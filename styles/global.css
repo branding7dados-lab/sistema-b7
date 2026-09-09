@@ -925,18 +925,19 @@ body.apurando #app{visibility:hidden;}
   50%{transform:translateY(-50vh) translateX(18px);opacity:.6}
   100%{transform:translateY(-105vh) translateX(-10px);opacity:0}}
 
-/* ---- anel girando com gradiente da marca, atrás do símbolo ---- */
-.b7-abertura .anel{position:absolute;z-index:0;width:168px;height:168px;border-radius:50%;
-  top:50%;left:50%;margin:-118px 0 0 -84px;
-  background:conic-gradient(from 0deg,transparent 0 55%,rgba(58,30,134,.0) 55%,#3A1E86 70%,#C21C83 88%,#FF6FB5 100%);
+/* ---- anel girando com gradiente da marca, centrado no símbolo ---- */
+.b7-abertura .anel{position:absolute;z-index:0;width:176px;height:176px;border-radius:50%;
+  left:50%;top:50%;transform:translate(-50%,-50%);
+  background:conic-gradient(from 0deg,transparent 0 58%,#3A1E86 72%,#C21C83 90%,#FF6FB5 100%);
   -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px));
   mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px));
-  animation:aberturaGira 2.4s cubic-bezier(.6,.05,.4,.95) infinite;filter:drop-shadow(0 0 10px rgba(226,64,156,.55));}
-.b7-abertura .anel span{position:absolute;inset:14px;border-radius:50%;
+  animation:aberturaGira 2.4s cubic-bezier(.6,.05,.4,.95) infinite;
+  filter:drop-shadow(0 0 10px rgba(226,64,156,.55));}
+.b7-abertura .anel:after{content:"";position:absolute;inset:16px;border-radius:50%;
   border:1px solid rgba(255,255,255,.07);}
-@keyframes aberturaGira{to{transform:rotate(360deg)}}
+@keyframes aberturaGira{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
 
-.b7-abertura .marca{position:relative;z-index:1;width:64px;height:74px;
+.b7-abertura .marca{position:relative;z-index:1;width:64px;height:74px;margin-top:18px;
   background:url('../assets/brand/symbol-color.png') no-repeat center/contain;
   animation:aberturaMarca 2.4s ease-in-out infinite;
   filter:drop-shadow(0 8px 24px rgba(194,28,131,.35));}

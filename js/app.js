@@ -130,8 +130,7 @@ B7.Rota = (function () {
       el.innerHTML = '<div class="fundo"><span class="a"></span><span class="b"></span><span class="c"></span>' +
           '<i class="p p1"></i><i class="p p2"></i><i class="p p3"></i>' +
           '<i class="p p4"></i><i class="p p5"></i><i class="p p6"></i></div>' +
-        '<div class="anel"><span></span></div>' +
-        '<div class="marca"></div>' +
+        '<div class="marca"><span class="anel"></span></div>' +
         '<div class="txt"><b>' + B7.UI.esc(titulo || 'Branding7') + '</b>' +
         B7.UI.esc(texto || 'Preparando o seu espaço…') + '</div>' +
         '<div class="barra"><i></i></div>';
