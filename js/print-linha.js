@@ -152,6 +152,54 @@ B7.FolhaLinha = (function () {
     return blocos;
   }
 
+  /* --------------------------------------------------------- PILARES
+     "ESTRATÉGIA BASEADA NOS PILARES DE CONTEÚDO": barra com a proporção
+     planejada, depois um bloco por pilar (indivisível, para a paginação
+     não cortar um pilar ao meio). Real × planejado entra quando a linha
+     já tem conteúdos. */
+  const nomePilar = (ctx, id) => {
+    const p = id && (ctx.pilares || []).find(x => x.id === id);
+    return p ? (p.nome || 'Pilar sem nome') : '';
+  };
+  function blocosPilares(ctx, num) {
+    const pilares = (ctx.pilares || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
+    if (!pilares.length) return [];
+    const pct = p => Math.max(0, +p.percentual || 0);
+    const soma = pilares.reduce((s, p) => s + pct(p), 0);
+    const base = +ctx.linha.meta_conteudos || ctx.conteudos.length;
+    const planejados = p => Math.round(base * pct(p) / 100);
+    const reais = p => ctx.conteudos.filter(c => c.pilar_id === p.id).length;
+
+    const blocos = [{ secao: 'PILARES', titulo: true,
+      html: tituloSecao(num, 'ESTRATÉGIA BASEADA NOS PILARES DE CONTEÚDO', 'Pilares de conteúdo') }];
+
+    if (soma > 0) {
+      blocos.push({ secao: 'PILARES',
+        html: '<div class="le-barra-total">' + pilares.map((p, i) =>
+          '<i class="f' + (i % 4) + '" style="width:' + (pct(p) / Math.max(100, soma) * 100) + '%"></i>').join('') +
+          '</div>' +
+          '<div class="le-pilar-legenda">' + pilares.map((p, i) =>
+            '<span><i class="f' + (i % 4) + '"></i>' + esc(p.nome || 'Pilar ' + (i + 1)) + ' · ' + pct(p) + '%</span>').join('') +
+          (Math.round(soma) !== 100 ? '<span class="soma">soma ' + (Math.round(soma * 100) / 100) + '%</span>' : '') +
+          '</div>' });
+    }
+
+    pilares.forEach((p, i) => {
+      blocos.push({ secao: 'PILARES',
+        html: '<div class="le-pilar"><div class="le-pilar-n">' + String(i + 1).padStart(2, '0') + '</div>' +
+          '<div class="le-pilar-c"><div class="le-pilar-topo">' +
+            '<h3>' + esc(p.nome || 'Pilar sem nome') + '</h3>' +
+            (pct(p) ? '<span class="pct">' + pct(p) + '%</span>' : '') +
+            (p.funil ? '<span class="fun">' + esc(String(p.funil).toUpperCase()) + ' DE FUNIL</span>' : '') +
+            (ctx.conteudos.length ? '<span class="rf">' + reais(p) + ' de ' + planejados(p) +
+              ' conteúdo' + (planejados(p) === 1 ? '' : 's') + ' planejado' + (planejados(p) === 1 ? '' : 's') + '</span>' : '') +
+          '</div>' +
+          bloco('OBJETIVO', p.objetivo) + bloco('OBSERVAÇÕES', p.observacoes) +
+          '</div></div>' });
+    });
+    return blocos;
+  }
+
   /* ------------------------------------------------------- CRIATIVOS
      Um bloco por conteúdo. A distinção entre formatos é por ícone e
      rótulo — não por quatro sistemas visuais diferentes. */
@@ -200,6 +248,7 @@ B7.FolhaLinha = (function () {
         '<span class="le-cri-n">POST ' + String(i + 1).padStart(2, '0') + '</span>' +
         '<span class="le-cri-f"><i>' + ICONE[c.tipo] + '</i>' + esc(c.tipo.toUpperCase()) + '</span>' +
         (c.data_postagem ? '<span class="le-cri-d">' + esc(B7.UI.dataBR(c.data_postagem)) + '</span>' : '') +
+        (nomePilar(ctx, c.pilar_id) ? '<span class="le-cri-p">' + esc(nomePilar(ctx, c.pilar_id)) + '</span>' : '') +
       '</div>' +
       '<h3 class="' + (vazio(c.titulo) ? 'fraco' : '') + '">' + esc(c.titulo || 'Sem título') + '</h3>' +
       bloco('OBJETIVO', c.objetivo) +
@@ -229,11 +278,14 @@ B7.FolhaLinha = (function () {
     const ordenados = ctx.conteudos.slice().sort((a, b) =>
       String(a.data_postagem || '9999').localeCompare(String(b.data_postagem || '9999')));
 
-    const cabecalho = '<tr><th>DATA</th><th>CANAL</th><th>FORMATO</th><th>CONTEÚDO</th></tr>';
+    const comPilar = (ctx.pilares || []).length > 0;
+    const cabecalho = '<tr><th>DATA</th><th>CANAL</th><th>FORMATO</th>' +
+      (comPilar ? '<th>PILAR</th>' : '') + '<th>CONTEÚDO</th></tr>';
     const linha = c =>
       '<tr><td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
       '<td>' + esc(c.canal || '') + '</td>' +
       '<td>' + esc(c.tipo) + '</td>' +
+      (comPilar ? '<td>' + esc(nomePilar(ctx, c.pilar_id)) + '</td>' : '') +
       '<td class="t">' + esc(c.titulo || 'Sem título') + '</td></tr>';
 
     const blocos = [{ secao: 'POSTAGENS', titulo: true,
@@ -324,6 +376,8 @@ B7.FolhaLinha = (function () {
     }
     const visao = blocosVisao(ctx, num);
     if (visao.length) { blocos = blocos.concat(visao); num++; }
+    const pil = blocosPilares(ctx, num);
+    if (pil.length) { blocos = blocos.concat(pil); num++; }
     const cri = blocosCriativos(ctx, num);
     if (cri.length) { blocos = blocos.concat(cri); num++; }
     const tab = blocosTabela(ctx, num);
@@ -353,7 +407,7 @@ B7.FolhaLinha = (function () {
   }
 
   return { documentoHTML, documentoMedidoHTML, montarFolhas, blocosDocumento,
-           blocosVisao, blocosCriativos, blocosTabela, criativoHTML,
+           blocosVisao, blocosPilares, blocosCriativos, blocosTabela, criativoHTML,
            tituloSecao, aberturaCompacta, capaHTML };
 })();
 
@@ -370,8 +424,9 @@ B7.BaixarLinha = (function () {
   async function reunir(linhaId, opcoes) {
     opcoes = opcoes || {};
     const linha = await B7.DB.linha(linhaId);
-    const [conteudos, cliente] = await Promise.all([
-      B7.DB.listarConteudos(linhaId), B7.DB.cliente(linha.client_id)
+    const [conteudos, cliente, pilares] = await Promise.all([
+      B7.DB.listarConteudos(linhaId), B7.DB.cliente(linha.client_id),
+      B7.DB.listarPilares(linhaId).catch(() => [])
     ]);
 
     const slides = {}, frames = {}, roteiros = {};
@@ -386,7 +441,7 @@ B7.BaixarLinha = (function () {
       }
     }
     return {
-      linha: linha, conteudos: conteudos, slides: slides, frames: frames,
+      linha: linha, conteudos: conteudos, pilares: pilares || [], slides: slides, frames: frames,
       roteiros: roteiros, clienteLogo: cliente.logo_url || '',
       incluirCapa: opcoes.incluirCapa !== false
     };

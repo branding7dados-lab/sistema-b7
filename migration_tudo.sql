@@ -18,8 +18,13 @@
 --   9. migration_aprovacoes_v2.sql aprovações transacionais, eventos,
 --                                 notificações e Kanban automático
 --                                 (ver APROVACOES.md)
+--  10. migration_pilares.sql     pilares de conteúdo (conteudos.pilar_id)
+--  11. migration_presenca.sql    preferências, last_login_at/last_seen_at,
+--                                 heartbeat; recria minha_sessao
+--  12. migration_push.sql        push_subscricoes + publicação Realtime
+--                                 (ver PUSH.md)
 --
---  10. migration_rls.sql          POR ÚLTIMO, e só depois de:
+--  13. migration_rls.sql          POR ÚLTIMO, e só depois de:
 --                                 - conseguir entrar como admin
 --                                 - existir um usuário cliente de teste
 --                                 - ter migration_rls_reverter.sql aberto

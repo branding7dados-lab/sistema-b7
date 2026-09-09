@@ -88,6 +88,16 @@ B7.Usuarios = (function () {
     });
   }
 
+  /* "Online agora" (visto há < 5 min), "Último acesso: …" ou "Nunca
+     acessou". Vem de perfis.last_seen_at / last_login_at (heartbeat e
+     login) — nunca de auth.users. */
+  function acessoHTML(u) {
+    const r = B7.Presenca ? B7.Presenca.rotulo(u)
+      : { online: false, texto: u.ultimo_acesso ? 'Último acesso: ' + B7.UI.quando(u.ultimo_acesso) : 'Nunca acessou' };
+    const classe = r.online ? ' online' : (r.texto === 'Nunca acessou' ? ' nunca' : '');
+    return '<span class="lu-acesso' + classe + '" title="' + esc(r.online ? 'Ativo nos últimos 5 minutos' : r.texto) + '">' + esc(r.texto) + '</span>';
+  }
+
   function linhaUsuario(u, empresas) {
     const inativa = u.estado !== 'ativa';
     return '<div class="lu-item' + (inativa ? ' inativa' : '') + '">' +
@@ -102,9 +112,7 @@ B7.Usuarios = (function () {
           (empresas.length > 2 ? ' +' + (empresas.length - 2) : '')
          : (u.papel === 'cliente' ? '<i>sem empresa vinculada</i>' : '—')) +
       '</span>' +
-      '<span class="lu-acesso">' +
-        (u.ultimo_acesso ? 'acessou ' + esc(B7.UI.quando(u.ultimo_acesso)) : 'nunca acessou') +
-      '</span>' +
+      acessoHTML(u) +
       (inativa ? '<span class="lu-estado">desativada</span>' : '') +
       '<div class="menu"><button class="ico">⋯</button><div class="lista">' +
         '<button data-acao-conta="editar" data-id="' + esc(u.id) + '">Editar acesso</button>' +

@@ -21,7 +21,7 @@ B7.Perfil = (function () {
     cliente: 'Cliente'
   };
 
-  function abrir() {
+  function abrir(secao) {
     const u = B7.Auth && B7.Auth.usuario();
     if (!u) return B7.UI.toast('Entre para ver o seu perfil.', { tipo: 'erro' });
 
@@ -83,6 +83,17 @@ B7.Perfil = (function () {
             '<span class="perfil-msg" id="pf-msg-senha"></span>' +
             '<button class="b pri fina" id="pf-salvar-senha">Trocar senha</button>' +
           '</div>' +
+        '</div>' +
+
+        /* avisos: som, navegador e push — cada pessoa decide o seu */
+        '<div class="perfil-bloco" id="pf-notif">' +
+          '<h4>Notificações</h4>' +
+          '<p class="ajuda">Como você quer ser avisado quando um cliente decidir ou a equipe enviar uma nova versão. ' +
+          'O sino no topo sempre mostra tudo, independentemente destas opções.</p>' +
+          opcao('som', 'Som ao chegar notificação', 'Um toque curto, gerado pelo próprio sistema.') +
+          opcao('navegador', 'Aviso do navegador', 'Quando esta aba não estiver em foco, o navegador mostra o aviso.') +
+          opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.') +
+          '<div class="perfil-acao"><span class="perfil-msg" id="pf-msg-notif"></span></div>' +
         '</div>' +
 
         /* o que só o administrador muda: mostrado, nunca editável */
@@ -203,6 +214,99 @@ B7.Perfil = (function () {
     };
 
     m.querySelector('#pf-sair').onclick = () => B7.Auth.sair();
+
+    /* --------------------------------------------------- notificações */
+    ligarNotificacoes(m);
+    if (secao === 'notificacoes') {
+      const alvo = m.querySelector('#pf-notif');
+      if (alvo) setTimeout(() => alvo.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80);
+    }
+  }
+
+  function opcao(chave, titulo, ajuda) {
+    return '<div class="perfil-opcao" data-opcao="' + chave + '">' +
+      '<span class="perfil-opcao-tx"><b>' + esc(titulo) + '</b><small>' + esc(ajuda) + '</small>' +
+      '<small class="aviso" data-aviso hidden></small></span>' +
+      '<button type="button" class="chave" role="switch" aria-checked="false" aria-label="' + esc(titulo) + '" data-chave="' + chave + '"></button>' +
+    '</div>';
+  }
+
+  /* Cada interruptor grava na hora. "Salvo" só aparece depois de o banco
+     responder; se falhar, o interruptor volta e a mensagem explica. */
+  async function ligarNotificacoes(m) {
+    if (!B7.Notif) return;
+    const msg = m.querySelector('#pf-msg-notif');
+    const p = B7.Notif.prefs();
+    const chave = k => m.querySelector('[data-chave="' + k + '"]');
+    const avisoOpcao = (k, texto) => {
+      const el = m.querySelector('[data-opcao="' + k + '"] [data-aviso]');
+      if (!el) return; el.textContent = texto || ''; el.hidden = !texto;
+    };
+    const pintar = (k, v) => { const b = chave(k); if (b) b.setAttribute('aria-checked', v ? 'true' : 'false'); };
+
+    pintar('som', p.som);
+    pintar('navegador', p.navegador);
+    if ('Notification' in window && Notification.permission === 'denied') {
+      avisoOpcao('navegador', 'Bloqueado nas configurações do navegador para este site.');
+    }
+
+    /* push: depende de chave pública, service worker e permissão */
+    const btPush = chave('push');
+    if (B7.Push && !B7.Push.disponivel()) {
+      btPush.disabled = true; pintar('push', false);
+      avisoOpcao('push', B7.Push.motivo());
+    } else if (B7.Push) {
+      btPush.disabled = true;
+      B7.Push.ativo().then(ativo => { pintar('push', ativo); btPush.disabled = false; })
+        .catch(() => { btPush.disabled = false; });
+    } else { btPush.disabled = true; }
+
+    async function gravar(k, v) {
+      msg.className = 'perfil-msg'; msg.textContent = 'Salvando…';
+      try {
+        await B7.Notif.gravarPrefs({ [k]: v });
+        aviso(msg, 'Preferência salva.', 'ok');
+      } catch (e) {
+        pintar(k, !v);
+        aviso(msg, e.message || 'Não foi possível salvar.', 'erro');
+        throw e;
+      }
+    }
+
+    chave('som').onclick = async () => {
+      const v = chave('som').getAttribute('aria-checked') !== 'true';
+      pintar('som', v);
+      try { await gravar('som', v); if (v) B7.Notif.tocarSom(); } catch (e) {}
+    };
+    chave('navegador').onclick = async () => {
+      const v = chave('navegador').getAttribute('aria-checked') !== 'true';
+      if (v) {
+        try {
+          const ok = await B7.Notif.pedirPermissao();
+          if (!ok) { avisoOpcao('navegador', 'Permissão não concedida.'); return; }
+          avisoOpcao('navegador', '');
+        } catch (e) { avisoOpcao('navegador', e.message); return; }
+      }
+      pintar('navegador', v);
+      try { await gravar('navegador', v); } catch (e) {}
+    };
+    btPush.onclick = async () => {
+      if (btPush.disabled) return;
+      const v = btPush.getAttribute('aria-checked') !== 'true';
+      btPush.disabled = true;
+      msg.className = 'perfil-msg'; msg.textContent = v ? 'Ativando push…' : 'Desativando push…';
+      try {
+        if (v) await B7.Push.ativar(); else await B7.Push.desativar();
+        pintar('push', v);
+        await B7.Notif.gravarPrefs({ push: v });
+        aviso(msg, v ? 'Push ativado neste aparelho.' : 'Push desativado neste aparelho.', 'ok');
+        avisoOpcao('push', '');
+      } catch (e) {
+        pintar('push', !v);
+        aviso(msg, e.message || 'Não foi possível alterar o push.', 'erro');
+      }
+      btPush.disabled = false;
+    };
   }
 
   function aviso(el, texto, tipo) {

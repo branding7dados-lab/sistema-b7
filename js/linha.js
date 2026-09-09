@@ -2,11 +2,14 @@
    LINHA EDITORIAL
    Abas: Visão geral · Estratégia · Criativos · Postagens.
 
-   Pilares saíram da experiência: a linha editorial passou a ser sobre o que
-   será produzido no mês, não sobre proporções. Os dados antigos continuam no
-   banco intactos — só deixaram de ser lidos e exigidos aqui.
-   Mesma linguagem visual do editor de roteiros, composição própria —
-   o roteiro fala de cena e gravação, a linha fala do mês.
+   Estado em memória (L) é a fonte da tela. Tudo que a pessoa digita é
+   espelhado em L na hora (ver espelhar) e vai para o banco pelo autosave;
+   trocar de aba só troca o corpo — não refaz a página nem relê o banco.
+
+   Pilares de conteúdo voltaram: a aba Estratégia tem a seção
+   "ESTRATÉGIA BASEADA NOS PILARES DE CONTEÚDO" (CRUD, percentual, funil)
+   e cada conteúdo pode apontar para um pilar (conteudos.pilar_id). Nada é
+   obrigatório: linha sem pilar funciona como antes.
 
    Conteúdo de vídeo NÃO tem editor próprio: ele aponta para um roteiro
    do sistema (script_id) e abre o editor que já existe.
@@ -28,30 +31,54 @@ B7.Linha = (function () {
     Story: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3.5" width="10" height="17" rx="2.5"/><path d="M10 20.5h4"/></svg>'
   };
 
-  let L = { linha: null, conteudos: [], aba: 'geral', cliente: null };
+  let L = { linha: null, conteudos: [], pilares: [], aba: 'geral', cliente: null,
+            aprovacao: null, cal: null };
+
+  const ABAS = [['geral', 'Visão geral'], ['estrategia', 'Estratégia'],
+                ['criativos', 'Criativos'], ['postagens', 'Postagens']];
 
   /* ------------------------------------------------------------ abrir */
   async function abrir(id, aba) {
-    L.aba = aba || 'geral';
+    L.aba = ABAS.some(([k]) => k === aba) ? aba : 'geral';
     painel().innerHTML = '<div class="conteudo">' +
       '<div class="b7-load"><div class="simbolo"></div><div class="txt">Abrindo a linha editorial…</div></div></div>';
     try {
       L.linha = await B7.DB.linha(id);
-      [L.conteudos, L.cliente] = await Promise.all([
-        B7.DB.listarConteudos(id), B7.DB.cliente(L.linha.client_id)
+      [L.conteudos, L.cliente, L.pilares] = await Promise.all([
+        B7.DB.listarConteudos(id), B7.DB.cliente(L.linha.client_id),
+        B7.DB.listarPilares(id).catch(() => [])
       ]);
       try { L.aprovacao = (await B7.DB.ultimasAprovacoes('linha', [id]))[id] || null; } catch (e) { L.aprovacao = null; }
     } catch (e) { return B7.Dashboard.erroConteudo(e, (L.linha || {}).client_id || ''); }
 
+    /* o calendário abre no mês da linha; a navegação é só visual */
+    L.cal = { ano: +L.linha.ano, mes: +L.linha.mes };
     B7.Rota.titulo([L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano), L.linha.cliente_nome]);
     render();
   }
 
+  /* --------------------------------------------- espelho em memória
+     O autosave manda o patch para o banco; aqui o mesmo patch entra no
+     objeto que a tela usa para renderizar. Sem isso, trocar de aba
+     mostrava o valor anterior (bug "a estratégia some"). */
+  function espelhar(tab, id, patch) {
+    let alvo = null;
+    if (tab === 'linhas_editoriais' && L.linha && L.linha.id === id) alvo = L.linha;
+    else if (tab === 'conteudos') alvo = L.conteudos.find(c => c.id === id);
+    else if (tab === 'pilares') alvo = L.pilares.find(p => p.id === id);
+    if (!alvo) return;
+    Object.assign(alvo, patch);
+    if (tab === 'pilares' && 'percentual' in patch) resumoPilaresAoVivo();
+  }
+
+  function corpoHTML() {
+    return L.aba === 'geral' ? visaoGeral() :
+           L.aba === 'estrategia' ? estrategia() :
+           L.aba === 'criativos' ? criativos() : postagens();
+  }
+
   function render() {
     const l = L.linha;
-    const abas = [['geral', 'Visão geral'], ['estrategia', 'Estratégia'],
-                  ['criativos', 'Criativos'], ['postagens', 'Postagens']];
-
     painel().innerHTML = '<div class="conteudo entra">' +
       '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span>' +
         '<button data-ir="#/clientes">Clientes</button><span>/</span>' +
@@ -60,20 +87,47 @@ B7.Linha = (function () {
         '<span>/</span><b>' + esc(l.nome || MESES[l.mes - 1] + ' ' + l.ano) + '</b></div>' +
 
       capa(l) +
-      '<div class="abas-cliente">' + abas.map(([k, r]) =>
+      '<div class="abas-cliente abas-linha">' + ABAS.map(([k, r]) =>
         '<button data-aba="' + k + '"' + (L.aba === k ? ' class="on"' : '') + '>' + r + '</button>').join('') +
       '</div>' +
-      '<div id="corpo-linha">' +
-        (L.aba === 'geral' ? visaoGeral() :
-         L.aba === 'estrategia' ? estrategia() :
-         L.aba === 'criativos' ? criativos() : postagens()) +
-      '</div></div>';
+      '<div id="corpo-linha">' + corpoHTML() + '</div></div>';
 
     painel().querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
-    painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => { L.aba = b.dataset.aba; render(); });
-    C.ligarCampos(painel());
+    painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => trocarAba(b.dataset.aba));
+    C.ligarCampos(painel(), espelhar);
     B7.UI.ligarMenus(painel());
     ligarAba();
+  }
+
+  /* Só o corpo é trocado: capa, trilha e abas ficam onde estão, e nada
+     é relido do banco — o que está em L é o que a pessoa acabou de ver. */
+  function trocarAba(k) {
+    if (!ABAS.some(([x]) => x === k)) return;
+    /* o que ainda estava no debounce vai agora; a tela não espera por
+       isso porque L já tem o valor (espelhar) */
+    B7.Save.agora().catch(() => {});
+    L.aba = k;
+    painel().querySelectorAll('[data-aba]').forEach(b => b.classList.toggle('on', b.dataset.aba === k));
+    renderCorpo();
+  }
+
+  function renderCorpo() {
+    const corpo = document.getElementById('corpo-linha');
+    if (!corpo) return render();
+    corpo.innerHTML = corpoHTML();
+    C.ligarCampos(corpo, espelhar);
+    ligarAba();
+  }
+
+  /* Redesenha a página inteira a partir de L (sem ler o banco), mantendo
+     a rolagem. Usado quando capa e corpo mudam juntos (contagens). */
+  function atualizar() {
+    const y = window.scrollY;
+    const cx = painel().closest('.principal, main, .conteudo-rolavel');
+    const st = cx ? cx.scrollTop : 0;
+    render();
+    window.scrollTo(0, y);
+    if (cx) cx.scrollTop = st;
   }
 
   function capa(l) {
@@ -138,8 +192,13 @@ B7.Linha = (function () {
             periodo: (l.periodo_inicio ? B7.UI.dataBR(l.periodo_inicio) : '') + (l.periodo_fim ? ' a ' + B7.UI.dataBR(l.periodo_fim) : ''),
             objetivo: l.objetivo || '', posicionamento_mes: l.posicionamento_mes || '', canais: l.canais || '',
             estrategia: l.estrategia || '', mes: l.mes, ano: l.ano, cliente: l.cliente_nome,
+            /* pilares congelados junto: o cliente aprova a estratégia inteira */
+            pilares: L.pilares.map(p => ({ id: p.id, nome: p.nome, percentual: +p.percentual || 0,
+              funil: p.funil, objetivo: p.objetivo || '', observacoes: p.observacoes || '',
+              planejados: planejadosDoPilar(p), reais: reaisDoPilar(p) })),
             conteudos: L.conteudos.map(c => ({ id: c.id, tipo: c.tipo, titulo: c.titulo, data_postagem: c.data_postagem,
-              objetivo: c.objetivo, canal: c.canal, roteiro_titulo: titulos[c.id] || null }))
+              objetivo: c.objetivo, canal: c.canal, roteiro_titulo: titulos[c.id] || null,
+              pilar_id: c.pilar_id || null, pilar: nomeDoPilar(c.pilar_id) }))
           },
           observacao: m.querySelector('#env-obs').value.trim() || null
         });
@@ -212,6 +271,9 @@ B7.Linha = (function () {
                      : '<button class="b p" data-ir-aba="criativos">Abrir criativos</button>') +
         '</div>' +
       '</div><div class="apoio">' +
+        (L.pilares.length ? '<div class="bloco"><h3>Pilares de conteúdo</h3>' +
+          distribuicaoPilares() +
+          '<button class="b p" data-ir-aba="estrategia" style="margin-top:10px">Editar pilares</button></div>' : '') +
         (proximos.length ? '<div class="bloco"><h3>Próximos conteúdos</h3>' +
           proximos.map(c =>
             '<div class="proximo" data-conteudo="' + esc(c.id) + '">' +
@@ -261,8 +323,13 @@ B7.Linha = (function () {
 
       '<div class="bloco mb"><h3>Objetivo principal</h3>' +
         C.campo('OBJETIVO DO PERÍODO', l.objetivo, t + ' data-campo="objetivo"') +
-        C.campo('O QUE A ESTRATÉGIA PRETENDE GERAR', l.objetivo_detalhe, t + ' data-campo="objetivo_detalhe"') +
+        /* o campo antigo só aparece se já tinha texto: nada se perde, mas
+           a seção dele foi substituída pelos pilares */
+        (String(l.objetivo_detalhe || '').trim()
+          ? C.campo('COMPLEMENTO DO OBJETIVO', l.objetivo_detalhe, t + ' data-campo="objetivo_detalhe"') : '') +
       '</div>' +
+
+      secaoPilares() +
 
       '<div class="bloco"><h3>Posicionamento</h3>' +
         '<div class="linha-acao"><button class="b fina contorno" id="usar-inteligencia">' +
@@ -273,6 +340,143 @@ B7.Linha = (function () {
         C.campo('PROPOSTA ÚNICA DE VALOR', l.puv, t + ' data-campo="puv"') +
         C.campo('PERCEPÇÃO DESEJADA', l.percepcao, t + ' data-campo="percepcao"') +
       '</div>';
+  }
+
+  /* ----------------------------------------------------------- PILARES
+     A distribuição planejada é o percentual; a real é quantos conteúdos
+     apontam para o pilar. A base do planejado é a meta de conteúdos ou,
+     sem meta, o total de conteúdos da linha. Somar 100% é aviso, não
+     bloqueio: a equipe decide. */
+  const pct = p => Math.max(0, +p.percentual || 0);
+  const somaPilares = () => L.pilares.reduce((s, p) => s + pct(p), 0);
+  const basePlanejada = () => +L.linha.meta_conteudos || L.conteudos.length;
+  const planejadosDoPilar = p => Math.round(basePlanejada() * pct(p) / 100);
+  const reaisDoPilar = p => L.conteudos.filter(c => c.pilar_id === p.id).length;
+  const nomeDoPilar = id => { const p = id && L.pilares.find(x => x.id === id); return p ? (p.nome || 'Pilar sem nome') : null; };
+  const semPilar = () => L.conteudos.filter(c => !c.pilar_id || !L.pilares.some(p => p.id === c.pilar_id)).length;
+
+  function avisoSoma(soma) {
+    const s = Math.round(soma * 100) / 100;
+    if (!L.pilares.length) return '';
+    if (s === 100) return '<span class="ok">Soma 100%</span>';
+    if (s < 100) return '<span class="falta">Soma ' + s + '% — faltam ' + (Math.round((100 - s) * 100) / 100) + '%</span>';
+    return '<span class="falta">Soma ' + s + '% — passa ' + (Math.round((s - 100) * 100) / 100) + '% de 100</span>';
+  }
+
+  /* barra empilhada com a proporção planejada de cada pilar */
+  function barraPilares() {
+    const soma = somaPilares();
+    if (!soma) return '';
+    return '<div class="barra-total pil-barra">' + L.pilares.map((p, i) =>
+      '<i class="faixa-' + (i % 4) + '" style="width:' + (pct(p) / Math.max(100, soma) * 100) + '%" ' +
+      'title="' + esc(p.nome || 'Pilar ' + (i + 1)) + ' · ' + pct(p) + '%"></i>').join('') + '</div>';
+  }
+
+  /* real × planejado, um par de barras por pilar (usado na visão geral e
+     dentro da seção de pilares) */
+  function distribuicaoPilares() {
+    if (!L.pilares.length) return '';
+    const maxB = Math.max(1, ...L.pilares.map(p => Math.max(planejadosDoPilar(p), reaisDoPilar(p))));
+    const soltos = semPilar();
+    return '<div class="pil-dist">' + L.pilares.map((p, i) => {
+      const plan = planejadosDoPilar(p), real = reaisDoPilar(p);
+      const estado = !L.conteudos.length ? '' : real === plan ? ' ok' : real < plan ? ' abaixo' : ' acima';
+      return '<div class="pil-dist-l' + estado + '">' +
+        '<div class="pil-dist-cab"><span class="n">' + String(i + 1).padStart(2, '0') + '</span>' +
+        '<b>' + esc(p.nome || 'Pilar sem nome') + '</b><span class="pc">' + pct(p) + '%</span>' +
+        '<span class="rf"><b>' + real + '</b> de ' + plan + ' planejado' + (plan === 1 ? '' : 's') + '</span></div>' +
+        '<div class="pil-dist-barras">' +
+          '<div class="barra plan" title="Planejado"><i style="width:' + (plan / maxB * 100) + '%"></i></div>' +
+          '<div class="barra real" title="Real"><i style="width:' + (real / maxB * 100) + '%"></i></div>' +
+        '</div></div>';
+    }).join('') +
+    '<div class="pil-legenda"><span class="plan">Planejado</span><span class="real">Real</span>' +
+      (soltos ? '<span class="solto">' + soltos + ' conteúdo' + (soltos === 1 ? '' : 's') + ' sem pilar</span>' : '') +
+    '</div></div>';
+  }
+
+  function secaoPilares() {
+    const soma = somaPilares();
+    return '<div class="bloco mb bloco-pilares" id="bloco-pilares">' +
+      '<div class="pil-cab"><h3>ESTRATÉGIA BASEADA NOS PILARES DE CONTEÚDO</h3>' +
+      '<div class="pil-soma" id="pil-soma">' + avisoSoma(soma) + '</div></div>' +
+      '<p class="ajuda" style="margin:0 0 12px">Os temas que sustentam o mês, com o peso de cada um. ' +
+      'Cada conteúdo pode apontar para um pilar; a distribuição real aparece ao lado da planejada.</p>' +
+      '<div id="pil-barra">' + barraPilares() + '</div>' +
+      '<div id="lista-pilares">' + L.pilares.map((p, i) => cardPilar(p, i)).join('') + '</div>' +
+      (L.pilares.length ? '' :
+        '<div class="pil-vazio">Nenhum pilar ainda. Comece com dois ou três: educação, autoridade, oferta…</div>') +
+      '<button class="add-largo" id="add-pilar">+ ADICIONAR PILAR</button>' +
+      (L.pilares.length ? '<div class="pil-sub">DISTRIBUIÇÃO DOS CONTEÚDOS</div>' +
+        '<div id="pil-dist">' + distribuicaoPilares() + '</div>' : '') +
+    '</div>';
+  }
+
+  function cardPilar(p, i) {
+    const t = 'data-tab="pilares" data-id="' + esc(p.id) + '"';
+    return '<div class="cartao-pilar" data-pilar="' + esc(p.id) + '">' +
+      '<div class="pilar-num">' + String(i + 1).padStart(2, '0') + '</div>' +
+      '<div class="pilar-corpo">' +
+        '<div class="linha mb pil-linha">' +
+          '<div class="pil-nome"><label class="rot">NOME DO PILAR</label>' +
+            '<input class="campo" value="' + esc(p.nome || '') + '" ' + t + ' data-campo="nome" placeholder="Ex: Educação"></div>' +
+          '<div class="pil-pct"><label class="rot">PERCENTUAL</label>' +
+            '<input class="campo" type="number" min="0" max="100" step="1" value="' + esc(pct(p) || '') + '" ' +
+            t + ' data-campo="percentual" data-vazio="0" placeholder="%"></div>' +
+          '<div class="pil-funil"><label class="rot">FUNIL</label>' +
+            '<select class="campo" ' + t + ' data-campo="funil">' + C.FUNIL.map(f =>
+              '<option' + (p.funil === f ? ' selected' : '') + '>' + f + '</option>').join('') + '</select></div>' +
+        '</div>' +
+        C.campo('OBJETIVO DO PILAR', p.objetivo, t + ' data-campo="objetivo"') +
+        C.campo('OBSERVAÇÕES', p.observacoes, t + ' data-campo="observacoes"') +
+      '</div>' +
+      '<button class="ico perigo" data-excluir-pilar="' + esc(p.id) + '" title="Remover pilar">✕</button></div>';
+  }
+
+  /* soma e barra reagem a cada tecla, sem redesenhar os cartões (o foco
+     ficaria perdido) */
+  function resumoPilaresAoVivo() {
+    const soma = document.getElementById('pil-soma');
+    if (soma) soma.innerHTML = avisoSoma(somaPilares());
+    const barra = document.getElementById('pil-barra');
+    if (barra) barra.innerHTML = barraPilares();
+    const dist = document.getElementById('pil-dist');
+    if (dist) dist.innerHTML = distribuicaoPilares();
+  }
+
+  function ligarPilares(p) {
+    const add = p.querySelector('#add-pilar');
+    if (add) add.onclick = async () => {
+      try {
+        const novo = await B7.Save.acao(() => B7.DB.criarPilar({
+          linha_id: L.linha.id, position: L.pilares.length, nome: '', percentual: 0, funil: 'Topo'
+        }), 'Pilar adicionado');
+        L.pilares.push(novo);
+        renderCorpo();
+        const campo = document.querySelector('[data-pilar="' + novo.id + '"] [data-campo="nome"]');
+        if (campo) campo.focus();
+      } catch (e) {}
+    };
+    p.querySelectorAll('[data-excluir-pilar]').forEach(b => b.onclick = () => {
+      const id = b.dataset.excluirPilar;
+      const pilar = L.pilares.find(x => x.id === id);
+      const ligados = reaisDoPilar({ id });
+      B7.UI.confirmar({
+        titulo: 'Remover o pilar ' + (pilar && pilar.nome ? '“' + pilar.nome + '”' : '') + '?',
+        texto: ligados ? ligados + ' conteúdo' + (ligados === 1 ? ' fica' : 's ficam') + ' sem pilar. Nenhum conteúdo é apagado.'
+                       : 'Nenhum conteúdo está ligado a ele.',
+        rotulo: 'Remover', perigo: true,
+        aoConfirmar: async () => {
+          try {
+            await B7.Save.agora().catch(() => {});
+            await B7.Save.acao(() => B7.DB.excluirPilar(id), 'Pilar removido');
+            L.pilares = L.pilares.filter(x => x.id !== id);
+            L.conteudos.forEach(c => { if (c.pilar_id === id) c.pilar_id = null; });
+            renderCorpo();
+          } catch (e) {}
+        }
+      });
+    });
   }
 
   /* --------------------------------------------------------- CRIATIVOS */
@@ -296,7 +500,9 @@ B7.Linha = (function () {
       '<h3>' + esc(c.titulo || 'Sem título') + '</h3>' +
       '<div class="cc-meta">' +
         (c.canal ? '<span>' + esc(c.canal) + '</span><span class="p"></span>' : '') +
-        '<span>' + (c.data_postagem ? B7.UI.dataBR(c.data_postagem) : 'sem data') + '</span></div>' +
+        '<span>' + (c.data_postagem ? B7.UI.dataBR(c.data_postagem) : 'sem data') + '</span>' +
+        (nomeDoPilar(c.pilar_id) ? '<span class="p"></span><span class="cc-pilar">' + esc(nomeDoPilar(c.pilar_id)) + '</span>' : '') +
+      '</div>' +
       '<div class="cc-rodape">' + chipConteudo(c.status) +
         '<button class="cc-espiar" data-espiar="' + esc(c.id) + '" title="Visualização rápida">👁</button>' +
         '<span class="abrir">Abrir →</span></div></div>';
@@ -309,58 +515,104 @@ B7.Linha = (function () {
   }
 
   /* --------------------------------------------------------- POSTAGENS
-     Duas visualizações: lista e calendário do mês da linha. É calendário
-     editorial, não agenda: cada dia mostra o que está marcado para ele. */
+     Duas visualizações: lista e calendário. É calendário editorial, não
+     agenda: cada dia mostra o que está marcado para ele.
+
+     Datas são "date-only": strings YYYY-MM-DD do começo ao fim. Nunca
+     `new Date('YYYY-MM-DD')` — isso é meia-noite UTC e no Brasil vira o
+     dia anterior. Só o dia da semana usa Date, e com componentes locais. */
   let vistaPostagens = 'lista';
 
+  const DIAS_SEMANA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+  const iso = (a, m, d) => a + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  const diasNoMes = (a, m) => new Date(a, m, 0).getDate();       // m = 1..12
+  const diaSemana = (a, m, d) => new Date(a, m - 1, d).getDay();  // 0 = domingo, local
+  const MAX_POR_DIA = 3;
+
+  function mesAnterior(c) { return c.mes === 1 ? { ano: c.ano - 1, mes: 12 } : { ano: c.ano, mes: c.mes - 1 }; }
+  function mesSeguinte(c) { return c.mes === 12 ? { ano: c.ano + 1, mes: 1 } : { ano: c.ano, mes: c.mes + 1 }; }
+
+  /* as células de um mês, em semanas completas (DOM..SÁB), com os dias
+     vizinhos marcados como `fora` */
+  function celulasDoMes(ano, mes) {
+    const total = diasNoMes(ano, mes);
+    const antes = diaSemana(ano, mes, 1);
+    const ant = mesAnterior({ ano, mes }), seg = mesSeguinte({ ano, mes });
+    const totalAnt = diasNoMes(ant.ano, ant.mes);
+    const cels = [];
+    for (let i = antes - 1; i >= 0; i--) cels.push({ iso: iso(ant.ano, ant.mes, totalAnt - i), dia: totalAnt - i, fora: true });
+    for (let d = 1; d <= total; d++) cels.push({ iso: iso(ano, mes, d), dia: d, fora: false });
+    let d = 1;
+    while (cels.length % 7) cels.push({ iso: iso(seg.ano, seg.mes, d), dia: d++, fora: true });
+    return cels;
+  }
+
+  function itemCal(c) {
+    return '<button class="cal-ev" data-conteudo="' + esc(c.id) + '" title="' + esc(c.titulo || 'Sem título') + '">' +
+      '<span class="cal-ev-ic">' + ICONE_FORMATO[c.tipo] + '</span>' +
+      '<span class="cal-ev-tx">' + esc(c.titulo || 'Sem título') + '</span></button>';
+  }
+
   function calendario() {
-    const semData = L.conteudos.filter(c => !c.data_postagem);
-    const l = L.linha;
-    const primeiro = new Date(l.ano, l.mes - 1, 1);
-    const dias = new Date(l.ano, l.mes, 0).getDate();
-    const inicio = primeiro.getDay();               // 0 = domingo
+    const cal = L.cal || { ano: +L.linha.ano, mes: +L.linha.mes };
+    const hoje = B7.UI.hojeISO();
     const porDia = {};
     L.conteudos.filter(c => c.data_postagem).forEach(c => {
-      const d = c.data_postagem;
-      if (+d.slice(0, 4) === l.ano && +d.slice(5, 7) === l.mes) {
-        (porDia[+d.slice(8, 10)] = porDia[+d.slice(8, 10)] || []).push(c);
-      }
+      const d = String(c.data_postagem).slice(0, 10);
+      (porDia[d] = porDia[d] || []).push(c);
     });
-    const foraDoMes = L.conteudos.filter(c => c.data_postagem &&
-      (+c.data_postagem.slice(0, 4) !== l.ano || +c.data_postagem.slice(5, 7) !== l.mes));
+    Object.values(porDia).forEach(lista => lista.sort((a, b) => (a.position || 0) - (b.position || 0)));
 
-    let celulas = '';
-    for (let i = 0; i < inicio; i++) celulas += '<div class="cal-cel vazia"></div>';
-    for (let d = 1; d <= dias; d++) {
-      const itens = porDia[d] || [];
-      celulas += '<div class="cal-cel' + (itens.length ? ' com' : '') + '">' +
-        '<div class="cal-dia">' + d + '</div>' +
-        itens.map(c => '<button class="cal-item" data-conteudo="' + esc(c.id) + '" ' +
-          'title="' + esc(c.titulo || 'Sem título') + '">' +
-          '<span class="cal-ic">' + ICONE_FORMATO[c.tipo] + '</span>' +
-          '<span class="cal-tx">' + esc(c.titulo || 'Sem título') + '</span></button>').join('') +
-      '</div>';
-    }
+    const cels = celulasDoMes(cal.ano, cal.mes);
+    const prefixo = iso(cal.ano, cal.mes, 1).slice(0, 7);
+    const noMes = L.conteudos.filter(c => c.data_postagem && String(c.data_postagem).slice(0, 7) === prefixo);
+    const semData = L.conteudos.filter(c => !c.data_postagem);
+    const mesDaLinha = cal.ano === +L.linha.ano && cal.mes === +L.linha.mes;
 
-    return '<div class="cal-grade-topo">' +
-        ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'].map(d => '<span>' + d + '</span>').join('') +
-      '</div><div class="cal-grade">' + celulas + '</div>' +
-      (foraDoMes.length ? '<div class="aviso-suave">' + foraDoMes.length +
-        ' conteúdo' + (foraDoMes.length === 1 ? '' : 's') + ' com data fora de ' +
-        esc(MESES[l.mes - 1]) + ' — aparece' + (foraDoMes.length === 1 ? '' : 'm') +
-        ' na lista.</div>' : '') +
+    const grade = cels.map(cel => {
+      const itens = porDia[cel.iso] || [];
+      const extra = itens.length - MAX_POR_DIA;
+      return '<div class="cal-d' + (cel.fora ? ' fora' : '') + (itens.length ? ' tem' : '') +
+        (cel.iso === hoje ? ' hoje' : '') + '" data-dia="' + cel.iso + '">' +
+        '<div class="cal-n">' + cel.dia + '</div>' +
+        '<div class="cal-evs">' + itens.slice(0, MAX_POR_DIA).map(itemCal).join('') +
+        (extra > 0 ? '<button class="cal-mais" data-mais="' + cel.iso + '">+' + extra + '</button>' : '') +
+        '</div></div>';
+    }).join('');
+
+    /* vista agenda: a mesma informação em lista por dia (celular) */
+    const diasComItens = Object.keys(porDia).filter(d => d.startsWith(prefixo)).sort();
+    const agenda = diasComItens.length
+      ? diasComItens.map(d => {
+          const dia = +d.slice(8, 10);
+          return '<div class="cal-ag-dia' + (d === hoje ? ' hoje' : '') + '">' +
+            '<div class="cal-ag-data"><b>' + dia + '</b><small>' + DIAS_SEMANA[diaSemana(cal.ano, cal.mes, dia)] + '</small></div>' +
+            '<div class="cal-ag-itens">' + porDia[d].map(itemCal).join('') + '</div></div>';
+        }).join('')
+      : '<div class="cal-ag-vazio">Nenhuma postagem marcada em ' + esc(MESES[cal.mes - 1]) + '.</div>';
+
+    return '<div class="cal-mes">' +
+      '<div class="cal-nav">' +
+        '<button class="ico" data-cal="ant" aria-label="Mês anterior" title="Mês anterior">‹</button>' +
+        '<div class="cal-titulo"><b>' + esc(MESES[cal.mes - 1]) + '</b><span>' + cal.ano + '</span>' +
+          '<small>' + noMes.length + ' postage' + (noMes.length === 1 ? 'm' : 'ns') + '</small></div>' +
+        '<button class="ico" data-cal="prox" aria-label="Próximo mês" title="Próximo mês">›</button>' +
+        (mesDaLinha ? '' : '<button class="b p" data-cal="linha">Mês da linha</button>') +
+      '</div>' +
+      '<div class="cal-grade-mes">' +
+        '<div class="cal-cab">' + DIAS_SEMANA.map(d => '<span>' + d + '</span>').join('') + '</div>' +
+        '<div class="cal-dias">' + grade + '</div>' +
+      '</div>' +
+      '<div class="cal-agenda">' + agenda + '</div>' +
       /* sem data não é pendência: é conteúdo que ainda não foi agendado */
-      (semData.length ? '<div class="cal-sem-data"><small>SEM DATA DEFINIDA</small>' +
-        semData.map(c => '<button class="cal-item" data-conteudo="' + esc(c.id) + '" ' +
-          'title="' + esc(c.titulo || 'Sem título') + '">' +
-          '<span class="cal-ic">' + ICONE_FORMATO[c.tipo] + '</span>' +
-          '<span class="cal-tx">' + esc(c.titulo || 'Sem título') + '</span></button>').join('') +
-        '</div>' : '');
+      (semData.length ? '<div class="cal-soltos"><small>SEM DATA DEFINIDA</small>' +
+        semData.map(itemCal).join('') + '</div>' : '') +
+    '</div>';
   }
 
   function postagens() {
     const comData = L.conteudos.filter(c => c.data_postagem)
-      .sort((a, b) => a.data_postagem.localeCompare(b.data_postagem));
+      .sort((a, b) => String(a.data_postagem).localeCompare(String(b.data_postagem)));
     const semData = L.conteudos.filter(c => !c.data_postagem);
 
     if (!L.conteudos.length) {
@@ -373,19 +625,20 @@ B7.Linha = (function () {
       '<button data-vista="lista"' + (vistaPostagens === 'lista' ? ' class="on"' : '') + '>Lista</button>' +
       '<button data-vista="calendario"' + (vistaPostagens === 'calendario' ? ' class="on"' : '') + '>Calendário</button>' +
       '</div>';
-    if (vistaPostagens === 'calendario') return seletor + '<div class="bloco">' + calendario() + '</div>';
+    if (vistaPostagens === 'calendario') return seletor + '<div class="bloco bloco-cal">' + calendario() + '</div>';
 
     const linhaPost = c => {
-  
+      const d = c.data_postagem ? String(c.data_postagem).slice(0, 10) : '';
       return '<div class="post-linha" data-conteudo="' + esc(c.id) + '">' +
-        '<div class="post-data">' + (c.data_postagem
-          ? '<b>' + esc(c.data_postagem.slice(8, 10)) + '</b><small>' +
-            esc(MESES[+c.data_postagem.slice(5, 7) - 1].slice(0, 3).toUpperCase()) + '</small>'
+        '<div class="post-data">' + (d
+          ? '<b>' + esc(d.slice(8, 10)) + '</b><small>' +
+            esc(MESES[+d.slice(5, 7) - 1].slice(0, 3).toUpperCase()) + '</small>'
           : '<span class="sem-data">—</span>') + '</div>' +
         '<span class="post-formato">' + ICONE_FORMATO[c.tipo] + '</span>' +
         '<div class="post-tx"><b>' + esc(c.titulo || 'Sem título') + '</b>' +
-        '<small>' +
-        (c.canal ? ' · ' + esc(c.canal) : '') + '</small></div>' +
+        '<small>' + esc(c.tipo) +
+        (c.canal ? ' · ' + esc(c.canal) : '') +
+        (nomeDoPilar(c.pilar_id) ? ' · ' + esc(nomeDoPilar(c.pilar_id)) : '') + '</small></div>' +
         chipConteudo(c.status) + '</div>';
     };
 
@@ -413,8 +666,31 @@ B7.Linha = (function () {
       abrirConteudo(el.dataset.conteudo);
     });
     p.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
-      vistaPostagens = b.dataset.vista; render();
+      vistaPostagens = b.dataset.vista; renderCorpo();
     });
+    p.querySelectorAll('[data-ir-aba]').forEach(b => b.onclick = () => trocarAba(b.dataset.irAba));
+
+    /* calendário: navegação de mês e "+N" (expande o dia) */
+    p.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => {
+      const c = L.cal || { ano: +L.linha.ano, mes: +L.linha.mes };
+      L.cal = b.dataset.cal === 'ant' ? mesAnterior(c)
+            : b.dataset.cal === 'prox' ? mesSeguinte(c)
+            : { ano: +L.linha.ano, mes: +L.linha.mes };
+      renderCorpo();
+    });
+    p.querySelectorAll('[data-mais]').forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const cel = b.closest('.cal-d');
+      const dia = b.dataset.mais;
+      const itens = L.conteudos.filter(c => c.data_postagem && String(c.data_postagem).slice(0, 10) === dia)
+        .sort((x, y) => (x.position || 0) - (y.position || 0));
+      cel.classList.add('aberta');
+      cel.querySelector('.cal-evs').innerHTML = itens.map(itemCal).join('');
+      cel.querySelectorAll('[data-conteudo]').forEach(el => el.onclick = ev => {
+        ev.stopPropagation(); abrirConteudo(el.dataset.conteudo);
+      });
+    });
+    ligarPilares(p);
     p.querySelectorAll('[data-status-semanal]').forEach(b => b.onclick = () =>
       B7.Semana.modalNovo(L.linha.client_id, L.linha.id));
     const baixar = p.querySelector('[data-baixar-linha]');
@@ -432,7 +708,7 @@ B7.Linha = (function () {
             cliente: L.linha.client_id, texto: (L.linha.nome || 'Linha editorial') + ' → ' + v });
         }
         L.linha.status = v;
-        render();
+        atualizar();
       } catch (e) {}
     });
     /* Liberar no portal é uma decisão explícita da equipe: nada fica
@@ -447,7 +723,7 @@ B7.Linha = (function () {
         await B7.Save.acao(() => B7.DB.atualizarLinha(L.linha.id, { visivel_cliente: ligar }),
           ligar ? 'Linha liberada no portal do cliente' : 'Linha oculta do portal');
         L.linha.visivel_cliente = ligar;
-        render();
+        atualizar();
       } catch (e) {}
     };
 
@@ -458,7 +734,7 @@ B7.Linha = (function () {
         await B7.Save.acao(() => B7.DB.arquivarLinha(L.linha.id, ligar),
           ligar ? 'Linha arquivada' : 'Linha desarquivada');
         L.linha.archived_at = ligar ? new Date().toISOString() : null;
-        render();
+        atualizar();
       } catch (e) {}
     };
     const excluir = p.querySelector('[data-excluir-linha]');
@@ -496,7 +772,7 @@ B7.Linha = (function () {
         const atuais = (L.linha.canais || '').split(',').map(x => x.trim()).filter(Boolean);
         L.linha.canais = atuais.concat(nome).join(', ');
         await B7.Save.acao(() => B7.DB.atualizarLinha(L.linha.id, { canais: L.linha.canais }), 'Canal adicionado');
-        m.fechar(); render();
+        m.fechar(); atualizar();
       };
     };
 
@@ -512,7 +788,7 @@ B7.Linha = (function () {
         }
         await B7.Save.acao(() => B7.DB.atualizarLinha(L.linha.id, patch), 'Posicionamento aplicado');
         Object.assign(L.linha, patch);
-        render();
+        atualizar();
       } catch (e) {}
     };
   }
@@ -540,7 +816,7 @@ B7.Linha = (function () {
       '<label class="rot">O QUE COPIAR</label>' +
       '<div class="lista-check">' +
         [['objetivo', 'Objetivo do mês', true], ['posicionamento', 'Posicionamento', true],
-         ['canais', 'Canais e meta', true],
+         ['canais', 'Canais e meta', true], ['pilares', 'Pilares de conteúdo', true],
          ['criativos', 'Criativos', false], ['datas', 'Datas de postagem', false]].map(([k, r, on]) =>
           '<label class="check"><input type="checkbox" data-copiar="' + k + '"' +
           (on ? ' checked' : '') + (k === 'datas' ? ' data-dep="criativos" disabled' : '') + '>' +
@@ -577,6 +853,18 @@ B7.Linha = (function () {
 
         const nova = await B7.DB.criarLinha(dados);
 
+        /* pilares copiados ganham id novo; o mapa liga o antigo ao novo
+           para os criativos continuarem apontando para o pilar certo */
+        const mapaPilar = {};
+        if (quer('pilares')) {
+          for (let i = 0; i < L.pilares.length; i++) {
+            const pl = L.pilares[i];
+            const novoP = await B7.DB.criarPilar({ linha_id: nova.id, position: i, nome: pl.nome,
+              percentual: pl.percentual, funil: pl.funil, objetivo: pl.objetivo, observacoes: pl.observacoes });
+            mapaPilar[pl.id] = novoP.id;
+          }
+        }
+
         if (quer('criativos')) {
           for (let i = 0; i < L.conteudos.length; i++) {
             const c = L.conteudos[i];
@@ -586,6 +874,7 @@ B7.Linha = (function () {
               canal: c.canal, headline: c.headline, sub_headline: c.sub_headline, cta: c.cta,
               legenda: c.legenda, direcao: c.direcao, observacao_design: c.observacao_design,
               data_postagem: quer('datas') ? c.data_postagem : null,
+              pilar_id: (c.pilar_id && mapaPilar[c.pilar_id]) || null,
               status: 'Ideia'   /* o mês novo começa do começo, não aprovado */
             });
             /* slides e frames acompanham o criativo */
@@ -724,6 +1013,16 @@ B7.Linha = (function () {
         '<div><label class="rot">DATA <span class="leve">— opcional</span></label>' +
           '<input class="campo" type="date" value="' + esc(c.data_postagem || '') + '" ' + t + ' data-campo="data_postagem"></div>' +
       '</div>' +
+      /* pilar: só quando a linha tem pilares; vazio grava null (data-nulo) */
+      (L.pilares.length
+        ? '<div class="mb"><label class="rot">PILAR DE CONTEÚDO <span class="leve">— opcional</span></label>' +
+          '<select class="campo" ' + t + ' data-campo="pilar_id" data-nulo>' +
+            '<option value=""' + (!c.pilar_id ? ' selected' : '') + '>Sem pilar</option>' +
+            L.pilares.map((p, i) => '<option value="' + esc(p.id) + '"' + (c.pilar_id === p.id ? ' selected' : '') + '>' +
+              String(i + 1).padStart(2, '0') + ' · ' + esc(p.nome || 'Pilar sem nome') +
+              (pct(p) ? ' (' + pct(p) + '%)' : '') + '</option>').join('') +
+          '</select></div>'
+        : '') +
       '<div class="mb"><label class="rot">STATUS</label><div class="opcoes" id="st-conteudo">' +
         C.STATUS_CONTEUDO.map(v => '<button data-st="' + esc(v) + '"' + (c.status === v ? ' class="on"' : '') + '>' +
           v + '</button>').join('') + '</div></div>' +
@@ -784,9 +1083,9 @@ B7.Linha = (function () {
         '</div>' + '</div>' +
       '<div class="acoes"><button class="b perigo" data-excluir-conteudo>Excluir conteúdo</button>' +
       '<div style="flex:1"></div><button class="b pri" data-fecha>Concluir</button></div>',
-      { larga: true, extra: 'modal-conteudo', aoFechar: () => abrir(L.linha.id, L.aba) });
+      { larga: true, extra: 'modal-conteudo', aoFechar: () => { B7.Save.agora().catch(() => {}); atualizar(); } });
 
-    C.ligarCampos(m);
+    C.ligarCampos(m, espelhar);
 
     const chkPortal = m.querySelector('#ct-portal input');
     if (chkPortal) chkPortal.onchange = async () => {
@@ -827,14 +1126,14 @@ B7.Linha = (function () {
       const total = m.querySelectorAll('[data-slide]').length;
       const novo = await B7.Save.acao(() => B7.DB.criarSlide({ content_id: c.id, position: total }), 'Slide adicionado');
       m.querySelector('#lista-slides').insertAdjacentHTML('beforeend', itemSlide(novo, total));
-      C.ligarCampos(m); ligarRemocoes(m); ligarArrasto(m);
+      C.ligarCampos(m, espelhar); ligarRemocoes(m); ligarArrasto(m);
     };
     const addFrame = m.querySelector('#add-frame');
     if (addFrame) addFrame.onclick = async () => {
       const total = m.querySelectorAll('[data-frame]').length;
       const novo = await B7.Save.acao(() => B7.DB.criarFrame({ content_id: c.id, position: total }), 'Story adicionado');
       m.querySelector('#lista-frames').insertAdjacentHTML('beforeend', itemFrame(novo, total));
-      C.ligarCampos(m); ligarRemocoes(m); ligarArrasto(m);
+      C.ligarCampos(m, espelhar); ligarRemocoes(m); ligarArrasto(m);
     };
     ligarRemocoes(m);
     ligarArrasto(m);

@@ -112,6 +112,46 @@ B7.Slides = (function () {
               '<div class="sl-duas">' + pos + '</div>' });
     }
 
+    /* ---- pilares: até 4 por slide, sem encolher letra ---- */
+    const pilares = (ctx.pilares || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
+    if (pilares.length) {
+      const pct = p => Math.max(0, +p.percentual || 0);
+      const soma = pilares.reduce((t, p) => t + pct(p), 0);
+      const base = +l.meta_conteudos || ctx.conteudos.length;
+      const planejados = p => Math.round(base * pct(p) / 100);
+      const reais = p => ctx.conteudos.filter(c => c.pilar_id === p.id).length;
+      const POR = 4;
+      const partes = Math.ceil(pilares.length / POR);
+      for (let k = 0; k < partes; k++) {
+        const grupo = pilares.slice(k * POR, (k + 1) * POR);
+        lista.push({ secao: 'PILARES', num: null,
+          html: (k === 0
+            ? abreSecao(secao, 'ESTRATÉGIA BASEADA NOS PILARES DE CONTEÚDO', 'Pilares de conteúdo')
+            : '<div class="sl-cont">PILARES · PARTE ' + (k + 1) + ' DE ' + partes + '</div>') +
+            (k === 0 && soma > 0
+              ? '<div class="sl-barra-total">' + pilares.map((p, i) =>
+                  '<i class="f' + (i % 4) + '" style="width:' + (pct(p) / Math.max(100, soma) * 100) + '%"></i>').join('') +
+                '</div>'
+              : '') +
+            '<div class="sl-pilares">' + grupo.map(p => {
+              const i = pilares.indexOf(p);
+              return '<div class="sl-pilar"><div class="sl-pilar-topo">' +
+                '<span class="n f' + (i % 4) + '">' + String(i + 1).padStart(2, '0') + '</span>' +
+                (pct(p) ? '<span class="pct">' + pct(p) + '%</span>' : '') + '</div>' +
+                '<h3>' + esc(p.nome || 'Pilar sem nome') + '</h3>' +
+                '<div class="sl-pilar-meta">' +
+                  (p.funil ? '<span class="fun">' + esc(String(p.funil).toUpperCase()) + ' DE FUNIL</span>' : '') +
+                  (ctx.conteudos.length ? '<span class="rf">' + reais(p) + ' de ' + planejados(p) + ' planejado' +
+                    (planejados(p) === 1 ? '' : 's') + '</span>' : '') +
+                '</div>' +
+                (vazio(p.objetivo) ? '' : '<div class="sl-txt">' + paragrafos(p.objetivo) + '</div>') +
+                (vazio(p.observacoes) ? '' : '<div class="sl-dir">' + esc(p.observacoes) + '</div>') +
+              '</div>';
+            }).join('') + '</div>' });
+      }
+      secao++;
+    }
+
     /* ---- visão dos conteúdos ---- */
     if (ctx.conteudos.length) {
       const porFormato = {};
@@ -164,12 +204,14 @@ B7.Slides = (function () {
             ? abreSecao(secao, 'TABELA DE POSTAGENS', 'Postagens')
             : '<div class="sl-cont">POSTAGENS · PARTE ' + parteNum + ' DE ' + total + '</div>') +
             '<table class="sl-tabela"><thead><tr>' +
-              '<th>DATA</th><th>CANAL</th><th>FORMATO</th><th>CONTEÚDO</th>' +
+              '<th>DATA</th><th>CANAL</th><th>FORMATO</th>' + (pilares.length ? '<th>PILAR</th>' : '') +
+              '<th>CONTEÚDO</th>' +
             '</tr></thead><tbody>' +
             parte.map(c => '<tr>' +
               '<td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
               '<td>' + esc(c.canal || '') + '</td>' +
               '<td>' + esc(c.tipo) + '</td>' +
+              (pilares.length ? '<td>' + esc((pilares.find(p => p.id === c.pilar_id) || {}).nome || '') + '</td>' : '') +
               '<td class="t">' + esc(c.titulo || 'Sem título') + '</td></tr>').join('') +
             '</tbody></table>' });
       }
@@ -183,12 +225,17 @@ B7.Slides = (function () {
      fonte, ele continua na parte seguinte. */
   function slidesCriativo(c, i, ctx) {
     const post = 'POST ' + String(i + 1).padStart(2, '0');
+    const pilarDe = x => {
+      const p = x.pilar_id && (ctx.pilares || []).find(y => y.id === x.pilar_id);
+      return p ? (p.nome || 'Pilar sem nome') : '';
+    };
     const cabecalho = (parte, total) =>
       '<div class="sl-cri-topo">' +
         '<span class="n">' + post + '</span>' +
         '<span class="f">' + esc(c.tipo.toUpperCase()) + '</span>' +
         (c.data_postagem ? '<span class="d">' + esc(B7.UI.dataBR(c.data_postagem)) + '</span>' : '') +
         (c.canal ? '<span class="d">' + esc(c.canal) + '</span>' : '') +
+        (pilarDe(c) ? '<span class="d">' + esc(pilarDe(c)) + '</span>' : '') +
         (total > 1 ? '<span class="p">PARTE ' + parte + ' DE ' + total + '</span>' : '') +
       '</div>' +
       '<h3 class="sl-cri-t">' + esc(c.titulo || 'Sem título') + '</h3>';

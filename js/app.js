@@ -15,7 +15,19 @@ B7.Rota = (function () {
     document.getElementById(tela).classList.add('ativa');
   }
 
+  /* Limpeza ao sair da rota. Uma tela que assina Realtime ou liga um
+     timer registra aqui como desligar; a próxima troca de rota chama
+     tudo o que ficou pendente. Sem isto, cada visita à mesma tela
+     somava mais um canal aberto. */
+  let limpezas = [];
+  function aoSair(fn) { if (typeof fn === 'function') limpezas.push(fn); }
+  function limpar() {
+    const fila = limpezas; limpezas = [];
+    fila.forEach(fn => { try { fn(); } catch (e) {} });
+  }
+
   async function ir() {
+    limpar();
     const bruto = location.hash || '#/';
     atual = bruto;
     const [caminho, query] = bruto.slice(1).split('?');
@@ -114,7 +126,7 @@ B7.Rota = (function () {
     document.title = partes && partes.length ? partes.join(' · ') + ' · Roteiros B7' : 'Roteiros B7';
   }
 
-  return { ir, recarregar, titulo };
+  return { ir, recarregar, titulo, aoSair };
 })();
 
 
@@ -218,7 +230,11 @@ B7.Rota = (function () {
       alvo.innerHTML = '';
     }
   }
-  B7.pintarSessao = function () { pintarSessao(); if (B7.Notif) B7.Notif.montar(); };
+  B7.pintarSessao = function () {
+    pintarSessao();
+    if (B7.Notif) B7.Notif.montar();
+    if (B7.Presenca) B7.Presenca.iniciar();
+  };
 
   /* Itens marcados com data-papel só existem para quem tem aquele papel.
      Some da tela, não fica desabilitado: uma opção com cadeado só serve

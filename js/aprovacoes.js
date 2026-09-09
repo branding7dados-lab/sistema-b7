@@ -17,7 +17,7 @@ B7.Aprovacoes = (function () {
     ['ajustes',    'Ajustes solicitados', ['ajustes']],
     ['recusado',   'Recusados', ['recusado']],
     ['aprovado',   'Aprovados', ['aprovado']],
-    ['todos',      'Histórico', null]
+    ['todos',      'Todos', null]   /* inclui versões substituídas e canceladas */
   ];
   const ROTULO = { pendente: 'Aguardando cliente', parcial: 'Parcialmente revisado', aprovado: 'Aprovado',
                    ajustes: 'Ajustes solicitados', recusado: 'Recusado', substituido: 'Versão substituída',
@@ -26,6 +26,27 @@ B7.Aprovacoes = (function () {
   const rotulo = s => ROTULO[s] || s;
 
   const F = { situacao: 'aguardando', clienteId: '', tipo: '', busca: '', periodo: '' };
+
+  /* ---- Realtime: a lista e as contagens acompanham o banco ----
+     Um canal só, aberto quando a tela entra e fechado ao sair da rota
+     (B7.Rota.aoSair). Mudança em aprovacoes ou nas cenas decididas
+     agenda uma re-leitura curta; a tela redesenha a partir dos mesmos
+     filtros, sem recarregar a página. */
+  let canal = null, agendado = null;
+  function assinar(assinaturas, aoMudar) {
+    desassinar();
+    if (!B7.DB.canal) return;
+    canal = B7.DB.canal('aprov-' + Date.now(), assinaturas, () => {
+      clearTimeout(agendado);
+      agendado = setTimeout(aoMudar, 400);
+    });
+    if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(desassinar);
+  }
+  function desassinar() {
+    clearTimeout(agendado); agendado = null;
+    if (canal) { B7.DB.fecharCanal(canal); canal = null; }
+  }
+  const naRota = prefixo => (location.hash || '#/').split('?')[0] === prefixo;
 
   function lerFiltrosDaUrl() {
     const q = (location.hash.split('?')[1] || '');
@@ -47,13 +68,24 @@ B7.Aprovacoes = (function () {
   }
 
   /* ============================================================ LISTA */
-  async function abrir() {
+  async function abrir(silencioso) {
     if (B7.Perm && !B7.Perm.podeRota('aprovacoes')) { location.hash = '#/'; return; }
-    lerFiltrosDaUrl();
-    B7.Rota.titulo(['Aprovações']);
-    marcarNav();
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div>' +
-      '<div class="txt">Carregando aprovações…</div></div></div>';
+    if (!silencioso) {
+      lerFiltrosDaUrl();
+      B7.Rota.titulo(['Aprovações']);
+      marcarNav();
+      painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div>' +
+        '<div class="txt">Carregando aprovações…</div></div></div>';
+    }
+    if (!canal) {
+      assinar([{ table: 'aprovacoes' }, { table: 'aprovacao_partes' }], () => {
+        if (!naRota('#/aprovacoes')) return desassinar();
+        /* quem está digitando na busca não perde o campo: preserva o foco */
+        const b = painel().querySelector('#ap-busca');
+        if (b && document.activeElement === b) F.refocar = true;
+        abrir(true);
+      });
+    }
 
     let itens = [], clientes = [], resumo = null;
     try {
@@ -103,16 +135,16 @@ B7.Aprovacoes = (function () {
     '</div>';
 
     const p = painel();
-    p.querySelectorAll('[data-sit]').forEach(b => b.onclick = () => { F.situacao = b.dataset.sit; abrir(); });
-    p.querySelector('#ap-cliente').onchange = e => { F.clienteId = e.target.value; abrir(); };
-    p.querySelector('#ap-tipo').onchange = e => { F.tipo = e.target.value; abrir(); };
-    p.querySelector('#ap-periodo').onchange = e => { F.periodo = e.target.value; abrir(); };
+    p.querySelectorAll('[data-sit]').forEach(b => b.onclick = () => { F.situacao = b.dataset.sit; abrir(true); });
+    p.querySelector('#ap-cliente').onchange = e => { F.clienteId = e.target.value; abrir(true); };
+    p.querySelector('#ap-tipo').onchange = e => { F.tipo = e.target.value; abrir(true); };
+    p.querySelector('#ap-periodo').onchange = e => { F.periodo = e.target.value; abrir(true); };
     let t; p.querySelector('#ap-busca').oninput = e => { clearTimeout(t); t = setTimeout(async () => {
-      F.busca = e.target.value.trim(); F.refocar = true; await abrir();
+      F.busca = e.target.value.trim(); F.refocar = true; await abrir(true);
     }, 350); };
     if (F.refocar) { F.refocar = false; const b = p.querySelector('#ap-busca'); b.focus(); b.setSelectionRange(b.value.length, b.value.length); }
     p.querySelectorAll('[data-abrir]').forEach(el => el.onclick = () => { location.hash = '#/aprovacoes/' + el.dataset.abrir; });
-    p.querySelectorAll('[data-resumo]').forEach(el => el.onclick = () => { F.situacao = el.dataset.resumo; abrir(); });
+    p.querySelectorAll('[data-resumo]').forEach(el => el.onclick = () => { F.situacao = el.dataset.resumo; abrir(true); });
   }
 
   function vazio() {
@@ -162,10 +194,21 @@ B7.Aprovacoes = (function () {
   }
 
   /* ========================================================== DETALHE */
-  async function abrirDetalhe(id) {
+  async function abrirDetalhe(id, silencioso) {
     if (B7.Perm && !B7.Perm.podeRota('aprovacoes')) { location.hash = '#/'; return; }
-    marcarNav();
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div><div class="txt">Abrindo…</div></div></div>';
+    if (!silencioso) {
+      marcarNav();
+      painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div><div class="txt">Abrindo…</div></div></div>';
+      /* o cliente decidiu enquanto a equipe olhava: a tela acompanha */
+      assinar([{ table: 'aprovacoes', filter: 'id=eq.' + id },
+               { table: 'aprovacao_partes', filter: 'aprovacao_id=eq.' + id },
+               { table: 'comentarios', filter: 'aprovacao_id=eq.' + id }], () => {
+        if (!naRota('#/aprovacoes/' + id)) return desassinar();
+        const c = painel().querySelector('#ap-com');
+        if (c && c.value.trim()) return;      /* resposta sendo escrita: não apaga */
+        abrirDetalhe(id, true);
+      });
+    }
     let ap, cru, partes = [], comentarios = [], eventos = [], versoes = [];
     try {
       [ap, cru] = await Promise.all([B7.DB.painelAprovacao(id), B7.DB.aprovacao(id)]);

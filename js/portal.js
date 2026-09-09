@@ -37,6 +37,26 @@ B7.Portal = (function () {
     conteudo: 'Conteúdo', semana: 'Status semanal'
   };
 
+  /* ---- Realtime do portal ----
+     A lista de aprovações e a home acompanham o banco: mudança em
+     aprovacoes da empresa do cliente (filtro client_id) agenda uma
+     re-leitura curta. Um canal por tela, fechado ao sair da rota. */
+  let canal = null, agendado = null;
+  function assinar(aoMudar) {
+    desassinar();
+    const emp = empresa();
+    if (!emp || !B7.DB.canal) return;
+    canal = B7.DB.canal('portal-' + emp.id + '-' + Date.now(),
+      [{ table: 'aprovacoes', filter: 'client_id=eq.' + emp.id }],
+      () => { clearTimeout(agendado); agendado = setTimeout(aoMudar, 400); });
+    if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(desassinar);
+  }
+  function desassinar() {
+    clearTimeout(agendado); agendado = null;
+    if (canal) { B7.DB.fecharCanal(canal); canal = null; }
+  }
+  const naRota = prefixo => (location.hash || '#/').split('?')[0] === prefixo;
+
   /* =================================================================
      LAYOUT
      A navegação do cliente é montada do zero, não filtrada da interna.
@@ -97,17 +117,20 @@ B7.Portal = (function () {
   /* =================================================================
      HOME
      ================================================================= */
-  async function abrirHome() {
+  async function abrirHome(silencioso) {
     const u = B7.Auth.usuario();
     const emp = empresa();
     marcarNav('#/');
 
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load">' +
-      '<div class="simbolo"></div><div class="txt">Carregando seu acompanhamento…</div>' +
-      '<div class="barra-load"><i></i></div></div></div>';
+    if (!silencioso) {
+      painel().innerHTML = '<div class="conteudo"><div class="b7-load">' +
+        '<div class="simbolo"></div><div class="txt">Carregando seu acompanhamento…</div>' +
+        '<div class="barra-load"><i></i></div></div></div>';
+    }
 
     /* serviço pausado ou cancelado tem tela própria, e nada é carregado */
     if (emp && emp.servico !== 'ativo') return telaServico(emp);
+    if (!canal) assinar(() => { if (naRota('#/')) abrirHome(true); else desassinar(); });
 
     let pendentes = [], producao = [], semana = null, linha = null;
     try {
@@ -240,15 +263,20 @@ B7.Portal = (function () {
   /* =================================================================
      APROVAÇÕES — lista
      ================================================================= */
-  async function abrirAprovacoes(filtro) {
+  let filtroAtual = 'pendente';
+  async function abrirAprovacoes(filtro, silencioso) {
     marcarNav('#/aprovacoes');
     const emp = empresa();
     if (emp && emp.servico !== 'ativo') return telaServico(emp);
 
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load">' +
-      '<div class="simbolo"></div><div class="txt">Carregando…</div></div></div>';
+    if (!silencioso) {
+      painel().innerHTML = '<div class="conteudo"><div class="b7-load">' +
+        '<div class="simbolo"></div><div class="txt">Carregando…</div></div></div>';
+    }
+    if (!canal) assinar(() => { if (naRota('#/aprovacoes')) abrirAprovacoes(filtroAtual, true); else desassinar(); });
 
     const situacao = filtro || 'pendente';
+    filtroAtual = situacao;
     const mapa = { pendente: ['pendente', 'parcial'], ajustes: ['ajustes'], recusado: ['recusado'],
                    aprovado: ['aprovado'], todos: null };
     let itens = [];
@@ -256,7 +284,7 @@ B7.Portal = (function () {
     catch (e) { itens = []; }
 
     const abas = [['pendente', 'Aguardando você'], ['ajustes', 'Ajustes solicitados'],
-                  ['recusado', 'Recusados'], ['aprovado', 'Aprovados'], ['todos', 'Histórico']];
+                  ['recusado', 'Recusados'], ['aprovado', 'Aprovados'], ['todos', 'Todos']];
 
     painel().innerHTML = '<div class="conteudo entra portal-home">' +
       '<header class="ph-cab"><div><h1>Aprovações</h1>' +
@@ -275,7 +303,7 @@ B7.Portal = (function () {
     '</div>';
 
     painel().querySelectorAll('[data-filtro]').forEach(b =>
-      b.onclick = () => abrirAprovacoes(b.dataset.filtro));
+      b.onclick = () => abrirAprovacoes(b.dataset.filtro, true));
     ligar();
   }
 

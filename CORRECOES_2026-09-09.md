@@ -208,3 +208,83 @@ Precisa rodar `migration_aprovacoes_v2.sql` no SQL Editor (depois do
 - Sino de notificações no topo (banco + polling + realtime).
 - Kanban: card mostra a situação da aprovação, link para o feedback e
   trava de automação; movimentos automáticos registrados no histórico.
+
+## Build 2026-09-09-j — A: linha editorial, pilares, calendário, apresentação
+
+Precisa rodar `migration_pilares.sql` (depois do `migration_aprovacoes_v2.sql`,
+antes do `migration_rls.sql`). Aditiva e idempotente.
+
+- **Estratégia sumia ao trocar de aba** (raiz: `ligarCampos` gravava só
+  pelo autosave e `render()` redesenhava a partir do objeto antigo).
+  `B7.Conteudo.ligarCampos(raiz, aoMudar)` agora avisa quem renderiza;
+  `js/linha.js` espelha cada patch em `L.linha` / `L.conteudos` /
+  `L.pilares`, descarrega o autosave pendente (`B7.Save.agora()`) e troca
+  só o corpo da aba (`trocarAba` → `renderCorpo`), sem refazer a página
+  nem reler o banco. Fechar o editor de conteúdo também não recarrega
+  mais (`atualizar()` redesenha de memória mantendo a rolagem).
+  Bônus: `data-ir-aba` (botões "Adicionar informações"/"Ver os N")
+  não tinha handler — agora troca de aba.
+- **Pilares de conteúdo** de volta na aba Estratégia, seção
+  "ESTRATÉGIA BASEADA NOS PILARES DE CONTEÚDO" no lugar de "O que a
+  estratégia pretende gerar" (o campo antigo só aparece se já tinha
+  texto, como "Complemento do objetivo"). CRUD com autosave (nome,
+  percentual, funil, objetivo, observações), barra de proporção, soma com
+  aviso (não bloqueia), distribuição real × planejada (base = meta de
+  conteúdos ou total da linha), seletor de pilar no editor do conteúdo
+  (`conteudos.pilar_id`, vazio grava `null` via `data-nulo`), chip do
+  pilar nos cards e na lista de postagens, bloco na Visão geral,
+  cópia dos pilares ao duplicar a linha (mapeando `pilar_id`).
+  Snapshot de aprovação da linha leva `pilares[]` e `pilar` em cada
+  conteúdo. `linhas_resumo` ganha `percentual_pilares`.
+- **Documento A4** (`print-linha.js`): seção "Pilares de conteúdo"
+  (barra + legenda + um bloco indivisível por pilar, paginação medida),
+  pilar no cabeçalho do criativo e coluna PILAR na tabela quando há
+  pilares. **Apresentação 16:9** (`slides.js`): slide de pilares com
+  até 4 por slide ("PARTE n DE m"), pilar no cabeçalho do criativo e na
+  tabela de postagens (já paginada de 8 em 8).
+- **Calendário de postagens** refeito: grade real de 7 colunas
+  DOM..SÁB em CSS grid, semanas completas com dias vizinhos esmaecidos,
+  hoje destacado, até 3 itens por dia com "+N" que expande, navegação
+  mês anterior/próximo e "Mês da linha", vista agenda (lista por dia)
+  no celular, sem overflow horizontal em 390 px. Datas tratadas como
+  texto `YYYY-MM-DD` de ponta a ponta — nunca `new Date('YYYY-MM-DD')`.
+  Estilos novos em `styles/linha.css` (classes `cal-*` e `pil-*`).
+- `B7.DB`: `excluirPilar` desvincula os conteúdos antes de apagar,
+  `reordenarPilares`, `definirPilarDoConteudo`.
+- `ligarCampos`: `select` grava no `change`; `data-vazio="0"` para
+  colunas numéricas `not null` (percentual).
+
+## Build 2026-09-09-j — Notificações, push, aprovações em tempo real, presença
+
+Migrations novas: `migration_presenca.sql` e `migration_push.sql` (depois de
+`migration_aprovacoes_v2.sql` e `migration_pilares.sql`, antes de
+`migration_rls.sql`). Setup do push em PUSH.md.
+
+- **Sino** (`js/notificacoes.js`): badge com estado "carregando" (ponto
+  pulsando) até a primeira resposta do banco — nunca um "0" falso; um único
+  canal Realtime por sessão (montar() pode ser chamado várias vezes); som
+  curto gerado por WebAudio ao chegar notificação; aviso do navegador
+  (Notification API) quando a aba não está em foco. Tudo respeita as
+  preferências da pessoa.
+- **Preferências** (`perfis.preferencias` jsonb; `perfil_preferencias_gravar()`;
+  `minha_sessao` recriada com `preferencias`, `last_login_at`, `last_seen_at`):
+  UI em Meu perfil → Notificações (som, navegador, push), com interruptores
+  que gravam na hora e só dizem "salvo" depois de o banco responder.
+- **Push** (`js/push.js`, `sw.js`, `supabase/functions/b7-push/index.ts`,
+  `push_subscricoes` com RLS): chave pública em `js/config.js`
+  (`VAPID_PUBLIC_KEY`, opcional — vazia desliga com aviso na UI); envio pela
+  Edge Function acionada por Database Webhook em INSERT de `notificacoes`,
+  chave privada só em secret; inscrições 404/410 apagadas; clique no aviso
+  foca a aba aberta e troca de rota sem recarregar.
+- **Aprovações**: aba "Histórico" virou **"Todos"** (equipe e portal); lista,
+  contagens e detalhe da equipe acompanham o banco em tempo real
+  (postgres_changes em `aprovacoes` / `aprovacao_partes` / `comentarios`),
+  o portal filtra por `client_id`; canal fechado ao sair da rota
+  (`B7.Rota.aoSair`, novo em `js/app.js`).
+- **Presença** (`js/presenca.js`): `perfil_heartbeat()` security definer grava
+  `last_seen_at` só para `auth.uid()`; o frontend chama no máximo 1x a cada
+  5 min (entrada, troca de rota, foco de volta). `b7-auth` grava
+  `last_login_at` no login (trigger mantém `ultimo_acesso` igual; cai para o
+  campo antigo se a migration ainda não rodou). Usuários e acessos mostra
+  "Online agora" / "Último acesso: …" / "Nunca acessou". Nada de
+  `auth.users` no frontend.

@@ -153,6 +153,22 @@ autor "<nome> (aprovação)". Repetir o evento não cria segundo card
 - Antes do corte do RLS o sistema abre sem sessão, mas as funções
   exigem sessão: decisão sem autor não existe.
 
+## Tempo real e notificações (build 2026-09-09-j)
+
+- A tela de Aprovações da equipe assina `aprovacoes` e `aprovacao_partes`
+  (postgres_changes) enquanto está aberta: lista e contagens redesenham a
+  partir dos mesmos filtros, sem recarregar; o detalhe assina só o seu id
+  (mais `comentarios`) e não redesenha enquanto há resposta sendo escrita.
+  O portal assina `aprovacoes` filtrando por `client_id` da empresa. Os
+  canais são fechados ao sair da rota (`B7.Rota.aoSair`).
+- A aba "Todos" substitui "Histórico": versões substituídas e canceladas
+  aparecem só ali.
+- Toda linha de `notificacoes` pode virar push (Database Webhook →
+  `b7-push`); ver PUSH.md. Som e aviso do navegador seguem
+  `perfis.preferencias`.
+- `migration_push.sql` adiciona `notificacoes`, `aprovacoes`,
+  `aprovacao_partes` e `comentarios` à publicação `supabase_realtime`.
+
 ## Telas
 
 - Equipe: `#/aprovacoes` (caixa: contagens, filtros, lista) e

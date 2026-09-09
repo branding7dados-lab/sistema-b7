@@ -38,16 +38,27 @@ B7.Conteudo = (function () {
       '<div class="sanfona-corpo">' + conteudo + '</div></section>';
   }
 
-  /* liga autosave em qualquer campo com data-tab/data-id/data-campo */
-  function ligarCampos(raiz) {
+  /* Liga autosave em qualquer campo com data-tab/data-id/data-campo.
+     `aoMudar(tab, id, patch)` é opcional: quem renderiza a partir de um
+     objeto em memória usa isso para espelhar o valor digitado nele —
+     senão, a próxima renderização (troca de aba, por exemplo) volta ao
+     valor antigo enquanto o banco ainda nem recebeu o novo. */
+  function ligarCampos(raiz, aoMudar) {
     raiz.querySelectorAll('[data-campo][data-tab]').forEach(el => {
-      el.oninput = () => {
+      const gravar = () => {
         if (el.tagName === 'TEXTAREA') B7.UI.autoAltura(el);
         /* date e number vazios precisam ir como null: '' não é uma data
-           nem um número para o Postgres, e o erro travaria o autosave */
-        const vazio = el.value === '' && (el.type === 'date' || el.type === 'number');
-        B7.Save.campo(el.dataset.tab, el.dataset.id, { [el.dataset.campo]: vazio ? null : el.value });
+           nem um número para o Postgres, e o erro travaria o autosave.
+           data-nulo marca outros campos (uuid em select) com a mesma regra */
+        const vazio = el.value === '' &&
+          (el.type === 'date' || el.type === 'number' || el.dataset.nulo !== undefined);
+        /* data-vazio="0": coluna not null que não aceita null nem '' */
+        const valor = vazio ? (el.dataset.vazio !== undefined ? el.dataset.vazio : null) : el.value;
+        const patch = { [el.dataset.campo]: valor };
+        B7.Save.campo(el.dataset.tab, el.dataset.id, patch);
+        if (aoMudar) aoMudar(el.dataset.tab, el.dataset.id, patch);
       };
+      if (el.tagName === 'SELECT') el.onchange = gravar; else el.oninput = gravar;
       if (el.tagName === 'TEXTAREA') B7.UI.autoAltura(el);
     });
     raiz.querySelectorAll('.sanfona-topo').forEach(b => b.onclick = () => {

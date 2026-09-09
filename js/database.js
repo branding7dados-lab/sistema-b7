@@ -408,7 +408,20 @@ B7.DB = (function () {
       return ok(await sb().from('pilares').update(patch).eq('id', id).select());
     },
     async excluirPilar(id) {
+      /* a FK é on delete set null, mas o cliente PostgREST pode ter cache
+         de esquema antigo: desvincula explicitamente antes de apagar */
+      ok(await sb().from('conteudos').update({ pilar_id: null }).eq('pilar_id', id));
       return ok(await sb().from('pilares').delete().eq('id', id));
+    },
+    async reordenarPilares(ids) {
+      for (let i = 0; i < ids.length; i++) {
+        ok(await sb().from('pilares').update({ position: i }).eq('id', ids[i]));
+      }
+    },
+    /* vincula (ou desvincula, com null) um conteúdo a um pilar */
+    async definirPilarDoConteudo(conteudoId, pilarId) {
+      return ok(await sb().from('conteudos').update({ pilar_id: pilarId || null })
+        .eq('id', conteudoId).select());
     },
 
     /* ---- conteúdos ---- */
@@ -844,6 +857,47 @@ B7.DB = (function () {
     },
     async marcarLida(id) { return this.rpc('notif_marcar_lida', { p_id: id }); },
     async marcarTodasLidas() { return this.rpc('notif_marcar_todas', {}); },
+
+    /* ---- presença e preferências (migration_presenca.sql) ---- */
+    async heartbeat() { return this.rpc('perfil_heartbeat', {}); },
+    async gravarPreferencias(patch) { return this.rpc('perfil_preferencias_gravar', { p: patch || {} }); },
+
+    /* ---- push (migration_push.sql) ---- */
+    async registrarPush(sub) {
+      return this.rpc('push_registrar', {
+        p_endpoint: sub.endpoint, p_p256dh: sub.p256dh, p_auth: sub.auth,
+        p_user_agent: (navigator.userAgent || '').slice(0, 300)
+      });
+    },
+    async removerPush(endpoint) {
+      const { error } = await sb().from('push_subscricoes').delete().eq('endpoint', endpoint);
+      if (error) throw error;
+    },
+    async temPush(endpoint) {
+      const { count, error } = await sb().from('push_subscricoes')
+        .select('id', { count: 'exact', head: true }).eq('endpoint', endpoint);
+      if (error) throw error;
+      return (count || 0) > 0;
+    },
+
+    /* ---- Realtime ----
+       Devolve o canal (ou null sem Realtime). Quem assina é responsável
+       por chamar B7.DB.fecharCanal ao sair da tela. */
+    canal(nome, assinaturas, aoMudar) {
+      try {
+        if (!sb().channel) return null;
+        let c = sb().channel(nome);
+        (assinaturas || []).forEach(a => {
+          c = c.on('postgres_changes', Object.assign({ event: '*', schema: 'public' }, a), p => aoMudar(p));
+        });
+        c.subscribe();
+        return c;
+      } catch (e) { return null; }
+    },
+    fecharCanal(c) {
+      if (!c) return;
+      try { sb().removeChannel(c); } catch (e) { try { c.unsubscribe(); } catch (x) {} }
+    },
 
     async partesDaAprovacao(id) {
       return ok(await sb().from('aprovacao_partes').select('*').eq('aprovacao_id', id));

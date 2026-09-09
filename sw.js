@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v13';
+const CACHE = 'roteiros-b7-v14';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -17,10 +17,10 @@ const CASCA = [
   './js/linha.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
   './js/print-linha.js', './js/extras.js',
   './js/permissoes.js', './js/portal.js', './js/kanban.js', './js/perfil.js', './js/foto.js',
-  './js/aprovacoes.js', './js/notificacoes.js',
+  './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js',
   './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js',
   './styles/auth.css', './styles/central.css', './styles/conteudo.css', './styles/semana.css',
-  './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css',
+  './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css', './styles/linha.css',
   './assets/brand/logo-color.png', './assets/brand/logo-white.png',
   './assets/brand/symbol-color.png', './assets/brand/symbol-white.png',
   './assets/fonts/inter-400.woff2', './assets/fonts/inter-500.woff2',
@@ -69,5 +69,43 @@ self.addEventListener('fetch', ev => {
       caches.match(ev.request).then(c => c ||
         (ev.request.mode === 'navigate' ? caches.match('./index.html') : Response.error()))
     )
+  );
+});
+
+/* =====================================================================
+   PUSH — o servidor (Edge Function b7-push) manda um JSON pequeno:
+   { id, titulo, mensagem, link }. A tag repete o id da notificação, a
+   mesma que o sino usa no aviso do navegador: o aparelho mostra um
+   aviso só, nunca dois para o mesmo evento.
+   ===================================================================== */
+self.addEventListener('push', ev => {
+  let d = {};
+  try { d = ev.data ? ev.data.json() : {}; } catch (e) { d = { titulo: ev.data ? ev.data.text() : '' }; }
+  const titulo = d.titulo || 'Sistema B7';
+  ev.waitUntil(self.registration.showNotification(titulo, {
+    body: d.mensagem || '',
+    icon: './assets/icons/icon-192.png',
+    badge: './assets/icons/icon-192.png',
+    tag: d.id ? 'b7-notif-' + d.id : undefined,
+    renotify: !!d.id,
+    data: { link: d.link || '#/', id: d.id || null }
+  }));
+});
+
+/* Clique no aviso: foca uma aba já aberta do sistema e pede a ela que
+   troque de rota (mensagem para js/push.js) — sem recarregar nada. Sem
+   aba aberta, abre uma nova já no destino. */
+self.addEventListener('notificationclick', ev => {
+  ev.notification.close();
+  const link = (ev.notification.data && ev.notification.data.link) || '#/';
+  const destino = new URL(link, self.registration.scope).href;
+  ev.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(lista => {
+      const aba = lista.find(c => c.url.startsWith(self.registration.scope));
+      if (!aba) return self.clients.openWindow(destino);
+      return Promise.resolve(aba.focus && aba.focus()).catch(() => aba).then(c => {
+        (c || aba).postMessage({ tipo: 'b7-abrir', link: link });
+      });
+    })
   );
 });

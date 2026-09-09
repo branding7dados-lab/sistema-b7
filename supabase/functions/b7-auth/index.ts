@@ -23,7 +23,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
-const VERSAO = '2026-09-09-b';
+const VERSAO = '2026-09-09-c';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -232,8 +232,17 @@ Deno.serve(async (req) => {
       }
 
       tentativas.delete(chave);
-      await sb.from('perfis')
-        .update({ ultimo_acesso: new Date().toISOString() }).eq('id', perfil.perfil_id);
+      /* last_login_at é a fonte (migration_presenca.sql); o trigger do banco
+         mantém ultimo_acesso igual. Num banco sem a migration, a coluna não
+         existe e o update falha — então cai para o campo antigo, e o login
+         nunca deixa de ser registrado por causa disso. */
+      const agora = new Date().toISOString();
+      const { error: erroAcesso } = await sb.from('perfis')
+        .update({ last_login_at: agora, last_seen_at: agora, ultimo_acesso: agora })
+        .eq('id', perfil.perfil_id);
+      if (erroAcesso) {
+        await sb.from('perfis').update({ ultimo_acesso: agora }).eq('id', perfil.perfil_id);
+      }
 
       /* devolve a sessão para o frontend assumir; a identidade técnica
          não vai junto */

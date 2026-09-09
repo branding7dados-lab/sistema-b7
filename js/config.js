@@ -17,5 +17,11 @@
 
 window.B7_CONFIG = {
   SUPABASE_URL: 'https://rartcafydsaocdzshqcx.supabase.co',
-  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_N9Ha9Gwmh-jJsXaI5oY7Lw_dY4XAb8e'
+  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_N9Ha9Gwmh-jJsXaI5oY7Lw_dY4XAb8e',
+
+  /* Push (opcional). Chave PÚBLICA VAPID, em base64url — a mesma que a
+     Edge Function b7-push usa como VAPID_PUBLIC_KEY. Vazia = push
+     desligado (o Meu perfil explica). A chave PRIVADA nunca entra aqui:
+     fica só nos secrets da função. Ver PUSH.md. */
+  VAPID_PUBLIC_KEY: ''
 };
