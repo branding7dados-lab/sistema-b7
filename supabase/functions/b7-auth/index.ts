@@ -37,6 +37,72 @@ const admin = () => createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
+
+// =====================================================================
+// FOTO DE PERFIL — grava a imagem no Storage
+// O navegador manda um data URL JPEG já reduzido (512×512). Aqui o
+// arquivo entra no bucket público `avatars` com a chave de serviço, e a
+// URL pública vai para perfis.avatar_url. Foto anterior é apagada.
+// =====================================================================
+const BUCKET_AVATAR = 'avatars';
+const MAX_AVATAR = 600 * 1024;   // 512² em JPEG 0.88 fica bem abaixo disso
+
+async function garantirBucket(sb: ReturnType<typeof admin>) {
+  const { data } = await sb.storage.getBucket(BUCKET_AVATAR);
+  if (data) return;
+  await sb.storage.createBucket(BUCKET_AVATAR, {
+    public: true, fileSizeLimit: MAX_AVATAR,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp']
+  });
+}
+
+function decodificarDataUrl(dataUrl: string): { bytes: Uint8Array; tipo: string } | null {
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl || '');
+  if (!m) return null;
+  const bin = atob(m[2]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { bytes, tipo: m[1] };
+}
+
+/* Resolve o que vai para avatar_url: uma imagem enviada (sobe e devolve
+   a URL pública), null (remove) ou a URL antiga (nada muda). Devolve
+   { url } ou { erro }. */
+async function resolverAvatar(sb: ReturnType<typeof admin>, perfilId: string,
+                              corpo: Record<string, unknown>, atual: string | null) {
+  if (typeof corpo.imagem === 'string' && corpo.imagem) {
+    const dec = decodificarDataUrl(corpo.imagem);
+    if (!dec) return { erro: 'Imagem inválida. Use PNG, JPG ou WEBP.' };
+    if (dec.bytes.length > MAX_AVATAR) return { erro: 'Imagem grande demais.' };
+    await garantirBucket(sb);
+    const ext = dec.tipo === 'image/png' ? 'png' : dec.tipo === 'image/webp' ? 'webp' : 'jpg';
+    const caminho = perfilId + '/' + Date.now() + '.' + ext;
+    const { error } = await sb.storage.from(BUCKET_AVATAR)
+      .upload(caminho, dec.bytes, { contentType: dec.tipo, upsert: false });
+    if (error) return { erro: 'Não foi possível guardar a imagem: ' + error.message };
+    const { data } = sb.storage.from(BUCKET_AVATAR).getPublicUrl(caminho);
+    await apagarAvatarAntigo(sb, atual);
+    return { url: data.publicUrl };
+  }
+  if (corpo.avatar_url === null || corpo.imagem === null) {
+    await apagarAvatarAntigo(sb, atual);
+    return { url: null };
+  }
+  /* compatibilidade: link externo continua aceito, mas a interface não
+     oferece mais esse caminho */
+  const url = String(corpo.avatar_url || '');
+  if (url && !/^https?:\/\//i.test(url)) return { erro: 'Endereço de imagem inválido.' };
+  return { url: url || null };
+}
+
+async function apagarAvatarAntigo(sb: ReturnType<typeof admin>, url: string | null) {
+  if (!url) return;
+  const i = url.indexOf('/' + BUCKET_AVATAR + '/');
+  if (i < 0) return;                                  // era link externo
+  const caminho = decodeURIComponent(url.slice(i + BUCKET_AVATAR.length + 2).split('?')[0]);
+  try { await sb.storage.from(BUCKET_AVATAR).remove([caminho]); } catch (_) { /* melhor esforço */ }
+}
+
 const json = (corpo: unknown, status = 200) =>
   new Response(JSON.stringify(corpo), {
     status, headers: { ...CORS, 'Content-Type': 'application/json' }
@@ -464,10 +530,10 @@ Deno.serve(async (req) => {
     // assim que se impede alguém de trocar a foto de outra pessoa.
     // =================================================================
     if (acao === 'meu_avatar') {
-      const url = corpo.avatar_url === null ? null : String(corpo.avatar_url || '');
-      if (url && !/^https?:\/\//i.test(url)) {
-        return json({ erro: 'Endereço de imagem inválido.' }, 400);
-      }
+      const { data: eu } = await sb.from('perfis').select('avatar_url').eq('id', autor.id).maybeSingle();
+      const r = await resolverAvatar(sb, autor.id, corpo, (eu && eu.avatar_url) || null);
+      if (r.erro) return json({ erro: r.erro }, 400);
+      const url = r.url;
       const { error: erroAvatar } = await sb.from('perfis').update({
         avatar_url: url || null,
         avatar_em: url ? new Date().toISOString() : null
@@ -492,13 +558,12 @@ Deno.serve(async (req) => {
     // fica registrada com o nome de quem fez.
     // =================================================================
     if (acao === 'avatar_de') {
-      const url = corpo.avatar_url === null ? null : String(corpo.avatar_url || '');
-      if (url && !/^https?:\/\//i.test(url)) {
-        return json({ erro: 'Endereço de imagem inválido.' }, 400);
-      }
       const { data: alvo } = await sb.from('perfis')
-        .select('id, username').eq('id', corpo.perfil_id).maybeSingle();
+        .select('id, username, avatar_url').eq('id', corpo.perfil_id).maybeSingle();
       if (!alvo) return json({ erro: 'Conta não encontrada.' }, 404);
+      const r = await resolverAvatar(sb, alvo.id, corpo, alvo.avatar_url || null);
+      if (r.erro) return json({ erro: r.erro }, 400);
+      const url = r.url;
 
       const { error: erroAv } = await sb.from('perfis').update({
         avatar_url: url || null,

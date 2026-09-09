@@ -53,13 +53,15 @@ B7.Perfil = (function () {
           '</div>' +
 
         /* A foto é do usuário: ele troca a dele sem passar pelo admin.
-           O campo aceita link de imagem já hospedada. */
+           Escolhe o arquivo; o envio acontece na hora. */
         '<div class="perfil-bloco">' +
           '<h4>Foto de perfil</h4>' +
-          '<input class="campo" id="pf-foto" placeholder="https://…" value="' +
-            esc(u.avatar_url || '') + '">' +
-          '<div class="ajuda">Cole o endereço de uma imagem. ' +
-            'Deixe vazio para voltar às iniciais.</div>' +
+          '<div id="pf-zona"></div>' +
+          '<div class="perfil-acao">' +
+            '<span class="perfil-msg" id="pf-msg-foto"></span>' +
+            (u.avatar_url ? '<button class="b fina perigo" id="pf-remover-foto">Remover foto</button>' : '') +
+            '<button class="b pri fina" id="pf-salvar-foto" disabled>Salvar foto</button>' +
+          '</div>' +
         '</div>' +
         '</div>' +
 
@@ -107,32 +109,39 @@ B7.Perfil = (function () {
       '</div>',
       { larga: true, extra: 'modal-perfil' });
 
-    /* ---------------------------------------------------------- foto
-       Salva junto com o nome, na mesma ação de salvar, para a pessoa não
-       ter que descobrir que existem dois botões. */
-    const campoFoto = m.querySelector('#pf-foto');
-    if (campoFoto) campoFoto.oninput = () => {
-      const alvo = m.querySelector('#pf-avatar');
-      const url = campoFoto.value.trim();
-      alvo.innerHTML = url
-        ? '<img src="' + esc(url) + '" alt="" onerror="this.remove()">'
-        : esc((u.nome || u.username).slice(0, 2).toUpperCase());
-    };
-
-    async function salvarFotoSeMudou(msg) {
-      if (!campoFoto) return true;
-      const foto = campoFoto.value.trim();
-      if (foto === (u.avatar_url || '')) return true;
-      try {
-        await B7.DB.chamarAuth({ acao: 'meu_avatar', avatar_url: foto || null });
-        u.avatar_url = foto || null;
-        if (B7.pintarSessao) B7.pintarSessao();
-        return true;
-      } catch (e) {
-        if (msg) aviso(msg, e.message || 'Não foi possível salvar a foto.', 'erro');
-        return false;
+    /* ---------------------------------------------------------- foto */
+    const btFoto = m.querySelector('#pf-salvar-foto');
+    const msgFoto = m.querySelector('#pf-msg-foto');
+    const avatarEl = m.querySelector('#pf-avatar');
+    const escolha = B7.Foto.montar(m.querySelector('#pf-zona'), {
+      aoEscolher: dataUrl => {
+        avatarEl.innerHTML = '<img src="' + dataUrl + '" alt="">';
+        btFoto.disabled = false;
+        msgFoto.className = 'perfil-msg'; msgFoto.textContent = '';
       }
+    });
+    async function enviarFoto(imagem) {
+      msgFoto.className = 'perfil-msg';
+      btFoto.disabled = true; btFoto.textContent = 'Enviando…';
+      try {
+        await B7.DB.chamarAuth({ acao: 'meu_avatar', imagem: imagem });
+        await B7.Auth.carregar();
+        const novo = B7.Auth.usuario();
+        u.avatar_url = novo ? novo.avatar_url : null;
+        if (!imagem) avatarEl.textContent = (u.nome || u.username).slice(0, 2).toUpperCase();
+        if (B7.pintarSessao) B7.pintarSessao();
+        aviso(msgFoto, imagem ? 'Foto atualizada.' : 'Foto removida.', 'ok');
+        const rem = m.querySelector('#pf-remover-foto');
+        if (rem && !imagem) rem.remove();
+      } catch (e) {
+        aviso(msgFoto, e.message || 'Não foi possível salvar a foto.', 'erro');
+        btFoto.disabled = !escolha.dataUrl();
+      }
+      btFoto.textContent = 'Salvar foto';
     }
+    btFoto.onclick = () => { if (escolha.dataUrl()) enviarFoto(escolha.dataUrl()); };
+    const btRemover = m.querySelector('#pf-remover-foto');
+    if (btRemover) btRemover.onclick = () => enviarFoto(null);
 
     /* ---------------------------------------------------------- nome */
     const campoNome = m.querySelector('#pf-nome');
@@ -141,25 +150,24 @@ B7.Perfil = (function () {
 
     btNome.onclick = async () => {
       const nome = campoNome.value.trim();
-      const fotoMudou = campoFoto && campoFoto.value.trim() !== (u.avatar_url || '');
       msgNome.className = 'perfil-msg';
       if (!nome) { return aviso(msgNome, 'Informe um nome.', 'erro'); }
-      if (nome === u.nome && !fotoMudou) { return aviso(msgNome, 'Nada mudou.', ''); }
+      if (nome === u.nome) { return aviso(msgNome, 'Nada mudou.', ''); }
 
       btNome.disabled = true; btNome.textContent = 'Salvando…';
       try {
         if (nome !== u.nome) {
           await B7.DB.chamarAuth({ acao: 'meu_perfil', nome: nome });
         }
-        const fotoOk = await salvarFotoSeMudou(msgNome);
         await B7.Auth.carregar();
-        if (fotoOk) aviso(msgNome, 'Perfil atualizado.', 'ok');
+        u.nome = nome;
+        aviso(msgNome, 'Perfil atualizado.', 'ok');
         /* o avatar e o menu do topo passam a mostrar o nome novo */
         if (B7.pintarSessao) B7.pintarSessao();
         const idNome = m.querySelector('.perfil-id b');
         if (idNome) idNome.textContent = nome;
         const av = m.querySelector('.perfil-avatar');
-        if (av) av.textContent = nome.slice(0, 2).toUpperCase();
+        if (av && !u.avatar_url) av.textContent = nome.slice(0, 2).toUpperCase();
       } catch (e) {
         aviso(msgNome, e.message || 'Não foi possível salvar.', 'erro');
       }

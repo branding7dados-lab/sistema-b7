@@ -123,22 +123,30 @@ B7.Rota = (function () {
      ================================================================= */
   function abrirCortina(titulo, texto) {
     let el = document.querySelector('.b7-abertura');
+    if (el && el.classList.contains('saindo')) { el.remove(); el = null; }
     if (!el) {
       el = document.createElement('div');
       el.className = 'b7-abertura';
-      el.innerHTML = '<div class="fundo"><span class="a"></span><span class="b"></span></div>' +
+      el.innerHTML = '<div class="fundo"><span class="a"></span><span class="b"></span><span class="c"></span>' +
+          '<i class="p p1"></i><i class="p p2"></i><i class="p p3"></i>' +
+          '<i class="p p4"></i><i class="p p5"></i><i class="p p6"></i></div>' +
+        '<div class="anel"><span></span></div>' +
         '<div class="marca"></div>' +
         '<div class="txt"><b>' + B7.UI.esc(titulo || 'Branding7') + '</b>' +
         B7.UI.esc(texto || 'Preparando o seu espaço…') + '</div>' +
         '<div class="barra"><i></i></div>';
       document.body.appendChild(el);
+    } else {
+      const t = el.querySelector('.txt');
+      if (t) t.innerHTML = '<b>' + B7.UI.esc(titulo || 'Branding7') + '</b>' +
+        B7.UI.esc(texto || 'Preparando o seu espaço…');
     }
     return el;
   }
 
   function fecharCortina() {
     const el = document.querySelector('.b7-abertura');
-    if (!el) return;
+    if (!el || el.classList.contains('saindo')) return;
     el.classList.add('saindo');
     /* espera a transição antes de remover: tirar na hora devolve o corte
        seco que a cortina existe para evitar */
@@ -273,8 +281,13 @@ B7.Rota = (function () {
           'O certo termina em <b>.supabase.co</b> e está em Project Settings → API → Project URL:';
       }
       document.getElementById('setup').classList.add('ativo');
+      fecharCortina();
       return;
     }
+
+    /* Rede de segurança: aconteça o que acontecer, a abertura não fica
+       na frente para sempre. */
+    setTimeout(fecharCortina, 12000);
 
     document.body.classList.remove('apurando');
 
@@ -483,8 +496,13 @@ B7.Rota = (function () {
           'O certo termina em <b>.supabase.co</b> e está em Project Settings → API → Project URL:';
       }
       document.getElementById('setup').classList.add('ativo');
+      fecharCortina();
       return;
     }
+
+    /* Rede de segurança: aconteça o que acontecer, a abertura não fica
+       na frente para sempre. */
+    setTimeout(fecharCortina, 12000);
 
     /* ---- sessão ----
        O login vem antes do sistema: sem sessão, a tela de acesso ocupa a
@@ -507,10 +525,10 @@ B7.Rota = (function () {
       else if (B7.Perm) B7.Perm.aplicarNavegacao();
       /* tela de login na frente: não montamos o resto agora. Ao entrar,
          a página recarrega e este trecho roda de novo, já com sessão. */
-      if (r.exigido) return;
+      if (r.exigido) { fecharCortina(); return; }
     }
 
-
-    await montarSistema();
+    try { await montarSistema(); }
+    finally { fecharCortina(); }
   });
 })();

@@ -886,41 +886,80 @@ body.apurando #app{visibility:hidden;}
    centro e um progresso honesto. Trocar de tela branca para o sistema
    era a parte mais crua da experiência. */
 .b7-abertura{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:24px;
-  background:radial-gradient(120% 90% at 50% 0%, #170B2E 0%, #0B0512 58%, #06030C 100%);
+  align-items:center;justify-content:center;gap:22px;
+  background:radial-gradient(120% 90% at 50% 0%, #1A0C33 0%, #0B0512 58%, #06030C 100%);
   animation:aberturaEntra .3s ease-out;}
-.b7-abertura.saindo{animation:aberturaSai .5s cubic-bezier(.16,1,.3,1) forwards;}
+/* a inicial vem do HTML, antes de qualquer script: sem fade de entrada,
+   senão pisca o fundo branco por um instante */
+.b7-abertura.inicial{animation:none;}
+.b7-abertura.saindo{animation:aberturaSai .6s cubic-bezier(.16,1,.3,1) forwards;pointer-events:none;}
 @keyframes aberturaEntra{from{opacity:0}to{opacity:1}}
-@keyframes aberturaSai{to{opacity:0;visibility:hidden}}
+@keyframes aberturaSai{to{opacity:0;visibility:hidden;transform:scale(1.03)}}
 
+/* ---- fundo: três luzes lentas + partículas subindo ---- */
 .b7-abertura .fundo{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
-.b7-abertura .fundo span{position:absolute;border-radius:50%;filter:blur(18px);}
-.b7-abertura .fundo .a{width:640px;height:640px;top:-240px;right:-170px;
-  background:radial-gradient(circle,rgba(194,28,131,.30),transparent 66%);
+.b7-abertura .fundo span{position:absolute;border-radius:50%;filter:blur(22px);}
+.b7-abertura .fundo .a{width:680px;height:680px;top:-260px;right:-180px;
+  background:radial-gradient(circle,rgba(194,28,131,.32),transparent 66%);
   animation:loginFlutua 18s cubic-bezier(.45,0,.55,1) infinite;}
-.b7-abertura .fundo .b{width:540px;height:540px;bottom:-210px;left:-150px;
-  background:radial-gradient(circle,rgba(58,30,134,.36),transparent 68%);
+.b7-abertura .fundo .b{width:560px;height:560px;bottom:-220px;left:-160px;
+  background:radial-gradient(circle,rgba(58,30,134,.40),transparent 68%);
   animation:loginFlutua 24s cubic-bezier(.45,0,.55,1) infinite reverse;}
+.b7-abertura .fundo .c{width:420px;height:420px;top:40%;left:50%;margin:-210px 0 0 -210px;
+  background:radial-gradient(circle,rgba(124,30,133,.22),transparent 70%);
+  animation:aberturaRespira 6s ease-in-out infinite;}
+@keyframes aberturaRespira{0%,100%{transform:scale(.92);opacity:.7}50%{transform:scale(1.08);opacity:1}}
 
-.b7-abertura .marca{position:relative;z-index:1;width:62px;height:72px;
+.b7-abertura .fundo .p{position:absolute;bottom:-12px;width:5px;height:5px;border-radius:50%;
+  background:rgba(255,255,255,.55);box-shadow:0 0 12px rgba(226,64,156,.8);
+  animation:aberturaSobe linear infinite;opacity:0;}
+.b7-abertura .fundo .p1{left:14%;animation-duration:11s;animation-delay:0s;}
+.b7-abertura .fundo .p2{left:28%;animation-duration:14s;animation-delay:2.5s;width:3px;height:3px;}
+.b7-abertura .fundo .p3{left:47%;animation-duration:12s;animation-delay:5s;}
+.b7-abertura .fundo .p4{left:63%;animation-duration:15s;animation-delay:1.2s;width:4px;height:4px;}
+.b7-abertura .fundo .p5{left:78%;animation-duration:10s;animation-delay:3.8s;}
+.b7-abertura .fundo .p6{left:90%;animation-duration:13s;animation-delay:6.5s;width:3px;height:3px;}
+@keyframes aberturaSobe{
+  0%{transform:translateY(0) translateX(0);opacity:0}
+  10%{opacity:.9}
+  50%{transform:translateY(-50vh) translateX(18px);opacity:.6}
+  100%{transform:translateY(-105vh) translateX(-10px);opacity:0}}
+
+/* ---- anel girando com gradiente da marca, atrás do símbolo ---- */
+.b7-abertura .anel{position:absolute;z-index:0;width:168px;height:168px;border-radius:50%;
+  top:50%;left:50%;margin:-118px 0 0 -84px;
+  background:conic-gradient(from 0deg,transparent 0 55%,rgba(58,30,134,.0) 55%,#3A1E86 70%,#C21C83 88%,#FF6FB5 100%);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px));
+  animation:aberturaGira 2.4s cubic-bezier(.6,.05,.4,.95) infinite;filter:drop-shadow(0 0 10px rgba(226,64,156,.55));}
+.b7-abertura .anel span{position:absolute;inset:14px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.07);}
+@keyframes aberturaGira{to{transform:rotate(360deg)}}
+
+.b7-abertura .marca{position:relative;z-index:1;width:64px;height:74px;
   background:url('../assets/brand/symbol-color.png') no-repeat center/contain;
-  animation:aberturaMarca 2.2s ease-in-out infinite;}
-/* halo respirando atrás do símbolo */
-.b7-abertura .marca:before{content:"";position:absolute;inset:-46px;border-radius:50%;
-  background:radial-gradient(circle,rgba(194,28,131,.28),transparent 68%);
-  animation:aberturaHalo 2.6s ease-in-out infinite;}
-@keyframes aberturaMarca{0%,100%{transform:scale(.97);opacity:.86}50%{transform:scale(1);opacity:1}}
-@keyframes aberturaHalo{0%,100%{opacity:.4;transform:scale(.9)}50%{opacity:.85;transform:scale(1.06)}}
+  animation:aberturaMarca 2.4s ease-in-out infinite;
+  filter:drop-shadow(0 8px 24px rgba(194,28,131,.35));}
+.b7-abertura .marca:before{content:"";position:absolute;inset:-52px;border-radius:50%;
+  background:radial-gradient(circle,rgba(194,28,131,.30),transparent 68%);
+  animation:aberturaHalo 2.8s ease-in-out infinite;z-index:-1;}
+@keyframes aberturaMarca{0%,100%{transform:scale(.96) translateY(1px);opacity:.9}50%{transform:scale(1.02) translateY(-2px);opacity:1}}
+@keyframes aberturaHalo{0%,100%{opacity:.35;transform:scale(.88)}50%{opacity:.9;transform:scale(1.08)}}
 
-.b7-abertura .txt{position:relative;z-index:1;font-size:13.5px;
-  color:rgba(255,255,255,.62);letter-spacing:.01em;text-align:center;}
-.b7-abertura .txt b{display:block;font-family:'Archivo';font-weight:800;font-size:17px;
-  color:#fff;margin-bottom:6px;letter-spacing:-.01em;}
-/* barra indeterminada: mostra que algo acontece sem prometer porcentagem */
-.b7-abertura .barra{position:relative;z-index:1;width:190px;height:3px;border-radius:2px;
-  background:rgba(255,255,255,.10);overflow:hidden;}
+.b7-abertura .txt{position:relative;z-index:1;font-size:13.5px;margin-top:26px;
+  color:rgba(255,255,255,.60);letter-spacing:.01em;text-align:center;
+  animation:aberturaTexto .9s cubic-bezier(.16,1,.3,1) .15s both;}
+.b7-abertura .txt b{display:block;font-family:'Archivo';font-weight:900;font-size:22px;
+  letter-spacing:-.02em;margin-bottom:6px;
+  background:linear-gradient(92deg,#fff 0%,#F3D6EA 45%,#FF8FCB 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;}
+@keyframes aberturaTexto{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.b7-abertura .barra{position:relative;z-index:1;width:200px;height:3px;border-radius:2px;
+  background:rgba(255,255,255,.10);overflow:hidden;
+  animation:aberturaTexto .9s cubic-bezier(.16,1,.3,1) .3s both;}
 .b7-abertura .barra i{display:block;width:42%;height:100%;border-radius:2px;
-  background:linear-gradient(90deg,#3A1E86,#C21C83);
+  background:linear-gradient(90deg,#3A1E86,#C21C83,#FF8FCB);
   animation:aberturaCorre 1.5s cubic-bezier(.45,0,.55,1) infinite;}
 @keyframes aberturaCorre{0%{transform:translateX(-110%)}100%{transform:translateX(350%)}}
 

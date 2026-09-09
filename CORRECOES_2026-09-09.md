@@ -1,6 +1,6 @@
 # Correções de 09/09/2026 — rodada 1 (críticos + segurança)
 
-Build `2026-09-09-a`. Esta rodada não muda nenhuma tela de lugar: ela faz
+Build `2026-09-09-b`. Esta rodada não muda nenhuma tela de lugar: ela faz
 funcionar o que estava quebrado e fecha as brechas que precisavam estar
 fechadas antes do corte do RLS.
 
@@ -17,7 +17,7 @@ fechadas antes do corte do RLS.
    `migration_tudo.sql` já tenham rodado — se faltar alguma, ele avisa
    qual.
 4. Recarregue o sistema com `Ctrl+Shift+R`. O rodapé da tela de acesso
-   deve mostrar `2026-09-09-a`.
+   deve mostrar `2026-09-09-b`.
 
 O corte do RLS (`migration_rls.sql`) continua sendo o último passo e
 continua exigindo o procedimento do `CORTE_RLS.md`.
@@ -144,3 +144,26 @@ duplicados no `BOOTSTRAP.md` e bloco repetido no `README.md`.
 - App carregado em Chromium headless com Supabase simulado: todas as
   rotas internas abrem sem erro de JavaScript.
 - `node --check` em todos os arquivos JS.
+
+## Build 2026-09-09-b (mesmo dia, à tarde)
+
+- **Usuários e acessos** aparecia sem estilo: as classes da lista
+  (`lista-usuarios`, `lu-*`) e do formulário (`nu-*`) nunca tiveram CSS.
+  Estilizadas em `styles/auth.css`, com versão para celular e tema escuro.
+- **Tela de abertura** presente desde o primeiro pixel: vem no
+  `index.html` antes de qualquer script e some quando o sistema ou a tela
+  de acesso estão prontos (com rede de segurança de 12 s). Visual novo:
+  anel em gradiente girando ao redor do símbolo, halo respirando, três
+  luzes de fundo e partículas subindo; respeita `prefers-reduced-motion`.
+
+## Build 2026-09-09-c
+
+- **Foto de perfil por upload**, não mais por link. Vale para o admin
+  (Usuários e acessos → Foto de perfil) e para cada pessoa no próprio
+  perfil. O navegador recorta ao quadrado e reduz para 512×512 JPEG; o
+  `b7-auth` grava no bucket `avatars` (criado sozinho na primeira foto,
+  público para leitura) e apaga a foto anterior. Como o upload passa pela
+  função, funciona antes e depois do corte do RLS.
+- Modal **Meu perfil** também estava sem CSS; estilizado.
+- **Precisa republicar a Edge Function `b7-auth`** (mesmo caminho: Deploy
+  → Via Editor → colar o `index.ts` novo). Nenhum SQL novo.

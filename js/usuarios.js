@@ -381,81 +381,55 @@ B7.Usuarios = (function () {
      viraria um quadrado vazio sem explicação.
      ================================================================= */
   function modalFoto(u) {
+    const iniciais = esc((u.nome || u.username).slice(0, 2).toUpperCase());
     const m = B7.UI.modal('<h3>Foto de perfil</h3>' +
       '<div class="sub">De @' + esc(u.username) + '. A pessoa também pode trocar a dela.</div>' +
 
       '<div class="foto-atual">' +
         '<div class="foto-previa" id="fp-previa">' +
-          (u.avatar_url ? '<img src="' + esc(u.avatar_url) + '" alt="">'
-            : '<span>' + esc((u.nome || u.username).slice(0, 2).toUpperCase()) + '</span>') +
+          (u.avatar_url ? '<img src="' + esc(u.avatar_url) + '" alt="">' : '<span>' + iniciais + '</span>') +
         '</div>' +
         '<div class="foto-tx"><b>' + esc(u.nome) + '</b>' +
-        '<span>' + (u.avatar_url ? 'tem foto' : 'usando as iniciais') + '</span></div>' +
+        '<span id="fp-estado">' + (u.avatar_url ? 'tem foto' : 'usando as iniciais') + '</span></div>' +
       '</div>' +
 
-      '<label class="rot">ENDEREÇO DA IMAGEM</label>' +
-      '<input class="campo" id="fp-url" placeholder="https://…" value="' +
-        esc(u.avatar_url || '') + '">' +
-      '<div class="ajuda">Cole o link de uma imagem já hospedada. ' +
-        'Quadrada funciona melhor.</div>' +
+      '<div id="fp-zona"></div>' +
       '<div id="fp-erro" class="ajuda erro-txt"></div>' +
 
       '<div class="acoes">' +
         (u.avatar_url ? '<button class="b perigo" data-remover>Remover foto</button>' +
           '<div style="flex:1"></div>' : '') +
         '<button class="b" data-fecha>Cancelar</button>' +
-        '<button class="b pri" data-ok>Salvar</button>' +
+        '<button class="b pri" data-ok disabled>Salvar foto</button>' +
       '</div>');
 
-    /* prévia ao vivo: dá para ver antes de salvar se o link presta */
-    const campo = m.querySelector('#fp-url');
-    campo.oninput = () => {
-      const url = campo.value.trim();
-      const previa = m.querySelector('#fp-previa');
-      if (!url) {
-        previa.innerHTML = '<span>' +
-          esc((u.nome || u.username).slice(0, 2).toUpperCase()) + '</span>';
-        return;
+    const botao = m.querySelector('[data-ok]');
+    const escolha = B7.Foto.montar(m.querySelector('#fp-zona'), {
+      aoEscolher: dataUrl => {
+        m.querySelector('#fp-previa').innerHTML = '<img src="' + dataUrl + '" alt="">';
+        m.querySelector('#fp-estado').textContent = 'nova foto — ainda não salva';
+        botao.disabled = false;
       }
-      previa.innerHTML = '<img src="' + esc(url) + '" alt="" ' +
-        'onerror="this.parentElement.innerHTML=\'<span>?</span>\'">';
-    };
+    });
 
-    const salvar = async (url) => {
+    const salvar = async (imagem) => {
       const erro = m.querySelector('#fp-erro');
-      const botao = m.querySelector('[data-ok]');
       erro.textContent = '';
-      if (url) {
-        const vale = await imagemCarrega(url);
-        if (!vale) { erro.textContent = 'Esse endereço não carregou como imagem.'; return; }
-      }
       botao.disabled = true; botao.textContent = 'Salvando…';
       try {
-        await B7.DB.chamarAuth({ acao: 'avatar_de', perfil_id: u.id, avatar_url: url });
+        await B7.DB.chamarAuth({ acao: 'avatar_de', perfil_id: u.id, imagem: imagem });
         m.fechar();
-        B7.UI.toast(url ? 'Foto atualizada' : 'Foto removida');
+        B7.UI.toast(imagem ? 'Foto atualizada' : 'Foto removida');
         abrir();
       } catch (e) {
-        botao.disabled = false; botao.textContent = 'Salvar';
+        botao.disabled = !escolha.dataUrl(); botao.textContent = 'Salvar foto';
         erro.textContent = e.message || 'Não foi possível salvar.';
       }
     };
 
-    m.querySelector('[data-ok]').onclick = () => salvar(campo.value.trim() || null);
+    botao.onclick = () => { if (escolha.dataUrl()) salvar(escolha.dataUrl()); };
     const rem = m.querySelector('[data-remover]');
     if (rem) rem.onclick = () => salvar(null);
-  }
-
-  /* Testa de verdade se o endereço devolve uma imagem. Validar só o
-     formato do texto deixaria passar link quebrado. */
-  function imagemCarrega(url) {
-    return new Promise(resolve => {
-      const img = new Image();
-      const t = setTimeout(() => resolve(false), 6000);
-      img.onload = () => { clearTimeout(t); resolve(true); };
-      img.onerror = () => { clearTimeout(t); resolve(false); };
-      img.src = url;
-    });
   }
 
   /* =================================================================
