@@ -16,6 +16,6 @@
    ===================================================================== */
 
 window.B7_CONFIG = {
-  SUPABASE_URL: 'https://sfdjstnrwoaaaayydahw.supabase.co',
-  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_rIPIwtTl4A3jgtztG4mWSQ_jwVv-Wuu'
+  SUPABASE_URL: 'https://rartcafydsaocdzshqcx.supabase.co',
+  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_N9Ha9Gwmh-jJsXaI5oY7Lw_dY4XAb8e'
 };
