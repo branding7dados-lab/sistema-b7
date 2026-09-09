@@ -291,6 +291,26 @@ B7.UI = (function () {
     return '<div class="' + cls + '">' + esc(iniciais(nome)) + '</div>';
   }
 
+  /* Avatar de PESSOA sem foto: iniciais de nome + sobrenome e um tom da
+     paleta escolhido pelo nome — a mesma pessoa tem sempre a mesma cor,
+     e duas pessoas na mesma lista raramente ficam iguais. */
+  function tomDoNome(nome) {
+    let h = 0; const s = String(nome || '');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h % 6;
+  }
+  function avatarPessoa(u, classe) {
+    const nome = (u && (u.nome || u.username)) || '?';
+    const cls = 'av-pessoa' + (classe ? ' ' + classe : '');
+    if (u && u.avatar_url) {
+      return '<div class="' + cls + ' com-foto"><img src="' + esc(u.avatar_url) + '" alt="" ' +
+        'onerror="this.parentElement.classList.remove(\'com-foto\');' +
+        'this.parentElement.textContent=this.dataset.ini" data-ini="' + esc(iniciais(nome)) + '"></div>';
+    }
+    return '<div class="' + cls + ' tom-' + tomDoNome(nome) + '" title="' + esc(nome) + '">' +
+      '<span>' + esc(iniciais(nome)) + '</span></div>';
+  }
+
   /* "Mercato Sadia" → MS · "ClimaPro" → CP · "Águas Mucugê" → ÁM
      Nome de uma palavra só usa a maiúscula interna quando existe
      (ClimaPro, AutoEscola); sem ela, cai nas duas primeiras letras. */
@@ -557,6 +577,6 @@ B7.UI = (function () {
       '</div><div class="acoes"><button class="b pri" data-fecha>Entendi</button></div>');
   }
 
-  return { atalhos, avatarCliente, chipRevisao, REVISAO, CLASSE_REVISAO, esc, toast, modal, confirmar, perguntar, ligarMenus, dica, esconderDica, MESES, paleta,
+  return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, toast, modal, confirmar, perguntar, ligarMenus, dica, esconderDica, MESES, paleta,
            dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura };
 })();

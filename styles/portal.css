@@ -13,7 +13,7 @@ body.modo-portal .nav{padding-top:8px;}
 .ph-saud{font-size:13.5px;color:var(--ink-4);margin-bottom:6px;}
 .ph-cab h1{font-family:'Archivo';font-size:29px;font-weight:900;letter-spacing:-.03em;
   line-height:1.15;}
-.ph-emp{font-size:13.5px;color:var(--ink-3);margin-top:7px;}
+.ph-emp{font-size:13.5px;color:var(--ink-3);margin-top:7px;max-width:620px;line-height:1.55;}
 
 /* --------------------------------------------------------- seções */
 .ph-secao{margin-bottom:34px;}

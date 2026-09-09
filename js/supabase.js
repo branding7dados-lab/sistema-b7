@@ -29,6 +29,18 @@ window.B7 = window.B7 || {};
   B7.sb = null;
   B7.motivoConfig = faltando ? 'faltando' : (urlDoPainel ? 'painel' : null);
 
+  /* Sessão guardada de OUTRO projeto (banco trocado no config.js) não
+     serve para nada e ainda dispara refresh contra a URL errada. */
+  try {
+    const ref = (url.match(/^https?:\/\/([a-z0-9-]+)\./i) || [])[1] || '';
+    const anterior = localStorage.getItem('b7_projeto');
+    if (ref && anterior && anterior !== ref) {
+      localStorage.removeItem('b7-sessao');
+      sessionStorage.removeItem('b7_rastro');
+    }
+    if (ref) localStorage.setItem('b7_projeto', ref);
+  } catch (e) {}
+
   if (B7.configurado && window.supabase && window.supabase.createClient) {
     /* persistSession e autoRefreshToken vieram desligados da época em que
        o sistema não tinha login: não havia sessão para guardar nem para

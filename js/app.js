@@ -173,15 +173,16 @@ B7.Rota = (function () {
     if (u) {
       const rotulo = { admin: 'Administrador', coordenador: 'Coordenador de mídias',
                        cliente: 'Cliente' }[u.papel] || u.papel;
-      const iniciais = B7.UI.esc((u.nome || u.username).slice(0, 2).toUpperCase());
+      const tom = ' tom-' + B7.UI.tomDoNome(u.nome || u.username);
       const foto = u.avatar_url
-        ? '<img src="' + B7.UI.esc(u.avatar_url) + '" alt="">' : iniciais;
-      alvo.innerHTML = '<div class="menu sessao-menu"><button class="ico-sessao' +
-        (u.avatar_url ? ' com-foto' : '') + '" ' +
+        ? '<img src="' + B7.UI.esc(u.avatar_url) + '" alt="">'
+        : '<span>' + B7.UI.esc(B7.UI.iniciais(u.nome || u.username)) + '</span>';
+      alvo.innerHTML = '<div class="menu sessao-menu"><button class="ico-sessao av-pessoa' +
+        (u.avatar_url ? ' com-foto' : tom) + '" ' +
         'title="' + B7.UI.esc(u.nome) + '" aria-label="Sua conta">' + foto + '</button>' +
         '<div class="lista">' +
           '<div class="sessao-cab">' +
-            '<div class="sessao-av' + (u.avatar_url ? ' com-foto' : '') + '">' +
+            '<div class="sessao-av av-pessoa' + (u.avatar_url ? ' com-foto' : tom) + '">' +
               foto + '</div>' +
             '<div class="sessao-tx"><b>' + B7.UI.esc(u.nome) + '</b>' +
             '<span>@' + B7.UI.esc(u.username) + '</span></div>' +

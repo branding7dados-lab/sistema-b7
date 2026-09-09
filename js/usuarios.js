@@ -91,10 +91,7 @@ B7.Usuarios = (function () {
   function linhaUsuario(u, empresas) {
     const inativa = u.estado !== 'ativa';
     return '<div class="lu-item' + (inativa ? ' inativa' : '') + '">' +
-      (u.avatar_url
-        ? '<div class="lu-avatar foto"><img src="' + esc(u.avatar_url) + '" alt=""></div>'
-        : '<div class="lu-avatar ' + esc(u.papel) + '">' +
-          esc((u.nome || u.username).slice(0, 2).toUpperCase()) + '</div>') +
+      B7.UI.avatarPessoa(u, 'lu-avatar') +
       '<div class="lu-tx">' +
         '<b>' + esc(u.nome) + '</b>' +
         '<span class="lu-user">@' + esc(u.username) + '</span>' +
@@ -381,12 +378,12 @@ B7.Usuarios = (function () {
      viraria um quadrado vazio sem explicação.
      ================================================================= */
   function modalFoto(u) {
-    const iniciais = esc((u.nome || u.username).slice(0, 2).toUpperCase());
+    const iniciais = esc(B7.UI.iniciais(u.nome || u.username));
     const m = B7.UI.modal('<h3>Foto de perfil</h3>' +
       '<div class="sub">De @' + esc(u.username) + '. A pessoa também pode trocar a dela.</div>' +
 
       '<div class="foto-atual">' +
-        '<div class="foto-previa" id="fp-previa">' +
+        '<div class="foto-previa av-pessoa tom-' + B7.UI.tomDoNome(u.nome || u.username) + '" id="fp-previa">' +
           (u.avatar_url ? '<img src="' + esc(u.avatar_url) + '" alt="">' : '<span>' + iniciais + '</span>') +
         '</div>' +
         '<div class="foto-tx"><b>' + esc(u.nome) + '</b>' +

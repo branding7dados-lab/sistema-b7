@@ -176,9 +176,9 @@ body.sem-sessao main{display:none;}
 .lu-avatar{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;
   font-family:'Archivo';font-weight:800;font-size:14px;letter-spacing:.02em;color:#fff;
   background:var(--grad-curto);overflow:hidden;flex-shrink:0;}
-.lu-avatar.admin{background:linear-gradient(135deg,#001559,#3A1E86);}
-.lu-avatar.coordenador{background:linear-gradient(135deg,#3A1E86,#7C1E85);}
-.lu-avatar.cliente{background:linear-gradient(135deg,#7C1E85,#C21C83);}
+
+
+
 .lu-avatar.foto{background:var(--suave);}
 .lu-avatar img{width:100%;height:100%;object-fit:cover;}
 
@@ -265,3 +265,42 @@ body.sem-sessao main{display:none;}
 .perfil-msg{flex:1;font-size:12.5px;color:var(--ink-3);min-height:1em;}
 .perfil-msg.ok{color:var(--ok);font-weight:600;}
 .perfil-msg.erro{color:var(--erro);font-weight:600;}
+
+/* botão da sessão no topo: tamanho fixo, com ou sem foto */
+.ico-sessao{width:36px;height:36px;flex:none;border-radius:11px;display:inline-flex;
+  align-items:center;justify-content:center;font-family:'Archivo';font-weight:800;font-size:12.5px;
+  letter-spacing:.03em;color:#fff;background:var(--grad-curto);border:0;cursor:pointer;
+  overflow:hidden;padding:0;transition:transform var(--t),box-shadow var(--t);}
+.ico-sessao:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(194,28,131,.28);}
+.ico-sessao img,.sessao-av img,.lu-avatar img,.foto-previa img,.perfil-avatar img{
+  width:100%;height:100%;max-width:none;object-fit:cover;object-position:center;display:block;}
+
+/* =====================================================================
+   AVATAR DE PESSOA SEM FOTO
+   Iniciais sobre um gradiente da paleta B7, com brilho interno e a
+   inicial em Archivo. Seis tons; o nome escolhe qual, sempre o mesmo.
+   ===================================================================== */
+.av-pessoa{position:relative;display:inline-flex;align-items:center;justify-content:center;
+  overflow:hidden;color:#fff;font-family:'Archivo';font-weight:800;letter-spacing:.04em;
+  text-shadow:0 1px 2px rgba(0,0,0,.25);isolation:isolate;}
+.av-pessoa span{position:relative;z-index:1;font-size:.36em;line-height:1;}
+/* o tamanho da letra segue a caixa: font-size do container = lado */
+.lu-avatar.av-pessoa{font-size:44px;}
+.ico-sessao.av-pessoa{font-size:36px;}
+.sessao-av.av-pessoa{font-size:38px;}
+.perfil-avatar.av-pessoa{font-size:60px;}
+.foto-previa.av-pessoa{font-size:66px;}
+.av-pessoa:before{content:"";position:absolute;inset:0;z-index:0;
+  background:radial-gradient(120% 90% at 20% 0%,rgba(255,255,255,.28),transparent 55%),
+             radial-gradient(90% 90% at 100% 100%,rgba(0,0,0,.22),transparent 60%);}
+.av-pessoa:after{content:"";position:absolute;inset:0;z-index:0;border-radius:inherit;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);}
+.av-pessoa.tom-0{background:linear-gradient(140deg,#3A1E86 0%,#7C1E85 100%);}
+.av-pessoa.tom-1{background:linear-gradient(140deg,#7C1E85 0%,#C21C83 100%);}
+.av-pessoa.tom-2{background:linear-gradient(140deg,#001559 0%,#3A1E86 100%);}
+.av-pessoa.tom-3{background:linear-gradient(140deg,#C21C83 0%,#FF6FB5 100%);}
+.av-pessoa.tom-4{background:linear-gradient(140deg,#1D2C8F 0%,#5B44C0 100%);}
+.av-pessoa.tom-5{background:linear-gradient(140deg,#5B44C0 0%,#E2409C 100%);}
+.av-pessoa.com-foto{background:var(--suave);text-shadow:none;}
+.av-pessoa.com-foto:before,.av-pessoa.com-foto:after{display:none;}
+.av-pessoa img{width:100%;height:100%;max-width:none;object-fit:cover;object-position:center;display:block;}

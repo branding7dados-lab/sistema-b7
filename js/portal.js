@@ -128,14 +128,14 @@ B7.Portal = (function () {
       '<header class="ph-cab">' +
         '<div>' +
           '<div class="ph-saud">' + esc(saudacao) + ', ' + esc(primeiro) + '.</div>' +
-          '<h1>Sua produção na Branding7</h1>' +
-          (emp ? '<p class="ph-emp">' + esc(emp.nome) + '</p>' : '') +
+          '<h1>O que a Branding7 está produzindo para ' + (emp ? esc(emp.nome) : 'você') + '</h1>' +
+          '<p class="ph-emp">Aqui você acompanha o trabalho da nossa equipe, aprova o que está pronto e vê o que vem pela frente.</p>' +
         '</div>' +
       '</header>' +
 
       /* ---- o que depende do cliente vem primeiro ---- */
       '<section class="ph-secao">' +
-        '<div class="ph-titulo"><h2>Precisa da sua atenção</h2>' +
+        '<div class="ph-titulo"><h2>Aguardando sua aprovação</h2>' +
           (pendentes.length
             ? '<span class="ph-conta">' + pendentes.length + '</span>' : '') +
         '</div>' +
@@ -143,7 +143,7 @@ B7.Portal = (function () {
           ? '<div class="ph-lista">' + pendentes.map(cartaoPendente).join('') + '</div>'
           : '<div class="ph-vazio"><div class="ph-vazio-ic">' + ICONE.aprovacoes + '</div>' +
             '<b>Nada aguardando você.</b>' +
-            '<p>Quando a Branding7 enviar um material para sua aprovação, ele aparece aqui.</p>' +
+            '<p>Quando nossa equipe terminar um material e enviar para sua aprovação, ele aparece aqui.</p>' +
             '</div>') +
       '</section>' +
 
@@ -151,8 +151,8 @@ B7.Portal = (function () {
       '<section class="ph-numeros">' +
         numero(pendentes.length, 'Aguardando sua aprovação',
                'materiais enviados que ainda não têm sua decisão', '#/aprovacoes') +
-        numero(producao.length, 'Em acompanhamento',
-               'conteúdos liberados para você acompanhar', '#/minha-producao') +
+        numero(producao.length, 'Em produção pela Branding7',
+               'conteúdos que nossa equipe já liberou para você acompanhar', '#/minha-producao') +
       '</section>' +
 
       /* ---- o que a B7 publicou ---- */
@@ -189,19 +189,19 @@ B7.Portal = (function () {
   function blocoLinha(l) {
     if (!l) {
       return '<div class="ph-bloco vazio"><h3>Linha editorial</h3>' +
-        '<p>Nenhum planejamento liberado para este período.</p></div>';
+        '<p>A Branding7 ainda não liberou o planejamento deste período.</p></div>';
     }
     return '<button class="ph-bloco" data-ir="#/minha-linha">' +
       '<h3>Linha editorial</h3>' +
       '<b>' + esc(l.nome || 'Planejamento') + '</b>' +
-      '<p>' + (l.total_conteudos || 0) + ' conteúdos planejados</p>' +
+      '<p>' + (l.total_conteudos || 0) + ' conteúdos planejados pela Branding7</p>' +
       '<span class="ph-ir">Abrir →</span></button>';
   }
 
   function blocoSemana(s) {
     if (!s) {
       return '<div class="ph-bloco vazio"><h3>Status semanal</h3>' +
-        '<p>Nenhum relatório publicado ainda.</p></div>';
+        '<p>A Branding7 ainda não publicou o relatório da semana.</p></div>';
     }
     return '<button class="ph-bloco" data-ir="#/meus-status">' +
       '<h3>Status semanal</h3>' +
@@ -280,6 +280,9 @@ B7.Portal = (function () {
   function marcarNav(destino) {
     document.querySelectorAll('.nav a').forEach(a =>
       a.classList.toggle('on', a.dataset.ir === destino));
+    /* a trilha luminosa só anda quando alguém manda — sem isto ela
+       ficava parada no Início enquanto a tela trocava */
+    if (B7.moverTrilha) B7.moverTrilha();
   }
 
   function ligar() {

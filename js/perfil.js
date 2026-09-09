@@ -29,10 +29,10 @@ B7.Perfil = (function () {
 
     const m = B7.UI.modal(
       '<div class="perfil-topo">' +
-        '<div class="perfil-avatar ' + esc(u.papel) + '" id="pf-avatar">' +
+        '<div class="perfil-avatar av-pessoa tom-' + B7.UI.tomDoNome(u.nome || u.username) + '" id="pf-avatar">' +
           (u.avatar_url
             ? '<img src="' + esc(u.avatar_url) + '" alt="">'
-            : esc((u.nome || u.username).slice(0, 2).toUpperCase())) + '</div>' +
+            : '<span>' + esc(B7.UI.iniciais(u.nome || u.username)) + '</span>') + '</div>' +
         '<div class="perfil-id">' +
           '<b>' + esc(u.nome) + '</b>' +
           '<span>@' + esc(u.username) + '</span>' +
@@ -128,7 +128,7 @@ B7.Perfil = (function () {
         await B7.Auth.carregar();
         const novo = B7.Auth.usuario();
         u.avatar_url = novo ? novo.avatar_url : null;
-        if (!imagem) avatarEl.textContent = (u.nome || u.username).slice(0, 2).toUpperCase();
+        if (!imagem) avatarEl.innerHTML = '<span>' + esc(B7.UI.iniciais(u.nome || u.username)) + '</span>';
         if (B7.pintarSessao) B7.pintarSessao();
         aviso(msgFoto, imagem ? 'Foto atualizada.' : 'Foto removida.', 'ok');
         const rem = m.querySelector('#pf-remover-foto');
@@ -167,7 +167,7 @@ B7.Perfil = (function () {
         const idNome = m.querySelector('.perfil-id b');
         if (idNome) idNome.textContent = nome;
         const av = m.querySelector('.perfil-avatar');
-        if (av && !u.avatar_url) av.textContent = nome.slice(0, 2).toUpperCase();
+        if (av && !u.avatar_url) av.innerHTML = '<span>' + esc(B7.UI.iniciais(nome)) + '</span>';
       } catch (e) {
         aviso(msgNome, e.message || 'Não foi possível salvar.', 'erro');
       }

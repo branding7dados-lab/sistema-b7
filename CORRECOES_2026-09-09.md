@@ -167,3 +167,24 @@ duplicados no `BOOTSTRAP.md` e bloco repetido no `README.md`.
 - Modal **Meu perfil** também estava sem CSS; estilizado.
 - **Precisa republicar a Edge Function `b7-auth`** (mesmo caminho: Deploy
   → Via Editor → colar o `index.ts` novo). Nenhum SQL novo.
+
+## Build 2026-09-09-f
+
+- `config.js` nunca mais vem de cache: o service worker busca com
+  `no-store` (o GitHub Pages manda max-age de 10 minutos, e foi isso que
+  segurou o banco antigo no navegador depois da troca de projeto).
+- Sessão guardada de outro projeto Supabase é descartada sozinha quando
+  o `config.js` aponta para um projeto diferente.
+- Portal do cliente: a trilha luminosa da sidebar acompanha a tela
+  aberta (ficava parada no Início); textos da home deixam claro que
+  quem produz é a Branding7 e o cliente acompanha e aprova.
+- Mensagem de erro do login informa o código HTTP e o motivo provável.
+- (g) Foto de perfil no topo estourava a tela: o botão da sessão não
+  tinha tamanho definido e crescia até o tamanho da imagem. Agora é uma
+  caixa fixa de 36 px, e todas as fotos (topo, menu, lista, perfil)
+  recortam por `object-fit: cover`.
+- (h) Avatar sem foto refeito: iniciais de nome + sobrenome (Yury Nóbrega
+  → YN, não "YU"), gradiente da paleta B7 escolhido pelo nome (a mesma
+  pessoa tem sempre a mesma cor), brilho interno e contorno sutil. Vale
+  para o topo, o menu da sessão, a lista de usuários, o perfil e o modal
+  de foto (`B7.UI.avatarPessoa`).

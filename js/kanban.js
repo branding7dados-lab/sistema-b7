@@ -146,7 +146,7 @@ B7.Kanban = (function () {
       '<div class="kb-pe">' +
         (d.responsavel_nome
           ? '<span class="kb-resp" title="' + esc(d.responsavel_nome) + '">' +
-            esc(d.responsavel_nome.slice(0, 2).toUpperCase()) + '</span>' : '') +
+            esc(B7.UI.iniciais(d.responsavel_nome)) + '</span>' : '') +
         (d.prazo ? '<span class="kb-prazo' + (atrasada ? ' atrasada' : '') + '">' +
           esc(B7.UI.dataBR(d.prazo)) + '</span>' : '') +
         (d.comentarios_abertos ? '<span class="kb-coment">' + d.comentarios_abertos + '</span>' : '') +

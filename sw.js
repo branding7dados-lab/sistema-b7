@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v9';
+const CACHE = 'roteiros-b7-v12';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -48,7 +48,13 @@ self.addEventListener('activate', ev => {
 self.addEventListener('fetch', ev => {
   const url = new URL(ev.request.url);
   if (ev.request.method !== 'GET' || url.origin !== self.location.origin) return;  // Supabase vai direto à rede
-  if (url.pathname.endsWith('/js/config.js')) return;                              // sempre fresco
+  /* config.js nunca pode vir de cache nenhum — nem do nosso, nem do
+     cache HTTP do navegador (o GitHub Pages manda max-age=600, e dez
+     minutos com o banco antigo já foram suficientes para muita confusão). */
+  if (url.pathname.endsWith('/js/config.js')) {
+    ev.respondWith(fetch(ev.request, { cache: 'no-store' }).catch(() => caches.match(ev.request)));
+    return;
+  }
 
   ev.respondWith(
     fetch(ev.request).then(resp => {
