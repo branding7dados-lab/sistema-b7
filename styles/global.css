@@ -925,29 +925,27 @@ body.apurando #app{visibility:hidden;}
   50%{transform:translateY(-50vh) translateX(18px);opacity:.6}
   100%{transform:translateY(-105vh) translateX(-10px);opacity:0}}
 
-/* ---- anel girando com gradiente da marca, centrado no símbolo ---- */
-.b7-abertura .anel{position:absolute;z-index:0;width:176px;height:176px;border-radius:50%;
-  left:50%;top:50%;transform:translate(-50%,-50%);
-  background:conic-gradient(from 0deg,transparent 0 58%,#3A1E86 72%,#C21C83 90%,#FF6FB5 100%);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px));
-  mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#000 calc(100% - 2px));
-  animation:aberturaGira 2.4s cubic-bezier(.6,.05,.4,.95) infinite;
-  filter:drop-shadow(0 0 10px rgba(226,64,156,.55));}
-.b7-abertura .anel:after{content:"";position:absolute;inset:16px;border-radius:50%;
-  border:1px solid rgba(255,255,255,.07);}
-@keyframes aberturaGira{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+/* ---- núcleo: uma caixa fixa de 180px com o anel (SVG) e o símbolo
+        centrados nela. Geometria fechada: não depende de flex nem de
+        cálculo de posição, então fica igual em qualquer tela. ---- */
+.b7-abertura .nucleo{position:relative;z-index:1;width:180px;height:180px;
+  display:flex;align-items:center;justify-content:center;}
+.b7-abertura .giro{position:absolute;inset:0;width:100%;height:100%;
+  animation:aberturaGira 2.2s cubic-bezier(.55,.1,.45,.9) infinite;
+  filter:drop-shadow(0 0 8px rgba(226,64,156,.45));}
+@keyframes aberturaGira{to{transform:rotate(360deg)}}
 
-.b7-abertura .marca{position:relative;z-index:1;width:64px;height:74px;margin-top:18px;
+.b7-abertura .marca{position:relative;width:62px;height:72px;
   background:url('../assets/brand/symbol-color.png') no-repeat center/contain;
   animation:aberturaMarca 2.4s ease-in-out infinite;
   filter:drop-shadow(0 8px 24px rgba(194,28,131,.35));}
-.b7-abertura .marca:before{content:"";position:absolute;inset:-52px;border-radius:50%;
+.b7-abertura .marca:before{content:"";position:absolute;inset:-46px;border-radius:50%;
   background:radial-gradient(circle,rgba(194,28,131,.30),transparent 68%);
   animation:aberturaHalo 2.8s ease-in-out infinite;z-index:-1;}
-@keyframes aberturaMarca{0%,100%{transform:scale(.96) translateY(1px);opacity:.9}50%{transform:scale(1.02) translateY(-2px);opacity:1}}
+@keyframes aberturaMarca{0%,100%{transform:scale(.96);opacity:.9}50%{transform:scale(1.02);opacity:1}}
 @keyframes aberturaHalo{0%,100%{opacity:.35;transform:scale(.88)}50%{opacity:.9;transform:scale(1.08)}}
 
-.b7-abertura .txt{position:relative;z-index:1;font-size:13.5px;margin-top:26px;
+.b7-abertura .txt{position:relative;z-index:1;font-size:13.5px;margin-top:4px;
   color:rgba(255,255,255,.60);letter-spacing:.01em;text-align:center;
   animation:aberturaTexto .9s cubic-bezier(.16,1,.3,1) .15s both;}
 .b7-abertura .txt b{display:block;font-family:'Archivo';font-weight:900;font-size:22px;

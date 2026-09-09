@@ -104,7 +104,7 @@ Espere um ou dois minutos.
 Vai ficar assim:
 
 ```
-https://branding7dados-lab.github.io/roteiros-b7/
+https://branding7dados-lab.github.io/sistema-b7/
 ```
 
 Abra, crie uma gravação e comece. Salve esse link nos favoritos de todos os

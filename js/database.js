@@ -701,11 +701,29 @@ B7.DB = (function () {
            erro. Uma função publicada que recusa a credencial responde 401
            e cairia aqui igual a uma função inexistente — por isso lemos o
            corpo da resposta antes de concluir qualquer coisa. */
-        let corpoErro = null;
-        try { corpoErro = await error.context.json(); } catch (x) {}
+        let corpoErro = null, texto = '';
+        const ctx = error.context;
+        const status = ctx && typeof ctx.status === 'number' ? ctx.status : 0;
+        try { texto = await ctx.clone().text(); corpoErro = JSON.parse(texto); } catch (x) {}
         if (corpoErro && corpoErro.erro) throw new Error(corpoErro.erro);
-        const e = new Error('Serviço de acesso indisponível.');
-        e.rede = true;
+        /* Sem corpo reconhecível, o que importa é dizer o que o gateway
+           respondeu: 401 sem JSON é "Verify JWT" ligado na função; 404 é
+           função com outro nome; 5xx é a função quebrando ao subir. */
+        let motivo = 'Serviço de acesso indisponível';
+        if (status === 401 || status === 403) {
+          motivo += ' (HTTP ' + status + ': a função b7-auth está com "Verify JWT" ligado — desligue em Edge Functions → b7-auth → Details)';
+        } else if (status === 404) {
+          motivo += ' (HTTP 404: não existe uma função publicada com o nome exato b7-auth)';
+        } else if (status >= 500) {
+          motivo += ' (HTTP ' + status + ': a função falhou — veja Edge Functions → b7-auth → Logs)';
+        } else if (status) {
+          motivo += ' (HTTP ' + status + ')';
+        } else {
+          motivo += ' (sem resposta: rede, CORS ou projeto pausado — ' + (error.name || '') + ')';
+        }
+        if (texto && texto.length < 160) motivo += ' — ' + texto.replace(/\s+/g, ' ').trim();
+        const e = new Error(motivo + '.');
+        e.rede = true; e.status = status;
         throw e;
       }
       if (data && data.erro) throw new Error(data.erro);

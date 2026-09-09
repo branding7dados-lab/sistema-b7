@@ -39,7 +39,18 @@
   <div class="fundo"><span class="a"></span><span class="b"></span><span class="c"></span>
     <i class="p p1"></i><i class="p p2"></i><i class="p p3"></i><i class="p p4"></i><i class="p p5"></i><i class="p p6"></i>
   </div>
-  <div class="marca"><span class="anel"></span></div>
+  <div class="nucleo">
+    <svg class="giro" viewBox="0 0 200 200" aria-hidden="true">
+      <defs><linearGradient id="abGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#3A1E86" stop-opacity="0"/>
+        <stop offset=".45" stop-color="#7C1E85"/>
+        <stop offset="1" stop-color="#FF6FB5"/></linearGradient></defs>
+      <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+      <circle cx="100" cy="100" r="92" fill="none" stroke="url(#abGrad)" stroke-width="2.5"
+              stroke-linecap="round" stroke-dasharray="330 248" transform="rotate(-90 100 100)"/>
+    </svg>
+    <div class="marca"></div>
+  </div>
   <div class="txt"><b>Branding7</b>Preparando o seu espaço…</div>
   <div class="barra"><i></i></div>
 </div>
