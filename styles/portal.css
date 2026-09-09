@@ -1,0 +1,225 @@
+/* =====================================================================
+   PORTAL DO CLIENTE
+   Mesma identidade Branding7, respiro maior e menos densidade: quem entra
+   aqui não trabalha no sistema o dia inteiro.
+   ===================================================================== */
+
+body.modo-portal .nav{padding-top:8px;}
+
+.portal-home{max-width:920px;}
+
+/* ------------------------------------------------------- cabeçalho */
+.ph-cab{margin-bottom:34px;}
+.ph-saud{font-size:13.5px;color:var(--ink-4);margin-bottom:6px;}
+.ph-cab h1{font-family:'Archivo';font-size:29px;font-weight:900;letter-spacing:-.03em;
+  line-height:1.15;}
+.ph-emp{font-size:13.5px;color:var(--ink-3);margin-top:7px;}
+
+/* --------------------------------------------------------- seções */
+.ph-secao{margin-bottom:34px;}
+.ph-titulo{display:flex;align-items:center;gap:11px;margin-bottom:15px;}
+.ph-titulo h2{font-family:'Archivo';font-size:17px;font-weight:800;letter-spacing:-.02em;}
+.ph-conta{font-size:11.5px;font-weight:700;color:#fff;background:var(--grad-curto);
+  border-radius:99px;padding:3px 10px;}
+
+/* ------------------------------------------- itens para aprovação */
+.ph-lista{display:flex;flex-direction:column;gap:9px;}
+.ph-item{display:flex;align-items:center;gap:15px;width:100%;text-align:left;
+  padding:15px 18px;background:var(--card);border:1px solid var(--borda);
+  border-radius:var(--r);cursor:pointer;font:inherit;color:inherit;
+  transition:var(--t-micro);}
+.ph-item:hover{border-color:var(--acento);transform:translateY(-1px);
+  box-shadow:0 6px 20px -12px rgba(120,20,120,.4);}
+.ph-item-tipo{flex:none;font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--acento);background:var(--acento-suave);
+  border-radius:99px;padding:6px 11px;}
+.ph-item-tx{flex:1;min-width:0;}
+.ph-item-tx b{display:block;font-size:14.5px;font-weight:600;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.ph-item-tx small{display:block;font-size:12px;color:var(--ink-4);margin-top:3px;}
+.ph-item-ir{flex:none;font-size:12.5px;font-weight:600;color:var(--acento);}
+@media (max-width:640px){
+  .ph-item{flex-wrap:wrap;gap:9px;}
+  .ph-item-tx{width:100%;order:3;}
+}
+
+/* ----------------------------------------------------- vazio digno */
+.ph-vazio{text-align:center;padding:44px 24px;background:var(--card);
+  border:1px dashed var(--borda);border-radius:var(--r);}
+.ph-vazio-ic{width:44px;height:44px;margin:0 auto 14px;color:var(--ink-4);opacity:.5;}
+.ph-vazio-ic svg{width:100%;height:100%;}
+.ph-vazio b{display:block;font-family:'Archivo';font-size:15px;font-weight:800;}
+.ph-vazio p{font-size:13px;color:var(--ink-4);margin-top:7px;line-height:1.55;
+  max-width:380px;margin-left:auto;margin-right:auto;}
+
+/* -------------------------------------------------------- números */
+.ph-numeros{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:11px;margin-bottom:34px;}
+.ph-num{text-align:left;padding:19px 21px;background:var(--card);
+  border:1px solid var(--borda);border-radius:var(--r);cursor:pointer;
+  font:inherit;color:inherit;transition:var(--t-micro);}
+.ph-num:hover{border-color:var(--acento);}
+.ph-num b{display:block;font-family:'Archivo';font-size:31px;font-weight:900;
+  letter-spacing:-.03em;line-height:1;}
+.ph-num span{display:block;font-size:13px;font-weight:600;margin-top:9px;}
+.ph-num small{display:block;font-size:11.5px;color:var(--ink-4);margin-top:4px;
+  line-height:1.45;}
+
+/* --------------------------------------------------- blocos duplos */
+.ph-duplo{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:11px;}
+.ph-bloco{text-align:left;padding:21px;background:var(--card);
+  border:1px solid var(--borda);border-radius:var(--r);cursor:pointer;
+  font:inherit;color:inherit;transition:var(--t-micro);}
+.ph-bloco:hover{border-color:var(--acento);}
+.ph-bloco.vazio{cursor:default;border-style:dashed;}
+.ph-bloco.vazio:hover{border-color:var(--borda);}
+.ph-bloco h3{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-4);}
+.ph-bloco b{display:block;font-family:'Archivo';font-size:17px;font-weight:800;
+  letter-spacing:-.02em;margin-top:9px;}
+.ph-bloco p{font-size:12.5px;color:var(--ink-4);margin-top:5px;}
+.ph-ir{display:inline-block;margin-top:13px;font-size:12.5px;font-weight:600;
+  color:var(--acento);}
+
+/* ------------------------------------------- serviço pausado
+   O desfoque é decoração sobre formas vazias. Nenhum dado privado é
+   carregado atrás dele — esconder não é proteger. */
+.ph-bloqueio{position:relative;min-height:440px;display:flex;align-items:center;
+  justify-content:center;padding:24px;}
+.ph-bloqueio-fundo{position:absolute;inset:0;filter:blur(7px);opacity:.4;
+  pointer-events:none;display:flex;flex-direction:column;gap:14px;padding:30px;}
+.ph-fake{height:74px;background:var(--card);border:1px solid var(--borda);
+  border-radius:var(--r);}
+.ph-fake.curto{width:60%;}
+.ph-bloqueio-caixa{position:relative;z-index:1;max-width:440px;text-align:center;
+  background:var(--card);border:1px solid var(--borda);border-radius:20px;
+  padding:38px 32px;box-shadow:var(--sh-3);}
+.ph-marca{height:30px;margin-bottom:22px;}
+.ph-bloqueio-caixa h2{font-family:'Archivo';font-size:21px;font-weight:800;
+  letter-spacing:-.02em;}
+.ph-bloqueio-caixa p{font-size:13.5px;color:var(--ink-3);margin-top:11px;line-height:1.6;}
+.ph-bloqueio-ct{font-size:12.5px !important;color:var(--ink-4) !important;margin-top:18px !important;}
+
+/* ============================================ REVISÃO DE MATERIAL */
+.pt-voltar{display:inline-block;font-size:12.5px;color:var(--ink-3);
+  text-decoration:none;margin-bottom:16px;}
+.pt-voltar:hover{color:var(--acento);}
+
+.pt-rev-cab{display:flex;align-items:flex-start;justify-content:space-between;
+  gap:18px;margin-bottom:24px;flex-wrap:wrap;}
+.pt-tipo{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-4);}
+.pt-rev-cab h1{font-family:'Archivo';font-weight:900;font-size:24px;letter-spacing:-.02em;
+  margin:6px 0 4px;}
+.pt-rev-cab p{font-size:12.5px;color:var(--ink-4);}
+.pt-sit{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:6px 13px;border-radius:99px;background:var(--suave);color:var(--ink-3);
+  white-space:nowrap;}
+.pt-sit.pendente{background:#FEF3C7;color:#92400E;}
+.pt-sit.aprovado{background:#DCFCE7;color:#166534;}
+.pt-sit.ajustes{background:#FEE2E2;color:#991B1B;}
+
+.pt-cenas{display:flex;flex-direction:column;gap:14px;}
+.pt-cena{background:var(--card);border:1px solid var(--borda);border-left:3px solid var(--borda);
+  border-radius:var(--r);padding:18px 20px;}
+.pt-cena.aprovada{border-left-color:#16A34A;}
+.pt-cena.ajustes{border-left-color:#DC2626;}
+.pt-cena-cab{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.pt-cena-n{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--acento);}
+.pt-cena-sit{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 9px;border-radius:99px;}
+.pt-cena-sit.aprovada{background:#DCFCE7;color:#166534;}
+.pt-cena-sit.ajustes{background:#FEE2E2;color:#991B1B;}
+.pt-cena h4{font-size:15px;font-weight:700;margin-bottom:12px;}
+.pt-campo{margin-bottom:12px;}
+.pt-campo small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.14em;
+  color:var(--ink-4);margin-bottom:4px;}
+.pt-campo p{font-size:14px;line-height:1.6;color:var(--ink-2);white-space:pre-wrap;}
+.pt-cena-acoes{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;
+  padding-top:14px;border-top:1px solid var(--borda);}
+
+.pt-bloco{margin-top:30px;}
+.pt-bloco h3{font-family:'Archivo';font-weight:800;font-size:15px;margin-bottom:12px;}
+.pt-coments{display:flex;flex-direction:column;gap:10px;}
+.pt-com{background:var(--suave);border-radius:var(--r-sm);padding:12px 14px;}
+.pt-com.resolvido{opacity:.55;}
+.pt-com-cab{display:flex;gap:9px;align-items:baseline;font-size:12px;margin-bottom:5px;}
+.pt-com-cab i{font-style:normal;font-size:10.5px;color:var(--acento);}
+.pt-com-cab span{color:var(--ink-4);font-size:10.5px;margin-left:auto;}
+.pt-com p{font-size:13px;line-height:1.55;color:var(--ink-2);}
+.pt-novo-com{display:flex;gap:9px;margin-top:12px;}
+.pt-novo-com .campo{flex:1;}
+.pt-nada{font-size:13px;color:var(--ink-4);}
+
+/* a decisão fica fixa no rodapé: é a ação principal desta tela */
+.pt-decisao{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;
+  background:var(--card);border:1px solid var(--borda);border-radius:var(--r);
+  padding:14px 18px;margin-top:30px;box-shadow:0 -8px 24px -14px rgba(20,8,40,.3);
+  flex-wrap:wrap;}
+.pt-decisao-tx{flex:1;min-width:180px;}
+.pt-decisao-tx b{display:block;font-size:13px;}
+.pt-decisao-tx span{font-size:11.5px;color:var(--ink-4);}
+.pt-decidido{margin-top:30px;padding:16px 18px;background:var(--suave);
+  border-radius:var(--r);font-size:13px;color:var(--ink-3);}
+.pt-baixar{margin-top:16px;}
+.pt-corpo-simples{background:var(--card);border:1px solid var(--borda);
+  border-radius:var(--r);padding:20px;}
+.env-anterior{font-size:12.5px;color:var(--ink-3);background:var(--suave);
+  border-radius:10px;padding:11px 13px;margin-bottom:16px;line-height:1.5;}
+
+/* =====================================================================
+   IDENTIDADE DO PORTAL
+   O cliente precisa saber, olhando, que está no ambiente dele.
+   ===================================================================== */
+.pt-marcador{margin:0 0 18px;padding:12px 14px;border-radius:14px;
+  background:linear-gradient(135deg,rgba(194,28,131,.16),rgba(58,30,134,.16));
+  border:1px solid rgba(255,255,255,.09);}
+.pt-marcador-rot{display:block;font-size:9px;font-weight:800;letter-spacing:.2em;
+  color:#F09CD0;}
+.pt-marcador-emp{display:block;font-size:13px;font-weight:600;color:#fff;margin-top:5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+body.recolhida .pt-marcador{padding:10px 6px;text-align:center;}
+body.recolhida .pt-marcador-rot{font-size:8px;letter-spacing:.08em;}
+body.recolhida .pt-marcador-emp{display:none;}
+
+.pt-sair{display:flex;align-items:center;gap:11px;width:100%;padding:11px 14px;
+  margin-top:8px;border:0;background:none;cursor:pointer;font:inherit;font-size:13px;
+  color:rgba(255,255,255,.55);border-radius:11px;transition:var(--t-micro);}
+.pt-sair:hover{background:rgba(255,255,255,.07);color:#fff;}
+.pt-sair svg{width:18px;height:18px;flex:none;}
+body.recolhida .pt-sair span{display:none;}
+
+/* ---------------------------------------------- telas do portal */
+.pt-destaque{background:var(--card);border:1px solid var(--borda);border-radius:var(--r);
+  padding:18px 20px;margin-bottom:20px;}
+.pt-destaque small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.14em;
+  color:var(--ink-4);margin-bottom:7px;}
+.pt-destaque p{font-size:14px;line-height:1.6;color:var(--ink-2);}
+.pt-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.pt-item{background:var(--card);border:1px solid var(--borda);border-radius:var(--r);
+  padding:16px 18px;}
+.pt-formato{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--acento);}
+.pt-item h4{font-size:14.5px;font-weight:600;margin:7px 0 5px;line-height:1.35;}
+.pt-data{font-size:11.5px;color:var(--ink-4);}
+.pt-item p{font-size:12.5px;color:var(--ink-3);line-height:1.5;margin-top:8px;}
+.pt-lista{display:flex;flex-direction:column;gap:8px;}
+.pt-linha-item{display:flex;align-items:center;gap:14px;padding:14px 18px;
+  background:var(--card);border:1px solid var(--borda);border-radius:var(--r);}
+.pt-linha-item[data-ir]{cursor:pointer;}
+.pt-linha-item[data-ir]:hover{border-color:var(--acento);}
+.pt-linha-item > div{flex:1;min-width:0;}
+.pt-linha-item b{display:block;font-size:14px;font-weight:600;}
+.pt-linha-item span{font-size:11.5px;color:var(--ink-4);}
+.pt-vazio{text-align:center;padding:56px 24px;background:var(--card);
+  border:1px solid var(--borda);border-radius:var(--r);}
+.pt-vazio b{display:block;font-family:'Archivo';font-weight:800;font-size:16px;
+  margin-bottom:8px;}
+.pt-vazio p{font-size:13px;color:var(--ink-4);line-height:1.6;max-width:380px;margin:0 auto;}
+
+/* meta da cena no portal: tipo/função e direção, como na folha */
+.pt-cena-meta{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px;}
+.pt-cena-tipo{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 8px;border-radius:999px;background:var(--acento-suave);color:var(--acento);}
+.pt-cena-dir{font-size:11px;color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase;}
+.pt-campo p{white-space:pre-line;}

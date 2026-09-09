@@ -1,0 +1,306 @@
+/* =====================================================================
+   Dashboard, clientes e gravações — área clara
+   Grid: coluna principal larga + coluna de apoio. Em telas menores,
+   tudo vira uma coluna só.
+   ===================================================================== */
+
+.painel{flex:1;min-height:0;overflow-y:auto;}
+.conteudo{max-width:var(--largura);margin:0 auto;padding:26px 26px 90px;}
+
+.colunas{display:grid;grid-template-columns:minmax(0,1fr) 328px;gap:22px;align-items:start;}
+.apoio{display:flex;flex-direction:column;gap:16px;position:sticky;top:0;}
+
+/* --------------------------------------------------------- hero */
+.hero{position:relative;overflow:hidden;border-radius:22px;background:var(--sidebar);color:#fff;
+  padding:30px 34px;margin-bottom:20px;display:flex;align-items:center;gap:26px;}
+.hero .brilho{position:absolute;right:-90px;top:-120px;width:460px;height:460px;border-radius:50%;
+  background:radial-gradient(circle,rgba(194,28,131,.5) 0%,rgba(58,30,134,.28) 45%,transparent 70%);}
+.hero .malha{position:absolute;inset:0;opacity:.32;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:linear-gradient(100deg,#000 10%,transparent 72%);
+          mask-image:linear-gradient(100deg,#000 10%,transparent 72%);}
+.hero .simbolo{position:absolute;right:38px;top:50%;transform:translateY(-50%);height:150px;opacity:.9;
+  filter:drop-shadow(0 12px 40px rgba(194,28,131,.4));}
+.hero .miolo{position:relative;z-index:2;max-width:640px;}
+.hero .olho{display:inline-flex;align-items:center;gap:9px;font-size:9.5px;font-weight:700;
+  letter-spacing:.28em;color:#F09CD0;margin-bottom:12px;}
+.hero .olho i{display:block;width:20px;height:2px;background:var(--magenta);}
+.hero h1{font-family:'Archivo';font-size:34px;font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:9px;}
+.hero p{font-size:14px;color:rgba(255,255,255,.62);line-height:1.6;max-width:520px;}
+.hero .acoes{display:flex;gap:10px;margin-top:20px;}
+
+/* ------------------------------------------------------ métricas */
+.metricas{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.metrica{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);padding:18px;
+  transition:var(--t);}
+.metrica:hover{box-shadow:var(--sh-2);transform:translateY(-2px);}
+.metrica .ic{width:34px;height:34px;border-radius:11px;background:var(--neutro-bg);color:var(--acento);
+  display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.metrica .ic svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.metrica b{display:block;font-family:'Archivo';font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1;}
+.metrica .rot{font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--ink-4);margin-top:7px;}
+.metrica .sub{font-size:12px;color:var(--ink-3);margin-top:8px;}
+.metrica.destaque .ic{background:linear-gradient(120deg,rgba(58,30,134,.12),rgba(194,28,131,.14));color:var(--magenta);}
+.metrica.destaque b{background:var(--grad-curto);-webkit-background-clip:text;background-clip:text;color:transparent;}
+
+/* -------------------------------------------------------- seções */
+.secao{margin-bottom:28px;}
+.secao-topo{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.secao-topo h2{font-family:'Archivo';font-size:16px;font-weight:800;letter-spacing:-.015em;}
+.secao-topo .conta{font-size:12px;font-weight:600;color:var(--ink-4);background:var(--suave);
+  padding:3px 9px;border-radius:20px;}
+.secao-topo .espaco{flex:1;}
+
+/* ---------------------------------------- gravação em destaque */
+.destaque-grav{display:flex;align-items:center;gap:18px;background:var(--card);border:1px solid var(--borda);
+  border-radius:var(--r-lg);padding:20px;cursor:pointer;transition:var(--t);position:relative;overflow:hidden;
+  margin-bottom:12px;}
+.destaque-grav:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--grad-curto);}
+.destaque-grav:hover{box-shadow:var(--sh-2);transform:translateY(-2px);border-color:var(--borda-forte);}
+.destaque-grav .info{flex:1;min-width:0;}
+.destaque-grav .cli{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--acento);
+  text-transform:uppercase;margin-bottom:6px;}
+.destaque-grav h3{font-family:'Archivo';font-size:20px;font-weight:800;letter-spacing:-.02em;margin-bottom:9px;}
+.destaque-grav .meta{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-3);flex-wrap:wrap;}
+.destaque-grav .meta .p{width:3px;height:3px;border-radius:50%;background:var(--ink-4);}
+.destaque-grav .lado{display:flex;align-items:center;gap:10px;flex:none;}
+
+/* --------------------------------------------- cards de gravação */
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:14px;}
+.card-gravacao{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);padding:18px;
+  cursor:pointer;transition:var(--t);position:relative;display:flex;flex-direction:column;gap:11px;}
+.destaque-grav,.linha-gravacao{position:relative;}
+.card-gravacao:hover{box-shadow:var(--sh-2);transform:translateY(-2px);border-color:var(--borda-forte);}
+.card-gravacao .cli{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--acento);
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card-gravacao h3{font-family:'Archivo';font-size:16px;font-weight:800;letter-spacing:-.015em;line-height:1.3;}
+.card-gravacao .meta{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-3);flex-wrap:wrap;}
+.card-gravacao .meta .p{width:3px;height:3px;border-radius:50%;background:var(--ink-4);}
+.card-gravacao .rodape{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;
+  padding-top:4px;}
+.card-gravacao .abrir{font-size:12.5px;font-weight:600;color:var(--acento);opacity:0;transition:var(--t);}
+.card-gravacao:hover .abrir{opacity:1;}
+
+/* ------------------------------------------------------- clientes */
+.grade-clientes{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;}
+.card-cliente{position:relative;display:flex;align-items:center;gap:14px;background:var(--card);
+  border:1px solid var(--borda);border-radius:var(--r-lg);padding:16px;cursor:pointer;transition:var(--t);}
+.card-cliente:hover{box-shadow:var(--sh-2);transform:translateY(-2px);border-color:var(--borda-forte);}
+.card-cliente .nm{flex:1;min-width:0;}
+.card-cliente .nm b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card-cliente .nm small{font-size:12px;color:var(--ink-3);display:block;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;padding-right:6px;}
+.card-cliente .acao-hover{display:none;}
+.card-cliente:hover .acao-hover{opacity:1;}
+.card-cliente .seta{color:var(--ink-4);font-size:18px;flex:none;}
+.card-cliente .menu{flex:none;}
+.card-cliente:hover .seta{color:var(--acento);}
+
+/* ----------------------------------------------- coluna de apoio */
+.bloco{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);padding:18px;}
+.bloco h3{font-family:'Archivo';font-size:14px;font-weight:800;letter-spacing:-.01em;margin-bottom:14px;}
+.acao-rapida{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px;
+  border-radius:12px;transition:var(--t);margin-bottom:4px;}
+.acao-rapida:hover{background:var(--suave);}
+.acao-rapida .ic{width:32px;height:32px;border-radius:10px;background:var(--neutro-bg);color:var(--acento);
+  display:flex;align-items:center;justify-content:center;flex:none;transition:var(--t);}
+.acao-rapida:hover .ic{background:var(--grad-curto);color:#fff;}
+.acao-rapida .ic svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.acao-rapida .tx{flex:1;min-width:0;}
+.acao-rapida .tx b{display:block;font-size:13.5px;font-weight:600;}
+.acao-rapida .tx small{font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;display:block;}
+.acao-rapida:disabled{opacity:.45;cursor:not-allowed;}
+
+.institucional{position:relative;overflow:hidden;border-radius:var(--r-lg);background:var(--sidebar);
+  color:#fff;padding:22px;}
+.institucional .brilho{position:absolute;right:-70px;bottom:-90px;width:250px;height:250px;border-radius:50%;
+  background:radial-gradient(circle,rgba(194,28,131,.46) 0%,transparent 68%);}
+.institucional img{height:26px;margin-bottom:16px;position:relative;z-index:2;}
+.institucional p{font-family:'Archivo';font-size:17px;font-weight:800;line-height:1.3;letter-spacing:-.02em;
+  position:relative;z-index:2;}
+.institucional small{display:block;font-size:12px;color:rgba(255,255,255,.5);margin-top:9px;
+  line-height:1.55;position:relative;z-index:2;}
+
+/* --------------------------------------------- página do cliente */
+.voltar{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink-3);
+  padding:8px 12px 8px 8px;border-radius:10px;margin-bottom:16px;transition:var(--t);}
+.voltar:hover{background:var(--suave);color:var(--acento);}
+.cabeca-cliente{display:flex;align-items:center;gap:16px;margin-bottom:26px;flex-wrap:wrap;}
+.cabeca-cliente h1{font-family:'Archivo';font-size:27px;font-weight:900;letter-spacing:-.03em;}
+.cabeca-cliente small{font-size:13px;color:var(--ink-3);}
+.lista-gravacoes{display:flex;flex-direction:column;gap:9px;}
+.linha-gravacao{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--borda);
+  border-radius:var(--r);padding:15px 17px;cursor:pointer;transition:var(--t);}
+.linha-gravacao:hover{box-shadow:var(--sh-2);transform:translateX(3px);border-color:var(--borda-forte);}
+.linha-gravacao .nm{flex:1;min-width:0;}
+.linha-gravacao .nm b{display:block;font-size:15px;font-weight:600;}
+.linha-gravacao .nm small{font-size:12px;color:var(--ink-3);}
+
+@media (max-width:1240px){
+  .colunas{grid-template-columns:1fr;}
+  .apoio{position:static;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .metricas{grid-template-columns:repeat(2,1fr);}
+  .hero .simbolo{display:none;}
+}
+@media (max-width:720px){
+  .conteudo{padding:18px 14px 80px;}
+  .apoio{grid-template-columns:1fr;}
+  .hero{padding:24px 20px;}
+  .hero h1{font-size:26px;}
+  .destaque-grav{flex-direction:column;align-items:flex-start;}
+}
+
+/* =====================================================================
+   CAPAS DE GRAVAÇÃO
+   Montadas em CSS a partir dos dados reais: cliente, nome e status.
+   Nenhuma imagem é gerada — a capa é o próprio card.
+   ===================================================================== */
+.capa{position:relative;height:104px;border-radius:14px;overflow:hidden;flex:none;
+  background:linear-gradient(135deg,#1B1338 0%,#3A1E86 45%,#7C1E85 100%);
+  display:flex;align-items:center;padding:16px;gap:12px;}
+.capa .marca{position:absolute;right:-14px;bottom:-22px;width:104px;height:104px;
+  background:url('../assets/brand/symbol-white.png') no-repeat center/contain;opacity:.14;}
+.capa .malha{position:absolute;inset:0;opacity:.16;
+  background-image:linear-gradient(rgba(255,255,255,.4) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.4) 1px,transparent 1px);
+  background-size:26px 26px;
+  -webkit-mask-image:linear-gradient(120deg,#000,transparent 68%);
+          mask-image:linear-gradient(120deg,#000,transparent 68%);}
+.capa .selo{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.94);
+  display:flex;align-items:center;justify-content:center;flex:none;position:relative;z-index:2;
+  font-family:'Archivo';font-weight:800;font-size:14px;color:var(--roxo);
+  padding:0;overflow:hidden;}
+.capa .selo img{width:100%;height:100%;object-fit:cover;object-position:center;}
+.capa .tit{position:relative;z-index:2;min-width:0;}
+.capa .tit small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.16em;
+  color:rgba(255,255,255,.66);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.capa .tit b{display:block;font-family:'Archivo';font-weight:800;font-size:15px;color:#fff;
+  line-height:1.25;margin-top:4px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.capa.grande{height:132px;}
+.capa.grande .tit b{font-size:19px;}
+.capa.grande .selo{width:56px;height:56px;border-radius:14px;font-size:17px;}
+
+/* =====================================================================
+   WORKSPACE DO CLIENTE
+   ===================================================================== */
+.trilha-nav{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-4);margin-bottom:14px;}
+.trilha-nav button{color:var(--ink-3);transition:var(--t);}
+.trilha-nav button:hover{color:var(--acento);}
+.trilha-nav b{color:var(--ink-2);font-weight:600;}
+
+.capa-cliente{position:relative;overflow:hidden;border-radius:22px;padding:26px 30px;
+  background:var(--sidebar);color:#fff;display:flex;align-items:center;gap:20px;margin-bottom:20px;}
+.capa-cliente .brilho{position:absolute;right:-70px;top:-110px;width:380px;height:380px;border-radius:50%;
+  background:radial-gradient(circle,rgba(194,28,131,.42) 0%,rgba(58,30,134,.24) 46%,transparent 70%);}
+.capa-cliente .malha{position:absolute;inset:0;opacity:.28;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:44px 44px;
+  -webkit-mask-image:linear-gradient(100deg,#000 8%,transparent 70%);
+          mask-image:linear-gradient(100deg,#000 8%,transparent 70%);}
+.capa-cliente .b7-marca{right:26px;top:50%;transform:translateY(-50%);width:120px;height:120px;
+  background-image:url('../assets/brand/symbol-white.png');opacity:.12;}
+.capa-cliente .selo{width:72px;height:72px;border-radius:20px;background:#fff;flex:none;
+  display:flex;align-items:center;justify-content:center;padding:0;overflow:hidden;
+  position:relative;z-index:2;
+  font-family:'Archivo';font-weight:800;font-size:22px;color:var(--roxo);}
+/* preenche o quadrado, sem moldura branca sobrando */
+.capa-cliente .selo img{width:100%;height:100%;object-fit:cover;object-position:center;}
+.capa-cliente .info{flex:1;min-width:0;position:relative;z-index:2;}
+.capa-cliente .olho{font-size:9.5px;font-weight:700;letter-spacing:.26em;color:#F09CD0;margin-bottom:7px;}
+.capa-cliente h1{font-family:'Archivo';font-size:28px;font-weight:900;letter-spacing:-.03em;line-height:1.1;}
+.capa-cliente .meta{display:flex;align-items:center;gap:9px;font-size:13px;
+  color:rgba(255,255,255,.6);margin-top:8px;flex-wrap:wrap;}
+.capa-cliente .meta .p{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.4);}
+.capa-cliente .acoes{display:flex;align-items:center;gap:9px;position:relative;z-index:2;flex:none;}
+
+.abas-cliente{display:flex;gap:4px;background:var(--suave);padding:4px;border-radius:12px;
+  margin-bottom:20px;width:max-content;}
+.abas-cliente button{font-size:13px;font-weight:600;color:var(--ink-3);padding:8px 16px;
+  border-radius:9px;transition:var(--t);}
+.abas-cliente button:hover{color:var(--ink);}
+.abas-cliente button.on{background:var(--card);color:var(--acento);box-shadow:var(--sh-1);}
+
+.mini-metricas{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
+.mini-metrica{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:14px 16px;
+  transition:var(--t);}
+.mini-metrica:hover{border-color:var(--borda-forte);}
+.mini-metrica b{display:block;font-family:'Archivo';font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1;}
+.mini-metrica span{display:block;font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--ink-4);margin-top:6px;}
+
+.atividade{display:flex;flex-direction:column;}
+.atividade .item{display:flex;gap:12px;align-items:flex-start;padding:11px 0;
+  border-bottom:1px solid var(--borda);cursor:pointer;transition:var(--t);}
+.atividade .item:last-child{border-bottom:0;}
+.atividade .item:hover .tx b{color:var(--acento);}
+.atividade .pt{width:8px;height:8px;border-radius:50%;background:var(--grad-curto);
+  flex:none;margin-top:6px;}
+.atividade .tx{flex:1;min-width:0;}
+.atividade .tx b{display:block;font-size:13.5px;font-weight:600;transition:var(--t);}
+.atividade .tx small{font-size:11.5px;color:var(--ink-3);}
+
+.roteiro-linha{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:12px;
+  background:var(--card);border:1px solid var(--borda);margin-bottom:7px;cursor:pointer;transition:var(--t);}
+.roteiro-linha:hover{border-color:var(--borda-forte);transform:translateX(3px);}
+.roteiro-linha .n{font-family:'Archivo';font-weight:800;font-size:13px;color:var(--acento);flex:none;min-width:24px;}
+.roteiro-linha .tx{flex:1;min-width:0;}
+.roteiro-linha .tx b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.roteiro-linha .tx small{font-size:11.5px;color:var(--ink-3);}
+
+.barra-filtros{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.barra-filtros .campo{width:210px;padding:9px 12px;}
+
+.entra{animation:entrando .2s cubic-bezier(.2,.9,.3,1);}
+@keyframes entrando{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+@media (max-width:1240px){ .mini-metricas{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:720px){
+  .capa-cliente{flex-direction:column;align-items:flex-start;padding:20px;}
+  .capa-cliente .b7-marca{display:none;}
+  .capa-cliente .acoes{width:100%;}
+}
+
+/* linha do tempo da atividade */
+.linha-tempo{position:relative;padding-left:16px;}
+.linha-tempo:before{content:"";position:absolute;left:4px;top:6px;bottom:6px;width:1px;
+  background:linear-gradient(180deg,var(--borda-forte),transparent);}
+.tl-item{position:relative;padding:9px 0;}
+.tl-pt{position:absolute;left:-16px;top:14px;width:9px;height:9px;border-radius:50%;
+  background:var(--grad-curto);box-shadow:0 0 0 3px var(--card);}
+.tl-tx small{display:block;font-size:11px;color:var(--ink-4);margin-bottom:3px;}
+.tl-tx b{font-size:13px;font-weight:500;color:var(--ink-2);line-height:1.5;}
+
+/* =====================================================================
+   EMPILHAMENTO DOS DROPDOWNS
+   O hover dos cards usa transform, e transform cria contexto de
+   empilhamento próprio: sem elevar o card, o menu aberto some atrás do
+   card seguinte. Estas regras resolvem isso.
+   ===================================================================== */
+.card-cliente,.card-gravacao,.destaque-grav,.linha-gravacao{position:relative;}
+.card-cliente:hover,.card-gravacao:hover,.destaque-grav:hover,.linha-gravacao:hover{z-index:5;}
+/* .no-topo era necessário quando o dropdown vivia dentro do card. Agora ele
+   é posicionado em coordenadas de tela, então o card fica quieto. A regra
+   permanece só para o hover das ações do card. */
+.card-cliente.no-topo .acoes-card{opacity:1;}
+
+/* ações do cliente sobrepostas ao card: o nome usa a largura inteira */
+.card-cliente .acoes-card{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  display:flex;align-items:center;gap:2px;background:var(--card);padding-left:10px;
+  border-radius:10px;opacity:0;transition:opacity var(--t-micro);}
+.card-cliente:hover .acoes-card,.card-cliente.no-topo .acoes-card{opacity:1;}
+.card-cliente .acoes-card .ico{width:30px;height:30px;}
+.card-cliente .nm small{padding-right:4px;}
+
+/* A trilha com links (.trilha) não tinha estilo próprio: os itens ficavam
+   colados e sublinhados, sem respiro no separador. Agora usa a mesma
+   aparência da trilha de botões. */
+.trilha{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-4);
+  margin-bottom:14px;flex-wrap:wrap;}
+.trilha a{color:var(--ink-3);text-decoration:none;transition:var(--t-micro);}
+.trilha a:hover{color:var(--acento);}
+.trilha b{color:var(--ink-2);font-weight:600;}
+.trilha span{opacity:.5;}

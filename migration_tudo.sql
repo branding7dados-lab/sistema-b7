@@ -1,0 +1,31 @@
+-- =====================================================================
+-- ORDEM DAS MIGRATIONS
+--
+-- Este arquivo NÃO executa nada: o SQL Editor do Supabase roda um script
+-- por vez, e juntar tudo num só esconderia qual etapa falhou.
+--
+-- Rode os arquivos abaixo, nesta ordem, um de cada vez. Todos são
+-- aditivos e idempotentes: repetir não causa dano.
+--
+--   1. migration_vnext.sql        estrutura base
+--   2. migration_vcontent.sql     conteúdos e linha editorial
+--   3. migration_semana.sql       status semanal
+--   4. migration_central.sql      central de produção + correção da view
+--   5. migration_auth.sql         perfis, vínculos e autorização
+--   6. migration_portal.sql       aprovações, comentários e avatar
+--   7. migration_kanban.sql       quadro de produção
+--   8. migration_fix.sql          correções da revisão de 09/09/2026
+--                                 (views, triggers, portal) — rode
+--                                 mesmo que as anteriores já tenham
+--                                 rodado antes
+--
+--   9. migration_rls.sql          POR ÚLTIMO, e só depois de:
+--                                 - conseguir entrar como admin
+--                                 - existir um usuário cliente de teste
+--                                 - ter migration_rls_reverter.sql aberto
+--
+-- Se algum arquivo reclamar de coluna ou tabela inexistente, é porque um
+-- anterior não rodou. A mensagem diz qual.
+-- =====================================================================
+
+select 'Leia os comentários deste arquivo: ele lista a ordem das migrations.' as leia_me;

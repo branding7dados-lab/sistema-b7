@@ -1,0 +1,130 @@
+/* =====================================================================
+   CENTRAL DE PRODUÇÃO
+   Três categorias, números grandes e listas compactas. Sem hero, sem
+   card de retomada, sem indicador técnico.
+   ===================================================================== */
+
+.cp-cab{display:flex;align-items:flex-end;gap:18px;margin-bottom:16px;flex-wrap:wrap;}
+.cp-cab h1{font-size:27px;letter-spacing:-.4px;}
+.cp-cab p{font-size:13.5px;color:var(--ink-3);margin-top:6px;}
+.cp-criar{margin-left:auto;}
+.cp-criar .b svg{width:14px;height:14px;}
+
+.cp-filtros{display:flex;align-items:center;gap:11px;margin-bottom:26px;flex-wrap:wrap;
+  padding-bottom:16px;border-bottom:1px solid var(--borda);}
+.cp-escopo{font-size:12px;color:var(--ink-4);margin-left:auto;}
+@media (max-width:700px){ .cp-escopo{margin-left:0;width:100%;} }
+
+/* ------------------------------------------------------- categorias */
+.cp-cat{margin-bottom:30px;}
+.cp-cat-cab{display:flex;align-items:center;gap:11px;margin-bottom:13px;}
+.cp-ic{width:22px;height:22px;color:var(--acento);flex:none;}
+.cp-ic svg{width:100%;height:100%;}
+.cp-cat-cab h2{font-family:'Archivo';font-weight:800;font-size:18px;letter-spacing:-.2px;margin:0;}
+.cp-cat-cab .b{margin-left:auto;}
+.cp-cat-cab .b svg{width:13px;height:13px;}
+
+/* três colunas de altura igual */
+.cp-tres{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:stretch;}
+@media (max-width:860px){ .cp-tres{grid-template-columns:1fr;} }
+
+.cp-num{position:relative;display:flex;flex-direction:column;align-items:flex-start;
+  gap:7px;padding:19px 22px;min-height:104px;text-align:left;font:inherit;cursor:pointer;
+  background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);
+  color:var(--ink);transition:var(--t-micro);}
+.cp-num:hover{border-color:var(--borda-forte);transform:translateY(-2px);}
+.cp-num:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.cp-num b{font-family:'Archivo';font-weight:800;font-size:38px;line-height:1;letter-spacing:-.02em;}
+.cp-num span{font-size:12.5px;color:var(--ink-3);}
+.cp-num .cp-seta{position:absolute;right:16px;top:18px;width:14px;height:14px;
+  color:var(--ink-4);opacity:0;transition:var(--t-micro);}
+.cp-num:hover .cp-seta{opacity:1;}
+/* cor semântica discreta — o rótulo continua dizendo tudo sozinho */
+.cp-num.ok b{color:#2E8B63;}
+.cp-num.pendente b{background:var(--grad);-webkit-background-clip:text;background-clip:text;
+  color:transparent;}
+.cp-cat.destaque .cp-num b{font-size:44px;}
+
+/* -------------------------------------------------------- andamento */
+.cp-andamento{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;}
+.cp-andamento button{font:inherit;font-size:12px;color:var(--ink-3);cursor:pointer;
+  background:var(--suave);border:1px solid var(--borda);border-radius:99px;padding:6px 14px;
+  transition:var(--t-micro);}
+.cp-andamento button:hover{border-color:var(--acento);color:var(--acento);}
+.cp-andamento b{font-family:'Archivo';font-weight:800;color:var(--ink);}
+
+/* ----------------------------------------------------------- agenda */
+.cp-agenda{margin-top:16px;background:var(--card);border:1px solid var(--borda);
+  border-radius:var(--r-lg);padding:16px 18px;}
+.cp-agenda-cab{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.cp-agenda-cab .b{margin-left:auto;}
+.cp-agenda-cab .b svg{width:12px;height:12px;}
+.cp-agenda-vazia{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  font-size:12.5px;color:var(--ink-4);padding:6px 0;}
+.cp-aviso{font-size:12.5px;color:var(--ink-2);background:var(--suave);
+  border-left:2px solid var(--acento);border-radius:var(--r-sm);padding:10px 13px;
+  margin-bottom:11px;}
+.cp-agenda-lista{display:flex;flex-direction:column;gap:7px;}
+.cp-ag-item{display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:var(--r-sm);
+  background:var(--suave);cursor:pointer;transition:var(--t-micro);}
+.cp-ag-item:hover{background:var(--acento-suave);}
+.cp-ag-data{flex:none;width:62px;text-align:center;}
+.cp-ag-data .dow{display:block;font-size:9.5px;font-weight:700;letter-spacing:.14em;
+  color:var(--ink-4);}
+.cp-ag-data .dt{display:block;font-family:'Archivo';font-weight:800;font-size:13px;
+  color:var(--ink);margin-top:2px;}
+.cp-ag-tx{flex:1;min-width:0;}
+.cp-ag-tx b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;}
+.cp-ag-meta{display:flex;gap:5px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-4);margin-top:3px;}
+.cp-ag-sit{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-4);background:var(--card);border-radius:99px;padding:4px 10px;white-space:nowrap;}
+.cp-ag-sit.ok{color:#2E8B63;}
+.cp-ag-abrir{font-size:11.5px;color:var(--ink-4);white-space:nowrap;}
+@media (max-width:760px){ .cp-ag-abrir{display:none;} }
+
+/* ------------------------------------------------- listas compactas */
+.cp-lista{display:flex;flex-direction:column;gap:7px;margin-top:14px;}
+.cp-item{display:flex;align-items:center;gap:14px;padding:11px 14px;background:var(--card);
+  border:1px solid var(--borda);border-radius:var(--r-sm);cursor:pointer;
+  transition:var(--t-micro);}
+.cp-item:hover{border-color:var(--borda-forte);}
+.cp-item-tx{flex:1;min-width:0;}
+.cp-item-tx b{display:block;font-size:13px;font-weight:600;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.cp-item-meta{display:flex;gap:5px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-4);
+  margin-top:4px;}
+.cp-item-abrir{font-size:11.5px;color:var(--ink-4);white-space:nowrap;}
+.cp-item-abrir svg{width:12px;height:12px;vertical-align:-2px;}
+.cp-lista-modal{display:flex;flex-direction:column;gap:7px;max-height:52vh;overflow-y:auto;
+  margin:10px 0;padding-right:4px;}
+
+/* ------------------------------------------------------------ vazio */
+.cp-vazio{margin-top:14px;padding:22px;text-align:center;background:var(--suave);
+  border-radius:var(--r-lg);}
+.cp-vazio b{display:block;font-family:'Archivo';font-weight:800;font-size:15px;}
+.cp-vazio p{font-size:12.5px;color:var(--ink-4);margin:7px 0 14px;}
+
+/* -------------------------------------------------------- esqueleto */
+.cp-esqueleto{display:flex;flex-direction:column;gap:30px;padding-top:20px;}
+.sk-card{height:104px;border-radius:var(--r-lg);}
+.cp-cat-sk .cp-tres{margin-top:13px;}
+
+/* ------------------------------------------------- configurações */
+.cfg-bloco{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);
+  padding:18px 20px;margin-bottom:12px;}
+.cfg-bloco h3{font-family:'Archivo';font-weight:800;font-size:15px;margin:0 0 4px;}
+.cfg-bloco p{font-size:12.5px;color:var(--ink-4);margin:0 0 14px;}
+.cfg-linha{display:flex;align-items:center;gap:12px;padding:11px 0;
+  border-top:1px solid var(--borda);font-size:12.5px;}
+.cfg-linha b{color:var(--ink-3);font-weight:600;min-width:150px;}
+.cfg-linha span{color:var(--ink-2);}
+.cfg-linha .b{margin-left:auto;}
+.cfg-estado{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;}
+.cfg-ponto{width:9px;height:9px;border-radius:50%;background:var(--ink-4);flex:none;}
+.cfg-ponto.ok{background:#3FA37A;}
+.cfg-ponto.erro{background:#C2185B;}
+.cfg-passos{font-size:12.5px;color:var(--ink-3);line-height:1.6;padding-left:18px;margin:8px 0 0;}
+.cfg-passos li{margin-bottom:5px;}
+.cfg-passos code{font-size:11.5px;background:var(--suave);border-radius:5px;padding:2px 6px;}
+.cpl-causa{display:block;font-size:12px;color:var(--ink-4);margin-top:6px;line-height:1.5;}

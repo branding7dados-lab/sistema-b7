@@ -1,0 +1,157 @@
+/* =====================================================================
+   TELA DE LOGIN
+   Fundo vivo, cartão de vidro, foco na credencial. A mesma linguagem das
+   capas dos documentos — não um formulário genérico centralizado.
+   ===================================================================== */
+
+body.sem-sessao{overflow:hidden;}
+body.sem-sessao .lateral,
+body.sem-sessao .topo,
+body.sem-sessao main{display:none;}
+
+.tela-login{position:fixed;inset:0;z-index:500;display:flex;align-items:center;
+  justify-content:center;padding:24px;overflow:auto;
+  background:radial-gradient(120% 90% at 50% 0%, #170B2E 0%, #0B0512 58%, #06030C 100%);}
+
+.login-fundo{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+.login-fundo .brilho{position:absolute;border-radius:50%;filter:blur(18px);}
+.login-fundo .um{width:720px;height:720px;top:-260px;right:-180px;
+  background:radial-gradient(circle,rgba(194,28,131,.34),transparent 66%);
+  animation:loginFlutua 20s cubic-bezier(.45,0,.55,1) infinite;}
+.login-fundo .dois{width:600px;height:600px;bottom:-230px;left:-160px;
+  background:radial-gradient(circle,rgba(58,30,134,.40),transparent 68%);
+  animation:loginFlutua 26s cubic-bezier(.45,0,.55,1) infinite reverse;}
+/* malha fina: dá textura sem competir com o cartão */
+.login-fundo .malha{position:absolute;inset:0;opacity:.30;
+  background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+  background-size:46px 46px;
+  mask-image:radial-gradient(70% 55% at 50% 45%,#000 30%,transparent 78%);
+  -webkit-mask-image:radial-gradient(70% 55% at 50% 45%,#000 30%,transparent 78%);}
+/* um traço de luz atravessando devagar */
+.login-fundo .rastro{position:absolute;top:0;left:-40%;width:40%;height:100%;
+  background:linear-gradient(105deg,transparent,rgba(255,255,255,.045) 45%,transparent);
+  animation:loginRastro 11s ease-in-out infinite;}
+
+@keyframes loginFlutua{
+  0%,100%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(-34px,26px,0) scale(1.09)}
+}
+@keyframes loginRastro{
+  0%{transform:translateX(0)}
+  55%,100%{transform:translateX(360%)}
+}
+
+.login-caixa{position:relative;z-index:1;width:min(408px,100%);
+  background:linear-gradient(168deg,rgba(255,255,255,.085),rgba(255,255,255,.035));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:26px;padding:40px 34px 34px;backdrop-filter:blur(22px) saturate(1.2);
+  box-shadow:0 40px 90px -32px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.12);
+  animation:loginEntra .58s cubic-bezier(.16,1,.3,1) both;}
+/* fio de luz na borda de cima: o detalhe que tira o ar de caixa chapada */
+.login-caixa:before{content:"";position:absolute;top:-1px;left:16%;right:16%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(240,156,208,.75),transparent);}
+
+@keyframes loginEntra{
+  from{opacity:0;transform:translateY(22px) scale(.975)}
+  to{opacity:1;transform:none}
+}
+
+.login-marca{height:36px;display:block;margin-bottom:30px;
+  animation:loginItem .5s cubic-bezier(.16,1,.3,1) both .08s;}
+.login-caixa h1{font-family:'Archivo';font-weight:800;font-size:23px;letter-spacing:-.025em;
+  color:#fff;margin:0;animation:loginItem .5s cubic-bezier(.16,1,.3,1) both .14s;}
+.login-sub{font-size:13px;color:rgba(255,255,255,.52);margin:9px 0 26px;line-height:1.55;
+  animation:loginItem .5s cubic-bezier(.16,1,.3,1) both .2s;}
+@keyframes loginItem{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+.login-caixa .rot{color:rgba(255,255,255,.46);margin-top:18px;letter-spacing:.14em;}
+.login-caixa .campo{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.13);
+  color:#fff;padding:13px 15px;font-size:14px;border-radius:13px;
+  transition:border-color .2s, background .2s, box-shadow .25s;}
+.login-caixa .campo::placeholder{color:rgba(255,255,255,.26);}
+.login-caixa .campo:hover{border-color:rgba(255,255,255,.22);}
+.login-caixa .campo:focus{border-color:var(--magenta);background:rgba(255,255,255,.085);
+  box-shadow:0 0 0 4px rgba(194,28,131,.16);}
+
+.login-senha{position:relative;}
+.login-senha .campo{padding-right:48px;}
+.login-olho{position:absolute;right:7px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  border-radius:10px;background:none;border:0;cursor:pointer;
+  color:rgba(255,255,255,.4);transition:var(--t-micro);}
+.login-olho:hover{color:#fff;background:rgba(255,255,255,.08);}
+.login-olho.on{color:var(--magenta);}
+.login-olho svg{width:19px;height:19px;}
+
+.login-erro{min-height:18px;font-size:12.5px;color:#FF9BC8;margin-top:14px;line-height:1.45;}
+.login-erro:not(:empty){animation:loginErro .34s cubic-bezier(.36,.07,.19,.97);}
+@keyframes loginErro{
+  0%,100%{transform:translateX(0)}
+  22%{transform:translateX(-5px)} 62%{transform:translateX(4px)}
+}
+.login-aviso{font-size:12.5px;color:rgba(255,255,255,.78);background:rgba(255,255,255,.07);
+  border-left:2px solid var(--magenta);border-radius:0 10px 10px 0;
+  padding:12px 14px;margin-bottom:4px;line-height:1.55;}
+
+.login-entrar{width:100%;justify-content:center;margin-top:24px;padding:14px;
+  font-size:14.5px;border-radius:13px;
+  transition:transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .25s, filter .2s;}
+.login-entrar:hover:not(:disabled){transform:translateY(-1px);
+  box-shadow:0 14px 30px -12px rgba(194,28,131,.65);filter:brightness(1.06);}
+.login-entrar:active:not(:disabled){transform:translateY(0);}
+.login-entrar:disabled{opacity:.62;cursor:default;}
+
+@media (max-width:480px){
+  .tela-login{padding:16px;align-items:flex-start;padding-top:7vh;}
+  .login-caixa{padding:30px 24px 26px;border-radius:22px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .login-fundo .brilho,.login-fundo .rastro,.login-caixa,
+  .login-marca,.login-caixa h1,.login-sub,.login-erro{animation:none;}
+  .login-entrar:hover:not(:disabled){transform:none;}
+}
+
+/* --------------------------------------------- menu da sessão */
+.sessao-cab{display:flex;align-items:center;gap:11px;padding:6px 10px 10px;}
+.sessao-av{width:38px;height:38px;flex:none;border-radius:12px;display:flex;
+  align-items:center;justify-content:center;font-family:'Archivo';font-weight:800;
+  font-size:13px;color:#fff;background:var(--grad-curto);}
+.sessao-tx{min-width:0;}
+.sessao-tx b{display:block;font-size:13.5px;font-weight:600;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.sessao-tx span{display:block;font-size:11.5px;color:var(--ink-4);}
+.sessao-papel{margin:0 10px 8px;font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-3);background:var(--suave);
+  border-radius:99px;padding:5px 10px;display:inline-block;}
+.sessao-papel.admin{background:var(--acento-suave);color:var(--acento);}
+
+/* --------------------------------------------- modal de perfil */
+.perfil-topo{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
+.perfil-avatar{width:52px;height:52px;flex:none;border-radius:15px;display:flex;
+  align-items:center;justify-content:center;font-family:'Archivo';font-weight:800;
+  font-size:17px;color:#fff;background:var(--grad-curto);}
+.perfil-topo h3{margin:0;}
+.perfil-sub{font-size:12.5px;color:var(--ink-4);margin-top:3px;}
+.perfil-sep{display:flex;align-items:center;gap:12px;margin:22px 0 4px;
+  font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-4);}
+.perfil-sep:after{content:"";flex:1;height:1px;background:var(--borda);}
+
+/* ------------------------------------------------- foto de perfil */
+.lu-avatar.foto{background:var(--suave);overflow:hidden;padding:0;}
+.lu-avatar.foto img{width:100%;height:100%;object-fit:cover;object-position:center;
+  display:block;}
+.foto-atual{display:flex;align-items:center;gap:16px;background:var(--suave);
+  border-radius:var(--r);padding:16px 18px;margin:6px 0 18px;}
+.foto-previa{width:66px;height:66px;flex:none;border-radius:50%;overflow:hidden;
+  background:var(--grad-curto);display:flex;align-items:center;justify-content:center;
+  color:#fff;font-family:'Archivo';font-weight:800;font-size:20px;}
+.foto-previa img{width:100%;height:100%;object-fit:cover;object-position:center;}
+.foto-tx b{display:block;font-size:14px;}
+.foto-tx span{font-size:12px;color:var(--ink-4);}
+
+/* a foto preenche o círculo inteiro, em qualquer tamanho */
+.ico-sessao.com-foto,.sessao-av.com-foto,.perfil-avatar{overflow:hidden;padding:0;}
+.ico-sessao.com-foto img,.sessao-av.com-foto img,.perfil-avatar img{
+  width:100%;height:100%;object-fit:cover;object-position:center;display:block;}
