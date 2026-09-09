@@ -40,6 +40,7 @@ B7.Linha = (function () {
       [L.conteudos, L.cliente] = await Promise.all([
         B7.DB.listarConteudos(id), B7.DB.cliente(L.linha.client_id)
       ]);
+      try { L.aprovacao = (await B7.DB.ultimasAprovacoes('linha', [id]))[id] || null; } catch (e) { L.aprovacao = null; }
     } catch (e) { return B7.Dashboard.erroConteudo(e, (L.linha || {}).client_id || ''); }
 
     B7.Rota.titulo([L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano), L.linha.cliente_nome]);
@@ -96,10 +97,60 @@ B7.Linha = (function () {
           '<div class="rot">STATUS DA LINHA</div>' +
           C.STATUS_LINHA.map(v => '<button data-status-linha="' + esc(v) + '">' +
             (l.status === v ? '● ' : '') + esc(v) + '</button>').join('') +
-          '<hr><button data-portal-linha>' + (l.visivel_cliente ? '✓ Visível no portal do cliente' : 'Liberar no portal do cliente') + '</button>' +
+          '<hr><button data-enviar-aprovacao>Enviar para aprovação do cliente</button>' +
+          '<button data-portal-linha>' + (l.visivel_cliente ? '✓ Visível no portal do cliente' : 'Liberar no portal do cliente') + '</button>' +
           '<button data-arquivar-linha>' + (l.archived_at ? 'Desarquivar' : 'Arquivar') + '</button>' +
           '<button class="perigo" data-excluir-linha>Excluir linha editorial</button>' +
         '</div></div></div></div>';
+  }
+
+  /* ------------------------------------------------ ENVIAR PARA APROVAÇÃO
+     O cliente aprova o PLANEJAMENTO (versão congelada). Não aprova roteiro,
+     arte final nem publicação — cada um tem a própria aprovação. Os
+     roteiros vinculados entram só pelo título. */
+  async function enviarParaAprovacao() {
+    const l = L.linha;
+    const ultima = L.aprovacao;
+    const proxima = ultima ? (ultima.versao || 0) + 1 : 1;
+    const m = B7.UI.modal('<h3>Enviar planejamento para aprovação</h3>' +
+      '<div class="sub">O cliente vê a linha editorial como está agora (' + L.conteudos.length + ' conteúdo(s)). ' +
+      'Alterações depois do envio não mudam esta versão.</div>' +
+      (ultima ? '<div class="env-anterior">Última versão: <b>v' + ultima.versao + '</b> — ' +
+        esc(B7.Aprovacoes.rotulo(ultima.situacao).toLowerCase()) + '. Este envio cria a <b>v' + proxima + '</b>.</div>'
+        : '<div class="env-anterior">Primeiro envio deste planejamento: será a <b>v1</b>.</div>') +
+      '<label class="rot">RECADO PARA O CLIENTE (opcional)</label>' +
+      '<textarea class="campo alta" id="env-obs" rows="2" placeholder="ex.: segue o planejamento de outubro para sua aprovação"></textarea>' +
+      '<div id="env-erro" class="ajuda erro-txt"></div>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" data-ok>Enviar v' + proxima + '</button></div>');
+    m.querySelector('[data-ok]').onclick = async () => {
+      const botao = m.querySelector('[data-ok]'), erro = m.querySelector('#env-erro');
+      botao.disabled = true; botao.textContent = 'Enviando…';
+      try {
+        const titulos = {};
+        for (const c of L.conteudos.filter(x => x.script_id)) {
+          try { const r = await B7.DB.roteiro(c.script_id); titulos[c.id] = r && r.titulo; } catch (e) {}
+        }
+        await B7.DB.enviarParaAprovacao({
+          client_id: l.client_id, tipo: 'linha', alvo_id: l.id,
+          snapshot: {
+            titulo: l.nome || (MESES[l.mes - 1] + ' ' + l.ano),
+            periodo: (l.periodo_inicio ? B7.UI.dataBR(l.periodo_inicio) : '') + (l.periodo_fim ? ' a ' + B7.UI.dataBR(l.periodo_fim) : ''),
+            objetivo: l.objetivo || '', posicionamento_mes: l.posicionamento_mes || '', canais: l.canais || '',
+            estrategia: l.estrategia || '', mes: l.mes, ano: l.ano, cliente: l.cliente_nome,
+            conteudos: L.conteudos.map(c => ({ id: c.id, tipo: c.tipo, titulo: c.titulo, data_postagem: c.data_postagem,
+              objetivo: c.objetivo, canal: c.canal, roteiro_titulo: titulos[c.id] || null }))
+          },
+          observacao: m.querySelector('#env-obs').value.trim() || null
+        });
+        m.fechar();
+        B7.UI.toast('Planejamento enviado para aprovação (v' + proxima + ') — o cliente foi avisado');
+        abrir(l.id, L.aba);
+      } catch (e) {
+        botao.disabled = false; botao.textContent = 'Enviar v' + proxima;
+        erro.textContent = e.message || 'Não foi possível enviar.';
+      }
+    };
   }
 
   /* ------------------------------------------------------- VISÃO GERAL */
@@ -137,7 +188,8 @@ B7.Linha = (function () {
       L.linha.meta_conteudos ? [L.linha.meta_conteudos, 'META'] : null
     ].filter(Boolean);
 
-    return '<div class="mini-metricas">' + metricas.map(([n, r]) =>
+    return (B7.Aprovacoes ? '<div class="mb" id="ap-status-linha">' + B7.Aprovacoes.blocoStatus(L.aprovacao, { botaoEnviar: true }) + '</div>' : '') +
+      '<div class="mini-metricas">' + metricas.map(([n, r]) =>
         '<div class="mini-metrica"><b>' + n + '</b><span>' + r + '</span></div>').join('') +
       '</div>' +
 
@@ -385,6 +437,9 @@ B7.Linha = (function () {
     });
     /* Liberar no portal é uma decisão explícita da equipe: nada fica
        visível ao cliente só porque foi salvo. */
+    p.querySelectorAll('[data-enviar-aprovacao], [data-ap-enviar]').forEach(b => b.onclick = () => enviarParaAprovacao());
+    p.querySelectorAll('#ap-status-linha [data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
+
     const portal = p.querySelector('[data-portal-linha]');
     if (portal) portal.onclick = async () => {
       const ligar = !L.linha.visivel_cliente;

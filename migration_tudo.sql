@@ -15,11 +15,11 @@
 --   6. migration_portal.sql       aprovações, comentários e avatar
 --   7. migration_kanban.sql       quadro de produção
 --   8. migration_fix.sql          correções da revisão de 09/09/2026
---                                 (views, triggers, portal) — rode
---                                 mesmo que as anteriores já tenham
---                                 rodado antes
+--   9. migration_aprovacoes_v2.sql aprovações transacionais, eventos,
+--                                 notificações e Kanban automático
+--                                 (ver APROVACOES.md)
 --
---   9. migration_rls.sql          POR ÚLTIMO, e só depois de:
+--  10. migration_rls.sql          POR ÚLTIMO, e só depois de:
 --                                 - conseguir entrar como admin
 --                                 - existir um usuário cliente de teste
 --                                 - ter migration_rls_reverter.sql aberto

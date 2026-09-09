@@ -188,8 +188,11 @@ begin
     to authenticated using (public.sou_equipe()) with check (public.sou_equipe());
 
   /* Decidir é do cliente — e só de quem tem permissão de aprovar. A
-     equipe também decide, porque acompanha e corrige. */
+     equipe também decide, porque acompanha e corrige.
+     Com a v2 (aprov_decidir), a decisão passa só pela função: as
+     políticas de escrita direta do cliente não são recriadas. */
   drop policy if exists aprovacoes_decisao on public.aprovacoes;
+  if to_regproc('public.aprov_decidir') is null then
   create policy aprovacoes_decisao on public.aprovacoes for update
     to authenticated using (
       public.posso_ver_cliente(client_id) and exists (
@@ -209,6 +212,7 @@ begin
     to authenticated using (exists (
       select 1 from public.aprovacoes a
        where a.id = aprovacao_id and public.posso_ver_cliente(a.client_id)));
+  end if;
 
   drop policy if exists comentarios_leitura on public.comentarios;
   create policy comentarios_leitura on public.comentarios for select

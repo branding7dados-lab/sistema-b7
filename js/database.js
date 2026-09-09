@@ -757,51 +757,93 @@ B7.DB = (function () {
       return linhas[0] || null;
     },
 
-    /* ---- envio, decisão e comentários ---- */
+    /* ---- envio, decisão e comentários ----
+       Tudo passa por funções do banco (migration_aprovacoes_v2): elas
+       trancam a versão, conferem quem decide, ignoram comando repetido e
+       gravam evento + notificações + Kanban na mesma transação. */
+    rpc(nome, args) {
+      return sb().rpc(nome, args).then(({ data, error }) => {
+        if (error) {
+          const e = new Error(error.message || 'Falha no banco');
+          e.code = error.code; e.details = error.details; throw e;
+        }
+        return data;
+      });
+    },
 
-    /* A equipe libera UMA versão. Reenviar cria a próxima: nunca
-       sobrescreve o que já foi decidido, senão o histórico mentiria. */
     async enviarParaAprovacao({ client_id, tipo, alvo_id, snapshot, observacao }) {
-      const anteriores = ok(await sb().from('aprovacoes')
-        .select('versao').eq('tipo', tipo).eq('alvo_id', alvo_id)
-        .is('deleted_at', null).order('versao', { ascending: false }).limit(1));
-      const versao = anteriores.length ? (anteriores[0].versao || 0) + 1 : 1;
-      const u = window.B7 && B7.Auth && B7.Auth.usuario();
-      const linhas = ok(await sb().from('aprovacoes').insert([{
-        client_id, tipo, alvo_id, versao,
-        snapshot: snapshot || {},
-        situacao: 'pendente',
-        enviado_por: u ? u.id : null,
-        observacao_envio: observacao || null
-      }]).select());
-      return linhas[0];
+      return this.rpc('aprov_enviar', {
+        p_client_id: client_id, p_tipo: tipo, p_alvo_id: alvo_id,
+        p_snapshot: snapshot || {}, p_observacao: observacao || null
+      });
     },
 
-    async decidirAprovacao(id, situacao) {
-      const u = window.B7 && B7.Auth && B7.Auth.usuario();
-      /* .select() devolve as linhas afetadas: se o RLS recusou a
-         decisão (conta sem pode_aprovar, empresa errada), vem vazio e
-         isso precisa virar erro — não um toast de sucesso. */
-      const linhas = ok(await sb().from('aprovacoes').update({
-        situacao,
-        decidido_por: u ? u.id : null,
-        decidido_em: new Date().toISOString()
-      }).eq('id', id).select('id'));
-      if (!linhas.length) throw new Error('Sua conta não tem permissão para decidir esta aprovação.');
+    /* situacao: 'aprovado' | 'ajustes' | 'recusado'. versao é a que a
+       pessoa está vendo — o banco recusa se outra já existir. */
+    async decidirAprovacao(id, situacao, motivo, versao) {
+      return this.rpc('aprov_decidir', {
+        p_aprovacao_id: id, p_situacao: situacao,
+        p_motivo: motivo || null, p_versao: versao == null ? null : versao
+      });
     },
 
-    async decidirParte(aprovacaoId, parteId, rotulo, situacao, tipo) {
-      const u = window.B7 && B7.Auth && B7.Auth.usuario();
-      /* upsert pela chave (aprovacao, parte): mudar de ideia sobre uma
-         cena substitui a decisão anterior daquela versão */
-      const linhas = ok(await sb().from('aprovacao_partes').upsert([{
-        aprovacao_id: aprovacaoId, parte_id: parteId, parte_rotulo: rotulo,
-        parte_tipo: tipo || 'cena',
-        situacao, decidido_por: u ? u.id : null,
-        decidido_em: new Date().toISOString()
-      }], { onConflict: 'aprovacao_id,parte_id' }).select('id'));
-      if (!linhas.length) throw new Error('Sua conta não tem permissão para decidir esta cena.');
+    async decidirParte(aprovacaoId, parteId, rotulo, situacao, comentario, tipo) {
+      return this.rpc('aprov_decidir_parte', {
+        p_aprovacao_id: aprovacaoId, p_parte_id: parteId, p_rotulo: rotulo,
+        p_situacao: situacao, p_comentario: comentario || null, p_parte_tipo: tipo || 'cena'
+      });
     },
+
+    /* painel: lista com contagens, para equipe e para o portal */
+    async painelAprovacoes(f) {
+      f = f || {};
+      let q = sb().from('aprovacoes_painel').select('*');
+      if (f.situacao && f.situacao !== 'todos') {
+        if (Array.isArray(f.situacao)) q = q.in('situacao', f.situacao);
+        else q = q.eq('situacao', f.situacao);
+      }
+      if (f.clienteId) q = q.eq('client_id', f.clienteId);
+      if (f.tipo) q = q.eq('tipo', f.tipo);
+      if (f.de) q = q.gte('enviado_em', f.de);
+      if (f.ate) q = q.lte('enviado_em', f.ate + 'T23:59:59');
+      if (f.busca) q = q.ilike('titulo', '%' + f.busca + '%');
+      if (f.somenteAtual) q = q.eq('versao_atual', true);
+      if (f.alvoIds) q = q.in('alvo_id', f.alvoIds);
+      return ok(await q.order('enviado_em', { ascending: false }).limit(f.limite || 200));
+    },
+    async painelAprovacao(id) {
+      const l = ok(await sb().from('aprovacoes_painel').select('*').eq('id', id).limit(1));
+      return l[0] || null;
+    },
+    /* última versão de cada material de uma lista (para o editor / linha) */
+    async ultimasAprovacoes(tipo, alvoIds) {
+      if (!alvoIds || !alvoIds.length) return {};
+      const linhas = ok(await sb().from('aprovacoes_painel').select('*')
+        .eq('tipo', tipo).in('alvo_id', alvoIds).order('versao', { ascending: false }));
+      const por = {};
+      linhas.forEach(a => { if (!por[a.alvo_id]) por[a.alvo_id] = a; });
+      return por;
+    },
+    async eventosDaAprovacao(id) {
+      return ok(await sb().from('eventos_dominio').select('*').eq('aprovacao_id', id)
+        .order('created_at', { ascending: true }));
+    },
+    async reprocessarEvento(id) { return this.rpc('aprov_reprocessar', { p_evento_id: id }); },
+
+    /* ---- notificações ---- */
+    async notificacoes({ limite = 30, antesDe } = {}) {
+      let q = sb().from('notificacoes').select('*').order('created_at', { ascending: false }).limit(limite);
+      if (antesDe) q = q.lt('created_at', antesDe);
+      return ok(await q);
+    },
+    async notificacoesNaoLidas() {
+      const { count, error } = await sb().from('notificacoes')
+        .select('id', { count: 'exact', head: true }).is('lida_em', null);
+      if (error) throw error;
+      return count || 0;
+    },
+    async marcarLida(id) { return this.rpc('notif_marcar_lida', { p_id: id }); },
+    async marcarTodasLidas() { return this.rpc('notif_marcar_todas', {}); },
 
     async partesDaAprovacao(id) {
       return ok(await sb().from('aprovacao_partes').select('*').eq('aprovacao_id', id));

@@ -188,3 +188,23 @@ duplicados no `BOOTSTRAP.md` e bloco repetido no `README.md`.
   pessoa tem sempre a mesma cor), brilho interno e contorno sutil. Vale
   para o topo, o menu da sessão, a lista de usuários, o perfil e o modal
   de foto (`B7.UI.avatarPessoa`).
+
+## Build 2026-09-09-i — Aprovações v2 (ver APROVACOES.md)
+
+Precisa rodar `migration_aprovacoes_v2.sql` no SQL Editor (depois do
+`migration_fix.sql`; antes ou depois do corte do RLS, tanto faz).
+
+- Decisões do cliente (cena, roteiro completo, ajustes, recusa) passam
+  por funções do banco: idempotentes, com trava de versão, permissão
+  conferida no servidor, evento + notificações + Kanban na mesma
+  transação.
+- Cliente: cena aprovada fica travada como "Aprovada"; botão "Aprovar
+  roteiro completo"; "Solicitar ajustes" e "Recusar" (motivo obrigatório)
+  separados; aviso de versão substituída; abas Aguardando / Ajustes /
+  Recusados / Aprovados / Histórico; aprovação da linha editorial.
+- Equipe: tela Aprovações (`#/aprovacoes`) com contagens, filtros e
+  detalhe cena a cena; bloco de status no editor de roteiro e na linha
+  editorial; resumo na Central B7; "Enviar para aprovação" da linha.
+- Sino de notificações no topo (banco + polling + realtime).
+- Kanban: card mostra a situação da aprovação, link para o feedback e
+  trava de automação; movimentos automáticos registrados no histórico.

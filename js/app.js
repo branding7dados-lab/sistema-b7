@@ -81,6 +81,10 @@ B7.Rota = (function () {
     }
     if (partes[0] === 'linhas') { mostrar('tela-dashboard'); return B7.Conteudo.abrirLinhasGlobais(); }
     if (partes[0] === 'kanban') { mostrar('tela-dashboard'); return B7.Kanban.abrir(); }
+    if (partes[0] === 'aprovacoes' && B7.Aprovacoes) {
+      mostrar('tela-dashboard');
+      return partes[1] ? B7.Aprovacoes.abrirDetalhe(partes[1]) : B7.Aprovacoes.abrir();
+    }
     if (partes[0] === 'usuarios') { mostrar('tela-dashboard'); return B7.Usuarios.abrir(); }
     if (partes[0] === 'semanas') { mostrar('tela-dashboard'); return B7.Semana.abrirLista(); }
     if (partes[0] === 'semana' && partes[1]) { mostrar('tela-dashboard'); return B7.Semana.abrir(partes[1]); }
@@ -214,7 +218,7 @@ B7.Rota = (function () {
       alvo.innerHTML = '';
     }
   }
-  B7.pintarSessao = pintarSessao;
+  B7.pintarSessao = function () { pintarSessao(); if (B7.Notif) B7.Notif.montar(); };
 
   /* Itens marcados com data-papel só existem para quem tem aquele papel.
      Some da tela, não fica desabilitado: uma opção com cadeado só serve
@@ -239,7 +243,7 @@ B7.Rota = (function () {
     const u = B7.Auth.usuario();
     abrirCortina('Bem-vindo' + (u && u.nome ? ', ' + u.nome.split(' ')[0] : ''),
                  'Preparando o seu espaço…');
-    pintarSessao();
+    B7.pintarSessao();
     /* Monta o sistema aqui mesmo. Nada de recarregar: a sessão já está em
        memória e válida, e esperar que ela chegue ao armazenamento antes de
        recarregar era exatamente o que produzia o laço. */
@@ -250,7 +254,7 @@ B7.Rota = (function () {
     if (B7.Auth.ehCliente() && B7.Portal) B7.Portal.montarLayout();
     await B7.montarSistema();
     if (!(B7.Auth.ehCliente() && B7.Portal) && B7.Perm) B7.Perm.aplicarNavegacao();
-    pintarSessao();
+    B7.pintarSessao();
 
     /* A persistência ainda importa para a próxima visita — só que agora
        é um aviso, não um bloqueio. */
@@ -527,7 +531,7 @@ B7.Rota = (function () {
       /* a partir daqui o papel é conhecido: pode desenhar */
       document.body.classList.remove('apurando');
       B7.Auth.anotar('app', 'exigido=' + !!r.exigido + ' sessao=' + !!r.sessao);
-      pintarSessao();
+      B7.pintarSessao();
       /* Antes de montar qualquer tela: o cliente não pode ver a navegação
          interna nem por um instante. */
       if (B7.Auth.ehCliente() && B7.Portal) B7.Portal.montarLayout();

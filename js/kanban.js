@@ -143,6 +143,9 @@ B7.Kanban = (function () {
       '</div>' +
       '<h4>' + esc(d.titulo) + '</h4>' +
       (d.cliente_nome ? '<div class="kb-cli">' + esc(d.cliente_nome) + '</div>' : '') +
+      (d.aprovacao_situacao ? '<span class="kb-aprov ' + esc(d.aprovacao_situacao) + '" title="Aprovação do cliente">' +
+        esc(B7.Aprovacoes ? B7.Aprovacoes.rotulo(d.aprovacao_situacao) : d.aprovacao_situacao) + '</span>' : '') +
+      (d.automacao_travada ? '<span class="kb-trava" title="A automação de aprovação não move esta demanda">🔒</span>' : '') +
       '<div class="kb-pe">' +
         (d.responsavel_nome
           ? '<span class="kb-resp" title="' + esc(d.responsavel_nome) + '">' +
@@ -473,8 +476,13 @@ B7.Kanban = (function () {
 
         (d.tipo_vinculo && d.tipo_vinculo !== 'avulsa' && d.vinculo_id
           ? '<div class="kd-vinculo"><div><small>MATERIAL VINCULADO</small>' +
-            '<b>' + esc(d.tipo_vinculo) + '</b></div>' +
-            '<button class="b fina pri" data-abrir-material>Abrir</button></div>'
+            '<b>' + esc(d.tipo_vinculo) + '</b>' +
+            (d.aprovacao_situacao ? ' <span class="kb-aprov ' + esc(d.aprovacao_situacao) + '">' +
+              esc(B7.Aprovacoes ? B7.Aprovacoes.rotulo(d.aprovacao_situacao) : d.aprovacao_situacao) + '</span>' : '') + '</div>' +
+            (d.aprovacao_id ? '<button class="b fina" data-ir="#/aprovacoes/' + esc(d.aprovacao_id) + '">Feedback do cliente</button>' : '') +
+            '<button class="b fina pri" data-abrir-material>Abrir</button></div>' +
+            '<label class="op-mini' + (d.automacao_travada ? ' on' : '') + '" id="kd-trava"><input type="checkbox"' + (d.automacao_travada ? ' checked' : '') + '>' +
+              '<span>Travar automação<small>a aprovação do cliente não move esta demanda de coluna</small></span></label>'
           : '') +
 
         (links.length
@@ -519,6 +527,16 @@ B7.Kanban = (function () {
 
     m.querySelector('[data-editar]').onclick = () => { m.fechar(); modalDemanda(id); };
 
+    const trava = m.querySelector('#kd-trava input');
+    if (trava) trava.onchange = async () => {
+      try {
+        await B7.DB.atualizarDemanda(d.id, { automacao_travada: trava.checked });
+        d.automacao_travada = trava.checked;
+        m.querySelector('#kd-trava').classList.toggle('on', trava.checked);
+        B7.UI.toast(trava.checked ? 'Automação travada nesta demanda' : 'Automação liberada');
+      } catch (e) { trava.checked = !trava.checked; B7.UI.toast('Não foi possível salvar', { tipo: 'erro' }); }
+    };
+    m.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { m.fechar(); location.hash = b.dataset.ir; });
     m.querySelector('[data-arquivar]').onclick = async () => {
       await B7.DB.atualizarDemanda(id, { arquivada_em: new Date().toISOString() });
       m.fechar(); await abrir();

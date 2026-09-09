@@ -112,7 +112,7 @@ B7.Portal = (function () {
     let pendentes = [], producao = [], semana = null, linha = null;
     try {
       [pendentes, producao, semana, linha] = await Promise.all([
-        B7.DB.aprovacoesDoCliente({ situacao: 'pendente' }).catch(() => []),
+        B7.DB.painelAprovacoes({ situacao: ['pendente', 'parcial'], somenteAtual: true }).catch(() => []),
         B7.DB.conteudosVisiveis().catch(() => []),
         B7.DB.ultimoStatusPublicado().catch(() => null),
         B7.DB.linhaVisivelAtual().catch(() => null)
@@ -173,10 +173,12 @@ B7.Portal = (function () {
         '<b>' + esc(a.titulo || 'Sem título') + '</b>' +
         '<small>versão ' + String(a.versao).padStart(2, '0') +
         (quando ? ' · enviado ' + esc(quando) : '') +
-        (a.comentarios_abertos ? ' · ' + a.comentarios_abertos + ' observação(ões)' : '') +
+        (a.total_partes ? ' · ' + (a.partes_aprovadas || 0) + '/' + a.total_partes + ' cenas aprovadas' : '') +
+        (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' com ajustes' : '') +
         '</small>' +
       '</span>' +
-      '<span class="ph-item-ir">Revisar →</span>' +
+      '<span class="pt-sit mini ' + esc(a.situacao) + '">' + esc(rotuloSituacao(a.situacao)) + '</span>' +
+      '<span class="ph-item-ir">' + (a.situacao === 'pendente' || a.situacao === 'parcial' ? 'Revisar →' : 'Abrir →') + '</span>' +
     '</button>';
   }
 
@@ -247,17 +249,20 @@ B7.Portal = (function () {
       '<div class="simbolo"></div><div class="txt">Carregando…</div></div></div>';
 
     const situacao = filtro || 'pendente';
+    const mapa = { pendente: ['pendente', 'parcial'], ajustes: ['ajustes'], recusado: ['recusado'],
+                   aprovado: ['aprovado'], todos: null };
     let itens = [];
-    try { itens = await B7.DB.aprovacoesDoCliente({ situacao }); } catch (e) { itens = []; }
+    try { itens = await B7.DB.painelAprovacoes({ situacao: mapa[situacao] || null, somenteAtual: situacao !== 'todos' && situacao !== 'aprovado' }); }
+    catch (e) { itens = []; }
 
-    const abas = [['pendente', 'Pendentes'], ['ajustes', 'Ajustes solicitados'],
-                  ['aprovado', 'Aprovados'], ['todos', 'Histórico']];
+    const abas = [['pendente', 'Aguardando você'], ['ajustes', 'Ajustes solicitados'],
+                  ['recusado', 'Recusados'], ['aprovado', 'Aprovados'], ['todos', 'Histórico']];
 
     painel().innerHTML = '<div class="conteudo entra portal-home">' +
       '<header class="ph-cab"><div><h1>Aprovações</h1>' +
       '<p class="ph-emp">Materiais que a Branding7 enviou para você.</p></div></header>' +
 
-      '<div class="abas">' + abas.map(([v, r]) =>
+      '<div class="abas-cliente ap-abas">' + abas.map(([v, r]) =>
         '<button class="aba' + (v === situacao ? ' on' : '') + '" data-filtro="' + v + '">' +
         esc(r) + '</button>').join('') + '</div>' +
 
@@ -317,7 +322,21 @@ B7.Portal = (function () {
     }
 
     const doMes = conteudos.filter(c => c.linha_id === linha.id);
+    /* a aprovação do planejamento é uma decisão separada da visualização */
+    let ap = null;
+    try {
+      const lista = await B7.DB.painelAprovacoes({ tipo: 'linha', alvoIds: [linha.id], somenteAtual: true, limite: 1 });
+      ap = lista[0] || null;
+    } catch (e) {}
+    const faixaAp = ap
+      ? '<a class="pt-faixa-link ' + esc(ap.situacao) + '" href="#/revisar/' + esc(ap.id) + '">' +
+          '<b>' + esc(rotuloSituacao(ap.situacao)) + ' · versão ' + ap.versao + '</b>' +
+          '<span>' + (ap.situacao === 'pendente' || ap.situacao === 'parcial'
+            ? 'A Branding7 enviou este planejamento para sua aprovação. Revisar →'
+            : 'Ver a decisão e as observações →') + '</span></a>'
+      : '';
     tela('Linha editorial', esc(linha.nome || 'Planejamento do mês'),
+      faixaAp +
       (linha.objetivo
         ? '<div class="pt-destaque"><small>OBJETIVO DO MÊS</small><p>' +
           esc(linha.objetivo) + '</p></div>' : '') +
@@ -348,7 +367,7 @@ B7.Portal = (function () {
     try {
       [conteudos, aprovacoes] = await Promise.all([
         B7.DB.conteudosVisiveis().catch(() => []),
-        B7.DB.aprovacoesDoCliente({ situacao: 'todos' }).catch(() => [])
+        B7.DB.painelAprovacoes({}).catch(() => [])
       ]);
     } catch (e) {}
 
@@ -429,7 +448,7 @@ B7.Portal = (function () {
     carregando('Carregando o histórico…');
 
     let itens = [];
-    try { itens = await B7.DB.aprovacoesDoCliente({ situacao: 'todos' }); } catch (e) {}
+    try { itens = await B7.DB.painelAprovacoes({}); } catch (e) {}
     const decididos = itens.filter(a => a.situacao !== 'pendente');
 
     if (!decididos.length) {
@@ -482,14 +501,18 @@ B7.Portal = (function () {
     conteudo().innerHTML = '<div class="b7-load"><div class="simbolo"></div>' +
       '<div class="txt">Abrindo material…</div><div class="barra-load"><i></i></div></div>';
 
-    let ap, partes = [], comentarios = [];
+    let ap, partes = [], comentarios = [], versoes = [];
     try {
-      ap = await B7.DB.aprovacao(id);
+      ap = await B7.DB.painelAprovacao(id);
       if (!ap) throw new Error('Material não encontrado.');
-      [partes, comentarios] = await Promise.all([
+      [partes, comentarios, versoes] = await Promise.all([
         B7.DB.partesDaAprovacao(id).catch(() => []),
-        B7.DB.comentariosAprovacao(id).catch(() => [])
+        B7.DB.comentariosAprovacao(id).catch(() => []),
+        B7.DB.aprovacoesDoMaterial(ap.tipo, ap.alvo_id).catch(() => [])
       ]);
+      /* o snapshot não vem no painel: busca a linha crua */
+      const cru = await B7.DB.aprovacao(id);
+      ap.snapshot = (cru && cru.snapshot) || {};
     } catch (e) {
       return conteudo().innerHTML = '<div class="pt-vazio"><b>' +
         esc(e.message || 'Não foi possível abrir este material.') + '</b></div>';
@@ -497,61 +520,87 @@ B7.Portal = (function () {
 
     const snap = ap.snapshot || {};
     const cenas = Array.isArray(snap.cenas) ? snap.cenas : [];
-    const decidido = ap.situacao !== 'pendente';
-    const decisaoDe = pid => (partes.find(x => x.parte_id === pid) || {}).situacao || 'pendente';
-    /* Quem decide é o cliente marcado como aprovador. Os demais veem,
-       comentam e acompanham — sem botão de decisão, para não parecer
-       que aprovaram quando o banco recusou em silêncio. */
+    const aberta = ap.situacao === 'pendente' || ap.situacao === 'parcial';
+    const decisaoDe = pid => partes.find(x => x.parte_id === pid) || null;
     const u = B7.Auth.usuario() || {};
     const aprovador = u.papel !== 'cliente' || !!u.pode_aprovar;
-    const podeAprovar = !B7.Portal.somenteLeitura && !decidido && aprovador;
+    const podeAprovar = !B7.Portal.somenteLeitura && aberta && aprovador;
+    const atual = versoes.find(v => v.situacao !== 'substituido' && v.versao > ap.versao) ||
+                  versoes.reduce((m, v) => (!m || v.versao > m.versao) ? v : m, null);
+    const superada = ap.situacao === 'substituido' || (atual && atual.id !== ap.id && atual.versao > ap.versao);
+
+    const cenasAprovadas = partes.filter(p => p.situacao === 'aprovada').length;
+    const cenasAjustes = partes.filter(p => p.situacao === 'ajustes').length;
+    const cenasPendentes = cenas.filter(c => !decisaoDe(c.id)).length;
 
     conteudo().innerHTML =
       '<a class="pt-voltar" href="#/aprovacoes">← Aprovações</a>' +
 
+      (superada
+        ? '<div class="pt-aviso-versao"><b>Esta é a versão ' + (ap.versao || 1) + ', que já foi substituída.</b> ' +
+          'Suas decisões nela ficam guardadas no histórico, mas não valem para a versão nova. ' +
+          (atual && atual.id !== ap.id
+            ? '<a href="#/revisar/' + esc(atual.id) + '">Abrir a versão atual (v' + atual.versao + ') →</a>' : '') +
+          '</div>' : '') +
+
       '<header class="pt-rev-cab">' +
         '<div>' +
           '<span class="pt-tipo">' + esc(rotuloTipo(ap.tipo)) + ' · versão ' + (ap.versao || 1) + '</span>' +
-          '<h1>' + esc(snap.titulo || 'Material') + '</h1>' +
+          '<h1>' + esc(ap.titulo || snap.titulo || 'Material') + '</h1>' +
           '<p>Enviado ' + esc(B7.UI.quando(ap.enviado_em)) +
             (ap.observacao_envio ? ' · ' + esc(ap.observacao_envio) : '') + '</p>' +
         '</div>' +
         '<span class="pt-sit ' + esc(ap.situacao) + '">' + esc(rotuloSituacao(ap.situacao)) + '</span>' +
       '</header>' +
 
+      faixaDecisao(ap, cenas.length, cenasAprovadas, cenasAjustes, cenasPendentes) +
+
       (cenas.length
         ? '<div class="pt-cenas">' + cenas.map((c, i) => cartaoCena(c, i, decisaoDe, podeAprovar)).join('') + '</div>'
-        : '<div class="pt-corpo-simples">' + corpoSimples(snap) + '</div>') +
+        : '<div class="pt-corpo-simples">' + corpoSimples(snap, ap.tipo) + '</div>') +
 
-      /* Comentário geral: o cliente diz o que pensa do conjunto, sem
-         precisar escolher uma cena. */
       '<section class="pt-bloco">' +
         '<h3>Observações</h3>' +
         '<div class="pt-coments" id="pt-coments">' +
           (comentarios.length ? comentarios.map(comentario).join('')
             : '<p class="pt-nada">Nenhuma observação ainda.</p>') +
         '</div>' +
-        (B7.Portal.somenteLeitura ? '' :
+        (B7.Portal.somenteLeitura || !aberta ? '' :
           '<div class="pt-novo-com">' +
-            '<input class="campo" id="pt-com" placeholder="Escrever uma observação…">' +
+            '<input class="campo" id="pt-com" placeholder="Escrever uma observação geral…">' +
             '<button class="b pri" id="pt-com-add">Enviar</button>' +
           '</div>') +
       '</section>' +
 
       (podeAprovar
         ? '<div class="pt-decisao">' +
-            '<div class="pt-decisao-tx"><b>Sua decisão sobre esta versão</b>' +
-            '<span id="pt-aviso"></span></div>' +
-            '<button class="b contorno" id="pt-ajustes">Solicitar ajustes</button>' +
-            '<button class="b pri" id="pt-aprovar">Aprovar</button>' +
+            '<div class="pt-decisao-tx"><b>Sua decisão sobre a versão ' + (ap.versao || 1) + '</b>' +
+              '<span id="pt-aviso">' + (cenasAjustes
+                ? cenasAjustes + ' cena(s) com ajustes pedidos — a aprovação completa fica bloqueada até uma nova versão.'
+                : (cenas.length && cenasPendentes
+                    ? cenasPendentes + ' cena(s) ainda sem decisão. Aprovar o ' + rotuloTipo(ap.tipo).toLowerCase() + ' completo vale para todas.'
+                    : 'Escolha uma ação. Ela vale para esta versão inteira.')) + '</span></div>' +
+            '<div class="pt-decisao-bts">' +
+              '<button class="b perigo contorno" id="pt-recusar">Recusar</button>' +
+              '<button class="b contorno" id="pt-ajustes">Solicitar ajustes</button>' +
+              '<button class="b pri grande" id="pt-aprovar"' + (cenasAjustes ? ' disabled' : '') + '>' +
+                (ap.tipo === 'roteiro' ? 'Aprovar roteiro completo' : 'Aprovar ' + rotuloTipo(ap.tipo).toLowerCase()) + '</button>' +
+            '</div>' +
           '</div>'
         : '<div class="pt-decidido">' +
-            (decidido
-              ? 'Esta versão já foi ' + esc(rotuloSituacao(ap.situacao).toLowerCase()) +
-                (ap.decidido_em ? ' ' + esc(B7.UI.quando(ap.decidido_em)) : '') + '.'
+            (!aberta
+              ? textoEncerrado(ap)
               : (aprovador ? 'Modo de visualização: nenhuma decisão é registrada.'
-                         : 'Sua conta acompanha e comenta; a aprovação oficial fica com o responsável da empresa.')) +
+                           : 'Sua conta acompanha e comenta; a aprovação oficial fica com o responsável da empresa.')) +
           '</div>') +
+
+      (versoes.length > 1
+        ? '<section class="pt-bloco"><h3>Versões deste material</h3><div class="pt-versoes">' +
+          versoes.slice().sort((x, y) => y.versao - x.versao).map(v =>
+            '<a class="pt-versao' + (v.id === ap.id ? ' atual' : '') + '" href="#/revisar/' + esc(v.id) + '">' +
+              '<b>v' + v.versao + '</b><span class="pt-sit mini ' + esc(v.situacao) + '">' + esc(rotuloSituacao(v.situacao)) + '</span>' +
+              '<small>' + esc(B7.UI.quando(v.enviado_em)) + '</small></a>').join('') +
+          '</div></section>' : '') +
 
       (ap.tipo === 'roteiro'
         ? '<div class="pt-baixar"><button class="b contorno" id="pt-pdf">Baixar PDF</button></div>'
@@ -560,20 +609,56 @@ B7.Portal = (function () {
     ligarRevisao(ap, cenas, partes);
   }
 
+  /* faixa de destaque com o veredito da versão */
+  function faixaDecisao(ap, total, aprovadas, ajustes, pendentes) {
+    if (ap.situacao === 'aprovado') {
+      return '<div class="pt-faixa aprovado"><b>' + (ap.tipo === 'roteiro' ? 'Roteiro aprovado' : rotuloTipo(ap.tipo) + (ap.tipo === 'linha' ? ' aprovada' : ' aprovado')) +
+        '</b><span>Versão ' + ap.versao + ' · por ' + esc(ap.decidido_por_nome || 'você') + ' · ' + esc(B7.UI.quando(ap.decidido_em)) + '</span></div>';
+    }
+    if (ap.situacao === 'ajustes') {
+      return '<div class="pt-faixa ajustes"><b>Ajustes solicitados</b><span>' +
+        (ap.motivo ? esc(ap.motivo) + ' · ' : '') + 'A Branding7 vai preparar uma nova versão.</span></div>';
+    }
+    if (ap.situacao === 'recusado') {
+      return '<div class="pt-faixa recusado"><b>Recusado</b><span>Motivo: ' + esc(ap.motivo || '—') +
+        ' · A equipe vai avaliar um novo caminho.</span></div>';
+    }
+    if (ap.situacao === 'substituido') {
+      return '<div class="pt-faixa substituido"><b>Versão substituída</b><span>Uma versão mais nova foi enviada.</span></div>';
+    }
+    if (total) {
+      return '<div class="pt-faixa parcial"><b>' + (aprovadas ? aprovadas + ' de ' + total + ' cenas aprovadas' : 'Aguardando sua revisão') +
+        '</b><span>' + (ajustes ? ajustes + ' com ajustes pedidos · ' : '') + (pendentes ? pendentes + ' sem decisão' : 'todas as cenas decididas') + '</span></div>';
+    }
+    return '';
+  }
+
+  function textoEncerrado(ap) {
+    const q = ap.decidido_em ? ' ' + esc(B7.UI.quando(ap.decidido_em)) : '';
+    if (ap.situacao === 'aprovado') return 'Esta versão foi aprovada' + q + '. Para mudar de ideia, fale com a equipe.';
+    if (ap.situacao === 'ajustes') return 'Você pediu ajustes' + q + '. Quando a Branding7 enviar a nova versão, ela aparece em Aprovações.';
+    if (ap.situacao === 'recusado') return 'Você recusou esta versão' + q + '.';
+    if (ap.situacao === 'substituido') return 'Esta versão foi substituída por uma mais nova.';
+    return 'Esta versão está encerrada.';
+  }
+
   function cartaoCena(c, i, decisaoDe, podeAprovar) {
     const pid = c.id || ('cena-' + i);
-    const sit = decisaoDe(pid);
-    const campo = (rot, valor) => valor
-      ? '<div class="pt-campo"><small>' + rot + '</small><p>' + esc(valor) + '</p></div>' : '';
-    return '<article class="pt-cena ' + esc(sit) + '" data-parte="' + esc(pid) + '">' +
+    /* snapshot antigo sem id de cena: mostra, mas não decide por cena */
+    if (!c.id) podeAprovar = false;
+    const d = decisaoDe(pid);
+    const sit = d ? d.situacao : 'pendente';
+    const rot = 'Cena ' + String(i + 1).padStart(2, '0');
+    const campo = (r, valor) => valor
+      ? '<div class="pt-campo"><small>' + r + '</small><p>' + esc(valor) + '</p></div>' : '';
+    return '<article class="pt-cena ' + esc(sit) + '" data-parte="' + esc(pid) + '" data-rotulo="' + esc(rot) + '">' +
       '<div class="pt-cena-cab">' +
-        '<span class="pt-cena-n">CENA ' + String(i + 1).padStart(2, '0') + '</span>' +
+        '<span class="pt-cena-n">' + rot.toUpperCase() + '</span>' +
         (sit !== 'pendente'
           ? '<span class="pt-cena-sit ' + esc(sit) + '">' +
-            (sit === 'aprovada' ? 'aprovada' : 'ajustes pedidos') + '</span>' : '') +
+            (sit === 'aprovada' ? '✓ Aprovada' : 'Ajustes pedidos') +
+            (d && d.decidido_em ? ' · ' + esc(B7.UI.quando(d.decidido_em)) : '') + '</span>' : '') +
       '</div>' +
-      /* Campos reais da cena: tipo, direção, texto e (na narração) a
-         sugestão de cenas. Mantém compatibilidade com snapshots antigos. */
       '<div class="pt-cena-meta">' +
         (c.tipo ? '<span class="pt-cena-tipo">' + esc((c.funcao && c.funcao.trim()) || c.tipo) + '</span>' : '') +
         (c.direcao ? '<span class="pt-cena-dir">' + esc(c.direcao) + '</span>' : '') +
@@ -582,128 +667,179 @@ B7.Portal = (function () {
       campo(c.tipo ? c.tipo.toUpperCase() : 'TEXTO', c.texto) +
       campo('SUGESTÃO DE CENAS', c.sugestao_cenas) +
       campo('HOOK', c.hook) + campo('NARRATIVA', c.narrativa) +
-      campo('NARRAÇÃO', c.narracao) + campo('CTA', c.cta) +
-      campo('TOMADA', c.tomada) +
+      campo('NARRAÇÃO', c.narracao) + campo('CTA', c.cta) + campo('TOMADA', c.tomada) +
       (podeAprovar
         ? '<div class="pt-cena-acoes">' +
-            '<button class="b fina" data-cena-ajuste="' + esc(pid) + '">Pedir ajuste</button>' +
-            '<button class="b fina pri" data-cena-ok="' + esc(pid) + '">Aprovar cena</button>' +
+            (sit === 'ajustes'
+              ? '<button class="b fina" data-cena-ok="' + esc(pid) + '">Aprovar esta cena afinal</button>'
+              : sit === 'aprovada'
+                ? '<button class="b fina" data-cena-ajuste="' + esc(pid) + '">Pedir ajuste</button>' +
+                  '<span class="pt-cena-ok">Aprovada</span>'
+                : '<button class="b fina" data-cena-ajuste="' + esc(pid) + '">Pedir ajuste</button>' +
+                  '<button class="b fina pri" data-cena-ok="' + esc(pid) + '">Aprovar cena</button>') +
           '</div>'
         : '') +
     '</article>';
   }
 
-  function corpoSimples(snap) {
+  function corpoSimples(snap, tipo) {
+    let html = '';
+    if (tipo === 'linha') {
+      const itens = Array.isArray(snap.conteudos) ? snap.conteudos : [];
+      html += (snap.periodo ? '<div class="pt-campo"><small>PERÍODO</small><p>' + esc(snap.periodo) + '</p></div>' : '');
+      ['objetivo', 'posicionamento_mes', 'canais', 'estrategia'].forEach(k => {
+        if (snap[k]) html += '<div class="pt-campo"><small>' + k.replace(/_/g, ' ').toUpperCase() + '</small><p>' + esc(snap[k]) + '</p></div>';
+      });
+      if (itens.length) {
+        html += '<div class="pt-campo"><small>CONTEÚDOS PLANEJADOS (' + itens.length + ')</small><div class="pt-grade">' +
+          itens.map(c => '<article class="pt-item"><span class="pt-formato">' + esc(c.tipo || 'Conteúdo') + '</span>' +
+            '<h4>' + esc(c.titulo || 'Sem título') + '</h4>' +
+            (c.data_postagem ? '<span class="pt-data">' + esc(B7.UI.dataBR(c.data_postagem)) + '</span>' : '') +
+            (c.objetivo ? '<p>' + esc(c.objetivo) + '</p>' : '') +
+            (c.roteiro_titulo ? '<p class="pt-nada">Roteiro: ' + esc(c.roteiro_titulo) + '</p>' : '') +
+            '</article>').join('') + '</div></div>';
+      }
+      return html || '<p class="pt-nada">Este planejamento não tem detalhes para exibir.</p>';
+    }
     const campos = ['objetivo', 'ideia_geral', 'headline', 'legenda', 'cta', 'direcao'];
-    const html = campos.filter(k => snap[k])
+    html = campos.filter(k => snap[k])
       .map(k => '<div class="pt-campo"><small>' + k.replace(/_/g, ' ').toUpperCase() +
         '</small><p>' + esc(snap[k]) + '</p></div>').join('');
     return html || '<p class="pt-nada">Este material não tem detalhes para exibir.</p>';
   }
 
   function comentario(c) {
-    return '<div class="pt-com' + (c.resolvido ? ' resolvido' : '') + '">' +
+    return '<div class="pt-com' + (c.resolvido ? ' resolvido' : '') + (c.autor_papel === 'cliente' ? ' cliente' : ' equipe') + '">' +
       '<div class="pt-com-cab"><b>' + esc(c.autor_nome || 'Equipe') + '</b>' +
       (c.parte_rotulo ? '<i>' + esc(c.parte_rotulo) + '</i>' : '') +
       '<span>' + esc(B7.UI.quando(c.created_at)) + '</span></div>' +
       '<p>' + esc(c.texto) + '</p></div>';
   }
 
+  /* Uma ação de cada vez: enquanto um comando está em voo, os outros
+     botões ficam travados. O banco garante a idempotência de qualquer
+     forma — isto é só para a pessoa não ver dois toasts. */
+  let emVoo = false;
+  async function comando(botoes, fn) {
+    if (emVoo) return;
+    emVoo = true;
+    botoes.forEach(b => { if (b) { b.disabled = true; b.dataset.tx = b.textContent; b.textContent = 'Enviando…'; } });
+    try { return await fn(); }
+    finally {
+      emVoo = false;
+      botoes.forEach(b => { if (b) { b.disabled = false; b.textContent = b.dataset.tx || b.textContent; } });
+    }
+  }
+  function explicarErro(e, padrao) {
+    const msg = (e && e.message) || padrao;
+    B7.UI.toast(msg, { tipo: 'erro', tempo: 9000 });
+  }
+
   function ligarRevisao(ap, cenas, partes) {
     const c = conteudo();
+    const rotuloDe = pid => { const el = c.querySelector('[data-parte="' + pid + '"]'); return el ? el.dataset.rotulo : 'Cena'; };
+    const todos = () => [...c.querySelectorAll('[data-cena-ok],[data-cena-ajuste],#pt-aprovar,#pt-ajustes,#pt-recusar')];
 
-    /* decisão por cena */
-    c.querySelectorAll('[data-cena-ok]').forEach(b => b.onclick = async () => {
-      await decidirCena(ap.id, b.dataset.cenaOk, 'aprovada');
-      abrirRevisao(ap.id);
-    });
+    c.querySelectorAll('[data-cena-ok]').forEach(b => b.onclick = () => comando(todos(), async () => {
+      try {
+        const r = await B7.DB.decidirParte(ap.id, b.dataset.cenaOk, rotuloDe(b.dataset.cenaOk), 'aprovada');
+        if (r && r.resultado === 'inalterado') B7.UI.toast('Esta cena já estava aprovada');
+        else B7.UI.toast(rotuloDe(b.dataset.cenaOk) + ' aprovada');
+        abrirRevisao(ap.id);
+      } catch (e) { explicarErro(e, 'Não foi possível registrar a decisão'); if (/versão|substitu|encerrada/i.test(e.message || '')) abrirRevisao(ap.id); }
+    }));
+
     c.querySelectorAll('[data-cena-ajuste]').forEach(b => b.onclick = async () => {
       const texto = await B7.UI.perguntar({
-        titulo: 'O que precisa mudar nesta cena?',
+        titulo: 'O que precisa mudar na ' + rotuloDe(b.dataset.cenaAjuste).toLowerCase() + '?',
         rotulo: 'Sua observação vai para a equipe. O texto não muda sozinho.',
-        placeholder: 'ex.: trocar o exemplo do início'
+        placeholder: 'ex.: trocar o exemplo do início', confirmar: 'Pedir ajuste'
       });
       if (texto === null) return;
-      await decidirCena(ap.id, b.dataset.cenaAjuste, 'ajustes');
-      if (texto) {
-        const i = [...c.querySelectorAll('[data-parte]')]
-          .findIndex(x => x.dataset.parte === b.dataset.cenaAjuste);
-        await B7.DB.comentarAprovacao(ap.id, texto, {
-          parteId: b.dataset.cenaAjuste,
-          parteRotulo: 'Cena ' + String(i + 1).padStart(2, '0')
-        });
-      }
-      abrirRevisao(ap.id);
+      if (!texto) return B7.UI.toast('Descreva o ajuste para a equipe entender o pedido', { tipo: 'erro' });
+      comando(todos(), async () => {
+        try {
+          await B7.DB.decidirParte(ap.id, b.dataset.cenaAjuste, rotuloDe(b.dataset.cenaAjuste), 'ajustes', texto);
+          B7.UI.toast('Ajuste pedido na ' + rotuloDe(b.dataset.cenaAjuste).toLowerCase());
+          abrirRevisao(ap.id);
+        } catch (e) { explicarErro(e, 'Não foi possível registrar o pedido'); }
+      });
     });
 
-    /* comentário geral */
     const add = c.querySelector('#pt-com-add');
     if (add) add.onclick = async () => {
       const campo = c.querySelector('#pt-com');
       const texto = campo.value.trim();
       if (!texto) return;
       add.disabled = true;
-      try {
-        await B7.DB.comentarAprovacao(ap.id, texto);
-        abrirRevisao(ap.id);
-      } catch (e) {
-        add.disabled = false;
-        B7.UI.toast('Não foi possível enviar a observação', { tipo: 'erro' });
-      }
+      try { await B7.DB.comentarAprovacao(ap.id, texto); abrirRevisao(ap.id); }
+      catch (e) { add.disabled = false; explicarErro(e, 'Não foi possível enviar a observação'); }
     };
 
-    /* decisão do material inteiro */
     const bAprovar = c.querySelector('#pt-aprovar');
     if (bAprovar) bAprovar.onclick = async () => {
-      /* Aprovar o todo com cenas em ajuste seria uma contradição
-         registrada no histórico. A interface avisa e não deixa passar
-         calado. */
-      const emAjuste = partes.filter(p => p.situacao === 'ajustes');
-      if (emAjuste.length) {
-        const segue = await B7.UI.confirmar({
-          titulo: 'Há cenas com ajustes pedidos',
-          texto: emAjuste.length === 1
-            ? 'Uma cena está marcada para ajuste. Aprovar tudo agora vai contra esse pedido.'
-            : emAjuste.length + ' cenas estão marcadas para ajuste. Aprovar tudo agora vai contra esses pedidos.',
-          confirmar: 'Aprovar mesmo assim'
-        });
-        if (!segue) return;
-      }
-      try {
-        await B7.DB.decidirAprovacao(ap.id, 'aprovado');
-        await avisarKanban(ap, 'aprovado');
-        B7.UI.toast('Material aprovado');
-        abrirRevisao(ap.id);
-      } catch (e) {
-        B7.UI.toast(e.message || 'Não foi possível registrar a aprovação', { tipo: 'erro' });
-      }
+      const semDecisao = cenas.filter(x => !partes.find(p => p.parte_id === x.id)).length;
+      const ok = await B7.UI.confirmar({
+        titulo: ap.tipo === 'roteiro' ? 'Aprovar o roteiro completo?' : 'Aprovar ' + rotuloTipo(ap.tipo).toLowerCase() + '?',
+        texto: 'Você está aprovando a versão ' + ap.versao + ' inteira' +
+               (semDecisao ? ', incluindo ' + semDecisao + ' cena(s) que você não decidiu individualmente' : '') +
+               '. A equipe recebe a aprovação na hora e segue para a próxima etapa.',
+        confirmar: 'Aprovar'
+      });
+      if (!ok) return;
+      comando(todos(), async () => {
+        try {
+          const r = await B7.DB.decidirAprovacao(ap.id, 'aprovado', null, ap.versao);
+          B7.UI.toast(r && r.resultado === 'inalterado' ? 'Esta versão já estava aprovada' : 'Aprovado — a Branding7 foi avisada');
+          abrirRevisao(ap.id);
+        } catch (e) { explicarErro(e, 'Não foi possível registrar a aprovação'); if (/versão|substitu|decidida/i.test(e.message || '')) abrirRevisao(ap.id); }
+      });
     };
 
     const bAjustes = c.querySelector('#pt-ajustes');
     if (bAjustes) bAjustes.onclick = async () => {
+      const cenasAj = partes.filter(p => p.situacao === 'ajustes').length;
       const texto = await B7.UI.perguntar({
         titulo: 'O que precisa ser ajustado?',
-        rotulo: 'A equipe recebe sua observação e prepara uma nova versão.',
-        placeholder: 'descreva o ajuste'
+        rotulo: cenasAj ? 'Você já pediu ajustes em ' + cenasAj + ' cena(s). Acrescente o que faltar; a equipe recebe tudo junto.'
+                        : 'Descreva o que deve mudar. A equipe prepara uma nova versão e envia de novo para você.',
+        placeholder: 'ex.: o tom está formal demais para o nosso público', confirmar: 'Solicitar ajustes'
       });
       if (texto === null) return;
-      try {
-        /* a decisão vai antes do comentário: se ela for recusada, não
-           fica um comentário órfão de um pedido que não aconteceu */
-        await B7.DB.decidirAprovacao(ap.id, 'ajustes');
-        if (texto) await B7.DB.comentarAprovacao(ap.id, texto).catch(() => {});
-        await avisarKanban(ap, 'ajustes');
-        B7.UI.toast('Ajustes solicitados');
-        abrirRevisao(ap.id);
-      } catch (e) {
-        B7.UI.toast(e.message || 'Não foi possível registrar o pedido de ajustes', { tipo: 'erro' });
-      }
+      if (!texto && !cenasAj) return B7.UI.toast('Descreva o que precisa ser ajustado', { tipo: 'erro' });
+      comando(todos(), async () => {
+        try {
+          await B7.DB.decidirAprovacao(ap.id, 'ajustes', texto, ap.versao);
+          B7.UI.toast('Ajustes solicitados — a Branding7 foi avisada');
+          abrirRevisao(ap.id);
+        } catch (e) { explicarErro(e, 'Não foi possível registrar o pedido de ajustes'); }
+      });
+    };
+
+    const bRecusar = c.querySelector('#pt-recusar');
+    if (bRecusar) bRecusar.onclick = async () => {
+      const motivo = await B7.UI.perguntar({
+        titulo: 'Recusar esta versão?',
+        rotulo: 'Recusar é diferente de pedir ajustes: significa que a proposta não serve e a equipe precisa repensar o caminho. O motivo é obrigatório e fica registrado.',
+        placeholder: 'ex.: esse conceito não representa a marca', confirmar: 'Recusar'
+      });
+      if (motivo === null) return;
+      if (!motivo) return B7.UI.toast('Recusar exige um motivo', { tipo: 'erro' });
+      const ok = await B7.UI.confirmar({ titulo: 'Confirmar a recusa', perigo: true,
+        texto: 'A versão ' + ap.versao + ' será marcada como recusada com o motivo informado. Isso não pode ser desfeito por você.',
+        confirmar: 'Recusar de vez' });
+      if (!ok) return;
+      comando(todos(), async () => {
+        try {
+          await B7.DB.decidirAprovacao(ap.id, 'recusado', motivo, ap.versao);
+          B7.UI.toast('Recusa registrada — a Branding7 foi avisada');
+          abrirRevisao(ap.id);
+        } catch (e) { explicarErro(e, 'Não foi possível registrar a recusa'); }
+      });
     };
 
     const pdf = c.querySelector('#pt-pdf');
     if (pdf) pdf.onclick = async () => {
-      /* O PDF sai do retrato enviado, não da tabela: o cliente baixa
-         exatamente a versão que está decidindo. */
       const snap = ap.snapshot || {};
       if (!Array.isArray(snap.cenas) || !snap.cenas.length) {
         return B7.UI.toast('Esta versão não tem cenas para gerar o PDF', { tipo: 'erro' });
@@ -728,29 +864,11 @@ B7.Portal = (function () {
     };
   }
 
-  async function decidirCena(aprovacaoId, parteId, situacao) {
-    const el = conteudo().querySelector('[data-parte="' + parteId + '"]');
-    const i = [...conteudo().querySelectorAll('[data-parte]')].indexOf(el);
-    try {
-      await B7.DB.decidirParte(aprovacaoId, parteId,
-        'Cena ' + String(i + 1).padStart(2, '0'), situacao);
-    } catch (e) {
-      B7.UI.toast('Não foi possível registrar a decisão', { tipo: 'erro' });
-    }
-  }
-
-  /* O quadro da equipe reage a um evento real do fluxo, não a um
-     comentário solto. */
-  async function avisarKanban(ap, evento) {
-    if (B7.Kanban && B7.Kanban.reagirAprovacao) {
-      await B7.Kanban.reagirAprovacao(ap.tipo, ap.alvo_id, evento).catch(() => {});
-    }
-  }
-
   const rotuloTipo = t => ({ roteiro: 'Roteiro', linha: 'Linha editorial',
     conteudo: 'Conteúdo', semana: 'Status semanal' }[t] || t);
-  const rotuloSituacao = s => ({ pendente: 'Aguardando você',
-    aprovado: 'Aprovado', ajustes: 'Ajustes pedidos', cancelado: 'Cancelado' }[s] || s);
+  const rotuloSituacao = s => ({ pendente: 'Aguardando você', parcial: 'Parcialmente revisado',
+    aprovado: 'Aprovado', ajustes: 'Ajustes solicitados', recusado: 'Recusado',
+    substituido: 'Versão substituída', cancelado: 'Cancelado' }[s] || s);
 
   return { montarLayout, abrirHome, abrirAprovacoes, abrirRevisao,
            abrirLinha, abrirProducao, abrirStatus, abrirHistorico,

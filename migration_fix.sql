@@ -174,6 +174,12 @@ begin
     raise notice 'aprovacoes não existe: rode migration_portal.sql antes.';
     return;
   end if;
+  /* a v2 das aprovações substitui este trigger por um que reconhece as
+     funções de decisão; re-rodar o fix não pode regredir */
+  if to_regproc('public.aprov_decidir') is not null then
+    raise notice 'aprovações v2 presente: trigger de proteção mantido.';
+    return;
+  end if;
 
   create or replace function public.aprovacoes_protege_material()
   returns trigger language plpgsql security definer set search_path = public as $t$

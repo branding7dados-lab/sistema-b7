@@ -22,7 +22,7 @@ B7.Perm = (function () {
     admin: '*',
     coordenador: [
       '', 'clientes', 'cliente', 'gravacoes', 'gravacao', 'roteiros', 'linhas',
-      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban'
+      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes'
     ],   /* sem usuarios, importar, atalhos e lixeira */
     cliente: [
       '', 'aprovacoes', 'revisar', 'minha-linha', 'minha-producao',
@@ -39,7 +39,7 @@ B7.Perm = (function () {
       grupos: { 'MAIS FERRAMENTAS': true }
     },
     cliente: {
-      ocultar: ['#/kanban', '#/usuarios', '#/clientes', '#/gravacoes', '#/roteiros', '#/linhas',
+      ocultar: ['#/kanban', '#/aprovacoes', '#/usuarios', '#/clientes', '#/gravacoes', '#/roteiros', '#/linhas',
                 '#/semanas', '#/arquivados', '#/lixeira', '#/importar',
                 '#/atalhos', '#/config'],
       grupos: { 'PRODUÇÃO': false, 'MAIS FERRAMENTAS': false }

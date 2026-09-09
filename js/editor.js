@@ -13,7 +13,7 @@ B7.Editor = (function () {
   const DIRECAO_PADRAO = { 'Gancho': 'DIRETO PRA CÂMERA', 'Narrativa': 'DIRETO PRA CÂMERA',
                            'Narração': 'VOZ EM OFF', 'CTA': 'DIRETO PRA CÂMERA' };
 
-  let E = { gravacao: null, roteiros: [], cenas: {}, atual: null };
+  let E = { gravacao: null, roteiros: [], cenas: {}, atual: null, aprovacoes: {} };
   let zoomManual = null;
   let fechadas = new Set();     // cenas recolhidas (só visual)
 
@@ -32,7 +32,9 @@ B7.Editor = (function () {
       ids.forEach(id => cenas[id] = []);
       todasCenas.forEach(c => (cenas[c.script_id] = cenas[c.script_id] || []).push(c));
 
-      E = { gravacao, roteiros, cenas, atual: null };
+      let aprovacoes = {};
+      try { aprovacoes = await B7.DB.ultimasAprovacoes('roteiro', ids); } catch (e) { aprovacoes = {}; }
+      E = { gravacao, roteiros, cenas, atual: null, aprovacoes };
       const ultimo = B7.pref.ler('ultimo_roteiro_' + gravacaoId, null);
       E.atual = (roteiroAlvo && ids.includes(roteiroAlvo)) ? roteiroAlvo
               : (ultimo && ids.includes(ultimo) ? ultimo : (ids[0] || null));
@@ -82,8 +84,8 @@ B7.Editor = (function () {
 
       (ultima
         ? '<div class="env-anterior">Última versão enviada: <b>v' + (ultima.versao || 1) +
-          '</b> — ' + esc(({ pendente: 'aguardando decisão', aprovado: 'aprovada',
-            ajustes: 'com ajustes pedidos' }[ultima.situacao] || ultima.situacao)) +
+          '</b> — ' + esc(({ pendente: 'aguardando decisão', parcial: 'parcialmente revisada', aprovado: 'aprovada',
+            ajustes: 'com ajustes pedidos', recusado: 'recusada', substituido: 'substituída' }[ultima.situacao] || ultima.situacao)) +
           '. Este envio cria a <b>v' + proxima + '</b>.</div>'
         : '<div class="env-anterior">Primeiro envio deste roteiro: será a <b>v1</b>.</div>') +
 
@@ -119,11 +121,10 @@ B7.Editor = (function () {
           },
           observacao: m.querySelector('#env-obs').value.trim() || null
         });
-        if (B7.Kanban && B7.Kanban.reagirAprovacao) {
-          await B7.Kanban.reagirAprovacao('roteiro', r.id, 'enviado').catch(() => {});
-        }
         m.fechar();
-        B7.UI.toast('Roteiro enviado para aprovação (v' + proxima + ')');
+        B7.UI.toast('Roteiro enviado para aprovação (v' + proxima + ') — o cliente foi avisado');
+        try { E.aprovacoes = Object.assign(E.aprovacoes, await B7.DB.ultimasAprovacoes('roteiro', [r.id])); } catch (e) {}
+        renderEscrita();
       } catch (e) {
         botao.disabled = false; botao.textContent = 'Enviar v' + proxima;
         erro.textContent = e.message || 'Não foi possível enviar.';
@@ -325,6 +326,7 @@ B7.Editor = (function () {
           '<button class="perigo" data-acao="excluir">Excluir roteiro</button>' +
         '</div></div>' +
       '</div><div class="bloco-corpo">' +
+        '<div class="mb" id="ap-status-roteiro">' + (B7.Aprovacoes ? B7.Aprovacoes.blocoStatus(E.aprovacoes[r.id], { botaoEnviar: true }) : '') + '</div>' +
         '<div class="mb"><label class="rot">TÍTULO</label>' +
         '<input class="campo" data-campo="titulo" placeholder="Título do roteiro" value="' + esc(r.titulo) + '"></div>' +
         '<div class="mb"><label class="rot">OBJETIVO DO ROTEIRO</label>' +
@@ -435,6 +437,10 @@ B7.Editor = (function () {
       } catch (e) {}
       renderTrilho();
     });
+
+    /* bloco de aprovação (status do cliente) */
+    cx.querySelectorAll('[data-ap-enviar]').forEach(b => b.onclick = () => enviarParaAprovacao());
+    cx.querySelectorAll('#ap-status-roteiro [data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
 
     /* menu do roteiro */
     cx.querySelectorAll('[data-acao]').forEach(b => b.onclick = () => {

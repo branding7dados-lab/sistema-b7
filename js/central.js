@@ -63,10 +63,11 @@ B7.Central = (function () {
     } catch (e) { return B7.Dashboard.erroConteudo(e); }
 
     /* listas de apoio são extras: nenhuma delas derruba a Central */
-    const [recentesLinhas, recentesRoteiros] = await Promise.all([
+    const [recentesLinhas, recentesRoteiros, aprov] = await Promise.all([
       (B7.DB.listarTodasLinhas ? B7.DB.listarTodasLinhas(4) : Promise.resolve([]))
         .catch(() => []),
-      B7.DB.listarRoteirosPor(null, { de: F.de, ate: F.ate }).catch(() => [])
+      B7.DB.listarRoteirosPor(null, { de: F.de, ate: F.ate }).catch(() => []),
+      B7.DB.painelAprovacoes({ somenteAtual: true, clienteId: F.clienteId || null, de: F.de, ate: F.ate, limite: 1000 }).catch(() => null)
     ]);
 
     painel().innerHTML = '<div class="conteudo entra">' +
@@ -74,9 +75,25 @@ B7.Central = (function () {
       categoriaGravacoes(dados.gravacoes) +
       categoriaLinhas(dados.linhas, recentesLinhas) +
       categoriaRoteiros(dados.roteiros, recentesRoteiros.slice(0, 4)) +
+      resumoAprovacoes(aprov) +
     '</div>';
 
     ligar(clientes);
+  }
+
+  /* Aprovações: um material (versão atual) conta uma vez, qualquer que
+     seja o número de cenas. Mesmo recorte de período e cliente das
+     categorias acima; o clique abre a lista já filtrada. */
+  function resumoAprovacoes(lista) {
+    if (!lista) return '';
+    const n = { aguardando: 0, ajustes: 0, recusado: 0, aprovado: 0 };
+    lista.forEach(a => { if (a.situacao === 'pendente' || a.situacao === 'parcial') n.aguardando++; else if (n[a.situacao] !== undefined) n[a.situacao]++; });
+    const q = (s) => '#/aprovacoes?situacao=' + s + (F.clienteId ? '&cliente=' + F.clienteId : '');
+    const item = (k, r, cls) => '<a class="cp-ap ' + cls + '" href="' + q(k) + '"><b>' + n[k] + '</b><span>' + r + '</span></a>';
+    return '<section class="cp-categoria cp-aprovacoes"><div class="cp-cat-cab"><h2>Aprovações dos clientes</h2>' +
+      '<a class="cp-ver" href="#/aprovacoes">Abrir aprovações →</a></div>' +
+      '<div class="cp-ap-grade">' + item('aguardando', 'Aguardando cliente', 'neutro') + item('ajustes', 'Ajustes solicitados', 'ambar') +
+      item('recusado', 'Recusados', 'erro') + item('aprovado', 'Aprovados', 'ok') + '</div></section>';
   }
 
   const esqueleto = () => '<div class="cp-esqueleto">' +
