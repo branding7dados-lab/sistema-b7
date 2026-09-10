@@ -221,6 +221,31 @@ select.ds-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 .ds-tl small{display:block;font-size:10.5px;color:var(--ink-4);margin-top:1px;}
 .ds-tl-msg{font-style:italic;color:var(--ink-3);margin:3px 0 0;}
 
+/* ------------------------------------------------- central do designer */
+.ds-central{display:flex;flex-direction:column;gap:28px;}
+.ds-central-sec h3{font-family:'Archivo';font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.ds-central-sec h3 span{font-size:11px;font-weight:700;background:var(--suave);color:var(--ink-3);
+  padding:2px 8px;border-radius:99px;}
+.ds-grupo-card{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+.ds-grupo-card > .ds-grupo-info{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;}
+.ds-grupo-card > .ds-grupo-info b{font-family:'Archivo';font-size:14.5px;}
+.ds-grupo-card .ds-grupo-cont{width:100%;font-size:12px;color:var(--ink-3);}
+.ds-grupo-card .ds-grupo-cont .alerta{color:var(--ambar);}
+.ds-grupo-card[data-grupo-abrir]{cursor:pointer;}
+.ds-grupo-card > [data-assumir-linha]{margin-top:8px;}
+.ds-grupo-progresso{width:100%;height:6px;border-radius:99px;background:var(--suave);overflow:hidden;margin-top:6px;}
+.ds-grupo-progresso span{display:block;height:100%;background:var(--ok);border-radius:99px;}
+.ds-grupo-minhas .ds-lista-grade{margin-top:12px;}
+.estado-b7.leve{padding:16px;border:1px dashed var(--borda);border-radius:12px;background:none;}
+.estado-b7.leve p{margin:0;color:var(--ink-3);font-size:13px;}
+
+/* ----------------------------------------------------- via de envio */
+.ds-via-toggle{display:flex;gap:2px;margin:8px 0 12px;background:var(--suave);border-radius:10px;padding:3px;}
+.ds-via-toggle button{flex:1;border:0;background:none;font:inherit;font-size:12.5px;font-weight:600;
+  color:var(--ink-3);padding:7px 8px;border-radius:8px;cursor:pointer;}
+.ds-via-toggle button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.ds-chip-via{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--acento-suave);color:var(--acento);}
+
 /* ------------------------------------------------------ responsivo */
 @media (max-width:1100px){
   .ds-dr-grade{grid-template-columns:1fr 1fr;}

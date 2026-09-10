@@ -567,3 +567,100 @@ Designer de verdade.
 - Testado: `node --check`; Playwright confirmou as 4 opções de papel no
   modal ("admin", "coordenador", "designer", "cliente") sem erro de JS.
 - `VERSAO` → `2026-09-10-e`, cache do service worker → `roteiros-b7-v20`.
+
+## Build 2026-09-10-f — B7 Design: refino operacional
+
+Refino sobre o build `-d` (não uma reconstrução): a Central do Designer
+passou a abrir já mostrando o que fazer, agrupado por Linha Editorial —
+sem precisar visitar "Linhas editoriais" só para descobrir trabalho — e
+o envio de uma peça para revisão deixou de exigir arquivo: quem revisou
+e aprovou a arte fora do sistema (ex.: WhatsApp) agora registra isso
+honestamente em vez de ser obrigado a simular um upload.
+
+**Banco (`migration_design_refino.sql`, aditiva, roda depois de
+`migration_design.sql`):**
+- `design_versoes` ganhou `via` (`upload` | `externa`) e
+  `canal_externo` (texto livre curto, ex. "WhatsApp"). `via` é
+  `'upload'` por padrão — nada muda para quem sempre usou arquivo.
+- `design_versao_enviar` ganhou dois parâmetros (`p_via`, `p_canal`,
+  ambos com default, então nenhuma chamada existente quebra) e só exige
+  `count(*) > 0` de `design_arquivos` quando `via = 'upload'`. Via
+  `externa` passa sem nenhum arquivo. **A função de 2 parâmetros
+  anterior foi removida (`drop function`)** — mantê-la ao lado da nova
+  deixava uma chamada com 2 argumentos ambígua para o Postgres (dois
+  candidatos possíveis) e toda chamada existente passava a falhar; isso
+  foi pego pelo teste automatizado antes de qualquer coisa ir para
+  produção.
+- `design_processar_evento`: a notificação de "peça enviada para
+  revisão" agora menciona a via quando é externa — "(revisada por fora
+  — WhatsApp)" — nunca finge que um arquivo foi enviado.
+- `design_assumir_demanda_linha(linha_id)`: nova função, só para
+  Designer, que reivindica em lote **apenas** as peças daquela linha
+  que estão sem responsável e não finalizadas — idempotente (rodar de
+  novo sem peça nova reivindica 0), nunca tira uma peça de outro
+  designer, e convive com a atribuição manual existente (não assume
+  nada que já tenha dono, mesmo que o dono seja outra pessoa).
+- Nenhuma mudança em `design_solicitar_ajuste`, `design_aprovar_interno`,
+  `design_finalizar` ou `design_enviar_cliente` — elas já operavam
+  sobre o estado da versão, nunca dependeram de arquivo existir.
+
+**Frontend (`js/design.js`, `js/database.js`, `styles/design.css`,
+`js/app.js`):**
+- Central do Designer (`#/design`) reorganizada em duas seções sempre
+  visíveis, agrupadas por Linha Editorial: **"Demandas a fazer"**
+  (sem responsável, com o prazo mais próximo do grupo e um botão
+  **"Assumir demanda"** que reivindica todas de uma vez) e **"Minhas
+  demandas"** (já assumidas, com progresso real — X de Y finalizadas —
+  e alerta de quantas estão em ajuste). Autoatribuição individual
+  continua disponível dentro do detalhe de cada peça, como antes.
+- Nova tela `#/design/linha/<id>` (`B7.Design.abrirLinha`): leitura da
+  produção de Design de uma Linha Editorial específica, para o Designer
+  não precisar abrir o editor completo da Linha só para ver o que está
+  em jogo ali. Acessível pelos cartões de grupo na Central.
+- Gaveta de detalhe: "Enviar nova versão" agora tem duas abas —
+  **"Enviar arquivo"** (fluxo de sempre) e **"Revisada por fora (sem
+  arquivo)"** (observação + canal opcionais, botão "Marcar como enviada
+  para revisão" sem exigir nada anexado). O histórico de versões mostra
+  um selo "Revisada por fora — <canal>" quando é o caso — nunca omite
+  isso nem simula um arquivo que não existe.
+- `B7.DB.enviarVersaoDesign` ganhou os parâmetros `via`/`canal`;
+  `B7.DB.assumirDemandaLinha(linhaId)` é a chamada nova.
+- Barra de filtros: o alternador Quadro/Lista some para o Designer (só
+  fazia sentido para a fila da equipe; a Central do Designer não usa
+  mais essa vista).
+
+**Testado:**
+- `migration_design_refino.sql` rodada do zero contra Postgres 16 local
+  (cadeia completa: `migration_rls.sql` → `migration_design.sql` →
+  `migration_design_refino.sql`), com fixtures reais de admin,
+  coordenador, 2 designers e cliente.
+- Aceitação via SQL com `set role authenticated` + `request.jwt.claim.sub`
+  real (não mock): Mateus assume as 3 peças de uma linha (`assumidas: 3`),
+  rodar de novo não assume nada (`assumidas: 0`, idempotente), Bia (outra
+  designer) não rouba as peças já assumidas por Mateus, e
+  admin/coordenador recebem erro de permissão ao tentar chamar a função
+  (é exclusiva de Designer). Envio sem arquivo e sem via falha com a
+  mensagem certa; o mesmo envio com `via='externa'` e canal "WhatsApp"
+  passa sem nenhum arquivo, segue até aprovação interna e finalização
+  normalmente, e a notificação gerada nomeia a via honestamente. Uma
+  segunda peça com arquivo real, via padrão, continua funcionando como
+  antes.
+- `node --check` em todos os arquivos JS tocados.
+- Playwright (mock completo do Supabase): Central do Designer mostra os
+  dois grupos corretos; clicar em "Assumir demanda" move a peça de
+  "Demandas a fazer" para "Minhas demandas" na tela (chamada real ao
+  RPC, sem mock de sucesso hardcoded); abrir um grupo mostra a vista de
+  leitura por linha; a aba "Revisada por fora" habilita o envio sem
+  nenhum arquivo e o histórico exibe "Revisada por fora — WhatsApp";
+  testado também em 390px (mobile) sem quebra de layout. Sem erros de
+  console em nenhum cenário.
+- `VERSAO` → `2026-09-10-f`, cache do service worker → `roteiros-b7-v21`.
+
+**Honestidade sobre o que não foi testado:** não houve teste em
+Supabase real (o ambiente de teste é Postgres local — a mesma limitação
+de todos os builds anteriores desta sessão). O teste de duas sessões
+simultâneas em tempo real (dois designers vendo a Central atualizar ao
+vivo) não foi refeito neste build — o canal Realtime já existente
+(`design_deliverables`/`design_versoes`) não foi alterado, então o
+comportamento observado no build `-d` deve se manter, mas isso não foi
+reconfirmado agora.

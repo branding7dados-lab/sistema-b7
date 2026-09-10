@@ -114,7 +114,7 @@ B7.Design = (function () {
     const equipe = ehEquipe();
     painel().innerHTML = '<div class="conteudo entra design-tela">' +
       '<div class="cab-conteudo"><div><h1>Design</h1>' +
-      '<p>' + (ehDesigner() ? 'O que você precisa entregar. Peças sem responsável aparecem no fim — assuma a que for sua.'
+      '<p>' + (ehDesigner() ? 'O que você precisa entregar, por Linha Editorial — sem precisar procurar.'
                             : 'A fila de produção visual da equipe.') + '</p></div>' +
       (equipe ? '<button class="b pri" id="ds-nova">+ Nova demanda de Design</button>' : '') + '</div>' +
       (equipe ? '<nav class="ds-abas" role="tablist">' + ABAS_EQUIPE.map(([k, r]) =>
@@ -174,10 +174,10 @@ B7.Design = (function () {
       (filtrosAtivos() ? '<button class="b fina contorno" id="ds-limpar">Limpar filtros</button>' : '') +
       '<div class="ds-espaco"></div>' +
       '<span class="ds-total" id="ds-total"></span>' +
-      '<div class="seg-vista" role="tablist">' +
+      (equipe ? '<div class="seg-vista" role="tablist">' +
         '<button role="tab" class="' + (F.vista === 'quadro' ? 'on' : '') + '" data-vista="quadro">Quadro</button>' +
         '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista">Lista</button>' +
-      '</div>' +
+      '</div>' : '') +
     '</div>';
 
     const busca = cx.querySelector('#ds-busca');
@@ -270,26 +270,183 @@ B7.Design = (function () {
       return;
     }
 
-    let vis = filtrar(dados);
     if (!ehEquipe()) {
-      /* fila do designer: só o que é dele (a barra de busca/filtros
-         ainda se aplica em cima disso); "sem responsável" vira uma
-         seção própria, sempre visível, para poder assumir trabalho */
-      const { minhas } = filaDoDesigner(vis);
-      vis = minhas;
+      /* Central do designer: a Linha Editorial nunca precisa ser
+         visitada à parte para descobrir trabalho — "Demandas a fazer"
+         (sem responsável) e "Minhas demandas" (já assumidas) aparecem
+         aqui, já agrupadas por Linha Editorial. */
+      const vis = filtrar(dados);
+      const { minhas, semDono } = filaDoDesigner(vis);
+      const total = painel().querySelector('#ds-total');
+      if (total) total.textContent = (minhas.length + semDono.length) + ' peça' + (minhas.length + semDono.length === 1 ? '' : 's');
+      area.innerHTML = viewCentralDesigner(minhas, semDono);
+      ligarCentralDesigner(area);
+      ligarThumbs(area);
+      return;
     }
 
+    const vis = filtrar(dados);
     const total = painel().querySelector('#ds-total');
     if (total) total.textContent = vis.length + (vis.length === 1 ? ' peça' : ' peças');
 
-    const semDono = !ehEquipe() ? filaDoDesigner(filtrar(dados)).semDono : [];
-
-    area.innerHTML =
-      (F.vista === 'lista' ? viewLista(vis) : viewQuadro(vis)) +
-      (semDono.length ? blocoSemResponsavel(semDono) : '');
+    area.innerHTML = (F.vista === 'lista' ? viewLista(vis) : viewQuadro(vis));
 
     ligarArea(area);
     ligarThumbs(area);
+  }
+
+  /* =================================================================
+     CENTRAL DO DESIGNER — "Demandas a fazer" e "Minhas demandas",
+     sempre agrupadas por Linha Editorial. Nunca mistura peça de outro
+     designer: "a fazer" é só o que está sem responsável.
+     ================================================================= */
+  function agruparPorLinha(lista) {
+    const grupos = new Map();
+    lista.forEach(d => {
+      const chave = d.linha_id || '_sem_linha_' + (d.client_id || '');
+      if (!grupos.has(chave)) grupos.set(chave, {
+        linhaId: d.linha_id || null, linhaNome: d.linha_nome || (d.client_id ? 'Sem linha editorial' : 'Demandas internas'),
+        clienteNome: d.cliente_nome || null, itens: []
+      });
+      grupos.get(chave).itens.push(d);
+    });
+    return [...grupos.values()].sort((a, b) => (a.linhaNome || '').localeCompare(b.linhaNome || ''));
+  }
+
+  function viewCentralDesigner(minhas, semDono) {
+    const gruposFazer = agruparPorLinha(semDono);
+    const gruposMinhas = agruparPorLinha(minhas);
+    return '<div class="ds-central">' +
+      '<section class="ds-central-sec"><h3>Demandas a fazer <span>' + semDono.length + '</span></h3>' +
+      (gruposFazer.length
+        ? gruposFazer.map(g => grupoFazerCartao(g)).join('')
+        : '<div class="estado-b7 leve"><p>Nenhuma demanda sem responsável no momento.</p></div>') +
+      '</section>' +
+      '<section class="ds-central-sec"><h3>Minhas demandas <span>' + minhas.length + '</span></h3>' +
+      (gruposMinhas.length
+        ? gruposMinhas.map(g => grupoMinhasCartao(g)).join('')
+        : '<div class="estado-b7 leve"><p>Nenhuma demanda atribuída a você ainda. Assuma uma acima.</p></div>') +
+      '</section>' +
+    '</div>';
+  }
+
+  function nearestPrazo(itens) {
+    const comPrazo = itens.filter(d => d.prazo && d.status !== 'finalizado');
+    if (!comPrazo.length) return null;
+    comPrazo.sort((a, b) => new Date(a.prazo) - new Date(b.prazo));
+    return prazoInfo(comPrazo[0]);
+  }
+
+  function grupoFazerCartao(g) {
+    const info = nearestPrazo(g.itens);
+    return '<article class="ds-grupo-card" data-grupo-abrir="' + esc(g.linhaId || '') + '">' +
+      '<div class="ds-grupo-info">' +
+        '<b>' + esc(g.linhaNome) + '</b>' +
+        (g.clienteNome ? '<span class="ds-cli">' + esc(g.clienteNome) + '</span>' : '') +
+        '<span class="ds-grupo-cont">' + g.itens.length + (g.itens.length === 1 ? ' peça' : ' peças') +
+          (info ? ' · ' + esc(info.txt) : '') + '</span>' +
+      '</div>' +
+      (g.linhaId ? '<button class="b fina pri" data-assumir-linha="' + esc(g.linhaId) + '">Assumir demanda' + (g.itens.length > 1 ? ' (' + g.itens.length + ')' : '') + '</button>' : '') +
+    '</article>';
+  }
+
+  function grupoMinhasCartao(g) {
+    const total = g.itens.length;
+    const finalizadas = g.itens.filter(d => d.status === 'finalizado').length;
+    const ajustes = g.itens.filter(d => d.status === 'ajustes' || d.status === 'ajustes_cliente').length;
+    const pct = total ? Math.round((finalizadas / total) * 100) : 0;
+    const info = nearestPrazo(g.itens);
+    return '<article class="ds-grupo-card ds-grupo-minhas" data-grupo-abrir="' + esc(g.linhaId || '') + '">' +
+      '<div class="ds-grupo-info">' +
+        '<b>' + esc(g.linhaNome) + '</b>' +
+        (g.clienteNome ? '<span class="ds-cli">' + esc(g.clienteNome) + '</span>' : '') +
+        '<div class="ds-grupo-progresso"><span style="width:' + pct + '%"></span></div>' +
+        '<span class="ds-grupo-cont">' + finalizadas + ' de ' + total + ' finalizadas' +
+          (ajustes ? ' · <b class="alerta">' + ajustes + ' em ajuste</b>' : '') +
+          (info ? ' · ' + esc(info.txt) : '') + '</span>' +
+      '</div>' +
+      '<div class="ds-lista ds-lista-grade">' + g.itens.slice().sort(ordenarPorUrgencia).slice(0, 4).map(cartao).join('') + '</div>' +
+      (total > 4 && g.linhaId ? '<button class="b fina contorno" data-grupo-abrir="' + esc(g.linhaId) + '">Ver as ' + total + ' peças desta linha</button>' : '') +
+    '</article>';
+  }
+
+  function ligarCentralDesigner(area) {
+    area.querySelectorAll('[data-grupo-abrir]').forEach(el => {
+      if (el.closest('[data-peca]')) return; /* não intercepta clique no cartão de peça dentro do grupo */
+      el.onclick = e => {
+        if (e.target.closest('[data-assumir-linha]') || e.target.closest('[data-peca]')) return;
+        const id = el.dataset.grupoAbrir;
+        if (id) abrirLinha(id);
+      };
+    });
+    area.querySelectorAll('[data-peca]').forEach(el => el.onclick = e => {
+      if (e.target.closest('[data-check]')) return; abrirDetalhe(el.dataset.peca);
+    });
+    area.querySelectorAll('[data-assumir-linha]').forEach(b => b.onclick = async e => {
+      e.stopPropagation();
+      const linhaId = b.dataset.assumirLinha;
+      b.disabled = true; b.textContent = 'Assumindo…';
+      try {
+        const r = await B7.DB.assumirDemandaLinha(linhaId);
+        const n = (r && r.assumidas) || 0;
+        if (n > 0) B7.UI.toast(n === 1 ? '1 demanda assumida' : n + ' demandas assumidas');
+        else B7.UI.toast('Nenhuma demanda sobrou para assumir — alguém já pegou.', { tipo: 'aviso' });
+        const linhas = await B7.DB.listarDesign();
+        dados = linhas || [];
+        desenharArea();
+      } catch (e2) {
+        b.disabled = false; b.textContent = 'Assumir demanda';
+        B7.UI.toast('Não foi possível assumir: ' + (e2.message || ''), { tipo: 'erro' });
+      }
+    });
+  }
+
+  /* =================================================================
+     VISTA POR LINHA EDITORIAL — leitura da produção de Design daquela
+     linha, para o Designer não precisar abrir o editor completo da
+     Linha Editorial só para ver o que está em jogo ali.
+     ================================================================= */
+  async function abrirLinha(linhaId) {
+    B7.Dashboard.marcarNav('#/design');
+    B7.Rota.titulo(['Design', 'Linha']);
+    painel().innerHTML = '<div class="conteudo design-tela">' + B7.UI.skeleton('tabela', { n: 5, cols: 3 }) + '</div>';
+    let itens;
+    try { itens = await B7.DB.listarDesign({ linhaId }); }
+    catch (e) {
+      painel().innerHTML = '<div class="conteudo entra"><div class="estado-b7"><b>Não foi possível carregar esta linha.</b><p>' + esc(e.message || '') + '</p></div></div>';
+      return;
+    }
+    const nome = (itens[0] && itens[0].linha_nome) || 'Linha editorial';
+    const cliente = itens[0] && itens[0].cliente_nome;
+    const semDono = itens.filter(d => !d.designer_id);
+    painel().innerHTML = '<div class="conteudo entra design-tela">' +
+      '<div class="cab-conteudo"><div>' +
+        '<button class="b fina contorno" id="ds-voltar" style="margin-bottom:8px">← Voltar ao Design</button>' +
+        '<h1>' + esc(nome) + '</h1>' +
+        (cliente ? '<p>' + esc(cliente) + ' · produção de Design desta linha (leitura)</p>' : '<p>Produção de Design desta linha (leitura)</p>') +
+      '</div>' +
+      (ehDesigner() && semDono.length ? '<button class="b pri" id="ds-assumir-tudo">Assumir demanda (' + semDono.length + ')</button>' : '') +
+      '</div>' +
+      (itens.length ? '<div class="ds-lista ds-lista-grade">' + itens.slice().sort(ordenarPorUrgencia).map(cartao).join('') + '</div>'
+        : '<div class="estado-b7"><b>Nenhuma peça de Design nesta linha ainda.</b></div>') +
+    '</div>';
+    const voltar = painel().querySelector('#ds-voltar');
+    if (voltar) voltar.onclick = () => abrir();
+    const assumirTudo = painel().querySelector('#ds-assumir-tudo');
+    if (assumirTudo) assumirTudo.onclick = async () => {
+      assumirTudo.disabled = true; assumirTudo.textContent = 'Assumindo…';
+      try {
+        const r = await B7.DB.assumirDemandaLinha(linhaId);
+        const n = (r && r.assumidas) || 0;
+        B7.UI.toast(n > 0 ? (n === 1 ? '1 demanda assumida' : n + ' demandas assumidas') : 'Nenhuma demanda sobrou para assumir.');
+        abrirLinha(linhaId);
+      } catch (e) {
+        assumirTudo.disabled = false; assumirTudo.textContent = 'Assumir demanda';
+        B7.UI.toast('Não foi possível assumir: ' + (e.message || ''), { tipo: 'erro' });
+      }
+    };
+    painel().querySelectorAll('[data-peca]').forEach(el => el.onclick = () => abrirDetalhe(el.dataset.peca));
+    ligarThumbs(painel());
   }
 
   /* =================================================================
@@ -884,15 +1041,33 @@ B7.Design = (function () {
   }
 
   /* ---------------------------------------------------------- upload */
+  /* Upload é uma forma de mandar para revisão, não a única: a arte pode
+     ter sido revisada e aprovada por fora (WhatsApp, e-mail…) — nesse
+     caso não existe arquivo nenhum para anexar, e forçar um upload
+     symbolic só pra "cumprir tabela" seria mentir sobre o que aconteceu.
+     A via externa registra isso honestamente: sem arquivo, com uma
+     anotação opcional de canal, e segue o mesmo ciclo de revisão. */
+  const CANAIS_EXTERNOS = ['WhatsApp', 'E-mail', 'Reunião', 'Outro'];
+
   function blocoUpload(d) {
+    if (drawer.viaExterna === undefined) drawer.viaExterna = false;
+    return '<div class="ds-dr-bloco"><h4>Enviar nova versão</h4>' +
+      '<div class="ds-via-toggle" role="tablist">' +
+        '<button role="tab" data-via="upload" class="' + (!drawer.viaExterna ? 'on' : '') + '" aria-selected="' + !drawer.viaExterna + '">Enviar arquivo</button>' +
+        '<button role="tab" data-via="externa" class="' + (drawer.viaExterna ? 'on' : '') + '" aria-selected="' + !!drawer.viaExterna + '">Revisada por fora (sem arquivo)</button>' +
+      '</div>' +
+      '<div id="dv-bloco-envio">' + (drawer.viaExterna ? blocoEnvioExterno() : blocoEnvioUpload(d)) + '</div>' +
+    '</div>';
+  }
+
+  function blocoEnvioUpload(d) {
     const fila = drawer.filaUpload;
     const algumPronto = fila.some(f => f.estado === 'ok');
     const algumEnviando = fila.some(f => f.estado === 'enviando');
     const papeis = PAPEIS_ARQUIVO.filter(([v]) => v !== 'final' ||
       d.status === 'aprovado_interno' || d.status === 'aprovado_cliente');
 
-    return '<div class="ds-dr-bloco"><h4>Enviar nova versão</h4>' +
-      '<div class="ds-drop" id="dv-drop" tabindex="0" role="button" aria-label="Escolher arquivos ou arrastar aqui">' +
+    return '<div class="ds-drop" id="dv-drop" tabindex="0" role="button" aria-label="Escolher arquivos ou arrastar aqui">' +
         '<input type="file" id="dv-arquivo" multiple hidden>' +
         '<div class="ds-drop-tx"><b>Arraste arquivos aqui</b><span>ou clique para escolher · qualquer formato de arte</span></div>' +
       '</div>' +
@@ -901,8 +1076,18 @@ B7.Design = (function () {
       '<textarea class="campo" id="dv-observacao" rows="2" placeholder="O que mudou nesta versão, algo que a revisão deveria olhar…"></textarea>' +
       '<button class="b pri" id="dv-enviar" style="width:100%;margin-top:10px" ' + (algumPronto && !algumEnviando ? '' : 'disabled') + '>' +
         'Enviar para revisão interna</button>' +
-      (algumEnviando ? '<p class="ds-leve" style="margin-top:6px">Aguarde o envio terminar para mandar para revisão.</p>' : '') +
-    '</div>';
+      (algumEnviando ? '<p class="ds-leve" style="margin-top:6px">Aguarde o envio terminar para mandar para revisão.</p>' : '');
+  }
+
+  function blocoEnvioExterno() {
+    return '<p class="ds-leve">Use quando a arte foi mostrada e revisada fora do sistema. Nenhum arquivo é exigido — o resto do fluxo (ajuste, aprovação, finalização) continua igual.</p>' +
+      '<label class="rot" for="dv-canal-externo" style="margin-top:10px">CANAL <span class="ds-leve">— opcional</span></label>' +
+      '<select class="campo fina" id="dv-canal-externo"><option value="">Não informado</option>' +
+        CANAIS_EXTERNOS.map(c => '<option value="' + esc(c) + '"' + (drawer.canalExterno === c ? ' selected' : '') + '>' + esc(c) + '</option>').join('') +
+      '</select>' +
+      '<label class="rot" for="dv-observacao" style="margin-top:12px">OBSERVAÇÃO <span class="ds-leve">— opcional</span></label>' +
+      '<textarea class="campo" id="dv-observacao" rows="2" placeholder="ex.: Aprovado no grupo do WhatsApp com o cliente em 10/09…"></textarea>' +
+      '<button class="b pri" id="dv-enviar" style="width:100%;margin-top:10px">Marcar como enviada para revisão</button>';
   }
 
   function linhaUpload(f, i, papeis) {
@@ -987,6 +1172,50 @@ B7.Design = (function () {
     el.querySelectorAll('[data-up-tentar]').forEach(b => b.onclick = () => iniciarUpload(d, drawer.filaUpload[+b.dataset.upTentar]));
   }
 
+  /* liga o bloco de envio (upload OU externo) — chamado no desenho
+     inicial da gaveta e de novo sempre que o modo é trocado */
+  function ligarBlocoEnvio(d) {
+    const el = drawer.el;
+    const drop = el.querySelector('#dv-drop'), input = el.querySelector('#dv-arquivo');
+    if (drop && input) {
+      drop.onclick = () => input.click();
+      drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } };
+      input.onchange = () => { if (input.files.length) adicionarArquivos(d, input.files); input.value = ''; };
+      drop.ondragover = e => { e.preventDefault(); drop.classList.add('arrastando'); };
+      drop.ondragleave = () => drop.classList.remove('arrastando');
+      drop.ondrop = e => {
+        e.preventDefault(); drop.classList.remove('arrastando');
+        if (e.dataTransfer.files && e.dataTransfer.files.length) adicionarArquivos(d, e.dataTransfer.files);
+      };
+      ligarUpload(d);
+    }
+    const canal = el.querySelector('#dv-canal-externo');
+    if (canal) canal.onchange = () => { drawer.canalExterno = canal.value || null; };
+    const obs = el.querySelector('#dv-observacao');
+    if (obs) obs.oninput = () => { drawer._observacaoTocada = !!obs.value.trim(); };
+
+    const enviar = el.querySelector('#dv-enviar');
+    if (!enviar) return;
+    enviar.onclick = async () => {
+      const via = drawer.viaExterna ? 'externa' : 'upload';
+      const rotuloOriginal = enviar.textContent;
+      enviar.disabled = true; enviar.textContent = via === 'externa' ? 'Registrando…' : 'Enviando…';
+      try {
+        const versaoId = await garantirRascunho(d.id);
+        await B7.DB.enviarVersaoDesign(versaoId, (obs && obs.value.trim()) || '', via, drawer.canalExterno);
+        drawer.filaUpload = []; drawer.rascunhoId = null; drawer._observacaoTocada = false;
+        drawer.canalExterno = null; drawer.viaExterna = false;
+        const novo = await B7.DB.design(d.id); Object.assign(d, novo);
+        drawer.extra = await B7.DB.historicoDesign(d.id);
+        B7.UI.toast(via === 'externa' ? 'Registrado — enviada para revisão interna' : 'Peça enviada para revisão interna');
+        desenharDrawer(); desenharArea();
+      } catch (e) {
+        enviar.disabled = false; enviar.textContent = rotuloOriginal;
+        B7.UI.toast('Não foi possível enviar: ' + (e.message || ''), { tipo: 'erro' });
+      }
+    };
+  }
+
   /* ---------------------------------------------------------- versões */
   function blocoVersoes(versoes) {
     const enviadas = versoes.filter(v => v.estado !== 'rascunho');
@@ -998,6 +1227,7 @@ B7.Design = (function () {
       '<div class="ds-versao ds-versao-' + v.estado + '">' +
         '<div class="ds-versao-cab"><b>V' + String(v.numero).padStart(2, '0') + '</b>' +
         '<span class="ds-chip-v ' + esc(v.estado) + '">' + esc(ESTADOS[v.estado] || v.estado) + '</span>' +
+        (v.via === 'externa' ? '<span class="ds-chip-via">Revisada por fora' + (v.canal_externo ? ' — ' + esc(v.canal_externo) : '') + '</span>' : '') +
         '<small>' + esc(B7.UI.quando(v.enviada_em || v.created_at)) + '</small></div>' +
         (v.observacao ? '<p class="ds-versao-obs">' + esc(v.observacao) + '</p>' : '') +
         (v.estado === 'aprovada_interna' && v.aprovada_em ? '<p class="ds-versao-ap">Aprovada em ' + esc(B7.UI.quando(v.aprovada_em)) + '</p>' : '') +
@@ -1055,37 +1285,17 @@ B7.Design = (function () {
       }
     };
 
-    /* upload */
-    const drop = el.querySelector('#dv-drop'), input = el.querySelector('#dv-arquivo');
-    if (drop && input) {
-      drop.onclick = () => input.click();
-      drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } };
-      input.onchange = () => { if (input.files.length) adicionarArquivos(d, input.files); input.value = ''; };
-      drop.ondragover = e => { e.preventDefault(); drop.classList.add('arrastando'); };
-      drop.ondragleave = () => drop.classList.remove('arrastando');
-      drop.ondrop = e => {
-        e.preventDefault(); drop.classList.remove('arrastando');
-        if (e.dataTransfer.files && e.dataTransfer.files.length) adicionarArquivos(d, e.dataTransfer.files);
-      };
-    }
-    ligarUpload(d);
-    const obs = el.querySelector('#dv-observacao');
-    if (obs) obs.oninput = () => { drawer._observacaoTocada = !!obs.value.trim(); };
-    const enviar = el.querySelector('#dv-enviar');
-    if (enviar) enviar.onclick = async () => {
-      enviar.disabled = true; enviar.textContent = 'Enviando…';
-      try {
-        await B7.DB.enviarVersaoDesign(drawer.rascunhoId, (obs && obs.value.trim()) || '');
-        drawer.filaUpload = []; drawer.rascunhoId = null; drawer._observacaoTocada = false;
-        const novo = await B7.DB.design(d.id); Object.assign(d, novo);
-        drawer.extra = await B7.DB.historicoDesign(d.id);
-        B7.UI.toast('Peça enviada para revisão interna');
-        desenharDrawer(); desenharArea();
-      } catch (e) {
-        enviar.disabled = false; enviar.textContent = 'Enviar para revisão interna';
-        B7.UI.toast('Não foi possível enviar: ' + (e.message || ''), { tipo: 'erro' });
-      }
-    };
+    /* envio da versão — arquivo ou revisão externa */
+    el.querySelectorAll('[data-via]').forEach(b => b.onclick = () => {
+      const novoValor = b.dataset.via === 'externa';
+      if (novoValor === !!drawer.viaExterna) return;
+      drawer.viaExterna = novoValor;
+      const cx = el.querySelector('#dv-bloco-envio');
+      if (cx) cx.innerHTML = drawer.viaExterna ? blocoEnvioExterno() : blocoEnvioUpload(d);
+      el.querySelectorAll('[data-via]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
+      ligarBlocoEnvio(d);
+    });
+    ligarBlocoEnvio(d);
 
     /* roteiro vinculado (briefing de Reel), aberto no editor em que ele vive */
     el.querySelectorAll('[data-abrir-roteiro]').forEach(b => b.onclick = () => {
@@ -1151,5 +1361,5 @@ B7.Design = (function () {
     };
   }
 
-  return { abrir, abrirDetalhe };
+  return { abrir, abrirDetalhe, abrirLinha };
 })();

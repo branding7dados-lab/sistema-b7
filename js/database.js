@@ -1391,8 +1391,18 @@ B7.DB = (function () {
         p_caminho: caminho, p_mime: mime || null, p_tamanho: tamanho || null
       });
     },
-    async enviarVersaoDesign(versaoId, observacao) {
-      return this.rpc('design_versao_enviar', { p_versao_id: versaoId, p_observacao: observacao || '' });
+    /* via: 'upload' (padrão — exige ao menos 1 arquivo já registrado) ou
+       'externa' (arte revisada fora do sistema, ex. WhatsApp — nenhum
+       arquivo é exigido; canal é uma anotação opcional). */
+    async enviarVersaoDesign(versaoId, observacao, via, canal) {
+      return this.rpc('design_versao_enviar', {
+        p_versao_id: versaoId, p_observacao: observacao || '',
+        p_via: via === 'externa' ? 'externa' : 'upload',
+        p_canal: via === 'externa' ? (canal || null) : null
+      });
+    },
+    async assumirDemandaLinha(linhaId) {
+      return this.rpc('design_assumir_demanda_linha', { p_linha_id: linhaId });
     },
     async solicitarAjusteDesign(versaoId, mensagem) {
       return this.rpc('design_solicitar_ajuste', { p_versao_id: versaoId, p_mensagem: mensagem });

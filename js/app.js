@@ -130,6 +130,7 @@ B7.Rota = (function () {
     if (partes[0] === 'kanban') { mostrar('tela-dashboard'); return B7.Kanban.abrir(); }
     if (partes[0] === 'design' && B7.Design) {
       mostrar('tela-dashboard');
+      if (partes[1] === 'linha' && partes[2]) return B7.Design.abrirLinha(partes[2]);
       return partes[1] ? B7.Design.abrirDetalhe(partes[1]) : B7.Design.abrir(params.get('aba'));
     }
     if (partes[0] === 'aprovacoes' && B7.Aprovacoes) {
