@@ -24,6 +24,11 @@ B7.Aprovacoes = (function () {
                    cancelado: 'Cancelado' };
   const TIPO = { roteiro: 'Roteiro', linha: 'Linha editorial', conteudo: 'Conteúdo', semana: 'Status semanal' };
   const rotulo = s => ROTULO[s] || s;
+  const dataBR = ts => { try { return new Date(ts).toLocaleDateString('pt-BR'); } catch (e) { return ''; } };
+  const souAdmin = () => !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario() && B7.Auth.usuario().papel === 'admin');
+  /* a decisão gravada em decidido_* ainda vale? (v3: anulação preserva
+     decidido_por/decidido_em e marca anulada_em) */
+  const decisaoVale = a => !!(a && a.decidido_em && !a.decisao_anulada);
 
   const F = { situacao: 'aguardando', clienteId: '', tipo: '', busca: '', periodo: '' };
 
@@ -169,7 +174,7 @@ B7.Aprovacoes = (function () {
 
   function linha(a) {
     const pend = a.situacao === 'pendente' || a.situacao === 'parcial';
-    const acao = pend ? 'Aguardando o cliente'
+    const acao = pend ? (a.decisao_anulada ? 'Aprovação anulada · aguardando o cliente' : 'Aguardando o cliente')
       : a.situacao === 'ajustes' ? 'Corrigir e reenviar'
       : a.situacao === 'recusado' ? 'Repensar a proposta'
       : a.situacao === 'aprovado' ? 'Seguir para a produção' : '';
@@ -184,8 +189,9 @@ B7.Aprovacoes = (function () {
       '<div class="ap-cenas">' + (a.total_partes
         ? '<b>' + (a.partes_aprovadas || 0) + '/' + a.total_partes + '</b><span>cenas ok' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' ajuste(s)' : '') + '</span>'
         : '') + '</div>' +
-      '<div class="ap-resposta">' + (a.decidido_em
+      '<div class="ap-resposta">' + (decisaoVale(a)
         ? '<b>' + esc(a.decidido_por_nome || 'Cliente') + '</b><span>' + esc(B7.UI.quando(a.decidido_em)) + '</span>'
+        : a.decisao_anulada ? '<b>Anulada</b><span>' + esc(dataBR(a.anulada_em)) + '</span>'
         : (a.ultima_resposta_cliente ? '<b>Comentou</b><span>' + esc(B7.UI.quando(a.ultima_resposta_cliente)) + '</span>' : '<span>sem resposta</span>')) + '</div>' +
       '<span class="ap-sit ' + esc(a.situacao) + '">' + esc(rotulo(a.situacao)) + '</span>' +
       '<span class="ap-acao">' + esc(acao) + '</span>' +
@@ -230,6 +236,7 @@ B7.Aprovacoes = (function () {
       : ap.tipo === 'conteudo' && ap.linha_id ? '#/linha/' + ap.linha_id + '/criativos'
       : ap.tipo === 'semana' ? '#/semana/' + ap.alvo_id : null;
     const comFalha = eventos.filter(e => e.erro);
+    const podeAnular = souAdmin();
 
     painel().innerHTML = '<div class="conteudo entra ap-detalhe">' +
       '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span>' +
@@ -243,11 +250,26 @@ B7.Aprovacoes = (function () {
           (ap.enviado_por_nome ? ' por ' + esc(ap.enviado_por_nome) : '') + '</p></div>' +
         '<div class="ap-cab-acoes">' +
           (linkMaterial ? '<button class="b pri" data-ir="' + esc(linkMaterial) + '">Abrir no editor</button>' : '') +
-          (ap.demanda_id ? '<button class="b contorno" data-ir="#/kanban">Demanda: ' + esc(B7.Kanban ? B7.Kanban.nomeColuna(ap.demanda_coluna) : ap.demanda_coluna) + '</button>' : '') +
+          (ap.demanda_id ? '<button class="b contorno" data-ir="#/kanban/' + esc(ap.demanda_id) + '">Demanda: ' + esc(B7.Kanban ? B7.Kanban.nomeColuna(ap.demanda_coluna) : ap.demanda_coluna) + '</button>' : '') +
+          (podeAnular && decisaoVale(ap)
+            ? '<button class="b perigo contorno" data-anular="total" title="Anula a decisão do cliente sobre esta versão (auditado)">Excluir aprovação</button>' : '') +
         '</div></div>' +
 
+      /* anulação (v3): a decisão original fica registrada, a versão volta a aguardar o cliente */
+      (ap.decisao_anulada
+        ? '<div class="ap-veredito anulada"><b>Aprovação anulada pelo Administrador em ' + esc(dataBR(ap.anulada_em)) + '</b>' +
+          '<p>' + esc(ap.anulada_por_nome || 'Administrador') + ' anulou a decisão “' + esc(rotulo(ap.situacao_anterior || '')) +
+          '” de ' + esc(ap.decidido_por_nome || 'cliente') + ' (' + esc(B7.UI.quando(ap.decidido_em)) + ').' +
+          (ap.anulacao_motivo ? ' Motivo: ' + esc(ap.anulacao_motivo) : '') +
+          (ap.anulacao_visivel_cliente ? ' <em>(motivo visível ao cliente)</em>' : '') + '</p>' +
+          '<p class="ajuda">' + (ap.situacao === 'substituido' ? 'Esta versão já foi substituída; a decisão vale na versão atual.'
+            : 'O material voltou a aguardar a decisão do cliente. O cliente foi avisado com texto neutro.') + '</p></div>' : '') +
+      (ap.demanda_aviso
+        ? '<div class="ap-falha aviso"><b>Atenção na produção:</b> ' + esc(ap.demanda_aviso) +
+          ' <button class="b fina" data-ir="#/kanban/' + esc(ap.demanda_id) + '">Abrir o Kanban</button></div>' : '') +
+
       /* veredito */
-      (ap.decidido_em
+      (decisaoVale(ap)
         ? '<div class="ap-veredito ' + esc(ap.situacao) + '"><b>' + esc(rotulo(ap.situacao)) + ' por ' + esc(ap.decidido_por_nome || 'cliente') +
           ' · ' + esc(B7.UI.quando(ap.decidido_em)) + '</b>' + (ap.motivo ? '<p>' + esc(ap.motivo) + '</p>' : '') +
           (ap.situacao === 'ajustes' || ap.situacao === 'recusado'
@@ -273,8 +295,12 @@ B7.Aprovacoes = (function () {
                 return '<article class="ap-cena ' + sit + '">' +
                   '<div class="ap-cena-cab"><b>CENA ' + String(i + 1).padStart(2, '0') + '</b>' +
                     '<span class="ap-cena-tipo">' + esc((c.funcao && c.funcao.trim()) || c.tipo || '') + '</span>' +
-                    '<span class="ap-cena-sit ' + sit + '">' + (sit === 'aprovada' ? '✓ Aprovada' : sit === 'ajustes' ? 'Ajustes pedidos' : 'Sem decisão') +
-                    (d && d.decidido_em ? ' · ' + esc(B7.UI.quando(d.decidido_em)) : '') + '</span></div>' +
+                    '<span class="ap-cena-sit ' + sit + '">' + (sit === 'aprovada' ? '✓ Aprovada' : sit === 'ajustes' ? 'Ajustes pedidos'
+                      : (d && d.anulada_em ? 'Decisão anulada em ' + esc(dataBR(d.anulada_em)) : 'Sem decisão')) +
+                    (d && d.decidido_em && sit !== 'pendente' ? ' · ' + esc(B7.UI.quando(d.decidido_em)) : '') + '</span>' +
+                    (podeAnular && d && sit !== 'pendente'
+                      ? '<button class="b fina perigo" data-anular="parte" data-parte="' + esc(c.id) + '" data-rotulo="Cena ' + String(i + 1).padStart(2, '0') + '">Excluir</button>' : '') +
+                  '</div>' +
                   '<p class="ap-cena-texto">' + esc(c.texto || '') + '</p>' +
                   (coms.length ? '<div class="ap-cena-coms">' + coms.map(comentarioHTML).join('') + '</div>' : '') +
                 '</article>';
@@ -300,8 +326,9 @@ B7.Aprovacoes = (function () {
           '</div>' +
           '<h3>Linha do tempo</h3><div class="ap-eventos">' +
             (eventos.length ? eventos.map(e => '<div class="ap-evento' + (e.erro ? ' erro' : '') + '"><span>' + esc(B7.UI.quando(e.created_at)) + '</span>' +
-              '<b>' + esc(nomeEvento(e.tipo)) + '</b>' + (e.ator_nome ? '<small>' + esc(e.ator_nome) + '</small>' : '') +
-              (e.payload && e.payload.rotulo ? '<small>' + esc(e.payload.rotulo) + '</small>' : '') + '</div>').join('')
+              '<b>' + esc(nomeEvento(e.tipo, e)) + '</b>' + (e.ator_nome && !/anulada$/.test(e.tipo) ? '<small>' + esc(e.ator_nome) + '</small>' : '') +
+              (e.payload && e.payload.rotulo ? '<small>' + esc(e.payload.rotulo) + '</small>' : '') +
+              (/anulada$/.test(e.tipo) && e.payload && e.payload.motivo ? '<small>Motivo: ' + esc(e.payload.motivo) + '</small>' : '') + '</div>').join('')
             : '<p class="ajuda">Sem eventos registrados (aprovação anterior à v2).</p>') +
           '</div>' +
         '</aside>' +
@@ -313,6 +340,10 @@ B7.Aprovacoes = (function () {
     p.querySelectorAll('[data-resolver]').forEach(b => b.onclick = async () => {
       try { await B7.DB.resolverComentario(b.dataset.resolver); abrirDetalhe(id); }
       catch (e) { B7.UI.toast('Não foi possível resolver', { tipo: 'erro' }); }
+    });
+    p.querySelectorAll('[data-anular]').forEach(b => b.onclick = () => {
+      const parte = b.dataset.anular === 'parte' ? { id: b.dataset.parte, rotulo: b.dataset.rotulo, decisao: decisaoDe(b.dataset.parte) } : null;
+      modalAnular(ap, parte, () => abrirDetalhe(id, true));
     });
     p.querySelectorAll('[data-reprocessar]').forEach(b => b.onclick = async () => {
       b.disabled = true;
@@ -328,13 +359,69 @@ B7.Aprovacoes = (function () {
     };
   }
 
+  /* "Excluir aprovação?" — anulação auditada. O banco exige admin e
+     motivo; aqui só se monta a confirmação com o que vai ser anulado. */
+  function modalAnular(ap, parte, depois) {
+    const anterior = parte ? (parte.decisao && parte.decisao.situacao) : ap.situacao;
+    const tipoDec = parte
+      ? (anterior === 'aprovada' ? 'Aprovação da ' + parte.rotulo : 'Pedido de ajuste na ' + parte.rotulo)
+      : (anterior === 'aprovado' ? 'Aprovação completa' : anterior === 'ajustes' ? 'Solicitação de ajustes' : anterior === 'recusado' ? 'Recusa' : rotulo(anterior));
+    const quando = parte ? (parte.decisao && parte.decisao.decidido_em) : ap.decidido_em;
+    const quem = parte ? (parte.decisao && parte.decisao.decidido_por_nome) : ap.decidido_por_nome;
+    const consequencia = parte
+      ? 'Só a decisão desta cena deixa de valer; o estado do material inteiro é recalculado.'
+      : (ap.versao_atual
+          ? 'Esta decisão deixa de valer. As decisões por cena são preservadas e o material volta a aguardar o cliente' +
+            (ap.demanda_id ? '; a demanda no Kanban volta para “Aguardando cliente” se foi esta aprovação que a moveu (se já houver etapas concluídas, fica um aviso)' : '') + '.'
+          : 'Esta versão já foi substituída: a decisão deixa de valer no histórico e nada muda na versão atual.');
+    const m = B7.UI.modal(
+      '<h3>Excluir aprovação?</h3>' +
+      '<div class="sub">Esta aprovação deixará de ser válida. O histórico da decisão será preservado para auditoria.</div>' +
+      '<dl class="ap-anular-dados">' +
+        '<dt>Cliente</dt><dd>' + esc(ap.cliente_nome) + '</dd>' +
+        '<dt>Material</dt><dd>' + esc(ap.titulo) + ' (' + esc(TIPO[ap.tipo] || ap.tipo) + ')</dd>' +
+        '<dt>Versão</dt><dd>v' + ap.versao + (ap.versao_atual ? ' (atual)' : ' (substituída)') + '</dd>' +
+        '<dt>Tipo</dt><dd>' + esc(tipoDec) + '</dd>' +
+        '<dt>Decidido</dt><dd>' + (quando ? esc(B7.UI.quando(quando)) : '—') + (quem ? ' por ' + esc(quem) : '') + '</dd>' +
+        '<dt>Consequência</dt><dd>' + esc(consequencia) + '</dd>' +
+      '</dl>' +
+      '<label class="rot" for="an-motivo">MOTIVO DA EXCLUSÃO</label>' +
+      '<textarea class="campo alta" id="an-motivo" rows="3" data-foco placeholder="Obrigatório. Fica no histórico interno."></textarea>' +
+      '<label class="op-mini" id="an-visivel-l"><input type="checkbox" id="an-visivel"><span>Mostrar motivo ao cliente<small>sem marcar, o cliente vê só “A aprovação anterior foi anulada pela Branding7.”</small></span></label>' +
+      '<div id="an-erro" class="ajuda erro-txt"></div>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri perigo" id="an-ok">Excluir aprovação</button></div>');
+    const ok = m.querySelector('#an-ok'), erro = m.querySelector('#an-erro');
+    ok.onclick = async () => {
+      const motivo = m.querySelector('#an-motivo').value.trim();
+      if (!motivo) { erro.textContent = 'Informe o motivo da exclusão.'; m.querySelector('#an-motivo').focus(); return; }
+      ok.disabled = true; erro.textContent = '';
+      try {
+        const r = await B7.DB.anularAprovacao({ id: ap.id, escopo: parte ? 'parte' : 'total', parteId: parte ? parte.id : null,
+                                                motivo, visivelCliente: m.querySelector('#an-visivel').checked });
+        m.fechar();
+        B7.UI.toast(parte ? 'Decisão da cena anulada' : 'Aprovação anulada · ' +
+          ((r && r.situacao) === 'substituido' ? 'versão já substituída' : 'o material voltou a aguardar o cliente'));
+        if (depois) depois(r);
+      } catch (e) {
+        ok.disabled = false;
+        erro.textContent = e.code === '42501' ? 'Só o Administrador pode excluir uma aprovação.' : (e.message || 'Não foi possível anular.');
+      }
+    };
+    return m;
+  }
+
   function comentarioHTML(c) {
     return '<div class="ap-com' + (c.resolvido ? ' resolvido' : '') + (c.autor_papel === 'cliente' ? ' cliente' : '') + '">' +
       '<div class="ap-com-cab"><b>' + esc(c.autor_nome || 'Equipe') + '</b><span>' + esc(B7.UI.quando(c.created_at)) + '</span>' +
       (!c.resolvido && c.autor_papel === 'cliente' ? '<button class="b fina" data-resolver="' + esc(c.id) + '">Resolvido</button>' : '') + '</div>' +
       '<p>' + esc(c.texto) + '</p></div>';
   }
-  function nomeEvento(t) {
+  function nomeEvento(t, e) {
+    if (t === 'aprovacao.anulada' || t === 'parte.anulada') {
+      return (t === 'parte.anulada' ? 'Decisão da cena anulada' : 'Aprovação anulada') + ' pelo Administrador' +
+        (e && e.created_at ? ' em ' + dataBR(e.created_at) : '') + (e && e.ator_nome ? ' (' + e.ator_nome + ')' : '');
+    }
     return { 'aprovacao.enviada': 'Enviado ao cliente', 'aprovacao.aprovada': 'Aprovado pelo cliente',
              'aprovacao.ajustes': 'Ajustes solicitados', 'aprovacao.recusada': 'Recusado pelo cliente',
              'parte.aprovada': 'Cena aprovada', 'parte.ajustes': 'Ajuste pedido em cena' }[t] || t;
@@ -354,17 +441,18 @@ B7.Aprovacoes = (function () {
         (opcoes.botaoEnviar ? '<button class="b fina pri" data-ap-enviar>Enviar para aprovação</button>' : '') + '</div>';
     }
     const pend = a.situacao === 'pendente' || a.situacao === 'parcial';
-    return '<div class="ap-bloco ' + esc(a.situacao) + '">' +
+    return '<div class="ap-bloco ' + esc(a.situacao) + (a.decisao_anulada ? ' anulada' : '') + '">' +
       '<span class="ap-sit ' + esc(a.situacao) + '">' + esc(rotulo(a.situacao)) + '</span>' +
-      '<span class="ap-bloco-tx"><b>Versão ' + a.versao + (a.decidido_em ? ' · ' + esc(a.decidido_por_nome || 'cliente') + ' · ' + esc(B7.UI.quando(a.decidido_em)) : ' · enviada ' + esc(B7.UI.quando(a.enviado_em))) + '</b>' +
-        '<small>' + (a.total_partes ? (a.partes_aprovadas || 0) + '/' + a.total_partes + ' cenas aprovadas' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' com ajustes' : '') + ' · ' : '') +
+      '<span class="ap-bloco-tx"><b>Versão ' + a.versao + (decisaoVale(a) ? ' · ' + esc(a.decidido_por_nome || 'cliente') + ' · ' + esc(B7.UI.quando(a.decidido_em)) : ' · enviada ' + esc(B7.UI.quando(a.enviado_em))) + '</b>' +
+        '<small>' + (a.decisao_anulada ? 'Aprovação anulada pelo Administrador em ' + esc(dataBR(a.anulada_em)) + ' · aguardando nova decisão do cliente · ' : '') +
+          (a.total_partes ? (a.partes_aprovadas || 0) + '/' + a.total_partes + ' cenas aprovadas' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' com ajustes' : '') + ' · ' : '') +
           (a.comentarios_abertos ? a.comentarios_abertos + ' observação(ões) em aberto' : 'sem observações em aberto') +
-          (a.motivo ? ' · “' + esc(a.motivo.slice(0, 90)) + (a.motivo.length > 90 ? '…' : '') + '”' : '') + '</small></span>' +
+          (a.motivo && decisaoVale(a) ? ' · “' + esc(a.motivo.slice(0, 90)) + (a.motivo.length > 90 ? '…' : '') + '”' : '') + '</small></span>' +
       '<span class="ap-bloco-acoes"><button class="b fina" data-ir="#/aprovacoes/' + esc(a.id) + '">Ver feedback</button>' +
       (opcoes.botaoEnviar && !pend ? '<button class="b fina pri" data-ap-enviar>Enviar nova versão</button>' : '') +
       (opcoes.botaoEnviar && pend ? '<button class="b fina" data-ap-enviar title="Cria a versão ' + (a.versao + 1) + ' e substitui a atual">Reenviar</button>' : '') +
       '</span></div>';
   }
 
-  return { abrir, abrirDetalhe, blocoStatus, rotulo, TIPO };
+  return { abrir, abrirDetalhe, blocoStatus, rotulo, TIPO, modalAnular, decisaoVale };
 })();

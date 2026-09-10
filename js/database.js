@@ -800,6 +800,16 @@ B7.DB = (function () {
       });
     },
 
+    /* "Excluir aprovação" (só Admin; o banco confere). escopo: 'total' |
+       'parte'. Anulação auditada: nada é apagado; a versão volta a
+       aguardar o cliente (migration_aprovacoes_v3). */
+    async anularAprovacao({ id, escopo, parteId, motivo, visivelCliente }) {
+      return this.rpc('aprov_anular', {
+        p_aprovacao_id: id, p_escopo: escopo || 'total', p_parte_id: parteId || null,
+        p_motivo: motivo || null, p_visivel_cliente: !!visivelCliente
+      });
+    },
+
     async decidirParte(aprovacaoId, parteId, rotulo, situacao, comentario, tipo) {
       return this.rpc('aprov_decidir_parte', {
         p_aprovacao_id: aprovacaoId, p_parte_id: parteId, p_rotulo: rotulo,
@@ -942,34 +952,90 @@ B7.DB = (function () {
         .order('data', { ascending: true }).order('position', { ascending: true }));
     },
 
-    async conteudosVisiveis() {
-      return ok(await sb().from('conteudos').select('*')
-        .eq('visivel_cliente', true).is('deleted_at', null)
-        .order('data_postagem', { ascending: true }).limit(60));
+    /* As consultas do portal recebem o client_id da empresa escolhida.
+       Para o cliente isso é redundante com o RLS (posso_ver_cliente
+       corta o resto) — o filtro existe para a PRÉVIA do admin, que é
+       equipe e passaria sem corte, ler exatamente o conjunto do cliente.
+       Os filtros de liberação (visivel_cliente, publicado_em) ficam
+       repetidos aqui pela mesma razão. Tudo somente leitura. */
+
+    async conteudosVisiveis(clientId) {
+      let q = sb().from('conteudos').select('*')
+        .eq('visivel_cliente', true).is('deleted_at', null);
+      if (clientId) q = q.eq('client_id', clientId);
+      return ok(await q.order('data_postagem', { ascending: true }).limit(60));
     },
 
-    async linhaVisivelAtual() {
-      const linhas = ok(await sb().from('linhas_editoriais').select('*')
-        .eq('visivel_cliente', true).is('deleted_at', null)
-        .order('ano', { ascending: false }).order('mes', { ascending: false }).limit(1));
+    async linhaVisivelAtual(clientId) {
+      let q = sb().from('linhas_editoriais').select('*')
+        .eq('visivel_cliente', true).is('deleted_at', null);
+      if (clientId) q = q.eq('client_id', clientId);
+      const linhas = ok(await q.order('ano', { ascending: false }).order('mes', { ascending: false }).limit(1));
       return linhas[0] || null;
     },
 
-    async ultimoStatusPublicado() {
-      const linhas = ok(await sb().from('status_semanais').select('*')
-        .not('publicado_em', 'is', null).is('deleted_at', null)
-        .order('semana_inicio', { ascending: false }).limit(1));
-      return linhas[0] || null;
+    /* view portal_status: só publicado (migration_portal_v2.sql) */
+    async ultimoStatusPublicado(clientId) {
+      const lista = await this.statusPublicados(clientId, 1);
+      return lista[0] || null;
+    },
+    async statusPublicados(clientId, limite = 40) {
+      let q = sb().from('portal_status').select('*');
+      if (clientId) q = q.eq('client_id', clientId);
+      return ok(await q.order('semana_inicio', { ascending: false }).limit(limite));
     },
 
-    /* ======================================================= KANBAN */
+    /* view portal_producao: conteúdos liberados com status amigável
+       (em_producao | em_revisao | aguardando_voce | aprovado |
+       programado | publicado) e a aprovação atual, sem nada interno */
+    async producaoDoCliente(clientId, limite = 200) {
+      let q = sb().from('portal_producao').select('*');
+      if (clientId) q = q.eq('client_id', clientId);
+      return ok(await q.order('data_postagem', { ascending: false, nullsFirst: false })
+        .order('updated_at', { ascending: false }).limit(limite));
+    },
 
+    /* view portal_gravacoes: só gravações liberadas (visivel_cliente),
+       com nome, data opcional, situação amigável e roteiros por título */
+    async gravacoesDoCliente(clientId, limite = 60) {
+      let q = sb().from('portal_gravacoes').select('*');
+      if (clientId) q = q.eq('client_id', clientId);
+      return ok(await q.order('data_gravacao', { ascending: false, nullsFirst: false }).limit(limite));
+    },
+
+    /* equipe: libera ou recolhe uma gravação do portal */
+    async liberarGravacao(id, visivel) {
+      return this.rpc('gravacao_liberar_portal', { p_id: id, p_visivel: !!visivel });
+    },
+
+    /* ======================================================= KANBAN
+       O quadro lê a view kanban_resumo (resumo por card, já com nome do
+       cliente, responsável e contagem de ajustes pendentes). O detalhe
+       carrega o resto só quando a gaveta abre. */
+
+    /* ativas + concluídas dos últimos 30 dias (histórico limitado) */
     async listarDemandas() {
+      const corte = new Date(Date.now() - 30 * 86400000).toISOString();
       return ok(await sb().from('kanban_resumo').select('*')
-        .is('deleted_at', null).order('posicao', { ascending: true }));
+        .is('deleted_at', null).is('arquivada_em', null)
+        .or('concluida_em.is.null,concluida_em.gte.' + corte)
+        .order('posicao', { ascending: true }).limit(1000));
+    },
+
+    /* uma demanda pela view — usada pelo Realtime para trocar só a linha
+       que mudou, e para reler depois de salvar */
+    async demandas(ids) {
+      if (!ids || !ids.length) return [];
+      return ok(await sb().from('kanban_resumo').select('*').in('id', ids));
+    },
+    async demanda(id) {
+      const l = await this.demandas([id]);
+      return l[0] || null;
     },
 
     async criarDemanda(campos) {
+      const u = window.B7 && B7.Auth && B7.Auth.usuario();
+      if (u && !campos.criado_por) campos.criado_por = u.id;
       const linhas = ok(await sb().from('kanban_demandas').insert([campos]).select());
       return linhas[0];
     },
@@ -978,10 +1044,12 @@ B7.DB = (function () {
       ok(await sb().from('kanban_demandas').update(campos).eq('id', id));
     },
 
-    /* separado do update geral: mover é a operação mais frequente e a
-       única que precisa ser rápida no arrastar */
-    async moverDemanda(id, campos) {
-      ok(await sb().from('kanban_demandas').update(campos).eq('id', id));
+    /* mover = coluna + posição + histórico numa transação no banco
+       (kanban_mover, migration_kanban_v2). Devolve a linha gravada. */
+    async moverDemanda(id, coluna, posicao) {
+      return this.rpc('kanban_mover', {
+        p_id: id, p_coluna: coluna, p_posicao: posicao == null ? null : posicao
+      });
     },
 
     async excluirDemanda(id) {
@@ -1000,21 +1068,61 @@ B7.DB = (function () {
     },
 
     async comentarDemanda(id, texto, autorNome) {
+      const u = window.B7 && B7.Auth && B7.Auth.usuario();
       ok(await sb().from('kanban_comentarios')
-        .insert([{ demanda_id: id, texto, autor_nome: autorNome }]));
+        .insert([{ demanda_id: id, texto, autor_nome: autorNome || (u ? u.nome : 'Equipe'),
+                   autor_id: u ? u.id : null }]));
+    },
+
+    async resolverNotaDemanda(id, resolvido) {
+      ok(await sb().from('kanban_comentarios')
+        .update({ resolvido_em: resolvido ? new Date().toISOString() : null }).eq('id', id));
     },
 
     async historicoDemanda(id) {
       return ok(await sb().from('kanban_historico').select('*')
-        .eq('demanda_id', id).order('created_at', { ascending: false }));
+        .eq('demanda_id', id).order('created_at', { ascending: false }).limit(100));
     },
 
     async registrarKanban(id, de, para, campo) {
       const u = window.B7 && B7.Auth && B7.Auth.usuario();
       ok(await sb().from('kanban_historico').insert([{
         demanda_id: id, de, para, campo: campo || 'coluna',
-        autor_nome: u ? u.nome : null
+        autor_nome: u ? u.nome : null, autor_id: u ? u.id : null
       }]));
+    },
+
+    /* tudo o que a gaveta de detalhe precisa, em paralelo: notas internas,
+       histórico e — se há aprovação — cenas decididas, comentários do
+       cliente e eventos da versão ativa */
+    async detalheDemanda(d) {
+      const vazio = () => [];
+      const [notas, historico, partes, comentarios, eventos] = await Promise.all([
+        this.comentariosDemanda(d.id).catch(vazio),
+        this.historicoDemanda(d.id).catch(vazio),
+        d.aprovacao_id ? this.partesDaAprovacao(d.aprovacao_id).catch(vazio) : vazio(),
+        d.aprovacao_id ? this.comentariosAprovacao(d.aprovacao_id).catch(vazio) : vazio(),
+        d.aprovacao_id ? this.eventosDaAprovacao(d.aprovacao_id).catch(vazio) : vazio()
+      ]);
+      return { notas, historico, partes, comentarios, eventos };
+    },
+
+    /* materiais de um cliente que uma demanda manual pode apontar */
+    async materiaisParaVinculo(clienteId) {
+      if (!clienteId) return [];
+      const vazio = () => [];
+      const [roteiros, linhas, gravacoes] = await Promise.all([
+        this.roteirosDoCliente(clienteId, 40).catch(vazio),
+        this.listarLinhas(clienteId).catch(vazio),
+        this.listarGravacoes(clienteId).catch(vazio)
+      ]);
+      return [].concat(
+        roteiros.map(r => ({ tipo: 'roteiro', id: r.id, titulo: r.titulo || 'Sem título',
+                             extra: r.gravacao ? r.gravacao.nome : '' })),
+        linhas.map(l => ({ tipo: 'linha', id: l.id, titulo: l.nome || 'Linha editorial',
+                           extra: l.mes && l.ano ? l.mes + '/' + l.ano : '' })),
+        gravacoes.map(g => ({ tipo: 'gravacao', id: g.id, titulo: g.nome || 'Gravação', extra: g.status || '' }))
+      );
     },
 
     /* quem pode ser responsável: a equipe interna, não os clientes */

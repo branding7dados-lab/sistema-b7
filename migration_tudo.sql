@@ -23,8 +23,19 @@
 --                                 heartbeat; recria minha_sessao
 --  12. migration_push.sql        push_subscricoes + publicação Realtime
 --                                 (ver PUSH.md)
+--  13. migration_aprovacoes_v3.sql "Excluir aprovação": anulação auditada
+--                                 pelo Admin, evento aprovacao.anulada,
+--                                 kanban_demandas.aviso (ver APROVACOES.md)
+--  14. migration_kanban_v2.sql   Kanban 2.0: vínculo ativo único (com
+--                                 diagnóstico de duplicatas), kanban_resumo
+--                                 com ajustes pendentes, kanban_mover,
+--                                 ajuste por cena → coluna Ajustes,
+--                                 kanban_* na publicação Realtime
+--  15. migration_portal_v2.sql   portal do cliente: views portal_producao,
+--                                 portal_gravacoes, portal_status;
+--                                 gravacoes.visivel_cliente; minha_sessao
 --
---  13. migration_rls.sql          POR ÚLTIMO, e só depois de:
+--  16. migration_rls.sql         POR ÚLTIMO, e só depois de:
 --                                 - conseguir entrar como admin
 --                                 - existir um usuário cliente de teste
 --                                 - ter migration_rls_reverter.sql aberto

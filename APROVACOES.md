@@ -43,9 +43,14 @@ para aprovação" congela um snapshot e cria a versão.
 Transições permitidas: `pendente|parcial → aprovado|ajustes|recusado`
 (pelo cliente aprovador ou equipe); `pendente|parcial → substituido`
 (automático ao enviar nova versão). `aprovado|ajustes|recusado` são
-terminais para a versão — mudar de ideia exige nova versão.
+terminais para a versão — mudar de ideia exige nova versão **ou** a
+anulação pelo Administrador (`aprovado|ajustes|recusado → pendente|parcial`,
+ou `→ substituido` se já existe versão mais nova; ver "Anulação").
 
 ### Parte (`aprovacao_partes.situacao`): `pendente | aprovada | ajustes`
+
+A anulação de uma cena devolve `pendente` e guarda `situacao_anterior` +
+`anulada_em`; o cliente pode decidir a cena de novo.
 
 Uma linha por (aprovação, parte). `parte_id` é o id estável da cena —
 reordenar não move a decisão. A cena precisa existir no snapshot da
@@ -77,6 +82,7 @@ versão. Repetir a mesma decisão não gera evento.
 aprov_enviar(p_client_id, p_tipo, p_alvo_id, p_snapshot, p_observacao) → aprovacoes
 aprov_decidir_parte(p_aprovacao_id, p_parte_id, p_rotulo, p_situacao, p_comentario, p_parte_tipo) → jsonb
 aprov_decidir(p_aprovacao_id, p_situacao, p_motivo, p_versao) → jsonb
+aprov_anular(p_aprovacao_id, p_escopo 'total'|'parte', p_parte_id, p_motivo, p_visivel_cliente) → jsonb  -- só admin
 aprov_reprocessar(p_evento_id)                     -- equipe
 notif_marcar_lida(p_id) · notif_marcar_todas()     -- só as próprias
 ```
@@ -94,7 +100,13 @@ ajustes bloqueiam aprovação total · `P0005` motivo obrigatório.
 |---|---|---|
 | `aprovacao.enviada` | `enviada:<aprovacao_id>` | equipe |
 | `parte.aprovada` / `parte.ajustes` | `parte:<ap>:<parte>:<situacao>:<ts>` | cliente |
-| `aprovacao.aprovada` / `.ajustes` / `.recusada` | `decisao:<ap>:<situacao>` | cliente |
+| `aprovacao.aprovada` / `.ajustes` / `.recusada` | `decisao:<ap>:<situacao>[:<anulada_em>]` | cliente |
+| `aprovacao.anulada` | `anulada:<ap>:<ts>` | admin |
+| `parte.anulada` | `anulada:<ap>:<parte>:<ts>` | admin |
+
+A chave da decisão do todo inclui `anulada_em` quando existe: a nova
+decisão do cliente depois de uma anulação é um fato novo, com evento,
+notificação e Kanban próprios.
 
 `payload` guarda rótulo, comentário, motivo, versão. `processado_em`,
 `erro`, `tentativas` registram o processamento.
@@ -107,6 +119,10 @@ Uma por (evento, destinatário) — `unique`. Destinatários:
   empresa (`perfil_clientes`).
 - eventos do cliente → todos os `admin` e `coordenador` ativos, exceto o
   próprio ator.
+- `aprovacao.anulada` / `parte.anulada` → clientes da empresa com texto
+  neutro ("A aprovação anterior foi anulada pela Branding7.", sem motivo
+  salvo `anulacao_visivel_cliente`) **e** admins/coordenadores com o
+  motivo, exceto quem anulou.
 
 Texto em português com nome, empresa e título vindos do banco. `link`
 é `#/aprovacoes/<id>` (equipe) ou `#/revisar/<id>` (cliente); a tela de
@@ -128,13 +144,65 @@ e `vinculo_id = alvo_id` (ativa, não arquivada).
 | `aprovacao.ajustes` | `ajustes` | cria se não houver; motivo entra na descrição |
 | `aprovacao.recusada` | `ajustes` | prioridade `alta`; `[RECUSADO vN]` na descrição |
 | `aprovacao.aprovada` | `pronto` | só se estava em `aguardando_cliente`, `revisao` ou `ajustes` |
-| `parte.*` | — | só atualiza `aprovacao_situacao` no card |
+| `parte.ajustes` | `ajustes` | trigger `kanban_evento_parte` (migration_kanban_v2): agrega na MESMA demanda; cria se não houver |
+| `parte.aprovada` | — | se o cliente retirou o último pedido e o card foi para Ajustes pela automação, volta a `aguardando_cliente` |
+
+`kanban_resumo.ajustes_pendentes` = cenas em `ajustes` + comentários do
+cliente não resolvidos da versão ativa (fora os de cena já decidida): é o
+"N ajustes pendentes" do card. Um material tem no máximo UMA demanda ativa
+(índice `kanban_vinculo_ativo_unico`). Mover pelo quadro = `kanban_mover`
+(coluna + posição + histórico, equipe). Pronto = produção criativa
+terminou, falta gravar/publicar; Concluída = nada mais a fazer.
+| `aprovacao.anulada` | `aguardando_cliente` | só se a demanda está na coluna que **essa** decisão causou (`pronto` com `origem_evento = aprovacao.aprovada`, ou `ajustes` com `aprovacao.ajustes/recusada`), não travada e não concluída; histórico "Aprovação anulada por <nome>". Caso contrário (concluída, travada ou movida manualmente depois) NÃO move e grava `kanban_demandas.aviso` ("A aprovação foi anulada, mas este material já possui etapas posteriores concluídas. Revise o status da produção."). Versão antiga (virou `substituido`) não mexe no quadro |
+| `parte.anulada` | — | só atualiza `aprovacao_situacao` |
+
+`aviso` aparece no card e no detalhe da demanda; "Já revisei" limpa.
 
 Nunca move para `concluida`. Não mexe em demanda com
 `automacao_travada = true` (checkbox "Travar automação" no card) nem já
 concluída. Todo movimento automático vai para `kanban_historico` com
 autor "<nome> (aprovação)". Repetir o evento não cria segundo card
 (idempotência na chave do evento + busca pela demanda existente).
+
+## Anulação — "Excluir aprovação" (`migration_aprovacoes_v3.sql`)
+
+O Administrador pode anular uma decisão do cliente (aprovação, pedido de
+ajustes ou recusa) no todo ou por cena. Nada é apagado: é um evento de
+negócio auditado.
+
+- **Quem**: só `perfis.papel = 'admin'` ativo — conferido pela função
+  (`42501` para coordenador e cliente). Coordenador vê o histórico da
+  anulação; cliente não anula nem apaga o próprio histórico.
+- **Motivo obrigatório** (`P0005`). `p_visivel_cliente` decide se o
+  motivo vai para o cliente; por padrão não vai.
+- **Não existe `situacao = 'anulado'`.** A anulação preserva
+  `decidido_por`, `decidido_por_nome`, `decidido_em` e `motivo`, grava
+  `situacao_anterior`, `anulada_em`, `anulada_por(_nome)`,
+  `anulacao_motivo`, `anulacao_visivel_cliente`, e **recalcula** a
+  situação: `parcial` se há cena decidida válida, `pendente` se não há,
+  `substituido` se já existe versão mais nova. A view expõe
+  `decisao_anulada = anulada_em is not null and decidido_em <= anulada_em`
+  — é isso que as telas usam para saber se `decidido_*` ainda vale.
+  Um estado terminal exigiria um segundo caminho para "decidir de novo";
+  assim o cliente simplesmente decide de novo pela mesma `aprov_decidir`.
+- **Escopo `total`**: só com decisão do todo (`aprovado|ajustes|recusado`);
+  decisões por cena válidas são preservadas. Repetir a anulação → `P0003`
+  com data e autor da anulação anterior. Se o cliente decidir de novo, a
+  decisão nova vale (`decidido_em > anulada_em`) e pode ser anulada de
+  novo; cada anulação é um evento próprio.
+- **Escopo `parte`**: só a cena volta a `pendente`; o todo é recalculado
+  apenas enquanto ainda está em `pendente|parcial` (uma aprovação
+  completa vigente não cai por causa de uma cena — para isso anule o todo).
+- **`aprov_decidir` e `aprov_decidir_parte` aceitam nova decisão** depois
+  da anulação: a versão está `pendente|parcial`. Não há bloqueio.
+- Trigger `aprovacoes_protege_material` intocada: a função marca
+  `b7.via_funcao`; UPDATE direto de cliente continua barrado.
+- Telas: detalhe da equipe (`#/aprovacoes/<id>`) tem "Excluir aprovação"
+  (todo) e "Excluir" (cena) só para admin; modal "Excluir aprovação?" com
+  cliente, material, versão, tipo, data, consequência, motivo e "Mostrar
+  motivo ao cliente"; linha do tempo "Aprovação anulada pelo Administrador
+  em dd/mm/aaaa" + motivo. Portal: faixa neutra e decisão liberada.
+  Contadores, lista, detalhe e portal acompanham pelo Realtime existente.
 
 ## Autorização
 

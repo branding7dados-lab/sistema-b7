@@ -1,8 +1,14 @@
 /* =====================================================================
    BOOT + ROTAS
-   #/                 → dashboard
-   #/cliente/<id>     → gravações daquele cliente
+   #/                 → Central B7 (equipe) ou home do Portal (cliente)
+   #/cliente/<id>     → ficha do cliente
    #/gravacao/<id>    → editor  (?roteiro=<id> abre num roteiro específico)
+   #/previa/<id>/…    → Portal do Cliente visto pelo admin, somente leitura
+
+   Papel antes de interface: a navegação da equipe fica num <template>
+   em index.html e só é montada (B7.montarShellInterno) depois que a
+   sessão diz quem é. O cliente recebe a navegação do Portal; a interna
+   nunca entra no DOM dele — nem por um quadro.
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -38,8 +44,15 @@ B7.Rota = (function () {
 
     /* Guarda de rota: esconder o menu não basta, o endereço digitado à mão
        também precisa recusar. A regra vive em um lugar só (B7.Perm), para
-       uma tela nova não nascer aberta a todo mundo por esquecimento. */
+       uma tela nova não nascer aberta a todo mundo por esquecimento.
+       O cliente é redirecionado para a home do Portal: a rota interna
+       não fica nem na barra de endereço. */
     if (B7.Perm && !B7.Perm.podeRota(partes[0] || '')) {
+      if (B7.Perm.redirecionaSeNegado()) {
+        B7.UI.toast('Esta área não faz parte do seu acompanhamento.', { tipo: 'erro' });
+        location.replace(B7.Perm.inicio());
+        return;
+      }
       mostrar('tela-dashboard');
       return B7.Dashboard.semPermissao(partes[0] || '');
     }
@@ -48,17 +61,37 @@ B7.Rota = (function () {
        reduzidas das internas. */
     if (B7.Auth && B7.Auth.ehCliente() && B7.Portal) {
       mostrar('tela-dashboard');
+      /* ?empresa=<id> troca a empresa do acompanhamento — só se ela
+         estiver na lista da sessão; fora dela o parâmetro é ignorado */
+      if (params.get('empresa') && !B7.Portal.definirEmpresa(params.get('empresa'))) {
+        B7.UI.toast('Essa empresa não está vinculada à sua conta.', { tipo: 'erro' });
+        location.replace('#/' + (partes[0] || ''));
+        return;
+      }
       if (!partes[0])                    return B7.Portal.abrirHome();
-      if (partes[0] === 'aprovacoes')    return B7.Portal.abrirAprovacoes();
+      if (partes[0] === 'aprovacoes')    return B7.Portal.abrirAprovacoes(params.get('f'));
       /* cada rota abre a sua lista, com o filtro que lhe cabe — antes
          todas caíam na mesma tela, o que fazia o menu parecer quebrado */
       if (partes[0] === 'minha-linha')   return B7.Portal.abrirLinha();
       if (partes[0] === 'minha-producao')return B7.Portal.abrirProducao();
+      if (partes[0] === 'minhas-gravacoes') return B7.Portal.abrirGravacoes();
       if (partes[0] === 'meus-status')   return B7.Portal.abrirStatus();
       if (partes[0] === 'historico')     return B7.Portal.abrirHistorico();
+      if (partes[0] === 'perfil')        return B7.Portal.abrirPerfil();
       if (partes[0] === 'revisar' && partes[1]) return B7.Portal.abrirRevisao(partes[1]);
       if (partes[0] === 'revisar')       return B7.Portal.abrirAprovacoes();
       return B7.Portal.abrirHome();
+    }
+
+    /* Prévia do cliente (admin): o mesmo Portal, com a empresa escolhida
+       e somente leitura. Sair da prévia devolve o shell da equipe. */
+    if (partes[0] === 'previa' && partes[1] && B7.Portal && B7.Auth && B7.Auth.ehAdmin()) {
+      mostrar('tela-dashboard');
+      return B7.Portal.abrirPrevia(partes[1], partes.slice(2), params);
+    }
+    if (B7.Portal && B7.Portal.emPrevia && B7.Portal.emPrevia()) {
+      B7.Portal.sairPrevia();
+      B7.montarShellInterno();
     }
 
     B7.UI.esconderDica();
@@ -125,7 +158,7 @@ B7.Rota = (function () {
 
   /* título da aba acompanha o contexto */
   function titulo(partes) {
-    document.title = partes && partes.length ? partes.join(' · ') + ' · Roteiros B7' : 'Roteiros B7';
+    document.title = partes && partes.length ? partes.join(' · ') + ' · Branding7' : 'Branding7';
   }
 
   return { ir, recarregar, titulo, aoSair };
@@ -186,6 +219,45 @@ B7.Rota = (function () {
   }
   B7.abrirCortina = abrirCortina;
   B7.fecharCortina = fecharCortina;
+
+  /* =================================================================
+     SHELL DA EQUIPE
+     A navegação interna e os controles do topo (busca, Nova gravação,
+     backup) vivem em <template> no index.html. Só entram no DOM aqui,
+     depois que o papel é conhecido e NÃO é cliente. Idempotente: pode
+     ser chamada de novo ao sair da prévia do cliente.
+     ================================================================= */
+  function montarShellInterno() {
+    if (B7.Auth && B7.Auth.ehCliente()) return false;
+    const nav = document.querySelector('.nav');
+    const tpl = document.getElementById('tpl-nav-interna');
+    if (nav && tpl && nav.dataset.shell !== 'interno') {
+      nav.innerHTML = '';
+      nav.appendChild(tpl.content.cloneNode(true));
+      nav.dataset.shell = 'interno';
+      /* a trilha luminosa é filha da nav: volta junto */
+      if (B7.criarTrilha) B7.criarTrilha();
+      aplicarPapelNaNavegacao();
+      if (B7.Perm) B7.Perm.aplicarNavegacao();
+      const ligarSe = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+      ligarSe('nav-backup', () => B7.Backup.menu());
+      ligarSe('nav-atalhos', () => B7.UI.atalhos());
+      ligarSe('nav-config', () => { location.hash = '#/config'; });
+      if (B7.rotularNav) B7.rotularNav();
+    }
+    [['topo-interno-esq', 'tpl-topo-interno-esq'], ['topo-interno-dir', 'tpl-topo-interno-dir']].forEach(([id, t]) => {
+      const alvo = document.getElementById(id), tp = document.getElementById(t);
+      if (!alvo || !tp) return;
+      const frag = tp.content.cloneNode(true);
+      alvo.replaceWith(frag);
+    });
+    document.body.classList.remove('modo-portal', 'modo-previa');
+    document.body.dataset.shell = 'interno';
+    if (B7.ligarTopoInterno) B7.ligarTopoInterno();
+    if (B7.moverTrilha) setTimeout(() => B7.moverTrilha(), 0);
+    return true;
+  }
+  B7.montarShellInterno = montarShellInterno;
 
   /* Mostra quem está logado, ou o caminho para entrar. Sem sessão e sem
      serviço publicado, não aparece nada: um botão que não leva a lugar
@@ -272,12 +344,13 @@ B7.Rota = (function () {
        memória e válida, e esperar que ela chegue ao armazenamento antes de
        recarregar era exatamente o que produzia o laço. */
     B7.Auth.anotar('aoEntrar', 'montando sem recarregar');
-    /* O layout do portal é montado ANTES de montarSistema, que é quem
-       liga os cliques da sidebar. Montar de novo depois recriaria os
-       links sem handler — a sidebar ficava morta até recarregar. */
+    /* Papel resolvido: agora sim a interface certa entra no DOM. O
+       cliente recebe o Portal; a equipe recebe o shell interno. Os
+       cliques da navegação são delegados no documento, então montar
+       antes ou depois de montarSistema dá no mesmo. */
     if (B7.Auth.ehCliente() && B7.Portal) B7.Portal.montarLayout();
+    else montarShellInterno();
     await B7.montarSistema();
-    if (!(B7.Auth.ehCliente() && B7.Portal) && B7.Perm) B7.Perm.aplicarNavegacao();
     B7.pintarSessao();
 
     /* A persistência ainda importa para a próxima visita — só que agora
@@ -328,20 +401,32 @@ B7.Rota = (function () {
 
     document.body.classList.remove('apurando');
 
-    /* ---- topo: dashboard ---- */
-    const busca = document.getElementById('campo-busca');
-    const caixaRes = document.getElementById('resultados-busca');
-    busca.addEventListener('input', () => B7.Dashboard.buscar(busca.value, caixaRes));
-    busca.addEventListener('focus', () => { if (busca.value.trim()) caixaRes.classList.add('aberto'); });
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.busca')) caixaRes.classList.remove('aberto');
-    });
+    /* ---- topo: dashboard ----
+       Estes controles são da equipe e só existem depois de
+       montarShellInterno. No Portal do Cliente não existem: por isso
+       tudo aqui é condicional, e a ligação pode ser refeita quando o
+       admin sai da prévia do cliente. */
     const ligarTopo = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-    ligarTopo('bt-nova-gravacao', () => B7.Dashboard.modalNovaGravacao());
-    document.getElementById('mn-novo-cliente').onclick = () => B7.Dashboard.modalNovoCliente();
-    document.getElementById('mn-paleta').onclick = () => B7.UI.paleta();
-    document.getElementById('mn-exportar').onclick = () => B7.Backup.exportar();
-    document.getElementById('mn-importar').onclick = () => B7.Backup.importar();
+    B7.ligarTopoInterno = function () {
+      const busca = document.getElementById('campo-busca');
+      const caixaRes = document.getElementById('resultados-busca');
+      if (busca && caixaRes && !busca.dataset.ligado) {
+        busca.dataset.ligado = '1';
+        busca.addEventListener('input', () => B7.Dashboard.buscar(busca.value, caixaRes));
+        busca.addEventListener('focus', () => { if (busca.value.trim()) caixaRes.classList.add('aberto'); });
+      }
+      ligarTopo('bt-nova-gravacao', () => B7.Dashboard.modalNovaGravacao());
+      ligarTopo('mn-novo-cliente', () => B7.Dashboard.modalNovoCliente());
+      ligarTopo('mn-paleta', () => B7.UI.paleta());
+      ligarTopo('mn-exportar', () => B7.Backup.exportar());
+      ligarTopo('mn-importar', () => B7.Backup.importar());
+      B7.UI.ligarMenus(document.getElementById('tela-dashboard') || document);
+    };
+    B7.ligarTopoInterno();
+    document.addEventListener('click', e => {
+      const caixaRes = document.getElementById('resultados-busca');
+      if (caixaRes && !e.target.closest('.busca')) caixaRes.classList.remove('aberto');
+    });
 
     /* ---- topo: editor ---- */
     ligarTopo('bt-voltar', () => { location.hash = '#/'; });
@@ -350,6 +435,26 @@ B7.Rota = (function () {
     ligarTopo('bt-baixar', () => B7.Editor.baixar());
     ligarTopo('mn-ed-baixar', () => B7.Editor.baixar());   /* no celular o botão do topo some */
     document.getElementById('mn-ed-apresentar').onclick = () => B7.Editor.apresentar();
+    /* Gravação só aparece no portal do cliente quando a equipe libera
+       (gravacoes.visivel_cliente via gravacao_liberar_portal). */
+    document.getElementById('mn-ed-portal').onclick = async () => {
+      const g = B7.Editor.estado.gravacao, bt = document.getElementById('mn-ed-portal');
+      const novo = !g.visivel_cliente;
+      bt.disabled = true;
+      try {
+        await B7.DB.liberarGravacao(g.id, novo);
+        g.visivel_cliente = novo;
+        B7.pintarPortalGravacao();
+        B7.UI.toast(novo ? 'Gravação liberada no portal do cliente' : 'Gravação retirada do portal do cliente');
+      } catch (e) {
+        B7.UI.toast('Não foi possível salvar: ' + (e.message || 'erro'), { tipo: 'erro' });
+      }
+      bt.disabled = false;
+    };
+    B7.pintarPortalGravacao = function () {
+      const g = B7.Editor.estado.gravacao, bt = document.getElementById('mn-ed-portal');
+      if (g && bt) bt.textContent = g.visivel_cliente ? '✓ Visível no portal do cliente' : 'Liberar no portal do cliente';
+    };
     document.getElementById('mn-ed-arquivar').onclick = () =>
       B7.Dashboard.arquivarGravacao(B7.Editor.estado.gravacao.id, true);
     document.getElementById('mn-ed-dados').onclick = () => B7.Editor.editarGravacao();
@@ -380,7 +485,7 @@ B7.Rota = (function () {
        resolve para todas de uma vez, inclusive telas futuras. */
     document.addEventListener('click', e => {
       const alvo = e.target.closest('[data-ir]');
-      if (!alvo || alvo.closest('.nav')) return;      /* a sidebar tem o seu */
+      if (!alvo) return;
       const destino = alvo.dataset.ir;
       if (!destino) return;
       e.preventDefault();
@@ -388,20 +493,12 @@ B7.Rota = (function () {
       if (B7.fecharGaveta) B7.fecharGaveta();
     });
 
+    /* ---- sidebar ----
+       A navegação (da equipe ou do Portal) é montada por quem conhece o
+       papel — montarShellInterno ou B7.Portal.montarLayout — e os
+       cliques passam pela delegação acima. Os botões com id da equipe
+       são ligados em montarShellInterno, porque só existem lá. */
     aplicarPapelNaNavegacao();
-
-    /* ---- sidebar ---- */
-    document.querySelectorAll('.nav a[data-ir]').forEach(a => a.onclick = () => {
-      location.hash = a.dataset.ir;
-      if (B7.fecharGaveta) B7.fecharGaveta();
-    });
-    /* Estes botões não existem no Portal do Cliente: a navegação dele é
-       outra. Amarrar evento sem checar derrubava o arranque inteiro antes
-       de a home ser montada. */
-    const ligarSe = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-    ligarSe('nav-backup', () => B7.Backup.menu());
-    ligarSe('nav-atalhos', () => B7.UI.atalhos());
-    ligarSe('nav-config', () => { location.hash = '#/config'; });
     /* recolhida só mostra ícones: o nome do item vai para o title */
     const rotularNav = () => {
       const r = document.body.classList.contains('recolhida');
@@ -410,6 +507,7 @@ B7.Rota = (function () {
         if (r && sp) a.title = sp.textContent.trim(); else a.removeAttribute('title');
       });
     };
+    B7.rotularNav = rotularNav;
     document.getElementById('bt-recolher').onclick = () => {
       const r = document.body.classList.toggle('recolhida');
       B7.pref.gravar('sidebar_recolhida', r);
@@ -456,12 +554,21 @@ B7.Rota = (function () {
     };
     window.addEventListener('offline', avisarConexao);
 
-    /* ---- B7 Light Trail: a trilha desliza até o item ativo ---- */
+    /* ---- B7 Light Trail: a trilha desliza até o item ativo ----
+       A nav é reescrita ao trocar de shell (Portal ↔ equipe); a trilha
+       é recriada por B7.criarTrilha quando isso acontece. */
     const nav = document.querySelector('.nav');
-    const trilha = document.createElement('div');
-    trilha.className = 'nav-trilha';
-    nav.appendChild(trilha);
+    B7.criarTrilha = function () {
+      if (!nav.querySelector('.nav-trilha')) {
+        const t = document.createElement('div');
+        t.className = 'nav-trilha';
+        nav.appendChild(t);
+      }
+    };
+    B7.criarTrilha();
     B7.moverTrilha = function () {
+      B7.criarTrilha();
+      const trilha = nav.querySelector('.nav-trilha');
       const ativo = nav.querySelector('a.on');
       if (!ativo) { trilha.classList.remove('visivel'); return; }
       trilha.style.top = (ativo.offsetTop + 8) + 'px';
@@ -586,13 +693,16 @@ B7.Rota = (function () {
       document.body.classList.remove('apurando');
       B7.Auth.anotar('app', 'exigido=' + !!r.exigido + ' sessao=' + !!r.sessao);
       B7.pintarSessao();
-      /* Antes de montar qualquer tela: o cliente não pode ver a navegação
-         interna nem por um instante. */
-      if (B7.Auth.ehCliente() && B7.Portal) B7.Portal.montarLayout();
-      else if (B7.Perm) B7.Perm.aplicarNavegacao();
-      /* tela de login na frente: não montamos o resto agora. Ao entrar,
-         a página recarrega e este trecho roda de novo, já com sessão. */
+      /* tela de login na frente: nenhum shell é montado — nem o da
+         equipe nem o do Portal. Ao entrar, B7.aoEntrar decide qual. */
       if (r.exigido) { fecharCortina(); return; }
+      /* Papel conhecido. O cliente recebe o Portal; a equipe (ou o
+         sistema aberto sem serviço de acesso) recebe o shell interno.
+         A navegação interna não existia no DOM até este ponto. */
+      if (B7.Auth.ehCliente() && B7.Portal) B7.Portal.montarLayout();
+      else montarShellInterno();
+    } else {
+      montarShellInterno();
     }
 
     try { await montarSistema(); }

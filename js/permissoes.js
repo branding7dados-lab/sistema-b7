@@ -26,9 +26,12 @@ B7.Perm = (function () {
     ],   /* sem usuarios, importar, atalhos e lixeira */
     cliente: [
       '', 'aprovacoes', 'revisar', 'minha-linha', 'minha-producao',
-      'meus-status', 'historico', 'perfil'
+      'minhas-gravacoes', 'meus-status', 'historico', 'perfil'
     ]
   };
+  /* "Visualizar como cliente" (#/previa/<id>) é só do administrador:
+     admin tem '*'; coordenador e cliente não têm 'previa' e caem na
+     recusa. A prévia é somente leitura de qualquer forma (portal.js). */
 
   /* Itens da barra lateral. A do cliente não é a da equipe com menos
      coisas: é outra navegação, voltada a acompanhar e aprovar. */
@@ -75,11 +78,11 @@ B7.Perm = (function () {
     return !lista || lista.includes(secao);
   }
 
-  /* Para onde mandar quem tentou uma rota que não pode abrir. */
-  function inicio() {
-    if (semSessao()) return '#/';
-    return papel() === 'cliente' ? '#/' : '#/';
-  }
+  /* Para onde mandar quem tentou uma rota que não pode abrir. O cliente
+     é REDIRECIONADO (app.js troca o endereço), não só avisado: uma
+     rota interna digitada à mão não pode nem ficar na barra. */
+  function inicio() { return '#/'; }
+  function redirecionaSeNegado() { return papel() === 'cliente'; }
 
   /* Esconde o que o papel não alcança. Some do DOM em vez de ficar
      desabilitado: opção com cadeado só informa o que a pessoa não pode
@@ -111,6 +114,6 @@ B7.Perm = (function () {
     });
   }
 
-  return { podeRota, podeConfig, inicio, aplicarNavegacao, papel, semSessao,
+  return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
            ROTAS, CONFIG };
 })();

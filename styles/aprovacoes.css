@@ -143,3 +143,17 @@
   .ap-item{grid-template-columns:40px 1fr;row-gap:6px;} .ap-item > *{grid-column:2;} .ap-item .ap-logo{grid-column:1;grid-row:1 / span 2;}
   .ap-duplo{grid-template-columns:1fr;}
 }
+
+/* ---- anulação (v3): "Excluir aprovação" ---- */
+.ap-veredito.anulada{background:var(--suave);border:1px dashed var(--borda-forte);}
+.ap-veredito.anulada b{color:var(--ink-2);} .ap-veredito.anulada em{color:var(--ink-3);font-style:normal;}
+.ap-falha.aviso{background:var(--ambar-bg);color:var(--ambar);}
+.ap-falha.aviso .b{margin-left:8px;}
+.ap-cena-cab .b.perigo{margin-left:8px;color:var(--ink-4);}
+.ap-cena-cab .b.perigo:hover{color:var(--erro);background:var(--erro-bg);}
+.ap-anular-dados{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0 0 16px;font-size:13px;}
+.ap-anular-dados dt{color:var(--ink-4);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding-top:2px;}
+.ap-anular-dados dd{margin:0;color:var(--ink);line-height:1.45;}
+.modal .op-mini{margin:10px 0 4px;width:100%;box-sizing:border-box;}
+.b.pri.perigo{background:var(--erro);box-shadow:none;} .b.pri.perigo:hover{background:var(--erro);color:#fff;filter:brightness(1.08);}
+.ap-bloco.anulada{border:1px dashed var(--borda-forte);background:var(--suave);}

@@ -59,6 +59,7 @@ B7.Editor = (function () {
       g.nome + (g.data_gravacao ? ' · ' + B7.UI.dataBR(g.data_gravacao) : '');
     const bt = document.getElementById('ed-status');
     bt.innerHTML = B7.UI.chipStatus(g.status);
+    if (B7.pintarPortalGravacao) B7.pintarPortalGravacao();
   }
 
   /* =================================================================

@@ -360,3 +360,63 @@ Migrations novas: `migration_presenca.sql` e `migration_push.sql` (depois de
 - Só no aparelho real: `env(safe-area-inset-*)` em iPhone com notch,
   comportamento de `100dvh` com a barra do Safari/Chrome recolhendo, e a
   ausência de hover no toque (a prévia já não é ligada em `pointer:coarse`).
+
+## Build 2026-09-10 — R: "Excluir aprovação" (anulação auditada pelo Admin)
+
+Ver a seção "Anulação" em APROVACOES.md. Resumo:
+
+- `migration_aprovacoes_v3.sql` (nova; roda depois de `migration_push.sql`
+  e antes do RLS): colunas de auditoria em `aprovacoes` e
+  `aprovacao_partes` (`anulada_em`, `anulada_por`, `anulada_por_nome`,
+  `anulacao_motivo`, `anulacao_visivel_cliente`, `situacao_anterior`),
+  `kanban_demandas.aviso`, função `aprov_anular` (só admin ativo; motivo
+  obrigatório), `aprov_processar_evento` recriada com os eventos
+  `aprovacao.anulada` / `parte.anulada`, `aprov_decidir` recriada só para
+  a chave do evento incluir `anulada_em` (sem isso a nova decisão do
+  cliente depois de uma anulação não gerava evento), `aprovacoes_painel`
+  recriada (drop/create) com as colunas de anulação e `decisao_anulada`,
+  `kanban_resumo` recriada (usa `d.*` e precisava enxergar `aviso`).
+- Não existe `situacao = 'anulado'`: a anulação devolve a versão a
+  `pendente`/`parcial` (ou `substituido` se já há versão mais nova) e o
+  cliente decide de novo. Motivo documentado na migration e em APROVACOES.md.
+- `js/database.js`: `anularAprovacao({id, escopo, parteId, motivo, visivelCliente})`.
+- `js/aprovacoes.js`: botão "Excluir aprovação" no cabeçalho do detalhe e
+  "Excluir" por cena (só admin — o banco confere também); modal "Excluir
+  aprovação?" com cliente, material, versão, tipo, data da decisão,
+  consequência, motivo obrigatório e "Mostrar motivo ao cliente"; bloco
+  "Aprovação anulada pelo Administrador em dd/mm/aaaa" + motivo; aviso da
+  demanda (Kanban) quando a anulação não pôde mover; linha do tempo e lista
+  reconhecem `decisao_anulada`; `blocoStatus` (editor e linha editorial)
+  mostra a anulação. Contadores acompanham pelo realtime já existente.
+- `js/portal.js` (mínimo): faixa neutra "A aprovação anterior foi anulada
+  pela Branding7." em `abrirRevisao` (motivo só se o admin marcou),
+  `textoEncerrado` e marca na cena anulada; a decisão volta a estar
+  disponível porque a versão volta a `pendente`/`parcial`.
+- `js/kanban.js` (mínimo): card mostra "⚠ Revisar: aprovação anulada" e o
+  detalhe mostra o texto do `aviso` com "Já revisei" (limpa o campo).
+- CSS: `styles/aprovacoes.css`, `styles/portal.css`, `styles/kanban.css`.
+
+### Como foi testado
+- `node --check js/*.js sw.js`.
+- PostgreSQL 16 local, banco `wt_r`: cadeia completa de migrations, v3
+  duas vezes, RLS, `t_aprov.sql` (9 ERROR esperados, nada além) e
+  `/tmp/pgtest/t_anular.sql`: anulação total (situação, `decidido_*`
+  preservados, evento processado, notificações — cliente com texto neutro,
+  coordenador com motivo, admin ator sem notificação —, Kanban
+  `pronto → aguardando_cliente` com histórico "Aprovação anulada por …",
+  painel com `decisao_anulada`), coordenador e cliente → 42501, sem motivo
+  → P0005, anular duas vezes → P0003 com data e autor, cliente decide de
+  novo → aceito e gera evento/Kanban `pronto` de novo, demanda concluída →
+  `aviso` e sem movimento, motivo visível ao cliente quando marcado,
+  anulação por cena (parte volta a `pendente`, todo recalculado, evento
+  `parte.anulada`), versão antiga anulada → `substituido` sem mexer no
+  Kanban, UPDATE direto do cliente continua bloqueado, 0 eventos com erro.
+- Playwright headless (porta 8783, REST/RPC simulados): admin vê o botão
+  e o "Excluir" por cena, modal com todos os campos, envio sem motivo é
+  barrado na tela sem chamar o banco, envio chama `aprov_anular` com
+  `p_escopo`, `p_motivo` e `p_visivel_cliente`, detalhe redesenha com o
+  bloco de anulação e a linha do tempo; coordenador não vê o botão;
+  cliente vê a faixa neutra e os botões de decisão de volta.
+- Só em produção: Realtime de verdade (o canal já existente redesenha a
+  lista/detalhe/portal quando `aprovacoes` muda), push das notificações
+  de anulação, e o Kanban redesenhado por outro agente exibindo `aviso`.
