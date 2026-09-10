@@ -60,9 +60,30 @@ B7.Notif = (function () {
       window.addEventListener('online', atualizar);
       window.addEventListener('hashchange', fechar);
       timer = setInterval(atualizar, 60000);
+      avisarLoteAoEntrar();
     }
     realtime();
     atualizar();
+  }
+
+  /* ----------------------------------------- som de "voltei, tem coisa nova"
+     Toca no máximo UMA vez por lote genuinamente novo acumulado enquanto a
+     pessoa estava fora (offline, outra aba, sessão anterior) — nunca de
+     novo para notificações que o reload já contabilizou. A marca d'água
+     (perfis.preferencias.ultimo_som_em) é persistida no banco para
+     sobreviver a reload e valer em qualquer dispositivo/login; nada aqui
+     marca a notificação como lida. */
+  async function avisarLoteAoEntrar() {
+    try {
+      const u = await B7.DB.ultimaNaoLida();
+      if (!u) return;
+      const p = prefs();
+      const marca = p.ultimo_som_em ? Date.parse(p.ultimo_som_em) : 0;
+      const criada = Date.parse(u.created_at);
+      if (!(criada > marca)) return;      /* já contabilizada em login/reload anterior */
+      if (p.som) tocarSom();
+      try { await gravarPrefs({ ultimo_som_em: u.created_at }); } catch (e) {}
+    } catch (e) {}
   }
 
   function pintarBadge() {

@@ -43,8 +43,28 @@ B7.Conteudo = (function () {
      objeto em memória usa isso para espelhar o valor digitado nele —
      senão, a próxima renderização (troca de aba, por exemplo) volta ao
      valor antigo enquanto o banco ainda nem recebeu o novo. */
+  /* Designer tem acesso de LEITURA a Linha Editorial/conteúdo/cliente
+     (spec "B7 Design Final Operational Refinement" §18/§24): não é só
+     esconder botão — o RLS do banco já bloqueia a escrita de verdade
+     (ver migration_editorial_versao.sql, testado com tentativa de UPDATE
+     direta). Aqui a UI acompanha isso: os mesmos campos viram somente
+     leitura para quem é designer, num único ponto central (ligarCampos é
+     o autosave usado por linha.js/conteudo.js para todas as tabelas desta
+     lista — nenhuma delas é do B7 Design, que tem sua própria tela). */
+  function souDesignerSomenteLeitura() {
+    return !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario() && B7.Auth.papel && B7.Auth.papel() === 'designer');
+  }
+
   function ligarCampos(raiz, aoMudar) {
+    const bloquear = souDesignerSomenteLeitura();
     raiz.querySelectorAll('[data-campo][data-tab]').forEach(el => {
+      if (bloquear) {
+        if ('readOnly' in el) el.readOnly = true;
+        el.disabled = true;
+        el.classList.add('so-leitura');
+        el.title = 'Somente leitura — quem edita a Linha Editorial é a equipe.';
+        return;
+      }
       const gravar = () => {
         if (el.tagName === 'TEXTAREA') B7.UI.autoAltura(el);
         /* date e number vazios precisam ir como null: '' não é uma data

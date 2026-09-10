@@ -311,6 +311,11 @@ label.rot .leve{letter-spacing:0;font-weight:500;text-transform:none;}
 .campo::placeholder{color:var(--ink-4);}
 .campo:focus{outline:none;border-color:var(--magenta);box-shadow:0 0 0 3px rgba(194,28,131,.1);}
 .campo.erro{border-color:var(--erro);}
+/* Designer vendo Linha Editorial/conteúdo/cliente: campo continua legível
+   (não é um "desabilitado" cinza-sobre-cinza comum), só sem cursor de
+   texto e sem foco — deixa claro que é leitura, não falha visual. */
+.campo.so-leitura{cursor:default;background:var(--fundo, var(--card));opacity:.85;}
+.campo.so-leitura:focus{box-shadow:none;border-color:var(--borda-forte);}
 select.campo{appearance:none;cursor:pointer;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239E97B5' stroke-width='2.4'><path d='M6 9l6 6 6-6'/></svg>");
   background-repeat:no-repeat;background-position:right 13px center;}

@@ -192,14 +192,17 @@ B7.Linha = (function () {
       '<h1>' + esc(l.nome || (MESES[l.mes - 1] + ' ' + l.ano)) + '</h1>' +
       '<div class="meta"><span>' + L.conteudos.length + ' conteúdo' + (L.conteudos.length === 1 ? '' : 's') + '</span>' +
       '<span class="p"></span><span>' + estruturados + ' estruturado' + (estruturados === 1 ? '' : 's') + '</span>' +
-      (l.canais ? '<span class="p"></span><span>' + esc(l.canais) + '</span>' : '') + '</div></div>' +
+      (l.canais ? '<span class="p"></span><span>' + esc(l.canais) + '</span>' : '') +
+      (l.concluida_em ? '<span class="p"></span><span title="Última conclusão formal — libera demandas de Design">Concluída · v' + (l.versao_design || 1) + '</span>' : '') +
+      '</div></div>' +
       '<div class="acoes">' +
         '<button class="b pri" data-novo-conteudo>+ Novo conteúdo</button>' +
         '<button class="b clara" data-baixar-linha>Baixar PDF</button>' +
         '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
           '<button data-duplicar-linha>Duplicar para outro mês</button>' +
           '<button data-status-semanal>Criar status semanal</button>' +
-          (podeEnviarDesign() ? '<button data-enviar-design-linha>Enviar para Design</button>' : '') +
+          (podeEnviarDesign() ? '<button data-concluir-linha><b>Concluir Linha Editorial</b></button>' : '') +
+          (podeEnviarDesign() ? '<button data-enviar-design-linha>Enviar para Design (rápido, sem versão)</button>' : '') +
           '<div class="rot">STATUS DA LINHA</div>' +
           C.STATUS_LINHA.map(v => '<button data-status-linha="' + esc(v) + '">' +
             (l.status === v ? '● ' : '') + esc(v) + '</button>').join('') +
@@ -289,6 +292,52 @@ B7.Linha = (function () {
     } catch (e) {
       B7.UI.toast(e.message || 'Não foi possível enviar para Design.', { tipo: 'erro' });
     }
+  }
+
+  /* -------------------------------------------------- CONCLUIR LINHA
+     Gatilho formal (spec "B7 Design Final Operational Refinement" §5-13):
+     gera/atualiza as peças de Design com um snapshot versionado, permite
+     atribuir a um Designer específico (ou deixar em "Demandas a fazer"
+     para qualquer um assumir) e dispara a notificação em lote. Distinto
+     do "Enviar para Design" acima, que continua existindo para quem
+     quiser gerar peças rapidamente sem passar pela versão/():
+     linha_concluir reusa a mesma geração por baixo, então repetir aqui
+     nunca duplica peça nenhuma. */
+  async function concluirLinhaEditorial() {
+    let designers = [];
+    try { designers = await B7.DB.listarDesigners(); } catch (e) {}
+    const jaConcluida = !!L.linha.concluida_em;
+    const m = B7.UI.modal('<h3>Concluir Linha Editorial</h3>' +
+      '<div class="sub">' + (jaConcluida
+        ? 'Esta linha já foi concluída antes (v' + (L.linha.versao_design || 1) + '). Concluir de novo gera a próxima versão, mantém o histórico e sinaliza para o(a) Designer qualquer peça cujo briefing mudou.'
+        : 'Libera as peças de Design desta linha para produção. Rascunhos e linhas ainda não concluídas não aparecem para o(a) Designer.') + '</div>' +
+      '<label class="rot">RESPONSÁVEL PELO DESIGN (opcional)</label>' +
+      '<select class="campo" id="cl-resp"><option value="">Sem responsável — fica em "Demandas a fazer"</option>' +
+      designers.map(d => '<option value="' + esc(d.id) + '">' + esc(d.nome) + '</option>').join('') + '</select>' +
+      '<div class="ajuda">Se escolher um(a) Designer, as peças sem responsável desta linha são atribuídas a ele(a) automaticamente e ele(a) é notificado(a).</div>' +
+      '<div id="cl-erro" class="ajuda erro-txt"></div>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" id="cl-confirmar">Concluir</button></div>');
+    const botao = m.querySelector('#cl-confirmar'), erro = m.querySelector('#cl-erro');
+    botao.onclick = async () => {
+      botao.disabled = true; botao.textContent = 'Concluindo…'; erro.textContent = '';
+      try {
+        const respId = m.querySelector('#cl-resp').value || null;
+        const r = await B7.DB.concluirLinha(L.linha.id, respId);
+        m.fechar();
+        const partes = [plural(r.total_pecas || 0, 'peça de Design', 'peças de Design')];
+        if (r.pecas_criadas) partes.push(plural(r.pecas_criadas, 'nova peça', 'novas peças'));
+        if (r.pecas_atualizadas) partes.push(plural(r.pecas_atualizadas, 'peça com briefing atualizado', 'peças com briefing atualizado'));
+        if (r.pecas_atribuidas) partes.push(plural(r.pecas_atribuidas, 'peça atribuída agora', 'peças atribuídas agora'));
+        B7.UI.toast('Linha concluída (v' + r.versao + ') — ' + partes.join(', ') + '.');
+        L.linha = await B7.DB.linha(L.linha.id);
+        await carregarDesign();
+        atualizar();
+      } catch (e) {
+        botao.disabled = false; botao.textContent = 'Concluir';
+        erro.textContent = e.message || 'Não foi possível concluir a linha.';
+      }
+    };
   }
 
   async function enviarConteudoParaDesign(conteudoId) {
@@ -881,6 +930,7 @@ B7.Linha = (function () {
     /* Design: enviar (linha inteira ou um conteúdo) e abrir a peça —
        o badge no card, a linha da tabela e o item do menu do card. */
     p.querySelectorAll('[data-enviar-design-linha], #design-enviar-linha').forEach(b => b.onclick = () => enviarLinhaParaDesign());
+    p.querySelectorAll('[data-concluir-linha]').forEach(b => b.onclick = () => concluirLinhaEditorial());
     p.querySelectorAll('[data-enviar-design]').forEach(b => b.onclick = e => {
       e.stopPropagation();
       enviarConteudoParaDesign(b.dataset.enviarDesign);

@@ -867,6 +867,15 @@ B7.DB = (function () {
     },
     async marcarLida(id) { return this.rpc('notif_marcar_lida', { p_id: id }); },
     async marcarTodasLidas() { return this.rpc('notif_marcar_todas', {}); },
+    /* mais recente não lida — usada só para decidir se toca o som de
+       "cheguei e tem coisa nova" no login/retorno, sem trazer a lista
+       inteira de não lidas (leitura leve, migration_editorial_versao.sql §8) */
+    async ultimaNaoLida() {
+      const { data, error } = await sb().from('notificacoes').select('id, created_at')
+        .is('lida_em', null).order('created_at', { ascending: false }).limit(1);
+      if (error) throw error;
+      return (data && data[0]) || null;
+    },
 
     /* ---- presença e preferências (migration_presenca.sql) ---- */
     async heartbeat() { return this.rpc('perfil_heartbeat', {}); },
@@ -1403,6 +1412,16 @@ B7.DB = (function () {
     },
     async assumirDemandaLinha(linhaId) {
       return this.rpc('design_assumir_demanda_linha', { p_linha_id: linhaId });
+    },
+    /* Conclusão formal da Linha Editorial (gatilho oficial que libera as
+       demandas de Design — migration_editorial_versao.sql). responsavelId
+       null = fica em "Demandas a fazer" para qualquer Designer assumir. */
+    async concluirLinha(linhaId, responsavelId) {
+      return this.rpc('linha_concluir', { p_linha_id: linhaId, p_responsavel_design_id: responsavelId || null });
+    },
+    async versoesDaLinha(linhaId) {
+      return ok(await sb().from('linha_versoes').select('id, versao, concluida_em, concluida_por, responsavel_design_id')
+        .eq('linha_id', linhaId).order('versao', { ascending: false }));
     },
     async solicitarAjusteDesign(versaoId, mensagem) {
       return this.rpc('design_solicitar_ajuste', { p_versao_id: versaoId, p_mensagem: mensagem });

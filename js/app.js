@@ -147,6 +147,13 @@ B7.Rota = (function () {
     if (partes[0] === 'gravacoes') { mostrar('tela-dashboard'); return B7.Dashboard.abrirGravacoes(); }
     if (partes[0] === 'roteiros')  { mostrar('tela-dashboard'); return B7.Dashboard.abrirRoteiros(); }
     mostrar('tela-dashboard');
+    /* Designer não grava nem escreve roteiro — a "Central de Produção"
+       genérica (Gravações/Roteiros/Linhas) não é o trabalho dele, e os
+       dois primeiros nem abrem (rota bloqueada). A home do Designer é
+       a própria Central de Design. */
+    if (!partes[0] && B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'designer' && B7.Design) {
+      return B7.Design.abrir(params.get('aba'), true);
+    }
     await B7.Central.abrir();
   }
 

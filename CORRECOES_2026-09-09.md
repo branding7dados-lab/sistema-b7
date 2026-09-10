@@ -691,3 +691,212 @@ com foto de perfil cadastrada nos dados de teste do usuário.
   correto, foto pequena e redonda, nome e contagem legíveis.
 - `VERSAO` → `2026-09-10-g`, cache do service worker →
   `roteiros-b7-v22`.
+
+## Build 2026-09-10-h — B7 Design: conclusão formal, versionamento e Central do Designer como home
+
+Refinamento operacional grande, pedido pelo dono como continuação do
+build `-f`: a Central do Designer devia ser *só* sobre Design (nunca
+Gravações/Roteiros), e a liberação de demandas de Design devia ter um
+gatilho formal — "Concluir Linha Editorial" — em vez de nascer de
+qualquer edição de rascunho. Relatório completo por seção em
+`RELATORIO_2026-09-10-h_REFINO_FINAL.md`; aqui vai o resumo técnico.
+
+**Banco (`migration_editorial_versao.sql`, nova — roda depois de
+`migration_design_refino.sql`):**
+- `linhas_editoriais` ganha `concluida_em`, `concluida_por`,
+  `versao_design` — controle da conclusão formal, sem mexer no campo
+  `status` (texto livre, cosmético) que já existia.
+- `linha_versoes`: uma linha por conclusão, com snapshot jsonb completo
+  dos conteúdos (inclusive slides/frames) daquele momento. RLS: só quem
+  já pode ver a Linha Editorial (equipe, designer, ou cliente com
+  `visivel_cliente`) lê; ninguém escreve direto (só a função).
+- `design_deliverables` ganha `briefing_desatualizado` e
+  `linha_versao_confirmada` — usados na reconciliação.
+- `linha_montar_snapshot(linha_id)`: monta o jsonb.
+- `linha_concluir(linha_id, responsavel_design_id)`: função central.
+  Só equipe (`sou_equipe()`) chama. Grava o snapshot, gera/atualiza as
+  peças de Design (reaproveita `design_gerar_da_linha`, já existente —
+  não duplica geração), compara o snapshot novo com o anterior por
+  `conteudo_id` e marca `briefing_desatualizado=true` só nas peças cujo
+  conteúdo realmente mudou (headline, CTA, slides, frames etc.) — as
+  que não mudaram, ou são novas, não ficam com aviso falso. Se um
+  responsável é informado, atribui as peças sem responsável dessa linha
+  a ele e move o Kanban vinculado junto. Idempotente: concluir de novo
+  sem mudar nada não duplica peça nem marca nada como desatualizado.
+- `design_processar_evento` ganha um ramo novo para
+  `alvo_tipo='linha_editorial'`/`tipo='linha.concluida'` (função
+  reaproveitada, não duplicada): notificação **em lote**, nunca uma por
+  peça — "atribuída a você" (um destinatário) quando há responsável, ou
+  "disponível" (um envio por Designer ativo, mesmo evento) quando não
+  há; e uma notificação separada de "Briefing atualizado" para quem já
+  tinha peça e teve o conteúdo mudado sob os pés, agrupada por
+  designer.
+- `perfil_preferencias_gravar` ganha a chave `ultimo_som_em` (timestamp
+  validado no servidor — string que não vira `timestamptz` é
+  rejeitada), sem tirar a validação já existente de `som`/`navegador`/
+  `push`; qualquer chave desconhecida continua sendo ignorada. Base
+  para o som de login tocar só uma vez por lote de fato novo.
+- `design_resumo` e `linhas_resumo` recriadas (Postgres não deixa
+  `create or replace view` inserir coluna no meio — as duas já eram
+  `select l.*`/tinham lista explícita) para expor as colunas novas.
+
+**Segurança — testado de verdade, não só assumido:** com o rig de
+Postgres 16 local, simulando sessão de Designer
+(`set role authenticated; select set_config('request.jwt.claim.sub',
+'<uuid-do-designer>', false)`), tentativas diretas de `UPDATE` em
+`linhas_editoriais`, `conteudos` e `clientes` afetam **0 linhas** (RLS
+via `USING`) e a tentativa de `INSERT` em `conteudos` é **recusada**
+pelo Postgres com violação de RLS (via `WITH CHECK`) — não são bugs,
+são o comportamento correto e esperado das políticas que já existiam
+desde `migration_rls.sql` (builds anteriores desta sessão). Ou seja: a
+principal exigência de segurança deste refino ("Designer só lê, nunca
+escreve, e isso precisa valer mesmo pulando a UI") **já estava
+garantida pela arquitetura existente** — este build não precisou
+adicionar nenhuma política nova de escrita para isso, só confirmar com
+teste real que elas seguram.
+
+**`js/app.js`:** a rota padrão (`#/`) agora manda o Designer direto
+para `B7.Design.abrir(aba, true)` em vez da Central de Produção
+genérica (Gravações/Roteiros/Linhas/Aprovações) — a Central genérica
+nunca fazia sentido para quem não grava nem escreve roteiro, e dois dos
+quatro atalhos nem abriam (rota já bloqueada). Admin/coordenador
+continuam caindo na Central de sempre — `js/central.js` não foi
+alterado.
+
+**`js/design.js`:** `abrir(aba, comoInicio)` — quando é a Home do
+Designer (`comoInicio=true`), marca o item de navegação certo ("Central
+B7") e não duplica o título da aba; o conteúdo renderizado é
+exatamente o mesmo de `#/design`.
+
+**`js/permissoes.js`:** rota `cliente` entra na lista do Designer — sem
+isso ele não conseguia nem abrir a ficha de um cliente para entender o
+ICP/posicionamento (só existia acesso de leitura no *banco*, mas a UI
+bloqueava a navegação). O item de nav `#/clientes` (lista geral)
+continua escondido — o Designer chega ao cliente pelo contexto de uma
+peça, não navegando a lista inteira.
+
+**`js/conteudo.js`:** `ligarCampos` (autosave usado por toda tabela de
+conteúdo — Linha Editorial, conteúdos, pilares, inteligência do
+cliente, onboarding, status semanal) ganhou um guardião central:
+quando quem está logado é Designer, todo campo com `data-campo`/
+`data-tab` vira `disabled`/`readOnly` em vez de ligar o autosave — um
+ponto só, cobrindo todas as telas que usam esse mecanismo de uma vez,
+em vez de alterar campo por campo em cada arquivo. Nenhum campo do B7
+Design em si passa por `ligarCampos` (tem sua própria tela), então
+nada do fluxo de trabalho do Designer foi afetado.
+
+**`js/linha.js`:** botão novo "Concluir Linha Editorial" (visível só
+para quem pode enviar para Design — mesma regra de sempre) com modal
+de seletor opcional "Responsável pelo Design" (Sem responsável ou um
+Designer ativo da lista real). Chama `linha_concluir` e mostra o
+resultado real devolvido pelo banco (peças totais, novas, atualizadas,
+atribuídas — nunca um texto genérico). O botão antigo "Enviar para
+Design" continua existindo, agora rotulado "(rápido, sem versão)" —
+ele não gera snapshot nem notificação em lote; ver nota de honestidade
+abaixo. Selo "Concluída · vN" aparece no cabeçalho da linha quando
+`concluida_em` está preenchido.
+
+**`js/database.js`:** `concluirLinha(linhaId, responsavelId)`,
+`versoesDaLinha(linhaId)`, `ultimaNaoLida()` (não lida mais recente,
+consulta leve — não traz a lista inteira).
+
+**`js/notificacoes.js`:** `avisarLoteAoEntrar()`, chamada uma vez no
+primeiro `montar()` da sessão (login/reload). Busca a não lida mais
+recente, compara `created_at` contra `preferencias.ultimo_som_em`; toca
+o som (respeitando a preferência "Som das notificações") só se for mais
+nova, e grava a nova marca d'água no banco — nunca marca a notificação
+como lida. Em reloads seguintes, sem notificação mais nova que a marca,
+não toca de novo. O Realtime (evento chegando com a sessão já aberta)
+continua tocando pelo caminho de sempre (`anunciar`), sem mudança.
+
+**Testado:**
+- `migration_editorial_versao.sql` rodada do zero contra Postgres 16
+  local, cadeia completa desde `supabase_setup.sql` até
+  `migration_editorial_versao.sql` (16 arquivos, nesta ordem), duas
+  vezes seguidas sem erro (idempotência das migrations).
+- SQL de aceitação dedicado (equivalente a `t_versao.sql`), com
+  `set role authenticated` real (não mock), cobrindo: linha sem peça
+  liberada antes da conclusão; conclusão sem responsável gera 3 peças e
+  notifica os 2 designers ativos (uma notificação cada, não uma por
+  peça); concluir de novo sem mudar nada não duplica peça nem marca
+  nada como desatualizado; mudar o headline de um conteúdo e concluir
+  de novo marca **só** aquela peça como `briefing_desatualizado`, as
+  outras duas continuam `false`; nova linha concluída já atribuindo a
+  um designer específico atribui a peça, move status e notifica
+  "atribuída a você"; designer tentando concluir recebe erro de
+  permissão; tentativas diretas de `UPDATE`/`INSERT` de Designer contra
+  `linhas_editoriais`/`conteudos`/`clientes` são bloqueadas pelo RLS
+  (0 linhas afetadas / violação explícita); Designer consegue `SELECT`
+  normalmente (leitura permitida); `perfil_preferencias_gravar` aceita
+  `ultimo_som_em` válido, ignora chave desconhecida e não quebra com
+  boolean malformado.
+- `node --check` em todos os arquivos JS tocados
+  (`app.js`, `design.js`, `database.js`, `notificacoes.js`, `linha.js`,
+  `conteudo.js`, `central.js`, `permissoes.js`, `sw.js`).
+- Playwright (mock completo do Supabase, sem tocar rede real):
+  Designer abrindo `#/` cai direto na Central de Design (nav mostra só
+  "Design" e "Linhas editoriais", nenhum rótulo de Gravações/Roteiros
+  na tela, sem erro de console); Admin abrindo uma Linha Editorial, uma
+  Linha Editorial vê o botão "Concluir Linha Editorial", o modal abre,
+  o RPC `linha_concluir` é chamado com os parâmetros certos
+  (`p_linha_id`, `p_responsavel_design_id`), o toast mostra a contagem
+  real devolvida pelo mock e o selo "Concluída · v1" aparece no
+  cabeçalho depois; Designer abrindo a mesma Linha Editorial na aba
+  Estratégia tem os 9 campos editáveis daquela aba todos desabilitados
+  (nenhum ficou editável por engano).
+- `VERSAO` → `2026-09-10-h`, cache do service worker →
+  `roteiros-b7-v23`.
+
+**Honestidade sobre o que não foi testado ou não foi feito:**
+- **Supabase real**: nenhum teste rodou contra o projeto de produção —
+  só o rig local de Postgres 16, mesma limitação de todos os builds
+  anteriores desta sessão. Recomendo rodar
+  `migration_editorial_versao.sql` primeiro num ambiente de teste antes
+  de produção, e conferir com uma consulta direta que `design_resumo`/
+  `linhas_resumo` devolvem as colunas novas.
+- **Som de notificação em dispositivo real / restrição de autoplay**: a
+  lógica de "tocar uma vez por lote novo" foi validada na lógica
+  (comparação de timestamp, gravação da marca d'água) e via
+  `node --check`, mas **não** foi validada num navegador real com
+  autoplay bloqueado — o `tocarSom()` existente já tem a guarda
+  `ctx.state !== 'running'` (não toca sem gesto prévio da pessoa), e
+  isso não muda neste build, mas não posso afirmar que o som realmente
+  soa no primeiro login em todo navegador.
+- **Push em dispositivo real**: não testado — este build não mexeu no
+  fluxo de push (`migration_push.sql`), só no som local do sino.
+- **Realtime com duas sessões simultâneas**: não retestado neste build.
+  O canal usado pela Central do Designer é o mesmo já existente
+  (`design_deliverables`/`design_versoes`), que não foi alterado —
+  comportamento observado nos builds anteriores deve se manter, mas
+  isso não foi reconfirmado agora.
+- **Cobertura exaustiva de somente-leitura fora dos campos de
+  autosave**: `ligarCampos` cobre todo campo de texto/select ligado ao
+  autosave (Linha Editorial completa, incluindo a ficha do cliente via
+  Inteligência/Onboarding). Não fiz uma varredura campo a campo dos
+  botões de ação da ficha do cliente fora da aba Inteligência (por
+  exemplo "Arquivar gravação", "Excluir cliente", "Nova gravação", que
+  ficam nas abas Gravações/Geral da ficha do cliente, hoje acessível ao
+  Designer só pelo contexto de uma peça) — esses continuam visíveis na
+  UI para o Designer, embora a escrita real no banco já esteja barrada
+  pelo mesmo RLS testado acima (mesmo padrão `sou_equipe()` cobre
+  `clientes`/`gravacoes`/`status_semanais`). Ou seja: nenhum buraco de
+  segurança, mas a experiência nessas telas específicas pode mostrar um
+  botão que erra ao ser clicado por um Designer, em vez de já vir
+  escondido. Recomendo uma rodada futura dedicada a isso se o dono
+  achar que vale a pena, dado que não é o caminho principal do
+  Designer.
+- **`design_assumir_demanda_linha`, `design_criar_manual` e o restante
+  do fluxo já existente do build `-f`**: não foram alterados — os
+  testes antigos (`t_design.sql`, `t_design_refino.sql`) foram
+  reexecutados contra a cadeia de migrations completa (incluindo a
+  nova) e continuam passando exatamente com os mesmos erros esperados
+  de antes, confirmando que nada regrediu.
+- **Botão antigo "Enviar para Design"**: fica coexistindo com "Concluir
+  Linha Editorial" porque removê-lo não foi pedido explicitamente e
+  algumas equipes podem preferir o fluxo rápido para um teste pontual.
+  Ele gera peças (idempotente, reaproveitando a mesma função de
+  geração) mas **não** cria snapshot de versão nem dispara a
+  notificação em lote da conclusão formal — só a notificação de peça
+  criada, já existente. Recomendo ao dono decidir, numa rodada futura,
+  se esse botão deve sumir da interface para não haver dois caminhos
+  para a mesma coisa.

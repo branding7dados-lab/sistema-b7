@@ -25,9 +25,15 @@ B7.Perm = (function () {
       'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes', 'design'
     ],   /* sem usuarios, importar, atalhos e lixeira */
     /* Designer é produção interna, não administração: só o que precisa
-       para entender o briefing e entregar o trabalho. Sem clientes,
-       usuários, Kanban geral, aprovações de cliente, importar/backup. */
-    designer: ['', 'design', 'linhas', 'linha', 'gravacao', 'config'],
+       para entender o briefing e entregar o trabalho. Sem usuários,
+       Kanban geral, aprovações de cliente, importar/backup.
+       'cliente' entra aqui pela mesma spec de refino: o Designer pode
+       VER o contexto do cliente (ICP, posicionamento — abas Inteligência/
+       Onboarding, que moram sob a rota #/cliente/<id>/...) para entender
+       o briefing, mas nunca editar — a UI trava os campos (ver
+       souDesignerSomenteLeitura em js/conteudo.js) e o RLS do banco
+       bloqueia a escrita de verdade mesmo se alguém pular a UI. */
+    designer: ['', 'design', 'linhas', 'linha', 'gravacao', 'cliente', 'config'],
     cliente: [
       '', 'aprovacoes', 'revisar', 'minha-linha', 'minha-producao',
       'minhas-gravacoes', 'meus-status', 'historico', 'perfil'

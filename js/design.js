@@ -82,15 +82,18 @@ B7.Design = (function () {
   /* =================================================================
      TELA PRINCIPAL
      ================================================================= */
-  async function abrir(aba) {
+  /* comoInicio=true: esta é a Home do Designer (rota "#/"), não a rota
+     "#/design" — marca o item de nav certo ("Central B7") e evita um
+     título de aba redundante. O conteúdo é exatamente o mesmo. */
+  async function abrir(aba, comoInicio) {
     selecionados.clear();
-    B7.Dashboard.marcarNav('#/design');
-    B7.Rota.titulo(['Design']);
+    B7.Dashboard.marcarNav(comoInicio ? '#/' : '#/design');
+    B7.Rota.titulo(comoInicio ? [] : ['Design']);
     if (aba) F.aba = aba;
     if (!F.aba) F.aba = ehDesigner() ? 'fila' : 'todas';
 
     painel().innerHTML = '<div class="conteudo design-tela"><div class="cab-conteudo"><div><h1>Design</h1>' +
-      '<p>' + (ehDesigner() ? 'O que você precisa entregar.' : 'A fila de produção visual da equipe.') + '</p></div></div>' +
+      '<p>' + (ehDesigner() ? 'O que você precisa entregar, por Linha Editorial.' : 'A fila de produção visual da equipe.') + '</p></div></div>' +
       B7.UI.skeleton('tabela', { n: 6, cols: 4 }) + '</div>';
 
     try {
