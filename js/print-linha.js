@@ -213,14 +213,25 @@ B7.FolhaLinha = (function () {
         bloco('OBSERVAÇÃO PARA O DESIGN', c.observacao_design);
     }
     if (c.tipo === 'Carrossel') {
+      /* Sem Headline nem CTA separados: o Slide 1 é a abertura e o último
+         slide é o CTA. Registros antigos que ainda têm c.headline/c.cta
+         preenchidos (de antes desta mudança) continuam aparecendo — como
+         conteúdo do próprio slide 1/último, só se o slide estiver vazio,
+         nunca apagando nada do que já foi salvo. */
       const slides = (ctx.slides[c.id] || []);
-      especifico = bloco('CAPA / HEADLINE', c.headline) +
-        (slides.length ? '<div class="le-campo"><b>SLIDES</b><div class="le-slides">' +
-          slides.map((s, n) => '<div class="le-slide"><span>' + String(n + 1).padStart(2, '0') +
-            (n === 0 ? ' · CAPA' : '') + '</span>' +
-            (vazio(s.titulo) ? '' : '<b>' + esc(s.titulo) + '</b>') +
-            (vazio(s.texto) ? '' : '<div class="le-txt">' + paragrafos(s.texto) + '</div>') +
-          '</div>').join('') + '</div></div>' : '') +
+      especifico = (slides.length ? '<div class="le-campo"><b>SLIDES</b><div class="le-slides">' +
+          slides.map((s, n) => {
+            const ultimo = n === slides.length - 1, unico = slides.length === 1;
+            const legadoAbertura = n === 0 && vazio(s.titulo) && vazio(s.texto) ? c.headline : '';
+            const legadoCta = ultimo && vazio(s.titulo) && vazio(s.texto) ? c.cta : '';
+            const texto = s.texto || legadoAbertura || legadoCta;
+            return '<div class="le-slide"><span>' + String(n + 1).padStart(2, '0') +
+              (unico ? ' · CAPA · CTA' : n === 0 ? ' · CAPA' : ultimo ? ' · CTA' : '') + '</span>' +
+              (vazio(s.titulo) ? '' : '<b>' + esc(s.titulo) + '</b>') +
+              (vazio(texto) ? '' : '<div class="le-txt">' + paragrafos(texto) + '</div>') +
+            '</div>';
+          }).join('') + '</div></div>'
+        : (vazio(c.headline) ? '' : bloco('CAPA / HEADLINE (registro antigo)', c.headline))) +
         bloco('LEGENDA', c.legenda);
     }
     if (c.tipo === 'Story') {
@@ -254,7 +265,7 @@ B7.FolhaLinha = (function () {
       bloco('OBJETIVO', c.objetivo) +
       bloco('IDEIA GERAL', c.ideia_geral) +
       especifico +
-      bloco('CTA', c.cta) +
+      (c.tipo === 'Carrossel' ? '' : bloco('CTA', c.cta)) +
       linksHTML('REFERÊNCIAS', c.referencias) +
     '</div>';
   }

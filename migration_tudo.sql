@@ -35,10 +35,21 @@
 --                                 portal_gravacoes, portal_status;
 --                                 gravacoes.visivel_cliente; minha_sessao
 --
---  16. migration_rls.sql         POR ÚLTIMO, e só depois de:
+--  16. migration_rls.sql         só depois de:
 --                                 - conseguir entrar como admin
 --                                 - existir um usuário cliente de teste
 --                                 - ter migration_rls_reverter.sql aberto
+--
+--  17. migration_design.sql      POR ÚLTIMO. B7 Design: papel designer,
+--                                 deliverables/versões/arquivos, geração a
+--                                 partir da Linha Editorial, revisão
+--                                 interna, bucket design-files, e a
+--                                 política de LEITURA do Designer sobre a
+--                                 Linha Editorial (precisa que migration_rls
+--                                 já tenha rodado — ela apaga e recria as
+--                                 políticas das tabelas de conteúdo, e essa
+--                                 política adicional tem que sobreviver por
+--                                 cima). Ver CORRECOES_2026-09-09.md.
 --
 -- Se algum arquivo reclamar de coluna ou tabela inexistente, é porque um
 -- anterior não rodou. A mensagem diz qual.

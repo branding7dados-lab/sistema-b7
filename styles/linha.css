@@ -50,6 +50,37 @@
 .pil-legenda .solto::before{display:none;}
 .cc-pilar{color:var(--acento);font-weight:600;}
 
+/* ----------------------------------------------------------- DESIGN
+   Selo no card do criativo (badge-design), menu de ação por card
+   (cc-menu) e a tabela de peças na aba Design. Nada de UI nova: reusa
+   chip-revisao, .menu/.lista e .mini-metricas que já existem. */
+.cc-topo-esq{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
+.cc-menu{flex:none;}
+.cc-menu > .ico{width:26px;height:26px;font-size:15px;color:var(--ink-4);}
+.cc-design{margin-top:2px;}
+.badge-design{cursor:pointer;}
+button.badge-design{border:0;}
+
+.design-tabela{display:flex;flex-direction:column;}
+.design-linha{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  background:none;border:0;border-bottom:1px solid var(--borda);padding:12px 4px;
+  font:inherit;cursor:pointer;}
+.design-linha:last-child{border-bottom:0;}
+.design-linha:hover{background:var(--suave);border-radius:var(--r-sm);}
+.dl-conteudo{flex:1.6;min-width:0;}
+.dl-conteudo b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dl-conteudo small{display:block;font-size:11px;color:var(--ink-4);margin-top:2px;}
+.dl-designer{flex:1;min-width:0;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dl-prazo{flex:none;width:76px;font-size:11.5px;color:var(--ink-3);text-align:right;}
+.dl-versao{flex:none;width:34px;font-size:11.5px;color:var(--ink-4);text-align:right;}
+
+@media (max-width:760px){
+  .design-linha{flex-wrap:wrap;row-gap:6px;}
+  .dl-conteudo{flex:1 1 100%;}
+  .dl-designer{flex:1 1 auto;}
+  .dl-prazo,.dl-versao{width:auto;text-align:left;}
+}
+
 /* -------------------------------------------------------- calendário */
 .bloco-cal{padding:14px;}
 .cal-mes{display:flex;flex-direction:column;gap:12px;min-width:0;}
@@ -60,6 +91,17 @@
 .cal-titulo span{font-size:13px;color:var(--ink-3);}
 .cal-titulo small{font-size:11.5px;color:var(--ink-4);margin-left:4px;}
 .cal-nav .b.p{flex:none;}
+
+/* legenda: os mesmos tokens/ícones do calendário, sempre visível perto
+   dos controles — nunca depende só da cor para dizer o que é o quê */
+.cal-legenda{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  font-size:11px;font-weight:600;color:var(--ink-3);margin:-4px 0 2px;}
+.cal-leg-item{display:inline-flex;align-items:center;gap:6px;}
+.cal-leg-ic{flex:none;display:flex;width:16px;height:16px;align-items:center;justify-content:center;
+  border-radius:5px;}
+.cal-leg-ic svg{width:10px;height:10px;}
+.cal-leg-item.post .cal-leg-ic{background:var(--cal-post-bg);color:var(--cal-post);}
+.cal-leg-item.grav .cal-leg-ic{background:var(--cal-grav-bg);color:var(--cal-grav);}
 
 .cal-grade-mes{min-width:0;}
 .cal-cab{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:5px;}
@@ -77,13 +119,25 @@
 .cal-d.hoje .cal-n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
   border-radius:50%;background:var(--acento);color:#fff;margin:-3px 0 0 -3px;}
 .cal-evs{display:flex;flex-direction:column;gap:3px;min-width:0;}
+/* Tipo de evento (Postagem/Gravação) é a cor principal — sempre, em
+   qualquer status. Status é secundário: só o pontinho no fim (cal-ev-st),
+   nunca troca o fundo/borda do item. Ícone diferente por tipo garante
+   que dá para diferenciar mesmo em escala de cinza. */
 .cal-ev{display:flex;align-items:center;gap:5px;width:100%;min-width:0;text-align:left;cursor:pointer;
-  background:var(--acento-suave);border:0;border-radius:6px;padding:4px 6px;color:var(--acento);
+  border:0;border-left:2.5px solid transparent;border-radius:6px;padding:4px 6px 4px 5px;
   font:inherit;transition:var(--t-micro);}
-.cal-ev:hover{background:var(--acento);color:#fff;}
+.cal-ev-post{background:var(--cal-post-bg);color:var(--cal-post);border-left-color:var(--cal-post-border);}
+.cal-ev-post:hover,.cal-ev-post:focus-visible{background:var(--cal-post-hover);color:#fff;border-left-color:var(--cal-post-hover);}
+.cal-ev-grav{background:var(--cal-grav-bg);color:var(--cal-grav);border-left-color:var(--cal-grav-border);}
+.cal-ev-grav:hover,.cal-ev-grav:focus-visible{background:var(--cal-grav-hover);color:#fff;border-left-color:var(--cal-grav-hover);}
+.cal-ev:focus-visible{outline:2px solid var(--ink);outline-offset:1px;}
 .cal-ev-ic{flex:none;display:flex;}
 .cal-ev-ic svg{width:11px;height:11px;}
-.cal-ev-tx{font-size:10.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.cal-ev-tx{font-size:10.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;}
+/* status: um pontinho discreto, não a cor do card inteiro */
+.cal-ev-st{flex:none;width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.55;}
+.cal-ev-st.st-ok{background:var(--ok);opacity:1;}
+.cal-ev-st.st-ambar{background:var(--ambar);opacity:1;}
 .cal-mais{align-self:flex-start;background:none;border:1px dashed var(--borda-forte);border-radius:6px;
   padding:2px 7px;font:inherit;font-size:10.5px;font-weight:700;color:var(--ink-3);cursor:pointer;}
 .cal-mais:hover{border-color:var(--acento);color:var(--acento);}
@@ -115,14 +169,20 @@
   .cal-cab{gap:3px;}
   .cal-cab span{letter-spacing:.06em;font-size:9px;}
   .cal-d{min-height:44px;padding:5px 4px;gap:3px;}
-  .cal-evs{flex-direction:row;flex-wrap:wrap;gap:3px;}
-  .cal-ev{width:8px;height:8px;padding:0;border-radius:50%;background:var(--acento);}
-  .cal-ev-ic,.cal-ev-tx{display:none;}
+  .cal-evs{flex-direction:row;flex-wrap:wrap;gap:4px;}
+  /* na grade minúscula não cabe ícone nem texto: o tipo ainda precisa
+     dar para diferenciar sem cor, então além da cor o formato muda —
+     Postagem é um ponto redondo, Gravação é um quadrado arredondado */
+  .cal-ev{width:8px;height:8px;padding:0;border:0;border-radius:50%;}
+  .cal-ev-post{background:var(--cal-post);}
+  .cal-ev-grav{background:var(--cal-grav);border-radius:2.5px;}
+  .cal-ev-ic,.cal-ev-tx,.cal-ev-st{display:none;}
   .cal-mais{padding:0 4px;font-size:9px;border:0;}
   .cal-ag-itens .cal-ev,.cal-soltos .cal-ev{width:auto;height:auto;padding:8px 10px;border-radius:6px;
-    background:var(--acento-suave);}
+    border-left-width:2.5px;}
   .cal-ag-itens .cal-ev-ic,.cal-ag-itens .cal-ev-tx,.cal-soltos .cal-ev-ic,.cal-soltos .cal-ev-tx{display:flex;}
   .cal-soltos .cal-ev{width:100%;max-width:none;}
+  .cal-legenda{gap:12px;font-size:10.5px;}
   .pil-linha{flex-wrap:wrap;}
   .pil-linha .pil-nome{flex:1 1 100%;}
   .pil-linha .pil-pct,.pil-linha .pil-funil{flex:1 1 40%;}

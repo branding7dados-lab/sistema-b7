@@ -30,12 +30,35 @@ B7.Linha = (function () {
     Carrossel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="4.5" width="11" height="15" rx="2.5"/><path d="M3.5 8v8M20.5 8v8"/></svg>',
     Story: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3.5" width="10" height="17" rx="2.5"/><path d="M10 20.5h4"/></svg>'
   };
+  /* ícone de GRAVAÇÃO no calendário: câmera, deliberadamente diferente de
+     todo ícone de formato de postagem — em cinza também dá pra separar */
+  const ICONE_GRAVACAO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h2l1-1.8h5L15.5 6h2A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg>';
 
-  let L = { linha: null, conteudos: [], pilares: [], aba: 'geral', cliente: null,
-            aprovacao: null, cal: null };
+  /* -------------------------------------------------------------- DESIGN
+     Rótulo/classe (as mesmas do chip-revisao, já existente no sistema)
+     por status de design_deliverables. */
+  const DESIGN_STATUS = {
+    aguardando_producao: ['Não iniciado', 'criacao'],
+    em_criacao:          ['Em criação', 'criacao'],
+    revisao_interna:     ['Revisão interna', 'revisao'],
+    ajustes:              ['Ajustes', 'revisao'],
+    aprovado_interno:    ['Aprovado', 'aprovado'],
+    aguardando_cliente:  ['Aguardando cliente', 'pronto'],
+    ajustes_cliente:     ['Ajustes do cliente', 'revisao'],
+    aprovado_cliente:    ['Aprovado pelo cliente', 'aprovado'],
+    finalizado:          ['Finalizado', 'gravado']
+  };
+  const rotuloDesign = s => (DESIGN_STATUS[s] || [s || 'Sem status', 'criacao'])[0];
+  const classeDesign = s => (DESIGN_STATUS[s] || [s, 'criacao'])[1];
+  const TIPO_DESIGN_ROTULO = { card: 'Card', capa_reel: 'Capa de Reel', carrossel: 'Carrossel',
+                                stories: 'Stories', outro: 'Outro' };
+  const plural = (n, s, p) => n + ' ' + (n === 1 ? s : p);
+
+  let L = { linha: null, conteudos: [], pilares: [], gravacoes: [], aba: 'geral', cliente: null,
+            aprovacao: null, cal: null, design: [], designProducao: null, designPorConteudo: {} };
 
   const ABAS = [['geral', 'Visão geral'], ['estrategia', 'Estratégia'],
-                ['criativos', 'Criativos'], ['postagens', 'Postagens']];
+                ['criativos', 'Criativos'], ['postagens', 'Postagens'], ['design', 'Design']];
 
   /* ------------------------------------------------------------ abrir */
   async function abrir(id, aba) {
@@ -48,12 +71,39 @@ B7.Linha = (function () {
         B7.DB.listarPilares(id).catch(() => [])
       ]);
       try { L.aprovacao = (await B7.DB.ultimasAprovacoes('linha', [id]))[id] || null; } catch (e) { L.aprovacao = null; }
+      /* gravações do cliente entram no calendário editorial (Gravação),
+         ao lado das postagens — sem inventar data: só as que já têm
+         data_gravacao aparecem. Falha aqui não impede a linha de abrir. */
+      try { L.gravacoes = await B7.DB.listarGravacoes(L.linha.client_id); } catch (e) { L.gravacoes = []; }
     } catch (e) { return B7.Dashboard.erroConteudo(e, (L.linha || {}).client_id || ''); }
+
+    /* Design (B7 Design): busca só uma vez ao abrir a linha, nunca por
+       card — falha aqui não impede a linha de abrir. */
+    await carregarDesign();
 
     /* o calendário abre no mês da linha; a navegação é só visual */
     L.cal = { ano: +L.linha.ano, mes: +L.linha.mes };
     B7.Rota.titulo([L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano), L.linha.cliente_nome]);
     render();
+  }
+
+  /* Só a equipe (admin/coordenador) envia conteúdo para Design — mesma
+     regra do banco (sou_equipe), espelhada aqui só para esconder a ação
+     de quem não pode usá-la. Sem sessão, comporta-se como antes da
+     autenticação (mesmo padrão de B7.Perm). */
+  function podeEnviarDesign() {
+    return !(B7.Auth && B7.Auth.usuario()) || B7.Auth.ehEquipe();
+  }
+
+  async function carregarDesign() {
+    try {
+      L.design = await B7.DB.listarDesign({ linhaId: L.linha.id });
+    } catch (e) { L.design = []; }
+    try {
+      L.designProducao = await B7.DB.designProducaoDaLinha(L.linha.id);
+    } catch (e) { L.designProducao = null; }
+    L.designPorConteudo = {};
+    L.design.forEach(p => { if (p.conteudo_id) L.designPorConteudo[p.conteudo_id] = p; });
   }
 
   /* --------------------------------------------- espelho em memória
@@ -73,7 +123,8 @@ B7.Linha = (function () {
   function corpoHTML() {
     return L.aba === 'geral' ? visaoGeral() :
            L.aba === 'estrategia' ? estrategia() :
-           L.aba === 'criativos' ? criativos() : postagens();
+           L.aba === 'criativos' ? criativos() :
+           L.aba === 'design' ? design() : postagens();
   }
 
   function render() {
@@ -115,6 +166,7 @@ B7.Linha = (function () {
     if (!corpo) return render();
     corpo.innerHTML = corpoHTML();
     C.ligarCampos(corpo, espelhar);
+    B7.UI.ligarMenus(corpo);
     ligarAba();
   }
 
@@ -147,6 +199,7 @@ B7.Linha = (function () {
         '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
           '<button data-duplicar-linha>Duplicar para outro mês</button>' +
           '<button data-status-semanal>Criar status semanal</button>' +
+          (podeEnviarDesign() ? '<button data-enviar-design-linha>Enviar para Design</button>' : '') +
           '<div class="rot">STATUS DA LINHA</div>' +
           C.STATUS_LINHA.map(v => '<button data-status-linha="' + esc(v) + '">' +
             (l.status === v ? '● ' : '') + esc(v) + '</button>').join('') +
@@ -209,6 +262,47 @@ B7.Linha = (function () {
         erro.textContent = e.message || 'Não foi possível enviar.';
       }
     };
+  }
+
+  /* --------------------------------------------------- ENVIAR P/ DESIGN
+     Gera as peças de Design (design_deliverables) a partir dos conteúdos
+     da linha inteira ou de um conteúdo específico. Idempotente no banco:
+     repetir nunca duplica — só recarrega os números reais depois. */
+  async function enviarLinhaParaDesign() {
+    try {
+      const r = await B7.DB.gerarDesignDaLinha(L.linha.id);
+      const criadas = r.criadas || 0, existentes = r.existentes || 0;
+      let msg;
+      if (criadas && existentes) {
+        msg = plural(existentes, 'peça já existia', 'peças já existiam') + '. ' +
+              plural(criadas, 'nova peça foi criada', 'novas peças foram criadas') + '.';
+      } else if (criadas) {
+        msg = plural(criadas, 'peça enviada', 'peças enviadas') + ' para Design.';
+      } else if (existentes) {
+        msg = plural(existentes, 'peça já existia', 'peças já existiam') + '.';
+      } else {
+        msg = 'Nenhuma peça gerada — nenhum conteúdo desta linha tem requisito visual de Design.';
+      }
+      B7.UI.toast(msg);
+      await carregarDesign();
+      atualizar();
+    } catch (e) {
+      B7.UI.toast(e.message || 'Não foi possível enviar para Design.', { tipo: 'erro' });
+    }
+  }
+
+  async function enviarConteudoParaDesign(conteudoId) {
+    try {
+      const r = await B7.DB.gerarDesignDoConteudo(conteudoId);
+      if (r.criada) B7.UI.toast('Peça de Design criada.');
+      else if (r.motivo === 'ja_existia') B7.UI.toast('Peça de Design já existia.');
+      else if (r.motivo === 'sem_requisito_visual') B7.UI.toast('Este conteúdo não gera peça de Design (Reel sem capa).');
+      else B7.UI.toast('Não foi possível enviar para Design.', { tipo: 'erro' });
+      await carregarDesign();
+      atualizar();
+    } catch (e) {
+      B7.UI.toast(e.message || 'Não foi possível enviar para Design.', { tipo: 'erro' });
+    }
   }
 
   /* ------------------------------------------------------- VISÃO GERAL */
@@ -492,16 +586,26 @@ B7.Linha = (function () {
   }
 
   function cardConteudo(c, i) {
+    const peca = L.designPorConteudo[c.id];
+    const badgeDesign = peca
+      ? '<button class="chip-revisao ' + classeDesign(peca.status) + ' badge-design" ' +
+        'data-abrir-design="' + esc(peca.id) + '" title="Abrir peça de Design">' +
+        'Design · ' + esc(rotuloDesign(peca.status)) + '</button>'
+      : '';
 
     return '<div class="card-criativo spot eleva" data-conteudo="' + esc(c.id) + '">' +
-      '<div class="cc-topo"><span class="cc-num">POST ' + String(i + 1).padStart(2, '0') + '</span>' +
+      '<div class="cc-topo"><div class="cc-topo-esq"><span class="cc-num">POST ' + String(i + 1).padStart(2, '0') + '</span>' +
         '<span class="cc-formato">' + ICONE_FORMATO[c.tipo] + esc(c.tipo) + '</span></div>' +
+        (podeEnviarDesign() ? '<div class="menu cc-menu"><button class="ico" title="Mais ações">⋯</button>' +
+          '<div class="lista"><button data-enviar-design="' + esc(c.id) + '">Enviar para Design</button></div></div>' : '') +
+      '</div>' +
       '<h3>' + esc(c.titulo || 'Sem título') + '</h3>' +
       '<div class="cc-meta">' +
         (c.canal ? '<span>' + esc(c.canal) + '</span><span class="p"></span>' : '') +
         '<span>' + (c.data_postagem ? B7.UI.dataBR(c.data_postagem) : 'sem data') + '</span>' +
         (nomeDoPilar(c.pilar_id) ? '<span class="p"></span><span class="cc-pilar">' + esc(nomeDoPilar(c.pilar_id)) + '</span>' : '') +
       '</div>' +
+      (badgeDesign ? '<div class="cc-design">' + badgeDesign + '</div>' : '') +
       '<div class="cc-rodape">' + chipConteudo(c.status) +
         '<button class="cc-espiar" data-espiar="' + esc(c.id) + '" title="Visualização rápida">👁</button>' +
         '<span class="abrir">Abrir →</span></div></div>';
@@ -546,25 +650,77 @@ B7.Linha = (function () {
     return cels;
   }
 
-  function itemCal(c) {
-    return '<button class="cal-ev" data-conteudo="' + esc(c.id) + '" title="' + esc(c.titulo || 'Sem título') + '">' +
-      '<span class="cal-ev-ic">' + ICONE_FORMATO[c.tipo] + '</span>' +
-      '<span class="cal-ev-tx">' + esc(c.titulo || 'Sem título') + '</span></button>';
+  /* Postagem e Gravação são tipos de EVENTO — o que o item É — e nunca
+     se confundem com o status (em que pé está a produção). O status
+     entra só como um pontinho discreto (cal-ev-st); a cor/ícone/forma
+     principal do item é sempre do tipo, e nunca muda com o status. */
+  function statusPostagemDot(s) {
+    if (s === 'Aprovado' || s === 'Publicado') return 'st-ok';
+    if (s === 'Em revisão') return 'st-ambar';
+    return '';
+  }
+  function statusGravacaoDot(s) {
+    if (s === 'Gravado') return 'st-ok';
+    if (s === 'Pronto para gravar') return 'st-ambar';
+    return '';
+  }
+
+  function itemCal(item) {
+    if (item._evento === 'gravacao') {
+      const st = statusGravacaoDot(item.status);
+      return '<button class="cal-ev cal-ev-grav" data-gravacao="' + esc(item.id) + '" ' +
+        'title="Gravação — ' + esc(item.nome || 'Sem título') + (item.status ? ' · ' + esc(item.status) : '') + '">' +
+        '<span class="cal-ev-ic">' + ICONE_GRAVACAO + '</span>' +
+        '<span class="cal-ev-tx">' + esc(item.nome || 'Gravação') + '</span>' +
+        (st ? '<span class="cal-ev-st ' + st + '" aria-hidden="true"></span>' : '') +
+      '</button>';
+    }
+    const st = statusPostagemDot(item.status);
+    return '<button class="cal-ev cal-ev-post" data-conteudo="' + esc(item.id) + '" ' +
+      'title="Postagem — ' + esc(item.titulo || 'Sem título') + (item.status ? ' · ' + esc(item.status) : '') + '">' +
+      '<span class="cal-ev-ic">' + ICONE_FORMATO[item.tipo] + '</span>' +
+      '<span class="cal-ev-tx">' + esc(item.titulo || 'Sem título') + '</span>' +
+      (st ? '<span class="cal-ev-st ' + st + '" aria-hidden="true"></span>' : '') +
+    '</button>';
+  }
+
+  /* Todos os eventos (postagens + gravações) do mês, agrupados por dia
+     ISO. Data-only o tempo todo — nunca `new Date('YYYY-MM-DD')`, que em
+     UTC-3 desloca a data para o dia anterior. Uma gravação só entra aqui
+     quando já tem data_gravacao de verdade: nunca é inventada. */
+  function eventosPorDia() {
+    const porDia = {};
+    L.conteudos.filter(c => c.data_postagem).forEach(c => {
+      const d = String(c.data_postagem).slice(0, 10);
+      (porDia[d] = porDia[d] || []).push(Object.assign({ _evento: 'postagem' }, c));
+    });
+    (L.gravacoes || []).filter(g => g.data_gravacao).forEach(g => {
+      const d = String(g.data_gravacao).slice(0, 10);
+      (porDia[d] = porDia[d] || []).push(Object.assign({ _evento: 'gravacao' }, g));
+    });
+    Object.values(porDia).forEach(lista => lista.sort((a, b) => {
+      if (a._evento !== b._evento) return a._evento === 'postagem' ? -1 : 1;
+      return (a.position || 0) - (b.position || 0);
+    }));
+    return porDia;
+  }
+
+  function legendaCal() {
+    return '<div class="cal-legenda">' +
+      '<span class="cal-leg-item post"><span class="cal-leg-ic">' + ICONE_FORMATO.Reel + '</span>Postagem</span>' +
+      '<span class="cal-leg-item grav"><span class="cal-leg-ic">' + ICONE_GRAVACAO + '</span>Gravação</span>' +
+    '</div>';
   }
 
   function calendario() {
     const cal = L.cal || { ano: +L.linha.ano, mes: +L.linha.mes };
     const hoje = B7.UI.hojeISO();
-    const porDia = {};
-    L.conteudos.filter(c => c.data_postagem).forEach(c => {
-      const d = String(c.data_postagem).slice(0, 10);
-      (porDia[d] = porDia[d] || []).push(c);
-    });
-    Object.values(porDia).forEach(lista => lista.sort((a, b) => (a.position || 0) - (b.position || 0)));
+    const porDia = eventosPorDia();
 
     const cels = celulasDoMes(cal.ano, cal.mes);
     const prefixo = iso(cal.ano, cal.mes, 1).slice(0, 7);
-    const noMes = L.conteudos.filter(c => c.data_postagem && String(c.data_postagem).slice(0, 7) === prefixo);
+    const postsNoMes = L.conteudos.filter(c => c.data_postagem && String(c.data_postagem).slice(0, 7) === prefixo).length;
+    const gravsNoMes = (L.gravacoes || []).filter(g => g.data_gravacao && String(g.data_gravacao).slice(0, 7) === prefixo).length;
     const semData = L.conteudos.filter(c => !c.data_postagem);
     const mesDaLinha = cal.ano === +L.linha.ano && cal.mes === +L.linha.mes;
 
@@ -588,13 +744,15 @@ B7.Linha = (function () {
             '<div class="cal-ag-data"><b>' + dia + '</b><small>' + DIAS_SEMANA[diaSemana(cal.ano, cal.mes, dia)] + '</small></div>' +
             '<div class="cal-ag-itens">' + porDia[d].map(itemCal).join('') + '</div></div>';
         }).join('')
-      : '<div class="cal-ag-vazio">Nenhuma postagem marcada em ' + esc(MESES[cal.mes - 1]) + '.</div>';
+      : '<div class="cal-ag-vazio">Nenhuma postagem ou gravação marcada em ' + esc(MESES[cal.mes - 1]) + '.</div>';
 
     return '<div class="cal-mes">' +
+      legendaCal() +
       '<div class="cal-nav">' +
         '<button class="ico" data-cal="ant" aria-label="Mês anterior" title="Mês anterior">‹</button>' +
         '<div class="cal-titulo"><b>' + esc(MESES[cal.mes - 1]) + '</b><span>' + cal.ano + '</span>' +
-          '<small>' + noMes.length + ' postage' + (noMes.length === 1 ? 'm' : 'ns') + '</small></div>' +
+          '<small>' + postsNoMes + ' postage' + (postsNoMes === 1 ? 'm' : 'ns') +
+          (gravsNoMes ? ' · ' + gravsNoMes + ' gravaç' + (gravsNoMes === 1 ? 'ão' : 'ões') : '') + '</small></div>' +
         '<button class="ico" data-cal="prox" aria-label="Próximo mês" title="Próximo mês">›</button>' +
         (mesDaLinha ? '' : '<button class="b p" data-cal="linha">Mês da linha</button>') +
       '</div>' +
@@ -603,9 +761,10 @@ B7.Linha = (function () {
         '<div class="cal-dias">' + grade + '</div>' +
       '</div>' +
       '<div class="cal-agenda">' + agenda + '</div>' +
-      /* sem data não é pendência: é conteúdo que ainda não foi agendado */
+      /* sem data não é pendência: é conteúdo que ainda não foi agendado.
+         Gravação sem data nunca aparece aqui — não é inventada. */
       (semData.length ? '<div class="cal-soltos"><small>SEM DATA DEFINIDA</small>' +
-        semData.map(itemCal).join('') + '</div>' : '') +
+        semData.map(c => itemCal(Object.assign({ _evento: 'postagem' }, c))).join('') + '</div>' : '') +
     '</div>';
   }
 
@@ -647,6 +806,55 @@ B7.Linha = (function () {
         semData.map(linhaPost).join('') : '') + '</div>';
   }
 
+  /* ------------------------------------------------------------ DESIGN
+     Produção de Design da linha: números reais de design_producao_linha
+     e a lista real de design_resumo. Nada é inventado — se a linha ainda
+     não tem nenhuma peça, o convite é para enviar, não um gráfico vazio. */
+  function design() {
+    const prod = L.designProducao;
+    const podeEnviar = podeEnviarDesign();
+    const acaoEnviar = podeEnviar
+      ? '<button class="b pri" id="design-enviar-linha">Enviar linha para Design</button>' : '';
+
+    if (!prod || !prod.total) {
+      return '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
+        '<b>Nenhuma peça de Design ainda.</b>' +
+        '<p>Envie os conteúdos desta linha para o time de Design gerar as peças — card, ' +
+        'capa de reel (quando marcado), carrossel e stories.</p>' +
+        (acaoEnviar ? '<div class="acoes">' + acaoEnviar + '</div>' : '') + '</div>';
+    }
+
+    const metricas = [
+      [prod.total, prod.total === 1 ? 'PEÇA' : 'PEÇAS'],
+      prod.finalizadas ? [prod.finalizadas, 'FINALIZADAS'] : null,
+      prod.em_criacao ? [prod.em_criacao, 'EM CRIAÇÃO'] : null,
+      prod.em_revisao ? [prod.em_revisao, 'EM REVISÃO INTERNA'] : null,
+      prod.em_ajustes ? [prod.em_ajustes, 'EM AJUSTES'] : null,
+      prod.aprovadas ? [prod.aprovadas, 'APROVADAS'] : null,
+      prod.aguardando ? [prod.aguardando, 'AGUARDANDO PRODUÇÃO'] : null
+    ].filter(Boolean);
+
+    return (podeEnviar ? '<div class="linha-acao mb">' + acaoEnviar +
+        '<small>Gera as peças que faltam para os conteúdos desta linha — não duplica o que já existe.</small></div>' : '') +
+      '<div class="mini-metricas">' + metricas.map(([n, r]) =>
+        '<div class="mini-metrica"><b>' + n + '</b><span>' + r + '</span></div>').join('') +
+      '</div>' +
+      '<div class="bloco"><h3>Peças de Design</h3>' +
+        '<div class="design-tabela" id="lista-design">' + (L.design || []).map(linhaDesign).join('') + '</div>' +
+      '</div>';
+  }
+
+  function linhaDesign(p) {
+    return '<button class="design-linha" data-abrir-design="' + esc(p.id) + '">' +
+      '<div class="dl-conteudo"><b>' + esc(p.conteudo_titulo || p.titulo || 'Sem título') + '</b>' +
+      '<small>' + esc(TIPO_DESIGN_ROTULO[p.tipo] || p.tipo) + '</small></div>' +
+      '<span class="dl-designer">' + esc(p.designer_nome || 'Sem designer') + '</span>' +
+      '<span class="chip-revisao ' + classeDesign(p.status) + '">' + esc(rotuloDesign(p.status)) + '</span>' +
+      '<span class="dl-prazo">' + (p.prazo ? B7.UI.dataBR(p.prazo) : '—') + '</span>' +
+      '<span class="dl-versao">' + (p.ultima_versao ? 'v' + p.ultima_versao : '—') + '</span>' +
+    '</button>';
+  }
+
   /* ==================================================== interações */
   function ligarAba() {
     const p = painel();
@@ -663,6 +871,23 @@ B7.Linha = (function () {
     p.querySelectorAll('[data-conteudo]').forEach(el => el.onclick = e => {
       e.stopPropagation();
       abrirConteudo(el.dataset.conteudo);
+    });
+    /* clique numa Gravação do calendário abre a ficha da gravação —
+       o registro canônico, não uma cópia criada só pra desenhar o dia */
+    p.querySelectorAll('[data-gravacao]').forEach(el => el.onclick = e => {
+      e.stopPropagation();
+      location.hash = '#/gravacao/' + el.dataset.gravacao;
+    });
+    /* Design: enviar (linha inteira ou um conteúdo) e abrir a peça —
+       o badge no card, a linha da tabela e o item do menu do card. */
+    p.querySelectorAll('[data-enviar-design-linha], #design-enviar-linha').forEach(b => b.onclick = () => enviarLinhaParaDesign());
+    p.querySelectorAll('[data-enviar-design]').forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      enviarConteudoParaDesign(b.dataset.enviarDesign);
+    });
+    p.querySelectorAll('[data-abrir-design]').forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      location.hash = '#/design/' + b.dataset.abrirDesign;
     });
     p.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
       vistaPostagens = b.dataset.vista; renderCorpo();
@@ -681,12 +906,14 @@ B7.Linha = (function () {
       e.stopPropagation();
       const cel = b.closest('.cal-d');
       const dia = b.dataset.mais;
-      const itens = L.conteudos.filter(c => c.data_postagem && String(c.data_postagem).slice(0, 10) === dia)
-        .sort((x, y) => (x.position || 0) - (y.position || 0));
+      const itens = (eventosPorDia()[dia] || []);
       cel.classList.add('aberta');
       cel.querySelector('.cal-evs').innerHTML = itens.map(itemCal).join('');
       cel.querySelectorAll('[data-conteudo]').forEach(el => el.onclick = ev => {
         ev.stopPropagation(); abrirConteudo(el.dataset.conteudo);
+      });
+      cel.querySelectorAll('[data-gravacao]').forEach(el => el.onclick = ev => {
+        ev.stopPropagation(); location.hash = '#/gravacao/' + el.dataset.gravacao;
       });
     });
     ligarPilares(p);
@@ -870,7 +1097,13 @@ B7.Linha = (function () {
             const novoC = await B7.DB.criarConteudo({
               client_id: c.client_id, linha_id: nova.id, tipo: c.tipo, position: i,
               titulo: c.titulo, objetivo: c.objetivo, ideia_geral: c.ideia_geral, tema: c.tema,
-              canal: c.canal, headline: c.headline, sub_headline: c.sub_headline, cta: c.cta,
+              canal: c.canal,
+              /* Carrossel não usa headline/cta próprios (Slide 1 e o
+                 último slide já carregam isso) — só copia para os
+                 formatos que ainda têm esses campos. */
+              headline: c.tipo === 'Carrossel' ? null : c.headline,
+              sub_headline: c.sub_headline,
+              cta: c.tipo === 'Carrossel' ? null : c.cta,
               legenda: c.legenda, direcao: c.direcao, observacao_design: c.observacao_design,
               data_postagem: quer('datas') ? c.data_postagem : null,
               pilar_id: (c.pilar_id && mapaPilar[c.pilar_id]) || null,
@@ -947,6 +1180,8 @@ B7.Linha = (function () {
         const id = itens[i].dataset[cfg.attr];
         await cfg.salvar(id, { position: i });
       }
+      /* quem ficou por último no arrasto vira o CTA */
+      if (cfg.attr === 'slide') marcarSlides(lista);
       /* mantém o estado local coerente com a tela */
       B7.UI.toast('Ordem salva');
     } catch (e) {
@@ -1036,6 +1271,12 @@ B7.Linha = (function () {
       especifico = '<div class="bloco-formato"><h4>Vídeo / Reel</h4>' +
         C.campoLinha('HEADLINE', c.headline, t + ' data-campo="headline"') +
         C.campoLinha('CTA', c.cta, t + ' data-campo="cta"') +
+        '<div class="mb"><label class="rot">NECESSITA CAPA? <span class="leve">— opcional</span></label>' +
+        '<div class="opcoes" id="op-capa">' +
+          '<button data-capa="sim"' + (c.precisa_capa === true ? ' class="on"' : '') + '>Sim</button>' +
+          '<button data-capa="nao"' + (c.precisa_capa === false ? ' class="on"' : '') + '>Não</button>' +
+        '</div>' +
+        '<div class="ajuda">Só com "Sim" o Enviar para Design gera a peça de capa deste Reel.</div></div>' +
         '<div class="vinculo-roteiro">' +
           (roteiro
             ? '<div class="vr-ok"><div><small>ROTEIRO VINCULADO</small>' +
@@ -1057,11 +1298,13 @@ B7.Linha = (function () {
         C.campo('OBSERVAÇÃO PARA O DESIGN', c.observacao_design, t + ' data-campo="observacao_design"') + '</div>';
     }
     if (c.tipo === 'Carrossel') {
+      /* Sem Headline nem CTA separados: o Slide 1 É a abertura (título/gancho)
+         e o último slide É o CTA — sempre, dinamicamente, seja qual for a
+         posição dele depois de adicionar, remover ou reordenar. */
       especifico = '<div class="bloco-formato"><h4>Carrossel</h4>' +
-        C.campoLinha('CAPA / HEADLINE', c.headline, t + ' data-campo="headline"') +
-        '<div id="lista-slides">' + slides.map((s, i) => itemSlide(s, i)).join('') + '</div>' +
+        '<div class="ajuda" style="margin:-4px 0 12px">O Slide 1 é a abertura. O último slide é sempre o CTA.</div>' +
+        '<div id="lista-slides">' + slides.map((s, i) => itemSlide(s, i, slides.length)).join('') + '</div>' +
         '<button class="add-largo" id="add-slide">+ ADICIONAR SLIDE</button>' +
-        C.campoLinha('CTA DO ÚLTIMO SLIDE', c.cta, t + ' data-campo="cta"') +
         C.campo('LEGENDA', c.legenda, t + ' data-campo="legenda"') + '</div>';
     }
     if (c.tipo === 'Story') {
@@ -1108,6 +1351,18 @@ B7.Linha = (function () {
       }
     });
 
+    const opCapa = m.querySelector('#op-capa');
+    if (opCapa) opCapa.querySelectorAll('[data-capa]').forEach(b => b.onclick = async () => {
+      const valor = b.dataset.capa === 'sim';
+      opCapa.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      c.precisa_capa = valor;
+      try {
+        await B7.Save.acao(() => B7.DB.atualizarConteudo(c.id, { precisa_capa: valor }),
+          'Necessita capa: ' + (valor ? 'Sim' : 'Não'));
+      } catch (e) {}
+    });
+
     const excluir = m.querySelector('[data-excluir-conteudo]');
     if (excluir) excluir.onclick = () => B7.UI.confirmar({
       titulo: 'Excluir este conteúdo?', texto: 'Ele vai para a lixeira e pode ser restaurado.',
@@ -1122,9 +1377,12 @@ B7.Linha = (function () {
     /* slides e frames */
     const addSlide = m.querySelector('#add-slide');
     if (addSlide) addSlide.onclick = async () => {
-      const total = m.querySelectorAll('[data-slide]').length;
+      const lista = m.querySelector('#lista-slides');
+      const total = lista.querySelectorAll('[data-slide]').length;
       const novo = await B7.Save.acao(() => B7.DB.criarSlide({ content_id: c.id, position: total }), 'Slide adicionado');
-      m.querySelector('#lista-slides').insertAdjacentHTML('beforeend', itemSlide(novo, total));
+      lista.insertAdjacentHTML('beforeend', itemSlide(novo, total, total + 1));
+      /* o novo slide vira o último → vira o CTA; o antigo último deixa de ser */
+      marcarSlides(lista);
       C.ligarCampos(m, espelhar); ligarRemocoes(m); ligarArrasto(m);
     };
     const addFrame = m.querySelector('#add-frame');
@@ -1154,13 +1412,36 @@ B7.Linha = (function () {
     };
   }
 
-  function itemSlide(s, i) {
+  function itemSlide(s, i, total) {
     const t = 'data-tab="slides" data-id="' + esc(s.id) + '"';
     return '<div class="item-slide" data-slide="' + esc(s.id) + '">' +
-      '<div class="is-num">SLIDE ' + String(i + 1).padStart(2, '0') + (i === 0 ? ' · CAPA' : '') + '</div>' +
+      '<div class="is-num">' + rotuloSlide(i, total) + '</div>' +
       C.campoLinha('TÍTULO', s.titulo, t + ' data-campo="titulo"') +
       C.campo('TEXTO', s.texto, t + ' data-campo="texto"') +
       '<button class="ico perigo" data-excluir-slide="' + esc(s.id) + '" title="Remover">✕</button></div>';
+  }
+
+  /* Rótulo "SLIDE 01 · CAPA" / "SLIDE 06 · CTA" — a designação de CTA é
+     sempre estrutural (o último slide), nunca um número gravado no banco. */
+  function rotuloSlide(i, total) {
+    const primeiro = i === 0, ultimo = i === total - 1, unico = total === 1;
+    let rot = 'SLIDE ' + String(i + 1).padStart(2, '0');
+    if (unico) rot += ' · CAPA · CTA';
+    else if (primeiro) rot += ' · CAPA';
+    else if (ultimo) rot += ' <span class="badge-cta">CTA</span>';
+    return rot;
+  }
+
+  /* Renumera e reaplica os rótulos CAPA/CTA depois de adicionar, remover
+     ou arrastar um slide — a posição no banco já mudou, isto só refaz o
+     texto na tela sem precisar reler nada do servidor. */
+  function marcarSlides(lista) {
+    if (!lista) return;
+    const itens = [...lista.querySelectorAll('[data-slide]')];
+    itens.forEach((el, i) => {
+      const num = el.querySelector('.is-num');
+      if (num) num.innerHTML = rotuloSlide(i, itens.length);
+    });
   }
 
   function itemFrame(f, i) {
@@ -1175,7 +1456,10 @@ B7.Linha = (function () {
   function ligarRemocoes(m) {
     m.querySelectorAll('[data-excluir-slide]').forEach(b => b.onclick = async () => {
       await B7.Save.acao(() => B7.DB.excluirSlide(b.dataset.excluirSlide), 'Slide removido');
+      const lista = b.closest('#lista-slides') || m.querySelector('#lista-slides');
       b.closest('[data-slide]').remove();
+      /* quem sobrou por último agora é o CTA */
+      marcarSlides(lista);
     });
     m.querySelectorAll('[data-excluir-frame]').forEach(b => b.onclick = async () => {
       await B7.Save.acao(() => B7.DB.excluirFrame(b.dataset.excluirFrame), 'Story removido');

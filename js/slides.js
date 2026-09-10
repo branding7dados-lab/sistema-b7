@@ -262,22 +262,28 @@ B7.Slides = (function () {
     }
 
     if (c.tipo === 'Carrossel') {
+      /* Sem Headline/CTA separados: slide 1 = abertura, último slide = CTA,
+         sempre dinâmico. Registro antigo com c.headline/c.cta preenchidos e
+         o slide correspondente vazio continua aparecendo, sem sumir. */
       const slides = ctx.slides[c.id] || [];
       const POR = 6;
       const partes = Math.max(1, Math.ceil(slides.length / POR));
       const saida = [];
       for (let k = 0; k < partes; k++) {
         const grupo = slides.slice(k * POR, (k + 1) * POR);
-        const corpo = (k === 0 ? base + campo('CAPA / HEADLINE', c.headline) : '') +
+        const corpo = (k === 0 ? base : '') +
           (grupo.length ? '<div class="sl-slides">' + grupo.map((s, n) => {
-            const idx = k * POR + n;
+            const idx = k * POR + n, ultimo = idx === slides.length - 1, unico = slides.length === 1;
+            const legado = (idx === 0 && vazio(s.titulo) && vazio(s.texto)) ? c.headline
+              : (ultimo && vazio(s.titulo) && vazio(s.texto)) ? c.cta : '';
+            const texto = s.texto || legado;
             return '<div class="sl-slide"><span>' + String(idx + 1).padStart(2, '0') +
-              (idx === 0 ? ' · CAPA' : '') + '</span>' +
+              (unico ? ' · CAPA · CTA' : idx === 0 ? ' · CAPA' : ultimo ? ' · CTA' : '') + '</span>' +
               (vazio(s.titulo) ? '' : '<b>' + esc(s.titulo) + '</b>') +
-              (vazio(s.texto) ? '' : '<div class="sl-txt">' + paragrafos(s.texto) + '</div>') +
+              (vazio(texto) ? '' : '<div class="sl-txt">' + paragrafos(texto) + '</div>') +
             '</div>';
           }).join('') + '</div>' : '') +
-          (k === partes - 1 ? campo('CTA', c.cta) + campo('LEGENDA', c.legenda) : '');
+          (k === partes - 1 ? campo('LEGENDA', c.legenda) : '');
         saida.push({ secao: 'CRIATIVOS', html: cabecalho(k + 1, partes) + corpo });
       }
       return saida;

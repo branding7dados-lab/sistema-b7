@@ -128,6 +128,10 @@ B7.Rota = (function () {
     }
     if (partes[0] === 'linhas') { mostrar('tela-dashboard'); return B7.Conteudo.abrirLinhasGlobais(); }
     if (partes[0] === 'kanban') { mostrar('tela-dashboard'); return B7.Kanban.abrir(); }
+    if (partes[0] === 'design' && B7.Design) {
+      mostrar('tela-dashboard');
+      return partes[1] ? B7.Design.abrirDetalhe(partes[1]) : B7.Design.abrir(params.get('aba'));
+    }
     if (partes[0] === 'aprovacoes' && B7.Aprovacoes) {
       mostrar('tela-dashboard');
       return partes[1] ? B7.Aprovacoes.abrirDetalhe(partes[1]) : B7.Aprovacoes.abrir();

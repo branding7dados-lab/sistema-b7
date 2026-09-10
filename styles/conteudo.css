@@ -123,6 +123,11 @@
 .item-slide > .ico.perigo{position:absolute;top:9px;right:9px;color:var(--ink-4);opacity:0;
   transition:opacity var(--t-micro);}
 .item-slide:hover > .ico.perigo{opacity:1;}
+/* o último slide do carrossel é sempre o CTA — designação estrutural,
+   nunca um número de slide gravado no banco (ver js/linha.js rotuloSlide) */
+.badge-cta{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;
+  background:var(--ambar-bg);color:var(--ambar);font-size:9.5px;font-weight:800;
+  letter-spacing:.6px;vertical-align:middle;}
 
 /* ----------------------------------------- vínculo com roteiro */
 .vinculo-roteiro{margin-top:6px;}

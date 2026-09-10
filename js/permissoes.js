@@ -22,8 +22,12 @@ B7.Perm = (function () {
     admin: '*',
     coordenador: [
       '', 'clientes', 'cliente', 'gravacoes', 'gravacao', 'roteiros', 'linhas',
-      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes'
+      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes', 'design'
     ],   /* sem usuarios, importar, atalhos e lixeira */
+    /* Designer é produção interna, não administração: só o que precisa
+       para entender o briefing e entregar o trabalho. Sem clientes,
+       usuários, Kanban geral, aprovações de cliente, importar/backup. */
+    designer: ['', 'design', 'linhas', 'linha', 'gravacao', 'config'],
     cliente: [
       '', 'aprovacoes', 'revisar', 'minha-linha', 'minha-producao',
       'minhas-gravacoes', 'meus-status', 'historico', 'perfil'
@@ -41,6 +45,14 @@ B7.Perm = (function () {
       ocultar: ['#/usuarios', '#/importar', '#/atalhos', '#/lixeira'],
       grupos: { 'MAIS FERRAMENTAS': true }
     },
+    /* Designer vê a fila de trabalho e o contexto que precisa; nada de
+       administração de clientes, quadro geral ou aprovações de cliente. */
+    designer: {
+      ocultar: ['#/usuarios', '#/importar', '#/atalhos', '#/lixeira', '#/clientes',
+                '#/kanban', '#/aprovacoes', '#/semanas', '#/arquivados',
+                '#/roteiros', '#/gravacoes'],
+      grupos: { 'MAIS FERRAMENTAS': false }
+    },
     cliente: {
       ocultar: ['#/kanban', '#/aprovacoes', '#/usuarios', '#/clientes', '#/gravacoes', '#/roteiros', '#/linhas',
                 '#/semanas', '#/arquivados', '#/lixeira', '#/importar',
@@ -55,6 +67,7 @@ B7.Perm = (function () {
     admin:       ['aparencia', 'interface', 'impressao', 'acesso', 'usuarios',
                   'banco', 'dados', 'conta'],
     coordenador: ['aparencia', 'interface', 'impressao', 'conta'],
+    designer:    ['aparencia', 'conta'],
     cliente:     ['aparencia', 'conta']
   };
 

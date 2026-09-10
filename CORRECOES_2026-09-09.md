@@ -420,3 +420,122 @@ Ver a seção "Anulação" em APROVACOES.md. Resumo:
 - Só em produção: Realtime de verdade (o canal já existente redesenha a
   lista/detalhe/portal quando `aprovacoes` muda), push das notificações
   de anulação, e o Kanban redesenhado por outro agente exibindo `aviso`.
+
+## Build 2026-09-10-b — Editor de Carrossel sem Headline/CTA redundantes
+
+Sem SQL novo (as colunas `conteudos.headline` e `conteudos.cta` já
+existiam e continuam existindo — só deixaram de ser usadas por
+Carrossel; Reel e Card continuam com os dois campos normalmente).
+
+- O editor de carrossel não pede mais "Capa/Headline" antes do Slide 1
+  nem "CTA do último slide" depois da lista. O **Slide 1 é a abertura**
+  (gancho/título/primeira mensagem) e o **último slide é sempre o CTA**
+  — de forma estrutural e dinâmica, nunca um número fixo gravado no
+  banco: adicionar, remover ou arrastar um slide reflete a etiqueta
+  "CAPA"/"CTA" na hora, sem recarregar a tela.
+- Nenhum texto de CTA é escrito automaticamente — o rótulo só identifica
+  qual slide é o CTA; o conteúdo continua 100% editável pela pessoa.
+- Snapshot de aprovação, folha A4 e apresentação 16:9 atualizados para a
+  mesma lógica (slide 1 = capa, último = CTA), sem bloco duplicado de
+  Headline/CTA para Carrossel.
+- Compatibilidade: carrosséis antigos que já tinham `headline`/`cta`
+  preenchidos continuam aparecendo nas exportações — como conteúdo do
+  slide 1/último quando esse slide específico está vazio — sem apagar
+  nada e sem duplicar slide algum. Ao editar um carrossel existente, os
+  dois campos antigos simplesmente deixam de ser usados a partir daí.
+- Testado: `node --check`, lógica de rotulagem (CAPA/CTA) isolada com 8
+  casos — 1º de N, meio, último de N, slide único (CAPA e CTA juntos),
+  o que era CTA deixa de ser após adicionar um slide, o novo último vira
+  CTA, o novo último vira CTA após excluir, e após reordenar — todos
+  corretos; smoke completo do app sem erro de JavaScript.
+
+## Build 2026-09-10-c — Calendário: Postagem × Gravação bem diferentes
+
+Sem SQL novo: a Gravação já existia como tabela própria (`gravacoes`),
+só passou a aparecer no calendário editorial ao lado da Postagem.
+
+- O calendário da Linha Editorial (aba Postagens → Calendário) agora
+  mostra **Postagem** e **Gravação** juntas, cada uma com identidade
+  visual própria: cor de fundo/borda diferente (tokens novos
+  `--cal-post`/`--cal-grav`, claro e escuro), e **ícone diferente**
+  (câmera para Gravação, o ícone do formato — Reel/Card/Carrossel/
+  Story — para Postagem) — dá pra saber o que é o quê mesmo em
+  escala de cinza, sem depender só da cor.
+- **Tipo de evento não é status.** Postagem/Gravação é o que o item É;
+  o status (Em revisão, Aprovado, Gravado…) vira só um pontinho discreto
+  no canto do item — a cor principal do card nunca muda quando o status
+  muda.
+- Legenda compacta (● Postagem ● Gravação) sempre visível perto dos
+  controles do calendário, com os mesmos ícones/cores reais.
+- Um dia com Postagem e Gravação mostra as duas, separadas, sem juntar
+  numa coisa só. Com muitos itens no dia, o "+N" continua funcionando e
+  ao expandir aparecem todos com sua cor/ícone certos.
+- Gravação só aparece no calendário quando já tem data marcada de
+  verdade — nunca é inventada. Data tratada só como string (sem fuso).
+- Clicar numa Postagem abre o conteúdo; clicar numa Gravação abre a
+  ficha da gravação (`#/gravacao/<id>`) — nenhum registro é duplicado
+  só pra desenhar o calendário.
+- No celular, sem espaço para ícone/texto, o ponto de cada dia também
+  muda de **forma** (Postagem = círculo, Gravação = quadrado
+  arredondado), não só de cor.
+- Testado: `node --check`; Playwright com um mês simulado cobrindo — dia
+  só com Postagem, dia só com Gravação, dia com as duas, várias
+  Postagens no mesmo dia (com overflow "+1"), várias Gravações no mesmo
+  dia, Postagem + Gravação + overflow no mesmo dia, claro, escuro,
+  desktop (1280), tablet (834), celular (390), foco de teclado, ícones
+  SVG diferentes por tipo, cores de fundo diferentes em claro e escuro,
+  clique na Gravação navegando para a ficha certa — 17 verificações,
+  todas passaram, sem erro de JavaScript. Smoke geral do app sem
+  regressão.
+
+## Build 2026-09-10-d — B7 Design (Central de Design)
+
+Módulo novo de produção visual interna, sem exigir login de cliente.
+Arquitetura: `design_deliverables` (a peça) → `design_versoes` (V01,
+V02…) → `design_arquivos` (prévia/produção/anexo/final); cada peça se
+liga ao `kanban_demandas` já existente (não é um segundo quadro) e usa
+`eventos_dominio`/`notificacoes` (não é um segundo sistema de
+notificação). Aprovação futura do cliente reaproveita `aprovacoes`
+(`tipo='design_versao'`) — não é um segundo motor de aprovação.
+
+- **Papel Designer** (`migration_design.sql`): `sou_designer()` e
+  `sou_equipe_interna()` (admin+coordenador+designer) novas, sem alterar
+  o que `sou_equipe()` já protegia. Designer só lê a Linha Editorial
+  (política de leitura adicionada por cima da já existente, nunca
+  escreve strategy/roteiro/pilares).
+- **"Enviar para Design"** — na Linha Editorial inteira e por criativo
+  (`js/linha.js`). Idempotente de verdade (índice único
+  `conteudo_id+tipo`): clicar de novo não duplica, e o toast mostra os
+  números reais devolvidos pelo banco ("N peças enviadas… M já
+  existiam."). Reel só vira peça de Capa quando `precisa_capa=true`
+  (novo controle Sim/Não no editor do Reel — opcional, sem bloquear
+  nada).
+- **Briefing sem duplicar nada**: o Designer lê headline, sub-headline,
+  objetivo, observação de Design e referências que já estão no
+  conteúdo — nenhum campo novo obrigatório de "direção criativa". A
+  regra do carrossel (Slide 1 = abertura, última slide = CTA dinâmico)
+  é a mesma da Linha Editorial, mostrada com o mesmo critério.
+- **Fila do Designer** (`#/design`) prioriza o que a pessoa precisa
+  fazer agora (Ajustes solicitados, Em criação, Revisão interna…),
+  com prazo real (Vence hoje/amanhã/Atrasado há N dias — só quando
+  existe prazo). "Equipe de Design" (Admin/Coordenador) mostra carga
+  real por pessoa, sem ranking nem "produtividade".
+- **Upload real** para o bucket privado `design-files`: progresso real
+  por arquivo (XHR), sem limite artificial de tamanho no app, múltiplos
+  arquivos por versão, papel por arquivo (prévia/produção/anexo/final).
+  Falha no envio preserva rascunho e observação já digitados.
+- **Revisão interna**: Designer nunca aprova a própria peça (barrado no
+  banco, testado). Admin/Coordenador aprovam ou pedem ajuste com
+  mensagem obrigatória; a versão anterior fica intacta no histórico com
+  seu estado original.
+- **Produção de Design** dentro da Linha Editorial: contagem real por
+  status e lista das peças, cada uma levando direto para o detalhe.
+- Testado com Postgres real (não simulado): cadeia completa do fluxo de
+  aceitação interno (gerar → atribuir → enviar V01 → pedir ajuste →
+  enviar V02 → aprovar → finalizar, tudo sem login de cliente) e RLS
+  como Admin/Coordenador/Designer(dois)/Cliente/anônimo — cada regra de
+  segurança do enunciado foi exercitada e confirmada. UI testada com
+  Playwright (admin/coordenador/designer, desktop 1280 e celular 390):
+  zero erro de JavaScript, zero scroll horizontal, navegação do
+  Designer sem nenhum item administrativo vazando.
+- `VERSAO` → `2026-09-10-d`, cache do service worker → `roteiros-b7-v19`.

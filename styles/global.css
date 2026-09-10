@@ -36,6 +36,16 @@
   --acento:var(--magenta); --acento-suave:rgba(194,28,131,.09);
   --esq-1:#EEEBF5; --esq-2:#F7F5FB;          /* skeleton */
 
+  /* calendário editorial — tipo de EVENTO (o que é), não status (em que
+     pé está). Nunca reaproveitar --acento/--ok/--ambar/--violeta aqui:
+     essas já significam aprovado/pronto/revisão/gravado em outro lugar
+     do sistema — misturar teria o card mudando de cor sozinho quando o
+     status mudasse, e é exatamente isso que não pode acontecer. */
+  --cal-post:var(--roxo); --cal-post-bg:rgba(124,30,133,.09);
+  --cal-post-border:rgba(124,30,133,.3); --cal-post-hover:var(--roxo);
+  --cal-grav:#1B5FA6; --cal-grav-bg:rgba(27,95,166,.09);
+  --cal-grav-border:rgba(27,95,166,.3); --cal-grav-hover:#1B5FA6;
+
   --sh-1:0 1px 2px rgba(21,18,43,.04);
   --sh-2:0 1px 3px rgba(21,18,43,.05), 0 10px 24px -12px rgba(21,18,43,.14);
   --sh-3:0 24px 70px rgba(11,10,30,.28);
@@ -76,6 +86,11 @@
   --grad-curto:linear-gradient(120deg,#5B44C0 0%,#9A44A8 52%,#E2409C 100%);
   --acento:#E2409C; --acento-suave:rgba(226,64,156,.16);
   --esq-1:#241A31; --esq-2:#2E2340;
+
+  --cal-post:var(--roxo); --cal-post-bg:rgba(154,68,168,.2);
+  --cal-post-border:rgba(154,68,168,.44); --cal-post-hover:var(--roxo);
+  --cal-grav:#6FA8DC; --cal-grav-bg:rgba(111,168,220,.18);
+  --cal-grav-border:rgba(111,168,220,.4); --cal-grav-hover:#6FA8DC;
 
   --sh-1:0 1px 2px rgba(0,0,0,.3);
   --sh-2:0 1px 3px rgba(0,0,0,.34), 0 12px 28px -14px rgba(0,0,0,.6);

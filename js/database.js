@@ -1323,6 +1323,163 @@ B7.DB = (function () {
       return pacote;
     },
 
+    /* ======================================================= DESIGN
+       Tudo lê a view design_resumo (já com cliente, linha, designer e
+       última versão). Toda escrita relevante passa por função do banco
+       (migration_design.sql) — mesmo padrão de Aprovações/Kanban: a
+       tabela em si só aceita SELECT. */
+
+    async listarDesign(filtros) {
+      let q = sb().from('design_resumo').select('*');
+      if (filtros) {
+        if (filtros.designerId) q = q.eq('designer_id', filtros.designerId);
+        if (filtros.clienteId) q = q.eq('client_id', filtros.clienteId);
+        if (filtros.linhaId) q = q.eq('linha_id', filtros.linhaId);
+        if (filtros.status) q = q.eq('status', Array.isArray(filtros.status) ? filtros.status[0] : filtros.status);
+        if (filtros.statusIn) q = q.in('status', filtros.statusIn);
+        if (filtros.semResponsavel) q = q.is('designer_id', null);
+      }
+      return ok(await q.order('updated_at', { ascending: false }).limit(500));
+    },
+
+    async design(id) {
+      return ok(await sb().from('design_resumo').select('*').eq('id', id).single());
+    },
+
+    async designDoConteudo(conteudoId) {
+      return ok(await sb().from('design_resumo').select('*').eq('conteudo_id', conteudoId));
+    },
+
+    async designProducaoDaLinha(linhaId) {
+      const l = ok(await sb().from('design_producao_linha').select('*').eq('linha_id', linhaId));
+      return l[0] || { linha_id: linhaId, total: 0, aguardando: 0, em_criacao: 0, em_revisao: 0, em_ajustes: 0, aprovadas: 0, finalizadas: 0 };
+    },
+
+    async gerarDesignDaLinha(linhaId) {
+      return this.rpc('design_gerar_da_linha', { p_linha_id: linhaId });
+    },
+    async gerarDesignDoConteudo(conteudoId) {
+      return this.rpc('design_gerar_do_conteudo', { p_conteudo_id: conteudoId });
+    },
+    async criarDesignManual(campos) {
+      return this.rpc('design_criar_manual', {
+        p_titulo: campos.titulo, p_client_id: campos.clientId || null,
+        p_tipo: campos.tipo || 'outro', p_descricao: campos.descricao || '',
+        p_designer_id: campos.designerId || null, p_prazo: campos.prazo || null,
+        p_prioridade: campos.prioridade || 'normal'
+      });
+    },
+    async atribuirDesign(deliverableId, designerId) {
+      return this.rpc('design_atribuir', { p_deliverable_id: deliverableId, p_designer_id: designerId });
+    },
+    async definirPrazoPrioridadeDesign(deliverableId, prazo, prioridade) {
+      return this.rpc('design_definir_prazo_prioridade', { p_deliverable_id: deliverableId, p_prazo: prazo || null, p_prioridade: prioridade });
+    },
+
+    async versoesDesign(deliverableId) {
+      return ok(await sb().from('design_versoes').select('*').eq('deliverable_id', deliverableId).order('numero', { ascending: false }));
+    },
+    async arquivosVersaoDesign(versaoId) {
+      return ok(await sb().from('design_arquivos').select('*').eq('versao_id', versaoId).order('papel').order('posicao'));
+    },
+    async criarRascunhoDesign(deliverableId) {
+      return this.rpc('design_versao_rascunho', { p_deliverable_id: deliverableId });
+    },
+    async registrarArquivoDesign({ versaoId, papel, nome, caminho, mime, tamanho }) {
+      return this.rpc('design_arquivo_registrar', {
+        p_versao_id: versaoId, p_papel: papel, p_nome: nome,
+        p_caminho: caminho, p_mime: mime || null, p_tamanho: tamanho || null
+      });
+    },
+    async enviarVersaoDesign(versaoId, observacao) {
+      return this.rpc('design_versao_enviar', { p_versao_id: versaoId, p_observacao: observacao || '' });
+    },
+    async solicitarAjusteDesign(versaoId, mensagem) {
+      return this.rpc('design_solicitar_ajuste', { p_versao_id: versaoId, p_mensagem: mensagem });
+    },
+    async aprovarInternoDesign(versaoId) {
+      return this.rpc('design_aprovar_interno', { p_versao_id: versaoId });
+    },
+    async finalizarDesign(deliverableId) {
+      return this.rpc('design_finalizar', { p_deliverable_id: deliverableId });
+    },
+    async enviarClienteDesign(versaoId, observacao) {
+      return this.rpc('design_enviar_cliente', { p_versao_id: versaoId, p_observacao: observacao || '' });
+    },
+
+    /* histórico da peça: eventos_dominio não é exposto por RLS ampla ao
+       designer, então a timeline vem das próprias versões + notificações
+       que o usuário tem direito de ver (mesma base de dados, sem
+       segundo sistema de auditoria). */
+    async historicoDesign(deliverableId) {
+      const [versoes, notifs] = await Promise.all([
+        this.versoesDesign(deliverableId),
+        ok(await sb().from('notificacoes').select('*')
+          .eq('link', '#/design/' + deliverableId).order('created_at', { ascending: true }))
+      ]);
+      return { versoes, notificacoes: notifs };
+    },
+
+    /* upload de arquivo de Design — Storage privado (bucket design-files),
+       caminho "<deliverable_id>/<versao_id>/<arquivo>". Progresso real via
+       XHR (o cliente supabase-js não expõe progresso em upload()). */
+    async enviarArquivoDesign({ deliverableId, versaoId, arquivo, papel, aoProgredir }) {
+      const nomeSeguro = arquivo.name.normalize('NFKD').replace(/[^\w.\-]+/g, '_').slice(-140);
+      const caminho = deliverableId + '/' + versaoId + '/' + Date.now() + '-' + nomeSeguro;
+      const cfg = window.B7_CONFIG || {};
+      const base = String(cfg.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+      const chave = String(cfg.SUPABASE_PUBLISHABLE_KEY || '').trim();
+      const sess = await sb().auth.getSession();
+      const token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+      const url = base + '/storage/v1/object/design-files/' + encodeURI(caminho);
+
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('apikey', chave);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + (token || chave));
+        xhr.setRequestHeader('x-upsert', 'false');
+        xhr.setRequestHeader('Content-Type', arquivo.type || 'application/octet-stream');
+        xhr.upload.onprogress = (e) => {
+          if (aoProgredir && e.lengthComputable) aoProgredir(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else {
+            let msg = 'O envio falhou (HTTP ' + xhr.status + ').';
+            try { const j = JSON.parse(xhr.responseText); if (j && j.message) msg = j.message; } catch (_e) {}
+            reject(new Error(msg));
+          }
+        };
+        xhr.onerror = () => reject(new Error('O envio foi interrompido. Confira a conexão e tente novamente.'));
+        xhr.send(arquivo);
+      });
+
+      return this.registrarArquivoDesign({
+        versaoId, papel, nome: arquivo.name, caminho, mime: arquivo.type, tamanho: arquivo.size
+      });
+    },
+
+    /* design_resumo não expõe a descrição (só interessa às peças manuais,
+       que não têm conteúdo canônico) — lida direto da tabela base. */
+    async descricaoDesign(deliverableId) {
+      const l = ok(await sb().from('design_deliverables').select('descricao').eq('id', deliverableId).single());
+      return (l && l.descricao) || '';
+    },
+
+    urlArquivoDesign(caminho) {
+      /* Storage privado: sem URL pública. A visualização passa por
+         createSignedUrl, curta duração, pedida na hora de abrir. */
+      return sb().storage.from('design-files').createSignedUrl(caminho, 60 * 10)
+        .then(({ data, error }) => { if (error) throw error; return data.signedUrl; });
+    },
+
+    /* ---- Equipe de Design (Admin/Coordenador) ---- */
+    async listarDesigners() {
+      return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')
+        .eq('papel', 'designer').eq('estado', 'ativa').order('nome'));
+    },
+
     /* Importa sem apagar nada: mantém os ids do arquivo e ignora o que
        já existir (upsert por id). Serve para restaurar um backup. */
     async importarTudo(pacote) {
