@@ -74,8 +74,7 @@ B7.Aprovacoes = (function () {
       lerFiltrosDaUrl();
       B7.Rota.titulo(['Aprovações']);
       marcarNav();
-      painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div>' +
-        '<div class="txt">Carregando aprovações…</div></div></div>';
+      painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div>';
     }
     if (!canal) {
       assinar([{ table: 'aprovacoes' }, { table: 'aprovacao_partes' }], () => {
@@ -198,7 +197,7 @@ B7.Aprovacoes = (function () {
     if (B7.Perm && !B7.Perm.podeRota('aprovacoes')) { location.hash = '#/'; return; }
     if (!silencioso) {
       marcarNav();
-      painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div><div class="txt">Abrindo…</div></div></div>';
+      painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
       /* o cliente decidiu enquanto a equipe olhava: a tela acompanha */
       assinar([{ table: 'aprovacoes', filter: 'id=eq.' + id },
                { table: 'aprovacao_partes', filter: 'aprovacao_id=eq.' + id },

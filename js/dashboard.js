@@ -38,57 +38,109 @@ B7.Dashboard = (function () {
     '</div>';
   }
 
-  /* carregando de verdade: o símbolo oficial pulsando, curto */
-  function carregando(texto) {
-    return '<div class="b7-load"><div class="simbolo"></div>' +
-      '<div class="txt">' + esc(texto || 'Carregando…') + '</div></div>';
-  }
-
-  /* prévia dos roteiros no hover — carrega uma vez por gravação e guarda */
+  /* =================================================================
+     PRÉVIA DOS ROTEIROS NO HOVER
+     Um único cartão para o sistema inteiro, reutilizado a cada card. Os
+     eventos são delegados no painel e ligados UMA vez: a versão anterior
+     criava um cartão por card e somava um listener de scroll por card a
+     cada render — depois de algumas telas o cartão ficava preso aberto.
+     Fecha ao sair do card, ao rolar, ao trocar de rota e no ESC. Nunca
+     fica sob o cursor: vai para fora do retângulo do card, com folga.
+     ================================================================= */
   const cachePrevia = {};
-  function ligarPrevia(raiz) {
-    if (window.matchMedia('(pointer: coarse)').matches) return;   // nada disso no toque
-    raiz.querySelectorAll('.card-gravacao[data-gravacao], .destaque-grav[data-gravacao]').forEach(card => {
-      let caixa = null, timer = null;
-      card.onmouseenter = () => {
-        timer = setTimeout(async () => {
-          const id = card.dataset.gravacao;
-          if (!cachePrevia[id]) {
-            try { cachePrevia[id] = await B7.DB.previaRoteiros(id, 3); } catch (e) { return; }
-          }
-          const roteiros = cachePrevia[id];
-          if (!roteiros.length) return;
-          const total = +(card.dataset.totalRoteiros || roteiros.length);
-          caixa = document.createElement('div');
-          caixa.className = 'previa-roteiros';
-          caixa.innerHTML = '<div class="rot">ROTEIROS</div>' + roteiros.map((r, i) =>
-            '<div class="it"><b>' + String((r.position || i) + 1).padStart(2, '0') + '</b>' +
-            '<span>' + esc(r.titulo || 'Sem título') + '</span></div>').join('') +
-            (total > roteiros.length ? '<div class="mais">+' + (total - roteiros.length) + ' roteiros</div>' : '');
-          /* No card ela era cortada pelo overflow e escapava para o canto
-             da tela. Vai para o body, posicionada por coordenadas: fica
-             sempre colada ao card e dentro da janela. */
-          document.body.appendChild(caixa);
-          const r = card.getBoundingClientRect();
-          const larg = caixa.offsetWidth, alt = caixa.offsetHeight, M = 12;
-          let left = r.left + r.width / 2 - larg / 2;
-          left = Math.max(M, Math.min(left, window.innerWidth - larg - M));
-          /* acima do card por padrão; abaixo quando não couber */
-          const acima = r.top - alt - 10 >= M;
-          caixa.classList.toggle('abaixo', !acima);
-          caixa.style.left = left + 'px';
-          caixa.style.top = (acima ? r.top - alt - 10 : r.bottom + 10) + 'px';
-          requestAnimationFrame(() => caixa && caixa.classList.add('aberta'));
-        }, 380);
-      };
-      const sumir = () => {
-        clearTimeout(timer);
-        if (caixa) { caixa.remove(); caixa = null; }
-      };
-      card.onmouseleave = sumir;
-      /* rolar com a prévia aberta deixaria ela flutuando solta */
-      window.addEventListener('scroll', sumir, { passive: true, capture: true });
-    });
+  const Previa = (function () {
+    const SELETOR = '.card-gravacao[data-gravacao], .destaque-grav[data-gravacao], .card-roteiro[data-gravacao]';
+    let caixa = null, timer = null, cardAtual = null, ligado = false, pedido = 0;
+
+    function elemento() {
+      if (caixa && document.body.contains(caixa)) return caixa;
+      caixa = document.createElement('div');
+      caixa.className = 'previa-roteiros';
+      caixa.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(caixa);
+      return caixa;
+    }
+
+    function fechar() {
+      clearTimeout(timer); timer = null;
+      pedido++;                     /* invalida qualquer carga em andamento */
+      cardAtual = null;
+      if (caixa) caixa.classList.remove('aberta');
+    }
+
+    function posicionar(card) {
+      const r = card.getBoundingClientRect();
+      const larg = caixa.offsetWidth, alt = caixa.offsetHeight, M = 12, F = 10;
+      let left = r.left + r.width / 2 - larg / 2;
+      left = Math.max(M, Math.min(left, window.innerWidth - larg - M));
+      /* acima do card por padrão; abaixo quando não couber; se nenhum dos
+         dois couber (card mais alto que a janela) vai para o lado, sempre
+         fora do retângulo do card — o cursor está dentro dele */
+      let top;
+      if (r.top - alt - F >= M) { top = r.top - alt - F; caixa.classList.remove('abaixo'); }
+      else if (r.bottom + F + alt <= window.innerHeight - M) { top = r.bottom + F; caixa.classList.add('abaixo'); }
+      else {
+        top = Math.max(M, Math.min(r.top, window.innerHeight - alt - M));
+        left = r.right + F + larg <= window.innerWidth - M ? r.right + F : Math.max(M, r.left - larg - F);
+        caixa.classList.add('abaixo');
+      }
+      caixa.style.left = left + 'px';
+      caixa.style.top = top + 'px';
+    }
+
+    async function abrir(card) {
+      const id = card.dataset.gravacao;
+      const meu = ++pedido;
+      if (!cachePrevia[id]) {
+        try { cachePrevia[id] = await B7.DB.previaRoteiros(id, 3); } catch (e) { return; }
+      }
+      if (meu !== pedido || cardAtual !== card || !document.body.contains(card)) return;
+      const roteiros = cachePrevia[id];
+      if (!roteiros.length) return;
+      const total = +(card.dataset.totalRoteiros || roteiros.length);
+      const el = elemento();
+      el.innerHTML = '<div class="rot">ROTEIROS</div>' + roteiros.map((r, i) =>
+        '<div class="it' + (card.dataset.roteiro === r.id ? ' atual' : '') + '"><b>' +
+        String((r.position || i) + 1).padStart(2, '0') + '</b>' +
+        '<span>' + esc(r.titulo || 'Sem título') + '</span></div>').join('') +
+        (total > roteiros.length ? '<div class="mais">+' + (total - roteiros.length) + ' roteiros</div>' : '');
+      posicionar(card);
+      requestAnimationFrame(() => { if (cardAtual === card) el.classList.add('aberta'); });
+    }
+
+    function aoEntrar(e) {
+      const card = e.target.closest(SELETOR);
+      if (!card || card === cardAtual) return;
+      fechar();
+      cardAtual = card;
+      timer = setTimeout(() => abrir(card), 380);
+    }
+    function aoSair(e) {
+      if (!cardAtual) return;
+      const para = e.relatedTarget;
+      if (para && cardAtual.contains(para)) return;    /* ainda dentro do card */
+      fechar();
+    }
+
+    /* ligado uma vez por sessão: delegação no painel, nada por card */
+    function ligar() {
+      if (ligado || window.matchMedia('(pointer: coarse)').matches) return;
+      ligado = true;
+      const p = painel();
+      p.addEventListener('mouseover', aoEntrar);
+      p.addEventListener('mouseout', aoSair);
+      p.addEventListener('scroll', fechar, { passive: true });
+      window.addEventListener('scroll', fechar, { passive: true, capture: true });
+      window.addEventListener('resize', fechar);
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') fechar(); });
+      window.addEventListener('hashchange', fechar);
+    }
+    return { ligar, fechar };
+  })();
+  function ligarPrevia() {
+    Previa.ligar();
+    Previa.fechar();
+    if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(Previa.fechar);
   }
 
   /* spotlight: o brilho acompanha o cursor apenas nos cards principais */
@@ -105,15 +157,11 @@ B7.Dashboard = (function () {
 
 
   /* ------------------------------------------------------- esqueleto */
-  function esqueleto(tipo) {
-    const cx = tipo === 'lista'
-      ? '<div class="esqueleto" style="height:44px;width:300px;margin-bottom:22px"></div>' +
-        '<div class="grade-clientes">' + '<div class="esqueleto" style="height:78px"></div>'.repeat(6) + '</div>'
-      : '<div class="esqueleto" style="height:172px;border-radius:22px;margin-bottom:20px"></div>' +
-        '<div class="metricas">' + '<div class="esqueleto" style="height:140px"></div>'.repeat(4) + '</div>' +
-        '<div class="colunas"><div>' + carregando('Carregando sua produção…') + '</div>' +
-        '<div class="apoio"><div class="esqueleto" style="height:262px"></div></div></div>';
-    painel().innerHTML = '<div class="conteudo">' + cx + '</div>';
+  /* Troca de rota: a silhueta da tela seguinte, nunca a abertura nem um
+     spinner de tela cheia. `tipo` segue B7.UI.skeleton. */
+  function esqueleto(tipo, opcoes) {
+    painel().innerHTML = '<div class="conteudo">' +
+      B7.UI.skeleton(tipo === 'lista' ? 'cards' : (tipo || 'central'), opcoes) + '</div>';
   }
 
   function erro(e, acao) {
@@ -368,29 +416,104 @@ B7.Dashboard = (function () {
   }
 
   /* ================================================ ROTEIROS RECENTES */
+  /* Cada card diz de quem é o roteiro (cliente), onde ele vive (gravação),
+     em que estágio está e quando foi mexido. Busca e filtros trabalham em
+     memória sobre a lista já carregada — sem ida ao banco a cada tecla. */
+  function cardRoteiro(r) {
+    const g = r.gravacao || {};
+    const cliente = g.cliente_nome || 'Sem cliente';
+    return '<div class="card-roteiro spot eleva" data-gravacao="' + esc(r.recording_session_id) +
+      '" data-roteiro="' + esc(r.id) + '" data-total-roteiros="' + (g.total_roteiros || 0) + '" ' +
+      'role="link" tabindex="0" aria-label="Abrir roteiro ' + esc(r.titulo || 'Sem título') + '">' +
+      '<div class="cr-topo">' + B7.UI.avatarCliente(cliente, g.cliente_logo_url || null) +
+        '<div class="cr-quem"><b>' + esc(cliente) + '</b>' +
+        '<small>' + IC.gravacoes + esc(g.nome || 'Gravação removida') + '</small></div>' +
+      '</div>' +
+      '<h3>' + esc(r.titulo || 'Sem título') + '</h3>' +
+      (r.objetivo ? '<p>' + esc(r.objetivo) + '</p>' : '') +
+      '<div class="cr-pe">' + B7.UI.chipRevisao(r.status) +
+        '<span class="cr-quando" title="' + esc(r.updated_at || '') + '">' +
+          'atualizado ' + esc(B7.UI.quando(r.updated_at)) + '</span>' +
+        (g.data_gravacao ? '<span class="cr-data">' + esc(B7.UI.dataBR(g.data_gravacao)) + '</span>' : '') +
+      '</div></div>';
+  }
+
   async function abrirRoteiros() {
     marcarNav('#/roteiros');
-    esqueleto('lista');
+    B7.Rota.titulo(['Roteiros']);
+    esqueleto('cards', { n: 6 });
     let roteiros;
-    try { roteiros = await B7.DB.roteirosRecentes(20); } catch (e) { return erro(e, 'abrirRoteiros'); }
+    try { roteiros = await B7.DB.roteirosRecentes(60); } catch (e) { return erro(e, 'abrirRoteiros'); }
 
-    painel().innerHTML = '<div class="conteudo">' +
-      '<div class="secao-topo"><h2 style="font-size:22px">Roteiros recentes</h2>' +
-      '<span class="conta">' + roteiros.length + '</span></div>' +
-      (roteiros.length ? '<div class="lista-gravacoes">' + roteiros.map(r =>
-        '<div class="linha-gravacao" data-gravacao="' + esc(r.recording_session_id) +
-          '" data-roteiro="' + esc(r.id) + '">' +
-          B7.UI.avatarCliente(r.gravacao ? r.gravacao.cliente_nome : '?',
-                              r.gravacao ? r.gravacao.cliente_logo_url : null) +
-          '<div class="nm"><b>' + esc(r.titulo || 'Sem título') + '</b><small>' +
-          (r.gravacao ? esc(r.gravacao.cliente_nome) + ' · ' + esc(r.gravacao.nome) + ' · ' : '') +
-          'editado ' + B7.UI.quando(r.updated_at) + '</small></div>' +
-          '<div class="seta">›</div></div>').join('') + '</div>'
-        : '<div class="cartao vazio"><div class="ilu">' + IC.roteiros + '</div>' +
-          '<b>Nenhum roteiro ainda</b><p>Crie uma gravação e comece a escrever.</p>' +
-          '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button></div>') +
+    const clientes = [...new Set(roteiros.map(r => r.gravacao && r.gravacao.cliente_nome).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    painel().innerHTML = '<div class="conteudo entra">' +
+      '<div class="secao-topo cab-roteiros"><div class="cab-tx"><h2 style="font-size:22px">Roteiros</h2>' +
+        '<small>Os últimos roteiros trabalhados, de todos os clientes.</small></div>' +
+        '<span class="conta" id="rt-conta">' + roteiros.length + '</span><div class="espaco"></div>' +
+        (roteiros.length ? '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button>' : '') +
+      '</div>' +
+      (roteiros.length ?
+        '<div class="barra-filtros rt-filtros">' +
+          '<div class="busca-local"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+            '<input class="campo" id="rt-busca" placeholder="Buscar por título, cliente ou gravação…" autocomplete="off"></div>' +
+          '<div class="filtro rolavel" id="rt-status">' +
+            ['Todos'].concat(B7.UI.REVISAO).map((f, i) =>
+              '<button data-f="' + esc(f) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(f) + '</button>').join('') +
+          '</div>' +
+          (clientes.length > 1 ? '<select class="campo rt-cliente" id="rt-cliente" aria-label="Filtrar por cliente">' +
+            '<option value="">Todos os clientes</option>' +
+            clientes.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('') + '</select>' : '') +
+        '</div>' +
+        '<div class="grade grade-roteiros" id="lista-roteiros">' + roteiros.map(cardRoteiro).join('') + '</div>'
+      : estadoB7(IC.roteiros, 'Nenhum roteiro ainda.',
+          'Crie uma gravação e escreva o primeiro roteiro: ele aparece aqui assim que for salvo.',
+          '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button>' +
+          '<button class="b contorno" data-ir="#/gravacoes">Ver gravações</button>')) +
       '</div>';
     ligar();
+    if (!roteiros.length) return;
+
+    let status = 'Todos', cliente = '', termo = '';
+    const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const aplicar = () => {
+      const lista = roteiros.filter(r => {
+        const g = r.gravacao || {};
+        if (status !== 'Todos' && (r.status || 'Em criação') !== status) return false;
+        if (cliente && g.cliente_nome !== cliente) return false;
+        if (termo && !norm(r.titulo + ' ' + g.cliente_nome + ' ' + g.nome + ' ' + r.objetivo).includes(termo)) return false;
+        return true;
+      });
+      const cx = document.getElementById('lista-roteiros');
+      const conta = document.getElementById('rt-conta');
+      if (!cx) return;
+      if (conta) conta.textContent = lista.length === roteiros.length ? roteiros.length : lista.length + ' de ' + roteiros.length;
+      cx.innerHTML = lista.length ? lista.map(cardRoteiro).join('')
+        : '<div class="estado-b7 leve" style="grid-column:1/-1"><div class="b7-marca fraca"></div>' +
+          '<div class="ilu">' + IC.roteiros + '</div><b>Nenhum roteiro com esses filtros.</b>' +
+          '<p>Tente outra palavra, outro estágio ou outro cliente.</p>' +
+          '<div class="acoes"><button class="b contorno" id="rt-limpar">Limpar filtros</button></div></div>';
+      ligar();
+      const limpar = document.getElementById('rt-limpar');
+      if (limpar) limpar.onclick = () => {
+        status = 'Todos'; cliente = ''; termo = '';
+        const b = document.getElementById('rt-busca'); if (b) b.value = '';
+        const s = document.getElementById('rt-cliente'); if (s) s.value = '';
+        const f = document.getElementById('rt-status');
+        if (f) f.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.f === 'Todos'));
+        aplicar();
+      };
+    };
+    const f = document.getElementById('rt-status');
+    if (f) f.querySelectorAll('button').forEach(b => b.onclick = () => {
+      f.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on'); status = b.dataset.f; aplicar();
+    });
+    const busca = document.getElementById('rt-busca');
+    if (busca) busca.oninput = B7.UI.debounce(() => { termo = norm(busca.value.trim()); aplicar(); }, 120);
+    const sel = document.getElementById('rt-cliente');
+    if (sel) sel.onchange = () => { cliente = sel.value; aplicar(); };
   }
 
   /* ========================================================= CLIENTES */
@@ -451,7 +574,7 @@ B7.Dashboard = (function () {
   async function abrirCliente(id, aba) {
     marcarNav('#/clientes');
     abaCliente = aba || 'geral';
-    painel().innerHTML = '<div class="conteudo">' + carregando('Abrindo o workspace…') + '</div>';
+    esqueleto('detalhe');
 
     let cliente, gravacoes, roteiros, linhas = [], semanas = [];
     try {
@@ -488,7 +611,7 @@ B7.Dashboard = (function () {
 
       (abaCliente === 'geral' ? visaoGeralCliente(cliente, gravacoes, roteiros, emAndamento, conta, ultima, linhas, semanas)
        : abaCliente === 'gravacoes' ? abaGravacoesCliente(cliente, gravacoes)
-       : abaCliente === 'arquivados' ? '<div id="aba-arquivados">' + carregando('Carregando arquivados…') + '</div>'
+       : abaCliente === 'arquivados' ? '<div id="aba-arquivados">' + B7.UI.skeleton('cards', { n: 3, titulo: false }) + '</div>'
        : abaRoteirosCliente(cliente, roteiros)) +
     '</div>';
 
@@ -951,7 +1074,7 @@ B7.Dashboard = (function () {
   async function abrirLixeira() {
     marcarNav('#/lixeira');
     B7.Rota.titulo(['Lixeira']);
-    painel().innerHTML = '<div class="conteudo">' + carregando('Abrindo a lixeira…') + '</div>';
+    esqueleto('lista', { n: 5 });
     let dados;
     try { dados = await B7.DB.lixeira(); } catch (e) { return erro(e, 'abrirLixeira'); }
 
@@ -1013,7 +1136,7 @@ B7.Dashboard = (function () {
   async function abrirArquivados() {
     marcarNav('#/arquivados');
     B7.Rota.titulo(['Arquivados']);
-    painel().innerHTML = '<div class="conteudo">' + carregando('Abrindo os arquivados…') + '</div>';
+    esqueleto('cards', { n: 4 });
     let gravacoes;
     try { gravacoes = await B7.DB.listarGravacoes(null, { somenteArquivadas: true }); }
     catch (e) { return erro(e, 'abrirArquivados'); }
@@ -1079,10 +1202,14 @@ B7.Dashboard = (function () {
 
   function ligar() {
     const p = painel();
-    p.querySelectorAll('[data-gravacao]').forEach(el => el.onclick = ev => {
-      if (ev.target.closest('.menu')) return;
-      const r = el.dataset.roteiro;
-      location.hash = '#/gravacao/' + el.dataset.gravacao + (r ? '?roteiro=' + r : '');
+    p.querySelectorAll('[data-gravacao]').forEach(el => {
+      const abrir = () => {
+        const r = el.dataset.roteiro;
+        location.hash = '#/gravacao/' + el.dataset.gravacao + (r ? '?roteiro=' + r : '');
+      };
+      el.onclick = ev => { if (!ev.target.closest('.menu')) abrir(); };
+      /* cards focáveis abrem com Enter, como um link */
+      if (el.getAttribute('tabindex') === '0') el.onkeydown = ev => { if (ev.key === 'Enter') abrir(); };
     });
     p.querySelectorAll('[data-cliente]').forEach(el => el.onclick = ev => {
       if (ev.target.closest('button')) return;

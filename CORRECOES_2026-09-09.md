@@ -288,3 +288,75 @@ Migrations novas: `migration_presenca.sql` e `migration_push.sql` (depois de
   campo antigo se a migration ainda não rodou). Usuários e acessos mostra
   "Online agora" / "Último acesso: …" / "Nunca acessou". Nada de
   `auth.users` no frontend.
+
+## Build 2026-09-09-j — C: responsividade, skeletons, roteiros, prévia
+
+### Abertura só no arranque
+- A tela de abertura (`.b7-abertura`) aparece no boot e no instante entre o
+  login e a montagem do sistema, e nunca mais: `abrirCortina` vira no-op
+  depois que `fecharCortina` roda com o sistema montado (`js/app.js`).
+- Trocas de rota usam **skeletons** em vez de spinner de tela cheia:
+  `B7.UI.skeleton(tipo, { n, cols, titulo })` em `js/ui.js`, com os tipos
+  `linhas`, `cards`, `lista`, `tabela`, `central`, `detalhe`. CSS em
+  `global.css` (seção "SKELETONS DE ROTA"). Usado em dashboard, clientes,
+  gravações, roteiros, workspace do cliente, lixeira, arquivados, linhas,
+  inteligência, onboarding, ideias, kanban, status semanal, usuários,
+  aprovações, linha editorial e no portal do cliente.
+
+### Auditoria responsiva
+- `html, body, #app` em `100dvh` com reserva `100vh`; `env(safe-area-inset-*)`
+  na sidebar, no topo e nas margens do conteúdo.
+- Grades no celular usam `minmax(0,1fr)` (com `1fr` um título sem quebra
+  empurrava o card para fora da tela); cards com `min-width:0`.
+- Sidebar no celular/tablet (≤1080px) é gaveta: hambúrguer com
+  `aria-expanded`, overlay (`body.gaveta:before`), botão × dentro da gaveta,
+  fecha ao tocar fora, no ESC, ao navegar (`B7.Rota.ir` chama
+  `B7.fecharGaveta`) e ao voltar a uma largura de desktop. `body.recolhida`
+  não vale na gaveta (sempre aberta com rótulos).
+- Sidebar recolhida sem barra de rolagem: `.nav{overflow-x:hidden}`, rótulo
+  de grupo com `nowrap`, e `title` nos links quando só o ícone aparece.
+- Abas (`.abas-cliente`, `.abas-linha`, `.filtro`, `.opcoes`) rolam na
+  horizontal em qualquer largura que não as comporte; alvos de toque ≥ 40px
+  em ≤820px e em `pointer:coarse`.
+- Topo no celular: tema some (fica em Configurações), indicador de
+  salvamento vira só o ponto, botão primário só com o ícone. No editor, o
+  contexto (cliente · gravação) não quebra letra a letra e "Baixar" passa
+  a existir também no menu ⋯ (o botão do topo some em ≤520px).
+- Kanban: a margem negativa do quadro acompanha a margem real do conteúdo
+  (`--gutter`), o que tirava 2–3px de rolagem lateral em ≤520px.
+- Configurações: linha do estado do banco quebra em vez de empurrar o botão.
+
+### Tela de Roteiros
+- `abrirRoteiros` (`js/dashboard.js`) refeita: cards com cliente (avatar),
+  gravação, título, objetivo, estágio (`chipRevisao`), "atualizado há…" e
+  data de gravação; busca por título/cliente/gravação (sem acento), filtro
+  por estágio e por cliente, tudo em memória; estados vazios com identidade
+  (`estadoB7`) para "nenhum roteiro" e "nada com esses filtros" (com
+  "Limpar filtros"). `roteirosRecentes` traz `status` e `objetivo`.
+- Cards focáveis por teclado (Enter abre).
+
+### Prévia no hover refeita
+- Um único elemento `.previa-roteiros` para o sistema inteiro, reutilizado;
+  eventos delegados no painel e ligados uma vez por sessão (antes cada
+  render somava um listener de scroll por card e o cartão ficava preso).
+- Fecha em mouseleave, scroll (painel e janela), resize, ESC, `hashchange`
+  e `B7.Rota.aoSair`. Fica fora do retângulo do card (acima, abaixo ou ao
+  lado), então nunca cobre o cursor. Marca o roteiro do card atual.
+
+### Portal do cliente
+- Mesma gaveta e `100dvh`. Os controles do sistema interno no topo (busca,
+  Nova gravação, menu de backup, indicador de salvamento) somem em
+  `body.modo-portal`.
+
+### Como foi testado
+- `node --check` em todos os JS.
+- Playwright headless com REST simulado e sessão semeada em `localStorage`
+  (`b7-sessao`): 16 rotas da equipe + 7 do portal (papel cliente via
+  `minha_sessao` mockada) em 1280×800, 1024×768, 390×844 e 360×740, medindo
+  `scrollWidth <= innerWidth` e rolagem lateral do painel — todas OK, sem
+  erros de JS. Sidebar recolhida sem scroll; gaveta abre/fecha por toque,
+  ESC, navegação e overlay; prévia abre no hover e fecha em mouseleave,
+  scroll, ESC e troca de rota; skeleton visível logo após cada troca.
+- Só no aparelho real: `env(safe-area-inset-*)` em iPhone com notch,
+  comportamento de `100dvh` com a barra do Safari/Chrome recolhendo, e a
+  ausência de hover no toque (a prévia já não é ligada em `pointer:coarse`).

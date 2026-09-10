@@ -123,9 +123,7 @@ B7.Portal = (function () {
     marcarNav('#/');
 
     if (!silencioso) {
-      painel().innerHTML = '<div class="conteudo"><div class="b7-load">' +
-        '<div class="simbolo"></div><div class="txt">Carregando seu acompanhamento…</div>' +
-        '<div class="barra-load"><i></i></div></div></div>';
+      carregando('Carregando seu acompanhamento…');
     }
 
     /* serviço pausado ou cancelado tem tela própria, e nada é carregado */
@@ -270,8 +268,7 @@ B7.Portal = (function () {
     if (emp && emp.servico !== 'ativo') return telaServico(emp);
 
     if (!silencioso) {
-      painel().innerHTML = '<div class="conteudo"><div class="b7-load">' +
-        '<div class="simbolo"></div><div class="txt">Carregando…</div></div></div>';
+      carregando('Carregando as aprovações…');
     }
     if (!canal) assinar(() => { if (naRota('#/aprovacoes')) abrirAprovacoes(filtroAtual, true); else desassinar(); });
 
@@ -497,10 +494,12 @@ B7.Portal = (function () {
   }
 
   /* ---- utilidades das telas do portal ---- */
+  /* Troca de rota no portal: a silhueta da lista que vem a seguir. O
+     texto continua servindo aos leitores de tela. */
   function carregando(texto) {
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load">' +
-      '<div class="simbolo"></div><div class="txt">' + esc(texto) + '</div>' +
-      '<div class="barra-load"><i></i></div></div></div>';
+    painel().innerHTML = '<div class="conteudo portal-home">' +
+      '<span class="sr-only">' + esc(texto) + '</span>' +
+      B7.UI.skeleton('lista', { n: 4 }) + '</div>';
   }
 
   function tela(titulo, subtitulo, corpo) {
@@ -526,8 +525,7 @@ B7.Portal = (function () {
   async function abrirRevisao(id) {
     marcarNav('#/aprovacoes');
     painel().innerHTML = '<div class="conteudo entra portal-revisao"></div>';
-    conteudo().innerHTML = '<div class="b7-load"><div class="simbolo"></div>' +
-      '<div class="txt">Abrindo material…</div><div class="barra-load"><i></i></div></div>';
+    conteudo().innerHTML = '<span class="sr-only">Abrindo material…</span>' + B7.UI.skeleton('detalhe');
 
     let ap, partes = [], comentarios = [], versoes = [];
     try {

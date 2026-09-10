@@ -65,8 +65,7 @@ B7.Semana = (function () {
      LISTA GLOBAL
      ================================================================= */
   async function abrirLista() {
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div>' +
-      '<div class="txt">Carregando status semanais…</div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div>';
     let lista;
     try { lista = await B7.DB.listarStatus({}); }
     catch (e) { return B7.Dashboard.erroConteudo(e); }
@@ -267,8 +266,7 @@ B7.Semana = (function () {
      EDITOR
      ================================================================= */
   async function abrir(id) {
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div>' +
-      '<div class="txt">Abrindo a semana…</div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
     try {
       S.relatorio = await B7.DB.status(id);
       S.itens = await B7.DB.listarItens(id);

@@ -28,6 +28,8 @@ B7.Rota = (function () {
 
   async function ir() {
     limpar();
+    /* no celular a sidebar é uma gaveta: navegar fecha a gaveta */
+    if (B7.fecharGaveta) B7.fecharGaveta(); else document.body.classList.remove('gaveta');
     const bruto = location.hash || '#/';
     atual = bruto;
     const [caminho, query] = bruto.slice(1).split('?');
@@ -137,7 +139,12 @@ B7.Rota = (function () {
      Cobre o intervalo entre entrar e o sistema estar montado. Some com
      transição, para a troca não ser um corte seco.
      ================================================================= */
+  /* A abertura é do arranque (e do instante entre o login e a montagem
+     do sistema). Depois disso ela não volta: troca de rota usa os
+     skeletons de B7.UI.skeleton, nunca esta tela. */
+  let arranqueConcluido = false;
   function abrirCortina(titulo, texto) {
+    if (arranqueConcluido) return null;
     let el = document.querySelector('.b7-abertura');
     if (el && el.classList.contains('saindo')) { el.remove(); el = null; }
     if (!el) {
@@ -169,6 +176,7 @@ B7.Rota = (function () {
   }
 
   function fecharCortina() {
+    if (jaMontado) arranqueConcluido = true;
     const el = document.querySelector('.b7-abertura');
     if (!el || el.classList.contains('saindo')) return;
     el.classList.add('saindo');
@@ -340,6 +348,7 @@ B7.Rota = (function () {
     document.getElementById('ed-status').onclick = () => B7.Editor.menuStatus();
     ligarTopo('bt-imprimir', () => B7.Editor.imprimir());
     ligarTopo('bt-baixar', () => B7.Editor.baixar());
+    ligarTopo('mn-ed-baixar', () => B7.Editor.baixar());   /* no celular o botão do topo some */
     document.getElementById('mn-ed-apresentar').onclick = () => B7.Editor.apresentar();
     document.getElementById('mn-ed-arquivar').onclick = () =>
       B7.Dashboard.arquivarGravacao(B7.Editor.estado.gravacao.id, true);
@@ -376,7 +385,7 @@ B7.Rota = (function () {
       if (!destino) return;
       e.preventDefault();
       location.hash = destino;
-      document.body.classList.remove('gaveta');
+      if (B7.fecharGaveta) B7.fecharGaveta();
     });
 
     aplicarPapelNaNavegacao();
@@ -384,7 +393,7 @@ B7.Rota = (function () {
     /* ---- sidebar ---- */
     document.querySelectorAll('.nav a[data-ir]').forEach(a => a.onclick = () => {
       location.hash = a.dataset.ir;
-      document.body.classList.remove('gaveta');
+      if (B7.fecharGaveta) B7.fecharGaveta();
     });
     /* Estes botões não existem no Portal do Cliente: a navegação dele é
        outra. Amarrar evento sem checar derrubava o arranque inteiro antes
@@ -393,18 +402,47 @@ B7.Rota = (function () {
     ligarSe('nav-backup', () => B7.Backup.menu());
     ligarSe('nav-atalhos', () => B7.UI.atalhos());
     ligarSe('nav-config', () => { location.hash = '#/config'; });
+    /* recolhida só mostra ícones: o nome do item vai para o title */
+    const rotularNav = () => {
+      const r = document.body.classList.contains('recolhida');
+      document.querySelectorAll('.nav a').forEach(a => {
+        const sp = a.querySelector('span');
+        if (r && sp) a.title = sp.textContent.trim(); else a.removeAttribute('title');
+      });
+    };
     document.getElementById('bt-recolher').onclick = () => {
       const r = document.body.classList.toggle('recolhida');
       B7.pref.gravar('sidebar_recolhida', r);
+      rotularNav();
       if (document.getElementById('tela-editor').classList.contains('ativa')) B7.Editor.aplicarZoom();
     };
-    const abre = document.getElementById('abre-menu');
-    if (abre) abre.onclick = e => { e.stopPropagation(); document.body.classList.toggle('gaveta'); };
-    document.addEventListener('click', e => {
-      if (document.body.classList.contains('gaveta') && !e.target.closest('.lateral'))
-        document.body.classList.remove('gaveta');
+    /* ---- gaveta (sidebar no celular) ----
+       Abre pelo hambúrguer; fecha ao tocar fora (o overlay é o próprio
+       body.gaveta:before), no ESC, ao navegar (B7.Rota.ir) e ao voltar
+       para uma largura em que a sidebar é fixa. */
+    const gaveta = aberta => {
+      document.body.classList.toggle('gaveta', aberta);
+      document.querySelectorAll('.abre-menu').forEach(b => b.setAttribute('aria-expanded', aberta ? 'true' : 'false'));
+    };
+    B7.fecharGaveta = () => gaveta(false);
+    const fecha = document.getElementById('fecha-gaveta');
+    if (fecha) fecha.onclick = e => { e.stopPropagation(); gaveta(false); };
+    document.querySelectorAll('.abre-menu').forEach(b => {
+      b.setAttribute('aria-label', 'Abrir menu');
+      b.setAttribute('aria-expanded', 'false');
+      b.onclick = e => { e.stopPropagation(); gaveta(!document.body.classList.contains('gaveta')); };
     });
+    document.addEventListener('click', e => {
+      if (document.body.classList.contains('gaveta') && !e.target.closest('.lateral')) gaveta(false);
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && document.body.classList.contains('gaveta')) gaveta(false);
+    });
+    try {
+      window.matchMedia('(min-width:1081px)').addEventListener('change', ev => { if (ev.matches) gaveta(false); });
+    } catch (e) {}
     if (B7.pref.ler('sidebar_recolhida', false)) document.body.classList.add('recolhida');
+    rotularNav();
 
     /* O estado do banco saiu da sidebar: durante a produção normal a
        equipe não precisa ver infraestrutura. Ele vive em Configurações →

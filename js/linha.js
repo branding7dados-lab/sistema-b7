@@ -40,8 +40,7 @@ B7.Linha = (function () {
   /* ------------------------------------------------------------ abrir */
   async function abrir(id, aba) {
     L.aba = ABAS.some(([k]) => k === aba) ? aba : 'geral';
-    painel().innerHTML = '<div class="conteudo">' +
-      '<div class="b7-load"><div class="simbolo"></div><div class="txt">Abrindo a linha editorial…</div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
     try {
       L.linha = await B7.DB.linha(id);
       [L.conteudos, L.cliente, L.pilares] = await Promise.all([

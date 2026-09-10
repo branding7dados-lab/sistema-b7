@@ -13,7 +13,10 @@
 .cp-filtros{display:flex;align-items:center;gap:11px;margin-bottom:26px;flex-wrap:wrap;
   padding-bottom:16px;border-bottom:1px solid var(--borda);}
 .cp-escopo{font-size:12px;color:var(--ink-4);margin-left:auto;}
-@media (max-width:700px){ .cp-escopo{margin-left:0;width:100%;} }
+/* o seletor de cliente é um filtro, não um campo de formulário: largura
+   do conteúdo no desktop, linha inteira no celular */
+.cp-filtros select.campo{width:auto;min-width:220px;max-width:100%;padding-right:36px;}
+@media (max-width:700px){ .cp-escopo{margin-left:0;width:100%;} .cp-filtros select.campo{width:100%;} }
 
 /* ------------------------------------------------------- categorias */
 .cp-cat{margin-bottom:30px;}

@@ -107,3 +107,17 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
   body[data-aba="previa"] .escrita{display:none;}
   body[data-aba="editor"] .previa{display:none;}
 }
+
+/* topo do editor no celular: o contexto (cliente · gravação) não pode
+   quebrar letra a letra, e os botões secundários vivem no menu ⋯ */
+@media (max-width:720px){
+  .topo .contexto{flex:1 1 auto;min-width:40px;}
+  .topo .contexto b,.topo .contexto small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+  #tela-editor .topo .espaco{flex:0 0 0;}
+  #ed-status{flex:none;}
+}
+@media (max-width:520px){
+  #bt-foco,#bt-baixar{display:none;}
+  #tela-editor .topo{gap:6px;}
+  .trilho{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+}

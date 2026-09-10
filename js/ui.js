@@ -577,6 +577,58 @@ B7.UI = (function () {
       '</div><div class="acoes"><button class="b pri" data-fecha>Entendi</button></div>');
   }
 
+  /* =================================================================
+     SKELETON
+     O que aparece entre a troca de rota e a chegada dos dados. Reproduz
+     a silhueta da tela que vem a seguir — nunca um spinner de tela cheia
+     nem a abertura de novo: aquela é só do arranque.
+
+       skeleton('linhas', { n: 4 })          → parágrafo de linhas
+       skeleton('cards',  { n: 6 })          → grade de cards
+       skeleton('tabela', { n: 6, cols: 4 }) → linhas de tabela
+       skeleton('lista',  { n: 5 })          → itens com avatar + texto
+       skeleton('pagina', { titulo: true })  → cabeçalho + linhas + cards
+       skeleton('central')                   → hero + métricas + colunas
+
+     Todas devolvem HTML; quem chama coloca dentro de .conteudo.
+     ================================================================= */
+  function skeleton(tipo, o = {}) {
+    const n = o.n || 0;
+    const bloco = (cls, estilo) => '<div class="esq ' + cls + '"' + (estilo ? ' style="' + estilo + '"' : '') + '></div>';
+    const linhas = (q, larguras) => '<div class="esq-linhas">' +
+      Array.from({ length: q }, (_, i) =>
+        bloco('esq-linha', 'width:' + (larguras ? larguras[i % larguras.length] : [92, 74, 84, 58][i % 4]) + '%')).join('') +
+      '</div>';
+    const cards = q => '<div class="esq-grade">' +
+      Array.from({ length: q }, () => '<div class="esq-card">' + bloco('esq-capa') +
+        linhas(2, [70, 45]) + '</div>').join('') + '</div>';
+    const lista = q => '<div class="esq-lista">' +
+      Array.from({ length: q }, () => '<div class="esq-item">' + bloco('esq-av') +
+        '<div class="esq-tx">' + bloco('esq-linha', 'width:46%') + bloco('esq-linha fina', 'width:28%') + '</div></div>').join('') +
+      '</div>';
+    const tabela = (q, cols) => '<div class="esq-tabela">' +
+      Array.from({ length: q }, () => '<div class="esq-tr">' +
+        Array.from({ length: cols }, (_, c) => bloco('esq-linha', 'width:' + (c === 0 ? 80 : 55) + '%')).join('') +
+        '</div>').join('') + '</div>';
+    const titulo = o.titulo === false ? '' :
+      '<div class="esq-cab">' + bloco('esq-titulo') + bloco('esq-linha fina', 'width:34%') + '</div>';
+
+    let corpo;
+    switch (tipo) {
+      case 'linhas':  corpo = linhas(n || 5); break;
+      case 'cards':   corpo = titulo + cards(n || 6); break;
+      case 'lista':   corpo = titulo + lista(n || 5); break;
+      case 'tabela':  corpo = titulo + tabela(n || 6, o.cols || 4); break;
+      case 'central': corpo = bloco('esq-hero') +
+        '<div class="esq-metricas">' + bloco('esq-metrica').repeat(4) + '</div>' +
+        '<div class="esq-colunas"><div>' + cards(4) + '</div><div>' + bloco('esq-apoio') + '</div></div>';
+        break;
+      case 'detalhe': corpo = titulo + bloco('esq-capa grande') + linhas(4) + cards(3); break;
+      default:        corpo = titulo + linhas(3) + cards(n || 3);
+    }
+    return '<div class="esqueleto-tela" role="status" aria-live="polite" aria-label="Carregando…">' + corpo + '</div>';
+  }
+
   return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, toast, modal, confirmar, perguntar, ligarMenus, dica, esconderDica, MESES, paleta,
-           dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura };
+           dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton };
 })();

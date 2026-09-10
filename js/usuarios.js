@@ -29,8 +29,7 @@ B7.Usuarios = (function () {
   async function abrir() {
     B7.Dashboard.marcarNav('#/config');
     B7.Rota.titulo(['Usuários e acessos']);
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div>' +
-      '<div class="txt">Carregando contas…</div><div class="barra-load"><i></i></div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div>';
 
     let dados, clientes;
     try {

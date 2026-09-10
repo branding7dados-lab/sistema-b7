@@ -70,8 +70,7 @@ B7.Conteudo = (function () {
      INTELIGÊNCIA DO CLIENTE
      ================================================================= */
   async function abrirInteligencia(clienteId) {
-    painel().innerHTML = '<div class="conteudo">' +
-      '<div class="b7-load"><div class="simbolo"></div><div class="txt">Carregando a inteligência…</div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
     let cliente, dados, produtos, provas;
     try {
       [cliente, dados, produtos, provas] = await Promise.all([
@@ -223,8 +222,7 @@ B7.Conteudo = (function () {
      ONBOARDING MENSAL
      ================================================================= */
   async function abrirOnboarding(clienteId) {
-    painel().innerHTML = '<div class="conteudo">' +
-      '<div class="b7-load"><div class="simbolo"></div><div class="txt">Carregando os onboardings…</div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>';
     let cliente, lista;
     try {
       [cliente, lista] = await Promise.all([B7.DB.cliente(clienteId), B7.DB.listarOnboardings(clienteId)]);
@@ -305,8 +303,7 @@ B7.Conteudo = (function () {
   let filtroLinhas = '';
 
   async function abrirLinhasGlobais() {
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div>' +
-      '<div class="txt">Carregando linhas editoriais…</div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('cards', { n: 6 }) + '</div>';
     let linhas, clientes;
     try {
       [linhas, clientes] = await Promise.all([
@@ -400,8 +397,7 @@ B7.Conteudo = (function () {
   }
 
   async function abrirLinhas(clienteId) {
-    painel().innerHTML = '<div class="conteudo">' +
-      '<div class="b7-load"><div class="simbolo"></div><div class="txt">Carregando as linhas editoriais…</div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('cards', { n: 4 }) + '</div>';
     let cliente, linhas;
     try {
       [cliente, linhas] = await Promise.all([B7.DB.cliente(clienteId), B7.DB.listarLinhas(clienteId)]);
@@ -559,8 +555,7 @@ B7.Conteudo = (function () {
   const STATUS_IDEIA = ['Ideia', 'Selecionada', 'Virou conteúdo', 'Arquivada'];
 
   async function abrirIdeias(clienteId) {
-    painel().innerHTML = '<div class="conteudo">' +
-      '<div class="b7-load"><div class="simbolo"></div><div class="txt">Carregando o banco de ideias…</div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 6 }) + '</div>';
     let cliente, ideias, linhas;
     try {
       [cliente, ideias, linhas] = await Promise.all([

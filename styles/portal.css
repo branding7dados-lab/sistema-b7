@@ -269,3 +269,20 @@ body.recolhida .pt-sair span{display:none;}
 .pt-com.equipe{border-left:3px solid var(--borda-forte);}
 .ph-item .pt-sit.mini{margin-left:auto;margin-right:12px;}
 @media (max-width:820px){.pt-decisao-bts{width:100%;} .pt-decisao-bts .b{flex:1;justify-content:center;}}
+
+/* ------------------------------------------------------ topo no portal
+   O cliente não cria gravação, não faz backup nem busca a produção
+   interna: esses controles são do sistema da equipe e ficam fora. */
+body.modo-portal #bt-nova-gravacao,body.modo-portal .topo .busca,
+body.modo-portal .topo>.menu,body.modo-portal #indicador-salvamento{display:none !important;}
+body.modo-portal .topo .espaco{flex:1;}
+
+/* --------------------------------------------------- portal no celular
+   A gaveta é a mesma da equipe (global.css); aqui só o que é do portal. */
+@media (max-width:820px){
+  .portal-home{max-width:100%;}
+  .ph-cab h1{font-size:23px;}
+  .ph-item{flex-wrap:wrap;}
+  .ph-item-tx{flex:1 1 60%;}
+  .pt-marcador{margin:0 0 6px;}
+}

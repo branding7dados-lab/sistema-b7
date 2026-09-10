@@ -1176,7 +1176,7 @@ B7.DB = (function () {
     /* roteiros mexidos por último, com a gravação e o cliente de cada um */
     async roteirosRecentes(limite = 8) {
       const roteiros = ok(await sb().from('roteiros')
-        .select('id,titulo,recording_session_id,updated_at')
+        .select('id,titulo,objetivo,status,recording_session_id,updated_at')
         .is('deleted_at', null).is('archived_at', null)
         .order('updated_at', { ascending: false }).limit(limite));
       if (!roteiros.length) return [];

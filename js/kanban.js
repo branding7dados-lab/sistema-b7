@@ -41,8 +41,7 @@ B7.Kanban = (function () {
   async function abrir() {
     B7.Dashboard.marcarNav('#/kanban');
     B7.Rota.titulo(['Produção']);
-    painel().innerHTML = '<div class="conteudo"><div class="b7-load"><div class="simbolo"></div>' +
-      '<div class="txt">Carregando demandas…</div><div class="barra-load"><i></i></div></div></div>';
+    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('tabela', { n: 7, cols: 5 }) + '</div>';
 
     try {
       [dados, clientes, equipe] = await Promise.all([
