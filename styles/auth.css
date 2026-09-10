@@ -190,9 +190,11 @@ body.sem-sessao main{display:none;}
   font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
 .lu-papel.admin{background:rgba(0,21,89,.10);color:#001559;}
 .lu-papel.coordenador{background:rgba(58,30,134,.12);color:#3A1E86;}
+.lu-papel.designer{background:rgba(27,95,166,.12);color:#1B5FA6;}
 .lu-papel.cliente{background:var(--acento-suave);color:var(--acento);}
 [data-theme="dark"] .lu-papel.admin{background:rgba(120,140,255,.16);color:#B7C3FF;}
 [data-theme="dark"] .lu-papel.coordenador{background:rgba(155,120,255,.16);color:#CDB9FF;}
+[data-theme="dark"] .lu-papel.designer{background:rgba(90,165,235,.18);color:#9CCBF2;}
 
 .lu-empresas{font-size:13px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:8px;}
 .lu-empresas i{color:var(--ink-4);font-style:normal;}

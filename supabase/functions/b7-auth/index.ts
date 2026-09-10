@@ -636,7 +636,7 @@ Deno.serve(async (req) => {
       const papel = String(corpo.papel || 'cliente');
       const senha = String(corpo.senha || '');
 
-      if (!['admin', 'coordenador', 'cliente'].includes(papel)) {
+      if (!['admin', 'coordenador', 'designer', 'cliente'].includes(papel)) {
         return json({ erro: 'Perfil inválido.' }, 400);
       }
       if (!/^[a-zA-Z0-9._-]{3,32}$/.test(username)) {
@@ -684,7 +684,7 @@ Deno.serve(async (req) => {
     if (acao === 'alterar_conta') {
       const patch: Record<string, unknown> = {};
       if (corpo.papel) {
-        if (!['admin', 'coordenador', 'cliente'].includes(corpo.papel)) {
+        if (!['admin', 'coordenador', 'designer', 'cliente'].includes(corpo.papel)) {
           return json({ erro: 'Perfil inválido.' }, 400);
         }
         patch.papel = corpo.papel;

@@ -19,6 +19,7 @@ B7.Usuarios = (function () {
   const PAPEIS = [
     ['admin', 'Administrador', 'controla a plataforma, contas e configurações'],
     ['coordenador', 'Coordenador de mídias', 'produz e organiza o conteúdo'],
+    ['designer', 'Designer', 'produz as artes a partir da Linha Editorial'],
     ['cliente', 'Cliente', 'acompanha e aprova o que foi liberado']
   ];
   const rotuloPapel = p => (PAPEIS.find(x => x[0] === p) || [, p])[1];

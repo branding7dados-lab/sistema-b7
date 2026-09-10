@@ -539,3 +539,31 @@ notificação). Aprovação futura do cliente reaproveita `aprovacoes`
   zero erro de JavaScript, zero scroll horizontal, navegação do
   Designer sem nenhum item administrativo vazando.
 - `VERSAO` → `2026-09-10-d`, cache do service worker → `roteiros-b7-v19`.
+
+## Build 2026-09-10-e — Designer em Usuários e acessos
+
+A migração e o RPC já aceitavam o papel `designer` desde o build
+anterior, mas faltava o caminho de criação: a tela **Usuários e
+acessos** só oferecia Administrador/Coordenador/Cliente no seletor, e a
+Edge Function `b7-auth` (que é quem de fato cria e altera contas)
+recusava `papel='designer'` com "Perfil inválido." mesmo se alguém
+tentasse por fora da tela. Sem isso, não havia como criar um usuário
+Designer de verdade.
+
+- `js/usuarios.js`: "Designer — produz as artes a partir da Linha
+  Editorial" adicionado à lista de papéis, nos modais de criar e editar
+  usuário.
+- `supabase/functions/b7-auth/index.ts`: `designer` incluído nas duas
+  listas de papéis aceitos (`criar_usuario` e `alterar_conta`) — sem
+  isso a validação do backend barrava a criação mesmo com a tela
+  corrigida.
+- `styles/auth.css`: selo "DESIGNER" na lista de usuários com cor
+  própria (azul, a mesma introduzida para Gravação no calendário),
+  clara e escura.
+- **Requer nova publicação da Edge Function**: depois de subir os
+  arquivos, é preciso reimplantar `b7-auth` no Supabase (Edge Functions
+  → `b7-auth` → colar `supabase/functions/b7-auth/index.ts` atualizado)
+  — só subir o HTML/JS no GitHub Pages não atualiza a função.
+- Testado: `node --check`; Playwright confirmou as 4 opções de papel no
+  modal ("admin", "coordenador", "designer", "cliente") sem erro de JS.
+- `VERSAO` → `2026-09-10-e`, cache do service worker → `roteiros-b7-v20`.
