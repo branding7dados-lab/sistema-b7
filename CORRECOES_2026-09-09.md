@@ -664,3 +664,30 @@ vivo) não foi refeito neste build — o canal Realtime já existente
 (`design_deliverables`/`design_versoes`) não foi alterado, então o
 comportamento observado no build `-d` deve se manter, mas isso não foi
 reconfirmado agora.
+
+## Build 2026-09-10-g — Design: foto gigante na aba "Equipe"
+
+Bug reportado pelo usuário com print de tela: na aba "Equipe" (visão da
+equipe em Design), o avatar do designer aparecia enorme — a foto no
+tamanho natural do arquivo, "vazando" do cartão — e o nome ficava
+cortado ao lado ("A..").
+
+Causa: `viewEquipe()` (`js/design.js`) sempre chamou
+`B7.UI.avatarPessoa(pessoa, 'sm')`, mas o modificador de tamanho `sm`
+nunca tinha sido definido em nenhum CSS do sistema — só existiam
+`.lu-avatar`, `.perfil-avatar`, `.foto-previa` etc. (cada tela com sua
+própria classe) e `.av-pessoa.xs` (em `kanban.css`, reaproveitado pelos
+cartões normais de Design). Sem largura/altura definidas, o navegador
+não tinha como encolher a `<img>` (que é `width:100%;height:100%`
+relativa ao próprio container) — o container ficava do tamanho da foto.
+Bug pré-existente do build `-d`, só notado agora que havia um designer
+com foto de perfil cadastrada nos dados de teste do usuário.
+
+- `styles/design.css`: `.av-pessoa.sm{width:36px;height:36px;
+  border-radius:10px;font-size:36px}` — mesmo tamanho já usado por
+  `.ds-sem-resp.lg` ali do lado, para o "sem responsável" e o avatar
+  real ficarem visualmente do mesmo tamanho na grade da Equipe.
+- Testado com Playwright, avatar com foto real (URL de imagem): cartão
+  correto, foto pequena e redonda, nome e contagem legíveis.
+- `VERSAO` → `2026-09-10-g`, cache do service worker →
+  `roteiros-b7-v22`.

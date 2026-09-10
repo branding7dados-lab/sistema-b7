@@ -130,6 +130,11 @@ select.ds-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
   border-radius:var(--r);padding:14px;cursor:pointer;transition:var(--t-micro);text-align:left;}
 .ds-equipe-card:hover{border-color:var(--borda-forte);box-shadow:var(--sh-1);}
 .ds-equipe-card:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+/* .av-pessoa só ganha tamanho de quem o usa (.xs em kanban.css, por
+   exemplo) — o cartão de Equipe pedia o modificador "sm", que nunca
+   tinha sido definido em lugar nenhum: sem largura/altura, a foto caía
+   no tamanho natural do arquivo, gigante, e espremia o nome ao lado. */
+.av-pessoa.sm{width:36px;height:36px;border-radius:10px;font-size:36px;flex:none;}
 .ds-equipe-info{min-width:0;}
 .ds-equipe-info b{display:block;font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ds-equipe-metricas{display:flex;gap:8px;flex-wrap:wrap;margin-top:5px;font-size:11.5px;color:var(--ink-3);}
