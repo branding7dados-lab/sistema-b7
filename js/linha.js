@@ -1273,6 +1273,13 @@ B7.Linha = (function () {
       lista.querySelectorAll(cfg.item).forEach(el => {
         el.setAttribute('draggable', 'true');
         el.classList.add('arrastavel');
+        /* mesmo problema do roteiro: draggable no card inteiro sequestra
+           a seleção de texto dentro de TÍTULO/TEXTO. Só fica arrastável
+           quando o mousedown não começa dentro de um campo — ver
+           js/editor.js ligarCena() pro mesmo comentário completo. */
+        el.addEventListener('mousedown', ev => {
+          el.draggable = !ev.target.closest('input, textarea, select, [contenteditable]');
+        });
         el.ondragstart = e => {
           el.classList.add('arrastando');
           e.dataTransfer.effectAllowed = 'move';

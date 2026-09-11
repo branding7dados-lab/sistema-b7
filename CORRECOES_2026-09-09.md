@@ -2856,3 +2856,51 @@ Arquivos alterados: `js/ui.js`, `js/linha.js`, `js/extras.js`,
 `styles/global.css`, `styles/conteudo.css`, `js/auth.js`, `sw.js`.
 `VERSAO` → `2026-09-11-aa`, cache do service worker →
 `roteiros-b7-v44`.
+
+## Build 2026-09-11-ab — Bug: arrastar sequestrando a seleção de texto (roteiro e slides do Carrossel)
+
+**O problema relatado:** ao escrever o texto de uma cena no roteiro e
+tentar selecionar um trecho arrastando o mouse, em vez de selecionar o
+texto, o sistema arrasta o card inteiro (a mesma coisa que já
+acontecia com o campo de texto dos slides do Carrossel).
+
+**Causa real:** o card da cena (`.cena`, em `js/editor.js`) e o item de
+slide/story (`.item-slide`, em `js/linha.js`) têm `draggable="true"` no
+elemento inteiro, para dar suporte a "arrastar para reordenar". O
+problema é que isso vale pra QUALQUER clique-e-arraste dentro do card
+— inclusive dentro do `<textarea>`/`<input>` de texto. O navegador
+interpreta "clicou e arrastou" ali como o início de um drag nativo do
+elemento, não como seleção de texto, e sequestra o gesto.
+
+### Implementado e testado
+
+- **Correção em `js/editor.js` (cena do roteiro) e `js/linha.js`
+  (slides do Carrossel e frames de Story)**: o card continua com
+  `draggable="true"` por padrão, mas agora um `mousedown` no card
+  decide, na hora, se o drag deve ficar ligado ou desligado — se o
+  clique começou dentro de um campo de texto (`input`, `textarea`,
+  `select` ou `contenteditable`), `draggable` vira `false` e o gesto
+  vira seleção de texto normal; se começou em qualquer outro lugar do
+  card (a alça "⠿ Arraste para reordenar", o cabeçalho, etc.),
+  `draggable` continua `true` e arrastar para reordenar funciona
+  exatamente como antes.
+- Testei com Playwright, simulando o clique real (mousedown na posição
+  exata do campo, não só disparando o evento): dentro do texto da cena
+  e dentro do texto do slide, `draggable` desliga; segurando pela alça
+  ou por fora dos campos, `draggable` continua ligado; e confirmei que
+  a seleção de texto de verdade funciona (`textarea.selectionStart/End`
+  reflete o trecho selecionado).
+- `node --check` em `js/editor.js` e `js/linha.js`. Rerrodei toda a
+  suíte de regressão anterior (Status Semanal + Criativos/Postagens,
+  29 testes) sem nenhuma quebra — nenhuma tela além de reordenar cena/
+  slide foi tocada.
+
+### Não implementado por bloqueio
+
+- Nenhum. O card do Kanban (`js/kanban.js`) também é `draggable="true"`,
+  mas não tem nenhum campo de texto editável dentro — conferido no
+  código, não precisa da mesma correção.
+
+Arquivos alterados: `js/editor.js`, `js/linha.js`, `js/auth.js`,
+`sw.js`. `VERSAO` → `2026-09-11-ab`, cache do service worker →
+`roteiros-b7-v45`.

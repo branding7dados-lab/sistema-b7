@@ -517,7 +517,16 @@ B7.Editor = (function () {
       if (a === 'excluir') excluirCena(r.id, id);
     });
 
-    /* arrastar */
+    /* arrastar — o card inteiro tem draggable, mas isso sequestra o gesto
+       de selecionar texto dentro do textarea/input (o navegador entende
+       "clicou e arrastou" como início de um drag nativo, mesmo dentro de
+       um campo de texto). Por isso o draggable só fica ligado quando o
+       mousedown NÃO começou dentro de um campo — clicar no texto pra
+       selecionar continua sendo seleção; arrastar pela alça (⠿) ou pelo
+       resto do card continua reordenando normalmente. */
+    el.addEventListener('mousedown', ev => {
+      el.draggable = !ev.target.closest('input, textarea, select, [contenteditable]');
+    });
     el.ondragstart = ev => { ev.dataTransfer.setData('text/plain', id); el.classList.add('arrastando'); };
     el.ondragend = () => {
       el.classList.remove('arrastando');
