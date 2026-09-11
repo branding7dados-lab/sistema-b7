@@ -114,6 +114,10 @@ B7.DocSemana = (function () {
     'Cancelado':          { cor: '#4A4458', bg: 'rgba(74,68,88,.15)',     legenda: 'Não será realizado.' }
   };
   const sitInfo = s => SITUACOES[s] || SITUACOES.Previsto;
+  /* Cor de status pra quem só precisa do tom (ex.: o pontinho da lista
+     de itens do editor, fora da peça pro cliente) — mesmo token da
+     pílula, sem precisar montar a pílula inteira. */
+  const corSituacao = s => sitInfo(s).cor;
 
   /* Trabalho já concluído não é "o que vai acontecer nesta semana" — o
      relatório cliente é sempre olhando pra frente. Isso NUNCA apaga a
@@ -387,7 +391,7 @@ B7.DocSemana = (function () {
   }
 
   return { montar, periodoTexto, diasDoPeriodo, diaDaSemana, curto, partes,
-           SITUACOES, TIPOS, corTipo, EXCLUIR_DO_PLANEJAMENTO, ICONE, DIAS, MESES_CURTO };
+           SITUACOES, TIPOS, corTipo, corSituacao, EXCLUIR_DO_PLANEJAMENTO, ICONE, DIAS, MESES_CURTO };
 })();
 
 

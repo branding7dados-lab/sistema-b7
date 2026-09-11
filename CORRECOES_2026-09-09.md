@@ -1884,3 +1884,81 @@ Arquivos alterados: `js/doc-semana.js`, `styles/semana.css`,
 `js/semana.js`, `js/auth.js`, `sw.js`.
 `VERSAO` → `2026-09-11-s`, cache do service worker →
 `roteiros-b7-v34`.
+
+## Build 2026-09-11-t — Correção urgente: "Status semanal" travava carregando pra sempre
+
+Bug reportado pelo Yury com print de tela logo depois do build `-s`:
+abrir o status semanal de um cliente ficava com o skeleton de
+carregamento pra sempre, sem nunca mostrar o editor.
+
+**Causa:** no build anterior eu reescrevi `js/doc-semana.js` e troquei o
+sistema antigo de indicador de status (`classeSituacao(situacao)`, que
+devolvia o nome de uma classe CSS tipo `ps-ponto-azul`) pelo novo
+sistema de tokens `SITUACOES`/pílula colorida — mas essa função não
+fazia parte só da peça exportada pro cliente: **a lista de itens do
+próprio editor** (`cardItem()` em `js/semana.js`, a coluna da esquerda
+onde a pessoa vê e edita as demandas) também chamava
+`D().classeSituacao(...)` pra colorir um pontinho ao lado do status —
+e o mesmo acontecia na prévia rápida (`quickView()`, o modal que abre
+ao clicar num card na lista de status semanais). Como a função não
+existe mais no `B7.DocSemana` reescrito, a chamada lançava
+`TypeError: D(...).classeSituacao is not a function` bem no meio da
+montagem do HTML do editor (`render()`) — antes do
+`painel().innerHTML = ...` substituir o skeleton inicial. O erro ficava
+sem tratamento (não tem try/catch ali), a Promise de `abrir(id)`
+rejeitava silenciosamente, e o skeleton nunca saía da tela.
+
+Encontrado testando de verdade o caminho que faltava na rodada
+anterior: eu tinha testado o renderizador da peça do cliente
+(`montar`/`gerarPNG`/`gerarPDF`) de ponta a ponta, mas não tinha aberto
+o editor em si (`B7.Semana.abrir()`) — exatamente o tipo de lacuna que
+a rodada anterior já tinha me ensinado a desconfiar (o bug do
+flex-shrink e o das fontes). Peço desculpa pelo retrabalho — devia ter
+testado o editor completo antes de entregar o build `-s`.
+
+**Correção:**
+- `js/doc-semana.js`: `corSituacao(situacao)` — nova função exportada,
+  devolve só a cor (mesmo token de `SITUACOES` usado na pílula), sem
+  montar pílula nenhuma. Serve pra quem só precisa colorir um pontinho.
+- `js/semana.js`: as duas chamadas (`cardItem()` e `quickView()`)
+  trocadas de `D().classeSituacao(it.situacao)` (classe CSS) pra
+  `D().corSituacao(it.situacao)` usado como `style="background:…"`
+  inline — mesmo padrão já usado em outras partes do sistema.
+- `styles/semana.css`: adicionada de volta a regra de tamanho/formato
+  do `.ps-ponto` (círculo de 8px) — ela só existia, sem querer,
+  dentro do escopo `.ps-atencao .ps-ponto` da peça exportada; agora
+  existe também fora desse escopo, pro pontinho do editor e da prévia
+  rápida.
+
+**Testado com confiança desta vez, incluindo o caminho que faltou:**
+- Harness dedicado carregando `js/semana.js` de verdade (não só
+  `js/doc-semana.js` isolado) com `B7.DB` simulado (status + 4 itens,
+  incluindo um "Publicado" — pra conferir as duas coisas ao mesmo
+  tempo) e chamando `B7.Semana.abrir('r1')` do jeito que a rota real
+  chama.
+- Confirmado: a Promise resolve sem erro, o skeleton de carregamento
+  sai completamente da tela, o HTML do editor é montado (12.5KB),
+  nenhum erro de console/página.
+- Os 4 pontinhos de status renderizam com cor real (`rgb(...)`, não
+  `transparent` nem erro) — a correção realmente resolve, não só
+  silencia o erro.
+- Conferido visualmente por screenshot: a lista de itens do editor
+  mostra TODOS os 4 itens, incluindo o "Publicado" (correto — o editor
+  nunca filtra); a prévia ao vivo no mesmo screenshot mostra só 3
+  (o "Publicado" corretamente ausente) — confirma que a correção não
+  quebrou o filtro do build anterior.
+- `grep` confirmando que não sobrou nenhuma outra referência a
+  `classeSituacao` em nenhum arquivo do sistema.
+- `node --check` em `js/doc-semana.js` e `js/semana.js`.
+
+**Não retestado nesta rodada** (não foi tocado, sem motivo pra suspeitar
+de regressão, mas registro por honestidade): os caminhos de exportação
+PNG/PDF e o restante do fluxo do editor (adicionar/mover/excluir
+demanda, duplicar, versões, publicar no portal) — a mudança desta
+rodada foi cirúrgica (duas linhas trocadas + uma função nova + uma
+regra CSS) e não encosta em nenhum desses fluxos.
+
+Arquivos alterados: `js/doc-semana.js`, `js/semana.js`,
+`styles/semana.css`, `js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-11-t`, cache do service worker →
+`roteiros-b7-v35`.

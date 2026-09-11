@@ -384,7 +384,7 @@ B7.Semana = (function () {
         '<span class="si-ic">' + (D().ICONE[it.formato] || D().ICONE[it.etapa] || D().ICONE.Outro) + '</span>' +
         '<div class="si-tx"><b>' + esc(it.titulo || 'Sem título') + '</b>' +
           '<div class="si-estado"><span>' + esc(it.etapa) + '</span>' +
-          '<span class="ps-ponto ' + D().classeSituacao(it.situacao) + '"></span>' +
+          '<span class="ps-ponto" style="background:' + D().corSituacao(it.situacao) + '"></span>' +
           '<span>' + esc(it.situacao) + '</span>' +
           (it.origem === 'linha_editorial' ? '<span class="si-origem">linha editorial</span>' : '') +
           '</div></div>' +
@@ -1067,8 +1067,8 @@ B7.Semana = (function () {
           D().curto(d) + '</b>' +
           (doDia.length
             ? '<div>' + doDia.map(i =>
-                '<span class="qv-item"><span class="ps-ponto ' +
-                D().classeSituacao(i.situacao) + '"></span>' +
+                '<span class="qv-item"><span class="ps-ponto" style="background:' +
+                D().corSituacao(i.situacao) + '"></span>' +
                 esc(i.titulo || 'Sem título') + '</span>').join('') + '</div>'
             : '<span class="qv-vazio">sem atividades</span>') + '</div>';
       }).join('') + '</div>' +
