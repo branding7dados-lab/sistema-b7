@@ -2590,3 +2590,73 @@ Arquivos alterados: `js/doc-semana.js`, `js/semana.js`, `js/auth.js`,
 `sw.js`.
 `VERSAO` → `2026-09-11-z`, cache do service worker →
 `roteiros-b7-v41`.
+
+## Build 2026-09-11-z2 — Status Semanal: painel "situações a revisar" pra tirar os itens antigos do genérico
+
+**Pedido do Yury:** depois dos builds `-y`/`-z`, apontou o problema de
+verdade: no relatório que o cliente recebe, quase tudo continuava
+mostrando só "Previsto" e "Em andamento" — o cliente não sabia se era
+roteiro, gravação, edição ou aprovação. A causa raiz: o vocabulário
+específico por formato passou a valer só pra situação escolhida DAQUI
+PRA FRENTE; os itens que já existiam na semana continuavam com o texto
+antigo salvo no banco, porque nada troca a situação de um item sozinho
+(decisão consciente, documentada desde o `-y`, pra nunca inventar o
+estado real de uma demanda). Ou seja: o vocabulário certo já existia,
+mas ninguém tinha ido, item por item, escolher a situação real — e não
+tinha um jeito rápido de fazer isso.
+
+**Implementado e testado:**
+- Novo bloco no topo do editor do Status Semanal (`js/semana.js`,
+  `blocoRevisao()`): aparece automaticamente sempre que a semana tem
+  pelo menos um item cuja situação salva não está mais no vocabulário
+  do formato/etapa dele — ou seja, ainda está com um rótulo genérico de
+  antes desta rodada (`Previsto`, `Confirmado`, `Programado`, `Em
+  andamento`, `Em revisão`, `Aguardando cliente`, `Atenção`, ou
+  qualquer valor fora de contexto). Lista cada item com o título, o
+  contexto (Card/Reel/Carrossel/...) e a situação atual entre aspas, e
+  um seletor ao lado já com só as opções válidas daquele contexto.
+- Escolher uma opção salva a situação na hora (mesmo padrão de
+  autosave do resto do sistema) e o item some da lista de pendências
+  imediatamente — sem precisar abrir o card nem recarregar a página.
+  Um toast confirma: `"<título>" agora está como "<nova situação>"`.
+- **Nunca escolhe sozinho.** Continua a mesma regra de honestidade do
+  `-y`: o sistema não sabe se um Reel "Em andamento" está no roteiro,
+  na gravação ou na edição — só mostra as opções certas e pede pra
+  alguém da equipe decidir. O texto do bloco explica isso: "o cliente
+  vê exatamente esse texto... escolha a etapa real de cada um".
+- **Item concluído ou cancelado não entra na lista de pendências**
+  (`precisaRevisao()` ignora `ehConcluido`/`ehCancelado`) — "Postado"
+  e "Cancelada" já são claros por si, mesmo com rótulo fora do
+  vocabulário "a fazer"; forçar revisão neles seria ruído.
+- CSS novo (`.sem-revisao`, `.sr-cab`, `.sr-item`, `.sr-tit`) em
+  `styles/semana.css`, com um destaque âmbar sutil (mesma família de
+  cor de "Aguardando aprovação") pra chamar atenção sem parecer erro.
+- Testado com Playwright: confirmei que o bloco lista só os itens com
+  situação genérica de verdade (não lista item já específico, nem
+  concluído, nem cancelado), que o seletor de cada item já vem
+  filtrado pro contexto certo (ex.: Card não mostra "Gravando"), que
+  escolher uma opção salva o valor real no item e some da lista na
+  hora, e que a semana sem nenhum item pendente simplesmente não
+  mostra o bloco. Rerrodei a suíte completa de regressão dos builds
+  `-y`/`-z` (11 + 3 testes anteriores): tudo continua passando, sem
+  erro de console.
+- `node --check` em `js/doc-semana.js` e `js/semana.js`.
+
+**Como isso resolve o incômodo relatado:** o relatório do cliente em
+si não muda de comportamento — ele sempre mostrou a situação real do
+item (`it.situacao`), sem inventar nada. O que estava faltando era um
+jeito rápido de a equipe atualizar os itens antigos pro vocabulário
+novo; agora, ao abrir qualquer Status Semanal com itens desatualizados,
+o próprio editor avisa e deixa resolver em segundos, item por item —
+sem precisar caçar um por um nem lembrar quais formatos têm quais
+opções.
+
+**Não implementado por decisão consciente:** nenhuma automação escolhe
+a situação por conta própria — nem aqui, nem em lugar nenhum do
+sistema. Continua sendo a equipe quem sabe, de verdade, se aquele Reel
+está no roteiro ou na gravação.
+
+Arquivos alterados: `js/semana.js`, `styles/semana.css`, `js/auth.js`,
+`sw.js`.
+`VERSAO` → `2026-09-11-z2`, cache do service worker →
+`roteiros-b7-v42`.

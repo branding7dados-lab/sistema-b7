@@ -45,6 +45,20 @@
 .op-mini input{accent-color:var(--acento);}
 .op-mini small{display:block;font-size:10.5px;opacity:.8;}
 
+/* ------------------------------------------------- situações a revisar
+   Aviso no topo do editor: itens com status genérico de antes desta
+   rodada (Previsto, Em andamento...) — o cliente vê exatamente esse
+   texto, então precisa de escolha rápida sem abrir cada card. */
+.sem-revisao{border-color:#C2740A;background:rgba(194,116,10,.06);}
+.sr-cab b{font-size:13.5px;}
+.sr-cab p{margin:5px 0 12px;font-size:12px;color:var(--ink-3);line-height:1.5;}
+.sr-item{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:9px 0;border-top:1px solid var(--borda);flex-wrap:wrap;}
+.sr-item:first-of-type{border-top:1px solid var(--borda);}
+.sr-tit{font-size:13px;font-weight:600;min-width:0;}
+.sr-tit small{display:block;font-size:11px;font-weight:400;color:var(--ink-4);margin-top:2px;}
+.sr-item select{max-width:230px;}
+
 /* ------------------------------------------------------ dias no editor */
 .sem-dia{margin-bottom:12px;}
 .sd-cab{display:flex;align-items:center;gap:9px;margin-bottom:7px;padding-bottom:6px;

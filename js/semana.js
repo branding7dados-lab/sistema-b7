@@ -321,6 +321,7 @@ B7.Semana = (function () {
       '<div class="sem-grade">' +
         '<div class="sem-edicao">' +
           blocoInfo() +
+          blocoRevisao() +
           dias.map(d => blocoDia(d, (porDia[d] || []))).join('') +
           (semData.length ? blocoDia(null, semData) : '') +
         '</div>' +
@@ -376,6 +377,48 @@ B7.Semana = (function () {
           '<option value="a_partir_hoje"' + (mostrarAPartirDeHoje() ? ' selected' : '') + '>A partir de hoje</option>' +
         '</select>' +
       '</div>' +
+    '</div>';
+  }
+
+  /* Um item "precisa de revisão" quando a situação guardada nele não
+     está mais no vocabulário do contexto atual (formato/etapa) — é o
+     caso de item criado antes desta rodada, com um rótulo genérico de
+     antes (Previsto, Em andamento, Confirmado...), ou item cujo
+     formato/etapa mudou sem que a situação tenha acompanhado. Card
+     concluído/cancelado não entra aqui — "Postado"/"Cancelada" já são
+     claros por si, mesmo fora do vocabulário "a fazer". */
+  function precisaRevisao(it) {
+    if (!it.situacao) return false;
+    if (D().ehConcluido(it) || D().ehCancelado(it)) return false;
+    return !D().estagiosDe(D().contextoDe(it)).includes(it.situacao);
+  }
+
+  /* Aviso no topo do editor, sempre que existir pelo menos um item com
+     situação genérica — resolve o incômodo de "só aparece previsto/em
+     andamento pro cliente": ao migrar pra esta rodada, os itens que já
+     existiam continuam com o texto antigo até alguém escolher a
+     situação real (nunca é trocado sozinho, por decisão consciente —
+     ver CORRECOES). Este bloco deixa a troca rápida: escolher aqui
+     salva na hora, sem precisar abrir cada item. Some da lista assim
+     que o item tiver uma situação específica de novo. */
+  function blocoRevisao() {
+    const pendentes = S.itens.filter(precisaRevisao);
+    if (!pendentes.length) return '';
+    const plural = pendentes.length > 1;
+    return '<div class="bloco mb sem-revisao">' +
+      '<div class="sr-cab"><b>' + pendentes.length + ' situaç' + (plural ? 'ões genéricas' : 'ão genérica') + ' pra especificar</b>' +
+      '<p class="leve">Esses itens ainda estão com um status antigo (ex.: "Previsto", "Em andamento") — o cliente vê exatamente esse texto no relatório, sem saber se é roteiro, gravação, edição ou aprovação. Escolha a etapa real de cada um.</p></div>' +
+      pendentes.map(it => {
+        const contexto = D().contextoDe(it);
+        const opcoes = D().estagiosDe(contexto);
+        return '<div class="sr-item">' +
+          '<span class="sr-tit">' + esc(it.titulo || 'Sem título') +
+            '<small>' + esc(contexto) + ' · atualmente "' + esc(it.situacao) + '"</small></span>' +
+          '<select class="campo" data-revisar-situacao="' + esc(it.id) + '">' +
+            '<option value="" selected disabled>Escolher situação real…</option>' +
+            opcoes.map(v => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('') +
+          '</select></div>';
+      }).join('') +
     '</div>';
   }
 
@@ -482,6 +525,20 @@ B7.Semana = (function () {
     p.querySelectorAll('[data-nova-demanda]').forEach(b => b.onclick = () => modalDemanda(null));
     p.querySelectorAll('[data-add-dia]').forEach(b => b.onclick = () => modalDemanda(b.dataset.addDia));
     p.querySelectorAll('[data-exportar]').forEach(b => b.onclick = modalExportar);
+
+    /* bloco "situações a revisar" — escolher aqui já salva a situação
+       real do item, sem precisar abrir o card. Some da lista sozinho no
+       próximo render() porque deixa de bater em precisaRevisao(). */
+    p.querySelectorAll('[data-revisar-situacao]').forEach(sel => sel.onchange = async () => {
+      const it = S.itens.find(x => x.id === sel.dataset.revisarSituacao);
+      if (!it || !sel.value) return;
+      const titulo = it.titulo || 'Sem título';
+      it.situacao = sel.value;
+      try { await B7.Save.campo('status_itens', it.id, { situacao: sel.value }); } catch (e) {}
+      B7.UI.toast('"' + titulo + '" agora está como "' + sel.value + '"');
+      render();
+      desenharPreview();
+    });
 
     p.querySelectorAll('[data-opcao]').forEach(cx => cx.onchange = async () => {
       const patch = {}; patch[cx.dataset.opcao] = cx.checked;
