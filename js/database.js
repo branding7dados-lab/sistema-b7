@@ -1394,12 +1394,46 @@ B7.DB = (function () {
     async criarRascunhoDesign(deliverableId) {
       return this.rpc('design_versao_rascunho', { p_deliverable_id: deliverableId });
     },
-    async registrarArquivoDesign({ versaoId, papel, nome, caminho, mime, tamanho, caminhoThumb }) {
+    async registrarArquivoDesign({ versaoId, papel, nome, caminho, mime, tamanho, caminhoThumb, parte, largura, altura }) {
       return this.rpc('design_arquivo_registrar', {
         p_versao_id: versaoId, p_papel: papel, p_nome: nome,
         p_caminho: caminho, p_mime: mime || null, p_tamanho: tamanho || null,
-        p_caminho_thumb: caminhoThumb || null
+        p_caminho_thumb: caminhoThumb || null,
+        p_parte_tipo: parte ? parte.tipo : null, p_parte_id: parte ? parte.id : null,
+        p_parte_posicao: parte ? parte.posicao : null,
+        p_largura: largura || null, p_altura: altura || null
       });
+    },
+    /* todos os arquivos de todas as versões da peça, com o número/estado
+       da versão junto — a base do "arquivo efetivo por slide" (calculado
+       no cliente com a MESMA regra de design_arquivos_efetivos: preview
+       mais recente de versão já enviada) e do histórico por slide */
+    async arquivosDesign(deliverableId, versoes) {
+      const ids = (versoes || []).map(v => v.id);
+      if (!ids.length) return [];
+      const lista = ok(await sb().from('design_arquivos').select('*').in('versao_id', ids).order('created_at'));
+      const porVersao = new Map(versoes.map(v => [v.id, v]));
+      return lista.map(a => {
+        const v = porVersao.get(a.versao_id) || {};
+        return Object.assign({}, a, { versao_numero: v.numero, versao_estado: v.estado });
+      });
+    },
+    /* nomes de quem decidiu (revisado_por) pra linha do tempo por slide —
+       equipe + designers; RLS de perfis vale normalmente */
+    async nomesPerfis(ids) {
+      const lista = [...new Set((ids || []).filter(Boolean))];
+      if (!lista.length) return {};
+      const linhas = ok(await sb().from('perfis').select('id, nome').in('id', lista));
+      const m = {}; linhas.forEach(l => { m[l.id] = l.nome; }); return m;
+    },
+    async removerArquivoRascunhoDesign(arquivoId) {
+      return this.rpc('design_arquivo_remover_rascunho', { p_arquivo_id: arquivoId });
+    },
+    async revisarParteDesign(arquivoId, decisao, mensagem) {
+      return this.rpc('design_parte_revisar', { p_arquivo_id: arquivoId, p_decisao: decisao, p_mensagem: mensagem || null });
+    },
+    async fecharRevisaoDesign(versaoId) {
+      return this.rpc('design_revisao_fechar', { p_versao_id: versaoId });
     },
     /* via: 'upload' (padrão — exige ao menos 1 arquivo já registrado) ou
        'externa' (arte revisada fora do sistema, ex. WhatsApp — nenhum
@@ -1447,7 +1481,8 @@ B7.DB = (function () {
         ok(await sb().from('notificacoes').select('*')
           .eq('link', '#/design/' + deliverableId).order('created_at', { ascending: true }))
       ]);
-      return { versoes, notificacoes: notifs };
+      const arquivos = await this.arquivosDesign(deliverableId, versoes).catch(() => []);
+      return { versoes, notificacoes: notifs, arquivos };
     },
 
     /* envia um blob qualquer pro bucket design-files, num caminho já
@@ -1499,6 +1534,11 @@ B7.DB = (function () {
     async _gerarMiniaturaImagem(arquivo, ladoMax) {
       const okMime = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(arquivo.type);
       if (!okMime) return null;
+      /* Arquivos 2.0: as dimensões reais da arte vão junto do registro —
+         a prévia grande reserva a proporção certa antes mesmo de a
+         imagem chegar. Medidas aqui de carona na decodificação da
+         miniatura (mesmo bitmap), sem decodificar duas vezes. */
+      this._ultimaMedida = null;
       try {
         let bitmap;
         if ('createImageBitmap' in window) {
@@ -1516,6 +1556,7 @@ B7.DB = (function () {
         }
         const largura = bitmap.width || bitmap.naturalWidth, altura = bitmap.height || bitmap.naturalHeight;
         if (!largura || !altura) return null;
+        this._ultimaMedida = { largura, altura };
         const escala = Math.min(1, ladoMax / Math.max(largura, altura));
         const w = Math.max(1, Math.round(largura * escala)), h = Math.max(1, Math.round(altura * escala));
         const tela = document.createElement('canvas');
@@ -1537,7 +1578,7 @@ B7.DB = (function () {
        Se a miniatura não puder ser gerada (formato não suportado, falha
        de decodificação), o upload segue normal, só sem thumb — sem
        bloquear ninguém por causa de uma otimização. */
-    async enviarArquivoDesign({ deliverableId, versaoId, arquivo, papel, aoProgredir }) {
+    async enviarArquivoDesign({ deliverableId, versaoId, arquivo, papel, parte, aoProgredir }) {
       const nomeSeguro = arquivo.name.normalize('NFKD').replace(/[^\w.\-]+/g, '_').slice(-140);
       const caminho = deliverableId + '/' + versaoId + '/' + Date.now() + '-' + nomeSeguro;
 
@@ -1545,15 +1586,31 @@ B7.DB = (function () {
 
       let caminhoThumb = null;
       const miniatura = await this._gerarMiniaturaImagem(arquivo, 320);
+      const medida = this._ultimaMedida || {};
       if (miniatura) {
         caminhoThumb = caminho + '-thumb.jpg';
         try { await this._subirArquivoStorage(caminhoThumb, miniatura, 'image/jpeg'); }
         catch (e) { caminhoThumb = null; /* card cai pro arquivo original */ }
       }
 
+      /* Arquivos 2.0: `parte` = { tipo:'slide'|'frame', id, posicao } vincula
+         o arquivo ao slide/frame canônico (id estável da Linha Editorial —
+         nunca posição de array). Peça de arte única manda parte = null. */
       return this.registrarArquivoDesign({
-        versaoId, papel, nome: arquivo.name, caminho, mime: arquivo.type, tamanho: arquivo.size, caminhoThumb
+        versaoId, papel, nome: arquivo.name, caminho, mime: arquivo.type, tamanho: arquivo.size, caminhoThumb,
+        parte: parte || null, largura: medida.largura, altura: medida.altura
       });
+    },
+
+    /* Baixa o ARQUIVO ORIGINAL (bytes intactos, nunca a miniatura) como
+       blob, pela mesma URL assinada de curta duração — o bucket continua
+       privado e quem não enxerga a peça não consegue assinar a URL
+       (política de select do Storage passa por design_pode_acessar). */
+    async baixarArquivoDesign(caminho) {
+      const url = await this.urlArquivoDesign(caminho);
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('Não foi possível baixar o arquivo (HTTP ' + r.status + ').');
+      return r.blob();
     },
 
     /* design_resumo não expõe a descrição (só interessa às peças manuais,

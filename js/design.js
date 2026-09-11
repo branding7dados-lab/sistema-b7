@@ -1473,6 +1473,7 @@ B7.Design = (function () {
     try {
       const [hist] = await Promise.all([B7.DB.historicoDesign(d.id)]);
       drawer.extra = hist;
+      await carregarNomesRevisores();
     } catch (e) { drawer.extra = { versoes: [], notificacoes: [] }; }
     if (!drawer.briefing) {
       try { drawer.briefing = await carregarBriefing(d); } catch (e) { drawer.briefing = { erro: true }; }
@@ -1499,6 +1500,16 @@ B7.Design = (function () {
     return extra;
   }
 
+  /* quem decidiu cada slide (pra linha do tempo) — só ids ainda não
+     conhecidos; falha silenciosa (a timeline sai sem o nome) */
+  async function carregarNomesRevisores() {
+    if (!drawer || !drawer.extra) return;
+    drawer.nomesPerfis = drawer.nomesPerfis || {};
+    const ids = (drawer.extra.arquivos || []).map(a => a.revisado_por).filter(id => id && !drawer.nomesPerfis[id]);
+    if (!ids.length) return;
+    try { Object.assign(drawer.nomesPerfis, await B7.DB.nomesPerfis(ids)); } catch (e) {}
+  }
+
   async function atualizarDrawerSeAberto(id) {
     if (!drawer || drawer.id !== id) return;
     /* não redesenha por cima de uma observação sendo digitada */
@@ -1517,6 +1528,28 @@ B7.Design = (function () {
   function acaoPrimaria(d, versaoAtual, souResponsavel, equipe, podeAssumir) {
     if (podeAssumir) return { primaria: { id: 'dv-assumir', label: 'Assumir esta peça' } };
     if (equipe && versaoAtual && versaoAtual.estado === 'enviada') {
+      /* multiparte (Arquivos 2.0): a decisão é por slide, na área
+         principal; aqui só o fechamento — "Aprovar carrossel" só com
+         tudo aprovado, "Enviar ajustes ao Designer" só com algum ajuste
+         marcado (§23/§45/§46). Uma ação de fechamento = uma notificação. */
+      if (ehMultiparte() && drawer.briefing) {
+        const r = resumoDecisoes(d);
+        const conj = d.tipo === 'stories' ? 'Stories' : 'carrossel';
+        const nomeP = d.tipo === 'stories' ? 'story' : 'slide';
+        const partesDecididas = r.aprovados + r.ajustes;
+        const resumo = souResponsavel ? 'Quem produziu a peça não pode revisá-la.'
+          : r.total - r.semArquivo === 0 ? 'Nenhum ' + nomeP + ' com arquivo nesta versão — aprove ou peça ajuste pela peça inteira.'
+          : r.aprovados + ' aprovado' + (r.aprovados === 1 ? '' : 's') + ' · ' + r.ajustes + ' em ajuste · ' + r.pendentes + ' sem decisão' +
+            (r.semArquivo ? ' · ' + r.semArquivo + ' sem arquivo' : '');
+        if (r.total - r.semArquivo === 0) {
+          return { primaria: { id: 'dv-aprovar', label: 'Aprovar internamente', desabilitada: souResponsavel },
+                   secundarias: [{ id: 'dv-ajuste', label: 'Solicitar ajuste' }], resumo };
+        }
+        return { primaria: { id: 'dv-fechar-aprovar', label: 'Aprovar ' + conj,
+                             desabilitada: souResponsavel || r.ajustes > 0 || r.pendentes > 0 || r.semArquivo > 0 || partesDecididas === 0 },
+                 secundarias: [{ id: 'dv-fechar-ajustes', label: 'Enviar ajustes ao Designer', desabilitada: souResponsavel || r.ajustes === 0 }],
+                 resumo };
+      }
       return { primaria: { id: 'dv-aprovar', label: 'Aprovar internamente', desabilitada: souResponsavel },
                secundarias: [{ id: 'dv-ajuste', label: 'Solicitar ajuste' }] };
     }
@@ -1537,12 +1570,13 @@ B7.Design = (function () {
   function acaoPrimariaHTML(acao) {
     if (!acao) return '';
     return '<div class="ds-ws-lateral-acao">' +
+      (acao.resumo ? '<p class="ds-ws-resumo-decisoes">' + esc(acao.resumo) + '</p>' : '') +
       '<button class="b pri ds-ws-acao-primaria" id="' + acao.primaria.id + '"' +
-        (acao.primaria.desabilitada ? ' disabled title="Quem produziu a peça não pode aprová-la"' : '') + '>' +
+        (acao.primaria.desabilitada ? ' disabled title="' + (acao.resumo ? esc(acao.resumo) : 'Quem produziu a peça não pode aprová-la') + '"' : '') + '>' +
         esc(acao.primaria.label) + '</button>' +
       ((acao.secundarias || []).length
         ? '<div class="ds-ws-acoes-sec">' + acao.secundarias.map(s =>
-            '<button class="b contorno" id="' + s.id + '">' + esc(s.label) + '</button>').join('') + '</div>' : '') +
+            '<button class="b contorno" id="' + s.id + '"' + (s.desabilitada ? ' disabled' : '') + '>' + esc(s.label) + '</button>').join('') + '</div>' : '') +
     '</div>';
   }
 
@@ -1554,11 +1588,573 @@ B7.Design = (function () {
      vez de um quadrado quebrado tentando abrir como background-image —
      o arquivo continua acessível pelo histórico de versões, só não dá
      pra pré-visualizar aqui dentro. */
-  function previaGrande(d) {
-    const ehImagem = !d.ultima_previa_mime || d.ultima_previa_mime.indexOf('image/') === 0;
-    return (d.ultima_previa && ehImagem)
-      ? '<div class="ds-ws-preview ds-thumb" data-previa="' + esc(d.ultima_previa) + '"></div>'
-      : '<div class="ds-ws-preview">' + iconeTipo(d.tipo) + '</div>';
+  /* =================================================================
+     ARQUIVOS 2.0 — arte por slide/frame, arquivo efetivo, revisão por
+     parte, tela cheia, download e ZIP ordenado.
+
+     CAUSA RAIZ da prévia em "tira" que existia aqui: a prévia grande era
+     um <div class="ds-ws-preview ds-thumb"> com background-image. A
+     classe .ds-thumb (a do card de 52px) trazia height:52px e
+     background-size:cover — a "prévia grande" virava uma faixa de
+     100% × 52px com a arte cortada no meio. E mesmo sem isso o
+     container tinha aspect-ratio 4/5 + max-height 440px numa coluna de
+     ~800px: viraria uma caixa 800×440 com cover cortando qualquer arte
+     4:5/9:16/1:1. Agora a arte é um <img> de verdade com
+     object-fit:contain, dentro de uma moldura que reserva a proporção
+     REAL do arquivo (largura/altura gravadas no upload) — nada de
+     esticar, nada de cortar.
+     ================================================================= */
+  const cacheUrlArte = new Map();   // caminho → url assinada (curta)
+
+  /* partes canônicas da peça aberta, na ordem da Linha Editorial —
+     null quando a peça é de arte única (Card, Capa de Reel, Story de 1
+     frame, demanda manual). Índice 0..n-1 é o parte_posicao gravado no
+     upload — id ESTÁVEL do slide/frame é o vínculo de verdade. */
+  function partesDaPeca() {
+    const b = drawer && drawer.briefing;
+    if (!b || b.manual || !b.conteudo) return null;
+    let lista = null, tipo = null;
+    if (b.conteudo.tipo === 'Carrossel') { lista = b.slides || []; tipo = 'slide'; }
+    else if (b.conteudo.tipo === 'Story') { lista = b.frames || []; tipo = 'frame'; }
+    if (!lista || !lista.length) return null;
+    return lista.map((it, i) => ({ tipo, id: it.id, posicao: i, item: it,
+      rotulo: tipo === 'slide' ? (it.titulo || '') : (it.texto || '') }));
+  }
+  function ehMultiparte() { const p = partesDaPeca(); return !!(p && p.length > 1); }
+  const chaveParte = a => a.parte_id || '_';
+
+  function ordenarMaisRecente(a, b) {
+    return (b.versao_numero - a.versao_numero) || (b.posicao - a.posicao) || ((b.created_at || '').localeCompare(a.created_at || ''));
+  }
+  /* arquivo efetivo por parte — MESMA regra de design_arquivos_efetivos
+     no banco: preview mais recente de versão já enviada (rascunho nunca
+     conta) */
+  function arquivosEfetivos() {
+    const m = new Map();
+    ((drawer.extra && drawer.extra.arquivos) || []).filter(a => a.papel === 'preview' && a.versao_estado !== 'rascunho')
+      .sort(ordenarMaisRecente).forEach(a => { if (!m.has(chaveParte(a))) m.set(chaveParte(a), a); });
+    return m;
+  }
+  function arquivosRascunho() {
+    const m = new Map();
+    ((drawer.extra && drawer.extra.arquivos) || []).filter(a => a.papel === 'preview' && a.versao_estado === 'rascunho')
+      .sort(ordenarMaisRecente).forEach(a => { if (!m.has(chaveParte(a))) m.set(chaveParte(a), a); });
+    return m;
+  }
+  function historicoParte(chave) {
+    return ((drawer.extra && drawer.extra.arquivos) || [])
+      .filter(a => a.papel === 'preview' && a.versao_estado !== 'rascunho' && chaveParte(a) === chave).sort(ordenarMaisRecente);
+  }
+  /* arquivos de versão enviada sem vínculo de slide numa peça multiparte
+     — uploads de antes da estrutura por slide. Ficam acessíveis, nunca
+     são "encaixados" num slide por ordem de chegada. */
+  function arquivosLegados() {
+    if (!ehMultiparte()) return [];
+    return ((drawer.extra && drawer.extra.arquivos) || [])
+      .filter(a => a.papel === 'preview' && !a.parte_id && a.versao_estado !== 'rascunho').sort(ordenarMaisRecente);
+  }
+  function ehImagem(a) { return !!a && !!a.mime && a.mime.indexOf('image/') === 0; }
+
+  /* o estado que a pessoa lê na parte: o que a arte atual está esperando */
+  function estadoParte(d, efetivo, rascunho, podeEditar) {
+    if (rascunho && podeEditar) return { k: 'novo', t: 'Nova versão · ainda não enviada' };
+    if (!efetivo) return { k: 'vazio', t: 'Sem arquivo' };
+    if (efetivo.revisao === 'aprovado') return { k: 'aprovado', t: 'Aprovado' };
+    if (efetivo.revisao === 'ajuste') return { k: 'ajuste', t: 'Ajuste solicitado' };
+    if (d.status === 'revisao_interna') return { k: 'pendente', t: 'Aguardando revisão' };
+    return { k: 'pendente', t: 'Enviado' };
+  }
+
+  /* ---- nomes limpos de download (§14/§58) — nunca o nome original
+     "IMG_9382.png", nunca uuid; extensão original preservada ---- */
+  function slug(s) {
+    return String(s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+  }
+  function extensaoDe(a) {
+    const m = /\.([a-z0-9]{1,6})$/i.exec(a.nome_original || '');
+    if (m) return m[1].toLowerCase();
+    const porMime = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'application/pdf': 'pdf' };
+    return porMime[a.mime] || 'bin';
+  }
+  const pad2 = n => String(n).padStart(2, '0');
+  function baseNomePeca(d) {
+    const base = slug(d.titulo || d.conteudo_titulo) || 'arte';
+    return d.tipo === 'capa_reel' && base.indexOf('capa') !== 0 ? 'capa-' + base : base;
+  }
+  function nomeDownload(d, a, parte) {
+    const ext = extensaoDe(a);
+    const v = a.versao_numero ? '-v' + pad2(a.versao_numero) : '';
+    if (parte) return pad2(parte.posicao + 1) + '-' + (slug(parte.rotulo) || (parte.tipo === 'frame' ? 'story' : 'slide')) + v + '.' + ext;
+    return baseNomePeca(d) + v + '.' + ext;
+  }
+
+  /* ---- download do ORIGINAL (bytes intactos) com nome limpo ---- */
+  async function baixarArquivo(d, a, parte, botao) {
+    const rot = botao ? botao.textContent : '';
+    if (botao) { botao.disabled = true; botao.textContent = 'Preparando…'; }
+    try {
+      const blob = await B7.DB.baixarArquivoDesign(a.caminho);
+      salvarBlob(blob, nomeDownload(d, a, parte));
+    } catch (e) {
+      B7.UI.toast('Não foi possível preparar o download.', { tipo: 'erro' });
+    } finally { if (botao) { botao.disabled = false; botao.textContent = rot; } }
+  }
+  function salvarBlob(blob, nome) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  /* ---- ZIP ordenado (§15/§16): só os arquivos EFETIVOS de cada parte,
+     na ordem canônica, prefixo numérico zero-padded. Montado no
+     navegador a partir de URLs assinadas curtas (mesma autorização de
+     sempre — nenhuma credencial de serviço no cliente). ZIP "store"
+     (sem compressão: arte já é PNG/JPG comprimido), escrito à mão —
+     sem biblioteca externa. Limite real: memória do navegador (tudo
+     fica em RAM até o clique); pra carrossel de dezenas de MB é ok,
+     pra centenas de MB o navegador pode recusar. ---- */
+  const TABELA_CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = TABELA_CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function montarZip(entradas) {   // [{ nome, bytes: Uint8Array }]
+    const enc = new TextEncoder(); const partes = []; const central = []; let offset = 0;
+    const agora = new Date(); const dosTime = ((agora.getHours() << 11) | (agora.getMinutes() << 5) | (agora.getSeconds() >> 1)) & 0xFFFF;
+    const dosDate = (((agora.getFullYear() - 1980) << 9) | ((agora.getMonth() + 1) << 5) | agora.getDate()) & 0xFFFF;
+    const u16 = n => [n & 0xFF, (n >>> 8) & 0xFF], u32 = n => [n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF];
+    entradas.forEach(en => {
+      const nome = enc.encode(en.nome), crc = crc32(en.bytes), tam = en.bytes.length;
+      const local = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(dosTime), ...u16(dosDate),
+        ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0), ...nome]);
+      partes.push(local, en.bytes);
+      central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(dosTime), ...u16(dosDate),
+        ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset), ...nome]));
+      offset += local.length + tam;
+    });
+    const tamCentral = central.reduce((s, c) => s + c.length, 0);
+    const fim = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(entradas.length), ...u16(entradas.length), ...u32(tamCentral), ...u32(offset), ...u16(0)]);
+    return new Blob([...partes, ...central, fim], { type: 'application/zip' });
+  }
+  async function baixarConjunto(d, botao, somenteDisponiveis) {
+    const partes = partesDaPeca() || []; const efet = arquivosEfetivos();
+    const alvo = partes.map(p => ({ parte: p, arq: efet.get(p.id) })).filter(x => x.arq);
+    if (!alvo.length) { B7.UI.toast('Nenhum arquivo para baixar ainda.', { tipo: 'aviso' }); return; }
+    const rot = botao.textContent; botao.disabled = true;
+    try {
+      const entradas = []; const usados = new Set();
+      for (let i = 0; i < alvo.length; i++) {
+        botao.textContent = 'Preparando download… ' + (i + 1) + '/' + alvo.length;
+        const blob = await B7.DB.baixarArquivoDesign(alvo[i].arq.caminho);
+        let nome = pad2(alvo[i].parte.posicao + 1) + '-' + (slug(alvo[i].parte.rotulo) || (alvo[i].parte.tipo === 'frame' ? 'story' : 'slide')) + '.' + extensaoDe(alvo[i].arq);
+        while (usados.has(nome)) nome = nome.replace(/(\.[^.]+)$/, '-' + pad2(alvo[i].arq.versao_numero || 0) + '$1');
+        usados.add(nome);
+        entradas.push({ nome, bytes: new Uint8Array(await blob.arrayBuffer()) });
+      }
+      const nomeZip = baseNomePeca(d) + (somenteDisponiveis ? '-parcial' : (d.versao_atual ? '-v' + pad2(d.versao_atual) : '')) + '.zip';
+      salvarBlob(montarZip(entradas), nomeZip);
+      botao.textContent = rot;
+    } catch (e) {
+      botao.textContent = rot;
+      B7.UI.toast('Não foi possível preparar o download.', { tipo: 'erro' });
+    } finally { botao.disabled = false; }
+  }
+
+  /* ---- prévia grande: <img> contido na proporção real ---- */
+  function cartaoArquivo(a, d, parte) {
+    return '<div class="ds-arte-arquivo">' + iconeTipo(d.tipo) +
+      '<div class="ds-arte-arquivo-tx"><b>' + esc(a.nome_original || 'arquivo') + '</b>' +
+      '<small>' + esc((a.mime || 'tipo desconhecido') + ' · ' + formatarTamanho(a.tamanho_bytes || 0)) + '</small>' +
+      '<span class="ds-leve">Este formato não abre como prévia no navegador — o download funciona normalmente.</span></div>' +
+      '<button class="b fina contorno" data-baixar="' + esc(a.id) + '">Baixar arquivo</button></div>';
+  }
+  function molduraArte(a, d, parte) {
+    if (!a) return '<div class="ds-arte-moldura vazia"><div class="ds-arte-vazio">' + iconeTipo(d.tipo) + '<span>Sem arquivo</span></div></div>';
+    if (!ehImagem(a)) return '<div class="ds-arte-moldura arquivo">' + cartaoArquivo(a, d, parte) + '</div>';
+    const prop = a.largura && a.altura ? ' style="--prop:' + a.largura + '/' + a.altura + '"' : '';
+    return '<div class="ds-arte-moldura"' + prop + '>' +
+      '<img class="ds-arte-img" data-caminho="' + esc(a.caminho) + '" data-arte="' + esc(a.id) + '" alt="' + esc(a.nome_original || '') + '" draggable="false">' +
+      '<span class="ds-arte-carregando" aria-hidden="true"></span></div>';
+  }
+  function metaArte(a) {
+    if (!a) return '';
+    return '<span class="ds-arte-meta">V' + pad2(a.versao_numero || 0) +
+      (a.largura && a.altura ? ' · ' + a.largura + '×' + a.altura : '') +
+      (a.tamanho_bytes ? ' · ' + formatarTamanho(a.tamanho_bytes) : '') + '</span>';
+  }
+
+  /* painel de UMA arte (parte ou única): moldura + estado + ações +
+     feedback + decisão da revisão + slot de upload + histórico */
+  function painelArte(d, x, parte, ctx) {
+    const chave = parte ? parte.id : '_';
+    const efet = ctx.efetivos.get(chave) || null, rasc = ctx.rascunhos.get(chave) || null;
+    const escolhido = drawer.arteHistorico && drawer.arteHistorico[chave];
+    const hist = historicoParte(chave);
+    const historico = escolhido ? hist.find(h => h.id === escolhido) : null;
+    const mostrado = historico || (ctx.podeEditar && rasc) || efet;
+    const est = historico ? { k: 'historico', t: 'Versão anterior' } : estadoParte(d, efet, rasc, ctx.podeEditar);
+    const nomeParte = parte ? (parte.tipo === 'frame' ? 'story' : 'slide') : null;
+    const rotBaixar = parte ? 'Baixar ' + nomeParte : 'Baixar arquivo';
+    const podeDecidir = ctx.podeRevisar && !!efet && !rasc && !historico;
+    const podeUpload = ctx.podeEditar && d.status !== 'finalizado';
+    const up = parte && drawer.uploadsParte && drawer.uploadsParte[parte.id];
+
+    /* pra quem vai REENVIAR (slide em ajuste ou sem arte), o pedido e o
+       botão de upload vêm ANTES da arte grande — senão ficam abaixo da
+       dobra e o designer tem que rolar pra achar o que fazer */
+    const precisaAgir = podeUpload && parte && (!efet || (efet.revisao === 'ajuste' && !rasc)) && !historico;
+    const blocoFeedback = (efet && efet.revisao === 'ajuste' && efet.revisao_mensagem && !historico)
+      ? '<div class="ds-arte-feedback"><b>Ajuste solicitado' + (parte ? ' neste ' + nomeParte : '') + '</b><p>' + esc(efet.revisao_mensagem) + '</p></div>' : '';
+    const blocoUploadParte = () => {
+      const precisa = efet && efet.revisao === 'ajuste';
+      return '<div class="ds-arte-upload' + (precisa ? ' precisa' : '') + '">' +
+        (up && up.estado === 'enviando'
+          ? '<div class="ds-up-barra"><span style="width:' + up.progresso + '%"></span></div><small>Enviando ' + esc(up.nome) + ' · ' + up.progresso + '%</small>'
+          : up && up.estado === 'erro'
+          ? '<span class="ds-up-erro">' + esc(up.erro || 'O envio foi interrompido') + '</span><button class="b fina" data-up-tentar-parte="' + esc(parte.id) + '">Tentar novamente</button>'
+          : '<label class="b fina ' + (precisa || (!efet && !rasc) ? 'pri' : 'contorno') + ' ds-arte-escolher">' +
+              (rasc ? 'Substituir arquivo' : precisa ? 'Enviar nova versão do ' + nomeParte + ' ' + pad2(parte.posicao + 1) : efet ? 'Substituir arquivo' : 'Enviar arquivo') +
+              '<input type="file" hidden data-up-parte="' + esc(parte.id) + '"></label>' +
+            (rasc ? '<button class="b fina" data-remover-rascunho="' + esc(rasc.id) + '">Remover</button>' : '')) +
+      '</div>';
+    };
+
+    let html = '<div class="ds-arte' + (parte ? '' : ' unica') + '" data-parte="' + esc(chave) + '">' +
+      (precisaAgir ? blocoFeedback + blocoUploadParte() : '') +
+      molduraArte(mostrado, d, parte) +
+      '<div class="ds-arte-barra">' +
+        '<span class="ds-arte-estado st-' + est.k + '">' + esc(est.t) + '</span>' + metaArte(mostrado) +
+        (mostrado ? '<div class="ds-arte-acoes">' +
+          (ehImagem(mostrado) ? '<button class="b fina contorno" data-tela-cheia="' + esc(mostrado.id) + '">Ver em tela cheia</button>' : '') +
+          '<button class="b fina contorno" data-baixar="' + esc(mostrado.id) + '">' + (historico ? 'Baixar V' + pad2(historico.versao_numero) : rotBaixar) + '</button>' +
+        '</div>' : '') +
+      '</div>';
+
+    if (!precisaAgir) html += blocoFeedback;
+    if (podeDecidir) {
+      html += '<div class="ds-arte-decisao">' +
+        (efet.revisao === 'aprovado'
+          ? '<span class="ds-arte-decidido ok">Aprovado</span><button class="b fina" data-decidir="pendente" data-arquivo="' + esc(efet.id) + '">Desfazer</button>'
+          : efet.revisao === 'ajuste'
+          ? '<span class="ds-arte-decidido ajuste">Ajuste pedido</span><button class="b fina" data-decidir="ajuste" data-arquivo="' + esc(efet.id) + '">Editar pedido</button><button class="b fina" data-decidir="pendente" data-arquivo="' + esc(efet.id) + '">Desfazer</button>'
+          : '<button class="b fina pri" data-decidir="aprovado" data-arquivo="' + esc(efet.id) + '">' + (parte ? 'Aprovar ' + nomeParte : 'Aprovar') + '</button>' +
+            '<button class="b fina contorno" data-decidir="ajuste" data-arquivo="' + esc(efet.id) + '">' + (parte ? 'Solicitar ajuste neste ' + nomeParte : 'Solicitar ajuste') + '</button>') +
+      '</div>';
+    }
+    if (podeUpload && parte && !precisaAgir) html += blocoUploadParte();
+    if (hist.length > 1 || (hist.length === 1 && rasc && ctx.podeEditar)) {
+      html += '<div class="ds-arte-hist"><small>VERSÕES' + (parte ? ' DESTE ' + nomeParte.toUpperCase() : '') + '</small>' +
+        hist.map(h => '<button class="ds-arte-hist-v' + ((historico ? historico.id === h.id : (!rasc || !ctx.podeEditar) && efet && efet.id === h.id) ? ' on' : '') + '" data-ver-versao="' + esc(h.id) + '" data-parte-chave="' + esc(chave) + '">' +
+          'V' + pad2(h.versao_numero) + rotuloHist(h) + '</button>').join('') +
+        (historico ? '<button class="ds-arte-hist-v" data-ver-versao="" data-parte-chave="' + esc(chave) + '">Voltar à atual</button>' : '') +
+      '</div>';
+    }
+    return html + '</div>';
+  }
+
+  /* rótulo curto da versão no histórico: decisão do arquivo (Arquivos
+     2.0) ou, sem ela, o estado da versão (fluxo simples de arte única) */
+  function rotuloHist(h) {
+    if (h.revisao === 'aprovado') return ' · aprovada';
+    if (h.revisao === 'ajuste') return ' · ajuste';
+    if (h.versao_estado === 'ajuste_solicitado' || h.versao_estado === 'ajuste_cliente') return ' · ajuste';
+    if (h.versao_estado === 'aprovada_interna' || h.versao_estado === 'aprovada_cliente') return ' · aprovada';
+    return '';
+  }
+
+  function contextoArte(d) {
+    const souResponsavel = d.designer_id === meuId(), equipe = ehEquipe();
+    return {
+      efetivos: arquivosEfetivos(), rascunhos: arquivosRascunho(),
+      podeEditar: (equipe || souResponsavel) && d.status !== 'finalizado',
+      podeRevisar: equipe && !souResponsavel && d.status === 'revisao_interna'
+    };
+  }
+
+  /* ---- ARTE ÚNICA (Card, Capa de Reel, Story de 1 frame, manual) ---- */
+  function blocoArteUnica(d, x) {
+    const ctx = contextoArte(d);
+    /* Story de 1 frame / Carrossel de 1 slide: um slot só, pela lateral,
+       sem "Story 01" na tela (arquivo sem parte_id, como Card) */
+    return '<section class="ds-arte-secao"><small class="ds-arte-titulo">ARTE</small>' + painelArte(d, x, null, ctx) + '</section>';
+  }
+
+  /* ---- MULTIPARTE (Carrossel, Story com vários frames): navegador de
+     slide com estado por parte + arte grande da parte atual + briefing
+     canônico da parte; "Ver todos" vira a visão geral em grade ---- */
+  function blocoArteMultiparte(d, x) {
+    const partes = partesDaPeca(); const ctx = contextoArte(d);
+    const total = partes.length, tipoItem = partes[0].tipo;
+    const idx = Math.min(Math.max(drawer.slideIndice || 0, 0), total - 1);
+    drawer.slideIndice = idx;
+    const nomeConj = tipoItem === 'frame' ? 'Stories' : 'carrossel';
+    /* "sem arquivo" = nem efetivo (enviado) nem rascunho deste designer */
+    const faltam = partes.filter(p => !ctx.efetivos.get(p.id) && !(ctx.podeEditar && ctx.rascunhos.get(p.id)));
+    const estados = partes.map(p => estadoParte(d, ctx.efetivos.get(p.id), ctx.rascunhos.get(p.id), ctx.podeEditar));
+    const qtd = k => estados.filter(e => e.k === k).length;
+
+    const resumo = '<div class="ds-arte-resumo">' +
+      (qtd('aprovado') ? '<span class="st-aprovado">' + qtd('aprovado') + ' aprovado' + (qtd('aprovado') > 1 ? 's' : '') + '</span>' : '') +
+      (qtd('ajuste') ? '<span class="st-ajuste">' + qtd('ajuste') + ' em ajuste</span>' : '') +
+      (qtd('pendente') ? '<span class="st-pendente">' + qtd('pendente') + ' aguardando</span>' : '') +
+      (qtd('novo') ? '<span class="st-novo">' + qtd('novo') + ' nov' + (qtd('novo') > 1 ? 'os' : 'o') + '</span>' : '') +
+      (faltam.length ? '<span class="st-vazio">' + faltam.length + ' ' + (tipoItem === 'frame' ? 'story' : 'slide') + (faltam.length > 1 ? 's' : '') + ' ainda sem arquivo (' + faltam.map(p => pad2(p.posicao + 1)).join(', ') + ')</span>' : '') +
+    '</div>';
+    const disponiveis = partes.length - faltam.length;
+    const baixarTudo = disponiveis
+      ? (faltam.length
+          ? '<button class="b fina contorno" data-baixar-conjunto="parcial" title="O ' + nomeConj + ' ainda não está completo">Baixar arquivos disponíveis (' + disponiveis + '/' + total + ')</button>'
+          : '<button class="b fina pri" data-baixar-conjunto="tudo">Baixar ' + nomeConj + '</button>')
+      : '';
+
+    const rotSecao = tipoItem === 'slide' ? 'SLIDES' : 'STORIES';
+    const dica = tipoItem === 'slide' ? ' <span class="ds-leve">— o último é sempre o CTA</span>' : '';
+    /* §31: envio em lote é conveniência — vários arquivos de uma vez, mas
+       cada um é MAPEADO a um slide antes de subir (modal), nunca
+       encaixado por ordem alfabética às cegas */
+    const enviarVarios = ctx.podeEditar && d.status !== 'finalizado'
+      ? '<label class="b fina contorno ds-arte-escolher">Enviar vários ' + (tipoItem === 'frame' ? 'stories' : 'slides') + '<input type="file" hidden multiple id="dv-lote"></label>' : '';
+    let html = '<section class="ds-arte-secao ds-nav-slides"><div class="ds-nav-topo"><small>' + rotSecao + dica + '</small>' +
+      '<div class="ds-nav-topo-acoes">' + enviarVarios + baixarTudo +
+      '<button class="b fina contorno ds-nav-alternar" data-slides-modo="' + (drawer.slideModoTodos ? 'navegador' : 'todos') + '">' +
+        (drawer.slideModoTodos ? 'Ver em navegador' : 'Ver todos (' + total + ')') + '</button></div></div>' + resumo;
+
+    if (drawer.slideModoTodos) {
+      html += '<div class="ds-arte-grade">' + partes.map((p, i) => {
+        const a = (ctx.podeEditar && ctx.rascunhos.get(p.id)) || ctx.efetivos.get(p.id);
+        const e = estados[i];
+        return '<button class="ds-arte-mini st-' + e.k + '" data-slide-ir="' + i + '" aria-label="' + esc(rotuloItemNav(i, total, tipoItem)) + '">' +
+          (a && ehImagem(a) ? '<span class="ds-arte-mini-img ds-thumb" data-previa="' + esc(a.caminho_thumb || a.caminho) + '"><span class="ds-thumb-esq"></span></span>'
+            : '<span class="ds-arte-mini-img vazia">' + iconeTipo(d.tipo) + '</span>') +
+          '<b>' + pad2(i + 1) + '</b><small>' + esc(e.t) + '</small></button>';
+      }).join('') + '</div>' +
+      '<div class="ds-arte-lista">' + partes.map((p, i) => itemNavHTML(p.item, i, total, tipoItem)).join('') + '</div>';
+      return html + '</section>';
+    }
+
+    html += '<div class="ds-nav-pills" role="tablist" aria-label="Navegar pelos ' + rotSecao.toLowerCase() + '">' +
+      partes.map((p, i) => '<button class="ds-nav-pill st-' + estados[i].k + (i === idx ? ' on' : '') + '" data-slide-ir="' + i + '" role="tab" aria-selected="' + (i === idx) + '" ' +
+        'aria-label="' + esc(rotuloItemNav(i, total, tipoItem) + ' — ' + estados[i].t) + '" title="' + esc(estados[i].t) + '">' + pad2(i + 1) + '</button>').join('') + '</div>' +
+      '<div class="ds-nav-foco">' +
+        '<button class="ico ds-nav-seta" data-slide-nav="-1" aria-label="anterior"' + (idx === 0 ? ' disabled' : '') + '>‹</button>' +
+        '<div class="ds-nav-foco-corpo">' + painelArte(d, x, partes[idx], ctx) + itemNavHTML(partes[idx].item, idx, total, tipoItem, true) + '</div>' +
+        '<button class="ico ds-nav-seta" data-slide-nav="1" aria-label="próximo"' + (idx === total - 1 ? ' disabled' : '') + '>›</button>' +
+      '</div>';
+    const legados = arquivosLegados();
+    if (legados.length) {
+      html += '<div class="ds-arte-legado"><small>ARQUIVOS ANTERIORES <span class="ds-leve">— enviados antes da estrutura por ' + (tipoItem === 'frame' ? 'story' : 'slide') + ', sem vínculo</span></small>' +
+        legados.map(a => '<div class="ds-arte-legado-item"><b>' + esc(a.nome_original) + '</b><small>V' + pad2(a.versao_numero) + ' · ' + formatarTamanho(a.tamanho_bytes || 0) + '</small>' +
+          (ehImagem(a) ? '<button class="b fina contorno" data-tela-cheia="' + esc(a.id) + '">Ver</button>' : '') +
+          '<button class="b fina contorno" data-baixar="' + esc(a.id) + '">Baixar</button></div>').join('') + '</div>';
+    }
+    return html + '</section>';
+  }
+
+  function blocoArte(d, x) {
+    if (!drawer.briefing) return '<section class="ds-arte-secao"><div class="ds-arte-moldura vazia"><div class="ds-arte-vazio">' + iconeTipo(d.tipo) + '<span>Carregando…</span></div></div></section>';
+    return ehMultiparte() ? blocoArteMultiparte(d, x) : blocoArteUnica(d, x);
+  }
+
+  /* carrega as <img> da arte (URL assinada curta, cache por caminho);
+     se o navegador não conseguir renderizar, vira card de arquivo — nunca
+     ícone de imagem quebrada */
+  function ligarArte(raiz, d) {
+    raiz.querySelectorAll('img.ds-arte-img[data-caminho]').forEach(async img => {
+      const caminho = img.dataset.caminho; if (!caminho || img.dataset.ligada) return;
+      img.dataset.ligada = '1';
+      const moldura = img.closest('.ds-arte-moldura');
+      const falhou = () => {
+        const a = arquivoPorId(img.dataset.arte);
+        if (moldura && a) { moldura.classList.add('arquivo'); moldura.innerHTML = cartaoArquivo(a, d, null); ligarBaixar(moldura, d); }
+      };
+      img.onload = () => { if (moldura) moldura.classList.add('ok'); };
+      img.onerror = falhou;
+      try {
+        let url = cacheUrlArte.get(caminho);
+        if (!url) { url = await B7.DB.urlArquivoDesign(caminho); cacheUrlArte.set(caminho, url); }
+        if (img.isConnected) img.src = url;
+      } catch (e) { falhou(); }
+    });
+  }
+  function arquivoPorId(id) { return ((drawer && drawer.extra && drawer.extra.arquivos) || []).find(a => a.id === id) || null; }
+  /* parte canônica do arquivo — só faz sentido em peça multiparte; em
+     arte única (inclusive Story de 1 frame) o nome de download é o da
+     demanda, sem prefixo "01-" */
+  function parteDoArquivo(a) {
+    if (!a || !a.parte_id || !ehMultiparte()) return null;
+    return (partesDaPeca() || []).find(p => p.id === a.parte_id) || null;
+  }
+  function ligarBaixar(raiz, d) {
+    raiz.querySelectorAll('[data-baixar]').forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const a = arquivoPorId(b.dataset.baixar); if (a) baixarArquivo(d, a, parteDoArquivo(a), b);
+    });
+  }
+
+  /* ---- TELA CHEIA (§11): ajustar, zoom +/−/reset, ‹ › entre partes,
+     Esc fecha, setas navegam ---- */
+  function abrirTelaCheia(d, arquivoId) {
+    const ctx = contextoArte(d);
+    const partes = partesDaPeca();
+    /* sequência navegável: a arte mostrada de cada parte (ou só a única) */
+    let seq = [];
+    if (partes && partes.length > 1) {
+      seq = partes.map(p => (ctx.podeEditar && ctx.rascunhos.get(p.id)) || ctx.efetivos.get(p.id)).filter(a => a && ehImagem(a));
+    }
+    const inicial = arquivoPorId(arquivoId);
+    if (!seq.some(a => a.id === arquivoId) && inicial) seq = [inicial];
+    if (!seq.length) return;
+    let i = Math.max(0, seq.findIndex(a => a.id === arquivoId)); let zoom = 1;
+
+    const el = document.createElement('div'); el.className = 'ds-lightbox'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Arte em tela cheia');
+    const desenhar = () => {
+      const a = seq[i]; const parte = parteDoArquivo(a);
+      el.innerHTML = '<div class="ds-lb-topo">' +
+          '<span class="ds-lb-tit">' + esc(parte ? rotuloItemNav(parte.posicao, (partes || []).length, parte.tipo) : (d.titulo || '')) + ' · V' + pad2(a.versao_numero || 0) + (a.largura ? ' · ' + a.largura + '×' + a.altura : '') + '</span>' +
+          '<div class="ds-lb-acoes">' +
+            '<button class="ico" data-lb-zoom="-1" aria-label="Diminuir">−</button><span class="ds-lb-zoom">' + Math.round(zoom * 100) + '%</span>' +
+            '<button class="ico" data-lb-zoom="1" aria-label="Aumentar">+</button><button class="b fina contorno" data-lb-zoom="0">Ajustar</button>' +
+            '<button class="b fina contorno" data-baixar="' + esc(a.id) + '">Baixar</button>' +
+            '<button class="ico" data-lb-fechar aria-label="Fechar">✕</button></div></div>' +
+        '<div class="ds-lb-corpo">' +
+          (seq.length > 1 ? '<button class="ico ds-lb-seta" data-lb-nav="-1" aria-label="anterior"' + (i === 0 ? ' disabled' : '') + '>‹</button>' : '') +
+          '<div class="ds-lb-area"><img class="ds-lb-img" alt="" draggable="false" style="transform:scale(' + zoom + ')"></div>' +
+          (seq.length > 1 ? '<button class="ico ds-lb-seta" data-lb-nav="1" aria-label="próximo"' + (i === seq.length - 1 ? ' disabled' : '') + '>›</button>' : '') +
+        '</div>' +
+        (seq.length > 1 ? '<div class="ds-lb-pills">' + seq.map((s, k) => '<button class="ds-nav-pill' + (k === i ? ' on' : '') + '" data-lb-ir="' + k + '">' + pad2((parteDoArquivo(s) || { posicao: k }).posicao + 1) + '</button>').join('') + '</div>' : '');
+      const img = el.querySelector('.ds-lb-img');
+      const caminho = a.caminho;
+      (async () => { try { let url = cacheUrlArte.get(caminho); if (!url) { url = await B7.DB.urlArquivoDesign(caminho); cacheUrlArte.set(caminho, url); } img.src = url; } catch (e) {} })();
+      el.querySelectorAll('[data-lb-zoom]').forEach(b => b.onclick = () => { const z = +b.dataset.lbZoom; zoom = z === 0 ? 1 : Math.min(6, Math.max(0.25, zoom * (z > 0 ? 1.25 : 0.8))); desenhar(); });
+      el.querySelectorAll('[data-lb-nav]').forEach(b => b.onclick = () => { i = Math.min(seq.length - 1, Math.max(0, i + (+b.dataset.lbNav))); zoom = 1; desenhar(); });
+      el.querySelectorAll('[data-lb-ir]').forEach(b => b.onclick = () => { i = +b.dataset.lbIr; zoom = 1; desenhar(); });
+      el.querySelector('[data-lb-fechar]').onclick = fechar;
+      ligarBaixar(el, d);
+      const area = el.querySelector('.ds-lb-area');
+      area.ondblclick = () => { zoom = zoom === 1 ? 2 : 1; desenhar(); };
+    };
+    const tecla = e => {
+      if (e.key === 'Escape') { e.stopImmediatePropagation(); fechar(); }
+      else if (e.key === 'ArrowLeft' && seq.length > 1 && i > 0) { e.stopImmediatePropagation(); i--; zoom = 1; desenhar(); }
+      else if (e.key === 'ArrowRight' && seq.length > 1 && i < seq.length - 1) { e.stopImmediatePropagation(); i++; zoom = 1; desenhar(); }
+      else if (e.key === '+' || e.key === '=') { zoom = Math.min(6, zoom * 1.25); desenhar(); }
+      else if (e.key === '-') { zoom = Math.max(0.25, zoom * 0.8); desenhar(); }
+    };
+    const anterior = document.activeElement;
+    function fechar() {
+      document.removeEventListener('keydown', tecla, true);
+      el.remove(); document.body.classList.remove('ds-lb-aberta');
+      if (anterior && anterior.focus && document.contains(anterior)) anterior.focus();
+    }
+    document.addEventListener('keydown', tecla, true);   // captura: fecha SÓ a tela cheia, nunca o workspace por trás
+    el.addEventListener('mousedown', e => { if (e.target === el || e.target.classList.contains('ds-lb-area')) fechar(); });
+    document.body.appendChild(el); document.body.classList.add('ds-lb-aberta');
+    desenhar();
+    const f = el.querySelector('[data-lb-fechar]'); if (f) f.focus();
+  }
+
+  /* ---- upload por parte (§5/§30/§42): cada slide tem seu slot; a falha
+     de um não apaga o outro; "Substituir" troca só o rascunho daquela
+     parte ---- */
+  async function uploadParte(d, parte, arquivo) {
+    drawer.uploadsParte = drawer.uploadsParte || {};
+    const up = drawer.uploadsParte[parte.id] = { estado: 'enviando', progresso: 0, erro: null, nome: arquivo.name, arquivo };
+    desenharDrawer();
+    try {
+      const versaoId = await garantirRascunho(d.id);
+      const anterior = arquivosRascunho().get(parte.id);
+      await B7.DB.enviarArquivoDesign({
+        deliverableId: d.id, versaoId, arquivo, papel: 'preview',
+        parte: { tipo: parte.tipo, id: parte.id, posicao: parte.posicao },
+        aoProgredir: pct => {
+          up.progresso = pct;
+          const barra = drawer.el.querySelector('.ds-arte[data-parte="' + parte.id + '"] .ds-up-barra span');
+          const txt = drawer.el.querySelector('.ds-arte[data-parte="' + parte.id + '"] .ds-up-barra + small');
+          if (barra) barra.style.width = pct + '%';
+          if (txt) txt.textContent = 'Enviando ' + arquivo.name + ' · ' + pct + '%';
+        }
+      });
+      /* substituição: o registro antigo do rascunho sai só DEPOIS do novo
+         subir com sucesso — falha no meio nunca deixa a parte sem arte */
+      if (anterior) { try { await B7.DB.removerArquivoRascunhoDesign(anterior.id); } catch (e) {} }
+      delete drawer.uploadsParte[parte.id];
+      drawer.extra = await B7.DB.historicoDesign(d.id);
+    } catch (e) {
+      up.estado = 'erro'; up.erro = e.message || 'O envio foi interrompido.';
+    }
+    if (drawer && drawer.id === d.id) desenharDrawer();
+  }
+
+  /* ---- envio em lote com mapeamento (§31) ---- */
+  function chutarParte(nome, partes, usados) {
+    /* prefixo numérico no nome ("03-…", "slide 3", "IMG_3.png" não conta)
+       vira sugestão; sem prefixo, a próxima parte livre na ordem */
+    const m = /^(?:slide|story|frame)?[\s_-]*0*(\d{1,2})(?!\d)/i.exec(nome.trim());
+    if (m) { const p = partes[+m[1] - 1]; if (p && !usados.has(p.id)) return p; }
+    return partes.find(p => !usados.has(p.id)) || null;
+  }
+  function modalLote(d, arquivos) {
+    const partes = partesDaPeca(); const nomeP = partes[0].tipo === 'frame' ? 'Story' : 'Slide';
+    const usados = new Set(); const mapa = [...arquivos].map(f => { const p = chutarParte(f.name, partes, usados); if (p) usados.add(p.id); return { arquivo: f, parteId: p ? p.id : '' }; });
+    const opcoes = sel => '<option value="">— não enviar —</option>' + partes.map(p => '<option value="' + esc(p.id) + '"' + (sel === p.id ? ' selected' : '') + '>' + nomeP + ' ' + pad2(p.posicao + 1) + (p.rotulo ? ' · ' + esc(p.rotulo.slice(0, 28)) : '') + '</option>').join('');
+    const m = B7.UI.modal('<h3>Enviar vários ' + nomeP.toLowerCase() + 's</h3>' +
+      '<div class="sub">Confira a que ' + nomeP.toLowerCase() + ' cada arquivo pertence antes de enviar. A sugestão vem do número no nome do arquivo; sem número, segue a ordem.</div>' +
+      '<div class="ds-lote">' + mapa.map((x, i) => '<div class="ds-lote-item"><b>' + esc(x.arquivo.name) + '</b><small>' + formatarTamanho(x.arquivo.size) + '</small>' +
+        '<select class="campo fina" data-lote="' + i + '">' + opcoes(x.parteId) + '</select></div>').join('') + '</div>' +
+      '<p class="ds-up-erro" id="ds-lote-erro" hidden></p>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" data-ok>Enviar</button></div>', { larga: true });
+    m.querySelectorAll('[data-lote]').forEach(sel => sel.onchange = () => { mapa[+sel.dataset.lote].parteId = sel.value; });
+    m.querySelector('[data-ok]').onclick = async () => {
+      const escolhidos = mapa.filter(x => x.parteId);
+      const erro = m.querySelector('#ds-lote-erro');
+      const vistos = new Set(); const dup = escolhidos.find(x => vistos.has(x.parteId) || !vistos.add(x.parteId));
+      if (!escolhidos.length) { erro.textContent = 'Escolha ao menos um ' + nomeP.toLowerCase() + '.'; erro.hidden = false; return; }
+      if (dup) { erro.textContent = 'Dois arquivos apontam para o mesmo ' + nomeP.toLowerCase() + ' — ajuste antes de enviar.'; erro.hidden = false; return; }
+      m.fechar();
+      /* um de cada vez, na ordem canônica — falha de um não derruba os outros (uploadParte já trata) */
+      escolhidos.sort((a, b) => partes.findIndex(p => p.id === a.parteId) - partes.findIndex(p => p.id === b.parteId));
+      for (const x of escolhidos) {
+        const parte = partes.find(p => p.id === x.parteId);
+        if (parte && drawer && drawer.id === d.id) await uploadParte(d, parte, x.arquivo);
+      }
+    };
+  }
+
+  /* ---- decisão por parte (§21/§46/§47): só a ação formal muda o
+     estado; idempotente (o servidor grava o mesmo valor de novo) ---- */
+  async function decidirParte(d, arquivoId, decisao, botao) {
+    let msg = null;
+    const a = arquivoPorId(arquivoId); const parte = parteDoArquivo(a);
+    if (decisao === 'ajuste') {
+      msg = await B7.UI.perguntar({ titulo: parte ? 'Solicitar ajuste no ' + (parte.tipo === 'frame' ? 'story' : 'slide') + ' ' + pad2(parte.posicao + 1) : 'Solicitar ajuste',
+        rotulo: 'Descreva o que precisa mudar' + (parte ? ' neste ' + (parte.tipo === 'frame' ? 'story' : 'slide') : '') + ' — o designer vê esta mensagem.',
+        valor: (a && a.revisao_mensagem) || '', placeholder: 'ex.: Aumentar o produto e dar mais destaque ao preço…', confirmar: 'Registrar ajuste' });
+      if (msg === null) return;
+      if (!msg.trim()) { B7.UI.toast('Descreva o ajuste.', { tipo: 'erro' }); return; }
+    }
+    if (botao) botao.disabled = true;
+    try {
+      await B7.DB.revisarParteDesign(arquivoId, decisao, msg ? msg.trim() : null);
+      drawer.extra = await B7.DB.historicoDesign(d.id);
+      await carregarNomesRevisores();
+      desenharDrawer();
+    } catch (e) {
+      if (botao) botao.disabled = false;
+      B7.UI.toast('Não foi possível registrar: ' + (e.message || ''), { tipo: 'erro' });
+    }
+  }
+
+  /* resumo das decisões por parte — decide o que a lateral oferece
+     (Aprovar carrossel × Enviar ajustes ao Designer) */
+  function resumoDecisoes(d) {
+    const partes = partesDaPeca() || []; const efet = arquivosEfetivos();
+    const lista = partes.map(p => efet.get(p.id));
+    return {
+      total: partes.length,
+      semArquivo: lista.filter(a => !a).length,
+      aprovados: lista.filter(a => a && a.revisao === 'aprovado').length,
+      ajustes: lista.filter(a => a && a.revisao === 'ajuste').length,
+      pendentes: lista.filter(a => a && !a.revisao).length
+    };
   }
 
   /* ajuste pedido em destaque no topo do conteúdo principal — a peça
@@ -1704,8 +2300,8 @@ B7.Design = (function () {
       '</header>' +
       '<div class="ds-ws-corpo">' +
         '<div class="ds-ws-principal" role="tabpanel">' +
-          previaGrande(d) +
           feedbackAjuste(d, x) +
+          blocoArte(d, x) +
           conteudoPrincipal(d) +
         '</div>' +
         '<div class="ds-ws-lateral">' +
@@ -1737,15 +2333,18 @@ B7.Design = (function () {
             '<span class="ds-dr-salvo" id="dv-salvo" aria-live="polite"></span>' +
           '</div>' +
 
-          (podeEditar && d.status !== 'finalizado' ? blocoUpload(d) : '') +
+          /* o designer responsável (ou equipe sem designer atribuído) tem o
+             envio à mão; quem só revisa vê o envio recolhido, como exceção */
+          (podeEditar && d.status !== 'finalizado' ? blocoUpload(d, equipe && !souResponsavel && !!d.designer_id) : '') +
 
-          '<div class="ds-dr-bloco"><h4>Histórico de versões</h4>' + blocoVersoes(versoes) + '</div>' +
-          '<div class="ds-dr-bloco"><h4>Linha do tempo</h4>' + blocoTimeline(x.notificacoes || []) + '</div>' +
+          '<details class="ds-dr-bloco ds-dr-recolhido"' + (drawer.versoesAberto || !ehMultiparte() ? ' open' : '') + ' id="dv-versoes"><summary>Histórico de versões</summary>' + blocoVersoes(versoes) + '</details>' +
+          '<details class="ds-dr-bloco ds-dr-recolhido"' + (drawer.timelineAberta ? ' open' : '') + ' id="dv-timeline"><summary>Linha do tempo</summary>' + blocoTimeline(x.notificacoes || []) + '</details>' +
         '</div>' +
       '</div>';
 
     ligarDrawer(d, x, versaoAtual);
     ligarThumbs(drawer.el);
+    ligarArte(drawer.el, d);
   }
 
   /* ---------------------------------------------------------- briefing
@@ -1856,17 +2455,23 @@ B7.Design = (function () {
     if (pill) pill.focus(); else { const foco = drawer.el.querySelector('.ds-nav-seta:not([disabled])'); if (foco) foco.focus(); }
   }
 
+  /* Arquivos 2.0: quando a peça é multiparte, o navegador de slides
+     (pills + item atual) já vive dentro do bloco de ARTE — a arte de
+     cada slide e o briefing daquele slide andam juntos. Aqui só sobra o
+     que é da peça inteira (legenda/CTA/referências). navegadorSlides()
+     continua servindo o caso sem arte por parte (ex.: Story de 1 frame
+     cai em blocoArteUnica; um Carrossel sem slide cadastrado). */
   function blocoPrincipalCarrossel(b) {
     const c = b.conteudo;
     const campo = (rot, val) => val ? '<div class="ds-campo-briefing"><small>' + rot + '</small><p>' + esc(val) + '</p></div>' : '';
-    return pilarBriefingHTML(b) + navegadorSlides(b.slides || [], 'slide') +
+    return pilarBriefingHTML(b) + (ehMultiparte() ? '' : navegadorSlides(b.slides || [], 'slide')) +
       campo('LEGENDA', c.legenda) + referenciasBriefingHTML(c);
   }
 
   function blocoPrincipalStory(b) {
     const c = b.conteudo;
     const campo = (rot, val) => val ? '<div class="ds-campo-briefing"><small>' + rot + '</small><p>' + esc(val) + '</p></div>' : '';
-    return pilarBriefingHTML(b) + navegadorSlides(b.frames || [], 'frame') +
+    return pilarBriefingHTML(b) + (ehMultiparte() ? '' : navegadorSlides(b.frames || [], 'frame')) +
       campo('CTA', c.cta) + referenciasBriefingHTML(c);
   }
 
@@ -1879,32 +2484,56 @@ B7.Design = (function () {
      anotação opcional de canal, e segue o mesmo ciclo de revisão. */
   const CANAIS_EXTERNOS = ['WhatsApp', 'E-mail', 'Reunião', 'Outro'];
 
-  function blocoUpload(d) {
+  function blocoUpload(d, recolhido) {
     if (drawer.viaExterna === undefined) drawer.viaExterna = false;
-    return '<div class="ds-dr-bloco"><h4>Enviar nova versão</h4>' +
-      '<div class="ds-via-toggle" role="tablist">' +
+    const corpo = '<div class="ds-via-toggle" role="tablist">' +
         '<button role="tab" data-via="upload" class="' + (!drawer.viaExterna ? 'on' : '') + '" aria-selected="' + !drawer.viaExterna + '">Enviar arquivo</button>' +
         '<button role="tab" data-via="externa" class="' + (drawer.viaExterna ? 'on' : '') + '" aria-selected="' + !!drawer.viaExterna + '">Revisada por fora (sem arquivo)</button>' +
       '</div>' +
-      '<div id="dv-bloco-envio">' + (drawer.viaExterna ? blocoEnvioExterno() : blocoEnvioUpload(d)) + '</div>' +
-    '</div>';
+      '<div id="dv-bloco-envio">' + (drawer.viaExterna ? blocoEnvioExterno() : blocoEnvioUpload(d)) + '</div>';
+    /* §43: pra quem REVISA (equipe que não é o designer responsável) o
+       envio de versão é exceção, não o fluxo — fica recolhido, abaixo
+       das ações de revisão, sem competir com "Aprovar"/"Solicitar ajuste" */
+    if (recolhido) {
+      return '<details class="ds-dr-bloco ds-dr-recolhido"' + (drawer.envioAberto ? ' open' : '') + '><summary>Enviar versão em nome do designer <span class="ds-leve">— exceção</span></summary>' + corpo + '</details>';
+    }
+    return '<div class="ds-dr-bloco"><h4>Enviar nova versão</h4>' + corpo + '</div>';
   }
 
   function blocoEnvioUpload(d) {
     const fila = drawer.filaUpload;
-    const algumPronto = fila.some(f => f.estado === 'ok');
-    const algumEnviando = fila.some(f => f.estado === 'enviando');
-    const papeis = PAPEIS_ARQUIVO.filter(([v]) => v !== 'final' ||
-      d.status === 'aprovado_interno' || d.status === 'aprovado_cliente');
+    const algumEnviando = fila.some(f => f.estado === 'enviando') ||
+      Object.values(drawer.uploadsParte || {}).some(u => u.estado === 'enviando');
+    const multi = ehMultiparte();
+    /* multiparte: a arte entra pelo slot de cada slide (área principal);
+       aqui embaixo só arquivo de apoio (fonte, anexo) e o envio */
+    const papeis = PAPEIS_ARQUIVO.filter(([v]) => (v !== 'final' ||
+      d.status === 'aprovado_interno' || d.status === 'aprovado_cliente') && (!multi || v !== 'preview'));
 
-    return '<div class="ds-drop" id="dv-drop" tabindex="0" role="button" aria-label="Escolher arquivos ou arrastar aqui">' +
+    let resumoPartes = '';
+    let pronto = fila.some(f => f.estado === 'ok');
+    if (multi) {
+      const partes = partesDaPeca(); const efet = arquivosEfetivos(); const rasc = arquivosRascunho();
+      const nomeP = d.tipo === 'stories' ? 'Stories' : 'Slides';
+      const novos = partes.filter(p => rasc.get(p.id)), herdados = partes.filter(p => !rasc.get(p.id) && efet.get(p.id)),
+            faltam = partes.filter(p => !rasc.get(p.id) && !efet.get(p.id));
+      pronto = novos.length > 0 && faltam.length === 0;
+      resumoPartes = '<div class="ds-envio-partes">' +
+        (novos.length ? '<p><b>Nesta versão:</b> ' + nomeP.toLowerCase() + ' ' + novos.map(p => pad2(p.posicao + 1)).join(', ') + '</p>' : '<p class="ds-leve">Nenhum arquivo novo nesta versão ainda — use “Enviar arquivo” em cada ' + (d.tipo === 'stories' ? 'story' : 'slide') + ' acima.</p>') +
+        (herdados.length ? '<p><b>Mantidos da versão anterior:</b> ' + herdados.map(p => pad2(p.posicao + 1)).join(', ') + '</p>' : '') +
+        (faltam.length ? '<p class="ds-up-erro">Faltam arquivos nos ' + nomeP + ' ' + faltam.map(p => pad2(p.posicao + 1)).join(', ') + '.</p>' : '') +
+      '</div>';
+    }
+
+    return resumoPartes +
+      '<div class="ds-drop' + (multi ? ' ds-drop-apoio' : '') + '" id="dv-drop" tabindex="0" role="button" aria-label="Escolher arquivos ou arrastar aqui">' +
         '<input type="file" id="dv-arquivo" multiple hidden>' +
-        '<div class="ds-drop-tx"><b>Arraste arquivos aqui</b><span>ou clique para escolher · qualquer formato de arte</span></div>' +
+        '<div class="ds-drop-tx"><b>' + (multi ? 'Arquivo de apoio (fonte, anexo)' : 'Arraste arquivos aqui') + '</b><span>' + (multi ? 'opcional · PSD, AI, PDF… não substitui a arte dos slides' : 'ou clique para escolher · qualquer formato de arte') + '</span></div>' +
       '</div>' +
       '<div id="dv-fila" class="ds-fila-upload">' + fila.map((f, i) => linhaUpload(f, i, papeis)).join('') + '</div>' +
       '<label class="rot" for="dv-observacao" style="margin-top:12px">OBSERVAÇÃO <span class="ds-leve">— opcional</span></label>' +
       '<textarea class="campo" id="dv-observacao" rows="2" placeholder="O que mudou nesta versão, algo que a revisão deveria olhar…"></textarea>' +
-      '<button class="b pri" id="dv-enviar" style="width:100%;margin-top:10px" ' + (algumPronto && !algumEnviando ? '' : 'disabled') + '>' +
+      '<button class="b pri" id="dv-enviar" style="width:100%;margin-top:10px" ' + (pronto && !algumEnviando ? '' : 'disabled') + '>' +
         'Enviar para revisão interna</button>' +
       (algumEnviando ? '<p class="ds-leve" style="margin-top:6px">Aguarde o envio terminar para mandar para revisão.</p>' : '');
   }
@@ -1948,7 +2577,7 @@ B7.Design = (function () {
   }
 
   async function adicionarArquivos(d, arquivos) {
-    const novos = [...arquivos].map(arquivo => ({ arquivo, papel: 'preview', estado: 'pendente', progresso: 0, erro: null }));
+    const novos = [...arquivos].map(arquivo => ({ arquivo, papel: ehMultiparte() ? 'anexo' : 'preview', estado: 'pendente', progresso: 0, erro: null }));
     drawer.filaUpload.push(...novos);
     redesenharUpload(d);
     for (const f of novos) iniciarUpload(d, f);
@@ -1986,11 +2615,20 @@ B7.Design = (function () {
     if (cx) cx.innerHTML = drawer.filaUpload.map((f, i) => linhaUpload(f, i, papeis)).join('');
     ligarUpload(d);
     const btn = drawer.el.querySelector('#dv-enviar');
-    if (btn) {
-      const algumPronto = drawer.filaUpload.some(f => f.estado === 'ok');
-      const algumEnviando = drawer.filaUpload.some(f => f.estado === 'enviando');
-      btn.disabled = !(algumPronto && !algumEnviando);
-    }
+    if (btn) btn.disabled = !envioPronto();
+  }
+
+  /* pode mandar pra revisão? arte única: algum arquivo ok na fila.
+     multiparte: algum slide novo no rascunho e nenhum slide sem arte
+     (novo ou herdado). Nunca com upload em andamento. */
+  function envioPronto() {
+    const enviando = drawer.filaUpload.some(f => f.estado === 'enviando') ||
+      Object.values(drawer.uploadsParte || {}).some(u => u.estado === 'enviando');
+    if (enviando) return false;
+    if (!ehMultiparte()) return drawer.filaUpload.some(f => f.estado === 'ok');
+    const efet = arquivosEfetivos(), rasc = arquivosRascunho();
+    const partes = partesDaPeca();
+    return partes.some(p => rasc.get(p.id)) && partes.every(p => rasc.get(p.id) || efet.get(p.id));
   }
 
   function ligarUpload(d) {
@@ -2034,7 +2672,7 @@ B7.Design = (function () {
         const versaoId = await garantirRascunho(d.id);
         await B7.DB.enviarVersaoDesign(versaoId, (obs && obs.value.trim()) || '', via, drawer.canalExterno);
         drawer.filaUpload = []; drawer.rascunhoId = null; drawer._observacaoTocada = false;
-        drawer.canalExterno = null; drawer.viaExterna = false;
+        drawer.canalExterno = null; drawer.viaExterna = false; drawer.uploadsParte = {}; drawer.arteHistorico = null;
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
         B7.UI.toast(via === 'externa' ? 'Registrado — enviada para revisão interna' : 'Peça enviada para revisão interna');
@@ -2065,13 +2703,40 @@ B7.Design = (function () {
   }
 
   /* ---------------------------------------------------------- timeline */
+  /* Linha do tempo = notificações (como sempre) + eventos POR SLIDE
+     derivados dos dados reais de arquivos/versões (Arquivos 2.0, §50):
+     "Slide 03 — V02 enviada" (data de envio da versão que trouxe o
+     arquivo), "Slide 03 — ajuste solicitado por Yury" / "aprovado por
+     Yury" (revisado_em/revisado_por do arquivo). Nada é inventado a
+     partir de render: cada linha tem um registro e um timestamp por
+     trás. Só pra peça multiparte — arte única já está coberta pelas
+     notificações da versão. */
+  function eventosPorParte() {
+    if (!drawer.briefing || !ehMultiparte()) return [];
+    const partes = partesDaPeca(); const porId = new Map(partes.map(p => [p.id, p]));
+    const nomes = drawer.nomesPerfis || {};
+    const nomeP = partes[0].tipo === 'frame' ? 'Story' : 'Slide';
+    const ev = [];
+    ((drawer.extra && drawer.extra.arquivos) || []).filter(a => a.papel === 'preview' && a.parte_id && a.versao_estado !== 'rascunho').forEach(a => {
+      const p = porId.get(a.parte_id); const rot = nomeP + ' ' + pad2(p ? p.posicao + 1 : (a.parte_posicao || 0) + 1);
+      const v = ((drawer.extra && drawer.extra.versoes) || []).find(x => x.id === a.versao_id) || {};
+      ev.push({ t: v.enviada_em || a.created_at, titulo: rot + ' — V' + pad2(a.versao_numero) + ' enviada' });
+      if (a.revisao && a.revisado_em) {
+        const quem = nomes[a.revisado_por] ? ' por ' + nomes[a.revisado_por] : '';
+        ev.push({ t: a.revisado_em, titulo: rot + ' — ' + (a.revisao === 'ajuste' ? 'ajuste solicitado' : 'aprovado') + quem,
+                  mensagem: a.revisao === 'ajuste' ? a.revisao_mensagem : null });
+      }
+    });
+    return ev;
+  }
   function blocoTimeline(notifs) {
-    if (!notifs.length) return '<p class="vazio-leve">Sem atividade registrada ainda.</p>';
-    const ordenadas = notifs.slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    const itens = notifs.map(n => ({ t: n.created_at, titulo: n.titulo, mensagem: n.mensagem })).concat(eventosPorParte());
+    if (!itens.length) return '<p class="vazio-leve">Sem atividade registrada ainda.</p>';
+    const ordenadas = itens.sort((a, b) => (b.t || '').localeCompare(a.t || ''));
     return '<div class="ds-timeline">' + ordenadas.map(n =>
       '<div class="ds-tl"><span class="ds-tl-pt"></span><div>' + esc(n.titulo || '') +
         (n.mensagem ? '<p class="ds-tl-msg">“' + esc(n.mensagem) + '”</p>' : '') +
-        '<small>' + esc(B7.UI.quando(n.created_at)) + '</small></div></div>').join('') + '</div>';
+        '<small>' + esc(B7.UI.quando(n.t)) + '</small></div></div>').join('') + '</div>';
   }
 
   /* ---------------------------------------------------------- ligações */
@@ -2154,6 +2819,8 @@ B7.Design = (function () {
     /* navegador de slide/story (Rodada 4) — ver navegadorSlides() */
     el.querySelectorAll('[data-slide-ir]').forEach(b => b.onclick = () => {
       drawer.slideIndice = +b.dataset.slideIr;
+      /* miniatura da visão geral: seleciona E abre em grande (§34) */
+      if (b.classList.contains('ds-arte-mini')) drawer.slideModoTodos = false;
       desenharDrawer();
       const pill = drawer.el.querySelector('.ds-nav-pill.on');
       if (pill) pill.focus();
@@ -2166,6 +2833,69 @@ B7.Design = (function () {
       const alvo = drawer.el.querySelector('.ds-nav-alternar');
       if (alvo) alvo.focus();
     });
+
+    /* Arquivos 2.0 — arte: download, tela cheia, decisão por parte,
+       upload por slot, histórico por parte, ZIP do conjunto */
+    ligarBaixar(el, d);
+    el.querySelectorAll('[data-tela-cheia]').forEach(b => b.onclick = () => abrirTelaCheia(d, b.dataset.telaCheia));
+    el.querySelectorAll('[data-decidir]').forEach(b => b.onclick = () => decidirParte(d, b.dataset.arquivo, b.dataset.decidir, b));
+    el.querySelectorAll('input[data-up-parte]').forEach(inp => inp.onchange = () => {
+      const parte = (partesDaPeca() || []).find(p => p.id === inp.dataset.upParte);
+      if (parte && inp.files && inp.files[0]) uploadParte(d, parte, inp.files[0]);
+      inp.value = '';
+    });
+    const lote = el.querySelector('#dv-lote');
+    if (lote) lote.onchange = () => { if (lote.files && lote.files.length) modalLote(d, lote.files); lote.value = ''; };
+    el.querySelectorAll('[data-up-tentar-parte]').forEach(b => b.onclick = () => {
+      const parte = (partesDaPeca() || []).find(p => p.id === b.dataset.upTentarParte);
+      const up = drawer.uploadsParte && drawer.uploadsParte[b.dataset.upTentarParte];
+      if (parte && up && up.arquivo) uploadParte(d, parte, up.arquivo);
+    });
+    el.querySelectorAll('[data-remover-rascunho]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      try { await B7.DB.removerArquivoRascunhoDesign(b.dataset.removerRascunho); drawer.extra = await B7.DB.historicoDesign(d.id); desenharDrawer(); }
+      catch (e) { b.disabled = false; B7.UI.toast('Não foi possível remover: ' + (e.message || ''), { tipo: 'erro' }); }
+    });
+    el.querySelectorAll('[data-ver-versao]').forEach(b => b.onclick = () => {
+      drawer.arteHistorico = drawer.arteHistorico || {};
+      if (b.dataset.verVersao) drawer.arteHistorico[b.dataset.parteChave] = b.dataset.verVersao; else delete drawer.arteHistorico[b.dataset.parteChave];
+      desenharDrawer();
+    });
+    el.querySelectorAll('[data-baixar-conjunto]').forEach(b => b.onclick = () => baixarConjunto(d, b, b.dataset.baixarConjunto === 'parcial'));
+    /* arrastar arquivo direto no slot de um slide */
+    el.querySelectorAll('.ds-arte[data-parte]').forEach(slot => {
+      const parte = (partesDaPeca() || []).find(p => p.id === slot.dataset.parte);
+      if (!parte || !slot.querySelector('input[data-up-parte]')) return;
+      slot.ondragover = e => { e.preventDefault(); slot.classList.add('arrastando'); };
+      slot.ondragleave = () => slot.classList.remove('arrastando');
+      slot.ondrop = e => { e.preventDefault(); slot.classList.remove('arrastando'); if (e.dataTransfer.files && e.dataTransfer.files[0]) uploadParte(d, parte, e.dataTransfer.files[0]); };
+    });
+    const detVersoes = el.querySelector('#dv-versoes'); if (detVersoes) detVersoes.ontoggle = () => { drawer.versoesAberto = detVersoes.open; };
+    const detTimeline = el.querySelector('#dv-timeline'); if (detTimeline) detTimeline.ontoggle = () => { drawer.timelineAberta = detTimeline.open; };
+    const detEnvio = el.querySelector('details.ds-dr-recolhido:not([id])'); if (detEnvio) detEnvio.ontoggle = () => { drawer.envioAberto = detEnvio.open; };
+
+    /* fechamento da revisão multiparte (§23/§45): uma ação, uma notificação */
+    const fecharRevisao = async (botao, rotulo) => {
+      botao.disabled = true; botao.textContent = 'Registrando…';
+      try {
+        const resultado = await B7.DB.fecharRevisaoDesign(versaoAtual.id);
+        const novo = await B7.DB.design(d.id); Object.assign(d, novo);
+        drawer.extra = await B7.DB.historicoDesign(d.id);
+        B7.UI.toast(resultado === 'aprovado' ? 'Peça aprovada internamente' : 'Ajustes enviados ao designer');
+        desenharDrawer(); redesenharTela();
+      } catch (e) {
+        botao.disabled = false; botao.textContent = rotulo;
+        B7.UI.toast('Não foi possível registrar: ' + (e.message || ''), { tipo: 'erro' });
+      }
+    };
+    const fecharAprovar = el.querySelector('#dv-fechar-aprovar');
+    if (fecharAprovar && !fecharAprovar.disabled) fecharAprovar.onclick = () => fecharRevisao(fecharAprovar, fecharAprovar.textContent);
+    const fecharAjustes = el.querySelector('#dv-fechar-ajustes');
+    if (fecharAjustes && !fecharAjustes.disabled) fecharAjustes.onclick = async () => {
+      const r = resumoDecisoes(d);
+      const ok = await B7.UI.confirmar({ titulo: 'Enviar ajustes ao Designer?', texto: r.ajustes + ' ' + (d.tipo === 'stories' ? 'story' : 'slide') + (r.ajustes > 1 ? 's' : '') + ' com ajuste pedido' + (r.pendentes ? ' · ' + r.pendentes + ' ainda sem decisão (ficam como estão)' : '') + '. O designer recebe uma notificação só, com tudo junto.', confirmar: 'Enviar ajustes' });
+      if (ok) fecharRevisao(fecharAjustes, fecharAjustes.textContent);
+    };
 
     /* revisão interna */
     const aprovar = el.querySelector('#dv-aprovar');

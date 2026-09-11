@@ -201,13 +201,150 @@ body.ds-ws-aberta{overflow:hidden;}
 .ds-ws-lateral{flex:0 0 380px;min-width:0;max-width:380px;overflow-y:auto;padding:20px;
   border-left:1px solid var(--borda);background:var(--suave);overscroll-behavior:contain;}
 
-.ds-ws-preview{width:100%;aspect-ratio:4/5;max-height:440px;border-radius:16px;background:var(--card) center/cover no-repeat;
-  border:1px solid var(--borda);display:flex;align-items:center;justify-content:center;margin-bottom:20px;
-  color:var(--ink-4);position:relative;overflow:hidden;}
-.ds-ws-preview svg{width:40px;height:40px;}
-.ds-ws-preview.ds-thumb-ok{color:transparent;}
-.ds-ws-preview-legenda{position:absolute;left:0;right:0;bottom:0;padding:8px 12px;font-size:11px;color:#fff;
-  background:linear-gradient(0deg,rgba(10,6,20,.55),transparent);text-align:right;}
+/* =====================================================================
+   ARQUIVOS 2.0 — a arte é um <img> contido (object-fit:contain) numa
+   moldura que reserva a proporção REAL do arquivo (--prop = largura/
+   altura gravadas no upload). Nunca cover, nunca altura fixa: 1:1,
+   4:5, 9:16, 16:9 aparecem inteiras, com fundo neutro sobrando ao
+   redor quando a proporção não bate com a coluna. (O bug antigo: a
+   prévia grande herdava height:52px + cover da classe .ds-thumb do card
+   e virava uma tira.)
+   ===================================================================== */
+.ds-arte-secao{margin-bottom:22px;}
+.ds-arte-titulo{display:block;font-size:9.5px;font-weight:700;letter-spacing:.14em;color:var(--ink-4);margin-bottom:8px;}
+.ds-arte{position:relative;min-width:0;}
+.ds-arte.arrastando .ds-arte-moldura{outline:2px dashed var(--acento);outline-offset:-2px;}
+.ds-arte-moldura{position:relative;width:100%;aspect-ratio:var(--prop,4/5);max-height:min(62vh,700px);
+  border-radius:16px;border:1px solid var(--borda);background:var(--suave);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;}
+/* a moldura pode ser limitada pela altura (arte 9:16 numa tela baixa):
+   a largura acompanha pra não sobrar borda gigante dos lados */
+.ds-arte-moldura:not(.vazia):not(.arquivo){width:auto;max-width:100%;margin:0 auto;}
+.ds-arte-img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;opacity:0;transition:opacity .2s;}
+.ds-arte-moldura.ok .ds-arte-img{opacity:1;}
+.ds-arte-moldura.ok .ds-arte-carregando{display:none;}
+.ds-arte-carregando{position:absolute;inset:0;background:linear-gradient(90deg,var(--esq-1),var(--esq-2),var(--esq-1));
+  background-size:200% 100%;animation:dsEsq 1.3s ease-in-out infinite;}   /* mesma animação da .ds-thumb-esq */
+.ds-arte-moldura.vazia{aspect-ratio:4/5;max-height:320px;border-style:dashed;}
+.ds-arte-vazio{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--ink-4);font-size:12.5px;}
+.ds-arte-vazio svg{width:36px;height:36px;}
+.ds-arte-moldura.arquivo{aspect-ratio:auto;max-height:none;padding:16px;}
+.ds-arte-arquivo{display:flex;align-items:center;gap:14px;width:100%;}
+.ds-arte-arquivo>svg{width:34px;height:34px;flex:none;color:var(--ink-3);}
+.ds-arte-arquivo-tx{flex:1;min-width:0;}
+.ds-arte-arquivo-tx b{display:block;font-size:13px;overflow-wrap:anywhere;}
+.ds-arte-arquivo-tx small{display:block;color:var(--ink-4);font-size:11px;margin:2px 0 4px;}
+.ds-arte-arquivo-tx .ds-leve{display:block;font-size:11.5px;}
+
+.ds-arte-barra{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.ds-arte-meta{font-size:11.5px;color:var(--ink-4);}
+.ds-arte-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;}
+.ds-arte-estado{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:3px 9px;border-radius:99px;background:var(--suave);color:var(--ink-3);}
+.ds-arte-estado:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+.ds-arte-estado.st-aprovado,.ds-arte-resumo .st-aprovado{background:var(--ok-bg);color:var(--ok);}
+.ds-arte-estado.st-ajuste,.ds-arte-resumo .st-ajuste{background:var(--erro-bg);color:var(--erro);}
+.ds-arte-estado.st-pendente,.ds-arte-resumo .st-pendente{background:var(--ambar-bg);color:var(--ambar);}
+.ds-arte-estado.st-novo,.ds-arte-resumo .st-novo{background:var(--acento-suave);color:var(--acento);}
+.ds-arte-estado.st-vazio,.ds-arte-resumo .st-vazio{background:var(--suave);color:var(--ink-4);}
+.ds-arte-estado.st-historico{background:var(--suave);color:var(--ink-3);}
+
+.ds-arte-feedback{display:flex;flex-direction:column;gap:3px;background:var(--erro-bg);color:var(--erro);border-radius:12px;padding:10px 14px;margin-top:10px;font-size:13px;line-height:1.5;}
+.ds-arte-feedback b{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+.ds-arte-feedback p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;}
+.ds-arte-decisao{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.ds-arte-decidido{font-size:12px;font-weight:700;}
+.ds-arte-decidido.ok{color:var(--ok);}
+.ds-arte-decidido.ajuste{color:var(--erro);}
+.ds-arte-upload{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.ds-arte-upload.precisa{background:var(--erro-bg);border-radius:12px;padding:10px 12px;}
+.ds-arte-upload .ds-up-barra{flex:1 1 160px;}
+.ds-arte-escolher{cursor:pointer;}
+.ds-arte-hist{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.ds-arte-hist small{font-size:9.5px;font-weight:700;letter-spacing:.12em;color:var(--ink-4);margin-right:4px;}
+.ds-arte-hist-v{border:1px solid var(--borda-forte);background:var(--card);border-radius:99px;font:inherit;font-size:11px;font-weight:600;
+  padding:3px 9px;color:var(--ink-3);cursor:pointer;}
+.ds-arte-hist-v.on{background:var(--ink);border-color:var(--ink);color:var(--card);}
+.ds-arte-hist-v:hover:not(.on){border-color:var(--acento);color:var(--acento);}
+
+/* multiparte: resumo + navegador com estado por slide + arte da parte */
+.ds-nav-topo-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.ds-arte-resumo{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.ds-arte-resumo span{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--suave);color:var(--ink-3);}
+.ds-nav-pill{position:relative;}
+.ds-nav-pill:after{content:"";position:absolute;right:-2px;top:-2px;width:10px;height:10px;border-radius:50%;border:2px solid var(--card);display:none;}
+.ds-nav-pill.st-aprovado:after{display:block;background:var(--ok);}
+.ds-nav-pill.st-ajuste:after{display:block;background:var(--erro);}
+.ds-nav-pill.st-pendente:after{display:block;background:var(--ambar);}
+.ds-nav-pill.st-novo:after{display:block;background:var(--acento);}
+.ds-nav-pill.st-vazio{border-style:dashed;}
+.ds-nav-foco-corpo{flex:1;min-width:0;}
+.ds-nav-foco-corpo .ds-slide-foco{margin-top:12px;}
+.ds-arte-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px;margin-bottom:14px;}
+.ds-arte-mini{border:1.5px solid var(--borda);border-radius:12px;background:var(--card);padding:8px;font:inherit;text-align:left;cursor:pointer;
+  display:flex;flex-direction:column;gap:4px;min-width:0;}
+.ds-arte-mini:hover{border-color:var(--acento);}
+.ds-arte-mini-img{display:block;width:100%;height:auto;aspect-ratio:4/5;border-radius:8px;background:var(--suave) center/contain no-repeat;position:relative;overflow:hidden;}
+.ds-arte-mini-img.vazia{display:flex;align-items:center;justify-content:center;color:var(--ink-4);border:1.5px dashed var(--borda-forte);}
+.ds-arte-mini-img svg{width:22px;height:22px;}
+.ds-arte-mini b{font-family:'Archivo';font-weight:800;font-size:12px;}
+.ds-arte-mini small{font-size:10.5px;color:var(--ink-4);line-height:1.3;}
+.ds-arte-mini.st-aprovado b{color:var(--ok);}
+.ds-arte-mini.st-ajuste b{color:var(--erro);}
+.ds-arte-mini.st-ajuste{border-color:var(--erro);}
+.ds-arte-lista .ds-slide{margin-bottom:8px;}
+.ds-arte-legado{margin-top:14px;padding-top:12px;border-top:1px dashed var(--borda);}
+.ds-arte-legado small:first-child{display:block;font-size:9.5px;font-weight:700;letter-spacing:.12em;color:var(--ink-4);margin-bottom:6px;}
+.ds-arte-legado-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:6px 0;}
+.ds-arte-legado-item b{font-weight:600;overflow-wrap:anywhere;}
+.ds-arte-legado-item small{color:var(--ink-4);margin-right:auto;}
+
+/* lateral: resumo das decisões, envio recolhido, envio multiparte */
+.ds-ws-resumo-decisoes{font-size:12px;color:var(--ink-3);margin:0 0 8px;line-height:1.45;}
+.ds-dr-recolhido summary{cursor:pointer;font-family:'Archivo';font-size:13px;font-weight:800;list-style:none;display:flex;align-items:center;gap:6px;}
+.ds-dr-recolhido summary::-webkit-details-marker{display:none;}
+.ds-dr-recolhido summary:before{content:"›";display:inline-block;transition:transform .15s;color:var(--ink-4);}
+.ds-dr-recolhido[open] summary:before{transform:rotate(90deg);}
+.ds-dr-recolhido[open] summary{margin-bottom:10px;}
+.ds-envio-partes{font-size:12.5px;line-height:1.5;margin-bottom:10px;}
+.ds-envio-partes p{margin:0 0 3px;}
+.ds-drop-apoio{padding:12px 14px;}
+.ds-drop-apoio .ds-drop-tx b{font-size:12px;}
+
+/* envio em lote com mapeamento (§31) */
+.ds-lote{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;margin:12px 0;}
+.ds-lote-item{display:grid;grid-template-columns:1fr auto minmax(200px,240px);gap:10px;align-items:center;font-size:12.5px;}
+.ds-lote-item b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ds-lote-item small{color:var(--ink-4);}
+@media (max-width:560px){.ds-lote-item{grid-template-columns:1fr;}}
+
+/* tela cheia (§11) */
+body.ds-lb-aberta{overflow:hidden;}
+.ds-lightbox{position:fixed;inset:0;z-index:200;background:rgba(8,6,18,.92);display:flex;flex-direction:column;color:#fff;}
+.ds-lb-topo{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;}
+.ds-lb-tit{font-size:12.5px;font-weight:600;opacity:.85;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ds-lb-acoes{display:flex;align-items:center;gap:6px;flex:none;}
+.ds-lb-acoes .ico{color:#fff;}
+.ds-lb-acoes .ico:hover{background:rgba(255,255,255,.12);color:#fff;}
+.ds-lb-acoes .b.contorno{color:#fff;border-color:rgba(255,255,255,.4);background:transparent;}
+.ds-lb-acoes .b.contorno:hover{border-color:#fff;color:#fff;background:rgba(255,255,255,.1);}
+.ds-lb-zoom{font-size:12px;min-width:44px;text-align:center;opacity:.8;font-variant-numeric:tabular-nums;}
+.ds-lb-corpo{flex:1;min-height:0;display:flex;align-items:center;gap:8px;padding:0 12px;}
+.ds-lb-area{flex:1;min-width:0;height:100%;overflow:auto;display:flex;align-items:center;justify-content:center;cursor:zoom-in;}
+.ds-lb-img{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center;transition:transform .12s;user-select:none;}
+.ds-lb-seta{flex:none;width:44px;height:64px;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:26px;}
+.ds-lb-seta:hover:not(:disabled){background:rgba(255,255,255,.22);color:#fff;}
+.ds-lb-seta:disabled{opacity:.25;}
+.ds-lb-pills{flex:none;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;padding:12px;}
+.ds-lightbox .ds-nav-pill{background:transparent;border-color:rgba(255,255,255,.4);color:#fff;}
+.ds-lightbox .ds-nav-pill.on{background:#fff;color:#111;border-color:#fff;}
+@media (max-width:640px){
+  .ds-lb-seta{width:32px;height:48px;font-size:20px;}
+  .ds-lb-tit{display:none;}
+  .ds-arte-moldura{max-height:70vh;}
+  .ds-arte-acoes{margin-left:0;width:100%;}
+  .ds-arte-acoes .b{flex:1;justify-content:center;}
+}
 
 .ds-ws-feedback{display:flex;gap:10px;align-items:flex-start;background:var(--erro-bg);color:var(--erro);
   border-radius:12px;padding:12px 14px;margin-bottom:20px;font-size:13px;line-height:1.5;}

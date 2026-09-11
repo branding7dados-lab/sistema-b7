@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-09-11-ag';
+  const VERSAO = '2026-09-11-ai';
 
   /* Rastro dos eventos de sessão, guardado entre recarregamentos.
      Sem ele, um laço que atravessa reloads é invisível: cada página

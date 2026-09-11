@@ -124,7 +124,7 @@ B7.UI = (function () {
      string vazia se a pessoa confirmou sem escrever, ou null se
      cancelou — três respostas diferentes, porque "não quis dizer nada"
      não é o mesmo que "desistiu". */
-  function perguntar({ titulo, rotulo, placeholder = '', confirmar = 'Enviar' }) {
+  function perguntar({ titulo, rotulo, placeholder = '', confirmar = 'Enviar', valor = '' }) {
     let resolver;
     const promessa = new Promise(r => { resolver = r; });
     let decidido = false;
@@ -132,7 +132,7 @@ B7.UI = (function () {
     const m = modal('<h3>' + esc(titulo) + '</h3>' +
       (rotulo ? '<div class="sub">' + esc(rotulo) + '</div>' : '') +
       '<textarea class="campo alta" id="pg-texto" rows="3" data-foco ' +
-        'placeholder="' + esc(placeholder) + '"></textarea>' +
+        'placeholder="' + esc(placeholder) + '">' + esc(valor || '') + '</textarea>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>' + esc(confirmar) + '</button></div>',
       { aoFechar: () => { if (!decidido) { decidido = true; resolver(null); } } });

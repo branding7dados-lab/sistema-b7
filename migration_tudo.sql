@@ -60,6 +60,23 @@
 --                                 depois de migration_design.sql. Ver
 --                                 CORRECOES_2026-09-09.md, build -f.
 --
+--  19. migration_design_thumb.sql  Miniatura otimizada (caminho_thumb) +
+--                                 colunas ultima_previa_thumb/_mime na
+--                                 view design_resumo. Build -ae.
+--
+--  20. migration_notificacoes_deeplink.sql  Link da notificação de
+--                                 "linha concluída" apontando pra rota
+--                                 real (#/design/linha/:id). Build -ag.
+--
+--  21. migration_design_arquivos_v2.sql  Arquivos 2.0: arte por
+--                                 slide/frame (parte_id estável),
+--                                 dimensões, decisão de revisão por
+--                                 arquivo, arquivo efetivo por parte,
+--                                 envio validando completude, fechamento
+--                                 de revisão agrupado. Roda depois de 19
+--                                 (troca a assinatura de
+--                                 design_arquivo_registrar). Build -ah.
+--
 -- Se algum arquivo reclamar de coluna ou tabela inexistente, é porque um
 -- anterior não rodou. A mensagem diz qual.
 -- =====================================================================
