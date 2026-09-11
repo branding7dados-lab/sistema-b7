@@ -70,6 +70,10 @@ B7.DocSemana = (function () {
     const p = partes(iso);
     return String(p.dia).padStart(2, '0') + '/' + String(p.mes).padStart(2, '0');
   };
+  /* DD/MM/AAAA — usado na segunda data do Reel (data de postagem),
+     onde o dia sozinho (que já aparece na faixa do dia) não basta pra
+     deixar claro que é uma data diferente, possivelmente noutra semana. */
+  const longa = iso => curto(iso) + '/' + partes(iso).ano;
 
   /* '07 a 13 de setembro · 2026' — e quando a semana cruza o mês,
      '31 de agosto a 06 de setembro · 2026' */
@@ -122,32 +126,197 @@ B7.DocSemana = (function () {
   };
   const corTipo = t => (TIPOS[t] || TIPOS.Outro).cor;
 
-  /* Confirmado/Em revisão não estão na lista oficial de 8 do produto,
-     mas continuam em uso real no editor (sugestões de Gravação/Reunião/
-     Produção/Aprovação) — ficam no sistema de cor com tom próprio, na
-     mesma família do estado mais próximo, pra nada ficar sem token. */
-  const SITUACOES = {
-    'Previsto':           { cor: '#6B6478', bg: 'rgba(107,100,120,.11)',  legenda: 'Planejado para a semana.' },
-    'Programado':         { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)',   legenda: 'Preparado para publicação.' },
-    'Confirmado':         { cor: '#5B47C4', bg: 'rgba(91,71,196,.12)',    legenda: 'Data e horário confirmados.' },
-    'Em andamento':       { cor: '#2464C7', bg: 'rgba(36,100,199,.12)',   legenda: 'Em execução.' },
-    'Em revisão':         { cor: '#3A7BD5', bg: 'rgba(58,123,213,.12)',   legenda: 'Em conferência interna.' },
-    'Aguardando cliente': { cor: '#B98900', bg: 'rgba(185,137,0,.14)',    legenda: 'Depende de retorno do cliente.' },
-    'Atenção':            { cor: '#C2185B', bg: 'rgba(194,24,91,.14)',    legenda: 'Precisa de ação.' },
-    'Concluído':          { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)',   legenda: 'Etapa finalizada.' },
-    'Publicado':          { cor: '#158F7A', bg: 'rgba(21,143,122,.14)',   legenda: 'Publicado no canal.' },
-    'Cancelado':          { cor: '#4A4458', bg: 'rgba(74,68,88,.15)',     legenda: 'Não será realizado.' }
+  /* FORMATO agora tem identidade de cor própria (antes era sempre cinza
+     neutro) — é a informação que o cliente mais pergunta ("isso é reels
+     ou card?"), então o selo de formato ganha o mesmo destaque visual
+     que TIPO já tinha. Só se aplica aos formatos que são peça de
+     verdade (Card/Carrossel/Reel/Story/Capa de Reel); demandas sem
+     formato (Gravação, Reunião, Aprovação…) continuam usando a cor de
+     TIPO no lugar — os dois sistemas nunca aparecem ao mesmo tempo na
+     mesma linha (ver linhaItem). */
+  const FORMATOS = {
+    'Card':          { cor: '#C21C83' }, /* magenta — post estático */
+    'Carrossel':     { cor: '#6D3FC4' }, /* violeta */
+    'Reel':          { cor: '#0E8FA8' }, /* ciano/azul-esverdeado */
+    'Story':         { cor: '#B9720A' }, /* âmbar */
+    'Capa de Reel':  { cor: '#8A3FA8' }, /* roxo — mesma família de Design */
+    'Gravação':      { cor: '#0E8074' }  /* turquesa — mesma cor já usada em TIPOS */
   };
-  const sitInfo = s => SITUACOES[s] || SITUACOES.Previsto;
+  const corFormato = f => (FORMATOS[f] || {}).cor || null;
+
+  /* =================================================================
+     STATUS DE PRODUÇÃO POR FORMATO
+     Um Card, um Carrossel, um Reel, uma Story, uma Capa de Reel e uma
+     Gravação não passam pelas mesmas etapas — um Card nunca deveria
+     mostrar "Gravando", um Carrossel nunca "Editando vídeo". Cada
+     formato tem seu próprio vocabulário de status, na ordem real da
+     produção. `situacao` continua sendo o campo único e livre de
+     sempre (nunca teve constraint no banco) — só o vocabulário
+     OFERECIDO no editor passa a depender do contexto (formato, ou a
+     etapa quando não há formato, como Gravação/Reunião/Aprovação).
+
+     Rótulos repetidos entre formatos (ex.: "Criando arte" em Card,
+     Story e Capa de Reel) são intencionais: o mesmo texto, a mesma cor,
+     o mesmo significado — dedup natural na legenda da semana.
+     ================================================================= */
+  const ESTAGIOS = {
+    'Card': ['A produzir', 'Criando arte', 'Corrigindo arte', 'Revisão interna',
+             'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
+    'Story': ['A produzir', 'Criando arte', 'Corrigindo arte', 'Revisão interna',
+              'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
+    'Carrossel': ['A estruturar', 'Criando arte', 'Corrigindo carrossel', 'Revisão interna',
+                  'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
+    'Reel': ['A gravar', 'Gravação marcada', 'Gravando', 'Editando vídeo', 'Corrigindo vídeo',
+             'Revisão interna', 'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
+    'Capa de Reel': ['A produzir', 'Criando capa', 'Corrigindo capa', 'Revisão interna',
+                     'Aguardando aprovação', 'Aprovada', 'Finalizada'],
+    'Gravação': ['A confirmar', 'Gravação marcada', 'Gravando', 'Material captado',
+                 'Remarcada', 'Cancelada'],
+    /* fallback pra demandas sem formato específico (Reunião, Aprovação,
+       Entrega, Ajustes, Outro, Produção — o próprio texto da etapa já
+       diz do que se trata) */
+    'Genérico': ['A produzir', 'Em produção', 'Revisão interna', 'Aguardando aprovação',
+                 'Aprovado', 'Finalizado']
+  };
+  /* qual formato/contexto rege o vocabulário de status de uma demanda:
+     o campo `formato` quando é um dos formatos de peça reais; Gravação
+     quando a etapa é Gravação (demanda de captação sem formato de
+     peça); Genérico pra tudo mais (Reunião, Aprovação, Entrega,
+     Ajustes, Outro, Produção). */
+  function contextoDe(it) {
+    if (it.formato && ESTAGIOS[it.formato]) return it.formato;
+    if (it.etapa === 'Gravação') return 'Gravação';
+    return 'Genérico';
+  }
+  const estagiosDe = ctx => ESTAGIOS[ctx] || ESTAGIOS.Genérico;
+
+  /* Status considerado "trabalho já entregue" — depende do contexto
+     (Postado pra Card/Story/Carrossel/Reel, Finalizada pra Capa de
+     Reel, Material captado pra Gravação, Finalizado no genérico), mais
+     os rótulos antigos genéricos (Concluído/Publicado) que dados de
+     antes desta rodada ainda podem ter. Cancelado/Cancelada é um
+     estado diferente de concluído (não é "entregue", é "não vai
+     acontecer") e some do relatório sempre, independente do controle
+     de itens concluídos. */
+  const TERMINAL_POR_CONTEXTO = {
+    'Card': 'Postado', 'Story': 'Postado', 'Carrossel': 'Postado', 'Reel': 'Postado',
+    'Capa de Reel': 'Finalizada', 'Gravação': 'Material captado', 'Genérico': 'Finalizado'
+  };
+  const CONCLUIDOS_LEGADO = ['Concluído', 'Publicado'];
+  const CANCELADOS = ['Cancelado', 'Cancelada'];
+  function ehConcluido(it) {
+    if (CONCLUIDOS_LEGADO.includes(it.situacao)) return true;
+    return TERMINAL_POR_CONTEXTO[contextoDe(it)] === it.situacao;
+  }
+  const ehCancelado = it => CANCELADOS.includes(it.situacao);
+
+  /* Confirmado/Em revisão/Previsto/Programado/Atenção/Aguardando
+     cliente/Em andamento não estão nos vocabulários por formato acima
+     — são os rótulos genéricos de antes desta rodada. Continuam com
+     token de cor pra não quebrar relatórios/itens já existentes; o
+     editor simplesmente não os oferece mais como sugestão para
+     demandas novas. */
+  const SITUACOES = {
+    'A produzir':               { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
+    'A gravar':                 { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
+    'A confirmar':              { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
+    'A estruturar':             { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
+    'Criando arte':             { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
+    'Criando capa':             { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
+    'Em produção':              { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
+    'Corrigindo arte':          { cor: '#D2572B', bg: 'rgba(210,87,43,.13)' },
+    'Corrigindo carrossel':     { cor: '#D2572B', bg: 'rgba(210,87,43,.13)' },
+    'Corrigindo capa':          { cor: '#D2572B', bg: 'rgba(210,87,43,.13)' },
+    'Corrigindo vídeo':         { cor: '#D2572B', bg: 'rgba(210,87,43,.13)' },
+    'Gravação marcada':         { cor: '#0E8074', bg: 'rgba(14,128,116,.13)' },
+    'Gravando':                 { cor: '#B98900', bg: 'rgba(185,137,0,.14)' },
+    'Editando vídeo':           { cor: '#2464C7', bg: 'rgba(36,100,199,.12)' },
+    'Revisão interna':          { cor: '#8B6FD9', bg: 'rgba(139,111,217,.14)' },
+    'Aguardando aprovação':     { cor: '#C2740A', bg: 'rgba(194,116,10,.14)' },
+    'Aprovado':                 { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
+    'Aprovada':                 { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
+    'Programado para postagem': { cor: '#7A3FA0', bg: 'rgba(122,63,160,.14)' },
+    'Postado':                  { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
+    'Finalizada':               { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
+    'Finalizado':               { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
+    'Material captado':         { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
+    'Remarcada':                { cor: '#B98900', bg: 'rgba(185,137,0,.14)' },
+    'Cancelada':                { cor: '#4A4458', bg: 'rgba(74,68,88,.15)' },
+    /* --- legado (dados de antes desta rodada) --- */
+    'Previsto':           { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
+    'Programado':         { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
+    'Confirmado':         { cor: '#5B47C4', bg: 'rgba(91,71,196,.12)' },
+    'Em andamento':       { cor: '#2464C7', bg: 'rgba(36,100,199,.12)' },
+    'Em revisão':         { cor: '#3A7BD5', bg: 'rgba(58,123,213,.12)' },
+    'Aguardando cliente': { cor: '#B98900', bg: 'rgba(185,137,0,.14)' },
+    'Atenção':            { cor: '#C2185B', bg: 'rgba(194,24,91,.14)' },
+    'Concluído':          { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
+    'Publicado':          { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
+    'Cancelado':          { cor: '#4A4458', bg: 'rgba(74,68,88,.15)' }
+  };
+  const sitInfo = s => SITUACOES[s] || SITUACOES['A produzir'];
   /* Cor de status pra quem só precisa do tom (ex.: o pontinho da lista
      de itens do editor, fora da peça pro cliente) — mesmo token da
      pílula, sem precisar montar a pílula inteira. */
   const corSituacao = s => sitInfo(s).cor;
 
-  /* Trabalho já concluído não é "o que vai acontecer nesta semana" — o
-     relatório cliente é sempre olhando pra frente. Isso NUNCA apaga a
-     demanda: só tira dela da apresentação desta peça. O editor (semana.js)
-     continua mostrando tudo, sempre. */
+  /* Descrição curta pra legenda (só entra quando o nível de densidade
+     tem espaço — ver .ps-leg-detalhe/.ps-leg-compacta no CSS). Um
+     rótulo compartilhado por formatos diferentes (ex. "Criando arte")
+     tem uma descrição só — o significado é o mesmo. */
+  const LEGENDA_TEXTO = {
+    'A produzir': 'A produção da peça ainda não começou.',
+    'A gravar': 'A gravação ainda não foi realizada.',
+    'A confirmar': 'A gravação ainda depende de confirmação de data.',
+    'A estruturar': 'O conteúdo do carrossel ainda será organizado.',
+    'Criando arte': 'A equipe de Design está desenvolvendo a peça.',
+    'Criando capa': 'A equipe de Design está desenvolvendo a capa do Reel.',
+    'Em produção': 'A demanda está em andamento.',
+    'Corrigindo arte': 'A peça está recebendo ajustes visuais.',
+    'Corrigindo carrossel': 'O carrossel está recebendo alterações.',
+    'Corrigindo capa': 'A capa do Reel está recebendo ajustes.',
+    'Corrigindo vídeo': 'O vídeo está recebendo ajustes.',
+    'Gravação marcada': 'A captação já está agendada.',
+    'Gravando': 'O conteúdo está em processo de captação.',
+    'Editando vídeo': 'O material gravado está em edição.',
+    'Revisão interna': 'A equipe B7 está revisando o material antes de avançar.',
+    'Aguardando aprovação': 'O material depende da aprovação do cliente.',
+    'Aprovado': 'O conteúdo foi aprovado e segue para programação/entrega.',
+    'Aprovada': 'A capa foi aprovada e segue para finalização.',
+    'Programado para postagem': 'A publicação já está agendada.',
+    'Postado': 'O conteúdo já foi publicado.',
+    'Finalizada': 'A capa do Reel está pronta.',
+    'Finalizado': 'A demanda foi concluída.',
+    'Material captado': 'O conteúdo já foi gravado.',
+    'Remarcada': 'A gravação foi remarcada para uma nova data.',
+    'Cancelada': 'A gravação não será realizada.',
+    /* legado */
+    'Previsto': 'Planejado para a semana.',
+    'Programado': 'Preparado para publicação.',
+    'Confirmado': 'Data e horário confirmados.',
+    'Em andamento': 'Em execução.',
+    'Em revisão': 'Em conferência interna.',
+    'Aguardando cliente': 'Depende de retorno do cliente.',
+    'Atenção': 'Precisa de ação.',
+    'Concluído': 'Etapa finalizada.',
+    'Publicado': 'Publicado no canal.',
+    'Cancelado': 'Não será realizado.'
+  };
+
+  /* Trabalho já concluído (ou cancelado) não é "o que vai acontecer
+     nesta semana" — o relatório cliente é sempre olhando pra frente,
+     por padrão. Isso NUNCA apaga a demanda: só tira dela da
+     apresentação desta peça. O editor (semana.js) continua mostrando
+     tudo, sempre. A equipe pode escolher mostrar os concluídos mesmo
+     assim (opção "Mostrar itens concluídos") — cancelado nunca aparece,
+     é um estado diferente de concluído. */
+  function deveExcluir(it, mostrarConcluidos) {
+    if (ehCancelado(it)) return true;
+    if (!mostrarConcluidos && ehConcluido(it)) return true;
+    return false;
+  }
+  /* mantido por compatibilidade — nada mais no arquivo usa este nome,
+     mas evita quebrar qualquer leitura externa que dependesse dele. */
   const EXCLUIR_DO_PLANEJAMENTO = ['Concluído', 'Publicado', 'Cancelado'];
 
   const ICONE = {
@@ -155,6 +324,7 @@ B7.DocSemana = (function () {
     Card: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 10h8M8 14h5"/></svg>',
     Carrossel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="5" width="10" height="14" rx="2.5"/><path d="M4 8v8M20 8v8"/></svg>',
     Story: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6.5" y="3.5" width="11" height="17" rx="3"/><path d="M10 7.5h4"/></svg>',
+    'Capa de Reel': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9.5 9l5 3-5 3z" fill="currentColor" stroke="none"/><path d="M3 15.5h18"/></svg>',
     Gravação: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2.5" y="6.5" width="12" height="11" rx="2.5"/><path d="M14.5 10.5l7-3.5v10l-7-3.5z"/></svg>',
     Aprovação: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>',
     Reunião: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M3 19v-.8A4.2 4.2 0 0 1 7.2 14h3.6A4.2 4.2 0 0 1 15 18.2V19M16 6.2a3 3 0 0 1 0 5.6M17 14.2a4.2 4.2 0 0 1 4 4.2V19"/></svg>',
@@ -218,55 +388,90 @@ B7.DocSemana = (function () {
   }
 
   /* Título + pílula de status: os dois elementos mais fortes da linha.
-     Tipo/canal ficam abaixo, discretos — nunca maiores que o título. */
+     Formato/canal/data extra ficam abaixo, discretos — nunca maiores
+     que o título. O texto da pílula pode ser o rótulo interno de
+     verdade ou, quando a equipe preencheu, um texto simplificado só
+     pra apresentação (situacao_cliente) — a cor é sempre a do status
+     real, nunca a de um texto arbitrário. */
   function linhaItem(it) {
     const s = sitInfo(it.situacao);
+    const rotuloPill = !vazio(it.situacao_cliente) ? it.situacao_cliente : it.situacao;
+    /* etapa e formato nunca aparecem juntos: quando há formato (peça de
+       verdade — Card/Carrossel/Reel/Story/Capa de Reel), o formato já
+       diz "o que é" com mais precisão; etapa só entra pra demandas sem
+       formato (Gravação, Reunião, Aprovação, Entrega, Ajustes, Outro,
+       Produção), onde ela É o "o que é". */
+    const corFmt = corFormato(it.formato);
+    /* segunda data: só o Reel pode ter data de gravação (o campo
+       `data`, que também posiciona a demanda no dia) e data de
+       postagem separada — e só quando as duas existem de verdade. */
+    const dataExtra = (it.formato === 'Reel' && !vazio(it.data_postagem))
+      ? '<span class="ps-data-extra">Postagem: ' + esc(longa(it.data_postagem)) + '</span>' : '';
     return '<div class="ps-item">' +
       '<div class="ps-item-topo">' +
         '<b class="ps-titulo">' + esc(it.titulo || 'Sem título') + '</b>' +
         (it.situacao ? '<span class="ps-pill" style="color:' + s.cor + ';background:' + s.bg + '">' +
-          '<i style="background:' + s.cor + '"></i>' + esc(it.situacao) + '</span>' : '') +
+          '<i style="background:' + s.cor + '"></i>' + esc(rotuloPill) + '</span>' : '') +
       '</div>' +
       '<div class="ps-meta">' +
-        (it.formato ? '<span class="ps-formato">' +
-          '<span class="ps-formato-ic">' + (ICONE[it.formato] || iconeDe(it)) + '</span>' + esc(it.formato) + '</span>' : '') +
-        (it.etapa ? '<span class="ps-tipo" style="color:' + corTipo(it.etapa) + '">' +
-          (it.formato ? '' : '<span class="ps-tipo-ic">' + iconeDe(it) + '</span>') + esc(it.etapa) + '</span>' : '') +
+        (it.formato ? '<span class="ps-formato"' + (corFmt ? ' style="color:' + corFmt + '"' : '') + '>' +
+          '<span class="ps-formato-ic">' + (ICONE[it.formato] || iconeDe(it)) + '</span>' + esc(it.formato) + '</span>' :
+          (it.etapa ? '<span class="ps-tipo" style="color:' + corTipo(it.etapa) + '">' +
+            '<span class="ps-tipo-ic">' + iconeDe(it) + '</span>' + esc(it.etapa) + '</span>' : '')) +
         (it.canal ? '<span class="ps-canal">' + esc(it.canal) + '</span>' : '') +
+        dataExtra +
       '</div>' +
       (!vazio(it.observacao) ? '<p class="ps-obs">' + esc(it.observacao) + '</p>' : '') +
     '</div>';
   }
 
   /* --------------------------------------------------------- LEGENDA
-     Só o que realmente aparece na semana — uma legenda de oito tipos
-     quando só dois foram usados é ruído. Sempre compacta: ícone/ponto +
-     rótulo, sem frase explicativa, pra nunca disputar espaço com a
-     agenda de verdade. */
+     Só o que realmente aparece na semana — uma legenda de oito estágios
+     quando só dois foram usados é ruído. Duas seções: FORMATOS (só os
+     que a semana tem: Card, Reel…) e ETAPAS DA PRODUÇÃO (só os status
+     realmente usados, na cor real deles). Cada uma monta uma versão
+     DETALHADA (rótulo + descrição curta, pros níveis de densidade que
+     têm espaço) e uma COMPACTA (só rótulos, separados por ponto) — as
+     duas ficam no HTML, o CSS decide qual mostrar por nível
+     (.ps-leg-detalhe / .ps-leg-compacta), então a medição real por
+     nível (ver montar()) já considera o tamanho certo de cada uma. */
   function legenda(itens) {
-    const tiposUsados = [...new Set(itens.map(i => i.etapa).filter(Boolean))]
-      .filter(t => TIPOS[t]);
+    const formatosUsados = [...new Set(itens.map(i => i.formato).filter(Boolean))]
+      .filter(f => FORMATOS[f]);
     const statusUsados = [...new Set(itens.map(i => i.situacao).filter(Boolean))]
       .filter(s => SITUACOES[s]);
-    if (!tiposUsados.length && !statusUsados.length) return '';
-    const linha = (rot, chips) => chips.length
-      ? '<div class="ps-leg-linha"><b>' + rot + '</b>' + chips + '</div>' : '';
+    if (!formatosUsados.length && !statusUsados.length) return '';
+
+    const secao = (rot, itensLeg) => {
+      if (!itensLeg.length) return '';
+      const detalhada = itensLeg.map(x =>
+        '<span class="ps-leg-item"><span class="ps-leg-chip" style="color:' + x.cor + '">' +
+          (x.icone ? '<span class="ps-leg-ic">' + x.icone + '</span>' : '<i style="background:' + x.cor + '"></i>') +
+          esc(x.rotulo) + '</span>' +
+          (x.desc ? '<small>' + esc(x.desc) + '</small>' : '') + '</span>').join('');
+      const compacta = itensLeg.map(x => esc(x.rotulo)).join(' · ');
+      return '<div class="ps-leg-linha"><b>' + rot + '</b>' +
+        '<span class="ps-leg-detalhe">' + detalhada + '</span>' +
+        '<span class="ps-leg-compacta">' + compacta + '</span></div>';
+    };
+
     return '<div class="ps-legendas">' +
-      linha('TIPOS', tiposUsados.map(t =>
-        '<span class="ps-leg-chip" style="color:' + corTipo(t) + '">' +
-          '<span class="ps-leg-ic">' + iconeDe({ etapa: t }) + '</span>' + esc(t) + '</span>').join('')) +
-      linha('STATUS', statusUsados.map(s =>
-        '<span class="ps-leg-chip"><i style="background:' + sitInfo(s).cor + '"></i>' + esc(s) + '</span>').join('')) +
+      secao('FORMATOS', formatosUsados.map(f => ({
+        rotulo: f, cor: corFormato(f) || 'var(--ink-2)', icone: ICONE[f] || iconeDe({ formato: f }) }))) +
+      secao('ETAPAS DA PRODUÇÃO', statusUsados.map(s => ({
+        rotulo: s, cor: sitInfo(s).cor, desc: LEGENDA_TEXTO[s] || '' }))) +
     '</div>';
   }
 
   /* Aviso curto de quantas demandas dependem do cliente. Só com dado
-     real, e sem alarme vermelho gigante. */
+     real, e sem alarme vermelho gigante. Cobre tanto o rótulo novo
+     (Aguardando aprovação) quanto os legados (Aguardando cliente,
+     Atenção). */
+  const ESPERA_CLIENTE = ['Aguardando aprovação', 'Aguardando cliente', 'Atenção'];
   function atencao(itens) {
-    const n = itens.filter(i =>
-      i.situacao === 'Aguardando cliente' || i.situacao === 'Atenção').length;
+    const n = itens.filter(i => ESPERA_CLIENTE.includes(i.situacao)).length;
     if (!n) return '';
-    return '<div class="ps-atencao"><span class="ps-ponto" style="background:' + SITUACOES['Aguardando cliente'].cor + '"></span>' +
+    return '<div class="ps-atencao"><span class="ps-ponto" style="background:' + SITUACOES['Aguardando aprovação'].cor + '"></span>' +
       '<span>Atenção nesta semana: <b>' + n + ' demanda' + (n === 1 ? '' : 's') +
       '</b> ' + (n === 1 ? 'precisa' : 'precisam') + ' de retorno.</span></div>';
   }
@@ -289,11 +494,27 @@ B7.DocSemana = (function () {
      só, nunca um dia dividido ao meio. */
   const NIVEIS = ['nv-enorme', 'nv-grande', '', 'nv-compacta', 'nv-densa', 'nv-muito-densa'];
 
+  const hojeISO = () => {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+           String(d.getDate()).padStart(2, '0');
+  };
+
   function montar(ctx, area, opcoes) {
     opcoes = opcoes || {};
     const r = ctx.relatorio;
     const itensTodos = ctx.itens || [];
-    const itens = itensTodos.filter(i => !EXCLUIR_DO_PLANEJAMENTO.includes(i.situacao));
+    const mostrarConcluidos = !!opcoes.mostrarConcluidos;
+    /* "A partir de hoje": tira do relatório o que já passou dentro da
+       própria semana (útil pra uma atualização no meio da semana, ex.
+       quinta mostrando só quinta a domingo). Demanda sem data nunca é
+       afetada — não há "antes de hoje" pra algo sem data. Se hoje cai
+       fora do período do relatório (relatório de uma semana futura,
+       por exemplo), o filtro não corta nada. */
+    const soAPartirDeHoje = opcoes.somenteAPartirDeHoje === true;
+    const hoje = hojeISO();
+    let itens = itensTodos.filter(i => !deveExcluir(i, mostrarConcluidos));
+    if (soAPartirDeHoje) itens = itens.filter(i => !i.data || i.data >= hoje);
     const mostrarVazios = opcoes.mostrarDiasVazios !== false;
     const mostrarObs = opcoes.mostrarObservacoes !== false;
     const querLegenda = opcoes.mostrarLegenda !== 'nao';
@@ -301,7 +522,8 @@ B7.DocSemana = (function () {
     const porDia = {};
     itens.forEach(i => { (porDia[i.data] = porDia[i.data] || []).push(i); });
 
-    const diasCompletos = diasDoPeriodo(r.semana_inicio, r.semana_fim);
+    let diasCompletos = diasDoPeriodo(r.semana_inicio, r.semana_fim);
+    if (soAPartirDeHoje) diasCompletos = diasCompletos.filter(d => d >= hoje);
     const diasVisiveis = diasCompletos.filter(d => mostrarVazios || (porDia[d] || []).length);
     const semData = itens.filter(i => !i.data);
 
@@ -418,8 +640,9 @@ B7.DocSemana = (function () {
     return paginaHtml(escolhido.nivel, escolhido.corpo, escolhido.duas);
   }
 
-  return { montar, periodoTexto, diasDoPeriodo, diaDaSemana, curto, partes, carregarFontes,
-           SITUACOES, TIPOS, corTipo, corSituacao, EXCLUIR_DO_PLANEJAMENTO, ICONE, DIAS, MESES_CURTO };
+  return { montar, periodoTexto, diasDoPeriodo, diaDaSemana, curto, longa, partes, carregarFontes, hojeISO,
+           SITUACOES, TIPOS, FORMATOS, ESTAGIOS, corTipo, corFormato, corSituacao, contextoDe, estagiosDe,
+           ehConcluido, ehCancelado, EXCLUIR_DO_PLANEJAMENTO, ICONE, DIAS, MESES_CURTO };
 })();
 
 

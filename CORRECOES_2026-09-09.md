@@ -2327,3 +2327,201 @@ Arquivos alterados: `js/design.js`, `styles/design.css`, `js/auth.js`,
 `sw.js`.
 `VERSAO` → `2026-09-11-x`, cache do service worker →
 `roteiros-b7-v39`.
+
+## Build 2026-09-11-y — Status Semanal: status de produção específico por formato
+
+**Pedido do Yury (especificação completa de 48 seções):** o Status
+Semanal usava o mesmo vocabulário de situação para tudo — um Card podia
+aparecer como "Gravando", um Carrossel como "Editando vídeo". O pedido
+foi refinar o módulo existente (não reconstruir, não trocar o
+renderizador de uma página, não mexer no algoritmo de densidade do
+build `-s`, na correção de cor do `-t`, na correção de medição de fonte
+do `-u`, nem no selo de formato do `-v`) para que FORMATO e SITUAÇÃO
+continuem campos separados, mas a lista de situações disponíveis passe
+a depender do formato/contexto da demanda.
+
+### Implementado e testado
+
+- **Vocabulário de situação por contexto** (`js/doc-semana.js`,
+  `ESTAGIOS` + `contextoDe()`/`estagiosDe()`): cada formato tem sua
+  própria lista ordenada de situações — Card e Story (`A produzir` →
+  `Criando arte` → `Corrigindo arte` → `Revisão interna` →
+  `Aguardando aprovação` → `Aprovado` → `Programado para postagem` →
+  `Postado`; Story nunca presume sequência de múltiplos quadros — pode
+  ser um quadro só), Carrossel (com `Corrigindo carrossel` em vez do
+  termo genérico de arte, e `A estruturar` consolidado — sem separar
+  "estruturando conteúdo" como um passo à parte), Reel (única lista
+  com vocabulário de vídeo: `A gravar` → `Gravação marcada` →
+  `Gravando` → `Editando vídeo` → `Corrigindo vídeo` → ... →
+  `Postado`), Capa de Reel (lista própria, sem duplicar registro —
+  reaproveita o mesmo item de dados do Reel quando já vier junto) e
+  Gravação (vocabulário específico de agenda de gravação: `A
+  confirmar`, `Gravação marcada`, `Gravando`, `Material captado`,
+  `Remarcada`, `Cancelada` — usa a data de gravação, nunca a de
+  postagem). Item sem formato reconhecido cai no contexto `Genérico`
+  (lista curta, neutra). `contextoDe(it)` decide o contexto: formato
+  reconhecido → o próprio formato; senão, etapa `Gravação` → contexto
+  `Gravação`; senão → `Genérico`.
+- **Nenhuma migração de dados foi necessária para o vocabulário**:
+  `status_itens.situacao`, `.etapa` e `.formato` nunca tiveram
+  `CHECK CONSTRAINT` — são texto livre. Registros antigos com rótulos
+  genéricos (`Previsto`, `Em andamento`, `Concluído`...) continuam
+  funcionando exatamente como antes; o editor só passou a oferecer um
+  dropdown mais específico dependendo do formato escolhido.
+- **Segunda data para Reel** (`data_postagem`, coluna nova — ver
+  `migration_status_formato.sql`): Reel pode ter data de gravação (o
+  campo `data` de sempre, que continua posicionando a demanda no dia
+  da grade) e data de postagem separada, quando as duas existem de
+  verdade. Aparece no documento do cliente como uma linha extra
+  ("Postagem: DD/MM/AAAA") só quando preenchida — nunca um placeholder
+  tipo "Data de postagem: —" para datas que não existem. Ao trocar o
+  formato de um item de Reel para outro formato, `data_postagem` é
+  limpa automaticamente (não faz sentido fora do Reel).
+- **Revalidação de situação sem conversão silenciosa**
+  (`revalidarSituacao()` em `js/semana.js`): ao trocar o formato ou a
+  etapa de uma demanda, se a situação atual não existir no vocabulário
+  do novo contexto, o sistema reseta para a primeira opção válida do
+  novo contexto E mostra um toast explicando a mudança (ex.: `Situação
+  ajustada para "A produzir" (novo formato/etapa: Card)`). Nunca fica
+  com um valor inválido parado, e nunca troca sem avisar.
+- **Semeadura de situação inicial ciente do contexto**: todo caminho
+  que cria um item novo (adicionar manualmente, duplicar item,
+  duplicar semana inteira, importação automática da linha editorial)
+  agora começa com a primeira situação do vocabulário do contexto
+  certo, em vez do antigo `'Previsto'` fixo para tudo.
+- **"Mostrar itens concluídos" (Sim/Não)** — novo controle no editor
+  (`blocoInfo()`), guardado em `status_semanais.preferencias`
+  (coluna `jsonb` que já existia e não era usada — não precisou de
+  migração nova). Só filtra a APRESENTAÇÃO: nunca apaga dado nem muda
+  a situação canônica do item. Itens concluídos (situação terminal por
+  contexto: `Postado`, `Finalizada`/`Finalizado`, `Material captado`,
+  mais os rótulos legados `Concluído`/`Concluida`) ficam ocultos por
+  padrão; com o controle em "Sim", aparecem.
+- **Cancelado é diferente de concluído**: itens com situação
+  `Cancelada`/`Cancelado` ficam SEMPRE ocultos do documento do
+  cliente, mesmo com "Mostrar itens concluídos" em Sim — nunca são
+  contados nem mostrados como se fossem `Postado`.
+- **"Mostrar atividades: Toda a semana / A partir de hoje"** — segundo
+  controle novo, também salvo em `preferencias`. Com "A partir de
+  hoje", dias e itens com data anterior a hoje somem da grade; hoje e
+  o futuro continuam aparecendo; itens sem data nunca são cortados por
+  esse filtro (regra de sempre: não inventa nem filtra o que não tem
+  informação).
+- **Duas paletas de cor semânticas continuam separadas**: cor de
+  FORMATO (`corFormato()` — Post estático/Card em magenta, Carrossel
+  em violeta, Reel em ciano, Story em âmbar, Capa de Reel no tom de
+  Design já usado no resto do sistema, Gravação em turquesa) e cor de
+  SITUAÇÃO (pílula, por família de cor conforme o significado do
+  status: cinza para "a fazer", azul para "em produção", amarelo/laranja
+  para "aguardando", verde para "aprovado/concluído", vermelho para
+  "correção pedida"). O selo de formato (ícone + texto, do build `-v`)
+  continua visível e não muda de cor conforme a situação.
+- **Legenda específica da semana, adaptável por densidade**
+  (`legenda()` reescrita): mostra só os formatos e situações que
+  realmente aparecem naquela semana — não a lista genérica de tudo que
+  existe no sistema. Ganhou duas seções ("FORMATOS" e "ETAPAS DA
+  PRODUÇÃO"). Cada seção existe em duas versões no HTML — detalhada
+  (com descrição curta por situação) e compacta (só os rótulos,
+  separados por " · ") — e o CSS (`styles/semana.css`) alterna qual
+  aparece conforme o nível de densidade (`nv-compacta`, `nv-densa`,
+  `nv-muito-densa` mostram a compacta; níveis mais folgados mostram a
+  detalhada). Isso preserva sem nenhuma alteração o loop de medição por
+  nível que já existia em `montar()` — elemento oculto não conta pro
+  `scrollHeight`, então a medição continua correta em cada nível.
+- **Override de status para o cliente** (`situacao_cliente`, coluna
+  nova, opcional): campo de texto no editor ("Como aparece para o
+  cliente") que só troca o TEXTO da pílula mostrado no documento —
+  nunca a cor (que continua vindo da `situacao` real) nem a lógica de
+  filtro/legenda, que sempre usa a situação canônica. Documentado como
+  decisão deliberada de escopo — não é um segundo sistema de status,
+  é só um rótulo de apresentação.
+- **Editor**: dropdown de FORMATO por demanda; dropdown de SITUAÇÃO
+  passa a listar só as opções do contexto atual (com o rótulo do
+  contexto ativo visível); campo de segunda data (postagem) só aparece
+  quando o formato é Reel; os dois novos controles de exibição do
+  relatório (concluídos / período) ficam junto das outras opções do
+  relatório em `blocoInfo()`.
+- Suíte de 11 testes automatizados via Playwright (harness isolado,
+  sem tocar produção): filtragem padrão dos concluídos, toggle de
+  mostrar concluídos, segunda data do Reel, sempre uma página,
+  cores de formato distintas, legenda com as duas seções, filtro "a
+  partir de hoje" (com data simulada), dropdown de situação do Card
+  sem termos de vídeo, dropdown do Reel com vocabulário de vídeo,
+  revalidação ao trocar formato (sem conversão silenciosa, zera a
+  segunda data), e presença do campo de override pro cliente — todos
+  passaram, sem erro de console.
+- **Teste de estresse de densidade** (35 itens, 5 por dia × 7 dias,
+  alternando Card/Reel/Carrossel/Story): continua exatamente uma
+  página (`nv-muito-densa`, duas colunas), e medição direta confirmou
+  `scrollHeight === clientHeight` (1149 = 1149) com `overflow:hidden`
+  — a página cabe exatamente, sem sobra invisível e sem corte de
+  conteúdo.
+- Conferência visual: screenshots do documento padrão (selos de
+  formato coloridos, pílulas de situação coloridas, linha extra de
+  postagem do Reel, legenda de duas seções com descrição) e do editor
+  (novos campos + toast de revalidação em tempo real, com o texto
+  exato `Situação ajustada para "A produzir" (novo formato/etapa:
+  Card)`) — revisadas, corretas.
+- `node --check` em `js/doc-semana.js` e `js/semana.js`.
+
+### Implementado, mas requer validação adicional
+
+- Tema escuro dos campos novos do editor (select de FORMATO, campo de
+  segunda data, campo de override pro cliente, os dois novos toggles
+  de exibição): não foi capturado screenshot específico em tema
+  escuro nesta rodada. Reaproveitam classes já existentes e
+  sensíveis a tema (`.campo`, `.rot`, `.op-mini`) usadas pelo resto do
+  editor, então o risco é baixo, mas não foi verificado visualmente.
+- O restante do fluxo do Status Semanal fora do que foi mudado
+  (adicionar/mover/excluir demanda em outros pontos, versões
+  exportadas — Rascunho/Pronto/Enviado —, cópia de preferências ao
+  duplicar semana em cenários fora dos testados, publicação no
+  portal): código não tocado nesta rodada, mas não foi reexecutado
+  explicitamente com Playwright.
+- Deep-link de notificação para o Status Semanal: caminho não alterado
+  nesta rodada, não foi reexecutado.
+
+### Não implementado por bloqueio ou por decisão consciente
+
+- **Derivação automática de situação a partir dos módulos canônicos**
+  (Peça de Design, produção de vídeo, Gravação, ocorrência de
+  postagem) — o pedido pedia isso "onde for seguro", mas o sistema
+  hoje não expõe um mapeamento pronto e confiável entre o estado
+  desses módulos e o vocabulário de situação do Status Semanal sem
+  arriscar inventar uma automação que não existe de verdade. Fica para
+  uma rodada dedicada — **não foi implementado nesta rodada**, e a
+  situação continua sendo definida manualmente no editor do Status
+  Semanal, como sempre foi.
+  Consequência direta: ainda é preciso atualizar manualmente a
+  situação em mais de um lugar quando o mesmo evento existe em Design/
+  Kanban/Status Semanal com uma relação canônica — não foi resolvido
+  nesta rodada, fica fora do escopo conforme combinado.
+- **Contagem/exibição de "N quadros" no Story**: não implementado —
+  era opcional na especificação. O Story continua sendo tratado como
+  podendo ser um quadro só ou vários, sem exigir nem mostrar uma
+  contagem.
+- **Exposição de detalhe por slide do Carrossel**: não implementado —
+  não há hoje um fluxo de dados que armazene conteúdo por slide
+  individual ligado ao Status Semanal; não há o que expor.
+- **Não duplicação da data principal na linha do item** para formatos
+  de data única (Card, Carrossel, Story, Gravação, Genérico): a
+  especificação mostrava a data também dentro da linha do item nesses
+  casos; optei por não duplicar, porque o cabeçalho do dia já mostra
+  essa mesma data — repetir violaria o princípio já estabelecido neste
+  módulo de não mostrar informação redundante. Só o Reel, que tem
+  duas datas de verdade, ganhou a linha extra. Decisão consciente,
+  reportada para validação do Yury.
+
+### Migração de banco
+
+- `migration_status_formato.sql` (nova, aditiva e idempotente): duas
+  colunas novas em `status_itens` — `data_postagem` (date) e
+  `situacao_cliente` (text). Nenhuma outra migração foi necessária,
+  porque `situacao`/`etapa`/`formato` nunca tiveram `CHECK
+  CONSTRAINT`.
+
+Arquivos alterados: `js/doc-semana.js`, `js/semana.js`,
+`styles/semana.css`, `migration_status_formato.sql`, `js/auth.js`,
+`sw.js`.
+`VERSAO` → `2026-09-11-y`, cache do service worker →
+`roteiros-b7-v40`.

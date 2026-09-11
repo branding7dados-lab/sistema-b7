@@ -19,23 +19,25 @@ B7.Semana = (function () {
 
   const ETAPAS = ['Produção', 'Postagem', 'Gravação', 'Aprovação',
                   'Ajustes', 'Entrega', 'Reunião', 'Outro'];
-
-  /* Situações sugeridas por etapa. É atalho, não regra: a lista completa
-     continua disponível para quem precisar de outra. */
-  const SUGESTOES = {
-    'Produção':  ['Previsto', 'Em andamento', 'Em revisão', 'Concluído'],
-    'Postagem':  ['Previsto', 'Programado', 'Publicado'],
-    'Gravação':  ['Previsto', 'Confirmado', 'Concluído'],
-    'Aprovação': ['Aguardando cliente', 'Em revisão', 'Concluído'],
-    'Ajustes':   ['Previsto', 'Em andamento', 'Concluído'],
-    'Entrega':   ['Previsto', 'Programado', 'Concluído'],
-    'Reunião':   ['Previsto', 'Confirmado', 'Concluído'],
-    'Outro':     ['Previsto', 'Em andamento', 'Concluído', 'Atenção']
-  };
-  const TODAS = ['Previsto', 'Em andamento', 'Aguardando cliente', 'Programado',
-                 'Concluído', 'Publicado', 'Confirmado', 'Em revisão',
-                 'Atenção', 'Cancelado'];
+  /* Formatos de peça de verdade — só esses direcionam pra um vocabulário
+     de status próprio (Card, Story, Carrossel, Reel, Capa de Reel);
+     demandas sem formato usam a etapa (Gravação tem vocabulário próprio
+     também; as demais caem no genérico). "Nenhum" limpa o campo. */
+  const FORMATOS_DEMANDA = ['Card', 'Carrossel', 'Reel', 'Story', 'Capa de Reel'];
   const SITUACOES_RELATORIO = ['Rascunho', 'Pronto para envio', 'Enviado'];
+
+  /* Opções de status pro contexto (formato, ou a etapa quando não há
+     formato) — só o vocabulário daquele formato, nunca a lista inteira
+     do sistema (seria ruído: um Card não precisa ver "Gravando" no
+     seletor). Se o valor atual não pertence mais ao vocabulário do
+     contexto (ex.: dado antigo, ou o formato acabou de mudar), ele
+     ainda aparece — como primeira opção — pra nunca sumir sozinho do
+     seletor nem forçar uma troca silenciosa. */
+  function opcoesSituacao(contexto, atual) {
+    const base = D().estagiosDe(contexto);
+    const lista = (atual && !base.includes(atual)) ? [atual].concat(base) : base.slice();
+    return [...new Set(lista)];
+  }
 
   let S = { relatorio: null, itens: [], linha: null, expandido: null, pagina: 0 };
   let filtro = '';
@@ -242,8 +244,11 @@ B7.Semana = (function () {
               report_id: novo.id, data: c.data_postagem, position: i,
               titulo: c.titulo || 'Sem título',
               etapa: 'Postagem',
-              /* estado inicial neutro: o sistema não sabe o que já foi feito */
-              situacao: 'Previsto',
+              /* estado inicial neutro (o sistema não sabe o que já foi
+                 feito): primeira etapa do vocabulário do próprio formato
+                 — "A produzir" pra Card/Story, "A estruturar" pro
+                 Carrossel, "A gravar" pro Reel. */
+              situacao: D().estagiosDe(D().contextoDe({ formato: c.tipo || null, etapa: 'Postagem' }))[0],
               canal: c.canal || null, formato: c.tipo || null,
               content_id: c.id, script_id: c.script_id || null,
               origem: 'linha_editorial',
@@ -335,6 +340,13 @@ B7.Semana = (function () {
     desenharPreview();
   }
 
+  /* preferencias é o jsonb já existente na tabela (nunca usado até
+     agora) — guarda os dois ajustes de apresentação novos sem precisar
+     de coluna nova no banco. */
+  const prefs = () => (S.relatorio && S.relatorio.preferencias) || {};
+  const mostrarConcluidos = () => !!prefs().mostrar_concluidos;
+  const mostrarAPartirDeHoje = () => prefs().mostrar_periodo === 'a_partir_hoje';
+
   function blocoInfo() {
     const r = S.relatorio;
     const t = 'data-tab="status_semanais" data-id="' + esc(r.id) + '"';
@@ -352,6 +364,17 @@ B7.Semana = (function () {
           '<input type="checkbox" data-opcao="mostrar_observacoes"' +
           (r.mostrar_observacoes !== false ? ' checked' : '') + '>' +
           '<span>Incluir observações</span></label>' +
+        '<label class="op-mini' + (mostrarConcluidos() ? ' on' : '') + '">' +
+          '<input type="checkbox" data-pref-bool="mostrar_concluidos"' +
+          (mostrarConcluidos() ? ' checked' : '') + '>' +
+          '<span>Mostrar itens concluídos <small>trabalho já postado/finalizado — cancelados nunca aparecem</small></span></label>' +
+      '</div>' +
+      '<div class="mb" style="margin-top:10px;max-width:280px">' +
+        '<label class="rot">MOSTRAR ATIVIDADES</label>' +
+        '<select class="campo" data-pref-select="mostrar_periodo">' +
+          '<option value="toda_semana"' + (mostrarAPartirDeHoje() ? '' : ' selected') + '>Toda a semana</option>' +
+          '<option value="a_partir_hoje"' + (mostrarAPartirDeHoje() ? ' selected' : '') + '>A partir de hoje</option>' +
+        '</select>' +
       '</div>' +
     '</div>';
   }
@@ -376,14 +399,15 @@ B7.Semana = (function () {
   function cardItem(it, indice, total) {
     const aberto = S.expandido === it.id;
     const t = 'data-tab="status_itens" data-id="' + esc(it.id) + '"';
-    const sugeridas = SUGESTOES[it.etapa] || SUGESTOES.Outro;
-    const opcoes = [...new Set(sugeridas.concat(TODAS))];
+    const contexto = D().contextoDe(it);
+    const opcoes = opcoesSituacao(contexto, it.situacao);
+    const ehReel = it.formato === 'Reel';
 
     return '<div class="sd-item' + (aberto ? ' aberto' : '') + '" data-item="' + esc(it.id) + '">' +
       '<div class="si-topo" data-expandir="' + esc(it.id) + '">' +
         '<span class="si-ic">' + (D().ICONE[it.formato] || D().ICONE[it.etapa] || D().ICONE.Outro) + '</span>' +
         '<div class="si-tx"><b>' + esc(it.titulo || 'Sem título') + '</b>' +
-          '<div class="si-estado"><span>' + esc(it.etapa) + '</span>' +
+          '<div class="si-estado"><span>' + esc(it.formato || it.etapa) + '</span>' +
           '<span class="ps-ponto" style="background:' + D().corSituacao(it.situacao) + '"></span>' +
           '<span>' + esc(it.situacao) + '</span>' +
           (it.origem === 'linha_editorial' ? '<span class="si-origem">linha editorial</span>' : '') +
@@ -405,22 +429,38 @@ B7.Semana = (function () {
         '<div class="linha mb">' +
           '<div><label class="rot">TÍTULO</label>' +
             '<input class="campo" value="' + esc(it.titulo || '') + '" ' + t + ' data-campo="titulo"></div>' +
-          '<div><label class="rot">DATA</label>' +
+          '<div><label class="rot">' + ((ehReel || it.etapa === 'Gravação') ? 'DATA DE GRAVAÇÃO' : 'DATA DE POSTAGEM') + '</label>' +
             '<input class="campo" type="date" value="' + esc(it.data || '') + '" ' +
             'data-data-item="' + esc(it.id) + '"></div>' +
         '</div>' +
+        (ehReel ? '<div class="linha mb"><div><label class="rot">DATA DE POSTAGEM ' +
+          '<span class="leve">— opcional, se for diferente da gravação</span></label>' +
+          '<input class="campo" type="date" value="' + esc(it.data_postagem || '') + '" ' +
+          'data-data-postagem-item="' + esc(it.id) + '"></div></div>' : '') +
         '<div class="linha mb">' +
+          '<div><label class="rot">FORMATO <span class="leve">— opcional</span></label>' +
+            '<select class="campo" data-formato-item="' + esc(it.id) + '">' +
+              '<option value=""' + (!it.formato ? ' selected' : '') + '>Nenhum específico</option>' +
+              FORMATOS_DEMANDA.map(f => '<option value="' + esc(f) + '"' +
+                (it.formato === f ? ' selected' : '') + '>' + esc(f) + '</option>').join('') +
+            '</select></div>' +
           '<div><label class="rot">ETAPA</label>' +
             '<select class="campo" data-etapa-item="' + esc(it.id) + '">' + ETAPAS.map(e =>
               '<option' + (it.etapa === e ? ' selected' : '') + '>' + e + '</option>').join('') +
             '</select></div>' +
-          '<div><label class="rot">SITUAÇÃO</label>' +
+        '</div>' +
+        '<div class="linha mb">' +
+          '<div><label class="rot">SITUAÇÃO <span class="leve">— ' + esc(contexto) + '</span></label>' +
             '<select class="campo" ' + t + ' data-campo="situacao">' + opcoes.map(v =>
               '<option' + (it.situacao === v ? ' selected' : '') + '>' + v + '</option>').join('') +
             '</select></div>' +
           '<div><label class="rot">CANAL <span class="leve">— opcional</span></label>' +
             '<input class="campo" value="' + esc(it.canal || '') + '" ' + t + ' data-campo="canal"></div>' +
         '</div>' +
+        '<label class="rot">COMO APARECE PARA O CLIENTE <span class="leve">' +
+          '— opcional, simplifica o texto do status sem mudar o status real</span></label>' +
+        '<input class="campo" value="' + esc(it.situacao_cliente || '') + '" ' + t +
+        ' data-campo="situacao_cliente" placeholder="' + esc(it.situacao) + '" style="margin-bottom:10px">' +
         '<label class="rot">OBSERVAÇÃO PARA O CLIENTE <span class="leve">— opcional</span></label>' +
         '<textarea class="campo cresce" rows="2" ' + t + ' data-campo="observacao" ' +
         'placeholder="Uma frase curta: o que o cliente precisa saber.">' +
@@ -449,6 +489,23 @@ B7.Semana = (function () {
       S.relatorio = Object.assign(S.relatorio, patch);
       try { await B7.Save.campo('status_semanais', S.relatorio.id, patch); } catch (e) {}
       desenharPreview();
+    });
+
+    /* preferências dentro do jsonb — mesmo padrão do data-opcao acima,
+       só que fazendo merge dentro de preferencias em vez de gravar uma
+       coluna própria. */
+    async function salvarPref(chave, valor) {
+      const novo = Object.assign({}, prefs(), { [chave]: valor });
+      S.relatorio.preferencias = novo;
+      try { await B7.Save.campo('status_semanais', S.relatorio.id, { preferencias: novo }); } catch (e) {}
+      desenharPreview();
+    }
+    p.querySelectorAll('[data-pref-bool]').forEach(cx => cx.onchange = () => {
+      cx.closest('.op-mini').classList.toggle('on', cx.checked);
+      salvarPref(cx.dataset.prefBool, cx.checked);
+    });
+    p.querySelectorAll('[data-pref-select]').forEach(sel => sel.onchange = () => {
+      salvarPref(sel.dataset.prefSelect, sel.value);
     });
 
     p.querySelectorAll('[data-situacao-rel]').forEach(b => b.onclick = async () => {
@@ -481,12 +538,50 @@ B7.Semana = (function () {
       } catch (e) {}
     };
 
+    /* Quando etapa/formato muda, o vocabulário de status válido muda
+       junto — se a situação atual não pertence mais a ele, o sistema
+       nunca converte silenciosamente pra outra coisa: ajusta pra
+       primeira opção válida do novo contexto e avisa por toast, pra
+       quem editou saber que precisa conferir/escolher a situação de
+       novo. */
+    async function revalidarSituacao(it) {
+      const contexto = D().contextoDe(it);
+      const validas = D().estagiosDe(contexto);
+      if (validas.includes(it.situacao)) return;
+      const nova = validas[0];
+      it.situacao = nova;
+      try { await B7.Save.campo('status_itens', it.id, { situacao: nova }); } catch (e) {}
+      B7.UI.toast('Situação ajustada para "' + nova + '" (novo formato/etapa: ' + contexto + ')');
+    }
+
     p.querySelectorAll('[data-etapa-item]').forEach(sel => sel.onchange = async () => {
       const it = S.itens.find(x => x.id === sel.dataset.etapaItem);
       if (!it) return;
       it.etapa = sel.value;
       try { await B7.Save.campo('status_itens', it.id, { etapa: sel.value }); } catch (e) {}
+      await revalidarSituacao(it);
       render();
+    });
+
+    p.querySelectorAll('[data-formato-item]').forEach(sel => sel.onchange = async () => {
+      const it = S.itens.find(x => x.id === sel.dataset.formatoItem);
+      if (!it) return;
+      it.formato = sel.value || null;
+      if (it.formato !== 'Reel') it.data_postagem = null;
+      try {
+        await B7.Save.campo('status_itens', it.id,
+          { formato: it.formato, data_postagem: it.data_postagem });
+      } catch (e) {}
+      await revalidarSituacao(it);
+      render();
+    });
+
+    p.querySelectorAll('[data-data-postagem-item]').forEach(inp => inp.onchange = async () => {
+      const it = S.itens.find(x => x.id === inp.dataset.dataPostagemItem);
+      if (!it) return;
+      it.data_postagem = inp.value || null;
+      try { await B7.Save.campo('status_itens', it.id, { data_postagem: it.data_postagem }); } catch (e) {}
+      desenharPreview();
     });
 
     /* mudar a data pode tirar a demanda da semana: avisamos antes */
@@ -532,9 +627,10 @@ B7.Semana = (function () {
       const it = S.itens.find(x => x.id === b.dataset.duplicarItem);
       if (!it) return;
       try {
+        const contexto = D().contextoDe(it);
         const novo = await B7.Save.acao(() => B7.DB.criarItem({
           report_id: S.relatorio.id, data: it.data, position: (it.position || 0) + 1,
-          titulo: it.titulo, etapa: it.etapa, situacao: 'Previsto',
+          titulo: it.titulo, etapa: it.etapa, situacao: D().estagiosDe(contexto)[0],
           canal: it.canal, formato: it.formato, content_id: it.content_id,
           script_id: it.script_id, recording_id: it.recording_id,
           origem: it.origem, source_snapshot: it.source_snapshot
@@ -678,7 +774,9 @@ B7.Semana = (function () {
   const opcoesDoc = () => ({
     mostrarDiasVazios: S.relatorio.mostrar_dias_vazios !== false,
     mostrarObservacoes: S.relatorio.mostrar_observacoes !== false,
-    mostrarLegenda: S.relatorio.mostrar_legenda || 'auto'
+    mostrarLegenda: S.relatorio.mostrar_legenda || 'auto',
+    mostrarConcluidos: mostrarConcluidos(),
+    somenteAPartirDeHoje: mostrarAPartirDeHoje()
   });
 
   /* =================================================================
@@ -750,6 +848,11 @@ B7.Semana = (function () {
         if (campoData && escolhido && escolhido.data_postagem && !campoData.value) {
           campoData.value = escolhido.data_postagem;
         }
+        const campoFormato = m.querySelector('#md-formato');
+        if (campoFormato && escolhido && escolhido.tipo && FORMATOS_DEMANDA.includes(escolhido.tipo)) {
+          campoFormato.value = escolhido.tipo;
+          campoFormato.onchange();
+        }
       });
       ligarCamposComuns();
     }
@@ -759,15 +862,26 @@ B7.Semana = (function () {
       return '<div class="linha mb">' +
           '<div><label class="rot">TÍTULO</label>' +
             '<input class="campo" id="md-titulo" placeholder="O que será feito"></div>' +
-          '<div><label class="rot">DATA</label>' +
+          '<div><label class="rot" id="md-rot-data">DATA DE POSTAGEM</label>' +
             '<input class="campo" type="date" id="md-data" value="' + esc(data) + '" ' +
             'min="' + esc(r.semana_inicio) + '" max="' + esc(r.semana_fim) + '"></div>' +
         '</div>' +
+        '<div class="linha mb" id="md-data-postagem-wrap" hidden>' +
+          '<div><label class="rot">DATA DE POSTAGEM <span class="leve">— opcional, se diferente da gravação</span></label>' +
+            '<input class="campo" type="date" id="md-data-postagem" ' +
+            'min="' + esc(r.semana_inicio) + '" max="' + esc(r.semana_fim) + '"></div>' +
+        '</div>' +
         '<div class="linha mb">' +
+          '<div><label class="rot">FORMATO <span class="leve">— opcional</span></label>' +
+            '<select class="campo" id="md-formato">' +
+              '<option value="">Nenhum específico</option>' +
+              FORMATOS_DEMANDA.map(f => '<option value="' + esc(f) + '">' + esc(f) + '</option>').join('') +
+            '</select></div>' +
           '<div><label class="rot">ETAPA</label><select class="campo" id="md-etapa">' +
             ETAPAS.map(e => '<option>' + e + '</option>').join('') + '</select></div>' +
-          '<div><label class="rot">SITUAÇÃO</label><select class="campo" id="md-situacao"></select></div>' +
         '</div>' +
+        '<div class="mb"><label class="rot" id="md-rot-situacao">SITUAÇÃO</label>' +
+          '<select class="campo" id="md-situacao"></select></div>' +
         '<div class="mb"><label class="rot">OBSERVAÇÃO PARA O CLIENTE ' +
           '<span class="leve">— opcional</span></label>' +
           '<textarea class="campo cresce" rows="2" id="md-obs"></textarea></div>';
@@ -775,15 +889,25 @@ B7.Semana = (function () {
 
     function ligarCamposComuns() {
       const etapa = m.querySelector('#md-etapa');
+      const formato = m.querySelector('#md-formato');
       const situacao = m.querySelector('#md-situacao');
+      const rotData = m.querySelector('#md-rot-data');
+      const rotSituacao = m.querySelector('#md-rot-situacao');
+      const wrapPostagem = m.querySelector('#md-data-postagem-wrap');
       if (!etapa || !situacao) return;
       const preencher = () => {
-        const sug = SUGESTOES[etapa.value] || SUGESTOES.Outro;
-        const todas = [...new Set(sug.concat(TODAS))];
-        situacao.innerHTML = todas.map(v => '<option>' + v + '</option>').join('');
-        situacao.value = sug[0];
+        const contexto = D().contextoDe({ formato: formato.value || null, etapa: etapa.value });
+        const opcoes = D().estagiosDe(contexto);
+        situacao.innerHTML = opcoes.map(v => '<option>' + v + '</option>').join('');
+        situacao.value = opcoes[0];
+        if (rotSituacao) rotSituacao.textContent = 'SITUAÇÃO — ' + contexto;
+        const ehReel = formato.value === 'Reel';
+        if (wrapPostagem) wrapPostagem.hidden = !ehReel;
+        if (rotData) rotData.textContent = (ehReel || etapa.value === 'Gravação')
+          ? 'DATA DE GRAVAÇÃO' : 'DATA DE POSTAGEM';
       };
       etapa.onchange = preencher;
+      if (formato) formato.onchange = preencher;
       preencher();
     }
 
@@ -812,6 +936,8 @@ B7.Semana = (function () {
       const data = m.querySelector('#md-data').value || null;
       try {
         const irmaos = S.itens.filter(x => x.data === data);
+        const formatoEscolhido = m.querySelector('#md-formato').value || null;
+        const campoPostagem = m.querySelector('#md-data-postagem');
         const novo = await B7.Save.acao(() => B7.DB.criarItem({
           report_id: r.id, data: data, position: irmaos.length,
           titulo: titulo,
@@ -819,7 +945,12 @@ B7.Semana = (function () {
           situacao: m.querySelector('#md-situacao').value,
           observacao: m.querySelector('#md-obs').value.trim(),
           canal: escolhido && tipo === 'conteudo' ? (escolhido.canal || null) : null,
-          formato: escolhido && tipo === 'conteudo' ? (escolhido.tipo || null) : null,
+          /* o formato do seletor manda sempre — inicialmente vem do
+             conteúdo escolhido, mas a pessoa pode ajustar (ex.: marcar
+             como "Capa de Reel" uma demanda sobre a capa de um Reel). */
+          formato: formatoEscolhido,
+          data_postagem: (formatoEscolhido === 'Reel' && campoPostagem && campoPostagem.value)
+            ? campoPostagem.value : null,
           content_id: escolhido && tipo === 'conteudo' ? escolhido.id : null,
           script_id: escolhido && tipo === 'conteudo' ? (escolhido.script_id || null) : null,
           origem: escolhido && tipo === 'conteudo' ? 'linha_editorial' : 'manual',
@@ -865,11 +996,19 @@ B7.Semana = (function () {
         '<label class="op-mini' + (r.mostrar_observacoes !== false ? ' on' : '') + '" id="ex-obs">' +
           '<input type="checkbox"' + (r.mostrar_observacoes !== false ? ' checked' : '') + '>' +
           '<span>Incluir observações</span></label>' +
+        '<label class="op-mini' + (mostrarConcluidos() ? ' on' : '') + '" id="ex-concluidos">' +
+          '<input type="checkbox"' + (mostrarConcluidos() ? ' checked' : '') + '>' +
+          '<span>Mostrar itens concluídos</span></label>' +
         '<div class="mb" style="margin-top:10px"><label class="rot">LEGENDA</label>' +
           '<select class="campo" id="ex-legenda">' +
             '<option value="auto">Automática</option>' +
             '<option value="sim">Sempre incluir</option>' +
             '<option value="nao">Não incluir</option>' +
+          '</select></div>' +
+        '<div class="mb" style="margin-top:10px"><label class="rot">MOSTRAR ATIVIDADES</label>' +
+          '<select class="campo" id="ex-periodo">' +
+            '<option value="toda_semana"' + (mostrarAPartirDeHoje() ? '' : ' selected') + '>Toda a semana</option>' +
+            '<option value="a_partir_hoje"' + (mostrarAPartirDeHoje() ? ' selected' : '') + '>A partir de hoje</option>' +
           '</select></div>' +
       '</details>' +
 
@@ -911,7 +1050,9 @@ B7.Semana = (function () {
         alta: m.querySelector('#ex-alta input').checked,
         mostrarDiasVazios: m.querySelector('#ex-vazios input').checked,
         mostrarObservacoes: m.querySelector('#ex-obs input').checked,
-        mostrarLegenda: m.querySelector('#ex-legenda').value
+        mostrarLegenda: m.querySelector('#ex-legenda').value,
+        mostrarConcluidos: m.querySelector('#ex-concluidos input').checked,
+        somenteAPartirDeHoje: m.querySelector('#ex-periodo').value === 'a_partir_hoje'
       };
       const aoAndar = (fase) => {
         prog.textContent = fase === 'render' ? 'Renderizando documento…' : 'Gerando arquivo…';
@@ -1007,9 +1148,10 @@ B7.Semana = (function () {
           await B7.DB.criarItens(S.itens.map((it, i) => ({
             report_id: nova.id,
             data: it.data ? somarDias(it.data, desloca) : null,
+            data_postagem: it.data_postagem ? somarDias(it.data_postagem, desloca) : null,
             position: it.position || i,
             titulo: it.titulo, etapa: it.etapa,
-            situacao: 'Previsto',                    /* nunca herda o estado antigo */
+            situacao: D().estagiosDe(D().contextoDe(it))[0], /* nunca herda o estado antigo */
             observacao: quer('observacoes') ? it.observacao : null,
             canal: it.canal, formato: it.formato,
             content_id: it.content_id, script_id: it.script_id,

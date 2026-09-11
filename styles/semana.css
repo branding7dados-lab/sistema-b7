@@ -336,22 +336,42 @@
 .ps-formato-ic svg{width:100%;height:100%;}
 .ps-canal{font-size:var(--canal-fs);color:var(--grey);background:var(--lilac);border-radius:99px;
   padding:2px 10px;}
+/* segunda data do Reel (data de postagem) — mesma linguagem visual do
+   canal, sempre depois dele */
+.ps-data-extra{font-size:var(--canal-fs);color:var(--ink-2);font-weight:600;}
 .ps-obs{font-size:var(--obs-fs);line-height:1.4;color:var(--ink-2);margin:var(--obs-mt) 0 0;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .ps-sem-nada{font-size:18px;color:var(--grey);text-align:center;margin:auto;padding:40px 0;}
 
 /* --------------------------------------------------------- legenda
-   Sempre compacta: ícone/ponto + rótulo, sem frase — nunca disputa
-   espaço com a agenda de verdade. Só o que a semana realmente usa. */
+   Só o que realmente aparece na semana. Duas versões no HTML pra cada
+   seção — detalhada (rótulo + descrição curta) e compacta (só
+   rótulos) — o nível de densidade escolhe qual mostrar via CSS, nunca
+   via JS: assim a medição real de cada nível (montar()) já considera
+   o tamanho certo. Confortável pra cima mostra a detalhada; compacta
+   pra baixo (onde a agenda de verdade já disputa espaço) mostra só os
+   rótulos. */
 .ps-legendas{display:flex;flex-direction:column;gap:6px;margin-top:var(--leg-mt);
   padding-top:var(--leg-pad);border-top:1px solid var(--line);}
-.ps-leg-linha{display:flex;align-items:center;gap:var(--leg-gap);flex-wrap:wrap;font-size:var(--leg-fs);}
+.ps-leg-linha{display:flex;align-items:baseline;gap:var(--leg-gap);flex-wrap:wrap;font-size:var(--leg-fs);}
 .ps-leg-linha > b{font-weight:800;letter-spacing:.14em;color:var(--grey);flex:none;}
+.ps-leg-compacta{display:none;color:var(--ink-2);font-weight:600;}
+.ps-leg-detalhe{display:flex;flex-wrap:wrap;gap:var(--leg-gap);flex:1;}
+.ps-leg-item{display:flex;flex-direction:column;gap:1px;min-width:0;}
 .ps-leg-chip{display:inline-flex;align-items:center;gap:5px;color:var(--ink-2);font-weight:600;
   white-space:nowrap;}
 .ps-leg-chip i{width:8px;height:8px;border-radius:50%;flex:none;}
 .ps-leg-ic{width:var(--leg-ic);height:var(--leg-ic);flex:none;}
 .ps-leg-ic svg{width:100%;height:100%;}
+.ps-leg-item small{font-size:calc(var(--leg-fs) - 1.5px);color:var(--grey);font-weight:500;
+  max-width:210px;}
+/* níveis compactos pra baixo: troca detalhe (com descrição) por uma
+   linha só de rótulos separados por ponto — a agenda de verdade tem
+   prioridade sobre a legenda quando o espaço aperta */
+.pag45.nv-compacta .ps-leg-detalhe,.pag45.nv-densa .ps-leg-detalhe,
+.pag45.nv-muito-densa .ps-leg-detalhe{display:none;}
+.pag45.nv-compacta .ps-leg-compacta,.pag45.nv-densa .ps-leg-compacta,
+.pag45.nv-muito-densa .ps-leg-compacta{display:inline;}
 
 /* --------------------------------------------------------- rodapé
    Restrito — só a assinatura B7. Sempre uma página, então sem "01/01". */
