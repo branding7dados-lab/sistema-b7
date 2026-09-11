@@ -1032,3 +1032,163 @@ parecendo que nada tinha mudado.
   `roteiros-b7-v25`.
 - Nenhuma migration nova. Arquivos alterados: `js/permissoes.js`,
   `js/auth.js`, `sw.js`.
+
+## Build 2026-09-11-k — Linha Editorial no contexto do Designer, e gráfico de pilares com a barra "Planejado" invisível
+
+Dois bugs reportados pelo dono com print de tela, os dois na mesma
+página: um Designer abrindo "Ver contexto da Linha Editorial" (link
+criado no build `-i`, dentro de `B7.Design.abrirLinha`) caía numa tela
+idêntica à de um Coordenador — inclusive os botões de gestão — e o
+gráfico "Pilares de conteúdo" parecia com números que não batiam com a
+barra visual.
+
+**1) A Linha Editorial, vista pelo Designer, tinha os mesmos botões de
+gestão que a equipe usa.** `ligarCampos` (`js/conteudo.js`) já travava
+os *campos* de texto/número/select para Designer desde o build `-h` —
+mas os *botões de ação* da página (`js/linha.js`) nunca passam por
+`ligarCampos`, então continuavam ativos: "+ Novo conteúdo" (em 5
+lugares: capa, visão geral vazia, criativos vazio/cheio, postagens
+vazio), e o menu "⋯" inteiro da capa (Duplicar para outro mês, Criar
+status semanal, Concluir Linha Editorial, Enviar para Design, mudar
+Status da linha, Enviar para aprovação do cliente, Liberar no portal,
+Arquivar, Excluir linha editorial) — nenhuma dessas ações é do
+Designer, e a maioria já era bloqueada pelo RLS do banco se clicada
+(só não pelo RLS de leitura da UI). Corrigido: `js/conteudo.js` passou
+a exportar `souDesignerSomenteLeitura()` (já existia internamente,
+usada por `ligarCampos`); `js/linha.js` usa a mesma função para não
+renderizar nenhum desses botões quando quem está vendo é o Designer —
+sobra só "Baixar PDF" (leitura, sem efeito colateral). O quadro
+"Enviar para aprovação" no topo da Visão geral também deixou de
+mostrar o botão de envio para o Designer (`blocoStatus` recebe
+`botaoEnviar: false`). A trilha de navegação (breadcrumb) no topo da
+página e o rótulo "Editar pilares" também passaram a ler "Central de
+Design"/"Ver pilares" para esse papel, consistente com o resto da
+experiência desde o build `-j`.
+- Nada mudou para quem já podia usar esses botões (admin/coordenador):
+  a condição é sempre "esconder se for Designer", nunca "mostrar se
+  for equipe" — outros papéis continuam exatamente como estavam.
+
+**2) Gráfico "Pilares de conteúdo" — a barra "Planejado" estava
+praticamente invisível.** Causa: `--borda-forte` (usada como cor da
+barra "Planejado" em `styles/linha.css`) é `#DED9EC` no tema claro —
+quase idêntica à cor do próprio trilho da barra (`--suave`, `#F4F2F9`),
+então a barra cinza clara ficava indistinguível do fundo. O número
+("50%", por exemplo) é o percentual planejado bruto do pilar — correto
+— mas sem a barra "Planejado" visível, sobrava só a barra "Real"
+(magenta) na tela, sem nenhuma referência visual do que fora
+planejado, dando a impressão de gráfico quebrado/números que não
+batem com a barra. **Os números em si estavam certos** (conferido:
+"4 de 11 planejados" = 21 [meta de conteúdos] × 50% arredondado = 11,
+batendo exatamente com o print do dono) — o problema era só de
+contraste de cor. Corrigido trocando a cor da barra e da legenda
+"Planejado" de `--borda-forte` para `--ink-4` (mais escura, com
+contraste real contra `--suave` nos temas claro e escuro, sem
+competir com o magenta da barra "Real").
+- O terceiro pilar do print do dono ("Conversão — 0% — 11 de 0
+  planejados") não é bug: é um pilar sem percentual definido
+  (`percentual = 0`) que já tem 11 conteúdos apontando para ele — a
+  barra "Planejado" fica corretamente vazia (0% de largura) e a "Real"
+  cheia; o sistema já destaca isso em vermelho (`.pil-dist-l.acima`).
+  Vale o dono revisar o percentual desse pilar ou realocar os
+  conteúdos, mas a tela está mostrando a situação real.
+- A "Distribuição por formato" (Reel/Card/Carrossel/Stories, mais
+  acima na mesma tela) foi conferida e está correta — usa uma cor com
+  contraste adequado (`--grad-curto`, o gradiente magenta) e a largura
+  de cada barra já era proporcional ao maior valor do grupo; não
+  precisou de correção.
+
+**Testado:**
+- `node --check` em `js/linha.js` e `js/conteudo.js`.
+- Playwright (mock completo do Supabase), sessão de Designer abrindo
+  `#/linha/l1` diretamente (o mesmo caminho de "Ver contexto da Linha
+  Editorial"): trilha mostra "Central de Design" (não "Central B7"),
+  nenhum "+ Novo conteúdo" na tela, nenhum menu "⋯" na capa, "Baixar
+  PDF" continua presente, o item da barra lateral mostra "Central de
+  Design", os campos da aba Estratégia continuam desabilitados (sem
+  regressão do build `-h`). Confirmado por computação de estilo real
+  do navegador: a barra "Planejado" renderiza com
+  `rgb(158, 151, 181)` (`--ink-4`) contra um trilho
+  `rgb(244, 242, 249)` (`--suave`) — contraste visível — com a largura
+  calculada batendo exatamente com os números do print do dono (pilar
+  1: barra Planejado 100%, Real 36,36% = 4 de 11; reproduzido com os
+  mesmos totais do print). Zero erros de console. Screenshot conferido
+  visualmente.
+- `VERSAO` → `2026-09-11-k`, cache do service worker →
+  `roteiros-b7-v26`.
+- Nenhuma migration nova. Arquivos alterados: `js/linha.js`,
+  `js/conteudo.js`, `styles/linha.css`, `js/auth.js`, `sw.js`.
+
+## Build 2026-09-11-l — modal de conteúdo, aba "Design" e texto do pilar sem %
+
+O dono testou o build `-k` de verdade (numa conta Designer) e mandou 4
+prints com o que ainda faltava. Confirmando um por um:
+
+**1) "a aba de design aparece a mesma coisa que a central do design"**
+— a aba dentro da Linha Editorial chamava-se "Design", igual à Central
+de Design (a home do Designer, builds `-j`/`-k`) — nome repetido para
+duas telas diferentes (uma é a fila de trabalho pessoal do Designer;
+a outra é o status das peças de uma Linha específica). Renomeada para
+**"Produção"** (só o texto do botão da aba — a chave interna
+`design`, usada em roteamento/dataset, não mudou, então nada mais
+quebra). Vale para todos os papéis, não só Designer — o nome fazia
+tão pouco sentido pra equipe quanto pra ele.
+
+**2) "o negocio de pilar continua bugado"** — o contraste da barra
+"Planejado" (corrigido no build `-k`) está correto e testado de novo
+agora (print em anexo do próprio dono confirma as duas barras
+visíveis). O que sobrou, e que eu não tinha notado antes: quando um
+pilar não tem percentual definido (0%), o texto ficava **"11 de 0
+planejados"** — lê como conta quebrada (divisão por zero), mesmo o
+número estando tecnicamente certo. Trocado para **"11 conteúdos · sem
+% definido"** nesse caso específico — só muda o texto quando o pilar
+realmente não tem meta (`percentual = 0`); pilares com percentual
+continuam mostrando "X de Y planejados" normalmente.
+
+**3) "a aba de criativos, quando eu clico em algum criativo aparece a
+mesma tela de edição quando eu edito na conta de coordenador/admin" +
+"essa parte de status e visível no portal do cliente, eu ainda
+consigo clicar"** — bug real, o mais importante dos quatro.
+`ligarCampos` só trava os campos com `data-campo`/`data-tab`
+(Título, Canal, Data, Pilar, Objetivo…), mas o modal de edição de
+conteúdo (`abrirConteudo`, aberto pela aba Criativos) tem vários
+controles ligados por fora desse mecanismo — o dono estava certo,
+continuavam 100% funcionais para o Designer: os botões de **Status**
+(Ideia/Em criação/.../Publicado), o checkbox **"Visível no portal do
+cliente"**, os botões **Sim/Não** de "Necessita capa?" (Reel),
+**"Excluir conteúdo"**, **"+ Adicionar slide/story"** e o "✕" de
+remover cada slide/story, e **"Vincular roteiro"/"Desvincular"**.
+Todos agora viram versão somente leitura para o Designer: Status
+mostra um selo fixo com o valor atual (sem botões clicáveis);
+"Visível no portal" vira uma linha de texto ("Não visível no portal
+do cliente" / "✓ Visível no portal do cliente"), sem checkbox;
+"Necessita capa?" mostra só o valor atual; "Excluir conteúdo",
+"+ Adicionar slide/story", os "✕" de remover e
+"Vincular"/"Desvincular roteiro" somem da tela. **"Abrir roteiro"**
+continua visível (é só navegação de leitura, não grava nada).
+- Mesma lógica de sempre: a condição é "esconder/travar se for
+  Designer", nunca "mostrar se for equipe" — admin e coordenador
+  continuam exatamente como estavam, editando normalmente.
+- Essa era a lacuna mais séria das quatro: mesmo com o RLS do banco
+  barrando a escrita de verdade (testado desde o build `-h`), a UI
+  deixava a pessoa preencher um formulário inteiro achando que
+  editou, pra só descobrir depois — ou nunca — que nada foi salvo.
+  Agora ela nem vê os controles que não pode usar.
+
+**Testado:**
+- `node --check` em `js/linha.js`.
+- Playwright (mock completo do Supabase), sessão de Designer: aba
+  renomeada confirmada (`['Visão geral', 'Estratégia', 'Criativos',
+  'Postagens', 'Produção']`); abrindo um Carrossel pela aba
+  Criativos — nenhum "Excluir conteúdo", nenhum "+ Adicionar slide",
+  nenhum "✕" de remover slide, nenhum checkbox de portal, nenhum
+  botão de Status clicável; Status mostra o selo "Ideia" (texto
+  correto, sem classe de link/clique); o campo do portal mostra "Não
+  visível no portal do cliente" como texto simples. Na aba
+  Estratégia, o pilar sem percentual mostra "1 conteúdo · sem %
+  definido" e o pilar com 50% continua mostrando "1 de 11
+  planejados" normalmente. Zero erros de console. Screenshot do
+  modal conferido visualmente.
+- `VERSAO` → `2026-09-11-l`, cache do service worker →
+  `roteiros-b7-v27`.
+- Nenhuma migration nova. Arquivo alterado: `js/linha.js` (e
+  `js/auth.js`/`sw.js` para a versão).

@@ -57,8 +57,14 @@ B7.Linha = (function () {
   let L = { linha: null, conteudos: [], pilares: [], gravacoes: [], aba: 'geral', cliente: null,
             aprovacao: null, cal: null, design: [], designProducao: null, designPorConteudo: {} };
 
+  /* A aba se chamava "Design" — igual ao nome da Central de Design do
+     Designer (sidebar/home dele, builds -j/-k). As duas mostram peças de
+     Design, então o rótulo repetido confundia: "Produção" deixa claro que
+     aqui é o status das peças DESTA linha, não a fila de trabalho pessoal
+     do Designer (essa é a Central). A chave interna ('design', usada em
+     dataset/roteamento) não muda — só o texto do botão da aba. */
   const ABAS = [['geral', 'Visão geral'], ['estrategia', 'Estratégia'],
-                ['criativos', 'Criativos'], ['postagens', 'Postagens'], ['design', 'Design']];
+                ['criativos', 'Criativos'], ['postagens', 'Postagens'], ['design', 'Produção']];
 
   /* ------------------------------------------------------------ abrir */
   async function abrir(id, aba) {
@@ -532,10 +538,17 @@ B7.Linha = (function () {
     return '<div class="pil-dist">' + L.pilares.map((p, i) => {
       const plan = planejadosDoPilar(p), real = reaisDoPilar(p);
       const estado = !L.conteudos.length ? '' : real === plan ? ' ok' : real < plan ? ' abaixo' : ' acima';
+      /* "X de 0 planejados" lê como conta quebrada quando o pilar não tem
+         percentual definido (0%). Nesse caso o texto muda para deixar
+         claro que é falta de meta, não um erro de cálculo — a barra
+         "Planejado" já mostra 0% de qualquer forma. */
+      const rf = pct(p) > 0
+        ? '<b>' + real + '</b> de ' + plan + ' planejado' + (plan === 1 ? '' : 's')
+        : '<b>' + real + '</b> ' + (real === 1 ? 'conteúdo' : 'conteúdos') + ' · sem % definido';
       return '<div class="pil-dist-l' + estado + '">' +
         '<div class="pil-dist-cab"><span class="n">' + String(i + 1).padStart(2, '0') + '</span>' +
         '<b>' + esc(p.nome || 'Pilar sem nome') + '</b><span class="pc">' + pct(p) + '%</span>' +
-        '<span class="rf"><b>' + real + '</b> de ' + plan + ' planejado' + (plan === 1 ? '' : 's') + '</span></div>' +
+        '<span class="rf">' + rf + '</span></div>' +
         '<div class="pil-dist-barras">' +
           '<div class="barra plan" title="Planejado"><i style="width:' + (plan / maxB * 100) + '%"></i></div>' +
           '<div class="barra real" title="Real"><i style="width:' + (real / maxB * 100) + '%"></i></div>' +
@@ -1291,6 +1304,14 @@ B7.Linha = (function () {
   async function abrirConteudo(id) {
     const c = L.conteudos.find(x => x.id === id);
     if (!c) return;
+    /* ligarCampos (chamado mais abaixo) já trava os campos com
+       data-campo/data-tab (Título, Canal, Data, Pilar, Objetivo…) para o
+       Designer — mas os botões de AÇÃO deste modal (Status, Visível no
+       portal, Necessita capa, Excluir, adicionar/remover slide ou story,
+       vincular/desvincular roteiro) são ligados à parte, fora desse
+       mecanismo, e continuavam clicáveis mesmo sem nenhum campo editável
+       por perto. Aqui trocamos cada um por uma versão só de leitura. */
+    const leitura = C.souDesignerSomenteLeitura();
     let slides = [], frames = [], roteiro = null;
     try {
       if (c.tipo === 'Carrossel') slides = await B7.DB.listarSlides(c.id);
@@ -1318,11 +1339,18 @@ B7.Linha = (function () {
               (pct(p) ? ' (' + pct(p) + '%)' : '') + '</option>').join('') +
           '</select></div>'
         : '') +
-      '<div class="mb"><label class="rot">STATUS</label><div class="opcoes" id="st-conteudo">' +
-        C.STATUS_CONTEUDO.map(v => '<button data-st="' + esc(v) + '"' + (c.status === v ? ' class="on"' : '') + '>' +
-          v + '</button>').join('') + '</div></div>' +
-      '<label class="op-mini' + (c.visivel_cliente ? ' on' : '') + '" id="ct-portal">' +
-        '<input type="checkbox"' + (c.visivel_cliente ? ' checked' : '') + '> Visível no portal do cliente</label>' +
+      '<div class="mb"><label class="rot">STATUS</label>' +
+        (leitura
+          ? '<div class="opcoes"><button class="on" disabled>' + esc(c.status || 'Ideia') + '</button></div>'
+          : '<div class="opcoes" id="st-conteudo">' +
+            C.STATUS_CONTEUDO.map(v => '<button data-st="' + esc(v) + '"' + (c.status === v ? ' class="on"' : '') + '>' +
+              v + '</button>').join('') + '</div>') +
+      '</div>' +
+      (leitura
+        ? '<div class="op-mini' + (c.visivel_cliente ? ' on' : '') + '">' +
+          (c.visivel_cliente ? '✓ Visível no portal do cliente' : 'Não visível no portal do cliente') + '</div>'
+        : '<label class="op-mini' + (c.visivel_cliente ? ' on' : '') + '" id="ct-portal">' +
+          '<input type="checkbox"' + (c.visivel_cliente ? ' checked' : '') + '> Visível no portal do cliente</label>') +
       C.campo('OBJETIVO', c.objetivo, t + ' data-campo="objetivo"') +
       C.campo('IDEIA GERAL', c.ideia_geral, t + ' data-campo="ideia_geral"');
 
@@ -1333,20 +1361,25 @@ B7.Linha = (function () {
         C.campoLinha('HEADLINE', c.headline, t + ' data-campo="headline"') +
         C.campoLinha('CTA', c.cta, t + ' data-campo="cta"') +
         '<div class="mb"><label class="rot">NECESSITA CAPA? <span class="leve">— opcional</span></label>' +
-        '<div class="opcoes" id="op-capa">' +
-          '<button data-capa="sim"' + (c.precisa_capa === true ? ' class="on"' : '') + '>Sim</button>' +
-          '<button data-capa="nao"' + (c.precisa_capa === false ? ' class="on"' : '') + '>Não</button>' +
-        '</div>' +
+        (leitura
+          ? '<div class="opcoes"><button class="on" disabled>' + (c.precisa_capa === true ? 'Sim' : c.precisa_capa === false ? 'Não' : 'Não definido') + '</button></div>'
+          : '<div class="opcoes" id="op-capa">' +
+            '<button data-capa="sim"' + (c.precisa_capa === true ? ' class="on"' : '') + '>Sim</button>' +
+            '<button data-capa="nao"' + (c.precisa_capa === false ? ' class="on"' : '') + '>Não</button>' +
+          '</div>') +
         '<div class="ajuda">Só com "Sim" o Enviar para Design gera a peça de capa deste Reel.</div></div>' +
         '<div class="vinculo-roteiro">' +
           (roteiro
             ? '<div class="vr-ok"><div><small>ROTEIRO VINCULADO</small>' +
               '<b>' + esc(roteiro.titulo || 'Sem título') + '</b></div>' +
               '<button class="b fina pri" data-abrir-roteiro="' + esc(roteiro.id) + '">Abrir roteiro</button>' +
-              '<button class="b fina" data-desvincular>Desvincular</button></div>'
-            : '<div class="vr-vazio"><div><b>Nenhum roteiro vinculado</b>' +
-              '<small>O texto do vídeo vive no editor de roteiros, não aqui.</small></div>' +
-              '<button class="b fina contorno" data-vincular>Vincular roteiro existente</button></div>') +
+              (leitura ? '' : '<button class="b fina" data-desvincular>Desvincular</button>') + '</div>'
+            : leitura
+              ? '<div class="vr-vazio"><div><b>Nenhum roteiro vinculado</b>' +
+                '<small>O texto do vídeo vive no editor de roteiros, não aqui.</small></div></div>'
+              : '<div class="vr-vazio"><div><b>Nenhum roteiro vinculado</b>' +
+                '<small>O texto do vídeo vive no editor de roteiros, não aqui.</small></div>' +
+                '<button class="b fina contorno" data-vincular>Vincular roteiro existente</button></div>') +
         '</div></div>';
     }
     if (c.tipo === 'Card') {
@@ -1365,13 +1398,13 @@ B7.Linha = (function () {
       especifico = '<div class="bloco-formato"><h4>Carrossel</h4>' +
         '<div class="ajuda" style="margin:-4px 0 12px">O Slide 1 é a abertura. O último slide é sempre o CTA.</div>' +
         '<div id="lista-slides">' + slides.map((s, i) => itemSlide(s, i, slides.length)).join('') + '</div>' +
-        '<button class="add-largo" id="add-slide">+ ADICIONAR SLIDE</button>' +
+        (leitura ? '' : '<button class="add-largo" id="add-slide">+ ADICIONAR SLIDE</button>') +
         C.campo('LEGENDA', c.legenda, t + ' data-campo="legenda"') + '</div>';
     }
     if (c.tipo === 'Story') {
       especifico = '<div class="bloco-formato"><h4>Sequência de stories</h4>' +
         '<div id="lista-frames">' + frames.map((f, i) => itemFrame(f, i)).join('') + '</div>' +
-        '<button class="add-largo" id="add-frame">+ ADICIONAR STORY</button>' +
+        (leitura ? '' : '<button class="add-largo" id="add-frame">+ ADICIONAR STORY</button>') +
         C.campoLinha('CTA', c.cta, t + ' data-campo="cta"') + '</div>';
     }
 
@@ -1384,7 +1417,8 @@ B7.Linha = (function () {
         C.campo('LINKS DE REFERÊNCIA', c.referencias,
           t + ' data-campo="referencias" placeholder="Um link por linha"') +
         '</div>' + '</div>' +
-      '<div class="acoes"><button class="b perigo" data-excluir-conteudo>Excluir conteúdo</button>' +
+      '<div class="acoes">' +
+      (leitura ? '' : '<button class="b perigo" data-excluir-conteudo>Excluir conteúdo</button>') +
       '<div style="flex:1"></div><button class="b pri" data-fecha>Concluir</button></div>',
       { larga: true, extra: 'modal-conteudo', aoFechar: () => { B7.Save.agora().catch(() => {}); atualizar(); } });
 
@@ -1479,7 +1513,8 @@ B7.Linha = (function () {
       '<div class="is-num">' + rotuloSlide(i, total) + '</div>' +
       C.campoLinha('TÍTULO', s.titulo, t + ' data-campo="titulo"') +
       C.campo('TEXTO', s.texto, t + ' data-campo="texto"') +
-      '<button class="ico perigo" data-excluir-slide="' + esc(s.id) + '" title="Remover">✕</button></div>';
+      (C.souDesignerSomenteLeitura() ? '' :
+        '<button class="ico perigo" data-excluir-slide="' + esc(s.id) + '" title="Remover">✕</button>') + '</div>';
   }
 
   /* Rótulo "SLIDE 01 · CAPA" / "SLIDE 06 · CTA" — a designação de CTA é
@@ -1511,7 +1546,8 @@ B7.Linha = (function () {
       '<div class="is-num">STORY ' + String(i + 1).padStart(2, '0') + '</div>' +
       C.campo('TEXTO', f.texto, t + ' data-campo="texto"') +
       C.campo('DIREÇÃO VISUAL', f.direcao_visual, t + ' data-campo="direcao_visual"') +
-      '<button class="ico perigo" data-excluir-frame="' + esc(f.id) + '" title="Remover">✕</button></div>';
+      (C.souDesignerSomenteLeitura() ? '' :
+        '<button class="ico perigo" data-excluir-frame="' + esc(f.id) + '" title="Remover">✕</button>') + '</div>';
   }
 
   function ligarRemocoes(m) {
