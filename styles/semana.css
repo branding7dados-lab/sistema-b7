@@ -131,12 +131,29 @@
 .qv-vazio{font-size:12px;color:var(--ink-4);}
 
 /* =====================================================================
-   DOCUMENTO 4:5 — 1080 × 1350 na escala 1
+   DOCUMENTO 4:5 — 1080 × 1350 na escala 1 — UMA PÁGINA, SEMPRE
    Sempre claro na área de conteúdo, independentemente do tema.
+
+   Cabeçalho e faixa do cliente são sempre compactos (não fazem parte da
+   escada de densidade). O que varia por nível (nv-compacta/nv-densa/
+   nv-muito-densa, aplicadas como classe extra em .pag45 por
+   B7.DocSemana.montar) é só o corpo: espaçamento das faixas de dia,
+   tamanho da pílula de status, tipografia do título da tarefa — nunca
+   abaixo de um piso legível. Tudo via custom properties, redefinidas
+   por nível uma vez só aqui embaixo.
    ===================================================================== */
 .pag45{--fs:1;--ink:#15122B;--ink-2:#3B3557;--grey:#8B85A0;--line:#E5E0EE;
   --lilac:#F5F1FB;--magenta:#C21C83;--roxo:#7C1E85;--violeta:#3A1E86;--marinho:#001559;
   --grad:linear-gradient(118deg,#001559 0%,#3A1E86 34%,#7C1E85 66%,#C21C83 100%);
+  /* densidade — nível confortável (padrão) */
+  --corpo-pad:18px 56px 22px;--corpo-gap:9px;
+  --dia-gap:8px;--dia-r:14px;--dia-data-w:100px;--dia-data-pad:13px 7px;
+  --dia-dow-fs:14px;--dia-dt-fs:23px;--dia-itens-pad:14px 20px;--dia-item-gap:12px;
+  --dia-vazio-pad:8px 20px;--dia-sem-fs:14px;
+  --item-title-fs:18px;--item-title-lh:1.26;--item-gap:12px;
+  --pill-fs:12.5px;--pill-pad:4px 13px;--pill-dot:7px;
+  --tipo-fs:11.5px;--tipo-ic:14px;--canal-fs:12px;--obs-fs:13.5px;--obs-mt:7px;
+  --leg-fs:11.5px;--leg-gap:14px;--leg-mt:12px;--leg-pad:12px;--leg-ic:13px;
   width:1080px;height:1350px;min-height:1350px;max-height:1350px;
   position:relative;overflow:hidden;background:#fff;color:#15122B;
   display:flex;flex-direction:column;margin-bottom:26px;
@@ -145,131 +162,166 @@
 .pag45:last-child{margin-bottom:0;}
 .pag45 *{box-sizing:border-box;}
 
-/* ------------------------------------------------------- cabeçalho */
-.ps-cabeca{position:relative;flex:none;padding:44px 60px 36px;
+/* nível 2 — compacta */
+.pag45.nv-compacta{--corpo-pad:14px 52px 18px;--corpo-gap:7px;
+  --dia-gap:6px;--dia-data-w:88px;--dia-data-pad:10px 6px;
+  --dia-dow-fs:12.5px;--dia-dt-fs:19px;--dia-itens-pad:11px 17px;--dia-item-gap:9px;
+  --dia-vazio-pad:6px 17px;--dia-sem-fs:12.5px;
+  --item-title-fs:16px;--item-gap:9px;
+  --pill-fs:11.5px;--pill-pad:3px 11px;--pill-dot:6px;
+  --tipo-fs:10.5px;--tipo-ic:13px;--canal-fs:11px;--obs-fs:12.5px;--obs-mt:5px;
+  --leg-fs:10.5px;--leg-gap:11px;--leg-mt:9px;--leg-pad:9px;--leg-ic:11px;}
+
+/* nível 3 — densa */
+.pag45.nv-densa{--corpo-pad:11px 48px 15px;--corpo-gap:6px;
+  --dia-gap:5px;--dia-data-w:78px;--dia-data-pad:8px 5px;
+  --dia-dow-fs:11px;--dia-dt-fs:16.5px;--dia-itens-pad:9px 15px;--dia-item-gap:7px;
+  --dia-vazio-pad:5px 15px;--dia-sem-fs:11.5px;
+  --item-title-fs:14.5px;--item-title-lh:1.2;--item-gap:7px;
+  --pill-fs:10.5px;--pill-pad:3px 10px;--pill-dot:6px;
+  --tipo-fs:9.5px;--tipo-ic:12px;--canal-fs:10px;--obs-fs:11.5px;--obs-mt:4px;
+  --leg-fs:9.5px;--leg-gap:9px;--leg-mt:7px;--leg-pad:7px;--leg-ic:10px;}
+
+/* nível 4 — muito densa (piso legível: nunca menor que isto) */
+.pag45.nv-muito-densa{--corpo-pad:9px 44px 12px;--corpo-gap:5px;
+  --dia-gap:4px;--dia-data-w:68px;--dia-data-pad:6px 4px;
+  --dia-dow-fs:10px;--dia-dt-fs:14.5px;--dia-itens-pad:7px 13px;--dia-item-gap:6px;
+  --dia-vazio-pad:4px 13px;--dia-sem-fs:10.5px;
+  --item-title-fs:13px;--item-title-lh:1.16;--item-gap:5px;
+  --pill-fs:9.5px;--pill-pad:2px 9px;--pill-dot:5px;
+  --tipo-fs:9px;--tipo-ic:11px;--canal-fs:9px;--obs-fs:10.5px;--obs-mt:3px;
+  --leg-fs:9px;--leg-gap:7px;--leg-mt:6px;--leg-pad:6px;--leg-ic:9px;}
+
+/* ------------------------------------------------------- cabeçalho
+   Sempre compacto — não faz parte da escada de densidade. Título +
+   período numa faixa só, logo à direita: a marca não precisa de meia
+   página pra aparecer. */
+.ps-cabeca{position:relative;flex:none;display:flex;align-items:center;gap:20px;
+  padding:22px 56px 18px;
   background:linear-gradient(122deg,#0B0512 0%,#1B1140 42%,#3A1355 74%,#5A1553 100%);
   color:#fff;overflow:hidden;}
-.ps-brilho{position:absolute;right:-120px;top:-160px;width:520px;height:520px;border-radius:50%;
-  background:radial-gradient(circle,rgba(194,28,131,.42),transparent 66%);}
-.ps-logo{position:absolute;right:56px;top:52px;width:150px;z-index:2;}
-.ps-cabeca-in{position:relative;z-index:2;}
-.ps-olho{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:700;
-  letter-spacing:.32em;color:rgba(255,255,255,.6);margin-bottom:20px;}
-.ps-olho i{width:34px;height:2px;background:linear-gradient(90deg,#3A1E86,#C21C83);}
-.ps-cabeca h1{font-family:'Archivo';font-weight:800;font-size:66px;line-height:.94;
-  letter-spacing:-.035em;margin:0;color:#fff;}
-.ps-cabeca h1 em{font-style:normal;font-size:30px;letter-spacing:-.01em;
-  color:rgba(255,255,255,.55);}
-.ps-periodo{font-family:'Archivo';font-weight:800;font-size:20px;letter-spacing:.16em;
-  color:#F09CD0;margin-top:18px;text-transform:uppercase;}
+.ps-brilho{position:absolute;right:-100px;top:-140px;width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle,rgba(194,28,131,.4),transparent 66%);}
+.ps-cabeca-in{position:relative;z-index:2;flex:1;min-width:0;}
+.ps-olho{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:700;
+  letter-spacing:.28em;color:rgba(255,255,255,.6);margin-bottom:9px;}
+.ps-olho i{width:26px;height:2px;background:linear-gradient(90deg,#3A1E86,#C21C83);}
+.ps-cab-linha{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;}
+.ps-cabeca h1{font-family:'Archivo';font-weight:800;font-size:30px;line-height:1;
+  letter-spacing:-.02em;margin:0;color:#fff;white-space:nowrap;}
+.ps-periodo{font-family:'Archivo';font-weight:700;font-size:14px;letter-spacing:.1em;
+  color:#F09CD0;text-transform:uppercase;}
+.ps-logo{position:relative;z-index:2;flex:none;width:88px;}
 
-/* --------------------------------------------------------- cliente */
-.ps-cliente{flex:none;display:flex;align-items:center;gap:22px;padding:20px 60px;
+/* --------------------------------------------------------- cliente
+   Compacta sempre: uma linha com logo, nome e linha editorial. */
+.ps-cliente{flex:none;display:flex;align-items:center;gap:14px;padding:11px 56px;
   border-bottom:1px solid var(--line);}
-.ps-cliente small{display:block;font-size:12px;font-weight:700;letter-spacing:.3em;
+.ps-cliente small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.24em;
   color:var(--grey);}
-.ps-cliente b{display:block;font-family:'Archivo';font-weight:800;font-size:32px;
-  letter-spacing:-.02em;color:var(--ink);margin-top:7px;}
-.ps-cli-logo{width:78px;height:78px;flex:none;border-radius:16px;background:#fff;
-  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:10px;}
+.ps-cliente b{display:block;font-family:'Archivo';font-weight:800;font-size:19px;
+  letter-spacing:-.01em;color:var(--ink);margin-top:2px;}
+.ps-cli-logo{width:42px;height:42px;flex:none;border-radius:11px;background:#fff;
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:5px;}
 .ps-cli-logo img{max-width:100%;max-height:100%;object-fit:contain;}
+.ps-cli-logo-vazio{background:var(--lilac);color:var(--roxo);font-family:'Archivo';
+  font-weight:800;font-size:17px;}
 .ps-selo{margin-left:auto;text-align:right;}
-.ps-selo b{display:block;font-family:'Inter';font-size:12px;font-weight:700;letter-spacing:.14em;
-  color:var(--grey);}
-.ps-selo span{display:inline-block;margin-top:8px;font-size:14px;font-weight:600;
-  color:var(--magenta);background:rgba(194,28,131,.08);border-radius:99px;padding:5px 16px;}
+.ps-selo small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.2em;
+  color:var(--grey);text-transform:uppercase;}
+.ps-selo b{display:block;font-family:'Inter';font-size:13px;font-weight:700;
+  color:var(--ink);margin-top:2px;}
+.ps-selo span{display:inline-block;margin-top:3px;font-size:11px;font-weight:600;
+  color:var(--magenta);background:rgba(194,28,131,.08);border-radius:99px;padding:2px 11px;}
 
 /* ----------------------------------------------------------- corpo */
-.ps-corpo{flex:1;min-height:0;overflow:hidden;padding:22px 60px;}
-.ps-nota-geral{font-size:18px;line-height:1.5;color:var(--ink-2);padding:18px 24px;
-  background:var(--lilac);border-radius:14px;margin-bottom:16px;}
-.ps-atencao{display:flex;align-items:center;gap:12px;padding:14px 22px;margin-bottom:16px;
-  background:rgba(214,158,0,.09);border-radius:12px;font-size:17px;color:var(--ink-2);}
+.ps-corpo{flex:1;min-height:0;overflow:hidden;padding:var(--corpo-pad);
+  display:flex;flex-direction:column;gap:var(--corpo-gap);}
+/* flex-shrink:0 em cada bloco é essencial pra medição funcionar: sem
+   isso, o flexbox espreme os blocos pra caber (nunca estoura) e
+   scrollHeight nunca fica maior que clientHeight — o algoritmo de
+   densidade nunca detectaria que precisa de um nível mais compacto. */
+.ps-corpo > *{flex-shrink:0;}
+/* fallback de duas colunas — semana excepcionalmente cheia. Cada coluna
+   é sua própria pilha vertical; um dia nunca é dividido entre as duas. */
+.ps-corpo.duas-colunas{flex-direction:row;gap:22px;}
+.ps-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--corpo-gap);overflow:hidden;}
+.ps-col > *{flex-shrink:0;}
+.ps-nota-geral{font-size:calc(var(--item-title-fs) - 3px);line-height:1.5;color:var(--ink-2);
+  padding:12px 18px;background:var(--lilac);border-radius:12px;}
+.ps-atencao{display:flex;align-items:center;gap:10px;padding:9px 16px;
+  background:rgba(214,158,0,.09);border-radius:10px;font-size:var(--pill-fs);color:var(--ink-2);}
 .ps-atencao b{color:var(--ink);}
+.ps-atencao .ps-ponto{width:8px;height:8px;border-radius:50%;flex:none;}
 
 /* --------------------------------------------------- faixas de dia */
-.ps-dia{display:flex;gap:0;margin-bottom:8px;border-radius:16px;overflow:hidden;
+.ps-dia{display:flex;gap:0;border-radius:var(--dia-r);overflow:hidden;
   border:1px solid var(--line);}
-.ps-data{flex:none;width:112px;background:linear-gradient(160deg,#1B1140,#3A1355);
+.ps-data{flex:none;width:var(--dia-data-w);background:linear-gradient(160deg,#1B1140,#3A1355);
   color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:14px 8px;gap:5px;}
-.ps-data .dow{font-family:'Archivo';font-weight:800;font-size:15px;letter-spacing:.18em;
+  padding:var(--dia-data-pad);gap:3px;}
+.ps-data .dow{font-family:'Archivo';font-weight:800;font-size:var(--dia-dow-fs);letter-spacing:.14em;
   color:rgba(255,255,255,.62);}
-.ps-data .dt{font-family:'Archivo';font-weight:800;font-size:26px;letter-spacing:-.01em;
+.ps-data .dt{font-family:'Archivo';font-weight:800;font-size:var(--dia-dt-fs);letter-spacing:-.01em;
   color:#F09CD0;}
-.ps-itens{flex:1;min-width:0;padding:16px 22px;display:flex;flex-direction:column;gap:14px;}
+.ps-itens{flex:1;min-width:0;padding:var(--dia-itens-pad);display:flex;flex-direction:column;
+  gap:var(--dia-item-gap);}
 /* Dia sem atividades é uma linha discreta, não uma faixa cheia: sete
    delas precisam caber numa página só. Nome próprio porque .vazio já é
    um utilitário do global.css. */
-.ps-dia-vazio{margin-bottom:7px;}
-.ps-dia-vazio .ps-itens{padding:9px 22px;justify-content:center;}
-.ps-dia-vazio .ps-data{padding:9px 8px;}
-.ps-dia-vazio .ps-data .dow{font-size:13px;}
-.ps-dia-vazio .ps-data .dt{font-size:20px;}
+.ps-dia-vazio .ps-itens{padding:var(--dia-vazio-pad);justify-content:center;}
+.ps-dia-vazio .ps-data{padding:var(--dia-vazio-pad);}
+.ps-dia-vazio .ps-data .dow{font-size:calc(var(--dia-dow-fs) - 1px);}
+.ps-dia-vazio .ps-data .dt{font-size:calc(var(--dia-dt-fs) - 4px);}
 .ps-dia-vazio .ps-data{background:linear-gradient(160deg,#2A2440,#3A3350);}
-.ps-sem{font-size:15px;color:var(--grey);}
-.ps-dia.sem-data .ps-data .dt{font-size:19px;}
+.ps-sem{font-size:var(--dia-sem-fs);color:var(--grey);}
+.ps-dia.sem-data .ps-data .dt{font-size:calc(var(--dia-dt-fs) - 3px);}
 
-.ps-item{display:flex;gap:14px;align-items:flex-start;}
-.ps-item + .ps-item{padding-top:14px;border-top:1px solid var(--line);}
-.ps-ic{width:24px;height:24px;flex:none;color:var(--roxo);margin-top:2px;}
-.ps-ic svg{width:100%;height:100%;}
-.ps-item-tx{min-width:0;flex:1;}
-.ps-item-tx > b{display:block;font-family:'Archivo';font-weight:700;font-size:20px;
-  line-height:1.28;color:var(--ink);letter-spacing:-.01em;}
-.ps-estado{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;}
-.ps-etapa{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--roxo);}
-.ps-situacao{font-size:15px;color:var(--ink-2);}
-.ps-canal{font-size:13px;color:var(--grey);background:var(--lilac);border-radius:99px;
-  padding:3px 12px;}
-.ps-obs{font-size:16px;line-height:1.45;color:var(--ink-2);margin:9px 0 0;}
-.ps-cont{font-size:13px;letter-spacing:.1em;color:var(--grey);text-align:right;margin-top:8px;}
-.ps-sem-nada{font-size:18px;color:var(--grey);text-align:center;padding:60px 0;}
+/* linha divisória leve entre tarefas do mesmo dia — nunca um cartão
+   inteiro por tarefa */
+.ps-item + .ps-item{padding-top:var(--dia-item-gap);border-top:1px solid var(--line);}
+.ps-item-topo{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+/* título e status são os dois elementos mais fortes da linha */
+.ps-titulo{font-family:'Archivo';font-weight:700;font-size:var(--item-title-fs);
+  line-height:var(--item-title-lh,1.26);color:var(--ink);letter-spacing:-.01em;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  flex:1;min-width:0;}
+.ps-pill{flex:none;display:inline-flex;align-items:center;gap:6px;font-weight:700;
+  font-size:var(--pill-fs);padding:var(--pill-pad);border-radius:99px;white-space:nowrap;}
+.ps-pill i{width:var(--pill-dot);height:var(--pill-dot);border-radius:50%;flex:none;}
+.ps-meta{display:flex;align-items:center;gap:12px;margin-top:calc(var(--item-gap) / 2.2);flex-wrap:wrap;}
+.ps-tipo{display:inline-flex;align-items:center;gap:5px;font-size:var(--tipo-fs);font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;}
+.ps-tipo-ic{width:var(--tipo-ic);height:var(--tipo-ic);flex:none;}
+.ps-tipo-ic svg{width:100%;height:100%;}
+.ps-canal{font-size:var(--canal-fs);color:var(--grey);background:var(--lilac);border-radius:99px;
+  padding:2px 10px;}
+.ps-obs{font-size:var(--obs-fs);line-height:1.4;color:var(--ink-2);margin:var(--obs-mt) 0 0;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.ps-sem-nada{font-size:18px;color:var(--grey);text-align:center;margin:auto;padding:40px 0;}
 
-/* ponto de situação — cor acompanha o texto, nunca o substitui */
-.ps-ponto{width:10px;height:10px;border-radius:50%;flex:none;background:#9E97B5;}
-.ps-ponto.producao{background:#5B47C4;}
-.ps-ponto.pronto{background:#3FA37A;}
-.ps-ponto.espera{background:#D69E00;}
-.ps-ponto.atencao{background:#C2185B;}
-.ps-ponto.neutro{background:#9E97B5;}
+/* --------------------------------------------------------- legenda
+   Sempre compacta: ícone/ponto + rótulo, sem frase — nunca disputa
+   espaço com a agenda de verdade. Só o que a semana realmente usa. */
+.ps-legendas{display:flex;flex-direction:column;gap:6px;margin-top:var(--leg-mt);
+  padding-top:var(--leg-pad);border-top:1px solid var(--line);}
+.ps-leg-linha{display:flex;align-items:center;gap:var(--leg-gap);flex-wrap:wrap;font-size:var(--leg-fs);}
+.ps-leg-linha > b{font-weight:800;letter-spacing:.14em;color:var(--grey);flex:none;}
+.ps-leg-chip{display:inline-flex;align-items:center;gap:5px;color:var(--ink-2);font-weight:600;
+  white-space:nowrap;}
+.ps-leg-chip i{width:8px;height:8px;border-radius:50%;flex:none;}
+.ps-leg-ic{width:var(--leg-ic);height:var(--leg-ic);flex:none;}
+.ps-leg-ic svg{width:100%;height:100%;}
 
-/* --------------------------------------------------------- legenda */
-.ps-legenda{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px;margin-top:18px;
-  padding-top:18px;border-top:1px solid var(--line);}
-.ps-legenda > div{display:flex;align-items:baseline;gap:9px;font-size:14px;color:var(--grey);}
-.ps-legenda b{color:var(--ink-2);font-weight:600;}
-
-/* --------------------------------------------------------- rodapé */
-.ps-rodape{flex:none;display:flex;align-items:center;justify-content:space-between;
-  padding:18px 60px;border-top:1px solid var(--line);}
-.ps-rodape .esq{display:flex;align-items:center;gap:12px;}
-.ps-rodape .esq img{height:30px;}
-.ps-rodape .esq span{font-size:12px;font-weight:700;letter-spacing:.26em;color:var(--grey);}
-.ps-rodape .dir{font-family:'Archivo';font-weight:800;font-size:15px;color:var(--ink-2);}
+/* --------------------------------------------------------- rodapé
+   Restrito — só a assinatura B7. Sempre uma página, então sem "01/01". */
+.ps-rodape{flex:none;display:flex;align-items:center;padding:10px 56px 14px;
+  border-top:1px solid var(--line);}
+.ps-rodape .esq{display:flex;align-items:center;gap:9px;}
+.ps-rodape .esq img{height:18px;}
+.ps-rodape .esq span{font-size:9.5px;font-weight:700;letter-spacing:.22em;color:var(--grey);}
 
 /* a área de montagem em 4:5 não usa as regras A4 */
 #area-impressao.modo-45 .pag45{margin:0;}
 
 .dl-acoes-mini{margin-top:12px;}
-
-/* Página de continuação não precisa do cabeçalho em tamanho de capa: o
-   leitor já sabe do que se trata. Menos altura aqui é mais espaço útil
-   para as demandas. */
-.pag45:not(.primeira) .ps-cabeca{padding:30px 60px 26px;}
-.pag45:not(.primeira) .ps-cabeca h1{font-size:40px;}
-.pag45:not(.primeira) .ps-cabeca h1 em{font-size:22px;}
-.pag45:not(.primeira) .ps-olho{margin-bottom:14px;}
-.pag45:not(.primeira) .ps-periodo{font-size:16px;margin-top:12px;}
-.pag45:not(.primeira) .ps-logo{width:110px;top:32px;}
-
-
-/* Página de continuação: o cabeçalho não precisa repetir o mesmo peso da
-   primeira. Compactar libera espaço real e equilibra a distribuição. */
-.pag45:not(.primeira) .ps-cabeca{padding:26px 60px 22px;}
-.pag45:not(.primeira) .ps-cabeca h1{font-size:38px;}
-.pag45:not(.primeira) .ps-cabeca h1 em{font-size:20px;}
-.pag45:not(.primeira) .ps-olho{margin-bottom:12px;font-size:12px;}
-.pag45:not(.primeira) .ps-periodo{font-size:16px;margin-top:12px;}
-.pag45:not(.primeira) .ps-logo{width:110px;top:30px;}

@@ -1721,3 +1721,166 @@ contexto" dentro da página de demanda), nunca criar planejamento novo.
 Arquivos alterados: `js/conteudo.js`, `js/auth.js`, `sw.js`.
 `VERSAO` → `2026-09-11-r`, cache do service worker →
 `roteiros-b7-v33`.
+
+## Build 2026-09-11-s — STATUS SEMANAL 2.0: renderizador de uma página só, densidade adaptativa, dois sistemas de cor
+
+Redesenho grande do Status Semanal voltado ao cliente (não é o mesmo
+módulo do Design das rodadas anteriores) — pedido do Yury antes da
+Rodada 3 do plano de Design, a partir de uma especificação de 42 seções
+em inglês. Regra inegociável do pedido: o relatório cabe SEMPRE numa
+página só (nunca gera página 2, nunca mostra "01/02"), nunca resolve
+isso encolhendo o texto até ficar ilegível, mostra só o que vai
+acontecer na semana (trabalho concluído/publicado/cancelado nunca
+aparece pro cliente, mas nunca é apagado do banco), e tipo de atividade
+e status da tarefa usam dois sistemas de cor semânticos bem distintos.
+
+**`js/doc-semana.js` (reescrito):**
+- `TIPOS` (8 tokens de cor pra tipo de atividade — rótulo de texto
+  pequeno, nunca em pílula) e `SITUACOES` (10 tokens — cor + fundo +
+  texto de legenda — pra status da tarefa, sempre em pílula forte com
+  ponto colorido). Título + pílula de status são os dois elementos mais
+  fortes de cada linha; tipo/canal ficam abaixo, discretos.
+- `EXCLUIR_DO_PLANEJAMENTO = ['Concluído', 'Publicado', 'Cancelado']`
+  filtrado logo no início de `montar()` — só na peça pro cliente. O
+  editor (`js/semana.js`) não usa esse filtro em lugar nenhum: continua
+  mostrando tudo, sempre (confirmado lendo o código, não só assumido).
+- Cabeçalho e faixa do cliente sempre compactos, fora da escada de
+  densidade — a faixa do cliente ganhou o rótulo "LINHA EDITORIAL"
+  acima do nome da linha (antes o nome aparecia sozinho, em caixa alta
+  pequena, sem dizer o que era).
+- **Algoritmo de densidade adaptativa, substituindo inteiramente a
+  paginação múltipla antiga**: mede de verdade a altura do corpo num
+  elemento escondido fora da tela, tentando 4 níveis (confortável →
+  compacta → densa → muito densa, como classes CSS numa escada de
+  custom properties) numa coluna só; se nada couber, tenta um fallback
+  de duas colunas (um dia nunca é dividido entre as duas), testando
+  vários pontos de corte — não só o "melhor" por peso estimado, mas
+  medindo de verdade cada candidato — nos 4 níveis de novo; se mesmo
+  assim nada couber (semana excepcionalmente cheia), usa a combinação
+  medida como a que MENOS estourou, nunca a primeira que apareceu.
+  Nunca produz uma segunda página, sob nenhuma circunstância.
+- **Bug real encontrado e corrigido durante o teste** (não é só um
+  ajuste — mudou o resultado): a classe `duas-colunas` estava sendo
+  aplicada no elemento errado (`.pag45` em vez de `.ps-corpo`, que é
+  onde o CSS realmente espera), então o fallback de duas colunas nunca
+  virava duas colunas de verdade — as colunas ficavam empilhadas uma
+  embaixo da outra sem limite de altura, e a medição (que dependia
+  desse limite) sempre "passava" por engano. Corrigido.
+- **Segundo bug real, mais sutil**: a medição roda de forma síncrona,
+  mas as fontes do sistema (`Inter`/`Archivo`) usam
+  `font-display:swap` — se a medição rodar antes da fonte trocar do
+  fallback pra fonte real, o texto pode crescer depois, estourando uma
+  página que "coube" na hora de medir. `B7.BaixarSemana.preparar()`
+  (usado por PNG e PDF) e `desenharPreview()` (usado pelo editor)
+  agora esperam `document.fonts.ready` antes de montar/medir — sem
+  isso, o resultado visto na tela podia ser diferente do medido,
+  dependendo de quão rápido a fonte carregasse.
+- `B7.BaixarSemana.gerarPNG`/`gerarPDF` simplificados pra sempre um
+  canvas/uma página (removida a função `montarZip`, morta desde que
+  não existe mais PNG multi-página como ZIP).
+
+**`styles/semana.css`:** bloco `.pag45` reescrito com escada de
+densidade via custom properties (`--corpo-pad`, `--dia-*`, `--item-*`,
+`--pill-*`, `--tipo-*`, `--leg-*`…), três classes de override
+(`.nv-compacta`/`.nv-densa`/`.nv-muito-densa`). Novo `.ps-item-topo`
+(título + pílula), `.ps-meta` (tipo + canal), `.ps-obs` (observação
+com `-webkit-line-clamp:2`), legenda em duas linhas horizontais
+compactas (TIPOS/STATUS, só os valores realmente usados na semana).
+**Correção crítica de medição**: `.ps-corpo{display:flex;
+flex-direction:column}` sem `flex-shrink:0` nos filhos deixa o
+flexbox encolher o conteúdo pra caber em vez de estourar — o que
+quebra qualquer técnica de medição por `scrollHeight > clientHeight`
+(nunca fica maior). Adicionado `.ps-corpo > *{flex-shrink:0}` e
+`.ps-col > *{flex-shrink:0}`, com comentário explicando o porquê.
+
+**`js/semana.js`:** removida a navegação de páginas do preview
+("‹ 01/01 ›") — não existe mais conceito de página no preview, porque
+`montar()` nunca devolve mais de uma. `desenharPreview()` também passou
+a esperar `document.fonts.ready` antes de montar, pelo mesmo motivo do
+`preparar()`. Mensagens de progresso/sucesso da exportação simplificadas
+(sem contagem de página).
+
+**Sem migration nova** — o modelo de dados (`status_itens.etapa`/
+`situacao`) já tinha quase 1:1 as 8 categorias de tipo e as 8+2 de
+status pedidas pela especificação; nenhuma coluna nova foi necessária.
+
+### Implementado e testado
+
+- Filtro de itens concluído/publicado/cancelado: confirmado por
+  Playwright que nenhum desses três aparece no HTML renderizado
+  (busca por texto "NÃO DEVE APARECER" marcado nesses itens) em quatro
+  cenários (semana normal com 3 itens excluídos, semana cheia, dia
+  muito cheio, semana extrema), com contagem renderizada = contagem
+  enviada (pós-filtro) em todos os casos — sem perda silenciosa de
+  dado além do filtro pretendido.
+- Nunca gera segunda página: confirmado (`document.querySelectorAll
+  ('.pag45').length === 1`) em todos os cenários testados, incluindo
+  uma semana propositalmente extrema de 36 itens.
+- Escada de densidade real, medida de verdade (depois de corrigido o
+  bug do flex-shrink e o de fontes): semana normal (9 itens, 3
+  excluídos) → confortável; semana cheia (15 itens) → densa; um dia
+  com 8 tarefas → compacta; semana muito cheia mas realista (22 itens
+  úteis) → compacta em duas colunas, layout equilibrado e legível
+  (conferido visualmente por screenshot, com legenda e rodapé
+  visíveis, nada cortado).
+- **As duas exportações reais foram exercitadas de ponta a ponta**
+  (não só o HTML/CSS isolado): `B7.BaixarSemana.gerarPNG()` rodou com
+  o `html2canvas` de verdade (vendorizado localmente, sem depender de
+  rede) e produziu um PNG de 2160×2700px (escala 2×) com o filtro de
+  itens concluídos confirmado no próprio PNG gerado. `B7.BaixarSemana.
+  gerarPDF()` rodou com o `jsPDF` de verdade e produziu um PDF de
+  exatamente 1 página, 216×270mm — a proporção 4:5 pedida, não A4.
+  Nenhum dos dois lançou erro de console/página.
+- Editor (`js/semana.js`) continua sem o filtro de exclusão em
+  qualquer lugar do código — confirmado por leitura direta, não só
+  inferido: a pessoa que edita continua vendo e editando itens
+  concluídos/publicados/cancelados normalmente.
+- `node --check` (via `vm.Script`) em `js/doc-semana.js` e
+  `js/semana.js` depois de cada edição.
+
+### Implementado, mas requer validação adicional
+
+- **Semanas verdadeiramente extremas (30+ itens com títulos longos)
+  ainda podem estourar visualmente**, mesmo no nível mais denso em
+  duas colunas — testado com uma fixture deliberadamente patológica de
+  36 itens (5-6 por dia, título longo em todos): o algoritmo escolhe a
+  combinação que menos estoura (comportamento de último recurso
+  pedido pela própria especificação: "força a combinação mais extrema
+  como último recurso, mas nunca uma segunda página"), mas nesse caso
+  extremo ~180px do fim da segunda coluna ficam cortados
+  (`overflow:hidden`, sem indicação visual de conteúdo oculto). Não
+  encontrei uma forma de garantir 100% de legibilidade sem paginação
+  para esse volume — a especificação também não pediu paginação, então
+  mantive a peça sempre em uma página, com a ressalva honesta de que
+  um volume assim de demandas numa única semana para um único cliente
+  é incomum e não foi possível confirmar quão frequente isso seria na
+  prática. Se o Yury notar isso em uso real, a saída mais simples é um
+  aviso discreto ("+N itens não exibidos") quando o pior caso for
+  detectado — não implementado ainda, porque exigiria decidir com ele
+  qual item priorizar mostrar.
+- Snapshot/versionamento (`status_versoes`, Rascunho/Pronto/Enviado) —
+  o caminho de exportação continua chamando `B7.DB.criarVersao(...)`
+  sem alteração, mas não reexecutei esse fluxo especificamente nesta
+  rodada (não mexi nele).
+- Acessibilidade em escala de cinza (seção 33 da especificação): o
+  texto do status sempre acompanha a cor (nunca só a cor sozinha),
+  mas não fiz uma captura específica em escala de cinza pra confirmar
+  visualmente.
+- Preview do editor dentro do app completo (roteamento real, não o
+  harness isolado): testei a lógica de `desenharPreview()`/
+  `escalarPreview()` por leitura e `node --check`, mas não naveguei o
+  app inteiro (login → editor → preview) com Playwright nesta rodada.
+
+### Não implementado por bloqueio
+
+Nenhum item desta especificação ficou bloqueado — todos os requisitos
+centrais (uma página sempre, densidade adaptativa real, dois sistemas
+de cor, exclusão de itens concluídos, header/faixa de cliente
+compactos, legenda compacta, PNG/PDF/preview consistentes) foram
+implementados e testados de ponta a ponta, incluindo os dois caminhos
+de exportação reais.
+
+Arquivos alterados: `js/doc-semana.js`, `styles/semana.css`,
+`js/semana.js`, `js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-11-s`, cache do service worker →
+`roteiros-b7-v34`.

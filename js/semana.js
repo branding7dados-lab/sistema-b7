@@ -321,11 +321,6 @@ B7.Semana = (function () {
         '</div>' +
         '<div class="sem-preview" id="sem-preview">' +
           '<div class="sp-topo"><span>Prévia</span>' +
-            '<div class="sp-nav">' +
-              '<button class="b p" data-pag="-1">‹</button>' +
-              '<span id="sp-cont">01 / 01</span>' +
-              '<button class="b p" data-pag="1">›</button>' +
-            '</div>' +
             '<button class="b p" data-recolher>Recolher</button>' +
           '</div>' +
           '<div class="sp-palco"><div class="sp-in" id="sp-in"></div></div>' +
@@ -601,10 +596,6 @@ B7.Semana = (function () {
       } catch (e) {}
     });
 
-    p.querySelectorAll('[data-pag]').forEach(b => b.onclick = () => {
-      S.pagina += Number(b.dataset.pag);
-      desenharPreview();
-    });
     p.querySelectorAll('[data-recolher]').forEach(b => b.onclick = () => {
       const alvo = document.getElementById('sem-preview');
       const recolhido = alvo.classList.toggle('recolhido');
@@ -648,29 +639,22 @@ B7.Semana = (function () {
   /* ------------------------------------------------- preview vivo
      Usa exatamente o mesmo renderizador da exportação. O que se vê é o
      que sai no arquivo. */
-  function desenharPreview() {
+  async function desenharPreview() {
     const alvo = document.getElementById('sp-in');
     if (!alvo) return;
     const ctx = {
       relatorio: S.relatorio, itens: S.itens, linha: S.linha,
       clienteLogo: S.relatorio.cliente_logo_url || ''
     };
-    const html = D().montar(ctx, alvo.parentElement, opcoesDoc());
-    const caixa = document.createElement('div');
-    caixa.innerHTML = html;
-    const paginas = [...caixa.querySelectorAll('.pag45')];
-    S.pagina = Math.max(0, Math.min(paginas.length - 1, S.pagina));
-    alvo.innerHTML = paginas[S.pagina] ? paginas[S.pagina].outerHTML : '';
-
-    const cont = document.getElementById('sp-cont');
-    if (cont) {
-      cont.textContent = String(S.pagina + 1).padStart(2, '0') + ' / ' +
-                         String(paginas.length).padStart(2, '0');
+    /* espera as fontes carregarem antes de medir — sem isso a decisão de
+       densidade/colunas pode usar a fonte de fallback (font-display:swap)
+       e ficar errada assim que a fonte certa trocar. */
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch (e) { /* segue mesmo assim */ }
+      if (!document.getElementById('sp-in')) return; /* saiu da tela enquanto esperava */
     }
-    const ant = painel().querySelector('[data-pag="-1"]');
-    const prox = painel().querySelector('[data-pag="1"]');
-    if (ant) ant.disabled = S.pagina === 0;
-    if (prox) prox.disabled = S.pagina >= paginas.length - 1;
+    /* sempre uma página só — D().montar() nunca devolve mais de um .pag45 */
+    alvo.innerHTML = D().montar(ctx, alvo.parentElement, opcoesDoc());
     escalarPreview();
   }
 
@@ -927,15 +911,13 @@ B7.Semana = (function () {
         mostrarObservacoes: m.querySelector('#ex-obs input').checked,
         mostrarLegenda: m.querySelector('#ex-legenda').value
       };
-      const aoAndar = (fase, i, total) => {
-        prog.textContent = fase === 'render'
-          ? 'Renderizando páginas… ' + i + ' de ' + total
-          : 'Gerando arquivo…';
+      const aoAndar = (fase) => {
+        prog.textContent = fase === 'render' ? 'Renderizando documento…' : 'Gerando arquivo…';
       };
 
       try {
         const ctx = await B7.BaixarSemana.reunir(r.id);
-        const paginas = formato === 'png'
+        formato === 'png'
           ? await B7.BaixarSemana.gerarPNG(ctx, opcoes, aoAndar)
           : await B7.BaixarSemana.gerarPDF(ctx, opcoes, aoAndar);
 
@@ -949,8 +931,7 @@ B7.Semana = (function () {
           cliente: r.client_id,
           texto: 'Status semanal exportado em ' + formato.toUpperCase() +
                  (versao ? ' · V' + String(versao.versao).padStart(2, '0') : '') });
-        B7.UI.toast(formato.toUpperCase() + ' gerado · ' + paginas +
-          (paginas === 1 ? ' página' : ' páginas'));
+        B7.UI.toast(formato.toUpperCase() + ' gerado.');
         setTimeout(() => m.fechar(), 900);
       } catch (e) {
         console.error(e);
