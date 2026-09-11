@@ -714,10 +714,14 @@ B7.Linha = (function () {
         '<span class="abrir">Abrir →</span></div></div>';
   }
 
+  /* Cor dedicada ao status do Criativo — ver .status-conteudo em
+     global.css. Independente de .chip-revisao (Design/Linha usam aquele). */
+  const MAPA_STATUS_CONTEUDO = {
+    'Ideia': 'sc-ideia', 'Em criação': 'sc-criacao', 'Em revisão': 'sc-revisao',
+    'Aprovado': 'sc-aprovado', 'Programado': 'sc-programado', 'Publicado': 'sc-publicado'
+  };
   function chipConteudo(s) {
-    const mapa = { 'Ideia': 'criacao', 'Em criação': 'criacao', 'Em revisão': 'revisao',
-                   'Aprovado': 'aprovado', 'Programado': 'pronto', 'Publicado': 'gravado' };
-    return '<span class="chip-revisao ' + (mapa[s] || 'criacao') + '">' + esc(s) + '</span>';
+    return '<span class="status-conteudo ' + (MAPA_STATUS_CONTEUDO[s] || 'sc-ideia') + '">' + esc(s) + '</span>';
   }
 
   /* --------------------------------------------------------- POSTAGENS
@@ -779,7 +783,7 @@ B7.Linha = (function () {
       '</button>';
     }
     const st = statusPostagemDot(item.status);
-    return '<button class="cal-ev cal-ev-post" data-conteudo="' + esc(item.id) + '" ' +
+    return '<button class="cal-ev cal-ev-post" data-postagem-ver="' + esc(item.id) + '" ' +
       'title="Postagem — ' + esc(item.titulo || 'Sem título') + (item.status ? ' · ' + esc(item.status) : '') + '">' +
       '<span class="cal-ev-ic">' + ICONE_FORMATO[item.tipo] + '</span>' +
       '<span class="cal-ev-tx">' + esc(item.titulo || 'Sem título') + '</span>' +
@@ -891,7 +895,8 @@ B7.Linha = (function () {
 
     const linhaPost = c => {
       const d = c.data_postagem ? String(c.data_postagem).slice(0, 10) : '';
-      return '<div class="post-linha" data-conteudo="' + esc(c.id) + '">' +
+      return '<div class="post-linha" data-postagem-ver="' + esc(c.id) + '" role="button" tabindex="0" ' +
+        'aria-label="Ver detalhe da postagem — ' + esc(c.titulo || 'Sem título') + '">' +
         '<div class="post-data">' + (d
           ? '<b>' + esc(d.slice(8, 10)) + '</b><small>' +
             esc(MESES[+d.slice(5, 7) - 1].slice(0, 3).toUpperCase()) + '</small>'
@@ -969,12 +974,23 @@ B7.Linha = (function () {
       const c = L.conteudos.find(x => x.id === b.dataset.espiar);
       if (c) B7.QuickView.abrirConteudo(c, {
         cliente: L.linha.cliente_nome, clienteLogo: L.linha.cliente_logo_url,
-        linha: L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano)
+        linha: L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano), gatilho: b
       });
     });
     p.querySelectorAll('[data-conteudo]').forEach(el => el.onclick = e => {
       e.stopPropagation();
       abrirConteudo(el.dataset.conteudo);
+    });
+    /* Postagens (lista e calendário): abre a ficha de leitura, nunca o
+       editor do Criativo direto — quem pode editar tem o botão "Abrir
+       nos Criativos" dentro da própria ficha. */
+    p.querySelectorAll('[data-postagem-ver]').forEach(el => {
+      el.onclick = e => { e.stopPropagation(); abrirDetalhePostagem(el.dataset.postagemVer, el); };
+      /* linhas da lista são <div role="button">: Enter/Espaço não disparam
+         click sozinhos como num <button> de verdade */
+      el.onkeydown = e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+      };
     });
     /* clique numa Gravação do calendário abre a ficha da gravação —
        o registro canônico, não uma cópia criada só pra desenhar o dia */
@@ -1332,6 +1348,23 @@ B7.Linha = (function () {
   }
 
   /* ------------------------------------------- editor do conteúdo */
+  /* Ficha de leitura da Postagem (aba Postagens: lista e calendário).
+     Reaproveita o painel do QuickView — já é somente leitura por
+     natureza — em vez de recriar um segundo componente de "espiada".
+     Quem pode editar Criativos (mesma regra de podeEnviarDesign, que já
+     é a regra real de equipe/RLS) ganha o botão "Abrir nos Criativos";
+     quem não pode, nunca vê esse botão — e mesmo que chegasse lá, o
+     editor de Criativo já trava sozinho para Designer (souDesignerSomenteLeitura). */
+  function abrirDetalhePostagem(id, gatilho) {
+    const c = L.conteudos.find(x => x.id === id);
+    if (!c) return;
+    B7.QuickView.abrirConteudo(c, {
+      cliente: L.linha.cliente_nome, clienteLogo: L.linha.cliente_logo_url,
+      linha: L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano),
+      contexto: 'postagem', podeAbrirCriativos: podeEnviarDesign(), gatilho: gatilho
+    });
+  }
+
   async function abrirConteudo(id) {
     const c = L.conteudos.find(x => x.id === id);
     if (!c) return;
@@ -1420,6 +1453,7 @@ B7.Linha = (function () {
         C.campoLinha('CTA', c.cta, t + ' data-campo="cta"') +
         C.campo('DIREÇÃO VISUAL', c.direcao, t + ' data-campo="direcao"') +
         C.campo('LEGENDA', c.legenda, t + ' data-campo="legenda"') +
+        '<button type="button" class="b fina contorno" id="btn-copiar-legenda" aria-label="Copiar legenda">Copiar legenda</button>' +
         C.campo('OBSERVAÇÃO PARA O DESIGN', c.observacao_design, t + ' data-campo="observacao_design"') + '</div>';
     }
     if (c.tipo === 'Carrossel') {
@@ -1430,7 +1464,8 @@ B7.Linha = (function () {
         '<div class="ajuda" style="margin:-4px 0 12px">O Slide 1 é a abertura. O último slide é sempre o CTA.</div>' +
         '<div id="lista-slides">' + slides.map((s, i) => itemSlide(s, i, slides.length)).join('') + '</div>' +
         (leitura ? '' : '<button class="add-largo" id="add-slide">+ ADICIONAR SLIDE</button>') +
-        C.campo('LEGENDA', c.legenda, t + ' data-campo="legenda"') + '</div>';
+        C.campo('LEGENDA', c.legenda, t + ' data-campo="legenda"') +
+        '<button type="button" class="b fina contorno" id="btn-copiar-legenda" aria-label="Copiar legenda">Copiar legenda</button></div>';
     }
     if (c.tipo === 'Story') {
       especifico = '<div class="bloco-formato"><h4>Sequência de stories</h4>' +
@@ -1454,6 +1489,19 @@ B7.Linha = (function () {
       { larga: true, extra: 'modal-conteudo', aoFechar: () => { B7.Save.agora().catch(() => {}); atualizar(); } });
 
     C.ligarCampos(m, espelhar);
+
+    /* "Copiar legenda" copia o valor ATUAL do campo, mesmo o que ainda
+       não foi salvo (autosave tem debounce de 650ms) — lê direto do
+       textarea na hora do clique, nunca do objeto em memória, que pode
+       estar um instante atrasado em relação ao que a pessoa digitou. */
+    const campoLegenda = m.querySelector('[data-campo="legenda"]');
+    const btnCopiarLegenda = m.querySelector('#btn-copiar-legenda');
+    if (campoLegenda && btnCopiarLegenda) {
+      const atualizarBotaoCopiar = () => { btnCopiarLegenda.disabled = !campoLegenda.value.trim(); };
+      atualizarBotaoCopiar();
+      campoLegenda.addEventListener('input', atualizarBotaoCopiar);
+      btnCopiarLegenda.onclick = () => B7.UI.copiarTexto(campoLegenda.value);
+    }
 
     const chkPortal = m.querySelector('#ct-portal input');
     if (chkPortal) chkPortal.onchange = async () => {
@@ -1624,5 +1672,8 @@ B7.Linha = (function () {
   return { abrir, abrirConteudo,
            /* usados pela paleta de comandos quando já há uma linha aberta */
            novoConteudo: () => L.linha && modalNovoConteudo(),
-           duplicar: () => L.linha && modalDuplicar() };
+           duplicar: () => L.linha && modalDuplicar(),
+           /* status do Criativo com a mesma cor em qualquer lugar do
+              sistema que o mostre (card, ficha de Postagem, QuickView) */
+           chipConteudo: chipConteudo };
 })();

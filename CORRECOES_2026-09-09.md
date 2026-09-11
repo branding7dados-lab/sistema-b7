@@ -2756,3 +2756,103 @@ Arquivos alterados: `js/doc-semana.js`, `js/semana.js`,
 `styles/semana.css`, `js/portal.js`, `js/auth.js`, `sw.js`.
 `VERSAO` → `2026-09-11-z3`, cache do service worker →
 `roteiros-b7-v43`.
+
+## Build 2026-09-11-aa — Cores do status do Criativo, Copiar legenda, Detalhe de leitura da Postagem
+
+Três refinamentos pedidos juntos para a Linha Editorial — especificamente
+para as abas **Criativos** e **Postagens** (não mexi em Status Semanal,
+Calendário, aprovações, autosave, Carrossel, Pilares, exportações ou
+papéis — tudo isso continua exatamente como estava). Antes de mexer,
+auditei a implementação atual em vez de assumir que os nomes de status
+do prompt batiam com os nomes reais do sistema — e não batiam: hoje o
+Criativo tem 6 status (`Ideia`, `Em criação`, `Em revisão`, `Aprovado`,
+`Programado`, `Publicado`), não 8. "Ajustes" e "Aguardando cliente" não
+existem como status reais de Criativo — não criei token de cor pra eles.
+
+### Implementado e testado
+
+- **Cores do status do Criativo, num sistema próprio.** O status do
+  Criativo usava o mesmo componente CSS (`.chip-revisao`) que a Peça de
+  Design e a Linha Editorial também usam — mexer ali vazaria cor pros
+  outros dois. Criei um sistema dedicado (`.status-conteudo` +
+  `styles/global.css`, tokens `--laranja`/`--violeta-bg` novos, resto
+  reaproveita `--erro`/`--ambar`/`--neutro`/`--ok` que já existiam):
+  Ideia = vermelho, Em criação = laranja, Em revisão = âmbar, Aprovado =
+  roxo forte, Programado = cinza neutro, Publicado = verde — sempre com
+  o texto do status do lado (nunca só a cor). Testei que as 6 cores são
+  todas distintas entre si, no claro e no escuro, e que nenhum card de
+  Criativo usa mais `.chip-revisao` (Peça de Design e Linha Editorial
+  seguem com as cores de sempre, confirmado sem mudança). O grupo de
+  botões de status dentro do editor do Criativo também ganhou a mesma
+  cor no botão selecionado. O sistema de cor do calendário
+  (`--cal-post`/`--cal-grav`, cor por TIPO de evento) não foi tocado.
+- **"Copiar legenda", uma implementação só, usada nos dois lugares.**
+  Criei `B7.UI.copiarTexto()` (Clipboard API com fallback de
+  `execCommand`, toast "Legenda copiada."/"Não foi possível copiar a
+  legenda.") e reaproveitei em Criativos e Postagens — nunca duas
+  versões que podem divergir. Em **Criativos** (Card e Carrossel, os
+  únicos formatos com legenda), o botão lê o valor **ao vivo do
+  campo na hora do clique** — testei digitando um texto novo e clicando
+  em "Copiar legenda" antes dos 650ms do debounce do autosave: copiou
+  o texto digitado, não o valor antigo salvo no banco. Em **Postagens**,
+  a ficha de leitura copia o valor canônico já persistido. Nos dois
+  lugares, o texto copiado é exatamente o que está na tela — sem
+  "Legenda:", sem aspas, com quebras de linha/emoji/hashtag/acentos
+  preservados (testei com um texto com tudo isso junto). Quando não há
+  legenda, a seção inteira some (nunca um botão fingindo que vai
+  funcionar) — testado com um Criativo de legenda vazia.
+- **Detalhe de leitura da Postagem.** Clicar numa Postagem (lista ou
+  calendário) não abre mais o editor do Criativo: abre uma ficha
+  estritamente de leitura, reaproveitando o painel do QuickView que já
+  existia (não criei um segundo componente de "espiada"). Testei que
+  essa ficha nunca tem input/textarea/select. Ela mostra só os campos
+  que o formato realmente tem — corrigi de passagem uma lacuna que a
+  auditoria achou: o Carrossel tinha campo de legenda no editor mas a
+  visualização rápida não mostrava; agora mostra, com "Copiar legenda"
+  junto. O botão "Abrir nos Criativos" só aparece pra quem realmente
+  pode editar Criativo (mesma regra que já existia pra quem manda pra
+  Design — não é só esconder o botão: mesmo que alguém sem permissão
+  chegasse lá, o editor de Criativo já trava sozinho pra Designer).
+  Testei os dois papéis: coordenador vê o botão, designer não vê.
+- **Teclado e foco.** A linha da Postagem na lista virou
+  `role="button" tabindex="0"` com Enter/Espaço funcionando (o evento
+  do calendário já era um `<button>` de verdade). Escape fecha a ficha
+  e o foco volta pro elemento que abriu — testei os dois. Label
+  acessível no botão de copiar e no `role="dialog"`.
+- Testado em 390px de largura com a ficha aberta: sem estouro
+  horizontal. Testado no modo escuro: as 6 cores do status continuam
+  distintas.
+- Rerrodei toda a suíte de regressão do Status Semanal (11 + 7 testes
+  dos builds anteriores) sem nenhuma quebra — este build não encostou
+  em `js/doc-semana.js` nem `js/semana.js`.
+- `node --check` em `js/ui.js`, `js/linha.js`, `js/extras.js`; chaves
+  de `styles/global.css` e `styles/conteudo.css` conferidas.
+
+### Implementado, mas requer validação adicional
+
+- A navegação circular por Tab dentro da ficha (Tab no último elemento
+  volta pro primeiro, Shift+Tab no primeiro vai pro último) foi
+  implementada, mas só testei automatizado a devolução de foco via
+  Escape — não simulei a sequência de Tab em si. Vale um teste manual
+  rápido antes de considerar 100% coberto.
+- O tamanho de toque do botão "Copiar legenda" dentro da ficha ficou em
+  ~38px de altura (perto do mínimo recomendado de 40-44px) — os outros
+  botões do sistema (`.b`) só garantem 40px dentro do breakpoint mobile
+  específico; deixei esse um pouco maior sempre, mas não medi em
+  dispositivo real.
+- Não simulei o caminho de falha do clipboard (permissão negada) — o
+  toast de erro existe no código ("Não foi possível copiar a legenda."),
+  mas não reproduzi esse cenário num teste automatizado.
+
+### Não implementado por bloqueio
+
+- Nenhum item ficou de fora por bloqueio técnico. "Ajustes" e
+  "Aguardando cliente" não ganharam token de cor de propósito — não são
+  status reais de Criativo hoje (`STATUS_CONTEUDO` só tem os 6 listados
+  acima); criar cor pra um status que não existe seria inventar estado,
+  o que este sistema evita desde a primeira rodada.
+
+Arquivos alterados: `js/ui.js`, `js/linha.js`, `js/extras.js`,
+`styles/global.css`, `styles/conteudo.css`, `js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-11-aa`, cache do service worker →
+`roteiros-b7-v44`.

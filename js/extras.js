@@ -264,6 +264,7 @@ B7.Export = (function () {
 B7.QuickView = (function () {
   const esc = B7.UI.esc;
   let painel = null;
+  let gatilhoAnterior = null; /* elemento que abriu o painel — foco volta pra ele ao fechar */
 
   function fechar() {
     if (!painel) return;
@@ -271,8 +272,27 @@ B7.QuickView = (function () {
     const p = painel; painel = null;
     setTimeout(() => p.remove(), 200);
     document.removeEventListener('keydown', tecla);
+    if (gatilhoAnterior && document.contains(gatilhoAnterior) && gatilhoAnterior.focus) gatilhoAnterior.focus();
+    gatilhoAnterior = null;
   }
-  function tecla(e) { if (e.key === 'Escape') fechar(); }
+  function focaveis(p) {
+    return Array.from(p.querySelectorAll('button:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'));
+  }
+  function tecla(e) {
+    if (e.key === 'Escape') { fechar(); return; }
+    if (e.key === 'Tab' && painel) {
+      const els = focaveis(painel);
+      if (!els.length) return;
+      const primeiro = els[0], ultimo = els[els.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+      else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+    }
+  }
+  function focarAoAbrir(p, gatilho) {
+    gatilhoAnterior = gatilho || document.activeElement;
+    const fecharBtn = p.querySelector('[data-fechar]');
+    if (fecharBtn) fecharBtn.focus();
+  }
 
   /* ctx igual ao da impressão + roteiro escolhido */
   function abrir(ctx, roteiro) {
@@ -315,6 +335,7 @@ B7.QuickView = (function () {
     document.addEventListener('keydown', tecla);
     painel.addEventListener('mousedown', e => { if (e.target === painel) fechar(); });
     painel.querySelector('[data-fechar]').onclick = fechar;
+    focarAoAbrir(painel, null);
 
     /* miniatura da folha, reduzida por transform — mesmo desenho da impressão */
     const mini = painel.querySelector('#qv-mini');
@@ -367,12 +388,22 @@ B7.QuickView = (function () {
 
     const campo = (rot, v) => !String(v || '').trim() ? '' :
       '<div class="qv-campo"><b>' + rot + '</b><p>' + esc(v) + '</p></div>';
+    /* LEGENDA sempre com "Copiar legenda" junto — texto exato, canônico
+       (persistido), sem prefixo nem aspas. Some junto com o campo quando
+       não há legenda: nunca finge sucesso copiando um valor vazio. */
+    const campoLegenda = v => {
+      const t = String(v || '');
+      if (!t.trim()) return '';
+      return '<div class="qv-campo"><div class="qv-campo-cab"><b>LEGENDA</b>' +
+        '<button type="button" class="qv-copiar" data-copiar-legenda aria-label="Copiar legenda">Copiar legenda</button></div>' +
+        '<p>' + esc(t) + '</p></div>';
+    };
 
     let corpo = campo('OBJETIVO', conteudo.objetivo) + campo('IDEIA GERAL', conteudo.ideia_geral);
 
     if (conteudo.tipo === 'Card') {
       corpo += campo('HEADLINE', conteudo.headline) + campo('SUB-HEADLINE', conteudo.sub_headline) +
-        campo('DIREÇÃO VISUAL', conteudo.direcao) + campo('LEGENDA', conteudo.legenda) +
+        campo('DIREÇÃO VISUAL', conteudo.direcao) + campoLegenda(conteudo.legenda) +
         campo('OBSERVAÇÃO PARA O DESIGN', conteudo.observacao_design);
     }
     if (conteudo.tipo === 'Carrossel') {
@@ -383,7 +414,8 @@ B7.QuickView = (function () {
             (sl.titulo ? '<b>' + esc(sl.titulo) + '</b>' : '') +
             (sl.texto ? '<p>' + esc(sl.texto) + '</p>' : '') + '</div>').join('') +
           '</div></div>'
-          : '<div class="qv-campo"><b>SLIDES</b><p class="fraco">Nenhum slide ainda.</p></div>');
+          : '<div class="qv-campo"><b>SLIDES</b><p class="fraco">Nenhum slide ainda.</p></div>') +
+        campoLegenda(conteudo.legenda);
     }
     if (conteudo.tipo === 'Story') {
       corpo += frames.length ? '<div class="qv-campo"><b>SEQUÊNCIA</b><div class="qv-slides">' +
@@ -405,9 +437,21 @@ B7.QuickView = (function () {
       ? '<div class="qv-selo"><img src="' + esc(extra.clienteLogo) + '" alt=""></div>'
       : '<div class="qv-selo">' + esc(B7.UI.iniciais(extra.cliente || 'B7')) + '</div>';
 
+    /* Detalhe de Postagem (aba Postagens): ficha estritamente de leitura.
+       "Editar conteúdo" vira "Abrir nos Criativos" e só aparece pra quem
+       tem permissão real de editar Criativo — não é só esconder o botão,
+       é a mesma regra que já trava a edição de verdade lá dentro. Nos
+       outros contextos (espiada de Criativos), continua como sempre foi. */
+    const contexto = extra.contexto || 'criativo';
+    const ehPostagem = contexto === 'postagem';
+    const rotuloEditar = ehPostagem ? 'Abrir nos Criativos' : 'Editar conteúdo';
+    const mostrarEditar = ehPostagem ? !!extra.podeAbrirCriativos : true;
+    const statusChip = (B7.Linha && B7.Linha.chipConteudo) ? B7.Linha.chipConteudo(conteudo.status) : B7.UI.chipRevisao(conteudo.status);
+
     painel = document.createElement('div');
     painel.className = 'qv-fundo';
-    painel.innerHTML = '<aside class="qv" role="dialog" aria-modal="true">' +
+    painel.innerHTML = '<aside class="qv" role="dialog" aria-modal="true"' +
+      (ehPostagem ? ' aria-label="Detalhe da postagem"' : ' aria-label="Visualização rápida do conteúdo"') + '>' +
       '<header class="qv-topo">' + selo +
         '<div class="qv-ctx"><b>' + esc(extra.cliente || 'Cliente') + '</b>' +
         '<small>' + esc(extra.linha || 'Linha editorial') + '</small></div>' +
@@ -415,13 +459,13 @@ B7.QuickView = (function () {
       '<div class="qv-corpo rolagem">' +
         '<div class="qv-num">' + IC_FMT[conteudo.tipo] + ' ' + esc(conteudo.tipo.toUpperCase()) + '</div>' +
         '<h2>' + esc(conteudo.titulo || 'Sem título') + '</h2>' +
-        '<div class="qv-meta">' + B7.UI.chipRevisao(conteudo.status) +
+        '<div class="qv-meta">' + statusChip +
           (conteudo.canal ? '<span>' + esc(conteudo.canal) + '</span>' : '') +
           '<span>' + (conteudo.data_postagem ? B7.UI.dataBR(conteudo.data_postagem) : 'sem data') + '</span>' +
         '</div>' + corpo +
       '</div>' +
       '<footer class="qv-pe">' +
-        '<button class="b pri" data-editar>Editar conteúdo</button>' +
+        (mostrarEditar ? '<button class="b pri" data-editar>' + rotuloEditar + '</button>' : '') +
         (roteiro ? '<button class="b contorno" data-roteiro>Abrir roteiro</button>' : '') +
       '</footer></aside>';
 
@@ -430,10 +474,14 @@ B7.QuickView = (function () {
     document.addEventListener('keydown', tecla);
     painel.addEventListener('mousedown', e => { if (e.target === painel) fechar(); });
     painel.querySelector('[data-fechar]').onclick = fechar;
-    painel.querySelector('[data-editar]').onclick = () => {
+    focarAoAbrir(painel, extra.gatilho);
+    const btnEditar = painel.querySelector('[data-editar]');
+    if (btnEditar) btnEditar.onclick = () => {
       fechar();
       if (B7.Linha && B7.Linha.abrirConteudo) B7.Linha.abrirConteudo(conteudo.id);
     };
+    const btnCopiarLegenda = painel.querySelector('[data-copiar-legenda]');
+    if (btnCopiarLegenda) btnCopiarLegenda.onclick = () => B7.UI.copiarTexto(conteudo.legenda);
     const br = painel.querySelector('[data-roteiro]');
     if (br) br.onclick = () => {
       fechar();

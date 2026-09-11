@@ -34,6 +34,44 @@ B7.UI = (function () {
     return fecha;
   }
 
+  /* --------------------------------------------------------- clipboard
+     Implementação única de "copiar texto", reaproveitada por Criativos
+     e Postagens (Legenda) — pra nunca ter duas versões que podem
+     divergir. Copia exatamente o texto passado (nunca adiciona prefixo,
+     aspas ou formatação, nunca mexe em quebra de linha/emoji/hashtag).
+     Quem chama decide QUAL valor passar (valor local do campo ainda não
+     salvo, ou valor canônico já persistido) — a função só copia. */
+  async function copiarTexto(texto, opcoes = {}) {
+    const t = texto == null ? '' : String(texto);
+    if (!t.trim()) {
+      toast(opcoes.msgVazio || 'Não há legenda para copiar.', { tipo: 'erro' });
+      return false;
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(t);
+      } else {
+        /* fallback pra navegador/contexto sem Clipboard API (ex.: http
+           não seguro) — mesmo resultado, sem depender de permissão nova */
+        const area = document.createElement('textarea');
+        area.value = t;
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+        const ok = document.execCommand('copy');
+        area.remove();
+        if (!ok) throw new Error('execCommand copy falhou');
+      }
+      toast(opcoes.msgSucesso || 'Legenda copiada.');
+      return true;
+    } catch (e) {
+      toast(opcoes.msgErro || 'Não foi possível copiar a legenda.', { tipo: 'erro' });
+      return false;
+    }
+  }
+
   /* ------------------------------------------------------------ modais */
   function modal(html, opcoes = {}) {
     const anterior = document.activeElement;      // para devolver o foco ao fechar
@@ -630,5 +668,5 @@ B7.UI = (function () {
   }
 
   return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, toast, modal, confirmar, perguntar, ligarMenus, dica, esconderDica, MESES, paleta,
-           dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton };
+           dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton, copiarTexto };
 })();

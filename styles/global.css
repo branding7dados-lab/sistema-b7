@@ -32,6 +32,8 @@
   --ambar:#96601A; --ambar-bg:#FBF0DF;
   --neutro:#5B5480; --neutro-bg:#F0EDF8;
   --erro:#C2185B; --erro-bg:#FDECF3;
+  --laranja:#B85A16; --laranja-bg:#FBEDDF;
+  --violeta-bg:rgba(58,30,134,.12);
 
   --acento:var(--magenta); --acento-suave:rgba(194,28,131,.09);
   --esq-1:#EEEBF5; --esq-2:#F7F5FB;          /* skeleton */
@@ -81,6 +83,8 @@
   --ambar:#E8B45C; --ambar-bg:rgba(232,180,92,.14);
   --neutro:#B3A8CC; --neutro-bg:rgba(179,168,204,.13);
   --erro:#FF74AE; --erro-bg:rgba(255,116,174,.13);
+  --laranja:#E8973C; --laranja-bg:rgba(232,151,60,.16);
+  --violeta-bg:rgba(91,68,192,.2);
 
   --magenta:#E2409C; --roxo:#9A44A8; --violeta:#5B44C0;
   --grad-curto:linear-gradient(120deg,#5B44C0 0%,#9A44A8 52%,#E2409C 100%);
@@ -778,6 +782,33 @@ select.campo{appearance:none;cursor:pointer;
 .chip-revisao.gravado{background:var(--ok-bg);color:var(--ok);}
 button.chip-revisao{cursor:pointer;transition:var(--t-micro);}
 button.chip-revisao:hover{filter:brightness(.96);}
+
+/* =====================================================================
+   STATUS DO CRIATIVO (Ideia/Em criação/Em revisão/Aprovado/Programado/
+   Publicado). Sistema de cor PRÓPRIO — não reaproveita .chip-revisao,
+   que também veste o status da Peça de Design e o status da Linha
+   Editorial: um ajuste de cor aqui não pode mexer nessas outras duas.
+   O texto do status sempre acompanha a cor (nunca cor sozinha). Não tem
+   nada a ver com --cal-post/--cal-grav (cor do calendário é por TIPO de
+   evento, nunca por status). ===================================== */
+.status-conteudo{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
+  padding:4px 10px;border-radius:20px;white-space:nowrap;}
+.status-conteudo:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+.status-conteudo.sc-ideia{background:var(--erro-bg);color:var(--erro);}
+.status-conteudo.sc-criacao{background:var(--laranja-bg);color:var(--laranja);}
+.status-conteudo.sc-revisao{background:var(--ambar-bg);color:var(--ambar);}
+.status-conteudo.sc-aprovado{background:var(--violeta-bg);color:var(--violeta);}
+.status-conteudo.sc-programado{background:var(--neutro-bg);color:var(--neutro);}
+.status-conteudo.sc-publicado{background:var(--ok-bg);color:var(--ok);}
+
+/* mesma paleta no seletor de status dentro do editor do Criativo, pra
+   quem está trocando o status já ver a cor que ele vai assumir */
+#st-conteudo button[data-st="Ideia"].on{background:var(--erro-bg);color:var(--erro);}
+#st-conteudo button[data-st="Em criação"].on{background:var(--laranja-bg);color:var(--laranja);}
+#st-conteudo button[data-st="Em revisão"].on{background:var(--ambar-bg);color:var(--ambar);}
+#st-conteudo button[data-st="Aprovado"].on{background:var(--violeta-bg);color:var(--violeta);}
+#st-conteudo button[data-st="Programado"].on{background:var(--neutro-bg);color:var(--neutro);}
+#st-conteudo button[data-st="Publicado"].on{background:var(--ok-bg);color:var(--ok);}
 
 /* =====================================================================
    QUICK VIEW (painel lateral)
