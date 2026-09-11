@@ -21,6 +21,31 @@ window.B7 = window.B7 || {};
 B7.DocSemana = (function () {
   const esc = B7.UI.esc;
   const MARCA = 'assets/brand/symbol-color.png';
+
+  /* `document.fonts.ready` só espera as fontes que JÁ foram pedidas —
+     se nada na página ainda usou, por exemplo, Archivo 800 (o peso do
+     nome do cliente e da data do dia), essa promise resolve na hora,
+     sem esperar nada, e só quando o HTML da peça é inserido é que o
+     navegador pede o arquivo da fonte pela primeira vez (com
+     font-display:swap, mostrando a fonte de fallback até lá). Isso é
+     uma corrida de verdade: a medição de densidade pode rodar (e o
+     screenshot/canvas pode capturar) ANTES da troca pra fonte real
+     acontecer, com a fonte de fallback ocupando menos espaço — e o
+     texto real, mais largo/alto, estoura silenciosamente uma página
+     que "coube" na medição. Por isso força o carregamento de cada peso
+     usado no documento explicitamente, em vez de só esperar o que já
+     estava em andamento. */
+  async function carregarFontes() {
+    if (!(window.document && document.fonts && document.fonts.load)) return;
+    const pesos = [
+      '400 16px Inter', '500 16px Inter', '600 16px Inter', '700 16px Inter',
+      '700 16px Archivo', '800 16px Archivo', '900 16px Archivo'
+    ];
+    try {
+      await Promise.all(pesos.map(p => document.fonts.load(p).catch(() => null)));
+      await document.fonts.ready;
+    } catch (e) { /* segue mesmo assim — melhor tentar montar do que travar */ }
+  }
   const LOGO = 'assets/brand/logo-white.png';
 
   const DIAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
@@ -253,13 +278,14 @@ B7.DocSemana = (function () {
 
   /* =================================================================
      UMA PÁGINA, SEMPRE
-     Nunca gera página 2. Em vez de paginar, escolhe entre níveis de
-     densidade cada vez mais compactos (a tipografia nunca cai abaixo de
-     um piso legível) e, se mesmo o nível mais denso não couber, usa uma
-     composição de duas colunas balanceadas — ainda uma página só, nunca
-     um dia dividido ao meio.
-     ================================================================= */
-  const NIVEIS = ['', 'nv-compacta', 'nv-densa', 'nv-muito-densa'];
+     Nunca gera página 2. Em vez de paginar, testa os níveis do MAIOR
+     pro menor e usa o primeiro que couber de verdade — uma semana leve
+     preenche a página com texto grande (nunca sobra espaço em branco
+     com letra pequena só porque "coube"); só uma semana cheia desce a
+     escada até um piso legível. Se mesmo o nível mais denso não couber,
+     usa uma composição de duas colunas balanceadas — ainda uma página
+     só, nunca um dia dividido ao meio. */
+  const NIVEIS = ['nv-enorme', 'nv-grande', '', 'nv-compacta', 'nv-densa', 'nv-muito-densa'];
 
   function montar(ctx, area, opcoes) {
     opcoes = opcoes || {};
@@ -390,7 +416,7 @@ B7.DocSemana = (function () {
     return paginaHtml(escolhido.nivel, escolhido.corpo, escolhido.duas);
   }
 
-  return { montar, periodoTexto, diasDoPeriodo, diaDaSemana, curto, partes,
+  return { montar, periodoTexto, diasDoPeriodo, diaDaSemana, curto, partes, carregarFontes,
            SITUACOES, TIPOS, corTipo, corSituacao, EXCLUIR_DO_PLANEJAMENTO, ICONE, DIAS, MESES_CURTO };
 })();
 
@@ -434,9 +460,7 @@ B7.BaixarSemana = (function () {
      evita que o html2canvas capture a página ainda com a fonte de
      fallback. */
   async function preparar(ctx, opcoes) {
-    if (window.document && document.fonts && document.fonts.ready) {
-      try { await document.fonts.ready; } catch (e) { /* segue mesmo assim */ }
-    }
+    await B7.DocSemana.carregarFontes();
     const area = document.getElementById('area-impressao');
     area.style.display = 'block';
     area.classList.add('modo-45');

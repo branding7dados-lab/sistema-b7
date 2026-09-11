@@ -1962,3 +1962,95 @@ Arquivos alterados: `js/doc-semana.js`, `js/semana.js`,
 `styles/semana.css`, `js/auth.js`, `sw.js`.
 `VERSAO` → `2026-09-11-t`, cache do service worker →
 `roteiros-b7-v35`.
+
+## Build 2026-09-11-u — Demandas pequenas demais no Status Semanal, e correção de fundo na medição de fontes
+
+O Yury mandou print de um caso real (cliente "Atacadão dos Suplementos",
+9 demandas na semana): o texto saía pequeno e sobrava bastante espaço
+em branco na parte de baixo da página — o arquivo é sempre visto como
+miniatura no WhatsApp, então legibilidade em tamanho grande importa
+mais que caber "com folga".
+
+**Causa raiz — por que o nível confortável sempre "vencia" mesmo
+sobrando espaço:** a escada de densidade só tinha níveis pra ENCOLHER
+(confortável era o teto). Uma semana leve cabia fácil no nível
+confortável e o algoritmo nunca tentava nada maior — não porque um
+texto maior não coubesse, mas porque nunca havia um nível maior pra
+testar.
+
+**Investigando o quanto dava pra aumentar, encontrei um segundo bug —
+mais sério, uma reincidência do problema de fontes do build `-s`:**
+`document.fonts.ready` só espera fontes que JÁ foram pedidas pelo
+navegador. Nos meus testes iniciais com os níveis novos, a medição de
+"cabe/não cabe" rodava e dizia que cabia — mas o resultado final,
+tanto no PNG de verdade quanto no HTML puro, saía com a legenda
+cortada bem em cima do rodapé. Motivo: nada na tela tinha usado ainda
+o peso 800 da fonte Archivo (usado no nome do cliente e na data do
+dia) antes da primeira montagem — então `document.fonts.ready`
+resolvia na hora, sem esperar nada, e só quando o HTML da peça foi
+inserido é que o navegador pediu esse arquivo de fonte pela primeira
+vez. Com `font-display:swap`, o texto aparece primeiro numa fonte de
+reserva (mais estreita) e troca pra real depois — e a medição de
+densidade tinha rodado usando a fonte de reserva, then a fonte real
+(mais larga/alta) chegou depois e estourou silenciosamente o que
+"tinha cabido". Corrigido de forma definitiva: em vez de só esperar
+passivamente, o sistema agora **força o carregamento** de cada peso de
+fonte usado no documento (`document.fonts.load(...)` pra cada
+combinação Inter/Archivo × peso) antes de montar e medir qualquer
+coisa — `B7.DocSemana.carregarFontes()`, nova função pública, chamada
+tanto no editor (`desenharPreview`) quanto na exportação (`preparar`,
+usado por PNG e PDF). Isso fecha a lacuna que o `document.fonts.ready`
+sozinho (build `-s`) não cobria.
+
+**O que mudou de fato:**
+- `styles/semana.css`: dois níveis novos ACIMA do confortável —
+  `nv-grande` e `nv-enorme` — com tipografia, pílulas e espaçamento
+  visivelmente maiores. `js/doc-semana.js`: a escada de níveis agora
+  testa do MAIOR pro menor (`nv-enorme → nv-grande → confortável →
+  nv-compacta → nv-densa → nv-muito-densa`) e usa o primeiro que
+  couber de verdade — uma semana leve preenche a página com letra
+  grande; só uma semana cheia desce a escada, exatamente como antes.
+- `js/doc-semana.js`: nova função `carregarFontes()` (exportada) e
+  `corSituacao()` continuam do build anterior; `preparar()` (PNG/PDF)
+  passou a chamar `carregarFontes()` em vez de só esperar
+  `document.fonts.ready`.
+- `js/semana.js`: `desenharPreview()` (preview do editor) idem.
+
+**Testado com confiança, incluindo o caso que quebrou antes:**
+- Reproduzi o caso exato do print do Yury (9 itens, mesma distribuição
+  pelos dias) num teste isolado. Antes da correção do bug de fontes,
+  esse caso escolhia `nv-grande` mas saía com a legenda de status
+  literalmente cortada (confirmado pixel a pixel, comparando a
+  posição real do texto renderizado contra a medição — uma diferença
+  de ~20px entre o que foi medido e o que foi de fato desenhado).
+  Depois de forçar o carregamento das fontes antes de medir, o mesmo
+  caso mede exatamente igual ao que é desenhado (`scrollHeight ===
+  clientHeight`, sem margem de erro), e ajustei o espaçamento do nível
+  `nv-grande` pra ele realmente caber com a fonte de verdade (não a de
+  fallback) — confirmado visualmente, sem nenhum corte.
+- Suíte de regressão com 6 cenários (1 item · 9 itens leve real · 9
+  itens com exclusões · 15 itens · 1 dia com 8 tarefas · 36 itens
+  extremos): semana de 1 item → `nv-enorme`; a semana real do Yury e a
+  semana normal de 9 itens → `nv-grande`; 15 itens → `nv-densa`; dia
+  muito cheio → `nv-compacta`; 36 itens extremos → `nv-muito-densa` em
+  duas colunas (mesmo comportamento de último recurso já documentado
+  no build `-s`, não piorou). Todos sem página 2, sem vazamento de
+  item concluído, sem erro de console.
+- **A exportação PNG real** (`B7.BaixarSemana.gerarPNG()`, com
+  `html2canvas` de verdade) rodada com o caso exato do Yury: o
+  arquivo final bate exatamente com o HTML medido — texto grande,
+  nada cortado, legenda com espaço limpo antes do rodapé.
+- `node --check` em `js/doc-semana.js` e `js/semana.js`.
+
+- **A exportação PDF real** (`gerarPDF()`, com `jsPDF` de verdade)
+  também foi regerada com o mesmo caso: 1 página, 216×270mm, sem erro.
+
+**Não retestado nesta rodada** (não foi tocado): o restante do fluxo
+do editor (adicionar/mover/excluir demanda, duplicar, versões) — a
+mudança desta rodada é só na escada de densidade e no carregamento de
+fontes, não encosta nesses fluxos.
+
+Arquivos alterados: `js/doc-semana.js`, `js/semana.js`,
+`styles/semana.css`, `js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-11-u`, cache do service worker →
+`roteiros-b7-v36`.

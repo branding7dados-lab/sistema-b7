@@ -646,13 +646,15 @@ B7.Semana = (function () {
       relatorio: S.relatorio, itens: S.itens, linha: S.linha,
       clienteLogo: S.relatorio.cliente_logo_url || ''
     };
-    /* espera as fontes carregarem antes de medir — sem isso a decisão de
-       densidade/colunas pode usar a fonte de fallback (font-display:swap)
-       e ficar errada assim que a fonte certa trocar. */
-    if (document.fonts && document.fonts.ready) {
-      try { await document.fonts.ready; } catch (e) { /* segue mesmo assim */ }
-      if (!document.getElementById('sp-in')) return; /* saiu da tela enquanto esperava */
-    }
+    /* espera E força o carregamento das fontes antes de medir — sem isso
+       a decisão de densidade/colunas pode rodar com a fonte de fallback
+       (font-display:swap) ainda no lugar e ficar errada assim que a
+       fonte certa trocar (document.fonts.ready sozinho não basta: só
+       espera o que já foi pedido, e um peso que a tela ainda não usou
+       nunca chega a ser pedido antes de montar() usá-lo pela primeira
+       vez). */
+    await D().carregarFontes();
+    if (!document.getElementById('sp-in')) return; /* saiu da tela enquanto esperava */
     /* sempre uma página só — D().montar() nunca devolve mais de um .pag45 */
     alvo.innerHTML = D().montar(ctx, alvo.parentElement, opcoesDoc());
     escalarPreview();

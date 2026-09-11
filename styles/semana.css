@@ -139,17 +139,23 @@
    Sempre claro na área de conteúdo, independentemente do tema.
 
    Cabeçalho e faixa do cliente são sempre compactos (não fazem parte da
-   escada de densidade). O que varia por nível (nv-compacta/nv-densa/
-   nv-muito-densa, aplicadas como classe extra em .pag45 por
-   B7.DocSemana.montar) é só o corpo: espaçamento das faixas de dia,
-   tamanho da pílula de status, tipografia do título da tarefa — nunca
-   abaixo de um piso legível. Tudo via custom properties, redefinidas
-   por nível uma vez só aqui embaixo.
+   escada de densidade). O que varia por nível é só o corpo: espaçamento
+   das faixas de dia, tamanho da pílula de status, tipografia do título
+   da tarefa. A escada tem SEIS níveis, do maior pro menor — nv-enorme,
+   nv-grande, confortável (padrão, sem classe extra), nv-compacta,
+   nv-densa, nv-muito-densa (piso legível, nunca menor que isto).
+   B7.DocSemana.montar() testa do maior pro menor e usa o MAIOR que
+   couber de verdade — uma semana leve (poucas demandas) preenche a
+   página com texto grande em vez de sobrar espaço em branco com letra
+   pequena; só uma semana cheia de verdade desce a escada. O arquivo é
+   visualizado sobretudo como miniatura no WhatsApp, então legibilidade
+   em tamanho grande é a prioridade sempre que a semana permitir. Tudo
+   via custom properties, redefinidas por nível uma vez só aqui embaixo.
    ===================================================================== */
 .pag45{--fs:1;--ink:#15122B;--ink-2:#3B3557;--grey:#8B85A0;--line:#E5E0EE;
   --lilac:#F5F1FB;--magenta:#C21C83;--roxo:#7C1E85;--violeta:#3A1E86;--marinho:#001559;
   --grad:linear-gradient(118deg,#001559 0%,#3A1E86 34%,#7C1E85 66%,#C21C83 100%);
-  /* densidade — nível confortável (padrão) */
+  /* densidade — nível confortável (padrão, meio da escada) */
   --corpo-pad:18px 56px 22px;--corpo-gap:9px;
   --dia-gap:8px;--dia-r:14px;--dia-data-w:100px;--dia-data-pad:13px 7px;
   --dia-dow-fs:14px;--dia-dt-fs:23px;--dia-itens-pad:14px 20px;--dia-item-gap:12px;
@@ -165,6 +171,26 @@
   font-family:'Inter',system-ui,sans-serif;}
 .pag45:last-child{margin-bottom:0;}
 .pag45 *{box-sizing:border-box;}
+
+/* nível 0 — enorme (semana bem leve, poucas demandas) */
+.pag45.nv-enorme{--corpo-pad:34px 68px 38px;--corpo-gap:19px;
+  --dia-gap:14px;--dia-data-w:128px;--dia-data-pad:20px 9px;
+  --dia-dow-fs:16.5px;--dia-dt-fs:32px;--dia-itens-pad:24px 30px;--dia-item-gap:22px;
+  --dia-vazio-pad:14px 30px;--dia-sem-fs:16.5px;
+  --item-title-fs:27px;--item-title-lh:1.3;--item-gap:16px;
+  --pill-fs:16.5px;--pill-pad:6px 17px;--pill-dot:9px;
+  --tipo-fs:15px;--tipo-ic:18px;--canal-fs:14.5px;--obs-fs:17px;--obs-mt:10px;
+  --leg-fs:14.5px;--leg-gap:18px;--leg-mt:16px;--leg-pad:15px;--leg-ic:16px;}
+
+/* nível 1 — grande */
+.pag45.nv-grande{--corpo-pad:20px 60px 24px;--corpo-gap:10px;
+  --dia-gap:10px;--dia-data-w:112px;--dia-data-pad:15px 8px;
+  --dia-dow-fs:15px;--dia-dt-fs:27px;--dia-itens-pad:16px 24px;--dia-item-gap:13px;
+  --dia-vazio-pad:10px 24px;--dia-sem-fs:15px;
+  --item-title-fs:22px;--item-title-lh:1.26;--item-gap:13px;
+  --pill-fs:14.5px;--pill-pad:5px 15px;--pill-dot:8px;
+  --tipo-fs:13px;--tipo-ic:16px;--canal-fs:13px;--obs-fs:15px;--obs-mt:7px;
+  --leg-fs:13px;--leg-gap:16px;--leg-mt:12px;--leg-pad:12px;--leg-ic:14.5px;}
 
 /* nível 2 — compacta */
 .pag45.nv-compacta{--corpo-pad:14px 52px 18px;--corpo-gap:7px;
