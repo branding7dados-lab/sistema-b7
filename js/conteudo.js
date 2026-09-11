@@ -19,6 +19,7 @@ B7.Conteudo = (function () {
   const FORMATOS = ['Reel', 'Card', 'Carrossel', 'Story'];
   const FUNIL = ['Topo', 'Meio', 'Fundo'];
   const STATUS_CONTEUDO = ['Ideia', 'Em criação', 'Em revisão', 'Aprovado', 'Programado', 'Publicado'];
+  const TIPO_PILAR = ['Entretenimento', 'Educativo', 'Inspirador', 'Conversão', 'Institucional'];
   const STATUS_LINHA = ['Em criação', 'Em revisão', 'Aprovada', 'Finalizada'];
 
   /* ---------------------------------------------------------- helpers */
@@ -747,5 +748,5 @@ B7.Conteudo = (function () {
   }
 
   return { abrirInteligencia, abrirOnboarding, abrirLinhas, abrirLinhasGlobais, abrirIdeias, ligarCampos, campo, campoLinha,
-           secao, FORMATOS, FUNIL, STATUS_CONTEUDO, STATUS_LINHA, souDesignerSomenteLeitura };
+           secao, FORMATOS, FUNIL, STATUS_CONTEUDO, STATUS_LINHA, TIPO_PILAR, souDesignerSomenteLeitura };
 })();

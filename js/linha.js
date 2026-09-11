@@ -509,7 +509,7 @@ B7.Linha = (function () {
   const basePlanejada = () => +L.linha.meta_conteudos || L.conteudos.length;
   const planejadosDoPilar = p => Math.round(basePlanejada() * pct(p) / 100);
   const reaisDoPilar = p => L.conteudos.filter(c => c.pilar_id === p.id).length;
-  const nomeDoPilar = id => { const p = id && L.pilares.find(x => x.id === id); return p ? (p.nome || 'Pilar sem nome') : null; };
+  const nomeDoPilar = id => { const p = id && L.pilares.find(x => x.id === id); return p ? (p.nome || 'Tipo não definido') : null; };
   const semPilar = () => L.conteudos.filter(c => !c.pilar_id || !L.pilares.some(p => p.id === c.pilar_id)).length;
 
   function avisoSoma(soma) {
@@ -556,7 +556,7 @@ B7.Linha = (function () {
         : '<b>' + real + '</b> ' + (real === 1 ? 'conteúdo' : 'conteúdos') + ' · sem % definido';
       return '<div class="pil-dist-l' + estado + '">' +
         '<div class="pil-dist-cab"><span class="n">' + String(i + 1).padStart(2, '0') + '</span>' +
-        '<b>' + esc(p.nome || 'Pilar sem nome') + '</b><span class="pc">' + pct(p) + '%</span>' +
+        '<b>' + esc(p.nome || 'Tipo não definido') + '</b><span class="pc">' + pct(p) + '%</span>' +
         '<span class="rf">' + rf + '</span></div>' +
         '<div class="pil-dist-barras"><div class="barra unica" title="' + real + ' real' +
           (plan > 0 ? ' · meta ' + plan : '') + '">' +
@@ -583,7 +583,7 @@ B7.Linha = (function () {
       '<div id="pil-barra">' + barraPilares() + '</div>' +
       '<div id="lista-pilares">' + L.pilares.map((p, i) => leitura ? cardPilarLeitura(p, i) : cardPilar(p, i)).join('') + '</div>' +
       (L.pilares.length ? '' :
-        '<div class="pil-vazio">Nenhum pilar ainda' + (leitura ? '.' : '. Comece com dois ou três: educação, autoridade, oferta…') + '</div>') +
+        '<div class="pil-vazio">Nenhum pilar ainda' + (leitura ? '.' : '. Comece com dois ou três tipos: Entretenimento, Educativo, Inspirador…') + '</div>') +
       (leitura ? '' : '<button class="add-largo" id="add-pilar">+ ADICIONAR PILAR</button>') +
       (L.pilares.length ? '<div class="pil-sub">DISTRIBUIÇÃO DOS CONTEÚDOS</div>' +
         '<div id="pil-dist">' + distribuicaoPilares() + '</div>' : '') +
@@ -596,8 +596,17 @@ B7.Linha = (function () {
       '<div class="pilar-num">' + String(i + 1).padStart(2, '0') + '</div>' +
       '<div class="pilar-corpo">' +
         '<div class="linha mb pil-linha">' +
-          '<div class="pil-nome"><label class="rot">NOME DO PILAR</label>' +
-            '<input class="campo" value="' + esc(p.nome || '') + '" ' + t + ' data-campo="nome" placeholder="Ex: Educação"></div>' +
+          '<div class="pil-nome"><label class="rot">TIPO DE PILAR</label>' +
+            '<select class="campo" ' + t + ' data-campo="nome" data-nulo>' +
+              '<option value=""' + (!p.nome ? ' selected' : '') + '>Selecione</option>' +
+              /* pilar antigo com nome livre (de antes desta lista fechada de
+                 tipos): mantém o valor visível e selecionado, em vez de
+                 trocar sozinho por um dos 5 tipos ou aparecer em branco */
+              (p.nome && !C.TIPO_PILAR.includes(p.nome)
+                ? '<option value="' + esc(p.nome) + '" selected>' + esc(p.nome) + ' (personalizado)</option>'
+                : '') +
+              C.TIPO_PILAR.map(v => '<option value="' + esc(v) + '"' + (p.nome === v ? ' selected' : '') + '>' + v + '</option>').join('') +
+            '</select></div>' +
           '<div class="pil-pct"><label class="rot">PERCENTUAL</label>' +
             '<input class="campo" type="number" min="0" max="100" step="1" value="' + esc(pct(p) || '') + '" ' +
             t + ' data-campo="percentual" data-vazio="0" placeholder="%"></div>' +
@@ -620,7 +629,7 @@ B7.Linha = (function () {
     return '<div class="cartao-pilar leitura">' +
       '<div class="pilar-num">' + String(i + 1).padStart(2, '0') + '</div>' +
       '<div class="pilar-corpo">' +
-        '<div class="pl-cab"><b class="pl-nome">' + esc(p.nome || 'Pilar sem nome') + '</b>' +
+        '<div class="pl-cab"><b class="pl-nome">' + esc(p.nome || 'Tipo não definido') + '</b>' +
           '<span class="pl-pct">' + pct(p) + '%</span>' +
           (p.funil ? '<span class="pl-funil">' + esc(p.funil) + '</span>' : '') + '</div>' +
         bloco('OBJETIVO DO PILAR', p.objetivo) +
@@ -1406,7 +1415,7 @@ B7.Linha = (function () {
           '<select class="campo" ' + t + ' data-campo="pilar_id" data-nulo>' +
             '<option value=""' + (!c.pilar_id ? ' selected' : '') + '>Sem pilar</option>' +
             L.pilares.map((p, i) => '<option value="' + esc(p.id) + '"' + (c.pilar_id === p.id ? ' selected' : '') + '>' +
-              String(i + 1).padStart(2, '0') + ' · ' + esc(p.nome || 'Pilar sem nome') +
+              String(i + 1).padStart(2, '0') + ' · ' + esc(p.nome || 'Tipo não definido') +
               (pct(p) ? ' (' + pct(p) + '%)' : '') + '</option>').join('') +
           '</select></div>'
         : '') +

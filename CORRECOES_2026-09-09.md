@@ -2904,3 +2904,48 @@ elemento, não como seleção de texto, e sequestra o gesto.
 Arquivos alterados: `js/editor.js`, `js/linha.js`, `js/auth.js`,
 `sw.js`. `VERSAO` → `2026-09-11-ab`, cache do service worker →
 `roteiros-b7-v45`.
+
+## Build 2026-09-11-ac — Pilares: "Nome do pilar" virou "Tipo de pilar" (lista fechada)
+
+O campo de texto livre "NOME DO PILAR" (na aba Estratégia, seção de
+Pilares de Conteúdo) virou um seletor "TIPO DE PILAR" com 5 opções
+fixas: Entretenimento, Educativo, Inspirador, Conversão, Institucional.
+
+### Implementado e testado
+
+- `js/conteudo.js`: nova constante `TIPO_PILAR` (as 5 opções, exportada
+  pelo módulo `B7.Conteudo`, mesmo padrão de `FUNIL`/`STATUS_CONTEUDO`).
+- `js/linha.js` (`cardPilar`): o campo virou `<select>` no lugar do
+  `<input>` de texto livre, continua gravando na mesma coluna (`nome`)
+  — não precisou de migration nem mudou o formato do dado no banco,
+  só a forma como a equipe escolhe o valor.
+- **Pilares antigos com nome livre são preservados, nunca trocados ou
+  apagados sozinhos.** Se o pilar já tinha um nome que não é nenhuma
+  das 5 opções (ex: "Autoridade", de antes desta mudança), o select
+  mostra esse valor como uma opção extra "(personalizado)", selecionada
+  — a pessoa só muda se quiser. Pilar sem nome nenhum mostra
+  "Selecione" (vazio), sem forçar um valor.
+- Testado: o campo é mesmo um `<select>` (não sobrou nenhum `<input>`
+  de texto livre); as 5 opções estão todas lá; um pilar já com
+  "Educativo" aparece selecionado; um pilar com nome livre antigo
+  ("Autoridade") continua com esse valor, com a opção extra
+  "(personalizado)"; um pilar sem nome mostra vazio; trocar o valor no
+  select funciona e grava.
+- Troquei também os textos que mencionavam "Nome do pilar"/"Pilar sem
+  nome" pelos equivalentes de "tipo" nos outros lugares que mostram o
+  pilar (visão de leitura do Designer, distribuição por pilar, dica de
+  "comece com dois ou três" na lista vazia) — sem mexer em nenhuma
+  outra regra (percentual, funil, objetivo, observações, exclusão,
+  distribuição real × planejado, congelamento na aprovação do cliente
+  continuam exatamente como estavam).
+- `node --check` em `js/linha.js` e `js/conteudo.js`. Rerrodei toda a
+  suíte de regressão anterior (35 testes: Status Semanal, Criativos/
+  Postagens, seleção de texto no roteiro/slides) sem nenhuma quebra.
+
+### Não implementado por bloqueio
+
+- Nenhum.
+
+Arquivos alterados: `js/conteudo.js`, `js/linha.js`, `js/auth.js`,
+`sw.js`. `VERSAO` → `2026-09-11-ac`, cache do service worker →
+`roteiros-b7-v46`.
