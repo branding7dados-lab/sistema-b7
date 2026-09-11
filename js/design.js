@@ -96,8 +96,12 @@ B7.Design = (function () {
      filtros e todas as peças por Linha Editorial. A home dele (rota
      "#/") é outra tela, abrirCentral(): o que precisa de ação agora. */
   async function carregarDados() {
-    const chamadas = [B7.DB.listarDesign()];
-    if (ehEquipe()) { chamadas.push(B7.DB.listarDesigners().catch(() => [])); chamadas.push(B7.DB.listarClientes().catch(() => [])); }
+    /* designers sempre carregado (não só p/ equipe): o Designer precisa
+       da lista pra "compartilhar" uma peça disponível com um colega de
+       uma linha que ele já está produzindo — mesma consulta que a
+       equipe já usava, nenhuma nova */
+    const chamadas = [B7.DB.listarDesign(), B7.DB.listarDesigners().catch(() => [])];
+    if (ehEquipe()) chamadas.push(B7.DB.listarClientes().catch(() => []));
     const [linhas, dsg, cli] = await Promise.all(chamadas);
     dados = linhas || [];
     designers = dsg || [];
@@ -955,8 +959,10 @@ B7.Design = (function () {
         (feedback ? '<span class="ds-feedback">Ajuste pendente</span>' : '') +
       '</div>' +
       '<div class="ds-pe">' +
-        (d.designer_nome ? B7.UI.avatarPessoa({ nome: d.designer_nome, avatar_url: d.designer_avatar }, 'xs')
-          : '<span class="ds-sem-resp" title="Sem responsável"></span>') +
+        (d.designer_nome
+          ? '<span class="ds-resp">' + B7.UI.avatarPessoa({ nome: d.designer_nome, avatar_url: d.designer_avatar }, 'xs') +
+              '<b>' + esc(d.designer_nome.split(/\s+/)[0]) + '</b></span>'
+          : '<span class="ds-resp-vazio"><span class="ds-sem-resp"></span>Sem responsável</span>') +
         (info ? '<span class="ds-prazo' + (info.atrasada ? ' atrasada' : info.hoje ? ' hoje' : '') + '">' + esc(info.txt) + '</span>' : '') +
       '</div>' +
     '</article>';
@@ -1338,6 +1344,12 @@ B7.Design = (function () {
     const equipe = ehEquipe();
     const podeEditar = equipe || souResponsavel;
     const podeAssumir = ehDesigner() && !d.designer_id;
+    /* "compartilhar": um designer que já tem outra peça nesta MESMA
+       linha pode atribuir uma peça ainda sem dono a um colega — só
+       vale a pena mostrar quando há pra quem compartilhar */
+    const podeCompartilhar = ehDesigner() && !d.designer_id && !!d.linha_id &&
+      dados.some(x => x.linha_id === d.linha_id && x.designer_id === meuId()) &&
+      designers.some(p => p.id !== meuId());
     const info = prazoInfo(d);
 
     const aside = drawer.el.querySelector('.ds-drawer');
@@ -1375,6 +1387,14 @@ B7.Design = (function () {
           '<span class="ds-dr-salvo" id="dv-salvo" aria-live="polite"></span>' +
         '</div>' +
         (podeAssumir ? '<button class="b pri" id="dv-assumir" style="width:100%;margin-top:6px">Assumir esta peça</button>' : '') +
+        (podeCompartilhar ? '<div class="ds-dr-compartilhar">' +
+            '<small>OU ATRIBUIR A UM COLEGA DESTA LINHA</small>' +
+            '<div class="ds-dr-compartilhar-linha">' +
+              '<select class="campo fina" id="dv-colega"><option value="">Escolher designer…</option>' +
+                designers.filter(p => p.id !== meuId()).map(p => '<option value="' + esc(p.id) + '">' + esc(p.nome) + '</option>').join('') +
+              '</select>' +
+              '<button class="b fina contorno" id="dv-compartilhar">Compartilhar</button>' +
+            '</div></div>' : '') +
 
         '<div class="ds-dr-bloco"><h4>Briefing</h4>' + blocoBriefing(d) + '</div>' +
 
@@ -1700,6 +1720,23 @@ B7.Design = (function () {
       } catch (e) {
         assumir.disabled = false; assumir.textContent = 'Assumir esta peça';
         B7.UI.toast('Não foi possível assumir: ' + (e.message || ''), { tipo: 'erro' });
+      }
+    };
+
+    const compartilhar = el.querySelector('#dv-compartilhar');
+    if (compartilhar) compartilhar.onclick = async () => {
+      const sel = el.querySelector('#dv-colega');
+      const colegaId = sel && sel.value;
+      if (!colegaId) { B7.UI.toast('Escolha um designer para compartilhar.', { tipo: 'aviso' }); return; }
+      const colegaNome = sel.options[sel.selectedIndex].textContent;
+      compartilhar.disabled = true; compartilhar.textContent = 'Compartilhando…';
+      try {
+        await B7.DB.atribuirDesign(d.id, colegaId);
+        const novo = await B7.DB.design(d.id); Object.assign(d, novo);
+        B7.UI.toast('Peça atribuída a ' + colegaNome); desenharDrawer(); redesenharTela();
+      } catch (e) {
+        compartilhar.disabled = false; compartilhar.textContent = 'Compartilhar';
+        B7.UI.toast('Não foi possível compartilhar: ' + (e.message || ''), { tipo: 'erro' });
       }
     };
 

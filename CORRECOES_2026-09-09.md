@@ -1573,3 +1573,151 @@ coordenação não foi tocado (fora do escopo, igual à Rodada 2).
 Arquivos alterados: `js/design.js`, `styles/design.css`,
 `js/auth.js`, `sw.js`, `migration_design_logo.sql` (novo, não
 aplicada em nenhum banco ainda).
+
+## Build 2026-09-11-q — Responsável visível no card da peça, e "compartilhar" uma peça disponível com um colega da mesma linha
+
+Pedido direto do Yury: quando alguém assume uma peça (mesmo só uma
+peça, não a linha inteira), isso precisa aparecer pros outros
+designers — e o designer que já está numa linha precisa poder passar
+uma peça ainda sem dono pra um colega específico, sem depender da
+coordenação.
+
+**O que mudou:**
+- **Nome do responsável, como texto, no card da peça** (`cartao()`,
+  usado no modo "Peças" do navegador, na página de demanda e na
+  Central). Antes só existia o avatar com iniciais (o nome só
+  aparecia no `title` do HTML, ou seja, invisível até passar o mouse).
+  Agora o primeiro nome aparece escrito ao lado do avatar; quando não
+  há responsável, o card mostra o texto "Sem responsável" em vez de um
+  quadradinho tracejado sem explicação.
+- **"Compartilhar" uma peça disponível com um colega.** Na gaveta de
+  uma peça sem responsável, se o Designer logado já produz outra peça
+  da MESMA linha editorial, aparece — junto do já existente "Assumir
+  esta peça" — uma opção "Ou atribuir a um colega desta linha": um
+  seletor com os outros designers e um botão "Compartilhar". Ao
+  confirmar, a peça é atribuída direto ao colega escolhido (mesmo
+  fluxo de `design_atribuir`, sem passar pela coordenação). Só
+  aparece quando faz sentido: peça sem dono, linha em que eu já tenho
+  peça, e existe pelo menos outro designer pra quem compartilhar.
+- **Migration nova (`migration_design_compartilhar.sql`)**: amplia a
+  permissão de `design_atribuir` pra aceitar esse terceiro caso
+  (designer atribuindo a um colega dentro da própria linha), mantendo
+  intactas as duas permissões que já existiam (equipe atribui livre;
+  designer só auto-atribui peça sem dono).
+- **Correção de RLS encontrada durante a investigação (não é uma
+  regressão desta rodada — é uma lacuna que já existia)**: a política
+  de leitura de `public.perfis` só deixava cada um ler o próprio
+  perfil (equipe lia todos). Como `design_resumo` faz join com
+  `perfis` e é `security_invoker=true`, esse join respeita a RLS de
+  quem chama — ou seja, em produção, um Designer olhando uma peça de
+  OUTRO designer provavelmente recebia `designer_nome` nulo (mascarado
+  sem querer como "Sem responsável", justamente o problema que o Yury
+  reportou). A política foi ampliada para qualquer funcionário interno
+  (admin/coordenador/designer) poder ler o perfil básico de outro
+  funcionário interno — nunca o de um cliente, que continua visível só
+  pra equipe ou pro próprio cliente. **Essa é a correção mais
+  importante desta rodada**: sem ela, o nome do responsável continuaria
+  sumindo pra outros designers mesmo com o texto novo no card.
+
+**Não mudou:** uma peça continua tendo só UM responsável por vez —
+"compartilhar" é uma forma mais rápida de ATRIBUIR (transferir a
+responsabilidade), não duas pessoas responsáveis pela mesma peça ao
+mesmo tempo. Isso foi confirmado com o Yury antes de implementar,
+porque a alternativa (co-responsabilidade) exigiria uma tabela nova.
+
+**Testado com confiança (Playwright, Supabase simulado):**
+- Card da peça mostra o primeiro nome do responsável como texto
+  (ex.: "Mateus") quando há responsável, e "Sem responsável" por
+  extenso quando não há.
+- Gaveta de uma peça sem dono, numa linha onde o Designer logado já
+  tem outra peça seguindo: mostra "Assumir esta peça" E "Compartilhar"
+  com a lista de colegas (excluindo o próprio usuário).
+- Escolher um colega e clicar "Compartilhar" chama `design_atribuir`
+  com o id da peça e do colega certos; a gaveta atualiza mostrando o
+  colega como novo responsável.
+- Gaveta de uma peça sem dono numa linha onde o Designer logado NÃO
+  tem nenhuma peça: mostra "Assumir esta peça" mas NÃO mostra
+  "Compartilhar" — confirmando que a opção só aparece quando faz
+  sentido.
+- Reconferida toda a suíte de regressão das rodadas anteriores (navegador,
+  filtro rápido, modo Peças, responsivo em 4 larguras, tema escuro,
+  Central de Design) depois de tornar `listarDesigners()` uma consulta
+  sempre feita (antes só rodava pra equipe) — sem regressão, zero
+  erros de console em todos os cenários.
+- `VERSAO` → `2026-09-11-q`, cache do service worker →
+  `roteiros-b7-v32`.
+
+**Requer validação adicional:**
+- `migration_design_compartilhar.sql` (incluindo a mudança de RLS de
+  `perfis`) ainda não foi rodada em nenhum banco real — os testes
+  usaram Supabase simulado, então a correção da política de RLS não
+  foi validada contra o Postgres de verdade, só o comportamento do
+  front-end perante a resposta esperada.
+
+Arquivos alterados: `js/design.js`, `styles/design.css`, `js/auth.js`,
+`sw.js`, `migration_design_compartilhar.sql` (novo, não aplicada em
+nenhum banco ainda).
+
+### Correção — `migration_design_logo.sql` (build -p) não rodava
+
+Ao tentar aplicar, o Supabase recusava com `42P16: cannot change name
+of view column "linha_id" to "cliente_logo_url"`. A coluna nova
+(`cliente_logo_url`) tinha sido inserida no MEIO da lista do
+`select`, logo depois de `cliente_nome` — isso empurra a posição de
+todas as colunas seguintes, e o Postgres não permite que
+`CREATE OR REPLACE VIEW` mude o nome ou a posição de uma coluna já
+existente (só permite acrescentar coluna nova no fim). Corrigido
+movendo `cliente_logo_url` para o final da lista — não afeta nada no
+front-end, que já lê a coluna pelo nome, nunca pela posição. Rode a
+versão corrigida de `migration_design_logo.sql` (deste mesmo build)
+no lugar da anterior.
+
+## Build 2026-09-11-r — "Linhas editoriais" (listagem geral) vira tela operacional pro Design
+
+Pedido do Yury: a tela "Linhas editoriais" (menu lateral, fora do
+"Design") estava idêntica pra Admin, Coordenação e Design — qualquer
+um podia criar linha nova e via "Clientes sem planejamento" pra
+começar o planejamento de qualquer cliente. Isso é trabalho de
+estratégia/conteúdo, não de produção visual — o Design só precisa
+navegar pra ver o contexto de uma linha (já faz isso pelo botão "Ver
+contexto" dentro da página de demanda), nunca criar planejamento novo.
+
+**O que mudou:**
+- **"Linhas editoriais" (visão global, `#/linhas`)**: pro Design, some
+  o botão "+ Nova linha editorial" e some inteira a seção "Clientes
+  sem planejamento" (que é só pra criar linha pra quem ainda não tem).
+  A lista das linhas já existentes continua aparecendo — o Design
+  ainda pode abrir qualquer uma pra ver o contexto — só não cria.
+  Quando não há nenhuma linha ainda, o texto do estado vazio muda de
+  "Escolha um cliente e comece o planejamento" (convite a criar) pra
+  "Nenhum planejamento foi criado ainda" (neutro, sem convite a ação
+  que ele não pode fazer).
+- **"Linhas editoriais" de um cliente específico (`#/cliente/:id/
+  linhas`)**: mesma lógica — "+ Nova linha editorial" some pro Design,
+  texto do estado vazio fica neutro.
+- Reaproveitado o mesmo guard `souDesignerSomenteLeitura()` que já
+  existia desde uma rodada anterior e já deixava a EDIÇÃO de uma linha
+  específica (`#/linha/:id`) somente leitura pro Design — esta rodada
+  só estendia esse mesmo padrão pras duas telas de LISTAGEM, que
+  tinham ficado de fora.
+- Nenhuma migration, nenhuma mudança de RLS: é puramente front-end
+  (esconder botão/seção conforme o papel) — a mesma proteção de
+  sempre (RLS + funções do banco) já impedia qualquer criação real
+  vinda de fora da tela.
+
+**Testado com confiança (Playwright, Supabase simulado):**
+- Sessão de Designer em `#/linhas`: sem "+ Nova linha editorial", sem
+  seção "Clientes sem planejamento", lista de linhas existentes
+  continua visível e clicável. Sessão de Coordenador na mesma tela:
+  tudo igual a antes (botão e seção presentes) — sem regressão.
+  Zero erros de console nos dois casos.
+
+**Requer validação adicional:**
+- Não testei a variante por cliente (`#/cliente/:id/linhas`) com
+  Playwright nesta rodada — a mudança é estruturalmente idêntica à da
+  visão global e usa o mesmo guard já testado em outras telas, mas não
+  houve teste automatizado específico pra essa rota.
+
+Arquivos alterados: `js/conteudo.js`, `js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-11-r`, cache do service worker →
+`roteiros-b7-v33`.

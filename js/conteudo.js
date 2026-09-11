@@ -344,11 +344,18 @@ B7.Conteudo = (function () {
     const comLinha = new Set(linhas.map(l => l.client_id));
     const semLinha = clientes.filter(c => !comLinha.has(c.id));
 
+    /* Design é só leitura aqui: essa tela é planejamento/estratégia de
+       conteúdo (criar linha, distribuir clientes sem planejamento), não
+       produção. O Designer já tem sua própria entrada operacional
+       ("Design"/"Central de Design") — aqui ele só navega pra ver o
+       contexto de uma linha, nunca cria uma nova. */
+    const leitura = souDesignerSomenteLeitura();
+
     painel().innerHTML = '<div class="conteudo entra">' +
       '<div class="trilha"><a href="#/">Central B7</a><span>/</span><b>Linhas editoriais</b></div>' +
       '<div class="cab-conteudo"><div><h1>Linhas editoriais</h1>' +
       '<p>O planejamento de conteúdo de cada cliente, mês a mês.</p></div>' +
-      '<button class="b pri" id="nova-linha-global">+ Nova linha editorial</button></div>' +
+      (leitura ? '' : '<button class="b pri" id="nova-linha-global">+ Nova linha editorial</button>') + '</div>' +
 
       (linhas.length
         ? '<div class="busca-linhas"><input class="campo" id="busca-linha" ' +
@@ -358,10 +365,11 @@ B7.Conteudo = (function () {
             : '<div class="estado-b7"><b>Nada encontrado para “' + esc(filtroLinhas) + '”.</b></div>')
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
           '<b>Nenhuma linha editorial ainda.</b>' +
-          '<p>Escolha um cliente e comece o planejamento do mês.</p>' +
-          '<div class="acoes"><button class="b pri" id="nova-linha-vazia">+ Criar linha editorial</button></div></div>') +
+          (leitura ? '<p>Nenhum planejamento foi criado ainda.</p>'
+            : '<p>Escolha um cliente e comece o planejamento do mês.</p>' +
+              '<div class="acoes"><button class="b pri" id="nova-linha-vazia">+ Criar linha editorial</button></div>') + '</div>') +
 
-      (semLinha.length ? '<div class="secao-sem-linha">' +
+      (semLinha.length && !leitura ? '<div class="secao-sem-linha">' +
         '<div class="ssl-cab"><b>Clientes sem planejamento</b>' +
         '<span>' + semLinha.length + (semLinha.length === 1 ? ' cliente' : ' clientes') +
         ' ainda sem linha editorial</span></div>' +
@@ -378,14 +386,16 @@ B7.Conteudo = (function () {
     painel().querySelectorAll('[data-linha]').forEach(el => el.onclick = () => {
       location.hash = '#/linha/' + el.dataset.linha;
     });
-    ['nova-linha-global', 'nova-linha-vazia'].forEach(id => {
-      const b = document.getElementById(id);
-      if (b) b.onclick = () => modalNovaLinha(null, null);
-    });
-    painel().querySelectorAll('[data-criar-para]').forEach(b => b.onclick = async () => {
-      const lista = await B7.DB.listarLinhas(b.dataset.criarPara).catch(() => []);
-      modalNovaLinha(b.dataset.criarPara, lista);
-    });
+    if (!leitura) {
+      ['nova-linha-global', 'nova-linha-vazia'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.onclick = () => modalNovaLinha(null, null);
+      });
+      painel().querySelectorAll('[data-criar-para]').forEach(b => b.onclick = async () => {
+        const lista = await B7.DB.listarLinhas(b.dataset.criarPara).catch(() => []);
+        modalNovaLinha(b.dataset.criarPara, lista);
+      });
+    }
     const busca = document.getElementById('busca-linha');
     if (busca) {
       busca.oninput = B7.UI.debounce(() => {
@@ -423,25 +433,30 @@ B7.Conteudo = (function () {
       [cliente, linhas] = await Promise.all([B7.DB.cliente(clienteId), B7.DB.listarLinhas(clienteId)]);
     } catch (e) { return B7.Dashboard.erroConteudo(e, clienteId); }
 
+    const leitura = souDesignerSomenteLeitura();
+
     painel().innerHTML = '<div class="conteudo entra">' +
       B7.Dashboard.trilhaCliente(cliente, 'Linhas editoriais') +
       '<div class="cab-conteudo"><div><h1>Linhas editoriais</h1>' +
       '<p>O planejamento de conteúdo de cada mês: o que será produzido, para onde vai ' +
       'e quando.</p></div>' +
-      '<button class="b pri" id="nova-linha">+ Nova linha editorial</button></div>' +
+      (leitura ? '' : '<button class="b pri" id="nova-linha">+ Nova linha editorial</button>') + '</div>' +
       (linhas.length ? '<div class="grade">' + linhas.map(cardLinha).join('') + '</div>'
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
           '<b>Nenhuma linha editorial ainda.</b>' +
-          '<p>Crie a linha do mês para organizar os conteúdos deste cliente.</p>' +
-          '<div class="acoes"><button class="b pri" id="nova-linha-vazio">+ Criar linha editorial</button></div></div>') +
+          (leitura ? '<p>Nenhuma linha editorial foi criada ainda para este cliente.</p>'
+            : '<p>Crie a linha do mês para organizar os conteúdos deste cliente.</p>' +
+              '<div class="acoes"><button class="b pri" id="nova-linha-vazio">+ Criar linha editorial</button></div>') + '</div>') +
     '</div>';
 
     painel().querySelectorAll('[data-linha]').forEach(el => el.onclick = () => {
       location.hash = '#/linha/' + el.dataset.linha;
     });
-    ['nova-linha', 'nova-linha-vazio'].forEach(id => {
-      const b = document.getElementById(id); if (b) b.onclick = () => modalNovaLinha(clienteId, linhas);
-    });
+    if (!leitura) {
+      ['nova-linha', 'nova-linha-vazio'].forEach(id => {
+        const b = document.getElementById(id); if (b) b.onclick = () => modalNovaLinha(clienteId, linhas);
+      });
+    }
   }
 
   function cardLinha(l) {

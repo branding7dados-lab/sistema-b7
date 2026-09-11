@@ -91,6 +91,13 @@ select.ds-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 .ds-pe{display:flex;align-items:center;gap:8px;margin-top:9px;}
 .ds-sem-resp{width:22px;height:22px;border-radius:7px;border:1.5px dashed var(--borda-forte);flex:none;}
 .ds-sem-resp.lg{width:36px;height:36px;border-radius:10px;}
+/* nome do responsável visível no card da peça — não só o avatar, pra
+   ficar claro pra outros designers quem já assumiu, mesmo com a peça
+   ainda "a fazer" */
+.ds-resp{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;}
+.ds-resp b{font-size:11px;font-weight:600;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ds-resp-vazio{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-4);white-space:nowrap;}
+.ds-resp-vazio .ds-sem-resp{width:18px;height:18px;border-radius:6px;}
 .ds-prazo{font-size:10.5px;color:var(--ink-4);white-space:nowrap;margin-left:auto;}
 .ds-prazo.atrasada{color:var(--erro);font-weight:700;}
 .ds-prazo.hoje{color:var(--ambar);font-weight:700;}
@@ -165,6 +172,10 @@ select.ds-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 .ds-dr-campo .campo.fina{padding:7px 9px;font-size:12.5px;}
 .ds-dr-valor{font-size:12.5px;color:var(--ink-2);padding:7px 0;}
 .ds-dr-valor.atrasada{color:var(--erro);font-weight:700;}
+.ds-dr-compartilhar{margin-top:10px;padding-top:10px;border-top:1px dashed var(--borda);}
+.ds-dr-compartilhar>small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.1em;color:var(--ink-4);margin-bottom:6px;}
+.ds-dr-compartilhar-linha{display:flex;gap:8px;}
+.ds-dr-compartilhar-linha select{flex:1;min-width:0;}
 .ds-dr-salvo{grid-column:1/-1;font-size:11px;color:var(--ink-4);min-height:14px;}
 .ds-dr-salvo.salvo{color:var(--ok);} .ds-dr-salvo.erro{color:var(--erro);} .ds-dr-salvo.salvando{color:var(--ambar);}
 
