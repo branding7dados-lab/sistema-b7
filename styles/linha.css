@@ -50,19 +50,22 @@
 .pil-dist-l.abaixo .rf b{color:var(--ambar);}
 .pil-dist-l.acima .rf b{color:var(--erro);}
 .pil-dist-l.ok .rf b{color:var(--ok);}
-.pil-dist-barras{display:flex;flex-direction:column;gap:3px;}
-.pil-dist-barras .barra{height:6px;background:var(--suave);border-radius:4px;overflow:hidden;}
-.pil-dist-barras .barra i{display:block;height:100%;border-radius:4px;transition:width var(--t);}
-/* --borda-forte é quase a mesma cor do trilho (.pil-dist-barras .barra) —
-   a barra "Planejado" ficava invisível ao lado da "Real". --ink-4 tem
-   contraste real contra --suave nos dois temas, sem virar tão forte
-   quanto a barra Real (que precisa continuar sendo a principal). */
-.pil-dist-barras .plan i{background:var(--ink-4);}
-.pil-dist-barras .real i{background:var(--grad-curto);}
+/* Uma barra só: trilho = escala (o maior planejado/real entre todos os
+   pilares), preenchimento colorido = real, tracinho vertical = onde
+   fica a meta planejada. `overflow:visible` no trilho é de propósito —
+   o tracinho da meta precisa ultrapassar um pouco a altura da barra
+   pra não se confundir com o preenchimento. */
+.pil-dist-barras{display:block;}
+.pil-dist-barras .barra.unica{position:relative;height:7px;background:var(--suave);
+  border-radius:4px;overflow:visible;}
+.pil-dist-barras .barra.unica .fill{position:absolute;left:0;top:0;height:100%;
+  border-radius:4px;background:var(--grad-curto);transition:width var(--t);}
+.pil-dist-barras .barra.unica .alvo{position:absolute;top:-3px;width:2.5px;height:13px;
+  border-radius:2px;background:var(--ink-4);transform:translateX(-1.25px);}
 .pil-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-4);margin-top:2px;}
 .pil-legenda span::before{content:'';display:inline-block;width:10px;height:6px;border-radius:3px;
   margin-right:6px;vertical-align:1px;}
-.pil-legenda .plan::before{background:var(--ink-4);}
+.pil-legenda .plan::before{width:2.5px;border-radius:2px;background:var(--ink-4);}
 .pil-legenda .real::before{background:var(--grad-curto);}
 .pil-legenda .solto{margin-left:auto;color:var(--ink-3);}
 .pil-legenda .solto::before{display:none;}

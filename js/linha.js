@@ -531,6 +531,15 @@ B7.Linha = (function () {
 
   /* real × planejado, um par de barras por pilar (usado na visão geral e
      dentro da seção de pilares) */
+  /* Uma barra só por pilar, não duas paradas em cima uma da outra: o
+     preenchimento colorido é o REAL (quanto já foi feito), e uma marca
+     (um tracinho vertical) sobre a barra indica onde fica o PLANEJADO —
+     o mesmo padrão de "meta numa régua" que qualquer gráfico de
+     progresso usa. Duas barras finas e paralelas, mesmo com cor e
+     legenda certas, liam como elemento quebrado à primeira vista (é o
+     que o dono seguiu reportando mesmo depois do contraste corrigido no
+     build `-k`) — uma barra só, com uma marca de meta, é inequívoca sem
+     precisar decifrar a legenda antes. */
   function distribuicaoPilares() {
     if (!L.pilares.length) return '';
     const maxB = Math.max(1, ...L.pilares.map(p => Math.max(planejadosDoPilar(p), reaisDoPilar(p))));
@@ -540,8 +549,8 @@ B7.Linha = (function () {
       const estado = !L.conteudos.length ? '' : real === plan ? ' ok' : real < plan ? ' abaixo' : ' acima';
       /* "X de 0 planejados" lê como conta quebrada quando o pilar não tem
          percentual definido (0%). Nesse caso o texto muda para deixar
-         claro que é falta de meta, não um erro de cálculo — a barra
-         "Planejado" já mostra 0% de qualquer forma. */
+         claro que é falta de meta, não um erro de cálculo — sem
+         percentual, também não existe marca de meta na barra. */
       const rf = pct(p) > 0
         ? '<b>' + real + '</b> de ' + plan + ' planejado' + (plan === 1 ? '' : 's')
         : '<b>' + real + '</b> ' + (real === 1 ? 'conteúdo' : 'conteúdos') + ' · sem % definido';
@@ -549,12 +558,13 @@ B7.Linha = (function () {
         '<div class="pil-dist-cab"><span class="n">' + String(i + 1).padStart(2, '0') + '</span>' +
         '<b>' + esc(p.nome || 'Pilar sem nome') + '</b><span class="pc">' + pct(p) + '%</span>' +
         '<span class="rf">' + rf + '</span></div>' +
-        '<div class="pil-dist-barras">' +
-          '<div class="barra plan" title="Planejado"><i style="width:' + (plan / maxB * 100) + '%"></i></div>' +
-          '<div class="barra real" title="Real"><i style="width:' + (real / maxB * 100) + '%"></i></div>' +
-        '</div></div>';
+        '<div class="pil-dist-barras"><div class="barra unica" title="' + real + ' real' +
+          (plan > 0 ? ' · meta ' + plan : '') + '">' +
+          '<i class="fill" style="width:' + (real / maxB * 100) + '%"></i>' +
+          (plan > 0 ? '<i class="alvo" style="left:' + Math.min(100, plan / maxB * 100) + '%"></i>' : '') +
+        '</div></div></div>';
     }).join('') +
-    '<div class="pil-legenda"><span class="plan">Planejado</span><span class="real">Real</span>' +
+    '<div class="pil-legenda"><span class="real">Real</span><span class="plan">Meta (planejado)</span>' +
       (soltos ? '<span class="solto">' + soltos + ' conteúdo' + (soltos === 1 ? '' : 's') + ' sem pilar</span>' : '') +
     '</div></div>';
   }

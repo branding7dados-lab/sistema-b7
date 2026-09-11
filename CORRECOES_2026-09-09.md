@@ -2118,3 +2118,78 @@ Arquivos alterados: `js/doc-semana.js`, `styles/semana.css`,
 `js/auth.js`, `sw.js`.
 `VERSAO` → `2026-09-11-v`, cache do service worker →
 `roteiros-b7-v37`.
+
+## Build 2026-09-11-w — Gráfico "Pilares de conteúdo": uma barra só, com marca de meta
+
+**Relato do Yury, com print:** "os pilares de conteúdo continuam com o
+gráfico bugado" — mesmo depois do contraste ter sido corrigido no
+build `-k` e da auditoria de dados do build `-m` não ter achado
+nenhum bug de relação (`RELATORIO_2026-09-11-m_AUDITORIA_UX_DESIGN.md`).
+
+**Causa real, desta vez achada por inspeção visual de perto (recorte
+ampliado do print, não só o print inteiro):** os números e a lógica
+sempre estiveram certos — o problema é o **desenho** do gráfico em si.
+Cada pilar mostrava DUAS barrinhas finas, paralelas, uma logo abaixo
+da outra ("Planejado" em cinza, "Real" em magenta) — um padrão que,
+mesmo com contraste correto, lê como elemento quebrado/duplicado à
+primeira vista, principalmente numa barra lateral estreita, e obriga a
+raciocinar sobre a legenda pra saber qual é qual. Isso explica por que
+o dono continuou reportando "bugado" mesmo depois do contraste da
+barra "Planejado" ter sido corrigido de verdade (confirmado por
+computação de estilo real no build `-k`) — o número em si nunca foi o
+problema, mas duas barras próximas do mesmo comprimento pareciam um
+glitch de qualquer forma.
+
+**O que mudou — `js/linha.js` (`distribuicaoPilares()`) e
+`styles/linha.css`:** as duas barras viraram uma barra só por pilar,
+no padrão comum de "progresso com meta": o preenchimento colorido
+(gradiente magenta, o mesmo tom de antes) mostra o REAL; uma marca —
+um tracinho vertical — sobre a barra mostra onde fica a META
+(planejado). Quando o pilar não tem percentual definido (0%), a marca
+simplesmente não aparece (não existe meta pra marcar), e o
+preenchimento mostra o real cheio, exatamente como o pilar "Conversão"
+do print do dono. A escala continua a mesma de antes (o maior valor
+entre todos os planejados/reais de todos os pilares), então as barras
+continuam comparáveis entre si.
+- Legenda atualizada: "Real" (chip colorido) e "Meta (planejado)"
+  (tracinho, do mesmo jeito que aparece na barra) — texto mais claro
+  que só "Planejado", que não dizia se era uma barra ou uma meta.
+- Nada mudou na lógica de cálculo (`pct`, `planejadosDoPilar`,
+  `reaisDoPilar`, `basePlanejada`, `estado` ok/abaixo/acima) — só a
+  representação visual. Os números ao lado ("4 de 11 planejados",
+  "sem % definido" etc.) continuam exatamente os mesmos de antes.
+- Essa barra é usada em dois lugares (o card "Pilares de conteúdo" na
+  Visão geral, e dentro da aba Estratégia/"Editar pilares") — os dois
+  usam a mesma função `distribuicaoPilares()`, então os dois foram
+  corrigidos de uma vez só, sem duplicar código.
+- A OUTRA barra de pilares que existe no sistema (`barraPilares()`, a
+  faixa segmentada colorida que mostra só a proporção planejada de
+  cada pilar, usada no topo da seção Estratégia) é um componente
+  diferente e não foi tocada — não fazia parte do relato.
+
+**Testado:**
+- Reproduzi os números exatos do print do dono (pilar 1: 50%, 4 de 11;
+  pilar 2: 35%, 4 de 7; pilar 3: 0%, 11 conteúdos sem % definido; 3
+  conteúdos soltos) num harness isolado com o CSS real do sistema.
+  Conferido visualmente por screenshot: cada pilar agora mostra uma
+  barra só, com o preenchimento na proporção certa (pilar 1: 36%;
+  pilar 2: 36%; pilar 3: 100%) e a marca de meta na posição certa
+  (pilar 1: bem no fim da barra, coerente com ser o maior planejado do
+  grupo; pilar 2: a ~64%; pilar 3: sem marca, como esperado).
+- Testado nos dois temas (claro e escuro): a marca de meta (`--ink-4`)
+  mantém contraste real contra o preenchimento e contra o trilho nos
+  dois, incluindo o card com fundo escuro de verdade (`--card` do tema
+  escuro), não só a página inteira escura.
+- `node --check` em `js/linha.js`.
+
+**Não implementado por bloqueio:** nenhum.
+
+**Não retestado nesta rodada** (não foi tocado): o restante da página
+da Linha Editorial (abas Estratégia/Criativos/Postagens/Produção,
+CRUD de pilar, autosave) — a mudança desta rodada é só a representação
+visual da barra de distribuição, isolada nessas duas funções.
+
+Arquivos alterados: `js/linha.js`, `styles/linha.css`, `js/auth.js`,
+`sw.js`.
+`VERSAO` → `2026-09-11-w`, cache do service worker →
+`roteiros-b7-v38`.
