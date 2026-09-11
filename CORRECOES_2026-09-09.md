@@ -3924,3 +3924,44 @@ Arquivos alterados: `js/doc-semana.js`, `js/semana.js`, `js/linha.js`,
 `js/database.js`, `js/design.js`, `js/auth.js`, `sw.js`. Nova migration:
 `migration_status_linha_sync.sql` (rodar depois de `migration_semana.sql`).
 `VERSAO` → `2026-09-11-am`, cache → `roteiros-b7-v56`.
+
+## Build 2026-09-11-an — Status Semanal: lista por mês/semana + exportar a semana inteira num .zip
+
+**Pedido:** "Outra coisa, melhorar a ui/ux do status, separar por mês e
+dentro do mês ter as semanas. […] ter a opção de exportar o status
+semanal de todos os clientes que fizemos daquela semana."
+
+### Implementado e testado
+
+- **Lista do Status Semanal agrupada:** a lista global (`#/semana`),
+  antes uma fila plana de cards, agora é um acordeão de dois níveis —
+  cada mês (mais recente primeiro) abre em semanas, e cada semana
+  mostra os cards de cliente de sempre (mesmo card, mesma "Prévia",
+  mesmo "Abrir"). Cada grupo lembra se foi fechado, mesmo depois de um
+  novo carregamento da lista. Buscar por cliente ou período (campo que
+  já existia) desmonta o agrupamento de propósito: mostra os
+  resultados numa lista só, sem esconder atrás de acordeão fechado.
+- **"Exportar semana"**, um botão por semana (ao lado do período, no
+  cabeçalho do grupo): gera o PNG de status de CADA cliente daquela
+  semana e baixa tudo junto num único `.zip` — sem precisar abrir
+  cliente por cliente. Usa as mesmas preferências de exportação já
+  salvas em cada status (mostrar dias vazios/observações/legenda,
+  itens concluídos, período) — o resultado é igual ao que sairia
+  exportando aquele cliente individualmente. Se a geração de um
+  cliente falhar, o lote segue sem ele e avisa quantos saíram no fim,
+  em vez de travar tudo por causa de um só.
+- **Zero migration.** Mudança só de interface — nenhuma tabela, view
+  ou função nova.
+- O escritor de `.zip` "na mão" (sem biblioteca externa) que o Design
+  já usava só para si (baixar o conjunto de artes de uma peça) virou
+  compartilhado (`B7.Export.montarZip`, `js/extras.js`) — o Design
+  passou a chamar essa versão em vez de ter a sua própria cópia do
+  mesmo código.
+- Testado localmente (fora do navegador): o `.zip` gerado pelo
+  escritor compartilhado abre e extrai corretamente com `unzip`, com
+  os bytes de cada arquivo intactos.
+
+Arquivos alterados: `js/semana.js`, `js/doc-semana.js`, `js/extras.js`,
+`js/design.js`, `styles/semana.css`, `js/auth.js`, `sw.js`. Nenhuma
+migration nova.
+`VERSAO` → `2026-09-11-an`, cache → `roteiros-b7-v57`.

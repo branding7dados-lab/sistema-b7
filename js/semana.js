@@ -52,6 +52,17 @@ B7.Semana = (function () {
   let S = { relatorio: null, itens: [], linha: null, expandido: null, pagina: 0 };
   let filtro = '';
 
+  /* estado de UI da lista global — quais grupos (mês/semana) a pessoa
+     fechou, para sobreviver a um re-render (busca, por exemplo).
+     Preenchidos sempre abertos por padrão, como o backlog do Design. */
+  let mesesFechados = [];
+  let semanasFechadas = [];
+  /* chave da semana (semana_inicio + semana_fim) → linhas daquela
+     semana (todos os clientes) — alimentado por gruposHTML() a cada
+     render da lista, para a exportação em lote saber quem exportar
+     sem precisar re-consultar o banco. */
+  let semanasIndex = new Map();
+
   /* ------------------------------------------------------------ datas */
   const hojeISO = () => {
     const d = new Date();
@@ -74,7 +85,9 @@ B7.Semana = (function () {
   }
 
   /* =================================================================
-     LISTA GLOBAL
+     LISTA GLOBAL — agrupada por mês e, dentro do mês, por semana. Uma
+     busca ativa (nome do cliente ou período) achata os grupos: exibe
+     tudo relevante sem esconder atrás de acordeões fechados.
      ================================================================= */
   async function abrirLista() {
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div>';
@@ -98,7 +111,8 @@ B7.Semana = (function () {
         ? '<div class="busca-linhas"><input class="campo" id="busca-status" ' +
           'placeholder="Buscar por cliente ou período…" value="' + esc(filtro) + '"></div>' +
           (filtradas.length
-            ? '<div class="lista-status">' + filtradas.map(cardStatus).join('') + '</div>'
+            ? (termo ? '<div class="lista-status">' + filtradas.map(cardStatus).join('') + '</div>'
+                     : gruposHTML(filtradas))
             : '<div class="estado-b7"><b>Nada encontrado para “' + esc(filtro) + '”.</b></div>')
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
           '<b>Nenhum status semanal ainda.</b>' +
@@ -119,6 +133,19 @@ B7.Semana = (function () {
       e.stopPropagation();
       quickView(el.dataset.quickStatus);
     });
+    painel().querySelectorAll('[data-grupo-mes]').forEach(det => det.addEventListener('toggle', () => {
+      const k = det.dataset.grupoMes;
+      mesesFechados = det.open ? mesesFechados.filter(x => x !== k) : [...new Set([...mesesFechados, k])];
+    }));
+    painel().querySelectorAll('[data-grupo-semana]').forEach(det => det.addEventListener('toggle', () => {
+      const k = det.dataset.grupoSemana;
+      semanasFechadas = det.open ? semanasFechadas.filter(x => x !== k) : [...new Set([...semanasFechadas, k])];
+    }));
+    painel().querySelectorAll('[data-exportar-semana]').forEach(b => b.onclick = e => {
+      e.preventDefault();     /* está dentro do <summary>: sem isso, o clique também abre/fecha o grupo */
+      e.stopPropagation();
+      exportarSemanaEmLote(b.dataset.exportarSemana, b);
+    });
     const busca = document.getElementById('busca-status');
     if (busca) busca.oninput = B7.UI.debounce(() => {
       filtro = busca.value;
@@ -128,6 +155,46 @@ B7.Semana = (function () {
         if (novo) { novo.focus(); novo.setSelectionRange(pos, pos); }
       });
     }, 260);
+  }
+
+  /* Agrupa em Map<mês, Map<semana, linhas[]>> preservando a ordem que
+     já vem do banco (mais recente primeiro), e guarda em
+     `semanasIndex` quem faz parte de cada semana — é o que a
+     exportação em lote usa para saber quais clientes empacotar. */
+  function gruposHTML(linhas) {
+    semanasIndex = new Map();
+    const meses = new Map();
+    linhas.forEach(r => {
+      const p = D().partes(r.semana_inicio);
+      const chaveMes = p.ano + '-' + String(p.mes).padStart(2, '0');
+      if (!meses.has(chaveMes)) meses.set(chaveMes, { rotulo: B7.UI.MESES[p.mes - 1] + ' de ' + p.ano, semanas: new Map() });
+      const chaveSemana = r.semana_inicio + '_' + r.semana_fim;
+      const mes = meses.get(chaveMes);
+      if (!mes.semanas.has(chaveSemana)) mes.semanas.set(chaveSemana, { inicio: r.semana_inicio, fim: r.semana_fim, linhas: [] });
+      mes.semanas.get(chaveSemana).linhas.push(r);
+      if (!semanasIndex.has(chaveSemana)) semanasIndex.set(chaveSemana, []);
+      semanasIndex.get(chaveSemana).push(r);
+    });
+
+    return '<div class="lista-status-agrupada">' + [...meses.entries()].map(([chaveMes, mes]) => {
+      const totalMes = [...mes.semanas.values()].reduce((s, sem) => s + sem.linhas.length, 0);
+      return '<details class="grupo-mes"' + (mesesFechados.includes(chaveMes) ? '' : ' open') +
+        ' data-grupo-mes="' + esc(chaveMes) + '">' +
+        '<summary><b>' + esc(mes.rotulo) + '</b>' +
+          '<span class="grupo-cont">' + totalMes + ' status</span></summary>' +
+        '<div class="grupo-mes-corpo">' + [...mes.semanas.entries()].map(([chaveSemana, sem]) =>
+          '<details class="grupo-semana"' + (semanasFechadas.includes(chaveSemana) ? '' : ' open') +
+            ' data-grupo-semana="' + esc(chaveSemana) + '">' +
+            '<summary><b>' + esc(D().periodoTexto(sem.inicio, sem.fim)) + '</b>' +
+              '<span class="grupo-cont">' + sem.linhas.length + ' cliente' + (sem.linhas.length === 1 ? '' : 's') + '</span>' +
+              '<button class="b p" data-exportar-semana="' + esc(chaveSemana) + '" ' +
+                'title="Baixar, num só .zip, o status semanal de todos os clientes desta semana">' +
+                'Exportar semana</button></summary>' +
+            '<div class="lista-status">' + sem.linhas.map(cardStatus).join('') + '</div>' +
+          '</details>'
+        ).join('') + '</div>' +
+      '</details>';
+    }).join('') + '</div>';
   }
 
   function cardStatus(r) {
@@ -148,6 +215,74 @@ B7.Semana = (function () {
       '<button class="b p" data-quick-status="' + esc(r.id) + '">Prévia</button>' +
       '<span class="is-seta">Abrir →</span>' +
     '</div>';
+  }
+
+  /* opções de exportação usadas no lote — as mesmas preferências já
+     salvas em cada status (mostrar_dias_vazios/observações/legenda e
+     as prefs em jsonb), sem precisar abrir o editor de cada um; espelha
+     `opcoesDoc()` (usada na prévia/exportação individual), só que a
+     partir da linha da lista (`status_resumo`) em vez de S.relatorio. */
+  function opcoesExportPadrao(r) {
+    const prefs = r.preferencias || {};
+    return {
+      mostrarDiasVazios: r.mostrar_dias_vazios !== false,
+      mostrarObservacoes: r.mostrar_observacoes !== false,
+      mostrarLegenda: r.mostrar_legenda || 'auto',
+      mostrarConcluidos: !!prefs.mostrar_concluidos,
+      somenteAPartirDeHoje: prefs.mostrar_periodo === 'a_partir_hoje'
+    };
+  }
+
+  /* =================================================================
+     EXPORTAÇÃO EM LOTE — todos os clientes de uma mesma semana, num
+     único .zip (um PNG por cliente). Gera um por vez (o navegador não
+     gosta de vários html2canvas simultâneos) e segue o lote mesmo se
+     um cliente falhar — melhor entregar os outros do que travar tudo
+     por causa de um só.
+     ================================================================= */
+  async function exportarSemanaEmLote(chave, botao) {
+    const linhas = semanasIndex.get(chave) || [];
+    if (!linhas.length) return;
+    const rot = botao.textContent;
+    botao.disabled = true;
+    try {
+      const entradas = [];
+      const usados = new Set();
+      for (let i = 0; i < linhas.length; i++) {
+        const r = linhas[i];
+        botao.textContent = 'Gerando ' + (i + 1) + '/' + linhas.length + '…';
+        try {
+          const ctx = await B7.BaixarSemana.reunir(r.id);
+          const blob = await B7.BaixarSemana.gerarPNGBlob(ctx, opcoesExportPadrao(r));
+          let nome = B7.BaixarSemana.nomeBase(ctx) + '.png';
+          while (usados.has(nome)) nome = nome.replace(/\.png$/, '-' + (usados.size + 1) + '.png');
+          usados.add(nome);
+          entradas.push({ nome: nome, bytes: new Uint8Array(await blob.arrayBuffer()) });
+        } catch (e) { /* um cliente falhou: o lote segue sem ele */ }
+      }
+      if (!entradas.length) {
+        return B7.UI.toast('Não foi possível gerar os arquivos desta semana.', { tipo: 'erro' });
+      }
+
+      const primeira = linhas[0];
+      const a = D().partes(primeira.semana_inicio), b = D().partes(primeira.semana_fim);
+      const dia = n => String(n).padStart(2, '0');
+      const nomeZip = B7.Export.nomeArquivo(
+        ['STATUS_SEMANAL', dia(a.dia) + '-' + dia(b.dia), D().MESES_CURTO[b.mes - 1], String(b.ano)], 'zip');
+      B7.Export.baixarBlob(B7.Export.montarZip(entradas), nomeZip);
+
+      B7.DB.registrar({ tipo: 'exportar', entidade: 'status',
+        texto: 'Status semanal exportado em lote (' + entradas.length + '/' + linhas.length + ' clientes) · ' +
+               D().periodoTexto(primeira.semana_inicio, primeira.semana_fim) });
+      B7.UI.toast(entradas.length < linhas.length
+        ? entradas.length + ' de ' + linhas.length + ' status exportados (alguns falharam).'
+        : entradas.length + ' status semanal exportados num .zip.');
+    } catch (e) {
+      console.error(e);
+      B7.UI.toast('Não foi possível preparar o arquivo.', { tipo: 'erro' });
+    } finally {
+      botao.disabled = false; botao.textContent = rot;
+    }
   }
 
   /* =================================================================

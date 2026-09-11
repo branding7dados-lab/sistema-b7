@@ -254,7 +254,48 @@ B7.Export = (function () {
     return m;
   }
 
-  return { abrirCentral, gerarPDF, gerarPNG, nomeArquivo, paraCanvas, baixarBlob };
+  /* ---- ZIP "store" (sem compressão), escrito à mão, sem biblioteca
+     externa — mesma implementação que o Design já usava só para si
+     (§15/§16); movida para cá para servir qualquer tela que precise
+     empacotar vários arquivos num download só (Design e, agora,
+     exportação em lote do Status Semanal). Limite real: memória do
+     navegador, tudo fica em RAM até o clique. */
+  const TABELA_CRC = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function crc32(u8) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < u8.length; i++) c = TABELA_CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  function montarZip(entradas) {   // [{ nome, bytes: Uint8Array }]
+    const enc = new TextEncoder(); const partes = []; const central = []; let offset = 0;
+    const agora = new Date();
+    const dosTime = ((agora.getHours() << 11) | (agora.getMinutes() << 5) | (agora.getSeconds() >> 1)) & 0xFFFF;
+    const dosDate = (((agora.getFullYear() - 1980) << 9) | ((agora.getMonth() + 1) << 5) | agora.getDate()) & 0xFFFF;
+    const u16 = n => [n & 0xFF, (n >>> 8) & 0xFF];
+    const u32 = n => [n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF];
+    entradas.forEach(en => {
+      const nome = enc.encode(en.nome), crc = crc32(en.bytes), tam = en.bytes.length;
+      const local = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(dosTime), ...u16(dosDate),
+        ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0), ...nome]);
+      partes.push(local, en.bytes);
+      central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(dosTime), ...u16(dosDate),
+        ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset), ...nome]));
+      offset += local.length + tam;
+    });
+    const tamCentral = central.reduce((s, c) => s + c.length, 0);
+    const fim = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(entradas.length), ...u16(entradas.length), ...u32(tamCentral), ...u32(offset), ...u16(0)]);
+    return new Blob([...partes, ...central, fim], { type: 'application/zip' });
+  }
+
+  return { abrirCentral, gerarPDF, gerarPNG, nomeArquivo, paraCanvas, baixarBlob, montarZip };
 })();
 
 

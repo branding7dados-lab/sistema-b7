@@ -1827,31 +1827,9 @@ B7.Design = (function () {
   /* ---- ZIP ordenado (§15/§16): só os arquivos EFETIVOS de cada parte,
      na ordem canônica, prefixo numérico zero-padded. Montado no
      navegador a partir de URLs assinadas curtas (mesma autorização de
-     sempre — nenhuma credencial de serviço no cliente). ZIP "store"
-     (sem compressão: arte já é PNG/JPG comprimido), escrito à mão —
-     sem biblioteca externa. Limite real: memória do navegador (tudo
-     fica em RAM até o clique); pra carrossel de dezenas de MB é ok,
-     pra centenas de MB o navegador pode recusar. ---- */
-  const TABELA_CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
-  function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = TABELA_CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
-  function montarZip(entradas) {   // [{ nome, bytes: Uint8Array }]
-    const enc = new TextEncoder(); const partes = []; const central = []; let offset = 0;
-    const agora = new Date(); const dosTime = ((agora.getHours() << 11) | (agora.getMinutes() << 5) | (agora.getSeconds() >> 1)) & 0xFFFF;
-    const dosDate = (((agora.getFullYear() - 1980) << 9) | ((agora.getMonth() + 1) << 5) | agora.getDate()) & 0xFFFF;
-    const u16 = n => [n & 0xFF, (n >>> 8) & 0xFF], u32 = n => [n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF];
-    entradas.forEach(en => {
-      const nome = enc.encode(en.nome), crc = crc32(en.bytes), tam = en.bytes.length;
-      const local = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(dosTime), ...u16(dosDate),
-        ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0), ...nome]);
-      partes.push(local, en.bytes);
-      central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(dosTime), ...u16(dosDate),
-        ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset), ...nome]));
-      offset += local.length + tam;
-    });
-    const tamCentral = central.reduce((s, c) => s + c.length, 0);
-    const fim = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(entradas.length), ...u16(entradas.length), ...u32(tamCentral), ...u32(offset), ...u16(0)]);
-    return new Blob([...partes, ...central, fim], { type: 'application/zip' });
-  }
+     sempre — nenhuma credencial de serviço no cliente). A escrita do
+     .zip em si (sem biblioteca externa) vive em B7.Export.montarZip —
+     compartilhada com a exportação em lote do Status Semanal. ---- */
   async function baixarConjunto(d, botao, somenteDisponiveis) {
     const partes = partesDaPeca() || []; const efet = arquivosEfetivos();
     const alvo = partes.map(p => ({ parte: p, arq: efet.get(p.id) })).filter(x => x.arq);
@@ -1868,7 +1846,7 @@ B7.Design = (function () {
         entradas.push({ nome, bytes: new Uint8Array(await blob.arrayBuffer()) });
       }
       const nomeZip = baseNomePeca(d) + (somenteDisponiveis ? '-parcial' : (d.versao_atual ? '-v' + pad2(d.versao_atual) : '')) + '.zip';
-      salvarBlob(montarZip(entradas), nomeZip);
+      salvarBlob(B7.Export.montarZip(entradas), nomeZip);
       botao.textContent = rot;
     } catch (e) {
       botao.textContent = rot;

@@ -822,23 +822,30 @@ B7.BaixarSemana = (function () {
     area.classList.remove('modo-45');
   }
 
-  /* ---------------------------------------------------------- PNG */
-  async function gerarPNG(ctx, opcoes, aoAndar) {
+  /* ---------------------------------------------------------- PNG
+     `gerarPNGBlob` faz só o render + canvas → Blob, sem disparar
+     download nenhum — é o que a exportação em lote (várias semanas,
+     um .zip só) do Status Semanal usa; `gerarPNG` continua sendo o
+     caminho de sempre (um clique, um arquivo baixado). */
+  async function gerarPNGBlob(ctx, opcoes) {
     const { area, pagina } = await preparar(ctx, opcoes);
     const escala = (opcoes && opcoes.alta) ? 4 : 2;   /* 2 → 1080×1350, 4 → 2160×2700 */
     try {
-      aoAndar && aoAndar('render', 1, 1);
       const canvas = await html2canvas(pagina, {
         scale: escala, backgroundColor: '#ffffff', useCORS: true, logging: false,
         windowWidth: pagina.offsetWidth, windowHeight: pagina.offsetHeight
       });
       const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
       canvas.width = canvas.height = 0;             /* não segura canvas gigante na memória */
-
-      aoAndar && aoAndar('arquivo', 1, 1);
-      B7.Export.baixarBlob(blob, B7.Export.nomeArquivo([nomeBase(ctx)], 'png'));
-      return 1;
+      return blob;
     } finally { limpar(area); }
+  }
+  async function gerarPNG(ctx, opcoes, aoAndar) {
+    aoAndar && aoAndar('render', 1, 1);
+    const blob = await gerarPNGBlob(ctx, opcoes);
+    aoAndar && aoAndar('arquivo', 1, 1);
+    B7.Export.baixarBlob(blob, B7.Export.nomeArquivo([nomeBase(ctx)], 'png'));
+    return 1;
   }
 
   /* ---------------------------------------------------------- PDF
@@ -867,5 +874,5 @@ B7.BaixarSemana = (function () {
     } finally { limpar(area); }
   }
 
-  return { reunir, gerarPNG, gerarPDF, preparar, limpar, nomeBase, LARGURA, ALTURA };
+  return { reunir, gerarPNG, gerarPNGBlob, gerarPDF, preparar, limpar, nomeBase, LARGURA, ALTURA };
 })();
