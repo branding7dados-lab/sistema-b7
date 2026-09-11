@@ -405,6 +405,68 @@ select.ds-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
   .dsc-disp-row .b{width:100%;justify-content:center;}
 }
 
+/* ===================================================================
+   NAVEGADOR "PRODUÇÃO DE DESIGN" — resumo rápido do topo, e o cartão
+   de projeto por Linha Editorial (identidade do cliente em primeiro
+   lugar, prévias reais, formatos com ícone, progresso real). Grade
+   com largura controlada por cartão — nunca uma faixa esticando de
+   ponta a ponta da tela.
+   =================================================================== */
+.ds-resumo-rapido{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.ds-rapido-item{display:inline-flex;align-items:baseline;gap:5px;font:inherit;font-size:12.5px;
+  color:var(--ink-3);background:var(--card);border:1px solid var(--borda);border-radius:99px;
+  padding:6px 13px;cursor:pointer;transition:var(--t-micro);}
+.ds-rapido-item:hover{border-color:var(--borda-forte);}
+.ds-rapido-item b{font-family:'Archivo';font-weight:800;font-size:14px;color:var(--ink);}
+.ds-rapido-item.on{background:var(--acento-suave);border-color:var(--acento);color:var(--acento);}
+.ds-rapido-item.on b{color:var(--acento);}
+.ds-vazio-linha{padding:14px 2px;color:var(--ink-3);font-size:13px;margin:0;}
+
+.cp-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;align-items:start;}
+.cartao-projeto{max-width:400px;background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);
+  padding:16px 18px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:var(--t-micro);min-width:0;}
+.cartao-projeto:hover{border-color:var(--borda-forte);box-shadow:var(--sh-1);transform:translateY(-1px);}
+.cartao-projeto:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.cartao-projeto.concluido{opacity:.72;}
+@media (prefers-reduced-motion:reduce){.cartao-projeto{transition:none;}.cartao-projeto:hover{transform:none;}}
+
+.cp-cab{display:flex;align-items:center;gap:10px;min-width:0;}
+.cp-logo{width:36px;height:36px;border-radius:10px;flex:none;object-fit:cover;}
+.cp-logo-ini{display:flex;align-items:center;justify-content:center;background:var(--suave);color:var(--ink-3);
+  font-family:'Archivo';font-weight:800;font-size:13px;}
+.cp-cab-tx{min-width:0;display:flex;flex-direction:column;}
+.cp-cliente{font-family:'Archivo';font-weight:800;font-size:15.5px;letter-spacing:-.1px;line-height:1.25;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cp-linha{font-size:11.5px;color:var(--ink-4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.cp-previas{display:flex;gap:6px;}
+.cp-previa{width:100%;flex:1;aspect-ratio:1;border-radius:9px;max-width:64px;}
+.cp-formatos{display:flex;flex-wrap:wrap;gap:5px 12px;}
+.cp-formato{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-3);white-space:nowrap;}
+.cp-formato svg{width:14px;height:14px;color:var(--ink-4);flex:none;}
+
+.cp-status{font-size:13px;font-weight:600;color:var(--acento);}
+.cp-progresso .ds-grupo-progresso{margin-top:0;}
+.cp-pct{display:block;margin-top:6px;font-size:12.5px;color:var(--ink-3);}
+.cp-estados{font-size:12px;color:var(--ink-3);}
+.cp-estados .alerta{color:var(--ambar);}
+.cp-aviso{font-size:11.5px;font-weight:700;color:var(--ambar);}
+.cp-prazo{font-size:12px;color:var(--ink-3);}
+.cp-prazo.atrasada{color:var(--erro);font-weight:700;}
+.cp-prazo.hoje{color:var(--ambar);font-weight:700;}
+
+.cp-acoes{display:flex;gap:8px;margin-top:auto;padding-top:2px;}
+.cp-acoes .b{flex:1;justify-content:center;}
+.cp-acoes:empty{display:none;}
+
+@media (max-width:900px){
+  .cp-grade{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));}
+}
+@media (max-width:760px){
+  .cp-grade{grid-template-columns:1fr;}
+  .cartao-projeto{max-width:none;}
+}
+
 /* ------------------------------------------------------ responsivo */
 @media (max-width:1100px){
   .ds-dr-grade{grid-template-columns:1fr 1fr;}

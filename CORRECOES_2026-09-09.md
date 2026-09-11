@@ -1434,3 +1434,142 @@ lado do Designer.
   `roteiros-b7-v30`.
 - Nenhuma migration nova. Arquivos alterados: `js/design.js`,
   `styles/design.css`, `js/auth.js`, `sw.js`.
+
+## Build 2026-09-11-p — Redesenho da página "Design" (navegador de produção): cartões de projeto, hierarquia cliente-primeiro, filtro rápido e modo "Peças"
+
+Trabalho intermediário pedido antes da Rodada 3, a partir de uma
+especificação própria de 43 seções ("Redesign da página Design —
+visual production browser") motivada por screenshots reais da tela
+em produção: uma faixa fina de 100% de largura sobre um espaço vazio
+enorme, sem hierarquia de cliente, sem prévia visual. Esta rodada é
+puramente de UX/IA/visual/responsivo — nenhuma regra de negócio foi
+tocada (assumir demanda, atribuição, status, Kanban, notificações,
+upload, revisão e aprovação continuam exatamente como estavam).
+
+**O que mudou:**
+- **Distinção Central vs. Design reforçada.** O título dentro da
+  página passou a ser "Produção de Design" (o item "Design" na
+  barra lateral não muda), com subtítulo "Acompanhe as linhas
+  editoriais e peças em produção." — deixando claro que esta é a
+  vista ampla de produção, não a home pessoal (Central de Design,
+  intacta desde a Rodada 1).
+- **Faixa fina de 100% de largura removida.** No lugar, uma grade
+  responsiva de cartões de projeto (`.cp-grade`, `auto-fill,
+  minmax(300px,1fr)`, `max-width:400px` por cartão) — nunca mais um
+  único projeto esticado ocupando a tela inteira.
+- **Cartão de projeto com hierarquia invertida**: identidade do
+  cliente (logo real quando `clientes.logo_url` existe, iniciais
+  como aviso quando não existe — nunca o avatar do usuário fazendo
+  as vezes de marca) vem primeiro; linha editorial e versão
+  confirmada viram metadado secundário logo abaixo. Antes, o mês da
+  linha tinha mais peso visual que o cliente — invertido conforme a
+  especificação.
+- **Prévias reais em miniatura** (até 3 por cartão, reaproveitando o
+  mesmo mecanismo de thumbnail assinado e lazy-load que já existia
+  nos cartões de peça — `ligarThumbs`/`IntersectionObserver`) e
+  **quebra por formato com ícone** (reaproveita `iconeTipo`, os
+  mesmos SVGs já usados no sistema — nenhum emoji novo).
+- **Progresso real de Design** (finalizadas ÷ total, igual à Central,
+  nunca o status editorial) com estado por etapa (para fazer, em
+  criação, ajustes em destaque, revisão) e ação primária por
+  contexto: "Assumir demanda" nas disponíveis, "Continuar produção"
+  nas próprias — nunca mais de duas ações por cartão.
+- **Barra de resumo rápida no topo** ("N disponíveis · N comigo · N
+  em ajustes · N em revisão"), cada item também funciona como filtro
+  de um clique (liga/desliga) sem tocar na barra de filtros
+  completa. Itens com contagem zero em "ajustes"/"revisão" somem —
+  só "disponíveis" e "comigo" aparecem sempre, porque moldam a
+  leitura da tela.
+- **Modo "Linhas editoriais" / "Peças"** (o mesmo componente visual
+  de segmento que a equipe já usa em Quadro/Lista): "Linhas
+  editoriais" é o padrão e mostra os cartões de projeto; "Peças"
+  lista cada peça individualmente reaproveitando o cartão de peça já
+  existente no quadro/lista da equipe — útil para achar uma peça
+  específica sem abrir a linha. Preferência de modo persiste em
+  `sessionStorage` (`b7.design.filtros`), igual às demais telas.
+  Nenhuma consulta nova: os dois modos usam a mesma leitura de
+  `design_resumo`.
+- **Filtro por Cliente** adicionado à barra do Designer (some quando
+  só há um cliente nas peças visíveis — não vale a pena mostrar um
+  filtro de uma opção só) e o **filtro por Status**, que antes só
+  existia para a equipe, passou a existir também para o Designer.
+  "Limpar filtros" agora zera o filtro rápido junto.
+- **"Minhas demandas" vazio ficou compacto**: uma linha de texto
+  ("Você ainda não tem demandas atribuídas.") em vez do antigo
+  retângulo tracejado grande.
+- **Ordem das seções**: se o Designer não tem nada assumido ainda, a
+  seção "Demandas disponíveis" aparece primeiro — não força uma
+  seção pessoal vazia acima de conteúdo útil.
+- **Nova coluna `cliente_logo_url`** em `design_resumo`
+  (`migration_design_logo.sql`) — a view já fazia join com
+  `clientes`, só faltava selecionar a coluna; nenhuma consulta nova,
+  nenhuma tabela duplicada.
+
+**Não mudou nesta rodada:** nenhuma regra de negócio; a página de
+demanda (`#/design/linha/:id`, Rodada 2) e a Central (`#/`, Rodada 1)
+continuam como estavam — só o botão "Voltar ao Design" delas agora
+retorna para o navegador redesenhado. O quadro/lista/equipe da
+coordenação não foi tocado (fora do escopo, igual à Rodada 2).
+
+**Testado com confiança (Playwright, Supabase simulado):**
+- Fixture com 12 peças cobrindo duas linhas de dois clientes
+  diferentes (um com `cliente_logo_url` preenchido, outro sem), uma
+  peça sem responsável e uma peça de outro designer (canário de
+  vazamento). Sessões de Designer e Coordenador.
+- Navegador do Designer: cartões de projeto renderizam com dados
+  corretos (cliente, linha, versão, progresso, quebra por formato,
+  quebra por estado, prazo atrasado destacado); peça de outro
+  designer nunca aparece em nenhum modo.
+- Barra de resumo rápido: contagem "1 disponível · 10 comigo · 2 em
+  ajustes · 1 em revisão" batendo com os dados; clicar em "Ajustes"
+  estreita para 1 cartão de projeto (a única linha com peça em
+  ajuste) e liga o estado visual do botão; clicar de novo desliga
+  corretamente; "Disponível" e "Comigo" isolam cada seção como
+  esperado.
+- Avatar de cliente: cliente com `cliente_logo_url` mostra `<img>`
+  real; cliente sem logo mostra iniciais.
+- Modo "Peças": lista as 11 peças visíveis ao Designer (10 próprias +
+  1 disponível), nunca a do outro designer; busca por "Studio"
+  estreita para as 2 peças certas; clicar numa peça abre a gaveta
+  (Design Piece Workspace), nunca um editor diferente; alternar de
+  volta para "Linhas editoriais" funciona.
+- Responsivo: telas de 1440px, 1024px (laptop), 820px (tablet) e
+  390px (celular) — sem overflow horizontal em nenhuma largura; grade
+  reflui de 3 colunas (desktop) para 2 (tablet) para 1 (celular),
+  conferido tanto por screenshot quanto por `gridTemplateColumns`
+  computado.
+- Tema escuro: página renderiza sem erros de console (verificação de
+  ausência de erro; não houve inspeção visual pixel a pixel de
+  contraste).
+- Central de Design (`#/`, Rodada 1) e página de demanda (`#/design/
+  linha/:id`, Rodada 2): regressão conferida após as mudanças no
+  navegador — cabeçalho, linhas em produção, disponíveis e ausência
+  de vazamento entre designers continuam corretos. Zero erros de
+  console em todos os cenários.
+- `VERSAO` → `2026-09-11-p`, cache do service worker →
+  `roteiros-b7-v31`.
+
+**Requer validação adicional (não testado nesta rodada):**
+- `migration_design_logo.sql` não foi rodada contra nenhum banco real
+  — a renderização do `<img>` do logo foi validada só com uma URL
+  simulada (Playwright interceptando a resposta), não com o Storage
+  do Supabase de verdade nem com uma foto de cliente real.
+- Contraste e legibilidade do tema escuro não foram inspecionados
+  visualmente (só confirmada a ausência de erro de JS/CSS quebrado).
+- Navegação por teclado (Tab/Enter) nos cartões de projeto não foi
+  testada com Playwright nesta rodada — o cartão tem
+  `tabindex="0" role="button"` e os manipuladores de teclado do
+  `ligarCentral` (reaproveitados sem alteração desde a Rodada 1), mas
+  não houve teste automatizado de foco especificamente para o novo
+  layout.
+- Teste em dispositivo físico não foi realizado — toda a validação
+  responsiva foi feita por emulação de viewport no Chromium.
+
+**Não implementado por decisão consciente:**
+- Design Piece Workspace, carrossel interativo dedicado e Linha
+  Editorial Operacional separada continuam fora do escopo — são a
+  Rodada 3 do plano original (`PLANO_UX_DESIGN_RESTANTE.md`).
+
+Arquivos alterados: `js/design.js`, `styles/design.css`,
+`js/auth.js`, `sw.js`, `migration_design_logo.sql` (novo, não
+aplicada em nenhum banco ainda).

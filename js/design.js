@@ -79,7 +79,11 @@ B7.Design = (function () {
   const ehMovel = () => window.matchMedia('(max-width: 760px)').matches;
 
   const F_PADRAO = { cliente: '', designer: '', tipo: '', status: '', prazo: '', linha: '',
-                     prioridade: '', busca: '', vista: 'quadro', aba: null };
+                     prioridade: '', busca: '', vista: 'quadro', aba: null,
+                     /* só o navegador do designer usa estes dois: modo de exibição
+                        (linhas de produção vs. peças individuais) e o filtro rápido
+                        do resumo do topo (disponíveis/comigo/ajustes/revisão) */
+                     modo: 'linhas', rapido: '' };
   let F = Object.assign({}, F_PADRAO);
   try { Object.assign(F, JSON.parse(sessionStorage.getItem('b7.design.filtros') || '{}')); } catch (e) {}
   function guardarFiltros() { try { sessionStorage.setItem('b7.design.filtros', JSON.stringify(F)); } catch (e) {} }
@@ -112,9 +116,9 @@ B7.Design = (function () {
     if (aba) F.aba = aba;
     if (!F.aba) F.aba = ehDesigner() ? 'fila' : 'todas';
 
-    painel().innerHTML = '<div class="conteudo design-tela"><div class="cab-conteudo"><div><h1>Design</h1>' +
-      '<p>' + (ehDesigner() ? 'Toda a sua fila, por Linha Editorial.' : 'A fila de produção visual da equipe.') + '</p></div></div>' +
-      B7.UI.skeleton('tabela', { n: 6, cols: 4 }) + '</div>';
+    painel().innerHTML = '<div class="conteudo design-tela"><div class="cab-conteudo"><div><h1>Produção de Design</h1>' +
+      '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.' : 'A fila de produção visual da equipe.') + '</p></div></div>' +
+      B7.UI.skeleton('cards', { n: 6, titulo: false }) + '</div>';
 
     try { await carregarDados(); } catch (e) { erroCarga(e); return; }
     desenhar();
@@ -124,13 +128,14 @@ B7.Design = (function () {
   function desenhar() {
     const equipe = ehEquipe();
     painel().innerHTML = '<div class="conteudo entra design-tela">' +
-      '<div class="cab-conteudo"><div><h1>Design</h1>' +
-      '<p>' + (ehDesigner() ? 'Toda a sua fila, por Linha Editorial — com busca e filtros. O que precisa de você agora está na <a href="#/">Central de Design</a>.'
+      '<div class="cab-conteudo"><div><h1>Produção de Design</h1>' +
+      '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.'
                             : 'A fila de produção visual da equipe.') + '</p></div>' +
       (equipe ? '<button class="b pri" id="ds-nova">+ Nova demanda de Design</button>' : '') + '</div>' +
       (equipe ? '<nav class="ds-abas" role="tablist">' + ABAS_EQUIPE.map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (F.aba === k ? 'on' : '') + '" aria-selected="' + (F.aba === k) + '">' +
         esc(r) + '</button>').join('') + '</nav>' : '') +
+      (!equipe ? '<div id="ds-resumo"></div>' : '') +
       '<div id="ds-barra"></div>' +
       '<div id="ds-area"></div>' +
     '</div>';
@@ -164,20 +169,23 @@ B7.Design = (function () {
       itens.map(([v, r]) => '<option value="' + esc(v) + '"' + (atual === v ? ' selected' : '') + '>' + esc(r) + '</option>').join('') +
       '</select>';
 
-    /* linhas editoriais presentes nos dados atuais — não existe um
-       cadastro "todas as linhas" independente de peças de Design */
+    /* linhas/clientes presentes nos dados atuais — não existe um
+       cadastro "todos os clientes com peça de Design" independente */
     const linhasPresentes = [...new Map(dados.filter(d => d.linha_id)
       .map(d => [d.linha_id, d.linha_nome])).entries()];
+    const clientesPresentes = [...new Map(dados.filter(d => d.client_id)
+      .map(d => [d.client_id, d.cliente_nome])).entries()].sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
 
     cx.innerHTML = '<div class="ds-barra">' +
       '<div class="ds-busca-cx"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
-        '<input class="campo fina ds-busca" id="ds-busca" placeholder="Buscar peça, conteúdo ou cliente…" ' +
+        '<input class="campo fina ds-busca" id="ds-busca" placeholder="Buscar cliente, linha editorial ou peça…" ' +
         'value="' + esc(F.busca) + '" aria-label="Buscar"></div>' +
-      (equipe ? opc('cliente', F.cliente, [['', 'Cliente']].concat(clientes.map(c => [c.id, c.nome])), 'Cliente') : '') +
+      (equipe ? opc('cliente', F.cliente, [['', 'Cliente']].concat(clientes.map(c => [c.id, c.nome])), 'Cliente')
+        : (clientesPresentes.length > 1 ? opc('cliente', F.cliente, [['', 'Cliente']].concat(clientesPresentes), 'Cliente') : '')) +
       (equipe ? opc('designer', F.designer, [['', 'Designer'], ['sem', 'Sem responsável']]
         .concat(designers.map(p => [p.id, p.nome])), 'Designer') : '') +
       opc('tipo', F.tipo, [['', 'Tipo']].concat(TIPOS), 'Tipo') +
-      (equipe ? opc('status', F.status, [['', 'Status']].concat(STATUS), 'Status') : '') +
+      opc('status', F.status, [['', 'Status']].concat(STATUS), 'Status') +
       opc('prazo', F.prazo, [['', 'Prazo'], ['atrasadas', 'Atrasadas'], ['hoje', 'Para hoje'],
         ['semana', 'Próximos 7 dias'], ['sem', 'Sem prazo']], 'Prazo') +
       (equipe && linhasPresentes.length ? opc('linha', F.linha, [['', 'Linha editorial']].concat(linhasPresentes), 'Linha editorial') : '') +
@@ -188,7 +196,10 @@ B7.Design = (function () {
       (equipe ? '<div class="seg-vista" role="tablist">' +
         '<button role="tab" class="' + (F.vista === 'quadro' ? 'on' : '') + '" data-vista="quadro">Quadro</button>' +
         '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista">Lista</button>' +
-      '</div>' : '') +
+      '</div>' : '<div class="seg-vista" role="tablist">' +
+        '<button role="tab" class="' + (F.modo === 'linhas' ? 'on' : '') + '" data-modo="linhas">Linhas editoriais</button>' +
+        '<button role="tab" class="' + (F.modo === 'pecas' ? 'on' : '') + '" data-modo="pecas">Peças</button>' +
+      '</div>') +
     '</div>';
 
     const busca = cx.querySelector('#ds-busca');
@@ -204,9 +215,14 @@ B7.Design = (function () {
       cx.querySelectorAll('[data-vista]').forEach(x => x.classList.toggle('on', x === b));
       desenharArea();
     });
+    cx.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => {
+      F.modo = b.dataset.modo; guardarFiltros();
+      cx.querySelectorAll('[data-modo]').forEach(x => x.classList.toggle('on', x === b));
+      desenharArea();
+    });
     const limpar = cx.querySelector('#ds-limpar');
     if (limpar) limpar.onclick = () => {
-      F.cliente = F.designer = F.tipo = F.status = F.prazo = F.linha = F.prioridade = F.busca = '';
+      F.cliente = F.designer = F.tipo = F.status = F.prazo = F.linha = F.prioridade = F.busca = F.rapido = '';
       guardarFiltros(); desenharBarra(); desenharArea();
     };
   }
@@ -218,7 +234,7 @@ B7.Design = (function () {
     if (filtrosAtivos() && !existe) {
       const b = document.createElement('button');
       b.className = 'b fina contorno'; b.id = 'ds-limpar'; b.textContent = 'Limpar filtros';
-      b.onclick = () => { F.cliente = F.designer = F.tipo = F.status = F.prazo = F.linha = F.prioridade = F.busca = '';
+      b.onclick = () => { F.cliente = F.designer = F.tipo = F.status = F.prazo = F.linha = F.prioridade = F.busca = F.rapido = '';
         guardarFiltros(); desenharBarra(); desenharArea(); };
       cx.insertBefore(b, cx.querySelector('.ds-espaco'));
     } else if (!filtrosAtivos() && existe) existe.remove();
@@ -282,17 +298,18 @@ B7.Design = (function () {
     }
 
     if (!ehEquipe()) {
-      /* Navegador do designer: a fila inteira, agrupada por Linha
-         Editorial — "Demandas a fazer" (sem responsável) e "Minhas
-         demandas" (já assumidas), como pacotes densos (mesma
-         linguagem visual da Central: progresso real, formatos, prazo).
-         O detalhe peça a peça mora na página de demanda (abrirLinha). */
+      /* Navegador do designer ("Produção de Design"): a fila inteira,
+         com dois modos — "Linhas editoriais" (projetos, o padrão) e
+         "Peças" (cada peça individual, para buscar uma específica).
+         O detalhe completo de uma linha mora na página de demanda. */
       const vis = filtrar(dados);
       const { minhas, semDono } = filaDoDesigner(vis);
+      desenharResumoDesigner(minhas, semDono);
       const total = painel().querySelector('#ds-total');
       if (total) total.textContent = (minhas.length + semDono.length) + ' peça' + (minhas.length + semDono.length === 1 ? '' : 's');
-      area.innerHTML = viewCentralDesigner(minhas, semDono);
+      area.innerHTML = F.modo === 'pecas' ? viewPecasDesigner(minhas, semDono) : viewProjetosDesigner(minhas, semDono);
       ligarCentral(area);
+      ligarThumbs(area);
       return;
     }
 
@@ -337,27 +354,156 @@ B7.Design = (function () {
       .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')).slice(0, 3);
   }
 
-  /* Navegador (#/design) do Designer: só a fila — "Precisa de mim" e
-     "Continuar de onde parei" moram na Central (#/), para as duas
-     telas não serem a mesma coisa com nome diferente. */
-  /* Todo o pacote é reaproveitado da Central (mesma linguagem visual:
-     progresso real, formatos, prazo) — o navegador mostra a fila
-     inteira em vez de só o que precisa de ação agora, e o detalhe
-     peça a peça mora na página de demanda (abrirLinha). */
-  function viewCentralDesigner(minhas, semDono) {
-    const gruposFazer = agruparPorLinha(semDono);
-    const gruposMinhas = agruparPorLinha(minhas).map(g => Object.assign(g, resumoLinha(g.itens)))
-      .sort((a, b) => (a.concluida - b.concluida) || (b.ajustes - a.ajustes) || (a.linhaNome || '').localeCompare(b.linhaNome || ''));
-    return '<div class="ds-central">' +
-      '<section class="ds-central-sec"><h3>Demandas a fazer <span>' + semDono.length + '</span></h3>' +
-      (gruposFazer.length ? '<div class="dsc-disp">' + gruposFazer.map(linhaDisponivel).join('') + '</div>'
-        : '<div class="estado-b7 leve"><p>Nenhuma demanda sem responsável no momento.</p></div>') +
-      '</section>' +
-      '<section class="ds-central-sec"><h3>Minhas demandas <span>' + minhas.length + '</span></h3>' +
-      (gruposMinhas.length ? '<div class="dsc-linhas">' + gruposMinhas.map(pacoteLinha).join('') + '</div>'
-        : '<div class="estado-b7 leve"><p>Nenhuma demanda atribuída a você ainda. Assuma uma acima.</p></div>') +
-      '</section>' +
-    '</div>';
+  /* Navegador (#/design) do Designer: a fila inteira — "Precisa de
+     mim"/"Continuar de onde parei" moram na Central (#/), para as
+     duas telas não serem a mesma coisa com nome diferente. Aqui é o
+     NAVEGADOR de produção: "Linhas editoriais" (projetos — o padrão)
+     ou "Peças" (cada peça, pra buscar uma específica). */
+  const RAPIDO_STATUS = {
+    ajustes: ['ajustes', 'ajustes_cliente'],
+    revisao: ['revisao_interna', 'aprovado_interno', 'aguardando_cliente', 'aprovado_cliente']
+  };
+
+  /* resumo compacto do topo — "13 disponíveis · 4 comigo · 2 ajustes
+     · 3 em revisão" — cada item é também um filtro rápido. Zero só
+     aparece nos dois primeiros (moldam a leitura da página inteira);
+     ajustes/revisão zerados não ocupam espaço à toa. */
+  function desenharResumoDesigner(minhas, semDono) {
+    const cx = painel().querySelector('#ds-resumo');
+    if (!cx) return;
+    const ajustes = minhas.filter(d => RAPIDO_STATUS.ajustes.includes(d.status)).length;
+    const revisao = minhas.filter(d => RAPIDO_STATUS.revisao.includes(d.status)).length;
+    const itens = [
+      ['disponivel', semDono.length, semDono.length === 1 ? 'disponível' : 'disponíveis'],
+      ['comigo', minhas.length, 'comigo']
+    ];
+    if (ajustes) itens.push(['ajustes', ajustes, ajustes === 1 ? 'em ajuste' : 'em ajustes']);
+    if (revisao) itens.push(['revisao', revisao, 'em revisão']);
+    if (F.rapido && !itens.some(i => i[0] === F.rapido)) F.rapido = '';
+    cx.innerHTML = itens.length ? '<div class="ds-resumo-rapido" role="tablist">' + itens.map(([k, n, r]) =>
+      '<button class="ds-rapido-item' + (F.rapido === k ? ' on' : '') + '" data-rapido="' + k + '" role="tab" aria-selected="' + (F.rapido === k) + '">' +
+        '<b>' + n + '</b> ' + esc(r) + '</button>').join('') + '</div>' : '';
+    cx.querySelectorAll('[data-rapido]').forEach(b => b.onclick = () => {
+      F.rapido = F.rapido === b.dataset.rapido ? '' : b.dataset.rapido;
+      guardarFiltros(); desenharArea();
+    });
+  }
+
+  function textoVazioMinhas() {
+    return (F.rapido === 'ajustes' || F.rapido === 'revisao')
+      ? 'Nenhuma linha com peças nesse estado agora.'
+      : 'Você ainda não tem demandas atribuídas.';
+  }
+
+  function viewProjetosDesigner(minhas, semDono) {
+    let minhasF = minhas;
+    if (RAPIDO_STATUS[F.rapido]) minhasF = minhas.filter(d => RAPIDO_STATUS[F.rapido].includes(d.status));
+    const mostraDisp = F.rapido !== 'comigo' && !RAPIDO_STATUS[F.rapido];
+    const mostraMinhas = F.rapido !== 'disponivel';
+
+    const secDisponiveis = () => {
+      const grupos = agruparPorLinha(semDono);
+      return '<section class="ds-central-sec"><h3>Demandas disponíveis <span>' + semDono.length + '</span></h3>' +
+        (grupos.length ? '<div class="cp-grade">' + grupos.map(g => cartaoProjeto(g, 'disponivel')).join('') + '</div>'
+          : '<p class="ds-vazio-linha">Nenhuma demanda disponível no momento.</p>') + '</section>';
+    };
+    const secMinhas = () => {
+      const grupos = agruparPorLinha(minhasF).map(g => Object.assign(g, resumoLinha(g.itens)))
+        .sort((a, b) => (a.concluida - b.concluida) || (b.ajustes - a.ajustes) || (a.linhaNome || '').localeCompare(b.linhaNome || ''));
+      return '<section class="ds-central-sec"><h3>Minhas demandas <span>' + minhasF.length + '</span></h3>' +
+        (grupos.length ? '<div class="cp-grade">' + grupos.map(g => cartaoProjeto(g, 'minha')).join('') + '</div>'
+          : '<p class="ds-vazio-linha">' + esc(textoVazioMinhas()) + (minhas.length ? '' : ' Assuma uma das linhas disponíveis.') + '</p>') + '</section>';
+    };
+
+    if (!mostraDisp) return '<div class="ds-central">' + secMinhas() + '</div>';
+    if (!mostraMinhas) return '<div class="ds-central">' + secDisponiveis() + '</div>';
+    /* sem filtro rápido ativo: se ainda não há nada assumido, a fila
+       disponível vem primeiro — é o que o designer precisa ver agora */
+    return '<div class="ds-central">' + (minhas.length === 0 ? secDisponiveis() + secMinhas() : secMinhas() + secDisponiveis()) + '</div>';
+  }
+
+  /* modo "Peças": a mesma peça (design_resumo) sem agrupar por linha
+     — pra buscar/filtrar um item específico visualmente, não numa
+     tabela. Reaproveita o cartão de peça já usado no quadro/lista. */
+  function viewPecasDesigner(minhas, semDono) {
+    let lista;
+    if (F.rapido === 'disponivel') lista = semDono;
+    else if (F.rapido === 'comigo') lista = minhas;
+    else if (RAPIDO_STATUS[F.rapido]) lista = minhas.filter(d => RAPIDO_STATUS[F.rapido].includes(d.status));
+    else lista = minhas.concat(semDono);
+    lista = lista.slice().sort(ordenarPorUrgencia);
+    if (!lista.length) return '<div class="estado-b7"><b>Nenhuma peça corresponde aos filtros.</b></div>';
+    return '<div class="ds-lista ds-lista-grade">' + lista.map(cartao).join('') + '</div>';
+  }
+
+  /* iniciais como placeholder — nunca o avatar do usuário como se
+     fosse a marca do cliente; logo real só quando o cliente já tem
+     um (cliente_logo_url, exposto por design_resumo) */
+  function avatarCliente(nome, logoUrl) {
+    if (logoUrl) return '<img class="cp-logo" src="' + esc(logoUrl) + '" alt="" loading="lazy">';
+    const iniciais = (nome || '').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '·';
+    return '<span class="cp-logo cp-logo-ini">' + esc(iniciais) + '</span>';
+  }
+
+  /* até 3 prévias reais da linha — nunca a arte em resolução total
+     (ligarThumbs resolve a URL assinada sob demanda, como no cartão
+     de peça) e nunca um espaço vazio reservado quando não há prévia */
+  function tirasPrevia(itens) {
+    const comPrevia = itens.filter(d => d.ultima_previa).slice(0, 3);
+    if (!comPrevia.length) return '';
+    return '<div class="cp-previas">' + comPrevia.map(d =>
+      '<div class="ds-thumb cp-previa" data-previa="' + esc(d.ultima_previa) + '"><span class="ds-thumb-esq"></span></div>').join('') + '</div>';
+  }
+
+  function formatosIcone(itens) {
+    const porTipo = new Map();
+    itens.forEach(d => porTipo.set(d.tipo, (porTipo.get(d.tipo) || 0) + 1));
+    const formatos = [...porTipo.entries()].sort((a, b) => b[1] - a[1]);
+    return '<div class="cp-formatos">' + formatos.map(([t, n]) =>
+      '<span class="cp-formato">' + iconeTipo(t) + esc(rotuloTipoContagem(t, n)) + '</span>').join('') + '</div>';
+  }
+
+  /* CARTÃO DE PROJETO — a unidade visual do navegador em "Linhas
+     editoriais": identidade do cliente em primeiro lugar (não o mês),
+     linha + versão como metadado, prévias reais, formatos com ícone,
+     progresso real (Design, não o status editorial) e uma ação
+     primária por estado — nunca mais de duas. */
+  function cartaoProjeto(g, modo) {
+    const r = Object.assign({ linhaId: g.linhaId, linhaNome: g.linhaNome, clienteNome: g.clienteNome, itens: g.itens }, resumoLinha(g.itens));
+    const disponivel = modo === 'disponivel';
+    const partes = [];
+    if (r.fazer) partes.push(r.fazer + ' para fazer');
+    if (r.criacao) partes.push(r.criacao + ' em criação');
+    if (r.ajustes) partes.push('<b class="alerta">' + r.ajustes + ' em ajuste' + (r.ajustes === 1 ? '' : 's') + '</b>');
+    if (r.revisao) partes.push(r.revisao + ' em revisão');
+    const briefing = r.itens.some(d => d.briefing_desatualizado);
+    const logoUrl = (r.itens[0] && r.itens[0].cliente_logo_url) || null;
+
+    return '<article class="cartao-projeto' + (r.concluida ? ' concluido' : '') + '"' +
+      (r.linhaId ? ' data-linha-abrir="' + esc(r.linhaId) + '" tabindex="0" role="button" aria-label="Ver peças de ' + esc(r.linhaNome) + '"' : '') + '>' +
+      '<div class="cp-cab">' + avatarCliente(r.clienteNome, logoUrl) +
+        '<div class="cp-cab-tx"><b class="cp-cliente">' + esc(r.clienteNome || 'Interno') + '</b>' +
+        '<span class="cp-linha">Linha Editorial · ' + esc(r.linhaNome) + (r.versao ? ' · V' + String(r.versao).padStart(2, '0') : '') + '</span></div>' +
+      '</div>' +
+      tirasPrevia(r.itens) +
+      formatosIcone(r.itens) +
+      (disponivel
+        ? '<div class="cp-status">' + r.total + (r.total === 1 ? ' peça disponível' : ' peças disponíveis') + ' para produção</div>'
+        : '<div class="cp-progresso">' +
+            '<div class="ds-grupo-progresso"><span style="width:' + r.pct + '%"></span></div>' +
+            '<span class="cp-pct">' + (r.concluida ? 'Concluída — ' : '') + r.finalizadas + ' de ' + r.total + ' finalizada' + (r.total === 1 ? '' : 's') + '</span>' +
+          '</div>' +
+          (partes.length ? '<div class="cp-estados">' + partes.join(' · ') + '</div>' : '')) +
+      (briefing ? '<div class="cp-aviso">Briefing atualizado</div>' : '') +
+      (r.prazo ? '<div class="cp-prazo' + (r.prazo.atrasada ? ' atrasada' : r.prazo.hoje ? ' hoje' : '') + '">' +
+        (r.prazo.atrasada || r.prazo.hoje ? '' : 'Prazo: ') + esc(r.prazo.txt) + '</div>' : '') +
+      '<div class="cp-acoes">' +
+        (r.linhaId ? '<button class="b fina contorno" data-linha-abrir="' + esc(r.linhaId) + '">Ver peças</button>' : '') +
+        (disponivel
+          ? (r.linhaId ? '<button class="b pri fina" data-assumir-linha="' + esc(r.linhaId) + '">Assumir demanda' + (r.total > 1 ? ' (' + r.total + ')' : '') + '</button>' : '')
+          : (r.linhaId ? '<button class="b pri fina" data-linha-abrir="' + esc(r.linhaId) + '">' + (r.concluida ? 'Ver produção' : 'Continuar produção') + '</button>' : '')) +
+      '</div>' +
+    '</article>';
   }
 
   function nearestPrazo(itens) {
