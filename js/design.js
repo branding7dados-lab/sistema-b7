@@ -1767,6 +1767,7 @@ B7.Design = (function () {
       .filter(a => a.papel === 'preview' && !a.parte_id && a.versao_estado !== 'rascunho').sort(ordenarMaisRecente);
   }
   function ehImagem(a) { return !!a && !!a.mime && a.mime.indexOf('image/') === 0; }
+  function ehImagemMime(mime) { return !!mime && mime.indexOf('image/') === 0; }
 
   /* o estado que a pessoa lê na parte: o que a arte atual está esperando */
   function estadoParte(d, efetivo, rascunho, podeEditar) {
@@ -2815,15 +2816,45 @@ B7.Design = (function () {
 
   function linhaUpload(f, i, papeis) {
     const trancado = f.estado === 'enviando' || f.estado === 'ok';
+    const podeVer = f.estado === 'ok' && ehImagemMime(f.mime);
     return '<div class="ds-up-item ds-up-item-' + f.estado + '" data-up="' + i + '">' +
       '<div class="ds-up-nome"><b>' + esc(f.arquivo.name) + '</b><small>' + formatarTamanho(f.arquivo.size) + '</small></div>' +
       '<select class="campo fina" data-up-papel="' + i + '"' + (trancado ? ' disabled' : '') + '>' +
         papeis.map(([v, r]) => '<option value="' + v + '"' + (f.papel === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>' +
       (f.estado === 'enviando' ? '<div class="ds-up-barra"><span style="width:' + f.progresso + '%"></span></div><small>' + f.progresso + '%</small>'
-        : f.estado === 'ok' ? '<span class="ds-up-ok">Enviado</span>'
+        : f.estado === 'ok' ? (podeVer ? '<button class="b fina contorno" data-up-ver="' + i + '">Ver</button>' : '') + '<span class="ds-up-ok">Enviado</span>'
         : f.estado === 'erro' ? '<span class="ds-up-erro">' + esc(f.erro || 'O envio foi interrompido') + '</span><button class="b fina" data-up-tentar="' + i + '">Tentar novamente</button>'
         : '<span class="ds-leve">Aguardando…</span>') +
     '</div>';
+  }
+
+  /* Prévia de um arquivo que ainda está só na fila de upload (antes de
+     mandar a versão pra revisão interna) — ainda não existe como
+     registro carregado em `drawer.extra.arquivos` (só entra ali depois
+     que a peça é recarregada), então não dá pra reaproveitar
+     `abrirTelaCheia` direto: um visualizador simples, com o que já
+     temos na hora (caminho + mime devolvidos por `enviarArquivoDesign`). */
+  async function abrirPreviaUpload(f) {
+    if (!f || !f.caminho || !ehImagemMime(f.mime)) return;
+    const el = document.createElement('div');
+    el.className = 'ds-lightbox'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-label', 'Prévia do arquivo enviado');
+    el.innerHTML = '<div class="ds-lb-topo"><span class="ds-lb-tit">' + esc(f.arquivo.name) + '</span>' +
+        '<div class="ds-lb-acoes"><button class="ico" data-lb-fechar aria-label="Fechar">✕</button></div></div>' +
+      '<div class="ds-lb-corpo"><div class="ds-lb-area"><img class="ds-lb-img" alt="" draggable="false"></div></div>';
+    const tecla = e => { if (e.key === 'Escape') { e.stopImmediatePropagation(); fechar(); } };
+    function fechar() {
+      document.removeEventListener('keydown', tecla, true);
+      el.remove(); document.body.classList.remove('ds-lb-aberta');
+    }
+    document.addEventListener('keydown', tecla, true);
+    el.addEventListener('mousedown', e => { if (e.target === el || e.target.classList.contains('ds-lb-area')) fechar(); });
+    el.querySelector('[data-lb-fechar]').onclick = fechar;
+    document.body.appendChild(el); document.body.classList.add('ds-lb-aberta');
+    try {
+      const url = await B7.DB.urlArquivoDesign(f.caminho);
+      el.querySelector('.ds-lb-img').src = url;
+    } catch (e) { fechar(); B7.UI.toast('Não foi possível abrir a prévia.', { tipo: 'erro' }); }
   }
 
   function formatarTamanho(bytes) {
@@ -2852,11 +2883,11 @@ B7.Design = (function () {
     redesenharUpload(d);
     try {
       const versaoId = await garantirRascunho(d.id);
-      const arquivoId = await B7.DB.enviarArquivoDesign({
+      const enviado = await B7.DB.enviarArquivoDesign({
         deliverableId: d.id, versaoId, arquivo: f.arquivo, papel: f.papel,
         aoProgredir: pct => { f.progresso = pct; atualizarBarraUpload(f); }
       });
-      f.estado = 'ok'; f.arquivoId = arquivoId;
+      f.estado = 'ok'; f.arquivoId = enviado.id; f.caminho = enviado.caminho; f.mime = enviado.mime;
     } catch (e) {
       f.estado = 'erro'; f.erro = e.message || 'O envio foi interrompido.';
     }
@@ -2902,6 +2933,7 @@ B7.Design = (function () {
       if (f && f.estado === 'pendente') f.papel = s.value;
     });
     el.querySelectorAll('[data-up-tentar]').forEach(b => b.onclick = () => iniciarUpload(d, drawer.filaUpload[+b.dataset.upTentar]));
+    el.querySelectorAll('[data-up-ver]').forEach(b => b.onclick = () => abrirPreviaUpload(drawer.filaUpload[+b.dataset.upVer]));
   }
 
   /* liga o bloco de envio (upload OU externo) — chamado no desenho

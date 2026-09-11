@@ -3965,3 +3965,40 @@ Arquivos alterados: `js/semana.js`, `js/doc-semana.js`, `js/extras.js`,
 `js/design.js`, `styles/semana.css`, `js/auth.js`, `sw.js`. Nenhuma
 migration nova.
 `VERSAO` → `2026-09-11-an`, cache → `roteiros-b7-v57`.
+
+## Build 2026-09-11-ao — Design: prévia de um arquivo recém-enviado, ainda na fila (antes de mandar pra revisão)
+
+**Pedido:** "quando eu clico em prévia para revisão, não aparece nada
+pra mim" — com print de um arquivo já enviado (barra "Enviado") na
+gaveta de Design, ao lado do seletor mostrando o papel "Prévia para
+revisão".
+
+### O que a auditoria encontrou
+
+"Prévia para revisão" ali não é um link nem um botão — é o rótulo do
+papel do arquivo, escolhido no seletor ao lado (a lista de papéis que
+o arquivo pode ter dentro da versão). Ele nunca teve comportamento de
+clique. O problema de verdade: depois que um arquivo termina de subir
+nessa fila (peça de arte única — Card, Story, Capa de Reel), não
+existe NENHUMA forma de olhar o que foi enviado antes de mandar pra
+revisão interna — só nome, tamanho e "Enviado". Pra conferir se subiu
+o arquivo certo, só baixando de novo ou mandando às cegas.
+
+(Peça multiparte — Carrossel, Slides — já tinha isso resolvido: cada
+slide upado por `uploadParte` recarrega o histórico da peça na hora,
+e o slide mostra a arte na tela normalmente.)
+
+### Implementado e testado
+
+- Arquivo de imagem que termina de subir na fila (fora do fluxo por
+  slide) ganha um botão **"Ver"** ao lado de "Enviado" — abre a mesma
+  tela cheia (zoom, fechar com Esc ou clicando fora) usada pra ver
+  arte já enviada, só que direto do arquivo que acabou de subir, sem
+  precisar esperar a peça recarregar do banco.
+- Arquivo que não é imagem (PDF, PSD, AI…) continua sem prévia — igual
+  ao resto do sistema, que nesses casos só oferece baixar.
+- `node --check` limpo em `js/design.js` e `js/database.js`.
+
+Arquivos alterados: `js/database.js`, `js/design.js`, `js/auth.js`,
+`sw.js`. Nenhuma migration nova.
+`VERSAO` → `2026-09-11-ao`, cache → `roteiros-b7-v58`.

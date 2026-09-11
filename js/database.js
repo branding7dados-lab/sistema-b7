@@ -1624,10 +1624,15 @@ B7.DB = (function () {
       /* Arquivos 2.0: `parte` = { tipo:'slide'|'frame', id, posicao } vincula
          o arquivo ao slide/frame canônico (id estável da Linha Editorial —
          nunca posição de array). Peça de arte única manda parte = null. */
-      return this.registrarArquivoDesign({
+      const id = await this.registrarArquivoDesign({
         versaoId, papel, nome: arquivo.name, caminho, mime: arquivo.type, tamanho: arquivo.size, caminhoThumb,
         parte: parte || null, largura: medida.largura, altura: medida.altura
       });
+      /* devolve caminho/mime junto do id — quem acabou de subir o
+         arquivo (a fila de upload, antes de a peça ser recarregada do
+         banco) precisa disso pra poder abrir uma prévia na hora, sem
+         esperar um refresh de `drawer.extra`. */
+      return { id, caminho, mime: arquivo.type };
     },
 
     /* Baixa o ARQUIVO ORIGINAL (bytes intactos, nunca a miniatura) como
