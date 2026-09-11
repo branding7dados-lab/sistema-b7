@@ -1394,10 +1394,11 @@ B7.DB = (function () {
     async criarRascunhoDesign(deliverableId) {
       return this.rpc('design_versao_rascunho', { p_deliverable_id: deliverableId });
     },
-    async registrarArquivoDesign({ versaoId, papel, nome, caminho, mime, tamanho }) {
+    async registrarArquivoDesign({ versaoId, papel, nome, caminho, mime, tamanho, caminhoThumb }) {
       return this.rpc('design_arquivo_registrar', {
         p_versao_id: versaoId, p_papel: papel, p_nome: nome,
-        p_caminho: caminho, p_mime: mime || null, p_tamanho: tamanho || null
+        p_caminho: caminho, p_mime: mime || null, p_tamanho: tamanho || null,
+        p_caminho_thumb: caminhoThumb || null
       });
     },
     /* via: 'upload' (padrão — exige ao menos 1 arquivo já registrado) ou
@@ -1449,26 +1450,25 @@ B7.DB = (function () {
       return { versoes, notificacoes: notifs };
     },
 
-    /* upload de arquivo de Design — Storage privado (bucket design-files),
-       caminho "<deliverable_id>/<versao_id>/<arquivo>". Progresso real via
-       XHR (o cliente supabase-js não expõe progresso em upload()). */
-    async enviarArquivoDesign({ deliverableId, versaoId, arquivo, papel, aoProgredir }) {
-      const nomeSeguro = arquivo.name.normalize('NFKD').replace(/[^\w.\-]+/g, '_').slice(-140);
-      const caminho = deliverableId + '/' + versaoId + '/' + Date.now() + '-' + nomeSeguro;
+    /* envia um blob qualquer pro bucket design-files, num caminho já
+       pronto — usado tanto pro arquivo original (com progresso) quanto
+       pra miniatura gerada localmente (sem progresso, é pequena). Fatorei
+       daqui de dentro de enviarArquivoDesign pra não duplicar a parte
+       chata (headers, token, XHR) quando a miniatura entrou (Rodada 5). */
+    async _subirArquivoStorage(caminho, blob, mime, aoProgredir) {
       const cfg = window.B7_CONFIG || {};
       const base = String(cfg.SUPABASE_URL || '').trim().replace(/\/+$/, '');
       const chave = String(cfg.SUPABASE_PUBLISHABLE_KEY || '').trim();
       const sess = await sb().auth.getSession();
       const token = sess && sess.data && sess.data.session && sess.data.session.access_token;
       const url = base + '/storage/v1/object/design-files/' + encodeURI(caminho);
-
       await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', url, true);
         xhr.setRequestHeader('apikey', chave);
         xhr.setRequestHeader('Authorization', 'Bearer ' + (token || chave));
         xhr.setRequestHeader('x-upsert', 'false');
-        xhr.setRequestHeader('Content-Type', arquivo.type || 'application/octet-stream');
+        xhr.setRequestHeader('Content-Type', mime || 'application/octet-stream');
         xhr.upload.onprogress = (e) => {
           if (aoProgredir && e.lengthComputable) aoProgredir(Math.round((e.loaded / e.total) * 100));
         };
@@ -1481,11 +1481,78 @@ B7.DB = (function () {
           }
         };
         xhr.onerror = () => reject(new Error('O envio foi interrompido. Confira a conexão e tente novamente.'));
-        xhr.send(arquivo);
+        xhr.send(blob);
       });
+    },
+
+    /* miniatura local (Rodada 5) — gerada no navegador, NUNCA no
+       servidor: evita depender de transformação de imagem paga do
+       Storage e mantém tudo funcionando em qualquer plano do Supabase.
+       Só pra formatos raster comuns (jpeg/png/webp/gif); qualquer outra
+       coisa (vídeo, PDF, arquivo de design nativo) retorna null — o
+       card mostra o ícone por formato em vez de tentar montar uma
+       miniatura que não existe. Lado maior limitado a 320px, JPEG 0.72
+       — pequeno o bastante pra nunca pesar no card de 52px nem na
+       bolinha do navegador, grande o bastante pra dar uma ideia real da
+       arte. Retorna null (nunca lança) se o navegador não conseguir
+       decodificar — a peça continua acessível pelo arquivo original. */
+    async _gerarMiniaturaImagem(arquivo, ladoMax) {
+      const okMime = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(arquivo.type);
+      if (!okMime) return null;
+      try {
+        let bitmap;
+        if ('createImageBitmap' in window) {
+          bitmap = await createImageBitmap(arquivo);
+        } else {
+          const urlObj = URL.createObjectURL(arquivo);
+          try {
+            bitmap = await new Promise((resolve, reject) => {
+              const img = new Image();
+              img.onload = () => resolve(img);
+              img.onerror = () => reject(new Error('decodificação falhou'));
+              img.src = urlObj;
+            });
+          } finally { URL.revokeObjectURL(urlObj); }
+        }
+        const largura = bitmap.width || bitmap.naturalWidth, altura = bitmap.height || bitmap.naturalHeight;
+        if (!largura || !altura) return null;
+        const escala = Math.min(1, ladoMax / Math.max(largura, altura));
+        const w = Math.max(1, Math.round(largura * escala)), h = Math.max(1, Math.round(altura * escala));
+        const tela = document.createElement('canvas');
+        tela.width = w; tela.height = h;
+        const ctx = tela.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        if (bitmap.close) bitmap.close();
+        const blob = await new Promise(resolve => tela.toBlob(resolve, 'image/jpeg', 0.72));
+        return blob || null;
+      } catch (e) { return null; /* nunca bloqueia o upload do arquivo original por isso */ }
+    },
+
+    /* upload de arquivo de Design — Storage privado (bucket design-files),
+       caminho "<deliverable_id>/<versao_id>/<arquivo>". Progresso real via
+       XHR (o cliente supabase-js não expõe progresso em upload()).
+       Rodada 5: se o arquivo for uma imagem, sobe também uma miniatura
+       pequena (gerada localmente) no mesmo caminho + "-thumb.jpg" — o
+       card na fila passa a baixar ela, não o arquivo original inteiro.
+       Se a miniatura não puder ser gerada (formato não suportado, falha
+       de decodificação), o upload segue normal, só sem thumb — sem
+       bloquear ninguém por causa de uma otimização. */
+    async enviarArquivoDesign({ deliverableId, versaoId, arquivo, papel, aoProgredir }) {
+      const nomeSeguro = arquivo.name.normalize('NFKD').replace(/[^\w.\-]+/g, '_').slice(-140);
+      const caminho = deliverableId + '/' + versaoId + '/' + Date.now() + '-' + nomeSeguro;
+
+      await this._subirArquivoStorage(caminho, arquivo, arquivo.type, aoProgredir);
+
+      let caminhoThumb = null;
+      const miniatura = await this._gerarMiniaturaImagem(arquivo, 320);
+      if (miniatura) {
+        caminhoThumb = caminho + '-thumb.jpg';
+        try { await this._subirArquivoStorage(caminhoThumb, miniatura, 'image/jpeg'); }
+        catch (e) { caminhoThumb = null; /* card cai pro arquivo original */ }
+      }
 
       return this.registrarArquivoDesign({
-        versaoId, papel, nome: arquivo.name, caminho, mime: arquivo.type, tamanho: arquivo.size
+        versaoId, papel, nome: arquivo.name, caminho, mime: arquivo.type, tamanho: arquivo.size, caminhoThumb
       });
     },
 

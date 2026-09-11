@@ -2949,3 +2949,180 @@ fixas: Entretenimento, Educativo, Inspirador, Conversão, Institucional.
 Arquivos alterados: `js/conteudo.js`, `js/linha.js`, `js/auth.js`,
 `sw.js`. `VERSAO` → `2026-09-11-ac`, cache do service worker →
 `roteiros-b7-v46`.
+
+## Build 2026-09-11-ad — Rodada 4 do redesign do Designer: navegador de Carrossel e Stories
+
+Rodada 4 do plano de UX do Designer (`PLANO_UX_DESIGN_RESTANTE.md`):
+dentro do Design Piece Workspace (a tela quase cheia entregue na
+Rodada 3), o briefing de Carrossel e de Stories deixou de ser uma
+lista empilhada de todos os slides/frames de uma vez e virou um
+navegador — um slide/frame em destaque por vez, com numeração
+clicável e setas, igual a um carrossel de verdade.
+
+### Implementado e testado
+
+- `js/design.js`: nova seção de navegador, reaproveitando a mesma
+  arquitetura da Rodada 3 (`conteudoPrincipal()` despacha por tipo de
+  conteúdo, `drawer` guarda o estado da peça aberta, `desenharDrawer()`
+  redesenha tudo):
+  - `navegadorSlides(itens, tipoItem)` monta o navegador: pills
+    numeradas (01, 02, 03…) com a atual em destaque, setas ‹ › para
+    andar um de cada vez, e um botão "Ver todos (N)" que troca pra
+    lista clássica empilhada (com "Ver em navegador" pra voltar) —
+    pensado pra quem prefere rolar tudo de uma vez em vez de navegar.
+  - Navegação por clique na pill, clique nas setas, e teclado: com o
+    foco dentro do navegador, seta ← / → do teclado andam pro
+    slide/frame anterior/próximo (sem interferir em nenhum outro atalho
+    de teclado do resto da tela — testado que Escape continua fechando
+    o workspace normalmente).
+  - As setas desabilitam nas pontas (não tem "anterior" no slide 1,
+    nem "próximo" no último) e o foco do teclado volta pra pill/seta
+    certa depois de cada navegação, pra quem usa teclado não perder o
+    lugar.
+  - Com 1 slide/frame só, não aparecem pills nem setas (não faz sentido
+    navegar entre um item único) — só o card do conteúdo.
+  - Sem nenhum slide/frame cadastrado, mostra a mensagem "Nenhum slide/
+    story cadastrado", igual ao resto do app (nunca finge que tem
+    conteúdo).
+  - **As regras de CAPA e CTA do Carrossel continuam exatamente as
+    mesmas de antes** (slide 1 = CAPA, último = CTA, calculado pela
+    posição no array — nunca guardado no banco): reusei a mesma lógica
+    de rótulo que já existia (a mesma do editor de Criativos, em
+    `js/linha.js`). Stories não tem CAPA/CTA por frame — só "STORY 01",
+    "STORY 02"… — porque essa regra nunca existiu pra Stories.
+  - Continua 100% somente leitura: nenhum input, textarea ou campo
+    editável dentro do conteúdo principal do workspace, só no painel
+    lateral (responsável/prazo/prioridade/upload), do mesmo jeito que
+    já era pro Card e pra Capa de Reel na Rodada 3.
+- Limpei um pedaço de código morto: a função que antes desenhava o
+  briefing tinha os ramos de Card, Reel, Carrossel e Story todos
+  juntos, mas os de Card/Reel já não eram mais chamados dali desde a
+  Rodada 3 (tinham virado telas próprias) — sobrava só como código
+  inalcançável. Ficou só o caso de peça manual (sem conteúdo vinculado
+  dos Criativos) e um aviso de segurança pra formato não reconhecido.
+- `node --check` em `js/design.js`.
+- Testei com Playwright (peças fictícias de Carrossel com 5 slides, 1
+  slide só, e 0 slides; Story com 3 frames): pills corretas e a atual
+  destacada; setas ‹ › navegam e desabilitam nas pontas certas; ArrowLeft/
+  ArrowRight do teclado navegam quando o foco está no navegador; "Ver
+  todos"/"Ver em navegador" alternam a visualização; CAPA aparece no
+  slide 1 e CTA no último do Carrossel (e nos dois ao mesmo tempo
+  quando só tem 1 slide); Stories não mostra CAPA nem CTA por frame,
+  só o campo geral "CTA" do conteúdo; mensagem de vazio aparece sem
+  slides cadastrados; nenhum input/textarea dentro do conteúdo
+  principal; nenhum erro de JavaScript em nenhum cenário. Testei
+  também em mobile (390px) e tema escuro — sem estouro horizontal, sem
+  erro. Rerrodei a suíte de regressão da Rodada 3 (Card, Reel, Central
+  de Design) e a suíte de Status Semanal/Criativos/Postagens/seleção
+  de texto — sem nenhuma quebra.
+
+### Não implementado por bloqueio
+
+- Nenhum.
+
+### Observação
+
+- Ao rodar a suíte antiga de regressão mais ampla, um teste específico
+  da Rodada 2 (`t_design_r2.py`, visão de coordenador na página
+  "Design") apontou um resultado que merece checagem — não é algo que
+  toquei nesta rodada (Rodada 4 mexeu só no conteúdo principal do
+  workspace de Carrossel/Story), mas fica registrado pra auditoria
+  futura em vez de ignorado.
+
+Arquivos alterados: `js/design.js`, `styles/design.css`, `js/auth.js`,
+`sw.js`. `VERSAO` → `2026-09-11-ad`, cache do service worker →
+`roteiros-b7-v47`.
+
+## Build 2026-09-11-ae — Rodada 5a: miniatura otimizada + placeholder por formato
+
+Rodada 5 do plano de UX do Designer acabou grande demais pra um build
+só (a mesma situação da Rodada 3), então ficou dividida: esta é a
+parte 1 (miniatura + placeholder). A parte 2 (Linha Editorial do
+Designer como componente próprio, navegação reduzida) ainda não foi
+iniciada — ver observação no fim.
+
+**O problema**: todo lugar que mostra uma prévia pequena de uma peça
+(o card de 52px na fila, a bolinha do navegador do Carrossel/Story da
+Rodada 4) baixava o ARQUIVO ORIGINAL inteiro — a mesma imagem de
+produção em alta resolução — só pra desenhar um quadradinho. Numa fila
+com muitas peças, isso é banda de verdade desperdiçada. Além disso, se
+o último arquivo enviado como "prévia" era um vídeo ou PDF (em vez de
+imagem), o card tentava montar ele como imagem de fundo e ficava
+quebrado/vazio, sem avisar nada — bug antigo, silencioso.
+
+### Implementado e testado
+
+- **Miniatura gerada no navegador, no momento do upload** (não no
+  servidor): `js/database.js` (`_gerarMiniaturaImagem`) usa
+  `<canvas>` pra reduzir a imagem enviada pro lado maior de 320px,
+  exporta como JPEG (qualidade 0.72), e sobe ela pro mesmo bucket
+  `design-files`, no mesmo caminho do arquivo original + `-thumb.jpg`.
+  Escolhi fazer isso no navegador (em vez de usar a transformação de
+  imagem do Storage do Supabase) porque aquele recurso é de plano
+  pago — assim funciona em qualquer plano, sem depender de nada extra
+  configurado no projeto.
+  - Só tenta gerar miniatura pra formatos raster comuns (jpeg, png,
+    webp, gif). Qualquer outro tipo de arquivo (vídeo, PDF, arquivo de
+    design nativo tipo .psd/.ai) não gera miniatura — nunca tenta, nem
+    falha tentando.
+  - Se a geração falhar por qualquer motivo (imagem corrompida,
+    navegador sem suporte), o upload do arquivo original **continua
+    normal** — a miniatura é só uma otimização, nunca bloqueia nada.
+  - Migração `migration_design_thumb.sql`: coluna nova
+    `design_arquivos.caminho_thumb`; a função `design_arquivo_registrar`
+    aceita esse caminho (parâmetro novo, opcional — chamada antiga
+    continua funcionando); a view `design_resumo` passou a expor
+    `ultima_previa_thumb` e `ultima_previa_mime`.
+- **Cards e navegador usam a miniatura quando ela existe** — `js/
+  design.js` (`fontePrevia`): prefere `ultima_previa_thumb`; se não
+  existir (peça enviada antes desta rodada), cai pro arquivo original
+  **só se ele for mesmo uma imagem**; se o último preview for
+  vídeo/PDF/etc., não usa nenhum dos dois — mostra o ícone de
+  placeholder por formato (o mesmo que já existia pra "sem prévia
+  nenhuma"), corrigindo o card quebrado de antes.
+- **A prévia grande do workspace (Rodada 3) continua usando o arquivo
+  original**, nunca a miniatura de 320px — é a peça inteira, a pessoa
+  abriu de propósito pra ver a arte de verdade; só ganhou a mesma
+  proteção de placeholder quando o preview não é imagem.
+- Compatível com peças antigas: nenhuma precisa ser reenviada — só as
+  que já eram imagem continuam mostrando o arquivo original até
+  alguém subir uma versão nova (aí já ganha a miniatura automática).
+- Testado com Playwright, incluindo um upload de verdade (arquivo
+  `.jpg` real passado pelo seletor de arquivo, não simulado): subir
+  uma imagem gera duas requisições de upload (original + miniatura) e
+  a chamada que registra o arquivo no banco leva o caminho da
+  miniatura; subir um PDF gera só uma requisição (sem miniatura) e o
+  caminho da miniatura vai `null`. Testado também: peça com prévia em
+  vídeo mostra o ícone, nunca tenta montar imagem quebrada (no card e
+  no workspace); peça com miniatura usa a miniatura no card mas o
+  original no workspace; peça antiga (imagem sem miniatura) cai pro
+  original; peça sem prévia nenhuma mostra o ícone. `node --check` em
+  `js/database.js` e `js/design.js`. Rerrodei a suíte de regressão das
+  Rodadas 3 e 4 (Card, Reel, Carrossel, Stories, Central de Design) e a
+  suíte de Status Semanal/Criativos/Postagens/tipo de pilar — sem
+  nenhuma quebra.
+
+### Implementado mas requer validação adicional
+
+- A migração SQL (`migration_design_thumb.sql`) precisa ser rodada no
+  Supabase antes deste build ir pro ar — sem ela, o front-end tenta
+  mandar `p_caminho_thumb` pra uma função que ainda não aceita esse
+  parâmetro e o upload de arquivo passa a falhar. **Rodar a migração
+  primeiro, testar um upload de imagem depois.**
+
+### Não implementado por bloqueio
+
+- Nenhum.
+
+### Observação
+
+- Esta é só a parte 1 da Rodada 5 (ver `PLANO_UX_DESIGN_RESTANTE.md`).
+  A parte 2 — Linha Editorial do Designer virar um componente próprio,
+  com navegação reduzida a 4 abas (Peças de Design / Contexto /
+  Pilares / Referências) em vez das 5 do Coordenador — é um refactor
+  bem maior (mexe num `js/linha.js` de quase 1700 linhas, hoje
+  compartilhado pelos dois papéis) e ainda não foi iniciada.
+
+Arquivos alterados: `js/database.js`, `js/design.js`,
+`migration_design_thumb.sql`, `js/auth.js`, `sw.js`. `VERSAO` →
+`2026-09-11-ae`, cache do service worker → `roteiros-b7-v48`.

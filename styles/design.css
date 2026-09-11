@@ -257,6 +257,30 @@ body.ds-ws-aberta{overflow:hidden;}
 .ds-slide-tit{font-weight:600;}
 .ds-slide p{font-size:12.5px;line-height:1.5;color:var(--ink-2);margin:2px 0;}
 
+/* ------------------------------------------------ navegador de slide/
+   story (Rodada 4) — pills numeradas + item em foco + setas ‹/›.
+   Puramente leitura, mesma família visual do resto do briefing. */
+.ds-nav-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.ds-nav-topo small{margin-bottom:0;}
+.ds-nav-alternar{flex:none;}
+.ds-nav-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.ds-nav-pill{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--borda-forte);background:var(--card);
+  color:var(--ink-3);font-size:11px;font-weight:700;cursor:pointer;transition:var(--t-micro);flex:none;}
+.ds-nav-pill:hover{border-color:var(--acento);color:var(--acento);}
+.ds-nav-pill.on{background:var(--acento);border-color:var(--acento);color:#fff;}
+.ds-nav-foco{display:flex;align-items:stretch;gap:8px;}
+.ds-nav-foco .ds-slide-foco{flex:1;min-width:0;}
+.ds-nav-seta{flex:none;width:36px;border-radius:var(--r-sm);background:var(--suave);color:var(--ink-2);
+  font-size:18px;line-height:1;cursor:pointer;transition:var(--t-micro);align-self:stretch;}
+.ds-nav-seta:hover:not(:disabled){background:var(--acento-suave);color:var(--acento);}
+.ds-nav-seta:disabled{opacity:.35;cursor:default;}
+.ds-slide-foco{border:1.5px solid var(--borda-forte);}
+
+@media (max-width: 480px){
+  .ds-nav-topo{flex-wrap:wrap;}
+  .ds-nav-seta{width:32px;}
+}
+
 /* ------------------------------------------------------------ upload */
 .ds-drop{border:1.5px dashed var(--borda-forte);border-radius:var(--r-sm);padding:20px 14px;text-align:center;
   cursor:pointer;transition:var(--t-micro);}

@@ -454,10 +454,10 @@ B7.Design = (function () {
      (ligarThumbs resolve a URL assinada sob demanda, como no cartão
      de peça) e nunca um espaço vazio reservado quando não há prévia */
   function tirasPrevia(itens) {
-    const comPrevia = itens.filter(d => d.ultima_previa).slice(0, 3);
+    const comPrevia = itens.map(d => ({ d, fonte: fontePrevia(d) })).filter(x => x.fonte).slice(0, 3);
     if (!comPrevia.length) return '';
-    return '<div class="cp-previas">' + comPrevia.map(d =>
-      '<div class="ds-thumb cp-previa" data-previa="' + esc(d.ultima_previa) + '"><span class="ds-thumb-esq"></span></div>').join('') + '</div>';
+    return '<div class="cp-previas">' + comPrevia.map(({ fonte }) =>
+      '<div class="ds-thumb cp-previa" data-previa="' + esc(fonte) + '"><span class="ds-thumb-esq"></span></div>').join('') + '</div>';
   }
 
   function formatosIcone(itens) {
@@ -637,7 +637,7 @@ B7.Design = (function () {
     const m = motivoPrecisa(d);
     const info = prazoInfo(d);
     return '<article class="dsc-item" data-peca="' + esc(d.id) + '" tabindex="0" role="button">' +
-      (d.ultima_previa ? '<div class="ds-thumb" data-previa="' + esc(d.ultima_previa) + '"><span class="ds-thumb-esq"></span></div>'
+      (fontePrevia(d) ? '<div class="ds-thumb" data-previa="' + esc(fontePrevia(d)) + '"><span class="ds-thumb-esq"></span></div>'
         : '<div class="ds-thumb ds-thumb-vazia">' + iconeTipo(d.tipo) + '</div>') +
       '<div class="dsc-item-tx">' +
         '<span class="dsc-motivo ' + m.k + '">' + esc(m.t) + '</span>' +
@@ -946,7 +946,7 @@ B7.Design = (function () {
     return '<article class="ds-card' + (d.prioridade === 'urgente' ? ' urgente' : d.prioridade === 'alta' ? ' alta' : '') + '" ' +
       'data-peca="' + esc(d.id) + '" tabindex="0" role="button" aria-label="' + esc(d.titulo || d.conteudo_titulo || 'Peça de Design') + '">' +
       '<div class="ds-card-topo">' +
-        (d.ultima_previa ? '<div class="ds-thumb" data-previa="' + esc(d.ultima_previa) + '"><span class="ds-thumb-esq"></span></div>'
+        (fontePrevia(d) ? '<div class="ds-thumb" data-previa="' + esc(fontePrevia(d)) + '"><span class="ds-thumb-esq"></span></div>'
           : '<div class="ds-thumb ds-thumb-vazia">' + iconeTipo(d.tipo) + '</div>') +
         '<div class="ds-card-info">' +
           '<span class="ds-tipo">' + esc(rotuloTipo(d.tipo)) + '</span>' +
@@ -967,6 +967,19 @@ B7.Design = (function () {
         (info ? '<span class="ds-prazo' + (info.atrasada ? ' atrasada' : info.hoje ? ' hoje' : '') + '">' + esc(info.txt) + '</span>' : '') +
       '</div>' +
     '</article>';
+  }
+
+  /* qual caminho usar pra desenhar a prévia de uma peça, sem nunca
+     tentar montar imagem de algo que não é imagem (Rodada 5). Prefere
+     a miniatura otimizada (gerada no upload, Rodada 5 em diante); cai
+     pro arquivo original só quando ele É mesmo uma imagem (peça antiga,
+     enviada antes desta miniatura existir); e retorna null — vira
+     placeholder limpo por formato — quando o último preview é vídeo,
+     PDF ou qualquer coisa que não dá pra desenhar como background-image. */
+  function fontePrevia(d) {
+    if (d.ultima_previa_thumb) return d.ultima_previa_thumb;
+    const ehImagem = !d.ultima_previa_mime || d.ultima_previa_mime.indexOf('image/') === 0;
+    return (d.ultima_previa && ehImagem) ? d.ultima_previa : null;
   }
 
   function iconeTipo(t) {
@@ -1272,7 +1285,17 @@ B7.Design = (function () {
       document.body.appendChild(el);
       document.body.classList.add('ds-ws-aberta');
       el.addEventListener('mousedown', e => { if (e.target === el) fecharDrawer(); });
-      const tecla = e => { if (e.key === 'Escape') fecharDrawer(); };
+      /* setas do teclado só navegam slide/story quando o foco já está
+         dentro do navegador (uma pill ou uma seta ‹/›) — nunca sequestra
+         Left/Right de um campo de texto ou de qualquer outro controle */
+      const tecla = e => {
+        if (e.key === 'Escape') { fecharDrawer(); return; }
+        if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
+            document.activeElement && document.activeElement.closest('.ds-nav-slides')) {
+          e.preventDefault();
+          moverSlide(e.key === 'ArrowRight' ? 1 : -1);
+        }
+      };
       document.addEventListener('keydown', tecla);
       drawer = { id, el, extra: null, briefing: null, versaoAtualId: null, filaUpload: [],
                  anterior: document.activeElement, tecla };
@@ -1371,10 +1394,17 @@ B7.Design = (function () {
     '</div>';
   }
 
-  /* prévia grande da arte mais recente — mesma fonte (ultima_previa) e
-     mesmo carregamento sob demanda dos cartões, só maior */
+  /* prévia grande da arte mais recente — mesmo carregamento sob demanda
+     dos cartões, só maior. Aqui usa sempre o ARQUIVO ORIGINAL (nunca a
+     miniatura de 320px) — é a peça inteira, a pessoa abriu de propósito
+     pra ver a arte de verdade. Mas só quando o último preview É uma
+     imagem (Rodada 5): vídeo, PDF etc. mostram o ícone por formato em
+     vez de um quadrado quebrado tentando abrir como background-image —
+     o arquivo continua acessível pelo histórico de versões, só não dá
+     pra pré-visualizar aqui dentro. */
   function previaGrande(d) {
-    return d.ultima_previa
+    const ehImagem = !d.ultima_previa_mime || d.ultima_previa_mime.indexOf('image/') === 0;
+    return (d.ultima_previa && ehImagem)
       ? '<div class="ds-ws-preview ds-thumb" data-previa="' + esc(d.ultima_previa) + '"></div>'
       : '<div class="ds-ws-preview">' + iconeTipo(d.tipo) + '</div>';
   }
@@ -1395,17 +1425,19 @@ B7.Design = (function () {
       '<p>' + esc(n.mensagem.trim()) + '</p></div></div>';
   }
 
-  /* conteúdo principal do workspace — Card e Capa de Reel ganham
-     tratamento próprio (o campo mais importante em destaque, e no Reel
-     um atalho direto pro roteiro); os demais formatos (Carrossel,
-     Story, peça manual) continuam no briefing genérico de sempre —
-     ganham workspace dedicado na Rodada 4. */
+  /* conteúdo principal do workspace — cada formato real (Card, Reel,
+     Carrossel, Story) tem tratamento próprio: Card e Reel destacam o
+     campo mais importante (Rodada 3); Carrossel e Story ganham o
+     navegador de slide/story (Rodada 4). Só a peça manual (sem
+     conteúdo canônico) continua no briefing genérico. */
   function conteudoPrincipal(d) {
     const b = drawer.briefing;
     if (!b) return '<p class="vazio-leve">Carregando…</p>';
     if (b.erro) return '<p class="vazio-leve">Não foi possível carregar o briefing.</p>';
     if (!b.manual && b.conteudo.tipo === 'Card') return blocoPrincipalCard(b);
     if (!b.manual && b.conteudo.tipo === 'Reel') return blocoPrincipalReel(b);
+    if (!b.manual && b.conteudo.tipo === 'Carrossel') return blocoPrincipalCarrossel(b);
+    if (!b.manual && b.conteudo.tipo === 'Story') return blocoPrincipalStory(b);
     return blocoBriefing(d);
   }
 
@@ -1564,7 +1596,13 @@ B7.Design = (function () {
     ligarThumbs(drawer.el);
   }
 
-  /* ---------------------------------------------------------- briefing */
+  /* ---------------------------------------------------------- briefing
+     Só sobra pra peça MANUAL (sem conteúdo canônico — nada de Linha
+     Editorial por trás, só a descrição digitada na criação da peça).
+     Card, Reel, Carrossel e Story têm workspace dedicado — ver
+     conteudoPrincipal(). O `return` final é só uma rede de segurança
+     para um tipo desconhecido, que não deveria acontecer (FORMATOS só
+     tem os quatro). */
   function blocoBriefing(d) {
     const b = drawer.briefing;
     if (!b) return '<p class="vazio-leve">Carregando…</p>';
@@ -1574,52 +1612,110 @@ B7.Design = (function () {
         ? '<p class="ds-briefing-texto">' + esc(b.descricao) + '</p>'
         : '<p class="vazio-leve">Sem descrição.</p>';
     }
+    return '<p class="vazio-leve">Formato não reconhecido.</p>';
+  }
+
+  /* --------------------------------------------------- navegador de
+     slide/story (Rodada 4)
+     Troca a lista empilhada por um navegador: pills numeradas (01, 02,
+     03…) com o item atual em destaque, setas ‹/› pra andar um de cada
+     vez, e "Ver todos (N)" pra abrir a sequência inteira empilhada de
+     novo — sem perder a leitura de ponta a ponta pra quem prefere
+     rolar. Puramente leitura: nenhum input/textarea aqui, igual sempre
+     foi neste workspace (Designer nunca edita a Linha Editorial por
+     aqui). O estado (item atual / modo) vive em `drawer`, junto do
+     resto do estado da peça aberta — reseta sozinho ao trocar de peça,
+     porque `drawer` é recriado do zero em abrirDetalhe(). */
+
+  /* Slide 1 = capa, último = CTA — sempre calculado pela posição, nunca
+     um campo gravado no banco. Mesma regra de js/linha.js:rotuloSlide,
+     só que Story nunca teve essa rotulagem (não tem capa/CTA). */
+  function rotuloItemNav(i, total, tipoItem) {
+    if (tipoItem !== 'slide') return 'STORY ' + String(i + 1).padStart(2, '0');
+    const primeiro = i === 0, ultimo = i === total - 1, unico = total === 1;
+    let rot = 'SLIDE ' + String(i + 1).padStart(2, '0');
+    if (unico) rot += ' · CAPA · CTA'; else if (primeiro) rot += ' · CAPA'; else if (ultimo) rot += ' · CTA';
+    return rot;
+  }
+
+  function itemNavHTML(it, i, total, tipoItem, destaque) {
+    const rot = rotuloItemNav(i, total, tipoItem);
+    const corpo = tipoItem === 'slide'
+      ? ((it.titulo ? '<p class="ds-slide-tit">' + esc(it.titulo) + '</p>' : '') +
+         (it.texto ? '<p>' + esc(it.texto) + '</p>' : '') +
+         (!it.titulo && !it.texto ? '<p class="vazio-leve">Sem conteúdo.</p>' : ''))
+      : ((it.texto ? '<p>' + esc(it.texto) + '</p>' : '') +
+         (it.direcao_visual ? '<p class="ds-leve">' + esc(it.direcao_visual) + '</p>' : '') +
+         (!it.texto && !it.direcao_visual ? '<p class="vazio-leve">Sem conteúdo.</p>' : ''));
+    return '<div class="ds-slide' + (destaque ? ' ds-slide-foco' : '') + '"><b>' + rot + '</b>' + corpo + '</div>';
+  }
+
+  function navegadorSlides(itens, tipoItem) {
+    const rotSecao = tipoItem === 'slide' ? 'SLIDES' : 'STORIES';
+    const dica = tipoItem === 'slide' ? ' <span class="ds-leve">— o último é sempre o CTA</span>' : '';
+    if (!itens.length) {
+      return '<div class="ds-campo-briefing"><small>' + rotSecao + dica + '</small>' +
+        '<p class="vazio-leve">Nenhum ' + (tipoItem === 'slide' ? 'slide' : 'story') + ' cadastrado.</p></div>';
+    }
+    const total = itens.length;
+    const idx = Math.min(Math.max(drawer.slideIndice || 0, 0), total - 1);
+    drawer.slideIndice = idx;   // corrige sozinho se a peça mudou e ficou com menos itens
+
+    if (drawer.slideModoTodos) {
+      return '<div class="ds-campo-briefing"><small>' + rotSecao + dica + '</small>' +
+        (total > 1 ? '<button class="b fina contorno ds-nav-alternar" data-slides-modo="navegador">Ver em navegador</button>' : '') +
+        itens.map((it, i) => itemNavHTML(it, i, total, tipoItem)).join('') + '</div>';
+    }
+
+    const nomeItem = tipoItem === 'slide' ? 'slide' : 'story';
+    return '<div class="ds-campo-briefing ds-nav-slides"><div class="ds-nav-topo"><small>' + rotSecao + dica + '</small>' +
+      (total > 1 ? '<button class="b fina contorno ds-nav-alternar" data-slides-modo="todos">Ver todos (' + total + ')</button>' : '') +
+      '</div>' +
+      (total > 1 ? '<div class="ds-nav-pills" role="tablist" aria-label="Navegar pelos ' + rotSecao.toLowerCase() + '">' +
+        itens.map((it, i) => '<button class="ds-nav-pill' + (i === idx ? ' on' : '') + '" data-slide-ir="' + i + '" ' +
+          'role="tab" aria-selected="' + (i === idx) + '" aria-label="' + esc(rotuloItemNav(i, total, tipoItem)) + '">' +
+          String(i + 1).padStart(2, '0') + '</button>').join('') + '</div>' : '') +
+      '<div class="ds-nav-foco">' +
+        (total > 1 ? '<button class="ico ds-nav-seta" data-slide-nav="-1" aria-label="' + nomeItem + ' anterior"' + (idx === 0 ? ' disabled' : '') + '>‹</button>' : '') +
+        itemNavHTML(itens[idx], idx, total, tipoItem, true) +
+        (total > 1 ? '<button class="ico ds-nav-seta" data-slide-nav="1" aria-label="próximo ' + nomeItem + '"' + (idx === total - 1 ? ' disabled' : '') + '>›</button>' : '') +
+      '</div></div>';
+  }
+
+  /* itens de slide/story da peça atualmente aberta — usado pelas setas
+     de navegação por teclado, que não têm o array à mão diretamente */
+  function itensNavAtuais() {
+    const b = drawer && drawer.briefing;
+    if (!b || b.manual || !b.conteudo) return { itens: [], tipoItem: null };
+    if (b.conteudo.tipo === 'Carrossel') return { itens: b.slides || [], tipoItem: 'slide' };
+    if (b.conteudo.tipo === 'Story') return { itens: b.frames || [], tipoItem: 'frame' };
+    return { itens: [], tipoItem: null };
+  }
+
+  function moverSlide(delta) {
+    const { itens } = itensNavAtuais();
+    if (!itens.length || drawer.slideModoTodos) return;
+    const atual = Math.min(Math.max(drawer.slideIndice || 0, 0), itens.length - 1);
+    const novo = Math.min(Math.max(atual + delta, 0), itens.length - 1);
+    if (novo === atual) return;
+    drawer.slideIndice = novo;
+    desenharDrawer();
+    const pill = drawer.el.querySelector('.ds-nav-pill.on');
+    if (pill) pill.focus(); else { const foco = drawer.el.querySelector('.ds-nav-seta:not([disabled])'); if (foco) foco.focus(); }
+  }
+
+  function blocoPrincipalCarrossel(b) {
     const c = b.conteudo;
     const campo = (rot, val) => val ? '<div class="ds-campo-briefing"><small>' + rot + '</small><p>' + esc(val) + '</p></div>' : '';
-    const linksRef = String(c.referencias || '').split('\n').map(l => l.trim()).filter(Boolean);
-    const referencias = linksRef.length
-      ? '<div class="ds-campo-briefing"><small>REFERÊNCIAS</small>' + linksRef.map(l =>
-          /^https?:\/\//i.test(l) ? '<a class="kd-link" href="' + esc(l) + '" target="_blank" rel="noopener noreferrer">' + esc(l) + '</a>'
-                                  : '<span class="kd-link">' + esc(l) + '</span>').join('') + '</div>' : '';
-    const pilar = b.pilar ? '<div class="ds-campo-briefing"><small>PILAR</small><p>' + esc(b.pilar.nome || 'Pilar sem nome') + '</p></div>' : '';
+    return pilarBriefingHTML(b) + navegadorSlides(b.slides || [], 'slide') +
+      campo('LEGENDA', c.legenda) + referenciasBriefingHTML(c);
+  }
 
-    if (c.tipo === 'Card') {
-      return campo('OBJETIVO', c.objetivo) + pilar +
-        campo('HEADLINE', c.headline) + campo('SUB-HEADLINE', c.sub_headline) + campo('CTA', c.cta) +
-        campo('DIREÇÃO VISUAL', c.direcao) + campo('LEGENDA', c.legenda) +
-        campo('OBSERVAÇÃO PARA O DESIGN', c.observacao_design) + referencias;
-    }
-    if (c.tipo === 'Reel') {
-      return campo('IDENTIFICAÇÃO DO REEL', c.titulo) + campo('CONTEXTO', c.objetivo || c.ideia_geral) + pilar +
-        (b.roteiro
-          ? '<div class="ds-campo-briefing"><small>ROTEIRO VINCULADO</small>' +
-            '<button class="b fina contorno" data-abrir-roteiro="' + esc(b.roteiro.recording_session_id) + '" data-roteiro-id="' + esc(b.roteiro.id) + '">' +
-            'Abrir "' + esc(b.roteiro.titulo || 'roteiro') + '"</button></div>'
-          : '') + referencias;
-    }
-    if (c.tipo === 'Carrossel') {
-      const slides = b.slides || [];
-      return pilar + '<div class="ds-campo-briefing"><small>SLIDES <span class="ds-leve">— o último é sempre o CTA</span></small>' +
-        (slides.length ? slides.map((s, i) => {
-          const primeiro = i === 0, ultimo = i === slides.length - 1, unico = slides.length === 1;
-          let rot = 'SLIDE ' + String(i + 1).padStart(2, '0');
-          if (unico) rot += ' · CAPA · CTA'; else if (primeiro) rot += ' · CAPA'; else if (ultimo) rot += ' · CTA';
-          return '<div class="ds-slide"><b>' + rot + '</b>' +
-            (s.titulo ? '<p class="ds-slide-tit">' + esc(s.titulo) + '</p>' : '') +
-            (s.texto ? '<p>' + esc(s.texto) + '</p>' : '') + '</div>';
-        }).join('') : '<p class="vazio-leve">Nenhum slide cadastrado.</p>') + '</div>' +
-        campo('LEGENDA', c.legenda) + referencias;
-    }
-    if (c.tipo === 'Story') {
-      const frames = b.frames || [];
-      return pilar + '<div class="ds-campo-briefing"><small>STORIES</small>' +
-        (frames.length ? frames.map((f, i) => '<div class="ds-slide"><b>STORY ' + String(i + 1).padStart(2, '0') + '</b>' +
-          (f.texto ? '<p>' + esc(f.texto) + '</p>' : '') +
-          (f.direcao_visual ? '<p class="ds-leve">' + esc(f.direcao_visual) + '</p>' : '') + '</div>').join('')
-          : '<p class="vazio-leve">Nenhum story cadastrado.</p>') + '</div>' +
-        campo('CTA', c.cta) + referencias;
-    }
-    return campo('OBJETIVO', c.objetivo) + pilar + referencias;
+  function blocoPrincipalStory(b) {
+    const c = b.conteudo;
+    const campo = (rot, val) => val ? '<div class="ds-campo-briefing"><small>' + rot + '</small><p>' + esc(val) + '</p></div>' : '';
+    return pilarBriefingHTML(b) + navegadorSlides(b.frames || [], 'frame') +
+      campo('CTA', c.cta) + referenciasBriefingHTML(c);
   }
 
   /* ---------------------------------------------------------- upload */
@@ -1901,6 +1997,22 @@ B7.Design = (function () {
        daqui, que edita o roteiro e não é o que "Ver roteiro" promete */
     el.querySelectorAll('[data-abrir-roteiro]').forEach(b => b.onclick = () => {
       verRoteiro(drawer.briefing && drawer.briefing.roteiro, d);
+    });
+
+    /* navegador de slide/story (Rodada 4) — ver navegadorSlides() */
+    el.querySelectorAll('[data-slide-ir]').forEach(b => b.onclick = () => {
+      drawer.slideIndice = +b.dataset.slideIr;
+      desenharDrawer();
+      const pill = drawer.el.querySelector('.ds-nav-pill.on');
+      if (pill) pill.focus();
+    });
+    el.querySelectorAll('[data-slide-nav]').forEach(b => b.onclick = () => moverSlide(+b.dataset.slideNav));
+    el.querySelectorAll('[data-slides-modo]').forEach(b => b.onclick = () => {
+      const querVerTodos = b.dataset.slidesModo === 'todos';
+      drawer.slideModoTodos = querVerTodos;
+      desenharDrawer();
+      const alvo = drawer.el.querySelector('.ds-nav-alternar');
+      if (alvo) alvo.focus();
     });
 
     /* revisão interna */
