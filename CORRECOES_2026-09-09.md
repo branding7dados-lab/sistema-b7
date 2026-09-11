@@ -3774,3 +3774,41 @@ Arquivos alterados: `migration_design_decisao_cliente.sql` (nova),
 `migration_tudo.sql`, `js/design.js`, `js/database.js`, `js/aprovacoes.js`,
 `styles/design.css`, `js/auth.js`, `sw.js`. `VERSAO` → `2026-09-11-aj`,
 cache → `roteiros-b7-v53`.
+
+## Build 2026-09-11-ak — Revisão do Admin/Coordenador: aprovar o carrossel inteiro + bugs visuais da lateral
+
+Só frontend (sem migração). Sobre a captura enviada da tela de revisão.
+
+### Implementado e testado
+
+- **"Aprovar carrossel inteiro"** (ou "Aprovar Stories inteiro"): na
+  revisão interna, enquanto houver slide sem decisão, a ação primária
+  aprova todos de uma vez (confirmação diz quantos) — quem não tem
+  tempo de passar slide a slide aprova tudo num clique. Continua
+  travada só com ajuste marcado (aí a saída é "Enviar ajustes ao
+  Designer") ou slide sem arquivo. Usa `design_aprovar_interno`, que
+  já marcava como aprovado o que estava sem decisão; nada mudou no
+  banco. Quando todos já estão decididos, volta a ser "Aprovar
+  carrossel".
+- **Decisão por slide acima da arte:** os botões "Aprovar slide" /
+  "Solicitar ajuste neste slide" (e "Registrar ajuste do cliente neste
+  slide") passaram pra uma faixa logo abaixo das pills, com o estado do
+  slide — antes ficavam abaixo da arte grande, fora da tela em monitor
+  comum (era o botão cortado na parte de baixo da captura). O chip de
+  estado não se repete embaixo.
+- **Bugs visuais da lateral:** "Enviar pelo Portal do Cliente" e
+  "Finalizar mesmo assim" estouravam a largura (texto cortado) — agora
+  quebram em duas linhas dentro do botão. O bloco "Decisão do cliente"
+  colidia com Responsável/Prazo/Prioridade — agora vem depois dessa
+  grade, com o estado como chip no título ("Sem decisão ainda",
+  "Aguardando cliente", "Aprovado pelo cliente"…) e o texto de ajuda
+  apontando pro botão de cima. Arte grande um pouco menor
+  (58vh) e respiro no fim da coluna pra última linha não ficar colada
+  na borda.
+- Testes: suíte ponta a ponta atualizada (146 verificações, 0 erro
+  JS): "Aprovar carrossel inteiro" aprova os 5 de uma vez; com ajuste
+  marcado a aprovação fica travada; faixa de decisão fica acima da
+  moldura e dentro da primeira tela; botões secundários sem overflow.
+
+Arquivos alterados: `js/design.js`, `styles/design.css`, `js/auth.js`,
+`sw.js`. `VERSAO` → `2026-09-11-ak`, cache → `roteiros-b7-v54`.

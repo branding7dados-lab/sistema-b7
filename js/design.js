@@ -1545,10 +1545,17 @@ B7.Design = (function () {
           return { primaria: { id: 'dv-aprovar', label: 'Aprovar internamente', desabilitada: souResponsavel },
                    secundarias: [{ id: 'dv-ajuste', label: 'Solicitar ajuste' }], resumo };
         }
-        return { primaria: { id: 'dv-fechar-aprovar', label: 'Aprovar ' + conj,
-                             desabilitada: souResponsavel || r.ajustes > 0 || r.pendentes > 0 || r.semArquivo > 0 || partesDecididas === 0 },
+        /* "Aprovar carrossel inteiro": aprova de uma vez todo slide ainda
+           sem decisão (o banco marca como aprovado ao aprovar a peça) —
+           quem não tem tempo de passar slide a slide aprova tudo num
+           clique. Só trava com ajuste marcado ou slide sem arquivo. */
+        const inteiro = r.pendentes > 0;
+        return { primaria: { id: inteiro ? 'dv-aprovar-inteiro' : 'dv-fechar-aprovar', label: inteiro ? 'Aprovar ' + conj + ' inteiro' : 'Aprovar ' + conj,
+                             desabilitada: souResponsavel || r.ajustes > 0 || r.semArquivo > 0 },
                  secundarias: [{ id: 'dv-fechar-ajustes', label: 'Enviar ajustes ao Designer', desabilitada: souResponsavel || r.ajustes === 0 }],
-                 resumo };
+                 resumo: resumo + (inteiro && !souResponsavel && r.ajustes === 0 && r.semArquivo === 0
+                   ? ' — “Aprovar ' + conj + ' inteiro” aprova de uma vez os ' + r.pendentes + ' sem decisão.'
+                   : r.ajustes > 0 ? ' — com ajuste marcado, só dá pra enviar ajustes.' : '') };
       }
       return { primaria: { id: 'dv-aprovar', label: 'Aprovar internamente', desabilitada: souResponsavel },
                secundarias: [{ id: 'dv-ajuste', label: 'Solicitar ajuste' }] };
@@ -1839,25 +1846,8 @@ B7.Design = (function () {
       '</div>';
     };
 
-    let html = '<div class="ds-arte' + (parte ? '' : ' unica') + '" data-parte="' + esc(chave) + '">' +
-      (precisaAgir ? blocoFeedback + blocoUploadParte() : '') +
-      molduraArte(mostrado, d, parte) +
-      '<div class="ds-arte-barra">' +
-        '<span class="ds-arte-estado st-' + est.k + '">' + esc(est.t) + '</span>' + metaArte(mostrado) +
-        (mostrado ? '<div class="ds-arte-acoes">' +
-          (ehImagem(mostrado) ? '<button class="b fina contorno" data-tela-cheia="' + esc(mostrado.id) + '">Ver em tela cheia</button>' : '') +
-          '<button class="b fina contorno" data-baixar="' + esc(mostrado.id) + '">' + (historico ? 'Baixar V' + pad2(historico.versao_numero) : rotBaixar) + '</button>' +
-        '</div>' : '') +
-      '</div>';
-
-    if (!precisaAgir) html += blocoFeedback;
-    /* §37: a equipe marca, slide a slide, o que o cliente pediu por fora;
-       o envio agrupado acontece em "Registrar decisão do cliente" */
-    if (ctx.podeRegistrarCliente && parte && efet && !marcado && !historico) {
-      html += '<div class="ds-arte-decisao"><button class="b fina contorno cliente" data-ajuste-cliente="' + esc(parte.id) + '">Registrar ajuste do cliente neste ' + nomeParte + '</button></div>';
-    }
-    if (podeDecidir) {
-      html += '<div class="ds-arte-decisao">' +
+    const blocoDecisao = () => !podeDecidir ? '' : '<div class="ds-arte-decisao topo">' +
+        '<span class="ds-arte-estado st-' + est.k + '">' + esc(est.t) + '</span>' +
         (efet.revisao === 'aprovado'
           ? '<span class="ds-arte-decidido ok">Aprovado</span><button class="b fina" data-decidir="pendente" data-arquivo="' + esc(efet.id) + '">Desfazer</button>'
           : efet.revisao === 'ajuste'
@@ -1865,7 +1855,25 @@ B7.Design = (function () {
           : '<button class="b fina pri" data-decidir="aprovado" data-arquivo="' + esc(efet.id) + '">' + (parte ? 'Aprovar ' + nomeParte : 'Aprovar') + '</button>' +
             '<button class="b fina contorno" data-decidir="ajuste" data-arquivo="' + esc(efet.id) + '">' + (parte ? 'Solicitar ajuste neste ' + nomeParte : 'Solicitar ajuste') + '</button>') +
       '</div>';
-    }
+    const blocoAjusteCliente = () => (ctx.podeRegistrarCliente && parte && efet && !marcado && !historico)
+      ? '<div class="ds-arte-decisao topo"><span class="ds-arte-estado st-' + est.k + '">' + esc(est.t) + '</span>' +
+        '<button class="b fina contorno cliente" data-ajuste-cliente="' + esc(parte.id) + '">Registrar ajuste do cliente neste ' + nomeParte + '</button></div>' : '';
+
+    let html = '<div class="ds-arte' + (parte ? '' : ' unica') + '" data-parte="' + esc(chave) + '">' +
+      (precisaAgir ? blocoFeedback + blocoUploadParte() : '') +
+      /* pra quem REVISA, a decisão fica antes da arte grande — visível
+         sem rolar, em qualquer altura de tela */
+      blocoDecisao() + blocoAjusteCliente() +
+      molduraArte(mostrado, d, parte) +
+      '<div class="ds-arte-barra">' +
+        (podeDecidir || (ctx.podeRegistrarCliente && parte && efet && !marcado && !historico) ? '' : '<span class="ds-arte-estado st-' + est.k + '">' + esc(est.t) + '</span>') + metaArte(mostrado) +
+        (mostrado ? '<div class="ds-arte-acoes">' +
+          (ehImagem(mostrado) ? '<button class="b fina contorno" data-tela-cheia="' + esc(mostrado.id) + '">Ver em tela cheia</button>' : '') +
+          '<button class="b fina contorno" data-baixar="' + esc(mostrado.id) + '">' + (historico ? 'Baixar V' + pad2(historico.versao_numero) : rotBaixar) + '</button>' +
+        '</div>' : '') +
+      '</div>';
+
+    if (!precisaAgir) html += blocoFeedback;
     if (podeUpload && parte && !precisaAgir) html += blocoUploadParte();
     if (hist.length > 1 || (hist.length === 1 && rasc && ctx.podeEditar)) {
       html += '<div class="ds-arte-hist"><small>VERSÕES' + (parte ? ' DESTE ' + nomeParte.toUpperCase() : '') + '</small>' +
@@ -2216,10 +2224,10 @@ B7.Design = (function () {
     const cabecalho = d.status === 'aprovado_cliente' ? 'Aprovado pelo cliente'
       : d.status === 'ajustes_cliente' ? (atual && atual.situacao === 'recusado' ? 'Recusado pelo cliente' : 'Cliente solicitou ajustes')
       : d.status === 'aguardando_cliente' ? 'Aguardando cliente'
-      : d.status === 'aprovado_interno' ? 'Aprovado internamente — sem decisão do cliente ainda' : null;
-    return '<div class="ds-dr-bloco ds-dc"><h4>Decisão do cliente</h4>' +
-      (cabecalho ? '<p class="ds-dc-status st-' + esc(d.status) + '">' + esc(cabecalho) + '</p>' : '') +
-      (lista.length ? lista.map(item).join('') : '<p class="ds-leve">O cliente ainda não decidiu. Quando decidir — pelo Portal ou por fora (WhatsApp, ligação…) — registre aqui.</p>') +
+      : d.status === 'aprovado_interno' ? 'Sem decisão ainda' : null;
+    return '<div class="ds-dr-bloco ds-dc"><h4>Decisão do cliente' +
+      (cabecalho ? ' <span class="ds-dc-status st-' + esc(d.status) + '">' + esc(cabecalho) + '</span>' : '') + '</h4>' +
+      (lista.length ? lista.map(item).join('') : '<p class="ds-dc-vazio">O cliente ainda não decidiu. Quando decidir — pelo Portal ou por fora (WhatsApp, ligação…) — use “Registrar decisão do cliente” acima.</p>') +
     '</div>';
   }
 
@@ -2468,7 +2476,6 @@ B7.Design = (function () {
         '</div>' +
         '<div class="ds-ws-lateral">' +
           acaoPrimariaHTML(acao) +
-          blocoDecisaoCliente(d, x) +
           (podeCompartilhar ? '<div class="ds-dr-compartilhar">' +
               '<small>OU ATRIBUIR A UM COLEGA DESTA LINHA</small>' +
               '<div class="ds-dr-compartilhar-linha">' +
@@ -2495,6 +2502,7 @@ B7.Design = (function () {
             '</label>' +
             '<span class="ds-dr-salvo" id="dv-salvo" aria-live="polite"></span>' +
           '</div>' +
+          blocoDecisaoCliente(d, x) +
 
           /* o designer responsável (ou equipe sem designer atribuído) tem o
              envio à mão; quem só revisa vê o envio recolhido, como exceção */
@@ -3059,6 +3067,22 @@ B7.Design = (function () {
       } catch (e) {
         botao.disabled = false; botao.textContent = rotulo;
         B7.UI.toast('Não foi possível registrar: ' + (e.message || ''), { tipo: 'erro' });
+      }
+    };
+    const aprovarInteiro = el.querySelector('#dv-aprovar-inteiro');
+    if (aprovarInteiro && !aprovarInteiro.disabled) aprovarInteiro.onclick = async () => {
+      const r = resumoDecisoes(d);
+      const ok = await B7.UI.confirmar({ titulo: aprovarInteiro.textContent + '?', texto: 'Os ' + r.pendentes + ' ' + (d.tipo === 'stories' ? 'stories' : 'slides') + ' sem decisão ficam aprovados junto' + (r.aprovados ? ' com os ' + r.aprovados + ' já aprovados' : '') + '. A peça vai pra “Aprovado internamente”.', confirmar: 'Aprovar tudo' });
+      if (!ok) return;
+      const rot = aprovarInteiro.textContent; aprovarInteiro.disabled = true; aprovarInteiro.textContent = 'Aprovando…';
+      try {
+        await B7.DB.aprovarInternoDesign(versaoAtual.id);
+        const novo = await B7.DB.design(d.id); Object.assign(d, novo);
+        drawer.extra = await B7.DB.historicoDesign(d.id);
+        B7.UI.toast('Peça aprovada internamente'); desenharDrawer(); redesenharTela();
+      } catch (e) {
+        aprovarInteiro.disabled = false; aprovarInteiro.textContent = rot;
+        B7.UI.toast('Não foi possível aprovar: ' + (e.message || ''), { tipo: 'erro' });
       }
     };
     const fecharAprovar = el.querySelector('#dv-fechar-aprovar');
