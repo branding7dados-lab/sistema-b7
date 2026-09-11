@@ -135,12 +135,25 @@ B7.DocSemana = (function () {
      TIPO no lugar — os dois sistemas nunca aparecem ao mesmo tempo na
      mesma linha (ver linhaItem). */
   const FORMATOS = {
-    'Card':          { cor: '#C21C83' }, /* magenta — post estático */
-    'Carrossel':     { cor: '#6D3FC4' }, /* violeta */
-    'Reel':          { cor: '#0E8FA8' }, /* ciano/azul-esverdeado */
-    'Story':         { cor: '#B9720A' }, /* âmbar */
-    'Capa de Reel':  { cor: '#8A3FA8' }, /* roxo — mesma família de Design */
-    'Gravação':      { cor: '#0E8074' }  /* turquesa — mesma cor já usada em TIPOS */
+    'Card':            { cor: '#C21C83' }, /* magenta — post estático */
+    'Carrossel':       { cor: '#6D3FC4' }, /* violeta */
+    'Reel':            { cor: '#0E8FA8' }, /* ciano/azul-esverdeado */
+    'Story':           { cor: '#B9720A' }, /* âmbar */
+    'Capa de Reel':    { cor: '#8A3FA8' }, /* roxo — mesma família de Design */
+    'Gravação':        { cor: '#0E8074' }, /* turquesa — mesma cor já usada em TIPOS */
+    /* tipos de demanda que antes só existiam como `etapa` (sem selo
+       próprio) — agora que a etapa some do editor (ver CORRECOES), o
+       próprio `formato` passa a carregar esses tipos, com a mesma cor
+       que já usavam em TIPOS, pra não mudar nada visualmente. */
+    'Reunião':         { cor: '#4A4E8C' },
+    'Aprovação':       { cor: '#A8790A' },
+    'Ajustes':         { cor: '#D2572B' },
+    'Entrega':         { cor: '#1E6FA8' },
+    'Outro':           { cor: '#6B6478' },
+    /* espelha o status real da Linha Editorial do cliente (ver
+       `itemLinhaEditorial()`) — cor própria, verde-petróleo, pra não se
+       confundir com nenhum formato de peça. */
+    'Linha editorial': { cor: '#2E7D5B' }
   };
   const corFormato = f => (FORMATOS[f] || {}).cor || null;
 
@@ -159,48 +172,65 @@ B7.DocSemana = (function () {
      Story e Capa de Reel) são intencionais: o mesmo texto, a mesma cor,
      o mesmo significado — dedup natural na legenda da semana.
      ================================================================= */
+  /* Cada situação diz, sem ambiguidade, de quem depende agora: um
+     rótulo "... do cliente"/"... pelo cliente" é sempre uma decisão do
+     cliente (aprovar, confirmar, validar); todo o resto é trabalho da
+     equipe B7. Isso substitui a etapa como forma de dizer "o que é"
+     essa demanda — ETAPA saiu do editor (ver CORRECOES): os tipos que
+     antes só existiam como etapa (Reunião, Aprovação, Ajustes, Entrega,
+     Outro) agora são formato/contexto de pleno direito, com vocabulário
+     próprio, igual Card/Reel/Carrossel sempre foram. */
   const ESTAGIOS = {
     'Card': ['A produzir', 'Criando arte', 'Corrigindo arte', 'Revisão interna',
-             'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
+             'Aguardando aprovação do cliente', 'Aprovado pelo cliente', 'Programado para postagem', 'Postado'],
     'Story': ['A produzir', 'Criando arte', 'Corrigindo arte', 'Revisão interna',
-              'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
+              'Aguardando aprovação do cliente', 'Aprovado pelo cliente', 'Programado para postagem', 'Postado'],
     'Carrossel': ['A estruturar', 'Criando arte', 'Corrigindo carrossel', 'Revisão interna',
-                  'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
+                  'Aguardando aprovação do cliente', 'Aprovado pelo cliente', 'Programado para postagem', 'Postado'],
     'Reel': ['Escrevendo roteiro', 'A gravar', 'Gravação marcada', 'Gravando', 'Editando vídeo', 'Corrigindo vídeo',
-             'Revisão interna', 'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
+             'Revisão interna', 'Aguardando aprovação do cliente', 'Aprovado pelo cliente', 'Programado para postagem', 'Postado'],
     'Capa de Reel': ['A produzir', 'Criando capa', 'Corrigindo capa', 'Revisão interna',
-                     'Aguardando aprovação', 'Aprovada', 'Finalizada'],
+                     'Aguardando aprovação do cliente', 'Aprovada pelo cliente', 'Finalizada'],
     'Gravação': ['Escrevendo roteiro', 'A confirmar', 'Gravação marcada', 'Gravando', 'Material captado',
                  'Remarcada', 'Cancelada'],
-    /* fallback pra demandas sem formato específico (Reunião, Aprovação,
-       Entrega, Ajustes, Outro, Produção — o próprio texto da etapa já
-       diz do que se trata) */
-    'Genérico': ['A produzir', 'Em produção', 'Revisão interna', 'Aguardando aprovação',
-                 'Aprovado', 'Finalizado']
+    'Reunião': ['A agendar', 'Aguardando confirmação do cliente', 'Confirmada pelo cliente',
+                'Realizada', 'Remarcada', 'Cancelada'],
+    'Aprovação': ['Em preparação', 'Aguardando aprovação do cliente', 'Aprovado pelo cliente', 'Reprovado pelo cliente'],
+    'Ajustes': ['Em desenvolvimento', 'Aguardando validação do cliente', 'Validado pelo cliente', 'Concluído'],
+    'Entrega': ['Em preparação', 'Aguardando confirmação do cliente', 'Entregue'],
+    /* espelha 1:1 o status real da Linha Editorial do cliente
+       (`linhas.status`, ver STATUS_LINHA em conteudo.js) — nunca é
+       escolhido manualmente aqui, então nunca sai de sincronia: quando
+       a equipe muda o estágio da linha (em criação/revisão) ou o
+       cliente aprova, a demanda no Status Semanal muda sozinha (ver
+       `itemLinhaEditorial`). */
+    'Linha editorial': ['Em criação', 'Em revisão', 'Aprovada', 'Finalizada'],
+    /* fallback pra "Outro" e pra qualquer demanda sem contexto reconhecido */
+    'Genérico': ['A produzir', 'Em desenvolvimento', 'Revisão interna',
+                 'Aguardando aprovação do cliente', 'Aprovado pelo cliente', 'Finalizado']
   };
   /* qual formato/contexto rege o vocabulário de status de uma demanda:
-     o campo `formato` quando é um dos formatos de peça reais; Gravação
-     quando a etapa é Gravação (demanda de captação sem formato de
-     peça); Genérico pra tudo mais (Reunião, Aprovação, Entrega,
-     Ajustes, Outro, Produção). */
+     o campo `formato` quando bate com um contexto conhecido; senão a
+     `etapa` — só existe pra dado antigo (de antes da etapa sair do
+     editor), quando bate com um contexto conhecido (Gravação, Reunião,
+     Aprovação, Ajustes, Entrega); Genérico pra tudo mais (Outro, dado
+     sem nenhum dos dois). */
   function contextoDe(it) {
     if (it.formato && ESTAGIOS[it.formato]) return it.formato;
-    if (it.etapa === 'Gravação') return 'Gravação';
+    if (it.etapa && ESTAGIOS[it.etapa]) return it.etapa;
     return 'Genérico';
   }
   const estagiosDe = ctx => ESTAGIOS[ctx] || ESTAGIOS.Genérico;
 
-  /* Status considerado "trabalho já entregue" — depende do contexto
-     (Postado pra Card/Story/Carrossel/Reel, Finalizada pra Capa de
-     Reel, Material captado pra Gravação, Finalizado no genérico), mais
-     os rótulos antigos genéricos (Concluído/Publicado) que dados de
-     antes desta rodada ainda podem ter. Cancelado/Cancelada é um
-     estado diferente de concluído (não é "entregue", é "não vai
-     acontecer") e some do relatório sempre, independente do controle
-     de itens concluídos. */
+  /* Status considerado "trabalho já entregue" — depende do contexto.
+     Cancelado/Cancelada é um estado diferente de concluído (não é
+     "entregue", é "não vai acontecer") e some do relatório sempre,
+     independente do controle de itens concluídos. */
   const TERMINAL_POR_CONTEXTO = {
     'Card': 'Postado', 'Story': 'Postado', 'Carrossel': 'Postado', 'Reel': 'Postado',
-    'Capa de Reel': 'Finalizada', 'Gravação': 'Material captado', 'Genérico': 'Finalizado'
+    'Capa de Reel': 'Finalizada', 'Gravação': 'Material captado',
+    'Reunião': 'Realizada', 'Aprovação': 'Aprovado pelo cliente', 'Ajustes': 'Concluído',
+    'Entrega': 'Entregue', 'Linha editorial': 'Finalizada', 'Genérico': 'Finalizado'
   };
   const CONCLUIDOS_LEGADO = ['Concluído', 'Publicado'];
   const CANCELADOS = ['Cancelado', 'Cancelada'];
@@ -210,21 +240,27 @@ B7.DocSemana = (function () {
   }
   const ehCancelado = it => CANCELADOS.includes(it.situacao);
 
-  /* Confirmado/Em revisão/Previsto/Programado/Atenção/Aguardando
-     cliente/Em andamento não estão nos vocabulários por formato acima
-     — são os rótulos genéricos de antes desta rodada. Continuam com
-     token de cor pra não quebrar relatórios/itens já existentes; o
-     editor simplesmente não os oferece mais como sugestão para
-     demandas novas. */
+  /* Cor por família de significado, não por formato: toda situação que
+     depende do CLIENTE (aguardando.../pelo cliente/do cliente) usa a
+     mesma família de cor em qualquer contexto — âmbar enquanto espera,
+     verde quando o cliente decide a favor, vermelho quando decide
+     contra. O que depende só da EQUIPE varia por estágio (cinza = não
+     começou, violeta = produzindo, laranja = corrigindo, azul =
+     editando, roxo-claro = revisão interna), igual já era. Isso deixa
+     visualmente óbvio, em qualquer relatório, o que trava com a B7 e o
+     que trava com o cliente. */
   const SITUACOES = {
     'Escrevendo roteiro':       { cor: '#5B5FC7', bg: 'rgba(91,95,199,.12)' },
     'A produzir':               { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
     'A gravar':                 { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
     'A confirmar':              { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
     'A estruturar':             { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
+    'A agendar':                { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
+    'Em preparação':            { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
+    'Em criação':               { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
+    'Em desenvolvimento':       { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
     'Criando arte':             { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
     'Criando capa':             { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
-    'Em produção':              { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
     'Corrigindo arte':          { cor: '#D2572B', bg: 'rgba(210,87,43,.13)' },
     'Corrigindo carrossel':     { cor: '#D2572B', bg: 'rgba(210,87,43,.13)' },
     'Corrigindo capa':          { cor: '#D2572B', bg: 'rgba(210,87,43,.13)' },
@@ -233,13 +269,27 @@ B7.DocSemana = (function () {
     'Gravando':                 { cor: '#B98900', bg: 'rgba(185,137,0,.14)' },
     'Editando vídeo':           { cor: '#2464C7', bg: 'rgba(36,100,199,.12)' },
     'Revisão interna':          { cor: '#8B6FD9', bg: 'rgba(139,111,217,.14)' },
-    'Aguardando aprovação':     { cor: '#C2740A', bg: 'rgba(194,116,10,.14)' },
-    'Aprovado':                 { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
+    'Em revisão':               { cor: '#8B6FD9', bg: 'rgba(139,111,217,.14)' },
+    /* --- depende do cliente: aguardando (âmbar) --- */
+    'Aguardando aprovação do cliente':   { cor: '#C2740A', bg: 'rgba(194,116,10,.14)' },
+    'Aguardando confirmação do cliente': { cor: '#C2740A', bg: 'rgba(194,116,10,.14)' },
+    'Aguardando validação do cliente':   { cor: '#C2740A', bg: 'rgba(194,116,10,.14)' },
+    /* --- depende do cliente: decidiu a favor (verde) --- */
+    'Aprovado pelo cliente':    { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
+    'Aprovada pelo cliente':    { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
+    'Validado pelo cliente':    { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
+    'Confirmada pelo cliente':  { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
     'Aprovada':                 { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
+    /* --- depende do cliente: decidiu contra (vermelho) --- */
+    'Reprovado pelo cliente':   { cor: '#C23B3B', bg: 'rgba(194,59,59,.14)' },
+    /* --- equipe: agendado/entregue/concluído (teal) --- */
     'Programado para postagem': { cor: '#7A3FA0', bg: 'rgba(122,63,160,.14)' },
     'Postado':                  { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
+    'Realizada':                { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
+    'Entregue':                 { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
     'Finalizada':               { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
     'Finalizado':               { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
+    'Concluído':                { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
     'Material captado':         { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
     'Remarcada':                { cor: '#B98900', bg: 'rgba(185,137,0,.14)' },
     'Cancelada':                { cor: '#4A4458', bg: 'rgba(74,68,88,.15)' },
@@ -247,11 +297,12 @@ B7.DocSemana = (function () {
     'Previsto':           { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
     'Programado':         { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
     'Confirmado':         { cor: '#5B47C4', bg: 'rgba(91,71,196,.12)' },
+    'Em produção':        { cor: '#6D3FC4', bg: 'rgba(109,63,196,.12)' },
     'Em andamento':       { cor: '#2464C7', bg: 'rgba(36,100,199,.12)' },
-    'Em revisão':         { cor: '#3A7BD5', bg: 'rgba(58,123,213,.12)' },
-    'Aguardando cliente': { cor: '#B98900', bg: 'rgba(185,137,0,.14)' },
+    'Aguardando aprovação': { cor: '#C2740A', bg: 'rgba(194,116,10,.14)' },
+    'Aprovado':           { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
+    'Aguardando cliente': { cor: '#C2740A', bg: 'rgba(194,116,10,.14)' },
     'Atenção':            { cor: '#C2185B', bg: 'rgba(194,24,91,.14)' },
-    'Concluído':          { cor: '#2E9E6D', bg: 'rgba(46,158,109,.14)' },
     'Publicado':          { cor: '#158F7A', bg: 'rgba(21,143,122,.14)' },
     'Cancelado':          { cor: '#4A4458', bg: 'rgba(74,68,88,.15)' }
   };
@@ -271,9 +322,12 @@ B7.DocSemana = (function () {
     'A gravar': 'O roteiro está pronto; a gravação ainda não foi realizada.',
     'A confirmar': 'A gravação ainda depende de confirmação de data.',
     'A estruturar': 'O conteúdo do carrossel ainda será organizado.',
+    'A agendar': 'A reunião ainda não tem data marcada.',
+    'Em preparação': 'A equipe B7 está preparando o material.',
+    'Em criação': 'A equipe B7 está montando a linha editorial.',
+    'Em desenvolvimento': 'A equipe B7 está trabalhando na demanda.',
     'Criando arte': 'A equipe de Design está desenvolvendo a peça.',
     'Criando capa': 'A equipe de Design está desenvolvendo a capa do Reel.',
-    'Em produção': 'A demanda está em andamento.',
     'Corrigindo arte': 'A peça está recebendo ajustes visuais.',
     'Corrigindo carrossel': 'O carrossel está recebendo alterações.',
     'Corrigindo capa': 'A capa do Reel está recebendo ajustes.',
@@ -282,25 +336,35 @@ B7.DocSemana = (function () {
     'Gravando': 'O conteúdo está em processo de captação.',
     'Editando vídeo': 'O material gravado está em edição.',
     'Revisão interna': 'A equipe B7 está revisando o material antes de avançar.',
-    'Aguardando aprovação': 'O material depende da aprovação do cliente.',
-    'Aprovado': 'O conteúdo foi aprovado e segue para programação/entrega.',
-    'Aprovada': 'A capa foi aprovada e segue para finalização.',
+    'Em revisão': 'A equipe B7 está revisando a linha editorial.',
+    'Aguardando aprovação do cliente': 'Depende da aprovação do cliente pra avançar.',
+    'Aguardando confirmação do cliente': 'Depende de uma confirmação do cliente.',
+    'Aguardando validação do cliente': 'Depende do cliente validar o ajuste feito.',
+    'Aprovado pelo cliente': 'O cliente aprovou; segue para a próxima etapa.',
+    'Aprovada pelo cliente': 'O cliente aprovou a capa; segue para finalização.',
+    'Validado pelo cliente': 'O cliente validou o ajuste feito.',
+    'Confirmada pelo cliente': 'O cliente confirmou a reunião.',
+    'Aprovada': 'A linha editorial foi aprovada pelo cliente.',
+    'Reprovado pelo cliente': 'O cliente pediu para não seguir com isso.',
     'Programado para postagem': 'A publicação já está agendada.',
     'Postado': 'O conteúdo já foi publicado.',
-    'Finalizada': 'A capa do Reel está pronta.',
+    'Realizada': 'A reunião já aconteceu.',
+    'Entregue': 'O material já foi entregue ao cliente.',
+    'Finalizada': 'Está pronta/concluída.',
     'Finalizado': 'A demanda foi concluída.',
+    'Concluído': 'O ajuste foi concluído.',
     'Material captado': 'O conteúdo já foi gravado.',
-    'Remarcada': 'A gravação foi remarcada para uma nova data.',
-    'Cancelada': 'A gravação não será realizada.',
+    'Remarcada': 'Foi remarcada para uma nova data.',
+    'Cancelada': 'Não será realizada.',
     /* legado */
     'Previsto': 'Planejado para a semana.',
     'Programado': 'Preparado para publicação.',
     'Confirmado': 'Data e horário confirmados.',
     'Em andamento': 'Em execução.',
-    'Em revisão': 'Em conferência interna.',
+    'Aguardando aprovação': 'O material depende da aprovação do cliente.',
+    'Aprovado': 'O conteúdo foi aprovado e segue para programação/entrega.',
     'Aguardando cliente': 'Depende de retorno do cliente.',
     'Atenção': 'Precisa de ação.',
-    'Concluído': 'Etapa finalizada.',
     'Publicado': 'Publicado no canal.',
     'Cancelado': 'Não será realizado.'
   };
@@ -332,9 +396,32 @@ B7.DocSemana = (function () {
     Reunião: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M3 19v-.8A4.2 4.2 0 0 1 7.2 14h3.6A4.2 4.2 0 0 1 15 18.2V19M16 6.2a3 3 0 0 1 0 5.6M17 14.2a4.2 4.2 0 0 1 4 4.2V19"/></svg>',
     Ajustes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a3 3 0 0 1-3.9 3.9l-6 6V19h2.8l6-6a3 3 0 0 1 3.9-3.9l-2.2 2.2 1.4 1.4z"/></svg>',
     Entrega: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l9-5 9 5-9 5-9-5z"/><path d="M3 8.5V16l9 5 9-5V8.5M12 13.5V21"/></svg>',
-    Outro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v5M12 16h.01"/></svg>'
+    Outro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v5M12 16h.01"/></svg>',
+    'Linha editorial': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 4.5v-1.5M16 4.5v-1.5M7.5 13.5h4M7.5 16.5h7"/></svg>'
   };
   const iconeDe = it => ICONE[it.formato] || ICONE[it.etapa] || ICONE.Outro;
+
+  /* Demanda sintética que espelha o status real da Linha Editorial do
+     cliente (`linhas.status`) direto na lista de demandas da semana —
+     pedido do Yury: quando a equipe está montando/revisando a linha, ou
+     quando o cliente já aprovou/a linha foi finalizada, isso aparece
+     junto com as outras demandas, não só como selo no cabeçalho. Nunca
+     é uma linha do banco (não tem id de `status_itens`, não pode ser
+     editada, movida, duplicada nem excluída no editor) — é sempre
+     derivada de `ctx.linha` no momento de montar o relatório, então
+     nunca fica dessincronizada: muda sozinha quando a linha muda. Sem
+     data própria (a linha editorial não é um evento de um dia só) —
+     entra sempre no grupo "sem data". */
+  function itemLinhaEditorial(ctx) {
+    const l = ctx.linha;
+    if (!l || !l.status) return null;
+    return {
+      id: 'linha-' + l.id, sintetico: true, data: null,
+      titulo: l.nome || 'Linha editorial',
+      formato: 'Linha editorial', etapa: null,
+      situacao: l.status, canal: null, observacao: null
+    };
+  }
 
   /* ---------------------------------------------------------- CABEÇA
      Compacta sempre — o cabeçalho não precisa dominar a página pra a
@@ -466,16 +553,23 @@ B7.DocSemana = (function () {
   }
 
   /* Aviso curto de quantas demandas dependem do cliente. Só com dado
-     real, e sem alarme vermelho gigante. Cobre tanto o rótulo novo
-     (Aguardando aprovação) quanto os legados (Aguardando cliente,
-     Atenção). */
-  const ESPERA_CLIENTE = ['Aguardando aprovação', 'Aguardando cliente', 'Atenção'];
+     real, e sem alarme vermelho gigante. Qualquer situação que comece
+     com "Aguardando" já é, por definição, uma espera do cliente (é
+     assim que o vocabulário desta rodada nomeia toda situação que
+     depende dele) — cobre os rótulos novos (Aguardando aprovação do
+     cliente, Aguardando confirmação do cliente, Aguardando validação
+     do cliente) e os legados (Aguardando aprovação, Aguardando
+     cliente), mais "Atenção" (legado). */
+  function ehEsperaCliente(situacao) {
+    return typeof situacao === 'string' &&
+      (situacao.indexOf('Aguardando') === 0 || situacao === 'Atenção');
+  }
   function atencao(itens) {
-    const n = itens.filter(i => ESPERA_CLIENTE.includes(i.situacao)).length;
+    const n = itens.filter(i => ehEsperaCliente(i.situacao)).length;
     if (!n) return '';
-    return '<div class="ps-atencao"><span class="ps-ponto" style="background:' + SITUACOES['Aguardando aprovação'].cor + '"></span>' +
+    return '<div class="ps-atencao"><span class="ps-ponto" style="background:' + SITUACOES['Aguardando aprovação do cliente'].cor + '"></span>' +
       '<span>Atenção nesta semana: <b>' + n + ' demanda' + (n === 1 ? '' : 's') +
-      '</b> ' + (n === 1 ? 'precisa' : 'precisam') + ' de retorno.</span></div>';
+      '</b> ' + (n === 1 ? 'precisa' : 'precisam') + ' de retorno do cliente.</span></div>';
   }
 
   function rodape(ctx) {
@@ -505,7 +599,8 @@ B7.DocSemana = (function () {
   function montar(ctx, area, opcoes) {
     opcoes = opcoes || {};
     const r = ctx.relatorio;
-    const itensTodos = ctx.itens || [];
+    const itemLinha = itemLinhaEditorial(ctx);
+    const itensTodos = itemLinha ? [itemLinha].concat(ctx.itens || []) : (ctx.itens || []);
     const mostrarConcluidos = !!opcoes.mostrarConcluidos;
     /* "A partir de hoje": tira do relatório o que já passou dentro da
        própria semana (útil pra uma atualização no meio da semana, ex.
@@ -644,7 +739,7 @@ B7.DocSemana = (function () {
 
   return { montar, periodoTexto, diasDoPeriodo, diaDaSemana, curto, longa, partes, carregarFontes, hojeISO,
            SITUACOES, TIPOS, FORMATOS, ESTAGIOS, corTipo, corFormato, corSituacao, contextoDe, estagiosDe,
-           ehConcluido, ehCancelado, EXCLUIR_DO_PLANEJAMENTO, ICONE, DIAS, MESES_CURTO };
+           ehConcluido, ehCancelado, itemLinhaEditorial, EXCLUIR_DO_PLANEJAMENTO, ICONE, DIAS, MESES_CURTO };
 })();
 
 

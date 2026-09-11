@@ -2660,3 +2660,99 @@ Arquivos alterados: `js/semana.js`, `styles/semana.css`, `js/auth.js`,
 `sw.js`.
 `VERSAO` → `2026-09-11-z2`, cache do service worker →
 `roteiros-b7-v42`.
+
+## Build 2026-09-11-z3 — Status Semanal: situações equipe × cliente, novos tipos de demanda sem etapa, e a Linha Editorial como demanda
+
+**Pedido do Yury:** três coisas na mesma mensagem —
+1. Situações mais específicas, com exemplos: "aguardando aprovação do
+   cliente", "aprovado pelo cliente", "em desenvolvimento" — deixando
+   claro, em cada situação, o que depende da equipe e o que depende do
+   cliente.
+2. Tirar o campo ETAPA do Status Semanal — "já tem o que fala sobre a
+   situação", então etapa virou redundante.
+3. A produção da Linha Editorial do cliente aparecer também na parte
+   das demandas: "quando concluirmos uma linha editorial, ou em
+   edição, vai aparecer na parte das demandas."
+
+**Implementado e testado:**
+
+- **Toda situação agora diz de quem depende.** Convenção nova, em
+  qualquer contexto: um rótulo terminado em "... do cliente"/"... pelo
+  cliente" é sempre uma decisão do cliente; todo o resto é trabalho da
+  equipe B7. Renomeado em `js/doc-semana.js` (`ESTAGIOS`, `SITUACOES`,
+  `LEGENDA_TEXTO`): "Aguardando aprovação" → "Aguardando aprovação do
+  cliente"; "Aprovado"/"Aprovada" → "Aprovado pelo cliente"/"Aprovada
+  pelo cliente"; "Em produção" → "Em desenvolvimento" (Genérico/
+  Ajustes). Cor por família de significado, não por formato: QUALQUER
+  situação "Aguardando ... do cliente", em qualquer contexto, usa a
+  mesma cor âmbar; toda decisão do cliente a favor ("Aprovado/
+  Confirmada/Validado pelo cliente") usa o mesmo verde; a única decisão
+  negativa ("Reprovado pelo cliente") ganha cor vermelha própria, nova
+  nesta rodada. Isso deixa visualmente óbvio, em qualquer relatório, o
+  que trava com a B7 e o que trava com o cliente — sem precisar ler o
+  texto pra saber.
+- **ETAPA saiu do editor.** O campo `formato` (renomeado na tela pra
+  "TIPO DE DEMANDA") agora cobre sozinho o que antes precisava dos dois
+  campos: além de Card/Carrossel/Reel/Story/Capa de Reel, passou a
+  aceitar também Gravação, Reunião, Aprovação, Ajustes, Entrega e Outro
+  — cada um com vocabulário de situação próprio (novo em
+  `ESTAGIOS`), igual os formatos de peça sempre tiveram:
+  - **Reunião**: A agendar → Aguardando confirmação do cliente →
+    Confirmada pelo cliente → Realizada (ou Remarcada/Cancelada).
+  - **Aprovação**: Em preparação → Aguardando aprovação do cliente →
+    Aprovado pelo cliente (ou Reprovado pelo cliente).
+  - **Ajustes**: Em desenvolvimento → Aguardando validação do cliente
+    → Validado pelo cliente → Concluído.
+  - **Entrega**: Em preparação → Aguardando confirmação do cliente →
+    Entregue.
+  - Nenhuma migração de banco: a coluna `etapa` continua existindo
+    (texto livre, nunca teve constraint) e continua sendo lida pra
+    demanda antiga que só tinha etapa preenchida (`contextoDe` em
+    `js/doc-semana.js` agora casa qualquer etapa que bata com um
+    contexto conhecido, não só "Gravação" como antes) — só o campo
+    deixou de aparecer separado no editor. Escolher um tipo novo grava
+    em `formato` e zera `etapa`, migrando o item naturalmente.
+- **Linha Editorial como demanda.** Nova função
+  `itemLinhaEditorial(ctx)`: sempre que o relatório está vinculado a
+  uma linha editorial (`status_semanais.linha_id`), uma demanda
+  sintética — nunca uma linha do banco, sempre derivada na hora de
+  montar o relatório — entra junto das outras, no grupo "sem data"
+  (a linha não é um evento de um dia só). O título é o nome da linha; a
+  situação é **exatamente** o status real dela (`linhas.status`: "Em
+  criação", "Em revisão", "Aprovada", "Finalizada" — o mesmo campo que
+  a equipe já muda na tela da própria Linha Editorial). Como nunca é
+  escolhida manualmente, nunca fica dessincronizada: muda sozinha
+  quando a equipe avança o estágio da linha ou quando o cliente aprova.
+  Aparece tanto no documento do cliente (com selo de formato "Linha
+  editorial", cor verde-petróleo própria) quanto no editor (card
+  informativo, só leitura, com link "Abrir" pra ir na Linha Editorial —
+  pra mudar a situação, é lá que se muda, não aqui).
+- Editor: card "TIPO DE DEMANDA" removeu o texto "— opcional" (agora é
+  o único jeito de dizer o que é a demanda, não mais opcional de fato);
+  aviso "Atenção nesta semana" e o painel de "situações a revisar"
+  (build anterior) atualizados pros novos rótulos.
+- Testado com Playwright: confirmei que o campo ETAPA não existe mais
+  no editor; que os dropdowns de Reunião e Aprovação mostram exatamente
+  o vocabulário novo; que o seletor de TIPO DE DEMANDA lista os tipos
+  novos e NUNCA lista "Linha editorial" (não é escolhível à mão); que o
+  card da linha editorial aparece no editor com o nome e status reais;
+  que o documento do cliente lista a linha editorial junto das outras
+  demandas; e que toda situação "Aguardando ... do cliente" renderiza
+  com a mesma cor âmbar em qualquer contexto. Rerrodei toda a suíte de
+  regressão anterior (11 + 3 + 2 testes dos builds `-y`/`-z`/`-z2`),
+  ajustando só os rótulos esperados nos dois testes que checavam o
+  vocabulário antigo do Card — sem nenhuma outra quebra.
+- `node --check` em `js/doc-semana.js`, `js/semana.js` e `js/portal.js`
+  (corrigido ali um fallback que só lia `etapa`; agora lê `formato`
+  primeiro, senão fica em branco pra demanda nova sem etapa).
+
+**Não implementado por decisão consciente:** a Linha Editorial ainda
+não pode ser criada nem ter a situação trocada a partir do Status
+Semanal — é só espelhada. Pra mudar o estágio dela, o caminho continua
+sendo a tela da própria Linha Editorial (o link "Abrir" leva direto
+pra lá). Isso evita duas fontes de verdade pro mesmo dado.
+
+Arquivos alterados: `js/doc-semana.js`, `js/semana.js`,
+`styles/semana.css`, `js/portal.js`, `js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-11-z3`, cache do service worker →
+`roteiros-b7-v43`.

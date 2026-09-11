@@ -815,7 +815,7 @@ B7.Portal = (function () {
       if (!alvo) return;
       alvo.innerHTML = itens.length
         ? itens.map(i => '<div class="pt-linha-item"><div><b>' + esc(i.titulo) + '</b>' +
-            '<span>' + esc(i.etapa || '') +
+            '<span>' + esc(i.formato || i.etapa || '') +
             (i.data ? ' · ' + esc(B7.UI.dataBR(i.data)) : '') + '</span></div>' +
             '<span class="pt-sit">' + esc(i.situacao || '') + '</span></div>').join('')
         : '<p class="pt-nada">Sem demandas registradas nesta semana.</p>';

@@ -3,11 +3,17 @@
 
    Recorte operacional de sete dias, montado a partir da linha editorial
    e completado com demandas manuais. O que a equipe faz aqui é rápido:
-   olhar a semana, mexer em etapa e situação, escrever uma observação
-   curta e mandar o card para o cliente.
+   olhar a semana, escolher o tipo da demanda e a situação, escrever uma
+   observação curta e mandar o card para o cliente.
 
-   Etapa é o que será feito. Situação é o andamento. São campos separados
-   de propósito.
+   TIPO DE DEMANDA (campo `formato` no banco) é o que será feito — peça
+   de verdade (Card/Carrossel/Reel/Story/Capa de Reel) ou outro tipo de
+   trabalho (Gravação/Reunião/Aprovação/Ajustes/Entrega/Outro). SITUAÇÃO
+   é o andamento, sempre específico do tipo escolhido. O campo `etapa`
+   (separado, mais antigo) saiu do editor: cada tipo agora tem
+   vocabulário de situação próprio o bastante pra não precisar dele —
+   continua sendo lido, por compatibilidade, em demandas antigas que só
+   têm etapa preenchida (ver `contextoDe` em doc-semana.js).
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -17,13 +23,17 @@ B7.Semana = (function () {
   const painel = () => document.getElementById('painel-dashboard');
   const D = () => B7.DocSemana;
 
-  const ETAPAS = ['Produção', 'Postagem', 'Gravação', 'Aprovação',
-                  'Ajustes', 'Entrega', 'Reunião', 'Outro'];
-  /* Formatos de peça de verdade — só esses direcionam pra um vocabulário
-     de status próprio (Card, Story, Carrossel, Reel, Capa de Reel);
-     demandas sem formato usam a etapa (Gravação tem vocabulário próprio
-     também; as demais caem no genérico). "Nenhum" limpa o campo. */
-  const FORMATOS_DEMANDA = ['Card', 'Carrossel', 'Reel', 'Story', 'Capa de Reel'];
+  /* Tipos de demanda selecionáveis no editor — cobre tanto peça de
+     verdade (Card/Carrossel/Reel/Story/Capa de Reel, cada um com
+     vocabulário de situação próprio) quanto os tipos que antes só
+     existiam como `etapa` (Gravação, Reunião, Aprovação, Ajustes,
+     Entrega, Outro) — todos com o mesmo tratamento agora: formato +
+     situação, sem precisar de um campo etapa à parte. "Linha editorial"
+     NÃO entra aqui de propósito — é sempre derivada do status real da
+     linha do cliente, nunca escolhida manualmente (ver
+     `itemLinhaEditorial` em doc-semana.js). */
+  const FORMATOS_DEMANDA = ['Card', 'Carrossel', 'Reel', 'Story', 'Capa de Reel',
+                             'Gravação', 'Reunião', 'Aprovação', 'Ajustes', 'Entrega', 'Outro'];
   const SITUACOES_RELATORIO = ['Rascunho', 'Pronto para envio', 'Enviado'];
 
   /* Opções de status pro contexto (formato, ou a etapa quando não há
@@ -321,6 +331,7 @@ B7.Semana = (function () {
       '<div class="sem-grade">' +
         '<div class="sem-edicao">' +
           blocoInfo() +
+          blocoLinhaEditorial() +
           blocoRevisao() +
           dias.map(d => blocoDia(d, (porDia[d] || []))).join('') +
           (semData.length ? blocoDia(null, semData) : '') +
@@ -377,6 +388,32 @@ B7.Semana = (function () {
           '<option value="a_partir_hoje"' + (mostrarAPartirDeHoje() ? ' selected' : '') + '>A partir de hoje</option>' +
         '</select>' +
       '</div>' +
+    '</div>';
+  }
+
+  /* Card informativo, só leitura — mostra o status real da Linha
+     Editorial do cliente direto no editor, do mesmo jeito que aparece
+     na lista de demandas do relatório do cliente (ver
+     `itemLinhaEditorial` em doc-semana.js). Não tem controles de
+     editar/mover/duplicar/excluir porque não é uma linha de
+     `status_itens` — pra mudar essa situação, é preciso mudar o
+     estágio da própria Linha Editorial (link "Abrir"). Só aparece
+     quando a semana está vinculada a uma linha. */
+  function blocoLinhaEditorial() {
+    if (!S.linha) return '';
+    const item = D().itemLinhaEditorial({ linha: S.linha });
+    if (!item) return '';
+    return '<div class="bloco mb sem-linha-editorial">' +
+      '<div class="si-topo" style="cursor:default">' +
+        '<span class="si-ic">' + D().ICONE['Linha editorial'] + '</span>' +
+        '<div class="si-tx"><b>' + esc(item.titulo) + '</b>' +
+          '<div class="si-estado"><span>Linha editorial</span>' +
+          '<span class="ps-ponto" style="background:' + D().corSituacao(item.situacao) + '"></span>' +
+          '<span>' + esc(item.situacao) + '</span></div></div>' +
+        '<button class="b p" data-ir-linha>Abrir</button>' +
+      '</div>' +
+      '<p class="leve" style="margin:8px 0 0">Aparece assim também no relatório do cliente. ' +
+      'Pra mudar essa situação, atualize o estágio da própria Linha Editorial.</p>' +
     '</div>';
   }
 
@@ -450,7 +487,7 @@ B7.Semana = (function () {
       '<div class="si-topo" data-expandir="' + esc(it.id) + '">' +
         '<span class="si-ic">' + (D().ICONE[it.formato] || D().ICONE[it.etapa] || D().ICONE.Outro) + '</span>' +
         '<div class="si-tx"><b>' + esc(it.titulo || 'Sem título') + '</b>' +
-          '<div class="si-estado"><span>' + esc(it.formato || it.etapa) + '</span>' +
+          '<div class="si-estado"><span>' + esc(it.formato || it.etapa || contexto) + '</span>' +
           '<span class="ps-ponto" style="background:' + D().corSituacao(it.situacao) + '"></span>' +
           '<span>' + esc(it.situacao) + '</span>' +
           (it.origem === 'linha_editorial' ? '<span class="si-origem">linha editorial</span>' : '') +
@@ -472,7 +509,7 @@ B7.Semana = (function () {
         '<div class="linha mb">' +
           '<div><label class="rot">TÍTULO</label>' +
             '<input class="campo" value="' + esc(it.titulo || '') + '" ' + t + ' data-campo="titulo"></div>' +
-          '<div><label class="rot">' + ((ehReel || it.etapa === 'Gravação') ? 'DATA DE GRAVAÇÃO' : 'DATA DE POSTAGEM') + '</label>' +
+          '<div><label class="rot">' + ((ehReel || contexto === 'Gravação') ? 'DATA DE GRAVAÇÃO' : 'DATA DE POSTAGEM') + '</label>' +
             '<input class="campo" type="date" value="' + esc(it.data || '') + '" ' +
             'data-data-item="' + esc(it.id) + '"></div>' +
         '</div>' +
@@ -481,24 +518,20 @@ B7.Semana = (function () {
           '<input class="campo" type="date" value="' + esc(it.data_postagem || '') + '" ' +
           'data-data-postagem-item="' + esc(it.id) + '"></div></div>' : '') +
         '<div class="linha mb">' +
-          '<div><label class="rot">FORMATO <span class="leve">— opcional</span></label>' +
+          '<div><label class="rot">TIPO DE DEMANDA</label>' +
             '<select class="campo" data-formato-item="' + esc(it.id) + '">' +
-              '<option value=""' + (!it.formato ? ' selected' : '') + '>Nenhum específico</option>' +
+              '<option value=""' + (!it.formato ? ' selected' : '') + '>Sem tipo específico</option>' +
               FORMATOS_DEMANDA.map(f => '<option value="' + esc(f) + '"' +
                 (it.formato === f ? ' selected' : '') + '>' + esc(f) + '</option>').join('') +
             '</select></div>' +
-          '<div><label class="rot">ETAPA</label>' +
-            '<select class="campo" data-etapa-item="' + esc(it.id) + '">' + ETAPAS.map(e =>
-              '<option' + (it.etapa === e ? ' selected' : '') + '>' + e + '</option>').join('') +
-            '</select></div>' +
+          '<div><label class="rot">CANAL <span class="leve">— opcional</span></label>' +
+            '<input class="campo" value="' + esc(it.canal || '') + '" ' + t + ' data-campo="canal"></div>' +
         '</div>' +
         '<div class="linha mb">' +
           '<div><label class="rot">SITUAÇÃO <span class="leve">— ' + esc(contexto) + '</span></label>' +
             '<select class="campo" ' + t + ' data-campo="situacao">' + opcoes.map(v =>
               '<option' + (it.situacao === v ? ' selected' : '') + '>' + v + '</option>').join('') +
             '</select></div>' +
-          '<div><label class="rot">CANAL <span class="leve">— opcional</span></label>' +
-            '<input class="campo" value="' + esc(it.canal || '') + '" ' + t + ' data-campo="canal"></div>' +
         '</div>' +
         '<label class="rot">COMO APARECE PARA O CLIENTE <span class="leve">' +
           '— opcional, simplifica o texto do status sem mudar o status real</span></label>' +
@@ -608,26 +641,23 @@ B7.Semana = (function () {
       const nova = validas[0];
       it.situacao = nova;
       try { await B7.Save.campo('status_itens', it.id, { situacao: nova }); } catch (e) {}
-      B7.UI.toast('Situação ajustada para "' + nova + '" (novo formato/etapa: ' + contexto + ')');
+      B7.UI.toast('Situação ajustada para "' + nova + '" (novo tipo: ' + contexto + ')');
     }
 
-    p.querySelectorAll('[data-etapa-item]').forEach(sel => sel.onchange = async () => {
-      const it = S.itens.find(x => x.id === sel.dataset.etapaItem);
-      if (!it) return;
-      it.etapa = sel.value;
-      try { await B7.Save.campo('status_itens', it.id, { etapa: sel.value }); } catch (e) {}
-      await revalidarSituacao(it);
-      render();
-    });
-
+    /* TIPO DE DEMANDA único: escreve em `formato` e limpa `etapa` (o
+       campo separado saiu do editor — ver cabeçalho do arquivo). Item
+       antigo que só tinha etapa preenchida continua lido normalmente
+       (contextoDe em doc-semana.js cobre os dois), mas a partir daqui
+       tudo passa a viver só em formato. */
     p.querySelectorAll('[data-formato-item]').forEach(sel => sel.onchange = async () => {
       const it = S.itens.find(x => x.id === sel.dataset.formatoItem);
       if (!it) return;
       it.formato = sel.value || null;
+      it.etapa = null;
       if (it.formato !== 'Reel') it.data_postagem = null;
       try {
         await B7.Save.campo('status_itens', it.id,
-          { formato: it.formato, data_postagem: it.data_postagem });
+          { formato: it.formato, etapa: it.etapa, data_postagem: it.data_postagem });
       } catch (e) {}
       await revalidarSituacao(it);
       render();
@@ -928,14 +958,12 @@ B7.Semana = (function () {
             '<input class="campo" type="date" id="md-data-postagem" ' +
             'min="' + esc(r.semana_inicio) + '" max="' + esc(r.semana_fim) + '"></div>' +
         '</div>' +
-        '<div class="linha mb">' +
-          '<div><label class="rot">FORMATO <span class="leve">— opcional</span></label>' +
+        '<div class="mb">' +
+          '<label class="rot">TIPO DE DEMANDA</label>' +
             '<select class="campo" id="md-formato">' +
-              '<option value="">Nenhum específico</option>' +
+              '<option value="">Sem tipo específico</option>' +
               FORMATOS_DEMANDA.map(f => '<option value="' + esc(f) + '">' + esc(f) + '</option>').join('') +
-            '</select></div>' +
-          '<div><label class="rot">ETAPA</label><select class="campo" id="md-etapa">' +
-            ETAPAS.map(e => '<option>' + e + '</option>').join('') + '</select></div>' +
+            '</select>' +
         '</div>' +
         '<div class="mb"><label class="rot" id="md-rot-situacao">SITUAÇÃO</label>' +
           '<select class="campo" id="md-situacao"></select></div>' +
@@ -945,26 +973,24 @@ B7.Semana = (function () {
     }
 
     function ligarCamposComuns() {
-      const etapa = m.querySelector('#md-etapa');
       const formato = m.querySelector('#md-formato');
       const situacao = m.querySelector('#md-situacao');
       const rotData = m.querySelector('#md-rot-data');
       const rotSituacao = m.querySelector('#md-rot-situacao');
       const wrapPostagem = m.querySelector('#md-data-postagem-wrap');
-      if (!etapa || !situacao) return;
+      if (!formato || !situacao) return;
       const preencher = () => {
-        const contexto = D().contextoDe({ formato: formato.value || null, etapa: etapa.value });
+        const contexto = D().contextoDe({ formato: formato.value || null, etapa: null });
         const opcoes = D().estagiosDe(contexto);
         situacao.innerHTML = opcoes.map(v => '<option>' + v + '</option>').join('');
         situacao.value = opcoes[0];
         if (rotSituacao) rotSituacao.textContent = 'SITUAÇÃO — ' + contexto;
         const ehReel = formato.value === 'Reel';
         if (wrapPostagem) wrapPostagem.hidden = !ehReel;
-        if (rotData) rotData.textContent = (ehReel || etapa.value === 'Gravação')
+        if (rotData) rotData.textContent = (ehReel || formato.value === 'Gravação')
           ? 'DATA DE GRAVAÇÃO' : 'DATA DE POSTAGEM';
       };
-      etapa.onchange = preencher;
-      if (formato) formato.onchange = preencher;
+      formato.onchange = preencher;
       preencher();
     }
 
@@ -973,8 +999,8 @@ B7.Semana = (function () {
         '<div class="ajuda mb">Uma reunião, uma gravação, um envio para aprovação — ' +
         'nada disso precisa virar conteúdo na linha editorial.</div>' + camposComuns();
       ligarCamposComuns();
-      const etapa = m.querySelector('#md-etapa');
-      if (etapa) { etapa.value = 'Reunião'; etapa.onchange(); }
+      const formato = m.querySelector('#md-formato');
+      if (formato) { formato.value = 'Reunião'; formato.onchange(); }
     }
 
     m.querySelectorAll('#md-tipo [data-tipo]').forEach(b => b.onclick = () => {
@@ -998,7 +1024,7 @@ B7.Semana = (function () {
         const novo = await B7.Save.acao(() => B7.DB.criarItem({
           report_id: r.id, data: data, position: irmaos.length,
           titulo: titulo,
-          etapa: m.querySelector('#md-etapa').value,
+          etapa: null,
           situacao: m.querySelector('#md-situacao').value,
           observacao: m.querySelector('#md-obs').value.trim(),
           canal: escolhido && tipo === 'conteudo' ? (escolhido.canal || null) : null,
@@ -1159,7 +1185,7 @@ B7.Semana = (function () {
       '<label class="rot">O QUE COPIAR</label>' +
       '<div class="lista-copiar">' +
         '<label class="op-copiar on"><input type="checkbox" data-copiar="demandas" checked>' +
-          '<span><b>Demandas</b><small>títulos, etapas e canais; as datas andam sete dias</small></span></label>' +
+          '<span><b>Demandas</b><small>títulos, tipos e canais; as datas andam sete dias</small></span></label>' +
         '<label class="op-copiar"><input type="checkbox" data-copiar="observacoes">' +
           '<span><b>Observações</b><small>as observações escritas para o cliente</small></span></label>' +
         '<label class="op-copiar on"><input type="checkbox" data-copiar="preferencias" checked>' +

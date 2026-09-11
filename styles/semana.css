@@ -45,6 +45,14 @@
 .op-mini input{accent-color:var(--acento);}
 .op-mini small{display:block;font-size:10.5px;opacity:.8;}
 
+/* --------------------------------------------- linha editorial (card)
+   Espelha o status real da Linha Editorial do cliente — cor própria,
+   verde-petróleo, igual ao selo de formato "Linha editorial" no
+   documento do cliente. */
+.sem-linha-editorial{border-left:3px solid #2E7D5B;}
+.sem-linha-editorial .si-topo{padding:11px 13px 0;}
+.sem-linha-editorial .si-ic{color:#2E7D5B;}
+
 /* ------------------------------------------------- situações a revisar
    Aviso no topo do editor: itens com status genérico de antes desta
    rodada (Previsto, Em andamento...) — o cliente vê exatamente esse
