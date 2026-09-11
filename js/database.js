@@ -1426,6 +1426,22 @@ B7.DB = (function () {
       const linhas = ok(await sb().from('perfis').select('id, nome').in('id', lista));
       const m = {}; linhas.forEach(l => { m[l.id] = l.nome; }); return m;
     },
+    /* decisões do cliente sobre a peça (linhas de `aprovacoes`, tipo
+       design_versao) — Portal ou registradas pela B7; RLS de aprovacoes
+       vale (designer pode não enxergar: cai em []) */
+    async aprovacoesDesign(deliverableId) {
+      return ok(await sb().from('aprovacoes').select('*').eq('tipo', 'design_versao').eq('alvo_id', deliverableId)
+        .is('deleted_at', null).order('versao', { ascending: false }));
+    },
+    /* Registrar decisão do cliente (Admin/Coordenador) — decisao:
+       'enviado' | 'aprovado' | 'ajustes' | 'recusado'; canal: whatsapp |
+       ligacao | reuniao | presencial | outro; partes: [{parte_id, mensagem}] */
+    async registrarDecisaoClienteDesign(deliverableId, decisao, canal, observacao, partes) {
+      return this.rpc('design_registrar_decisao_cliente', {
+        p_deliverable_id: deliverableId, p_decisao: decisao, p_canal: canal || 'whatsapp',
+        p_observacao: observacao || null, p_partes: partes || []
+      });
+    },
     async removerArquivoRascunhoDesign(arquivoId) {
       return this.rpc('design_arquivo_remover_rascunho', { p_arquivo_id: arquivoId });
     },
@@ -1481,8 +1497,11 @@ B7.DB = (function () {
         ok(await sb().from('notificacoes').select('*')
           .eq('link', '#/design/' + deliverableId).order('created_at', { ascending: true }))
       ]);
-      const arquivos = await this.arquivosDesign(deliverableId, versoes).catch(() => []);
-      return { versoes, notificacoes: notifs, arquivos };
+      const [arquivos, aprovacoes] = await Promise.all([
+        this.arquivosDesign(deliverableId, versoes).catch(() => []),
+        this.aprovacoesDesign(deliverableId).catch(() => [])
+      ]);
+      return { versoes, notificacoes: notifs, arquivos, aprovacoes };
     },
 
     /* envia um blob qualquer pro bucket design-files, num caminho já

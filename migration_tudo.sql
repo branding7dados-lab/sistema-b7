@@ -77,6 +77,16 @@
 --                                 (troca a assinatura de
 --                                 design_arquivo_registrar). Build -ah.
 --
+--  22. migration_design_decisao_cliente.sql  Decisão do cliente
+--                                 registrada pela equipe B7 (WhatsApp,
+--                                 ligação…): procedência em aprovacoes,
+--                                 feedback do cliente por slide, trigger
+--                                 que propaga a decisão (Portal, B7 ou
+--                                 anulação) pra peça, aprov_processar_evento
+--                                 recriada com texto honesto + card do
+--                                 Kanban da peça. Roda depois de 21 e de
+--                                 migration_aprovacoes_v3.sql. Build -aj.
+--
 -- Se algum arquivo reclamar de coluna ou tabela inexistente, é porque um
 -- anterior não rodou. A mensagem diz qual.
 -- =====================================================================

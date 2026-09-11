@@ -1449,7 +1449,7 @@ B7.Design = (function () {
         }
       };
       document.addEventListener('keydown', tecla);
-      drawer = { id, el, extra: null, briefing: null, versaoAtualId: null, filaUpload: [],
+      drawer = { id, el, extra: null, briefing: null, versaoAtualId: null, filaUpload: [], ajustesCliente: {},
                  anterior: document.activeElement, tecla };
       if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(fecharDrawer);
     }
@@ -1553,13 +1553,18 @@ B7.Design = (function () {
       return { primaria: { id: 'dv-aprovar', label: 'Aprovar internamente', desabilitada: souResponsavel },
                secundarias: [{ id: 'dv-ajuste', label: 'Solicitar ajuste' }] };
     }
-    if (equipe && d.client_id && versaoAtual && versaoAtual.estado === 'aprovada_interna') {
-      /* aprovada por dentro mas ainda não foi ao cliente — mandar pro
-         cliente é o próximo passo de verdade; Finalizar sem isso pularia
-         a aprovação do cliente, então vira secundário, não some. */
-      return { primaria: { id: 'dv-enviar-cliente', label: 'Enviar para aprovação do cliente' },
-               secundarias: (d.status === 'aprovado_interno' || d.status === 'aprovado_cliente')
-                 ? [{ id: 'dv-finalizar', label: 'Finalizar mesmo assim' }] : [] };
+    if (equipe && d.client_id && versaoAtual && (versaoAtual.estado === 'aprovada_interna' || versaoAtual.estado === 'enviada_cliente')) {
+      /* aprovada por dentro: o próximo passo é a DECISÃO DO CLIENTE. Como
+         hoje quase tudo acontece pelo WhatsApp, a ação primária é
+         registrar o que o cliente decidiu; mandar pelo Portal continua
+         disponível como caminho alternativo. Finalizar sem decisão do
+         cliente pularia etapa — fica secundário, não some. */
+      const r = resumoAjustesCliente();
+      const sec = [];
+      if (versaoAtual.estado === 'aprovada_interna') sec.push({ id: 'dv-enviar-cliente', label: 'Enviar pelo Portal do Cliente' });
+      if (versaoAtual.estado === 'aprovada_interna' && d.status === 'aprovado_interno') sec.push({ id: 'dv-finalizar', label: 'Finalizar mesmo assim' });
+      return { primaria: { id: 'dv-decisao-cliente', label: r ? 'Enviar ajustes do cliente ao Designer' : 'Registrar decisão do cliente' },
+               secundarias: sec, resumo: r ? r + ' com ajuste do cliente marcado — confirme e envie' : (versaoAtual.estado === 'enviada_cliente' ? 'Aguardando a decisão do cliente (Portal, WhatsApp, ligação…).' : null) };
     }
     if (equipe && (d.status === 'aprovado_interno' || d.status === 'aprovado_cliente')) {
       return { primaria: { id: 'dv-finalizar', label: 'Finalizar' } };
@@ -1659,6 +1664,10 @@ B7.Design = (function () {
   function estadoParte(d, efetivo, rascunho, podeEditar) {
     if (rascunho && podeEditar) return { k: 'novo', t: 'Nova versão · ainda não enviada' };
     if (!efetivo) return { k: 'vazio', t: 'Sem arquivo' };
+    /* ajuste pedido PELO CLIENTE (registrado pela B7 ou pelo Portal) tem
+       precedência sobre a decisão interna — é o que o designer precisa
+       atender agora, e a origem é outra */
+    if (efetivo.cliente_ajuste) return { k: 'cliente', t: 'Ajuste do cliente' };
     if (efetivo.revisao === 'aprovado') return { k: 'aprovado', t: 'Aprovado' };
     if (efetivo.revisao === 'ajuste') return { k: 'ajuste', t: 'Ajuste solicitado' };
     if (d.status === 'revisao_interna') return { k: 'pendente', t: 'Aguardando revisão' };
@@ -1801,11 +1810,23 @@ B7.Design = (function () {
     /* pra quem vai REENVIAR (slide em ajuste ou sem arte), o pedido e o
        botão de upload vêm ANTES da arte grande — senão ficam abaixo da
        dobra e o designer tem que rolar pra achar o que fazer */
-    const precisaAgir = podeUpload && parte && (!efet || (efet.revisao === 'ajuste' && !rasc)) && !historico;
-    const blocoFeedback = (efet && efet.revisao === 'ajuste' && efet.revisao_mensagem && !historico)
-      ? '<div class="ds-arte-feedback"><b>Ajuste solicitado' + (parte ? ' neste ' + nomeParte : '') + '</b><p>' + esc(efet.revisao_mensagem) + '</p></div>' : '';
+    const precisaAgir = podeUpload && parte && (!efet || ((efet.revisao === 'ajuste' || efet.cliente_ajuste) && !rasc)) && !historico;
+    /* dois feedbacks, duas origens, dois visuais (§13): "Ajuste interno
+       B7" (vermelho) × "Ajuste solicitado pelo cliente" (roxo, com o
+       canal). Nunca misturados num bloco só. */
+    const marcado = ctx.ajustesCliente && parte && ctx.ajustesCliente[parte.id];
+    const blocoFeedback =
+      ((efet && efet.cliente_ajuste && !historico)
+        ? '<div class="ds-arte-feedback cliente"><b>Ajuste solicitado pelo cliente' + (parte ? ' neste ' + nomeParte : '') +
+            (efet.cliente_ajuste_canal ? ' · via ' + esc(rotuloCanal(efet.cliente_ajuste_canal)) : '') + '</b><p>' + esc(efet.cliente_ajuste) + '</p></div>' : '') +
+      ((efet && efet.revisao === 'ajuste' && efet.revisao_mensagem && !historico)
+        ? '<div class="ds-arte-feedback"><b>Ajuste interno B7' + (parte ? ' neste ' + nomeParte : '') + '</b><p>' + esc(efet.revisao_mensagem) + '</p></div>' : '') +
+      (marcado
+        ? '<div class="ds-arte-feedback cliente a-enviar"><b>Ajuste do cliente · a enviar ao designer</b><p>' + esc(marcado) + '</p>' +
+            '<div class="ds-arte-decisao"><button class="b fina" data-ajuste-cliente="' + esc(parte.id) + '">Editar</button>' +
+            '<button class="b fina" data-ajuste-cliente-remover="' + esc(parte.id) + '">Remover</button></div></div>' : '');
     const blocoUploadParte = () => {
-      const precisa = efet && efet.revisao === 'ajuste';
+      const precisa = !!(efet && (efet.revisao === 'ajuste' || efet.cliente_ajuste));
       return '<div class="ds-arte-upload' + (precisa ? ' precisa' : '') + '">' +
         (up && up.estado === 'enviando'
           ? '<div class="ds-up-barra"><span style="width:' + up.progresso + '%"></span></div><small>Enviando ' + esc(up.nome) + ' · ' + up.progresso + '%</small>'
@@ -1830,6 +1851,11 @@ B7.Design = (function () {
       '</div>';
 
     if (!precisaAgir) html += blocoFeedback;
+    /* §37: a equipe marca, slide a slide, o que o cliente pediu por fora;
+       o envio agrupado acontece em "Registrar decisão do cliente" */
+    if (ctx.podeRegistrarCliente && parte && efet && !marcado && !historico) {
+      html += '<div class="ds-arte-decisao"><button class="b fina contorno cliente" data-ajuste-cliente="' + esc(parte.id) + '">Registrar ajuste do cliente neste ' + nomeParte + '</button></div>';
+    }
     if (podeDecidir) {
       html += '<div class="ds-arte-decisao">' +
         (efet.revisao === 'aprovado'
@@ -1866,7 +1892,11 @@ B7.Design = (function () {
     return {
       efetivos: arquivosEfetivos(), rascunhos: arquivosRascunho(),
       podeEditar: (equipe || souResponsavel) && d.status !== 'finalizado',
-      podeRevisar: equipe && !souResponsavel && d.status === 'revisao_interna'
+      podeRevisar: equipe && !souResponsavel && d.status === 'revisao_interna',
+      /* decisão do cliente registrada pela B7: só Admin/Coordenador, com
+         a peça aprovada por dentro ou já aguardando o cliente */
+      podeRegistrarCliente: equipe && podeRegistrarDecisaoCliente(d),
+      ajustesCliente: drawer.ajustesCliente || {}
     };
   }
 
@@ -1895,6 +1925,8 @@ B7.Design = (function () {
     const resumo = '<div class="ds-arte-resumo">' +
       (qtd('aprovado') ? '<span class="st-aprovado">' + qtd('aprovado') + ' aprovado' + (qtd('aprovado') > 1 ? 's' : '') + '</span>' : '') +
       (qtd('ajuste') ? '<span class="st-ajuste">' + qtd('ajuste') + ' em ajuste</span>' : '') +
+      (qtd('cliente') ? '<span class="st-cliente">' + qtd('cliente') + ' com ajuste do cliente</span>' : '') +
+      (Object.keys(ctx.ajustesCliente || {}).length ? '<span class="st-cliente">' + Object.keys(ctx.ajustesCliente).length + ' marcado' + (Object.keys(ctx.ajustesCliente).length > 1 ? 's' : '') + ' pra enviar</span>' : '') +
       (qtd('pendente') ? '<span class="st-pendente">' + qtd('pendente') + ' aguardando</span>' : '') +
       (qtd('novo') ? '<span class="st-novo">' + qtd('novo') + ' nov' + (qtd('novo') > 1 ? 'os' : 'o') + '</span>' : '') +
       (faltam.length ? '<span class="st-vazio">' + faltam.length + ' ' + (tipoItem === 'frame' ? 'story' : 'slide') + (faltam.length > 1 ? 's' : '') + ' ainda sem arquivo (' + faltam.map(p => pad2(p.posicao + 1)).join(', ') + ')</span>' : '') +
@@ -1932,7 +1964,7 @@ B7.Design = (function () {
     }
 
     html += '<div class="ds-nav-pills" role="tablist" aria-label="Navegar pelos ' + rotSecao.toLowerCase() + '">' +
-      partes.map((p, i) => '<button class="ds-nav-pill st-' + estados[i].k + (i === idx ? ' on' : '') + '" data-slide-ir="' + i + '" role="tab" aria-selected="' + (i === idx) + '" ' +
+      partes.map((p, i) => '<button class="ds-nav-pill st-' + estados[i].k + (ctx.ajustesCliente && ctx.ajustesCliente[p.id] ? ' marcado-cliente' : '') + (i === idx ? ' on' : '') + '" data-slide-ir="' + i + '" role="tab" aria-selected="' + (i === idx) + '" ' +
         'aria-label="' + esc(rotuloItemNav(i, total, tipoItem) + ' — ' + estados[i].t) + '" title="' + esc(estados[i].t) + '">' + pad2(i + 1) + '</button>').join('') + '</div>' +
       '<div class="ds-nav-foco">' +
         '<button class="ico ds-nav-seta" data-slide-nav="-1" aria-label="anterior"' + (idx === 0 ? ' disabled' : '') + '>‹</button>' +
@@ -2115,6 +2147,136 @@ B7.Design = (function () {
       for (const x of escolhidos) {
         const parte = partes.find(p => p.id === x.parteId);
         if (parte && drawer && drawer.id === d.id) await uploadParte(d, parte, x.arquivo);
+      }
+    };
+  }
+
+  /* =================================================================
+     DECISÃO DO CLIENTE registrada pela B7 (WhatsApp, ligação, reunião…)
+     — mesma linha de `aprovacoes` que o Portal usa; só a procedência
+     muda. O ator é quem REGISTRA (pessoa da B7), nunca o cliente.
+     ================================================================= */
+  const CANAIS_DECISAO = [['whatsapp', 'WhatsApp'], ['ligacao', 'Ligação'], ['reuniao', 'Reunião'], ['presencial', 'Presencial'], ['outro', 'Outro']];
+  function rotuloCanal(c) { const x = CANAIS_DECISAO.find(k => k[0] === c); return x ? x[1] : (c === 'portal' ? 'Portal do Cliente' : (c || '')); }
+  function podeRegistrarDecisaoCliente(d) {
+    return !!d.client_id && (d.status === 'aprovado_interno' || d.status === 'aguardando_cliente');
+  }
+  function resumoAjustesCliente() {
+    const m = drawer && drawer.ajustesCliente || {}; const n = Object.keys(m).length;
+    if (!n) return '';
+    const partes = partesDaPeca() || [];
+    const nomes = partes.filter(p => m[p.id]).map(p => pad2(p.posicao + 1));
+    const nomeP = partes[0] && partes[0].tipo === 'frame' ? 'story' : 'slide';
+    return n + ' ' + nomeP + (n > 1 ? 's' : '') + ' (' + nomes.join(', ') + ')';
+  }
+  async function marcarAjusteCliente(d, parteId) {
+    const parte = (partesDaPeca() || []).find(p => p.id === parteId); if (!parte) return;
+    const nomeP = parte.tipo === 'frame' ? 'story' : 'slide';
+    drawer.ajustesCliente = drawer.ajustesCliente || {};
+    const msg = await B7.UI.perguntar({ titulo: 'Ajuste do cliente no ' + nomeP + ' ' + pad2(parte.posicao + 1),
+      rotulo: 'O que o cliente pediu neste ' + nomeP + '? Fica marcado aqui até você enviar tudo junto ao designer.',
+      valor: drawer.ajustesCliente[parteId] || '', placeholder: 'ex.: Produto precisa ficar maior.', confirmar: 'Marcar' });
+    if (msg === null) return;
+    if (!msg.trim()) { delete drawer.ajustesCliente[parteId]; } else drawer.ajustesCliente[parteId] = msg.trim();
+    desenharDrawer();
+  }
+
+  /* linha da decisão do cliente na lateral — a verdade de como aconteceu:
+     "Aprovado pelo cliente · Via WhatsApp · Registrado por Ana" ou
+     "Via Portal do Cliente · Aprovado por <cliente>"; anulação aparece
+     por cima, sem apagar a decisão original */
+  function rotuloSituacaoCliente(a) {
+    const anulada = a.anulada_em && (!a.decidido_em || a.decidido_em <= a.anulada_em);
+    const sit = anulada ? a.situacao_anterior : a.situacao;
+    const R = { aprovado: 'Aprovado pelo cliente', ajustes: 'Cliente solicitou ajustes', recusado: 'Recusado pelo cliente',
+                pendente: 'Aguardando cliente', parcial: 'Parcialmente revisado', substituido: 'Substituída por versão mais nova' };
+    return { texto: R[sit] || sit, anulada, sit };
+  }
+  function blocoDecisaoCliente(d, x) {
+    const lista = (x.aprovacoes || []).slice();
+    const atual = lista[0] || null;
+    const equipe = ehEquipe();
+    if (!d.client_id) return '';
+    if (!lista.length && !podeRegistrarDecisaoCliente(d) && d.status !== 'aprovado_cliente' && d.status !== 'ajustes_cliente') return '';
+    const item = a => {
+      const r = rotuloSituacaoCliente(a);
+      const externa = a.origem_decisao === 'externa';
+      const decidida = ['aprovado', 'ajustes', 'recusado'].includes(r.sit);
+      return '<div class="ds-dc-item ds-dc-' + esc(r.sit) + (r.anulada ? ' anulada' : '') + '">' +
+        '<b>' + esc(r.texto) + '</b><small>Envio ' + a.versao + (a.snapshot && a.snapshot.numero ? ' · arte V' + pad2(a.snapshot.numero) : '') + '</small>' +
+        (decidida ? '<span>' + (externa ? 'Via ' + esc(rotuloCanal(a.canal_decisao)) + ' · registrado por ' + esc(a.registrado_por_nome || a.decidido_por_nome || 'equipe')
+                                          : 'Via Portal do Cliente · ' + esc(a.decidido_por_nome || 'cliente')) +
+                     ' · ' + esc(B7.UI.quando(a.decidido_em)) + '</span>' : '') +
+        (a.observacao_decisao ? '<p>“' + esc(a.observacao_decisao) + '”</p>' : (a.motivo && r.sit !== 'aprovado' ? '<p>' + esc(a.motivo) + '</p>' : '')) +
+        (r.anulada ? '<span class="ds-dc-anulada">Anulada por ' + esc(a.anulada_por_nome || 'Administrador') + ' · ' + esc(B7.UI.quando(a.anulada_em)) +
+                     (a.anulacao_motivo ? ' · “' + esc(a.anulacao_motivo) + '”' : '') + ' · voltou a aguardar o cliente</span>' : '') +
+        (equipe && decidida && !r.anulada && a.versao === (lista[0] && lista[0].versao) ? '<button class="b fina" data-ir-aprovacao="' + esc(a.id) + '">Ver nas Aprovações</button>' : '') +
+      '</div>';
+    };
+    const cabecalho = d.status === 'aprovado_cliente' ? 'Aprovado pelo cliente'
+      : d.status === 'ajustes_cliente' ? (atual && atual.situacao === 'recusado' ? 'Recusado pelo cliente' : 'Cliente solicitou ajustes')
+      : d.status === 'aguardando_cliente' ? 'Aguardando cliente'
+      : d.status === 'aprovado_interno' ? 'Aprovado internamente — sem decisão do cliente ainda' : null;
+    return '<div class="ds-dr-bloco ds-dc"><h4>Decisão do cliente</h4>' +
+      (cabecalho ? '<p class="ds-dc-status st-' + esc(d.status) + '">' + esc(cabecalho) + '</p>' : '') +
+      (lista.length ? lista.map(item).join('') : '<p class="ds-leve">O cliente ainda não decidiu. Quando decidir — pelo Portal ou por fora (WhatsApp, ligação…) — registre aqui.</p>') +
+    '</div>';
+  }
+
+  /* modal "Registrar decisão do cliente" — o que o cliente decidiu, por
+     onde, e (opcional) o que disse. Nada de conta do cliente, nada de
+     sessão: quem registra é quem está logado (Admin/Coordenador). */
+  function modalDecisaoCliente(d) {
+    const partes = partesDaPeca() || []; const multi = partes.length > 1;
+    const marcados = partes.filter(p => drawer.ajustesCliente && drawer.ajustesCliente[p.id]);
+    const nomeP = partes[0] && partes[0].tipo === 'frame' ? 'story' : 'slide';
+    const decisaoInicial = marcados.length ? 'ajustes' : 'aprovado';
+    const m = B7.UI.modal('<h3>Registrar decisão do cliente</h3>' +
+      '<div class="sub">Use quando a decisão aconteceu fora do sistema (WhatsApp, ligação…). O histórico vai mostrar que foi você quem registrou, em nome do cliente — nunca que o cliente entrou no Portal.</div>' +
+      '<div class="ds-dc-opcoes" role="radiogroup">' +
+        [['aprovado', 'Aprovado pelo cliente', 'A arte atual (' + (d.versao_atual ? 'V' + pad2(d.versao_atual) : 'versão atual') + ') fica aprovada pelo cliente.'],
+         ['ajustes', 'Cliente solicitou ajustes', multi ? (marcados.length ? marcados.length + ' ' + nomeP + (marcados.length > 1 ? 's' : '') + ' marcado' + (marcados.length > 1 ? 's' : '') + ': ' + marcados.map(p => pad2(p.posicao + 1)).join(', ') : 'Marque os ' + nomeP + 's na área principal, ou descreva abaixo.') : 'Descreva abaixo o que o cliente pediu.'],
+         ['recusado', 'Recusado pelo cliente', 'Mais forte que ajustes — exige o motivo do cliente.'],
+         ['enviado', 'Só marcar como enviado ao cliente', 'A peça fica “Aguardando cliente” até a decisão chegar.']]
+        .filter(o => o[0] !== 'enviado' || d.status === 'aprovado_interno')
+        .map(o => '<label class="ds-dc-opcao"><input type="radio" name="dc-decisao" value="' + o[0] + '"' + (o[0] === decisaoInicial ? ' checked' : '') + '><span><b>' + o[1] + '</b><small>' + esc(o[2]) + '</small></span></label>').join('') +
+      '</div>' +
+      '<label class="rot" for="dc-canal">CANAL</label>' +
+      '<select class="campo fina" id="dc-canal">' + CANAIS_DECISAO.map(c => '<option value="' + c[0] + '">' + c[1] + '</option>').join('') + '</select>' +
+      '<label class="rot" for="dc-obs" id="dc-obs-rot">OBSERVAÇÃO <span class="ds-leve">— opcional</span></label>' +
+      '<textarea class="campo" id="dc-obs" rows="3" placeholder="ex.: Cliente aprovou pelo grupo do WhatsApp."></textarea>' +
+      '<p class="ds-up-erro" id="dc-erro" hidden></p>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" data-ok>Registrar</button></div>', { larga: false });
+    const atualizarRotulo = () => {
+      const v = m.querySelector('input[name="dc-decisao"]:checked').value;
+      const rot = m.querySelector('#dc-obs-rot'); const ta = m.querySelector('#dc-obs');
+      if (v === 'recusado') { rot.innerHTML = 'MOTIVO DO CLIENTE <span class="ds-leve">— obrigatório</span>'; ta.placeholder = 'ex.: Cliente não aprovou a linha visual desta campanha.'; }
+      else if (v === 'ajustes') { rot.innerHTML = (multi && marcados.length ? 'OBSERVAÇÃO GERAL <span class="ds-leve">— opcional</span>' : 'O QUE O CLIENTE PEDIU <span class="ds-leve">— obrigatório</span>'); ta.placeholder = 'ex.: Aumentar o título e trocar a foto.'; }
+      else { rot.innerHTML = 'OBSERVAÇÃO <span class="ds-leve">— opcional</span>'; ta.placeholder = 'ex.: Cliente aprovou pelo grupo do WhatsApp.'; }
+    };
+    m.querySelectorAll('input[name="dc-decisao"]').forEach(r => r.onchange = atualizarRotulo); atualizarRotulo();
+    m.querySelector('[data-ok]').onclick = async () => {
+      const decisao = m.querySelector('input[name="dc-decisao"]:checked').value;
+      const canal = m.querySelector('#dc-canal').value; const obs = m.querySelector('#dc-obs').value.trim();
+      const erro = m.querySelector('#dc-erro'); erro.hidden = true;
+      if (decisao === 'recusado' && !obs) { erro.textContent = 'Recusar exige o motivo do cliente.'; erro.hidden = false; return; }
+      if (decisao === 'ajustes' && !obs && !marcados.length) { erro.textContent = multi ? 'Marque os ' + nomeP + 's com ajuste ou descreva o pedido.' : 'Descreva o que o cliente pediu.'; erro.hidden = false; return; }
+      if (decisao === 'aprovado' && marcados.length) { erro.textContent = 'Há ' + nomeP + 's marcados com ajuste do cliente — remova as marcações ou registre como ajustes.'; erro.hidden = false; return; }
+      const partesEnvio = decisao === 'ajustes' ? marcados.map(p => ({ parte_id: p.id, mensagem: drawer.ajustesCliente[p.id] })) : [];
+      const btn = m.querySelector('[data-ok]'); btn.disabled = true; btn.textContent = 'Registrando…';
+      try {
+        const r = await B7.DB.registrarDecisaoClienteDesign(d.id, decisao, canal, obs, partesEnvio);
+        m.fechar();
+        drawer.ajustesCliente = {};
+        const novo = await B7.DB.design(d.id); Object.assign(d, novo);
+        drawer.extra = await B7.DB.historicoDesign(d.id);
+        B7.UI.toast(r && r.resultado === 'inalterado' ? 'Essa decisão já estava registrada' :
+          decisao === 'aprovado' ? 'Aprovação do cliente registrada' : decisao === 'ajustes' ? 'Ajustes do cliente enviados ao designer' :
+          decisao === 'recusado' ? 'Recusa do cliente registrada' : 'Marcada como enviada ao cliente');
+        desenharDrawer(); redesenharTela();
+      } catch (e) {
+        btn.disabled = false; btn.textContent = 'Registrar';
+        erro.textContent = 'Não foi possível registrar: ' + (e.message || ''); erro.hidden = false;
       }
     };
   }
@@ -2306,6 +2468,7 @@ B7.Design = (function () {
         '</div>' +
         '<div class="ds-ws-lateral">' +
           acaoPrimariaHTML(acao) +
+          blocoDecisaoCliente(d, x) +
           (podeCompartilhar ? '<div class="ds-dr-compartilhar">' +
               '<small>OU ATRIBUIR A UM COLEGA DESTA LINHA</small>' +
               '<div class="ds-dr-compartilhar-linha">' +
@@ -2721,6 +2884,9 @@ B7.Design = (function () {
       const p = porId.get(a.parte_id); const rot = nomeP + ' ' + pad2(p ? p.posicao + 1 : (a.parte_posicao || 0) + 1);
       const v = ((drawer.extra && drawer.extra.versoes) || []).find(x => x.id === a.versao_id) || {};
       ev.push({ t: v.enviada_em || a.created_at, titulo: rot + ' — V' + pad2(a.versao_numero) + ' enviada' });
+      if (a.cliente_ajuste && a.cliente_ajuste_em) {
+        ev.push({ t: a.cliente_ajuste_em, titulo: rot + ' — ajuste solicitado pelo cliente' + (a.cliente_ajuste_canal ? ' (via ' + rotuloCanal(a.cliente_ajuste_canal) + ')' : ''), mensagem: a.cliente_ajuste });
+      }
       if (a.revisao && a.revisado_em) {
         const quem = nomes[a.revisado_por] ? ' por ' + nomes[a.revisado_por] : '';
         ev.push({ t: a.revisado_em, titulo: rot + ' — ' + (a.revisao === 'ajuste' ? 'ajuste solicitado' : 'aprovado') + quem,
@@ -2873,6 +3039,13 @@ B7.Design = (function () {
     const detVersoes = el.querySelector('#dv-versoes'); if (detVersoes) detVersoes.ontoggle = () => { drawer.versoesAberto = detVersoes.open; };
     const detTimeline = el.querySelector('#dv-timeline'); if (detTimeline) detTimeline.ontoggle = () => { drawer.timelineAberta = detTimeline.open; };
     const detEnvio = el.querySelector('details.ds-dr-recolhido:not([id])'); if (detEnvio) detEnvio.ontoggle = () => { drawer.envioAberto = detEnvio.open; };
+
+    /* decisão do cliente registrada pela B7 */
+    const decisaoCliente = el.querySelector('#dv-decisao-cliente');
+    if (decisaoCliente) decisaoCliente.onclick = () => modalDecisaoCliente(d);
+    el.querySelectorAll('[data-ajuste-cliente]').forEach(b => b.onclick = () => marcarAjusteCliente(d, b.dataset.ajusteCliente));
+    el.querySelectorAll('[data-ajuste-cliente-remover]').forEach(b => b.onclick = () => { if (drawer.ajustesCliente) delete drawer.ajustesCliente[b.dataset.ajusteClienteRemover]; desenharDrawer(); });
+    el.querySelectorAll('[data-ir-aprovacao]').forEach(b => b.onclick = () => { location.hash = '#/aprovacoes/' + b.dataset.irAprovacao; });
 
     /* fechamento da revisão multiparte (§23/§45): uma ação, uma notificação */
     const fecharRevisao = async (botao, rotulo) => {

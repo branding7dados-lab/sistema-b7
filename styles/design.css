@@ -311,6 +311,39 @@ body.ds-ws-aberta{overflow:hidden;}
 .ds-drop-apoio{padding:12px 14px;}
 .ds-drop-apoio .ds-drop-tx b{font-size:12px;}
 
+/* decisão do cliente (registrada pela B7 ou pelo Portal) — roxo é a
+   cor de "vem do cliente" em todo o sistema; vermelho continua sendo o
+   ajuste interno */
+.ds-arte-estado.st-cliente,.ds-arte-resumo .st-cliente{background:color-mix(in srgb,var(--roxo) 14%,transparent);color:var(--roxo);}
+.ds-nav-pill.st-cliente:after{display:block;background:var(--roxo);}
+.ds-nav-pill.marcado-cliente{border-color:var(--roxo);border-style:dashed;}
+.ds-arte-feedback.cliente{background:color-mix(in srgb,var(--roxo) 14%,transparent);color:var(--roxo);}
+.ds-arte-feedback.cliente.a-enviar{border:1.5px dashed var(--roxo);background:transparent;}
+.ds-arte-feedback.cliente .ds-arte-decisao{margin-top:6px;}
+.b.contorno.cliente{border-color:color-mix(in srgb,var(--roxo) 45%,var(--borda));color:var(--roxo);}
+.b.contorno.cliente:hover{border-color:var(--roxo);background:color-mix(in srgb,var(--roxo) 10%,transparent);color:var(--roxo);}
+.ds-dc-status{font-size:12.5px;font-weight:700;margin:0 0 8px;padding:6px 10px;border-radius:8px;background:var(--suave);color:var(--ink-2);}
+.ds-dc-status.st-aprovado_cliente{background:var(--ok-bg);color:var(--ok);}
+.ds-dc-status.st-ajustes_cliente{background:color-mix(in srgb,var(--roxo) 14%,transparent);color:var(--roxo);}
+.ds-dc-status.st-aguardando_cliente{background:var(--ambar-bg);color:var(--ambar);}
+.ds-dc-item{background:var(--suave);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;font-size:12.5px;line-height:1.45;border-left:3px solid var(--borda-forte);}
+.ds-dc-item b{display:block;font-family:'Archivo';font-weight:800;font-size:13px;}
+.ds-dc-item small{display:block;color:var(--ink-4);font-size:11px;}
+.ds-dc-item span{display:block;color:var(--ink-3);margin-top:3px;}
+.ds-dc-item p{margin:6px 0 0;color:var(--ink-2);white-space:pre-wrap;overflow-wrap:anywhere;}
+.ds-dc-item .b{margin-top:8px;}
+.ds-dc-aprovado{border-left-color:var(--ok);}
+.ds-dc-ajustes,.ds-dc-recusado{border-left-color:var(--roxo);}
+.ds-dc-item.anulada{opacity:.75;}
+.ds-dc-item.anulada b{text-decoration:line-through;}
+.ds-dc-anulada{color:var(--erro) !important;font-weight:600;}
+.ds-dc-opcoes{display:flex;flex-direction:column;gap:6px;margin:12px 0;}
+.ds-dc-opcao{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1.5px solid var(--borda);border-radius:var(--r-sm);cursor:pointer;}
+.ds-dc-opcao:has(input:checked){border-color:var(--acento);background:var(--acento-suave);}
+.ds-dc-opcao input{margin-top:3px;}
+.ds-dc-opcao b{display:block;font-size:13px;}
+.ds-dc-opcao small{display:block;color:var(--ink-4);font-size:11.5px;line-height:1.4;}
+
 /* envio em lote com mapeamento (§31) */
 .ds-lote{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;margin:12px 0;}
 .ds-lote-item{display:grid;grid-template-columns:1fr auto minmax(200px,240px);gap:10px;align-items:center;font-size:12.5px;}

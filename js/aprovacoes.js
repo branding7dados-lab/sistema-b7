@@ -22,7 +22,14 @@ B7.Aprovacoes = (function () {
   const ROTULO = { pendente: 'Aguardando cliente', parcial: 'Parcialmente revisado', aprovado: 'Aprovado',
                    ajustes: 'Ajustes solicitados', recusado: 'Recusado', substituido: 'Versão substituída',
                    cancelado: 'Cancelado' };
-  const TIPO = { roteiro: 'Roteiro', linha: 'Linha editorial', conteudo: 'Conteúdo', semana: 'Status semanal' };
+  const TIPO = { roteiro: 'Roteiro', linha: 'Linha editorial', conteudo: 'Conteúdo', semana: 'Status semanal', design_versao: 'Peça de Design' };
+  /* decisão registrada pela B7 em nome do cliente (WhatsApp, ligação…):
+     mostra a procedência de verdade — nunca como se o cliente tivesse
+     clicado no Portal */
+  const CANAL = { whatsapp: 'WhatsApp', ligacao: 'ligação', reuniao: 'reunião', presencial: 'presencial', outro: 'outro canal' };
+  const quemDecidiu = a => a.origem_decisao === 'externa'
+    ? 'cliente via ' + (CANAL[a.canal_decisao] || 'canal externo') + ' · registrado por ' + (a.registrado_por_nome || a.decidido_por_nome || 'equipe')
+    : (a.decidido_por_nome || 'cliente');
   const rotulo = s => ROTULO[s] || s;
   const dataBR = ts => { try { return new Date(ts).toLocaleDateString('pt-BR'); } catch (e) { return ''; } };
   const souAdmin = () => !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario() && B7.Auth.usuario().papel === 'admin');
@@ -190,7 +197,8 @@ B7.Aprovacoes = (function () {
         ? '<b>' + (a.partes_aprovadas || 0) + '/' + a.total_partes + '</b><span>cenas ok' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' ajuste(s)' : '') + '</span>'
         : '') + '</div>' +
       '<div class="ap-resposta">' + (decisaoVale(a)
-        ? '<b>' + esc(a.decidido_por_nome || 'Cliente') + '</b><span>' + esc(B7.UI.quando(a.decidido_em)) + '</span>'
+        ? '<b>' + esc(a.origem_decisao === 'externa' ? 'Via ' + (CANAL[a.canal_decisao] || 'canal externo') : (a.decidido_por_nome || 'Cliente')) + '</b><span>' +
+            (a.origem_decisao === 'externa' ? 'reg. ' + esc(a.registrado_por_nome || '') + ' · ' : '') + esc(B7.UI.quando(a.decidido_em)) + '</span>'
         : a.decisao_anulada ? '<b>Anulada</b><span>' + esc(dataBR(a.anulada_em)) + '</span>'
         : (a.ultima_resposta_cliente ? '<b>Comentou</b><span>' + esc(B7.UI.quando(a.ultima_resposta_cliente)) + '</span>' : '<span>sem resposta</span>')) + '</div>' +
       '<span class="ap-sit ' + esc(a.situacao) + '">' + esc(rotulo(a.situacao)) + '</span>' +
@@ -270,8 +278,10 @@ B7.Aprovacoes = (function () {
 
       /* veredito */
       (decisaoVale(ap)
-        ? '<div class="ap-veredito ' + esc(ap.situacao) + '"><b>' + esc(rotulo(ap.situacao)) + ' por ' + esc(ap.decidido_por_nome || 'cliente') +
-          ' · ' + esc(B7.UI.quando(ap.decidido_em)) + '</b>' + (ap.motivo ? '<p>' + esc(ap.motivo) + '</p>' : '') +
+        ? '<div class="ap-veredito ' + esc(ap.situacao) + '"><b>' + esc(rotulo(ap.situacao)) + ' por ' + esc(quemDecidiu(ap)) +
+          ' · ' + esc(B7.UI.quando(ap.decidido_em)) + '</b>' +
+          (ap.origem_decisao === 'externa' ? '<p class="ajuda">Decisão recebida fora do sistema e registrada pela Branding7 em nome do cliente — o cliente não entrou no Portal para isto.</p>' : '') +
+          (ap.motivo ? '<p>' + esc(ap.motivo) + '</p>' : '') +
           (ap.situacao === 'ajustes' || ap.situacao === 'recusado'
             ? '<p class="ajuda">Corrija no editor e use <b>Enviar para aprovação</b> de novo: isso cria a versão ' + (ap.versao + 1) + ' e avisa o cliente.</p>' : '') +
           '</div>'
@@ -443,7 +453,7 @@ B7.Aprovacoes = (function () {
     const pend = a.situacao === 'pendente' || a.situacao === 'parcial';
     return '<div class="ap-bloco ' + esc(a.situacao) + (a.decisao_anulada ? ' anulada' : '') + '">' +
       '<span class="ap-sit ' + esc(a.situacao) + '">' + esc(rotulo(a.situacao)) + '</span>' +
-      '<span class="ap-bloco-tx"><b>Versão ' + a.versao + (decisaoVale(a) ? ' · ' + esc(a.decidido_por_nome || 'cliente') + ' · ' + esc(B7.UI.quando(a.decidido_em)) : ' · enviada ' + esc(B7.UI.quando(a.enviado_em))) + '</b>' +
+      '<span class="ap-bloco-tx"><b>Versão ' + a.versao + (decisaoVale(a) ? ' · ' + esc(quemDecidiu(a)) + ' · ' + esc(B7.UI.quando(a.decidido_em)) : ' · enviada ' + esc(B7.UI.quando(a.enviado_em))) + '</b>' +
         '<small>' + (a.decisao_anulada ? 'Aprovação anulada pelo Administrador em ' + esc(dataBR(a.anulada_em)) + ' · aguardando nova decisão do cliente · ' : '') +
           (a.total_partes ? (a.partes_aprovadas || 0) + '/' + a.total_partes + ' cenas aprovadas' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' com ajustes' : '') + ' · ' : '') +
           (a.comentarios_abertos ? a.comentarios_abertos + ' observação(ões) em aberto' : 'sem observações em aberto') +
