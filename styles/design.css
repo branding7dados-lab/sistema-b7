@@ -241,8 +241,31 @@ select.ds-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 .ds-grupo-progresso{width:100%;height:6px;border-radius:99px;background:var(--suave);overflow:hidden;margin-top:6px;}
 .ds-grupo-progresso span{display:block;height:100%;background:var(--ok);border-radius:99px;}
 .ds-grupo-minhas .ds-lista-grade{margin-top:12px;}
+.ds-grupo-card .ds-resumo-formatos{width:100%;margin-top:4px;}
 .estado-b7.leve{padding:16px;border:1px dashed var(--borda);border-radius:12px;background:none;}
 .estado-b7.leve p{margin:0;color:var(--ink-3);font-size:13px;}
+
+/* "Precisa de mim" — seção de destaque no topo da Central do Designer,
+   levemente diferenciada (não é mais um bloco cinza igual aos outros:
+   é a pergunta "o que exige minha ação agora?" respondida primeiro) */
+.ds-central-sec.ds-precisa h3{color:var(--magenta, var(--ok));}
+.ds-central-sec.ds-precisa h3 span{background:var(--acento-suave, var(--suave));color:var(--magenta, var(--ink-3));}
+
+/* selo de versão ("V01", "V02…") ao lado do nome da Linha Editorial na
+   vista operacional do Designer */
+.ds-v-badge{display:inline-block;margin-left:8px;font-family:'Archivo';font-size:12px;font-weight:800;
+  vertical-align:middle;background:var(--suave);color:var(--ink-3);padding:2px 9px;border-radius:99px;}
+
+/* resumo de produção no topo da vista operacional: total, formatos e
+   status, tudo derivado dos dados já carregados — nada inventado */
+.ds-resumo-producao{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:4px 0 16px;
+  padding:12px 14px;background:var(--card);border:1px solid var(--borda);border-radius:12px;}
+.ds-resumo-total{font-family:'Archivo';font-weight:800;font-size:14px;}
+.ds-resumo-formatos{display:flex;flex-wrap:wrap;gap:6px;}
+.ds-resumo-chip{font-size:11.5px;color:var(--ink-3);background:var(--suave);padding:3px 9px;border-radius:99px;}
+.ds-resumo-status{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--ink-3);margin-left:auto;}
+.ds-resumo-status .alerta{color:var(--ambar);font-weight:700;}
+.ds-ver-contexto{margin-bottom:16px;}
 
 /* ----------------------------------------------------- via de envio */
 .ds-via-toggle{display:flex;gap:2px;margin:8px 0 12px;background:var(--suave);border-radius:10px;padding:3px;}

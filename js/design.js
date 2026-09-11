@@ -26,6 +26,11 @@ B7.Design = (function () {
     ['stories', 'Stories'], ['outro', 'Outro']
   ];
   const rotuloTipo = t => (TIPOS.find(x => x[0] === t) || [, 'Peça'])[1];
+  /* plural certo por tipo (não é só "singular + s": "Carrossel" vira
+     "Carrosséis", "Capa de Reel" vira "Capas de Reel") — usado nos
+     resumos de produção ("4 Cards", "2 Carrosséis…") */
+  const PLURAL_TIPO = { card: 'Cards', capa_reel: 'Capas de Reel', carrossel: 'Carrosséis', stories: 'Stories', outro: 'Outros' };
+  const rotuloTipoContagem = (t, n) => n + ' ' + (n === 1 ? rotuloTipo(t) : (PLURAL_TIPO[t] || rotuloTipo(t) + 's'));
 
   const STATUS = [
     ['aguardando_producao', 'Aguardando produção'],
@@ -316,10 +321,29 @@ B7.Design = (function () {
     return [...grupos.values()].sort((a, b) => (a.linhaNome || '').localeCompare(b.linhaNome || ''));
   }
 
+  /* "Precisa de mim": só o que exige AÇÃO minha agora — nunca o que já
+     mandei e está esperando revisão/aprovação de outra pessoa. */
+  function precisaDeMim(minhas) {
+    return minhas.filter(d => d.status === 'aguardando_producao' || d.status === 'ajustes' ||
+      d.status === 'ajustes_cliente' || d.briefing_desatualizado);
+  }
+  /* "Continuar de onde parei": só o que está mesmo em produção comigo
+     agora, mais recente primeiro — some sozinho quando não há nada. */
+  function continuarDeOndeParei(minhas) {
+    return minhas.filter(d => d.status === 'em_criacao')
+      .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')).slice(0, 3);
+  }
+
   function viewCentralDesigner(minhas, semDono) {
     const gruposFazer = agruparPorLinha(semDono);
     const gruposMinhas = agruparPorLinha(minhas);
+    const precisa = precisaDeMim(minhas);
+    const continuar = continuarDeOndeParei(minhas);
     return '<div class="ds-central">' +
+      (precisa.length ? '<section class="ds-central-sec ds-precisa"><h3>Precisa de mim <span>' + precisa.length + '</span></h3>' +
+        '<div class="ds-lista ds-lista-grade">' + precisa.slice().sort(ordenarPorUrgencia).map(cartao).join('') + '</div></section>' : '') +
+      (continuar.length ? '<section class="ds-central-sec"><h3>Continuar de onde parei</h3>' +
+        '<div class="ds-lista ds-lista-grade">' + continuar.map(cartao).join('') + '</div></section>' : '') +
       '<section class="ds-central-sec"><h3>Demandas a fazer <span>' + semDono.length + '</span></h3>' +
       (gruposFazer.length
         ? gruposFazer.map(g => grupoFazerCartao(g)).join('')
@@ -348,6 +372,7 @@ B7.Design = (function () {
         (g.clienteNome ? '<span class="ds-cli">' + esc(g.clienteNome) + '</span>' : '') +
         '<span class="ds-grupo-cont">' + g.itens.length + (g.itens.length === 1 ? ' peça' : ' peças') +
           (info ? ' · ' + esc(info.txt) : '') + '</span>' +
+        chipsFormatos(g.itens) +
       '</div>' +
       (g.linhaId ? '<button class="b fina pri" data-assumir-linha="' + esc(g.linhaId) + '">Assumir demanda' + (g.itens.length > 1 ? ' (' + g.itens.length + ')' : '') + '</button>' : '') +
     '</article>';
@@ -367,6 +392,7 @@ B7.Design = (function () {
         '<span class="ds-grupo-cont">' + finalizadas + ' de ' + total + ' finalizadas' +
           (ajustes ? ' · <b class="alerta">' + ajustes + ' em ajuste</b>' : '') +
           (info ? ' · ' + esc(info.txt) : '') + '</span>' +
+        chipsFormatos(g.itens) +
       '</div>' +
       '<div class="ds-lista ds-lista-grade">' + g.itens.slice().sort(ordenarPorUrgencia).slice(0, 4).map(cartao).join('') + '</div>' +
       (total > 4 && g.linhaId ? '<button class="b fina contorno" data-grupo-abrir="' + esc(g.linhaId) + '">Ver as ' + total + ' peças desta linha</button>' : '') +
@@ -421,18 +447,24 @@ B7.Design = (function () {
     }
     const nome = (itens[0] && itens[0].linha_nome) || 'Linha editorial';
     const cliente = itens[0] && itens[0].cliente_nome;
+    const clienteId = itens[0] && itens[0].client_id;
+    const versao = itens[0] && itens[0].linha_versao_confirmada;
     const semDono = itens.filter(d => !d.designer_id);
     painel().innerHTML = '<div class="conteudo entra design-tela">' +
       '<div class="cab-conteudo"><div>' +
         '<button class="b fina contorno" id="ds-voltar" style="margin-bottom:8px">← Voltar ao Design</button>' +
-        '<h1>' + esc(nome) + '</h1>' +
+        '<h1>' + esc(nome) + (versao ? '<span class="ds-v-badge">V' + String(versao).padStart(2, '0') + '</span>' : '') + '</h1>' +
         (cliente ? '<p>' + esc(cliente) + ' · produção de Design desta linha (leitura)</p>' : '<p>Produção de Design desta linha (leitura)</p>') +
       '</div>' +
       (ehDesigner() && semDono.length ? '<button class="b pri" id="ds-assumir-tudo">Assumir demanda (' + semDono.length + ')</button>' : '') +
       '</div>' +
+      resumoProducao(itens) +
+      (linhaId ? '<button class="b fina contorno ds-ver-contexto" id="ds-ver-contexto">Ver contexto da Linha Editorial (estratégia, pilares, outros criativos)</button>' : '') +
       (itens.length ? '<div class="ds-lista ds-lista-grade">' + itens.slice().sort(ordenarPorUrgencia).map(cartao).join('') + '</div>'
         : '<div class="estado-b7"><b>Nenhuma peça de Design nesta linha ainda.</b></div>') +
     '</div>';
+    const contexto = painel().querySelector('#ds-ver-contexto');
+    if (contexto) contexto.onclick = () => location.hash = '#/linha/' + linhaId;
     const voltar = painel().querySelector('#ds-voltar');
     if (voltar) voltar.onclick = () => abrir();
     const assumirTudo = painel().querySelector('#ds-assumir-tudo');
@@ -523,6 +555,38 @@ B7.Design = (function () {
     return '<div class="ds-bloco-sem"><h3>Sem responsável <span>' + lista.length + '</span></h3>' +
       '<p class="ds-sub">Disponíveis para qualquer designer assumir.</p>' +
       '<div class="ds-lista ds-lista-grade">' + lista.slice().sort(ordenarPorUrgencia).map(cartao).join('') + '</div></div>';
+  }
+
+  /* =================================================================
+     RESUMO DE PRODUÇÃO — "11 peças · 4 Cards, 4 Capas de Reel, 2
+     Carrosséis, 1 Stories · 5 finalizadas · 2 em ajustes · 1 em
+     revisão · 3 para fazer". Só conta o que já está nos dados
+     (design_resumo) que a tela já carregou — nada de consulta nova.
+     ================================================================= */
+  function chipsFormatos(itens) {
+    const porTipo = new Map();
+    itens.forEach(d => porTipo.set(d.tipo, (porTipo.get(d.tipo) || 0) + 1));
+    const formatos = [...porTipo.entries()].sort((a, b) => b[1] - a[1]);
+    return '<div class="ds-resumo-formatos">' + formatos.map(([t, n]) =>
+      '<span class="ds-resumo-chip">' + esc(rotuloTipoContagem(t, n)) + '</span>').join('') + '</div>';
+  }
+
+  function resumoProducao(itens) {
+    if (!itens.length) return '';
+    const total = itens.length;
+    const finalizadas = itens.filter(d => d.status === 'finalizado').length;
+    const ajustes = itens.filter(d => d.status === 'ajustes' || d.status === 'ajustes_cliente').length;
+    const emRevisao = itens.filter(d => d.status === 'revisao_interna').length;
+    const aFazer = total - finalizadas - ajustes - emRevisao;
+    return '<div class="ds-resumo-producao">' +
+      '<div class="ds-resumo-total">' + total + (total === 1 ? ' peça de Design' : ' peças de Design') + '</div>' +
+      chipsFormatos(itens) +
+      '<div class="ds-resumo-status">' +
+        (finalizadas ? '<span>' + finalizadas + ' finalizada' + (finalizadas === 1 ? '' : 's') + '</span>' : '') +
+        (ajustes ? '<span class="alerta">' + ajustes + ' em ajuste' + (ajustes === 1 ? '' : 's') + '</span>' : '') +
+        (emRevisao ? '<span>' + emRevisao + ' em revisão</span>' : '') +
+        (aFazer ? '<span>' + aFazer + ' para fazer</span>' : '') +
+      '</div></div>';
   }
 
   /* =================================================================

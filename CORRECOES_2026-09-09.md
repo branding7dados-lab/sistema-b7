@@ -900,3 +900,96 @@ continua tocando pelo caminho de sempre (`anunciar`), sem mudança.
   criada, já existente. Recomendo ao dono decidir, numa rodada futura,
   se esse botão deve sumir da interface para não haver dois caminhos
   para a mesma coisa.
+
+## Build 2026-09-11-i — auditoria de RLS em produção + Central do Designer: "Precisa de mim", "Continuar de onde parei" e resumo de produção
+
+O dono mandou uma segunda especificação grande, com uma preocupação
+central nova: confirmar que o `migration_rls.sql` (que builds anteriores
+desta sessão sempre assumiram como já aplicado, mas só testaram contra
+Postgres local) estava mesmo ativo no Supabase de **produção**. Relatório
+completo em `RELATORIO_2026-09-11-i_AUDITORIA_E_CENTRAL.md`.
+
+**Auditoria de segurança em produção (não em ambiente local, pela
+primeira vez nesta sessão):** o dono rodou três consultas de leitura que
+eu preparei, direto no SQL Editor do projeto real. Resultado:
+- RLS está **ligada** (`relrowsecurity = true`) nas 11 tabelas
+  verificadas: `aprovacoes`, `clientes`, `conteudos`, `design_deliverables`,
+  `design_versoes`, `gravacoes`, `kanban_demandas`, `linhas_editoriais`,
+  `notificacoes`, `perfis`, `roteiros`.
+- Políticas de RLS **existem** em praticamente todas as tabelas do
+  schema (`clientes` tem 2, `linhas_editoriais` tem 2, `conteudos` tem 2,
+  `perfis` tem 1, `design_deliverables` tem 1, e assim por diante).
+- `anon`/`authenticated` têm GRANT bruto de INSERT/UPDATE/DELETE em
+  `clientes`, `conteudos`, `linhas_editoriais` e `perfis` — isso por si
+  só pareceria grave, mas GRANT de tabela é só o primeiro portão; com
+  RLS ligada e política escrevendo `using (sou_equipe())`/
+  `with check (sou_equipe())`, a política é quem decide linha por linha,
+  e o GRANT aberto sozinho não expõe nada.
+- Conclusão: **o `migration_rls.sql` já estava aplicado em produção**
+  antes mesmo desta rodada. Os testes de segurança dos builds `-h` e
+  anteriores (Designer tentando `UPDATE`/`INSERT` direto, bloqueado) —
+  embora feitos só em Postgres local — refletem o comportamento real do
+  banco de produção, porque a política testada localmente é a mesma
+  política que está de fato ativa lá.
+- **Ressalva honesta:** eu confirmei que RLS está ligada e que políticas
+  existem, e testei essas políticas (localmente) simulando sessão de
+  Designer — mas não tenho como garantir que o *texto* de cada política
+  em produção é byte a byte idêntico ao que está em `migration_rls.sql`
+  neste repositório (por exemplo, se alguém editou uma política direto
+  no Supabase sem atualizar o arquivo). Recomendo, numa próxima
+  oportunidade, rodar a tentativa de mutação direta (a mesma dos meus
+  testes locais) contra o banco de produção mesmo, não só localmente.
+
+**`js/design.js` — Central do Designer, duas seções novas:**
+- **"Precisa de mim"**: peças atribuídas ao Designer que exigem ação
+  dele agora — `aguardando_producao` (não começou), `ajustes`/
+  `ajustes_cliente` (voltou pra correção), ou `briefing_desatualizado`
+  (o briefing mudou sob os pés da peça, do build `-h`). Nunca inclui
+  peça que já está esperando revisão/aprovação de outra pessoa. Some
+  sozinha quando vazia.
+- **"Continuar de onde parei"**: até 3 peças em `em_criacao` do próprio
+  Designer, mais recente primeiro (por `updated_at`). Some sozinha
+  quando não há nada em produção ativa.
+- Nenhuma das duas cria consulta nova ao banco — as duas derivam da
+  mesma lista (`design_resumo`) que a Central já carregava.
+
+**Resumo de produção — cards de demanda e vista operacional da Linha:**
+- `resumoProducao(itens)`: total de peças, contagem por formato
+  ("3 Cards", "1 Carrossel", "1 Capa de Reel", "1 Stories" — plural
+  correto por tipo, não é só acrescentar "s") e por status
+  (finalizadas / em ajuste / em revisão / para fazer). Aparece no topo
+  de `B7.Design.abrirLinha` (a vista de leitura por Linha Editorial, já
+  existente desde o build `-f`).
+- Os cartões de "Demandas a fazer" e "Minhas demandas" na Central
+  também ganharam a contagem por formato (chips compactos), para bater
+  com o "pacote de produção" que a especificação pediu.
+- `abrirLinha` ganhou o selo de versão ("V01", "V02…", a partir de
+  `linha_versao_confirmada`, já gravado nas peças desde o build `-h`) e
+  um link **"Ver contexto da Linha Editorial"**, que leva o Designer
+  para `#/linha/<id>` — a mesma Linha Editorial completa (estratégia,
+  pilares, outros criativos), em leitura, porque a rota `cliente`/`linha`
+  já ficam travadas em somente-leitura para o papel Designer desde o
+  build `-h` (`ligarCampos`). Isso não substitui a vista operacional
+  como destino principal — é um link secundário, como a especificação
+  pediu explicitamente ("Ver contexto" é secundário; o primário
+  continua sendo `abrirLinha`).
+
+**O que da especificação nova eu NÃO reconstruí nem retestei nesta
+rodada, porque já existia de builds anteriores e não foi tocado:** a
+vista de detalhe de cada peça (Card/Carrossel/Capa de Reel/Stories,
+`abrirDetalhe`), "Assumir demanda" e sua idempotência, distribuição
+individual por peça, upload opcional, revisão externa sem arquivo,
+Kanban, e a arquitetura de eventos/notificações. Ver os relatórios dos
+builds `-d`, `-f` e `-h` para o que foi testado neles.
+
+- `node --check` em `js/design.js`.
+- Playwright (mock completo do Supabase): Central do Designer com dados
+  variados (peça aguardando produção, peça em ajuste, duas em criação,
+  uma finalizada, uma em revisão) mostra "Precisa de mim" com as 2
+  peças certas e "Continuar de onde parei" com as 2 peças certas, na
+  ordem certa; a vista operacional da linha mostra "6 peças de Design",
+  os chips de formato corretos, "1 finalizada · 1 em ajuste · 1 em
+  revisão · 3 para fazer" (contagem batendo com os dados do mock), selo
+  "V01" e o link de contexto. Sem erro de console nos dois cenários.
+- `VERSAO` → `2026-09-11-i`, cache do service worker →
+  `roteiros-b7-v24`.
