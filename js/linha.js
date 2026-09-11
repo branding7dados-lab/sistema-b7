@@ -130,7 +130,7 @@ B7.Linha = (function () {
   function render() {
     const l = L.linha;
     painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span>' +
+      '<div class="trilha-nav"><button data-ir="#/">' + (C.souDesignerSomenteLeitura() ? 'Central de Design' : 'Central B7') + '</button><span>/</span>' +
         '<button data-ir="#/clientes">Clientes</button><span>/</span>' +
         '<button data-ir="#/cliente/' + esc(l.client_id) + '">' + esc(l.cliente_nome) + '</button>' +
         '<span>/</span><button data-ir="#/cliente/' + esc(l.client_id) + '/linhas">Linhas editoriais</button>' +
@@ -196,8 +196,15 @@ B7.Linha = (function () {
       (l.concluida_em ? '<span class="p"></span><span title="Última conclusão formal — libera demandas de Design">Concluída · v' + (l.versao_design || 1) + '</span>' : '') +
       '</div></div>' +
       '<div class="acoes">' +
-        '<button class="b pri" data-novo-conteudo>+ Novo conteúdo</button>' +
+        (C.souDesignerSomenteLeitura() ? '' : '<button class="b pri" data-novo-conteudo>+ Novo conteúdo</button>') +
         '<button class="b clara" data-baixar-linha>Baixar PDF</button>' +
+        /* O menu "⋯" é só de gestão da Linha Editorial (duplicar, status,
+           enviar para aprovação do cliente, portal, arquivar, excluir) —
+           nada disso é ação do Designer. Ele chega aqui pelo link "Ver
+           contexto da Linha Editorial" (B7.Design.abrirLinha), só para
+           entender o briefing; a produção de Design dele fica na própria
+           Central de Design, não aqui. */
+        (C.souDesignerSomenteLeitura() ? '' :
         '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
           '<button data-duplicar-linha>Duplicar para outro mês</button>' +
           '<button data-status-semanal>Criar status semanal</button>' +
@@ -210,7 +217,8 @@ B7.Linha = (function () {
           '<button data-portal-linha>' + (l.visivel_cliente ? '✓ Visível no portal do cliente' : 'Liberar no portal do cliente') + '</button>' +
           '<button data-arquivar-linha>' + (l.archived_at ? 'Desarquivar' : 'Arquivar') + '</button>' +
           '<button class="perigo" data-excluir-linha>Excluir linha editorial</button>' +
-        '</div></div></div></div>';
+        '</div></div>') +
+      '</div></div>';
   }
 
   /* ------------------------------------------------ ENVIAR PARA APROVAÇÃO
@@ -378,7 +386,7 @@ B7.Linha = (function () {
         'ou nunca, se não fizerem falta.</p>' +
         '<div class="acoes">' +
           '<button class="b" data-ir-aba="estrategia">Adicionar informações</button>' +
-          '<button class="b pri" data-novo-conteudo>+ Novo conteúdo</button>' +
+          (C.souDesignerSomenteLeitura() ? '' : '<button class="b pri" data-novo-conteudo>+ Novo conteúdo</button>') +
         '</div></div>';
     }
 
@@ -389,7 +397,7 @@ B7.Linha = (function () {
       L.linha.meta_conteudos ? [L.linha.meta_conteudos, 'META'] : null
     ].filter(Boolean);
 
-    return (B7.Aprovacoes ? '<div class="mb" id="ap-status-linha">' + B7.Aprovacoes.blocoStatus(L.aprovacao, { botaoEnviar: true }) + '</div>' : '') +
+    return (B7.Aprovacoes ? '<div class="mb" id="ap-status-linha">' + B7.Aprovacoes.blocoStatus(L.aprovacao, { botaoEnviar: !C.souDesignerSomenteLeitura() }) + '</div>' : '') +
       '<div class="mini-metricas">' + metricas.map(([n, r]) =>
         '<div class="mini-metrica"><b>' + n + '</b><span>' + r + '</span></div>').join('') +
       '</div>' +
@@ -415,7 +423,8 @@ B7.Linha = (function () {
       '</div><div class="apoio">' +
         (L.pilares.length ? '<div class="bloco"><h3>Pilares de conteúdo</h3>' +
           distribuicaoPilares() +
-          '<button class="b p" data-ir-aba="estrategia" style="margin-top:10px">Editar pilares</button></div>' : '') +
+          '<button class="b p" data-ir-aba="estrategia" style="margin-top:10px">' +
+          (C.souDesignerSomenteLeitura() ? 'Ver pilares' : 'Editar pilares') + '</button></div>' : '') +
         (proximos.length ? '<div class="bloco"><h3>Próximos conteúdos</h3>' +
           proximos.map(c =>
             '<div class="proximo" data-conteudo="' + esc(c.id) + '">' +
@@ -627,11 +636,12 @@ B7.Linha = (function () {
       return '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
         '<b>Nenhum conteúdo ainda.</b>' +
         '<p>Cada conteúdo vira um card com a estrutura do formato: reel, card, carrossel ou story.</p>' +
-        '<div class="acoes"><button class="b pri" data-novo-conteudo>+ Novo conteúdo</button></div></div>';
+        (C.souDesignerSomenteLeitura() ? '' : '<div class="acoes"><button class="b pri" data-novo-conteudo>+ Novo conteúdo</button></div>') +
+        '</div>';
     }
     return '<div class="grade-criativos" id="lista-criativos">' +
       L.conteudos.map((c, i) => cardConteudo(c, i)).join('') + '</div>' +
-      '<button class="add-largo" data-novo-conteudo>+ NOVO CONTEÚDO</button>';
+      (C.souDesignerSomenteLeitura() ? '' : '<button class="add-largo" data-novo-conteudo>+ NOVO CONTEÚDO</button>');
   }
 
   function cardConteudo(c, i) {
@@ -825,7 +835,8 @@ B7.Linha = (function () {
     if (!L.conteudos.length) {
       return '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
         '<b>Nenhuma postagem ainda.</b><p>Os conteúdos aparecem aqui assim que forem criados.</p>' +
-        '<div class="acoes"><button class="b pri" data-novo-conteudo>+ Novo conteúdo</button></div></div>';
+        (C.souDesignerSomenteLeitura() ? '' : '<div class="acoes"><button class="b pri" data-novo-conteudo>+ Novo conteúdo</button></div>') +
+        '</div>';
     }
 
     const seletor = '<div class="vista-postagens">' +

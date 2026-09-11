@@ -732,5 +732,5 @@ B7.Conteudo = (function () {
   }
 
   return { abrirInteligencia, abrirOnboarding, abrirLinhas, abrirLinhasGlobais, abrirIdeias, ligarCampos, campo, campoLinha,
-           secao, FORMATOS, FUNIL, STATUS_CONTEUDO, STATUS_LINHA };
+           secao, FORMATOS, FUNIL, STATUS_CONTEUDO, STATUS_LINHA, souDesignerSomenteLeitura };
 })();

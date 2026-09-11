@@ -993,3 +993,42 @@ builds `-d`, `-f` e `-h` para o que foi testado neles.
   "V01" e o link de contexto. Sem erro de console nos dois cenários.
 - `VERSAO` → `2026-09-11-i`, cache do service worker →
   `roteiros-b7-v24`.
+
+## Build 2026-09-11-j — Barra lateral: rótulo "Central de Design" para o Designer
+
+**O que estava errado:** o item de topo da barra lateral (rota `#/`)
+sempre mostrou o texto fixo "Central B7", vindo direto do
+`index.html` (`<span>Central B7</span>`) — o mesmo rótulo genérico
+para admin, coordenador e designer. O *conteúdo* por trás da rota `#/`
+já era só a Central do Designer para esse papel (roteamento em
+`js/app.js`, desde builds anteriores), mas o *rótulo* nunca tinha sido
+adaptado — só a navegação (quais itens aparecem) é que já era
+role-aware, não o texto. Resultado relatado pelo dono, numa conta de
+Designer real, depois de forçar reload (Ctrl+Shift+R) várias vezes: a
+Central certa aparecia, mas o menu continuava dizendo "Central B7",
+parecendo que nada tinha mudado.
+
+**Correção — `js/permissoes.js`, dentro de `aplicarNavegacao()`:**
+- Depois de esconder os itens de navegação que o papel não alcança
+  (comportamento já existente), quando `papel() === 'designer'` o
+  `<span>` do item `[data-ir="#/"]` na barra lateral tem seu
+  `textContent` trocado para **"Central de Design"**. A rota e o
+  destino continuam sendo `#/` — não existe (nem foi criada) uma rota
+  `#/design` separada; é só o rótulo que muda.
+- `aplicarNavegacao()` já era chamada uma única vez por sessão, a
+  partir de `montarShellInterno()` (`js/app.js`), antes de qualquer
+  rota específica ser renderizada — local seguro para essa troca de
+  texto: confirmei lendo `B7.Dashboard.marcarNav(rota)`
+  (`js/dashboard.js`), chamada a cada troca de rota, que só alterna a
+  classe CSS `.on` e nunca toca em `textContent` — então nada
+  sobrescreve o rótulo depois.
+- `node --check` em `js/permissoes.js` sem erro.
+- Playwright: login mockado como Designer, navegação até `#/`,
+  leitura do `textContent` do `span` do item de nav → **"Central de
+  Design"**, zero erros de console. Screenshot confirma visualmente o
+  item ativo da barra lateral com o novo rótulo, com "Design" e
+  "Linhas editoriais" listados abaixo em "PRODUÇÃO".
+- `VERSAO` → `2026-09-11-j`, cache do service worker →
+  `roteiros-b7-v25`.
+- Nenhuma migration nova. Arquivos alterados: `js/permissoes.js`,
+  `js/auth.js`, `sw.js`.

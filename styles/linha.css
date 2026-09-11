@@ -39,12 +39,16 @@
 .pil-dist-barras{display:flex;flex-direction:column;gap:3px;}
 .pil-dist-barras .barra{height:6px;background:var(--suave);border-radius:4px;overflow:hidden;}
 .pil-dist-barras .barra i{display:block;height:100%;border-radius:4px;transition:width var(--t);}
-.pil-dist-barras .plan i{background:var(--borda-forte);}
+/* --borda-forte é quase a mesma cor do trilho (.pil-dist-barras .barra) —
+   a barra "Planejado" ficava invisível ao lado da "Real". --ink-4 tem
+   contraste real contra --suave nos dois temas, sem virar tão forte
+   quanto a barra Real (que precisa continuar sendo a principal). */
+.pil-dist-barras .plan i{background:var(--ink-4);}
 .pil-dist-barras .real i{background:var(--grad-curto);}
 .pil-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-4);margin-top:2px;}
 .pil-legenda span::before{content:'';display:inline-block;width:10px;height:6px;border-radius:3px;
   margin-right:6px;vertical-align:1px;}
-.pil-legenda .plan::before{background:var(--borda-forte);}
+.pil-legenda .plan::before{background:var(--ink-4);}
 .pil-legenda .real::before{background:var(--grad-curto);}
 .pil-legenda .solto{margin-left:auto;color:var(--ink-3);}
 .pil-legenda .solto::before{display:none;}

@@ -131,6 +131,18 @@ B7.Perm = (function () {
       }
       if (!temItem) g.remove();
     });
+
+    /* Designer: o item "Central B7" da barra lateral é o mesmo rótulo
+       genérico que admin/coordenador veem, mas o conteúdo por trás dele
+       (rota "#/") já é só Design (js/app.js). Sem isso a pessoa clica,
+       cai direto na fila de Design, e o menu continua dizendo "Central
+       B7" — confuso, parece que não mudou nada. Só o rótulo muda; a
+       rota e o destino continuam "#/" (não existe uma rota "#/design"
+       separada para a home do Designer). */
+    if (papel() === 'designer') {
+      const rotulo = document.querySelector('.nav [data-ir="#/"] span');
+      if (rotulo) rotulo.textContent = 'Central de Design';
+    }
   }
 
   return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
