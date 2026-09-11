@@ -247,7 +247,7 @@ B7.Semana = (function () {
               /* estado inicial neutro (o sistema não sabe o que já foi
                  feito): primeira etapa do vocabulário do próprio formato
                  — "A produzir" pra Card/Story, "A estruturar" pro
-                 Carrossel, "A gravar" pro Reel. */
+                 Carrossel, "Escrevendo roteiro" pro Reel. */
               situacao: D().estagiosDe(D().contextoDe({ formato: c.tipo || null, etapa: 'Postagem' }))[0],
               canal: c.canal || null, formato: c.tipo || null,
               content_id: c.id, script_id: c.script_id || null,

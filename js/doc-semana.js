@@ -166,11 +166,11 @@ B7.DocSemana = (function () {
               'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
     'Carrossel': ['A estruturar', 'Criando arte', 'Corrigindo carrossel', 'Revisão interna',
                   'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
-    'Reel': ['A gravar', 'Gravação marcada', 'Gravando', 'Editando vídeo', 'Corrigindo vídeo',
+    'Reel': ['Escrevendo roteiro', 'A gravar', 'Gravação marcada', 'Gravando', 'Editando vídeo', 'Corrigindo vídeo',
              'Revisão interna', 'Aguardando aprovação', 'Aprovado', 'Programado para postagem', 'Postado'],
     'Capa de Reel': ['A produzir', 'Criando capa', 'Corrigindo capa', 'Revisão interna',
                      'Aguardando aprovação', 'Aprovada', 'Finalizada'],
-    'Gravação': ['A confirmar', 'Gravação marcada', 'Gravando', 'Material captado',
+    'Gravação': ['Escrevendo roteiro', 'A confirmar', 'Gravação marcada', 'Gravando', 'Material captado',
                  'Remarcada', 'Cancelada'],
     /* fallback pra demandas sem formato específico (Reunião, Aprovação,
        Entrega, Ajustes, Outro, Produção — o próprio texto da etapa já
@@ -217,6 +217,7 @@ B7.DocSemana = (function () {
      editor simplesmente não os oferece mais como sugestão para
      demandas novas. */
   const SITUACOES = {
+    'Escrevendo roteiro':       { cor: '#5B5FC7', bg: 'rgba(91,95,199,.12)' },
     'A produzir':               { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
     'A gravar':                 { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
     'A confirmar':              { cor: '#6B6478', bg: 'rgba(107,100,120,.11)' },
@@ -265,8 +266,9 @@ B7.DocSemana = (function () {
      rótulo compartilhado por formatos diferentes (ex. "Criando arte")
      tem uma descrição só — o significado é o mesmo. */
   const LEGENDA_TEXTO = {
+    'Escrevendo roteiro': 'O roteiro do vídeo está sendo escrito.',
     'A produzir': 'A produção da peça ainda não começou.',
-    'A gravar': 'A gravação ainda não foi realizada.',
+    'A gravar': 'O roteiro está pronto; a gravação ainda não foi realizada.',
     'A confirmar': 'A gravação ainda depende de confirmação de data.',
     'A estruturar': 'O conteúdo do carrossel ainda será organizado.',
     'Criando arte': 'A equipe de Design está desenvolvendo a peça.',

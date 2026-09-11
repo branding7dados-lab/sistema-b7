@@ -2525,3 +2525,68 @@ Arquivos alterados: `js/doc-semana.js`, `js/semana.js`,
 `sw.js`.
 `VERSAO` → `2026-09-11-y`, cache do service worker →
 `roteiros-b7-v40`.
+
+## Build 2026-09-11-z — Status Semanal: etapa de roteiro, para não confundir "produção do roteiro" com "edição"
+
+**Pedido do Yury:** depois de ver o build `-y`, apontou que faltava
+especificar melhor o que está em andamento — se é a produção do
+roteiro (a escrita do texto do vídeo) ou já a edição, e deixar claro
+quando algo está só previsto pra postagem. Investigando, confirmei o
+problema: o vocabulário de situação do Reel e da Gravação pulava
+direto de "a fazer" pra "gravação" — nunca existia uma situação que
+representasse a fase de escrever o roteiro, que é um trabalho real e
+anterior à gravação (o sistema já tem um módulo próprio de roteiro,
+`js/editor.js`, com seu próprio campo de estágio — "Em criação", "Em
+revisão", "Aprovado internamente", "Pronto para gravar", "Gravado" —
+mas ele é uma entidade separada da situação do Status Semanal, e
+essa rodada não liga os dois automaticamente, como já ficou
+documentado no build `-y`).
+
+**Implementado e testado:**
+- Nova situação `Escrevendo roteiro`, adicionada como primeira opção
+  do vocabulário de **Reel** (antes de `A gravar`) e de **Gravação**
+  (antes de `A confirmar`) em `js/doc-semana.js` (`ESTAGIOS`,
+  `SITUACOES`, `LEGENDA_TEXTO`). Não mexe em Card/Story/Carrossel —
+  esses formatos não têm etapa de roteiro.
+- Cor própria (`#5B5FC7`, tom índigo) pra não confundir com "Criando
+  arte" (violeta) nem "Editando vídeo" (azul) — mantém os dois
+  sistemas de cor (formato/situação) do jeito que já eram.
+- Texto de legenda: "O roteiro do vídeo está sendo escrito." — e o
+  texto de `A gravar` foi ajustado pra deixar explícito que o roteiro
+  já está pronto nesse ponto ("O roteiro está pronto; a gravação ainda
+  não foi realizada.").
+- Nenhuma migração de banco: `situacao` continua texto livre, sem
+  `CHECK CONSTRAINT` — é só um rótulo novo no vocabulário oferecido.
+- O editor (`js/semana.js`) não precisou de nenhuma mudança de código
+  — o dropdown de situação já lê o vocabulário de
+  `D().estagiosDe(contexto)` dinamicamente, então a nova etapa
+  apareceu automaticamente pra Reel e Gravação assim que entrou no
+  `ESTAGIOS`. Só um comentário desatualizado foi corrigido.
+- Testado com Playwright: confirmei que a pílula do item mostra
+  "Escrevendo roteiro" corretamente, que a legenda lista a nova etapa
+  na seção "ETAPAS DA PRODUÇÃO", que o dropdown do Reel no editor
+  começa com "Escrevendo roteiro" seguido do restante do vocabulário
+  de vídeo intacto, e que o dropdown de uma demanda de Gravação (sem
+  formato) também oferece a nova etapa — sem erro de console.
+- Rerrodei a suíte completa de regressão do build `-y` (os 11 testes
+  anteriores — filtragem de concluídos/cancelados, segunda data do
+  Reel, sempre uma página, cores de formato, legenda de duas seções,
+  filtro "a partir de hoje", dropdowns por contexto, revalidação ao
+  trocar formato, campo de override pro cliente): todos continuam
+  passando, sem regressão.
+- `node --check` em `js/doc-semana.js` e `js/semana.js`.
+
+**Não implementado por decisão consciente:** ligar automaticamente o
+estágio do roteiro (`roteiros.status`, no editor de roteiro) com a
+situação do Status Semanal continua fora do escopo, pelo mesmo motivo
+já registrado no build `-y` — o sistema não tem hoje um mapeamento
+confiável entre os dois, e cada demanda de vídeo no Status Semanal
+pode não ter um roteiro vinculado (`script_id` é opcional). A equipe
+continua escolhendo manualmente quando o item está em "Escrevendo
+roteiro" — não é atualizado sozinho quando o estágio do roteiro muda
+no editor.
+
+Arquivos alterados: `js/doc-semana.js`, `js/semana.js`, `js/auth.js`,
+`sw.js`.
+`VERSAO` → `2026-09-11-z`, cache do service worker →
+`roteiros-b7-v41`.
