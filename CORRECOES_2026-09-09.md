@@ -3850,3 +3850,77 @@ Só frontend. Sobre a captura da tela "Produção de Design" (quadro).
 
 Arquivos alterados: `js/design.js`, `styles/design.css`, `js/auth.js`,
 `sw.js`. `VERSAO` → `2026-09-11-al`, cache → `roteiros-b7-v55`.
+
+## Build 2026-09-11-am — Status Semanal ligado à Linha Editorial (situação + auto-publicação) e upload de Design em nome do designer desde "Em criação"
+
+Backend (nova migration) + frontend.
+
+### Implementado e testado
+
+- **Situação do Status Semanal nasce vinda da Linha Editorial.** Antes,
+  uma demanda importada de um conteúdo sempre nascia num estado neutro
+  ("A produzir"), sem relação com o status real do conteúdo
+  (Ideia/Em criação/Em revisão/Aprovado/Programado/Publicado). Agora
+  nasce traduzida pro vocabulário do formato da demanda (`js/doc-semana.js`,
+  `situacaoDeConteudo()`): Card/Story → "A produzir"/"Criando arte" nas
+  duas primeiras etapas, Carrossel → "A estruturar"/"Criando arte",
+  Reel → "Escrevendo roteiro"/"A gravar"; "Em revisão", "Aprovado",
+  "Programado" e "Publicado" viram "Revisão interna", "Aprovado pelo
+  cliente", "Programado para postagem" e "Postado" — o mesmo rótulo
+  nos quatro formatos. Vale tanto na criação do Status Semanal (importa
+  o período) quanto ao vincular um conteúdo existente pelo modal
+  "Adicionar demanda".
+- **Continua acompanhando sozinha depois.** Novo campo
+  `status_itens.situacao_auto` (default `true`) + gatilho no banco
+  (`conteudos_sync_status_itens`, `migration_status_linha_sync.sql`):
+  toda vez que o status do conteúdo muda na Linha Editorial, os cards
+  vinculados do Status Semanal mudam junto, sozinhos — sem precisar
+  abrir o Status Semanal pra ver a mudança.
+- **"E aí se precisar a gente muda a situação nos próprios cards"** —
+  a saída do automático é manual e por card: escolher a situação à mão
+  (seletor do card aberto, ou o atalho "situações a revisar") desliga
+  `situacao_auto` só NAQUELE card; ele para de seguir a Linha Editorial
+  até alguém religar (direto no banco, por enquanto — não tem botão de
+  religar na interface). Os demais cards do mesmo relatório continuam
+  automáticos normalmente.
+- **Reconciliação ao abrir:** cards criados antes desta build (ou que
+  ficaram para trás por qualquer motivo) são corrigidos sozinhos assim
+  que o Status Semanal é aberto — não precisa recriar nada.
+- **Publicação automática por data:** um conteúdo "Programado" cuja
+  data de postagem já passou vira "Publicado" sozinho ao abrir a Linha
+  Editorial (`verificarPostagensAutomaticas`, `js/linha.js`) — e, pelo
+  mesmo gatilho do banco, propaga pro Status Semanal também, mesmo que
+  a Linha Editorial não tenha sido aberta primeiro (a própria tela do
+  Status Semanal detecta e corrige ao abrir).
+- **Testado no Postgres local** (`mapa_situacao_de_conteudo`, gatilho
+  `conteudos_sync_status_itens`): conteúdo avança de status → card
+  automático segue; card marcado manual → conteúdo avança e o card NÃO
+  muda; religando o automático → volta a seguir. Tradução conferida
+  para os quatro formatos (Card, Story, Carrossel, Reel) nos seis
+  status possíveis — sempre uma situação válida do vocabulário do
+  formato, batendo com a mesma função em `js/doc-semana.js`.
+- **Design (Admin/Coordenador): upload em nome do designer fica visível
+  desde "Em criação".** A ação já existia desde a File Review 2.0
+  (§43, build -ah/-ak) mas ficava sempre recolhida como "exceção"
+  quando a peça já tinha um responsável — mesmo se ele ainda não
+  tivesse enviado nenhuma arte. Agora, enquanto o designer não enviou
+  NENHUMA versão ainda, o bloco de envio fica aberto por padrão, com o
+  título "Enviar arquivo pelo designer" e um aviso explicando o motivo
+  — é exatamente o caso "o designer não teve tempo, a equipe sobe por
+  ele". Assim que existir ao menos uma versão enviada pelo designer, o
+  bloco volta a ficar recolhido como exceção (o fluxo normal volta a
+  ser dele). Nenhuma regra de permissão mudou — Admin/Coordenador já
+  podiam enviar em qualquer status (exceto "Finalizado"); a mudança é
+  só de visibilidade.
+
+### Preparado, mas ainda não aplicado
+
+- Não existe, ainda, um botão na interface pra religar `situacao_auto`
+  de volta a `true` num card que já foi marcado manual — hoje só volta
+  ligando o campo direto no banco. Se a equipe sentir falta, é simples
+  de adicionar (um botão "Voltar a seguir a Linha Editorial" no card).
+
+Arquivos alterados: `js/doc-semana.js`, `js/semana.js`, `js/linha.js`,
+`js/database.js`, `js/design.js`, `js/auth.js`, `sw.js`. Nova migration:
+`migration_status_linha_sync.sql` (rodar depois de `migration_semana.sql`).
+`VERSAO` → `2026-09-11-am`, cache → `roteiros-b7-v56`.

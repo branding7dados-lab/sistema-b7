@@ -254,16 +254,23 @@ B7.Semana = (function () {
               report_id: novo.id, data: c.data_postagem, position: i,
               titulo: c.titulo || 'Sem título',
               etapa: 'Postagem',
-              /* estado inicial neutro (o sistema não sabe o que já foi
-                 feito): primeira etapa do vocabulário do próprio formato
-                 — "A produzir" pra Card/Story, "A estruturar" pro
-                 Carrossel, "Escrevendo roteiro" pro Reel. */
-              situacao: D().estagiosDe(D().contextoDe({ formato: c.tipo || null, etapa: 'Postagem' }))[0],
+              /* a situação nasce vinculada à Linha Editorial: traduz o
+                 status atual do conteúdo (Ideia/Em criação/Em revisão/
+                 Aprovado/Programado/Publicado) pro vocabulário do
+                 formato desta demanda — nunca um estado neutro que
+                 ignora onde o conteúdo já está. `situacao_auto` fica
+                 true: enquanto ninguém mexer manualmente na situação
+                 deste card, ela continua acompanhando a Linha
+                 Editorial sozinha (ver trigger no banco e o aoMudar
+                 de ligarCampos, abaixo). */
+              situacao: D().situacaoDeConteudo(c.status || 'Ideia',
+                D().contextoDe({ formato: c.tipo || null, etapa: 'Postagem' })),
+              situacao_auto: true,
               canal: c.canal || null, formato: c.tipo || null,
               content_id: c.id, script_id: c.script_id || null,
               origem: 'linha_editorial',
               source_snapshot: { titulo: c.titulo, data_postagem: c.data_postagem,
-                                 canal: c.canal, tipo: c.tipo }
+                                 canal: c.canal, tipo: c.tipo, status: c.status }
             })));
           }
         }
@@ -292,6 +299,47 @@ B7.Semana = (function () {
     B7.Rota.titulo([D().periodoTexto(S.relatorio.semana_inicio, S.relatorio.semana_fim),
                     S.relatorio.cliente_nome]);
     render();
+    sincronizarComLinhaEditorial();
+  }
+
+  /* Reconcilia, ao abrir, a situação de cada demanda vinda da Linha
+     Editorial (`origem: 'linha_editorial'`, `content_id` preenchido)
+     com o status ATUAL do conteúdo — cobre tanto o card que nunca foi
+     tocado quanto o que ficou desatualizado (ex.: criado antes desta
+     ligação existir). Só mexe em quem está com `situacao_auto` (nunca
+     em quem a equipe já ajustou manualmente no próprio card — ver
+     aoMudar em ligar()). De caminho, também cobre o mesmo caso de
+     `verificarPostagensAutomaticas` da Linha Editorial (js/linha.js):
+     um conteúdo Programado cuja data já passou vira Publicado sozinho
+     — sem depender de alguém ter aberto a Linha Editorial primeiro.
+     Roda em segundo plano, depois da tela já estar de pé: não atrasa
+     a abertura do status semanal. */
+  async function sincronizarComLinhaEditorial() {
+    const alvos = S.itens.filter(it => it.content_id && it.origem === 'linha_editorial' && it.situacao_auto !== false);
+    if (!alvos.length) return;
+    let conteudos;
+    try { conteudos = await B7.DB.conteudosPorIds([...new Set(alvos.map(it => it.content_id))]); }
+    catch (e) { return; }
+    const porId = new Map(conteudos.map(c => [c.id, c]));
+    const hoje = D().hojeISO();
+    let mudou = false;
+    for (const c of porId.values()) {
+      if (c.status === 'Programado' && c.data_postagem && c.data_postagem <= hoje) {
+        try { await B7.DB.atualizarConteudo(c.id, { status: 'Publicado' }); c.status = 'Publicado'; }
+        catch (e) {}
+      }
+    }
+    for (const it of alvos) {
+      const c = porId.get(it.content_id);
+      if (!c) continue;
+      const nova = D().situacaoDeConteudo(c.status || 'Ideia', D().contextoDe(it));
+      if (nova && nova !== it.situacao) {
+        it.situacao = nova;
+        mudou = true;
+        try { await B7.Save.campo('status_itens', it.id, { situacao: nova }); } catch (e) {}
+      }
+    }
+    if (mudou && S.relatorio) { render(); desenharPreview(); }
   }
 
   function render() {
@@ -346,7 +394,18 @@ B7.Semana = (function () {
     '</div>';
 
     painel().querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
-    B7.Conteudo.ligarCampos(painel());
+    /* escolher a situação à mão, no próprio card, é a saída consciente
+       do modo automático (§ vínculo com a Linha Editorial): a partir
+       daqui esta demanda para de seguir sozinha o status do conteúdo —
+       "se caso precisar a gente muda a situação nos próprios cards". */
+    B7.Conteudo.ligarCampos(painel(), (tab, id, patch) => {
+      if (tab !== 'status_itens' || !('situacao' in patch)) return;
+      const it = S.itens.find(x => x.id === id);
+      if (it && it.situacao_auto !== false) {
+        it.situacao_auto = false;
+        B7.Save.campo('status_itens', id, { situacao_auto: false }).catch(() => {});
+      }
+    });
     B7.UI.ligarMenus(painel());
     ligar();
     desenharPreview();
@@ -567,7 +626,8 @@ B7.Semana = (function () {
       if (!it || !sel.value) return;
       const titulo = it.titulo || 'Sem título';
       it.situacao = sel.value;
-      try { await B7.Save.campo('status_itens', it.id, { situacao: sel.value }); } catch (e) {}
+      it.situacao_auto = false; /* escolha manual: sai do modo automático */
+      try { await B7.Save.campo('status_itens', it.id, { situacao: sel.value, situacao_auto: false }); } catch (e) {}
       B7.UI.toast('"' + titulo + '" agora está como "' + sel.value + '"');
       render();
       desenharPreview();
@@ -718,6 +778,7 @@ B7.Semana = (function () {
         const novo = await B7.Save.acao(() => B7.DB.criarItem({
           report_id: S.relatorio.id, data: it.data, position: (it.position || 0) + 1,
           titulo: it.titulo, etapa: it.etapa, situacao: D().estagiosDe(contexto)[0],
+          situacao_auto: it.situacao_auto !== false,
           canal: it.canal, formato: it.formato, content_id: it.content_id,
           script_id: it.script_id, recording_id: it.recording_id,
           origem: it.origem, source_snapshot: it.source_snapshot
@@ -885,6 +946,10 @@ B7.Semana = (function () {
     let tipo = 'conteudo';
     let escolhido = null;
     let conteudos = [];
+    /* true assim que a pessoa escolher a situação à mão no modal — daí
+       em diante o card nasce com situacao_auto: false (mesma regra do
+       card já aberto: escolha manual sai do modo automático). */
+    let situacaoTocada = false;
 
     async function corpoConteudo(termo) {
       const alvo = m.querySelector('#md-corpo');
@@ -927,6 +992,7 @@ B7.Semana = (function () {
       }, 250);
       alvo.querySelectorAll('[data-cont]').forEach(b => b.onclick = () => {
         escolhido = lista.find(c => c.id === b.dataset.cont);
+        situacaoTocada = false;
         alvo.querySelectorAll('.md-cont').forEach(x => x.classList.remove('on'));
         b.classList.add('on');
         const campoTitulo = m.querySelector('#md-titulo');
@@ -979,11 +1045,16 @@ B7.Semana = (function () {
       const rotSituacao = m.querySelector('#md-rot-situacao');
       const wrapPostagem = m.querySelector('#md-data-postagem-wrap');
       if (!formato || !situacao) return;
+      situacao.addEventListener('change', () => { situacaoTocada = true; });
       const preencher = () => {
         const contexto = D().contextoDe({ formato: formato.value || null, etapa: null });
         const opcoes = D().estagiosDe(contexto);
         situacao.innerHTML = opcoes.map(v => '<option>' + v + '</option>').join('');
-        situacao.value = opcoes[0];
+        /* vinculando a um conteúdo existente da Linha Editorial, a
+           situação já nasce onde o conteúdo está — não sempre na
+           primeira etapa do vocabulário. */
+        situacao.value = (tipo === 'conteudo' && escolhido)
+          ? D().situacaoDeConteudo(escolhido.status || 'Ideia', contexto) : opcoes[0];
         if (rotSituacao) rotSituacao.textContent = 'SITUAÇÃO — ' + contexto;
         const ehReel = formato.value === 'Reel';
         if (wrapPostagem) wrapPostagem.hidden = !ehReel;
@@ -1026,6 +1097,7 @@ B7.Semana = (function () {
           titulo: titulo,
           etapa: null,
           situacao: m.querySelector('#md-situacao').value,
+          situacao_auto: !!(escolhido && tipo === 'conteudo') && !situacaoTocada,
           observacao: m.querySelector('#md-obs').value.trim(),
           canal: escolhido && tipo === 'conteudo' ? (escolhido.canal || null) : null,
           /* o formato do seletor manda sempre — inicialmente vem do
@@ -1039,7 +1111,7 @@ B7.Semana = (function () {
           origem: escolhido && tipo === 'conteudo' ? 'linha_editorial' : 'manual',
           source_snapshot: escolhido && tipo === 'conteudo'
             ? { titulo: escolhido.titulo, data_postagem: escolhido.data_postagem,
-                canal: escolhido.canal, tipo: escolhido.tipo } : {}
+                canal: escolhido.canal, tipo: escolhido.tipo, status: escolhido.status } : {}
         }), 'Demanda adicionada');
         S.itens.push(novo);
         B7.DB.registrar({ tipo: 'criar', entidade: 'status', id: r.id, cliente: r.client_id,

@@ -222,6 +222,32 @@ B7.DocSemana = (function () {
   }
   const estagiosDe = ctx => ESTAGIOS[ctx] || ESTAGIOS.Genérico;
 
+  /* -----------------------------------------------------------------
+     SITUAÇÃO DO STATUS SEMANAL A PARTIR DO STATUS DA LINHA EDITORIAL
+     `conteudos.status` (Ideia/Em criação/Em revisão/Aprovado/Programado/
+     Publicado — ver STATUS_CONTEUDO em conteudo.js) é um ciclo simples
+     e único; cada formato tem um vocabulário de situação bem mais fino
+     (ver ESTAGIOS acima). Os rótulos "Revisão interna", "Aprovado pelo
+     cliente", "Programado para postagem" e "Postado" são idênticos nos
+     quatro formatos de propósito — só o início do vocabulário (Ideia/Em
+     criação) muda por formato. É essa função que faz a ponte: dado o
+     status do conteúdo e o contexto (formato) da demanda, devolve a
+     situação correspondente NESSE vocabulário — sempre uma opção
+     válida de `estagiosDe(contexto)`, nunca um rótulo solto. */
+  const MAPA_STATUS_CONTEUDO_SITUACAO = {
+    'Em revisão': 'Revisão interna',
+    'Aprovado': 'Aprovado pelo cliente',
+    'Programado': 'Programado para postagem',
+    'Publicado': 'Postado'
+  };
+  function situacaoDeConteudo(statusConteudo, contexto) {
+    const estagios = estagiosDe(contexto);
+    if (statusConteudo === 'Ideia') return estagios[0];
+    if (statusConteudo === 'Em criação') return estagios[1] || estagios[0];
+    const alvo = MAPA_STATUS_CONTEUDO_SITUACAO[statusConteudo];
+    return (alvo && estagios.includes(alvo)) ? alvo : estagios[0];
+  }
+
   /* Status considerado "trabalho já entregue" — depende do contexto.
      Cancelado/Cancelada é um estado diferente de concluído (não é
      "entregue", é "não vai acontecer") e some do relatório sempre,
@@ -738,6 +764,7 @@ B7.DocSemana = (function () {
   }
 
   return { montar, periodoTexto, diasDoPeriodo, diaDaSemana, curto, longa, partes, carregarFontes, hojeISO,
+           situacaoDeConteudo,
            SITUACOES, TIPOS, FORMATOS, ESTAGIOS, corTipo, corFormato, corSituacao, contextoDe, estagiosDe,
            ehConcluido, ehCancelado, itemLinhaEditorial, EXCLUIR_DO_PLANEJAMENTO, ICONE, DIAS, MESES_CURTO };
 })();

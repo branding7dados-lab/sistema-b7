@@ -2537,6 +2537,13 @@ B7.Design = (function () {
     const x = drawer.extra || { versoes: [], notificacoes: [] };
     const versoes = x.versoes || [];
     const versaoAtual = versoes[0] || null;   // maior número = mais recente
+    /* nenhuma versão enviada ainda = o designer não chegou a produzir
+       nada nesta peça (mesmo já em "Em criação", com responsável
+       atribuído) — é exatamente o caso de "o designer não teve tempo,
+       upa por ele": aqui o envio em nome do designer não é uma
+       exceção rara, é o caminho normal, então fica ABERTO por padrão
+       em vez de recolhido (ver blocoUpload/recolhido logo abaixo). */
+    const nenhumaVersaoEnviada = !versoes.some(v => v.estado !== 'rascunho');
     drawer.versaoAtualId = versaoAtual ? versaoAtual.id : null;
 
     const souResponsavel = d.designer_id === meuId();
@@ -2607,7 +2614,8 @@ B7.Design = (function () {
 
           /* o designer responsável (ou equipe sem designer atribuído) tem o
              envio à mão; quem só revisa vê o envio recolhido, como exceção */
-          (podeEditar && d.status !== 'finalizado' ? blocoUpload(d, equipe && !souResponsavel && !!d.designer_id) : '') +
+          (podeEditar && d.status !== 'finalizado' ? blocoUpload(d, equipe && !souResponsavel && !!d.designer_id && !nenhumaVersaoEnviada,
+            equipe && !souResponsavel && !!d.designer_id && nenhumaVersaoEnviada) : '') +
 
           '<details class="ds-dr-bloco ds-dr-recolhido"' + (drawer.versoesAberto || !ehMultiparte() ? ' open' : '') + ' id="dv-versoes"><summary>Histórico de versões</summary>' + blocoVersoes(versoes) + '</details>' +
           '<details class="ds-dr-bloco ds-dr-recolhido"' + (drawer.timelineAberta ? ' open' : '') + ' id="dv-timeline"><summary>Linha do tempo</summary>' + blocoTimeline(x.notificacoes || []) + '</details>' +
@@ -2756,7 +2764,7 @@ B7.Design = (function () {
      anotação opcional de canal, e segue o mesmo ciclo de revisão. */
   const CANAIS_EXTERNOS = ['WhatsApp', 'E-mail', 'Reunião', 'Outro'];
 
-  function blocoUpload(d, recolhido) {
+  function blocoUpload(d, recolhido, semNadaAinda) {
     if (drawer.viaExterna === undefined) drawer.viaExterna = false;
     const corpo = '<div class="ds-via-toggle" role="tablist">' +
         '<button role="tab" data-via="upload" class="' + (!drawer.viaExterna ? 'on' : '') + '" aria-selected="' + !drawer.viaExterna + '">Enviar arquivo</button>' +
@@ -2765,11 +2773,17 @@ B7.Design = (function () {
       '<div id="dv-bloco-envio">' + (drawer.viaExterna ? blocoEnvioExterno() : blocoEnvioUpload(d)) + '</div>';
     /* §43: pra quem REVISA (equipe que não é o designer responsável) o
        envio de versão é exceção, não o fluxo — fica recolhido, abaixo
-       das ações de revisão, sem competir com "Aprovar"/"Solicitar ajuste" */
+       das ações de revisão, sem competir com "Aprovar"/"Solicitar ajuste".
+       Exceto quando o designer ainda não enviou nada: aí não é exceção,
+       é o motivo de a equipe estar aqui ("o designer não teve tempo") —
+       fica aberto, com um aviso em vez do rótulo "— exceção". */
     if (recolhido) {
       return '<details class="ds-dr-bloco ds-dr-recolhido"' + (drawer.envioAberto ? ' open' : '') + '><summary>Enviar versão em nome do designer <span class="ds-leve">— exceção</span></summary>' + corpo + '</details>';
     }
-    return '<div class="ds-dr-bloco"><h4>Enviar nova versão</h4>' + corpo + '</div>';
+    const titulo = semNadaAinda ? 'Enviar arquivo pelo designer' : 'Enviar nova versão';
+    const aviso = semNadaAinda
+      ? '<p class="ds-leve" style="margin:2px 0 10px">O designer ainda não enviou nenhuma arte — se ele não tiver tempo, a equipe pode subir o arquivo por ele.</p>' : '';
+    return '<div class="ds-dr-bloco"><h4>' + titulo + '</h4>' + aviso + corpo + '</div>';
   }
 
   function blocoEnvioUpload(d) {

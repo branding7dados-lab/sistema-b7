@@ -546,6 +546,15 @@ B7.DB = (function () {
         .gte('data_postagem', inicio).lte('data_postagem', fim)
         .order('data_postagem', { ascending: true }));
     },
+    /* Conteúdos específicos por id — usado pelo Status Semanal para
+       reconciliar a situação das demandas vinculadas (`status_itens.
+       content_id`) com o status atual de cada conteúdo na Linha
+       Editorial, sem trazer a linha inteira. */
+    async conteudosPorIds(ids) {
+      if (!ids || !ids.length) return [];
+      return ok(await sb().from('conteudos').select('id,status,tipo,etapa,data_postagem')
+        .in('id', ids).is('deleted_at', null));
+    },
 
     /* =============================================== CENTRAL DE PRODUÇÃO
        Cada número tem uma definição e um filtro equivalente na lista, para

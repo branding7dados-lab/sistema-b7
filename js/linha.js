@@ -91,6 +91,29 @@ B7.Linha = (function () {
     L.cal = { ano: +L.linha.ano, mes: +L.linha.mes };
     B7.Rota.titulo([L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano), L.linha.cliente_nome]);
     render();
+    verificarPostagensAutomaticas();
+  }
+
+  /* Um conteúdo Programado cuja data de postagem já passou foi, na
+     prática, postado — ninguém precisa entrar e trocar "Programado"
+     por "Publicado" à mão todo dia. Roda em segundo plano ao abrir a
+     linha (não atrasa a tela) e, quando muda algo, só redesenha — não
+     recarrega nada do banco. O gatilho `conteudos_sync_status_itens`
+     (migration_status_linha_sync.sql) propaga sozinho pro Status
+     Semanal vinculado, então esta é a ÚNICA função que precisa detectar
+     a data — o resto (linkagem com o Status Semanal) já é automático a
+     partir daqui. */
+  async function verificarPostagensAutomaticas() {
+    const hoje = B7.UI.hojeISO();
+    const pendentes = (L.conteudos || []).filter(c =>
+      c.status === 'Programado' && c.data_postagem && c.data_postagem <= hoje);
+    if (!pendentes.length) return;
+    let mudou = false;
+    for (const c of pendentes) {
+      try { await B7.DB.atualizarConteudo(c.id, { status: 'Publicado' }); c.status = 'Publicado'; mudou = true; }
+      catch (e) {}
+    }
+    if (mudou) render();
   }
 
   /* Só a equipe (admin/coordenador) envia conteúdo para Design — mesma

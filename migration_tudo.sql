@@ -87,6 +87,21 @@
 --                                 Kanban da peça. Roda depois de 21 e de
 --                                 migration_aprovacoes_v3.sql. Build -aj.
 --
+--  23. migration_status_linha_sync.sql  Status Semanal ↔ Linha
+--                                 Editorial: `status_itens.situacao_auto`
+--                                 (default true), `mapa_situacao_de_
+--                                 conteudo()` e o gatilho
+--                                 `conteudos_sync_status_itens` — a
+--                                 situação de uma demanda vinda da Linha
+--                                 Editorial passa a nascer e a seguir
+--                                 sozinha o status do conteúdo vinculado
+--                                 (Ideia/Em criação/Em revisão/Aprovado/
+--                                 Programado/Publicado, traduzido pro
+--                                 vocabulário do formato), até alguém
+--                                 escolher a situação à mão no card.
+--                                 Roda depois de migration_semana.sql.
+--                                 Build -am.
+--
 -- Se algum arquivo reclamar de coluna ou tabela inexistente, é porque um
 -- anterior não rodou. A mensagem diz qual.
 -- =====================================================================
