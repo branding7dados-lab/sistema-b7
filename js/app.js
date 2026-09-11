@@ -263,6 +263,17 @@ B7.Rota = (function () {
       const frag = tp.content.cloneNode(true);
       alvo.replaceWith(frag);
     });
+    /* Designer: "Nova gravação" e a busca por gravação/roteiro não são o
+       trabalho dele — a barra do topo é clonada do zero a cada chamada
+       desta função (ao contrário da nav, que só monta uma vez), então o
+       ajuste fica aqui, não em aplicarNavegacao(), para nunca voltar ao
+       texto genérico numa remontagem. Admin/coordenador não mudam. */
+    if (B7.Perm && B7.Perm.papel() === 'designer') {
+      const btGrav = document.getElementById('bt-nova-gravacao');
+      if (btGrav) btGrav.remove();
+      const busca = document.getElementById('campo-busca');
+      if (busca) busca.placeholder = 'Buscar cliente, linha editorial ou peça…';
+    }
     document.body.classList.remove('modo-portal', 'modo-previa');
     document.body.dataset.shell = 'interno';
     if (B7.ligarTopoInterno) B7.ligarTopoInterno();

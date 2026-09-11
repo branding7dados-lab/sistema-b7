@@ -561,16 +561,20 @@ B7.Linha = (function () {
 
   function secaoPilares() {
     const soma = somaPilares();
+    const leitura = C.souDesignerSomenteLeitura();
+    /* Designer: nada de input/select/botão de adicionar ou remover — não
+       é "o mesmo card com os campos desabilitados", é um card diferente,
+       só de leitura (cardPilarLeitura), sem "+ ADICIONAR PILAR". */
     return '<div class="bloco mb bloco-pilares" id="bloco-pilares">' +
-      '<div class="pil-cab"><h3>ESTRATÉGIA BASEADA NOS PILARES DE CONTEÚDO</h3>' +
+      '<div class="pil-cab"><h3>' + (leitura ? 'PILARES DE CONTEÚDO' : 'ESTRATÉGIA BASEADA NOS PILARES DE CONTEÚDO') + '</h3>' +
       '<div class="pil-soma" id="pil-soma">' + avisoSoma(soma) + '</div></div>' +
-      '<p class="ajuda" style="margin:0 0 12px">Os temas que sustentam o mês, com o peso de cada um. ' +
-      'Cada conteúdo pode apontar para um pilar; a distribuição real aparece ao lado da planejada.</p>' +
+      (leitura ? '' : '<p class="ajuda" style="margin:0 0 12px">Os temas que sustentam o mês, com o peso de cada um. ' +
+      'Cada conteúdo pode apontar para um pilar; a distribuição real aparece ao lado da planejada.</p>') +
       '<div id="pil-barra">' + barraPilares() + '</div>' +
-      '<div id="lista-pilares">' + L.pilares.map((p, i) => cardPilar(p, i)).join('') + '</div>' +
+      '<div id="lista-pilares">' + L.pilares.map((p, i) => leitura ? cardPilarLeitura(p, i) : cardPilar(p, i)).join('') + '</div>' +
       (L.pilares.length ? '' :
-        '<div class="pil-vazio">Nenhum pilar ainda. Comece com dois ou três: educação, autoridade, oferta…</div>') +
-      '<button class="add-largo" id="add-pilar">+ ADICIONAR PILAR</button>' +
+        '<div class="pil-vazio">Nenhum pilar ainda' + (leitura ? '.' : '. Comece com dois ou três: educação, autoridade, oferta…') + '</div>') +
+      (leitura ? '' : '<button class="add-largo" id="add-pilar">+ ADICIONAR PILAR</button>') +
       (L.pilares.length ? '<div class="pil-sub">DISTRIBUIÇÃO DOS CONTEÚDOS</div>' +
         '<div id="pil-dist">' + distribuicaoPilares() + '</div>' : '') +
     '</div>';
@@ -595,6 +599,23 @@ B7.Linha = (function () {
         C.campo('OBSERVAÇÕES', p.observacoes, t + ' data-campo="observacoes"') +
       '</div>' +
       '<button class="ico perigo" data-excluir-pilar="' + esc(p.id) + '" title="Remover pilar">✕</button></div>';
+  }
+
+  /* Versão só de leitura do cartão de pilar (Designer): nada de
+     input/select/textarea nem botão de remover — texto puro, seções
+     vazias somem em vez de aparecer como um campo em branco. */
+  function cardPilarLeitura(p, i) {
+    const bloco = (rot, v) => !String(v || '').trim() ? '' :
+      '<div class="pl-campo"><b>' + rot + '</b><p>' + esc(v) + '</p></div>';
+    return '<div class="cartao-pilar leitura">' +
+      '<div class="pilar-num">' + String(i + 1).padStart(2, '0') + '</div>' +
+      '<div class="pilar-corpo">' +
+        '<div class="pl-cab"><b class="pl-nome">' + esc(p.nome || 'Pilar sem nome') + '</b>' +
+          '<span class="pl-pct">' + pct(p) + '%</span>' +
+          (p.funil ? '<span class="pl-funil">' + esc(p.funil) + '</span>' : '') + '</div>' +
+        bloco('OBJETIVO DO PILAR', p.objetivo) +
+        bloco('OBSERVAÇÕES', p.observacoes) +
+      '</div></div>';
   }
 
   /* soma e barra reagem a cada tecla, sem redesenhar os cartões (o foco

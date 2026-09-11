@@ -1192,3 +1192,87 @@ continua visível (é só navegação de leitura, não grava nada).
   `roteiros-b7-v27`.
 - Nenhuma migration nova. Arquivo alterado: `js/linha.js` (e
   `js/auth.js`/`sw.js` para a versão).
+
+## Build 2026-09-11-m — primeira rodada da especificação "B7 Design UX/Operational Refinement"
+
+O dono mandou uma especificação de 56 seções pedindo um redesenho
+grande da experiência de Design (nova Central, navegador de peças,
+workspace de peça em tela cheia, carrossel interativo, thumbnails,
+Linha Editorial Operacional como componente separado, etc.) mais uma
+auditoria real do "bug de pilar" e da autorização do Designer.
+
+**Esta rodada não fez o redesenho visual completo — isso é grande
+demais para uma passada só.** Fiz a auditoria pedida nas seções 1, 10,
+25, 29-35 e 53-54 (a parte de dados/segurança, que é a mais arriscada
+de deixar para depois) e implementei o que já estava totalmente
+resolvido pela auditoria, sem depender do redesenho visual maior. Ver
+`RELATORIO_2026-09-11-m_AUDITORIA_UX_DESIGN.md` para o relatório
+completo nas quatro categorias pedidas.
+
+- **Auditoria do "bug de pilar" (§31-35, §54):** relação
+  `conteudos.pilar_id → pilares.id` é por UUID estável, não por índice
+  de array nem por nome. Não existe reordenação de pilares na
+  interface (só slides/stories têm arrastar-e-soltar); duplicar linha
+  mapeia `pilar_id` antigo → novo corretamente
+  (`mapaPilar[pl.id] = novoP.id`); criar/excluir pilar usa
+  `L.pilares.push`/`filter` sobre o estado real, sem cache
+  desatualizado. **Não encontrei bug de relação de dados** — o que os
+  prints mostravam nos builds `-k`/`-l` era só contraste de cor e texto
+  confuso ("de 0 planejados"), ambos já corrigidos. Reportando isso
+  honestamente porque a especificação pediu explicitamente para não
+  esconder o sintoma sem achar a causa real — e a causa real é que não
+  havia causa: os dados sempre estiveram certos.
+- **Cartão de pilar do Designer virou um componente de leitura de
+  verdade (§29), não mais o mesmo formulário com campos
+  desabilitados:** `cardPilarLeitura` — nome, percentual e funil como
+  texto/selo, objetivo e observações só aparecem quando preenchidos
+  (nada de seção vazia), sem `<input>`/`<select>` nenhum no HTML. **"+
+  ADICIONAR PILAR" e "✕ remover pilar" não existem mais no DOM** para
+  o Designer (antes apareciam sempre, mesmo que o clique fosse barrado
+  pelo banco — exatamente o tipo de furo que a especificação pediu
+  para fechar). Admin/coordenador continuam com o cartão editável de
+  sempre.
+- **Barra do topo do Designer (§8):** "Nova gravação" não aparece mais
+  para esse papel, e a busca global mostra "Buscar cliente, linha
+  editorial ou peça…" em vez de "…gravação ou roteiro…". Implementado
+  em `montarShellInterno` (`js/app.js`) — não em `aplicarNavegacao`
+  (`js/permissoes.js`), porque a barra do topo é reconstruída do zero
+  a cada montagem do shell (a nav lateral, não: só monta uma vez), e
+  colocar ali garante que o ajuste nunca "volta" numa remontagem.
+  Admin/coordenador não mudam.
+- **Autorização de verdade (§30/§53):** re-confirmo o que já estava
+  testado desde o build `-h` — tentativa direta de `UPDATE`/`INSERT`
+  como Designer contra `linhas_editoriais`/`conteudos`/`pilares` é
+  bloqueada pelo RLS que já está ativo em produção (auditado no build
+  `-i` com consultas reais do dono no SQL Editor). Não toquei em
+  nenhuma política nesta rodada — nada mudou no banco.
+
+**O que NÃO foi feito nesta rodada** (a maior parte da especificação —
+ver o relatório para a lista completa com justificativa): a Central de
+Design não foi redesenhada visualmente (as seções "Precisa de mim" /
+"Continuar de onde parei" já existem desde o build `-i`, mas não
+ganharam o tratamento visual "premium" pedido agora); a página Design
+(navegador) não foi redesenhada; não existe ainda um "Design Piece
+Workspace" em tela cheia/rota dedicada — o modal de peça continua
+sendo o mesmo, só que somente-leitura pra Designer; carrossel/stories
+não ganharam navegador de slide interativo; não há geração de
+thumbnails; a Linha Editorial Operacional continua sendo o mesmo
+componente `js/linha.js` com ramos condicionais por papel, não um
+componente `js/linha-operacional.js` separado como a especificação
+pede na arquitetura; não houve auditoria de notificações, performance
+nem responsividade nesta rodada.
+
+**Testado:**
+- `node --check` em `js/linha.js`, `js/app.js`.
+- Playwright: Designer sem "Nova gravação" no topo, placeholder de
+  busca trocado, sem "+ Adicionar Pilar"/"✕ remover pilar", sem
+  `<input>` nenhum dentro do cartão de pilar, pilar sem objetivo/
+  observações não mostra seção vazia. Coordenador (mesmo teste, outra
+  sessão): "Nova gravação" presente, placeholder original, "+
+  Adicionar Pilar" presente, inputs editáveis presentes — nada
+  regrediu para quem já podia editar. Zero erros de console nos dois
+  casos. Screenshot conferido visualmente.
+- `VERSAO` → `2026-09-11-m`, cache do service worker →
+  `roteiros-b7-v28`.
+- Nenhuma migration nova. Arquivos alterados: `js/linha.js`,
+  `js/app.js`, `styles/linha.css`, `js/auth.js`, `sw.js`.
