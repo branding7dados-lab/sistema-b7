@@ -3109,6 +3109,26 @@ quebrado/vazio, sem avisar nada — bug antigo, silencioso.
   mandar `p_caminho_thumb` pra uma função que ainda não aceita esse
   parâmetro e o upload de arquivo passa a falhar. **Rodar a migração
   primeiro, testar um upload de imagem depois.**
+- **Correção 1 (mesmo build, arquivo atualizado):** a primeira versão
+  da migração inseria as duas colunas novas (`ultima_previa_thumb`,
+  `ultima_previa_mime`) no MEIO da lista de colunas da view
+  `design_resumo`, o que o Postgres não aceita num `create or replace
+  view` (só permite acrescentar coluna no fim — senão dá erro `42P16:
+  cannot change name of view column`).
+- **Correção 2 (mesmo build, arquivo atualizado de novo):** a correção
+  1 ainda deu o mesmo erro `42P16`, mas apontando pra outra coluna
+  (`cliente_logo_url`) — porque eu tinha reconstruído a view a partir
+  do SQL de uma migração mais antiga (`migration_editorial_versao.sql`),
+  sem notar que `migration_design_logo.sql` (Rodada 3) já tinha
+  recriado essa mesma view DEPOIS, acrescentando `cliente_logo_url`
+  como última coluna — a versão que está de verdade no banco hoje.
+  Corrigido reconstruindo a view a partir da versão certa (a mais
+  recente, de `migration_design_logo.sql`), com as duas colunas novas
+  só no final, depois de `cliente_logo_url`. Quem tentou rodar
+  qualquer uma das duas versões anteriores e recebeu erro pode rodar
+  o arquivo corrigido normalmente — nada ficou criado pela metade,
+  as partes 1 e 2 da migração (coluna nova, função) já eram seguras
+  de repetir.
 
 ### Não implementado por bloqueio
 

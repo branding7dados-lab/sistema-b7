@@ -74,13 +74,25 @@ grant execute on function public.design_arquivo_registrar(uuid, text, text, text
 
 -- ---------------------------------------------------------------------
 -- 3. design_resumo — expõe ultima_previa_thumb + ultima_previa_mime
---    (mesmo SQL base de migration_editorial_versao.sql §9, só com as
---    duas colunas novas na subquery de prévia)
+--
+--    Segunda tentativa desta migração: a primeira vez eu tinha
+--    reconstruído a view a partir do SQL de migration_editorial_versao.sql
+--    §9, mas a view AO VIVO no banco já tinha sido recriada DEPOIS
+--    disso por migration_design_logo.sql (Rodada 3), que acrescentou
+--    "cliente_logo_url" como última coluna. Minha lista de colunas não
+--    incluía essa coluna, então o Postgres tentou "renomear" ela pra
+--    "ultima_previa_thumb" — de novo o erro 42P16, só que desta vez
+--    porque eu parti de uma versão desatualizada da view, não porque
+--    inseri no meio (isso já tinha corrigido). A lista abaixo é a
+--    íntegra de migration_design_logo.sql (a versão real que está no
+--    banco hoje), com as duas colunas novas SÓ no final, depois de
+--    "cliente_logo_url".
 -- ---------------------------------------------------------------------
 create or replace view public.design_resumo
 with (security_invoker = true) as
 select
-  d.id, d.client_id, cl.nome as cliente_nome, d.linha_id, le.nome as linha_nome,
+  d.id, d.client_id, cl.nome as cliente_nome,
+  d.linha_id, le.nome as linha_nome,
   d.conteudo_id, co.titulo as conteudo_titulo, co.tipo as conteudo_tipo, co.pilar_id,
   d.tipo, d.titulo, d.designer_id, pf.nome as designer_nome, pf.avatar_url as designer_avatar,
   d.status, d.prazo, d.prioridade, d.origem, d.versao_atual, d.kanban_id,
@@ -91,6 +103,11 @@ select
      join public.design_versoes v on v.id = a.versao_id
     where v.deliverable_id = d.id and a.papel = 'preview'
     order by v.numero desc, a.posicao asc limit 1) as ultima_previa,
+  d.briefing_desatualizado, d.linha_versao_confirmada,
+  cl.logo_url as cliente_logo_url,
+  /* colunas novas desta migração — SEMPRE no fim da lista, depois de
+     TODAS as colunas que já existem na view ao vivo, "cliente_logo_url"
+     incluída. */
   (select a.caminho_thumb from public.design_arquivos a
      join public.design_versoes v on v.id = a.versao_id
     where v.deliverable_id = d.id and a.papel = 'preview'
@@ -98,8 +115,7 @@ select
   (select a.mime from public.design_arquivos a
      join public.design_versoes v on v.id = a.versao_id
     where v.deliverable_id = d.id and a.papel = 'preview'
-    order by v.numero desc, a.posicao asc limit 1) as ultima_previa_mime,
-  d.briefing_desatualizado, d.linha_versao_confirmada
+    order by v.numero desc, a.posicao asc limit 1) as ultima_previa_mime
 from public.design_deliverables d
 left join public.clientes cl on cl.id = d.client_id
 left join public.linhas_editoriais le on le.id = d.linha_id
