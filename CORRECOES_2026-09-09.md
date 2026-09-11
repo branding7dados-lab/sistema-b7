@@ -1276,3 +1276,91 @@ nem responsividade nesta rodada.
   `roteiros-b7-v28`.
 - Nenhuma migration nova. Arquivos alterados: `js/linha.js`,
   `js/app.js`, `styles/linha.css`, `js/auth.js`, `sw.js`.
+
+## Build 2026-09-11-n — Rodada 1 do refino de UX do Design: Central de Design
+
+Primeira das seis rodadas planejadas em `PLANO_UX_DESIGN_RESTANTE.md`
+(seções 2-7 da especificação "B7 Design UX / Operational Editorial
+Refinement").
+
+**Causa real do problema relatado ("a aba Design aparece a mesma coisa
+que a Central de Design"):** a rota `#/` do Designer chamava
+`B7.Design.abrir(aba, true)` — a mesma função da rota `#/design`, com
+um único parâmetro que só trocava o item marcado na navegação e o
+título da aba. As duas telas eram, literalmente, o mesmo HTML. Não era
+um bug de estilo: era uma tela só com dois nomes.
+
+**O que mudou:**
+- `js/design.js` ganhou `abrirCentral()` / `desenharCentral()` — uma
+  tela própria para a rota `#/` do Designer, montada a partir da mesma
+  consulta única `design_resumo` que o navegador já usava (nenhuma
+  consulta nova, nenhum número inventado):
+  - Cabeçalho pessoal com saudação por horário ("Bom dia, Mateus.") e
+    uma frase de estado que muda conforme a fila: "4 peças precisam da
+    sua atenção." / "Nada pendente de ajuste. Continue de onde parou."
+    / "Há demandas disponíveis para assumir." / "Tudo em dia." / fila
+    vazia.
+  - Quatro números reais (precisam de mim · em criação · esperando
+    revisão · disponíveis para assumir) que rolam até a seção
+    correspondente; número zero fica desabilitado, não some.
+  - **"Precisa de mim"** virou uma fila de linhas com o MOTIVO antes do
+    título — "Ajuste solicitado", "Ajuste do cliente", "Briefing
+    atualizado", "Para começar" — mais formato · cliente · linha ·
+    versão e o prazo real (atrasado/vence hoje em destaque). Ordenada
+    por urgência. O Designer sabe o tipo de ação sem abrir a peça.
+  - **"Continuar de onde parei"**: até 3 peças em criação, mais recente
+    primeiro — e uma peça nunca aparece duas vezes (se já está em
+    "Precisa de mim", não repete aqui).
+  - **"Minhas linhas em produção"** como pacote por Linha Editorial:
+    cliente em caixa alta, nome da linha com selo de versão confirmada
+    (V01, V02…), porcentagem = finalizadas ÷ total (dado real), barra
+    de progresso, quebra por estado ("1 para fazer · 2 em criação · 2
+    em ajuste · 1 em revisão"), contagem por formato, próximo prazo
+    real e "Abrir produção →" para a vista operacional da linha
+    (`#/design/linha/<id>`). Linha 100% finalizada aparece por último,
+    esmaecida e marcada "Concluída".
+  - **"Demandas disponíveis"** como linhas densas (linha · cliente · N
+    peças · prazo mais próximo · formatos · botão "Assumir"), sem os
+    cartões com espaço em branco de antes.
+  - Estado vazio honesto quando não há peça nenhuma na fila.
+- A rota `#/design` do Designer passou a ser só o NAVEGADOR da fila
+  (busca, filtros, "Demandas a fazer" e "Minhas demandas" por linha) —
+  as seções "Precisa de mim"/"Continuar de onde parei" saíram dela,
+  porque agora moram na Central. O subtítulo aponta para a Central. O
+  redesenho visual maior dessa página é a Rodada 2.
+- `js/app.js`: rota `#/` do Designer → `B7.Design.abrirCentral()`.
+- Realtime e ações da gaveta (assumir, enviar para revisão, salvar
+  prazo etc.) agora redesenham a tela que estiver montada — Central
+  ou navegador — via `redesenharTela()`. Antes, `desenharArea()` era
+  no-op fora do navegador.
+- Correção de passagem: `abrirDetalhe()` só remontava a fila por trás
+  da gaveta quando não achava `#ds-area` — o que trocava a Central (e
+  a vista por linha) pela página Design ao abrir uma peça. Agora
+  verifica `.design-tela` (qualquer tela de Design) e a gaveta abre
+  por cima da tela atual.
+- `styles/design.css`: bloco `.dsc-*` novo (cabeçalho, números, fila
+  "Precisa de mim", pacote de linha, linhas de demanda disponível),
+  com regras para ≤900px e ≤760px. Só tokens já existentes do sistema.
+
+**Não feito nesta rodada (de propósito):** miniaturas otimizadas
+(Rodada 5 — a Central usa as prévias que já existem, carregadas sob
+demanda como antes); redesenho da página Design/navegador (Rodada 2);
+workspace de peça (Rodadas 3-4).
+
+**Testado:**
+- Playwright com Supabase simulado, sessão Designer, 12 peças em 3
+  linhas/3 clientes (ajuste interno, ajuste do cliente, para começar,
+  briefing atualizado, em criação, finalizada, em revisão, 2
+  disponíveis sem responsável, 1 peça de OUTRO designer): a peça de
+  outro designer não aparece em lugar nenhum; os quatro números batem
+  com os dados (4 · 2 · 1 · 2); motivos e prazos corretos ("Atrasado
+  há 1 dia", "Vence hoje"); linha 1 de 7 = 14%, linha 2 de 2 = 100% e
+  "Concluída"; clicar numa peça abre a gaveta e a Central continua
+  atrás; clicar num pacote de linha leva a `#/design/linha/l1`; fila
+  vazia mostra o estado vazio sem erro. Desktop 1280px, celular 390px
+  e tema escuro conferidos por screenshot. `#/design` do Designer não
+  repete mais as seções da Central. Coordenador em `#/design` e `#/`
+  sem regressão. Zero erros de console em todos os casos.
+- `VERSAO` → `2026-09-11-n`, cache do service worker → `roteiros-b7-v29`.
+- Nenhuma migration nova. Arquivos alterados: `js/design.js`,
+  `js/app.js`, `styles/design.css`, `js/auth.js`, `sw.js`.

@@ -87,33 +87,36 @@ B7.Design = (function () {
   /* =================================================================
      TELA PRINCIPAL
      ================================================================= */
-  /* comoInicio=true: esta é a Home do Designer (rota "#/"), não a rota
-     "#/design" — marca o item de nav certo ("Central B7") e evita um
-     título de aba redundante. O conteúdo é exatamente o mesmo. */
-  async function abrir(aba, comoInicio) {
+  /* Rota "#/design". Para a equipe é a fila inteira (quadro/lista/
+     equipe). Para o Designer é o NAVEGADOR da própria fila — busca,
+     filtros e todas as peças por Linha Editorial. A home dele (rota
+     "#/") é outra tela, abrirCentral(): o que precisa de ação agora. */
+  async function carregarDados() {
+    const chamadas = [B7.DB.listarDesign()];
+    if (ehEquipe()) { chamadas.push(B7.DB.listarDesigners().catch(() => [])); chamadas.push(B7.DB.listarClientes().catch(() => [])); }
+    const [linhas, dsg, cli] = await Promise.all(chamadas);
+    dados = linhas || [];
+    designers = dsg || [];
+    clientes = cli || [];
+  }
+  function erroCarga(e) {
+    painel().innerHTML = '<div class="conteudo entra"><div class="estado-b7"><b>Não foi possível carregar o Design.</b>' +
+      '<p>' + esc(e.message || '') + '</p>' +
+      '<p>Se o sistema acabou de ser atualizado, rode migration_design.sql no Supabase.</p></div></div>';
+  }
+
+  async function abrir(aba) {
     selecionados.clear();
-    B7.Dashboard.marcarNav(comoInicio ? '#/' : '#/design');
-    B7.Rota.titulo(comoInicio ? [] : ['Design']);
+    B7.Dashboard.marcarNav('#/design');
+    B7.Rota.titulo(['Design']);
     if (aba) F.aba = aba;
     if (!F.aba) F.aba = ehDesigner() ? 'fila' : 'todas';
 
     painel().innerHTML = '<div class="conteudo design-tela"><div class="cab-conteudo"><div><h1>Design</h1>' +
-      '<p>' + (ehDesigner() ? 'O que você precisa entregar, por Linha Editorial.' : 'A fila de produção visual da equipe.') + '</p></div></div>' +
+      '<p>' + (ehDesigner() ? 'Toda a sua fila, por Linha Editorial.' : 'A fila de produção visual da equipe.') + '</p></div></div>' +
       B7.UI.skeleton('tabela', { n: 6, cols: 4 }) + '</div>';
 
-    try {
-      const chamadas = [B7.DB.listarDesign()];
-      if (ehEquipe()) { chamadas.push(B7.DB.listarDesigners().catch(() => [])); chamadas.push(B7.DB.listarClientes().catch(() => [])); }
-      const [linhas, dsg, cli] = await Promise.all(chamadas);
-      dados = linhas || [];
-      designers = dsg || [];
-      clientes = cli || [];
-    } catch (e) {
-      painel().innerHTML = '<div class="conteudo entra"><div class="estado-b7"><b>Não foi possível carregar o Design.</b>' +
-        '<p>' + esc(e.message || '') + '</p>' +
-        '<p>Se o sistema acabou de ser atualizado, rode migration_design.sql no Supabase.</p></div></div>';
-      return;
-    }
+    try { await carregarDados(); } catch (e) { erroCarga(e); return; }
     desenhar();
     assinar();
   }
@@ -122,7 +125,7 @@ B7.Design = (function () {
     const equipe = ehEquipe();
     painel().innerHTML = '<div class="conteudo entra design-tela">' +
       '<div class="cab-conteudo"><div><h1>Design</h1>' +
-      '<p>' + (ehDesigner() ? 'O que você precisa entregar, por Linha Editorial — sem precisar procurar.'
+      '<p>' + (ehDesigner() ? 'Toda a sua fila, por Linha Editorial — com busca e filtros. O que precisa de você agora está na <a href="#/">Central de Design</a>.'
                             : 'A fila de produção visual da equipe.') + '</p></div>' +
       (equipe ? '<button class="b pri" id="ds-nova">+ Nova demanda de Design</button>' : '') + '</div>' +
       (equipe ? '<nav class="ds-abas" role="tablist">' + ABAS_EQUIPE.map(([k, r]) =>
@@ -334,16 +337,13 @@ B7.Design = (function () {
       .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')).slice(0, 3);
   }
 
+  /* Navegador (#/design) do Designer: só a fila — "Precisa de mim" e
+     "Continuar de onde parei" moram na Central (#/), para as duas
+     telas não serem a mesma coisa com nome diferente. */
   function viewCentralDesigner(minhas, semDono) {
     const gruposFazer = agruparPorLinha(semDono);
     const gruposMinhas = agruparPorLinha(minhas);
-    const precisa = precisaDeMim(minhas);
-    const continuar = continuarDeOndeParei(minhas);
     return '<div class="ds-central">' +
-      (precisa.length ? '<section class="ds-central-sec ds-precisa"><h3>Precisa de mim <span>' + precisa.length + '</span></h3>' +
-        '<div class="ds-lista ds-lista-grade">' + precisa.slice().sort(ordenarPorUrgencia).map(cartao).join('') + '</div></section>' : '') +
-      (continuar.length ? '<section class="ds-central-sec"><h3>Continuar de onde parei</h3>' +
-        '<div class="ds-lista ds-lista-grade">' + continuar.map(cartao).join('') + '</div></section>' : '') +
       '<section class="ds-central-sec"><h3>Demandas a fazer <span>' + semDono.length + '</span></h3>' +
       (gruposFazer.length
         ? gruposFazer.map(g => grupoFazerCartao(g)).join('')
@@ -422,9 +422,213 @@ B7.Design = (function () {
         else B7.UI.toast('Nenhuma demanda sobrou para assumir — alguém já pegou.', { tipo: 'aviso' });
         const linhas = await B7.DB.listarDesign();
         dados = linhas || [];
-        desenharArea();
+        redesenharTela();
       } catch (e2) {
         b.disabled = false; b.textContent = 'Assumir demanda';
+        B7.UI.toast('Não foi possível assumir: ' + (e2.message || ''), { tipo: 'erro' });
+      }
+    });
+  }
+
+  /* redesenha o que estiver montado — o navegador (#ds-area) ou a
+     Central (#dsc-raiz) — a partir de `dados`, sem nova consulta */
+  function redesenharTela() {
+    if (painel().querySelector('#dsc-raiz')) desenharCentral();
+    else if (painel().querySelector('#ds-area')) desenharArea();
+  }
+
+  /* =================================================================
+     CENTRAL DE DESIGN — home do Designer (rota "#/").
+     Não é a fila: é "o que precisa de mim agora, onde eu parei e como
+     estão as minhas linhas". Tudo derivado de design_resumo, a mesma
+     consulta única do navegador — nenhum número aqui é inventado: a
+     porcentagem de uma linha é finalizadas ÷ total, o prazo é o prazo
+     real da peça mais próxima, e seção sem conteúdo não aparece.
+     ================================================================= */
+  async function abrirCentral() {
+    selecionados.clear();
+    B7.Dashboard.marcarNav('#/');
+    B7.Rota.titulo([]);
+    painel().innerHTML = '<div class="conteudo design-tela dsc-tela">' +
+      '<header class="dsc-cab"><h1>' + esc(saudacao()) + '</h1><p>Carregando o que precisa da sua atenção…</p></header>' +
+      B7.UI.skeleton('tabela', { n: 4, cols: 3 }) + '</div>';
+    try { await carregarDados(); } catch (e) { erroCarga(e); return; }
+    desenharCentral();
+    assinar();
+  }
+
+  function saudacao() {
+    const u = B7.Auth.usuario() || {};
+    const primeiro = ((u.nome || u.username || '').trim().split(/\s+/)[0]) || '';
+    const h = new Date().getHours();
+    const s = h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+    return s + (primeiro ? ', ' + primeiro : '') + '.';
+  }
+
+  /* por que esta peça precisa de mim — o rótulo que o Designer lê
+     antes do título, para saber o tipo de ação sem abrir a peça */
+  function motivoPrecisa(d) {
+    if (d.status === 'ajustes_cliente') return { k: 'cliente', t: 'Ajuste do cliente' };
+    if (d.status === 'ajustes') return { k: 'ajuste', t: 'Ajuste solicitado' };
+    if (d.briefing_desatualizado) return { k: 'briefing', t: 'Briefing atualizado' };
+    return { k: 'comecar', t: 'Para começar' };
+  }
+
+  function desenharCentral() {
+    const { minhas, semDono } = filaDoDesigner(dados);
+    const precisa = precisaDeMim(minhas).sort(ordenarPorUrgencia);
+    /* uma peça aparece uma vez só: se já está em "Precisa de mim"
+       (ex.: em criação com briefing atualizado), não repete abaixo */
+    const idsPrecisa = new Set(precisa.map(d => d.id));
+    const continuar = continuarDeOndeParei(minhas.filter(d => !idsPrecisa.has(d.id)));
+    const emCriacao = minhas.filter(d => d.status === 'em_criacao').length;
+    const esperando = minhas.filter(d => ['revisao_interna', 'aprovado_interno', 'aguardando_cliente', 'aprovado_cliente'].includes(d.status)).length;
+    const linhas = agruparPorLinha(minhas)
+      .map(g => Object.assign(g, resumoLinha(g.itens)))
+      .sort((a, b) => (a.concluida - b.concluida) || (b.ajustes - a.ajustes) || (a.linhaNome || '').localeCompare(b.linhaNome || ''));
+    const disponiveis = agruparPorLinha(semDono);
+    const nada = !minhas.length && !semDono.length;
+
+    const sub = nada ? 'Sua fila está vazia. Quando uma demanda de Design for criada, ela aparece aqui.'
+      : precisa.length ? (precisa.length === 1 ? 'Uma peça precisa da sua atenção.' : precisa.length + ' peças precisam da sua atenção.')
+      : continuar.length ? 'Nada pendente de ajuste. Continue de onde parou.'
+      : semDono.length ? 'Nada pendente com você. Há demandas disponíveis para assumir.'
+      : 'Tudo em dia.';
+
+    const num = (n, r, k, on) => '<button class="dsc-num' + (on && n ? ' on' : '') + '" data-dsc-ir="' + k + '"' + (n ? '' : ' disabled') + '>' +
+      '<b>' + n + '</b><span>' + r + '</span></button>';
+
+    painel().innerHTML = '<div class="conteudo entra design-tela dsc-tela" id="dsc-raiz">' +
+      '<header class="dsc-cab"><div><h1>' + esc(saudacao()) + '</h1><p>' + esc(sub) + '</p></div>' +
+        '<a class="b fina contorno" href="#/design">Ver toda a fila</a></header>' +
+
+      (nada ? '' : '<div class="dsc-nums">' +
+        num(precisa.length, precisa.length === 1 ? 'precisa de mim' : 'precisam de mim', 'precisa', true) +
+        num(emCriacao, 'em criação', 'continuar') +
+        num(esperando, 'esperando revisão', 'linhas') +
+        num(semDono.length, semDono.length === 1 ? 'disponível para assumir' : 'disponíveis para assumir', 'disponiveis') +
+      '</div>') +
+
+      (precisa.length ? '<section class="dsc-sec dsc-precisa" id="dsc-precisa"><h2>Precisa de mim <span>' + precisa.length + '</span></h2>' +
+        '<div class="dsc-fila">' + precisa.map(linhaPrecisa).join('') + '</div></section>' : '') +
+
+      (continuar.length ? '<section class="dsc-sec" id="dsc-continuar"><h2>Continuar de onde parei</h2>' +
+        '<div class="ds-lista ds-lista-grade">' + continuar.map(cartao).join('') + '</div></section>' : '') +
+
+      (linhas.length ? '<section class="dsc-sec" id="dsc-linhas"><h2>Minhas linhas em produção <span>' + linhas.length + '</span></h2>' +
+        '<div class="dsc-linhas">' + linhas.map(pacoteLinha).join('') + '</div></section>' : '') +
+
+      (disponiveis.length ? '<section class="dsc-sec" id="dsc-disponiveis"><h2>Demandas disponíveis <span>' + semDono.length + '</span></h2>' +
+        '<p class="dsc-sub">Sem responsável ainda — qualquer designer pode assumir.</p>' +
+        '<div class="dsc-disp">' + disponiveis.map(linhaDisponivel).join('') + '</div></section>' : '') +
+
+      (nada ? '<div class="estado-b7"><b>Nenhuma peça de Design na sua fila.</b>' +
+        '<p>As demandas nascem na Linha Editorial de cada cliente ("Enviar para Design") ou são criadas pela coordenação.</p></div>' : '') +
+    '</div>';
+
+    ligarCentral(painel().querySelector('#dsc-raiz'));
+    ligarThumbs(painel());
+  }
+
+  /* números reais de uma linha — nunca porcentagem sem base */
+  function resumoLinha(itens) {
+    const total = itens.length;
+    const finalizadas = itens.filter(d => d.status === 'finalizado').length;
+    const ajustes = itens.filter(d => d.status === 'ajustes' || d.status === 'ajustes_cliente').length;
+    const criacao = itens.filter(d => d.status === 'em_criacao').length;
+    const revisao = itens.filter(d => ['revisao_interna', 'aprovado_interno', 'aguardando_cliente', 'aprovado_cliente'].includes(d.status)).length;
+    const fazer = itens.filter(d => d.status === 'aguardando_producao').length;
+    return { total, finalizadas, ajustes, criacao, revisao, fazer,
+      pct: total ? Math.round((finalizadas / total) * 100) : 0, concluida: total > 0 && finalizadas === total ? 1 : 0,
+      prazo: nearestPrazo(itens), versao: (itens.find(d => d.linha_versao_confirmada) || {}).linha_versao_confirmada || null };
+  }
+
+  function linhaPrecisa(d) {
+    const m = motivoPrecisa(d);
+    const info = prazoInfo(d);
+    return '<article class="dsc-item" data-peca="' + esc(d.id) + '" tabindex="0" role="button">' +
+      (d.ultima_previa ? '<div class="ds-thumb" data-previa="' + esc(d.ultima_previa) + '"><span class="ds-thumb-esq"></span></div>'
+        : '<div class="ds-thumb ds-thumb-vazia">' + iconeTipo(d.tipo) + '</div>') +
+      '<div class="dsc-item-tx">' +
+        '<span class="dsc-motivo ' + m.k + '">' + esc(m.t) + '</span>' +
+        '<h4>' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</h4>' +
+        '<span class="dsc-meta">' + esc(rotuloTipo(d.tipo)) +
+          (d.cliente_nome ? ' · ' + esc(d.cliente_nome) : '') + (d.linha_nome ? ' · ' + esc(d.linha_nome) : '') +
+          (d.ultima_versao ? ' · V' + String(d.ultima_versao).padStart(2, '0') : '') + '</span>' +
+      '</div>' +
+      (info ? '<span class="ds-prazo' + (info.atrasada ? ' atrasada' : info.hoje ? ' hoje' : '') + '">' + esc(info.txt) + '</span>' : '<span class="ds-prazo"></span>') +
+      '<svg class="dsc-seta" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>' +
+    '</article>';
+  }
+
+  function pacoteLinha(g) {
+    const partes = [];
+    if (g.fazer) partes.push(g.fazer + ' para fazer');
+    if (g.criacao) partes.push(g.criacao + ' em criação');
+    if (g.ajustes) partes.push('<b class="alerta">' + g.ajustes + ' em ajuste</b>');
+    if (g.revisao) partes.push(g.revisao + ' em revisão');
+    return '<article class="dsc-linha' + (g.concluida ? ' concluida' : '') + '"' + (g.linhaId ? ' data-linha-abrir="' + esc(g.linhaId) + '" tabindex="0" role="button"' : '') + '>' +
+      '<div class="dsc-linha-cab">' +
+        '<div><span class="dsc-cli">' + esc(g.clienteNome || 'Interno') + '</span>' +
+          '<h3>' + esc(g.linhaNome) + (g.versao ? '<span class="ds-v-badge">V' + String(g.versao).padStart(2, '0') + '</span>' : '') + '</h3></div>' +
+        '<b class="dsc-pct">' + g.pct + '%</b>' +
+      '</div>' +
+      '<div class="ds-grupo-progresso"><span style="width:' + g.pct + '%"></span></div>' +
+      '<div class="dsc-linha-st">' + (g.concluida ? 'Concluída — ' : '') + g.finalizadas + ' de ' + g.total + ' finalizada' + (g.total === 1 ? '' : 's') +
+        (partes.length ? ' · ' + partes.join(' · ') : '') + '</div>' +
+      chipsFormatos(g.itens) +
+      '<div class="dsc-linha-pe">' +
+        (g.prazo ? '<span class="ds-prazo' + (g.prazo.atrasada ? ' atrasada' : g.prazo.hoje ? ' hoje' : '') + '">' +
+          (g.prazo.atrasada || g.prazo.hoje ? '' : 'Próximo prazo: ') + esc(g.prazo.txt) + '</span>' : '<span></span>') +
+        (g.linhaId ? '<span class="dsc-abrir">Abrir produção →</span>' : '') +
+      '</div>' +
+    '</article>';
+  }
+
+  function linhaDisponivel(g) {
+    const info = nearestPrazo(g.itens);
+    return '<article class="dsc-disp-row"' + (g.linhaId ? ' data-linha-abrir="' + esc(g.linhaId) + '" tabindex="0" role="button"' : '') + '>' +
+      '<div class="dsc-disp-tx">' +
+        '<b>' + esc(g.linhaNome) + '</b>' +
+        '<span class="dsc-meta">' + (g.clienteNome ? esc(g.clienteNome) + ' · ' : '') + g.itens.length + (g.itens.length === 1 ? ' peça' : ' peças') +
+          (info ? ' · <i class="' + (info.atrasada ? 'atrasada' : info.hoje ? 'hoje' : '') + '">' + esc(info.txt) + '</i>' : '') + '</span>' +
+      '</div>' +
+      chipsFormatos(g.itens) +
+      (g.linhaId ? '<button class="b fina pri" data-assumir-linha="' + esc(g.linhaId) + '">Assumir' + (g.itens.length > 1 ? ' (' + g.itens.length + ')' : '') + '</button>' : '') +
+    '</article>';
+  }
+
+  function ligarCentral(raiz) {
+    if (!raiz) return;
+    raiz.querySelectorAll('[data-dsc-ir]').forEach(b => b.onclick = () => {
+      const alvo = { precisa: '#dsc-precisa', continuar: '#dsc-continuar', linhas: '#dsc-linhas', disponiveis: '#dsc-disponiveis' }[b.dataset.dscIr];
+      const el = alvo && raiz.querySelector(alvo);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else location.hash = '#/design';
+    });
+    raiz.querySelectorAll('[data-peca]').forEach(el => {
+      el.onclick = () => abrirDetalhe(el.dataset.peca);
+      el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirDetalhe(el.dataset.peca); } };
+    });
+    raiz.querySelectorAll('[data-linha-abrir]').forEach(el => {
+      const ir = e => { if (e.target.closest('[data-assumir-linha]')) return; location.hash = '#/design/linha/' + el.dataset.linhaAbrir; };
+      el.onclick = ir;
+      el.onkeydown = e => { if (e.key === 'Enter') ir(e); };
+    });
+    raiz.querySelectorAll('[data-assumir-linha]').forEach(b => b.onclick = async e => {
+      e.stopPropagation();
+      const linhaId = b.dataset.assumirLinha;
+      b.disabled = true; b.textContent = 'Assumindo…';
+      try {
+        const r = await B7.DB.assumirDemandaLinha(linhaId);
+        const n = (r && r.assumidas) || 0;
+        if (n > 0) B7.UI.toast(n === 1 ? '1 demanda assumida' : n + ' demandas assumidas');
+        else B7.UI.toast('Nenhuma demanda sobrou para assumir — alguém já pegou.', { tipo: 'aviso' });
+        const linhas = await B7.DB.listarDesign();
+        dados = linhas || [];
+        redesenharTela();
+      } catch (e2) {
+        b.disabled = false; b.textContent = 'Assumir';
         B7.UI.toast('Não foi possível assumir: ' + (e2.message || ''), { tipo: 'erro' });
       }
     });
@@ -882,7 +1086,7 @@ B7.Design = (function () {
           if (i >= 0) dados.splice(i, 1);
         }
       }
-      if (painel().querySelector('#ds-area')) desenharArea();
+      redesenharTela();
       lote.forEach(id => { if (drawer && drawer.id === id) atualizarDrawerSeAberto(id); });
     }, 400);
   }
@@ -896,7 +1100,9 @@ B7.Design = (function () {
     /* link direto (#/design/<id>, ex.: vindo de uma notificação) chega
        aqui sem a lista por trás — monta a tela normal primeiro, e a
        gaveta abre por cima dela, como no Kanban */
-    if (!painel().querySelector('#ds-area')) await abrir();
+    /* Central (#dsc-raiz) e vista por linha também são telas de Design:
+       a gaveta abre por cima delas sem trocar a tela de trás */
+    if (!painel().querySelector('.design-tela')) await abrir();
     let d = dados.find(x => x.id === id);
     if (!d) {
       try { d = await B7.DB.design(id); dados.push(d); } catch (e) {
@@ -1275,7 +1481,7 @@ B7.Design = (function () {
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
         B7.UI.toast(via === 'externa' ? 'Registrado — enviada para revisão interna' : 'Peça enviada para revisão interna');
-        desenharDrawer(); desenharArea();
+        desenharDrawer(); redesenharTela();
       } catch (e) {
         enviar.disabled = false; enviar.textContent = rotuloOriginal;
         B7.UI.toast('Não foi possível enviar: ' + (e.message || ''), { tipo: 'erro' });
@@ -1326,7 +1532,7 @@ B7.Design = (function () {
         const novo = await B7.DB.design(d.id);
         Object.assign(d, novo);
         if (salvo) { salvo.textContent = rotulo + ' salvo'; salvo.className = 'ds-dr-salvo salvo'; }
-        desenharArea();
+        redesenharTela();
       } catch (e) {
         if (salvo) { salvo.textContent = 'Não foi possível salvar'; salvo.className = 'ds-dr-salvo erro'; }
         B7.UI.toast('Não foi possível salvar: ' + (e.message || ''), { tipo: 'erro' });
@@ -1345,7 +1551,7 @@ B7.Design = (function () {
       try {
         await B7.DB.atribuirDesign(d.id, meuId());
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
-        B7.UI.toast('Peça assumida'); desenharDrawer(); desenharArea();
+        B7.UI.toast('Peça assumida'); desenharDrawer(); redesenharTela();
       } catch (e) {
         assumir.disabled = false; assumir.textContent = 'Assumir esta peça';
         B7.UI.toast('Não foi possível assumir: ' + (e.message || ''), { tipo: 'erro' });
@@ -1379,7 +1585,7 @@ B7.Design = (function () {
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
         B7.UI.toast('Peça aprovada internamente');
-        desenharDrawer(); desenharArea();
+        desenharDrawer(); redesenharTela();
       } catch (e) {
         aprovar.disabled = false; aprovar.textContent = 'Aprovar internamente';
         B7.UI.toast('Não foi possível aprovar: ' + (e.message || ''), { tipo: 'erro' });
@@ -1396,7 +1602,7 @@ B7.Design = (function () {
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
         B7.UI.toast('Ajuste solicitado');
-        desenharDrawer(); desenharArea();
+        desenharDrawer(); redesenharTela();
       } catch (e) { B7.UI.toast('Não foi possível solicitar ajuste: ' + (e.message || ''), { tipo: 'erro' }); }
     };
 
@@ -1410,7 +1616,7 @@ B7.Design = (function () {
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
         B7.UI.toast('Peça finalizada');
-        desenharDrawer(); desenharArea();
+        desenharDrawer(); redesenharTela();
       } catch (e) { B7.UI.toast('Não foi possível finalizar: ' + (e.message || ''), { tipo: 'erro' }); }
     };
     const enviarCliente = el.querySelector('#dv-enviar-cliente');
@@ -1423,10 +1629,10 @@ B7.Design = (function () {
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
         B7.UI.toast('Enviada para aprovação do cliente');
-        desenharDrawer(); desenharArea();
+        desenharDrawer(); redesenharTela();
       } catch (e) { B7.UI.toast('Não foi possível enviar ao cliente: ' + (e.message || ''), { tipo: 'erro' }); }
     };
   }
 
-  return { abrir, abrirDetalhe, abrirLinha };
+  return { abrir, abrirCentral, abrirDetalhe, abrirLinha };
 })();

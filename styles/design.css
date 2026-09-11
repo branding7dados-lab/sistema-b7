@@ -274,6 +274,110 @@ select.ds-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 .ds-via-toggle button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);}
 .ds-chip-via{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--acento-suave);color:var(--acento);}
 
+/* ===================================================================
+   CENTRAL DE DESIGN — home do Designer (rota "#/"). Não é a fila:
+   cabeçalho pessoal, quatro números reais, "Precisa de mim" como fila
+   de linhas (motivo antes do título), linhas em produção como pacote
+   (cliente, versão, progresso real por finalizadas ÷ total) e demandas
+   disponíveis como linhas densas. Mesmos tokens do resto do sistema.
+   =================================================================== */
+.dsc-tela{max-width:1180px;}
+.dsc-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
+.dsc-cab h1{font-family:'Archivo';font-size:30px;font-weight:900;letter-spacing:-.03em;line-height:1.1;}
+.dsc-cab p{font-size:14px;color:var(--ink-3);margin-top:7px;max-width:620px;line-height:1.5;}
+.dsc-cab .b{text-decoration:none;}
+
+.dsc-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:30px;}
+.dsc-num{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:16px 18px;text-align:left;
+  font:inherit;cursor:pointer;background:var(--card);border:1px solid var(--borda);border-radius:var(--r);
+  color:var(--ink);transition:var(--t-micro);}
+.dsc-num:hover:not(:disabled){border-color:var(--borda-forte);transform:translateY(-1px);}
+.dsc-num:disabled{cursor:default;opacity:.55;}
+.dsc-num b{font-family:'Archivo';font-weight:800;font-size:30px;line-height:1;letter-spacing:-.02em;}
+.dsc-num span{font-size:12px;color:var(--ink-3);}
+.dsc-num.on b{color:var(--acento);}
+.dsc-num.on{border-color:var(--acento);background:var(--acento-suave);}
+
+.dsc-sec{margin-bottom:32px;}
+.dsc-sec h2{font-family:'Archivo';font-size:17px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:8px;margin:0 0 12px;}
+.dsc-sec h2 span{font-size:11px;font-weight:700;background:var(--suave);color:var(--ink-3);padding:2px 9px;border-radius:99px;}
+.dsc-precisa h2{color:var(--acento);}
+.dsc-precisa h2 span{background:var(--acento-suave);color:var(--acento);}
+.dsc-sub{font-size:12.5px;color:var(--ink-4);margin:-6px 0 12px;}
+
+/* "Precisa de mim": uma linha por peça, motivo antes do título */
+.dsc-fila{display:flex;flex-direction:column;gap:8px;}
+.dsc-item{display:flex;align-items:center;gap:12px;padding:10px 14px 10px 10px;background:var(--card);
+  border:1px solid var(--borda);border-radius:var(--r-sm);cursor:pointer;transition:var(--t-micro);min-width:0;}
+.dsc-item:hover{border-color:var(--borda-forte);transform:translateY(-1px);box-shadow:var(--sh-1);}
+.dsc-item:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.dsc-item .ds-thumb{width:46px;height:46px;}
+.dsc-item-tx{flex:1;min-width:0;}
+.dsc-item h4{font-size:13.5px;font-weight:600;line-height:1.3;margin:3px 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dsc-meta{font-size:11.5px;color:var(--ink-3);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dsc-meta i{font-style:normal;}
+.dsc-meta i.atrasada{color:var(--erro);font-weight:700;}
+.dsc-meta i.hoje{color:var(--ambar);font-weight:700;}
+.dsc-motivo{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 8px;border-radius:6px;background:var(--suave);color:var(--ink-3);}
+.dsc-motivo.ajuste,.dsc-motivo.cliente{background:var(--erro-bg);color:var(--erro);}
+.dsc-motivo.briefing{background:var(--ambar-bg);color:var(--ambar);}
+.dsc-motivo.comecar{background:var(--acento-suave);color:var(--acento);}
+.dsc-item .ds-prazo{margin-left:0;flex:none;min-width:0;}
+.dsc-seta{width:16px;height:16px;flex:none;fill:none;stroke:var(--ink-4);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+/* linhas em produção: pacote por Linha Editorial */
+.dsc-linhas{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;}
+.dsc-linha{background:var(--card);border:1px solid var(--borda);border-radius:var(--r);padding:16px 18px;
+  cursor:pointer;transition:var(--t-micro);min-width:0;display:flex;flex-direction:column;gap:9px;}
+.dsc-linha:hover{border-color:var(--borda-forte);transform:translateY(-1px);box-shadow:var(--sh-1);}
+.dsc-linha:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.dsc-linha.concluida{opacity:.7;}
+.dsc-linha-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.dsc-cli{display:block;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);margin-bottom:3px;}
+.dsc-linha h3{font-family:'Archivo';font-size:16px;font-weight:800;letter-spacing:-.2px;margin:0;line-height:1.2;}
+.dsc-linha h3 .ds-v-badge{font-size:11px;padding:1px 8px;margin-left:8px;}
+.dsc-pct{font-family:'Archivo';font-weight:800;font-size:22px;letter-spacing:-.02em;color:var(--ok);flex:none;line-height:1;}
+.dsc-linha .ds-grupo-progresso{margin-top:0;}
+.dsc-linha-st{font-size:12.5px;color:var(--ink-3);}
+.dsc-linha-st .alerta{color:var(--ambar);}
+.dsc-linha-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:4px;}
+.dsc-linha-pe .ds-prazo{margin-left:0;font-size:11.5px;}
+.dsc-abrir{font-size:12.5px;font-weight:600;color:var(--acento);white-space:nowrap;}
+
+/* demandas disponíveis: linhas densas */
+.dsc-disp{display:flex;flex-direction:column;gap:8px;}
+.dsc-disp-row{display:flex;align-items:center;gap:14px;padding:10px 14px;background:var(--card);
+  border:1px solid var(--borda);border-radius:var(--r-sm);min-width:0;cursor:pointer;transition:var(--t-micro);}
+.dsc-disp-row:hover{border-color:var(--borda-forte);}
+.dsc-disp-row:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.dsc-disp-tx{flex:1;min-width:0;}
+.dsc-disp-tx b{display:block;font-family:'Archivo';font-size:14px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dsc-disp-row .ds-resumo-formatos{flex:none;}
+.dsc-disp-row .b{flex:none;}
+
+@media (max-width:900px){
+  .dsc-nums{grid-template-columns:repeat(2,1fr);}
+}
+@media (max-width:760px){
+  .dsc-cab h1{font-size:24px;}
+  .dsc-cab .b{width:100%;justify-content:center;}
+  .dsc-nums{gap:8px;margin-bottom:24px;}
+  .dsc-num{padding:12px 14px;}
+  .dsc-num b{font-size:24px;}
+  .dsc-item{flex-wrap:wrap;gap:8px 12px;}
+  .dsc-item-tx{flex:1 1 calc(100% - 58px);}
+  .dsc-item h4{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .dsc-item .ds-prazo{order:3;margin-left:58px;}
+  .dsc-item .ds-prazo:empty{display:none;}
+  .dsc-motivo{white-space:nowrap;}
+  .dsc-seta{display:none;}
+  .dsc-linhas{grid-template-columns:1fr;}
+  .dsc-disp-row{flex-wrap:wrap;}
+  .dsc-disp-row .ds-resumo-formatos{flex:1 1 100%;}
+  .dsc-disp-row .b{width:100%;justify-content:center;}
+}
+
 /* ------------------------------------------------------ responsivo */
 @media (max-width:1100px){
   .ds-dr-grade{grid-template-columns:1fr 1fr;}

@@ -150,9 +150,10 @@ B7.Rota = (function () {
     /* Designer não grava nem escreve roteiro — a "Central de Produção"
        genérica (Gravações/Roteiros/Linhas) não é o trabalho dele, e os
        dois primeiros nem abrem (rota bloqueada). A home do Designer é
-       a própria Central de Design. */
+       a Central de Design: uma tela própria (o que precisa de mim, onde
+       parei, minhas linhas), diferente da fila ampla em #/design. */
     if (!partes[0] && B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'designer' && B7.Design) {
-      return B7.Design.abrir(params.get('aba'), true);
+      return B7.Design.abrirCentral();
     }
     await B7.Central.abrir();
   }
