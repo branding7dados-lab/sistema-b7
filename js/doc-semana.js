@@ -228,8 +228,10 @@ B7.DocSemana = (function () {
           '<i style="background:' + s.cor + '"></i>' + esc(it.situacao) + '</span>' : '') +
       '</div>' +
       '<div class="ps-meta">' +
+        (it.formato ? '<span class="ps-formato">' +
+          '<span class="ps-formato-ic">' + (ICONE[it.formato] || iconeDe(it)) + '</span>' + esc(it.formato) + '</span>' : '') +
         (it.etapa ? '<span class="ps-tipo" style="color:' + corTipo(it.etapa) + '">' +
-          '<span class="ps-tipo-ic">' + iconeDe(it) + '</span>' + esc(it.etapa) + '</span>' : '') +
+          (it.formato ? '' : '<span class="ps-tipo-ic">' + iconeDe(it) + '</span>') + esc(it.etapa) + '</span>' : '') +
         (it.canal ? '<span class="ps-canal">' + esc(it.canal) + '</span>' : '') +
       '</div>' +
       (!vazio(it.observacao) ? '<p class="ps-obs">' + esc(it.observacao) + '</p>' : '') +

@@ -2054,3 +2054,67 @@ Arquivos alterados: `js/doc-semana.js`, `js/semana.js`,
 `styles/semana.css`, `js/auth.js`, `sw.js`.
 `VERSAO` → `2026-09-11-u`, cache do service worker →
 `roteiros-b7-v36`.
+
+## Build 2026-09-11-v — Status Semanal agora mostra o FORMATO de cada demanda
+
+**Pedido do Yury:** "no status semanal também tem que dizer se é
+carrossel, reels, estático, story... enfim." O campo `formato` já
+existia nos dados e já escolhia o ícone de cada linha
+(`iconeDe()`), mas nunca aparecia como texto — só quem soubesse ler o
+ícone sabia se era Reel, Card, Carrossel ou Story. Etapa (`ps-tipo`) e
+canal (`ps-canal`) apareciam como texto; formato, não.
+
+**Implementado e testado:**
+- `js/doc-semana.js`, `linhaItem()`: novo selo `.ps-formato` na linha
+  de metadados de cada demanda, mostrado ANTES do tipo/etapa — é o que
+  o cliente mais pergunta ("isso é reels ou card?"). Mostra o ícone
+  (o mesmo que já era escolhido por formato) + o nome do formato por
+  extenso (REEL, CARD, CARROSSEL, STORY etc.), em maiúsculas, cor
+  neutra — não é um dos dois sistemas de cor semânticos (tipo/situação),
+  então não usa nem a cor de tipo nem a pílula de status. Quando o
+  item não tem formato preenchido, o selo simplesmente não aparece
+  (regra de sempre: campo vazio não aparece).
+- Pra não duplicar o ícone quando os dois selos aparecem juntos: o
+  ícone só vai no selo de formato quando ele existe; a etapa (`ps-tipo`)
+  só carrega o próprio ícone quando não há formato (fallback, igual já
+  era o comportamento de `iconeDe()`).
+- `styles/semana.css`: novo bloco `.ps-formato`/`.ps-formato-ic`,
+  reaproveitando os tamanhos da escada de densidade que já regem
+  `.ps-tipo`/`.ps-tipo-ic` (`--tipo-fs`, `--tipo-ic`) — não precisou de
+  nenhuma variável nova nem mexeu na medição de altura por nível.
+- Suíte de regressão com os 6 cenários de sempre (1 item · 9 itens
+  leve real · 9 itens com exclusões · 15 itens · 1 dia com 8 tarefas ·
+  36 itens extremos), desta vez com `formato` preenchido em
+  praticamente todos os itens (pior caso de largura na linha de
+  metadados, pra garantir que o selo novo não empurra nada pra fora):
+  todos os níveis de densidade escolhidos continuam os mesmos de
+  antes (`nv-enorme` → `nv-grande` → `nv-densa` → `nv-compacta` →
+  `nv-muito-densa` em duas colunas no extremo), sem página 2, sem
+  vazamento de item concluído, sem erro de console. O caso extremo
+  de 36 itens em duas colunas continua com a mesma sobra conhecida e
+  já documentada do build `-s` (não piorou com o selo novo).
+- Conferência visual: capturei screenshot da página renderizada nos
+  cenários leve-real e extremo — o selo de formato aparece legível ao
+  lado do tipo e do canal em todas as densidades, inclusive na mais
+  compacta.
+- **Exportação PNG real** (`B7.BaixarSemana.gerarPNG()`, com
+  `html2canvas` de verdade) e **PDF real** (`gerarPDF()`, com `jsPDF`
+  de verdade), ambas com itens levando formato: os dois arquivos
+  saíram sem erro, com o selo de formato visível e no lugar certo, e
+  o item "Publicado" (fora do planejamento) continuou de fora, como
+  sempre.
+- `node --check` em `js/doc-semana.js` e `js/semana.js`.
+
+**Não implementado por bloqueio:** nenhum.
+
+**Não retestado nesta rodada** (não foi tocado): o restante do fluxo
+do editor (adicionar/mover/excluir demanda, duplicar, versões) — o
+cartão de demanda do editor (`cardItem()` em `js/semana.js`) já usava
+o ícone de formato antes desta mudança e continua igual; não recebeu
+o texto do formato porque não foi pedido — o pedido foi especificamente
+sobre o arquivo que vai pro cliente.
+
+Arquivos alterados: `js/doc-semana.js`, `styles/semana.css`,
+`js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-11-v`, cache do service worker →
+`roteiros-b7-v37`.
