@@ -3812,3 +3812,41 @@ Só frontend (sem migração). Sobre a captura enviada da tela de revisão.
 
 Arquivos alterados: `js/design.js`, `styles/design.css`, `js/auth.js`,
 `sw.js`. `VERSAO` → `2026-09-11-ak`, cache → `roteiros-b7-v54`.
+
+## Build 2026-09-11-al — "Produção de Design" pra Admin/Coordenador: fila com o que precisa da equipe
+
+Só frontend. Sobre a captura da tela "Produção de Design" (quadro).
+
+### Implementado e testado
+
+- **Faixa "Precisa de você"** acima dos filtros, contada sobre a fila
+  inteira (ignora filtros): N para revisar (revisão interna), N
+  aprovadas sem envio ao cliente (aprovado internamente), N aguardando
+  o cliente, N sem responsável (aguardando produção e ninguém
+  assumiu), N atrasadas (prazo passou e não finalizou). Cada chip é um
+  atalho: clica, o quadro mostra só aquilo (e "Limpar filtros"
+  aparece); clica de novo, desliga. Sem métrica inventada — são
+  contagens.
+- **Backlog "Aguardando produção" agrupado por cliente** (quando tem
+  mais de 6 peças): 43 cards viram meia dúzia de grupos recolhíveis
+  (o recolhido/aberto fica guardado enquanto a tela está aberta), cada
+  grupo com "Atribuir N" — atribui um designer de uma vez a todas as
+  peças daquele cliente ainda sem responsável (mesmo seletor da lista).
+- **Colunas do fluxo sempre visíveis pra equipe:** "Revisão interna" e
+  "Aguardando cliente" aparecem mesmo vazias ("Nada aqui agora"), na
+  ordem do fluxo — antes sumiam e o quadro parecia não ter etapa de
+  revisão. Coluna com largura máxima (360px) em vez de esticar até
+  1/3 da tela com 3 colunas.
+- **Cards mais enxutos no quadro da equipe:** sem o chip de status
+  (a coluna já é o status — só "Cliente" quando é ajuste do cliente);
+  dentro dos grupos por cliente, sem repetir tipo e cliente em cada
+  card. Na lista, os cards continuam completos.
+- Testado com Playwright (28 peças em 4 clientes, 1917px): faixa com
+  as 5 contagens certas; colunas na ordem do fluxo com as fixas;
+  grupos por cliente com "Atribuir 3"/"Atribuir 6"; atalho "para
+  revisar" recorta pra 4 peças e mostra "Limpar filtros"; "Atribuir"
+  abre o seletor com "3 peças selecionadas"; sem overflow horizontal;
+  0 erro JS. Suíte ponta a ponta inteira (146) e regressões sem quebra.
+
+Arquivos alterados: `js/design.js`, `styles/design.css`, `js/auth.js`,
+`sw.js`. `VERSAO` → `2026-09-11-al`, cache → `roteiros-b7-v55`.

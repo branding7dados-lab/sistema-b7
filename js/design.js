@@ -140,7 +140,7 @@ B7.Design = (function () {
       (equipe ? '<nav class="ds-abas" role="tablist">' + ABAS_EQUIPE.map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (F.aba === k ? 'on' : '') + '" aria-selected="' + (F.aba === k) + '">' +
         esc(r) + '</button>').join('') + '</nav>' : '') +
-      (!equipe ? '<div id="ds-resumo"></div>' : '') +
+      '<div id="ds-resumo"></div>' +
       '<div id="ds-barra"></div>' +
       '<div id="ds-area"></div>' +
     '</div>';
@@ -162,7 +162,7 @@ B7.Design = (function () {
      busca + vista, o essencial para achar uma peça na própria fila.
      ================================================================= */
   function filtrosAtivos() {
-    return !!(F.cliente || F.designer || F.tipo || F.status || F.prazo || F.linha || F.prioridade || F.busca.trim());
+    return !!(F.cliente || F.designer || F.tipo || F.status || F.prazo || F.linha || F.prioridade || F.busca.trim() || (ehEquipe() && F.rapido));
   }
 
   function desenharBarra() {
@@ -262,6 +262,17 @@ B7.Design = (function () {
       if (F.linha && d.linha_id !== F.linha) return false;
       if (F.prioridade && (d.prioridade || 'normal') !== F.prioridade) return false;
       if (statusAba && !statusAba.includes(d.status)) return false;
+      /* atalhos do "Precisa de você" (equipe) */
+      if (F.rapido && ehEquipe()) {
+        if (F.rapido === 'revisao' && d.status !== 'revisao_interna') return false;
+        if (F.rapido === 'cliente' && d.status !== 'aguardando_cliente') return false;
+        if (F.rapido === 'aprovado' && d.status !== 'aprovado_interno') return false;
+        if (F.rapido === 'semdono' && !(d.status === 'aguardando_producao' && !d.designer_id)) return false;
+        if (F.rapido === 'atrasadas') {
+          const p = d.prazo ? new Date(d.prazo + 'T00:00:00') : null;
+          if (!(p && p < hoje && d.status !== 'finalizado')) return false;
+        }
+      }
       if (F.prazo) {
         const p = d.prazo ? new Date(d.prazo + 'T00:00:00') : null;
         if (F.prazo === 'sem' && p) return false;
@@ -318,6 +329,7 @@ B7.Design = (function () {
       return;
     }
 
+    desenharResumoEquipe();
     const vis = filtrar(dados);
     const total = painel().querySelector('#ds-total');
     if (total) total.textContent = vis.length + (vis.length === 1 ? ' peça' : ' peças');
@@ -973,14 +985,89 @@ B7.Design = (function () {
      QUADRO — uma coluna por status presente no recorte atual; ordenar
      por urgência (prazo) dentro de cada coluna, mais atrasada primeiro
      ================================================================= */
+  /* "PRECISA DE VOCÊ" — o que a equipe (Admin/Coordenador) tem pra
+     fazer AGORA, contado sobre a fila inteira (ignora os filtros): o que
+     está esperando revisão interna, o que está aprovado por dentro e
+     ainda não foi ao cliente, o que aguarda decisão do cliente, o que
+     ninguém assumiu e o que estourou o prazo. Cada chip é um atalho de
+     filtro (liga/desliga). Sem inventar métrica: são contagens. */
+  function desenharResumoEquipe() {
+    const cx = painel().querySelector('#ds-resumo');
+    if (!cx || !ehEquipe() || F.aba === 'equipe') { if (cx) cx.innerHTML = ''; return; }
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const n = {
+      revisao: dados.filter(d => d.status === 'revisao_interna').length,
+      aprovado: dados.filter(d => d.status === 'aprovado_interno').length,
+      cliente: dados.filter(d => d.status === 'aguardando_cliente').length,
+      semdono: dados.filter(d => d.status === 'aguardando_producao' && !d.designer_id).length,
+      atrasadas: dados.filter(d => d.prazo && new Date(d.prazo + 'T00:00:00') < hoje && d.status !== 'finalizado').length
+    };
+    const itens = [
+      ['revisao', n.revisao, 'para revisar', 'Peças enviadas pelo designer, esperando a revisão interna', 'urgente'],
+      ['aprovado', n.aprovado, 'aprovada' + (n.aprovado === 1 ? '' : 's') + ' sem envio ao cliente', 'Aprovadas por dentro — falta registrar a decisão do cliente ou enviar pelo Portal', 'atencao'],
+      ['cliente', n.cliente, 'aguardando o cliente', 'Enviadas ao cliente, sem decisão registrada', 'neutra'],
+      ['semdono', n.semdono, 'sem responsável', 'Aguardando produção e ninguém assumiu — atribua um designer', 'atencao'],
+      ['atrasadas', n.atrasadas, 'atrasada' + (n.atrasadas === 1 ? '' : 's'), 'Prazo passou e a peça não foi finalizada', 'urgente']
+    ];
+    const nada = itens.every(i => !i[1]);
+    cx.innerHTML = '<div class="ds-precisa">' +
+      '<small>PRECISA DE VOCÊ</small>' +
+      (nada ? '<span class="ds-precisa-ok">Nada esperando a equipe agora.</span>' :
+        itens.filter(i => i[1] > 0).map(i =>
+          '<button class="ds-precisa-chip ' + i[4] + (F.rapido === i[0] ? ' on' : '') + '" data-rapido="' + i[0] + '" title="' + esc(i[3]) + '" aria-pressed="' + (F.rapido === i[0]) + '">' +
+            '<b>' + i[1] + '</b> ' + esc(i[2]) + '</button>').join('')) +
+    '</div>';
+    cx.querySelectorAll('[data-rapido]').forEach(b => b.onclick = () => {
+      F.rapido = F.rapido === b.dataset.rapido ? '' : b.dataset.rapido;
+      /* o atalho já recorta por status; a aba "Todas" evita que uma aba
+         mais estreita esconda o resultado */
+      if (F.rapido) { F.aba = 'todas'; painel().querySelectorAll('[data-aba]').forEach(x => x.classList.toggle('on', x.dataset.aba === 'todas')); }
+      guardarFiltros(); desenharArea(); atualizarLimpar();
+    });
+  }
+
+  /* colunas do quadro da equipe: as que têm peça, na ordem do fluxo, e
+     SEMPRE as duas filas da equipe (revisão interna e aguardando
+     cliente) — vazias dizem "nada aqui", em vez de sumir e parecer que
+     não existe etapa de revisão */
+  const COLUNAS_FIXAS_EQUIPE = ['revisao_interna', 'aguardando_cliente'];
+
+  /* fila de "Aguardando produção" agrupada por cliente: 40 cards viram
+     meia dúzia de grupos recolhíveis, cada um com "Atribuir" em massa */
+  function colunaBacklog(itens, s) {
+    const grupos = new Map();
+    itens.forEach(d => { const k = d.client_id || '_'; if (!grupos.has(k)) grupos.set(k, { nome: d.cliente_nome || 'Interno', itens: [] }); grupos.get(k).itens.push(d); });
+    const lista = [...grupos.entries()].sort((a, b) => a[1].nome.localeCompare(b[1].nome));
+    F._backlogFechados = F._backlogFechados || [];
+    return '<section class="ds-col ds-col-backlog" data-status="' + s + '">' +
+      '<header><b>' + esc(rotuloStatus(s)) + '</b><span class="ds-cont">' + itens.length + '</span></header>' +
+      '<div class="ds-lista">' + lista.map(([k, g]) => {
+        const semDono = g.itens.filter(d => !d.designer_id).length;
+        return '<details class="ds-grupo-cli"' + (F._backlogFechados.includes(k) ? '' : ' open') + ' data-grupo="' + esc(k) + '">' +
+          '<summary><b>' + esc(g.nome) + '</b><span class="ds-cont">' + g.itens.length + '</span>' +
+            (semDono ? '<button class="b fina contorno" data-atribuir-grupo="' + esc(k) + '" title="Atribuir um designer a todas as peças deste cliente ainda sem responsável">Atribuir ' + semDono + '</button>' : '') +
+          '</summary>' +
+          g.itens.sort(ordenarPorUrgencia).map(d => cartao(d, { compacto: true })).join('') +
+        '</details>';
+      }).join('') + '</div></section>';
+  }
+
   function viewQuadro(vis) {
-    if (!vis.length) return blocoVazio();
-    const statusPresentes = [...new Set(vis.map(d => d.status))].sort((a, b) => ordemStatus(a) - ordemStatus(b));
+    if (!vis.length && !ehEquipe()) return blocoVazio();
+    const presentes = new Set(vis.map(d => d.status));
+    if (ehEquipe() && !filtrosAtivos() && !F.rapido && (!F.aba || F.aba === 'todas')) COLUNAS_FIXAS_EQUIPE.forEach(c => presentes.add(c));
+    const statusPresentes = [...presentes].sort((a, b) => ordemStatus(a) - ordemStatus(b));
+    if (!statusPresentes.length) return blocoVazio();
     const porStatus = s => vis.filter(d => d.status === s).sort(ordenarPorUrgencia);
 
-    const coluna = s => '<section class="ds-col" data-status="' + s + '">' +
-      '<header><b>' + esc(rotuloStatus(s)) + '</b><span class="ds-cont">' + porStatus(s).length + '</span></header>' +
-      '<div class="ds-lista">' + porStatus(s).map(cartao).join('') + '</div></section>';
+    const coluna = s => {
+      const itens = porStatus(s);
+      if (ehEquipe() && s === 'aguardando_producao' && itens.length > 6 && !ehMovel()) return colunaBacklog(itens, s);
+      return '<section class="ds-col' + (itens.length ? '' : ' vazia') + '" data-status="' + s + '">' +
+        '<header><b>' + esc(rotuloStatus(s)) + '</b><span class="ds-cont">' + itens.length + '</span></header>' +
+        '<div class="ds-lista">' + (itens.length ? itens.map(d => cartao(d, { compacto: ehEquipe() })).join('')
+          : '<p class="ds-col-nada">Nada aqui agora.</p>') + '</div></section>';
+    };
 
     if (ehMovel()) {
       if (!F._colMovel || !statusPresentes.includes(F._colMovel)) F._colMovel = statusPresentes[0];
@@ -1092,7 +1179,8 @@ B7.Design = (function () {
      CARTÃO — a mesma peça de dado alimenta quadro, lista (linha) e
      "sem responsável"; aqui é a versão em card usada nos dois primeiros
      ================================================================= */
-  function cartao(d) {
+  function cartao(d, op) {
+    op = op || {};
     const info = prazoInfo(d);
     const feedback = d.ultima_versao_estado === 'ajuste_solicitado';
     return '<article class="ds-card' + (d.prioridade === 'urgente' ? ' urgente' : d.prioridade === 'alta' ? ' alta' : '') + '" ' +
@@ -1103,11 +1191,14 @@ B7.Design = (function () {
         '<div class="ds-card-info">' +
           '<span class="ds-tipo">' + esc(rotuloTipo(d.tipo)) + '</span>' +
           '<h4>' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</h4>' +
-          (d.cliente_nome ? '<span class="ds-cli">' + esc(d.cliente_nome) + '</span>' : '<span class="ds-cli sem">Interno</span>') +
+          (d.cliente_nome ? '<span class="ds-cli">' + esc(d.cliente_nome) + (d.linha_nome && !op.compacto ? ' · ' + esc(d.linha_nome) : '') + '</span>' : '<span class="ds-cli sem">Interno</span>') +
         '</div>' +
       '</div>' +
       '<div class="ds-tags">' +
-        '<span class="ds-chip ' + esc(d.status) + '">' + esc(rotuloStatus(d.status)) + '</span>' +
+        /* no quadro da equipe a coluna já é o status — o chip só repete;
+           fica só o que acrescenta (versão, ajuste pendente, origem) */
+        (op.compacto ? (d.status === 'ajustes_cliente' ? '<span class="ds-chip ajustes_cliente">Cliente</span>' : '')
+                     : '<span class="ds-chip ' + esc(d.status) + '">' + esc(rotuloStatus(d.status)) + '</span>') +
         (d.ultima_versao ? '<span class="ds-v">V' + String(d.ultima_versao).padStart(2, '0') + '</span>' : '') +
         (feedback ? '<span class="ds-feedback">Ajuste pendente</span>' : '') +
       '</div>' +
@@ -1240,6 +1331,16 @@ B7.Design = (function () {
       el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirDetalhe(el.dataset.peca); } };
     });
     area.querySelectorAll('[data-col-movel]').forEach(b => b.onclick = () => { F._colMovel = b.dataset.colMovel; desenharArea(); });
+    area.querySelectorAll('details.ds-grupo-cli').forEach(det => det.ontoggle = () => {
+      const k = det.dataset.grupo; F._backlogFechados = F._backlogFechados || [];
+      if (det.open) F._backlogFechados = F._backlogFechados.filter(x => x !== k); else if (!F._backlogFechados.includes(k)) F._backlogFechados.push(k);
+    });
+    area.querySelectorAll('[data-atribuir-grupo]').forEach(b => b.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      const k = b.dataset.atribuirGrupo;
+      const ids = dados.filter(d => (d.client_id || '_') === k && d.status === 'aguardando_producao' && !d.designer_id).map(d => d.id);
+      if (ids.length) abrirSeletorDesigner(null, ids);
+    });
 
     /* seleção múltipla, só existe na lista */
     const barraSel = area.querySelector('#ds-sel-barra');
