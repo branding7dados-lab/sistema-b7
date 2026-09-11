@@ -1570,7 +1570,7 @@ B7.Design = (function () {
     const notifs = (x.notificacoes || []).slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
     const n = notifs.find(n => n.mensagem && n.mensagem.trim());
     if (!n) return '';
-    return '<div class="ds-ws-feedback">' +
+    return '<div class="ds-ws-feedback' + (d.status === 'ajustes_cliente' ? ' cliente' : '') + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
         '<path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>' +
       '<div><b>' + (d.status === 'ajustes_cliente' ? 'Ajuste do cliente' : 'Ajuste solicitado') + '</b>' +

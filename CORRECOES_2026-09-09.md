@@ -3229,3 +3229,127 @@ Arquivos alterados: `js/design.js`, `js/linha.js` (só um comentário,
 sem mudança de comportamento), `styles/design.css`, `js/auth.js`,
 `sw.js`. `VERSAO` → `2026-09-11-af`, cache do service worker →
 `roteiros-b7-v49`.
+
+## Build 2026-09-11-ag — Rodada 6: notificações, polimento e auditoria final
+
+Última rodada do plano `PLANO_UX_DESIGN_RESTANTE.md` — fecha os
+retoques pequenos que sobraram desde a auditoria da rodada `-m` e
+audita o que as rodadas 1-5 construíram (performance e mobile), sem
+nenhuma tela nova.
+
+### Implementado e testado
+
+- **Ctrl+K vazando ação fora do alcance do Designer.** A paleta de
+  comandos (`paleta()` em `js/ui.js`) montava a lista de ações sem
+  nenhum filtro de papel, mesmo as ações/rotas equivalentes já
+  estando escondidas em todo o resto da interface (barra lateral via
+  `B7.Perm.NAV`, botões da própria página via
+  `souDesignerSomenteLeitura()`). Achado dois tipos de vazamento, os
+  dois corrigidos:
+  - Ações que só navegam para uma rota já bloqueada pra Designer por
+    `B7.Perm.podeRota()` ("Ir para clientes", "Ver gravações", "Abrir
+    status semanal") — clicar caía numa tela de "sem permissão", um
+    atalho que não levava a lugar nenhum.
+  - Ações que chamam direto uma função de modal de escrita, pulando
+    por cima do controle de acesso que a própria página de destino já
+    tem ("Nova gravação", "Novo cliente", "Novo status semanal",
+    "Novo conteúdo" e "Duplicar mês" quando dentro de uma linha
+    editorial) — esse é o achado mais sério, porque o botão
+    equivalente foi deliberadamente tirado da tela pro Designer, e o
+    atalho contornava isso.
+  - Corrigido calculando `souDesigner` uma vez (mesma checagem de
+    papel já usada em outros lugares do app) e filtrando as duas
+    listas que compõem a paleta: as ações contextuais de dentro de
+    uma linha editorial, e a lista geral de ações, separada agora em
+    "comuns" (sempre visíveis: Configurações, Alternar tema) e "de
+    equipe" (escondidas para o Designer).
+  - Testado com `node --check js/ui.js`; sem mudança de comportamento
+    pra Admin/Coordenador (a lista de equipe continua completa).
+
+- **Link de notificação quebrado: "linha concluída" apontava pra uma
+  rota que nunca existiu.** Ao auditar todo `link :=` gerado dentro de
+  `design_processar_evento` (a função que monta as notificações de
+  Design), achei que a notificação de "Nova demanda de Design
+  atribuída a você"/"disponível" (disparada quando uma Linha Editorial
+  é concluída) linkava para `#/design?linha=<id>` — `js/app.js` nunca
+  leu esse parâmetro `?linha=` na rota `#/design` (só lê `?aba=`),
+  então clicar na notificação sempre abria a fila geral de Design, sem
+  nenhum recorte pra a linha que gerou o aviso. As outras 6
+  notificações de Design (peça criada, atribuída, versão enviada,
+  ajuste solicitado, aprovada, finalizada, demanda assumida) já
+  usavam `link := '#/design/' || d.id`, essa rota sempre existiu e
+  está correta — não precisaram de mudança.
+  - Corrigido em `migration_notificacoes_deeplink.sql`: recria
+    `design_processar_evento` com a única linha do link trocada para
+    `'#/design/linha/' || ev.alvo_id` — a rota certa, que já existe
+    desde a Rodada 2 e ganhou as 4 abas (Peças de Design/Contexto/
+    Pilares/Referências) na Rodada 5b.
+  - Notificações **já enviadas** com o link antigo não são reescritas
+    automaticamente (mexer em histórico está fora do escopo desta
+    correção); só as notificações criadas a partir de agora saem com
+    o link novo. A migração deixa, em comentário, um `UPDATE` opcional
+    pra quem quiser corrigir o link das notificações antigas ainda não
+    lidas — não roda sozinho.
+
+- **Distinção visual entre "Ajuste solicitado" (interno da B7) e
+  "Ajuste do cliente".** A arquitetura já distingue as duas origens
+  desde a Rodada 2/3 (`status = 'ajustes'` × `'ajustes_cliente'`,
+  cada uma com seu próprio texto), mas visualmente as duas caíam no
+  mesmo vermelho em três lugares — o chip de status nos cards/lista/
+  tabela (`.ds-chip`), o rótulo "precisa de mim" na Central de Design
+  (`.dsc-motivo`) e o aviso em destaque no topo do workspace da peça
+  (`.ds-ws-feedback`) — só o texto avisava quem tinha pedido o ajuste,
+  fácil de passar batido numa varredura rápida pela fila.
+  - "Ajuste do cliente" agora usa roxo (a mesma cor já usada em
+    kanban/calendário pra sinalizar origem "cliente"), mantendo o
+    vermelho só para o ajuste interno da B7 — nos três lugares acima.
+  - Verificado com screenshot em 375px: chip roxo no card da lista,
+    aviso roxo no topo do workspace, nenhuma quebra de layout.
+
+### Auditoria (sem mudança de código)
+
+- **Performance — sem N+1, sem subscription por card.** Toda a fila
+  de Design (Central, navegador, página de demanda) vem de uma
+  consulta só à view `design_resumo` (já com cliente, linha,
+  designer e prévia resolvidos via `select` aninhado na própria
+  view); a realtime também é um canal só por sessão
+  (`B7.DB.canal('design-...')`, assinando `design_deliverables` e
+  `design_versoes` juntos), não um canal por card. Não achei nenhum
+  loop com `await`/consulta por item dentro de `js/database.js` ou
+  `js/design.js` pras telas de Design. Nada a corrigir.
+- **Responsividade mobile das rodadas 1-5.** Testado com Playwright
+  em 375px (Central de Design, navegador em "Linhas"/"Peças", as 4
+  abas da página de demanda, o workspace de peça) checando overflow
+  horizontal da página inteira: nenhuma tela vaza a largura da
+  janela. Achado um padrão já existente desde a Rodada 2 e mantido
+  como está: as abas de status/filtro (`.ds-abas`, incluindo o
+  `.dl-abas-topo` novo da Rodada 5b) rolam na horizontal sem
+  indicação visual de que há mais conteúdo pro lado — funciona
+  (`overflow-x:auto`, testado por toque), mas sem affordance. Como é
+  um padrão consistente já usado em 4 rodadas anteriores sem queixa
+  registrada, decidi documentar em vez de mexer, pra não introduzir
+  risco visual de última hora numa rodada de fechamento.
+  Rerrodada a suíte de regressão das Rodadas 4 e 5b (navegador de
+  Carrossel/Stories, miniaturas, as 4 abas da Linha Editorial do
+  Designer) — sem quebra.
+
+### Não implementado por decisão consciente
+
+- **Distinção "Feedback interno B7" vs. "Feedback do cliente" além do
+  que já foi descrito acima.** Não existe, na arquitetura atual, um
+  conceito separado de "feedback do cliente" fora do fluxo de
+  aprovação que já existe em `js/aprovacoes.js` (roteiros) e do status
+  `ajustes_cliente`/`aprovado_cliente` do Design (peças). A rodada
+  tratou a distinção onde ela já existe (peças de Design); não criou
+  nenhum conceito novo de feedback.
+- **Affordance de rolagem nas abas horizontais** (`.ds-abas`) — ver
+  auditoria de mobile acima.
+
+### Não implementado por bloqueio
+
+- Nenhum.
+
+Arquivos alterados: `js/ui.js`, `styles/design.css`, `js/design.js`,
+`js/auth.js`, `sw.js`, `migration_notificacoes_deeplink.sql` (nova).
+`VERSAO` → `2026-09-11-ag`, cache do service worker →
+`roteiros-b7-v50`.

@@ -125,7 +125,12 @@ select.ds-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 .ds-chip.em_criacao{background:var(--acento-suave);color:var(--acento);}
 .ds-chip.revisao_interna{background:rgba(58,30,134,.12);color:var(--violeta);}
 [data-theme="dark"] .ds-chip.revisao_interna{background:rgba(91,68,192,.2);color:#B9A8FF;}
-.ds-chip.ajustes,.ds-chip.ajustes_cliente{background:var(--erro-bg);color:var(--erro);}
+.ds-chip.ajustes{background:var(--erro-bg);color:var(--erro);}
+/* ajuste pedido pelo CLIENTE é uma origem diferente do ajuste interno
+   da B7 — antes as duas caíam no mesmo vermelho, sem jeito de saber de
+   longe quem pediu a mudança sem ler o texto; roxo é a mesma cor já
+   usada em kanban/calendário pra sinalizar "vem do cliente". */
+.ds-chip.ajustes_cliente{background:color-mix(in srgb,var(--roxo) 14%,transparent);color:var(--roxo);}
 .ds-chip.aprovado_interno,.ds-chip.aprovado_cliente{background:var(--ok-bg);color:var(--ok);}
 .ds-chip.aguardando_cliente{background:var(--ambar-bg);color:var(--ambar);}
 .ds-chip.finalizado{background:var(--suave);color:var(--ink-4);}
@@ -206,6 +211,10 @@ body.ds-ws-aberta{overflow:hidden;}
 
 .ds-ws-feedback{display:flex;gap:10px;align-items:flex-start;background:var(--erro-bg);color:var(--erro);
   border-radius:12px;padding:12px 14px;margin-bottom:20px;font-size:13px;line-height:1.5;}
+/* mesma distinção do .ds-chip.ajustes_cliente acima: feedback do
+   cliente em destaque no topo do workspace usa roxo, não o vermelho do
+   ajuste interno — pra não confundir "a B7 pediu" com "o cliente pediu". */
+.ds-ws-feedback.cliente{background:color-mix(in srgb,var(--roxo) 14%,transparent);color:var(--roxo);}
 .ds-ws-feedback svg{width:18px;height:18px;flex:none;margin-top:1px;}
 .ds-ws-feedback b{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px;}
 .ds-ws-feedback p{margin:0;color:inherit;white-space:pre-wrap;overflow-wrap:anywhere;}
@@ -461,7 +470,8 @@ body.ds-ws-aberta{overflow:hidden;}
 .dsc-meta i.hoje{color:var(--ambar);font-weight:700;}
 .dsc-motivo{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
   padding:2px 8px;border-radius:6px;background:var(--suave);color:var(--ink-3);}
-.dsc-motivo.ajuste,.dsc-motivo.cliente{background:var(--erro-bg);color:var(--erro);}
+.dsc-motivo.ajuste{background:var(--erro-bg);color:var(--erro);}
+.dsc-motivo.cliente{background:color-mix(in srgb,var(--roxo) 14%,transparent);color:var(--roxo);}
 .dsc-motivo.briefing{background:var(--ambar-bg);color:var(--ambar);}
 .dsc-motivo.comecar{background:var(--acento-suave);color:var(--acento);}
 .dsc-item .ds-prazo{margin-left:0;flex:none;min-width:0;}

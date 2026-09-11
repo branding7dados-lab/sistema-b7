@@ -407,12 +407,27 @@ B7.UI = (function () {
     const emCliente = /^#\/cliente\/([^/?]+)/.exec(rota);
     const contextuais = [];
 
+    /* Designer: produção interna, não administração (mesma regra de
+       B7.Perm.ROTAS/NAV — ver js/permissoes.js). Achado na auditoria da
+       Rodada `-m` e corrigido aqui, na Rodada 6: a paleta ignorava por
+       completo essas regras, então um atalho de teclado oferecia
+       exatamente as ações que o resto da interface esconde do Designer
+       — "Nova gravação"/"Novo cliente" (auditoria original), e também
+       "Novo status semanal"/"Novo conteúdo"/"Duplicar mês" (ações de
+       escrita que o botão correspondente na tela já esconde para
+       Designer, mas a paleta abria o modal direto) e "Abrir status
+       semanal"/"Ir para clientes"/"Ver gravações" (rotas que
+       B7.Perm.podeRota já recusa para Designer — o clique não quebrava,
+       mas caía numa tela de "sem permissão", link morto por definição). */
+    const souDesigner = !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario() && B7.Auth.papel && B7.Auth.papel() === 'designer');
+
     if (emLinha && window.B7.Linha && window.B7.BaixarLinha) {
       contextuais.push(
+        { ic: ICP.rot, rot: 'Baixar linha editorial', dica: 'gerar o documento',
+          fn: () => B7.BaixarLinha.abrir(emLinha[1]) });
+      if (!souDesigner) contextuais.push(
         { ic: ICP.mais, rot: 'Novo conteúdo', dica: 'nesta linha editorial',
           fn: () => B7.Linha.novoConteudo() },
-        { ic: ICP.rot, rot: 'Baixar linha editorial', dica: 'gerar o documento',
-          fn: () => B7.BaixarLinha.abrir(emLinha[1]) },
         { ic: ICP.rot, rot: 'Duplicar mês', dica: 'copiar para outro mês',
           fn: () => B7.Linha.duplicar() });
     }
@@ -430,7 +445,11 @@ B7.UI = (function () {
     }
 
 
-    const acoes = contextuais.concat([
+    const acoesComuns = [
+      { ic: ICP.play,   rot: 'Configurações',  dica: 'tema, densidade e dados',      fn: () => { location.hash = '#/config'; } },
+      { ic: ICP.play,   rot: 'Alternar tema',  dica: 'claro ou escuro',              fn: () => B7.alternarTema && B7.alternarTema() }
+    ];
+    const acoesEquipe = souDesigner ? [] : [
       { ic: ICP.mais,   rot: 'Novo status semanal', dica: 'acompanhamento de sete dias',
         fn: () => B7.Semana.modalNovo(emCliente ? emCliente[1] : null) },
       { ic: ICP.rot,    rot: 'Abrir status semanal', dica: 'lista de semanas',
@@ -438,10 +457,9 @@ B7.UI = (function () {
       { ic: ICP.mais,   rot: 'Nova gravação',  dica: 'começar um grupo de roteiros', fn: () => B7.Dashboard.modalNovaGravacao() },
       { ic: ICP.pessoa, rot: 'Novo cliente',   dica: 'cadastrar um cliente',         fn: () => B7.Dashboard.modalNovoCliente() },
       { ic: ICP.grav,   rot: 'Ir para clientes', dica: 'todos os workspaces',        fn: () => { location.hash = '#/clientes'; } },
-      { ic: ICP.grav,   rot: 'Ver gravações',  dica: 'todas as gravações',           fn: () => { location.hash = '#/gravacoes'; } },
-      { ic: ICP.play,   rot: 'Configurações',  dica: 'tema, densidade e dados',      fn: () => { location.hash = '#/config'; } },
-      { ic: ICP.play,   rot: 'Alternar tema',  dica: 'claro ou escuro',              fn: () => B7.alternarTema && B7.alternarTema() }
-    ]);
+      { ic: ICP.grav,   rot: 'Ver gravações',  dica: 'todas as gravações',           fn: () => { location.hash = '#/gravacoes'; } }
+    ];
+    const acoes = contextuais.concat(acoesEquipe, acoesComuns);
 
     const m = modal(
       '<div class="busca-cp"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +

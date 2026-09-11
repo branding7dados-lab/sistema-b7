@@ -90,19 +90,33 @@ Rodada 3 (Card+Capa de Reel antes do Carrossel).
   o ganho, já que o Coordenador continua usando esse arquivo do jeito
   que sempre usou.
 
-## Rodada 6 — Notificações, polimento e auditoria final
+## Rodada 6 — Notificações, polimento e auditoria final — ✅ entregue no build `2026-09-11-ag`
 Seções 24 (parte), 40-41, 45-46 da especificação, mais os retoques
 pequenos que foram anotados na auditoria da rodada `-m`.
-- Deep-links de notificação apontando para as novas telas operacionais
-- Distinção visual "Feedback interno B7" vs. "Feedback do cliente" (se
-  já existir feedback de cliente na arquitetura)
-- Auditoria de performance (sem N+1, sem uma subscription realtime por
-  card)
-- Auditoria completa de responsividade mobile de tudo que foi
-  construído nas rodadas 1-5
-- Ctrl+K: tirar "Nova gravação"/"Novo cliente" da paleta de comandos
-  para o Designer (achado na auditoria da rodada `-m`, ainda não
-  corrigido)
+- Ctrl+K corrigido para o Designer: além de "Nova gravação"/"Novo
+  cliente" (achado na rodada `-m`), a auditoria completa achou mais 4
+  ações vazando (2 navegações pra rota bloqueada, 2 ações de escrita
+  pulando o controle de acesso da própria página) — todas filtradas.
+- Deep-link de notificação corrigido: "linha concluída" apontava para
+  `#/design?linha=` (rota que nunca existiu); agora aponta para
+  `#/design/linha/:id`, a rota real desde a Rodada 2.
+  `migration_notificacoes_deeplink.sql` — não reescreve notificações
+  já enviadas, só as novas.
+- Distinção visual "Ajuste solicitado" (B7) × "Ajuste do cliente" nos
+  3 lugares que mostravam os dois com a mesma cor (chip de status,
+  rótulo da Central de Design, aviso no topo do workspace) — cliente
+  agora em roxo, B7 continua em vermelho.
+- Auditoria de performance: sem N+1, sem subscription por card (já
+  era um canal só e uma view só) — nada a corrigir.
+- Auditoria de responsividade mobile das rodadas 1-5 (Central,
+  navegador, página de demanda com as 4 abas, workspace): sem
+  overflow horizontal em nenhuma tela testada em 375px. Achado um
+  padrão de abas roláveis sem affordance visual, já existente desde a
+  Rodada 2 — documentado, não alterado (risco de última hora sem
+  ganho comprovado).
+- Escopo consciente: não existe "feedback do cliente" fora do que já
+  foi tratado (peças de Design e o fluxo de aprovação de roteiros em
+  `js/aprovacoes.js`) — nenhum conceito novo foi criado.
 
 ---
 
