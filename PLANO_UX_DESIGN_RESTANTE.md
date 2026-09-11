@@ -18,7 +18,7 @@ Seções 2-7 da especificação.
   contagem por formato, progresso real — dado real, sem inventar %)
 - "Demandas disponíveis" mais denso, sem cartões com espaço em branco
 
-## Rodada 2 — Design (navegador) + página de demanda
+## Rodada 2 — Design (navegador) + página de demanda — ✅ entregue no build `2026-09-11-o`
 Seções 9-13, 43 da especificação.
 - Layout mais denso da página "Design" (a fila ampla, com filtros)
 - Cabeçalho da página de demanda (Setembro 2026) como projeto de

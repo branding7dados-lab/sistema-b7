@@ -1364,3 +1364,73 @@ workspace de peça (Rodadas 3-4).
 - `VERSAO` → `2026-09-11-n`, cache do service worker → `roteiros-b7-v29`.
 - Nenhuma migration nova. Arquivos alterados: `js/design.js`,
   `js/app.js`, `styles/design.css`, `js/auth.js`, `sw.js`.
+
+## Build 2026-09-11-o — Rodada 2 do refino de UX do Design: navegador + página de demanda
+
+Segunda das seis rodadas de `PLANO_UX_DESIGN_RESTANTE.md` (seções
+9-13 e 43 da especificação).
+
+**O que mudou:**
+- **Navegador do Designer (`#/design`) mais denso.** "Demandas a
+  fazer" e "Minhas demandas" passaram a usar os mesmos componentes
+  ricos da Central (`linhaDisponivel`/`pacoteLinha`, de `js/design.js`)
+  em vez do cartão antigo (`ds-grupo-card`), que só mostrava contagem
+  simples. Agora cada linha mostra progresso real (%), quebra por
+  estado, formatos e prazo — a mesma linguagem visual em toda a
+  experiência do Designer, não duas versões parecidas. Os cartões de
+  peça individuais que apareciam soltos dentro de cada grupo saíram
+  daqui: o detalhe peça a peça agora é sempre a página de demanda.
+- **Página de demanda (`#/design/linha/:id`) como projeto de
+  verdade.** Cabeçalho reformulado: cliente, nome da linha, selo de
+  versão confirmada e a porcentagem real de conclusão em destaque
+  (`finalizadas ÷ total`) com barra de progresso logo abaixo — não é
+  mais um texto corrido "produção de Design desta linha (leitura)".
+  Progresso por formato deixou de ser só contagem ("4 Cards") e virou
+  fração real ("2/5 Cards, 1/2 Capas de Reel…"), com o chip marcado
+  quando o formato está 100% pronto.
+- **Abas por estado dentro da demanda**: Todas / Para fazer / Em
+  criação / Ajustes / Revisão / Finalizadas, cada uma com a contagem
+  real. Filtragem no cliente, sem nova consulta — a página busca as
+  peças da linha uma vez e as abas só recortam o que já está em
+  memória.
+- Realtime e ações (assumir, gaveta) agora atualizam a página de
+  demanda no lugar, sem perder a aba selecionada nem esperar uma nova
+  consulta completa: `agendarReleitura` mantém um cache próprio da
+  linha aberta (`itensLinha`), sincronizado peça a peça.
+- Correção de responsividade encontrada no teste: o botão "Ver
+  contexto da Linha Editorial…" estourava a largura da tela em
+  celular (herdava `white-space:nowrap` do botão padrão do sistema).
+  Corrigido para quebrar linha e ocupar a largura total abaixo de
+  760px.
+
+**Não mudou nesta rodada:** a barra de filtros do navegador do
+Designer continua só busca + tipo + prazo (o status agora vive nas
+abas da página de demanda, então não duplicamos o filtro); o quadro/
+lista da equipe (coordenação) não foi tocado — a especificação, e a
+auditoria da rodada `-m`, sempre trataram esse redesenho como algo do
+lado do Designer.
+
+**Testado:**
+- Playwright com Supabase simulado: 10 peças numa linha (todos os
+  estados representados, incluindo uma peça de OUTRO designer) mais
+  uma linha de outro cliente sem responsável. Navegador do Designer:
+  "Minhas demandas" mostra só as peças do próprio designer (8 de 9 —
+  a peça do outro designer fica de fora, como sempre); clicar na linha
+  leva à página de demanda. Página de demanda: cabeçalho com 33% e "3
+  de 9 finalizadas" batendo com os dados; chips "2/5 Cards, 1/2 Capas
+  de Reel, 0/1 Carrosséis, 0/1 Stories" corretos; abas com contagem
+  certa (Ajustes 3, Finalizadas 3…) e filtragem correta ao clicar;
+  abrir peça a partir da demanda abre a gaveta por cima da página
+  (não troca de tela); "Voltar ao Design" retorna ao navegador. Nota:
+  a página de demanda mostra a produção da linha INTEIRA (qualquer
+  designer), não só a do usuário — comportamento herdado de antes
+  desta rodada, mantido de propósito (é a vista de "o que está
+  acontecendo nesta linha", não a fila pessoal). Desktop 1280px e
+  celular 390px conferidos por screenshot; bug de responsividade
+  encontrado e corrigido (botão de contexto). Coordenador em `#/design`
+  (quadro, lista, equipe) sem regressão. Zero erros de console em
+  todos os casos.
+- `VERSAO` → `2026-09-11-o`, cache do service worker →
+  `roteiros-b7-v30`.
+- Nenhuma migration nova. Arquivos alterados: `js/design.js`,
+  `styles/design.css`, `js/auth.js`, `sw.js`.

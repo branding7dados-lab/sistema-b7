@@ -282,17 +282,17 @@ B7.Design = (function () {
     }
 
     if (!ehEquipe()) {
-      /* Central do designer: a Linha Editorial nunca precisa ser
-         visitada à parte para descobrir trabalho — "Demandas a fazer"
-         (sem responsável) e "Minhas demandas" (já assumidas) aparecem
-         aqui, já agrupadas por Linha Editorial. */
+      /* Navegador do designer: a fila inteira, agrupada por Linha
+         Editorial — "Demandas a fazer" (sem responsável) e "Minhas
+         demandas" (já assumidas), como pacotes densos (mesma
+         linguagem visual da Central: progresso real, formatos, prazo).
+         O detalhe peça a peça mora na página de demanda (abrirLinha). */
       const vis = filtrar(dados);
       const { minhas, semDono } = filaDoDesigner(vis);
       const total = painel().querySelector('#ds-total');
       if (total) total.textContent = (minhas.length + semDono.length) + ' peça' + (minhas.length + semDono.length === 1 ? '' : 's');
       area.innerHTML = viewCentralDesigner(minhas, semDono);
-      ligarCentralDesigner(area);
-      ligarThumbs(area);
+      ligarCentral(area);
       return;
     }
 
@@ -340,18 +340,21 @@ B7.Design = (function () {
   /* Navegador (#/design) do Designer: só a fila — "Precisa de mim" e
      "Continuar de onde parei" moram na Central (#/), para as duas
      telas não serem a mesma coisa com nome diferente. */
+  /* Todo o pacote é reaproveitado da Central (mesma linguagem visual:
+     progresso real, formatos, prazo) — o navegador mostra a fila
+     inteira em vez de só o que precisa de ação agora, e o detalhe
+     peça a peça mora na página de demanda (abrirLinha). */
   function viewCentralDesigner(minhas, semDono) {
     const gruposFazer = agruparPorLinha(semDono);
-    const gruposMinhas = agruparPorLinha(minhas);
+    const gruposMinhas = agruparPorLinha(minhas).map(g => Object.assign(g, resumoLinha(g.itens)))
+      .sort((a, b) => (a.concluida - b.concluida) || (b.ajustes - a.ajustes) || (a.linhaNome || '').localeCompare(b.linhaNome || ''));
     return '<div class="ds-central">' +
       '<section class="ds-central-sec"><h3>Demandas a fazer <span>' + semDono.length + '</span></h3>' +
-      (gruposFazer.length
-        ? gruposFazer.map(g => grupoFazerCartao(g)).join('')
+      (gruposFazer.length ? '<div class="dsc-disp">' + gruposFazer.map(linhaDisponivel).join('') + '</div>'
         : '<div class="estado-b7 leve"><p>Nenhuma demanda sem responsável no momento.</p></div>') +
       '</section>' +
       '<section class="ds-central-sec"><h3>Minhas demandas <span>' + minhas.length + '</span></h3>' +
-      (gruposMinhas.length
-        ? gruposMinhas.map(g => grupoMinhasCartao(g)).join('')
+      (gruposMinhas.length ? '<div class="dsc-linhas">' + gruposMinhas.map(pacoteLinha).join('') + '</div>'
         : '<div class="estado-b7 leve"><p>Nenhuma demanda atribuída a você ainda. Assuma uma acima.</p></div>') +
       '</section>' +
     '</div>';
@@ -364,76 +367,12 @@ B7.Design = (function () {
     return prazoInfo(comPrazo[0]);
   }
 
-  function grupoFazerCartao(g) {
-    const info = nearestPrazo(g.itens);
-    return '<article class="ds-grupo-card" data-grupo-abrir="' + esc(g.linhaId || '') + '">' +
-      '<div class="ds-grupo-info">' +
-        '<b>' + esc(g.linhaNome) + '</b>' +
-        (g.clienteNome ? '<span class="ds-cli">' + esc(g.clienteNome) + '</span>' : '') +
-        '<span class="ds-grupo-cont">' + g.itens.length + (g.itens.length === 1 ? ' peça' : ' peças') +
-          (info ? ' · ' + esc(info.txt) : '') + '</span>' +
-        chipsFormatos(g.itens) +
-      '</div>' +
-      (g.linhaId ? '<button class="b fina pri" data-assumir-linha="' + esc(g.linhaId) + '">Assumir demanda' + (g.itens.length > 1 ? ' (' + g.itens.length + ')' : '') + '</button>' : '') +
-    '</article>';
-  }
-
-  function grupoMinhasCartao(g) {
-    const total = g.itens.length;
-    const finalizadas = g.itens.filter(d => d.status === 'finalizado').length;
-    const ajustes = g.itens.filter(d => d.status === 'ajustes' || d.status === 'ajustes_cliente').length;
-    const pct = total ? Math.round((finalizadas / total) * 100) : 0;
-    const info = nearestPrazo(g.itens);
-    return '<article class="ds-grupo-card ds-grupo-minhas" data-grupo-abrir="' + esc(g.linhaId || '') + '">' +
-      '<div class="ds-grupo-info">' +
-        '<b>' + esc(g.linhaNome) + '</b>' +
-        (g.clienteNome ? '<span class="ds-cli">' + esc(g.clienteNome) + '</span>' : '') +
-        '<div class="ds-grupo-progresso"><span style="width:' + pct + '%"></span></div>' +
-        '<span class="ds-grupo-cont">' + finalizadas + ' de ' + total + ' finalizadas' +
-          (ajustes ? ' · <b class="alerta">' + ajustes + ' em ajuste</b>' : '') +
-          (info ? ' · ' + esc(info.txt) : '') + '</span>' +
-        chipsFormatos(g.itens) +
-      '</div>' +
-      '<div class="ds-lista ds-lista-grade">' + g.itens.slice().sort(ordenarPorUrgencia).slice(0, 4).map(cartao).join('') + '</div>' +
-      (total > 4 && g.linhaId ? '<button class="b fina contorno" data-grupo-abrir="' + esc(g.linhaId) + '">Ver as ' + total + ' peças desta linha</button>' : '') +
-    '</article>';
-  }
-
-  function ligarCentralDesigner(area) {
-    area.querySelectorAll('[data-grupo-abrir]').forEach(el => {
-      if (el.closest('[data-peca]')) return; /* não intercepta clique no cartão de peça dentro do grupo */
-      el.onclick = e => {
-        if (e.target.closest('[data-assumir-linha]') || e.target.closest('[data-peca]')) return;
-        const id = el.dataset.grupoAbrir;
-        if (id) abrirLinha(id);
-      };
-    });
-    area.querySelectorAll('[data-peca]').forEach(el => el.onclick = e => {
-      if (e.target.closest('[data-check]')) return; abrirDetalhe(el.dataset.peca);
-    });
-    area.querySelectorAll('[data-assumir-linha]').forEach(b => b.onclick = async e => {
-      e.stopPropagation();
-      const linhaId = b.dataset.assumirLinha;
-      b.disabled = true; b.textContent = 'Assumindo…';
-      try {
-        const r = await B7.DB.assumirDemandaLinha(linhaId);
-        const n = (r && r.assumidas) || 0;
-        if (n > 0) B7.UI.toast(n === 1 ? '1 demanda assumida' : n + ' demandas assumidas');
-        else B7.UI.toast('Nenhuma demanda sobrou para assumir — alguém já pegou.', { tipo: 'aviso' });
-        const linhas = await B7.DB.listarDesign();
-        dados = linhas || [];
-        redesenharTela();
-      } catch (e2) {
-        b.disabled = false; b.textContent = 'Assumir demanda';
-        B7.UI.toast('Não foi possível assumir: ' + (e2.message || ''), { tipo: 'erro' });
-      }
-    });
-  }
-
-  /* redesenha o que estiver montado — o navegador (#ds-area) ou a
-     Central (#dsc-raiz) — a partir de `dados`, sem nova consulta */
+  /* redesenha o que estiver montado — o navegador (#ds-area), a
+     Central (#dsc-raiz) ou a página de demanda (#ds-linha-raiz) — a
+     partir dos dados já em memória, sem nova consulta */
   function redesenharTela() {
     if (painel().querySelector('#dsc-raiz')) desenharCentral();
+    else if (painel().querySelector('#ds-linha-raiz') && linhaAberta) desenharLinha();
     else if (painel().querySelector('#ds-area')) desenharArea();
   }
 
@@ -635,55 +574,94 @@ B7.Design = (function () {
   }
 
   /* =================================================================
-     VISTA POR LINHA EDITORIAL — leitura da produção de Design daquela
-     linha, para o Designer não precisar abrir o editor completo da
-     Linha Editorial só para ver o que está em jogo ali.
+     PÁGINA DE DEMANDA — a produção de Design de UMA Linha Editorial,
+     como projeto de verdade: cliente, versão confirmada, progresso
+     real e abas por estado. O Designer não precisa abrir o editor
+     completo da Linha Editorial só para ver o que está em jogo ali.
      ================================================================= */
+  const ABAS_LINHA = [
+    ['todas', 'Todas'], ['fazer', 'Para fazer'], ['criacao', 'Em criação'],
+    ['ajustes', 'Ajustes'], ['revisao', 'Revisão'], ['finalizadas', 'Finalizadas']
+  ];
+  const STATUS_DA_ABA_LINHA = {
+    fazer: ['aguardando_producao'], criacao: ['em_criacao'],
+    ajustes: ['ajustes', 'ajustes_cliente'],
+    revisao: ['revisao_interna', 'aprovado_interno', 'aguardando_cliente', 'aprovado_cliente'],
+    finalizadas: ['finalizado']
+  };
+  let linhaAberta = null;   /* id da linha aberta na página de demanda, ou null */
+  let itensLinha = [];      /* peças dessa linha — cache local para as abas não refazerem consulta */
+  let abaLinha = 'todas';
+
   async function abrirLinha(linhaId) {
+    linhaAberta = linhaId; abaLinha = 'todas';
     B7.Dashboard.marcarNav('#/design');
     B7.Rota.titulo(['Design', 'Linha']);
     painel().innerHTML = '<div class="conteudo design-tela">' + B7.UI.skeleton('tabela', { n: 5, cols: 3 }) + '</div>';
-    let itens;
-    try { itens = await B7.DB.listarDesign({ linhaId }); }
+    try { itensLinha = await B7.DB.listarDesign({ linhaId }); }
     catch (e) {
       painel().innerHTML = '<div class="conteudo entra"><div class="estado-b7"><b>Não foi possível carregar esta linha.</b><p>' + esc(e.message || '') + '</p></div></div>';
+      linhaAberta = null;
       return;
     }
+    desenharLinha();
+    assinar();
+  }
+
+  function desenharLinha() {
+    const itens = itensLinha;
     const nome = (itens[0] && itens[0].linha_nome) || 'Linha editorial';
     const cliente = itens[0] && itens[0].cliente_nome;
-    const clienteId = itens[0] && itens[0].client_id;
     const versao = itens[0] && itens[0].linha_versao_confirmada;
+    const total = itens.length;
+    const finalizadas = itens.filter(d => d.status === 'finalizado').length;
+    const pct = total ? Math.round((finalizadas / total) * 100) : 0;
     const semDono = itens.filter(d => !d.designer_id);
-    painel().innerHTML = '<div class="conteudo entra design-tela">' +
-      '<div class="cab-conteudo"><div>' +
-        '<button class="b fina contorno" id="ds-voltar" style="margin-bottom:8px">← Voltar ao Design</button>' +
-        '<h1>' + esc(nome) + (versao ? '<span class="ds-v-badge">V' + String(versao).padStart(2, '0') + '</span>' : '') + '</h1>' +
-        (cliente ? '<p>' + esc(cliente) + ' · produção de Design desta linha (leitura)</p>' : '<p>Produção de Design desta linha (leitura)</p>') +
+    const statusAba = STATUS_DA_ABA_LINHA[abaLinha];
+    const vis = (statusAba ? itens.filter(d => statusAba.includes(d.status)) : itens).slice().sort(ordenarPorUrgencia);
+
+    painel().innerHTML = '<div class="conteudo entra design-tela" id="ds-linha-raiz">' +
+      '<button class="b fina contorno" id="ds-voltar" style="margin-bottom:12px">← Voltar ao Design</button>' +
+      '<div class="dl-cab">' +
+        '<div class="dl-cab-tx">' +
+          (cliente ? '<span class="dsc-cli">' + esc(cliente) + '</span>' : '') +
+          '<h1>' + esc(nome) + (versao ? '<span class="ds-v-badge">V' + String(versao).padStart(2, '0') + '</span>' : '') + '</h1>' +
+        '</div>' +
+        '<div class="dl-cab-pct"><b>' + pct + '%</b><span>' + finalizadas + ' de ' + total + ' finalizada' + (total === 1 ? '' : 's') + '</span></div>' +
       '</div>' +
-      (ehDesigner() && semDono.length ? '<button class="b pri" id="ds-assumir-tudo">Assumir demanda (' + semDono.length + ')</button>' : '') +
-      '</div>' +
+      '<div class="ds-grupo-progresso dl-progresso"><span style="width:' + pct + '%"></span></div>' +
+      (ehDesigner() && semDono.length ? '<button class="b pri dl-assumir" id="ds-assumir-tudo">Assumir demanda (' + semDono.length + ')</button>' : '') +
       resumoProducao(itens) +
-      (linhaId ? '<button class="b fina contorno ds-ver-contexto" id="ds-ver-contexto">Ver contexto da Linha Editorial (estratégia, pilares, outros criativos)</button>' : '') +
-      (itens.length ? '<div class="ds-lista ds-lista-grade">' + itens.slice().sort(ordenarPorUrgencia).map(cartao).join('') + '</div>'
-        : '<div class="estado-b7"><b>Nenhuma peça de Design nesta linha ainda.</b></div>') +
+      (linhaAberta ? '<button class="b fina contorno ds-ver-contexto" id="ds-ver-contexto">Ver contexto da Linha Editorial (estratégia, pilares, outros criativos)</button>' : '') +
+      ('<nav class="ds-abas dl-abas" role="tablist">' + ABAS_LINHA.map(([k, r]) => {
+        const n = k === 'todas' ? total : itens.filter(d => STATUS_DA_ABA_LINHA[k].includes(d.status)).length;
+        return '<button role="tab" data-aba-linha="' + k + '" class="' + (abaLinha === k ? 'on' : '') + '" aria-selected="' + (abaLinha === k) + '">' +
+          esc(r) + (n ? ' <b>' + n + '</b>' : '') + '</button>';
+      }).join('') + '</nav>') +
+      (vis.length ? '<div class="ds-lista ds-lista-grade">' + vis.map(cartao).join('') + '</div>'
+        : '<div class="estado-b7"><b>' + (total ? 'Nada nesta aba.' : 'Nenhuma peça de Design nesta linha ainda.') + '</b></div>') +
     '</div>';
-    const contexto = painel().querySelector('#ds-ver-contexto');
-    if (contexto) contexto.onclick = () => location.hash = '#/linha/' + linhaId;
+
     const voltar = painel().querySelector('#ds-voltar');
-    if (voltar) voltar.onclick = () => abrir();
+    if (voltar) voltar.onclick = () => { linhaAberta = null; abrir(); };
+    const contexto = painel().querySelector('#ds-ver-contexto');
+    if (contexto) contexto.onclick = () => location.hash = '#/linha/' + linhaAberta;
     const assumirTudo = painel().querySelector('#ds-assumir-tudo');
     if (assumirTudo) assumirTudo.onclick = async () => {
       assumirTudo.disabled = true; assumirTudo.textContent = 'Assumindo…';
       try {
-        const r = await B7.DB.assumirDemandaLinha(linhaId);
+        const r = await B7.DB.assumirDemandaLinha(linhaAberta);
         const n = (r && r.assumidas) || 0;
         B7.UI.toast(n > 0 ? (n === 1 ? '1 demanda assumida' : n + ' demandas assumidas') : 'Nenhuma demanda sobrou para assumir.');
-        abrirLinha(linhaId);
+        const linhas = await B7.DB.listarDesign();
+        dados = linhas || [];
+        desenharLinha();
       } catch (e) {
         assumirTudo.disabled = false; assumirTudo.textContent = 'Assumir demanda';
         B7.UI.toast('Não foi possível assumir: ' + (e.message || ''), { tipo: 'erro' });
       }
     };
+    painel().querySelectorAll('[data-aba-linha]').forEach(b => b.onclick = () => { abaLinha = b.dataset.abaLinha; desenharLinha(); });
     painel().querySelectorAll('[data-peca]').forEach(el => el.onclick = () => abrirDetalhe(el.dataset.peca));
     ligarThumbs(painel());
   }
@@ -775,16 +753,30 @@ B7.Design = (function () {
       '<span class="ds-resumo-chip">' + esc(rotuloTipoContagem(t, n)) + '</span>').join('') + '</div>';
   }
 
+  /* progresso REAL por formato — "3/4 Cards, 1/2 Carrosséis" — nunca
+     só a contagem: finalizada ÷ total daquele formato, na linha atual */
+  function chipsProgressoFormato(itens) {
+    const porTipo = new Map();
+    itens.forEach(d => {
+      if (!porTipo.has(d.tipo)) porTipo.set(d.tipo, { total: 0, feitas: 0 });
+      const g = porTipo.get(d.tipo); g.total++; if (d.status === 'finalizado') g.feitas++;
+    });
+    const formatos = [...porTipo.entries()].sort((a, b) => b[1].total - a[1].total);
+    return '<div class="ds-resumo-formatos">' + formatos.map(([t, g]) =>
+      '<span class="ds-resumo-chip' + (g.feitas === g.total ? ' feito' : '') + '">' + g.feitas + '/' + g.total + ' ' +
+      esc(PLURAL_TIPO[t] || rotuloTipo(t)) + '</span>').join('') + '</div>';
+  }
+
   function resumoProducao(itens) {
     if (!itens.length) return '';
     const total = itens.length;
     const finalizadas = itens.filter(d => d.status === 'finalizado').length;
     const ajustes = itens.filter(d => d.status === 'ajustes' || d.status === 'ajustes_cliente').length;
-    const emRevisao = itens.filter(d => d.status === 'revisao_interna').length;
+    const emRevisao = itens.filter(d => ['revisao_interna', 'aprovado_interno', 'aguardando_cliente', 'aprovado_cliente'].includes(d.status)).length;
     const aFazer = total - finalizadas - ajustes - emRevisao;
     return '<div class="ds-resumo-producao">' +
       '<div class="ds-resumo-total">' + total + (total === 1 ? ' peça de Design' : ' peças de Design') + '</div>' +
-      chipsFormatos(itens) +
+      chipsProgressoFormato(itens) +
       '<div class="ds-resumo-status">' +
         (finalizadas ? '<span>' + finalizadas + ' finalizada' + (finalizadas === 1 ? '' : 's') + '</span>' : '') +
         (ajustes ? '<span class="alerta">' + ajustes + ' em ajuste' + (ajustes === 1 ? '' : 's') + '</span>' : '') +
@@ -1081,9 +1073,16 @@ B7.Design = (function () {
           const linha = await B7.DB.design(pid);
           const i = dados.findIndex(x => x.id === pid);
           if (i >= 0) dados[i] = linha; else dados.push(linha);
+          /* página de demanda tem cache próprio (itensLinha) — pode
+             estar aberta sem `dados` ter sido carregado (link direto) */
+          const j = itensLinha.findIndex(x => x.id === pid);
+          if (j >= 0) itensLinha[j] = linha;
+          else if (linhaAberta && linha.linha_id === linhaAberta) itensLinha.push(linha);
         } catch (e) {
           const i = dados.findIndex(x => x.id === pid);
           if (i >= 0) dados.splice(i, 1);
+          const j = itensLinha.findIndex(x => x.id === pid);
+          if (j >= 0) itensLinha.splice(j, 1);
         }
       }
       redesenharTela();
