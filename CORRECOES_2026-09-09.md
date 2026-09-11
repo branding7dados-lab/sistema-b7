@@ -3146,3 +3146,86 @@ quebrado/vazio, sem avisar nada — bug antigo, silencioso.
 Arquivos alterados: `js/database.js`, `js/design.js`,
 `migration_design_thumb.sql`, `js/auth.js`, `sw.js`. `VERSAO` →
 `2026-09-11-ae`, cache do service worker → `roteiros-b7-v48`.
+
+## Build 2026-09-11-af — Rodada 5b: Linha Editorial do Designer como componente próprio
+
+Parte 2 da Rodada 5 (a parte 1, miniatura otimizada, foi o build
+`-ae`). A página de demanda do Design (`#/design/linha/:id`, que já
+existia desde a Rodada 2) tinha um botão "Ver contexto da Linha
+Editorial" que levava o Designer PRA FORA do Design inteiro — pro
+editor completo da Linha Editorial (`#/linha/:id`), pensado pro
+Coordenador editar, com os 5 abas dele e todos os campos abertos, só
+desabilitados pra quem é designer. Pra ver 3 informações de leitura
+(objetivo do mês, pilares, referências), o Designer saía da tela onde
+estava trabalhando e caía num editor que não é dele.
+
+### Implementado e testado
+
+- A página de demanda ganhou 4 abas de topo — **Peças de Design /
+  Contexto / Pilares / Referências** — substituindo o botão "Ver
+  contexto". As 4 vivem na mesma tela, sem navegação de página:
+  - **Peças de Design**: exatamente o que já existia ali (resumo por
+    status, subabas Todas/Para fazer/Em criação/Ajustes/Revisão/
+    Finalizadas, grade de peças) — só reorganizado como a primeira
+    aba, sem nenhuma mudança de comportamento.
+  - **Contexto**: objetivo do período, informações gerais (período,
+    canais, meta de conteúdos) e posicionamento (marca, tom de voz,
+    proposta única de valor, percepção desejada) — tudo texto puro,
+    nada de input desabilitado fingindo ser editável.
+  - **Pilares**: os pilares de conteúdo do mês (nome, percentual,
+    funil, objetivo, observações), com o aviso de soma (100%/faltam/
+    passa) — mesma linguagem visual do cartão de pilar só-leitura que
+    já existia dentro da Estratégia.
+  - **Referências**: os links de referência do mês, um por linha,
+    como lista clicável de verdade (antes era um campo de texto
+    desabilitado, ficava tudo junto sem quebra visual nem link
+    clicável).
+  - As 3 abas novas buscam a linha e os pilares só na primeira vez que
+    a pessoa clica numa delas (nunca de cara) — fica em cache pelo
+    resto da visita a essa linha, sem refazer a consulta ao trocar de
+    aba e voltar.
+  - Todas as 4 abas são construídas DENTRO de `js/design.js` — não
+    tocam em `js/linha.js` nem reaproveitam nenhum código pensado pra
+    edição do Coordenador. `js/linha.js` continua existindo do jeito
+    que sempre foi, intacto, como o editor completo do Coordenador.
+  - Testado com Playwright: as 4 abas aparecem e trocam de conteúdo
+    corretamente; nenhuma das 3 abas novas tem input/textarea/select
+    (somente leitura de verdade, não input desabilitado); Pilares não
+    tem botão de remover; Referências separa link de texto solto (só
+    vira `<a>` clicável o que começa com `http://`/`https://`);
+    estado vazio limpo quando a linha não tem contexto/pilares/
+    referências cadastrados, em vez de seção em branco; a mesma tela
+    testada como Coordenador mostra as mesmas 4 abas, também somente
+    leitura (não é feature exclusiva do Designer — é sempre um resumo
+    de apoio, nunca o editor). `node --check` em `js/design.js` e
+    `js/linha.js`. Rerrodei a suíte de regressão das Rodadas 2, 3, 4 e
+    5a (página de demanda do Coordenador, Card, Reel, Carrossel,
+    Stories, miniaturas) e a suíte de tipo de pilar — sem nenhuma
+    quebra.
+
+### Não implementado por decisão consciente
+
+- **Distribuição real × planejado dos pilares** não aparece na aba
+  Pilares — esse número precisa da lista de criativos da linha
+  inteira, e decidi não buscar ela só pra essas 3 abas de contexto
+  (mais uma consulta, pra um dado que já está disponível no editor
+  completo do Coordenador). A aba Pilares mostra o planejado
+  (percentual/funil/objetivo/observações), não o real.
+- **As checagens de `souDesignerSomenteLeitura()` dentro de
+  `js/linha.js` não foram removidas.** O objetivo funcional da Rodada
+  5b (o Designer não depender mais de `js/linha.js` no caminho normal)
+  foi alcançado — ele não passa mais por lá. Mas `js/linha.js`
+  continua alcançável por outros links (busca global, "próximo
+  conteúdo" no dashboard), então essas checagens continuam servindo de
+  rede de segurança pra esses casos, e removê-las traria risco de
+  regressão no editor do Coordenador sem nenhum ganho visível pra
+  ninguém — decidi não mexer.
+
+### Não implementado por bloqueio
+
+- Nenhum.
+
+Arquivos alterados: `js/design.js`, `js/linha.js` (só um comentário,
+sem mudança de comportamento), `styles/design.css`, `js/auth.js`,
+`sw.js`. `VERSAO` → `2026-09-11-af`, cache do service worker →
+`roteiros-b7-v49`.

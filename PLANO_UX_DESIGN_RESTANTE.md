@@ -66,17 +66,29 @@ Rodada 3 (Card+Capa de Reel antes do Carrossel).
   quando o último preview é vídeo/PDF/outro formato que não dá pra
   desenhar como imagem (bug antigo corrigido de quebra)
 
-### Rodada 5b — Linha Editorial do Designer como componente próprio
-- Linha Editorial do Designer como componente próprio (não mais
-  `js/linha.js` com `if` de papel) — abre caminho para um futuro
-  Videomaker sem reescrever a base
-- Navegação operacional reduzida (Peças de Design / Contexto /
-  Pilares / Referências, em vez das 5 abas do Coordenador)
-- Ainda não iniciada: é um refactor bem maior (extrair um componente
-  novo de um `js/linha.js` com quase 1700 linhas hoje compartilhado
-  pelos dois papéis, com uns 20 pontos de checagem de papel espalhados)
-  e merece rodada própria, testada de ponta a ponta antes de seguir —
-  não dava pra entrar com segurança no mesmo build da 5a.
+### Rodada 5b — Linha Editorial do Designer como componente próprio — ✅ entregue no build `2026-09-11-af`
+- Navegação operacional reduzida: a página de demanda do Design
+  (`#/design/linha/:id`, que já existia desde a Rodada 2) ganhou 4
+  abas de topo — Peças de Design / Contexto / Pilares / Referências —
+  em vez do botão "Ver contexto" que levava pra fora do Design, pro
+  editor completo de 5 abas do Coordenador.
+- As 3 abas novas (Contexto, Pilares, Referências) são um componente
+  próprio dentro de `js/design.js`, sempre somente leitura — não tocam
+  em `js/linha.js`. Abre caminho pra um futuro Videomaker sem
+  reescrever a base.
+- Escopo consciente: não busca a lista de criativos da linha só pra
+  essas 3 abas (evita uma consulta a mais); por isso Pilares mostra o
+  planejado (percentual/funil/objetivo) mas não a distribuição real×
+  planejado, que continua só no editor completo do Coordenador.
+- `js/linha.js` continua existindo, intacto, como o editor completo do
+  Coordenador (`#/linha/:id`) — inclusive as checagens de
+  `souDesignerSomenteLeitura()` que já existiam nele continuam como
+  rede de segurança para quem chegar lá por outro caminho (busca,
+  "próximo conteúdo" no dashboard). A limpeza completa dessas
+  checagens (removê-las de dentro de `js/linha.js` de vez) ficou fora
+  do escopo — não é user-facing e tem risco de regressão maior do que
+  o ganho, já que o Coordenador continua usando esse arquivo do jeito
+  que sempre usou.
 
 ## Rodada 6 — Notificações, polimento e auditoria final
 Seções 24 (parte), 40-41, 45-46 da especificação, mais os retoques

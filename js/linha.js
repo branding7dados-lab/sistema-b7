@@ -206,10 +206,12 @@ B7.Linha = (function () {
         '<button class="b clara" data-baixar-linha>Baixar PDF</button>' +
         /* O menu "⋯" é só de gestão da Linha Editorial (duplicar, status,
            enviar para aprovação do cliente, portal, arquivar, excluir) —
-           nada disso é ação do Designer. Ele chega aqui pelo link "Ver
-           contexto da Linha Editorial" (B7.Design.abrirLinha), só para
-           entender o briefing; a produção de Design dele fica na própria
-           Central de Design, não aqui. */
+           nada disso é ação do Designer. Desde a Rodada 5b, o caminho
+           normal do Designer (as abas Contexto/Pilares/Referências da
+           página de demanda, B7.Design.desenharLinha) nem passa mais por
+           esta tela — mas ele ainda pode chegar aqui por outros links
+           (busca, "próximo conteúdo" no dashboard), então estas checagens
+           continuam servindo de rede de segurança, não são código morto. */
         (C.souDesignerSomenteLeitura() ? '' :
         '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
           '<button data-duplicar-linha>Duplicar para outro mês</button>' +

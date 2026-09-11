@@ -744,8 +744,29 @@ B7.Design = (function () {
   let itensLinha = [];      /* peças dessa linha — cache local para as abas não refazerem consulta */
   let abaLinha = 'todas';
 
+  /* Rodada 5b: as outras 3 abas da página de demanda (Contexto/Pilares/
+     Referências) — SÓ leitura, sempre, pros dois papéis que abrem essa
+     tela. Antes disso, o botão "Ver contexto da Linha Editorial" levava
+     pra fora do Design inteiro (`#/linha/:id`, o editor completo de
+     verdade, com os 5 abas do Coordenador e todos os campos abertos —
+     só desabilitados pra quem é designer). Isso obrigava o Designer a
+     sair da tela de peças pra ver de que trata a linha, e reaproveitava
+     `js/linha.js` (pensado pra edição do Coordenador) só pra mostrar
+     3 informações de leitura. Agora as 4 "abas" (Peças de Design /
+     Contexto / Pilares / Referências) vivem na MESMA tela, sem sair do
+     Design nem tocar em `js/linha.js` — um componente próprio,
+     começando por esta página (abre caminho pra um dia fazer o mesmo
+     com a fila de Criativos/Postagens, se um Videomaker precisar). */
+  const ABAS_LINHA_TOPO = [
+    ['pecas', 'Peças de Design'], ['contexto', 'Contexto'],
+    ['pilares', 'Pilares'], ['referencias', 'Referências']
+  ];
+  let abaLinhaTopo = 'pecas';
+  let contextoLinha = null;  /* { linha, pilares } | { erro: true } | null (ainda não pedido) */
+
   async function abrirLinha(linhaId) {
     linhaAberta = linhaId; abaLinha = 'todas';
+    abaLinhaTopo = 'pecas'; contextoLinha = null;
     B7.Dashboard.marcarNav('#/design');
     B7.Rota.titulo(['Design', 'Linha']);
     painel().innerHTML = '<div class="conteudo design-tela">' + B7.UI.skeleton('tabela', { n: 5, cols: 3 }) + '</div>';
@@ -768,8 +789,6 @@ B7.Design = (function () {
     const finalizadas = itens.filter(d => d.status === 'finalizado').length;
     const pct = total ? Math.round((finalizadas / total) * 100) : 0;
     const semDono = itens.filter(d => !d.designer_id);
-    const statusAba = STATUS_DA_ABA_LINHA[abaLinha];
-    const vis = (statusAba ? itens.filter(d => statusAba.includes(d.status)) : itens).slice().sort(ordenarPorUrgencia);
 
     painel().innerHTML = '<div class="conteudo entra design-tela" id="ds-linha-raiz">' +
       '<button class="b fina contorno" id="ds-voltar" style="margin-bottom:12px">← Voltar ao Design</button>' +
@@ -782,21 +801,18 @@ B7.Design = (function () {
       '</div>' +
       '<div class="ds-grupo-progresso dl-progresso"><span style="width:' + pct + '%"></span></div>' +
       (ehDesigner() && semDono.length ? '<button class="b pri dl-assumir" id="ds-assumir-tudo">Assumir demanda (' + semDono.length + ')</button>' : '') +
-      resumoProducao(itens) +
-      (linhaAberta ? '<button class="b fina contorno ds-ver-contexto" id="ds-ver-contexto">Ver contexto da Linha Editorial (estratégia, pilares, outros criativos)</button>' : '') +
-      ('<nav class="ds-abas dl-abas" role="tablist">' + ABAS_LINHA.map(([k, r]) => {
-        const n = k === 'todas' ? total : itens.filter(d => STATUS_DA_ABA_LINHA[k].includes(d.status)).length;
-        return '<button role="tab" data-aba-linha="' + k + '" class="' + (abaLinha === k ? 'on' : '') + '" aria-selected="' + (abaLinha === k) + '">' +
-          esc(r) + (n ? ' <b>' + n + '</b>' : '') + '</button>';
-      }).join('') + '</nav>') +
-      (vis.length ? '<div class="ds-lista ds-lista-grade">' + vis.map(cartao).join('') + '</div>'
-        : '<div class="estado-b7"><b>' + (total ? 'Nada nesta aba.' : 'Nenhuma peça de Design nesta linha ainda.') + '</b></div>') +
+      ('<nav class="ds-abas dl-abas-topo" role="tablist">' + ABAS_LINHA_TOPO.map(([k, r]) =>
+        '<button role="tab" data-aba-linha-topo="' + k + '" class="' + (abaLinhaTopo === k ? 'on' : '') + '" aria-selected="' + (abaLinhaTopo === k) + '">' +
+          esc(r) + '</button>').join('') + '</nav>') +
+      (abaLinhaTopo === 'pecas' ? corpoPecas(itens, total)
+        : abaLinhaTopo === 'contexto' ? corpoContexto()
+        : abaLinhaTopo === 'pilares' ? corpoPilares()
+        : corpoReferencias()) +
     '</div>';
 
     const voltar = painel().querySelector('#ds-voltar');
     if (voltar) voltar.onclick = () => { linhaAberta = null; abrir(); };
-    const contexto = painel().querySelector('#ds-ver-contexto');
-    if (contexto) contexto.onclick = () => location.hash = '#/linha/' + linhaAberta;
+    painel().querySelectorAll('[data-aba-linha-topo]').forEach(b => b.onclick = () => trocarAbaLinhaTopo(b.dataset.abaLinhaTopo));
     const assumirTudo = painel().querySelector('#ds-assumir-tudo');
     if (assumirTudo) assumirTudo.onclick = async () => {
       assumirTudo.disabled = true; assumirTudo.textContent = 'Assumindo…';
@@ -815,6 +831,142 @@ B7.Design = (function () {
     painel().querySelectorAll('[data-aba-linha]').forEach(b => b.onclick = () => { abaLinha = b.dataset.abaLinha; desenharLinha(); });
     painel().querySelectorAll('[data-peca]').forEach(el => el.onclick = () => abrirDetalhe(el.dataset.peca));
     ligarThumbs(painel());
+  }
+
+  /* aba "Peças de Design" — exatamente o corpo que já existia aqui
+     antes da Rodada 5b (resumo por status + subabas + grade de peças),
+     só extraído pra função própria porque agora divide a tela com as
+     outras 3 abas. */
+  function corpoPecas(itens, total) {
+    const statusAba = STATUS_DA_ABA_LINHA[abaLinha];
+    const vis = (statusAba ? itens.filter(d => statusAba.includes(d.status)) : itens).slice().sort(ordenarPorUrgencia);
+    return resumoProducao(itens) +
+      ('<nav class="ds-abas dl-abas" role="tablist">' + ABAS_LINHA.map(([k, r]) => {
+        const n = k === 'todas' ? total : itens.filter(d => STATUS_DA_ABA_LINHA[k].includes(d.status)).length;
+        return '<button role="tab" data-aba-linha="' + k + '" class="' + (abaLinha === k ? 'on' : '') + '" aria-selected="' + (abaLinha === k) + '">' +
+          esc(r) + (n ? ' <b>' + n + '</b>' : '') + '</button>';
+      }).join('') + '</nav>') +
+      (vis.length ? '<div class="ds-lista ds-lista-grade">' + vis.map(cartao).join('') + '</div>'
+        : '<div class="estado-b7"><b>' + (total ? 'Nada nesta aba.' : 'Nenhuma peça de Design nesta linha ainda.') + '</b></div>');
+  }
+
+  /* =================================================================
+     Rodada 5b — CONTEXTO / PILARES / REFERÊNCIAS: as outras 3 abas,
+     sempre somente leitura (pros dois papéis que passam por aqui — não
+     é a tela de edição, é um resumo de apoio pra quem vai produzir a
+     peça). Buscam a linha e os pilares sob demanda, na primeira vez que
+     a pessoa clica numa dessas abas — nunca de cara, pra não pesar
+     quem só quer ver as peças (o caso mais comum). `contextoLinha` fica
+     em cache pelo resto da visita a esta linha; zera em abrirLinha().
+
+     Decisão consciente: NÃO busca `listarConteudos` (a lista de
+     criativos da linha) só pra estas abas — evitaria uma consulta a
+     mais e a aba "Peças de Design" já mostra o resumo de produção real.
+     Por isso a aba Pilares aqui mostra o planejado (percentual/funil/
+     objetivo) mas não a distribuição real×planejado (que precisa dos
+     criativos) — essa continua só no editor completo da Linha Editorial
+     (`#/linha/:id`, Coordenador).
+     ================================================================= */
+  async function trocarAbaLinhaTopo(k) {
+    abaLinhaTopo = k;
+    if (k !== 'pecas' && !contextoLinha) {
+      desenharLinha();   /* mostra o esqueleto de carregamento já */
+      try {
+        const [linha, pilares] = await Promise.all([
+          B7.DB.linha(linhaAberta), B7.DB.listarPilares(linhaAberta).catch(() => [])
+        ]);
+        contextoLinha = { linha, pilares };
+      } catch (e) { contextoLinha = { erro: true }; }
+      if (abaLinhaTopo === k) desenharLinha();
+      return;
+    }
+    desenharLinha();
+  }
+
+  function blocoCarregandoOuErro() {
+    if (!contextoLinha) return B7.UI.skeleton('detalhe');
+    if (contextoLinha.erro) return '<div class="estado-b7"><b>Não foi possível carregar.</b><p>Tenta de novo em instantes.</p></div>';
+    return null;
+  }
+
+  /* texto de leitura — nada aparece quando vazio, igual ao resto do
+     app (nunca mostra rótulo com campo em branco embaixo) */
+  function blocoTexto(rot, v) {
+    return !String(v || '').trim() ? '' :
+      '<div class="bloco mb"><h3>' + esc(rot) + '</h3><p class="texto-bloco">' + esc(v) + '</p></div>';
+  }
+
+  function corpoContexto() {
+    const carregando = blocoCarregandoOuErro();
+    if (carregando) return carregando;
+    const l = contextoLinha.linha;
+    const canais = (l.canais || '').split(',').map(x => x.trim()).filter(Boolean);
+    const periodo = (l.periodo_inicio || l.periodo_fim)
+      ? (l.periodo_inicio ? B7.UI.dataBR(l.periodo_inicio) : '…') + ' – ' + (l.periodo_fim ? B7.UI.dataBR(l.periodo_fim) : '…')
+      : null;
+
+    const geral = (periodo || canais.length || l.meta_conteudos)
+      ? '<div class="bloco mb"><h3>Informações gerais</h3>' +
+          (periodo ? '<div class="pl-campo"><b>PERÍODO</b><p>' + esc(periodo) + '</p></div>' : '') +
+          (canais.length ? '<div class="pl-campo"><b>CANAIS</b><div class="chips-canais">' +
+            canais.map(c => '<span class="chip-canal on">' + esc(c) + '</span>').join('') + '</div></div>' : '') +
+          (l.meta_conteudos ? '<div class="pl-campo"><b>META DE CONTEÚDOS</b><p>' + esc(l.meta_conteudos) + '</p></div>' : '') +
+        '</div>' : '';
+
+    const posicionamento = (l.posicionamento || l.tom_voz || l.puv || l.percepcao)
+      ? '<div class="bloco"><h3>Posicionamento</h3>' +
+          blocoLeituraCampo('A MARCA SE POSICIONA COMO', l.posicionamento) +
+          blocoLeituraCampo('TOM DE VOZ', l.tom_voz) +
+          blocoLeituraCampo('PROPOSTA ÚNICA DE VALOR', l.puv) +
+          blocoLeituraCampo('PERCEPÇÃO DESEJADA', l.percepcao) +
+        '</div>' : '';
+
+    const nada = !l.objetivo && !geral && !posicionamento;
+    if (nada) return '<div class="estado-b7"><b>Sem contexto cadastrado ainda.</b><p>Período, canais, objetivo e ' +
+      'posicionamento aparecem aqui quando alguém da equipe preencher na Linha Editorial.</p></div>';
+
+    return blocoTexto('Objetivo do período', l.objetivo) + geral + posicionamento;
+  }
+
+  function blocoLeituraCampo(rot, v) {
+    return !String(v || '').trim() ? '' : '<div class="pl-campo"><b>' + esc(rot) + '</b><p>' + esc(v) + '</p></div>';
+  }
+
+  function corpoPilares() {
+    const carregando = blocoCarregandoOuErro();
+    if (carregando) return carregando;
+    const pilares = contextoLinha.pilares || [];
+    if (!pilares.length) return '<div class="estado-b7"><b>Nenhum pilar cadastrado ainda.</b>' +
+      '<p>Os pilares de conteúdo do mês aparecem aqui quando a equipe cadastrar na Linha Editorial.</p></div>';
+    const pct = p => Math.max(0, +p.percentual || 0);
+    const soma = Math.round(pilares.reduce((s, p) => s + pct(p), 0) * 100) / 100;
+    const avisoSoma = soma === 100 ? '<span class="ok">Soma 100%</span>'
+      : soma < 100 ? '<span class="falta">Soma ' + soma + '% — faltam ' + Math.round((100 - soma) * 100) / 100 + '%</span>'
+      : '<span class="falta">Soma ' + soma + '% — passa ' + Math.round((soma - 100) * 100) / 100 + '% de 100</span>';
+    return '<div class="bloco mb bloco-pilares">' +
+      '<div class="pil-cab"><h3>PILARES DE CONTEÚDO</h3><div class="pil-soma">' + avisoSoma + '</div></div>' +
+      '<div id="lista-pilares">' + pilares.map((p, i) =>
+        '<div class="cartao-pilar leitura"><div class="pilar-num">' + String(i + 1).padStart(2, '0') + '</div>' +
+          '<div class="pilar-corpo"><div class="pl-cab"><b class="pl-nome">' + esc(p.nome || 'Tipo não definido') + '</b>' +
+            '<span class="pl-pct">' + pct(p) + '%</span>' +
+            (p.funil ? '<span class="pl-funil">' + esc(p.funil) + '</span>' : '') + '</div>' +
+            blocoLeituraCampo('OBJETIVO DO PILAR', p.objetivo) +
+            blocoLeituraCampo('OBSERVAÇÕES', p.observacoes) +
+          '</div></div>').join('') + '</div>' +
+    '</div>';
+  }
+
+  function corpoReferencias() {
+    const carregando = blocoCarregandoOuErro();
+    if (carregando) return carregando;
+    const linhas = String((contextoLinha.linha || {}).referencias || '').split('\n').map(x => x.trim()).filter(Boolean);
+    if (!linhas.length) return '<div class="estado-b7"><b>Nenhuma referência cadastrada ainda.</b>' +
+      '<p>Links de apoio para os conteúdos do mês aparecem aqui quando a equipe cadastrar na Linha Editorial.</p></div>';
+    const ehLink = s => /^https?:\/\//i.test(s);
+    return '<div class="bloco"><h3>Referências do mês</h3><ul class="ds-lista-referencias">' +
+      linhas.map(l => '<li>' + (ehLink(l)
+        ? '<a href="' + esc(l) + '" target="_blank" rel="noopener">' + esc(l) + '</a>'
+        : esc(l)) + '</li>').join('') + '</ul></div>';
   }
 
   /* =================================================================
