@@ -17,6 +17,7 @@ window.B7 = window.B7 || {};
 
 B7.Design = (function () {
   const esc = B7.UI.esc;
+  const vazio = t => !String(t || '').trim();
   const painel = () => document.getElementById('painel-dashboard');
 
   /* tipo da PEÇA de design (diferente do tipo do conteúdo de origem:
@@ -1265,11 +1266,11 @@ B7.Design = (function () {
 
     if (!drawer) {
       const el = document.createElement('div');
-      el.className = 'ds-drawer-fundo';
-      el.innerHTML = '<aside class="ds-drawer" role="dialog" aria-modal="true" aria-label="Detalhe da peça de Design"><div class="ds-dr-corpo">' +
-        B7.UI.skeleton('tabela', { n: 5, cols: 2 }) + '</div></aside>';
+      el.className = 'ds-ws-fundo';
+      el.innerHTML = '<div class="ds-ws" role="dialog" aria-modal="true" aria-label="Peça de Design"><div class="ds-ws-corpo"><div class="ds-ws-principal">' +
+        B7.UI.skeleton('tabela', { n: 5, cols: 2 }) + '</div></div></div>';
       document.body.appendChild(el);
-      document.body.classList.add('ds-drawer-aberta');
+      document.body.classList.add('ds-ws-aberta');
       el.addEventListener('mousedown', e => { if (e.target === el) fecharDrawer(); });
       const tecla = e => { if (e.key === 'Escape') fecharDrawer(); };
       document.addEventListener('keydown', tecla);
@@ -1287,7 +1288,7 @@ B7.Design = (function () {
     if (!drawer) return;
     document.removeEventListener('keydown', drawer.tecla);
     drawer.el.remove();
-    document.body.classList.remove('ds-drawer-aberta');
+    document.body.classList.remove('ds-ws-aberta');
     const foco = drawer.anterior;
     drawer = null;
     if (foco && foco.focus && document.contains(foco)) foco.focus();
@@ -1332,6 +1333,153 @@ B7.Design = (function () {
     if (drawer && drawer.id === id) desenharDrawer();
   }
 
+  /* Uma peça precisa de uma ação clara a cada momento — nunca duas
+     igualmente fortes competindo (era o caso antes: "Finalizar" e
+     "Enviar para aprovação do cliente" podiam aparecer juntos, os dois
+     como botão cheio, para a mesma peça vinculada a cliente). Esta
+     função decide QUAL é a ação primária do estado atual; o resto vira
+     secundário (contorno) ou simplesmente não aparece agora. */
+  function acaoPrimaria(d, versaoAtual, souResponsavel, equipe, podeAssumir) {
+    if (podeAssumir) return { primaria: { id: 'dv-assumir', label: 'Assumir esta peça' } };
+    if (equipe && versaoAtual && versaoAtual.estado === 'enviada') {
+      return { primaria: { id: 'dv-aprovar', label: 'Aprovar internamente', desabilitada: souResponsavel },
+               secundarias: [{ id: 'dv-ajuste', label: 'Solicitar ajuste' }] };
+    }
+    if (equipe && d.client_id && versaoAtual && versaoAtual.estado === 'aprovada_interna') {
+      /* aprovada por dentro mas ainda não foi ao cliente — mandar pro
+         cliente é o próximo passo de verdade; Finalizar sem isso pularia
+         a aprovação do cliente, então vira secundário, não some. */
+      return { primaria: { id: 'dv-enviar-cliente', label: 'Enviar para aprovação do cliente' },
+               secundarias: (d.status === 'aprovado_interno' || d.status === 'aprovado_cliente')
+                 ? [{ id: 'dv-finalizar', label: 'Finalizar mesmo assim' }] : [] };
+    }
+    if (equipe && (d.status === 'aprovado_interno' || d.status === 'aprovado_cliente')) {
+      return { primaria: { id: 'dv-finalizar', label: 'Finalizar' } };
+    }
+    return null;
+  }
+
+  function acaoPrimariaHTML(acao) {
+    if (!acao) return '';
+    return '<div class="ds-ws-lateral-acao">' +
+      '<button class="b pri ds-ws-acao-primaria" id="' + acao.primaria.id + '"' +
+        (acao.primaria.desabilitada ? ' disabled title="Quem produziu a peça não pode aprová-la"' : '') + '>' +
+        esc(acao.primaria.label) + '</button>' +
+      ((acao.secundarias || []).length
+        ? '<div class="ds-ws-acoes-sec">' + acao.secundarias.map(s =>
+            '<button class="b contorno" id="' + s.id + '">' + esc(s.label) + '</button>').join('') + '</div>' : '') +
+    '</div>';
+  }
+
+  /* prévia grande da arte mais recente — mesma fonte (ultima_previa) e
+     mesmo carregamento sob demanda dos cartões, só maior */
+  function previaGrande(d) {
+    return d.ultima_previa
+      ? '<div class="ds-ws-preview ds-thumb" data-previa="' + esc(d.ultima_previa) + '"></div>'
+      : '<div class="ds-ws-preview">' + iconeTipo(d.tipo) + '</div>';
+  }
+
+  /* ajuste pedido em destaque no topo do conteúdo principal — a peça
+     está em "Ajustes"/"Ajustes do cliente" porque alguém escreveu o
+     que precisa mudar; isso não pode ficar perdido no meio da linha
+     do tempo, lá embaixo */
+  function feedbackAjuste(d, x) {
+    if (d.status !== 'ajustes' && d.status !== 'ajustes_cliente') return '';
+    const notifs = (x.notificacoes || []).slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    const n = notifs.find(n => n.mensagem && n.mensagem.trim());
+    if (!n) return '';
+    return '<div class="ds-ws-feedback">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
+        '<path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>' +
+      '<div><b>' + (d.status === 'ajustes_cliente' ? 'Ajuste do cliente' : 'Ajuste solicitado') + '</b>' +
+      '<p>' + esc(n.mensagem.trim()) + '</p></div></div>';
+  }
+
+  /* conteúdo principal do workspace — Card e Capa de Reel ganham
+     tratamento próprio (o campo mais importante em destaque, e no Reel
+     um atalho direto pro roteiro); os demais formatos (Carrossel,
+     Story, peça manual) continuam no briefing genérico de sempre —
+     ganham workspace dedicado na Rodada 4. */
+  function conteudoPrincipal(d) {
+    const b = drawer.briefing;
+    if (!b) return '<p class="vazio-leve">Carregando…</p>';
+    if (b.erro) return '<p class="vazio-leve">Não foi possível carregar o briefing.</p>';
+    if (!b.manual && b.conteudo.tipo === 'Card') return blocoPrincipalCard(b);
+    if (!b.manual && b.conteudo.tipo === 'Reel') return blocoPrincipalReel(b);
+    return blocoBriefing(d);
+  }
+
+  function pilarBriefingHTML(b) {
+    return b.pilar ? '<div class="ds-campo-briefing"><small>PILAR</small><p>' + esc(b.pilar.nome || 'Pilar sem nome') + '</p></div>' : '';
+  }
+  function referenciasBriefingHTML(c) {
+    const links = String(c.referencias || '').split('\n').map(l => l.trim()).filter(Boolean);
+    if (!links.length) return '';
+    return '<div class="ds-campo-briefing"><small>REFERÊNCIAS</small>' + links.map(l =>
+      /^https?:\/\//i.test(l) ? '<a class="kd-link" href="' + esc(l) + '" target="_blank" rel="noopener noreferrer">' + esc(l) + '</a>'
+                              : '<span class="kd-link">' + esc(l) + '</span>').join('') + '</div>';
+  }
+
+  function blocoPrincipalCard(b) {
+    const c = b.conteudo;
+    const campo = (rot, val) => val ? '<div class="ds-campo-briefing"><small>' + rot + '</small><p>' + esc(val) + '</p></div>' : '';
+    return (vazio(c.headline) ? '' : '<div class="ds-ws-campo-principal"><small>HEADLINE</small><p>' + esc(c.headline) + '</p></div>') +
+      campo('OBJETIVO', c.objetivo) + pilarBriefingHTML(b) +
+      campo('SUB-HEADLINE', c.sub_headline) + campo('CTA', c.cta) +
+      campo('DIREÇÃO VISUAL', c.direcao) + campo('LEGENDA', c.legenda) +
+      campo('OBSERVAÇÃO PARA O DESIGN', c.observacao_design) + referenciasBriefingHTML(c);
+  }
+
+  function blocoPrincipalReel(b) {
+    const c = b.conteudo;
+    const campo = (rot, val) => val ? '<div class="ds-campo-briefing"><small>' + rot + '</small><p>' + esc(val) + '</p></div>' : '';
+    return (vazio(c.titulo) ? '' : '<div class="ds-ws-campo-principal"><small>IDENTIFICAÇÃO DO REEL</small><p>' + esc(c.titulo) + '</p></div>') +
+      campo('CONTEXTO', c.objetivo || c.ideia_geral) + pilarBriefingHTML(b) +
+      (b.roteiro
+        ? '<div class="ds-ws-roteiro-cta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
+            '<path d="M6 4h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M9 13h6M9 17h4"/></svg>' +
+          '<span>Roteiro vinculado — <b>' + esc(b.roteiro.titulo || 'roteiro') + '</b></span>' +
+          '<button class="b fina contorno" data-abrir-roteiro>Ver roteiro</button></div>'
+        : '') +
+      referenciasBriefingHTML(c);
+  }
+
+  /* "Ver roteiro" — antes fechava o workspace e navegava para o editor
+     completo da Gravação (que edita, não só mostra). Agora abre a
+     mesma ficha usada no PDF/impressão (B7.Folha.folhaHTML), num modal
+     só de leitura, sem sair do workspace e sem nenhum controle de
+     edição — o roteiro continua só sendo editado na Gravação. */
+  async function verRoteiro(roteiro, d) {
+    if (!roteiro) return;
+    let gravacao = null, cenas = [];
+    try {
+      [gravacao, cenas] = await Promise.all([
+        B7.DB.gravacao(roteiro.recording_session_id).catch(() => null),
+        B7.DB.listarCenas(roteiro.id).catch(() => [])
+      ]);
+    } catch (e) {}
+    const html = '<h3>' + esc(roteiro.titulo || 'Roteiro vinculado') + '</h3>' +
+      '<p class="sub">Somente leitura — o roteiro é editado na Gravação, não aqui.</p>' +
+      '<div class="corpo ds-roteiro-corpo" id="dv-roteiro-corpo">' + B7.Folha.folhaHTML({
+        cliente: d.cliente_nome || '', clienteLogo: d.cliente_logo_url || null,
+        gravacao: gravacao ? gravacao.nome : '',
+        dataGravacao: gravacao && gravacao.data_gravacao ? B7.UI.dataBR(gravacao.data_gravacao) : '',
+        roteiro, cenas, indice: 0, total: 1
+      }) + '</div>' +
+      '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>';
+    const m = B7.UI.modal(html, { larga: true, extra: 'ds-roteiro-modal' });
+    const corpo = m.querySelector('#dv-roteiro-corpo');
+    const folha = corpo && corpo.querySelector('.folha');
+    if (!folha) return;
+    if (roteiro.escala_automatica !== false) B7.Folha.ajustar(folha);
+    requestAnimationFrame(() => {
+      const escala = Math.min(1, (corpo.clientWidth - 4) / 794);
+      folha.style.transformOrigin = 'top left';
+      folha.style.transform = 'scale(' + escala + ')';
+      corpo.style.height = Math.round(folha.scrollHeight * escala + 8) + 'px';
+    });
+  }
+
   function desenharDrawer() {
     const d = dados.find(x => x.id === drawer.id);
     if (!d) return fecharDrawer();
@@ -1351,73 +1499,69 @@ B7.Design = (function () {
       dados.some(x => x.linha_id === d.linha_id && x.designer_id === meuId()) &&
       designers.some(p => p.id !== meuId());
     const info = prazoInfo(d);
+    const acao = acaoPrimaria(d, versaoAtual, souResponsavel, equipe, podeAssumir);
 
-    const aside = drawer.el.querySelector('.ds-drawer');
-    aside.innerHTML =
-      '<header class="ds-dr-cab">' +
-        '<div class="ds-dr-linha1">' +
-          '<span class="ds-tipo">' + esc(rotuloTipo(d.tipo)) + '</span>' +
-          '<span class="ds-chip ' + esc(d.status) + '">' + esc(rotuloStatus(d.status)) + '</span>' +
-          '<span class="ds-espaco"></span>' +
-          '<button class="ico" data-fechar aria-label="Fechar">✕</button>' +
+    const raiz = drawer.el.querySelector('.ds-ws');
+    raiz.innerHTML =
+      '<header class="ds-ws-topo">' +
+        '<button class="ico ds-ws-voltar" data-fechar aria-label="Fechar">←</button>' +
+        '<div class="ds-ws-topo-tx">' +
+          '<div class="ds-ws-topo-linha1">' +
+            '<span class="ds-tipo">' + esc(rotuloTipo(d.tipo)) + '</span>' +
+            '<span class="ds-chip ' + esc(d.status) + '">' + esc(rotuloStatus(d.status)) + '</span>' +
+          '</div>' +
+          '<h3>' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</h3>' +
+          '<div class="ds-ws-topo-meta">' +
+            (d.cliente_nome ? '<span>' + esc(d.cliente_nome) + '</span>' : '<span>Demanda interna</span>') +
+            (d.linha_nome ? '<span>· ' + esc(d.linha_nome) + '</span>' : '') +
+          '</div>' +
         '</div>' +
-        '<h3>' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</h3>' +
-        '<div class="ds-dr-meta">' +
-          (d.cliente_nome ? '<span>' + esc(d.cliente_nome) + '</span>' : '<span>Demanda interna</span>') +
-          (d.linha_nome ? '<span>· ' + esc(d.linha_nome) + '</span>' : '') +
-        '</div>' +
+        '<button class="ico" data-fechar aria-label="Fechar">✕</button>' +
       '</header>' +
-      '<div class="ds-dr-corpo" role="tabpanel">' +
-        '<div class="ds-dr-grade">' +
-          '<label class="ds-dr-campo"><small>RESPONSÁVEL</small>' +
-            (equipe
-              ? '<select class="campo fina" id="dv-designer"><option value="">Sem responsável</option>' +
-                designers.map(p => '<option value="' + esc(p.id) + '"' + (d.designer_id === p.id ? ' selected' : '') + '>' + esc(p.nome) + '</option>').join('') + '</select>'
-              : '<div class="ds-dr-valor">' + esc(d.designer_nome || 'Sem responsável') + '</div>') +
-          '</label>' +
-          '<label class="ds-dr-campo"><small>PRAZO</small>' +
-            (equipe ? '<input class="campo fina" type="date" id="dv-prazo" value="' + esc(d.prazo || '') + '">'
-                    : '<div class="ds-dr-valor' + (info && info.atrasada ? ' atrasada' : '') + '">' + (info ? esc(info.txt) : 'Sem prazo') + '</div>') +
-          '</label>' +
-          '<label class="ds-dr-campo"><small>PRIORIDADE</small>' +
-            (equipe ? '<select class="campo fina" id="dv-prioridade">' + PRIORIDADES.map(([v, r]) =>
-                '<option value="' + v + '"' + ((d.prioridade || 'normal') === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>'
-                    : '<div class="ds-dr-valor">' + esc(rotuloPrioridade(d.prioridade)) + '</div>') +
-          '</label>' +
-          '<span class="ds-dr-salvo" id="dv-salvo" aria-live="polite"></span>' +
+      '<div class="ds-ws-corpo">' +
+        '<div class="ds-ws-principal" role="tabpanel">' +
+          previaGrande(d) +
+          feedbackAjuste(d, x) +
+          conteudoPrincipal(d) +
         '</div>' +
-        (podeAssumir ? '<button class="b pri" id="dv-assumir" style="width:100%;margin-top:6px">Assumir esta peça</button>' : '') +
-        (podeCompartilhar ? '<div class="ds-dr-compartilhar">' +
-            '<small>OU ATRIBUIR A UM COLEGA DESTA LINHA</small>' +
-            '<div class="ds-dr-compartilhar-linha">' +
-              '<select class="campo fina" id="dv-colega"><option value="">Escolher designer…</option>' +
-                designers.filter(p => p.id !== meuId()).map(p => '<option value="' + esc(p.id) + '">' + esc(p.nome) + '</option>').join('') +
-              '</select>' +
-              '<button class="b fina contorno" id="dv-compartilhar">Compartilhar</button>' +
-            '</div></div>' : '') +
+        '<div class="ds-ws-lateral">' +
+          acaoPrimariaHTML(acao) +
+          (podeCompartilhar ? '<div class="ds-dr-compartilhar">' +
+              '<small>OU ATRIBUIR A UM COLEGA DESTA LINHA</small>' +
+              '<div class="ds-dr-compartilhar-linha">' +
+                '<select class="campo fina" id="dv-colega"><option value="">Escolher designer…</option>' +
+                  designers.filter(p => p.id !== meuId()).map(p => '<option value="' + esc(p.id) + '">' + esc(p.nome) + '</option>').join('') +
+                '</select>' +
+                '<button class="b fina contorno" id="dv-compartilhar">Compartilhar</button>' +
+              '</div></div>' : '') +
+          '<div class="ds-dr-grade">' +
+            '<label class="ds-dr-campo"><small>RESPONSÁVEL</small>' +
+              (equipe
+                ? '<select class="campo fina" id="dv-designer"><option value="">Sem responsável</option>' +
+                  designers.map(p => '<option value="' + esc(p.id) + '"' + (d.designer_id === p.id ? ' selected' : '') + '>' + esc(p.nome) + '</option>').join('') + '</select>'
+                : '<div class="ds-dr-valor">' + esc(d.designer_nome || 'Sem responsável') + '</div>') +
+            '</label>' +
+            '<label class="ds-dr-campo"><small>PRAZO</small>' +
+              (equipe ? '<input class="campo fina" type="date" id="dv-prazo" value="' + esc(d.prazo || '') + '">'
+                      : '<div class="ds-dr-valor' + (info && info.atrasada ? ' atrasada' : '') + '">' + (info ? esc(info.txt) : 'Sem prazo') + '</div>') +
+            '</label>' +
+            '<label class="ds-dr-campo"><small>PRIORIDADE</small>' +
+              (equipe ? '<select class="campo fina" id="dv-prioridade">' + PRIORIDADES.map(([v, r]) =>
+                  '<option value="' + v + '"' + ((d.prioridade || 'normal') === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>'
+                      : '<div class="ds-dr-valor">' + esc(rotuloPrioridade(d.prioridade)) + '</div>') +
+            '</label>' +
+            '<span class="ds-dr-salvo" id="dv-salvo" aria-live="polite"></span>' +
+          '</div>' +
 
-        '<div class="ds-dr-bloco"><h4>Briefing</h4>' + blocoBriefing(d) + '</div>' +
+          (podeEditar && d.status !== 'finalizado' ? blocoUpload(d) : '') +
 
-        (podeEditar && d.status !== 'finalizado' ? blocoUpload(d) : '') +
-
-        '<div class="ds-dr-bloco"><h4>Histórico de versões</h4>' + blocoVersoes(versoes) + '</div>' +
-
-        (equipe && versaoAtual && versaoAtual.estado === 'enviada'
-          ? '<div class="ds-dr-bloco ds-acoes-revisao">' +
-              '<button class="b pri" id="dv-aprovar"' + (souResponsavel ? ' disabled title="Quem produziu a peça não pode aprová-la"' : '') + '>Aprovar internamente</button>' +
-              '<button class="b contorno" id="dv-ajuste">Solicitar ajuste</button>' +
-            '</div>' : '') +
-
-        '<div class="ds-dr-bloco"><h4>Linha do tempo</h4>' + blocoTimeline(x.notificacoes || []) + '</div>' +
-      '</div>' +
-      '<footer class="ds-dr-pe">' +
-        (equipe && (d.status === 'aprovado_interno' || d.status === 'aprovado_cliente')
-          ? '<button class="b pri" id="dv-finalizar">Finalizar</button>' : '') +
-        (equipe && versaoAtual && versaoAtual.estado === 'aprovada_interna' && d.client_id
-          ? '<button class="b contorno" id="dv-enviar-cliente">Enviar para aprovação do cliente</button>' : '') +
-      '</footer>';
+          '<div class="ds-dr-bloco"><h4>Histórico de versões</h4>' + blocoVersoes(versoes) + '</div>' +
+          '<div class="ds-dr-bloco"><h4>Linha do tempo</h4>' + blocoTimeline(x.notificacoes || []) + '</div>' +
+        '</div>' +
+      '</div>';
 
     ligarDrawer(d, x, versaoAtual);
+    ligarThumbs(drawer.el);
   }
 
   /* ---------------------------------------------------------- briefing */
@@ -1685,7 +1829,7 @@ B7.Design = (function () {
   /* ---------------------------------------------------------- ligações */
   function ligarDrawer(d, x, versaoAtual) {
     const el = drawer.el;
-    el.querySelector('[data-fechar]').onclick = fecharDrawer;
+    el.querySelectorAll('[data-fechar]').forEach(b => b.onclick = fecharDrawer);
 
     const salvo = el.querySelector('#dv-salvo');
     const salvar = async (campos, rotulo) => {
@@ -1752,10 +1896,11 @@ B7.Design = (function () {
     });
     ligarBlocoEnvio(d);
 
-    /* roteiro vinculado (briefing de Reel), aberto no editor em que ele vive */
+    /* roteiro vinculado (briefing de Reel) — ficha de leitura, sem sair
+       do workspace (ver verRoteiro()); nunca abre o editor completo
+       daqui, que edita o roteiro e não é o que "Ver roteiro" promete */
     el.querySelectorAll('[data-abrir-roteiro]').forEach(b => b.onclick = () => {
-      fecharDrawer();
-      location.hash = '#/gravacao/' + b.dataset.abrirRoteiro + '?roteiro=' + b.dataset.roteiroId;
+      verRoteiro(drawer.briefing && drawer.briefing.roteiro, d);
     });
 
     /* revisão interna */

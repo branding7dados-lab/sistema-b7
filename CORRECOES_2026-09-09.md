@@ -2193,3 +2193,137 @@ Arquivos alterados: `js/linha.js`, `styles/linha.css`, `js/auth.js`,
 `sw.js`.
 `VERSAO` → `2026-09-11-w`, cache do service worker →
 `roteiros-b7-v38`.
+
+## Build 2026-09-11-x — Rodada 3 do refino de UX do Design: Design Piece Workspace (Card e Capa de Reel)
+
+Terceira das seis rodadas de `PLANO_UX_DESIGN_RESTANTE.md` (seções
+14-17, 20, 22-24 da especificação). Escolhido começar pelos formatos
+mais simples (Card e Capa de Reel) antes do Carrossel, que é o mais
+trabalhoso — fica para a Rodada 4, junto com Stories.
+
+**O que mudou:**
+- **A gaveta estreita (560px) saiu.** No lugar, um workspace quase
+  tela cheia (`.ds-ws`, até 1320×920px, com fallback total em
+  celular): cabeçalho com voltar/fechar, corpo em duas colunas —
+  conteúdo principal à esquerda (prévia grande, feedback de ajuste em
+  destaque quando existe, campos do briefing) e painel operacional à
+  direita (ação primária, compartilhar, responsável/prazo/prioridade,
+  envio de versão, histórico, linha do tempo).
+- **Ação primária única por estado** (`acaoPrimaria()`): um botão de
+  destaque só, nunca dois competindo — corrige um bug real
+  pré-existente em que \"Finalizar\" e \"Enviar para aprovação do
+  cliente\" podiam aparecer juntos, com o mesmo peso visual, para a
+  mesma peça vinculada a cliente. A precedência agora é explícita:
+  assumir → aprovar internamente (com \"Solicitar ajuste\" como ação
+  secundária) → enviar para aprovação do cliente (com \"Finalizar
+  mesmo assim\" como secundária, só quando já houve aprovação) →
+  finalizar. Fora desses estados, não existe ação primária — o próximo
+  passo natural já é o bloco de envio de versão, sempre visível.
+- **Workspace específico para Card estático**: campo principal
+  (\"HEADLINE\") em destaque tipográfico (Archivo 800, 22px), seguido
+  dos campos secundários do briefing (sub-headline, CTA, legenda,
+  objetivo, direção, observação de Design, referências) — nunca um
+  campo vazio ocupando espaço.
+- **Workspace específico para Capa de Reel**: campo principal
+  (\"IDENTIFICAÇÃO DO REEL\") em destaque, mais um bloco \"Ver
+  roteiro\" quando a Capa está vinculada a um roteiro com script_id.
+- **\"Ver roteiro\" genuinamente somente leitura**: antes, esse botão
+  fechava o workspace e navegava para o editor completo da
+  Gravação/roteiro (editável). Agora abre um modal (`verRoteiro()`)
+  reaproveitando o mesmo renderizador da folha A4 impressa
+  (`B7.Folha.folhaHTML`), escalado para caber, com um único botão
+  \"Fechar\" — nenhum controle de edição.
+- **Prévia grande** (`.ds-ws-preview`) no topo do conteúdo principal,
+  reaproveitando o mesmo mecanismo de miniatura assinada e lazy-load
+  já usado nos cards (`ligarThumbs`) — não existia antes na gaveta.
+- **Bloco de feedback de ajuste em destaque** (`feedbackAjuste()`):
+  quando a peça está em `ajustes`/`ajustes_cliente`, a mensagem mais
+  recente do histórico de notificações aparece como um alerta no topo
+  do conteúdo principal — não é preciso rolar até a linha do tempo
+  para saber o que precisa mudar.
+- Upload/revisão de versão e histórico continuam dentro do novo
+  layout (painel lateral), sem nenhuma mudança de lógica.
+
+**O que NÃO mudou (risco minimizado de propósito):** toda a lógica de
+negócio existente foi preservada literalmente — mesmo objeto de estado
+`drawer`, mesma função `ligarDrawer()` (só dois ajustes pontuais, ver
+abaixo), mesmos IDs de campo (`dv-designer`, `dv-prazo`,
+`dv-prioridade`, `dv-assumir`, `dv-compartilhar`, `dv-drop`,
+`dv-aprovar`, `dv-ajuste`, `dv-finalizar`, `dv-enviar-cliente` etc.).
+Só a moldura HTML/CSS ao redor foi reescrita. Upload, autosave de
+responsável/prazo/prioridade, aprovação/ajuste interno, finalizar,
+enviar para o cliente, compartilhar com colega — nenhum desses fluxos
+foi tocado.
+
+**Dois ajustes pontuais em `ligarDrawer()`, necessários pela nova
+moldura:**
+- O cabeçalho novo tem dois botões de fechar (← voltar e ✕); o código
+  antigo só ligava o primeiro que encontrasse — corrigido para ligar
+  os dois.
+- O handler de \"Ver roteiro\" foi trocado da navegação antiga
+  (`location.hash = '#/gravacao/...'`) para abrir `verRoteiro()`.
+
+**Limpeza:** removidas do `styles/design.css` as regras da gaveta
+antiga que a nova marcação não emite mais (`.ds-dr-cab`,
+`.ds-dr-linha1`, `.ds-dr-cab h3`, `.ds-dr-meta`, `.ds-dr-corpo`,
+`.ds-dr-pe` e o bloco mobile correspondente, incluindo a animação
+`dsSobeDrawer`) — código morto de verdade, confirmado por busca no
+JS antes de apagar. O que continua ativo (`.ds-dr-grade` e os campos
+dentro dela) ficou.
+
+**Não implementado nesta rodada (Rodada 4, seguinte):** workspace
+dedicado para Carrossel e Stories — esses dois formatos continuam
+usando o `blocoBriefing()` genérico de sempre dentro do novo
+workspace (a moldura mudou, o conteúdo do briefing desses dois
+formatos, não).
+
+### Implementado e testado
+
+- Harness dedicado (Playwright, Supabase simulado) com 4 cenários:
+  Card em `ajustes` com feedback do cliente e versão anterior
+  `ajuste_solicitado` (confirma que nenhuma ação primária aparece
+  nesse estado — o próximo passo é o envio de nova versão); Capa de
+  Reel em `em_criacao` com roteiro/cenas/gravação vinculados (\"Ver
+  roteiro\" abre o modal correto, com o nome do cliente, da gravação e
+  as 3 cenas, escalado sem overflow, só o botão Fechar); Card
+  `aprovado_interno` vinculado a cliente com versão `aprovada_interna`
+  (confirma a precedência: só \"Enviar para aprovação do cliente\"
+  aparece como primária, com \"Finalizar mesmo assim\" como
+  secundária — nunca os dois como primários); Card `aguardando_producao`
+  sem responsável, sessão Designer (\"Assumir esta peça\" aparece como
+  única ação).
+- Responsivo: 390×844 (celular) testado do topo ao fim da rolagem —
+  painel lateral empilha corretamente abaixo do conteúdo principal,
+  sem overflow horizontal, upload/histórico/linha do tempo legíveis e
+  utilizáveis.
+- `document.querySelectorAll('[data-fechar]')` com dois elementos
+  confirmados, os dois fechando o workspace corretamente.
+- `node --check` em `js/design.js`.
+- Reconferido por leitura: nenhuma referência a `ds-drawer`/
+  `ds-dr-cab`/`ds-dr-linha1`/`ds-dr-meta`/`ds-dr-corpo`/`ds-dr-pe`
+  sobra em `js/design.js` nem em `styles/design.css` depois da
+  limpeza — nem código morto emitindo classes sem CSS, nem CSS morto
+  esperando classes que não existem mais.
+
+### Requer validação adicional (não testado nesta rodada)
+
+- O caminho de notificação (`#/design/<id>` pelo sino ou por um push)
+  continua chamando `abrirDetalhe(id)` exatamente como antes — não foi
+  alterado — mas não foi reexecutado explicitamente com Playwright
+  nesta rodada.
+- Teste em dispositivo físico não foi realizado — toda a validação
+  responsiva foi feita por emulação de viewport no Chromium.
+- Realtime com duas sessões simultâneas não foi retestado nesta rodada
+  (o canal usado não foi alterado).
+
+### Não implementado por decisão consciente
+
+- Workspace dedicado para Carrossel (o mais trabalhoso, com navegador
+  de slides interativo) e Stories — ficam para a Rodada 4, conforme o
+  plano.
+- Miniaturas otimizadas/geração de thumbnail — Rodada 5.
+
+Arquivos alterados: `js/design.js`, `styles/design.css`, `js/auth.js`,
+`sw.js`.
+`VERSAO` → `2026-09-11-x`, cache do service worker →
+`roteiros-b7-v39`.
