@@ -5420,3 +5420,28 @@ Arquivos alterados: `js/video.js`, `js/auth.js`, `sw.js`,
 
 1. Suba os arquivos deste zip (sem SQL desta vez).
 2. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-m`.
+
+# Rodada n (14/09/2026) — player do Drive estava pequeno demais
+
+Ajuste rápido de CSS: o player embutido (rodada m) estava disputando
+espaço na mesma linha com o link "Abrir no Drive" ao lado, então saía
+espremido (mostrado na sua captura de tela). Corrigido.
+
+## Implementado e testado
+
+- O player agora ocupa a largura toda do bloco (até um teto de 860px,
+  pra não ficar gigante em tela muito larga), com o link "Abrir no
+  Drive" embaixo, não mais ao lado espremendo o vídeo. Versões antigas
+  (dentro do "ver mais") usam um teto um pouco menor (640px), já que
+  ficam recuadas dentro de um `<details>`.
+- Revisado por CSS (chaves balanceadas), mas — mesma ressalva de
+  antes — não cliquei numa tela de verdade aqui. Pelo print que você
+  mandou dá pra confirmar visualmente depois de subir.
+
+Arquivos alterados: `js/auth.js`, `sw.js`, `styles/video.css`.
+`VERSAO` → `2026-09-14-n`, cache → `roteiros-b7-v72`.
+
+## Como aplicar
+
+1. Suba os arquivos deste zip (sem SQL).
+2. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-n`.

@@ -166,7 +166,8 @@
 .vd-versao-atual{background:var(--card);border:1px solid var(--borda);border-radius:var(--r);padding:14px 16px;}
 .vd-versao-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
 .vd-versao-cab b{font-family:'Archivo';font-size:14.5px;font-weight:800;letter-spacing:-.1px;}
-.vd-versao-arquivo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.vd-versao-arquivo{margin-bottom:6px;}
+.vd-versao-arquivo:not(:has(.vd-player)){display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .vd-versao-arquivo .vd-sem{color:var(--ink-3);font-style:italic;font-size:12.5px;}
 .vd-versao-arquivo .vd-quem{font-size:12px;color:var(--ink-3);}
 
@@ -174,11 +175,16 @@
    de um iframe 16:9 — o arquivo continua hospedado no Drive, isto é
    só a exibição. Se o link não for do Drive (ou o arquivo não estiver
    compartilhado como "qualquer pessoa com o link"), não tem como
-   embutir — nesses casos blocoArquivo() nem gera este bloco. */
-.vd-player{position:relative;width:100%;max-width:520px;aspect-ratio:16/9;border-radius:var(--r-sm);
+   embutir — nesses casos blocoArquivo() nem gera este bloco.
+   Ocupa toda a largura disponível do bloco (até um teto razoável pra
+   não ficar gigante em telas muito largas), em vez de dividir espaço
+   com o link ao lado — por isso .vd-versao-arquivo vira coluna quando
+   tem player dentro (:has acima). */
+.vd-player{position:relative;width:100%;max-width:860px;aspect-ratio:16/9;border-radius:var(--r-sm);
   overflow:hidden;background:#000;border:1px solid var(--borda);}
 .vd-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
-.vd-player-legenda{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.vd-player-legenda{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.vd-versao-antiga-corpo .vd-player{max-width:640px;}
 .vd-versao-acoes{margin-top:12px;padding-top:0;border-top:none;}
 
 .vd-decisao{margin-top:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--borda);
