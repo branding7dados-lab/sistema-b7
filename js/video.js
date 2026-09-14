@@ -193,6 +193,8 @@ B7.Video = (function () {
           ? '<button class="b fina contorno" id="vd-descartados">Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
           : '') +
         '<button class="b fina contorno" id="vd-pacotes">Pacotes</button>' +
+        '<button class="b fina contorno" id="vd-gerar">Gerar de gravação</button>' +
+        '<button class="b fina contorno" id="vd-gestao">Gestão</button>' +
         '<button class="b contorno" id="vd-importar">Importar planilha</button>' +
         '<button class="b pri" id="vd-nova">+ Nova demanda</button></div>' +
       '</div>' +
@@ -215,6 +217,10 @@ B7.Video = (function () {
     if (btDescartados) btDescartados.onclick = () => modalDescartados(descartados);
     const btPacotes = document.getElementById('vd-pacotes');
     if (btPacotes) btPacotes.onclick = () => modalPacotes();
+    const btGerar = document.getElementById('vd-gerar');
+    if (btGerar) btGerar.onclick = () => modalGerarDemandas();
+    const btGestao = document.getElementById('vd-gestao');
+    if (btGestao) btGestao.onclick = () => modalGestao();
     const btVerAnteriores = document.getElementById('vd-ver-anteriores');
     if (btVerAnteriores) btVerAnteriores.onclick = () => {
       F.competencia = 'todas'; F.prazo = 'atrasadas'; guardarFiltros(); desenharProducao();
@@ -223,6 +229,14 @@ B7.Video = (function () {
     desenharResumo(base);
     desenharBarra(comp, souTambemVideomaker);
     desenharArea(visiveis);
+
+    /* Alertas de prazo: recalculados (server-side, com a chave única
+       evitando duplicar) toda vez que a equipe abre a Produção de
+       Vídeo — não há job agendado neste projeto (ver nota no topo de
+       migration_video_gestao.sql), então é assim que eles acontecem:
+       de forma preguiçosa, ao alguém abrir a tela. Silencioso de
+       propósito — não é motivo pra travar a tela se falhar. */
+    B7.DB.verificarAlertasPrazoVideo().catch(() => {});
   }
 
   function desenharResumo(base) {
@@ -756,6 +770,8 @@ B7.Video = (function () {
         (linhas.length
           ? '<div class="vd-pacotes-adm">' + linhas.map(p =>
               '<div class="vd-pacote-item"><span>' + esc(p.nome) + '</span>' +
+              '<input class="campo vd-pacote-quota" type="number" min="1" step="1" placeholder="cota/mês" ' +
+                'data-quota-pacote="' + p.id + '" value="' + (p.quantidade_contratada || '') + '" title="Quantidade contratada por mês (opcional — sem número, o pacote continua sendo só sugestão de nome)">' +
               '<button class="vd-cm-excluir" data-excluir-pacote="' + p.id + '" title="Excluir pacote" aria-label="Excluir pacote">×</button></div>').join('') + '</div>'
           : '<p class="fraca">Nenhum pacote cadastrado ainda.</p>') +
         '<form id="vd-pct-form" class="vd-cm-form">' +
@@ -808,8 +824,307 @@ B7.Video = (function () {
           } catch (err) { B7.UI.toast(err.message || 'Não foi possível excluir.'); }
         };
       });
+      /* Cota (quantidade_contratada): salva ao sair do campo ou Enter —
+         null quando vazio (limpa a cota, volta a ser só sugestão). */
+      m.querySelectorAll('[data-quota-pacote]').forEach(inp => {
+        const salvar = async () => {
+          const bruto = inp.value.trim();
+          const qtd = bruto ? Number(bruto) : null;
+          if (bruto && (!Number.isFinite(qtd) || qtd <= 0)) { B7.UI.toast('A cota precisa ser um número maior que zero.'); return; }
+          try {
+            await B7.DB.definirQuotaPacoteVideo(inp.dataset.quotaPacote, qtd);
+            pacotesVideoCache = await B7.DB.pacotesVideo().catch(() => pacotesVideoCache);
+            B7.UI.toast('Cota atualizada.');
+          } catch (err) { B7.UI.toast(err.message || 'Não foi possível salvar a cota.'); }
+        };
+        inp.onblur = salvar;
+        inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } };
+      });
     }
     ligar();
+  }
+
+  /* =================================================================
+     GESTÃO — resumo do mês, carga da equipe, produção por cliente,
+     relatório por videomaker e fechamento mensal (Parte 3,
+     migration_video_gestao.sql). Tudo calculado no banco (agregação em
+     SQL, não soma linha por linha no navegador).
+     ================================================================= */
+  function numFmt(n) { return (n === null || n === undefined) ? '—' : String(n); }
+  function diasFmt(n) { return (n === null || n === undefined) ? '—' : n + ' dia' + (n === 1 ? '' : 's'); }
+
+  function modalGestao() {
+    const compChave = (F.competencia && F.competencia !== 'todas') ? F.competencia : mesAtualChave();
+    const [anoIni, mesIni] = compChave.split('-').map(Number);
+    let estado = { ano: anoIni, mes: mesIni, carregando: true, erro: null,
+      resumo: null, carga: [], porCliente: [], porVideomaker: [], fechado: false };
+
+    const cascaHTML = () =>
+      '<h3>Gestão — Produção de Vídeo</h3>' +
+      '<div class="vd-gestao-comp">' +
+        '<label class="rot">Competência</label>' +
+        '<select class="campo" id="vg-comp">' +
+          competenciasDisponiveis().filter(c => c !== 'todas').map(c =>
+            '<option value="' + c + '"' + (c === (estado.ano + '-' + String(estado.mes).padStart(2, '0')) ? ' selected' : '') + '>' + esc(competenciaRotulo(c)) + '</option>').join('') +
+        '</select>' +
+        (estado.fechado ? '<span class="vd-badge-fechado">Mês fechado</span>' : '') +
+      '</div>' +
+      '<div id="vg-corpo">' + (estado.carregando ? B7.UI.skeleton('tabela', { n: 4, cols: 3 }) :
+        estado.erro ? '<p class="fraca">' + esc(estado.erro) + '</p>' : corpoHTML()) + '</div>' +
+      '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>';
+
+    function corpoHTML() {
+      const r = estado.resumo || {};
+      const porStatus = r.por_status || {};
+      const abertas = ['pendente', 'em_edicao', 'aguardando_aprovacao', 'correcao', 'standby']
+        .reduce((s, k) => s + (porStatus[k] || 0), 0);
+      return (
+        '<div class="vd-gestao-cards">' +
+          '<div class="vg-card"><b>' + numFmt(r.total) + '</b><span>demandas na competência</span></div>' +
+          '<div class="vg-card' + (r.atrasadas ? ' vg-alerta' : '') + '"><b>' + numFmt(r.atrasadas) + '</b><span>atrasadas</span></div>' +
+          '<div class="vg-card"><b>' + numFmt(r.vence_hoje) + '</b><span>vencem hoje</span></div>' +
+          '<div class="vg-card"><b>' + numFmt(r.entregues_no_prazo) + '</b><span>entregues no prazo</span></div>' +
+          '<div class="vg-card"><b>' + numFmt(r.entregues_com_atraso) + '</b><span>entregues com atraso</span></div>' +
+          '<div class="vg-card"><b>' + diasFmt(r.tempo_medio_producao_dias) + '</b><span>tempo médio de produção' +
+            (r.demandas_com_tempo_medido ? ' (' + r.demandas_com_tempo_medido + ' medida' + (r.demandas_com_tempo_medido === 1 ? '' : 's') + ')' : '') + '</span></div>' +
+          '<div class="vg-card"><b>' + numFmt(r.ciclos_correcao_total) + '</b><span>ciclos de correção (cliente: ' + numFmt(r.ciclos_correcao_cliente) + ' · interna: ' + numFmt(r.ciclos_correcao_interna) + ')</span></div>' +
+        '</div>' +
+        '<p class="fraca">Tempo médio de produção mede do início da edição até o primeiro envio para aprovação — só conta demandas com essa trilha de eventos completa (ver nota no rodapé). Ciclo de correção "cliente" é uma inferência sobre o texto da decisão registrada, não um campo estruturado à parte.</p>' +
+
+        '<h4>Carga da equipe (agora)</h4>' +
+        '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
+        '<th>Videomaker</th><th>P/ iniciar</th><th>Em edição</th><th>Correção</th><th>Aguard. aprov.</th><th>Standby</th><th>Atrasadas</th><th>Vence hoje</th><th>Total ativo</th>' +
+        '</tr></thead><tbody>' +
+        (estado.carga.length ? estado.carga.map(v =>
+          '<tr><td>' + esc(v.videomaker_nome) + '</td><td>' + v.para_iniciar + '</td><td>' + v.em_edicao + '</td>' +
+          '<td>' + v.correcao + '</td><td>' + v.aguardando_aprovacao + '</td><td>' + v.standby + '</td>' +
+          '<td' + (v.atrasadas ? ' class="vd-cel-alerta"' : '') + '>' + v.atrasadas + '</td><td>' + v.vence_hoje + '</td><td>' + v.total_ativo + '</td></tr>').join('')
+          : '<tr><td colspan="9"><i class="vd-sem">Sem videomakers ativos.</i></td></tr>') +
+        '</tbody></table></div>' +
+
+        '<h4>Produção por cliente</h4>' +
+        '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
+        '<th>Cliente</th><th>Pacote</th><th>Cota/mês</th><th>Total</th><th>Entregues</th><th>Em produção</th><th>Aguard. aprov.</th><th>Correção</th>' +
+        '</tr></thead><tbody>' +
+        (estado.porCliente.length ? estado.porCliente.map(c =>
+          '<tr><td>' + esc(c.client_nome) + '</td><td>' + (c.pacote ? esc(c.pacote) : '<i class="vd-sem">sem pacote</i>') + '</td>' +
+          '<td>' + (c.quantidade_contratada != null ? c.quantidade_contratada : '<i class="vd-sem">não definida</i>') + '</td>' +
+          '<td>' + c.total + '</td><td>' + c.entregues + '</td><td>' + c.em_producao + '</td><td>' + c.aguardando_aprovacao + '</td><td>' + c.correcao + '</td></tr>').join('')
+          : '<tr><td colspan="8"><i class="vd-sem">Nenhuma demanda nesta competência.</i></td></tr>') +
+        '</tbody></table></div>' +
+        '<p class="fraca">Cota/mês só aparece quando alguém define uma quantidade contratada pro pacote com esse nome exato (ver "Pacotes") — sem isso, nunca inventamos uma cota.</p>' +
+
+        '<h4>Relatório por videomaker</h4>' +
+        '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
+        '<th>Videomaker</th><th>Entregues</th><th>Em edição</th><th>Aguard. aprov.</th><th>Correção</th><th>Entregues c/ atraso</th><th>Tempo médio</th>' +
+        '</tr></thead><tbody>' +
+        (estado.porVideomaker.length ? estado.porVideomaker.map(v =>
+          '<tr><td>' + esc(v.videomaker_nome) + '</td><td>' + v.entregues + '</td><td>' + v.em_edicao + '</td>' +
+          '<td>' + v.aguardando_aprovacao + '</td><td>' + v.correcao + '</td><td>' + v.entregues_com_atraso + '</td>' +
+          '<td>' + diasFmt(v.tempo_medio_producao_dias) + '</td></tr>').join('')
+          : '<tr><td colspan="7"><i class="vd-sem">Nenhuma demanda nesta competência.</i></td></tr>') +
+        '</tbody></table></div>' +
+
+        '<h4>Fechamento mensal</h4>' +
+        (estado.fechado
+          ? '<p class="fraca">Este mês está fechado. O fechamento não impede reabrir — é um retrato (snapshot), não uma trava definitiva.</p>' +
+            '<div class="acoes-inline"><button class="b contorno" id="vg-reabrir">Reabrir mês</button></div>'
+          : (abertas
+              ? '<p class="vd-aviso-texto"><b>' + abertas + '</b> demanda' + (abertas === 1 ? '' : 's') + ' ainda em aberto nesta competência (não entregue nem descartada).</p>'
+              : '<p class="fraca">Nenhuma pendência em aberto nesta competência.</p>') +
+            '<div class="acoes-inline"><button class="b pri" id="vg-fechar">Fechar mês</button></div>')
+      );
+    }
+
+    const m = B7.UI.modal(cascaHTML(), { larga: true });
+
+    async function carregar() {
+      estado.carregando = true; estado.erro = null;
+      m.querySelector('.modal').innerHTML = cascaHTML();
+      ligarTopo();
+      try {
+        const [resumo, carga, porCliente, porVideomaker, fechado] = await Promise.all([
+          B7.DB.resumoGestaoVideo(estado.ano, estado.mes),
+          B7.DB.cargaEquipeVideo(),
+          B7.DB.producaoPorClienteVideo(estado.ano, estado.mes),
+          B7.DB.relatorioPorVideomakerVideo(estado.ano, estado.mes),
+          B7.DB.mesFechadoVideo(estado.ano, estado.mes)
+        ]);
+        estado.resumo = resumo || {};
+        estado.carga = carga || [];
+        estado.porCliente = porCliente || [];
+        estado.porVideomaker = porVideomaker || [];
+        estado.fechado = !!fechado;
+      } catch (e) {
+        estado.erro = e.message || 'Não foi possível carregar a gestão deste mês.';
+      }
+      estado.carregando = false;
+      m.querySelector('.modal').innerHTML = cascaHTML();
+      ligarTopo();
+      ligarCorpo();
+    }
+
+    function ligarTopo() {
+      m.querySelectorAll('[data-fecha]').forEach(b => b.onclick = m.fechar);
+      const sel = m.querySelector('#vg-comp');
+      if (sel) sel.onchange = () => {
+        const [a, mm] = sel.value.split('-').map(Number);
+        estado.ano = a; estado.mes = mm;
+        carregar();
+      };
+    }
+    function ligarCorpo() {
+      const btFechar = m.querySelector('#vg-fechar');
+      if (btFechar) btFechar.onclick = async () => {
+        const ok = await B7.UI.confirmar({
+          titulo: 'Fechar ' + esc(competenciaRotulo(estado.ano + '-' + String(estado.mes).padStart(2, '0'))) + '?',
+          texto: 'Guarda um retrato das métricas de agora. Não apaga nem trava nada — dá pra reabrir quando quiser.',
+          rotulo: 'Fechar mês'
+        });
+        if (!ok) return;
+        btFechar.disabled = true;
+        try {
+          await B7.DB.fecharMesVideo(estado.ano, estado.mes, estado.resumo || {});
+          B7.UI.toast('Mês fechado.');
+          carregar();
+        } catch (e) { btFechar.disabled = false; B7.UI.toast(e.message || 'Não foi possível fechar o mês.'); }
+      };
+      const btReabrir = m.querySelector('#vg-reabrir');
+      if (btReabrir) btReabrir.onclick = async () => {
+        const ok = await B7.UI.confirmar({
+          titulo: 'Reabrir este mês?',
+          texto: 'O mês volta a poder receber alterações normalmente.',
+          rotulo: 'Reabrir'
+        });
+        if (!ok) return;
+        btReabrir.disabled = true;
+        try {
+          await B7.DB.reabrirMesVideo(estado.ano, estado.mes);
+          B7.UI.toast('Mês reaberto.');
+          carregar();
+        } catch (e) { btReabrir.disabled = false; B7.UI.toast(e.message || 'Não foi possível reabrir o mês.'); }
+      };
+    }
+
+    ligarTopo();
+    carregar();
+  }
+
+  /* =================================================================
+     AUTOMAÇÃO GRAVAÇÃO → EDIÇÃO — escolhe uma gravação "Gravado" e
+     gera uma demanda de edição por roteiro selecionado (checklist),
+     reaproveitando os roteiros reais da gravação (não inventa nada).
+     Fica dentro de js/video.js de propósito — não mexe em
+     js/editor.js (tela de Gravação/roteiro), módulo grande e não
+     relacionado a este recurso.
+     ================================================================= */
+  function modalGerarDemandas() {
+    let gravacoesCache = null, roteiroSelecionados = new Set(), roteirosDaGravacao = [];
+
+    const cascaHTML = () =>
+      '<h3>Gerar demandas de edição a partir de uma gravação</h3>' +
+      '<label class="rot">Cliente</label>' +
+      '<select class="campo" id="vgd-cliente" data-foco>' +
+        '<option value="">Escolha um cliente</option>' +
+        clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') +
+      '</select>' +
+      '<label class="rot">Gravação (status "Gravado")</label>' +
+      '<select class="campo" id="vgd-gravacao"><option value="">Escolha um cliente primeiro</option></select>' +
+      '<div id="vgd-roteiros"></div>' +
+      '<div class="vd-grid-2">' +
+        '<div><label class="rot">Responsável (opcional)</label><select class="campo" id="vgd-videomaker">' +
+          '<option value="">Sem atribuir ainda</option>' +
+          videomakers.map(v => '<option value="' + v.id + '">' + esc(v.nome) + '</option>').join('') +
+        '</select></div>' +
+        '<div><label class="rot">Prazo (opcional, mesmo pra todos)</label><input class="campo" type="date" id="vgd-prazo"></div>' +
+      '</div>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" id="vgd-gerar" disabled>Gerar demandas</button></div>';
+
+    const m = B7.UI.modal(cascaHTML());
+
+    function roteirosHTML() {
+      if (!roteirosDaGravacao.length) return '<p class="fraca">Esta gravação não tem roteiros cadastrados.</p>';
+      return '<label class="rot">Roteiros (marque os que viram demanda)</label>' +
+        '<div class="vd-roteiros-lista">' + roteirosDaGravacao.map(r =>
+          '<label class="vd-roteiro-item"><input type="checkbox" data-roteiro="' + r.id + '"' +
+            (roteiroSelecionados.has(r.id) ? ' checked' : '') + (r.ja_tem_demanda ? ' disabled' : '') + '>' +
+            '<span>' + esc(r.titulo || '(sem título)') + (r.objetivo ? ' <i class="fraca">— ' + esc(r.objetivo) + '</i>' : '') + '</span>' +
+            (r.ja_tem_demanda ? '<span class="vd-badge-ja">já tem demanda</span>' : '') +
+          '</label>').join('') + '</div>';
+    }
+
+    function atualizarBotao() {
+      const btn = m.querySelector('#vgd-gerar');
+      if (btn) btn.disabled = roteiroSelecionados.size === 0;
+    }
+
+    const selCliente = m.querySelector('#vgd-cliente');
+    const selGravacao = m.querySelector('#vgd-gravacao');
+    selCliente.onchange = async () => {
+      const clienteId = selCliente.value;
+      selGravacao.innerHTML = '<option value="">Carregando…</option>';
+      m.querySelector('#vgd-roteiros').innerHTML = '';
+      roteiroSelecionados = new Set();
+      atualizarBotao();
+      if (!clienteId) { selGravacao.innerHTML = '<option value="">Escolha um cliente primeiro</option>'; return; }
+      try {
+        const gs = await B7.DB.gravacoesDoClienteParaVideo(clienteId);
+        const gravadas = (gs || []).filter(g => g.status === 'Gravado');
+        gravacoesCache = gravadas;
+        selGravacao.innerHTML = gravadas.length
+          ? '<option value="">Escolha uma gravação</option>' + gravadas.map(g =>
+              '<option value="' + g.id + '">' + esc(g.nome) + (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') + '</option>').join('')
+          : '<option value="">Nenhuma gravação com status "Gravado" para este cliente</option>';
+      } catch (e) { selGravacao.innerHTML = '<option value="">Não foi possível carregar</option>'; }
+    };
+    selGravacao.onchange = async () => {
+      const gravacaoId = selGravacao.value;
+      const cx = m.querySelector('#vgd-roteiros');
+      roteiroSelecionados = new Set();
+      if (!gravacaoId) { cx.innerHTML = ''; atualizarBotao(); return; }
+      cx.innerHTML = '<p class="fraca">Carregando roteiros…</p>';
+      try {
+        const [roteiros, existentes] = await Promise.all([
+          B7.DB.roteirosParaAutomacaoVideo(gravacaoId),
+          Promise.resolve(demandas.filter(d => d.gravacao_id === gravacaoId))
+        ]);
+        const comRoteiro = new Set(existentes.filter(d => d.roteiro_id).map(d => d.roteiro_id));
+        roteirosDaGravacao = (roteiros || []).map(r => ({ ...r, ja_tem_demanda: comRoteiro.has(r.id) }));
+        roteiroSelecionados = new Set(roteirosDaGravacao.filter(r => !r.ja_tem_demanda).map(r => r.id));
+        cx.innerHTML = roteirosHTML();
+        cx.querySelectorAll('[data-roteiro]').forEach(chk => {
+          chk.onchange = () => {
+            if (chk.checked) roteiroSelecionados.add(chk.dataset.roteiro); else roteiroSelecionados.delete(chk.dataset.roteiro);
+            atualizarBotao();
+          };
+        });
+        atualizarBotao();
+      } catch (e) { cx.innerHTML = '<p class="fraca">Não foi possível carregar os roteiros.</p>'; }
+    };
+
+    m.querySelector('#vgd-gerar').onclick = async () => {
+      const gravacaoId = selGravacao.value;
+      if (!gravacaoId || !roteiroSelecionados.size) return;
+      const btn = m.querySelector('#vgd-gerar');
+      btn.disabled = true; btn.textContent = 'Gerando…';
+      try {
+        const resultado = await B7.DB.gerarDemandasDeGravacaoVideo(
+          gravacaoId, [...roteiroSelecionados],
+          m.querySelector('#vgd-videomaker').value || null,
+          m.querySelector('#vgd-prazo').value || null
+        );
+        const novas = (resultado || []).filter(r => !r.ja_existia).length;
+        const existiam = (resultado || []).filter(r => r.ja_existia).length;
+        m.fechar();
+        B7.UI.toast(novas + ' demanda' + (novas === 1 ? '' : 's') + ' criada' + (novas === 1 ? '' : 's') +
+          (existiam ? ' (' + existiam + ' já existia' + (existiam === 1 ? '' : 'm') + ')' : '') + '.');
+        abrir();
+      } catch (e) {
+        btn.disabled = false; btn.textContent = 'Gerar demandas';
+        B7.UI.toast(e.message || 'Não foi possível gerar as demandas.');
+      }
+    };
   }
 
   /* =================================================================

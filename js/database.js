@@ -1688,13 +1688,13 @@ B7.DB = (function () {
     async historicoDemandaVideo(id) {
       return ok(await sb().from('demandas_edicao_eventos').select('*').eq('demanda_id', id).order('created_at', { ascending: true }));
     },
-    async criarDemandaVideo({ clienteId, titulo, codigo, competenciaAno, competenciaMes, gravacaoId, videomakerId, pacote, prazo, observacoes, prioridade }) {
+    async criarDemandaVideo({ clienteId, titulo, codigo, competenciaAno, competenciaMes, gravacaoId, videomakerId, pacote, prazo, observacoes, prioridade, roteiroId }) {
       return this.rpc('video_criar_demanda', {
         p_client_id: clienteId, p_titulo: titulo, p_codigo: codigo || '',
         p_competencia_ano: competenciaAno || null, p_competencia_mes: competenciaMes || null,
         p_gravacao_id: gravacaoId || null, p_videomaker_id: videomakerId || null,
         p_pacote: pacote || '', p_prazo: prazo || null, p_observacoes: observacoes || '',
-        p_prioridade: prioridade || 'normal'
+        p_prioridade: prioridade || 'normal', p_roteiro_id: roteiroId || null
       });
     },
     async atribuirVideo(demandaId, videomakerId) {
@@ -1719,7 +1719,7 @@ B7.DB = (function () {
     /* gravações de um cliente, para o seletor "vincular a uma gravação"
        na Central do Videomaker (mais recentes primeiro). */
     async gravacoesDoClienteParaVideo(clienteId) {
-      return ok(await sb().from('gravacoes').select('id,nome,data_gravacao,situacao')
+      return ok(await sb().from('gravacoes').select('id,nome,data_gravacao,situacao,status')
         .eq('client_id', clienteId).order('data_gravacao', { ascending: false }).order('created_at', { ascending: false }));
     },
     async excluirDemandaVideo(demandaId) { return this.rpc('video_excluir_demanda', { p_demanda_id: demandaId }); },
@@ -1789,6 +1789,53 @@ B7.DB = (function () {
     },
     async excluirPacoteVideo(id) {
       return this.rpc('video_excluir_pacote', { p_id: id });
+    },
+    async definirQuotaPacoteVideo(id, quantidade) {
+      return this.rpc('video_definir_quota_pacote', { p_id: id, p_quantidade: quantidade || null });
+    },
+
+    /* ---- Gestão, métricas, fechamento mensal, automação (Parte 3,
+       migration_video_gestao.sql) ---- */
+    async resumoGestaoVideo(ano, mes) {
+      return this.rpc('video_gestao_resumo', { p_ano: ano, p_mes: mes });
+    },
+    async cargaEquipeVideo() {
+      return ok(await sb().rpc('video_carga_equipe'));
+    },
+    async producaoPorClienteVideo(ano, mes) {
+      return ok(await sb().rpc('video_producao_por_cliente', { p_ano: ano, p_mes: mes }));
+    },
+    async relatorioPorVideomakerVideo(ano, mes) {
+      return ok(await sb().rpc('video_relatorio_por_videomaker', { p_ano: ano, p_mes: mes }));
+    },
+    async mesFechadoVideo(ano, mes) {
+      return this.rpc('video_mes_fechado', { p_ano: ano, p_mes: mes });
+    },
+    async fecharMesVideo(ano, mes, snapshot) {
+      return this.rpc('video_fechar_mes', { p_ano: ano, p_mes: mes, p_snapshot: snapshot || {} });
+    },
+    async reabrirMesVideo(ano, mes) {
+      return this.rpc('video_reabrir_mes', { p_ano: ano, p_mes: mes });
+    },
+    async competenciasFechadasVideo() {
+      return ok(await sb().from('video_competencias_fechadas').select('*').order('competencia_ano', { ascending: false }).order('competencia_mes', { ascending: false }));
+    },
+    /* roteiros de uma gravação "Gravado", pra montar o checklist da
+       automação Gravação→Edição — reaproveita listarRoteiros já existente. */
+    async roteirosParaAutomacaoVideo(gravacaoId) {
+      return this.listarRoteiros(gravacaoId);
+    },
+    async gerarDemandasDeGravacaoVideo(gravacaoId, roteiroIds, videomakerId, prazo) {
+      return ok(await sb().rpc('video_gerar_demandas_de_gravacao', {
+        p_gravacao_id: gravacaoId, p_roteiro_ids: roteiroIds || [],
+        p_videomaker_id: videomakerId || null, p_prazo: prazo || null
+      }));
+    },
+    async verificarAlertasPrazoVideo() {
+      return this.rpc('video_verificar_alertas_prazo', {});
+    },
+    async definirStandbyVideo(demandaId, revisarEm) {
+      return this.rpc('video_definir_standby', { p_demanda_id: demandaId, p_revisar_em: revisarEm || null });
     },
 
     /* ---- Equipe de Design (Admin/Coordenador) ---- */

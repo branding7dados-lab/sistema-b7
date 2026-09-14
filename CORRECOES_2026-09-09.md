@@ -5585,3 +5585,171 @@ Arquivos alterados: `js/video.js`, `js/database.js`, `js/auth.js`,
 1. No SQL Editor, rode `migration_video_pacotes.sql`.
 2. Suba os arquivos deste zip.
 3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-p`.
+
+# Rodada q (14/09/2026) — B7 Vídeo Parte 3: gestão, métricas, fechamento mensal, automação Gravação→Edição, alertas de prazo
+
+Esta é a rodada da sua especificação longa ("PARTE 3"). É a maior mudança
+desde a Parte 1 — por isso, mais do que nas rodadas anteriores, preciso
+ser direto sobre o que ficou pronto e testado, o que ficou pronto mas
+limitado, e o que eu decidi não tentar fazer agora (e por quê), em vez de
+prometer as 72 seções inteiras de uma vez.
+
+**Antes de qualquer coisa: um bug real que eu achei e corrigi.** Testando
+a métrica nova de "tempo médio de produção", descobri que criar uma
+demanda já com o responsável definido (ou atribuir um responsável a uma
+demanda pendente) sempre fazia a situação virar "Em edição" por baixo dos
+panos, mas **nunca registrava esse evento no histórico** — só ficava
+registrado que a demanda foi "criada" (com situação genérica "pendente",
+mesmo quando a situação real já era outra). Isso é comportamento antigo,
+de antes desta rodada, e não deveria mudar nada visível pra vocês — mas
+sem esse evento, a métrica de tempo de produção ia excluir do cálculo
+praticamente toda demanda criada normalmente, contando só as poucas
+importadas de planilha (que é a única exclusão que deveria acontecer).
+Corrigido: as duas funções agora também gravam esse evento quando a
+transição acontece. Testado.
+
+## Implementado e testado
+
+- **Resumo de gestão do mês** (botão "Gestão" → Produção de Vídeo):
+  total de demandas na competência, por situação, atrasadas, vencendo
+  hoje, entregues no prazo/com atraso/sem prazo definido, ciclos de
+  correção (total, por cliente, interna) e tempo médio de produção — tudo
+  calculado com SQL agregado no banco, não somado linha por linha na
+  tela. Testado com dados reais do banco local: soma das situações bate
+  com o total, soma do detalhe de entregues bate com o total de
+  entregues.
+- **Tempo médio de produção**: mede do início da edição até o primeiro
+  envio para aprovação (não até a entrega — a espera pela decisão do
+  cliente é tempo do cliente, não da equipe). Só entra no cálculo quem
+  tem essa trilha completa de eventos — sem isso, o número fica em
+  branco em vez de inventado. Testado com um caso real (3 dias de
+  diferença, calculado certo).
+- **Ciclo de correção por origem (cliente x interna)**: é uma
+  **inferência** sobre um padrão de texto que a função de decisão do
+  cliente (Parte 2) já grava ("Cliente (via ...")") — não é um campo
+  estruturado à parte. Reporto assim porque é exatamente isso que é: uma
+  leitura de um formato de mensagem existente, não uma garantia. Sem
+  reescrever nenhum código já em produção.
+- **Carga da equipe** (dentro do modal "Gestão"): por videomaker, quanto
+  cada um tem pra iniciar/em edição/correção/aguardando aprovação/
+  standby, atrasadas e vencendo hoje — sempre "agora" (não filtra por
+  mês, porque carga de trabalho é sobre o presente). Nunca conta
+  Entregue/Descartado. Sem ranking, sem nota de produtividade.
+- **Produção por cliente** (dentro do modal "Gestão"): total/entregues/
+  em produção/aguardando aprovação/correção por cliente e pacote na
+  competência escolhida. A coluna "Cota/mês" só aparece quando alguém
+  cadastrou uma quantidade contratada pra um pacote com esse nome exato
+  (ver "Pacotes" → agora cada pacote tem um campo de cota opcional) —
+  sem isso, fica "não definida". Nenhuma cota é inventada.
+- **Relatório por videomaker** (dentro do modal "Gestão"): entregues, em
+  edição, aguardando aprovação, correção, entregues com atraso e tempo
+  médio de produção, por pessoa, na competência escolhida.
+- **Fechamento mensal** ("Fechar mês"/"Reabrir mês", dentro do modal
+  "Gestão"): guarda um retrato (snapshot) das métricas do momento do
+  fechamento; avisa quantas demandas ainda estão em aberto (não
+  entregues/descartadas) antes de fechar, mas **não bloqueia** o
+  fechamento nem trava a edição de nada depois — é histórico, não uma
+  trava definitiva. Dá pra reabrir a qualquer momento. Testado o ciclo
+  completo: fechar → aparece fechado → reabrir → some o "fechado" →
+  tentar reabrir de novo sem estar fechado dá erro correto. Testado que
+  só admin/coordenador conseguem fechar/reabrir (videomaker é barrado).
+- **Automação Gravação → Edição** (botão "Gerar de gravação" → Produção
+  de Vídeo): escolhe um cliente, uma gravação com status "Gravado", e
+  marca quais roteiros dessa gravação viram demanda de edição (os
+  roteiros são os reais, cadastrados na gravação — título e objetivo
+  puxados de lá, nada inventado). Roteiro que já tem uma demanda ativa
+  vem marcado e travado (não dá pra duplicar), com aviso "já tem
+  demanda". Prazo e responsável são opcionais e aplicados a todos de
+  uma vez. Testado: gerar duas vezes com os mesmos roteiros não duplica
+  (a segunda chamada devolve as mesmas demandas, com aviso "já
+  existia") — e isso é garantido no banco (índice único), não só na
+  tela, então nem um duplo-clique nem um retry de rede cria duplicata.
+- **Alertas de prazo** ("entrega amanhã", "atrasada", "atrasada há mais
+  de 1 dia"): recalculados toda vez que a equipe abre a Produção de
+  Vídeo (silencioso — não trava a tela se falhar). "Entrega amanhã" e
+  "atrasada" avisam o videomaker responsável; "atrasada há mais de 1
+  dia" também avisa admin/coordenador (escalonamento). Testado: os três
+  avisos disparam nas condições certas, rodar de novo não duplica
+  (garantido por chave única no banco, o mesmo padrão de idempotência
+  usado em todo o sistema desde a Parte 1), e um prazo alterado gera um
+  aviso novo (chave diferente), não fica preso ao prazo antigo.
+- **Cota de pacote**: o catálogo de pacotes ("Pacotes") ganhou um campo
+  numérico opcional por pacote — só aparece na "Produção por cliente"
+  quando preenchido, continua sendo puramente opcional.
+- **Data de acompanhamento de standby**: função de banco pronta e
+  testada (`video_definir_standby`) pra marcar "revisar esta demanda em
+  tal data" numa demanda em standby — **mas ainda sem campo na tela de
+  detalhe** (ver "Preparado mas ainda não aplicado" abaixo).
+
+## Implementado mas requer validação adicional
+
+- **Toda a interface nova** (modal "Gestão", modal "Gerar de gravação",
+  cota no modal "Pacotes") foi testada por revisão de código e pelos
+  testes de banco acima, mas eu não tenho como abrir o navegador aqui
+  pra clicar em cada botão de verdade. Vale conferir, especialmente: o
+  modal "Gestão" com uma competência que realmente tem dados variados,
+  trocar de mês no seletor dentro do modal, e o fluxo completo de gerar
+  demandas de uma gravação com vários roteiros.
+- **Escalonamento de "atrasada há mais de 1 dia"**: notifica todo
+  admin/coordenador ativo. Com poucas contas de teste isso ficou
+  pequeno demais pra eu avaliar se o volume de aviso é incômodo com uma
+  equipe de verdade — se dessa vez também vier avaliar, é a única parte
+  desta rodada que reservo uma dúvida real de "vai incomodar?" em vez
+  de "está certo?".
+
+## Preparado mas ainda não aplicado
+
+- **Campo de standby na tela de detalhe da demanda**: a função de banco
+  existe e está testada, só falta o campo na tela (select/date picker
+  na área de detalhe). Não emendei porque o resto da rodada já é grande
+  — fica pra próxima passada, é pequeno.
+- **PDF/CSV do relatório mensal**: a especificação já permitia adiar
+  isso. Os dados do relatório existem e estão testados (função de
+  banco), só não tem botão de exportar ainda.
+
+## Não implementado por decisão consciente
+
+- **Aprovação/correção de vídeo pelo Portal do Cliente** (a parte da
+  especificação que reusa o mesmo fluxo de decisão do WhatsApp, mas
+  dentro do Portal): decidi não mexer nisso nesta rodada. É uma área
+  sensível (autenticação de cliente, dados de outros clientes,
+  informação interna que não pode vazar pro portal) que merece uma
+  auditoria própria do `js/portal.js` antes de eu tocar, e um jeito
+  seguro de testar sem arriscar o acesso de cliente de verdade em
+  produção. Prefiro entregar isso numa rodada dedicada, com o cuidado
+  que o tema pede, do que emendar rápido numa rodada já grande.
+- **Bloqueio total de edição em mês fechado**: o fechamento hoje é um
+  retrato (snapshot) — não impede ninguém de continuar editando uma
+  demanda de um mês fechado. Decidi assim de propósito (fechamento
+  reversível, sem risco de travar alguém por engano), mas se vocês
+  querem que "fechado" realmente bloqueie escrita, é outra decisão de
+  produto que prefiro confirmar antes de implementar.
+- **Job agendado de verdade pros alertas de prazo**: como expliquei no
+  topo do arquivo `migration_video_gestao.sql`, este projeto não tem
+  nenhuma infraestrutura de agendamento (nem `pg_cron`, nem Edge
+  Function em cron) — só duas Edge Functions sem agenda (`b7-auth`,
+  `b7-push`). Os alertas hoje só recalculam quando alguém da equipe
+  abre a Produção de Vídeo. Isso significa que um aviso pode demorar a
+  aparecer até alguém abrir o sistema — não é notificação em tempo
+  real de verdade, e eu não quero deixar essa limitação escondida.
+  Resolver isso de verdade exigiria configurar agendamento no Supabase,
+  fora do escopo de "subir um zip" — se quiser seguir por aí, é
+  conversa à parte.
+- **"+3 dias úteis" de prazo sugerido automaticamente**: a
+  especificação supõe que essa lógica já existia no sistema — eu
+  procurei e não existe nada parecido em nenhuma migration anterior.
+  Não implementei porque não tinha certeza de qual regra de dias úteis
+  vocês realmente querem (feriados? fim de semana só, ou também
+  feriados nacionais?) — prefiro perguntar do que supor e cravar uma
+  regra errada num campo que afeta prazo de entrega de cliente.
+
+Arquivos alterados: `js/video.js`, `js/database.js`, `js/auth.js`,
+`sw.js`, `styles/video.css`. Arquivo novo: `migration_video_gestao.sql`.
+`VERSAO` → `2026-09-14-q`, cache → `roteiros-b7-v75`.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_video_gestao.sql` (pode repetir sem
+   dano — todo `create or replace`/`add column if not exists`).
+2. Suba os arquivos deste zip.
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-q`.
