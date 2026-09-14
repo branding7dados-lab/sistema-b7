@@ -4591,3 +4591,126 @@ de um deploy separado (`supabase functions deploy b7-auth`), igual já
 foi feito antes quando a função `videomaker` foi criada — subir o zip
 no GitHub Pages e rodar a migration **não** atualiza a função de
 borda.
+
+# Correção de 14/09/2026 — rodada f (competência das 367 demandas: causa real e recuperação)
+
+Build `2026-09-14-f`. Hotfix depois que você reportou que filtrar por
+setembro/2026 continuava trazendo demandas de todos os meses. O filtro
+da tela nunca teve bug — o problema era o dado: as 367 demandas já
+importadas estavam **todas** gravadas como setembro/2026 no banco, e a
+função de backfill que eu shipei no build anterior (`2026-09-14-e`)
+não corrigia isso por dois motivos, os dois corrigidos aqui.
+
+## Causa 1 — a competência (coluna "Mês" da planilha) nunca foi salva
+
+Na importação real que já aconteceu, `dados_originais` de cada linha
+importada guardou cliente, título, código, pacote etc., mas **não**
+guardou a coluna "Mês" da planilha como campo próprio — essa extração
+só passou a existir no parser a partir do build `2026-09-14-e`
+(depois que as 367 demandas já tinham sido confirmadas). Sem esse
+valor salvo, `video_backfill_competencia()` não tinha de onde
+recuperar nada — e cada demanda ficou com a competência padrão do
+momento em que foi confirmada (setembro/2026, para todas, porque toda
+a confirmação aconteceu no mesmo mês).
+
+**Recuperação**: você confirmou que a planilha real que eu já tinha
+aqui de testes anteriores (731 linhas, arquivo "PLANILHA DE GRAVAÇÕES
+(1).xlsx") é a mesma usada na importação de produção. Cruzei cada uma
+das 367 linhas já confirmadas (identificadas por `linha_numero`, que
+preserva a ordem original do arquivo) com a linha correspondente desse
+arquivo, e verifiquei a correspondência manualmente em 16 linhas de
+amostra (cliente + código + título, espalhadas do início ao fim do
+arquivo) — bateram as 16, sem nenhuma divergência, antes de eu gerar
+qualquer script. Testei o recorte completo (idêntico ao que você vai
+rodar) contra a base local de 731 linhas simulando o mesmo problema
+(apagando `ano`/`mes` de `dados_originais` e forçando toda demanda
+para setembro/2026, exatamente como está em produção): depois de
+rodar a recuperação, as 733 demandas locais bateram 100% com o valor
+correto que eu já tinha confirmado antes — nenhuma divergência.
+
+**Novo arquivo**: `migration_video_recuperacao_competencia.sql`. Só
+adiciona as chaves `ano`/`mes` que faltavam em `dados_originais` das
+367 linhas (não toca em mais nada do que já estava salvo) e, na
+sequência, chama `video_backfill_competencia()` — a mesma função já
+entregue — que aplica a correção de verdade e devolve a lista do que
+mudou, pra você conferir. **Rode uma vez só**, depois da migration
+`migration_video_producao.sql` já aplicada.
+
+## Causa 2 — o backfill nunca rodava a partir do SQL Editor
+
+Mesmo com o dado certo, `video_backfill_competencia()` e
+`video_backfill_prioridade()` checavam `sou_equipe()`, que depende de
+`auth.uid()` — e o SQL Editor do Supabase roda como o papel do banco
+(postgres/owner), sem token de usuário nenhum. `auth.uid()` volta
+nulo, `sou_equipe()` volta falso, e a função recusava rodar com "Só a
+equipe roda o backfill...". **A instrução que te dei no build anterior
+(rodar essas duas funções direto no SQL Editor) nunca teria
+funcionado** — o erro ficava escondido atrás da falta de dado, mas era
+um segundo problema real, independente.
+
+**Correção**: as duas funções (e `video_demandas_competencia_nao_confiavel()`)
+agora só exigem `sou_equipe()` quando existe uma sessão de usuário de
+verdade (`auth.uid()` não nulo — ou seja, quando chamadas pelo app,
+via login de alguém). Chamadas sem token nenhum (SQL Editor, sessão de
+administração do banco) passam direto — quem tem acesso ao SQL Editor
+já tem acesso irrestrito ao banco de qualquer jeito, então essa
+checagem nunca protegia nada nesse caso; ela continua protegendo o
+caminho que importa (um usuário comum tentando chamar pelo app sem ser
+da equipe).
+
+**Novo arquivo**: `migration_video_backfill_acesso_sql.sql` — recria
+as três funções com a checagem corrigida. `migration_video_producao.sql`
+(o arquivo mestre) também foi atualizado com a mesma correção, para
+quem for aplicar tudo do zero no futuro.
+
+## Como aplicar (nesta ordem)
+
+1. Suba os arquivos deste zip no repositório.
+2. No SQL Editor do Supabase, rode, nesta ordem:
+   - `migration_video_backfill_acesso_sql.sql` (corrige o acesso das
+     três funções — precisa vir antes do passo de recuperação, senão
+     ele vai dar o mesmo erro de permissão).
+   - `migration_video_recuperacao_competencia.sql` (recupera a
+     competência das 367 demandas e já aplica a correção — confira a
+     lista de retorno).
+3. Recarregue com `Ctrl+Shift+R`. O rodapé da tela de acesso agora
+   realmente mostra a versão (`v2026-09-14-f`) — descobri, verificando
+   isso com você, que o número nunca tinha sido exibido em lugar
+   nenhum da tela em nenhum build anterior, apesar do changelog sempre
+   dizer "confira o rodapé". Corrigido também.
+
+### Implementado e testado
+
+- Causa 1 e causa 2 diagnosticadas com evidência direta (consulta que
+  você rodou mostrando as 367 demandas 100% em setembro/2026;
+  reprodução do erro de permissão do backfill rodando localmente como
+  o SQL Editor roda, sem JWT).
+- Script de recuperação testado de ponta a ponta contra a base local
+  de 731 linhas reais, simulando fielmente o estado de produção
+  (dados ausentes + erro de permissão), com o resultado batendo 100%
+  com o valor correto já validado antes.
+- Rodapé da tela de acesso agora mostra a versão de verdade.
+
+### Implementado, mas requer validação adicional
+
+- A correlação por `linha_numero` assume que a ordem das linhas no
+  arquivo não mudou entre a importação real e o arquivo que eu tenho
+  aqui — você confirmou que é o mesmo arquivo, e a amostra de 16
+  linhas bateu 100%, mas vale conferir a lista de saída do
+  `video_backfill_competencia()` depois de rodar, especialmente se
+  alguma linha antiga tiver ficado "não confiável" (sem correspondência).
+
+### Preparado, mas ainda não aplicado
+
+- Nada pendente de aplicação nesta rodada além dos dois scripts acima.
+
+### Não implementado por bloqueio ou por decisão consciente
+
+- Nenhum item novo — rodada de correção pontual sobre o que já foi
+  entregue.
+
+Arquivos alterados: `migration_video_backfill_acesso_sql.sql` (novo),
+`migration_video_recuperacao_competencia.sql` (novo),
+`migration_video_producao.sql` (atualizado com a mesma correção de
+acesso), `js/auth.js`, `styles/auth.css`, `sw.js`.
+`VERSAO` → `2026-09-14-f`, cache → `roteiros-b7-v64`.

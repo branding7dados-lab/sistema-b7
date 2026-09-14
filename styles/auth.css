@@ -322,3 +322,6 @@ body.sem-sessao main{display:none;}
 .av-pessoa.com-foto{background:var(--suave);text-shadow:none;}
 .av-pessoa.com-foto:before,.av-pessoa.com-foto:after{display:none;}
 .av-pessoa img{width:100%;height:100%;max-width:none;object-fit:cover;object-position:center;display:block;}
+
+.login-rodape{position:relative;z-index:1;text-align:center;font-size:11px;
+  color:rgba(255,255,255,.45);letter-spacing:.03em;margin-top:16px;}

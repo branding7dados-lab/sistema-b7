@@ -287,7 +287,11 @@ create or replace function public.video_backfill_competencia()
 returns table(demanda_id uuid, titulo text, competencia_antiga text, competencia_nova text)
 language plpgsql security definer set search_path = public as $$
 begin
-  if not public.sou_equipe() then
+  /* auth.uid() nulo = chamado do SQL Editor (sessão de DBA, sem JWT),
+     não do app — quem tem acesso ao SQL Editor já tem acesso total ao
+     banco, então só exige sou_equipe() quando existe usuário logado
+     de verdade (chamada vinda do app). */
+  if auth.uid() is not null and not public.sou_equipe() then
     raise exception 'Só a equipe roda o backfill de competência.' using errcode = '42501';
   end if;
 
@@ -336,7 +340,7 @@ language sql stable security definer set search_path = public as $$
    where d.origem = 'importacao' and d.deleted_at is null
      and (l.id is null or nullif(l.dados_originais->>'ano', '') is null
           or nullif(l.dados_originais->>'mes', '') is null)
-     and public.sou_equipe()
+     and (auth.uid() is null or public.sou_equipe())
    order by d.competencia_ano desc nulls last, d.competencia_mes desc nulls last;
 $$;
 revoke all on function public.video_demandas_competencia_nao_confiavel() from public;
@@ -485,7 +489,7 @@ create or replace function public.video_backfill_prioridade()
 returns table(demanda_id uuid, titulo text, prioridade_origem text, prioridade_nova text)
 language plpgsql security definer set search_path = public as $$
 begin
-  if not public.sou_equipe() then
+  if auth.uid() is not null and not public.sou_equipe() then
     raise exception 'Só a equipe roda o backfill de prioridade.' using errcode = '42501';
   end if;
 
