@@ -68,7 +68,7 @@ B7.Video = (function () {
   };
   const mesAtualChave = () => { const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0'); };
 
-  let demandas = [], clientes = [], videomakers = [];
+  let demandas = [], clientes = [], videomakers = [], pacotesVideoCache = [];
   let versoesAtual = [];   /* versões da demanda aberta no momento (Workspace de Vídeo) */
   let comentariosPorVersao = {};   /* versao_id -> lista de comentários com timecode */
 
@@ -96,11 +96,12 @@ B7.Video = (function () {
 
     try {
       const chamadas = [B7.DB.minhasDemandasVideo()];
-      if (equipe) chamadas.push(B7.DB.listarClientes(), B7.DB.listarVideomakers());
-      const [d, c, v] = await Promise.all(chamadas);
+      if (equipe) chamadas.push(B7.DB.listarClientes(), B7.DB.listarVideomakers(), B7.DB.pacotesVideo());
+      const [d, c, v, p] = await Promise.all(chamadas);
       demandas = d || [];
       clientes = c || [];
       videomakers = v || [];
+      pacotesVideoCache = p || [];
     } catch (e) {
       painel().innerHTML = '<div class="conteudo vd-tela"><div class="estado-b7">' +
         '<b>Não foi possível carregar a Produção de Vídeo.</b>' +
@@ -191,9 +192,11 @@ B7.Video = (function () {
         (descartados.length
           ? '<button class="b fina contorno" id="vd-descartados">Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
           : '') +
+        '<button class="b fina contorno" id="vd-pacotes">Pacotes</button>' +
         '<button class="b contorno" id="vd-importar">Importar planilha</button>' +
         '<button class="b pri" id="vd-nova">+ Nova demanda</button></div>' +
       '</div>' +
+      '<datalist id="vd-pacotes-lista">' + pacotesVideoCache.map(p => '<option value="' + esc(p.nome) + '">').join('') + '</datalist>' +
       (anteriores.length
         ? '<div class="vd-aviso-anteriores" id="vd-aviso-anteriores">' +
           '<b>' + anteriores.length + '</b> demanda' + (anteriores.length === 1 ? '' : 's') +
@@ -210,6 +213,8 @@ B7.Video = (function () {
     if (btImportar) btImportar.onclick = () => modalImportar();
     const btDescartados = document.getElementById('vd-descartados');
     if (btDescartados) btDescartados.onclick = () => modalDescartados(descartados);
+    const btPacotes = document.getElementById('vd-pacotes');
+    if (btPacotes) btPacotes.onclick = () => modalPacotes();
     const btVerAnteriores = document.getElementById('vd-ver-anteriores');
     if (btVerAnteriores) btVerAnteriores.onclick = () => {
       F.competencia = 'todas'; F.prazo = 'atrasadas'; guardarFiltros(); desenharProducao();
@@ -651,7 +656,7 @@ B7.Video = (function () {
       '<input class="campo" id="vd-nd-titulo" placeholder="Ex.: Reel de lançamento">' +
       '<div class="vd-grid-2">' +
         '<div><label class="rot">Código (opcional)</label><input class="campo" id="vd-nd-codigo" placeholder="Ex.: 014"></div>' +
-        '<div><label class="rot">Pacote (opcional)</label><input class="campo" id="vd-nd-pacote" placeholder="Ex.: Mensal 8 vídeos"></div>' +
+        '<div><label class="rot">Pacote (opcional)</label><input class="campo" id="vd-nd-pacote" list="vd-pacotes-lista" placeholder="Ex.: Mensal 8 vídeos" autocomplete="off"></div>' +
       '</div>' +
       '<div class="vd-grid-2">' +
         '<div><label class="rot">Prazo (opcional)</label><input class="campo" type="date" id="vd-nd-prazo"></div>' +
@@ -739,6 +744,75 @@ B7.Video = (function () {
   }
 
   /* =================================================================
+     PACOTES PREDEFINIDOS — catálogo de sugestões pro campo "Pacote"
+     (migration_video_pacotes.sql). Não é obrigatório nem trava texto
+     livre — só evita redigitar/variar o nome toda vez.
+     ================================================================= */
+  function modalPacotes() {
+    const conteudo = () => {
+      const linhas = [...pacotesVideoCache].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+      return '<h3>Pacotes predefinidos</h3>' +
+        '<p class="fraca">Sugestões pro campo "Pacote" das demandas — o campo continua aceitando qualquer texto, isso aqui só evita redigitar.</p>' +
+        (linhas.length
+          ? '<div class="vd-pacotes-adm">' + linhas.map(p =>
+              '<div class="vd-pacote-item"><span>' + esc(p.nome) + '</span>' +
+              '<button class="vd-cm-excluir" data-excluir-pacote="' + p.id + '" title="Excluir pacote" aria-label="Excluir pacote">×</button></div>').join('') + '</div>'
+          : '<p class="fraca">Nenhum pacote cadastrado ainda.</p>') +
+        '<form id="vd-pct-form" class="vd-cm-form">' +
+          '<input class="campo vd-cm-texto" id="vd-pct-nome" placeholder="Nome do pacote (ex.: Mensal 8 vídeos)" autocomplete="off" data-foco>' +
+          '<button class="b pri fina" type="submit">Adicionar</button>' +
+        '</form>' +
+        '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>';
+    };
+
+    const atualizarDatalists = () => {
+      document.querySelectorAll('#vd-pacotes-lista').forEach(dl => {
+        dl.innerHTML = pacotesVideoCache.map(p => '<option value="' + esc(p.nome) + '">').join('');
+      });
+    };
+
+    const m = B7.UI.modal(conteudo());
+    const redesenhar = () => {
+      m.querySelector('.modal').innerHTML = conteudo();
+      m.querySelectorAll('[data-fecha]').forEach(b => b.onclick = m.fechar);
+      ligar();
+    };
+    function ligar() {
+      const form = m.querySelector('#vd-pct-form');
+      if (form) form.onsubmit = async e => {
+        e.preventDefault();
+        const nome = m.querySelector('#vd-pct-nome').value.trim();
+        if (!nome) return;
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        try {
+          await B7.DB.criarPacoteVideo(nome);
+          pacotesVideoCache = await B7.DB.pacotesVideo().catch(() => pacotesVideoCache);
+          atualizarDatalists();
+          redesenhar();
+        } catch (err) { btn.disabled = false; B7.UI.toast(err.message || 'Não foi possível criar o pacote.'); }
+      };
+      m.querySelectorAll('[data-excluir-pacote]').forEach(btn => {
+        btn.onclick = async () => {
+          const ok = await B7.UI.confirmar({
+            titulo: 'Excluir este pacote?',
+            texto: 'Só some da lista de sugestões — não muda nenhuma demanda já cadastrada com esse pacote.',
+            perigo: true, rotulo: 'Excluir'
+          });
+          if (!ok) return;
+          try {
+            await B7.DB.excluirPacoteVideo(btn.dataset.excluirPacote);
+            pacotesVideoCache = await B7.DB.pacotesVideo().catch(() => pacotesVideoCache);
+            atualizarDatalists();
+            redesenhar();
+          } catch (err) { B7.UI.toast(err.message || 'Não foi possível excluir.'); }
+        };
+      });
+    }
+    ligar();
+  }
+
+  /* =================================================================
      DETALHE DE UMA DEMANDA — layout principal + painel lateral
      ================================================================= */
   async function abrirDetalhe(id) {
@@ -753,6 +827,7 @@ B7.Video = (function () {
       ]);
       if (souEquipe() && !clientes.length) clientes = await B7.DB.listarClientes().catch(() => []);
       if (souEquipe() && !videomakers.length) videomakers = await B7.DB.listarVideomakers().catch(() => []);
+      if (souEquipe() && !pacotesVideoCache.length) pacotesVideoCache = await B7.DB.pacotesVideo().catch(() => []);
       comentariosPorVersao = {};
       if (versoesAtual.length) {
         const listas = await Promise.all(versoesAtual.map(v => B7.DB.comentariosVersaoVideo(v.id).catch(() => [])));
@@ -843,8 +918,10 @@ B7.Video = (function () {
           '<div class="vd-so-leitura">' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</div>' +
           '</div>' +
           '<div class="vd-dt-campo"><label class="rot">Pacote</label>' +
-          (podeEditar ? '<input class="campo" id="vd-dt-pacote" value="' + esc(d.pacote || '') + '">' :
-            '<div class="vd-so-leitura">' + esc(d.pacote || '—') + '</div>') +
+          (podeEditar
+            ? '<input class="campo" id="vd-dt-pacote" list="vd-pacotes-lista" value="' + esc(d.pacote || '') + '" autocomplete="off">' +
+              '<datalist id="vd-pacotes-lista">' + pacotesVideoCache.map(p => '<option value="' + esc(p.nome) + '">').join('') + '</datalist>'
+            : '<div class="vd-so-leitura">' + esc(d.pacote || '—') + '</div>') +
           '</div>' +
           '<div class="vd-dt-campo"><label class="rot">Gravação vinculada</label>' +
           (podeEditar
@@ -943,7 +1020,9 @@ B7.Video = (function () {
         return '<a class="b fina" href="' + esc(v.arquivo_url) + '" target="_blank" rel="noopener">Abrir vídeo</a>' + nomeArq;
       }
       return '<div class="vd-player"><iframe src="https://drive.google.com/file/d/' + driveId + '/preview" allow="autoplay" loading="lazy" ' +
-        'title="' + esc(v.arquivo_nome || 'Vídeo ' + vNum(v.numero)) + '"></iframe></div>' +
+        'title="' + esc(v.arquivo_nome || 'Vídeo ' + vNum(v.numero)) + '"></iframe>' +
+        '<button type="button" class="vd-player-tela-cheia" title="Tela cheia" aria-label="Ver em tela cheia">⛶</button>' +
+        '</div>' +
         '<div class="vd-player-legenda"><a class="b fina" href="' + esc(v.arquivo_url) + '" target="_blank" rel="noopener">Abrir no Drive</a>' + nomeArq + '</div>';
     };
 
@@ -1222,6 +1301,19 @@ B7.Video = (function () {
       try { await B7.DB.excluirDemandaVideo(d.id); B7.UI.toast('Demanda excluída.'); location.hash = '#/video'; }
       catch (e) { B7.UI.toast(e.message || 'Não foi possível excluir.'); }
     };
+
+    /* Tela cheia: pede fullscreen no próprio container do player (não no
+       iframe/vídeo por dentro) — funciona mesmo com o conteúdo do Drive
+       sendo de outra origem, porque a API de Fullscreen opera sobre o
+       elemento em si, não sobre o que tem dentro dele. */
+    document.querySelectorAll('.vd-player-tela-cheia').forEach(btn => {
+      btn.onclick = () => {
+        const caixa = btn.closest('.vd-player');
+        if (!caixa) return;
+        const pedir = caixa.requestFullscreen || caixa.webkitRequestFullscreen || caixa.msRequestFullscreen;
+        if (pedir) pedir.call(caixa).catch(() => B7.UI.toast('Não foi possível abrir em tela cheia.'));
+      };
+    });
 
     document.querySelectorAll('.vd-cm-form').forEach(form => {
       form.onsubmit = async e => {

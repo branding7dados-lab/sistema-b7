@@ -1778,6 +1778,19 @@ B7.DB = (function () {
       return this.rpc('video_excluir_comentario', { p_comentario_id: comentarioId });
     },
 
+    /* ---- Catálogo de pacotes predefinidos (migration_video_pacotes.sql) ----
+       Só sugestão pra preencher mais rápido — o campo "Pacote" da
+       demanda continua sendo texto livre, sem FK pra cá. */
+    async pacotesVideo() {
+      return ok(await sb().from('video_pacotes').select('*').order('nome'));
+    },
+    async criarPacoteVideo(nome) {
+      return this.rpc('video_criar_pacote', { p_nome: nome });
+    },
+    async excluirPacoteVideo(id) {
+      return this.rpc('video_excluir_pacote', { p_id: id });
+    },
+
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {
       return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')

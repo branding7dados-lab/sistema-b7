@@ -5500,3 +5500,88 @@ Arquivos alterados: `js/video.js`, `js/database.js`, `js/auth.js`,
 1. No SQL Editor, rode `migration_video_comentarios.sql`.
 2. Suba os arquivos deste zip.
 3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-o`.
+
+# Rodada p (14/09/2026) — tela cheia no player, pacotes predefinidos, e por que o timecode automático não entrou
+
+Você pediu três coisas nessa mensagem. Duas eu implementei e testei.
+A terceira (timecode automático ao pausar o vídeo) eu NÃO implementei
+— e preciso explicar o motivo técnico real, não é escolha por preguiça.
+
+## Implementado e testado
+
+- **Tela cheia no player**: botão novo (ícone ⛶ no canto do vídeo) que
+  abre o player em tela cheia de verdade (API de Fullscreen do
+  navegador, não é só "esticar a div"). Funciona em cima do player
+  embutido do Drive sem precisar de nenhuma permissão extra, porque a
+  tela cheia é pedida sobre a caixa que contém o vídeo, não sobre o
+  conteúdo do Drive em si (que é de outro domínio). Testado por
+  revisão de código/CSS (o comportamento da API de Fullscreen é padrão
+  do navegador, não depende de nada específico do sistema) — vale
+  confirmar clicando numa versão de verdade.
+- **Pacotes predefinidos**: botão novo "Pacotes" na Produção de Vídeo
+  — admin/coordenador cadastra os nomes de pacote que a B7 usa (ex.:
+  "Mensal 8 vídeos", "Premium 12 vídeos") numa lista reutilizável.
+  Nos formulários (Nova demanda e edição da demanda), o campo
+  "Pacote" ganhou autocomplete com essas sugestões — mas **continua
+  sendo texto livre**: ninguém é obrigado a escolher da lista, dá pra
+  digitar qualquer coisa, e nenhuma demanda já cadastrada foi tocada
+  (não criei nenhum vínculo/trava entre o catálogo e o campo — de
+  propósito, pra não repetir a bagunça que já tivemos com
+  competência/responsável vindos de planilha). Testei contra o banco
+  local: criar pacote, tentar criar duplicado (bloqueado, com aviso
+  claro), videomaker tentando gerenciar pacote (bloqueado — só
+  admin/coordenador), excluir pacote (funciona e não mexe nas
+  demandas que já usavam aquele nome).
+
+## Não implementado por bloqueio técnico real
+
+- **Timecode automático ao pausar o vídeo**: pedido claro, mas
+  tecnicamente não dá pra fazer do jeito que está hoje, e preciso
+  explicar o porquê em vez de fingir que dá.
+
+  O player embutido é o preview do próprio Google Drive, carregado
+  dentro de um iframe de outro domínio (`drive.google.com`). O
+  navegador isola isso por segurança — é assim que qualquer iframe de
+  outro site funciona, não é uma regra nossa. O Google não publica
+  nenhuma API pra esse preview especificamente (diferente do YouTube
+  ou do Vimeo, que têm APIs de player documentadas): não dá pra ler
+  "em que segundo o vídeo está agora" nem saber quando alguém pausou,
+  de fora do iframe.
+
+  Cheguei a considerar tentar tocar o vídeo direto (sem passar pelo
+  preview do Drive, usando o link de download direto num player HTML5
+  nosso, que aí sim eu controlo o pausar/tempo/tela cheia). Decidi
+  **não** implementar isso porque é instável de um jeito arriscado:
+  pra arquivos grandes (a maioria dos vídeos editados de verdade, em
+  9:16 e boa qualidade), o Drive costuma interromper o link direto com
+  uma tela de aviso ("não foi possível verificar vírus neste arquivo")
+  em vez de entregar o vídeo — e isso quebra o player sem erro claro,
+  de forma imprevisível (funciona hoje, para de funcionar amanhã sem
+  eu ter mudado nada). Preferi não entregar uma função que parece
+  funcionar mas falha silenciosamente às vezes — isso é pior do que
+  simplesmente digitar o tempo, porque ninguém saberia por que falhou.
+
+  **O caminho de verdade pra ter timecode automático** seria trocar
+  onde o vídeo fica hospedado — sair do link do Drive e usar um
+  serviço com player embutido de verdade (ex.: vídeo não listado no
+  YouTube, Vimeo, ou um serviço de vídeo tipo Cloudflare Stream/Bunny).
+  Isso é uma mudança de arquitetura real: muda onde/como a equipe sobe
+  o vídeo depois de editar, não é só um ajuste de tela. Não fiz essa
+  mudança sozinho porque afeta o fluxo de trabalho de vocês — se
+  quiser seguir por aí, me diga qual serviço prefere (ou se quer que
+  eu sugira um) que eu desenho a migração.
+
+  Até lá, o comentário com timecode continua funcionando do jeito que
+  já está: você pausa o vídeo no player, olha o tempo que o próprio
+  Drive mostra (ex.: "0:14 / 0:30", visível no player), digita `0:14`
+  no campo. Não é automático, mas é rápido e funciona sempre.
+
+Arquivos alterados: `js/video.js`, `js/database.js`, `js/auth.js`,
+`sw.js`, `styles/video.css`. Arquivo novo: `migration_video_pacotes.sql`.
+`VERSAO` → `2026-09-14-p`, cache → `roteiros-b7-v74`.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_video_pacotes.sql`.
+2. Suba os arquivos deste zip.
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-p`.
