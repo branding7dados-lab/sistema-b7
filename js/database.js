@@ -1765,6 +1765,19 @@ B7.DB = (function () {
       return this.rpc('video_registrar_entrega', { p_demanda_id: demandaId, p_versao_id: versaoId, p_mensagem: mensagem || null });
     },
 
+    /* ---- Comentários com timecode (migration_video_comentarios.sql) ----
+       Timecode é digitado por quem comenta (o preview do Drive não expõe
+       o tempo do player pra fora do iframe) — ver nota no arquivo SQL. */
+    async comentariosVersaoVideo(versaoId) {
+      return ok(await sb().from('video_comentarios_resumo').select('*').eq('versao_id', versaoId).order('timecode_seg', { ascending: true }));
+    },
+    async criarComentarioVideo(versaoId, timecodeSeg, texto) {
+      return this.rpc('video_criar_comentario', { p_versao_id: versaoId, p_timecode_seg: timecodeSeg, p_texto: texto });
+    },
+    async excluirComentarioVideo(comentarioId) {
+      return this.rpc('video_excluir_comentario', { p_comentario_id: comentarioId });
+    },
+
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {
       return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')

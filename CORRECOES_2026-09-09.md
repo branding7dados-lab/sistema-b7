@@ -5445,3 +5445,58 @@ Arquivos alterados: `js/auth.js`, `sw.js`, `styles/video.css`.
 
 1. Suba os arquivos deste zip (sem SQL).
 2. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-n`.
+
+# Rodada o (14/09/2026) — player em 9:16 (vertical) e comentário com timecode
+
+Dois pedidos seus: os vídeos da B7 são sempre verticais (9:16), então o
+player embutido estava na proporção errada (16:9, "deitado"); e você
+pediu de volta o comentário com timecode, que eu tinha deixado de fora
+lá na rodada `l` porque seu prompt original marcava como opcional.
+
+## Implementado e testado
+
+- **Player em 9:16**: o player embutido agora respeita a proporção
+  vertical (retrato) dos vídeos de vocês, em vez de esticar horizontal
+  como se fosse 16:9. Fica centralizado no bloco, com um teto de
+  largura (não ocupa a tela inteira).
+- **Comentário com timecode**: dentro de cada versão (a atual e as
+  antigas, no "ver mais"), um bloco novo "Comentários" — quem pode
+  operar a demanda (equipe ou o videomaker responsável) escreve um
+  comentário e digita o tempo do vídeo em que ele se aplica (`mm:ss`,
+  ex.: `1:23`), fica listado em ordem do menor pro maior tempo, com
+  quem escreveu e quando. Quem escreveu (ou admin/coordenador) pode
+  excluir. Testei os três cenários de permissão contra o banco local:
+  o videomaker responsável comenta normalmente; um videomaker que NÃO
+  é o responsável pela demanda é bloqueado ao tentar comentar
+  (`permission denied` de propósito); e na exclusão — quem escreveu
+  apaga o próprio comentário, outro videomaker qualquer é bloqueado de
+  apagar comentário alheio, e admin/coordenador consegue apagar
+  qualquer um.
+- **Limitação real, que preciso deixar clara**: o timecode não é
+  capturado automaticamente do player, é digitado por quem comenta.
+  O player embutido é a pré-visualização do próprio Google Drive — um
+  iframe de outro domínio, sem uma API pública documentada pra eu ler
+  "em que segundo o vídeo está" nem pra pular o vídeo pra um tempo ao
+  clicar num comentário. Então: a pessoa vê o vídeo, anota o tempo de
+  cabeça (ou pausa e olha o contador do próprio player do Drive), e
+  digita. Fica registrado e ordenado certinho — só não pilota o player
+  sozinho.
+
+## Não implementado por bloqueio ou decisão consciente
+
+- Clicar num comentário pra pular o vídeo pro timecode: não dá, pela
+  limitação de API explicada acima. Se um dia migrarmos pra hospedar
+  vídeo dentro do próprio sistema (não mais link do Drive), aí sim dá
+  pra ter isso — mas é uma mudança de arquitetura bem maior, não algo
+  pra essa rodada.
+
+Arquivos alterados: `js/video.js`, `js/database.js`, `js/auth.js`,
+`sw.js`, `styles/video.css`. Arquivo novo:
+`migration_video_comentarios.sql`.
+`VERSAO` → `2026-09-14-o`, cache → `roteiros-b7-v73`.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_video_comentarios.sql`.
+2. Suba os arquivos deste zip.
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-o`.

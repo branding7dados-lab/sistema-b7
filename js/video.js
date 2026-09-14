@@ -70,6 +70,7 @@ B7.Video = (function () {
 
   let demandas = [], clientes = [], videomakers = [];
   let versoesAtual = [];   /* versões da demanda aberta no momento (Workspace de Vídeo) */
+  let comentariosPorVersao = {};   /* versao_id -> lista de comentários com timecode */
 
   /* =================================================================
      FILTROS — persistidos por sessão (mesmo padrão de B7.Design),
@@ -752,6 +753,11 @@ B7.Video = (function () {
       ]);
       if (souEquipe() && !clientes.length) clientes = await B7.DB.listarClientes().catch(() => []);
       if (souEquipe() && !videomakers.length) videomakers = await B7.DB.listarVideomakers().catch(() => []);
+      comentariosPorVersao = {};
+      if (versoesAtual.length) {
+        const listas = await Promise.all(versoesAtual.map(v => B7.DB.comentariosVersaoVideo(v.id).catch(() => [])));
+        versoesAtual.forEach((v, i) => { comentariosPorVersao[v.id] = listas[i]; });
+      }
     } catch (e) {
       painel().innerHTML = '<div class="conteudo vd-tela"><div class="estado-b7">' +
         '<b>Não foi possível abrir esta demanda.</b><p>' + esc(e.message || '') + '</p>' +
@@ -882,6 +888,43 @@ B7.Video = (function () {
     return null;
   }
 
+  /* Comentários com timecode. O preview do Drive é um iframe de outro
+     domínio sem API pública pra ler "em que segundo o vídeo está" nem
+     pra pular pra um tempo — então o timecode aqui é digitado por quem
+     comenta (campo mm:ss), não capturado do player. */
+  const tcFmt = seg => { seg = Math.max(0, Math.floor(seg || 0)); return Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0'); };
+  function parseTC(str) {
+    str = (str || '').trim();
+    if (!str) return null;
+    if (/^\d+$/.test(str)) return parseInt(str, 10);
+    const m = str.match(/^(\d{1,3}):([0-5]?\d)$/);
+    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+  }
+
+  function secaoComentarios(v, podeOperar) {
+    const lista = comentariosPorVersao[v.id] || [];
+    const podeExcluir = c => souEquipe() || c.autor_id === meuId();
+    return '<div class="vd-comentarios">' +
+      '<label class="rot">Comentários' + (lista.length ? ' <span class="vd-contagem">' + lista.length + '</span>' : '') + '</label>' +
+      (lista.length
+        ? '<div class="vd-comentarios-lista">' + lista.map(c =>
+            '<div class="vd-comentario">' +
+              '<b class="vd-cm-tc">' + tcFmt(c.timecode_seg) + '</b>' +
+              '<div class="vd-cm-corpo"><p>' + esc(c.texto) + '</p>' +
+              '<span class="vd-cm-meta">' + esc(c.autor_nome || 'equipe') + ' · ' + esc(quandoBR(c.created_at)) + '</span></div>' +
+              (podeExcluir(c) ? '<button class="vd-cm-excluir" data-excluir-comentario="' + c.id + '" title="Excluir comentário" aria-label="Excluir comentário">×</button>' : '') +
+            '</div>').join('') + '</div>'
+        : '<p class="fraca">Nenhum comentário ainda.</p>') +
+      (podeOperar
+        ? '<form class="vd-cm-form" data-versao="' + v.id + '">' +
+            '<input class="campo vd-cm-tempo" name="tempo" placeholder="mm:ss" maxlength="6" autocomplete="off">' +
+            '<input class="campo vd-cm-texto" name="texto" placeholder="Comentar em qual ponto do vídeo…" autocomplete="off">' +
+            '<button class="b fina" type="submit">Comentar</button>' +
+          '</form>'
+        : '') +
+    '</div>';
+  }
+
   function secaoVersoes(d, versoes, podeEditar, podeOperar) {
     if (!podeOperar && !versoes.length) return '';
     const atual = versoes[0];
@@ -949,6 +992,7 @@ B7.Video = (function () {
         (podeEnviarAprovacao ? '<button class="b" id="vd-vs-enviar">Enviar para aprovação</button>' : '') +
         (podeOperar && !decisaoHTML.includes('vd-vs-nova') ? '<button class="b fina contorno" id="vd-vs-nova">Registrar nova versão</button>' : '') +
         '</div>' +
+        secaoComentarios(atual, podeOperar) +
       '</div>';
     }
 
@@ -963,6 +1007,7 @@ B7.Video = (function () {
               blocoArquivo(v) +
               (v.observacao ? '<p class="fraca">' + esc(v.observacao) + '</p>' : '') +
               (v.decisao_observacao ? '<p class="vd-decisao-obs">' + esc(v.decisao_observacao) + '</p>' : '') +
+              secaoComentarios(v, podeOperar) +
             '</div></details>').join('') + '</div>'
         : '') +
       '</div>';
@@ -1177,6 +1222,34 @@ B7.Video = (function () {
       try { await B7.DB.excluirDemandaVideo(d.id); B7.UI.toast('Demanda excluída.'); location.hash = '#/video'; }
       catch (e) { B7.UI.toast(e.message || 'Não foi possível excluir.'); }
     };
+
+    document.querySelectorAll('.vd-cm-form').forEach(form => {
+      form.onsubmit = async e => {
+        e.preventDefault();
+        const versaoId = form.dataset.versao;
+        const seg = parseTC(form.tempo.value);
+        const texto = form.texto.value.trim();
+        if (seg === null) { B7.UI.toast('Timecode inválido. Use mm:ss (ex.: 1:23).'); return; }
+        if (!texto) { B7.UI.toast('Escreva o comentário.'); return; }
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        try {
+          await B7.DB.criarComentarioVideo(versaoId, seg, texto);
+          B7.UI.toast('Comentário adicionado.');
+          abrirDetalhe(d.id);
+        } catch (err) { btn.disabled = false; B7.UI.toast(err.message || 'Não foi possível comentar.'); }
+      };
+    });
+
+    document.querySelectorAll('[data-excluir-comentario]').forEach(btn => {
+      btn.onclick = async () => {
+        const ok = await B7.UI.confirmar({ titulo: 'Excluir comentário?', texto: 'Essa ação não pode ser desfeita.', perigo: true, rotulo: 'Excluir' });
+        if (!ok) return;
+        btn.disabled = true;
+        try { await B7.DB.excluirComentarioVideo(btn.dataset.excluirComentario); B7.UI.toast('Comentário excluído.'); abrirDetalhe(d.id); }
+        catch (err) { btn.disabled = false; B7.UI.toast(err.message || 'Não foi possível excluir.'); }
+      };
+    });
   }
 
   /* ================================================================
