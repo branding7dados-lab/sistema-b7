@@ -1701,8 +1701,15 @@ B7.DB = (function () {
         p_demanda_id: demandaId,
         p_titulo: patch.titulo ?? null, p_codigo: patch.codigo ?? null, p_pacote: patch.pacote ?? null,
         p_prazo: patch.temPrazo ? (patch.prazo || null) : null, p_tem_prazo: !!patch.temPrazo,
-        p_observacoes: patch.observacoes ?? null
+        p_observacoes: patch.observacoes ?? null,
+        p_gravacao_id: patch.temGravacao ? (patch.gravacaoId || null) : null, p_tem_gravacao: !!patch.temGravacao
       });
+    },
+    /* gravações de um cliente, para o seletor "vincular a uma gravação"
+       na Central do Videomaker (mais recentes primeiro). */
+    async gravacoesDoClienteParaVideo(clienteId) {
+      return ok(await sb().from('gravacoes').select('id,nome,data_gravacao,situacao')
+        .eq('client_id', clienteId).order('data_gravacao', { ascending: false }).order('created_at', { ascending: false }));
     },
     async excluirDemandaVideo(demandaId) { return this.rpc('video_excluir_demanda', { p_demanda_id: demandaId }); },
 

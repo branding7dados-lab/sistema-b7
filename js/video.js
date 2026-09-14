@@ -149,8 +149,22 @@ B7.Video = (function () {
           videomakers.map(v => '<option value="' + v.id + '">' + esc(v.nome) + '</option>').join('') +
         '</select></div>' +
       '</div>' +
+      '<label class="rot">Vincular a uma gravação deste cliente (opcional)</label>' +
+      '<select class="campo" id="vd-nd-gravacao"><option value="">Carregando…</option></select>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" id="vd-nd-salvar">Criar demanda</button></div>');
+
+    const selGravacao = m.querySelector('#vd-nd-gravacao');
+    const carregarGravacoes = async clienteId => {
+      selGravacao.innerHTML = '<option value="">Carregando…</option>';
+      try {
+        const gs = await B7.DB.gravacoesDoClienteParaVideo(clienteId);
+        selGravacao.innerHTML = '<option value="">Sem vínculo</option>' +
+          gs.map(g => '<option value="' + g.id + '">' + esc(g.nome) + (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') + '</option>').join('');
+      } catch (e) { selGravacao.innerHTML = '<option value="">Sem vínculo</option>'; }
+    };
+    carregarGravacoes(m.querySelector('#vd-nd-cliente').value);
+    m.querySelector('#vd-nd-cliente').onchange = e => carregarGravacoes(e.target.value);
 
     m.querySelector('#vd-nd-salvar').onclick = async () => {
       const titulo = m.querySelector('#vd-nd-titulo').value.trim();
@@ -164,7 +178,8 @@ B7.Video = (function () {
           codigo: m.querySelector('#vd-nd-codigo').value.trim(),
           pacote: m.querySelector('#vd-nd-pacote').value.trim(),
           prazo: m.querySelector('#vd-nd-prazo').value || null,
-          videomakerId: m.querySelector('#vd-nd-videomaker').value || null
+          videomakerId: m.querySelector('#vd-nd-videomaker').value || null,
+          gravacaoId: selGravacao.value || null
         });
         m.fechar();
         B7.UI.toast('Demanda criada.');
@@ -229,6 +244,11 @@ B7.Video = (function () {
         '<div class="vd-dt-campo"><label class="rot">Pacote</label>' +
         (podeEditar ? '<input class="campo" id="vd-dt-pacote" value="' + esc(d.pacote || '') + '">' :
           '<div class="vd-so-leitura">' + esc(d.pacote || '—') + '</div>') +
+        '</div>' +
+        '<div class="vd-dt-campo"><label class="rot">Gravação vinculada</label>' +
+        (podeEditar
+          ? '<select class="campo" id="vd-dt-gravacao"><option value="">Carregando…</option></select>'
+          : '<div class="vd-so-leitura">' + (d.gravacao_nome ? esc(d.gravacao_nome) + ' (' + esc(d.gravacao_situacao || '') + ')' : 'sem vínculo') + '</div>') +
         '</div>' +
       '</div>' +
 
@@ -301,6 +321,15 @@ B7.Video = (function () {
       finally { btLink.disabled = false; }
     };
 
+    const selGravacaoDt = document.getElementById('vd-dt-gravacao');
+    if (selGravacaoDt) {
+      B7.DB.gravacoesDoClienteParaVideo(d.client_id).then(gs => {
+        selGravacaoDt.innerHTML = '<option value="">Sem vínculo</option>' +
+          gs.map(g => '<option value="' + g.id + '"' + (g.id === d.gravacao_id ? ' selected' : '') + '>' +
+            esc(g.nome) + (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') + '</option>').join('');
+      }).catch(() => { selGravacaoDt.innerHTML = '<option value="">Sem vínculo</option>'; });
+    }
+
     const btSalvar = document.getElementById('vd-dt-salvar');
     if (btSalvar) btSalvar.onclick = async () => {
       btSalvar.disabled = true; btSalvar.textContent = 'Salvando…';
@@ -309,7 +338,9 @@ B7.Video = (function () {
           pacote: document.getElementById('vd-dt-pacote').value.trim(),
           prazo: document.getElementById('vd-dt-prazo').value || null,
           temPrazo: true,
-          observacoes: document.getElementById('vd-dt-obs').value.trim()
+          observacoes: document.getElementById('vd-dt-obs').value.trim(),
+          gravacaoId: document.getElementById('vd-dt-gravacao').value || null,
+          temGravacao: true
         });
         B7.UI.toast('Alterações salvas.');
         abrirDetalhe(d.id);
@@ -329,12 +360,24 @@ B7.Video = (function () {
   }
 
   /* ================================================================
-     IMPORTAÇÃO DE PLANILHA (CSV)
-     O navegador lê e interpreta o CSV; o banco só recebe JSON já
+     IMPORTAÇÃO DE PLANILHA (CSV ou XLSX)
+     O navegador lê e interpreta o arquivo; o banco só recebe JSON já
      pronto (ver migration_video.sql, seção 13). Colunas esperadas no
      cabeçalho (nem todas obrigatórias): cliente, titulo, codigo,
      pacote, prazo, observacoes, ano, mes.
+
+     XLSX usa a biblioteca SheetJS (js/vendor/xlsx.full.min.js, mesmo
+     padrão de vendorização do html2canvas/jspdf) — lê só a primeira
+     aba do arquivo. Testado com arquivos .xlsx sintéticos gerados
+     para este build (cabeçalho normal, datas, acentos); **não foi
+     testado contra uma planilha real do usuário**, porque nenhuma foi
+     fornecida — ver o relatório do build para o que isso significa na
+     prática.
      ================================================================ */
+  function normalizarCabecalho(h) {
+    return String(h == null ? '' : h).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  }
+
   function parseCSV(texto) {
     const linhas = texto.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l.trim() !== '');
     if (!linhas.length) return [];
@@ -350,8 +393,7 @@ B7.Video = (function () {
       campos.push(atual);
       return campos.map(x => x.trim());
     };
-    const cab = partirLinha(linhas[0]).map(h => h.toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g, '')); // remove acento do cabeçalho
+    const cab = partirLinha(linhas[0]).map(normalizarCabecalho);
     return linhas.slice(1).map(l => {
       const campos = partirLinha(l);
       const obj = {};
@@ -360,22 +402,48 @@ B7.Video = (function () {
     });
   }
 
+  /* lê só a primeira aba; datas viram texto AAAA-MM-DD (dateNF), pronto
+     para o `prazo::date` do banco. Linhas totalmente vazias são
+     descartadas (planilha real sempre tem algumas no fim). */
+  function parseXLSX(arrayBuffer) {
+    if (!window.XLSX) throw new Error('Biblioteca de leitura de XLSX não carregou.');
+    const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+    const aba = wb.SheetNames[0];
+    if (!aba) return [];
+    const bruto = XLSX.utils.sheet_to_json(wb.Sheets[aba], { header: 1, defval: '', raw: false, dateNF: 'yyyy-mm-dd' });
+    if (!bruto.length) return [];
+    const cab = bruto[0].map(normalizarCabecalho);
+    return bruto.slice(1)
+      .filter(l => l.some(v => String(v).trim() !== ''))
+      .map(l => {
+        const obj = {};
+        cab.forEach((h, i) => { obj[h] = l[i] != null ? String(l[i]).trim() : ''; });
+        return obj;
+      });
+  }
+
   function modalImportar() {
     const m = B7.UI.modal(
-      '<h3>Importar planilha (CSV)</h3>' +
+      '<h3>Importar planilha (CSV ou XLSX)</h3>' +
       '<p class="fraca">O arquivo precisa de uma linha de cabeçalho com (ao menos) as colunas ' +
       '<code>cliente</code> e <code>titulo</code>. Colunas opcionais: <code>codigo</code>, <code>pacote</code>, ' +
-      '<code>prazo</code> (AAAA-MM-DD), <code>observacoes</code>, <code>ano</code>, <code>mes</code>.</p>' +
-      '<input type="file" accept=".csv,text/csv" id="vd-imp-arquivo" data-foco>' +
+      '<code>prazo</code> (AAAA-MM-DD), <code>observacoes</code>, <code>ano</code>, <code>mes</code>. ' +
+      'No XLSX só a primeira aba do arquivo é lida.</p>' +
+      '<input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="vd-imp-arquivo" data-foco>' +
       '<div id="vd-imp-resultado"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>', { larga: true });
 
     m.querySelector('#vd-imp-arquivo').onchange = async ev => {
       const arquivo = ev.target.files[0];
       if (!arquivo) return;
-      const texto = await arquivo.text();
+      const ehXlsx = /\.xlsx?$/i.test(arquivo.name);
       let linhas;
-      try { linhas = parseCSV(texto); } catch (e) { B7.UI.toast('Não foi possível ler este CSV.'); return; }
+      try {
+        linhas = ehXlsx ? parseXLSX(await arquivo.arrayBuffer()) : parseCSV(await arquivo.text());
+      } catch (e) {
+        B7.UI.toast('Não foi possível ler este arquivo (' + (e.message || 'formato inválido') + ').');
+        return;
+      }
       if (!linhas.length) { B7.UI.toast('Planilha vazia.'); return; }
 
       const area = m.querySelector('#vd-imp-resultado');

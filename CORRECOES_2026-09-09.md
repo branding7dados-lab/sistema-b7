@@ -4181,3 +4181,101 @@ Arquivos alterados: `migration_video.sql` (novo), `js/video.js`
 `js/permissoes.js`, `js/usuarios.js`, `js/app.js`, `index.html`,
 `sw.js`, `js/auth.js`, `supabase/functions/b7-auth/index.ts`.
 `VERSAO` → `2026-09-14-b`, cache → `roteiros-b7-v60`.
+
+## Build 2026-09-14-c — B7 Vídeo: fechando as três lacunas da Parte 1
+
+**Pedido:** "pronto, tudo isso que vc deixou de fora, pode fzr agora"
+— referindo-se à lista de pendências do relatório do build anterior.
+Como a lista misturava lacunas técnicas da própria Parte 1 com a
+Parte 2 inteira (revisão/versão do vídeo, nunca especificada), foi
+perguntado ao Yury o que fazer agora; a resposta foi: só fechar as
+lacunas técnicas da Parte 1 — XLSX, vínculo com gravação e
+integração opcional com o Kanban geral — deixando a Parte 2 para
+quando houver uma especificação dela.
+
+### Implementado e testado
+
+- **Importação de XLSX**: vendorizada a biblioteca SheetJS
+  (`js/vendor/xlsx.full.min.js`, build `xlsx.full.min` da versão
+  0.18.5, mesmo padrão de vendorização do `html2canvas`/`jspdf`). A
+  tela de importação (`js/video.js`) agora aceita `.csv` e `.xlsx`/
+  `.xls`; para XLSX só a primeira aba do arquivo é lida, cabeçalho
+  normalizado do mesmo jeito que o CSV (minúsculo, sem acento), datas
+  convertidas para `AAAA-MM-DD` na hora da leitura. **Testado de
+  ponta a ponta**: gerado um `.xlsx` sintético (`openpyxl`, com
+  acentos, datas e uma linha em branco no fim — não é um arquivo real
+  do usuário, porque nenhum foi fornecido), lido com a própria
+  biblioteca vendorizada rodando em Node (fora do navegador, para
+  poder automatizar o teste) e o resultado mandado de verdade para
+  `video_import_criar_lote` no banco de teste: casou o cliente
+  existente, reconheceu o cliente desconhecido como pendência, e a
+  confirmação da linha gerou a demanda com o prazo (`2026-10-15`)
+  interpretado corretamente a partir da data da planilha. A linha
+  vazia do fim do arquivo foi descartada, como esperado.
+- **Vínculo com Gravação**: `js/video.js` ganhou o seletor "Vincular a
+  uma gravação deste cliente" tanto na criação manual quanto na ficha
+  da demanda (equipe), carregado sob demanda ao trocar de cliente.
+  `video_editar_demanda` ganhou os parâmetros `p_gravacao_id`/
+  `p_tem_gravacao` (a assinatura antiga foi descartada — nada mais no
+  sistema a chamava). `demandas_edicao_resumo` passou a expor
+  `gravacao_nome` (antes só tinha `gravacao_situacao`). Testado no
+  banco: vincular e trocar a gravação de uma demanda existente
+  persiste corretamente.
+- **Integração opcional com o Kanban geral**: `demandas_edicao` ganhou
+  `kanban_id`, e `demanda_edicao` virou um `tipo_vinculo` válido em
+  `kanban_demandas` (mesmo padrão de `design_deliverables.kanban_id`).
+  O card só nasce quando o trabalho de verdade começa (situação vira
+  "em_edicao" — seja por `video_mudar_status` ou por `video_atribuir`
+  atribuindo alguém a uma demanda pendente), evitando poluir o quadro
+  geral com toda demanda ainda pendente de planilha. Depois de
+  nascido, o card acompanha: correção → coluna "Ajustes", entregue →
+  coluna "Pronto", descartado → arquivado. "Pendente" e "standby" não
+  têm coluna correspondente no Kanban geral, então o card
+  simplesmente não se move nesses casos (mesma filosofia de "nem toda
+  situação interna vira uma coluna nova" que o Design já segue).
+  **Testado de ponta a ponta no banco**: criei uma demanda, atribuí um
+  videomaker (o card nasceu na coluna "Produção", com o responsável
+  certo), passei por correção (foi para "Ajustes"), entregue (foi
+  para "Pronto") e descartado (foi arquivado) — confirmando cada
+  transição no `kanban_demandas` depois de cada chamada.
+  **Um bug real foi encontrado e corrigido nesse teste**: atribuir um
+  videomaker a uma demanda pendente também move a situação para
+  "em_edicao" (regra que já existia desde a Parte 1), mas essa
+  transição passava batido pela lógica de criação do card — só
+  `video_mudar_status` criava a sombra, não `video_atribuir`. Corrigido
+  replicando a mesma lógica de criação preguiçosa nos dois lugares.
+- `node --check` limpo em `js/database.js` e `js/video.js`.
+  `migration_video_kanban.sql` foi aplicada e reaplicada contra o
+  mesmo Postgres 16 de teste da Parte 1 (idempotência confirmada) —
+  um segundo detalhe corrigido nesse processo: a `view`
+  `demandas_edicao_resumo` precisou listar as colunas explicitamente
+  (em vez de `de.*`) porque o Postgres recusa `create or replace
+  view` quando uma coluna nova (`kanban_id`, criada por `alter
+  table`) entraria no meio da lista em vez do fim.
+
+### Implementado, mas requer validação adicional
+
+- O parser de XLSX continua **não testado contra uma planilha real**
+  do usuário — só contra o arquivo sintético descrito acima. Formatos
+  de data fora do padrão, fórmulas, células mescladas ou uma segunda
+  aba com dados (só a primeira é lida) podem exigir ajuste na
+  primeira importação real.
+
+### Preparado, mas ainda não aplicado
+
+- `migration_video_kanban.sql` está testada localmente, mas **ainda
+  não foi rodada no Supabase de produção** — roda depois de
+  `migration_video.sql`, mesmo processo manual de sempre.
+
+### Não implementado por bloqueio ou por decisão consciente
+
+- **Parte 2 (revisão/versão do vídeo editado dentro do sistema)**
+  continua de fora, por decisão explícita do Yury nesta conversa: a
+  lista anterior misturava lacunas técnicas da Parte 1 com a Parte 2
+  inteira, e a Parte 2 nunca foi especificada — fica para quando
+  houver uma especificação própria, do mesmo jeito que a Parte 1 teve.
+
+Arquivos alterados: `migration_video_kanban.sql` (novo),
+`js/vendor/xlsx.full.min.js` (novo, vendorizado), `js/video.js`,
+`js/database.js`, `index.html`, `sw.js`, `js/auth.js`.
+`VERSAO` → `2026-09-14-c`, cache → `roteiros-b7-v61`.
