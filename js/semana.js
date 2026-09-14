@@ -90,6 +90,7 @@ B7.Semana = (function () {
      tudo relevante sem esconder atrás de acordeões fechados.
      ================================================================= */
   async function abrirLista() {
+    B7.Dashboard.marcarNav('#/semanas');
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div>';
     let lista;
     try { lista = await B7.DB.listarStatus({}); }
@@ -423,6 +424,7 @@ B7.Semana = (function () {
      EDITOR
      ================================================================= */
   async function abrir(id) {
+    B7.Dashboard.marcarNav('#/semanas');
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
     try {
       S.relatorio = await B7.DB.status(id);

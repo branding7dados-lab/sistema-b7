@@ -324,6 +324,7 @@ B7.Conteudo = (function () {
   let filtroLinhas = '';
 
   async function abrirLinhasGlobais() {
+    B7.Dashboard.marcarNav('#/linhas');
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('cards', { n: 6 }) + '</div>';
     let linhas, clientes;
     try {

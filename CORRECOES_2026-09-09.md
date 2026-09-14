@@ -4002,3 +4002,39 @@ e o slide mostra a arte na tela normalmente.)
 Arquivos alterados: `js/database.js`, `js/design.js`, `js/auth.js`,
 `sw.js`. Nenhuma migration nova.
 `VERSAO` → `2026-09-11-ao`, cache → `roteiros-b7-v58`.
+
+## Build 2026-09-14-a — Sidebar não acompanhava Linha Editorial nem Status Semanal
+
+**Pedido:** "quando eu clico em linha editorial, ou status semanal,
+ele não aparece na sidebar qual aba que eu estou, mesmo eu estando na
+aba, tipo, eu clico em roteiro, ai aparece q to em roteiros, mas
+quando eu clico em linha editorial, na sidebar ta selecionado
+roteiro, mas na página eu tô na linha editorial" — com print mostrando
+"Roteiros" destacado na sidebar enquanto a página é "Linhas
+editoriais".
+
+### O que a auditoria encontrou
+
+Cada tela do sistema é responsável por avisar a sidebar "sou eu que
+tô ativa agora" (`B7.Dashboard.marcarNav('#/rota')`, chamada logo no
+início da função que desenha a tela) — é assim que Roteiros,
+Clientes, Design etc. acendem certo. As quatro telas de Linha
+Editorial e Status Semanal nunca faziam essa chamada:
+`abrirLinhasGlobais` (lista de linhas), `B7.Linha.abrir` (uma linha
+aberta), `B7.Semana.abrirLista` (lista de status) e `B7.Semana.abrir`
+(um status aberto). Resultado: a sidebar simplesmente continuava
+mostrando o que estava aceso antes — daí "Roteiros" ficar destacado
+mesmo com a página já em Linhas editoriais.
+
+### Implementado e testado
+
+- Adicionada a chamada que faltava (`B7.Dashboard.marcarNav(...)`) nas
+  quatro telas: `js/conteudo.js` (`abrirLinhasGlobais` → `#/linhas`),
+  `js/linha.js` (`abrir` → `#/linhas`), `js/semana.js` (`abrirLista` e
+  `abrir` → `#/semanas`) — mesmo padrão já usado em Design,
+  Dashboard, Kanban e Aprovações.
+- `node --check` limpo nos três arquivos.
+
+Arquivos alterados: `js/conteudo.js`, `js/linha.js`, `js/semana.js`,
+`js/auth.js`, `sw.js`. Nenhuma migration nova.
+`VERSAO` → `2026-09-14-a`, cache → `roteiros-b7-v59`.

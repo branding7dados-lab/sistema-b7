@@ -69,6 +69,7 @@ B7.Linha = (function () {
   /* ------------------------------------------------------------ abrir */
   async function abrir(id, aba) {
     L.aba = ABAS.some(([k]) => k === aba) ? aba : 'geral';
+    B7.Dashboard.marcarNav('#/linhas');
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
     try {
       L.linha = await B7.DB.linha(id);
