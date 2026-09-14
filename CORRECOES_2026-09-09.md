@@ -4279,3 +4279,97 @@ Arquivos alterados: `migration_video_kanban.sql` (novo),
 `js/vendor/xlsx.full.min.js` (novo, vendorizado), `js/video.js`,
 `js/database.js`, `index.html`, `sw.js`, `js/auth.js`.
 `VERSAO` → `2026-09-14-c`, cache → `roteiros-b7-v61`.
+
+## Build 2026-09-14-d — B7 Vídeo: corrigindo a importação contra a planilha real
+
+Você mandou print da importação de CSV dando errado (732 linhas, todas
+"sem_nome_de_cliente, sem_titulo") e depois a planilha real
+("PLANILHA DE GRAVAÇÕES - EDIÇÕES 2026.csv", 731 linhas de dados, 38
+clientes). Usei o arquivo de verdade para achar e corrigir a causa —
+não só o parser (já reescrito no build anterior sem ter sido testado
+contra um arquivo seu), mas também dois problemas de fundo na
+resolução em lote que só apareceriam numa planilha grande de verdade.
+
+### Implementado e testado
+
+- **Causa raiz do "tudo sem nome/sem título"**: a planilha tem uma
+  linha de lixo antes do cabeçalho de verdade (uma célula solta com
+  "n"), e o parser antigo sempre tratava a primeira linha como
+  cabeçalho — isso jogava o cabeçalho real (e todas as linhas
+  seguintes) para dentro dos dados. Some-se a isso que os nomes reais
+  das colunas ("Briefing / Título", "Cód.", "Mês", "Prazo de
+  ENTREGA") não batiam com os nomes exatos que o parser esperava
+  ("titulo", "codigo"...). O parser (já reescrito) resolve os dois
+  problemas: acha sozinho a linha de cabeçalho testando as primeiras
+  15 linhas do arquivo, e reconhece variações de nome de coluna por
+  aproximação, não por igualdade exata. Testado contra a planilha
+  real inteira (731 linhas): cabeçalho encontrado corretamente, as 11
+  colunas todas mapeadas, datas e status convertidos batendo com uma
+  conferência independente feita em Python linha por linha.
+- **Resolver um cliente resolvia só uma linha por vez.** Numa
+  planilha com um cliente repetido 109 vezes, isso obrigaria resolver
+  o mesmo nome 109 vezes. `video_import_resolver_linha` agora aplica
+  a mesma resolução (e o apelido aprendido) a todas as linhas do
+  mesmo lote com o mesmo nome de cliente na planilha, de uma vez.
+  Testado com a planilha real: resolver "ÓTICAS ALMEIDA" uma vez
+  resolveu as 47 linhas daquele cliente; a tela de importação também
+  foi reorganizada para agrupar por nome de cliente em vez de listar
+  uma linha por registro (essencial para não tentar desenhar uma
+  tabela de 700+ linhas na tela).
+- **Linha sem título travava a importação sem necessidade.**
+  `video_import_criar_lote` bloqueava qualquer linha sem título
+  (problema "sem_titulo"), mas a confirmação já tinha (desde a Parte
+  1) um título de reserva para esse caso. Removido o bloqueio; o
+  título de reserva agora também cita o código da planilha quando
+  existe (ex.: "Sem título (planilha) — código #3"), para ficar
+  identificável depois. Na planilha real, 81 linhas tinham código mas
+  não título — todas importam normalmente agora.
+- **Status da planilha era ignorado na importação.** Toda demanda
+  importada nascia "pendente", mesmo quando a planilha já dizia
+  "ENTREGUE" — na planilha real isso teria marcado 704 trabalhos já
+  entregues como pendentes de novo. `video_import_confirmar_linha`
+  agora lê o status já interpretado pelo frontend
+  (entregue/descartado/pendente/em_edicao/correção/standby), valida
+  contra os status permitidos (com "pendente" como reserva segura) e
+  preenche a data de entrega quando o status final é "entregue".
+- **Teste de ponta a ponta com o arquivo real completo**: criei o
+  lote de importação com as 731 linhas reais, resolvi os ~18 nomes de
+  cliente que precisavam de resolução manual (contra ~730 se não
+  fosse a resolução em lote) e confirmei tudo — o resultado bateu
+  exatamente com a planilha: 703 demandas como "entregue" (com data
+  de entrega preenchida), 18 "descartado", 6 "pendente", 3
+  "em_edicao", e as 80 linhas sem título ficaram com o título de
+  reserva citando o código. A única linha que sobrou sem resolver foi
+  a única linha da planilha que realmente não tem nome de cliente
+  nenhum — comportamento correto, não um bug.
+- `migration_video_import_fix.sql` foi aplicada e reaplicada duas
+  vezes contra o mesmo Postgres 16 de teste (idempotência
+  confirmada). `node --check` limpo em `js/video.js` e
+  `js/database.js`.
+
+### Implementado, mas requer validação adicional
+
+- Este teste usou clientes de teste com nomes próximos aos da
+  planilha real, não os clientes de verdade do seu banco de produção
+  — a real conferência de "quantos nomes precisam de resolução
+  manual" só acontece quando você importar a planilha de verdade lá.
+  É esperado que alguns nomes da planilha não batam exatamente com o
+  nome cadastrado do cliente (abreviação, acento, etc.) — isso é
+  normal e é para isso que existe a tela de resolução manual +
+  apelido aprendido.
+
+### Preparado, mas ainda não aplicado
+
+- `migration_video_import_fix.sql` está pronta e testada localmente,
+  mas precisa ser rodada no Supabase de produção — depois de
+  `migration_video.sql` e `migration_video_kanban.sql`, mesmo
+  processo manual de sempre.
+
+### Não implementado por bloqueio ou por decisão consciente
+
+- Nenhum item novo nesta rodada — o escopo era só corrigir a
+  importação contra a planilha real que você mandou.
+
+Arquivos alterados: `migration_video_import_fix.sql` (novo),
+`js/video.js`, `js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-14-d`, cache → `roteiros-b7-v62`.
