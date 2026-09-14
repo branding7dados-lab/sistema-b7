@@ -1,15 +1,26 @@
 /* =====================================================================
-   B7 VÍDEO — CENTRAL DO VIDEOMAKER (Parte 1)
+   B7 VÍDEO — PRODUÇÃO DE VÍDEO (Parte 1.1) + CENTRAL DE VÍDEO
 
-   Escopo desta primeira etapa (ver migration_video.sql e o relatório de
-   build): fila de Demandas de Edição, atribuição, mudança de situação,
-   entrega por LINK EXTERNO (Drive/WeTransfer…) e importação de planilha
-   (CSV). Não existe ainda revisão/versão do vídeo dentro do sistema —
-   isso é fase futura, fora do que foi pedido aqui.
+   Correção/evolução sobre a Parte 1 (fila de Demandas de Edição,
+   atribuição, mudança de situação, link externo, importação de
+   planilha — tudo isso continua igual, ver migration_video.sql/
+   migration_video_kanban.sql/migration_video_import_fix.sql). O que
+   muda aqui é a EXPERIÊNCIA, não os dados: nenhuma Demanda de Edição é
+   recriada, nenhum dado importado é apagado.
 
-   Mesma arquitetura de B7 Design (js/design.js): leitura direta de uma
-   view resumo, toda escrita passa por função do banco (js/database.js
-   só embrulha as chamadas), papel decide o que aparece.
+   Duas telas distintas atrás da mesma rota "#/video":
+     - PRODUÇÃO DE VÍDEO (equipe — admin/coordenador): fila inteira,
+       por competência (mês/ano), com filtros, lista/quadro e resumo.
+     - CENTRAL DE VÍDEO (quem é videomaker — papel principal OU função
+       extra, ver migration_video_producao.sql): fila pessoal, o que
+       precisa de atenção agora, sem exigir troca de "modo".
+   Quem é equipe E videomaker (ex.: Kevin, admin + função extra
+   videomaker) vê Produção de Vídeo com uma aba "Minha fila" — não
+   dois itens de menu, nem duas contas.
+
+   Mesma arquitetura de sempre: leitura direta de demandas_edicao_resumo
+   (RLS já filtra o que cada um pode ver), toda escrita passa por
+   função do banco (js/database.js só embrulha as chamadas).
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -18,7 +29,9 @@ B7.Video = (function () {
   const esc = B7.UI.esc;
   const painel = () => document.getElementById('painel-dashboard');
   const souEquipe = () => B7.Auth && ['admin', 'coordenador'].includes(B7.Auth.papel());
-  const souVideomaker = () => B7.Auth && B7.Auth.papel() === 'videomaker';
+  const souVideomakerElegivel = () => B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel();
+  const meuId = () => { const u = B7.Auth && B7.Auth.usuario(); return u ? u.id : null; };
+  const hoje = () => B7.UI.hojeISO();
 
   const SITUACOES = [
     ['pendente', 'Pendente'],
@@ -30,106 +43,429 @@ B7.Video = (function () {
   ];
   const rotuloSituacao = s => (SITUACOES.find(x => x[0] === s) || [, s])[1];
 
+  const PRIORIDADES = [['normal', 'Normal'], ['alta', 'Alta'], ['urgente', 'Urgente']];
+  const rotuloPrioridade = p => (PRIORIDADES.find(x => x[0] === p) || [, 'Normal'])[1];
+
+  const MESES_NOME = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const competenciaChave = d => (d.competencia_ano && d.competencia_mes)
+    ? d.competencia_ano + '-' + String(d.competencia_mes).padStart(2, '0') : '';
+  const competenciaRotulo = chave => {
+    const [ano, mes] = chave.split('-');
+    return MESES_NOME[Number(mes)] + ' de ' + ano;
+  };
+  const mesAtualChave = () => { const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0'); };
+
   let demandas = [], clientes = [], videomakers = [];
 
-  /* ================================================================
-     CENTRAL — lista/quadro
-     ================================================================ */
+  /* =================================================================
+     FILTROS — persistidos por sessão (mesmo padrão de B7.Design),
+     compartilhados por Lista, Quadro e resumo.
+     ================================================================= */
+  const F_PADRAO = { competencia: '', cliente: '', status: '', responsavel: '', prioridade: '',
+                     prazo: '', busca: '', vista: 'lista', minhaFila: false };
+  let F = Object.assign({}, F_PADRAO);
+  try { Object.assign(F, JSON.parse(sessionStorage.getItem('b7.video.filtros') || '{}')); } catch (e) {}
+  function guardarFiltros() { try { sessionStorage.setItem('b7.video.filtros', JSON.stringify(F)); } catch (e) {} }
+
+  /* =================================================================
+     CARGA
+     ================================================================= */
   async function abrir() {
     B7.Dashboard.marcarNav('#/video');
-    B7.Rota.titulo(['Edição de vídeo']);
+    const equipe = souEquipe();
+    B7.Rota.titulo([equipe ? 'Produção de Vídeo' : 'Central de Vídeo']);
     painel().innerHTML = '<div class="conteudo vd-tela">' +
-      '<header class="vd-cab"><h1>Edição de vídeo</h1>' +
+      '<header class="vd-cab"><h1>' + esc(equipe ? 'Produção de Vídeo' : 'Central de Vídeo') + '</h1>' +
       '<p>Carregando as demandas…</p></header>' +
-      B7.UI.skeleton('tabela', { n: 4, cols: 3 }) + '</div>';
+      B7.UI.skeleton('tabela', { n: 5, cols: 5 }) + '</div>';
 
     try {
       const chamadas = [B7.DB.minhasDemandasVideo()];
-      if (souEquipe()) chamadas.push(B7.DB.listarClientes(), B7.DB.listarVideomakers());
+      if (equipe) chamadas.push(B7.DB.listarClientes(), B7.DB.listarVideomakers());
       const [d, c, v] = await Promise.all(chamadas);
       demandas = d || [];
       clientes = c || [];
       videomakers = v || [];
     } catch (e) {
       painel().innerHTML = '<div class="conteudo vd-tela"><div class="estado-b7">' +
-        '<b>Não foi possível carregar a Edição de vídeo.</b>' +
+        '<b>Não foi possível carregar a Produção de Vídeo.</b>' +
         '<p>' + esc(e.message || 'Confira a conexão e tente de novo.') + '</p>' +
         '<div class="acoes"><button class="b pri" onclick="location.reload()">Tentar de novo</button></div>' +
         '</div></div>';
       return;
     }
-    desenhar();
+
+    if (!F.competencia) F.competencia = mesAtualChave();
+
+    if (equipe) desenharProducao(); else desenharCentral();
   }
 
-  function saudacao() {
-    if (souVideomaker()) return 'O que precisa de você agora';
-    return 'Demandas de edição';
+  /* =================================================================
+     PRODUÇÃO DE VÍDEO — equipe (admin/coordenador)
+     ================================================================= */
+  function competenciasDisponiveis() {
+    const chaves = new Set(demandas.map(competenciaChave).filter(Boolean));
+    chaves.add(mesAtualChave());
+    return [...chaves].sort().reverse();
   }
 
-  function desenhar() {
-    const grupos = SITUACOES.map(([chave, nome]) => ({
-      chave, nome, itens: demandas.filter(d => d.editing_status === chave)
-    }));
-
-    painel().innerHTML = '<div class="conteudo vd-tela">' +
-      '<header class="vd-cab"><div><h1>' + esc(saudacao()) + '</h1>' +
-      '<p>' + demandas.length + ' demanda' + (demandas.length === 1 ? '' : 's') +
-      (souVideomaker() ? ' atribuída' + (demandas.length === 1 ? '' : 's') + ' a você.' : ' no total.') + '</p></div>' +
-      (souEquipe()
-        ? '<div class="vd-acoes-topo">' +
-          '<button class="b contorno" id="vd-importar">Importar planilha</button>' +
-          '<button class="b pri" id="vd-nova">+ Nova demanda</button></div>'
-        : '') +
-      '</header>' +
-      (demandas.length
-        ? '<div class="vd-quadro">' + grupos.map(colunaHTML).join('') + '</div>'
-        : '<div class="estado-b7"><b>' +
-          (souVideomaker() ? 'Nenhuma demanda atribuída a você ainda.' : 'Nenhuma demanda de edição ainda.') +
-          '</b><p>' + (souEquipe() ? 'Crie uma demanda manual ou importe uma planilha.' : 'Assim que a equipe atribuir algo, aparece aqui.') + '</p></div>') +
-      '</div>';
-
-    ligar();
-  }
-
-  function cardHTML(d) {
-    const prazo = d.prazo ? B7.UI.dataBR(d.prazo) : '';
-    const atrasado = d.prazo && d.editing_status !== 'entregue' && d.editing_status !== 'descartado' && d.prazo < B7.UI.hojeISO();
-    return '<div class="vd-card" data-demanda="' + d.id + '" tabindex="0">' +
-      '<div class="vd-card-topo"><b>' + esc(d.cliente_nome || 'Cliente') + '</b>' +
-      (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') + '</div>' +
-      '<div class="vd-card-titulo">' + esc(d.titulo) + '</div>' +
-      (d.pacote ? '<div class="vd-card-pacote">' + esc(d.pacote) + '</div>' : '') +
-      '<div class="vd-card-rodape">' +
-      (d.videomaker_nome ? '<span class="vd-quem">' + esc(d.videomaker_nome) + '</span>' : '<span class="vd-quem fraca">sem videomaker</span>') +
-      (prazo ? '<span class="vd-prazo' + (atrasado ? ' atrasado' : '') + '">' + esc(prazo) + '</span>' : '') +
-      '</div></div>';
-  }
-
-  function colunaHTML(g) {
-    return '<div class="vd-coluna" data-coluna="' + g.chave + '">' +
-      '<div class="vd-coluna-cab"><span>' + esc(g.nome) + '</span><b>' + g.itens.length + '</b></div>' +
-      '<div class="vd-coluna-corpo">' +
-      (g.itens.length ? g.itens.map(cardHTML).join('') : '<div class="vd-vazia">—</div>') +
-      '</div></div>';
-  }
-
-  function ligar() {
-    painel().querySelectorAll('[data-demanda]').forEach(el => {
-      const ir = () => location.hash = '#/video/' + el.dataset.demanda;
-      el.onclick = ir;
-      el.onkeydown = e => { if (e.key === 'Enter') ir(); };
+  /* tudo que não é o filtro de status/prazo — alimenta o resumo (cada
+     chip do resumo é, ele mesmo, um filtro rápido de status/prazo) */
+  function baseFiltrada() {
+    const t = F.busca.trim().toLowerCase();
+    return demandas.filter(d => {
+      if (F.competencia !== 'todas' && competenciaChave(d) !== F.competencia) return false;
+      if (F.cliente && d.client_id !== F.cliente) return false;
+      if (F.responsavel === 'sem' && d.videomaker_id) return false;
+      if (F.responsavel && F.responsavel !== 'sem' && d.videomaker_id !== F.responsavel) return false;
+      if (F.prioridade && (d.prioridade || 'normal') !== F.prioridade) return false;
+      if (F.minhaFila && d.videomaker_id !== meuId()) return false;
+      if (t && !((d.titulo || '').toLowerCase().includes(t) || (d.cliente_nome || '').toLowerCase().includes(t) ||
+                 (d.codigo || '').toLowerCase().includes(t))) return false;
+      return true;
     });
+  }
+  function filtrar(lista) {
+    return lista.filter(d => {
+      if (F.status && d.editing_status !== F.status) return false;
+      if (F.prazo === 'atrasadas' && !ehAtrasada(d)) return false;
+      return true;
+    });
+  }
+  function ehAtrasada(d) {
+    return !!(d.prazo && d.prazo < hoje() && d.editing_status !== 'entregue' && d.editing_status !== 'descartado');
+  }
+  function filtrosAtivos() {
+    return !!(F.cliente || F.status || F.responsavel || F.prioridade || F.prazo || F.busca.trim() || F.minhaFila);
+  }
+
+  function desenharProducao() {
+    const base = baseFiltrada();
+    const visiveis = filtrar(base);
+    const comp = competenciasDisponiveis();
+    const souTambemVideomaker = souVideomakerElegivel();
+
+    /* pendências de meses ANTERIORES ao selecionado, ainda em aberto —
+       nunca somem, só ficam fora da projeção do mês corrente até
+       alguém trocar de competência ou clicar no aviso (spec: "não deixe
+       trabalho antigo desaparecer operacionalmente"). */
+    const anteriores = F.competencia !== 'todas'
+      ? demandas.filter(d => competenciaChave(d) && competenciaChave(d) < F.competencia &&
+                             d.editing_status !== 'entregue' && d.editing_status !== 'descartado')
+      : [];
+
+    painel().innerHTML = '<div class="conteudo entra vd-tela">' +
+      '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
+      '<p>Toda a fila de edição da B7 em um só lugar.</p></div>' +
+      '<div class="vd-acoes-topo">' +
+        '<button class="b contorno" id="vd-importar">Importar planilha</button>' +
+        '<button class="b pri" id="vd-nova">+ Nova demanda</button></div>' +
+      '</div>' +
+      (anteriores.length
+        ? '<div class="vd-aviso-anteriores" id="vd-aviso-anteriores">' +
+          '<b>' + anteriores.length + '</b> demanda' + (anteriores.length === 1 ? '' : 's') +
+          ' de meses anteriores ainda em aberto.<button class="b fina contorno" id="vd-ver-anteriores">Ver</button></div>'
+        : '') +
+      '<div id="vd-resumo"></div>' +
+      '<div id="vd-barra"></div>' +
+      '<div id="vd-area"></div>' +
+    '</div>';
+
     const btNova = document.getElementById('vd-nova');
     if (btNova) btNova.onclick = () => modalNovaDemanda();
     const btImportar = document.getElementById('vd-importar');
     if (btImportar) btImportar.onclick = () => modalImportar();
+    const btVerAnteriores = document.getElementById('vd-ver-anteriores');
+    if (btVerAnteriores) btVerAnteriores.onclick = () => {
+      F.competencia = 'todas'; F.prazo = 'atrasadas'; guardarFiltros(); desenharProducao();
+    };
+
+    desenharResumo(base);
+    desenharBarra(comp, souTambemVideomaker);
+    desenharArea(visiveis);
   }
 
-  /* ================================================================
+  function desenharResumo(base) {
+    const cx = painel().querySelector('#vd-resumo');
+    if (!cx) return;
+    const contar = pred => base.filter(pred).length;
+    const chips = [
+      ['prazo:atrasadas', contar(ehAtrasada), 'atrasada' + (contar(ehAtrasada) === 1 ? '' : 's'), F.prazo === 'atrasadas'],
+      ['status:pendente', contar(d => d.editing_status === 'pendente'), 'pendente' + (contar(d => d.editing_status === 'pendente') === 1 ? '' : 's'), F.status === 'pendente'],
+      ['status:em_edicao', contar(d => d.editing_status === 'em_edicao'), 'em edição', F.status === 'em_edicao'],
+      ['status:correcao', contar(d => d.editing_status === 'correcao'), 'em correção', F.status === 'correcao'],
+      ['status:standby', contar(d => d.editing_status === 'standby'), 'em standby', F.status === 'standby'],
+      ['status:entregue', contar(d => d.editing_status === 'entregue'), 'entregue' + (contar(d => d.editing_status === 'entregue') === 1 ? '' : 's'), F.status === 'entregue']
+    ].filter(c => c[1] > 0 || c[3]);
+
+    cx.innerHTML = '<div class="ds-resumo-rapido">' + chips.map(([chave, n, rot, on]) =>
+      '<button class="ds-rapido-item' + (on ? ' on' : '') + '" data-resumo="' + chave + '"><b>' + n + '</b> ' + esc(rot) + '</button>').join('') +
+      '</div>';
+
+    cx.querySelectorAll('[data-resumo]').forEach(b => b.onclick = () => {
+      const [dim, val] = b.dataset.resumo.split(':');
+      const ligado = (dim === 'prazo' ? F.prazo === val : F.status === val);
+      if (dim === 'prazo') F.prazo = ligado ? '' : val;
+      else { F.status = ligado ? '' : val; }
+      guardarFiltros();
+      desenharProducao();
+    });
+  }
+
+  function desenharBarra(comp, souTambemVideomaker) {
+    const cx = painel().querySelector('#vd-barra');
+    if (!cx) return;
+    const opc = (chave, atual, itens, rotulo) =>
+      '<select class="campo fina ds-filtro' + (atual ? ' ativo' : '') + '" data-filtro="' + chave + '" aria-label="' + esc(rotulo) + '">' +
+      itens.map(([v, r]) => '<option value="' + esc(v) + '"' + (atual === v ? ' selected' : '') + '>' + esc(r) + '</option>').join('') +
+      '</select>';
+    const clientesPresentes = [...new Map(demandas.filter(d => d.client_id).map(d => [d.client_id, d.cliente_nome])).entries()]
+      .sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
+
+    cx.innerHTML = '<div class="ds-barra">' +
+      '<div class="ds-busca-cx"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
+        '<input class="campo fina ds-busca" id="vd-busca" placeholder="Buscar código, cliente ou título…" ' +
+        'value="' + esc(F.busca) + '" aria-label="Buscar"></div>' +
+      opc('competencia', F.competencia, [['todas', 'Todos os meses']].concat(comp.map(c => [c, competenciaRotulo(c)])), 'Competência') +
+      opc('cliente', F.cliente, [['', 'Cliente']].concat(clientesPresentes), 'Cliente') +
+      opc('status', F.status, [['', 'Status']].concat(SITUACOES), 'Status') +
+      opc('responsavel', F.responsavel, [['', 'Responsável'], ['sem', 'Sem responsável']]
+        .concat(videomakers.map(v => [v.id, v.nome])), 'Responsável') +
+      opc('prioridade', F.prioridade, [['', 'Prioridade']].concat(PRIORIDADES), 'Prioridade') +
+      (filtrosAtivos() ? '<button class="b fina contorno" id="vd-limpar">Limpar filtros</button>' : '') +
+      '<div class="ds-espaco"></div>' +
+      (souTambemVideomaker
+        ? '<label class="op-mini vd-minha-fila' + (F.minhaFila ? ' on' : '') + '"><input type="checkbox" id="vd-minha-fila"' +
+          (F.minhaFila ? ' checked' : '') + '><span>Minha fila</span></label>'
+        : '') +
+      '<div class="seg-vista" role="tablist">' +
+        '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista">Lista</button>' +
+        '<button role="tab" class="' + (F.vista === 'kanban' ? 'on' : '') + '" data-vista="kanban">Kanban</button>' +
+      '</div>' +
+    '</div>';
+
+    const busca = cx.querySelector('#vd-busca');
+    let t;
+    busca.oninput = () => { clearTimeout(t); t = setTimeout(() => { F.busca = busca.value; guardarFiltros(); desenharArea(filtrar(baseFiltrada())); desenharResumo(baseFiltrada()); }, 220); };
+    cx.querySelectorAll('[data-filtro]').forEach(s => s.onchange = () => {
+      F[s.dataset.filtro] = s.value; guardarFiltros();
+      desenharProducao();
+    });
+    const minhaFila = cx.querySelector('#vd-minha-fila');
+    if (minhaFila) minhaFila.onchange = () => { F.minhaFila = minhaFila.checked; guardarFiltros(); desenharProducao(); };
+    cx.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
+      F.vista = b.dataset.vista; guardarFiltros();
+      cx.querySelectorAll('[data-vista]').forEach(x => x.classList.toggle('on', x === b));
+      desenharArea(filtrar(baseFiltrada()));
+    });
+    const limpar = cx.querySelector('#vd-limpar');
+    if (limpar) limpar.onclick = () => {
+      F.cliente = F.status = F.responsavel = F.prioridade = F.prazo = F.busca = '';
+      F.minhaFila = false;
+      guardarFiltros(); desenharProducao();
+    };
+  }
+
+  function desenharArea(visiveis) {
+    const cx = painel().querySelector('#vd-area');
+    if (!cx) return;
+    cx.innerHTML = '<p class="vd-total">' + (visiveis.length
+      ? visiveis.length + ' demanda' + (visiveis.length === 1 ? '' : 's') +
+        (F.competencia !== 'todas' ? ' em ' + esc(competenciaRotulo(F.competencia)) : '')
+      : '') + '</p>' +
+      (visiveis.length
+        ? (F.vista === 'lista' ? tabelaHTML(visiveis) : quadroHTML(visiveis))
+        : '<div class="estado-b7"><b>Nenhuma demanda com esses filtros.</b>' +
+          '<p>Ajuste a busca, o mês ou os filtros ativos.</p></div>');
+    ligarArea(cx);
+  }
+
+  /* ---------------- LISTA (versão moderna da planilha) ---------------- */
+  function tabelaHTML(lista) {
+    const ordenada = [...lista].sort((a, b) => {
+      const pa = a.prazo || '9999-99-99', pb = b.prazo || '9999-99-99';
+      return pa < pb ? -1 : pa > pb ? 1 : 0;
+    });
+    return '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
+      '<th>Código</th><th>Cliente</th><th>Título</th><th>Prioridade</th><th>Prazo</th><th>Status</th><th>Responsável</th>' +
+      '</tr></thead><tbody>' +
+      ordenada.map(d => {
+        const atrasada = ehAtrasada(d);
+        return '<tr data-demanda="' + d.id + '" tabindex="0">' +
+          '<td class="vd-codigo">' + esc(d.codigo || '—') + '</td>' +
+          '<td>' + esc(d.cliente_nome || '—') + '</td>' +
+          '<td class="vd-tb-titulo">' + tituloComFallback(d) + '</td>' +
+          '<td>' + prioridadeBadge(d.prioridade) + '</td>' +
+          '<td>' + prazoHTML(d, atrasada) + '</td>' +
+          '<td>' + statusBadge(d.editing_status) + '</td>' +
+          '<td>' + (d.videomaker_nome ? esc(d.videomaker_nome) : '<i class="vd-sem">sem responsável</i>') + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  }
+
+  function tituloComFallback(d) {
+    if (!/^Sem título \(planilha\)/.test(d.titulo || '')) return esc(d.titulo);
+    const partes = d.titulo.split(' — código ');
+    return '<span class="vd-sem">Sem título</span>' +
+      '<small class="vd-tb-sub">Importado da planilha' + (partes[1] ? ' · código ' + esc(partes[1]) : '') + '</small>';
+  }
+  function prioridadeBadge(p) {
+    p = p || 'normal';
+    return '<span class="vd-prioridade vd-prioridade-' + p + '">' + esc(rotuloPrioridade(p)) + '</span>';
+  }
+  function statusBadge(s) {
+    return '<span class="vd-status vd-status-' + s + '">' + esc(rotuloSituacao(s)) + '</span>';
+  }
+  function prazoHTML(d, atrasada) {
+    if (!d.prazo) return '<span class="vd-sem">—</span>';
+    const dias = Math.round((new Date(hoje()) - new Date(d.prazo)) / 86400000);
+    return '<span class="vd-prazo' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo)) +
+      (atrasada ? '<small>' + (dias === 1 ? '1 dia em atraso' : dias + ' dias em atraso') + '</small>' : '') + '</span>';
+  }
+
+  /* ---------------- QUADRO (Kanban secundário, mesmos dados) ---------------- */
+  const COLUNAS_KANBAN = SITUACOES;
+  const LIMITE_COLUNA = 30;
+  function quadroHTML(lista) {
+    const grupos = COLUNAS_KANBAN.map(([chave, nome]) => ({
+      chave, nome, itens: lista.filter(d => d.editing_status === chave)
+    }));
+    return '<div class="vd-quadro">' + grupos.map(colunaHTML).join('') + '</div>';
+  }
+  function colunaHTML(g) {
+    const mostrar = g.itens.slice(0, LIMITE_COLUNA);
+    const resto = g.itens.length - mostrar.length;
+    return '<div class="vd-coluna" data-coluna="' + g.chave + '">' +
+      '<div class="vd-coluna-cab"><span>' + esc(g.nome) + '</span><b>' + g.itens.length + '</b></div>' +
+      '<div class="vd-coluna-corpo">' +
+      (mostrar.length ? mostrar.map(cardHTML).join('') : '<div class="vd-vazia">—</div>') +
+      (resto > 0 ? '<button class="vd-ver-mais" data-coluna-ver-mais="' + g.chave + '">+' + resto + ' entregue' + (resto === 1 ? '' : 's') + '…</button>' : '') +
+      '</div></div>';
+  }
+  function cardHTML(d) {
+    const atrasada = ehAtrasada(d);
+    return '<div class="vd-card" data-demanda="' + d.id + '" tabindex="0">' +
+      '<div class="vd-card-topo"><b>' + esc(d.cliente_nome || 'Cliente') + '</b>' +
+      (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') + '</div>' +
+      '<div class="vd-card-titulo">' + tituloComFallback(d) + '</div>' +
+      (d.prioridade && d.prioridade !== 'normal' ? prioridadeBadge(d.prioridade) : '') +
+      '<div class="vd-card-rodape">' +
+      (d.videomaker_nome ? '<span class="vd-quem">' + esc(d.videomaker_nome) + '</span>' : '<span class="vd-quem fraca">sem responsável</span>') +
+      (d.prazo ? '<span class="vd-prazo' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo)) + '</span>' : '') +
+      '</div></div>';
+  }
+
+  function ligarArea(cx) {
+    cx.querySelectorAll('[data-demanda]').forEach(el => {
+      const ir = () => location.hash = '#/video/' + el.dataset.demanda;
+      el.onclick = ir;
+      el.onkeydown = e => { if (e.key === 'Enter') ir(); };
+    });
+    cx.querySelectorAll('[data-coluna-ver-mais]').forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const col = b.closest('.vd-coluna');
+      const chave = b.dataset.colunaVerMais;
+      const todos = filtrar(baseFiltrada()).filter(d => d.editing_status === chave);
+      col.querySelector('.vd-coluna-corpo').innerHTML = todos.map(cardHTML).join('');
+      col.querySelectorAll('[data-demanda]').forEach(el => {
+        const ir = () => location.hash = '#/video/' + el.dataset.demanda;
+        el.onclick = ir; el.onkeydown = ev => { if (ev.key === 'Enter') ir(); };
+      });
+    });
+  }
+
+  /* =================================================================
+     CENTRAL DE VÍDEO — quem é videomaker (papel ou função extra), e
+     não é equipe. Mesmo espírito de "Central do Designer" (js/design.js):
+     o que precisa de mim agora, não um painel administrativo.
+     ================================================================= */
+  function desenharCentral() {
+    const minhas = demandas; /* RLS já entrega só o que é meu quando não sou equipe */
+    const ativas = minhas.filter(d => d.editing_status !== 'entregue' && d.editing_status !== 'descartado');
+    const atrasadasAgora = ativas.filter(ehAtrasada);
+    const correcoes = ativas.filter(d => d.editing_status === 'correcao');
+    const emEdicao = ativas.filter(d => d.editing_status === 'em_edicao' && !ehAtrasada(d) && d.editing_status !== 'correcao');
+    const pendentes = ativas.filter(d => d.editing_status === 'pendente' && !ehAtrasada(d));
+    const standby = ativas.filter(d => d.editing_status === 'standby');
+    const mesAtual = mesAtualChave();
+    const anteriores = ativas.filter(d => competenciaChave(d) && competenciaChave(d) < mesAtual);
+    const entreguesRecentes = minhas.filter(d => d.editing_status === 'entregue')
+      .sort((a, b) => (b.entregue_em || '').localeCompare(a.entregue_em || '')).slice(0, 6);
+
+    /* ordem de prioridade da própria tela (não muda status/prioridade
+       real de nada — é só a ordem de leitura): atrasadas, correções,
+       hoje/amanhã, alta prioridade, o resto */
+    const prazoLabel = d => d.prazo === hoje() ? 'hoje' : (d.prazo && d.prazo > hoje() && diasAte(d.prazo) === 1 ? 'amanhã' : '');
+    const precisaAgora = [...atrasadasAgora, ...correcoes,
+      ...emEdicao.filter(d => prazoLabel(d)), ...pendentes.filter(d => prazoLabel(d)),
+      ...emEdicao.filter(d => !prazoLabel(d) && d.prioridade === 'alta'),
+      ...pendentes.filter(d => !prazoLabel(d) && d.prioridade === 'alta')]
+      .filter((d, i, arr) => arr.findIndex(x => x.id === d.id) === i);
+    const restoAtivo = ativas.filter(d => !precisaAgora.some(p => p.id === d.id) && !anteriores.some(a => a.id === d.id));
+
+    painel().innerHTML = '<div class="conteudo entra vd-tela vd-central">' +
+      '<header class="vd-cab"><div><h1>O que precisa de você agora</h1>' +
+      '<p>' + minhas.length + ' demanda' + (minhas.length === 1 ? '' : 's') + ' atribuída' + (minhas.length === 1 ? '' : 's') + ' a você.</p></div></header>' +
+
+      (anteriores.length
+        ? '<section class="vd-sec"><h2>Pendências de meses anteriores <span>' + anteriores.length + '</span></h2>' +
+          '<div class="vd-fila">' + anteriores.map(linhaCentral).join('') + '</div></section>'
+        : '') +
+
+      (precisaAgora.length
+        ? '<section class="vd-sec vd-sec-precisa"><h2>Precisa de você agora <span>' + precisaAgora.length + '</span></h2>' +
+          '<div class="vd-fila">' + precisaAgora.map(linhaCentral).join('') + '</div></section>'
+        : '') +
+
+      (standby.length
+        ? '<section class="vd-sec"><h2>Em standby <span>' + standby.length + '</span></h2>' +
+          '<div class="vd-fila">' + standby.map(linhaCentral).join('') + '</div></section>'
+        : '') +
+
+      (restoAtivo.length
+        ? '<section class="vd-sec"><h2>Demais demandas em aberto <span>' + restoAtivo.length + '</span></h2>' +
+          '<div class="vd-fila">' + restoAtivo.map(linhaCentral).join('') + '</div></section>'
+        : '') +
+
+      (entreguesRecentes.length
+        ? '<section class="vd-sec vd-sec-fraca"><h2>Entregues recentemente</h2>' +
+          '<div class="vd-fila">' + entreguesRecentes.map(linhaCentral).join('') + '</div></section>'
+        : '') +
+
+      (!minhas.length
+        ? '<div class="estado-b7"><b>Nenhuma demanda atribuída a você ainda.</b>' +
+          '<p>Assim que a equipe atribuir algo, aparece aqui.</p></div>'
+        : '') +
+    '</div>';
+
+    ligarArea(painel());
+  }
+
+  function diasAte(iso) { return Math.round((new Date(iso) - new Date(hoje())) / 86400000); }
+
+  function linhaCentral(d) {
+    const atrasada = ehAtrasada(d);
+    return '<article class="vd-item-central" data-demanda="' + d.id + '" tabindex="0" role="button">' +
+      '<div class="vd-ic-tx">' +
+        '<span class="vd-ic-cliente">' + esc(d.cliente_nome || 'Cliente') + (d.codigo ? ' · ' + esc(d.codigo) : '') + '</span>' +
+        '<b>' + tituloComFallback(d) + '</b>' +
+      '</div>' +
+      '<div class="vd-ic-meta">' +
+        statusBadge(d.editing_status) +
+        (d.prioridade && d.prioridade !== 'normal' ? prioridadeBadge(d.prioridade) : '') +
+        (d.prazo ? '<span class="vd-prazo' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo)) + '</span>' : '') +
+      '</div>' +
+    '</article>';
+  }
+
+  /* =================================================================
      NOVA DEMANDA (manual, equipe)
-     ================================================================ */
+     ================================================================= */
   function modalNovaDemanda() {
     if (!clientes.length) { B7.UI.toast('Cadastre um cliente antes de criar uma demanda.'); return; }
+    const compAtual = F.competencia !== 'todas' && F.competencia ? F.competencia.split('-') : null;
     const m = B7.UI.modal(
       '<h3>Nova demanda de edição</h3>' +
       '<label class="rot">Cliente</label>' +
@@ -144,11 +480,15 @@ B7.Video = (function () {
       '</div>' +
       '<div class="vd-grid-2">' +
         '<div><label class="rot">Prazo (opcional)</label><input class="campo" type="date" id="vd-nd-prazo"></div>' +
-        '<div><label class="rot">Videomaker (opcional)</label><select class="campo" id="vd-nd-videomaker">' +
-          '<option value="">Sem atribuir ainda</option>' +
-          videomakers.map(v => '<option value="' + v.id + '">' + esc(v.nome) + '</option>').join('') +
+        '<div><label class="rot">Prioridade</label><select class="campo" id="vd-nd-prioridade">' +
+          PRIORIDADES.map(([v, r]) => '<option value="' + v + '"' + (v === 'normal' ? ' selected' : '') + '>' + r + '</option>').join('') +
         '</select></div>' +
       '</div>' +
+      '<label class="rot">Responsável (videomaker, opcional)</label>' +
+      '<select class="campo" id="vd-nd-videomaker">' +
+        '<option value="">Sem atribuir ainda</option>' +
+        videomakers.map(v => '<option value="' + v.id + '">' + esc(v.nome) + '</option>').join('') +
+      '</select>' +
       '<label class="rot">Vincular a uma gravação deste cliente (opcional)</label>' +
       '<select class="campo" id="vd-nd-gravacao"><option value="">Carregando…</option></select>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
@@ -179,7 +519,10 @@ B7.Video = (function () {
           pacote: m.querySelector('#vd-nd-pacote').value.trim(),
           prazo: m.querySelector('#vd-nd-prazo').value || null,
           videomakerId: m.querySelector('#vd-nd-videomaker').value || null,
-          gravacaoId: selGravacao.value || null
+          gravacaoId: selGravacao.value || null,
+          prioridade: m.querySelector('#vd-nd-prioridade').value,
+          competenciaAno: compAtual ? Number(compAtual[0]) : null,
+          competenciaMes: compAtual ? Number(compAtual[1]) : null
         });
         m.fechar();
         B7.UI.toast('Demanda criada.');
@@ -191,12 +534,12 @@ B7.Video = (function () {
     };
   }
 
-  /* ================================================================
-     DETALHE DE UMA DEMANDA
-     ================================================================ */
+  /* =================================================================
+     DETALHE DE UMA DEMANDA — layout principal + painel lateral
+     ================================================================= */
   async function abrirDetalhe(id) {
     B7.Dashboard.marcarNav('#/video');
-    B7.Rota.titulo(['Edição de vídeo', 'Demanda']);
+    B7.Rota.titulo([souEquipe() ? 'Produção de Vídeo' : 'Central de Vídeo', 'Demanda']);
     painel().innerHTML = '<div class="conteudo vd-tela">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>';
 
     let d, historico;
@@ -213,65 +556,85 @@ B7.Video = (function () {
     }
 
     const podeEditar = souEquipe();
-    const podeOperar = souEquipe() || d.videomaker_id === (B7.Auth.usuario() && B7.Auth.usuario().id);
+    const podeOperar = souEquipe() || d.videomaker_id === meuId();
+    const atrasada = ehAtrasada(d);
 
-    painel().innerHTML = '<div class="conteudo vd-tela vd-detalhe">' +
-      '<div class="trilha"><a href="#/video">Edição de vídeo</a><span>/</span><b>' + esc(d.titulo) + '</b></div>' +
-      '<header class="vd-cab"><div><h1>' + esc(d.titulo) + '</h1>' +
-      '<p>' + esc(d.cliente_nome || '') + (d.codigo ? ' · ' + esc(d.codigo) : '') + '</p></div>' +
+    painel().innerHTML = '<div class="conteudo entra vd-tela vd-detalhe">' +
+      '<div class="trilha"><a href="#/video">' + esc(souEquipe() ? 'Produção de Vídeo' : 'Central de Vídeo') + '</a><span>/</span><b>' + esc(d.titulo) + '</b></div>' +
+      '<header class="vd-cab"><div><h1>' + tituloComFallback(d) + '</h1>' +
+      '<p>' + esc(d.cliente_nome || '') + (d.codigo ? ' · ' + esc(d.codigo) : '') +
+      (d.competencia_ano ? ' · ' + esc(competenciaRotulo(competenciaChave(d))) : '') + '</p></div>' +
       (podeEditar ? '<button class="b fina contorno" id="vd-dt-excluir">Excluir</button>' : '') +
       '</header>' +
 
-      '<div class="vd-dt-grid">' +
-        '<div class="vd-dt-campo"><label class="rot">Situação</label>' +
-        (podeOperar
-          ? '<select class="campo" id="vd-dt-status">' +
-            SITUACOES.map(([v, n]) => '<option value="' + v + '"' + (v === d.editing_status ? ' selected' : '') + '>' + n + '</option>').join('') +
-            '</select>'
-          : '<div class="vd-so-leitura">' + esc(rotuloSituacao(d.editing_status)) + '</div>') +
-        '</div>' +
-        '<div class="vd-dt-campo"><label class="rot">Videomaker</label>' +
-        (podeEditar
-          ? '<select class="campo" id="vd-dt-videomaker"><option value="">Sem atribuir</option>' +
-            videomakers.map(v => '<option value="' + v.id + '"' + (v.id === d.videomaker_id ? ' selected' : '') + '>' + esc(v.nome) + '</option>').join('') +
-            '</select>'
-          : '<div class="vd-so-leitura">' + esc(d.videomaker_nome || 'sem videomaker') + '</div>') +
-        '</div>' +
-        '<div class="vd-dt-campo"><label class="rot">Prazo</label>' +
-        (podeEditar ? '<input class="campo" type="date" id="vd-dt-prazo" value="' + (d.prazo || '') + '">' :
-          '<div class="vd-so-leitura">' + (d.prazo ? esc(B7.UI.dataBR(d.prazo)) : '—') + '</div>') +
-        '</div>' +
-        '<div class="vd-dt-campo"><label class="rot">Pacote</label>' +
-        (podeEditar ? '<input class="campo" id="vd-dt-pacote" value="' + esc(d.pacote || '') + '">' :
-          '<div class="vd-so-leitura">' + esc(d.pacote || '—') + '</div>') +
-        '</div>' +
-        '<div class="vd-dt-campo"><label class="rot">Gravação vinculada</label>' +
-        (podeEditar
-          ? '<select class="campo" id="vd-dt-gravacao"><option value="">Carregando…</option></select>'
-          : '<div class="vd-so-leitura">' + (d.gravacao_nome ? esc(d.gravacao_nome) + ' (' + esc(d.gravacao_situacao || '') + ')' : 'sem vínculo') + '</div>') +
-        '</div>' +
-      '</div>' +
+      '<div class="vd-detalhe-corpo">' +
+        '<div class="vd-detalhe-principal">' +
+          (d.link_material
+            ? '<a class="b pri vd-abrir-materiais" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir materiais</a>'
+            : (podeOperar ? '' : '<div class="estado-b7 vd-sem-material"><b>Sem materiais vinculados ainda.</b></div>')) +
+          '<div class="vd-dt-campo vd-dt-link"><label class="rot">Link do material editado</label>' +
+          (podeOperar
+            ? '<div class="vd-link-linha"><input class="campo" id="vd-dt-link" placeholder="https://drive.google.com/…" value="' + esc(d.link_material || '') + '">' +
+              '<button class="b" id="vd-dt-link-salvar">Salvar</button></div>' +
+              '<p class="fraca">Link externo (Drive, WeTransfer…) — nesta etapa o vídeo não é enviado para dentro do sistema.</p>'
+            : '') +
+          '</div>' +
 
-      '<div class="vd-dt-campo vd-dt-link"><label class="rot">Link do material editado</label>' +
-      (podeOperar
-        ? '<div class="vd-link-linha"><input class="campo" id="vd-dt-link" placeholder="https://drive.google.com/…" value="' + esc(d.link_material || '') + '">' +
-          '<button class="b" id="vd-dt-link-salvar">Salvar</button></div>' +
-          '<p class="fraca">Link externo (Drive, WeTransfer…) — nesta etapa o vídeo não é enviado para dentro do sistema.</p>'
-        : (d.link_material
-            ? '<a class="b contorno" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir material</a>'
-            : '<div class="vd-so-leitura">Ainda sem link.</div>')) +
-      '</div>' +
+          (podeEditar
+            ? '<div class="vd-dt-campo"><label class="rot">Observações</label>' +
+              '<textarea class="campo alta" id="vd-dt-obs" rows="4">' + esc(d.observacoes || '') + '</textarea></div>'
+            : (d.observacoes ? '<div class="vd-dt-campo"><label class="rot">Observações</label><div class="vd-so-leitura">' + esc(d.observacoes) + '</div></div>' : '')) +
 
-      (podeEditar
-        ? '<div class="vd-dt-campo"><label class="rot">Observações</label>' +
-          '<textarea class="campo alta" id="vd-dt-obs" rows="3">' + esc(d.observacoes || '') + '</textarea>' +
-          '<div class="acoes"><button class="b pri" id="vd-dt-salvar">Salvar alterações</button></div></div>'
-        : (d.observacoes ? '<div class="vd-dt-campo"><label class="rot">Observações</label><div class="vd-so-leitura">' + esc(d.observacoes) + '</div></div>' : '')) +
+          '<div class="vd-dt-campo"><label class="rot">Histórico</label>' +
+          (historico.length
+            ? '<ul class="vd-timeline">' + historico.map(linhaHistorico).join('') + '</ul>'
+            : '<div class="vd-so-leitura">Sem eventos ainda.</div>') +
+          '</div>' +
+        '</div>' +
 
-      '<div class="vd-dt-campo"><label class="rot">Histórico</label>' +
-      (historico.length
-        ? '<ul class="vd-timeline">' + historico.map(linhaHistorico).join('') + '</ul>'
-        : '<div class="vd-so-leitura">Sem eventos ainda.</div>') +
+        '<aside class="vd-detalhe-lateral">' +
+          '<div class="vd-dt-campo"><label class="rot">Situação</label>' +
+          (podeOperar
+            ? '<select class="campo" id="vd-dt-status">' +
+              SITUACOES.map(([v, n]) => '<option value="' + v + '"' + (v === d.editing_status ? ' selected' : '') + '>' + n + '</option>').join('') +
+              '</select>'
+            : '<div class="vd-so-leitura">' + statusBadge(d.editing_status) + '</div>') +
+          '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Prioridade</label>' +
+          (podeEditar
+            ? '<select class="campo" id="vd-dt-prioridade">' +
+              PRIORIDADES.map(([v, r]) => '<option value="' + v + '"' + (v === (d.prioridade || 'normal') ? ' selected' : '') + '>' + r + '</option>').join('') +
+              '</select>'
+            : '<div class="vd-so-leitura">' + prioridadeBadge(d.prioridade) + '</div>') +
+          '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Responsável</label>' +
+          (podeEditar
+            ? '<select class="campo" id="vd-dt-videomaker"><option value="">Sem atribuir</option>' +
+              videomakers.map(v => '<option value="' + v.id + '"' + (v.id === d.videomaker_id ? ' selected' : '') + '>' + esc(v.nome) + '</option>').join('') +
+              '</select>'
+            : '<div class="vd-so-leitura">' + esc(d.videomaker_nome || 'sem responsável') + '</div>') +
+          '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Prazo</label>' +
+          (podeEditar ? '<input class="campo" type="date" id="vd-dt-prazo" value="' + (d.prazo || '') + '">' :
+            '<div class="vd-so-leitura">' + (d.prazo ? esc(B7.UI.dataBR(d.prazo)) + (atrasada ? ' — atrasada' : '') : '—') + '</div>') +
+          '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Competência</label>' +
+          '<div class="vd-so-leitura">' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</div>' +
+          '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Pacote</label>' +
+          (podeEditar ? '<input class="campo" id="vd-dt-pacote" value="' + esc(d.pacote || '') + '">' :
+            '<div class="vd-so-leitura">' + esc(d.pacote || '—') + '</div>') +
+          '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Gravação vinculada</label>' +
+          (podeEditar
+            ? '<select class="campo" id="vd-dt-gravacao"><option value="">Carregando…</option></select>'
+            : '<div class="vd-so-leitura">' + (d.gravacao_nome ? esc(d.gravacao_nome) + ' (' + esc(d.gravacao_situacao || '') + ')' : 'sem vínculo') + '</div>') +
+          '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Origem</label>' +
+          '<div class="vd-so-leitura">' + (d.origem === 'importacao' ? 'Importada de planilha' : 'Criada manualmente') + '</div>' +
+          '</div>' +
+          (podeEditar ? '<div class="acoes"><button class="b pri" id="vd-dt-salvar">Salvar alterações</button></div>' : '') +
+        '</aside>' +
       '</div>' +
     '</div>';
 
@@ -281,7 +644,7 @@ B7.Video = (function () {
   function linhaHistorico(ev) {
     let texto;
     if (ev.tipo === 'criada') texto = 'Demanda criada';
-    else if (ev.tipo === 'atribuida') texto = ev.mensagem === 'Atribuição removida' ? 'Atribuição removida' : 'Videomaker atribuído';
+    else if (ev.tipo === 'atribuida') texto = ev.mensagem === 'Atribuição removida' ? 'Atribuição removida' : 'Responsável atribuído';
     else if (ev.tipo === 'status') texto = 'Situação mudou para "' + esc(rotuloSituacao(ev.para_status)) + '"';
     else if (ev.tipo === 'link_material') texto = 'Link do material atualizado';
     else texto = esc(ev.tipo);
@@ -316,7 +679,7 @@ B7.Video = (function () {
     if (btLink) btLink.onclick = async () => {
       const link = document.getElementById('vd-dt-link').value.trim();
       btLink.disabled = true;
-      try { await B7.DB.definirLinkVideo(d.id, link); B7.UI.toast('Link salvo.'); }
+      try { await B7.DB.definirLinkVideo(d.id, link); B7.UI.toast('Link salvo.'); abrirDetalhe(d.id); }
       catch (e) { B7.UI.toast(e.message || 'Não foi possível salvar o link.'); }
       finally { btLink.disabled = false; }
     };
@@ -338,9 +701,10 @@ B7.Video = (function () {
           pacote: document.getElementById('vd-dt-pacote').value.trim(),
           prazo: document.getElementById('vd-dt-prazo').value || null,
           temPrazo: true,
-          observacoes: document.getElementById('vd-dt-obs').value.trim(),
+          observacoes: document.getElementById('vd-dt-obs') ? document.getElementById('vd-dt-obs').value.trim() : undefined,
           gravacaoId: document.getElementById('vd-dt-gravacao').value || null,
-          temGravacao: true
+          temGravacao: true,
+          prioridade: document.getElementById('vd-dt-prioridade').value
         });
         B7.UI.toast('Alterações salvas.');
         abrirDetalhe(d.id);
@@ -370,30 +734,20 @@ B7.Video = (function () {
      antes do cabeçalho de verdade) — ver o relatório do build.
 
      Como planilha real de produção quase nunca usa exatamente
-     "cliente"/"titulo" como cabeçalho (a primeira tentativa deste
-     módulo assumia isso e falhou contra a planilha real do Yury: toda
-     linha caía como "sem_nome_de_cliente, sem_titulo"), a leitura
-     agora faz duas coisas que a primeira versão não fazia:
-
+     "cliente"/"titulo" como cabeçalho, a leitura:
      1) Acha a linha de cabeçalho de verdade em vez de assumir que é a
         primeira linha do arquivo — pontua as primeiras linhas por
-        quantas colunas reconhecidas elas têm e usa a que pontuar mais
-        (raspa de fora qualquer linha de lixo antes do cabeçalho).
-     2) Casa CADA coluna por uma lista de sinônimos (ex.: "titulo" e
-        "briefing" mapeiam pra `titulo`; "cod" casa com "Cód.";
-        "gravacao" casa com "Data de Gravação"), não por igualdade
+        quantas colunas reconhecidas elas têm e usa a que pontuar mais.
+     2) Casa CADA coluna por uma lista de sinônimos, não por igualdade
         exata do nome da coluna.
 
-     Colunas reconhecidas (nenhuma obrigatória, exceto ter cliente e
-     título pra a linha valer alguma coisa): cliente, titulo (ou
-     briefing), codigo (cod), pacote, prazo, mes/competência
-     ("Mês" no formato "julho/2026"), status (ENTREGUE/DESCARTADO/
-     PENDENTE/EDIÇÃO/CORREÇÃO/STANDBY — vira a situação inicial da
-     demanda), observações, prioridade e responsável (planilha) — as
-     duas últimas não têm campo próprio no sistema ainda, então
-     entram como texto dentro de observações, pra não se perder.
-     Datas em DD/MM/AAAA (formato brasileiro) são convertidas para
-     AAAA-MM-DD.
+     "prioridade" e "responsavel" (planilha) e "data_gravacao" viram
+     CAMPOS PRÓPRIOS no objeto de linha (a partir deste build — antes,
+     só entravam compostos dentro de observações e não davam pra
+     recuperar depois; migration_video_producao.sql tem um backfill
+     que recupera o que já foi importado assim, lendo o texto composto
+     de volta). Continuam também aparecendo, em texto, dentro de
+     observações — não tira informação de quem já usa a tela assim.
      ================================================================ */
   function normalizarCabecalho(h) {
     return String(h == null ? '' : h).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
@@ -425,10 +779,6 @@ B7.Video = (function () {
     return mapa;
   }
 
-  /* varre as primeiras linhas do arquivo e escolhe a que "parece mais
-     um cabeçalho" (mais colunas reconhecidas) — assim uma linha de
-     lixo antes do cabeçalho de verdade (comum em planilha exportada
-     à mão) não vira o cabeçalho por engano. */
   function acharLinhaCabecalho(bruto) {
     let melhorIndice = 0, melhorPontuacao = -1;
     for (let i = 0; i < Math.min(bruto.length, 15); i++) {
@@ -446,8 +796,6 @@ B7.Video = (function () {
     return mes ? { ano: m[2], mes: String(mes) } : {};
   }
 
-  /* aceita DD/MM/AAAA (planilha brasileira) ou já AAAA-MM-DD; qualquer
-     outra coisa vira '' (sem prazo) em vez de quebrar a importação. */
   function parseDataBR(v) {
     const s = String(v || '').trim();
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -462,9 +810,6 @@ B7.Video = (function () {
   };
   function parseStatus(v) { return STATUS_PLANILHA[normalizarCabecalho(v)] || ''; }
 
-  /* bruto: array de linhas, cada linha um array de células (mesmo
-     formato pra CSV e XLSX) — a partir daqui os dois caminhos usam a
-     mesma lógica de achar cabeçalho e montar as linhas. */
   function linhasParaObjetos(bruto) {
     if (!bruto.length) return [];
     const idxCab = acharLinhaCabecalho(bruto);
@@ -475,10 +820,10 @@ B7.Video = (function () {
       .filter(l => l.some(v => String(v == null ? '' : v).trim() !== ''))
       .map(l => {
         const comp = parseCompetencia(pegar(l, 'competencia'));
-        const extras = [];
         const prioridade = pegar(l, 'prioridade');
         const responsavel = pegar(l, 'responsavel');
         const dataGravacao = parseDataBR(pegar(l, 'data_gravacao'));
+        const extras = [];
         if (prioridade) extras.push('Prioridade (planilha): ' + prioridade);
         if (responsavel) extras.push('Responsável (planilha): ' + responsavel);
         if (dataGravacao) extras.push('Data de gravação (planilha): ' + dataGravacao.split('-').reverse().join('/'));
@@ -493,7 +838,8 @@ B7.Video = (function () {
           observacoes,
           ano: comp.ano || '',
           mes: comp.mes || '',
-          status: parseStatus(pegar(l, 'status'))
+          status: parseStatus(pegar(l, 'status')),
+          prioridade
         };
       });
   }
@@ -517,8 +863,6 @@ B7.Video = (function () {
   }
   function parseCSV(texto) { return linhasParaObjetos(csvParaLinhasBrutas(texto)); }
 
-  /* lê só a primeira aba; datas viram texto AAAA-MM-DD (dateNF), pronto
-     para o `prazo::date` do banco. */
   function parseXLSX(arrayBuffer) {
     if (!window.XLSX) throw new Error('Biblioteca de leitura de XLSX não carregou.');
     const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
@@ -572,10 +916,6 @@ B7.Video = (function () {
     const naoResolvidas = pendentes.filter(l => !l.resolvida);
     const prontas = pendentes.filter(l => l.resolvida);
 
-    // Planilhas reais costumam repetir o mesmo cliente dezenas ou centenas
-    // de vezes. Resolver o cliente de UMA linha já resolve todas as linhas
-    // irmãs (mesmo nome, mesmo lote) — então a lista aqui agrupa por nome
-    // de cliente da planilha, em vez de mostrar uma linha por registro.
     const grupos = [];
     const porNome = new Map();
     naoResolvidas.forEach(l => {

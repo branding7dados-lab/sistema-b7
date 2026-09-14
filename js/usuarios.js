@@ -25,6 +25,18 @@ B7.Usuarios = (function () {
   ];
   const rotuloPapel = p => (PAPEIS.find(x => x[0] === p) || [, p])[1];
 
+  /* Funções extras de produção (B7 Vídeo Parte 1.1): aditivo ao papel
+     principal acima, não substitui nada. Hoje só "videomaker" — uma
+     pessoa continua com UM papel (ex.: Administrador) e pode acumular
+     essa função extra sem precisar de uma segunda conta (ex.: Kevin,
+     Administrador + Videomaker, numa conta só). Nunca combina com
+     Cliente (perfil externo) — o bloco some quando o papel escolhido é
+     "cliente", tanto ao criar quanto ao editar. */
+  const FUNCOES_EXTRA = [
+    ['videomaker', 'Videomaker', 'também filma e edita, além do papel principal']
+  ];
+  const rotuloFuncaoExtra = f => (FUNCOES_EXTRA.find(x => x[0] === f) || [, f])[1];
+
   /* =================================================================
      LISTA
      ================================================================= */
@@ -60,8 +72,10 @@ B7.Usuarios = (function () {
 
     const usuarios = dados.usuarios || [];
     const vinculos = dados.vinculos || [];
+    const funcoesExtraTodas = dados.funcoes_extra || [];
     const empresasDe = id => vinculos.filter(v => v.perfil_id === id)
       .map(v => (v.clientes && v.clientes.nome) || '');
+    const funcoesExtraDe = id => funcoesExtraTodas.filter(f => f.perfil_id === id).map(f => f.funcao);
 
     painel().innerHTML = '<div class="conteudo entra">' +
       '<div class="trilha"><a href="#/config">Configurações</a><span>/</span>' +
@@ -71,7 +85,7 @@ B7.Usuarios = (function () {
       '<button class="b pri" id="novo-usuario">+ Novo usuário</button></div>' +
 
       (usuarios.length
-        ? '<div class="lista-usuarios">' + usuarios.map(u => linhaUsuario(u, empresasDe(u.id))).join('') + '</div>'
+        ? '<div class="lista-usuarios">' + usuarios.map(u => linhaUsuario(u, empresasDe(u.id), funcoesExtraDe(u.id))).join('') + '</div>'
         : '<div class="estado-b7"><b>Nenhuma conta ainda.</b>' +
           '<p>Crie a primeira conta de coordenador ou cliente.</p></div>') +
     '</div>';
@@ -82,7 +96,7 @@ B7.Usuarios = (function () {
       const u = usuarios.find(x => x.id === b.dataset.id);
       const acao = b.dataset.acaoConta;
       if (acao === 'senha') return modalSenha(u);
-      if (acao === 'editar') return modalEditar(u, clientes, vinculos);
+      if (acao === 'editar') return modalEditar(u, clientes, vinculos, funcoesExtraDe(u.id));
       if (acao === 'estado') return alterarEstado(u, b.dataset.estado);
       if (acao === 'foto') return modalFoto(u);
       if (acao === 'excluir') return excluirConta(u);
@@ -99,15 +113,20 @@ B7.Usuarios = (function () {
     return '<span class="lu-acesso' + classe + '" title="' + esc(r.online ? 'Ativo nos últimos 5 minutos' : r.texto) + '">' + esc(r.texto) + '</span>';
   }
 
-  function linhaUsuario(u, empresas) {
+  function linhaUsuario(u, empresas, funcoesExtra) {
     const inativa = u.estado !== 'ativa';
+    /* "Administrador · Videomaker" — nunca o array cru; a função extra
+       aparece como continuação legível do papel principal, não como
+       outro papel. */
+    const rotuloCompleto = rotuloPapel(u.papel) +
+      ((funcoesExtra || []).length ? ' · ' + funcoesExtra.map(rotuloFuncaoExtra).join(' · ') : '');
     return '<div class="lu-item' + (inativa ? ' inativa' : '') + '">' +
       B7.UI.avatarPessoa(u, 'lu-avatar') +
       '<div class="lu-tx">' +
         '<b>' + esc(u.nome) + '</b>' +
         '<span class="lu-user">@' + esc(u.username) + '</span>' +
       '</div>' +
-      '<span class="lu-papel ' + esc(u.papel) + '">' + esc(rotuloPapel(u.papel)) + '</span>' +
+      '<span class="lu-papel ' + esc(u.papel) + '">' + esc(rotuloCompleto) + '</span>' +
       '<span class="lu-empresas">' +
         (empresas.length ? esc(empresas.slice(0, 2).join(', ')) +
           (empresas.length > 2 ? ' +' + (empresas.length - 2) : '')
@@ -165,6 +184,13 @@ B7.Usuarios = (function () {
           '<small>sem isso, a pessoa visualiza e comenta, mas não aprova</small></span></label>' +
       '</div>' +
 
+      '<div id="nu-extras" class="mb" style="margin-top:14px">' +
+        '<label class="rot">FUNÇÕES EXTRAS (ALÉM DO PERFIL PRINCIPAL)</label>' +
+        '<div class="nu-empresas">' + FUNCOES_EXTRA.map(([v, r, d]) =>
+          '<label class="op-mini" data-funcao-extra="' + v + '"><input type="checkbox" value="' + v + '">' +
+          '<span>' + r + '<small>' + d + '</small></span></label>').join('') + '</div>' +
+      '</div>' +
+
       '<label class="rot" style="margin-top:6px">SENHA INICIAL</label>' +
       '<div class="nu-senha">' +
         '<input class="campo" id="nu-senha" autocomplete="new-password">' +
@@ -179,13 +205,27 @@ B7.Usuarios = (function () {
 
     let papel = 'cliente';
     const blocoCliente = m.querySelector('#nu-cliente');
+    const blocoExtras = m.querySelector('#nu-extras');
+    const atualizarExtras = () => {
+      /* função extra é só para papel interno, e não faz sentido marcar
+         a mesma função que já é o papel principal (ex.: Videomaker não
+         ganha a função extra "Videomaker") */
+      blocoExtras.style.display = papel === 'cliente' ? 'none' : '';
+      blocoExtras.querySelectorAll('[data-funcao-extra]').forEach(l => {
+        const redundante = l.dataset.funcaoExtra === papel;
+        l.style.display = redundante ? 'none' : '';
+        if (redundante) { l.querySelector('input').checked = false; l.classList.remove('on'); }
+      });
+    };
     m.querySelectorAll('#nu-papel [data-papel]').forEach(b => b.onclick = () => {
       m.querySelectorAll('#nu-papel button').forEach(x => x.classList.remove('on'));
       b.classList.add('on');
       papel = b.dataset.papel;
       /* empresa e permissão de aprovação só fazem sentido para cliente */
       blocoCliente.style.display = papel === 'cliente' ? '' : 'none';
+      atualizarExtras();
     });
+    atualizarExtras();
     m.querySelectorAll('.op-mini input').forEach(cx => cx.onchange = () =>
       cx.closest('.op-mini').classList.toggle('on', cx.checked));
 
@@ -199,6 +239,8 @@ B7.Usuarios = (function () {
       const botao = m.querySelector('[data-ok]');
       const empresas = [...m.querySelectorAll('#nu-cliente input[type=checkbox][value]')]
         .filter(c => c.checked).map(c => c.value);
+      const funcoesExtra = [...m.querySelectorAll('#nu-extras input[type=checkbox]')]
+        .filter(c => c.checked).map(c => c.value);
       const corpo = {
         acao: 'criar_usuario',
         nome: m.querySelector('#nu-nome').value.trim(),
@@ -206,7 +248,8 @@ B7.Usuarios = (function () {
         senha: m.querySelector('#nu-senha').value,
         papel: papel,
         empresas: papel === 'cliente' ? empresas : [],
-        pode_aprovar: papel === 'cliente' && m.querySelector('#nu-aprovar input').checked
+        pode_aprovar: papel === 'cliente' && m.querySelector('#nu-aprovar input').checked,
+        funcoes_extra: papel === 'cliente' ? [] : funcoesExtra
       };
       erro.textContent = '';
       botao.disabled = true; botao.textContent = 'Criando…';
@@ -226,8 +269,9 @@ B7.Usuarios = (function () {
   /* =================================================================
      EDITAR ACESSO
      ================================================================= */
-  function modalEditar(u, clientes, vinculos) {
+  function modalEditar(u, clientes, vinculos, funcoesExtraAtuais) {
     const ligadas = vinculos.filter(v => v.perfil_id === u.id).map(v => v.client_id);
+    const extrasAtuais = funcoesExtraAtuais || [];
     const m = B7.UI.modal('<h3>Editar acesso</h3>' +
       '<div class="sub">@' + esc(u.username) + ' — o nome de usuário não muda.</div>' +
 
@@ -256,16 +300,39 @@ B7.Usuarios = (function () {
           '<span>Pode aprovar oficialmente</span></label>' +
       '</div>' +
 
+      '<div id="ed-extras" style="margin-top:14px' +
+        (u.papel === 'cliente' ? ';display:none' : '') + '">' +
+        '<label class="rot">FUNÇÕES EXTRAS (ALÉM DO PERFIL PRINCIPAL)</label>' +
+        '<div class="nu-empresas">' + FUNCOES_EXTRA.map(([v, r, d]) => {
+          const marcada = extrasAtuais.includes(v);
+          const redundante = u.papel === v;
+          return '<label class="op-mini' + (marcada ? ' on' : '') + '" data-funcao-extra="' + v + '"' +
+            (redundante ? ' style="display:none"' : '') + '>' +
+            '<input type="checkbox" value="' + v + '"' + (marcada ? ' checked' : '') + '>' +
+            '<span>' + r + '<small>' + d + '</small></span></label>';
+        }).join('') + '</div>' +
+      '</div>' +
+
       '<div id="ed-erro" class="ajuda erro-txt"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Salvar</button></div>', { larga: true });
 
     let papel = u.papel;
+    const atualizarExtras = () => {
+      const blocoExtras = m.querySelector('#ed-extras');
+      blocoExtras.style.display = papel === 'cliente' ? 'none' : '';
+      blocoExtras.querySelectorAll('[data-funcao-extra]').forEach(l => {
+        const redundante = l.dataset.funcaoExtra === papel;
+        l.style.display = redundante ? 'none' : '';
+        if (redundante) { l.querySelector('input').checked = false; l.classList.remove('on'); }
+      });
+    };
     m.querySelectorAll('#ed-papel [data-papel]').forEach(b => b.onclick = () => {
       m.querySelectorAll('#ed-papel button').forEach(x => x.classList.remove('on'));
       b.classList.add('on');
       papel = b.dataset.papel;
       m.querySelector('#ed-cliente').style.display = papel === 'cliente' ? '' : 'none';
+      atualizarExtras();
     });
     m.querySelectorAll('.op-mini input').forEach(cx => cx.onchange = () =>
       cx.closest('.op-mini').classList.toggle('on', cx.checked));
@@ -275,6 +342,8 @@ B7.Usuarios = (function () {
       const botao = m.querySelector('[data-ok]');
       const empresas = [...m.querySelectorAll('#ed-cliente input[type=checkbox][value]')]
         .filter(c => c.checked).map(c => c.value);
+      const funcoesExtra = [...m.querySelectorAll('#ed-extras input[type=checkbox]')]
+        .filter(c => c.checked).map(c => c.value);
       erro.textContent = '';
       botao.disabled = true; botao.textContent = 'Salvando…';
       try {
@@ -283,7 +352,8 @@ B7.Usuarios = (function () {
           nome: m.querySelector('#ed-nome').value.trim(),
           papel: papel,
           empresas: papel === 'cliente' ? empresas : [],
-          pode_aprovar: papel === 'cliente' && m.querySelector('#ed-aprovar input').checked
+          pode_aprovar: papel === 'cliente' && m.querySelector('#ed-aprovar input').checked,
+          funcoes_extra: papel === 'cliente' ? [] : funcoesExtra
         });
         m.fechar();
         B7.UI.toast('Acesso atualizado');

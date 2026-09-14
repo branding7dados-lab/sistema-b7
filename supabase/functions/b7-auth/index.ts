@@ -142,6 +142,28 @@ function senhaFraca(senha: string): string | null {
   return null;
 }
 
+/* Funções extras de produção (multi-função aditiva, B7 Vídeo Parte 1.1):
+   hoje só "videomaker" é uma função combinável com qualquer papel
+   principal interno. Cliente é externo — nunca ganha função extra
+   interna, mesmo que alguém tente mandar isso no corpo da requisição.
+   O mesmo valor do papel principal também não entra como "extra": não
+   faz sentido um Videomaker ganhar a função extra "videomaker". */
+const FUNCOES_EXTRA_VALIDAS = ['videomaker'];
+function normalizarFuncoesExtra(bruto: unknown, papelFinal: string): { lista: string[]; erro?: string } {
+  if (bruto === undefined || bruto === null) return { lista: [] };
+  if (!Array.isArray(bruto)) return { lista: [], erro: 'Funções extras inválidas.' };
+  const lista = [...new Set(bruto.map((f) => String(f)))];
+  for (const f of lista) {
+    if (!FUNCOES_EXTRA_VALIDAS.includes(f)) {
+      return { lista: [], erro: 'Função extra inválida: ' + f + '.' };
+    }
+  }
+  if (papelFinal === 'cliente' && lista.length) {
+    return { lista: [], erro: 'Cliente é um perfil externo — não recebe função extra de produção.' };
+  }
+  return { lista: lista.filter((f) => f !== papelFinal) };
+}
+
 /* Quem chamou? Valida o token da sessão e devolve o perfil real, lido do
    banco — nunca do que o cliente enviou. */
 async function quemChamou(req: Request) {
@@ -646,6 +668,14 @@ Deno.serve(async (req) => {
       const fraca = senhaFraca(senha);
       if (fraca) return json({ erro: fraca }, 400);
 
+      /* Funções extras (multi-função aditiva, Parte 1.1 do B7 Vídeo):
+         uma pessoa continua com UM papel principal, mas pode acumular
+         funções extras de produção (por ora, só "videomaker" — o mesmo
+         valor do papel principal não conta como extra, e Cliente é
+         externo, nunca combina com função interna). */
+      const funcoesExtra = normalizarFuncoesExtra(corpo.funcoes_extra, papel);
+      if (funcoesExtra.erro) return json({ erro: funcoesExtra.erro }, 400);
+
       const criado = await criarConta(sb, {
         username, nome, senha, papel,
         podeAprovar: !!corpo.pode_aprovar,
@@ -654,9 +684,14 @@ Deno.serve(async (req) => {
       });
       if (criado.erro) return json({ erro: criado.erro }, 400);
 
+      if (funcoesExtra.lista.length) {
+        await sb.from('perfis_funcoes_extra').insert(
+          funcoesExtra.lista.map((f) => ({ perfil_id: criado.id, funcao: f, criado_por: autor.id })));
+      }
+
       await auditar(sb, autor, 'criar_usuario',
         { tipo: 'perfil', id: criado.id, descricao: username },
-        { papel, empresas: (corpo.empresas || []).length });
+        { papel, empresas: (corpo.empresas || []).length, funcoes_extra: funcoesExtra.lista });
       return json({ ok: true, id: criado.id, username });
     }
 
@@ -705,6 +740,21 @@ Deno.serve(async (req) => {
         return json({ erro: 'Você não pode alterar o próprio acesso de administrador.' }, 400);
       }
 
+      /* Funções extras: valida contra o papel FINAL (o que está sendo
+         salvo agora, se mudou, senão o que a conta já tinha) — nunca
+         contra o papel antigo, pra não aceitar "Cliente + Videomaker"
+         de passagem numa troca de papel na mesma chamada. */
+      let funcoesExtra: { lista: string[]; erro?: string } | null = null;
+      if (corpo.funcoes_extra !== undefined) {
+        let papelFinal = String(patch.papel || '');
+        if (!papelFinal) {
+          const { data: atual } = await sb.from('perfis').select('papel').eq('id', corpo.perfil_id).maybeSingle();
+          papelFinal = atual?.papel || '';
+        }
+        funcoesExtra = normalizarFuncoesExtra(corpo.funcoes_extra, papelFinal);
+        if (funcoesExtra.erro) return json({ erro: funcoesExtra.erro }, 400);
+      }
+
       if (Object.keys(patch).length) {
         await sb.from('perfis').update(patch).eq('id', corpo.perfil_id);
       }
@@ -718,12 +768,22 @@ Deno.serve(async (req) => {
         }
       }
 
+      /* funções extras, quando enviadas (substitui o conjunto inteiro,
+         mesmo padrão de perfil_clientes acima) */
+      if (funcoesExtra) {
+        await sb.from('perfis_funcoes_extra').delete().eq('perfil_id', corpo.perfil_id);
+        if (funcoesExtra.lista.length) {
+          await sb.from('perfis_funcoes_extra').insert(
+            funcoesExtra.lista.map((f) => ({ perfil_id: corpo.perfil_id, funcao: f, criado_por: autor.id })));
+        }
+      }
+
       if (patch.estado && patch.estado !== 'ativa') {
         await sb.auth.admin.signOut(corpo.perfil_id, 'global').catch(() => {});
       }
 
       await auditar(sb, autor, 'alterar_conta',
-        { tipo: 'perfil', id: corpo.perfil_id }, patch);
+        { tipo: 'perfil', id: corpo.perfil_id }, { ...patch, funcoes_extra: funcoesExtra?.lista });
       return json({ ok: true });
     }
 
@@ -743,7 +803,16 @@ Deno.serve(async (req) => {
       }
       const { data: vinculos } = await sb.from('perfil_clientes')
         .select('perfil_id, client_id, clientes(nome)');
-      return json({ usuarios: data || [], vinculos: vinculos || [] });
+      /* funções extras: tabela pode não existir ainda numa instalação
+         que não rodou migration_video_producao.sql — falha em silêncio
+         pra não derrubar a listagem inteira por causa de um recurso
+         opcional/novo (mesmo espírito do try/catch de avatar_url acima). */
+      let funcoesExtra: unknown[] = [];
+      try {
+        const { data } = await sb.from('perfis_funcoes_extra').select('perfil_id, funcao');
+        funcoesExtra = data || [];
+      } catch (_e) { /* tabela ainda não existe — segue sem funções extras */ }
+      return json({ usuarios: data || [], vinculos: vinculos || [], funcoes_extra: funcoesExtra });
     }
 
   } catch (e) {

@@ -4373,3 +4373,221 @@ resolução em lote que só apareceriam numa planilha grande de verdade.
 Arquivos alterados: `migration_video_import_fix.sql` (novo),
 `js/video.js`, `js/auth.js`, `sw.js`.
 `VERSAO` → `2026-09-14-d`, cache → `roteiros-b7-v62`.
+
+# Correções de 14/09/2026 — rodada e (B7 Vídeo Parte 1.1: produção mensal + multi-função)
+
+Build `2026-09-14-e`. Esta rodada corrige a tela principal do módulo de
+Vídeo (que mostrava as 367 demandas de todo o histórico de uma vez, em
+vez do mês corrente), adiciona visão em Lista/Quadro com filtros, o
+detalhe da demanda em duas colunas, a Central de Vídeo pessoal, e
+usuários internos com mais de uma função (ex.: Kevin como
+Administrador **e** Videomaker na mesma conta). Não recria nem apaga
+nenhuma das 367 demandas existentes; competência e prioridade
+históricas são preenchidas por uma função de backfill que só usa dado
+originalmente preservado, nunca chuta.
+
+## Como aplicar
+
+1. Suba todos os arquivos deste zip no repositório `roteiros-b7`
+   (substituindo os existentes).
+2. No SQL Editor do Supabase, rode **`migration_video_producao.sql`**
+   (uma vez; pode repetir sem dano — idempotente, testada rodando duas
+   vezes seguidas). Exige que `migration_video.sql`,
+   `migration_video_kanban.sql` e `migration_video_import_fix.sql` já
+   tenham rodado antes.
+3. Depois da migration, rode estas duas linhas **uma vez** no mesmo SQL
+   Editor para preencher competência e prioridade das demandas já
+   importadas a partir do dado original preservado (não há botão na
+   tela para isso ainda — ver "Preparado, mas ainda não aplicado"):
+   ```sql
+   select * from video_backfill_competencia();
+   select * from video_backfill_prioridade();
+   ```
+   Cada uma retorna quantas linhas mudou e, no caso da competência,
+   quais demandas não têm dado de origem confiável (rode também
+   `select * from video_demandas_competencia_nao_confiavel();` para ver
+   a lista e decidir manualmente).
+4. **Redeploy separado da função de borda**, do mesmo jeito que já foi
+   feito quando a função `videomaker` foi criada:
+   `supabase functions deploy b7-auth`. Sem esse passo, criar/editar
+   usuário com função extra (o checkbox "Funções extras" na tela de
+   usuários) vai falhar.
+5. Recarregue o sistema com `Ctrl+Shift+R`. O rodapé da tela de acesso
+   deve mostrar `2026-09-14-e`.
+
+## O que foi corrigido / implementado
+
+### Implementado e testado
+
+- **"367 demandas no total" era o histórico inteiro, não o mês.** A
+  tela de Vídeo agora chama-se "Produção de Vídeo" e tem a competência
+  (mês/ano) como filtro principal, com o mês atual como padrão — igual
+  ao Design. Trocar de mês nunca apaga nem arquiva nada: é só projeção
+  sobre os mesmos dados. Testado com os dados reais já importados:
+  contagem do mês corrente bate com o esperado, e trocar de mês para
+  trás/frente mostra os mesmos registros sem duplicar nem sumir.
+- **Pendências de mês anterior não ficam escondidas.** Um aviso no
+  topo mostra quantas demandas de meses anteriores ainda estão
+  pendentes/em edição/correção/standby (nunca "entregue"/"descartado")
+  e permite abrir a lista sem trocar o filtro de mês manualmente.
+- **Lista (tabela) como padrão, com alternância para Quadro.**
+  Reaproveitado o mesmo componente de alternância Lista/Quadro
+  (`.seg-vista`) e a barra de filtros (`.ds-busca-cx`/`.ds-filtro`) já
+  usados no Design — mesmos filtros (competência, cliente, status,
+  responsável, prioridade, busca) valem para as duas visões, e o
+  resumo mensal (chips de contagem) funciona como atalho de filtro
+  rápido.
+- **Quadro (Kanban) não vira mais parede intransponível em
+  "Entregue".** Cada coluna mostra no máximo 30 cartões e um botão
+  "+N entregues…" expande o resto — nenhum dado é escondido, só
+  paginado.
+- **Cartões e detalhe da demanda redesenhados.** Cartão do quadro
+  ganhou badge de prioridade; o detalhe agora é dividido em corpo
+  principal (materiais, observações, histórico) e painel lateral
+  (situação, prioridade, responsável, prazo, competência, pacote,
+  origem, ações) — mesmo modelo do Design.
+- **Central de Vídeo — fila pessoal do videomaker**, separada da
+  "Produção de Vídeo" (visão da equipe): minhas atrasadas, pendentes,
+  em edição, em correção, próximas entregas e pendências de meses
+  anteriores. Mesmo padrão estrutural da Central do Design
+  (`dsc-*` → `vd-*`).
+- **Usuário com mais de uma função, numa conta só — o caso do Kevin.**
+  Nova tabela `perfis_funcoes_extra` (aditiva: não substitui o `papel`
+  principal, soma função extra a ele). Combinações permitidas:
+  Admin+Videomaker, Admin+Designer, Coordenador+Videomaker,
+  Coordenador+Designer, Videomaker+Designer. Cliente nunca recebe
+  função extra (bloqueado no backend, não só escondido na tela).
+  `eh_videomaker_elegivel()` é a checagem única usada em todo lugar
+  que antes comparava `papel = 'videomaker'` diretamente:
+  `sou_videomaker()`, criação de demanda, atribuição de demanda, view
+  `videomakers_elegiveis` (usada no seletor de responsável), navegação
+  (`#/video` aparece/some dinamicamente por elegibilidade, não por
+  lista fixa por papel — de quebra, corrigiu uma inconsistência que já
+  existia na navegação do Designer) e a sessão (`minha_sessao` agora
+  expõe `funcoes_extra`). Testado direto no Postgres com RLS simulado
+  para três contas: Kevin (admin + extra videomaker) e Ana
+  (coordenador + extra videomaker) reconhecidos como elegíveis para
+  receber demanda de vídeo; um admin comum, sem função extra,
+  corretamente rejeitado. Nenhum usuário existente perdeu acesso —
+  todos os papéis únicos continuam funcionando exatamente como antes
+  (a função extra é sempre um acréscimo, nunca uma troca).
+- **Tela de usuários** ganhou checkboxes de "Funções extras" ao criar
+  ou editar um usuário interno (escondido para Cliente, e uma função
+  não pode se repetir como extra da função principal), com badge
+  combinado ("Papel · Extra") na listagem.
+- **Toda escrita em `perfis_funcoes_extra` passa pela função de
+  borda** `b7-auth` (RLS da tabela só permite leitura para usuário
+  autenticado — criação/edição/remoção de função extra só acontece
+  autenticada como service role, do mesmo jeito que o resto da conta
+  já funcionava), com validação server-side: função inválida, função
+  repetida ou função extra para Cliente são recusadas mesmo que a
+  tela mande.
+- **Prioridade estava sendo perdida silenciosamente desde a Parte 1.**
+  Achei o motivo real: o importador calculava a prioridade da planilha
+  só para montar o texto de observações, nunca guardava como campo
+  próprio — nas 731 demandas já importadas, a prioridade não existia
+  em lugar nenhum estruturado. `video_backfill_prioridade()` recupera
+  o valor de duas fontes, na ordem: o dado original da planilha
+  (`dados_originais->>'prioridade'`, para importações futuras) e, se
+  não existir, um recorte de texto das observações já salvas (padrão
+  "Prioridade (planilha): ALTA · ..."), só para dado histórico.
+  Testado contra o banco real de teste: recuperou 198 demandas como
+  "alta" a partir do texto — conferido manualmente contra o texto
+  literal das observações de uma amostra. O importador (`js/video.js`)
+  já passou a gravar `prioridade` como campo próprio a partir de
+  agora, então esse problema não volta a acontecer para novas
+  importações.
+- **Competência das demandas já importadas.**
+  `video_backfill_competencia()` lê ano/mês só do dado original
+  preservado da linha de importação (nunca deriva de outro campo) e
+  aplica apenas onde diverge do valor atual — idempotente, testado
+  rodando duas vezes sem mudança na segunda. Demandas sem essa origem
+  preservada aparecem em `video_demandas_competencia_nao_confiavel()`
+  para revisão manual, em vez de receberem um mês adivinhado.
+- `migration_video_producao.sql` rodada duas vezes seguidas contra o
+  mesmo Postgres 16 de teste sem erro (idempotência confirmada).
+  `node --check` limpo em `js/video.js`, `js/database.js`,
+  `js/auth.js`, `js/permissoes.js`, `js/usuarios.js`. `deno lint`
+  limpo em `b7-auth/index.ts` (sem checar tipos remotos — a rede deste
+  ambiente de teste bloqueia buscar o pacote do Supabase; os únicos
+  avisos são os mesmos de sempre, em linhas que esta rodada não
+  tocou).
+
+### Implementado, mas requer validação adicional
+
+- **Multi-função foi testado direto no banco (SQL/RLS simulado), não
+  numa passada completa pelo navegador real.** As telas de Produção de
+  Vídeo, Central de Vídeo e usuários foram escritas e revisadas
+  linha a linha contra o pedido, mas eu não tenho como abrir o
+  navegador e clicar pelo sistema neste ambiente — vale conferir na
+  prática, especialmente a navegação para quem tem função extra e o
+  fluxo de criar/editar usuário com o checkbox novo.
+- **Função extra "designer" existe no schema e é aceita pela tela de
+  usuários, mas só está de fato ligada ao lado Videomaker.** Ou seja:
+  hoje dá para marcar alguém como "Coordenador + Designer" e isso fica
+  salvo corretamente, mas `listarDesigners()`, a elegibilidade de
+  atribuição de demanda de Design e a RLS do módulo de Design ainda
+  comparam `papel = 'designer'` direto — não reconhecem a função extra
+  ainda. Foi uma decisão consciente de escopo (ver abaixo), não um
+  esquecimento.
+- O recorte de prioridade a partir do texto de observações
+  (`video_backfill_prioridade`) depende do formato exato que o
+  importador da Parte 1 usava ("Prioridade (planilha): X · ..."); se
+  alguma demanda tiver esse texto editado manualmente de forma
+  diferente, ela não será recuperada automaticamente e vai aparecer
+  como prioridade "normal" (padrão) até correção manual.
+
+### Preparado, mas ainda não aplicado
+
+- Não existe botão na tela para rodar `video_backfill_competencia()` e
+  `video_backfill_prioridade()` — são funções SQL prontas e testadas,
+  mas precisam ser chamadas manualmente no SQL Editor (passo 3 acima)
+  depois de aplicar a migration. Rodar de novo mais tarde não faz mal
+  (só reaplica onde ainda divergir).
+- **RLS de `perfis_funcoes_extra`**: a tabela tem RLS habilitado com
+  política de leitura para usuário autenticado; não tem política de
+  escrita para usuário autenticado (só a função de borda, com service
+  role, escreve) — isso está aplicado, não só preparado. O que ainda
+  não foi feito é auditar se alguma política de RLS *fora* dessa
+  tabela nova (nas tabelas de demanda de vídeo, por exemplo) precisa
+  ser atualizada para também aceitar `eh_videomaker_elegivel()` em vez
+  de comparar `papel` direto — as funções SQL que fazem essa checagem
+  foram todas atualizadas, mas não fiz uma auditoria linha a linha de
+  toda política de RLS já existente no banco procurando outros lugares
+  com a mesma comparação antiga.
+- Deduplicação de destinatário de notificação por usuário+evento (item
+  do pedido original) não foi implementada nesta rodada — o sistema de
+  notificações do módulo de Vídeo não foi tocado além do necessário
+  para a mudança de dados.
+
+### Não implementado por bloqueio ou por decisão consciente
+
+- **Decisão consciente de escopo: multi-função foi implementado como
+  camada aditiva (`perfis_funcoes_extra`) por cima do modelo de papel
+  único existente, não como uma reescrita geral de todo o sistema de
+  permissões.** Reescrever todo o sistema (Design, Kanban, Aprovações,
+  etc.) para tratar múltiplos papéis nativamente seria um projeto bem
+  maior e mais arriscado do que o pedido concreto exigia — os casos
+  citados explicitamente (Kevin admin+videomaker, Coordenador+
+  videomaker) só precisam do lado Videomaker funcionando, que está
+  implementado e testado. Função extra "designer" foi deixada pronta
+  no schema para não fechar a porta, mas não wired no módulo de
+  Design em si (ver "requer validação adicional" acima).
+- Nada da Parte 2 (revisão/versionamento/aprovação de vídeo) foi
+  tocado — fora do escopo desta rodada, como pedido.
+- Nenhuma demanda das 367 já existentes foi apagada, recriada ou teve
+  seu histórico reescrito — só competência e prioridade foram
+  completadas via backfill, e só a partir de dado de origem
+  preservado.
+
+Arquivos alterados: `migration_video_producao.sql` (novo),
+`supabase/functions/b7-auth/index.ts`, `js/auth.js`,
+`js/permissoes.js`, `js/database.js`, `js/usuarios.js`, `js/video.js`
+(reescrito), `styles/video.css`, `sw.js`.
+`VERSAO` → `2026-09-14-e`, cache → `roteiros-b7-v63`.
+
+**Lembrete importante**: `supabase/functions/b7-auth/index.ts` precisa
+de um deploy separado (`supabase functions deploy b7-auth`), igual já
+foi feito antes quando a função `videomaker` foi criada — subir o zip
+no GitHub Pages e rodar a migration **não** atualiza a função de
+borda.

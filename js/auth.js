@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-09-14-d';
+  const VERSAO = '2026-09-14-e';
 
   /* Rastro dos eventos de sessão, guardado entre recarregamentos.
      Sem ele, um laço que atravessa reloads é invisível: cada página
@@ -61,6 +61,17 @@ B7.Auth = (function () {
   const ehEquipe = () => ['admin', 'coordenador'].includes(papel());
   const ehAdmin = () => papel() === 'admin';
   const ehCliente = () => papel() === 'cliente';
+
+  /* Funções extras de produção (B7 Vídeo Parte 1.1): uma pessoa continua
+     com UM papel principal (acima), mas pode acumular funções extras
+     sem precisar de uma segunda conta — hoje só "videomaker". Kevin
+     pode ser papel='admin' com funcoes_extra=['videomaker']: continua
+     admin por completo e também é elegível para receber Demandas de
+     Edição. Vem de minha_sessao (migration_video_producao.sql); numa
+     instalação sem essa migração, funcoesExtra() simplesmente devolve
+     lista vazia (a coluna não existe na sessão e some ao contrato). */
+  const funcoesExtra = () => (sessao && sessao.funcoes_extra) || [];
+  const souVideomakerElegivel = () => papel() === 'videomaker' || funcoesExtra().includes('videomaker');
 
   /* Empresas que a sessão alcança. Para a equipe, vazio significa todas. */
   const empresas = () => (sessao && sessao.empresas) || [];
@@ -398,5 +409,5 @@ B7.Auth = (function () {
   }
 
   return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, sair, carregar, telaLogin, sessaoPersiste,
-           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente };
+           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel };
 })();

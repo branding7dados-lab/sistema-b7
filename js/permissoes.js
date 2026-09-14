@@ -43,6 +43,19 @@ B7.Perm = (function () {
       'minhas-gravacoes', 'meus-status', 'historico', 'perfil'
     ]
   };
+  /* Acesso a "#/video" (Produção de Vídeo / Central de Vídeo) por
+     ASSOCIAÇÃO, não só pela lista estática acima: além de quem já tem
+     'video' no próprio papel (admin '*', coordenador), também entra
+     quem ganhou a FUNÇÃO EXTRA "videomaker" (B7 Vídeo Parte 1.1) —
+     ex.: um Designer que também é Videomaker. Cliente nunca entra
+     aqui, função extra é só para papéis internos. */
+  function acessoVideoDinamico() {
+    if (semSessao()) return true;
+    if (papel() === 'cliente') return false;
+    if (papel() === 'admin' || (ROTAS[papel()] || []).includes('video')) return true;
+    return !!(B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel());
+  }
+
   /* "Visualizar como cliente" (#/previa/<id>) é só do administrador:
      admin tem '*'; coordenador e cliente não têm 'previa' e caem na
      recusa. A prévia é somente leitura de qualquer forma (portal.js). */
@@ -98,10 +111,12 @@ B7.Perm = (function () {
 
   function podeRota(rota) {
     if (semSessao()) return true;
+    const base = String(rota || '').replace(/^#\//, '').split('/')[0];
+    if (base === 'video') return acessoVideoDinamico();
     const lista = ROTAS[papel()];
     if (!lista) return false;
     if (lista === '*') return true;
-    return lista.includes(String(rota || '').replace(/^#\//, '').split('/')[0]);
+    return lista.includes(base);
   }
 
   function podeConfig(secao) {
@@ -134,6 +149,14 @@ B7.Perm = (function () {
         if (b) b.remove();
       }
     });
+
+    /* "#/video" some para quem não tem acesso por papel NEM por função
+       extra — a lista estática de ocultar acima não sabe da função
+       extra (decidida em tempo de sessão), então este passo roda
+       separado, depois dela. */
+    if (!acessoVideoDinamico()) {
+      document.querySelectorAll('.nav [data-ir="#/video"]').forEach(el => el.remove());
+    }
 
     /* um grupo sem itens vira só um título solto */
     document.querySelectorAll('.nav .grupo').forEach(g => {

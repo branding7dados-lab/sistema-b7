@@ -1665,9 +1665,18 @@ B7.DB = (function () {
        Mesmo padrão do Design: leitura direta nas views/RLS, toda
        escrita passa por função (migration_video.sql).
        ================================================================= */
+    /* videomakers_elegiveis (migration_video_producao.sql) já é a
+       união de quem tem papel='videomaker' com quem ganhou a FUNÇÃO
+       EXTRA "videomaker" (ex.: Kevin, admin + videomaker) — não filtra
+       mais por igualdade exata de papel. Numa instalação sem essa
+       migração a view não existe; cai de volta na consulta antiga. */
     async listarVideomakers() {
-      return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')
-        .eq('papel', 'videomaker').eq('estado', 'ativa').order('nome'));
+      try {
+        return ok(await sb().from('videomakers_elegiveis').select('id,nome,avatar_url,estado,papel,funcoes_extra').order('nome'));
+      } catch (e) {
+        return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')
+          .eq('papel', 'videomaker').eq('estado', 'ativa').order('nome'));
+      }
     },
     async minhasDemandasVideo() {
       return ok(await sb().from('demandas_edicao_resumo').select('*')
@@ -1679,12 +1688,13 @@ B7.DB = (function () {
     async historicoDemandaVideo(id) {
       return ok(await sb().from('demandas_edicao_eventos').select('*').eq('demanda_id', id).order('created_at', { ascending: true }));
     },
-    async criarDemandaVideo({ clienteId, titulo, codigo, competenciaAno, competenciaMes, gravacaoId, videomakerId, pacote, prazo, observacoes }) {
+    async criarDemandaVideo({ clienteId, titulo, codigo, competenciaAno, competenciaMes, gravacaoId, videomakerId, pacote, prazo, observacoes, prioridade }) {
       return this.rpc('video_criar_demanda', {
         p_client_id: clienteId, p_titulo: titulo, p_codigo: codigo || '',
         p_competencia_ano: competenciaAno || null, p_competencia_mes: competenciaMes || null,
         p_gravacao_id: gravacaoId || null, p_videomaker_id: videomakerId || null,
-        p_pacote: pacote || '', p_prazo: prazo || null, p_observacoes: observacoes || ''
+        p_pacote: pacote || '', p_prazo: prazo || null, p_observacoes: observacoes || '',
+        p_prioridade: prioridade || 'normal'
       });
     },
     async atribuirVideo(demandaId, videomakerId) {
@@ -1702,7 +1712,8 @@ B7.DB = (function () {
         p_titulo: patch.titulo ?? null, p_codigo: patch.codigo ?? null, p_pacote: patch.pacote ?? null,
         p_prazo: patch.temPrazo ? (patch.prazo || null) : null, p_tem_prazo: !!patch.temPrazo,
         p_observacoes: patch.observacoes ?? null,
-        p_gravacao_id: patch.temGravacao ? (patch.gravacaoId || null) : null, p_tem_gravacao: !!patch.temGravacao
+        p_gravacao_id: patch.temGravacao ? (patch.gravacaoId || null) : null, p_tem_gravacao: !!patch.temGravacao,
+        p_prioridade: patch.prioridade ?? null
       });
     },
     /* gravações de um cliente, para o seletor "vincular a uma gravação"
@@ -1728,6 +1739,10 @@ B7.DB = (function () {
     },
     async confirmarLinhaImportacaoVideo(linhaId) { return this.rpc('video_import_confirmar_linha', { p_linha_id: linhaId }); },
     async confirmarLoteImportacaoVideo(loteId) { return this.rpc('video_import_confirmar_lote', { p_lote_id: loteId }); },
+
+    /* ---- backfill de competência (migration_video_producao.sql) ---- */
+    async backfillCompetenciaVideo() { return this.rpc('video_backfill_competencia', {}); },
+    async demandasCompetenciaNaoConfiavelVideo() { return this.rpc('video_demandas_competencia_nao_confiavel', {}); },
 
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {
