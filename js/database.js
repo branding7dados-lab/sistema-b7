@@ -1743,6 +1743,8 @@ B7.DB = (function () {
     /* ---- backfill de competência (migration_video_producao.sql) ---- */
     async backfillCompetenciaVideo() { return this.rpc('video_backfill_competencia', {}); },
     async demandasCompetenciaNaoConfiavelVideo() { return this.rpc('video_demandas_competencia_nao_confiavel', {}); },
+    async backfillResponsavelVideo() { return this.rpc('video_backfill_responsavel', {}); },
+    async demandasResponsavelNaoConfiavelVideo() { return this.rpc('video_demandas_responsavel_nao_confiavel', {}); },
 
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {

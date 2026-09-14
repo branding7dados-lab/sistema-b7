@@ -839,7 +839,8 @@ B7.Video = (function () {
           ano: comp.ano || '',
           mes: comp.mes || '',
           status: parseStatus(pegar(l, 'status')),
-          prioridade
+          prioridade,
+          responsavel
         };
       });
   }

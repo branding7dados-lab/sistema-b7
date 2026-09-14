@@ -4714,3 +4714,130 @@ Arquivos alterados: `migration_video_backfill_acesso_sql.sql` (novo),
 `migration_video_producao.sql` (atualizado com a mesma correção de
 acesso), `js/auth.js`, `styles/auth.css`, `sw.js`.
 `VERSAO` → `2026-09-14-f`, cache → `roteiros-b7-v64`.
+
+# Correção de 14/09/2026 — rodada g (Responsável da planilha vira atribuição de verdade)
+
+Build `2026-09-14-g`. Você notou que a planilha tem uma coluna
+"Responsável" (quem edita cada vídeo — Kaique, Kevin, etc.) e que isso
+não estava virando a atribuição de fato no sistema. Confirmei: é
+exatamente o mesmo padrão de bug já corrigido para prioridade — o
+parser sempre leu "Responsável", mas só usava o valor pra montar o
+texto de observações ("Responsável (planilha): KAIQUE"), nunca pra
+preencher o campo de verdade (`videomaker_id`) da demanda. Isso valia
+tanto para as 367 já importadas quanto, até agora, para qualquer
+importação nova.
+
+## O que a planilha real tem na coluna Responsável
+
+| Responsável | Linhas |
+|---|---|
+| KAIQUE | 348 |
+| LUIS | 181 |
+| KEVIN | 130 |
+| MATHEUS | 38 |
+| KAIQUE E KEVIN | 8 |
+| EMANUEL | 4 |
+
+Você confirmou que hoje só Kevin e Kaique são videomakers oficiais no
+sistema; Matheus é freelancer, cadastrado manualmente quando você
+precisa dele; Luis e Emanuel não foram confirmados como usuários
+atuais.
+
+## O que foi implementado
+
+- **`video_achar_videomaker_por_responsavel(texto)`** — a função que
+  casa o texto livre da planilha com um usuário real. Casa pelo
+  **primeiro nome** do perfil (comparação exata, sem acento/maiúscula,
+  nunca aproximada) — nunca inventa nem cadastra usuário sozinha. Sem
+  usuário elegível com aquele primeiro nome (casos de Luis, Matheus e
+  Emanuel até que você os cadastre como videomaker), a demanda fica
+  sem responsável, para revisão manual.
+- **Caso especial "KAIQUE E KEVIN" (8 linhas)**: por decisão sua, essas
+  vão para o Kevin — uma exceção nomeada na função (não uma regra
+  genérica de "primeiro nome do texto", que aqui na verdade daria
+  Kaique, já que é ele quem aparece primeiro na string real da
+  planilha; achei essa inconsistência na minha própria pergunta
+  anterior e corrigi antes de aplicar qualquer coisa).
+- **Importações NOVAS**: `js/video.js` agora salva `responsavel` como
+  campo próprio (antes só entrava no texto de observações), e
+  `video_import_confirmar_linha` já atribui `videomaker_id` na hora de
+  confirmar a linha, usando a função acima.
+- **`video_backfill_responsavel()`** — recupera o responsável das
+  demandas já importadas (as 367 atuais e qualquer outra sem
+  responsável), lendo o texto "Responsável (planilha): X" já
+  preservado em observações. **Só preenche onde `videomaker_id` está
+  vazio hoje** — nunca sobrescreve uma atribuição que alguém já tenha
+  feito manualmente depois da importação. Não muda o status da demanda
+  (pendente continua pendente, entregue continua entregue — atribuir
+  responsável não é o mesmo que "começou a editar agora").
+- **`video_demandas_responsavel_nao_confiavel()`** — lista as demandas
+  com um nome de responsável na planilha que não bateu com nenhum
+  usuário cadastrado (hoje: as de Luis, Matheus e Emanuel). Não muda
+  nada; é só a lista pra você decidir — cadastrar o usuário e rodar o
+  backfill de novo, ou atribuir manualmente pela tela.
+
+### Implementado e testado
+
+- Testado de ponta a ponta contra a base local de 731 linhas reais,
+  simulando o estado de produção (responsável só no texto de
+  observações, `videomaker_id` vazio): "KAIQUE" e "KEVIN" sozinhos
+  casaram certo com as contas correspondentes; "KAIQUE E KEVIN" caiu
+  no Kevin, como você decidiu; "LUIS" (e Matheus/Emanuel) ficaram sem
+  responsável e listados no relatório de não confiáveis, sem chute.
+  Rodei o backfill duas vezes seguidas — a segunda não mudou nada
+  (idempotente). Confirmei também que o status da demanda não muda
+  quando o responsável é atribuído.
+- Testado também o fluxo de importação NOVA (linha com `responsavel`
+  já salvo em `dados_originais`, confirmando a linha): a demanda
+  nasceu já com o `videomaker_id` certo.
+- `node --check` limpo em `js/video.js` e `js/database.js`.
+- Arquivo de migration testado rodando duas vezes seguidas sem erro
+  (idempotente).
+
+### Implementado, mas requer validação adicional
+
+- A correspondência assume que o "primeiro nome" no cadastro de cada
+  videomaker (Kaique, Kevin) é exatamente "Kaique" e "Kevin" — vale
+  conferir isso rapidamente na tela de usuários antes de rodar o
+  backfill em produção; se o nome cadastrado for diferente (apelido,
+  nome completo com abreviação, etc.), o casamento pode falhar
+  silenciosamente para essa pessoa (ela cairia na lista de "não
+  confiável" em vez de ser atribuída).
+
+### Preparado, mas ainda não aplicado
+
+- `video_backfill_responsavel()` também não tem botão na tela — roda
+  uma vez no SQL Editor, depois de aplicada a migration (já com a
+  correção de acesso da rodada anterior, então funciona direto, sem
+  erro de permissão).
+- Se você cadastrar Luis, Matheus ou Emanuel como videomaker depois,
+  rodar `select * from video_backfill_responsavel();` de novo recupera
+  as demandas deles sem tocar em mais nada.
+
+### Não implementado por bloqueio ou por decisão consciente
+
+- Não criei nenhum usuário novo automaticamente (Luis, Matheus,
+  Emanuel) — isso é uma decisão sua, sobre quem deve ou não ter conta
+  no sistema.
+- Não mudei a tela de importação para mostrar/editar o responsável
+  detectado antes de confirmar (hoje ele é atribuído direto quando bate
+  um nome conhecido) — se isso for importante pra revisar antes de
+  confirmar, é um ajuste pequeno pra próxima rodada.
+
+Arquivos alterados: `migration_video_responsavel.sql` (novo),
+`js/video.js`, `js/database.js`, `js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-14-g`, cache → `roteiros-b7-v65`.
+
+## Como aplicar (nesta ordem, a partir do zero)
+
+1. Suba os arquivos deste zip.
+2. No SQL Editor, nesta ordem (pule o que já rodou antes):
+   `migration_video_producao.sql` → `migration_video_backfill_acesso_sql.sql`
+   → `migration_video_recuperacao_competencia.sql` → `migration_video_responsavel.sql`.
+3. Depois de aplicado, rode uma vez: `select * from video_backfill_responsavel();`
+   e confira o resultado. Se quiser ver quem ficou sem responsável:
+   `select * from video_demandas_responsavel_nao_confiavel();`
+4. Redeploy da função de borda continua pendente só se você ainda não
+   fez (`supabase functions deploy b7-auth`) — esta rodada não mexeu
+   nela.
+5. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-g`.
