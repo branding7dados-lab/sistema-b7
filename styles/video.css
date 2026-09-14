@@ -169,6 +169,16 @@
 .vd-versao-arquivo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
 .vd-versao-arquivo .vd-sem{color:var(--ink-3);font-style:italic;font-size:12.5px;}
 .vd-versao-arquivo .vd-quem{font-size:12px;color:var(--ink-3);}
+
+/* Player embutido do Drive: pré-visualização do próprio Google dentro
+   de um iframe 16:9 — o arquivo continua hospedado no Drive, isto é
+   só a exibição. Se o link não for do Drive (ou o arquivo não estiver
+   compartilhado como "qualquer pessoa com o link"), não tem como
+   embutir — nesses casos blocoArquivo() nem gera este bloco. */
+.vd-player{position:relative;width:100%;max-width:520px;aspect-ratio:16/9;border-radius:var(--r-sm);
+  overflow:hidden;background:#000;border:1px solid var(--borda);}
+.vd-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.vd-player-legenda{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;}
 .vd-versao-acoes{margin-top:12px;padding-top:0;border-top:none;}
 
 .vd-decisao{margin-top:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--borda);

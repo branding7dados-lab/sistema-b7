@@ -5372,3 +5372,51 @@ Arquivos alterados: `js/video.js`, `js/database.js`, `js/auth.js`,
 1. No SQL Editor, rode `migration_video_workspace.sql`.
 2. Suba os arquivos deste zip.
 3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-l`.
+
+# Rodada m (14/09/2026) — vídeo do Drive embutido na tela da versão
+
+Só a pré-visualização do vídeo, que na rodada anterior eu tinha listado
+como "não implementado" (player embutido). Você pediu pra embutir o
+Drive da B7 no sistema — não é integração com a API do Drive (não pedi
+credencial nenhuma, não mudei o jeito de subir vídeo), é só passar a
+mostrar o vídeo dentro da tela em vez de só um botão "Abrir vídeo".
+
+## Implementado e testado
+
+- Quando o link de uma versão é do Google Drive, a tela da versão (e
+  as versões antigas, dentro do "ver mais") passam a mostrar um player
+  embutido (iframe de pré-visualização do próprio Drive, 16:9),
+  reconhecendo os formatos de link mais comuns que o Drive gera ao
+  compartilhar (`/file/d/ID/...` e `?id=ID`). Testei a extração do ID
+  contra exemplos dos dois formatos.
+- Link que não é do Drive (WeTransfer etc.) continua exatamente como
+  antes — só o botão "Abrir vídeo", sem tentar embutir o que não dá.
+- CSS novo do player (`.vd-player`), responsivo.
+
+## Implementado, mas requer validação adicional
+
+- **Não testei contra um vídeo real do Drive de vocês** (não tenho
+  navegador neste ambiente) — só revisei o código e o formato dos
+  links. Por favor confira com uma versão de verdade.
+- **O player só aparece se o arquivo estiver compartilhado como
+  "qualquer pessoa com o link pode visualizar"** — isso é como o Drive
+  funciona, não uma configuração deste sistema. Se o arquivo estiver
+  restrito, o iframe mostra a tela de "solicitar acesso" do próprio
+  Drive em vez do vídeo (o link "Abrir no Drive" continua funcionando
+  do mesmo jeito, pra quem tiver acesso).
+
+## Não implementado por bloqueio ou decisão consciente
+
+- **Integração com a API do Google Drive** (escolher arquivo de dentro
+  do sistema sem colar link, listar pastas, etc.) — você escolheu a
+  opção mais simples desta vez; se quiser essa integração mais pra
+  frente, é uma frente nova (exige projeto no Google Cloud, OAuth).
+
+Arquivos alterados: `js/video.js`, `js/auth.js`, `sw.js`,
+`styles/video.css`.
+`VERSAO` → `2026-09-14-m`, cache → `roteiros-b7-v71`.
+
+## Como aplicar
+
+1. Suba os arquivos deste zip (sem SQL desta vez).
+2. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-m`.

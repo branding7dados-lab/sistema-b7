@@ -869,14 +869,40 @@ B7.Video = (function () {
   const vNum = n => 'V' + String(n).padStart(2, '0');
   const quandoBR = ts => { try { return new Date(ts).toLocaleDateString('pt-BR') + ' às ' + new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
 
+  /* Extrai o ID do arquivo de um link do Google Drive (vários formatos
+     de link que o Drive gera ao compartilhar). Links que não são do
+     Drive (WeTransfer, etc.) retornam null — nesse caso não tem como
+     embutir, só o link externo mesmo. */
+  function driveIdDe(url) {
+    if (!url) return null;
+    let m = url.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/);
+    if (m) return m[1];
+    m = url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+    if (m) return m[1];
+    return null;
+  }
+
   function secaoVersoes(d, versoes, podeEditar, podeOperar) {
     if (!podeOperar && !versoes.length) return '';
     const atual = versoes[0];
 
-    const blocoArquivo = v => (v.arquivo_url
-      ? '<a class="b fina" href="' + esc(v.arquivo_url) + '" target="_blank" rel="noopener">Abrir vídeo</a>' +
-        (v.arquivo_nome ? ' <span class="vd-quem">' + esc(v.arquivo_nome) + '</span>' : '')
-      : '<i class="vd-sem">sem arquivo/link</i>');
+    /* Vídeo do Drive: embutido via iframe de pré-visualização do
+       próprio Google (só funciona se o arquivo estiver compartilhado
+       como "qualquer pessoa com o link"). Continua sendo o arquivo
+       hospedado no Drive — não baixa, não copia, não sobe nada pro
+       nosso banco. Link que não é do Drive não tem como embutir: fica
+       só o botão de abrir. */
+    const blocoArquivo = v => {
+      if (!v.arquivo_url) return '<i class="vd-sem">sem arquivo/link</i>';
+      const nomeArq = v.arquivo_nome ? ' <span class="vd-quem">' + esc(v.arquivo_nome) + '</span>' : '';
+      const driveId = driveIdDe(v.arquivo_url);
+      if (!driveId) {
+        return '<a class="b fina" href="' + esc(v.arquivo_url) + '" target="_blank" rel="noopener">Abrir vídeo</a>' + nomeArq;
+      }
+      return '<div class="vd-player"><iframe src="https://drive.google.com/file/d/' + driveId + '/preview" allow="autoplay" loading="lazy" ' +
+        'title="' + esc(v.arquivo_nome || 'Vídeo ' + vNum(v.numero)) + '"></iframe></div>' +
+        '<div class="vd-player-legenda"><a class="b fina" href="' + esc(v.arquivo_url) + '" target="_blank" rel="noopener">Abrir no Drive</a>' + nomeArq + '</div>';
+    };
 
     let acao = '';
     if (!atual) {
