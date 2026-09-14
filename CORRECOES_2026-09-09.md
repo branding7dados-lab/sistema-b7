@@ -5221,3 +5221,154 @@ Arquivos alterados: `js/video.js`, `js/auth.js`, `sw.js`,
 1. No SQL Editor, rode `migration_video_aprovacao.sql`.
 2. Suba os arquivos deste zip.
 3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-k`.
+
+# Rodada l (14/09/2026) — versões de vídeo, decisão do cliente, entrega, arrastar no Kanban e "Descartar demanda"
+
+Essa rodada fecha os dois prompts que você mandou seguidos da "parte 2"
+(o segundo acrescentou o arrastar-e-soltar no Kanban em cima do
+primeiro — tratei os dois juntos, como uma coisa só). É aditivo: nada
+do que já existia (Parte 1, "Aguardando aprovação") mudou de lugar ou
+de comportamento.
+
+## Implementado e testado
+
+- **Versões do vídeo (V01, V02, V03…)**: dentro da demanda, um bloco
+  novo "Versões" — registra uma versão (link do vídeo + nome do
+  arquivo opcional + observação), numeração sequencial automática por
+  demanda. Testado contra o banco local, inclusive tentando criar duas
+  versões "ao mesmo tempo" (a numeração trava a linha da demanda antes
+  de calcular o próximo número — não sai V02 duplicada).
+- **Enviar para aprovação**: manda a versão atual pro cliente decidir
+  — muda a situação pra "Aguardando aprovação" reaproveitando a mesma
+  função que a Parte 1 já usava (mesmo aviso pro time, mesmo card no
+  Kanban geral — não duplica lógica nenhuma). Só libera a versão mais
+  recente; se já existe uma versão mais nova, o sistema recusa enviar
+  a antiga.
+- **Registrar decisão do cliente**: só admin/coordenador (o mesmo
+  controle que já existe em todo o sistema — bloqueado no banco, não
+  só escondido na tela) registra o que o cliente decidiu — aprovado,
+  pediu ajuste ou recusou —, por qual canal (WhatsApp, ligação,
+  reunião, presencial, outro) e com observação obrigatória quando não
+  é aprovação. **A decisão nunca finge ser um clique do cliente**: fica
+  gravado quem da equipe registrou e quando, sempre. Aprovar não move
+  a demanda sozinha (fica em "Aguardando aprovação" até alguém
+  registrar a entrega); pedir ajuste ou recusar volta a demanda pra
+  "Correção" com a observação do cliente já preenchida no histórico.
+- **Registrar entrega**: só libera se a versão atual tiver decisão
+  "aprovado" registrada — testei tentando entregar sem aprovação
+  (recusa) e entregar depois de aprovar (funciona, fecha `entregue_em`
+  na demanda e na versão). **Encontrei e corrigi um bug real nesse
+  teste**: a checagem original deixava passar uma entrega quando a
+  versão ainda não tinha decisão nenhuma (`NULL`), porque em SQL
+  comparar com `NULL` não dá certo nem errado — corrigido antes de
+  chegar em você.
+- **Versão não herda aprovação de versão anterior**: criei V02 depois
+  de aprovar V01 e confirmei que V02 nasce sem decisão — precisa
+  passar pelo ciclo de novo.
+- **Histórico da demanda** mostra os eventos novos (versão registrada,
+  decisão do cliente) com a mensagem certa, e o texto é escapado antes
+  de entrar na tela (a observação da decisão é digitada por
+  admin/coordenador, então tratei como qualquer texto de usuário).
+- **Arrastar e soltar no Kanban de Produção de Vídeo**: o card pode ser
+  arrastado direto entre colunas, sem abrir a demanda. Reaproveitei o
+  mesmo jeito de arrastar que o Kanban geral já usa (nada de
+  biblioteca nova) e todo arrasto passa pelas mesmas ações que os
+  botões já usavam — não existe um "mover card" que ignore as regras:
+  - Pendente ↔ Em edição ↔ Standby: move direto.
+  - Arrastar pra "Correção": pergunta o que precisa corrigir, igual ao
+    seletor de sempre; cancelar a pergunta devolve o card pro lugar,
+    sem mudar nada.
+  - Arrastar pra "Aguardando aprovação": se não existe versão
+    registrada, bloqueia e oferece abrir a demanda; se existe, pergunta
+    "Enviar V0N para aprovação?" antes de confirmar.
+  - Arrastar pra "Entregue": bloqueia (sem mudar nada) se a versão
+    atual não tiver aprovação registrada; se tiver, pergunta e usa a
+    mesma ação de "Registrar entrega".
+  - Arrastar pra FORA de "Entregue": pede confirmação — arrasto
+    acidental não reabre nada.
+  - "Descartado" continua fora do Kanban, não é coluna pra soltar card
+    (nem por engano).
+  - Coluna de destino acende quando o card passa por cima; largar fora
+    de uma coluna ou apertar Esc cancela sem travar nada; card volta
+    pro lugar se a ação falhar (com aviso).
+  - O histórico de um card movido por arrasto registra o evento de
+    verdade (ex: "V01 enviada para aprovação"), nunca algo genérico
+    tipo "card movido".
+- **"Descartar demanda"**: ação própria (botão no topo da demanda, com
+  confirmação), separada do seletor de Situação — o seletor de
+  Situação não tem mais a opção "Descartado" nele, exatamente pra não
+  dar pra descartar sem querer clicando errado num `<select>`. Demanda
+  descartada some da Lista/Kanban normais e some da coluna
+  correspondente no Kanban geral, mas nada é apagado — fica disponível
+  no botão "Descartados" (novo, no topo da Produção de Vídeo, com
+  contador) como arquivo consultável.
+- CSS novo pra tudo isso (versões, decisão, arrasto) — nada ficou sem
+  estilo.
+
+## Implementado, mas requer validação adicional
+
+- O arrasto foi testado por revisão de código e checagem de sintaxe —
+  **não tive como clicar e arrastar de verdade num navegador aqui**
+  (este ambiente não tem tela). O comportamento descrito acima é o que
+  o código faz, mas peço que você teste arrastando alguns cards de
+  verdade antes de confiar 100% — principalmente casos de borda tipo
+  arrastar bem rápido, ou dois cliques quase juntos.
+- Arrastar-e-soltar nativo do navegador (o mesmo jeito que o Kanban
+  geral já usa) **tem suporte fraco em celular/tablet** — não é uma
+  limitação que eu introduzi, é do próprio recurso do navegador.
+  Recomendo tratar como "funciona bem no computador"; no celular, quem
+  precisar mudar a situação continua usando o seletor de Situação
+  dentro da demanda, que funciona igual em qualquer aparelho.
+- A tela "Descartados" e o botão "Descartar demanda" foram
+  revisados/testados via banco local, mas não clicados numa tela de
+  verdade — mesma ressalva do arrasto.
+
+## Preparado mas ainda não aplicado
+
+- **`migration_video_workspace.sql`** — os testes que fiz foram todos
+  no meu banco local (`b7test`), simulando o sistema; o banco de
+  produção real ainda não tem essas funções/tabela. Precisa rodar essa
+  migration no SQL Editor antes de qualquer coisa desta rodada
+  funcionar.
+
+## Não implementado por bloqueio ou decisão consciente
+
+- **Player de vídeo embutido / pré-visualização dentro do sistema**:
+  não construí — os materiais do B7 sempre foram link externo (Drive,
+  WeTransfer…), o sistema não tem (e essa rodada não criou) infra de
+  hospedagem de vídeo pra embutir um player. Cada versão abre o link
+  externo numa aba nova, igual já funcionava pro material editado.
+- **Comentário com timecode** (marcar "no segundo 0:35 tal coisa"): o
+  seu próprio prompt marcava isso como opcional — não fiz, pra focar
+  no que era obrigatório.
+- **Portal do cliente**: não mexi nele nessa rodada. A decisão do
+  cliente é registrada pela equipe (WhatsApp/ligação/reunião/etc.),
+  não pelo cliente entrando no sistema — segui exatamente o que os dois
+  prompts pediram ("sem exigir login do cliente"). Se em algum momento
+  você quiser que o cliente decida direto pelo Portal, isso é uma
+  frente nova, ainda não começada.
+- **Criar demanda de edição a partir da tela de Gravação** (e travar
+  pra não deixar criar duas demandas pra mesma gravação sem querer):
+  não construí. A demanda já mostra a gravação vinculada e tem o link
+  "Ver gravação", mas o caminho contrário (de dentro da Gravação,
+  criar a demanda) ainda não existe.
+- **Auditoria de RLS do sistema inteiro**: não fiz — só a tabela nova
+  desta rodada (`video_versoes`) tem RLS revisada a fundo por mim.
+  Contas antigas/outras tabelas eu não reabri.
+- Um detalhe pequeno: quando um videomaker (que não é admin/coordenador)
+  vê uma decisão registrada por um admin, o nome de quem registrou pode
+  aparecer como "equipe" em vez do nome — é uma regra de privacidade
+  que já existia no sistema (perfil só é visível por inteiro pra
+  admin/coordenador), não corrigi porque mudar isso seria abrir mais
+  informação de perfil do que o sistema já libera hoje.
+
+Arquivos alterados: `js/video.js`, `js/database.js`, `js/auth.js`,
+`sw.js`, `styles/video.css`. Arquivo novo:
+`migration_video_workspace.sql`.
+`VERSAO` → `2026-09-14-l`, cache → `roteiros-b7-v70`.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_video_workspace.sql`.
+2. Suba os arquivos deste zip.
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-l`.

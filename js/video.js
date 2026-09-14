@@ -43,6 +43,10 @@ B7.Video = (function () {
     ['descartado', 'Descartado']
   ];
   const rotuloSituacao = s => (SITUACOES.find(x => x[0] === s) || [, s])[1];
+  /* Descartado nunca entra no filtro/Kanban/resumo da produção normal —
+     só existe na lista completa (badge, seletor de Situação no
+     detalhe). Ver "Descartados" (modalDescartados) pra consultar. */
+  const SITUACOES_ATIVAS = SITUACOES.filter(([v]) => v !== 'descartado');
 
   const PRIORIDADES = [['normal', 'Normal'], ['alta', 'Alta'], ['urgente', 'Urgente']];
 
@@ -65,6 +69,7 @@ B7.Video = (function () {
   const mesAtualChave = () => { const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0'); };
 
   let demandas = [], clientes = [], videomakers = [];
+  let versoesAtual = [];   /* versões da demanda aberta no momento (Workspace de Vídeo) */
 
   /* =================================================================
      FILTROS — persistidos por sessão (mesmo padrão de B7.Design),
@@ -123,6 +128,10 @@ B7.Video = (function () {
   function baseFiltrada() {
     const t = F.busca.trim().toLowerCase();
     return demandas.filter(d => {
+      /* Descartado nunca aparece na produção normal (Lista/Kanban/
+         resumo) — nem via filtro de status. Fica só no arquivo
+         "Descartados" (descarregado à parte, ver modalDescartados). */
+      if (d.editing_status === 'descartado') return false;
       if (F.competencia !== 'todas' && competenciaChave(d) !== F.competencia) return false;
       if (F.cliente && d.client_id !== F.cliente) return false;
       if (F.responsavel === 'sem' && d.videomaker_id) return false;
@@ -147,7 +156,12 @@ B7.Video = (function () {
     });
   }
   function ehAtrasada(d) {
-    return !!(d.prazo && d.prazo < hoje() && d.editing_status !== 'entregue' && d.editing_status !== 'descartado');
+    /* "Aguardando aprovação" também não conta como atrasada: o prazo é
+       da EDIÇÃO ficar pronta, e isso já aconteceu — quem está devendo
+       resposta agora é o cliente, não o videomaker. Evita punir o
+       videomaker porque o cliente demorou a decidir. */
+    return !!(d.prazo && d.prazo < hoje() && d.editing_status !== 'entregue' && d.editing_status !== 'descartado' &&
+              d.editing_status !== 'aguardando_aprovacao');
   }
   function filtrosAtivos() {
     return !!(F.cliente || F.status || F.responsavel || F.prioridade || F.prazo || F.busca.trim() || F.minhaFila);
@@ -158,6 +172,7 @@ B7.Video = (function () {
     const visiveis = filtrar(base);
     const comp = competenciasDisponiveis();
     const souTambemVideomaker = souVideomakerElegivel();
+    const descartados = demandas.filter(d => d.editing_status === 'descartado');
 
     /* pendências de meses ANTERIORES ao selecionado, ainda em aberto —
        nunca somem, só ficam fora da projeção do mês corrente até
@@ -172,6 +187,9 @@ B7.Video = (function () {
       '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
       '<p>Toda a fila de edição da B7 em um só lugar.</p></div>' +
       '<div class="vd-acoes-topo">' +
+        (descartados.length
+          ? '<button class="b fina contorno" id="vd-descartados">Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
+          : '') +
         '<button class="b contorno" id="vd-importar">Importar planilha</button>' +
         '<button class="b pri" id="vd-nova">+ Nova demanda</button></div>' +
       '</div>' +
@@ -189,6 +207,8 @@ B7.Video = (function () {
     if (btNova) btNova.onclick = () => modalNovaDemanda();
     const btImportar = document.getElementById('vd-importar');
     if (btImportar) btImportar.onclick = () => modalImportar();
+    const btDescartados = document.getElementById('vd-descartados');
+    if (btDescartados) btDescartados.onclick = () => modalDescartados(descartados);
     const btVerAnteriores = document.getElementById('vd-ver-anteriores');
     if (btVerAnteriores) btVerAnteriores.onclick = () => {
       F.competencia = 'todas'; F.prazo = 'atrasadas'; guardarFiltros(); desenharProducao();
@@ -243,7 +263,7 @@ B7.Video = (function () {
         'value="' + esc(F.busca) + '" aria-label="Buscar"></div>' +
       opc('competencia', F.competencia, [['todas', 'Todos os meses']].concat(comp.map(c => [c, competenciaRotulo(c)])), 'Competência') +
       opc('cliente', F.cliente, [['', 'Cliente']].concat(clientesPresentes), 'Cliente') +
-      opc('status', F.status, [['', 'Status']].concat(SITUACOES), 'Status') +
+      opc('status', F.status, [['', 'Status']].concat(SITUACOES_ATIVAS), 'Status') +
       opc('responsavel', F.responsavel, [['', 'Responsável'], ['sem', 'Sem responsável']]
         .concat(videomakers.map(v => [v.id, v.nome])), 'Responsável') +
       opc('prioridade', F.prioridade, [['', 'Prioridade']].concat(PRIORIDADES), 'Prioridade') +
@@ -340,7 +360,7 @@ B7.Video = (function () {
   }
 
   /* ---------------- QUADRO (Kanban secundário, mesmos dados) ---------------- */
-  const COLUNAS_KANBAN = SITUACOES;
+  const COLUNAS_KANBAN = SITUACOES_ATIVAS;
   const LIMITE_COLUNA = 30;
   function quadroHTML(lista) {
     /* mesma regra da Lista: coluna "Entregue" só aparece se alguém
@@ -358,14 +378,15 @@ B7.Video = (function () {
     const resto = g.itens.length - mostrar.length;
     return '<div class="vd-coluna" data-coluna="' + g.chave + '">' +
       '<div class="vd-coluna-cab"><span>' + esc(g.nome) + '</span><b>' + g.itens.length + '</b></div>' +
-      '<div class="vd-coluna-corpo">' +
+      '<div class="vd-coluna-corpo" data-solta="' + g.chave + '">' +
       (mostrar.length ? mostrar.map(cardHTML).join('') : '<div class="vd-vazia">—</div>') +
       (resto > 0 ? '<button class="vd-ver-mais" data-coluna-ver-mais="' + g.chave + '">+' + resto + ' em ' + esc(g.nome.toLowerCase()) + '…</button>' : '') +
       '</div></div>';
   }
   function cardHTML(d) {
     const atrasada = ehAtrasada(d);
-    return '<div class="vd-card" data-demanda="' + d.id + '" tabindex="0">' +
+    return '<div class="vd-card" data-demanda="' + d.id + '" data-situacao="' + d.editing_status + '"' +
+      (souEquipe() ? ' draggable="true"' : '') + ' tabindex="0">' +
       '<div class="vd-card-topo"><b>' + esc(d.cliente_nome || 'Cliente') + '</b>' +
       (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') + '</div>' +
       '<div class="vd-card-titulo">' + tituloComFallback(d) + '</div>' +
@@ -392,7 +413,141 @@ B7.Video = (function () {
         const ir = () => location.hash = '#/video/' + el.dataset.demanda;
         el.onclick = ir; el.onkeydown = ev => { if (ev.key === 'Enter') ir(); };
       });
+      ligarArrastarVideo(cx);
     });
+    if (F.vista === 'kanban' && souEquipe()) ligarArrastarVideo(cx);
+  }
+
+  /* =================================================================
+     ARRASTAR E SOLTAR NO KANBAN — mesmo padrão nativo (HTML5 drag/drop,
+     sem biblioteca) já usado no Kanban geral (js/kanban.js). O drop
+     nunca escreve status "na marra": sempre passa pela mesma ação de
+     negócio que um botão chamaria (mudarStatusVideo / enviar para
+     aprovação / registrar entrega) — nunca um "update direto".
+     ================================================================= */
+  function ligarArrastarVideo(cx) {
+    let arrastando = null;
+    const limpar = () => cx.querySelectorAll('[data-solta]').forEach(z => z.classList.remove('sobre'));
+
+    cx.querySelectorAll('.vd-card[draggable="true"]').forEach(card => {
+      card.ondragstart = e => {
+        arrastando = card.dataset.demanda;
+        card.classList.add('arrastando');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.dataset.demanda);
+      };
+      /* dragend sempre dispara — solto no destino certo, cancelado com
+         Esc, ou solto fora de qualquer coluna: nenhum desses casos
+         pode deixar classe/estado grudado na tela. */
+      card.ondragend = () => { card.classList.remove('arrastando'); arrastando = null; limpar(); };
+    });
+
+    cx.querySelectorAll('[data-solta]').forEach(zona => {
+      zona.ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zona.classList.add('sobre'); };
+      zona.ondragleave = e => { if (!zona.contains(e.relatedTarget)) zona.classList.remove('sobre'); };
+      zona.ondrop = e => {
+        e.preventDefault();
+        const id = arrastando || e.dataTransfer.getData('text/plain');
+        limpar();
+        if (!id) return;
+        const d = demandas.find(x => x.id === id);
+        const destino = zona.dataset.solta;
+        if (!d || destino === d.editing_status) return;
+        moverCartaoVideo(d, destino);
+      };
+    });
+  }
+
+  async function commitStatusVideo(d, status, mensagem) {
+    try {
+      await B7.DB.mudarStatusVideo(d.id, status, mensagem || null);
+      d.editing_status = status;
+      B7.UI.toast('Situação atualizada.');
+    } catch (e) {
+      B7.UI.toast(e.message || 'Não foi possível mover a demanda.');
+    } finally {
+      desenharProducao();
+    }
+  }
+  async function commitAcaoVideo(d, acao, statusFinal) {
+    try {
+      await acao();
+      d.editing_status = statusFinal;
+      B7.UI.toast('Situação atualizada.');
+    } catch (e) {
+      B7.UI.toast(e.message || 'Não foi possível mover a demanda.');
+    } finally {
+      desenharProducao();
+    }
+  }
+
+  /* Roteia o drop pela MESMA lógica de negócio de sempre — nunca um
+     status "cru". Cada destino com regra própria pede confirmação (ou
+     bloqueia) antes de qualquer escrita; se a pessoa cancelar, nada
+     muda e o card só volta pro lugar no próximo redesenho. */
+  async function moverCartaoVideo(d, destino) {
+    if (destino === d.editing_status) return;
+
+    if (destino === 'correcao') {
+      const mensagem = await B7.UI.perguntar({ titulo: 'O que precisa corrigir?', confirmar: 'Marcar correção' });
+      if (mensagem === null) return;
+      await commitStatusVideo(d, 'correcao', mensagem);
+      return;
+    }
+
+    if (destino === 'aguardando_aprovacao') {
+      let versoes = [];
+      try { versoes = await B7.DB.versoesDemandaVideo(d.id); } catch (e) { versoes = []; }
+      const atual = versoes[0];
+      if (!atual) {
+        const ir = await B7.UI.confirmar({
+          titulo: 'Sem versão registrada',
+          texto: 'Envie ou registre uma versão antes de enviar para aprovação.',
+          confirmar: 'Abrir demanda'
+        });
+        if (ir) location.hash = '#/video/' + d.id;
+        return;
+      }
+      const ok = await B7.UI.confirmar({
+        titulo: 'Enviar para aprovação?',
+        texto: 'Enviar V' + String(atual.numero).padStart(2, '0') + ' para a aprovação do cliente?',
+        confirmar: 'Enviar para aprovação'
+      });
+      if (!ok) return;
+      await commitAcaoVideo(d, () => B7.DB.enviarParaAprovacaoVideo(d.id, atual.id), 'aguardando_aprovacao');
+      return;
+    }
+
+    if (destino === 'entregue') {
+      let versoes = [];
+      try { versoes = await B7.DB.versoesDemandaVideo(d.id); } catch (e) { versoes = []; }
+      const atual = versoes[0];
+      if (!atual || atual.decisao_cliente !== 'aprovado') {
+        B7.UI.toast('Esta versão ainda não foi aprovada pelo cliente.');
+        return;
+      }
+      const ok = await B7.UI.confirmar({
+        titulo: 'Registrar entrega?',
+        texto: 'Marcar V' + String(atual.numero).padStart(2, '0') + ' como entregue?',
+        confirmar: 'Registrar entrega'
+      });
+      if (!ok) return;
+      await commitAcaoVideo(d, () => B7.DB.registrarEntregaVideo(d.id, atual.id, null), 'entregue');
+      return;
+    }
+
+    if (d.editing_status === 'entregue') {
+      /* reabrir trabalho já entregue não pode ser um deslize de mouse */
+      const ok = await B7.UI.confirmar({
+        titulo: 'Reabrir demanda entregue?',
+        texto: 'Essa demanda já foi marcada como entregue. Quer mesmo reabrir e mudar a situação?',
+        confirmar: 'Reabrir', perigo: true
+      });
+      if (!ok) return;
+    }
+
+    /* transições simples, sem dado extra: pendente / em edição / standby */
+    await commitStatusVideo(d, destino, null);
   }
 
   /* =================================================================
@@ -554,6 +709,35 @@ B7.Video = (function () {
   }
 
   /* =================================================================
+     DESCARTADOS — arquivo à parte; não polui a produção ativa mas o
+     histórico continua consultável (nada é apagado de verdade).
+     ================================================================= */
+  function modalDescartados(lista) {
+    const ordenada = [...lista].sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+    const m = B7.UI.modal(
+      '<h3>Descartados <span class="vd-contagem">' + ordenada.length + '</span></h3>' +
+      '<p class="fraca">Demandas marcadas como descartadas. Nada foi apagado — só ficam fora da produção ativa.</p>' +
+      '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
+      '<th>Código</th><th>Cliente</th><th>Título</th><th>Competência</th><th>Responsável</th><th>Atualizado em</th>' +
+      '</tr></thead><tbody>' +
+      (ordenada.length ? ordenada.map(d =>
+        '<tr data-demanda="' + d.id + '" tabindex="0">' +
+          '<td class="vd-codigo">' + esc(d.codigo || '—') + '</td>' +
+          '<td>' + esc(d.cliente_nome || '—') + '</td>' +
+          '<td class="vd-tb-titulo">' + tituloComFallback(d) + '</td>' +
+          '<td>' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</td>' +
+          '<td>' + (d.videomaker_nome ? esc(d.videomaker_nome) : '<i class="vd-sem">sem responsável</i>') + '</td>' +
+          '<td>' + (d.updated_at ? esc(B7.UI.dataBR(d.updated_at.slice(0, 10))) : '—') + '</td>' +
+        '</tr>').join('') : '<tr><td colspan="6"><i class="vd-sem">Nenhuma demanda descartada.</i></td></tr>') +
+      '</tbody></table></div>' +
+      '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>');
+    m.querySelectorAll('[data-demanda]').forEach(tr => {
+      tr.onclick = () => { m.fechar(); location.hash = '#/video/' + tr.dataset.demanda; };
+      tr.onkeydown = e => { if (e.key === 'Enter') tr.click(); };
+    });
+  }
+
+  /* =================================================================
      DETALHE DE UMA DEMANDA — layout principal + painel lateral
      ================================================================= */
   async function abrirDetalhe(id) {
@@ -563,7 +747,9 @@ B7.Video = (function () {
 
     let d, historico;
     try {
-      [d, historico] = await Promise.all([B7.DB.demandaVideo(id), B7.DB.historicoDemandaVideo(id)]);
+      [d, historico, versoesAtual] = await Promise.all([
+        B7.DB.demandaVideo(id), B7.DB.historicoDemandaVideo(id), B7.DB.versoesDemandaVideo(id).catch(() => [])
+      ]);
       if (souEquipe() && !clientes.length) clientes = await B7.DB.listarClientes().catch(() => []);
       if (souEquipe() && !videomakers.length) videomakers = await B7.DB.listarVideomakers().catch(() => []);
     } catch (e) {
@@ -583,11 +769,14 @@ B7.Video = (function () {
       '<header class="vd-cab"><div><h1>' + tituloComFallback(d) + '</h1>' +
       '<p>' + esc(d.cliente_nome || '') + (d.codigo ? ' · ' + esc(d.codigo) : '') +
       (d.competencia_ano ? ' · ' + esc(competenciaRotulo(competenciaChave(d))) : '') + '</p></div>' +
+      (podeEditar && d.editing_status !== 'descartado'
+        ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar demanda</button>' : '') +
       (podeEditar ? '<button class="b fina contorno" id="vd-dt-excluir">Excluir</button>' : '') +
       '</header>' +
 
       '<div class="vd-detalhe-corpo">' +
         '<div class="vd-detalhe-principal">' +
+          secaoVersoes(d, versoesAtual, podeEditar, podeOperar) +
           (d.link_material
             ? '<a class="b pri vd-abrir-materiais" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir materiais</a>'
             : (podeOperar ? '' : '<div class="estado-b7 vd-sem-material"><b>Sem materiais vinculados ainda.</b></div>')) +
@@ -613,12 +802,19 @@ B7.Video = (function () {
 
         '<aside class="vd-detalhe-lateral">' +
           '<div class="vd-dt-campo"><label class="rot">Situação</label>' +
-          (podeOperar
+          (podeOperar && d.editing_status !== 'descartado'
             ? '<select class="campo" id="vd-dt-status">' +
-              SITUACOES.map(([v, n]) => '<option value="' + v + '"' + (v === d.editing_status ? ' selected' : '') + '>' + n + '</option>').join('') +
+              SITUACOES_ATIVAS.map(([v, n]) => '<option value="' + v + '"' + (v === d.editing_status ? ' selected' : '') + '>' + n + '</option>').join('') +
               '</select>'
             : '<div class="vd-so-leitura">' + statusBadge(d.editing_status) + '</div>') +
           '</div>' +
+          (versoesAtual.length
+            ? '<div class="vd-dt-campo"><label class="rot">Versão atual</label>' +
+              '<div class="vd-so-leitura">V' + String(versoesAtual[0].numero).padStart(2, '0') +
+              (versoesAtual.filter(v => v.decisao_cliente === 'correcao' || v.decisao_cliente === 'recusado').length
+                ? ' · ' + versoesAtual.filter(v => v.decisao_cliente === 'correcao' || v.decisao_cliente === 'recusado').length + ' correção(ões)'
+                : '') + '</div></div>'
+            : '') +
           '<div class="vd-dt-campo"><label class="rot">Prioridade</label>' +
           (podeEditar
             ? '<select class="campo" id="vd-dt-prioridade">' +
@@ -660,12 +856,169 @@ B7.Video = (function () {
     ligarDetalhe(d);
   }
 
+  /* =================================================================
+     WORKSPACE DE VÍDEO — versões, envio para aprovação, decisão do
+     cliente e entrega (Parte 2). Reusa o mesmo padrão de link externo
+     já usado em "Link do material editado" — os arquivos de vídeo do
+     B7 vivem fora do sistema (Drive/WeTransfer), então uma "versão"
+     aqui é sempre um link + nome, nunca um upload pra dentro do banco.
+     ================================================================= */
+  const CANAIS_DECISAO = [['whatsapp', 'WhatsApp'], ['ligacao', 'Ligação'], ['reuniao', 'Reunião'],
+    ['presencial', 'Presencial'], ['outro', 'Outro']];
+  const rotuloCanal = c => (CANAIS_DECISAO.find(x => x[0] === c) || [, c])[1];
+  const vNum = n => 'V' + String(n).padStart(2, '0');
+  const quandoBR = ts => { try { return new Date(ts).toLocaleDateString('pt-BR') + ' às ' + new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+
+  function secaoVersoes(d, versoes, podeEditar, podeOperar) {
+    if (!podeOperar && !versoes.length) return '';
+    const atual = versoes[0];
+
+    const blocoArquivo = v => (v.arquivo_url
+      ? '<a class="b fina" href="' + esc(v.arquivo_url) + '" target="_blank" rel="noopener">Abrir vídeo</a>' +
+        (v.arquivo_nome ? ' <span class="vd-quem">' + esc(v.arquivo_nome) + '</span>' : '')
+      : '<i class="vd-sem">sem arquivo/link</i>');
+
+    let acao = '';
+    if (!atual) {
+      acao = podeOperar
+        ? '<div class="estado-b7 vd-sem-material"><b>Nenhuma versão registrada ainda.</b>' +
+          '<div class="acoes"><button class="b pri" id="vd-vs-nova">Registrar versão</button></div></div>'
+        : '<div class="estado-b7 vd-sem-material"><b>Nenhuma versão registrada ainda.</b></div>';
+    } else {
+      let decisaoHTML = '';
+      if (d.editing_status === 'aguardando_aprovacao' && !atual.decisao_cliente) {
+        decisaoHTML = '<div class="vd-decisao vd-decisao-pendente"><b>DECISÃO DO CLIENTE</b>' +
+          '<p>Aguardando decisão sobre a ' + vNum(atual.numero) + '.</p>' +
+          (podeEditar ? '<button class="b pri" id="vd-vs-decisao">Registrar decisão do cliente</button>' : '') +
+          '</div>';
+      } else if (atual.decisao_cliente === 'aprovado') {
+        decisaoHTML = '<div class="vd-decisao vd-decisao-aprovada"><b>DECISÃO DO CLIENTE</b>' +
+          '<p>Aprovado — via ' + esc(rotuloCanal(atual.decisao_canal)) +
+          (atual.decisao_registrado_por ? ', registrado por ' + esc(atual.decisao_registrado_por_nome || 'equipe') : '') +
+          (atual.decisao_em ? ' · ' + esc(quandoBR(atual.decisao_em)) : '') + '</p>' +
+          (d.editing_status !== 'entregue' && podeEditar ? '<button class="b pri" id="vd-vs-entrega">Registrar entrega</button>' : '') +
+          '</div>';
+      } else if ((atual.decisao_cliente === 'correcao' || atual.decisao_cliente === 'recusado') && d.editing_status === 'correcao') {
+        decisaoHTML = '<div class="vd-decisao vd-decisao-correcao"><b>' +
+          (atual.decisao_cliente === 'recusado' ? 'RECUSADO PELO CLIENTE' : 'AJUSTE SOLICITADO PELO CLIENTE') + '</b>' +
+          '<p class="vd-decisao-canal">Via ' + esc(rotuloCanal(atual.decisao_canal)) +
+          (atual.decisao_em ? ' · ' + esc(quandoBR(atual.decisao_em)) : '') + '</p>' +
+          '<p class="vd-decisao-obs">' + esc(atual.decisao_observacao || '') + '</p>' +
+          (podeOperar ? '<button class="b pri" id="vd-vs-nova">Enviar nova versão</button>' : '') +
+          '</div>';
+      } else if (d.editing_status === 'entregue' && atual.entregue_em) {
+        decisaoHTML = '<div class="vd-decisao vd-decisao-aprovada"><b>VERSÃO FINAL</b>' +
+          '<p>Entregue em ' + esc(quandoBR(atual.entregue_em)) + '.</p></div>';
+      }
+
+      const podeEnviarAprovacao = podeOperar && !atual.enviada_aprovacao_em &&
+        (d.editing_status === 'em_edicao' || d.editing_status === 'correcao' || d.editing_status === 'pendente');
+
+      acao = '<div class="vd-versao-atual">' +
+        '<div class="vd-versao-cab"><b>' + vNum(atual.numero) + ' · Atual</b>' + statusBadge(d.editing_status) + '</div>' +
+        '<div class="vd-versao-arquivo">' + blocoArquivo(atual) + '</div>' +
+        (atual.observacao ? '<p class="fraca">' + esc(atual.observacao) + '</p>' : '') +
+        decisaoHTML +
+        '<div class="acoes vd-versao-acoes">' +
+        (podeEnviarAprovacao ? '<button class="b" id="vd-vs-enviar">Enviar para aprovação</button>' : '') +
+        (podeOperar && !decisaoHTML.includes('vd-vs-nova') ? '<button class="b fina contorno" id="vd-vs-nova">Registrar nova versão</button>' : '') +
+        '</div>' +
+      '</div>';
+    }
+
+    const antigas = versoes.slice(1);
+    return '<div class="vd-dt-campo vd-workspace"><label class="rot">Versões</label>' +
+      acao +
+      (antigas.length
+        ? '<div class="vd-versoes-antigas">' + antigas.map(v =>
+            '<details class="vd-versao-antiga"><summary>' + vNum(v.numero) +
+            (v.decisao_cliente ? ' · ' + (v.decisao_cliente === 'aprovado' ? 'Aprovada' : v.decisao_cliente === 'recusado' ? 'Recusada' : 'Correção solicitada') : ' · substituída') +
+            '</summary><div class="vd-versao-antiga-corpo">' +
+              blocoArquivo(v) +
+              (v.observacao ? '<p class="fraca">' + esc(v.observacao) + '</p>' : '') +
+              (v.decisao_observacao ? '<p class="vd-decisao-obs">' + esc(v.decisao_observacao) + '</p>' : '') +
+            '</div></details>').join('') + '</div>'
+        : '') +
+      '</div>';
+  }
+
+  function modalNovaVersao(d) {
+    const ultima = versoesAtual[0];
+    const m = B7.UI.modal(
+      '<h3>' + (ultima ? 'Registrar ' + vNum(ultima.numero + 1) : 'Registrar V01') + '</h3>' +
+      '<label class="rot">Link do vídeo</label>' +
+      '<input class="campo" id="vd-nv-url" placeholder="https://drive.google.com/…" data-foco>' +
+      '<label class="rot">Nome do arquivo (opcional)</label>' +
+      '<input class="campo" id="vd-nv-nome" placeholder="Ex.: corte-final-v2.mov">' +
+      '<label class="rot">Observação (opcional)</label>' +
+      '<textarea class="campo alta" id="vd-nv-obs" rows="2" placeholder="Ex.: Ajustes solicitados pelo cliente."></textarea>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" id="vd-nv-salvar">Registrar</button></div>');
+    m.querySelector('#vd-nv-salvar').onclick = async () => {
+      const url = m.querySelector('#vd-nv-url').value.trim();
+      if (!url) { B7.UI.toast('Informe o link do vídeo.'); return; }
+      const btn = m.querySelector('#vd-nv-salvar');
+      btn.disabled = true; btn.textContent = 'Registrando…';
+      try {
+        await B7.DB.criarVersaoVideo(d.id, {
+          arquivoUrl: url, arquivoNome: m.querySelector('#vd-nv-nome').value.trim(), observacao: m.querySelector('#vd-nv-obs').value.trim()
+        });
+        m.fechar();
+        B7.UI.toast('Versão registrada.');
+        abrirDetalhe(d.id);
+      } catch (e) {
+        btn.disabled = false; btn.textContent = 'Registrar';
+        B7.UI.toast(e.message || 'Não foi possível registrar a versão.');
+      }
+    };
+  }
+
+  function modalDecisaoCliente(d, versao) {
+    const m = B7.UI.modal(
+      '<h3>Decisão do cliente — ' + vNum(versao.numero) + '</h3>' +
+      '<p class="fraca">O cliente não precisa acessar o sistema — registre aqui o que ele decidiu, mesmo que tenha respondido por WhatsApp, ligação etc.</p>' +
+      '<label class="rot">Decisão</label>' +
+      '<select class="campo" id="vd-dc-decisao" data-foco>' +
+        '<option value="aprovado">Aprovado pelo cliente</option>' +
+        '<option value="correcao">Cliente solicitou correção</option>' +
+        '<option value="recusado">Recusado pelo cliente</option>' +
+      '</select>' +
+      '<label class="rot">Canal</label>' +
+      '<select class="campo" id="vd-dc-canal">' +
+        CANAIS_DECISAO.map(([v, r]) => '<option value="' + v + '"' + (v === 'whatsapp' ? ' selected' : '') + '>' + r + '</option>').join('') +
+      '</select>' +
+      '<label class="rot" id="vd-dc-obs-rot">O que o cliente pediu? (obrigatório se não for aprovação)</label>' +
+      '<textarea class="campo alta" id="vd-dc-obs" rows="3" placeholder="Ex.: Retirar a cena aos 00:34 e diminuir a abertura."></textarea>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" id="vd-dc-salvar">Registrar decisão</button></div>');
+
+    m.querySelector('#vd-dc-salvar').onclick = async () => {
+      const decisao = m.querySelector('#vd-dc-decisao').value;
+      const canal = m.querySelector('#vd-dc-canal').value;
+      const obs = m.querySelector('#vd-dc-obs').value.trim();
+      if (decisao !== 'aprovado' && !obs) { B7.UI.toast('Descreva o que o cliente pediu.'); return; }
+      const btn = m.querySelector('#vd-dc-salvar');
+      btn.disabled = true; btn.textContent = 'Registrando…';
+      try {
+        await B7.DB.registrarDecisaoClienteVideo(versao.id, decisao, canal, obs);
+        m.fechar();
+        B7.UI.toast('Decisão registrada.');
+        abrirDetalhe(d.id);
+      } catch (e) {
+        btn.disabled = false; btn.textContent = 'Registrar decisão';
+        B7.UI.toast(e.message || 'Não foi possível registrar a decisão.');
+      }
+    };
+  }
+
   function linhaHistorico(ev) {
     let texto;
     if (ev.tipo === 'criada') texto = 'Demanda criada';
     else if (ev.tipo === 'atribuida') texto = ev.mensagem === 'Atribuição removida' ? 'Atribuição removida' : 'Responsável atribuído';
     else if (ev.tipo === 'status') texto = 'Situação mudou para "' + esc(rotuloSituacao(ev.para_status)) + '"';
     else if (ev.tipo === 'link_material') texto = 'Link do material atualizado';
+    else if (ev.tipo === 'versao') texto = esc(ev.mensagem || 'Nova versão registrada');
+    else if (ev.tipo === 'decisao_cliente') texto = esc(ev.mensagem || 'Decisão do cliente registrada');
     else texto = esc(ev.tipo);
     return '<li><b>' + esc(ev.ator_nome || 'Alguém') + '</b> — ' + texto +
       (ev.mensagem && ev.tipo === 'status' ? '<div class="vd-tl-msg">' + esc(ev.mensagem) + '</div>' : '') +
@@ -692,6 +1045,48 @@ B7.Video = (function () {
     if (selVm) selVm.onchange = async () => {
       try { await B7.DB.atribuirVideo(d.id, selVm.value || null); B7.UI.toast('Atribuição atualizada.'); abrirDetalhe(d.id); }
       catch (e) { B7.UI.toast(e.message || 'Não foi possível atribuir.'); selVm.value = d.videomaker_id || ''; }
+    };
+
+    const btNovaVersao = document.getElementById('vd-vs-nova');
+    if (btNovaVersao) btNovaVersao.onclick = () => modalNovaVersao(d);
+
+    const btEnviarAprovacao = document.getElementById('vd-vs-enviar');
+    if (btEnviarAprovacao) btEnviarAprovacao.onclick = async () => {
+      const atual = versoesAtual[0];
+      if (!atual) return;
+      const ok = await B7.UI.confirmar({
+        titulo: 'Enviar para aprovação?',
+        texto: 'Enviar ' + vNum(atual.numero) + ' para a aprovação do cliente?',
+        confirmar: 'Enviar para aprovação'
+      });
+      if (!ok) return;
+      btEnviarAprovacao.disabled = true;
+      try {
+        await B7.DB.enviarParaAprovacaoVideo(d.id, atual.id);
+        B7.UI.toast('Enviado para aprovação.');
+        abrirDetalhe(d.id);
+      } catch (e) { btEnviarAprovacao.disabled = false; B7.UI.toast(e.message || 'Não foi possível enviar para aprovação.'); }
+    };
+
+    const btDecisao = document.getElementById('vd-vs-decisao');
+    if (btDecisao) btDecisao.onclick = () => { if (versoesAtual[0]) modalDecisaoCliente(d, versoesAtual[0]); };
+
+    const btEntrega = document.getElementById('vd-vs-entrega');
+    if (btEntrega) btEntrega.onclick = async () => {
+      const atual = versoesAtual[0];
+      if (!atual) return;
+      const ok = await B7.UI.confirmar({
+        titulo: 'Registrar entrega?',
+        texto: 'Marcar ' + vNum(atual.numero) + ' como entregue?',
+        confirmar: 'Registrar entrega'
+      });
+      if (!ok) return;
+      btEntrega.disabled = true;
+      try {
+        await B7.DB.registrarEntregaVideo(d.id, atual.id, null);
+        B7.UI.toast('Entrega registrada.');
+        abrirDetalhe(d.id);
+      } catch (e) { btEntrega.disabled = false; B7.UI.toast(e.message || 'Não foi possível registrar a entrega.'); }
     };
 
     const btLink = document.getElementById('vd-dt-link-salvar');
@@ -731,6 +1126,22 @@ B7.Video = (function () {
         btSalvar.disabled = false; btSalvar.textContent = 'Salvar alterações';
         B7.UI.toast(e.message || 'Não foi possível salvar.');
       }
+    };
+
+    const btDescartar = document.getElementById('vd-dt-descartar');
+    if (btDescartar) btDescartar.onclick = async () => {
+      const ok = await B7.UI.confirmar({
+        titulo: 'Descartar esta demanda?',
+        texto: 'A demanda sai do Kanban e da lista ativa, mas fica guardada em "Descartados" e pode ser consultada depois. Isso não apaga o histórico.',
+        perigo: true, rotulo: 'Descartar'
+      });
+      if (!ok) return;
+      btDescartar.disabled = true;
+      try {
+        await B7.DB.mudarStatusVideo(d.id, 'descartado', null);
+        B7.UI.toast('Demanda descartada.');
+        abrirDetalhe(d.id);
+      } catch (e) { btDescartar.disabled = false; B7.UI.toast(e.message || 'Não foi possível descartar.'); }
     };
 
     const btExcluir = document.getElementById('vd-dt-excluir');

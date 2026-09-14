@@ -1746,6 +1746,25 @@ B7.DB = (function () {
     async backfillResponsavelVideo() { return this.rpc('video_backfill_responsavel', {}); },
     async demandasResponsavelNaoConfiavelVideo() { return this.rpc('video_demandas_responsavel_nao_confiavel', {}); },
 
+    /* ---- Workspace de Vídeo — versões, aprovação, entrega (Parte 2, migration_video_workspace.sql) ---- */
+    async versoesDemandaVideo(demandaId) {
+      return ok(await sb().from('video_versoes_resumo').select('*').eq('demanda_id', demandaId).order('numero', { ascending: false }));
+    },
+    async criarVersaoVideo(demandaId, { arquivoUrl, arquivoNome, observacao }) {
+      return this.rpc('video_criar_versao', {
+        p_demanda_id: demandaId, p_arquivo_url: arquivoUrl || '', p_arquivo_nome: arquivoNome || '', p_observacao: observacao || ''
+      });
+    },
+    async enviarParaAprovacaoVideo(demandaId, versaoId) {
+      return this.rpc('video_enviar_para_aprovacao', { p_demanda_id: demandaId, p_versao_id: versaoId });
+    },
+    async registrarDecisaoClienteVideo(versaoId, decisao, canal, observacao) {
+      return this.rpc('video_registrar_decisao_cliente', { p_versao_id: versaoId, p_decisao: decisao, p_canal: canal || 'outro', p_observacao: observacao || '' });
+    },
+    async registrarEntregaVideo(demandaId, versaoId, mensagem) {
+      return this.rpc('video_registrar_entrega', { p_demanda_id: demandaId, p_versao_id: versaoId, p_mensagem: mensagem || null });
+    },
+
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {
       return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')
