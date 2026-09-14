@@ -36,6 +36,7 @@ B7.Video = (function () {
   const SITUACOES = [
     ['pendente', 'Pendente'],
     ['em_edicao', 'Em edição'],
+    ['aguardando_aprovacao', 'Aguardando aprovação'],
     ['correcao', 'Correção'],
     ['standby', 'Standby'],
     ['entregue', 'Entregue'],
@@ -206,6 +207,7 @@ B7.Video = (function () {
       ['prazo:atrasadas', contar(ehAtrasada), 'atrasada' + (contar(ehAtrasada) === 1 ? '' : 's'), F.prazo === 'atrasadas'],
       ['status:pendente', contar(d => d.editing_status === 'pendente'), 'pendente' + (contar(d => d.editing_status === 'pendente') === 1 ? '' : 's'), F.status === 'pendente'],
       ['status:em_edicao', contar(d => d.editing_status === 'em_edicao'), 'em edição', F.status === 'em_edicao'],
+      ['status:aguardando_aprovacao', contar(d => d.editing_status === 'aguardando_aprovacao'), 'aguardando aprovação', F.status === 'aguardando_aprovacao'],
       ['status:correcao', contar(d => d.editing_status === 'correcao'), 'em correção', F.status === 'correcao'],
       ['status:standby', contar(d => d.editing_status === 'standby'), 'em standby', F.status === 'standby'],
       ['status:entregue', contar(d => d.editing_status === 'entregue'), 'entregue' + (contar(d => d.editing_status === 'entregue') === 1 ? '' : 's'), F.status === 'entregue']

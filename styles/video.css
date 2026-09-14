@@ -94,6 +94,7 @@
   background:var(--suave);color:var(--ink-3);white-space:nowrap;}
 .vd-status-pendente{background:var(--suave);color:var(--ink-3);}
 .vd-status-em_edicao{background:var(--acento-suave);color:var(--acento);}
+.vd-status-aguardando_aprovacao{background:var(--laranja-bg);color:var(--laranja);}
 .vd-status-correcao{background:var(--ambar-bg);color:var(--ambar);}
 .vd-status-standby{background:var(--violeta-bg);color:var(--violeta);}
 .vd-status-entregue{background:var(--ok-bg);color:var(--ok);}

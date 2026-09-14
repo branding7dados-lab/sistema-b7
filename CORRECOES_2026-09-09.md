@@ -5137,3 +5137,87 @@ Arquivos alterados: `js/video.js`, `js/auth.js`, `sw.js`.
 3. Me manda o resultado do Passo 1 de
    `migration_video_diagnostico_responsavel.sql` (já te mandei esse
    arquivo antes) pra eu continuar o responsável.
+
+# Confirmação em produção (14/09/2026) — responsável resolvido
+
+Você aplicou `migration_video_responsavel.sql` (a migração da rodada
+`g` que nunca tinha sido aplicada — essa era a causa raiz real do "0
+de 414") e rodou o backfill. Resultado confirmado por você:
+
+- `video_backfill_responsavel()` casou corretamente todas as demandas
+  cujo responsável na planilha era **Kevin** ou **Kaique** — os dois
+  únicos videomakers de verdade cadastrados no sistema.
+- `video_demandas_responsavel_nao_confiavel()` mostrou o restante:
+  demandas com responsável **LUIS**, **MATHEUS** ou **EMANUEL** na
+  planilha — nomes que não têm conta de videomaker cadastrada no
+  sistema. Isso é o comportamento esperado (mesmo caso do Mateus
+  freelancer, já discutido antes): o sistema nunca atribui um
+  responsável "chutando" — só quando acha uma conta de verdade. Essas
+  demandas continuam sem responsável até alguém atribuir manualmente
+  pela tela, ou até essas pessoas virarem contas de videomaker no
+  sistema (se for o caso, é só pedir).
+
+Com isso, os dois bugs da rodada `h`/`i` (competência caindo tudo em
+setembro, e responsável zerado) estão confirmados como resolvidos em
+produção — não só testados localmente.
+
+Nenhum arquivo alterado nesta entrada (foi só a aplicação da migração
+e do backfill, já preparados antes).
+
+# Rodada k (14/09/2026) — nova etapa "Aguardando aprovação" (parte 1)
+
+Por pedido seu: depois que o vídeo sai de "Em edição", em vez de já
+marcar como "Entregue" direto, agora existe uma etapa intermediária —
+"Aguardando aprovação". Se precisar de alteração, volta pra "Correção"
+(mesmo fluxo que já existia: ao marcar Correção, o sistema pergunta o
+que precisa corrigir).
+
+Essa é só a **parte 1**, como você pediu — o status interno e a
+movimentação nas telas da equipe (Lista, Kanban da Produção de Vídeo,
+Kanban geral). A parte do CLIENTE decidir (aprovar ou pedir alteração
+pelo lado dele, provavelmente no Portal) fica pro próximo prompt que
+você vai me mandar.
+
+## Implementado e testado
+
+- **Novo status "Aguardando aprovação"** na fila de vídeo, entre "Em
+  edição" e "Correção" — aparece no filtro de Status, no chip do
+  resumo, na Lista e como nova coluna no Kanban da Produção de Vídeo.
+  Pra usar: abra a demanda, mude "Situação" pra "Aguardando aprovação"
+  (mesmo seletor que já existia pra mudar qualquer status). Se depois
+  precisar de ajuste, muda pra "Correção" — o sistema pergunta o que
+  precisa corrigir, exatamente como já fazia antes.
+- **Kanban geral** (o quadro que outras áreas também usam): a demanda
+  em "Aguardando aprovação" vai pra coluna "Aguardando cliente", que
+  já existia lá — não criei coluna nova nesse quadro.
+- **Aviso pro time**: quando algo entra em "Aguardando aprovação",
+  admin/coordenador recebem uma notificação (mesmo padrão de quando
+  algo é marcado como "Entregue").
+- Testei a sequência completa contra o banco local: em edição →
+  aguardando aprovação (evento e notificação disparam, card vai pra
+  coluna certa no Kanban geral) → correção (pede a mensagem, volta a
+  demanda) → aguardando aprovação de novo → entregue (fecha certo,
+  `entregue_em` é preenchido). Também testei que um status inválido
+  continua sendo rejeitado pelo banco.
+
+## Preparado mas ainda não aplicado
+
+- Nada específico desta etapa — o próximo passo é a parte 2 (decisão
+  do cliente), que ainda não tenho o prompt.
+
+## Não implementado por bloqueio ou decisão consciente
+
+- Não mexi na Central de Vídeo (tela de quem é videomaker) nem no
+  Portal do cliente — como você disse que vai mandar o prompt da
+  segunda parte, preferi não adiantar suposição sobre como o cliente
+  vai ver/decidir isso.
+
+Arquivos alterados: `js/video.js`, `js/auth.js`, `sw.js`,
+`styles/video.css`. Arquivo novo: `migration_video_aprovacao.sql`.
+`VERSAO` → `2026-09-14-k`, cache → `roteiros-b7-v69`.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_video_aprovacao.sql`.
+2. Suba os arquivos deste zip.
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-k`.
