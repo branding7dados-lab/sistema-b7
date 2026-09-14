@@ -50,6 +50,34 @@ B7.Video = (function () {
 
   const PRIORIDADES = [['normal', 'Normal'], ['alta', 'Alta'], ['urgente', 'Urgente']];
 
+  /* Cor por videomaker: não existe (nem foi pedido) campo de cor
+     cadastrado por pessoa — a cor é calculada a partir do id (sempre a
+     mesma pra cada pessoa, sem precisar guardar nada novo no banco). */
+  const PALETA_VIDEOMAKER = ['#2E86AB', '#E07A5F', '#3D8361', '#8E44AD', '#C9A227', '#D64550',
+    '#1B998B', '#F4A259', '#5C6BC0', '#B5838D', '#457B9D', '#6A994E'];
+  function corVideomaker(id) {
+    if (!id) return '#9aa0a6';
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    return PALETA_VIDEOMAKER[h % PALETA_VIDEOMAKER.length];
+  }
+  function quemHTML(d) {
+    if (!d.videomaker_id || !d.videomaker_nome) return '<span class="vd-quem fraca">sem responsável</span>';
+    return '<span class="vd-quem"><i class="vd-quem-dot" style="background:' + corVideomaker(d.videomaker_id) + '"></i>' +
+      esc(d.videomaker_nome) + '</span>';
+  }
+  /* Logo do cliente: quando não tem logo cadastrada (clientes.js —
+     campo já existia antes desta rodada), mostra a inicial do nome em
+     vez de deixar um buraco em branco. */
+  function logoClienteHTML(d, tamanho) {
+    tamanho = tamanho || 'sm';
+    if (d.cliente_logo_url) {
+      return '<img class="vd-logo-cliente ' + tamanho + '" src="' + esc(d.cliente_logo_url) + '" alt="" loading="lazy">';
+    }
+    const inicial = (d.cliente_nome || '?').trim().charAt(0) || '?';
+    return '<span class="vd-logo-cliente vd-logo-cliente-vazia ' + tamanho + '">' + esc(inicial) + '</span>';
+  }
+
   const ROTULO_PROBLEMA = {
     sem_nome_de_cliente: 'Sem nome de cliente na planilha',
     cliente_nao_encontrado: 'Cliente não encontrado — escolha na lista',
@@ -348,12 +376,12 @@ B7.Video = (function () {
         const atrasada = ehAtrasada(d);
         return '<tr data-demanda="' + d.id + '" tabindex="0">' +
           '<td class="vd-codigo">' + esc(d.codigo || '—') + '</td>' +
-          '<td>' + esc(d.cliente_nome || '—') + '</td>' +
+          '<td><div class="vd-tb-cliente">' + logoClienteHTML(d, 'sm') + '<span>' + esc(d.cliente_nome || '—') + '</span></div></td>' +
           '<td class="vd-tb-titulo">' + tituloComFallback(d) + '</td>' +
           '<td>' + prioridadeBadge(d.prioridade) + '</td>' +
           '<td>' + prazoHTML(d, atrasada) + '</td>' +
           '<td>' + statusBadge(d.editing_status) + '</td>' +
-          '<td>' + (d.videomaker_nome ? esc(d.videomaker_nome) : '<i class="vd-sem">sem responsável</i>') + '</td>' +
+          '<td>' + quemHTML(d) + '</td>' +
         '</tr>';
       }).join('') +
       '</tbody></table></div>';
@@ -407,12 +435,12 @@ B7.Video = (function () {
     const atrasada = ehAtrasada(d);
     return '<div class="vd-card" data-demanda="' + d.id + '" data-situacao="' + d.editing_status + '"' +
       (souEquipe() ? ' draggable="true"' : '') + ' tabindex="0">' +
-      '<div class="vd-card-topo"><b>' + esc(d.cliente_nome || 'Cliente') + '</b>' +
+      '<div class="vd-card-topo"><span class="vd-card-cliente">' + logoClienteHTML(d, 'sm') + '<b>' + esc(d.cliente_nome || 'Cliente') + '</b></span>' +
       (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') + '</div>' +
       '<div class="vd-card-titulo">' + tituloComFallback(d) + '</div>' +
       (d.prioridade && d.prioridade !== 'normal' ? prioridadeBadge(d.prioridade) : '') +
       '<div class="vd-card-rodape">' +
-      (d.videomaker_nome ? '<span class="vd-quem">' + esc(d.videomaker_nome) + '</span>' : '<span class="vd-quem fraca">sem responsável</span>') +
+      quemHTML(d) +
       (d.prazo ? '<span class="vd-prazo' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo)) + '</span>' : '') +
       '</div></div>';
   }
@@ -743,10 +771,10 @@ B7.Video = (function () {
       (ordenada.length ? ordenada.map(d =>
         '<tr data-demanda="' + d.id + '" tabindex="0">' +
           '<td class="vd-codigo">' + esc(d.codigo || '—') + '</td>' +
-          '<td>' + esc(d.cliente_nome || '—') + '</td>' +
+          '<td><div class="vd-tb-cliente">' + logoClienteHTML(d, 'sm') + '<span>' + esc(d.cliente_nome || '—') + '</span></div></td>' +
           '<td class="vd-tb-titulo">' + tituloComFallback(d) + '</td>' +
           '<td>' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</td>' +
-          '<td>' + (d.videomaker_nome ? esc(d.videomaker_nome) : '<i class="vd-sem">sem responsável</i>') + '</td>' +
+          '<td>' + quemHTML(d) + '</td>' +
           '<td>' + (d.updated_at ? esc(B7.UI.dataBR(d.updated_at.slice(0, 10))) : '—') + '</td>' +
         '</tr>').join('') : '<tr><td colspan="6"><i class="vd-sem">Nenhuma demanda descartada.</i></td></tr>') +
       '</tbody></table></div>' +
@@ -1163,8 +1191,8 @@ B7.Video = (function () {
     painel().innerHTML = '<div class="conteudo entra vd-tela vd-detalhe">' +
       '<div class="trilha"><a href="#/video">' + esc(souEquipe() ? 'Produção de Vídeo' : 'Central de Vídeo') + '</a><span>/</span><b>' + esc(d.titulo) + '</b></div>' +
       '<header class="vd-cab"><div><h1>' + tituloComFallback(d) + '</h1>' +
-      '<p>' + esc(d.cliente_nome || '') + (d.codigo ? ' · ' + esc(d.codigo) : '') +
-      (d.competencia_ano ? ' · ' + esc(competenciaRotulo(competenciaChave(d))) : '') + '</p></div>' +
+      '<p class="vd-dt-cliente">' + logoClienteHTML(d, 'md') + '<span>' + esc(d.cliente_nome || '') + (d.codigo ? ' · ' + esc(d.codigo) : '') +
+      (d.competencia_ano ? ' · ' + esc(competenciaRotulo(competenciaChave(d))) : '') + '</span></p></div>' +
       (podeEditar && d.editing_status !== 'descartado'
         ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar demanda</button>' : '') +
       (podeEditar ? '<button class="b fina contorno" id="vd-dt-excluir">Excluir</button>' : '') +
@@ -1223,7 +1251,7 @@ B7.Video = (function () {
             ? '<select class="campo" id="vd-dt-videomaker"><option value="">Sem atribuir</option>' +
               videomakers.map(v => '<option value="' + v.id + '"' + (v.id === d.videomaker_id ? ' selected' : '') + '>' + esc(v.nome) + '</option>').join('') +
               '</select>'
-            : '<div class="vd-so-leitura">' + esc(d.videomaker_nome || 'sem responsável') + '</div>') +
+            : '<div class="vd-so-leitura">' + quemHTML(d) + '</div>') +
           '</div>' +
           '<div class="vd-dt-campo"><label class="rot">Prazo</label>' +
           (podeEditar ? '<input class="campo" type="date" id="vd-dt-prazo" value="' + (d.prazo || '') + '">' :

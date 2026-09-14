@@ -5753,3 +5753,56 @@ Arquivos alterados: `js/video.js`, `js/database.js`, `js/auth.js`,
    dano — todo `create or replace`/`add column if not exists`).
 2. Suba os arquivos deste zip.
 3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-q`.
+
+# Rodada r (14/09/2026) — cor por responsável, logo do cliente, título mais destacado e nova paleta de situação
+
+Você pediu quatro ajustes visuais na tela de Vídeo. Antes de mexer,
+perguntei o que exatamente você queria em cada um (pra não adivinhar
+errado e refazer depois) — respostas: cor fixa por videomaker, logo do
+cliente na Lista + Quadro + detalhe, título só mais destacado (não mudar
+o texto), e trocar as cores da situação por outras (mantendo o esquema
+de badge colorido).
+
+## Implementado e testado
+
+- **Cor por responsável**: cada videomaker agora tem uma bolinha colorida
+  do lado do nome (na Lista, no Quadro e no detalhe da demanda). A cor é
+  **calculada a partir do id da pessoa** — sempre a mesma cor pra cada
+  videomaker, sem precisar cadastrar nada novo em lugar nenhum (não criei
+  campo de cor no perfil; se um dia vocês quiserem escolher a cor de cada
+  pessoa manualmente, é uma mudança pequena a mais). Testado por revisão
+  de código — é cálculo determinístico (mesmo id sempre gera a mesma cor),
+  não depende de nada externo pra falhar.
+- **Logo do cliente**: aparece na Lista (ao lado do nome, coluna
+  Cliente), no Quadro (topo de cada cartão) e no detalhe da demanda
+  (cabeçalho). Cliente sem logo cadastrada mostra a inicial do nome numa
+  bolinha em vez de ficar com um espaço em branco. **Precisou de uma
+  mudança pequena no banco**: a logo do cliente já existia (campo
+  `logo_url`, cadastrado em Clientes), mas a "view" de onde a tela de
+  Vídeo lê os dados (`demandas_edicao_resumo`) não expunha essa coluna
+  ainda — corrigido em `migration_video_visual.sql` (só adiciona a coluna
+  no fim da view, não muda nem remove nada que já existia). Testado no
+  banco local: cliente com logo cadastrada aparece com a URL certa,
+  cliente sem logo continua funcionando (vem vazio, a tela usa a
+  inicial).
+- **Título mais destacado**: no Quadro e na Lista, o título da demanda
+  ficou maior e em negrito (antes tinha o mesmo peso visual do resto do
+  texto). Não mudei o texto em si nem onde editar o título — isso já
+  existia (editar demanda).
+- **Nova paleta de cor da situação**: troquei as cores de "Em edição",
+  "Aguardando aprovação" e "Standby" entre si. Deixei **"Entregue"
+  (verde) e "Descartado" (vermelho) como estavam** de propósito — são os
+  dois status com significado universal de "bom"/"ruim", trocar essas
+  duas ia confundir mais do que ajudar. Se a combinação nova não agradar,
+  é fácil trocar de novo — me diga qual cor você quer em qual situação.
+
+Arquivos alterados: `js/video.js`, `js/auth.js`, `sw.js`,
+`styles/video.css`. Arquivo novo: `migration_video_visual.sql`.
+`VERSAO` → `2026-09-14-r`, cache → `roteiros-b7-v76`.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_video_visual.sql` (pode repetir sem
+   dano).
+2. Suba os arquivos deste zip.
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-r`.
