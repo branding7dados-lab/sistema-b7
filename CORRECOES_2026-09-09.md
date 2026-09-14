@@ -4841,3 +4841,107 @@ Arquivos alterados: `migration_video_responsavel.sql` (novo),
    fez (`supabase functions deploy b7-auth`) — esta rodada não mexeu
    nela.
 5. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-g`.
+
+# Correção de 14/09/2026 — rodada h (reimportação duplicou 367 demandas + trava contra isso)
+
+Build `2026-09-14-h`. Você reimportou a mesma planilha (provavelmente
+antes de aplicar a rodada `g`) e o sistema criou 367 demandas novas,
+duplicando as 367 que já existiam — e, por não ter a rodada `g`
+aplicada ainda naquele momento, também não reconheceu os responsáveis
+dessa vez. Duas coisas nesta rodada: limpar a duplicação que já
+aconteceu, e travar pra isso nunca mais acontecer sozinho.
+
+## O que aconteceu (confirmado pelas consultas que você rodou)
+
+Dois lotes, mesmo arquivo "PLANILHA DE GRAVAÇÕES (1).xlsx", cada um
+confirmou 367 demandas:
+- `11da4b03-341a-48db-b3fa-8ab191592633` (14/09 15:06 — o original,
+  já com a competência recuperada pela rodada `f`)
+- `ae5632b2-c809-49e9-9fb3-17e0f5bd2f8c` (14/09 17:15 — a
+  reimportação, que duplicou tudo)
+
+(Também apareceram 4 lotes com 0 demandas confirmadas — tentativas de
+importação que você não chegou a terminar de resolver/confirmar; não
+têm demanda nenhuma associada, então não precisam de limpeza, só
+ficam como registro histórico do lote.)
+
+## Limpeza (novo arquivo: `migration_video_limpeza_duplicatas_14set.sql`)
+
+Marca como excluídas (soft-delete — o sistema nunca apaga de verdade)
+só as 367 demandas do lote **mais novo** (`ae5632b2...`) que são
+duplicata exata de uma do lote original, casando pela **posição da
+linha no arquivo** (não por título/código — vários "Sem título
+(planilha)" colidem entre linhas diferentes e um casamento por texto
+marcaria coisas erradas). Testei local: criei 5 duplicatas sintéticas,
+rodei o mesmo script, as 5 novas sumiram e as 5 originais ficaram
+intactas. Depois de rodar, sobra 1 cópia de cada demanda — a que já
+tem a competência (e o responsável, se você já rodou a rodada `g`)
+recuperados.
+
+**Este script é específico pra essa reimportação de 14/09 — não é
+reaproveitável pra um problema parecido no futuro** (por isso o nome
+com a data).
+
+## Trava contra reimportação duplicada (novo arquivo: `migration_video_prevencao_duplicata.sql`)
+
+`video_import_criar_lote` agora sinaliza como **"possível
+duplicata"** qualquer linha cujo cliente + código + título já bate com
+uma demanda ativa existente vinda de importação — a linha fica
+pendente de revisão (mesmo mecanismo já usado hoje pra "cliente não
+encontrado"), em vez de virar uma demanda nova direto. Selecionar o
+cliente de novo na tela de importação (mesmo que seja o mesmo)
+confirma que é intencional e libera a linha pra confirmar. A tela de
+importação também passou a mostrar o problema em português ("Possível
+duplicata — já existe uma demanda igual...") em vez do código cru.
+
+### Implementado e testado
+
+- Simulei uma reimportação da mesma linha: a segunda vez veio marcada
+  "possível duplicata" e ficou bloqueada; uma linha genuinamente nova
+  (código/título diferentes) passou direto, sem ficar presa à toa.
+  Resolver a linha duplicada (escolhendo o cliente de novo) limpou o
+  aviso e liberou a confirmação.
+- Script de limpeza testado localmente com duplicatas sintéticas antes
+  de gerar a versão final com os IDs reais dos seus dois lotes.
+- `node --check` limpo em `js/video.js`.
+
+### Implementado, mas requer validação adicional
+
+- A detecção de duplicata usa cliente + código + título; se duas
+  linhas diferentes tiverem código E título vazios os dois, não tem
+  como distinguir — isso é raro (a maioria tem pelo menos código) mas
+  pode deixar passar algum caso.
+- Depois de rodar a limpeza, rode de novo (se ainda não rodou depois
+  da rodada `g`) `select * from video_backfill_responsavel();` —
+  as 367 demandas que sobraram são as do lote original, que talvez
+  ainda não tenham passado por esse backfill.
+
+### Preparado, mas ainda não aplicado
+
+- Nada além dos dois scripts desta rodada.
+
+### Não implementado por bloqueio ou por decisão consciente
+
+- Não apaguei nada de verdade — as 367 demandas duplicadas continuam
+  no banco, só saem de qualquer tela (deleted_at preenchido). Reversível
+  se eu tiver pegado algo errado, mas testei a lógica antes de gerar
+  o script.
+
+Arquivos alterados: `migration_video_limpeza_duplicatas_14set.sql`
+(novo), `migration_video_prevencao_duplicata.sql` (novo), `js/video.js`,
+`js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-14-h`, cache → `roteiros-b7-v66`.
+
+## Como aplicar (nesta ordem)
+
+1. Suba os arquivos deste zip.
+2. No SQL Editor, **nesta ordem exata**:
+   - `migration_video_prevencao_duplicata.sql` (trava primeiro, pra
+     não arriscar mais duplicação enquanto você ainda está limpando)
+   - `migration_video_limpeza_duplicatas_14set.sql` (limpa a
+     duplicação já feita — confira a lista que ele devolve: são as
+     367 demandas que sumiram das telas)
+   - Se ainda não rodou depois da rodada `g`:
+     `migration_video_responsavel.sql`, depois
+     `select * from video_backfill_responsavel();`
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-h`.

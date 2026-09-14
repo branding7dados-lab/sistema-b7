@@ -44,6 +44,13 @@ B7.Video = (function () {
   const rotuloSituacao = s => (SITUACOES.find(x => x[0] === s) || [, s])[1];
 
   const PRIORIDADES = [['normal', 'Normal'], ['alta', 'Alta'], ['urgente', 'Urgente']];
+
+  const ROTULO_PROBLEMA = {
+    sem_nome_de_cliente: 'Sem nome de cliente na planilha',
+    cliente_nao_encontrado: 'Cliente não encontrado — escolha na lista',
+    possivel_duplicata: 'Possível duplicata — já existe uma demanda igual. Escolha o cliente de novo pra confirmar mesmo assim.'
+  };
+  const rotuloProblema = p => ROTULO_PROBLEMA[p] || p;
   const rotuloPrioridade = p => (PRIORIDADES.find(x => x[0] === p) || [, 'Normal'])[1];
 
   const MESES_NOME = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -939,7 +946,7 @@ B7.Video = (function () {
           grupos.map(g => '<tr data-linha="' + g.linhas[0].id + '">' +
             '<td>' + g.linhas.length + '</td>' +
             '<td>' + esc(g.nome || '—') + '</td>' +
-            '<td>' + esc(Array.from(g.problemas).join(', ')) + '</td>' +
+            '<td>' + esc(Array.from(g.problemas).map(rotuloProblema).join(' · ')) + '</td>' +
             '<td><select class="campo fina" data-resolver="' + g.linhas[0].id + '"><option value="">resolver cliente…</option>' +
               clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') + '</select></td>' +
             '</tr>').join('') +
