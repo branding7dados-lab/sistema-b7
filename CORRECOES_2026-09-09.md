@@ -5081,3 +5081,59 @@ Arquivo novo: `migration_video_diagnostico_responsavel.sql`.
 4. Me avise o resultado do Passo 1 (e se aplicou o Passo 2) antes de
    decidirmos entre as opções (a)/(b) pra corrigir as 414 demandas
    desta importação.
+
+# Rodada j (14/09/2026) — esconder "Entregue" da Lista/Kanban, e confirmação de responsável ainda pendente
+
+Você confirmou que a data já saiu certa (rodada `i`). Ficaram dois
+pontos: esconder vídeos já entregues da Lista e do Kanban da Produção
+de Vídeo, e o responsável que continua sem aparecer.
+
+## Implementado e testado
+
+- **Lista e Kanban não mostram mais demandas "Entregue" por padrão.**
+  Antes, "Entregue" era só mais um status igual aos outros — agora ele
+  some da visão padrão nas duas telas (Produção de Vídeo). O card de
+  resumo "X entregues" continua existindo lá em cima: clicar nele (ou
+  escolher "Entregue" no filtro de Status) volta a mostrar só os
+  entregues, se você precisar consultar depois. Nada foi apagado nem
+  mudou de status — é só a visão padrão que ficou mais limpa.
+  De brinde, corrigi um detalhe que notei mexendo nesse código: o
+  botão "+N…" que aparece quando uma coluna do Kanban passa de 30
+  itens sempre dizia "+N entregues…", mesmo em colunas que não são
+  Entregue (ex.: "Pendente") — agora usa o nome certo da coluna.
+  Testei a lógica isolada (filtro escondendo/mostrando entregue
+  conforme o status escolhido, colunas do Kanban aparecendo/sumindo
+  do jeito esperado) e `node --check` no arquivo.
+
+## Implementado mas requer validação adicional
+
+- (mesmo item da rodada `i`, ainda em aberto) — a suspeita sobre
+  responsável não reconhecido continua sem confirmação: preciso do
+  resultado do **Passo 1** de `migration_video_diagnostico_responsavel.sql`
+  (a consulta só de leitura) pra saber se é isso mesmo ou se é outra
+  coisa.
+
+## Preparado mas ainda não aplicado
+
+- Nenhuma novidade além do que já estava preparado na rodada `i`
+  (backfill de competência/responsável nas 414 demandas, depois que o
+  responsável estiver resolvido).
+
+## Não implementado por bloqueio ou decisão consciente
+
+- Não toquei na Central de Vídeo (tela de quem é videomaker): ela já
+  separa "Entregues recentemente" numa seção própria, mostrando só as
+  6 mais recentes — achei que já resolve o mesmo problema lá, então
+  não mudei nada nessa tela. Me avise se quiser que eu tire essa
+  seção também.
+
+Arquivos alterados: `js/video.js`, `js/auth.js`, `sw.js`.
+`VERSAO` → `2026-09-14-j`, cache → `roteiros-b7-v68`.
+
+## Como aplicar
+
+1. Suba os arquivos deste zip.
+2. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-j`.
+3. Me manda o resultado do Passo 1 de
+   `migration_video_diagnostico_responsavel.sql` (já te mandei esse
+   arquivo antes) pra eu continuar o responsável.

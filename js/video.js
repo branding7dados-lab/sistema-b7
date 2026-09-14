@@ -135,7 +135,12 @@ B7.Video = (function () {
   }
   function filtrar(lista) {
     return lista.filter(d => {
-      if (F.status && d.editing_status !== F.status) return false;
+      /* Entregue some da Lista e do Kanban por padrão — só volta a
+         aparecer se a pessoa escolher "Entregue" no filtro de status
+         (ou clicar no chip "entregues" do resumo, que é o mesmo
+         filtro). Continua contando no resumo normalmente. */
+      if (F.status) { if (d.editing_status !== F.status) return false; }
+      else if (d.editing_status === 'entregue') return false;
       if (F.prazo === 'atrasadas' && !ehAtrasada(d)) return false;
       return true;
     });
@@ -336,7 +341,12 @@ B7.Video = (function () {
   const COLUNAS_KANBAN = SITUACOES;
   const LIMITE_COLUNA = 30;
   function quadroHTML(lista) {
-    const grupos = COLUNAS_KANBAN.map(([chave, nome]) => ({
+    /* mesma regra da Lista: coluna "Entregue" só aparece se alguém
+       filtrar explicitamente por ela — senão fica ocupando espaço
+       vazia pra sempre, já que "entregue" já sai de `lista` por causa
+       do filtrar() acima. */
+    const colunas = F.status === 'entregue' ? COLUNAS_KANBAN : COLUNAS_KANBAN.filter(([chave]) => chave !== 'entregue');
+    const grupos = colunas.map(([chave, nome]) => ({
       chave, nome, itens: lista.filter(d => d.editing_status === chave)
     }));
     return '<div class="vd-quadro">' + grupos.map(colunaHTML).join('') + '</div>';
@@ -348,7 +358,7 @@ B7.Video = (function () {
       '<div class="vd-coluna-cab"><span>' + esc(g.nome) + '</span><b>' + g.itens.length + '</b></div>' +
       '<div class="vd-coluna-corpo">' +
       (mostrar.length ? mostrar.map(cardHTML).join('') : '<div class="vd-vazia">—</div>') +
-      (resto > 0 ? '<button class="vd-ver-mais" data-coluna-ver-mais="' + g.chave + '">+' + resto + ' entregue' + (resto === 1 ? '' : 's') + '…</button>' : '') +
+      (resto > 0 ? '<button class="vd-ver-mais" data-coluna-ver-mais="' + g.chave + '">+' + resto + ' em ' + esc(g.nome.toLowerCase()) + '…</button>' : '') +
       '</div></div>';
   }
   function cardHTML(d) {
