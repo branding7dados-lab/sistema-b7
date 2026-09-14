@@ -798,7 +798,19 @@ B7.Video = (function () {
   const MESES_PT = { janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6,
     julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12 };
   function parseCompetencia(v) {
-    const m = normalizarCabecalho(v).match(/([a-z]+)\s*\/\s*(\d{4})/);
+    const s = normalizarCabecalho(v);
+    /* Célula de DATA de verdade no Excel (mesmo quando exibida como
+       "janeiro/2026" por formatação customizada): a leitura do XLSX
+       (cellDates + dateNF: 'yyyy-mm-dd', ver parseXLSX) devolve o valor
+       real da data, não o texto formatado — vem como "2026-01-15" ou
+       "2026-01" (ou, no CSV puro, às vezes "2026-01-01T00:00:00.000Z").
+       Descoberto testando contra a importação real: a coluna Mês é
+       gravada como data no arquivo original, não como texto. */
+    let m = s.match(/^(\d{4})-(\d{2})(?:-\d{2})?/);
+    if (m) return { ano: m[1], mes: String(Number(m[2])) };
+    /* Texto digitado direto ("janeiro/2026", "Janeiro /2026" etc.) —
+       continua funcionando pra planilhas onde a coluna é texto mesmo. */
+    m = s.match(/([a-z]+)\s*\/\s*(\d{4})/);
     const mes = m && MESES_PT[m[1]];
     return mes ? { ano: m[2], mes: String(mes) } : {};
   }

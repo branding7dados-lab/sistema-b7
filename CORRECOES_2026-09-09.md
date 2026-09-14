@@ -4945,3 +4945,139 @@ Arquivos alterados: `migration_video_limpeza_duplicatas_14set.sql`
      `migration_video_responsavel.sql`, depois
      `select * from video_backfill_responsavel();`
 3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-h`.
+
+# Limpeza de 14/09/2026 — zerar demandas importadas para reimportar do zero
+
+Sem número de rodada de build — este é só um script SQL operacional,
+não muda nenhum arquivo do app (por isso não bumpei `VERSAO`/cache).
+Por pedido seu: em vez de continuar corrigindo dado histórico
+retroativamente, decidimos zerar as demandas vindas de importação e
+reimportar a planilha do zero — agora com o pipeline já corrigido
+(competência, prioridade e responsável extraídos certos linha a
+linha desde o build `2026-09-14-h`).
+
+**Novo arquivo**: `migration_video_limpeza_geral_reimportacao.sql`.
+Marca como excluída (soft-delete — nunca apaga de verdade) **toda**
+demanda com `origem = 'importacao'`, de qualquer lote. Demandas
+criadas manualmente pela tela (`origem = 'manual'`) não são tocadas.
+Testei local: criei uma demanda manual de teste junto com as
+importadas, rodei o script, só as importadas sumiram — a manual
+continuou intacta.
+
+Reversível: nada é apagado de verdade, só marcado como excluído. Se
+precisar desfazer, é só pedir que eu preparo o UPDATE inverso.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_video_limpeza_geral_reimportacao.sql`
+   — ele devolve a lista de tudo que foi marcado como excluído, pra
+   você conferir.
+2. Confirme na tela "Produção de Vídeo" que a lista está vazia (fora
+   de qualquer demanda manual que já existisse).
+3. Reimporte a planilha normalmente pela tela — com o build `h` já
+   aplicado, a trava de duplicata não vai barrar nada (as demandas
+   antigas estão excluídas) e competência/prioridade/responsável já
+   devem sair certos linha a linha.
+4. Depois da reimportação, **não precisa mais rodar os backfills** de
+   competência/prioridade/responsável — eles existem só para corrigir
+   dado histórico que tinha sido importado antes das correções; numa
+   importação limpa com o build atual, o dado já nasce certo.
+
+# Rodada i (14/09/2026) — competência e responsável continuavam quebrados depois da reimportação
+
+Depois da limpeza geral e reimportação da planilha (que eu disse que já
+sairia certa com o build `h`), você reportou que voltou tudo: mês
+carregando como se fosse "todos" (na real, tudo caiu em setembro/2026)
+e nenhuma das 414 demandas confirmadas ficou com responsável. Eu estava
+errado ao dizer no build `h` que "numa importação limpa o dado já nasce
+certo" — não tinha testado esses dois pontos contra o arquivo real
+`.xlsx`, só contra uma exportação em CSV, e isso escondeu os dois bugs
+abaixo.
+
+## Implementado e testado
+
+- **Competência (mês/ano) não é mais lida errado quando a coluna "Mês"
+  é uma célula de DATA de verdade no Excel.** Causa raiz: a planilha
+  real (`.xlsx`) guarda a coluna "Mês" como uma data de verdade (só
+  formatada pra *aparecer* como "janeiro/2026"), não como texto. A
+  biblioteca que lê o arquivo (SheetJS) converte esse tipo de célula
+  pra um valor tipo `"2026-01-15"`, não pro texto exibido — e a função
+  que interpretava a competência só sabia reconhecer o texto
+  (`"janeiro/2026"`), então ficava com `ano`/`mes` vazios pra toda
+  linha. Com vazio, a função que grava a demanda no banco caía no
+  padrão dela, que é "usar o mês/ano de hoje" — por isso tudo foi
+  parar em setembro/2026, não por causa do filtro.
+  Corrigido em `js/video.js` (`parseCompetencia`): agora reconhece os
+  dois formatos — data de verdade (`"2026-01-15"`, `"2026-01"`) e
+  texto digitado (`"janeiro/2026"`). Testei as duas formas isoladas
+  (várias entradas, incluindo o formato exato que vem da planilha
+  real) e também testei o fluxo completo de gravação no banco local:
+  com `ano`/`mes` extraídos certos, a demanda é criada no mês certo.
+- Arquivo `migration_video_diagnostico_responsavel.sql` (script de
+  diagnóstico, ver abaixo) — testei a consulta e o bloco de correção
+  contra uma simulação local do seu cenário (perfil como admin, sem a
+  função extra de videomaker) e confirmei: antes da correção,
+  `video_achar_videomaker_por_responsavel` não achava ninguém; depois,
+  achava certo.
+
+## Implementado mas requer validação adicional
+
+- **Hipótese pro "responsável" não ser reconhecido em nenhuma das 414
+  demandas**: `dados_originais->>'responsavel'` está vindo certo
+  (confirmei no seu print, ex. `"LUIS"`), então o problema não é mais
+  de captura — é de **elegibilidade**. A função que casa o nome só
+  aceita um perfil que esteja "elegível como videomaker", e isso não é
+  só ter o cargo (`papel`) igual a `videomaker`: também vale quem
+  recebeu a função extra "videomaker" numa tabela separada
+  (`perfis_funcoes_extra`) — usada pra quando um admin/coordenador
+  também edita vídeo, como no seu caso (Kevin e Kaique). Minha
+  suspeita é que essa função extra nunca foi concedida pros perfis de
+  vocês dois, e por isso a busca não encontra ninguém elegível pra
+  nenhum nome — o que bate com o "0 de 414".
+  Não tenho como confirmar isso sem ver o estado real do banco, então
+  preparei `migration_video_diagnostico_responsavel.sql`: primeiro
+  roda uma consulta só de leitura mostrando o cargo e a elegibilidade
+  atual de Kevin e Kaique; se confirmar a suspeita, tem um bloco
+  (comentado, você descomenta pra aplicar) que concede a função extra
+  só pra quem ainda não tem, e depois reaplica o backfill de
+  responsável nas 414 demandas.
+
+## Preparado mas ainda não aplicado
+
+- Depois de aplicar a correção de competência (subir os arquivos) e
+  confirmar/corrigir a elegibilidade de responsável
+  (`migration_video_diagnostico_responsavel.sql`), as 414 demandas
+  desta última importação vão continuar com o dado errado que já
+  foi gravado (setembro/2026 pra todo mundo, sem responsável) — elas
+  não se corrigem sozinhas. Duas opções, me diga qual prefere:
+  (a) rodar `video_backfill_competencia()` e `video_backfill_responsavel()`
+  de novo, já que agora `dados_originais` tem o dado certo salvo (só
+  não foi interpretado direito na hora); ou (b) repetir a limpeza
+  geral (`migration_video_limpeza_geral_reimportacao.sql`) e
+  reimportar mais uma vez, já com tudo corrigido. Acho a opção (a)
+  mais simples — não precisa reimportar de novo — mas só confirmo
+  que funciona depois que você rodar e eu ver o resultado.
+
+## Não implementado por bloqueio ou decisão consciente
+
+- Não apliquei a concessão de função extra automaticamente: como
+  mexe em permissão de acesso (quem pode ser atribuído como
+  videomaker), preferi deixar você confirmar o diagnóstico primeiro
+  e decidir se quer aplicar.
+
+Arquivos alterados: `js/video.js`, `js/auth.js`, `sw.js`.
+Arquivo novo: `migration_video_diagnostico_responsavel.sql`.
+`VERSAO` → `2026-09-14-i`, cache → `roteiros-b7-v67`.
+
+## Como aplicar (nesta ordem)
+
+1. Suba os arquivos deste zip (corrige a extração de competência para
+   qualquer importação futura).
+2. No SQL Editor, rode `migration_video_diagnostico_responsavel.sql`
+   **um bloco de cada vez**, seguindo os comentários dentro do
+   arquivo: primeiro só a consulta (Passo 1), confira o resultado,
+   depois decida se aplica o Passo 2.
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-i`.
+4. Me avise o resultado do Passo 1 (e se aplicou o Passo 2) antes de
+   decidirmos entre as opções (a)/(b) pra corrigir as 414 demandas
+   desta importação.
