@@ -4038,3 +4038,146 @@ mesmo com a página já em Linhas editoriais.
 Arquivos alterados: `js/conteudo.js`, `js/linha.js`, `js/semana.js`,
 `js/auth.js`, `sw.js`. Nenhuma migration nova.
 `VERSAO` → `2026-09-14-a`, cache → `roteiros-b7-v59`.
+
+## Build 2026-09-14-b — B7 Vídeo / Videomaker — Parte 1: fundação operacional
+
+**Pedido:** especificação de 57 seções para o novo papel Videomaker
+(filma e edita), com Demanda de Edição, Central do Videomaker,
+entrega por link externo (Drive/WeTransfer…) e importação de
+planilha — explicitamente Parte 1 (sem revisão/versão do vídeo, sem
+upload/streaming, sem tocar em Branding7/Clientes/Gravações/Linha
+Editorial/Roteiros/Design/Kanban/notificações/aprovações já
+existentes).
+
+### Auditoria antes de codificar
+
+Não existia nenhum conceito de "pacote"/contrato para clientes
+(busca por "pacote"/"package" só achou dois nomes homônimos sem
+relação: `pacote` em `js/backup.js` é o pacote de backup, `pacoteLinha`
+em `js/design.js` é um agrupamento de cartões do carrossel) — decisão:
+campo de texto livre, não uma tabela nova. `clientes.servico`
+(ativo/pausado/cancelado, desde `migration_auth.sql`) já é o conceito
+de cliente ativo/inativo — reaproveitado, não duplicado. O padrão
+`eventos_dominio` + `notificacoes` + `<dominio>_processar_evento()`
+(chamado explicitamente, não por trigger) já usado por
+Aprovações/Design foi mirrado como `video_processar_evento()`. A
+Demanda de Edição ganhou situação e lista/quadro próprios, sem
+integrar com o `kanban_demandas` geral nesta Parte 1 (decisão
+consciente, ver abaixo).
+
+### Implementado e testado
+
+- **`migration_video.sql`** (nova): papel `videomaker`
+  (`perfis_papel_valido`), `sou_videomaker()`, `sou_equipe_interna()`
+  ampliada; tabelas `demandas_edicao`, `demandas_edicao_eventos`,
+  `demandas_edicao_import_lotes`, `demandas_edicao_import_linhas`,
+  `clientes_import_aliases`; view `demandas_edicao_resumo`; RLS
+  (leitura direta restrita a `sou_equipe()` ou ao próprio
+  `videomaker_id`, toda escrita via função — mesmo padrão do Design);
+  leitura adicional de `clientes`/`gravacoes` para o videomaker (mesmo
+  padrão da seção 19 de `migration_design.sql`); funções
+  `video_criar_demanda`, `video_atribuir`, `video_mudar_status`,
+  `video_definir_link`, `video_editar_demanda`,
+  `video_excluir_demanda`, `video_processar_evento`,
+  `video_import_criar_lote`, `video_import_resolver_linha`,
+  `video_import_confirmar_linha`, `video_import_confirmar_lote`.
+  **Testada de ponta a ponta contra um Postgres 16 real** (não apenas
+  lida): aplicada a migration inteira em cima da cadeia completa de
+  migrations existentes (com stubs mínimos para `auth.uid()` e
+  `storage.*`, que só existem de verdade no Supabase), reaplicada uma
+  segunda vez para confirmar idempotência (um bug de idempotência foi
+  encontrado e corrigido nesse processo — constraint sem `if not
+  exists`), e exercitada com dados reais: criação manual de demanda
+  com atribuição (gera notificação), mudança de situação até
+  "entregue" (gera notificação para a equipe), link de material,
+  importação de CSV com uma linha resolvida automaticamente e outra
+  com cliente não encontrado, resolução manual + aprendizado de
+  apelido, confirmação em lote. RLS testada sob o papel `authenticated`
+  (não como superusuário, que ignora RLS): um videomaker sem
+  atribuição enxerga 0 demandas, o videomaker atribuído enxerga só a
+  dele, o admin enxerga todas, e um `update` direto na tabela (fora
+  das funções) é recusado com "permission denied" — confirma que
+  nenhuma escrita passa por fora das funções auditadas. Um segundo bug
+  real foi encontrado e corrigido nesse processo: `nome` como variável
+  colidindo com a coluna `clientes.nome` na função de importação
+  (`column reference "nome" is ambiguous"`).
+- **Frontend**: novo módulo `js/video.js` (Central do Videomaker —
+  quadro por situação, ficha de uma demanda com mudança de situação,
+  atribuição, link do material e histórico, criação manual e
+  importação de CSV com resolução de cliente linha a linha) e
+  `styles/video.css`. `js/database.js` ganhou os wrappers
+  correspondentes (`minhasDemandasVideo`, `criarDemandaVideo`,
+  `atribuirVideo`, `mudarStatusVideo`, `definirLinkVideo`,
+  `editarDemandaVideo`, `excluirDemandaVideo`,
+  `importarPlanilhaVideo` e o resto do fluxo de importação).
+  `js/permissoes.js` ganhou o papel (rotas, navegação, seções de
+  configuração — mesmo padrão do Designer). `js/usuarios.js` ganhou
+  "Videomaker" no seletor de papel. `js/app.js` ganhou a rota `#/video`
+  e a home do videomaker (mesma lógica da home do Designer).
+  `index.html` ganhou o item "Edição de vídeo" na barra lateral e os
+  `<script>`/`<link>` do módulo novo. `sw.js` ganhou os dois arquivos
+  novos na casca offline. `node --check` limpo em todos os arquivos
+  `.js` alterados.
+- `supabase/functions/b7-auth/index.ts`: as duas listas de papéis
+  válidos (criação e edição de conta) ganharam `videomaker`.
+  **Requer um novo deploy da Edge Function** — não faz parte do zip da
+  SPA, é publicada separadamente (mesmo aviso que valeu para o
+  Designer em `2026-09-10-e`).
+
+### Implementado, mas requer validação adicional
+
+- O parser de CSV do navegador (`js/video.js`, `parseCSV`) foi escrito
+  e testado manualmente com exemplos pequenos digitados à mão (vírgula
+  e ponto-e-vírgula como separador, campos entre aspas) — **não foi
+  testado contra uma planilha real exportada de uma ferramenta como
+  Excel/Google Sheets**, porque nenhum arquivo real foi fornecido para
+  este build. Formatos de data, separador decimal ou codificação de
+  caracteres fora do comum podem exigir ajuste quando a primeira
+  planilha real for importada.
+- As notificações de `video_processar_evento` (atribuição, entrega,
+  correção) seguem exatamente o padrão de Design/Aprovações e foram
+  testadas no banco (a linha em `notificacoes` é criada corretamente),
+  mas o sino/push no navegador para esses tipos específicos de evento
+  não foi verificado na interface real (só a gravação no banco).
+
+### Preparado, mas ainda não aplicado
+
+- `supabase/functions/b7-auth/index.ts` foi editado neste build, mas
+  **o deploy da Edge Function não foi feito por aqui** — precisa ser
+  publicado manualmente (mesmo processo já usado para os papéis
+  anteriores).
+- `migration_video.sql` foi testada localmente, mas **ainda não foi
+  rodada no Supabase de produção** — como todo o histórico deste
+  projeto, quem aplica a migration no SQL Editor é o Yury.
+
+### Não implementado por bloqueio ou por decisão consciente
+
+- **Revisão/versão do vídeo editado dentro do sistema, upload de
+  arquivo de vídeo, streaming** — fora do escopo desta Parte 1 por
+  definição da própria especificação ("PARTE 1" explicitamente separa
+  isso para depois). O vídeo entra só como link externo.
+- **Importação de XLSX (Excel) nativo** — não foi vendorizada nenhuma
+  biblioteca de parsing de planilha binária (o projeto só tem
+  `html2canvas`/`jspdf` em `js/vendor/`). Só houve confirmação de que o
+  registro npm está acessível (`npm view xlsx` respondeu), não a
+  vendorização nem o teste de fato. Parte 1 aceita CSV (que Excel/
+  Sheets exportam nativamente); XLSX binário fica para uma próxima
+  etapa caso seja necessário.
+- **Integração da Demanda de Edição com o `kanban_demandas` geral**
+  (o "shadow card" que o Design cria) — decisão consciente de manter a
+  Demanda de Edição com situação e lista/quadro totalmente próprios
+  nesta Parte 1, para não arriscar o Kanban geral que já está em
+  produção. Pode ser adicionado depois como sincronização opcional,
+  do mesmo jeito que `design_deliverables.kanban_id` funciona hoje.
+- **Vínculo automático entre Demanda de Edição e uma Gravação**
+  (`gravacao_id`) — a coluna existe no banco e a função aceita o
+  parâmetro, mas a interface (`js/video.js`) não oferece essa
+  vinculação ainda: a demanda nasce solta ou pela planilha, sem
+  seletor de gravação na Central. Fica pronta no schema para quando
+  fizer sentido ligar a demanda de edição à gravação de origem.
+
+Arquivos alterados: `migration_video.sql` (novo), `js/video.js`
+(novo), `styles/video.css` (novo), `js/database.js`,
+`js/permissoes.js`, `js/usuarios.js`, `js/app.js`, `index.html`,
+`sw.js`, `js/auth.js`, `supabase/functions/b7-auth/index.ts`.
+`VERSAO` → `2026-09-14-b`, cache → `roteiros-b7-v60`.

@@ -133,6 +133,10 @@ B7.Rota = (function () {
       if (partes[1] === 'linha' && partes[2]) return B7.Design.abrirLinha(partes[2]);
       return partes[1] ? B7.Design.abrirDetalhe(partes[1]) : B7.Design.abrir(params.get('aba'));
     }
+    if (partes[0] === 'video' && B7.Video) {
+      mostrar('tela-dashboard');
+      return partes[1] ? B7.Video.abrirDetalhe(partes[1]) : B7.Video.abrir();
+    }
     if (partes[0] === 'aprovacoes' && B7.Aprovacoes) {
       mostrar('tela-dashboard');
       return partes[1] ? B7.Aprovacoes.abrirDetalhe(partes[1]) : B7.Aprovacoes.abrir();
@@ -154,6 +158,12 @@ B7.Rota = (function () {
        parei, minhas linhas), diferente da fila ampla em #/design. */
     if (!partes[0] && B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'designer' && B7.Design) {
       return B7.Design.abrirCentral();
+    }
+    /* Videomaker: mesma lógica — a home dele é a própria fila (Central
+       do Videomaker), não a Central de Produção genérica (que nem abre:
+       'gravacoes'/'roteiros' estão fora de ROTAS.videomaker). */
+    if (!partes[0] && B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'videomaker' && B7.Video) {
+      return B7.Video.abrir();
     }
     await B7.Central.abrir();
   }

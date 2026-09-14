@@ -1660,6 +1660,68 @@ B7.DB = (function () {
         .then(({ data, error }) => { if (error) throw error; return data.signedUrl; });
     },
 
+    /* =================================================================
+       B7 VÍDEO / VIDEOMAKER — Parte 1
+       Mesmo padrão do Design: leitura direta nas views/RLS, toda
+       escrita passa por função (migration_video.sql).
+       ================================================================= */
+    async listarVideomakers() {
+      return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')
+        .eq('papel', 'videomaker').eq('estado', 'ativa').order('nome'));
+    },
+    async minhasDemandasVideo() {
+      return ok(await sb().from('demandas_edicao_resumo').select('*')
+        .order('prazo', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }));
+    },
+    async demandaVideo(id) {
+      return ok(await sb().from('demandas_edicao_resumo').select('*').eq('id', id).single());
+    },
+    async historicoDemandaVideo(id) {
+      return ok(await sb().from('demandas_edicao_eventos').select('*').eq('demanda_id', id).order('created_at', { ascending: true }));
+    },
+    async criarDemandaVideo({ clienteId, titulo, codigo, competenciaAno, competenciaMes, gravacaoId, videomakerId, pacote, prazo, observacoes }) {
+      return this.rpc('video_criar_demanda', {
+        p_client_id: clienteId, p_titulo: titulo, p_codigo: codigo || '',
+        p_competencia_ano: competenciaAno || null, p_competencia_mes: competenciaMes || null,
+        p_gravacao_id: gravacaoId || null, p_videomaker_id: videomakerId || null,
+        p_pacote: pacote || '', p_prazo: prazo || null, p_observacoes: observacoes || ''
+      });
+    },
+    async atribuirVideo(demandaId, videomakerId) {
+      return this.rpc('video_atribuir', { p_demanda_id: demandaId, p_videomaker_id: videomakerId || null });
+    },
+    async mudarStatusVideo(demandaId, status, mensagem) {
+      return this.rpc('video_mudar_status', { p_demanda_id: demandaId, p_status: status, p_mensagem: mensagem || null });
+    },
+    async definirLinkVideo(demandaId, link) {
+      return this.rpc('video_definir_link', { p_demanda_id: demandaId, p_link: link || '' });
+    },
+    async editarDemandaVideo(demandaId, patch) {
+      return this.rpc('video_editar_demanda', {
+        p_demanda_id: demandaId,
+        p_titulo: patch.titulo ?? null, p_codigo: patch.codigo ?? null, p_pacote: patch.pacote ?? null,
+        p_prazo: patch.temPrazo ? (patch.prazo || null) : null, p_tem_prazo: !!patch.temPrazo,
+        p_observacoes: patch.observacoes ?? null
+      });
+    },
+    async excluirDemandaVideo(demandaId) { return this.rpc('video_excluir_demanda', { p_demanda_id: demandaId }); },
+
+    /* ---- importação de planilha (CSV) ---- */
+    async importarPlanilhaVideo(nomeArquivo, linhas) {
+      return this.rpc('video_import_criar_lote', { p_nome_arquivo: nomeArquivo || '', p_linhas: linhas || [] });
+    },
+    async loteImportacaoVideo(loteId) {
+      return ok(await sb().from('demandas_edicao_import_lotes').select('*').eq('id', loteId).single());
+    },
+    async linhasImportacaoVideo(loteId) {
+      return ok(await sb().from('demandas_edicao_import_linhas').select('*').eq('lote_id', loteId).order('linha_numero'));
+    },
+    async resolverLinhaImportacaoVideo(linhaId, clienteId, lembrarApelido) {
+      return this.rpc('video_import_resolver_linha', { p_linha_id: linhaId, p_cliente_id: clienteId, p_lembrar_apelido: lembrarApelido !== false });
+    },
+    async confirmarLinhaImportacaoVideo(linhaId) { return this.rpc('video_import_confirmar_linha', { p_linha_id: linhaId }); },
+    async confirmarLoteImportacaoVideo(loteId) { return this.rpc('video_import_confirmar_lote', { p_lote_id: loteId }); },
+
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {
       return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')

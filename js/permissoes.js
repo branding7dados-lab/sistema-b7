@@ -22,7 +22,7 @@ B7.Perm = (function () {
     admin: '*',
     coordenador: [
       '', 'clientes', 'cliente', 'gravacoes', 'gravacao', 'roteiros', 'linhas',
-      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes', 'design'
+      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes', 'design', 'video'
     ],   /* sem usuarios, importar, atalhos e lixeira */
     /* Designer é produção interna, não administração: só o que precisa
        para entender o briefing e entregar o trabalho. Sem usuários,
@@ -34,6 +34,10 @@ B7.Perm = (function () {
        souDesignerSomenteLeitura em js/conteudo.js) e o RLS do banco
        bloqueia a escrita de verdade mesmo se alguém pular a UI. */
     designer: ['', 'design', 'linhas', 'linha', 'gravacao', 'cliente', 'config'],
+    /* Videomaker filma e edita: só precisa da própria fila de demandas
+       de edição e do contexto mínimo do cliente/gravação por trás
+       delas — mesma lógica do Designer, sem administração nenhuma. */
+    videomaker: ['', 'video', 'gravacao', 'cliente', 'config'],
     cliente: [
       '', 'aprovacoes', 'revisar', 'minha-linha', 'minha-producao',
       'minhas-gravacoes', 'meus-status', 'historico', 'perfil'
@@ -59,6 +63,14 @@ B7.Perm = (function () {
                 '#/roteiros', '#/gravacoes'],
       grupos: { 'MAIS FERRAMENTAS': false }
     },
+    /* Videomaker vê a própria Central e o contexto que precisa; nada de
+       administração, quadro geral ou aprovações de cliente. */
+    videomaker: {
+      ocultar: ['#/usuarios', '#/importar', '#/atalhos', '#/lixeira', '#/clientes',
+                '#/kanban', '#/aprovacoes', '#/semanas', '#/arquivados',
+                '#/roteiros', '#/linhas', '#/design'],
+      grupos: { 'MAIS FERRAMENTAS': false }
+    },
     cliente: {
       ocultar: ['#/kanban', '#/aprovacoes', '#/usuarios', '#/clientes', '#/gravacoes', '#/roteiros', '#/linhas',
                 '#/semanas', '#/arquivados', '#/lixeira', '#/importar',
@@ -74,6 +86,7 @@ B7.Perm = (function () {
                   'banco', 'dados', 'conta'],
     coordenador: ['aparencia', 'interface', 'impressao', 'conta'],
     designer:    ['aparencia', 'conta'],
+    videomaker:  ['aparencia', 'conta'],
     cliente:     ['aparencia', 'conta']
   };
 
@@ -142,6 +155,10 @@ B7.Perm = (function () {
     if (papel() === 'designer') {
       const rotulo = document.querySelector('.nav [data-ir="#/"] span');
       if (rotulo) rotulo.textContent = 'Central de Design';
+    }
+    if (papel() === 'videomaker') {
+      const rotulo = document.querySelector('.nav [data-ir="#/"] span');
+      if (rotulo) rotulo.textContent = 'Central do Videomaker';
     }
   }
 
