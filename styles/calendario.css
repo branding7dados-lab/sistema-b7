@@ -126,9 +126,9 @@
 .cal-grade-cab > div:first-child,.cal-grade-cab > div:last-child{color:var(--ink-4);}
 .cal-grade-corpo{display:grid;grid-template-columns:repeat(7,1fr);}
 
-.cal-cel{position:relative;background:var(--card);min-height:128px;padding:9px 8px;
+.cal-cel{position:relative;background:var(--card);min-height:128px;min-width:0;padding:9px 8px;
   display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--borda);
-  border-bottom:1px solid var(--borda);transition:var(--t);}
+  border-bottom:1px solid var(--borda);transition:var(--t);overflow:hidden;}
 .cal-grade-corpo > .cal-cel:nth-child(7n){border-right:none;}
 .cal-grade-corpo > .cal-cel:nth-last-child(-n+7){border-bottom:none;}
 .cal-cel:nth-child(7n+1),.cal-cel:nth-child(7n){background:color-mix(in srgb, var(--suave) 45%, var(--card));}
