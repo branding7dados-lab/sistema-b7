@@ -2005,5 +2005,5 @@ B7.Video = (function () {
     };
   }
 
-  return { abrir, abrirDetalhe };
+  return { abrir, abrirDetalhe, modalGerarDemandas };
 })();

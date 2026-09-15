@@ -5992,3 +5992,156 @@ Arquivos alterados: `js/video.js`, `js/database.js`, `js/permissoes.js`,
 5. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-s`.
 6. Com um usuário admin, abra "Calendário de Gravações" e clique em
    "Conectar Google Calendar" pra testar a conexão real.
+
+# Rodada t (15/09/2026) — calendário em grade de mês, status Marcada/Remarcada/Concluída/Cancelada com histórico, e escrita de volta pro Google
+
+Depois de conectar o Google Calendar de verdade (Rodada s + a sessão de
+depuração até o espaço a mais no `GOOGLE_REDIRECT_URI`), você testou a
+tela e voltou com: "o ui/ux não está legal, tem que ter também o
+calendário mesmo, quando uma gravação for cancelada, ou remarcada, ...ou
+quando ela for concluída, tb quero que tenha uma aba onde eu possa marcar
+uma gravação, e sincronizar com o Google Agenda também." Te fiz três
+perguntas de recorte antes de construir (escrever no Google também?
+grade de mês? o que significa "marcar uma gravação?") e você me deu a
+especificação completa de status/cores/histórico, com exemplo
+(`15/09 REMARCADA` 🟡 / `18/09 MARCADA` 🔵). É isso que esta rodada
+constrói.
+
+## Implementado e testado
+
+- **Modelo de dados de ocorrência com histórico** (`migration_calendario_status.sql`,
+  tabela nova `gravacoes_ocorrencias`): cada gravação passa a ter uma ou
+  mais "ocorrências" no tempo, uma por data marcada. Remarcar **nunca
+  apaga nem esconde** a ocorrência antiga — ela fica congelada na data
+  original com status `remarcada` (amarelo), e uma ocorrência nova é
+  criada na nova data com status `marcada` (azul), vinculada à antiga por
+  `ocorrencia_anterior_id`. Um índice único parcial garante que só existe
+  uma ocorrência "atual" por gravação por vez (`where atual`), que é o
+  que impede duas correntes de remarcação vivas ao mesmo tempo pra uma
+  mesma gravação. Cancelar e concluir também nunca apagam — só mudam o
+  status da ocorrência atual (`cancelada` = vermelho, `concluida` =
+  verde), preservando a linha. Testei direto no Postgres (usuário
+  simulado como videomaker e como admin, dentro de transações com
+  `savepoint`/`rollback to savepoint`): idempotência da migration (rodei
+  duas vezes seguidas sem erro — corrigi um bug real nesse processo, veja
+  abaixo), bloqueio de quem não é admin/coordenador tentando remarcar,
+  encadeamento correto `ocorrencia_anterior_id` com os timestamps certos,
+  bloqueio de remarcar uma ocorrência que não é mais a atual, bloqueio de
+  cancelar uma ocorrência já concluída, e a semeadura automática da
+  ocorrência inicial (`marcada`) tanto pro backfill de vínculos antigos
+  quanto pras funções de vincular/criar gravação a partir de um evento.
+- **Bug real encontrado e corrigido nesta verificação**: a view
+  `calendario_ocorrencias_resumo` usava `create or replace view`, mas eu
+  tinha inserido a coluna `agenda_id` no meio da lista de colunas (não no
+  final) — o Postgres recusa `create or replace` quando a ordem das
+  colunas de uma view muda, então reaplicar a migration numa base onde
+  ela já tinha rodado quebrava com `cannot change name of view column`.
+  Troquei por `drop view if exists` + `create view`, e confirmei rodando
+  a migration duas vezes seguidas sem erro.
+- **Marcar uma gravação como concluída, remarcar ou cancelar** — três
+  funções novas (`calendario_ocorrencia_concluir`,
+  `calendario_ocorrencia_remarcar`, `calendario_ocorrencia_cancelar`),
+  todas restritas a admin/coordenador (mesma regra das outras ações de
+  gestão do calendário). Concluir uma ocorrência também atualiza
+  `gravacoes.status` pra `Gravado` (com `gravada_em`), que é o campo que
+  a tela de Vídeo já usa pra liberar "Gerar demandas de edição" — então
+  marcar como concluída no calendário libera automaticamente esse fluxo
+  existente, sem precisar duplicar nada. Testei essa ponte diretamente.
+- **Calendário em grade de mês** (`js/calendario.js`, reescrito): nova
+  visão "Mês" (virou a padrão ao abrir a tela), com legenda de cores dos
+  quatro status, células por dia mostrando até 3 chips coloridos e
+  "+N mais" quando tem mais, e clique num dia lotado abre um modal com a
+  lista completa daquele dia. As visões Semana e Agenda (lista) que já
+  existiam continuam disponíveis.
+- **Detalhe de uma ocorrência com as ações de status**: clicar num
+  evento/chip vinculado a uma gravação abre um modal com o status atual
+  (badge colorido), e — só pra admin/coordenador, e só na ocorrência
+  atual — os botões "Remarcar", "Cancelar gravação" e "Marcar como
+  Concluída" (mais "Remarcar (reativar)" quando já está cancelada).
+  Ocorrências históricas (uma "remarcada" antiga, por exemplo) abrem o
+  mesmo modal em modo leitura, com um aviso explicando que aquela é uma
+  ocorrência antiga mantida só pro histórico.
+- **`node --check` limpo** em todos os arquivos JS tocados
+  (`calendario.js`, `video.js`, `database.js`, `auth.js`, `app.js`,
+  `permissoes.js`, `sw.js`) e `deno check` limpo na Edge Function.
+
+## Implementado mas requer validação adicional
+
+- **Escrita de volta pro Google Calendar** (Edge Function
+  `google-agenda`, ações novas `atualizar_evento` e `cancelar_evento`):
+  ao remarcar, o B7 tenta mover o evento no Google (`events.patch` no
+  mesmo `external_event_id` — nunca cria um evento novo, exatamente pra
+  não duplicar); ao cancelar, tenta marcar o evento como `cancelled` no
+  Google (também via PATCH, não DELETE, pra manter o histórico lá
+  também). A mudança no B7 **sempre é salva primeiro e vale mesmo se o
+  Google falhar** — se a chamada ao Google der erro, isso fica registrado
+  na própria ocorrência (campo `erro_sincronizacao`, visível na tela como
+  aviso) em vez de desfazer o que você acabou de fazer no B7. Isso foi
+  verificado com `deno check` (tipos corretos) e por leitura de código,
+  mas **não foi exercitado contra a API real do Google nesta sessão** —
+  ou seja, o caminho "B7 salva certo, Google não recebe" foi
+  testado (é o comportamento padrão em qualquer falha), mas o caminho
+  "B7 salva certo, Google recebe e atualiza certo" ainda não foi visto
+  acontecer de verdade. Peço que teste remarcar e cancelar uma gravação
+  de teste e confira se o evento realmente se move/cancela no Google
+  Calendar antes de confiar nisso em produção.
+- **Escopo OAuth mudou de leitura para leitura+escrita**
+  (`calendar.readonly` → `calendar.readonly calendar.events`): o Google
+  não expande sozinho o escopo de um token já emitido, então **qualquer
+  admin que já tinha conectado o Google Calendar antes precisa
+  desconectar e reconectar** (na tela de Configurações do calendário)
+  depois de subir esta rodada — senão a escrita vai falhar com erro de
+  permissão insuficiente até reconectar.
+- **Grade de mês e os modais de Remarcar/Cancelar/Concluir**: implementei
+  e revisei o código com cuidado, mas não tive como abrir num navegador
+  de verdade nesta sessão — não vi a grade renderizada, não cliquei nos
+  botões. Peço atenção especial ao testar: layout da grade em celular,
+  o "+N mais" quando um dia tem muitas gravações, e se os três modais
+  (Remarcar, Cancelar, Concluir) realmente fecham e recarregam a tela
+  certo depois de salvar.
+
+## Não implementado por bloqueio ou decisão consciente
+
+- **Botão "Desvincular" (tirar o vínculo entre um evento do Google e uma
+  gravação do B7) ficou sem lugar na tela.** Na versão anterior, esse
+  botão vivia no modal de detalhe do evento; nesta reescrita, um evento
+  já vinculado abre o modal de ocorrência (com Remarcar/Cancelar/Concluir)
+  em vez do modal antigo, e não copiei o botão pra lá. Investiguei antes
+  de decidir: a função `calendario_desvincular` no banco só apaga a linha
+  de `calendario_vinculos` — mas a view nova (`calendario_ocorrencias_resumo`)
+  não lê mais essa tabela, ela lê `gravacoes_ocorrencias.evento_id`
+  diretamente. Ou seja, hoje, chamar `calendario_desvincular` **não
+  desfaria o vínculo que a tela de ocorrências mostra** — seria um botão
+  que parece funcionar mas não faz o que promete. Preferi deixar de fora
+  e te avisar, em vez de recolocar um botão que eu sei que está quebrado
+  nesse novo modelo. Se "desvincular um evento de uma gravação" ainda é
+  algo que você precisa, me diga o que deveria acontecer com as
+  ocorrências já criadas para aquela gravação (apagar a ocorrência
+  vinculada a esse evento? só tirar o `evento_id`, mantendo o histórico
+  de status?) que eu desenho e implemento certo, em vez de adivinhar.
+- **Visão de Mês forçada no celular / grade compacta dedicada pra tela
+  pequena**: fiz a grade de mês responsiva (célula menor, cabeçalho
+  menor em telas até 640px), mas não redesenhei um formato alternativo
+  específico pra celular — é a mesma grade, só com medidas menores.
+
+Arquivos alterados: `js/calendario.js` (reescrito), `js/database.js`,
+`js/video.js` (expôs `modalGerarDemandas`), `js/auth.js`, `sw.js`,
+`supabase/functions/google-agenda/index.ts`, `styles/calendario.css`.
+Arquivo novo: `migration_calendario_status.sql`.
+`VERSAO` → `2026-09-15-t`, cache → `roteiros-b7-v78`.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_calendario_status.sql` (pode repetir
+   sem dano — testei rodar duas vezes seguidas).
+2. Faça o deploy de novo da Edge Function `google-agenda`
+   (`supabase functions deploy google-agenda --no-verify-jwt`) — ela
+   mudou o escopo do OAuth e ganhou as ações de escrita.
+3. Suba os arquivos deste zip no repositório.
+4. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-t`.
+5. **Importante**: com cada usuário admin que já tinha conectado o
+   Google Calendar antes desta rodada, abra Configurações do calendário
+   e **desconecte e reconecte** — é o único jeito de o Google emitir um
+   token novo com permissão de escrita.
+6. Teste remarcar e cancelar uma gravação de verdade e confira no Google
+   Calendar se o evento realmente se moveu/foi marcado como cancelado.

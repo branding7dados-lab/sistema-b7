@@ -60,9 +60,83 @@
 .cal-gravacao-vinculada b{font-size:13.5px;}
 .cal-gravacao-vinculada span{font-size:12px;color:var(--ink-3);}
 
+/* =====================================================================
+   STATUS DE OCORRÊNCIA (Marcada/Remarcada/Concluída/Cancelada)
+   Marcada = azul (reaproveita --cal-grav, já usado pra "gravação" no
+   calendário editorial) · Remarcada = amarelo (--ambar) · Concluída =
+   verde (--ok) · Cancelada = vermelho (--erro) · sem vínculo = neutro.
+   ===================================================================== */
+.cal-st-marcada{--cal-st:var(--cal-grav);--cal-st-bg:var(--cal-grav-bg);--cal-st-border:var(--cal-grav-border);}
+.cal-st-remarcada{--cal-st:var(--ambar);--cal-st-bg:var(--ambar-bg);--cal-st-border:rgba(150,96,26,.35);}
+.cal-st-concluida{--cal-st:var(--ok);--cal-st-bg:var(--ok-bg);--cal-st-border:rgba(18,128,90,.35);}
+.cal-st-cancelada{--cal-st:var(--erro);--cal-st-bg:var(--erro-bg);--cal-st-border:rgba(194,24,91,.35);}
+.cal-st-semvinculo{--cal-st:var(--ink-4);--cal-st-bg:var(--suave);--cal-st-border:var(--borda-forte);}
+[data-theme="dark"] .cal-st-remarcada{--cal-st-border:rgba(232,180,92,.4);}
+[data-theme="dark"] .cal-st-concluida{--cal-st-border:rgba(79,214,159,.4);}
+[data-theme="dark"] .cal-st-cancelada{--cal-st-border:rgba(255,116,174,.4);}
+
+.cal-legenda{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 16px;padding:10px 14px;
+  background:var(--suave);border-radius:var(--r-sm);}
+.cal-legenda-item{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+  color:var(--ink-2);}
+.cal-dot{width:9px;height:9px;border-radius:50%;background:var(--cal-st);flex:0 0 auto;}
+
+.cal-badge-status{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;
+  font-weight:700;padding:3px 9px;border-radius:99px;background:var(--cal-st-bg);
+  color:var(--cal-st);white-space:nowrap;}
+.cal-badge-status:before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cal-st);}
+
+/* Ocorrência dentro da lista por dia — mesma estrutura do .cal-evento,
+   mas com a cor de status na borda esquerda. */
+.cal-oc{border-left:3px solid var(--cal-st-border);}
+.cal-oc.cal-st-marcada, .cal-oc.cal-st-remarcada,
+.cal-oc.cal-st-concluida, .cal-oc.cal-st-cancelada{border-left-color:var(--cal-st);}
+.cal-oc.cal-st-cancelada .cal-evento-titulo,
+.cal-oc.cal-st-remarcada .cal-evento-titulo{text-decoration:none;}
+.cal-oc-hist{font-size:10.5px;font-weight:700;color:var(--ink-4);margin-left:6px;}
+
+.cal-aviso-sync{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;
+  font-weight:600;color:var(--erro);}
+
+/* Ações do modal de ocorrência (remarcar/cancelar/concluir) */
+.cal-oc-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+.cal-oc-acoes .b{flex:1 1 auto;}
+
+/* =====================================================================
+   VISTA DE MÊS — grade
+   ===================================================================== */
+.cal-grade-mes{display:flex;flex-direction:column;gap:1px;background:var(--borda);
+  border:1px solid var(--borda);border-radius:var(--r-sm);overflow:hidden;}
+.cal-grade-cab{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--borda);}
+.cal-grade-cab > div{background:var(--suave);padding:8px 6px;text-align:center;
+  font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;
+  letter-spacing:.03em;}
+.cal-grade-corpo{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--borda);}
+
+.cal-cel{background:var(--card);min-height:104px;padding:6px;display:flex;
+  flex-direction:column;gap:4px;}
+.cal-cel.fora{background:var(--suave);opacity:.55;}
+.cal-cel.hoje{background:var(--acento-suave);}
+.cal-cel-num{font-size:12px;font-weight:700;color:var(--ink-3);}
+.cal-cel.hoje .cal-cel-num{color:var(--acento);}
+.cal-cel-itens{display:flex;flex-direction:column;gap:3px;min-height:0;}
+
+.cal-chip{display:flex;align-items:center;gap:5px;padding:2px 6px;border-radius:6px;
+  background:var(--cal-st-bg);color:var(--cal-st);font-size:10.5px;font-weight:600;
+  line-height:1.35;cursor:pointer;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;border-left:2px solid var(--cal-st);}
+.cal-chip:hover{filter:brightness(.97);}
+[data-theme="dark"] .cal-chip:hover{filter:brightness(1.12);}
+.cal-cel-mais{font-size:10.5px;font-weight:700;color:var(--ink-4);cursor:pointer;
+  padding:1px 6px;}
+.cal-cel-mais:hover{color:var(--acento);}
+
 @media (max-width: 640px){
   .cal-barra{flex-direction:column;align-items:stretch;}
   .cal-vista{align-self:flex-start;}
   .cal-evento{flex-wrap:wrap;}
   .cal-evento-hora{min-width:0;}
+  .cal-grade-cab > div{font-size:9.5px;padding:6px 2px;}
+  .cal-cel{min-height:64px;padding:4px;}
+  .cal-legenda{gap:10px;}
 }

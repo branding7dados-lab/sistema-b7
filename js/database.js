@@ -1892,6 +1892,33 @@ B7.DB = (function () {
       });
     },
 
+    /* ---- Ocorrências (status Marcada/Remarcada/Concluída/Cancelada) ---- */
+    async ocorrenciasCalendario(inicioISO, fimISO) {
+      return ok(await sb().from('calendario_ocorrencias_resumo').select('*')
+        .lt('inicio', fimISO).or('fim.gte.' + inicioISO + ',fim.is.null')
+        .order('inicio'));
+    },
+    async ocorrenciaConcluir(ocorrenciaId) {
+      return this.rpc('calendario_ocorrencia_concluir', { p_ocorrencia_id: ocorrenciaId });
+    },
+    async ocorrenciaRemarcar(ocorrenciaId, novoInicioISO, novoFimISO) {
+      return this.rpc('calendario_ocorrencia_remarcar', {
+        p_ocorrencia_id: ocorrenciaId, p_novo_inicio: novoInicioISO, p_novo_fim: novoFimISO || null
+      });
+    },
+    async ocorrenciaCancelar(ocorrenciaId, motivo) {
+      return this.rpc('calendario_ocorrencia_cancelar', { p_ocorrencia_id: ocorrenciaId, p_motivo: motivo || null });
+    },
+    /* Chamadas de escrita no Google — best-effort: se falharem, a mudança
+       já salva no B7 (via ocorrenciaRemarcar/ocorrenciaCancelar acima)
+       continua valendo; quem chamou só avisa o usuário do desalinho. */
+    async atualizarEventoGoogle(eventoId, inicioISO, fimISO, ocorrenciaId) {
+      return this.chamarCalendarioGoogle({ acao: 'atualizar_evento', evento_id: eventoId, inicio: inicioISO, fim: fimISO || inicioISO, ocorrencia_id: ocorrenciaId || null });
+    },
+    async cancelarEventoGoogle(eventoId, ocorrenciaId) {
+      return this.chamarCalendarioGoogle({ acao: 'cancelar_evento', evento_id: eventoId, ocorrencia_id: ocorrenciaId || null });
+    },
+
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {
       return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')

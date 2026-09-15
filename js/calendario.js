@@ -10,16 +10,25 @@
 
    Arquitetura: o navegador NUNCA fala direto com a API do Google. Tudo
    que precisa do token de acesso (listar agendas, sincronizar eventos,
-   conectar/desconectar) passa pela Edge Function "google-agenda"
-   (js/database.js → chamarCalendarioGoogle). O que só precisa do banco
-   (status da conexão, escolher agendas ativas, ler eventos já
-   sincronizados, vincular/desvincular/criar gravação a partir de um
-   evento) é RPC direto — mesmo padrão do resto do B7.
+   conectar/desconectar, mover/cancelar um evento) passa pela Edge
+   Function "google-agenda" (js/database.js → chamarCalendarioGoogle). O
+   que só precisa do banco é RPC direto — mesmo padrão do resto do B7.
 
    Sem job agendado neste projeto (mesma limitação já registrada em
    migration_video_gestao.sql): a sincronização acontece quando alguém
-   da equipe abre esta tela, pedindo os eventos da janela visível — não
-   um relógio rodando sozinho no servidor.
+   da equipe abre esta tela, não um relógio rodando sozinho no servidor.
+
+   STATUS DE OCORRÊNCIA (migration_calendario_status.sql) — o coração
+   desta rodada: cada gravação vinculada a um evento vira uma ou mais
+   "ocorrências" ao longo do tempo (public.gravacoes_ocorrencias). Remarcar
+   NUNCA apaga a ocorrência antiga: ela fica congelada na data original,
+   com status "remarcada" (amarelo), e uma ocorrência nova aparece na
+   data nova, "marcada" (azul) — as duas ligadas à mesma gravação, pro
+   histórico do calendário nunca sumir. Cancelar mantém a linha no lugar,
+   só muda a cor pra vermelho. Concluída fica verde. A tela combina esse
+   histórico de ocorrências com os eventos do Google que AINDA não foram
+   vinculados a nenhuma gravação (esses continuam aparecendo do jeito que
+   já apareciam, com o badge "Sem vínculo").
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -33,25 +42,43 @@ B7.Calendario = (function () {
 
   const DIA_MS = 86400000;
   const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  const DIAS_SEMANA_ABREV = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const MESES_LONGOS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
-  let conexao = null, agendas = [], eventos = [], clientesCache = null;
+  const STATUS_ROTULO = { marcada: 'Marcada', remarcada: 'Remarcada', concluida: 'Concluída', cancelada: 'Cancelada' };
+  const STATUS_CLASSE = { marcada: 'cal-st-marcada', remarcada: 'cal-st-remarcada', concluida: 'cal-st-concluida', cancelada: 'cal-st-cancelada' };
+
+  let conexao = null, agendas = [], eventos = [], ocorrencias = [], clientesCache = null;
   let carregando = true, erroCarga = null;
   let janelaRef = new Date();   // data de referência pra calcular a janela visível
 
-  const F_PADRAO = { vista: 'agenda', cliente: '', agenda: '', status: '', busca: '' };
+  const F_PADRAO = { vista: 'mes', cliente: '', agenda: '', status: '', busca: '' };
   let F = Object.assign({}, F_PADRAO);
   try { Object.assign(F, JSON.parse(sessionStorage.getItem('b7.calendario.filtros') || '{}')); } catch (e) {}
+  if (!['mes', 'semana', 'agenda'].includes(F.vista)) F.vista = 'mes';
   function guardarFiltros() { try { sessionStorage.setItem('b7.calendario.filtros', JSON.stringify(F)); } catch (e) {} }
 
   function inicioDoDia(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
   function inicioDaSemana(d) { const x = inicioDoDia(d); x.setDate(x.getDate() - x.getDay()); return x; }
-  function isoData(d) { return d.toISOString().slice(0, 10); }
+  function isoData(d) { return d.toISOString ? d.toISOString().slice(0, 10) : String(d).slice(0, 10); }
+  function chaveDia(d) {
+    const x = new Date(d);
+    return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  }
 
   function calcularJanela() {
     if (F.vista === 'semana') {
       const inicio = inicioDaSemana(janelaRef);
       const fim = new Date(inicio.getTime() + 7 * DIA_MS);
+      return { inicio, fim };
+    }
+    if (F.vista === 'mes') {
+      const primeiroDoMes = new Date(janelaRef.getFullYear(), janelaRef.getMonth(), 1);
+      const inicio = inicioDaSemana(primeiroDoMes);
+      const ultimoDoMes = new Date(janelaRef.getFullYear(), janelaRef.getMonth() + 1, 0);
+      const fimSemana = inicioDaSemana(ultimoDoMes);
+      const fim = new Date(fimSemana.getTime() + 7 * DIA_MS);
       return { inicio, fim };
     }
     // "agenda": janela rolante de 21 dias a partir da referência
@@ -67,7 +94,6 @@ B7.Calendario = (function () {
     B7.Dashboard.marcarNav('#/calendario');
     B7.Rota.titulo(['Calendário de Gravações']);
     janelaRef = new Date();
-    F.vista = F.vista === 'semana' ? 'semana' : 'agenda';
 
     /* retorno do popup de conexão do Google (ver paginaRetorno na Edge
        Function) — se abriu direto sem popup, o parâmetro chega na URL. */
@@ -100,18 +126,35 @@ B7.Calendario = (function () {
            tela) e depois lê do banco, que é a fonte que a tela usa. */
         try { await B7.DB.sincronizarCalendario(inicio.toISOString(), fim.toISOString()); }
         catch (eSync) { conexao.avisoSync = eSync.message; }
-        const [ags, evs] = await Promise.all([
+        const [ags, evs, ocs] = await Promise.all([
           B7.DB.listarCalendariosGoogle().then(r => r.agendas || []).catch(() => agendas),
-          B7.DB.eventosCalendario(inicio.toISOString(), fim.toISOString()).catch(() => [])
+          B7.DB.eventosCalendario(inicio.toISOString(), fim.toISOString()).catch(() => []),
+          B7.DB.ocorrenciasCalendario(inicio.toISOString(), fim.toISOString()).catch(() => [])
         ]);
-        agendas = ags; eventos = evs;
+        agendas = ags; eventos = evs; ocorrencias = ocs;
       } else {
-        agendas = []; eventos = [];
+        agendas = []; eventos = []; ocorrencias = [];
       }
     } catch (e) {
       erroCarga = e.message || 'Não foi possível carregar o calendário.';
     }
     carregando = false;
+    desenhar();
+  }
+
+  /* Recarrega só o que já está sincronizado (sem chamar a API do Google
+     de novo) — usada depois de uma ação nossa (vincular, remarcar,
+     cancelar, concluir…) pra atualizar a tela rápido sem gastar mais uma
+     chamada de sincronização. */
+  async function recarregarLocal() {
+    const { inicio, fim } = calcularJanela();
+    try {
+      const [evs, ocs] = await Promise.all([
+        B7.DB.eventosCalendario(inicio.toISOString(), fim.toISOString()),
+        B7.DB.ocorrenciasCalendario(inicio.toISOString(), fim.toISOString())
+      ]);
+      eventos = evs; ocorrencias = ocs;
+    } catch (e) { /* mantém o que já tinha — nunca esvazia a tela por causa de uma falha de rede */ }
     desenhar();
   }
 
@@ -121,32 +164,62 @@ B7.Calendario = (function () {
     try {
       await B7.DB.sincronizarCalendario(inicio.toISOString(), fim.toISOString());
     } catch (e) { conexao.avisoSync = e.message; }
-    try { eventos = await B7.DB.eventosCalendario(inicio.toISOString(), fim.toISOString()); }
-    catch (e) { /* mantém o que já tinha — nunca esvazia a tela por causa de uma falha de rede */ }
+    try {
+      const [evs, ocs] = await Promise.all([
+        B7.DB.eventosCalendario(inicio.toISOString(), fim.toISOString()),
+        B7.DB.ocorrenciasCalendario(inicio.toISOString(), fim.toISOString())
+      ]);
+      eventos = evs; ocorrencias = ocs;
+    } catch (e) { /* mantém o que já tinha */ }
     desenhar();
+  }
+
+  /* =================================================================
+     ITENS COMBINADOS — ocorrências (gravações com histórico de status) +
+     eventos do Google ainda sem nenhuma gravação vinculada.
+     ================================================================= */
+  function itensCombinados() {
+    const semVinculo = eventos.filter(ev => !ev.gravacao_id).map(ev => ({
+      tipo: 'evento', id: ev.id, inicio: ev.inicio, fim: ev.fim, dia_inteiro: ev.dia_inteiro,
+      titulo: ev.titulo, local: ev.local, agenda_id: ev.agenda_id, agenda_nome: ev.agenda_nome, agenda_cor: ev.agenda_cor,
+      status_provider: ev.status_provider
+    }));
+    const daOcorrencia = ocorrencias.map(o => ({
+      tipo: 'ocorrencia', id: o.id, evento_id: o.evento_id, gravacao_id: o.gravacao_id,
+      inicio: o.inicio, fim: o.fim, status: o.status, atual: o.atual,
+      ocorrencia_anterior_id: o.ocorrencia_anterior_id,
+      motivo_cancelamento: o.motivo_cancelamento, erro_sincronizacao: o.erro_sincronizacao,
+      titulo: o.gravacao_nome, cliente_id: o.gravacao_client_id, cliente_nome: o.gravacao_cliente_nome,
+      cliente_logo_url: o.gravacao_cliente_logo_url, local: o.gravacao_local,
+      agenda_id: o.agenda_id, agenda_nome: o.agenda_nome, agenda_cor: o.agenda_cor
+    }));
+    return semVinculo.concat(daOcorrencia).sort((a, b) => a.inicio < b.inicio ? -1 : a.inicio > b.inicio ? 1 : 0);
   }
 
   /* =================================================================
      FILTROS
      ================================================================= */
-  function eventosFiltrados() {
+  function itensFiltrados() {
     const t = F.busca.trim().toLowerCase();
-    return eventos.filter(ev => {
-      if (F.agenda && ev.agenda_id !== F.agenda) return false;
-      if (F.cliente === '__sem__' && ev.gravacao_client_id) return false;
-      if (F.cliente && F.cliente !== '__sem__' && ev.gravacao_client_id !== F.cliente) return false;
-      if (F.status === 'vinculado' && !ev.gravacao_id) return false;
-      if (F.status === 'nao_vinculado' && ev.gravacao_id) return false;
-      if (F.status === 'cancelado' && ev.status_provider !== 'cancelled') return false;
-      if (t && !((ev.titulo || '').toLowerCase().includes(t) || (ev.local || '').toLowerCase().includes(t) ||
-                 (ev.gravacao_cliente_nome || '').toLowerCase().includes(t))) return false;
+    return itensCombinados().filter(it => {
+      if (F.agenda && it.agenda_id !== F.agenda) return false;
+      if (F.cliente === '__sem__' && it.tipo !== 'evento') return false;
+      if (F.cliente && F.cliente !== '__sem__' && it.cliente_id !== F.cliente) return false;
+      if (F.status === 'nao_vinculado' && it.tipo !== 'evento') return false;
+      if (['marcada', 'remarcada', 'concluida', 'cancelada'].includes(F.status)) {
+        if (it.tipo !== 'ocorrencia' || it.status !== F.status) return false;
+      }
+      if (t) {
+        const alvo = ((it.titulo || '') + ' ' + (it.local || '') + ' ' + (it.cliente_nome || '')).toLowerCase();
+        if (!alvo.includes(t)) return false;
+      }
       return true;
-    }).sort((a, b) => a.inicio < b.inicio ? -1 : a.inicio > b.inicio ? 1 : 0);
+    });
   }
 
   function clientesPresentes() {
     const mapa = new Map();
-    eventos.forEach(ev => { if (ev.gravacao_client_id) mapa.set(ev.gravacao_client_id, ev.gravacao_cliente_nome); });
+    ocorrencias.forEach(o => { if (o.gravacao_client_id) mapa.set(o.gravacao_client_id, o.gravacao_cliente_nome); });
     return [...mapa.entries()].sort((a, b) => (a[1] || '').localeCompare(b[1] || '', 'pt-BR'));
   }
 
@@ -158,6 +231,9 @@ B7.Calendario = (function () {
     if (F.vista === 'semana') {
       const ultimo = new Date(fim.getTime() - DIA_MS);
       return inicio.getDate() + ' ' + MESES[inicio.getMonth()] + ' – ' + ultimo.getDate() + ' ' + MESES[ultimo.getMonth()];
+    }
+    if (F.vista === 'mes') {
+      return MESES_LONGOS[janelaRef.getMonth()].replace(/^./, c => c.toUpperCase()) + ' de ' + janelaRef.getFullYear();
     }
     return 'Próximos 21 dias, a partir de ' + inicio.getDate() + ' ' + MESES[inicio.getMonth()];
   }
@@ -180,8 +256,7 @@ B7.Calendario = (function () {
       return;
     }
 
-    const visiveis = eventosFiltrados();
-    const porDia = agruparPorDia(visiveis);
+    const visiveis = itensFiltrados();
 
     painel().innerHTML = '<div class="conteudo entra cal-tela">' +
       '<div class="cab-conteudo"><div><h1>Calendário de Gravações</h1>' +
@@ -204,33 +279,39 @@ B7.Calendario = (function () {
           '<span class="cal-rotulo-janela">' + esc(rotuloJanela()) + '</span>' +
         '</div>' +
         '<div class="cal-vista">' +
+          '<button class="b fina' + (F.vista === 'mes' ? ' pri' : ' contorno') + '" data-vista="mes">Mês</button>' +
           '<button class="b fina' + (F.vista === 'semana' ? ' pri' : ' contorno') + '" data-vista="semana">Semana</button>' +
           '<button class="b fina' + (F.vista === 'agenda' ? ' pri' : ' contorno') + '" data-vista="agenda">Agenda</button>' +
         '</div>' +
       '</div>' +
+      '<div class="cal-legenda">' +
+        '<span class="cal-legenda-item"><i class="cal-dot cal-st-marcada"></i>Marcada</span>' +
+        '<span class="cal-legenda-item"><i class="cal-dot cal-st-remarcada"></i>Remarcada</span>' +
+        '<span class="cal-legenda-item"><i class="cal-dot cal-st-concluida"></i>Concluída</span>' +
+        '<span class="cal-legenda-item"><i class="cal-dot cal-st-cancelada"></i>Cancelada</span>' +
+      '</div>' +
       '<div class="cal-filtros">' +
-        '<select class="campo" id="cal-f-cliente"><option value="">Todos os clientes</option><option value="__sem__">Sem cliente vinculado</option>' +
+        '<select class="campo" id="cal-f-cliente"><option value="">Todos os clientes</option>' +
           clientesPresentes().map(([id, nome]) => '<option value="' + id + '"' + (F.cliente === id ? ' selected' : '') + '>' + esc(nome) + '</option>').join('') +
         '</select>' +
         '<select class="campo" id="cal-f-agenda"><option value="">Todas as agendas</option>' +
           agendas.filter(a => a.ativo).map(a => '<option value="' + a.id + '"' + (F.agenda === a.id ? ' selected' : '') + '>' + esc(a.nome) + '</option>').join('') +
         '</select>' +
-        '<select class="campo" id="cal-f-status"><option value="">Todos</option>' +
-          '<option value="vinculado"' + (F.status === 'vinculado' ? ' selected' : '') + '>Vinculados a uma gravação</option>' +
-          '<option value="nao_vinculado"' + (F.status === 'nao_vinculado' ? ' selected' : '') + '>Não vinculados</option>' +
-          '<option value="cancelado"' + (F.status === 'cancelado' ? ' selected' : '') + '>Cancelados</option>' +
+        '<select class="campo" id="cal-f-status"><option value="">Todos os status</option>' +
+          '<option value="marcada"' + (F.status === 'marcada' ? ' selected' : '') + '>Marcada</option>' +
+          '<option value="remarcada"' + (F.status === 'remarcada' ? ' selected' : '') + '>Remarcada</option>' +
+          '<option value="concluida"' + (F.status === 'concluida' ? ' selected' : '') + '>Concluída</option>' +
+          '<option value="cancelada"' + (F.status === 'cancelada' ? ' selected' : '') + '>Cancelada</option>' +
+          '<option value="nao_vinculado"' + (F.status === 'nao_vinculado' ? ' selected' : '') + '>Sem vínculo (evento cru do Google)</option>' +
         '</select>' +
         '<input class="campo" id="cal-f-busca" placeholder="Buscar título, local, cliente…" value="' + esc(F.busca) + '">' +
       '</div>' : '') +
 
-      '<div id="cal-corpo">' + (conexao.conectado ? corpoHTML(porDia, visiveis.length) : '') + '</div>' +
+      '<div id="cal-corpo">' + (conexao.conectado ? (F.vista === 'mes' ? gradeMesHTML(visiveis) : corpoListaHTML(visiveis)) : '') + '</div>' +
     '</div>';
 
     ligar();
-    if (F.cliente || F.agenda || F.status || F.busca) atualizarSelectsAposDesenho();
   }
-
-  function atualizarSelectsAposDesenho() { /* valores já vêm marcados via selected= acima */ }
 
   function avisoDesconectadoHTML() {
     return '<div class="estado-b7 cal-desconectado"><b>O calendário de gravações ainda não está conectado ao Google.</b>' +
@@ -243,43 +324,109 @@ B7.Calendario = (function () {
 
   function agruparPorDia(lista) {
     const mapa = new Map();
-    lista.forEach(ev => {
-      const chave = (ev.inicio || '').slice(0, 10);
+    lista.forEach(it => {
+      const chave = (it.inicio || '').slice(0, 10);
       if (!mapa.has(chave)) mapa.set(chave, []);
-      mapa.get(chave).push(ev);
+      mapa.get(chave).push(it);
     });
     return [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }
 
-  function corpoHTML(porDia, total) {
-    if (!total) {
-      return '<div class="estado-b7"><b>Nenhum evento nesta janela.</b><p>Ajuste os filtros ou navegue para outra semana.</p></div>';
+  /* ---------------------------------------------------------------
+     VISTA LISTA (Semana / Agenda) — mesma casca de antes
+     --------------------------------------------------------------- */
+  function corpoListaHTML(lista) {
+    if (!lista.length) {
+      return '<div class="estado-b7"><b>Nenhum item nesta janela.</b><p>Ajuste os filtros ou navegue para outro período.</p></div>';
     }
     const hojeStr = B7.UI.hojeISO();
-    return '<div class="cal-dias">' + porDia.map(([diaISO, evs]) => {
+    const porDia = agruparPorDia(lista);
+    return '<div class="cal-dias">' + porDia.map(([diaISO, itens]) => {
       const d = new Date(diaISO + 'T00:00:00');
       const ehHoje = diaISO === hojeStr;
       return '<div class="cal-dia' + (ehHoje ? ' hoje' : '') + '">' +
         '<div class="cal-dia-cab"><b>' + DIAS_SEMANA[d.getDay()] + '</b><span>' + d.getDate() + ' de ' + MESES[d.getMonth()] + '</span>' + (ehHoje ? '<em>hoje</em>' : '') + '</div>' +
-        '<div class="cal-dia-corpo">' + evs.map(eventoCardHTML).join('') + '</div>' +
+        '<div class="cal-dia-corpo">' + itens.map(itemCardHTML).join('') + '</div>' +
       '</div>';
     }).join('') + '</div>';
   }
 
-  function eventoCardHTML(ev) {
-    const cancelado = ev.status_provider === 'cancelled';
-    const hora = ev.dia_inteiro ? 'Dia inteiro' : horaBR(ev.inicio) + (ev.fim ? '–' + horaBR(ev.fim) : '');
-    return '<div class="cal-evento' + (cancelado ? ' cancelado' : '') + '" data-evento="' + ev.id + '" tabindex="0">' +
+  /* ---------------------------------------------------------------
+     VISTA GRADE DE MÊS
+     --------------------------------------------------------------- */
+  function gradeMesHTML(lista) {
+    const { inicio } = calcularJanela();
+    const porDia = new Map();
+    lista.forEach(it => {
+      const chave = chaveDia(new Date(it.inicio));
+      if (!porDia.has(chave)) porDia.set(chave, []);
+      porDia.get(chave).push(it);
+    });
+    const hojeStr = chaveDia(new Date());
+    const mesAtual = janelaRef.getMonth();
+    const totalDias = Math.round((calcularJanela().fim - inicio) / DIA_MS);
+
+    let html = '<div class="cal-grade-mes">' +
+      '<div class="cal-grade-cab">' + DIAS_SEMANA_ABREV.map(d => '<div>' + d + '</div>').join('') + '</div>' +
+      '<div class="cal-grade-corpo">';
+
+    for (let i = 0; i < totalDias; i++) {
+      const d = new Date(inicio.getTime() + i * DIA_MS);
+      const chave = chaveDia(d);
+      const itens = (porDia.get(chave) || []).sort((a, b) => a.inicio < b.inicio ? -1 : 1);
+      const foraDoMes = d.getMonth() !== mesAtual;
+      const ehHoje = chave === hojeStr;
+      const MOSTRAR = 3;
+      html += '<div class="cal-cel' + (foraDoMes ? ' fora' : '') + (ehHoje ? ' hoje' : '') + '" data-dia="' + chave + '">' +
+        '<div class="cal-cel-num">' + d.getDate() + (ehHoje ? '<em>hoje</em>' : '') + '</div>' +
+        '<div class="cal-cel-itens">' +
+          itens.slice(0, MOSTRAR).map(it => cellChipHTML(it)).join('') +
+          (itens.length > MOSTRAR ? '<button class="cal-cel-mais" data-dia-mais="' + chave + '">+' + (itens.length - MOSTRAR) + ' mais</button>' : '') +
+        '</div>' +
+      '</div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function cellChipHTML(it) {
+    const cor = it.tipo === 'ocorrencia' ? STATUS_CLASSE[it.status] : (it.status_provider === 'cancelled' ? 'cal-st-cancelada' : 'cal-st-semvinculo');
+    const titulo = it.tipo === 'ocorrencia' ? (it.titulo || 'Gravação') : (it.titulo || '(sem título)');
+    return '<button class="cal-chip ' + cor + '" data-item-tipo="' + it.tipo + '" data-item-id="' + it.id + '">' +
+      '<i class="cal-dot"></i><span>' + esc(horaBR(it.inicio)) + ' ' + esc(titulo) + '</span></button>';
+  }
+
+  function itemCardHTML(it) {
+    const hora = it.dia_inteiro ? 'Dia inteiro' : horaBR(it.inicio) + (it.fim ? '–' + horaBR(it.fim) : '');
+    if (it.tipo === 'evento') {
+      const cancelado = it.status_provider === 'cancelled';
+      return '<div class="cal-evento' + (cancelado ? ' cancelado' : '') + '" data-item-tipo="evento" data-item-id="' + it.id + '" tabindex="0">' +
+        '<div class="cal-evento-hora">' + hora + '</div>' +
+        '<div class="cal-evento-corpo">' +
+          '<div class="cal-evento-titulo">' + esc(it.titulo) + (cancelado ? ' <span class="vd-status vd-status-descartado">Cancelado no Google</span>' : '') + '</div>' +
+          '<div class="cal-evento-meta">' +
+            (it.local ? '<span>' + esc(it.local) + '</span>' : '') +
+            '<span class="cal-evento-agenda" style="' + (it.agenda_cor ? 'color:' + esc(it.agenda_cor) : '') + '">' + esc(it.agenda_nome || 'Agenda') + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<span class="cal-vinculo-badge fraca">Sem vínculo</span>' +
+      '</div>';
+    }
+    // ocorrência
+    return '<div class="cal-evento cal-oc ' + STATUS_CLASSE[it.status] + '" data-item-tipo="ocorrencia" data-item-id="' + it.id + '" tabindex="0">' +
       '<div class="cal-evento-hora">' + hora + '</div>' +
       '<div class="cal-evento-corpo">' +
-        '<div class="cal-evento-titulo">' + esc(ev.titulo) + (cancelado ? ' <span class="vd-status vd-status-descartado">Cancelado</span>' : '') + '</div>' +
-        '<div class="cal-evento-meta">' +
-          (ev.gravacao_cliente_nome ? '<span>' + esc(ev.gravacao_cliente_nome) + '</span>' : '') +
-          (ev.local ? '<span>' + esc(ev.local) + '</span>' : '') +
-          '<span class="cal-evento-agenda" style="' + (ev.agenda_cor ? 'color:' + esc(ev.agenda_cor) : '') + '">' + esc(ev.agenda_nome || 'Agenda') + '</span>' +
+        '<div class="cal-evento-titulo">' + esc(it.titulo || 'Gravação') +
+          ' <span class="cal-badge-status ' + STATUS_CLASSE[it.status] + '">' + STATUS_ROTULO[it.status] + '</span>' +
+          (!it.atual ? ' <span class="fraca">(histórico)</span>' : '') +
         '</div>' +
+        '<div class="cal-evento-meta">' +
+          (it.cliente_nome ? '<span>' + esc(it.cliente_nome) + '</span>' : '') +
+          (it.local ? '<span>' + esc(it.local) + '</span>' : '') +
+          (it.agenda_nome ? '<span class="cal-evento-agenda" style="' + (it.agenda_cor ? 'color:' + esc(it.agenda_cor) : '') + '">' + esc(it.agenda_nome) + '</span>' : '') +
+        '</div>' +
+        (it.erro_sincronizacao ? '<div class="cal-aviso-sync">⚠ ' + esc(it.erro_sincronizacao) + '</div>' : '') +
       '</div>' +
-      (ev.gravacao_id ? '<span class="cal-vinculo-badge">Vinculado</span>' : '<span class="cal-vinculo-badge fraca">Sem vínculo</span>') +
     '</div>';
   }
 
@@ -301,9 +448,8 @@ B7.Calendario = (function () {
     if (btConectarVazio) btConectarVazio.onclick = () => conectarGoogle();
 
     const btAnt = cx.querySelector('#cal-ant'), btProx = cx.querySelector('#cal-prox'), btHoje = cx.querySelector('#cal-hoje');
-    const passo = F.vista === 'semana' ? 7 : 21;
-    if (btAnt) btAnt.onclick = () => { janelaRef = new Date(janelaRef.getTime() - passo * DIA_MS); carregarTudo(); };
-    if (btProx) btProx.onclick = () => { janelaRef = new Date(janelaRef.getTime() + passo * DIA_MS); carregarTudo(); };
+    if (btAnt) btAnt.onclick = () => { navegar(-1); };
+    if (btProx) btProx.onclick = () => { navegar(1); };
     if (btHoje) btHoje.onclick = () => { janelaRef = new Date(); carregarTudo(); };
 
     cx.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
@@ -316,10 +462,60 @@ B7.Calendario = (function () {
     const fBusca = cx.querySelector('#cal-f-busca');
     if (fBusca) fBusca.oninput = B7.UI.debounce ? B7.UI.debounce(e => { F.busca = e.target.value; guardarFiltros(); desenhar(); }, 250) : e => { F.busca = e.target.value; guardarFiltros(); desenhar(); };
 
-    cx.querySelectorAll('[data-evento]').forEach(el => {
-      const abrir = () => { const ev = eventos.find(x => x.id === el.dataset.evento); if (ev) modalEvento(ev); };
-      el.onclick = abrir;
-      el.onkeydown = e => { if (e.key === 'Enter') abrir(); };
+    cx.querySelectorAll('[data-item-tipo]').forEach(el => {
+      const abrirItem = () => abrirDetalheDoItem(el.dataset.itemTipo, el.dataset.itemId);
+      el.onclick = abrirItem;
+      el.onkeydown = e => { if (e.key === 'Enter') abrirItem(); };
+    });
+    cx.querySelectorAll('[data-dia-mais]').forEach(el => {
+      el.onclick = () => modalDia(el.dataset.diaMais);
+    });
+  }
+
+  function navegar(direcao) {
+    if (F.vista === 'mes') {
+      janelaRef = new Date(janelaRef.getFullYear(), janelaRef.getMonth() + direcao, 1);
+    } else {
+      const passo = F.vista === 'semana' ? 7 : 21;
+      janelaRef = new Date(janelaRef.getTime() + direcao * passo * DIA_MS);
+    }
+    carregarTudo();
+  }
+
+  function abrirDetalheDoItem(tipo, id) {
+    if (tipo === 'evento') {
+      const ev = eventos.find(x => x.id === id);
+      if (ev) modalEvento(ev);
+    } else {
+      const oc = ocorrencias.find(x => x.id === id);
+      if (oc) modalOcorrencia(normalizarOcorrencia(oc));
+    }
+  }
+
+  function normalizarOcorrencia(o) {
+    return {
+      tipo: 'ocorrencia', id: o.id, evento_id: o.evento_id, gravacao_id: o.gravacao_id,
+      inicio: o.inicio, fim: o.fim, status: o.status, atual: o.atual,
+      ocorrencia_anterior_id: o.ocorrencia_anterior_id,
+      motivo_cancelamento: o.motivo_cancelamento, erro_sincronizacao: o.erro_sincronizacao,
+      titulo: o.gravacao_nome, cliente_id: o.gravacao_client_id, cliente_nome: o.gravacao_cliente_nome,
+      local: o.gravacao_local, agenda_nome: o.agenda_nome, agenda_cor: o.agenda_cor
+    };
+  }
+
+  /* dia inteiro num modal — usado no "+X mais" da grade de mês */
+  function modalDia(diaISO) {
+    const d = new Date(diaISO + 'T00:00:00');
+    const itens = itensFiltrados().filter(it => chaveDia(new Date(it.inicio)) === diaISO)
+      .sort((a, b) => a.inicio < b.inicio ? -1 : 1);
+    const m = B7.UI.modal(
+      '<h3>' + DIAS_SEMANA[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + '</h3>' +
+      '<div class="cal-dia-corpo">' + (itens.length ? itens.map(itemCardHTML).join('') : '<p class="fraca">Nada nesta data.</p>') + '</div>' +
+      '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>',
+      { larga: true }
+    );
+    m.querySelectorAll('[data-item-tipo]').forEach(el => {
+      el.onclick = () => { m.fechar(); abrirDetalheDoItem(el.dataset.itemTipo, el.dataset.itemId); };
     });
   }
 
@@ -345,7 +541,8 @@ B7.Calendario = (function () {
       (conexao.conectado
         ? '<div class="cal-conexao-ok"><b>Conectado</b><span>' + esc(conexao.conta_email || '') + '</span>' +
           (conexao.ultima_sincronizacao ? '<small class="fraca">Última sincronização: ' + esc(B7.UI.quando ? B7.UI.quando(conexao.ultima_sincronizacao) : conexao.ultima_sincronizacao) + '</small>' : '') +
-          '</div><button class="b fina contorno" id="cal-cfg-desconectar">Desconectar</button>'
+          '</div><button class="b fina contorno" id="cal-cfg-desconectar">Desconectar</button>' +
+          '<p class="fraca" style="margin-top:10px">Conectou antes desta rodada (só leitura)? Desconecte e conecte de novo pra conceder a nova permissão de escrita — sem ela, remarcar/cancelar não move o evento no Google.</p>'
         : '<p class="fraca">Nenhuma conta do Google conectada ainda.</p><button class="b pri" id="cal-cfg-conectar">Conectar Google Calendar</button>') +
       (conexao.conectado
         ? '<h4>Agendas</h4><p class="fraca">Escolha quais agendas do Google aparecem no Calendário de Gravações.</p>' +
@@ -415,11 +612,10 @@ B7.Calendario = (function () {
   }
 
   /* =================================================================
-     DETALHE DO EVENTO
+     DETALHE DE UM EVENTO SEM VÍNCULO (fluxo de antes: vincular / criar)
      ================================================================= */
   function modalEvento(ev) {
     const cancelado = ev.status_provider === 'cancelled';
-    const dt = new Date(ev.inicio);
     const dataHora = (ev.dia_inteiro ? B7.UI.dataBR(ev.inicio.slice(0, 10)) + ' · dia inteiro'
       : B7.UI.dataBR(ev.inicio.slice(0, 10)) + ' · ' + horaBR(ev.inicio) + (ev.fim ? '–' + horaBR(ev.fim) : ''));
 
@@ -433,24 +629,14 @@ B7.Calendario = (function () {
       '</div>' +
       (ev.descricao ? '<div class="vd-dt-campo"><label class="rot">Descrição</label><div class="vd-so-leitura">' + esc(ev.descricao) + '</div></div>' : '') +
       '<div class="vd-dt-campo"><label class="rot">Gravação</label>' +
-      (ev.gravacao_id
-        ? '<div class="cal-gravacao-vinculada"><b>' + esc(ev.gravacao_nome) + '</b><span>' + esc(ev.gravacao_cliente_nome || '') + '</span>' +
-          '<div class="acoes-inline"><a class="b fina contorno" href="#/gravacao/' + ev.gravacao_id + '">Ver gravação</a>' +
-          (souGestor() ? '<button class="b fina contorno" id="cal-desvincular">Desvincular</button>' : '') + '</div></div>'
-        : '<p class="fraca">Este evento ainda não está vinculado a nenhuma gravação do B7.</p>' +
-          (souGestor() ? '<div class="acoes-inline"><button class="b fina contorno" id="cal-vincular">Vincular gravação</button>' +
-            '<button class="b fina contorno" id="cal-criar">Criar gravação</button></div>' : '')) +
+        '<p class="fraca">Este evento ainda não está vinculado a nenhuma gravação do B7.</p>' +
+        (souGestor() ? '<div class="acoes-inline"><button class="b fina contorno" id="cal-vincular">Vincular gravação</button>' +
+          '<button class="b fina contorno" id="cal-criar">Criar gravação</button></div>' : '') +
       '</div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>'
     );
     const btVincular = m.querySelector('#cal-vincular'); if (btVincular) btVincular.onclick = () => { m.fechar(); modalVincular(ev); };
     const btCriar = m.querySelector('#cal-criar'); if (btCriar) btCriar.onclick = () => { m.fechar(); modalCriarGravacao(ev); };
-    const btDesvincular = m.querySelector('#cal-desvincular'); if (btDesvincular) btDesvincular.onclick = async () => {
-      const ok = await B7.UI.confirmar({ titulo: 'Desvincular este evento?', texto: 'A gravação em si não é apagada — só deixa de estar ligada a este evento da agenda.', rotulo: 'Desvincular' });
-      if (!ok) return;
-      try { await B7.DB.desvincularCalendario(ev.id); m.fechar(); B7.UI.toast('Desvinculado.'); apenasRecarregarEventos(); }
-      catch (e) { B7.UI.toast(e.message || 'Não foi possível desvincular.'); }
-    };
   }
 
   async function garantirClientes() {
@@ -485,7 +671,7 @@ B7.Calendario = (function () {
         btSalvar.disabled = true; btSalvar.textContent = 'Vinculando…';
         try {
           await B7.DB.vincularGravacaoCalendario(ev.id, selGravacao.value);
-          m.fechar(); B7.UI.toast('Vinculado.'); apenasRecarregarEventos();
+          m.fechar(); B7.UI.toast('Vinculado.'); recarregarLocal();
         } catch (e) { btSalvar.disabled = false; btSalvar.textContent = 'Vincular'; B7.UI.toast(e.message || 'Não foi possível vincular.'); }
       };
     });
@@ -519,10 +705,122 @@ B7.Calendario = (function () {
             local: m.querySelector('#cal-cg-local').value.trim(),
             observacoes: 'Criada a partir do Calendário de Gravações (evento "' + ev.titulo + '").'
           });
-          m.fechar(); B7.UI.toast('Gravação criada e vinculada.'); apenasRecarregarEventos();
+          m.fechar(); B7.UI.toast('Gravação criada e vinculada.'); recarregarLocal();
         } catch (e) { btn.disabled = false; btn.textContent = 'Criar gravação'; B7.UI.toast(e.message || 'Não foi possível criar a gravação.'); }
       };
     });
+  }
+
+  /* =================================================================
+     DETALHE DE UMA OCORRÊNCIA (gravação com status) — o coração desta
+     rodada: Marcar como Concluída / Remarcar / Cancelar.
+     ================================================================= */
+  function modalOcorrencia(it) {
+    const dataHora = B7.UI.dataBR(isoData(it.inicio)) + ' · ' + horaBR(it.inicio) + (it.fim ? '–' + horaBR(it.fim) : '');
+    const podeAgir = souGestor() && it.atual;
+
+    const m = B7.UI.modal(
+      '<h3>' + esc(it.titulo || 'Gravação') + ' <span class="cal-badge-status ' + STATUS_CLASSE[it.status] + '">' + STATUS_ROTULO[it.status] + '</span></h3>' +
+      (!it.atual ? '<p class="fraca">Esta é uma ocorrência antiga, mantida só pro histórico do calendário — a gravação já tem uma ocorrência mais recente.</p>' : '') +
+      '<div class="cal-detalhe-grid">' +
+        '<div><label class="rot">Data e horário' + (it.status === 'remarcada' ? ' (antiga)' : '') + '</label><div class="vd-so-leitura">' + esc(dataHora) + '</div></div>' +
+        (it.cliente_nome ? '<div><label class="rot">Cliente</label><div class="vd-so-leitura">' + esc(it.cliente_nome) + '</div></div>' : '') +
+        (it.local ? '<div><label class="rot">Local</label><div class="vd-so-leitura">' + esc(it.local) + '</div></div>' : '') +
+        (it.agenda_nome ? '<div><label class="rot">Agenda de origem</label><div class="vd-so-leitura">' + esc(it.agenda_nome) + '</div></div>' : '') +
+      '</div>' +
+      (it.motivo_cancelamento ? '<div class="vd-dt-campo"><label class="rot">Motivo do cancelamento</label><div class="vd-so-leitura">' + esc(it.motivo_cancelamento) + '</div></div>' : '') +
+      (it.erro_sincronizacao ? '<div class="cal-aviso-sync">⚠ Não sincronizado com o Google: ' + esc(it.erro_sincronizacao) + '</div>' : '') +
+      (it.gravacao_id ? '<div class="acoes-inline" style="margin-top:8px"><a class="b fina contorno" href="#/gravacao/' + it.gravacao_id + '">Ver gravação</a></div>' : '') +
+      (podeAgir ? '<div class="acoes cal-oc-acoes">' +
+        (it.status !== 'concluida' && it.status !== 'cancelada' ? '<button class="b fina contorno" id="cal-oc-remarcar">Remarcar</button>' : '') +
+        (it.status === 'cancelada' ? '<button class="b fina contorno" id="cal-oc-remarcar">Remarcar (reativar)</button>' : '') +
+        (it.status === 'marcada' || it.status === 'remarcada' ? '<button class="b fina contorno" id="cal-oc-cancelar">Cancelar gravação</button>' : '') +
+        (it.status === 'marcada' || it.status === 'remarcada' ? '<button class="b pri" id="cal-oc-concluir">Marcar como Concluída</button>' : '') +
+      '</div>' : '') +
+      '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>'
+    );
+
+    const btRemarcar = m.querySelector('#cal-oc-remarcar');
+    if (btRemarcar) btRemarcar.onclick = () => { m.fechar(); modalRemarcar(it); };
+    const btCancelar = m.querySelector('#cal-oc-cancelar');
+    if (btCancelar) btCancelar.onclick = () => { m.fechar(); modalCancelar(it); };
+    const btConcluir = m.querySelector('#cal-oc-concluir');
+    if (btConcluir) btConcluir.onclick = async () => {
+      const ok = await B7.UI.confirmar({
+        titulo: 'Marcar esta gravação como concluída?',
+        texto: 'Registra que a gravação realmente aconteceu e libera a gravação pra virar demanda de edição.',
+        rotulo: 'Marcar como concluída'
+      });
+      if (!ok) return;
+      m.fechar();
+      try {
+        await B7.DB.ocorrenciaConcluir(it.id);
+        B7.UI.toast('Gravação marcada como concluída.', {
+          acao: 'Gerar demandas de edição',
+          aoClicar: () => { location.hash = '#/video'; }
+        });
+        recarregarLocal();
+      } catch (e) { B7.UI.toast(e.message || 'Não foi possível marcar como concluída.'); }
+    };
+  }
+
+  function modalRemarcar(it) {
+    const d = new Date(it.inicio);
+    const dataAtual = isoData(d);
+    const horaIni = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    let horaFim = horaIni;
+    if (it.fim) { const f = new Date(it.fim); horaFim = String(f.getHours()).padStart(2, '0') + ':' + String(f.getMinutes()).padStart(2, '0'); }
+
+    const m = B7.UI.modal(
+      '<h3>Remarcar — ' + esc(it.titulo || 'Gravação') + '</h3>' +
+      '<p class="fraca">A data antiga (' + esc(B7.UI.dataBR(dataAtual)) + ') continua no calendário como "Remarcada", pro histórico — ela não some.</p>' +
+      '<div class="vd-grid-2">' +
+        '<div><label class="rot">Nova data</label><input class="campo" type="date" id="cal-rm-data" value="' + dataAtual + '" data-foco></div>' +
+        '<div></div>' +
+        '<div><label class="rot">Início</label><input class="campo" type="time" id="cal-rm-hora-ini" value="' + horaIni + '"></div>' +
+        '<div><label class="rot">Fim</label><input class="campo" type="time" id="cal-rm-hora-fim" value="' + horaFim + '"></div>' +
+      '</div>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="cal-rm-salvar">Remarcar</button></div>'
+    );
+    m.querySelector('#cal-rm-salvar').onclick = async () => {
+      const data = m.querySelector('#cal-rm-data').value;
+      const hIni = m.querySelector('#cal-rm-hora-ini').value;
+      const hFim = m.querySelector('#cal-rm-hora-fim').value || hIni;
+      if (!data || !hIni) { B7.UI.toast('Escolha a nova data e horário.'); return; }
+      const novoInicio = new Date(data + 'T' + hIni + ':00');
+      const novoFim = new Date(data + 'T' + hFim + ':00');
+      if (novoFim < novoInicio) { B7.UI.toast('O horário de fim não pode ser antes do início.'); return; }
+      const btn = m.querySelector('#cal-rm-salvar'); btn.disabled = true; btn.textContent = 'Remarcando…';
+      try {
+        const resp = await B7.DB.ocorrenciaRemarcar(it.id, novoInicio.toISOString(), novoFim.toISOString());
+        if (resp && resp.evento_id) {
+          try { await B7.DB.atualizarEventoGoogle(resp.evento_id, novoInicio.toISOString(), novoFim.toISOString(), resp.nova_ocorrencia_id); }
+          catch (eGoogle) { B7.UI.toast('Remarcado no B7, mas não deu pra atualizar no Google: ' + (eGoogle.message || '') + ' — o evento no Google continua com a data antiga.', { tempo: 8000 }); }
+        }
+        m.fechar(); B7.UI.toast('Gravação remarcada.'); recarregarLocal();
+      } catch (e) { btn.disabled = false; btn.textContent = 'Remarcar'; B7.UI.toast(e.message || 'Não foi possível remarcar.'); }
+    };
+  }
+
+  function modalCancelar(it) {
+    const m = B7.UI.modal(
+      '<h3>Cancelar — ' + esc(it.titulo || 'Gravação') + '</h3>' +
+      '<p class="fraca">A gravação continua visível nesta data no calendário, só que marcada como cancelada — nada é apagado.</p>' +
+      '<label class="rot">Motivo (opcional)</label><textarea class="campo" id="cal-cn-motivo" rows="3" placeholder="Ex.: cliente remarcou por telefone, equipe indisponível…"></textarea>' +
+      '<div class="acoes"><button class="b" data-fecha>Voltar</button><button class="b perigo" id="cal-cn-confirmar">Cancelar gravação</button></div>'
+    );
+    m.querySelector('#cal-cn-confirmar').onclick = async () => {
+      const motivo = m.querySelector('#cal-cn-motivo').value.trim();
+      const btn = m.querySelector('#cal-cn-confirmar'); btn.disabled = true; btn.textContent = 'Cancelando…';
+      try {
+        const resp = await B7.DB.ocorrenciaCancelar(it.id, motivo);
+        if (resp && resp.evento_id) {
+          try { await B7.DB.cancelarEventoGoogle(resp.evento_id, it.id); }
+          catch (eGoogle) { B7.UI.toast('Cancelado no B7, mas não deu pra cancelar no Google: ' + (eGoogle.message || '') + ' — cancele manualmente na agenda, se precisar.', { tempo: 8000 }); }
+        }
+        m.fechar(); B7.UI.toast('Gravação cancelada.'); recarregarLocal();
+      } catch (e) { btn.disabled = false; btn.textContent = 'Cancelar gravação'; B7.UI.toast(e.message || 'Não foi possível cancelar.'); }
+    };
   }
 
   return { abrir };

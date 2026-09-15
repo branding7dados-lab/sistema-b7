@@ -24,10 +24,23 @@
 //   POST { acao: 'listar_calendarios' }  — admin/coordenador
 //   POST { acao: 'sincronizar',
 //          inicio, fim }                 — qualquer um da equipe interna
+//   POST { acao: 'atualizar_evento',
+//          evento_id, inicio, fim,
+//          ocorrencia_id? }              — admin/coordenador — usada pela
+//                                          remarcação (migration_calendario_
+//                                          status.sql): move a data do MESMO
+//                                          evento no Google, nunca cria outro
+//   POST { acao: 'cancelar_evento',
+//          evento_id, ocorrencia_id? }   — admin/coordenador — cancela
+//                                          (PATCH status=cancelled, não
+//                                          apaga) o evento correspondente
 //
 // (Status da conexão, escolher quais agendas ficam ativas, vincular a
-// uma gravação, criar gravação a partir de um evento — tudo isso é RPC
-// direto no banco, migration_calendario.sql, sem precisar desta função.)
+// uma gravação, criar gravação a partir de um evento, e agora também o
+// status de ocorrência — marcada/remarcada/concluída/cancelada — tudo
+// isso é RPC direto no banco: migration_calendario.sql e
+// migration_calendario_status.sql. Esta função só entra quando é preciso
+// falar com o Google de verdade.)
 //
 // Secrets (supabase secrets set ...):
 //   GOOGLE_CLIENT_ID        do Google Cloud Console (tipo "Web application")
@@ -52,7 +65,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-09-15-a';
+const VERSAO = '2026-09-15-b';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -77,8 +90,14 @@ const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') || '';
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
 const GOOGLE_REDIRECT_URI = Deno.env.get('GOOGLE_REDIRECT_URI') || '';
 const APP_URL = Deno.env.get('APP_URL') || 'https://branding7dados-lab.github.io/sistema-b7/';
-// Só leitura, de propósito (ver relatório — rodada segura por padrão).
-const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+// A partir desta rodada, além de ler (listar agendas + eventos), também
+// escreve: mover a data de um evento numa remarcação, e cancelar um
+// evento quando a gravação é cancelada no B7 — sempre feito nesta Edge
+// Function, nunca no navegador. Quem já tinha conectado antes desta
+// rodada (com escopo só-leitura) precisa desconectar e conectar de novo
+// pra conceder a permissão de escrita — o Google não amplia escopo de um
+// token já concedido sozinho.
+const SCOPE = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
 
 type Perfil = { id: string; nome: string; papel: string; estado: string };
 
@@ -119,6 +138,8 @@ Deno.serve(async (req: Request) => {
   if (acao === 'desconectar') return await desconectar(perfil);
   if (acao === 'listar_calendarios') return await listarCalendarios(perfil);
   if (acao === 'sincronizar') return await sincronizar(perfil, corpo);
+  if (acao === 'atualizar_evento') return await atualizarEvento(perfil, corpo);
+  if (acao === 'cancelar_evento') return await cancelarEvento(perfil, corpo);
 
   return json({ erro: 'Ação desconhecida: ' + acao }, 400);
 });
@@ -387,4 +408,103 @@ async function sincronizarUmaAgenda(sb: SupabaseClient, accessToken: string, age
   }).eq('id', agenda.id);
 
   return total;
+}
+
+// =====================================================================
+// ESCRITA — mover ou cancelar um evento existente no Google, sempre a
+// partir de uma ocorrência que já foi atualizada no B7 primeiro (a
+// mudança no B7 nunca depende do Google responder: se a chamada abaixo
+// falhar, quem chamou registra o aviso com
+// calendario_ocorrencia_marcar_erro_sync e o dado do B7 continua valendo).
+// Nunca CRIA evento novo aqui — sempre atualiza o mesmo external_event_id
+// já vinculado, pra não duplicar nada na agenda da branding7dados.
+// =====================================================================
+async function obterEventoEAgenda(sb: SupabaseClient, eventoId: string): Promise<{ ev: any; ag: any } | { erro: string }> {
+  const { data: ev } = await sb.from('calendario_eventos').select('*').eq('id', eventoId).maybeSingle();
+  if (!ev) return { erro: 'Evento não encontrado no B7 — não há o que sincronizar com o Google.' };
+  const { data: ag } = await sb.from('calendario_agendas').select('*').eq('id', ev.agenda_id).maybeSingle();
+  if (!ag) return { erro: 'Agenda do evento não encontrada.' };
+  return { ev, ag };
+}
+
+async function atualizarEvento(perfil: Perfil, corpo: Record<string, unknown>): Promise<Response> {
+  if (!ehEquipe(perfil)) return json({ erro: 'Só admin/coordenador remarcam um evento no Google.' }, 403);
+  const eventoId = typeof corpo.evento_id === 'string' ? corpo.evento_id : '';
+  const inicioISO = typeof corpo.inicio === 'string' ? corpo.inicio : '';
+  const fimISO = typeof corpo.fim === 'string' ? corpo.fim : inicioISO;
+  const ocorrenciaId = typeof corpo.ocorrencia_id === 'string' ? corpo.ocorrencia_id : null;
+  if (!eventoId || !inicioISO) return json({ erro: 'Faltam dados para atualizar o evento no Google.' }, 400);
+
+  const sb = admin();
+  const par = await obterEventoEAgenda(sb, eventoId);
+  if ('erro' in par) return json({ erro: par.erro }, 404);
+  const t = await obterAccessTokenValido(sb);
+  if ('erro' in t) {
+    if (ocorrenciaId) await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: t.erro });
+    return json({ erro: t.erro }, 409);
+  }
+
+  const resp = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(par.ag.external_calendar_id) +
+      '/events/' + encodeURIComponent(par.ev.external_event_id),
+    {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + t.accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start: { dateTime: inicioISO }, end: { dateTime: fimISO } })
+    }
+  );
+  const dados = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const motivo = dados.error?.message || ('HTTP ' + resp.status);
+    if (ocorrenciaId) await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: 'Google recusou remarcar o evento: ' + motivo });
+    return json({ erro: 'A gravação foi remarcada no B7, mas o Google recusou atualizar o evento: ' + motivo }, 502);
+  }
+
+  await sb.from('calendario_eventos').update({
+    inicio: dados.start?.dateTime || dados.start?.date || inicioISO,
+    fim: dados.end?.dateTime || dados.end?.date || fimISO,
+    external_updated_at: dados.updated || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }).eq('id', eventoId);
+
+  return json({ ok: true });
+}
+
+async function cancelarEvento(perfil: Perfil, corpo: Record<string, unknown>): Promise<Response> {
+  if (!ehEquipe(perfil)) return json({ erro: 'Só admin/coordenador cancelam um evento no Google.' }, 403);
+  const eventoId = typeof corpo.evento_id === 'string' ? corpo.evento_id : '';
+  const ocorrenciaId = typeof corpo.ocorrencia_id === 'string' ? corpo.ocorrencia_id : null;
+  if (!eventoId) return json({ erro: 'Falta o evento a cancelar.' }, 400);
+
+  const sb = admin();
+  const par = await obterEventoEAgenda(sb, eventoId);
+  if ('erro' in par) return json({ erro: par.erro }, 404);
+  const t = await obterAccessTokenValido(sb);
+  if ('erro' in t) {
+    if (ocorrenciaId) await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: t.erro });
+    return json({ erro: t.erro }, 409);
+  }
+
+  // PATCH pra status 'cancelled' em vez de DELETE — o evento continua
+  // existindo (com o histórico de quem criou, comentários etc.) só que
+  // marcado como cancelado, igual a uma pessoa cancelando pela interface
+  // do Google. Nunca apaga de verdade.
+  const resp = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(par.ag.external_calendar_id) +
+      '/events/' + encodeURIComponent(par.ev.external_event_id),
+    {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + t.accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' })
+    }
+  );
+  const dados = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const motivo = dados.error?.message || ('HTTP ' + resp.status);
+    if (ocorrenciaId) await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: 'Google recusou cancelar o evento: ' + motivo });
+    return json({ erro: 'A gravação foi cancelada no B7, mas o Google recusou cancelar o evento: ' + motivo }, 502);
+  }
+
+  await sb.from('calendario_eventos').update({ status_provider: 'cancelled', updated_at: new Date().toISOString() }).eq('id', eventoId);
+  return json({ ok: true });
 }
