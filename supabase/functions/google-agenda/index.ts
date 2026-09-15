@@ -34,6 +34,16 @@
 //          evento_id, ocorrencia_id? }   — admin/coordenador — cancela
 //                                          (PATCH status=cancelled, não
 //                                          apaga) o evento correspondente
+//   POST { acao: 'criar_evento',
+//          ocorrencia_id, titulo,
+//          inicio, fim?, local? }        — admin/coordenador — usada por
+//                                          "marcar gravação" direto do
+//                                          calendário (migration_
+//                                          calendario_marcar.sql): cria
+//                                          um evento NOVO na "agenda de
+//                                          escrita" (calendario_agendas.
+//                                          escrita_padrao) e grava o
+//                                          vínculo na ocorrência
 //
 // (Status da conexão, escolher quais agendas ficam ativas, vincular a
 // uma gravação, criar gravação a partir de um evento, e agora também o
@@ -65,7 +75,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-09-15-b';
+const VERSAO = '2026-09-15-c';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -140,6 +150,7 @@ Deno.serve(async (req: Request) => {
   if (acao === 'sincronizar') return await sincronizar(perfil, corpo);
   if (acao === 'atualizar_evento') return await atualizarEvento(perfil, corpo);
   if (acao === 'cancelar_evento') return await cancelarEvento(perfil, corpo);
+  if (acao === 'criar_evento') return await criarEvento(perfil, corpo);
 
   return json({ erro: 'Ação desconhecida: ' + acao }, 400);
 });
@@ -507,4 +518,79 @@ async function cancelarEvento(perfil: Perfil, corpo: Record<string, unknown>): P
 
   await sb.from('calendario_eventos').update({ status_provider: 'cancelled', updated_at: new Date().toISOString() }).eq('id', eventoId);
   return json({ ok: true });
+}
+
+// =====================================================================
+// CRIAR — usada por "marcar gravação" direto do Calendário de Gravações
+// (migration_calendario_marcar.sql). Ao contrário de atualizarEvento/
+// cancelarEvento, aqui NÃO existe ainda um external_event_id — a
+// ocorrência já foi criada no B7 (calendario_marcar_gravacao) antes desta
+// chamada, sem evento_id. Criamos o evento na "agenda de escrita" e só
+// então gravamos o vínculo — se o Google falhar, a gravação e a
+// ocorrência continuam existindo no B7 normalmente, só sem evento
+// vinculado ainda (o mesmo padrão best-effort das outras duas ações).
+// =====================================================================
+async function criarEvento(perfil: Perfil, corpo: Record<string, unknown>): Promise<Response> {
+  if (!ehEquipe(perfil)) return json({ erro: 'Só admin/coordenador marcam uma gravação com evento no Google.' }, 403);
+  const ocorrenciaId = typeof corpo.ocorrencia_id === 'string' ? corpo.ocorrencia_id : '';
+  const titulo = typeof corpo.titulo === 'string' ? corpo.titulo : '';
+  const inicioISO = typeof corpo.inicio === 'string' ? corpo.inicio : '';
+  const fimISO = typeof corpo.fim === 'string' ? corpo.fim : inicioISO;
+  const local = typeof corpo.local === 'string' ? corpo.local : '';
+  if (!ocorrenciaId || !titulo || !inicioISO) return json({ erro: 'Faltam dados para criar o evento no Google.' }, 400);
+
+  const sb = admin();
+  const t = await obterAccessTokenValido(sb);
+  if ('erro' in t) {
+    await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: t.erro });
+    return json({ erro: t.erro }, 409);
+  }
+
+  const { data: agenda } = await sb.from('calendario_agendas')
+    .select('*').eq('conexao_id', t.conexao.id).eq('escrita_padrao', true).eq('ativo', true).maybeSingle();
+  if (!agenda) {
+    const motivo = 'Nenhuma agenda de escrita escolhida — defina uma em Configurações do Calendário antes de marcar gravações.';
+    await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: motivo });
+    return json({ erro: motivo }, 409);
+  }
+
+  const resp = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(agenda.external_calendar_id) + '/events',
+    {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + t.accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        summary: titulo,
+        location: local || undefined,
+        start: { dateTime: inicioISO },
+        end: { dateTime: fimISO }
+      })
+    }
+  );
+  const dados = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const motivo = dados.error?.message || ('HTTP ' + resp.status);
+    await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: 'Google recusou criar o evento: ' + motivo });
+    return json({ erro: 'A gravação foi marcada no B7, mas o Google recusou criar o evento: ' + motivo }, 502);
+  }
+
+  const { data: novoEvento, error: erroEvento } = await sb.from('calendario_eventos').upsert({
+    agenda_id: agenda.id, external_event_id: dados.id,
+    titulo: dados.summary || titulo, local: dados.location || local || null,
+    inicio: dados.start?.dateTime || dados.start?.date || inicioISO,
+    fim: dados.end?.dateTime || dados.end?.date || fimISO,
+    dia_inteiro: false, status_provider: 'confirmed',
+    external_updated_at: dados.updated || null, updated_at: new Date().toISOString()
+  }, { onConflict: 'agenda_id,external_event_id' }).select('id').single();
+
+  if (erroEvento || !novoEvento) {
+    await sb.rpc('calendario_ocorrencia_marcar_erro_sync', {
+      p_ocorrencia_id: ocorrenciaId,
+      p_erro: 'Evento criado no Google, mas não deu pra salvar a cópia local: ' + (erroEvento?.message || '')
+    });
+    return json({ erro: 'Evento criado no Google, mas não deu pra salvar o vínculo — sincronize a agenda depois pra recuperar.' }, 500);
+  }
+
+  await sb.from('gravacoes_ocorrencias').update({ evento_id: novoEvento.id, atualizado_em: new Date().toISOString() }).eq('id', ocorrenciaId);
+  return json({ ok: true, evento_id: novoEvento.id });
 }

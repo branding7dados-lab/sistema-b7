@@ -262,6 +262,7 @@ B7.Calendario = (function () {
       '<div class="cab-conteudo"><div><h1>Calendário de Gravações</h1>' +
       '<p>' + (conexao.conectado ? 'Conectado como ' + esc(conexao.conta_email || 'conta do Google') : 'Google Calendar não conectado') + '</p></div>' +
       '<div class="vd-acoes-topo">' +
+        (conexao.conectado && souGestor() ? '<button class="b pri" id="cal-marcar">+ Marcar gravação</button>' : '') +
         (conexao.conectado ? '<button class="b fina contorno" id="cal-atualizar">Atualizar</button>' : '') +
         (souGestor() ? '<button class="b fina contorno" id="cal-config">Configurações</button>' : '') +
       '</div></div>' +
@@ -378,7 +379,9 @@ B7.Calendario = (function () {
       const ehHoje = chave === hojeStr;
       const MOSTRAR = 3;
       html += '<div class="cal-cel' + (foraDoMes ? ' fora' : '') + (ehHoje ? ' hoje' : '') + '" data-dia="' + chave + '">' +
-        '<div class="cal-cel-num">' + d.getDate() + (ehHoje ? '<em>hoje</em>' : '') + '</div>' +
+        '<div class="cal-cel-num">' + d.getDate() + (ehHoje ? '<em>hoje</em>' : '') +
+          (souGestor() ? '<button class="cal-cel-add" data-dia-marcar="' + chave + '" title="Marcar gravação neste dia" aria-label="Marcar gravação neste dia">+</button>' : '') +
+        '</div>' +
         '<div class="cal-cel-itens">' +
           itens.slice(0, MOSTRAR).map(it => cellChipHTML(it)).join('') +
           (itens.length > MOSTRAR ? '<button class="cal-cel-mais" data-dia-mais="' + chave + '">+' + (itens.length - MOSTRAR) + ' mais</button>' : '') +
@@ -446,6 +449,11 @@ B7.Calendario = (function () {
     if (btConfig) btConfig.onclick = () => modalConfiguracoes();
     const btConectarVazio = cx.querySelector('#cal-conectar-vazio');
     if (btConectarVazio) btConectarVazio.onclick = () => conectarGoogle();
+    const btMarcar = cx.querySelector('#cal-marcar');
+    if (btMarcar) btMarcar.onclick = () => modalMarcarGravacao();
+    cx.querySelectorAll('[data-dia-marcar]').forEach(el => {
+      el.onclick = ev => { ev.stopPropagation(); modalMarcarGravacao(el.dataset.diaMarcar); };
+    });
 
     const btAnt = cx.querySelector('#cal-ant'), btProx = cx.querySelector('#cal-prox'), btHoje = cx.querySelector('#cal-hoje');
     if (btAnt) btAnt.onclick = () => { navegar(-1); };
@@ -555,8 +563,14 @@ B7.Calendario = (function () {
     function agendasListaHTML() {
       if (!agendas.length) return '<p class="fraca">Nenhuma agenda encontrada — clique em "Atualizar lista" ou confira a conexão.</p><button class="b fina contorno" id="cal-cfg-listar">Atualizar lista de agendas</button>';
       return agendas.map(a =>
-        '<label class="cal-agenda-item"><input type="checkbox" data-agenda="' + a.id + '"' + (a.ativo ? ' checked' : '') + '>' +
-        '<span>' + esc(a.nome) + '</span></label>').join('') +
+        '<div class="cal-agenda-item">' +
+          '<label><input type="checkbox" data-agenda="' + a.id + '"' + (a.ativo ? ' checked' : '') + '><span>' + esc(a.nome) + '</span></label>' +
+          (a.ativo ? '<label class="cal-agenda-padrao" title="Gravações marcadas pelo calendário criam o evento nesta agenda">' +
+            '<input type="radio" name="cal-agenda-escrita" data-agenda-padrao="' + a.id + '"' + (a.escrita_padrao ? ' checked' : '') + '>' +
+            '<span>Usar para novas gravações</span></label>' : '') +
+        '</div>').join('') +
+        (agendas.some(a => a.ativo) && !agendas.some(a => a.escrita_padrao) ?
+          '<p class="cal-aviso-sync" style="margin:6px 0 10px">⚠ Nenhuma agenda escolhida pra receber novas gravações — marque uma acima.</p>' : '') +
         '<button class="b fina contorno" id="cal-cfg-listar">Atualizar lista de agendas</button>';
     }
     function ligarModal() {
@@ -595,8 +609,19 @@ B7.Calendario = (function () {
             await B7.DB.alternarAgendaCalendario(chk.dataset.agenda, chk.checked);
             const a = agendas.find(x => x.id === chk.dataset.agenda);
             if (a) a.ativo = chk.checked;
+            if (a && !chk.checked && a.escrita_padrao) a.escrita_padrao = false;
+            redesenhar();
           } catch (e) { chk.checked = !chk.checked; B7.UI.toast(e.message || 'Não foi possível salvar.'); }
-          chk.disabled = false;
+        };
+      });
+      m.querySelectorAll('[data-agenda-padrao]').forEach(rd => {
+        rd.onchange = async () => {
+          rd.disabled = true;
+          try {
+            await B7.DB.definirAgendaEscritaPadrao(rd.dataset.agendaPadrao);
+            agendas.forEach(a => { a.escrita_padrao = (a.id === rd.dataset.agendaPadrao); });
+            redesenhar();
+          } catch (e) { rd.checked = false; B7.UI.toast(e.message || 'Não foi possível salvar.'); }
         };
       });
     }
@@ -707,6 +732,71 @@ B7.Calendario = (function () {
           });
           m.fechar(); B7.UI.toast('Gravação criada e vinculada.'); recarregarLocal();
         } catch (e) { btn.disabled = false; btn.textContent = 'Criar gravação'; B7.UI.toast(e.message || 'Não foi possível criar a gravação.'); }
+      };
+    });
+  }
+
+  /* =================================================================
+     MARCAR GRAVAÇÃO — direto do calendário, sem precisar de um evento
+     do Google pré-existente. Cria a gravação + a ocorrência 'marcada'
+     no B7 primeiro (sempre vale); tenta criar o evento no Google depois,
+     best-effort — se falhar, avisa mas não desfaz nada. É esta a porta
+     de entrada principal pro sistema de status (era isso que faltava:
+     antes só dava pra vincular/criar a partir de um evento que já
+     existisse no Google).
+     ================================================================= */
+  function modalMarcarGravacao(diaSugeridoISO) {
+    if (conexao.conectado && agendas.some(a => a.ativo) && !agendas.some(a => a.escrita_padrao)) {
+      B7.UI.toast('Escolha em Configurações qual agenda recebe as gravações marcadas por aqui — sem isso, a gravação é criada no B7 mas não sincroniza com o Google.', { tempo: 7000 });
+    }
+    garantirClientes().then(clientes => {
+      const dataSugerida = diaSugeridoISO || B7.UI.hojeISO();
+      const m = B7.UI.modal(
+        '<h3>Marcar gravação</h3>' +
+        '<p class="fraca">Cria a gravação já com status "Marcada" no calendário e, se houver uma agenda de escrita configurada, cria o evento correspondente no Google.</p>' +
+        '<label class="rot">Cliente</label><select class="campo" id="cal-mg-cliente" data-foco><option value="">Escolha o cliente</option>' +
+          clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') + '</select>' +
+        '<label class="rot">Nome da gravação</label><input class="campo" id="cal-mg-nome" placeholder="Ex: Gravação Setembro">' +
+        '<div class="vd-grid-2">' +
+          '<div><label class="rot">Data</label><input class="campo" type="date" id="cal-mg-data" value="' + dataSugerida + '"></div>' +
+          '<div></div>' +
+          '<div><label class="rot">Início</label><input class="campo" type="time" id="cal-mg-hora-ini" value="09:00"></div>' +
+          '<div><label class="rot">Fim</label><input class="campo" type="time" id="cal-mg-hora-fim" value="10:00"></div>' +
+        '</div>' +
+        '<label class="rot">Local <span class="leve">— opcional</span></label><input class="campo" id="cal-mg-local">' +
+        '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="cal-mg-salvar">Marcar gravação</button></div>'
+      );
+      m.querySelector('#cal-mg-salvar').onclick = async () => {
+        const clienteId = m.querySelector('#cal-mg-cliente').value;
+        const nome = m.querySelector('#cal-mg-nome').value.trim();
+        const data = m.querySelector('#cal-mg-data').value;
+        const hIni = m.querySelector('#cal-mg-hora-ini').value || '09:00';
+        const hFim = m.querySelector('#cal-mg-hora-fim').value || hIni;
+        const local = m.querySelector('#cal-mg-local').value.trim();
+        if (!clienteId) { B7.UI.toast('Escolha o cliente.'); return; }
+        if (!nome) { B7.UI.toast('Dê um nome para a gravação.'); return; }
+        if (!data) { B7.UI.toast('Escolha a data.'); return; }
+        const inicio = new Date(data + 'T' + hIni + ':00');
+        const fim = new Date(data + 'T' + hFim + ':00');
+        if (fim < inicio) { B7.UI.toast('O horário de fim não pode ser antes do início.'); return; }
+
+        const btn = m.querySelector('#cal-mg-salvar'); btn.disabled = true; btn.textContent = 'Marcando…';
+        try {
+          const resp = await B7.DB.marcarGravacaoCalendario({
+            clienteId, nome, inicioISO: inicio.toISOString(), fimISO: fim.toISOString(), local
+          });
+          m.fechar();
+          B7.UI.toast('Gravação marcada — agora dá pra remarcar, cancelar ou concluir por aqui.');
+          if (conexao.conectado && resp && resp.ocorrencia_id) {
+            try { await B7.DB.criarEventoGoogle(resp.ocorrencia_id, nome, inicio.toISOString(), fim.toISOString(), local); }
+            catch (eGoogle) { B7.UI.toast('Marcada no B7, mas não deu pra criar o evento no Google: ' + (eGoogle.message || ''), { tempo: 8000 }); }
+          }
+          await recarregarLocal();
+          if (resp && resp.ocorrencia_id) {
+            const nova = ocorrencias.find(o => o.id === resp.ocorrencia_id);
+            if (nova) modalOcorrencia(normalizarOcorrencia(nova));
+          }
+        } catch (e) { btn.disabled = false; btn.textContent = 'Marcar gravação'; B7.UI.toast(e.message || 'Não foi possível marcar a gravação.'); }
       };
     });
   }

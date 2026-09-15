@@ -1918,6 +1918,25 @@ B7.DB = (function () {
     async cancelarEventoGoogle(eventoId, ocorrenciaId) {
       return this.chamarCalendarioGoogle({ acao: 'cancelar_evento', evento_id: eventoId, ocorrencia_id: ocorrenciaId || null });
     },
+    /* "Marcar gravação" direto do Calendário (migration_calendario_marcar.sql):
+       cria a gravação + a ocorrência inicial no B7 primeiro (sempre vale,
+       mesmo se o Google falhar depois) — quem chama tenta criarEventoGoogle
+       em seguida, best-effort, igual ao padrão de remarcar/cancelar. */
+    async marcarGravacaoCalendario({ clienteId, nome, inicioISO, fimISO, local, observacoes }) {
+      return this.rpc('calendario_marcar_gravacao', {
+        p_client_id: clienteId, p_nome: nome, p_inicio: inicioISO, p_fim: fimISO || null,
+        p_local: local || '', p_observacoes: observacoes || ''
+      });
+    },
+    async criarEventoGoogle(ocorrenciaId, titulo, inicioISO, fimISO, local) {
+      return this.chamarCalendarioGoogle({
+        acao: 'criar_evento', ocorrencia_id: ocorrenciaId, titulo,
+        inicio: inicioISO, fim: fimISO || inicioISO, local: local || ''
+      });
+    },
+    async definirAgendaEscritaPadrao(agendaId) {
+      return this.rpc('calendario_agenda_definir_escrita_padrao', { p_agenda_id: agendaId });
+    },
 
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {

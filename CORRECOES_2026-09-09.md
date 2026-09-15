@@ -6145,3 +6145,109 @@ Arquivo novo: `migration_calendario_status.sql`.
    token novo com permissão de escrita.
 6. Teste remarcar e cancelar uma gravação de verdade e confira no Google
    Calendar se o evento realmente se moveu/foi marcado como cancelado.
+
+# Rodada u (15/09/2026) — "kd o sistema de criar, remarcar, cancelar?": marcar gravação direto do calendário, e redesenho visual da grade de mês
+
+Você testou a Rodada t de verdade e voltou com duas coisas: "melhora esse
+ui/ux, tá muito feio ainda" e "kd o sistema de criar, remarcar,
+cancelar...?". Investiguei antes de sair mexendo — o print que você
+mandou mostrava quase tudo em cinza neutro ("sem vínculo"), não nas
+cores de status. Isso não era só estética: era um buraco real que eu
+tinha deixado na Rodada t.
+
+## O que eu encontrei (por que quase nada tinha cor)
+
+O botão que cria gravação em quase todo o sistema é o global "+ Nova
+gravação" (o que aparece no topo em toda tela, não só no calendário) —
+ele cria a gravação direto na tabela `gravacoes`, sem nunca passar pelo
+calendário. Na Rodada t, uma gravação só virava uma "ocorrência" (e por
+isso só ganhava cor/status) se alguém primeiro vinculasse ou criasse a
+gravação **a partir de um evento que já existisse no Google**. Ou seja:
+a porta de entrada mais usada do sistema (o botão de sempre) não levava
+a lugar nenhum no calendário novo, e por isso praticamente toda gravação
+aparecia cinza, sem jeito de remarcar/cancelar/concluir por ali — exatamente
+o que você notou. Faltava um caminho pra "marcar" uma gravação nova
+direto do calendário, sem depender de um evento do Google já existir.
+
+## Implementado e testado
+
+- **"+ Marcar gravação" — novo caminho de criação direto no calendário**
+  (`migration_calendario_marcar.sql`, função `calendario_marcar_gravacao`):
+  cria a gravação **e** a ocorrência inicial (`marcada`, azul) numa
+  chamada só — sem precisar de nenhum evento do Google pré-existente.
+  Aparece como botão principal na barra do calendário, e também como um
+  "+" pequeno que surge ao passar o mouse em cada dia da grade de mês
+  (já preenche a data daquele dia). Depois de marcar, a tela já abre
+  direto o modal de detalhe da ocorrência — com Remarcar/Cancelar/Marcar
+  como Concluída visíveis na hora, pra não repetir a confusão de "onde
+  está isso". Testado no Postgres: bloqueio de quem não é
+  admin/coordenador, criação correta da gravação + ocorrência vinculadas
+  com `evento_id` nulo (preenchido depois pela sincronização com o
+  Google).
+- **Agenda de escrita** (mesma migration): como agora dá pra criar um
+  evento novo no Google (não só mover/cancelar um que já existia), o
+  sistema precisa saber em qual agenda do Google criar esse evento — 
+  adicionei uma opção "Usar para novas gravações" em Configurações
+  (só pode haver uma por vez; testei que só admin/coordenador escolhem,
+  e que escolher uma desmarca a anterior automaticamente).
+- **Ação `criar_evento` na Edge Function** (`google-agenda`): cria o
+  evento na agenda de escrita via `events.insert` do Google, salva a
+  cópia local e grava o vínculo na ocorrência. Segue o mesmo padrão
+  best-effort das outras ações: a gravação e a ocorrência já existem no
+  B7 antes desta chamada, então se o Google recusar (ou não houver
+  agenda de escrita escolhida), o aviso fica registrado na ocorrência
+  (`erro_sincronizacao`) em vez de travar ou desfazer o que você acabou
+  de marcar. Verificado com `deno check` — não exercitado contra a API
+  real do Google nesta sessão (mesma ressalva de sempre).
+- **Redesenho visual da grade de mês** (`styles/calendario.css`): a
+  grade virou um cartão só com sombra (em vez das linhas cruas de
+  antes), o dia de hoje ganhou um contorno de verdade na cor de acento
+  em vez de só um fundo meio apagado, e — a causa raiz do "cinza sem
+  cor" que você viu — os chips de evento sem vínculo agora têm um fundo
+  de verdade (antes o fundo deles era quase igual ao da célula, por
+  isso sumiam visualmente). Legenda de status redesenhada como pílulas
+  coloridas. `node --check` limpo em todos os arquivos tocados.
+
+## Implementado mas requer validação adicional
+
+- Tudo desta rodada (criar evento no Google, grade redesenhada, os dois
+  pontos de entrada do "+") foi revisado com cuidado no código mas não
+  aberto num navegador real nesta sessão — o mesmo padrão de disclosure
+  de sempre. Peço especial atenção a: o "+" aparecendo/funcionando ao
+  passar o mouse em cada dia (e num toque, no celular), o modal de
+  detalhe abrindo sozinho depois de marcar uma gravação, e se o evento
+  realmente aparece na agenda do Google escolhida em Configurações.
+- Se ainda achar que falta contraste ou que algum elemento específico
+  está feio, me diga qual — "feio" sem apontar o quê me deixa sem como
+  verificar se acertei desta vez; prefiro um ajuste cirúrgico a ficar
+  redesenhando às cegas.
+
+## Não implementado por bloqueio ou decisão consciente
+
+- Continua em aberto o mesmo ponto da Rodada t: o botão "Desvincular"
+  evento↔gravação sem lugar na tela nova. Não mexi nisso agora porque
+  não é o que você pediu nesta rodada.
+
+Arquivos alterados: `js/calendario.js`, `js/database.js`, `js/auth.js`,
+`sw.js`, `supabase/functions/google-agenda/index.ts`,
+`styles/calendario.css`. Arquivo novo: `migration_calendario_marcar.sql`.
+`VERSAO` → `2026-09-15-u`, cache → `roteiros-b7-v79`.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_calendario_marcar.sql` (depende de
+   `migration_calendario.sql` e `migration_calendario_status.sql` já
+   terem rodado antes — se ainda não rodou a Rodada t, rode as três em
+   ordem).
+2. Faça o deploy de novo da Edge Function `google-agenda`
+   (`supabase functions deploy google-agenda --no-verify-jwt`) — ganhou
+   a ação `criar_evento`.
+3. Suba os arquivos deste zip no repositório.
+4. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-u`.
+5. Em Configurações do Calendário, marque qual agenda recebe as
+   gravações marcadas por aqui ("Usar para novas gravações") — sem
+   isso, marcar uma gravação continua funcionando no B7, só não cria o
+   evento no Google.
+6. Teste "+ Marcar gravação" com uma gravação de verdade e confira se
+   ela aparece na grade em azul, se o modal de ações abre sozinho, e se
+   o evento aparece na agenda do Google escolhida.
