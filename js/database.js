@@ -1838,6 +1838,60 @@ B7.DB = (function () {
       return this.rpc('video_definir_standby', { p_demanda_id: demandaId, p_revisar_em: revisarEm || null });
     },
 
+    /* ---- Calendário de Gravações — integração com o Google Calendar da
+       conta branding7dados (migration_calendario.sql + Edge Function
+       google-agenda). O refresh_token do Google nunca passa por aqui:
+       tudo que toca a conexão em si (conectar/desconectar/listar
+       agendas do Google/sincronizar eventos) vai pela Edge Function,
+       que usa a service role. O resto (status, escolher agendas ativas,
+       vincular/desvincular/criar gravação a partir de um evento) é RPC
+       direto, igual ao resto do sistema. ---- */
+    async chamarCalendarioGoogle(corpo) {
+      const { data, error } = await sb().functions.invoke('google-agenda', { body: corpo });
+      if (error) {
+        let corpoErro = null, texto = '';
+        const ctx = error.context;
+        const status = ctx && typeof ctx.status === 'number' ? ctx.status : 0;
+        try { texto = await ctx.clone().text(); corpoErro = JSON.parse(texto); } catch (x) {}
+        if (corpoErro && corpoErro.erro) throw new Error(corpoErro.erro);
+        let motivo = 'Serviço do Calendário indisponível';
+        if (status === 404) motivo += ' (função google-agenda não publicada)';
+        else if (status >= 500) motivo += ' (a função falhou — veja os logs)';
+        else if (status) motivo += ' (HTTP ' + status + ')';
+        else motivo += ' (sem resposta: rede, CORS ou projeto pausado)';
+        throw new Error(motivo + '.');
+      }
+      if (data && data.erro) throw new Error(data.erro);
+      return data;
+    },
+    async statusConexaoCalendario() { return this.rpc('calendario_status_conexao', {}); },
+    async iniciarConexaoCalendario() { return this.chamarCalendarioGoogle({ acao: 'iniciar_conexao' }); },
+    async desconectarCalendario() { return this.chamarCalendarioGoogle({ acao: 'desconectar' }); },
+    async listarCalendariosGoogle() { return this.chamarCalendarioGoogle({ acao: 'listar_calendarios' }); },
+    async sincronizarCalendario(inicioISO, fimISO) {
+      return this.chamarCalendarioGoogle({ acao: 'sincronizar', inicio: inicioISO, fim: fimISO });
+    },
+    async alternarAgendaCalendario(id, ativo) {
+      return this.rpc('calendario_alternar_agenda', { p_id: id, p_ativo: !!ativo });
+    },
+    async eventosCalendario(inicioISO, fimISO) {
+      return ok(await sb().from('calendario_eventos_resumo').select('*')
+        .lt('inicio', fimISO).or('fim.gte.' + inicioISO + ',fim.is.null')
+        .order('inicio'));
+    },
+    async vincularGravacaoCalendario(eventoId, gravacaoId) {
+      return this.rpc('calendario_vincular_gravacao', { p_event_id: eventoId, p_gravacao_id: gravacaoId });
+    },
+    async desvincularCalendario(eventoId) {
+      return this.rpc('calendario_desvincular', { p_event_id: eventoId });
+    },
+    async criarGravacaoDeEventoCalendario({ eventoId, clienteId, nome, dataGravacao, local, observacoes }) {
+      return this.rpc('calendario_criar_gravacao_de_evento', {
+        p_event_id: eventoId, p_client_id: clienteId, p_nome: nome,
+        p_data_gravacao: dataGravacao, p_local: local || '', p_observacoes: observacoes || ''
+      });
+    },
+
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {
       return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')

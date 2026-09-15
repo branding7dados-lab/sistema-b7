@@ -5806,3 +5806,189 @@ Arquivos alterados: `js/video.js`, `js/auth.js`, `sw.js`,
    dano).
 2. Suba os arquivos deste zip.
 3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-14-r`.
+
+# Rodada s (15/09/2026) — Calendário de Gravações com Google Calendar, criação de gravação a partir de evento, e visão de gargalo na Gestão
+
+Você me mandou a especificação completa da Parte 3 (gestão, métricas,
+capacidade da equipe, calendário de gravações integrado à agenda da
+`branding7dados`, automação Gravação→Edição, fechamento mensal e alertas
+inteligentes). Antes de construir qualquer coisa do calendário, auditei o
+repositório de verdade pra não inventar uma integração que não existe — e
+encontrei uma pegadinha importante, que te perguntei antes de seguir.
+
+## O que encontrei na auditoria (e por que perguntei antes de construir)
+
+O `CENTRAL.md` já documentava que uma integração com o Google Calendar
+existiu no B7 e **foi removida de propósito**, com a justificativa
+registrada de que essa função passaria a viver no sistema da N7. Não
+havia mais nenhum vestígio dela no código: nem tabela, nem Edge Function,
+nem tela. A especificação nova pedia pra eu auditar e reaproveitar "a
+integração existente com a agenda da branding7dados" — mas ela não
+existe mais no B7. Como a própria especificação proíbe inventar um
+provedor, parei e perguntei: reconstruir a integração dentro do B7 (revertendo
+aquela decisão antiga), ou manter fora do B7 como estava decidido? Você
+escolheu **reconstruir no B7**. O que vem a seguir parte dessa escolha.
+
+## Implementado e testado
+
+- **Estrutura de dados e segurança do calendário** (`migration_calendario.sql`):
+  quatro tabelas novas — conexão (token do Google), estados de OAuth
+  (proteção contra CSRF), agendas do Google que a equipe escolhe
+  acompanhar, e eventos sincronizados — mais uma tabela de vínculo entre
+  evento e gravação. As duas tabelas que guardam credenciais
+  (`calendario_conexoes`, `calendario_oauth_estados`) **não têm nenhuma
+  permissão concedida a usuário nenhum do sistema** (nem `authenticated`,
+  nem `anon`) — só o Postgres como dono da tabela enxerga essas linhas;
+  todo acesso passa por funções `security definer` que nunca devolvem o
+  token, só um resumo de status (conectado, e-mail da conta, data da
+  última sincronização). Confirmei isso consultando
+  `information_schema.role_table_grants` depois de aplicar a migration:
+  zero linhas de permissão pra qualquer papel do sistema.
+- **Identidade estável do evento** (evita duplicar): cada evento do
+  Google é identificado por `(agenda, id externo do evento)`, com
+  restrição de unicidade no banco — reimportar, ressincronizar ou o
+  evento mudar de horário nunca cria uma cópia nova, sempre atualiza a
+  mesma linha. Testado diretamente no banco.
+- **Vincular gravação a um evento / desvincular / criar gravação a
+  partir de um evento**: três funções no banco, só pra admin/coordenador
+  (videomaker recebe erro de permissão, testado). Criar gravação a partir
+  de um evento é uma operação única no banco (nunca duas etapas soltas) —
+  ou cria a gravação e vincula as duas juntas, ou não faz nem uma das
+  duas. Testado com rollback simulando sucesso e tentativa de vincular
+  evento já vinculado (barrado, como esperado).
+- **Fuso horário**: testei um evento cadastrado às 14h no horário de
+  Brasília e confirmei que ele é guardado e lido de volta corretamente
+  (17h UTC) — sem a confusão de 3 horas que costuma aparecer quando isso é
+  feito errado.
+- **Cancelamento sem apagar dado**: evento cancelado no Google chega
+  marcado como cancelado (`status_provider`), não some da base — aparece
+  na tela riscado, com aviso, e mantém o vínculo com a gravação se
+  houver, pra vocês decidirem o que fazer (nunca apago automaticamente).
+- **Tela do Calendário de Gravações** (`js/calendario.js`,
+  `styles/calendario.css`): navegação por Semana e por "Agenda" (janela
+  rolante de 21 dias, pensada pra quem prefere lista a grade — pedido
+  explícito da especificação), filtro por cliente/agenda/status/busca,
+  card de cada evento mostrando cliente, local, agenda de origem e se já
+  tem gravação vinculada, modal de detalhe do evento, modal de
+  configuração da conexão (conectar, desconectar, escolher quais agendas
+  do Google acompanhar). Acesso: Admin e coordenador com tudo liberado;
+  designer e videomaker só veem a agenda (sem vincular/criar/desconectar).
+- **Visão de gargalo na Gestão de Vídeo** (`js/video.js`, pedido da seção
+  48 da especificação): a tela de Gestão agora mostra uma frase simples
+  quando um status concentra a maior parte do trabalho em aberto (ex.:
+  "68% das demandas em aberto estão em Aguardando aprovação — hoje o
+  gargalo é a resposta do cliente, não a equipe"). Só aparece quando um
+  status realmente domina (40% ou mais); com o trabalho bem distribuído,
+  não mostra nada — de propósito, pra não virar um aviso permanente sem
+  utilidade. Não é mineração de processo, é só uma leitura direta da
+  mesma contagem por status que já existia.
+- **Campo "Revisar standby em"** no detalhe da demanda (fechando um item
+  que tinha ficado como "preparado mas não aplicado" na Rodada q): quando
+  a demanda está em standby, aparece um campo de data pra marcar quando
+  vale voltar a olhar — é só um lembrete visual, não dispara notificação
+  sozinho.
+
+## Implementado, mas requer validação adicional
+
+- **O fluxo de OAuth com o Google e as chamadas à API do Google Calendar
+  em si — isso eu não consegui testar de ponta a ponta**, porque este
+  ambiente não tem acesso a credenciais reais do Google nem à conta
+  `branding7dados`. O que fiz: escrevi a Edge Function
+  (`supabase/functions/google-agenda/index.ts`) seguindo exatamente o
+  fluxo padrão de OAuth 2.0 do Google (troca de código por token,
+  renovação de token expirado, listagem de agendas, sincronização
+  incremental de eventos com paginação e `syncToken`), conferi que o
+  código compila e passa checagem de tipos (`deno check`, sem erros), e
+  testei toda a parte que *não* depende do Google responder (guarda de
+  permissão, geração e validação do estado anti-CSRF, gravação e leitura
+  no banco). Mas **a conexão real com o Google — "conectar, escolher
+  agendas, sincronizar e ver os eventos de verdade aparecerem" — ainda
+  precisa ser testada por vocês, com a conta e as credenciais reais**,
+  depois de configurar o projeto no Google Cloud Console (passo a passo
+  abaixo). Não estou afirmando que a agenda da `branding7dados` está
+  conectada — só que o código pra conectar está pronto e não testado
+  contra o Google real.
+- **Sincronização não é automática em segundo plano**: como o projeto
+  não tem nenhuma infraestrutura de job agendado (mesma limitação já
+  registrada nos alertas de prazo da Rodada q), a sincronização acontece
+  quando alguém da equipe abre a tela do Calendário — não a cada minuto
+  em segundo plano. Na prática, isso significa que um evento criado ou
+  alterado no Google pode levar até a próxima vez que alguém abrir a
+  tela pra aparecer atualizado no B7.
+
+## Preparado mas ainda não aplicado
+
+- **Visão de Mês**: só construí Semana e Agenda (lista rolante). Mês
+  ficou de fora desta rodada — se for importante, dá pra adicionar depois
+  reaproveitando a mesma base de dados.
+- **Exportar (PDF/CSV) do calendário**: mesma decisão já tomada na
+  Rodada q para os outros relatórios — ainda não construído.
+- **Legenda dedicada de cores por agenda**: hoje cada evento mostra o
+  nome da agenda de origem no card, mas não há uma legenda visual
+  separada (ex.: uma cor fixa por agenda). Dá pra fazer como um ajuste
+  pequeno depois.
+- **Forçar visão "Agenda" no celular**: a tela é responsiva (ajusta
+  layout em telas pequenas), mas não força esconder a visão Semana no
+  celular como a especificação sugeriu — deixei as duas visões
+  disponíveis em qualquer tamanho de tela por enquanto.
+
+## Não implementado por bloqueio ou decisão consciente
+
+- **Sincronização bidirecional** (criar/editar evento no Google a partir
+  do B7): a especificação pede pra começar só leitura, e foi isso que
+  fiz (`calendar.readonly` — o B7 nunca escreve na agenda do Google).
+  Não afirmo em lugar nenhum que existe escrita de volta pro Google,
+  porque não existe.
+- **Integração com Núcleo7 e reconstrução do Portal do Cliente**:
+  ficaram de fora desta tarefa, como a própria especificação pediu
+  explicitamente.
+
+## Configuração externa necessária (você precisa fazer isso — eu não
+tenho como, e não deveria)
+
+Pra a conexão com o Google funcionar de verdade, alguém com acesso ao
+Google Cloud Console da conta que vai ser usada (provavelmente a conta
+`branding7dados`) precisa:
+
+1. Criar (ou usar) um projeto no [Google Cloud Console](https://console.cloud.google.com/).
+2. Ativar a **Google Calendar API** nesse projeto.
+3. Configurar a **tela de consentimento OAuth** (modo interno ou externo,
+   conforme o tipo de conta do Google usada).
+4. Criar uma credencial do tipo **OAuth Client ID — Aplicativo Web**.
+5. Registrar como **URI de redirecionamento autorizado** exatamente a
+   URL pública da Edge Function `google-agenda` (algo como
+   `https://<seu-projeto>.supabase.co/functions/v1/google-agenda`).
+6. Guardar o **Client ID** e o **Client Secret** gerados — essas duas
+   informações (mais o URI de redirecionamento) vão virar variáveis de
+   ambiente da Edge Function no Supabase (`GOOGLE_CLIENT_ID`,
+   `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`), configuradas direto no
+   painel do Supabase — **nunca me envie essas credenciais pelo chat**,
+   configure-as direto lá.
+7. Fazer o deploy da função com `supabase functions deploy google-agenda
+   --no-verify-jwt` (o `--no-verify-jwt` é necessário porque o próprio
+   redirecionamento do Google chega sem sessão do Supabase; a função
+   verifica a identidade manualmente em cada ação que precisa).
+
+Depois disso, um admin abre o Calendário de Gravações no B7 e clica em
+"Conectar Google Calendar" — aí sim dá pra testar a conexão de verdade e
+eu recomendo fortemente que isso seja testado com cuidado antes de
+confiar nos dados.
+
+Arquivos novos: `js/calendario.js`, `styles/calendario.css`,
+`migration_calendario.sql`, `supabase/functions/google-agenda/index.ts`.
+Arquivos alterados: `js/video.js`, `js/database.js`, `js/permissoes.js`,
+`js/app.js`, `js/auth.js`, `index.html`, `sw.js`.
+`VERSAO` → `2026-09-15-s`, cache → `roteiros-b7-v77`.
+
+## Como aplicar
+
+1. No SQL Editor, rode `migration_calendario.sql` (pode repetir sem
+   dano).
+2. Configure o projeto no Google Cloud Console e as variáveis de
+   ambiente da Edge Function, como descrito acima.
+3. Faça o deploy da Edge Function `google-agenda`
+   (`supabase functions deploy google-agenda --no-verify-jwt`).
+4. Suba os arquivos deste zip no repositório.
+5. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-s`.
+6. Com um usuário admin, abra "Calendário de Gravações" e clique em
+   "Conectar Google Calendar" pra testar a conexão real.

@@ -308,6 +308,9 @@
 .vd-badge-ja{font-size:10.5px;color:var(--ink-4);background:var(--suave);border-radius:100px;
   padding:2px 8px;margin-left:auto;}
 .vd-aviso-texto{color:var(--ambar);font-size:13px;margin:4px 0 10px;}
+.vd-gargalo{background:var(--suave);border-left:3px solid var(--acento);border-radius:var(--r-sm);
+  padding:10px 12px;font-size:13px;color:var(--ink-2);margin:0 0 16px;line-height:1.4;}
+.vd-gargalo b{color:var(--ink);}
 .vg-corpo h4{margin:20px 0 8px;font-size:13.5px;}
 #vg-corpo h4:first-child{margin-top:0;}
 .acoes-inline{display:flex;gap:9px;margin:8px 0 18px;}

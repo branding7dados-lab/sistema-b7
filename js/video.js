@@ -881,6 +881,42 @@ B7.Video = (function () {
   function numFmt(n) { return (n === null || n === undefined) ? '—' : String(n); }
   function diasFmt(n) { return (n === null || n === undefined) ? '—' : n + ' dia' + (n === 1 ? '' : 's'); }
 
+  /* Visão simples de gargalo: entre os status em aberto, qual concentra
+     mais demandas agora. Não é mineração de processo — só ajuda a
+     enxergar rápido se o entrave é a equipe (em_edicao/correcao/pendente)
+     ou o cliente (aguardando_aprovacao) ou algo parado (standby). */
+  const GARGALO_ROTULOS = {
+    pendente: 'Pendente (ainda não iniciadas)',
+    em_edicao: 'Em edição',
+    aguardando_aprovacao: 'Aguardando aprovação do cliente',
+    correcao: 'Em correção',
+    standby: 'Em standby'
+  };
+  const GARGALO_LEITURA = {
+    pendente: 'a fila de início — a equipe ainda não começou essas demandas.',
+    em_edicao: 'o trabalho de edição em si — a equipe está com essas demandas em mãos.',
+    aguardando_aprovacao: 'a resposta do cliente, não a equipe — essas demandas já foram entregues para aprovação.',
+    correcao: 'o ciclo de correção — a equipe está retrabalhando essas demandas.',
+    standby: 'demandas paradas por decisão registrada — vale revisar se ainda cabe esperar.'
+  };
+  function gargaloHTML(porStatus) {
+    const chaves = Object.keys(GARGALO_ROTULOS);
+    const total = chaves.reduce((s, k) => s + (porStatus[k] || 0), 0);
+    if (!total) return '';
+    let maior = null;
+    chaves.forEach(k => {
+      const n = porStatus[k] || 0;
+      if (n > 0 && (!maior || n > porStatus[maior])) maior = k;
+    });
+    if (!maior) return '';
+    const n = porStatus[maior] || 0;
+    const pct = Math.round((n / total) * 100);
+    // Só destaca quando o status realmente concentra a maior parte do trabalho em aberto.
+    if (pct < 40) return '';
+    return '<p class="vd-gargalo"><b>' + numFmt(n) + '</b> de <b>' + numFmt(total) + '</b> demandas em aberto (' + pct + '%) estão em <b>' +
+      esc(GARGALO_ROTULOS[maior]) + '</b> — hoje o gargalo é ' + esc(GARGALO_LEITURA[maior]) + '</p>';
+  }
+
   function modalGestao() {
     const compChave = (F.competencia && F.competencia !== 'todas') ? F.competencia : mesAtualChave();
     const [anoIni, mesIni] = compChave.split('-').map(Number);
@@ -918,6 +954,7 @@ B7.Video = (function () {
           '<div class="vg-card"><b>' + numFmt(r.ciclos_correcao_total) + '</b><span>ciclos de correção (cliente: ' + numFmt(r.ciclos_correcao_cliente) + ' · interna: ' + numFmt(r.ciclos_correcao_interna) + ')</span></div>' +
         '</div>' +
         '<p class="fraca">Tempo médio de produção mede do início da edição até o primeiro envio para aprovação — só conta demandas com essa trilha de eventos completa (ver nota no rodapé). Ciclo de correção "cliente" é uma inferência sobre o texto da decisão registrada, não um campo estruturado à parte.</p>' +
+        gargaloHTML(porStatus) +
 
         '<h4>Carga da equipe (agora)</h4>' +
         '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
@@ -1257,6 +1294,15 @@ B7.Video = (function () {
           (podeEditar ? '<input class="campo" type="date" id="vd-dt-prazo" value="' + (d.prazo || '') + '">' :
             '<div class="vd-so-leitura">' + (d.prazo ? esc(B7.UI.dataBR(d.prazo)) + (atrasada ? ' — atrasada' : '') : '—') + '</div>') +
           '</div>' +
+          (d.editing_status === 'standby'
+            ? '<div class="vd-dt-campo"><label class="rot">Revisar standby em</label>' +
+              (podeOperar
+                ? '<div class="vd-link-linha"><input class="campo" type="date" id="vd-dt-standby" value="' + (d.standby_revisar_em || '') + '">' +
+                  '<button class="b" id="vd-dt-standby-salvar">Salvar</button></div>' +
+                  '<p class="fraca">Lembrete visual — não manda notificação sozinho, só ajuda a lembrar de voltar a olhar essa demanda.</p>'
+                : '<div class="vd-so-leitura">' + (d.standby_revisar_em ? esc(B7.UI.dataBR(d.standby_revisar_em)) : '—') + '</div>') +
+              '</div>'
+            : '') +
           '<div class="vd-dt-campo"><label class="rot">Competência</label>' +
           '<div class="vd-so-leitura">' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</div>' +
           '</div>' +
@@ -1589,6 +1635,15 @@ B7.Video = (function () {
       try { await B7.DB.definirLinkVideo(d.id, link); B7.UI.toast('Link salvo.'); abrirDetalhe(d.id); }
       catch (e) { B7.UI.toast(e.message || 'Não foi possível salvar o link.'); }
       finally { btLink.disabled = false; }
+    };
+
+    const btStandby = document.getElementById('vd-dt-standby-salvar');
+    if (btStandby) btStandby.onclick = async () => {
+      const data = document.getElementById('vd-dt-standby').value || null;
+      btStandby.disabled = true;
+      try { await B7.DB.definirStandbyVideo(d.id, data); B7.UI.toast('Data salva.'); abrirDetalhe(d.id); }
+      catch (e) { B7.UI.toast(e.message || 'Não foi possível salvar.'); }
+      finally { btStandby.disabled = false; }
     };
 
     const selGravacaoDt = document.getElementById('vd-dt-gravacao');

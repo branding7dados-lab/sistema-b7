@@ -1,0 +1,68 @@
+/* =====================================================================
+   B7 CALENDÁRIO DE GRAVAÇÕES (Parte 3)
+   ===================================================================== */
+
+.cal-tela .estado-b7{margin-top:10px;}
+.cal-desconectado b{display:block;margin-bottom:4px;}
+
+.cal-barra{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin:16px 0 12px;}
+.cal-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cal-nav .b{padding:6px 12px;}
+.cal-rotulo-janela{font-size:13px;color:var(--ink-3);font-weight:600;margin-left:4px;}
+.cal-vista{display:flex;gap:6px;}
+
+.cal-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+.cal-filtros .campo{width:auto;min-width:150px;flex:1 1 150px;}
+#cal-f-busca{min-width:200px;flex:2 1 200px;}
+
+.cal-dias{display:flex;flex-direction:column;gap:18px;}
+.cal-dia-cab{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;
+  font-size:13px;color:var(--ink-3);}
+.cal-dia-cab b{font-family:'Archivo';font-weight:800;color:var(--ink);font-size:14px;}
+.cal-dia.hoje .cal-dia-cab b{color:var(--acento);}
+.cal-dia-cab em{font-style:normal;background:var(--acento-suave);color:var(--acento);
+  font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;}
+.cal-dia-corpo{display:flex;flex-direction:column;gap:6px;}
+
+.cal-evento{display:flex;align-items:center;gap:12px;padding:10px 12px;
+  background:var(--card);border:1px solid var(--borda);border-radius:10px;
+  cursor:pointer;transition:var(--t-rapido);}
+.cal-evento:hover, .cal-evento:focus-visible{border-color:var(--borda-forte);
+  box-shadow:0 6px 18px -12px rgba(0,0,0,.25);outline:none;}
+.cal-evento.cancelado{opacity:.55;}
+.cal-evento.cancelado .cal-evento-titulo{text-decoration:line-through;}
+.cal-evento-hora{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--ink-3);
+  min-width:82px;font-variant-numeric:tabular-nums;}
+.cal-evento-corpo{flex:1;min-width:0;}
+.cal-evento-titulo{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:3px;}
+.cal-evento-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-4);}
+.cal-evento-agenda{font-weight:600;}
+.cal-vinculo-badge{flex:0 0 auto;font-size:10.5px;font-weight:700;padding:3px 9px;
+  border-radius:99px;background:var(--ok-bg);color:var(--ok);white-space:nowrap;}
+.cal-vinculo-badge.fraca{background:var(--suave);color:var(--ink-4);}
+
+/* Configurações */
+.cal-conexao-ok{display:flex;flex-direction:column;gap:2px;margin-bottom:12px;
+  padding:12px 14px;background:var(--ok-bg);border-radius:var(--r-sm);}
+.cal-conexao-ok b{color:var(--ok);font-size:13.5px;}
+.cal-conexao-ok span{font-size:12.5px;color:var(--ink-2);}
+.cal-conexao-ok small{font-size:11px;color:var(--ink-4);margin-top:2px;}
+.cal-agenda-item{display:flex;align-items:center;gap:9px;padding:8px 10px;
+  background:var(--suave);border-radius:var(--r-sm);font-size:13px;color:var(--ink-2);
+  margin-bottom:6px;cursor:pointer;}
+
+/* Detalhe do evento */
+.cal-detalhe-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px;margin:14px 0;}
+.cal-gravacao-vinculada{padding:12px 14px;background:var(--suave);border-radius:var(--r-sm);
+  display:flex;flex-direction:column;gap:3px;}
+.cal-gravacao-vinculada b{font-size:13.5px;}
+.cal-gravacao-vinculada span{font-size:12px;color:var(--ink-3);}
+
+@media (max-width: 640px){
+  .cal-barra{flex-direction:column;align-items:stretch;}
+  .cal-vista{align-self:flex-start;}
+  .cal-evento{flex-wrap:wrap;}
+  .cal-evento-hora{min-width:0;}
+}

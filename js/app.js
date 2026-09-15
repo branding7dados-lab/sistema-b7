@@ -137,6 +137,10 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return partes[1] ? B7.Video.abrirDetalhe(partes[1]) : B7.Video.abrir();
     }
+    if (partes[0] === 'calendario' && B7.Calendario) {
+      mostrar('tela-dashboard');
+      return B7.Calendario.abrir();
+    }
     if (partes[0] === 'aprovacoes' && B7.Aprovacoes) {
       mostrar('tela-dashboard');
       return partes[1] ? B7.Aprovacoes.abrirDetalhe(partes[1]) : B7.Aprovacoes.abrir();

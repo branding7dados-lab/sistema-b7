@@ -22,7 +22,7 @@ B7.Perm = (function () {
     admin: '*',
     coordenador: [
       '', 'clientes', 'cliente', 'gravacoes', 'gravacao', 'roteiros', 'linhas',
-      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes', 'design', 'video'
+      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes', 'design', 'video', 'calendario'
     ],   /* sem usuarios, importar, atalhos e lixeira */
     /* Designer é produção interna, não administração: só o que precisa
        para entender o briefing e entregar o trabalho. Sem usuários,
@@ -33,11 +33,17 @@ B7.Perm = (function () {
        o briefing, mas nunca editar — a UI trava os campos (ver
        souDesignerSomenteLeitura em js/conteudo.js) e o RLS do banco
        bloqueia a escrita de verdade mesmo se alguém pular a UI. */
-    designer: ['', 'design', 'linhas', 'linha', 'gravacao', 'cliente', 'config'],
+    /* 'calendario' entra pro Designer só como LEITURA (a tela em si não
+       mostra ações de conectar/gerenciar agenda nem vincular/criar
+       gravação pra quem não é admin/coordenador — ver souGestorCalendario
+       em js/calendario.js) — é contexto (o que vai ser gravado), não
+       administração. */
+    designer: ['', 'design', 'linhas', 'linha', 'gravacao', 'cliente', 'config', 'calendario'],
     /* Videomaker filma e edita: só precisa da própria fila de demandas
        de edição e do contexto mínimo do cliente/gravação por trás
-       delas — mesma lógica do Designer, sem administração nenhuma. */
-    videomaker: ['', 'video', 'gravacao', 'cliente', 'config'],
+       delas — mesma lógica do Designer, sem administração nenhuma.
+       'calendario' também é só leitura pra ele (mesma nota acima). */
+    videomaker: ['', 'video', 'gravacao', 'cliente', 'config', 'calendario'],
     cliente: [
       '', 'aprovacoes', 'revisar', 'minha-linha', 'minha-producao',
       'minhas-gravacoes', 'meus-status', 'historico', 'perfil'
@@ -87,7 +93,7 @@ B7.Perm = (function () {
     cliente: {
       ocultar: ['#/kanban', '#/aprovacoes', '#/usuarios', '#/clientes', '#/gravacoes', '#/roteiros', '#/linhas',
                 '#/semanas', '#/arquivados', '#/lixeira', '#/importar',
-                '#/atalhos', '#/config'],
+                '#/atalhos', '#/config', '#/calendario'],
       grupos: { 'PRODUÇÃO': false, 'MAIS FERRAMENTAS': false }
     }
   };
