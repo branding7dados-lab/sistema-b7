@@ -107,6 +107,9 @@ select.kb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 .kb-tipo.v-linha{background:var(--neutro-bg);color:#4338CA;}
 [data-theme="dark"] .kb-tipo.v-linha{color:#A5B4FC;}
 .kb-tipo.v-conteudo{background:var(--ok-bg);color:var(--ok);}
+.kb-tipo.video{background:var(--acento-suave);color:var(--acento);}
+.kb-tipo.design{background:var(--neutro-bg);color:#4338CA;}
+[data-theme="dark"] .kb-tipo.design{color:#A5B4FC;}
 .kb-tipo.reuniao{background:var(--ambar-bg);color:var(--ambar);}
 .kb-tipo.entrega{background:var(--ok-bg);color:var(--ok);}
 .kb-tipo.ajuste{background:var(--erro-bg);color:var(--erro);}

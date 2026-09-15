@@ -267,9 +267,26 @@ B7.Rota = (function () {
       aplicarPapelNaNavegacao();
       if (B7.Perm) B7.Perm.aplicarNavegacao();
       const ligarSe = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-      ligarSe('nav-backup', () => B7.Backup.menu());
       ligarSe('nav-atalhos', () => B7.UI.atalhos());
       ligarSe('nav-config', () => { location.hash = '#/config'; });
+      /* "MAIS FERRAMENTAS" começa recolhido (sidebar menos cheia) — abre
+         sozinho se a rota atual já é uma delas, e lembra a escolha. */
+      (function () {
+        const toggle = document.getElementById('nav-mais-toggle'), caixa = document.getElementById('nav-mais');
+        if (!toggle || !caixa) return;
+        const ROTAS = ['#/arquivados', '#/lixeira', '#/usuarios', '#/config'];
+        const abrir = ROTAS.some(r => location.hash.indexOf(r) === 0) || localStorage.getItem('b7-nav-mais') === '1';
+        const aplicar = ab => {
+          caixa.classList.toggle('aberta', ab);
+          toggle.setAttribute('aria-expanded', ab ? 'true' : 'false');
+        };
+        aplicar(abrir);
+        toggle.onclick = () => {
+          const ab = !caixa.classList.contains('aberta');
+          aplicar(ab);
+          localStorage.setItem('b7-nav-mais', ab ? '1' : '0');
+        };
+      })();
       if (B7.rotularNav) B7.rotularNav();
     }
     [['topo-interno-esq', 'tpl-topo-interno-esq'], ['topo-interno-dir', 'tpl-topo-interno-dir']].forEach(([id, t]) => {

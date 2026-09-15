@@ -562,56 +562,30 @@ B7.DB = (function () {
        de fora de tudo. */
     async painelProducao(filtros) {
       filtros = filtros || {};
-      /* Cada contagem é isolada: se uma tabela ainda não existe porque o
-         migration correspondente não rodou, aquele número vem zero e a
-         Central continua de pé em vez de virar tela de erro. */
-      const conta = async (tabela, montar) => {
-        try {
-          let q = sb().from(tabela).select('id', { count: 'exact', head: true })
-            .is('deleted_at', null).is('archived_at', null);
-          q = montar ? montar(q) : q;
-          const { count, error } = await q;
-          if (error) { console.warn('painelProducao: ' + tabela, error.message); return 0; }
-          return count || 0;
-        } catch (e) { console.warn('painelProducao: ' + tabela, e.message); return 0; }
-      };
-
-      /* O período tem semântica diferente em cada categoria:
-         gravação usa a data de gravação, linha editorial usa mês/ano de
-         referência e roteiro usa a data de criação. */
-      const perGrav = q => filtros.de
-        ? q.gte('data_gravacao', filtros.de).lte('data_gravacao', filtros.ate) : q;
-      const perRot = q => filtros.de
-        ? q.gte('created_at', filtros.de).lte('created_at', filtros.ate + 'T23:59:59') : q;
-      const cli = q => filtros.clienteId ? q.eq('client_id', filtros.clienteId) : q;
-
-      /* Roteiro não tem client_id: ele pertence a uma gravação. Filtrar
-         por cliente é filtrar pelas gravações daquele cliente. */
-      const idsGrav = filtros.clienteId ? await this.idsGravacoesDoCliente(filtros.clienteId) : null;
-      const cliRot = q => idsGrav ? q.in('recording_session_id', idsGrav.length ? idsGrav : ['00000000-0000-0000-0000-000000000000']) : q;
-
-      const g = q => cli(perGrav(q));
-      const r = q => cliRot(perRot(q));
-
-      const [gravTotal, gravFeitas, gravFaltam, gravAgendadas, gravSemData, gravCanceladas,
-             rotTotal, rotAndamento, rotProntos, rotGravados] = await Promise.all([
-        /* total: gravações válidas, canceladas fora */
-        conta('gravacoes', q => g(q).neq('situacao', 'Cancelada')),
-        /* gravadas: confirmação explícita da equipe, nunca deduzida da data */
-        conta('gravacoes', q => g(q).eq('situacao', 'Gravada')),
-        /* faltam: pendentes e agendadas — não é total menos gravadas */
-        conta('gravacoes', q => g(q).in('situacao', ['Pendente', 'Agendada'])),
-        conta('gravacoes', q => g(q).eq('situacao', 'Agendada')),
-        conta('gravacoes', q => g(q).eq('situacao', 'Pendente').is('data_gravacao', null)),
-        conta('gravacoes', q => g(q).eq('situacao', 'Cancelada')),
-
-        conta('roteiros', q => r(q)),
-        conta('roteiros', q => r(q).in('status', ['Em criação', 'Em revisão', 'Aprovado internamente'])),
-        conta('roteiros', q => r(q).eq('status', 'Pronto para gravar')),
-        /* roteiro já gravado tinha sumido da leitura: entrava no total e não
-           aparecia em categoria nenhuma */
-        conta('roteiros', q => r(q).eq('status', 'Gravado'))
-      ]);
+      /* Antes eram 10 consultas de contagem em paralelo (6 em gravacoes +
+         4 em roteiros) — no plano Free do Supabase, cuja pool do
+         PostgREST é de só 10 conexões, isso sozinho já tomava a pool
+         inteira e derrubava outras telas com 503 ("Thread killed by
+         timeout manager", visto direto no log do Supabase). Agora é uma
+         função só no banco (painel_producao_contagens) que faz as duas
+         passadas (uma por tabela) numa única ida — 1 conexão em vez de
+         10. Limite curto (8s): se o banco estiver fora do ar mesmo assim,
+         os números vêm zerados em vez de travar a Central inteira. */
+      let dados = {};
+      try {
+        dados = await Promise.race([
+          this.rpc('painel_producao_contagens', {
+            p_de: filtros.de || null, p_ate: filtros.de ? filtros.ate : null,
+            p_cliente_id: filtros.clienteId || null
+          }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('sem resposta em 8s')), 8000))
+        ]);
+      } catch (e) { console.warn('painelProducao', e.message); dados = {}; }
+      const gravTotal = dados.gravTotal || 0, gravFeitas = dados.gravFeitas || 0,
+            gravFaltam = dados.gravFaltam || 0, gravAgendadas = dados.gravAgendadas || 0,
+            gravSemData = dados.gravSemData || 0, gravCanceladas = dados.gravCanceladas || 0,
+            rotTotal = dados.rotTotal || 0, rotAndamento = dados.rotAndamento || 0,
+            rotProntos = dados.rotProntos || 0, rotGravados = dados.rotGravados || 0;
 
       /* Linhas editoriais filtram por mês/ano de referência, não por
          created_at: é essa a semântica do planejamento. */
@@ -1274,25 +1248,24 @@ B7.DB = (function () {
 
     /* ------------------------------------------------------ RESUMO */
     async resumo() {
-      /* lixeira e arquivados ficam fora de todos os totais, para os
-         números baterem com as listas */
-      const conta = async (tabela, filtro) => {
-        let q = sb().from(tabela).select('id', { count: 'exact', head: true }).is('deleted_at', null);
-        if (tabela !== 'clientes') q = q.is('archived_at', null);
-        if (filtro) q = filtro(q);
-        const { count, error } = await q;
-        if (error) throw error;
-        return count || 0;
-      };
-      const inicioMes = new Date();
-      inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
-      const [clientes, gravacoes, roteiros, mes, rascunho, pronto, gravado] = await Promise.all([
-        conta('clientes'), conta('gravacoes'), conta('roteiros'),
-        conta('roteiros', q => q.gte('created_at', inicioMes.toISOString())),
-        conta('gravacoes', q => q.eq('status', 'Rascunho')),
-        conta('gravacoes', q => q.eq('status', 'Pronto para gravar')),
-        conta('gravacoes', q => q.eq('status', 'Gravado'))
-      ]);
+      /* Antes eram 7 contagens em paralelo — no plano Free do Supabase
+         (pool do PostgREST de só 10 conexões), isso sozinho quase tomava
+         a pool inteira e voltava 503 ("Thread killed by timeout manager",
+         visto no log do Supabase). Agora é uma função só no banco
+         (dashboard_resumo_contagens) numa única ida. Limite curto (8s):
+         se mesmo assim o banco não responder, os números vêm zerados em
+         vez de travar o Dashboard inteiro (era esse o bug maior: antes
+         um erro aqui derrubava a tela toda, sem try/catch nenhum). */
+      let dados = {};
+      try {
+        dados = await Promise.race([
+          this.rpc('dashboard_resumo_contagens'),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('sem resposta em 8s')), 8000))
+        ]);
+      } catch (e) { console.warn('resumo', e.message); dados = {}; }
+      const clientes = dados.clientes || 0, gravacoes = dados.gravacoes || 0,
+            roteiros = dados.roteiros || 0, mes = dados.mes || 0,
+            rascunho = dados.rascunho || 0, pronto = dados.pronto || 0, gravado = dados.gravado || 0;
       /* "em andamento" = tudo que ainda não foi gravado; é o número que
          interessa na operação, mais do que um total acumulado */
       return { clientes, gravacoes, roteiros, mes,

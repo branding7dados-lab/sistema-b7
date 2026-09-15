@@ -666,7 +666,7 @@ B7.DocSemana = (function () {
 
     if (semData.length) {
       blocos.push({ html: '<div class="ps-dia sem-data">' +
-        '<div class="ps-data"><span class="dow">SEM</span><span class="dt">DATA</span></div>' +
+        '<div class="ps-data"><span class="dt">Geral</span></div>' +
         '<div class="ps-itens">' + semData.map(linhaItem).join('') + '</div></div>', peso: 1.1 + semData.length * 1.35 });
     }
 

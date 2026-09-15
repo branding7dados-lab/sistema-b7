@@ -351,7 +351,12 @@
 .ps-dia-vazio .ps-data .dt{font-size:calc(var(--dia-dt-fs) - 4px);}
 .ps-dia-vazio .ps-data{background:linear-gradient(160deg,#2A2440,#3A3350);}
 .ps-sem{font-size:var(--dia-sem-fs);color:var(--grey);}
-.ps-dia.sem-data .ps-data .dt{font-size:calc(var(--dia-dt-fs) - 3px);}
+/* Item sem data (ex.: linha editorial) não finge ser um dia da semana:
+   fundo neutro, um rótulo único centralizado — não a dupla dow/dt que
+   imita "SEG / 14/09" e fazia parecer um 8º dia bugado no calendário. */
+.ps-dia.sem-data .ps-data{background:var(--grey, #8B85A0);}
+.ps-dia.sem-data .ps-data .dt{font-size:calc(var(--dia-dow-fs) + 1px);letter-spacing:.06em;
+  color:#fff;text-transform:uppercase;}
 
 /* linha divisória leve entre tarefas do mesmo dia — nunca um cartão
    inteiro por tarefa */

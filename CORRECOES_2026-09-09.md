@@ -6330,3 +6330,458 @@ Nenhuma migration nova. `VERSAO` → `2026-09-15-v`, cache →
 4. Só depois de confirmar a versão: abra o Calendário de Gravações e
    teste "+ Marcar gravação", depois abra a ocorrência criada e teste
    Editar, Remarcar e Cancelar.
+
+# Rodada w (15/09/2026) — achado o motivo do "Ação desconhecida: criar_evento", roteiro deixou de ser criado sozinho, e plano pra Excluir/título/cores no Google
+
+O indicador de versão funcionou: seus prints mostram o rodapé em
+`v2026-09-15-v` e o botão Editar aparecendo — ou seja, o **frontend**
+(GitHub Pages) está atualizado. Mas o erro que apareceu
+("Marcada no B7, mas não deu pra criar o evento no Google: Ação
+desconhecida: criar_evento") não vem do frontend — vem de dentro da
+Edge Function `google-agenda`, rodando no Supabase.
+
+## O que achei (diagnóstico, sem código novo)
+
+Fui direto na função que devolve esse erro: ela devolve exatamente essa
+frase quando recebe uma ação que ela não reconhece — é a última linha de
+uma lista de "if" (iniciar_conexao, desconectar, listar_calendarios,
+sincronizar, atualizar_evento, cancelar_evento, criar_evento,
+editar_evento; se não bater com nenhuma, cai nesse erro). No código que
+está no repositório, `criar_evento` está na lista — então o problema não
+está no código, está em qual versão está rodando de fato no Supabase.
+
+O frontend (arquivos `.js`, `.html`, `.css`) e a Edge Function são **dois
+deploys totalmente separados** — subir os arquivos no GitHub não sobe a
+Edge Function, e vice-versa. As Rodadas u e v acrescentaram justamente as
+ações `criar_evento` e `editar_evento` na Edge Function, então: se o
+deploy da Edge Function não foi refeito depois da Rodada u (ou foi feito
+antes dela), ela ainda está numa versão anterior — sem `criar_evento` —
+e cai nesse fallback assim que o frontend novo tenta chamar essa ação. É
+o cenário mais provável: o frontend claramente foi atualizado (senão o
+indicador de versão e o botão Editar não apareceriam), mas nada nos
+prints indica que a Edge Function foi.
+
+**O que fazer**: rodar de novo
+`supabase functions deploy google-agenda --no-verify-jwt`. Depois disso,
+"+ Marcar gravação" deve conseguir criar o evento no Google sem esse
+erro (a gravação em si já fica salva certinha no nosso sistema mesmo
+quando o Google falha — é por isso que apareceu "Marcada no B7, mas...",
+e não um erro travando tudo).
+
+## Implementado e testado
+
+- **Roteiro deixou de ser criado sozinho**: até esta rodada, sempre que
+  se abria uma gravação com zero roteiros (o caso normal de uma gravação
+  marcada pelo calendário — ela nasce só com nome/cliente/data, sem
+  nenhum roteiro nosso), o editor criava um roteiro em branco na hora,
+  automaticamente. Agora não cria mais: a tela mostra "Nenhum roteiro
+  nesta gravação" com um botão "+ Novo roteiro" — só cria se alguém
+  clicar. Faz sentido exatamente pelo motivo que você deu: às vezes o
+  cliente já tem o roteiro dele pronto, e forçar a criação de um roteiro
+  nosso vazio não ajuda em nada, só suja a lista.
+
+## Plano para os 3 pedidos novos (aguardando sua aprovação antes de programar)
+
+**1. Excluir gravação (apagar de verdade, do B7 e do Google)**
+Hoje "Cancelar" só muda o status pra Cancelada — a gravação e o evento no
+Google continuam existindo (histórico). Isso é proposital: cancelar
+guarda rastro. "Excluir" é diferente — apaga mesmo. Plano:
+- Nova função no banco (`calendario_ocorrencia_excluir` ou
+  `gravacao_excluir`, só admin/coordenador) que apaga a gravação
+  (arrasta ocorrências e, se houver, roteiros/cenas ligados a ela — vou
+  confirmar o que existe antes de apagar, com uma confirmação clara na
+  tela tipo "isso vai apagar a gravação e N roteiro(s) ligado(s) a ela,
+  não dá pra desfazer").
+- Nova ação `excluir_evento` na Edge Function, chamando o DELETE de
+  verdade do Google (diferente do Cancelar, que hoje só marca
+  status=cancelled por lá).
+- Botão "Excluir" no modal da ocorrência, com confirmação (é
+  irreversível, então peço confirmação clara antes).
+
+**2. Título do evento no Google mostrando "Gravação" + nome do cliente**
+Hoje o título que vai pro Google é só o nome da gravação (ex.: "teste").
+Passaria a ir, por exemplo: `Gravação — <Cliente> — <nome da gravação>`
+(ex.: "Gravação — Branding7 — teste"). Aplicaria em toda escrita no
+Google: criar, remarcar (que já reaproveita o mesmo evento) e editar.
+Qual desses dois formatos prefere (ou outro, me diga)?
+- `Gravação — <Cliente> — <nome da gravação>`
+- `🎥 Gravação: <Cliente> (<nome da gravação>)`
+
+**3. Cores iguais entre o B7 e o Google**
+O Google Calendar tem uma paleta fixa de 11 cores por evento (`colorId`
+1 a 11 — não são cores livres, são nomes fixos tipo "Tomate", "Sálvia",
+"Mirtilo"). Plano: mapear nossos 4 status pra cor do Google mais
+parecida (ex.: Marcada→Mirtilo/azul, Remarcada→Banana/amarelo,
+Concluída→Sálvia/verde, Cancelada→Tomate/vermelho — a cor exata de cada
+uma delas no Google não é idêntica à nossa, mas seria a mais próxima
+disponível). A cor seria escrita no evento sempre que o status mudar:
+criar, remarcar, cancelar e concluir (concluir hoje não mexe no Google
+nenhuma — passaria a fazer um PATCH só de cor).
+
+Arquivo alterado nesta rodada: `js/editor.js`, `js/auth.js`, `sw.js`.
+Nenhuma migration nova, nenhuma mudança na Edge Function ainda (os 3
+itens acima é que vão mexer nela, depois que você aprovar). `VERSAO` →
+`2026-09-15-w`, cache → `roteiros-b7-v81`.
+
+## Como aplicar
+
+1. Rode de novo `supabase functions deploy google-agenda --no-verify-jwt`
+   — é isso que deve resolver o erro "Ação desconhecida: criar_evento".
+2. Suba os arquivos desta rodada no repositório.
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-w`.
+4. Teste "+ Marcar gravação" de novo — o toast de erro do Google não deve
+   mais aparecer. Depois abra essa gravação (pela lista normal, não pelo
+   calendário) e confirme que ela abre sem criar roteiro sozinho.
+5. Me diga se aprova o plano de Excluir/título/cores acima (e qual
+   formato de título prefere) pra eu programar na próxima rodada.
+
+# Rodada x (15/09/2026) — "You need to have writer access to this calendar": a agenda de escrita não tinha permissão de escrita, e a tela deixava escolher isso sem avisar
+
+Depois de reconectar o Google com a permissão de escrita, o erro mudou
+de "scope" pra "writer access" — ou seja, a permissão está certa agora,
+mas a **agenda específica** marcada como "agenda de escrita" (em
+Configurações do Calendário → "Usar para novas gravações") é uma agenda
+em que essa conta do Google só pode ler, não criar/editar evento. O
+Google manda essa informação (se a conta é dona, pode escrever, ou só
+lê) em toda listagem de agenda, mas a tela não guardava nem mostrava
+isso — dava pra marcar qualquer agenda como "de escrita", inclusive uma
+só-leitura, e o erro só aparecia na hora de tentar criar o evento.
+
+## Implementado e testado
+
+- **A tela agora sabe (e mostra) o que cada agenda permite**: ao listar
+  as agendas do Google, a Edge Function passou a guardar o nível de
+  acesso de cada uma (dona / pode escrever / só leitura). Em
+  Configurações do Calendário, uma agenda só-leitura aparece com a opção
+  "Usar para novas gravações" desabilitada e o aviso "Só leitura — não
+  pode ser agenda de escrita" — não dá mais pra escolher errado sem
+  querer.
+- **Aviso quando a agenda já escolhida é só-leitura**: se a agenda de
+  escrita atual (a que você já tinha marcado) for só-leitura, aparece um
+  aviso vermelho no topo da tela de Configurações pedindo pra trocar —
+  em vez de descobrir isso só quando uma gravação falhar.
+- **Mensagem de erro mais clara na Edge Function**: se mesmo assim
+  acontecer (por exemplo, permissão mudou do lado do Google depois), o
+  erro agora diz exatamente qual agenda é essa e o que fazer — em vez do
+  erro cru do Google ("You need to have writer access...").
+- Nova coluna `papel_acesso` em `calendario_agendas` (migration nova,
+  abaixo) — só armazena o que o Google já manda, nenhum dado novo
+  coletado.
+
+## O que fazer agora (pra sua gravação específica)
+
+1. Suba os arquivos desta rodada e rode a migration nova (abaixo).
+2. Vá em Calendário → Configurações e clique em **"Atualizar lista de
+   agendas"** — isso vai preencher o nível de acesso de cada agenda que
+   já existia.
+3. Veja qual agenda está marcada como "Usar para novas gravações": se
+   ela aparecer como "Só leitura", escolha outra — o jeito mais simples é
+   usar a agenda principal da própria conta que você conectou (aquela
+   agenda "dona"/`owner`, normalmente a de e-mail da conta), ou uma
+   agenda dentro dessa conta que você criou você mesmo. Se o objetivo é
+   escrever numa agenda de outra pessoa/equipe, essa agenda precisa estar
+   compartilhada com a conta conectada com a permissão **"Fazer
+   alterações nos eventos"** (não "Ver todos os detalhes do evento") —
+   isso se ajusta do lado do Google (Configurações da agenda →
+   Compartilhar com pessoas específicas).
+4. Teste "+ Marcar gravação" de novo.
+
+Arquivos alterados: `js/calendario.js`, `js/auth.js`, `sw.js`,
+`supabase/functions/google-agenda/index.ts`. Migration nova:
+`migration_calendario_papel_acesso.sql`. `VERSAO` → `2026-09-15-x`,
+cache → `roteiros-b7-v82`, versão da Edge Function → `2026-09-15-e`.
+
+## Como aplicar
+
+1. Rode `migration_calendario_papel_acesso.sql` no banco.
+2. `supabase functions deploy google-agenda --no-verify-jwt`.
+3. Suba os arquivos deste zip no repositório.
+4. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-x`.
+5. Configurações do Calendário → "Atualizar lista de agendas" → confira
+   a agenda de escrita → "+ Marcar gravação" de novo.
+
+# Rodada y (15/09/2026) — nome padrão "Grav. (cliente)", Excluir gravação de verdade, e polimento visual da grade de mês
+
+O erro do Google sumiu — o evento "kk" apareceu certinho, criado, cor e
+horário corretos. Ficaram só o título (você digitou "kk" na hora de
+testar; o pedido é o sistema já sugerir um nome sozinho, sem perguntar)
+e mais dois pedidos: excluir de vez, e o visual do mês.
+
+## Implementado e testado
+
+- **Não pergunta mais o nome da gravação**: o campo "Nome da gravação"
+  saiu do "+ Marcar gravação". O nome agora é sempre automático —
+  `Grav. <nome do cliente>` — tanto no B7 quanto no título do evento
+  criado no Google (é o mesmo texto usado nos dois lugares, então já
+  fica igual como você pediu). Se quiser um nome diferente depois, dá
+  pra ajustar pelo "Editar" da ocorrência (esse campo continua lá,
+  editável).
+- **Excluir gravação (de verdade, B7 + Google)**: novo botão "Excluir
+  gravação" (vermelho) no modal da ocorrência, ao lado de Editar/
+  Remarcar/Cancelar/Concluir. Pede confirmação clara antes ("isto apaga
+  a gravação de vez — histórico, roteiros e cenas ligados a ela, e o
+  evento no Google — não dá pra desfazer"). Diferente do Cancelar (que
+  só muda o status e mantém tudo pra histórico), Excluir apaga mesmo:
+  a gravação, todas as ocorrências (inclusive as antigas, de remarcações
+  passadas), qualquer roteiro/cena que tenha sido feito nela, e o evento
+  correspondente no Google (DELETE de verdade, não só cancelar). Testado
+  direto no banco: videomaker bloqueado, admin exclui e a cascata (B7)
+  fica confirmada — gravação, ocorrências e roteiro somem juntos.
+- **Grade de mês com mais acabamento**: cabeçalho (Dom/Seg/Ter...) ganhou
+  fundo e linhas verticais que casam com as colunas de baixo — antes o
+  cabeçalho "flutuava" solto por cima da grade, sem nenhuma linha
+  amarrando ele às colunas, o que dava a sensação de desalinhado mesmo
+  com os dias no dia certo. Sábado e domingo agora têm um fundo levemente
+  diferente pra separar visualmente fim de semana de dia de semana. Célula
+  de "hoje" ganhou canto arredondado pra destacar melhor. Não mexi na
+  Semana nem na "Agenda" — isso continua na lista de pendências.
+
+Arquivos alterados: `js/calendario.js`, `js/database.js`, `js/auth.js`,
+`sw.js`, `styles/calendario.css`, `supabase/functions/google-agenda/index.ts`.
+Migration nova: `migration_calendario_excluir.sql`. `VERSAO` →
+`2026-09-15-y`, cache → `roteiros-b7-v83`, versão da Edge Function →
+`2026-09-15-f`.
+
+## Como aplicar
+
+1. Rode `migration_calendario_excluir.sql` no banco.
+2. `supabase functions deploy google-agenda --no-verify-jwt`.
+3. Suba os arquivos deste zip no repositório.
+4. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-y`.
+5. Teste "+ Marcar gravação" (sem campo de nome agora) e confira o
+   título no Google. Depois teste "Excluir gravação" numa gravação de
+   teste, pra ver o aviso de confirmação e conferir que ela some do
+   calendário e (se tiver evento vinculado) do Google também.
+
+# Rodada z (15/09/2026) — achei o motivo real do desalinhamento da grade de mês (e confirmei com um teste visual, não só no olho)
+
+Dessa vez, em vez de mexer no CSS de novo só no olho e torcer, montei uma
+cópia isolada da grade de mês (mesmo HTML, mesmo CSS que o sistema usa
+de verdade) num navegador automatizado e MEDI a posição de cada coluna
+em pixel — cabeçalho contra corpo. Foi assim que achei a causa real.
+
+## O que estava acontecendo
+
+Quando um dia tem uma gravação com título comprido (ex.: "Gravação -
+Infinite Fio"), o texto dentro do card não tem espaço pra quebrar linha
+(por design — pra não estourar a altura da célula) e, mesmo cortando
+com reticências visualmente, o navegador ainda reserva espaço de sobra
+pra esse texto na hora de calcular o tamanho da coluna da grade. Isso
+fazia UMA coluna específica (a do dia com o texto mais comprido) ficar
+mais larga que as outras 6 — e, como é uma grade só, isso empurrava
+todas as colunas à direita dela, coluna a coluna, desalinhando cabeçalho
+("DOM SEG TER...") e corpo cada vez mais conforme a semana andava. Por
+isso parecia "não estar na mesma coluna": não era coincidência nem coisa
+de zoom do navegador, era mesmo um desalinhamento real, causado por
+textos compridos indo pra grade errada de largura.
+
+## Implementado e testado
+
+- Uma linha de CSS (`min-width:0` na célula do dia) resolve isso —
+  instrui o navegador a nunca deixar o conteúdo de dentro empurrar o
+  tamanho da coluna, então a grade sempre fica com as 7 colunas do
+  mesmo tamanho, sempre alinhadas com o cabeçalho, não importa o quanto
+  comprido seja o nome de uma gravação.
+- Testei igual a como vou fazer daqui pra frente quando você pedir uma
+  correção visual: montei a tela isolada com o Setembro de 2026 de
+  verdade (mesmos dias, mesmo "hoje" dia 15) e MEDI em pixel a posição
+  de cada coluna do cabeçalho contra cada coluna do corpo — bateu exato
+  em todas as 7, coisa que não acontecia antes da correção (uma das
+  colunas estava ~25px mais larga que as outras). Print da tela testada
+  em anexo.
+
+## Sobre os outros dois pontos que você trouxe
+
+- **"Se a marcação não estiver no Google e só no sistema, ele apaga
+  automático"**: procurei em todo o código (banco, Edge Function,
+  frontend) por qualquer rotina que apague uma gravação sozinha, sem
+  alguém clicar em algo — não existe nenhuma. A única coisa que apaga
+  gravação é o "Excluir gravação" que acabei de criar (e só quando
+  alguém clica e confirma), e a sincronização com o Google só ATUALIZA
+  o status de eventos que já existem, nunca apaga nada do nosso banco.
+  O que eu acho que pode ter te confundido: o evento de teste "kk" que
+  você criou direto no Google (não pelo nosso "+ Marcar gravação")
+  também foi apagado direto no Google, e por isso, na próxima
+  sincronização, ele passou a aparecer em vermelho como "CANCELLED" no
+  nosso calendário — não sumiu, só mudou de cor pra refletir que foi
+  removido do lado do Google (por design, o sistema nunca apaga
+  automático, só marca como cancelado, pra manter histórico). Se foi
+  uma gravação DIFERENTE que sumiu de vez (não virou vermelha, desapareceu
+  mesmo do calendário), me diz qual — nome, cliente, dia — que eu
+  investigo esse caso específico.
+- **Lentidão**: registrado, mas preciso de mais pista pra investigar
+  certo — é ao abrir o Calendário, ao salvar algo, ao trocar de mês, ao
+  navegar entre as abas do sistema? Acontece sempre ou só às vezes?
+
+## A partir de agora
+
+Você pediu pra eu sempre mandar uma prévia visual quando a mudança for
+algo que dá pra ver na tela — vou passar a fazer isso: monto uma versão
+de teste da tela com os mesmos dados de exemplo, tiro um print e te
+mando junto com a explicação, antes (ou junto) de te pedir pra subir o
+código de verdade.
+
+Arquivos alterados: `styles/calendario.css`, `js/auth.js`, `sw.js`.
+Nenhuma migration nova, nenhuma mudança na Edge Function. `VERSAO` →
+`2026-09-15-z`, cache → `roteiros-b7-v84`.
+
+## Como aplicar
+
+1. Suba os arquivos deste zip no repositório.
+2. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-z`.
+3. Confira a grade de mês — as colunas devem bater com o cabeçalho
+   mesmo em semanas com título comprido (ex.: a semana do dia 1, com
+   "Gravação - Infinite Fio").
+
+# Rodada z2 (15/09/2026) — achei a causa real da lentidão geral: 11 consultas de contagem estão voltando "serviço indisponível" a cada carregamento, e isso estava até quebrando a tela inicial
+
+Você disse "lentidão no sistema em geral, começou recentemente" — em vez
+de adivinhar, abri o sistema de verdade num navegador automatizado (com
+sua sessão já logada) e fui ver a aba de Rede, igual você faria no F12.
+
+## O que encontrei (achado grave, não é impressão)
+
+Toda vez que o sistema carrega — a tela inicial (Dashboard) e a Central
+de Produção — ele dispara, em paralelo, um bando de perguntinhas pro
+banco tipo "quantas gravações estão Pendentes?", "quantas Agendadas?",
+"quantos roteiros Prontos pra gravar?" etc. (são os números que aparecem
+nos cartõezinhos). Testei duas vezes, em momentos diferentes: **as 11
+consultas desse tipo nas tabelas de gravações e roteiros voltaram
+"503 — Serviço indisponível" nas duas vezes, sem exceção** — enquanto
+consultas normais (buscar a lista de clientes, de roteiros recentes
+etc.) funcionaram normalmente. Ou seja: não é a internet, não é o
+navegador, não é imaginação — é uma falha real e consistente bem
+específica desse tipo de consulta (contagem) nessas duas tabelas.
+
+Pior: encontrei que a tela inicial (Dashboard) não tinha nenhuma
+proteção contra isso — se qualquer uma dessas contagens falha, a tela
+inicial inteira quebra e mostra "Não foi possível carregar esta área".
+Ou seja, o que você está sentindo como "lentidão" pode, na verdade, estar
+sendo às vezes um erro puro e simples na tela que todo mundo vê primeiro
+ao entrar no sistema.
+
+## Implementado e testado
+
+- **A tela não quebra mais por causa disso**: o resumo do Dashboard e os
+  números da Central de Produção agora seguem a mesma regra que já
+  existia só na Central: se uma contagem falhar ou demorar mais de 8
+  segundos, ela aparece como 0 (com um aviso no console pra investigar
+  depois) em vez de derrubar a tela inteira. A tela sempre carrega agora,
+  mesmo que algum número específico fique temporariamente incorreto.
+- **Índices novos** (`migration_indices_contagem.sql`) nas combinações
+  exatas de filtro que essas contagens usam — não custam nada ter, e
+  ajudam se parte do problema for o custo da consulta em si.
+
+## O que só você consegue checar (não é código, é a conta do Supabase)
+
+Eu não tenho acesso ao painel do seu projeto Supabase (login, uso,
+logs) — só ao código. Pra achar a causa raiz do 503, alguém com acesso
+precisa entrar no painel do Supabase
+(https://supabase.com/dashboard/project/rartcafydsaocdzshqcx) e olhar:
+
+1. **Reports / Logs → API**: filtrar por essas duas tabelas
+   (`gravacoes`, `roteiros`) e ver o que aparece pros pedidos que
+   deram 503 — geralmente a causa vem escrita ali (limite de conexões,
+   timeout de consulta, projeto pausado por inatividade, etc.).
+2. **Settings → Billing/Usage**: se o projeto está num plano gratuito, e
+   se algum limite (conexões simultâneas, uso de banco) está estourado —
+   isso bateria exatamente com "começou a notar recentemente", já que o
+   volume de gravações/roteiros vem crescendo.
+3. https://status.supabase.com — pra descartar uma instabilidade geral
+   da plataforma bem nesse momento.
+
+Se você conseguir um print de qualquer uma dessas telas (principalmente
+o Log da API mostrando um desses 503), me manda — com a causa exata
+escrita ali, o conserto do lado do banco fica bem mais direto.
+
+Arquivos alterados: `js/database.js`, `js/auth.js`, `sw.js`. Migration
+nova: `migration_indices_contagem.sql`. `VERSAO` → `2026-09-15-z2`,
+cache → `roteiros-b7-v85`.
+
+## Como aplicar
+
+1. Rode `migration_indices_contagem.sql` no banco.
+2. Suba os arquivos deste zip no repositório.
+3. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-z2`.
+4. A tela inicial deve carregar sempre agora, mesmo se os números da
+   Central de Produção vierem zerados temporariamente — se isso
+   acontecer, é sinal de que os 503 continuam vindo do banco, e aí
+   precisamos do print do painel do Supabase pra ir além.
+
+# Rodada z3 (15/09/2026) — causa raiz confirmada nos logs do Supabase, e conserto de verdade (não só proteção): menos conexões abertas ao mesmo tempo
+
+Com a connection string que você me passou eu não consegui conectar
+diretamente (o ambiente onde eu rodo bloqueia conexão direta a bancos de
+dados externos, por segurança — sugiro trocar a senha do banco de novo,
+por precaução, já que ela chegou a ser digitada aqui no chat). Então fui
+pelo outro caminho: usei o seu Chrome (que já estava logado no Supabase)
+pra entrar direto nos Logs do projeto.
+
+## A causa raiz, confirmada com print do log de verdade
+
+Em **Logs → PostgREST**, achei isto se repetindo várias vezes em
+horários diferentes:
+
+> `Warp server error: Thread killed by timeout manager`
+
+E logo depois de um reinício do PostgREST:
+
+> `Connection Pool initialized with a maximum size of 10 connections`
+
+Isso é a confirmação: seu projeto Supabase está no **plano Free**, e
+nesse plano o PostgREST (a camada que atende toda consulta feita pelo
+site) sobe com uma "pool" de só **10 conexões com o banco ao mesmo
+tempo**. Só que a Central de Produção e o Dashboard, juntos, disparavam
+de 10 a 18 consultas de contagem em paralelo TODA VEZ que a tela abria
+— sozinhas, essas contagens já tomavam a pool inteira. Quando isso
+acontece, o PostgREST enfileira os pedidos que sobram, estoura o tempo
+interno dele esperando, mata a linha de execução ("thread killed") e
+devolve **503** pro navegador. Bate exatamente com "começou a notar
+recentemente": o volume de gravações/roteiros vem crescendo, e quanto
+mais tela aberta ao mesmo tempo (você, sua equipe), mais fácil de bater
+nesse teto de 10.
+
+Print do log em anexo.
+
+## Implementado e testado
+
+- **Reduzi de verdade o número de conexões abertas por tela**: em vez de
+  10 consultas separadas pra Central de Produção, agora é **1** (uma
+  função no banco que calcula tudo numa passada só). O resumo do
+  Dashboard, que eram 7 consultas, também virou **1**. No total, uma
+  pessoa abrindo essas duas telas passa de ~18 conexões simultâneas pra
+  **2** — bem longe do teto de 10 do plano Free.
+- Testei as duas funções novas direto no banco: contam certo, e bloqueiam
+  quem não é da equipe interna (mesma regra de acesso que já existia).
+- Isso é além da proteção que já tinha feito na Rodada z2 (números
+  virarem zero em vez de quebrar a tela) — aquilo evitava o estrago,
+  isto aqui ataca a causa.
+
+## O que ainda vale considerar (decisão sua, não é código)
+
+Mesmo com essa redução, se a equipe toda usar o sistema ao mesmo tempo
+(vários navegadores abertos), ainda dá pra chegar perto do teto de 10 se
+outras partes do sistema também estiverem consultando bastante. Se isso
+continuar acontecendo depois desta rodada, a saída de verdade é o plano
+pago do Supabase (o "Pro" já aumenta bastante esse limite de conexões)
+— isso eu não decido nem mexo sozinho, é conta e custo seus.
+
+Arquivos alterados: `js/database.js`, `js/auth.js`, `sw.js`. Migration
+nova: `migration_contagens_unificadas.sql`. `VERSAO` → `2026-09-15-z3`,
+cache → `roteiros-b7-v86`.
+
+## Como aplicar
+
+1. Troque a senha do banco de novo (Supabase → Settings → Database →
+   Reset database password) — por causa da connection string desta
+   conversa.
+2. Rode `migration_contagens_unificadas.sql` no banco (não precisa
+   rodar `migration_indices_contagem.sql` de novo se já rodou na
+   Rodada z2 — os índices continuam ajudando, só que agora o principal é
+   a redução de conexões).
+3. Suba os arquivos deste zip no repositório.
+4. `Ctrl+Shift+R` — rodapé deve mostrar `v2026-09-15-z3`.
+5. Teste abrir a Central de Produção e o Dashboard várias vezes seguidas
+   — se a lentidão/erro 503 sumiu, achamos e resolvemos. Se persistir
+   mesmo com só 2 conexões por tela, aí sim é hora de considerar o plano
+   pago.

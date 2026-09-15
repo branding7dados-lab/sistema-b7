@@ -382,13 +382,36 @@ B7.Dashboard = (function () {
       (acoes ? '<div class="acoes">' + acoes + '</div>' : '') + '</div>';
   }
 
+  /* ---- agrupamento por mês (gravações e, mais adiante, linhas editoriais)
+     "Sem data" primeiro (é o que falta organizar), depois os meses com
+     gravação marcada, do mais recente pro mais antigo. */
+  function agruparPorMes(lista, campoData) {
+    const grupos = new Map();
+    lista.forEach(item => {
+      const chave = item[campoData] ? String(item[campoData]).slice(0, 7) : '';
+      if (!grupos.has(chave)) grupos.set(chave, []);
+      grupos.get(chave).push(item);
+    });
+    return [...grupos.keys()]
+      .sort((a, b) => !a ? -1 : !b ? 1 : b.localeCompare(a))
+      .map(chave => ({ rotulo: B7.UI.mesRotulo(chave ? chave + '-01' : ''), itens: grupos.get(chave) }));
+  }
+  function blocoMeses(lista, campoData, renderCard, classeGrade) {
+    return agruparPorMes(lista, campoData).map(gr =>
+      '<div class="grupo-mes"><h3 class="grupo-mes-tit">' + esc(gr.rotulo) +
+        '<span class="conta-mes">' + gr.itens.length + '</span></h3>' +
+        '<div class="' + (classeGrade || 'grade') + '">' + gr.itens.map(renderCard).join('') + '</div></div>'
+    ).join('');
+  }
+
   /* ================================================ TODAS AS GRAVAÇÕES */
   async function abrirGravacoes() {
     marcarNav('#/gravacoes');
     esqueleto('lista');
     let gravacoes;
     try { gravacoes = await B7.DB.listarGravacoes(); } catch (e) { return erro(e, 'abrirGravacoes'); }
-    gravacoes.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+    gravacoes.sort((a, b) => String(b.data_gravacao || '').localeCompare(String(a.data_gravacao || '')) ||
+                              String(b.updated_at).localeCompare(String(a.updated_at)));
 
     painel().innerHTML = '<div class="conteudo">' +
       '<div class="secao-topo"><h2 style="font-size:22px">Gravações</h2>' +
@@ -398,7 +421,7 @@ B7.Dashboard = (function () {
           '<button data-f="' + esc(f) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(f) + '</button>').join('') +
       '</div>' +
       '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button></div>' +
-      (gravacoes.length ? '<div class="grade" id="lista-gravacoes">' + gravacoes.map(cardGravacao).join('') + '</div>'
+      (gravacoes.length ? '<div id="lista-gravacoes">' + blocoMeses(gravacoes, 'data_gravacao', cardGravacao) + '</div>'
                         : vazioGravacoes()) + '</div>';
 
     ligar();
@@ -409,8 +432,8 @@ B7.Dashboard = (function () {
       const f = b.dataset.f;
       const lista = f === 'Todas' ? gravacoes : gravacoes.filter(g => g.status === f);
       document.getElementById('lista-gravacoes').innerHTML =
-        lista.length ? lista.map(cardGravacao).join('')
-                     : '<div class="vazio" style="grid-column:1/-1"><b>Nada com esse status</b></div>';
+        lista.length ? blocoMeses(lista, 'data_gravacao', cardGravacao)
+                     : '<div class="vazio"><b>Nada com esse status</b></div>';
       ligar();
     });
   }

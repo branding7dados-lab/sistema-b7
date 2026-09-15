@@ -45,7 +45,8 @@ B7.Kanban = (function () {
   const nomeColuna = c => (COLUNAS.find(x => x[0] === c) || [, c])[1];
 
   const TIPOS = [
-    ['producao', 'Produção'], ['gravacao', 'Gravação'], ['reuniao', 'Reunião'],
+    ['producao', 'Produção'], ['video', 'Vídeo'], ['design', 'Design'],
+    ['gravacao', 'Gravação'], ['reuniao', 'Reunião'],
     ['entrega', 'Entrega'], ['ajuste', 'Ajuste'], ['outro', 'Outro']
   ];
   const VINCULOS = { roteiro: 'Roteiro', linha: 'Linha editorial', conteudo: 'Conteúdo', gravacao: 'Gravação' };

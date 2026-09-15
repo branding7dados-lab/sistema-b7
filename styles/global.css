@@ -170,6 +170,17 @@ body.recolhida .marca-lateral .produto{display:none;}
    forçar largura — era ele que criava a barra de rolagem lateral */
 .nav .grupo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 body.recolhida .nav .grupo{opacity:0;height:14px;padding:6px 0;}
+/* grupo "MAIS FERRAMENTAS" — recolhível, pra sidebar não ficar tão cheia */
+.nav .grupo-alterna{display:flex;align-items:center;justify-content:space-between;width:100%;
+  background:none;border:none;font:inherit;cursor:pointer;}
+.nav .grupo-alterna .seta{width:11px;height:11px;stroke:rgba(255,255,255,.3);fill:none;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;transition:transform var(--t);}
+.nav .grupo-alterna[aria-expanded="true"] .seta{transform:rotate(180deg);}
+.nav .grupo-alterna:hover .seta{stroke:rgba(255,255,255,.6);}
+body.recolhida .nav .grupo-alterna .seta{display:none;}
+.nav-mais{max-height:0;overflow:hidden;transition:max-height .22s ease;}
+.nav-mais.aberta{max-height:260px;}
+body.recolhida .nav-mais{max-height:none;}
 .nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;
   color:rgba(255,255,255,.66);text-decoration:none;font-size:13.5px;font-weight:500;
   transition:var(--t);margin-bottom:2px;white-space:nowrap;cursor:pointer;}
@@ -681,10 +692,17 @@ select.campo{appearance:none;cursor:pointer;
 .b7-load.linha{flex-direction:row;padding:18px;gap:10px;}
 .b7-load.linha .simbolo{width:22px;height:26px;}
 
-/* ---- B7 SPOTLIGHT: brilho radial seguindo o cursor ---- */
+/* ---- B7 SPOTLIGHT: brilho radial seguindo o cursor ----
+   O ::before é position:absolute, então por padrão ele pinta ACIMA do
+   conteúdo em fluxo normal do card (logo, nome do cliente, título) — não
+   é só uma questão de opacidade, é a ordem de pintura do CSS. A regra
+   abaixo dá aos filhos diretos do .spot seu próprio contexto de
+   empilhamento (z-index:1), garantindo que texto e logo fiquem sempre
+   por cima do brilho, nunca esmaecidos por ele. */
 .spot{position:relative;}
+.spot>*{position:relative;z-index:1;}
 .spot:before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  opacity:0;transition:opacity .22s;
+  opacity:0;transition:opacity .22s;z-index:0;
   background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%),
              rgba(194,28,131,.12), transparent 62%);}
 [data-theme="dark"] .spot:before{

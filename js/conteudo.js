@@ -363,7 +363,7 @@ B7.Conteudo = (function () {
         ? '<div class="busca-linhas"><input class="campo" id="busca-linha" ' +
           'placeholder="Buscar por cliente ou mês…" value="' + esc(filtroLinhas) + '"></div>' +
           (filtradas.length
-            ? '<div class="grade">' + filtradas.map(cardLinhaGlobal).join('') + '</div>'
+            ? blocoLinhasPorMes(filtradas)
             : '<div class="estado-b7"><b>Nada encontrado para “' + esc(filtroLinhas) + '”.</b></div>')
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
           '<b>Nenhuma linha editorial ainda.</b>' +
@@ -409,6 +409,25 @@ B7.Conteudo = (function () {
         });
       }, 260);
     }
+  }
+
+  /* agrupa por ano/mês, mais recente primeiro — mesmo padrão visual das
+     Gravações (dashboard.js agrupa por data_gravacao). */
+  function blocoLinhasPorMes(lista) {
+    const grupos = new Map();
+    lista.forEach(l => {
+      const chave = l.ano && l.mes ? l.ano + '-' + String(l.mes).padStart(2, '0') : '';
+      if (!grupos.has(chave)) grupos.set(chave, []);
+      grupos.get(chave).push(l);
+    });
+    const chaves = [...grupos.keys()].sort((a, b) => !a ? -1 : !b ? 1 : b.localeCompare(a));
+    return chaves.map(chave => {
+      const itens = grupos.get(chave);
+      const rotulo = chave ? (MESES[+chave.slice(5, 7) - 1] + ' ' + chave.slice(0, 4)) : 'Sem mês definido';
+      return '<div class="grupo-mes"><h3 class="grupo-mes-tit">' + esc(rotulo) +
+        '<span class="conta-mes">' + itens.length + '</span></h3>' +
+        '<div class="grade">' + itens.map(cardLinhaGlobal).join('') + '</div></div>';
+    }).join('');
   }
 
   function cardLinhaGlobal(l) {

@@ -53,10 +53,10 @@ B7.Calendario = (function () {
   let carregando = true, erroCarga = null;
   let janelaRef = new Date();   // data de referência pra calcular a janela visível
 
-  const F_PADRAO = { vista: 'mes', cliente: '', agenda: '', status: '', busca: '' };
+  const F_PADRAO = { vista: 'hoje', cliente: '', agenda: '', status: '', busca: '' };
   let F = Object.assign({}, F_PADRAO);
   try { Object.assign(F, JSON.parse(sessionStorage.getItem('b7.calendario.filtros') || '{}')); } catch (e) {}
-  if (!['mes', 'semana', 'agenda'].includes(F.vista)) F.vista = 'mes';
+  if (!['hoje', 'mes', 'semana', 'agenda'].includes(F.vista)) F.vista = 'hoje';
   function guardarFiltros() { try { sessionStorage.setItem('b7.calendario.filtros', JSON.stringify(F)); } catch (e) {} }
 
   function inicioDoDia(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
@@ -68,6 +68,11 @@ B7.Calendario = (function () {
   }
 
   function calcularJanela() {
+    if (F.vista === 'hoje') {
+      const inicio = inicioDoDia(janelaRef);
+      const fim = new Date(inicio.getTime() + DIA_MS);
+      return { inicio, fim };
+    }
     if (F.vista === 'semana') {
       const inicio = inicioDaSemana(janelaRef);
       const fim = new Date(inicio.getTime() + 7 * DIA_MS);
@@ -228,6 +233,9 @@ B7.Calendario = (function () {
      ================================================================= */
   function rotuloJanela() {
     const { inicio, fim } = calcularJanela();
+    if (F.vista === 'hoje') {
+      return 'Hoje, ' + inicio.getDate() + ' de ' + MESES_LONGOS[inicio.getMonth()];
+    }
     if (F.vista === 'semana') {
       const ultimo = new Date(fim.getTime() - DIA_MS);
       return inicio.getDate() + ' ' + MESES[inicio.getMonth()] + ' – ' + ultimo.getDate() + ' ' + MESES[ultimo.getMonth()];
@@ -280,6 +288,7 @@ B7.Calendario = (function () {
           '<span class="cal-rotulo-janela">' + esc(rotuloJanela()) + '</span>' +
         '</div>' +
         '<div class="cal-vista">' +
+          '<button class="b fina' + (F.vista === 'hoje' ? ' pri' : ' contorno') + '" data-vista="hoje">Hoje</button>' +
           '<button class="b fina' + (F.vista === 'mes' ? ' pri' : ' contorno') + '" data-vista="mes">Mês</button>' +
           '<button class="b fina' + (F.vista === 'semana' ? ' pri' : ' contorno') + '" data-vista="semana">Semana</button>' +
           '<button class="b fina' + (F.vista === 'agenda' ? ' pri' : ' contorno') + '" data-vista="agenda">Agenda</button>' +
@@ -484,7 +493,7 @@ B7.Calendario = (function () {
     if (F.vista === 'mes') {
       janelaRef = new Date(janelaRef.getFullYear(), janelaRef.getMonth() + direcao, 1);
     } else {
-      const passo = F.vista === 'semana' ? 7 : 21;
+      const passo = F.vista === 'hoje' ? 1 : F.vista === 'semana' ? 7 : 21;
       janelaRef = new Date(janelaRef.getTime() + direcao * passo * DIA_MS);
     }
     carregarTudo();
