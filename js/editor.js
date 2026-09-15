@@ -40,8 +40,12 @@ B7.Editor = (function () {
               : (ultimo && ids.includes(ultimo) ? ultimo : (ids[0] || null));
 
       cabecalho();
-      if (!E.roteiros.length) await novoRoteiro(true);
-      else { renderTrilho(); renderEscrita(); renderPrevia(); }
+      /* Antes criava o primeiro roteiro em branco automaticamente. Passou
+         a NÃO criar mais: uma gravação marcada pelo calendário pode nunca
+         precisar de roteiro nosso (às vezes o cliente já traz o dele
+         pronto) — quem quiser o primeiro roteiro clica em "+ Novo roteiro"
+         no estado vazio abaixo. */
+      renderTrilho(); renderEscrita(); renderPrevia();
       B7.Save.atualizar();
     } catch (e) {
       console.error(e);
