@@ -1946,6 +1946,17 @@ B7.DB = (function () {
         ocorrencia_id: ocorrenciaId || null
       });
     },
+    /* Excluir de verdade (não confundir com Cancelar, que só muda status
+       e mantém histórico): apaga a gravação, ocorrências, roteiros e
+       cenas no B7 — sempre primeiro, sempre vale mesmo se o Google
+       falhar depois. Devolve evento_id pra quem chamou tentar excluirEventoGoogle
+       em seguida, best-effort, igual ao resto do calendário. */
+    async excluirGravacaoCalendario(ocorrenciaId) {
+      return this.rpc('calendario_gravacao_excluir', { p_ocorrencia_id: ocorrenciaId });
+    },
+    async excluirEventoGoogle(eventoId) {
+      return this.chamarCalendarioGoogle({ acao: 'excluir_evento', evento_id: eventoId });
+    },
 
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {

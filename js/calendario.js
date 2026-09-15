@@ -762,7 +762,6 @@ B7.Calendario = (function () {
         '<p class="fraca">Cria a gravação já com status "Marcada" no calendário e, se houver uma agenda de escrita configurada, cria o evento correspondente no Google.</p>' +
         '<label class="rot">Cliente</label><select class="campo" id="cal-mg-cliente" data-foco><option value="">Escolha o cliente</option>' +
           clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') + '</select>' +
-        '<label class="rot">Nome da gravação</label><input class="campo" id="cal-mg-nome" placeholder="Ex: Gravação Setembro">' +
         '<div class="vd-grid-2">' +
           '<div><label class="rot">Data</label><input class="campo" type="date" id="cal-mg-data" value="' + dataSugerida + '"></div>' +
           '<div></div>' +
@@ -774,14 +773,18 @@ B7.Calendario = (function () {
       );
       m.querySelector('#cal-mg-salvar').onclick = async () => {
         const clienteId = m.querySelector('#cal-mg-cliente').value;
-        const nome = m.querySelector('#cal-mg-nome').value.trim();
         const data = m.querySelector('#cal-mg-data').value;
         const hIni = m.querySelector('#cal-mg-hora-ini').value || '09:00';
         const hFim = m.querySelector('#cal-mg-hora-fim').value || hIni;
         const local = m.querySelector('#cal-mg-local').value.trim();
         if (!clienteId) { B7.UI.toast('Escolha o cliente.'); return; }
-        if (!nome) { B7.UI.toast('Dê um nome para a gravação.'); return; }
         if (!data) { B7.UI.toast('Escolha a data.'); return; }
+        /* Nome padrão — não perguntamos mais: só o dia da gravação
+           importa aqui, o nome de exibição (no B7 e no Google) é sempre
+           "Grav. <cliente>". Quem quiser um nome diferente pode ajustar
+           depois pelo "Editar" da ocorrência. */
+        const clienteEscolhido = clientes.find(c => c.id === clienteId);
+        const nome = 'Grav. ' + (clienteEscolhido ? clienteEscolhido.nome : '');
         const inicio = new Date(data + 'T' + hIni + ':00');
         const fim = new Date(data + 'T' + hFim + ':00');
         if (fim < inicio) { B7.UI.toast('O horário de fim não pode ser antes do início.'); return; }
@@ -833,6 +836,7 @@ B7.Calendario = (function () {
         (it.status === 'cancelada' ? '<button class="b fina contorno" id="cal-oc-remarcar">Remarcar (reativar)</button>' : '') +
         (it.status === 'marcada' || it.status === 'remarcada' ? '<button class="b fina contorno" id="cal-oc-cancelar">Cancelar gravação</button>' : '') +
         (it.status === 'marcada' || it.status === 'remarcada' ? '<button class="b pri" id="cal-oc-concluir">Marcar como Concluída</button>' : '') +
+        (it.gravacao_id ? '<button class="b fina perigo" id="cal-oc-excluir">Excluir gravação</button>' : '') +
       '</div>' : '') +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>'
     );
@@ -860,6 +864,26 @@ B7.Calendario = (function () {
         });
         recarregarLocal();
       } catch (e) { B7.UI.toast(e.message || 'Não foi possível marcar como concluída.'); }
+    };
+    const btExcluir = m.querySelector('#cal-oc-excluir');
+    if (btExcluir) btExcluir.onclick = async () => {
+      const ok = await B7.UI.confirmar({
+        titulo: 'Excluir esta gravação?',
+        texto: 'Diferente de Cancelar: isto apaga a gravação de vez — todo o histórico dela no calendário, roteiros e cenas ligados a ela (se houver) e o evento no Google. Não dá pra desfazer.',
+        perigo: true, rotulo: 'Excluir de vez'
+      });
+      if (!ok) return;
+      btExcluir.disabled = true; btExcluir.textContent = 'Excluindo…';
+      try {
+        const resp = await B7.DB.excluirGravacaoCalendario(it.id);
+        m.fechar();
+        B7.UI.toast('Gravação excluída.');
+        if (resp && resp.evento_id) {
+          try { await B7.DB.excluirEventoGoogle(resp.evento_id); }
+          catch (eGoogle) { B7.UI.toast('Excluída no B7, mas não deu pra excluir o evento no Google: ' + (eGoogle.message || ''), { tempo: 8000 }); }
+        }
+        recarregarLocal();
+      } catch (e) { btExcluir.disabled = false; btExcluir.textContent = 'Excluir gravação'; B7.UI.toast(e.message || 'Não foi possível excluir.'); }
     };
   }
 

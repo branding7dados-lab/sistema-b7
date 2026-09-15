@@ -51,6 +51,17 @@
 //                                          só título/local, nunca
 //                                          data/horário (isso é
 //                                          atualizar_evento)
+//   POST { acao: 'excluir_evento',
+//          evento_id }                   — admin/coordenador — usada por
+//                                          "Excluir gravação": DELETE de
+//                                          verdade no Google (diferente
+//                                          de cancelar_evento, que só
+//                                          marca cancelled). A gravação em
+//                                          si já foi apagada no B7 antes
+//                                          disso, por
+//                                          calendario_gravacao_excluir
+//                                          (migration_calendario_
+//                                          excluir.sql)
 //
 // (Status da conexão, escolher quais agendas ficam ativas, vincular a
 // uma gravação, criar gravação a partir de um evento, e agora também o
@@ -82,7 +93,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-09-15-e';
+const VERSAO = '2026-09-15-f';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -159,6 +170,7 @@ Deno.serve(async (req: Request) => {
   if (acao === 'cancelar_evento') return await cancelarEvento(perfil, corpo);
   if (acao === 'criar_evento') return await criarEvento(perfil, corpo);
   if (acao === 'editar_evento') return await editarEvento(perfil, corpo);
+  if (acao === 'excluir_evento') return await excluirEvento(perfil, corpo);
 
   return json({ erro: 'Ação desconhecida: ' + acao }, 400);
 });
@@ -656,5 +668,44 @@ async function editarEvento(perfil: Perfil, corpo: Record<string, unknown>): Pro
     external_updated_at: dados.updated || new Date().toISOString(), updated_at: new Date().toISOString()
   }).eq('id', eventoId);
 
+  return json({ ok: true });
+}
+
+// =====================================================================
+// EXCLUIR — usada por "Excluir gravação" (migration_calendario_excluir.
+// sql já apagou a gravação e tudo dela no B7; esta ação só cuida do lado
+// do Google). Ao contrário de cancelarEvento (PATCH status=cancelled),
+// aqui é DELETE de verdade — o evento some da agenda igual a uma pessoa
+// excluindo pela interface do Google. Se o evento já não existir mais no
+// Google (410/404 — por exemplo, alguém já apagou por lá), trata como
+// sucesso: o resultado que importa (o evento não existir) já está feito.
+// =====================================================================
+async function excluirEvento(perfil: Perfil, corpo: Record<string, unknown>): Promise<Response> {
+  if (!ehEquipe(perfil)) return json({ erro: 'Só admin/coordenador excluem um evento no Google.' }, 403);
+  const eventoId = typeof corpo.evento_id === 'string' ? corpo.evento_id : '';
+  if (!eventoId) return json({ erro: 'Falta o evento a excluir.' }, 400);
+
+  const sb = admin();
+  const par = await obterEventoEAgenda(sb, eventoId);
+  if ('erro' in par) {
+    // a gravação já foi excluída no B7 de qualquer forma — se o evento
+    // nem existe mais no nosso cache, não há o que excluir no Google
+    return json({ ok: true, aviso: par.erro });
+  }
+  const t = await obterAccessTokenValido(sb);
+  if ('erro' in t) return json({ erro: t.erro }, 409);
+
+  const resp = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(par.ag.external_calendar_id) +
+      '/events/' + encodeURIComponent(par.ev.external_event_id),
+    { method: 'DELETE', headers: { Authorization: 'Bearer ' + t.accessToken } }
+  );
+  if (!resp.ok && resp.status !== 410 && resp.status !== 404) {
+    const dados = await resp.json().catch(() => ({}));
+    const motivo = dados.error?.message || ('HTTP ' + resp.status);
+    return json({ erro: 'A gravação foi excluída no B7, mas o Google recusou excluir o evento: ' + motivo }, 502);
+  }
+
+  await sb.from('calendario_eventos').delete().eq('id', eventoId);
   return json({ ok: true });
 }
