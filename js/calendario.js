@@ -562,15 +562,21 @@ B7.Calendario = (function () {
     function redesenhar() { m.querySelector('.modal').innerHTML = conteudo(); ligarModal(); }
     function agendasListaHTML() {
       if (!agendas.length) return '<p class="fraca">Nenhuma agenda encontrada — clique em "Atualizar lista" ou confira a conexão.</p><button class="b fina contorno" id="cal-cfg-listar">Atualizar lista de agendas</button>';
-      return agendas.map(a =>
-        '<div class="cal-agenda-item">' +
+      return agendas.map(a => {
+        const semEscrita = a.papel_acesso && a.papel_acesso !== 'owner' && a.papel_acesso !== 'writer';
+        return '<div class="cal-agenda-item">' +
           '<label><input type="checkbox" data-agenda="' + a.id + '"' + (a.ativo ? ' checked' : '') + '><span>' + esc(a.nome) + '</span></label>' +
-          (a.ativo ? '<label class="cal-agenda-padrao" title="Gravações marcadas pelo calendário criam o evento nesta agenda">' +
-            '<input type="radio" name="cal-agenda-escrita" data-agenda-padrao="' + a.id + '"' + (a.escrita_padrao ? ' checked' : '') + '>' +
-            '<span>Usar para novas gravações</span></label>' : '') +
-        '</div>').join('') +
+          (a.ativo ? '<label class="cal-agenda-padrao"' +
+            (semEscrita ? ' title="Esta conta só tem permissão de leitura nesta agenda — não dá pra criar eventos aqui"' : ' title="Gravações marcadas pelo calendário criam o evento nesta agenda"') +
+            '><input type="radio" name="cal-agenda-escrita" data-agenda-padrao="' + a.id + '"' +
+            (a.escrita_padrao ? ' checked' : '') + (semEscrita ? ' disabled' : '') + '>' +
+            '<span>' + (semEscrita ? 'Só leitura — não pode ser agenda de escrita' : 'Usar para novas gravações') + '</span></label>' : '') +
+        '</div>';
+      }).join('') +
         (agendas.some(a => a.ativo) && !agendas.some(a => a.escrita_padrao) ?
           '<p class="cal-aviso-sync" style="margin:6px 0 10px">⚠ Nenhuma agenda escolhida pra receber novas gravações — marque uma acima.</p>' : '') +
+        (agendas.some(a => a.escrita_padrao && a.papel_acesso && a.papel_acesso !== 'owner' && a.papel_acesso !== 'writer') ?
+          '<p class="cal-aviso-sync" style="margin:6px 0 10px">⚠ A agenda de escrita atual é só leitura pra esta conta — marcar gravação vai falhar no Google. Clique em "Atualizar lista de agendas" e escolha outra.</p>' : '') +
         '<button class="b fina contorno" id="cal-cfg-listar">Atualizar lista de agendas</button>';
     }
     function ligarModal() {

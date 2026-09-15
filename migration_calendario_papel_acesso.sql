@@ -1,0 +1,22 @@
+-- =========================================================================
+-- B7 CALENDÁRIO — guardar o nível de acesso de cada agenda do Google
+-- (Rodada w)
+--
+-- Motivo: você marcou uma gravação e o Google recusou criar o evento
+-- ("You need to have writer access to this calendar") — a "agenda de
+-- escrita" escolhida em Configurações é uma agenda em que a conta
+-- conectada só tem permissão de LEITURA (ex.: uma agenda compartilhada
+-- com você como "Ver todos os detalhes do evento", não "Fazer alterações
+-- nos eventos"). O Google já manda essa informação (accessRole) na
+-- listagem de agendas; até agora a Edge Function lia mas não guardava
+-- esse dado, então a tela deixava escolher qualquer agenda como "agenda
+-- de escrita" — mesmo uma sem permissão de escrita — e só descobríamos o
+-- problema na hora de criar o evento. Esta migration só acrescenta a
+-- coluna; quem passa a preenchê-la é a Edge Function (Rodada w).
+-- =========================================================================
+
+alter table public.calendario_agendas add column if not exists papel_acesso text;
+-- valores que o Google manda: 'owner', 'writer', 'reader', 'freeBusyReader'.
+-- null = agenda listada antes desta rodada, ainda sem essa informação —
+-- passa a vir preenchida na próxima vez que "Atualizar lista de agendas"
+-- rodar.

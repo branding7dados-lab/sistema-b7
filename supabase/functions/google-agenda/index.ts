@@ -82,7 +82,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-09-15-d';
+const VERSAO = '2026-09-15-e';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -324,7 +324,8 @@ async function listarCalendarios(perfil: Perfil): Promise<Response> {
 
   const itens = (dados.items || []).map((c: any) => ({
     conexao_id: t.conexao.id, external_calendar_id: c.id,
-    nome: c.summaryOverride || c.summary || c.id, cor: c.backgroundColor || null
+    nome: c.summaryOverride || c.summary || c.id, cor: c.backgroundColor || null,
+    papel_acesso: c.accessRole || null   // 'owner' | 'writer' | 'reader' | 'freeBusyReader'
   }));
   if (itens.length) {
     const { error } = await sb.from('calendario_agendas').upsert(itens, { onConflict: 'conexao_id,external_calendar_id' });
@@ -558,6 +559,11 @@ async function criarEvento(perfil: Perfil, corpo: Record<string, unknown>): Prom
     .select('*').eq('conexao_id', t.conexao.id).eq('escrita_padrao', true).eq('ativo', true).maybeSingle();
   if (!agenda) {
     const motivo = 'Nenhuma agenda de escrita escolhida — defina uma em Configurações do Calendário antes de marcar gravações.';
+    await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: motivo });
+    return json({ erro: motivo }, 409);
+  }
+  if (agenda.papel_acesso && agenda.papel_acesso !== 'owner' && agenda.papel_acesso !== 'writer') {
+    const motivo = 'A agenda "' + agenda.nome + '" está definida como agenda de escrita, mas esta conta do Google só tem permissão de leitura nela. Vá em Configurações do Calendário e escolha uma agenda onde esta conta seja dona ou tenha permissão de "Fazer alterações nos eventos".';
     await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: motivo });
     return json({ erro: motivo }, 409);
   }

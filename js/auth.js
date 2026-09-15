@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-09-15-w';
+  const VERSAO = '2026-09-15-x';
   /* Visível o tempo todo (não só na tela de login) — pra confirmar em 2
      segundos se um deploy pegou, sem precisar sair da sessão. */
   try { const el = document.getElementById('versao-app'); if (el) el.textContent = 'v' + VERSAO; } catch (e) {}
