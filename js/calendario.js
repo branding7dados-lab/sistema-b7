@@ -822,6 +822,7 @@ B7.Calendario = (function () {
       (it.erro_sincronizacao ? '<div class="cal-aviso-sync">⚠ Não sincronizado com o Google: ' + esc(it.erro_sincronizacao) + '</div>' : '') +
       (it.gravacao_id ? '<div class="acoes-inline" style="margin-top:8px"><a class="b fina contorno" href="#/gravacao/' + it.gravacao_id + '">Ver gravação</a></div>' : '') +
       (podeAgir ? '<div class="acoes cal-oc-acoes">' +
+        (it.gravacao_id ? '<button class="b fina contorno" id="cal-oc-editar">Editar</button>' : '') +
         (it.status !== 'concluida' && it.status !== 'cancelada' ? '<button class="b fina contorno" id="cal-oc-remarcar">Remarcar</button>' : '') +
         (it.status === 'cancelada' ? '<button class="b fina contorno" id="cal-oc-remarcar">Remarcar (reativar)</button>' : '') +
         (it.status === 'marcada' || it.status === 'remarcada' ? '<button class="b fina contorno" id="cal-oc-cancelar">Cancelar gravação</button>' : '') +
@@ -830,6 +831,8 @@ B7.Calendario = (function () {
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>'
     );
 
+    const btEditar = m.querySelector('#cal-oc-editar');
+    if (btEditar) btEditar.onclick = () => { m.fechar(); modalEditarGravacao(it); };
     const btRemarcar = m.querySelector('#cal-oc-remarcar');
     if (btRemarcar) btRemarcar.onclick = () => { m.fechar(); modalRemarcar(it); };
     const btCancelar = m.querySelector('#cal-oc-cancelar');
@@ -852,6 +855,43 @@ B7.Calendario = (function () {
         recarregarLocal();
       } catch (e) { B7.UI.toast(e.message || 'Não foi possível marcar como concluída.'); }
     };
+  }
+
+  /* Editar nome/cliente/local da gravação por trás da ocorrência — não
+     mexe em data/horário (isso é o Remarcar) nem em status. Esses três
+     campos vivem em `gravacoes` (não em `gravacoes_ocorrencias`), então
+     reaproveita B7.DB.atualizarGravacao, que já existe pro resto do
+     sistema; se a ocorrência tiver evento no Google, tenta atualizar o
+     título/local de lá também, best-effort, igual ao resto. */
+  function modalEditarGravacao(it) {
+    garantirClientes().then(clientes => {
+      const m = B7.UI.modal(
+        '<h3>Editar gravação</h3>' +
+        '<label class="rot">Cliente</label><select class="campo" id="cal-ed-cliente" data-foco>' +
+          clientes.map(c => '<option value="' + c.id + '"' + (c.id === it.cliente_id ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') +
+        '</select>' +
+        '<label class="rot">Nome da gravação</label><input class="campo" id="cal-ed-nome" value="' + esc(it.titulo || '') + '">' +
+        '<label class="rot">Local <span class="leve">— opcional</span></label><input class="campo" id="cal-ed-local" value="' + esc(it.local || '') + '">' +
+        '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="cal-ed-salvar">Salvar</button></div>'
+      );
+      m.querySelector('#cal-ed-salvar').onclick = async () => {
+        const clienteId = m.querySelector('#cal-ed-cliente').value;
+        const nome = m.querySelector('#cal-ed-nome').value.trim();
+        const local = m.querySelector('#cal-ed-local').value.trim();
+        if (!clienteId) { B7.UI.toast('Escolha o cliente.'); return; }
+        if (!nome) { B7.UI.toast('Dê um nome para a gravação.'); return; }
+        const btn = m.querySelector('#cal-ed-salvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+        try {
+          await B7.DB.atualizarGravacao(it.gravacao_id, { client_id: clienteId, nome, local });
+          m.fechar(); B7.UI.toast('Gravação atualizada.');
+          if (it.evento_id) {
+            try { await B7.DB.editarMetaEventoGoogle(it.evento_id, { titulo: nome, local }, it.id); }
+            catch (eGoogle) { B7.UI.toast('Atualizado no B7, mas não deu pra atualizar o título/local no Google: ' + (eGoogle.message || ''), { tempo: 8000 }); }
+          }
+          recarregarLocal();
+        } catch (e) { btn.disabled = false; btn.textContent = 'Salvar'; B7.UI.toast(e.message || 'Não foi possível salvar.'); }
+      };
+    });
   }
 
   function modalRemarcar(it) {

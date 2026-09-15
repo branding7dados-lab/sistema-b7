@@ -44,6 +44,13 @@
 //                                          escrita" (calendario_agendas.
 //                                          escrita_padrao) e grava o
 //                                          vínculo na ocorrência
+//   POST { acao: 'editar_evento',
+//          evento_id, titulo?, local?,
+//          ocorrencia_id? }              — admin/coordenador — usada
+//                                          pelo "Editar" da ocorrência:
+//                                          só título/local, nunca
+//                                          data/horário (isso é
+//                                          atualizar_evento)
 //
 // (Status da conexão, escolher quais agendas ficam ativas, vincular a
 // uma gravação, criar gravação a partir de um evento, e agora também o
@@ -75,7 +82,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-09-15-c';
+const VERSAO = '2026-09-15-d';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -151,6 +158,7 @@ Deno.serve(async (req: Request) => {
   if (acao === 'atualizar_evento') return await atualizarEvento(perfil, corpo);
   if (acao === 'cancelar_evento') return await cancelarEvento(perfil, corpo);
   if (acao === 'criar_evento') return await criarEvento(perfil, corpo);
+  if (acao === 'editar_evento') return await editarEvento(perfil, corpo);
 
   return json({ erro: 'Ação desconhecida: ' + acao }, 400);
 });
@@ -593,4 +601,54 @@ async function criarEvento(perfil: Perfil, corpo: Record<string, unknown>): Prom
 
   await sb.from('gravacoes_ocorrencias').update({ evento_id: novoEvento.id, atualizado_em: new Date().toISOString() }).eq('id', ocorrenciaId);
   return json({ ok: true, evento_id: novoEvento.id });
+}
+
+// =====================================================================
+// EDITAR — só título/local de um evento já existente (o "Editar" da
+// ocorrência). Nunca mexe em data/horário — para isso já existe
+// atualizarEvento, chamada separadamente pelo Remarcar.
+// =====================================================================
+async function editarEvento(perfil: Perfil, corpo: Record<string, unknown>): Promise<Response> {
+  if (!ehEquipe(perfil)) return json({ erro: 'Só admin/coordenador editam um evento no Google.' }, 403);
+  const eventoId = typeof corpo.evento_id === 'string' ? corpo.evento_id : '';
+  const titulo = typeof corpo.titulo === 'string' ? corpo.titulo : '';
+  const local = typeof corpo.local === 'string' ? corpo.local : '';
+  const ocorrenciaId = typeof corpo.ocorrencia_id === 'string' ? corpo.ocorrencia_id : null;
+  if (!eventoId || (!titulo && !local)) return json({ erro: 'Nada para atualizar no Google.' }, 400);
+
+  const sb = admin();
+  const par = await obterEventoEAgenda(sb, eventoId);
+  if ('erro' in par) return json({ erro: par.erro }, 404);
+  const t = await obterAccessTokenValido(sb);
+  if ('erro' in t) {
+    if (ocorrenciaId) await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: t.erro });
+    return json({ erro: t.erro }, 409);
+  }
+
+  const corpoPatch: Record<string, unknown> = {};
+  if (titulo) corpoPatch.summary = titulo;
+  if (local) corpoPatch.location = local;
+
+  const resp = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(par.ag.external_calendar_id) +
+      '/events/' + encodeURIComponent(par.ev.external_event_id),
+    {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + t.accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpoPatch)
+    }
+  );
+  const dados = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const motivo = dados.error?.message || ('HTTP ' + resp.status);
+    if (ocorrenciaId) await sb.rpc('calendario_ocorrencia_marcar_erro_sync', { p_ocorrencia_id: ocorrenciaId, p_erro: 'Google recusou editar o evento: ' + motivo });
+    return json({ erro: 'A gravação foi atualizada no B7, mas o Google recusou editar o evento: ' + motivo }, 502);
+  }
+
+  await sb.from('calendario_eventos').update({
+    titulo: dados.summary || undefined, local: dados.location || undefined,
+    external_updated_at: dados.updated || new Date().toISOString(), updated_at: new Date().toISOString()
+  }).eq('id', eventoId);
+
+  return json({ ok: true });
 }

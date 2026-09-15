@@ -6251,3 +6251,82 @@ Arquivos alterados: `js/calendario.js`, `js/database.js`, `js/auth.js`,
 6. Teste "+ Marcar gravação" com uma gravação de verdade e confira se
    ela aparece na grade em azul, se o modal de ações abre sozinho, e se
    o evento aparece na agenda do Google escolhida.
+
+# Rodada v (15/09/2026) — "Editar" na ocorrência, indicador de versão sempre visível, e ajuste de escopo (postagem NÃO sincroniza com o Google)
+
+Você testou de novo e voltou dizendo que "marcar, remarcar, cancelar,
+editar" continua não funcionando. Investiguei tudo de novo — revisei
+função por função (SQL, Edge Function, JavaScript), reconferi as
+permissões, reli cada chamada. Não encontrei nenhum bug novo nesse
+caminho: o código da Rodada u está consistente ponta a ponta, e as
+funções de marcar/remarcar/cancelar/concluir já tinham sido testadas
+direto no banco antes de eu te entregar.
+
+O que isso me diz é que o mais provável é o site ainda estar rodando uma
+versão anterior à Rodada u (sem `+ Marcar gravação`, sem os novos botões
+na ocorrência) — só que eu não tenho como confirmar isso de longe, e já
+tinha te pedido pra checar duas vezes sem resposta. Então, em vez de
+insistir na mesma explicação, fiz duas coisas nesta rodada: (1) resolvi o
+"editar" que você pediu e que realmente não existia ainda, e (2) criei um
+jeito de você mesmo confirmar em 2 segundos, olhando a tela, se um deploy
+pegou ou não — sem precisar confiar na minha palavra.
+
+## Implementado e testado
+
+- **Indicador de versão sempre visível**: agora tem um textinho discreto
+  no rodapé da barra lateral (embaixo, perto de "Recolher") mostrando a
+  versão do código carregado — antes só aparecia na tela de login. Depois
+  de subir esta rodada e dar `Ctrl+Shift+R`, ele deve mostrar
+  `v2026-09-15-v`. Se mostrar qualquer coisa diferente disso (ou nada),
+  o deploy não pegou — é a forma mais rápida de descartar essa
+  possibilidade antes de procurar bug em outro lugar.
+- **Botão "Editar" na ocorrência**: faltava mesmo — dá pra editar
+  cliente, nome e local da gravação direto do modal de status (Remarcar
+  já cobria data/horário; Editar cobre o resto). Se a ocorrência tem
+  evento vinculado no Google, tenta atualizar título/local de lá também,
+  best-effort, igual ao resto do sistema. Nova ação `editar_evento` na
+  Edge Function, só título/local — nunca mexe em data (isso continua
+  sendo só o Remarcar). Não precisou de nenhuma migration nova: reaproveitei
+  `atualizarGravacao`, que já existe e já é usado pelo resto do sistema.
+
+## Ajuste de escopo (a seu pedido)
+
+- **Postagem da Linha Editorial NÃO vai sincronizar com o Google
+  Calendar** — você pediu pra tirar isso do plano, e tirei. O resto do
+  plano da Linha Editorial dentro do calendário (mostrar postagem junto
+  com gravação, com os status/cores que a Linha Editorial já usa, filtro
+  por tipo, "Programado" virando "Publicado" sozinho) segue de pé, só
+  sem escrever no Google — combinamos isso antes de eu ter escrito
+  qualquer linha desse pedaço, então não há nada pra desfazer.
+
+## Ainda preciso da sua ajuda pra fechar isto
+
+Depois de subir esta rodada, se `+ Marcar gravação` continuar sumido ou
+as ações da ocorrência continuarem não aparecendo mesmo com o rodapé
+mostrando `v2026-09-15-v`, me manda um print de exatamente onde você
+esperava ver o botão (a tela toda, não só o recorte) — só assim consigo
+diferenciar "não apareceu" de "apareceu em outro lugar da tela" de "deu
+erro no console do navegador" (F12 → aba Console, se souber olhar).
+Continuando com o rodapé numa versão antiga, o problema não está em
+nada que eu possa consertar por aqui — é o deploy que precisa acontecer
+primeiro.
+
+Arquivos alterados: `js/calendario.js`, `js/database.js`, `js/auth.js`,
+`sw.js`, `index.html`, `supabase/functions/google-agenda/index.ts`.
+Nenhuma migration nova. `VERSAO` → `2026-09-15-v`, cache →
+`roteiros-b7-v80`.
+
+## Como aplicar
+
+1. Faça o deploy de novo da Edge Function `google-agenda`
+   (`supabase functions deploy google-agenda --no-verify-jwt`) — ganhou
+   a ação `editar_evento`.
+2. Suba os arquivos deste zip no repositório (sobrescrevendo os
+   anteriores).
+3. `Ctrl+Shift+R` — o rodapé da barra lateral (embaixo, perto de
+   "Recolher") deve mostrar `v2026-09-15-v`. **Esse é o teste mais
+   importante desta rodada** — se não mostrar isso, pare aqui e resolva
+   o deploy antes de testar qualquer outra coisa.
+4. Só depois de confirmar a versão: abra o Calendário de Gravações e
+   teste "+ Marcar gravação", depois abra a ocorrência criada e teste
+   Editar, Remarcar e Cancelar.

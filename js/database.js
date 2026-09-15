@@ -1937,6 +1937,15 @@ B7.DB = (function () {
     async definirAgendaEscritaPadrao(agendaId) {
       return this.rpc('calendario_agenda_definir_escrita_padrao', { p_agenda_id: agendaId });
     },
+    /* Editar só título/local de um evento já existente no Google (não
+       mexe em data/horário — isso é atualizarEventoGoogle/remarcar).
+       Usado pelo "Editar" da ocorrência. Best-effort, mesmo padrão. */
+    async editarMetaEventoGoogle(eventoId, { titulo, local }, ocorrenciaId) {
+      return this.chamarCalendarioGoogle({
+        acao: 'editar_evento', evento_id: eventoId, titulo: titulo || '', local: local || '',
+        ocorrencia_id: ocorrenciaId || null
+      });
+    },
 
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
     async listarDesigners() {
