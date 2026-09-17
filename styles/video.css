@@ -324,3 +324,14 @@
   border-radius:var(--r-sm);font-size:13px;color:var(--ink-2);cursor:pointer;}
 .vd-roteiro-item input[disabled]{opacity:.5;}
 .vd-roteiro-item span{flex:1;}
+.vd-roteiro-item.vd-agrupar{background:none;border:1px dashed var(--borda);margin-bottom:2px;}
+.vd-agrupar-dica{margin:0 0 14px;font-size:11.5px;line-height:1.4;}
+#vgd-titulo-agrupada{margin-bottom:14px;}
+
+/* Roteiros vinculados no detalhe da demanda (Parte 2 da auditoria —
+   multi-roteiro por demanda) */
+.vd-roteiros-vinculo-lista{display:flex;flex-direction:column;gap:6px;margin:6px 0;max-height:220px;overflow-y:auto;}
+.vd-rv-chip{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);}
+.vd-rv-chip span{flex:1;}
+.vd-rv-chip button{background:none;border:0;color:var(--ink-4);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px;}
+.vd-rv-chip button:hover{color:var(--erro);}

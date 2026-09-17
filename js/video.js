@@ -1096,6 +1096,12 @@ B7.Video = (function () {
       '<label class="rot">Gravação (status "Gravado")</label>' +
       '<select class="campo" id="vgd-gravacao"><option value="">Escolha um cliente primeiro</option></select>' +
       '<div id="vgd-roteiros"></div>' +
+      '<label class="vd-roteiro-item vd-agrupar"><input type="checkbox" id="vgd-agrupar">' +
+        '<span>Agrupar os roteiros marcados em uma única demanda</span></label>' +
+      '<p class="fraca vd-agrupar-dica">Desmarcado (padrão): 1 demanda por roteiro marcado. ' +
+        'Marcado: todos os roteiros marcados entram juntos em 1 demanda só.</p>' +
+      '<div id="vgd-titulo-agrupada" hidden><label class="rot">Título da demanda</label>' +
+        '<input class="campo" id="vgd-titulo" placeholder="Deixe em branco para usar o nome da gravação"></div>' +
       '<div class="vd-grid-2">' +
         '<div><label class="rot">Responsável (opcional)</label><select class="campo" id="vgd-videomaker">' +
           '<option value="">Sem atribuir ainda</option>' +
@@ -1119,10 +1125,24 @@ B7.Video = (function () {
           '</label>').join('') + '</div>';
     }
 
+    function agrupando() {
+      const chk = m.querySelector('#vgd-agrupar');
+      return !!(chk && chk.checked);
+    }
+
     function atualizarBotao() {
       const btn = m.querySelector('#vgd-gerar');
-      if (btn) btn.disabled = roteiroSelecionados.size === 0;
+      if (btn) {
+        btn.disabled = roteiroSelecionados.size === 0;
+        btn.textContent = agrupando() ? 'Gerar demanda' : 'Gerar demandas';
+      }
     }
+
+    const chkAgrupar = m.querySelector('#vgd-agrupar');
+    chkAgrupar.onchange = () => {
+      m.querySelector('#vgd-titulo-agrupada').hidden = !chkAgrupar.checked;
+      atualizarBotao();
+    };
 
     const selCliente = m.querySelector('#vgd-cliente');
     const selGravacao = m.querySelector('#vgd-gravacao');
@@ -1154,7 +1174,11 @@ B7.Video = (function () {
           B7.DB.roteirosParaAutomacaoVideo(gravacaoId),
           Promise.resolve(demandas.filter(d => d.gravacao_id === gravacaoId))
         ]);
-        const comRoteiro = new Set(existentes.filter(d => d.roteiro_id).map(d => d.roteiro_id));
+        /* considera TODOS os roteiros vinculados de cada demanda ativa
+           dessa gravação, não só o "primeiro" (roteiro_id) — uma
+           demanda pode ter vários roteiros desde a Parte 2 da
+           auditoria (multi-roteiro). */
+        const comRoteiro = new Set(existentes.flatMap(d => (d.roteiros_vinculados || []).map(r => r.id)));
         roteirosDaGravacao = (roteiros || []).map(r => ({ ...r, ja_tem_demanda: comRoteiro.has(r.id) }));
         roteiroSelecionados = new Set(roteirosDaGravacao.filter(r => !r.ja_tem_demanda).map(r => r.id));
         cx.innerHTML = roteirosHTML();
@@ -1172,24 +1196,56 @@ B7.Video = (function () {
       const gravacaoId = selGravacao.value;
       if (!gravacaoId || !roteiroSelecionados.size) return;
       const btn = m.querySelector('#vgd-gerar');
+      const agrupada = agrupando();
       btn.disabled = true; btn.textContent = 'Gerando…';
       try {
-        const resultado = await B7.DB.gerarDemandasDeGravacaoVideo(
-          gravacaoId, [...roteiroSelecionados],
-          m.querySelector('#vgd-videomaker').value || null,
-          m.querySelector('#vgd-prazo').value || null
-        );
-        const novas = (resultado || []).filter(r => !r.ja_existia).length;
-        const existiam = (resultado || []).filter(r => r.ja_existia).length;
-        m.fechar();
-        B7.UI.toast(novas + ' demanda' + (novas === 1 ? '' : 's') + ' criada' + (novas === 1 ? '' : 's') +
-          (existiam ? ' (' + existiam + ' já existia' + (existiam === 1 ? '' : 'm') + ')' : '') + '.');
+        if (agrupada) {
+          await B7.DB.gerarDemandaAgrupadaVideo(
+            gravacaoId, [...roteiroSelecionados],
+            m.querySelector('#vgd-titulo').value.trim() || null,
+            m.querySelector('#vgd-videomaker').value || null,
+            m.querySelector('#vgd-prazo').value || null
+          );
+          m.fechar();
+          B7.UI.toast('1 demanda criada com ' + roteiroSelecionados.size + ' roteiro' + (roteiroSelecionados.size === 1 ? '' : 's') + '.');
+        } else {
+          const resultado = await B7.DB.gerarDemandasDeGravacaoVideo(
+            gravacaoId, [...roteiroSelecionados],
+            m.querySelector('#vgd-videomaker').value || null,
+            m.querySelector('#vgd-prazo').value || null
+          );
+          const novas = (resultado || []).filter(r => !r.ja_existia).length;
+          const existiam = (resultado || []).filter(r => r.ja_existia).length;
+          m.fechar();
+          B7.UI.toast(novas + ' demanda' + (novas === 1 ? '' : 's') + ' criada' + (novas === 1 ? '' : 's') +
+            (existiam ? ' (' + existiam + ' já existia' + (existiam === 1 ? '' : 'm') + ')' : '') + '.');
+        }
         abrir();
       } catch (e) {
-        btn.disabled = false; btn.textContent = 'Gerar demandas';
+        btn.disabled = false; btn.textContent = agrupada ? 'Gerar demanda' : 'Gerar demandas';
         B7.UI.toast(e.message || 'Não foi possível gerar as demandas.');
       }
     };
+  }
+
+  /* Roteiro(s) vinculado(s) — Parte 2 da auditoria: uma demanda pode
+     ter vários roteiros. Escrita sempre substitui o conjunto inteiro
+     (video_definir_roteiros), então tanto remover um chip quanto
+     adicionar um novo mandam a lista completa de novo. */
+  function roteirosVinculadosHTML(d, podeEditar) {
+    const vinc = d.roteiros_vinculados || [];
+    const lista = vinc.length
+      ? '<div class="vd-roteiros-vinculo-lista">' + vinc.map(r =>
+          '<div class="vd-rv-chip"><span>' + esc(r.titulo || '(sem título)') + '</span>' +
+          (podeEditar ? '<button type="button" data-remover-roteiro="' + r.id + '" title="Remover" aria-label="Remover">×</button>' : '') +
+          '</div>').join('') + '</div>'
+      : '<div class="vd-so-leitura">' + (podeEditar ? 'Nenhum roteiro vinculado ainda.' : 'sem vínculo') + '</div>';
+    if (!podeEditar) return lista;
+    return lista +
+      (d.gravacao_id
+        ? '<div class="vd-link-linha"><select class="campo" id="vd-dt-roteiro-add"><option value="">Adicionar roteiro…</option></select>' +
+          '<button class="b" id="vd-dt-roteiro-add-bt" disabled>Adicionar</button></div>'
+        : '<p class="fraca">Vincule uma gravação acima para poder escolher roteiros dela.</p>');
   }
 
   /* =================================================================
@@ -1316,6 +1372,9 @@ B7.Video = (function () {
           (podeEditar
             ? '<select class="campo" id="vd-dt-gravacao"><option value="">Carregando…</option></select>'
             : '<div class="vd-so-leitura">' + (d.gravacao_nome ? esc(d.gravacao_nome) + ' (' + esc(d.gravacao_situacao || '') + ')' : 'sem vínculo') + '</div>') +
+          '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Roteiro(s) vinculado(s)</label>' +
+          '<div id="vd-dt-roteiros">' + roteirosVinculadosHTML(d, podeEditar) + '</div>' +
           '</div>' +
           '<div class="vd-dt-campo"><label class="rot">Origem</label>' +
           '<div class="vd-so-leitura">' + (d.origem === 'importacao' ? 'Importada de planilha' : 'Criada manualmente') + '</div>' +
@@ -1654,6 +1713,44 @@ B7.Video = (function () {
             esc(g.nome) + (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') + '</option>').join('');
       }).catch(() => { selGravacaoDt.innerHTML = '<option value="">Sem vínculo</option>'; });
     }
+
+    /* Roteiro(s) vinculado(s) — remover chip ou adicionar via select,
+       sempre reenviando o CONJUNTO completo (video_definir_roteiros
+       substitui, não soma). */
+    const vinculados = d.roteiros_vinculados || [];
+    async function salvarRoteirosVinculados(idsNovos, elBotao) {
+      if (elBotao) elBotao.disabled = true;
+      try {
+        await B7.DB.definirRoteirosVideo(d.id, idsNovos);
+        B7.UI.toast('Roteiros vinculados atualizados.');
+        abrirDetalhe(d.id);
+      } catch (e) {
+        if (elBotao) elBotao.disabled = false;
+        B7.UI.toast(e.message || 'Não foi possível atualizar os roteiros vinculados.');
+      }
+    }
+    document.querySelectorAll('[data-remover-roteiro]').forEach(bt => {
+      bt.onclick = () => {
+        const restantes = vinculados.filter(r => r.id !== bt.dataset.removerRoteiro).map(r => r.id);
+        salvarRoteirosVinculados(restantes, bt);
+      };
+    });
+    const selRoteiroAdd = document.getElementById('vd-dt-roteiro-add');
+    const btRoteiroAdd = document.getElementById('vd-dt-roteiro-add-bt');
+    if (selRoteiroAdd && d.gravacao_id) {
+      B7.DB.listarRoteiros(d.gravacao_id).then(roteiros => {
+        const jaVinculados = new Set(vinculados.map(r => r.id));
+        const disponiveis = (roteiros || []).filter(r => !jaVinculados.has(r.id));
+        selRoteiroAdd.innerHTML = '<option value="">' + (disponiveis.length ? 'Adicionar roteiro…' : 'Nenhum roteiro disponível') + '</option>' +
+          disponiveis.map(r => '<option value="' + r.id + '">' + esc(r.titulo || '(sem título)') + '</option>').join('');
+        selRoteiroAdd.onchange = () => { if (btRoteiroAdd) btRoteiroAdd.disabled = !selRoteiroAdd.value; };
+      }).catch(() => { selRoteiroAdd.innerHTML = '<option value="">Não foi possível carregar</option>'; });
+    }
+    if (btRoteiroAdd) btRoteiroAdd.onclick = () => {
+      if (!selRoteiroAdd.value) return;
+      const novos = [...vinculados.map(r => r.id), selRoteiroAdd.value];
+      salvarRoteirosVinculados(novos, btRoteiroAdd);
+    };
 
     const btSalvar = document.getElementById('vd-dt-salvar');
     if (btSalvar) btSalvar.onclick = async () => {

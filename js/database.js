@@ -1673,6 +1673,13 @@ B7.DB = (function () {
     async atribuirVideo(demandaId, videomakerId) {
       return this.rpc('video_atribuir', { p_demanda_id: demandaId, p_videomaker_id: videomakerId || null });
     },
+    /* Define o CONJUNTO completo de roteiros vinculados a uma demanda
+       (substitui o que houver — lista vazia é válida, o vínculo
+       continua opcional). Parte 2 da auditoria: uma demanda passou a
+       poder ter vários roteiros, não só um. */
+    async definirRoteirosVideo(demandaId, roteiroIds) {
+      return this.rpc('video_definir_roteiros', { p_demanda_id: demandaId, p_roteiro_ids: roteiroIds || [] });
+    },
     async mudarStatusVideo(demandaId, status, mensagem) {
       return this.rpc('video_mudar_status', { p_demanda_id: demandaId, p_status: status, p_mensagem: mensagem || null });
     },
@@ -1803,6 +1810,15 @@ B7.DB = (function () {
         p_gravacao_id: gravacaoId, p_roteiro_ids: roteiroIds || [],
         p_videomaker_id: videomakerId || null, p_prazo: prazo || null
       }));
+    },
+    /* Mesma automação, mas junta os roteiros marcados numa ÚNICA
+       demanda em vez de uma demanda por roteiro (Parte 2 da auditoria,
+       item 7 — "vários roteiros selecionados por demanda"). */
+    async gerarDemandaAgrupadaVideo(gravacaoId, roteiroIds, titulo, videomakerId, prazo) {
+      return this.rpc('video_gerar_demanda_agrupada', {
+        p_gravacao_id: gravacaoId, p_roteiro_ids: roteiroIds || [], p_titulo: titulo || null,
+        p_videomaker_id: videomakerId || null, p_prazo: prazo || null
+      });
     },
     async verificarAlertasPrazoVideo() {
       return this.rpc('video_verificar_alertas_prazo', {});
