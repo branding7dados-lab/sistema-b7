@@ -1892,7 +1892,7 @@ B7.Design = (function () {
     const rotBaixar = parte ? 'Baixar ' + nomeParte : 'Baixar arquivo';
     const podeDecidir = ctx.podeRevisar && !!efet && !rasc && !historico;
     const podeUpload = ctx.podeEditar && d.status !== 'finalizado';
-    const up = parte && drawer.uploadsParte && drawer.uploadsParte[parte.id];
+    const up = drawer.uploadsParte && drawer.uploadsParte[chave];
 
     /* pra quem vai REENVIAR (slide em ajuste ou sem arte), o pedido e o
        botão de upload vêm ANTES da arte grande — senão ficam abaixo da
@@ -1918,10 +1918,10 @@ B7.Design = (function () {
         (up && up.estado === 'enviando'
           ? '<div class="ds-up-barra"><span style="width:' + up.progresso + '%"></span></div><small>Enviando ' + esc(up.nome) + ' · ' + up.progresso + '%</small>'
           : up && up.estado === 'erro'
-          ? '<span class="ds-up-erro">' + esc(up.erro || 'O envio foi interrompido') + '</span><button class="b fina" data-up-tentar-parte="' + esc(parte.id) + '">Tentar novamente</button>'
+          ? '<span class="ds-up-erro">' + esc(up.erro || 'O envio foi interrompido') + '</span><button class="b fina" data-up-tentar-parte="' + esc(chave) + '">Tentar novamente</button>'
           : '<label class="b fina ' + (precisa || (!efet && !rasc) ? 'pri' : 'contorno') + ' ds-arte-escolher">' +
-              (rasc ? 'Substituir arquivo' : precisa ? 'Enviar nova versão do ' + nomeParte + ' ' + pad2(parte.posicao + 1) : efet ? 'Substituir arquivo' : 'Enviar arquivo') +
-              '<input type="file" hidden data-up-parte="' + esc(parte.id) + '"></label>' +
+              (rasc ? 'Substituir arquivo' : precisa ? 'Enviar nova versão' + (parte ? ' do ' + nomeParte + ' ' + pad2(parte.posicao + 1) : '') : efet ? 'Substituir arquivo' : 'Enviar arquivo') +
+              '<input type="file" hidden data-up-parte="' + esc(chave) + '"></label>' +
             (rasc ? '<button class="b fina" data-remover-rascunho="' + esc(rasc.id) + '">Remover</button>' : '')) +
       '</div>';
     };
@@ -1954,7 +1954,7 @@ B7.Design = (function () {
       '</div>';
 
     if (!precisaAgir) html += blocoFeedback;
-    if (podeUpload && parte && !precisaAgir) html += blocoUploadParte();
+    if (podeUpload && !precisaAgir) html += blocoUploadParte();
     if (hist.length > 1 || (hist.length === 1 && rasc && ctx.podeEditar)) {
       html += '<div class="ds-arte-hist"><small>VERSÕES' + (parte ? ' DESTE ' + nomeParte.toUpperCase() : '') + '</small>' +
         hist.map(h => '<button class="ds-arte-hist-v' + ((historico ? historico.id === h.id : (!rasc || !ctx.podeEditar) && efet && efet.id === h.id) ? ' on' : '') + '" data-ver-versao="' + esc(h.id) + '" data-parte-chave="' + esc(chave) + '">' +
@@ -2197,6 +2197,37 @@ B7.Design = (function () {
          subir com sucesso — falha no meio nunca deixa a parte sem arte */
       if (anterior) { try { await B7.DB.removerArquivoRascunhoDesign(anterior.id); } catch (e) {} }
       delete drawer.uploadsParte[parte.id];
+      drawer.extra = await B7.DB.historicoDesign(d.id);
+    } catch (e) {
+      up.estado = 'erro'; up.erro = e.message || 'O envio foi interrompido.';
+    }
+    if (drawer && drawer.id === d.id) desenharDrawer();
+  }
+
+  /* ---- upload de ARTE ÚNICA (Card, Capa de Reel, Story/Carrossel de 1
+     item, manual) — mesmo botão "Substituir arquivo" e mesma garantia
+     não-destrutiva do upload por parte acima (o registro antigo do
+     rascunho só sai depois do novo subir com sucesso), só que sem
+     parte_id: a peça inteira é a "parte" única (chave '_') ---- */
+  async function uploadArteUnica(d, arquivo) {
+    drawer.uploadsParte = drawer.uploadsParte || {};
+    const up = drawer.uploadsParte['_'] = { estado: 'enviando', progresso: 0, erro: null, nome: arquivo.name, arquivo };
+    desenharDrawer();
+    try {
+      const versaoId = await garantirRascunho(d.id);
+      const anterior = arquivosRascunho().get('_');
+      await B7.DB.enviarArquivoDesign({
+        deliverableId: d.id, versaoId, arquivo, papel: 'preview', parte: null,
+        aoProgredir: pct => {
+          up.progresso = pct;
+          const barra = drawer.el.querySelector('.ds-arte[data-parte="_"] .ds-up-barra span');
+          const txt = drawer.el.querySelector('.ds-arte[data-parte="_"] .ds-up-barra + small');
+          if (barra) barra.style.width = pct + '%';
+          if (txt) txt.textContent = 'Enviando ' + arquivo.name + ' · ' + pct + '%';
+        }
+      });
+      if (anterior) { try { await B7.DB.removerArquivoRascunhoDesign(anterior.id); } catch (e) {} }
+      delete drawer.uploadsParte['_'];
       drawer.extra = await B7.DB.historicoDesign(d.id);
     } catch (e) {
       up.estado = 'erro'; up.erro = e.message || 'O envio foi interrompido.';
@@ -2770,30 +2801,30 @@ B7.Design = (function () {
     const algumEnviando = fila.some(f => f.estado === 'enviando') ||
       Object.values(drawer.uploadsParte || {}).some(u => u.estado === 'enviando');
     const multi = ehMultiparte();
-    /* multiparte: a arte entra pelo slot de cada slide (área principal);
-       aqui embaixo só arquivo de apoio (fonte, anexo) e o envio */
+    /* a arte (única ou por slide) entra sempre pelo botão "Substituir
+       arquivo"/"Enviar arquivo" junto da própria arte, acima — aqui
+       embaixo é só arquivo de apoio (fonte, anexo) e o envio */
     const papeis = PAPEIS_ARQUIVO.filter(([v]) => (v !== 'final' ||
-      d.status === 'aprovado_interno' || d.status === 'aprovado_cliente') && (!multi || v !== 'preview'));
+      d.status === 'aprovado_interno' || d.status === 'aprovado_cliente') && v !== 'preview');
 
-    let resumoPartes = '';
-    let pronto = fila.some(f => f.estado === 'ok');
-    if (multi) {
-      const partes = partesDaPeca(); const efet = arquivosEfetivos(); const rasc = arquivosRascunho();
-      const nomeP = d.tipo === 'stories' ? 'Stories' : 'Slides';
-      const novos = partes.filter(p => rasc.get(p.id)), herdados = partes.filter(p => !rasc.get(p.id) && efet.get(p.id)),
-            faltam = partes.filter(p => !rasc.get(p.id) && !efet.get(p.id));
-      pronto = novos.length > 0 && faltam.length === 0;
-      resumoPartes = '<div class="ds-envio-partes">' +
-        (novos.length ? '<p><b>Nesta versão:</b> ' + nomeP.toLowerCase() + ' ' + novos.map(p => pad2(p.posicao + 1)).join(', ') + '</p>' : '<p class="ds-leve">Nenhum arquivo novo nesta versão ainda — use “Enviar arquivo” em cada ' + (d.tipo === 'stories' ? 'story' : 'slide') + ' acima.</p>') +
-        (herdados.length ? '<p><b>Mantidos da versão anterior:</b> ' + herdados.map(p => pad2(p.posicao + 1)).join(', ') + '</p>' : '') +
-        (faltam.length ? '<p class="ds-up-erro">Faltam arquivos nos ' + nomeP + ' ' + faltam.map(p => pad2(p.posicao + 1)).join(', ') + '.</p>' : '') +
-      '</div>';
-    }
+    const partes = multi ? partesDaPeca() : [{ id: '_', posicao: 0 }];
+    const efet = arquivosEfetivos(), rasc = arquivosRascunho();
+    const nomeP = multi ? (d.tipo === 'stories' ? 'Stories' : 'Slides') : 'Arte';
+    const novos = partes.filter(p => rasc.get(p.id)), herdados = partes.filter(p => !rasc.get(p.id) && efet.get(p.id)),
+          faltam = partes.filter(p => !rasc.get(p.id) && !efet.get(p.id));
+    const pronto = novos.length > 0 && faltam.length === 0;
+    const nomeUnidade = multi ? (d.tipo === 'stories' ? 'story' : 'slide') : 'arte';
+    const resumoPartes = '<div class="ds-envio-partes">' +
+      (novos.length ? (multi ? '<p><b>Nesta versão:</b> ' + nomeP.toLowerCase() + ' ' + novos.map(p => pad2(p.posicao + 1)).join(', ') + '</p>' : '<p><b>Nesta versão:</b> arquivo novo pronto para enviar.</p>')
+        : '<p class="ds-leve">Nenhum arquivo novo nesta versão ainda — use “Substituir arquivo”/“Enviar arquivo” em cada ' + nomeUnidade + ' acima.</p>') +
+      (herdados.length && multi ? '<p><b>Mantidos da versão anterior:</b> ' + herdados.map(p => pad2(p.posicao + 1)).join(', ') + '</p>' : '') +
+      (faltam.length ? '<p class="ds-up-erro">' + (multi ? 'Faltam arquivos nos ' + nomeP + ' ' + faltam.map(p => pad2(p.posicao + 1)).join(', ') : 'Falta o arquivo da arte') + '.</p>' : '') +
+    '</div>';
 
     return resumoPartes +
-      '<div class="ds-drop' + (multi ? ' ds-drop-apoio' : '') + '" id="dv-drop" tabindex="0" role="button" aria-label="Escolher arquivos ou arrastar aqui">' +
+      '<div class="ds-drop ds-drop-apoio" id="dv-drop" tabindex="0" role="button" aria-label="Escolher arquivos ou arrastar aqui">' +
         '<input type="file" id="dv-arquivo" multiple hidden>' +
-        '<div class="ds-drop-tx"><b>' + (multi ? 'Arquivo de apoio (fonte, anexo)' : 'Arraste arquivos aqui') + '</b><span>' + (multi ? 'opcional · PSD, AI, PDF… não substitui a arte dos slides' : 'ou clique para escolher · qualquer formato de arte') + '</span></div>' +
+        '<div class="ds-drop-tx"><b>Arquivo de apoio (fonte, anexo)</b><span>opcional · PSD, AI, PDF… não substitui a arte' + (multi ? ' dos slides' : '') + '</span></div>' +
       '</div>' +
       '<div id="dv-fila" class="ds-fila-upload">' + fila.map((f, i) => linhaUpload(f, i, papeis)).join('') + '</div>' +
       '<label class="rot" for="dv-observacao" style="margin-top:12px">OBSERVAÇÃO <span class="ds-leve">— opcional</span></label>' +
@@ -2872,7 +2903,7 @@ B7.Design = (function () {
   }
 
   async function adicionarArquivos(d, arquivos) {
-    const novos = [...arquivos].map(arquivo => ({ arquivo, papel: ehMultiparte() ? 'anexo' : 'preview', estado: 'pendente', progresso: 0, erro: null }));
+    const novos = [...arquivos].map(arquivo => ({ arquivo, papel: 'anexo', estado: 'pendente', progresso: 0, erro: null }));
     drawer.filaUpload.push(...novos);
     redesenharUpload(d);
     for (const f of novos) iniciarUpload(d, f);
@@ -2906,7 +2937,7 @@ B7.Design = (function () {
 
   function redesenharUpload(d) {
     const cx = drawer.el.querySelector('#dv-fila');
-    const papeis = PAPEIS_ARQUIVO.filter(([v]) => v !== 'final' || d.status === 'aprovado_interno' || d.status === 'aprovado_cliente');
+    const papeis = PAPEIS_ARQUIVO.filter(([v]) => (v !== 'final' || d.status === 'aprovado_interno' || d.status === 'aprovado_cliente') && v !== 'preview');
     if (cx) cx.innerHTML = drawer.filaUpload.map((f, i) => linhaUpload(f, i, papeis)).join('');
     ligarUpload(d);
     const btn = drawer.el.querySelector('#dv-enviar');
@@ -2920,9 +2951,8 @@ B7.Design = (function () {
     const enviando = drawer.filaUpload.some(f => f.estado === 'enviando') ||
       Object.values(drawer.uploadsParte || {}).some(u => u.estado === 'enviando');
     if (enviando) return false;
-    if (!ehMultiparte()) return drawer.filaUpload.some(f => f.estado === 'ok');
     const efet = arquivosEfetivos(), rasc = arquivosRascunho();
-    const partes = partesDaPeca();
+    const partes = ehMultiparte() ? partesDaPeca() : [{ id: '_' }];
     return partes.some(p => rasc.get(p.id)) && partes.every(p => rasc.get(p.id) || efet.get(p.id));
   }
 
@@ -3139,16 +3169,22 @@ B7.Design = (function () {
     el.querySelectorAll('[data-tela-cheia]').forEach(b => b.onclick = () => abrirTelaCheia(d, b.dataset.telaCheia));
     el.querySelectorAll('[data-decidir]').forEach(b => b.onclick = () => decidirParte(d, b.dataset.arquivo, b.dataset.decidir, b));
     el.querySelectorAll('input[data-up-parte]').forEach(inp => inp.onchange = () => {
-      const parte = (partesDaPeca() || []).find(p => p.id === inp.dataset.upParte);
-      if (parte && inp.files && inp.files[0]) uploadParte(d, parte, inp.files[0]);
+      const chave = inp.dataset.upParte;
+      const parte = (partesDaPeca() || []).find(p => p.id === chave);
+      if (!inp.files || !inp.files[0]) { inp.value = ''; return; }
+      if (parte) uploadParte(d, parte, inp.files[0]);
+      else if (chave === '_') uploadArteUnica(d, inp.files[0]);
       inp.value = '';
     });
     const lote = el.querySelector('#dv-lote');
     if (lote) lote.onchange = () => { if (lote.files && lote.files.length) modalLote(d, lote.files); lote.value = ''; };
     el.querySelectorAll('[data-up-tentar-parte]').forEach(b => b.onclick = () => {
-      const parte = (partesDaPeca() || []).find(p => p.id === b.dataset.upTentarParte);
-      const up = drawer.uploadsParte && drawer.uploadsParte[b.dataset.upTentarParte];
-      if (parte && up && up.arquivo) uploadParte(d, parte, up.arquivo);
+      const chave = b.dataset.upTentarParte;
+      const parte = (partesDaPeca() || []).find(p => p.id === chave);
+      const up = drawer.uploadsParte && drawer.uploadsParte[chave];
+      if (!up || !up.arquivo) return;
+      if (parte) uploadParte(d, parte, up.arquivo);
+      else if (chave === '_') uploadArteUnica(d, up.arquivo);
     });
     el.querySelectorAll('[data-remover-rascunho]').forEach(b => b.onclick = async () => {
       b.disabled = true;
@@ -3161,13 +3197,20 @@ B7.Design = (function () {
       desenharDrawer();
     });
     el.querySelectorAll('[data-baixar-conjunto]').forEach(b => b.onclick = () => baixarConjunto(d, b, b.dataset.baixarConjunto === 'parcial'));
-    /* arrastar arquivo direto no slot de um slide */
+    /* arrastar arquivo direto no slot de um slide, ou na arte única */
     el.querySelectorAll('.ds-arte[data-parte]').forEach(slot => {
-      const parte = (partesDaPeca() || []).find(p => p.id === slot.dataset.parte);
-      if (!parte || !slot.querySelector('input[data-up-parte]')) return;
+      const chave = slot.dataset.parte;
+      const parte = (partesDaPeca() || []).find(p => p.id === chave);
+      if (!slot.querySelector('input[data-up-parte]')) return;
+      if (!parte && chave !== '_') return;
       slot.ondragover = e => { e.preventDefault(); slot.classList.add('arrastando'); };
       slot.ondragleave = () => slot.classList.remove('arrastando');
-      slot.ondrop = e => { e.preventDefault(); slot.classList.remove('arrastando'); if (e.dataTransfer.files && e.dataTransfer.files[0]) uploadParte(d, parte, e.dataTransfer.files[0]); };
+      slot.ondrop = e => {
+        e.preventDefault(); slot.classList.remove('arrastando');
+        if (!e.dataTransfer.files || !e.dataTransfer.files[0]) return;
+        if (parte) uploadParte(d, parte, e.dataTransfer.files[0]);
+        else uploadArteUnica(d, e.dataTransfer.files[0]);
+      };
     });
     const detVersoes = el.querySelector('#dv-versoes'); if (detVersoes) detVersoes.ontoggle = () => { drawer.versoesAberto = detVersoes.open; };
     const detTimeline = el.querySelector('#dv-timeline'); if (detTimeline) detTimeline.ontoggle = () => { drawer.timelineAberta = detTimeline.open; };
