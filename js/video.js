@@ -1270,8 +1270,17 @@ B7.Video = (function () {
         versoesAtual.forEach((v, i) => { comentariosPorVersao[v.id] = listas[i]; });
       }
     } catch (e) {
+      /* PGRST116 = a consulta com .single() não achou nenhuma linha —
+         o caso mais comum é um link antigo (ex.: clique numa notificação
+         de dias atrás) apontando pra uma demanda que already foi excluída
+         (Lixeira) ou descartada depois que o aviso foi criado. Nesse caso
+         a mensagem de erro crua do Postgres ("Cannot coerce…") não ajuda
+         ninguém — mostra o motivo real, em português. */
+      const excluida = e && (e.code === 'PGRST116' || /coerce the result/i.test(e.message || ''));
       painel().innerHTML = '<div class="conteudo vd-tela"><div class="estado-b7">' +
-        '<b>Não foi possível abrir esta demanda.</b><p>' + esc(e.message || '') + '</p>' +
+        (excluida
+          ? '<b>Esta demanda não foi encontrada.</b><p>Ela pode ter sido excluída ou movida para a Lixeira desde que o link foi criado.</p>'
+          : '<b>Não foi possível abrir esta demanda.</b><p>' + esc(e.message || '') + '</p>') +
         '<div class="acoes"><button class="b" onclick="location.hash=\'#/video\'">Voltar</button></div>' +
         '</div></div>';
       return;
