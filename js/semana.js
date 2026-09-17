@@ -91,6 +91,7 @@ B7.Semana = (function () {
      ================================================================= */
   async function abrirLista() {
     B7.Dashboard.marcarNav('#/semanas');
+    B7.Rota.titulo(['Status semanal']);
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div>';
     let lista;
     try { lista = await B7.DB.listarStatus({}); }

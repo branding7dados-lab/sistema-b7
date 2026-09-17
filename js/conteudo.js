@@ -325,6 +325,7 @@ B7.Conteudo = (function () {
 
   async function abrirLinhasGlobais() {
     B7.Dashboard.marcarNav('#/linhas');
+    B7.Rota.titulo(['Linhas editoriais']);
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('cards', { n: 6 }) + '</div>';
     let linhas, clientes;
     try {

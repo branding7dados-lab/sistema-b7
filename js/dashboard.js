@@ -407,6 +407,7 @@ B7.Dashboard = (function () {
   /* ================================================ TODAS AS GRAVAÇÕES */
   async function abrirGravacoes() {
     marcarNav('#/gravacoes');
+    B7.Rota.titulo(['Gravações']);
     esqueleto('lista');
     let gravacoes;
     try { gravacoes = await B7.DB.listarGravacoes(); } catch (e) { return erro(e, 'abrirGravacoes'); }
@@ -542,6 +543,7 @@ B7.Dashboard = (function () {
   /* ========================================================= CLIENTES */
   async function abrirClientes() {
     marcarNav('#/clientes');
+    B7.Rota.titulo(['Clientes']);
     esqueleto('lista');
     let clientes;
     try { clientes = ordenarClientes(await B7.DB.listarClientes()); }
