@@ -552,7 +552,12 @@ B7.DB = (function () {
        Editorial, sem trazer a linha inteira. */
     async conteudosPorIds(ids) {
       if (!ids || !ids.length) return [];
-      return ok(await sb().from('conteudos').select('id,status,tipo,etapa,data_postagem')
+      /* 'etapa' não existe (nunca existiu) na tabela conteudos — pedir essa
+         coluna fazia o PostgREST recusar a consulta inteira (400), toda vez,
+         derrubando silenciosamente a reconciliação automática do Status
+         Semanal (sincronizarComLinhaEditorial, js/semana.js) que depende
+         só de status e data_postagem. */
+      return ok(await sb().from('conteudos').select('id,status,tipo,data_postagem')
         .in('id', ids).is('deleted_at', null));
     },
 

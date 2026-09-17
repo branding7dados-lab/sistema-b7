@@ -1264,17 +1264,41 @@ B7.Design = (function () {
       if (observerThumb) observerThumb.observe(el); else carregarThumb(el);
     });
   }
+  /* peças cujo arquivo de miniatura não existe mais no Storage (removido,
+     ou nunca terminou de subir) davam 400 na hora de baixar a imagem —
+     sinalizado, mas sem cache, então cada card recarregado (troca de
+     aba, volta pro quadro) pedia a URL assinada de novo e tentava
+     baixar de novo, sempre falhando do mesmo jeito. Guardamos aqui
+     também os caminhos que já falharam, pra não repetir a rede à toa
+     dentro da mesma sessão. */
+  const thumbsQuebrados = new Set();
   async function carregarThumb(el) {
     const caminho = el.dataset.previa;
     if (!caminho) return;
+    const limparCarregando = () => { const esq = el.querySelector('.ds-thumb-esq'); if (esq) esq.remove(); };
+    if (thumbsQuebrados.has(caminho)) { limparCarregando(); return; }
     try {
       let url = cacheThumb.get(caminho);
       if (!url) { url = await B7.DB.urlArquivoDesign(caminho); cacheThumb.set(caminho, url); }
       if (!el.isConnected) return;
+      /* só assume a miniatura como boa depois que a imagem de fato
+         carrega — setar background-image direto deixava a caixa vazia
+         pra sempre quando o arquivo não existia, sem avisar ninguém */
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = url;
+      });
+      if (!el.isConnected) return;
       el.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")';
       el.classList.add('ds-thumb-ok');
-      const esq = el.querySelector('.ds-thumb-esq'); if (esq) esq.remove();
-    } catch (e) { /* sem prévia visível, a peça continua acessível pelo resto do card */ }
+      limparCarregando();
+    } catch (e) {
+      thumbsQuebrados.add(caminho);
+      limparCarregando();
+      /* sem prévia visível, a peça continua acessível pelo resto do card */
+    }
   }
 
   /* =================================================================
