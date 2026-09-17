@@ -68,8 +68,15 @@
     <!-- Só a logo oficial. O sistema é a Branding7, não "Roteiros B7":
          nada de texto de produto ao lado da marca. -->
     <div class="marca-lateral">
-      <img class="lockup" src="assets/brand/logo-white.png" alt="Branding7">
-      <img class="simbolo" src="assets/brand/symbol-white.png" alt="B7">
+      <!-- clicar na logo volta pro início (a Central certa pro papel de
+           quem está logado — a mesma resolução de #/ vazio que já existe
+           em app.js). Botão à parte, não o div inteiro: o fecha-gaveta
+           mora dentro do mesmo container e não pode disparar navegação
+           também quando clicado. -->
+      <button type="button" class="marca-clique" data-ir="#/" aria-label="Ir para o início">
+        <img class="lockup" src="assets/brand/logo-white.png" alt="Branding7">
+        <img class="simbolo" src="assets/brand/symbol-white.png" alt="B7">
+      </button>
       <!-- só existe na gaveta do celular: fecha o menu -->
       <button class="ico fecha-gaveta" id="fecha-gaveta" aria-label="Fechar menu" title="Fechar menu"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>

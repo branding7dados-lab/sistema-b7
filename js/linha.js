@@ -900,7 +900,7 @@ B7.Linha = (function () {
       '</div>' +
       '<div class="cal-grade-mes">' +
         '<div class="cal-cab">' + DIAS_SEMANA.map(d => '<span>' + d + '</span>').join('') + '</div>' +
-        '<div class="cal-dias">' + grade + '</div>' +
+        '<div class="cal-mes-dias">' + grade + '</div>' +
       '</div>' +
       '<div class="cal-agenda">' + agenda + '</div>' +
       /* sem data não é pendência: é conteúdo que ainda não foi agendado.

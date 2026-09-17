@@ -128,7 +128,13 @@ button.badge-design{border:0;}
 .cal-cab{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:5px;}
 .cal-cab span{font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--ink-4);text-align:center;
   padding-bottom:7px;border-bottom:1px solid var(--borda);}
-.cal-dias{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;}
+/* nome próprio (cal-mes-dias, não cal-dias) — calendario.css usa
+   ".cal-dias" pra outra coisa (a lista/agenda do Calendário de
+   Gravações, display:flex em coluna) e, como as duas folhas têm a
+   mesma especificidade, quem carrega por último no index.html vencia
+   e quebrava esta grade — virava uma lista empilhada em vez de 7
+   colunas. Renomeado pra não colidir nunca mais. */
+.cal-mes-dias{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;}
 .cal-d{min-height:96px;min-width:0;background:var(--suave);border:1px solid transparent;
   border-radius:var(--r-sm);padding:7px 6px 6px;display:flex;flex-direction:column;gap:4px;
   transition:border-color var(--t-micro);}
@@ -186,7 +192,7 @@ button.badge-design{border:0;}
    vira um resumo compacto (pontos por dia) que continua clicável. */
 @media (max-width:760px){
   .cal-agenda{display:flex;}
-  .cal-dias{gap:3px;}
+  .cal-mes-dias{gap:3px;}
   .cal-cab{gap:3px;}
   .cal-cab span{letter-spacing:.06em;font-size:9px;}
   .cal-d{min-height:44px;padding:5px 4px;gap:3px;}
