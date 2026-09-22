@@ -463,6 +463,9 @@ B7.BaixarLinha = (function () {
     const m = B7.UI.modal('<h3>Exportar linha editorial</h3>' +
       '<div class="sub">Os dois formatos usam o mesmo conteúdo salvo. Campos vazios ' +
       'não aparecem, e notas internas nunca entram.</div>' +
+      '<div class="sub">"Baixar PDF" abre a impressão do navegador — na janela que abrir, ' +
+      'escolha destino <b>"Salvar como PDF"</b>, margens <b>"Nenhuma"</b> e escala <b>"100%"</b>. ' +
+      'Sem isso, o navegador aplica margens e escala próprias e o documento sai desproporcional.</div>' +
 
       '<label class="rot">FORMATO</label>' +
       '<div class="grade-formatos exp-formatos">' +
@@ -550,6 +553,10 @@ B7.BaixarLinha = (function () {
           : B7.FolhaLinha.documentoMedidoHTML(ctx, area);
         area.querySelectorAll('.le-folha, .slide').forEach(f => B7.Folha.ajustar(f));
         area.style.display = '';
+        /* a janela de impressão do navegador é nativa e bloqueia a página —
+           o aviso precisa aparecer ANTES dela abrir, daí o atraso maior
+           aqui (era 180ms) só neste fluxo. */
+        B7.UI.toast('Na janela que vai abrir: "Salvar como PDF", margens "Nenhuma", escala "100%".', { tempo: 6000 });
         setTimeout(() => {
           try { window.print(); } catch (e) { return reject(e); }
           setTimeout(() => {
@@ -558,7 +565,7 @@ B7.BaixarLinha = (function () {
             definirPagina(false);          /* volta ao A4 para não afetar as fichas */
           }, 800);
           resolve();
-        }, 180);
+        }, 900);
       } catch (e) { reject(e); }
     });
   }
