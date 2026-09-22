@@ -147,6 +147,25 @@ button{background:none;border:0;cursor:pointer;}
    =================================================================== */
 #app{display:flex;height:100vh;height:100dvh;width:100%;max-width:100vw;overflow:hidden;}
 
+/* --------------------------------------------- prévia de usuário (admin) */
+/* Sobrepõe tudo (sidebar incluída), então #app desce a mesma altura pra
+   não sobrar nada cortado embaixo — mesma ideia do banner da prévia de
+   cliente (styles/portal.css), mas fixo: a área interna tem duas telas
+   (dashboard/editor) que se alternam, e o banner precisa sobreviver às
+   duas. */
+.pv-banner-usuario{position:fixed;top:0;left:0;right:0;z-index:90;
+  display:flex;align-items:center;gap:14px;padding:9px 22px;
+  background:var(--ambar-bg);color:var(--ambar);border-bottom:1px solid var(--borda);flex-wrap:wrap;}
+.pv-banner-tx{flex:1;min-width:200px;display:flex;flex-direction:column;gap:1px;}
+.pv-banner-tx b{font-size:13.5px;font-weight:800;}
+.pv-banner-tx span{font-size:12px;opacity:.9;}
+.pv-banner-usuario .b{border-color:currentColor;color:inherit;background:transparent;}
+body.modo-previa-usuario #app{margin-top:44px;height:calc(100vh - 44px);height:calc(100dvh - 44px);}
+@media (max-width:820px){
+  .pv-banner-usuario{padding:8px 14px;}
+  body.modo-previa-usuario #app{margin-top:58px;height:calc(100vh - 58px);height:calc(100dvh - 58px);}
+}
+
 .lateral{width:248px;flex:none;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;
   transition:width var(--t);position:relative;z-index:60;overflow:hidden;
   padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
@@ -213,6 +232,31 @@ body.recolhida .nav a{margin-left:auto;margin-right:auto;width:100%;}
 .pe-lateral .estado.ruim .bolinha{background:#FF5FA8;}
 .pe-lateral .versao{font-size:10.5px;color:rgba(255,255,255,.26);padding:2px 12px 8px;}
 body.recolhida .pe-lateral .estado span,body.recolhida .pe-lateral .versao{display:none;}
+/* ------------------------------------------------- ver como cliente/usuário */
+.ver-como{position:relative;padding:0 12px 10px;}
+.ver-como-bt{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;
+  border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.75);font-size:12.5px;
+  font-weight:600;border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:var(--t);}
+.ver-como-bt:hover{background:rgba(255,255,255,.12);color:#fff;}
+.ver-como-bt svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;flex:none;}
+body.recolhida .ver-como-bt span{display:none;}
+.ver-como-caixa{position:absolute;left:12px;right:12px;bottom:calc(100% + 8px);background:var(--elevado);
+  border-radius:var(--r);box-shadow:0 18px 50px rgba(20,8,40,.35);border:1px solid var(--borda);padding:8px;
+  max-height:60vh;overflow-y:auto;display:none;z-index:85;color:var(--ink-2);}
+.ver-como.aberto .ver-como-caixa{display:block;}
+.ver-como-caixa input{width:100%;background:var(--suave);border:1px solid var(--borda);border-radius:9px;
+  padding:9px 12px;font-size:13px;margin-bottom:6px;color:var(--ink-1);}
+.ver-como-caixa input:focus{outline:none;border-color:var(--acento);}
+.ver-como-lista .grupo{font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--ink-4);padding:8px 8px 4px;}
+.ver-como-lista .res{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:9px;cursor:pointer;}
+.ver-como-lista .res:hover{background:var(--suave);}
+.ver-como-lista .res .mini{width:26px;height:26px;border-radius:8px;background:var(--neutro-bg);color:var(--acento);
+  display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;flex:none;}
+.ver-como-lista .res b{display:block;font-size:13px;font-weight:600;}
+.ver-como-lista .res small{font-size:11px;color:var(--ink-3);}
+.ver-como-lista .nada{padding:18px;text-align:center;font-size:12.5px;color:var(--ink-3);}
+body.recolhida .ver-como-caixa{left:74px;right:auto;width:290px;}
+
 .bt-recolher{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;
   border-radius:10px;color:rgba(255,255,255,.45);font-size:12px;transition:var(--t);}
 .bt-recolher:hover{background:rgba(255,255,255,.07);color:#fff;}

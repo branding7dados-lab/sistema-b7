@@ -266,6 +266,7 @@ B7.Rota = (function () {
       if (B7.criarTrilha) B7.criarTrilha();
       aplicarPapelNaNavegacao();
       if (B7.Perm) B7.Perm.aplicarNavegacao();
+      if (B7.PreviaUsuario) B7.PreviaUsuario.montarSeletor();
       const ligarSe = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
       ligarSe('nav-atalhos', () => B7.UI.atalhos());
       ligarSe('nav-config', () => { location.hash = '#/config'; });

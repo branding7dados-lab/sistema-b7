@@ -727,9 +727,11 @@ B7.Dashboard = (function () {
       '<div class="acoes">' +
         '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button>' +
         '<button class="b clara" data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
-        /* Prévia do Portal: o admin vê o que este cliente vê, somente
-           leitura, sem senha do cliente (B7.Portal.abrirPrevia). */
-        (ehAdmin() ? '<button class="b clara" data-ir="#/previa/' + esc(c.id) + '" title="Abrir o Portal do Cliente como esta empresa o vê, somente leitura">Visualizar como cliente</button>' : '') +
+        /* O botão de destaque saiu daqui: virou o seletor "Visualizar
+           como…" da sidebar (js/previa-usuario.js), que busca entre
+           clientes e usuários num campo só. O atalho continua no menu
+           "⋯" abaixo, pra quem já está com o cliente aberto — mesma
+           rota de sempre (B7.Portal.abrirPrevia), nada mudou nela. */
         '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
           '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
           '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +

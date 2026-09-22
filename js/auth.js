@@ -60,7 +60,26 @@ B7.Auth = (function () {
 
   /* ---------------------------------------------------------- estado */
   const usuario = () => sessao;
-  const papel = () => (sessao ? sessao.papel : null);
+
+  /* Prévia de usuário (js/previa-usuario.js): o administrador continua
+     logado como ele mesmo — nenhuma sessão nova, nenhuma senha — mas
+     enquanto a simulação está ativa, papel()/funcoesExtra() respondem
+     como se fossem da pessoa escolhida. Toda a navegação e as rotas
+     (js/permissoes.js) já decidem tudo a partir dessas duas funções,
+     então a prévia não precisa duplicar regra nenhuma: ela só troca o
+     que essas funções devolvem. Só quem é admin de verdade entra em
+     simulação (simularPapel confere ehAdminReal); sair sempre limpa. */
+  let simulacao = null;   /* { papel, funcoes_extra } */
+  const ehAdminReal = () => !!(sessao && sessao.papel === 'admin');
+  function simularPapel(papelAlvo, funcoesExtraAlvo) {
+    if (!ehAdminReal() || !papelAlvo) return false;
+    simulacao = { papel: papelAlvo, funcoes_extra: funcoesExtraAlvo || [] };
+    return true;
+  }
+  function encerrarSimulacao() { simulacao = null; }
+  const emSimulacao = () => !!simulacao;
+
+  const papel = () => (simulacao ? simulacao.papel : (sessao ? sessao.papel : null));
   const ehEquipe = () => ['admin', 'coordenador'].includes(papel());
   const ehAdmin = () => papel() === 'admin';
   const ehCliente = () => papel() === 'cliente';
@@ -73,7 +92,7 @@ B7.Auth = (function () {
      Edição. Vem de minha_sessao (migration_video_producao.sql); numa
      instalação sem essa migração, funcoesExtra() simplesmente devolve
      lista vazia (a coluna não existe na sessão e some ao contrato). */
-  const funcoesExtra = () => (sessao && sessao.funcoes_extra) || [];
+  const funcoesExtra = () => (simulacao ? (simulacao.funcoes_extra || []) : ((sessao && sessao.funcoes_extra) || []));
   const souVideomakerElegivel = () => papel() === 'videomaker' || funcoesExtra().includes('videomaker');
 
   /* Empresas que a sessão alcança. Para a equipe, vazio significa todas. */
@@ -413,5 +432,6 @@ B7.Auth = (function () {
   }
 
   return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, sair, carregar, telaLogin, sessaoPersiste,
-           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel };
+           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel,
+           ehAdminReal, simularPapel, encerrarSimulacao, emSimulacao };
 })();

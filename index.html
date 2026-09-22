@@ -143,6 +143,22 @@
     <div class="pe-lateral">
       <div class="versao" id="versao-app" title="Versão do código carregado agora — útil pra confirmar se um deploy pegou"></div>
 
+      <!-- Só o Administrador vê isto (data-papel, aplicado pelo mesmo
+           mecanismo que esconde item de menu). Busca e seleciona entre
+           empresas (abre a prévia de cliente já existente, #/previa/<id>)
+           e usuários da equipe (abre a prévia somente-leitura de
+           js/previa-usuario.js) num único campo. -->
+      <div class="ver-como" id="ver-como" data-papel="admin">
+        <button type="button" class="ver-como-bt" id="ver-como-bt" title="Visualizar como cliente ou usuário" aria-expanded="false">
+          <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>Visualizar como…</span>
+        </button>
+        <div class="ver-como-caixa" id="ver-como-caixa">
+          <input id="ver-como-busca" placeholder="Buscar cliente ou usuário…" autocomplete="off">
+          <div class="ver-como-lista" id="ver-como-lista"></div>
+        </div>
+      </div>
+
       <button class="bt-recolher" id="bt-recolher">
         <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span>Recolher</span>
       </button>
@@ -264,6 +280,7 @@
 <script src="js/auth.js"></script>
 <script src="js/permissoes.js"></script>
 <script src="js/portal.js"></script>
+<script src="js/previa-usuario.js"></script>
 <script src="js/autosave.js"></script>
 <script src="js/vendor/html2canvas.min.js"></script>
 <script src="js/vendor/jspdf.umd.min.js"></script>
