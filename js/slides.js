@@ -181,12 +181,43 @@ B7.Slides = (function () {
             canais.map(c => '<span>' + esc(c) + '</span>').join('') + '</div>' : '') });
     }
 
-    /* ---- criativos: um slide por conteúdo, dividindo quando for longo ---- */
+    /* ---- criativos: lista compacta do mês, não um slide por conteúdo
+       explicando cada um (objetivo, headline, roteiro…) — isso é o que o
+       editor de Linha Editorial já mostra. Na apresentação, o que importa
+       é dar uma visão geral rápida: o que existe, em que formato, quando
+       sai. Mesma tabela compacta que Postagens já usa (sl-tabela), só que
+       na ordem dos posts em vez de por data. */
     if (ctx.conteudos.length) {
-      lista.push({ abertura: true, secao: 'CRIATIVOS', num: null,
-        html: abreSecao(secao++, ctx.conteudos.length + ' CONTEÚDO' +
-          (ctx.conteudos.length === 1 ? '' : 'S'), 'Criativos') });
-      ctx.conteudos.forEach((c, i) => slidesCriativo(c, i, ctx).forEach(x => lista.push(x)));
+      /* Antes era 12 (mesmo problema do que Postagens tinha): fixo demais,
+         gerava slide quase vazio na última parte de um mês comum. O slide
+         (.slide) já passa por B7.Folha.ajustar depois de montado — reduz a
+         fonte da tabela (var(--fs) em .sl-tabela) até 58% se precisar, em
+         vez de cortar. Então o teto aqui pode ser bem mais alto: cabe tudo
+         num slide só na maioria dos meses, com fonte um pouco menor
+         quando for muitos itens — só quebra em partes se nem a 58% coubesse. */
+      const POR_SLIDE_CRI = 30;
+      for (let i = 0; i < ctx.conteudos.length; i += POR_SLIDE_CRI) {
+        const parte = ctx.conteudos.slice(i, i + POR_SLIDE_CRI);
+        const parteNum = Math.floor(i / POR_SLIDE_CRI) + 1;
+        const total = Math.ceil(ctx.conteudos.length / POR_SLIDE_CRI);
+        lista.push({ secao: 'CRIATIVOS', num: null,
+          html: (i === 0
+            ? abreSecao(secao, ctx.conteudos.length + ' CONTEÚDO' +
+                (ctx.conteudos.length === 1 ? '' : 'S'), 'Criativos')
+            : '<div class="sl-cont">CRIATIVOS · PARTE ' + parteNum + ' DE ' + total + '</div>') +
+            '<table class="sl-tabela"><thead><tr>' +
+              '<th>POST</th><th>FORMATO</th><th>DATA</th>' + (pilares.length ? '<th>PILAR</th>' : '') +
+              '<th>TÍTULO</th>' +
+            '</tr></thead><tbody>' +
+            parte.map((c, k) => '<tr>' +
+              '<td class="d">' + String(i + k + 1).padStart(2, '0') + '</td>' +
+              '<td>' + esc(c.tipo) + '</td>' +
+              '<td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
+              (pilares.length ? '<td>' + esc((pilares.find(p => p.id === c.pilar_id) || {}).nome || '') + '</td>' : '') +
+              '<td class="t">' + esc(c.titulo || 'Sem título') + '</td></tr>').join('') +
+            '</tbody></table>' });
+      }
+      secao++;
     }
 
     /* ---- postagens ---- */
@@ -194,7 +225,12 @@ B7.Slides = (function () {
     if (ctx.conteudos.length) {
       const ordenados = ctx.conteudos.slice().sort((a, b) =>
         String(a.data_postagem || '9999').localeCompare(String(b.data_postagem || '9999')));
-      const POR_SLIDE = 8;   /* mais que isso vira letra miúda na projeção */
+      /* Era 8, achando que precisava reservar isso pra letra não ficar
+         miúda — mas o slide já reduz a fonte sozinho (B7.Folha.ajustar,
+         --fs até 58%) quando o conteúdo não cabe, em vez de simplesmente
+         cortar. Teto bem mais alto: a maioria dos meses cabe num slide só;
+         só quebra em partes quando nem a 58% resolveria. */
+      const POR_SLIDE = 30;
       for (let i = 0; i < ordenados.length; i += POR_SLIDE) {
         const parte = ordenados.slice(i, i + POR_SLIDE);
         const parteNum = Math.floor(i / POR_SLIDE) + 1;
@@ -219,93 +255,6 @@ B7.Slides = (function () {
     }
 
     return lista;
-  }
-
-  /* Um criativo pode precisar de mais de um slide. Em vez de encolher a
-     fonte, ele continua na parte seguinte. */
-  function slidesCriativo(c, i, ctx) {
-    const post = 'POST ' + String(i + 1).padStart(2, '0');
-    const pilarDe = x => {
-      const p = x.pilar_id && (ctx.pilares || []).find(y => y.id === x.pilar_id);
-      return p ? (p.nome || 'Pilar sem nome') : '';
-    };
-    const cabecalho = (parte, total) =>
-      '<div class="sl-cri-topo">' +
-        '<span class="n">' + post + '</span>' +
-        '<span class="f">' + esc(c.tipo.toUpperCase()) + '</span>' +
-        (c.data_postagem ? '<span class="d">' + esc(B7.UI.dataBR(c.data_postagem)) + '</span>' : '') +
-        (c.canal ? '<span class="d">' + esc(c.canal) + '</span>' : '') +
-        (pilarDe(c) ? '<span class="d">' + esc(pilarDe(c)) + '</span>' : '') +
-        (total > 1 ? '<span class="p">PARTE ' + parte + ' DE ' + total + '</span>' : '') +
-      '</div>' +
-      '<h3 class="sl-cri-t">' + esc(c.titulo || 'Sem título') + '</h3>';
-
-    /* roteiro entra só pelo título, e nem isso se for igual ao do conteúdo */
-    const roteiro = c.script_id ? ctx.roteiros[c.script_id] : null;
-    const linhaRoteiro = (roteiro && !vazio(roteiro.titulo) &&
-        roteiro.titulo.trim().toLowerCase() !== String(c.titulo || '').trim().toLowerCase())
-      ? campo('ROTEIRO', roteiro.titulo) : '';
-
-    const base = campo('OBJETIVO', c.objetivo) + campo('IDEIA GERAL', c.ideia_geral);
-
-    if (c.tipo === 'Reel') {
-      const corpo = base + campo('HEADLINE', c.headline) + linhaRoteiro + campo('CTA', c.cta) +
-        links('REFERÊNCIAS', c.referencias);
-      return [{ secao: 'CRIATIVOS', html: cabecalho(1, 1) + '<div class="sl-duas">' + corpo + '</div>' }];
-    }
-
-    if (c.tipo === 'Card') {
-      const corpo = base + campo('HEADLINE', c.headline) + campo('SUB-HEADLINE', c.sub_headline) +
-        campo('DIREÇÃO VISUAL', c.direcao) + campo('CTA', c.cta) + campo('LEGENDA', c.legenda) +
-        links('REFERÊNCIAS', c.referencias);
-      return [{ secao: 'CRIATIVOS', html: cabecalho(1, 1) + '<div class="sl-duas">' + corpo + '</div>' }];
-    }
-
-    if (c.tipo === 'Carrossel') {
-      /* Sem Headline/CTA separados: slide 1 = abertura, último slide = CTA,
-         sempre dinâmico. Registro antigo com c.headline/c.cta preenchidos e
-         o slide correspondente vazio continua aparecendo, sem sumir. */
-      const slides = ctx.slides[c.id] || [];
-      const POR = 6;
-      const partes = Math.max(1, Math.ceil(slides.length / POR));
-      const saida = [];
-      for (let k = 0; k < partes; k++) {
-        const grupo = slides.slice(k * POR, (k + 1) * POR);
-        const corpo = (k === 0 ? base : '') +
-          (grupo.length ? '<div class="sl-slides">' + grupo.map((s, n) => {
-            const idx = k * POR + n, ultimo = idx === slides.length - 1, unico = slides.length === 1;
-            const legado = (idx === 0 && vazio(s.titulo) && vazio(s.texto)) ? c.headline
-              : (ultimo && vazio(s.titulo) && vazio(s.texto)) ? c.cta : '';
-            const texto = s.texto || legado;
-            return '<div class="sl-slide"><span>' + String(idx + 1).padStart(2, '0') +
-              (unico ? ' · CAPA · CTA' : idx === 0 ? ' · CAPA' : ultimo ? ' · CTA' : '') + '</span>' +
-              (vazio(s.titulo) ? '' : '<b>' + esc(s.titulo) + '</b>') +
-              (vazio(texto) ? '' : '<div class="sl-txt">' + paragrafos(texto) + '</div>') +
-            '</div>';
-          }).join('') + '</div>' : '') +
-          (k === partes - 1 ? campo('LEGENDA', c.legenda) : '');
-        saida.push({ secao: 'CRIATIVOS', html: cabecalho(k + 1, partes) + corpo });
-      }
-      return saida;
-    }
-
-    /* Story */
-    const frames = ctx.frames[c.id] || [];
-    const POR = 6;
-    const partes = Math.max(1, Math.ceil(frames.length / POR));
-    const saida = [];
-    for (let k = 0; k < partes; k++) {
-      const grupo = frames.slice(k * POR, (k + 1) * POR);
-      const corpo = (k === 0 ? base : '') +
-        (grupo.length ? '<div class="sl-slides">' + grupo.map((f, n) =>
-          '<div class="sl-slide"><span>STORY ' + String(k * POR + n + 1).padStart(2, '0') + '</span>' +
-          (vazio(f.texto) ? '' : '<div class="sl-txt">' + paragrafos(f.texto) + '</div>') +
-          (vazio(f.direcao_visual) ? '' : '<div class="sl-dir">' + esc(f.direcao_visual) + '</div>') +
-          '</div>').join('') + '</div>' : '') +
-        (k === partes - 1 ? campo('CTA', c.cta) : '');
-      saida.push({ secao: 'CRIATIVOS', html: cabecalho(k + 1, partes) + corpo });
-    }
-    return saida;
   }
 
   /* ------------------------------------------------------ documento */
