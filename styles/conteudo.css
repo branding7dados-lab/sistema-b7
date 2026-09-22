@@ -185,6 +185,44 @@
   .barra-linha .rot-barra{width:88px;}
 }
 
+/* =====================================================================
+   MOBILE (celular) — reforço específico deste módulo. As regras gerais
+   já vivem em global.css (max-width:820px); aqui só o que é peculiar
+   destas telas (Central de Conteúdo / editor de conteúdo).
+   ===================================================================== */
+@media (max-width:820px){
+  /* Ícones/textos que só apareciam no :hover do cartão ficavam
+     impossíveis de descobrir no toque (não existe hover em touch) —
+     o botão continuava clicável, mas invisível. Ficam sempre visíveis
+     (um pouco mais discretos que o hover de desktop) no celular. */
+  .cc-espiar{opacity:.55;}
+  .cc-rodape .abrir{opacity:.85;}
+  .item-slide > .ico.perigo{opacity:.55;}
+
+  /* "Linha editorial atual/Status semanal" no Client Home: título e o
+     botão "Abrir…" disputavam a mesma linha. Com o texto podendo ser
+     longo (nome do mês/cliente) e o botão em white-space:nowrap, o
+     título era espremido a quase 0px e quebrava letra por letra —
+     mesmo padrão de bug já visto em outras telas. Empilha em vez de
+     espremer. */
+  .dl-topo{flex-direction:column;align-items:stretch;gap:10px;}
+  .dl-topo > div{width:100%;}
+  .dl-topo button{width:100%;justify-content:center;}
+
+  /* mesma ideia na legenda "copiar" de um campo do Quick View: o
+     rótulo (algumas legendas são longas, ex. "OBSERVAÇÃO PARA O
+     DESIGN") não tinha para onde ir ao lado do botão — agora quebra
+     de linha em vez de espremer o texto. */
+  .qv-campo-cab{flex-wrap:wrap;row-gap:6px;}
+  .qv-copiar{min-height:40px;}
+
+  /* CANAL/DATA do bloco "Identificação" (modal de um conteúdo): dois
+     campos lado a lado ficam apertados demais num Android compacto —
+     empilha como o resto do formulário no celular. */
+  .modal-conteudo .linha{flex-direction:column;}
+  .modal-conteudo .linha > div{width:100%;}
+}
+
 /* Camadas decorativas da capa nunca devem interceptar cliques: o menu
    e os botões que ficam sobre ela precisam continuar clicáveis. */
 .capa-cliente .brilho,.capa-cliente .malha,.capa-cliente .b7-marca{pointer-events:none;}

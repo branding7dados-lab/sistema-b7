@@ -63,8 +63,11 @@ B7.Video = (function () {
   }
   function quemHTML(d) {
     if (!d.videomaker_id || !d.videomaker_nome) return '<span class="vd-quem fraca">sem responsável</span>';
+    /* nome do videomaker num span próprio: precisa de um elemento
+       separado pra truncar com reticências no card estreito (celular)
+       sem empurrar o prazo, que fica ao lado — ver .vd-quem no CSS. */
     return '<span class="vd-quem"><i class="vd-quem-dot" style="background:' + corVideomaker(d.videomaker_id) + '"></i>' +
-      esc(d.videomaker_nome) + '</span>';
+      '<span class="vd-quem-nome">' + esc(d.videomaker_nome) + '</span></span>';
   }
   /* Logo do cliente: quando não tem logo cadastrada (clientes.js —
      campo já existia antes desta rodada), mostra a inicial do nome em

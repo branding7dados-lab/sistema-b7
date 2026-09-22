@@ -157,7 +157,12 @@ B7.Usuarios = (function () {
       '<div class="sub">A conta é criada aqui e a senha é entregue pela equipe. ' +
       'Não há e-mail nem convite.</div>' +
 
-      '<div class="linha mb">' +
+      /* linha-2col: classe própria (ver styles/dashboard.css) porque a
+         .linha genérica de global.css tem um bug — o ajuste mobile dela
+         usa grid-template-columns num container que é display:flex, ou
+         seja, não faz nada; NOME e USUÁRIO ficavam espremidos lado a
+         lado até em tela de celular estreita. */
+      '<div class="linha mb linha-2col">' +
         '<div><label class="rot">NOME</label>' +
           '<input class="campo" id="nu-nome" placeholder="Nome da pessoa"></div>' +
         '<div><label class="rot">USUÁRIO</label>' +

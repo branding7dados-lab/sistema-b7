@@ -1427,14 +1427,17 @@ B7.Design = (function () {
       '<div class="corpo">' +
         '<label class="rot" for="dn-titulo">TÍTULO</label>' +
         '<input class="campo" id="dn-titulo" data-foco placeholder="ex.: Post de aniversário da marca">' +
-        '<div class="linha mb" style="display:flex;gap:12px;margin-top:12px">' +
+        /* linha-2col empilha em telas estreitas (ver styles/design.css) —
+           dois <select> lado a lado em ~330px de largura cortavam nomes
+           de cliente/designer sem jeito de ler. */
+        '<div class="linha mb linha-2col" style="display:flex;gap:12px;margin-top:12px">' +
           '<div style="flex:1"><label class="rot" for="dn-cliente">CLIENTE</label>' +
             '<select class="campo" id="dn-cliente"><option value="">Sem cliente</option>' +
             clientes.map(c => '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>').join('') + '</select></div>' +
           '<div style="flex:1"><label class="rot" for="dn-tipo">TIPO</label>' +
             '<select class="campo" id="dn-tipo">' + TIPOS.map(([v, r]) => '<option value="' + v + '"' + (v === 'outro' ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div>' +
         '</div>' +
-        '<div class="linha mb" style="display:flex;gap:12px;margin-top:12px">' +
+        '<div class="linha mb linha-2col" style="display:flex;gap:12px;margin-top:12px">' +
           '<div style="flex:1"><label class="rot" for="dn-designer">DESIGNER</label>' +
             '<select class="campo" id="dn-designer"><option value="">Sem responsável</option>' +
             designers.map(p => '<option value="' + esc(p.id) + '">' + esc(p.nome) + '</option>').join('') + '</select></div>' +

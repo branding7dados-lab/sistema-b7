@@ -399,13 +399,17 @@ B7.Kanban = (function () {
         return '<div class="kb-tr' + (doCliente(d) ? ' do-cliente' : '') + '" data-demanda="' + esc(d.id) + '" tabindex="0" role="button">' +
           '<span class="kb-tr-titulo"><b>' + esc(d.titulo) + '</b><small>' + esc(rotuloTipo(d)) +
             (n ? ' · ' + n + (n === 1 ? ' ajuste pendente' : ' ajustes pendentes') : '') + '</small></span>' +
-          '<span>' + esc(d.cliente_nome || '—') + '</span>' +
-          '<span><i class="kb-chip ' + esc(d.coluna) + '">' + esc(nomeColuna(d.coluna)) + '</i></span>' +
-          '<span>' + (d.aprovacao_situacao
+          /* data-rot: no celular a tabela vira cartão (ver kanban.css,
+             @media 820px) e cada linha perde a coluna do cabeçalho —
+             o rótulo volta como ::before só ali, pra célula solta não
+             virar um "—" sem contexto. */
+          '<span data-rot="Cliente">' + esc(d.cliente_nome || '—') + '</span>' +
+          '<span data-rot="Situação"><i class="kb-chip ' + esc(d.coluna) + '">' + esc(nomeColuna(d.coluna)) + '</i></span>' +
+          '<span data-rot="Aprovação">' + (d.aprovacao_situacao
             ? '<i class="kb-ap ' + esc(d.aprovacao_situacao) + '">' + esc(rotuloAprov(d.aprovacao_situacao)) +
               (d.aprovacao_versao ? ' v' + d.aprovacao_versao : '') + '</i>' : '—') + '</span>' +
-          '<span>' + esc(d.responsavel_nome || '—') + '</span>' +
-          '<span class="' + (atrasada ? 'kb-prazo atrasada' : '') + '">' + (d.prazo ? esc(B7.UI.dataBR(d.prazo)) : '—') + '</span>' +
+          '<span data-rot="Responsável">' + esc(d.responsavel_nome || '—') + '</span>' +
+          '<span data-rot="Prazo" class="' + (atrasada ? 'kb-prazo atrasada' : '') + '">' + (d.prazo ? esc(B7.UI.dataBR(d.prazo)) : '—') + '</span>' +
         '</div>';
       }).join('') +
     '</div>';

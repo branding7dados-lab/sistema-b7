@@ -142,6 +142,27 @@
   .ap-filtros-linha{grid-template-columns:1fr 1fr;}
   .ap-item{grid-template-columns:40px 1fr;row-gap:6px;} .ap-item > *{grid-column:2;} .ap-item .ap-logo{grid-column:1;grid-row:1 / span 2;}
   .ap-duplo{grid-template-columns:1fr;}
+
+  /* "CENA 01 · tipo · situação" e "autor · data · Resolvido": o tipo
+     da cena é texto livre (pode ser longo) e o autor do comentário
+     também — ao lado de irmãos em white-space:nowrap (o selo de
+     situação, o botão "Resolvido"), sem quebra de linha eles ficavam
+     espremidos a quase 0px e o texto virava letra por letra num
+     Android compacto. Deixa quebrar em vez de espremer. */
+  .ap-cena-cab,.ap-com-cab{flex-wrap:wrap;row-gap:4px;}
+  .ap-cena-sit{margin-left:0;}
+
+  /* campo de resposta ao cliente: o input precisa poder encolher
+     abaixo do seu tamanho "natural" para não empurrar o botão
+     "Enviar" para fora da tela. */
+  .ap-novo-com .campo{min-width:0;}
+}
+
+/* Ajuste fino para Android compacto (~360-390px): 2 colunas de filtro
+   ainda apertam campo/select demais — empilha só aqui, sem mudar o
+   layout de tablet/telas maiores que já cabem bem em 2 colunas. */
+@media (max-width:480px){
+  .ap-filtros-linha{grid-template-columns:1fr;}
 }
 
 /* ---- anulação (v3): "Excluir aprovação" ---- */

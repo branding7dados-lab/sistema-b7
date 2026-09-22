@@ -1553,7 +1553,7 @@ B7.Dashboard = (function () {
       '<div class="sub">Uma gravação é um grupo de roteiros de um cliente. Nomeie como quiser — ' +
       '“Conteúdos Setembro”, “Campanha Cashback”, “Institucionais”.</div>' +
       '<div class="mb"><label class="rot">CLIENTE</label>' +
-        '<div class="linha"><select class="campo" id="ng-cliente">' +
+        '<div class="linha linha-2col"><select class="campo" id="ng-cliente">' +
         (clientes.length ? opcoes : '<option value="">— nenhum cliente ainda —</option>') +
         '</select><button class="b contorno" id="ng-novo-cliente" style="flex:none">+ Novo</button></div></div>' +
       '<div class="mb"><label class="rot">NOME DA GRAVAÇÃO</label>' +

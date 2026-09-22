@@ -168,6 +168,18 @@
   border:none;width:fit-content;}
 .cal-cel-mais:hover{color:var(--acento);background:var(--acento-suave);}
 
+/* =====================================================================
+   MOBILE GERAL DO CALENDÁRIO — 820px, o mesmo corte "geral" usado no
+   resto do sistema (global.css). Reorganiza a barra de cima e força os
+   filtros para coluna única em vez de deixar os <select> encolherem
+   até virar texto cortado (min-width:150px cada um brigando por
+   espaço numa tela de ~360px não cabe de jeito nenhum).
+   ===================================================================== */
+@media (max-width: 820px){
+  .cal-filtros{flex-direction:column;}
+  .cal-filtros .campo,#cal-f-busca{width:100%;min-width:0;flex:1 1 auto;}
+}
+
 @media (max-width: 640px){
   .cal-barra{flex-direction:column;align-items:stretch;}
   .cal-vista{align-self:flex-start;}

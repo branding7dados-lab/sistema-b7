@@ -123,6 +123,14 @@
 .cfg-linha b{color:var(--ink-3);font-weight:600;min-width:150px;}
 .cfg-linha span{color:var(--ink-2);}
 .cfg-linha .b{margin-left:auto;}
+/* rótulo com min-width:150px + valor/botão ao lado espremiam tudo numa
+   tela de ~360px (tela "Sistema" do Dashboard, que reaproveita estas
+   classes) — empilha rótulo e valor pra sobrar espaço de leitura. */
+@media (max-width:480px){
+  .cfg-linha{flex-wrap:wrap;row-gap:6px;}
+  .cfg-linha b{min-width:0;flex:1 1 100%;}
+  .cfg-linha .b{margin-left:0;width:100%;justify-content:center;}
+}
 .cfg-estado{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;}
 .cfg-ponto{width:9px;height:9px;border-radius:50%;background:var(--ink-4);flex:none;}
 .cfg-ponto.ok{background:#3FA37A;}

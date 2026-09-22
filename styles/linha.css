@@ -216,3 +216,16 @@ button.badge-design{border:0;}
   .pil-dist-cab .rf{margin-left:0;width:100%;}
   .pil-dist-cab{flex-wrap:wrap;}
 }
+
+/* =====================================================================
+   MOBILE — aba Estratégia da Linha Editorial. `.linha` (global.css) é
+   flex, não grid: a regra genérica `.linha{grid-template-columns:1fr
+   !important}` do global (pensada para grid) não tem efeito nenhum
+   nela, então "Início/Fim do período" e "Meta de conteúdos" continuavam
+   3 campos espremidos lado a lado num Android compacto. Empilha aqui,
+   sem mexer em `.pil-linha` (que já tem o próprio layout de mobile
+   logo acima — nome em cima, % e funil dividindo a linha de baixo). */
+@media (max-width:820px){
+  #corpo-linha .linha:not(.pil-linha){flex-direction:column;}
+  #corpo-linha .linha:not(.pil-linha) > div{width:100%;}
+}

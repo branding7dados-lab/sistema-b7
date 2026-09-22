@@ -145,8 +145,16 @@ select.kb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 
 /* --------------------------------------------------------- celular */
 .kb-movel{min-width:0;}
-.kb-movel-sel{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 10px;margin:0 -2px;min-width:0;
-  scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+/* seletor de coluna: sangra até a borda da tela (mesma técnica do
+   .kb-quadro em global.css) e mascara as pontas em degradê — sem isso
+   a primeira aba ficava cortada rente à borda, sem indicar que dava
+   pra arrastar mais. scroll-padding evita que o snap pare com uma
+   aba pela metade. */
+.kb-movel-sel{display:flex;gap:6px;overflow-x:auto;padding:2px var(--gutter,16px) 10px;
+  margin:0 calc(-1 * var(--gutter,16px));min-width:0;scroll-padding-inline:var(--gutter,16px);
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 20px,#000 calc(100% - 20px),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 20px,#000 calc(100% - 20px),transparent 100%);}
 .kb-movel-sel::-webkit-scrollbar{display:none;}
 .kb-movel-sel button{flex:none;border:1px solid var(--borda);background:var(--card);color:var(--ink-3);
   font:inherit;font-size:12.5px;font-weight:600;padding:8px 12px;border-radius:99px;cursor:pointer;
@@ -286,8 +294,19 @@ select.kb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
   .kb-limpar{flex:1 1 100%;}
   .kb-total{display:none;}
   .kb-th{display:none;}
-  .kb-tr{grid-template-columns:1fr 1fr;gap:4px 10px;}
-  .kb-tr > span:first-child{grid-column:1/-1;white-space:normal;}
+  /* grid-template-columns real já vem forçado para 1fr por global.css
+     (regra genérica que vira tabela em cartão em qualquer tela ≤820px);
+     aqui só arruma o respiro entre os campos empilhados — ver o bloco
+     de rótulos logo abaixo, que dá contexto a cada campo solto. */
+  .kb-tr{gap:6px;padding:12px 14px;}
+  .kb-tr > span:first-child{white-space:normal;}
+  /* empilhado, cada campo perde a coluna do cabeçalho que dava contexto
+     a ele ("Cliente", "Prazo"...) — devolve o rótulo como prefixo, só
+     no celular, sem duplicar o cabeçalho que já some aqui. E como não
+     tem mais coluna ao lado pra caber, o valor pode quebrar em vez de
+     truncar com "…". */
+  .kb-tr > span{white-space:normal;overflow:visible;text-overflow:clip;}
+  .kb-tr > span[data-rot]:before{content:attr(data-rot) ": ";font-weight:700;color:var(--ink-4);}
   .kb-drawer-fundo{align-items:flex-end;}
   .kb-drawer{width:100%;height:calc(100dvh - 28px);border-radius:18px 18px 0 0;border-left:0;
     animation-name:kbSobeDrawer;}
@@ -298,6 +317,18 @@ select.kb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
   .kb-dr-pe{padding:10px 16px calc(10px + env(safe-area-inset-bottom));}
   .kb-dr-pe .b{flex:1 1 auto;justify-content:center;}
   .kb-dr-grade{grid-template-columns:1fr;}
+}
+
+/* telas Android compactas (~360-390px): duas colunas de filtro ainda
+   apertavam rótulos como "Aguardando cliente" contra a seta do select —
+   cada campo passa a ocupar a linha inteira. */
+@media (max-width:480px){
+  select.kb-filtro{flex:1 1 100%;}
+  /* rodapé do card (responsável · prazo · ícones) sem folga nenhuma
+     pra quebrar — melhor deixar embrulhar em vez de vazar da borda do
+     cartão numa tela bem estreita. */
+  .kb-pe{flex-wrap:wrap;row-gap:4px;}
+  .kb-espaco{flex:1 1 auto;min-width:8px;}
 }
 
 /* aviso operacional (anulação de aprovação, v3) */

@@ -99,13 +99,34 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
 .abas button.on{background:var(--suave);color:var(--acento);}
 
 @media (max-width:1240px){ .escrita{width:430px;} }
+
+/* =====================================================================
+   Celular: as 3 colunas lado a lado não cabem, então viram 2 "telas"
+   alternadas pelas abas Editor/Prévia do cabeçalho (body[data-aba]).
+   Acima deste ponto (desktop/tablet largo) nada aqui se aplica — as
+   3 colunas continuam lado a lado exatamente como hoje.
+   ===================================================================== */
 @media (max-width:1000px){
   .abas{display:flex;}
-  .trilho{width:100%;flex-direction:row;height:60px;padding:0 10px;border-right:0;border-bottom:1px solid var(--borda);}
   .editor-cols{flex-direction:column;}
-  .escrita{width:100%;}
-  body[data-aba="previa"] .escrita{display:none;}
+
+  /* aba Editor: trilho (faixa horizontal compacta no topo) + escrita
+     digitando ocupando o resto da tela. A prévia (folha A4) some — ela
+     só faz sentido na aba própria, senão é 3 blocos espremidos. */
+  .trilho{width:100%;flex-direction:row;height:60px;padding:0 10px;border-right:0;
+    border-bottom:1px solid var(--borda);overflow-x:auto;overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;}
+  .escrita{width:100%;flex:1;min-height:0;}
+  body[data-aba="previa"] .trilho,body[data-aba="previa"] .escrita{display:none;}
+
+  /* aba Prévia: só a folha A4, sozinha, ocupando a tela (ver print.css
+     para como ela é enquadrada — a folha em si não muda de proporção) */
   body[data-aba="editor"] .previa{display:none;}
+
+  /* a barra de zoom só faz sentido olhando a folha — escondida na aba
+     Editor pra não flutuar por cima do trilho/escrita à toa */
+  .zoom{display:none;}
+  body[data-aba="previa"] .zoom{display:flex;}
 }
 
 /* topo do editor no celular: o contexto (cliente · gravação) não pode
@@ -115,9 +136,10 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
   .topo .contexto b,.topo .contexto small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
   #tela-editor .topo .espaco{flex:0 0 0;}
   #ed-status{flex:none;}
+  /* Foco e Baixar já existem no menu ⋯ (mn-ed-foco / mn-ed-baixar);
+     no celular a barra do topo não tem espaço pra repetir os dois. */
+  #bt-foco,#bt-baixar{display:none;}
 }
 @media (max-width:520px){
-  #bt-foco,#bt-baixar{display:none;}
   #tela-editor .topo{gap:6px;}
-  .trilho{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 }

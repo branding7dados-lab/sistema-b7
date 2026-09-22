@@ -160,6 +160,25 @@
   .hero{padding:24px 20px;}
   .hero h1{font-size:26px;}
   .destaque-grav{flex-direction:column;align-items:flex-start;}
+
+  /* .barra-filtros .campo tinha 210px fixos (linha 266) — bom no
+     desktop, mas no celular sobrava uma caixa de busca minúscula ao
+     lado do botão em vez de ocupar a linha inteira. Esta regra vem
+     depois no arquivo, então vence a de 210px sem precisar de !important. */
+  .barra-filtros .campo{width:100%;}
+  /* #busca-cli (Clientes) recebe width:210px por estilo inline no JS —
+     estilo inline sempre vence CSS comum, então só !important resolve. */
+  #busca-cli{width:100% !important;}
+}
+
+/* linha-2col: duas colunas de formulário (select/input lado a lado)
+   viram uma coluna só em tela estreita. Existe como classe própria
+   porque a .linha genérica de global.css tem um bug — o ajuste mobile
+   dela (grid-template-columns) não faz nada num container display:flex
+   — então os pares de campo continuavam espremidos no celular. */
+@media (max-width:560px){
+  .linha-2col{flex-direction:column;gap:12px !important;}
+  .linha-2col > *{flex:1 1 auto;width:100%;min-width:0;}
 }
 
 /* =====================================================================
@@ -269,9 +288,26 @@
 @keyframes entrando{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 @media (max-width:1240px){ .mini-metricas{grid-template-columns:repeat(2,1fr);} }
+/* Android compacto (~360-390px): 2 colunas de mini-métrica ainda cabem,
+   mas o rótulo com letter-spacing largo (.14em) quebrava em 2-3 linhas
+   e o card ficava desproporcional — reduz padding/gap e o tamanho do
+   número pra sobrar respiro sem precisar virar 1 coluna. */
+@media (max-width:390px){
+  .mini-metricas{gap:8px;}
+  .mini-metrica{padding:12px 12px;}
+  .mini-metrica b{font-size:20px;}
+}
 @media (max-width:720px){
   .capa-cliente{flex-direction:column;align-items:flex-start;padding:20px;}
   .capa-cliente .b7-marca{display:none;}
+  .capa-cliente h1{font-size:23px;}
+  /* dica visual de que as abas rolam: o usuário via a última aba
+     cortada na borda ("Gravaç...") sem entender que dava pra arrastar.
+     O fade nas pontas sugere "tem mais aqui" sem poluir o visual. */
+  .abas-cliente{
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 18px),transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 18px),transparent);
+  }
   /* .acoes tinha display:flex sem quebra (linha 228) — width:100% aqui
      sozinho não estava bastando, os botões continuavam numa fileira só
      e estouravam a borda da tela ("Visualizar como cliente" cortado). */

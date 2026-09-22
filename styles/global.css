@@ -1210,7 +1210,14 @@ body.apurando #app{visibility:hidden;}
      (aplicarPapelNaNavegacao em js/app.js), o que teria precedência
      sobre uma regra comum aqui. */
   #nav-atalhos{display:none !important;}
+
+  /* Sensação de app: sem o "flash" cinza do toque no Android/iOS, e
+     campo de texto em 16px — abaixo disso o navegador dá zoom sozinho
+     ao focar (Safari sempre, Chrome Android em alguns teclados), o que
+     quebra a tela toda vez que alguém abre um campo. */
+  .campo,select.campo,textarea.campo{font-size:16px;}
 }
+* { -webkit-tap-highlight-color:transparent; }
 
 @media (max-width:520px){
   .conteudo{--gutter:13px;padding-left:max(var(--gutter),env(safe-area-inset-left));padding-right:max(var(--gutter),env(safe-area-inset-right));}
