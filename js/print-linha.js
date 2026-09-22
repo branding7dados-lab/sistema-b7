@@ -463,9 +463,6 @@ B7.BaixarLinha = (function () {
     const m = B7.UI.modal('<h3>Exportar linha editorial</h3>' +
       '<div class="sub">Os dois formatos usam o mesmo conteúdo salvo. Campos vazios ' +
       'não aparecem, e notas internas nunca entram.</div>' +
-      '<div class="sub">"Baixar PDF" abre a impressão do navegador — na janela que abrir, ' +
-      'escolha destino <b>"Salvar como PDF"</b>, margens <b>"Nenhuma"</b> e escala <b>"100%"</b>. ' +
-      'Sem isso, o navegador aplica margens e escala próprias e o documento sai desproporcional.</div>' +
 
       '<label class="rot">FORMATO</label>' +
       '<div class="grade-formatos exp-formatos">' +
@@ -515,7 +512,8 @@ B7.BaixarLinha = (function () {
       try {
         const ctx = await reunir(linhaId, opcoesAtuais());
         m.fechar();
-        await gerar(ctx, formato);
+        await gerar(ctx, formato, (i, total) =>
+          B7.UI.toast('Gerando PDF… página ' + i + ' de ' + total, { tempo: 1200 }));
       } catch (e) {
         console.error(e);
         btn.disabled = false; btn.textContent = 'Baixar PDF';
@@ -524,51 +522,47 @@ B7.BaixarLinha = (function () {
     };
   }
 
-  /* Monta as folhas em #area-impressao e entrega ao navegador — o mesmo
-     caminho que o Download Center já usa para as fichas de roteiro. */
-  /* O tamanho da página do PDF vem de @page, que não pode depender de uma
-     classe no HTML. Então trocamos a regra na hora de gerar. */
-  function definirPagina(slides) {
-    let tag = document.getElementById('regra-pagina');
-    if (!tag) {
-      tag = document.createElement('style');
-      tag.id = 'regra-pagina';
-      document.head.appendChild(tag);
+  /* Monta as folhas em #area-impressao e gera o PDF ali mesmo, sem passar
+     pela impressão do navegador — mesmo caminho (html2canvas + jsPDF, via
+     B7.Export.paraCanvas/baixarBlob/nomeArquivo) que o Download Center já
+     usa para as fichas de Roteiro. O resultado é sempre um arquivo salvo
+     na pasta de downloads, nunca a caixa de impressão nativa: o layout
+     não depende mais de margem/escala escolhidas pela pessoa. */
+  async function gerar(ctx, formato, aoAndar) {
+    const area = document.getElementById('area-impressao');
+    const slides = formato === 'slides';
+    area.style.display = 'block';
+    area.classList.toggle('modo-slides', slides);
+    area.innerHTML = slides
+      ? B7.Slides.documentoHTML(ctx, area)
+      : B7.FolhaLinha.documentoMedidoHTML(ctx, area);
+    const folhas = [...area.querySelectorAll(slides ? '.slide' : '.le-folha')];
+    folhas.forEach(f => B7.Folha.ajustar(f));
+    try {
+      const { jsPDF } = window.jspdf;
+      const pdf = slides
+        ? new jsPDF({ unit: 'mm', format: [338.7, 190.5], orientation: 'landscape', compress: true })
+        : new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+      for (let i = 0; i < folhas.length; i++) {
+        aoAndar && aoAndar(i + 1, folhas.length);
+        const canvas = await B7.Export.paraCanvas(folhas[i]);
+        const img = canvas.toDataURL('image/jpeg', 0.94);
+        if (i > 0) pdf.addPage();
+        if (slides) pdf.addImage(img, 'JPEG', 0, 0, 338.7, 190.5, undefined, 'FAST');
+        else pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        canvas.width = canvas.height = 0;
+      }
+      const l = ctx.linha;
+      const mes = (B7.UI.MESES[l.mes - 1] || '').toUpperCase();
+      const nome = B7.Export.nomeArquivo(
+        [l.cliente_nome, 'LINHA_EDITORIAL', mes, String(l.ano), slides ? 'APRESENTACAO' : ''], 'pdf');
+      B7.Export.baixarBlob(pdf.output('blob'), nome);
+    } finally {
+      area.innerHTML = '';
+      area.style.display = '';
+      area.classList.remove('modo-slides');
     }
-    tag.textContent = slides
-      ? '@media print{@page{size:338.7mm 190.5mm;margin:0}}'
-      : '@media print{@page{size:A4 portrait;margin:0}}';
   }
 
-  function gerar(ctx, formato) {
-    return new Promise((resolve, reject) => {
-      try {
-        const area = document.getElementById('area-impressao');
-        const slides = formato === 'slides';
-        definirPagina(slides);
-        area.style.display = 'block';
-        area.classList.toggle('modo-slides', slides);
-        area.innerHTML = slides
-          ? B7.Slides.documentoHTML(ctx, area)
-          : B7.FolhaLinha.documentoMedidoHTML(ctx, area);
-        area.querySelectorAll('.le-folha, .slide').forEach(f => B7.Folha.ajustar(f));
-        area.style.display = '';
-        /* a janela de impressão do navegador é nativa e bloqueia a página —
-           o aviso precisa aparecer ANTES dela abrir, daí o atraso maior
-           aqui (era 180ms) só neste fluxo. */
-        B7.UI.toast('Na janela que vai abrir: "Salvar como PDF", margens "Nenhuma", escala "100%".', { tempo: 6000 });
-        setTimeout(() => {
-          try { window.print(); } catch (e) { return reject(e); }
-          setTimeout(() => {
-            area.innerHTML = '';
-            area.classList.remove('modo-slides');
-            definirPagina(false);          /* volta ao A4 para não afetar as fichas */
-          }, 800);
-          resolve();
-        }, 900);
-      } catch (e) { reject(e); }
-    });
-  }
-
-  return { abrir, reunir, gerar, definirPagina };
+  return { abrir, reunir, gerar };
 })();
