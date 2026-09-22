@@ -1426,8 +1426,14 @@ B7.Linha = (function () {
     } catch (e) {}
 
     const t = 'data-tab="conteudos" data-id="' + esc(c.id) + '"';
+    /* Campos agrupados por assunto (Identificação / Status / Conteúdo) em
+       vez de uma lista vertical única de campos soltos — reaproveita o
+       mesmo padrão .bloco-formato já usado abaixo para os blocos
+       específicos de cada formato (Reel, Card, Carrossel, Story). Nenhum
+       data-tab/data-campo muda: só o agrupamento visual. */
     const geral =
       C.campoLinha('TÍTULO / TEMA', c.titulo, t + ' data-campo="titulo"') +
+      '<div class="bloco-formato"><h4>Identificação</h4>' +
       '<div class="linha mb">' +
         '<div><label class="rot">CANAL</label>' +
           '<input class="campo" value="' + esc(c.canal || '') + '" ' + t + ' data-campo="canal" ' +
@@ -1445,7 +1451,9 @@ B7.Linha = (function () {
               (pct(p) ? ' (' + pct(p) + '%)' : '') + '</option>').join('') +
           '</select></div>'
         : '') +
-      '<div class="mb"><label class="rot">STATUS</label>' +
+      '</div>' +
+      '<div class="bloco-formato"><h4>Status</h4>' +
+      '<div class="mb">' +
         (leitura
           ? '<div class="opcoes"><button class="on" disabled>' + esc(c.status || 'Ideia') + '</button></div>'
           : '<div class="opcoes" id="st-conteudo">' +
@@ -1457,8 +1465,11 @@ B7.Linha = (function () {
           (c.visivel_cliente ? '✓ Visível no portal do cliente' : 'Não visível no portal do cliente') + '</div>'
         : '<label class="op-mini' + (c.visivel_cliente ? ' on' : '') + '" id="ct-portal">' +
           '<input type="checkbox"' + (c.visivel_cliente ? ' checked' : '') + '> Visível no portal do cliente</label>') +
+      '</div>' +
+      '<div class="bloco-formato"><h4>Conteúdo</h4>' +
       C.campo('OBJETIVO', c.objetivo, t + ' data-campo="objetivo"') +
-      C.campo('IDEIA GERAL', c.ideia_geral, t + ' data-campo="ideia_geral"');
+      C.campo('IDEIA GERAL', c.ideia_geral, t + ' data-campo="ideia_geral"') +
+      '</div>';
 
     /* cada formato mostra só o que faz sentido para ele */
     let especifico = '';
