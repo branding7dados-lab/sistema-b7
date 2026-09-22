@@ -132,12 +132,6 @@ B7.FolhaLinha = (function () {
       bloco('OBSERVAÇÕES', l.observacoes) +
       linksHTML('REFERÊNCIAS DO MÊS', l.referencias);
 
-    const posicionamento =
-      bloco('A MARCA SE POSICIONA COMO', l.posicionamento) +
-      bloco('TOM DE VOZ', l.tom_voz) +
-      bloco('PROPOSTA ÚNICA DE VALOR', l.puv) +
-      bloco('PERCEPÇÃO DESEJADA', l.percepcao);
-
     const blocos = [];
     if (corpo) {
       blocos.push({ secao: 'LINHA EDITORIAL', titulo: true,
@@ -145,11 +139,25 @@ B7.FolhaLinha = (function () {
                                       'Visão geral') });
       blocos.push({ secao: 'LINHA EDITORIAL', html: corpo });
     }
-    if (posicionamento) {
-      blocos.push({ secao: 'POSICIONAMENTO',
-                    html: '<div class="le-sub">POSICIONAMENTO</div>' + posicionamento });
-    }
     return blocos;
+  }
+
+  /* Seção própria, com o mesmo título numerado grande de Pilares/Criativos/
+     Postagens — antes vinha "grudada" no fim de Visão geral, só com um
+     rótulo pequeno (.le-sub), sem nunca ganhar um número de seção. */
+  function blocosPosicionamento(ctx, num) {
+    const l = ctx.linha;
+    const corpo =
+      bloco('A MARCA SE POSICIONA COMO', l.posicionamento) +
+      bloco('TOM DE VOZ', l.tom_voz) +
+      bloco('PROPOSTA ÚNICA DE VALOR', l.puv) +
+      bloco('PERCEPÇÃO DESEJADA', l.percepcao);
+    if (!corpo) return [];
+    return [
+      { secao: 'POSICIONAMENTO', titulo: true,
+        html: tituloSecao(num, 'IDENTIDADE DE MARCA', 'Posicionamento') },
+      { secao: 'POSICIONAMENTO', html: corpo }
+    ];
   }
 
   /* --------------------------------------------------------- PILARES
@@ -375,7 +383,17 @@ B7.FolhaLinha = (function () {
     if (atual) folhas.push({ html: atual, secao: secaoAtual });
     medidor.remove();
 
-    return folhas.map((f, i) => folha(f.html, f.secao, i + 1)).join('');
+    /* A tabela de Postagens é fatiada em pedaços de linhas (blocosTabela)
+       só para poder atravessar folhas sem cortar uma linha ao meio. Mas
+       quando dois pedaços cabem juntos na MESMA folha (mês com poucos
+       conteúdos), isso sobrava como dois <table> separados grudados, cada
+       um com seu próprio cabeçalho — um cabeçalho "PASSOU DATA/CANAL/…"
+       repetido no meio da página, com espaço em branco sobrando embaixo.
+       Aqui os dois viram um só quando ficam na mesma folha; quando caem em
+       folhas diferentes (quebra de página de verdade), cada folha mantém
+       seu próprio cabeçalho normalmente. */
+    const juntarTabelas = /<\/tbody><\/table><table class="le-tabela"><thead>.*?<\/thead><tbody>/g;
+    return folhas.map((f, i) => folha(f.html.replace(juntarTabelas, ''), f.secao, i + 1)).join('');
   }
 
   /* Lista completa de blocos do documento, na ordem editorial. */
@@ -387,6 +405,8 @@ B7.FolhaLinha = (function () {
     }
     const visao = blocosVisao(ctx, num);
     if (visao.length) { blocos = blocos.concat(visao); num++; }
+    const pos = blocosPosicionamento(ctx, num);
+    if (pos.length) { blocos = blocos.concat(pos); num++; }
     const pil = blocosPilares(ctx, num);
     if (pil.length) { blocos = blocos.concat(pil); num++; }
     const cri = blocosCriativos(ctx, num);
