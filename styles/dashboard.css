@@ -272,7 +272,11 @@
 @media (max-width:720px){
   .capa-cliente{flex-direction:column;align-items:flex-start;padding:20px;}
   .capa-cliente .b7-marca{display:none;}
-  .capa-cliente .acoes{width:100%;}
+  /* .acoes tinha display:flex sem quebra (linha 228) — width:100% aqui
+     sozinho não estava bastando, os botões continuavam numa fileira só
+     e estouravam a borda da tela ("Visualizar como cliente" cortado). */
+  .capa-cliente .acoes{width:100%;flex-wrap:wrap;}
+  .capa-cliente .acoes .b{flex:1 1 auto;justify-content:center;}
 }
 
 /* linha do tempo da atividade */

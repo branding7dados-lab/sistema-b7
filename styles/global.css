@@ -351,7 +351,11 @@ body.recolhida .bt-recolher span{display:none;}
 .lista{position:fixed;left:0;top:0;display:none;
   background:var(--elevado);border-radius:var(--r);
   border:1px solid var(--borda);box-shadow:0 18px 50px rgba(20,8,40,.24);padding:6px;
-  min-width:236px;max-width:min(320px,calc(100vw - 20px));z-index:400;}
+  min-width:236px;max-width:min(320px,calc(100vw - 20px));z-index:400;
+  /* menu comprido (muitos itens, ex.: "..." da Linha Editorial) num
+     celular baixo passava da tela sem jeito nenhum de rolar até o fim
+     — o último item (normalmente "Excluir") ficava inalcançável. */
+  max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;}
 .lista.solta{display:block;opacity:0;pointer-events:none;
   transform:translateY(-4px);transform-origin:top right;
   transition:opacity .12s ease-out, transform .16s cubic-bezier(.2,.8,.3,1);}
@@ -1168,8 +1172,11 @@ body.apurando #app{visibility:hidden;}
   .capa-cliente{padding:18px 18px;flex-wrap:wrap;gap:14px;}
   .capa-cliente .selo{width:56px;height:56px;border-radius:16px;}
   .capa-cliente h1{font-size:20px;}
-  .capa-cliente .acoes-capa{width:100%;}
-  .capa-cliente .acoes-capa .b{flex:1;justify-content:center;}
+  /* a classe real no card do cliente é .acoes (js/dashboard.js), não
+     .acoes-capa — por isso os botões nunca empilhavam no celular e a
+     fileira estourava a tela ("Visualizar co…" cortado na borda). */
+  .capa-cliente .acoes{width:100%;flex-wrap:wrap;}
+  .capa-cliente .acoes .b{flex:1 1 auto;justify-content:center;}
 
   /* alvos de toque com tamanho mínimo confortável */
   .b,.ico,.menu > button,.aba,.filtro button,.opcoes button,.abas-cliente button,.abas button{min-height:40px;}
@@ -1196,6 +1203,13 @@ body.apurando #app{visibility:hidden;}
 
   /* documentos e prévias não cabem: rolam dentro do próprio bloco */
   .doc-previa,.sem-doc,.le-previa{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+  /* "Atalhos" é lista de teclado (Ctrl K, Ctrl S…) — sem teclado físico
+     no celular, o item não serve pra nada ali. !important porque
+     data-papel="admin" liga display:'' por JS a cada remontagem da nav
+     (aplicarPapelNaNavegacao em js/app.js), o que teria precedência
+     sobre uma regra comum aqui. */
+  #nav-atalhos{display:none !important;}
 }
 
 @media (max-width:520px){

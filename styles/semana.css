@@ -22,6 +22,14 @@
 .is-seta{font-size:12px;color:var(--ink-4);white-space:nowrap;}
 @media (max-width:900px){
   .item-status{flex-wrap:wrap;}
+  /* .is-tx tinha flex:1 com base 0 (flex:1 = flex-basis:0%): ao lado de
+     vizinhos com white-space:nowrap (que não encolhem por causa do
+     texto), o navegador tirava TODO o aperto de dentro do nome do
+     cliente, espremendo-o a poucos pixels — daí o nome quebrando letra
+     por letra na tela pequena. Uma base mínima garante que ele nunca
+     fica menor que isto: quem estoura a linha agora são os badges
+     depois dele, que têm pra onde quebrar (flex-wrap acima). */
+  .is-tx{flex:1 1 170px;}
   .is-seta{display:none;}
 }
 

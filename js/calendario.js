@@ -487,6 +487,19 @@ B7.Calendario = (function () {
     cx.querySelectorAll('[data-dia-mais]').forEach(el => {
       el.onclick = () => modalDia(el.dataset.diaMais);
     });
+
+    /* Celular: a grade de mês não tem largura pra mostrar hora+título
+       em cada dia (virava "09:3..." cortado) — os chips na célula
+       encolhem pra bolinhas (CSS) e a célula inteira abre a lista do
+       dia, o mesmo modalDia() que já existe pro "+N mais". Só no
+       tamanho de tela onde os chips já viraram bolinha, pra não mudar
+       o comportamento do desktop. */
+    cx.querySelectorAll('.cal-cel').forEach(el => {
+      el.onclick = ev => {
+        if (ev.target.closest('[data-item-tipo],[data-dia-marcar],[data-dia-mais]')) return;
+        if (window.matchMedia('(max-width:640px)').matches) modalDia(el.dataset.dia);
+      };
+    });
   }
 
   function navegar(direcao) {
