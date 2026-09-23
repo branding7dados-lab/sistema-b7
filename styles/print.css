@@ -14,6 +14,13 @@
   --lilac:#F5F1FB; --tint:#FBF0F8; --erro:#C2185B;
   --magenta:#C21C83; --roxo:#7C1E85; --violeta:#3A1E86; --marinho:#001559;
   --grad:linear-gradient(118deg,#001559 0%,#3A1E86 34%,#7C1E85 66%,#C21C83 100%);
+  /* Respiro entre "número + kicker + título" (o cabeçalho de seção,
+     tituloSecao()/abreSecao()) e o conteúdo que vem depois. Um valor só,
+     usado por A4 (.le-folha) e apresentação (.slide) — nunca margins
+     soltas repetidas em cada seção. Trocar aqui muda os dois formatos
+     juntos, sem esticar um dentro do outro (cada composição aplica o
+     token na sua própria unidade: px*--fs no A4, mm no slide). */
+  --le-cab-gap: 22px;
   color:#15122B;
 }
 
@@ -198,6 +205,13 @@
 
 .le-folha .folha-corpo{display:block;overflow:visible;}
 
+/* Respiro cabeçalho→conteúdo (Parte C da spec): só dentro de .le-folha
+   (Linha Editorial) — .titulo-bloco/.risco-titulo também são usados pela
+   ficha de Roteiro (js/print.js), que não muda aqui. Sem isso, o
+   conteúdo de Posicionamento e Pilares começava colado no risco/título
+   (risco-titulo não tinha margin-bottom nenhuma). */
+.le-folha .titulo-bloco{margin-bottom:calc(var(--le-cab-gap) * var(--fs));}
+
 /* números do mês */
 .le-numeros{display:flex;gap:0;border:1px solid var(--line);border-radius:3px;
   margin-bottom:calc(16px * var(--fs));overflow:hidden;}
@@ -311,7 +325,7 @@
    para o PDF sair na proporção certa: 338,7 × 190,5 mm é 16:9 exato e
    corresponde ao tamanho de slide widescreen padrão.
    ===================================================================== */
-.slide{--fs:1;width:338.7mm;height:190.5mm;min-height:190.5mm;max-height:190.5mm;
+.slide{--fs:1;--sl-cab-gap:12mm;width:338.7mm;height:190.5mm;min-height:190.5mm;max-height:190.5mm;
   position:relative;overflow:hidden;background:#fff;color:#15122B;
   box-shadow:0 8px 40px rgba(28,16,48,.14);margin-bottom:26px;
   display:flex;flex-direction:column;padding:14mm 18mm;}
@@ -354,7 +368,7 @@
 .sl-logo-cliente img{max-width:100%;max-height:100%;object-fit:contain;}
 
 /* ------------------------------------------------- título de seção */
-.sl-secao{display:flex;gap:9mm;align-items:flex-start;margin-bottom:8mm;}
+.sl-secao{display:flex;gap:9mm;align-items:flex-start;margin-bottom:var(--sl-cab-gap);}
 .sl-num{font-family:'Archivo';font-weight:800;font-size:46px;line-height:.9;
   -webkit-text-stroke:1.4px var(--magenta);color:transparent;flex:none;}
 .sl-kicker{display:flex;align-items:center;gap:9px;font-size:8.5px;font-weight:700;
@@ -376,9 +390,42 @@
 /* duas colunas dão respiro no formato horizontal, sem esticar a linha */
 .sl-duas{column-count:2;column-gap:14mm;}
 
+/* -------------------------------------------- objetivo do mês (16:9)
+   Objetivo / estratégia de apoio / período-mês como três blocos
+   distintos — em vez de um único parágrafo flutuando no meio do slide. */
+.sl-objetivo{display:flex;flex-direction:column;gap:8mm;}
+.sl-objetivo-hero{background:var(--lilac,#F5F1FB);border-left:4px solid var(--magenta);
+  border-radius:0 3mm 3mm 0;padding:10mm 12mm;}
+.sl-objetivo-hero b{display:block;font-size:8.5px;font-weight:700;letter-spacing:.26em;
+  color:var(--violeta,#3A1E86);margin-bottom:4mm;}
+.sl-objetivo-hero p{font-family:'Archivo';font-weight:700;font-size:19px;line-height:1.4;
+  color:var(--ink);margin:0 0 3mm;}
+.sl-objetivo-hero p:last-child{margin-bottom:0;}
+.sl-objetivo-meta{display:flex;gap:10mm;flex-wrap:wrap;}
+.sl-objetivo-meta div{display:flex;flex-direction:column;gap:2mm;}
+.sl-objetivo-meta b{font-size:8px;font-weight:700;letter-spacing:.22em;color:var(--grey);}
+.sl-objetivo-meta span{font-family:'Archivo';font-weight:700;font-size:13px;color:var(--ink);}
+.sl-objetivo-apoio{padding-top:6mm;border-top:1px solid var(--line);}
+.sl-objetivo-apoio .sl-campo:last-child{margin-bottom:0;}
+
+/* ---------------------------------------------- posicionamento (16:9)
+   Grade de 2 colunas com separação clara por campo — sem virar cards
+   com borda/sombra em cada um (fica poluído). */
+.sl-pos-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7mm 16mm;}
+.sl-pos-grid .sl-campo{margin-bottom:0;break-inside:avoid;}
+
 .sl-numeros{display:flex;gap:20mm;margin-bottom:8mm;}
+/* Sólido, não gradiente-em-texto: `background-clip:text` com cor
+   transparente não sobrevive de forma confiável ao pipeline de
+   impressão/captura (window.print() e html2canvas) — em vez do número
+   recortado, o motor de exportação pinta o retângulo inteiro do
+   gradiente (o texto, transparente, fica invisível dentro dele). Isso é
+   o bug relatado ("número vira bloco/retângulo"). A cor sólida da marca
+   (mesma usada em .le-pilar-topo .pct, no A4) é o fallback seguro e
+   funciona igual na tela e na exportação — mesma fonte de renderização,
+   sem depender de suporte de clip do motor de impressão/captura. */
 .sl-numeros b{display:block;font-family:'Archivo';font-weight:800;font-size:40px;line-height:1;
-  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  color:var(--magenta);}
 .sl-numeros span{display:block;font-size:8.5px;font-weight:700;letter-spacing:.22em;
   color:var(--grey);margin-top:4mm;}
 .sl-dist{display:flex;flex-direction:column;gap:4mm;max-width:150mm;}
@@ -438,8 +485,8 @@
 .preview-topo b{font-family:'Archivo';font-weight:800;font-size:14px;}
 .preview-topo .fmt{font-size:11.5px;color:rgba(255,255,255,.5);}
 .preview-acoes{margin-left:auto;display:flex;gap:8px;}
-.preview-palco{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
-  overflow:hidden;}
+.preview-palco{position:relative;flex:1;min-height:0;display:flex;align-items:center;
+  justify-content:center;overflow:hidden;touch-action:pan-y;}
 .preview-in{transform-origin:center center;}
 .preview-in .slide,.preview-in .folha{margin:0;box-shadow:0 30px 80px -30px rgba(0,0,0,.8);}
 .preview-nav{flex:none;display:flex;align-items:center;justify-content:center;gap:16px;
@@ -447,6 +494,24 @@
 .preview-nav .cont{font-family:'Archivo';font-weight:800;font-size:13px;color:#F3EFF9;
   letter-spacing:.1em;min-width:80px;text-align:center;}
 .preview-nav .b:disabled{opacity:.4;cursor:not-allowed;}
+
+/* setas visuais nas bordas do palco — além do teclado e dos botões
+   Anterior/Próximo, para uso com mouse/touch em tela de reunião */
+.preview-seta{position:absolute;top:50%;transform:translateY(-50%);z-index:5;
+  width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.08);
+  color:#F3EFF9;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background var(--t-micro,.15s);}
+.preview-seta:hover:not(:disabled){background:rgba(255,255,255,.2);}
+.preview-seta:disabled{opacity:.22;cursor:not-allowed;}
+.preview-seta.esq{left:16px;} .preview-seta.dir{right:16px;}
+@media (max-width:760px){.preview-seta{width:38px;height:38px;font-size:15px;}
+  .preview-seta.esq{left:6px;} .preview-seta.dir{right:6px;}}
+
+/* itens clicáveis dentro da apresentação (detalhe read-only) */
+.sl-tabela tbody tr[data-cid]{cursor:pointer;}
+.sl-tabela tbody tr[data-cid]:hover td{background:var(--lilac,#F5F1FB);}
+.sl-cri-topo[data-cid]{cursor:pointer;}
+.sl-cri-topo[data-cid]:hover{opacity:.82;}
 
 /* ------------------------------------------- modal de exportação */
 .exp-formatos{grid-template-columns:1fr 1fr;}
@@ -509,8 +574,10 @@
 .sl-pilar-topo{display:flex;align-items:center;justify-content:space-between;}
 .sl-pilar .n{display:inline-flex;align-items:center;justify-content:center;width:9mm;height:9mm;
   border-radius:2.5mm;color:#fff;font-family:'Archivo';font-weight:800;font-size:11px;}
+/* Mesmo motivo do .sl-numeros b acima: sólido em vez de gradiente
+   recortado em texto, para nunca virar um bloco colorido na exportação. */
 .sl-pilar .pct{font-family:'Archivo';font-weight:800;font-size:22px;letter-spacing:-.02em;
-  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  color:var(--magenta);}
 .sl-pilar h3{font-family:'Archivo';font-weight:800;font-size:16px;line-height:1.2;letter-spacing:-.01em;
   margin:1mm 0 0;color:var(--ink);word-wrap:break-word;}
 .sl-pilar-meta{display:flex;flex-wrap:wrap;gap:2mm;align-items:center;}

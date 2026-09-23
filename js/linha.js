@@ -227,6 +227,7 @@ B7.Linha = (function () {
       '</div></div>' +
       '<div class="acoes">' +
         (C.souDesignerSomenteLeitura() ? '' : '<button class="b pri" data-novo-conteudo>+ Novo conteúdo</button>') +
+        '<button class="b clara" data-apresentar-linha>Apresentar</button>' +
         '<button class="b clara" data-baixar-linha>Baixar PDF</button>' +
         /* O menu "⋯" é só de gestão da Linha Editorial (duplicar, status,
            enviar para aprovação do cliente, portal, arquivar, excluir) —
@@ -1077,6 +1078,17 @@ B7.Linha = (function () {
       B7.Semana.modalNovo(L.linha.client_id, L.linha.id));
     const baixar = p.querySelector('[data-baixar-linha]');
     if (baixar) baixar.onclick = () => B7.BaixarLinha.abrir(L.linha.id);
+    /* "Apresentar": vai direto para a apresentação 16:9 em tela cheia,
+       sem passar pelo modal de exportação — mesmos dados e mesmo
+       renderizador do PDF (B7.BaixarLinha.reunir + B7.Slides), então o
+       que aparece aqui é exatamente o que sai no PDF/PNG. */
+    const apresentar = p.querySelector('[data-apresentar-linha]');
+    if (apresentar) apresentar.onclick = async () => {
+      apresentar.disabled = true;
+      try { await B7.PreviewLinha.apresentar(L.linha.id); }
+      catch (e) { B7.UI.toast('Não foi possível abrir a apresentação.', { tipo: 'erro' }); }
+      finally { apresentar.disabled = false; }
+    };
     const dup = p.querySelector('[data-duplicar-linha]');
     if (dup) dup.onclick = () => modalDuplicar();
     ligarArrasto();

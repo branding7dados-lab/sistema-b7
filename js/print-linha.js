@@ -499,14 +499,19 @@ B7.BaixarLinha = (function () {
       '<div class="acoes">' +
         '<button class="b" data-fecha>Cancelar</button>' +
         '<button class="b contorno" data-preview>Visualizar</button>' +
+        '<button class="b contorno" data-png style="display:none">Baixar PNG</button>' +
         '<button class="b pri" data-ok>Baixar PDF</button>' +
       '</div>');
 
     let formato = 'a4';
+    /* PNG só existe para o formato 16:9 (um arquivo por slide) — o A4
+       continua só PDF, como sempre foi. */
+    const botaoPNG = m.querySelector('[data-png]');
     m.querySelectorAll('[data-fmt]').forEach(b => b.onclick = () => {
       m.querySelectorAll('[data-fmt]').forEach(x => x.classList.remove('on'));
       b.classList.add('on');
       formato = b.dataset.fmt;
+      botaoPNG.style.display = formato === 'slides' ? '' : 'none';
     });
     m.querySelector('#exp-capa input').onchange = e =>
       m.querySelector('#exp-capa').classList.toggle('on', e.target.checked);
@@ -523,6 +528,18 @@ B7.BaixarLinha = (function () {
       } catch (e) {
         btn.disabled = false; btn.textContent = 'Visualizar';
         B7.UI.toast('Não foi possível preparar a visualização', { tipo: 'erro' });
+      }
+    };
+
+    botaoPNG.onclick = async () => {
+      botaoPNG.disabled = true; botaoPNG.textContent = 'Gerando PNGs…';
+      try {
+        const ctx = await reunir(linhaId, opcoesAtuais());
+        m.fechar();
+        await B7.Slides.baixarTodosPNG(ctx);
+      } catch (e) {
+        botaoPNG.disabled = false; botaoPNG.textContent = 'Baixar PNG';
+        B7.UI.toast('Não foi possível gerar os PNGs', { tipo: 'erro' });
       }
     };
 
@@ -549,6 +566,11 @@ B7.BaixarLinha = (function () {
      na pasta de downloads, nunca a caixa de impressão nativa: o layout
      não depende mais de margem/escala escolhidas pela pessoa. */
   async function gerar(ctx, formato, aoAndar) {
+    /* Fontes carregadas ANTES de medir: a paginação (medição real no
+       DOM) depende da altura do texto já com a tipografia final — sem
+       esperar document.fonts.ready, a primeira geração de cada sessão
+       podia medir com a fonte do sistema e cortar/sobrar espaço errado. */
+    try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
     const area = document.getElementById('area-impressao');
     const slides = formato === 'slides';
     area.style.display = 'block';

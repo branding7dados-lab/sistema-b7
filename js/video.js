@@ -378,13 +378,13 @@ B7.Video = (function () {
       ordenada.map(d => {
         const atrasada = ehAtrasada(d);
         return '<tr data-demanda="' + d.id + '" tabindex="0">' +
-          '<td class="vd-codigo">' + esc(d.codigo || '—') + '</td>' +
-          '<td><div class="vd-tb-cliente">' + logoClienteHTML(d, 'sm') + '<span>' + esc(d.cliente_nome || '—') + '</span></div></td>' +
-          '<td class="vd-tb-titulo">' + tituloComFallback(d) + '</td>' +
-          '<td>' + prioridadeBadge(d.prioridade) + '</td>' +
-          '<td>' + prazoHTML(d, atrasada) + '</td>' +
-          '<td>' + statusBadge(d.editing_status) + '</td>' +
-          '<td>' + quemHTML(d) + '</td>' +
+          '<td class="vd-codigo" data-rot="Código">' + esc(d.codigo || '—') + '</td>' +
+          '<td data-rot="Cliente"><div class="vd-tb-cliente">' + logoClienteHTML(d, 'sm') + '<span>' + esc(d.cliente_nome || '—') + '</span></div></td>' +
+          '<td class="vd-tb-titulo" data-rot="Título">' + tituloComFallback(d) + '</td>' +
+          '<td data-rot="Prioridade">' + prioridadeBadge(d.prioridade) + '</td>' +
+          '<td data-rot="Prazo">' + prazoHTML(d, atrasada) + '</td>' +
+          '<td data-rot="Status">' + statusBadge(d.editing_status) + '</td>' +
+          '<td data-rot="Responsável">' + quemHTML(d) + '</td>' +
         '</tr>';
       }).join('') +
       '</tbody></table></div>';
@@ -686,104 +686,242 @@ B7.Video = (function () {
   }
 
   /* =================================================================
-     NOVA DEMANDA (manual, equipe)
+     PRAZO SUGERIDO = data da gravação + 3 dias úteis (seg–sex, sem
+     feriados — não existe cadastro de feriados neste projeto). Só uma
+     SUGESTÃO: o campo continua editável e, uma vez que a pessoa mexa
+     nele manualmente, nenhum redesenho/auto-preenchimento seguinte
+     pode sobrescrever o que ela escolheu.
      ================================================================= */
-  function modalNovaDemanda() {
+  function somarDiasUteis(dataISO, n) {
+    const d = new Date(dataISO + 'T00:00:00');
+    let restante = n;
+    while (restante > 0) {
+      d.setDate(d.getDate() + 1);
+      const dia = d.getDay(); // 0=domingo, 6=sábado
+      if (dia !== 0 && dia !== 6) restante--;
+    }
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function prazoSugeridoDeGravacao(dataGravacaoISO) {
+    return dataGravacaoISO ? somarDiasUteis(dataGravacaoISO, 3) : '';
+  }
+
+  /* =================================================================
+     NOVA DEMANDA DE EDIÇÃO (equipe) — criação manual (comportamento de
+     sempre, sem nenhuma mudança) OU, quando uma gravação com roteiros é
+     escolhida, geração em lote (1 demanda por roteiro marcado) — tudo
+     no MESMO modal, sem abrir uma segunda tela. A geração em lote
+     reaproveita a mesma função de banco de sempre
+     (video_gerar_demandas_de_gravacao, já aplicada e com a numeração
+     "#N" por gravação) — esta função só decide QUANDO chamar qual.
+     ================================================================= */
+  function modalNovaDemanda(opts) {
+    opts = opts || {};
     if (!clientes.length) { B7.UI.toast('Cadastre um cliente antes de criar uma demanda.'); return; }
     const compAtual = F.competencia !== 'todas' && F.competencia ? F.competencia.split('-') : null;
+
+    let gravacoesCache = [];
+    let roteirosDaGravacao = [];
+    let roteiroSelecionados = new Set();
+    let prazoEditadoManualmente = false;
+    let ajustandoPrazoProgramaticamente = false;
+
     const m = B7.UI.modal(
       '<h3>Nova demanda de edição</h3>' +
       '<label class="rot">Cliente</label>' +
       '<select class="campo" id="vd-nd-cliente" data-foco>' +
         clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') +
       '</select>' +
-      '<label class="rot">Título</label>' +
-      '<input class="campo" id="vd-nd-titulo" placeholder="Ex.: Reel de lançamento">' +
-      '<div class="vd-grid-2">' +
-        '<div><label class="rot">Código (opcional)</label><input class="campo" id="vd-nd-codigo" placeholder="Ex.: 014"></div>' +
-        '<div><label class="rot">Pacote (opcional)</label><input class="campo" id="vd-nd-pacote" list="vd-pacotes-lista" placeholder="Ex.: Mensal 8 vídeos" autocomplete="off"></div>' +
+
+      '<label class="rot">Vincular a uma gravação deste cliente (opcional)</label>' +
+      '<select class="campo" id="vd-nd-gravacao"><option value="">Carregando…</option></select>' +
+      '<p class="fraca vd-nd-gravacao-dica">Escolher uma gravação "Gravado" carrega os roteiros dela aqui mesmo — marque os que viraram demanda, sem abrir outra tela.</p>' +
+      '<div id="vd-nd-roteiros"></div>' +
+      '<p class="vd-nd-aviso-lote" id="vd-nd-aviso-lote" hidden></p>' +
+
+      '<div id="vd-nd-manual">' +
+        '<label class="rot">Título</label>' +
+        '<input class="campo" id="vd-nd-titulo" placeholder="Ex.: Reel de lançamento">' +
+        '<div class="vd-grid-2">' +
+          '<div><label class="rot">Código (opcional)</label><input class="campo" id="vd-nd-codigo" placeholder="Ex.: 014"></div>' +
+          '<div><label class="rot">Pacote (opcional)</label><input class="campo" id="vd-nd-pacote" list="vd-pacotes-lista" placeholder="Ex.: Mensal 8 vídeos" autocomplete="off"></div>' +
+        '</div>' +
       '</div>' +
+
       '<div class="vd-grid-2">' +
         '<div><label class="rot">Prazo (opcional)</label><input class="campo" type="date" id="vd-nd-prazo"></div>' +
-        '<div><label class="rot">Prioridade</label><select class="campo" id="vd-nd-prioridade">' +
+        '<div id="vd-nd-prioridade-cx"><label class="rot">Prioridade</label><select class="campo" id="vd-nd-prioridade">' +
           PRIORIDADES.map(([v, r]) => '<option value="' + v + '"' + (v === 'normal' ? ' selected' : '') + '>' + r + '</option>').join('') +
         '</select></div>' +
       '</div>' +
+      '<p class="fraca vd-nd-aviso-prioridade" id="vd-nd-aviso-prioridade" hidden>Prioridade e pacote não se aplicam à geração em lote — cada demanda nasce com prioridade Normal e pode ser ajustada depois, individualmente.</p>' +
+
       '<label class="rot">Responsável (videomaker, opcional)</label>' +
       '<select class="campo" id="vd-nd-videomaker">' +
         '<option value="">Sem atribuir ainda</option>' +
         videomakers.map(v => '<option value="' + v.id + '">' + esc(v.nome) + '</option>').join('') +
       '</select>' +
-      '<label class="rot">Vincular a uma gravação deste cliente (opcional)</label>' +
-      '<select class="campo" id="vd-nd-gravacao"><option value="">Carregando…</option></select>' +
-      '<p class="vd-nd-hint" id="vd-nd-gravacao-hint" hidden></p>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" id="vd-nd-salvar">Criar demanda</button></div>');
 
+    const selCliente = m.querySelector('#vd-nd-cliente');
     const selGravacao = m.querySelector('#vd-nd-gravacao');
-    const hintGravacao = m.querySelector('#vd-nd-gravacao-hint');
-    const esconderHint = () => { hintGravacao.hidden = true; hintGravacao.innerHTML = ''; };
-    let gravacoesDoCliente = [];
-    const carregarGravacoes = async clienteId => {
+    const cxRoteiros = m.querySelector('#vd-nd-roteiros');
+    const cxManual = m.querySelector('#vd-nd-manual');
+    const cxAvisoLote = m.querySelector('#vd-nd-aviso-lote');
+    const cxPrioridade = m.querySelector('#vd-nd-prioridade-cx');
+    const cxAvisoPrioridade = m.querySelector('#vd-nd-aviso-prioridade');
+    const campoPrazo = m.querySelector('#vd-nd-prazo');
+    const btnSalvar = m.querySelector('#vd-nd-salvar');
+
+    campoPrazo.oninput = () => { if (!ajustandoPrazoProgramaticamente) prazoEditadoManualmente = true; };
+    function definirPrazoSugerido(dataGravacaoISO) {
+      if (prazoEditadoManualmente || !dataGravacaoISO) return;
+      ajustandoPrazoProgramaticamente = true;
+      campoPrazo.value = prazoSugeridoDeGravacao(dataGravacaoISO);
+      ajustandoPrazoProgramaticamente = false;
+    }
+
+    /* Roteiro já com demanda ativa: reaproveita o campo `codigo` que já
+       vem em `demandas` (cache carregado por abrir()) pra mostrar o
+       código existente, ex. "já tem demanda #2" — nunca marcado pra
+       seleção, nunca duplicado. */
+    function codigoDemandaExistente(roteiroId) {
+      const existente = demandas.find(d => d.roteiro_id === roteiroId && d.editing_status !== 'descartado');
+      return existente && existente.codigo ? existente.codigo : '';
+    }
+
+    function roteirosHTML() {
+      if (!roteirosDaGravacao.length) return '<p class="fraca">Esta gravação não tem roteiros cadastrados.</p>';
+      return '<label class="rot">Roteiros (marque os que viraram demanda — nada é marcado automaticamente)</label>' +
+        '<div class="vd-roteiros-lista">' + roteirosDaGravacao.map(r => {
+          const codigoExistente = r.ja_tem_demanda ? codigoDemandaExistente(r.id) : '';
+          return '<label class="vd-roteiro-item"><input type="checkbox" data-roteiro="' + r.id + '"' +
+            (roteiroSelecionados.has(r.id) ? ' checked' : '') + (r.ja_tem_demanda ? ' disabled' : '') + '>' +
+            '<span>' + esc(r.titulo || '(sem título)') + (r.objetivo ? ' <i class="fraca">— ' + esc(r.objetivo) + '</i>' : '') + '</span>' +
+            (r.ja_tem_demanda ? '<span class="vd-badge-ja">já tem demanda' + (codigoExistente ? ' ' + esc(codigoExistente) : '') + '</span>' : '') +
+          '</label>';
+        }).join('') + '</div>';
+    }
+
+    function atualizarModoLote() {
+      const n = roteiroSelecionados.size;
+      if (n > 0) {
+        cxManual.hidden = true;
+        cxPrioridade.hidden = true;
+        cxAvisoPrioridade.hidden = false;
+        cxAvisoLote.hidden = false;
+        cxAvisoLote.textContent = n + ' roteiro' + (n === 1 ? '' : 's') + ' selecionado' + (n === 1 ? '' : 's') +
+          ' — ser' + (n === 1 ? 'á criada 1 demanda' : 'ão criadas ' + n + ' demandas') + '.';
+        btnSalvar.textContent = n === 1 ? 'Gerar 1 demanda' : 'Gerar ' + n + ' demandas';
+      } else {
+        cxManual.hidden = false;
+        cxPrioridade.hidden = false;
+        cxAvisoPrioridade.hidden = true;
+        cxAvisoLote.hidden = true;
+        btnSalvar.textContent = 'Criar demanda';
+      }
+    }
+
+    async function carregarGravacoes(clienteId) {
       selGravacao.innerHTML = '<option value="">Carregando…</option>';
-      esconderHint();
+      cxRoteiros.innerHTML = '';
+      roteiroSelecionados = new Set();
+      roteirosDaGravacao = [];
+      atualizarModoLote();
+      if (!clienteId) { selGravacao.innerHTML = '<option value="">Sem vínculo</option>'; return; }
       try {
-        const gs = await B7.DB.gravacoesDoClienteParaVideo(clienteId);
-        gravacoesDoCliente = gs || [];
+        gravacoesCache = await B7.DB.gravacoesDoClienteParaVideo(clienteId) || [];
         selGravacao.innerHTML = '<option value="">Sem vínculo</option>' +
-          gs.map(g => '<option value="' + g.id + '">' + esc(g.nome) + (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') + '</option>').join('');
-      } catch (e) { gravacoesDoCliente = []; selGravacao.innerHTML = '<option value="">Sem vínculo</option>'; }
-    };
-    carregarGravacoes(m.querySelector('#vd-nd-cliente').value);
-    m.querySelector('#vd-nd-cliente').onchange = e => carregarGravacoes(e.target.value);
+          gravacoesCache.map(g => '<option value="' + g.id + '">' + esc(g.nome) +
+            (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') +
+            (g.status && g.status !== 'Gravado' ? ' · ' + esc(g.status) : '') + '</option>').join('');
+      } catch (e) { gravacoesCache = []; selGravacao.innerHTML = '<option value="">Sem vínculo</option>'; }
+    }
+    carregarGravacoes(selCliente.value);
+    selCliente.onchange = () => carregarGravacoes(selCliente.value);
 
-    /* Ao escolher uma gravação já com status "Gravado" (mesmo critério
-       do botão "Gerar de gravação"), se ela tiver roteiros, oferece o
-       atalho pra gerar 1 demanda por roteiro selecionado em vez de
-       criar essa única demanda manual — sem duplicar a lógica aqui:
-       fecha este modal e abre o outro já com cliente + gravação
-       escolhidos, sem precisar selecionar tudo de novo. A criação
-       manual sem gravação/roteiro (ou com gravação ainda não
-       "Gravado", ou sem usar este atalho) continua funcionando
-       exatamente como sempre. */
     selGravacao.onchange = async () => {
-      const gid = selGravacao.value;
-      const gravacaoEscolhida = gravacoesDoCliente.find(g => g.id === gid);
-      if (!gid || !gravacaoEscolhida || gravacaoEscolhida.status !== 'Gravado') { esconderHint(); return; }
-      hintGravacao.hidden = false;
-      hintGravacao.textContent = 'Verificando roteiros desta gravação…';
+      const gravacaoId = selGravacao.value;
+      roteiroSelecionados = new Set();
+      roteirosDaGravacao = [];
+      cxRoteiros.innerHTML = '';
+      atualizarModoLote();
+      if (!gravacaoId) return;
+      const g = gravacoesCache.find(x => x.id === gravacaoId);
+      definirPrazoSugerido(g && g.data_gravacao);
+      /* Checklist de roteiros só faz sentido pra gravação já "Gravado"
+         — pra qualquer outro status, o vínculo continua funcionando
+         (igual sempre funcionou), só não tem o que marcar em lote. */
+      if (!g || g.status !== 'Gravado') return;
+      cxRoteiros.innerHTML = '<p class="fraca">Carregando roteiros…</p>';
       try {
-        const roteiros = await B7.DB.roteirosParaAutomacaoVideo(gid);
-        if (roteiros && roteiros.length) {
-          const n = roteiros.length;
-          hintGravacao.innerHTML = 'Esta gravação tem ' + n + ' roteiro' + (n === 1 ? '' : 's') + '. ' +
-            '<button type="button" class="vd-nd-hint-bt" id="vd-nd-ir-roteiros">Selecionar roteiros e gerar demandas em lote →</button>';
-          const bt = hintGravacao.querySelector('#vd-nd-ir-roteiros');
-          bt.onclick = () => {
-            const clienteId = m.querySelector('#vd-nd-cliente').value;
-            m.fechar();
-            modalGerarDemandas({ clienteId, gravacaoId: gid });
+        const [roteiros, existentes] = await Promise.all([
+          B7.DB.roteirosParaAutomacaoVideo(gravacaoId),
+          Promise.resolve(demandas.filter(d => d.gravacao_id === gravacaoId && d.editing_status !== 'descartado'))
+        ]);
+        const comRoteiro = new Set(existentes.filter(d => d.roteiro_id).map(d => d.roteiro_id));
+        roteirosDaGravacao = (roteiros || []).map(r => ({ ...r, ja_tem_demanda: comRoteiro.has(r.id) }));
+        if (selGravacao.value !== gravacaoId) return; // usuário já trocou de novo
+        cxRoteiros.innerHTML = roteirosHTML();
+        cxRoteiros.querySelectorAll('[data-roteiro]').forEach(chk => {
+          chk.onchange = () => {
+            if (chk.checked) roteiroSelecionados.add(chk.dataset.roteiro); else roteiroSelecionados.delete(chk.dataset.roteiro);
+            atualizarModoLote();
           };
-        } else {
-          esconderHint();
-        }
-      } catch (e) { esconderHint(); }
+        });
+      } catch (e) { cxRoteiros.innerHTML = '<p class="fraca">Não foi possível carregar os roteiros desta gravação.</p>'; }
     };
 
-    m.querySelector('#vd-nd-salvar').onclick = async () => {
+    btnSalvar.onclick = async () => {
+      const gravacaoId = selGravacao.value || null;
+
+      /* -------- Modo lote: N roteiros marcados = N demandas -------- */
+      if (roteiroSelecionados.size > 0) {
+        const n = roteiroSelecionados.size;
+        const ok = await B7.UI.confirmar({
+          titulo: n === 1 ? '1 roteiro selecionado' : n + ' roteiros selecionados',
+          texto: (n === 1 ? 'Será criada 1 demanda de edição.' : 'Serão criadas ' + n + ' demandas de edição.') +
+            ' Cada uma nasce com o título do roteiro correspondente.',
+          confirmar: n === 1 ? 'Gerar 1 demanda' : 'Gerar ' + n + ' demandas'
+        });
+        if (!ok) return;
+        btnSalvar.disabled = true; btnSalvar.textContent = 'Gerando…';
+        try {
+          const resultado = await B7.DB.gerarDemandasDeGravacaoVideo(
+            gravacaoId, [...roteiroSelecionados],
+            m.querySelector('#vd-nd-videomaker').value || null,
+            campoPrazo.value || null
+          );
+          const novas = (resultado || []).filter(r => !r.ja_existia);
+          const existiam = (resultado || []).filter(r => r.ja_existia);
+          const codigosNovos = novas.map(r => r.codigo).filter(Boolean);
+          m.fechar();
+          let msg = novas.length + ' demanda' + (novas.length === 1 ? '' : 's') + ' criada' + (novas.length === 1 ? '' : 's') + ' com sucesso';
+          if (codigosNovos.length) msg += ' (' + codigosNovos.join(', ') + ')';
+          msg += existiam.length ? ' · ' + existiam.length + ' já existia' + (existiam.length === 1 ? '' : 'm') + '.' : '.';
+          B7.UI.toast(msg);
+          abrir();
+        } catch (e) {
+          btnSalvar.disabled = false; atualizarModoLote();
+          B7.UI.toast(e.message || 'Não foi possível gerar as demandas.');
+        }
+        return;
+      }
+
+      /* -------- Modo manual: comportamento de sempre, inalterado -------- */
       const titulo = m.querySelector('#vd-nd-titulo').value.trim();
       if (!titulo) { B7.UI.toast('Dê um título para a demanda.'); return; }
-      const btn = m.querySelector('#vd-nd-salvar');
-      btn.disabled = true; btn.textContent = 'Criando…';
+      btnSalvar.disabled = true; btnSalvar.textContent = 'Criando…';
       try {
         await B7.DB.criarDemandaVideo({
-          clienteId: m.querySelector('#vd-nd-cliente').value,
+          clienteId: selCliente.value,
           titulo,
           codigo: m.querySelector('#vd-nd-codigo').value.trim(),
           pacote: m.querySelector('#vd-nd-pacote').value.trim(),
-          prazo: m.querySelector('#vd-nd-prazo').value || null,
+          prazo: campoPrazo.value || null,
           videomakerId: m.querySelector('#vd-nd-videomaker').value || null,
-          gravacaoId: selGravacao.value || null,
+          gravacaoId,
           prioridade: m.querySelector('#vd-nd-prioridade').value,
           competenciaAno: compAtual ? Number(compAtual[0]) : null,
           competenciaMes: compAtual ? Number(compAtual[1]) : null
@@ -792,7 +930,7 @@ B7.Video = (function () {
         B7.UI.toast('Demanda criada.');
         abrir();
       } catch (e) {
-        btn.disabled = false; btn.textContent = 'Criar demanda';
+        btnSalvar.disabled = false; btnSalvar.textContent = 'Criar demanda';
         B7.UI.toast(e.message || 'Não foi possível criar a demanda.');
       }
     };
@@ -812,12 +950,12 @@ B7.Video = (function () {
       '</tr></thead><tbody>' +
       (ordenada.length ? ordenada.map(d =>
         '<tr data-demanda="' + d.id + '" tabindex="0">' +
-          '<td class="vd-codigo">' + esc(d.codigo || '—') + '</td>' +
-          '<td><div class="vd-tb-cliente">' + logoClienteHTML(d, 'sm') + '<span>' + esc(d.cliente_nome || '—') + '</span></div></td>' +
-          '<td class="vd-tb-titulo">' + tituloComFallback(d) + '</td>' +
-          '<td>' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</td>' +
-          '<td>' + quemHTML(d) + '</td>' +
-          '<td>' + (d.updated_at ? esc(B7.UI.dataBR(d.updated_at.slice(0, 10))) : '—') + '</td>' +
+          '<td class="vd-codigo" data-rot="Código">' + esc(d.codigo || '—') + '</td>' +
+          '<td data-rot="Cliente"><div class="vd-tb-cliente">' + logoClienteHTML(d, 'sm') + '<span>' + esc(d.cliente_nome || '—') + '</span></div></td>' +
+          '<td class="vd-tb-titulo" data-rot="Título">' + tituloComFallback(d) + '</td>' +
+          '<td data-rot="Competência">' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</td>' +
+          '<td data-rot="Responsável">' + quemHTML(d) + '</td>' +
+          '<td data-rot="Atualizado em">' + (d.updated_at ? esc(B7.UI.dataBR(d.updated_at.slice(0, 10))) : '—') + '</td>' +
         '</tr>').join('') : '<tr><td colspan="6"><i class="vd-sem">Nenhuma demanda descartada.</i></td></tr>') +
       '</tbody></table></div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>');
@@ -1003,9 +1141,9 @@ B7.Video = (function () {
         '<th>Videomaker</th><th>P/ iniciar</th><th>Em edição</th><th>Correção</th><th>Aguard. aprov.</th><th>Standby</th><th>Atrasadas</th><th>Vence hoje</th><th>Total ativo</th>' +
         '</tr></thead><tbody>' +
         (estado.carga.length ? estado.carga.map(v =>
-          '<tr><td>' + esc(v.videomaker_nome) + '</td><td>' + v.para_iniciar + '</td><td>' + v.em_edicao + '</td>' +
-          '<td>' + v.correcao + '</td><td>' + v.aguardando_aprovacao + '</td><td>' + v.standby + '</td>' +
-          '<td' + (v.atrasadas ? ' class="vd-cel-alerta"' : '') + '>' + v.atrasadas + '</td><td>' + v.vence_hoje + '</td><td>' + v.total_ativo + '</td></tr>').join('')
+          '<tr><td data-rot="Videomaker">' + esc(v.videomaker_nome) + '</td><td data-rot="P/ iniciar">' + v.para_iniciar + '</td><td data-rot="Em edição">' + v.em_edicao + '</td>' +
+          '<td data-rot="Correção">' + v.correcao + '</td><td data-rot="Aguard. aprov.">' + v.aguardando_aprovacao + '</td><td data-rot="Standby">' + v.standby + '</td>' +
+          '<td data-rot="Atrasadas"' + (v.atrasadas ? ' class="vd-cel-alerta"' : '') + '>' + v.atrasadas + '</td><td data-rot="Vence hoje">' + v.vence_hoje + '</td><td data-rot="Total ativo">' + v.total_ativo + '</td></tr>').join('')
           : '<tr><td colspan="9"><i class="vd-sem">Sem videomakers ativos.</i></td></tr>') +
         '</tbody></table></div>' +
 
@@ -1014,9 +1152,9 @@ B7.Video = (function () {
         '<th>Cliente</th><th>Pacote</th><th>Cota/mês</th><th>Total</th><th>Entregues</th><th>Em produção</th><th>Aguard. aprov.</th><th>Correção</th>' +
         '</tr></thead><tbody>' +
         (estado.porCliente.length ? estado.porCliente.map(c =>
-          '<tr><td>' + esc(c.client_nome) + '</td><td>' + (c.pacote ? esc(c.pacote) : '<i class="vd-sem">sem pacote</i>') + '</td>' +
-          '<td>' + (c.quantidade_contratada != null ? c.quantidade_contratada : '<i class="vd-sem">não definida</i>') + '</td>' +
-          '<td>' + c.total + '</td><td>' + c.entregues + '</td><td>' + c.em_producao + '</td><td>' + c.aguardando_aprovacao + '</td><td>' + c.correcao + '</td></tr>').join('')
+          '<tr><td data-rot="Cliente">' + esc(c.client_nome) + '</td><td data-rot="Pacote">' + (c.pacote ? esc(c.pacote) : '<i class="vd-sem">sem pacote</i>') + '</td>' +
+          '<td data-rot="Cota/mês">' + (c.quantidade_contratada != null ? c.quantidade_contratada : '<i class="vd-sem">não definida</i>') + '</td>' +
+          '<td data-rot="Total">' + c.total + '</td><td data-rot="Entregues">' + c.entregues + '</td><td data-rot="Em produção">' + c.em_producao + '</td><td data-rot="Aguard. aprov.">' + c.aguardando_aprovacao + '</td><td data-rot="Correção">' + c.correcao + '</td></tr>').join('')
           : '<tr><td colspan="8"><i class="vd-sem">Nenhuma demanda nesta competência.</i></td></tr>') +
         '</tbody></table></div>' +
         '<p class="fraca">Cota/mês só aparece quando alguém define uma quantidade contratada pro pacote com esse nome exato (ver "Pacotes") — sem isso, nunca inventamos uma cota.</p>' +
@@ -1026,9 +1164,9 @@ B7.Video = (function () {
         '<th>Videomaker</th><th>Entregues</th><th>Em edição</th><th>Aguard. aprov.</th><th>Correção</th><th>Entregues c/ atraso</th><th>Tempo médio</th>' +
         '</tr></thead><tbody>' +
         (estado.porVideomaker.length ? estado.porVideomaker.map(v =>
-          '<tr><td>' + esc(v.videomaker_nome) + '</td><td>' + v.entregues + '</td><td>' + v.em_edicao + '</td>' +
-          '<td>' + v.aguardando_aprovacao + '</td><td>' + v.correcao + '</td><td>' + v.entregues_com_atraso + '</td>' +
-          '<td>' + diasFmt(v.tempo_medio_producao_dias) + '</td></tr>').join('')
+          '<tr><td data-rot="Videomaker">' + esc(v.videomaker_nome) + '</td><td data-rot="Entregues">' + v.entregues + '</td><td data-rot="Em edição">' + v.em_edicao + '</td>' +
+          '<td data-rot="Aguard. aprov.">' + v.aguardando_aprovacao + '</td><td data-rot="Correção">' + v.correcao + '</td><td data-rot="Entregues c/ atraso">' + v.entregues_com_atraso + '</td>' +
+          '<td data-rot="Tempo médio">' + diasFmt(v.tempo_medio_producao_dias) + '</td></tr>').join('')
           : '<tr><td colspan="7"><i class="vd-sem">Nenhuma demanda nesta competência.</i></td></tr>') +
         '</tbody></table></div>' +
 
@@ -1118,229 +1256,18 @@ B7.Video = (function () {
   }
 
   /* =================================================================
-     AUTOMAÇÃO GRAVAÇÃO → EDIÇÃO — escolhe uma gravação "Gravado" e
-     gera uma demanda de edição por roteiro selecionado (checklist),
-     reaproveitando os roteiros reais da gravação (não inventa nada).
-     Fica dentro de js/video.js de propósito — não mexe em
-     js/editor.js (tela de Gravação/roteiro), módulo grande e não
-     relacionado a este recurso.
+     AUTOMAÇÃO GRAVAÇÃO → EDIÇÃO — antes vivia num modal separado
+     (modalGerarDemandas, com sua própria cópia da lógica de checklist
+     de roteiros). Fundida nesta rodada dentro do modal "Nova demanda
+     de edição" (modalNovaDemanda acima), que agora é a ÚNICA fonte de
+     verdade pra criação manual E geração em lote — a equipe não
+     precisa mais criar a demanda, abrir, vincular gravação e roteiro
+     um por um, nem abrir uma segunda tela pra gerar em lote.
+     modalGerarDemandas continua existindo só como atalho (era exportado
+     em `return {...}` e acionado pelo botão "Gerar de gravação") — abre
+     o MESMO modal unificado, sem nenhuma lógica própria de criação.
      ================================================================= */
-  function modalGerarDemandas(preSel) {
-    preSel = preSel || {};
-    let gravacoesCache = null, roteiroSelecionados = new Set(), roteirosDaGravacao = [];
-
-    const cascaHTML = () =>
-      '<h3>Gerar demandas de edição a partir de uma gravação</h3>' +
-      '<p class="sub">Cada roteiro marcado vira sua própria demanda, com título do roteiro e um código ' +
-        'próprio dessa gravação (#1, #2, #3…), continuando de onde ela já estiver.</p>' +
-      '<label class="rot">Cliente</label>' +
-      '<select class="campo" id="vgd-cliente" data-foco>' +
-        '<option value="">Escolha um cliente</option>' +
-        clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') +
-      '</select>' +
-      '<label class="rot">Gravação (status "Gravado")</label>' +
-      '<select class="campo" id="vgd-gravacao"><option value="">Escolha um cliente primeiro</option></select>' +
-      '<div id="vgd-roteiros"></div>' +
-      '<div id="vgd-resumo" class="vd-resumo-selecao" hidden></div>' +
-      '<label class="vd-roteiro-item vd-agrupar"><input type="checkbox" id="vgd-agrupar">' +
-        '<span>Agrupar os roteiros marcados em uma única demanda</span></label>' +
-      '<p class="fraca vd-agrupar-dica">Desmarcado (padrão): 1 demanda por roteiro marcado, cada uma com seu ' +
-        'próprio código #N. Marcado: todos os roteiros marcados entram juntos em 1 demanda só (sem numeração #N).</p>' +
-      '<div id="vgd-titulo-agrupada" hidden><label class="rot">Título da demanda</label>' +
-        '<input class="campo" id="vgd-titulo" placeholder="Deixe em branco para usar o nome da gravação"></div>' +
-      '<div class="vd-grid-2">' +
-        '<div><label class="rot">Responsável (opcional)</label><select class="campo" id="vgd-videomaker">' +
-          '<option value="">Sem atribuir ainda</option>' +
-          videomakers.map(v => '<option value="' + v.id + '">' + esc(v.nome) + '</option>').join('') +
-        '</select></div>' +
-        '<div><label class="rot">Prazo (opcional, mesmo pra todos)</label><input class="campo" type="date" id="vgd-prazo"></div>' +
-      '</div>' +
-      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
-      '<button class="b pri" id="vgd-gerar" disabled>Gerar demandas</button></div>';
-
-    const m = B7.UI.modal(cascaHTML());
-
-    function roteirosHTML() {
-      if (!roteirosDaGravacao.length) return '<p class="fraca">Esta gravação não tem roteiros cadastrados.</p>';
-      return '<label class="rot">Roteiros (marque os que viram demanda)</label>' +
-        '<div class="vd-roteiros-lista">' + roteirosDaGravacao.map(r =>
-          '<label class="vd-roteiro-item"><input type="checkbox" data-roteiro="' + r.id + '"' +
-            (roteiroSelecionados.has(r.id) ? ' checked' : '') + (r.ja_tem_demanda ? ' disabled' : '') + '>' +
-            '<span>' + esc(r.titulo || '(sem título)') + (r.objetivo ? ' <i class="fraca">— ' + esc(r.objetivo) + '</i>' : '') + '</span>' +
-            (r.ja_tem_demanda
-              ? '<span class="vd-badge-ja">já tem demanda' + (r.codigo_existente ? ' ' + esc(r.codigo_existente) : '') + '</span>'
-              : '') +
-          '</label>').join('') + '</div>';
-    }
-
-    function agrupando() {
-      const chk = m.querySelector('#vgd-agrupar');
-      return !!(chk && chk.checked);
-    }
-
-    function atualizarBotao() {
-      const btn = m.querySelector('#vgd-gerar');
-      const n = roteiroSelecionados.size;
-      if (btn) {
-        btn.disabled = n === 0;
-        btn.textContent = agrupando() ? 'Gerar demanda' : 'Gerar demandas';
-      }
-      const resumo = m.querySelector('#vgd-resumo');
-      if (resumo) {
-        if (n === 0) { resumo.hidden = true; }
-        else {
-          resumo.hidden = false;
-          resumo.textContent = agrupando()
-            ? n + ' roteiro' + (n === 1 ? '' : 's') + ' selecionado' + (n === 1 ? '' : 's') + ' — será criada 1 demanda agrupada.'
-            : n + ' roteiro' + (n === 1 ? '' : 's') + ' selecionado' + (n === 1 ? '' : 's') + ' — ' +
-              (n === 1 ? 'será criada 1 demanda de vídeo.' : 'serão criadas ' + n + ' demandas de vídeo.');
-        }
-      }
-    }
-
-    const chkAgrupar = m.querySelector('#vgd-agrupar');
-    chkAgrupar.onchange = () => {
-      m.querySelector('#vgd-titulo-agrupada').hidden = !chkAgrupar.checked;
-      atualizarBotao();
-    };
-
-    const selCliente = m.querySelector('#vgd-cliente');
-    const selGravacao = m.querySelector('#vgd-gravacao');
-    selCliente.onchange = async () => {
-      const clienteId = selCliente.value;
-      selGravacao.innerHTML = '<option value="">Carregando…</option>';
-      m.querySelector('#vgd-roteiros').innerHTML = '';
-      roteiroSelecionados = new Set();
-      atualizarBotao();
-      if (!clienteId) { selGravacao.innerHTML = '<option value="">Escolha um cliente primeiro</option>'; return; }
-      try {
-        const gs = await B7.DB.gravacoesDoClienteParaVideo(clienteId);
-        const gravadas = (gs || []).filter(g => g.status === 'Gravado');
-        gravacoesCache = gravadas;
-        selGravacao.innerHTML = gravadas.length
-          ? '<option value="">Escolha uma gravação</option>' + gravadas.map(g =>
-              '<option value="' + g.id + '">' + esc(g.nome) + (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') + '</option>').join('')
-          : '<option value="">Nenhuma gravação com status "Gravado" para este cliente</option>';
-      } catch (e) { selGravacao.innerHTML = '<option value="">Não foi possível carregar</option>'; }
-    };
-    selGravacao.onchange = async () => {
-      const gravacaoId = selGravacao.value;
-      const cx = m.querySelector('#vgd-roteiros');
-      roteiroSelecionados = new Set();
-      if (!gravacaoId) { cx.innerHTML = ''; atualizarBotao(); return; }
-      cx.innerHTML = '<p class="fraca">Carregando roteiros…</p>';
-      try {
-        const [roteiros, existentes] = await Promise.all([
-          B7.DB.roteirosParaAutomacaoVideo(gravacaoId),
-          Promise.resolve(demandas.filter(d => d.gravacao_id === gravacaoId))
-        ]);
-        /* considera TODOS os roteiros vinculados de cada demanda ativa
-           dessa gravação, não só o "primeiro" (roteiro_id) — uma
-           demanda pode ter vários roteiros desde a Parte 2 da
-           auditoria (multi-roteiro). Guarda também o código da demanda
-           já existente, para mostrar junto do aviso "já tem demanda" —
-           evita duplicidade acidental mostrando de cara qual demanda
-           (e qual código) já cobre aquele roteiro. */
-        const comRoteiro = new Map();
-        existentes.forEach(d => (d.roteiros_vinculados || []).forEach(r => {
-          if (!comRoteiro.has(r.id)) comRoteiro.set(r.id, d.codigo || '');
-        }));
-        roteirosDaGravacao = (roteiros || []).map(r => ({
-          ...r, ja_tem_demanda: comRoteiro.has(r.id), codigo_existente: comRoteiro.get(r.id) || ''
-        }));
-        roteiroSelecionados = new Set(roteirosDaGravacao.filter(r => !r.ja_tem_demanda).map(r => r.id));
-        cx.innerHTML = roteirosHTML();
-        cx.querySelectorAll('[data-roteiro]').forEach(chk => {
-          chk.onchange = () => {
-            if (chk.checked) roteiroSelecionados.add(chk.dataset.roteiro); else roteiroSelecionados.delete(chk.dataset.roteiro);
-            atualizarBotao();
-          };
-        });
-        atualizarBotao();
-      } catch (e) { cx.innerHTML = '<p class="fraca">Não foi possível carregar os roteiros.</p>'; }
-    };
-
-    m.querySelector('#vgd-gerar').onclick = async () => {
-      const gravacaoId = selGravacao.value;
-      if (!gravacaoId || !roteiroSelecionados.size) return;
-      const btn = m.querySelector('#vgd-gerar');
-      const agrupada = agrupando();
-      btn.disabled = true; btn.textContent = 'Gerando…';
-      try {
-        if (agrupada) {
-          await B7.DB.gerarDemandaAgrupadaVideo(
-            gravacaoId, [...roteiroSelecionados],
-            m.querySelector('#vgd-titulo').value.trim() || null,
-            m.querySelector('#vgd-videomaker').value || null,
-            m.querySelector('#vgd-prazo').value || null
-          );
-          m.fechar();
-          B7.UI.toast('1 demanda criada com ' + roteiroSelecionados.size + ' roteiro' + (roteiroSelecionados.size === 1 ? '' : 's') + '.');
-        } else {
-          const resultado = await B7.DB.gerarDemandasDeGravacaoVideo(
-            gravacaoId, [...roteiroSelecionados],
-            m.querySelector('#vgd-videomaker').value || null,
-            m.querySelector('#vgd-prazo').value || null
-          );
-          /* Os códigos finais (#N) só existem de verdade depois de
-             persistidos — a alocação é atômica no banco (ver
-             migration_video_nova_demanda_sequencia.sql). Por isso o
-             resumo acima ("N roteiros selecionados") nunca promete
-             números, e só agora, com o resultado confirmado da escrita,
-             é que os códigos aparecem. */
-          const criadas = (resultado || []).filter(r => !r.ja_existia);
-          const existentes2 = (resultado || []).filter(r => r.ja_existia);
-          const novas = criadas.length;
-          const existiam = existentes2.length;
-          const codigosNovos = criadas.map(r => r.codigo).filter(Boolean);
-          m.fechar();
-          let msg = novas + ' demanda' + (novas === 1 ? '' : 's') + ' de vídeo criada' + (novas === 1 ? '' : 's') + ' com sucesso';
-          if (codigosNovos.length) msg += ' (' + codigosNovos.join(', ') + ')';
-          msg += '.';
-          if (existiam) msg += ' ' + existiam + ' roteiro' + (existiam === 1 ? ' já tinha' : 's já tinham') + ' demanda.';
-          B7.UI.toast(msg, { tempo: 6000 });
-        }
-        abrir();
-      } catch (e) {
-        btn.disabled = false; btn.textContent = agrupada ? 'Gerar demanda' : 'Gerar demandas';
-        B7.UI.toast(e.message || 'Não foi possível gerar as demandas.');
-      }
-    };
-
-    /* Pré-seleção: chegando aqui a partir do link em "Nova demanda de
-       edição" (cliente/gravação já escolhidos ali), evita fazer a
-       pessoa escolher tudo de novo — mesmos dados, mesmo formulário,
-       sem tela nova. */
-    if (preSel.clienteId) {
-      selCliente.value = preSel.clienteId;
-      selCliente.onchange().then(() => {
-        if (preSel.gravacaoId && [...selGravacao.options].some(o => o.value === preSel.gravacaoId)) {
-          selGravacao.value = preSel.gravacaoId;
-          selGravacao.onchange();
-        }
-      });
-    }
-  }
-
-  /* Roteiro(s) vinculado(s) — Parte 2 da auditoria: uma demanda pode
-     ter vários roteiros. Escrita sempre substitui o conjunto inteiro
-     (video_definir_roteiros), então tanto remover um chip quanto
-     adicionar um novo mandam a lista completa de novo. */
-  function roteirosVinculadosHTML(d, podeEditar) {
-    const vinc = d.roteiros_vinculados || [];
-    const lista = vinc.length
-      ? '<div class="vd-roteiros-vinculo-lista">' + vinc.map(r =>
-          '<div class="vd-rv-chip"><span>' + esc(r.titulo || '(sem título)') + '</span>' +
-          (podeEditar ? '<button type="button" data-remover-roteiro="' + r.id + '" title="Remover" aria-label="Remover">×</button>' : '') +
-          '</div>').join('') + '</div>'
-      : '<div class="vd-so-leitura">' + (podeEditar ? 'Nenhum roteiro vinculado ainda.' : 'sem vínculo') + '</div>';
-    if (!podeEditar) return lista;
-    return lista +
-      (d.gravacao_id
-        ? '<div class="vd-link-linha"><select class="campo" id="vd-dt-roteiro-add"><option value="">Adicionar roteiro…</option></select>' +
-          '<button class="b" id="vd-dt-roteiro-add-bt" disabled>Adicionar</button></div>'
-        : '<p class="fraca">Vincule uma gravação acima para poder escolher roteiros dela.</p>');
-  }
+  function modalGerarDemandas() { modalNovaDemanda(); }
 
   /* =================================================================
      DETALHE DE UMA DEMANDA — layout principal + painel lateral
@@ -2104,21 +2031,83 @@ B7.Video = (function () {
     return linhasParaObjetos(bruto);
   }
 
+  /* Casca visual trocada nesta rodada (arrastar-e-soltar + prévia do
+     arquivo antes de processar) — a lógica de dados (achar cabeçalho,
+     reconhecer coluna, parseCSV/parseXLSX/linhasParaObjetos,
+     staging em lote no banco, resolução de cliente linha a linha,
+     confirmação explícita) NÃO foi tocada, só passou a rodar um passo
+     depois: ao clicar "Continuar", não mais no instante do <input
+     type=file> disparar onchange. */
+  const ACEITA_IMPORTACAO = '.csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  function formatarTamanhoArquivo(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
   function modalImportar() {
+    let arquivoEscolhido = null;
+
     const m = B7.UI.modal(
       '<h3>Importar planilha (CSV ou XLSX)</h3>' +
       '<p class="fraca">O sistema encontra sozinho a linha de cabeçalho (mesmo com linhas de lixo antes ' +
       'dela) e reconhece colunas parecidas com Cliente, Briefing/Título, Cód., Pacote, Prazo, Mês/Competência ' +
       'e Status, em qualquer ordem. Uma coluna de cliente é obrigatória — as demais são opcionais e, quando ' +
       'faltar título, a linha ainda é importada com um título de referência. No XLSX só a primeira aba do ' +
-      'arquivo é lida.</p>' +
-      '<input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="vd-imp-arquivo" data-foco>' +
+      'arquivo é lida. Nada é gravado como demanda antes de você revisar e confirmar.</p>' +
+      '<div class="vd-imp-solta" id="vd-imp-solta" tabindex="0" role="button" aria-label="Escolher arquivo">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M12 4l-4 4M12 4l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>' +
+        '<b>Arraste um arquivo aqui</b>' +
+        '<span>ou <u>selecionar arquivo</u> — CSV ou XLSX</span>' +
+        '<input type="file" accept="' + ACEITA_IMPORTACAO + '" id="vd-imp-arquivo" class="vd-imp-input-oculto" data-foco>' +
+      '</div>' +
+      '<div class="vd-imp-arquivo-escolhido" id="vd-imp-escolhido" hidden></div>' +
       '<div id="vd-imp-resultado"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>', { larga: true });
 
-    m.querySelector('#vd-imp-arquivo').onchange = async ev => {
-      const arquivo = ev.target.files[0];
-      if (!arquivo) return;
+    const zona = m.querySelector('#vd-imp-solta');
+    const input = m.querySelector('#vd-imp-arquivo');
+    const cxEscolhido = m.querySelector('#vd-imp-escolhido');
+    const area = m.querySelector('#vd-imp-resultado');
+
+    function mostrarArquivo(arquivo) {
+      arquivoEscolhido = arquivo;
+      zona.hidden = true;
+      const ehXlsx = /\.xlsx?$/i.test(arquivo.name);
+      cxEscolhido.hidden = false;
+      cxEscolhido.innerHTML =
+        '<div class="vd-imp-arquivo-info">' +
+          '<span class="vd-imp-arquivo-tipo">' + (ehXlsx ? 'XLSX' : 'CSV') + '</span>' +
+          '<div class="vd-imp-arquivo-nome"><b>' + esc(arquivo.name) + '</b><small>' + formatarTamanhoArquivo(arquivo.size) + '</small></div>' +
+        '</div>' +
+        '<div class="acoes-inline">' +
+          '<button class="b fina contorno" id="vd-imp-trocar">Trocar arquivo</button>' +
+          '<button class="b pri fina" id="vd-imp-continuar">Continuar</button>' +
+        '</div>';
+      cxEscolhido.querySelector('#vd-imp-trocar').onclick = () => {
+        arquivoEscolhido = null;
+        input.value = '';
+        cxEscolhido.hidden = true; cxEscolhido.innerHTML = '';
+        area.innerHTML = '';
+        zona.hidden = false;
+      };
+      cxEscolhido.querySelector('#vd-imp-continuar').onclick = () => processarArquivo(arquivo);
+    }
+
+    input.onchange = () => { if (input.files[0]) mostrarArquivo(input.files[0]); };
+    zona.onclick = e => { if (e.target !== input) input.click(); };
+    zona.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } };
+    ['dragenter', 'dragover'].forEach(ev => zona.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation(); zona.classList.add('sobre');
+    }));
+    ['dragleave', 'dragend', 'drop'].forEach(ev => zona.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation(); zona.classList.remove('sobre');
+    }));
+    zona.addEventListener('drop', e => {
+      const arquivo = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (arquivo) mostrarArquivo(arquivo);
+    });
+
+    async function processarArquivo(arquivo) {
       const ehXlsx = /\.xlsx?$/i.test(arquivo.name);
       let linhas;
       try {
@@ -2129,13 +2118,12 @@ B7.Video = (function () {
       }
       if (!linhas.length) { B7.UI.toast('Planilha vazia.'); return; }
 
-      const area = m.querySelector('#vd-imp-resultado');
       area.innerHTML = '<p>Processando ' + linhas.length + ' linha(s)…</p>';
       let loteId;
       try { loteId = await B7.DB.importarPlanilhaVideo(arquivo.name, linhas); }
       catch (e) { area.innerHTML = '<p class="vd-erro">' + esc(e.message || 'Falha ao importar.') + '</p>'; return; }
       await desenharResultadoImportacao(area, loteId);
-    };
+    }
   }
 
   async function desenharResultadoImportacao(area, loteId) {

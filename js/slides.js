@@ -92,16 +92,33 @@ B7.Slides = (function () {
     const lista = [];
     let secao = 1;
 
-    /* ---- objetivo do mês ---- */
-    const objetivo = campo('OBJETIVO PRINCIPAL', l.objetivo) +
-                     campo('O QUE A ESTRATÉGIA PRETENDE GERAR', l.objetivo_detalhe);
-    if (objetivo) {
+    /* ---- objetivo do mês ----
+       Três blocos distintos, não um parágrafo solto: o objetivo principal
+       em destaque, o período/mês como contexto ao lado, e o complemento
+       ("o que a estratégia pretende gerar") como apoio abaixo — a mesma
+       separação hero/meta/apoio que a spec pediu para não sobrar espaço
+       vazio em volta de um único bloco de texto. */
+    if (!vazio(l.objetivo) || !vazio(l.objetivo_detalhe)) {
+      const meta = [
+        ['MÊS', rotulo(l)],
+        periodo(l) ? ['PERÍODO', periodo(l)] : null
+      ].filter(Boolean);
       lista.push({ secao: 'OBJETIVO', num: null,
         html: abreSecao(secao++, rotulo(l).toUpperCase(), 'Objetivo do mês') +
-              '<div class="sl-duas">' + objetivo + '</div>' });
+          '<div class="sl-objetivo">' +
+            (vazio(l.objetivo) ? '' : '<div class="sl-objetivo-hero"><b>OBJETIVO PRINCIPAL</b>' +
+              paragrafos(l.objetivo) + '</div>') +
+            (meta.length ? '<div class="sl-objetivo-meta">' + meta.map(([r, v]) =>
+              '<div><b>' + r + '</b><span>' + esc(v) + '</span></div>').join('') + '</div>' : '') +
+            (vazio(l.objetivo_detalhe) ? '' : '<div class="sl-objetivo-apoio">' +
+              campo('O QUE A ESTRATÉGIA PRETENDE GERAR', l.objetivo_detalhe) + '</div>') +
+          '</div>' });
     }
 
-    /* ---- posicionamento ---- */
+    /* ---- posicionamento ----
+       Grade de campos, não coluna corrida: cada campo real do sistema
+       (a marca se posiciona como / tom de voz / proposta única de valor /
+       percepção desejada) ocupa seu próprio espaço, sem virar cartão. */
     const pos = campo('A MARCA SE POSICIONA COMO', l.posicionamento) +
                 campo('TOM DE VOZ', l.tom_voz) +
                 campo('PROPOSTA ÚNICA DE VALOR', l.puv) +
@@ -109,7 +126,7 @@ B7.Slides = (function () {
     if (pos) {
       lista.push({ secao: 'POSICIONAMENTO', num: null,
         html: abreSecao(secao++, 'COMO A MARCA SE APRESENTA', 'Posicionamento') +
-              '<div class="sl-duas">' + pos + '</div>' });
+              '<div class="sl-pos-grid">' + pos + '</div>' });
     }
 
     /* ---- pilares: até 4 por slide, sem encolher letra ---- */
@@ -209,7 +226,7 @@ B7.Slides = (function () {
               '<th>POST</th><th>FORMATO</th><th>DATA</th>' + (pilares.length ? '<th>PILAR</th>' : '') +
               '<th>TÍTULO</th>' +
             '</tr></thead><tbody>' +
-            parte.map((c, k) => '<tr>' +
+            parte.map((c, k) => '<tr data-cid="' + esc(c.id) + '" title="Ver detalhes">' +
               '<td class="d">' + String(i + k + 1).padStart(2, '0') + '</td>' +
               '<td>' + esc(c.tipo) + '</td>' +
               '<td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
@@ -243,7 +260,7 @@ B7.Slides = (function () {
               '<th>DATA</th><th>CANAL</th><th>FORMATO</th>' + (pilares.length ? '<th>PILAR</th>' : '') +
               '<th>CONTEÚDO</th>' +
             '</tr></thead><tbody>' +
-            parte.map(c => '<tr>' +
+            parte.map(c => '<tr data-cid="' + esc(c.id) + '" title="Ver detalhes">' +
               '<td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
               '<td>' + esc(c.canal || '') + '</td>' +
               '<td>' + esc(c.tipo) + '</td>' +
@@ -272,7 +289,53 @@ B7.Slides = (function () {
   /* quantos slides o documento terá, sem montar o HTML */
   const contar = ctx => slidesDo(ctx).length + (ctx.incluirCapa ? 1 : 0);
 
-  return { documentoHTML, slidesDo, capa, slide, contar };
+  /* Espera fontes/imagens antes de medir — mesma regra usada na prévia.
+     Compartilhada aqui porque tanto o modal de exportação (PNG "todos os
+     slides") quanto a apresentação chamam esta função. */
+  async function esperarPronto(area) {
+    try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+    try {
+      const imgs = [...area.querySelectorAll('img')];
+      await Promise.all(imgs.map(img => img.complete ? Promise.resolve() :
+        new Promise(res => { img.onload = img.onerror = res; })));
+    } catch (e) {}
+  }
+
+  function nomeArquivoSlide(ctx, indice) {
+    const base = [ctx.linha.cliente_nome, ctx.linha.nome ||
+      (MESES[ctx.linha.mes - 1] + ' ' + ctx.linha.ano), 'SLIDE_' + String(indice + 1).padStart(2, '0')];
+    return B7.Export.nomeArquivo(base, 'png');
+  }
+
+  /* --------------------------------------------------------------- PNG
+     Mesmo caminho de captura já usado no sistema para roteiros
+     (B7.Export.paraCanvas → html2canvas): um arquivo por slide. Único
+     ponto que gera PNG de todos os slides — usado pelo modal de
+     exportação e pela apresentação (B7.PreviewLinha), sem duplicar. */
+  async function baixarTodosPNG(ctx) {
+    const area = document.getElementById('area-impressao');
+    const guardado = area.innerHTML;
+    area.style.display = 'block';
+    area.classList.add('modo-slides');
+    area.innerHTML = documentoHTML(ctx);
+    await esperarPronto(area);
+    const paginas = [...area.querySelectorAll('.slide')];
+    paginas.forEach(f => B7.Folha.ajustar(f));
+    try {
+      for (let i = 0; i < paginas.length; i++) {
+        const canvas = await B7.Export.paraCanvas(paginas[i]);
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        B7.Export.baixarBlob(blob, nomeArquivoSlide(ctx, i));
+        await new Promise(res => setTimeout(res, 300));   // o navegador não gosta de rajada
+      }
+    } finally {
+      area.innerHTML = guardado;
+      area.style.display = '';
+      area.classList.remove('modo-slides');
+    }
+  }
+
+  return { documentoHTML, slidesDo, capa, slide, contar, esperarPronto, nomeArquivoSlide, baixarTodosPNG };
 })();
 
 
@@ -287,7 +350,15 @@ B7.Slides = (function () {
 B7.PreviewLinha = (function () {
   let estado = { paginas: [], i: 0, formato: 'slides', ctx: null };
 
-  function abrir(ctx, formato) {
+  /* Ponto de entrada dedicado ("Apresentar Linha Editorial"): reúne os
+     dados (mesma função usada pelo PDF, B7.BaixarLinha.reunir — fonte
+     única) e abre direto em 16:9, sem passar pelo modal de exportação. */
+  async function apresentar(linhaId) {
+    const ctx = await B7.BaixarLinha.reunir(linhaId, { incluirCapa: true });
+    await abrir(ctx, 'slides');
+  }
+
+  async function abrir(ctx, formato) {
     estado.ctx = ctx;
     estado.formato = formato || 'slides';
     estado.i = 0;
@@ -300,17 +371,26 @@ B7.PreviewLinha = (function () {
         B7.UI.esc(ctx.linha.nome || (B7.UI.MESES[ctx.linha.mes - 1] + ' ' + ctx.linha.ano)) + '</b>' +
         '<span class="fmt">' + (estado.formato === 'slides' ? 'Apresentação 16:9' : 'Documento A4') + '</span>' +
         '<div class="preview-acoes">' +
-          '<button class="b p" data-baixar>Baixar PDF</button>' +
-          '<button class="b p" data-fechar>Fechar</button>' +
+          '<div class="menu"><button class="b p" data-menu-baixar">Baixar ▾</button><div class="lista">' +
+            '<button data-baixar-pdf>PDF</button>' +
+            (estado.formato === 'slides' ? '<button data-baixar-png-atual>PNG — este slide</button>' +
+              '<button data-baixar-png-todos>PNG — todos os slides</button>' : '') +
+          '</div></div>' +
+          '<button class="b p" data-fechar>Fechar (Esc)</button>' +
         '</div>' +
       '</div>' +
-      '<div class="preview-palco"><div class="preview-in" id="preview-in"></div></div>' +
+      '<div class="preview-palco">' +
+        '<button class="preview-seta esq" data-ant aria-label="Slide anterior">‹</button>' +
+        '<div class="preview-in" id="preview-in"></div>' +
+        '<button class="preview-seta dir" data-prox aria-label="Próximo slide">›</button>' +
+      '</div>' +
       '<div class="preview-nav">' +
-        '<button class="b p" data-ant>Anterior</button>' +
+        '<button class="b p" data-ant2>Anterior</button>' +
         '<span class="cont" id="preview-cont">—</span>' +
-        '<button class="b p" data-prox>Próximo</button>' +
+        '<button class="b p" data-prox2>Próximo</button>' +
       '</div>';
     document.body.appendChild(caixa);
+    B7.UI.ligarMenus(caixa);
 
     /* monta as páginas de verdade, fora da tela, e depois mostra uma a uma */
     const area = document.getElementById('area-impressao');
@@ -320,6 +400,7 @@ B7.PreviewLinha = (function () {
     area.innerHTML = estado.formato === 'slides'
       ? B7.Slides.documentoHTML(ctx)
       : B7.FolhaLinha.documentoMedidoHTML(ctx, area);
+    await B7.Slides.esperarPronto(area);
     area.querySelectorAll('.le-folha, .slide').forEach(f => B7.Folha.ajustar(f));
     estado.paginas = [...area.querySelectorAll('.slide, .folha')].map(el => el.outerHTML);
     area.innerHTML = guardado;
@@ -330,7 +411,12 @@ B7.PreviewLinha = (function () {
       caixa.remove();
       document.removeEventListener('keydown', tecla);
     };
+    /* Um detalhe read-only (clique num item) abre por cima como modal
+       comum (B7.UI.modal, que também escuta Esc) — quando ele está
+       aberto, Esc precisa fechar só o detalhe, não a apresentação
+       inteira por baixo. */
     const tecla = e => {
+      if (document.querySelector('.fundo-modal')) return;
       if (e.key === 'Escape') fechar();
       if (e.key === 'ArrowRight' || e.key === 'PageDown') ir(1);
       if (e.key === 'ArrowLeft' || e.key === 'PageUp') ir(-1);
@@ -338,12 +424,32 @@ B7.PreviewLinha = (function () {
     document.addEventListener('keydown', tecla);
 
     caixa.querySelector('[data-fechar]').onclick = fechar;
-    caixa.querySelector('[data-ant]').onclick = () => ir(-1);
-    caixa.querySelector('[data-prox]').onclick = () => ir(1);
-    caixa.querySelector('[data-baixar]').onclick = async () => {
+    caixa.querySelectorAll('[data-ant],[data-ant2]').forEach(b => b.onclick = () => ir(-1));
+    caixa.querySelectorAll('[data-prox],[data-prox2]').forEach(b => b.onclick = () => ir(1));
+    caixa.querySelector('[data-baixar-pdf]').onclick = async () => {
       fechar();
       await B7.BaixarLinha.gerar(ctx, estado.formato);
     };
+    const btnPngAtual = caixa.querySelector('[data-baixar-png-atual]');
+    if (btnPngAtual) btnPngAtual.onclick = () => baixarPNGAtual();
+    const btnPngTodos = caixa.querySelector('[data-baixar-png-todos]');
+    if (btnPngTodos) btnPngTodos.onclick = () => B7.Slides.baixarTodosPNG(ctx);
+
+    /* swipe (touch): esquerda = próximo, direita = anterior — só no
+       palco, para não atrapalhar a rolagem do resto da tela */
+    const palco = caixa.querySelector('.preview-palco');
+    let tx = null, ty = null;
+    palco.addEventListener('touchstart', e => {
+      if (!e.touches.length) return;
+      tx = e.touches[0].clientX; ty = e.touches[0].clientY;
+    }, { passive: true });
+    palco.addEventListener('touchend', e => {
+      if (tx === null) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - tx, dy = t.clientY - ty;
+      tx = ty = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) ir(dx < 0 ? 1 : -1);
+    }, { passive: true });
 
     function ir(d) {
       estado.i = Math.max(0, Math.min(estado.paginas.length - 1, estado.i + d));
@@ -353,19 +459,18 @@ B7.PreviewLinha = (function () {
       const alvo = caixa.querySelector('#preview-in');
       alvo.innerHTML = estado.paginas[estado.i] || '';
       caixa.querySelector('#preview-cont').textContent =
-        String(estado.i + 1).padStart(2, '0') + ' / ' +
-        String(estado.paginas.length).padStart(2, '0');
-      caixa.querySelector('[data-ant]').disabled = estado.i === 0;
-      caixa.querySelector('[data-prox]').disabled = estado.i >= estado.paginas.length - 1;
+        (estado.i + 1) + ' / ' + estado.paginas.length;
+      caixa.querySelectorAll('[data-ant],[data-ant2]').forEach(b => b.disabled = estado.i === 0);
+      caixa.querySelectorAll('[data-prox],[data-prox2]').forEach(b => b.disabled = estado.i >= estado.paginas.length - 1);
       escalar();
+      ligarDetalhe(alvo, ctx);
     }
     function escalar() {
-      const palco = caixa.querySelector('.preview-palco');
       const dentro = caixa.querySelector('#preview-in');
       const pagina = dentro.firstElementChild;
       if (!pagina) return;
       const f = Math.min(
-        (palco.clientWidth - 40) / pagina.offsetWidth,
+        (palco.clientWidth - 100) / pagina.offsetWidth,
         (palco.clientHeight - 40) / pagina.offsetHeight);
       dentro.style.transform = 'scale(' + f + ')';
       dentro.style.width = pagina.offsetWidth + 'px';
@@ -375,5 +480,64 @@ B7.PreviewLinha = (function () {
     desenhar();
   }
 
-  return { abrir };
+  /* ------------------------------------------------- interação (item 12)
+     Clicar num item de conteúdo (linha da tabela de postagens, ou o
+     cabeçalho de um slide de criativo) abre um detalhe read-only por
+     cima, sem sair do slide atual. Só os campos reais do conteúdo. */
+  function ligarDetalhe(area, ctx) {
+    area.querySelectorAll('[data-cid]').forEach(el => el.onclick = () => abrirDetalheConteudo(el.dataset.cid, ctx));
+  }
+  function abrirDetalheConteudo(id, ctx) {
+    const c = (ctx.conteudos || []).find(x => x.id === id);
+    if (!c) return;
+    const esc = B7.UI.esc;
+    const pilar = (ctx.pilares || []).find(p => p.id === c.pilar_id);
+    const campo = (rot, v) => (!v || !String(v).trim()) ? '' :
+      '<div class="le-campo"><b>' + rot + '</b><div class="le-txt"><p>' + esc(v) + '</p></div></div>';
+    B7.UI.modal('<h3>' + esc(c.titulo || 'Sem título') + '</h3>' +
+      '<div class="sub">' + esc(c.tipo || '') +
+        (c.canal ? ' · ' + esc(c.canal) : '') +
+        (c.data_postagem ? ' · ' + esc(B7.UI.dataBR(c.data_postagem)) : '') +
+        (pilar ? ' · ' + esc(pilar.nome || 'Pilar sem nome') : '') + '</div>' +
+      campo('OBJETIVO', c.objetivo) +
+      campo('IDEIA GERAL', c.ideia_geral) +
+      campo('LEGENDA', c.legenda) +
+      campo('CTA', c.cta) +
+      '<div class="acoes"><button class="b pri" data-fecha>Voltar à apresentação</button></div>');
+  }
+
+  /* --------------------------------------------------------------- PNG
+     Mesmo caminho de captura já usado no sistema para roteiros
+     (B7.Export.paraCanvas → html2canvas), aplicado aos slides da Linha
+     Editorial. O slide atual é recriado fora da tela (mesmo caminho de
+     baixarTodosPNG) em vez de capturar o nó visível do preview — esse nó
+     está dentro de #preview-in, que tem um `transform:scale()` para
+     caber no palco, e capturar um elemento transformado dá resultado
+     inconsistente (tamanho/nitidez variam com o zoom da tela no
+     momento). Capturando sempre em tamanho real, o PNG de "este slide"
+     sai idêntico ao de "todos os slides". */
+  async function baixarPNGAtual() {
+    const area = document.getElementById('area-impressao');
+    const guardado = area.innerHTML;
+    area.style.display = 'block';
+    area.classList.add('modo-slides');
+    area.innerHTML = estado.paginas[estado.i] || '';
+    await B7.Slides.esperarPronto(area);
+    const pagina = area.querySelector('.slide, .folha');
+    try {
+      if (!pagina) return;
+      B7.Folha.ajustar(pagina);
+      const canvas = await B7.Export.paraCanvas(pagina);
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      B7.Export.baixarBlob(blob, B7.Slides.nomeArquivoSlide(estado.ctx, estado.i));
+    } catch (e) {
+      B7.UI.toast('Não foi possível gerar o PNG.', { tipo: 'erro' });
+    } finally {
+      area.innerHTML = guardado;
+      area.style.display = '';
+      area.classList.remove('modo-slides');
+    }
+  }
+
+  return { abrir, apresentar };
 })();
