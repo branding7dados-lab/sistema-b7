@@ -716,20 +716,59 @@ B7.Video = (function () {
       '</select>' +
       '<label class="rot">Vincular a uma gravação deste cliente (opcional)</label>' +
       '<select class="campo" id="vd-nd-gravacao"><option value="">Carregando…</option></select>' +
+      '<p class="vd-nd-hint" id="vd-nd-gravacao-hint" hidden></p>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" id="vd-nd-salvar">Criar demanda</button></div>');
 
     const selGravacao = m.querySelector('#vd-nd-gravacao');
+    const hintGravacao = m.querySelector('#vd-nd-gravacao-hint');
+    const esconderHint = () => { hintGravacao.hidden = true; hintGravacao.innerHTML = ''; };
+    let gravacoesDoCliente = [];
     const carregarGravacoes = async clienteId => {
       selGravacao.innerHTML = '<option value="">Carregando…</option>';
+      esconderHint();
       try {
         const gs = await B7.DB.gravacoesDoClienteParaVideo(clienteId);
+        gravacoesDoCliente = gs || [];
         selGravacao.innerHTML = '<option value="">Sem vínculo</option>' +
           gs.map(g => '<option value="' + g.id + '">' + esc(g.nome) + (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') + '</option>').join('');
-      } catch (e) { selGravacao.innerHTML = '<option value="">Sem vínculo</option>'; }
+      } catch (e) { gravacoesDoCliente = []; selGravacao.innerHTML = '<option value="">Sem vínculo</option>'; }
     };
     carregarGravacoes(m.querySelector('#vd-nd-cliente').value);
     m.querySelector('#vd-nd-cliente').onchange = e => carregarGravacoes(e.target.value);
+
+    /* Ao escolher uma gravação já com status "Gravado" (mesmo critério
+       do botão "Gerar de gravação"), se ela tiver roteiros, oferece o
+       atalho pra gerar 1 demanda por roteiro selecionado em vez de
+       criar essa única demanda manual — sem duplicar a lógica aqui:
+       fecha este modal e abre o outro já com cliente + gravação
+       escolhidos, sem precisar selecionar tudo de novo. A criação
+       manual sem gravação/roteiro (ou com gravação ainda não
+       "Gravado", ou sem usar este atalho) continua funcionando
+       exatamente como sempre. */
+    selGravacao.onchange = async () => {
+      const gid = selGravacao.value;
+      const gravacaoEscolhida = gravacoesDoCliente.find(g => g.id === gid);
+      if (!gid || !gravacaoEscolhida || gravacaoEscolhida.status !== 'Gravado') { esconderHint(); return; }
+      hintGravacao.hidden = false;
+      hintGravacao.textContent = 'Verificando roteiros desta gravação…';
+      try {
+        const roteiros = await B7.DB.roteirosParaAutomacaoVideo(gid);
+        if (roteiros && roteiros.length) {
+          const n = roteiros.length;
+          hintGravacao.innerHTML = 'Esta gravação tem ' + n + ' roteiro' + (n === 1 ? '' : 's') + '. ' +
+            '<button type="button" class="vd-nd-hint-bt" id="vd-nd-ir-roteiros">Selecionar roteiros e gerar demandas em lote →</button>';
+          const bt = hintGravacao.querySelector('#vd-nd-ir-roteiros');
+          bt.onclick = () => {
+            const clienteId = m.querySelector('#vd-nd-cliente').value;
+            m.fechar();
+            modalGerarDemandas({ clienteId, gravacaoId: gid });
+          };
+        } else {
+          esconderHint();
+        }
+      } catch (e) { esconderHint(); }
+    };
 
     m.querySelector('#vd-nd-salvar').onclick = async () => {
       const titulo = m.querySelector('#vd-nd-titulo').value.trim();
@@ -1086,11 +1125,14 @@ B7.Video = (function () {
      js/editor.js (tela de Gravação/roteiro), módulo grande e não
      relacionado a este recurso.
      ================================================================= */
-  function modalGerarDemandas() {
+  function modalGerarDemandas(preSel) {
+    preSel = preSel || {};
     let gravacoesCache = null, roteiroSelecionados = new Set(), roteirosDaGravacao = [];
 
     const cascaHTML = () =>
       '<h3>Gerar demandas de edição a partir de uma gravação</h3>' +
+      '<p class="sub">Cada roteiro marcado vira sua própria demanda, com título do roteiro e um código ' +
+        'próprio dessa gravação (#1, #2, #3…), continuando de onde ela já estiver.</p>' +
       '<label class="rot">Cliente</label>' +
       '<select class="campo" id="vgd-cliente" data-foco>' +
         '<option value="">Escolha um cliente</option>' +
@@ -1099,10 +1141,11 @@ B7.Video = (function () {
       '<label class="rot">Gravação (status "Gravado")</label>' +
       '<select class="campo" id="vgd-gravacao"><option value="">Escolha um cliente primeiro</option></select>' +
       '<div id="vgd-roteiros"></div>' +
+      '<div id="vgd-resumo" class="vd-resumo-selecao" hidden></div>' +
       '<label class="vd-roteiro-item vd-agrupar"><input type="checkbox" id="vgd-agrupar">' +
         '<span>Agrupar os roteiros marcados em uma única demanda</span></label>' +
-      '<p class="fraca vd-agrupar-dica">Desmarcado (padrão): 1 demanda por roteiro marcado. ' +
-        'Marcado: todos os roteiros marcados entram juntos em 1 demanda só.</p>' +
+      '<p class="fraca vd-agrupar-dica">Desmarcado (padrão): 1 demanda por roteiro marcado, cada uma com seu ' +
+        'próprio código #N. Marcado: todos os roteiros marcados entram juntos em 1 demanda só (sem numeração #N).</p>' +
       '<div id="vgd-titulo-agrupada" hidden><label class="rot">Título da demanda</label>' +
         '<input class="campo" id="vgd-titulo" placeholder="Deixe em branco para usar o nome da gravação"></div>' +
       '<div class="vd-grid-2">' +
@@ -1124,7 +1167,9 @@ B7.Video = (function () {
           '<label class="vd-roteiro-item"><input type="checkbox" data-roteiro="' + r.id + '"' +
             (roteiroSelecionados.has(r.id) ? ' checked' : '') + (r.ja_tem_demanda ? ' disabled' : '') + '>' +
             '<span>' + esc(r.titulo || '(sem título)') + (r.objetivo ? ' <i class="fraca">— ' + esc(r.objetivo) + '</i>' : '') + '</span>' +
-            (r.ja_tem_demanda ? '<span class="vd-badge-ja">já tem demanda</span>' : '') +
+            (r.ja_tem_demanda
+              ? '<span class="vd-badge-ja">já tem demanda' + (r.codigo_existente ? ' ' + esc(r.codigo_existente) : '') + '</span>'
+              : '') +
           '</label>').join('') + '</div>';
     }
 
@@ -1135,9 +1180,21 @@ B7.Video = (function () {
 
     function atualizarBotao() {
       const btn = m.querySelector('#vgd-gerar');
+      const n = roteiroSelecionados.size;
       if (btn) {
-        btn.disabled = roteiroSelecionados.size === 0;
+        btn.disabled = n === 0;
         btn.textContent = agrupando() ? 'Gerar demanda' : 'Gerar demandas';
+      }
+      const resumo = m.querySelector('#vgd-resumo');
+      if (resumo) {
+        if (n === 0) { resumo.hidden = true; }
+        else {
+          resumo.hidden = false;
+          resumo.textContent = agrupando()
+            ? n + ' roteiro' + (n === 1 ? '' : 's') + ' selecionado' + (n === 1 ? '' : 's') + ' — será criada 1 demanda agrupada.'
+            : n + ' roteiro' + (n === 1 ? '' : 's') + ' selecionado' + (n === 1 ? '' : 's') + ' — ' +
+              (n === 1 ? 'será criada 1 demanda de vídeo.' : 'serão criadas ' + n + ' demandas de vídeo.');
+        }
       }
     }
 
@@ -1180,9 +1237,17 @@ B7.Video = (function () {
         /* considera TODOS os roteiros vinculados de cada demanda ativa
            dessa gravação, não só o "primeiro" (roteiro_id) — uma
            demanda pode ter vários roteiros desde a Parte 2 da
-           auditoria (multi-roteiro). */
-        const comRoteiro = new Set(existentes.flatMap(d => (d.roteiros_vinculados || []).map(r => r.id)));
-        roteirosDaGravacao = (roteiros || []).map(r => ({ ...r, ja_tem_demanda: comRoteiro.has(r.id) }));
+           auditoria (multi-roteiro). Guarda também o código da demanda
+           já existente, para mostrar junto do aviso "já tem demanda" —
+           evita duplicidade acidental mostrando de cara qual demanda
+           (e qual código) já cobre aquele roteiro. */
+        const comRoteiro = new Map();
+        existentes.forEach(d => (d.roteiros_vinculados || []).forEach(r => {
+          if (!comRoteiro.has(r.id)) comRoteiro.set(r.id, d.codigo || '');
+        }));
+        roteirosDaGravacao = (roteiros || []).map(r => ({
+          ...r, ja_tem_demanda: comRoteiro.has(r.id), codigo_existente: comRoteiro.get(r.id) || ''
+        }));
         roteiroSelecionados = new Set(roteirosDaGravacao.filter(r => !r.ja_tem_demanda).map(r => r.id));
         cx.innerHTML = roteirosHTML();
         cx.querySelectorAll('[data-roteiro]').forEach(chk => {
@@ -1217,11 +1282,23 @@ B7.Video = (function () {
             m.querySelector('#vgd-videomaker').value || null,
             m.querySelector('#vgd-prazo').value || null
           );
-          const novas = (resultado || []).filter(r => !r.ja_existia).length;
-          const existiam = (resultado || []).filter(r => r.ja_existia).length;
+          /* Os códigos finais (#N) só existem de verdade depois de
+             persistidos — a alocação é atômica no banco (ver
+             migration_video_nova_demanda_sequencia.sql). Por isso o
+             resumo acima ("N roteiros selecionados") nunca promete
+             números, e só agora, com o resultado confirmado da escrita,
+             é que os códigos aparecem. */
+          const criadas = (resultado || []).filter(r => !r.ja_existia);
+          const existentes2 = (resultado || []).filter(r => r.ja_existia);
+          const novas = criadas.length;
+          const existiam = existentes2.length;
+          const codigosNovos = criadas.map(r => r.codigo).filter(Boolean);
           m.fechar();
-          B7.UI.toast(novas + ' demanda' + (novas === 1 ? '' : 's') + ' criada' + (novas === 1 ? '' : 's') +
-            (existiam ? ' (' + existiam + ' já existia' + (existiam === 1 ? '' : 'm') + ')' : '') + '.');
+          let msg = novas + ' demanda' + (novas === 1 ? '' : 's') + ' de vídeo criada' + (novas === 1 ? '' : 's') + ' com sucesso';
+          if (codigosNovos.length) msg += ' (' + codigosNovos.join(', ') + ')';
+          msg += '.';
+          if (existiam) msg += ' ' + existiam + ' roteiro' + (existiam === 1 ? ' já tinha' : 's já tinham') + ' demanda.';
+          B7.UI.toast(msg, { tempo: 6000 });
         }
         abrir();
       } catch (e) {
@@ -1229,6 +1306,20 @@ B7.Video = (function () {
         B7.UI.toast(e.message || 'Não foi possível gerar as demandas.');
       }
     };
+
+    /* Pré-seleção: chegando aqui a partir do link em "Nova demanda de
+       edição" (cliente/gravação já escolhidos ali), evita fazer a
+       pessoa escolher tudo de novo — mesmos dados, mesmo formulário,
+       sem tela nova. */
+    if (preSel.clienteId) {
+      selCliente.value = preSel.clienteId;
+      selCliente.onchange().then(() => {
+        if (preSel.gravacaoId && [...selGravacao.options].some(o => o.value === preSel.gravacaoId)) {
+          selGravacao.value = preSel.gravacaoId;
+          selGravacao.onchange();
+        }
+      });
+    }
   }
 
   /* Roteiro(s) vinculado(s) — Parte 2 da auditoria: uma demanda pode

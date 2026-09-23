@@ -532,6 +532,10 @@ B7.Rota = (function () {
       b.classList.add('on');
       document.body.dataset.aba = b.dataset.aba;
       B7.Editor.aplicarZoom();
+      /* a prévia só ganha layout real ao virar a aba ativa no celular —
+         se a escala é automática, a medida feita enquanto ela estava
+         escondida não vale nada; reavalia agora que .folha é medível. */
+      if (b.dataset.aba === 'previa') B7.Editor.reavaliarEscalaAtual();
     });
 
     /* ---- navegação por data-ir, em qualquer lugar ----

@@ -630,7 +630,41 @@ B7.Editor = (function () {
     }).catch(() => {});
   }
 
-  /* ==================================================== prévia */
+  /* ==================================================== prévia
+     Ajuste automático de escala (B7.Folha.ajustar) mede scrollHeight/
+     clientHeight da própria folha — e um elemento dentro de um
+     ancestral com display:none não tem layout nenhum, então as duas
+     medidas voltam 0 e "estourou" nunca é true. No celular a coluna
+     .previa fica display:none enquanto a aba ativa é "Editor" (ver
+     styles/editor.css, @media max-width:1000px) — era exatamente aí
+     que o Automático travava em 100%: o cálculo rodava cedo demais,
+     contra uma folha invisível, e nunca mais era refeito. */
+  function folhaMedivel(folha) {
+    return !!folha && folha.offsetParent !== null;
+  }
+
+  function medirEAjustar(folha, r) {
+    if (!folhaMedivel(folha)) return; /* a folha sumiu de novo (trocou de aba/roteiro) antes do frame chegar */
+    const novo = B7.Folha.ajustar(folha);
+    if (novo !== +r.escala) {
+      r.escala = novo;
+      B7.Save.campo('roteiros', r.id, { escala: novo });
+      const pc = document.querySelector('#escrita .escala .pc');
+      if (pc) pc.textContent = Math.round(novo * 100) + '%';
+    }
+    B7.Folha.marcarOverflow(folha);
+  }
+
+  /* Espera as fontes carregarem (fonte ainda não trocada = a medida sai
+     errada) e um frame de layout depois disso (o reflow de um
+     display:none → flex/block não está garantido pronto no mesmo tick
+     em todo Android/Chrome) antes de medir de verdade. */
+  function agendarMedicao(folha, r) {
+    const medir = () => requestAnimationFrame(() => medirEAjustar(folha, r));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir);
+    else medir();
+  }
+
   function renderPrevia() {
     const r = E.roteiros.find(x => x.id === E.atual);
     const cx = document.getElementById('folhas');
@@ -647,18 +681,33 @@ B7.Editor = (function () {
 
     const folha = cx.querySelector('.folha');
     if (r.escala_automatica) {
-      const novo = B7.Folha.ajustar(folha);
-      if (novo !== +r.escala) {
-        r.escala = novo;
-        B7.Save.campo('roteiros', r.id, { escala: novo });
-        const pc = document.querySelector('#escrita .escala .pc');
-        if (pc) pc.textContent = Math.round(novo * 100) + '%';
+      if (folhaMedivel(folha)) {
+        agendarMedicao(folha, r);
+      } else {
+        /* não dá pra medir agora (aba Editor no celular, ou a coluna
+           ainda não tem largura) — usa a última escala conhecida até
+           reavaliarEscalaAtual() rodar quando a prévia ficar visível. */
+        folha.style.setProperty('--fs', r.escala || 1);
       }
     } else {
       folha.style.setProperty('--fs', r.escala || 1);
     }
     B7.Folha.marcarOverflow(folha);
     aplicarZoom();
+  }
+
+  /* Chamado quando a prévia passa a ficar visível de verdade: ao trocar
+     pra aba "Prévia" no celular, ou quando a tela cresce o bastante pra
+     as 3 colunas caberem lado a lado de novo. Se a escala é automática
+     e a última medição rodou com a folha escondida, ela não vale nada —
+     recalcula com a folha já visível. Não faz nada se a escala for
+     manual (100%, A−/A+): aí o usuário decidiu o valor, não o sistema. */
+  function reavaliarEscalaAtual() {
+    const r = E.roteiros.find(x => x.id === E.atual);
+    if (!r || !r.escala_automatica) return;
+    const folha = document.querySelector('#folhas .folha');
+    if (!folhaMedivel(folha)) return;
+    agendarMedicao(folha, r);
   }
 
   function aplicarZoom() {
@@ -747,12 +796,15 @@ B7.Editor = (function () {
   }
 
   window.addEventListener('resize', () => {
-    if (document.getElementById('tela-editor').classList.contains('ativa')) aplicarZoom();
+    if (document.getElementById('tela-editor').classList.contains('ativa')) {
+      aplicarZoom();
+      reavaliarEscalaAtual(); /* orientação/breakpoint pode ter tornado a folha (i)medível */
+    }
   });
 
   return { abrir, novoRoteiro, duplicarRoteiro, excluirRoteiro, imprimir, editarGravacao,
            enviarParaAprovacao,
            baixar, espiar, apresentar, contexto,
-           menuStatus, modoFoco, zoom, zoomAjustar, aplicarZoom,
+           menuStatus, modoFoco, zoom, zoomAjustar, aplicarZoom, reavaliarEscalaAtual,
            get estado() { return E; } };
 })();
