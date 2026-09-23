@@ -224,7 +224,6 @@ B7.Video = (function () {
           ? '<button class="b fina contorno" id="vd-descartados">Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
           : '') +
         '<button class="b fina contorno" id="vd-pacotes">Pacotes</button>' +
-        '<button class="b fina contorno" id="vd-gerar">Gerar de gravação</button>' +
         '<button class="b fina contorno" id="vd-gestao">Gestão</button>' +
         '<button class="b contorno" id="vd-importar">Importar planilha</button>' +
         '<button class="b pri" id="vd-nova">+ Nova demanda</button></div>' +
@@ -248,8 +247,6 @@ B7.Video = (function () {
     if (btDescartados) btDescartados.onclick = () => modalDescartados(descartados);
     const btPacotes = document.getElementById('vd-pacotes');
     if (btPacotes) btPacotes.onclick = () => modalPacotes();
-    const btGerar = document.getElementById('vd-gerar');
-    if (btGerar) btGerar.onclick = () => modalGerarDemandas();
     const btGestao = document.getElementById('vd-gestao');
     if (btGestao) btGestao.onclick = () => modalGestao();
     const btVerAnteriores = document.getElementById('vd-ver-anteriores');
@@ -1257,17 +1254,20 @@ B7.Video = (function () {
 
   /* =================================================================
      AUTOMAÇÃO GRAVAÇÃO → EDIÇÃO — antes vivia num modal separado
-     (modalGerarDemandas, com sua própria cópia da lógica de checklist
-     de roteiros). Fundida nesta rodada dentro do modal "Nova demanda
-     de edição" (modalNovaDemanda acima), que agora é a ÚNICA fonte de
-     verdade pra criação manual E geração em lote — a equipe não
-     precisa mais criar a demanda, abrir, vincular gravação e roteiro
-     um por um, nem abrir uma segunda tela pra gerar em lote.
-     modalGerarDemandas continua existindo só como atalho (era exportado
-     em `return {...}` e acionado pelo botão "Gerar de gravação") — abre
-     o MESMO modal unificado, sem nenhuma lógica própria de criação.
+     (modalGerarDemandas, acionado por um botão próprio "Gerar de
+     gravação", com sua própria cópia da lógica de checklist de
+     roteiros). Fundida dentro do modal "Nova demanda de edição"
+     (modalNovaDemanda acima), que agora é a ÚNICA fonte de verdade pra
+     criação manual E geração em lote — a equipe não precisa mais criar
+     a demanda, abrir, vincular gravação e roteiro um por um, nem abrir
+     uma segunda tela pra gerar em lote: basta escolher a gravação
+     dentro do próprio "+ Nova demanda". O botão "Gerar de gravação" e
+     a função modalGerarDemandas foram removidos — eles só abriam esse
+     mesmo modal sem nenhuma lógica própria, e mantê-los como um botão
+     separado abrindo uma tela idêntica só confundia (relatado pelo
+     usuário: "a tela de Gerar de gravação tá com a mesma tela do Nova
+     demanda").
      ================================================================= */
-  function modalGerarDemandas() { modalNovaDemanda(); }
 
   /* =================================================================
      DETALHE DE UMA DEMANDA — layout principal + painel lateral
@@ -2193,5 +2193,5 @@ B7.Video = (function () {
     };
   }
 
-  return { abrir, abrirDetalhe, modalGerarDemandas };
+  return { abrir, abrirDetalhe };
 })();
