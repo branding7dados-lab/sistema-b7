@@ -66,8 +66,39 @@
   background:var(--acento-suave);color:var(--acento);padding:3px 9px;border-radius:20px;}
 .pb-totais{font-size:13px;color:var(--ink-3);margin-top:4px;}
 .pb-resumo{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px;}
-.pb-resumo-item{display:inline-flex;align-items:center;gap:6px;}
+/* o chip do resumo virou botão (clicar filtra por aquele status). O reset
+   abaixo existe só para o botão renderizar EXATAMENTE como o <span> que
+   ele substituiu — nenhuma caixa, nenhum padding, nenhuma cor nova. */
+.pb-resumo-item{display:inline-flex;align-items:center;gap:6px;
+  padding:0;margin:0;border:0;background:none;font:inherit;color:inherit;
+  text-align:left;cursor:pointer;border-radius:20px;}
 .pb-resumo-item b{font-size:12px;font-weight:700;color:var(--ink-2);}
+.pb-resumo-item:focus-visible{outline:2px solid var(--acento);outline-offset:3px;}
+.pb-resumo-item.on{box-shadow:0 0 0 2px var(--acento);}
+
+/* --------------------------------------------------------- filtros */
+/* No celular é um botão "Filtros" recolhido (os controles só descem
+   quando ele é aberto). Em tela larga o botão some e a barra fica
+   sempre aberta, em linha — ver @media (min-width: 761px). */
+.pb-filtros{margin-bottom:12px;}
+.pb-filtros-botao{display:inline-flex;align-items:center;gap:7px;background:var(--card);
+  border:1px solid var(--borda);border-radius:99px;padding:6px 13px;min-height:34px;
+  font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;transition:var(--t);}
+.pb-filtros-botao svg{width:15px;height:15px;flex:0 0 auto;}
+.pb-filtros-botao:hover{border-color:var(--borda-forte);}
+.pb-filtros-botao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.pb-filtros.com-filtro .pb-filtros-botao{border-color:var(--acento);color:var(--acento);}
+.pb-filtros-n{font-size:10.5px;font-weight:700;line-height:1.5;background:var(--acento);color:#fff;
+  border-radius:99px;padding:1px 7px;}
+.pb-filtros-corpo{display:flex;flex-direction:column;gap:7px;margin-top:9px;}
+.pb-filtros.fechado .pb-filtros-corpo{display:none;}
+.pb-filtros-corpo .campo.fina{padding:7px 10px;font-size:12.5px;line-height:1.4;margin:0;}
+select.pb-filtro{width:100%;min-width:0;background-color:var(--card);}
+select.pb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weight:600;}
+.pb-agrupar{align-self:flex-start;}
+.pb-totais-limpar{font:inherit;font-size:12px;font-weight:600;color:var(--acento);
+  background:none;border:0;padding:0 0 0 4px;cursor:pointer;text-decoration:underline;}
+.pb-totais-limpar:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 
 /* --------------------------------------------------- grupos por cliente */
 .pb-grupos{display:flex;flex-direction:column;gap:22px;}
@@ -107,6 +138,12 @@
   cursor:pointer;transition:var(--t);}
 .pb-acao:hover{background:var(--card);border-color:var(--borda-forte);color:var(--acento);}
 .pb-acao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+/* o ícone das ações secundárias só existe em tela larga; no celular o
+   botão continua sendo o mesmo texto de sempre */
+.pb-ico{display:none;}
+
+/* cabeçalho de grupo quando o agrupamento é por status */
+.pb-grupo-cab-status{gap:8px;}
 
 /* --------------------------------------------------- estados e seções */
 .pb-estado{background:var(--card);border:1px dashed var(--borda-forte);border-radius:14px;
@@ -149,8 +186,100 @@
 .pb-pendente-titulo{font-size:13.5px;font-weight:600;color:var(--ink);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 
+/* =====================================================================
+   TELA LARGA (>= 761px) — a rodada de desktop mora TODA aqui dentro.
+
+   O celular foi aprovado como está, então nenhuma regra desta rodada
+   pode valer abaixo de 761px: este bloco é disjunto dos dois @media de
+   celular (max-width: 760px e max-width: 620px) que vêm depois.
+
+   O que muda aqui: a tela usa a largura toda; os grupos viram colunas
+   de verdade (o dia inteiro cabe em uma tela em vez de três); o cartão
+   fica compacto e perde a repetição do nome do cliente (ou do chip de
+   status, quando o agrupamento é por status — aí quem repete é o chip);
+   e as ações secundárias viram ícone, visíveis no hover e no foco de
+   teclado, com o espaço reservado para nada pular de lugar.
+   ===================================================================== */
+@media (min-width: 761px){
+  .pb-tela{max-width:1480px;}
+
+  /* faixa de dias mais enxuta: a informação é pouca, a altura era muita */
+  .pb-faixa-caixa{margin-bottom:14px;}
+  .pb-dia{padding:6px 6px;gap:0;}
+  .pb-dia-num{font-size:17px;}
+  .pb-dia-semana{font-size:10px;}
+  .pb-dia-contagem, .pb-dia-hoje{font-size:10px;min-height:13px;}
+  .pb-seta{width:34px;}
+  .pb-seta svg{width:18px;height:18px;}
+
+  /* barra de filtros sempre aberta e em linha */
+  .pb-filtros{margin-bottom:16px;}
+  .pb-filtros-botao{display:none;}
+  .pb-filtros .pb-filtros-corpo,
+  .pb-filtros.fechado .pb-filtros-corpo{display:flex;flex-direction:row;align-items:center;
+    flex-wrap:wrap;gap:8px;margin-top:0;}
+  select.pb-filtro{width:auto;max-width:200px;padding-right:28px;}
+  .pb-limpar{margin-left:2px;}
+
+  .pb-dia-cab{margin-bottom:14px;}
+
+  /* ---------------------------------------------------------- a grade
+     Colunas de verdade (2–4 conforme a largura), com o grupo inteiro —
+     cabeçalho + cartões — dentro da mesma coluna. Um cliente com uma
+     publicação só deixa de virar uma faixa vazia de tela inteira. */
+  .pb-grupos{display:block;columns:330px 4;column-gap:18px;}
+  .pb-grupo{display:inline-block;width:100%;margin:0 0 16px;
+    break-inside:avoid;page-break-inside:avoid;}
+  .pb-grupo-cab{margin-bottom:7px;}
+  .pb-avatar.md{width:24px;height:24px;border-radius:8px;}
+  .pb-avatar.vazio.md{font-size:10px;}
+  .pb-cards{grid-template-columns:minmax(0,1fr);gap:8px;}
+
+  /* ---------------------------------------------------------- cartão */
+  .pb-card{padding:10px 12px;gap:5px;}
+  .pb-card-titulo{font-size:13.5px;line-height:1.3;}
+  .pb-card-meta{font-size:11px;gap:5px;}
+  /* o nome do cliente já está no cabeçalho do grupo */
+  .pb-grupos[data-agrupar="cliente"] .pb-card-cliente{display:none;}
+  .pb-grupos[data-agrupar="cliente"] .pb-card-topo{justify-content:flex-start;}
+  /* agrupado por status quem repete é o chip — o cliente PRECISA ficar */
+  .pb-grupos[data-agrupar="status"] .pb-card-topo > .status-conteudo{display:none;}
+
+  /* ------------------------------------------------------- as ações
+     "Copiar legenda" continua escrito (é a ação mais usada). As outras
+     três viram ícone com aria-label/title, transparentes até o mouse
+     entrar no cartão ou o teclado chegar nelas — NUNCA display:none,
+     então continuam na ordem de tabulação. O espaço é reservado sempre,
+     então o cartão não muda de altura no hover. */
+  .pb-card-acoes{gap:4px;align-items:center;margin-top:1px;}
+  .pb-acao{font-size:11px;padding:4px 9px;min-height:26px;border-radius:8px;}
+  .pb-acao-ico{padding:0;width:26px;min-height:26px;
+    display:inline-flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity .16s, background var(--t), color var(--t);}
+  .pb-acao-ico .pb-acao-tx{display:none;}
+  .pb-acao-ico .pb-ico{display:block;width:15px;height:15px;}
+  .pb-card:hover .pb-acao-ico,
+  .pb-card:focus-within .pb-acao-ico{opacity:1;pointer-events:auto;}
+  @media (prefers-reduced-motion:reduce){ .pb-acao-ico{transition:none;} }
+
+  /* ------------------------------------------- seções de apoio
+     Mesmo comportamento de sempre, só aproveitando a largura: a lista
+     de próximos dias deixa de ser um trilho com rolagem horizontal. */
+  .pb-proximos-lista{display:grid;grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+    gap:9px;overflow:visible;}
+  .pb-proximo{min-width:0;}
+  .pb-pendentes-lista{display:grid;grid-template-columns:repeat(auto-fill, minmax(420px, 1fr));gap:6px;}
+}
+
 /* ------------------------------------------------------------- celular */
 @media (max-width: 760px){
+  /* o botão "Filtros" é novo e ocupa uma linha; devolvemos parte da
+     altura encurtando a margem da faixa de dias, para as publicações
+     não descerem mais do que o necessário */
+  .pb-faixa-caixa{margin-bottom:10px;}
+  .pb-filtros{margin-bottom:10px;}
+  .pb-filtros-corpo .seg-vista{width:100%;}
+  .pb-filtros-corpo .seg-vista button{flex:1 1 0;}
   .pb-cab{gap:12px;}
   .pb-cab-acoes{width:100%;}
   .pb-seletor-data{flex:1 1 auto;}
