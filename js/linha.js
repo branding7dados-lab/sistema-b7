@@ -1514,7 +1514,17 @@ B7.Linha = (function () {
               : '<div class="vr-vazio"><div><b>Nenhum roteiro vinculado</b>' +
                 '<small>O texto do vídeo vive no editor de roteiros, não aqui.</small></div>' +
                 '<button class="b fina contorno" data-vincular>Vincular roteiro existente</button></div>') +
-        '</div></div>';
+        '</div>' +
+        /* Legenda do Reel: é o texto que vai NO POST (com emoji, quebras de
+           linha e hashtags), não o roteiro falado — esse continua vivendo no
+           editor de roteiros. O campo já existia na tabela conteudos para
+           todos os formatos; só não estava exposto aqui, então Card e
+           Carrossel tinham legenda e Reel não. Mesmo padrão dos outros: o
+           botão copia o valor ATUAL do textarea (ver o handler de
+           #btn-copiar-legenda mais abaixo, que serve os três formatos). */
+        C.campo('LEGENDA', c.legenda, t + ' data-campo="legenda"') +
+        '<button type="button" class="b fina contorno" id="btn-copiar-legenda" aria-label="Copiar legenda">Copiar legenda</button>' +
+        '</div>';
     }
     if (c.tipo === 'Card') {
       especifico = '<div class="bloco-formato"><h4>Card estático</h4>' +

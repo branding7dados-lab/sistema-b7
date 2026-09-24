@@ -260,6 +260,10 @@ B7.FolhaLinha = (function () {
         especifico += '<div class="le-campo"><b>ROTEIRO</b><div class="le-txt"><p>' +
           esc(roteiro.titulo) + '</p></div></div>';
       }
+      /* Legenda também no Reel: Card e Carrossel já mostravam a deles na
+         folha, e o cliente que recebe o PDF precisa ver o texto do post
+         do Reel pelo mesmo motivo. Sai sozinha quando está vazia. */
+      especifico += bloco('LEGENDA', c.legenda);
     }
 
     return '<div class="le-criativo">' +

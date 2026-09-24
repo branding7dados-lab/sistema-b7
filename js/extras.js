@@ -470,7 +470,11 @@ B7.QuickView = (function () {
       corpo += campo('HEADLINE', conteudo.headline) +
         (roteiro ? '<div class="qv-campo"><b>ROTEIRO VINCULADO</b><p>' +
           esc(roteiro.titulo || 'Sem título') + '</p></div>'
-          : '<div class="qv-campo"><b>ROTEIRO</b><p class="fraco">Nenhum roteiro vinculado.</p></div>');
+          : '<div class="qv-campo"><b>ROTEIRO</b><p class="fraco">Nenhum roteiro vinculado.</p></div>') +
+        /* mesmo "Copiar legenda" de Card e Carrossel — o Reel também tem
+           legenda de post, e quem abre a visualização rápida normalmente
+           está justamente indo copiar esse texto pra publicar */
+        campoLegenda(conteudo.legenda);
     }
     corpo += campo('CTA', conteudo.cta);
 
