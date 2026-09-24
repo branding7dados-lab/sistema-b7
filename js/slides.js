@@ -637,6 +637,7 @@ B7.PreviewLinha = (function () {
         alvo.classList.add(direcao === 'avanca' ? 'entra-avanca' : 'entra-volta');
       }
       alvo.innerHTML = estado.paginas[estado.i] || '';
+      encenar(alvo);
       caixa.querySelector('#preview-cont').textContent =
         (estado.i + 1) + ' / ' + estado.paginas.length;
       caixa.querySelectorAll('[data-ant],[data-ant2]').forEach(b => b.disabled = estado.i === 0);
@@ -661,6 +662,78 @@ B7.PreviewLinha = (function () {
        o botão precisa nascer dizendo "Sair da tela cheia" e o palco já
        escalado para a tela inteira */
     pintarBotaoTelaCheia();
+  }
+
+  /* ------------------------------------------------------- encenação
+     Distribui a entrada dos elementos do slide na ordem de leitura. A
+     lista de seletores é lida num querySelectorAll só, de propósito: o
+     DOM devolve em ordem de documento, que é justamente a ordem em que a
+     pessoa lê o slide — cabeçalho, número da seção, título, e então o
+     conteúdo. Nada de ordenar à mão por tipo.
+
+     Um elemento cujo ancestral já vai animar é PULADO: animar pai e
+     filho ao mesmo tempo multiplica opacidades e faz o filho piscar duas
+     vezes. Por isso `.sl-pilar` entra inteiro, e não cada pedaço dele.
+
+     Só o palco da apresentação passa por aqui. As exportações montam o
+     slide em #area-impressao e capturam de lá, sem nenhuma destas
+     classes — o PDF e o PNG não têm como sair com item apagado. */
+  const ALVOS_ANIMADOS = [
+    /* Cabeçalho: os filhos entram um a um, e por isso `.sl-secao` (o
+       contêiner deles) NÃO entra na lista — se entrasse, o filtro de
+       aninhamento abaixo pularia os filhos e o cabeçalho inteiro
+       apareceria de um golpe só, que é justamente o que se quer evitar
+       na abertura do slide. */
+    '.sl-topo', '.sl-num', '.sl-kicker', '.sl-secao h2', '.sl-risco', '.sl-cont',
+    /* capa */
+    '.sl-capa-in > *',
+    /* blocos de conteúdo */
+    '.sl-objetivo-hero', '.sl-objetivo-meta', '.sl-objetivo-apoio',
+    '.sl-pos-grid > *', '.sl-campo',
+    '.sl-numeros > div', '.sl-dist > div', '.sl-chips',
+    '.sl-pilar', '.sl-barra-total',
+    '.sl-tabela thead', '.sl-tabela tbody tr',
+    '.sl-cri-topo', '.sl-cri-t', '.sl-slides .sl-slide', '.sl-txt', '.sl-links',
+    '.sl-pe'
+  ].join(',');
+
+  /* Ritmo: os primeiros itens respiram, o resto acelera — uma tabela de
+     12 linhas com passo fixo levaria a apresentação inteira para
+     terminar. O teto garante que nenhum slide passe de ~1s pra assentar,
+     por mais itens que tenha. */
+  function atrasoDe(i) {
+    const passo = i < 4 ? 70 : i < 9 ? 45 : 26;
+    const base = i < 4 ? 0 : i < 9 ? 280 : 505;
+    const inicio = i < 4 ? 0 : i < 9 ? 4 : 9;
+    return Math.min(base + (i - inicio) * passo, 1000);
+  }
+
+  function encenar(palco) {
+    const slide = palco.firstElementChild;
+    if (!slide) return;
+    const marcados = [];
+    let i = 0;
+    slide.querySelectorAll(ALVOS_ANIMADOS).forEach(el => {
+      if (marcados.some(m => m.contains(el))) return;   /* já anima junto com um ancestral */
+      marcados.push(el);
+      el.style.setProperty('--d', atrasoDe(i++) + 'ms');
+      /* o número grande e as barras têm entrada própria: o número cresce
+         um fio, a barra preenche da esquerda para a direita */
+      if (el.matches('.sl-numeros > div')) el.classList.add('sl-ani-numero');
+      /* o risco sob o título é uma régua: cresce da esquerda, como se
+         estivesse sendo traçada, em vez de simplesmente surgir */
+      else if (el.matches('.sl-risco')) el.classList.add('sl-ani-barra');
+      else el.classList.add('sl-ani');
+    });
+    /* as barras internas entram depois da linha que as contém, somando um
+       atraso próprio à posição do item — parecem estar sendo preenchidas
+       assim que a linha se assenta */
+    slide.querySelectorAll('.sl-dist .ba i, .sl-barra-total > *').forEach((b, k) => {
+      const linha = b.closest('.sl-ani, .sl-ani-numero');
+      const base = linha ? parseInt(linha.style.getPropertyValue('--d'), 10) || 0 : 0;
+      b.style.setProperty('--d', (base + 120 + k * 60) + 'ms');
+      b.classList.add('sl-ani-barra');
+    });
   }
 
   /* ------------------------------------------------- interação (item 12)

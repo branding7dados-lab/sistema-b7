@@ -493,23 +493,65 @@
 .preview-in{transform-origin:center center;}
 .preview-in .slide,.preview-in .folha{margin:0;box-shadow:0 30px 80px -30px rgba(0,0,0,.8);}
 
-/* ------------------------------------------------ passagem de slide
-   O slide novo entra pelo lado para onde a apresentação está indo. A
-   animação é do CONTEÚDO (.preview-in já carrega o scale calculado em
-   JS no style inline, então animar `transform` aqui sobrescreveria a
-   escala): por isso o movimento vai no filho, que não tem transform
-   próprio. Curta de propósito — passagem de slide de reunião, não
-   efeito de apresentação de firma. */
-@keyframes sl-entra-avanca{
-  from{opacity:0;transform:translateX(38px);}
-  to{opacity:1;transform:translateX(0);}
+/* =================================================== movimento do palco
+   Duas camadas, e a divisão entre elas é o que faz parecer apresentação
+   e não carrossel: a PÁGINA troca de forma quase imperceptível (só o
+   suficiente pra dar a sensação de virada), e quem realmente se
+   apresenta é o CONTEÚDO, entrando em cascata na ordem de leitura.
+   Movimento grande na página inteira compete com o conteúdo e cansa em
+   reunião — o slide deve chegar "já assentado" e o olho ser conduzido
+   item a item.
+
+   Tudo aqui é escopado em .preview-in (o palco da apresentação). As
+   exportações — PDF e PNG, os dois — capturam de #area-impressao, que
+   nunca recebe estas classes: nenhum arquivo exportado corre o risco de
+   sair com elemento no meio da animação, apagado ou deslocado.
+
+   Só `opacity` e `transform` são animados (o compositor dá conta sem
+   recalcular layout), e por isso a barra cresce com scaleX em vez de
+   `width`, que forçaria reflow a cada quadro. */
+
+/* a página: fade curto com um respiro de escala, sem deslocamento lateral */
+@keyframes sl-pagina{
+  from{opacity:0;transform:scale(.992);}
+  to{opacity:1;transform:scale(1);}
 }
-@keyframes sl-entra-volta{
-  from{opacity:0;transform:translateX(-38px);}
-  to{opacity:1;transform:translateX(0);}
+.preview-in.entra-avanca > *,
+.preview-in.entra-volta > *{animation:sl-pagina .34s cubic-bezier(.22,.61,.36,1) both;}
+
+/* o item: sobe pouco e revela — deslocamento pequeno com easing longo
+   (expo out) lê como "assentar", enquanto deslocamento grande com easing
+   curto lê como "empurrão" */
+@keyframes sl-item{
+  from{opacity:0;transform:translateY(10px);}
+  to{opacity:1;transform:translateY(0);}
 }
-.preview-in.entra-avanca > *{animation:sl-entra-avanca .26s cubic-bezier(.22,.61,.36,1) both;}
-.preview-in.entra-volta  > *{animation:sl-entra-volta  .26s cubic-bezier(.22,.61,.36,1) both;}
+/* o número grande também cresce um fio: é o elemento de maior peso
+   visual do slide e merece chegar com presença */
+@keyframes sl-numero{
+  from{opacity:0;transform:translateY(8px) scale(.94);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+/* barras preenchem a partir da esquerda, como se estivessem sendo
+   medidas na hora */
+@keyframes sl-barra{
+  from{transform:scaleX(0);}
+  to{transform:scaleX(1);}
+}
+
+.preview-in .sl-ani{
+  animation:sl-item .52s cubic-bezier(.16,1,.3,1) both;
+  animation-delay:var(--d,0ms);
+}
+.preview-in .sl-ani-numero{
+  animation:sl-numero .6s cubic-bezier(.16,1,.3,1) both;
+  animation-delay:var(--d,0ms);
+}
+.preview-in .sl-ani-barra{
+  transform-origin:left center;
+  animation:sl-barra .72s cubic-bezier(.16,1,.3,1) both;
+  animation-delay:var(--d,0ms);
+}
 
 /* tela cheia de verdade (Fullscreen API): sem o respiro que fazia
    sentido dentro da janela — a tela inteira é o palco */
@@ -521,10 +563,16 @@
 .preview-fundo.tela-cheia .preview-nav:hover,
 .preview-fundo.tela-cheia .preview-nav:focus-within{opacity:1;}
 
-/* quem pediu menos movimento no sistema recebe a troca seca */
+/* quem pediu menos movimento no sistema vê o slide inteiro de uma vez,
+   sem cascata e sem fade — e, importante, com tudo VISÍVEL: as animações
+   usam `both`, então sem esta regra o conteúdo ficaria parado no quadro
+   inicial (opacity:0) e o slide apareceria vazio */
 @media (prefers-reduced-motion:reduce){
   .preview-in.entra-avanca > *,
-  .preview-in.entra-volta  > *{animation:none;}
+  .preview-in.entra-volta  > *,
+  .preview-in .sl-ani,
+  .preview-in .sl-ani-numero,
+  .preview-in .sl-ani-barra{animation:none;opacity:1;transform:none;}
   .preview-fundo.tela-cheia .preview-topo,
   .preview-fundo.tela-cheia .preview-nav{transition:none;}
 }
