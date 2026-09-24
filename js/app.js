@@ -124,7 +124,16 @@ B7.Rota = (function () {
     }
     if (partes[0] === 'linha' && partes[1]) {
       mostrar('tela-dashboard');
-      return B7.Linha.abrir(partes[1], partes[2]);
+      /* ?conteudo=<id> abre a linha já com o Criativo aberto — deep-link
+         por ID, usado por "Publicações do Dia". */
+      return B7.Linha.abrir(partes[1], partes[2], params.get('conteudo') || null);
+    }
+    /* PUBLICAÇÕES DO DIA — visão diária cross-cliente sobre os conteúdos
+       que já existem nas Linhas Editoriais. #/publicacoes abre no dia de
+       hoje; #/publicacoes/AAAA-MM-DD abre num dia específico. */
+    if (partes[0] === 'publicacoes' && B7.Publicacoes) {
+      mostrar('tela-dashboard');
+      return B7.Publicacoes.abrir(partes[1]);
     }
     if (partes[0] === 'linhas') { mostrar('tela-dashboard'); return B7.Conteudo.abrirLinhasGlobais(); }
     if (partes[0] === 'kanban') { mostrar('tela-dashboard'); return B7.Kanban.abrir(); }

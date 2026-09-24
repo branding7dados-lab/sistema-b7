@@ -538,6 +538,57 @@ B7.DB = (function () {
         .order('data_postagem', { ascending: false }).limit(limite || 80));
     },
 
+    /* ================================================ PUBLICAÇÕES DO DIA
+       Visão diária cross-cliente (js/publicacoes.js). Lê os MESMOS
+       registros da Linha Editorial (public.conteudos) — não existe tabela
+       de "publicações", nem campo duplicado de data: se alguém muda
+       `data_postagem` na Linha, o item aparece no dia novo aqui sozinho,
+       porque é a mesma linha do banco.
+
+       Escopo de data SEMPRE: nunca traz o histórico inteiro pro
+       navegador. O índice `conteudos_data_idx` (btree em data_postagem,
+       já existente) é o que sustenta o recorte.
+
+       Cliente, linha e pilar vêm embutidos (embed do PostgREST pelas FKs
+       conteudos_client_id_fkey / _linha_id_fkey / _pilar_id_fkey) pra não
+       virar uma consulta por card. */
+    async publicacoesDoPeriodo(inicio, fim) {
+      return ok(await sb().from('conteudos')
+        .select('id,linha_id,client_id,pilar_id,script_id,tipo,position,titulo,' +
+                'objetivo,ideia_geral,tema,canal,data_postagem,status,headline,' +
+                'sub_headline,cta,legenda,direcao,observacao_design,created_at,' +
+                'clientes(id,nome,logo_url),linhas_editoriais(id,nome,mes,ano),pilares(id,nome)')
+        .is('deleted_at', null)
+        .gte('data_postagem', inicio).lte('data_postagem', fim)
+        .order('data_postagem', { ascending: true })
+        .order('position', { ascending: true })
+        .order('created_at', { ascending: true }));
+    },
+
+    /* Só o que o bloco "Próximas publicações" precisa contar: uma consulta
+       por intervalo (ex.: os próximos 14 dias), agrupada em memória — nunca
+       uma consulta por dia. */
+    async contagemPublicacoesPorDia(inicio, fim) {
+      return ok(await sb().from('conteudos').select('id,data_postagem')
+        .is('deleted_at', null)
+        .gte('data_postagem', inicio).lte('data_postagem', fim)
+        .order('data_postagem', { ascending: true }));
+    },
+
+    /* Pendentes de dias anteriores: condição DERIVADA (data já passou e o
+       status ainda não é "Publicado"). Esta consulta só LÊ — quem promove
+       "Programado" → "Publicado" continua sendo, e só, a Linha Editorial
+       (verificarPostagensAutomaticas em js/linha.js). */
+    async publicacoesPendentes(antesDe, desde, limite) {
+      let q = sb().from('conteudos')
+        .select('id,linha_id,client_id,tipo,titulo,canal,data_postagem,status,' +
+                'legenda,clientes(id,nome,logo_url)')
+        .is('deleted_at', null)
+        .lt('data_postagem', antesDe).neq('status', 'Publicado');
+      if (desde) q = q.gte('data_postagem', desde);
+      return ok(await q.order('data_postagem', { ascending: false }).limit(limite || 50));
+    },
+
     /* Conteúdos da linha editorial com postagem dentro do intervalo. É o
        recorte da semana: não traz o mês inteiro. */
     async conteudosDoPeriodo(linhaId, inicio, fim) {

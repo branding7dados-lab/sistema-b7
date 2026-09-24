@@ -67,7 +67,11 @@ B7.Linha = (function () {
                 ['criativos', 'Criativos'], ['postagens', 'Postagens'], ['design', 'Produção']];
 
   /* ------------------------------------------------------------ abrir */
-  async function abrir(id, aba) {
+  /* `conteudoId` (opcional) é o deep-link por ID vindo de fora — hoje,
+     de "Publicações do Dia" (#/linha/<id>/criativos?conteudo=<id>). Só
+     por ID: nunca se procura um registro por título ou data. Se o ID não
+     estiver nesta linha, a linha abre normal e nada mais acontece. */
+  async function abrir(id, aba, conteudoId) {
     L.aba = ABAS.some(([k]) => k === aba) ? aba : 'geral';
     B7.Dashboard.marcarNav('#/linhas');
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
@@ -93,6 +97,7 @@ B7.Linha = (function () {
     B7.Rota.titulo([L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano), L.linha.cliente_nome]);
     render();
     verificarPostagensAutomaticas();
+    if (conteudoId && (L.conteudos || []).some(c => c.id === conteudoId)) abrirConteudo(conteudoId);
   }
 
   /* Um conteúdo Programado cuja data de postagem já passou foi, na

@@ -1,0 +1,176 @@
+/* =====================================================================
+   B7 — PUBLICAÇÕES DO DIA (js/publicacoes.js)
+
+   Mesma linguagem visual do resto do sistema: tokens de global.css
+   (--card, --borda, --ink-*, --r*), os mesmos botões (.b, .b.pri,
+   .b.contorno) e o MESMO chip de status (.status-conteudo, definido em
+   global.css e montado por B7.Linha.chipConteudo). Aqui só existe o que
+   é layout desta tela — nenhuma cor de status nova, nenhuma tipografia
+   própria.
+   ===================================================================== */
+
+.pb-tela{max-width:1180px;}
+
+/* ------------------------------------------------------------ cabeçalho */
+.pb-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;margin-bottom:18px;}
+.pb-cab h1{font-family:'Archivo';font-weight:800;font-size:22px;letter-spacing:-.02em;}
+.pb-cab p{font-size:13.5px;color:var(--ink-3);margin-top:4px;max-width:56ch;}
+.pb-cab-acoes{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+
+.pb-seletor-data{display:inline-flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--borda-forte);border-radius:11px;padding:6px 10px;min-height:42px;}
+.pb-seletor-data .pb-rot{font-size:11px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-4);}
+.pb-seletor-data input{border:0;background:transparent;color:var(--ink);font:inherit;
+  font-size:13px;min-width:132px;}
+.pb-seletor-data input:focus{outline:none;}
+.pb-seletor-data:focus-within{border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave);}
+
+/* ------------------------------------------------------- faixa de dias */
+.pb-faixa-caixa{display:flex;align-items:stretch;gap:8px;margin-bottom:22px;}
+.pb-seta{flex:0 0 auto;width:40px;border:1px solid var(--borda);background:var(--card);
+  border-radius:12px;color:var(--ink-3);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:var(--t);}
+.pb-seta svg{width:20px;height:20px;}
+.pb-seta:hover{border-color:var(--borda-forte);color:var(--acento);}
+.pb-seta:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+
+.pb-faixa{flex:1 1 auto;min-width:0;display:flex;gap:8px;overflow-x:auto;
+  scroll-behavior:smooth;-webkit-overflow-scrolling:touch;
+  scroll-snap-type:x proximity;padding:2px;}
+.pb-faixa::-webkit-scrollbar{height:0;}
+
+.pb-dia{flex:1 1 0;min-width:76px;scroll-snap-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:9px 6px;border-radius:12px;border:1px solid var(--borda);
+  background:var(--card);color:var(--ink-2);cursor:pointer;transition:var(--t);}
+.pb-dia:hover{border-color:var(--borda-forte);}
+.pb-dia:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.pb-dia-semana{font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-4);}
+.pb-dia-num{font-family:'Archivo';font-weight:800;font-size:19px;line-height:1.1;color:var(--ink);}
+.pb-dia-contagem, .pb-dia-hoje{font-size:10.5px;font-weight:700;color:var(--ink-4);min-height:14px;}
+.pb-dia.hoje{border-color:var(--borda-forte);}
+.pb-dia.hoje .pb-dia-hoje{color:var(--acento);text-transform:uppercase;letter-spacing:.04em;}
+.pb-dia.on{background:var(--acento);border-color:var(--acento);}
+.pb-dia.on .pb-dia-num, .pb-dia.on .pb-dia-semana,
+.pb-dia.on .pb-dia-contagem, .pb-dia.on .pb-dia-hoje{color:#fff;}
+.pb-dia.on .pb-dia-semana, .pb-dia.on .pb-dia-contagem{opacity:.85;}
+
+/* ------------------------------------------------------ cabeçalho do dia */
+.pb-dia-cab{margin-bottom:18px;}
+.pb-dia-cab h2{font-family:'Archivo';font-weight:800;font-size:19px;letter-spacing:-.015em;
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.pb-selo-hoje{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--acento-suave);color:var(--acento);padding:3px 9px;border-radius:20px;}
+.pb-totais{font-size:13px;color:var(--ink-3);margin-top:4px;}
+.pb-resumo{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px;}
+.pb-resumo-item{display:inline-flex;align-items:center;gap:6px;}
+.pb-resumo-item b{font-size:12px;font-weight:700;color:var(--ink-2);}
+
+/* --------------------------------------------------- grupos por cliente */
+.pb-grupos{display:flex;flex-direction:column;gap:22px;}
+.pb-grupo{min-width:0;}
+.pb-grupo-cab{display:flex;align-items:center;gap:9px;margin-bottom:10px;min-width:0;}
+.pb-grupo-nome{font-family:'Archivo';font-weight:700;font-size:14.5px;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.pb-grupo-n{flex:0 0 auto;font-size:11.5px;color:var(--ink-4);
+  background:var(--suave);padding:3px 9px;border-radius:20px;white-space:nowrap;}
+
+.pb-avatar{flex:0 0 auto;border-radius:9px;object-fit:cover;background:var(--suave);}
+.pb-avatar.sm{width:20px;height:20px;border-radius:7px;}
+.pb-avatar.md{width:30px;height:30px;}
+.pb-avatar.vazio{display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;color:var(--acento);background:var(--neutro-bg);}
+.pb-avatar.vazio.sm{font-size:9.5px;}
+.pb-avatar.vazio.md{font-size:12px;}
+
+/* ----------------------------------------------------------- os cartões */
+.pb-cards{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:12px;}
+.pb-card{background:var(--card);border:1px solid var(--borda);border-radius:14px;
+  padding:13px 14px;min-width:0;display:flex;flex-direction:column;gap:7px;
+  transition:var(--t);}
+.pb-card:hover{border-color:var(--borda-forte);box-shadow:0 6px 18px -12px rgba(0,0,0,.25);}
+.pb-card-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;}
+.pb-card-cliente{display:inline-flex;align-items:center;gap:6px;min-width:0;
+  font-size:12px;color:var(--ink-3);}
+.pb-card-cliente span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.pb-card-titulo{font-size:14.5px;font-weight:700;line-height:1.35;color:var(--ink);
+  overflow-wrap:anywhere;}
+.pb-card-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+  font-size:11.5px;color:var(--ink-3);}
+.pb-card-meta .p{width:3px;height:3px;border-radius:50%;background:var(--ink-4);opacity:.6;}
+.pb-card-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px;}
+.pb-acao{font-size:11.5px;font-weight:600;color:var(--ink-2);background:var(--suave);
+  border:1px solid transparent;border-radius:9px;padding:6px 10px;min-height:32px;
+  cursor:pointer;transition:var(--t);}
+.pb-acao:hover{background:var(--card);border-color:var(--borda-forte);color:var(--acento);}
+.pb-acao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+
+/* --------------------------------------------------- estados e seções */
+.pb-estado{background:var(--card);border:1px dashed var(--borda-forte);border-radius:14px;
+  padding:26px 20px;text-align:center;}
+.pb-estado b{display:block;font-family:'Archivo';font-weight:700;font-size:15px;color:var(--ink);}
+.pb-estado p{font-size:13px;color:var(--ink-3);margin-top:6px;}
+.pb-estado .acoes{display:flex;justify-content:center;gap:9px;margin-top:14px;flex-wrap:wrap;}
+.pb-estado-erro{border-style:solid;border-color:var(--erro);background:var(--erro-bg);}
+.pb-estado-erro b, .pb-estado-erro p{color:var(--erro);}
+
+.pb-secao{margin-top:26px;}
+.pb-secao h3{font-family:'Archivo';font-weight:700;font-size:13px;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;}
+.pb-etiqueta{font-size:11px;font-weight:700;letter-spacing:0;text-transform:none;
+  background:var(--ambar-bg);color:var(--ambar);padding:2px 8px;border-radius:20px;}
+.pb-fraca{font-size:12.5px;color:var(--ink-4);margin-bottom:10px;max-width:70ch;}
+
+.pb-proximos-lista{display:flex;gap:9px;overflow-x:auto;padding:2px;
+  -webkit-overflow-scrolling:touch;}
+.pb-proximos-lista::-webkit-scrollbar{height:0;}
+.pb-proximo{flex:0 0 auto;min-width:150px;text-align:left;background:var(--card);
+  border:1px solid var(--borda);border-radius:12px;padding:10px 12px;cursor:pointer;
+  display:flex;flex-direction:column;gap:2px;transition:var(--t);}
+.pb-proximo:hover{border-color:var(--borda-forte);color:var(--acento);}
+.pb-proximo:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.pb-proximo b{font-size:13px;font-weight:700;color:var(--ink);}
+.pb-proximo:hover b{color:var(--acento);}
+.pb-proximo span{font-size:11.5px;color:var(--ink-3);}
+
+.pb-pendentes-lista{display:flex;flex-direction:column;gap:6px;}
+.pb-pendente{display:grid;grid-template-columns:78px 150px 1fr auto;align-items:center;gap:10px;
+  text-align:left;background:var(--card);border:1px solid var(--borda);border-radius:11px;
+  padding:9px 12px;min-height:44px;cursor:pointer;transition:var(--t);}
+.pb-pendente:hover{border-color:var(--borda-forte);}
+.pb-pendente:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.pb-pendente-data{font-size:11.5px;font-weight:700;color:var(--ink-4);white-space:nowrap;}
+.pb-pendente-cliente{font-size:12px;color:var(--ink-3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.pb-pendente-titulo{font-size:13.5px;font-weight:600;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+
+/* ------------------------------------------------------------- celular */
+@media (max-width: 760px){
+  .pb-cab{gap:12px;}
+  .pb-cab-acoes{width:100%;}
+  .pb-seletor-data{flex:1 1 auto;}
+  .pb-seletor-data input{min-width:0;width:100%;}
+  .pb-pendente{grid-template-columns:1fr auto;grid-template-areas:
+    "titulo status" "cliente data";row-gap:3px;}
+  .pb-pendente-titulo{grid-area:titulo;white-space:normal;overflow-wrap:anywhere;}
+  .pb-pendente-cliente{grid-area:cliente;}
+  .pb-pendente-data{grid-area:data;text-align:right;}
+  .pb-pendente .status-conteudo{grid-area:status;justify-self:end;}
+}
+
+@media (max-width: 620px){
+  /* uma coluna de cartões; a faixa de dias vira rolagem horizontal com
+     alvos grandes, e as setas saem do caminho (o dedo arrasta a faixa) */
+  .pb-cards{grid-template-columns:minmax(0, 1fr);}
+  .pb-seta{display:none;}
+  .pb-faixa{gap:6px;}
+  .pb-dia{flex:0 0 auto;min-width:62px;padding:10px 8px;}
+  .pb-dia-num{font-size:18px;}
+  .pb-acao{min-height:36px;padding:8px 11px;font-size:12px;}
+  .pb-dia-cab h2{font-size:17px;}
+}

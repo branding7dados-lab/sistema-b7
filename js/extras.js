@@ -519,6 +519,16 @@ B7.QuickView = (function () {
     const btnEditar = painel.querySelector('[data-editar]');
     if (btnEditar) btnEditar.onclick = () => {
       fechar();
+      /* Quando a ficha foi aberta de FORA da Linha Editorial (ex.:
+         Publicações do Dia), o módulo da Linha não tem esse conteúdo em
+         memória e `abrirConteudo` não teria o que abrir. Nesse caso quem
+         chamou informa `linhaId` e a gente navega por ID até a linha já
+         com o Criativo aberto — nunca procurando o registro por título
+         ou data. */
+      if (extra.linhaId) {
+        location.hash = '#/linha/' + extra.linhaId + '/criativos?conteudo=' + conteudo.id;
+        return;
+      }
       if (B7.Linha && B7.Linha.abrirConteudo) B7.Linha.abrirConteudo(conteudo.id);
     };
     const btnCopiarLegenda = painel.querySelector('[data-copiar-legenda]');

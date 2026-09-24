@@ -22,7 +22,11 @@ B7.Perm = (function () {
     admin: '*',
     coordenador: [
       '', 'clientes', 'cliente', 'gravacoes', 'gravacao', 'roteiros', 'linhas',
-      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes', 'design', 'video', 'calendario'
+      'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes', 'design', 'video', 'calendario',
+      /* Publicações do Dia: visão operacional do que sai hoje em todos os
+         clientes. É leitura sobre a Linha Editorial, e coordenação é
+         exatamente o trabalho de quem olha isso todo dia. */
+      'publicacoes'
     ],   /* sem usuarios, importar, atalhos e lixeira */
     /* Designer é produção interna, não administração: só o que precisa
        para entender o briefing e entregar o trabalho. Sem usuários,
@@ -79,7 +83,7 @@ B7.Perm = (function () {
     designer: {
       ocultar: ['#/usuarios', '#/importar', '#/atalhos', '#/lixeira', '#/clientes',
                 '#/kanban', '#/aprovacoes', '#/semanas', '#/arquivados',
-                '#/roteiros', '#/gravacoes'],
+                '#/roteiros', '#/gravacoes', '#/publicacoes'],
       grupos: { 'MAIS FERRAMENTAS': false }
     },
     /* Videomaker vê a própria Central e o contexto que precisa; nada de
@@ -87,13 +91,13 @@ B7.Perm = (function () {
     videomaker: {
       ocultar: ['#/usuarios', '#/importar', '#/atalhos', '#/lixeira', '#/clientes',
                 '#/kanban', '#/aprovacoes', '#/semanas', '#/arquivados',
-                '#/roteiros', '#/linhas', '#/design'],
+                '#/roteiros', '#/linhas', '#/design', '#/publicacoes'],
       grupos: { 'MAIS FERRAMENTAS': false }
     },
     cliente: {
       ocultar: ['#/kanban', '#/aprovacoes', '#/usuarios', '#/clientes', '#/gravacoes', '#/roteiros', '#/linhas',
                 '#/semanas', '#/arquivados', '#/lixeira', '#/importar',
-                '#/atalhos', '#/config', '#/calendario'],
+                '#/atalhos', '#/config', '#/calendario', '#/publicacoes'],
       grupos: { 'PRODUÇÃO': false, 'MAIS FERRAMENTAS': false }
     }
   };
