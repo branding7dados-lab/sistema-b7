@@ -492,6 +492,42 @@
   justify-content:center;overflow:hidden;touch-action:pan-y;}
 .preview-in{transform-origin:center center;}
 .preview-in .slide,.preview-in .folha{margin:0;box-shadow:0 30px 80px -30px rgba(0,0,0,.8);}
+
+/* ------------------------------------------------ passagem de slide
+   O slide novo entra pelo lado para onde a apresentação está indo. A
+   animação é do CONTEÚDO (.preview-in já carrega o scale calculado em
+   JS no style inline, então animar `transform` aqui sobrescreveria a
+   escala): por isso o movimento vai no filho, que não tem transform
+   próprio. Curta de propósito — passagem de slide de reunião, não
+   efeito de apresentação de firma. */
+@keyframes sl-entra-avanca{
+  from{opacity:0;transform:translateX(38px);}
+  to{opacity:1;transform:translateX(0);}
+}
+@keyframes sl-entra-volta{
+  from{opacity:0;transform:translateX(-38px);}
+  to{opacity:1;transform:translateX(0);}
+}
+.preview-in.entra-avanca > *{animation:sl-entra-avanca .26s cubic-bezier(.22,.61,.36,1) both;}
+.preview-in.entra-volta  > *{animation:sl-entra-volta  .26s cubic-bezier(.22,.61,.36,1) both;}
+
+/* tela cheia de verdade (Fullscreen API): sem o respiro que fazia
+   sentido dentro da janela — a tela inteira é o palco */
+.preview-fundo.tela-cheia{background:#07030D;}
+.preview-fundo.tela-cheia .preview-topo,
+.preview-fundo.tela-cheia .preview-nav{opacity:.25;transition:opacity .2s;}
+.preview-fundo.tela-cheia .preview-topo:hover,
+.preview-fundo.tela-cheia .preview-topo:focus-within,
+.preview-fundo.tela-cheia .preview-nav:hover,
+.preview-fundo.tela-cheia .preview-nav:focus-within{opacity:1;}
+
+/* quem pediu menos movimento no sistema recebe a troca seca */
+@media (prefers-reduced-motion:reduce){
+  .preview-in.entra-avanca > *,
+  .preview-in.entra-volta  > *{animation:none;}
+  .preview-fundo.tela-cheia .preview-topo,
+  .preview-fundo.tela-cheia .preview-nav{transition:none;}
+}
 .preview-nav{flex:none;display:flex;align-items:center;justify-content:center;gap:16px;
   padding:14px 20px;border-top:1px solid rgba(255,255,255,.1);}
 .preview-nav .cont{font-family:'Archivo';font-weight:800;font-size:13px;color:#F3EFF9;

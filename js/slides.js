@@ -461,10 +461,15 @@ B7.PreviewLinha = (function () {
      única) e abre direto em 16:9, sem passar pelo modal de exportação. */
   async function apresentar(linhaId) {
     const ctx = await B7.BaixarLinha.reunir(linhaId, { incluirCapa: true });
-    await abrir(ctx, 'slides');
+    /* Apresentar abre em tela cheia direto — é o que "apresentar" quer
+       dizer. "Visualizar" (o preview antes de exportar) continua dentro
+       da janela: lá a pessoa está conferindo o documento, não mostrando
+       pra ninguém. */
+    await abrir(ctx, 'slides', { telaCheia: true });
   }
 
-  async function abrir(ctx, formato) {
+  async function abrir(ctx, formato, opcoes) {
+    opcoes = opcoes || {};
     estado.ctx = ctx;
     estado.formato = formato || 'slides';
     estado.i = 0;
@@ -482,6 +487,7 @@ B7.PreviewLinha = (function () {
             (estado.formato === 'slides' ? '<button data-baixar-png-atual>PNG — este slide</button>' +
               '<button data-baixar-png-todos>PNG — todos os slides</button>' : '') +
           '</div></div>' +
+          '<button class="b p" data-telacheia aria-label="Entrar em tela cheia">Tela cheia</button>' +
           '<button class="b p" data-fechar>Fechar (Esc)</button>' +
         '</div>' +
       '</div>' +
@@ -497,6 +503,17 @@ B7.PreviewLinha = (function () {
       '</div>';
     document.body.appendChild(caixa);
     B7.UI.ligarMenus(caixa);
+
+    /* Tela cheia AGORA, antes de montar as páginas: a API só aceita o
+       pedido enquanto a "ativação" do clique que abriu a apresentação
+       ainda vale, e montar/medir os slides leva tempo o bastante pra
+       essa janela expirar. Se o navegador recusar, a apresentação
+       continua como overlay — o botão "Tela cheia" fica lá pra tentar
+       de novo com um clique novo. */
+    if (opcoes.telaCheia) {
+      const pedir = caixa.requestFullscreen || caixa.webkitRequestFullscreen || caixa.msRequestFullscreen;
+      if (pedir) { try { await pedir.call(caixa); } catch (e) { /* recusado: segue em janela */ } }
+    }
 
     /* monta as páginas de verdade, fora da tela, e depois mostra uma a uma */
     const area = document.getElementById('area-impressao');
@@ -516,7 +533,45 @@ B7.PreviewLinha = (function () {
     area.style.display = '';
     area.classList.remove('modo-slides');
 
+    /* ------------------------------------------------------ tela cheia
+       Apresentar de verdade é a tela toda, como no PowerPoint: sem barra
+       do navegador, sem sistema em volta. A API de fullscreen só funciona
+       a partir de um gesto do usuário (clique/tecla), nunca sozinha — por
+       isso é pedida no clique de "Apresentar"/"Tela cheia", e uma recusa
+       (permissão, iframe sem allow, navegador antigo) só mantém a
+       apresentação como overlay, sem quebrar nada. */
+    const pedirTelaCheia = el =>
+      (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen || (() => Promise.reject()))
+        .call(el);
+    const sairTelaCheia = () =>
+      (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen || (() => {}))
+        .call(document);
+    const emTelaCheia = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+    const btTelaCheia = caixa.querySelector('[data-telacheia]');
+    function pintarBotaoTelaCheia() {
+      const dentro = emTelaCheia();
+      btTelaCheia.textContent = dentro ? 'Sair da tela cheia' : 'Tela cheia';
+      btTelaCheia.setAttribute('aria-label', dentro ? 'Sair da tela cheia' : 'Entrar em tela cheia');
+      caixa.classList.toggle('tela-cheia', dentro);
+      escalar();   /* a área útil mudou: o slide precisa reescalar */
+    }
+    btTelaCheia.onclick = () => {
+      if (emTelaCheia()) sairTelaCheia();
+      else Promise.resolve(pedirTelaCheia(caixa)).catch(() => {
+        B7.UI.toast('Este navegador não permitiu a tela cheia — a apresentação segue nesta janela.');
+      });
+    };
+    /* O navegador sai da tela cheia por conta própria (Esc nativo, F11,
+       troca de aba). Escutar o evento é a única forma de manter o botão e
+       a escala coerentes — não dá pra confiar só no nosso clique. */
+    document.addEventListener('fullscreenchange', pintarBotaoTelaCheia);
+    document.addEventListener('webkitfullscreenchange', pintarBotaoTelaCheia);
+
     const fechar = () => {
+      if (emTelaCheia()) Promise.resolve(sairTelaCheia()).catch(() => {});
+      document.removeEventListener('fullscreenchange', pintarBotaoTelaCheia);
+      document.removeEventListener('webkitfullscreenchange', pintarBotaoTelaCheia);
       caixa.remove();
       document.removeEventListener('keydown', tecla);
     };
@@ -561,11 +616,26 @@ B7.PreviewLinha = (function () {
     }, { passive: true });
 
     function ir(d) {
-      estado.i = Math.max(0, Math.min(estado.paginas.length - 1, estado.i + d));
-      desenhar();
+      const novo = Math.max(0, Math.min(estado.paginas.length - 1, estado.i + d));
+      if (novo === estado.i) return;   /* já está na ponta: não anima à toa */
+      estado.i = novo;
+      desenhar(d > 0 ? 'avanca' : 'volta');
     }
-    function desenhar() {
+    /* `direcao` só existe quando a troca veio de navegação: o slide novo
+       entra pelo lado para onde a apresentação está indo (avançar = entra
+       pela direita), como numa passagem de slide de verdade. O primeiro
+       desenho não tem direção e só aparece. Quem pediu menos movimento no
+       sistema (prefers-reduced-motion) recebe a troca seca — a classe é
+       aplicada do mesmo jeito, e o CSS é que zera a animação. */
+    function desenhar(direcao) {
       const alvo = caixa.querySelector('#preview-in');
+      alvo.classList.remove('entra-avanca', 'entra-volta');
+      if (direcao) {
+        /* reinicia a animação mesmo indo para o mesmo lado duas vezes
+           seguidas: sem forçar um reflow, o navegador não reaplica. */
+        void alvo.offsetWidth;
+        alvo.classList.add(direcao === 'avanca' ? 'entra-avanca' : 'entra-volta');
+      }
       alvo.innerHTML = estado.paginas[estado.i] || '';
       caixa.querySelector('#preview-cont').textContent =
         (estado.i + 1) + ' / ' + estado.paginas.length;
@@ -587,6 +657,10 @@ B7.PreviewLinha = (function () {
     }
     window.addEventListener('resize', escalar);
     desenhar();
+    /* depois do primeiro desenho: se já entrou em tela cheia lá em cima,
+       o botão precisa nascer dizendo "Sair da tela cheia" e o palco já
+       escalado para a tela inteira */
+    pintarBotaoTelaCheia();
   }
 
   /* ------------------------------------------------- interação (item 12)
