@@ -19,7 +19,12 @@ B7.Conteudo = (function () {
   const FORMATOS = ['Reel', 'Card', 'Carrossel', 'Story'];
   const FUNIL = ['Topo', 'Meio', 'Fundo'];
   const STATUS_CONTEUDO = ['Ideia', 'Em criação', 'Em revisão', 'Aprovado', 'Programado', 'Publicado'];
-  const TIPO_PILAR = ['Entretenimento', 'Educativo', 'Inspirador', 'Conversão', 'Institucional'];
+  /* Tipos de pilar oferecidos no select. A coluna `pilares.nome` é texto
+     livre: pilar antigo com nome fora desta lista continua valendo e
+     aparece como "(personalizado)" — por isso acrescentar um tipo aqui
+     nunca invalida o que já está cadastrado. A ordem é a de leitura da
+     estratégia, do conteúdo que atrai ao conteúdo que converte. */
+  const TIPO_PILAR = ['Entretenimento', 'Educativo', 'Informativo', 'Inspirador', 'Conversão', 'Institucional'];
   const STATUS_LINHA = ['Em criação', 'Em revisão', 'Aprovada', 'Finalizada'];
 
   /* ---------------------------------------------------------- helpers */

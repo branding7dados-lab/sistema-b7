@@ -633,7 +633,9 @@ B7.Linha = (function () {
               '<option value=""' + (!p.nome ? ' selected' : '') + '>Selecione</option>' +
               /* pilar antigo com nome livre (de antes desta lista fechada de
                  tipos): mantém o valor visível e selecionado, em vez de
-                 trocar sozinho por um dos 5 tipos ou aparecer em branco */
+                 trocar sozinho por um dos tipos da lista ou aparecer em
+                 branco. Vale também quando um tipo novo é acrescentado a
+                 TIPO_PILAR: nada do que já estava cadastrado se perde. */
               (p.nome && !C.TIPO_PILAR.includes(p.nome)
                 ? '<option value="' + esc(p.nome) + '" selected>' + esc(p.nome) + ' (personalizado)</option>'
                 : '') +
