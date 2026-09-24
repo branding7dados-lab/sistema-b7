@@ -461,7 +461,10 @@
 .sl-tabela th{font-size:8.5px;font-weight:700;letter-spacing:.22em;color:var(--grey);
   text-align:left;padding:0 6mm 3mm 0;border-bottom:1px solid var(--line);}
 .sl-tabela td{font-size:calc(13px * var(--fs));color:var(--ink-2);padding:3.6mm 6mm 3.6mm 0;
-  border-bottom:1px solid var(--line);vertical-align:top;}
+  border-bottom:1px solid var(--line);vertical-align:top;
+  /* título longo quebra dentro da célula em vez de esticar a tabela e
+     empurrar coluna para fora do slide */
+  overflow-wrap:break-word;word-break:break-word;}
 .sl-tabela td.d{font-family:'Archivo';font-weight:700;color:var(--ink);white-space:nowrap;width:32mm;}
 .sl-tabela td.t{color:var(--ink);font-weight:500;}
 .sl-tabela tr:last-child td{border-bottom:0;}

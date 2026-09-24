@@ -84,13 +84,112 @@ B7.Slides = (function () {
       '<h2>' + esc(titulo) + '</h2><div class="sl-risco"></div></div></div>';
   }
 
+  /* ------------------------------------------------- medição de verdade
+     O slide tem altura fixa (190,5mm) e TANTO .slide QUANTO .sl-corpo
+     têm overflow:hidden. Isso significa que o slide nunca "cresce":
+     B7.Folha.estourou() compara scrollHeight com clientHeight do .slide
+     e por isso nunca acusa nada — B7.Folha.ajustar() jamais reduz a
+     fonte de um slide, e o que passa da altura simplesmente é cortado na
+     captura (html2canvas), sumindo do PDF sem aviso. Foi exatamente o
+     que aconteceu com 15 criativos/postagens num teto de 30 por slide.
+
+     A correção é a mesma técnica que o documento A4 já usa em
+     B7.FolhaLinha.montarFolhas: montar no DOM, medir o corpo de verdade
+     e quebrar onde precisa. Aqui a medição é feita no .sl-corpo (o
+     .slide externo nunca estoura por causa do overflow:hidden).
+
+     Devolve null quando não há como medir (sem DOM, sem `area`, ou
+     elemento sem layout — jsdom, por exemplo); nesse caso a paginação
+     cai num teto conservador, nunca no corte. */
+  function criarMedidor(area) {
+    if (typeof document === 'undefined' || !area || !area.appendChild) return null;
+    let caixa;
+    try {
+      caixa = document.createElement('div');
+      caixa.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden;';
+      area.appendChild(caixa);
+    } catch (e) { return null; }
+
+    const cabe = html => {
+      try {
+        caixa.innerHTML = slide(html, { secao: 'MEDIÇÃO', rodape: '', num: 1 });
+        const f = caixa.querySelector('.slide');
+        const corpo = f && f.querySelector('.sl-corpo');
+        if (!corpo || !corpo.clientHeight) return null;   // sem layout: não dá para medir
+        return corpo.scrollHeight <= corpo.clientHeight + 2;
+      } catch (e) { return null; }
+    };
+
+    /* sonda: se o ambiente não faz layout, some com o medidor e avisa */
+    if (cabe('<div style="height:1px"></div>') === null) {
+      try { caixa.remove(); } catch (e) {}
+      return null;
+    }
+    return {
+      cabe: html => cabe(html) === true,
+      fim: () => { try { caixa.remove(); } catch (e) {} }
+    };
+  }
+
+  /* Tetos de segurança — usados só quando não há medição disponível.
+     São próximos do que cabe de fato no slide (o primeiro gasta altura
+     com o cabeçalho grande de seção, os seguintes só com a tarja
+     `.sl-cont`). Conservadores de propósito: sobrar espaço é aceitável,
+     perder conteúdo não. */
+  const TETO_PRIMEIRO = 9;
+  const TETO_SEGUINTES = 12;
+
+  /* Quebra `itens` em partes que realmente cabem.
+     `montar(parte, k, total)` devolve o HTML do corpo do slide da parte k
+     (0-based). A busca binária vale porque a altura cresce junto com a
+     quantidade de linhas. Nunca devolve parte vazia: se nem uma linha
+     couber, a linha vai assim mesmo (e aí o corte fica visível numa
+     linha só, em vez de sumir com o resto). */
+  function fatiar(itens, montar, medidor) {
+    const partes = [];
+    let i = 0;
+    while (i < itens.length) {
+      const k = partes.length;
+      const restante = itens.length - i;
+      let n;
+      if (medidor) {
+        const coube = c => medidor.cabe(montar(itens.slice(i, i + c), k, k + 1));
+        if (coube(restante)) n = restante;
+        else {
+          let lo = 1, hi = restante - 1, melhor = 0;
+          while (lo <= hi) {
+            const meio = (lo + hi) >> 1;
+            if (coube(meio)) { melhor = meio; lo = meio + 1; } else hi = meio - 1;
+          }
+          n = Math.max(1, melhor);
+        }
+      } else {
+        n = Math.min(restante, k === 0 ? TETO_PRIMEIRO : TETO_SEGUINTES);
+      }
+      partes.push(itens.slice(i, i + n));
+      i += n;
+    }
+    return partes;
+  }
+
+  /* Tarja das partes seguintes. O total exibido é o do conjunto inteiro
+     (15 criativos continuam sendo 15 na parte 2), não o da parte. */
+  const contHTML = (rot, k, totalPartes, totalItens, unidade) =>
+    '<div class="sl-cont">' + rot + ' · PARTE ' + (k + 1) + ' DE ' + totalPartes +
+    ' · ' + totalItens + ' ' + unidade + ' NO TOTAL</div>';
+
   /* ------------------------------------------------------------ montagem
      Cada entrada da lista vira um slide. Seção sem conteúdo não entra:
-     não existe slide vazio só para manter a estrutura. */
-  function slidesDo(ctx) {
+     não existe slide vazio só para manter a estrutura.
+
+     `area` (o #area-impressao) é opcional e serve só para medir: com ele
+     a paginação das tabelas é real; sem ele, cai no teto conservador. */
+  function slidesDo(ctx, area) {
     const l = ctx.linha;
     const lista = [];
     let secao = 1;
+    /* só é criado quando há tabela para paginar; null = sem medição */
+    const medidor = (ctx.conteudos && ctx.conteudos.length) ? criarMedidor(area) : null;
 
     /* ---- objetivo do mês ----
        Três blocos distintos, não um parágrafo solto: o objetivo principal
@@ -205,35 +304,34 @@ B7.Slides = (function () {
        sai. Mesma tabela compacta que Postagens já usa (sl-tabela), só que
        na ordem dos posts em vez de por data. */
     if (ctx.conteudos.length) {
-      /* Antes era 12 (mesmo problema do que Postagens tinha): fixo demais,
-         gerava slide quase vazio na última parte de um mês comum. O slide
-         (.slide) já passa por B7.Folha.ajustar depois de montado — reduz a
-         fonte da tabela (var(--fs) em .sl-tabela) até 58% se precisar, em
-         vez de cortar. Então o teto aqui pode ser bem mais alto: cabe tudo
-         num slide só na maioria dos meses, com fonte um pouco menor
-         quando for muitos itens — só quebra em partes se nem a 58% coubesse. */
-      const POR_SLIDE_CRI = 30;
-      for (let i = 0; i < ctx.conteudos.length; i += POR_SLIDE_CRI) {
-        const parte = ctx.conteudos.slice(i, i + POR_SLIDE_CRI);
-        const parteNum = Math.floor(i / POR_SLIDE_CRI) + 1;
-        const total = Math.ceil(ctx.conteudos.length / POR_SLIDE_CRI);
-        lista.push({ secao: 'CRIATIVOS', num: null,
-          html: (i === 0
-            ? abreSecao(secao, ctx.conteudos.length + ' CONTEÚDO' +
-                (ctx.conteudos.length === 1 ? '' : 'S'), 'Criativos')
-            : '<div class="sl-cont">CRIATIVOS · PARTE ' + parteNum + ' DE ' + total + '</div>') +
-            '<table class="sl-tabela"><thead><tr>' +
-              '<th>POST</th><th>FORMATO</th><th>DATA</th>' + (pilares.length ? '<th>PILAR</th>' : '') +
-              '<th>TÍTULO</th>' +
-            '</tr></thead><tbody>' +
-            parte.map((c, k) => '<tr data-cid="' + esc(c.id) + '" title="Ver detalhes">' +
-              '<td class="d">' + String(i + k + 1).padStart(2, '0') + '</td>' +
-              '<td>' + esc(c.tipo) + '</td>' +
-              '<td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
-              (pilares.length ? '<td>' + esc((pilares.find(p => p.id === c.pilar_id) || {}).nome || '') + '</td>' : '') +
-              '<td class="t">' + esc(c.titulo || 'Sem título') + '</td></tr>').join('') +
-            '</tbody></table>' });
-      }
+      /* Teto fixo (era 30) cortava conteúdo: com 15 criativos tudo ia
+         para um slide só e o que passava da altura sumia na captura.
+         Agora as linhas são medidas de verdade (ver criarMedidor) e o
+         que não cabe vai para um slide de continuação. */
+      const totalCri = ctx.conteudos.length;
+      const linhasCri = ctx.conteudos.map((c, idx) =>
+        '<tr data-cid="' + esc(c.id) + '" title="Ver detalhes">' +
+        '<td class="d">' + String(idx + 1).padStart(2, '0') + '</td>' +
+        '<td>' + esc(c.tipo) + '</td>' +
+        '<td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
+        (pilares.length ? '<td>' + esc((pilares.find(p => p.id === c.pilar_id) || {}).nome || '') + '</td>' : '') +
+        '<td class="t">' + esc(c.titulo || 'Sem título') + '</td></tr>');
+
+      const montarCri = (linhas, k, totalPartes) =>
+        (k === 0
+          ? abreSecao(secao, totalCri + ' CONTEÚDO' + (totalCri === 1 ? '' : 'S'), 'Criativos')
+          : contHTML('CRIATIVOS', k, totalPartes, totalCri, 'CONTEÚDO' + (totalCri === 1 ? '' : 'S'))) +
+        '<table class="sl-tabela"><thead><tr>' +
+          '<th>POST</th><th>FORMATO</th><th>DATA</th>' + (pilares.length ? '<th>PILAR</th>' : '') +
+          '<th>TÍTULO</th>' +
+        '</tr></thead><tbody>' + linhas.join('') + '</tbody></table>';
+
+      /* O total de partes só é conhecido depois de paginar tudo — por
+         isso o rótulo definitivo ("PARTE 2 DE 3") só é montado aqui,
+         depois do fatiamento. */
+      const partesCri = fatiar(linhasCri, montarCri, medidor);
+      partesCri.forEach((linhas, k) =>
+        lista.push({ secao: 'CRIATIVOS', num: null, html: montarCri(linhas, k, partesCri.length) }));
       secao++;
     }
 
@@ -242,41 +340,42 @@ B7.Slides = (function () {
     if (ctx.conteudos.length) {
       const ordenados = ctx.conteudos.slice().sort((a, b) =>
         String(a.data_postagem || '9999').localeCompare(String(b.data_postagem || '9999')));
-      /* Era 8, achando que precisava reservar isso pra letra não ficar
-         miúda — mas o slide já reduz a fonte sozinho (B7.Folha.ajustar,
-         --fs até 58%) quando o conteúdo não cabe, em vez de simplesmente
-         cortar. Teto bem mais alto: a maioria dos meses cabe num slide só;
-         só quebra em partes quando nem a 58% resolveria. */
-      const POR_SLIDE = 30;
-      for (let i = 0; i < ordenados.length; i += POR_SLIDE) {
-        const parte = ordenados.slice(i, i + POR_SLIDE);
-        const parteNum = Math.floor(i / POR_SLIDE) + 1;
-        const total = Math.ceil(ordenados.length / POR_SLIDE);
-        lista.push({ secao: 'POSTAGENS', num: null,
-          html: (i === 0
-            ? abreSecao(secao, 'TABELA DE POSTAGENS', 'Postagens')
-            : '<div class="sl-cont">POSTAGENS · PARTE ' + parteNum + ' DE ' + total + '</div>') +
-            '<table class="sl-tabela"><thead><tr>' +
-              '<th>DATA</th><th>CANAL</th><th>FORMATO</th>' + (pilares.length ? '<th>PILAR</th>' : '') +
-              '<th>CONTEÚDO</th>' +
-            '</tr></thead><tbody>' +
-            parte.map(c => '<tr data-cid="' + esc(c.id) + '" title="Ver detalhes">' +
-              '<td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
-              '<td>' + esc(c.canal || '') + '</td>' +
-              '<td>' + esc(c.tipo) + '</td>' +
-              (pilares.length ? '<td>' + esc((pilares.find(p => p.id === c.pilar_id) || {}).nome || '') + '</td>' : '') +
-              '<td class="t">' + esc(c.titulo || 'Sem título') + '</td></tr>').join('') +
-            '</tbody></table>' });
-      }
+      /* Mesmo caso dos Criativos: o teto de 30 cortava. Agora mede.
+         O eyebrow passa a trazer a contagem real ("15 POSTAGENS"), no
+         mesmo estilo do slide de Criativos — antes era só "TABELA DE
+         POSTAGENS", sem número. */
+      const totalPost = ordenados.length;
+      const unidPost = totalPost === 1 ? 'POSTAGEM' : 'POSTAGENS';
+      const linhasPost = ordenados.map(c =>
+        '<tr data-cid="' + esc(c.id) + '" title="Ver detalhes">' +
+        '<td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
+        '<td>' + esc(c.canal || '') + '</td>' +
+        '<td>' + esc(c.tipo) + '</td>' +
+        (pilares.length ? '<td>' + esc((pilares.find(p => p.id === c.pilar_id) || {}).nome || '') + '</td>' : '') +
+        '<td class="t">' + esc(c.titulo || 'Sem título') + '</td></tr>');
+
+      const montarPost = (linhas, k, totalPartes) =>
+        (k === 0
+          ? abreSecao(secao, totalPost + ' ' + unidPost, 'Postagens')
+          : contHTML('POSTAGENS', k, totalPartes, totalPost, unidPost)) +
+        '<table class="sl-tabela"><thead><tr>' +
+          '<th>DATA</th><th>CANAL</th><th>FORMATO</th>' + (pilares.length ? '<th>PILAR</th>' : '') +
+          '<th>CONTEÚDO</th>' +
+        '</tr></thead><tbody>' + linhas.join('') + '</tbody></table>';
+
+      const partesPost = fatiar(linhasPost, montarPost, medidor);
+      partesPost.forEach((linhas, k) =>
+        lista.push({ secao: 'POSTAGENS', num: null, html: montarPost(linhas, k, partesPost.length) }));
       secao++;
     }
 
+    if (medidor) medidor.fim();
     return lista;
   }
 
   /* ------------------------------------------------------ documento */
-  function documentoHTML(ctx) {
-    const lista = slidesDo(ctx);
+  function documentoHTML(ctx, area) {
+    const lista = slidesDo(ctx, area);
     const rodape = (ctx.linha.cliente_nome || '') + ' · ' + rotulo(ctx.linha);
     let n = 0;
     return (ctx.incluirCapa ? capa(ctx) : '') +
@@ -292,8 +391,12 @@ B7.Slides = (function () {
   /* Espera fontes/imagens antes de medir — mesma regra usada na prévia.
      Compartilhada aqui porque tanto o modal de exportação (PNG "todos os
      slides") quanto a apresentação chamam esta função. */
-  async function esperarPronto(area) {
+  async function esperarFontes() {
     try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+  }
+
+  async function esperarPronto(area) {
+    await esperarFontes();
     try {
       const imgs = [...area.querySelectorAll('img')];
       await Promise.all(imgs.map(img => img.complete ? Promise.resolve() :
@@ -317,7 +420,10 @@ B7.Slides = (function () {
     const guardado = area.innerHTML;
     area.style.display = 'block';
     area.classList.add('modo-slides');
-    area.innerHTML = documentoHTML(ctx);
+    /* fontes ANTES de montar: a paginação dos slides mede altura de
+       texto no DOM, e medir com a fonte do sistema pagina errado */
+    await esperarFontes();
+    area.innerHTML = documentoHTML(ctx, area);
     await esperarPronto(area);
     const paginas = [...area.querySelectorAll('.slide')];
     paginas.forEach(f => B7.Folha.ajustar(f));
@@ -335,7 +441,7 @@ B7.Slides = (function () {
     }
   }
 
-  return { documentoHTML, slidesDo, capa, slide, contar, esperarPronto, nomeArquivoSlide, baixarTodosPNG };
+  return { documentoHTML, slidesDo, capa, slide, contar, esperarFontes, esperarPronto, nomeArquivoSlide, baixarTodosPNG };
 })();
 
 
@@ -397,8 +503,11 @@ B7.PreviewLinha = (function () {
     const guardado = area.innerHTML;
     area.style.display = 'block';
     area.classList.toggle('modo-slides', estado.formato === 'slides');
+    /* fontes ANTES de montar: tanto a paginação medida dos slides quanto
+       a do A4 (documentoMedidoHTML) medem o DOM aqui dentro */
+    await B7.Slides.esperarFontes();
     area.innerHTML = estado.formato === 'slides'
-      ? B7.Slides.documentoHTML(ctx)
+      ? B7.Slides.documentoHTML(ctx, area)
       : B7.FolhaLinha.documentoMedidoHTML(ctx, area);
     await B7.Slides.esperarPronto(area);
     area.querySelectorAll('.le-folha, .slide').forEach(f => B7.Folha.ajustar(f));
