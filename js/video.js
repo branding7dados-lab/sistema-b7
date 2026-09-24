@@ -103,6 +103,19 @@ B7.Video = (function () {
   let versoesAtual = [];   /* versões da demanda aberta no momento (Workspace de Vídeo) */
   let comentariosPorVersao = {};   /* versao_id -> lista de comentários com timecode */
 
+  /* Teto de tempo para uma carga de tela. `fetch` não desiste sozinho: se a
+     conexão fica pendurada (rede caindo, celular trocando de torre, proxy
+     que engole a resposta), a promessa nunca resolve NEM rejeita, e quem
+     está esperando por ela fica no esqueleto de carregamento pra sempre.
+     Isso transforma esse silêncio num erro tratável, com "tentar de novo". */
+  function comTempoLimite(promessa, ms) {
+    let id;
+    const limite = new Promise((_, rejeitar) => {
+      id = setTimeout(() => rejeitar(new Error('A conexão demorou demais para responder. Tente de novo.')), ms);
+    });
+    return Promise.race([promessa, limite]).finally(() => clearTimeout(id));
+  }
+
   /* =================================================================
      FILTROS — persistidos por sessão (mesmo padrão de B7.Design),
      compartilhados por Lista, Quadro e resumo.
@@ -1279,17 +1292,36 @@ B7.Video = (function () {
 
     let d, historico;
     try {
-      [d, historico, versoesAtual] = await Promise.all([
-        B7.DB.demandaVideo(id), B7.DB.historicoDemandaVideo(id), B7.DB.versoesDemandaVideo(id).catch(() => [])
-      ]);
-      if (souEquipe() && !clientes.length) clientes = await B7.DB.listarClientes().catch(() => []);
-      if (souEquipe() && !videomakers.length) videomakers = await B7.DB.listarVideomakers().catch(() => []);
-      if (souEquipe() && !pacotesVideoCache.length) pacotesVideoCache = await B7.DB.pacotesVideo().catch(() => []);
+      /* Tudo que a tela precisa vai junto, numa rodada só. Antes eram três
+         `await` em fila (clientes → videomakers → pacotes) DEPOIS do lote
+         principal, e ainda uma consulta de comentários POR VERSÃO: numa
+         conexão ruim cada ida e volta somava, e a tela ficava no esqueleto
+         esperando requisições que nem dependiam uma da outra. Os
+         comentários agora vêm de uma consulta só, filtrada por demanda
+         (video_comentarios_resumo já traz demanda_id), e são separados por
+         versão aqui no cliente. */
+      const equipe = souEquipe();
+      const chamadas = [
+        B7.DB.demandaVideo(id),
+        B7.DB.historicoDemandaVideo(id),
+        B7.DB.versoesDemandaVideo(id).catch(() => []),
+        B7.DB.comentariosDemandaVideo(id).catch(() => []),
+        equipe && !clientes.length ? B7.DB.listarClientes().catch(() => null) : Promise.resolve(null),
+        equipe && !videomakers.length ? B7.DB.listarVideomakers().catch(() => null) : Promise.resolve(null),
+        equipe && !pacotesVideoCache.length ? B7.DB.pacotesVideo().catch(() => null) : Promise.resolve(null)
+      ];
+      /* Rede que trava (sem resposta e sem erro) deixava a tela no
+         esqueleto pra sempre — o usuário só via "carregando" eternamente.
+         Com teto de tempo, isso vira um erro com botão de tentar de novo. */
+      const [dd, hh, vv, cc, cl, vm, pc] = await comTempoLimite(Promise.all(chamadas), 20000);
+      d = dd; historico = hh; versoesAtual = vv;
+      if (cl) clientes = cl;
+      if (vm) videomakers = vm;
+      if (pc) pacotesVideoCache = pc;
       comentariosPorVersao = {};
-      if (versoesAtual.length) {
-        const listas = await Promise.all(versoesAtual.map(v => B7.DB.comentariosVersaoVideo(v.id).catch(() => [])));
-        versoesAtual.forEach((v, i) => { comentariosPorVersao[v.id] = listas[i]; });
-      }
+      (cc || []).forEach(c => {
+        (comentariosPorVersao[c.versao_id] = comentariosPorVersao[c.versao_id] || []).push(c);
+      });
     } catch (e) {
       /* PGRST116 = a consulta com .single() não achou nenhuma linha —
          o caso mais comum é um link antigo (ex.: clique numa notificação
@@ -1302,8 +1334,14 @@ B7.Video = (function () {
         (excluida
           ? '<b>Esta demanda não foi encontrada.</b><p>Ela pode ter sido excluída ou movida para a Lixeira desde que o link foi criado.</p>'
           : '<b>Não foi possível abrir esta demanda.</b><p>' + esc(e.message || '') + '</p>') +
-        '<div class="acoes"><button class="b" onclick="location.hash=\'#/video\'">Voltar</button></div>' +
-        '</div></div>';
+        '<div class="acoes">' +
+          (excluida ? '' : '<button class="b pri" id="vd-dt-tentar">Tentar de novo</button>') +
+          '<button class="b" onclick="location.hash=\'#/video\'">Voltar</button>' +
+        '</div></div></div>';
+      /* tenta de novo sem recarregar a página inteira: só refaz a carga
+         desta demanda, mantendo a sessão e o resto do estado da SPA */
+      const btTentar = document.getElementById('vd-dt-tentar');
+      if (btTentar) btTentar.onclick = () => abrirDetalhe(id);
       return;
     }
 

@@ -1807,6 +1807,16 @@ B7.DB = (function () {
     async comentariosVersaoVideo(versaoId) {
       return ok(await sb().from('video_comentarios_resumo').select('*').eq('versao_id', versaoId).order('timecode_seg', { ascending: true }));
     },
+    /* Todos os comentários da demanda de uma vez — a tela de detalhe abre
+       com N versões e antes fazia uma consulta por versão (N idas e voltas
+       enfileiradas no limite de conexões do navegador). A view já traz
+       demanda_id, então uma consulta só resolve; quem chama separa por
+       versao_id. */
+    async comentariosDemandaVideo(demandaId) {
+      return ok(await sb().from('video_comentarios_resumo').select('*')
+        .eq('demanda_id', demandaId)
+        .order('timecode_seg', { ascending: true }));
+    },
     async criarComentarioVideo(versaoId, timecodeSeg, texto) {
       return this.rpc('video_criar_comentario', { p_versao_id: versaoId, p_timecode_seg: timecodeSeg, p_texto: texto });
     },
