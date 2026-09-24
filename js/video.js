@@ -1282,6 +1282,33 @@ B7.Video = (function () {
      demanda").
      ================================================================= */
 
+  /* Roteiro(s) vinculado(s) — uma demanda pode ter vários roteiros. A
+     escrita sempre substitui o conjunto inteiro (video_definir_roteiros),
+     então tanto remover um chip quanto adicionar um novo mandam a lista
+     completa de novo.
+
+     Esta função chegou a sumir do arquivo numa fusão de versões: os
+     handlers em ligarDetalhe (data-remover-roteiro, vd-dt-roteiro-add)
+     continuaram aqui, mas a função que desenha o bloco não — e como ela é
+     chamada no meio da montagem do HTML do detalhe, o ReferenceError
+     interrompia a renderização inteira e a tela ficava eternamente no
+     esqueleto de carregamento. */
+  function roteirosVinculadosHTML(d, podeEditar) {
+    const vinc = d.roteiros_vinculados || [];
+    const lista = vinc.length
+      ? '<div class="vd-roteiros-vinculo-lista">' + vinc.map(r =>
+          '<div class="vd-rv-chip"><span>' + esc(r.titulo || '(sem título)') + '</span>' +
+          (podeEditar ? '<button type="button" data-remover-roteiro="' + r.id + '" title="Remover" aria-label="Remover">×</button>' : '') +
+          '</div>').join('') + '</div>'
+      : '<div class="vd-so-leitura">' + (podeEditar ? 'Nenhum roteiro vinculado ainda.' : 'sem vínculo') + '</div>';
+    if (!podeEditar) return lista;
+    return lista +
+      (d.gravacao_id
+        ? '<div class="vd-link-linha"><select class="campo" id="vd-dt-roteiro-add"><option value="">Adicionar roteiro…</option></select>' +
+          '<button class="b" id="vd-dt-roteiro-add-bt" disabled>Adicionar</button></div>'
+        : '<p class="fraca">Vincule uma gravação acima para poder escolher roteiros dela.</p>');
+  }
+
   /* =================================================================
      DETALHE DE UMA DEMANDA — layout principal + painel lateral
      ================================================================= */
