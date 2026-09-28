@@ -30,3 +30,22 @@ Renderizado num harness com dados fictícios (desktop 1366px e celular 390px): f
 
 ## O que não mudou
 Versões, comentários com timecode, aprovação do cliente, entrega, importação, gestão, descartados. Nenhuma tabela, view ou função do banco.
+
+---
+
+## Rodada B (mesmo dia) — polimento visual de todo o módulo
+**Arquivos:** `js/video.js`, `styles/video.css`. Sem migration. Pacote: `atualizacao-2026-09-28-b.zip`.
+
+**Página Produção de Vídeo.** Ferramentas (Gestão · Pacotes · Importar · Descartados) agrupadas num único bloco discreto com ícones; "Nova demanda" é a única ação forte. Chips de resumo com ponto de cor — viram legenda do quadro. Kanban: cabeçalho de coluna com ponto de cor e contador em pílula, coluna vazia com estado tracejado "Nenhuma demanda", cartões com borda esquerda por prioridade (âmbar = alta, vermelho = urgente), código em pílula, rodapé separado com prazo em pílula (vermelha quando atrasada), leve elevação no hover. Celular: ferramentas em grade 2×2.
+
+**Nova demanda.** Três seções numeradas — 1 Cliente e gravação · 2 A demanda · 3 Prazo e responsável — com "opcional" discreto nos rótulos. Checklist de roteiros virou lista de cartões selecionáveis (título + objetivo, destaque roxo ao marcar); no modo lote a seção 2 some e a 3 renumera. Aviso de gravação não gravada em faixa âmbar pequena.
+
+**Descartados.** Tabela com rolagem horizontal substituída por lista de cartões (logo, cliente · código, título, competência, responsável, data do descarte, seta).
+
+**Pacotes.** Cadastro no topo, itens com ícone, nome em destaque, cota com sufixo "vídeos/mês"; no celular a cota desce para a segunda linha em vez de truncar o nome.
+
+**Gestão.** Modal de 960px, título + competência na mesma linha, KPIs em grade de 4 com barra de cor semântica (roxo total, verde ok, âmbar atenção, vermelho atrasadas; ciclos de correção ocupa duas colunas). Tabelas com cabeçalho fixo, primeira coluna fixa ao rolar de lado, números tabulares, cantos arredondados; títulos de seção com marcador roxo.
+
+**Detalhe.** Versões virou bloco como os outros, com estado vazio ilustrado ("Registrar V01" + uma linha de explicação).
+
+Verificado em harness (desktop 1500px e celular 390px): kanban, os quatro modais, o detalhe e o QuickView da ficha A4.

@@ -32,6 +32,15 @@ B7.Video = (function () {
   const souVideomakerElegivel = () => B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel();
   const meuId = () => { const u = B7.Auth && B7.Auth.usuario(); return u ? u.id : null; };
   const hoje = () => B7.UI.hojeISO();
+  const IC = {
+    mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    grafico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19h16M7 16V9M12 16V5M17 16v-6"/></svg>',
+    pacote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
+    planilha: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>',
+    lixeira: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>',
+    seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+    versao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4-2.5z" fill="currentColor" stroke="none"/></svg>'
+  };
 
   const SITUACOES = [
     ['pendente', 'Pendente'],
@@ -233,13 +242,15 @@ B7.Video = (function () {
       '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
       '<p>Toda a fila de edição da B7 em um só lugar.</p></div>' +
       '<div class="vd-acoes-topo">' +
-        (descartados.length
-          ? '<button class="b fina contorno" id="vd-descartados">Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
-          : '') +
-        '<button class="b fina contorno" id="vd-pacotes">Pacotes</button>' +
-        '<button class="b fina contorno" id="vd-gestao">Gestão</button>' +
-        '<button class="b contorno" id="vd-importar">Importar planilha</button>' +
-        '<button class="b pri" id="vd-nova">+ Nova demanda</button></div>' +
+        '<div class="vd-acoes-sec" role="group" aria-label="Ferramentas">' +
+          '<button class="b fina" id="vd-gestao">' + IC.grafico + 'Gestão</button>' +
+          '<button class="b fina" id="vd-pacotes">' + IC.pacote + 'Pacotes</button>' +
+          '<button class="b fina" id="vd-importar">' + IC.planilha + 'Importar</button>' +
+          (descartados.length
+            ? '<button class="b fina" id="vd-descartados">' + IC.lixeira + 'Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
+            : '') +
+        '</div>' +
+        '<button class="b pri" id="vd-nova">' + IC.mais + 'Nova demanda</button></div>' +
       '</div>' +
       '<datalist id="vd-pacotes-lista">' + pacotesVideoCache.map(p => '<option value="' + esc(p.nome) + '">').join('') + '</datalist>' +
       (anteriores.length
@@ -294,8 +305,9 @@ B7.Video = (function () {
       ['status:entregue', contar(d => d.editing_status === 'entregue'), 'entregue' + (contar(d => d.editing_status === 'entregue') === 1 ? '' : 's'), F.status === 'entregue']
     ].filter(c => c[1] > 0 || c[3]);
 
-    cx.innerHTML = '<div class="ds-resumo-rapido">' + chips.map(([chave, n, rot, on]) =>
-      '<button class="ds-rapido-item' + (on ? ' on' : '') + '" data-resumo="' + chave + '"><b>' + n + '</b> ' + esc(rot) + '</button>').join('') +
+    cx.innerHTML = '<div class="ds-resumo-rapido vd-resumo-rapido">' + chips.map(([chave, n, rot, on]) =>
+      '<button class="ds-rapido-item vd-rapido-' + esc(chave.split(':')[1]) + (on ? ' on' : '') + '" data-resumo="' + chave + '">' +
+      '<i class="vd-dot"></i><b>' + n + '</b> ' + esc(rot) + '</button>').join('') +
       '</div>';
 
     cx.querySelectorAll('[data-resumo]').forEach(b => b.onclick = () => {
@@ -437,24 +449,25 @@ B7.Video = (function () {
   function colunaHTML(g) {
     const mostrar = g.itens.slice(0, LIMITE_COLUNA);
     const resto = g.itens.length - mostrar.length;
-    return '<div class="vd-coluna" data-coluna="' + g.chave + '">' +
-      '<div class="vd-coluna-cab"><span>' + esc(g.nome) + '</span><b>' + g.itens.length + '</b></div>' +
+    return '<div class="vd-coluna vd-coluna-' + g.chave + '" data-coluna="' + g.chave + '">' +
+      '<div class="vd-coluna-cab"><span><i class="vd-dot"></i>' + esc(g.nome) + '</span><b>' + g.itens.length + '</b></div>' +
       '<div class="vd-coluna-corpo" data-solta="' + g.chave + '">' +
-      (mostrar.length ? mostrar.map(cardHTML).join('') : '<div class="vd-vazia">—</div>') +
+      (mostrar.length ? mostrar.map(cardHTML).join('') : '<div class="vd-vazia">Nenhuma demanda</div>') +
       (resto > 0 ? '<button class="vd-ver-mais" data-coluna-ver-mais="' + g.chave + '">+' + resto + ' em ' + esc(g.nome.toLowerCase()) + '…</button>' : '') +
       '</div></div>';
   }
   function cardHTML(d) {
     const atrasada = ehAtrasada(d);
-    return '<div class="vd-card" data-demanda="' + d.id + '" data-situacao="' + d.editing_status + '"' +
+    const prio = d.prioridade || 'normal';
+    return '<div class="vd-card vd-card-p-' + prio + (atrasada ? ' vd-card-atrasada' : '') + '" data-demanda="' + d.id + '" data-situacao="' + d.editing_status + '"' +
       (souEquipe() ? ' draggable="true"' : '') + ' tabindex="0">' +
       '<div class="vd-card-topo"><span class="vd-card-cliente">' + logoClienteHTML(d, 'sm') + '<b>' + esc(d.cliente_nome || 'Cliente') + '</b></span>' +
       (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') + '</div>' +
       '<div class="vd-card-titulo">' + tituloComFallback(d) + '</div>' +
-      (d.prioridade && d.prioridade !== 'normal' ? prioridadeBadge(d.prioridade) : '') +
+      (prio !== 'normal' ? prioridadeBadge(prio) : '') +
       '<div class="vd-card-rodape">' +
       quemHTML(d) +
-      (d.prazo ? '<span class="vd-prazo' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo)) + '</span>' : '') +
+      (d.prazo ? '<span class="vd-prazo-pill' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + '</span>' : '') +
       '</div></div>';
   }
 
@@ -738,39 +751,43 @@ B7.Video = (function () {
 
     const m = B7.UI.modal(
       '<h3>Nova demanda de edição</h3>' +
-      '<label class="rot">Cliente</label>' +
-      '<select class="campo" id="vd-nd-cliente" data-foco>' +
-        clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') +
-      '</select>' +
+      '<p class="sub">Uma demanda manual, ou várias de uma vez a partir dos roteiros de uma gravação.</p>' +
 
-      '<label class="rot">Vincular a uma gravação deste cliente (opcional)</label>' +
-      '<select class="campo" id="vd-nd-gravacao"><option value="">Carregando…</option></select>' +
-      '<p class="fraca vd-nd-gravacao-dica">Escolher uma gravação carrega os roteiros dela aqui mesmo — marque os que viram demanda. A gravação não precisa estar marcada como gravada: a demanda pode nascer antes.</p>' +
-      '<div id="vd-nd-roteiros"></div>' +
-      '<p class="vd-nd-aviso-lote" id="vd-nd-aviso-lote" hidden></p>' +
+      '<div class="vd-nd-sec"><div class="vd-nd-sec-t"><i>1</i><span>Cliente e gravação</span></div>' +
+        '<label class="rot">Cliente</label>' +
+        '<select class="campo" id="vd-nd-cliente" data-foco>' +
+          clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') +
+        '</select>' +
+        '<label class="rot">Gravação <em>opcional</em></label>' +
+        '<select class="campo" id="vd-nd-gravacao"><option value="">Carregando…</option></select>' +
+        '<p class="fraca vd-nd-gravacao-dica">Escolher uma gravação traz os roteiros dela aqui — marque os que viram demanda. Não precisa estar marcada como gravada.</p>' +
+        '<div id="vd-nd-roteiros"></div>' +
+        '<p class="vd-nd-aviso-lote" id="vd-nd-aviso-lote" hidden></p>' +
+      '</div>' +
 
-      '<div id="vd-nd-manual">' +
+      '<div class="vd-nd-sec" id="vd-nd-manual"><div class="vd-nd-sec-t"><i>2</i><span>A demanda</span></div>' +
         '<label class="rot">Título</label>' +
         '<input class="campo" id="vd-nd-titulo" placeholder="Ex.: Reel de lançamento">' +
         '<div class="vd-grid-2">' +
-          '<div><label class="rot">Código (opcional)</label><input class="campo" id="vd-nd-codigo" placeholder="Ex.: 014"></div>' +
-          '<div><label class="rot">Pacote (opcional)</label><input class="campo" id="vd-nd-pacote" list="vd-pacotes-lista" placeholder="Ex.: Mensal 8 vídeos" autocomplete="off"></div>' +
+          '<div><label class="rot">Código <em>opcional</em></label><input class="campo" id="vd-nd-codigo" placeholder="Ex.: 014"></div>' +
+          '<div><label class="rot">Pacote <em>opcional</em></label><input class="campo" id="vd-nd-pacote" list="vd-pacotes-lista" placeholder="Ex.: B7 Start" autocomplete="off"></div>' +
         '</div>' +
       '</div>' +
 
-      '<div class="vd-grid-2">' +
-        '<div><label class="rot">Prazo (opcional)</label><input class="campo" type="date" id="vd-nd-prazo"></div>' +
-        '<div id="vd-nd-prioridade-cx"><label class="rot">Prioridade</label><select class="campo" id="vd-nd-prioridade">' +
-          PRIORIDADES.map(([v, r]) => '<option value="' + v + '"' + (v === 'normal' ? ' selected' : '') + '>' + r + '</option>').join('') +
-        '</select></div>' +
+      '<div class="vd-nd-sec"><div class="vd-nd-sec-t"><i id="vd-nd-num3">3</i><span>Prazo e responsável</span></div>' +
+        '<div class="vd-grid-2">' +
+          '<div><label class="rot">Prazo <em>opcional</em></label><input class="campo" type="date" id="vd-nd-prazo"></div>' +
+          '<div id="vd-nd-prioridade-cx"><label class="rot">Prioridade</label><select class="campo" id="vd-nd-prioridade">' +
+            PRIORIDADES.map(([v, r]) => '<option value="' + v + '"' + (v === 'normal' ? ' selected' : '') + '>' + r + '</option>').join('') +
+          '</select></div>' +
+        '</div>' +
+        '<p class="fraca vd-nd-aviso-prioridade" id="vd-nd-aviso-prioridade" hidden>Na geração em lote cada demanda nasce com prioridade Normal e sem pacote — ajuste depois, uma a uma.</p>' +
+        '<label class="rot">Responsável <em>opcional</em></label>' +
+        '<select class="campo" id="vd-nd-videomaker">' +
+          '<option value="">Sem atribuir ainda</option>' +
+          videomakers.map(v => '<option value="' + v.id + '">' + esc(v.nome) + '</option>').join('') +
+        '</select>' +
       '</div>' +
-      '<p class="fraca vd-nd-aviso-prioridade" id="vd-nd-aviso-prioridade" hidden>Prioridade e pacote não se aplicam à geração em lote — cada demanda nasce com prioridade Normal e pode ser ajustada depois, individualmente.</p>' +
-
-      '<label class="rot">Responsável (videomaker, opcional)</label>' +
-      '<select class="campo" id="vd-nd-videomaker">' +
-        '<option value="">Sem atribuir ainda</option>' +
-        videomakers.map(v => '<option value="' + v.id + '">' + esc(v.nome) + '</option>').join('') +
-      '</select>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" id="vd-nd-salvar">Criar demanda</button></div>');
 
@@ -805,21 +822,23 @@ B7.Video = (function () {
       if (!roteirosDaGravacao.length) return '<p class="fraca">Esta gravação não tem roteiros cadastrados.</p>';
       const g = gravacoesCache.find(x => x.id === selGravacao.value);
       const avisoStatus = g && g.status && g.status !== 'Gravado'
-        ? '<p class="fraca vd-nd-status-grav">Gravação ainda "' + esc(g.status) + '" — tudo bem, a demanda pode ser criada antes de marcar como gravada.</p>'
+        ? '<p class="vd-nd-status-grav">Gravação ainda <b>' + esc(g.status) + '</b> — tudo bem, a demanda pode nascer antes de marcar como gravada.</p>'
         : '';
       return avisoStatus + '<label class="rot">Roteiros (marque os que viram demanda — nada é marcado automaticamente)</label>' +
         '<div class="vd-roteiros-lista">' + roteirosDaGravacao.map(r => {
           const codigoExistente = r.ja_tem_demanda ? codigoDemandaExistente(r.id) : '';
-          return '<label class="vd-roteiro-item"><input type="checkbox" data-roteiro="' + r.id + '"' +
+          return '<label class="vd-roteiro-item' + (roteiroSelecionados.has(r.id) ? ' on' : '') + (r.ja_tem_demanda ? ' ja' : '') + '"><input type="checkbox" data-roteiro="' + r.id + '"' +
             (roteiroSelecionados.has(r.id) ? ' checked' : '') + (r.ja_tem_demanda ? ' disabled' : '') + '>' +
-            '<span>' + esc(r.titulo || '(sem título)') + (r.objetivo ? ' <i class="fraca">— ' + esc(r.objetivo) + '</i>' : '') + '</span>' +
-            (r.ja_tem_demanda ? '<span class="vd-badge-ja">já tem demanda' + (codigoExistente ? ' ' + esc(codigoExistente) : '') + '</span>' : '') +
+            '<span><b>' + esc(r.titulo || '(sem título)') + '</b>' + (r.objetivo ? '<small>' + esc(r.objetivo) + '</small>' : '') + '</span>' +
+            (r.ja_tem_demanda ? '<span class="vd-badge-ja">já virou demanda' + (codigoExistente ? ' ' + esc(codigoExistente) : '') + '</span>' : '') +
           '</label>';
         }).join('') + '</div>';
     }
 
     function atualizarModoLote() {
       const n = roteiroSelecionados.size;
+      const num3 = m.querySelector('#vd-nd-num3');
+      if (num3) num3.textContent = n > 0 ? '2' : '3';
       if (n > 0) {
         cxManual.hidden = true;
         cxPrioridade.hidden = true;
@@ -882,6 +901,7 @@ B7.Video = (function () {
         cxRoteiros.querySelectorAll('[data-roteiro]').forEach(chk => {
           chk.onchange = () => {
             if (chk.checked) roteiroSelecionados.add(chk.dataset.roteiro); else roteiroSelecionados.delete(chk.dataset.roteiro);
+            chk.closest('.vd-roteiro-item').classList.toggle('on', chk.checked);
             atualizarModoLote();
           };
         });
@@ -960,19 +980,20 @@ B7.Video = (function () {
     const m = B7.UI.modal(
       '<h3>Descartados <span class="vd-contagem">' + ordenada.length + '</span></h3>' +
       '<p class="fraca">Demandas marcadas como descartadas. Nada foi apagado — só ficam fora da produção ativa.</p>' +
-      '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
-      '<th>Código</th><th>Cliente</th><th>Título</th><th>Competência</th><th>Responsável</th><th>Atualizado em</th>' +
-      '</tr></thead><tbody>' +
+      '<div class="vd-lista-modal">' +
       (ordenada.length ? ordenada.map(d =>
-        '<tr data-demanda="' + d.id + '" tabindex="0">' +
-          '<td class="vd-codigo" data-rot="Código">' + esc(d.codigo || '—') + '</td>' +
-          '<td data-rot="Cliente"><div class="vd-tb-cliente">' + logoClienteHTML(d, 'sm') + '<span>' + esc(d.cliente_nome || '—') + '</span></div></td>' +
-          '<td class="vd-tb-titulo" data-rot="Título">' + tituloComFallback(d) + '</td>' +
-          '<td data-rot="Competência">' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</td>' +
-          '<td data-rot="Responsável">' + quemHTML(d) + '</td>' +
-          '<td data-rot="Atualizado em">' + (d.updated_at ? esc(B7.UI.dataBR(d.updated_at.slice(0, 10))) : '—') + '</td>' +
-        '</tr>').join('') : '<tr><td colspan="6"><i class="vd-sem">Nenhuma demanda descartada.</i></td></tr>') +
-      '</tbody></table></div>' +
+        '<div class="vd-lm-item" data-demanda="' + d.id + '" tabindex="0" role="button">' +
+          logoClienteHTML(d, 'md') +
+          '<div class="vd-lm-tx"><small>' + esc(d.cliente_nome || '—') + (d.codigo ? ' · <span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') + '</small>' +
+            '<b>' + tituloComFallback(d) + '</b>' +
+            '<div class="vd-lm-meta">' +
+              (d.competencia_ano ? '<span>' + esc(competenciaRotulo(competenciaChave(d))) + '</span>' : '') +
+              '<span>' + quemHTML(d) + '</span>' +
+              (d.updated_at ? '<span>descartada em ' + esc(B7.UI.dataBR(d.updated_at.slice(0, 10))) + '</span>' : '') +
+            '</div></div>' +
+          '<span class="vd-lm-seta">' + IC.seta + '</span>' +
+        '</div>').join('') : '<div class="vd-rot-vazio"><b>Nenhuma demanda descartada.</b></div>') +
+      '</div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>');
     m.querySelectorAll('[data-demanda]').forEach(tr => {
       tr.onclick = () => { m.fechar(); location.hash = '#/video/' + tr.dataset.demanda; };
@@ -988,19 +1009,19 @@ B7.Video = (function () {
   function modalPacotes() {
     const conteudo = () => {
       const linhas = [...pacotesVideoCache].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-      return '<h3>Pacotes predefinidos</h3>' +
-        '<p class="fraca">Sugestões pro campo "Pacote" das demandas — o campo continua aceitando qualquer texto, isso aqui só evita redigitar.</p>' +
+      return '<h3>Pacotes</h3>' +
+        '<p class="sub">Sugestões pro campo "Pacote" das demandas. A cota mensal alimenta a Gestão (quantos vídeos o cliente contratou × quantos foram entregues).</p>' +
+        '<form id="vd-pct-form" class="vd-pct-form">' +
+          '<input class="campo" id="vd-pct-nome" placeholder="Novo pacote — ex.: B7 Play" autocomplete="off" data-foco>' +
+          '<button class="b pri" type="submit">' + IC.mais + 'Adicionar</button>' +
+        '</form>' +
         (linhas.length
           ? '<div class="vd-pacotes-adm">' + linhas.map(p =>
-              '<div class="vd-pacote-item"><span>' + esc(p.nome) + '</span>' +
-              '<input class="campo vd-pacote-quota" type="number" min="1" step="1" placeholder="cota/mês" ' +
-                'data-quota-pacote="' + p.id + '" value="' + (p.quantidade_contratada || '') + '" title="Quantidade contratada por mês (opcional — sem número, o pacote continua sendo só sugestão de nome)">' +
+              '<div class="vd-pacote-item"><span class="vd-pacote-ico">' + IC.pacote + '</span><span class="vd-pacote-nome">' + esc(p.nome) + '</span>' +
+              '<label class="vd-pacote-cota"><input class="campo vd-pacote-quota" type="number" min="1" step="1" placeholder="—" inputmode="numeric" ' +
+                'data-quota-pacote="' + p.id + '" value="' + (p.quantidade_contratada || '') + '" aria-label="Cota mensal"><span>vídeos/mês</span></label>' +
               '<button class="vd-cm-excluir" data-excluir-pacote="' + p.id + '" title="Excluir pacote" aria-label="Excluir pacote">×</button></div>').join('') + '</div>'
-          : '<p class="fraca">Nenhum pacote cadastrado ainda.</p>') +
-        '<form id="vd-pct-form" class="vd-cm-form">' +
-          '<input class="campo vd-cm-texto" id="vd-pct-nome" placeholder="Nome do pacote (ex.: Mensal 8 vídeos)" autocomplete="off" data-foco>' +
-          '<button class="b pri fina" type="submit">Adicionar</button>' +
-        '</form>' +
+          : '<div class="vd-rot-vazio"><b>Nenhum pacote ainda.</b><p>Cadastre o primeiro acima.</p></div>') +
         '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>';
     };
 
@@ -1119,15 +1140,14 @@ B7.Video = (function () {
       resumo: null, carga: [], porCliente: [], porVideomaker: [], fechado: false };
 
     const cascaHTML = () =>
-      '<h3>Gestão — Produção de Vídeo</h3>' +
+      '<div class="vd-gestao-topo"><div><h3>Gestão</h3><p class="sub">Produção de vídeo por competência.</p></div>' +
       '<div class="vd-gestao-comp">' +
-        '<label class="rot">Competência</label>' +
-        '<select class="campo" id="vg-comp">' +
+        '<select class="campo" id="vg-comp" aria-label="Competência">' +
           competenciasDisponiveis().filter(c => c !== 'todas').map(c =>
             '<option value="' + c + '"' + (c === (estado.ano + '-' + String(estado.mes).padStart(2, '0')) ? ' selected' : '') + '>' + esc(competenciaRotulo(c)) + '</option>').join('') +
         '</select>' +
         (estado.fechado ? '<span class="vd-badge-fechado">Mês fechado</span>' : '') +
-      '</div>' +
+      '</div></div>' +
       '<div id="vg-corpo">' + (estado.carregando ? B7.UI.skeleton('tabela', { n: 4, cols: 3 }) :
         estado.erro ? '<p class="fraca">' + esc(estado.erro) + '</p>' : corpoHTML()) + '</div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>';
@@ -1139,14 +1159,14 @@ B7.Video = (function () {
         .reduce((s, k) => s + (porStatus[k] || 0), 0);
       return (
         '<div class="vd-gestao-cards">' +
-          '<div class="vg-card"><b>' + numFmt(r.total) + '</b><span>demandas na competência</span></div>' +
-          '<div class="vg-card' + (r.atrasadas ? ' vg-alerta' : '') + '"><b>' + numFmt(r.atrasadas) + '</b><span>atrasadas</span></div>' +
-          '<div class="vg-card"><b>' + numFmt(r.vence_hoje) + '</b><span>vencem hoje</span></div>' +
-          '<div class="vg-card"><b>' + numFmt(r.entregues_no_prazo) + '</b><span>entregues no prazo</span></div>' +
+          '<div class="vg-card vg-total"><b>' + numFmt(r.total) + '</b><span>demandas no mês</span></div>' +
+          '<div class="vg-card' + (r.atrasadas ? ' vg-alerta' : ' vg-ok') + '"><b>' + numFmt(r.atrasadas) + '</b><span>atrasadas</span></div>' +
+          '<div class="vg-card' + (r.vence_hoje ? ' vg-atencao' : '') + '"><b>' + numFmt(r.vence_hoje) + '</b><span>vencem hoje</span></div>' +
+          '<div class="vg-card vg-ok"><b>' + numFmt(r.entregues_no_prazo) + '</b><span>entregues no prazo</span></div>' +
           '<div class="vg-card"><b>' + numFmt(r.entregues_com_atraso) + '</b><span>entregues com atraso</span></div>' +
           '<div class="vg-card"><b>' + diasFmt(r.tempo_medio_producao_dias) + '</b><span>tempo médio de produção' +
-            (r.demandas_com_tempo_medido ? ' (' + r.demandas_com_tempo_medido + ' medida' + (r.demandas_com_tempo_medido === 1 ? '' : 's') + ')' : '') + '</span></div>' +
-          '<div class="vg-card"><b>' + numFmt(r.ciclos_correcao_total) + '</b><span>ciclos de correção (cliente: ' + numFmt(r.ciclos_correcao_cliente) + ' · interna: ' + numFmt(r.ciclos_correcao_interna) + ')</span></div>' +
+            (r.demandas_com_tempo_medido ? '<em>' + r.demandas_com_tempo_medido + ' medida' + (r.demandas_com_tempo_medido === 1 ? '' : 's') + '</em>' : '') + '</span></div>' +
+          '<div class="vg-card vg-larga"><b>' + numFmt(r.ciclos_correcao_total) + '</b><span>ciclos de correção<em>cliente ' + numFmt(r.ciclos_correcao_cliente) + ' · interna ' + numFmt(r.ciclos_correcao_interna) + '</em></span></div>' +
         '</div>' +
         '<p class="fraca">Tempo médio de produção mede do início da edição até o primeiro envio para aprovação — só conta demandas com essa trilha de eventos completa (ver nota no rodapé). Ciclo de correção "cliente" é uma inferência sobre o texto da decisão registrada, não um campo estruturado à parte.</p>' +
         gargaloHTML(porStatus) +
@@ -1196,7 +1216,7 @@ B7.Video = (function () {
       );
     }
 
-    const m = B7.UI.modal(cascaHTML(), { larga: true });
+    const m = B7.UI.modal(cascaHTML(), { larga: true, extra: 'vd-modal-gestao' });
 
     async function carregar() {
       estado.carregando = true; estado.erro = null;
@@ -1687,10 +1707,10 @@ B7.Video = (function () {
 
     let acao = '';
     if (!atual) {
-      acao = podeOperar
-        ? '<div class="estado-b7 vd-sem-material"><b>Nenhuma versão registrada ainda.</b>' +
-          '<div class="acoes"><button class="b pri" id="vd-vs-nova">Registrar versão</button></div></div>'
-        : '<div class="estado-b7 vd-sem-material"><b>Nenhuma versão registrada ainda.</b></div>';
+      acao = '<div class="vd-vazio-versao"><span class="vd-vazio-ico">' + IC.versao + '</span>' +
+        '<b>Nenhuma versão registrada ainda.</b>' +
+        '<p>Quando a primeira edição estiver pronta, registre o link do Drive como V01 — o cliente aprova a partir dela.</p>' +
+        (podeOperar ? '<button class="b pri" id="vd-vs-nova">' + IC.mais + 'Registrar V01</button>' : '') + '</div>';
     } else {
       let decisaoHTML = '';
       if (d.editing_status === 'aguardando_aprovacao' && !atual.decisao_cliente) {
@@ -1735,7 +1755,7 @@ B7.Video = (function () {
     }
 
     const antigas = versoes.slice(1);
-    return '<div class="vd-dt-campo vd-workspace"><label class="rot">Versões</label>' +
+    return '<section class="vd-bloco vd-workspace"><div class="vd-bloco-cab"><label class="rot">Versões' + (versoes.length ? ' · ' + versoes.length : '') + '</label></div>' +
       acao +
       (antigas.length
         ? '<div class="vd-versoes-antigas">' + antigas.map(v =>
@@ -1748,7 +1768,7 @@ B7.Video = (function () {
               secaoComentarios(v, podeOperar) +
             '</div></details>').join('') + '</div>'
         : '') +
-      '</div>';
+      '</section>';
   }
 
   function modalNovaVersao(d) {
