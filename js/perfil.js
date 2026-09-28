@@ -93,6 +93,10 @@ B7.Perfil = (function () {
           opcao('som', 'Som ao chegar notificação', 'Um toque curto, gerado pelo próprio sistema.') +
           opcao('navegador', 'Aviso do navegador', 'Quando esta aba não estiver em foco, o navegador mostra o aviso.') +
           opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.') +
+          '<div class="pf-teste-push">' +
+            '<button type="button" class="b fina contorno" id="pf-testar-notif">Enviar uma notificação de teste</button>' +
+            '<small id="pf-versao-sw"></small>' +
+          '</div>' +
           '<div class="perfil-acao"><span class="perfil-msg" id="pf-msg-notif"></span></div>' +
         '</div>' +
 
@@ -260,6 +264,35 @@ B7.Perfil = (function () {
       B7.Push.ativo().then(ativo => { pintar('push', ativo); btPush.disabled = false; })
         .catch(() => { btPush.disabled = false; });
     } else { btPush.disabled = true; }
+
+    /* Teste de ponta a ponta: o banco cria a notificação de verdade, o
+       webhook chama a b7-push e o aviso chega no aparelho. Ao lado,
+       a versão do service worker ativo — é ele quem desenha o aviso, e
+       um aparelho que ainda não recarregou o site continua com o antigo. */
+    const btTeste = m.querySelector('#pf-testar-notif');
+    if (btTeste) btTeste.onclick = async () => {
+      btTeste.disabled = true; const rotulo = btTeste.textContent;
+      btTeste.textContent = 'Enviando…';
+      msg.className = 'perfil-msg'; msg.textContent = '';
+      try {
+        await B7.DB.notificarTeste();
+        aviso(msg, 'Enviado. Deve chegar em alguns segundos — se o push estiver ligado, no celular também.', 'ok');
+      } catch (e) {
+        aviso(msg, e.message || 'Não foi possível enviar o teste.', 'erro');
+      } finally { btTeste.disabled = false; btTeste.textContent = rotulo; }
+    };
+
+    const cxVersao = m.querySelector('#pf-versao-sw');
+    if (cxVersao && navigator.serviceWorker && navigator.serviceWorker.controller) {
+      try {
+        const canal = new MessageChannel();
+        canal.port1.onmessage = ev => {
+          const v = (ev.data && ev.data.versao) || '';
+          if (v) cxVersao.textContent = 'Aparelho rodando ' + v;
+        };
+        navigator.serviceWorker.controller.postMessage({ tipo: 'b7-versao' }, [canal.port2]);
+      } catch (e) {}
+    }
 
     async function gravar(k, v) {
       msg.className = 'perfil-msg'; msg.textContent = 'Salvando…';

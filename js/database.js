@@ -905,6 +905,10 @@ B7.DB = (function () {
       return count || 0;
     },
     async marcarLida(id) { return this.rpc('notif_marcar_lida', { p_id: id }); },
+    /* Dispara uma notificação de teste pra própria pessoa — percorre o
+       mesmo caminho de uma notificação de verdade (banco → webhook →
+       b7-push), então serve pra conferir o push de ponta a ponta. */
+    async notificarTeste() { return this.rpc('notificar_teste'); },
     async marcarTodasLidas() { return this.rpc('notif_marcar_todas', {}); },
     /* mais recente não lida — usada só para decidir se toca o som de
        "cheguei e tem coisa nova" no login/retorno, sem trazer a lista

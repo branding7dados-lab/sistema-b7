@@ -184,7 +184,7 @@ B7.Notif = (function () {
         'design.ajuste_solicitado': 'Ajuste solicitado', 'design.cliente_aprovado': 'Cliente aprovou a peça', 'design.finalizado': 'Peça finalizada',
         'aprovacao.enviada': 'Material enviado para aprovação', 'aprovacao.aprovada': 'Cliente aprovou', 'aprovacao.ajustes': 'Cliente pediu ajustes',
         'aprovacao.recusada': 'Cliente recusou', 'aprovacao.anulada': 'Aprovação anulada', 'parte.aprovada': 'Parte aprovada pelo cliente',
-        'linha.concluida': 'Linha editorial concluída',
+        'linha.concluida': 'Linha editorial concluída', 'teste.notificacao': 'Teste do Sistema B7',
         'agenda.gravacao_24h': 'Gravação amanhã', 'agenda.gravacao_1h': 'Gravação em 1 hora',
         'agenda.apresentacao_24h': 'Apresentação amanhã', 'agenda.apresentacao_1h': 'Apresentação em 1 hora',
         'agenda.reuniao_24h': 'Reunião amanhã', 'agenda.reuniao_1h': 'Reunião em 1 hora',

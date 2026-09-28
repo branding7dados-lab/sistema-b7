@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v96';
+const CACHE = 'roteiros-b7-v97';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -113,7 +113,8 @@ const TITULOS = {
   'agenda.reuniao_24h': 'Reunião amanhã',
   'agenda.reuniao_1h': 'Reunião em 1 hora',
   'agenda.outro_24h': 'Compromisso amanhã',
-  'agenda.outro_1h': 'Compromisso em 1 hora'
+  'agenda.outro_1h': 'Compromisso em 1 hora',
+  'teste.notificacao': 'Teste do Sistema B7'
 };
 function tituloDe(d) {
   if (d.tipo && TITULOS[d.tipo]) return TITULOS[d.tipo];
@@ -123,6 +124,14 @@ function tituloDe(d) {
   if (d.tipo && d.tipo.startsWith('agenda.')) return 'Agenda';
   return 'Sistema B7';
 }
+
+/* Responde "que versão de mim está rodando aqui?" — o Meu perfil usa
+   isto pra mostrar se o aparelho já pegou a atualização ou continua no
+   service worker antigo (que é quem desenha a notificação). */
+self.addEventListener('message', ev => {
+  const d = ev.data || {};
+  if (d.tipo === 'b7-versao' && ev.ports && ev.ports[0]) ev.ports[0].postMessage({ versao: CACHE });
+});
 
 self.addEventListener('push', ev => {
   let d = {};

@@ -325,3 +325,9 @@ body.sem-sessao main{display:none;}
 
 .login-rodape{position:relative;z-index:1;text-align:center;font-size:11px;
   color:rgba(255,255,255,.45);letter-spacing:.03em;margin-top:16px;}
+
+/* Teste de notificação + versão do service worker (Meu perfil).
+   O último .perfil-opcao já traz border-bottom, então aqui só espaço. */
+.pf-teste-push{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0 0;}
+.pf-teste-push small{font-size:11px;color:var(--ink-4);font-family:monospace;}
+@media (max-width:480px){ .pf-teste-push .b{width:100%;justify-content:center;} }
