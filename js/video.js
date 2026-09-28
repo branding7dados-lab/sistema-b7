@@ -745,7 +745,7 @@ B7.Video = (function () {
 
       '<label class="rot">Vincular a uma gravação deste cliente (opcional)</label>' +
       '<select class="campo" id="vd-nd-gravacao"><option value="">Carregando…</option></select>' +
-      '<p class="fraca vd-nd-gravacao-dica">Escolher uma gravação "Gravado" carrega os roteiros dela aqui mesmo — marque os que viraram demanda, sem abrir outra tela.</p>' +
+      '<p class="fraca vd-nd-gravacao-dica">Escolher uma gravação carrega os roteiros dela aqui mesmo — marque os que viram demanda. A gravação não precisa estar marcada como gravada: a demanda pode nascer antes.</p>' +
       '<div id="vd-nd-roteiros"></div>' +
       '<p class="vd-nd-aviso-lote" id="vd-nd-aviso-lote" hidden></p>' +
 
@@ -803,7 +803,11 @@ B7.Video = (function () {
 
     function roteirosHTML() {
       if (!roteirosDaGravacao.length) return '<p class="fraca">Esta gravação não tem roteiros cadastrados.</p>';
-      return '<label class="rot">Roteiros (marque os que viraram demanda — nada é marcado automaticamente)</label>' +
+      const g = gravacoesCache.find(x => x.id === selGravacao.value);
+      const avisoStatus = g && g.status && g.status !== 'Gravado'
+        ? '<p class="fraca vd-nd-status-grav">Gravação ainda "' + esc(g.status) + '" — tudo bem, a demanda pode ser criada antes de marcar como gravada.</p>'
+        : '';
+      return avisoStatus + '<label class="rot">Roteiros (marque os que viram demanda — nada é marcado automaticamente)</label>' +
         '<div class="vd-roteiros-lista">' + roteirosDaGravacao.map(r => {
           const codigoExistente = r.ja_tem_demanda ? codigoDemandaExistente(r.id) : '';
           return '<label class="vd-roteiro-item"><input type="checkbox" data-roteiro="' + r.id + '"' +
@@ -860,10 +864,11 @@ B7.Video = (function () {
       if (!gravacaoId) return;
       const g = gravacoesCache.find(x => x.id === gravacaoId);
       definirPrazoSugerido(g && g.data_gravacao);
-      /* Checklist de roteiros só faz sentido pra gravação já "Gravado"
-         — pra qualquer outro status, o vínculo continua funcionando
-         (igual sempre funcionou), só não tem o que marcar em lote. */
-      if (!g || g.status !== 'Gravado') return;
+      /* O checklist de roteiros aparece pra QUALQUER gravação, não só
+         pra "Gravado": na prática nem sempre dá tempo de marcar a
+         gravação como gravada antes de a edição começar, e exigir isso
+         só travava a criação da demanda. O status da gravação vira
+         apenas um aviso informativo dentro da lista. */
       cxRoteiros.innerHTML = '<p class="fraca">Carregando roteiros…</p>';
       try {
         const [roteiros, existentes] = await Promise.all([
@@ -1293,20 +1298,107 @@ B7.Video = (function () {
      chamada no meio da montagem do HTML do detalhe, o ReferenceError
      interrompia a renderização inteira e a tela ficava eternamente no
      esqueleto de carregamento. */
-  function roteirosVinculadosHTML(d, podeEditar) {
+  /* =================================================================
+     ROTEIROS DA DEMANDA — o videomaker precisa LER o roteiro sem sair
+     da demanda. Cada roteiro vinculado vira um cartão com título,
+     objetivo, situação e as cenas (lidas aqui mesmo, expandindo), mais
+     a ficha A4 (espiada) e o atalho pro editor. `rc` é o contexto de
+     roteiros carregado em abrirDetalhe: { gravacao, roteiros (todos da
+     gravação), cenasPorRoteiro (só dos vinculados) }.
+     ================================================================= */
+  function cenaLeituraHTML(c, i) {
+    const tipo = c.tipo || 'Narrativa';
+    const etiqueta = (c.funcao && c.funcao.trim()) ? c.funcao.trim() : tipo;
+    const paragrafos = t => String(t || '').split('\n').map(x => x.trim()).filter(Boolean).map(x => '<p>' + esc(x) + '</p>').join('') || '<p class="fraca">(sem texto)</p>';
+    return '<div class="vd-rot-cena vd-rot-cena-' + esc(tipo.normalize('NFD').replace(/[^a-zA-Z]/g, '').toLowerCase()) + '">' +
+      '<div class="vd-rot-cena-cab"><b>Cena ' + (i + 1) + '</b><span>' + esc(etiqueta) + '</span>' +
+        (c.direcao ? '<i>' + esc(c.direcao) + '</i>' : '') + '</div>' +
+      '<div class="vd-rot-cena-txt">' + paragrafos(c.texto) + '</div>' +
+      (tipo === 'Narração' && String(c.sugestao_cenas || '').trim()
+        ? '<div class="vd-rot-cena-sug"><b>Sugestão de cenas</b>' + paragrafos(c.sugestao_cenas) + '</div>' : '') +
+    '</div>';
+  }
+
+  function secaoRoteiros(d, rc, podeEditar) {
     const vinc = d.roteiros_vinculados || [];
-    const lista = vinc.length
-      ? '<div class="vd-roteiros-vinculo-lista">' + vinc.map(r =>
-          '<div class="vd-rv-chip"><span>' + esc(r.titulo || '(sem título)') + '</span>' +
-          (podeEditar ? '<button type="button" data-remover-roteiro="' + r.id + '" title="Remover" aria-label="Remover">×</button>' : '') +
-          '</div>').join('') + '</div>'
-      : '<div class="vd-so-leitura">' + (podeEditar ? 'Nenhum roteiro vinculado ainda.' : 'sem vínculo') + '</div>';
-    if (!podeEditar) return lista;
-    return lista +
-      (d.gravacao_id
-        ? '<div class="vd-link-linha"><select class="campo" id="vd-dt-roteiro-add"><option value="">Adicionar roteiro…</option></select>' +
-          '<button class="b" id="vd-dt-roteiro-add-bt" disabled>Adicionar</button></div>'
-        : '<p class="fraca">Vincule uma gravação acima para poder escolher roteiros dela.</p>');
+    const todos = (rc && rc.roteiros) || [];
+    const cenasPor = (rc && rc.cenasPorRoteiro) || {};
+    const abertoPorPadrao = vinc.length === 1;
+
+    const cartoes = vinc.map(v => {
+      const r = todos.find(x => x.id === v.id) || v;
+      const idx = todos.findIndex(x => x.id === v.id);
+      const cenas = cenasPor[v.id] || [];
+      const num = idx >= 0 ? String(idx + 1).padStart(2, '0') : '—';
+      return '<article class="vd-rot' + (abertoPorPadrao ? ' aberto' : '') + '" data-roteiro-card="' + esc(v.id) + '">' +
+        '<header class="vd-rot-cab">' +
+          '<div class="vd-rot-num">ROTEIRO ' + num + '</div>' +
+          '<div class="vd-rot-tit"><h3>' + esc(r.titulo || '(sem título)') + '</h3>' +
+            (r.objetivo ? '<p>' + esc(r.objetivo) + '</p>' : '') + '</div>' +
+          '<div class="vd-rot-meta">' + (r.status ? B7.UI.chipRevisao(r.status) : '') +
+            '<span>' + cenas.length + ' cena' + (cenas.length === 1 ? '' : 's') + '</span></div>' +
+        '</header>' +
+        '<div class="vd-rot-acoes">' +
+          '<button type="button" class="b fina" data-rot-ler="' + esc(v.id) + '" aria-expanded="' + (abertoPorPadrao ? 'true' : 'false') + '">' +
+            (abertoPorPadrao ? 'Recolher' : 'Ler roteiro') + '</button>' +
+          (idx >= 0 ? '<button type="button" class="b fina contorno" data-rot-ficha="' + esc(v.id) + '">Ficha A4</button>' : '') +
+          (d.gravacao_id ? '<a class="b fina contorno" href="#/gravacao/' + esc(d.gravacao_id) + '?roteiro=' + esc(v.id) + '">Abrir no editor</a>' : '') +
+          (podeEditar ? '<button type="button" class="b fina contorno vd-rot-remover" data-remover-roteiro="' + esc(v.id) + '" title="Desvincular da demanda">Desvincular</button>' : '') +
+        '</div>' +
+        '<div class="vd-rot-corpo" id="vd-rot-corpo-' + esc(v.id) + '"' + (abertoPorPadrao ? '' : ' hidden') + '>' +
+          (cenas.length ? cenas.map(cenaLeituraHTML).join('') : '<p class="fraca">Este roteiro ainda não tem cenas escritas.</p>') +
+        '</div>' +
+      '</article>';
+    }).join('');
+
+    const vazio = !vinc.length
+      ? '<div class="vd-rot-vazio"><b>Nenhum roteiro vinculado.</b>' +
+        '<p>' + (d.gravacao_id
+          ? 'Escolha um roteiro da gravação vinculada para o videomaker ler aqui mesmo.'
+          : 'Vincule uma gravação (no painel ao lado) para poder escolher roteiros dela.') + '</p></div>'
+      : '';
+
+    const adicionar = podeEditar && d.gravacao_id
+      ? '<div class="vd-link-linha vd-rot-add"><select class="campo" id="vd-dt-roteiro-add"><option value="">Carregando roteiros…</option></select>' +
+        '<button class="b" id="vd-dt-roteiro-add-bt" disabled>Vincular</button></div>'
+      : '';
+
+    return '<section class="vd-bloco vd-bloco-roteiros">' +
+      '<div class="vd-bloco-cab"><label class="rot">Roteiro' + (vinc.length === 1 ? '' : 's') + (vinc.length ? ' · ' + vinc.length : '') + '</label>' +
+        (rc && rc.gravacao && rc.gravacao.status && rc.gravacao.status !== 'Gravado'
+          ? '<span class="vd-rot-grav-status" title="Situação da gravação vinculada">Gravação: ' + esc(rc.gravacao.status) + '</span>' : '') +
+      '</div>' +
+      cartoes + vazio + adicionar +
+    '</section>';
+  }
+
+  /* Contexto pra espiada da ficha A4 (B7.QuickView.abrir usa o mesmo
+     formato da impressão). */
+  function ctxQuickViewDe(d, rc) {
+    const g = rc.gravacao || {};
+    return {
+      cliente: g.cliente_nome || d.cliente_nome || '',
+      clienteLogo: g.cliente_logo_url || d.cliente_logo_url || null,
+      gravacao: g.nome || d.gravacao_nome || '',
+      dataGravacao: g.data_gravacao ? B7.UI.dataBR(g.data_gravacao) : '',
+      gravacaoId: d.gravacao_id,
+      roteiros: rc.roteiros || [],
+      cenasPorRoteiro: rc.cenasPorRoteiro || {}
+    };
+  }
+
+  /* Faixa de resumo sob o título: o estado da demanda de relance, sem
+     precisar correr o olho pelo painel lateral. */
+  function faixaResumoHTML(d, atrasada) {
+    const partes = [
+      statusBadge(d.editing_status),
+      prioridadeBadge(d.prioridade),
+      '<span class="vd-resumo-item' + (atrasada ? ' atrasado' : '') + '">' +
+        (d.prazo ? 'Prazo ' + esc(B7.UI.dataBR(d.prazo)) + (atrasada ? ' · atrasada' : '') : 'Sem prazo') + '</span>',
+      '<span class="vd-resumo-item">' + quemHTML(d) + '</span>'
+    ];
+    if (d.gravacao_nome) partes.push('<span class="vd-resumo-item">🎬 ' + esc(d.gravacao_nome) + '</span>');
+    return '<div class="vd-resumo">' + partes.join('') + '</div>';
   }
 
   /* =================================================================
@@ -1318,6 +1410,7 @@ B7.Video = (function () {
     painel().innerHTML = '<div class="conteudo vd-tela">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>';
 
     let d, historico;
+    const rc = { gravacao: null, roteiros: [], cenasPorRoteiro: {} };
     try {
       /* Tudo que a tela precisa vai junto, numa rodada só. Antes eram três
          `await` em fila (clientes → videomakers → pacotes) DEPOIS do lote
@@ -1349,10 +1442,25 @@ B7.Video = (function () {
       (cc || []).forEach(c => {
         (comentariosPorVersao[c.versao_id] = comentariosPorVersao[c.versao_id] || []).push(c);
       });
+
+      /* Segunda rodada, só quando há gravação: a gravação (pra ficha
+         A4 e pro status), TODOS os roteiros dela (numeração + seletor
+         de vínculo) e as cenas só dos vinculados (pra leitura inline).
+         Falha aqui não derruba a tela — a demanda abre sem a leitura. */
+      if (d.gravacao_id) {
+        const idsVinc = (d.roteiros_vinculados || []).map(r => r.id);
+        const [g, rs, cs] = await comTempoLimite(Promise.all([
+          B7.DB.gravacao(d.gravacao_id).catch(() => null),
+          B7.DB.listarRoteiros(d.gravacao_id).catch(() => []),
+          idsVinc.length ? B7.DB.listarCenasDaGravacao(idsVinc).catch(() => []) : Promise.resolve([])
+        ]), 15000).catch(() => [null, [], []]);
+        rc.gravacao = g; rc.roteiros = rs || [];
+        (cs || []).forEach(c => { (rc.cenasPorRoteiro[c.script_id] = rc.cenasPorRoteiro[c.script_id] || []).push(c); });
+      }
     } catch (e) {
       /* PGRST116 = a consulta com .single() não achou nenhuma linha —
          o caso mais comum é um link antigo (ex.: clique numa notificação
-         de dias atrás) apontando pra uma demanda que already foi excluída
+         de dias atrás) apontando pra uma demanda que já foi excluída
          (Lixeira) ou descartada depois que o aviso foi criado. Nesse caso
          a mensagem de erro crua do Postgres ("Cannot coerce…") não ajuda
          ninguém — mostra o motivo real, em português. */
@@ -1365,8 +1473,6 @@ B7.Video = (function () {
           (excluida ? '' : '<button class="b pri" id="vd-dt-tentar">Tentar de novo</button>') +
           '<button class="b" onclick="location.hash=\'#/video\'">Voltar</button>' +
         '</div></div></div>';
-      /* tenta de novo sem recarregar a página inteira: só refaz a carga
-         desta demanda, mantendo a sessão e o resto do estado da SPA */
       const btTentar = document.getElementById('vd-dt-tentar');
       if (btTentar) btTentar.onclick = () => abrirDetalhe(id);
       return;
@@ -1375,44 +1481,54 @@ B7.Video = (function () {
     const podeEditar = souEquipe();
     const podeOperar = souEquipe() || d.videomaker_id === meuId();
     const atrasada = ehAtrasada(d);
+    const correcoes = versoesAtual.filter(v => v.decisao_cliente === 'correcao' || v.decisao_cliente === 'recusado').length;
 
     painel().innerHTML = '<div class="conteudo entra vd-tela vd-detalhe">' +
       '<div class="trilha"><a href="#/video">' + esc(souEquipe() ? 'Produção de Vídeo' : 'Central de Vídeo') + '</a><span>/</span><b>' + esc(d.titulo) + '</b></div>' +
-      '<header class="vd-cab"><div><h1>' + tituloComFallback(d) + '</h1>' +
-      '<p class="vd-dt-cliente">' + logoClienteHTML(d, 'md') + '<span>' + esc(d.cliente_nome || '') + (d.codigo ? ' · ' + esc(d.codigo) : '') +
-      (d.competencia_ano ? ' · ' + esc(competenciaRotulo(competenciaChave(d))) : '') + '</span></p></div>' +
-      (podeEditar && d.editing_status !== 'descartado'
-        ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar demanda</button>' : '') +
-      (podeEditar ? '<button class="b fina contorno" id="vd-dt-excluir">Excluir</button>' : '') +
+      '<header class="vd-cab vd-cab-detalhe"><div class="vd-cab-texto"><h1>' + tituloComFallback(d) + '</h1>' +
+        '<p class="vd-dt-cliente">' + logoClienteHTML(d, 'md') + '<span>' + esc(d.cliente_nome || '') + (d.codigo ? ' · ' + esc(d.codigo) : '') +
+        (d.competencia_ano ? ' · ' + esc(competenciaRotulo(competenciaChave(d))) : '') + '</span></p>' +
+        faixaResumoHTML(d, atrasada) +
+      '</div>' +
+      (podeEditar
+        ? '<div class="vd-acoes-topo">' +
+          (d.editing_status !== 'descartado' ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar</button>' : '') +
+          '<button class="b fina contorno perigo" id="vd-dt-excluir">Excluir</button></div>'
+        : '') +
       '</header>' +
 
       '<div class="vd-detalhe-corpo">' +
         '<div class="vd-detalhe-principal">' +
           secaoVersoes(d, versoesAtual, podeEditar, podeOperar) +
-          (d.link_material
-            ? '<a class="b pri vd-abrir-materiais" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir materiais</a>'
-            : (podeOperar ? '' : '<div class="estado-b7 vd-sem-material"><b>Sem materiais vinculados ainda.</b></div>')) +
-          '<div class="vd-dt-campo vd-dt-link"><label class="rot">Link do material editado</label>' +
-          (podeOperar
-            ? '<div class="vd-link-linha"><input class="campo" id="vd-dt-link" placeholder="https://drive.google.com/…" value="' + esc(d.link_material || '') + '">' +
-              '<button class="b" id="vd-dt-link-salvar">Salvar</button></div>' +
-              '<p class="fraca">Link externo (Drive, WeTransfer…) — nesta etapa o vídeo não é enviado para dentro do sistema.</p>'
-            : '') +
-          '</div>' +
+
+          secaoRoteiros(d, rc, podeEditar) +
+
+          '<section class="vd-bloco">' +
+            '<div class="vd-bloco-cab"><label class="rot">Material editado</label></div>' +
+            (d.link_material
+              ? '<a class="b pri vd-abrir-materiais" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir materiais</a>'
+              : (podeOperar ? '' : '<div class="vd-so-leitura">Sem materiais vinculados ainda.</div>')) +
+            (podeOperar
+              ? '<div class="vd-dt-campo vd-dt-link"><div class="vd-link-linha"><input class="campo" id="vd-dt-link" placeholder="https://drive.google.com/…" value="' + esc(d.link_material || '') + '">' +
+                '<button class="b" id="vd-dt-link-salvar">Salvar</button></div>' +
+                '<p class="fraca">Link externo (Drive, WeTransfer…) — o vídeo não é enviado para dentro do sistema.</p></div>'
+              : '') +
+          '</section>' +
 
           (podeEditar
-            ? '<div class="vd-dt-campo"><label class="rot">Observações</label>' +
-              '<textarea class="campo alta" id="vd-dt-obs" rows="4">' + esc(d.observacoes || '') + '</textarea></div>'
-            : (d.observacoes ? '<div class="vd-dt-campo"><label class="rot">Observações</label><div class="vd-so-leitura">' + esc(d.observacoes) + '</div></div>' : '')) +
+            ? '<section class="vd-bloco"><div class="vd-bloco-cab"><label class="rot">Observações</label><span class="vd-autosave-dica" id="vd-obs-estado"></span></div>' +
+              '<textarea class="campo alta" id="vd-dt-obs" rows="4" placeholder="Orientações para a edição, referências, pontos de atenção…">' + esc(d.observacoes || '') + '</textarea></section>'
+            : (d.observacoes ? '<section class="vd-bloco"><div class="vd-bloco-cab"><label class="rot">Observações</label></div><div class="vd-so-leitura">' + esc(d.observacoes) + '</div></section>' : '')) +
 
-          '<div class="vd-dt-campo"><label class="rot">Histórico</label>' +
+          '<section class="vd-bloco"><div class="vd-bloco-cab"><label class="rot">Histórico</label></div>' +
           (historico.length
             ? '<ul class="vd-timeline">' + historico.map(linhaHistorico).join('') + '</ul>'
             : '<div class="vd-so-leitura">Sem eventos ainda.</div>') +
-          '</div>' +
+          '</section>' +
         '</div>' +
 
         '<aside class="vd-detalhe-lateral">' +
+          '<div class="vd-lat-grupo"><div class="vd-lat-titulo">Fluxo</div>' +
           '<div class="vd-dt-campo"><label class="rot">Situação</label>' +
           (podeOperar && d.editing_status !== 'descartado'
             ? '<select class="campo" id="vd-dt-status">' +
@@ -1423,17 +1539,8 @@ B7.Video = (function () {
           (versoesAtual.length
             ? '<div class="vd-dt-campo"><label class="rot">Versão atual</label>' +
               '<div class="vd-so-leitura">V' + String(versoesAtual[0].numero).padStart(2, '0') +
-              (versoesAtual.filter(v => v.decisao_cliente === 'correcao' || v.decisao_cliente === 'recusado').length
-                ? ' · ' + versoesAtual.filter(v => v.decisao_cliente === 'correcao' || v.decisao_cliente === 'recusado').length + ' correção(ões)'
-                : '') + '</div></div>'
+              (correcoes ? ' · ' + correcoes + ' correção(ões)' : '') + '</div></div>'
             : '') +
-          '<div class="vd-dt-campo"><label class="rot">Prioridade</label>' +
-          (podeEditar
-            ? '<select class="campo" id="vd-dt-prioridade">' +
-              PRIORIDADES.map(([v, r]) => '<option value="' + v + '"' + (v === (d.prioridade || 'normal') ? ' selected' : '') + '>' + r + '</option>').join('') +
-              '</select>'
-            : '<div class="vd-so-leitura">' + prioridadeBadge(d.prioridade) + '</div>') +
-          '</div>' +
           '<div class="vd-dt-campo"><label class="rot">Responsável</label>' +
           (podeEditar
             ? '<select class="campo" id="vd-dt-videomaker"><option value="">Sem atribuir</option>' +
@@ -1445,41 +1552,50 @@ B7.Video = (function () {
           (podeEditar ? '<input class="campo" type="date" id="vd-dt-prazo" value="' + (d.prazo || '') + '">' :
             '<div class="vd-so-leitura">' + (d.prazo ? esc(B7.UI.dataBR(d.prazo)) + (atrasada ? ' — atrasada' : '') : '—') + '</div>') +
           '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Prioridade</label>' +
+          (podeEditar
+            ? '<select class="campo" id="vd-dt-prioridade">' +
+              PRIORIDADES.map(([v, r]) => '<option value="' + v + '"' + (v === (d.prioridade || 'normal') ? ' selected' : '') + '>' + r + '</option>').join('') +
+              '</select>'
+            : '<div class="vd-so-leitura">' + prioridadeBadge(d.prioridade) + '</div>') +
+          '</div>' +
           (d.editing_status === 'standby'
             ? '<div class="vd-dt-campo"><label class="rot">Revisar standby em</label>' +
               (podeOperar
                 ? '<div class="vd-link-linha"><input class="campo" type="date" id="vd-dt-standby" value="' + (d.standby_revisar_em || '') + '">' +
                   '<button class="b" id="vd-dt-standby-salvar">Salvar</button></div>' +
-                  '<p class="fraca">Lembrete visual — não manda notificação sozinho, só ajuda a lembrar de voltar a olhar essa demanda.</p>'
+                  '<p class="fraca">Lembrete visual — não manda notificação sozinho.</p>'
                 : '<div class="vd-so-leitura">' + (d.standby_revisar_em ? esc(B7.UI.dataBR(d.standby_revisar_em)) : '—') + '</div>') +
               '</div>'
             : '') +
-          '<div class="vd-dt-campo"><label class="rot">Competência</label>' +
-          '<div class="vd-so-leitura">' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</div>' +
+          '</div>' +
+
+          '<div class="vd-lat-grupo"><div class="vd-lat-titulo">Contexto</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Gravação vinculada</label>' +
+          (podeEditar
+            ? '<select class="campo" id="vd-dt-gravacao"><option value="">Carregando…</option></select>' +
+              '<p class="fraca">Trocar a gravação desvincula os roteiros da anterior.</p>'
+            : '<div class="vd-so-leitura">' + (d.gravacao_nome ? esc(d.gravacao_nome) + ' (' + esc(d.gravacao_situacao || '') + ')' : 'sem vínculo') + '</div>') +
           '</div>' +
           '<div class="vd-dt-campo"><label class="rot">Pacote</label>' +
           (podeEditar
-            ? '<input class="campo" id="vd-dt-pacote" list="vd-pacotes-lista" value="' + esc(d.pacote || '') + '" autocomplete="off">' +
+            ? '<input class="campo" id="vd-dt-pacote" list="vd-pacotes-lista" value="' + esc(d.pacote || '') + '" autocomplete="off" placeholder="Ex.: B7 Start">' +
               '<datalist id="vd-pacotes-lista">' + pacotesVideoCache.map(p => '<option value="' + esc(p.nome) + '">').join('') + '</datalist>'
             : '<div class="vd-so-leitura">' + esc(d.pacote || '—') + '</div>') +
           '</div>' +
-          '<div class="vd-dt-campo"><label class="rot">Gravação vinculada</label>' +
-          (podeEditar
-            ? '<select class="campo" id="vd-dt-gravacao"><option value="">Carregando…</option></select>'
-            : '<div class="vd-so-leitura">' + (d.gravacao_nome ? esc(d.gravacao_nome) + ' (' + esc(d.gravacao_situacao || '') + ')' : 'sem vínculo') + '</div>') +
-          '</div>' +
-          '<div class="vd-dt-campo"><label class="rot">Roteiro(s) vinculado(s)</label>' +
-          '<div id="vd-dt-roteiros">' + roteirosVinculadosHTML(d, podeEditar) + '</div>' +
+          '<div class="vd-dt-campo"><label class="rot">Competência</label>' +
+          '<div class="vd-so-leitura">' + (d.competencia_ano ? esc(competenciaRotulo(competenciaChave(d))) : '—') + '</div>' +
           '</div>' +
           '<div class="vd-dt-campo"><label class="rot">Origem</label>' +
           '<div class="vd-so-leitura">' + (d.origem === 'importacao' ? 'Importada de planilha' : 'Criada manualmente') + '</div>' +
           '</div>' +
-          (podeEditar ? '<div class="acoes"><button class="b pri" id="vd-dt-salvar">Salvar alterações</button></div>' : '') +
+          '</div>' +
+          (podeEditar ? '<p class="fraca vd-lat-rodape">As alterações deste painel são salvas automaticamente.</p>' : '') +
         '</aside>' +
       '</div>' +
     '</div>';
 
-    ligarDetalhe(d);
+    ligarDetalhe(d, rc);
   }
 
   /* =================================================================
@@ -1718,7 +1834,8 @@ B7.Video = (function () {
       '<span class="vd-tl-quando">' + esc(B7.UI.quando ? B7.UI.quando(ev.created_at) : ev.created_at) + '</span></li>';
   }
 
-  function ligarDetalhe(d) {
+  function ligarDetalhe(d, rc) {
+    rc = rc || { gravacao: null, roteiros: [], cenasPorRoteiro: {} };
     const selStatus = document.getElementById('vd-dt-status');
     if (selStatus) selStatus.onchange = async () => {
       const novo = selStatus.value;
@@ -1805,9 +1922,77 @@ B7.Video = (function () {
       B7.DB.gravacoesDoClienteParaVideo(d.client_id).then(gs => {
         selGravacaoDt.innerHTML = '<option value="">Sem vínculo</option>' +
           gs.map(g => '<option value="' + g.id + '"' + (g.id === d.gravacao_id ? ' selected' : '') + '>' +
-            esc(g.nome) + (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') + '</option>').join('');
+            esc(g.nome) + (g.data_gravacao ? ' · ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') +
+            (g.status && g.status !== 'Gravado' ? ' · ' + esc(g.status) : '') + '</option>').join('');
       }).catch(() => { selGravacaoDt.innerHTML = '<option value="">Sem vínculo</option>'; });
+      selGravacaoDt.onchange = async () => {
+        const novo = selGravacaoDt.value || null;
+        if ((d.roteiros_vinculados || []).length && novo !== d.gravacao_id) {
+          const ok = await B7.UI.confirmar({
+            titulo: 'Trocar a gravação?',
+            texto: 'Os roteiros vinculados pertencem à gravação atual e serão desvinculados desta demanda.',
+            confirmar: 'Trocar'
+          });
+          if (!ok) { selGravacaoDt.value = d.gravacao_id || ''; return; }
+        }
+        selGravacaoDt.disabled = true;
+        try {
+          if ((d.roteiros_vinculados || []).length && novo !== d.gravacao_id) await B7.DB.definirRoteirosVideo(d.id, []);
+          await B7.DB.editarDemandaVideo(d.id, { gravacaoId: novo, temGravacao: true });
+          B7.UI.toast('Gravação atualizada.');
+          abrirDetalhe(d.id);
+        } catch (e) { selGravacaoDt.disabled = false; selGravacaoDt.value = d.gravacao_id || ''; B7.UI.toast(e.message || 'Não foi possível vincular a gravação.'); }
+      };
     }
+
+    /* Painel lateral salva sozinho — mesmo padrão do resto do sistema
+       (B7.Save mostra "Salvo ✓" no topo). Prazo e prioridade salvam na
+       hora; pacote ao sair do campo; observações com pausa de digitação. */
+    const campoPrazoDt = document.getElementById('vd-dt-prazo');
+    if (campoPrazoDt) campoPrazoDt.onchange = () => {
+      B7.Save.campo('demandas_edicao', d.id, { prazo: campoPrazoDt.value || null, temPrazo: true });
+      d.prazo = campoPrazoDt.value || null;
+    };
+    const selPrioridadeDt = document.getElementById('vd-dt-prioridade');
+    if (selPrioridadeDt) selPrioridadeDt.onchange = () => {
+      B7.Save.campo('demandas_edicao', d.id, { prioridade: selPrioridadeDt.value });
+    };
+    const campoPacoteDt = document.getElementById('vd-dt-pacote');
+    if (campoPacoteDt) campoPacoteDt.onchange = () => {
+      B7.Save.campo('demandas_edicao', d.id, { pacote: campoPacoteDt.value.trim() });
+    };
+    const campoObs = document.getElementById('vd-dt-obs');
+    const obsEstado = document.getElementById('vd-obs-estado');
+    if (campoObs) {
+      let ultimoObs = campoObs.value;
+      campoObs.oninput = () => {
+        if (obsEstado) obsEstado.textContent = 'digitando…';
+        B7.Save.campo('demandas_edicao', d.id, { observacoes: campoObs.value.trim() });
+        clearTimeout(campoObs._t);
+        campoObs._t = setTimeout(() => { if (obsEstado && campoObs.value !== ultimoObs) { obsEstado.textContent = 'salvo automaticamente'; ultimoObs = campoObs.value; } }, 1400);
+      };
+    }
+
+    /* Roteiros: ler inline, ficha A4 (espiada), desvincular, vincular. */
+    document.querySelectorAll('[data-rot-ler]').forEach(bt => {
+      bt.onclick = () => {
+        const corpo = document.getElementById('vd-rot-corpo-' + bt.dataset.rotLer);
+        const card = bt.closest('.vd-rot');
+        if (!corpo) return;
+        const abrir = corpo.hidden;
+        corpo.hidden = !abrir;
+        bt.textContent = abrir ? 'Recolher' : 'Ler roteiro';
+        bt.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        if (card) card.classList.toggle('aberto', abrir);
+      };
+    });
+    document.querySelectorAll('[data-rot-ficha]').forEach(bt => {
+      bt.onclick = () => {
+        const r = (rc.roteiros || []).find(x => x.id === bt.dataset.rotFicha);
+        if (!r || !B7.QuickView) { B7.UI.toast('Não foi possível abrir a ficha deste roteiro.'); return; }
+        B7.QuickView.abrir(ctxQuickViewDe(d, rc), r);
+      };
+    });
 
     /* Roteiro(s) vinculado(s) — remover chip ou adicionar via select,
        sempre reenviando o CONJUNTO completo (video_definir_roteiros
@@ -1825,7 +2010,9 @@ B7.Video = (function () {
       }
     }
     document.querySelectorAll('[data-remover-roteiro]').forEach(bt => {
-      bt.onclick = () => {
+      bt.onclick = async () => {
+        const ok = await B7.UI.confirmar({ titulo: 'Desvincular este roteiro?', texto: 'O roteiro continua existindo na gravação — só deixa de aparecer nesta demanda.', confirmar: 'Desvincular' });
+        if (!ok) return;
         const restantes = vinculados.filter(r => r.id !== bt.dataset.removerRoteiro).map(r => r.id);
         salvarRoteirosVinculados(restantes, bt);
       };
@@ -1833,39 +2020,20 @@ B7.Video = (function () {
     const selRoteiroAdd = document.getElementById('vd-dt-roteiro-add');
     const btRoteiroAdd = document.getElementById('vd-dt-roteiro-add-bt');
     if (selRoteiroAdd && d.gravacao_id) {
-      B7.DB.listarRoteiros(d.gravacao_id).then(roteiros => {
+      const pronto = roteiros => {
         const jaVinculados = new Set(vinculados.map(r => r.id));
         const disponiveis = (roteiros || []).filter(r => !jaVinculados.has(r.id));
-        selRoteiroAdd.innerHTML = '<option value="">' + (disponiveis.length ? 'Adicionar roteiro…' : 'Nenhum roteiro disponível') + '</option>' +
-          disponiveis.map(r => '<option value="' + r.id + '">' + esc(r.titulo || '(sem título)') + '</option>').join('');
+        selRoteiroAdd.innerHTML = '<option value="">' + (disponiveis.length ? 'Vincular outro roteiro…' : 'Todos os roteiros da gravação já estão vinculados') + '</option>' +
+          disponiveis.map((r, i) => '<option value="' + r.id + '">' + esc(r.titulo || '(sem título)') + '</option>').join('');
         selRoteiroAdd.onchange = () => { if (btRoteiroAdd) btRoteiroAdd.disabled = !selRoteiroAdd.value; };
-      }).catch(() => { selRoteiroAdd.innerHTML = '<option value="">Não foi possível carregar</option>'; });
+      };
+      if (rc.roteiros && rc.roteiros.length) pronto(rc.roteiros);
+      else B7.DB.listarRoteiros(d.gravacao_id).then(pronto).catch(() => { selRoteiroAdd.innerHTML = '<option value="">Não foi possível carregar</option>'; });
     }
     if (btRoteiroAdd) btRoteiroAdd.onclick = () => {
       if (!selRoteiroAdd.value) return;
       const novos = [...vinculados.map(r => r.id), selRoteiroAdd.value];
       salvarRoteirosVinculados(novos, btRoteiroAdd);
-    };
-
-    const btSalvar = document.getElementById('vd-dt-salvar');
-    if (btSalvar) btSalvar.onclick = async () => {
-      btSalvar.disabled = true; btSalvar.textContent = 'Salvando…';
-      try {
-        await B7.DB.editarDemandaVideo(d.id, {
-          pacote: document.getElementById('vd-dt-pacote').value.trim(),
-          prazo: document.getElementById('vd-dt-prazo').value || null,
-          temPrazo: true,
-          observacoes: document.getElementById('vd-dt-obs') ? document.getElementById('vd-dt-obs').value.trim() : undefined,
-          gravacaoId: document.getElementById('vd-dt-gravacao').value || null,
-          temGravacao: true,
-          prioridade: document.getElementById('vd-dt-prioridade').value
-        });
-        B7.UI.toast('Alterações salvas.');
-        abrirDetalhe(d.id);
-      } catch (e) {
-        btSalvar.disabled = false; btSalvar.textContent = 'Salvar alterações';
-        B7.UI.toast(e.message || 'Não foi possível salvar.');
-      }
     };
 
     const btDescartar = document.getElementById('vd-dt-descartar');

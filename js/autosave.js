@@ -117,6 +117,7 @@ B7.Save = (function () {
     if (tabela === 'ideias') return B7.DB.atualizarIdeia(id, patch);
     if (tabela === 'status_semanais') return B7.DB.atualizarStatus(id, patch);
     if (tabela === 'status_itens') return B7.DB.atualizarItem(id, patch);
+    if (tabela === 'demandas_edicao') return B7.DB.editarDemandaVideo(id, patch);
     const e = new Error('Tabela desconhecida: ' + tabela); e.code = 'B7_TABELA'; throw e;
   }
 
