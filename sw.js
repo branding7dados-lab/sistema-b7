@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v95';
+const CACHE = 'roteiros-b7-v96';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -105,13 +105,22 @@ const TITULOS = {
   'aprovacao.recusada': 'Cliente recusou',
   'aprovacao.anulada': 'Aprovação anulada',
   'parte.aprovada': 'Parte aprovada pelo cliente',
-  'linha.concluida': 'Linha editorial concluída'
+  'linha.concluida': 'Linha editorial concluída',
+  'agenda.gravacao_24h': 'Gravação amanhã',
+  'agenda.gravacao_1h': 'Gravação em 1 hora',
+  'agenda.apresentacao_24h': 'Apresentação amanhã',
+  'agenda.apresentacao_1h': 'Apresentação em 1 hora',
+  'agenda.reuniao_24h': 'Reunião amanhã',
+  'agenda.reuniao_1h': 'Reunião em 1 hora',
+  'agenda.outro_24h': 'Compromisso amanhã',
+  'agenda.outro_1h': 'Compromisso em 1 hora'
 };
 function tituloDe(d) {
   if (d.tipo && TITULOS[d.tipo]) return TITULOS[d.tipo];
   if (d.tipo && d.tipo.startsWith('video.')) return 'Produção de vídeo';
   if (d.tipo && d.tipo.startsWith('design.')) return 'Design';
   if (d.tipo && d.tipo.startsWith('aprovacao.')) return 'Aprovações';
+  if (d.tipo && d.tipo.startsWith('agenda.')) return 'Agenda';
   return 'Sistema B7';
 }
 

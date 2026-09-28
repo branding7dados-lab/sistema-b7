@@ -184,10 +184,14 @@ B7.Notif = (function () {
         'design.ajuste_solicitado': 'Ajuste solicitado', 'design.cliente_aprovado': 'Cliente aprovou a peça', 'design.finalizado': 'Peça finalizada',
         'aprovacao.enviada': 'Material enviado para aprovação', 'aprovacao.aprovada': 'Cliente aprovou', 'aprovacao.ajustes': 'Cliente pediu ajustes',
         'aprovacao.recusada': 'Cliente recusou', 'aprovacao.anulada': 'Aprovação anulada', 'parte.aprovada': 'Parte aprovada pelo cliente',
-        'linha.concluida': 'Linha editorial concluída'
+        'linha.concluida': 'Linha editorial concluída',
+        'agenda.gravacao_24h': 'Gravação amanhã', 'agenda.gravacao_1h': 'Gravação em 1 hora',
+        'agenda.apresentacao_24h': 'Apresentação amanhã', 'agenda.apresentacao_1h': 'Apresentação em 1 hora',
+        'agenda.reuniao_24h': 'Reunião amanhã', 'agenda.reuniao_1h': 'Reunião em 1 hora',
+        'agenda.outro_24h': 'Compromisso amanhã', 'agenda.outro_1h': 'Compromisso em 1 hora'
       };
       const t = n.tipo || '';
-      const titulo = TITULOS[t] || (t.startsWith('video.') ? 'Produção de vídeo' : t.startsWith('design.') ? 'Design' : t.startsWith('aprovacao.') ? 'Aprovações' : 'Sistema B7');
+      const titulo = TITULOS[t] || (t.startsWith('video.') ? 'Produção de vídeo' : t.startsWith('design.') ? 'Design' : t.startsWith('aprovacao.') ? 'Aprovações' : t.startsWith('agenda.') ? 'Agenda' : 'Sistema B7');
       const nt = new Notification(titulo, {
         body: [n.titulo, n.mensagem].filter(Boolean).join('\n'), tag: 'b7-notif-' + n.id,
         icon: 'assets/icons/icon-192.png', badge: 'assets/icons/badge-96.png'

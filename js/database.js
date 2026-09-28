@@ -1997,6 +1997,12 @@ B7.DB = (function () {
     async definirAgendaEscritaPadrao(agendaId) {
       return this.rpc('calendario_agenda_definir_escrita_padrao', { p_agenda_id: agendaId });
     },
+    /* Interruptor de lembretes por agenda (migration_agenda_lembretes.sql):
+       a agenda continua aparecendo no calendário, mas para de virar aviso
+       pra equipe — é o que separa "Agenda de Gravação" de "Família". */
+    async alternarLembretesAgenda(agendaId, ativo) {
+      return this.rpc('calendario_agenda_alternar_lembretes', { p_agenda_id: agendaId, p_ativo: !!ativo });
+    },
     /* Editar só título/local de um evento já existente no Google (não
        mexe em data/horário — isso é atualizarEventoGoogle/remarcar).
        Usado pelo "Editar" da ocorrência. Best-effort, mesmo padrão. */

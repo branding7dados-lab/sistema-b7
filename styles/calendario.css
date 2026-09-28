@@ -210,3 +210,14 @@
   .cal-cel-itens{gap:2px;}
   .cal-chip{width:6px;height:6px;}
 }
+
+/* Interruptor de lembretes por agenda (migration_agenda_lembretes.sql) —
+   fica ao lado de "Usar para novas gravações", com o mesmo peso visual. */
+.cal-agenda-lembrete{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ink-4);
+  font-weight:600;cursor:pointer;white-space:nowrap;}
+.cal-agenda-lembrete input{accent-color:var(--ok);}
+.cal-agenda-lembrete:has(input:checked){color:var(--ok);}
+@media (max-width:620px){
+  .cal-agenda-item{flex-wrap:wrap;row-gap:6px;}
+  .cal-agenda-item > label:first-child{flex:1 1 100%;}
+}

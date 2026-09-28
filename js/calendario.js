@@ -575,7 +575,8 @@ B7.Calendario = (function () {
           '<p class="fraca" style="margin-top:10px">Conectou antes desta rodada (só leitura)? Desconecte e conecte de novo pra conceder a nova permissão de escrita — sem ela, remarcar/cancelar não move o evento no Google.</p>'
         : '<p class="fraca">Nenhuma conta do Google conectada ainda.</p><button class="b pri" id="cal-cfg-conectar">Conectar Google Calendar</button>') +
       (conexao.conectado
-        ? '<h4>Agendas</h4><p class="fraca">Escolha quais agendas do Google aparecem no Calendário de Gravações.</p>' +
+        ? '<h4>Agendas</h4><p class="fraca">Escolha quais agendas do Google aparecem no Calendário de Gravações. ' +
+          '<b>Avisar a equipe</b> liga os lembretes automáticos daquela agenda — deixe desmarcado em agendas pessoais ou de feriados.</p>' +
           '<div id="cal-cfg-agendas">' + agendasListaHTML() + '</div>'
         : '') +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>';
@@ -593,6 +594,9 @@ B7.Calendario = (function () {
             '><input type="radio" name="cal-agenda-escrita" data-agenda-padrao="' + a.id + '"' +
             (a.escrita_padrao ? ' checked' : '') + (semEscrita ? ' disabled' : '') + '>' +
             '<span>' + (semEscrita ? 'Só leitura — não pode ser agenda de escrita' : 'Usar para novas gravações') + '</span></label>' : '') +
+          (a.ativo ? '<label class="cal-agenda-lembrete" title="Avisa a equipe antes dos compromissos desta agenda (gravação: 1 dia e 1h antes; o resto: 1h antes)">' +
+            '<input type="checkbox" data-agenda-lembrete="' + a.id + '"' + (a.lembretes === false ? '' : ' checked') + '>' +
+            '<span>Avisar a equipe</span></label>' : '') +
         '</div>';
       }).join('') +
         (agendas.some(a => a.ativo) && !agendas.some(a => a.escrita_padrao) ?
@@ -640,6 +644,18 @@ B7.Calendario = (function () {
             if (a && !chk.checked && a.escrita_padrao) a.escrita_padrao = false;
             redesenhar();
           } catch (e) { chk.checked = !chk.checked; B7.UI.toast(e.message || 'Não foi possível salvar.'); }
+        };
+      });
+      m.querySelectorAll('[data-agenda-lembrete]').forEach(chk => {
+        chk.onchange = async () => {
+          chk.disabled = true;
+          try {
+            await B7.DB.alternarLembretesAgenda(chk.dataset.agendaLembrete, chk.checked);
+            const a = agendas.find(x => x.id === chk.dataset.agendaLembrete);
+            if (a) a.lembretes = chk.checked;
+            chk.disabled = false;
+            B7.UI.toast(chk.checked ? 'Lembretes ligados para esta agenda.' : 'Lembretes desligados para esta agenda.');
+          } catch (e) { chk.disabled = false; chk.checked = !chk.checked; B7.UI.toast(e.message || 'Não foi possível salvar.'); }
         };
       });
       m.querySelectorAll('[data-agenda-padrao]').forEach(rd => {
