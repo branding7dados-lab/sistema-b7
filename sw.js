@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v94';
+const CACHE = 'roteiros-b7-v95';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -27,7 +27,7 @@ const CASCA = [
   './assets/fonts/inter-400.woff2', './assets/fonts/inter-500.woff2',
   './assets/fonts/inter-600.woff2', './assets/fonts/inter-700.woff2',
   './assets/fonts/archivo-700.woff2', './assets/fonts/archivo-800.woff2', './assets/fonts/archivo-900.woff2',
-  './assets/icons/icon-192.png', './assets/icons/icon-512.png', './assets/icons/favicon.png',
+  './assets/icons/icon-192.png', './assets/icons/icon-512.png', './assets/icons/badge-96.png', './assets/icons/favicon.png',
   './manifest.json'
 ];
 /* config.js fica de fora de propósito: é o arquivo que você edita e não
@@ -79,16 +79,55 @@ self.addEventListener('fetch', ev => {
    mesma que o sino usa no aviso do navegador: o aparelho mostra um
    aviso só, nunca dois para o mesmo evento.
    ===================================================================== */
+/* Título curto por tipo de evento; a frase completa ("Kevin atribuiu
+   "X" a Kevin") vai no corpo. Antes a frase inteira era o título e o
+   corpo ficava vazio — no Android isso vira um bloco de texto grande e
+   sem hierarquia. */
+const TITULOS = {
+  'video.atribuida': 'Nova demanda de vídeo',
+  'video.aguardando_aprovacao': 'Vídeo enviado para aprovação',
+  'video.entregue': 'Vídeo entregue',
+  'video.correcao_solicitada': 'Correção solicitada',
+  'video.atrasado': 'Demanda atrasada',
+  'video.atrasado_escalado': 'Demanda atrasada',
+  'video.prazo_amanha': 'Entrega é amanhã',
+  'design.criada': 'Nova peça de design',
+  'design.atribuida': 'Peça atribuída',
+  'design.demanda_assumida': 'Peça assumida',
+  'design.versao_enviada': 'Versão enviada para revisão',
+  'design.aprovado_interno': 'Peça aprovada internamente',
+  'design.ajuste_solicitado': 'Ajuste solicitado',
+  'design.cliente_aprovado': 'Cliente aprovou a peça',
+  'design.finalizado': 'Peça finalizada',
+  'aprovacao.enviada': 'Material enviado para aprovação',
+  'aprovacao.aprovada': 'Cliente aprovou',
+  'aprovacao.ajustes': 'Cliente pediu ajustes',
+  'aprovacao.recusada': 'Cliente recusou',
+  'aprovacao.anulada': 'Aprovação anulada',
+  'parte.aprovada': 'Parte aprovada pelo cliente',
+  'linha.concluida': 'Linha editorial concluída'
+};
+function tituloDe(d) {
+  if (d.tipo && TITULOS[d.tipo]) return TITULOS[d.tipo];
+  if (d.tipo && d.tipo.startsWith('video.')) return 'Produção de vídeo';
+  if (d.tipo && d.tipo.startsWith('design.')) return 'Design';
+  if (d.tipo && d.tipo.startsWith('aprovacao.')) return 'Aprovações';
+  return 'Sistema B7';
+}
+
 self.addEventListener('push', ev => {
   let d = {};
   try { d = ev.data ? ev.data.json() : {}; } catch (e) { d = { titulo: ev.data ? ev.data.text() : '' }; }
-  const titulo = d.titulo || 'Sistema B7';
+  const titulo = tituloDe(d);
+  const corpo = [d.titulo, d.mensagem].filter(Boolean).join('\n');
   ev.waitUntil(self.registration.showNotification(titulo, {
-    body: d.mensagem || '',
+    body: corpo || '',
     icon: './assets/icons/icon-192.png',
-    badge: './assets/icons/icon-192.png',
+    badge: './assets/icons/badge-96.png',
     tag: d.id ? 'b7-notif-' + d.id : undefined,
     renotify: !!d.id,
+    timestamp: Date.now(),
+    vibrate: [80, 40, 80],
     data: { link: d.link || '#/', id: d.id || null }
   }));
 });

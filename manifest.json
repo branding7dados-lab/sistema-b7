@@ -1,7 +1,7 @@
 {
-  "name": "Roteiros B7",
-  "short_name": "Roteiros B7",
-  "description": "Sistema interno de roteiros de gravação da B7 / Branding7",
+  "name": "Sistema B7",
+  "short_name": "Sistema B7",
+  "description": "Sistema interno da B7 / Branding7 — roteiros, vídeo, design e linha editorial",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

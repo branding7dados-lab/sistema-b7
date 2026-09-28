@@ -173,8 +173,24 @@ B7.Notif = (function () {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
       /* mesma tag que o service worker usa no push: o navegador substitui em
          vez de mostrar duas vezes o mesmo aviso */
-      const nt = new Notification(n.titulo || 'Sistema B7', {
-        body: n.mensagem || '', tag: 'b7-notif-' + n.id, icon: 'assets/icons/icon-192.png', badge: 'assets/icons/icon-192.png'
+      /* Mesmo formato do push (sw.js): título curto pelo tipo do
+         evento, a frase completa no corpo. */
+      const TITULOS = {
+        'video.atribuida': 'Nova demanda de vídeo', 'video.aguardando_aprovacao': 'Vídeo enviado para aprovação',
+        'video.entregue': 'Vídeo entregue', 'video.correcao_solicitada': 'Correção solicitada',
+        'video.atrasado': 'Demanda atrasada', 'video.atrasado_escalado': 'Demanda atrasada', 'video.prazo_amanha': 'Entrega é amanhã',
+        'design.criada': 'Nova peça de design', 'design.atribuida': 'Peça atribuída', 'design.demanda_assumida': 'Peça assumida',
+        'design.versao_enviada': 'Versão enviada para revisão', 'design.aprovado_interno': 'Peça aprovada internamente',
+        'design.ajuste_solicitado': 'Ajuste solicitado', 'design.cliente_aprovado': 'Cliente aprovou a peça', 'design.finalizado': 'Peça finalizada',
+        'aprovacao.enviada': 'Material enviado para aprovação', 'aprovacao.aprovada': 'Cliente aprovou', 'aprovacao.ajustes': 'Cliente pediu ajustes',
+        'aprovacao.recusada': 'Cliente recusou', 'aprovacao.anulada': 'Aprovação anulada', 'parte.aprovada': 'Parte aprovada pelo cliente',
+        'linha.concluida': 'Linha editorial concluída'
+      };
+      const t = n.tipo || '';
+      const titulo = TITULOS[t] || (t.startsWith('video.') ? 'Produção de vídeo' : t.startsWith('design.') ? 'Design' : t.startsWith('aprovacao.') ? 'Aprovações' : 'Sistema B7');
+      const nt = new Notification(titulo, {
+        body: [n.titulo, n.mensagem].filter(Boolean).join('\n'), tag: 'b7-notif-' + n.id,
+        icon: 'assets/icons/icon-192.png', badge: 'assets/icons/badge-96.png'
       });
       nt.onclick = () => { try { window.focus(); } catch (e) {} if (n.link) location.hash = n.link; nt.close(); };
     } catch (e) {}
