@@ -1409,16 +1409,60 @@ B7.Video = (function () {
 
   /* Faixa de resumo sob o título: o estado da demanda de relance, sem
      precisar correr o olho pelo painel lateral. */
+  const ETAPAS = [['pendente', 'Pendente'], ['em_edicao', 'Em edição'], ['aguardando_aprovacao', 'Aprovação'], ['entregue', 'Entregue']];
+  function etapasHTML(d) {
+    const st = d.editing_status;
+    const idx = { pendente: 0, em_edicao: 1, correcao: 1, standby: 1, aguardando_aprovacao: 2, entregue: 3, descartado: -1 }[st];
+    const rotuloAtual = st === 'correcao' ? 'Em correção' : st === 'standby' ? 'Standby' : null;
+    return '<ol class="vd-etapas' + (st === 'descartado' ? ' descartada' : '') + '">' + ETAPAS.map(([k, r], i) => {
+      const cls = i < idx ? 'feita' : i === idx ? 'atual' : '';
+      const rot = (i === idx && rotuloAtual) ? rotuloAtual : r;
+      return '<li class="' + cls + (i === idx && (st === 'correcao' || st === 'standby') ? ' desvio' : '') + '"><i>' + (i < idx ? '✓' : i + 1) + '</i><span>' + esc(rot) + '</span></li>';
+    }).join('') + '</ol>';
+  }
+
   function faixaResumoHTML(d, atrasada) {
     const partes = [
-      statusBadge(d.editing_status),
-      prioridadeBadge(d.prioridade),
+      (d.editing_status === 'descartado' ? statusBadge(d.editing_status) : ''),
+      (d.prioridade && d.prioridade !== 'normal' ? prioridadeBadge(d.prioridade) : ''),
       '<span class="vd-resumo-item' + (atrasada ? ' atrasado' : '') + '">' +
         (d.prazo ? 'Prazo ' + esc(B7.UI.dataBR(d.prazo)) + (atrasada ? ' · atrasada' : '') : 'Sem prazo') + '</span>',
       '<span class="vd-resumo-item">' + quemHTML(d) + '</span>'
     ];
     if (d.gravacao_nome) partes.push('<span class="vd-resumo-item">🎬 ' + esc(d.gravacao_nome) + '</span>');
-    return '<div class="vd-resumo">' + partes.join('') + '</div>';
+    return '<div class="vd-resumo">' + partes.filter(Boolean).join('') + '</div>';
+  }
+
+  /* Checklist de conclusão — o processo real da B7: manda no grupo de
+     concluídos e sobe no Drive. Registrar versão é opcional (serve pra
+     aprovação pelo sistema). As colunas só existem depois de
+     migration_video_conclusao.sql: sem elas, o bloco não aparece. */
+  function secaoConclusao(d, podeOperar) {
+    if (d.enviado_grupo_em === undefined) return '';
+    const feitas = [d.enviado_grupo_em, d.upado_drive_em].filter(Boolean).length;
+    const item = (etapa, ts, rot, sub) =>
+      '<label class="vd-check' + (ts ? ' on' : '') + (podeOperar ? '' : ' so-leitura') + '">' +
+        '<input type="checkbox" data-conclusao="' + etapa + '"' + (ts ? ' checked' : '') + (podeOperar ? '' : ' disabled') + '>' +
+        '<span class="vd-check-cx"></span>' +
+        '<span class="vd-check-tx"><b>' + rot + '</b><small>' + (ts ? 'feito ' + esc(quandoBR(ts)) : sub) + '</small></span>' +
+      '</label>';
+    const entregar = podeOperar && feitas === 2 && d.editing_status !== 'entregue' && d.editing_status !== 'descartado'
+      ? '<div class="vd-conclusao-pronta"><span>Tudo feito. Quer fechar a demanda?</span><button class="b pri fina" id="vd-marcar-entregue">Marcar como entregue</button></div>'
+      : '';
+    return '<section class="vd-bloco vd-bloco-conclusao' + (feitas === 2 ? ' completa' : '') + '">' +
+      '<div class="vd-bloco-cab"><label class="rot">Conclusão</label><span class="vd-progresso"><i style="width:' + (feitas * 50) + '%"></i></span><small>' + feitas + ' de 2</small></div>' +
+      '<div class="vd-checks">' +
+        item('grupo', d.enviado_grupo_em, 'Enviado no grupo de concluídos', 'WhatsApp da equipe') +
+        item('drive', d.upado_drive_em, 'Upado no Drive', 'na pasta do cliente') +
+      '</div>' +
+      (podeOperar
+        ? '<div class="vd-dt-campo vd-dt-link"><label class="rot">Link no Drive <em>opcional</em></label>' +
+          '<div class="vd-link-linha"><input class="campo" id="vd-dt-link" placeholder="https://drive.google.com/…" value="' + esc(d.link_material || '') + '">' +
+          '<button class="b" id="vd-dt-link-salvar">Salvar</button></div></div>'
+        : (d.link_material ? '<a class="b fina contorno vd-abrir-materiais" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir no Drive</a>' : '')) +
+      (podeOperar && d.link_material ? '<a class="b fina contorno vd-abrir-materiais" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir no Drive</a>' : '') +
+      entregar +
+    '</section>';
   }
 
   /* =================================================================
@@ -1503,26 +1547,35 @@ B7.Video = (function () {
     const atrasada = ehAtrasada(d);
     const correcoes = versoesAtual.filter(v => v.decisao_cliente === 'correcao' || v.decisao_cliente === 'recusado').length;
 
+    const temConclusao = d.enviado_grupo_em !== undefined;
     painel().innerHTML = '<div class="conteudo entra vd-tela vd-detalhe">' +
       '<div class="trilha"><a href="#/video">' + esc(souEquipe() ? 'Produção de Vídeo' : 'Central de Vídeo') + '</a><span>/</span><b>' + esc(d.titulo) + '</b></div>' +
-      '<header class="vd-cab vd-cab-detalhe"><div class="vd-cab-texto"><h1>' + tituloComFallback(d) + '</h1>' +
-        '<p class="vd-dt-cliente">' + logoClienteHTML(d, 'md') + '<span>' + esc(d.cliente_nome || '') + (d.codigo ? ' · ' + esc(d.codigo) : '') +
-        (d.competencia_ano ? ' · ' + esc(competenciaRotulo(competenciaChave(d))) : '') + '</span></p>' +
-        faixaResumoHTML(d, atrasada) +
-      '</div>' +
-      (podeEditar
-        ? '<div class="vd-acoes-topo">' +
-          (d.editing_status !== 'descartado' ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar</button>' : '') +
-          '<button class="b fina contorno perigo" id="vd-dt-excluir">Excluir</button></div>'
-        : '') +
+      '<header class="vd-hero">' +
+        '<div class="vd-hero-linha">' +
+          '<div class="vd-hero-id">' + logoClienteHTML(d, 'lg') +
+            '<div class="vd-cab-texto"><p class="vd-hero-cliente"><span>' + esc(d.cliente_nome || '') + '</span>' + (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') +
+              (d.competencia_ano ? '<span class="vd-hero-comp">' + esc(competenciaRotulo(competenciaChave(d))) + '</span>' : '') + '</p>' +
+              '<h1>' + tituloComFallback(d) + '</h1>' +
+              faixaResumoHTML(d, atrasada) +
+            '</div></div>' +
+          (podeEditar
+            ? '<div class="vd-acoes-topo">' +
+              (d.editing_status !== 'descartado' ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar</button>' : '') +
+              '<button class="b fina contorno perigo" id="vd-dt-excluir">Excluir</button></div>'
+            : '') +
+        '</div>' +
+        etapasHTML(d) +
       '</header>' +
 
       '<div class="vd-detalhe-corpo">' +
         '<div class="vd-detalhe-principal">' +
-          secaoVersoes(d, versoesAtual, podeEditar, podeOperar) +
-
           secaoRoteiros(d, rc, podeEditar) +
 
+          secaoVersoes(d, versoesAtual, podeEditar, podeOperar) +
+
+          secaoConclusao(d, podeOperar) +
+
+          (temConclusao ? '' :
           '<section class="vd-bloco">' +
             '<div class="vd-bloco-cab"><label class="rot">Material editado</label></div>' +
             (d.link_material
@@ -1533,7 +1586,7 @@ B7.Video = (function () {
                 '<button class="b" id="vd-dt-link-salvar">Salvar</button></div>' +
                 '<p class="fraca">Link externo (Drive, WeTransfer…) — o vídeo não é enviado para dentro do sistema.</p></div>'
               : '') +
-          '</section>' +
+          '</section>') +
 
           (podeEditar
             ? '<section class="vd-bloco"><div class="vd-bloco-cab"><label class="rot">Observações</label><span class="vd-autosave-dica" id="vd-obs-estado"></span></div>' +
@@ -1709,7 +1762,7 @@ B7.Video = (function () {
     if (!atual) {
       acao = '<div class="vd-vazio-versao"><span class="vd-vazio-ico">' + IC.versao + '</span>' +
         '<b>Nenhuma versão registrada ainda.</b>' +
-        '<p>Quando a primeira edição estiver pronta, registre o link do Drive como V01 — o cliente aprova a partir dela.</p>' +
+        '<p>Opcional: registre o link como V01 se o cliente for aprovar pelo sistema. Se a entrega é só grupo + Drive, use a Conclusão logo abaixo.</p>' +
         (podeOperar ? '<button class="b pri" id="vd-vs-nova">' + IC.mais + 'Registrar V01</button>' : '') + '</div>';
     } else {
       let decisaoHTML = '';
@@ -1848,10 +1901,12 @@ B7.Video = (function () {
     else if (ev.tipo === 'link_material') texto = 'Link do material atualizado';
     else if (ev.tipo === 'versao') texto = esc(ev.mensagem || 'Nova versão registrada');
     else if (ev.tipo === 'decisao_cliente') texto = esc(ev.mensagem || 'Decisão do cliente registrada');
+    else if (ev.tipo === 'conclusao') texto = esc(ev.mensagem || 'Conclusão atualizada');
     else texto = esc(ev.tipo);
-    return '<li><b>' + esc(ev.ator_nome || 'Alguém') + '</b> — ' + texto +
+    const cor = ev.tipo === 'status' ? ' vd-tl-' + esc(ev.para_status || '') : ev.tipo === 'conclusao' ? ' vd-tl-ok' : '';
+    return '<li class="vd-tl-item' + cor + '"><i class="vd-tl-dot"></i><div class="vd-tl-corpo"><b>' + esc(ev.ator_nome || 'Alguém') + '</b> ' + texto +
       (ev.mensagem && ev.tipo === 'status' ? '<div class="vd-tl-msg">' + esc(ev.mensagem) + '</div>' : '') +
-      '<span class="vd-tl-quando">' + esc(B7.UI.quando ? B7.UI.quando(ev.created_at) : ev.created_at) + '</span></li>';
+      '<span class="vd-tl-quando">' + esc(B7.UI.quando ? B7.UI.quando(ev.created_at) : ev.created_at) + '</span></div></li>';
   }
 
   function ligarDetalhe(d, rc) {
@@ -1917,6 +1972,26 @@ B7.Video = (function () {
         B7.UI.toast('Entrega registrada.');
         abrirDetalhe(d.id);
       } catch (e) { btEntrega.disabled = false; B7.UI.toast(e.message || 'Não foi possível registrar a entrega.'); }
+    };
+
+    document.querySelectorAll('[data-conclusao]').forEach(chk => {
+      chk.onchange = async () => {
+        const etapa = chk.dataset.conclusao, marcado = chk.checked;
+        chk.disabled = true;
+        try {
+          await B7.DB.marcarConclusaoVideo(d.id, etapa, marcado);
+          B7.UI.toast(marcado ? 'Marcado.' : 'Desmarcado.');
+          abrirDetalhe(d.id);
+        } catch (e) { chk.disabled = false; chk.checked = !marcado; B7.UI.toast(e.message || 'Não foi possível salvar.'); }
+      };
+    });
+    const btEntregue = document.getElementById('vd-marcar-entregue');
+    if (btEntregue) btEntregue.onclick = async () => {
+      const ok = await B7.UI.confirmar({ titulo: 'Marcar como entregue?', texto: 'A demanda sai da fila ativa e entra nos entregues do mês.', confirmar: 'Marcar como entregue' });
+      if (!ok) return;
+      btEntregue.disabled = true;
+      try { await B7.DB.mudarStatusVideo(d.id, 'entregue', null); B7.UI.toast('Demanda entregue.'); abrirDetalhe(d.id); }
+      catch (e) { btEntregue.disabled = false; B7.UI.toast(e.message || 'Não foi possível marcar.'); }
     };
 
     const btLink = document.getElementById('vd-dt-link-salvar');

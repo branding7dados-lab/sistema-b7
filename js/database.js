@@ -1739,6 +1739,11 @@ B7.DB = (function () {
     async mudarStatusVideo(demandaId, status, mensagem) {
       return this.rpc('video_mudar_status', { p_demanda_id: demandaId, p_status: status, p_mensagem: mensagem || null });
     },
+    /* Checklist de conclusão (migration_video_conclusao.sql): etapa =
+       'grupo' | 'drive'. Não muda status — só carimba e registra evento. */
+    async marcarConclusaoVideo(demandaId, etapa, marcado) {
+      return this.rpc('video_marcar_conclusao', { p_demanda_id: demandaId, p_etapa: etapa, p_marcado: !!marcado });
+    },
     async definirLinkVideo(demandaId, link) {
       return this.rpc('video_definir_link', { p_demanda_id: demandaId, p_link: link || '' });
     },

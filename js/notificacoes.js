@@ -207,7 +207,9 @@ B7.Notif = (function () {
       '<button class="b fina" id="sino-prefs" title="Som, navegador e push">Preferências</button></div>';
     const r = bt.getBoundingClientRect();
     p.style.top = (r.bottom + 8) + 'px';
-    p.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
+    /* no celular o CSS fixa left/right (folha de largura total) —
+       calcular `right` a partir do sino só faz sentido no desktop */
+    if (window.innerWidth > 600) p.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
     document.body.appendChild(p);
     p.querySelector('#sino-todas').onclick = async () => {
       try { await B7.DB.marcarTodasLidas(); await atualizar(); listar(); } catch (e) {}

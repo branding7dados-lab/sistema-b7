@@ -178,3 +178,14 @@
 .modal .op-mini{margin:10px 0 4px;width:100%;box-sizing:border-box;}
 .b.pri.perigo{background:var(--erro);box-shadow:none;} .b.pri.perigo:hover{background:var(--erro);color:#fff;filter:brightness(1.08);}
 .ap-bloco.anulada{border:1px dashed var(--borda-forte);background:var(--suave);}
+
+/* Sino no celular: o painel era posicionado a partir do botão (right =
+   distância do sino até a borda), com 380px de largura — como o sino
+   fica no meio da barra (avatar, +, menu depois dele), a caixa
+   estourava pela ESQUERDA e cortava o começo de cada notificação. No
+   celular vira uma folha de largura total, ancorada no topo. */
+@media (max-width:600px){
+  .sino-painel{left:10px !important;right:10px !important;width:auto;max-width:none;max-height:min(80vh,680px);border-radius:18px;}
+  .sino-cab{padding:12px 12px 12px 16px;}
+  .sino-item{padding:12px;}
+}

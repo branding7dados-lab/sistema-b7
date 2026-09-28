@@ -11,16 +11,15 @@
    Diferente do Portal do Cliente, a área interna não tem um "modo
    leitura" pronto em cada tela: ações de salvar/editar estão
    espalhadas por dezenas de módulos. Em vez de tocar em cada uma, a
-   prévia trava genericamente todo controle dentro de .area (botões,
-   campos, seletores, texto editável) enquanto está ativa — e mantém a
-   trava em telas montadas depois, via MutationObserver, já que cada
-   rota nova reconstrói o HTML por dentro de .area do zero. */
+   prévia bloqueia a ESCRITA na camada de dados (ver
+   ligarBloqueioEscrita): a tela inteira continua clicável e navegável
+   — abas, filtros, cartões, detalhe de demanda — e qualquer tentativa
+   de gravar recebe um aviso em vez de ir pro banco. */
 
 window.B7 = window.B7 || {};
 
 B7.PreviaUsuario = (function () {
   let alvo = null;      /* { id, nome, papel, funcoes_extra } */
-  let observer = null;
 
   const esc = s => (B7.UI ? B7.UI.esc(s) : String(s == null ? '' : s));
   const rotuloPapel = p => ({
@@ -41,47 +40,84 @@ B7.PreviaUsuario = (function () {
     if (B7.montarShellInterno) B7.montarShellInterno();
   }
 
-  function travarControles(raiz) {
-    if (!raiz) return;
-    raiz.querySelectorAll('button, input, select, textarea').forEach(el => {
-      if (el.disabled) return;
-      el.disabled = true;
-      el.dataset.pvTravado = '1';
-    });
-    raiz.querySelectorAll('[contenteditable="true"]').forEach(el => {
-      el.setAttribute('contenteditable', 'false');
-      el.dataset.pvEditavel = '1';
-    });
+  /* -----------------------------------------------------------------
+     BLOQUEIO DE ESCRITA — na camada de dados, não na tela.
+     A versão anterior desabilitava TODO botão/campo dentro de .area
+     (e reaplicava via MutationObserver). Resultado relatado: "não
+     consigo clicar nos botões, entrar nas demandas" — a prévia virava
+     uma tela morta, sem abas, filtros, cartões nem navegação. Agora a
+     navegação fica 100% livre e o que é travado é só a ESCRITA: toda
+     gravação do sistema passa por B7.DB.rpc, sb.from().insert/update/
+     delete/upsert, sb.rpc, sb.storage e B7.Save — esses cinco pontos
+     recebem um substituto que recusa com aviso enquanto a prévia está
+     ativa. Leitura (select) continua normal.
+     ----------------------------------------------------------------- */
+  let originais = null;
+  let ultimoAviso = 0;
+  const MSG = 'Modo visualização — nenhuma alteração é salva.';
+
+  function avisar() {
+    const agora = Date.now();
+    if (agora - ultimoAviso < 2500) return;
+    ultimoAviso = agora;
+    try { if (B7.UI && B7.UI.toast) B7.UI.toast(MSG); } catch (e) {}
+  }
+  function recusar() {
+    avisar();
+    const e = new Error(MSG); e.code = 'B7_PREVIA'; e.status = 403;
+    return Promise.reject(e);
+  }
+  const METODOS_ESCRITA = ['insert', 'update', 'delete', 'upsert'];
+  const METODOS_STORAGE = ['upload', 'remove', 'update', 'move', 'copy', 'uploadToSignedUrl'];
+
+  function ligarBloqueioEscrita() {
+    if (originais) return;
+    const sb = B7.sb;
+    originais = {
+      dbRpc: B7.DB && B7.DB.rpc,
+      dbAuth: B7.DB && B7.DB.chamarAuth,
+      saveCampo: B7.Save && B7.Save.campo,
+      saveAcao: B7.Save && B7.Save.acao,
+      sbFrom: sb && sb.from,
+      sbRpc: sb && sb.rpc,
+      storageFrom: sb && sb.storage && sb.storage.from
+    };
+    if (B7.DB) {
+      B7.DB.rpc = recusar;
+      B7.DB.chamarAuth = recusar;
+    }
+    if (B7.Save) {
+      B7.Save.campo = () => avisar();
+      B7.Save.acao = () => recusar();
+    }
+    if (sb) {
+      sb.from = function (tabela) {
+        const b = originais.sbFrom.call(sb, tabela);
+        METODOS_ESCRITA.forEach(m => { b[m] = recusar; });
+        return b;
+      };
+      sb.rpc = recusar;
+      if (sb.storage && originais.storageFrom) {
+        sb.storage.from = function (bucket) {
+          const b = originais.storageFrom.call(sb.storage, bucket);
+          METODOS_STORAGE.forEach(m => { if (typeof b[m] === 'function') b[m] = recusar; });
+          return b;
+        };
+      }
+    }
   }
 
-  function destravarControles(raiz) {
-    if (!raiz) return;
-    raiz.querySelectorAll('[data-pv-travado]').forEach(el => {
-      el.disabled = false;
-      delete el.dataset.pvTravado;
-    });
-    raiz.querySelectorAll('[data-pv-editavel]').forEach(el => {
-      el.setAttribute('contenteditable', 'true');
-      delete el.dataset.pvEditavel;
-    });
-  }
-
-  function ligarObservador() {
-    const area = document.querySelector('.area');
-    if (!area) return;
-    travarControles(area);
-    /* Cada troca de rota substitui o HTML de dentro de .area — mais
-       simples reaplicar a trava inteira a cada lote de mudança do que
-       tentar prever exatamente o que entrou. Elementos já travados são
-       ignorados (o disabled check acima), então isto é barato mesmo em
-       telas que remontam com frequência. */
-    observer = new MutationObserver(() => travarControles(area));
-    observer.observe(area, { childList: true, subtree: true });
-  }
-
-  function desligarObservador() {
-    if (observer) { observer.disconnect(); observer = null; }
-    destravarControles(document.querySelector('.area'));
+  function desligarBloqueioEscrita() {
+    if (!originais) return;
+    const o = originais; originais = null;
+    const sb = B7.sb;
+    if (B7.DB) { B7.DB.rpc = o.dbRpc; B7.DB.chamarAuth = o.dbAuth; }
+    if (B7.Save) { B7.Save.campo = o.saveCampo; B7.Save.acao = o.saveAcao; }
+    if (sb) {
+      if (o.sbFrom) sb.from = o.sbFrom;
+      if (o.sbRpc) sb.rpc = o.sbRpc;
+      if (sb.storage && o.storageFrom) sb.storage.from = o.storageFrom;
+    }
   }
 
   function montarBanner() {
@@ -95,7 +131,7 @@ B7.PreviaUsuario = (function () {
       '<div class="pv-banner-tx"><b>Visualizando como ' + esc(alvo.nome) + '</b>' +
       '<span>' + esc(rotuloPapel(alvo.papel)) +
         (alvo.funcoes_extra && alvo.funcoes_extra.length ? ' · ' + alvo.funcoes_extra.map(rotuloPapel).join(' · ') : '') +
-        ' · somente leitura — nenhuma ação é salva</span></div>' +
+        ' · navegue à vontade — nada que você fizer aqui é salvo</span></div>' +
       '<button class="b fina" id="pv-sair-previa">Voltar ao Admin</button>';
     document.body.appendChild(b);
     document.body.classList.add('modo-previa-usuario');
@@ -114,7 +150,7 @@ B7.PreviaUsuario = (function () {
     B7.Auth.simularPapel(alvo.papel, alvo.funcoes_extra);
     remontarNav();
     montarBanner();
-    ligarObservador();
+    ligarBloqueioEscrita();
     if (B7.UI) B7.UI.fecharMenus && B7.UI.fecharMenus();
     irParaInicio();
     return true;
@@ -123,7 +159,7 @@ B7.PreviaUsuario = (function () {
   function sair() {
     if (!alvo) return false;
     alvo = null;
-    desligarObservador();
+    desligarBloqueioEscrita();
     const b = document.getElementById('pv-banner-usuario');
     if (b) b.remove();
     document.body.classList.remove('modo-previa-usuario');
