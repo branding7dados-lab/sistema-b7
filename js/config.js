@@ -23,5 +23,5 @@ window.B7_CONFIG = {
      Edge Function b7-push usa como VAPID_PUBLIC_KEY. Vazia = push
      desligado (o Meu perfil explica). A chave PRIVADA nunca entra aqui:
      fica só nos secrets da função. Ver PUSH.md. */
-  VAPID_PUBLIC_KEY: ''
+  VAPID_PUBLIC_KEY: 'BA5kmM_qFyJonTd6jA4ggG_l1k2zJblzY0aB68NiotyupdSE6btda-Y1bnhTFNhO__qQrDNigEYZzpKb0HtMjko'
 };
