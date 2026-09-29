@@ -1,5 +1,9 @@
 /* =====================================================================
-   PAINEL — espaço de trabalho PESSOAL (fase 1: Videomaker)
+   PAINEL — espaço de trabalho PESSOAL
+   Fase 1: Videomaker (este arquivo). Fase 2: Coordenador de mídias
+   (js/painel-coord.js, que reaproveita os primitivos exportados aqui em
+   B7.Painel.ui). abrir(params) decide a visão pelas funções REAIS da
+   pessoa (B7.Perm.painelVisoes) — sem troca de perfil.
 
    Responde "o que EU preciso saber ou fazer agora?". Não é a Central B7
    (visão da agência) nem uma cópia da Produção de Vídeo: resume, prioriza
@@ -182,22 +186,24 @@ B7.Painel = (function () {
       '<span class="pn-att-seta" aria-hidden="true">' + IC.seta + '</span></a>';
   }
 
-  /* Ícone + número; a palavra aparece quando cabe (linha no celular) e
-     sempre vai inteira no aria-label do dia. */
+  /* Um dia da semana: ícone + número por tipo de coisa; a palavra
+     aparece quando cabe (linha no celular) e sempre vai inteira no
+     aria-label. d = { iso, hoje, passado, itens:[{cls, ic, n, um, varios}],
+     href? } — com href o dia vira link para a tela canônica daquele dia. */
   function diaSemana(d) {
-    const item = (cls, ic, n, um, varios) => '<span class="pn-dia-i ' + cls + '" title="' + n + ' ' + (n === 1 ? um : varios) + '">' +
-      ic + '<b>' + n + '</b><em> ' + (n === 1 ? um : varios) + '</em></span>';
-    const partes = [];
-    if (d.atrasadas) partes.push(item('pn-dia-atraso', IC.alerta, d.atrasadas, 'atrasada', 'atrasadas'));
-    if (d.prazos) partes.push(item('pn-dia-prazo', IC.relogio, d.prazos, 'prazo', 'prazos'));
-    if (d.gravacoes) partes.push(item('pn-dia-grav', IC.camera, d.gravacoes, 'gravação', 'gravações'));
+    const cheios = (d.itens || []).filter(i => i.n);
+    const partes = cheios.map(i => '<span class="pn-dia-i ' + i.cls + '" title="' + i.n + ' ' + (i.n === 1 ? i.um : i.varios) + '">' +
+      i.ic + '<b>' + i.n + '</b><em> ' + (i.n === 1 ? i.um : i.varios) + '</em></span>');
     const resumo = partes.length ? partes.join('') : '<span class="pn-dia-livre">Livre</span>';
     const falado = DOW_LONGO[local(d.iso).getDay()] + ' ' + ddmm(d.iso) + ': ' +
-      (partes.length ? [d.atrasadas && (d.atrasadas + ' atrasadas'), d.prazos && (d.prazos + ' prazos'), d.gravacoes && (d.gravacoes + ' gravações')].filter(Boolean).join(', ') : 'livre');
-    return '<li class="pn-dia' + (d.hoje ? ' hoje' : '') + (d.passado ? ' passado' : '') + '" aria-label="' + esc(falado) + '">' +
-      '<span class="pn-dia-cab"><span class="pn-dia-dow">' + DOW[local(d.iso).getDay()] + '</span>' +
+      (cheios.length ? cheios.map(i => i.n + ' ' + (i.n === 1 ? i.um : i.varios)).join(', ') : 'livre');
+    const cls = 'pn-dia' + (d.hoje ? ' hoje' : '') + (d.passado ? ' passado' : '') + (d.alerta ? ' com-alerta' : '');
+    const miolo = '<span class="pn-dia-cab"><span class="pn-dia-dow">' + DOW[local(d.iso).getDay()] + '</span>' +
         '<span class="pn-dia-num">' + d.iso.slice(8, 10) + '</span>' + (d.hoje ? '<span class="pn-dia-hoje">hoje</span>' : '') + '</span>' +
-      '<span class="pn-dia-itens">' + resumo + '</span></li>';
+      '<span class="pn-dia-itens">' + resumo + '</span>';
+    return d.href
+      ? '<li class="pn-dia-w"><a class="' + cls + ' pn-dia-lk" href="' + esc(d.href) + '" aria-label="' + esc(falado) + '">' + miolo + '</a></li>'
+      : '<li class="' + cls + '" aria-label="' + esc(falado) + '">' + miolo + '</li>';
   }
 
   /* Barras em HTML (não SVG com viewBox esticado): o texto nunca deforma
@@ -304,13 +310,15 @@ B7.Painel = (function () {
       const iso = somarDias(seg, i);
       const doDia = minhas().filter(d => comPrazoMeu(d) && d.prazo === iso);
       const passado = iso < hoje();
-      return { iso, hoje: iso === hoje(), passado,
-        atrasadas: passado ? doDia.filter(atrasada).length : 0,
-        prazos: passado ? 0 : doDia.length,
-        gravacoes: gravacoes().filter(g => diaDoTs(g.inicio) === iso).length };
+      const nAtr = passado ? doDia.filter(atrasada).length : 0;
+      return { iso, hoje: iso === hoje(), passado, alerta: nAtr > 0, itens: [
+        { cls: 'pn-dia-atraso', ic: IC.alerta, n: nAtr, um: 'atrasada', varios: 'atrasadas' },
+        { cls: 'pn-dia-prazo', ic: IC.relogio, n: passado ? 0 : doDia.length, um: 'prazo', varios: 'prazos' },
+        { cls: 'pn-dia-grav', ic: IC.camera, n: gravacoes().filter(g => diaDoTs(g.inicio) === iso).length, um: 'gravação', varios: 'gravações' }
+      ] };
     });
     /* fim de semana só entra quando tem alguma coisa nele */
-    return dias.filter((d, i) => i < 5 || d.atrasadas || d.prazos || d.gravacoes);
+    return dias.filter((d, i) => i < 5 || d.itens.some(x => x.n));
   }
 
   function semanasEntregues() {
@@ -493,24 +501,39 @@ B7.Painel = (function () {
     return [p].concat(extras).map(x => ROTULO_PAPEL[x] || x).join(' · ');
   }
 
-  function abrir() {
-    geracao++;
-    B7.Dashboard.marcarNav('#/painel');
-    B7.Rota.titulo(['Painel']);
+  /* Cabeçalho comum aos Painéis: data, saudação, papéis reais, a
+     alternância de visão (só para quem tem mais de uma função) e UMA
+     ação principal. */
+  const ROTULO_VISAO = { coordenacao: 'Coordenação', video: 'Edição de vídeo' };
+  function cabecalho(o) {
     const u = B7.Auth.usuario() || {};
     /* em "Visualizar como…" o nome é o da pessoa em prévia */
     const alvo = emPrevia();
     const nome = ((alvo && alvo.nome) || u.nome || u.username || '').split(' ')[0];
     const d = local(hoje());
     const dataLonga = DOW_LONGO[d.getDay()] + ', ' + d.getDate() + ' de ' + MES[d.getMonth()];
-
-    painel().innerHTML = '<div class="conteudo entra pn" id="pn-raiz">' +
-      '<header class="pn-cab">' +
+    const visoes = o.visoes || [];
+    return '<header class="pn-cab">' +
         '<div class="pn-cab-tx"><p class="pn-kicker">Painel <span>·</span> ' + esc(dataLonga) + '</p>' +
           '<h1>' + esc(saudacao() + (nome ? ', ' + nome : '')) + '</h1>' +
           '<p class="pn-papel">' + esc(papeis()) + '</p></div>' +
-        '<a class="b contorno pn-cab-acao" href="#/video?minha=1&comp=todas">' + IC.camera + '<span>Minha fila de edição</span></a>' +
-      '</header>' +
+        '<div class="pn-cab-lado">' +
+          (visoes.length > 1 ? '<nav class="pn-visoes" aria-label="Visão do Painel">' + visoes.map(v =>
+            '<a href="#/painel?visao=' + v + '"' + (v === o.visao ? ' class="on" aria-current="page"' : '') + '>' +
+            esc(ROTULO_VISAO[v] || v) + '</a>').join('') + '</nav>' : '') +
+          (o.acao || '') +
+        '</div>' +
+      '</header>';
+  }
+
+  function abrirVideo(visoes) {
+    geracao++;
+    B7.Dashboard.marcarNav('#/painel');
+    B7.Rota.titulo(['Painel']);
+
+    painel().innerHTML = '<div class="conteudo entra pn" id="pn-raiz">' +
+      cabecalho({ visoes, visao: 'video',
+        acao: '<a class="b contorno pn-cab-acao" href="#/video?minha=1&comp=todas">' + IC.camera + '<span>Minha fila de edição</span></a>' }) +
       '<section class="pn-kpis" id="pn-kpis" aria-label="Indicadores"></section>' +
       '<div class="pn-grade">' +
         '<section class="pn-bloco pn-atencao" id="pn-atencao" aria-labelledby="pn-t-atencao"></section>' +
@@ -523,5 +546,25 @@ B7.Painel = (function () {
     ['ativas', 'entregas', 'agenda'].forEach(carregar);
   }
 
-  return { abrir };
+  /* Qual visão abrir: a pedida no endereço (?visao=), senão a última
+     escolhida (preferência local), senão a primeira (coordenação vem
+     antes: é a visão mais ampla). Só visões que a pessoa TEM. */
+  function abrir(params) {
+    const visoes = (B7.Perm && B7.Perm.painelVisoes) ? B7.Perm.painelVisoes() : ['video'];
+    let visao = params && params.get ? params.get('visao') : null;
+    if (visao && visoes.includes(visao)) { try { B7.pref.gravar('painel_visao', visao); } catch (e) {} }
+    else {
+      let guardada = null; try { guardada = B7.pref.ler('painel_visao', null); } catch (e) {}
+      visao = visoes.includes(guardada) ? guardada : visoes[0];
+    }
+    if (visao === 'coordenacao' && B7.PainelCoord) { geracao++; return B7.PainelCoord.abrir({ visoes }); }
+    return abrirVideo(visoes);
+  }
+
+  /* Primitivos para os outros Painéis (fase 2: js/painel-coord.js). */
+  const ui = { esc, IC, kpi, cabecalhoSecao, blocoCarregando, blocoErro, blocoVazio, logoMini, linhaAtencao,
+               diaSemana, cabecalho, comTempoLimite,
+               datas: { hoje, pad, isoDe, local, somarDias, difDias, segundaDe, ddmm, hora, diaDoTs, quandoDia, DOW, DOW_LONGO, MES } };
+
+  return { abrir, ui };
 })();

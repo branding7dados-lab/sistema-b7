@@ -400,6 +400,9 @@
 
 /* --------------------------------- linhas editoriais: visão global */
 .busca-linhas{margin-bottom:16px;max-width:360px;}
+.filtro-ativo-linhas{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:-4px 0 18px;padding:10px 12px 10px 14px;border-radius:var(--r-sm);background:var(--suave);border:1px solid var(--borda);font-size:13px;color:var(--ink-3);}
+.filtro-ativo-linhas b{color:var(--ink);}
+.filtro-ativo-linhas a.b{text-decoration:none;}
 .card-linha{cursor:pointer;display:flex;flex-direction:column;gap:9px;padding:16px 18px;}
 .card-linha:hover{border-color:var(--borda-forte);}
 .cl-topo{display:flex;align-items:center;gap:9px;}

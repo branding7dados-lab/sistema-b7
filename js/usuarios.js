@@ -33,8 +33,15 @@ B7.Usuarios = (function () {
      Cliente (perfil externo) — o bloco some quando o papel escolhido é
      "cliente", tanto ao criar quanto ao editar. */
   const FUNCOES_EXTRA = [
-    ['videomaker', 'Videomaker', 'também filma e edita, além do papel principal']
+    ['videomaker', 'Videomaker', 'também filma e edita, além do papel principal'],
+    /* Coordenação como função extra existe só para o Administrador: ele
+       já tem, no banco, todas as permissões de coordenação; a função só
+       liga o Painel do Coordenador (casa padrão). Em qualquer outro papel
+       ela exigiria permissões que o papel não tem — por isso some. */
+    ['coordenador', 'Coordenador de mídias', 'recebe o Painel de coordenação (só para Administrador)']
   ];
+  /* a função extra não se aplica a este papel? (redundante ou restrita) */
+  const extraIndisponivel = (funcao, papel) => funcao === papel || (funcao === 'coordenador' && papel !== 'admin');
   const rotuloFuncaoExtra = f => (FUNCOES_EXTRA.find(x => x[0] === f) || [, f])[1];
 
   /* =================================================================
@@ -217,7 +224,7 @@ B7.Usuarios = (function () {
          ganha a função extra "Videomaker") */
       blocoExtras.style.display = papel === 'cliente' ? 'none' : '';
       blocoExtras.querySelectorAll('[data-funcao-extra]').forEach(l => {
-        const redundante = l.dataset.funcaoExtra === papel;
+        const redundante = extraIndisponivel(l.dataset.funcaoExtra, papel);
         l.style.display = redundante ? 'none' : '';
         if (redundante) { l.querySelector('input').checked = false; l.classList.remove('on'); }
       });
@@ -310,7 +317,7 @@ B7.Usuarios = (function () {
         '<label class="rot">FUNÇÕES EXTRAS (ALÉM DO PERFIL PRINCIPAL)</label>' +
         '<div class="nu-empresas">' + FUNCOES_EXTRA.map(([v, r, d]) => {
           const marcada = extrasAtuais.includes(v);
-          const redundante = u.papel === v;
+          const redundante = extraIndisponivel(v, u.papel);
           return '<label class="op-mini' + (marcada ? ' on' : '') + '" data-funcao-extra="' + v + '"' +
             (redundante ? ' style="display:none"' : '') + '>' +
             '<input type="checkbox" value="' + v + '"' + (marcada ? ' checked' : '') + '>' +
@@ -327,7 +334,7 @@ B7.Usuarios = (function () {
       const blocoExtras = m.querySelector('#ed-extras');
       blocoExtras.style.display = papel === 'cliente' ? 'none' : '';
       blocoExtras.querySelectorAll('[data-funcao-extra]').forEach(l => {
-        const redundante = l.dataset.funcaoExtra === papel;
+        const redundante = extraIndisponivel(l.dataset.funcaoExtra, papel);
         l.style.display = redundante ? 'none' : '';
         if (redundante) { l.querySelector('input').checked = false; l.classList.remove('on'); }
       });

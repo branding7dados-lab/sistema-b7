@@ -114,8 +114,16 @@ B7.Design = (function () {
       '<p>Se o sistema acabou de ser atualizado, rode migration_design.sql no Supabase.</p></div></div>';
   }
 
-  async function abrir(aba) {
+  async function abrir(aba, params) {
     selecionados.clear();
+    /* ?limpar=1 (links do Painel): a aba escolhida vale sozinha, sem os
+       filtros guardados da última visita — senão o número do Painel e a
+       lista aberta divergiriam. Mantém só o modo de exibição. */
+    if (params && params.get && params.get('limpar') === '1') {
+      F = Object.assign({}, F_PADRAO, { vista: F.vista, modo: F.modo });
+      guardarFiltros();
+      try { history.replaceState(null, '', '#/design' + (aba ? '?aba=' + encodeURIComponent(aba) : '')); } catch (e) {}
+    }
     B7.Dashboard.marcarNav('#/design');
     B7.Rota.titulo(['Design']);
     if (aba) F.aba = aba;

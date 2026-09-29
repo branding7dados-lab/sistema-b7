@@ -1,5 +1,5 @@
 /* =====================================================================
-   PAINEL — espaço pessoal (fase 1: Videomaker)
+   PAINEL — espaço pessoal (fase 1: Videomaker · fase 2: Coordenador)
    Só tokens de styles/global.css; nenhuma cor fixa, nenhum tema paralelo.
    Base reaproveitada da Central: .cp-num (card de número) e .cp-ag-item
    (linha de agenda com bloco de data). Densidade via --d.
@@ -18,6 +18,15 @@
 .pn-papel{font-size:13px;color:var(--ink-3);margin:5px 0 0;}
 .pn a.b{text-decoration:none;}
 .pn-cab-acao svg{width:15px;height:15px;}
+.pn-cab-lado{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+/* alternância de VISÃO (quem tem duas funções) — mesmo desenho do
+   segmentado .seg-vista; é navegação, então são links */
+.pn-visoes{display:inline-flex;background:var(--suave);border-radius:10px;padding:3px;}
+.pn-visoes a{font-size:12.5px;padding:6px 13px;border-radius:8px;color:var(--ink-3);text-decoration:none;
+  white-space:nowrap;transition:var(--t-micro);}
+.pn-visoes a:hover{color:var(--ink);}
+.pn-visoes a.on{background:var(--card);color:var(--ink);box-shadow:var(--sh-1);font-weight:600;}
+.pn-visoes a:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 
 /* ----------------------------------------------------------------- KPIs */
 .pn-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:var(--pn-gap);}
@@ -25,6 +34,7 @@
   color:var(--ink);overflow:hidden;}
 .pn .pn-kpi.estatico{cursor:default;}
 .pn .pn-kpi.estatico:hover{transform:none;border-color:var(--borda);}
+.pn .pn-kpi.pn-kpi-rolar{cursor:pointer;}
 .pn-kpi-rot{font-size:12.5px;font-weight:600;color:var(--ink-3);}
 .pn .pn-kpi .pn-kpi-num{font-family:'Archivo';font-weight:800;font-size:calc(36px * var(--d, 1));line-height:1;
   letter-spacing:-.02em;color:var(--ink);}
@@ -81,8 +91,12 @@
   overflow:hidden;white-space:nowrap;}
 /* o nome do cliente é o que encolhe (com reticências); status e prazo ficam inteiros */
 .pn-att-meta > span{flex:none;}
-.pn-att-meta > span:first-of-type{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.pn-att-meta > span:not(.pn-logo):first-of-type,
+.pn-att-meta > .pn-logo + span{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .pn-att-meta > span + span::before{content:'·';margin-right:6px;}
+/* o logo (ou as iniciais) cola no nome do cliente: sem separador */
+.pn-att-meta > .pn-logo + span::before{content:none;}
+.pn-att-meta > .pn-logo{margin-right:-1px;}
 .pn-att-seta{width:16px;height:16px;color:var(--ink-4);flex:none;opacity:.6;}
 .pn-att-seta svg{width:100%;height:100%;}
 .pn-att:hover .pn-att-seta{opacity:1;color:var(--acento);}
@@ -108,7 +122,13 @@
   border:1px solid transparent;min-width:0;}
 .pn-dia.hoje{background:var(--card);border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave);}
 .pn-dia.passado{opacity:.62;}
-.pn-dia.passado:has(.pn-dia-atraso){opacity:1;}
+.pn-dia.passado.com-alerta{opacity:1;}
+/* dia clicável (Coordenador → Publicações do Dia daquele dia) */
+.pn-dia-w{display:contents;}
+.pn-dia-lk{text-decoration:none;color:inherit;transition:var(--t-micro);}
+.pn-dia-lk:hover{border-color:var(--borda-forte);background:var(--card);}
+.pn-dia-lk.hoje:hover{border-color:var(--acento);}
+.pn-dia-lk:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 .pn-dia-cab{display:flex;flex-direction:column;align-items:flex-start;gap:3px;}
 .pn-dia-dow{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--ink-4);}
 .pn-dia-num{font-family:'Archivo';font-weight:800;font-size:17px;color:var(--ink);line-height:1;}
@@ -121,6 +141,7 @@
 .pn-dia-prazo{color:var(--ink-2);}
 .pn-dia-grav{color:var(--acento);}
 .pn-dia-atraso{color:var(--erro);}
+.pn-dia-linha{color:var(--ink-3);}
 .pn-dia-livre{color:var(--ink-4);font-size:11.5px;}
 .pn-sk-semana{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
 .pn-sk-semana .esq{height:92px;border-radius:var(--r-sm);}
@@ -165,7 +186,51 @@
   white-space:nowrap;flex:none;}
 .pn-comp-tipo svg{width:14px;height:14px;}
 .pn-comp-gravacao{color:var(--acento);}
+
+/* ====================================================================
+   PAINEL DO COORDENADOR (.pnc) — mesma família; só o que é dele
+   ==================================================================== */
+/* atenção à esquerda; semana + próximas publicações à direita; fluxo
+   do mês em largura total */
+.pnc-grade{grid-template-areas:"at sem" "at pub" "flx flx";}
+#pnc-atencao{grid-area:at;}
+#pnc-semana{grid-area:sem;}
+#pnc-publicacoes{grid-area:pub;}
+#pnc-fluxo{grid-area:flx;}
+.pnc .pn-kpi .pn-kpi-rot{padding-right:18px;}
+.pnc .pn-erro + .pn-erro, .pnc .pn-att-lista + .pn-erro{margin-top:10px;}
+/* próximas publicações: linha de agenda com chip de status à direita */
+.pnc-pub .status-conteudo{flex:none;}
+.pnc-pub .cp-ag-tx{min-width:0;}
+.pnc-pub .cp-ag-tx b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pnc-pub .cp-ag-meta.pn-att-meta{display:flex;}
+/* fluxo de conteúdos: barras horizontais, série única e neutra */
+.pnc-fluxo-corpo{align-items:center;}
+.pnc-fluxo-corpo .pn-graf-resumo{margin-bottom:0;}
+.pnc-fluxo{display:flex;flex-direction:column;gap:4px;}
+.pnc-etapa{position:relative;display:grid;grid-template-columns:118px minmax(0,1fr) 112px;align-items:center;gap:12px;
+  padding:6px 8px;border-radius:8px;outline:none;}
+.pnc-etapa:hover, .pnc-etapa:focus-visible{background:var(--suave);}
+.pnc-etapa:focus-visible{box-shadow:0 0 0 2px var(--acento);}
+.pnc-etapa-rot{min-width:0;}
+.pnc-etapa-rot .status-conteudo{white-space:nowrap;}
+.pnc-etapa-trilho{height:12px;display:flex;align-items:center;}
+.pnc-etapa-trilho i{display:block;height:100%;border-radius:0 4px 4px 0;
+  background:color-mix(in srgb, var(--ink-3) 30%, transparent);transition:background var(--t);}
+.pnc-etapa:hover .pnc-etapa-trilho i, .pnc-etapa:focus-visible .pnc-etapa-trilho i{background:color-mix(in srgb, var(--ink-3) 50%, transparent);}
+.pnc-etapa.vazia .pnc-etapa-n b{color:var(--ink-4);}
+.pnc-etapa-n{display:flex;align-items:baseline;gap:8px;white-space:nowrap;}
+.pnc-etapa-n b{font-family:'Archivo';font-weight:800;font-size:15px;color:var(--ink);min-width:24px;text-align:right;}
+.pnc-venc{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:var(--ink-3);}
+.pnc-venc svg{width:12px;height:12px;color:var(--ambar);}
+.pnc-etapa .pn-graf-tip{bottom:calc(100% - 2px);left:calc(118px + 30%);}
+.pnc-etapa:hover .pn-graf-tip, .pnc-etapa:focus-visible .pn-graf-tip{opacity:1;transform:translate(-50%,0);}
+.pnc-sk-fluxo{display:flex;flex-direction:column;gap:10px;padding:6px 0;}
+.pnc-sk-fluxo .esq{height:14px;border-radius:0 4px 4px 0;}
+.pnc-sk-fluxo .esq:nth-child(1){width:55%}.pnc-sk-fluxo .esq:nth-child(2){width:25%}.pnc-sk-fluxo .esq:nth-child(3){width:15%}
+.pnc-sk-fluxo .esq:nth-child(4){width:20%}.pnc-sk-fluxo .esq:nth-child(5){width:12%}.pnc-sk-fluxo .esq:nth-child(6){width:80%}
 .pn .cp-ag-meta > span + span::before{content:'·';margin-right:5px;}
+.pn .cp-ag-meta > .pn-logo + span::before{content:none;}
 
 /* ----------------------------------------------------- estados comuns */
 .pn-vazio{display:flex;align-items:center;gap:12px;padding:14px;border-radius:var(--r-sm);background:var(--suave);}
@@ -189,6 +254,7 @@
 }
 @media (max-width:1100px){
   .pn-grade{grid-template-columns:minmax(0,1fr);grid-template-areas:"at" "sem" "prod" "comp";}
+  .pnc-grade{grid-template-areas:"at" "sem" "flx" "pub";grid-template-rows:none;}
   .pn-prod-corpo{grid-template-columns:minmax(0,1fr);gap:0;}
   .pn-prod-corpo .pn-graf-resumo{flex-direction:row;gap:22px;margin-bottom:16px;}
 }
@@ -215,6 +281,13 @@
   .pn-graf{height:130px;gap:6px;}
   .pn-graf-resumo{gap:16px;}
   .pn-comp-tipo span{display:none;}
+  .pn-cab-lado{width:100%;}
+  .pn-visoes{width:100%;}
+  .pn-visoes a{flex:1;text-align:center;}
+  .pnc-etapa{grid-template-columns:96px minmax(0,1fr) auto;gap:10px;padding:6px 4px;}
+  .pnc-etapa .pn-graf-tip{display:none;}
+  .pnc-pub .status-conteudo{font-size:10.5px;padding:3px 7px;}
+  #pnc-fluxo .pn-sec-sub{display:none;}
 }
 @media (prefers-reduced-motion:reduce){
   .pn-graf-tip, .pn-graf-trilho i, .pn-att{transition:none;}

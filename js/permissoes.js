@@ -66,17 +66,32 @@ B7.Perm = (function () {
     return !!(B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel());
   }
 
-  /* PAINEL (#/painel) — espaço de trabalho PESSOAL. Nesta fase só existe
-     o Painel do Videomaker, então quem alcança é quem é videomaker pelo
-     papel principal OU pela função extra (Kevin: admin + videomaker).
-     Não é troca de perfil: a pessoa continua com todas as permissões do
-     papel dela; o Painel só é mais uma tela, focada no trabalho dela.
-     Admin sem função de videomaker não vê o Painel — a Central B7 segue
-     sendo a casa dele. */
-  function painelElegivel() {
-    if (semSessao() || papel() === 'cliente') return false;
-    return !!(B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel());
+  /* PAINEL (#/painel) — espaço de trabalho PESSOAL, montado a partir das
+     funções operacionais REAIS da pessoa. Não é troca de perfil: ela
+     continua com todas as permissões do papel dela; o Painel é só mais
+     uma tela. Duas visões existem hoje:
+       • 'coordenacao' — Coordenador de mídias pelo papel principal, ou
+         Administrador com a função extra "coordenador" (a função extra de
+         coordenação só vale para Administrador: é ele que já tem, no
+         banco, as permissões de coordenação — ver usuarios.js/b7-auth);
+       • 'video' — videomaker pelo papel principal ou pela função extra.
+     Quem tem as duas vê as duas no mesmo Painel (alternância de visão,
+     não de identidade). Admin sem nenhuma dessas funções não vê o
+     Painel — a Central B7 segue sendo a casa dele. */
+  function souCoordenadorElegivel() {
+    if (semSessao()) return false;
+    if (papel() === 'coordenador') return true;
+    const extras = (B7.Auth && B7.Auth.funcoesExtra) ? B7.Auth.funcoesExtra() : [];
+    return papel() === 'admin' && extras.includes('coordenador');
   }
+  function painelVisoes() {
+    if (semSessao() || papel() === 'cliente') return [];
+    const v = [];
+    if (souCoordenadorElegivel()) v.push('coordenacao');
+    if (B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel()) v.push('video');
+    return v;
+  }
+  function painelElegivel() { return painelVisoes().length > 0; }
 
   /* "Visualizar como cliente" (#/previa/<id>) é só do administrador:
      admin tem '*'; coordenador e cliente não têm 'previa' e caem na
@@ -219,5 +234,5 @@ B7.Perm = (function () {
   }
 
   return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
-           painelElegivel, ROTAS, CONFIG };
+           painelElegivel, painelVisoes, souCoordenadorElegivel, ROTAS, CONFIG };
 })();

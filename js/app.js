@@ -135,15 +135,16 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return B7.Publicacoes.abrir(partes[1]);
     }
-    /* PAINEL — espaço pessoal (fase 1: Videomaker). A guarda de rota
+    /* PAINEL — espaço pessoal (Videomaker e Coordenador de mídias; ?visao=
+       escolhe entre os dois quando a pessoa tem as duas funções). A guarda de rota
        acima (B7.Perm.podeRota) já recusou quem não é elegível. */
-    if (partes[0] === 'painel' && B7.Painel) { mostrar('tela-dashboard'); return B7.Painel.abrir(); }
-    if (partes[0] === 'linhas') { mostrar('tela-dashboard'); return B7.Conteudo.abrirLinhasGlobais(); }
+    if (partes[0] === 'painel' && B7.Painel) { mostrar('tela-dashboard'); return B7.Painel.abrir(params); }
+    if (partes[0] === 'linhas') { mostrar('tela-dashboard'); return B7.Conteudo.abrirLinhasGlobais(params); }
     if (partes[0] === 'kanban') { mostrar('tela-dashboard'); return B7.Kanban.abrir(); }
     if (partes[0] === 'design' && B7.Design) {
       mostrar('tela-dashboard');
       if (partes[1] === 'linha' && partes[2]) return B7.Design.abrirLinha(partes[2]);
-      return partes[1] ? B7.Design.abrirDetalhe(partes[1]) : B7.Design.abrir(params.get('aba'));
+      return partes[1] ? B7.Design.abrirDetalhe(partes[1]) : B7.Design.abrir(params.get('aba'), params);
     }
     if (partes[0] === 'video' && B7.Video) {
       mostrar('tela-dashboard');

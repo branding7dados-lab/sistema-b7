@@ -27,6 +27,35 @@ B7.Conteudo = (function () {
   const TIPO_PILAR = ['Entretenimento', 'Educativo', 'Informativo', 'Inspirador', 'Conversão', 'Institucional'];
   const STATUS_LINHA = ['Em criação', 'Em revisão', 'Aprovada', 'Finalizada'];
 
+  /* ------------------------------------------ regras canônicas da Linha
+     Um lugar só: a lista de Linhas (filtro por endereço) e o Painel do
+     Coordenador usam ESTAS funções, então o número do Painel e a lista
+     que ele abre nunca divergem.
+     • em andamento = tudo que ainda não é "Finalizada" (mesma regra da
+       Central: "em elaboração");
+     • planejamento atrasado = ainda "Em criação" com o período já
+       começado ou começando em até 7 dias (e não encerrado). */
+  const pad2 = n => String(n).padStart(2, '0');
+  const inicioLinha = l => l.periodo_inicio || (l.ano && l.mes ? l.ano + '-' + pad2(l.mes) + '-01' : null);
+  function fimLinha(l) {
+    if (l.periodo_fim) return l.periodo_fim;
+    if (!l.ano || !l.mes) return null;
+    return l.ano + '-' + pad2(l.mes) + '-' + pad2(new Date(l.ano, l.mes, 0).getDate());
+  }
+  function somarDiasISO(s, n) {
+    const [a, m, d] = s.split('-').map(Number); const dt = new Date(a, m - 1, d + n);
+    return dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate());
+  }
+  const REGRAS_LINHA = {
+    andamento: { rotulo: 'Em andamento', teste: l => l.status !== 'Finalizada' },
+    planejamento: { rotulo: 'Ainda em criação perto do início', teste: l => {
+      if (l.status !== 'Em criação') return false;
+      const hoje = B7.UI.hojeISO(), ini = inicioLinha(l), fim = fimLinha(l);
+      return !!ini && ini <= somarDiasISO(hoje, 7) && (!fim || fim >= hoje);
+    } },
+    revisao: { rotulo: 'Em revisão', teste: l => l.status === 'Em revisão' }
+  };
+
   /* ---------------------------------------------------------- helpers */
   const campo = (rot, valor, attrs, dica) =>
     '<div class="mb"><label class="rot">' + rot + '</label>' +
@@ -327,8 +356,15 @@ B7.Conteudo = (function () {
      todos os clientes sem contexto.
      ================================================================= */
   let filtroLinhas = '';
+  let filtroRegra = '';   /* chave de REGRAS_LINHA vinda do endereço (?status=) */
 
-  async function abrirLinhasGlobais() {
+  /* params (URLSearchParams) só vem da rota: é ela que define o filtro.
+     A busca redesenha chamando sem params e mantém o filtro atual. */
+  async function abrirLinhasGlobais(params) {
+    if (params && typeof params.get === 'function') {
+      const s = params.get('status') || '';
+      filtroRegra = REGRAS_LINHA[s] ? s : '';
+    }
     B7.Dashboard.marcarNav('#/linhas');
     B7.Rota.titulo(['Linhas editoriais']);
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('cards', { n: 6 }) + '</div>';
@@ -341,12 +377,16 @@ B7.Conteudo = (function () {
     } catch (e) { return B7.Dashboard.erroConteudo(e); }
 
     const termo = filtroLinhas.trim().toLowerCase();
-    const filtradas = termo
-      ? linhas.filter(l => (
+    const regra = filtroRegra && REGRAS_LINHA[filtroRegra];
+    const filtradas = linhas.filter(l => (!regra || regra.teste(l)) && (!termo || (
           (l.cliente_nome || '').toLowerCase().includes(termo) ||
           (l.nome || '').toLowerCase().includes(termo) ||
-          (MESES[l.mes - 1] + ' ' + l.ano).toLowerCase().includes(termo)))
-      : linhas;
+          (MESES[l.mes - 1] + ' ' + l.ano).toLowerCase().includes(termo))));
+    const chipRegra = regra
+      ? '<div class="filtro-ativo-linhas"><span>Mostrando: <b>' + esc(regra.rotulo) + '</b> · ' +
+        filtradas.length + (filtradas.length === 1 ? ' linha' : ' linhas') + '</span>' +
+        '<a class="b fina contorno" href="#/linhas">Ver todas</a></div>'
+      : '';
 
     /* clientes sem nenhuma linha ficam à mão, para criar em um clique */
     const comLinha = new Set(linhas.map(l => l.client_id));
@@ -367,10 +407,11 @@ B7.Conteudo = (function () {
 
       (linhas.length
         ? '<div class="busca-linhas"><input class="campo" id="busca-linha" ' +
-          'placeholder="Buscar por cliente ou mês…" value="' + esc(filtroLinhas) + '"></div>' +
+          'placeholder="Buscar por cliente ou mês…" value="' + esc(filtroLinhas) + '"></div>' + chipRegra +
           (filtradas.length
             ? blocoLinhasPorMes(filtradas)
-            : '<div class="estado-b7"><b>Nada encontrado para “' + esc(filtroLinhas) + '”.</b></div>')
+            : '<div class="estado-b7"><b>' + (termo ? 'Nada encontrado para “' + esc(filtroLinhas) + '”.'
+                : 'Nenhuma linha editorial neste filtro.') + '</b></div>')
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
           '<b>Nenhuma linha editorial ainda.</b>' +
           (leitura ? '<p>Nenhum planejamento foi criado ainda.</p>'
@@ -774,5 +815,6 @@ B7.Conteudo = (function () {
   }
 
   return { abrirInteligencia, abrirOnboarding, abrirLinhas, abrirLinhasGlobais, abrirIdeias, ligarCampos, campo, campoLinha,
-           secao, FORMATOS, FUNIL, STATUS_CONTEUDO, STATUS_LINHA, TIPO_PILAR, souDesignerSomenteLeitura };
+           secao, FORMATOS, FUNIL, STATUS_CONTEUDO, STATUS_LINHA, TIPO_PILAR, souDesignerSomenteLeitura,
+           REGRAS_LINHA, inicioLinha, fimLinha, novaLinha: () => modalNovaLinha(null, null) };
 })();

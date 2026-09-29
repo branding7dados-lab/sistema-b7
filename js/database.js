@@ -1761,6 +1761,50 @@ B7.DB = (function () {
         .order('inicio', { ascending: true }));
     },
 
+    /* ============================================ PAINEL DO COORDENADOR
+       Leituras escopadas por data/status — nunca o histórico inteiro.
+       Linhas, pendentes de publicação, design e aprovações reaproveitam
+       os helpers das telas canônicas (listarTodasLinhas,
+       publicacoesPendentes, listarDesign, painelAprovacoes) para o número
+       do Painel sair da MESMA consulta da tela que ele abre. */
+
+    /* Conteúdos com data de postagem no intervalo: mesma regra de
+       publicacoesDoPeriodo (Publicações do Dia) — só deleted_at —, com
+       menos colunas (sem legenda/direção, que o Painel não mostra). */
+    async painelCoordConteudos(inicio, fim) {
+      return ok(await sb().from('conteudos')
+        .select('id,linha_id,client_id,tipo,titulo,canal,data_postagem,status,position,created_at,clientes(nome,logo_url)')
+        .is('deleted_at', null)
+        .gte('data_postagem', inicio).lte('data_postagem', fim)
+        .order('data_postagem', { ascending: true })
+        .order('position', { ascending: true })
+        .order('created_at', { ascending: true }));
+    },
+    /* O que está esperando revisão interna fora do Design: conteúdos e
+       roteiros com status "Em revisão" (vocabulário canônico de
+       B7.Conteudo.STATUS_CONTEUDO e B7.UI REVISAO). Volume pequeno. */
+    async painelCoordConteudosEmRevisao() {
+      return ok(await sb().from('conteudos')
+        .select('id,linha_id,client_id,titulo,data_postagem,status,updated_at,clientes(nome,logo_url)')
+        .is('deleted_at', null).eq('status', 'Em revisão')
+        .order('data_postagem', { ascending: true, nullsFirst: false }).limit(50));
+    },
+    async painelCoordRoteirosEmRevisao() {
+      return ok(await sb().from('roteiros')
+        .select('id,titulo,status,recording_session_id,updated_at,gravacoes(nome,data_gravacao,clientes(nome,logo_url))')
+        .is('deleted_at', null).is('archived_at', null).eq('status', 'Em revisão')
+        .order('updated_at', { ascending: true }).limit(50));
+    },
+    /* Status dos roteiros das gravações que estão para acontecer — para
+       saber se a preparação está pronta. Uma consulta para todas. */
+    async painelCoordRoteirosDasGravacoes(ids) {
+      if (!ids || !ids.length) return [];
+      return ok(await sb().from('roteiros')
+        .select('id,status,recording_session_id')
+        .is('deleted_at', null).is('archived_at', null)
+        .in('recording_session_id', ids));
+    },
+
     async minhasDemandasVideo() {
       return ok(await sb().from('demandas_edicao_resumo').select('*')
         .order('prazo', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }));

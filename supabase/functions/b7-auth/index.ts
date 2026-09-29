@@ -23,7 +23,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
-const VERSAO = '2026-09-09-c';
+const VERSAO = '2026-09-29-b';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -148,7 +148,11 @@ function senhaFraca(senha: string): string | null {
    interna, mesmo que alguém tente mandar isso no corpo da requisição.
    O mesmo valor do papel principal também não entra como "extra": não
    faz sentido um Videomaker ganhar a função extra "videomaker". */
-const FUNCOES_EXTRA_VALIDAS = ['videomaker'];
+/* 'coordenador' (Painel do Coordenador, 29/09): só faz sentido para o
+   Administrador — ele já tem, no banco, as permissões de coordenação; a
+   função só liga o Painel de coordenação. Em outro papel ela é
+   descartada em silêncio (exigiria permissões que o papel não tem). */
+const FUNCOES_EXTRA_VALIDAS = ['videomaker', 'coordenador'];
 function normalizarFuncoesExtra(bruto: unknown, papelFinal: string): { lista: string[]; erro?: string } {
   if (bruto === undefined || bruto === null) return { lista: [] };
   if (!Array.isArray(bruto)) return { lista: [], erro: 'Funções extras inválidas.' };
@@ -161,7 +165,7 @@ function normalizarFuncoesExtra(bruto: unknown, papelFinal: string): { lista: st
   if (papelFinal === 'cliente' && lista.length) {
     return { lista: [], erro: 'Cliente é um perfil externo — não recebe função extra de produção.' };
   }
-  return { lista: lista.filter((f) => f !== papelFinal) };
+  return { lista: lista.filter((f) => f !== papelFinal && !(f === 'coordenador' && papelFinal !== 'admin')) };
 }
 
 /* Quem chamou? Valida o token da sessão e devolve o perfil real, lido do

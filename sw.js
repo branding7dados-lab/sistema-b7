@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v99';
+const CACHE = 'roteiros-b7-v100';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -15,7 +15,7 @@ const CASCA = [
   './js/backup.js', './js/app.js',
   './js/auth.js', './js/usuarios.js', './js/central.js', './js/conteudo.js',
   './js/linha.js', './js/design.js', './js/video.js', './js/calendario.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
-  './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js',
+  './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js', './js/painel-coord.js',
   './js/permissoes.js', './js/portal.js', './js/kanban.js', './js/perfil.js', './js/foto.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js',
   './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js', './js/vendor/xlsx.full.min.js',
