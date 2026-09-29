@@ -22,9 +22,30 @@ B7.Save = (function () {
   /* há um indicador no topo de cada tela; todos mostram o mesmo estado */
 
   /* ------------------------------------------------------- indicador */
+  /* O indicador só aparece quando importa (topo global, 29/09):
+     • Salvando… / Erro / Sem conexão — sempre visíveis (erro fica até
+       resolver ou a pessoa tentar de novo);
+     • Salvo ✓ — só depois de uma gravação REAL nesta tela (o banco
+       respondeu). No topo global some sozinho em ~2,5 s; no topo do
+       editor de roteiros (documento) fica, porque ali ele é o contexto.
+     • Sem nenhuma alteração nesta tela (Painel, Central, listas,
+       calendários, telas de leitura): nada — nada de "Salvo ✓" parado. */
+  let atividade = false;     /* houve gravação disparada desde a última troca de tela */
+  let fresco = false;        /* um "Salvo ✓" acabou de ser confirmado */
+  let timerFresco = null;
+  let ultimoEstado = '';
   function pintar(estado, texto) {
+    if (estado === 'salvo' && atividade && ultimoEstado && ultimoEstado !== 'salvo') {
+      fresco = true;
+      clearTimeout(timerFresco);
+      timerFresco = setTimeout(() => { fresco = false; atualizar(); }, 2600);
+    }
+    ultimoEstado = estado;
     document.querySelectorAll('.salvamento').forEach(el => {
-      el.className = 'salvamento ' + estado;
+      const noEditor = !!el.closest('#tela-editor');
+      const visivel = estado !== 'salvo' || (atividade && (noEditor || fresco));
+      el.className = 'salvamento ' + estado + (visivel ? '' : ' ocioso');
+      el.setAttribute('aria-hidden', visivel ? 'false' : 'true');
       el.querySelector('.txt').textContent = texto;
       el.onclick = estado === 'erro' ? tentarNovamente : null;
       el.title = estado === 'erro' ? 'Clique para tentar salvar de novo' : '';
@@ -123,6 +144,7 @@ B7.Save = (function () {
 
   /* --------------------------------------------------------- digitação */
   function campo(tabela, id, patch) {
+    atividade = true;
     const chave = tabela + ':' + id;
     const atual = pendentes.get(chave) || { tabela, id, patch: {} };
     Object.assign(atual.patch, patch);
@@ -171,6 +193,7 @@ B7.Save = (function () {
       B7.UI.toast('Sem conexão — a ação não foi salva. Reconecte e tente de novo.', { tipo: 'erro' });
       throw new Error('offline');
     }
+    atividade = true;
     emVoo++; atualizar();
     try {
       const r = await (typeof promessa === 'function' ? promessa() : promessa);
@@ -203,6 +226,15 @@ B7.Save = (function () {
     escoarFila().then(atualizar);
   });
   window.addEventListener('offline', atualizar);
+  /* troca de tela: o "Salvo ✓" era da tela anterior — some. Pendência,
+     erro e falta de conexão continuam visíveis (não se escondem falhas). */
+  window.addEventListener('hashchange', () => {
+    if (temPendencias() || descartados) return;   /* dado ainda não gravado ou perdido: continua à vista */
+    /* erro de uma ação pontual (já avisado por toast, nada pendente) era
+       daquela tela — sai junto com ela */
+    ultimoErro = null;
+    atividade = false; fresco = false; clearTimeout(timerFresco); atualizar();
+  });
   window.addEventListener('beforeunload', e => {
     if (temPendencias()) { e.preventDefault(); e.returnValue = ''; }
   });

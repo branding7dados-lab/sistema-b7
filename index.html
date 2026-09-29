@@ -36,6 +36,7 @@
 <link rel="stylesheet" href="styles/calendario.css">
 <link rel="stylesheet" href="styles/publicacoes.css">
 <link rel="stylesheet" href="styles/painel.css">
+<link rel="stylesheet" href="styles/topo.css">
 <link rel="stylesheet" href="styles/print.css">
 </head>
 <body class="apurando">
@@ -88,31 +89,19 @@
          sessão é conhecido. O cliente recebe a navegação do Portal e
          nunca vê esta, nem por um instante. -->
     <nav class="nav" aria-label="Navegação"></nav>
+    <!-- Topo global da equipe (js/topo.js). Uma barra só para todos os
+         papéis: o papel muda as AÇÕES de Criar (resolvidas por permissão)
+         e o menu da conta, nunca o desenho. -->
     <template id="tpl-topo-interno-esq">
-        <div class="busca">
-          <svg class="lupa" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-          <input id="campo-busca" placeholder="Buscar cliente, gravação ou roteiro…" autocomplete="off">
+        <button type="button" class="busca busca-gatilho" id="busca-gatilho" aria-label="Buscar no B7">
+          <svg class="lupa" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <span class="busca-tx">Buscar no B7…</span>
           <kbd>Ctrl K</kbd>
-          <div class="resultados" id="resultados-busca"></div>
-        </div>
-
+        </button>
+        <span class="topo-ctx" id="topo-ctx" aria-hidden="true"></span>
     </template>
     <template id="tpl-topo-interno-dir">
-        <button class="b pri" id="bt-nova-gravacao">
-          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="txt">Nova gravação</span>
-        </button>
-
-        <div class="menu">
-          <button class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="19" r="1.3"/></svg></button>
-          <div class="lista">
-            <button id="mn-novo-cliente">Novo cliente</button>
-            <button id="mn-paleta">Ações rápidas <span style="margin-left:auto;font-size:11px;color:var(--ink-4)">Ctrl K</span></button>
-            <hr>
-            <div class="rot">BACKUP</div>
-            <button id="mn-exportar">Exportar backup (.json)</button>
-            <button id="mn-importar">Importar backup</button>
-          </div>
-        </div>
+        <div class="topo-criar" id="topo-criar" hidden></div>
     </template>
     <template id="tpl-nav-interna">
       <!-- Painel: espaço pessoal. Só fica para quem é elegível (hoje:
@@ -177,15 +166,14 @@
 
     <!-- ========================= DASHBOARD ========================= -->
     <div class="tela ativa" id="tela-dashboard">
-      <header class="topo">
-        <button class="ico abre-menu" id="abre-menu"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <header class="topo topo-global">
+        <button class="ico abre-menu" id="abre-menu" aria-label="Abrir menu"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
 
         <div class="topo-interno" id="topo-interno-esq"></div>
         <div class="espaco"></div>
-        <div class="salvamento" id="indicador-salvamento"><span class="pt"></span><span class="txt">Pronto</span></div>
+        <div class="salvamento ocioso" id="indicador-salvamento" role="status" aria-live="polite"><span class="pt"></span><span class="txt"></span></div>
         <div class="area-sessao" id="area-sessao"></div>
 
-        <button class="ico" data-tema title="Alternar tema" aria-label="Alternar tema"><svg viewBox="0 0 24 24" class="ic-sol"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg><svg viewBox="0 0 24 24" class="ic-lua"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
         <div class="topo-interno" id="topo-interno-dir"></div>
             </header>
 
@@ -202,10 +190,9 @@
         <button id="ed-status" title="Alterar status"></button>
 
         <div class="espaco"></div>
-        <div class="salvamento" id="indicador-salvamento-editor"><span class="pt"></span><span class="txt">Pronto</span></div>
+        <div class="salvamento ocioso" id="indicador-salvamento-editor" role="status" aria-live="polite"><span class="pt"></span><span class="txt"></span></div>
         <div class="area-sessao"></div>
 
-        <button class="ico" data-tema title="Alternar tema" aria-label="Alternar tema"><svg viewBox="0 0 24 24" class="ic-sol"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg><svg viewBox="0 0 24 24" class="ic-lua"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
         <button class="b contorno" id="bt-foco" title="Modo foco">
           <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
         </button>
@@ -317,6 +304,7 @@
 <script src="js/publicacoes.js"></script>
 <script src="js/painel.js"></script>
 <script src="js/painel-coord.js"></script>
+<script src="js/topo.js"></script>
 <script src="js/extras.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/app.js"></script>

@@ -147,7 +147,7 @@ Continua disponível no menu para o Coordenador, com o mesmo nome, e abre normal
 
 ## Banco / migrations
 - **Aplicada em produção:** `migration_funcao_extra_coordenador.sql`, que acrescenta 'coordenador' ao check de `perfis_funcoes_extra.funcao`. É a única mudança de schema.
-- **Pendente de publicação:** a Edge Function `b7-auth` precisa aceitar a função nova (arquivo atualizado no zip, versão `2026-09-29-b`). Sem ela, a tela Usuários recusa marcar "Coordenador de mídias" num admin. O resto funciona.
+- **Edge Function `b7-auth` publicada** (versão `2026-09-29-b`), já aceitando a função extra "coordenador" só para Administrador. Conferido depois do deploy: ping responde a versão nova, rota protegida sem sessão devolve 401 e login com usuário inexistente devolve "Usuário ou senha inválidos".
 
 ## Testes executados
 - **Papéis (9 combinações):** coordenador; admin+coord; admin+coord+vm; coord+vm; admin; admin+vm; vm; designer; designer+coord (inválido → sem Painel).
@@ -183,7 +183,6 @@ Continua disponível no menu para o Coordenador, com o mesmo nome, e abre normal
   - `supabase/functions/b7-auth/index.ts`.
 
 ## Pendências
-- **Publicar o `b7-auth`** (ver Banco).
 - **Validar com o login real do Mateus**, no celular e no desktop.
 - **Dados de status:** 37 publicações aparecem atrasadas e boa parte ainda está em "Ideia". Isso reflete status não atualizados na Linha Editorial. O Painel mostra o que o banco diz.
 - **"Próximas publicações" não tem destino exato:** o KPI abre Publicações do Dia, que mostra dia a dia, não uma lista única dos 7 dias.

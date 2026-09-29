@@ -47,6 +47,7 @@ B7.Notif = (function () {
       if (area.previousElementSibling && area.previousElementSibling.classList.contains('sino')) return;
       const bt = document.createElement('button');
       bt.className = 'ico sino'; bt.title = 'Notificações'; bt.setAttribute('aria-label', 'Notificações');
+      bt.type = 'button'; bt.setAttribute('aria-haspopup', 'dialog'); bt.setAttribute('aria-expanded', 'false');
       bt.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">' +
         '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="sino-n"></span>';
       bt.onclick = e => { e.stopPropagation(); alternar(bt); };
@@ -59,6 +60,13 @@ B7.Notif = (function () {
       document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizar(); });
       window.addEventListener('online', atualizar);
       window.addEventListener('hashchange', fechar);
+      /* Esc fecha o painel e devolve o foco ao sino */
+      document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || !aberto) return;
+        fechar();
+        const s = document.querySelector('.tela.ativa .sino') || document.querySelector('.sino');
+        if (s) s.focus();
+      });
       timer = setInterval(atualizar, 60000);
       avisarLoteAoEntrar();
     }
@@ -92,6 +100,9 @@ B7.Notif = (function () {
       b.classList.toggle('carregando', carregando);
       b.classList.toggle('tem', !carregando && naoLidas > 0);
       b.title = carregando ? 'Notificações (carregando…)' : naoLidas ? naoLidas + ' não lida(s)' : 'Notificações';
+      /* o número não depende só da cor: vai por extenso no nome acessível */
+      b.setAttribute('aria-label', carregando ? 'Notificações, carregando'
+        : naoLidas ? 'Notificações: ' + naoLidas + (naoLidas === 1 ? ' não lida' : ' não lidas') : 'Notificações: nenhuma não lida');
       const n = b.querySelector('.sino-n');
       if (!n) return;
       if (carregando) { n.textContent = ''; n.hidden = false; n.setAttribute('aria-label', 'carregando'); return; }
@@ -229,9 +240,11 @@ B7.Notif = (function () {
   function alternar(bt) { aberto ? fechar() : abrirPainel(bt); }
   function fechar() {
     const p = document.querySelector('.sino-painel'); if (p) p.remove(); aberto = false;
+    document.querySelectorAll('.sino').forEach(b => b.setAttribute('aria-expanded', 'false'));
   }
   async function abrirPainel(bt) {
     fechar(); aberto = true;
+    bt.setAttribute('aria-expanded', 'true');
     /* o primeiro clique no sino também "desbloqueia" o áudio */
     try { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { ctx = ctx || new AC(); ctx.resume().catch(() => {}); } } catch (e) {}
     const p = document.createElement('div');

@@ -399,7 +399,7 @@ B7.UI = (function () {
     rot:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h9l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.5V9h5"/></svg>'
   };
 
-  function paleta() {
+  function paleta(textoInicial) {
     /* Smart actions: o que a paleta oferece depende de onde a pessoa está.
        Dentro de uma linha editorial, "novo conteúdo" é o que ela quer. */
     const rota = location.hash || '';
@@ -445,20 +445,24 @@ B7.UI = (function () {
     }
 
 
+    /* Busca global do topo ("Buscar no B7…") e Ctrl K são esta paleta.
+       Permissão: criar vem do MESMO resolvedor do botão "Criar"
+       (B7.Topo.acoesCriar — união das funções, sem duplicar); ir para
+       uma tela só aparece se B7.Perm.podeRota deixar; resultados de
+       busca só entram se a rota de destino abre para a pessoa. */
+    const podeIr = r => !(B7.Perm && B7.Auth && B7.Auth.usuario()) || B7.Perm.podeRota(r);
     const acoesComuns = [
       { ic: ICP.play,   rot: 'Configurações',  dica: 'tema, densidade e dados',      fn: () => { location.hash = '#/config'; } },
       { ic: ICP.play,   rot: 'Alternar tema',  dica: 'claro ou escuro',              fn: () => B7.alternarTema && B7.alternarTema() }
-    ];
-    const acoesEquipe = souDesigner ? [] : [
-      { ic: ICP.mais,   rot: 'Novo status semanal', dica: 'acompanhamento de sete dias',
-        fn: () => B7.Semana.modalNovo(emCliente ? emCliente[1] : null) },
-      { ic: ICP.rot,    rot: 'Abrir status semanal', dica: 'lista de semanas',
-        fn: () => { location.hash = '#/semanas'; } },
-      { ic: ICP.mais,   rot: 'Nova gravação',  dica: 'começar um grupo de roteiros', fn: () => B7.Dashboard.modalNovaGravacao() },
-      { ic: ICP.pessoa, rot: 'Novo cliente',   dica: 'cadastrar um cliente',         fn: () => B7.Dashboard.modalNovoCliente() },
-      { ic: ICP.grav,   rot: 'Ir para clientes', dica: 'todos os workspaces',        fn: () => { location.hash = '#/clientes'; } },
-      { ic: ICP.grav,   rot: 'Ver gravações',  dica: 'todas as gravações',           fn: () => { location.hash = '#/gravacoes'; } }
-    ];
+    ].filter((a, i) => i > 0 || podeIr('config'));
+    const criar = (B7.Topo ? B7.Topo.acoesCriar() : []).map(a =>
+      ({ ic: ICP.mais, rot: a.rotulo, dica: a.dica, fn: () => B7.Topo.executar(a.id) }));
+    const irPara = [
+      { r: 'semanas',   ic: ICP.rot,    rot: 'Abrir status semanal', dica: 'lista de semanas',   fn: () => { location.hash = '#/semanas'; } },
+      { r: 'clientes',  ic: ICP.grav,   rot: 'Ir para clientes',     dica: 'todos os workspaces', fn: () => { location.hash = '#/clientes'; } },
+      { r: 'gravacoes', ic: ICP.grav,   rot: 'Ver gravações',        dica: 'todas as gravações', fn: () => { location.hash = '#/gravacoes'; } }
+    ].filter(a => podeIr(a.r));
+    const acoesEquipe = criar.concat(irPara);
     const acoes = contextuais.concat(acoesEquipe, acoesComuns);
 
     const m = modal(
@@ -467,6 +471,8 @@ B7.UI = (function () {
       '<div class="cp-lista" id="cp-lista"></div>' +
       '<div class="cp-pe"><span><kbd>↑↓</kbd>navegar</span><span><kbd>Enter</kbd>abrir</span>' +
       '<span><kbd>Esc</kbd>fechar</span></div>', { classe: 'paleta' });
+    const rotuloBusca = m.querySelector('#cp-in');
+    if (rotuloBusca) rotuloBusca.setAttribute('aria-label', 'Buscar no B7');
 
     const entrada = m.querySelector('#cp-in');
     const lista = m.querySelector('#cp-lista');
@@ -500,7 +506,7 @@ B7.UI = (function () {
       let html = '', itens = [];
       try {
         const [gravacoes, clientes] = await Promise.all([
-          B7.DB.gravacoesRecentes(3), B7.DB.listarClientes()
+          podeIr('gravacao') ? B7.DB.gravacoesRecentes(3) : [], podeIr('cliente') ? B7.DB.listarClientes() : []
         ]);
         const cli = clientes
           .sort((a, b) => String(b.ultima_atividade).localeCompare(String(a.ultima_atividade)))
@@ -528,7 +534,7 @@ B7.UI = (function () {
       const lst = acoes.filter(a => !f || (a.rot + ' ' + a.dica).toLowerCase().includes(f));
       pintar('<div class="cp-grupo">AÇÕES</div>' + lst.map(a => linha(a.ic, a.rot, a.dica)).join(''), lst);
     }
-    inicial();
+    if (textoInicial) { entrada.value = textoInicial; } else inicial();
 
     const procurar = debounce(async termo => {
       if (!termo.trim()) return inicial();
@@ -540,6 +546,11 @@ B7.UI = (function () {
       }
       try {
         const r = await B7.DB.buscar(termo);
+        /* só destinos que abrem para esta pessoa (a mesma guarda de rota) */
+        if (!podeIr('cliente')) { r.clientes = []; r.ideias = []; }
+        if (!podeIr('gravacao')) { r.gravacoes = []; r.roteiros = []; }
+        if (!podeIr('linha')) { r.linhas = []; r.conteudos = []; }
+        if (!podeIr('semana')) r.semanas = [];
         if (r.clientes.length) {
           html += '<div class="cp-grupo">CLIENTES</div>' + r.clientes.map(c =>
             linha(c.logo_url ? '<img src="' + esc(c.logo_url) + '" style="width:100%;height:100%;object-fit:contain">'
@@ -588,6 +599,7 @@ B7.UI = (function () {
     }, 220);
 
     entrada.oninput = () => procurar(entrada.value);
+    if (textoInicial) { procurar(textoInicial); try { entrada.setSelectionRange(textoInicial.length, textoInicial.length); } catch (e) {} }
     entrada.onkeydown = e => {
       if (e.key === 'ArrowDown') { e.preventDefault(); foco = Math.min(foco + 1, itens.length - 1); marcar(); }
       if (e.key === 'ArrowUp')   { e.preventDefault(); foco = Math.max(foco - 1, 0); marcar(); }
@@ -685,6 +697,6 @@ B7.UI = (function () {
     return '<div class="esqueleto-tela" role="status" aria-live="polite" aria-label="Carregando…">' + corpo + '</div>';
   }
 
-  return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, toast, modal, confirmar, perguntar, ligarMenus, dica, esconderDica, MESES, paleta,
+  return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
            dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton, copiarTexto };
 })();

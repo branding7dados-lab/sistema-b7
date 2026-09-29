@@ -327,20 +327,13 @@ B7.Rota = (function () {
       const frag = tp.content.cloneNode(true);
       alvo.replaceWith(frag);
     });
-    /* Designer: "Nova gravação" e a busca por gravação/roteiro não são o
-       trabalho dele — a barra do topo é clonada do zero a cada chamada
-       desta função (ao contrário da nav, que só monta uma vez), então o
-       ajuste fica aqui, não em aplicarNavegacao(), para nunca voltar ao
-       texto genérico numa remontagem. Admin/coordenador não mudam. */
-    if (B7.Perm && B7.Perm.papel() === 'designer') {
-      const btGrav = document.getElementById('bt-nova-gravacao');
-      if (btGrav) btGrav.remove();
-      const busca = document.getElementById('campo-busca');
-      if (busca) busca.placeholder = 'Buscar cliente, linha editorial ou peça…';
-    }
+    /* O topo é o mesmo para todos os papéis: quem decide o que aparece
+       em "Criar" é o resolvedor de permissões (js/topo.js), não um ajuste
+       por papel aqui. */
     document.body.classList.remove('modo-portal', 'modo-previa');
     document.body.dataset.shell = 'interno';
     if (B7.ligarTopoInterno) B7.ligarTopoInterno();
+    if (B7.Topo) B7.Topo.render();
     if (B7.moverTrilha) setTimeout(() => B7.moverTrilha(), 0);
     return true;
   }
@@ -349,53 +342,11 @@ B7.Rota = (function () {
   /* Mostra quem está logado, ou o caminho para entrar. Sem sessão e sem
      serviço publicado, não aparece nada: um botão que não leva a lugar
      nenhum é pior do que botão nenhum. */
+  /* Conta (avatar → menu de conta) em todos os topos: js/topo.js. Sem
+     sessão e sem serviço publicado, não aparece nada. */
   function pintarSessao() {
-    const alvo = document.getElementById('area-sessao');
-    if (!alvo || !B7.Auth) return;
-    const u = B7.Auth.usuario();
-    if (u) {
-      const rotulo = { admin: 'Administrador', coordenador: 'Coordenador de mídias',
-                       cliente: 'Cliente' }[u.papel] || u.papel;
-      const tom = ' tom-' + B7.UI.tomDoNome(u.nome || u.username);
-      const foto = u.avatar_url
-        ? '<img src="' + B7.UI.esc(u.avatar_url) + '" alt="">'
-        : '<span>' + B7.UI.esc(B7.UI.iniciais(u.nome || u.username)) + '</span>';
-      alvo.innerHTML = '<div class="menu sessao-menu"><button class="ico-sessao av-pessoa' +
-        (u.avatar_url ? ' com-foto' : tom) + '" ' +
-        'title="' + B7.UI.esc(u.nome) + '" aria-label="Sua conta">' + foto + '</button>' +
-        '<div class="lista">' +
-          '<div class="sessao-cab">' +
-            '<div class="sessao-av av-pessoa' + (u.avatar_url ? ' com-foto' : tom) + '">' +
-              foto + '</div>' +
-            '<div class="sessao-tx"><b>' + B7.UI.esc(u.nome) + '</b>' +
-            '<span>@' + B7.UI.esc(u.username) + '</span></div>' +
-          '</div>' +
-          '<div class="sessao-papel ' + B7.UI.esc(u.papel) + '">' + B7.UI.esc(rotulo) + '</div>' +
-          '<hr>' +
-          '<button data-perfil>Editar perfil</button>' +
-          (B7.Perm && B7.Perm.podeConfig('usuarios')
-            ? '<button data-ir="#/usuarios">Usuários e acessos</button>' : '') +
-          (B7.Perm && B7.Perm.podeRota('config')
-            ? '<button data-ir="#/config">Configurações</button>' : '') +
-          '<hr>' +
-          '<button class="perigo" data-sair>Sair da conta</button>' +
-        '</div></div>';
-      B7.UI.ligarMenus(alvo);
-      alvo.querySelectorAll('[data-sair]').forEach(b => b.onclick = () => B7.Auth.sair());
-      alvo.querySelectorAll('[data-perfil]').forEach(b => b.onclick = () =>
-        /* um perfil só: dois modais diferentes para a mesma coisa era o
-           motivo de a foto aparecer num caminho e não no outro */
-        (B7.Perfil ? B7.Perfil.abrir() : B7.Auth.abrirPerfil()));
-    } else if (B7.acessoIndisponivel) {
-      /* Só aparece na situação em que o sistema abriu sem login porque o
-         serviço de acesso não respondeu. Fora dela, a tela de login já
-         está na frente e um botão "Entrar" seria redundante. */
-      alvo.innerHTML = '<button class="b p" id="bt-entrar">Entrar</button>';
-      const b = document.getElementById('bt-entrar');
-      if (b) b.onclick = () => B7.Auth.telaLogin();
-    } else {
-      alvo.innerHTML = '';
-    }
+    if (B7.Topo) B7.Topo.pintarConta();
+    if (B7.Topo) B7.Topo.renderCriar();
   }
   B7.pintarSessao = function () {
     pintarSessao();
@@ -495,19 +446,8 @@ B7.Rota = (function () {
        admin sai da prévia do cliente. */
     const ligarTopo = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
     B7.ligarTopoInterno = function () {
-      const busca = document.getElementById('campo-busca');
-      const caixaRes = document.getElementById('resultados-busca');
-      if (busca && caixaRes && !busca.dataset.ligado) {
-        busca.dataset.ligado = '1';
-        busca.addEventListener('input', () => B7.Dashboard.buscar(busca.value, caixaRes));
-        busca.addEventListener('focus', () => { if (busca.value.trim()) caixaRes.classList.add('aberto'); });
-      }
-      ligarTopo('bt-nova-gravacao', () => B7.Dashboard.modalNovaGravacao());
-      ligarTopo('mn-novo-cliente', () => B7.Dashboard.modalNovoCliente());
-      ligarTopo('mn-paleta', () => B7.UI.paleta());
-      ligarTopo('mn-exportar', () => B7.Backup.exportar());
-      ligarTopo('mn-importar', () => B7.Backup.importar());
-      B7.UI.ligarMenus(document.getElementById('tela-dashboard') || document);
+      /* busca, Criar e conta: js/topo.js (B7.Topo.render) */
+      if (B7.Topo) B7.Topo.render();
     };
     B7.ligarTopoInterno();
     document.addEventListener('click', e => {
@@ -687,6 +627,21 @@ B7.Rota = (function () {
       trocarLogos();
       return novo;
     };
+    /* Aparência: 'sistema' segue o sistema operacional (sem escolha
+       guardada); 'light'/'dark' ficam guardados neste navegador. Usado
+       pelo menu da conta e por Configurações → Aparência. */
+    B7.definirTema = function (modo) {
+      if (modo === 'light' || modo === 'dark') {
+        document.documentElement.setAttribute('data-theme', modo);
+        try { localStorage.setItem('b7_tema', modo); } catch (e) {}
+      } else {
+        try { localStorage.removeItem('b7_tema'); } catch (e) {}
+        let escuro = false; try { escuro = window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
+        document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
+      }
+      trocarLogos();
+      return modo;
+    };
     document.querySelectorAll('[data-tema]').forEach(b => b.onclick = () => B7.alternarTema());
 
     /* densidade da interface, guardada por navegador */
@@ -726,12 +681,13 @@ B7.Rota = (function () {
       if (e.ctrlKey || e.metaKey || e.altKey || digitando || temModal) return;
 
       if (e.key === '/') {
-        const busca = document.getElementById('campo-busca');
-        if (busca && !noEditor) { e.preventDefault(); busca.focus(); }
+        if (!noEditor && B7.Topo && document.body.dataset.shell === 'interno') { e.preventDefault(); B7.Topo.abrirBusca(''); }
       }
       if (e.key === '?') { e.preventDefault(); B7.UI.atalhos(); }
-      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); B7.Dashboard.modalNovaGravacao(); }
-      if (e.key === 'c' || e.key === 'C') { e.preventDefault(); B7.Dashboard.modalNovoCliente(); }
+      /* atalhos de criar passam pelo mesmo resolvedor do "Criar": quem
+         não pode criar gravação/cliente não abre o modal pelo teclado */
+      if ((e.key === 'n' || e.key === 'N') && B7.Topo && B7.Topo.acoesCriar().some(a => a.id === 'gravacao')) { e.preventDefault(); B7.Topo.executar('gravacao'); }
+      if ((e.key === 'c' || e.key === 'C') && B7.Topo && B7.Topo.acoesCriar().some(a => a.id === 'cliente')) { e.preventDefault(); B7.Topo.executar('cliente'); }
       if ((e.key === 'f' || e.key === 'F') && noEditor) { e.preventDefault(); B7.Editor.modoFoco(); }
       if ((e.key === 'p' || e.key === 'P') && noEditor) { e.preventDefault(); B7.Editor.imprimir(); }
       if ((e.key === 'd' || e.key === 'D') && noEditor) { e.preventDefault(); B7.Editor.baixar(); }

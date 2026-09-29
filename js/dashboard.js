@@ -1042,13 +1042,8 @@ B7.Dashboard = (function () {
         b.classList.add('on');
         const grupo = cx.dataset.grupo, v = b.dataset.v;
         if (grupo === 'tema') {
-          if (v === 'auto') {
-            try { localStorage.removeItem('b7_tema'); } catch (e) {}
-            const escuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
-          } else if (document.documentElement.getAttribute('data-theme') !== v) {
-            B7.alternarTema();
-          }
+          /* mesma função do menu da conta: um lugar só decide o tema */
+          if (B7.definirTema) B7.definirTema(v === 'auto' ? 'sistema' : v);
           B7.UI.toast('Tema atualizado');
         }
         if (grupo === 'densidade') { B7.aplicarDensidade(v); B7.UI.toast('Densidade: ' + b.textContent.toLowerCase()); }
@@ -1229,6 +1224,8 @@ B7.Dashboard = (function () {
   function marcarNav(rota) {
     document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.ir === rota));
     if (B7.moverTrilha) B7.moverTrilha();
+    /* o topo acompanha: contexto no celular e a ordem/estilo do "Criar" */
+    if (B7.Topo) B7.Topo.contexto();
   }
 
   function ligar() {
@@ -1693,7 +1690,7 @@ B7.Dashboard = (function () {
       caixa.classList.add('aberto');
       caixa.querySelectorAll('[data-ir]').forEach(el => el.onclick = () => {
         caixa.classList.remove('aberto');
-        document.getElementById('campo-busca').value = '';
+        const campo = document.getElementById('campo-busca'); if (campo) campo.value = '';
         location.hash = el.dataset.ir;
       });
     } catch (e) { console.error(e); }
