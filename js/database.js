@@ -893,10 +893,19 @@ B7.DB = (function () {
     async reprocessarEvento(id) { return this.rpc('aprov_reprocessar', { p_evento_id: id }); },
 
     /* ---- notificações ---- */
+    /* Lê de notificacoes_resumo (view = notificacoes + nome/logo do
+       cliente) pra o sino poder mostrar de quem é cada aviso sem uma
+       segunda consulta. A escrita (marcar lida) continua na tabela. */
     async notificacoes({ limite = 30, antesDe } = {}) {
-      let q = sb().from('notificacoes').select('*').order('created_at', { ascending: false }).limit(limite);
+      let q = sb().from('notificacoes_resumo').select('*').order('created_at', { ascending: false }).limit(limite);
       if (antesDe) q = q.lt('created_at', antesDe);
       return ok(await q);
+    },
+    /* Nome/logo de um cliente para enfeitar um aviso que chegou pelo
+       Realtime (a linha crua de `notificacoes` só traz client_id). */
+    async clienteParaAviso(id) {
+      const { data } = await sb().from('clientes').select('nome, logo_url').eq('id', id).maybeSingle();
+      return data ? { cliente_nome: data.nome, cliente_logo_url: data.logo_url || null } : null;
     },
     async notificacoesNaoLidas() {
       const { count, error } = await sb().from('notificacoes')
@@ -1711,6 +1720,47 @@ B7.DB = (function () {
           .eq('papel', 'videomaker').eq('estado', 'ativa').order('nome'));
       }
     },
+    /* ---------------------------------------------------------- PAINEL
+       Leituras escopadas do Painel pessoal (js/painel.js). Todas filtram
+       por videomaker_id = a pessoa logada — mesmo quando ela é admin e o
+       RLS deixaria ver a agência inteira: o Painel é pessoal, a visão
+       global é da Central B7. Nada aqui é tabela nova; são recortes das
+       fontes canônicas de vídeo e de agenda. */
+
+    /* Demandas ativas da pessoa (sem entregue/descartado) — alimenta
+       KPIs, atenção, semana e compromissos. Volume pequeno por natureza. */
+    async painelDemandasAtivas(uid) {
+      return ok(await sb().from('demandas_edicao_resumo')
+        .select('id,titulo,codigo,client_id,cliente_nome,cliente_logo_url,editing_status,prioridade,prazo,standby_revisar_em,gravacao_id,updated_at')
+        .eq('videomaker_id', uid)
+        .not('editing_status', 'in', '(entregue,descartado)')
+        .order('prazo', { ascending: true, nullsFirst: false }));
+    },
+    /* Entregas registradas no sistema desde `desde`. A fonte é o LOG de
+       mudança de status (demandas_edicao_eventos → 'entregue'), não
+       demandas_edicao.entregue_em: a importação da planilha carimbou
+       entregue_em com a data da importação (202 "entregas" do Kaique na
+       semana de 14/09), o que faria o gráfico mentir. O embed !inner em
+       demandas_edicao escopa pelo videomaker numa chamada só. */
+    async painelEntregas(uid, desdeISO) {
+      return ok(await sb().from('demandas_edicao_eventos')
+        .select('demanda_id,created_at,demandas_edicao!inner(videomaker_id,editing_status,titulo)')
+        .eq('tipo', 'status').eq('para_status', 'entregue')
+        .gte('created_at', desdeISO)
+        .eq('demandas_edicao.videomaker_id', uid)
+        .order('created_at', { ascending: true }));
+    },
+    /* Gravações na agenda entre duas datas — a view agenda_compromissos
+       já une Google Agenda + gravações marcadas no sistema, sem duplicar,
+       e já classifica o tipo pelo título (migration_agenda_lembretes.sql). */
+    async painelGravacoes(desdeISO, ateISO) {
+      return ok(await sb().from('agenda_compromissos')
+        .select('origem,id,titulo,inicio,dia_inteiro,local,gravacao_id,cliente_nome')
+        .eq('tipo', 'gravacao')
+        .gte('inicio', desdeISO).lte('inicio', ateISO)
+        .order('inicio', { ascending: true }));
+    },
+
     async minhasDemandasVideo() {
       return ok(await sb().from('demandas_edicao_resumo').select('*')
         .order('prazo', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }));

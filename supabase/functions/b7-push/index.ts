@@ -27,7 +27,7 @@
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-09-09-j';
+const VERSAO = '2026-09-28-a';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -44,6 +44,7 @@ function json(corpo: unknown, status = 200): Response {
 type Notificacao = {
   id: string; destinatario_id: string; titulo: string;
   mensagem?: string | null; link?: string | null; tipo?: string | null;
+  client_id?: string | null;
 };
 type Inscricao = { id: string; endpoint: string; p256dh: string; auth: string };
 
@@ -96,9 +97,21 @@ Deno.serve(async (req: Request) => {
   const lista = (inscricoes || []) as Inscricao[];
   if (!lista.length) return json({ ok: true, enviados: 0, motivo: 'sem inscrições', versao: VERSAO });
 
+  /* Cliente da notificação: o nome vai pro título do aviso e a logo vira
+     o ícone (bucket client-logos é público, então o aparelho baixa direto).
+     Falha aqui nunca derruba o push — segue sem cliente. */
+  let cliente: string | null = null;
+  let logo: string | null = null;
+  if (n.client_id) {
+    const { data: c } = await sb.from('clientes')
+      .select('nome, logo_url').eq('id', n.client_id).maybeSingle();
+    if (c) { cliente = c.nome || null; logo = c.logo_url || null; }
+  }
+
   const payload = JSON.stringify({
     id: n.id, titulo: n.titulo || 'Sistema B7',
-    mensagem: n.mensagem || '', link: n.link || '#/', tipo: n.tipo || null
+    mensagem: n.mensagem || '', link: n.link || '#/', tipo: n.tipo || null,
+    cliente, logo
   });
 
   let enviados = 0, removidos = 0;

@@ -138,7 +138,24 @@ B7.Video = (function () {
   /* =================================================================
      CARGA
      ================================================================= */
-  async function abrir() {
+  /* Links com filtro (ex.: KPI "Atrasadas" do Painel → #/video?prazo=
+     atrasadas&minha=1&comp=todas). Os filtros são aplicados por cima do
+     padrão e gravados como os de sempre; a query sai do endereço logo em
+     seguida, pra um refresh não reaplicar e a barra ficar limpa. */
+  function aplicarFiltrosDaUrl(params) {
+    if (!params || !['prazo', 'minha', 'comp', 'status'].some(k => params.has(k))) return;
+    const vista = F.vista;
+    F = Object.assign({}, F_PADRAO, { vista });
+    if (params.get('prazo') === 'atrasadas' || params.get('prazo') === 'hoje') F.prazo = params.get('prazo');
+    if (params.get('minha') === '1') F.minhaFila = true;
+    if (params.get('comp')) F.competencia = params.get('comp');
+    if (params.get('status') && SITUACOES.some(([v]) => v === params.get('status'))) F.status = params.get('status');
+    guardarFiltros();
+    try { history.replaceState(null, '', '#/video'); } catch (e) {}
+  }
+
+  async function abrir(params) {
+    aplicarFiltrosDaUrl(params);
     B7.Dashboard.marcarNav('#/video');
     const equipe = souEquipe();
     B7.Rota.titulo([equipe ? 'Produção de Vídeo' : 'Central de Vídeo']);
@@ -207,6 +224,9 @@ B7.Video = (function () {
       if (F.status) { if (d.editing_status !== F.status) return false; }
       else if (d.editing_status === 'entregue') return false;
       if (F.prazo === 'atrasadas' && !ehAtrasada(d)) return false;
+      /* "vence hoje" segue a mesma semântica do atraso: aguardando
+         aprovação já saiu das mãos do videomaker */
+      if (F.prazo === 'hoje' && (d.prazo !== hoje() || d.editing_status === 'aguardando_aprovacao')) return false;
       return true;
     });
   }
@@ -217,6 +237,9 @@ B7.Video = (function () {
        videomaker porque o cliente demorou a decidir. */
     return !!(d.prazo && d.prazo < hoje() && d.editing_status !== 'entregue' && d.editing_status !== 'descartado' &&
               d.editing_status !== 'aguardando_aprovacao');
+  }
+  function venceHoje(d) {
+    return d.prazo === hoje() && !['entregue', 'descartado', 'aguardando_aprovacao'].includes(d.editing_status);
   }
   function filtrosAtivos() {
     return !!(F.cliente || F.status || F.responsavel || F.prioridade || F.prazo || F.busca.trim() || F.minhaFila);
@@ -297,6 +320,7 @@ B7.Video = (function () {
     const contar = pred => base.filter(pred).length;
     const chips = [
       ['prazo:atrasadas', contar(ehAtrasada), 'atrasada' + (contar(ehAtrasada) === 1 ? '' : 's'), F.prazo === 'atrasadas'],
+      ['prazo:hoje', contar(venceHoje), contar(venceHoje) === 1 ? 'vence hoje' : 'vencem hoje', F.prazo === 'hoje'],
       ['status:pendente', contar(d => d.editing_status === 'pendente'), 'pendente' + (contar(d => d.editing_status === 'pendente') === 1 ? '' : 's'), F.status === 'pendente'],
       ['status:em_edicao', contar(d => d.editing_status === 'em_edicao'), 'em edição', F.status === 'em_edicao'],
       ['status:aguardando_aprovacao', contar(d => d.editing_status === 'aguardando_aprovacao'), 'aguardando aprovação', F.status === 'aguardando_aprovacao'],
@@ -2521,5 +2545,8 @@ B7.Video = (function () {
     };
   }
 
-  return { abrir, abrirDetalhe };
+  /* ehAtrasada e rotuloSituacao saem daqui para o Painel (js/painel.js)
+     usar a MESMA regra que a Produção de Vídeo mostra — o número do KPI
+     tem que bater com a lista que abre ao clicar nele. */
+  return { abrir, abrirDetalhe, ehAtrasada, rotuloSituacao };
 })();

@@ -1,0 +1,527 @@
+/* =====================================================================
+   PAINEL — espaço de trabalho PESSOAL (fase 1: Videomaker)
+
+   Responde "o que EU preciso saber ou fazer agora?". Não é a Central B7
+   (visão da agência) nem uma cópia da Produção de Vídeo: resume, prioriza
+   e leva para a tela canônica de cada coisa.
+
+   Quem vê: videomaker pelo papel principal ou pela função extra (Kevin =
+   admin + videomaker). Não é troca de perfil — admin continua admin; o
+   Painel é só mais uma tela, e ela mostra APENAS o trabalho da pessoa,
+   mesmo quando o RLS deixaria ver a agência inteira (B7.Perm.painelElegivel).
+
+   Dados: nenhuma tabela nova. Três leituras escopadas (js/database.js):
+     • painelDemandasAtivas — demandas_edicao_resumo, videomaker = eu,
+       sem entregue/descartado;
+     • painelEntregas       — log demandas_edicao_eventos → 'entregue'
+       (NÃO entregue_em, que a importação carimbou com a data dela);
+     • painelGravacoes      — view agenda_compromissos, tipo 'gravacao'.
+   Cada fonte carrega e falha sozinha: uma seção com erro não derruba as
+   outras, e erro nunca vira "0".
+
+   Regras canônicas: "atrasada" é B7.Video.ehAtrasada — a mesma regra da
+   Produção de Vídeo, para o número do KPI bater com a lista que abre.
+
+   Primitivos (kpi, cabecalhoSecao, linhaAtencao, diaSemana, grafico,
+   compromisso) são funções pequenas deste módulo, prontas para o Painel
+   do Designer e do Coordenador reaproveitarem — sem motor genérico.
+   ===================================================================== */
+
+window.B7 = window.B7 || {};
+
+B7.Painel = (function () {
+  const esc = s => B7.UI.esc(s);
+  const painel = () => document.getElementById('painel-dashboard');
+  const hoje = () => B7.UI.hojeISO();
+  /* Em "Visualizar como Kevin…" o admin continua logado como ele mesmo,
+     mas o Painel mostra o trabalho da pessoa em prévia (só leitura). */
+  const emPrevia = () => (B7.PreviaUsuario && B7.PreviaUsuario.ativa && B7.PreviaUsuario.ativa())
+    ? B7.PreviaUsuario.usuarioAtivo() : null;
+  const meuId = () => {
+    const alvo = emPrevia();
+    if (alvo && alvo.id) return alvo.id;
+    const u = B7.Auth && B7.Auth.usuario(); return u ? u.id : null;
+  };
+
+  /* ------------------------------------------------------------ datas
+     Datas de calendário (prazo) são texto AAAA-MM-DD e NUNCA passam por
+     new Date(texto) — isso lê como meia-noite UTC e, no Brasil, cai no
+     dia anterior. Horários de agenda (timestamptz) viram Date normal. */
+  const pad = n => String(n).padStart(2, '0');
+  const isoDe = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const local = s => { const [a, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(a, m - 1, d); };
+  const somarDias = (s, n) => { const d = local(s); d.setDate(d.getDate() + n); return isoDe(d); };
+  const difDias = (a, b) => Math.round((local(a) - local(b)) / 86400000);
+  const segundaDe = s => { const d = local(s); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); return isoDe(d); };
+  const DOW = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+  const DOW_LONGO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto',
+               'setembro', 'outubro', 'novembro', 'dezembro'];
+  const ddmm = s => s.slice(8, 10) + '/' + s.slice(5, 7);
+  const hora = ts => { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const diaDoTs = ts => isoDe(new Date(ts));
+  function quandoDia(s) {
+    const n = difDias(s, hoje());
+    if (n === 0) return 'hoje';
+    if (n === 1) return 'amanhã';
+    if (n === -1) return 'ontem';
+    return DOW_LONGO[local(s).getDay()] + ', ' + ddmm(s);
+  }
+
+  /* ------------------------------------------------------------ regras */
+  const ativa = d => d.editing_status !== 'entregue' && d.editing_status !== 'descartado';
+  const atrasada = d => (B7.Video && B7.Video.ehAtrasada) ? B7.Video.ehAtrasada(d)
+    : !!(d.prazo && d.prazo < hoje() && ativa(d) && d.editing_status !== 'aguardando_aprovacao');
+  /* mesma semântica do atraso: "aguardando aprovação" já saiu das mãos
+     do videomaker, então não "vence" pra ele */
+  const comPrazoMeu = d => ativa(d) && d.editing_status !== 'aguardando_aprovacao' && !!d.prazo;
+  const venceHoje = d => comPrazoMeu(d) && d.prazo === hoje();
+  /* nas mãos: o que o videomaker está (ou deveria estar) editando agora.
+     Aguardando aprovação está com o cliente; standby está parado por
+     decisão — nenhum dos dois é carga de edição. */
+  const NAS_MAOS = ['pendente', 'em_edicao', 'correcao'];
+  const rotuloSit = s => (B7.Video && B7.Video.rotuloSituacao) ? B7.Video.rotuloSituacao(s) : s;
+
+  /* ------------------------------------------------------------ estado
+     Uma entrada por fonte: 'carregando' | 'ok' | 'erro'. */
+  const S = { ativas: null, entregas: null, agenda: null };
+  const SEMANAS_GRAFICO = 6;
+  let geracao = 0;   /* descarta resposta de uma abertura anterior da tela */
+
+  function comTempoLimite(p, ms) {
+    let id;
+    return Promise.race([p, new Promise((_, r) => { id = setTimeout(() => r(new Error('A conexão demorou demais para responder.')), ms); })])
+      .finally(() => clearTimeout(id));
+  }
+
+  function carregar(fonte) {
+    const g = geracao, uid = meuId();
+    S[fonte] = { estado: 'carregando' };
+    pintar();
+    let p;
+    if (fonte === 'ativas') p = B7.DB.painelDemandasAtivas(uid);
+    else if (fonte === 'entregas') {
+      const inicio = somarDias(segundaDe(hoje()), -7 * (SEMANAS_GRAFICO - 1));
+      p = B7.DB.painelEntregas(uid, local(inicio).toISOString());
+    } else {
+      /* da segunda desta semana (a "Minha semana" mostra os dias que já
+         passaram) até 14 dias à frente (KPI de 7 dias + compromissos) */
+      const de = local(segundaDe(hoje()));
+      const ate = local(somarDias(hoje(), 15));
+      p = B7.DB.painelGravacoes(de.toISOString(), ate.toISOString());
+    }
+    comTempoLimite(p, 15000)
+      .then(dados => { if (g === geracao) { S[fonte] = { estado: 'ok', dados: dados || [] }; pintar(); } })
+      .catch(e => { if (g === geracao) { S[fonte] = { estado: 'erro', erro: (e && e.message) || '' }; pintar(); } });
+  }
+
+  /* =================================================================
+     PRIMITIVOS — reaproveitáveis pelos próximos Painéis
+     ================================================================= */
+  const IC = {
+    seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+    relogio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+    alerta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></svg>',
+    refazer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.7-5.7L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 15.5"/></svg>',
+    camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>',
+    pausa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M10 9v6M14 9v6"/></svg>',
+    agenda: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3"/></svg>',
+    ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/></svg>'
+  };
+
+  /* Card de número. Com href vira link de verdade (Tab + Enter); sem
+     destino útil, fica como bloco estático — não finge ser clicável. */
+  function kpi(o) {
+    const conteudo = o.estado === 'carregando'
+      ? '<span class="pn-kpi-rot">' + esc(o.rotulo) + '</span><i class="esq pn-sk-num"></i><i class="esq pn-sk-sub"></i>'
+      : o.estado === 'erro'
+        ? '<span class="pn-kpi-rot">' + esc(o.rotulo) + '</span><b class="pn-kpi-num">—</b><span class="pn-kpi-sub pn-erro-tx">Não carregou</span>'
+        : '<span class="pn-kpi-rot">' + esc(o.rotulo) + '</span><b class="pn-kpi-num">' + o.valor + '</b>' +
+          '<span class="pn-kpi-sub">' + esc(o.sub || '') + '</span>' + (o.href ? '<span class="cp-seta pn-kpi-seta">' + IC.seta + '</span>' : '');
+    const cls = 'cp-num pn-kpi' + (o.tom && o.estado === 'ok' ? ' pn-tom-' + o.tom : '') +
+      (o.estado === 'carregando' ? ' esqueleto-tela' : '');
+    return o.href && o.estado === 'ok'
+      ? '<a class="' + cls + '" href="' + esc(o.href) + '" aria-label="' + esc(o.aria || (o.valor + ' ' + o.rotulo)) + '">' + conteudo + '</a>'
+      : '<div class="' + cls + (o.href ? '' : ' estatico') + '">' + conteudo + '</div>';
+  }
+
+  function cabecalhoSecao(id, titulo, link) {
+    return '<div class="pn-sec-cab"><h2 id="' + id + '">' + esc(titulo) + '</h2>' +
+      (link ? '<a class="pn-link" href="' + esc(link.href) + '">' + esc(link.rotulo) + IC.seta + '</a>' : '') + '</div>';
+  }
+
+  function blocoCarregando(linhas) {
+    return '<div class="esqueleto-tela pn-sk-lista" role="status" aria-label="Carregando…">' +
+      Array.from({ length: linhas }, () => '<div class="pn-sk-linha"><i class="esq pn-sk-ic"></i><div><i class="esq pn-sk-l1"></i><i class="esq pn-sk-l2"></i></div></div>').join('') +
+      '</div>';
+  }
+  function blocoErro(texto, fontes) {
+    return '<div class="pn-erro" role="alert"><span>' + esc(texto) + '</span>' +
+      '<button type="button" class="b fina contorno" data-pn-retentar="' + esc(fontes.join(',')) + '">Tentar de novo</button></div>';
+  }
+  function blocoVazio(texto, sub) {
+    return '<div class="pn-vazio"><span class="pn-vazio-ic">' + IC.ok + '</span><div><b>' + esc(texto) + '</b>' +
+      (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div></div>';
+  }
+
+  function logoMini(d) {
+    if (!d.cliente_nome) return '';
+    return d.cliente_logo_url
+      ? '<img class="pn-logo" src="' + esc(d.cliente_logo_url) + '" alt="" loading="lazy" data-ini="' + esc(B7.UI.iniciais(d.cliente_nome)) + '">'
+      : '<span class="pn-logo pn-logo-vazia">' + esc(B7.UI.iniciais(d.cliente_nome)) + '</span>';
+  }
+
+  /* Uma linha de "Precisa da sua atenção": etiqueta (ícone + texto, a
+     urgência nunca depende só da cor), título e contexto. */
+  function linhaAtencao(it) {
+    return '<a class="pn-att pn-att-' + it.tom + '" href="' + esc(it.href) + '">' +
+      '<span class="pn-att-ic" aria-hidden="true">' + it.icone + '</span>' +
+      '<span class="pn-att-tx"><span class="pn-att-tag">' + esc(it.tag) + '</span>' +
+        '<b>' + esc(it.titulo) + '</b>' +
+        (it.meta ? '<span class="pn-att-meta">' + it.meta + '</span>' : '') + '</span>' +
+      '<span class="pn-att-seta" aria-hidden="true">' + IC.seta + '</span></a>';
+  }
+
+  /* Ícone + número; a palavra aparece quando cabe (linha no celular) e
+     sempre vai inteira no aria-label do dia. */
+  function diaSemana(d) {
+    const item = (cls, ic, n, um, varios) => '<span class="pn-dia-i ' + cls + '" title="' + n + ' ' + (n === 1 ? um : varios) + '">' +
+      ic + '<b>' + n + '</b><em> ' + (n === 1 ? um : varios) + '</em></span>';
+    const partes = [];
+    if (d.atrasadas) partes.push(item('pn-dia-atraso', IC.alerta, d.atrasadas, 'atrasada', 'atrasadas'));
+    if (d.prazos) partes.push(item('pn-dia-prazo', IC.relogio, d.prazos, 'prazo', 'prazos'));
+    if (d.gravacoes) partes.push(item('pn-dia-grav', IC.camera, d.gravacoes, 'gravação', 'gravações'));
+    const resumo = partes.length ? partes.join('') : '<span class="pn-dia-livre">Livre</span>';
+    const falado = DOW_LONGO[local(d.iso).getDay()] + ' ' + ddmm(d.iso) + ': ' +
+      (partes.length ? [d.atrasadas && (d.atrasadas + ' atrasadas'), d.prazos && (d.prazos + ' prazos'), d.gravacoes && (d.gravacoes + ' gravações')].filter(Boolean).join(', ') : 'livre');
+    return '<li class="pn-dia' + (d.hoje ? ' hoje' : '') + (d.passado ? ' passado' : '') + '" aria-label="' + esc(falado) + '">' +
+      '<span class="pn-dia-cab"><span class="pn-dia-dow">' + DOW[local(d.iso).getDay()] + '</span>' +
+        '<span class="pn-dia-num">' + d.iso.slice(8, 10) + '</span>' + (d.hoje ? '<span class="pn-dia-hoje">hoje</span>' : '') + '</span>' +
+      '<span class="pn-dia-itens">' + resumo + '</span></li>';
+  }
+
+  /* Barras em HTML (não SVG com viewBox esticado): o texto nunca deforma
+     e a largura acompanha a tela. Série única — sem legenda; a semana
+     atual leva o acento, as outras ficam neutras. Número direto só na
+     semana atual; as demais mostram no hover/foco (tooltip). */
+  function grafico(semanas) {
+    const max = Math.max(1, ...semanas.map(s => s.n));
+    return '<div class="pn-graf" role="group" aria-label="Entregas por semana">' +
+      semanas.map(s =>
+        '<div class="pn-graf-col' + (s.atual ? ' atual' : '') + '" tabindex="0" ' +
+          'aria-label="' + esc('Semana de ' + ddmm(s.inicio) + ': ' + s.n + (s.n === 1 ? ' entrega' : ' entregas')) + '">' +
+          '<span class="pn-graf-trilho">' + (s.atual ? '<span class="pn-graf-val">' + s.n + '</span>' : '') +
+            '<i style="height:' + (s.n ? Math.max(5, Math.round(s.n / max * 82)) : 0) + '%"></i></span>' +
+          '<span class="pn-graf-rot">' + (s.atual ? 'Esta' : ddmm(s.inicio)) + '</span>' +
+          '<span class="pn-graf-tip" role="tooltip">' + s.n + (s.n === 1 ? ' entrega' : ' entregas') + '<small>' + ddmm(s.inicio) + ' – ' + ddmm(somarDias(s.inicio, 6)) + '</small></span>' +
+        '</div>').join('') +
+      '</div>';
+  }
+
+  function compromisso(c) {
+    return '<a class="cp-ag-item pn-comp" href="' + esc(c.href) + '">' +
+      '<span class="cp-ag-data"><span class="dow">' + DOW[local(c.dia).getDay()] + '</span><span class="dt">' + ddmm(c.dia) + '</span></span>' +
+      '<span class="cp-ag-tx"><b>' + esc(c.titulo) + '</b><span class="cp-ag-meta">' + c.meta + '</span></span>' +
+      '<span class="pn-comp-tipo pn-comp-' + c.tipo + '">' + (c.tipo === 'gravacao' ? IC.camera : IC.relogio) +
+        '<span>' + (c.tipo === 'gravacao' ? 'Gravação' : 'Prazo') + '</span></span></a>';
+  }
+
+  /* =================================================================
+     DERIVAÇÕES — tudo calculado a partir das fontes canônicas
+     ================================================================= */
+  const ok = f => S[f] && S[f].estado === 'ok';
+  const minhas = () => ok('ativas') ? S.ativas.dados : [];
+  const gravacoes = () => ok('agenda') ? S.agenda.dados : [];
+
+  /* Ordem de prioridade (primeiro que couber, sem repetir a mesma demanda):
+       1. atrasadas            — no máximo 2 aqui; o KPI já conta todas
+       2. gravação HOJE        — compromisso físico, com hora marcada
+       3. correção solicitada
+       4. vence hoje
+       5. gravação amanhã
+       6. standby vencido      (standby_revisar_em já chegou)
+       7. vence amanhã
+     A lista mostra até 5; o resto vive na fila e nos compromissos. */
+  const MAX_ATENCAO = 5, MAX_ATRASADAS = 2;
+  function itensAtencao() {
+    const lista = [], vistos = new Set();
+    const add = (chave, it) => { if (!vistos.has(chave)) { vistos.add(chave); it.chave = chave; lista.push(it); } };
+    const ds = minhas();
+    const cli = d => d.cliente_nome ? logoMini(d) + '<span>' + esc(d.cliente_nome) + '</span>' : '';
+    const hrefD = d => '#/video/' + d.id;
+
+    const atrasadasOrd = ds.filter(atrasada).sort((a, b) => a.prazo.localeCompare(b.prazo));
+    atrasadasOrd.slice(0, MAX_ATRASADAS).forEach(d => {
+      const n = difDias(hoje(), d.prazo);
+      add(d.id, { demanda: true, tom: 'erro', icone: IC.alerta, tag: 'Atrasada há ' + n + (n === 1 ? ' dia' : ' dias'),
+        titulo: d.titulo, meta: cli(d) + '<span>' + esc(rotuloSit(d.editing_status)) + '</span>', href: hrefD(d) });
+    });
+
+    const agora = Date.now();
+    const grav = dias => gravacoes().filter(g => {
+      const t = new Date(g.inicio).getTime();
+      return t >= agora - 3600000 && dias.includes(diaDoTs(g.inicio));
+    }).forEach(g => add('g' + g.id, {
+      tom: 'acento', icone: IC.camera,
+      tag: 'Gravação ' + quandoDia(diaDoTs(g.inicio)) + (g.dia_inteiro ? '' : ' · ' + hora(g.inicio)),
+      titulo: g.titulo, meta: g.local ? '<span>' + esc(g.local) + '</span>' : '',
+      href: g.gravacao_id ? '#/gravacao/' + g.gravacao_id : '#/calendario' }));
+
+    grav([hoje()]);
+    ds.filter(d => d.editing_status === 'correcao').forEach(d => add(d.id, {
+      demanda: true, tom: 'ambar', icone: IC.refazer, tag: 'Correção solicitada', titulo: d.titulo,
+      meta: cli(d) + (d.prazo ? '<span>prazo ' + ddmm(d.prazo) + '</span>' : ''), href: hrefD(d) }));
+    ds.filter(venceHoje).forEach(d => add(d.id, {
+      demanda: true, tom: 'ambar', icone: IC.relogio, tag: 'Vence hoje', titulo: d.titulo,
+      meta: cli(d) + '<span>' + esc(rotuloSit(d.editing_status)) + '</span>', href: hrefD(d) }));
+    grav([somarDias(hoje(), 1)]);
+    ds.filter(d => d.editing_status === 'standby' && d.standby_revisar_em && d.standby_revisar_em <= hoje())
+      .forEach(d => add(d.id, { demanda: true, tom: 'neutro', icone: IC.pausa, tag: 'Revisar standby', titulo: d.titulo,
+        meta: cli(d) + '<span>marcado para ' + ddmm(d.standby_revisar_em) + '</span>', href: hrefD(d) }));
+    ds.filter(d => comPrazoMeu(d) && d.prazo === somarDias(hoje(), 1)).forEach(d => add(d.id, {
+      demanda: true, tom: 'neutro', icone: IC.agenda, tag: 'Vence amanhã', titulo: d.titulo,
+      meta: cli(d) + '<span>' + esc(rotuloSit(d.editing_status)) + '</span>', href: hrefD(d) }));
+    /* o teto de 2 atrasadas só existe pra abrir espaço: sobrando vaga,
+       as demais atrasadas entram logo depois das duas primeiras (ainda
+       na frente de tudo o mais que for menos urgente) */
+    const sobra = atrasadasOrd.slice(MAX_ATRASADAS);
+    const vagas = Math.max(0, MAX_ATENCAO - lista.length);
+    const entram = sobra.slice(0, vagas).map(d => {
+      const n = difDias(hoje(), d.prazo);
+      return { chave: d.id, demanda: true, tom: 'erro', icone: IC.alerta, tag: 'Atrasada há ' + n + (n === 1 ? ' dia' : ' dias'),
+        titulo: d.titulo, meta: cli(d) + '<span>' + esc(rotuloSit(d.editing_status)) + '</span>', href: hrefD(d) };
+    }).filter(it => !vistos.has(it.chave));
+    const posicao = Math.min(MAX_ATRASADAS, atrasadasOrd.length);
+    lista.splice(posicao, 0, ...entram);
+    const final = lista.slice();
+    final.atrasadasFora = Math.max(0, sobra.length - entram.length);
+    return final;
+  }
+
+  function diasDaSemana() {
+    const seg = segundaDe(hoje());
+    const dias = Array.from({ length: 7 }, (_, i) => {
+      const iso = somarDias(seg, i);
+      const doDia = minhas().filter(d => comPrazoMeu(d) && d.prazo === iso);
+      const passado = iso < hoje();
+      return { iso, hoje: iso === hoje(), passado,
+        atrasadas: passado ? doDia.filter(atrasada).length : 0,
+        prazos: passado ? 0 : doDia.length,
+        gravacoes: gravacoes().filter(g => diaDoTs(g.inicio) === iso).length };
+    });
+    /* fim de semana só entra quando tem alguma coisa nele */
+    return dias.filter((d, i) => i < 5 || d.atrasadas || d.prazos || d.gravacoes);
+  }
+
+  function semanasEntregues() {
+    const ultimo = {};
+    (S.entregas.dados || []).forEach(e => {
+      if (!e.demandas_edicao || e.demandas_edicao.editing_status !== 'entregue') return; /* reaberta depois */
+      if (!ultimo[e.demanda_id] || e.created_at > ultimo[e.demanda_id]) ultimo[e.demanda_id] = e.created_at;
+    });
+    const segAtual = segundaDe(hoje());
+    const semanas = Array.from({ length: SEMANAS_GRAFICO }, (_, i) => {
+      const inicio = somarDias(segAtual, -7 * (SEMANAS_GRAFICO - 1 - i));
+      return { inicio, n: 0, atual: inicio === segAtual };
+    });
+    Object.values(ultimo).forEach(ts => {
+      const s = semanas.find(w => w.inicio === segundaDe(diaDoTs(ts)));
+      if (s) s.n++;
+    });
+    return semanas;
+  }
+
+  function proximosCompromissos(jaListados) {
+    const agora = Date.now();
+    const itens = [];
+    gravacoes().filter(g => new Date(g.inicio).getTime() >= agora && !jaListados.has('g' + g.id)).forEach(g => itens.push({
+      tipo: 'gravacao', dia: diaDoTs(g.inicio), ordem: new Date(g.inicio).getTime(), titulo: g.titulo,
+      meta: '<span>' + esc(quandoDia(diaDoTs(g.inicio))) + (g.dia_inteiro ? ', dia todo' : ' · ' + hora(g.inicio)) + '</span>' +
+            (g.local ? '<span>' + esc(g.local) + '</span>' : ''),
+      href: g.gravacao_id ? '#/gravacao/' + g.gravacao_id : '#/calendario' }));
+    minhas().filter(d => comPrazoMeu(d) && d.prazo >= hoje() && !jaListados.has(d.id)).forEach(d => itens.push({
+      /* prazo não tem hora: ordena como fim do dia, depois das gravações dele */
+      tipo: 'prazo', dia: d.prazo, ordem: local(d.prazo).getTime() + 86399000, titulo: d.titulo,
+      meta: '<span>' + esc(quandoDia(d.prazo)) + '</span>' + (d.cliente_nome ? '<span>' + esc(d.cliente_nome) + '</span>' : ''),
+      href: '#/video/' + d.id }));
+    return itens.sort((a, b) => a.ordem - b.ordem).slice(0, 3);
+  }
+
+  /* =================================================================
+     PINTURA — cada seção se desenha a partir do estado das SUAS fontes
+     ================================================================= */
+  function estadoDe(...fontes) {
+    if (fontes.some(f => S[f] && S[f].estado === 'erro')) return 'erro';
+    if (fontes.some(f => !S[f] || S[f].estado === 'carregando')) return 'carregando';
+    return 'ok';
+  }
+
+  function pintarKpis() {
+    const cx = document.getElementById('pn-kpis'); if (!cx) return;
+    const eA = estadoDe('ativas'), eG = estadoDe('agenda');
+    const ds = minhas();
+    const nAtr = ds.filter(atrasada).length;
+    const nHoje = ds.filter(venceHoje).length;
+    const maos = ds.filter(d => NAS_MAOS.includes(d.editing_status));
+    const nEd = maos.filter(d => d.editing_status === 'em_edicao').length;
+    const nCor = maos.filter(d => d.editing_status === 'correcao').length;
+    const nPend = maos.filter(d => d.editing_status === 'pendente').length;
+    const agora = Date.now(), em7 = agora + 7 * 86400000;
+    const grav7 = gravacoes().filter(g => { const t = new Date(g.inicio).getTime(); return t >= agora && t < em7; });
+    const prox = grav7[0];
+    const subMaos = [nEd && nEd + ' em edição', nCor && nCor + (nCor === 1 ? ' correção' : ' correções'),
+                     nPend && nPend + ' para iniciar'].filter(Boolean).join(' · ');
+
+    cx.innerHTML =
+      kpi({ estado: eA, rotulo: 'Atrasadas', valor: nAtr, tom: nAtr ? 'erro' : '',
+            sub: nAtr ? 'prazo de edição vencido' : 'nenhuma demanda atrasada',
+            href: nAtr ? '#/video?prazo=atrasadas&minha=1&comp=todas' : null,
+            aria: nAtr + ' demandas atrasadas — abrir na Produção de Vídeo' }) +
+      kpi({ estado: eA, rotulo: 'Vencem hoje', valor: nHoje, tom: nHoje ? 'ambar' : '',
+            sub: nHoje ? 'entregar até o fim do dia' : 'nada vence hoje',
+            href: nHoje ? '#/video?prazo=hoje&minha=1&comp=todas' : null,
+            aria: nHoje + ' demandas vencem hoje — abrir na Produção de Vídeo' }) +
+      kpi({ estado: eA, rotulo: 'Em produção', valor: maos.length,
+            sub: subMaos || 'nada nas suas mãos agora',
+            href: '#/video?minha=1&comp=todas', aria: maos.length + ' demandas em produção — abrir sua fila' }) +
+      kpi({ estado: eG, rotulo: 'Próximas gravações', valor: grav7.length,
+            sub: prox ? 'próxima ' + quandoDia(diaDoTs(prox.inicio)) + (prox.dia_inteiro ? '' : ', ' + hora(prox.inicio)) : 'nenhuma nos próximos 7 dias',
+            href: '#/calendario', aria: grav7.length + ' gravações nos próximos 7 dias — abrir o calendário' });
+  }
+
+  function pintarAtencao() {
+    const cx = document.getElementById('pn-atencao'); if (!cx) return;
+    const e = estadoDe('ativas');
+    let corpo;
+    if (e === 'carregando') corpo = blocoCarregando(3);
+    else if (e === 'erro') corpo = blocoErro('Não foi possível carregar suas demandas.', ['ativas']);
+    else {
+      const itens = itensAtencao();
+      /* "+N" conta só demandas (gravação escondida já aparece em
+         Próximos compromissos) — o link leva à fila, então o número
+         precisa ser do que está na fila */
+      const foraDemandas = itens.slice(MAX_ATENCAO).filter(i => i.demanda).length + itens.atrasadasFora;
+      corpo = itens.length
+        ? '<div class="pn-att-lista">' + itens.slice(0, MAX_ATENCAO).map(linhaAtencao).join('') + '</div>' +
+          (foraDemandas ? '<a class="pn-mais" href="#/video?minha=1&comp=todas">+' + foraDemandas +
+            (foraDemandas === 1 ? ' demanda' : ' demandas') + ' na sua fila' + IC.seta + '</a>' : '')
+        : blocoVazio('Tudo em dia por aqui.', 'Nada atrasado, nenhuma correção e nenhuma gravação nas próximas 48 horas.');
+      /* a agenda ainda chegando não segura a lista — ela entra quando vier */
+      if (S.agenda && S.agenda.estado === 'erro') corpo += '<p class="pn-nota">As gravações não carregaram — a lista mostra só as demandas.</p>';
+    }
+    cx.innerHTML = cabecalhoSecao('pn-t-atencao', 'Precisa da sua atenção', { href: '#/video?minha=1&comp=todas', rotulo: 'Minha fila' }) + corpo;
+  }
+
+  function pintarSemana() {
+    const cx = document.getElementById('pn-semana'); if (!cx) return;
+    const e = estadoDe('ativas', 'agenda');
+    const seg = segundaDe(hoje());
+    const titulo = 'Minha semana';
+    let corpo;
+    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-semana">' + '<i class="esq"></i>'.repeat(5) + '</div>';
+    else if (e === 'erro') corpo = blocoErro('Não foi possível montar sua semana.', ['ativas', 'agenda'].filter(f => S[f] && S[f].estado === 'erro'));
+    else corpo = '<ol class="pn-semana-lista">' + diasDaSemana().map(diaSemana).join('') + '</ol>';
+    cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pn-t-semana">' + titulo + '</h2>' +
+      '<span class="pn-sec-sub">' + ddmm(seg) + ' – ' + ddmm(somarDias(seg, 6)) + '</span></div>' + corpo;
+  }
+
+  function pintarProducao() {
+    const cx = document.getElementById('pn-producao'); if (!cx) return;
+    const e = estadoDe('entregas');
+    let corpo;
+    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-graf">' + '<i class="esq"></i>'.repeat(SEMANAS_GRAFICO) + '</div>';
+    else if (e === 'erro') corpo = blocoErro('Não foi possível carregar suas entregas.', ['entregas']);
+    else {
+      const semanas = semanasEntregues();
+      const total = semanas.reduce((s, w) => s + w.n, 0);
+      const atual = semanas[semanas.length - 1].n;
+      const anteriores = semanas.slice(0, -1);
+      const media = anteriores.length ? anteriores.reduce((s, w) => s + w.n, 0) / anteriores.length : 0;
+      corpo = !total
+        ? blocoVazio('Nenhuma entrega registrada nas últimas semanas.', 'As entregas aparecem aqui quando a demanda é marcada como entregue.')
+        : '<div class="pn-prod-corpo"><div class="pn-graf-resumo">' +
+          '<div><b>' + total + '</b><span>em ' + SEMANAS_GRAFICO + ' semanas</span></div>' +
+          '<div><b>' + atual + '</b><span>nesta semana</span></div>' +
+          '<div><b>' + (Math.round(media * 10) / 10).toString().replace('.', ',') + '</b><span>média semanal</span></div>' +
+        '</div>' +
+        grafico(semanas) + '</div>';
+    }
+    cx.innerHTML = cabecalhoSecao('pn-t-producao', 'Minha produção',
+      { href: '#/video?minha=1&comp=todas&status=entregue', rotulo: 'Ver entregues' }) + corpo;
+  }
+
+  function pintarCompromissos() {
+    const cx = document.getElementById('pn-compromissos'); if (!cx) return;
+    const e = estadoDe('ativas', 'agenda');
+    let corpo;
+    if (e === 'carregando') corpo = blocoCarregando(3);
+    else if (e === 'erro') corpo = blocoErro('Não foi possível carregar seus compromissos.', ['ativas', 'agenda'].filter(f => S[f] && S[f].estado === 'erro'));
+    else {
+      /* o que já aparece em "Precisa da sua atenção" não se repete aqui */
+      const listados = new Set(itensAtencao().slice(0, MAX_ATENCAO).map(it => it.chave));
+      const itens = proximosCompromissos(listados);
+      corpo = itens.length ? '<div class="cp-agenda-lista">' + itens.map(compromisso).join('') + '</div>'
+        : blocoVazio('Nada marcado para os próximos dias.', 'Gravações da agenda e prazos seus aparecem aqui.');
+    }
+    cx.innerHTML = cabecalhoSecao('pn-t-comp', 'Próximos compromissos', { href: '#/calendario', rotulo: 'Ver agenda' }) + corpo;
+  }
+
+  function pintar() {
+    if (!document.getElementById('pn-raiz')) return;
+    pintarKpis(); pintarAtencao(); pintarSemana(); pintarProducao(); pintarCompromissos();
+    /* logo quebrada → iniciais (mesma regra do sino) */
+    painel().querySelectorAll('img.pn-logo').forEach(img => {
+      img.onerror = () => { const s = document.createElement('span'); s.className = 'pn-logo pn-logo-vazia'; s.textContent = img.dataset.ini || ''; img.replaceWith(s); };
+    });
+    painel().querySelectorAll('[data-pn-retentar]').forEach(b => {
+      b.onclick = () => b.dataset.pnRetentar.split(',').filter(Boolean).forEach(carregar);
+    });
+  }
+
+  /* =================================================================
+     CABEÇALHO + ABERTURA
+     ================================================================= */
+  const ROTULO_PAPEL = { admin: 'Administrador', coordenador: 'Coordenador de mídias', designer: 'Designer',
+                         videomaker: 'Videomaker' };
+  function saudacao() {
+    const h = new Date().getHours();
+    return h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  }
+  function papeis() {
+    const p = B7.Auth.papel();
+    const extras = (B7.Auth.funcoesExtra ? B7.Auth.funcoesExtra() : []).filter(f => f !== p);
+    return [p].concat(extras).map(x => ROTULO_PAPEL[x] || x).join(' · ');
+  }
+
+  function abrir() {
+    geracao++;
+    B7.Dashboard.marcarNav('#/painel');
+    B7.Rota.titulo(['Painel']);
+    const u = B7.Auth.usuario() || {};
+    /* em "Visualizar como…" o nome é o da pessoa em prévia */
+    const alvo = emPrevia();
+    const nome = ((alvo && alvo.nome) || u.nome || u.username || '').split(' ')[0];
+    const d = local(hoje());
+    const dataLonga = DOW_LONGO[d.getDay()] + ', ' + d.getDate() + ' de ' + MES[d.getMonth()];
+
+    painel().innerHTML = '<div class="conteudo entra pn" id="pn-raiz">' +
+      '<header class="pn-cab">' +
+        '<div class="pn-cab-tx"><p class="pn-kicker">Painel <span>·</span> ' + esc(dataLonga) + '</p>' +
+          '<h1>' + esc(saudacao() + (nome ? ', ' + nome : '')) + '</h1>' +
+          '<p class="pn-papel">' + esc(papeis()) + '</p></div>' +
+        '<a class="b contorno pn-cab-acao" href="#/video?minha=1&comp=todas">' + IC.camera + '<span>Minha fila de edição</span></a>' +
+      '</header>' +
+      '<section class="pn-kpis" id="pn-kpis" aria-label="Indicadores"></section>' +
+      '<div class="pn-grade">' +
+        '<section class="pn-bloco pn-atencao" id="pn-atencao" aria-labelledby="pn-t-atencao"></section>' +
+        '<section class="pn-bloco" id="pn-semana" aria-labelledby="pn-t-semana"></section>' +
+        '<section class="pn-bloco" id="pn-producao" aria-labelledby="pn-t-producao"></section>' +
+        '<section class="pn-bloco" id="pn-compromissos" aria-labelledby="pn-t-comp"></section>' +
+      '</div>' +
+    '</div>';
+
+    ['ativas', 'entregas', 'agenda'].forEach(carregar);
+  }
+
+  return { abrir };
+})();

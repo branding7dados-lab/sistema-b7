@@ -138,11 +138,27 @@ B7.Notif = (function () {
   }
 
   /* --------------------------------------------- som + aviso do navegador */
-  function anunciar(n) {
-    if (!n || n.id === ultimoIdAnunciado) return;
-    ultimoIdAnunciado = n.id; ultimoAnuncio = Date.now();
+  /* O Realtime entrega a linha crua de `notificacoes`, que só tem
+     client_id — o nome e a logo vêm daqui, com cache em memória pra não
+     consultar o mesmo cliente a cada aviso. Quem chega pelo polling já
+     vem da view, com tudo, e passa direto. */
+  const cacheClientes = new Map();
+  async function comCliente(n) {
+    if (!n || !n.client_id || n.cliente_nome) return n;
+    if (cacheClientes.has(n.client_id)) return Object.assign({}, n, cacheClientes.get(n.client_id));
+    try {
+      const c = await B7.DB.clienteParaAviso(n.client_id);
+      if (c) { cacheClientes.set(n.client_id, c); return Object.assign({}, n, c); }
+    } catch (e) {}
+    return n;
+  }
+
+  async function anunciar(bruta) {
+    if (!bruta || bruta.id === ultimoIdAnunciado) return;
+    ultimoIdAnunciado = bruta.id; ultimoAnuncio = Date.now();
     const p = prefs();
     if (p.som) tocarSom();
+    const n = await comCliente(bruta);
     if (p.navegador && document.hidden) avisarNavegador(n);
   }
 
@@ -192,9 +208,9 @@ B7.Notif = (function () {
       };
       const t = n.tipo || '';
       const titulo = TITULOS[t] || (t.startsWith('video.') ? 'Produção de vídeo' : t.startsWith('design.') ? 'Design' : t.startsWith('aprovacao.') ? 'Aprovações' : t.startsWith('agenda.') ? 'Agenda' : 'Sistema B7');
-      const nt = new Notification(titulo, {
+      const nt = new Notification(titulo + (n.cliente_nome ? ' · ' + n.cliente_nome : ''), {
         body: [n.titulo, n.mensagem].filter(Boolean).join('\n'), tag: 'b7-notif-' + n.id,
-        icon: 'assets/icons/icon-192.png', badge: 'assets/icons/badge-96.png'
+        icon: n.cliente_logo_url || 'assets/icons/icon-192.png', badge: 'assets/icons/badge-96.png'
       });
       nt.onclick = () => { try { window.focus(); } catch (e) {} if (n.link) location.hash = n.link; nt.close(); };
     } catch (e) {}
@@ -239,6 +255,21 @@ B7.Notif = (function () {
     listar();
   }
 
+  /* Logo do cliente no item do sino — mesma ideia da Produção de Vídeo:
+     imagem quando existe, iniciais quando não. Cliente sem logo (ou aviso
+     que não é de cliente nenhum, como os de agenda) não deixa buraco. */
+  function logoClienteHTML(n) {
+    if (!n.cliente_nome) return '';
+    if (n.cliente_logo_url) {
+      /* data-ini vira o conteúdo se a imagem falhar (logo apagada do
+         bucket, rede ruim) — melhor as iniciais do que ícone quebrado. */
+      return '<img class="sino-logo" src="' + esc(n.cliente_logo_url) + '" alt="" loading="lazy" ' +
+        'data-ini="' + esc(B7.UI.iniciais ? B7.UI.iniciais(n.cliente_nome) : '') + '">';
+    }
+    const ini = B7.UI.iniciais ? B7.UI.iniciais(n.cliente_nome) : n.cliente_nome.slice(0, 2).toUpperCase();
+    return '<span class="sino-logo sino-logo-vazia">' + esc(ini) + '</span>';
+  }
+
   let ultimas = [];
   async function listar(mais) {
     const p = document.querySelector('.sino-painel'); if (!p) return;
@@ -258,8 +289,19 @@ B7.Notif = (function () {
     lista.innerHTML = ultimas.map(n =>
       '<a class="sino-item' + (n.lida_em ? '' : ' nova') + '" data-id="' + esc(n.id) + '" href="' + esc(n.link || '#/') + '">' +
         '<span class="sino-ponto"></span>' +
-        '<span class="sino-tx"><b>' + esc(n.titulo) + '</b>' + (n.mensagem ? '<p>' + esc(n.mensagem) + '</p>' : '') +
+        logoClienteHTML(n) +
+        '<span class="sino-tx">' +
+          (n.cliente_nome ? '<i class="sino-cliente">' + esc(n.cliente_nome) + '</i>' : '') +
+          '<b>' + esc(n.titulo) + '</b>' + (n.mensagem ? '<p>' + esc(n.mensagem) + '</p>' : '') +
         '<small>' + esc(B7.UI.quando(n.created_at)) + '</small></span></a>').join('');
+    lista.querySelectorAll('img.sino-logo').forEach(img => {
+      img.onerror = () => {
+        const v = document.createElement('span');
+        v.className = 'sino-logo sino-logo-vazia';
+        v.textContent = img.dataset.ini || '';
+        img.replaceWith(v);
+      };
+    });
     lista.querySelectorAll('.sino-item').forEach(a => a.onclick = async () => {
       if (a.classList.contains('nova')) {
         a.classList.remove('nova');

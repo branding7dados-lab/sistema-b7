@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v97';
+const CACHE = 'roteiros-b7-v99';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -15,13 +15,13 @@ const CASCA = [
   './js/backup.js', './js/app.js',
   './js/auth.js', './js/usuarios.js', './js/central.js', './js/conteudo.js',
   './js/linha.js', './js/design.js', './js/video.js', './js/calendario.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
-  './js/print-linha.js', './js/extras.js', './js/publicacoes.js',
+  './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js',
   './js/permissoes.js', './js/portal.js', './js/kanban.js', './js/perfil.js', './js/foto.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js',
   './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js', './js/vendor/xlsx.full.min.js',
   './styles/auth.css', './styles/central.css', './styles/conteudo.css', './styles/semana.css',
   './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css', './styles/linha.css', './styles/design.css',
-  './styles/video.css', './styles/calendario.css', './styles/publicacoes.css',
+  './styles/video.css', './styles/calendario.css', './styles/publicacoes.css', './styles/painel.css',
   './assets/brand/logo-color.png', './assets/brand/logo-white.png',
   './assets/brand/symbol-color.png', './assets/brand/symbol-white.png',
   './assets/fonts/inter-400.woff2', './assets/fonts/inter-500.woff2',
@@ -136,11 +136,15 @@ self.addEventListener('message', ev => {
 self.addEventListener('push', ev => {
   let d = {};
   try { d = ev.data ? ev.data.json() : {}; } catch (e) { d = { titulo: ev.data ? ev.data.text() : '' }; }
-  const titulo = tituloDe(d);
+  /* "Nova demanda de vídeo · BLW" — o cliente entra no título, que é a
+     parte em negrito do aviso, então dá pra saber de quem é a demanda
+     sem abrir. A logo do cliente vira o ícone grande (bucket público);
+     o símbolo da B7 continua no badge, que é sempre monocromático. */
+  const titulo = tituloDe(d) + (d.cliente ? ' · ' + d.cliente : '');
   const corpo = [d.titulo, d.mensagem].filter(Boolean).join('\n');
   ev.waitUntil(self.registration.showNotification(titulo, {
     body: corpo || '',
-    icon: './assets/icons/icon-192.png',
+    icon: d.logo || './assets/icons/icon-192.png',
     badge: './assets/icons/badge-96.png',
     tag: d.id ? 'b7-notif-' + d.id : undefined,
     renotify: !!d.id,

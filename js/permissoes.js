@@ -66,6 +66,18 @@ B7.Perm = (function () {
     return !!(B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel());
   }
 
+  /* PAINEL (#/painel) — espaço de trabalho PESSOAL. Nesta fase só existe
+     o Painel do Videomaker, então quem alcança é quem é videomaker pelo
+     papel principal OU pela função extra (Kevin: admin + videomaker).
+     Não é troca de perfil: a pessoa continua com todas as permissões do
+     papel dela; o Painel só é mais uma tela, focada no trabalho dela.
+     Admin sem função de videomaker não vê o Painel — a Central B7 segue
+     sendo a casa dele. */
+  function painelElegivel() {
+    if (semSessao() || papel() === 'cliente') return false;
+    return !!(B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel());
+  }
+
   /* "Visualizar como cliente" (#/previa/<id>) é só do administrador:
      admin tem '*'; coordenador e cliente não têm 'previa' e caem na
      recusa. A prévia é somente leitura de qualquer forma (portal.js). */
@@ -123,6 +135,7 @@ B7.Perm = (function () {
     if (semSessao()) return true;
     const base = String(rota || '').replace(/^#\//, '').split('/')[0];
     if (base === 'video') return acessoVideoDinamico();
+    if (base === 'painel') return painelElegivel();
     const lista = ROTAS[papel()];
     if (!lista) return false;
     if (lista === '*') return true;
@@ -146,6 +159,19 @@ B7.Perm = (function () {
      fazer, e isso não ajuda ninguém. */
   function aplicarNavegacao() {
     if (semSessao()) return;
+
+    /* Painel e logo — roda ANTES do retorno do admin (NAV.admin é null,
+       então tudo abaixo não roda pra ele). Quem não é elegível perde o
+       item; quem é videomaker SÓ perde a "Central" (#/), que pra ele era
+       a própria fila — isso agora é o Painel, e a fila completa continua
+       em "Edição de vídeo". A logo ("ir para o início") leva ao início
+       de verdade de cada um. */
+    const elegivel = painelElegivel();
+    if (!elegivel) document.querySelectorAll('.nav [data-ir="#/painel"]').forEach(el => el.remove());
+    if (elegivel && papel() === 'videomaker') document.querySelectorAll('.nav [data-ir="#/"]').forEach(el => el.remove());
+    const logo = document.querySelector('.marca-clique');
+    if (logo) logo.dataset.ir = elegivel ? '#/painel' : '#/';
+
     const regra = NAV[papel()];
     if (!regra) return;
 
@@ -189,12 +215,9 @@ B7.Perm = (function () {
       const rotulo = document.querySelector('.nav [data-ir="#/"] span');
       if (rotulo) rotulo.textContent = 'Central de Design';
     }
-    if (papel() === 'videomaker') {
-      const rotulo = document.querySelector('.nav [data-ir="#/"] span');
-      if (rotulo) rotulo.textContent = 'Central do Videomaker';
-    }
+    /* (videomaker: o item "#/" não existe mais — ver Painel acima) */
   }
 
   return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
-           ROTAS, CONFIG };
+           painelElegivel, ROTAS, CONFIG };
 })();

@@ -135,6 +135,9 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return B7.Publicacoes.abrir(partes[1]);
     }
+    /* PAINEL — espaço pessoal (fase 1: Videomaker). A guarda de rota
+       acima (B7.Perm.podeRota) já recusou quem não é elegível. */
+    if (partes[0] === 'painel' && B7.Painel) { mostrar('tela-dashboard'); return B7.Painel.abrir(); }
     if (partes[0] === 'linhas') { mostrar('tela-dashboard'); return B7.Conteudo.abrirLinhasGlobais(); }
     if (partes[0] === 'kanban') { mostrar('tela-dashboard'); return B7.Kanban.abrir(); }
     if (partes[0] === 'design' && B7.Design) {
@@ -144,7 +147,7 @@ B7.Rota = (function () {
     }
     if (partes[0] === 'video' && B7.Video) {
       mostrar('tela-dashboard');
-      return partes[1] ? B7.Video.abrirDetalhe(partes[1]) : B7.Video.abrir();
+      return partes[1] ? B7.Video.abrirDetalhe(partes[1]) : B7.Video.abrir(params);
     }
     if (partes[0] === 'calendario' && B7.Calendario) {
       mostrar('tela-dashboard');
@@ -175,8 +178,12 @@ B7.Rota = (function () {
     /* Videomaker: mesma lógica — a home dele é a própria fila (Central
        do Videomaker), não a Central de Produção genérica (que nem abre:
        'gravacoes'/'roteiros' estão fora de ROTAS.videomaker). */
-    if (!partes[0] && B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'videomaker' && B7.Video) {
-      return B7.Video.abrir();
+    /* Agora a casa dele é o Painel (a fila completa continua em
+       "Edição de vídeo"). replace: não deixa "#/" no histórico, então o
+       Voltar do navegador não cai num laço de redirecionamento. */
+    if (!partes[0] && B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'videomaker' && B7.Painel) {
+      location.replace('#/painel');
+      return;
     }
     await B7.Central.abrir();
   }
@@ -197,7 +204,21 @@ B7.Rota = (function () {
     document.title = partes && partes.length ? partes.join(' · ') + ' · Branding7' : 'Branding7';
   }
 
-  return { ir, recarregar, titulo, aoSair };
+  /* Casa padrão de quem tem Painel (videomaker por papel ou por função
+     extra): só quando o sistema abre SEM rota — abrir o site, o PWA, ou
+     logo depois do login (sair limpa o endereço). "#/" explícito (clicar
+     em Central B7, dar refresh nela) continua sendo a Central, e qualquer
+     deep link continua valendo. replaceState não dispara hashchange:
+     nenhum redirecionamento em cadeia. Chamada uma vez, no arranque. */
+  function aplicarCasaPadrao() {
+    if ((!location.hash || location.hash === '#') && B7.Perm && B7.Perm.painelElegivel && B7.Perm.painelElegivel()) {
+      try { history.replaceState(null, '', '#/painel'); } catch (e) {}
+      return true;
+    }
+    return false;
+  }
+
+  return { ir, recarregar, titulo, aoSair, aplicarCasaPadrao };
 })();
 
 
@@ -719,6 +740,7 @@ B7.Rota = (function () {
     B7.UI.ligarMenus(document);
     B7.Save.atualizar();
     B7.Save.escoarFila();
+    B7.Rota.aplicarCasaPadrao();
     await B7.Rota.ir();
 
     /* ---- PWA ---- */

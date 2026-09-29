@@ -189,3 +189,13 @@
   .sino-cab{padding:12px 12px 12px 16px;}
   .sino-item{padding:12px;}
 }
+
+/* Logo do cliente no item do sino — quem é o cliente do aviso aparece
+   antes de ler a frase. Sem logo, iniciais; sem cliente, nem espaço. */
+.sino-logo{width:30px;height:30px;border-radius:9px;flex:none;object-fit:cover;background:var(--suave);
+  margin-top:1px;}
+.sino-logo-vazia{display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;
+  color:var(--ink-4);text-transform:uppercase;}
+.sino-cliente{display:block;font-style:normal;font-size:11px;font-weight:700;letter-spacing:.02em;
+  color:var(--acento);margin-bottom:1px;}
+.sino-item{align-items:flex-start;}
