@@ -19,7 +19,7 @@ window.B7 = window.B7 || {};
 
 B7.Topo = (function () {
   const esc = s => B7.UI.esc(s);
-  const ehCelular = () => { try { return window.matchMedia('(max-width: 600px)').matches; } catch (e) { return false; } };
+  const ehCelular = () => { try { return window.matchMedia('(max-width: 760px)').matches; } catch (e) { return false; } };
   const ehMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
   const IC = {
@@ -32,6 +32,7 @@ B7.Topo = (function () {
     kanban: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="9.5" y="4" width="5" height="11" rx="1.5"/><rect x="16" y="4" width="5" height="7" rx="1.5"/></svg>',
     semana: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3M7.5 13h3M13.5 13h3M7.5 16.5h3"/></svg>',
     cliente: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M16 19v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V19"/><circle cx="9" cy="7" r="3.2"/><path d="M19 8v6M22 11h-6"/></svg>',
+    olho: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
     perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>',
     config: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
     usuarios: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M16 19v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V19"/><circle cx="9" cy="7" r="3.2"/><path d="M22 19v-1.5a4 4 0 0 0-3-3.87M16 4.13a4 4 0 0 1 0 7.75"/></svg>',
@@ -187,6 +188,9 @@ B7.Topo = (function () {
   });
   window.addEventListener('resize', () => fecharMenu(false));
   window.addEventListener('hashchange', () => fecharMenu(false));
+  /* o título de contexto (celular) e o Criar acompanham a rota mesmo em
+     telas que não chamam marcarNav */
+  window.addEventListener('hashchange', () => setTimeout(() => { if (document.getElementById('topo-ctx')) contexto(); }, 0));
 
   /* Folha no celular: o B7.UI.modal já vira bottom sheet ≤520px, prende o
      foco, fecha no Esc/fora e devolve o foco ao gatilho. */
@@ -196,8 +200,8 @@ B7.Topo = (function () {
       '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
       '<div class="tp-folha-corpo" role="menu" aria-label="' + esc(titulo) + '">' + html + '</div>', { classe: 'tp-folha' });
     ligar(m, () => m.fechar());
-    const p = m.querySelector('[role="menuitem"],[role="menuitemradio"]');
-    if (p) p.focus();
+    const caixa = m.querySelector('.modal');
+    if (caixa) { caixa.tabIndex = -1; caixa.setAttribute('aria-label', titulo); caixa.focus({ preventScroll: true }); }
     return m;
   }
 
@@ -266,10 +270,14 @@ B7.Topo = (function () {
      No celular o meio do topo diz onde a pessoa está (o item ativo da
      barra lateral); no desktop a própria barra lateral já diz. */
   function contexto() {
+    /* a marca do topo (celular) leva à casa real da pessoa */
+    const marca = document.querySelector('.topo-marca');
+    if (marca) marca.dataset.ir = (B7.Perm && B7.Perm.painelElegivel && B7.Perm.painelElegivel()) ? '#/painel' : '#/';
     const el = document.getElementById('topo-ctx');
     if (!el) return;
     const on = document.querySelector('.nav a.on span');
-    el.textContent = (on && on.textContent.trim()) || 'Branding7';
+    const id = B7.Nav && B7.Nav.itemDaRota();
+    el.textContent = (id && B7.Nav.ITENS[id] ? B7.Nav.rotuloDe(id) : '') || (on && on.textContent.trim()) || 'Branding7';
     renderCriar();   /* o contexto também muda a ordem/estilo do Criar */
   }
 
@@ -312,6 +320,8 @@ B7.Topo = (function () {
       (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'Preferências e configurações') : '') +
       (B7.Perm && B7.Perm.podeConfig('usuarios') && !cliente ? item('data-conta="usuarios"', IC.usuarios, 'Usuários e acessos') : '') +
       (!cliente ? item('data-conta="atalhos"', IC.teclado, 'Atalhos de teclado', ' tp-so-desktop') : '') +
+      (B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor
+        ? item('data-conta="vercomo"', IC.olho, 'Visualizar como…') : '') +
       '<div class="tp-secao" role="group" aria-label="Aparência"><span class="tp-secao-rot">Aparência</span>' +
         '<div class="tp-temas">' + tema('sistema', IC.sistema, 'Sistema') + tema('light', IC.sol, 'Claro') + tema('dark', IC.lua, 'Escuro') + '</div>' +
       '</div>' +
@@ -323,6 +333,7 @@ B7.Topo = (function () {
       config: () => { location.hash = '#/config'; },
       usuarios: () => { location.hash = '#/usuarios'; },
       atalhos: () => B7.UI.atalhos(),
+      vercomo: () => B7.PreviaUsuario.abrirSeletor(),
       sair: () => B7.Auth.sair()
     };
     raiz.querySelectorAll('[data-conta]').forEach(b => b.onclick = () => { const k = b.dataset.conta; fechar(); acao[k] && acao[k](); });

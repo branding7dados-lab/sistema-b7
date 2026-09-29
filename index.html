@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B0A1E">
 <title>Branding7</title>
 <link rel="manifest" href="manifest.json">
@@ -37,6 +37,7 @@
 <link rel="stylesheet" href="styles/publicacoes.css">
 <link rel="stylesheet" href="styles/painel.css">
 <link rel="stylesheet" href="styles/topo.css">
+<link rel="stylesheet" href="styles/nav.css">
 <link rel="stylesheet" href="styles/print.css">
 </head>
 <body class="apurando">
@@ -93,6 +94,11 @@
          papéis: o papel muda as AÇÕES de Criar (resolvidas por permissão)
          e o menu da conta, nunca o desenho. -->
     <template id="tpl-topo-interno-esq">
+        <!-- celular: a marca abre a casa da pessoa (Painel ou Central) -->
+        <button type="button" class="topo-marca marca-clique" data-ir="#/" aria-label="Ir para o início">
+          <img class="tm-cor" src="assets/brand/symbol-color.png" alt="">
+          <img class="tm-branca" src="assets/brand/symbol-white.png" alt="">
+        </button>
         <button type="button" class="busca busca-gatilho" id="busca-gatilho" aria-label="Buscar no B7">
           <svg class="lupa" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
           <span class="busca-tx">Buscar no B7…</span>
@@ -140,22 +146,9 @@
     <div class="pe-lateral">
       <div class="versao" id="versao-app" title="Versão do código carregado agora — útil pra confirmar se um deploy pegou"></div>
 
-      <!-- Só o Administrador vê isto (data-papel, aplicado pelo mesmo
-           mecanismo que esconde item de menu). Busca e seleciona entre
-           empresas (abre a prévia de cliente já existente, #/previa/<id>)
-           e usuários da equipe (abre a prévia somente-leitura de
-           js/previa-usuario.js) num único campo. -->
-      <div class="ver-como" id="ver-como" data-papel="admin">
-        <button type="button" class="ver-como-bt" id="ver-como-bt" title="Visualizar como cliente ou usuário" aria-expanded="false">
-          <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span>Visualizar como…</span>
-        </button>
-        <div class="ver-como-caixa" id="ver-como-caixa">
-          <input id="ver-como-busca" placeholder="Buscar cliente ou usuário…" autocomplete="off">
-          <div class="ver-como-lista" id="ver-como-lista"></div>
-        </div>
-      </div>
-
+      <!-- "Visualizar como…" saiu daqui (29/09): é ferramenta do
+           administrador, não navegação — mora no menu da conta e, no
+           celular, no "Mais" (B7.PreviaUsuario.abrirSeletor). -->
       <button class="bt-recolher" id="bt-recolher">
         <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span>Recolher</span>
       </button>
@@ -305,6 +298,7 @@
 <script src="js/painel.js"></script>
 <script src="js/painel-coord.js"></script>
 <script src="js/topo.js"></script>
+<script src="js/nav.js"></script>
 <script src="js/extras.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/app.js"></script>

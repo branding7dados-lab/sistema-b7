@@ -152,6 +152,8 @@ B7.Portal = (function () {
     /* app.js usa esta marca para saber que a nav precisa ser
        reconstruída ao sair da prévia */
     nav.dataset.shell = 'portal';
+    /* o shell da equipe (barra inferior no celular) só vale fora do Portal */
+    document.body.dataset.shell = 'portal';
     nav.innerHTML =
       /* Deixa claro em que ambiente a pessoa está. Sem isso, o portal
          parecia uma versão reduzida do sistema interno. */

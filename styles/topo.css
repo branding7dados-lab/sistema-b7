@@ -118,7 +118,7 @@ body.modo-portal .topo-criar,body.modo-portal .topo-ctx{display:none !important;
 
 /* ------------------------------------------------------------ celular
    Mesma lógica, outra composição: [menu][busca]  contexto  [sino][conta][+] */
-@media (max-width:600px){
+@media (max-width:760px){
   .topo.topo-global{gap:4px;}
   .busca.busca-gatilho{flex:none;width:40px;height:40px;padding:0;justify-content:center;background:none;border:0;
     color:var(--ink-3);border-radius:10px;}
@@ -141,10 +141,10 @@ body.modo-portal .topo-criar,body.modo-portal .topo-ctx{display:none !important;
 }
 /* editor de roteiros no celular: o título do documento vale mais que o
    avatar — a conta continua a um toque, no topo global */
-@media (max-width:600px){ #tela-editor .topo .area-sessao{display:none;} }
+@media (max-width:760px){ #tela-editor .topo .area-sessao{display:none;} }
 /* erro/sem conexão no celular: o aviso ganha o lugar do título da tela
    (falha de salvamento nunca fica escondida) */
-@media (max-width:600px){
+@media (max-width:760px){
   .topo-global:has(.salvamento.erro, .salvamento.offline) .topo-ctx{display:none;}
   .topo-global:has(.salvamento.erro, .salvamento.offline) .salvamento{flex:1 1 auto;max-width:none;min-width:0;}
 }

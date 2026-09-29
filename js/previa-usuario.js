@@ -271,7 +271,28 @@ B7.PreviaUsuario = (function () {
     });
   }
 
+  /* "Visualizar como…" fora da barra lateral (29/09): abre como diálogo
+     (folha no celular) a partir do menu da conta ou do "Mais". Mesmos
+     ids de busca/lista, então renderizarLista e carregarItens valem. */
+  let modalSeletor = null;
+  function abrirSeletor() {
+    if (!B7.Auth || !(B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin())) return;
+    if (modalSeletor) return;
+    modalSeletor = B7.UI.modal('<div class="tp-folha-cab"><h3>Visualizar como…</h3>' +
+      '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+      '<p class="sub" style="margin:0 10px 10px">Veja o sistema como um cliente ou alguém da equipe. Somente leitura — você continua como administrador.</p>' +
+      '<div class="ver-como-caixa ver-como-dialogo"><input id="ver-como-busca" data-foco placeholder="Buscar cliente ou usuário…" autocomplete="off" aria-label="Buscar cliente ou usuário">' +
+      '<div class="ver-como-lista" id="ver-como-lista"><div class="nada">Carregando…</div></div></div>',
+      { classe: 'tp-folha', aoFechar: () => { modalSeletor = null; } });
+    const campo = modalSeletor.querySelector('#ver-como-busca');
+    campo.addEventListener('input', () => renderizarLista(campo.value));
+    carregarItens().then(() => renderizarLista(campo.value)).catch(() => {
+      const l = document.getElementById('ver-como-lista'); if (l) l.innerHTML = '<div class="nada">Não foi possível carregar.</div>';
+    });
+  }
+
   function fecharCaixa() {
+    if (modalSeletor) { const m = modalSeletor; modalSeletor = null; m.fechar(); }
     const caixa = document.getElementById('ver-como');
     if (!caixa) return;
     caixa.classList.remove('aberto');
@@ -300,5 +321,5 @@ B7.PreviaUsuario = (function () {
     });
   }
 
-  return { abrir, sair, ativa, usuarioAtivo, montarSeletor };
+  return { abrir, sair, ativa, usuarioAtivo, montarSeletor, abrirSeletor };
 })();

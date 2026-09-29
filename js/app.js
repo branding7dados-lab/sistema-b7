@@ -289,36 +289,35 @@ B7.Rota = (function () {
     if (B7.Auth && B7.Auth.ehCliente()) return false;
     const nav = document.querySelector('.nav');
     const tpl = document.getElementById('tpl-nav-interna');
-    if (nav && tpl && nav.dataset.shell !== 'interno') {
-      nav.innerHTML = '';
-      nav.appendChild(tpl.content.cloneNode(true));
-      nav.dataset.shell = 'interno';
+    if (nav && nav.dataset.shell !== 'interno') {
+      /* Navegação da equipe: montada pelo modelo único (js/nav.js) a
+         partir da sessão — permissão decide o que existe, função
+         operacional decide a ordem. Sem sessão (instalação ainda sem
+         login), cai no <template> antigo e é refeita quando a sessão
+         chegar (shell 'interno-anon' não conta como montado). */
+      const doModelo = !!(B7.Nav && B7.Nav.montarLateral());
+      if (!doModelo && tpl) {
+        nav.innerHTML = '';
+        nav.appendChild(tpl.content.cloneNode(true));
+        nav.dataset.shell = 'interno-anon';
+      }
       /* a trilha luminosa é filha da nav: volta junto */
       if (B7.criarTrilha) B7.criarTrilha();
       aplicarPapelNaNavegacao();
       if (B7.Perm) B7.Perm.aplicarNavegacao();
       if (B7.PreviaUsuario) B7.PreviaUsuario.montarSeletor();
-      const ligarSe = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-      ligarSe('nav-atalhos', () => B7.UI.atalhos());
-      ligarSe('nav-config', () => { location.hash = '#/config'; });
-      /* "MAIS FERRAMENTAS" começa recolhido (sidebar menos cheia) — abre
-         sozinho se a rota atual já é uma delas, e lembra a escolha. */
-      (function () {
+      if (!doModelo) {
+        const ligarSe = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+        ligarSe('nav-atalhos', () => B7.UI.atalhos());
+        ligarSe('nav-config', () => { location.hash = '#/config'; });
         const toggle = document.getElementById('nav-mais-toggle'), caixa = document.getElementById('nav-mais');
-        if (!toggle || !caixa) return;
-        const ROTAS = ['#/arquivados', '#/lixeira', '#/usuarios', '#/config'];
-        const abrir = ROTAS.some(r => location.hash.indexOf(r) === 0) || localStorage.getItem('b7-nav-mais') === '1';
-        const aplicar = ab => {
+        if (toggle && caixa) toggle.onclick = () => {
+          const ab = !caixa.classList.contains('aberta');
           caixa.classList.toggle('aberta', ab);
           toggle.setAttribute('aria-expanded', ab ? 'true' : 'false');
-        };
-        aplicar(abrir);
-        toggle.onclick = () => {
-          const ab = !caixa.classList.contains('aberta');
-          aplicar(ab);
           localStorage.setItem('b7-nav-mais', ab ? '1' : '0');
         };
-      })();
+      }
       if (B7.rotularNav) B7.rotularNav();
     }
     [['topo-interno-esq', 'tpl-topo-interno-esq'], ['topo-interno-dir', 'tpl-topo-interno-dir']].forEach(([id, t]) => {
@@ -332,6 +331,8 @@ B7.Rota = (function () {
        por papel aqui. */
     document.body.classList.remove('modo-portal', 'modo-previa');
     document.body.dataset.shell = 'interno';
+    /* celular: barra inferior; tablet: barra lateral em trilho */
+    if (B7.Nav) { B7.Nav.montarInferior(); B7.Nav.aplicarLargura(); }
     if (B7.ligarTopoInterno) B7.ligarTopoInterno();
     if (B7.Topo) B7.Topo.render();
     if (B7.moverTrilha) setTimeout(() => B7.moverTrilha(), 0);
@@ -535,11 +536,16 @@ B7.Rota = (function () {
       const r = document.body.classList.contains('recolhida');
       document.querySelectorAll('.nav a').forEach(a => {
         const sp = a.querySelector('span');
-        if (r && sp) a.title = sp.textContent.trim(); else a.removeAttribute('title');
+        /* o nome vai para aria-label; a dica visual é a flutuante de
+           js/nav.js (title nativo duplicava a dica) */
+        if (sp) a.setAttribute('aria-label', sp.textContent.trim());
+        a.removeAttribute('title');
       });
     };
     B7.rotularNav = rotularNav;
     document.getElementById('bt-recolher').onclick = () => {
+      /* no tablet a barra já é trilho fixo: recolher não se aplica */
+      if (document.body.classList.contains('trilho-tablet')) return;
       const r = document.body.classList.toggle('recolhida');
       B7.pref.gravar('sidebar_recolhida', r);
       rotularNav();

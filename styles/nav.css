@@ -1,0 +1,168 @@
+/* =====================================================================
+   NAVEGAÇÃO GLOBAL (js/nav.js)
+   Desktop (>1080): barra lateral em grupos · Tablet (761–1080): barra
+   lateral fixa em trilho de ícones · Celular (≤760): topo de vidro +
+   barra inferior + folha "Mais". Só tokens do B7; vidro é efeito, não
+   identidade nova. Tudo escopado ao shell da equipe — o Portal do
+   Cliente mantém a navegação dele.
+   ===================================================================== */
+
+/* ----------------------------------------------------- barra lateral */
+.nav a:focus-visible,.nav .grupo-alterna:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:-2px;}
+.nav .grupo:first-child{padding-top:6px;}
+/* fechado, o grupo recolhível não deixa links focáveis escondidos */
+.nav-mais:not(.aberta){visibility:hidden;}
+body.recolhida .nav-mais{visibility:visible;}
+.nav-mais{transition:max-height .22s ease, visibility .22s;}
+.nav-mais.aberta{max-height:320px;}
+/* rodapé enxuto: versão + recolher (Visualizar como… foi para a conta) */
+.pe-lateral{padding:10px 12px;}
+
+/* marca no topo: só no celular */
+.topo-marca{display:none;}
+
+/* barra inferior e folha "Mais": fora do celular não existem */
+.nav-inferior{display:none;}
+
+/* ------------------------------------------------ tablet: trilho fixo */
+@media (min-width:761px) and (max-width:1080px){
+  body[data-shell="interno"] .lateral{position:relative;transform:none;box-shadow:none;width:74px;}
+  body[data-shell="interno"].recolhida .lateral{width:74px;}
+  body[data-shell="interno"].recolhida .nav a{justify-content:center;padding:11px 0;}
+  body[data-shell="interno"].recolhida .nav a span{display:none;}
+  body[data-shell="interno"].recolhida .marca-lateral{padding:20px 0 16px;justify-content:center;}
+  body[data-shell="interno"].recolhida .marca-lateral img.lockup{display:none;}
+  body[data-shell="interno"].recolhida .marca-lateral img.simbolo{display:block;}
+  body[data-shell="interno"].recolhida .nav .grupo{opacity:0;height:14px;padding:6px 0;}
+  body[data-shell="interno"] .bt-recolher{display:none;}
+  body[data-shell="interno"] .fecha-gaveta{display:none !important;}
+  body[data-shell="interno"].recolhida .marca-clique{justify-content:center;}
+  body[data-shell="interno"] .abre-menu{display:none !important;}
+  body[data-shell="interno"].gaveta:before{display:none;}
+}
+
+/* ====================================================== CELULAR ≤760 */
+@media (max-width:760px){
+  body[data-shell="interno"] .lateral{display:none;}
+  body[data-shell="interno"] .abre-menu{display:none !important;}
+  body[data-shell="interno"].gaveta:before{display:none;}
+
+  /* ---- topo de vidro: o conteúdo rola por baixo ---- */
+  body[data-shell="interno"] #tela-dashboard{position:relative;}
+  body[data-shell="interno"] #tela-dashboard .topo.topo-global{
+    position:absolute;top:0;left:0;right:0;z-index:60;
+    height:calc(56px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);
+    padding-left:max(10px, env(safe-area-inset-left));padding-right:max(8px, env(safe-area-inset-right));
+    background:color-mix(in srgb, var(--card) 97%, transparent);
+    border-bottom:1px solid color-mix(in srgb, var(--borda) 80%, transparent);
+    box-shadow:0 1px 0 rgba(255,255,255,.04), 0 8px 24px -18px rgba(20,8,40,.35);}
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    body[data-shell="interno"] #tela-dashboard .topo.topo-global{
+      background:color-mix(in srgb, var(--card) 72%, transparent);
+      -webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);}
+  }
+  body[data-shell="interno"] #painel-dashboard{
+    padding-top:calc(56px + env(safe-area-inset-top));
+    padding-bottom:calc(64px + env(safe-area-inset-bottom));
+    scroll-padding-top:calc(64px + env(safe-area-inset-top));
+    scroll-padding-bottom:calc(72px + env(safe-area-inset-bottom));}
+  body[data-shell="interno"].teclado-aberto #painel-dashboard{padding-bottom:12px;}
+
+  /* composição do topo no celular: [marca] contexto ··· [busca][sino][conta][+] */
+  body[data-shell="interno"] .topo-marca{display:inline-flex;align-items:center;justify-content:center;flex:none;
+    width:36px;height:40px;border-radius:10px;order:0;flex:none;}
+  .topo-marca img{height:24px;width:auto;}
+  .topo-marca .tm-branca{display:none;}
+  [data-theme="dark"] .topo-marca .tm-cor{display:none;}
+  [data-theme="dark"] .topo-marca .tm-branca{display:block;}
+  body[data-shell="interno"] .topo-global .topo-ctx{order:1;}
+  body[data-shell="interno"] .topo-global .busca-gatilho{order:2;}
+  body[data-shell="interno"] .topo-global .salvamento{order:3;}
+  body[data-shell="interno"] .topo-global .sino{order:4;}
+  body[data-shell="interno"] .topo-global .area-sessao{order:5;}
+  body[data-shell="interno"] .topo-global .topo-criar{order:6;}
+
+  /* ---- barra inferior ---- */
+  body[data-shell="interno"] .nav-inferior{display:block;position:fixed;left:0;right:0;bottom:0;z-index:90;
+    padding:0 max(6px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(6px, env(safe-area-inset-left));
+    background:color-mix(in srgb, var(--card) 97%, transparent);
+    border-top:1px solid color-mix(in srgb, var(--borda) 80%, transparent);
+    box-shadow:0 -8px 24px -18px rgba(20,8,40,.35);}
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    body[data-shell="interno"] .nav-inferior{background:color-mix(in srgb, var(--card) 74%, transparent);
+      -webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);}
+  }
+  /* some com o teclado aberto, no editor de roteiros (documento, com zoom
+     próprio embaixo) e no Portal */
+  body.teclado-aberto .nav-inferior,
+  body:has(#tela-editor.ativa) .nav-inferior,
+  body.modo-portal .nav-inferior{display:none !important;}
+}
+.nav-inferior ul{list-style:none;margin:0;padding:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);}
+.nav-inferior a,.nav-inferior button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  width:100%;min-height:58px;padding:6px 2px 7px;text-decoration:none;color:var(--ink-3);background:none;border:0;
+  font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.ni-ic{display:inline-flex;align-items:center;justify-content:center;width:44px;height:28px;border-radius:14px;
+  transition:background var(--t-micro),color var(--t-micro);}
+.ni-ic svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.ni-tx{font-size:10.5px;font-weight:600;letter-spacing:.01em;line-height:1.1;max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* ativo: ícone no acento sobre pílula suave + rótulo forte + fio do B7 —
+   nunca só a cor */
+.nav-inferior .on{color:var(--ink);}
+.nav-inferior .on .ni-ic{background:var(--acento-suave);color:var(--acento);}
+.nav-inferior .on .ni-tx{font-weight:800;}
+.nav-inferior .on:before{content:"";position:absolute;top:0;left:50%;width:22px;height:3px;margin-left:-11px;
+  border-radius:0 0 3px 3px;background:var(--grad-curto);}
+.nav-inferior a:focus-visible,.nav-inferior button:focus-visible{outline:2px solid var(--acento);outline-offset:-4px;border-radius:12px;}
+.nav-inferior a:active .ni-ic,.nav-inferior button:active .ni-ic{background:var(--suave);}
+
+/* --------------------------------------------- folhas no celular
+   Criar, Conta, Mais e Visualizar como… sobem de baixo em qualquer
+   largura de celular (o modal base só faz isso até 520px). */
+@media (max-width:760px){
+  .fundo-modal.tp-folha{align-items:flex-end;padding:0;}
+  .fundo-modal.tp-folha .modal{width:100%;max-width:640px;border-radius:22px 22px 0 0;max-height:88vh;max-height:88dvh;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom));animation:folhaSobe .26s cubic-bezier(.2,.8,.25,1);}
+  .fundo-modal.tp-folha .modal:before{content:"";display:block;width:38px;height:4px;border-radius:4px;
+    background:var(--borda-forte);margin:0 auto 8px;}
+}
+@keyframes folhaSobe{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+
+/* "Mais": seções com grade de atalhos, alvos grandes */
+.nm-corpo{display:flex;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(80vh - 60px);max-height:calc(80dvh - 60px);padding:2px 4px 4px;}
+.nm-secao h4{margin:0 0 8px 6px;font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--ink-4);}
+.nm-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.nm-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:84px;padding:10px 6px;
+  border-radius:16px;background:var(--suave);color:var(--ink-2);text-decoration:none;text-align:center;transition:var(--t-micro);}
+.nm-item:hover{background:var(--borda);}
+.nm-item:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.nm-ic{display:inline-flex;width:36px;height:36px;border-radius:12px;align-items:center;justify-content:center;background:var(--card);color:var(--acento);}
+.nm-ic svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.nm-tx{font-size:12px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.nm-item.on{background:var(--acento-suave);color:var(--ink);box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--acento) 45%, transparent);}
+.nm-item.on .nm-tx{font-weight:800;}
+.nm-vazio{padding:20px;text-align:center;color:var(--ink-3);font-size:13px;}
+@media (min-width:420px){ .nm-grade{grid-template-columns:repeat(4,minmax(0,1fr));} }
+/* "Visualizar como…" em diálogo */
+.ver-como-dialogo{position:static;display:block;box-shadow:none;border:0;padding:0 4px;max-height:none;background:none;}
+.ver-como-dialogo .ver-como-lista{max-height:52vh;max-height:52dvh;overflow-y:auto;}
+
+@media (prefers-reduced-motion:reduce){
+  .fundo-modal.tp-folha .modal{animation:none;}
+  .ni-ic,.nm-item,.nav-mais{transition:none;}
+}
+/* o botão do grupo herdava a fonte do botão (font:inherit) e saía maior
+   que os outros rótulos de grupo */
+.nav .grupo-alterna{font-family:inherit;font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(255,255,255,.3);}
+.nav .grupo-alterna:hover{color:rgba(255,255,255,.55);}
+
+.fundo-modal.tp-folha .modal:focus{outline:none;}
+/* vidro escuro um pouco mais denso: o texto do topo nunca disputa com o
+   conteúdo que passa por baixo */
+@media (max-width:760px){
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    [data-theme="dark"] body[data-shell="interno"] #tela-dashboard .topo.topo-global,
+    [data-theme="dark"] body[data-shell="interno"] .nav-inferior{background:color-mix(in srgb, var(--card) 80%, transparent);}
+  }
+}

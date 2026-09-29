@@ -93,6 +93,24 @@ B7.Perm = (function () {
   }
   function painelElegivel() { return painelVisoes().length > 0; }
 
+  /* FUNÇÕES OPERACIONAIS — o trabalho que a pessoa FAZ (não o acesso).
+     Administrador NÃO é função operacional: é gestão/acesso. Um admin
+     puro não tem nenhuma aqui (e por isso não ganha Painel operacional).
+     Ordem fixa e determinística (coordenação → vídeo → design): é a que a
+     navegação usa para priorizar quando a pessoa tem mais de uma.
+     'designer' vale pelo papel principal ou pela função extra (o banco
+     aceita a função extra "designer"). Isto decide PRIORIDADE visual;
+     quem decide ACESSO continua sendo podeRota. */
+  function funcoesOperacionais() {
+    if (semSessao() || papel() === 'cliente') return [];
+    const extras = (B7.Auth && B7.Auth.funcoesExtra) ? B7.Auth.funcoesExtra() : [];
+    const f = [];
+    if (souCoordenadorElegivel()) f.push('coordenador');
+    if (B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel()) f.push('videomaker');
+    if (papel() === 'designer' || extras.includes('designer')) f.push('designer');
+    return f;
+  }
+
   /* "Visualizar como cliente" (#/previa/<id>) é só do administrador:
      admin tem '*'; coordenador e cliente não têm 'previa' e caem na
      recusa. A prévia é somente leitura de qualquer forma (portal.js). */
@@ -184,8 +202,7 @@ B7.Perm = (function () {
     const elegivel = painelElegivel();
     if (!elegivel) document.querySelectorAll('.nav [data-ir="#/painel"]').forEach(el => el.remove());
     if (elegivel && papel() === 'videomaker') document.querySelectorAll('.nav [data-ir="#/"]').forEach(el => el.remove());
-    const logo = document.querySelector('.marca-clique');
-    if (logo) logo.dataset.ir = elegivel ? '#/painel' : '#/';
+    document.querySelectorAll('.marca-clique').forEach(logo => { logo.dataset.ir = elegivel ? '#/painel' : '#/'; });
 
     const regra = NAV[papel()];
     if (!regra) return;
@@ -213,7 +230,7 @@ B7.Perm = (function () {
     document.querySelectorAll('.nav .grupo').forEach(g => {
       let irmao = g.nextElementSibling, temItem = false;
       while (irmao && !irmao.classList.contains('grupo')) {
-        if (irmao.tagName === 'A' || irmao.tagName === 'BUTTON') { temItem = true; break; }
+        if (irmao.tagName === 'A' || irmao.tagName === 'BUTTON' || (irmao.querySelector && irmao.querySelector('a'))) { temItem = true; break; }
         irmao = irmao.nextElementSibling;
       }
       if (!temItem) g.remove();
@@ -234,5 +251,5 @@ B7.Perm = (function () {
   }
 
   return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
-           painelElegivel, painelVisoes, souCoordenadorElegivel, ROTAS, CONFIG };
+           painelElegivel, painelVisoes, souCoordenadorElegivel, funcoesOperacionais, ROTAS, CONFIG };
 })();
