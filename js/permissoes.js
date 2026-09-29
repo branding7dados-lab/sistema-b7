@@ -74,8 +74,10 @@ B7.Perm = (function () {
          Administrador com a função extra "coordenador" (a função extra de
          coordenação só vale para Administrador: é ele que já tem, no
          banco, as permissões de coordenação — ver usuarios.js/b7-auth);
-       • 'video' — videomaker pelo papel principal ou pela função extra.
-     Quem tem as duas vê as duas no mesmo Painel (alternância de visão,
+       • 'video' — videomaker pelo papel principal ou pela função extra;
+       • 'design' — Designer pelo papel principal ou pela função extra
+         "designer" (fase 3).
+     Quem tem mais de uma vê todas no mesmo Painel (alternância de visão,
      não de identidade). Admin sem nenhuma dessas funções não vê o
      Painel — a Central B7 segue sendo a casa dele. */
   function souCoordenadorElegivel() {
@@ -89,7 +91,15 @@ B7.Perm = (function () {
     const v = [];
     if (souCoordenadorElegivel()) v.push('coordenacao');
     if (B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel()) v.push('video');
+    /* Painel do Designer (fase 3): papel principal ou função extra
+       "designer" — a mesma regra de funcoesOperacionais */
+    if (souDesignerElegivel()) v.push('design');
     return v;
+  }
+  function souDesignerElegivel() {
+    if (semSessao() || papel() === 'cliente') return false;
+    const extras = (B7.Auth && B7.Auth.funcoesExtra) ? B7.Auth.funcoesExtra() : [];
+    return papel() === 'designer' || extras.includes('designer');
   }
   function painelElegivel() { return painelVisoes().length > 0; }
 
@@ -107,7 +117,7 @@ B7.Perm = (function () {
     const f = [];
     if (souCoordenadorElegivel()) f.push('coordenador');
     if (B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel()) f.push('videomaker');
-    if (papel() === 'designer' || extras.includes('designer')) f.push('designer');
+    if (souDesignerElegivel()) f.push('designer');
     return f;
   }
 
@@ -251,5 +261,5 @@ B7.Perm = (function () {
   }
 
   return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
-           painelElegivel, painelVisoes, souCoordenadorElegivel, funcoesOperacionais, ROTAS, CONFIG };
+           painelElegivel, painelVisoes, souCoordenadorElegivel, souDesignerElegivel, funcoesOperacionais, ROTAS, CONFIG };
 })();

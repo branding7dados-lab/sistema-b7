@@ -1761,6 +1761,53 @@ B7.DB = (function () {
         .order('inicio', { ascending: true }));
     },
 
+    /* ============================================== PAINEL DO DESIGNER
+       Tudo escopado por designer_id = a pessoa (mesmo quando o RLS da
+       equipe deixaria ver a agência inteira). Sem tabela nova. */
+    /* peças minhas que ainda não terminaram: a MESMA view design_resumo
+       da Produção de Design (já sem deleted_at), sem as finalizadas */
+    async painelDesignMinhas(designerId) {
+      return ok(await sb().from('design_resumo')
+        .select('id,client_id,cliente_nome,cliente_logo_url,linha_id,linha_nome,conteudo_titulo,tipo,titulo,designer_id,status,prazo,prioridade,versao_atual,briefing_desatualizado,updated_at')
+        .eq('designer_id', designerId).neq('status', 'finalizado')
+        .order('updated_at', { ascending: false }).limit(500));
+    },
+    /* "produção" = versões que EU enviei (design_versoes.enviada_em) a
+       partir de uma data — rascunho nunca conta */
+    async painelDesignEnvios(designerId, desdeISO) {
+      return ok(await sb().from('design_versoes')
+        .select('id,deliverable_id,numero,estado,enviada_em')
+        .eq('designer_id', designerId).neq('estado', 'rascunho')
+        .gte('enviada_em', desdeISO)
+        .order('enviada_em', { ascending: true }).limit(1000));
+    },
+    /* partes (slides/frames) das peças em ajuste: o arquivo EFETIVO de
+       cada parte, com a mesma regra de design_arquivos_efetivos (preview
+       mais recente de versão já enviada), calculado aqui para N peças
+       numa ida só. Devolve { deliverable_id: [arquivo efetivo...] }. */
+    async painelDesignPartes(deliverableIds) {
+      const ids = [...new Set((deliverableIds || []).filter(Boolean))];
+      if (!ids.length) return {};
+      const versoes = ok(await sb().from('design_versoes').select('id,deliverable_id,numero,estado')
+        .in('deliverable_id', ids).neq('estado', 'rascunho'));
+      if (!versoes.length) return {};
+      const porVersao = new Map(versoes.map(v => [v.id, v]));
+      const arquivos = ok(await sb().from('design_arquivos')
+        .select('id,versao_id,parte_tipo,parte_id,parte_posicao,posicao,created_at,revisao,revisao_mensagem,cliente_ajuste')
+        .in('versao_id', versoes.map(v => v.id)).eq('papel', 'preview'));
+      const ordem = (a, b) => (b._n - a._n) || ((b.posicao || 0) - (a.posicao || 0)) || String(b.created_at).localeCompare(String(a.created_at));
+      const efetivos = {};
+      const vistos = new Set();
+      arquivos.map(a => Object.assign({}, a, { _n: porVersao.get(a.versao_id).numero, deliverable_id: porVersao.get(a.versao_id).deliverable_id }))
+        .sort(ordem).forEach(a => {
+          const chave = a.deliverable_id + '|' + (a.parte_id || '_');
+          if (vistos.has(chave)) return;
+          vistos.add(chave);
+          (efetivos[a.deliverable_id] = efetivos[a.deliverable_id] || []).push(a);
+        });
+      return efetivos;
+    },
+
     /* ============================================ PAINEL DO COORDENADOR
        Leituras escopadas por data/status — nunca o histórico inteiro.
        Linhas, pendentes de publicação, design e aprovações reaproveitam

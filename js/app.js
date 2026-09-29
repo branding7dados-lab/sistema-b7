@@ -172,7 +172,9 @@ B7.Rota = (function () {
        genérica (Gravações/Roteiros/Linhas) não é o trabalho dele, e os
        dois primeiros nem abrem (rota bloqueada). A home do Designer é
        a Central de Design: uma tela própria (o que precisa de mim, onde
-       parei, minhas linhas), diferente da fila ampla em #/design. */
+       parei, minhas linhas), diferente da fila ampla em #/design.
+       Desde a fase 3 do Painel, a CASA do Designer é o Painel (#/painel,
+       aplicarCasaPadrao); a Central de Design continua aqui em "#/". */
     if (!partes[0] && B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'designer' && B7.Design) {
       return B7.Design.abrirCentral();
     }

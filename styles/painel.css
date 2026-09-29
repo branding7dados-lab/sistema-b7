@@ -248,6 +248,22 @@
 .pn-sk-l1{display:block;height:11px;width:60%;border-radius:6px;}
 .pn-sk-l2{display:block;height:9px;width:35%;border-radius:6px;}
 
+
+/* ====================================================================
+   PAINEL DO DESIGNER (.pnd) — mesma família; só o que é dele
+   ==================================================================== */
+/* atenção à esquerda; semana + próximos prazos à direita; produção do
+   mês em largura total */
+.pnd-grade{grid-template-areas:"at sem" "at prox" "prod prod";}
+#pnd-atencao{grid-area:at;}
+#pnd-semana{grid-area:sem;}
+#pnd-proximos{grid-area:prox;}
+#pnd-producao{grid-area:prod;}
+.pn-dia-ajuste{color:var(--ambar);}
+/* semana que ainda não chegou: trilho existe, mas não compete */
+.pnd-graf .pn-graf-col.futura .pn-graf-rot{opacity:.55;}
+.pnd-graf .pn-graf-col.futura{cursor:default;}
+
 /* ------------------------------------------------------------ responsivo */
 @media (max-width:1100px) and (min-width:601px){
   .pn-dia-i em{display:inline;}
@@ -255,6 +271,7 @@
 @media (max-width:1100px){
   .pn-grade{grid-template-columns:minmax(0,1fr);grid-template-areas:"at" "sem" "prod" "comp";}
   .pnc-grade{grid-template-areas:"at" "sem" "flx" "pub";grid-template-rows:none;}
+  .pnd-grade{grid-template-areas:"at" "sem" "prox" "prod";grid-template-rows:none;}
   .pn-prod-corpo{grid-template-columns:minmax(0,1fr);gap:0;}
   .pn-prod-corpo .pn-graf-resumo{flex-direction:row;gap:22px;margin-bottom:16px;}
 }

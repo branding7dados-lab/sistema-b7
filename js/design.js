@@ -121,6 +121,17 @@ B7.Design = (function () {
        lista aberta divergiriam. Mantém só o modo de exibição. */
     if (params && params.get && params.get('limpar') === '1') {
       F = Object.assign({}, F_PADRAO, { vista: F.vista, modo: F.modo });
+      /* recortes que o Painel do Designer manda junto (só com limpar=1,
+         para o número do Painel e a lista aberta saírem da mesma regra):
+         rapido (navegador do designer: comigo/ajustes), designer (visão
+         da equipe), status e prazo — os mesmos filtros da barra */
+      const STATUS_OK = STATUS.map(s => s[0]);
+      const rap = params.get('rapido'), dsg = params.get('designer'),
+            st = params.get('status'), pz = params.get('prazo');
+      if (rap && ['comigo', 'ajustes', 'revisao', 'disponivel'].includes(rap) && !ehEquipe()) F.rapido = rap;
+      if (dsg && ehEquipe()) F.designer = dsg;
+      if (st && STATUS_OK.includes(st)) F.status = st;
+      if (pz && ['atrasadas', 'hoje', 'semana', 'sem'].includes(pz)) F.prazo = pz;
       guardarFiltros();
       try { history.replaceState(null, '', '#/design' + (aba ? '?aba=' + encodeURIComponent(aba) : '')); } catch (e) {}
     }
@@ -286,7 +297,9 @@ B7.Design = (function () {
         if (F.prazo === 'sem' && p) return false;
         if (F.prazo !== 'sem' && !p) return false;
         if (F.prazo === 'atrasadas' && !(p < hoje && d.status !== 'finalizado')) return false;
-        if (F.prazo === 'hoje' && p.getTime() !== hoje.getTime()) return false;
+        /* "para hoje" = vence hoje e ainda não terminou (mesma lógica de
+           "atrasadas"); peça finalizada não "vence" mais */
+        if (F.prazo === 'hoje' && !(p.getTime() === hoje.getTime() && d.status !== 'finalizado')) return false;
         if (F.prazo === 'semana' && !(p >= hoje && p <= em7)) return false;
       }
       if (t && !(d.titulo || '').toLowerCase().includes(t) &&

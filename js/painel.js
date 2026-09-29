@@ -504,7 +504,7 @@ B7.Painel = (function () {
   /* Cabeçalho comum aos Painéis: data, saudação, papéis reais, a
      alternância de visão (só para quem tem mais de uma função) e UMA
      ação principal. */
-  const ROTULO_VISAO = { coordenacao: 'Coordenação', video: 'Edição de vídeo' };
+  const ROTULO_VISAO = { coordenacao: 'Coordenação', video: 'Edição de vídeo', design: 'Design' };
   function cabecalho(o) {
     const u = B7.Auth.usuario() || {};
     /* em "Visualizar como…" o nome é o da pessoa em prévia */
@@ -558,12 +558,13 @@ B7.Painel = (function () {
       visao = visoes.includes(guardada) ? guardada : visoes[0];
     }
     if (visao === 'coordenacao' && B7.PainelCoord) { geracao++; return B7.PainelCoord.abrir({ visoes }); }
+    if (visao === 'design' && B7.PainelDesign) { geracao++; return B7.PainelDesign.abrir({ visoes }); }
     return abrirVideo(visoes);
   }
 
   /* Primitivos para os outros Painéis (fase 2: js/painel-coord.js). */
   const ui = { esc, IC, kpi, cabecalhoSecao, blocoCarregando, blocoErro, blocoVazio, logoMini, linhaAtencao,
-               diaSemana, cabecalho, comTempoLimite,
+               diaSemana, cabecalho, comTempoLimite, emPrevia, meuId,
                datas: { hoje, pad, isoDe, local, somarDias, difDias, segundaDe, ddmm, hora, diaDoTs, quandoDia, DOW, DOW_LONGO, MES } };
 
   return { abrir, ui };
