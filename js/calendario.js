@@ -61,7 +61,12 @@ B7.Calendario = (function () {
 
   function inicioDoDia(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
   function inicioDaSemana(d) { const x = inicioDoDia(d); x.setDate(x.getDate() - x.getDay()); return x; }
-  function isoData(d) { return d.toISOString ? d.toISOString().slice(0, 10) : String(d).slice(0, 10); }
+  /* dia LOCAL de um instante (nunca o dia em UTC: uma gravação às 22h de
+     10/10 não pode aparecer como 11/10). Data pura AAAA-MM-DD passa direto. */
+  function isoData(d) {
+    if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    return chaveDia(d);
+  }
   function chaveDia(d) {
     const x = new Date(d);
     return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
@@ -529,7 +534,10 @@ B7.Calendario = (function () {
       ocorrencia_anterior_id: o.ocorrencia_anterior_id,
       motivo_cancelamento: o.motivo_cancelamento, erro_sincronizacao: o.erro_sincronizacao,
       titulo: o.gravacao_nome, cliente_id: o.gravacao_client_id, cliente_nome: o.gravacao_cliente_nome,
-      local: o.gravacao_local, agenda_nome: o.agenda_nome, agenda_cor: o.agenda_cor
+      local: o.gravacao_local, agenda_nome: o.agenda_nome, agenda_cor: o.agenda_cor,
+      /* Gravações 2.0: data sem horário conhecido aparece como dia inteiro */
+      dia_inteiro: !!o.sem_horario, sem_horario: !!o.sem_horario,
+      competencia_ano: o.gravacao_competencia_ano, competencia_mes: o.gravacao_competencia_mes
     };
   }
 
@@ -806,9 +814,23 @@ B7.Calendario = (function () {
           '<div><label class="rot">Início</label><input class="campo" type="time" id="cal-mg-hora-ini" value="09:00"></div>' +
           '<div><label class="rot">Fim</label><input class="campo" type="time" id="cal-mg-hora-fim" value="10:00"></div>' +
         '</div>' +
+        '<label class="rot">Mês de referência</label>' +
+          (B7.Gravacao ? B7.Gravacao.camposMes(+dataSugerida.slice(0, 4), +dataSugerida.slice(5, 7), 'cal-mg') : '') +
         '<label class="rot">Local <span class="leve">— opcional</span></label><input class="campo" id="cal-mg-local">' +
         '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="cal-mg-salvar">Marcar gravação</button></div>'
       );
+      /* o mês de referência acompanha a data até a pessoa escolher outro */
+      let mesManual = false;
+      const selMes = m.querySelector('#cal-mg-mes'), selAno = m.querySelector('#cal-mg-ano');
+      if (selMes) {
+        selMes.onchange = selAno.onchange = () => { mesManual = true; };
+        m.querySelector('#cal-mg-data').addEventListener('change', e => {
+          const v = e.target.value; if (!v || mesManual) return;
+          selMes.value = String(+v.slice(5, 7));
+          if (![...selAno.options].some(o => o.value === v.slice(0, 4))) selAno.insertAdjacentHTML('beforeend', '<option>' + v.slice(0, 4) + '</option>');
+          selAno.value = v.slice(0, 4);
+        });
+      }
       m.querySelector('#cal-mg-salvar').onclick = async () => {
         const clienteId = m.querySelector('#cal-mg-cliente').value;
         const data = m.querySelector('#cal-mg-data').value;
@@ -830,7 +852,8 @@ B7.Calendario = (function () {
         const btn = m.querySelector('#cal-mg-salvar'); btn.disabled = true; btn.textContent = 'Marcando…';
         try {
           const resp = await B7.DB.marcarGravacaoCalendario({
-            clienteId, nome, inicioISO: inicio.toISOString(), fimISO: fim.toISOString(), local
+            clienteId, nome, inicioISO: inicio.toISOString(), fimISO: fim.toISOString(), local,
+            competenciaAno: selAno ? +selAno.value : null, competenciaMes: selMes ? +selMes.value : null
           });
           m.fechar();
           B7.UI.toast('Gravação marcada — agora dá pra remarcar, cancelar ou concluir por aqui.');
@@ -853,8 +876,12 @@ B7.Calendario = (function () {
      rodada: Marcar como Concluída / Remarcar / Cancelar.
      ================================================================= */
   function modalOcorrencia(it) {
-    const dataHora = B7.UI.dataBR(isoData(it.inicio)) + ' · ' + horaBR(it.inicio) + (it.fim ? '–' + horaBR(it.fim) : '');
+    const dataHora = B7.UI.dataBR(isoData(it.inicio)) + (it.sem_horario ? ' · sem horário' : ' · ' + horaBR(it.inicio) + (it.fim && it.fim !== it.inicio ? '–' + horaBR(it.fim) : ''));
     const podeAgir = souGestor() && it.atual;
+    const mesRefTx = it.competencia_ano && B7.Gravacao ? B7.Gravacao.mesRef(it.competencia_ano, it.competencia_mes) : '';
+    /* remarcada: diz para onde foi (a ocorrência nova aponta para esta) */
+    const proxima = it.status === 'remarcada' || (it.status === 'cancelada' && !it.atual) ? ocorrencias.find(o => o.ocorrencia_anterior_id === it.id) : null;
+    const anterior = it.ocorrencia_anterior_id ? ocorrencias.find(o => o.id === it.ocorrencia_anterior_id) : null;
 
     const m = B7.UI.modal(
       '<h3>' + esc(it.titulo || 'Gravação') + ' <span class="cal-badge-status ' + STATUS_CLASSE[it.status] + '">' + STATUS_ROTULO[it.status] + '</span></h3>' +
@@ -862,12 +889,15 @@ B7.Calendario = (function () {
       '<div class="cal-detalhe-grid">' +
         '<div><label class="rot">Data e horário' + (it.status === 'remarcada' ? ' (antiga)' : '') + '</label><div class="vd-so-leitura">' + esc(dataHora) + '</div></div>' +
         (it.cliente_nome ? '<div><label class="rot">Cliente</label><div class="vd-so-leitura">' + esc(it.cliente_nome) + '</div></div>' : '') +
+        (mesRefTx ? '<div><label class="rot">Mês de referência</label><div class="vd-so-leitura">' + esc(mesRefTx) + '</div></div>' : '') +
+        (proxima ? '<div><label class="rot">Remarcada para</label><div class="vd-so-leitura">' + esc(B7.UI.dataBR(isoData(proxima.inicio)) + (proxima.sem_horario ? '' : ' · ' + horaBR(proxima.inicio))) + '</div></div>' : '') +
+        (anterior ? '<div><label class="rot">Data anterior</label><div class="vd-so-leitura">' + esc(B7.UI.dataBR(isoData(anterior.inicio)) + (anterior.sem_horario ? '' : ' · ' + horaBR(anterior.inicio))) + ' (' + esc(STATUS_ROTULO[anterior.status] || anterior.status) + ')</div></div>' : '') +
         (it.local ? '<div><label class="rot">Local</label><div class="vd-so-leitura">' + esc(it.local) + '</div></div>' : '') +
         (it.agenda_nome ? '<div><label class="rot">Agenda de origem</label><div class="vd-so-leitura">' + esc(it.agenda_nome) + '</div></div>' : '') +
       '</div>' +
       (it.motivo_cancelamento ? '<div class="vd-dt-campo"><label class="rot">Motivo do cancelamento</label><div class="vd-so-leitura">' + esc(it.motivo_cancelamento) + '</div></div>' : '') +
       (it.erro_sincronizacao ? '<div class="cal-aviso-sync">⚠ Não sincronizado com o Google: ' + esc(it.erro_sincronizacao) + '</div>' : '') +
-      (it.gravacao_id ? '<div class="acoes-inline" style="margin-top:8px"><a class="b fina contorno" href="#/gravacao/' + it.gravacao_id + '">Ver gravação</a></div>' : '') +
+      (it.gravacao_id ? '<div class="acoes-inline" style="margin-top:8px"><a class="b fina contorno" href="#/gravacao/' + it.gravacao_id + '">Abrir gravação</a></div>' : '') +
       (podeAgir ? '<div class="acoes cal-oc-acoes">' +
         (it.gravacao_id ? '<button class="b fina contorno" id="cal-oc-editar">Editar</button>' : '') +
         (it.status !== 'concluida' && it.status !== 'cancelada' ? '<button class="b fina contorno" id="cal-oc-remarcar">Remarcar</button>' : '') +

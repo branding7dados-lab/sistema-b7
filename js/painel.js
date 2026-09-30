@@ -261,7 +261,11 @@ B7.Painel = (function () {
   const chaveGrav = g => 'grav:' + (g.gravacao_id || ('ag:' + g.origem + ':' + g.id));
   const ok = f => S[f] && S[f].estado === 'ok';
   const minhas = () => ok('ativas') ? S.ativas.dados : [];
-  const gravacoes = () => ok('agenda') ? S.agenda.dados : [];
+  /* gravações do videomaker: as que são DELE (gravacoes.videomaker_id,
+     Gravações 2.0) e as que ainda não têm responsável — nunca as de outro
+     videomaker. A consulta é a mesma da coordenação (compartilhada); o
+     recorte pessoal é feito aqui. */
+  const gravacoes = () => ok('agenda') ? S.agenda.dados.filter(g => !g.videomaker_id || g.videomaker_id === meuId()) : [];
 
   /* Ordem de prioridade (primeiro que couber, sem repetir a mesma demanda):
        1. atrasadas            — no máximo 2 aqui; o KPI já conta todas

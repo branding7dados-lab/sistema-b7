@@ -167,6 +167,56 @@ B7.DB = (function () {
     async atualizarGravacao(id, patch) {
       return ok(await sb().from('gravacoes').update(patch).eq('id', id).select());
     },
+    /* ---------------------------------------- GRAVAÇÕES 2.0 (fase 5)
+       Itens, histórico e datas da gravação. Toda escrita passa pelas
+       funções do banco (migration_gravacoes_2.sql), que validam
+       permissão, guardam o histórico e mantêm o roteiro sincronizado. */
+    async gravacaoItens(gravacaoId) {
+      return ok(await sb().from('gravacao_itens_resumo').select('*')
+        .eq('gravacao_id', gravacaoId).order('position').order('criado_em'));
+    },
+    async gravacaoHistorico(gravacaoId) {
+      return ok(await sb().from('gravacao_historico').select('id,tipo,dados,ator_nome,criado_em')
+        .eq('gravacao_id', gravacaoId).order('criado_em', { ascending: false }).limit(80));
+    },
+    async gravacaoOcorrencias(gravacaoId) {
+      return ok(await sb().from('gravacoes_ocorrencias')
+        .select('id,status,inicio,fim,atual,sem_horario,evento_id,ocorrencia_anterior_id,motivo_cancelamento,criado_em')
+        .eq('gravacao_id', gravacaoId).order('criado_em'));
+    },
+    async gravacaoItemAdicionar(gravacaoId, { tipo, roteiroId, conteudoId, titulo, url, observacao }) {
+      return this.rpc('gravacao_item_adicionar', {
+        p_gravacao_id: gravacaoId, p_tipo: tipo, p_roteiro_id: roteiroId || null, p_conteudo_id: conteudoId || null,
+        p_titulo: titulo || null, p_url: url || null, p_observacao: observacao || null });
+    },
+    async gravacaoItemEditar(itemId, { titulo, url, observacao }) {
+      return this.rpc('gravacao_item_editar', { p_item_id: itemId, p_titulo: titulo || null, p_url: url || null, p_observacao: observacao || null });
+    },
+    async gravacaoItemRemover(itemId) { return this.rpc('gravacao_item_remover', { p_item_id: itemId }); },
+    async gravacaoItemMover(itemId, delta) { return this.rpc('gravacao_item_mover', { p_item_id: itemId, p_delta: delta }); },
+    async gravacaoItemMarcar(itemId, gravado) { return this.rpc('gravacao_item_marcar', { p_item_id: itemId, p_gravado: !!gravado }); },
+    /* data/horário no formato do formulário (AAAA-MM-DD e HH:MM) — o
+       banco monta o instante no fuso de São Paulo; nada de Date() aqui */
+    async gravacaoAgendar(gravacaoId, data, horaInicio, horaFim, motivo) {
+      return this.rpc('gravacao_agendar', { p_gravacao_id: gravacaoId, p_data: data,
+        p_hora_inicio: horaInicio || null, p_hora_fim: horaFim || null, p_motivo: motivo || null });
+    },
+    async gravacaoConcluir(gravacaoId) { return this.rpc('gravacao_concluir', { p_gravacao_id: gravacaoId }); },
+    async gravacaoCancelar(gravacaoId, motivo) { return this.rpc('gravacao_cancelar', { p_gravacao_id: gravacaoId, p_motivo: motivo || null }); },
+    /* seletores escopados pelo CLIENTE da gravação (nunca a agência toda) */
+    async roteirosDoCliente(clienteId) {
+      return ok(await sb().from('roteiros')
+        .select('id,titulo,status,recording_session_id,updated_at,gravacoes!inner(id,nome,client_id,competencia_ano,competencia_mes,data_gravacao)')
+        .eq('gravacoes.client_id', clienteId).is('deleted_at', null)
+        .order('updated_at', { ascending: false }).limit(200));
+    },
+    async conteudosDoCliente(clienteId) {
+      return ok(await sb().from('conteudos')
+        .select('id,titulo,tipo,status,data_postagem,linha_id,linhas_editoriais(nome,mes,ano)')
+        .eq('client_id', clienteId).is('deleted_at', null).is('archived_at', null)
+        .order('data_postagem', { ascending: false, nullsFirst: false }).limit(300));
+    },
+
     async excluirGravacao(id) {
       return ok(await sb().from('gravacoes').delete().eq('id', id));
     },
@@ -1755,7 +1805,7 @@ B7.DB = (function () {
        e já classifica o tipo pelo título (migration_agenda_lembretes.sql). */
     async painelGravacoes(desdeISO, ateISO) {
       return ok(await sb().from('agenda_compromissos')
-        .select('origem,id,titulo,inicio,dia_inteiro,local,gravacao_id,cliente_nome')
+        .select('origem,id,titulo,inicio,dia_inteiro,local,gravacao_id,cliente_nome,videomaker_id')
         .eq('tipo', 'gravacao')
         .gte('inicio', desdeISO).lte('inicio', ateISO)
         .order('inicio', { ascending: true }));
@@ -2127,10 +2177,11 @@ B7.DB = (function () {
        cria a gravação + a ocorrência inicial no B7 primeiro (sempre vale,
        mesmo se o Google falhar depois) — quem chama tenta criarEventoGoogle
        em seguida, best-effort, igual ao padrão de remarcar/cancelar. */
-    async marcarGravacaoCalendario({ clienteId, nome, inicioISO, fimISO, local, observacoes }) {
+    async marcarGravacaoCalendario({ clienteId, nome, inicioISO, fimISO, local, observacoes, competenciaAno, competenciaMes }) {
       return this.rpc('calendario_marcar_gravacao', {
         p_client_id: clienteId, p_nome: nome, p_inicio: inicioISO, p_fim: fimISO || null,
-        p_local: local || '', p_observacoes: observacoes || ''
+        p_local: local || '', p_observacoes: observacoes || '',
+        p_competencia_ano: competenciaAno || null, p_competencia_mes: competenciaMes || null
       });
     },
     async criarEventoGoogle(ocorrenciaId, titulo, inicioISO, fimISO, local) {

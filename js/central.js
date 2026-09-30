@@ -296,10 +296,10 @@ B7.Central = (function () {
   /* Abre a lista que compõe o número clicado, com a mesma regra usada
      para contar. */
   const REGRAS = {
-    'grav:todas':     { situacoes: ['Pendente', 'Agendada', 'Gravada'], rotulo: 'Todas as gravações' },
+    'grav:todas':     { situacoes: ['Pendente', 'Agendada', 'Remarcada', 'Gravada'], rotulo: 'Todas as gravações' },
     'grav:gravadas':  { situacoes: ['Gravada'], rotulo: 'Gravações concluídas' },
-    'grav:faltam':    { situacoes: ['Pendente', 'Agendada'], rotulo: 'Faltam gravar' },
-    'grav:agendadas': { situacoes: ['Agendada'], rotulo: 'Gravações agendadas' },
+    'grav:faltam':    { situacoes: ['Pendente', 'Agendada', 'Remarcada'], rotulo: 'Faltam gravar' },
+    'grav:agendadas': { situacoes: ['Agendada', 'Remarcada'], rotulo: 'Gravações marcadas' },
     'grav:sem_data':  { situacoes: 'sem_data', rotulo: 'Sem agendamento' },
     'grav:canceladas': { situacoes: ['Cancelada'], rotulo: 'Gravações canceladas' },
     'rot:todos':      { status: null, rotulo: 'Todos os roteiros' },
@@ -331,7 +331,7 @@ B7.Central = (function () {
           '<div class="cp-item-meta"><span>' + esc(g.cliente_nome || '') + '</span>' +
           (g.data_gravacao ? '<span>· ' + esc(B7.UI.dataBR(g.data_gravacao)) + '</span>'
                            : '<span>· sem data</span>') +
-          '<span>· ' + esc(g.situacao || '') + '</span></div></div></div>';
+          '<span>· ' + esc(B7.Gravacao ? B7.Gravacao.rotuloSituacao(g.situacao) : (g.situacao || '')) + '</span></div></div></div>';
       } else if (regra.status !== undefined) {
         itens = await B7.DB.listarRoteirosPor(regra.status, filtros);
         render = r => '<div class="cp-item" data-abrir-roteiro="' + esc(r.id) + '">' +

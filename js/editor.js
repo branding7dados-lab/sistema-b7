@@ -50,7 +50,7 @@ B7.Editor = (function () {
     } catch (e) {
       console.error(e);
       B7.UI.toast('Não consegui carregar a gravação: ' + (e.message || ''), { tipo: 'erro' });
-      location.hash = '#/';
+      location.hash = '#/gravacoes';
     }
   }
 
@@ -145,20 +145,30 @@ B7.Editor = (function () {
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>');
     m.querySelectorAll('[data-s]').forEach(b => b.onclick = async () => {
       const s = b.dataset.s;
+      /* "Gravado" = concluir a gravação: passa pela regra canônica (data,
+         histórico, calendário). Voltar de "Gravado" não desfaz a conclusão. */
+      if (s === 'Gravado') {
+        m.fechar();
+        const ok = await B7.UI.confirmar({ titulo: 'Concluir esta gravação?',
+          texto: 'Registra que a gravação aconteceu. Os itens que não foram marcados continuam como não gravados.', rotulo: 'Concluir gravação' });
+        if (!ok) return;
+        try {
+          await B7.Save.acao(() => B7.DB.gravacaoConcluir(E.gravacao.id), 'Gravação concluída');
+          Object.assign(E.gravacao, { status: 'Gravado', situacao: 'Gravada' }); cabecalho();
+        } catch (e) {}
+        return;
+      }
+      if (E.gravacao.situacao === 'Gravada') {
+        m.fechar();
+        B7.UI.toast('Esta gravação já foi concluída — a conclusão fica registrada no histórico.');
+        return;
+      }
       E.gravacao.status = s;
 
       /* A situação operacional acompanha o status escolhido aqui. Sem isto,
          marcar "Gravado" no editor não chegava à Central de Produção: a
          gravação continuava contada como "faltam gravar". */
       const patch = { status: s };
-      if (s === 'Gravado') {
-        patch.situacao = 'Gravada';
-        if (!E.gravacao.gravada_em) patch.gravada_em = new Date().toISOString();
-      } else if (E.gravacao.situacao === 'Gravada') {
-        /* voltou atrás: a gravação deixa de ser um fato confirmado */
-        patch.situacao = E.gravacao.data_gravacao ? 'Agendada' : 'Pendente';
-        patch.gravada_em = null;
-      }
       Object.assign(E.gravacao, patch);
 
       cabecalho(); m.fechar();
@@ -756,9 +766,12 @@ B7.Editor = (function () {
     const g = E.gravacao;
     const m = B7.UI.modal('<h3>Dados da gravação</h3>' +
       '<div class="mb"><label class="rot">NOME DA GRAVAÇÃO</label><input class="campo" id="dd-nome" data-foco value="' + esc(g.nome) + '"></div>' +
-      '<div class="linha mb"><div><label class="rot">DATA (OPCIONAL)</label>' +
-        '<input class="campo" id="dd-data" type="date" value="' + (g.data_gravacao || '') + '"></div>' +
-        '<div><label class="rot">LOCAL</label><input class="campo" id="dd-local" value="' + esc(g.local || '') + '"></div></div>' +
+      /* data e status moram na GRAVAÇÃO (Gravações 2.0): marcar/remarcar
+         guarda o histórico — por isso não se edita a data por aqui */
+      '<div class="mb"><label class="rot">DATA</label><div class="vd-so-leitura">' +
+        esc(g.data_gravacao ? B7.UI.dataBR(g.data_gravacao) : 'Sem data marcada') +
+        ' · <a href="#/gravacao/' + esc(g.id) + '">marcar ou remarcar na gravação</a></div></div>' +
+      '<div class="mb"><label class="rot">LOCAL</label><input class="campo" id="dd-local" value="' + esc(g.local || '') + '"></div>' +
       '<div class="linha mb"><div><label class="rot">RESPONSÁVEL</label>' +
         '<input class="campo" id="dd-resp" value="' + esc(g.responsavel || '') + '"></div>' +
         '<div><label class="rot">VIDEOMAKER</label><input class="campo" id="dd-video" value="' + esc(g.videomaker || '') + '"></div></div>' +
@@ -770,17 +783,11 @@ B7.Editor = (function () {
     m.querySelector('[data-ok]').onclick = async () => {
       const patch = {
         nome: m.querySelector('#dd-nome').value.trim() || g.nome,
-        data_gravacao: m.querySelector('#dd-data').value || null,
         local: m.querySelector('#dd-local').value,
         responsavel: m.querySelector('#dd-resp').value,
         videomaker: m.querySelector('#dd-video').value,
         observacoes: m.querySelector('#dd-obs').value
       };
-      /* a data manda na situação, exceto quando já foi confirmada como
-         gravada: aí quem decide é a equipe, não o calendário */
-      if (E.gravacao.situacao !== 'Gravada' && E.gravacao.situacao !== 'Cancelada') {
-        patch.situacao = patch.data_gravacao ? 'Agendada' : 'Pendente';
-      }
       Object.assign(E.gravacao, patch);
       m.fechar(); cabecalho(); renderPrevia();
       try { await B7.Save.acao(() => B7.DB.atualizarGravacao(g.id, patch), 'Gravação atualizada'); } catch (e) {}

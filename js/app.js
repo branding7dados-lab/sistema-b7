@@ -2,7 +2,8 @@
    BOOT + ROTAS
    #/                 → Central B7 (equipe) ou home do Portal (cliente)
    #/cliente/<id>     → ficha do cliente
-   #/gravacao/<id>    → editor  (?roteiro=<id> abre num roteiro específico)
+   #/gravacao/<id>    → gravação (sessão de produção, itens, datas)
+   #/gravacao/<id>/roteiros → editor  (?roteiro=<id> abre num roteiro específico)
    #/previa/<id>/…    → Portal do Cliente visto pelo admin, somente leitura
 
    Papel antes de interface: a navegação da equipe fica num <template>
@@ -101,6 +102,15 @@ B7.Rota = (function () {
     if (partes[0] === 'diaria' && partes[1]) {
       location.replace('#/gravacao/' + partes[1] + (query ? '?' + query : ''));
       return;
+    }
+    /* Gravações 2.0: #/gravacao/<id> abre a GRAVAÇÃO (sessão de produção,
+       js/gravacao.js). O editor de roteiros continua em
+       #/gravacao/<id>/roteiros — e ?roteiro=<id> / ?imprimir=1 (links
+       antigos, busca, notificações de roteiro) seguem indo direto nele. */
+    if (partes[0] === 'gravacao' && partes[1] && B7.Gravacao && partes[2] !== 'roteiros' &&
+        !params.get('roteiro') && !params.get('imprimir')) {
+      mostrar('tela-dashboard');
+      return B7.Gravacao.abrir(partes[1]);
     }
     if (partes[0] === 'gravacao' && partes[1]) {
       mostrar('tela-editor');
@@ -459,7 +469,11 @@ B7.Rota = (function () {
     });
 
     /* ---- topo: editor ---- */
-    ligarTopo('bt-voltar', () => { location.hash = '#/'; });
+    /* do editor de roteiros, "voltar" leva à GRAVAÇÃO (Gravações 2.0) */
+    ligarTopo('bt-voltar', () => {
+      const m = /^#\/gravacao\/([^/?]+)/.exec(location.hash);
+      location.hash = m ? '#/gravacao/' + m[1] : '#/';
+    });
     document.getElementById('ed-status').onclick = () => B7.Editor.menuStatus();
     ligarTopo('bt-imprimir', () => B7.Editor.imprimir());
     ligarTopo('bt-baixar', () => B7.Editor.baixar());

@@ -263,10 +263,17 @@ B7.Dashboard = (function () {
       '</div>';
   }
 
-  const metaGravacao = g =>
-    (g.data_gravacao ? '<span>' + B7.UI.dataBR(g.data_gravacao) + '</span><span class="p"></span>' : '') +
-    '<span>' + g.total_roteiros + ' roteiro' + (g.total_roteiros === 1 ? '' : 's') + '</span>' +
-    '<span class="p"></span><span>editado ' + B7.UI.quando(g.updated_at) + '</span>';
+  /* Gravações 2.0: o card diz o mês de produção, a data (física) e
+     quanto da lista já foi gravado — não mais só "N roteiros" */
+  const metaGravacao = g => {
+    const mes = B7.Gravacao && g.competencia_ano ? B7.Gravacao.mesRef(g.competencia_ano, g.competencia_mes) : '';
+    const itens = g.total_itens != null ? +g.total_itens : +g.total_roteiros;
+    return (mes ? '<span class="gv-card-mes">' + esc(mes) + '</span><span class="p"></span>' : '') +
+      (g.data_gravacao ? '<span>' + B7.UI.dataBR(g.data_gravacao) + '</span><span class="p"></span>' : '') +
+      '<span>' + (g.total_itens != null && itens ? (+g.itens_gravados) + '/' + itens + ' gravados'
+                                               : itens + ' ite' + (itens === 1 ? 'm' : 'ns')) + '</span>';
+  };
+  const chipGravacao = g => (B7.Gravacao ? B7.Gravacao.chipSituacao(g.situacao) : B7.UI.chipStatus(g.status));
 
   function cardDestaque(g) {
     return '<div class="destaque-grav spot b7-glow" data-gravacao="' + esc(g.id) + '" ' +
@@ -275,8 +282,8 @@ B7.Dashboard = (function () {
       '<div class="info"><div class="cli">' + esc(g.cliente_nome) + '</div>' +
         '<h3>' + esc(g.nome) + '</h3>' +
         '<div class="meta">' + metaGravacao(g) + '</div></div>' +
-      '<div class="lado">' + B7.UI.chipStatus(g.status) +
-        '<button class="b pri">' + IC.play + 'Continuar edição</button>' +
+      '<div class="lado">' + chipGravacao(g) +
+        '<button class="b pri">' + IC.play + 'Abrir gravação</button>' +
         '<div class="menu"><button class="ico" onclick="event.stopPropagation()">⋯</button>' +
           '<div class="lista"><button data-dup="' + esc(g.id) + '">Duplicar gravação</button>' +
           '<button data-imprimir="' + esc(g.id) + '">Imprimir</button>' +
@@ -294,7 +301,7 @@ B7.Dashboard = (function () {
       'data-total-roteiros="' + g.total_roteiros + '">' +
       capa(g) +
       '<div class="meta">' + metaGravacao(g) + '</div>' +
-      '<div class="rodape">' + B7.UI.chipStatus(g.status) +
+      '<div class="rodape">' + chipGravacao(g) +
         '<div class="menu"><button class="ico" onclick="event.stopPropagation()">⋯</button>' +
           '<div class="lista"><button data-dup="' + esc(g.id) + '">Duplicar</button>' +
           '<button data-imprimir="' + esc(g.id) + '">Imprimir</button>' +
@@ -404,39 +411,78 @@ B7.Dashboard = (function () {
     ).join('');
   }
 
-  /* ================================================ TODAS AS GRAVAÇÕES */
+  /* ================================================ TODAS AS GRAVAÇÕES
+     Gravações 2.0: organizadas pelo MÊS DE REFERÊNCIA (o mês de produção
+     a que pertencem — independente do dia em que acontecem). Dentro de
+     cada mês, pela data ativa; sem data por último. Gravações antigas
+     sem mês ficam num grupo próprio, sempre visíveis. Filtros: cliente,
+     mês, responsável e status. */
+  const FG = { cliente: '', mes: '', resp: '', status: '' };
+  function chaveMes(g) { return g.competencia_ano ? g.competencia_ano + '-' + String(g.competencia_mes).padStart(2, '0') : ''; }
+  function grupoCompetencia(lista) {
+    const grupos = new Map();
+    lista.forEach(g => { const k = chaveMes(g); if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(g); });
+    const ord = (a, b) => (!a.data_gravacao ? 1 : 0) - (!b.data_gravacao ? 1 : 0) ||
+      String(a.data_gravacao || '').localeCompare(String(b.data_gravacao || '')) || String(b.updated_at).localeCompare(String(a.updated_at));
+    return [...grupos.keys()].sort((a, b) => !a ? 1 : !b ? -1 : b.localeCompare(a)).map(k => ({
+      rotulo: k ? B7.Gravacao.mesRef(+k.slice(0, 4), +k.slice(5, 7)) : 'Sem mês de referência (gravações antigas)',
+      itens: grupos.get(k).sort(ord) }));
+  }
+  function blocoCompetencia(lista) {
+    return grupoCompetencia(lista).map(gr =>
+      '<div class="grupo-mes"><h3 class="grupo-mes-tit sem-cap">' + esc(gr.rotulo) +
+        '<span class="conta-mes">' + gr.itens.length + '</span></h3>' +
+        '<div class="grade">' + gr.itens.map(cardGravacao).join('') + '</div></div>').join('');
+  }
   async function abrirGravacoes() {
     marcarNav('#/gravacoes');
     B7.Rota.titulo(['Gravações']);
     esqueleto('lista');
     let gravacoes;
     try { gravacoes = await B7.DB.listarGravacoes(); } catch (e) { return erro(e, 'abrirGravacoes'); }
-    gravacoes.sort((a, b) => String(b.data_gravacao || '').localeCompare(String(a.data_gravacao || '')) ||
-                              String(b.updated_at).localeCompare(String(a.updated_at)));
+
+    const clientes = [...new Map(gravacoes.map(g => [g.client_id, g.cliente_nome])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR'));
+    const meses = [...new Set(gravacoes.map(chaveMes).filter(Boolean))].sort().reverse();
+    const resps = [...new Map(gravacoes.filter(g => g.videomaker_id).map(g => [g.videomaker_id, g.videomaker_nome])).entries()];
+    const STATUS = [['', 'Todas'], ['Agendada', 'Marcada'], ['Remarcada', 'Remarcada'], ['Pendente', 'Sem data'], ['Gravada', 'Concluída'], ['Cancelada', 'Cancelada']];
+    const sel = (id, atual, ops, rot) => '<select class="campo fina gv-filtro' + (atual ? ' ativo' : '') + '" id="' + id + '" aria-label="' + esc(rot) + '">' +
+      ops.map(([v, r]) => '<option value="' + esc(v) + '"' + (v === atual ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>';
 
     painel().innerHTML = '<div class="conteudo">' +
       '<div class="secao-topo"><h2 style="font-size:22px">Gravações</h2>' +
-      '<span class="conta">' + gravacoes.length + '</span><div class="espaco"></div>' +
-      '<div class="filtro" id="filtro-status">' +
-        ['Todas', 'Rascunho', 'Pronto para gravar', 'Gravado'].map((f, i) =>
-          '<button data-f="' + esc(f) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(f) + '</button>').join('') +
-      '</div>' +
+      '<span class="conta" id="gv-conta">' + gravacoes.length + '</span><div class="espaco"></div>' +
       '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button></div>' +
-      (gravacoes.length ? '<div id="lista-gravacoes">' + blocoMeses(gravacoes, 'data_gravacao', cardGravacao) + '</div>'
-                        : vazioGravacoes()) + '</div>';
+      (gravacoes.length ? '<div class="gv-filtros">' +
+        sel('fg-cliente', FG.cliente, [['', 'Cliente']].concat(clientes), 'Cliente') +
+        sel('fg-mes', FG.mes, [['', 'Mês de referência'], ['sem', 'Sem mês (antigas)']].concat(meses.map(k => [k, B7.Gravacao.mesRef(+k.slice(0, 4), +k.slice(5, 7))])), 'Mês de referência') +
+        (resps.length ? sel('fg-resp', FG.resp, [['', 'Responsável'], ['sem', 'Sem responsável']].concat(resps), 'Responsável') : '') +
+        '<div class="filtro" id="filtro-status" role="group" aria-label="Status">' + STATUS.map(([v, r]) =>
+          '<button data-f="' + esc(v) + '"' + (FG.status === v ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' + esc(r) + '</button>').join('') + '</div>' +
+      '</div>' : '') +
+      (gravacoes.length ? '<div id="lista-gravacoes"></div>' : vazioGravacoes()) + '</div>';
 
-    ligar();
+    const aplicar = () => {
+      const lista = gravacoes.filter(g =>
+        (!FG.cliente || g.client_id === FG.cliente) &&
+        (!FG.mes || (FG.mes === 'sem' ? !g.competencia_ano : chaveMes(g) === FG.mes)) &&
+        (!FG.resp || (FG.resp === 'sem' ? !g.videomaker_id : g.videomaker_id === FG.resp)) &&
+        (!FG.status || (g.situacao || 'Pendente') === FG.status));
+      const cx = document.getElementById('lista-gravacoes'); if (!cx) return;
+      cx.innerHTML = lista.length ? blocoCompetencia(lista) : '<div class="vazio"><b>Nenhuma gravação com esses filtros</b></div>';
+      const conta = document.getElementById('gv-conta'); if (conta) conta.textContent = lista.length;
+      ligar();
+    };
+    [['fg-cliente', 'cliente'], ['fg-mes', 'mes'], ['fg-resp', 'resp']].forEach(([id, k]) => {
+      const el = document.getElementById(id);
+      if (el) el.onchange = () => { FG[k] = el.value; el.classList.toggle('ativo', !!el.value); aplicar(); };
+    });
     const filtro = document.getElementById('filtro-status');
     if (filtro) filtro.querySelectorAll('button').forEach(b => b.onclick = () => {
-      filtro.querySelectorAll('button').forEach(x => x.classList.remove('on'));
-      b.classList.add('on');
-      const f = b.dataset.f;
-      const lista = f === 'Todas' ? gravacoes : gravacoes.filter(g => g.status === f);
-      document.getElementById('lista-gravacoes').innerHTML =
-        lista.length ? blocoMeses(lista, 'data_gravacao', cardGravacao)
-                     : '<div class="vazio"><b>Nada com esse status</b></div>';
-      ligar();
+      filtro.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      FG.status = b.dataset.f; aplicar();
     });
+    ligar();
+    aplicar();
   }
 
   /* ================================================ ROTEIROS RECENTES */
@@ -1547,20 +1593,41 @@ B7.Dashboard = (function () {
 
     const m = B7.UI.modal(
       '<h3>Nova gravação</h3>' +
-      '<div class="sub">Uma gravação é um grupo de roteiros de um cliente. Nomeie como quiser — ' +
-      '“Conteúdos Setembro”, “Campanha Cashback”, “Institucionais”.</div>' +
+      '<div class="sub">Uma gravação é uma sessão de produção: tudo o que a equipe vai gravar para um cliente — roteiros, trends, ' +
+      'conteúdos da Linha Editorial ou algo de improviso. Nenhum roteiro é obrigatório.</div>' +
       '<div class="mb"><label class="rot">CLIENTE</label>' +
         '<div class="linha linha-2col"><select class="campo" id="ng-cliente">' +
         (clientes.length ? opcoes : '<option value="">— nenhum cliente ainda —</option>') +
         '</select><button class="b contorno" id="ng-novo-cliente" style="flex:none">+ Novo</button></div></div>' +
       '<div class="mb"><label class="rot">NOME DA GRAVAÇÃO</label>' +
         '<input class="campo" id="ng-nome" data-foco placeholder="Ex: Conteúdos Setembro"></div>' +
+      '<div class="mb"><label class="rot">MÊS DE REFERÊNCIA <span class="leve">— obrigatório</span></label>' +
+        B7.Gravacao.camposMes(null, null, 'ng') +
+        '<div class="gv-ajuda">O mês de produção a que a gravação pertence — pode ser diferente do dia em que ela acontece.</div></div>' +
       '<div class="mb"><label class="rot">DATA DA GRAVAÇÃO <span class="leve">— opcional</span></label>' +
-        '<input class="campo" id="ng-data" type="date">' +
-        '<div style="font-size:11.5px;color:var(--ink-4);margin-top:7px">' +
-        'Pode deixar em branco. Sem data, nada de data aparece na folha impressa.</div></div>' +
+        '<div class="gv-data-hora"><input class="campo" id="ng-data" type="date" aria-label="Data da gravação">' +
+        '<input class="campo" id="ng-hora" type="time" aria-label="Horário (opcional)"></div>' +
+        '<div class="gv-ajuda">Pode marcar depois. Os itens (roteiros, trends, conteúdos) entram na tela da gravação.</div></div>' +
+      '<div class="mb"><label class="rot">RESPONSÁVEL <span class="leve">— opcional</span></label>' +
+        '<select class="campo" id="ng-vm"><option value="">Sem responsável</option></select></div>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Criar gravação</button></div>');
+
+    /* mês de referência: a data sugere (se a pessoa ainda não escolheu
+       o mês à mão); escolher o mês nunca é desfeito pela data */
+    let mesManual = false;
+    const selMes = m.querySelector('#ng-mes'), selAno = m.querySelector('#ng-ano');
+    selMes.onchange = selAno.onchange = () => { mesManual = true; selMes.classList.remove('erro'); };
+    m.querySelector('#ng-data').onchange = e => {
+      const v = e.target.value; if (!v || mesManual) return;
+      selMes.value = String(+v.slice(5, 7));
+      if (![...selAno.options].some(o => o.value === v.slice(0, 4))) selAno.insertAdjacentHTML('beforeend', '<option>' + v.slice(0, 4) + '</option>');
+      selAno.value = v.slice(0, 4);
+    };
+    B7.DB.listarVideomakers().then(vms => {
+      const s = m.querySelector('#ng-vm'); if (!s) return;
+      s.insertAdjacentHTML('beforeend', (vms || []).map(v => '<option value="' + esc(v.id) + '">' + esc(v.nome) + '</option>').join(''));
+    }).catch(() => {});
 
     m.querySelector('#ng-novo-cliente').onclick = () => {
       modalNovoCliente(c => {
@@ -1576,14 +1643,20 @@ B7.Dashboard = (function () {
       const nome = m.querySelector('#ng-nome');
       if (!sel.value) { B7.UI.toast('Crie um cliente primeiro', { tipo: 'erro' }); return; }
       if (!nome.value.trim()) { nome.classList.add('erro'); nome.focus(); return; }
+      if (!selMes.value) { selMes.classList.add('erro'); selMes.focus(); B7.UI.toast('Escolha o mês de referência', { tipo: 'erro' }); return; }
+      const data = m.querySelector('#ng-data').value, hora = m.querySelector('#ng-hora').value;
       try {
+        /* a gravação nasce sozinha (sem roteiro nenhum); a data, se houver,
+           entra pela regra canônica (ocorrência + histórico) */
         const g = await B7.Save.acao(() => B7.DB.criarGravacao({
           client_id: sel.value,
           nome: nome.value.trim(),
-          data_gravacao: m.querySelector('#ng-data').value || null,
+          competencia_ano: +selAno.value, competencia_mes: +selMes.value,
+          videomaker_id: m.querySelector('#ng-vm').value || null,
           status: 'Rascunho',
-          situacao: m.querySelector('#ng-data').value ? 'Agendada' : 'Pendente'
+          situacao: 'Pendente'
         }), 'Gravação criada');
+        if (data) { try { await B7.DB.gravacaoAgendar(g.id, data, hora || null, null); } catch (e) { B7.UI.toast('Gravação criada, mas a data não foi salva: ' + (e.message || ''), { tipo: 'erro' }); } }
         B7.DB.registrar({ tipo: 'criar', entidade: 'gravacao', id: g.id, cliente: sel.value,
           gravacao: g.id, texto: 'Nova gravação: ' + g.nome });
         m.fechar();
@@ -1608,6 +1681,7 @@ B7.Dashboard = (function () {
         esc(c.nome) + '</option>').join('') + '</select></div>' +
       '<div class="mb"><label class="rot">NOME</label>' +
       '<input class="campo" id="dg-nome" data-foco value="' + esc(g.nome + ' (cópia)') + '"></div>' +
+      '<div class="mb"><label class="rot">MÊS DE REFERÊNCIA</label>' + B7.Gravacao.camposMes(g.competencia_ano, g.competencia_mes, 'dg') + '</div>' +
       '<div class="mb"><label class="rot">DATA <span class="leve">— opcional</span></label>' +
       '<input class="campo" id="dg-data" type="date"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
@@ -1618,11 +1692,13 @@ B7.Dashboard = (function () {
         const nova = await B7.Save.acao(() => B7.DB.duplicarGravacao(id, {
           client_id: m.querySelector('#dg-cliente').value,
           nome: m.querySelector('#dg-nome').value.trim() || g.nome,
-          data_gravacao: m.querySelector('#dg-data').value || null,
-          situacao: m.querySelector('#dg-data').value ? 'Agendada' : 'Pendente',
+          data_gravacao: null, situacao: 'Pendente',
+          competencia_ano: +m.querySelector('#dg-ano').value || null, competencia_mes: +m.querySelector('#dg-mes').value || null,
           local: g.local, responsavel: g.responsavel, videomaker: g.videomaker,
           observacoes: g.observacoes, status: 'Rascunho'
         }), 'Gravação duplicada');
+        const dataDup = m.querySelector('#dg-data').value;
+        if (dataDup) { try { await B7.DB.gravacaoAgendar(nova.id, dataDup); } catch (e) {} }
         m.fechar();
         location.hash = '#/gravacao/' + nova.id;
       } catch (e) {}
