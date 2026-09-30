@@ -33,6 +33,7 @@ B7.Nav = (function () {
       "video": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"><rect x=\"2.5\" y=\"6\" width=\"13\" height=\"12\" rx=\"2.5\"/><path d=\"M15.5 10.5l6-3.5v10l-6-3.5z\"/></svg>",
       "gravacoes": "<svg viewBox=\"0 0 24 24\"><path d=\"M3 9.5h18\"/><path d=\"M3.6 9.5l1.7-4.6 15 0-1.7 4.6\"/><path d=\"M8.2 4.9l-1.7 4.6M13.2 4.9l-1.7 4.6M18.2 4.9l-1.7 4.6\"/><rect x=\"3\" y=\"9.5\" width=\"18\" height=\"11\" rx=\"2\"/></svg>",
       "calendario": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"><rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"16\" rx=\"2.5\"/><path d=\"M3.5 9.5h17M8.5 3v3M15.5 3v3\"/><circle cx=\"8.3\" cy=\"14\" r=\"1\"/><circle cx=\"12\" cy=\"14\" r=\"1\"/><circle cx=\"15.7\" cy=\"14\" r=\"1\"/></svg>",
+      "oportunidades": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z\"/><path d=\"M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z\"/></svg>",
       "roteiros": "<svg viewBox=\"0 0 24 24\"><path d=\"M5 3.5h9l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1-1.5z\"/><path d=\"M14 3.5V9h5\"/><path d=\"M8.5 13.5h7M8.5 17h4.5\"/></svg>",
       "linhas": "<svg viewBox=\"0 0 24 24\"><rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"16\" rx=\"2.5\"/><path d=\"M3.5 9.5h17M8.5 3v3M15.5 3v3M7.5 13.5h4M7.5 17h7\"/></svg>",
       "semanas": "<svg viewBox=\"0 0 24 24\"><rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"16\" rx=\"2.5\"/><path d=\"M3.5 9.5h17M8.5 3v3M15.5 3v3M7.5 13h3M13.5 13h3M7.5 16.5h3\"/></svg>",
@@ -70,6 +71,7 @@ B7.Nav = (function () {
     video:       { rota: '#/video', rotulo: 'Edição de vídeo', curto: 'Vídeo', id: 'nav-video', base: ['video'], pode: () => pode('video') },
     gravacoes:   { rota: '#/gravacoes', rotulo: 'Gravações', curto: 'Gravações', base: ['gravacoes', 'gravacao', 'diaria'], pode: () => pode('gravacoes') },
     calendario:  { rota: '#/calendario', rotulo: 'Calendário', curto: 'Calendário', id: 'nav-calendario', base: ['calendario'], pode: () => pode('calendario') },
+    oportunidades: { rota: '#/oportunidades', rotulo: 'Oportunidades', curto: 'Oportunidades', id: 'nav-oportunidades', base: ['oportunidades'], pode: () => pode('oportunidades') },
     roteiros:    { rota: '#/roteiros', rotulo: 'Roteiros', curto: 'Roteiros', base: ['roteiros'], pode: () => pode('roteiros') },
     linhas:      { rota: '#/linhas', rotulo: 'Linhas editoriais', curto: 'Linhas', base: ['linhas', 'linha'], pode: () => pode('linhas') },
     semanas:     { rota: '#/semanas', rotulo: 'Status semanal', curto: 'Status', base: ['semanas', 'semana'], pode: () => pode('semanas') },
@@ -97,7 +99,7 @@ B7.Nav = (function () {
     designer:    ['design', 'linhas', 'calendario'],
     gestao:      ['kanban', 'clientes', 'gravacoes', 'publicacoes']   /* sem função operacional (ex.: admin puro) */
   };
-  const OPERACAO = ['clientes', 'publicacoes', 'aprovacoes', 'kanban', 'design', 'video', 'gravacoes', 'calendario',
+  const OPERACAO = ['clientes', 'publicacoes', 'aprovacoes', 'kanban', 'design', 'video', 'gravacoes', 'calendario', 'oportunidades',
                     'roteiros', 'linhas', 'semanas'];
   const FERRAMENTAS = ['arquivados', 'lixeira', 'usuarios', 'config', 'atalhos'];
 

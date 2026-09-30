@@ -160,6 +160,10 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return partes[1] ? B7.Video.abrirDetalhe(partes[1]) : B7.Video.abrir(params);
     }
+    if (partes[0] === 'oportunidades' && B7.Oportunidades) {
+      mostrar('tela-dashboard');
+      return B7.Oportunidades.abrir(params);
+    }
     if (partes[0] === 'calendario' && B7.Calendario) {
       mostrar('tela-dashboard');
       return B7.Calendario.abrir(params);

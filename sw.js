@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v111';
+const CACHE = 'roteiros-b7-v112';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -14,14 +14,14 @@ const CASCA = [
   './js/autosave.js', './js/print.js', './js/dashboard.js', './js/editor.js', './js/gravacao.js',
   './js/backup.js', './js/app.js',
   './js/auth.js', './js/usuarios.js', './js/central.js', './js/conteudo.js',
-  './js/linha.js', './js/design.js', './js/video.js', './js/eventos.js', './js/calendario.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
+  './js/linha.js', './js/design.js', './js/video.js', './js/eventos.js', './js/calendario.js', './js/oportunidades.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
   './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js', './js/painel-coord.js', './js/painel-design.js', './js/painel-multi.js', './js/topo.js', './js/nav.js',
   './js/permissoes.js', './js/portal.js', './js/kanban.js', './js/perfil.js', './js/foto.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js',
   './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js', './js/vendor/xlsx.full.min.js',
   './styles/auth.css', './styles/central.css', './styles/conteudo.css', './styles/semana.css',
   './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css', './styles/linha.css', './styles/design.css',
-  './styles/video.css', './styles/calendario.css', './styles/gravacao.css', './styles/publicacoes.css', './styles/painel.css', './styles/topo.css', './styles/nav.css',
+  './styles/video.css', './styles/calendario.css', './styles/oportunidades.css', './styles/gravacao.css', './styles/publicacoes.css', './styles/painel.css', './styles/topo.css', './styles/nav.css',
   './assets/brand/logo-color.png', './assets/brand/logo-white.png',
   './assets/brand/symbol-color.png', './assets/brand/symbol-white.png',
   './assets/fonts/inter-400.woff2', './assets/fonts/inter-500.woff2',

@@ -18,8 +18,9 @@
      design     → design_demandas.prazo (Produção de Design)
      aprovacao  → NÃO entra: aprovações não têm prazo/data agendada
                   canônica (só enviado_em/decidido_em). Não inventamos.
-     oportunidade → reservado para a fase 7 (datas comemorativas):
-                  basta registrar um adaptador novo em ADAPTADORES.
+     oportunidade → datas comemorativas/campanhas (fase 7, B7.Oportunidades):
+                  camada INFORMATIVA opcional (ESTADO.oportunidades), só
+                  lida quando a pessoa liga a camada no Calendário.
 
    Evento normalizado:
      { id (estável: '<dominio>:<id da fonte>'), dominio, fonteId,
@@ -69,7 +70,8 @@ B7.Eventos = (function () {
     publicacao: { rot: 'Publicação', plural: 'Publicações', grupo: 'Publicações', ordem: 2, ic: SVG('<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8 9h8M8 12.5h8M8 16h5"/>') },
     video:      { rot: 'Vídeo',      plural: 'Vídeo',       grupo: 'Prazos de vídeo',  ordem: 3, ic: SVG('<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M10 9.5v5l4.5-2.5z"/>') },
     design:     { rot: 'Design',     plural: 'Design',      grupo: 'Prazos de design', ordem: 4, ic: SVG('<path d="M4 20l4-1 11-11a2.1 2.1 0 0 0-3-3L5 16z"/><path d="M14 6l3 3"/>') },
-    google:     { rot: 'Google',     plural: 'Agenda Google', grupo: 'Agenda Google (sem vínculo)', ordem: 5, ic: SVG('<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3"/>') }
+    google:     { rot: 'Google',     plural: 'Agenda Google', grupo: 'Agenda Google (sem vínculo)', ordem: 5, ic: SVG('<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3"/>') },
+    oportunidade: { rot: 'Oportunidade', plural: 'Oportunidades', grupo: 'Oportunidades (datas comemorativas)', ordem: 6, ic: SVG('<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>') }
   };
   /* filtro "tipo": Google cru mora junto de Gravações (é agenda de gravação) */
   const TIPO_DO_DOMINIO = { gravacao: 'gravacoes', google: 'gravacoes', publicacao: 'publicacoes', video: 'video', design: 'design' };
@@ -192,11 +194,30 @@ B7.Eventos = (function () {
           href: '#/design/' + d.id, extra: { linha: d.linha_nome }
         };
       }
+    },
+    /* camada informativa: não é compromisso, não tem responsável nem
+       status operacional. Campanha que começou antes da janela aparece
+       no primeiro dia visível ("em andamento"). */
+    oportunidade: {
+      disponivel: () => !!ESTADO.oportunidades && !!B7.Oportunidades && ['admin', 'coordenador', 'designer', 'videomaker'].includes(papel()),
+      carregar: (ini, fim) => B7.Oportunidades.periodo(ini, fim).then(l => l.map(it => Object.assign({ diaVis: it.ini < ini ? ini : it.ini }, it))),
+      normalizar: it => {
+        const c = B7.Oportunidades.CONF[it.op.confiabilidade] || B7.Oportunidades.CONF.pendente;
+        const ignorados = it.relacionados.filter(r => r.ajuste && !r.nivel).map(r => r.cliente.id);
+        return {
+          id: 'oportunidade:' + it.op.id + ':' + it.ini, dominio: 'oportunidade', fonteId: it.op.id,
+          titulo: it.op.nome, sub: B7.Oportunidades.NATUREZA[it.op.natureza] || '',
+          clienteId: null, clienteNome: null, clienteLogo: null,
+          dia: it.diaVis, hora: null, horaFim: null, diaInteiro: true, responsavelId: null, responsavelNome: null,
+          status: it.op.confiabilidade, statusRotulo: c.rot, tom: c.tom,
+          cancelado: false, concluido: false, historico: false, href: null,
+          extra: { porCliente: it.porCliente, ignorados, nivelMax: it.nivelMax, geral: it.geral, ini: it.ini, fim: it.fim, emAndamento: it.ini < it.diaVis }
+        };
+      }
     }
-    /* oportunidade: { disponivel, carregar, normalizar } — fase 7 */
   };
 
-  const ESTADO = { googleConectado: false };
+  const ESTADO = { googleConectado: false, oportunidades: false };
 
   /* ------------------------------------------------------------ cache
      Por domínio + janela. Janela que já passou muda pouco (10 min);
@@ -278,12 +299,23 @@ B7.Eventos = (function () {
   /* filtros combinados (tipo AND cliente AND responsável AND canceladas) */
   function filtrar(eventos, f) {
     const tipo = TIPOS.find(t => t.id === f.tipo);
-    return eventos.filter(ev =>
+    return eventos.filter(ev => ev.dominio === 'oportunidade' ? filtrarOportunidade(ev, f) :
       (!tipo || tipo.dominios.includes(ev.dominio)) &&
       (!f.cliente || ev.clienteId === f.cliente) &&
       (!f.resp || ev.responsavelId === f.resp) &&
       (f.canceladas || !ev.cancelado));
   }
+  /* oportunidade = camada por cima dos filtros de tipo: aparece com a
+     camada ligada; com cliente, só as relevantes para ele (ignoradas para
+     ele somem, as dos outros não mudam); sem cliente, as que têm algum
+     cliente muito relevante/relacionado + as gerais. Responsável não se
+     aplica (não é compromisso de ninguém). */
+  function filtrarOportunidade(ev, f) {
+    if (!f.op || f.resp) return false;
+    const x = ev.extra;
+    if (f.cliente) return !!x.porCliente[f.cliente] || (x.geral && !x.ignorados.includes(f.cliente));
+    return x.nivelMax === 'muito' || x.nivelMax === 'relacionada' || x.geral;
+  }
 
-  return { DATAS, DOMINIOS, TIPOS, TIPO_DO_DOMINIO, ADAPTADORES, ESTADO, carregar, carregarDominio, filtrar, invalidar, dominiosDisponiveis, tiposDisponiveis, ordenar };
+  return { DATAS, DOMINIOS, TIPOS, TIPO_DO_DOMINIO, ADAPTADORES, ESTADO, carregar, carregarDominio, filtrar, filtrarOportunidade, invalidar, dominiosDisponiveis, tiposDisponiveis, ordenar };
 })();

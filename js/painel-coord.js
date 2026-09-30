@@ -390,7 +390,19 @@ B7.PainelCoord = (function () {
         (vazia ? '<p class="pn-nota">Semana tranquila por enquanto.</p>' : '');
     }
     cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pnc-t-semana">Minha semana</h2>' +
-      '<span class="pn-sec-sub">' + d.ddmm(seg) + ' – ' + d.ddmm(d.somarDias(seg, 6)) + '</span>' + (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="pn-link pn-link-cal" href="#/calendario?v=semana&amp;d=' + seg + '">Ver no calendário</a>' : '') + '</div>' + corpo;
+      '<span class="pn-sec-sub">' + d.ddmm(seg) + ' – ' + d.ddmm(d.somarDias(seg, 6)) + '</span>' + (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="pn-link pn-link-cal" href="#/calendario?v=semana&amp;d=' + seg + '">Ver no calendário</a>' : '') + '</div>' + corpo +
+      (B7.Oportunidades && B7.Perm && B7.Perm.podeRota('oportunidades') ? '<p class="pn-nota op-painel" id="pnc-op" hidden></p>' : '');
+    oportunidadesResumo();
+  }
+  /* Oportunidades (fase 7): uma linha discreta, sem virar tarefa */
+  function oportunidadesResumo() {
+    const el = document.getElementById('pnc-op'); if (!el) return;
+    B7.Oportunidades.resumoPainel(15).then(r => {
+      if (!document.body.contains(el) || !r.total) return;
+      el.innerHTML = B7.Oportunidades.IC + '<span>' + r.total + ' oportunidade' + (r.total > 1 ? 's relevantes' : ' relevante') + ' nos próximos 15 dias' +
+        (r.clientes ? ' · ' + r.clientes + ' cliente' + (r.clientes > 1 ? 's' : '') : '') + '</span> <a href="#/oportunidades?p=15&amp;rel=relevantes">Ver</a>';
+      el.hidden = false;
+    }).catch(() => {});
   }
 
   /* Fluxo de conteúdos do mês: barras horizontais, uma por status

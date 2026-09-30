@@ -52,7 +52,7 @@ B7.Calendario = (function () {
   let conexao = { conectado: false }, agendas = [], eventos = [], ocorrencias = [], clientesCache = null;
 
   /* estado da tela */
-  const V = { vista: 'mes', data: null, tipo: '', cliente: '', resp: '', canceladas: false };
+  const V = { vista: 'mes', data: null, tipo: '', cliente: '', resp: '', canceladas: false, op: false };
   let R = { eventos: [], erros: {}, ini: null, fim: null, carregando: false, pronto: false };
   let geracao = 0, sincronizados = new Map(), nomesResp = new Map(), mqOuvinte = null;
 
@@ -83,7 +83,7 @@ B7.Calendario = (function () {
     const p = params || new URLSearchParams(location.hash.split('?')[1] || '');
     let pref = {};
     try { pref = JSON.parse(sessionStorage.getItem('b7.calendario.v2') || '{}'); } catch (e) {}
-    const temFiltroUrl = ['v', 'd', 'tipo', 'cliente', 'resp', 'canc'].some(k => p.has(k));
+    const temFiltroUrl = ['v', 'd', 'tipo', 'cliente', 'resp', 'canc', 'op'].some(k => p.has(k));
     const base = temFiltroUrl ? {} : pref;
     V.vista = ['mes', 'semana', 'dia'].includes(p.get('v')) ? p.get('v') : (['mes', 'semana', 'dia'].includes(base.vista) ? base.vista : 'mes');
     V.data = /^\d{4}-\d{2}-\d{2}$/.test(p.get('d') || '') ? p.get('d') : D().hoje();
@@ -91,6 +91,9 @@ B7.Calendario = (function () {
     V.cliente = p.get('cliente') || (temFiltroUrl ? '' : base.cliente || '');
     V.resp = p.get('resp') || (temFiltroUrl ? '' : base.resp || '');
     V.canceladas = p.get('canc') === '1' || (!temFiltroUrl && !!base.canceladas);
+    /* camada de Oportunidades: desligada por padrão */
+    V.op = p.get('op') === '1' || (!temFiltroUrl && !!base.op);
+    E().ESTADO.oportunidades = V.op;
     if (V.tipo && !E().TIPOS.some(t => t.id === V.tipo)) V.tipo = '';
   }
   function gravarEstado() {
@@ -100,8 +103,9 @@ B7.Calendario = (function () {
     if (V.cliente) q.set('cliente', V.cliente);
     if (V.resp) q.set('resp', V.resp);
     if (V.canceladas) q.set('canc', '1');
+    if (V.op) q.set('op', '1');
     try { history.replaceState(null, '', location.pathname + location.search + '#/calendario?' + q.toString()); } catch (e) {}
-    try { sessionStorage.setItem('b7.calendario.v2', JSON.stringify({ vista: V.vista, tipo: V.tipo, cliente: V.cliente, resp: V.resp, canceladas: V.canceladas })); } catch (e) {}
+    try { sessionStorage.setItem('b7.calendario.v2', JSON.stringify({ vista: V.vista, tipo: V.tipo, cliente: V.cliente, resp: V.resp, canceladas: V.canceladas, op: V.op })); } catch (e) {}
   }
 
   /* janela carregada: sempre o mínimo que a vista mostra */
@@ -339,7 +343,8 @@ B7.Calendario = (function () {
     const cx = document.getElementById('cb-filtros'); if (!cx) return;
     const tipos = E().tiposDisponiveis();
     /* contagens do período, respeitando os OUTROS filtros */
-    const base = E().filtrar(R.eventos, Object.assign({}, V, { tipo: '' }));
+    const base = E().filtrar(R.eventos, Object.assign({}, V, { tipo: '' })).filter(ev => ev.dominio !== 'oportunidade');
+    const nOp = V.op ? E().filtrar(R.eventos, V).filter(ev => ev.dominio === 'oportunidade').length : 0;
     const nTipo = t => t ? base.filter(ev => t.dominios.includes(ev.dominio)).length : base.length;
     /* responsáveis: por id canônico, com nome vindo do próprio registro */
     const resps = new Map();
@@ -363,12 +368,15 @@ B7.Calendario = (function () {
           [...resps.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')).map(([id, n]) =>
             '<option value="' + esc(id) + '"' + (id === V.resp ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>' : '') +
         '<label class="cb-check"><input type="checkbox" id="cb-f-canc"' + (V.canceladas ? ' checked' : '') + '><span>Mostrar canceladas</span></label>' +
+        (B7.Oportunidades ? '<button type="button" class="cb-camada-op' + (V.op ? ' on' : '') + '" id="cb-f-op" aria-pressed="' + V.op + '" title="Datas comemorativas e campanhas relevantes' + (V.cliente ? ' para este cliente' : ' para os clientes') + '">' +
+          '<i class="cb-dom-ic">' + E().DOMINIOS.oportunidade.ic + '</i>Oportunidades' + (V.op && R.pronto ? '<span class="cb-n">' + nOp + '</span>' : '') + '</button>' : '') +
         (ativos ? '<button class="b fina contorno" id="cb-f-limpar">Limpar</button>' : '') +
       '</div>';
     cx.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => { V.tipo = b.dataset.tipo; aplicarFiltro(); });
     const sc = cx.querySelector('#cb-f-cliente'); if (sc) sc.onchange = () => { V.cliente = sc.value; aplicarFiltro(); };
     const sr = cx.querySelector('#cb-f-resp'); if (sr) sr.onchange = () => { V.resp = sr.value; aplicarFiltro(); };
     const ck = cx.querySelector('#cb-f-canc'); if (ck) ck.onchange = () => { V.canceladas = ck.checked; aplicarFiltro(); };
+    const bop = cx.querySelector('#cb-f-op'); if (bop) bop.onclick = () => { V.op = !V.op; E().ESTADO.oportunidades = V.op; gravarEstado(); pintarFiltros(); carregar({ silencioso: true }); };
     const lp = cx.querySelector('#cb-f-limpar'); if (lp) lp.onclick = () => { Object.assign(V, { tipo: '', cliente: '', resp: '', canceladas: false }); aplicarFiltro(); };
   }
   function aplicarFiltro() { gravarEstado(); pintarFiltros(); pintarCorpo(); }
@@ -376,7 +384,7 @@ B7.Calendario = (function () {
   function pintarAvisos() {
     const cx = document.getElementById('cb-avisos'); if (!cx) return;
     const erros = Object.keys(R.erros || {});
-    const NOME = { gravacao: 'as gravações', google: 'a agenda do Google', publicacao: 'as publicações', video: 'os prazos de Vídeo', design: 'os prazos de Design', geral: 'o calendário' };
+    const NOME = { oportunidade: 'as oportunidades', gravacao: 'as gravações', google: 'a agenda do Google', publicacao: 'as publicações', video: 'os prazos de Vídeo', design: 'os prazos de Design', geral: 'o calendário' };
     cx.innerHTML = erros.map(k => '<div class="cb-aviso erro" role="alert">Não foi possível carregar ' + (NOME[k] || k) +
         '. <button class="cb-link" data-recarregar>Tentar de novo</button></div>').join('') +
       (conexao.avisoSync && souGestor() ? '<div class="cb-aviso">A sincronização com o Google falhou agora — o Google pode estar um pouco desatualizado aqui.</div>' : '') +
@@ -425,7 +433,7 @@ B7.Calendario = (function () {
   const DOM = d => E().DOMINIOS[d];
   function horaTx(ev) {
     if (ev.hora) return ev.hora + (ev.horaFim ? '–' + ev.horaFim : '');
-    return ev.dominio === 'video' || ev.dominio === 'design' ? 'Prazo' : ev.dominio === 'publicacao' ? 'Publicação' : 'Dia todo';
+    return ev.dominio === 'video' || ev.dominio === 'design' ? 'Prazo' : ev.dominio === 'publicacao' ? 'Publicação' : ev.dominio === 'oportunidade' ? (ev.extra.emAndamento ? 'Em andamento' : 'Data') : 'Dia todo';
   }
   const rotStatus = ev => ev.historico && ev.status === 'remarcada' ? 'Remarcada (data antiga)' : ev.statusRotulo;
   function ariaEvento(ev) {
@@ -449,8 +457,10 @@ B7.Calendario = (function () {
     const resp = ev.responsavelNome || (ev.responsavelId && nomesResp.get(ev.responsavelId)) || '';
     return '<button type="button" class="cb-linha d-' + ev.dominio + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + '" data-ev="' + esc(ev.id) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
       '<span class="cb-linha-h">' + esc(horaTx(ev)) + '</span>' +
-      '<span class="cb-linha-tx"><b>' + esc(ev.clienteNome || DOM(ev.dominio).rot) + '</b>' +
-        '<span>' + esc(ev.titulo) + (ev.sub ? ' · ' + esc(ev.sub) : '') + '</span>' +
+      (ev.dominio === 'oportunidade'
+        ? '<span class="cb-linha-tx"><b>' + esc(ev.titulo) + '</b><span>' + esc(ev.sub || '') + '</span>'
+        : '<span class="cb-linha-tx"><b>' + esc(ev.clienteNome || DOM(ev.dominio).rot) + '</b>' +
+        '<span>' + esc(ev.titulo) + (ev.sub ? ' · ' + esc(ev.sub) : '') + '</span>') +
         (ev.dominio === 'gravacao' && ev.extra.referencia ? '<small>Referente a ' + esc(ev.extra.referencia) + '</small>' : '') +
       '</span>' +
       '<span class="cb-linha-lado">' + statusHTML(ev) + (resp ? '<small class="cb-resp">' + esc(resp.split(' ')[0]) + '</small>' : '') + '</span>' +
@@ -593,6 +603,7 @@ B7.Calendario = (function () {
   function previa(id) {
     const ev = R.eventos.find(e => e.id === id); if (!ev) return;
     if (ev.dominio === 'google') return modalEvento(ev.extra.bruto);
+    if (ev.dominio === 'oportunidade') return B7.Oportunidades.folha(ev.fonteId, { dia: ev.extra.ini, cliente: V.cliente || null, aoMudar: recarregarLocal });
     const dom = DOM(ev.dominio), d = D().local(ev.dia);
     const resp = ev.responsavelNome || (ev.responsavelId && nomesResp.get(ev.responsavelId)) || '';
     const quando = DIAS_SEMANA_ABREV[d.getDay()] + ', ' + D().pad(d.getDate()) + ' ' + MESES[d.getMonth()].toUpperCase() + ' ' + d.getFullYear() +

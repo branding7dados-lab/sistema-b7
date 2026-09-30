@@ -152,7 +152,8 @@ B7.Linha = (function () {
   }
 
   function corpoHTML() {
-    return L.aba === 'geral' ? visaoGeral() :
+    /* Oportunidades vinculadas (fase 7): seção discreta, preenchida depois */
+    return L.aba === 'geral' ? visaoGeral() + '<div id="ln-op"></div>' :
            L.aba === 'estrategia' ? estrategia() :
            L.aba === 'criativos' ? criativos() :
            L.aba === 'design' ? design() : postagens();
@@ -774,6 +775,27 @@ B7.Linha = (function () {
      vista de calendário é o Calendário B7, aberto já filtrado em
      Publicações, no cliente e no mês desta linha (mesma regra de data
      pura, mesmos destinos canônicos). A lista continua aqui. */
+  /* vínculo OPCIONAL conteúdo ↔ oportunidade — só entre as oportunidades
+     já vinculadas a esta linha; não cria nem muda mais nada */
+  async function slotOportunidade(m, c, leitura) {
+    const slot = m.querySelector('#ct-op-slot'); if (!slot || !B7.Oportunidades) return;
+    let vinc = [], base;
+    try { [vinc, base] = await Promise.all([B7.DB.oportunidadeLinhas({ linha: L.linha.id }), B7.Oportunidades.carregarBase()]); } catch (e) { return; }
+    const ops = vinc.map(v => base.todas.get(v.oportunidade_id)).filter(Boolean);
+    if (!ops.length || !document.body.contains(slot)) return;
+    const atual = ops.find(o => o.id === c.oportunidade_id);
+    const podeEditar = !leitura && ['admin', 'coordenador'].includes(B7.Auth.papel());
+    slot.innerHTML = '<div class="mb"><label class="rot" for="ct-op">OPORTUNIDADE <span class="leve">— opcional</span></label>' +
+      (podeEditar
+        ? '<select class="campo" id="ct-op"><option value="">Nenhuma</option>' + ops.map(o => '<option value="' + esc(o.id) + '"' + (c.oportunidade_id === o.id ? ' selected' : '') + '>' + esc(o.nome) + '</option>').join('') + '</select>'
+        : '<div class="opcoes"><button class="on" disabled>' + esc(atual ? atual.nome : 'Nenhuma') + '</button></div>') + '</div>';
+    const s = slot.querySelector('#ct-op');
+    if (s) s.onchange = async () => {
+      try { await B7.DB.conteudoDefinirOportunidade(c.id, s.value || null); c.oportunidade_id = s.value || null; B7.UI.toast(s.value ? 'Conteúdo ligado à oportunidade.' : 'Oportunidade removida do conteúdo.'); }
+      catch (e) { s.value = c.oportunidade_id || ''; B7.UI.toast('Não foi possível salvar: ' + (e.message || 'erro')); }
+    };
+  }
+
   function hrefCalendarioLinha() {
     const q = new URLSearchParams({ v: 'mes', d: L.linha.ano + '-' + String(L.linha.mes).padStart(2, '0') + '-01', tipo: 'publicacoes' });
     if (L.linha.client_id) q.set('cliente', L.linha.client_id);
@@ -871,6 +893,8 @@ B7.Linha = (function () {
   /* ==================================================== interações */
   function ligarAba() {
     const p = painel();
+    const lop = p.querySelector('#ln-op');
+    if (lop && B7.Oportunidades) B7.Oportunidades.secaoLinha(lop, L.linha);
 
     p.querySelectorAll('[data-novo-conteudo]').forEach(b => b.onclick = () => modalNovoConteudo());
     p.querySelectorAll('[data-espiar]').forEach(b => b.onclick = e => {
@@ -1306,6 +1330,8 @@ B7.Linha = (function () {
               (pct(p) ? ' (' + pct(p) + '%)' : '') + '</option>').join('') +
           '</select></div>'
         : '') +
+      /* oportunidade (fase 7): só aparece se a linha tiver alguma vinculada */
+      '<div id="ct-op-slot"></div>' +
       '</div>' +
       '<div class="bloco-formato"><h4>Status</h4>' +
       '<div class="mb">' +
@@ -1407,6 +1433,7 @@ B7.Linha = (function () {
       { larga: true, extra: 'modal-conteudo', aoFechar: () => { B7.Save.agora().catch(() => {}); atualizar(); } });
 
     C.ligarCampos(m, espelhar);
+    slotOportunidade(m, c, leitura);
 
     /* "Copiar legenda" copia o valor ATUAL do campo, mesmo o que ainda
        não foi salvo (autosave tem debounce de 650ms) — lê direto do

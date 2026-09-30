@@ -851,6 +851,11 @@ B7.Dashboard = (function () {
     });
     if (abaCliente === 'gravacoes') ligarFiltrosGravacoes(gravacoes);
     if (abaCliente === 'arquivados') carregarArquivadosCliente(id);
+    /* Oportunidades do cliente (fase 7): segmentos + próximas datas */
+    if (abaCliente === 'geral' && B7.Oportunidades) {
+      const cx = painel().querySelector('.conteudo');
+      if (cx) { const el = document.createElement('div'); el.id = 'cli-oportunidades'; cx.appendChild(el); B7.Oportunidades.secaoCliente(el, id); }
+    }
   }
 
   /* Arquivados do cliente: gravações e linhas editoriais que saíram de

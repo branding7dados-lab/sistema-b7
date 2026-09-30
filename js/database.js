@@ -2177,6 +2177,54 @@ B7.DB = (function () {
         .select('id,client_id,cliente_nome,cliente_logo_url,designer_id,designer_nome,titulo,conteudo_titulo,conteudo_tipo,tipo,prazo,status,linha_nome')
         .gte('prazo', inicio).lte('prazo', fim).order('prazo', { ascending: true }).limit(1500));
     },
+    /* ------------------------------------------ OPORTUNIDADES (fase 7)
+       Definições pequenas (algumas centenas): carregadas de uma vez e
+       resolvidas por ano no navegador (B7.Oportunidades). Escrita só por
+       RPC — o banco decide permissão. */
+    async oportunidadesBase() {
+      const [ops, datas, provas, temas, segs, ajustes] = await Promise.all([
+        sb().from('oportunidades').select('id,chave,nome,aliases,descricao,tipo_data,mes,dia,regra,duracao_dias,natureza,abrangencia,uf,municipio,categorias,tags,geral,confiabilidade,revisao,possivel_duplicata_de,ativo,verificado_em,sincronizado_em').limit(5000),
+        sb().from('oportunidade_datas').select('oportunidade_id,data,data_fim').limit(10000),
+        sb().from('oportunidade_provas').select('oportunidade_id,fonte_id,titulo_na_fonte,url,detalhe,visto_em,ativo').limit(10000),
+        sb().from('temas').select('id,nome,pai,ordem').order('ordem'),
+        sb().from('cliente_segmentos').select('client_id,tema_id,origem'),
+        sb().from('oportunidade_cliente_ajustes').select('oportunidade_id,client_id,decisao,em')
+      ]);
+      return { ops: ok(ops), datas: ok(datas), provas: ok(provas), temas: ok(temas), segmentos: ok(segs), ajustes: ok(ajustes) };
+    },
+    async oportunidadeFontes() {
+      return ok(await sb().from('oportunidade_fontes').select('*').order('nome'));
+    },
+    async oportunidadeExecucoes(limite) {
+      return ok(await sb().from('oportunidade_sync_execucoes').select('*').order('iniciado_em', { ascending: false }).limit(limite || 20));
+    },
+    async oportunidadeLinhas(filtro) {
+      let q = sb().from('oportunidade_linhas').select('oportunidade_id,linha_id,data_ocorrencia,observacao,criado_em,linhas_editoriais(nome,client_id,mes,ano)');
+      if (filtro && filtro.linha) q = q.eq('linha_id', filtro.linha);
+      if (filtro && filtro.oportunidade) q = q.eq('oportunidade_id', filtro.oportunidade);
+      return ok(await q.order('data_ocorrencia'));
+    },
+    oportunidadeAjustarCliente(op, cliente, decisao) { return this.rpc('oportunidade_ajustar_cliente', { p_oportunidade_id: op, p_client_id: cliente, p_decisao: decisao || null }); },
+    oportunidadeVincularLinha(op, linha, data, obs) { return this.rpc('oportunidade_vincular_linha', { p_oportunidade_id: op, p_linha_id: linha, p_data: data, p_observacao: obs || null }); },
+    oportunidadeDesvincularLinha(op, linha) { return this.rpc('oportunidade_desvincular_linha', { p_oportunidade_id: op, p_linha_id: linha }); },
+    conteudoDefinirOportunidade(conteudo, op) { return this.rpc('conteudo_definir_oportunidade', { p_conteudo_id: conteudo, p_oportunidade_id: op || null }); },
+    clienteSegmentosDefinir(cliente, temas) { return this.rpc('cliente_segmentos_definir', { p_client_id: cliente, p_temas: temas }); },
+    oportunidadeDefinirEstado(id, ativo, revisao) { return this.rpc('oportunidade_definir_estado', { p_id: id, p_ativo: ativo, p_revisao: revisao || null }); },
+    oportunidadeUnir(manter, duplicata) { return this.rpc('oportunidade_unir', { p_manter: manter, p_duplicata: duplicata }); },
+    oportunidadeCadastrarManual(d) {
+      return this.rpc('oportunidade_cadastrar_manual', {
+        p_nome: d.nome, p_tipo_data: d.tipo_data, p_mes: d.mes || null, p_dia: d.dia || null, p_regra: d.regra || null,
+        p_duracao: d.duracao || 1, p_natureza: d.natureza || 'comemorativa', p_abrangencia: d.abrangencia || 'nacional',
+        p_categorias: d.categorias || [], p_tags: d.tags || [], p_geral: !!d.geral, p_confiabilidade: d.confiabilidade || 'verificada',
+        p_descricao: d.descricao || null, p_fonte_id: d.fonte_id, p_fonte_url: d.fonte_url || null, p_fonte_detalhe: d.fonte_detalhe || null,
+        p_aliases: d.aliases || []
+      });
+    },
+    async oportunidadesSincronizar(forcar) {
+      const { data, error } = await sb().functions.invoke('oportunidades-sync', { body: { forcar: !!forcar } });
+      if (error) throw error;
+      return data;
+    },
     async ocorrenciasCalendario(inicioISO, fimISO) {
       return ok(await sb().from('calendario_ocorrencias_resumo').select('*')
         .lt('inicio', fimISO).or('fim.gte.' + inicioISO + ',fim.is.null')

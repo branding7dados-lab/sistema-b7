@@ -23,6 +23,9 @@ B7.Perm = (function () {
     coordenador: [
       '', 'clientes', 'cliente', 'gravacoes', 'gravacao', 'roteiros', 'linhas',
       'linha', 'semanas', 'semana', 'arquivados', 'config', 'kanban', 'aprovacoes', 'design', 'video', 'calendario',
+      /* Oportunidades (fase 7): datas comemorativas com fonte e relevância
+         por cliente — planejamento editorial é trabalho da coordenação. */
+      'oportunidades',
       /* Publicações do Dia: visão operacional do que sai hoje em todos os
          clientes. É leitura sobre a Linha Editorial, e coordenação é
          exatamente o trabalho de quem olha isso todo dia. */
