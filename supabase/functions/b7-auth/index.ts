@@ -23,7 +23,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
-const VERSAO = '2026-09-29-b';
+const VERSAO = '2026-09-30-g';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -152,7 +152,14 @@ function senhaFraca(senha: string): string | null {
    Administrador — ele já tem, no banco, as permissões de coordenação; a
    função só liga o Painel de coordenação. Em outro papel ela é
    descartada em silêncio (exigiria permissões que o papel não tem). */
-const FUNCOES_EXTRA_VALIDAS = ['videomaker', 'coordenador'];
+/* 'designer' (Painel unificado, 30/09): só para Administrador e
+   Coordenador de mídias — os dois já são "equipe" no banco (sou_equipe:
+   leem e editam todas as peças de Design, e design_atribuir já aceita
+   admin/coordenador como responsável). A função só faz a pessoa poder
+   RECEBER peças e ganhar o Painel do Designer. Num Videomaker ou Cliente
+   ela exigiria permissões que o papel não tem — então é descartada. */
+const FUNCOES_EXTRA_VALIDAS = ['videomaker', 'coordenador', 'designer'];
+const PAPEIS_COM_DESIGNER_EXTRA = ['admin', 'coordenador'];
 function normalizarFuncoesExtra(bruto: unknown, papelFinal: string): { lista: string[]; erro?: string } {
   if (bruto === undefined || bruto === null) return { lista: [] };
   if (!Array.isArray(bruto)) return { lista: [], erro: 'Funções extras inválidas.' };
@@ -165,7 +172,9 @@ function normalizarFuncoesExtra(bruto: unknown, papelFinal: string): { lista: st
   if (papelFinal === 'cliente' && lista.length) {
     return { lista: [], erro: 'Cliente é um perfil externo — não recebe função extra de produção.' };
   }
-  return { lista: lista.filter((f) => f !== papelFinal && !(f === 'coordenador' && papelFinal !== 'admin')) };
+  return { lista: lista.filter((f) => f !== papelFinal &&
+    !(f === 'coordenador' && papelFinal !== 'admin') &&
+    !(f === 'designer' && !PAPEIS_COM_DESIGNER_EXTRA.includes(papelFinal))) };
 }
 
 /* Quem chamou? Valida o token da sessão e devolve o perfil real, lido do

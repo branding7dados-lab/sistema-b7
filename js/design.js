@@ -76,7 +76,15 @@ B7.Design = (function () {
 
   const ehDesigner = () => B7.Auth.papel() === 'designer';
   const ehEquipe = () => !!(B7.Auth.ehEquipe && B7.Auth.ehEquipe());
-  const meuId = () => { const u = B7.Auth.usuario(); return u ? u.id : null; };
+  /* "eu": em "Visualizar como…" é a pessoa em prévia (a prévia bloqueia
+     toda escrita — ver js/previa-usuario.js), senão a sessão real. Assim
+     "comigo"/"minha fila" mostram o trabalho de quem está sendo visto,
+     igual ao Painel. */
+  const meuId = () => {
+    const alvo = (B7.PreviaUsuario && B7.PreviaUsuario.ativa && B7.PreviaUsuario.ativa()) ? B7.PreviaUsuario.usuarioAtivo() : null;
+    if (alvo && alvo.id) return alvo.id;
+    const u = B7.Auth && B7.Auth.usuario(); return u ? u.id : null;
+  };
   const ehMovel = () => window.matchMedia('(max-width: 760px)').matches;
 
   const F_PADRAO = { cliente: '', designer: '', tipo: '', status: '', prazo: '', linha: '',

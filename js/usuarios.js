@@ -38,10 +38,16 @@ B7.Usuarios = (function () {
        já tem, no banco, todas as permissões de coordenação; a função só
        liga o Painel do Coordenador (casa padrão). Em qualquer outro papel
        ela exigiria permissões que o papel não tem — por isso some. */
-    ['coordenador', 'Coordenador de mídias', 'recebe o Painel de coordenação (só para Administrador)']
+    ['coordenador', 'Coordenador de mídias', 'recebe o Painel de coordenação (só para Administrador)'],
+    /* Designer como função extra: só Administrador e Coordenador (já são
+       equipe no banco — leem e editam todo o Design). A função faz a
+       pessoa aparecer como responsável possível das peças e ganhar o
+       Painel do Designer. */
+    ['designer', 'Designer', 'pode receber peças de Design (Administrador ou Coordenador)']
   ];
   /* a função extra não se aplica a este papel? (redundante ou restrita) */
-  const extraIndisponivel = (funcao, papel) => funcao === papel || (funcao === 'coordenador' && papel !== 'admin');
+  const extraIndisponivel = (funcao, papel) => funcao === papel || (funcao === 'coordenador' && papel !== 'admin') ||
+    (funcao === 'designer' && papel !== 'admin' && papel !== 'coordenador');
   const rotuloFuncaoExtra = f => (FUNCOES_EXTRA.find(x => x[0] === f) || [, f])[1];
 
   /* =================================================================

@@ -30,7 +30,15 @@ B7.Video = (function () {
   const painel = () => document.getElementById('painel-dashboard');
   const souEquipe = () => B7.Auth && ['admin', 'coordenador'].includes(B7.Auth.papel());
   const souVideomakerElegivel = () => B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel();
-  const meuId = () => { const u = B7.Auth && B7.Auth.usuario(); return u ? u.id : null; };
+  /* "eu": em "Visualizar como…" é a pessoa em prévia (a prévia bloqueia
+     toda escrita — ver js/previa-usuario.js), senão a sessão real. Assim
+     "comigo"/"minha fila" mostram o trabalho de quem está sendo visto,
+     igual ao Painel. */
+  const meuId = () => {
+    const alvo = (B7.PreviaUsuario && B7.PreviaUsuario.ativa && B7.PreviaUsuario.ativa()) ? B7.PreviaUsuario.usuarioAtivo() : null;
+    if (alvo && alvo.id) return alvo.id;
+    const u = B7.Auth && B7.Auth.usuario(); return u ? u.id : null;
+  };
   const hoje = () => B7.UI.hojeISO();
   const IC = {
     mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',

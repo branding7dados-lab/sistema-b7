@@ -2170,9 +2170,23 @@ B7.DB = (function () {
     },
 
     /* ---- Equipe de Design (Admin/Coordenador) ---- */
+    /* quem pode receber peça de Design: Designer pelo papel e quem tem a
+       função extra "designer" (Administrador/Coordenador — design_atribuir
+       e linha_concluir já aceitam esses papéis como responsável). A
+       leitura das funções extras segue o RLS de perfis_funcoes_extra
+       (equipe vê todas; o próprio Designer, só as dele) e nunca derruba a
+       lista: sem ela, fica só quem é Designer pelo papel. */
     async listarDesigners() {
-      return ok(await sb().from('perfis').select('id,nome,avatar_url,estado')
+      const porPapel = ok(await sb().from('perfis').select('id,nome,avatar_url,estado')
         .eq('papel', 'designer').eq('estado', 'ativa').order('nome'));
+      let extras = [];
+      try {
+        const f = await sb().from('perfis_funcoes_extra').select('perfil_id').eq('funcao', 'designer');
+        const ids = ((f && f.data) || []).map(x => x.perfil_id).filter(id => !porPapel.some(p => p.id === id));
+        if (ids.length) extras = ok(await sb().from('perfis').select('id,nome,avatar_url,estado')
+          .in('id', ids).eq('estado', 'ativa'));
+      } catch (e) { extras = []; }
+      return porPapel.concat(extras).sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
     },
 
     /* Importa sem apagar nada: mantém os ids do arquivo e ignora o que
