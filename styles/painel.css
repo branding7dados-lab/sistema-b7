@@ -354,3 +354,4 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
 @media (prefers-reduced-motion:reduce){
   .pn-graf-tip, .pn-graf-trilho i, .pn-att{transition:none;}
 }
+.pn-sec-sub + .pn-link-cal{margin-left:auto;}

@@ -397,3 +397,5 @@
   .cab-roteiros{flex-wrap:wrap;}
   .cab-roteiros .conta{margin-left:auto;}
 }
+.secao-topo .gl-cal{display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-right:8px;}
+.secao-topo .gl-cal svg{width:16px;height:16px;}

@@ -292,7 +292,7 @@ B7.PainelDesign = (function () {
           : (vazia ? '<p class="pn-nota">Nenhum prazo seu nesta semana.</p>' : ''));
     }
     cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pnd-t-semana">Minha semana</h2>' +
-      '<span class="pn-sec-sub">' + d.ddmm(seg) + ' – ' + d.ddmm(d.somarDias(seg, 6)) + '</span></div>' + corpo;
+      '<span class="pn-sec-sub">' + d.ddmm(seg) + ' – ' + d.ddmm(d.somarDias(seg, 6)) + '</span>' + (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="pn-link pn-link-cal" href="#/calendario?v=semana&amp;d=' + seg + '">Ver no calendário</a>' : '') + '</div>' + corpo;
   }
 
   /* =========================================================== produção

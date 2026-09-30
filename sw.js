@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v109';
+const CACHE = 'roteiros-b7-v111';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -14,7 +14,7 @@ const CASCA = [
   './js/autosave.js', './js/print.js', './js/dashboard.js', './js/editor.js', './js/gravacao.js',
   './js/backup.js', './js/app.js',
   './js/auth.js', './js/usuarios.js', './js/central.js', './js/conteudo.js',
-  './js/linha.js', './js/design.js', './js/video.js', './js/calendario.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
+  './js/linha.js', './js/design.js', './js/video.js', './js/eventos.js', './js/calendario.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
   './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js', './js/painel-coord.js', './js/painel-design.js', './js/painel-multi.js', './js/topo.js', './js/nav.js',
   './js/permissoes.js', './js/portal.js', './js/kanban.js', './js/perfil.js', './js/foto.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js',

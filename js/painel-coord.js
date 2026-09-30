@@ -390,7 +390,7 @@ B7.PainelCoord = (function () {
         (vazia ? '<p class="pn-nota">Semana tranquila por enquanto.</p>' : '');
     }
     cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pnc-t-semana">Minha semana</h2>' +
-      '<span class="pn-sec-sub">' + d.ddmm(seg) + ' – ' + d.ddmm(d.somarDias(seg, 6)) + '</span></div>' + corpo;
+      '<span class="pn-sec-sub">' + d.ddmm(seg) + ' – ' + d.ddmm(d.somarDias(seg, 6)) + '</span>' + (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="pn-link pn-link-cal" href="#/calendario?v=semana&amp;d=' + seg + '">Ver no calendário</a>' : '') + '</div>' + corpo;
   }
 
   /* Fluxo de conteúdos do mês: barras horizontais, uma por status

@@ -82,18 +82,14 @@ B7.Linha = (function () {
         B7.DB.listarPilares(id).catch(() => [])
       ]);
       try { L.aprovacao = (await B7.DB.ultimasAprovacoes('linha', [id]))[id] || null; } catch (e) { L.aprovacao = null; }
-      /* gravações do cliente entram no calendário editorial (Gravação),
-         ao lado das postagens — sem inventar data: só as que já têm
-         data_gravacao aparecem. Falha aqui não impede a linha de abrir. */
-      try { L.gravacoes = await B7.DB.listarGravacoes(L.linha.client_id); } catch (e) { L.gravacoes = []; }
+      /* (fase 6) as gravações do cliente não são mais carregadas aqui: o
+         calendário da linha é o Calendário B7, que lê as gravações dele. */
     } catch (e) { return B7.Dashboard.erroConteudo(e, (L.linha || {}).client_id || ''); }
 
     /* Design (B7 Design): busca só uma vez ao abrir a linha, nunca por
        card — falha aqui não impede a linha de abrir. */
     await carregarDesign();
 
-    /* o calendário abre no mês da linha; a navegação é só visual */
-    L.cal = { ano: +L.linha.ano, mes: +L.linha.mes };
     B7.Rota.titulo([L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano), L.linha.cliente_nome]);
     render();
     verificarPostagensAutomaticas();
@@ -774,148 +770,14 @@ B7.Linha = (function () {
      Datas são "date-only": strings YYYY-MM-DD do começo ao fim. Nunca
      `new Date('YYYY-MM-DD')` — isso é meia-noite UTC e no Brasil vira o
      dia anterior. Só o dia da semana usa Date, e com componentes locais. */
-  let vistaPostagens = 'lista';
-
-  const DIAS_SEMANA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-  const iso = (a, m, d) => a + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-  const diasNoMes = (a, m) => new Date(a, m, 0).getDate();       // m = 1..12
-  const diaSemana = (a, m, d) => new Date(a, m - 1, d).getDay();  // 0 = domingo, local
-  const MAX_POR_DIA = 3;
-
-  function mesAnterior(c) { return c.mes === 1 ? { ano: c.ano - 1, mes: 12 } : { ano: c.ano, mes: c.mes - 1 }; }
-  function mesSeguinte(c) { return c.mes === 12 ? { ano: c.ano + 1, mes: 1 } : { ano: c.ano, mes: c.mes + 1 }; }
-
-  /* as células de um mês, em semanas completas (DOM..SÁB), com os dias
-     vizinhos marcados como `fora` */
-  function celulasDoMes(ano, mes) {
-    const total = diasNoMes(ano, mes);
-    const antes = diaSemana(ano, mes, 1);
-    const ant = mesAnterior({ ano, mes }), seg = mesSeguinte({ ano, mes });
-    const totalAnt = diasNoMes(ant.ano, ant.mes);
-    const cels = [];
-    for (let i = antes - 1; i >= 0; i--) cels.push({ iso: iso(ant.ano, ant.mes, totalAnt - i), dia: totalAnt - i, fora: true });
-    for (let d = 1; d <= total; d++) cels.push({ iso: iso(ano, mes, d), dia: d, fora: false });
-    let d = 1;
-    while (cels.length % 7) cels.push({ iso: iso(seg.ano, seg.mes, d), dia: d++, fora: true });
-    return cels;
-  }
-
-  /* Postagem e Gravação são tipos de EVENTO — o que o item É — e nunca
-     se confundem com o status (em que pé está a produção). O status
-     entra só como um pontinho discreto (cal-ev-st); a cor/ícone/forma
-     principal do item é sempre do tipo, e nunca muda com o status. */
-  function statusPostagemDot(s) {
-    if (s === 'Aprovado' || s === 'Publicado') return 'st-ok';
-    if (s === 'Em revisão') return 'st-ambar';
-    return '';
-  }
-  function statusGravacaoDot(s) {
-    if (s === 'Gravado') return 'st-ok';
-    if (s === 'Pronto para gravar') return 'st-ambar';
-    return '';
-  }
-
-  function itemCal(item) {
-    if (item._evento === 'gravacao') {
-      const st = statusGravacaoDot(item.status);
-      return '<button class="cal-ev cal-ev-grav" data-gravacao="' + esc(item.id) + '" ' +
-        'title="Gravação — ' + esc(item.nome || 'Sem título') + (item.status ? ' · ' + esc(item.status) : '') + '">' +
-        '<span class="cal-ev-ic">' + ICONE_GRAVACAO + '</span>' +
-        '<span class="cal-ev-tx">' + esc(item.nome || 'Gravação') + '</span>' +
-        (st ? '<span class="cal-ev-st ' + st + '" aria-hidden="true"></span>' : '') +
-      '</button>';
-    }
-    const st = statusPostagemDot(item.status);
-    return '<button class="cal-ev cal-ev-post" data-postagem-ver="' + esc(item.id) + '" ' +
-      'title="Postagem — ' + esc(item.titulo || 'Sem título') + (item.status ? ' · ' + esc(item.status) : '') + '">' +
-      '<span class="cal-ev-ic">' + ICONE_FORMATO[item.tipo] + '</span>' +
-      '<span class="cal-ev-tx">' + esc(item.titulo || 'Sem título') + '</span>' +
-      (st ? '<span class="cal-ev-st ' + st + '" aria-hidden="true"></span>' : '') +
-    '</button>';
-  }
-
-  /* Todos os eventos (postagens + gravações) do mês, agrupados por dia
-     ISO. Data-only o tempo todo — nunca `new Date('YYYY-MM-DD')`, que em
-     UTC-3 desloca a data para o dia anterior. Uma gravação só entra aqui
-     quando já tem data_gravacao de verdade: nunca é inventada. */
-  function eventosPorDia() {
-    const porDia = {};
-    L.conteudos.filter(c => c.data_postagem).forEach(c => {
-      const d = String(c.data_postagem).slice(0, 10);
-      (porDia[d] = porDia[d] || []).push(Object.assign({ _evento: 'postagem' }, c));
-    });
-    (L.gravacoes || []).filter(g => g.data_gravacao).forEach(g => {
-      const d = String(g.data_gravacao).slice(0, 10);
-      (porDia[d] = porDia[d] || []).push(Object.assign({ _evento: 'gravacao' }, g));
-    });
-    Object.values(porDia).forEach(lista => lista.sort((a, b) => {
-      if (a._evento !== b._evento) return a._evento === 'postagem' ? -1 : 1;
-      return (a.position || 0) - (b.position || 0);
-    }));
-    return porDia;
-  }
-
-  function legendaCal() {
-    return '<div class="cal-legenda">' +
-      '<span class="cal-leg-item post"><span class="cal-leg-ic">' + ICONE_FORMATO.Reel + '</span>Postagem</span>' +
-      '<span class="cal-leg-item grav"><span class="cal-leg-ic">' + ICONE_GRAVACAO + '</span>Gravação</span>' +
-    '</div>';
-  }
-
-  function calendario() {
-    const cal = L.cal || { ano: +L.linha.ano, mes: +L.linha.mes };
-    const hoje = B7.UI.hojeISO();
-    const porDia = eventosPorDia();
-
-    const cels = celulasDoMes(cal.ano, cal.mes);
-    const prefixo = iso(cal.ano, cal.mes, 1).slice(0, 7);
-    const postsNoMes = L.conteudos.filter(c => c.data_postagem && String(c.data_postagem).slice(0, 7) === prefixo).length;
-    const gravsNoMes = (L.gravacoes || []).filter(g => g.data_gravacao && String(g.data_gravacao).slice(0, 7) === prefixo).length;
-    const semData = L.conteudos.filter(c => !c.data_postagem);
-    const mesDaLinha = cal.ano === +L.linha.ano && cal.mes === +L.linha.mes;
-
-    const grade = cels.map(cel => {
-      const itens = porDia[cel.iso] || [];
-      const extra = itens.length - MAX_POR_DIA;
-      return '<div class="cal-d' + (cel.fora ? ' fora' : '') + (itens.length ? ' tem' : '') +
-        (cel.iso === hoje ? ' hoje' : '') + '" data-dia="' + cel.iso + '">' +
-        '<div class="cal-n">' + cel.dia + '</div>' +
-        '<div class="cal-evs">' + itens.slice(0, MAX_POR_DIA).map(itemCal).join('') +
-        (extra > 0 ? '<button class="cal-mais" data-mais="' + cel.iso + '">+' + extra + '</button>' : '') +
-        '</div></div>';
-    }).join('');
-
-    /* vista agenda: a mesma informação em lista por dia (celular) */
-    const diasComItens = Object.keys(porDia).filter(d => d.startsWith(prefixo)).sort();
-    const agenda = diasComItens.length
-      ? diasComItens.map(d => {
-          const dia = +d.slice(8, 10);
-          return '<div class="cal-ag-dia' + (d === hoje ? ' hoje' : '') + '">' +
-            '<div class="cal-ag-data"><b>' + dia + '</b><small>' + DIAS_SEMANA[diaSemana(cal.ano, cal.mes, dia)] + '</small></div>' +
-            '<div class="cal-ag-itens">' + porDia[d].map(itemCal).join('') + '</div></div>';
-        }).join('')
-      : '<div class="cal-ag-vazio">Nenhuma postagem ou gravação marcada em ' + esc(MESES[cal.mes - 1]) + '.</div>';
-
-    return '<div class="cal-mes">' +
-      legendaCal() +
-      '<div class="cal-nav">' +
-        '<button class="ico" data-cal="ant" aria-label="Mês anterior" title="Mês anterior">‹</button>' +
-        '<div class="cal-titulo"><b>' + esc(MESES[cal.mes - 1]) + '</b><span>' + cal.ano + '</span>' +
-          '<small>' + postsNoMes + ' postage' + (postsNoMes === 1 ? 'm' : 'ns') +
-          (gravsNoMes ? ' · ' + gravsNoMes + ' gravaç' + (gravsNoMes === 1 ? 'ão' : 'ões') : '') + '</small></div>' +
-        '<button class="ico" data-cal="prox" aria-label="Próximo mês" title="Próximo mês">›</button>' +
-        (mesDaLinha ? '' : '<button class="b p" data-cal="linha">Mês da linha</button>') +
-      '</div>' +
-      '<div class="cal-grade-mes">' +
-        '<div class="cal-cab">' + DIAS_SEMANA.map(d => '<span>' + d + '</span>').join('') + '</div>' +
-        '<div class="cal-mes-dias">' + grade + '</div>' +
-      '</div>' +
-      '<div class="cal-agenda">' + agenda + '</div>' +
-      /* sem data não é pendência: é conteúdo que ainda não foi agendado.
-         Gravação sem data nunca aparece aqui — não é inventada. */
-      (semData.length ? '<div class="cal-soltos"><small>SEM DATA DEFINIDA</small>' +
-        semData.map(c => itemCal(Object.assign({ _evento: 'postagem' }, c))).join('') + '</div>' : '') +
-    '</div>';
+  /* Fase 6: a Linha não tem mais um motor de calendário próprio. A
+     vista de calendário é o Calendário B7, aberto já filtrado em
+     Publicações, no cliente e no mês desta linha (mesma regra de data
+     pura, mesmos destinos canônicos). A lista continua aqui. */
+  function hrefCalendarioLinha() {
+    const q = new URLSearchParams({ v: 'mes', d: L.linha.ano + '-' + String(L.linha.mes).padStart(2, '0') + '-01', tipo: 'publicacoes' });
+    if (L.linha.client_id) q.set('cliente', L.linha.client_id);
+    return '#/calendario?' + q.toString();
   }
 
   function postagens() {
@@ -930,11 +792,10 @@ B7.Linha = (function () {
         '</div>';
     }
 
-    const seletor = '<div class="vista-postagens">' +
-      '<button data-vista="lista"' + (vistaPostagens === 'lista' ? ' class="on"' : '') + '>Lista</button>' +
-      '<button data-vista="calendario"' + (vistaPostagens === 'calendario' ? ' class="on"' : '') + '>Calendário</button>' +
+    const seletor = (B7.Perm && !B7.Perm.podeRota('calendario')) ? '' : '<div class="vista-postagens">' +
+      '<button class="on" aria-pressed="true">Lista</button>' +
+      '<a href="' + esc(hrefCalendarioLinha()) + '" title="Abre o Calendário B7 filtrado nas publicações deste cliente">Ver no Calendário</a>' +
       '</div>';
-    if (vistaPostagens === 'calendario') return seletor + '<div class="bloco bloco-cal">' + calendario() + '</div>';
 
     const linhaPost = c => {
       const d = c.data_postagem ? String(c.data_postagem).slice(0, 10) : '';
@@ -1053,33 +914,8 @@ B7.Linha = (function () {
       e.stopPropagation();
       location.hash = '#/design/' + b.dataset.abrirDesign;
     });
-    p.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
-      vistaPostagens = b.dataset.vista; renderCorpo();
-    });
     p.querySelectorAll('[data-ir-aba]').forEach(b => b.onclick = () => trocarAba(b.dataset.irAba));
 
-    /* calendário: navegação de mês e "+N" (expande o dia) */
-    p.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => {
-      const c = L.cal || { ano: +L.linha.ano, mes: +L.linha.mes };
-      L.cal = b.dataset.cal === 'ant' ? mesAnterior(c)
-            : b.dataset.cal === 'prox' ? mesSeguinte(c)
-            : { ano: +L.linha.ano, mes: +L.linha.mes };
-      renderCorpo();
-    });
-    p.querySelectorAll('[data-mais]').forEach(b => b.onclick = e => {
-      e.stopPropagation();
-      const cel = b.closest('.cal-d');
-      const dia = b.dataset.mais;
-      const itens = (eventosPorDia()[dia] || []);
-      cel.classList.add('aberta');
-      cel.querySelector('.cal-evs').innerHTML = itens.map(itemCal).join('');
-      cel.querySelectorAll('[data-conteudo]').forEach(el => el.onclick = ev => {
-        ev.stopPropagation(); abrirConteudo(el.dataset.conteudo);
-      });
-      cel.querySelectorAll('[data-gravacao]').forEach(el => el.onclick = ev => {
-        ev.stopPropagation(); location.hash = '#/gravacao/' + el.dataset.gravacao;
-      });
-    });
     ligarPilares(p);
     p.querySelectorAll('[data-status-semanal]').forEach(b => b.onclick = () =>
       B7.Semana.modalNovo(L.linha.client_id, L.linha.id));

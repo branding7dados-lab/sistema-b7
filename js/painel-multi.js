@@ -218,7 +218,7 @@ B7.PainelMulti = (function () {
         (vazia ? '<p class="pn-nota">Nenhum prazo, gravação ou publicação sua nesta semana.</p>' : '');
     }
     cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pnm-t-semana">Minha semana</h2>' +
-      '<span class="pn-sec-sub">' + d.ddmm(seg) + ' – ' + d.ddmm(d.somarDias(seg, 6)) + '</span></div>' + corpo;
+      '<span class="pn-sec-sub">' + d.ddmm(seg) + ' – ' + d.ddmm(d.somarDias(seg, 6)) + '</span>' + (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="pn-link pn-link-cal" href="#/calendario?v=semana&amp;d=' + seg + '">Ver no calendário</a>' : '') + '</div>' + corpo;
     cx.querySelectorAll('[data-pn-dia]').forEach(b => b.onclick = () => abrirDia(b.dataset.pnDia));
   }
   const ROTULO_TIPO = { atrasada: 'atrasada', gravacao: 'gravação', prazo: 'prazo', ajuste: 'ajuste', publicacao: 'publicação', linha: 'início de linha' };
@@ -286,7 +286,7 @@ B7.PainelMulti = (function () {
         : U().blocoVazio('Nada marcado para os próximos dias.', 'Gravações, prazos e publicações seus aparecem aqui.');
     }
     const podeAgenda = B7.Perm && B7.Perm.podeRota && B7.Perm.podeRota('calendario');
-    cx.innerHTML = U().cabecalhoSecao('pnm-t-prox', 'Próximos', podeAgenda ? { href: '#/calendario', rotulo: 'Ver agenda' } : null) + corpo;
+    cx.innerHTML = U().cabecalhoSecao('pnm-t-prox', 'Próximos', podeAgenda ? { href: '#/calendario?v=semana', rotulo: 'Ver no calendário' } : null) + corpo;
   }
 
   /* ============================================================= pintura */

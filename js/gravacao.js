@@ -458,7 +458,7 @@ B7.Gravacao = (function () {
     const ops = [];
     if (podeEditar()) ops.push({ rotulo: 'Editar detalhes', dica: 'nome, mês de referência, responsável, local', ic: IC.lapis, fazer: modalEditar });
     ops.push({ rotulo: 'Imprimir roteiros', dica: 'versão para levar na gravação', ic: IC.impressora, fazer: () => { location.hash = '#/gravacao/' + g.id + '/roteiros?imprimir=1'; } });
-    if (B7.Perm && B7.Perm.podeRota('calendario')) ops.push({ rotulo: 'Ver no calendário', dica: 'a agenda do mês', ic: IC.agenda, fazer: () => { location.hash = '#/calendario'; } });
+    if (B7.Perm && B7.Perm.podeRota('calendario')) ops.push({ rotulo: 'Ver no calendário', dica: 'a semana desta gravação, com o histórico de datas', ic: IC.agenda, fazer: () => { location.hash = '#/calendario?v=semana&tipo=gravacoes&d=' + (g.data_gravacao ? String(g.data_gravacao).slice(0, 10) : (B7.UI.hojeISO ? B7.UI.hojeISO() : '')); } });
     if (podeEditar() && sit !== 'Gravada' && sit !== 'Cancelada') ops.push({ rotulo: 'Cancelar gravação', dica: 'nada é apagado — fica no histórico', ic: IC.x, perigo: true, separar: true, fazer: modalCancelar });
     menuSimples(g.nome, ops);
   }

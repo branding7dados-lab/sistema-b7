@@ -51,10 +51,12 @@ B7.Painel = (function () {
      Datas de calendário (prazo) são texto AAAA-MM-DD e NUNCA passam por
      new Date(texto) — isso lê como meia-noite UTC e, no Brasil, cai no
      dia anterior. Horários de agenda (timestamptz) viram Date normal. */
-  const pad = n => String(n).padStart(2, '0');
-  const isoDe = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-  const local = s => { const [a, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(a, m - 1, d); };
-  const somarDias = (s, n) => { const d = local(s); d.setDate(d.getDate() + n); return isoDe(d); };
+  /* (fase 6) mesmas funções de data do Calendário B7 — uma regra só */
+  const DT = B7.Eventos.DATAS;
+  const pad = DT.pad;
+  const isoDe = DT.isoLocal;
+  const local = DT.local;
+  const somarDias = DT.somarDias;
   const difDias = (a, b) => Math.round((local(a) - local(b)) / 86400000);
   const segundaDe = s => { const d = local(s); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); return isoDe(d); };
   const DOW = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
@@ -62,8 +64,8 @@ B7.Painel = (function () {
   const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto',
                'setembro', 'outubro', 'novembro', 'dezembro'];
   const ddmm = s => s.slice(8, 10) + '/' + s.slice(5, 7);
-  const hora = ts => { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
-  const diaDoTs = ts => isoDe(new Date(ts));
+  const hora = DT.horaDoInstante;
+  const diaDoTs = DT.diaDoInstante;
   function quandoDia(s) {
     const n = difDias(s, hoje());
     if (n === 0) return 'hoje';
@@ -109,9 +111,26 @@ B7.Painel = (function () {
   }
   function reiniciarCompartilhadas() { compartilhadas = new Map(); }
   /* janela única das gravações (segunda desta semana → 15 dias à frente) */
+  /* Gravações do Painel = a MESMA fonte do Calendário B7 (ocorrências
+     via B7.Eventos): só a data atual de cada gravação, marcada ou
+     remarcada (não cancelada nem concluída). Da agenda do Google entram
+     só os eventos AINDA SEM gravação vinculada — os vinculados já vêm
+     pela ocorrência, com a data do B7 (nunca duas vezes, nunca a data
+     antiga de um evento que não sincronizou). */
   function gravacoesDaJanela() {
-    const de = local(segundaDe(hoje())), ate = local(somarDias(hoje(), 15));
-    return umaVez('gravacoes', () => B7.DB.painelGravacoes(de.toISOString(), ate.toISOString()));
+    const ini = segundaDe(hoje()), fim = somarDias(hoje(), 15);
+    return umaVez('gravacoes', async () => {
+      const [evs, agenda] = await Promise.all([
+        B7.Eventos.carregarDominio('gravacao', ini, fim),
+        B7.DB.painelGravacoes(local(ini).toISOString(), local(somarDias(fim, 1)).toISOString()).catch(() => [])
+      ]);
+      const doB7 = evs.filter(e => !e.historico && !e.cancelado && !e.concluido).map(e => ({
+        origem: 'ocorrencia', id: e.ocorrenciaId, titulo: e.titulo, inicio: e.extra.bruto.inicio, fim: e.extra.bruto.fim,
+        dia_inteiro: e.diaInteiro, local: e.extra.local, gravacao_id: e.fonteId, cliente_nome: e.clienteNome,
+        client_id: e.clienteId, videomaker_id: e.responsavelId }));
+      const soGoogle = (agenda || []).filter(g => g.origem === 'evento' && !g.gravacao_id);
+      return doB7.concat(soGoogle).sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
+    });
   }
 
   function comTempoLimite(p, ms) {
@@ -458,7 +477,7 @@ B7.Painel = (function () {
     else if (e === 'erro') corpo = blocoErro('Não foi possível montar sua semana.', ['ativas', 'agenda'].filter(f => S[f] && S[f].estado === 'erro'));
     else corpo = '<ol class="pn-semana-lista">' + diasDaSemana().map(diaSemana).join('') + '</ol>';
     cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pn-t-semana">' + titulo + '</h2>' +
-      '<span class="pn-sec-sub">' + ddmm(seg) + ' – ' + ddmm(somarDias(seg, 6)) + '</span></div>' + corpo;
+      '<span class="pn-sec-sub">' + ddmm(seg) + ' – ' + ddmm(somarDias(seg, 6)) + '</span>' + (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="pn-link pn-link-cal" href="#/calendario?v=semana&amp;d=' + seg + '">Ver no calendário</a>' : '') + '</div>' + corpo;
   }
 
   /* O gráfico do vídeo como peça solta: o Painel do Videomaker e o
@@ -505,7 +524,7 @@ B7.Painel = (function () {
       corpo = itens.length ? '<div class="cp-agenda-lista">' + itens.map(compromisso).join('') + '</div>'
         : blocoVazio('Nada marcado para os próximos dias.', 'Gravações da agenda e prazos seus aparecem aqui.');
     }
-    cx.innerHTML = cabecalhoSecao('pn-t-comp', 'Próximos compromissos', { href: '#/calendario', rotulo: 'Ver agenda' }) + corpo;
+    cx.innerHTML = cabecalhoSecao('pn-t-comp', 'Próximos compromissos', { href: '#/calendario?v=semana', rotulo: 'Ver no calendário' }) + corpo;
   }
 
   function pintar() {

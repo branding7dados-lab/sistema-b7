@@ -162,7 +162,7 @@ B7.Rota = (function () {
     }
     if (partes[0] === 'calendario' && B7.Calendario) {
       mostrar('tela-dashboard');
-      return B7.Calendario.abrir();
+      return B7.Calendario.abrir(params);
     }
     if (partes[0] === 'aprovacoes' && B7.Aprovacoes) {
       mostrar('tela-dashboard');

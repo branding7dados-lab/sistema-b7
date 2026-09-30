@@ -213,6 +213,8 @@ B7.Publicacoes = (function () {
   /* ------------------------------------------------------------ consulta */
   async function carregar() {
     const req = ++pedido;
+    /* o atalho para o Calendário B7 acompanha o dia escolhido */
+    const cal = document.getElementById('pb-cal'); if (cal && E.dia) cal.setAttribute('href', '#/calendario?v=semana&tipo=publicacoes&d=' + E.dia);
     E.carregando = true; E.erro = null;
     desenharFaixa(); desenharCorpo();
 
@@ -335,6 +337,7 @@ B7.Publicacoes = (function () {
             '<p>O que está marcado para sair hoje, em todos os clientes. Vem direto das Linhas Editoriais.</p>' +
           '</div>' +
           '<div class="pb-cab-acoes">' +
+            (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno" id="pb-cal" href="#/calendario?v=semana&amp;tipo=publicacoes">Ver no calendário</a>' : '') +
             '<button type="button" class="b contorno" data-hoje>Hoje</button>' +
             '<label class="pb-seletor-data"><span class="pb-rot">Ir para</span>' +
               '<input type="date" id="pb-data" aria-label="Escolher um dia"></label>' +

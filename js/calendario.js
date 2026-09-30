@@ -1,34 +1,30 @@
 /* =====================================================================
-   B7 CALENDÁRIO DE GRAVAÇÕES (Parte 3) — integração real com o Google
-   Calendar da conta branding7dados.
+   CALENDÁRIO B7 (fase 6) — UM calendário para a operação inteira.
 
-   Este sistema já teve uma agenda integrada ao Google; foi removida de
-   propósito numa rodada anterior ("essa função passa a viver no sistema
-   da N7", CENTRAL.md). Está sendo reconstruída aqui a pedido de quem usa
-   o sistema — a reversão foi decisão de vocês, registrada no changelog
-   desta rodada.
+   Responde: o que acontece na operação, quando, para qual cliente, com
+   quem — e onde abrir o registro de verdade.
 
-   Arquitetura: o navegador NUNCA fala direto com a API do Google. Tudo
-   que precisa do token de acesso (listar agendas, sincronizar eventos,
-   conectar/desconectar, mover/cancelar um evento) passa pela Edge
-   Function "google-agenda" (js/database.js → chamarCalendarioGoogle). O
-   que só precisa do banco é RPC direto — mesmo padrão do resto do B7.
+   É uma VISTA sobre registros canônicos (B7.Eventos, js/eventos.js):
+   gravações (ocorrências com histórico), publicações da Linha
+   Editorial, prazos de Vídeo e prazos de Design. Nada é copiado para
+   uma tabela de calendário; cada evento abre o registro dono dele.
 
-   Sem job agendado neste projeto (mesma limitação já registrada em
-   migration_video_gestao.sql): a sincronização acontece quando alguém
-   da equipe abre esta tela, não um relógio rodando sozinho no servidor.
+   Vistas: Mês · Semana · Dia (desktop/tablet). No celular (largura
+   estreita), agenda: faixa de dias + lista do dia escolhido, com o mês
+   num seletor próprio — nunca a grade de 7 colunas microscópica.
 
-   STATUS DE OCORRÊNCIA (migration_calendario_status.sql) — o coração
-   desta rodada: cada gravação vinculada a um evento vira uma ou mais
-   "ocorrências" ao longo do tempo (public.gravacoes_ocorrencias). Remarcar
-   NUNCA apaga a ocorrência antiga: ela fica congelada na data original,
-   com status "remarcada" (amarelo), e uma ocorrência nova aparece na
-   data nova, "marcada" (azul) — as duas ligadas à mesma gravação, pro
-   histórico do calendário nunca sumir. Cancelar mantém a linha no lugar,
-   só muda a cor pra vermelho. Concluída fica verde. A tela combina esse
-   histórico de ocorrências com os eventos do Google que AINDA não foram
-   vinculados a nenhuma gravação (esses continuam aparecendo do jeito que
-   já apareciam, com o badge "Sem vínculo").
+   Estado na URL: #/calendario?v=mes|semana|dia&d=AAAA-MM-DD&tipo=…
+   &cliente=…&resp=…&canc=1 — os módulos abrem este mesmo calendário já
+   filtrado (ex.: Gravações → tipo=gravacoes).
+
+   Google Calendar: a integração que já existia continua (conexão,
+   agendas, sincronização best-effort, eventos ainda sem vínculo para
+   gestores, marcar/remarcar/cancelar com escrita no Google). Mas o
+   Calendário NÃO depende mais dela: as gravações são dados do B7.
+
+   Mais abaixo (CONECTAR / CONFIGURAÇÕES em diante) ficam os modais da
+   integração e das ações de ocorrência, reaproveitados da versão
+   anterior.
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -39,494 +35,34 @@ B7.Calendario = (function () {
   const papel = () => B7.Auth && B7.Auth.papel && B7.Auth.papel();
   const souEquipeInterna = () => ['admin', 'coordenador', 'designer', 'videomaker'].includes(papel());
   const souGestor = () => ['admin', 'coordenador'].includes(papel());
+  const E = () => B7.Eventos;
+  const D = () => B7.Eventos.DATAS;
 
-  const DIA_MS = 86400000;
   const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const DIAS_SEMANA_ABREV = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   const MESES_LONGOS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-
   const STATUS_ROTULO = { marcada: 'Marcada', remarcada: 'Remarcada', concluida: 'Concluída', cancelada: 'Cancelada' };
   const STATUS_CLASSE = { marcada: 'cal-st-marcada', remarcada: 'cal-st-remarcada', concluida: 'cal-st-concluida', cancelada: 'cal-st-cancelada' };
+  const MAX_CEL = 3;              /* eventos visíveis por célula do mês */
+  const MQ_AGENDA = '(max-width: 760px)';
+  const ehAgenda = () => window.matchMedia(MQ_AGENDA).matches;
 
-  let conexao = null, agendas = [], eventos = [], ocorrencias = [], clientesCache = null;
-  let carregando = true, erroCarga = null;
-  let janelaRef = new Date();   // data de referência pra calcular a janela visível
+  /* integração Google (usada pelos modais de baixo) */
+  let conexao = { conectado: false }, agendas = [], eventos = [], ocorrencias = [], clientesCache = null;
 
-  const F_PADRAO = { vista: 'hoje', cliente: '', agenda: '', status: '', busca: '' };
-  let F = Object.assign({}, F_PADRAO);
-  try { Object.assign(F, JSON.parse(sessionStorage.getItem('b7.calendario.filtros') || '{}')); } catch (e) {}
-  if (!['hoje', 'mes', 'semana', 'agenda'].includes(F.vista)) F.vista = 'hoje';
-  function guardarFiltros() { try { sessionStorage.setItem('b7.calendario.filtros', JSON.stringify(F)); } catch (e) {} }
+  /* estado da tela */
+  const V = { vista: 'mes', data: null, tipo: '', cliente: '', resp: '', canceladas: false };
+  let R = { eventos: [], erros: {}, ini: null, fim: null, carregando: false, pronto: false };
+  let geracao = 0, sincronizados = new Map(), nomesResp = new Map(), mqOuvinte = null;
 
-  function inicioDoDia(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
-  function inicioDaSemana(d) { const x = inicioDoDia(d); x.setDate(x.getDate() - x.getDay()); return x; }
-  /* dia LOCAL de um instante (nunca o dia em UTC: uma gravação às 22h de
-     10/10 não pode aparecer como 11/10). Data pura AAAA-MM-DD passa direto. */
+  /* ---- utilidades mantidas para os modais de ocorrência abaixo ---- */
   function isoData(d) {
     if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
     return chaveDia(d);
   }
-  function chaveDia(d) {
-    const x = new Date(d);
-    return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
-  }
-
-  function calcularJanela() {
-    if (F.vista === 'hoje') {
-      const inicio = inicioDoDia(janelaRef);
-      const fim = new Date(inicio.getTime() + DIA_MS);
-      return { inicio, fim };
-    }
-    if (F.vista === 'semana') {
-      const inicio = inicioDaSemana(janelaRef);
-      const fim = new Date(inicio.getTime() + 7 * DIA_MS);
-      return { inicio, fim };
-    }
-    if (F.vista === 'mes') {
-      const primeiroDoMes = new Date(janelaRef.getFullYear(), janelaRef.getMonth(), 1);
-      const inicio = inicioDaSemana(primeiroDoMes);
-      const ultimoDoMes = new Date(janelaRef.getFullYear(), janelaRef.getMonth() + 1, 0);
-      const fimSemana = inicioDaSemana(ultimoDoMes);
-      const fim = new Date(fimSemana.getTime() + 7 * DIA_MS);
-      return { inicio, fim };
-    }
-    // "agenda": janela rolante de 21 dias a partir da referência
-    const inicio = inicioDoDia(janelaRef);
-    const fim = new Date(inicio.getTime() + 21 * DIA_MS);
-    return { inicio, fim };
-  }
-
-  /* =================================================================
-     CARGA
-     ================================================================= */
-  async function abrir() {
-    B7.Dashboard.marcarNav('#/calendario');
-    B7.Rota.titulo(['Calendário de Gravações']);
-    janelaRef = new Date();
-
-    /* retorno do popup de conexão do Google (ver paginaRetorno na Edge
-       Function) — se abriu direto sem popup, o parâmetro chega na URL. */
-    const params = new URLSearchParams(location.hash.split('?')[1] || '');
-    if (params.has('conectado')) {
-      history.replaceState(null, '', location.pathname + location.search + '#/calendario');
-      B7.UI.toast(params.get('conectado') === '1' ? 'Google Calendar conectado.' : 'Não foi possível conectar ao Google.');
-    }
-    window.addEventListener('message', aoReceberMensagemPopup);
-
-    await carregarTudo();
-  }
-
-  function aoReceberMensagemPopup(ev) {
-    if (!ev.data || ev.data.tipo !== 'b7-google-agenda') return;
-    B7.UI.toast(ev.data.ok ? 'Google Calendar conectado.' : (ev.data.mensagem || 'Não foi possível conectar.'));
-    carregarTudo();
-  }
-
-  async function carregarTudo() {
-    carregando = true; erroCarga = null;
-    desenhar();
-    try {
-      const st = await B7.DB.statusConexaoCalendario();
-      conexao = st || { conectado: false };
-      if (conexao.conectado) {
-        const { inicio, fim } = calcularJanela();
-        /* sincroniza (best-effort — se falhar, ainda tenta ler o que já
-           tem no banco da última vez que deu certo, nunca some com a
-           tela) e depois lê do banco, que é a fonte que a tela usa. */
-        try { await B7.DB.sincronizarCalendario(inicio.toISOString(), fim.toISOString()); }
-        catch (eSync) { conexao.avisoSync = eSync.message; }
-        const [ags, evs, ocs] = await Promise.all([
-          B7.DB.listarCalendariosGoogle().then(r => r.agendas || []).catch(() => agendas),
-          B7.DB.eventosCalendario(inicio.toISOString(), fim.toISOString()).catch(() => []),
-          B7.DB.ocorrenciasCalendario(inicio.toISOString(), fim.toISOString()).catch(() => [])
-        ]);
-        agendas = ags; eventos = evs; ocorrencias = ocs;
-      } else {
-        agendas = []; eventos = []; ocorrencias = [];
-      }
-    } catch (e) {
-      erroCarga = e.message || 'Não foi possível carregar o calendário.';
-    }
-    carregando = false;
-    desenhar();
-  }
-
-  /* Recarrega só o que já está sincronizado (sem chamar a API do Google
-     de novo) — usada depois de uma ação nossa (vincular, remarcar,
-     cancelar, concluir…) pra atualizar a tela rápido sem gastar mais uma
-     chamada de sincronização. */
-  async function recarregarLocal() {
-    const { inicio, fim } = calcularJanela();
-    try {
-      const [evs, ocs] = await Promise.all([
-        B7.DB.eventosCalendario(inicio.toISOString(), fim.toISOString()),
-        B7.DB.ocorrenciasCalendario(inicio.toISOString(), fim.toISOString())
-      ]);
-      eventos = evs; ocorrencias = ocs;
-    } catch (e) { /* mantém o que já tinha — nunca esvazia a tela por causa de uma falha de rede */ }
-    desenhar();
-  }
-
-  async function apenasRecarregarEventos() {
-    if (!conexao || !conexao.conectado) return;
-    const { inicio, fim } = calcularJanela();
-    try {
-      await B7.DB.sincronizarCalendario(inicio.toISOString(), fim.toISOString());
-    } catch (e) { conexao.avisoSync = e.message; }
-    try {
-      const [evs, ocs] = await Promise.all([
-        B7.DB.eventosCalendario(inicio.toISOString(), fim.toISOString()),
-        B7.DB.ocorrenciasCalendario(inicio.toISOString(), fim.toISOString())
-      ]);
-      eventos = evs; ocorrencias = ocs;
-    } catch (e) { /* mantém o que já tinha */ }
-    desenhar();
-  }
-
-  /* =================================================================
-     ITENS COMBINADOS — ocorrências (gravações com histórico de status) +
-     eventos do Google ainda sem nenhuma gravação vinculada.
-     ================================================================= */
-  function itensCombinados() {
-    const semVinculo = eventos.filter(ev => !ev.gravacao_id).map(ev => ({
-      tipo: 'evento', id: ev.id, inicio: ev.inicio, fim: ev.fim, dia_inteiro: ev.dia_inteiro,
-      titulo: ev.titulo, local: ev.local, agenda_id: ev.agenda_id, agenda_nome: ev.agenda_nome, agenda_cor: ev.agenda_cor,
-      status_provider: ev.status_provider
-    }));
-    const daOcorrencia = ocorrencias.map(o => ({
-      tipo: 'ocorrencia', id: o.id, evento_id: o.evento_id, gravacao_id: o.gravacao_id,
-      inicio: o.inicio, fim: o.fim, status: o.status, atual: o.atual,
-      ocorrencia_anterior_id: o.ocorrencia_anterior_id,
-      motivo_cancelamento: o.motivo_cancelamento, erro_sincronizacao: o.erro_sincronizacao,
-      titulo: o.gravacao_nome, cliente_id: o.gravacao_client_id, cliente_nome: o.gravacao_cliente_nome,
-      cliente_logo_url: o.gravacao_cliente_logo_url, local: o.gravacao_local,
-      agenda_id: o.agenda_id, agenda_nome: o.agenda_nome, agenda_cor: o.agenda_cor
-    }));
-    return semVinculo.concat(daOcorrencia).sort((a, b) => a.inicio < b.inicio ? -1 : a.inicio > b.inicio ? 1 : 0);
-  }
-
-  /* =================================================================
-     FILTROS
-     ================================================================= */
-  function itensFiltrados() {
-    const t = F.busca.trim().toLowerCase();
-    return itensCombinados().filter(it => {
-      if (F.agenda && it.agenda_id !== F.agenda) return false;
-      if (F.cliente === '__sem__' && it.tipo !== 'evento') return false;
-      if (F.cliente && F.cliente !== '__sem__' && it.cliente_id !== F.cliente) return false;
-      if (F.status === 'nao_vinculado' && it.tipo !== 'evento') return false;
-      if (['marcada', 'remarcada', 'concluida', 'cancelada'].includes(F.status)) {
-        if (it.tipo !== 'ocorrencia' || it.status !== F.status) return false;
-      }
-      if (t) {
-        const alvo = ((it.titulo || '') + ' ' + (it.local || '') + ' ' + (it.cliente_nome || '')).toLowerCase();
-        if (!alvo.includes(t)) return false;
-      }
-      return true;
-    });
-  }
-
-  function clientesPresentes() {
-    const mapa = new Map();
-    ocorrencias.forEach(o => { if (o.gravacao_client_id) mapa.set(o.gravacao_client_id, o.gravacao_cliente_nome); });
-    return [...mapa.entries()].sort((a, b) => (a[1] || '').localeCompare(b[1] || '', 'pt-BR'));
-  }
-
-  /* =================================================================
-     DESENHO
-     ================================================================= */
-  function rotuloJanela() {
-    const { inicio, fim } = calcularJanela();
-    if (F.vista === 'hoje') {
-      return 'Hoje, ' + inicio.getDate() + ' de ' + MESES_LONGOS[inicio.getMonth()];
-    }
-    if (F.vista === 'semana') {
-      const ultimo = new Date(fim.getTime() - DIA_MS);
-      return inicio.getDate() + ' ' + MESES[inicio.getMonth()] + ' – ' + ultimo.getDate() + ' ' + MESES[ultimo.getMonth()];
-    }
-    if (F.vista === 'mes') {
-      return MESES_LONGOS[janelaRef.getMonth()].replace(/^./, c => c.toUpperCase()) + ' de ' + janelaRef.getFullYear();
-    }
-    return 'Próximos 21 dias, a partir de ' + inicio.getDate() + ' ' + MESES[inicio.getMonth()];
-  }
-
-  function desenhar() {
-    if (!souEquipeInterna()) {
-      painel().innerHTML = '<div class="conteudo cal-tela"><div class="estado-b7"><b>Sem acesso.</b></div></div>';
-      return;
-    }
-    if (carregando) {
-      painel().innerHTML = '<div class="conteudo cal-tela"><header class="vd-cab"><h1>Calendário de Gravações</h1></header>' +
-        B7.UI.skeleton('tabela', { n: 5, cols: 2 }) + '</div>';
-      return;
-    }
-    if (erroCarga) {
-      painel().innerHTML = '<div class="conteudo cal-tela"><div class="estado-b7"><b>Não foi possível carregar o Calendário.</b>' +
-        '<p>' + esc(erroCarga) + '</p><div class="acoes"><button class="b pri" id="cal-tentar-de-novo">Tentar de novo</button></div></div></div>';
-      const bt = document.getElementById('cal-tentar-de-novo');
-      if (bt) bt.onclick = carregarTudo;
-      return;
-    }
-
-    const visiveis = itensFiltrados();
-
-    painel().innerHTML = '<div class="conteudo entra cal-tela">' +
-      '<div class="cab-conteudo"><div><h1>Calendário de Gravações</h1>' +
-      '<p>' + (conexao.conectado ? 'Conectado como ' + esc(conexao.conta_email || 'conta do Google') : 'Google Calendar não conectado') + '</p></div>' +
-      '<div class="vd-acoes-topo">' +
-        (conexao.conectado && souGestor() ? '<button class="b pri" id="cal-marcar">+ Marcar gravação</button>' : '') +
-        (conexao.conectado ? '<button class="b fina contorno" id="cal-atualizar">Atualizar</button>' : '') +
-        (souGestor() ? '<button class="b fina contorno" id="cal-config">Configurações</button>' : '') +
-      '</div></div>' +
-
-      (!conexao.conectado ? avisoDesconectadoHTML() :
-        (conexao.avisoSync ? '<div class="vd-aviso-anteriores">Não foi possível atualizar agora — mostrando os últimos dados sincronizados. <small class="fraca">' + esc(conexao.avisoSync) + '</small></div>' : '') +
-        (agendas.filter(a => a.ativo).length === 0 ? '<div class="vd-aviso-anteriores">Nenhuma agenda ativa. ' + (souGestor() ? 'Escolha ao menos uma em <b>Configurações</b>.' : 'Peça a um admin/coordenador para escolher uma em Configurações.') + '</div>' : '')
-      ) +
-
-      (conexao.conectado ? '<div class="cal-barra">' +
-        '<div class="cal-nav">' +
-          '<button class="b fina contorno" id="cal-ant">‹</button>' +
-          '<button class="b fina contorno" id="cal-hoje">Hoje</button>' +
-          '<button class="b fina contorno" id="cal-prox">›</button>' +
-          '<span class="cal-rotulo-janela">' + esc(rotuloJanela()) + '</span>' +
-        '</div>' +
-        '<div class="cal-vista">' +
-          '<button class="b fina' + (F.vista === 'hoje' ? ' pri' : ' contorno') + '" data-vista="hoje">Hoje</button>' +
-          '<button class="b fina' + (F.vista === 'mes' ? ' pri' : ' contorno') + '" data-vista="mes">Mês</button>' +
-          '<button class="b fina' + (F.vista === 'semana' ? ' pri' : ' contorno') + '" data-vista="semana">Semana</button>' +
-          '<button class="b fina' + (F.vista === 'agenda' ? ' pri' : ' contorno') + '" data-vista="agenda">Agenda</button>' +
-        '</div>' +
-      '</div>' +
-      '<div class="cal-legenda">' +
-        '<span class="cal-legenda-item"><i class="cal-dot cal-st-marcada"></i>Marcada</span>' +
-        '<span class="cal-legenda-item"><i class="cal-dot cal-st-remarcada"></i>Remarcada</span>' +
-        '<span class="cal-legenda-item"><i class="cal-dot cal-st-concluida"></i>Concluída</span>' +
-        '<span class="cal-legenda-item"><i class="cal-dot cal-st-cancelada"></i>Cancelada</span>' +
-      '</div>' +
-      '<div class="cal-filtros">' +
-        '<select class="campo" id="cal-f-cliente"><option value="">Todos os clientes</option>' +
-          clientesPresentes().map(([id, nome]) => '<option value="' + id + '"' + (F.cliente === id ? ' selected' : '') + '>' + esc(nome) + '</option>').join('') +
-        '</select>' +
-        '<select class="campo" id="cal-f-agenda"><option value="">Todas as agendas</option>' +
-          agendas.filter(a => a.ativo).map(a => '<option value="' + a.id + '"' + (F.agenda === a.id ? ' selected' : '') + '>' + esc(a.nome) + '</option>').join('') +
-        '</select>' +
-        '<select class="campo" id="cal-f-status"><option value="">Todos os status</option>' +
-          '<option value="marcada"' + (F.status === 'marcada' ? ' selected' : '') + '>Marcada</option>' +
-          '<option value="remarcada"' + (F.status === 'remarcada' ? ' selected' : '') + '>Remarcada</option>' +
-          '<option value="concluida"' + (F.status === 'concluida' ? ' selected' : '') + '>Concluída</option>' +
-          '<option value="cancelada"' + (F.status === 'cancelada' ? ' selected' : '') + '>Cancelada</option>' +
-          '<option value="nao_vinculado"' + (F.status === 'nao_vinculado' ? ' selected' : '') + '>Sem vínculo (evento cru do Google)</option>' +
-        '</select>' +
-        '<input class="campo" id="cal-f-busca" placeholder="Buscar título, local, cliente…" value="' + esc(F.busca) + '">' +
-      '</div>' : '') +
-
-      '<div id="cal-corpo">' + (conexao.conectado ? (F.vista === 'mes' ? gradeMesHTML(visiveis) : corpoListaHTML(visiveis)) : '') + '</div>' +
-    '</div>';
-
-    ligar();
-  }
-
-  function avisoDesconectadoHTML() {
-    return '<div class="estado-b7 cal-desconectado"><b>O calendário de gravações ainda não está conectado ao Google.</b>' +
-      '<p>' + (souGestor()
-        ? 'Conecte a conta branding7dados em Configurações para ver as gravações agendadas aqui.'
-        : 'Peça a um admin/coordenador para conectar a conta Google em Configurações.') + '</p>' +
-      (souGestor() ? '<div class="acoes"><button class="b pri" id="cal-conectar-vazio">Conectar Google Calendar</button></div>' : '') +
-      '</div>';
-  }
-
-  function agruparPorDia(lista) {
-    const mapa = new Map();
-    lista.forEach(it => {
-      const chave = (it.inicio || '').slice(0, 10);
-      if (!mapa.has(chave)) mapa.set(chave, []);
-      mapa.get(chave).push(it);
-    });
-    return [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }
-
-  /* ---------------------------------------------------------------
-     VISTA LISTA (Semana / Agenda) — mesma casca de antes
-     --------------------------------------------------------------- */
-  function corpoListaHTML(lista) {
-    if (!lista.length) {
-      return '<div class="estado-b7"><b>Nenhum item nesta janela.</b><p>Ajuste os filtros ou navegue para outro período.</p></div>';
-    }
-    const hojeStr = B7.UI.hojeISO();
-    const porDia = agruparPorDia(lista);
-    return '<div class="cal-dias">' + porDia.map(([diaISO, itens]) => {
-      const d = new Date(diaISO + 'T00:00:00');
-      const ehHoje = diaISO === hojeStr;
-      return '<div class="cal-dia' + (ehHoje ? ' hoje' : '') + '">' +
-        '<div class="cal-dia-cab"><b>' + DIAS_SEMANA[d.getDay()] + '</b><span>' + d.getDate() + ' de ' + MESES[d.getMonth()] + '</span>' + (ehHoje ? '<em>hoje</em>' : '') + '</div>' +
-        '<div class="cal-dia-corpo">' + itens.map(itemCardHTML).join('') + '</div>' +
-      '</div>';
-    }).join('') + '</div>';
-  }
-
-  /* ---------------------------------------------------------------
-     VISTA GRADE DE MÊS
-     --------------------------------------------------------------- */
-  function gradeMesHTML(lista) {
-    const { inicio } = calcularJanela();
-    const porDia = new Map();
-    lista.forEach(it => {
-      const chave = chaveDia(new Date(it.inicio));
-      if (!porDia.has(chave)) porDia.set(chave, []);
-      porDia.get(chave).push(it);
-    });
-    const hojeStr = chaveDia(new Date());
-    const mesAtual = janelaRef.getMonth();
-    const totalDias = Math.round((calcularJanela().fim - inicio) / DIA_MS);
-
-    let html = '<div class="cal-grade-mes">' +
-      '<div class="cal-grade-cab">' + DIAS_SEMANA_ABREV.map(d => '<div>' + d + '</div>').join('') + '</div>' +
-      '<div class="cal-grade-corpo">';
-
-    for (let i = 0; i < totalDias; i++) {
-      const d = new Date(inicio.getTime() + i * DIA_MS);
-      const chave = chaveDia(d);
-      const itens = (porDia.get(chave) || []).sort((a, b) => a.inicio < b.inicio ? -1 : 1);
-      const foraDoMes = d.getMonth() !== mesAtual;
-      const ehHoje = chave === hojeStr;
-      const MOSTRAR = 3;
-      html += '<div class="cal-cel' + (foraDoMes ? ' fora' : '') + (ehHoje ? ' hoje' : '') + '" data-dia="' + chave + '">' +
-        '<div class="cal-cel-num">' + d.getDate() + (ehHoje ? '<em>hoje</em>' : '') +
-          (souGestor() ? '<button class="cal-cel-add" data-dia-marcar="' + chave + '" title="Marcar gravação neste dia" aria-label="Marcar gravação neste dia">+</button>' : '') +
-        '</div>' +
-        '<div class="cal-cel-itens">' +
-          itens.slice(0, MOSTRAR).map(it => cellChipHTML(it)).join('') +
-          (itens.length > MOSTRAR ? '<button class="cal-cel-mais" data-dia-mais="' + chave + '">+' + (itens.length - MOSTRAR) + ' mais</button>' : '') +
-        '</div>' +
-      '</div>';
-    }
-    html += '</div></div>';
-    return html;
-  }
-
-  function cellChipHTML(it) {
-    const cor = it.tipo === 'ocorrencia' ? STATUS_CLASSE[it.status] : (it.status_provider === 'cancelled' ? 'cal-st-cancelada' : 'cal-st-semvinculo');
-    const titulo = it.tipo === 'ocorrencia' ? (it.titulo || 'Gravação') : (it.titulo || '(sem título)');
-    return '<button class="cal-chip ' + cor + '" data-item-tipo="' + it.tipo + '" data-item-id="' + it.id + '">' +
-      '<i class="cal-dot"></i><span>' + esc(horaBR(it.inicio)) + ' ' + esc(titulo) + '</span></button>';
-  }
-
-  function itemCardHTML(it) {
-    const hora = it.dia_inteiro ? 'Dia inteiro' : horaBR(it.inicio) + (it.fim ? '–' + horaBR(it.fim) : '');
-    if (it.tipo === 'evento') {
-      const cancelado = it.status_provider === 'cancelled';
-      return '<div class="cal-evento' + (cancelado ? ' cancelado' : '') + '" data-item-tipo="evento" data-item-id="' + it.id + '" tabindex="0">' +
-        '<div class="cal-evento-hora">' + hora + '</div>' +
-        '<div class="cal-evento-corpo">' +
-          '<div class="cal-evento-titulo">' + esc(it.titulo) + (cancelado ? ' <span class="vd-status vd-status-descartado">Cancelado no Google</span>' : '') + '</div>' +
-          '<div class="cal-evento-meta">' +
-            (it.local ? '<span>' + esc(it.local) + '</span>' : '') +
-            '<span class="cal-evento-agenda" style="' + (it.agenda_cor ? 'color:' + esc(it.agenda_cor) : '') + '">' + esc(it.agenda_nome || 'Agenda') + '</span>' +
-          '</div>' +
-        '</div>' +
-        '<span class="cal-vinculo-badge fraca">Sem vínculo</span>' +
-      '</div>';
-    }
-    // ocorrência
-    return '<div class="cal-evento cal-oc ' + STATUS_CLASSE[it.status] + '" data-item-tipo="ocorrencia" data-item-id="' + it.id + '" tabindex="0">' +
-      '<div class="cal-evento-hora">' + hora + '</div>' +
-      '<div class="cal-evento-corpo">' +
-        '<div class="cal-evento-titulo">' + esc(it.titulo || 'Gravação') +
-          ' <span class="cal-badge-status ' + STATUS_CLASSE[it.status] + '">' + STATUS_ROTULO[it.status] + '</span>' +
-          (!it.atual ? ' <span class="fraca">(histórico)</span>' : '') +
-        '</div>' +
-        '<div class="cal-evento-meta">' +
-          (it.cliente_nome ? '<span>' + esc(it.cliente_nome) + '</span>' : '') +
-          (it.local ? '<span>' + esc(it.local) + '</span>' : '') +
-          (it.agenda_nome ? '<span class="cal-evento-agenda" style="' + (it.agenda_cor ? 'color:' + esc(it.agenda_cor) : '') + '">' + esc(it.agenda_nome) + '</span>' : '') +
-        '</div>' +
-        (it.erro_sincronizacao ? '<div class="cal-aviso-sync">⚠ ' + esc(it.erro_sincronizacao) + '</div>' : '') +
-      '</div>' +
-    '</div>';
-  }
-
-  function horaBR(iso) {
-    const d = new Date(iso);
-    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-  }
-
-  /* =================================================================
-     LIGAÇÕES
-     ================================================================= */
-  function ligar() {
-    const cx = painel();
-    const btAtualizar = cx.querySelector('#cal-atualizar');
-    if (btAtualizar) btAtualizar.onclick = async () => { btAtualizar.disabled = true; await apenasRecarregarEventos(); btAtualizar.disabled = false; };
-    const btConfig = cx.querySelector('#cal-config');
-    if (btConfig) btConfig.onclick = () => modalConfiguracoes();
-    const btConectarVazio = cx.querySelector('#cal-conectar-vazio');
-    if (btConectarVazio) btConectarVazio.onclick = () => conectarGoogle();
-    const btMarcar = cx.querySelector('#cal-marcar');
-    if (btMarcar) btMarcar.onclick = () => modalMarcarGravacao();
-    cx.querySelectorAll('[data-dia-marcar]').forEach(el => {
-      el.onclick = ev => { ev.stopPropagation(); modalMarcarGravacao(el.dataset.diaMarcar); };
-    });
-
-    const btAnt = cx.querySelector('#cal-ant'), btProx = cx.querySelector('#cal-prox'), btHoje = cx.querySelector('#cal-hoje');
-    if (btAnt) btAnt.onclick = () => { navegar(-1); };
-    if (btProx) btProx.onclick = () => { navegar(1); };
-    if (btHoje) btHoje.onclick = () => { janelaRef = new Date(); carregarTudo(); };
-
-    cx.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
-      F.vista = b.dataset.vista; guardarFiltros(); janelaRef = new Date(); carregarTudo();
-    });
-
-    const fCliente = cx.querySelector('#cal-f-cliente'); if (fCliente) fCliente.onchange = e => { F.cliente = e.target.value; guardarFiltros(); desenhar(); };
-    const fAgenda = cx.querySelector('#cal-f-agenda'); if (fAgenda) fAgenda.onchange = e => { F.agenda = e.target.value; guardarFiltros(); desenhar(); };
-    const fStatus = cx.querySelector('#cal-f-status'); if (fStatus) fStatus.onchange = e => { F.status = e.target.value; guardarFiltros(); desenhar(); };
-    const fBusca = cx.querySelector('#cal-f-busca');
-    if (fBusca) fBusca.oninput = B7.UI.debounce ? B7.UI.debounce(e => { F.busca = e.target.value; guardarFiltros(); desenhar(); }, 250) : e => { F.busca = e.target.value; guardarFiltros(); desenhar(); };
-
-    cx.querySelectorAll('[data-item-tipo]').forEach(el => {
-      const abrirItem = () => abrirDetalheDoItem(el.dataset.itemTipo, el.dataset.itemId);
-      el.onclick = abrirItem;
-      el.onkeydown = e => { if (e.key === 'Enter') abrirItem(); };
-    });
-    cx.querySelectorAll('[data-dia-mais]').forEach(el => {
-      el.onclick = () => modalDia(el.dataset.diaMais);
-    });
-
-    /* Celular: a grade de mês não tem largura pra mostrar hora+título
-       em cada dia (virava "09:3..." cortado) — os chips na célula
-       encolhem pra bolinhas (CSS) e a célula inteira abre a lista do
-       dia, o mesmo modalDia() que já existe pro "+N mais". Só no
-       tamanho de tela onde os chips já viraram bolinha, pra não mudar
-       o comportamento do desktop. */
-    cx.querySelectorAll('.cal-cel').forEach(el => {
-      el.onclick = ev => {
-        if (ev.target.closest('[data-item-tipo],[data-dia-marcar],[data-dia-mais]')) return;
-        if (window.matchMedia('(max-width:640px)').matches) modalDia(el.dataset.dia);
-      };
-    });
-  }
-
-  function navegar(direcao) {
-    if (F.vista === 'mes') {
-      janelaRef = new Date(janelaRef.getFullYear(), janelaRef.getMonth() + direcao, 1);
-    } else {
-      const passo = F.vista === 'hoje' ? 1 : F.vista === 'semana' ? 7 : 21;
-      janelaRef = new Date(janelaRef.getTime() + direcao * passo * DIA_MS);
-    }
-    carregarTudo();
-  }
-
-  function abrirDetalheDoItem(tipo, id) {
-    if (tipo === 'evento') {
-      const ev = eventos.find(x => x.id === id);
-      if (ev) modalEvento(ev);
-    } else {
-      const oc = ocorrencias.find(x => x.id === id);
-      if (oc) modalOcorrencia(normalizarOcorrencia(oc));
-    }
-  }
-
+  function chaveDia(d) { return D().isoLocal(new Date(d)); }
+  function horaBR(iso) { return D().horaDoInstante(iso); }
   function normalizarOcorrencia(o) {
     return {
       tipo: 'ocorrencia', id: o.id, evento_id: o.evento_id, gravacao_id: o.gravacao_id,
@@ -535,27 +71,567 @@ B7.Calendario = (function () {
       motivo_cancelamento: o.motivo_cancelamento, erro_sincronizacao: o.erro_sincronizacao,
       titulo: o.gravacao_nome, cliente_id: o.gravacao_client_id, cliente_nome: o.gravacao_cliente_nome,
       local: o.gravacao_local, agenda_nome: o.agenda_nome, agenda_cor: o.agenda_cor,
-      /* Gravações 2.0: data sem horário conhecido aparece como dia inteiro */
       dia_inteiro: !!o.sem_horario, sem_horario: !!o.sem_horario,
       competencia_ano: o.gravacao_competencia_ano, competencia_mes: o.gravacao_competencia_mes
     };
   }
 
-  /* dia inteiro num modal — usado no "+X mais" da grade de mês */
-  function modalDia(diaISO) {
-    const d = new Date(diaISO + 'T00:00:00');
-    const itens = itensFiltrados().filter(it => chaveDia(new Date(it.inicio)) === diaISO)
-      .sort((a, b) => a.inicio < b.inicio ? -1 : 1);
-    const m = B7.UI.modal(
-      '<h3>' + DIAS_SEMANA[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + '</h3>' +
-      '<div class="cal-dia-corpo">' + (itens.length ? itens.map(itemCardHTML).join('') : '<p class="fraca">Nada nesta data.</p>') + '</div>' +
-      '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>',
-      { larga: true }
-    );
-    m.querySelectorAll('[data-item-tipo]').forEach(el => {
-      el.onclick = () => { m.fechar(); abrirDetalheDoItem(el.dataset.itemTipo, el.dataset.itemId); };
+  /* =================================================================
+     URL / ESTADO
+     ================================================================= */
+  function lerParams(params) {
+    const p = params || new URLSearchParams(location.hash.split('?')[1] || '');
+    let pref = {};
+    try { pref = JSON.parse(sessionStorage.getItem('b7.calendario.v2') || '{}'); } catch (e) {}
+    const temFiltroUrl = ['v', 'd', 'tipo', 'cliente', 'resp', 'canc'].some(k => p.has(k));
+    const base = temFiltroUrl ? {} : pref;
+    V.vista = ['mes', 'semana', 'dia'].includes(p.get('v')) ? p.get('v') : (['mes', 'semana', 'dia'].includes(base.vista) ? base.vista : 'mes');
+    V.data = /^\d{4}-\d{2}-\d{2}$/.test(p.get('d') || '') ? p.get('d') : D().hoje();
+    V.tipo = p.get('tipo') || (temFiltroUrl ? '' : base.tipo || '');
+    V.cliente = p.get('cliente') || (temFiltroUrl ? '' : base.cliente || '');
+    V.resp = p.get('resp') || (temFiltroUrl ? '' : base.resp || '');
+    V.canceladas = p.get('canc') === '1' || (!temFiltroUrl && !!base.canceladas);
+    if (V.tipo && !E().TIPOS.some(t => t.id === V.tipo)) V.tipo = '';
+  }
+  function gravarEstado() {
+    const q = new URLSearchParams();
+    q.set('v', V.vista); q.set('d', V.data);
+    if (V.tipo) q.set('tipo', V.tipo);
+    if (V.cliente) q.set('cliente', V.cliente);
+    if (V.resp) q.set('resp', V.resp);
+    if (V.canceladas) q.set('canc', '1');
+    try { history.replaceState(null, '', location.pathname + location.search + '#/calendario?' + q.toString()); } catch (e) {}
+    try { sessionStorage.setItem('b7.calendario.v2', JSON.stringify({ vista: V.vista, tipo: V.tipo, cliente: V.cliente, resp: V.resp, canceladas: V.canceladas })); } catch (e) {}
+  }
+
+  /* janela carregada: sempre o mínimo que a vista mostra */
+  function janela() {
+    const d = V.data;
+    if (ehAgenda()) { const i = D().inicioSemana(d); return { ini: i, fim: D().somarDias(i, 6) }; }
+    if (V.vista === 'dia') return { ini: d, fim: d };
+    if (V.vista === 'semana') { const i = D().inicioSemana(d); return { ini: i, fim: D().somarDias(i, 6) }; }
+    const ini = D().inicioSemana(D().primeiroDoMes(d));
+    const fim = D().somarDias(D().inicioSemana(D().ultimoDoMes(d)), 6);
+    return { ini, fim };
+  }
+
+  function rotulo() {
+    const d = D().local(V.data);
+    if (ehAgenda()) return MESES_LONGOS[d.getMonth()].replace(/^./, c => c.toUpperCase()) + ' de ' + d.getFullYear();
+    if (V.vista === 'mes') return MESES_LONGOS[d.getMonth()].replace(/^./, c => c.toUpperCase()) + ' de ' + d.getFullYear();
+    if (V.vista === 'semana') {
+      const { ini, fim } = janela(); const a = D().local(ini), b = D().local(fim);
+      return D().pad(a.getDate()) + ' ' + MESES[a.getMonth()].toUpperCase() + ' — ' + D().pad(b.getDate()) + ' ' + MESES[b.getMonth()].toUpperCase() +
+        (a.getFullYear() !== b.getFullYear() || b.getFullYear() !== new Date().getFullYear() ? ' ' + b.getFullYear() : '');
+    }
+    return d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + ' de ' + d.getFullYear();
+  }
+
+  /* =================================================================
+     ABRIR / CARREGAR
+     ================================================================= */
+  async function abrir(params) {
+    B7.Dashboard.marcarNav('#/calendario');
+    B7.Rota.titulo(['Calendário']);
+    const p = params || new URLSearchParams(location.hash.split('?')[1] || '');
+    if (p.has('conectado')) {
+      B7.UI.toast(p.get('conectado') === '1' ? 'Google Calendar conectado.' : 'Não foi possível conectar ao Google.');
+      p.delete('conectado');
+    }
+    lerParams(p);
+    if (!souEquipeInterna()) {
+      painel().innerHTML = '<div class="conteudo cb"><div class="estado-b7"><b>Sem acesso ao Calendário.</b></div></div>';
+      return;
+    }
+    R = { eventos: [], erros: {}, ini: null, fim: null, carregando: true, pronto: false };
+    window.removeEventListener('message', aoReceberMensagemPopup);
+    window.addEventListener('message', aoReceberMensagemPopup);
+    /* troca de largura (girar o celular, redimensionar): muda a vista sem recarregar a página */
+    if (mqOuvinte) { try { window.matchMedia(MQ_AGENDA).removeEventListener('change', mqOuvinte); } catch (e) {} }
+    mqOuvinte = () => { if (location.hash.startsWith('#/calendario')) { desenharCasca(); carregar(); } };
+    try { window.matchMedia(MQ_AGENDA).addEventListener('change', mqOuvinte); } catch (e) {}
+    gravarEstado();
+    desenharCasca();
+    ligarTempoReal();
+    /* o que é só "decoração" (nomes, clientes, status do Google) não segura a primeira pintura */
+    Promise.all([
+      garantirClientes().catch(() => []),
+      B7.DB.listarVideomakers ? B7.DB.listarVideomakers().then(l => (l || []).forEach(v => nomesResp.set(v.id, v.nome))).catch(() => {}) : null,
+      B7.DB.statusConexaoCalendario().then(st => { conexao = st || { conectado: false }; }).catch(() => { conexao = { conectado: false }; })
+    ]).then(() => {
+      const antes = E().ESTADO.googleConectado;
+      E().ESTADO.googleConectado = !!conexao.conectado;
+      if (conexao.conectado) {
+        if (souGestor()) B7.DB.listarCalendariosGoogle().then(r => { agendas = r.agendas || []; }).catch(() => {});
+        sincronizarGoogle();
+      }
+      pintarCabecalho(); pintarFiltros();
+      if (antes !== E().ESTADO.googleConectado) carregar({ silencioso: true });
+    });
+    await carregar();
+  }
+
+  function aoReceberMensagemPopup(ev) {
+    if (!ev.data || ev.data.tipo !== 'b7-google-agenda') return;
+    B7.UI.toast(ev.data.ok ? 'Google Calendar conectado.' : (ev.data.mensagem || 'Não foi possível conectar.'));
+    carregarTudo();
+  }
+
+  /* carrega a janela visível. Mantém o que já está na tela enquanto
+     busca (troca de período não pisca a tela inteira). */
+  async function carregar(opcoes) {
+    const g0 = ++geracao;
+    const { ini, fim } = janela();
+    const mesmaJanela = R.ini === ini && R.fim === fim;
+    R.carregando = true;
+    if (!(opcoes && opcoes.silencioso)) pintarCorpo();
+    let r;
+    try { r = await E().carregar(ini, fim, { forcar: opcoes && opcoes.forcar }); }
+    catch (e) { r = { eventos: mesmaJanela ? R.eventos : [], erros: { geral: e.message || 'erro' } }; }
+    if (g0 !== geracao) return;
+    R = { eventos: r.eventos, erros: r.erros, ini, fim, carregando: false, pronto: true };
+    /* os modais da integração usam as linhas cruas */
+    ocorrencias = r.eventos.filter(e => e.dominio === 'gravacao').map(e => e.extra.bruto);
+    eventos = r.eventos.filter(e => e.dominio === 'google').map(e => e.extra.bruto);
+    pintarFiltros(); pintarCorpo();
+  }
+
+  /* depois de uma ação (remarcar, cancelar, marcar…): dado novo, sem cache */
+  async function recarregarLocal() { E().invalidar(); await carregar({ forcar: true, silencioso: true }); }
+  async function carregarTudo() {
+    try { conexao = (await B7.DB.statusConexaoCalendario()) || { conectado: false }; } catch (e) {}
+    E().ESTADO.googleConectado = !!conexao.conectado;
+    if (conexao.conectado && souGestor()) { try { agendas = (await B7.DB.listarCalendariosGoogle()).agendas || []; } catch (e) {} }
+    E().invalidar(); pintarCabecalho();
+    await carregar({ forcar: true });
+  }
+
+  /* sincronização com o Google em segundo plano, no máximo a cada 5 min
+     por janela — o Calendário já está na tela com os dados do B7 */
+  function sincronizarGoogle() {
+    if (!conexao.conectado) return;
+    const { ini, fim } = janela(), k = ini + '|' + fim;
+    if (Date.now() - (sincronizados.get(k) || 0) < 5 * 60e3) return;
+    sincronizados.set(k, Date.now());
+    B7.DB.sincronizarCalendario(D().local(ini).toISOString(), D().local(D().somarDias(fim, 1)).toISOString())
+      .then(() => { conexao.avisoSync = null; E().invalidar(); return carregar({ forcar: true, silencioso: true }); })
+      .catch(e => { conexao.avisoSync = e.message; pintarAvisos(); });
+  }
+
+  /* =================================================================
+     TEMPO REAL — um canal só por abertura do Calendário, nas tabelas
+     de origem dos domínios que a pessoa vê (o RLS filtra o resto). Só
+     recarrega quando a mudança altera o que está na tela: data, status,
+     título, cliente, responsável, ou linha entrando/saindo da janela.
+     Autosave de outros campos (legenda, briefing…) é ignorado. Com a aba
+     escondida, a recarga espera ela voltar. O dado do banco continua
+     sendo a autoridade: o evento só dispara uma leitura nova.
+     ================================================================= */
+  let canalRT = null, rtTimer = null, rtPendente = false, rtOuvindoVisib = false;
+  const RT = {
+    gravacoes_ocorrencias: { dom: 'gravacao', dia: r => r.inicio ? D().diaDoInstante(r.inicio) : null, id: r => 'gravacao:' + r.id },
+    conteudos: { dom: 'publicacao', dia: r => D().diaPuro(r.data_postagem), id: r => 'publicacao:' + r.id,
+      igual: (ev, r) => !r.deleted_at && ev.titulo === (r.titulo || 'Conteúdo sem título') && (ev.status || '') === (r.status || '') && ev.clienteId === r.client_id },
+    demandas_edicao: { dom: 'video', dia: r => D().diaPuro(r.prazo), id: r => 'video:' + r.id,
+      igual: (ev, r) => !r.deleted_at && ev.status === r.editing_status && ev.responsavelId === (r.videomaker_id || null) && ev.titulo === (r.titulo || r.codigo || 'Demanda de vídeo') },
+    design_deliverables: { dom: 'design', dia: r => D().diaPuro(r.prazo), id: r => 'design:' + r.id,
+      igual: (ev, r) => !r.deleted_at && ev.status === r.status && ev.responsavelId === (r.designer_id || null) }
+  };
+  function fecharTempoReal() { clearTimeout(rtTimer); if (canalRT && B7.DB.fecharCanal) B7.DB.fecharCanal(canalRT); canalRT = null; }
+  function ligarTempoReal() {
+    fecharTempoReal();
+    if (!B7.DB.canal) return;
+    const doms = E().dominiosDisponiveis();
+    const subs = Object.keys(RT).filter(t => doms.includes(RT[t].dom)).map(t => ({ table: t }));
+    if (!subs.length) return;
+    canalRT = B7.DB.canal('calendario-b7-' + Date.now(), subs, aoMudarRT);
+    if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(fecharTempoReal);
+    if (!rtOuvindoVisib) {
+      rtOuvindoVisib = true;
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && rtPendente && canalRT) { rtPendente = false; E().invalidar(); carregar({ forcar: true, silencioso: true }); }
+      });
+    }
+  }
+  /* exposto para teste: decide se uma mudança mexe na tela */
+  function mudancaRelevante(p) {
+    const c = RT[p.table]; if (!c || !R.ini) return false;
+    const novo = p.new && Object.keys(p.new).length ? p.new : null, velho = p.old || {};
+    const id = c.id(novo || velho);
+    const naTela = R.eventos.find(e => e.id === id);
+    const dia = novo ? c.dia(novo) : null;
+    const dentro = !!dia && dia >= R.ini && dia <= R.fim;
+    if (!naTela && !dentro) return false;
+    if (naTela && novo && dentro && dia === naTela.dia && c.igual && c.igual(naTela, novo)) return false;
+    return true;
+  }
+  function aoMudarRT(p) {
+    if (!mudancaRelevante(p)) return;
+    clearTimeout(rtTimer);
+    rtTimer = setTimeout(() => {
+      if (!location.hash.startsWith('#/calendario')) return;
+      if (document.hidden) { rtPendente = true; return; }
+      E().invalidar(); carregar({ forcar: true, silencioso: true });
+    }, 1200);
+  }
+
+  /* =================================================================
+     CASCA (desenhada uma vez por abertura; o corpo troca sozinho)
+     ================================================================= */
+  function desenharCasca() {
+    const agenda = ehAgenda();
+    painel().innerHTML = '<div class="conteudo entra cb' + (agenda ? ' cb-agenda' : '') + '">' +
+      '<div class="cb-topo" id="cb-topo"></div>' +
+      '<div class="cb-barra" id="cb-barra"></div>' +
+      '<div class="cb-filtros" id="cb-filtros"></div>' +
+      '<div id="cb-avisos"></div>' +
+      '<div class="cb-corpo" id="cb-corpo" aria-live="polite"></div>' +
+    '</div>';
+    pintarCabecalho(); pintarBarra(); pintarFiltros(); pintarCorpo();
+  }
+
+  function pintarCabecalho() {
+    const cx = document.getElementById('cb-topo'); if (!cx) return;
+    cx.innerHTML = '<div class="cb-titulo"><h1>Calendário</h1>' +
+        '<p>Gravações, publicações e prazos da operação num lugar só.</p></div>' +
+      '<div class="cb-topo-acoes">' +
+        (souGestor() ? '<button class="b pri" id="cb-marcar">' + IC_MAIS + '<span>Marcar gravação</span></button>' : '') +
+        (souGestor() ? '<button class="b contorno ico" id="cb-config" aria-label="Configurações do Google Calendar" title="Google Calendar">' + IC_ENGRENAGEM + '</button>' : '') +
+      '</div>';
+    const m = cx.querySelector('#cb-marcar'); if (m) m.onclick = () => modalMarcarGravacao(ehAgenda() || V.vista === 'dia' ? V.data : undefined);
+    const c = cx.querySelector('#cb-config'); if (c) c.onclick = () => modalConfiguracoes();
+  }
+
+  function pintarBarra() {
+    const cx = document.getElementById('cb-barra'); if (!cx) return;
+    const agenda = ehAgenda();
+    cx.innerHTML =
+      '<div class="cb-nav">' +
+        '<button class="b contorno ico cb-seta" data-nav="-1" aria-label="' + (agenda ? 'Semana anterior' : 'Período anterior') + '">' + IC_ESQ + '</button>' +
+        '<button class="b contorno cb-hoje" data-nav="0">Hoje</button>' +
+        '<button class="b contorno ico cb-seta" data-nav="1" aria-label="' + (agenda ? 'Próxima semana' : 'Próximo período') + '">' + IC_DIR + '</button>' +
+        (agenda
+          ? '<button class="cb-rotulo cb-rotulo-btn" id="cb-mes-btn" aria-haspopup="dialog">' + esc(rotulo()) + IC_BAIXO + '</button>'
+          : '<h2 class="cb-rotulo" id="cb-rotulo">' + esc(rotulo()) + '</h2>') +
+      '</div>' +
+      (agenda ? '' : '<div class="cb-vistas filtro" role="group" aria-label="Vista">' +
+        [['mes', 'Mês'], ['semana', 'Semana'], ['dia', 'Dia']].map(([v, r]) =>
+          '<button data-vista="' + v + '" class="' + (V.vista === v ? 'on' : '') + '" aria-pressed="' + (V.vista === v) + '">' + r + '</button>').join('') + '</div>') +
+      (agenda ? faixaDiasHTML() : '');
+    cx.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navegar(+b.dataset.nav));
+    cx.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => { V.vista = b.dataset.vista; mudou(); });
+    const mb = cx.querySelector('#cb-mes-btn'); if (mb) mb.onclick = seletorMes;
+    cx.querySelectorAll('[data-faixa]').forEach(b => b.onclick = () => { V.data = b.dataset.faixa; gravarEstado(); pintarBarra(); pintarCorpo(); });
+    const sel = cx.querySelector('.cb-faixa .on'); if (sel && sel.scrollIntoView) { try { sel.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {} }
+  }
+
+  function navegar(dir) {
+    if (dir === 0) V.data = D().hoje();
+    else if (ehAgenda()) V.data = D().somarDias(V.data, 7 * dir);
+    else if (V.vista === 'mes') { const d = D().local(D().primeiroDoMes(V.data)); d.setMonth(d.getMonth() + dir); V.data = D().isoLocal(d); }
+    else V.data = D().somarDias(V.data, V.vista === 'semana' ? 7 * dir : dir);
+    mudou();
+  }
+  function mudou() { gravarEstado(); pintarBarra(); carregar(); sincronizarGoogle(); }
+
+  /* ------------------------------------------------------ filtros */
+  function pintarFiltros() {
+    const cx = document.getElementById('cb-filtros'); if (!cx) return;
+    const tipos = E().tiposDisponiveis();
+    /* contagens do período, respeitando os OUTROS filtros */
+    const base = E().filtrar(R.eventos, Object.assign({}, V, { tipo: '' }));
+    const nTipo = t => t ? base.filter(ev => t.dominios.includes(ev.dominio)).length : base.length;
+    /* responsáveis: por id canônico, com nome vindo do próprio registro */
+    const resps = new Map();
+    R.eventos.forEach(ev => { if (ev.responsavelId) resps.set(ev.responsavelId, ev.responsavelNome || nomesResp.get(ev.responsavelId) || 'Sem nome'); });
+    if (V.resp && !resps.has(V.resp)) resps.set(V.resp, nomesResp.get(V.resp) || 'Responsável');
+    const clientes = (clientesCache || []).slice().sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    if (V.cliente && !clientes.some(c => c.id === V.cliente)) {
+      const ev = R.eventos.find(e => e.clienteId === V.cliente); if (ev) clientes.push({ id: V.cliente, nome: ev.clienteNome });
+    }
+    const ativos = !!(V.tipo || V.cliente || V.resp || V.canceladas);
+    cx.innerHTML =
+      (tipos.length > 1 ? '<div class="cb-tipos filtro" role="group" aria-label="Tipo de evento">' +
+        [{ id: '', rot: 'Todos' }].concat(tipos).map(t =>
+          '<button data-tipo="' + t.id + '" class="' + (V.tipo === t.id ? 'on' : '') + '" aria-pressed="' + (V.tipo === t.id) + '">' +
+            (t.id ? '<i class="cb-dom-ic d-' + t.dominios[0] + '">' + E().DOMINIOS[t.dominios[0]].ic + '</i>' : '') + esc(t.rot) +
+            (R.pronto ? '<span class="cb-n">' + nTipo(t.id ? t : null) + '</span>' : '') + '</button>').join('') + '</div>' : '') +
+      '<div class="cb-sels">' +
+        '<select class="campo fina' + (V.cliente ? ' ativo' : '') + '" id="cb-f-cliente" aria-label="Cliente"><option value="">Cliente: todos</option>' +
+          clientes.map(c => '<option value="' + esc(c.id) + '"' + (c.id === V.cliente ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select>' +
+        (resps.size ? '<select class="campo fina' + (V.resp ? ' ativo' : '') + '" id="cb-f-resp" aria-label="Responsável"><option value="">Responsável: todos</option>' +
+          [...resps.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')).map(([id, n]) =>
+            '<option value="' + esc(id) + '"' + (id === V.resp ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>' : '') +
+        '<label class="cb-check"><input type="checkbox" id="cb-f-canc"' + (V.canceladas ? ' checked' : '') + '><span>Mostrar canceladas</span></label>' +
+        (ativos ? '<button class="b fina contorno" id="cb-f-limpar">Limpar</button>' : '') +
+      '</div>';
+    cx.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => { V.tipo = b.dataset.tipo; aplicarFiltro(); });
+    const sc = cx.querySelector('#cb-f-cliente'); if (sc) sc.onchange = () => { V.cliente = sc.value; aplicarFiltro(); };
+    const sr = cx.querySelector('#cb-f-resp'); if (sr) sr.onchange = () => { V.resp = sr.value; aplicarFiltro(); };
+    const ck = cx.querySelector('#cb-f-canc'); if (ck) ck.onchange = () => { V.canceladas = ck.checked; aplicarFiltro(); };
+    const lp = cx.querySelector('#cb-f-limpar'); if (lp) lp.onclick = () => { Object.assign(V, { tipo: '', cliente: '', resp: '', canceladas: false }); aplicarFiltro(); };
+  }
+  function aplicarFiltro() { gravarEstado(); pintarFiltros(); pintarCorpo(); }
+
+  function pintarAvisos() {
+    const cx = document.getElementById('cb-avisos'); if (!cx) return;
+    const erros = Object.keys(R.erros || {});
+    const NOME = { gravacao: 'as gravações', google: 'a agenda do Google', publicacao: 'as publicações', video: 'os prazos de Vídeo', design: 'os prazos de Design', geral: 'o calendário' };
+    cx.innerHTML = erros.map(k => '<div class="cb-aviso erro" role="alert">Não foi possível carregar ' + (NOME[k] || k) +
+        '. <button class="cb-link" data-recarregar>Tentar de novo</button></div>').join('') +
+      (conexao.avisoSync && souGestor() ? '<div class="cb-aviso">A sincronização com o Google falhou agora — o Google pode estar um pouco desatualizado aqui.</div>' : '') +
+      (conexao.conectado && souGestor() && agendas.length && !agendas.some(a => a.ativo) ? '<div class="cb-aviso">Nenhuma agenda do Google ativa. Escolha em <button class="cb-link" data-config>Configurações</button>.</div>' : '');
+    cx.querySelectorAll('[data-recarregar]').forEach(b => b.onclick = () => { E().invalidar(); carregar({ forcar: true }); });
+    cx.querySelectorAll('[data-config]').forEach(b => b.onclick = () => modalConfiguracoes());
+  }
+
+  /* =================================================================
+     CORPO
+     ================================================================= */
+  const visiveis = () => E().filtrar(R.eventos, V);
+  function porDia(lista) {
+    const m = new Map();
+    lista.forEach(ev => { if (!m.has(ev.dia)) m.set(ev.dia, []); m.get(ev.dia).push(ev); });
+    return m;
+  }
+
+  function pintarCorpo() {
+    const cx = document.getElementById('cb-corpo'); if (!cx) return;
+    pintarAvisos();
+    const rot = document.getElementById('cb-rotulo'); if (rot) rot.textContent = rotulo();
+    if (!R.pronto) {
+      cx.innerHTML = '<div class="cb-carregando">' + B7.UI.skeleton(ehAgenda() ? 'lista' : 'cards', { n: ehAgenda() ? 4 : 6 }) + '</div>';
+      return;
+    }
+    const lista = visiveis();
+    let html;
+    if (ehAgenda()) html = agendaDiaHTML(lista.filter(ev => ev.dia === V.data), V.data, true);
+    else if (V.vista === 'mes') html = mesHTML(lista);
+    else if (V.vista === 'semana') html = semanaHTML(lista);
+    else html = agendaDiaHTML(lista.filter(ev => ev.dia === V.data), V.data, false);
+    cx.innerHTML = (R.carregando ? '<div class="cb-atualizando" role="status"><i></i>Atualizando…</div>' : '') + html;
+    cx.classList.toggle('carregando', !!R.carregando);
+    if (ehAgenda()) pintarPontosFaixa();
+    ligarCorpo(cx);
+  }
+
+  function ligarCorpo(cx) {
+    cx.querySelectorAll('[data-ev]').forEach(b => b.onclick = ev => { ev.stopPropagation(); previa(b.dataset.ev); });
+    cx.querySelectorAll('[data-dia-mais]').forEach(b => b.onclick = ev => { ev.stopPropagation(); folhaDia(b.dataset.diaMais); });
+    cx.querySelectorAll('[data-ir-dia]').forEach(b => b.onclick = () => { V.vista = 'dia'; V.data = b.dataset.irDia; mudou(); });
+  }
+
+  /* ---- peças ---- */
+  const DOM = d => E().DOMINIOS[d];
+  function horaTx(ev) {
+    if (ev.hora) return ev.hora + (ev.horaFim ? '–' + ev.horaFim : '');
+    return ev.dominio === 'video' || ev.dominio === 'design' ? 'Prazo' : ev.dominio === 'publicacao' ? 'Publicação' : 'Dia todo';
+  }
+  const rotStatus = ev => ev.historico && ev.status === 'remarcada' ? 'Remarcada (data antiga)' : ev.statusRotulo;
+  function ariaEvento(ev) {
+    return [DOM(ev.dominio).rot, ev.clienteNome, ev.titulo, ev.hora ? 'às ' + ev.hora : horaTx(ev), rotStatus(ev)].filter(Boolean).join(', ');
+  }
+  function chipHTML(ev) {
+    const txt = (ev.clienteNome ? ev.clienteNome + ' · ' : '') + ev.titulo;
+    const mostrarSt = ev.dominio === 'gravacao' && ev.status !== 'marcada';
+    return '<button type="button" class="cb-chip d-' + ev.dominio + ' t-' + ev.tom + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + (ev.concluido ? ' feito' : '') + '" ' +
+      'data-ev="' + esc(ev.id) + '" title="' + esc(ariaEvento(ev)) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
+      '<i class="cb-dom-ic">' + DOM(ev.dominio).ic + '</i>' +
+      (ev.hora ? '<b class="cb-chip-h">' + ev.hora + '</b>' : '') +
+      (mostrarSt ? '<em class="cb-chip-st">' + esc(ev.historico && ev.status === 'remarcada' ? 'Remarcada' : ev.statusRotulo) + '</em>' : '') +
+      '<span class="cb-chip-tx">' + esc(txt) + '</span></button>';
+  }
+  function statusHTML(ev, curto) {
+    if (!ev.statusRotulo) return '';
+    return '<span class="cb-st t-' + ev.tom + (ev.historico ? ' hist' : '') + '" title="' + esc(rotStatus(ev)) + '">' + esc(curto ? ev.statusRotulo : rotStatus(ev)) + '</span>';
+  }
+  function linhaHTML(ev) {
+    const resp = ev.responsavelNome || (ev.responsavelId && nomesResp.get(ev.responsavelId)) || '';
+    return '<button type="button" class="cb-linha d-' + ev.dominio + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + '" data-ev="' + esc(ev.id) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
+      '<span class="cb-linha-h">' + esc(horaTx(ev)) + '</span>' +
+      '<span class="cb-linha-tx"><b>' + esc(ev.clienteNome || DOM(ev.dominio).rot) + '</b>' +
+        '<span>' + esc(ev.titulo) + (ev.sub ? ' · ' + esc(ev.sub) : '') + '</span>' +
+        (ev.dominio === 'gravacao' && ev.extra.referencia ? '<small>Referente a ' + esc(ev.extra.referencia) + '</small>' : '') +
+      '</span>' +
+      '<span class="cb-linha-lado">' + statusHTML(ev) + (resp ? '<small class="cb-resp">' + esc(resp.split(' ')[0]) + '</small>' : '') + '</span>' +
+    '</button>';
+  }
+
+  /* ---- MÊS: 7 colunas fixas, semanas completas ---- */
+  function mesHTML(lista) {
+    const mapa = porDia(lista);
+    const hoje = D().hoje(), mesAtual = V.data.slice(0, 7);
+    const { ini, fim } = janela();
+    const nDias = D().difDias(ini, fim) + 1;
+    let cel = '';
+    for (let i = 0; i < nDias; i++) {
+      const dia = D().somarDias(ini, i), d = D().local(dia);
+      const evs = mapa.get(dia) || [];
+      const fora = dia.slice(0, 7) !== mesAtual, ehHoje = dia === hoje;
+      cel += '<div class="cb-cel' + (fora ? ' fora' : '') + (ehHoje ? ' hoje' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' fds' : '') + '" role="gridcell">' +
+        '<button type="button" class="cb-cel-num" data-ir-dia="' + dia + '" aria-label="Abrir ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + (evs.length ? ', ' + evs.length + ' evento' + (evs.length > 1 ? 's' : '') : '') + '">' +
+          (ehHoje ? '<span class="cb-hoje-tag">Hoje</span>' : '') + '<b>' + d.getDate() + '</b></button>' +
+        '<div class="cb-cel-evs">' + evs.slice(0, evs.length > MAX_CEL ? MAX_CEL - 1 : MAX_CEL).map(chipHTML).join('') +
+          (evs.length > MAX_CEL ? '<button type="button" class="cb-mais" data-dia-mais="' + dia + '">+' + (evs.length - (MAX_CEL - 1)) + ' eventos</button>' : '') +
+        '</div></div>';
+    }
+    return '<div class="cb-mes" role="grid" aria-label="' + esc(rotulo()) + '">' +
+      '<div class="cb-mes-cab" role="row">' + DIAS_SEMANA_ABREV.map(x => '<div role="columnheader">' + x.toUpperCase() + '</div>').join('') + '</div>' +
+      '<div class="cb-mes-grade">' + cel + '</div></div>' + vazioPeriodo(lista);
+  }
+
+  /* ---- SEMANA: colunas por dia; prazos/dia todo em cima, horários embaixo ---- */
+  function semanaHTML(lista) {
+    const mapa = porDia(lista), hoje = D().hoje(), { ini } = janela();
+    let cols = '';
+    for (let i = 0; i < 7; i++) {
+      const dia = D().somarDias(ini, i), d = D().local(dia), evs = mapa.get(dia) || [];
+      const todo = evs.filter(e => !e.hora), hora = evs.filter(e => e.hora);
+      const MAXT = 5;
+      cols += '<section class="cb-sem-col' + (dia === hoje ? ' hoje' : '') + '" aria-label="' + DIAS_SEMANA[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + '">' +
+        '<button type="button" class="cb-sem-cab" data-ir-dia="' + dia + '"><small>' + DIAS_SEMANA_ABREV[d.getDay()].toUpperCase() + '</small><b>' + d.getDate() + '</b>' + (dia === hoje ? '<em>Hoje</em>' : '') + '</button>' +
+        '<div class="cb-sem-todo">' + todo.slice(0, todo.length > MAXT ? MAXT - 1 : MAXT).map(chipHTML).join('') +
+          (todo.length > MAXT ? '<button type="button" class="cb-mais" data-dia-mais="' + dia + '">+' + (todo.length - MAXT + 1) + ' prazos/publicações</button>' : '') + '</div>' +
+        '<div class="cb-sem-hora">' + (hora.length ? hora.map(ev =>
+          '<button type="button" class="cb-card d-' + ev.dominio + ' t-' + ev.tom + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + '" data-ev="' + esc(ev.id) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
+            '<span class="cb-card-h"><i class="cb-dom-ic">' + DOM(ev.dominio).ic + '</i>' + esc(horaTx(ev)) + '</span>' +
+            '<b>' + esc(ev.clienteNome || ev.titulo) + '</b>' + (ev.clienteNome ? '<span>' + esc(ev.titulo) + '</span>' : '') +
+            statusHTML(ev, true) + '</button>').join('') : (todo.length ? '' : '<span class="cb-sem-vazio">—</span>')) + '</div>' +
+      '</section>';
+    }
+    return '<div class="cb-semana">' + cols + '</div>' + vazioPeriodo(lista);
+  }
+
+  /* ---- DIA / agenda: agrupado por domínio, só grupos não vazios ---- */
+  function agendaDiaHTML(lista, dia, compacto) {
+    const d = D().local(dia), hoje = D().hoje();
+    const rel = dia === hoje ? 'Hoje' : dia === D().somarDias(hoje, 1) ? 'Amanhã' : dia === D().somarDias(hoje, -1) ? 'Ontem' : DIAS_SEMANA[d.getDay()];
+    const cab = '<header class="cb-dia-cab"><h3>' + esc(rel) + ' · <span>' + d.getDate() + ' ' + MESES[d.getMonth()].toUpperCase() + '</span></h3>' +
+      (lista.length ? '<small>' + lista.length + ' evento' + (lista.length > 1 ? 's' : '') + '</small>' : '') + '</header>';
+    if (!lista.length) return '<div class="cb-dia' + (compacto ? ' compacto' : '') + '">' + cab + '<div class="cb-vazio">Nenhum evento neste dia' + (filtrando() ? ' com esses filtros' : '') + '.</div></div>';
+    const grupos = [];
+    Object.keys(E().DOMINIOS).sort((a, b) => DOM(a).ordem - DOM(b).ordem).forEach(dom => {
+      const evs = lista.filter(e => e.dominio === dom);
+      if (evs.length) grupos.push('<section class="cb-grupo d-' + dom + '"><h4><i class="cb-dom-ic">' + DOM(dom).ic + '</i>' + esc(DOM(dom).grupo) + '<span>' + evs.length + '</span></h4>' +
+        '<div class="cb-grupo-lista">' + evs.map(linhaHTML).join('') + '</div></section>');
+    });
+    return '<div class="cb-dia' + (compacto ? ' compacto' : '') + '">' + cab + grupos.join('') + '</div>';
+  }
+
+  const filtrando = () => !!(V.tipo || V.cliente || V.resp);
+  function vazioPeriodo(lista) {
+    return lista.length || R.carregando ? '' : '<p class="cb-vazio cb-vazio-periodo">Nenhum compromisso neste período' + (filtrando() ? ' com esses filtros' : '') + '.</p>';
+  }
+
+  /* ---- faixa de dias (celular) ---- */
+  function faixaDiasHTML() {
+    const i = D().inicioSemana(V.data), hoje = D().hoje();
+    let h = '<div class="cb-faixa" role="tablist" aria-label="Dias da semana">';
+    for (let k = 0; k < 7; k++) {
+      const dia = D().somarDias(i, k), d = D().local(dia);
+      h += '<button type="button" role="tab" aria-selected="' + (dia === V.data) + '" class="' + (dia === V.data ? 'on' : '') + (dia === hoje ? ' hoje' : '') + '" data-faixa="' + dia + '">' +
+        '<small>' + DIAS_SEMANA_ABREV[d.getDay()].toUpperCase() + '</small><b>' + d.getDate() + '</b><i class="cb-pontos" data-pontos="' + dia + '"></i></button>';
+    }
+    return h + '</div>';
+  }
+  function pintarPontosFaixa() {
+    const mapa = porDia(visiveis());
+    document.querySelectorAll('[data-pontos]').forEach(el => {
+      const evs = mapa.get(el.dataset.pontos) || [];
+      const doms = [...new Set(evs.map(e => e.dominio))].slice(0, 3);
+      el.innerHTML = doms.map(d => '<span class="d-' + d + '"></span>').join('');
+      el.parentElement.setAttribute('aria-label', el.parentElement.textContent.trim() + (evs.length ? ', ' + evs.length + ' evento' + (evs.length > 1 ? 's' : '') : ', sem eventos'));
     });
   }
+
+  /* ---- seletor de mês (celular): folha com o mês, não a grade permanente ---- */
+  async function seletorMes() {
+    let ref = V.data;
+    const m = B7.UI.modal('<div class="cb-sm" id="cb-sm"></div>', { classe: 'tp-folha' });
+    const pintar = async () => {
+      const cx = m.querySelector('#cb-sm'); if (!cx) return;
+      const d0 = D().local(D().primeiroDoMes(ref));
+      const ini = D().inicioSemana(D().primeiroDoMes(ref)), fim = D().somarDias(D().inicioSemana(D().ultimoDoMes(ref)), 6);
+      const desenhar = mapa => {
+        let cel = '';
+        for (let k = 0; k <= D().difDias(ini, fim); k++) {
+          const dia = D().somarDias(ini, k), d = D().local(dia), n = (mapa.get(dia) || []).length;
+          cel += '<button type="button" class="' + (dia.slice(0, 7) !== ref.slice(0, 7) ? 'fora' : '') + (dia === D().hoje() ? ' hoje' : '') + (dia === V.data ? ' on' : '') + '" data-sm-dia="' + dia + '" aria-label="' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + (n ? ', ' + n + ' eventos' : '') + '">' +
+            d.getDate() + (n ? '<i></i>' : '') + '</button>';
+        }
+        cx.innerHTML = '<div class="tp-folha-cab"><h3>' + MESES_LONGOS[d0.getMonth()].replace(/^./, c => c.toUpperCase()) + ' de ' + d0.getFullYear() + '</h3>' +
+          '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+          '<div class="cb-sm-nav"><button class="b contorno ico" data-sm="-1" aria-label="Mês anterior">' + IC_ESQ + '</button>' +
+          '<button class="b contorno fina" data-sm="0">Hoje</button><button class="b contorno ico" data-sm="1" aria-label="Próximo mês">' + IC_DIR + '</button></div>' +
+          '<div class="cb-sm-cab">' + DIAS_SEMANA_ABREV.map(x => '<span>' + x.slice(0, 1).toUpperCase() + '</span>').join('') + '</div>' +
+          '<div class="cb-sm-grade">' + cel + '</div>';
+        cx.querySelectorAll('[data-fecha]').forEach(b => b.onclick = m.fechar);
+        cx.querySelectorAll('[data-sm]').forEach(b => b.onclick = () => {
+          const k = +b.dataset.sm;
+          if (!k) ref = D().hoje(); else { const x = D().local(D().primeiroDoMes(ref)); x.setMonth(x.getMonth() + k); ref = D().isoLocal(x); }
+          pintar();
+        });
+        cx.querySelectorAll('[data-sm-dia]').forEach(b => b.onclick = () => { V.data = b.dataset.smDia; m.fechar(); mudou(); });
+      };
+      desenhar(new Map());
+      try { const r = await E().carregar(ini, fim); if (document.body.contains(cx)) desenhar(porDia(E().filtrar(r.eventos, V))); } catch (e) {}
+    };
+    pintar();
+  }
+
+  /* ---- folha do dia ("+N eventos") ---- */
+  function folhaDia(dia) {
+    const m = B7.UI.modal('<div class="tp-folha-cab"><h3>Agenda do dia</h3><button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+      '<div class="cb-folha-dia">' + agendaDiaHTML(visiveis().filter(ev => ev.dia === dia), dia, true) + '</div>' +
+      '<div class="acoes"><button class="b contorno" data-ver-dia>Abrir na vista Dia</button></div>', { classe: 'tp-folha cb-folha', larga: true });
+    m.querySelectorAll('[data-fecha]').forEach(b => b.onclick = m.fechar);
+    m.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => { m.fechar(); previa(b.dataset.ev); });
+    const vd = m.querySelector('[data-ver-dia]'); if (vd) vd.onclick = () => { m.fechar(); V.vista = 'dia'; V.data = dia; if (ehAgenda()) { pintarBarra(); pintarCorpo(); gravarEstado(); } else mudou(); };
+  }
+
+  /* ---- prévia do evento: leve, com o caminho para o registro real ---- */
+  function previa(id) {
+    const ev = R.eventos.find(e => e.id === id); if (!ev) return;
+    if (ev.dominio === 'google') return modalEvento(ev.extra.bruto);
+    const dom = DOM(ev.dominio), d = D().local(ev.dia);
+    const resp = ev.responsavelNome || (ev.responsavelId && nomesResp.get(ev.responsavelId)) || '';
+    const quando = DIAS_SEMANA_ABREV[d.getDay()] + ', ' + D().pad(d.getDate()) + ' ' + MESES[d.getMonth()].toUpperCase() + ' ' + d.getFullYear() +
+      ' · ' + (ev.hora ? ev.hora + (ev.horaFim ? '–' + ev.horaFim : '') : ev.dominio === 'gravacao' ? 'horário a definir' : ev.dominio === 'publicacao' ? 'data de publicação' : 'prazo');
+    const ABRIR = { gravacao: 'Abrir gravação', publicacao: 'Abrir conteúdo', video: 'Abrir demanda de vídeo', design: 'Abrir peça de design' };
+    const podeAgir = ev.dominio === 'gravacao' && souGestor() && !ev.historico;
+    const linha = (rot, val) => val ? '<div class="cb-pv-l"><dt>' + rot + '</dt><dd>' + val + '</dd></div>' : '';
+    const m = B7.UI.modal(
+      '<div class="cb-pv d-' + ev.dominio + '">' +
+        '<div class="tp-folha-cab"><span class="cb-pv-tipo"><i class="cb-dom-ic">' + dom.ic + '</i>' + esc(dom.rot) + '</span>' +
+          '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+        '<h3>' + esc(ev.clienteNome || ev.titulo) + '</h3>' +
+        (ev.clienteNome ? '<p class="cb-pv-tit">' + esc(ev.titulo) + (ev.sub ? ' · ' + esc(ev.sub) : '') + '</p>' : '') +
+        '<div class="cb-pv-st">' + statusHTML(ev) + '</div>' +
+        '<dl class="cb-pv-dl">' +
+          linha('Quando', esc(quando)) +
+          (ev.dominio === 'gravacao' ? linha('Referente a', esc(ev.extra.referencia || 'mês não definido')) : '') +
+          linha('Responsável', esc(resp)) +
+          linha('Local', esc((ev.extra && ev.extra.local) || '')) +
+          linha('Linha editorial', esc((ev.extra && ev.extra.linha) || '')) +
+          linha('Gravação', esc((ev.extra && ev.extra.gravacao) || '')) +
+        '</dl>' +
+        (ev.historico ? '<p class="cb-pv-nota">Esta é uma data antiga desta gravação, mantida no calendário como histórico. A gravação tem uma data mais recente.</p>' : '') +
+        (ev.extra && ev.extra.erroSync ? '<p class="cb-pv-nota erro">Não sincronizado com o Google: ' + esc(ev.extra.erroSync) + '</p>' : '') +
+        '<div class="acoes">' +
+          (podeAgir ? '<button class="b contorno" data-acoes>Remarcar, concluir…</button>' : '') +
+          (ev.href ? '<a class="b pri" href="' + esc(ev.href) + '" data-ir>' + esc(ABRIR[ev.dominio] || 'Abrir') + '</a>' : '') +
+        '</div>' +
+      '</div>', { classe: 'tp-folha cb-folha' });
+    m.querySelectorAll('[data-fecha]').forEach(b => b.onclick = m.fechar);
+    const ir = m.querySelector('[data-ir]'); if (ir) ir.addEventListener('click', () => m.fechar());
+    const ac = m.querySelector('[data-acoes]'); if (ac) ac.onclick = () => { m.fechar(); modalOcorrencia(normalizarOcorrencia(ev.extra.bruto)); };
+  }
+
+  /* ícones */
+  const SVGI = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+  const IC_ESQ = SVGI('<path d="M15 6l-6 6 6 6"/>'), IC_DIR = SVGI('<path d="M9 6l6 6-6 6"/>'), IC_BAIXO = SVGI('<path d="M7 10l5 5 5-5"/>');
+  const IC_MAIS = SVGI('<path d="M12 5v14M5 12h14"/>');
+  const IC_ENGRENAGEM = SVGI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>');
 
   /* =================================================================
      CONECTAR / CONFIGURAÇÕES
@@ -805,18 +881,16 @@ B7.Calendario = (function () {
       const dataSugerida = diaSugeridoISO || B7.UI.hojeISO();
       const m = B7.UI.modal(
         '<h3>Marcar gravação</h3>' +
-        '<p class="fraca">Cria a gravação já com status "Marcada" no calendário e, se houver uma agenda de escrita configurada, cria o evento correspondente no Google.</p>' +
-        '<label class="rot">Cliente</label><select class="campo" id="cal-mg-cliente" data-foco><option value="">Escolha o cliente</option>' +
-          clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') + '</select>' +
-        '<div class="vd-grid-2">' +
-          '<div><label class="rot">Data</label><input class="campo" type="date" id="cal-mg-data" value="' + dataSugerida + '"></div>' +
-          '<div></div>' +
-          '<div><label class="rot">Início</label><input class="campo" type="time" id="cal-mg-hora-ini" value="09:00"></div>' +
-          '<div><label class="rot">Fim</label><input class="campo" type="time" id="cal-mg-hora-fim" value="10:00"></div>' +
-        '</div>' +
-        '<label class="rot">Mês de referência</label>' +
+        '<div class="sub">Cria a gravação já marcada no calendário' + (conexao.conectado ? ' e o evento na agenda do Google' : '') + '. Os itens (roteiros, trends) entram depois, na tela da gravação.</div>' +
+        '<div class="mb"><label class="rot" for="cal-mg-cliente">CLIENTE</label><select class="campo" id="cal-mg-cliente" data-foco><option value="">Escolha o cliente</option>' +
+          clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') + '</select></div>' +
+        '<div class="mb"><label class="rot" for="cal-mg-data">DATA</label><input class="campo" type="date" id="cal-mg-data" value="' + dataSugerida + '"></div>' +
+        '<div class="mb"><label class="rot">HORÁRIO</label><div class="gv-horas"><input class="campo" type="time" id="cal-mg-hora-ini" value="09:00" aria-label="Início">' +
+          '<span aria-hidden="true">até</span><input class="campo" type="time" id="cal-mg-hora-fim" value="10:00" aria-label="Fim"></div></div>' +
+        '<div class="mb"><label class="rot">MÊS DE REFERÊNCIA <span class="leve">— obrigatório</span></label>' +
           (B7.Gravacao ? B7.Gravacao.camposMes(+dataSugerida.slice(0, 4), +dataSugerida.slice(5, 7), 'cal-mg') : '') +
-        '<label class="rot">Local <span class="leve">— opcional</span></label><input class="campo" id="cal-mg-local">' +
+          '<div class="ajuda gv-ajuda">O mês de produção a que a gravação pertence. O calendário mostra a gravação no dia em que ela acontece.</div></div>' +
+        '<div class="mb"><label class="rot" for="cal-mg-local">LOCAL <span class="leve">— opcional</span></label><input class="campo" id="cal-mg-local"></div>' +
         '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="cal-mg-salvar">Marcar gravação</button></div>'
       );
       /* o mês de referência acompanha a data até a pessoa escolher outro */
@@ -1051,5 +1125,5 @@ B7.Calendario = (function () {
     };
   }
 
-  return { abrir };
+  return { abrir, recarregar: recarregarLocal, _mudancaRelevante: mudancaRelevante, _aoMudarRT: aoMudarRT };
 })();

@@ -1885,15 +1885,8 @@ B7.DB = (function () {
     /* Conteúdos com data de postagem no intervalo: mesma regra de
        publicacoesDoPeriodo (Publicações do Dia) — só deleted_at —, com
        menos colunas (sem legenda/direção, que o Painel não mostra). */
-    async painelCoordConteudos(inicio, fim) {
-      return ok(await sb().from('conteudos')
-        .select('id,linha_id,client_id,tipo,titulo,canal,data_postagem,status,position,created_at,clientes(nome,logo_url)')
-        .is('deleted_at', null)
-        .gte('data_postagem', inicio).lte('data_postagem', fim)
-        .order('data_postagem', { ascending: true })
-        .order('position', { ascending: true })
-        .order('created_at', { ascending: true }));
-    },
+    /* (fase 6) mesma leitura do Calendário B7 — uma regra de publicação só */
+    async painelCoordConteudos(inicio, fim) { return this.publicacoesCalendario(inicio, fim); },
     /* O que está esperando revisão interna fora do Design: conteúdos e
        roteiros com status "Em revisão" (vocabulário canônico de
        B7.Conteudo.STATUS_CONTEUDO e B7.UI REVISAO). Volume pequeno. */
@@ -2165,6 +2158,25 @@ B7.DB = (function () {
     },
 
     /* ---- Ocorrências (status Marcada/Remarcada/Concluída/Cancelada) ---- */
+    /* ---- Calendário B7 (fase 6): leituras ESCOPADAS pela janela
+       visível, só as colunas que o evento usa. Datas puras (prazo,
+       data_postagem) comparadas como texto AAAA-MM-DD — sem fuso. */
+    async publicacoesCalendario(inicio, fim) {
+      return ok(await sb().from('conteudos')
+        .select('id,linha_id,client_id,tipo,titulo,canal,data_postagem,status,position,created_at,clientes(nome,logo_url),linhas_editoriais(nome),pilares(nome)')
+        .is('deleted_at', null).gte('data_postagem', inicio).lte('data_postagem', fim)
+        .order('data_postagem', { ascending: true }).order('position', { ascending: true }).order('created_at', { ascending: true }).limit(1500));
+    },
+    async prazosVideoPeriodo(inicio, fim) {
+      return ok(await sb().from('demandas_edicao_resumo')
+        .select('id,client_id,cliente_nome,cliente_logo_url,videomaker_id,videomaker_nome,codigo,titulo,prazo,editing_status,gravacao_nome')
+        .gte('prazo', inicio).lte('prazo', fim).order('prazo', { ascending: true }).limit(1500));
+    },
+    async prazosDesignPeriodo(inicio, fim) {
+      return ok(await sb().from('design_resumo')
+        .select('id,client_id,cliente_nome,cliente_logo_url,designer_id,designer_nome,titulo,conteudo_titulo,conteudo_tipo,tipo,prazo,status,linha_nome')
+        .gte('prazo', inicio).lte('prazo', fim).order('prazo', { ascending: true }).limit(1500));
+    },
     async ocorrenciasCalendario(inicioISO, fimISO) {
       return ok(await sb().from('calendario_ocorrencias_resumo').select('*')
         .lt('inicio', fimISO).or('fim.gte.' + inicioISO + ',fim.is.null')

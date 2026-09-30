@@ -553,6 +553,7 @@ B7.Dashboard = (function () {
     painel().innerHTML = '<div class="conteudo gl-pagina">' +
       '<div class="secao-topo"><h2 style="font-size:22px">Gravações</h2>' +
       '<span class="conta" id="gv-conta">' + gravacoes.length + '</span><div class="espaco"></div>' +
+      (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno gl-cal" href="#/calendario?v=mes&amp;tipo=gravacoes">' + IC.gravacoes + 'Calendário</a>' : '') +
       '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button></div>' +
       (gravacoes.length ? '<div class="gl-filtros">' +
         '<div class="gl-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
