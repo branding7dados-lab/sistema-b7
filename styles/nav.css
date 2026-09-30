@@ -26,8 +26,8 @@ body.recolhida .nav-mais{visibility:visible;}
 
 /* ------------------------------------------------ tablet: trilho fixo */
 @media (min-width:761px) and (max-width:1080px){
-  body[data-shell="interno"] .lateral{position:relative;transform:none;box-shadow:none;width:74px;}
-  body[data-shell="interno"].recolhida .lateral{width:74px;}
+  body[data-shell="interno"] .lateral{position:relative;transform:none;box-shadow:none;width:var(--lateral-estreita);}
+  body[data-shell="interno"].recolhida .lateral{width:var(--lateral-estreita);}
   body[data-shell="interno"].recolhida .nav a{justify-content:center;padding:11px 0;}
   body[data-shell="interno"].recolhida .nav a span{display:none;}
   body[data-shell="interno"].recolhida .marca-lateral{padding:20px 0 16px;justify-content:center;}
@@ -165,4 +165,99 @@ body.recolhida .nav-mais{visibility:visible;}
     [data-theme="dark"] body[data-shell="interno"] #tela-dashboard .topo.topo-global,
     [data-theme="dark"] body[data-shell="interno"] .nav-inferior{background:color-mix(in srgb, var(--card) 80%, transparent);}
   }
+}
+
+/* =====================================================================
+   BARRA LATERAL EM SANFONA (js/nav.js) — shell da equipe
+   Um grupo aberto por vez; grid-template-rows 0fr→1fr (altura real,
+   sem max-height mágico); só propriedades intencionais animam.
+   ===================================================================== */
+.nav[data-shell="interno"]{padding:6px 10px 10px;}
+.nav[data-shell="interno"] .nav-trilha{display:none;}      /* acento vai no próprio item */
+.nav-acordeao{display:flex;flex-direction:column;gap:4px;}
+.ng{min-width:0;}
+.ng-cab{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:0 10px 0 12px;border:0;border-radius:9px;
+  background:transparent;cursor:pointer;text-align:left;color:rgba(255,255,255,.46);
+  transition:background-color .16s var(--mola), color .16s var(--mola);}
+.ng-cab:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.72);}
+.ng-cab:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:-2px;}
+.ng-tit{flex:1;min-width:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ng.aberto .ng-cab{color:rgba(255,255,255,.82);}
+.ng-seta{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  opacity:.8;transition:transform .17s cubic-bezier(.2,0,0,1);}
+.ng.aberto .ng-seta{transform:rotate(90deg);}
+/* tela atual mora num grupo fechado: ponto discreto */
+.ng-ponto{width:6px;height:6px;border-radius:50%;background:var(--magenta);flex:none;opacity:0;transform:scale(.4);
+  transition:opacity .16s var(--mola), transform .16s var(--mola);}
+.ng.tem-ativo:not(.aberto) .ng-ponto{opacity:1;transform:none;}
+.ng-leitor{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+/* painel: fechado não ocupa espaço nem recebe foco */
+.ng-painel{display:grid;grid-template-rows:0fr;opacity:0;visibility:hidden;
+  transition:grid-template-rows .17s cubic-bezier(.2,0,0,1), opacity .14s cubic-bezier(.2,0,0,1), visibility 0s linear .17s;}
+.ng.aberto .ng-painel{grid-template-rows:1fr;opacity:1;visibility:visible;
+  transition:grid-template-rows .17s cubic-bezier(.2,0,0,1), opacity .17s cubic-bezier(.2,0,0,1) .02s, visibility 0s;}
+.ng-in{min-height:0;overflow:hidden;}
+.ng-lista{display:flex;flex-direction:column;gap:2px;padding:2px 0 6px;}   /* o respiro fica DENTRO do que é recortado: sem pulo */
+/* itens: silenciosos; ativo com superfície + acento de 3px à esquerda */
+.nav[data-shell="interno"] .ng a{min-height:38px;padding:0 12px;margin:0;gap:12px;border-radius:9px;font-size:13.5px;
+  color:rgba(255,255,255,.62);transition:background-color .14s var(--mola), color .14s var(--mola);}
+.nav[data-shell="interno"] .ng a:hover{background:rgba(255,255,255,.06);color:#fff;}
+.nav[data-shell="interno"] .ng a.on{background:rgba(255,255,255,.1);color:#fff;font-weight:600;}
+.nav[data-shell="interno"] .ng a.on svg{stroke-width:1.9;}
+.nav[data-shell="interno"] .ng a.on:before{display:block;content:"";position:absolute;left:0;top:9px;bottom:9px;height:auto;width:3px;
+  transform:none;border-radius:0 3px 3px 0;background:var(--grad-curto);animation:none;}
+.nav[data-shell="interno"] .ng a span{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+
+/* ---- recolhida / trilho de tablet: ícone por GRUPO ---- */
+.nav-trilho{display:none;flex-direction:column;align-items:center;gap:6px;padding-top:4px;}
+body.recolhida .nav[data-shell="interno"] .nav-acordeao{display:none;}
+body.recolhida .nav[data-shell="interno"] .nav-trilho{display:flex;animation:navEntra .18s cubic-bezier(.2,0,0,1) both;}
+body:not(.recolhida) .nav[data-shell="interno"] .nav-acordeao{animation:navEntra .16s cubic-bezier(.2,0,0,1) .09s both;}
+@keyframes navEntra{from{opacity:0}to{opacity:1}}
+/* recolhendo: os rótulos saem antes da largura encolher */
+body.recolhendo .nav[data-shell="interno"] .nav-acordeao,body.recolhendo .marca-lateral img.lockup,body.recolhendo .bt-recolher span{
+  animation:navSai .09s linear both;}
+@keyframes navSai{from{opacity:1}to{opacity:0}}
+/* ao expandir: logo e rótulo do rodapé entram depois que há largura */
+body:not(.recolhida) .marca-lateral img.lockup,body:not(.recolhida) .bt-recolher span{animation:navEntra .16s cubic-bezier(.2,0,0,1) .09s both;}
+.ntr-bt{position:relative;width:44px;height:42px;display:flex;align-items:center;justify-content:center;border:0;border-radius:11px;
+  background:transparent;color:rgba(255,255,255,.6);cursor:pointer;transition:background-color .14s var(--mola), color .14s var(--mola);}
+.ntr-bt svg{width:19px;height:19px;}
+.ntr-bt:hover,.ntr-bt.aberto{background:rgba(255,255,255,.08);color:#fff;}
+.ntr-bt.tem-ativo{color:#fff;background:rgba(255,255,255,.1);}
+.ntr-bt.tem-ativo:before{content:"";position:absolute;left:-15px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--grad-curto);}
+.ntr-bt:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:1px;}
+.ntr-ponto{display:none;}
+.marca-lateral img.simbolo{animation:navEntra .18s cubic-bezier(.2,0,0,1) both;}
+
+/* ---- painel flutuante (fora da barra, no body) ---- */
+.nav-flyout{position:fixed;z-index:140;min-width:210px;max-width:260px;padding:8px;border-radius:12px;
+  background:var(--sidebar-2);border:1px solid rgba(255,255,255,.1);box-shadow:0 14px 34px -10px rgba(5,3,15,.55);
+  opacity:0;transform:translateX(-6px);transition:opacity .14s cubic-bezier(.2,0,0,1), transform .14s cubic-bezier(.2,0,0,1);}
+.nav-flyout.aberto{opacity:1;transform:none;}
+.nav-flyout.saindo{opacity:0;transform:translateX(-4px);}
+.nf-tit{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.5);padding:6px 10px 8px;}
+.nf-item{position:relative;display:flex;align-items:center;gap:11px;min-height:36px;padding:0 10px;border-radius:8px;
+  color:rgba(255,255,255,.7);font-size:13.5px;text-decoration:none;white-space:nowrap;transition:background-color .14s var(--mola), color .14s var(--mola);}
+.nf-item svg{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.nf-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.nf-item:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:-2px;}
+.nf-item.on{background:rgba(255,255,255,.1);color:#fff;font-weight:600;}
+.nf-item.on:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--grad-curto);}
+
+/* ---- logo e rodapé mais enxutos ---- */
+body[data-shell="interno"] .marca-lateral{padding:16px 18px 10px;}
+body[data-shell="interno"].recolhida .marca-lateral{padding:16px 0 10px;}
+body[data-shell="interno"] .pe-lateral{padding:8px 10px;}
+body[data-shell="interno"] .bt-recolher{justify-content:flex-start;gap:10px;padding:0 12px;min-height:34px;font-size:12px;color:rgba(255,255,255,.4);
+  transition:background-color .14s var(--mola), color .14s var(--mola);}
+body[data-shell="interno"].recolhida .bt-recolher{justify-content:center;padding:0;}
+body[data-shell="interno"] .bt-recolher svg{transition:transform .18s cubic-bezier(.2,0,0,1);}
+/* largura: só a largura anima, curva de produto (sem mola) */
+body[data-shell="interno"] .lateral{transition:width .18s cubic-bezier(.2,0,0,1);}
+
+@media (prefers-reduced-motion:reduce){
+  .ng-painel,.ng.aberto .ng-painel,.ng-seta,.ng-ponto,.nav-flyout,body[data-shell="interno"] .lateral{transition:none !important;}
+  .nav-acordeao,.nav-trilho,.marca-lateral img.simbolo{animation:none !important;}
 }

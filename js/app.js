@@ -563,13 +563,35 @@ B7.Rota = (function () {
       });
     };
     B7.rotularNav = rotularNav;
-    document.getElementById('bt-recolher').onclick = () => {
+    /* Recolher/expandir: ao recolher, os rótulos somem PRIMEIRO (90 ms) e
+       só então a largura encolhe; ao expandir, a largura cresce e os
+       rótulos entram com atraso (CSS) — nada de texto espremido. */
+    const btRecolher = document.getElementById('bt-recolher');
+    const rotularRecolher = () => {
+      const r = document.body.classList.contains('recolhida');
+      btRecolher.setAttribute('aria-label', r ? 'Expandir barra lateral' : 'Recolher barra lateral');
+      btRecolher.setAttribute('aria-expanded', String(!r));
+      const sp = btRecolher.querySelector('span'); if (sp) sp.textContent = 'Recolher';
+    };
+    B7.rotularRecolher = rotularRecolher;
+    btRecolher.onclick = () => {
       /* no tablet a barra já é trilho fixo: recolher não se aplica */
-      if (document.body.classList.contains('trilho-tablet')) return;
-      const r = document.body.classList.toggle('recolhida');
-      B7.pref.gravar('sidebar_recolhida', r);
-      rotularNav();
-      if (document.getElementById('tela-editor').classList.contains('ativa')) B7.Editor.aplicarZoom();
+      const b = document.body;
+      if (b.classList.contains('trilho-tablet') || b.classList.contains('recolhendo')) return;
+      if (B7.Nav && B7.Nav.fecharFlyout) B7.Nav.fecharFlyout(true);
+      const depois = () => {
+        rotularNav(); rotularRecolher();
+        if (document.getElementById('tela-editor').classList.contains('ativa')) B7.Editor.aplicarZoom();
+      };
+      const calmo = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!b.classList.contains('recolhida') && !calmo) {
+        b.classList.add('recolhendo');
+        setTimeout(() => { b.classList.remove('recolhendo'); b.classList.add('recolhida'); B7.pref.gravar('sidebar_recolhida', true); depois(); }, 90);
+      } else {
+        const r = b.classList.toggle('recolhida');
+        B7.pref.gravar('sidebar_recolhida', r);
+        depois();
+      }
     };
     /* ---- gaveta (sidebar no celular) ----
        Abre pelo hambúrguer; fecha ao tocar fora (o overlay é o próprio
@@ -597,7 +619,7 @@ B7.Rota = (function () {
       window.matchMedia('(min-width:1081px)').addEventListener('change', ev => { if (ev.matches) gaveta(false); });
     } catch (e) {}
     if (B7.pref.ler('sidebar_recolhida', false)) document.body.classList.add('recolhida');
-    rotularNav();
+    rotularNav(); rotularRecolher();
 
     /* O estado do banco saiu da sidebar: durante a produção normal a
        equipe não precisa ver infraestrutura. Ele vive em Configurações →

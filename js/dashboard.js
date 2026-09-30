@@ -1550,6 +1550,8 @@ B7.Dashboard = (function () {
   function marcarNav(rota) {
     document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.ir === rota));
     if (B7.moverTrilha) B7.moverTrilha();
+    /* sanfona da barra: abre o grupo da tela atual */
+    if (B7.Nav && B7.Nav.sincronizar) B7.Nav.sincronizar(false);
     /* o topo acompanha: contexto no celular e a ordem/estilo do "Criar" */
     if (B7.Topo) B7.Topo.contexto();
   }

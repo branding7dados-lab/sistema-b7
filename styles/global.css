@@ -58,6 +58,8 @@
 
   /* MOTION SYSTEM: quatro tempos oficiais, nada além disso */
   --mola:cubic-bezier(.4,0,.2,1);
+  /* barra lateral: uma fonte só para as duas larguras */
+  --lateral-larga:248px; --lateral-estreita:74px;
   --t-micro:.14s var(--mola);    /* clique, chip, checkbox   */
   --t:.18s var(--mola);          /* hover padrão             */
   --t-modal:.2s cubic-bezier(.2,.9,.3,1);
@@ -166,12 +168,12 @@ body.modo-previa-usuario #app{margin-top:44px;height:calc(100vh - 44px);height:c
   body.modo-previa-usuario #app{margin-top:58px;height:calc(100vh - 58px);height:calc(100dvh - 58px);}
 }
 
-.lateral{width:248px;flex:none;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;
+.lateral{width:var(--lateral-larga);flex:none;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;
   transition:width var(--t);position:relative;z-index:60;overflow:hidden;
   padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
 .lateral:after{content:"";position:absolute;right:0;top:0;bottom:0;width:1px;
   background:linear-gradient(180deg,rgba(194,28,131,.5),rgba(58,30,134,.25),transparent);}
-body.recolhida .lateral{width:74px;}
+body.recolhida .lateral{width:var(--lateral-estreita);}
 
 .marca-lateral{padding:20px 18px 16px;display:flex;align-items:center;gap:11px;}
 .marca-clique{display:flex;align-items:center;gap:11px;background:none;border:0;padding:0;
@@ -255,7 +257,7 @@ body.recolhida .ver-como-bt span{display:none;}
 .ver-como-lista .res b{display:block;font-size:13px;font-weight:600;}
 .ver-como-lista .res small{font-size:11px;color:var(--ink-3);}
 .ver-como-lista .nada{padding:18px;text-align:center;font-size:12.5px;color:var(--ink-3);}
-body.recolhida .ver-como-caixa{left:74px;right:auto;width:290px;}
+body.recolhida .ver-como-caixa{left:var(--lateral-estreita);right:auto;width:290px;}
 
 .bt-recolher{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;
   border-radius:10px;color:rgba(255,255,255,.45);font-size:12px;transition:var(--t);}

@@ -101,7 +101,8 @@ B7.Nav = (function () {
   };
   const OPERACAO = ['clientes', 'publicacoes', 'aprovacoes', 'kanban', 'design', 'video', 'gravacoes', 'calendario', 'oportunidades',
                     'roteiros', 'linhas', 'semanas'];
-  const FERRAMENTAS = ['arquivados', 'lixeira', 'usuarios', 'config', 'atalhos'];
+  /* Atalhos saiu da barra permanente: continua no menu da conta e na tecla "?" */
+  const FERRAMENTAS = ['arquivados', 'lixeira', 'usuarios', 'config'];
 
   function rotuloDe(id) {
     if (id === 'central' && papel() === 'designer') return 'Central de Design';
@@ -163,44 +164,218 @@ B7.Nav = (function () {
       ' data-nav="' + id + '" aria-label="' + esc(rot) + '"';
     return '<a' + attrs + (it.rota ? ' href="' + it.rota + '"' : ' href="#" role="button"') + '>' + IC[id] + '<span>' + esc(rot) + '</span></a>';
   }
-  function grupo(rotulo, ids) {
-    return ids.length ? '<div class="grupo" role="presentation">' + rotulo + '</div>' + ids.map(linkLateral).join('') : '';
+  /* ============================================ SANFONA (desktop)
+     Os mesmos quatro grupos de sempre (Principal · Meu trabalho ·
+     Operação · Mais ferramentas), agora em sanfona: UM grupo aberto por
+     vez. Quem abre: 1) o grupo da rota atual; 2) o último aberto à mão
+     (localStorage, só quando a rota não resolve); 3) Meu trabalho para
+     quem tem função operacional, Principal para os demais.
+     Fechar à mão o grupo da rota atual deixa um ponto discreto nele.
+     Recolhida (ou tablet em trilho): em vez de uma coluna com todos os
+     ícones, um ícone por GRUPO, que abre um painel flutuante ao lado. */
+  const SVGN = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+  const IC_GRUPO = {
+    principal: SVGN('<path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19z"/>'),
+    trabalho: SVGN('<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12.5h18"/>'),
+    operacao: SVGN('<path d="M12 3.5l8.5 4.5-8.5 4.5L3.5 8z"/><path d="M3.5 12.5L12 17l8.5-4.5M3.5 16.5L12 21l8.5-4.5"/>'),
+    ferramentas: SVGN('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>')
+  };
+  const CHEVRON = '<svg class="ng-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  const CHAVE_GRUPO = 'b7-nav-grupo';
+  let G = { grupos: [], aberto: null, rota: null, funcoes: [] };
+
+  function gruposDe(r) {
+    return [
+      { id: 'principal', rotulo: 'Principal', ids: r.principal },
+      { id: 'trabalho', rotulo: 'Meu trabalho', ids: r.trabalho },
+      { id: 'operacao', rotulo: r.trabalho.length ? 'Operação' : 'Produção', ids: r.operacao },
+      { id: 'ferramentas', rotulo: 'Mais ferramentas', ids: r.ferramentas }
+    ].filter(g => g.ids.length);            /* grupo sem item autorizado não existe */
+  }
+  function grupoHTML(g) {
+    return '<section class="ng" data-grupo="' + g.id + '">' +
+      '<button type="button" class="ng-cab" id="ng-cab-' + g.id + '" aria-expanded="false" aria-controls="ng-painel-' + g.id + '">' +
+        '<span class="ng-tit">' + esc(g.rotulo) + '</span>' +
+        '<i class="ng-ponto" aria-hidden="true"></i><span class="ng-leitor"></span>' + CHEVRON + '</button>' +
+      '<div class="ng-painel" id="ng-painel-' + g.id + '" role="region" aria-labelledby="ng-cab-' + g.id + '">' +
+        '<div class="ng-in"><div class="ng-lista">' + g.ids.map(linkLateral).join('') + '</div></div></div>' +
+    '</section>';
+  }
+  function trilhoHTML() {
+    return '<div class="nav-trilho" role="toolbar" aria-orientation="vertical" aria-label="Grupos de navegação">' +
+      G.grupos.map(g => '<button type="button" class="ntr-bt" data-grupo-bt="' + g.id + '" aria-label="' + esc(g.rotulo) + '" aria-haspopup="true" aria-expanded="false">' +
+        IC_GRUPO[g.id] + '<i class="ntr-ponto" aria-hidden="true"></i></button>').join('') + '</div>';
   }
 
   function montarLateral() {
     const nav = document.querySelector('.nav');
     const r = resolver();
     if (!nav || !r) return false;
-    const ferramentasAtivas = r.ferramentas.some(id => (ITENS[id].base || []).includes(baseAtual()));
-    let abertas = ferramentasAtivas;
-    try { abertas = abertas || localStorage.getItem('b7-nav-mais') === '1'; } catch (e) {}
-    nav.innerHTML =
-      grupo('PRINCIPAL', r.principal) +
-      grupo('MEU TRABALHO', r.trabalho) +
-      grupo(r.trabalho.length ? 'OPERAÇÃO' : 'PRODUÇÃO', r.operacao) +
-      (r.ferramentas.length
-        ? '<button type="button" class="grupo grupo-alterna" id="nav-mais-toggle" aria-expanded="' + abertas + '" aria-controls="nav-mais">' +
-            '<span>MAIS FERRAMENTAS</span><svg viewBox="0 0 24 24" class="seta" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>' +
-          '<div class="nav-mais' + (abertas ? ' aberta' : '') + '" id="nav-mais">' + r.ferramentas.map(linkLateral).join('') + '</div>'
-        : '');
+    fecharFlyout(true);
+    G = { grupos: gruposDe(r), aberto: null, rota: null, funcoes: r.funcoes };
+    nav.innerHTML = '<div class="nav-acordeao">' + G.grupos.map(grupoHTML).join('') + '</div>' + trilhoHTML();
     nav.dataset.shell = 'interno';
-    /* grupo recolhível: lembra a escolha neste navegador */
-    const toggle = document.getElementById('nav-mais-toggle'), caixa = document.getElementById('nav-mais');
-    if (toggle && caixa) toggle.onclick = () => {
-      const ab = !caixa.classList.contains('aberta');
-      caixa.classList.toggle('aberta', ab);
-      toggle.setAttribute('aria-expanded', String(ab));
-      /* fechado: os links escondidos saem da ordem do Tab */
-      caixa.querySelectorAll('a').forEach(a => a.tabIndex = ab ? 0 : -1);
-      try { localStorage.setItem('b7-nav-mais', ab ? '1' : '0'); } catch (e) {}
-    };
-    if (caixa && !abertas) caixa.querySelectorAll('a').forEach(a => a.tabIndex = -1);
-    const at = document.getElementById('nav-atalhos');
-    if (at) at.onclick = e => { e.preventDefault(); B7.UI.atalhos(); };
-    ligarDicas(nav);
+    nav.querySelectorAll('.ng-cab').forEach(b => b.onclick = () => {
+      const id = b.closest('.ng').dataset.grupo;
+      abrirGrupo(G.aberto === id ? null : id, true);
+    });
+    nav.querySelectorAll('.ntr-bt').forEach(b => {
+      b.onclick = ev => alternarFlyout(b.dataset.grupoBt, b, ev.detail === 0);
+      const dica = () => { if (!flyout || flyout.dataset.grupo !== b.dataset.grupoBt) B7.UI.dica(b, b.getAttribute('aria-label')); };
+      b.addEventListener('mouseenter', dica);
+      b.addEventListener('focus', dica);
+      b.addEventListener('mouseleave', () => B7.UI.esconderDica());
+      b.addEventListener('blur', () => B7.UI.esconderDica());
+      b.addEventListener('keydown', e => {
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        const bts = [...nav.querySelectorAll('.ntr-bt')], i = bts.indexOf(b);
+        (bts[(i + (e.key === 'ArrowDown' ? 1 : bts.length - 1)) % bts.length]).focus();
+      });
+    });
+    sincronizar(true);
     marcarAtivo();
     return true;
   }
+
+  /* qual grupo contém o destino atual? (o módulo marca .on; antes disso,
+     a rota decide) */
+  function grupoAtivo() {
+    const on = document.querySelector('.nav .ng a.on');
+    const id = (on && on.dataset.nav) || itemDaRota();
+    const g = G.grupos.find(x => x.ids.includes(id));
+    return g ? g.id : null;
+  }
+  function grupoPadrao() {
+    let lembrado = null;
+    try { lembrado = localStorage.getItem(CHAVE_GRUPO); } catch (e) {}
+    const existe = id => G.grupos.some(g => g.id === id);
+    if (lembrado && existe(lembrado)) return lembrado;
+    if (G.funcoes.length && existe('trabalho')) return 'trabalho';
+    return existe('principal') ? 'principal' : (G.grupos[0] && G.grupos[0].id) || null;
+  }
+  function abrirGrupo(id, manual) {
+    G.aberto = id;
+    document.querySelectorAll('.nav .ng').forEach(sec => {
+      const ab = sec.dataset.grupo === id;
+      sec.classList.toggle('aberto', ab);
+      const cab = sec.querySelector('.ng-cab');
+      cab.setAttribute('aria-expanded', String(ab));
+    });
+    if (manual) { try { if (id) localStorage.setItem(CHAVE_GRUPO, id); } catch (e) {} }
+    marcarGrupoAtivo();
+  }
+  /* ponto discreto no grupo (fechado) que contém a tela atual, e o
+     mesmo sinal no ícone do grupo quando a barra está recolhida */
+  function marcarGrupoAtivo() {
+    const ativo = grupoAtivo();
+    document.querySelectorAll('.nav .ng').forEach(sec => {
+      const tem = sec.dataset.grupo === ativo;
+      sec.classList.toggle('tem-ativo', tem);
+      const leitor = sec.querySelector('.ng-leitor');
+      if (leitor) leitor.textContent = tem && !sec.classList.contains('aberto') ? ' (tela atual está aqui)' : '';
+    });
+    document.querySelectorAll('.nav .ntr-bt').forEach(b => b.classList.toggle('tem-ativo', b.dataset.grupoBt === ativo));
+    document.querySelectorAll('.nav .ng a').forEach(a => { if (a.classList.contains('on')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  }
+  /* chamado pelo marcarNav dos módulos e na troca de rota: a rota tem
+     prioridade — se ela mudou e mora em outro grupo, esse grupo abre */
+  /* B7.Perm.aplicarNavegacao ainda pode retirar itens do DOM depois da
+     montagem: o modelo acompanha, e grupo que ficar vazio some inteiro */
+  function podarVazios() {
+    const nav = document.querySelector('.nav'); if (!nav) return;
+    G.grupos = G.grupos.filter(g => {
+      g.ids = g.ids.filter(id => nav.querySelector('.ng a[data-nav="' + id + '"]'));
+      if (g.ids.length) return true;
+      const sec = nav.querySelector('.ng[data-grupo="' + g.id + '"]'); if (sec) sec.remove();
+      const bt = nav.querySelector('[data-grupo-bt="' + g.id + '"]'); if (bt) bt.remove();
+      return false;
+    });
+  }
+  function sincronizar(inicial) {
+    podarVazios();
+    if (!G.grupos.length) return;
+    const rota = String(location.hash || '#/').split('?')[0];
+    const mudou = rota !== G.rota;
+    G.rota = rota;
+    const ativo = grupoAtivo();
+    if (inicial) abrirGrupo(ativo || grupoPadrao(), false);
+    else if (mudou && ativo && ativo !== G.aberto) abrirGrupo(ativo, false);
+    else marcarGrupoAtivo();
+    if (mudou && !inicial) {
+      /* item ativo fora da área visível da barra: traz para perto, sem
+         rolar a página e só quando precisa */
+      setTimeout(() => {
+        const nav = document.querySelector('.nav'), a = nav && nav.querySelector('.ng.aberto a.on');
+        if (!a || document.body.classList.contains('recolhida')) return;
+        const rn = nav.getBoundingClientRect(), ra = a.getBoundingClientRect();
+        if (ra.top < rn.top || ra.bottom > rn.bottom) nav.scrollTop += ra.top < rn.top ? ra.top - rn.top - 8 : ra.bottom - rn.bottom + 8;
+      }, 200);
+    }
+  }
+
+  /* ---------------------------------------- painel flutuante (recolhida)
+     Vive no <body> (position:fixed): não entra na caixa de rolagem da
+     barra, então não cria rolagem lateral. Abre por clique/Enter/Espaço;
+     fecha ao navegar, clicar fora, Esc ou abrir outro grupo. */
+  let flyout = null, flyoutBt = null;
+  function alternarFlyout(id, bt, peloTeclado) {
+    if (flyout && flyout.dataset.grupo === id) return fecharFlyout();
+    abrirFlyout(id, bt, peloTeclado);
+  }
+  function abrirFlyout(id, bt, peloTeclado) {
+    fecharFlyout(true);
+    const g = G.grupos.find(x => x.id === id); if (!g) return;
+    B7.UI.esconderDica();
+    const el = document.createElement('div');
+    el.className = 'nav-flyout';
+    el.id = 'nav-flyout';
+    el.dataset.grupo = id;
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-label', g.rotulo);
+    const ativoId = (document.querySelector('.nav .ng a.on') || {}).dataset;
+    el.innerHTML = '<div class="nf-tit">' + esc(g.rotulo) + '</div>' + g.ids.map(i => {
+      const it = ITENS[i], on = ativoId && ativoId.nav === i;
+      return '<a class="nf-item' + (on ? ' on' : '') + '"' + (on ? ' aria-current="page"' : '') + (it.rota ? ' href="' + it.rota + '" data-ir="' + it.rota + '"' : ' href="#" role="button"') + ' data-nf="' + i + '">' +
+        IC[i] + '<span>' + esc(rotuloDe(i)) + '</span></a>';
+    }).join('');
+    document.body.appendChild(el);
+    const rl = document.querySelector('.lateral').getBoundingClientRect(), rb = bt.getBoundingClientRect();
+    const alt = el.offsetHeight;
+    el.style.left = Math.round(rl.right + 8) + 'px';
+    el.style.top = Math.round(Math.max(8, Math.min(rb.top - 6, window.innerHeight - alt - 8))) + 'px';
+    requestAnimationFrame(() => el.classList.add('aberto'));
+    flyout = el; flyoutBt = bt;
+    bt.setAttribute('aria-expanded', 'true');
+    bt.setAttribute('aria-controls', 'nav-flyout');
+    bt.classList.add('aberto');
+    el.querySelectorAll('[data-nf]').forEach(a => {
+      if (ITENS[a.dataset.nf].acao === 'atalhos') a.onclick = e => { e.preventDefault(); fecharFlyout(); B7.UI.atalhos(); };
+    });
+    el.addEventListener('keydown', e => {
+      const links = [...el.querySelectorAll('a')], i = links.indexOf(document.activeElement);
+      if (e.key === 'Escape') { e.preventDefault(); const b = flyoutBt; fecharFlyout(); if (b) b.focus(); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); links[(i + 1) % links.length].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); links[(i - 1 + links.length) % links.length].focus(); }
+    });
+    if (peloTeclado) { const a = el.querySelector('a.on') || el.querySelector('a'); if (a) a.focus(); }
+  }
+  function fecharFlyout(imediato) {
+    if (!flyout) return;
+    const el = flyout, bt = flyoutBt;
+    flyout = null; flyoutBt = null;
+    if (bt) { bt.setAttribute('aria-expanded', 'false'); bt.classList.remove('aberto'); }
+    if (imediato) { el.remove(); return; }
+    el.classList.remove('aberto');
+    el.classList.add('saindo');
+    setTimeout(() => el.remove(), 170);
+  }
+  document.addEventListener('mousedown', e => {
+    if (flyout && !e.target.closest('.nav-flyout') && !e.target.closest('.ntr-bt')) fecharFlyout();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && flyout && !flyout.contains(document.activeElement)) fecharFlyout(); });
+  window.addEventListener('resize', () => fecharFlyout(true));
+  window.addEventListener('hashchange', () => { fecharFlyout(); setTimeout(() => sincronizar(false), 0); });
 
   /* Recolhida: o nome do item vira dica flutuante (B7.UI.dica, fixa no
      documento — não alarga o contêiner de rolagem da barra). */
@@ -322,6 +497,7 @@ B7.Nav = (function () {
     try { tablet = window.matchMedia('(min-width:761px) and (max-width:1080px)').matches; } catch (e) {}
     const pref = !!(B7.pref && B7.pref.ler('sidebar_recolhida', false));
     document.body.classList.toggle('trilho-tablet', tablet);
+    fecharFlyout(true);
     document.body.classList.toggle('recolhida', tablet || pref);
     if (B7.moverTrilha) setTimeout(() => B7.moverTrilha(), 0);
   }
@@ -334,5 +510,5 @@ B7.Nav = (function () {
     return ok;
   }
 
-  return { montar, montarLateral, montarInferior, aplicarLargura, marcarAtivo, resolver, itemDaRota, abrirMais, rotuloDe, ITENS };
+  return { sincronizar, fecharFlyout, montar, montarLateral, montarInferior, aplicarLargura, marcarAtivo, resolver, itemDaRota, abrirMais, rotuloDe, ITENS };
 })();
