@@ -622,58 +622,123 @@ B7.Dashboard = (function () {
     aplicar();
   }
 
-  /* ================================================ ROTEIROS RECENTES */
-  /* Cada card diz de quem é o roteiro (cliente), onde ele vive (gravação),
-     em que estágio está e quando foi mexido. Busca e filtros trabalham em
-     memória sobre a lista já carregada — sem ida ao banco a cada tecla. */
+  /* ================================================ ROTEIROS RECENTES
+     Duas formas de ver a mesma lista:
+       • Lista (padrão): agrupada por GRAVAÇÃO — é onde o roteiro vive e
+         onde ele é gravado. Cabeçalho do grupo: cliente, gravação, quando
+         grava e o andamento dos roteiros; cada linha: título, objetivo,
+         estágio e quando foi mexido.
+       • Cards: a grade antiga, mais compacta.
+     Busca, estágio, cliente e ordenação trabalham em memória. Títulos
+     digitados TODO EM MAIÚSCULAS aparecem em caixa de frase (só na tela). */
+  const ROT_ORDEM = ['Em criação', 'Em revisão', 'Aprovado internamente', 'Pronto para gravar', 'Gravado'];
+  function tituloTela(t) {
+    const s = String(t || '').trim();
+    if (!s) return 'Sem título';
+    const letras = s.replace(/[^A-Za-zÀ-ÿ]/g, '');
+    if (letras.length < 6 || letras !== letras.toUpperCase()) return s;
+    const baixo = s.toLocaleLowerCase('pt-BR');
+    return baixo.charAt(0).toLocaleUpperCase('pt-BR') + baixo.slice(1);
+  }
+  const hojeLocal = () => B7.Eventos ? B7.Eventos.DATAS.hoje() : new Date().toISOString().slice(0, 10);
+  /* quando a gravação acontece, em uma frase curta */
+  function quandoGrava(g) {
+    if (!g) return '';
+    const dia = g.data_gravacao ? String(g.data_gravacao).slice(0, 10) : null;
+    const MES = B7.UI.MESES || [];
+    if (g.situacao === 'concluida' || g.concluida_em || g.gravada_em) {
+      const d = String(g.gravada_em || g.concluida_em || dia || '').slice(0, 10);
+      return d ? 'Gravada em ' + B7.UI.dataBR(d).slice(0, 5) : 'Gravada';
+    }
+    if (dia) {
+      const n = B7.Eventos ? B7.Eventos.DATAS.difDias(hojeLocal(), dia) : 0;
+      return (n < 0 ? 'Era para ' : 'Grava ') + B7.UI.dataBR(dia).slice(0, 5) + (n === 0 ? ' · hoje' : n === 1 ? ' · amanhã' : n > 1 && n <= 14 ? ' · em ' + n + ' dias' : '');
+    }
+    if (g.competencia_mes && g.competencia_ano) return 'Ref. ' + (MES[g.competencia_mes - 1] || g.competencia_mes) + ' ' + g.competencia_ano + ' · sem data';
+    return 'Sem data';
+  }
   function cardRoteiro(r) {
     const g = r.gravacao || {};
     const cliente = g.cliente_nome || 'Sem cliente';
     return '<div class="card-roteiro spot eleva" data-gravacao="' + esc(r.recording_session_id) +
       '" data-roteiro="' + esc(r.id) + '" data-total-roteiros="' + (g.total_roteiros || 0) + '" ' +
-      'role="link" tabindex="0" aria-label="Abrir roteiro ' + esc(r.titulo || 'Sem título') + '">' +
+      'role="link" tabindex="0" aria-label="Abrir roteiro ' + esc(tituloTela(r.titulo)) + '">' +
       '<div class="cr-topo">' + B7.UI.avatarCliente(cliente, g.cliente_logo_url || null) +
         '<div class="cr-quem"><b>' + esc(cliente) + '</b>' +
-        '<small>' + IC.gravacoes + esc(g.nome || 'Gravação removida') + '</small></div>' +
+        '<small>' + IC.gravacoes + esc(g.nome ? tituloTela(g.nome) : 'Gravação removida') + '</small></div>' +
       '</div>' +
-      '<h3>' + esc(r.titulo || 'Sem título') + '</h3>' +
+      '<h3>' + esc(tituloTela(r.titulo)) + '</h3>' +
       (r.objetivo ? '<p>' + esc(r.objetivo) + '</p>' : '') +
       '<div class="cr-pe">' + B7.UI.chipRevisao(r.status) +
-        '<span class="cr-quando" title="' + esc(r.updated_at || '') + '">' +
-          'atualizado ' + esc(B7.UI.quando(r.updated_at)) + '</span>' +
-        (g.data_gravacao ? '<span class="cr-data">' + esc(B7.UI.dataBR(g.data_gravacao)) + '</span>' : '') +
+        '<span class="cr-quando" title="' + esc(r.updated_at || '') + '">' + esc(B7.UI.quando(r.updated_at)) + '</span>' +
+        (g.id ? '<span class="cr-data">' + esc(quandoGrava(g)) + '</span>' : '') +
       '</div></div>';
+  }
+  function linhaRoteiroLista(r) {
+    return '<div class="rt-linha" data-gravacao="' + esc(r.recording_session_id) + '" data-roteiro="' + esc(r.id) + '" role="link" tabindex="0" ' +
+        'aria-label="Abrir roteiro ' + esc(tituloTela(r.titulo)) + '">' +
+      '<span class="rt-l-tx"><b>' + esc(tituloTela(r.titulo)) + '</b>' + (r.objetivo ? '<small>' + esc(r.objetivo) + '</small>' : '') + '</span>' +
+      '<span class="rt-l-st">' + B7.UI.chipRevisao(r.status) + '</span>' +
+      '<span class="rt-l-quando" title="' + esc(r.updated_at || '') + '">' + esc(B7.UI.quando(r.updated_at)) + '</span>' +
+      '<span class="rt-l-seta" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>';
+  }
+  function grupoRoteirosHTML(grp) {
+    const g = grp.gravacao || {};
+    const cliente = g.cliente_nome || 'Sem cliente';
+    const conta = {}; grp.itens.forEach(r => { const k = r.status || 'Em criação'; conta[k] = (conta[k] || 0) + 1; });
+    const total = grp.itens.length;
+    const barra = ROT_ORDEM.filter(k => conta[k]).map(k =>
+      '<i class="rt-seg ' + (B7.UI.CLASSE_REVISAO[k] || 'criacao') + '" style="flex:' + conta[k] + '" title="' + conta[k] + ' ' + esc(k.toLowerCase()) + '"></i>').join('');
+    const prontos = (conta['Pronto para gravar'] || 0) + (conta['Gravado'] || 0);
+    const qg = quandoGrava(g);
+    return '<section class="rt-grupo">' +
+      '<header class="rt-g-cab" data-gravacao="' + esc(grp.id) + '" role="link" tabindex="0" aria-label="Abrir gravação ' + esc(g.nome || '') + ' de ' + esc(cliente) + '">' +
+        B7.UI.avatarCliente(cliente, g.cliente_logo_url || null) +
+        '<span class="rt-g-tx"><b>' + esc(cliente) + '</b><small>' + IC.gravacoes + esc(g.nome ? tituloTela(g.nome) : 'Gravação removida') + '</small></span>' +
+        (qg ? '<span class="rt-g-quando' + (/^Grava .*(hoje|amanhã|em \d dias)/.test(qg) ? ' perto' : /^Era/.test(qg) ? ' atras' : '') + '">' + esc(qg) + '</span>' : '') +
+        '<span class="rt-g-prog" title="' + prontos + ' de ' + total + ' prontos ou gravados">' +
+          '<span class="rt-barra">' + barra + '</span><small>' + prontos + '/' + total + ' prontos' +
+          (g.total_roteiros > total ? ' · ' + g.total_roteiros + ' na gravação' : '') + '</small></span>' +
+      '</header>' +
+      '<div class="rt-g-lista">' + grp.itens.map(linhaRoteiroLista).join('') + '</div></section>';
   }
 
   async function abrirRoteiros() {
     marcarNav('#/roteiros');
     B7.Rota.titulo(['Roteiros']);
-    esqueleto('cards', { n: 6 });
+    esqueleto('lista', { n: 6 });
     let roteiros;
     try { roteiros = await B7.DB.roteirosRecentes(60); } catch (e) { return erro(e, 'abrirRoteiros'); }
 
     const clientes = [...new Set(roteiros.map(r => r.gravacao && r.gravacao.cliente_nome).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    let vista = 'lista';
+    try { vista = localStorage.getItem('b7.roteiros.vista') === 'cards' ? 'cards' : 'lista'; } catch (e) {}
+    const F = { status: 'Todos', cliente: '', termo: '', ordem: 'recentes' };
 
-    painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="secao-topo cab-roteiros"><div class="cab-tx"><h2 style="font-size:22px">Roteiros</h2>' +
-        '<small>Os últimos roteiros trabalhados, de todos os clientes.</small></div>' +
-        '<span class="conta" id="rt-conta">' + roteiros.length + '</span><div class="espaco"></div>' +
-        (roteiros.length ? '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button>' : '') +
+    const ICL = '<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>';
+    const ICC = '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>';
+    painel().innerHTML = '<div class="conteudo entra rt">' +
+      '<div class="rt-cab"><div class="rt-cab-tx"><h1>Roteiros</h1>' +
+        '<p id="rt-sub">' + roteiros.length + ' roteiros mexidos por último, de todos os clientes</p></div>' +
+        (roteiros.length ? '<div class="rt-cab-acoes"><div class="filtro rt-vista" role="group" aria-label="Forma de ver">' +
+          '<button data-vista="lista" aria-label="Lista por gravação" title="Lista por gravação">' + ICL + '<span>Lista</span></button>' +
+          '<button data-vista="cards" aria-label="Cards" title="Cards">' + ICC + '<span>Cards</span></button></div>' +
+          '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button></div>' : '') +
       '</div>' +
       (roteiros.length ?
-        '<div class="barra-filtros rt-filtros">' +
+        '<div class="filtro rolavel rt-status" id="rt-status" role="group" aria-label="Estágio"></div>' +
+        '<div class="rt-barra-f">' +
           '<div class="busca-local"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
-            '<input class="campo" id="rt-busca" placeholder="Buscar por título, cliente ou gravação…" autocomplete="off"></div>' +
-          '<div class="filtro rolavel" id="rt-status">' +
-            ['Todos'].concat(B7.UI.REVISAO).map((f, i) =>
-              '<button data-f="' + esc(f) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(f) + '</button>').join('') +
-          '</div>' +
-          (clientes.length > 1 ? '<select class="campo rt-cliente" id="rt-cliente" aria-label="Filtrar por cliente">' +
-            '<option value="">Todos os clientes</option>' +
+            '<input class="campo" id="rt-busca" type="search" placeholder="Buscar por título, cliente, gravação ou objetivo…" autocomplete="off" aria-label="Buscar roteiros"></div>' +
+          (clientes.length > 1 ? '<select class="campo rt-sel" id="rt-cliente" aria-label="Cliente">' +
+            '<option value="">Cliente: todos</option>' +
             clientes.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('') + '</select>' : '') +
+          '<select class="campo rt-sel" id="rt-ordem" aria-label="Ordenar">' +
+            '<option value="recentes">Mexidos por último</option><option value="gravacao">Próximas gravações</option><option value="cliente">Cliente (A–Z)</option></select>' +
+          '<button class="b fina contorno" id="rt-limpar-f" style="display:none">Limpar</button>' +
         '</div>' +
-        '<div class="grade grade-roteiros" id="lista-roteiros">' + roteiros.map(cardRoteiro).join('') + '</div>'
+        '<div id="lista-roteiros"></div>'
       : estadoB7(IC.roteiros, 'Nenhum roteiro ainda.',
           'Crie uma gravação e escreva o primeiro roteiro: ele aparece aqui assim que for salvo.',
           '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button>' +
@@ -682,45 +747,82 @@ B7.Dashboard = (function () {
     ligar();
     if (!roteiros.length) return;
 
-    let status = 'Todos', cliente = '', termo = '';
     const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const aplicar = () => {
-      const lista = roteiros.filter(r => {
-        const g = r.gravacao || {};
-        if (status !== 'Todos' && (r.status || 'Em criação') !== status) return false;
-        if (cliente && g.cliente_nome !== cliente) return false;
-        if (termo && !norm(r.titulo + ' ' + g.cliente_nome + ' ' + g.nome + ' ' + r.objetivo).includes(termo)) return false;
-        return true;
-      });
-      const cx = document.getElementById('lista-roteiros');
-      const conta = document.getElementById('rt-conta');
-      if (!cx) return;
-      if (conta) conta.textContent = lista.length === roteiros.length ? roteiros.length : lista.length + ' de ' + roteiros.length;
-      cx.innerHTML = lista.length ? lista.map(cardRoteiro).join('')
-        : '<div class="estado-b7 leve" style="grid-column:1/-1"><div class="b7-marca fraca"></div>' +
+    const passaBase = r => {
+      const g = r.gravacao || {};
+      if (F.cliente && g.cliente_nome !== F.cliente) return false;
+      if (F.termo && !norm(r.titulo + ' ' + g.cliente_nome + ' ' + g.nome + ' ' + r.objetivo).includes(F.termo)) return false;
+      return true;
+    };
+    const chaveGrav = g => { const d = g && g.data_gravacao ? String(g.data_gravacao).slice(0, 10) : null; const passou = !d || d < hojeLocal() || (g && (g.gravada_em || g.concluida_em)); return (passou ? '1' : '0') + (d || '9999'); };
+    function pintarStatus(base) {
+      const cx = document.getElementById('rt-status'); if (!cx) return;
+      const n = k => k === 'Todos' ? base.length : base.filter(r => (r.status || 'Em criação') === k).length;
+      cx.innerHTML = ['Todos'].concat(ROT_ORDEM).map(k =>
+        '<button data-f="' + esc(k) + '" class="' + (F.status === k ? 'on' : '') + '" aria-pressed="' + (F.status === k) + '">' +
+          (k === 'Todos' ? '' : '<i class="rt-pt ' + (B7.UI.CLASSE_REVISAO[k] || '') + '"></i>') + esc(k) + '<span class="rt-n">' + n(k) + '</span></button>').join('');
+      cx.querySelectorAll('button').forEach(b => b.onclick = () => { F.status = b.dataset.f; aplicar(); });
+    }
+    function aplicar() {
+      const base = roteiros.filter(passaBase);
+      pintarStatus(base);
+      const lista = base.filter(r => F.status === 'Todos' || (r.status || 'Em criação') === F.status);
+      const cx = document.getElementById('lista-roteiros'); if (!cx) return;
+      const sub = document.getElementById('rt-sub');
+      if (sub) sub.textContent = (lista.length === roteiros.length ? roteiros.length + ' roteiros mexidos por último, de todos os clientes'
+        : lista.length + ' de ' + roteiros.length + ' roteiros');
+      const filtrando = F.status !== 'Todos' || F.cliente || F.termo;
+      const lp = document.getElementById('rt-limpar-f'); if (lp) lp.style.display = filtrando ? '' : 'none';
+      painel().querySelectorAll('[data-vista]').forEach(b => { b.classList.toggle('on', b.dataset.vista === vista); b.setAttribute('aria-pressed', b.dataset.vista === vista); });
+      if (!lista.length) {
+        cx.className = '';
+        cx.innerHTML = '<div class="estado-b7 leve"><div class="b7-marca fraca"></div>' +
           '<div class="ilu">' + IC.roteiros + '</div><b>Nenhum roteiro com esses filtros.</b>' +
           '<p>Tente outra palavra, outro estágio ou outro cliente.</p>' +
           '<div class="acoes"><button class="b contorno" id="rt-limpar">Limpar filtros</button></div></div>';
+        const l = document.getElementById('rt-limpar'); if (l) l.onclick = limpar;
+        return;
+      }
+      if (vista === 'cards') {
+        const ord = lista.slice();
+        if (F.ordem === 'cliente') ord.sort((a, b) => String((a.gravacao || {}).cliente_nome || '').localeCompare(String((b.gravacao || {}).cliente_nome || ''), 'pt-BR'));
+        if (F.ordem === 'gravacao') ord.sort((a, b) => chaveGrav(a.gravacao).localeCompare(chaveGrav(b.gravacao)));
+        cx.className = 'grade grade-roteiros';
+        cx.innerHTML = ord.map(cardRoteiro).join('');
+      } else {
+        /* agrupa por gravação, mantendo a ordem de "mexido por último" */
+        const grupos = [], idx = new Map();
+        lista.forEach(r => {
+          const k = r.recording_session_id;
+          if (!idx.has(k)) { const grp = { id: k, gravacao: r.gravacao, itens: [], recente: r.updated_at }; idx.set(k, grp); grupos.push(grp); }
+          idx.get(k).itens.push(r);
+        });
+        if (F.ordem === 'cliente') grupos.sort((a, b) => String((a.gravacao || {}).cliente_nome || '').localeCompare(String((b.gravacao || {}).cliente_nome || ''), 'pt-BR') || String(b.recente).localeCompare(String(a.recente)));
+        if (F.ordem === 'gravacao') grupos.sort((a, b) => chaveGrav(a.gravacao).localeCompare(chaveGrav(b.gravacao)));
+        cx.className = 'rt-lista';
+        cx.innerHTML = grupos.map(grupoRoteirosHTML).join('');
+      }
       ligar();
-      const limpar = document.getElementById('rt-limpar');
-      if (limpar) limpar.onclick = () => {
-        status = 'Todos'; cliente = ''; termo = '';
-        const b = document.getElementById('rt-busca'); if (b) b.value = '';
-        const s = document.getElementById('rt-cliente'); if (s) s.value = '';
-        const f = document.getElementById('rt-status');
-        if (f) f.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.f === 'Todos'));
-        aplicar();
-      };
-    };
-    const f = document.getElementById('rt-status');
-    if (f) f.querySelectorAll('button').forEach(b => b.onclick = () => {
-      f.querySelectorAll('button').forEach(x => x.classList.remove('on'));
-      b.classList.add('on'); status = b.dataset.f; aplicar();
-    });
+    }
+    function limpar() {
+      Object.assign(F, { status: 'Todos', cliente: '', termo: '' });
+      const b = document.getElementById('rt-busca'); if (b) b.value = '';
+      const s = document.getElementById('rt-cliente'); if (s) { s.value = ''; s.classList.remove('ativo'); }
+      aplicar();
+    }
     const busca = document.getElementById('rt-busca');
-    if (busca) busca.oninput = B7.UI.debounce(() => { termo = norm(busca.value.trim()); aplicar(); }, 120);
-    const sel = document.getElementById('rt-cliente');
-    if (sel) sel.onchange = () => { cliente = sel.value; aplicar(); };
+    if (busca) busca.oninput = B7.UI.debounce(() => { F.termo = norm(busca.value.trim()); aplicar(); }, 120);
+    const sc = document.getElementById('rt-cliente');
+    if (sc) sc.onchange = () => { F.cliente = sc.value; sc.classList.toggle('ativo', !!sc.value); aplicar(); };
+    const so = document.getElementById('rt-ordem');
+    if (so) so.onchange = () => { F.ordem = so.value; aplicar(); };
+    const lf = document.getElementById('rt-limpar-f'); if (lf) lf.onclick = limpar;
+    painel().querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
+      vista = b.dataset.vista;
+      try { localStorage.setItem('b7.roteiros.vista', vista); } catch (e) {}
+      aplicar();
+    });
+    aplicar();
   }
 
   /* ========================================================= CLIENTES */

@@ -426,6 +426,7 @@ B7.Calendario = (function () {
   function ligarCorpo(cx) {
     cx.querySelectorAll('[data-ev]').forEach(b => b.onclick = ev => { ev.stopPropagation(); previa(b.dataset.ev); });
     cx.querySelectorAll('[data-dia-mais]').forEach(b => b.onclick = ev => { ev.stopPropagation(); folhaDia(b.dataset.diaMais); });
+    cx.querySelectorAll('[data-grupo]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const [dia, dominio, cliente] = b.dataset.grupo.split('|'); folhaDia(dia, { dominio, cliente }); });
     cx.querySelectorAll('[data-ir-dia]').forEach(b => b.onclick = () => { V.vista = 'dia'; V.data = b.dataset.irDia; mudou(); });
   }
 
@@ -440,26 +441,64 @@ B7.Calendario = (function () {
     return [DOM(ev.dominio).rot, ev.clienteNome, ev.titulo, ev.hora ? 'às ' + ev.hora : horaTx(ev), rotStatus(ev)].filter(Boolean).join(', ');
   }
   function chipHTML(ev) {
-    const txt = (ev.clienteNome ? ev.clienteNome + ' · ' : '') + ev.titulo;
+    const txtHTML = ev.dominio === 'gravacao'
+      ? '<b>' + esc(ev.clienteNome || ev.titulo) + '</b>'
+      : (ev.clienteNome ? '<b>' + esc(ev.clienteNome) + '</b> ' : '') + '<span class="cb-chip-sub">' + esc(ev.titulo) + '</span>';
     const mostrarSt = ev.dominio === 'gravacao' && ev.status !== 'marcada';
     return '<button type="button" class="cb-chip d-' + ev.dominio + ' t-' + ev.tom + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + (ev.concluido ? ' feito' : '') + '" ' +
       'data-ev="' + esc(ev.id) + '" title="' + esc(ariaEvento(ev)) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
       '<i class="cb-dom-ic">' + DOM(ev.dominio).ic + '</i>' +
       (ev.hora ? '<b class="cb-chip-h">' + ev.hora + '</b>' : '') +
       (mostrarSt ? '<em class="cb-chip-st">' + esc(ev.historico && ev.status === 'remarcada' ? 'Remarcada' : ev.statusRotulo) + '</em>' : '') +
-      '<span class="cb-chip-tx">' + esc(txt) + '</span></button>';
+      (AGRUPA[ev.dominio] && ev.tom !== 'neutro' && !ev.concluido ? '<i class="cb-chip-dot t-' + ev.tom + '" aria-hidden="true"></i>' : '') +
+      '<span class="cb-chip-tx">' + txtHTML + '</span></button>';
   }
+  /* ---- agrupamento por cliente (mês e semana) ----
+     Vários prazos/publicações do MESMO cliente no MESMO dia viram um
+     chip só ("AutoEscola Modelo · 14 vídeos"), que abre a folha do dia já
+     filtrada. Gravação (tem hora) e oportunidade nunca agrupam. */
+  const AGRUPA = { video: 1, design: 1, publicacao: 1 };
+  function agrupar(evs) {
+    const out = [], idx = new Map();
+    evs.forEach(ev => {
+      if (!AGRUPA[ev.dominio] || !ev.clienteId) { out.push(ev); return; }
+      const k = ev.dominio + '|' + ev.clienteId;
+      if (idx.has(k)) { idx.get(k).itens.push(ev); return; }
+      const g = { grupo: true, dominio: ev.dominio, clienteId: ev.clienteId, clienteNome: ev.clienteNome, dia: ev.dia, itens: [ev] };
+      idx.set(k, g); out.push(g);
+    });
+    return out.map(x => x.grupo && x.itens.length === 1 ? x.itens[0] : x);
+  }
+  const PLURAL_DOM = { video: ['vídeo', 'vídeos'], design: ['peça', 'peças'], publicacao: ['publicação', 'publicações'] };
+  function resumoStatus(itens) {
+    const c = new Map(); itens.forEach(e => c.set(e.statusRotulo || '—', (c.get(e.statusRotulo || '—') || 0) + 1));
+    return [...c.entries()].sort((a, b) => b[1] - a[1]).map(([r, n]) => n + ' ' + r.toLowerCase()).join(', ');
+  }
+  function chipGrupoHTML(g) {
+    const n = g.itens.length, pl = PLURAL_DOM[g.dominio] || ['item', 'itens'];
+    const feitos = g.itens.filter(e => e.concluido).length;
+    const aria = (g.clienteNome || 'Cliente') + ': ' + n + ' ' + pl[1] + ' (' + resumoStatus(g.itens) + ')';
+    return '<button type="button" class="cb-chip cb-chip-grupo d-' + g.dominio + (feitos === n ? ' feito' : '') + '" data-grupo="' + esc(g.dia + '|' + g.dominio + '|' + g.clienteId) + '" ' +
+      'title="' + esc(aria) + '" aria-label="' + esc(aria) + '">' +
+      '<i class="cb-dom-ic">' + DOM(g.dominio).ic + '</i>' +
+      '<span class="cb-chip-tx"><b>' + esc(g.clienteNome || 'Cliente') + '</b></span>' +
+      '<span class="cb-chip-n">' + n + '</span></button>';
+  }
+  const pecaHTML = x => x.grupo ? chipGrupoHTML(x) : chipHTML(x);
+
   function statusHTML(ev, curto) {
     if (!ev.statusRotulo) return '';
     return '<span class="cb-st t-' + ev.tom + (ev.historico ? ' hist' : '') + '" title="' + esc(rotStatus(ev)) + '">' + esc(curto ? ev.statusRotulo : rotStatus(ev)) + '</span>';
   }
-  function linhaHTML(ev) {
+  function linhaHTML(ev, semCliente) {
     const resp = ev.responsavelNome || (ev.responsavelId && nomesResp.get(ev.responsavelId)) || '';
     return '<button type="button" class="cb-linha d-' + ev.dominio + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + '" data-ev="' + esc(ev.id) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
       '<span class="cb-linha-h">' + esc(horaTx(ev)) + '</span>' +
       (ev.dominio === 'oportunidade'
         ? '<span class="cb-linha-tx"><b>' + esc(ev.titulo) + '</b><span>' + esc(ev.sub || '') + '</span>'
-        : '<span class="cb-linha-tx"><b>' + esc(ev.clienteNome || DOM(ev.dominio).rot) + '</b>' +
+        : semCliente
+          ? '<span class="cb-linha-tx"><b>' + esc(ev.titulo) + '</b>' + (ev.sub ? '<span>' + esc(ev.sub) + '</span>' : '')
+          : '<span class="cb-linha-tx"><b>' + esc(ev.clienteNome || DOM(ev.dominio).rot) + '</b>' +
         '<span>' + esc(ev.titulo) + (ev.sub ? ' · ' + esc(ev.sub) : '') + '</span>') +
         (ev.dominio === 'gravacao' && ev.extra.referencia ? '<small>Referente a ' + esc(ev.extra.referencia) + '</small>' : '') +
       '</span>' +
@@ -467,6 +506,7 @@ B7.Calendario = (function () {
     '</button>';
   }
 
+  const restantes = l => l.reduce((n, x) => n + (x.grupo ? x.itens.length : 1), 0);
   /* ---- MÊS: 7 colunas fixas, semanas completas ---- */
   function mesHTML(lista) {
     const mapa = porDia(lista);
@@ -476,13 +516,13 @@ B7.Calendario = (function () {
     let cel = '';
     for (let i = 0; i < nDias; i++) {
       const dia = D().somarDias(ini, i), d = D().local(dia);
-      const evs = mapa.get(dia) || [];
+      const evs = mapa.get(dia) || [], pecas = agrupar(evs);
       const fora = dia.slice(0, 7) !== mesAtual, ehHoje = dia === hoje;
-      cel += '<div class="cb-cel' + (fora ? ' fora' : '') + (ehHoje ? ' hoje' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' fds' : '') + '" role="gridcell">' +
+      cel += '<div class="cb-cel' + (fora ? ' fora' : '') + (ehHoje ? ' hoje' : '') + (dia < hoje ? ' passado' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' fds' : '') + '" role="gridcell">' +
         '<button type="button" class="cb-cel-num" data-ir-dia="' + dia + '" aria-label="Abrir ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + (evs.length ? ', ' + evs.length + ' evento' + (evs.length > 1 ? 's' : '') : '') + '">' +
           (ehHoje ? '<span class="cb-hoje-tag">Hoje</span>' : '') + '<b>' + d.getDate() + '</b></button>' +
-        '<div class="cb-cel-evs">' + evs.slice(0, evs.length > MAX_CEL ? MAX_CEL - 1 : MAX_CEL).map(chipHTML).join('') +
-          (evs.length > MAX_CEL ? '<button type="button" class="cb-mais" data-dia-mais="' + dia + '">+' + (evs.length - (MAX_CEL - 1)) + ' eventos</button>' : '') +
+        '<div class="cb-cel-evs">' + pecas.slice(0, pecas.length > MAX_CEL ? MAX_CEL - 1 : MAX_CEL).map(pecaHTML).join('') +
+          (pecas.length > MAX_CEL ? '<button type="button" class="cb-mais" data-dia-mais="' + dia + '">+' + restantes(pecas.slice(MAX_CEL - 1)) + ' mais</button>' : '') +
         '</div></div>';
     }
     return '<div class="cb-mes" role="grid" aria-label="' + esc(rotulo()) + '">' +
@@ -496,12 +536,12 @@ B7.Calendario = (function () {
     let cols = '';
     for (let i = 0; i < 7; i++) {
       const dia = D().somarDias(ini, i), d = D().local(dia), evs = mapa.get(dia) || [];
-      const todo = evs.filter(e => !e.hora), hora = evs.filter(e => e.hora);
+      const todo = agrupar(evs.filter(e => !e.hora)), hora = evs.filter(e => e.hora);
       const MAXT = 5;
       cols += '<section class="cb-sem-col' + (dia === hoje ? ' hoje' : '') + '" aria-label="' + DIAS_SEMANA[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + '">' +
         '<button type="button" class="cb-sem-cab" data-ir-dia="' + dia + '"><small>' + DIAS_SEMANA_ABREV[d.getDay()].toUpperCase() + '</small><b>' + d.getDate() + '</b>' + (dia === hoje ? '<em>Hoje</em>' : '') + '</button>' +
-        '<div class="cb-sem-todo">' + todo.slice(0, todo.length > MAXT ? MAXT - 1 : MAXT).map(chipHTML).join('') +
-          (todo.length > MAXT ? '<button type="button" class="cb-mais" data-dia-mais="' + dia + '">+' + (todo.length - MAXT + 1) + ' prazos/publicações</button>' : '') + '</div>' +
+        '<div class="cb-sem-todo">' + todo.slice(0, todo.length > MAXT ? MAXT - 1 : MAXT).map(pecaHTML).join('') +
+          (todo.length > MAXT ? '<button type="button" class="cb-mais" data-dia-mais="' + dia + '">+' + restantes(todo.slice(MAXT - 1)) + ' mais</button>' : '') + '</div>' +
         '<div class="cb-sem-hora">' + (hora.length ? hora.map(ev =>
           '<button type="button" class="cb-card d-' + ev.dominio + ' t-' + ev.tom + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + '" data-ev="' + esc(ev.id) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
             '<span class="cb-card-h"><i class="cb-dom-ic">' + DOM(ev.dominio).ic + '</i>' + esc(horaTx(ev)) + '</span>' +
@@ -523,11 +563,27 @@ B7.Calendario = (function () {
     Object.keys(E().DOMINIOS).sort((a, b) => DOM(a).ordem - DOM(b).ordem).forEach(dom => {
       const evs = lista.filter(e => e.dominio === dom);
       if (evs.length) grupos.push('<section class="cb-grupo d-' + dom + '"><h4><i class="cb-dom-ic">' + DOM(dom).ic + '</i>' + esc(DOM(dom).grupo) + '<span>' + evs.length + '</span></h4>' +
-        '<div class="cb-grupo-lista">' + evs.map(linhaHTML).join('') + '</div></section>');
+        '<div class="cb-grupo-lista">' + comSubCliente(evs) + '</div></section>');
     });
     return '<div class="cb-dia' + (compacto ? ' compacto' : '') + '">' + cab + grupos.join('') + '</div>';
   }
 
+  /* dentro de um grupo do dia: cliente com 2+ itens ganha um subtítulo
+     e as linhas dele deixam de repetir o nome */
+  function comSubCliente(evs) {
+    if (!AGRUPA[evs[0].dominio]) return evs.map(e => linhaHTML(e)).join('');
+    const cont = new Map(); evs.forEach(e => cont.set(e.clienteId, (cont.get(e.clienteId) || 0) + 1));
+    let h = '', atual = null;
+    evs.slice().sort((a, b) => String(a.clienteNome || '').localeCompare(String(b.clienteNome || ''), 'pt-BR') ||
+      String(a.titulo || '').localeCompare(String(b.titulo || ''), 'pt-BR', { numeric: true })).forEach(e => {
+      if (cont.get(e.clienteId) > 1 && e.clienteId !== atual) {
+        atual = e.clienteId;
+        h += '<div class="cb-subcli"><b>' + esc(e.clienteNome || 'Cliente') + '</b><span>' + cont.get(e.clienteId) + '</span></div>';
+      }
+      h += linhaHTML(e, cont.get(e.clienteId) > 1);
+    });
+    return h;
+  }
   const filtrando = () => !!(V.tipo || V.cliente || V.resp);
   function vazioPeriodo(lista) {
     return lista.length || R.carregando ? '' : '<p class="cb-vazio cb-vazio-periodo">Nenhum compromisso neste período' + (filtrando() ? ' com esses filtros' : '') + '.</p>';
@@ -590,9 +646,13 @@ B7.Calendario = (function () {
   }
 
   /* ---- folha do dia ("+N eventos") ---- */
-  function folhaDia(dia) {
-    const m = B7.UI.modal('<div class="tp-folha-cab"><h3>Agenda do dia</h3><button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
-      '<div class="cb-folha-dia">' + agendaDiaHTML(visiveis().filter(ev => ev.dia === dia), dia, true) + '</div>' +
+  function folhaDia(dia, filtro) {
+    const doDia = visiveis().filter(ev => ev.dia === dia && (!filtro || (ev.dominio === filtro.dominio && ev.clienteId === filtro.cliente)));
+    const d0 = D().local(dia);
+    const titulo = filtro ? esc((doDia[0] && doDia[0].clienteNome) || 'Cliente') + ' · ' + doDia.length + ' ' + (PLURAL_DOM[filtro.dominio] || ['item', 'itens'])[doDia.length > 1 ? 1 : 0]
+      : 'Agenda do dia';
+    const m = B7.UI.modal('<div class="tp-folha-cab"><h3>' + titulo + (filtro ? '<small class="cb-folha-sub">' + DIAS_SEMANA[d0.getDay()] + ', ' + d0.getDate() + ' de ' + MESES_LONGOS[d0.getMonth()] + ' · ' + esc(resumoStatus(doDia)) + '</small>' : '') + '</h3><button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+      '<div class="cb-folha-dia' + (filtro ? ' filtrada' : '') + '">' + agendaDiaHTML(doDia, dia, true) + '</div>' +
       '<div class="acoes"><button class="b contorno" data-ver-dia>Abrir na vista Dia</button></div>', { classe: 'tp-folha cb-folha', larga: true });
     m.querySelectorAll('[data-fecha]').forEach(b => b.onclick = m.fechar);
     m.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => { m.fechar(); previa(b.dataset.ev); });
