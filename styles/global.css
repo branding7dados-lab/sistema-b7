@@ -671,16 +671,32 @@ select.campo{appearance:none;cursor:pointer;
 .mp-pe .b.pri.carregando svg{animation:girando .8s linear infinite;}
 @keyframes girando{to{transform:rotate(360deg)}}
 
+/* Celular/tablet estreito: uma coluna só, sem a coluna de contexto (ela
+   repetia o que o topo e a caixa de informação já dizem e empurrava a
+   seleção para baixo). A folha ocupa a altura disponível: topo fixo,
+   lista rolando no meio, rodapé sempre visível. Nada passa da largura. */
 @media (max-width:860px){
-  .modal.modal-impressao{max-height:90vh;}
-  .mp{grid-template-columns:1fr;}
-  .mp-lado{border-right:0;border-bottom:1px solid var(--borda);padding:20px;}
-  .mp-folhas{display:none;}
-  .mp-lado h3{font-size:17px;}
-  .mp-principal{padding:18px 18px 16px;}
-  .mp-lista{max-height:30vh;}
-  .mp-pe{flex-wrap:wrap;}
-  .mp-contador{flex:1 0 100%;order:-1;margin-bottom:4px;}
+  .modal.modal-impressao{display:flex;flex-direction:column;max-height:90vh;max-height:90dvh;min-width:0;}
+  .mp{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;min-width:0;}
+  .mp-lado{display:none;}
+  .mp-principal{flex:1 1 auto;min-height:0;min-width:0;padding:18px 16px 0;overflow-y:auto;overscroll-behavior:contain;}
+  .mp-principal > *{min-width:0;}
+  .mp-topo{margin-bottom:12px;}
+  .mp-topo h3{font-size:18px;}
+  .mp-topo .mp-sub{margin-top:4px;}
+  .mp-lista{flex:0 1 auto;max-height:42vh;max-height:42dvh;min-height:110px;margin:0;padding:0 0 2px;}
+  .rot-item{padding:11px 12px;gap:10px;}
+  .rot-item .ic-doc{display:none;}
+  .rot-item .tit{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;}
+  .rot-item .cenas{font-size:11px;}
+  .rot-item.extra .tx{min-width:0;}
+  .mp-marcar{padding-top:10px;}
+  .mp-info{margin-top:12px;padding:11px 12px;}
+  .mp-pe{position:sticky;bottom:0;z-index:2;background:var(--card);flex-wrap:wrap;gap:8px;margin:14px -16px 0;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -8px 16px -12px rgba(0,0,0,.35);}
+  .mp-contador{flex:1 0 100%;order:-1;margin-bottom:2px;}
+  .mp-pe .b{flex:1 1 0;justify-content:center;min-height:44px;}
+  .mp-pe .b.pri{flex:1.6 1 0;}
 }
 
 /* =====================================================================
