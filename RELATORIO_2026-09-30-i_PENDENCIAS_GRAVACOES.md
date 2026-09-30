@@ -24,30 +24,32 @@ As outras 5 não têm sinal confiável e continuam no grupo "Sem mês de referê
 - **Resultados de gravação:** também mostram o mês de referência e o status.
 - **Onde vale:** na paleta (Ctrl+K) e na busca do topo. Quem não pode abrir gravações não vê esses resultados.
 
-## Não aplicado (precisa da sua decisão)
+### 4. Corte do RLS: APLICADO (migration `rls_corte_2`, autorizado pelo Yury)
+Antes, 18 tabelas aceitavam leitura, escrita e exclusão de qualquer pessoa com a chave pública do site, mesmo sem login. A view `demandas_edicao_resumo` também ignorava o RLS.
 
-### 4. Corte do RLS: preparado, NÃO aplicado
-O classificador de segurança desta sessão bloqueou a alteração das políticas do banco. Não tentei de novo por outro caminho.
-
-**Situação atual (confirmada):** 18 tabelas aceitam leitura, escrita e exclusão de qualquer pessoa com a chave pública do site, mesmo sem login.
 - Tabelas: atividades, cenas, cliente_inteligencia, clientes, conteudos, frames, gravacoes, ideias, linhas_editoriais, onboardings, pilares, produtos, provas, roteiros, slides, status_itens, status_semanais, status_versoes.
-- A view `demandas_edicao_resumo` também ignora o RLS e pode ser lida sem login.
 
-**O que `migration_rls_corte_2.sql` faz (arquivo pronto no pacote):**
-- **Sem login:** nenhum acesso.
-- **Equipe logada** (admin, coordenador, designer, videomaker): exatamente o acesso de hoje, para não quebrar nenhuma tela.
-- **Cliente logado:** só leitura, só da própria empresa (com serviço ativo) e só o material liberado (`visivel_cliente` / `publicado_em`). O Portal continua funcionando pelas mesmas views.
-- **Trava:** o corte se recusa a rodar se não houver admin ativo.
-- **Reverter:** `migration_rls_corte_2_reverter.sql`.
+**Agora:**
+- **Sem login:** nenhum acesso (leitura e escrita negadas).
+- **Equipe logada** (admin, coordenador, designer, videomaker): o mesmo acesso de antes.
+- **Cliente logado:** só leitura, só da própria empresa (com serviço ativo) e só o material liberado (`visivel_cliente` / `publicado_em`).
+- **`demandas_edicao_resumo`:** passou a respeitar o RLS de `demandas_edicao`.
+- **Reverter, se preciso:** `migration_rls_corte_2_reverter.sql` no SQL Editor.
 
-**Por que é seguro para o app:** todo acesso real ao banco acontece com sessão (o login pelo b7-auth entrega o token), e as edge functions usam a service role. Hoje não existe nenhum usuário cliente, então o Portal não é afetado na prática.
+**Verificado no banco real,** com um cliente de teste criado e desfeito na mesma transação:
 
-**Como aplicar:** cole `migration_rls_corte_2.sql` no SQL Editor do Supabase, ou me autorize explicitamente a aplicar. Depois, entre como Admin e confira as telas principais.
+| Papel | Resultado |
+|---|---|
+| Sem login | clientes, gravações, roteiros e demandas negados; update negado |
+| Admin | 20/20 gravações, 23/23 clientes, 441 demandas, escrita ok |
+| Coordenador | 20 gravações, escrita ok |
+| Designer | 20 gravações, 23 clientes, escrita ok |
+| Cliente | 1 cliente (o dele), 0 gravações/roteiros/cenas/ideias/demandas, 3 conteúdos liberados, 0 de outras empresas, Portal com 3 itens; update e insert negados |
+
+**Advisor de segurança:** sobraram só itens intencionais. `portal_gravacoes` é uma view definer que filtra por cliente e não é acessível sem login; as tabelas de token do calendário ficam trancadas e só a service role acessa.
 
 ### 5. "Nori" (Natu Restaurante)
-A gravação está como Gravada (roteiro "Gravado", data 11/09), mas a única ocorrência no calendário é a de 16/09, cancelada. O mais provável é que tenha sido gravada em 11/09 e o evento de 16/09 cancelado depois. Não corrigi porque isso é decidir um fato do negócio.
-
-Se você confirmar que foi gravada em 11/09, eu registro a ocorrência concluída nessa data.
+O Yury confirmou que não foi gravada. O estado atual no banco já está coerente: situação Cancelada, roteiro "Pronto para gravar", nada marcado como gravado e data de 16/09 (a ocorrência cancelada). Nenhuma correção foi necessária.
 
 ## Arquivos alterados
 - `js/gravacao.js`: googleAposAgendar, exportado.
@@ -55,7 +57,7 @@ Se você confirmar que foi gravada em 11/09, eu registro a ocorrência concluíd
 - `js/database.js`: `buscar` inclui os itens de gravação.
 - `js/ui.js`: paleta com o grupo "Itens de gravação" e mês/status nas gravações.
 - `sw.js`: cache em `roteiros-b7-v107`.
-- Novos: `migration_rls_corte_2.sql` e `migration_rls_corte_2_reverter.sql` (não aplicados).
+- Novos: `migration_rls_corte_2.sql` (aplicado) e `migration_rls_corte_2_reverter.sql` (emergência).
 
 ## Tests
 Todos estes foram executados.
@@ -73,7 +75,5 @@ Todos estes foram executados.
 **Não testado:** a busca contra o banco real (o sandbox não acessa a API REST); o código foi revisado e passou no `node --check`. Também não testei login real nem a chamada real ao Google.
 
 ## Pendências
-1. Aplicar o corte do RLS (item 4). É o ponto mais importante.
-2. Confirmar a data real da gravação "Nori" (item 5).
-3. Definir o mês das 5 gravações antigas restantes.
-4. Depois de publicar, validar com login real: equipe e, quando existir, um cliente no Portal.
+1. Definir o mês das 5 gravações antigas restantes.
+2. Depois de publicar, validar com login real (equipe e, quando existir, um cliente no Portal). Se alguma tela da equipe ficar vazia, rode o reverter e me avise.
