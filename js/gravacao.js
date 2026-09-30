@@ -564,17 +564,31 @@ B7.Gravacao = (function () {
         const r = await B7.Save.acao(() => B7.DB.gravacaoAgendar(S.id, data, ini, fim, motivo));
         m.fechar();
         B7.UI.toast(r && r.remarcacao ? 'Gravação remarcada — a data antiga continua no histórico.' : 'Data marcada.');
-        /* evento do Google ligado a esta gravação: move junto (best-effort,
-           igual ao Calendário) */
-        if (r && r.evento_id && B7.DB.atualizarEventoGoogle) {
-          const iniISO = new Date(data + 'T' + (ini || '12:00') + ':00').toISOString();
-          const fimISO = new Date(data + 'T' + (fim || ini || '12:00') + ':00').toISOString();
-          try { await B7.DB.atualizarEventoGoogle(r.evento_id, iniISO, fimISO, r.ocorrencia_id); }
-          catch (e) { B7.UI.toast('Remarcado no B7, mas não deu pra atualizar no Google: ' + (e.message || ''), { tempo: 8000 }); }
-        }
+        await googleAposAgendar(r, S.g, data, ini, fim);
         recarregarGravacao();
       } catch (e) { bt.disabled = false; erro.textContent = e.message || ''; }
     };
+  }
+
+  /* Google (best-effort, igual ao Calendário): se a gravação já tem
+     evento, ele se move junto; se ainda não tem e há horário, cria.
+     Usado pelo detalhe e pela criação/duplicação na lista. */
+  async function googleAposAgendar(r, g, data, ini, fim) {
+    if (!r || !data) return;
+    const iniD = new Date(data + 'T' + (ini || '12:00') + ':00');
+    const fimD = fim ? new Date(data + 'T' + fim + ':00') : new Date(iniD.getTime() + 3600e3);
+    if (r.evento_id && B7.DB.atualizarEventoGoogle) {
+      try { await B7.DB.atualizarEventoGoogle(r.evento_id, iniD.toISOString(), fimD.toISOString(), r.ocorrencia_id); }
+      catch (e) { B7.UI.toast('Remarcado no B7, mas não deu pra atualizar no Google: ' + (e.message || ''), { tempo: 8000 }); }
+      return;
+    }
+    if (!r.ocorrencia_id || r.sem_mudanca || !B7.DB.criarEventoGoogle || !B7.DB.statusConexaoCalendario) return;
+    let conectado = false;
+    try { const st = await B7.DB.statusConexaoCalendario(); conectado = !!(st && st.conectado); } catch (e) {}
+    if (!conectado) return;
+    if (!ini) { B7.UI.toast('Sem horário: o evento não foi criado no Google. Informe o início para criar.', { tempo: 7000 }); return; }
+    try { await B7.DB.criarEventoGoogle(r.ocorrencia_id, 'Grav. ' + ((g && (g.cliente_nome || g.nome)) || ''), iniD.toISOString(), fimD.toISOString(), (g && g.local) || ''); }
+    catch (e) { B7.UI.toast('Data salva no B7, mas não deu pra criar o evento no Google: ' + (e.message || ''), { tempo: 8000 }); }
   }
 
   async function concluir() {
@@ -655,5 +669,5 @@ B7.Gravacao = (function () {
     };
   }
 
-  return { abrir, rotuloSituacao, chipSituacao, camposMes, mesRef, SITUACAO };
+  return { abrir, rotuloSituacao, chipSituacao, camposMes, mesRef, SITUACAO, googleAposAgendar };
 })();

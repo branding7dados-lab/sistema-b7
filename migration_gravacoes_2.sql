@@ -771,3 +771,14 @@ revoke execute on function public.gravacoes_regras_antes() from public, anon, au
 revoke execute on function public.gravacoes_historico_depois() from public, anon, authenticated;
 revoke execute on function public.gravacoes_ocorrencias_sincronizar() from public, anon, authenticated;
 revoke execute on function public.roteiros_itens_gravacao() from public, anon, authenticated;
+
+-- ============================================================
+-- Backfill pelo nome (aplicado como gravacoes_2_competencia_pelo_nome)
+-- ============================================================
+select set_config('b7.sem_historico', 'on', true);
+update public.gravacoes g set competencia_ano = 2026, competencia_mes = m.mes
+from (values ('janeiro',1),('fevereiro',2),('março',3),('marco',3),('abril',4),('maio',5),('junho',6),('julho',7),
+             ('agosto',8),('setembro',9),('outubro',10),('novembro',11),('dezembro',12)) m(nome, mes)
+where g.deleted_at is null and g.competencia_ano is null
+  and extract(year from g.created_at) = 2026
+  and lower(g.nome) ~ ('(^|[^a-zç])' || m.nome || '([^a-zç]|$)');

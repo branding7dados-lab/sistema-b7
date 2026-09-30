@@ -1323,7 +1323,7 @@ B7.DB = (function () {
          a busca inteira. */
       const opcional = q => q.then(r => r.error ? { data: [] } : r, () => ({ data: [] }));
       const [clientes, gravacoes, roteiros, cenas, linhas, conteudos, ideias,
-             semanas] = await Promise.all([
+             semanas, itensGrav] = await Promise.all([
         sb().from('clientes_resumo').select('*').ilike('nome', t).is('deleted_at', null).limit(6),
         sb().from('gravacoes_resumo').select('*').ilike('nome', t).is('deleted_at', null).limit(8),
         sb().from('roteiros').select('id,titulo,recording_session_id').ilike('titulo', t)
@@ -1337,8 +1337,24 @@ B7.DB = (function () {
         opcional(sb().from('status_resumo')
           .select('id,cliente_nome,semana_inicio,semana_fim,total_itens')
           .ilike('cliente_nome', t).is('deleted_at', null)
-          .order('semana_inicio', { ascending: false }).limit(4))
+          .order('semana_inicio', { ascending: false }).limit(4)),
+        /* itens soltos da gravação (trend/referência e avulso): roteiros e
+           conteúdos já aparecem nos próprios grupos */
+        opcional(sb().from('gravacao_itens_resumo').select('id,gravacao_id,tipo,titulo')
+          .in('tipo', ['referencia', 'avulso']).ilike('titulo', t).limit(6))
       ]);
+
+      /* itens precisam da gravação (nome/cliente) para fazer sentido */
+      let itensCom = [];
+      const itensAchados = itensGrav.data || [];
+      if (itensAchados.length) {
+        const gids = [...new Set(itensAchados.map(i => i.gravacao_id))];
+        const gs = await opcional(sb().from('gravacoes_resumo').select('id,nome,cliente_nome')
+          .in('id', gids).is('deleted_at', null));
+        const mapaG = {};
+        (gs.data || []).forEach(g => mapaG[g.id] = g);
+        itensCom = itensAchados.filter(i => mapaG[i.gravacao_id]).map(i => ({ ...i, gravacao: mapaG[i.gravacao_id] }));
+      }
 
       /* as cenas encontradas precisam do roteiro para poder abrir */
       let cenasCom = [];
@@ -1361,7 +1377,8 @@ B7.DB = (function () {
         linhas: linhas.data || [],
         conteudos: conteudos.data || [],
         ideias: ideias.data || [],
-        semanas: semanas.data || []
+        semanas: semanas.data || [],
+        itensGravacao: itensCom
       };
     },
 

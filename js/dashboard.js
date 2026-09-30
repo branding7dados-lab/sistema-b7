@@ -1656,7 +1656,7 @@ B7.Dashboard = (function () {
           status: 'Rascunho',
           situacao: 'Pendente'
         }), 'Gravação criada');
-        if (data) { try { await B7.DB.gravacaoAgendar(g.id, data, hora || null, null); } catch (e) { B7.UI.toast('Gravação criada, mas a data não foi salva: ' + (e.message || ''), { tipo: 'erro' }); } }
+        if (data) { try { const rAg = await B7.DB.gravacaoAgendar(g.id, data, hora || null, null); if (B7.Gravacao && B7.Gravacao.googleAposAgendar) await B7.Gravacao.googleAposAgendar(rAg, { nome: g.nome, cliente_nome: (sel.options[sel.selectedIndex] || {}).text || '' }, data, hora || null, null); } catch (e) { B7.UI.toast('Gravação criada, mas a data não foi salva: ' + (e.message || ''), { tipo: 'erro' }); } }
         B7.DB.registrar({ tipo: 'criar', entidade: 'gravacao', id: g.id, cliente: sel.value,
           gravacao: g.id, texto: 'Nova gravação: ' + g.nome });
         m.fechar();
@@ -1727,7 +1727,14 @@ B7.Dashboard = (function () {
         html += '<div class="grupo">GRAVAÇÕES</div>' + r.gravacoes.map(g =>
           '<div class="res" data-ir="#/gravacao/' + esc(g.id) + '"><div class="mini">' + IC.gravacoes +
           '</div><div><b>' + esc(g.nome) + '</b><small>' + esc(g.cliente_nome) +
+          (g.competencia_ano && B7.Gravacao ? ' · ' + esc(B7.Gravacao.mesRef(g.competencia_ano, g.competencia_mes)) : '') +
           (g.data_gravacao ? ' · ' + B7.UI.dataBR(g.data_gravacao) : '') + '</small></div></div>').join('');
+      }
+      if ((r.itensGravacao || []).length) {
+        html += '<div class="grupo">ITENS DE GRAVAÇÃO</div>' + r.itensGravacao.map(i =>
+          '<div class="res" data-ir="#/gravacao/' + esc(i.gravacao_id) + '"><div class="mini">' + IC.gravacoes +
+          '</div><div><b>' + esc(i.titulo || 'Sem título') + '</b><small>' + (i.tipo === 'referencia' ? 'Trend' : 'Avulso') +
+          ' · ' + esc(i.gravacao.nome) + '</small></div></div>').join('');
       }
       if (r.roteiros.length) {
         html += '<div class="grupo">ROTEIROS</div>' + r.roteiros.map(t =>

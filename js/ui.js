@@ -548,7 +548,7 @@ B7.UI = (function () {
         const r = await B7.DB.buscar(termo);
         /* só destinos que abrem para esta pessoa (a mesma guarda de rota) */
         if (!podeIr('cliente')) { r.clientes = []; r.ideias = []; }
-        if (!podeIr('gravacao')) { r.gravacoes = []; r.roteiros = []; }
+        if (!podeIr('gravacao')) { r.gravacoes = []; r.roteiros = []; r.itensGravacao = []; }
         if (!podeIr('linha')) { r.linhas = []; r.conteudos = []; }
         if (!podeIr('semana')) r.semanas = [];
         if (r.clientes.length) {
@@ -560,7 +560,9 @@ B7.UI = (function () {
         }
         if (r.gravacoes.length) {
           html += '<div class="cp-grupo">GRAVAÇÕES</div>' + r.gravacoes.map(g =>
-            linha(ICP.grav, g.nome, g.cliente_nome)).join('');
+            linha(ICP.grav, g.nome, [g.cliente_nome,
+              g.competencia_ano && B7.Gravacao ? B7.Gravacao.mesRef(g.competencia_ano, g.competencia_mes) : '',
+              B7.Gravacao && g.situacao ? B7.Gravacao.rotuloSituacao(g.situacao) : ''].filter(Boolean).join(' · '))).join('');
           novos = novos.concat(r.gravacoes.map(g => ({ fn: () => { location.hash = '#/gravacao/' + g.id; } })));
         }
         if (r.roteiros.length) {
@@ -568,6 +570,12 @@ B7.UI = (function () {
             linha(ICP.rot, t.titulo || 'Sem título', 'abrir na gravação')).join('');
           novos = novos.concat(r.roteiros.map(t => ({
             fn: () => { location.hash = '#/gravacao/' + t.recording_session_id + '?roteiro=' + t.id; } })));
+        }
+        if ((r.itensGravacao || []).length) {
+          html += '<div class="cp-grupo">ITENS DE GRAVAÇÃO</div>' + r.itensGravacao.map(i =>
+            linha(ICP.grav, i.titulo || 'Sem título',
+              (i.tipo === 'referencia' ? 'Trend' : 'Avulso') + ' · ' + i.gravacao.nome + (i.gravacao.cliente_nome ? ' · ' + i.gravacao.cliente_nome : ''))).join('');
+          novos = novos.concat(r.itensGravacao.map(i => ({ fn: () => { location.hash = '#/gravacao/' + i.gravacao_id; } })));
         }
         if ((r.linhas || []).length) {
           html += '<div class="cp-grupo">LINHAS EDITORIAIS</div>' + r.linhas.map(l =>
