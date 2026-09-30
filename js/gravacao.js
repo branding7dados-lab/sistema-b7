@@ -59,7 +59,10 @@ B7.Gravacao = (function () {
     seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
     voltar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
     mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-    menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>',
+    menu: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9" style="fill:currentColor;stroke:none"/><circle cx="12" cy="12" r="1.9" style="fill:currentColor;stroke:none"/><circle cx="18.5" cy="12" r="1.9" style="fill:currentColor;stroke:none"/></svg>',
+    lapis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    impressora: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V4h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><path d="M7 14h10v6H7z"/></svg>',
     agenda: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3"/></svg>',
     pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.2-3.6 3.8-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>',
     local: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>',
@@ -90,6 +93,13 @@ B7.Gravacao = (function () {
   function quandoGravacao(g) {
     if (!g.data_gravacao) return 'Sem data marcada';
     return dataLonga(g.data_gravacao) + (g.hora_inicio ? ' · ' + hhmm(g.hora_inicio) + (g.hora_fim ? '–' + hhmm(g.hora_fim) : '') : ' · sem horário');
+  }
+  const horaTx = g => g.hora_inicio ? hhmm(g.hora_inicio) + (g.hora_fim ? '–' + hhmm(g.hora_fim) : '') : '';
+  function diasAte(iso) {
+    if (!iso) return null;
+    const [a, m, d] = iso.slice(0, 10).split('-').map(Number);
+    const h = new Date(); const hoje = new Date(h.getFullYear(), h.getMonth(), h.getDate());
+    return Math.round((new Date(a, m - 1, d) - hoje) / 864e5);
   }
   /* instante de uma ocorrência (timestamptz) → dd/mm HH:MM no fuso local */
   function quandoOc(iso, semHorario) {
@@ -166,30 +176,52 @@ B7.Gravacao = (function () {
     const sit = g.situacao || 'Pendente';
     const concluida = sit === 'Gravada', cancelada = sit === 'Cancelada';
     const mes = mesRef(g.competencia_ano, g.competencia_mes);
+    const ed = podeEditar();
+    const dias = diasAte(g.data_gravacao);
+    const ativa = !concluida && !cancelada;
+    /* quando: "Hoje", "Amanhã", "em 5 dias" ou o aviso de data que passou */
+    let rel = '';
+    if (g.data_gravacao && ativa) {
+      if (dias === 0) rel = '<em class="gv-rel hoje">Hoje</em>';
+      else if (dias === 1) rel = '<em class="gv-rel">Amanhã</em>';
+      else if (dias > 1 && dias <= 14) rel = '<em class="gv-rel">em ' + dias + ' dias</em>';
+      else if (dias < 0) rel = '<em class="gv-rel passou">a data passou</em>';
+    }
+    /* fato: vira botão para quem pode mudar — clicar no que se quer mudar */
+    const fato = (cls, ic, rot, valor, extra, acao) => {
+      const miolo = ic + '<span><small>' + rot + '</small><b>' + valor + '</b>' + (extra || '') + '</span>';
+      return acao && ed
+        ? '<button type="button" class="gv-fato ' + cls + '" data-gv="' + acao + '" title="Alterar">' + miolo + '<i class="gv-fato-ed">' + IC.lapis + '</i></button>'
+        : '<span class="gv-fato ' + cls + '">' + miolo + '</span>';
+    };
+    const dataValor = g.data_gravacao ? esc(dataLonga(g.data_gravacao)) + (horaTx(g) ? ' · ' + esc(horaTx(g)) : '') : 'Sem data';
+    const dataExtra = (g.data_gravacao && !horaTx(g) ? '<i class="gv-fato-nota">horário a definir</i>' : '') + rel;
+    /* ação principal muda com o momento da gravação */
+    const principal = !ed || !ativa ? '' :
+      !g.data_gravacao ? 'agendar' :
+      (dias != null && dias <= 0) || (S.itens.length && S.itens.every(i => i.gravado)) ? 'concluir' : 'agendar';
+    const btAgendar = ed && !concluida
+      ? '<button type="button" class="b ' + (principal === 'agendar' ? 'pri' : 'contorno') + '" data-gv="agendar">' + IC.agenda +
+          '<span>' + (g.data_gravacao ? (cancelada ? 'Reativar com nova data' : 'Remarcar') : 'Marcar data') + '</span></button>' : '';
+    const btConcluir = ed && ativa
+      ? '<button type="button" class="b ' + (principal === 'concluir' ? 'pri' : 'contorno') + '" data-gv="concluir">' + IC.check + '<span>Concluir gravação</span></button>' : '';
     cx.innerHTML =
       '<div class="gv-cab-topo">' +
         '<a class="gv-cli" href="#/cliente/' + esc(g.client_id) + '">' + B7.UI.avatarCliente(g.cliente_nome, g.cliente_logo_url, 'p') +
           '<span>' + esc(g.cliente_nome || '') + '</span></a>' +
-        chipSituacao(sit) +
       '</div>' +
-      '<h1 class="gv-nome">' + esc(g.nome) + '</h1>' +
+      '<div class="gv-titulo"><h1 class="gv-nome">' + esc(g.nome) + '</h1>' + chipSituacao(sit) + '</div>' +
       '<div class="gv-fatos">' +
-        '<span class="gv-fato gv-fato-mes' + (mes ? '' : ' falta') + '">' + IC.mes +
-          (mes ? '<span><small>Mês de referência</small><b>' + esc(mes) + '</b></span>'
-               : '<span><small>Mês de referência</small><b>Não definido</b></span>') + '</span>' +
-        '<span class="gv-fato">' + IC.agenda + '<span><small>' + (sit === 'Remarcada' ? 'Nova data' : 'Data da gravação') + '</small><b>' +
-          esc(quandoGravacao(g)) + '</b></span></span>' +
-        '<span class="gv-fato">' + IC.pessoa + '<span><small>Responsável</small><b>' +
-          esc(g.videomaker_nome || g.videomaker || 'Sem responsável') + '</b></span></span>' +
+        fato('gv-fato-mes' + (mes ? '' : ' falta'), IC.mes, 'Mês de referência', mes ? esc(mes) : 'Não definido', '', 'editar') +
+        fato('gv-fato-data' + (dias != null && dias < 0 && ativa ? ' atrasada' : ''), IC.agenda, sit === 'Remarcada' ? 'Nova data' : 'Data da gravação', dataValor, dataExtra, concluida ? '' : 'agendar') +
+        fato('gv-fato-resp' + (g.videomaker_nome ? '' : ' vazio'), IC.pessoa, 'Responsável', esc(g.videomaker_nome || g.videomaker || 'Ninguém ainda'), '', 'editar') +
       '</div>' +
-      (!mes && podeEditar() ? '<div class="gv-aviso"><span>Esta gravação é anterior ao mês de referência. Defina o mês para ela aparecer na produção certa.</span>' +
+      (!mes && ed ? '<div class="gv-aviso"><span>Esta gravação é anterior ao mês de referência. Defina o mês para ela aparecer na produção certa.</span>' +
         '<button type="button" class="b fina contorno" data-gv="editar">Definir mês</button></div>' : '') +
       '<div class="gv-acoes">' +
-        (podeEditar() && !concluida ? '<button type="button" class="b ' + (g.data_gravacao && !cancelada ? 'contorno' : 'pri') + '" data-gv="agendar">' +
-          IC.agenda + '<span>' + (g.data_gravacao ? (cancelada ? 'Remarcar (reativar)' : 'Remarcar') : 'Marcar data') + '</span></button>' : '') +
-        (podeEditar() && !concluida && !cancelada ? '<button type="button" class="b contorno" data-gv="concluir">' + IC.check + '<span>Concluir gravação</span></button>' : '') +
+        (principal === 'concluir' ? btConcluir + btAgendar : btAgendar + btConcluir) +
         '<a class="b contorno" href="#/gravacao/' + esc(g.id) + '/roteiros">' + TIPO.roteiro.ic + '<span>Abrir roteiros</span></a>' +
-        '<button type="button" class="b ico gv-mais-acoes" data-gv="menu" aria-label="Mais ações" aria-haspopup="menu">' + IC.menu + '</button>' +
+        '<button type="button" class="b contorno ico gv-mais-acoes" data-gv="menu" aria-label="Mais ações" aria-haspopup="menu">' + IC.menu + '</button>' +
       '</div>';
     ligarAcoes(cx);
   }
@@ -202,24 +234,24 @@ B7.Gravacao = (function () {
     let titulo, sub = [], acao = '';
     if (it.tipo === 'roteiro') {
       titulo = it.roteiro_titulo || 'Roteiro sem título';
-      if (it.roteiro_status) sub.push(it.roteiro_status);
+      if (it.roteiro_status && !it.gravado) sub.push(it.roteiro_status);
       const casa = it.roteiro_gravacao_id || S.id;
       if (casa !== S.id) sub.push('escrito em outra gravação');
-      acao = '<a class="b fina contorno gv-it-abrir" href="#/gravacao/' + esc(casa) + '?roteiro=' + esc(it.roteiro_id) + '">Abrir roteiro' + IC.seta + '</a>';
+      acao = '<a class="b fina gv-it-abrir" href="#/gravacao/' + esc(casa) + '?roteiro=' + esc(it.roteiro_id) + '">Abrir roteiro' + IC.seta + '</a>';
     } else if (it.tipo === 'referencia') {
       titulo = it.titulo;
       let host = ''; try { host = new URL(it.url).hostname.replace(/^www\./, ''); } catch (e) {}
       if (host) sub.push(host);
-      acao = '<a class="b fina contorno gv-it-abrir" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer nofollow">Abrir referência' + IC.abrir + '</a>';
+      acao = '<a class="b fina gv-it-abrir" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer nofollow">Abrir referência' + IC.abrir + '</a>';
     } else if (it.tipo === 'conteudo') {
       titulo = it.conteudo_titulo || 'Conteúdo sem título';
       if (it.conteudo_tipo) sub.push(it.conteudo_tipo);
       if (it.conteudo_data_postagem) sub.push('postagem ' + B7.UI.dataBR(it.conteudo_data_postagem));
-      if (it.conteudo_linha_id) acao = '<a class="b fina contorno gv-it-abrir" href="#/linha/' + esc(it.conteudo_linha_id) + '?conteudo=' + esc(it.conteudo_id) + '">Abrir conteúdo' + IC.seta + '</a>';
+      if (it.conteudo_linha_id) acao = '<a class="b fina gv-it-abrir" href="#/linha/' + esc(it.conteudo_linha_id) + '?conteudo=' + esc(it.conteudo_id) + '">Abrir conteúdo' + IC.seta + '</a>';
     } else {
       titulo = it.titulo;
     }
-    const gravadoTx = it.gravado ? 'Gravado' + (it.gravado_por_nome ? ' por ' + it.gravado_por_nome.split(' ')[0] : '') : 'Não gravado';
+    const gravadoTx = it.gravado ? 'Gravado' + (it.gravado_por_nome ? ' por ' + it.gravado_por_nome.split(' ')[0] : '') : '';
     const marcar = podeMarcar();
     return '<li class="gv-it' + (it.gravado ? ' feito' : '') + '" data-item="' + esc(it.id) + '">' +
       (marcar
@@ -231,10 +263,10 @@ B7.Gravacao = (function () {
         '<b>' + esc(titulo) + '</b>' +
         (it.observacao ? '<p class="gv-it-obs">' + esc(it.observacao) + '</p>' : '') +
         '<span class="gv-it-meta">' + sub.map(x => '<span>' + esc(x) + '</span>').join('') +
-          '<span class="gv-it-estado">' + esc(gravadoTx) + '</span></span>' +
+          (gravadoTx ? '<span class="gv-it-estado">' + IC.check + esc(gravadoTx) + '</span>' : '') + '</span>' +
       '</div>' +
       '<div class="gv-it-acoes">' + acao +
-        (podeEditar() ? '<button type="button" class="b ico fina" data-item-menu="' + esc(it.id) + '" aria-label="Opções do item" aria-haspopup="menu">' + IC.menu + '</button>' : '') +
+        (podeEditar() ? '<button type="button" class="b ico fina gv-it-mais" data-item-menu="' + esc(it.id) + '" aria-label="Opções do item" aria-haspopup="menu">' + IC.menu + '</button>' : '') +
       '</div></li>';
   }
 
@@ -260,8 +292,8 @@ B7.Gravacao = (function () {
       corpo = aviso + '<ol class="gv-lista">' + S.itens.map((it, i) => linhaItem(it, i, total)).join('') + '</ol>';
     }
     cx.innerHTML = '<div class="gv-sec-cab"><h2 id="gv-t-itens">O que vamos gravar</h2>' +
-      (e === 'ok' && total ? '<span class="gv-progresso" aria-label="' + feitos + ' de ' + total + ' itens gravados"><b>' + feitos + '</b> de ' + total + ' gravados' +
-        '<i style="--p:' + Math.round(feitos / total * 100) + '%"></i></span>' : '') +
+      (e === 'ok' && total ? '<span class="gv-progresso' + (feitos === total ? ' completo' : '') + '" role="progressbar" aria-valuemin="0" aria-valuemax="' + total + '" aria-valuenow="' + feitos + '" aria-label="' + feitos + ' de ' + total + ' itens gravados">' +
+        '<i style="--p:' + Math.round(feitos / total * 100) + '%"></i><span><b>' + feitos + '</b> de ' + total + ' gravados</span></span>' : '') +
       (podeEditar() ? '<button type="button" class="b fina ' + (total ? 'contorno' : 'pri') + ' gv-add" data-gv="adicionar">' + IC.mais + '<span>Adicionar item</span></button>' : '') +
       '</div>' + corpo;
     ligarAcoes(cx);
@@ -289,15 +321,15 @@ B7.Gravacao = (function () {
     const cx = document.getElementById('gv-detalhes'); if (!cx) return;
     const g = S.g;
     const linha = (rot, val) => '<div class="gv-det"><dt>' + esc(rot) + '</dt><dd>' + val + '</dd></div>';
+    const ed = podeEditar();
     cx.innerHTML = '<div class="gv-sec-cab"><h2 id="gv-t-det">Detalhes</h2>' +
-        (podeEditar() ? '<button type="button" class="b fina contorno" data-gv="editar">Editar</button>' : '') + '</div>' +
+        (ed ? '<button type="button" class="b fina contorno" data-gv="editar">' + IC.lapis + '<span>Editar</span></button>' : '') + '</div>' +
       '<dl class="gv-dets">' +
-        linha('Status', chipSituacao(g.situacao || 'Pendente')) +
-        linha('Mês de referência', esc(mesRef(g.competencia_ano, g.competencia_mes) || 'Não definido (gravação antiga)')) +
-        linha('Data', esc(quandoGravacao(g))) +
-        linha('Responsável', esc(g.videomaker_nome || g.videomaker || '—')) +
-        (g.local ? linha('Local', esc(g.local)) : '') +
-        linha('Preparação', B7.UI.chipStatus(g.status)) +
+        linha('Local', g.local ? esc(g.local)
+          : (ed ? '<button type="button" class="gv-det-add" data-gv="editar">Adicionar local</button>' : '<span class="gv-det-vazio">—</span>')) +
+        linha('Roteiros', B7.UI.chipStatus(g.status)) +
+        (g.created_at ? linha('Criada', esc(B7.UI.dataBR(String(g.created_at).slice(0, 10)))) : '') +
+        (g.concluida_em ? linha('Concluída', esc(B7.UI.dataBR(String(g.concluida_em).slice(0, 10)))) : '') +
       '</dl>';
     ligarAcoes(cx);
   }
@@ -327,6 +359,25 @@ B7.Gravacao = (function () {
       default: return '';
     }
   }
+  /* "gravado" e "desmarcado" do mesmo item com poucos minutos de
+     diferença se anulam — só poluem a leitura. O registro completo
+     continua no banco e aparece em "Ver histórico completo". */
+  function histLimpo(lista) {
+    if (S.histTudo) return lista;
+    const par = { item_gravado: 'item_desmarcado', item_desmarcado: 'item_gravado' };
+    const chave = h => { const d = h.dados || {}; return (d.item_id || '') + '|' + (d.tipo || '') + '|' + (d.titulo || ''); };
+    const fora = new Set();
+    for (let i = 0; i < lista.length; i++) {
+      const a = lista[i]; if (fora.has(i) || !par[a.tipo]) continue;
+      for (let j = i + 1; j < lista.length; j++) {
+        const b = lista[j]; if (fora.has(j) || !par[b.tipo]) continue;
+        if (chave(b) !== chave(a)) continue;
+        if (b.tipo === par[a.tipo] && Math.abs(new Date(a.criado_em) - new Date(b.criado_em)) <= 30 * 60e3) { fora.add(i); fora.add(j); }
+        break;
+      }
+    }
+    return lista.filter((_, i) => !fora.has(i));
+  }
   function pintarHistorico() {
     const cx = document.getElementById('gv-hist'); if (!cx || !S) return;
     const e = S.estado.hist;
@@ -342,10 +393,15 @@ B7.Gravacao = (function () {
               esc({ marcada: 'Marcada', remarcada: 'Remarcada', concluida: 'Concluída', cancelada: 'Cancelada' }[o.status] || o.status) + '</span>' +
               '<span>' + esc(quandoOc(o.inicio, o.sem_horario)) + (o.atual ? ' · atual' : '') + '</span></li>').join('') + '</ol></div>'
         : '';
+      const limpo = histLimpo(S.hist);
+      const LIM = 6, mostrar = S.histTudo ? limpo : limpo.slice(0, LIM);
+      const escondidos = S.hist.length - mostrar.length;
       const lista = S.hist.length
-        ? '<ol class="gv-hist-lista">' + S.hist.map(h => '<li><b>' + esc(ROTULO_HIST[h.tipo] || h.tipo) + '</b>' +
+        ? '<ol class="gv-hist-lista">' + mostrar.map(h => '<li class="t-' + esc(h.tipo) + '"><b>' + esc(ROTULO_HIST[h.tipo] || h.tipo) + '</b>' +
             (textoHist(h) ? '<span>' + esc(textoHist(h)) + '</span>' : '') +
-            '<small>' + esc((h.ator_nome ? h.ator_nome.split(' ')[0] + ' · ' : '') + B7.UI.quando(h.criado_em)) + '</small></li>').join('') + '</ol>'
+            '<small>' + esc((h.ator_nome ? h.ator_nome.split(' ')[0] + ' · ' : '') + B7.UI.quando(h.criado_em)) + '</small></li>').join('') + '</ol>' +
+          (escondidos > 0 && !S.histTudo ? '<button type="button" class="gv-hist-mais" data-gv="hist-tudo">Ver histórico completo (' + S.hist.length + ')</button>' : '') +
+          (S.histTudo && limpo.length < S.hist.length ? '<p class="gv-hist-nota">Mostrando tudo, inclusive marcações desfeitas logo em seguida.</p>' : '')
         : '<p class="pn-nota">O histórico começa a ser registrado a partir desta versão do sistema.</p>';
       corpo = datas + lista;
     }
@@ -365,6 +421,7 @@ B7.Gravacao = (function () {
         if (a === 'menu') return menuGravacao(b);
         if (a === 'recarregar-itens') return carregarItens(geracao);
         if (a === 'recarregar-hist') return carregarHistorico(geracao);
+        if (a === 'hist-tudo') { S.histTudo = true; return pintarHistorico(); }
       };
     });
   }
@@ -399,11 +456,10 @@ B7.Gravacao = (function () {
   function menuGravacao() {
     const g = S.g, sit = g.situacao || 'Pendente';
     const ops = [];
-    if (podeEditar()) ops.push({ rotulo: 'Editar detalhes', dica: 'nome, mês de referência, responsável, local', fazer: modalEditar });
-    ops.push({ rotulo: 'Abrir roteiros', dica: 'editor de roteiros desta gravação', fazer: () => { location.hash = '#/gravacao/' + g.id + '/roteiros'; } });
-    ops.push({ rotulo: 'Imprimir roteiros', fazer: () => { location.hash = '#/gravacao/' + g.id + '/roteiros?imprimir=1'; } });
-    if (B7.Perm && B7.Perm.podeRota('calendario')) ops.push({ rotulo: 'Ver no calendário', fazer: () => { location.hash = '#/calendario'; } });
-    if (podeEditar() && sit !== 'Gravada' && sit !== 'Cancelada') ops.push({ rotulo: 'Cancelar gravação', dica: 'nada é apagado — fica no histórico', perigo: true, separar: true, fazer: modalCancelar });
+    if (podeEditar()) ops.push({ rotulo: 'Editar detalhes', dica: 'nome, mês de referência, responsável, local', ic: IC.lapis, fazer: modalEditar });
+    ops.push({ rotulo: 'Imprimir roteiros', dica: 'versão para levar na gravação', ic: IC.impressora, fazer: () => { location.hash = '#/gravacao/' + g.id + '/roteiros?imprimir=1'; } });
+    if (B7.Perm && B7.Perm.podeRota('calendario')) ops.push({ rotulo: 'Ver no calendário', dica: 'a agenda do mês', ic: IC.agenda, fazer: () => { location.hash = '#/calendario'; } });
+    if (podeEditar() && sit !== 'Gravada' && sit !== 'Cancelada') ops.push({ rotulo: 'Cancelar gravação', dica: 'nada é apagado — fica no histórico', ic: IC.x, perigo: true, separar: true, fazer: modalCancelar });
     menuSimples(g.nome, ops);
   }
 
@@ -456,15 +512,16 @@ B7.Gravacao = (function () {
   function modalItemLivre(tipo, it) {
     const ref = tipo === 'referencia';
     const m = B7.UI.modal('<h3>' + (it ? 'Editar ' : '') + (ref ? 'Trend / referência' : 'Conteúdo avulso') + '</h3>' +
-      '<label class="rot" for="gv-il-titulo">' + (ref ? 'Nome' : 'O que vai ser gravado') + '</label>' +
+      '<div class="sub">' + (ref ? 'Um link para a equipe se inspirar na hora de gravar.' : 'Algo para gravar sem roteiro: depoimento, bastidor, improviso.') + '</div>' +
+      '<div class="mb"><label class="rot" for="gv-il-titulo">' + (ref ? 'NOME' : 'O QUE VAI SER GRAVADO') + '</label>' +
       '<input class="campo" id="gv-il-titulo" data-foco maxlength="140" value="' + esc(it ? it.titulo || '' : '') + '" placeholder="' +
-        (ref ? 'Ex.: Trend recepcionista POV' : 'Ex.: Depoimento da Dra. Ana') + '">' +
-      (ref ? '<label class="rot" for="gv-il-url">Link</label><input class="campo" id="gv-il-url" type="url" inputmode="url" autocomplete="off" ' +
-        'placeholder="https://www.instagram.com/…" value="' + esc(it ? it.url || '' : '') + '">' : '') +
-      '<label class="rot" for="gv-il-obs">Observação <span class="leve">— opcional</span></label>' +
+        (ref ? 'Ex.: Trend recepcionista POV' : 'Ex.: Depoimento da Dra. Ana') + '"></div>' +
+      (ref ? '<div class="mb"><label class="rot" for="gv-il-url">LINK</label><input class="campo" id="gv-il-url" type="url" inputmode="url" autocomplete="off" ' +
+        'placeholder="https://www.instagram.com/…" value="' + esc(it ? it.url || '' : '') + '"></div>' : '') +
+      '<div class="mb"><label class="rot" for="gv-il-obs">OBSERVAÇÃO <span class="leve">— opcional</span></label>' +
       '<textarea class="campo" id="gv-il-obs" rows="3" placeholder="' + (ref ? 'Ex.: usar a mesma entrada, adaptando para odontologia' : 'Ex.: perguntar sobre o novo equipamento') + '">' +
-        esc(it ? it.observacao || '' : '') + '</textarea>' +
-      '<div class="ajuda erro-txt" id="gv-il-erro"></div>' +
+        esc(it ? it.observacao || '' : '') + '</textarea></div>' +
+      '<div class="ajuda erro-txt" id="gv-il-erro" role="alert"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="gv-il-ok">' + (it ? 'Salvar' : 'Adicionar') + '</button></div>');
     m.querySelector('#gv-il-ok').onclick = async () => {
       const titulo = m.querySelector('#gv-il-titulo').value.trim();
@@ -536,18 +593,21 @@ B7.Gravacao = (function () {
   /* ---------------------------------------------- data / status */
   function modalAgendar() {
     const g = S.g, remarcar = !!g.data_gravacao;
-    const m = B7.UI.modal('<h3>' + (remarcar ? 'Remarcar gravação' : 'Marcar data da gravação') + '</h3>' +
-      (remarcar ? '<p class="fraca">A data atual (' + esc(quandoGravacao(g)) + ') não some: ela fica no histórico e no calendário como "Remarcada".</p>' : '') +
-      '<div class="vd-grid-2">' +
-        '<div><label class="rot" for="gv-ag-data">' + (remarcar ? 'Nova data' : 'Data') + '</label><input class="campo" type="date" id="gv-ag-data" data-foco value="' + esc(remarcar ? '' : '') + '"></div>' +
-        '<div></div>' +
-        '<div><label class="rot" for="gv-ag-ini">Início <span class="leve">— opcional</span></label><input class="campo" type="time" id="gv-ag-ini" value="' + esc(hhmm(g.hora_inicio)) + '"></div>' +
-        '<div><label class="rot" for="gv-ag-fim">Fim <span class="leve">— opcional</span></label><input class="campo" type="time" id="gv-ag-fim" value="' + esc(hhmm(g.hora_fim)) + '"></div>' +
-      '</div>' +
-      (remarcar ? '<label class="rot" for="gv-ag-motivo">Motivo <span class="leve">— opcional</span></label><input class="campo" id="gv-ag-motivo" placeholder="Ex.: cliente pediu para mudar">' : '') +
-      (!g.competencia_ano ? '<p class="fraca">Defina também o mês de referência em "Editar detalhes".</p>' : '') +
-      '<div class="ajuda erro-txt" id="gv-ag-erro"></div>' +
-      '<div class="acoes"><button class="b" data-fecha>Voltar</button><button class="b pri" id="gv-ag-ok">' + (remarcar ? 'Remarcar' : 'Marcar') + '</button></div>');
+    const hoje = new Date(), iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const m = B7.UI.modal('<h3>' + (remarcar ? (g.situacao === 'Cancelada' ? 'Reativar com nova data' : 'Remarcar gravação') : 'Marcar data da gravação') + '</h3>' +
+      '<div class="sub">' + esc(g.cliente_nome || '') + ' · ' + esc(g.nome || '') +
+        (remarcar ? '<br>Hoje está em <b>' + esc(quandoGravacao(g)) + '</b>. Essa data não some: fica no histórico e no calendário como "Remarcada".' : '') + '</div>' +
+      '<div class="mb"><label class="rot" for="gv-ag-data">' + (remarcar ? 'NOVA DATA' : 'DATA') + '</label>' +
+        '<input class="campo" type="date" id="gv-ag-data" data-foco min="' + iso(new Date(hoje.getFullYear() - 1, 0, 1)) + '"></div>' +
+      '<div class="mb"><label class="rot">HORÁRIO <span class="leve">— opcional</span></label>' +
+        '<div class="gv-horas"><input class="campo" type="time" id="gv-ag-ini" aria-label="Início" value="' + esc(hhmm(g.hora_inicio)) + '">' +
+        '<span aria-hidden="true">até</span><input class="campo" type="time" id="gv-ag-fim" aria-label="Fim" value="' + esc(hhmm(g.hora_fim)) + '"></div>' +
+        '<div class="ajuda gv-ajuda">Sem horário, a gravação fica o dia todo no calendário e o evento do Google não é criado.</div></div>' +
+      (remarcar ? '<div class="mb"><label class="rot" for="gv-ag-motivo">MOTIVO <span class="leve">— opcional</span></label>' +
+        '<input class="campo" id="gv-ag-motivo" placeholder="Ex.: cliente pediu para mudar"></div>' : '') +
+      (!g.competencia_ano ? '<p class="gv-ajuda">Defina também o mês de referência em "Editar detalhes".</p>' : '') +
+      '<div class="ajuda erro-txt" id="gv-ag-erro" role="alert"></div>' +
+      '<div class="acoes"><button class="b" data-fecha>Voltar</button><button class="b pri" id="gv-ag-ok">' + (remarcar ? 'Salvar nova data' : 'Marcar data') + '</button></div>');
     /* início novo depois do fim antigo: o fim antigo deixa de fazer sentido */
     m.querySelector('#gv-ag-ini').addEventListener('change', e => {
       const f = m.querySelector('#gv-ag-fim'); if (f.value && e.target.value && f.value < e.target.value) f.value = '';
@@ -609,9 +669,9 @@ B7.Gravacao = (function () {
 
   function modalCancelar() {
     const m = B7.UI.modal('<h3>Cancelar gravação</h3>' +
-      '<p class="fraca">Nada é apagado: a gravação, os itens e as datas continuam no histórico, marcados como cancelados.</p>' +
-      '<label class="rot" for="gv-cn-motivo">Motivo <span class="leve">— opcional</span></label>' +
-      '<textarea class="campo" id="gv-cn-motivo" rows="3" data-foco placeholder="Ex.: cliente desmarcou"></textarea>' +
+      '<div class="sub">Nada é apagado: a gravação, os itens e as datas continuam no histórico, marcados como cancelados. Dá para reativar depois com uma nova data.</div>' +
+      '<div class="mb"><label class="rot" for="gv-cn-motivo">MOTIVO <span class="leve">— opcional</span></label>' +
+      '<textarea class="campo" id="gv-cn-motivo" rows="3" data-foco placeholder="Ex.: cliente desmarcou"></textarea></div>' +
       '<div class="acoes"><button class="b" data-fecha>Voltar</button><button class="b perigo" id="gv-cn-ok">Cancelar gravação</button></div>');
     m.querySelector('#gv-cn-ok').onclick = async () => {
       const bt = m.querySelector('#gv-cn-ok'); bt.disabled = true;
@@ -627,31 +687,47 @@ B7.Gravacao = (function () {
     };
   }
 
+  /* atalhos "este mês / próximo mês": o caso comum em um toque. Disparam
+     'change' nos selects, então quem escuta (sugestão pela data etc.)
+     trata como escolha manual. */
+  function atalhosMes(prefixo) {
+    const h = new Date();
+    const op = [[h.getFullYear(), h.getMonth() + 1], [h.getMonth() === 11 ? h.getFullYear() + 1 : h.getFullYear(), h.getMonth() === 11 ? 1 : h.getMonth() + 2]];
+    const js = (a, m) => "var r=this.closest('.gv-mes-bloco')||document,M=r.querySelector('#" + prefixo + "-mes'),A=r.querySelector('#" + prefixo + "-ano');" +
+      "if(![].some.call(A.options,function(o){return o.value=='" + a + "'}))A.insertAdjacentHTML('beforeend','<option>" + a + "</option>');" +
+      "M.value='" + m + "';A.value='" + a + "';M.dispatchEvent(new Event('change',{bubbles:true}));A.dispatchEvent(new Event('change',{bubbles:true}));M.classList.remove('erro');";
+    return '<div class="gv-mes-atalhos">' + op.map(([a, m], i) =>
+      '<button type="button" class="gv-chip" onclick="' + js(a, m).replace(/"/g, '&quot;') + '">' + (i ? 'Próximo mês' : 'Este mês') + ' · ' + MESES[m - 1] + '</button>').join('') + '</div>';
+  }
+
   /* campos do mês de referência — mês + ano, nunca um dia */
   function camposMes(ano, mes, prefixo) {
     const hoje = new Date();
     const a0 = hoje.getFullYear() - 1, a1 = hoje.getFullYear() + 2;
     const anos = []; for (let a = Math.min(a0, ano || a0); a <= Math.max(a1, ano || a1); a++) anos.push(a);
-    return '<div class="gv-mes-campos">' +
+    return '<div class="gv-mes-bloco"><div class="gv-mes-campos">' +
       '<select class="campo" id="' + prefixo + '-mes" aria-label="Mês de referência"><option value="">Mês</option>' +
         MESES.map((n, i) => '<option value="' + (i + 1) + '"' + (mes === i + 1 ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>' +
       '<select class="campo" id="' + prefixo + '-ano" aria-label="Ano de referência">' +
         anos.map(a => '<option value="' + a + '"' + ((ano || hoje.getFullYear()) === a ? ' selected' : '') + '>' + a + '</option>').join('') + '</select>' +
-    '</div>';
+    '</div>' + atalhosMes(prefixo) + '</div>';
   }
 
   async function modalEditar() {
     const g = S.g;
     let vms = [];
     try { vms = (await B7.DB.listarVideomakers()) || []; } catch (e) {}
-    const m = B7.UI.modal('<h3>Detalhes da gravação</h3>' +
-      '<label class="rot" for="gv-ed-nome">Nome da gravação</label><input class="campo" id="gv-ed-nome" data-foco value="' + esc(g.nome || '') + '">' +
-      '<label class="rot">Mês de referência <span class="leve">— obrigatório</span></label>' + camposMes(g.competencia_ano, g.competencia_mes, 'gv-ed') +
-      '<p class="fraca">É o mês de produção a que a gravação pertence — pode ser diferente do dia em que ela acontece.</p>' +
-      '<label class="rot" for="gv-ed-vm">Responsável (videomaker)</label><select class="campo" id="gv-ed-vm"><option value="">Sem responsável</option>' +
-        vms.map(v => '<option value="' + esc(v.id) + '"' + (v.id === g.videomaker_id ? ' selected' : '') + '>' + esc(v.nome) + '</option>').join('') + '</select>' +
-      '<label class="rot" for="gv-ed-local">Local <span class="leve">— opcional</span></label><input class="campo" id="gv-ed-local" value="' + esc(g.local || '') + '">' +
-      '<div class="ajuda erro-txt" id="gv-ed-erro"></div>' +
+    const m = B7.UI.modal('<h3>Editar gravação</h3>' +
+      '<div class="sub">' + esc(g.cliente_nome || '') + '</div>' +
+      '<div class="mb"><label class="rot" for="gv-ed-nome">NOME DA GRAVAÇÃO</label><input class="campo" id="gv-ed-nome" data-foco value="' + esc(g.nome || '') + '"></div>' +
+      '<div class="mb"><label class="rot">MÊS DE REFERÊNCIA <span class="leve">— obrigatório</span></label>' + camposMes(g.competencia_ano, g.competencia_mes, 'gv-ed') +
+        '<div class="ajuda gv-ajuda">O mês de produção a que a gravação pertence. Pode ser diferente do dia em que ela acontece.</div></div>' +
+      '<div class="gv-grid-2">' +
+        '<div class="mb"><label class="rot" for="gv-ed-vm">RESPONSÁVEL</label><select class="campo" id="gv-ed-vm"><option value="">Sem responsável</option>' +
+          vms.map(v => '<option value="' + esc(v.id) + '"' + (v.id === g.videomaker_id ? ' selected' : '') + '>' + esc(v.nome) + '</option>').join('') + '</select></div>' +
+        '<div class="mb"><label class="rot" for="gv-ed-local">LOCAL <span class="leve">— opcional</span></label><input class="campo" id="gv-ed-local" placeholder="Ex.: consultório, estúdio B7" value="' + esc(g.local || '') + '"></div>' +
+      '</div>' +
+      '<div class="ajuda erro-txt" id="gv-ed-erro" role="alert"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="gv-ed-ok">Salvar</button></div>');
     m.querySelector('#gv-ed-ok').onclick = async () => {
       const nome = m.querySelector('#gv-ed-nome').value.trim();
