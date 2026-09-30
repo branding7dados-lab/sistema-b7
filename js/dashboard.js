@@ -1338,7 +1338,10 @@ B7.Dashboard = (function () {
         linha('Conexão com o banco', online ? 'tudo certo por aqui' : 'reconecte para voltar a salvar',
               '<span class="chip-status ' + (online ? 'gravado' : 'pronto') + '">' +
               (online ? 'Conectado' : 'Sem conexão') + '</span>') +
-        linha('Versão', 'Branding7', '<span style="font-size:12.5px;color:var(--ink-3)">v2.1</span>') +
+        /* versão do código carregado — só o administrador vê (conferir deploy) */
+        (B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'admin'
+          ? linha('Versão', 'código carregado neste navegador — se não mudou após publicar, recarregue com Ctrl+Shift+R',
+                  '<code class="cfg-versao">v' + esc(B7.Auth.VERSAO || '') + '</code>') : '') +
       '</div>' : '') +
 
       /* Conta: todo mundo tem, inclusive cliente e coordenador. */

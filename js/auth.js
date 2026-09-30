@@ -18,10 +18,9 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-09-17-z6';
-  /* Visível o tempo todo (não só na tela de login) — pra confirmar em 2
-     segundos se um deploy pegou, sem precisar sair da sessão. */
-  try { const el = document.getElementById('versao-app'); if (el) el.textContent = 'v' + VERSAO; } catch (e) {}
+  const VERSAO = '2026-09-30-s';
+  /* A versão aparece só em Configurações → Sistema, para o administrador
+     (não fica mais no rodapé da barra lateral nem na tela de login). */
 
   /* Rastro dos eventos de sessão, guardado entre recarregamentos.
      Sem ele, um laço que atravessa reloads é invisível: cada página
@@ -230,8 +229,7 @@ B7.Auth = (function () {
         '<div class="login-erro" id="lg-erro" role="alert"></div>' +
 
         '<button class="b pri login-entrar" type="submit">Entrar</button>' +
-      '</form>' +
-      '<div class="login-rodape">v' + esc(VERSAO) + '</div>';
+      '</form>';
 
     document.body.appendChild(tela);
     document.body.classList.add('sem-sessao');

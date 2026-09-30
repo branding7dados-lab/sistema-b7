@@ -1322,3 +1322,4 @@ body.apurando #app{visibility:hidden;}
   .config-linha{flex-wrap:wrap;}
   .config-linha .tx{flex:1 1 100%;}
 }
+.cfg-versao{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--suave);border:1px solid var(--borda);border-radius:8px;padding:5px 10px;white-space:nowrap;}
