@@ -657,6 +657,16 @@ B7.Dashboard = (function () {
     if (g.competencia_mes && g.competencia_ano) return 'Ref. ' + (MES[g.competencia_mes - 1] || g.competencia_mes) + ' ' + g.competencia_ano + ' · sem data';
     return 'Sem data';
   }
+  /* MÊS DO ROTEIRO: o mês selecionado na gravação (mês de referência);
+     se a gravação ainda não tem mês, o mês em que o roteiro foi criado */
+  function mesDoRoteiro(r) {
+    const g = r.gravacao || {};
+    if (g.competencia_ano && g.competencia_mes) return { ano: +g.competencia_ano, mes: +g.competencia_mes, origem: 'gravacao' };
+    const d = r.created_at ? new Date(r.created_at) : new Date(r.updated_at || Date.now());
+    return { ano: d.getFullYear(), mes: d.getMonth() + 1, origem: 'criacao' };
+  }
+  const chaveMesRot = m => m.ano + '-' + String(m.mes).padStart(2, '0');
+  const rotuloMes = k => { const [a, m] = k.split('-').map(Number); return (B7.UI.MESES[m - 1] || m) + ' ' + a; };
   function cardRoteiro(r) {
     const g = r.gravacao || {};
     const cliente = g.cliente_nome || 'Sem cliente';
@@ -708,19 +718,22 @@ B7.Dashboard = (function () {
     B7.Rota.titulo(['Roteiros']);
     esqueleto('lista', { n: 6 });
     let roteiros;
-    try { roteiros = await B7.DB.roteirosRecentes(60); } catch (e) { return erro(e, 'abrirRoteiros'); }
+    try { roteiros = await B7.DB.roteirosRecentes(1000); } catch (e) { return erro(e, 'abrirRoteiros'); }
+    roteiros.forEach(r => { r._mes = mesDoRoteiro(r); r._chaveMes = chaveMesRot(r._mes); });
+    const agoraMes = chaveMesRot({ ano: new Date().getFullYear(), mes: new Date().getMonth() + 1 });
+    const meses = [...new Set(roteiros.map(r => r._chaveMes))].sort().reverse();
 
     const clientes = [...new Set(roteiros.map(r => r.gravacao && r.gravacao.cliente_nome).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, 'pt-BR'));
     let vista = 'lista';
     try { vista = localStorage.getItem('b7.roteiros.vista') === 'cards' ? 'cards' : 'lista'; } catch (e) {}
-    const F = { status: 'Todos', cliente: '', termo: '', ordem: 'recentes' };
+    const F = { status: 'Todos', cliente: '', termo: '', ordem: 'recentes', mes: '' };
 
     const ICL = '<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>';
     const ICC = '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>';
     painel().innerHTML = '<div class="conteudo entra rt">' +
       '<div class="rt-cab"><div class="rt-cab-tx"><h1>Roteiros</h1>' +
-        '<p id="rt-sub">' + roteiros.length + ' roteiros mexidos por último, de todos os clientes</p></div>' +
+        '<p id="rt-sub">' + roteiros.length + ' roteiros, separados pelo mês da gravação</p></div>' +
         (roteiros.length ? '<div class="rt-cab-acoes"><div class="filtro rt-vista" role="group" aria-label="Forma de ver">' +
           '<button data-vista="lista" aria-label="Lista por gravação" title="Lista por gravação">' + ICL + '<span>Lista</span></button>' +
           '<button data-vista="cards" aria-label="Cards" title="Cards">' + ICC + '<span>Cards</span></button></div>' +
@@ -731,6 +744,8 @@ B7.Dashboard = (function () {
         '<div class="rt-barra-f">' +
           '<div class="busca-local"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
             '<input class="campo" id="rt-busca" type="search" placeholder="Buscar por título, cliente, gravação ou objetivo…" autocomplete="off" aria-label="Buscar roteiros"></div>' +
+          '<select class="campo rt-sel" id="rt-mes" aria-label="Mês"><option value="">Mês: todos</option>' +
+            meses.map(k => '<option value="' + k + '">' + esc(rotuloMes(k)) + (k === agoraMes ? ' (este mês)' : '') + '</option>').join('') + '</select>' +
           (clientes.length > 1 ? '<select class="campo rt-sel" id="rt-cliente" aria-label="Cliente">' +
             '<option value="">Cliente: todos</option>' +
             clientes.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('') + '</select>' : '') +
@@ -751,6 +766,7 @@ B7.Dashboard = (function () {
     const passaBase = r => {
       const g = r.gravacao || {};
       if (F.cliente && g.cliente_nome !== F.cliente) return false;
+      if (F.mes && r._chaveMes !== F.mes) return false;
       if (F.termo && !norm(r.titulo + ' ' + g.cliente_nome + ' ' + g.nome + ' ' + r.objetivo).includes(F.termo)) return false;
       return true;
     };
@@ -769,9 +785,9 @@ B7.Dashboard = (function () {
       const lista = base.filter(r => F.status === 'Todos' || (r.status || 'Em criação') === F.status);
       const cx = document.getElementById('lista-roteiros'); if (!cx) return;
       const sub = document.getElementById('rt-sub');
-      if (sub) sub.textContent = (lista.length === roteiros.length ? roteiros.length + ' roteiros mexidos por último, de todos os clientes'
+      if (sub) sub.textContent = (lista.length === roteiros.length ? roteiros.length + ' roteiros, separados pelo mês da gravação'
         : lista.length + ' de ' + roteiros.length + ' roteiros');
-      const filtrando = F.status !== 'Todos' || F.cliente || F.termo;
+      const filtrando = F.status !== 'Todos' || F.cliente || F.termo || F.mes;
       const lp = document.getElementById('rt-limpar-f'); if (lp) lp.style.display = filtrando ? '' : 'none';
       painel().querySelectorAll('[data-vista]').forEach(b => { b.classList.toggle('on', b.dataset.vista === vista); b.setAttribute('aria-pressed', b.dataset.vista === vista); });
       if (!lista.length) {
@@ -783,29 +799,44 @@ B7.Dashboard = (function () {
         const l = document.getElementById('rt-limpar'); if (l) l.onclick = limpar;
         return;
       }
-      if (vista === 'cards') {
-        const ord = lista.slice();
-        if (F.ordem === 'cliente') ord.sort((a, b) => String((a.gravacao || {}).cliente_nome || '').localeCompare(String((b.gravacao || {}).cliente_nome || ''), 'pt-BR'));
-        if (F.ordem === 'gravacao') ord.sort((a, b) => chaveGrav(a.gravacao).localeCompare(chaveGrav(b.gravacao)));
-        cx.className = 'grade grade-roteiros';
-        cx.innerHTML = ord.map(cardRoteiro).join('');
-      } else {
+      /* uma seção por MÊS (mais novo primeiro); dentro dela, a vista escolhida */
+      const porMes = new Map();
+      lista.forEach(r => { if (!porMes.has(r._chaveMes)) porMes.set(r._chaveMes, []); porMes.get(r._chaveMes).push(r); });
+      const corpoMes = itens => {
+        if (vista === 'cards') {
+          const ord = itens.slice();
+          if (F.ordem === 'cliente') ord.sort((a, b) => String((a.gravacao || {}).cliente_nome || '').localeCompare(String((b.gravacao || {}).cliente_nome || ''), 'pt-BR'));
+          if (F.ordem === 'gravacao') ord.sort((a, b) => chaveGrav(a.gravacao).localeCompare(chaveGrav(b.gravacao)));
+          return '<div class="grade grade-roteiros">' + ord.map(cardRoteiro).join('') + '</div>';
+        }
         /* agrupa por gravação, mantendo a ordem de "mexido por último" */
         const grupos = [], idx = new Map();
-        lista.forEach(r => {
+        itens.forEach(r => {
           const k = r.recording_session_id;
           if (!idx.has(k)) { const grp = { id: k, gravacao: r.gravacao, itens: [], recente: r.updated_at }; idx.set(k, grp); grupos.push(grp); }
           idx.get(k).itens.push(r);
         });
         if (F.ordem === 'cliente') grupos.sort((a, b) => String((a.gravacao || {}).cliente_nome || '').localeCompare(String((b.gravacao || {}).cliente_nome || ''), 'pt-BR') || String(b.recente).localeCompare(String(a.recente)));
         if (F.ordem === 'gravacao') grupos.sort((a, b) => chaveGrav(a.gravacao).localeCompare(chaveGrav(b.gravacao)));
-        cx.className = 'rt-lista';
-        cx.innerHTML = grupos.map(grupoRoteirosHTML).join('');
-      }
+        return '<div class="rt-lista">' + grupos.map(grupoRoteirosHTML).join('') + '</div>';
+      };
+      cx.className = 'rt-meses';
+      cx.innerHTML = [...porMes.keys()].sort().reverse().map(k => {
+        const itens = porMes.get(k);
+        const pelaCriacao = itens.filter(r => r._mes.origem === 'criacao').length;
+        const gravs = new Set(itens.map(r => r.recording_session_id)).size;
+        return '<section class="rt-mes' + (k === agoraMes ? ' atual' : '') + '" data-mes="' + k + '" aria-label="' + esc(rotuloMes(k)) + '">' +
+          '<header class="rt-mes-cab"><h2>' + esc(rotuloMes(k)) + '</h2>' +
+            (k === agoraMes ? '<em>Este mês</em>' : '') +
+            '<span>' + itens.length + ' roteiro' + (itens.length > 1 ? 's' : '') + ' · ' + gravs + ' gravaç' + (gravs > 1 ? 'ões' : 'ão') + '</span>' +
+            (pelaCriacao ? '<small title="A gravação ainda não tem mês de referência: o roteiro entra pelo mês em que foi criado.">' + pelaCriacao + ' pelo mês de criação</small>' : '') +
+          '</header>' + corpoMes(itens) + '</section>';
+      }).join('');
       ligar();
     }
     function limpar() {
-      Object.assign(F, { status: 'Todos', cliente: '', termo: '' });
+      Object.assign(F, { status: 'Todos', cliente: '', termo: '', mes: '' });
+      const sm = document.getElementById('rt-mes'); if (sm) { sm.value = ''; sm.classList.remove('ativo'); }
       const b = document.getElementById('rt-busca'); if (b) b.value = '';
       const s = document.getElementById('rt-cliente'); if (s) { s.value = ''; s.classList.remove('ativo'); }
       aplicar();
@@ -814,6 +845,8 @@ B7.Dashboard = (function () {
     if (busca) busca.oninput = B7.UI.debounce(() => { F.termo = norm(busca.value.trim()); aplicar(); }, 120);
     const sc = document.getElementById('rt-cliente');
     if (sc) sc.onchange = () => { F.cliente = sc.value; sc.classList.toggle('ativo', !!sc.value); aplicar(); };
+    const smes = document.getElementById('rt-mes');
+    if (smes) smes.onchange = () => { F.mes = smes.value; smes.classList.toggle('ativo', !!smes.value); aplicar(); };
     const so = document.getElementById('rt-ordem');
     if (so) so.onchange = () => { F.ordem = so.value; aplicar(); };
     const lf = document.getElementById('rt-limpar-f'); if (lf) lf.onclick = limpar;
