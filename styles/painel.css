@@ -264,6 +264,47 @@
 .pnd-graf .pn-graf-col.futura .pn-graf-rot{opacity:.55;}
 .pnd-graf .pn-graf-col.futura{cursor:default;}
 
+
+/* ====================================================================
+   PAINEL COMPOSTO (.pnm) — várias funções, UM Painel; mesma família
+   ==================================================================== */
+.pnm-grade{grid-template-areas:"at sem" "at prox" "graf graf";}
+#pnm-atencao{grid-area:at;}
+#pnm-semana{grid-area:sem;}
+#pnm-proximos{grid-area:prox;}
+#pnm-grafico{grid-area:graf;}
+/* origem do item: discreta, texto (nunca só cor) */
+.pnm-dom{flex:none;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);}
+.pn-att-meta > .pnm-dom + span::before{content:'·';margin-right:6px;}
+.pn-att-meta > .pnm-dom + .pn-logo{margin-left:2px;}
+.pn-att-meta > .pnm-dom + .pn-logo + span,
+.pn-att-meta > .pnm-dom + span:not(.pn-logo){flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.pn-att-meta > span.pnm-dom,.pn-att-meta > span.pnm-dom:first-of-type{flex:none;min-width:auto;overflow:visible;}
+/* Próximos: com a origem na frente, o que encolhe é o texto (cliente),
+   nunca a origem nem o "quando" */
+.pnm .cp-ag-tx{min-width:0;}
+.pnm .cp-ag-meta > span:not(.pnm-dom){flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.pnm .cp-ag-meta > .pnm-dom + span{flex:none;}
+/* dia da semana como botão (abre a folha do dia) */
+button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
+/* seletor do gráfico: segmentado pequeno, só com mais de um domínio */
+.pnm-graf-sel{display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:var(--suave);margin-left:auto;}
+.pnm-graf-sel button{font:inherit;font-size:12px;font-weight:600;color:var(--ink-3);padding:4px 10px;border-radius:7px;min-height:28px;}
+.pnm-graf-sel button:hover{color:var(--ink);}
+.pnm-graf-sel button.on{background:var(--card);color:var(--ink);box-shadow:var(--sh-1);}
+.pnm-graf-sel button:focus-visible{outline:2px solid var(--acento);outline-offset:1px;}
+.pnm-graf-sel + .pn-link{margin-left:12px;}
+/* folha de detalhe (KPI e dia) */
+.pnm-folha{gap:14px;padding:0 4px 4px;}
+.pnm-folha-grupo h4{display:flex;align-items:center;gap:8px;margin:4px 6px 6px;}
+.pnm-folha-grupo h4 .pn-link{font-size:12px;}
+.pnm-folha-item{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;text-decoration:none;color:inherit;min-height:44px;justify-content:center;}
+.pnm-folha-item:hover,.pnm-folha-item:focus-visible{background:var(--suave);outline:none;}
+.pnm-folha-item:focus-visible{box-shadow:inset 0 0 0 2px var(--acento);}
+.pnm-folha-item b{font-size:13.5px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pnm-folha-item small{font-size:11.5px;color:var(--ink-4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media (min-width:521px){ .pnm-folha-fundo .modal{width:min(520px,calc(100vw - 32px));} }
+
 /* ------------------------------------------------------------ responsivo */
 @media (max-width:1100px) and (min-width:601px){
   .pn-dia-i em{display:inline;}
@@ -272,6 +313,7 @@
   .pn-grade{grid-template-columns:minmax(0,1fr);grid-template-areas:"at" "sem" "prod" "comp";}
   .pnc-grade{grid-template-areas:"at" "sem" "flx" "pub";grid-template-rows:none;}
   .pnd-grade{grid-template-areas:"at" "sem" "prox" "prod";grid-template-rows:none;}
+  .pnm-grade{grid-template-areas:"at" "sem" "graf" "prox";grid-template-rows:none;}
   .pn-prod-corpo{grid-template-columns:minmax(0,1fr);gap:0;}
   .pn-prod-corpo .pn-graf-resumo{flex-direction:row;gap:22px;margin-bottom:16px;}
 }
@@ -305,6 +347,9 @@
   .pnc-etapa .pn-graf-tip{display:none;}
   .pnc-pub .status-conteudo{font-size:10.5px;padding:3px 7px;}
   #pnc-fluxo .pn-sec-sub{display:none;}
+  #pnm-grafico .pn-sec-cab{flex-wrap:wrap;row-gap:8px;}
+  #pnm-grafico .pn-sec-sub{display:none;}
+  .pnm-graf-sel{order:3;margin-left:0;}
 }
 @media (prefers-reduced-motion:reduce){
   .pn-graf-tip, .pn-graf-trilho i, .pn-att{transition:none;}

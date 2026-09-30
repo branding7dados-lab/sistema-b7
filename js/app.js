@@ -135,8 +135,8 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return B7.Publicacoes.abrir(partes[1]);
     }
-    /* PAINEL — espaço pessoal (Videomaker e Coordenador de mídias; ?visao=
-       escolhe entre os dois quando a pessoa tem as duas funções). A guarda de rota
+    /* PAINEL — espaço pessoal: UM Painel por pessoa, montado pelas funções
+       operacionais (B7.Painel.contexto; várias funções → js/painel-multi.js). A guarda de rota
        acima (B7.Perm.podeRota) já recusou quem não é elegível. */
     if (partes[0] === 'painel' && B7.Painel) { mostrar('tela-dashboard'); return B7.Painel.abrir(params); }
     if (partes[0] === 'linhas') { mostrar('tela-dashboard'); return B7.Conteudo.abrirLinhasGlobais(params); }

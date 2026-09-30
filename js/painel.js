@@ -1,9 +1,9 @@
 /* =====================================================================
-   PAINEL — espaço de trabalho PESSOAL
-   Fase 1: Videomaker (este arquivo). Fase 2: Coordenador de mídias
-   (js/painel-coord.js, que reaproveita os primitivos exportados aqui em
-   B7.Painel.ui). abrir(params) decide a visão pelas funções REAIS da
-   pessoa (B7.Perm.painelVisoes) — sem troca de perfil.
+   PAINEL — espaço de trabalho PESSOAL (um sistema só)
+   Este arquivo: primitivos (B7.Painel.ui), resolução do Painel
+   (contexto/abrir) e o domínio VÍDEO. Coordenação → js/painel-coord.js;
+   Design → js/painel-design.js; várias funções → js/painel-multi.js, que
+   compõe UM Painel a partir dos adaptadores de cada domínio.
 
    Responde "o que EU preciso saber ou fazer agora?". Não é a Central B7
    (visão da agência) nem uma cópia da Produção de Vídeo: resume, prioriza
@@ -91,6 +91,28 @@ B7.Painel = (function () {
   const S = { ativas: null, entregas: null, agenda: null };
   const SEMANAS_GRAFICO = 6;
   let geracao = 0;   /* descarta resposta de uma abertura anterior da tela */
+  /* quando o Painel é COMPOSTO (várias funções, js/painel-multi.js), este
+     módulo não pinta: só carrega e avisa quem compõe */
+  let ouvinte = null;
+
+  /* Consultas iguais entre domínios (ex.: gravações da agenda, que o
+     vídeo e a coordenação leem com a MESMA janela) saem uma vez só por
+     abertura do Painel. reiniciarCompartilhadas() a cada abertura. */
+  let compartilhadas = new Map();
+  function umaVez(chave, fn) {
+    if (!compartilhadas.has(chave)) {
+      const p = Promise.resolve().then(fn);
+      compartilhadas.set(chave, p);
+      p.catch(() => compartilhadas.delete(chave));   /* falhou: "Tentar de novo" consulta de novo */
+    }
+    return compartilhadas.get(chave);
+  }
+  function reiniciarCompartilhadas() { compartilhadas = new Map(); }
+  /* janela única das gravações (segunda desta semana → 15 dias à frente) */
+  function gravacoesDaJanela() {
+    const de = local(segundaDe(hoje())), ate = local(somarDias(hoje(), 15));
+    return umaVez('gravacoes', () => B7.DB.painelGravacoes(de.toISOString(), ate.toISOString()));
+  }
 
   function comTempoLimite(p, ms) {
     let id;
@@ -110,13 +132,11 @@ B7.Painel = (function () {
     } else {
       /* da segunda desta semana (a "Minha semana" mostra os dias que já
          passaram) até 14 dias à frente (KPI de 7 dias + compromissos) */
-      const de = local(segundaDe(hoje()));
-      const ate = local(somarDias(hoje(), 15));
-      p = B7.DB.painelGravacoes(de.toISOString(), ate.toISOString());
+      p = gravacoesDaJanela();
     }
     comTempoLimite(p, 15000)
-      .then(dados => { if (g === geracao) { S[fonte] = { estado: 'ok', dados: dados || [] }; pintar(); } })
-      .catch(e => { if (g === geracao) { S[fonte] = { estado: 'erro', erro: (e && e.message) || '' }; pintar(); } });
+      .then(dados => { if (g === geracao) { S[fonte] = { estado: 'ok', dados: dados || [] }; pintar(); if (ouvinte) ouvinte(); } })
+      .catch(e => { if (g === geracao) { S[fonte] = { estado: 'erro', erro: (e && e.message) || '' }; pintar(); if (ouvinte) ouvinte(); } });
   }
 
   /* =================================================================
@@ -201,6 +221,7 @@ B7.Painel = (function () {
     const miolo = '<span class="pn-dia-cab"><span class="pn-dia-dow">' + DOW[local(d.iso).getDay()] + '</span>' +
         '<span class="pn-dia-num">' + d.iso.slice(8, 10) + '</span>' + (d.hoje ? '<span class="pn-dia-hoje">hoje</span>' : '') + '</span>' +
       '<span class="pn-dia-itens">' + resumo + '</span>';
+    if (d.botao) return '<li class="pn-dia-w"><button type="button" class="' + cls + ' pn-dia-lk" data-pn-dia="' + esc(d.iso) + '" aria-haspopup="dialog" aria-label="' + esc(falado + ' — ver o dia') + '">' + miolo + '</button></li>';
     return d.href
       ? '<li class="pn-dia-w"><a class="' + cls + ' pn-dia-lk" href="' + esc(d.href) + '" aria-label="' + esc(falado) + '">' + miolo + '</a></li>'
       : '<li class="' + cls + '" aria-label="' + esc(falado) + '">' + miolo + '</li>';
@@ -235,6 +256,9 @@ B7.Painel = (function () {
   /* =================================================================
      DERIVAÇÕES — tudo calculado a partir das fontes canônicas
      ================================================================= */
+  /* a MESMA gravação chega pelo vídeo e pela coordenação (mesma agenda):
+     a chave é a gravação do sistema, senão o compromisso da agenda */
+  const chaveGrav = g => 'grav:' + (g.gravacao_id || ('ag:' + g.origem + ':' + g.id));
   const ok = f => S[f] && S[f].estado === 'ok';
   const minhas = () => ok('ativas') ? S.ativas.dados : [];
   const gravacoes = () => ok('agenda') ? S.agenda.dados : [];
@@ -259,7 +283,7 @@ B7.Painel = (function () {
     const atrasadasOrd = ds.filter(atrasada).sort((a, b) => a.prazo.localeCompare(b.prazo));
     atrasadasOrd.slice(0, MAX_ATRASADAS).forEach(d => {
       const n = difDias(hoje(), d.prazo);
-      add(d.id, { demanda: true, tom: 'erro', icone: IC.alerta, tag: 'Atrasada há ' + n + (n === 1 ? ' dia' : ' dias'),
+      add(d.id, { demanda: true, prio: 1, dia: d.prazo, tom: 'erro', icone: IC.alerta, tag: 'Atrasada há ' + n + (n === 1 ? ' dia' : ' dias'),
         titulo: d.titulo, meta: cli(d) + '<span>' + esc(rotuloSit(d.editing_status)) + '</span>', href: hrefD(d) });
     });
 
@@ -267,7 +291,7 @@ B7.Painel = (function () {
     const grav = dias => gravacoes().filter(g => {
       const t = new Date(g.inicio).getTime();
       return t >= agora - 3600000 && dias.includes(diaDoTs(g.inicio));
-    }).forEach(g => add('g' + g.id, {
+    }).forEach(g => add(chaveGrav(g), { prio: dias[0] === hoje() ? 3 : 4, dia: diaDoTs(g.inicio),
       tom: 'acento', icone: IC.camera,
       tag: 'Gravação ' + quandoDia(diaDoTs(g.inicio)) + (g.dia_inteiro ? '' : ' · ' + hora(g.inicio)),
       titulo: g.titulo, meta: g.local ? '<span>' + esc(g.local) + '</span>' : '',
@@ -275,17 +299,17 @@ B7.Painel = (function () {
 
     grav([hoje()]);
     ds.filter(d => d.editing_status === 'correcao').forEach(d => add(d.id, {
-      demanda: true, tom: 'ambar', icone: IC.refazer, tag: 'Correção solicitada', titulo: d.titulo,
+      demanda: true, prio: 2, dia: d.prazo, tom: 'ambar', icone: IC.refazer, tag: 'Correção solicitada', titulo: d.titulo,
       meta: cli(d) + (d.prazo ? '<span>prazo ' + ddmm(d.prazo) + '</span>' : ''), href: hrefD(d) }));
     ds.filter(venceHoje).forEach(d => add(d.id, {
-      demanda: true, tom: 'ambar', icone: IC.relogio, tag: 'Vence hoje', titulo: d.titulo,
+      demanda: true, prio: 3, dia: d.prazo, tom: 'ambar', icone: IC.relogio, tag: 'Vence hoje', titulo: d.titulo,
       meta: cli(d) + '<span>' + esc(rotuloSit(d.editing_status)) + '</span>', href: hrefD(d) }));
     grav([somarDias(hoje(), 1)]);
     ds.filter(d => d.editing_status === 'standby' && d.standby_revisar_em && d.standby_revisar_em <= hoje())
-      .forEach(d => add(d.id, { demanda: true, tom: 'neutro', icone: IC.pausa, tag: 'Revisar standby', titulo: d.titulo,
+      .forEach(d => add(d.id, { demanda: true, prio: 5, dia: d.standby_revisar_em, tom: 'neutro', icone: IC.pausa, tag: 'Revisar standby', titulo: d.titulo,
         meta: cli(d) + '<span>marcado para ' + ddmm(d.standby_revisar_em) + '</span>', href: hrefD(d) }));
     ds.filter(d => comPrazoMeu(d) && d.prazo === somarDias(hoje(), 1)).forEach(d => add(d.id, {
-      demanda: true, tom: 'neutro', icone: IC.agenda, tag: 'Vence amanhã', titulo: d.titulo,
+      demanda: true, prio: 4, dia: d.prazo, tom: 'neutro', icone: IC.agenda, tag: 'Vence amanhã', titulo: d.titulo,
       meta: cli(d) + '<span>' + esc(rotuloSit(d.editing_status)) + '</span>', href: hrefD(d) }));
     /* o teto de 2 atrasadas só existe pra abrir espaço: sobrando vaga,
        as demais atrasadas entram logo depois das duas primeiras (ainda
@@ -294,7 +318,7 @@ B7.Painel = (function () {
     const vagas = Math.max(0, MAX_ATENCAO - lista.length);
     const entram = sobra.slice(0, vagas).map(d => {
       const n = difDias(hoje(), d.prazo);
-      return { chave: d.id, demanda: true, tom: 'erro', icone: IC.alerta, tag: 'Atrasada há ' + n + (n === 1 ? ' dia' : ' dias'),
+      return { chave: d.id, demanda: true, prio: 1, dia: d.prazo, tom: 'erro', icone: IC.alerta, tag: 'Atrasada há ' + n + (n === 1 ? ' dia' : ' dias'),
         titulo: d.titulo, meta: cli(d) + '<span>' + esc(rotuloSit(d.editing_status)) + '</span>', href: hrefD(d) };
     }).filter(it => !vistos.has(it.chave));
     const posicao = Math.min(MAX_ATRASADAS, atrasadasOrd.length);
@@ -339,20 +363,20 @@ B7.Painel = (function () {
     return semanas;
   }
 
-  function proximosCompromissos(jaListados) {
+  function proximosCompromissos(jaListados, limite) {
     const agora = Date.now();
     const itens = [];
-    gravacoes().filter(g => new Date(g.inicio).getTime() >= agora && !jaListados.has('g' + g.id)).forEach(g => itens.push({
+    gravacoes().filter(g => new Date(g.inicio).getTime() >= agora && !jaListados.has(chaveGrav(g))).forEach(g => itens.push({ chave: chaveGrav(g),
       tipo: 'gravacao', dia: diaDoTs(g.inicio), ordem: new Date(g.inicio).getTime(), titulo: g.titulo,
       meta: '<span>' + esc(quandoDia(diaDoTs(g.inicio))) + (g.dia_inteiro ? ', dia todo' : ' · ' + hora(g.inicio)) + '</span>' +
             (g.local ? '<span>' + esc(g.local) + '</span>' : ''),
       href: g.gravacao_id ? '#/gravacao/' + g.gravacao_id : '#/calendario' }));
     minhas().filter(d => comPrazoMeu(d) && d.prazo >= hoje() && !jaListados.has(d.id)).forEach(d => itens.push({
       /* prazo não tem hora: ordena como fim do dia, depois das gravações dele */
-      tipo: 'prazo', dia: d.prazo, ordem: local(d.prazo).getTime() + 86399000, titulo: d.titulo,
+      chave: d.id, tipo: 'prazo', dia: d.prazo, ordem: local(d.prazo).getTime() + 86399000, titulo: d.titulo,
       meta: '<span>' + esc(quandoDia(d.prazo)) + '</span>' + (d.cliente_nome ? '<span>' + esc(d.cliente_nome) + '</span>' : ''),
       href: '#/video/' + d.id }));
-    return itens.sort((a, b) => a.ordem - b.ordem).slice(0, 3);
+    return itens.sort((a, b) => a.ordem - b.ordem).slice(0, limite || 3);
   }
 
   /* =================================================================
@@ -433,8 +457,9 @@ B7.Painel = (function () {
       '<span class="pn-sec-sub">' + ddmm(seg) + ' – ' + ddmm(somarDias(seg, 6)) + '</span></div>' + corpo;
   }
 
-  function pintarProducao() {
-    const cx = document.getElementById('pn-producao'); if (!cx) return;
+  /* O gráfico do vídeo como peça solta: o Painel do Videomaker e o
+     Painel composto (várias funções) desenham o MESMO gráfico. */
+  function graficoVideo() {
     const e = estadoDe('entregas');
     let corpo;
     if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-graf">' + '<i class="esq"></i>'.repeat(SEMANAS_GRAFICO) + '</div>';
@@ -454,8 +479,13 @@ B7.Painel = (function () {
         '</div>' +
         grafico(semanas) + '</div>';
     }
-    cx.innerHTML = cabecalhoSecao('pn-t-producao', 'Minha produção',
-      { href: '#/video?minha=1&comp=todas&status=entregue', rotulo: 'Ver entregues' }) + corpo;
+    return { estado: e, titulo: 'Minha produção', sub: 'vídeos entregues por semana',
+             link: { href: '#/video?minha=1&comp=todas&status=entregue', rotulo: 'Ver entregues' }, corpo };
+  }
+  function pintarProducao() {
+    const cx = document.getElementById('pn-producao'); if (!cx) return;
+    const g = graficoVideo();
+    cx.innerHTML = cabecalhoSecao('pn-t-producao', g.titulo, g.link) + g.corpo;
   }
 
   function pintarCompromissos() {
@@ -512,15 +542,11 @@ B7.Painel = (function () {
     const nome = ((alvo && alvo.nome) || u.nome || u.username || '').split(' ')[0];
     const d = local(hoje());
     const dataLonga = DOW_LONGO[d.getDay()] + ', ' + d.getDate() + ' de ' + MES[d.getMonth()];
-    const visoes = o.visoes || [];
     return '<header class="pn-cab">' +
         '<div class="pn-cab-tx"><p class="pn-kicker">Painel <span>·</span> ' + esc(dataLonga) + '</p>' +
           '<h1>' + esc(saudacao() + (nome ? ', ' + nome : '')) + '</h1>' +
           '<p class="pn-papel">' + esc(papeis()) + '</p></div>' +
         '<div class="pn-cab-lado">' +
-          (visoes.length > 1 ? '<nav class="pn-visoes" aria-label="Visão do Painel">' + visoes.map(v =>
-            '<a href="#/painel?visao=' + v + '"' + (v === o.visao ? ' class="on" aria-current="page"' : '') + '>' +
-            esc(ROTULO_VISAO[v] || v) + '</a>').join('') + '</nav>' : '') +
           (o.acao || '') +
         '</div>' +
       '</header>';
@@ -546,26 +572,106 @@ B7.Painel = (function () {
     ['ativas', 'entregas', 'agenda'].forEach(carregar);
   }
 
-  /* Qual visão abrir: a pedida no endereço (?visao=), senão a última
-     escolhida (preferência local), senão a primeira (coordenação vem
-     antes: é a visão mais ampla). Só visões que a pessoa TEM. */
-  function abrir(params) {
-    const visoes = (B7.Perm && B7.Perm.painelVisoes) ? B7.Perm.painelVisoes() : ['video'];
-    let visao = params && params.get ? params.get('visao') : null;
-    if (visao && visoes.includes(visao)) { try { B7.pref.gravar('painel_visao', visao); } catch (e) {} }
-    else {
-      let guardada = null; try { guardada = B7.pref.ler('painel_visao', null); } catch (e) {}
-      visao = visoes.includes(guardada) ? guardada : visoes[0];
-    }
-    if (visao === 'coordenacao' && B7.PainelCoord) { geracao++; return B7.PainelCoord.abrir({ visoes }); }
-    if (visao === 'design' && B7.PainelDesign) { geracao++; return B7.PainelDesign.abrir({ visoes }); }
-    return abrirVideo(visoes);
+
+  /* =================================================================
+     ADAPTADOR DE VÍDEO — o que este domínio entrega ao Painel COMPOSTO
+     (js/painel-multi.js). Mesmas fontes e mesmas regras do Painel do
+     Videomaker; aqui só se normaliza o formato. Nada é gravado.
+     ================================================================= */
+  const cliTx = d => d.cliente_nome || '';
+  const itemDemanda = d => ({ chave: d.id, titulo: d.titulo || 'Demanda sem título', dia: d.prazo || null,
+    sub: [cliTx(d), rotuloSit(d.editing_status), d.prazo ? 'prazo ' + ddmm(d.prazo) : ''].filter(Boolean).join(' · '),
+    href: '#/video/' + d.id });
+  const itemGravacao = g => ({ chave: chaveGrav(g), tipo: 'gravacao', titulo: g.titulo || 'Gravação', dia: diaDoTs(g.inicio),
+    sub: [quandoDia(diaDoTs(g.inicio)) + (g.dia_inteiro ? '' : ' · ' + hora(g.inicio)), g.cliente_nome || g.local || ''].filter(Boolean).join(' · '),
+    href: g.gravacao_id ? '#/gravacao/' + g.gravacao_id : '#/calendario' });
+  const adaptador = {
+    dominio: 'video', marca: 'Vídeo', rotuloGrafico: 'Vídeo',
+    fontes: ['ativas', 'entregas', 'agenda'],
+    iniciar(aoMudar) {
+      geracao++; ouvinte = aoMudar;
+      Object.keys(S).forEach(k => { S[k] = null; });
+      this.fontes.forEach(carregar);
+    },
+    parar() { ouvinte = null; },
+    estado: f => (S[f] ? S[f].estado : 'carregando'),
+    recarregar: f => carregar(f),
+    atencao() {
+      if (!ok('ativas')) return [];
+      return itensAtencao().map(it => Object.assign({}, it, { dominio: 'video' }));
+    },
+    kpi(tipo) {
+      const ds = minhas(), h = hoje();
+      if (tipo === 'atrasadas') {
+        const l = ds.filter(atrasada).sort((a, b) => a.prazo.localeCompare(b.prazo));
+        return { fontes: ['ativas'], n: l.length, itens: l.map(itemDemanda), href: '#/video?prazo=atrasadas&minha=1&comp=todas' };
+      }
+      if (tipo === 'hoje') {
+        const l = ds.filter(venceHoje);
+        return { fontes: ['ativas'], n: l.length, itens: l.map(itemDemanda), href: '#/video?prazo=hoje&minha=1&comp=todas' };
+      }
+      if (tipo === 'andamento') {
+        const l = ds.filter(d => NAS_MAOS.includes(d.editing_status));
+        return { fontes: ['ativas'], n: l.length, itens: l.map(itemDemanda), href: '#/video?minha=1&comp=todas' };
+      }
+      /* próximos 7 dias: gravações a partir de agora + prazos de amanhã
+         em diante (os de hoje já estão em "Vencem hoje") */
+      const agora = Date.now(), em7 = agora + 7 * 86400000, ate = somarDias(h, 7);
+      const grav = gravacoes().filter(g => { const t = new Date(g.inicio).getTime(); return t >= agora && t < em7; }).map(itemGravacao);
+      const prazos = ds.filter(d => comPrazoMeu(d) && d.prazo > h && d.prazo <= ate)
+        .map(d => Object.assign(itemDemanda(d), { tipo: 'prazo' }));
+      return { fontes: ['ativas', 'agenda'], itens: grav.concat(prazos) };
+    },
+    /* eventos da semana: prazos (e atrasos) das minhas demandas + gravações */
+    semana(dias) {
+      const h = hoje(), ev = [];
+      minhas().filter(d => comPrazoMeu(d) && dias.includes(d.prazo)).forEach(d => {
+        if (d.prazo < h) { if (atrasada(d)) ev.push(Object.assign(itemDemanda(d), { tipo: 'atrasada' })); }
+        else ev.push(Object.assign(itemDemanda(d), { tipo: 'prazo' }));
+      });
+      gravacoes().filter(g => dias.includes(diaDoTs(g.inicio))).forEach(g => ev.push(itemGravacao(g)));
+      return ev.map(e => Object.assign(e, { dominio: 'video' }));
+    },
+    proximos() {
+      return proximosCompromissos(new Set(), 20).map(c => Object.assign({}, c, { dominio: 'video' }));
+    },
+    grafico: () => graficoVideo()
+  };
+
+  /* =================================================================
+     RESOLUÇÃO DO PAINEL — UM Painel por pessoa, montado pelas funções
+     OPERACIONAIS reais (B7.Perm.funcoesOperacionais: coordenador →
+     videomaker → designer, ordem fixa). Administrador não é função
+     operacional: admin puro não tem Painel (casa = Central B7) e admin +
+     função recebe o Painel da função. Sem troca de perfil e sem abas de
+     papel: uma função → o Painel dela, inteiro e específico; várias →
+     o Painel COMPOSTO (js/painel-multi.js). A função "principal" é a
+     primeira da ordem e só decide APRESENTAÇÃO (gráfico inicial, ação do
+     cabeçalho) — nunca esconde o trabalho das outras.
+     ================================================================= */
+  function contexto() {
+    const todas = (B7.Perm && B7.Perm.funcoesOperacionais) ? B7.Perm.funcoesOperacionais() : ['videomaker'];
+    const tem = { coordenador: !!B7.PainelCoord, videomaker: true, designer: !!B7.PainelDesign };
+    const funcoes = todas.filter(f => tem[f]);
+    return { funcoes, principal: funcoes[0] || null, multi: funcoes.length > 1 };
+  }
+
+  function abrir() {
+    reiniciarCompartilhadas();
+    ouvinte = null;
+    if (B7.PainelMulti && B7.PainelMulti.parar) B7.PainelMulti.parar();
+    const ctx = contexto();
+    geracao++;
+    if (ctx.multi && B7.PainelMulti) return B7.PainelMulti.abrir(ctx);
+    if (ctx.principal === 'coordenador') return B7.PainelCoord.abrir({});
+    if (ctx.principal === 'designer') return B7.PainelDesign.abrir({});
+    return abrirVideo([]);
   }
 
   /* Primitivos para os outros Painéis (fase 2: js/painel-coord.js). */
   const ui = { esc, IC, kpi, cabecalhoSecao, blocoCarregando, blocoErro, blocoVazio, logoMini, linhaAtencao,
-               diaSemana, cabecalho, comTempoLimite, emPrevia, meuId,
+               diaSemana, cabecalho, comTempoLimite, emPrevia, meuId, umaVez, gravacoesDaJanela,
                datas: { hoje, pad, isoDe, local, somarDias, difDias, segundaDe, ddmm, hora, diaDoTs, quandoDia, DOW, DOW_LONGO, MES } };
 
-  return { abrir, ui };
+  return { abrir, ui, contexto, adaptador };
 })();

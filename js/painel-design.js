@@ -6,10 +6,10 @@
    Design (#/design, o navegador canônico): resume, prioriza e leva para
    a tela canônica de cada coisa.
 
-   Quem vê: B7.Perm.painelVisoes() inclui 'design' — Designer pelo papel
-   principal ou pela função extra "designer". Quem também tem outra
-   função alterna a VISÃO no cabeçalho (?visao=design); identidade e
-   permissões nunca mudam.
+   Quem vê: Designer pelo papel principal ou pela função extra
+   "designer", quando é a ÚNICA função operacional. Quem tem mais de uma
+   recebe o Painel composto (js/painel-multi.js), que usa o adaptador
+   deste arquivo — sem troca de perfil e sem abas de papel.
 
    ESCOPO: sempre designer_id = a pessoa (em "Visualizar como…", a pessoa
    em prévia). Nunca a fila da agência, mesmo quando o RLS deixaria ver.
@@ -70,6 +70,7 @@ B7.PainelDesign = (function () {
   /* ------------------------------------------------------------ estado */
   const S = { minhas: null, partes: null, envios: null };
   let geracao = 0;
+  let ouvinte = null;   /* Painel composto: só carrega e avisa (js/painel-multi.js) */
 
   function intervaloMes() {
     const h = D().hoje();
@@ -95,14 +96,14 @@ B7.PainelDesign = (function () {
       .then(dados => {
         if (g !== geracao) return;
         S[fonte] = { estado: 'ok', dados: dados || (fonte === 'partes' ? {} : []) };
-        pintar();
+        pintar(); if (ouvinte) ouvinte();
         if (fonte === 'minhas') carregar('partes');
       })
       .catch(e => {
         if (g !== geracao) return;
         S[fonte] = { estado: 'erro', erro: (e && e.message) || '' };
         if (fonte === 'minhas') S.partes = { estado: 'erro' };
-        pintar();
+        pintar(); if (ouvinte) ouvinte();
       });
   }
 
@@ -170,7 +171,8 @@ B7.PainelDesign = (function () {
   function itensAtencao() {
     const IC = U().IC, d = D(), h = d.hoje();
     const lista = [], vistos = new Set();
-    const add = (peca, it) => { if (vistos.has(peca.id)) return; vistos.add(peca.id); it.chave = peca.id; it.href = hrefPeca(peca); lista.push(it); };
+    const add = (peca, it) => { if (vistos.has(peca.id)) return; vistos.add(peca.id); it.chave = peca.id; it.href = hrefPeca(peca);
+      it.dia = it.dia || peca.prazo || null; lista.push(it); };
     const ds = minhas();
     const porPrazo = (a, b) => (a.prazo || '9999').localeCompare(b.prazo || '9999') || String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
     const metaStatus = (p, extra) => cli(p) + (extra ? '<span>' + esc(extra) + '</span>' : '') +
@@ -178,29 +180,29 @@ B7.PainelDesign = (function () {
 
     const atrasadas = ds.filter(p => naMaoComPrazo(p) && p.prazo < h).sort(porPrazo);
     const itemAtraso = p => { const n = d.difDias(h, p.prazo);
-      return { tom: 'erro', icone: IC.alerta, tag: 'Atrasada há ' + plural(n, 'dia', 'dias'), titulo: nomePeca(p),
+      return { prio: 1, tom: 'erro', icone: IC.alerta, tag: 'Atrasada há ' + plural(n, 'dia', 'dias'), titulo: nomePeca(p),
                meta: cli(p) + '<span>' + esc(rotulo(p.status)) + '</span>' + (textoPartes(partesEmAjuste(p)) ? '<span>' + esc(textoPartes(partesEmAjuste(p))) + '</span>' : '') }; };
     atrasadas.slice(0, MAX_ATRASADAS).forEach(p => add(p, itemAtraso(p)));
 
     ds.filter(p => p.status === 'ajustes_cliente').sort(porPrazo).forEach(p => add(p, {
-      tom: 'erro', icone: IC.refazer, tag: 'Ajuste do cliente', titulo: nomePeca(p), meta: metaStatus(p, textoPartes(partesEmAjuste(p))) }));
+      prio: 2, tom: 'erro', icone: IC.refazer, tag: 'Ajuste do cliente', titulo: nomePeca(p), meta: metaStatus(p, textoPartes(partesEmAjuste(p))) }));
     ds.filter(p => p.status === 'ajustes').sort(porPrazo).forEach(p => add(p, {
-      tom: 'ambar', icone: IC.refazer, tag: 'Revisão pediu ajuste', titulo: nomePeca(p), meta: metaStatus(p, textoPartes(partesEmAjuste(p))) }));
+      prio: 2, tom: 'ambar', icone: IC.refazer, tag: 'Revisão pediu ajuste', titulo: nomePeca(p), meta: metaStatus(p, textoPartes(partesEmAjuste(p))) }));
     ds.filter(p => naMaoComPrazo(p) && p.prazo === h).forEach(p => add(p, {
-      tom: 'ambar', icone: IC.relogio, tag: 'Vence hoje', titulo: nomePeca(p), meta: cli(p) + '<span>' + esc(rotulo(p.status)) + '</span>' }));
+      prio: 3, tom: 'ambar', icone: IC.relogio, tag: 'Vence hoje', titulo: nomePeca(p), meta: cli(p) + '<span>' + esc(rotulo(p.status)) + '</span>' }));
     ds.filter(p => p.briefing_desatualizado).sort(porPrazo).forEach(p => add(p, {
-      tom: 'neutro', icone: IC_BRIEF, tag: 'Briefing atualizado', titulo: nomePeca(p),
+      prio: 4, tom: 'neutro', icone: IC_BRIEF, tag: 'Briefing atualizado', titulo: nomePeca(p),
       meta: cli(p) + '<span>confira antes de seguir</span>' }));
     [1, 2].forEach(n => ds.filter(p => naMaoComPrazo(p) && p.prazo === d.somarDias(h, n)).forEach(p => add(p, {
-      tom: 'neutro', icone: IC.agenda, tag: n === 1 ? 'Vence amanhã' : 'Vence ' + d.quandoDia(p.prazo).split(',')[0],
+      prio: 4, tom: 'neutro', icone: IC.agenda, tag: n === 1 ? 'Vence amanhã' : 'Vence ' + d.quandoDia(p.prazo).split(',')[0],
       titulo: nomePeca(p), meta: cli(p) + '<span>' + esc(rotulo(p.status)) + '</span>' })));
     ds.filter(p => p.status === 'aguardando_producao').sort(porPrazo).forEach(p => add(p, {
-      tom: 'neutro', icone: IC_INICIAR, tag: 'Para começar', titulo: nomePeca(p), meta: metaStatus(p) }));
+      prio: 5, tom: 'neutro', icone: IC_INICIAR, tag: 'Para começar', titulo: nomePeca(p), meta: metaStatus(p) }));
 
     /* atrasadas além das 2 primeiras entram logo depois delas, se sobrar vaga */
     const sobra = atrasadas.slice(MAX_ATRASADAS).filter(p => !vistos.has(p.id));
     const vagas = Math.max(0, MAX_ATENCAO - lista.length);
-    const entram = sobra.slice(0, vagas).map(p => Object.assign(itemAtraso(p), { chave: p.id, href: hrefPeca(p) }));
+    const entram = sobra.slice(0, vagas).map(p => Object.assign(itemAtraso(p), { chave: p.id, href: hrefPeca(p), dia: p.prazo }));
     lista.splice(Math.min(MAX_ATRASADAS, atrasadas.length), 0, ...entram);
     return lista;
   }
@@ -307,8 +309,7 @@ B7.PainelDesign = (function () {
     }
     return semanas;
   }
-  function pintarProducao() {
-    const cx = document.getElementById('pnd-producao'); if (!cx) return;
+  function graficoDesign() {
     const d = D(), e = estadoDe('envios'), mes = D().MES[D().local(D().hoje()).getMonth()];
     let corpo;
     if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-graf">' + '<i class="esq"></i>'.repeat(5) + '</div>';
@@ -340,7 +341,13 @@ B7.PainelDesign = (function () {
             '</div>').join('') +
           '</div></div>';
     }
-    cx.innerHTML = U().cabecalhoSecao('pnd-t-producao', 'Minha produção', { href: hrefDesign(), rotulo: 'Minhas peças' }) + corpo;
+    return { estado: e, titulo: 'Minha produção', sub: 'versões de Design enviadas em ' + mes,
+             link: { href: hrefDesign(), rotulo: 'Minhas peças' }, corpo };
+  }
+  function pintarProducao() {
+    const cx = document.getElementById('pnd-producao'); if (!cx) return;
+    const g = graficoDesign();
+    cx.innerHTML = U().cabecalhoSecao('pnd-t-producao', g.titulo, g.link) + g.corpo;
   }
 
   /* ===================================================== próximos prazos */
@@ -382,11 +389,74 @@ B7.PainelDesign = (function () {
     });
   }
 
+
+  /* =================================================================
+     ADAPTADOR DE DESIGN — o que o Design entrega ao Painel COMPOSTO
+     (js/painel-multi.js). Mesmas fontes e regras do Painel do Designer.
+     ================================================================= */
+  const itemPeca = p => ({ chave: p.id, titulo: nomePeca(p), dia: p.prazo || null,
+    sub: [p.cliente_nome, rotulo(p.status), p.prazo ? 'prazo ' + D().ddmm(p.prazo) : '', textoPartes(partesEmAjuste(p))].filter(Boolean).join(' · '),
+    href: hrefPeca(p) });
+  const adaptador = {
+    dominio: 'design', marca: 'Design', rotuloGrafico: 'Design',
+    fontes: ['minhas', 'envios'],   /* "partes" só qualifica — não segura a tela */
+    iniciar(aoMudar) {
+      geracao++; ouvinte = aoMudar;
+      Object.keys(S).forEach(k => { S[k] = null; });
+      carregar('minhas'); carregar('envios');
+    },
+    parar() { ouvinte = null; },
+    estado: f => (S[f] ? S[f].estado : 'carregando'),
+    recarregar: f => carregar(f),
+    atencao() {
+      if (!ok('minhas')) return [];
+      return itensAtencao().map(it => Object.assign({}, it, { dominio: 'design', demanda: true }));
+    },
+    /* no Painel composto, "Atrasadas" e "Vencem hoje" contam só o que
+       está NAS MÃOS do designer (o que já foi enviado não vence pra ele);
+       no Painel do Designer, "Vencem hoje" segue o filtro "Para hoje" */
+    kpi(tipo) {
+      const ds = minhas(), h = D().hoje();
+      if (tipo === 'atrasadas') {
+        const l = ds.filter(p => naMaoComPrazo(p) && p.prazo < h).sort((a, b) => a.prazo.localeCompare(b.prazo));
+        return { fontes: ['minhas'], n: l.length, itens: l.map(itemPeca), href: null };
+      }
+      if (tipo === 'hoje') {
+        const l = ds.filter(p => naMaoComPrazo(p) && p.prazo === h);
+        return { fontes: ['minhas'], n: l.length, itens: l.map(itemPeca), href: null };
+      }
+      if (tipo === 'andamento') {
+        const l = ds.filter(p => NA_MAO.includes(p.status));
+        return { fontes: ['minhas'], n: l.length, itens: l.map(itemPeca), href: null, unidade: ['design', 'design'] };
+      }
+      const ate = D().somarDias(h, 7);
+      return { fontes: ['minhas'], itens: ds.filter(p => naMaoComPrazo(p) && p.prazo > h && p.prazo <= ate)
+        .map(p => Object.assign(itemPeca(p), { tipo: 'prazo' })) };
+    },
+    semana(dias) {
+      const h = D().hoje(), ev = [];
+      minhas().filter(p => comPrazoAtiva(p) && dias.includes(p.prazo)).forEach(p => {
+        if (p.prazo < h) { if (NA_MAO.includes(p.status)) ev.push(Object.assign(itemPeca(p), { tipo: 'atrasada' })); }
+        else ev.push(Object.assign(itemPeca(p), { tipo: AJUSTES.includes(p.status) ? 'ajuste' : 'prazo' }));
+      });
+      return ev.map(e => Object.assign(e, { dominio: 'design' }));
+    },
+    proximos() {
+      const d = D(), h = d.hoje();
+      return minhas().filter(p => comPrazoAtiva(p) && p.prazo >= h).map(p => ({
+        chave: p.id, tipo: 'prazo', dia: p.prazo, ordem: d.local(p.prazo).getTime() + 86399000, dominio: 'design',
+        titulo: nomePeca(p), href: hrefPeca(p),
+        meta: '<span>' + esc(d.quandoDia(p.prazo)) + '</span>' + (p.cliente_nome ? '<span>' + esc(p.cliente_nome) + '</span>' : '') +
+              '<span>' + esc(rotulo(p.status)) + '</span>' }));
+    },
+    grafico: () => graficoDesign()
+  };
+
   /* ------------------------------------------------------------ abrir
      Designer não cria demanda de Design (só a equipe cria) — então a
      ação do cabeçalho é ir para a produção, não um "Criar" de mentira. */
   function abrir(o) {
-    geracao++;
+    geracao++; ouvinte = null;
     Object.keys(S).forEach(k => { S[k] = null; });
     B7.Dashboard.marcarNav('#/painel');
     B7.Rota.titulo(['Painel']);
@@ -405,5 +475,5 @@ B7.PainelDesign = (function () {
     carregar('envios');
   }
 
-  return { abrir, _regras: { NA_MAO, AJUSTES, COM_CLIENTE, textoPartes, semanasDoMes } };
+  return { abrir, adaptador, _regras: { NA_MAO, AJUSTES, COM_CLIENTE, textoPartes, semanasDoMes } };
 })();

@@ -8,8 +8,9 @@
 
    Quem vê: B7.Perm.painelVisoes() inclui 'coordenacao' — Coordenador de
    mídias pelo papel principal, ou Administrador com a função extra
-   "coordenador". Quem também é videomaker alterna a VISÃO no cabeçalho
-   (?visao=video); a identidade e as permissões nunca mudam.
+   "coordenador". Quem tem mais de uma função operacional recebe o Painel
+   composto (js/painel-multi.js), que usa o adaptador deste arquivo — sem
+   troca de perfil e sem abas de papel.
 
    ESCOPO: o sistema não tem "coordenador responsável" por cliente
    (clientes não tem dono; perfis não tem carteira). Então o Painel mostra
@@ -67,6 +68,7 @@ B7.PainelCoord = (function () {
   const S = { linhas: null, conteudos: null, pendentes: null, revisao: null, ajustes: null, agenda: null };
   const FONTES = Object.keys(S);
   let geracao = 0;
+  let ouvinte = null;   /* Painel composto: só carrega e avisa (js/painel-multi.js) */
 
   function intervaloConteudos() {
     const h = D().hoje();
@@ -93,8 +95,8 @@ B7.PainelCoord = (function () {
     }
     /* agenda: gravações da segunda desta semana até 15 dias à frente; e,
        numa segunda consulta só, os roteiros das gravações de hoje/amanhã */
-    const de = D().local(D().segundaDe(h)), ate = D().local(D().somarDias(h, 15));
-    return B7.DB.painelGravacoes(de.toISOString(), ate.toISOString()).then(async grav => {
+    /* mesma janela e MESMA consulta do vídeo: sai uma vez só por abertura */
+    return U().gravacoesDaJanela().then(async grav => {
       grav = grav || [];
       const perto = [h, D().somarDias(h, 1)];
       const ids = [...new Set(grav.filter(g => g.gravacao_id && perto.includes(D().diaDoTs(g.inicio))).map(g => g.gravacao_id))];
@@ -108,8 +110,8 @@ B7.PainelCoord = (function () {
     S[fonte] = { estado: 'carregando' };
     pintar();
     U().comTempoLimite(consulta(fonte), 15000)
-      .then(dados => { if (g === geracao) { S[fonte] = { estado: 'ok', dados: dados || [] }; pintar(); } })
-      .catch(e => { if (g === geracao) { S[fonte] = { estado: 'erro', erro: (e && e.message) || '' }; pintar(); } });
+      .then(dados => { if (g === geracao) { S[fonte] = { estado: 'ok', dados: dados || [] }; pintar(); if (ouvinte) ouvinte(); } })
+      .catch(e => { if (g === geracao) { S[fonte] = { estado: 'erro', erro: (e && e.message) || '' }; pintar(); if (ouvinte) ouvinte(); } });
   }
 
   const ok = f => S[f] && S[f].estado === 'ok';
@@ -155,7 +157,8 @@ B7.PainelCoord = (function () {
     if (ok('pendentes')) {
       const p = S.pendentes.dados;
       const maisAntiga = p.reduce((m, c) => (!m || c.data_postagem < m ? c.data_postagem : m), null);
-      add({ risco: true, n: p.length, rotulo: plural(p.length, 'publicação atrasada', 'publicações atrasadas'),
+      add({ risco: true, prio: 1, chave: p.length === 1 ? 'pub:' + p[0].id : 'grupo:pub-atrasadas', dia: maisAntiga ? String(maisAntiga).slice(0, 10) : null,
+        n: p.length, rotulo: plural(p.length, 'publicação atrasada', 'publicações atrasadas'),
         linha: p.length === 1
           ? { tom: 'erro', icone: IC.alerta, tag: 'Publicação atrasada', titulo: p[0].titulo || 'Sem título',
               meta: cli(p[0]) + '<span>era para ' + d.ddmm(String(p[0].data_postagem)) + '</span><span>' + esc(p[0].status) + '</span>', href: hrefConteudo(p[0]) }
@@ -172,7 +175,9 @@ B7.PainelCoord = (function () {
         .sort((a, b) => String(B7.Conteudo.inicioLinha(a)).localeCompare(String(B7.Conteudo.inicioLinha(b))));
       const quando = l => { const ini = B7.Conteudo.inicioLinha(l); return ini <= h ? 'começou em ' + d.ddmm(ini) : 'começa ' + d.quandoDia(ini); };
       const comecou = ls.some(l => B7.Conteudo.inicioLinha(l) <= h);
-      add({ risco: true, n: ls.length, rotulo: plural(ls.length, 'linha ainda em criação', 'linhas ainda em criação'),
+      add({ risco: true, prio: comecou ? 1 : 4, chave: ls.length === 1 ? 'linha:' + ls[0].id : 'grupo:linhas-planejamento',
+        dia: ls.length ? B7.Conteudo.inicioLinha(ls[0]) : null,
+        n: ls.length, rotulo: plural(ls.length, 'linha ainda em criação', 'linhas ainda em criação'),
         linha: ls.length === 1
           ? { tom: comecou ? 'erro' : 'ambar', icone: IC_LINHA, tag: 'Linha editorial ainda em criação',
               titulo: (ls[0].cliente_nome ? ls[0].cliente_nome + ' · ' : '') + nomeLinha(ls[0]),
@@ -186,7 +191,8 @@ B7.PainelCoord = (function () {
     /* 3. ajustes pedidos pelo cliente — "Corrigir e reenviar" */
     if (ok('ajustes')) {
       const a = S.ajustes.dados;
-      add({ risco: true, n: a.length, rotulo: plural(a.length, 'ajuste pedido pelo cliente', 'ajustes pedidos pelo cliente'),
+      add({ risco: true, prio: 2, chave: a.length === 1 ? 'aprov:' + a[0].id : 'grupo:ajustes-cliente', dia: null,
+        n: a.length, rotulo: plural(a.length, 'ajuste pedido pelo cliente', 'ajustes pedidos pelo cliente'),
         linha: a.length === 1
           ? { tom: 'ambar', icone: IC.refazer, tag: 'Ajustes pedidos pelo cliente', titulo: a[0].titulo || 'Material',
               meta: cli(a[0]) + (a[0].decidido_em ? '<span>pedido ' + esc(d.quandoDia(d.diaDoTs(a[0].decidido_em))) + '</span>' : ''),
@@ -200,7 +206,8 @@ B7.PainelCoord = (function () {
     const naoProntas = (iso, tom, icone, quandoTx) => {
       if (!ok('conteudos')) return null;
       const l = doDia(iso).filter(c => NAO_PRONTO.includes(c.status));
-      return { risco: true, n: l.length, rotulo: plural(l.length, 'publicação ' + quandoTx + ' não pronta', 'publicações ' + quandoTx + ' não prontas'),
+      return { risco: true, prio: iso === h ? 3 : 4, chave: l.length === 1 ? 'pub:' + l[0].id : 'grupo:pub-nao-prontas-' + iso, dia: iso,
+        n: l.length, rotulo: plural(l.length, 'publicação ' + quandoTx + ' não pronta', 'publicações ' + quandoTx + ' não prontas'),
         linha: l.length === 1
           ? { tom, icone, tag: 'Publicação ' + quandoTx + ' ainda não pronta', titulo: l[0].titulo || 'Sem título',
               meta: cli(l[0]) + '<span>' + esc(l[0].status) + '</span>', href: hrefConteudo(l[0]) }
@@ -217,7 +224,8 @@ B7.PainelCoord = (function () {
           const rs = ag.roteiros.filter(r => r.recording_session_id === g.gravacao_id);
           const pend = rs.filter(r => ROTEIRO_NAO_PRONTO.includes(r.status)).length;
           if (rs.length && !pend) return null;
-          return { risco: true, n: 1, rotulo: 'gravação ' + quandoTx + ' sem preparação completa',
+          return { risco: true, prio: iso === h ? 3 : 4, chave: 'grav:' + g.gravacao_id, dia: iso,
+            n: 1, rotulo: 'gravação ' + quandoTx + ' sem preparação completa',
             linha: { tom, icone: U().IC.camera, tag: 'Gravação ' + quandoTx + (g.dia_inteiro ? '' : ' · ' + d.hora(g.inicio)),
               titulo: g.titulo || 'Gravação',
               meta: (g.cliente_nome ? '<span>' + esc(g.cliente_nome) + '</span>' : '') +
@@ -234,7 +242,8 @@ B7.PainelCoord = (function () {
     /* 8+. revisões que esperam a coordenação */
     if (ok('linhas')) {
       const lr = linhas().filter(regrasLinha().revisao.teste);
-      add({ revisao: true, n: lr.length, rotulo: plural(lr.length, 'linha em revisão', 'linhas em revisão'),
+      add({ revisao: true, prio: 5, chave: lr.length === 1 ? 'linha:' + lr[0].id : 'grupo:linhas-revisao', dia: null,
+        n: lr.length, rotulo: plural(lr.length, 'linha em revisão', 'linhas em revisão'),
         linha: lr.length === 1
           ? { tom: 'neutro', icone: IC_REVISAR, tag: 'Linha editorial em revisão', titulo: (lr[0].cliente_nome ? lr[0].cliente_nome + ' · ' : '') + nomeLinha(lr[0]),
               meta: '', href: '#/linha/' + lr[0].id }
@@ -248,20 +257,23 @@ B7.PainelCoord = (function () {
       const rr = r.roteiros;
       const hrefRot = x => '#/gravacao/' + x.recording_session_id + '?roteiro=' + x.id;
       const gravCli = x => x.gravacoes && x.gravacoes.clientes ? x.gravacoes.clientes : null;
-      add({ revisao: true, n: rr.length, rotulo: plural(rr.length, 'roteiro em revisão', 'roteiros em revisão'),
+      add({ revisao: true, prio: 5, chave: rr.length === 1 ? 'roteiro:' + rr[0].id : 'grupo:roteiros-revisao', dia: null,
+        n: rr.length, rotulo: plural(rr.length, 'roteiro em revisão', 'roteiros em revisão'),
         linha: rr.length ? { tom: 'neutro', icone: IC_REVISAR, tag: rr.length === 1 ? 'Roteiro aguardando revisão' : rr.length + ' roteiros aguardando revisão',
           titulo: rr[0].titulo || 'Roteiro sem título',
           meta: (gravCli(rr[0]) ? cli({ clientes: gravCli(rr[0]) }) : '') + (rr.length > 1 ? '<span>o mais antigo</span>' : ''),
           href: hrefRot(rr[0]) } : null });
       const cr = r.conteudos;
-      add({ revisao: true, n: cr.length, rotulo: plural(cr.length, 'conteúdo em revisão', 'conteúdos em revisão'),
+      add({ revisao: true, prio: 5, chave: cr.length === 1 ? 'pub:' + cr[0].id : 'grupo:conteudos-revisao', dia: cr.length ? String(cr[0].data_postagem || '').slice(0, 10) || null : null,
+        n: cr.length, rotulo: plural(cr.length, 'conteúdo em revisão', 'conteúdos em revisão'),
         linha: cr.length ? { tom: 'neutro', icone: IC_REVISAR, tag: cr.length === 1 ? 'Conteúdo aguardando revisão' : cr.length + ' conteúdos aguardando revisão',
           titulo: cr[0].titulo || 'Sem título',
           meta: cli(cr[0]) + (cr[0].data_postagem ? '<span>postagem ' + d.ddmm(String(cr[0].data_postagem)) + '</span>' : '') +
                 (cr.length > 1 ? '<span>o mais próximo</span>' : ''),
           href: hrefConteudo(cr[0]) } : null });
       const ds = r.design;
-      add({ revisao: true, n: ds.length, rotulo: plural(ds.length, 'arte em revisão interna', 'artes em revisão interna'),
+      add({ revisao: true, prio: 5, chave: ds.length === 1 ? ds[0].id : 'grupo:design-revisao', dia: null,
+        n: ds.length, rotulo: plural(ds.length, 'arte em revisão interna', 'artes em revisão interna'),
         linha: ds.length === 1
           ? { tom: 'neutro', icone: IC_REVISAR, tag: 'Arte aguardando revisão interna', titulo: ds[0].titulo || ds[0].conteudo_titulo || 'Peça',
               meta: cli(ds[0]), href: '#/design/' + ds[0].id }
@@ -385,8 +397,7 @@ B7.PainelCoord = (function () {
      canônico (na ordem do fluxo). Série única, barras neutras — a
      identidade de cada etapa vem do chip de status que o sistema já usa
      (B7.Linha.chipConteudo), não de uma paleta nova. */
-  function pintarFluxo() {
-    const cx = document.getElementById('pnc-fluxo'); if (!cx) return;
+  function graficoFluxo() {
     const d = D(), h = d.hoje();
     const mesIdx = Number(h.slice(5, 7)) - 1;
     const e = estadoDe('conteudos');
@@ -425,8 +436,14 @@ B7.PainelCoord = (function () {
             '</div>';
           }).join('') + '</div></div>';
     }
-    cx.innerHTML = U().cabecalhoSecao('pnc-t-fluxo', 'Fluxo de conteúdos', { href: '#/publicacoes', rotulo: 'Publicações do dia' })
-      .replace('</h2>', '</h2><span class="pn-sec-sub">' + esc(B7.UI.MESES[mesIdx].toLowerCase() + ' · por data de postagem') + '</span>') + corpo;
+    return { estado: e, titulo: 'Fluxo de conteúdos', sub: B7.UI.MESES[mesIdx].toLowerCase() + ' · por data de postagem',
+             link: { href: '#/publicacoes', rotulo: 'Publicações do dia' }, corpo };
+  }
+  function pintarFluxo() {
+    const cx = document.getElementById('pnc-fluxo'); if (!cx) return;
+    const g = graficoFluxo();
+    cx.innerHTML = U().cabecalhoSecao('pnc-t-fluxo', g.titulo, g.link)
+      .replace('</h2>', '</h2><span class="pn-sec-sub">' + esc(g.sub) + '</span>') + g.corpo;
   }
 
   function pintarPublicacoes() {
@@ -467,9 +484,87 @@ B7.PainelCoord = (function () {
     });
   }
 
+
+  /* =================================================================
+     ADAPTADOR EDITORIAL — o que a coordenação entrega ao Painel COMPOSTO
+     (js/painel-multi.js). Mesmas fontes, mesmas regras e a mesma ordem de
+     grupos do Painel do Coordenador; só o formato é normalizado.
+     ================================================================= */
+  const diaPub = c => String(c.data_postagem).slice(0, 10);
+  const itemPub = c => ({ chave: 'pub:' + c.id, titulo: c.titulo || 'Sem título', dia: diaPub(c),
+    sub: [cliNome(c), c.status, D().ddmm(diaPub(c))].filter(Boolean).join(' · '), href: hrefConteudo(c) });
+  const itemGrav = g => ({ chave: 'grav:' + (g.gravacao_id || ('ag:' + g.origem + ':' + g.id)), tipo: 'gravacao', titulo: g.titulo || 'Gravação',
+    dia: D().diaDoTs(g.inicio),
+    sub: [D().quandoDia(D().diaDoTs(g.inicio)) + (g.dia_inteiro ? '' : ' · ' + D().hora(g.inicio)), g.cliente_nome || ''].filter(Boolean).join(' · '),
+    href: g.gravacao_id ? '#/gravacao/' + g.gravacao_id : '#/calendario' });
+  const adaptador = {
+    dominio: 'editorial', marca: 'Editorial', rotuloGrafico: 'Conteúdo',
+    fontes: FONTES,
+    iniciar(aoMudar) {
+      geracao++; ouvinte = aoMudar;
+      FONTES.forEach(k => { S[k] = null; });
+      FONTES.forEach(carregar);
+    },
+    parar() { ouvinte = null; },
+    estado: f => (S[f] ? S[f].estado : 'carregando'),
+    recarregar: f => carregar(f),
+    atencao() {
+      return grupos().filter(g => g.linha).map(g => Object.assign({}, g.linha,
+        { chave: g.chave, prio: g.prio, dia: g.dia, dominio: 'editorial', demanda: true }));
+    },
+    kpi(tipo) {
+      const d = D(), h = d.hoje();
+      if (tipo === 'atrasadas') {
+        const p = ok('pendentes') ? S.pendentes.dados : [];
+        return { fontes: ['pendentes'], n: p.length, mais: p.length >= 50, itens: p.map(itemPub), href: '#/publicacoes',
+                 unidade: ['publicação', 'publicações'] };
+      }
+      if (tipo === 'hoje') {
+        const l = doDia(h).filter(c => c.status !== 'Publicado');
+        return { fontes: ['conteudos'], n: l.length, itens: l.map(itemPub), href: null, unidade: ['publicação', 'publicações'] };
+      }
+      if (tipo === 'andamento') {
+        const la = linhas().filter(regrasLinha().andamento.teste);
+        return { fontes: ['linhas'], n: la.length, href: '#/linhas?status=andamento', unidade: ['linha', 'linhas'],
+          itens: la.map(l => ({ chave: 'linha:' + l.id, titulo: (l.cliente_nome ? l.cliente_nome + ' · ' : '') + nomeLinha(l),
+                                sub: l.status || '', href: '#/linha/' + l.id })) };
+      }
+      const agora = Date.now(), em7 = agora + 7 * 86400000, ate = d.somarDias(h, 7);
+      const pubs = conteudos().filter(c => { const x = diaPub(c); return x > h && x <= ate && c.status !== 'Publicado'; })
+        .map(c => Object.assign(itemPub(c), { tipo: 'publicacao' }));
+      const grav = agenda().gravacoes.filter(g => { const t = new Date(g.inicio).getTime(); return t >= agora && t < em7; }).map(itemGrav);
+      return { fontes: ['conteudos', 'agenda'], itens: grav.concat(pubs) };
+    },
+    semana(dias) {
+      const h = D().hoje(), ev = [];
+      conteudos().filter(c => dias.includes(diaPub(c))).forEach(c => {
+        if (diaPub(c) < h) { if (c.status !== 'Publicado') ev.push(Object.assign(itemPub(c), { tipo: 'atrasada' })); }
+        else ev.push(Object.assign(itemPub(c), { tipo: 'publicacao' }));
+      });
+      agenda().gravacoes.filter(g => dias.includes(D().diaDoTs(g.inicio))).forEach(g => ev.push(itemGrav(g)));
+      if (B7.Conteudo && B7.Conteudo.inicioLinha) linhas().filter(l => regrasLinha().andamento.teste(l) && dias.includes(B7.Conteudo.inicioLinha(l)))
+        .forEach(l => ev.push({ chave: 'linha:' + l.id, tipo: 'linha', dia: B7.Conteudo.inicioLinha(l),
+          titulo: (l.cliente_nome ? l.cliente_nome + ' · ' : '') + nomeLinha(l), sub: 'início da linha editorial', href: '#/linha/' + l.id }));
+      return ev.map(e => Object.assign(e, { dominio: 'editorial' }));
+    },
+    proximos() {
+      const d = D(), h = d.hoje(), ate = d.somarDias(h, JANELA_LISTA - 1), agora = Date.now();
+      const pubs = conteudos().filter(c => { const x = diaPub(c); return x >= h && x <= ate && c.status !== 'Publicado'; }).map(c => ({
+        chave: 'pub:' + c.id, tipo: 'publicacao', dia: diaPub(c), ordem: d.local(diaPub(c)).getTime() + 86398000,
+        titulo: c.titulo || 'Sem título', href: hrefConteudo(c),
+        meta: '<span>' + esc(d.quandoDia(diaPub(c))) + '</span>' + (cliNome(c) ? '<span>' + esc(cliNome(c)) + '</span>' : '') + '<span>' + esc(c.status) + '</span>' }));
+      const grav = agenda().gravacoes.filter(g => new Date(g.inicio).getTime() >= agora).map(g => Object.assign(itemGrav(g), {
+        ordem: new Date(g.inicio).getTime(),
+        meta: '<span>' + esc(d.quandoDia(d.diaDoTs(g.inicio))) + (g.dia_inteiro ? ', dia todo' : ' · ' + d.hora(g.inicio)) + '</span>' +
+              (g.local ? '<span>' + esc(g.local) + '</span>' : (g.cliente_nome ? '<span>' + esc(g.cliente_nome) + '</span>' : '')) }));
+      return grav.concat(pubs).map(x => Object.assign(x, { dominio: 'editorial' }));
+    },
+    grafico: () => graficoFluxo()
+  };
+
   /* ------------------------------------------------------------ abrir */
   function abrir(o) {
-    geracao++;
+    geracao++; ouvinte = null;
     B7.Dashboard.marcarNav('#/painel');
     B7.Rota.titulo(['Painel']);
     const podeCriarLinha = !!(B7.Conteudo && B7.Conteudo.novaLinha) && B7.Perm.podeRota('linhas') &&
@@ -490,5 +585,5 @@ B7.PainelCoord = (function () {
     FONTES.forEach(carregar);
   }
 
-  return { abrir };
+  return { abrir, adaptador };
 })();
