@@ -142,3 +142,103 @@
 .gv a.b,.gv-it-acoes a.b{text-decoration:none;}
 .gv .b.ico svg,.gv-it-acoes .b.ico svg{width:18px;height:18px;}
 .grupo-mes-tit.sem-cap{text-transform:none;}
+
+/* =====================================================================
+   LISTA DE GRAVAÇÕES (dashboard.js · abrirGravacoes) — linhas, não capas
+   ===================================================================== */
+.gl-pagina{max-width:1180px;}
+.gl-filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-2px 0 20px;}
+.gl-filtros .gv-filtro{width:auto;min-width:170px;max-width:240px;}
+.gl-filtros .gv-filtro.ativo{border-color:var(--acento);color:var(--acento);}
+.gl-busca{position:relative;flex:1 1 220px;max-width:320px;}
+.gl-busca svg{position:absolute;left:11px;top:50%;width:16px;height:16px;transform:translateY(-50%);color:var(--ink-4);pointer-events:none;}
+.gl-busca .campo{width:100%;padding-left:34px;}
+.gl-quebra{flex-basis:100%;height:0;}
+.gl-status{flex:0 1 auto;flex-wrap:wrap;max-width:100%;}
+.gl-status button{display:inline-flex;align-items:center;gap:6px;}
+.gl-n{font-size:11px;font-weight:700;color:var(--ink-4);background:var(--card);border-radius:999px;padding:1px 7px;min-width:20px;text-align:center;}
+.gl-status button.on .gl-n{background:var(--acento-suave);color:var(--acento);}
+.gl-limpar[hidden]{display:none;}
+
+.gl-grupo{margin-bottom:26px;}
+.gl-grupo-cab{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 14px;margin:0 2px 10px;}
+.gl-grupo-cab h3{display:flex;align-items:center;gap:8px;margin:0;font-family:'Archivo';font-size:16px;font-weight:800;letter-spacing:-.01em;color:var(--ink);}
+.gl-tag{font-family:'Inter';font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--acento);background:var(--acento-suave);padding:3px 8px;border-radius:999px;}
+.gl-resumo{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:12.5px;color:var(--ink-3);}
+.gl-resumo-itens{color:var(--ink-2);font-weight:600;}
+.gl-grupo.legado .gl-grupo-cab h3{color:var(--ink-2);}
+
+.gl-lista{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);overflow:hidden;}
+.gl-item{display:grid;grid-template-columns:52px minmax(0,1.7fr) minmax(130px,1fr) 150px 128px 40px;
+  grid-template-areas:"dia quem prog resp st menu";align-items:center;gap:0 18px;
+  padding:12px 14px 12px 16px;cursor:pointer;transition:background var(--t);position:relative;}
+.gl-item + .gl-item{border-top:1px solid var(--borda);}
+.gl-item:hover{background:color-mix(in srgb, var(--acento) 4%, var(--card));}
+.gl-item:focus-visible{outline:2px solid var(--acento);outline-offset:-2px;}
+.gl-item.cancelada .gl-tx b,.gl-item.cancelada .gl-nome{color:var(--ink-3);}
+
+.gl-dia{grid-area:dia;width:52px;height:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--suave);color:var(--ink-2);line-height:1.05;}
+.gl-dia b{font-family:'Archivo';font-size:20px;font-weight:800;color:var(--ink);}
+.gl-dia small{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);}
+.gl-dia.hoje{background:var(--acento);}
+.gl-dia.hoje b,.gl-dia.hoje small{color:#fff;}
+.gl-dia.off{opacity:.55;}
+.gl-dia.semdata{background:transparent;border:1.5px dashed var(--borda-forte);}
+.gl-dia.semdata b{color:var(--ink-4);font-size:16px;}
+.gl-dia.semdata small{font-size:9px;letter-spacing:.02em;text-transform:none;color:var(--ink-4);font-weight:600;}
+
+.gl-quem{grid-area:quem;display:flex;align-items:center;gap:11px;min-width:0;}
+.gl-quem .avatar{flex:none;width:36px;height:36px;border-radius:10px;font-size:12px;}
+.gl-tx{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.gl-tx b{font-size:14.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gl-nome{font-size:13px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gl-sub{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:2px;}
+.gl-quando{font-size:12px;font-weight:600;color:var(--ink-3);}
+.gl-alerta{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--ambar);background:var(--ambar-bg);padding:2px 8px;border-radius:999px;}
+.gl-alerta::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+.gl-definir{font-size:12px;font-weight:700;color:var(--acento);padding:2px 0;min-height:0;text-decoration:underline;text-underline-offset:2px;}
+.gl-definir:hover{color:var(--ink);}
+
+.gl-prog{grid-area:prog;display:flex;flex-direction:column;gap:6px;min-width:0;}
+.gl-barra{height:6px;border-radius:999px;background:var(--suave);overflow:hidden;}
+.gl-barra i{display:block;height:100%;border-radius:inherit;background:var(--acento);transition:width .4s var(--mola, ease);}
+.gl-prog.completo .gl-barra i{background:var(--ok);}
+.gl-prog-tx{font-size:12px;color:var(--ink-3);}
+.gl-prog-tx b{color:var(--ink);font-weight:700;}
+.gl-prog.nada .gl-prog-tx{color:var(--ink-4);font-style:italic;}
+
+.gl-resp{grid-area:resp;display:flex;align-items:center;gap:8px;min-width:0;font-size:13px;color:var(--ink-2);}
+.gl-resp .av-pessoa{width:26px;height:26px;border-radius:50%;flex:none;color:#fff;font-size:26px;}
+.gl-resp span:not(.gl-sem){white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gl-sem{font-size:12px;color:var(--ink-4);}
+.gl-st{grid-area:st;display:flex;justify-content:flex-start;}
+.gl-item > .menu{grid-area:menu;justify-self:end;}
+.gl-mais{width:36px;height:36px;color:var(--ink-3);}
+.gl-mais svg{width:18px;height:18px;}
+.gl-vazio{padding:40px 20px;text-align:center;}
+
+@media (max-width: 980px){
+  .gl-item{grid-template-columns:52px minmax(0,1fr) minmax(120px,160px) 116px 40px;grid-template-areas:"dia quem prog st menu";}
+  .gl-resp{display:none;}
+}
+@media (max-width: 680px){
+  .gl-filtros .gv-filtro{flex:1 1 calc(50% - 8px);max-width:none;min-width:0;}
+  .gl-busca{flex:1 1 100%;max-width:none;}
+  .gl-status{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:100%;}
+  .gl-status::-webkit-scrollbar{display:none;}
+  .gl-status button{flex:none;}
+  .gl-lista{border-radius:var(--r);}
+  .gl-item{grid-template-columns:48px minmax(0,1fr) 36px;
+    grid-template-areas:"dia quem menu" "dia prog prog" "dia st resp";gap:8px 12px;padding:12px;align-items:start;}
+  .gl-dia{width:48px;height:54px;}
+  .gl-quem .avatar{display:none;}
+  .gl-resp{display:flex;justify-self:end;font-size:12px;}
+  .gl-resp .av-pessoa{width:22px;height:22px;font-size:22px;}
+  .gl-sem{display:none;}
+  .gl-st .cal-badge-status,.gl-st span{white-space:nowrap;}
+  .gl-prog{flex-direction:row;align-items:center;gap:10px;}
+  .gl-barra{flex:1;}
+  .gl-prog-tx{white-space:nowrap;}
+}
+#fg-mes-cx{display:contents;}

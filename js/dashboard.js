@@ -49,7 +49,7 @@ B7.Dashboard = (function () {
      ================================================================= */
   const cachePrevia = {};
   const Previa = (function () {
-    const SELETOR = '.card-gravacao[data-gravacao], .destaque-grav[data-gravacao], .card-roteiro[data-gravacao]';
+    const SELETOR = '.card-gravacao[data-gravacao], .destaque-grav[data-gravacao], .card-roteiro[data-gravacao], .gl-item[data-gravacao]';
     let caixa = null, timer = null, cardAtual = null, ligado = false, pedido = 0;
 
     function elemento() {
@@ -417,7 +417,7 @@ B7.Dashboard = (function () {
      cada mês, pela data ativa; sem data por último. Gravações antigas
      sem mês ficam num grupo próprio, sempre visíveis. Filtros: cliente,
      mês, responsável e status. */
-  const FG = { cliente: '', mes: '', resp: '', status: '' };
+  const FG = { busca: '', cliente: '', mes: '', resp: '', status: '' };
   function chaveMes(g) { return g.competencia_ano ? g.competencia_ano + '-' + String(g.competencia_mes).padStart(2, '0') : ''; }
   function grupoCompetencia(lista) {
     const grupos = new Map();
@@ -428,11 +428,112 @@ B7.Dashboard = (function () {
       rotulo: k ? B7.Gravacao.mesRef(+k.slice(0, 4), +k.slice(5, 7)) : 'Sem mês de referência (gravações antigas)',
       itens: grupos.get(k).sort(ord) }));
   }
+  /* ---- linha da lista de Gravações ----
+     A capa roxa se repetia em todo card e escondia o que importa. Aqui
+     cada gravação é uma linha: QUANDO (dia em destaque), DE QUEM, quanto
+     já foi gravado, quem grava e o status. Data que já passou sem a
+     gravação ser concluída ganha um aviso. */
+  const DIAS_CURTOS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const hojeISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const ehAtivaComData = g => (g.situacao === 'Agendada' || g.situacao === 'Remarcada') && !!g.data_gravacao;
+  const dataPassou = g => ehAtivaComData(g) && String(g.data_gravacao).slice(0, 10) < hojeISO();
+  function quandoRel(g) {
+    if (!g.data_gravacao) return '';
+    const [y, m, d] = String(g.data_gravacao).slice(0, 10).split('-').map(Number);
+    const dias = Math.round((new Date(y, m - 1, d) - new Date(hojeISO() + 'T00:00:00')) / 864e5);
+    const hora = g.hora_inicio ? ' · ' + String(g.hora_inicio).slice(0, 5) : '';
+    if (g.situacao === 'Gravada' || g.situacao === 'Cancelada') return B7.UI.dataBR(g.data_gravacao) + hora;
+    if (dias === 0) return 'Hoje' + hora;
+    if (dias === 1) return 'Amanhã' + hora;
+    if (dias > 1 && dias <= 6) return 'Em ' + dias + ' dias' + hora;
+    return B7.UI.dataBR(g.data_gravacao) + hora;
+  }
+  function diaTile(g) {
+    if (!g.data_gravacao) return '<div class="gl-dia semdata" aria-hidden="true"><b>–</b><small>sem data</small></div>';
+    const [y, m, d] = String(g.data_gravacao).slice(0, 10).split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const hoje = String(g.data_gravacao).slice(0, 10) === hojeISO();
+    return '<div class="gl-dia' + (hoje ? ' hoje' : '') + (g.situacao === 'Cancelada' ? ' off' : '') + '" aria-hidden="true">' +
+      '<small>' + DIAS_CURTOS[dt.getDay()] + '</small><b>' + d + '</b><small>' + MESES_CURTOS[m - 1] + '</small></div>';
+  }
+  function progressoGrav(g) {
+    const total = g.total_itens != null ? +g.total_itens : +(g.total_roteiros || 0);
+    const feitos = g.total_itens != null ? +(g.itens_gravados || 0) : 0;
+    if (!total) return '<div class="gl-prog nada"><span class="gl-prog-tx">Nada na lista ainda</span></div>';
+    const pct = Math.round(feitos / total * 100);
+    return '<div class="gl-prog' + (feitos === total ? ' completo' : '') + '" title="' + feitos + ' de ' + total + ' itens gravados">' +
+      '<div class="gl-barra" role="progressbar" aria-valuemin="0" aria-valuemax="' + total + '" aria-valuenow="' + feitos + '" aria-label="Itens gravados"><i style="width:' + pct + '%"></i></div>' +
+      '<span class="gl-prog-tx"><b>' + feitos + '</b>/' + total + ' gravados</span></div>';
+  }
+  const podeEditarGrav = () => !(B7.Auth && B7.Auth.ehEquipe) || B7.Auth.ehEquipe();
+  function linhaGravacao(g) {
+    const legado = !g.competencia_ano;
+    const aviso = dataPassou(g) ? '<span class="gl-alerta">Data passou · concluir ou remarcar</span>' : '';
+    const quando = quandoRel(g);
+    return '<div class="gl-item' + (g.situacao === 'Cancelada' ? ' cancelada' : '') + '" data-gravacao="' + esc(g.id) + '" ' +
+      'data-total-roteiros="' + (g.total_roteiros || 0) + '" tabindex="0" role="link" aria-label="Abrir gravação ' + esc(g.cliente_nome + ' — ' + g.nome) + '">' +
+      diaTile(g) +
+      '<div class="gl-quem">' + B7.UI.avatarCliente(g.cliente_nome, g.cliente_logo_url || null, 'p') +
+        '<div class="gl-tx"><b>' + esc(g.cliente_nome || 'Sem cliente') + '</b>' +
+        '<span class="gl-nome">' + esc(g.nome) + '</span>' +
+        '<span class="gl-sub">' + (quando ? '<span class="gl-quando">' + esc(quando) + '</span>' : '') + aviso +
+          (legado && podeEditarGrav() ? '<button type="button" class="gl-definir" data-definir-mes="' + esc(g.id) + '">Definir mês</button>' : '') +
+        '</span></div></div>' +
+      progressoGrav(g) +
+      '<div class="gl-resp">' + (g.videomaker_nome
+        ? B7.UI.avatarPessoa({ nome: g.videomaker_nome }, 'mini') + '<span>' + esc(String(g.videomaker_nome).split(' ')[0]) + '</span>'
+        : '<span class="gl-sem">Sem responsável</span>') + '</div>' +
+      '<div class="gl-st">' + chipGravacao(g) + '</div>' +
+      '<div class="menu"><button class="ico gl-mais" aria-label="Mais ações" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button>' +
+        '<div class="lista">' +
+        (legado && podeEditarGrav() ? '<button data-definir-mes="' + esc(g.id) + '">Definir mês de referência</button><hr>' : '') +
+        '<button data-dup="' + esc(g.id) + '">Duplicar</button>' +
+        '<button data-imprimir="' + esc(g.id) + '">Imprimir roteiros</button>' +
+        '<button data-fixar-grav="' + esc(g.id) + '" data-fixado="' + (g.is_pinned ? '1' : '0') + '">' + (g.is_pinned ? 'Desafixar' : 'Fixar') + '</button>' +
+        '<button data-arquivar="' + esc(g.id) + '" data-arq="' + (g.archived_at ? '1' : '0') + '">' + (g.archived_at ? 'Desarquivar' : 'Arquivar') + '</button><hr>' +
+        '<button class="perigo" data-excluir="' + esc(g.id) + '" data-nome="' + esc(g.nome) + '">Excluir</button>' +
+      '</div></div></div>';
+  }
+  const ROT_SIT = { Agendada: ['marcada', 'marcadas'], Remarcada: ['remarcada', 'remarcadas'], Pendente: ['sem data', 'sem data'], Gravada: ['concluída', 'concluídas'], Cancelada: ['cancelada', 'canceladas'] };
+  function resumoGrupo(itens) {
+    const c = {}; let feitos = 0, total = 0, atras = 0;
+    itens.forEach(g => { const k = g.situacao || 'Pendente'; c[k] = (c[k] || 0) + 1;
+      total += +(g.total_itens || 0); feitos += +(g.itens_gravados || 0); if (dataPassou(g)) atras++; });
+    const partes = ['Agendada', 'Remarcada', 'Pendente', 'Gravada', 'Cancelada'].filter(k => c[k])
+      .map(k => c[k] + ' ' + ROT_SIT[k][c[k] === 1 ? 0 : 1]);
+    return '<span class="gl-resumo">' + esc(partes.join(' · ')) +
+      (total ? '<span class="gl-resumo-itens">' + feitos + '/' + total + ' itens gravados</span>' : '') +
+      (atras ? '<span class="gl-alerta">' + atras + ' com data passada</span>' : '') + '</span>';
+  }
   function blocoCompetencia(lista) {
-    return grupoCompetencia(lista).map(gr =>
-      '<div class="grupo-mes"><h3 class="grupo-mes-tit sem-cap">' + esc(gr.rotulo) +
-        '<span class="conta-mes">' + gr.itens.length + '</span></h3>' +
-        '<div class="grade">' + gr.itens.map(cardGravacao).join('') + '</div></div>').join('');
+    const atual = hojeISO().slice(0, 7);
+    return grupoCompetencia(lista).map(gr => {
+      const k = gr.itens[0] ? chaveMes(gr.itens[0]) : '';
+      return '<section class="gl-grupo' + (k ? '' : ' legado') + '">' +
+        '<header class="gl-grupo-cab"><h3>' + esc(k ? gr.rotulo : 'Sem mês de referência') +
+          (k === atual ? '<span class="gl-tag">mês atual</span>' : '') +
+          '<span class="conta-mes">' + gr.itens.length + '</span></h3>' +
+          (k ? resumoGrupo(gr.itens) : '<span class="gl-resumo">Gravações antigas, de antes do mês de referência. Defina o mês para organizá-las.</span>') +
+        '</header>' +
+        '<div class="gl-lista">' + gr.itens.map(linhaGravacao).join('') + '</div></section>';
+    }).join('');
+  }
+  function modalDefinirMes(g, aoSalvar) {
+    const sug = g.data_gravacao ? String(g.data_gravacao).slice(0, 10) : '';
+    const m = B7.UI.modal('<h3>Mês de referência</h3>' +
+      '<div class="sub">' + esc(g.cliente_nome + ' · ' + g.nome) + '</div>' +
+      '<p class="fraca">A que mês de produção esta gravação pertence? Não precisa ser o mês da data.</p>' +
+      B7.Gravacao.camposMes(sug ? +sug.slice(0, 4) : null, sug ? +sug.slice(5, 7) : null, 'dm') +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="dm-ok">Salvar</button></div>');
+    m.querySelector('#dm-ok').onclick = async () => {
+      const mes = +m.querySelector('#dm-mes').value, ano = +m.querySelector('#dm-ano').value;
+      if (!mes || !ano) { m.querySelector('#dm-mes').classList.add('erro'); return; }
+      try {
+        await B7.Save.acao(() => B7.DB.atualizarGravacao(g.id, { competencia_ano: ano, competencia_mes: mes }), 'Mês de referência definido');
+        g.competencia_ano = ano; g.competencia_mes = mes; m.fechar(); aoSalvar && aoSalvar();
+      } catch (e) {}
+    };
   }
   async function abrirGravacoes() {
     marcarNav('#/gravacoes');
@@ -442,45 +543,80 @@ B7.Dashboard = (function () {
     try { gravacoes = await B7.DB.listarGravacoes(); } catch (e) { return erro(e, 'abrirGravacoes'); }
 
     const clientes = [...new Map(gravacoes.map(g => [g.client_id, g.cliente_nome])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR'));
-    const meses = [...new Set(gravacoes.map(chaveMes).filter(Boolean))].sort().reverse();
+    const meses = () => [...new Set(gravacoes.map(chaveMes).filter(Boolean))].sort().reverse();
     const resps = [...new Map(gravacoes.filter(g => g.videomaker_id).map(g => [g.videomaker_id, g.videomaker_nome])).entries()];
-    const STATUS = [['', 'Todas'], ['Agendada', 'Marcada'], ['Remarcada', 'Remarcada'], ['Pendente', 'Sem data'], ['Gravada', 'Concluída'], ['Cancelada', 'Cancelada']];
+    const STATUS = [['', 'Todas'], ['Agendada', 'Marcadas'], ['Remarcada', 'Remarcadas'], ['Pendente', 'Sem data'], ['Gravada', 'Concluídas'], ['Cancelada', 'Canceladas']];
     const sel = (id, atual, ops, rot) => '<select class="campo fina gv-filtro' + (atual ? ' ativo' : '') + '" id="' + id + '" aria-label="' + esc(rot) + '">' +
       ops.map(([v, r]) => '<option value="' + esc(v) + '"' + (v === atual ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>';
+    const opcoesMes = () => [['', 'Todos os meses'], ['sem', 'Sem mês (antigas)']].concat(meses().map(k => [k, B7.Gravacao.mesRef(+k.slice(0, 4), +k.slice(5, 7))]));
 
-    painel().innerHTML = '<div class="conteudo">' +
+    painel().innerHTML = '<div class="conteudo gl-pagina">' +
       '<div class="secao-topo"><h2 style="font-size:22px">Gravações</h2>' +
       '<span class="conta" id="gv-conta">' + gravacoes.length + '</span><div class="espaco"></div>' +
       '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button></div>' +
-      (gravacoes.length ? '<div class="gv-filtros">' +
-        sel('fg-cliente', FG.cliente, [['', 'Cliente']].concat(clientes), 'Cliente') +
-        sel('fg-mes', FG.mes, [['', 'Mês de referência'], ['sem', 'Sem mês (antigas)']].concat(meses.map(k => [k, B7.Gravacao.mesRef(+k.slice(0, 4), +k.slice(5, 7))])), 'Mês de referência') +
-        (resps.length ? sel('fg-resp', FG.resp, [['', 'Responsável'], ['sem', 'Sem responsável']].concat(resps), 'Responsável') : '') +
-        '<div class="filtro" id="filtro-status" role="group" aria-label="Status">' + STATUS.map(([v, r]) =>
-          '<button data-f="' + esc(v) + '"' + (FG.status === v ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' + esc(r) + '</button>').join('') + '</div>' +
+      (gravacoes.length ? '<div class="gl-filtros">' +
+        '<div class="gl-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+          '<input class="campo fina" id="fg-busca" type="search" placeholder="Buscar cliente ou gravação" aria-label="Buscar cliente ou gravação" value="' + esc(FG.busca || '') + '"></div>' +
+        sel('fg-cliente', FG.cliente, [['', 'Todos os clientes']].concat(clientes), 'Cliente') +
+        '<span id="fg-mes-cx">' + sel('fg-mes', FG.mes, opcoesMes(), 'Mês de referência') + '</span>' +
+        (resps.length ? sel('fg-resp', FG.resp, [['', 'Todos os responsáveis'], ['sem', 'Sem responsável']].concat(resps), 'Responsável') : '') +
+        '<button class="b fina contorno gl-limpar" id="fg-limpar" hidden>Limpar filtros</button>' +
+        '<span class="gl-quebra"></span><div class="filtro gl-status" id="filtro-status" role="group" aria-label="Status"></div>' +
       '</div>' : '') +
       (gravacoes.length ? '<div id="lista-gravacoes"></div>' : vazioGravacoes()) + '</div>';
 
-    const aplicar = () => {
-      const lista = gravacoes.filter(g =>
+    const passa = (g, semStatus) => {
+      const t = (FG.busca || '').trim().toLowerCase();
+      return (!t || (String(g.cliente_nome || '') + ' ' + String(g.nome || '')).toLowerCase().includes(t)) &&
         (!FG.cliente || g.client_id === FG.cliente) &&
         (!FG.mes || (FG.mes === 'sem' ? !g.competencia_ano : chaveMes(g) === FG.mes)) &&
         (!FG.resp || (FG.resp === 'sem' ? !g.videomaker_id : g.videomaker_id === FG.resp)) &&
-        (!FG.status || (g.situacao || 'Pendente') === FG.status));
-      const cx = document.getElementById('lista-gravacoes'); if (!cx) return;
-      cx.innerHTML = lista.length ? blocoCompetencia(lista) : '<div class="vazio"><b>Nenhuma gravação com esses filtros</b></div>';
-      const conta = document.getElementById('gv-conta'); if (conta) conta.textContent = lista.length;
-      ligar();
+        (semStatus || !FG.status || (g.situacao || 'Pendente') === FG.status);
     };
-    [['fg-cliente', 'cliente'], ['fg-mes', 'mes'], ['fg-resp', 'resp']].forEach(([id, k]) => {
+    const pintarStatus = () => {
+      const f = document.getElementById('filtro-status'); if (!f) return;
+      const base = gravacoes.filter(g => passa(g, true));
+      f.innerHTML = STATUS.map(([v, r]) => {
+        const n = v ? base.filter(g => (g.situacao || 'Pendente') === v).length : base.length;
+        if (v && !n && FG.status !== v) return '';
+        return '<button data-f="' + esc(v) + '"' + (FG.status === v ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' +
+          esc(r) + '<span class="gl-n">' + n + '</span></button>';
+      }).join('');
+      f.querySelectorAll('button').forEach(b => b.onclick = () => { FG.status = b.dataset.f; aplicar(); });
+    };
+    const aplicar = () => {
+      const lista = gravacoes.filter(g => passa(g));
+      const cx = document.getElementById('lista-gravacoes'); if (!cx) return;
+      cx.innerHTML = lista.length ? blocoCompetencia(lista)
+        : '<div class="vazio gl-vazio"><b>Nenhuma gravação com esses filtros</b><p>Tente outro cliente, mês ou status.</p></div>';
+      const conta = document.getElementById('gv-conta'); if (conta) conta.textContent = lista.length;
+      const limpar = document.getElementById('fg-limpar');
+      if (limpar) limpar.hidden = !(FG.busca || FG.cliente || FG.mes || FG.resp || FG.status);
+      pintarStatus();
+      ligar();
+      cx.querySelectorAll('[data-definir-mes]').forEach(b => b.onclick = ev => {
+        ev.stopPropagation(); B7.UI.fecharMenus && B7.UI.fecharMenus();
+        const g = gravacoes.find(x => x.id === b.dataset.definirMes); if (!g) return;
+        modalDefinirMes(g, () => {
+          const c = document.getElementById('fg-mes-cx'); if (c) { c.innerHTML = sel('fg-mes', FG.mes, opcoesMes(), 'Mês de referência'); ligarSel('fg-mes', 'mes'); }
+          aplicar();
+        });
+      });
+    };
+    const ligarSel = (id, k) => {
       const el = document.getElementById(id);
       if (el) el.onchange = () => { FG[k] = el.value; el.classList.toggle('ativo', !!el.value); aplicar(); };
-    });
-    const filtro = document.getElementById('filtro-status');
-    if (filtro) filtro.querySelectorAll('button').forEach(b => b.onclick = () => {
-      filtro.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
-      FG.status = b.dataset.f; aplicar();
-    });
+    };
+    [['fg-cliente', 'cliente'], ['fg-mes', 'mes'], ['fg-resp', 'resp']].forEach(([id, k]) => ligarSel(id, k));
+    const busca = document.getElementById('fg-busca');
+    if (busca) busca.oninput = B7.UI.debounce(() => { FG.busca = busca.value; aplicar(); }, 120);
+    const limpar = document.getElementById('fg-limpar');
+    if (limpar) limpar.onclick = () => {
+      Object.assign(FG, { busca: '', cliente: '', mes: '', resp: '', status: '' });
+      if (busca) busca.value = '';
+      ['fg-cliente', 'fg-mes', 'fg-resp'].forEach(id => { const el = document.getElementById(id); if (el) { el.value = ''; el.classList.remove('ativo'); } });
+      aplicar();
+    };
     ligar();
     aplicar();
   }
