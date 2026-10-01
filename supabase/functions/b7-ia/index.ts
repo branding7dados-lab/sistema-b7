@@ -5,33 +5,35 @@
 //     → esta função: sessão, permissão, limite de uso, registro
 //       → tarefa (_shared/ia/roteiro.ts): valida o pedido, carrega o
 //         contexto com o RLS da pessoa e monta as instruções
-//         → serviço (_shared/ia/servico.ts): roteador, modelos gratuitos,
-//           troca de modelo, prazo
+//         → serviço (_shared/ia/servico.ts)
+//           → provedor (_shared/ia/gemini.ts, hoje)
 //
-// O navegador nunca fala com o roteador nem com provedor de IA, e nunca
-// manda prompt: pede uma tarefa conhecida. Hoje existe uma: "roteiro".
-// Uma tarefa nova entra como mais um arquivo em _shared/ia/ e mais um
-// caso aqui — sem tela nova, sem chave nova.
+// O navegador nunca fala com provedor de IA e nunca manda prompt: pede
+// uma tarefa conhecida. Hoje existe uma: "roteiro". Uma tarefa nova
+// entra como mais um arquivo em _shared/ia/ e mais um caso aqui — sem
+// tela nova, sem chave nova.
 //
 // Corpo:  { tarefa: 'roteiro', acao, cena_id, texto, cena_inteira?, instrucao? }
-// Resposta de produto (HTTP 200):
-//   { ok: true, texto }
+// Resposta de produto (HTTP 200), no formato do B7 — a tela não conhece
+// o formato do provedor:
+//   { ok: true, texto, id }
 //   { ok: false, categoria }   categoria ∈ entrada_invalida | nao_encontrado
-//                              | limite | ocupado | indisponivel | tempo
+//                              | limite | ocupado | cota | tempo | recusado
+//                              | indisponivel
 // Sessão e permissão respondem 401 / 403 com { ok: false, categoria }.
 // A resposta nunca traz nome de modelo, de provedor nem erro cru: isso
 // fica em public.ia_uso, que só o servidor lê.
 //
-// Segredos: B7_IA_BASE_URL, B7_IA_API_KEY, B7_IA_MODELOS (ver servico.ts).
-// Sem eles a função responde "indisponivel" — o resto do B7 não depende
-// dela para nada.
+// Segredo: GEMINI_API_KEY (ver gemini.ts). Sem ele a função responde
+// "indisponivel" — o resto do B7 não depende dela para nada.
 //
-// Deploy:  supabase functions deploy b7-ia
+// Deploy:  supabase functions deploy b7-ia --no-verify-jwt
+// (a sessão é conferida aqui dentro, com auth.getUser)
 // =====================================================================
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { gerar, lerConfig, type Resultado } from '../_shared/ia/servico.ts';
-import { carregarContexto, limparSaida, montarMensagens, validar } from '../_shared/ia/roteiro.ts';
+import { gerar, provedorAtual } from '../_shared/ia/servico.ts';
+import { carregarContexto, limiteDeSaida, limparSaida, montarMensagens, validar } from '../_shared/ia/roteiro.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -43,7 +45,7 @@ const json = (corpo: unknown, status = 200) =>
 
 /* Limites por pessoa. Folgados para quem está escrevendo de verdade
    (várias tentativas seguidas numa cena), apertados para um laço
-   acidental ou abuso: os modelos gratuitos têm cota. */
+   acidental ou abuso: a cota gratuita é uma só, dividida pela equipe. */
 const LIMITE = { porMinuto: 8, porHora: 80, simultaneos: 2, corpo: 20_000 };
 
 async function dentroDoLimite(sb: SupabaseClient, perfilId: string): Promise<'ok' | 'limite' | 'ocupado'> {
@@ -53,7 +55,7 @@ async function dentroDoLimite(sb: SupabaseClient, perfilId: string): Promise<'ok
     .eq('perfil_id', perfilId).gte('created_at', desde(3_600_000)).order('created_at', { ascending: false }).limit(LIMITE.porHora + 5);
   const linhas = data || [];
   const noMinuto = linhas.filter(l => l.created_at >= desde(60_000));
-  if (noMinuto.filter(l => l.status === 'andamento' && l.created_at >= desde(75_000)).length >= LIMITE.simultaneos) return 'ocupado';
+  if (noMinuto.filter(l => l.status === 'andamento').length >= LIMITE.simultaneos) return 'ocupado';
   if (noMinuto.length >= LIMITE.porMinuto || linhas.length >= LIMITE.porHora) return 'limite';
   return 'ok';
 }
@@ -84,9 +86,9 @@ Deno.serve(async (req: Request) => {
   if (!v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
   const pedido = v.pedido;
 
-  /* ---- sem roteador configurado: recurso indisponível, sem custo nenhum ---- */
-  const cfg = lerConfig(n => Deno.env.get(n));
-  if (!cfg) return json({ ok: false, categoria: 'indisponivel' });
+  /* ---- sem provedor configurado: recurso indisponível, nenhuma chamada externa ---- */
+  const provedor = provedorAtual(n => Deno.env.get(n));
+  if (!provedor) return json({ ok: false, categoria: 'indisponivel' });
 
   /* ---- limite de uso ---- */
   const limite = await dentroDoLimite(sb, perfil.id);
@@ -102,28 +104,24 @@ Deno.serve(async (req: Request) => {
   /* ---- registro: metadados, nunca o texto do roteiro nem a sugestão ---- */
   const { data: reg } = await sb.from('ia_uso').insert({
     perfil_id: perfil.id, recurso: 'roteiro', acao: pedido.acao,
-    entidade_tipo: 'cena', entidade_id: pedido.cenaId, tamanho_entrada: pedido.texto.length
+    entidade_tipo: 'cena', entidade_id: pedido.cenaId, tamanho_entrada: pedido.texto.length,
+    provedor: provedor.nome, modelo: provedor.modelo
   }).select('id').maybeSingle();
 
-  let r: Resultado;
-  try {
-    r = await gerar(cfg, montarMensagens(pedido, ctx), { maxTokens: 900, temperatura: 0.7, limpar: limparSaida });
-  } catch (_e) {
-    r = { ok: false, categoria: 'indisponivel', tentativas: [], ms: 0 };
-  }
+  /* um pedido da pessoa = uma chamada ao provedor */
+  const r = await gerar(provedor, montarMensagens(pedido, ctx), {
+    maxTokens: limiteDeSaida(pedido.acao), temperatura: 0.7, limpar: limparSaida
+  });
 
   if (reg) {
     await sb.from('ia_uso').update(r.ok ? {
-      status: 'ok', duracao_ms: r.ms, modelo: r.modeloServido || r.modelo, provedor: r.provedor,
-      tentativas: r.tentativas, houve_fallback: r.tentativas.length > 0 || (r.trocasNoRoteador || 0) > 0,
-      tokens_entrada: r.tokensEntrada, tokens_saida: r.tokensSaida, custo: r.custo, tamanho_saida: r.texto.length
+      status: 'ok', duracao_ms: r.ms, modelo: r.modelo,
+      tokens_entrada: r.tokensEntrada, tokens_saida: r.tokensSaida, tamanho_saida: r.texto.length
     } : {
-      status: 'erro', erro_categoria: r.categoria, duracao_ms: r.ms,
-      tentativas: r.tentativas, houve_fallback: r.tentativas.length > 1
+      status: 'erro', erro_categoria: r.erro, duracao_ms: r.ms
     }).eq('id', reg.id);
   }
 
-  if (r.ok) return json({ ok: true, texto: r.texto });
-  /* chave do roteador errada é problema de configuração: para a pessoa, "indisponível" */
-  return json({ ok: false, categoria: r.categoria === 'tempo' ? 'tempo' : 'indisponivel' });
+  if (r.ok) return json({ ok: true, texto: r.texto, id: reg ? reg.id : null });
+  return json({ ok: false, categoria: r.categoria });
 });

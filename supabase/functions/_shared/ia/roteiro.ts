@@ -31,6 +31,18 @@ export type Pedido = {
 
 export const LIMITES = { texto: 4000, instrucao: 300, instrucaoMin: 3, contexto: 2400, vizinha: 500, saida: 6000 };
 
+/**
+ * Teto de saída por ação, em tokens. Um gancho ou um CTA são uma ou duas
+ * frases; reescrever uma cena inteira pede mais. O teto inclui a margem
+ * que alguns modelos gastam raciocinando antes de responder — o tamanho
+ * real do texto quem segura é a instrução ("uma ou duas frases").
+ */
+export function limiteDeSaida(acao: Acao): number {
+  if (acao === 'gancho' || acao === 'cta') return 768;
+  if (acao === 'encurtar') return 1024;
+  return 2048;
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Esquema explícito do pedido. Qualquer coisa fora dele é recusada. */
@@ -145,7 +157,7 @@ export function montarMensagens(p: Pedido, ctx: Contexto): Mensagem[] {
  * A saída do modelo é texto não confiável: nunca vira HTML, e aqui sai
  * limpa do que os modelos costumam grudar em volta (raciocínio, cercas de
  * código, rótulo "Sugestão:", aspas, marcações que ecoam o pedido).
- * '' = resposta inválida (o serviço tenta o próximo modelo).
+ * '' = resposta inválida (a pessoa vê um aviso e pode gerar de novo).
  */
 export function limparSaida(bruto: string): string {
   let t = String(bruto || '').replace(/\r\n?/g, '\n');

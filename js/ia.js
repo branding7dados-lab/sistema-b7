@@ -35,13 +35,15 @@ B7.IA = (function () {
     entrada_invalida: 'Não foi possível usar este texto. Confira o tamanho do trecho e da instrução.',
     limite: 'Muitos pedidos em sequência. Espere um minuto e tente de novo.',
     ocupado: 'Já existe uma sugestão sendo gerada. Aguarde ela terminar.',
+    cota: 'Limite temporário do assistente atingido. Tente novamente mais tarde.',
+    recusado: 'O assistente não conseguiu trabalhar este trecho. Reformule o pedido ou escreva o texto de outro jeito.',
     indisponivel: 'Assistente de IA temporariamente indisponível. Tente novamente em alguns minutos.',
     tempo: 'A sugestão demorou demais para chegar. Tente novamente.',
     rede: 'Sem conexão com o servidor. Confira a internet e tente de novo.'
   };
   const falha = categoria => ({ ok: false, categoria, mensagem: MENSAGENS[categoria] || MENSAGENS.indisponivel });
 
-  /* Prazo do lado de cá: o servidor desiste antes (50 s), isto é só a
+  /* Prazo do lado de cá: o servidor desiste antes (30 s), isto é só a
      rede de segurança para a tela nunca ficar "gerando" para sempre. */
   const PRAZO_MS = 70000;
 
