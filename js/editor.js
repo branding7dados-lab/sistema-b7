@@ -397,6 +397,8 @@ B7.Editor = (function () {
           'style="padding:8px 12px;font-size:12px;letter-spacing:.06em;margin-bottom:10px" value="' + esc(c.direcao) + '">' +
         '<textarea class="campo cresce" data-c-campo="texto" rows="3" ' +
           'placeholder="Texto da cena — Enter cria um novo parágrafo">' + esc(c.texto) + '</textarea>' +
+        /* assistente de IA do texto desta cena (só existe se o recurso estiver ligado) */
+        (B7.IARoteiro ? B7.IARoteiro.html(c) : '') +
         (c.tipo === 'Narração' ?
           '<div class="sugestao-cx' + (falta ? ' falta' : '') + '">' +
           '<label class="rot">SUGESTÃO DE CENAS' + (falta ? ' · OBRIGATÓRIO' : '') + '</label>' +
@@ -539,8 +541,12 @@ B7.Editor = (function () {
        selecionar continua sendo seleção; arrastar pela alça (⠿) ou pelo
        resto do card continua reordenando normalmente. */
     el.addEventListener('mousedown', ev => {
-      el.draggable = !ev.target.closest('input, textarea, select, [contenteditable]');
+      el.draggable = !ev.target.closest('input, textarea, select, [contenteditable], [data-ia]');
     });
+
+    /* assistente de IA: a sugestão só entra no campo quando a pessoa
+       aplica, e entra pelo oninput acima, como texto digitado */
+    if (B7.IARoteiro) B7.IARoteiro.ligar(el, cena);
     el.ondragstart = ev => { ev.dataTransfer.setData('text/plain', id); el.classList.add('arrastando'); };
     el.ondragend = () => {
       el.classList.remove('arrastando');

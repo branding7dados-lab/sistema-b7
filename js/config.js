@@ -23,5 +23,12 @@ window.B7_CONFIG = {
      Edge Function b7-push usa como VAPID_PUBLIC_KEY. Vazia = push
      desligado (o Meu perfil explica). A chave PRIVADA nunca entra aqui:
      fica só nos secrets da função. Ver PUSH.md. */
-  VAPID_PUBLIC_KEY: 'BA5kmM_qFyJonTd6jA4ggG_l1k2zJblzY0aB68NiotyupdSE6btda-Y1bnhTFNhO__qQrDNigEYZzpKb0HtMjko'
+  VAPID_PUBLIC_KEY: 'BA5kmM_qFyJonTd6jA4ggG_l1k2zJblzY0aB68NiotyupdSE6btda-Y1bnhTFNhO__qQrDNigEYZzpKb0HtMjko',
+
+  /* IA (opcional). Aqui só se liga ou desliga a ENTRADA na tela, por
+     recurso. Nenhuma chave de IA entra neste arquivo: roteador, modelos
+     e chave ficam nos secrets da Edge Function b7-ia (B7_IA_BASE_URL,
+     B7_IA_API_KEY, B7_IA_MODELOS). Com o recurso em false, a tela nem
+     mostra o assistente. Ver IA.md. */
+  IA: { roteiros: false }
 };

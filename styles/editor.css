@@ -64,6 +64,77 @@
 .sugestao-cx .rot{color:var(--violet);} .sugestao-cx.falta .rot{color:var(--erro);}
 .ajuda{font-size:11px;color:var(--ink-4);margin-top:6px;}
 
+/* =====================================================================
+   ASSISTENTE DE IA DA CENA (js/ia-roteiro.js)
+   Mora dentro da cena, abaixo do texto. Fechado, é um botão pequeno e
+   quieto; aberto, um painel com a mesma linguagem do resto do editor.
+   O roteiro é o protagonista: o acento B7 aparece só no ícone, no botão
+   Aplicar e na borda da sugestão.
+   ===================================================================== */
+.ia-rot{margin-top:8px;}
+.ia-entrada{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;margin-left:-4px;border-radius:8px;
+  font-size:12px;font-weight:600;color:var(--ink-3);transition:background-color var(--t),color var(--t);}
+.ia-entrada svg{width:15px;height:15px;color:var(--acento);flex:none;}
+.ia-entrada:hover,.ia-entrada.on{background:var(--acento-suave);color:var(--acento);}
+.ia-entrada:focus-visible,.ia-fechar:focus-visible,.ia-acao:focus-visible,.ia-sugestao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+
+.ia-painel{margin-top:8px;padding:12px;border-radius:11px;background:var(--card);border:1px solid var(--borda);
+  animation:iaEntra .18s var(--mola);}
+.ia-painel[hidden]{display:none;}
+@keyframes iaEntra{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+.ia-cab{display:flex;align-items:center;gap:8px;margin-bottom:10px;min-width:0;}
+.ia-titulo{display:inline-flex;align-items:center;gap:6px;flex:none;font-size:12.5px;color:var(--ink);}
+.ia-titulo svg{width:15px;height:15px;color:var(--acento);}
+.ia-alvo{flex:1;min-width:0;font-size:11.5px;color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ia-fechar{flex:none;width:28px;height:28px;border-radius:8px;font-size:18px;line-height:1;color:var(--ink-3);transition:background-color var(--t);}
+.ia-fechar:hover{background:var(--suave);color:var(--ink);}
+
+.ia-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.ia-acao{padding:7px 12px;border-radius:999px;border:1px solid var(--borda-forte);background:var(--card);
+  font-size:12.5px;font-weight:600;color:var(--ink-2);transition:border-color var(--t),color var(--t),background-color var(--t);}
+.ia-acao:hover{border-color:var(--acento);color:var(--acento);}
+
+.ia-instrucao .rot{display:block;margin-bottom:6px;}
+.ia-instrucao-linha{display:flex;gap:8px;align-items:center;}
+.ia-instrucao-linha .campo{flex:1;min-width:0;padding:9px 12px;font-size:13px;}
+
+.ia-rotulo{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-4);margin:0 0 5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ia-original{margin:0 0 12px;padding:8px 10px;border-left:3px solid var(--borda-forte);border-radius:0 8px 8px 0;background:var(--suave);
+  font-size:12.5px;line-height:1.55;color:var(--ink-3);white-space:pre-wrap;overflow-wrap:anywhere;max-height:96px;overflow:auto;}
+.ia-sugestao{padding:10px 12px;border-radius:9px;border:1px solid var(--borda);border-left:3px solid var(--acento);background:var(--suave);
+  font-size:14px;line-height:1.6;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;
+  animation:iaEntra .2s var(--mola);}
+.ia-botoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.ia-nota{margin:10px 0 0;font-size:11.5px;color:var(--ink-4);line-height:1.45;}
+.ia-nota.erro,.ia-erro{color:var(--erro);}
+.ia-erro{margin:0;font-size:13px;font-weight:600;line-height:1.5;}
+
+.ia-gerando{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--ink-2);}
+.ia-gerando .b{margin-left:auto;}
+.ia-pontos{display:inline-flex;gap:4px;}
+.ia-pontos i{width:6px;height:6px;border-radius:50%;background:var(--acento);animation:iaPulsa 1.1s ease-in-out infinite;}
+.ia-pontos i:nth-child(2){animation-delay:.15s;} .ia-pontos i:nth-child(3){animation-delay:.3s;}
+@keyframes iaPulsa{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+
+/* celular: alvos de toque de 44px e botões que não espremem o texto */
+@media (max-width:720px){
+  .ia-entrada{min-height:44px;padding:10px 12px;font-size:13px;}
+  .ia-acao{min-height:44px;padding:10px 14px;font-size:13px;}
+  .ia-fechar{width:40px;height:40px;}
+  .ia-instrucao-linha{flex-direction:column;align-items:stretch;}
+  .ia-instrucao-linha .campo{font-size:16px;}      /* 16px: o iPhone não dá zoom ao focar */
+  .ia-instrucao-linha .b,.ia-botoes .b{min-height:44px;}
+  .ia-botoes .b{flex:1 1 calc(50% - 4px);}
+  .ia-botoes .b.pri{flex-basis:100%;}
+  .ia-sugestao{max-height:46vh;}
+}
+@media (prefers-reduced-motion:reduce){
+  .ia-painel,.ia-sugestao{animation:none;}
+  .ia-pontos i{animation:none;opacity:.7;}
+}
+
 /* inserir cena entre cenas */
 .entre{height:14px;position:relative;margin:-4px 0;}
 .entre button{position:absolute;inset:0;margin:auto;height:22px;font-size:10.5px;font-weight:700;
