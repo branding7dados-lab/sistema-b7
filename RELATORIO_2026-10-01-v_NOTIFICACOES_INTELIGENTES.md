@@ -2,7 +2,7 @@
 
 Pacote com front-end, service worker, Edge Function `b7-push` e uma migration (`migration_notificacoes_inteligentes.sql`).
 
-> **Situação da publicação.** O código está no repositório. A migration **ainda não foi aplicada** no Supabase e a `b7-push` nova **ainda não foi publicada**: as duas mexem em produção e esperam o seu ok. A ordem certa é: 1) publicar a `b7-push`; 2) aplicar a migration; 3) subir o front (push no GitHub).
+> **Situação da publicação (01/10/2026).** Publicado, nesta ordem: 1) `b7-push` versão 4 (`2026-10-01-v`), respondendo; 2) migration `notificacoes_inteligentes` aplicada no Supabase (14 funções novas, 2 gatilhos, cron `notif-agendados` ativo); 3) front no GitHub. Nenhuma notificação foi disparada pela aplicação da migration.
 
 ## Visão geral
 
@@ -248,7 +248,7 @@ Uma migration: `migration_notificacoes_inteligentes.sql`. Não cria tabela nem c
 
 ## Limitações
 
-- **Push de ponta a ponta não foi testado:** a função nova ainda não está publicada, e no navegador de teste a permissão de notificação está bloqueada. O envio real, o ícone, a imagem e os botões no Android precisam ser conferidos num aparelho depois de publicar.
+- **Push de ponta a ponta não foi testado:** no navegador de teste a permissão de notificação está bloqueada. Depois de publicada, a função só foi conferida respondendo ao teste sem sessão (401, como esperado). O envio real, o ícone, a imagem e os botões no Android precisam ser conferidos num aparelho depois de publicar.
 - **Nenhum teste em Android físico ou emulado.** O celular foi simulado por largura de tela.
 - **iPhone:** o Safari não mostra botões nem imagem no aviso. Sai título, corpo e ícone.
 - **Imagem do aviso:** usa a miniatura quadrada da peça; o Android corta para o formato largo dele.
@@ -258,7 +258,7 @@ Uma migration: `migration_notificacoes_inteligentes.sql`. Não cria tabela nem c
 
 ## Pendências
 
-- **Publicar:** `b7-push`, migration e front, nessa ordem, com o seu ok.
+- **Conferir no celular:** ligar o push, usar "Enviar notificação de teste" e ver ícone, botões e abertura do B7 num Android de verdade.
 - **Decidir quem revisa:** se algum admin revisa Design e vídeo no dia a dia, ligar "Revisões pendentes da agência" para ele.
 - **Publicações:** "Publicação programada para hoje" e "precisa de atenção" não viraram aviso individual. Não existe um campo que diga qual é a pendência, e um aviso por publicação daria vários por dia. As publicações do dia entram no resumo diário.
 - **Gravação com pendência de preparação** (para a coordenação): não implementado, pelo mesmo motivo — falta um dado canônico que diga o que está pendente.
