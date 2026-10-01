@@ -750,6 +750,23 @@ B7.Rota = (function () {
 
     /* ---- PWA ---- */
     if (navigator.serviceWorker && location.protocol.startsWith('http')) {
+      /* Uma versão nova assumiu o controle com esta página já aberta: o
+         que está na memória é o código da versão anterior (foi assim que
+         o celular ficou com service worker novo e tela antiga). Em
+         segundo plano e sem nada por salvar, recarrega sozinho; com a
+         pessoa olhando, avisa e deixa ela escolher a hora. Só vale para
+         atualização — na primeira instalação não havia controlador. */
+      if (navigator.serviceWorker.controller) {
+        let avisou = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (avisou) return; avisou = true;
+          const semRisco = () => !(B7.Save && B7.Save.temPendencias && B7.Save.temPendencias());
+          const recarregar = () => location.reload();
+          if (document.hidden && semRisco()) return recarregar();
+          B7.UI.toast('Nova versão do B7 disponível.', { acao: 'Atualizar', tempo: 20000, aoClicar: recarregar });
+          document.addEventListener('visibilitychange', () => { if (document.hidden && semRisco()) recarregar(); });
+        });
+      }
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   }

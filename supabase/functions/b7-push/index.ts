@@ -40,7 +40,18 @@
 import webpush from 'npm:web-push@3.6.7';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-10-01-v';
+const VERSAO = '2026-10-01-x';
+
+/* Endereço do cartão do aviso (função b7-arte) e a assinatura que ela
+   exige: HMAC do id, com um segredo que só as duas funções conhecem.
+   Sem a assinatura certa a b7-arte responde 404. */
+const ARTE = (Deno.env.get('SUPABASE_URL') ?? '') + '/functions/v1/b7-arte';
+async function assinar(texto: string): Promise<string> {
+  const chave = Deno.env.get('B7_WEBHOOK_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(chave), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const m = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode('b7-arte:' + texto));
+  return Array.from(new Uint8Array(m)).slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -162,6 +173,7 @@ Deno.serve(async (req: Request) => {
       v: 2, id: 'teste-' + Date.now(), tipo: 'teste.push', teste: true,
       titulo: 'Notificação de teste do B7',
       corpo: 'Se você recebeu esta mensagem, as notificações deste dispositivo estão funcionando corretamente.',
+      imagem: ARTE + '?teste=1&s=' + await assinar('teste'),
       link: '#/', acoes: [{ id: 'abrir', rotulo: 'Abrir B7', link: '#/' }]
     });
     const r = await enviar(sb, lista, payload, 60 * 10);
@@ -226,18 +238,13 @@ Deno.serve(async (req: Request) => {
     if (c) { cliente = c.nome || null; logo = c.logo_url || null; }
   }
 
-  /* Prévia real da peça (só quando o banco apontou uma). O bucket é
-     privado: a URL é assinada aqui, vale 48 h — mais que o TTL do push —
-     e só vai para quem já foi resolvido como destinatário. Sem imagem,
-     o aviso continua completo. */
+  /* Imagem grande do aviso: o cartão desenhado pela b7-arte (logo do
+     cliente, selo, dado em destaque e, quando o banco apontou uma, a
+     prévia real da peça de Design). Aqui vai só o endereço assinado; o
+     aparelho busca a imagem ao exibir. Se a busca falhar, o aviso
+     continua completo — só não tem a arte. */
   let imagem: string | null = null;
-  const img = dados.imagem as { bucket?: string; caminho?: string } | undefined;
-  if (img && typeof img.bucket === 'string' && typeof img.caminho === 'string') {
-    try {
-      const { data: s } = await sb.storage.from(img.bucket).createSignedUrl(img.caminho, 60 * 60 * 48);
-      imagem = (s && s.signedUrl) || null;
-    } catch (_e) { imagem = null; }
-  }
+  try { imagem = ARTE + '?n=' + n.id + '&s=' + await assinar(n.id); } catch (_e) { imagem = null; }
 
   const tipo = n.tipo || '';
   const link = n.link || '#/';
