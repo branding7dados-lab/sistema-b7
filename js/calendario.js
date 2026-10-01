@@ -316,20 +316,25 @@ B7.Calendario = (function () {
         '<button class="b contorno ico cb-seta" data-nav="1" aria-label="' + (agenda ? 'Próxima semana' : 'Próximo período') + '">' + IC_DIR + '</button>' +
         (agenda
           ? '<button class="cb-rotulo cb-rotulo-btn" id="cb-mes-btn" aria-haspopup="dialog">' + esc(rotulo()) + IC_BAIXO + '</button>'
-          : '<h2 class="cb-rotulo" id="cb-rotulo">' + esc(rotulo()) + '</h2>') +
+          : '<h2 class="cb-rotulo" id="cb-rotulo">' + esc(rotulo()) + '</h2><span class="cb-resumo" id="cb-resumo" aria-live="polite"></span>') +
       '</div>' +
       (agenda ? '' : '<div class="cb-vistas filtro" role="group" aria-label="Vista">' +
         [['mes', 'Mês'], ['semana', 'Semana'], ['dia', 'Dia']].map(([v, r]) =>
           '<button data-vista="' + v + '" class="' + (V.vista === v ? 'on' : '') + '" aria-pressed="' + (V.vista === v) + '">' + r + '</button>').join('') + '</div>') +
       (agenda ? faixaDiasHTML() : '');
     cx.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navegar(+b.dataset.nav));
-    cx.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => { V.vista = b.dataset.vista; mudou(); });
+    cx.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => { if (V.vista === b.dataset.vista) return; V.vista = b.dataset.vista; anim = 'vista'; mudou(); });
     const mb = cx.querySelector('#cb-mes-btn'); if (mb) mb.onclick = seletorMes;
     cx.querySelectorAll('[data-faixa]').forEach(b => b.onclick = () => { V.data = b.dataset.faixa; gravarEstado(); pintarBarra(); pintarCorpo(); });
     const sel = cx.querySelector('.cb-faixa .on'); if (sel && sel.scrollIntoView) { try { sel.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {} }
   }
 
+  /* animação da próxima pintura com dados: direção do mês, troca de
+     vista, filtro ou entrada. Só decide a classe; o CSS anima (e some
+     com prefers-reduced-motion). */
+  let anim = 'entrada';
   function navegar(dir) {
+    anim = dir > 0 ? 'prox' : dir < 0 ? 'ant' : 'hoje';
     if (dir === 0) V.data = D().hoje();
     else if (ehAgenda()) V.data = D().somarDias(V.data, 7 * dir);
     else if (V.vista === 'mes') { const d = D().local(D().primeiroDoMes(V.data)); d.setMonth(d.getMonth() + dir); V.data = D().isoLocal(d); }
@@ -379,7 +384,7 @@ B7.Calendario = (function () {
     const bop = cx.querySelector('#cb-f-op'); if (bop) bop.onclick = () => { V.op = !V.op; E().ESTADO.oportunidades = V.op; gravarEstado(); pintarFiltros(); carregar({ silencioso: true }); };
     const lp = cx.querySelector('#cb-f-limpar'); if (lp) lp.onclick = () => { Object.assign(V, { tipo: '', cliente: '', resp: '', canceladas: false }); aplicarFiltro(); };
   }
-  function aplicarFiltro() { gravarEstado(); pintarFiltros(); pintarCorpo(); }
+  function aplicarFiltro() { anim = 'filtro'; gravarEstado(); pintarFiltros(); pintarCorpo(); }
 
   function pintarAvisos() {
     const cx = document.getElementById('cb-avisos'); if (!cx) return;
@@ -417,13 +422,27 @@ B7.Calendario = (function () {
     else if (V.vista === 'mes') html = mesHTML(lista);
     else if (V.vista === 'semana') html = semanaHTML(lista);
     else html = agendaDiaHTML(lista.filter(ev => ev.dia === V.data), V.data, false);
-    cx.innerHTML = (R.carregando ? '<div class="cb-atualizando" role="status"><i></i>Atualizando…</div>' : '') + html;
+    const classeAnim = !R.carregando && anim ? ' cb-anim cb-anim-' + anim : '';
+    if (!R.carregando) anim = null;
+    cx.innerHTML = (R.carregando ? '<div class="cb-atualizando" role="status"><i></i>Atualizando…</div>' : '') +
+      '<div class="cb-palco' + classeAnim + '">' + html + '</div>';
     cx.classList.toggle('carregando', !!R.carregando);
+    pintarResumo(lista);
     if (ehAgenda()) pintarPontosFaixa();
     ligarCorpo(cx);
   }
 
+  /* resumo ao lado do mês: quanto há no período, sem abrir nada */
+  function pintarResumo(lista) {
+    const el = document.getElementById('cb-resumo'); if (!el) return;
+    if (!R.pronto || ehAgenda()) { el.textContent = ''; return; }
+    const n = d => lista.filter(ev => ev.dominio === d && !ev.historico).length;
+    const partes = [[n('gravacao'), 'gravaç', 'ão', 'ões'], [n('publicacao'), 'publicaç', 'ão', 'ões'], [n('video') + n('design'), 'prazo', '', 's']]
+      .filter(x => x[0]).map(x => x[0] + ' ' + x[1] + (x[0] > 1 ? x[3] : x[2]));
+    el.textContent = partes.join(' · ');
+  }
   function ligarCorpo(cx) {
+    cx.querySelectorAll('[data-add-dia]').forEach(b => b.onclick = ev => { ev.stopPropagation(); modalMarcarGravacao(b.dataset.addDia); });
     cx.querySelectorAll('[data-ev]').forEach(b => b.onclick = ev => { ev.stopPropagation(); previa(b.dataset.ev); });
     cx.querySelectorAll('[data-dia-mais]').forEach(b => b.onclick = ev => { ev.stopPropagation(); folhaDia(b.dataset.diaMais); });
     cx.querySelectorAll('[data-grupo]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const [dia, dominio, cliente] = b.dataset.grupo.split('|'); folhaDia(dia, { dominio, cliente }); });
@@ -440,13 +459,27 @@ B7.Calendario = (function () {
   function ariaEvento(ev) {
     return [DOM(ev.dominio).rot, ev.clienteNome, ev.titulo, ev.hora ? 'às ' + ev.hora : horaTx(ev), rotStatus(ev)].filter(Boolean).join(', ');
   }
+  /* cor estável por cliente (matiz a partir do id): a cor identifica o
+     CLIENTE; o ícone identifica o tipo. Escaneia-se o mês por cliente. */
+  const matizCache = new Map();
+  const MATIZES = [262, 330, 205, 160, 24, 292, 140, 4, 228, 42, 182, 312];
+  function matizCli(id) {
+    if (!id) return null;
+    if (matizCache.has(id)) return matizCache.get(id);
+    /* FNV-1a: ids parecidos caem longe; 12 matizes bem separados (sem
+       amarelos lavados) */
+    let h = 2166136261; const t = String(id);
+    for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    const m = MATIZES[h % MATIZES.length]; matizCache.set(id, m); return m;
+  }
+  const estiloCli = id => { const m = matizCli(id); return m == null ? '' : ' style="--cli-h:' + m + '"'; };
   function chipHTML(ev) {
     const txtHTML = ev.dominio === 'gravacao'
       ? '<b>' + esc(ev.clienteNome || ev.titulo) + '</b>'
       : (ev.clienteNome ? '<b>' + esc(ev.clienteNome) + '</b> ' : '') + '<span class="cb-chip-sub">' + esc(ev.titulo) + '</span>';
     const mostrarSt = ev.dominio === 'gravacao' && ev.status !== 'marcada';
-    return '<button type="button" class="cb-chip d-' + ev.dominio + ' t-' + ev.tom + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + (ev.concluido ? ' feito' : '') + '" ' +
-      'data-ev="' + esc(ev.id) + '" title="' + esc(ariaEvento(ev)) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
+    return '<button type="button" class="cb-chip d-' + ev.dominio + ' t-' + ev.tom + (ev.clienteId ? ' tem-cli' : '') + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + (ev.concluido ? ' feito' : '') + '" ' +
+      'data-ev="' + esc(ev.id) + '" title="' + esc(ariaEvento(ev)) + '" aria-label="' + esc(ariaEvento(ev)) + '"' + estiloCli(ev.clienteId) + '>' +
       '<i class="cb-dom-ic">' + DOM(ev.dominio).ic + '</i>' +
       (ev.hora ? '<b class="cb-chip-h">' + ev.hora + '</b>' : '') +
       (mostrarSt ? '<em class="cb-chip-st">' + esc(ev.historico && ev.status === 'remarcada' ? 'Remarcada' : ev.statusRotulo) + '</em>' : '') +
@@ -478,8 +511,8 @@ B7.Calendario = (function () {
     const n = g.itens.length, pl = PLURAL_DOM[g.dominio] || ['item', 'itens'];
     const feitos = g.itens.filter(e => e.concluido).length;
     const aria = (g.clienteNome || 'Cliente') + ': ' + n + ' ' + pl[1] + ' (' + resumoStatus(g.itens) + ')';
-    return '<button type="button" class="cb-chip cb-chip-grupo d-' + g.dominio + (feitos === n ? ' feito' : '') + '" data-grupo="' + esc(g.dia + '|' + g.dominio + '|' + g.clienteId) + '" ' +
-      'title="' + esc(aria) + '" aria-label="' + esc(aria) + '">' +
+    return '<button type="button" class="cb-chip cb-chip-grupo tem-cli d-' + g.dominio + (feitos === n ? ' feito' : '') + '" data-grupo="' + esc(g.dia + '|' + g.dominio + '|' + g.clienteId) + '" ' +
+      'title="' + esc(aria) + '" aria-label="' + esc(aria) + '"' + estiloCli(g.clienteId) + '>' +
       '<i class="cb-dom-ic">' + DOM(g.dominio).ic + '</i>' +
       '<span class="cb-chip-tx"><b>' + esc(g.clienteNome || 'Cliente') + '</b></span>' +
       '<span class="cb-chip-n">' + n + '</span></button>';
@@ -518,7 +551,8 @@ B7.Calendario = (function () {
       const dia = D().somarDias(ini, i), d = D().local(dia);
       const evs = mapa.get(dia) || [], pecas = agrupar(evs);
       const fora = dia.slice(0, 7) !== mesAtual, ehHoje = dia === hoje;
-      cel += '<div class="cb-cel' + (fora ? ' fora' : '') + (ehHoje ? ' hoje' : '') + (dia < hoje ? ' passado' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' fds' : '') + '" role="gridcell">' +
+      cel += '<div class="cb-cel' + (fora ? ' fora' : '') + (ehHoje ? ' hoje' : '') + (dia < hoje ? ' passado' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' fds' : '') + (evs.length ? '' : ' livre') + '" role="gridcell" style="--i:' + i + '">' +
+        (souGestor() && dia >= hoje ? '<button type="button" class="cb-cel-add" data-add-dia="' + dia + '" aria-label="Marcar gravação em ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + '" title="Marcar gravação neste dia">' + IC_MAIS + '</button>' : '') +
         '<button type="button" class="cb-cel-num" data-ir-dia="' + dia + '" aria-label="Abrir ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + (evs.length ? ', ' + evs.length + ' evento' + (evs.length > 1 ? 's' : '') : '') + '">' +
           (ehHoje ? '<span class="cb-hoje-tag">Hoje</span>' : '') + '<b>' + d.getDate() + '</b></button>' +
         '<div class="cb-cel-evs">' + pecas.slice(0, pecas.length > MAX_CEL ? MAX_CEL - 1 : MAX_CEL).map(pecaHTML).join('') +

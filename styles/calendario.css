@@ -460,3 +460,96 @@
 .cb-folha-dia.filtrada .cb-linha{grid-template-columns:minmax(0,1fr) auto!important;min-height:0;padding:10px 12px;}
 .cb-folha-dia.filtrada .cb-linha-h{display:none;}
 .cb-folha-dia.filtrada .cb-linha-lado{grid-column:auto!important;display:flex;flex-direction:row;align-items:center;gap:8px;}
+
+/* =====================================================================
+   CALENDÁRIO — REFINO VISUAL v2 (cor por cliente, grade mais limpa,
+   movimento). Cor = CLIENTE (matiz estável); ícone = TIPO.
+   ===================================================================== */
+.cb{--cli:hsl(var(--cli-h,262) 56% 52%);}
+[data-theme="dark"] .cb,[data-theme="dark"] .cb-folha{--cli:hsl(var(--cli-h,262) 62% 66%);}
+.cb-chip.tem-cli,.cb-card.tem-cli{--cli:hsl(var(--cli-h) 56% 52%);}
+[data-theme="dark"] .cb-chip.tem-cli{--cli:hsl(var(--cli-h) 62% 66%);}
+
+/* ---- topo e barra do mês ---- */
+.cb-topo{margin-bottom:12px;}
+.cb-titulo h1{font-size:24px;}
+.cb-barra{padding:10px 12px;margin-bottom:12px;background:var(--card);border:1px solid var(--borda);border-radius:16px;box-shadow:var(--sh-1);}
+.cb-rotulo{font-size:21px;margin-left:10px;}
+.cb-resumo{margin-left:12px;font-size:12.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.cb-nav{min-width:0;}
+.cb-seta,.cb-hoje{transition:background-color .15s var(--mola), transform .12s var(--mola);}
+.cb-seta:active,.cb-hoje:active{transform:scale(.94);}
+.cb-filtros{margin-bottom:12px;}
+.cb-tipos button{transition:background-color .15s var(--mola), color .15s var(--mola), box-shadow .15s var(--mola);}
+
+/* ---- grade ---- */
+.cb-mes{border-radius:18px;box-shadow:var(--sh-2);}
+.cb-mes-cab div{font-size:10.5px;letter-spacing:.1em;padding:10px 12px;background:color-mix(in srgb, var(--suave) 55%, var(--card));}
+.cb-cel{position:relative;min-height:134px;padding:8px 7px 9px;gap:4px;transition:background-color .18s var(--mola);}
+.cb-cel:hover{background:color-mix(in srgb, var(--acento) 3.5%, var(--card));}
+.cb-cel.fds:hover,.cb-cel.fora:hover{background:color-mix(in srgb, var(--acento) 3.5%, var(--suave));}
+.cb-cel-num{padding:0 2px;min-height:28px;}
+.cb-cel-num b{width:28px;height:28px;min-width:28px;font-size:13px;transition:background-color .15s var(--mola), color .15s var(--mola), transform .15s var(--mola);}
+.cb-cel-num:hover b{transform:scale(1.06);}
+.cb-cel.hoje{background:color-mix(in srgb, var(--acento) 5%, var(--card));box-shadow:inset 0 3px 0 var(--acento);}
+.cb-cel.hoje .cb-cel-num b{background:var(--grad-curto);color:#fff;box-shadow:0 4px 14px -4px color-mix(in srgb, var(--magenta) 70%, transparent);}
+.cb-cel.hoje .cb-hoje-tag{order:2;}
+.cb-cel-evs{gap:4px;}
+
+/* ---- chips: cor do cliente ---- */
+.cb-chip{border-left:3px solid var(--dom,var(--borda-forte));border-radius:7px;padding:4px 7px 4px 6px;gap:6px;font-size:12px;
+  transition:transform .15s var(--mola), box-shadow .15s var(--mola), background-color .15s var(--mola);}
+.cb-chip.tem-cli{border-left-color:var(--cli);background:color-mix(in srgb, var(--cli) 9%, var(--card));}
+.cb-chip.tem-cli:hover{background:color-mix(in srgb, var(--cli) 16%, var(--card));}
+.cb-chip:hover{transform:translateY(-1px);box-shadow:0 6px 14px -8px color-mix(in srgb, var(--cli,var(--ink)) 60%, transparent);z-index:1;}
+.cb-chip:active{transform:translateY(0) scale(.985);}
+.cb-chip .cb-dom-ic{color:var(--dom,var(--ink-3));opacity:.9;}
+.cb-chip-tx b{color:color-mix(in srgb, var(--cli,var(--ink)) 30%, var(--ink));}
+.cb-chip.d-gravacao.tem-cli{background:color-mix(in srgb, var(--cli) 14%, var(--card));}
+.cb-chip.d-gravacao .cb-chip-h{color:var(--ink);}
+.cb-chip-n{background:color-mix(in srgb, var(--cli,var(--dom)) 18%, var(--card));color:color-mix(in srgb, var(--cli,var(--dom)) 70%, var(--ink));}
+.cb-mais{align-self:stretch;text-align:left;padding:3px 8px;border-radius:7px;font-size:11.5px;color:var(--ink-3);transition:background-color .15s var(--mola), color .15s var(--mola);}
+.cb-mais:hover{background:var(--suave);color:var(--acento);}
+
+/* ---- "+" para marcar gravação no dia (gestores) ---- */
+.cb-cel-add{position:absolute;top:8px;right:7px;width:26px;height:26px;border-radius:8px;border:1px solid var(--borda);
+  background:var(--card);color:var(--ink-3);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  opacity:0;transform:scale(.8);transition:opacity .15s var(--mola), transform .15s var(--mola), background-color .15s var(--mola), color .15s var(--mola);}
+.cb-cel-add svg{width:14px;height:14px;}
+.cb-cel:hover .cb-cel-add,.cb-cel-add:focus-visible{opacity:1;transform:none;}
+.cb-cel-add:hover{background:var(--acento);border-color:var(--acento);color:#fff;}
+.cb-cel-add:focus-visible{outline:2px solid var(--acento);outline-offset:1px;}
+@media (pointer:coarse){ .cb-cel-add{display:none;} }
+
+/* ---- semana: cartões com a cor do cliente ---- */
+.cb-sem-col{border-radius:14px;transition:box-shadow .18s var(--mola);}
+.cb-sem-col:hover{box-shadow:var(--sh-2);}
+.cb-card{transition:transform .15s var(--mola), box-shadow .15s var(--mola), border-color .15s var(--mola);}
+.cb-card:hover{transform:translateY(-1px);box-shadow:var(--sh-2);}
+
+/* =========================== MOVIMENTO (só com dados novos na tela) */
+@keyframes cbProx{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+@keyframes cbAnt{from{opacity:0;transform:translateX(-22px)}to{opacity:1;transform:none}}
+@keyframes cbSurge{from{opacity:0;transform:translateY(6px) scale(.995)}to{opacity:1;transform:none}}
+@keyframes cbChip{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes cbHoje{0%{transform:scale(.6);box-shadow:0 0 0 0 color-mix(in srgb, var(--magenta) 55%, transparent)}
+  60%{transform:scale(1.08)}100%{transform:none;box-shadow:0 0 0 9px transparent}}
+/* troca de mês/semana: a grade desliza no sentido da navegação */
+.cb-anim-prox .cb-mes-grade,.cb-anim-prox .cb-semana,.cb-anim-prox .cb-dia{animation:cbProx .28s cubic-bezier(.2,0,0,1) backwards;}
+.cb-anim-ant .cb-mes-grade,.cb-anim-ant .cb-semana,.cb-anim-ant .cb-dia{animation:cbAnt .28s cubic-bezier(.2,0,0,1) backwards;}
+.cb-anim-entrada > *,.cb-anim-vista > *,.cb-anim-hoje > *{animation:cbSurge .26s cubic-bezier(.2,0,0,1) backwards;}
+/* chips entram em onda, célula por célula (atraso máx. 260 ms) */
+.cb-anim .cb-chip,.cb-anim .cb-mais{animation:cbChip .3s cubic-bezier(.2,0,0,1) backwards;animation-delay:min(calc(var(--i, 0) * 7ms + 60ms), 320ms);}
+.cb-anim-filtro .cb-chip,.cb-anim-filtro .cb-mais{animation-duration:.18s;animation-delay:0s;}
+.cb-anim .cb-cel.hoje .cb-cel-num b{animation:cbHoje .7s cubic-bezier(.2,0,0,1) .15s backwards;}
+/* listas do dia e da semana: em cascata curta */
+.cb-anim .cb-linha,.cb-anim .cb-card{animation:cbChip .26s cubic-bezier(.2,0,0,1) backwards;}
+.cb-anim .cb-linha:nth-child(2),.cb-anim .cb-card:nth-child(2){animation-delay:35ms;}
+.cb-anim .cb-linha:nth-child(3),.cb-anim .cb-card:nth-child(3){animation-delay:70ms;}
+.cb-anim .cb-linha:nth-child(4),.cb-anim .cb-card:nth-child(4){animation-delay:105ms;}
+.cb-anim .cb-linha:nth-child(n+5),.cb-anim .cb-card:nth-child(n+5){animation-delay:140ms;}
+.cb-palco{min-width:0;}
+@media (prefers-reduced-motion:reduce){
+  .cb-anim *,.cb-anim > *{animation:none !important;}
+  .cb-chip:hover,.cb-card:hover,.cb-cel-num:hover b{transform:none;}
+}
