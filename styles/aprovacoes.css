@@ -199,3 +199,19 @@
 .sino-cliente{display:block;font-style:normal;font-size:11px;font-weight:700;letter-spacing:.02em;
   color:var(--acento);margin-bottom:1px;}
 .sino-item{align-items:flex-start;}
+/* aviso sem cliente (resumo do dia, compromisso da agenda): símbolo da B7 */
+.sino-logo-b7{background:var(--suave) url('../assets/brand/symbol-color.png') center/62% no-repeat;}
+[data-theme="dark"] .sino-logo-b7{background-image:url('../assets/brand/symbol-white.png');}
+
+/* Filtros do sino: uma linha só, poucas categorias. No celular rola de
+   lado dentro do painel — a página nunca ganha rolagem horizontal. */
+.sino-filtros{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--borda);overflow-x:auto;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:none;}
+.sino-filtros::-webkit-scrollbar{display:none;}
+.sino-filtros button{flex:1 0 auto;border:1px solid var(--borda);background:transparent;color:var(--ink-3);
+  font:inherit;font-size:11.5px;font-weight:600;padding:5px 6px;border-radius:999px;cursor:pointer;
+  transition:background-color var(--t),color var(--t),border-color var(--t);}
+.sino-filtros button:hover{color:var(--ink);border-color:var(--borda-forte);}
+.sino-filtros button[aria-pressed="true"]{background:var(--acento-suave);color:var(--acento);border-color:transparent;}
+.sino-filtros button:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+@media (max-width:600px){ .sino-filtros{padding:8px 12px;} .sino-filtros button{padding:7px 13px;font-size:12.5px;} }

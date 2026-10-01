@@ -946,9 +946,10 @@ B7.DB = (function () {
     /* Lê de notificacoes_resumo (view = notificacoes + nome/logo do
        cliente) pra o sino poder mostrar de quem é cada aviso sem uma
        segunda consulta. A escrita (marcar lida) continua na tabela. */
-    async notificacoes({ limite = 30, antesDe } = {}) {
+    async notificacoes({ limite = 30, antesDe, tipos } = {}) {
       let q = sb().from('notificacoes_resumo').select('*').order('created_at', { ascending: false }).limit(limite);
       if (antesDe) q = q.lt('created_at', antesDe);
+      if (tipos && tipos.length) q = q.in('tipo', tipos);   /* filtro do sino */
       return ok(await q);
     },
     /* Nome/logo de um cliente para enfeitar um aviso que chegou pelo
@@ -999,6 +1000,22 @@ B7.DB = (function () {
         .select('id', { count: 'exact', head: true }).eq('endpoint', endpoint);
       if (error) throw error;
       return (count || 0) > 0;
+    },
+    /* Push de teste só para este aparelho: passa pelo envio de verdade
+       (b7-push → serviço de push do navegador → service worker), mas não
+       grava notificação nenhuma. Devolve { ok, enviado } ou { ok: false,
+       motivo } — "enviado" é o servidor de push ter aceitado, não a
+       confirmação de que o aparelho mostrou. */
+    async testarPush(endpoint) {
+      const { data, error } = await sb().functions.invoke('b7-push', { body: { teste: true, endpoint: endpoint } });
+      if (error) {
+        let corpo = null;
+        try { corpo = JSON.parse(await error.context.clone().text()); } catch (x) {}
+        if (corpo && corpo.motivo) return corpo;
+        /* função ainda na versão antiga (não conhece o teste) ou fora do ar */
+        return { ok: false, motivo: 'funcao_indisponivel' };
+      }
+      return data || { ok: false, motivo: 'falha_envio' };
     },
 
     /* ---- Realtime ----
@@ -1606,20 +1623,30 @@ B7.DB = (function () {
     },
 
     /* histórico da peça: eventos_dominio não é exposto por RLS ampla ao
-       designer, então a timeline vem das próprias versões + notificações
-       que o usuário tem direito de ver (mesma base de dados, sem
-       segundo sistema de auditoria). */
+       designer, então a timeline dele vem das próprias versões +
+       notificações que ele tem direito de ver (mesma base de dados, sem
+       segundo sistema de auditoria).
+       Admin e coordenação leem os eventos da peça direto (a policy
+       eventos_equipe já permite): desde que a notificação passou a ir só
+       para quem ela envolve, a lista de avisos de um gestor deixou de
+       ser o histórico completo da peça. */
     async historicoDesign(deliverableId) {
-      const [versoes, notifs] = await Promise.all([
+      const equipe = !!(B7.Auth && B7.Auth.ehEquipe && B7.Auth.ehEquipe());
+      const [versoes, notifs, eventos] = await Promise.all([
         this.versoesDesign(deliverableId),
         ok(await sb().from('notificacoes').select('*')
-          .eq('link', '#/design/' + deliverableId).order('created_at', { ascending: true }))
+          .eq('link', '#/design/' + deliverableId).order('created_at', { ascending: true })),
+        equipe
+          ? sb().from('eventos_dominio').select('id, tipo, created_at, ator_nome, versao, payload')
+              .eq('alvo_tipo', 'design_deliverable').eq('alvo_id', deliverableId)
+              .order('created_at', { ascending: true }).then(r => (r && r.data) || [], () => [])
+          : Promise.resolve([])
       ]);
       const [arquivos, aprovacoes] = await Promise.all([
         this.arquivosDesign(deliverableId, versoes).catch(() => []),
         this.aprovacoesDesign(deliverableId).catch(() => [])
       ]);
-      return { versoes, notificacoes: notifs, arquivos, aprovacoes };
+      return { versoes, notificacoes: notifs, eventos, arquivos, aprovacoes };
     },
 
     /* envia um blob qualquer pro bucket design-files, num caminho já

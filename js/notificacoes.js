@@ -6,6 +6,11 @@
    ficar visível; se o Realtime estiver disponível, ele só antecipa a
    consulta. Perder uma mensagem do Realtime nunca perde a notificação.
 
+   Quem recebe cada aviso é decidido no banco (notif_entregar, ver
+   migration_notificacoes_inteligentes.sql): atribuído/responsável,
+   função operacional ou admin que escolheu acompanhar. Aqui só se
+   mostra o que chegou.
+
    Estados do badge:
      carregando → antes da primeira resposta do banco (nada de "0" falso)
      número     → não lidas
@@ -16,7 +21,9 @@
 
    Ao chegar notificação nova: som curto (WebAudio, gerado na hora) e,
    se a aba não estiver em foco, notificação do navegador. As duas
-   respeitam as preferências da pessoa (perfis.preferencias).
+   respeitam as preferências da pessoa (perfis.preferencias) — e ficam
+   quietas quando a notificação nasceu silenciosa (a pessoa desligou
+   aquele tipo de aviso: fica no sino, não interrompe).
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -26,6 +33,7 @@ B7.Notif = (function () {
   const PADRAO = { som: true, navegador: true, push: false };
   let naoLidas = null, timer = null, canal = null, canalDe = null, aberto = false, ligado = false;
   let ultimoAnuncio = 0, ultimoIdAnunciado = null;
+  let filtro = 'todas';
 
   /* ------------------------------------------------------ preferências */
   function prefs() {
@@ -39,6 +47,87 @@ B7.Notif = (function () {
     if (u) u.preferencias = Object.assign({}, u.preferencias || {}, novas || patch);
     return prefs();
   }
+
+  /* ------------------------------------------- o que avisa cada pessoa
+     Espelho de notif_pref_ativa() no banco: tudo ligado por padrão,
+     menos o que é acompanhamento amplo. As chaves são as mesmas que
+     perfil_preferencias_gravar aceita. */
+  const DESLIGADO_POR_PADRAO = ['adm_revisoes', 'adm_tudo', 'resumo_diario'];
+  function prefTipo(chave) {
+    const n = prefs().notif;
+    if (n && typeof n[chave] === 'boolean') return n[chave];
+    return !DESLIGADO_POR_PADRAO.includes(chave);
+  }
+  function gravarPrefTipo(chave, v) { return gravarPrefs({ notif: { [chave]: !!v } }); }
+
+  /* Só aparece o grupo da função que a pessoa tem (papel ou função
+     extra — multifunção vê a soma). Nada de opção de Designer para quem
+     não é Designer. */
+  function tenho(funcao) {
+    const A = B7.Auth;
+    if (!A || !A.papel) return false;
+    return A.papel() === funcao || (A.funcoesExtra ? A.funcoesExtra() : []).includes(funcao);
+  }
+  const GRUPOS = [
+    { id: 'meu', titulo: 'Meu trabalho', quem: () => true, itens: [
+      ['atribuicoes', 'Atribuições a mim', 'Demandas, peças e gravações que passam a ser minhas.'],
+      ['prazos', 'Meus prazos', 'Entrega marcada para amanhã.'],
+      ['atrasos', 'Meus atrasos', 'Quando o prazo passa — e de novo se continuar atrasado.'],
+      ['correcoes', 'Correções e ajustes', 'Pedidos da equipe ou do cliente no que eu produzo.'],
+      ['aprovacoes', 'Aprovações do meu trabalho', 'O cliente ou a revisão interna aprovou.']
+    ] },
+    { id: 'video', titulo: 'Gravações', quem: () => tenho('videomaker'), itens: [
+      ['grav_lembretes', 'Lembretes de gravação', 'Na véspera e uma hora antes.'],
+      ['grav_mudancas', 'Gravações remarcadas ou canceladas', 'Das gravações em que sou o responsável.'],
+      ['roteiros_prontos', 'Roteiros prontos para gravar', 'Das gravações em que sou o responsável.']
+    ] },
+    { id: 'design', titulo: 'Design', quem: () => tenho('designer'), itens: [
+      ['design_disponivel', 'Novas demandas disponíveis', 'Linha editorial concluída sem designer definido.']
+    ] },
+    { id: 'coord', titulo: 'Coordenação', quem: () => tenho('coordenador'), itens: [
+      ['co_revisoes', 'Aguardando revisão', 'Roteiros, linhas editoriais, peças de Design e vídeos enviados para revisar.'],
+      ['co_aprovacoes', 'Decisões dos clientes', 'Aprovações, pedidos de ajuste e recusas.'],
+      ['co_producao', 'Andamento da produção', 'Vídeo entregue, designer assumiu uma peça.'],
+      ['co_escalados', 'Atrasos escalados', 'Demanda que continua atrasada dois dias depois do prazo.']
+    ] },
+    { id: 'geral', titulo: 'Agenda e resumo', quem: () => true, itens: [
+      ['agenda', 'Compromissos da agenda', 'Reuniões e apresentações das agendas com lembrete ligado.'],
+      ['resumo_diario', 'Resumo diário', 'Um aviso às 8h com os prazos do dia e as gravações de amanhã. Só sai quando há algo.']
+    ] },
+    { id: 'admin', titulo: 'Acompanhar a operação', quem: () => tenho('admin'),
+      nota: 'Ser administrador não faz você receber tudo. Ligue só o que quer acompanhar.', itens: [
+      ['adm_atrasos', 'Atrasos críticos', 'Demandas atrasadas há 5 dias ou mais.'],
+      ['adm_revisoes', 'Revisões pendentes da agência', 'O mesmo que a coordenação recebe em "Aguardando revisão".'],
+      ['adm_tudo', 'Todas as movimentações da agência', 'Tudo, de todo mundo. Costuma ser muito aviso.']
+    ] }
+  ];
+  /* grupos que valem para a pessoa logada (cliente do Portal não tem nenhum) */
+  function grupos() {
+    const A = B7.Auth;
+    if (!A || !A.papel || A.papel() === 'cliente') return [];
+    return GRUPOS.filter(g => g.quem());
+  }
+
+  /* --------------------------------------------------- filtros do sino
+     Poucas categorias, e só as que existem nos dados. O tipo é o mesmo
+     nome semântico do evento no banco e no push. */
+  const FILTROS = [
+    ['todas', 'Todas', null],
+    ['atribuicoes', 'Atribuições', ['video.atribuida', 'design.atribuida', 'design.criada', 'gravacao.atribuida',
+      'linha.concluida', 'linha.briefing_atualizado', 'roteiro.pronto']],
+    ['prazos', 'Prazos', ['video.prazo_amanha', 'video.atrasado', 'video.atrasado_escalado', 'video.atrasado_critico',
+      'design.prazo_amanha', 'design.atrasado', 'design.atrasado_escalado', 'design.atrasado_critico',
+      'agenda.gravacao_24h', 'agenda.gravacao_1h', 'agenda.apresentacao_24h', 'agenda.apresentacao_1h',
+      'agenda.reuniao_24h', 'agenda.reuniao_1h', 'agenda.outro_24h', 'agenda.outro_1h',
+      'gravacao.remarcada', 'gravacao.cancelada', 'resumo.diario']],
+    ['correcoes', 'Correções', ['video.correcao_solicitada', 'design.ajuste_solicitado', 'design.cliente_ajustes',
+      'design.cliente_recusado', 'aprovacao.ajustes', 'aprovacao.recusada', 'parte.ajustes']],
+    ['aprovacoes', 'Aprovações', ['aprovacao.aprovada', 'aprovacao.enviada', 'aprovacao.anulada', 'parte.aprovada',
+      'parte.anulada', 'design.cliente_aprovado', 'design.cliente_pendente', 'design.cliente_parcial',
+      'design.aprovado_interno', 'design.versao_enviada', 'design.finalizado',
+      'video.aguardando_aprovacao', 'video.aprovado_cliente', 'video.entregue', 'roteiro.revisao', 'linha.revisao']]
+  ];
+  const tiposDoFiltro = () => { const f = FILTROS.find(x => x[0] === filtro); return f ? f[2] : null; };
 
   /* -------------------------------------------------------------- sino */
   function montar() {
@@ -164,9 +253,14 @@ B7.Notif = (function () {
     return n;
   }
 
+  const silenciosa = n => !!(n && n.dados && typeof n.dados === 'object' && n.dados.silenciosa);
+
+  /* Um aviso por notificação: o mesmo id nunca toca duas vezes, venha do
+     Realtime, do polling ou de uma reconexão. */
   async function anunciar(bruta) {
     if (!bruta || bruta.id === ultimoIdAnunciado) return;
     ultimoIdAnunciado = bruta.id; ultimoAnuncio = Date.now();
+    if (silenciosa(bruta)) return;        /* a pessoa desligou este tipo: só o sino */
     const p = prefs();
     if (p.som) tocarSom();
     const n = await comCliente(bruta);
@@ -195,32 +289,15 @@ B7.Notif = (function () {
     } catch (e) {}
   }
 
+  /* Mesmo formato do push (sw.js): o título é o que aconteceu e o corpo
+     traz cliente · item · contexto — os dois já vêm prontos do banco.
+     Mesma tag que o service worker usa: o navegador substitui em vez de
+     mostrar duas vezes o mesmo aviso. */
   function avisarNavegador(n) {
     try {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
-      /* mesma tag que o service worker usa no push: o navegador substitui em
-         vez de mostrar duas vezes o mesmo aviso */
-      /* Mesmo formato do push (sw.js): título curto pelo tipo do
-         evento, a frase completa no corpo. */
-      const TITULOS = {
-        'video.atribuida': 'Nova demanda de vídeo', 'video.aguardando_aprovacao': 'Vídeo enviado para aprovação',
-        'video.entregue': 'Vídeo entregue', 'video.correcao_solicitada': 'Correção solicitada',
-        'video.atrasado': 'Demanda atrasada', 'video.atrasado_escalado': 'Demanda atrasada', 'video.prazo_amanha': 'Entrega é amanhã',
-        'design.criada': 'Nova peça de design', 'design.atribuida': 'Peça atribuída', 'design.demanda_assumida': 'Peça assumida',
-        'design.versao_enviada': 'Versão enviada para revisão', 'design.aprovado_interno': 'Peça aprovada internamente',
-        'design.ajuste_solicitado': 'Ajuste solicitado', 'design.cliente_aprovado': 'Cliente aprovou a peça', 'design.finalizado': 'Peça finalizada',
-        'aprovacao.enviada': 'Material enviado para aprovação', 'aprovacao.aprovada': 'Cliente aprovou', 'aprovacao.ajustes': 'Cliente pediu ajustes',
-        'aprovacao.recusada': 'Cliente recusou', 'aprovacao.anulada': 'Aprovação anulada', 'parte.aprovada': 'Parte aprovada pelo cliente',
-        'linha.concluida': 'Linha editorial concluída', 'teste.notificacao': 'Teste do Sistema B7',
-        'agenda.gravacao_24h': 'Gravação amanhã', 'agenda.gravacao_1h': 'Gravação em 1 hora',
-        'agenda.apresentacao_24h': 'Apresentação amanhã', 'agenda.apresentacao_1h': 'Apresentação em 1 hora',
-        'agenda.reuniao_24h': 'Reunião amanhã', 'agenda.reuniao_1h': 'Reunião em 1 hora',
-        'agenda.outro_24h': 'Compromisso amanhã', 'agenda.outro_1h': 'Compromisso em 1 hora'
-      };
-      const t = n.tipo || '';
-      const titulo = TITULOS[t] || (t.startsWith('video.') ? 'Produção de vídeo' : t.startsWith('design.') ? 'Design' : t.startsWith('aprovacao.') ? 'Aprovações' : t.startsWith('agenda.') ? 'Agenda' : 'Sistema B7');
-      const nt = new Notification(titulo + (n.cliente_nome ? ' · ' + n.cliente_nome : ''), {
-        body: [n.titulo, n.mensagem].filter(Boolean).join('\n'), tag: 'b7-notif-' + n.id,
+      const nt = new Notification(n.titulo || 'Sistema B7', {
+        body: [n.cliente_nome, n.mensagem].filter(Boolean).join(' · '), tag: 'b7-notif-' + n.id,
         icon: n.cliente_logo_url || 'assets/icons/icon-192.png', badge: 'assets/icons/badge-96.png'
       });
       nt.onclick = () => { try { window.focus(); } catch (e) {} if (n.link) location.hash = n.link; nt.close(); };
@@ -243,7 +320,7 @@ B7.Notif = (function () {
     document.querySelectorAll('.sino').forEach(b => b.setAttribute('aria-expanded', 'false'));
   }
   async function abrirPainel(bt) {
-    fechar(); aberto = true;
+    fechar(); aberto = true; filtro = 'todas';
     bt.setAttribute('aria-expanded', 'true');
     /* o primeiro clique no sino também "desbloqueia" o áudio */
     try { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { ctx = ctx || new AC(); ctx.resume().catch(() => {}); } } catch (e) {}
@@ -251,9 +328,12 @@ B7.Notif = (function () {
     p.className = 'sino-painel';
     p.innerHTML = '<div class="sino-cab"><b>Notificações</b>' +
       '<button class="b fina" id="sino-todas">Marcar todas como lidas</button></div>' +
+      '<div class="sino-filtros" role="group" aria-label="Filtrar notificações">' +
+        FILTROS.map(f => '<button type="button" data-filtro="' + f[0] + '" aria-pressed="' + (f[0] === filtro) + '">' + f[1] + '</button>').join('') +
+      '</div>' +
       '<div class="sino-lista"><div class="b7-load"><div class="simbolo"></div></div></div>' +
       '<div class="sino-pe"><button class="b fina" id="sino-mais">Carregar mais</button>' +
-      '<button class="b fina" id="sino-prefs" title="Som, navegador e push">Preferências</button></div>';
+      '<button class="b fina" id="sino-prefs" title="O que te avisa, som e push">Preferências</button></div>';
     const r = bt.getBoundingClientRect();
     p.style.top = (r.bottom + 8) + 'px';
     /* no celular o CSS fixa left/right (folha de largura total) —
@@ -263,16 +343,22 @@ B7.Notif = (function () {
     p.querySelector('#sino-todas').onclick = async () => {
       try { await B7.DB.marcarTodasLidas(); await atualizar(); listar(); } catch (e) {}
     };
+    p.querySelectorAll('[data-filtro]').forEach(b => b.onclick = () => {
+      filtro = b.dataset.filtro;
+      p.querySelectorAll('[data-filtro]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      listar();
+    });
     p.querySelector('#sino-mais').onclick = () => listar(true);
     p.querySelector('#sino-prefs').onclick = () => { fechar(); if (B7.Perfil) B7.Perfil.abrir('notificacoes'); };
     listar();
   }
 
   /* Logo do cliente no item do sino — mesma ideia da Produção de Vídeo:
-     imagem quando existe, iniciais quando não. Cliente sem logo (ou aviso
-     que não é de cliente nenhum, como os de agenda) não deixa buraco. */
+     imagem quando existe, iniciais quando não. Aviso que não é de cliente
+     nenhum (resumo, agenda sem gravação) leva o símbolo da B7: a coluna
+     não fica com buraco e dá pra ver na hora que é do sistema. */
   function logoClienteHTML(n) {
-    if (!n.cliente_nome) return '';
+    if (!n.cliente_nome) return '<span class="sino-logo sino-logo-b7" aria-hidden="true"></span>';
     if (n.cliente_logo_url) {
       /* data-ini vira o conteúdo se a imagem falhar (logo apagada do
          bucket, rede ruim) — melhor as iniciais do que ícone quebrado. */
@@ -283,20 +369,28 @@ B7.Notif = (function () {
     return '<span class="sino-logo sino-logo-vazia">' + esc(ini) + '</span>';
   }
 
-  let ultimas = [];
+  let ultimas = [], pedido = 0;
   async function listar(mais) {
     const p = document.querySelector('.sino-painel'); if (!p) return;
     const lista = p.querySelector('.sino-lista');
+    const meu = ++pedido;       /* troca rápida de filtro: só a última resposta pinta */
     try {
-      const novas = await B7.DB.notificacoes({ limite: 20, antesDe: mais && ultimas.length ? ultimas[ultimas.length - 1].created_at : null });
+      const novas = await B7.DB.notificacoes({
+        limite: 20, tipos: tiposDoFiltro(),
+        antesDe: mais && ultimas.length ? ultimas[ultimas.length - 1].created_at : null
+      });
+      if (meu !== pedido) return;
       ultimas = mais ? ultimas.concat(novas) : novas;
       p.querySelector('#sino-mais').hidden = novas.length < 20;
     } catch (e) {
+      if (meu !== pedido) return;
       lista.innerHTML = '<div class="sino-vazio">Não foi possível carregar. <small>' + esc(e.message || '') + '</small></div>';
       return;
     }
     if (!ultimas.length) {
-      lista.innerHTML = '<div class="sino-vazio"><b>Nada por aqui.</b><small>Decisões dos clientes e novas versões enviadas aparecem nesta lista.</small></div>';
+      lista.innerHTML = filtro === 'todas'
+        ? '<div class="sino-vazio"><b>Nada por aqui.</b><small>O que for atribuído a você, seus prazos e as decisões do seu trabalho aparecem nesta lista.</small></div>'
+        : '<div class="sino-vazio"><b>Nada nesta categoria.</b><small>Veja em “Todas” o que chegou.</small></div>';
       return;
     }
     lista.innerHTML = ultimas.map(n =>
@@ -325,5 +419,6 @@ B7.Notif = (function () {
     });
   }
 
-  return { montar, atualizar, fechar, prefs, gravarPrefs, pedirPermissao, tocarSom, anunciar, PADRAO };
+  return { montar, atualizar, fechar, prefs, gravarPrefs, pedirPermissao, tocarSom, anunciar, PADRAO,
+           prefTipo, gravarPrefTipo, grupos };
 })();

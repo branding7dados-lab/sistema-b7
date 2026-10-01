@@ -85,19 +85,28 @@ B7.Perfil = (function () {
           '</div>' +
         '</div>' +
 
-        /* avisos: som, navegador e push — cada pessoa decide o seu */
+        /* Notificações: como chega (este aparelho) e o que avisa (por
+           função). Cada pessoa decide o seu; nada aqui muda permissão. */
         '<div class="perfil-bloco" id="pf-notif">' +
           '<h4>Notificações</h4>' +
-          '<p class="ajuda">Como você quer ser avisado quando um cliente decidir ou a equipe enviar uma nova versão. ' +
-          'O sino no topo sempre mostra tudo, independentemente destas opções.</p>' +
-          opcao('som', 'Som ao chegar notificação', 'Um toque curto, gerado pelo próprio sistema.') +
-          opcao('navegador', 'Aviso do navegador', 'Quando esta aba não estiver em foco, o navegador mostra o aviso.') +
+          '<p class="ajuda">Você recebe o que envolve o seu trabalho. O sino sempre guarda esses avisos; ' +
+          'aqui você escolhe como eles chegam e quais podem te interromper.</p>' +
+
+          '<div class="pf-sub">Neste aparelho</div>' +
+          '<dl class="pf-estado" id="pf-estado"></dl>' +
           opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.') +
+          opcao('som', 'Som das notificações', 'Um toque curto quando chega um aviso novo com o B7 aberto.') +
+          opcao('navegador', 'Aviso do navegador', 'Quando esta aba não estiver em foco, o navegador mostra o aviso.') +
           '<div class="pf-teste-push">' +
-            '<button type="button" class="b fina contorno" id="pf-testar-notif">Enviar uma notificação de teste</button>' +
-            '<small id="pf-versao-sw"></small>' +
+            '<div class="pf-teste-tx"><b>Testar notificações</b>' +
+            '<small>Envie uma notificação de teste para este dispositivo para confirmar que push, ' +
+            'permissões, som e abertura do B7 estão funcionando.</small></div>' +
+            '<button type="button" class="b fina contorno" id="pf-testar-notif">Enviar notificação de teste</button>' +
           '</div>' +
-          '<div class="perfil-acao"><span class="perfil-msg" id="pf-msg-notif"></span></div>' +
+          '<div class="perfil-acao"><span class="perfil-msg" id="pf-msg-notif" role="status"></span></div>' +
+
+          gruposNotificacao() +
+          '<small class="pf-versao-sw" id="pf-versao-sw"></small>' +
         '</div>' +
 
         /* o que só o administrador muda: mostrado, nunca editável */
@@ -235,6 +244,23 @@ B7.Perfil = (function () {
     '</div>';
   }
 
+  /* O que avisa, agrupado pela função da pessoa (B7.Notif.grupos já
+     devolve só os grupos que valem para ela). Cada grupo é uma sanfona:
+     o primeiro abre, os outros mostram só quantos avisos estão ligados —
+     ninguém precisa encarar quinze interruptores de uma vez. */
+  function gruposNotificacao() {
+    const gs = (B7.Notif && B7.Notif.grupos) ? B7.Notif.grupos() : [];
+    if (!gs.length) return '';
+    return '<div class="pf-sub">O que te avisa</div>' +
+      '<p class="ajuda pf-sub-ajuda">Desligar um aviso tira o push e o som dele. O registro continua no sino.</p>' +
+      gs.map((g, i) =>
+        '<details class="pf-grupo" data-grupo="' + esc(g.id) + '"' + (i === 0 ? ' open' : '') + '>' +
+          '<summary><span>' + esc(g.titulo) + '</span><small data-conta></small></summary>' +
+          (g.nota ? '<p class="ajuda pf-grupo-nota">' + esc(g.nota) + '</p>' : '') +
+          g.itens.map(it => opcao('n:' + it[0], it[1], it[2])).join('') +
+        '</details>').join('');
+  }
+
   /* Cada interruptor grava na hora. "Salvo" só aparece depois de o banco
      responder; se falhar, o interruptor volta e a mensagem explica. */
   async function ligarNotificacoes(m) {
@@ -247,6 +273,31 @@ B7.Perfil = (function () {
       if (!el) return; el.textContent = texto || ''; el.hidden = !texto;
     };
     const pintar = (k, v) => { const b = chave(k); if (b) b.setAttribute('aria-checked', v ? 'true' : 'false'); };
+    const ligada = k => { const b = chave(k); return !!b && b.getAttribute('aria-checked') === 'true'; };
+
+    /* ---- estado deste aparelho: só o que o navegador realmente informa ---- */
+    const PERMISSAO = { permitida: 'Permitida', bloqueada: 'Bloqueada', nao_solicitada: 'Não solicitada', indisponivel: 'Sem suporte' };
+    const quandoTeste = iso => {
+      const d = new Date(iso), h = new Date();
+      const hora = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      return (d.toDateString() === h.toDateString() ? 'Hoje' :
+        String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0')) + ', ' + hora;
+    };
+    function pintarEstado() {
+      const cx = m.querySelector('#pf-estado');
+      if (!cx) return;
+      const perm = B7.Push ? B7.Push.permissao() : 'indisponivel';
+      const t = B7.Push ? B7.Push.ultimoTeste() : null;
+      const linha = (rot, valor, tom) => '<div><dt>' + rot + '</dt><dd' + (tom ? ' class="' + tom + '"' : '') + '>' + esc(valor) + '</dd></div>';
+      cx.innerHTML =
+        linha('Aparelho', B7.Push ? B7.Push.aparelho() : 'Navegador') +
+        linha('Permissão do navegador', PERMISSAO[perm] || perm, perm === 'permitida' ? 'ok' : perm === 'bloqueada' ? 'erro' : '') +
+        linha('Push', ligada('push') ? 'Ativado' : 'Desativado', ligada('push') ? 'ok' : '') +
+        linha('Som', ligada('som') ? 'Ativado' : 'Desativado', ligada('som') ? 'ok' : '') +
+        /* "Enviado" = o servidor de push aceitou. O navegador não confirma
+           que o aparelho exibiu, então aqui nunca aparece "Entregue". */
+        linha('Último teste', t ? quandoTeste(t.em) + ' · ' + (t.ok ? 'Enviado' : 'Não enviado') : 'Nenhum neste aparelho', t ? (t.ok ? 'ok' : 'erro') : '');
+    }
 
     pintar('som', p.som);
     pintar('navegador', p.navegador);
@@ -261,27 +312,59 @@ B7.Perfil = (function () {
       avisoOpcao('push', B7.Push.motivo());
     } else if (B7.Push) {
       btPush.disabled = true;
-      B7.Push.ativo().then(ativo => { pintar('push', ativo); btPush.disabled = false; })
+      B7.Push.ativo().then(ativo => { pintar('push', ativo); btPush.disabled = false; pintarEstado(); })
         .catch(() => { btPush.disabled = false; });
     } else { btPush.disabled = true; }
+    pintarEstado();
 
-    /* Teste de ponta a ponta: o banco cria a notificação de verdade, o
-       webhook chama a b7-push e o aviso chega no aparelho. Ao lado,
-       a versão do service worker ativo — é ele quem desenha o aviso, e
-       um aparelho que ainda não recarregou o site continua com o antigo. */
+    /* ---- o que avisa: um interruptor por tipo, contagem por grupo ---- */
+    const contar = () => m.querySelectorAll('.pf-grupo').forEach(g => {
+      const bs = g.querySelectorAll('.chave');
+      const on = g.querySelectorAll('.chave[aria-checked="true"]').length;
+      const c = g.querySelector('[data-conta]');
+      if (c) c.textContent = on === bs.length ? 'todos ligados' : on ? on + ' de ' + bs.length + ' ligados' : 'nenhum ligado';
+    });
+    m.querySelectorAll('.pf-grupo .chave').forEach(b => {
+      const k = b.dataset.chave.slice(2);
+      pintar(b.dataset.chave, B7.Notif.prefTipo(k));
+      b.onclick = async () => {
+        const v = b.getAttribute('aria-checked') !== 'true';
+        pintar(b.dataset.chave, v); contar();
+        msg.className = 'perfil-msg'; msg.textContent = 'Salvando…';
+        try {
+          await B7.Notif.gravarPrefTipo(k, v);
+          aviso(msg, 'Preferência salva.', 'ok');
+        } catch (e) {
+          pintar(b.dataset.chave, !v); contar();
+          aviso(msg, e.message || 'Não foi possível salvar.', 'erro');
+        }
+      };
+    });
+    contar();
+
+    /* Teste: um push de verdade, só para este aparelho, pelo mesmo envio
+       dos avisos reais (b7-push → serviço de push → service worker). Não
+       grava notificação: não vira pendência nem conta como não lida. O
+       som toca aqui mesmo, dentro do clique, que é quando o navegador
+       deixa. */
     const btTeste = m.querySelector('#pf-testar-notif');
     if (btTeste) btTeste.onclick = async () => {
       btTeste.disabled = true; const rotulo = btTeste.textContent;
       btTeste.textContent = 'Enviando…';
       msg.className = 'perfil-msg'; msg.textContent = '';
+      if (ligada('som')) B7.Notif.tocarSom();
       try {
-        await B7.DB.notificarTeste();
-        aviso(msg, 'Enviado. Deve chegar em alguns segundos — se o push estiver ligado, no celular também.', 'ok');
+        const r = B7.Push ? await B7.Push.testar() : { ok: false, texto: 'Push indisponível neste navegador.' };
+        aviso(msg, r.texto, r.ok ? 'ok' : 'erro');
+        /* inscrição morta foi removida no servidor: o interruptor acompanha */
+        if (r.motivo === 'inscricao_expirada' || r.motivo === 'sem_inscricao') pintar('push', false);
       } catch (e) {
-        aviso(msg, e.message || 'Não foi possível enviar o teste.', 'erro');
-      } finally { btTeste.disabled = false; btTeste.textContent = rotulo; }
+        aviso(msg, 'Não foi possível enviar a notificação de teste.', 'erro');
+      } finally { btTeste.disabled = false; btTeste.textContent = rotulo; pintarEstado(); }
     };
 
+    /* versão do service worker ativo — é ele quem desenha o aviso, e um
+       aparelho que ainda não recarregou o site continua com o antigo */
     const cxVersao = m.querySelector('#pf-versao-sw');
     if (cxVersao && navigator.serviceWorker && navigator.serviceWorker.controller) {
       try {
@@ -303,7 +386,7 @@ B7.Perfil = (function () {
         pintar(k, !v);
         aviso(msg, e.message || 'Não foi possível salvar.', 'erro');
         throw e;
-      }
+      } finally { pintarEstado(); }
     }
 
     chave('som').onclick = async () => {
@@ -339,6 +422,7 @@ B7.Perfil = (function () {
         aviso(msg, e.message || 'Não foi possível alterar o push.', 'erro');
       }
       btPush.disabled = false;
+      pintarEstado();
     };
   }
 

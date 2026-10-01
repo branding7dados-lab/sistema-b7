@@ -12,15 +12,23 @@ Firefox e Safari (no iPhone/iPad só com o site adicionado à tela de início).
    `push_subscricoes` pela função `push_registrar()` — cada pessoa só
    enxerga as suas (RLS).
 2. Toda notificação nasce como linha em `notificacoes` (uma por evento e
-   destinatário — ver APROVACOES.md). Um **Database Webhook** em `INSERT`
-   dessa tabela chama a Edge Function `b7-push`.
+   destinatário). Quem recebe é decidido no banco, num lugar só:
+   `notif_entregar()` (ver `migration_notificacoes_inteligentes.sql`).
+   Um **Database Webhook** em `INSERT` dessa tabela chama a Edge Function
+   `b7-push`. O push é só um canal de entrega: nunca escolhe destinatário.
 3. `b7-push` lê as inscrições do destinatário com a service role, respeita
-   `perfis.preferencias.push` e envia o push assinado com a chave
-   **privada**, que existe só nos secrets da função. Inscrições mortas
-   (404/410) são apagadas.
-4. `sw.js` recebe o push, mostra o aviso (`tag` = id da notificação, o mesmo
-   que o sino usa no aviso do navegador — nunca dois avisos para o mesmo
-   evento) e, no clique, foca a aba do sistema e abre o `link`.
+   `perfis.preferencias.push` e `dados.silenciosa` (a pessoa desligou
+   aquele tipo de aviso) e envia o push assinado com a chave **privada**,
+   que existe só nos secrets da função. Inscrições mortas (404/410) são
+   apagadas. O resultado fica na própria notificação (`push_status`,
+   `push_em`, `push_info`).
+4. `sw.js` recebe o push e mostra o aviso: título = o que aconteceu,
+   corpo = cliente · item · contexto, ícone = logo do cliente (ou o do B7),
+   badge = símbolo B7, e — quando o aparelho suporta — botões que só
+   navegam e a prévia real da peça de Design. `tag` = id da notificação,
+   o mesmo que o sino usa no aviso do navegador: nunca dois avisos para o
+   mesmo evento. No clique (corpo ou botão), foca a aba do sistema e abre
+   o `link`; sem aba aberta, abre uma já no destino.
 
 A chave privada **nunca** entra no frontend, no banco ou no git.
 
@@ -82,23 +90,47 @@ Supabase → Database → Webhooks → *Create a new hook*:
 1. Entre no sistema, abra *Meu perfil → Notificações*, ligue **Push neste
    aparelho** e aceite a permissão. Deve aparecer "Push ativado neste
    aparelho" — e uma linha em `push_subscricoes`.
-2. Feche a aba. Em outra conta, envie um material para aprovação (ou decida
-   um) que gere notificação para você. O aviso deve chegar em segundos.
-3. Sem aviso: veja *Edge Functions → b7-push → Logs* (a resposta traz
-   `enviados`, `removidos`, `falhas` e `motivo`) e *Database → Webhooks →
-   Logs*.
+2. Clique em **Enviar notificação de teste**. O B7 chama a `b7-push` com
+   `{ teste: true, endpoint }` e o JWT da sessão; a função manda um push
+   de verdade só para aquele aparelho e **não grava notificação** (o
+   teste não vira pendência, não conta como não lida, não escala).
+   "Enviado" significa que o serviço de push aceitou a mensagem — o
+   navegador não confirma a exibição, então a tela nunca diz "entregue".
+3. Sem aviso: o bloco "Neste aparelho" mostra permissão, push, som e o
+   último teste. No servidor, veja `notificacoes.push_status` da
+   notificação em questão (`enviado`, `silenciada`, `push_desligado`,
+   `sem_inscricao`, `falha`) e *Edge Functions → b7-push → Logs*.
 
 ## Preferências
 
-`perfis.preferencias` (jsonb) guarda `som`, `navegador` e `push`, por
-pessoa, gravadas por `perfil_preferencias_gravar()` — só as três chaves,
-só booleanos, só na própria linha. A view `minha_sessao` devolve a coluna.
+`perfis.preferencias` (jsonb), por pessoa, gravadas por
+`perfil_preferencias_gravar()` — só chaves conhecidas, só booleanos, só
+na própria linha.
+
+Canais:
 
 - **som**: toque curto gerado por WebAudio ao chegar notificação (aba aberta).
 - **navegador**: `Notification` do navegador quando a aba não está em foco
   (exige permissão; pedida ao ligar).
 - **push**: liga/desliga a inscrição deste aparelho. `b7-push` também
   respeita a chave: `push: false` = nada enviado, mesmo com inscrição.
+
+O que avisa (`preferencias.notif`), em *Meu perfil → Notificações → O que
+te avisa* — cada pessoa só vê os grupos da função que tem:
+
+| Grupo | Chaves | Padrão |
+|---|---|---|
+| Meu trabalho | `atribuicoes`, `prazos`, `atrasos`, `correcoes`, `aprovacoes` | ligado |
+| Gravações (videomaker) | `grav_lembretes`, `grav_mudancas`, `roteiros_prontos` | ligado |
+| Design (designer) | `design_disponivel` | ligado |
+| Coordenação | `co_revisoes`, `co_aprovacoes`, `co_producao`, `co_escalados` | ligado |
+| Agenda e resumo | `agenda` · `resumo_diario` | ligado · desligado |
+| Acompanhar a operação (admin) | `adm_atrasos` · `adm_revisoes`, `adm_tudo` | ligado · desligado |
+
+Desligar um aviso do próprio trabalho tira push, som e aviso do navegador;
+o registro continua no sino (a notificação nasce com `dados.silenciosa`).
+As opções `adm_*` e `resumo_diario` são diferentes: desligadas, a
+notificação nem é criada.
 
 ## Limites conhecidos
 

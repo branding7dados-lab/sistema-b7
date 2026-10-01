@@ -2498,16 +2498,26 @@ B7.Design = (function () {
      está em "Ajustes"/"Ajustes do cliente" porque alguém escreveu o
      que precisa mudar; isso não pode ficar perdido no meio da linha
      do tempo, lá embaixo */
+  /* O texto do pedido vive em dados.detalhe: a mensagem da notificação
+     ficou curta de propósito (é o que aparece na tela de bloqueio).
+     Notificações anteriores a essa mudança traziam o texto na própria
+     mensagem. Para a gestão, que não recebe o aviso do designer, o texto
+     vem do evento da peça. */
+  const TIPOS_AJUSTE = ['design.ajuste_solicitado', 'design.cliente_ajustes', 'design.cliente_recusado'];
+  const detalheDe = n => ((n && n.dados && typeof n.dados.detalhe === 'string' && n.dados.detalhe) || (n && n.mensagem) || '').trim();
   function feedbackAjuste(d, x) {
     if (d.status !== 'ajustes' && d.status !== 'ajustes_cliente') return '';
-    const notifs = (x.notificacoes || []).slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-    const n = notifs.find(n => n.mensagem && n.mensagem.trim());
-    if (!n) return '';
+    const recente = (a, b) => (b.created_at || '').localeCompare(a.created_at || '');
+    const n = (x.notificacoes || []).slice().sort(recente).find(n => TIPOS_AJUSTE.includes(n.tipo) && detalheDe(n));
+    const e = n ? null : (x.eventos || []).slice().sort(recente)
+      .find(e => e.tipo === 'design.ajuste_solicitado' && e.payload && e.payload.mensagem);
+    const texto = n ? detalheDe(n) : e ? String(e.payload.mensagem).trim() : '';
+    if (!texto) return '';
     return '<div class="ds-ws-feedback' + (d.status === 'ajustes_cliente' ? ' cliente' : '') + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
         '<path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>' +
       '<div><b>' + (d.status === 'ajustes_cliente' ? 'Ajuste do cliente' : 'Ajuste solicitado') + '</b>' +
-      '<p>' + esc(n.mensagem.trim()) + '</p></div></div>';
+      '<p>' + esc(texto) + '</p></div></div>';
   }
 
   /* conteúdo principal do workspace — cada formato real (Card, Reel,
@@ -2684,7 +2694,7 @@ B7.Design = (function () {
             equipe && !souResponsavel && !!d.designer_id && nenhumaVersaoEnviada) : '') +
 
           '<details class="ds-dr-bloco ds-dr-recolhido"' + (drawer.versoesAberto || !ehMultiparte() ? ' open' : '') + ' id="dv-versoes"><summary>Histórico de versões</summary>' + blocoVersoes(versoes) + '</details>' +
-          '<details class="ds-dr-bloco ds-dr-recolhido"' + (drawer.timelineAberta ? ' open' : '') + ' id="dv-timeline"><summary>Linha do tempo</summary>' + blocoTimeline(x.notificacoes || []) + '</details>' +
+          '<details class="ds-dr-bloco ds-dr-recolhido"' + (drawer.timelineAberta ? ' open' : '') + ' id="dv-timeline"><summary>Linha do tempo</summary>' + blocoTimeline(x) + '</details>' +
         '</div>' +
       '</div>';
 
@@ -3114,13 +3124,52 @@ B7.Design = (function () {
     });
     return ev;
   }
-  function blocoTimeline(notifs) {
-    const itens = notifs.map(n => ({ t: n.created_at, titulo: n.titulo, mensagem: n.mensagem })).concat(eventosPorParte());
+  /* Evento da peça → linha da linha do tempo (só a gestão lê eventos).
+     Texto entre aspas é sempre algo que alguém escreveu. */
+  function itemDoEvento(e) {
+    const p = e.payload || {};
+    const v = 'V' + pad2(Number(p.numero || e.versao || 1));
+    const por = e.ator_nome ? ' por ' + e.ator_nome : '';
+    const T = {
+      'design.criada': 'Peça criada' + por,
+      'design.atribuida': 'Atribuída a ' + (p.designer_nome || 'um designer') + por,
+      'design.demanda_assumida': (e.ator_nome || 'Um designer') + ' assumiu a peça',
+      'design.versao_enviada': v + ' enviada para revisão' + por,
+      'design.ajuste_solicitado': 'Ajuste solicitado na ' + v + por,
+      'design.aprovado_interno': v + ' aprovada na revisão interna' + por,
+      'design.finalizado': 'Peça finalizada' + por,
+      'design.cliente_aprovado': 'Cliente aprovou a peça',
+      'design.cliente_ajustes': 'Cliente solicitou ajustes',
+      'design.cliente_recusado': 'Cliente recusou a peça',
+      'design.cliente_pendente': 'Decisão do cliente anulada',
+      'design.cliente_parcial': 'Decisão do cliente anulada',
+      'design.prazo_amanha': 'Prazo no dia seguinte',
+      'design.atrasado': 'Prazo vencido',
+      'design.atrasado_escalado': 'Atraso levado à coordenação',
+      'design.atrasado_critico': 'Atraso crítico'
+    };
+    if (!T[e.tipo]) return null;
+    return { t: e.created_at, titulo: T[e.tipo],
+             citacao: e.tipo === 'design.ajuste_solicitado' && p.mensagem ? String(p.mensagem) : null };
+  }
+  function blocoTimeline(x) {
+    const eventos = (x && x.eventos) || [];
+    const base = eventos.length
+      ? eventos.map(itemDoEvento).filter(Boolean)
+      : ((x && x.notificacoes) || []).map(n => {
+          const det = n.dados && typeof n.dados.detalhe === 'string' ? n.dados.detalhe : null;
+          /* pedido de ajuste anterior a dados.detalhe: o texto escrito vinha na mensagem */
+          return det || (TIPOS_AJUSTE.includes(n.tipo) && n.mensagem)
+            ? { t: n.created_at, titulo: n.titulo, citacao: det || n.mensagem }
+            : { t: n.created_at, titulo: n.titulo, nota: n.mensagem };
+        });
+    const itens = base.concat(eventosPorParte().map(p => ({ t: p.t, titulo: p.titulo, citacao: p.mensagem })));
     if (!itens.length) return '<p class="vazio-leve">Sem atividade registrada ainda.</p>';
     const ordenadas = itens.sort((a, b) => (b.t || '').localeCompare(a.t || ''));
     return '<div class="ds-timeline">' + ordenadas.map(n =>
       '<div class="ds-tl"><span class="ds-tl-pt"></span><div>' + esc(n.titulo || '') +
-        (n.mensagem ? '<p class="ds-tl-msg">“' + esc(n.mensagem) + '”</p>' : '') +
+        (n.citacao ? '<p class="ds-tl-msg">“' + esc(n.citacao) + '”</p>' : '') +
+        (n.nota ? '<p class="ds-tl-msg">' + esc(n.nota) + '</p>' : '') +
         '<small>' + esc(B7.UI.quando(n.t)) + '</small></div></div>').join('') + '</div>';
   }
 

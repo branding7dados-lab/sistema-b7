@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v119';
+const CACHE = 'roteiros-b7-v120';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -74,15 +74,21 @@ self.addEventListener('fetch', ev => {
 });
 
 /* =====================================================================
-   PUSH — o servidor (Edge Function b7-push) manda um JSON pequeno:
-   { id, titulo, mensagem, link }. A tag repete o id da notificação, a
-   mesma que o sino usa no aviso do navegador: o aparelho mostra um
-   aviso só, nunca dois para o mesmo evento.
+   PUSH — o servidor (Edge Function b7-push) manda um JSON pequeno. No
+   formato atual (v: 2) o aviso já vem pronto do banco:
+     { v, id, tipo, titulo, corpo, logo, imagem, acoes: [{id, rotulo, link}], link }
+   titulo = o que aconteceu; corpo = cliente · item · contexto.
+   A tag repete o id da notificação, a mesma que o sino usa no aviso do
+   navegador: o aparelho mostra um aviso só, nunca dois para o mesmo
+   evento.
+
+   Melhoria progressiva: ícone do cliente, imagem e botões entram quando
+   existem e o aparelho suporta. Sem nada disso, sobram título, corpo e o
+   clique que abre o registro certo — o aviso continua útil.
    ===================================================================== */
-/* Título curto por tipo de evento; a frase completa ("Kevin atribuiu
-   "X" a Kevin") vai no corpo. Antes a frase inteira era o título e o
-   corpo ficava vazio — no Android isso vira um bloco de texto grande e
-   sem hierarquia. */
+/* Formato antigo (sem v): título curto pelo tipo e a frase no corpo.
+   Fica aqui para o intervalo em que a função de push ainda não foi
+   publicada na versão nova. */
 const TITULOS = {
   'video.atribuida': 'Nova demanda de vídeo',
   'video.aguardando_aprovacao': 'Vídeo enviado para aprovação',
@@ -136,13 +142,14 @@ self.addEventListener('message', ev => {
 self.addEventListener('push', ev => {
   let d = {};
   try { d = ev.data ? ev.data.json() : {}; } catch (e) { d = { titulo: ev.data ? ev.data.text() : '' }; }
-  /* "Nova demanda de vídeo · BLW" — o cliente entra no título, que é a
-     parte em negrito do aviso, então dá pra saber de quem é a demanda
-     sem abrir. A logo do cliente vira o ícone grande (bucket público);
-     o símbolo da B7 continua no badge, que é sempre monocromático. */
-  const titulo = tituloDe(d) + (d.cliente ? ' · ' + d.cliente : '');
-  const corpo = [d.titulo, d.mensagem].filter(Boolean).join('\n');
-  ev.waitUntil(self.registration.showNotification(titulo, {
+  const v2 = Number(d.v) >= 2;
+  /* A logo do cliente vira o ícone grande (bucket público) — bate o olho
+     e já se sabe de quem é. Sem cliente ou sem logo, ícone do B7. O
+     símbolo da B7 fica sempre no badge, que o Android pinta de uma cor
+     só: logo de cliente ali viraria um quadrado branco. */
+  const titulo = v2 ? (d.titulo || 'Sistema B7') : tituloDe(d) + (d.cliente ? ' · ' + d.cliente : '');
+  const corpo = v2 ? (d.corpo || '') : [d.titulo, d.mensagem].filter(Boolean).join('\n');
+  const base = {
     body: corpo || '',
     icon: d.logo || './assets/icons/icon-192.png',
     badge: './assets/icons/badge-96.png',
@@ -150,23 +157,42 @@ self.addEventListener('push', ev => {
     renotify: !!d.id,
     timestamp: Date.now(),
     vibrate: [80, 40, 80],
-    data: { link: d.link || '#/', id: d.id || null }
-  }));
+    data: { link: d.link || '#/', id: d.teste ? null : (d.id || null), links: {} }
+  };
+  const rica = Object.assign({}, base, { data: Object.assign({}, base.data) });
+  /* botões: só navegam, e só os que o aparelho comporta */
+  const max = (self.Notification && Notification.maxActions) || 0;
+  const acoes = (Array.isArray(d.acoes) ? d.acoes : [])
+    .filter(a => a && a.id && a.rotulo && typeof a.link === 'string' && a.link.startsWith('#/')).slice(0, max);
+  if (acoes.length) {
+    rica.actions = acoes.map(a => ({ action: String(a.id), title: String(a.rotulo) }));
+    rica.data.links = acoes.reduce((m, a) => { m[a.id] = a.link; return m; }, {});
+  }
+  if (d.imagem) rica.image = d.imagem;
+  ev.waitUntil(
+    self.registration.showNotification(titulo, rica)
+      /* aparelho que recusa imagem ou botões: o aviso simples sai mesmo assim */
+      .catch(() => self.registration.showNotification(titulo, base))
+  );
 });
 
-/* Clique no aviso: foca uma aba já aberta do sistema e pede a ela que
-   troque de rota (mensagem para js/push.js) — sem recarregar nada. Sem
-   aba aberta, abre uma nova já no destino. */
+/* Clique no aviso (no corpo ou num botão): foca uma aba já aberta do
+   sistema e pede a ela que troque de rota (mensagem para js/push.js) —
+   sem recarregar nada e sem abrir uma segunda aba. Sem aba aberta, abre
+   uma nova já no destino. Todo botão só navega: nenhuma ação de negócio
+   acontece a partir da tela de bloqueio. */
 self.addEventListener('notificationclick', ev => {
   ev.notification.close();
-  const link = (ev.notification.data && ev.notification.data.link) || '#/';
+  const dados = ev.notification.data || {};
+  let link = (ev.action && dados.links && dados.links[ev.action]) || dados.link || '#/';
+  if (typeof link !== 'string' || !link.startsWith('#/')) link = '#/';
   const destino = new URL(link, self.registration.scope).href;
   ev.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(lista => {
       const aba = lista.find(c => c.url.startsWith(self.registration.scope));
       if (!aba) return self.clients.openWindow(destino);
       return Promise.resolve(aba.focus && aba.focus()).catch(() => aba).then(c => {
-        (c || aba).postMessage({ tipo: 'b7-abrir', link: link });
+        (c || aba).postMessage({ tipo: 'b7-abrir', link: link, id: dados.id || null });
       });
     })
   );
