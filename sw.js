@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v120';
+const CACHE = 'roteiros-b7-v121';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -35,7 +35,9 @@ const CASCA = [
 
 self.addEventListener('install', ev => {
   ev.waitUntil(
-    caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u => c.add(u))))
+    /* 'reload': a casca nova é baixada do servidor, nunca do cache HTTP —
+       senão a reserva offline nasceria com arquivos da versão anterior */
+    caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u => c.add(new Request(u, { cache: 'reload' })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -58,8 +60,13 @@ self.addEventListener('fetch', ev => {
     return;
   }
 
+  /* 'no-cache' = sempre perguntar ao servidor se o arquivo mudou (uma
+     consulta leve; sem mudança, vem um 304 e o navegador usa a cópia
+     dele). Sem isto, o fetch daqui pegava a cópia do cache HTTP do
+     navegador, que o GitHub Pages deixa valer por 10 minutos: publicava-
+     se uma versão e a tela continuava a antiga até o prazo vencer. */
   ev.respondWith(
-    fetch(ev.request).then(resp => {
+    fetch(ev.request, { cache: 'no-cache' }).then(resp => {
       const copia = resp.clone();
       caches.open(CACHE).then(c => c.put(ev.request, copia)).catch(() => {});
       return resp;
