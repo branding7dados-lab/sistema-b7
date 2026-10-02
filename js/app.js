@@ -758,73 +758,95 @@ B7.Rota = (function () {
   function ligarAtualizacao() {
     if (atualizacaoLigada) return;
     atualizacaoLigada = true;
-    if (navigator.serviceWorker && location.protocol.startsWith('http')) {
-      /* Uma versão nova assumiu o controle com esta página já aberta: o
-         que está na memória é o código da versão anterior (foi assim que
-         o celular ficou com service worker novo e tela antiga), e a
-         página precisa recarregar para pegar o novo. Só vale para
-         atualização — na primeira instalação não havia controlador. */
-      /* QUANDO APLICAR. A atualização entra sozinha, mas nunca por cima do
-         que a pessoa está fazendo: recarregar apaga o que está digitado
-         num campo, fecha um modal no meio e derruba uma apresentação.
-         Então recarrega na hora se a aba está em segundo plano ou se
-         ninguém mexe há alguns segundos, e nada está aberto/por salvar;
-         senão espera — e aproveita a próxima troca de tela, que é um
-         momento em que recarregar não custa nada. O aviso com "Atualizar"
-         fica na tela enquanto isso, para quem quiser na hora. */
-      let ultimoGesto = Date.now();
-      ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(t =>
-        window.addEventListener(t, () => { ultimoGesto = Date.now(); }, { passive: true, capture: true }));
-      const ocupado = () => {
-        if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias()) return true;
-        if (document.fullscreenElement || document.webkitFullscreenElement) return true;
-        if (document.querySelector('.fundo-modal, .preview-fundo, .apresentacao')) return true;
-        const a = document.activeElement;
-        return !!(a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
-      };
-      const parado = () => Date.now() - ultimoGesto > 8000;
-      /* trava contra laço: no máximo uma recarga automática a cada 30 s */
-      const recarregouAgora = () => {
-        try { return Date.now() - (+sessionStorage.getItem('b7-recarga') || 0) < 30000; } catch (e) { return false; }
-      };
-      const recarregar = () => {
-        try { sessionStorage.setItem('b7-recarga', String(Date.now())); } catch (e) {}
-        location.reload();
-      };
+    if (!location.protocol.startsWith('http')) return;
 
-      if (navigator.serviceWorker.controller) {
-        let avisou = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (avisou) return; avisou = true;
-          const tentar = () => { if (!ocupado() && !recarregouAgora() && (document.hidden || parado())) recarregar(); };
-          tentar();
-          B7.UI.toast('Nova versão do B7 disponível.', { acao: 'Atualizar', tempo: 24 * 3600 * 1000, aoClicar: recarregar });
-          setInterval(tentar, 2000);
-          document.addEventListener('visibilitychange', tentar);
-          window.addEventListener('hashchange', () => { if (!ocupado() && !recarregouAgora()) recarregar(); });
-        });
+    /* COMO DESCOBRIR. A página sabe a versão que está rodando
+       (B7.Auth.VERSAO) e pergunta ao servidor qual é a publicada, lendo o
+       próprio js/auth.js: se o número é outro, há versão nova. É a
+       pergunta direta, e não depende do service worker — a primeira
+       tentativa dependia (esperava o evento de troca de service worker),
+       e esse evento não chega a uma página aberta com recarregamento
+       forçado (Ctrl+F5), que fica fora do controle dele: nada aparecia.
+
+       Pergunta a cada 30 s com a aba visível, e na hora em que ela volta
+       a aparecer, ganha foco ou a internet volta (no celular: reabrir o
+       app). Sem rede, o service worker devolve a cópia guardada — a
+       versão é a mesma e nada acontece. */
+    const minha = (B7.Auth && B7.Auth.VERSAO) || '';
+    let registro = null;      /* service worker, quando existe */
+    let alvo = null;          /* versão publicada, diferente da que roda */
+    let avisou = false, conferindo = false, ultima = 0;
+
+    async function conferir(forcar) {
+      if (!minha || conferindo || !navigator.onLine) return;
+      if (!forcar && (document.hidden || Date.now() - ultima < 10000)) return;
+      conferindo = true; ultima = Date.now();
+      try {
+        const r = await fetch('js/auth.js', { cache: 'no-store' });
+        if (r.ok) {
+          const m = /VERSAO\s*=\s*'([^']+)'/.exec(await r.text());
+          if (m && m[1] !== minha) haVersaoNova(m[1]);
+        }
+      } catch (e) { /* sem rede agora: pergunta de novo depois */ }
+      finally { conferindo = false; }
+    }
+
+    /* QUANDO APLICAR. A atualização entra sozinha, mas nunca por cima do
+       que a pessoa está fazendo: recarregar apaga o que está digitado
+       num campo, fecha um modal no meio e derruba uma apresentação.
+       Então recarrega na hora se a aba está em segundo plano ou se
+       ninguém mexe há alguns segundos, e nada está aberto/por salvar;
+       senão espera — e aproveita a próxima troca de tela, que é um
+       momento em que recarregar não custa nada. O aviso com "Atualizar"
+       fica na tela enquanto isso, para quem quiser na hora. */
+    let ultimoGesto = Date.now();
+    ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(t =>
+      window.addEventListener(t, () => { ultimoGesto = Date.now(); }, { passive: true, capture: true }));
+    const ocupado = () => {
+      if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias()) return true;
+      if (document.fullscreenElement || document.webkitFullscreenElement) return true;
+      if (document.querySelector('.fundo-modal, .preview-fundo, .apresentacao')) return true;
+      const a = document.activeElement;
+      return !!(a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
+    };
+    const parado = () => Date.now() - ultimoGesto > 8000;
+    /* trava contra laço: recarrega sozinho uma vez por versão. Se depois
+       de recarregar a versão ainda não for a publicada (servidor ainda
+       distribuindo os arquivos), fica só o aviso. */
+    const jaTentei = () => { try { return sessionStorage.getItem('b7-recarga-alvo') === alvo; } catch (e) { return false; } };
+    const recarregar = () => {
+      try { sessionStorage.setItem('b7-recarga-alvo', alvo || ''); } catch (e) {}
+      location.reload();
+    };
+    const tentar = () => { if (alvo && !ocupado() && !jaTentei() && (document.hidden || parado())) recarregar(); };
+
+    function haVersaoNova(v) {
+      alvo = v;
+      /* o service worker novo renova a reserva offline; a recarga em si
+         já busca os arquivos na rede, com ou sem ele */
+      if (registro) registro.update().catch(() => {});
+      if (!avisou) {
+        avisou = true;
+        B7.UI.toast('Nova versão do B7 disponível.', { acao: 'Atualizar', tempo: 24 * 3600 * 1000, aoClicar: recarregar });
+        setInterval(tentar, 2000);
+        document.addEventListener('visibilitychange', tentar);
+        window.addEventListener('hashchange', () => { if (alvo && !ocupado() && !jaTentei()) recarregar(); });
       }
+      tentar();
+    }
 
-      /* QUANDO DESCOBRIR. Sozinho, o navegador só confere se há service
-         worker novo ao abrir a página (ou uma vez por dia): com o B7
-         aberto, uma versão publicada passava despercebida até alguém
-         recarregar. Agora a própria página pergunta — a cada 30 s
-         enquanto está visível, e na hora em que volta a aparecer (trocou
-         de aba, abriu o app no celular, a internet voltou). É uma
-         consulta leve ao sw.js; havendo versão nova, ele se instala,
-         assume e cai no fluxo acima. */
-      navigator.serviceWorker.register('./sw.js').then(reg => {
-        let ultima = 0;
-        const conferir = () => {
-          if (document.hidden || !navigator.onLine || Date.now() - ultima < 10000) return;
-          ultima = Date.now();
-          reg.update().catch(() => {});
-        };
-        setInterval(conferir, 30000);
-        document.addEventListener('visibilitychange', conferir);
-        window.addEventListener('focus', conferir);
-        window.addEventListener('online', conferir);
-      }).catch(() => {});
+    setInterval(() => conferir(false), 30000);
+    document.addEventListener('visibilitychange', () => conferir(false));
+    window.addEventListener('focus', () => conferir(false));
+    window.addEventListener('pageshow', () => conferir(false));
+    window.addEventListener('online', () => conferir(true));
+
+    if (navigator.serviceWorker) {
+      /* um service worker novo assumiu: confere na hora, sem esperar o
+         relógio. Se a página já está na versão publicada (acabou de ser
+         aberta), não há o que fazer — antes isso gerava um aviso à toa. */
+      navigator.serviceWorker.addEventListener('controllerchange', () => conferir(true));
+      navigator.serviceWorker.register('./sw.js').then(reg => { registro = reg; }).catch(() => {});
     }
   }
 
