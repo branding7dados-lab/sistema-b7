@@ -976,6 +976,10 @@ B7.DB = (function () {
        mesmo caminho de uma notificação de verdade (banco → webhook →
        b7-push), então serve pra conferir o push de ponta a ponta. */
     async notificarTeste() { return this.rpc('notificar_teste'); },
+    /* um exemplo de cada aviso do B7, só para quem chama (migration_
+       notificacao_teste_todos.sql). grupo: null = todos | design | video |
+       gravacoes | cliente | geral. Devolve quantos foram criados. */
+    async notificarTesteTodos(grupo) { return this.rpc('notificar_teste_todos', { p_grupo: grupo || null }); },
     async marcarTodasLidas() { return this.rpc('notif_marcar_todas', {}); },
     /* mais recente não lida — usada só para decidir se toca o som de
        "cheguei e tem coisa nova" no login/retorno, sem trazer a lista

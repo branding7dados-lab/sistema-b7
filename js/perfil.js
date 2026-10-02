@@ -141,6 +141,19 @@ B7.Perfil = (function () {
               'permissão e som estão funcionando.</small></div>' +
               '<button type="button" class="b fina contorno" id="pf-testar-notif">Enviar teste</button>' +
             '</div>' +
+            /* um exemplo de cada aviso do sistema, só para a própria pessoa:
+               serve para ver como cada um chega (texto, imagem, som, link)
+               sem precisar provocar o evento de verdade */
+            (B7.Auth.papel && B7.Auth.papel() !== 'cliente' ? '<div class="pf-teste-push pf-teste-todos">' +
+              '<div class="pf-teste-tx"><b>Ver um exemplo de cada aviso</b>' +
+              '<small>Envia só para você um exemplo de cada notificação do B7, com o título começando por “Teste”. ' +
+              'Ninguém mais recebe e nada é alterado nas demandas.</small></div>' +
+              '<select class="campo fina" id="pf-exemplos-grupo" aria-label="Quais avisos">' +
+                '<option value="">Todos (43 avisos)</option><option value="design">Design (17)</option>' +
+                '<option value="video">Vídeo (9)</option><option value="gravacoes">Gravações e agenda (8)</option>' +
+                '<option value="cliente">Decisões do cliente (6)</option><option value="geral">Revisão e resumo (3)</option></select>' +
+              '<button type="button" class="b fina contorno" id="pf-exemplos">Enviar exemplos</button>' +
+            '</div>' : '') +
             '<details class="pf-detalhes"><summary>Detalhes deste aparelho</summary>' +
               '<dl class="pf-estado" id="pf-estado"></dl>' +
               '<small class="pf-versao-sw" id="pf-versao-sw"></small>' +
@@ -436,6 +449,21 @@ B7.Perfil = (function () {
       } catch (e) {
         aviso(msg, 'Não foi possível enviar a notificação de teste.', 'erro');
       } finally { btTeste.disabled = false; btTeste.textContent = rotulo; pintarEstado(); }
+    };
+
+    const btExemplos = m.querySelector('#pf-exemplos');
+    if (btExemplos) btExemplos.onclick = async () => {
+      const grupo = m.querySelector('#pf-exemplos-grupo').value;
+      btExemplos.disabled = true; const rotulo = btExemplos.textContent;
+      btExemplos.textContent = 'Enviando…';
+      msg.className = 'perfil-msg'; msg.textContent = '';
+      try {
+        const n = await B7.DB.notificarTesteTodos(grupo);
+        aviso(msg, n + (n === 1 ? ' aviso de exemplo enviado' : ' avisos de exemplo enviados') +
+          ' para você. Veja no sino' + (ligada('push') ? ' e neste aparelho.' : '. O push está desligado neste aparelho.'), 'ok');
+      } catch (e) {
+        aviso(msg, 'Não foi possível enviar os exemplos. ' + (e.message || ''), 'erro');
+      } finally { btExemplos.disabled = false; btExemplos.textContent = rotulo; }
     };
 
     /* versão do service worker ativo — é ele quem desenha o aviso, e um
