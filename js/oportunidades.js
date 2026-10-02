@@ -538,6 +538,9 @@ B7.Oportunidades = (function () {
       const op = it.op;
       const nivel = f.cliente ? (it.rel && it.rel.nivel) : it.nivelMax;
       if (f.rel === 'relevantes' ? !nivel : (f.rel && nivel !== f.rel)) return false;
+      /* feriado de estado/cidade onde não há cliente: existe na base, mas
+         só aparece quando alguém procura (filtro de abrangência ou busca) */
+      if (ehLocal(op) && !nivel && !f.abr && !f.q) return false;
       if (f.cat && !(op.categorias || []).includes(f.cat) && !(op.categorias || []).some(c => B.temas.get(c) && B.temas.get(c).pai === f.cat)) return false;
       if (f.conf && op.confiabilidade !== f.conf) return false;
       if (f.abr === 'local' ? !ehLocal(op) : (f.abr && op.abrangencia !== f.abr)) return false;
