@@ -24,7 +24,7 @@ Só front-end (`js/painel.js`, `styles/painel.css`). **Nenhuma migration, nenhum
 5. **Minha produção:** o número aparece em cima de toda barra com entrega; selo "acima da média" quando a semana atual passa da média das anteriores. Não existe selo "abaixo da média", porque a semana ainda está em curso.
 6. **Próximos compromissos:** "quando · cliente" fica numa linha só, com reticências no cliente.
 
-Resultado medido na página de teste em 390 px de largura: a tela inteira caiu de aproximadamente 1.900 px para 1.449 px de altura, e a primeira tela agora mostra frase do dia, indicadores, os itens urgentes e a semana.
+Resultado medido no site publicado, com os seus dados, em 390 px de largura: o Painel foi de 1.536 px para 1.449 px de altura, mesmo ganhando a frase do dia. O ganho principal não é de tamanho, é de ordem: a primeira tela agora mostra a frase do dia, os quatro indicadores e os dois itens urgentes, e o começo da semana.
 
 ## Quem mais recebe
 
@@ -39,7 +39,9 @@ Os Painéis do Coordenador, do Designer e o composto (várias funções) usam as
 - Cenário da sua captura (1 atrasada, 1 vence hoje, gravações na segunda): frase "Você tem 1 demanda atrasada e 1 entrega para hoje."; quatro indicadores com 72–88 px de altura; semana com cinco dias de 60 px; barras com 5, 2 e 7; selo "acima da média"; compromissos com reticências; sem rolagem lateral; sem erro no console. Tema escuro, em captura.
 - Cenário sem nada urgente: "Nada urgente hoje. Próxima gravação: segunda, 05/10, 09:30."; indicadores zerados sem cor; "Tudo em dia por aqui." Tema claro, em captura.
 
-**Site publicado, sessão real, somente leitura:** ver o fim deste relatório.
+**Site publicado (versão `2026-10-02-zc`), sessão real, somente leitura, emulação de celular 390×844:**
+
+- Frase "Você tem 1 demanda atrasada e 1 entrega para hoje."; indicadores 1, 1, 2 e 4, iguais aos de antes da mudança; semana com segunda e quinta com gravação e sexta com prazo; barras 5, 2 e 7; selo "acima da média"; sem rolagem lateral; sem erro no console. Conferido em captura de tela (parte de cima) e por leitura da página (parte de baixo). Nenhum link foi aberto e nada foi gravado.
 
 **Não testado:**
 
