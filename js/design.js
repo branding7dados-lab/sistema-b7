@@ -166,7 +166,7 @@ B7.Design = (function () {
       (equipe ? '<button class="b pri" id="ds-nova">+ Nova demanda de Design</button>' : '') + '</div>' +
       (equipe ? '<nav class="ds-abas" role="tablist">' + ABAS_EQUIPE.map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (F.aba === k ? 'on' : '') + '" aria-selected="' + (F.aba === k) + '">' +
-        esc(r) + '</button>').join('') + '</nav>' : '') +
+        esc(r) + (STATUS_DA_ABA[k] ? '<i class="ds-aba-n" data-aba-n="' + k + '"></i>' : '') + '</button>').join('') + '</nav>' : '') +
       '<div id="ds-resumo"></div>' +
       '<div id="ds-barra"></div>' +
       '<div id="ds-area"></div>' +
@@ -208,6 +208,10 @@ B7.Design = (function () {
     const clientesPresentes = [...new Map(dados.filter(d => d.client_id)
       .map(d => [d.client_id, d.cliente_nome])).entries()].sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
 
+    const extras = equipe;
+    const nExtras = [F.tipo, F.status, F.linha, F.prioridade].filter(Boolean).length;
+    if (F._maisFiltros === undefined) F._maisFiltros = nExtras > 0;
+
     cx.innerHTML = '<div class="ds-barra">' +
       '<div class="ds-busca-cx"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
         '<input class="campo fina ds-busca" id="ds-busca" placeholder="Buscar cliente, linha editorial ou peça…" ' +
@@ -216,12 +220,21 @@ B7.Design = (function () {
         : (clientesPresentes.length > 1 ? opc('cliente', F.cliente, [['', 'Cliente']].concat(clientesPresentes), 'Cliente') : '')) +
       (equipe ? opc('designer', F.designer, [['', 'Designer'], ['sem', 'Sem responsável']]
         .concat(designers.map(p => [p.id, p.nome])), 'Designer') : '') +
-      opc('tipo', F.tipo, [['', 'Tipo']].concat(TIPOS), 'Tipo') +
-      opc('status', F.status, [['', 'Status']].concat(STATUS), 'Status') +
+      (extras ? '' : opc('tipo', F.tipo, [['', 'Tipo']].concat(TIPOS), 'Tipo') +
+        opc('status', F.status, [['', 'Status']].concat(STATUS), 'Status')) +
       opc('prazo', F.prazo, [['', 'Prazo'], ['atrasadas', 'Atrasadas'], ['hoje', 'Para hoje'],
         ['semana', 'Próximos 7 dias'], ['sem', 'Sem prazo']], 'Prazo') +
-      (equipe && linhasPresentes.length ? opc('linha', F.linha, [['', 'Linha editorial']].concat(linhasPresentes), 'Linha editorial') : '') +
-      (equipe ? opc('prioridade', F.prioridade, [['', 'Prioridade']].concat(PRIORIDADES), 'Prioridade') : '') +
+      /* equipe: os filtros de uso raro ficam atrás de "Mais filtros" —
+         a barra do dia a dia é busca, cliente, designer e prazo */
+      (extras ? '<button class="b fina contorno ds-mais' + (nExtras ? ' ativo' : '') + '" id="ds-mais" aria-expanded="' + !!F._maisFiltros + '">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>' +
+          (F._maisFiltros ? 'Menos filtros' : 'Mais filtros') + (nExtras ? '<i>' + nExtras + '</i>' : '') + '</button>' : '') +
+      (extras && F._maisFiltros
+        ? opc('tipo', F.tipo, [['', 'Tipo']].concat(TIPOS), 'Tipo') +
+          opc('status', F.status, [['', 'Status']].concat(STATUS), 'Status') +
+          (linhasPresentes.length ? opc('linha', F.linha, [['', 'Linha editorial']].concat(linhasPresentes), 'Linha editorial') : '') +
+          opc('prioridade', F.prioridade, [['', 'Prioridade']].concat(PRIORIDADES), 'Prioridade')
+        : '') +
       (filtrosAtivos() ? '<button class="b fina contorno" id="ds-limpar">Limpar filtros</button>' : '') +
       '<div class="ds-espaco"></div>' +
       '<span class="ds-total" id="ds-total"></span>' +
@@ -241,7 +254,16 @@ B7.Design = (function () {
       F[s.dataset.filtro] = s.value; guardarFiltros();
       s.classList.toggle('ativo', !!s.value);
       desenharArea(); atualizarLimpar();
+      const mais = cx.querySelector('#ds-mais');
+      if (mais) {
+        const n = [F.tipo, F.status, F.linha, F.prioridade].filter(Boolean).length;
+        mais.classList.toggle('ativo', n > 0);
+        const i = mais.querySelector('i');
+        if (n && i) i.textContent = n; else if (n) mais.insertAdjacentHTML('beforeend', '<i>' + n + '</i>'); else if (i) i.remove();
+      }
     });
+    const mais = cx.querySelector('#ds-mais');
+    if (mais) mais.onclick = () => { F._maisFiltros = !F._maisFiltros; guardarFiltros(); desenharBarra(); };
     cx.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
       F.vista = b.dataset.vista; guardarFiltros();
       cx.querySelectorAll('[data-vista]').forEach(x => x.classList.toggle('on', x === b));
@@ -318,6 +340,20 @@ B7.Design = (function () {
     });
   }
 
+  const mostraFinalizadas = () => F.aba === 'finalizadas' || F.status === 'finalizado';
+
+  /* número ao lado das abas que são um recorte de status — contado na
+     fila inteira, sem os filtros da barra (é o tamanho da fila, não o
+     resultado da busca) */
+  function contarAbas() {
+    painel().querySelectorAll('[data-aba-n]').forEach(el => {
+      const st = STATUS_DA_ABA[el.dataset.abaN] || [];
+      const n = dados.filter(d => st.includes(d.status)).length;
+      el.textContent = n || '';
+      el.hidden = !n;
+    });
+  }
+
   /* fila do designer: o que é dele + o que está sem responsável, para
      poder assumir. Nunca mistura peças de outra pessoa. */
   function filaDoDesigner(lista) {
@@ -359,11 +395,25 @@ B7.Design = (function () {
     }
 
     desenharResumoEquipe();
-    const vis = filtrar(dados);
+    contarAbas();
+    /* peça finalizada sai do caminho: só aparece na aba "Finalizadas" (ou
+       com o filtro de status em "Finalizado"). O total avisa quantas
+       ficaram de fora e leva até elas. */
+    let vis = filtrar(dados);
+    const verFinalizadas = mostraFinalizadas();
+    const guardadas = verFinalizadas ? 0 : vis.filter(d => d.status === 'finalizado').length;
+    if (!verFinalizadas) vis = vis.filter(d => d.status !== 'finalizado');
     const total = painel().querySelector('#ds-total');
-    if (total) total.textContent = vis.length + (vis.length === 1 ? ' peça' : ' peças');
+    if (total) {
+      total.innerHTML = vis.length + (vis.length === 1 ? ' peça' : ' peças') +
+        (guardadas ? ' · <button type="button" class="ds-ver-final" id="ds-ver-final" title="Abrir a aba Finalizadas">' +
+          guardadas + (guardadas === 1 ? ' finalizada' : ' finalizadas') + '</button>' : '');
+      const ver = total.querySelector('#ds-ver-final');
+      if (ver) ver.onclick = () => { F.aba = 'finalizadas'; guardarFiltros(); desenharAbasEstado(); desenharBarra(); desenharArea(); };
+    }
 
-    area.innerHTML = (F.vista === 'lista' ? viewLista(vis) : viewQuadro(vis));
+    area.innerHTML = F.vista === 'lista' ? viewLista(vis)
+      : F.aba === 'finalizadas' ? viewFinalizadas(vis) : viewQuadro(vis);
 
     ligarArea(area);
     ligarThumbs(area);
@@ -1067,18 +1117,33 @@ B7.Design = (function () {
     const grupos = new Map();
     itens.forEach(d => { const k = d.client_id || '_'; if (!grupos.has(k)) grupos.set(k, { nome: d.cliente_nome || 'Interno', itens: [] }); grupos.get(k).itens.push(d); });
     const lista = [...grupos.entries()].sort((a, b) => a[1].nome.localeCompare(b[1].nome));
-    F._backlogFechados = F._backlogFechados || [];
+    /* grupos começam recolhidos: a coluna vira a lista de clientes com
+       fila, e cada um abre com um clique (fica lembrado na sessão) */
+    F._backlogAbertos = F._backlogAbertos || [];
     return '<section class="ds-col ds-col-backlog" data-status="' + s + '">' +
       '<header><b>' + esc(rotuloStatus(s)) + '</b><span class="ds-cont">' + itens.length + '</span></header>' +
       '<div class="ds-lista">' + lista.map(([k, g]) => {
         const semDono = g.itens.filter(d => !d.designer_id).length;
-        return '<details class="ds-grupo-cli"' + (F._backlogFechados.includes(k) ? '' : ' open') + ' data-grupo="' + esc(k) + '">' +
-          '<summary><b>' + esc(g.nome) + '</b><span class="ds-cont">' + g.itens.length + '</span>' +
-            (semDono ? '<button class="b fina contorno" data-atribuir-grupo="' + esc(k) + '" title="Atribuir um designer a todas as peças deste cliente ainda sem responsável">Atribuir ' + semDono + '</button>' : '') +
+        const logo = (g.itens.find(d => d.cliente_logo_url) || {}).cliente_logo_url;
+        return '<details class="ds-grupo-cli"' + (F._backlogAbertos.includes(k) ? ' open' : '') + ' data-grupo="' + esc(k) + '">' +
+          '<summary>' + avatarCliente(g.nome, logo) +
+            '<span class="ds-grupo-tx"><b title="' + esc(g.nome) + '">' + esc(g.nome) + '</b>' +
+              '<small>' + g.itens.length + (g.itens.length === 1 ? ' peça' : ' peças') +
+              (semDono && semDono < g.itens.length ? ' · ' + semDono + ' sem responsável' : '') + '</small></span>' +
+            (semDono ? '<button class="b fina contorno" data-atribuir-grupo="' + esc(k) + '" title="Atribuir um designer às ' + semDono + ' peças deste cliente ainda sem responsável">Atribuir</button>' : '') +
           '</summary>' +
-          g.itens.sort(ordenarPorUrgencia).map(d => cartao(d, { compacto: true })).join('') +
+          g.itens.sort(ordenarPorUrgencia).map(d => cartao(d, { compacto: true, grupo: true })).join('') +
         '</details>';
       }).join('') + '</div></section>';
+  }
+
+  /* aba "Finalizadas": não é etapa de trabalho, é arquivo — grade de
+     cartões, a mais recente primeiro, em vez de uma coluna só */
+  function viewFinalizadas(vis) {
+    if (!vis.length) return blocoVazio();
+    return '<div class="ds-lista ds-lista-grade ds-finalizadas">' +
+      vis.slice().sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+        .map(d => cartao(d, { compacto: true })).join('') + '</div>';
   }
 
   function viewQuadro(vis) {
@@ -1105,6 +1170,15 @@ B7.Design = (function () {
           '<button data-col-movel="' + s + '" class="' + (F._colMovel === s ? 'on' : '') + '">' +
           esc(rotuloStatus(s)) + '<b>' + porStatus(s).length + '</b></button>').join('') + '</div>' +
         coluna(F._colMovel) + '</div>';
+    }
+    /* uma etapa só na tela (aba "Revisão interna", um atalho do "Precisa
+       de você"): uma coluna estreita com dezenas de cartões desperdiça a
+       largura — vira grade */
+    if (ehEquipe() && statusPresentes.length === 1) {
+      const unica = porStatus(statusPresentes[0]);
+      if (unica.length && !(statusPresentes[0] === 'aguardando_producao' && unica.length > 6)) {
+        return '<div class="ds-lista ds-lista-grade">' + unica.map(d => cartao(d, { compacto: true })).join('') + '</div>';
+      }
     }
     return '<div class="ds-quadro">' + statusPresentes.map(coluna).join('') + '</div>';
   }
@@ -1223,22 +1297,31 @@ B7.Design = (function () {
           (d.cliente_nome ? '<span class="ds-cli">' + esc(d.cliente_nome) + (d.linha_nome && !op.compacto ? ' · ' + esc(d.linha_nome) : '') + '</span>' : '<span class="ds-cli sem">Interno</span>') +
         '</div>' +
       '</div>' +
-      '<div class="ds-tags">' +
-        /* no quadro da equipe a coluna já é o status — o chip só repete;
-           fica só o que acrescenta (versão, ajuste pendente, origem) */
-        (op.compacto ? (d.status === 'ajustes_cliente' ? '<span class="ds-chip ajustes_cliente">Cliente</span>' : '')
-                     : '<span class="ds-chip ' + esc(d.status) + '">' + esc(rotuloStatus(d.status)) + '</span>') +
-        (d.ultima_versao ? '<span class="ds-v">V' + String(d.ultima_versao).padStart(2, '0') + '</span>' : '') +
-        (feedback ? '<span class="ds-feedback">Ajuste pendente</span>' : '') +
-      '</div>' +
-      '<div class="ds-pe">' +
-        (d.designer_nome
-          ? '<span class="ds-resp">' + B7.UI.avatarPessoa({ nome: d.designer_nome, avatar_url: d.designer_avatar }, 'xs') +
-              '<b>' + esc(d.designer_nome.split(/\s+/)[0]) + '</b></span>'
-          : '<span class="ds-resp-vazio"><span class="ds-sem-resp"></span>Sem responsável</span>') +
-        (info ? '<span class="ds-prazo' + (info.atrasada ? ' atrasada' : info.hoje ? ' hoje' : '') + '">' + esc(info.txt) + '</span>' : '') +
-      '</div>' +
+      cartaoRodape(d, op, info, feedback) +
     '</article>';
+  }
+
+  /* rodapé do cartão. No quadro da equipe (compacto) a coluna já é o
+     status, então tudo cabe numa linha só: responsável à esquerda;
+     ajuste pendente, versão e prazo à direita. Dentro de um grupo de
+     cliente sem responsável nem prazo não há o que dizer — o grupo já
+     diz "sem responsável" e tem o botão Atribuir. */
+  function cartaoRodape(d, op, info, feedback) {
+    const versao = d.ultima_versao ? '<span class="ds-v">V' + String(d.ultima_versao).padStart(2, '0') + '</span>' : '';
+    const ajuste = feedback ? '<span class="ds-feedback">Ajuste pendente</span>' : '';
+    const prazo = info ? '<span class="ds-prazo' + (info.atrasada ? ' atrasada' : info.hoje ? ' hoje' : '') + '">' + esc(info.txt) + '</span>' : '';
+    const resp = d.designer_nome
+      ? '<span class="ds-resp">' + B7.UI.avatarPessoa({ nome: d.designer_nome, avatar_url: d.designer_avatar }, 'xs') +
+          '<b>' + esc(d.designer_nome.split(/\s+/)[0]) + '</b></span>'
+      : '<span class="ds-resp-vazio"><span class="ds-sem-resp"></span>Sem responsável</span>';
+    if (!op.compacto) {
+      return '<div class="ds-tags"><span class="ds-chip ' + esc(d.status) + '">' + esc(rotuloStatus(d.status)) + '</span>' + versao + ajuste + '</div>' +
+        '<div class="ds-pe">' + resp + prazo + '</div>';
+    }
+    const cliente = d.status === 'ajustes_cliente' ? '<span class="ds-chip ajustes_cliente">Cliente</span>' : '';
+    if (op.grupo && !d.designer_nome && !prazo && !ajuste && !versao) return '';
+    return '<div class="ds-pe">' + (op.grupo && !d.designer_nome ? '' : resp) +
+      '<span class="ds-pe-dir">' + cliente + ajuste + versao + prazo + '</span></div>';
   }
 
   /* qual caminho usar pra desenhar a prévia de uma peça, sem nunca
@@ -1385,8 +1468,9 @@ B7.Design = (function () {
     });
     area.querySelectorAll('[data-col-movel]').forEach(b => b.onclick = () => { F._colMovel = b.dataset.colMovel; desenharArea(); });
     area.querySelectorAll('details.ds-grupo-cli').forEach(det => det.ontoggle = () => {
-      const k = det.dataset.grupo; F._backlogFechados = F._backlogFechados || [];
-      if (det.open) F._backlogFechados = F._backlogFechados.filter(x => x !== k); else if (!F._backlogFechados.includes(k)) F._backlogFechados.push(k);
+      const k = det.dataset.grupo; F._backlogAbertos = F._backlogAbertos || [];
+      if (!det.open) F._backlogAbertos = F._backlogAbertos.filter(x => x !== k); else if (!F._backlogAbertos.includes(k)) F._backlogAbertos.push(k);
+      if (det.open) ligarThumbs(det);
     });
     area.querySelectorAll('[data-atribuir-grupo]').forEach(b => b.onclick = e => {
       e.preventDefault(); e.stopPropagation();
