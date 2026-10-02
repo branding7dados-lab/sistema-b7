@@ -137,9 +137,9 @@ Deno.serve(async (req: Request) => {
     if (base !== 'ok') return json({ ok: false, categoria: base });      /* sem base: avisa e não gasta uma chamada */
     t = {
       recurso: 'analise', acao: Analise.nomeNoRegistro(pedido), entidadeTipo: 'roteiro', entidadeId: pedido.roteiroId,
-      tamanhoEntrada: ctx.cenas.reduce((n, c) => n + c.fala.length, 0),
+      tamanhoEntrada: ctx.cenas.reduce((n, c) => n + c.fala.length, 0) + pedido.instrucao.length,
       mensagens: Analise.montarMensagens(pedido, ctx), maxTokens: Analise.limiteDeSaida(pedido),
-      temperatura: 0.3, limpar: Analise.limpador(pedido, ctx), json: true, esquema: Analise.esquema(pedido)
+      temperatura: pedido.operacao === 'rascunho_roteiro' ? 0.8 : 0.3, limpar: Analise.limpador(pedido, ctx), json: true, esquema: Analise.esquema(pedido)
     };
   } else {
     const pedido = (pLinha as { ok: true; pedido: Linha.Pedido }).pedido;

@@ -10,9 +10,13 @@
    Também desenha os cartões da revisão do conjunto da linha editorial
    (js/ia-linha.js usa cartoesHTML).
 
+   E uma ação que escreve: "Criar rascunho", para o roteiro ainda sem
+   fala. Ela só PROPÕE cenas; entram as que a pessoa marcar.
+
    REGRA DO PRODUTO: análise nunca altera nada. Não há "aplicar": são
-   observações, e a equipe decide o que fazer. Nada roda sozinho — só
-   quando a pessoa clica. O resultado fica em memória enquanto a tela
+   observações, e a equipe decide o que fazer. De uma observação dá para
+   ir direto ao assistente da cena ("Ajustar com IA"), que continua
+   exigindo Gerar e Aplicar. Nada roda sozinho — só quando a pessoa clica. O resultado fica em memória enquanto a tela
    está aberta; reabrir mostra o mesmo resultado sem gastar outra
    chamada, com aviso se o roteiro mudou desde então.
    ===================================================================== */
@@ -68,7 +72,10 @@ B7.IAAnalise = (function () {
       (it.sugestao ? '<p class="ia-ach-sug"><span>Sugestão</span>' + esc(it.sugestao) + '</p>' : '') +
       (conteudos.length ? '<div class="ia-ach-itens">' + conteudos.map(c =>
         '<span class="ia-chip" title="' + esc(c.titulo) + '">' + (c.tipo ? esc(c.tipo) + ' · ' : '') + esc(c.titulo) + '</span>').join('') + '</div>' : '') +
-      (it.cena_id ? '<button type="button" class="b fina" data-ver-cena="' + esc(it.cena_id) + '">Ver cena</button>' : '') +
+      (it.cena_id ? '<div class="ia-ach-acoes">' +
+        /* fecha o ciclo: a sugestão vira instrução no assistente da cena — quem gera e aplica é a pessoa */
+        (it.sugestao ? '<button type="button" class="b fina pri" data-ajustar-cena="' + esc(it.cena_id) + '" data-instrucao="' + esc(it.sugestao) + '">Ajustar com IA</button>' : '') +
+        '<button type="button" class="b fina contorno" data-ver-cena="' + esc(it.cena_id) + '">Ver cena</button></div>' : '') +
     '</article>';
   }
   function cartoesHTML(itens, resumo) {
@@ -137,6 +144,10 @@ B7.IAAnalise = (function () {
       if (cp) cp.onclick = () => B7.UI.copiarTexto(textoParaCopiar(g.itens, g.resumo),
         { msgSucesso: 'Observações copiadas.', msgErro: 'Não foi possível copiar.', msgVazio: 'Não há observações para copiar.' });
       corpo.querySelectorAll('[data-ver-cena]').forEach(b => b.onclick = () => { const id = b.dataset.verCena; m.fechar(); hooks.verCena(id); });
+      corpo.querySelectorAll('[data-ajustar-cena]').forEach(b => b.onclick = () => {
+        const id = b.dataset.ajustarCena, instrucao = b.dataset.instrucao;
+        m.fechar(); hooks.ajustarCena(id, instrucao);
+      });
     }
 
     async function pedir() {
@@ -168,22 +179,143 @@ B7.IAAnalise = (function () {
     return m;
   }
 
-  /* botões de entrada no cabeçalho do roteiro (vazio com a IA desligada) */
-  function botoesHTML(roteiro) {
-    if (!ligado() || !roteiro) return '';
-    return '<div class="ia-roteiro-acoes">' +
-      '<button type="button" class="ia-entrada" data-ia-analise="revisar_roteiro">' + IC + '<span>Revisar roteiro</span></button>' +
-      /* só existe quando o roteiro nasceu de um conteúdo da Linha Editorial — vínculo real, nunca por título */
-      (roteiro.content_id ? '<button type="button" class="ia-entrada" data-ia-analise="comparar_planejamento">' + IC + '<span>Comparar com planejamento</span></button>' : '') +
-    '</div>';
+  /* ------------------------------------------------ rascunho do roteiro
+     A única ação daqui que escreve — e mesmo assim só propõe: a pessoa vê
+     as cenas, marca as que quer e só então elas entram no roteiro, pelo
+     caminho de sempre do editor (hooks.adicionarCenas). */
+  const LIMITE_INSTRUCAO = 300;
+  function abrirRascunho(roteiro, hooks) {
+    if (!roteiro || aberta) return;
+    aberta = true;
+    const S = { fase: 'config', itens: [], marcados: new Set(), instrucao: '', erro: '', aviso: '', token: 0, ctrl: null, ocupado: false, fechada: false };
+    const m = B7.UI.modal(
+      '<div class="ia-jan-cab"><span class="ia-titulo">' + IC + '<b>Criar rascunho do roteiro</b></span>' +
+        '<button class="ico" data-fecha aria-label="Fechar">✕</button></div>' +
+      '<div class="sub ia-jan-sub">Uma primeira versão das cenas, a partir do título e do objetivo' +
+        (roteiro.content_id ? ' e do conteúdo planejado na Linha Editorial' : '') + '. Você escolhe o que entra no roteiro.</div>' +
+      '<div class="ia-jan-corpo" data-corpo></div><div class="acoes" data-rodape></div>',
+      { larga: true, extra: 'ia-janela', aoFechar: () => { S.fechada = true; aberta = false; if (S.ctrl) S.ctrl.abort(); } });
+    const corpo = m.querySelector('[data-corpo]'), rodape = m.querySelector('[data-rodape]');
+    const plural = n => n === 1 ? '1 cena' : n + ' cenas';
+
+    function pintar() {
+      if (S.fechada) return;
+      let c = '', r = '';
+      if (S.fase === 'config') {
+        c = '<label class="rot" for="ia-rasc-in">O QUE O VÍDEO PRECISA DIZER <span class="leve">— opcional</span></label>' +
+          '<textarea class="campo" id="ia-rasc-in" rows="3" maxlength="' + LIMITE_INSTRUCAO + '" ' +
+            'placeholder="Ex.: explicar em 3 passos como funciona a primeira consulta, tom leve">' + esc(S.instrucao) + '</textarea>' +
+          '<p class="ia-nota">Nenhuma cena é criada agora: primeiro você vê o rascunho.</p>';
+        r = '<button class="b" data-fecha>Cancelar</button><button class="b pri" data-gerar>Gerar rascunho</button>';
+      } else if (S.fase === 'gerando') {
+        c = '<div class="ia-gerando" role="status" aria-live="polite"><span class="ia-pontos" aria-hidden="true"><i></i><i></i><i></i></span>' +
+          '<span>Escrevendo o rascunho…</span><button type="button" class="b fina" data-ia-cancelar>Cancelar</button></div>';
+      } else if (S.fase === 'erro') {
+        c = '<p class="ia-erro" role="alert">' + esc(S.erro) + '</p><p class="ia-nota">Nada foi alterado no roteiro.</p>';
+        r = '<button class="b" data-fecha>Fechar</button><button class="b pri" data-voltar>Voltar</button>';
+      } else {
+        const n = S.marcados.size;
+        c = (S.aviso ? '<p class="ia-nota erro" role="alert">' + esc(S.aviso) + '</p>' : '') +
+          '<div class="ia-itens" role="group" aria-label="Cenas do rascunho">' + S.itens.map((it, i) => {
+            const on = S.marcados.has(i);
+            return '<label class="ia-item' + (on ? ' on' : '') + '"><input type="checkbox" data-item="' + i + '"' + (on ? ' checked' : '') + '>' +
+              '<span class="ia-item-tx"><span class="ia-item-meta"><span class="ia-chip pilar">' + esc(it.tipo) + '</span>' +
+                (it.orientacao ? '<span class="ia-chip">' + esc(it.orientacao) + '</span>' : '') + '</span>' +
+              '<span class="ia-item-fala">' + esc(it.fala) + '</span></span></label>';
+          }).join('') + '</div>' +
+          '<p class="ia-nota">É um rascunho: confira dados e o que estiver entre [colchetes] antes de gravar. As cenas marcadas entram no roteiro e podem ser editadas normalmente.</p>';
+        r = '<button class="b" data-fecha>Descartar</button><button class="b contorno" data-gerar' + (S.ocupado ? ' disabled' : '') + '>Gerar outro</button>' +
+          '<button class="b pri" data-adicionar' + (!n || S.ocupado ? ' disabled' : '') + '>' +
+          (S.ocupado ? 'Adicionando…' : n ? 'Adicionar ' + plural(n) : 'Adicionar cenas') + '</button>';
+      }
+      corpo.innerHTML = c; rodape.innerHTML = r;
+      m.querySelectorAll('[data-fecha]').forEach(b => b.onclick = () => m.fechar());
+      const campo = corpo.querySelector('#ia-rasc-in'); if (campo) campo.oninput = () => { S.instrucao = campo.value; };
+      const cancelar = corpo.querySelector('[data-ia-cancelar]'); if (cancelar) cancelar.onclick = () => m.fechar();
+      const g = rodape.querySelector('[data-gerar]'); if (g) g.onclick = () => pedir();
+      const v = rodape.querySelector('[data-voltar]'); if (v) v.onclick = () => { S.fase = 'config'; pintar(); };
+      corpo.querySelectorAll('[data-item]').forEach(ch => ch.onchange = () => {
+        const i = +ch.dataset.item;
+        if (ch.checked) S.marcados.add(i); else S.marcados.delete(i);
+        pintar();
+        const de = corpo.querySelector('[data-item="' + i + '"]'); if (de) de.focus();
+      });
+      const ad = rodape.querySelector('[data-adicionar]'); if (ad) ad.onclick = () => adicionar();
+    }
+
+    async function pedir() {
+      if (S.fase === 'gerando' || S.ocupado) return;
+      const instrucao = (S.instrucao || '').replace(/\s+/g, ' ').trim();
+      S.fase = 'gerando'; S.erro = ''; S.aviso = '';
+      const token = S.token = ++seq;
+      S.ctrl = new AbortController();
+      pintar();
+      try { await hooks.salvar(); } catch (e) {}
+      const dados = { operacao: 'rascunho_roteiro', roteiro_id: roteiro.id };
+      if (instrucao.length >= 3) dados.instrucao = instrucao;
+      const resp = await B7.IA.pedir('analise', dados, { signal: S.ctrl.signal });
+      if (S.fechada || S.token !== token) return;
+      S.ctrl = null;
+      if (resp.cancelado) return;
+      if (resp.ok && resp.itens && resp.itens.length) {
+        S.itens = resp.itens; S.marcados = new Set(resp.itens.map((x, i) => i)); S.fase = 'lista';
+      } else {
+        S.fase = 'erro';
+        S.erro = resp.categoria === 'contexto'
+          ? 'Ainda não há assunto para escrever. Dê um título ou objetivo ao roteiro, ou escreva acima o que o vídeo precisa dizer.'
+          : (resp.mensagem || 'Não foi possível criar o rascunho agora.');
+      }
+      pintar();
+    }
+
+    async function adicionar() {
+      if (S.ocupado || !S.marcados.size) return;
+      S.ocupado = true; S.aviso = '';
+      pintar();
+      const escolhidas = [...S.marcados].sort((a, b) => a - b).map(i => S.itens[i]);
+      try {
+        await hooks.adicionarCenas(escolhidas);
+        m.fechar();
+        B7.UI.toast((escolhidas.length === 1 ? '1 cena adicionada' : escolhidas.length + ' cenas adicionadas') + ' ao roteiro.');
+      } catch (e) {
+        S.ocupado = false;
+        S.aviso = 'Não foi possível adicionar as cenas. Confira a conexão e tente de novo.';
+        if (S.fechada) { B7.UI.toast(S.aviso, { tipo: 'erro' }); return; }
+        pintar();
+      }
+    }
+
+    pintar();
+    const campo = corpo.querySelector('#ia-rasc-in'); if (campo) { try { campo.focus({ preventScroll: true }); } catch (e) {} }
+    return m;
   }
-  /* `hooks`: { impressao(), salvar(), verCena(id) } */
+
+  /* Bloco da IA no topo do roteiro (vazio com a IA desligada).
+     `cenas`: as cenas do roteiro como estão na tela — com o roteiro ainda
+     sem fala, a ação principal é criar o rascunho. */
+  function botoesHTML(roteiro, cenas) {
+    if (!ligado() || !roteiro) return '';
+    const falado = (cenas || []).reduce((n, c) => n + String(c.texto || '').trim().length, 0);
+    const semFala = falado < 60;
+    return '<div class="ia-bloco">' +
+      '<div class="ia-bloco-cab">' + IC + '<b>IA do roteiro</b><span>' +
+        (semFala ? 'Comece por um rascunho e ajuste do seu jeito.' : 'Uma segunda leitura antes de gravar. Nada muda sem você.') + '</span></div>' +
+      '<div class="ia-roteiro-acoes">' +
+        (semFala ? '<button type="button" class="ia-entrada cheia" data-ia-rascunho>' + IC + '<span>Criar rascunho</span></button>' : '') +
+        '<button type="button" class="ia-entrada' + (semFala ? '' : ' cheia') + '" data-ia-analise="revisar_roteiro">' + IC + '<span>Revisar roteiro</span></button>' +
+        /* só existe quando o roteiro nasceu de um conteúdo da Linha Editorial — vínculo real, nunca por título */
+        (roteiro.content_id ? '<button type="button" class="ia-entrada" data-ia-analise="comparar_planejamento">' + IC + '<span>Comparar com planejamento</span></button>' : '') +
+      '</div></div>';
+  }
+  /* `hooks`: { impressao(), salvar(), verCena(id), ajustarCena(id, instrucao), adicionarCenas(lista) } */
   function ligar(raiz, roteiro, hooks) {
     if (!ligado() || !raiz) return;
     raiz.querySelectorAll('[data-ia-analise]').forEach(b => b.onclick = ev => {
       ev.preventDefault();
       abrir(b.dataset.iaAnalise, roteiro, hooks);
     });
+    const rasc = raiz.querySelector('[data-ia-rascunho]');
+    if (rasc) rasc.onclick = ev => { ev.preventDefault(); abrirRascunho(roteiro, hooks); };
   }
 
   return { botoesHTML, ligar, cartoesHTML, textoParaCopiar, ligado };

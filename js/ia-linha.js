@@ -97,7 +97,7 @@ B7.IALinha = (function () {
         botao.title = 'Assistente de IA';
         botao.setAttribute('aria-label', 'Assistente de IA: ' + nome.toLowerCase());
         botao.setAttribute('aria-expanded', 'false');
-        botao.innerHTML = IC;
+        botao.innerHTML = IC + '<span>IA</span>';
         rotulo.appendChild(botao);
         const painel = document.createElement('div');
         painel.className = 'ia-painel ia-campo-painel'; painel.hidden = true;

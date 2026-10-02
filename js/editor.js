@@ -343,7 +343,7 @@ B7.Editor = (function () {
         '</div></div>' +
       '</div><div class="bloco-corpo">' +
         /* IA que analisa o roteiro inteiro (não altera nada) */
-        (B7.IAAnalise ? B7.IAAnalise.botoesHTML(r) : '') +
+        (B7.IAAnalise ? B7.IAAnalise.botoesHTML(r, cenas) : '') +
         '<div class="mb" id="ap-status-roteiro">' + (B7.Aprovacoes ? B7.Aprovacoes.blocoStatus(E.aprovacoes[r.id], { botaoEnviar: true }) : '') + '</div>' +
         '<div class="mb"><label class="rot">TÍTULO</label>' +
         '<input class="campo" data-campo="titulo" placeholder="Título do roteiro" value="' + esc(r.titulo) + '"></div>' +
@@ -372,7 +372,35 @@ B7.Editor = (function () {
 
     ligarEscrita(r);
     B7.UI.ligarMenus(cx);
-    if (B7.IAAnalise) B7.IAAnalise.ligar(cx, r, { impressao: () => impressaoDoRoteiro(r.id), salvar: () => B7.Save.agora(), verCena: verCena });
+    if (B7.IAAnalise) B7.IAAnalise.ligar(cx, r, { impressao: () => impressaoDoRoteiro(r.id), salvar: () => B7.Save.agora(), verCena: verCena,
+      ajustarCena: (cenaId, instrucao) => { verCena(cenaId); if (B7.IARoteiro) B7.IARoteiro.abrirCom(cenaId, instrucao); },
+      adicionarCenas: lista => cenasDoRascunho(r.id, lista) });
+  }
+
+  /* Cenas de um rascunho da IA que a pessoa escolheu manter. Roteiro só
+     com cenas em branco (o padrão de um roteiro novo): o rascunho ocupa
+     essas cenas, na ordem, e o que sobrar entra no fim. Roteiro que já
+     tem algo escrito: nada é tocado, as cenas novas entram no fim. */
+  async function cenasDoRascunho(roteiroId, itens) {
+    const lista = E.cenas[roteiroId] || (E.cenas[roteiroId] = []);
+    const emBranco = c => !String(c.texto || '').trim() && !String(c.sugestao_cenas || '').trim();
+    const livres = lista.every(emBranco) ? lista.slice() : [];
+    const novas = [];
+    itens.forEach(it => {
+      const tipo = TIPOS.includes(it.tipo) ? it.tipo : 'Narrativa';
+      const dados = { tipo: tipo, direcao: String(it.orientacao || '').trim() || DIRECAO_PADRAO[tipo], texto: String(it.fala || '') };
+      const livre = livres.shift();
+      if (livre) { Object.assign(livre, dados); B7.Save.campo('cenas', livre.id, dados); }
+      else novas.push(dados);
+    });
+    if (novas.length) {
+      const criadas = await B7.DB.criarCenas(novas.map((d, i) => Object.assign(
+        { script_id: roteiroId, position: lista.length + i, sugestao_cenas: '', funcao: '' }, d)));
+      criadas.sort((a, b) => a.position - b.position).forEach(c => lista.push(c));
+      await persistirOrdemCenas(roteiroId);
+    }
+    try { await B7.Save.agora(); } catch (e) {}
+    renderEscrita(); renderPrevia();
   }
 
   /* "Impressão" do roteiro como está na tela agora: título, objetivo e

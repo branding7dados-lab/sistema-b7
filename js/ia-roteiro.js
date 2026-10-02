@@ -32,6 +32,7 @@ window.B7 = window.B7 || {};
 B7.IARoteiro = (function () {
   const esc = B7.UI.esc;
   const estados = new Map();      /* cenaId → estado do painel */
+  const ligadas = new Map();      /* cenaId → cena, como o editor ligou por último */
   let seq = 0;
 
   const ligado = () => !!(B7.IA && B7.IA.ligada('roteiros'));
@@ -49,7 +50,7 @@ B7.IARoteiro = (function () {
   function html(cena) {
     if (!ligado()) return '';
     return '<div class="ia-rot" data-ia>' +
-      '<button type="button" class="ia-entrada" data-ia-abrir aria-expanded="false">' + IC + '<span>Assistente de IA</span></button>' +
+      '<button type="button" class="ia-entrada" data-ia-abrir aria-expanded="false">' + IC + '<span>Melhorar com IA</span></button>' +
       '<div class="ia-painel" data-ia-painel role="region" aria-label="Assistente de IA desta cena" hidden></div>' +
     '</div>';
   }
@@ -109,7 +110,8 @@ B7.IARoteiro = (function () {
               '<button type="submit" class="b fina contorno">Gerar</button>' +
             '</div>' +
           '</form>') +
-        '<p class="ia-nota">A sugestão aparece aqui. Nada muda no roteiro até você aplicar.</p>';
+        '<p class="ia-nota">' + (st.daRevisao ? 'A instrução veio da revisão do roteiro: ajuste se quiser e clique em Gerar. ' : 'A sugestão aparece aqui. ') +
+          'Nada muda no roteiro até você aplicar.</p>';
     } else if (st.fase === 'gerando') {
       corpo = '<div class="ia-gerando" role="status" aria-live="polite">' +
         '<span class="ia-pontos" aria-hidden="true"><i></i><i></i><i></i></span>' +
@@ -195,6 +197,24 @@ B7.IARoteiro = (function () {
     });
     pintar(cena);
     focar(cena, '[data-ia-acao], [data-ia-instrucao]');
+  }
+
+  /* Abre o assistente de uma cena já com a instrução preenchida (vinda de
+     uma observação da revisão). Não gera nada: a pessoa confere a
+     instrução, clica em Gerar e depois decide se aplica. */
+  function abrirCom(cenaId, instrucao) {
+    const cena = ligadas.get(cenaId), r = refs(cenaId);
+    if (!ligado() || !cena || !r) return false;
+    const antigo = estados.get(cenaId);
+    if (antigo && antigo.ctrl) antigo.ctrl.abort();
+    estados.set(cenaId, {
+      fase: 'acoes', acao: null, sugestao: '', erro: '', token: 0, ctrl: null, daRevisao: true,
+      instrucao: String(instrucao || '').replace(/\s+/g, ' ').trim().slice(0, LIMITE_INSTRUCAO),
+      alvo: { tipo: 'cena', original: r.campo.value }
+    });
+    pintar(cena);
+    focar(cena, '[data-ia-instrucao]');
+    return true;
   }
 
   function fechar(cena) {
@@ -315,9 +335,10 @@ B7.IARoteiro = (function () {
     if (!ligado()) return;
     const cx = el.querySelector('[data-ia]');
     if (!cx) return;
+    ligadas.set(cena.id, cena);
     cx.querySelector('[data-ia-abrir]').onclick = () => abrir(cena);
     if (estados.has(cena.id)) pintar(cena);     /* o editor redesenhou: o painel volta como estava */
   }
 
-  return { html, ligar };
+  return { html, ligar, abrirCom };
 })();

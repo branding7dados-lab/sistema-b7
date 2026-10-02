@@ -129,6 +129,9 @@ Ligada pelo mesmo `IA: { roteiros: true }`. A tela é `js/ia-analise.js`; a tare
 |---|---|---|
 | `revisar_roteiro` | "Revisar roteiro", no topo do roteiro | até 6 observações (gancho, coerência, repetição, naturalidade, clareza, ritmo, CTA, alinhamento, conferir informação), cada uma com a cena |
 | `comparar_planejamento` | "Comparar com planejamento", só em roteiro ligado a um conteúdo da Linha Editorial | de 2 a 6 pontos (ideia, objetivo, ângulo, pontos-chave, formato, CTA, tom), cada um "alinhado", "atenção" ou "mudança de abordagem" |
+| `rascunho_roteiro` | "Criar rascunho", só em roteiro ainda sem fala (pacote 2026-10-02-w) | de 3 a 6 cenas propostas (Gancho, Narrativa, CTA) com orientação e fala; aceita `instrucao` opcional de até 300 caracteres. A tela só cria as cenas que a pessoa marcar (`B7.Editor` → `cenasDoRascunho`) |
+
+Da observação para o ajuste: o cartão da revisão com sugestão e cena tem "Ajustar com IA", que abre o assistente da cena (`B7.IARoteiro.abrirCom`) com a sugestão como instrução. Não gera nem aplica sozinho.
 
 - **Análise nunca altera nada.** Não existe "aplicar". Não cria tarefa, não muda status, não bloqueia gravação.
 - **Sem nota.** Observação com nota, "x/10" ou percentual de qualidade ou alinhamento é descartada no servidor.

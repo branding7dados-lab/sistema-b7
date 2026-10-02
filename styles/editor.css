@@ -71,11 +71,14 @@
    O roteiro é o protagonista: o acento B7 aparece só no ícone, no botão
    Aplicar e na borda da sugestão.
    ===================================================================== */
-.ia-rot{margin-top:8px;}
-.ia-entrada{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;margin-left:-4px;border-radius:8px;
-  font-size:12px;font-weight:600;color:var(--ink-3);transition:background-color var(--t),color var(--t);}
-.ia-entrada svg{width:15px;height:15px;color:var(--acento);flex:none;}
-.ia-entrada:hover,.ia-entrada.on{background:var(--acento-suave);color:var(--acento);}
+.ia-rot{margin-top:10px;}
+/* entrada da IA: um botão de verdade, com o acento B7 — fácil de achar e de tocar */
+.ia-entrada{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:8px 14px;border-radius:10px;
+  border:1px solid var(--acento);background:var(--acento-suave);font-size:13px;font-weight:700;color:var(--acento);
+  transition:background-color var(--t),color var(--t),border-color var(--t);}
+.ia-entrada svg{width:17px;height:17px;color:currentColor;flex:none;}
+.ia-entrada:hover,.ia-entrada.on,.ia-entrada.cheia{background:var(--acento);color:#fff;}
+.ia-entrada.cheia:hover{filter:brightness(1.08);}
 .ia-entrada:focus-visible,.ia-fechar:focus-visible,.ia-acao:focus-visible,.ia-sugestao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 
 .ia-painel{margin-top:8px;padding:12px;border-radius:11px;background:var(--card);border:1px solid var(--borda);
@@ -120,7 +123,7 @@
 
 /* celular: alvos de toque de 44px e botões que não espremem o texto */
 @media (max-width:720px){
-  .ia-entrada{min-height:44px;padding:10px 12px;font-size:13px;}
+  .ia-entrada{min-height:46px;padding:10px 16px;font-size:14px;}
   .ia-acao{min-height:44px;padding:10px 14px;font-size:13px;}
   .ia-fechar{width:40px;height:40px;}
   .ia-instrucao-linha{flex-direction:column;align-items:stretch;}
@@ -221,7 +224,14 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
    conjunto da linha editorial. Sem nota, sem semáforo: a cor só separa
    "atenção" de "observação".
    ===================================================================== */
-.ia-roteiro-acoes{display:flex;flex-wrap:wrap;gap:4px 10px;margin:-4px 0 12px;}
+/* bloco da IA no topo do roteiro: o ponto de partida, sempre no mesmo lugar */
+.ia-bloco{margin:0 0 14px;padding:14px;border-radius:13px;border:1px solid var(--borda);background:var(--suave);}
+.ia-bloco-cab{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-bottom:11px;font-size:12.5px;color:var(--ink-3);line-height:1.4;}
+.ia-bloco-cab svg{width:18px;height:18px;color:var(--acento);flex:none;}
+.ia-bloco-cab b{font-size:14px;font-weight:800;color:var(--ink);}
+.ia-roteiro-acoes{display:flex;flex-wrap:wrap;gap:8px;}
+.ia-ach-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;}
+.ia-item-fala{font-size:14px;line-height:1.55;color:var(--ink);overflow-wrap:anywhere;}
 .ia-ach-conta{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--ink);}
 .ia-ach-resumo{margin:0 0 12px;font-size:13.5px;line-height:1.55;color:var(--ink-2);}
 .ia-ach-lista{display:flex;flex-direction:column;gap:8px;}
@@ -247,6 +257,7 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
   background:var(--ambar-bg);color:var(--ambar);font-size:12.5px;font-weight:600;}
 .cena.ia-alvo{box-shadow:0 0 0 2px var(--acento);transition:box-shadow .2s;}
 @media (max-width:760px){
-  .ia-ach .b.fina{min-height:40px;}
-  .ia-roteiro-acoes{gap:2px 6px;}
+  .ia-ach .b.fina{min-height:44px;}
+  .ia-bloco{padding:12px;}
+  .ia-roteiro-acoes .ia-entrada{flex:1 1 100%;justify-content:center;}
 }
