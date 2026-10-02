@@ -697,6 +697,11 @@ B7.Teleprompter = (function () {
     /* o "voltar" do Android fecha o teleprompter em vez de sair da página */
     try { history.pushState({ b7tele: 1 }, '', location.href); empurrou = true; window.addEventListener('popstate', aoVoltar); } catch (e) {}
     window.addEventListener('hashchange', aoTrocarRota);
+    /* tela cheia JÁ na abertura (ainda dentro do toque que abriu o
+       teleprompter): o aviso do navegador "para sair da tela cheia…" não
+       pode ser removido por nenhuma página, então ele aparece aqui, na
+       tela de preparação, e já sumiu quando a leitura começa. */
+    entrarTelaCheia();
     manterTelaLigada();
     conferirOrientacao();
     return S;
