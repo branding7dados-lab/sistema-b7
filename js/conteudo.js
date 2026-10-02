@@ -161,9 +161,10 @@ B7.Conteudo = (function () {
       B7.Dashboard.trilhaCliente(cliente, 'Inteligência') +
       '<div class="cab-conteudo"><div><h1>Inteligência do cliente</h1>' +
       '<p>Contexto permanente da marca. Preencha aos poucos — nada aqui é obrigatório, ' +
-      'e o que estiver preenchido vira base para as linhas editoriais.</p></div>' +
-      '<div class="salvamento" id="ind-inteligencia"><span class="pt"></span><span class="txt">Salvo ✓</span></div></div>' +
+      'e o que estiver preenchido vira base para as linhas editoriais.</p></div></div>' +
 
+      /* o estado do salvamento aparece no topo global: um selo aqui ficava
+         parado em "Salvo ✓" e empurrava a tela ao aparecer e sumir */
       '<div class="int-resumo">' + B7.UI.avatarCliente(cliente.nome, cliente.logo_url) +
         '<div class="int-res-tx"><b>' + esc(cliente.nome) + '</b><small id="int-res-txt"></small>' +
         '<div class="barra-progresso"><i id="int-res-barra" style="width:0"></i></div></div>' +

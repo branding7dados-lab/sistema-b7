@@ -24,7 +24,8 @@ Só front-end (`js/conteudo.js`, `styles/conteudo.css`). **Nenhuma migration, ne
 3. **Campos no celular:** um por linha, largura inteira — nada mais cortado. Letra do campo em 16 px (o iPhone não dá zoom ao tocar) e rótulos um pouco maiores.
 4. **Atalho "Abrir ↗"** ao lado de Instagram e Site quando o valor é um perfil ou endereço válido. Abre em outra aba.
 5. **Exemplos dentro dos campos vazios** das Informações gerais ("Ex.: Odontologia", "@perfil", "https://").
-6. **Detalhes:** o título do cartão de produto/prova acompanha o nome digitado; a contagem de produtos e provas muda ao adicionar e remover; a seta virou ícone; área de toque maior; foco visível no teclado.
+6. **Selo "Salvo ✓" removido do corpo da tela** (versão `zb`): ficava parado abaixo do título e empurrava o conteúdo. O estado do salvamento continua no topo do sistema, como nas outras telas.
+7. **Detalhes:** o título do cartão de produto/prova acompanha o nome digitado; a contagem de produtos e provas muda ao adicionar e remover; a seta virou ícone; área de toque maior; foco visível no teclado.
 
 A mesma moldura de seção é usada no **Onboarding mensal**, que ganhou a seta nova e o espaçamento corrigido (sem ícone nem selo).
 
@@ -48,9 +49,13 @@ A mesma moldura de seção é usada no **Onboarding mensal**, que ganhou a seta 
 - Sem rolagem lateral; nenhum erro no console.
 - Tema escuro e tema claro conferidos em captura de tela.
 
+**Site publicado, sessão real, somente leitura (emulação de celular 390×844):**
+
+- AutoEscola Modelo: logo do cliente no resumo, "3 de 31 campos preenchidos · 10%", selo 3/5, "Formação de condutores" inteiro no campo, campos um por linha, sem rolagem lateral. Nada foi digitado nem gravado.
+
 **Não testado:**
 
-- A tela no site publicado com o banco real gravando (a gravação automática não foi alterada, mas não foi exercitada de novo em produção).
+- Digitar e gravar no site publicado (a gravação automática não foi alterada, mas não foi exercitada de novo em produção).
 - Aparelho físico: só emulação de celular no navegador.
 - Sessão de designer e o Onboarding mensal em tela (compartilha a moldura da seção; só conferido por leitura do código).
 - Computador em tela larga em captura (o layout de três campos lado a lado foi mantido como era).
