@@ -169,7 +169,8 @@ B7.Painel = (function () {
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>',
     pausa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M10 9v6M14 9v6"/></svg>',
     agenda: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3"/></svg>',
-    ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/></svg>'
+    ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/></svg>',
+    subiu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 16l5-5 3.5 3.5L19 8"/><path d="M14 8h5v5"/></svg>'
   };
 
   /* Card de número. Com href vira link de verdade (Tab + Enter); sem
@@ -256,7 +257,9 @@ B7.Painel = (function () {
       semanas.map(s =>
         '<div class="pn-graf-col' + (s.atual ? ' atual' : '') + '" tabindex="0" ' +
           'aria-label="' + esc('Semana de ' + ddmm(s.inicio) + ': ' + s.n + (s.n === 1 ? ' entrega' : ' entregas')) + '">' +
-          '<span class="pn-graf-trilho">' + (s.atual ? '<span class="pn-graf-val">' + s.n + '</span>' : '') +
+          /* o número fica à vista em toda semana com entrega: no celular
+             não existe hover para revelar o tooltip */
+          '<span class="pn-graf-trilho">' + (s.atual || s.n ? '<span class="pn-graf-val">' + s.n + '</span>' : '') +
             '<i style="height:' + (s.n ? Math.max(5, Math.round(s.n / max * 82)) : 0) + '%"></i></span>' +
           '<span class="pn-graf-rot">' + (s.atual ? 'Esta' : ddmm(s.inicio)) + '</span>' +
           '<span class="pn-graf-tip" role="tooltip">' + s.n + (s.n === 1 ? ' entrega' : ' entregas') + '<small>' + ddmm(s.inicio) + ' – ' + ddmm(somarDias(s.inicio, 6)) + '</small></span>' +
@@ -493,11 +496,15 @@ B7.Painel = (function () {
       const atual = semanas[semanas.length - 1].n;
       const anteriores = semanas.slice(0, -1);
       const media = anteriores.length ? anteriores.reduce((s, w) => s + w.n, 0) / anteriores.length : 0;
+      /* só o lado bom: a semana ainda está em curso, então "abaixo da
+         média" numa terça seria um aviso falso */
+      const acima = media > 0 && atual - media >= 0.5
+        ? '<em class="pn-delta">' + IC.subiu + 'acima da média</em>' : '';
       corpo = !total
         ? blocoVazio('Nenhuma entrega registrada nas últimas semanas.', 'As entregas aparecem aqui quando a demanda é marcada como entregue.')
         : '<div class="pn-prod-corpo"><div class="pn-graf-resumo">' +
           '<div><b>' + total + '</b><span>em ' + SEMANAS_GRAFICO + ' semanas</span></div>' +
-          '<div><b>' + atual + '</b><span>nesta semana</span></div>' +
+          '<div><b>' + atual + '</b><span>nesta semana</span>' + acima + '</div>' +
           '<div><b>' + (Math.round(media * 10) / 10).toString().replace('.', ',') + '</b><span>média semanal</span></div>' +
         '</div>' +
         grafico(semanas) + '</div>';
@@ -527,9 +534,36 @@ B7.Painel = (function () {
     cx.innerHTML = cabecalhoSecao('pn-t-comp', 'Próximos compromissos', { href: '#/calendario?v=semana', rotulo: 'Ver no calendário' }) + corpo;
   }
 
+  /* A frase do dia, logo abaixo da saudação: o Painel diz em uma linha o
+     que pede ação hoje, com os MESMOS números dos KPIs (mesmas regras).
+     Enquanto as demandas carregam ou se falharem, não aparece — erro
+     nunca vira "nada urgente". */
+  function pintarResumo() {
+    const cx = document.getElementById('pn-resumo'); if (!cx) return;
+    if (estadoDe('ativas') !== 'ok') { cx.innerHTML = ''; return; }
+    const ds = minhas(), agora = Date.now();
+    const nAtr = ds.filter(atrasada).length, nHoje = ds.filter(venceHoje).length;
+    const futuras = gravacoes().filter(g => new Date(g.inicio).getTime() >= agora - 3600000);
+    const nGrav = futuras.filter(g => diaDoTs(g.inicio) === hoje()).length;
+    const partes = [
+      nAtr && '<b class="t-erro">' + nAtr + (nAtr === 1 ? ' demanda atrasada' : ' demandas atrasadas') + '</b>',
+      nHoje && '<b class="t-ambar">' + nHoje + (nHoje === 1 ? ' entrega para hoje' : ' entregas para hoje') + '</b>',
+      nGrav && '<b class="t-acento">' + nGrav + (nGrav === 1 ? ' gravação hoje' : ' gravações hoje') + '</b>'
+    ].filter(Boolean);
+    if (partes.length) {
+      cx.innerHTML = 'Você tem ' + (partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' : '') + partes[partes.length - 1] + '.';
+      return;
+    }
+    /* sem a agenda ainda não dá para dizer que o dia está livre */
+    if (estadoDe('agenda') === 'carregando') { cx.innerHTML = ''; return; }
+    const prox = futuras.find(g => new Date(g.inicio).getTime() >= agora);
+    cx.innerHTML = 'Nada urgente hoje.' + (prox ? ' Próxima gravação: ' +
+      esc(quandoDia(diaDoTs(prox.inicio)) + (prox.dia_inteiro ? '' : ', ' + hora(prox.inicio))) + '.' : '');
+  }
+
   function pintar() {
     if (!document.getElementById('pn-raiz')) return;
-    pintarKpis(); pintarAtencao(); pintarSemana(); pintarProducao(); pintarCompromissos();
+    pintarResumo(); pintarKpis(); pintarAtencao(); pintarSemana(); pintarProducao(); pintarCompromissos();
     /* logo quebrada → iniciais (mesma regra do sino) */
     painel().querySelectorAll('img.pn-logo').forEach(img => {
       img.onerror = () => { const s = document.createElement('span'); s.className = 'pn-logo pn-logo-vazia'; s.textContent = img.dataset.ini || ''; img.replaceWith(s); };
@@ -568,7 +602,8 @@ B7.Painel = (function () {
     return '<header class="pn-cab">' +
         '<div class="pn-cab-tx"><p class="pn-kicker">Painel <span>·</span> ' + esc(dataLonga) + '</p>' +
           '<h1>' + esc(saudacao() + (nome ? ', ' + nome : '')) + '</h1>' +
-          '<p class="pn-papel">' + esc(papeis()) + '</p></div>' +
+          '<p class="pn-papel">' + esc(papeis()) + '</p>' +
+          (o.resumo ? '<p class="pn-resumo" id="pn-resumo" aria-live="polite"></p>' : '') + '</div>' +
         '<div class="pn-cab-lado">' +
           (o.acao || '') +
         '</div>' +
@@ -581,7 +616,7 @@ B7.Painel = (function () {
     B7.Rota.titulo(['Painel']);
 
     painel().innerHTML = '<div class="conteudo entra pn" id="pn-raiz">' +
-      cabecalho({ visoes, visao: 'video',
+      cabecalho({ visoes, visao: 'video', resumo: true,
         acao: '<a class="b contorno pn-cab-acao" href="#/video?minha=1&comp=todas">' + IC.camera + '<span>Minha fila de edição</span></a>' }) +
       '<section class="pn-kpis" id="pn-kpis" aria-label="Indicadores"></section>' +
       '<div class="pn-grade">' +

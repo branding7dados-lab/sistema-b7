@@ -16,6 +16,13 @@
 .pn-cab h1{font-family:'Archivo';font-weight:800;font-size:27px;letter-spacing:-.4px;line-height:1.15;margin:0;
   overflow-wrap:anywhere;}
 .pn-papel{font-size:13px;color:var(--ink-3);margin:5px 0 0;}
+/* a frase do dia: o que pede ação hoje, em uma linha */
+.pn-resumo{font-size:15px;line-height:1.5;color:var(--ink-2);margin:12px 0 0;max-width:62ch;}
+.pn-resumo:empty{display:none;}
+.pn-resumo b{font-weight:700;}
+.pn-resumo .t-erro{color:var(--erro);}
+.pn-resumo .t-ambar{color:var(--ambar);}
+.pn-resumo .t-acento{color:var(--acento);}
 .pn a.b{text-decoration:none;}
 .pn-cab-acao svg{width:15px;height:15px;}
 .pn-cab-lado{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -43,8 +50,11 @@
 .pn .pn-kpi .pn-kpi-seta{top:17px;}
 /* a cor reforça, nunca carrega sozinha: o rótulo já diz "Atrasadas" */
 .pn .pn-kpi.pn-tom-erro .pn-kpi-num{color:var(--erro);}
-.pn .pn-kpi.pn-tom-erro{border-color:color-mix(in srgb, var(--erro) 28%, var(--borda));}
+.pn .pn-kpi.pn-tom-erro{border-color:color-mix(in srgb, var(--erro) 32%, var(--borda));
+  background:linear-gradient(150deg, color-mix(in srgb, var(--erro) 11%, var(--card)), var(--card) 72%);}
 .pn .pn-kpi.pn-tom-ambar .pn-kpi-num{color:var(--ambar);}
+.pn .pn-kpi.pn-tom-ambar{border-color:color-mix(in srgb, var(--ambar) 28%, var(--borda));
+  background:linear-gradient(150deg, color-mix(in srgb, var(--ambar) 9%, var(--card)), var(--card) 72%);}
 .pn-erro-tx{color:var(--erro) !important;}
 .pn-sk-num{display:block;width:44px;height:30px;border-radius:8px;}
 .pn-sk-sub{display:block;width:70%;height:10px;border-radius:6px;}
@@ -100,6 +110,11 @@
 .pn-att-seta{width:16px;height:16px;color:var(--ink-4);flex:none;opacity:.6;}
 .pn-att-seta svg{width:100%;height:100%;}
 .pn-att:hover .pn-att-seta{opacity:1;color:var(--acento);}
+/* o que é urgente se destaca do que é só aviso: fundo levemente tingido */
+.pn-att-erro{background:color-mix(in srgb, var(--erro) 8%, var(--suave));}
+.pn-att-ambar{background:color-mix(in srgb, var(--ambar) 7%, var(--suave));}
+.pn-att-erro:hover{border-color:color-mix(in srgb, var(--erro) 40%, var(--borda));}
+.pn-att-ambar:hover{border-color:color-mix(in srgb, var(--ambar) 40%, var(--borda));}
 .pn-att-erro .pn-att-ic{background:var(--erro-bg);color:var(--erro);}
 .pn-att-erro .pn-att-tag{color:var(--erro);}
 .pn-att-ambar .pn-att-ic{background:var(--ambar-bg);color:var(--ambar);}
@@ -154,8 +169,12 @@
 .pn-graf{display:flex;align-items:stretch;gap:10px;height:150px;padding-top:4px;border-bottom:1px solid var(--borda);}
 .pn-graf-col{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;
   outline:none;border-radius:8px;}
-.pn-graf-val{font-family:'Archivo';font-weight:800;font-size:13px;color:var(--ink);line-height:16px;text-align:center;
+.pn-graf-val{font-family:'Archivo';font-weight:800;font-size:13px;color:var(--ink-3);line-height:16px;text-align:center;
   margin-bottom:4px;}
+.pn-graf-col.atual .pn-graf-val{color:var(--ink);}
+.pn-delta{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin-top:5px;padding:3px 8px 3px 6px;
+  border-radius:999px;background:var(--ok-bg);color:var(--ok);font-style:normal;font-size:11px;font-weight:700;white-space:nowrap;}
+.pn-delta svg{width:12px;height:12px;flex:none;}
 .pn-graf-trilho{flex:1;width:100%;max-width:46px;display:flex;flex-direction:column;justify-content:flex-end;}
 /* marca fina e arredondada só em cima, ancorada na linha de base */
 .pn-graf-trilho i{display:block;width:100%;border-radius:4px 4px 0 0;
@@ -186,6 +205,11 @@
   white-space:nowrap;flex:none;}
 .pn-comp-tipo svg{width:14px;height:14px;}
 .pn-comp-gravacao{color:var(--acento);}
+/* "quando · cliente" numa linha só: o separador nunca começa a linha de baixo */
+#pn-compromissos .cp-ag-meta, #pnd-proximos .cp-ag-meta{flex-wrap:nowrap;white-space:nowrap;min-width:0;}
+#pn-compromissos .cp-ag-meta > span, #pnd-proximos .cp-ag-meta > span{flex:none;}
+#pn-compromissos .cp-ag-meta > span:last-child:not(:first-child),
+#pnd-proximos .cp-ag-meta > span:last-child:not(:first-child){flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
 
 /* ====================================================================
    PAINEL DO COORDENADOR (.pnc) — mesma família; só o que é dele
@@ -325,18 +349,28 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
   .pn-cab h1{font-size:23px;}
   .pn-cab-acao{width:100%;justify-content:center;}
   .pn{--pn-pad:15px;--pn-gap:12px;}
-  .pn .pn-kpi{padding:13px 14px;}
-  .pn .pn-kpi .pn-kpi-num{font-size:28px;}
+  /* indicador deitado: número à esquerda, rótulo e detalhe ao lado —
+     os quatro cabem em metade da altura de antes */
+  .pn .pn-kpi{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"num rot" "num sub";
+    column-gap:11px;row-gap:2px;align-items:center;padding:12px 13px;min-height:66px;}
+  .pn .pn-kpi .pn-kpi-num{grid-area:num;font-size:30px;min-width:24px;text-align:center;}
+  .pn .pn-kpi .pn-kpi-rot{grid-area:rot;align-self:end;font-size:12.5px;font-weight:650;color:var(--ink);line-height:1.25;}
+  .pn .pn-kpi .pn-kpi-sub{grid-area:sub;align-self:start;font-size:11px;line-height:1.3;}
+  .pn .pn-kpi .pn-sk-num{grid-area:num;}
+  .pn .pn-kpi .pn-sk-sub{grid-area:sub;}
   .pn .pn-kpi .pn-kpi-seta{display:none;}
-  /* semana: vira lista de linhas — 5 colunas de 60px não leem */
-  .pn-semana-lista{grid-auto-flow:row;grid-auto-columns:auto;}
-  .pn-dia{flex-direction:row;align-items:center;gap:12px;padding:9px 12px;}
-  .pn-dia{min-height:0;}
-  .pn-dia-cab{width:78px;flex:none;flex-direction:row;align-items:baseline;gap:6px;}
-  .pn-dia-itens{flex-direction:row;flex-wrap:wrap;gap:4px 12px;margin-top:0;}
-  .pn-dia-i em{display:inline;}
-  .pn-sk-semana{grid-template-columns:1fr;}
-  .pn-sk-semana .esq{height:40px;}
+  /* semana: faixa de dias, como num calendário — ícone + número por dia
+     (a palavra inteira vai no aria-label). A lista de linhas gastava
+     cinco faixas para dizer "Livre". */
+  .pn-semana-lista{gap:5px;}
+  .pn-dia{align-items:center;gap:7px;padding:9px 2px 10px;min-height:88px;text-align:center;}
+  .pn-dia-cab{align-items:center;}
+  .pn-dia-itens{align-items:center;margin-top:0;gap:3px;}
+  .pn-dia-livre{font-size:0;width:5px;height:5px;border-radius:50%;background:var(--borda-forte);margin-top:6px;}
+  .pn-sk-semana .esq{height:88px;}
+  /* título do item urgente pode quebrar em duas linhas em vez de cortar */
+  .pn-att-tx b{font-size:14px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;}
+  .pn-resumo{font-size:14.5px;margin-top:10px;}
   .pn-graf{height:130px;gap:6px;}
   .pn-graf-resumo{gap:16px;}
   .pn-comp-tipo span{display:none;}
