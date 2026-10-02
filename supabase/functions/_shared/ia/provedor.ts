@@ -5,12 +5,13 @@
 // (tarefas, função b7-ia, telas) fala nestes termos e não conhece
 // Google, OmniRoute nem o formato de resposta de ninguém.
 //
-//   hoje:    serviço → gemini.ts → API do Gemini
-//   depois:  serviço → omniroute.ts → OmniRoute → vários modelos
+//   serviço → gemini.ts    → API do Gemini
+//   serviço → omniroute.ts → OmniRoute → vários modelos
 //
-// Trocar de provedor é escrever outro arquivo que devolva um `Provedor`
-// e mudar uma linha em servico.ts (provedorAtual). Telas, tarefas,
-// permissões, registro e mensagens de erro não mudam.
+// Qual dos dois atende é decidido pelos segredos, em servico.ts
+// (provedorAtual). Um provedor novo é outro arquivo que devolva um
+// `Provedor`. Telas, tarefas, permissões, registro e mensagens de erro
+// não mudam.
 // =====================================================================
 
 export type Mensagem = { role: 'system' | 'user'; content: string };
@@ -37,11 +38,13 @@ export type ErroDoProvedor =
   | 'indisponivel';     // fora do ar, erro interno, rede
 
 export type RespostaDoProvedor =
-  | { ok: true; texto: string; modelo: string; tokensEntrada: number | null; tokensSaida: number | null }
+  | { ok: true; texto: string; modelo: string; tokensEntrada: number | null; tokensSaida: number | null;
+      /** só um roteador informa: quem atendeu por trás dele, quantas trocas fez e o custo (USD) */
+      servidoPor?: string | null; trocas?: number | null; custo?: number | null }
   | { ok: false; erro: ErroDoProvedor; status: number | null };
 
 export type Provedor = {
-  /** nome curto para o registro de uso: 'gemini' */
+  /** nome curto para o registro de uso: 'gemini', 'omniroute' */
   nome: string;
   /** modelo configurado, também para o registro */
   modelo: string;

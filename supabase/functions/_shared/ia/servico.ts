@@ -1,24 +1,27 @@
 // =====================================================================
 // B7 IA — serviço de geração
 //
-// Quem usa: as tarefas de IA (hoje, só o assistente de roteiros). Uma
-// tarefa monta as mensagens e chama gerar(); não sabe quem responde.
+// Quem usa: as tarefas de IA (roteiros e linha editorial). Uma tarefa
+// monta as mensagens e chama gerar(); não sabe quem responde.
 //
 //   tarefa → gerar() → provedorAtual() → provedor (contrato em provedor.ts)
 //
-// PROVEDOR ATUAL: Gemini, direto (gemini.ts). É o provedor desta fase,
-// não a arquitetura: para trocar por um roteador (OmniRoute) ou por
-// outro provedor, escreva o adaptador e mude provedorAtual(). Nada acima
-// daqui muda.
+// QUAL PROVEDOR. Decidido pelos segredos, uma vez por pedido:
+//   OmniRoute (omniroute.ts)  se OMNIROUTE_URL, OMNIROUTE_API_KEY e
+//                             OMNIROUTE_MODEL estiverem configurados
+//   Gemini direto (gemini.ts) caso contrário
+// Para voltar ao Gemini direto, basta apagar o segredo OMNIROUTE_URL.
 //
-// SEM RESERVA. Há um provedor e um modelo. Não existe troca automática
-// para outro modelo, outro provedor nem para nada pago, e não existe
-// nova tentativa: um pedido da pessoa = uma chamada ao provedor. Se ele
-// falhar, a pessoa recebe um aviso e decide se tenta de novo. (Repetir
-// sozinho depois de um "limite atingido" só gastaria mais cota.)
+// SEM RESERVA NO B7. Um pedido da pessoa = uma chamada ao provedor
+// escolhido. Com o OmniRoute configurado, se ele estiver fora do ar o
+// B7 NÃO cai para o Gemini direto: a pessoa recebe um aviso e decide se
+// tenta de novo. (Trocar de modelo quando um provedor falha é trabalho
+// do roteador, dentro do combo dele. Repetir sozinho depois de um
+// "limite atingido" só gastaria mais cota.)
 // =====================================================================
 
 import { criarGemini } from './gemini.ts';
+import { criarOmniRoute } from './omniroute.ts';
 import type { ErroDoProvedor, Mensagem, Provedor } from './provedor.ts';
 
 export type { Mensagem } from './provedor.ts';
@@ -27,7 +30,9 @@ export type { Mensagem } from './provedor.ts';
 export type Categoria = 'indisponivel' | 'limite' | 'cota' | 'tempo' | 'recusado';
 
 export type Resultado =
-  | { ok: true; texto: string; ms: number; provedor: string; modelo: string; tokensEntrada: number | null; tokensSaida: number | null }
+  | { ok: true; texto: string; ms: number; provedor: string; modelo: string; tokensEntrada: number | null; tokensSaida: number | null;
+      /** só com roteador: quem atendeu por trás dele, trocas internas e custo informado */
+      servidoPor: string | null; trocas: number | null; custo: number | null }
   | { ok: false; categoria: Categoria; ms: number; provedor: string | null; modelo: string | null;
       /** o motivo técnico, só para o registro de uso */
       erro: ErroDoProvedor | 'nao_configurado' };
@@ -43,7 +48,7 @@ export type Opcoes = {
 
 /** O provedor desta instalação. null = IA não configurada neste ambiente. */
 export function provedorAtual(env: (nome: string) => string | undefined): Provedor | null {
-  return criarGemini(env);
+  return criarOmniRoute(env) || criarGemini(env);
 }
 
 /* Do motivo técnico para o que a pessoa precisa saber. Chave errada,
@@ -73,5 +78,9 @@ export async function gerar(provedor: Provedor | null, mensagens: Mensagem[], op
 
   const texto = op.limpar(r.texto);
   if (!texto) return falha('resposta_invalida');
-  return { ok: true, texto, ms: Date.now() - inicio, provedor: provedor.nome, modelo: r.modelo, tokensEntrada: r.tokensEntrada, tokensSaida: r.tokensSaida };
+  return {
+    ok: true, texto, ms: Date.now() - inicio, provedor: provedor.nome, modelo: r.modelo,
+    tokensEntrada: r.tokensEntrada, tokensSaida: r.tokensSaida,
+    servidoPor: r.servidoPor ?? null, trocas: r.trocas ?? null, custo: r.custo ?? null
+  };
 }

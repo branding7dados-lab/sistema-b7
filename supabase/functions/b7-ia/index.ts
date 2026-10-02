@@ -6,7 +6,7 @@
 //       → tarefa (_shared/ia/roteiro.ts): valida o pedido, carrega o
 //         contexto com o RLS da pessoa e monta as instruções
 //         → serviço (_shared/ia/servico.ts)
-//           → provedor (_shared/ia/gemini.ts, hoje)
+//           → provedor (_shared/ia/omniroute.ts ou gemini.ts, conforme os segredos)
 //
 // O navegador nunca fala com provedor de IA e nunca manda prompt: pede
 // uma tarefa conhecida. Hoje existem duas: "roteiro" (uma cena) e
@@ -27,8 +27,9 @@
 // A resposta nunca traz nome de modelo, de provedor nem erro cru: isso
 // fica em public.ia_uso, que só o servidor lê.
 //
-// Segredo: GEMINI_API_KEY (ver gemini.ts). Sem ele a função responde
-// "indisponivel" — o resto do B7 não depende dela para nada.
+// Segredos: GEMINI_API_KEY (ver gemini.ts) ou os três OMNIROUTE_* (ver
+// omniroute.ts). Sem nenhum, a função responde "indisponivel" — o resto
+// do B7 não depende dela para nada.
 //
 // Deploy:  supabase functions deploy b7-ia --no-verify-jwt
 // (a sessão é conferida aqui dentro, com auth.getUser)
@@ -152,7 +153,11 @@ Deno.serve(async (req: Request) => {
   if (reg) {
     await sb.from('ia_uso').update(r.ok ? {
       status: 'ok', duracao_ms: r.ms, modelo: r.modelo,
-      tokens_entrada: r.tokensEntrada, tokens_saida: r.tokensSaida, tamanho_saida: r.texto.length
+      tokens_entrada: r.tokensEntrada, tokens_saida: r.tokensSaida, tamanho_saida: r.texto.length,
+      /* com roteador: quem atendeu por trás dele, se houve troca e o custo informado */
+      ...(r.servidoPor ? { provedor: (r.provedor + ':' + r.servidoPor).slice(0, 80) } : {}),
+      ...(r.trocas ? { houve_fallback: true } : {}),
+      ...(r.custo != null ? { custo: r.custo } : {})
     } : {
       status: 'erro', erro_categoria: r.erro, duracao_ms: r.ms
     }).eq('id', reg.id);

@@ -12,7 +12,8 @@ tela (js/ia-roteiro.js ou js/ia-linha.js)
                   _shared/ia/linha.ts          idem, para a linha editorial
         → serviço   _shared/ia/servico.ts      escolhe o provedor, prazo, tradução dos erros
           → provedor  _shared/ia/provedor.ts   o contrato (o que um provedor recebe e devolve)
-            → _shared/ia/gemini.ts → API do Gemini
+            → _shared/ia/gemini.ts    → API do Gemini            (provedor em uso)
+            → _shared/ia/omniroute.ts → OmniRoute → vários modelos (pronto, desligado)
 ```
 
 - O navegador nunca fala com provedor de IA e nunca manda prompt. Ele pede uma **tarefa conhecida**.
@@ -21,7 +22,7 @@ tela (js/ia-roteiro.js ou js/ia-linha.js)
 
 ## Provedor atual: Gemini, direto
 
-Nesta fase o B7 chama a **API do Gemini (Google AI Studio)** diretamente, na **camada gratuita**. É o provedor de agora, não a arquitetura: `gemini.ts` é o único arquivo que conhece o Google.
+Nesta fase o B7 chama a **API do Gemini (Google AI Studio)** diretamente, na **camada gratuita**. É o provedor de agora, não a arquitetura: `gemini.ts` é o único arquivo que conhece o Google. O OmniRoute já tem adaptador e entra por configuração (seção própria, mais abaixo).
 
 Conferido na documentação oficial (ai.google.dev) em 01/10/2026:
 
@@ -122,7 +123,7 @@ Ligada por `IA: { linhas: true }` em `js/config.js`. A tela é `js/ia-linha.js`;
 
 Tabela `ia_uso` (ver `migration_ia_uso.sql`): quem pediu, qual ação, em qual cena, se deu certo, provedor, modelo, motivo do erro, duração, tokens e tamanhos em caracteres. **Não guarda** o texto do roteiro, a instrução nem a sugestão. Só o servidor lê; não há tela para isso. O `id` da linha é o que a função devolve como `id` do pedido.
 
-As colunas `tentativas`, `houve_fallback` e `custo` ficam vazias nesta fase (não há troca de modelo); voltam a ter uso com um roteador.
+As colunas `houve_fallback` e `custo` só são preenchidas quando o provedor é um roteador (OmniRoute); com o Gemini direto ficam vazias. `tentativas` não é usada.
 
 ```sql
 select acao, status, erro_categoria, count(*), round(avg(duracao_ms)) as ms
@@ -130,13 +131,34 @@ from ia_uso where created_at > now() - interval '7 days'
 group by 1, 2, 3 order by 4 desc;
 ```
 
-## Trocar de provedor depois (OmniRoute)
+## OmniRoute (pronto no B7, desligado até existir um roteador)
 
-1. Escrever `supabase/functions/_shared/ia/omniroute.ts` devolvendo um `Provedor` (contrato em `provedor.ts`): recebe mensagens, teto de tokens, temperatura e prazo; devolve o texto ou um dos erros do contrato.
-2. Em `servico.ts`, trocar a linha de `provedorAtual()`.
-3. Configurar os segredos do novo provedor e fazer o deploy da `b7-ia`.
+O [OmniRoute](https://github.com/diegosouzapw/OmniRoute) é um roteador de código aberto que **a B7 precisa hospedar**: ele recebe o pedido e distribui entre os provedores conectados no painel dele, trocando sozinho quando um falha. O B7 já sabe falar com ele (`_shared/ia/omniroute.ts`); o que liga é a configuração.
 
-Telas, tarefas, permissões, limites, registro e frases de erro não mudam.
+**Como o B7 escolhe o provedor** (`provedorAtual()`, em `servico.ts`), a cada pedido:
+
+- com os três segredos abaixo configurados → OmniRoute;
+- faltando qualquer um → Gemini direto, como hoje.
+
+| Segredo | O que é |
+|---|---|
+| `OMNIROUTE_URL` | endereço público do roteador, em **HTTPS** (com ou sem `/v1` no fim). `http://` é ignorado. |
+| `OMNIROUTE_API_KEY` | chave de API criada no painel do OmniRoute |
+| `OMNIROUTE_MODEL` | o que o B7 pede: o nome de um combo criado no painel, ou o id de um modelo |
+
+Para voltar ao Gemini direto, apague o segredo `OMNIROUTE_URL`. Não precisa de deploy: segredo novo vale no pedido seguinte.
+
+Conferido na documentação do projeto (README e `docs/openapi.yaml`) em 02/10/2026: `POST {base}/v1/chat/completions` com `Authorization: Bearer <chave>`, no formato da OpenAI; `401` para chave inválida, `502` quando todos os provedores falham; cabeçalhos `X-OmniRoute-Model`, `-Provider`, `-Fallback-Attempts`, `-Tokens-In`, `-Tokens-Out` e `-Response-Cost`. Porta padrão `20128`.
+
+Com o OmniRoute ligado:
+
+- **Uma chamada por pedido, como antes.** Quem troca de modelo é o roteador, dentro do combo. Se o roteador inteiro estiver fora do ar, o B7 **não** cai para o Gemini direto: a pessoa vê "temporariamente indisponível".
+- **Custo zero depende do painel do roteador.** O B7 só pede `OMNIROUTE_MODEL`; se o combo tiver um provedor pago, ele pode ser usado. O custo que o roteador informar fica em `ia_uso.custo`.
+- **Registro.** `ia_uso.provedor` vira `omniroute:<quem atendeu>`, `modelo` é o que de fato respondeu e `houve_fallback` marca troca interna.
+- **Privacidade.** O texto passa pelo roteador e vai para o provedor que ele escolher. Cada provedor gratuito tem a própria política de uso dos dados.
+- **Listas em JSON.** O B7 não manda `response_format` ao roteador (nem todo provedor gratuito aceita); as instruções pedem JSON e a validação no servidor é a mesma.
+
+Telas, tarefas, permissões, limites e frases de erro não mudam.
 
 ## Nova tarefa de IA no futuro
 
