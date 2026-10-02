@@ -749,25 +749,82 @@ B7.Rota = (function () {
     await B7.Rota.ir();
 
     /* ---- PWA ---- */
+    ligarAtualizacao();
+  }
+
+  /* Service worker e atualização automática. Uma vez por página. */
+  B7.ligarAtualizacao = ligarAtualizacao;
+  let atualizacaoLigada = false;
+  function ligarAtualizacao() {
+    if (atualizacaoLigada) return;
+    atualizacaoLigada = true;
     if (navigator.serviceWorker && location.protocol.startsWith('http')) {
       /* Uma versão nova assumiu o controle com esta página já aberta: o
          que está na memória é o código da versão anterior (foi assim que
-         o celular ficou com service worker novo e tela antiga). Em
-         segundo plano e sem nada por salvar, recarrega sozinho; com a
-         pessoa olhando, avisa e deixa ela escolher a hora. Só vale para
+         o celular ficou com service worker novo e tela antiga), e a
+         página precisa recarregar para pegar o novo. Só vale para
          atualização — na primeira instalação não havia controlador. */
+      /* QUANDO APLICAR. A atualização entra sozinha, mas nunca por cima do
+         que a pessoa está fazendo: recarregar apaga o que está digitado
+         num campo, fecha um modal no meio e derruba uma apresentação.
+         Então recarrega na hora se a aba está em segundo plano ou se
+         ninguém mexe há alguns segundos, e nada está aberto/por salvar;
+         senão espera — e aproveita a próxima troca de tela, que é um
+         momento em que recarregar não custa nada. O aviso com "Atualizar"
+         fica na tela enquanto isso, para quem quiser na hora. */
+      let ultimoGesto = Date.now();
+      ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(t =>
+        window.addEventListener(t, () => { ultimoGesto = Date.now(); }, { passive: true, capture: true }));
+      const ocupado = () => {
+        if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias()) return true;
+        if (document.fullscreenElement || document.webkitFullscreenElement) return true;
+        if (document.querySelector('.fundo-modal, .preview-fundo, .apresentacao')) return true;
+        const a = document.activeElement;
+        return !!(a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
+      };
+      const parado = () => Date.now() - ultimoGesto > 8000;
+      /* trava contra laço: no máximo uma recarga automática a cada 30 s */
+      const recarregouAgora = () => {
+        try { return Date.now() - (+sessionStorage.getItem('b7-recarga') || 0) < 30000; } catch (e) { return false; }
+      };
+      const recarregar = () => {
+        try { sessionStorage.setItem('b7-recarga', String(Date.now())); } catch (e) {}
+        location.reload();
+      };
+
       if (navigator.serviceWorker.controller) {
         let avisou = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (avisou) return; avisou = true;
-          const semRisco = () => !(B7.Save && B7.Save.temPendencias && B7.Save.temPendencias());
-          const recarregar = () => location.reload();
-          if (document.hidden && semRisco()) return recarregar();
-          B7.UI.toast('Nova versão do B7 disponível.', { acao: 'Atualizar', tempo: 20000, aoClicar: recarregar });
-          document.addEventListener('visibilitychange', () => { if (document.hidden && semRisco()) recarregar(); });
+          const tentar = () => { if (!ocupado() && !recarregouAgora() && (document.hidden || parado())) recarregar(); };
+          tentar();
+          B7.UI.toast('Nova versão do B7 disponível.', { acao: 'Atualizar', tempo: 24 * 3600 * 1000, aoClicar: recarregar });
+          setInterval(tentar, 2000);
+          document.addEventListener('visibilitychange', tentar);
+          window.addEventListener('hashchange', () => { if (!ocupado() && !recarregouAgora()) recarregar(); });
         });
       }
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+
+      /* QUANDO DESCOBRIR. Sozinho, o navegador só confere se há service
+         worker novo ao abrir a página (ou uma vez por dia): com o B7
+         aberto, uma versão publicada passava despercebida até alguém
+         recarregar. Agora a própria página pergunta — a cada 30 s
+         enquanto está visível, e na hora em que volta a aparecer (trocou
+         de aba, abriu o app no celular, a internet voltou). É uma
+         consulta leve ao sw.js; havendo versão nova, ele se instala,
+         assume e cai no fluxo acima. */
+      navigator.serviceWorker.register('./sw.js').then(reg => {
+        let ultima = 0;
+        const conferir = () => {
+          if (document.hidden || !navigator.onLine || Date.now() - ultima < 10000) return;
+          ultima = Date.now();
+          reg.update().catch(() => {});
+        };
+        setInterval(conferir, 30000);
+        document.addEventListener('visibilitychange', conferir);
+        window.addEventListener('focus', conferir);
+        window.addEventListener('online', conferir);
+      }).catch(() => {});
     }
   }
 
@@ -808,7 +865,8 @@ B7.Rota = (function () {
       B7.pintarSessao();
       /* tela de login na frente: nenhum shell é montado — nem o da
          equipe nem o do Portal. Ao entrar, B7.aoEntrar decide qual. */
-      if (r.exigido) { fecharCortina(); return; }
+      /* a tela de acesso também se atualiza sozinha */
+      if (r.exigido) { ligarAtualizacao(); fecharCortina(); return; }
       /* Papel conhecido. O cliente recebe o Portal; a equipe (ou o
          sistema aberto sem serviço de acesso) recebe o shell interno.
          A navegação interna não existia no DOM até este ponto. */
