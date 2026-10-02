@@ -23,7 +23,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
-const VERSAO = '2026-09-30-g';
+const VERSAO = '2026-10-02-j';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
         bootstrap_disponivel: !!Deno.env.get('B7_BOOTSTRAP_TOKEN'),
         admin_existe: (count || 0) > 0,
         acoes: ['ping', 'login', 'bootstrap', 'recuperar_admin', 'remover_admin',
-                'criar_usuario', 'redefinir_senha', 'alterar_conta', 'listar_usuarios']
+                'criar_usuario', 'redefinir_senha', 'alterar_conta', 'listar_usuarios', 'entrar_como']
       });
     }
 
@@ -495,7 +495,7 @@ Deno.serve(async (req) => {
 
     const ACOES_ADMIN = ['criar_usuario', 'redefinir_senha',
                          'alterar_conta', 'listar_usuarios', 'excluir_conta',
-                         'avatar_de'];
+                         'avatar_de', 'entrar_como'];
     /* qualquer pessoa autenticada edita a própria conta */
     const ACOES_PROPRIAS = ['meu_perfil', 'meu_avatar'];
     if (!ACOES_ADMIN.includes(acao) && !ACOES_PROPRIAS.includes(acao)) {
@@ -594,6 +594,62 @@ Deno.serve(async (req) => {
 
     if (autor.papel !== 'admin') {
       return json({ erro: 'Ação restrita ao administrador.' }, 403);
+    }
+
+    // =================================================================
+    // ENTRAR COMO — o administrador assume a conta de alguém da equipe
+    //
+    // Devolve uma sessão de verdade da pessoa escolhida: a partir dela,
+    // o banco responde como ela (RLS, autoria, histórico), que é o que o
+    // administrador pediu — cobrir o trabalho de alguém como se fosse a
+    // própria pessoa. Não usa nem revela senha: a sessão nasce de um link
+    // de acesso gerado e consumido aqui dentro, sem e-mail nenhum.
+    //
+    // Três travas:
+    //   • só administrador (a checagem acima, com o papel lido do banco);
+    //   • nunca conta de cliente: o que um cliente aprova é registro da
+    //     decisão DELE, e uma aprovação feita pela agência em nome do
+    //     cliente seria um registro falso. Para ver o Portal existe a
+    //     prévia de cliente, que é só leitura;
+    //   • toda entrada fica na auditoria (quem entrou, na conta de quem e
+    //     quando). O histórico do sistema mostra a pessoa; este registro
+    //     é o que permite, depois, saber que foi o administrador.
+    //
+    // Presença não é tocada: entrar na conta de alguém não pode fazê-lo
+    // aparecer "online agora" nem mudar o "último acesso" dele.
+    // =================================================================
+    if (acao === 'entrar_como') {
+      const { data: alvo } = await sb.from('perfis')
+        .select('id, username, nome, papel, estado').eq('id', corpo.perfil_id).maybeSingle();
+      if (!alvo) return json({ erro: 'Conta não encontrada.' }, 404);
+      if (alvo.id === autor.id) return json({ erro: 'Você já está na sua conta.' }, 400);
+      if (alvo.estado !== 'ativa') return json({ erro: 'Esta conta não está ativa.' }, 400);
+      if (alvo.papel === 'cliente') {
+        return json({ erro: 'Não é possível entrar na conta de um cliente. ' +
+          'Use "Visualizar como" a empresa para ver o Portal.' }, 403);
+      }
+
+      const { data: link, error: erroLink } = await sb.auth.admin.generateLink({
+        type: 'magiclink', email: identidadeTecnica(alvo.id)
+      });
+      const hash = link?.properties?.hashed_token;
+      if (erroLink || !hash) return json({ erro: 'Não foi possível abrir a conta.' }, 500);
+
+      /* cliente à parte: consumir o link num cliente com sessão em
+         memória trocaria a identidade do `sb` de serviço usado abaixo */
+      const publico = createClient(
+        Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!,
+        { auth: { autoRefreshToken: false, persistSession: false } });
+      const { data: aberta, error: erroSessao } = await publico.auth.verifyOtp({ token_hash: hash, type: 'magiclink' });
+      if (erroSessao || !aberta?.session) return json({ erro: 'Não foi possível abrir a conta.' }, 500);
+
+      await auditar(sb, autor, 'entrar_como',
+        { tipo: 'perfil', id: alvo.id, descricao: alvo.username }, { papel: alvo.papel });
+      return json({
+        access_token: aberta.session.access_token,
+        refresh_token: aberta.session.refresh_token,
+        alvo: { id: alvo.id, nome: alvo.nome, username: alvo.username, papel: alvo.papel }
+      });
     }
 
     // =================================================================

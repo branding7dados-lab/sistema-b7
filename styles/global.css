@@ -235,7 +235,7 @@ body.recolhida .nav a{margin-left:auto;margin-right:auto;width:100%;}
 .pe-lateral .versao{font-size:10.5px;color:rgba(255,255,255,.26);padding:2px 12px 8px;}
 body.recolhida .pe-lateral .estado span,body.recolhida .pe-lateral .versao{display:none;}
 /* ------------------------------------------------- ver como cliente/usuário */
-.ver-como{position:relative;padding:0 12px 10px;}
+.ver-como{position:relative;padding:0 0 8px;}
 .ver-como-bt{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;
   border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.75);font-size:12.5px;
   font-weight:600;border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:var(--t);}
@@ -258,6 +258,59 @@ body.recolhida .ver-como-bt span{display:none;}
 .ver-como-lista .res small{font-size:11px;color:var(--ink-3);}
 .ver-como-lista .nada{padding:18px;text-align:center;font-size:12.5px;color:var(--ink-3);}
 body.recolhida .ver-como-caixa{left:var(--lateral-estreita);right:auto;width:290px;}
+/* ---- rodapé da barra lateral: "Visualizar como…" e "Você está como…" ---- */
+.ver-como[hidden]{display:none;}
+body.recolhida .ver-como{padding-left:0;padding-right:0;}
+body.recolhida .ver-como-bt{width:44px;height:40px;padding:0;margin:0 auto;}
+/* administrador dentro da conta de outra pessoa: âmbar, porque é um
+   estado de atenção — tudo o que for feito sai no nome dela */
+.ver-como.como-outro{padding:0 0 10px;}
+.como-outro .co-quem{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px 12px 0 0;
+  background:rgba(232,180,92,.12);border:1px solid rgba(232,180,92,.28);border-bottom:0;min-width:0;}
+.como-outro .co-av{width:34px;height:34px;border-radius:10px;flex:none;font-size:34px;
+  box-shadow:0 0 0 2px var(--sidebar),0 0 0 3.5px #E8B45C;}
+.como-outro .co-tx{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.como-outro .co-tx small{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#E8B45C;}
+.como-outro .co-tx b{font-size:13px;font-weight:700;line-height:1.25;color:#fff;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
+.como-outro .co-voltar{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:0 12px;
+  border-radius:0 0 12px 12px;border:1px solid rgba(232,180,92,.28);background:#E8B45C;color:#2A1B02;
+  font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:var(--t);}
+.como-outro .co-voltar:hover{background:#F2C675;}
+.como-outro .co-voltar:disabled{opacity:.6;cursor:progress;}
+.como-outro .co-voltar:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+.como-outro .co-voltar svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+/* barra recolhida (e trilho de tablet): só o avatar e o ícone de voltar */
+body.recolhida .como-outro .co-quem{justify-content:center;padding:8px 0;border-radius:12px 12px 0 0;}
+body.recolhida .como-outro .co-tx,body.recolhida .como-outro .co-voltar span{display:none;}
+body.recolhida .como-outro .co-voltar{padding:0;}
+@media (min-width:761px) and (max-width:1080px){
+  body[data-shell="interno"] .como-outro .co-quem{justify-content:center;padding:8px 0;}
+  body[data-shell="interno"] .como-outro .co-tx,body[data-shell="interno"] .como-outro .co-voltar span{display:none;}
+  body[data-shell="interno"] .como-outro .co-voltar{padding:0;}
+  body[data-shell="interno"] .ver-como{padding-left:0;padding-right:0;}
+  body[data-shell="interno"] .ver-como-bt{width:44px;height:40px;padding:0;margin:0 auto;}
+  body[data-shell="interno"] .ver-como-bt span{display:none;}
+}
+/* celular: não há barra lateral — o mesmo aviso vira uma faixa no topo */
+.co-faixa{display:none;}
+@media (max-width:760px){
+  .co-faixa{display:flex;}
+  body.na-conta-de-outro #app{margin-top:58px;height:calc(100vh - 58px);height:calc(100dvh - 58px);}
+}
+
+/* escolha entre só visualizar e entrar na conta */
+.vc-opcoes{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+.vc-opcao{display:flex;flex-direction:column;gap:4px;text-align:left;padding:14px 16px;border-radius:var(--r);
+  border:1px solid var(--borda);background:var(--card);font:inherit;color:var(--ink);cursor:pointer;transition:var(--t);}
+.vc-opcao b{font-size:14px;font-weight:700;}
+.vc-opcao small{font-size:12.5px;line-height:1.45;color:var(--ink-3);}
+.vc-opcao:hover{border-color:var(--borda-forte);background:var(--suave);}
+.vc-opcao.forte{border-color:var(--ambar);background:var(--ambar-bg);}
+.vc-opcao.forte b{color:var(--ambar);}
+.vc-opcao.forte:hover{filter:brightness(.98);}
+.vc-opcao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.vc-opcao:disabled{opacity:.6;cursor:progress;}
 
 .bt-recolher{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;
   border-radius:10px;color:rgba(255,255,255,.45);font-size:12px;transition:var(--t);}

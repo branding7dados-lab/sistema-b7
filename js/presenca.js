@@ -18,6 +18,9 @@ B7.Presenca = (function () {
   async function tocar(forcar) {
     if (!B7.Auth || !B7.Auth.usuario() || !navigator.onLine || !B7.DB || !B7.DB.heartbeat) return;
     if (document.hidden) return;                       /* aba escondida não conta como presença */
+    /* administrador dentro da conta de outra pessoa: ela não está online,
+       e o "último acesso" dela não pode andar por causa disso */
+    if (B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro()) return;
     const agora = Date.now();
     if (!forcar && agora - ultimo < INTERVALO) return;
     if (emCurso) return;

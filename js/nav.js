@@ -426,7 +426,8 @@ B7.Nav = (function () {
     const secao = (titulo, ids) => ids.length ? '<section class="nm-secao"><h4>' + titulo + '</h4><div class="nm-grade">' + ids.map(item).join('') + '</div></section>' : '';
     const gestao = r.ferramentas.filter(id => ['usuarios', 'config'].includes(id));
     const ferr = r.ferramentas.filter(id => !gestao.includes(id) && id !== 'atalhos');
-    const podeVerComo = ehAdmin() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor;
+    const podeVerComo = ehAdmin() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor &&
+      !(B7.Auth && B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
     const html =
       secao('PRINCIPAL', r.principal.filter(fora)) +
       secao('MEU TRABALHO', r.trabalho.filter(fora)) +

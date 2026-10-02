@@ -310,6 +310,7 @@ B7.Topo = (function () {
     const tema = (v, ic, tx) => '<button type="button" role="menuitemradio" aria-checked="' + (m === v) + '" class="tp-tema' +
       (m === v ? ' on' : '') + '" data-tema-modo="' + v + '">' + ic + '<span>' + tx + '</span></button>';
     const cliente = B7.Auth.ehCliente && B7.Auth.ehCliente();
+    const naContaDeOutro = !!(B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
     return '<div class="tp-conta-cab">' +
         '<span class="tp-conta-av av-pessoa' + (u.avatar_url ? ' com-foto' : tom) + '">' + foto + '</span>' +
         '<span class="tp-conta-tx"><b>' + esc(u.nome || u.username) + '</b>' +
@@ -320,12 +321,14 @@ B7.Topo = (function () {
       (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'Preferências e configurações') : '') +
       (B7.Perm && B7.Perm.podeConfig('usuarios') && !cliente ? item('data-conta="usuarios"', IC.usuarios, 'Usuários e acessos') : '') +
       (!cliente ? item('data-conta="atalhos"', IC.teclado, 'Atalhos de teclado', ' tp-so-desktop') : '') +
-      (B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor
+      (B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor && !naContaDeOutro
         ? item('data-conta="vercomo"', IC.olho, 'Visualizar como…') : '') +
       '<div class="tp-secao" role="group" aria-label="Aparência"><span class="tp-secao-rot">Aparência</span>' +
         '<div class="tp-temas">' + tema('sistema', IC.sistema, 'Sistema') + tema('light', IC.sol, 'Claro') + tema('dark', IC.lua, 'Escuro') + '</div>' +
       '</div>' +
-      '<hr>' + item('data-conta="sair"', IC.sair, 'Sair da conta', ' perigo');
+      /* dentro da conta de outra pessoa, sair é voltar para a própria
+         (B7.Auth.sair já faz isso) — o rótulo diz o que vai acontecer */
+      '<hr>' + item('data-conta="sair"', IC.sair, naContaDeOutro ? 'Voltar para minha conta' : 'Sair da conta', ' perigo');
   }
   function ligarConta(raiz, fechar) {
     const acao = {

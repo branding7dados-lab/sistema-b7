@@ -840,6 +840,13 @@ B7.DB = (function () {
     async encerrarSessao() {
       try { await sb().auth.signOut(); } catch (e) {}
     },
+    /* Encerra só a sessão deste navegador. O signOut comum (acima) é
+       global: derruba todas as sessões da conta, em todos os aparelhos —
+       o que não pode acontecer quando o administrador sai da conta de
+       outra pessoa (ver B7.Auth.voltarParaMinhaConta). */
+    async encerrarSessaoLocal() {
+      try { await sb().auth.signOut({ scope: 'local' }); } catch (e) {}
+    },
 
     /* ================================================= PORTAL DO CLIENTE
 

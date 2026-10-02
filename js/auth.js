@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-02-i';
+  const VERSAO = '2026-10-02-j';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -161,6 +161,83 @@ B7.Auth = (function () {
     return sessao;
   }
 
+  /* =================================================================
+     ENTRAR NA CONTA DE OUTRA PESSOA (só administrador)
+
+     Diferente da prévia "só visualizar" (simularPapel, acima), aqui a
+     sessão é a da pessoa de verdade: o servidor (b7-auth, ação
+     entrar_como) devolve uma sessão dela, e a partir daí o banco
+     responde como ela — o que for feito fica registrado no nome dela.
+     O servidor só aceita de administrador, recusa conta de cliente e
+     anota cada entrada na auditoria.
+
+     A sessão do administrador não é encerrada: fica guardada neste
+     navegador (b7_volta) para o "Voltar para minha conta". Tudo recarrega
+     na troca — é o jeito seguro de não sobrar papel, menu ou dado da
+     conta anterior na memória.
+     ================================================================= */
+  const CHAVE_VOLTA = 'b7_volta';
+  function lerVolta() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_VOLTA) || 'null'); } catch (e) { return null; }
+  }
+  function esquecerVolta() { try { localStorage.removeItem(CHAVE_VOLTA); } catch (e) {} }
+  /* estou, agora, dentro da conta de outra pessoa? */
+  const naContaDeOutro = () => {
+    const v = lerVolta();
+    return !!(v && v.alvo && sessao && v.alvo.id === sessao.id);
+  };
+  /* de quem é a conta de verdade ({ id, nome }) — null fora desse modo */
+  const contaDeOrigem = () => (naContaDeOutro() ? lerVolta().admin : null);
+
+  /* As abas do mesmo navegador dividem a sessão. Se uma delas entra (ou
+     sai) da conta de outra pessoa, as demais passariam a gravar com a
+     identidade nova mostrando a tela da antiga — então recarregam. */
+  window.addEventListener('storage', e => {
+    if (e.key === CHAVE_VOLTA && e.oldValue !== e.newValue) location.reload();
+  });
+
+  async function entrarComo(perfilId) {
+    if (!ehAdminReal() || emSimulacao() || naContaDeOutro()) throw new Error('Volte para a sua conta antes de entrar em outra.');
+    const minha = await B7.DB.sessaoSupabase();
+    if (!minha) throw new Error('Sua sessão expirou. Entre de novo.');
+    /* nada por salvar pode ficar para trás: depois da troca, sairia no nome errado */
+    if (B7.Save && B7.Save.agora) { try { await B7.Save.agora(); } catch (e) {} }
+    if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias()) {
+      throw new Error('Ainda há alterações suas sendo salvas. Espere terminar e tente de novo.');
+    }
+    const r = await B7.DB.chamarAuth({ acao: 'entrar_como', perfil_id: perfilId });
+    if (!r || !r.access_token || !r.alvo) throw new Error((r && r.erro) || 'Não foi possível entrar na conta.');
+    anotar('entrarComo', r.alvo.username);
+    try {
+      localStorage.setItem(CHAVE_VOLTA, JSON.stringify({
+        a: minha.access_token, r: minha.refresh_token,
+        admin: { id: sessao.id, nome: sessao.nome }, alvo: r.alvo, em: Date.now()
+      }));
+    } catch (e) { throw new Error('Este navegador não deixou guardar a sua sessão para a volta.'); }
+    try { await B7.DB.assumirSessao(r.access_token, r.refresh_token); }
+    catch (e) { esquecerVolta(); throw new Error('Não foi possível entrar na conta.'); }
+    location.hash = '#/';
+    location.reload();
+  }
+
+  async function voltarParaMinhaConta() {
+    const v = lerVolta();
+    if (!v) return false;
+    anotar('voltar', 'para a conta de origem');
+    if (B7.Save && B7.Save.agora) { try { await B7.Save.agora(); } catch (e) {} }
+    /* encerra SÓ esta sessão da pessoa: um "sair" comum derrubaria todas
+       as sessões dela, em todos os aparelhos */
+    try { await B7.DB.encerrarSessaoLocal(); } catch (e) {}
+    let ok = true;
+    try { await B7.DB.assumirSessao(v.a, v.r); } catch (e) { ok = false; }
+    esquecerVolta();
+    sessao = null;
+    try { sessionStorage.clear(); } catch (e) {}
+    location.hash = '#/';
+    location.reload();   /* sem a sessão de volta, o recarregamento cai na tela de login */
+    return ok;
+  }
+
   /* Verifica que a sessão sobreviveria a um recarregamento. Sem isto, o
      reload que abre o sistema poderia devolver a pessoa ao login, num
      laço sem fim. */
@@ -171,6 +248,9 @@ B7.Auth = (function () {
 
   async function sair() {
     anotar('sair', 'chamado');
+    /* dentro da conta de outra pessoa, "sair" é voltar para a própria:
+       o encerramento comum, abaixo, desconectaria a pessoa de verdade */
+    if (naContaDeOutro()) return voltarParaMinhaConta();
     sessao = null;
     try { await B7.DB.encerrarSessao(); } catch (e) {}
     /* limpa o que ficou em memória e em cache local, para a próxima
@@ -295,6 +375,18 @@ B7.Auth = (function () {
     catch (e) { disponivel = !(e && e.rede); }   /* erro da função ≠ função ausente */
 
     await carregar();
+
+    /* Havia uma entrada na conta de outra pessoa guardada neste navegador.
+       Se a sessão atual não é a dela (expirou, foi encerrada, ou já é a
+       do administrador), aquilo ficou velho: retoma a conta de origem
+       quando não sobrou sessão nenhuma, e descarta o registro. */
+    const volta = lerVolta();
+    if (volta && !(sessao && volta.alvo && volta.alvo.id === sessao.id)) {
+      if (!sessao && volta.a && volta.r) {
+        try { await B7.DB.assumirSessao(volta.a, volta.r); await carregar(); } catch (e) {}
+      }
+      esquecerVolta();
+    }
 
     if (sessao) { anotar('iniciar', 'sessão válida — segue'); return { sessao, exigido: false }; }
 
@@ -431,5 +523,6 @@ B7.Auth = (function () {
 
   return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, sair, carregar, telaLogin, sessaoPersiste,
            usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel,
-           ehAdminReal, simularPapel, encerrarSimulacao, emSimulacao };
+           ehAdminReal, simularPapel, encerrarSimulacao, emSimulacao,
+           entrarComo, voltarParaMinhaConta, naContaDeOutro, contaDeOrigem };
 })();
