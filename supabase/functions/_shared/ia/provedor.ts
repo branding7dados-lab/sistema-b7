@@ -20,6 +20,8 @@ export type PedidoDeGeracao = {
   maxTokens: number;
   temperatura: number;
   prazoMs: number;
+  /** true = a resposta deve ser um JSON (quem valida o conteúdo é a tarefa) */
+  json?: boolean;
 };
 
 /** O que pode dar errado, em termos do B7 (não do provedor). */

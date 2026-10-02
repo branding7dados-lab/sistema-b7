@@ -7,7 +7,7 @@
 
    Uso:
      const r = await B7.IA.pedir('roteiro', { acao, cena_id, texto }, { signal });
-     r.ok      → r.texto
+     r.ok      → r.texto (um campo) ou r.itens (uma lista)
      !r.ok     → r.mensagem (frase pronta, em português) e r.categoria
      cancelado → r.cancelado === true (nada a mostrar)
 
@@ -30,9 +30,10 @@ B7.IA = (function () {
   /* O que a pessoa lê. Nunca o erro cru do provedor nem nome de modelo. */
   const MENSAGENS = {
     sessao: 'Sua sessão expirou. Entre de novo para usar o assistente.',
-    sem_permissao: 'Você não tem acesso ao assistente neste roteiro.',
-    nao_encontrado: 'Esta cena não foi encontrada. Recarregue o roteiro e tente de novo.',
+    sem_permissao: 'Você não tem acesso ao assistente aqui.',
+    nao_encontrado: 'Este item não foi encontrado. Recarregue a página e tente de novo.',
     entrada_invalida: 'Não foi possível usar este texto. Confira o tamanho do trecho e da instrução.',
+    contexto: 'Ainda não há informação suficiente para sugerir sem inventar. Preencha um pouco mais da estratégia e tente de novo.',
     limite: 'Muitos pedidos em sequência. Espere um minuto e tente de novo.',
     ocupado: 'Já existe uma sugestão sendo gerada. Aguarde ela terminar.',
     cota: 'Limite temporário do assistente atingido. Tente novamente mais tarde.',
@@ -78,6 +79,8 @@ B7.IA = (function () {
       if (corpo && corpo.ok === true && typeof corpo.texto === 'string' && corpo.texto.trim()) {
         return { ok: true, texto: corpo.texto };
       }
+      /* tarefas que devolvem lista (pilares, conteúdos, observações) */
+      if (corpo && corpo.ok === true && Array.isArray(corpo.itens)) return { ok: true, itens: corpo.itens };
       if (corpo && typeof corpo.categoria === 'string') return falha(corpo.categoria);
       if (resp.status === 401) return falha('sessao');
       if (resp.status === 403) return falha('sem_permissao');

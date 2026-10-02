@@ -7,7 +7,8 @@
 //   POST https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent
 //   cabeçalho  x-goog-api-key: <chave>
 //   corpo      { systemInstruction, contents: [{ role, parts: [{ text }] }],
-//                generationConfig: { temperature, maxOutputTokens } }
+//                generationConfig: { temperature, maxOutputTokens,
+//                                    responseMimeType (só quando se pede JSON) } }
 //   resposta   candidates[].content.parts[].text, candidates[].finishReason,
 //              promptFeedback.blockReason, usageMetadata, modelVersion
 //   erros      401/403 chave · 404 modelo · 429 limite por minuto OU cota
@@ -84,7 +85,10 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
         body: JSON.stringify({
           ...(sistema ? { systemInstruction: { parts: [{ text: sistema }] } } : {}),
           contents: [{ role: 'user', parts: [{ text: usuario }] }],
-          generationConfig: { temperature: p.temperatura, maxOutputTokens: p.maxTokens }
+          generationConfig: {
+            temperature: p.temperatura, maxOutputTokens: p.maxTokens,
+            ...(p.json ? { responseMimeType: 'application/json' } : {})
+          }
         })
       });
 

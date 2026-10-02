@@ -397,6 +397,50 @@ B7.Linha = (function () {
     }
   }
 
+  /* ------------------------------------------------- ASSISTENTE DE IA
+     A IA é uma camada à parte (js/ia-linha.js). Aqui ficam só os pontos
+     de contato: onde a entrada aparece e COMO um pilar ou conteúdo
+     sugerido é criado — pelo mesmo caminho de um criado à mão. Com a IA
+     desligada (ou para quem só lê a linha), iaAcao devolve '' e a tela
+     fica exatamente como era. */
+  function iaAcao(operacao, rotulo, alinhar) {
+    const b = B7.IALinha ? B7.IALinha.botao(operacao, rotulo) : '';
+    return b ? '<div class="ia-linha-acao' + (alinhar ? ' ' + alinhar : '') + '">' + b + '</div>' : '';
+  }
+  const temBaseParaIdeias = () => [L.linha.objetivo, L.linha.posicionamento, L.linha.puv, L.linha.percepcao]
+    .some(v => String(v || '').trim().length >= 12) || L.pilares.some(p => String(p.objetivo || '').trim().length >= 12);
+
+  const iaHooks = {
+    linhaId: () => L.linha.id,
+    pilares: () => L.pilares,
+    /* um conteúdo sugerido vira um conteúdo comum: mesma criação do
+       "+ Novo conteúdo", já com título, ideia e pilar preenchidos */
+    criarConteudo: async s => {
+      const dados = {
+        client_id: L.linha.client_id, linha_id: L.linha.id, tipo: s.formato,
+        position: L.conteudos.length, status: 'Ideia', titulo: s.titulo, ideia_geral: s.ideia || ''
+      };
+      if (s.pilar_id && L.pilares.some(p => p.id === s.pilar_id)) dados.pilar_id = s.pilar_id;
+      /* Carrossel não tem campo de CTA: o último slide é o CTA */
+      if (s.cta && s.formato !== 'Carrossel') dados.cta = s.cta;
+      const novo = await B7.DB.criarConteudo(dados);
+      B7.DB.registrar({ tipo: 'criar', entidade: 'conteudo', id: novo.id,
+        cliente: L.linha.client_id, texto: 'Novo ' + s.formato + ' em ' + L.linha.nome });
+      L.conteudos.push(novo);
+      return novo;
+    },
+    /* idem para o pilar: sem percentual — o peso é decisão da equipe */
+    criarPilar: async s => {
+      const novo = await B7.DB.criarPilar({
+        linha_id: L.linha.id, position: L.pilares.length, nome: s.tipo, percentual: 0,
+        funil: s.funil || 'Topo', objetivo: s.objetivo || ''
+      });
+      L.pilares.push(novo);
+      return novo;
+    },
+    depois: () => atualizar()
+  };
+
   /* ------------------------------------------------------- VISÃO GERAL */
   function visaoGeral() {
     const porFormato = {};
@@ -436,6 +480,8 @@ B7.Linha = (function () {
       '<div class="mini-metricas">' + metricas.map(([n, r]) =>
         '<div class="mini-metrica"><b>' + n + '</b><span>' + r + '</span></div>').join('') +
       '</div>' +
+      /* revisar o planejamento só faz sentido com alguns conteúdos na linha */
+      (total >= 3 ? iaAcao('revisar_linha', 'Revisar linha editorial') : '') +
 
       '<div class="colunas"><div>' +
         /* um único formato não merece gráfico: a métrica acima já disse tudo */
@@ -481,6 +527,7 @@ B7.Linha = (function () {
 
     return '<p class="nota-secao">Todos os campos desta aba são opcionais. O que estiver vazio ' +
       'simplesmente não aparece no documento.</p>' +
+      iaAcao('revisar_estrategia', 'Revisar estratégia') +
 
       '<div class="bloco mb"><h3>Referências do mês</h3>' +
         '<p class="ajuda" style="margin-bottom:10px">Links que servem de base para os ' +
@@ -614,6 +661,7 @@ B7.Linha = (function () {
       (L.pilares.length ? '' :
         '<div class="pil-vazio">Nenhum pilar ainda' + (leitura ? '.' : '. Comece com dois ou três tipos: Entretenimento, Educativo, Inspirador…') + '</div>') +
       (leitura ? '' : '<button class="add-largo" id="add-pilar">+ ADICIONAR PILAR</button>') +
+      iaAcao('sugerir_pilares', 'Sugerir pilares') +
       (L.pilares.length ? '<div class="pil-sub">DISTRIBUIÇÃO DOS CONTEÚDOS</div>' +
         '<div id="pil-dist">' + distribuicaoPilares() + '</div>' : '') +
     '</div>';
@@ -647,6 +695,8 @@ B7.Linha = (function () {
         '</div>' +
         C.campo('OBJETIVO DO PILAR', p.objetivo, t + ' data-campo="objetivo"') +
         C.campo('OBSERVAÇÕES', p.observacoes, t + ' data-campo="observacoes"') +
+        /* ideias de conteúdo para ESTE pilar: só faz sentido com o tipo definido */
+        (p.nome && B7.IALinha ? B7.IALinha.botao('sugerir_conteudos', 'Sugerir ideias para este pilar', { pilar: p.id }) : '') +
       '</div>' +
       '<button class="ico perigo" data-excluir-pilar="' + esc(p.id) + '" title="Remover pilar">✕</button></div>';
   }
@@ -721,9 +771,13 @@ B7.Linha = (function () {
         '<b>Nenhum conteúdo ainda.</b>' +
         '<p>Cada conteúdo vira um card com a estrutura do formato: reel, card, carrossel ou story.</p>' +
         (C.souDesignerSomenteLeitura() ? '' : '<div class="acoes"><button class="b pri" data-novo-conteudo>+ Novo conteúdo</button></div>') +
+        /* sem conteúdo ainda: a IA só é oferecida quando há estratégia ou
+           pilares de onde tirar as ideias (sem base, ela inventaria) */
+        (temBaseParaIdeias() ? iaAcao('sugerir_conteudos', 'Sugerir primeiros conteúdos', 'centro') : '') +
         '</div>';
     }
-    return '<div class="grade-criativos" id="lista-criativos">' +
+    return iaAcao('sugerir_conteudos', 'Sugerir conteúdos', 'direita') +
+      '<div class="grade-criativos" id="lista-criativos">' +
       L.conteudos.map((c, i) => cardConteudo(c, i)).join('') + '</div>' +
       (C.souDesignerSomenteLeitura() ? '' : '<button class="add-largo" data-novo-conteudo>+ NOVO CONTEÚDO</button>');
   }
@@ -941,6 +995,7 @@ B7.Linha = (function () {
     p.querySelectorAll('[data-ir-aba]').forEach(b => b.onclick = () => trocarAba(b.dataset.irAba));
 
     ligarPilares(p);
+    if (B7.IALinha) B7.IALinha.ligar(p, iaHooks);
     p.querySelectorAll('[data-status-semanal]').forEach(b => b.onclick = () =>
       B7.Semana.modalNovo(L.linha.client_id, L.linha.id));
     const baixar = p.querySelector('[data-baixar-linha]');
@@ -1433,6 +1488,7 @@ B7.Linha = (function () {
       { larga: true, extra: 'modal-conteudo', aoFechar: () => { B7.Save.agora().catch(() => {}); atualizar(); } });
 
     C.ligarCampos(m, espelhar);
+    if (B7.IALinha) B7.IALinha.ligar(m, iaHooks);
     slotOportunidade(m, c, leitura);
 
     /* "Copiar legenda" copia o valor ATUAL do campo, mesmo o que ainda

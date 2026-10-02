@@ -37,6 +37,8 @@ export type Opcoes = {
   /** transforma a saída crua em texto utilizável; devolver '' = resposta inválida */
   limpar: (bruto: string) => string;
   prazoMs?: number;
+  /** pede JSON ao provedor; `limpar` continua sendo quem valida */
+  json?: boolean;
 };
 
 /** O provedor desta instalação. null = IA não configurada neste ambiente. */
@@ -63,7 +65,7 @@ export async function gerar(provedor: Provedor | null, mensagens: Mensagem[], op
 
   let r;
   try {
-    r = await provedor.gerar({ mensagens, maxTokens: op.maxTokens, temperatura: op.temperatura, prazoMs: op.prazoMs ?? 30_000 });
+    r = await provedor.gerar({ mensagens, maxTokens: op.maxTokens, temperatura: op.temperatura, prazoMs: op.prazoMs ?? 30_000, json: op.json });
   } catch (_e) {
     return falha('indisponivel');
   }

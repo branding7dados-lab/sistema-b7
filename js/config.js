@@ -29,5 +29,5 @@ window.B7_CONFIG = {
      recurso. Nenhuma chave de IA entra neste arquivo: a chave do provedor
      fica só nos secrets da Edge Function b7-ia (GEMINI_API_KEY). Com o
      recurso em false, a tela nem mostra o assistente. Ver IA.md. */
-  IA: { roteiros: true }
+  IA: { roteiros: true, linhas: true }
 };

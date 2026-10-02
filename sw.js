@@ -6,7 +6,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v127';
+const CACHE = 'roteiros-b7-v128';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -18,7 +18,7 @@ const CASCA = [
   './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js', './js/painel-coord.js', './js/painel-design.js', './js/painel-multi.js', './js/topo.js', './js/nav.js',
   './js/permissoes.js', './js/portal.js', './js/kanban.js', './js/perfil.js', './js/foto.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js',
-  './js/ia.js', './js/ia-roteiro.js',
+  './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js',
   './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js', './js/vendor/xlsx.full.min.js',
   './styles/auth.css', './styles/central.css', './styles/conteudo.css', './styles/semana.css',
   './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css', './styles/linha.css', './styles/design.css',

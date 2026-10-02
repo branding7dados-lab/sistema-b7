@@ -1,21 +1,22 @@
 # IA no Sistema B7 — como funciona e como ligar
 
-A IA no B7 não é um módulo: é uma capacidade que aparece dentro das telas, onde ajuda. Hoje existe um uso — o **assistente de escrita nos roteiros**. Não há item de menu, página de chat nem painel de IA.
+A IA no B7 não é um módulo: é uma capacidade que aparece dentro das telas, onde ajuda. Hoje existem dois usos: o **assistente de escrita nos roteiros** e o **assistente da linha editorial** (estratégia, pilares e conteúdos). Não há item de menu, página de chat nem painel de IA.
 
 ## Caminho de um pedido
 
 ```
-tela (js/ia-roteiro.js)
-  → B7.IA.pedir('roteiro', …)                 js/ia.js
+tela (js/ia-roteiro.js ou js/ia-linha.js)
+  → B7.IA.pedir('roteiro' | 'linha', …)       js/ia.js
     → Edge Function b7-ia                      sessão, permissão, limite de uso, registro
       → tarefa    _shared/ia/roteiro.ts        valida o pedido, carrega o contexto com o RLS da pessoa, monta as instruções
+                  _shared/ia/linha.ts          idem, para a linha editorial
         → serviço   _shared/ia/servico.ts      escolhe o provedor, prazo, tradução dos erros
           → provedor  _shared/ia/provedor.ts   o contrato (o que um provedor recebe e devolve)
             → _shared/ia/gemini.ts → API do Gemini
 ```
 
 - O navegador nunca fala com provedor de IA e nunca manda prompt. Ele pede uma **tarefa conhecida**.
-- A tela não sabe qual provedor ou modelo respondeu. A resposta que ela recebe é do B7: `{ ok: true, texto, id }` ou `{ ok: false, categoria }`.
+- A tela não sabe qual provedor ou modelo respondeu. A resposta que ela recebe é do B7: `{ ok: true, texto, id }` (um campo), `{ ok: true, itens, id }` (uma lista) ou `{ ok: false, categoria }`.
 - Sem chave configurada, a função responde "indisponível" e o resto do B7 funciona igual.
 
 ## Provedor atual: Gemini, direto
@@ -98,6 +99,25 @@ supabase functions deploy b7-ia --no-verify-jwt
 - **Saída do modelo:** tratada como texto, nunca como HTML.
 - **Camada gratuita do Google:** segundo a página de preços, o conteúdo enviado na camada gratuita **pode ser usado pelo Google para melhorar os produtos dele**; na camada paga, não. Vale saber antes de usar o assistente em roteiros com informação sensível de cliente.
 
+## Linha editorial
+
+Ligada por `IA: { linhas: true }` em `js/config.js`. A tela é `js/ia-linha.js`; a tarefa no servidor é `_shared/ia/linha.ts`.
+
+| Operação | Onde aparece | O que devolve |
+|---|---|---|
+| `campo` | ícone no rótulo de um campo de texto (estratégia, objetivo do pilar, textos do conteúdo) | texto para aquele campo |
+| `sugerir_pilares` | "Sugerir pilares", na seção de pilares | lista de tipos de pilar que a linha ainda não tem |
+| `sugerir_conteudos` | "Sugerir conteúdos" (aba Criativos) e "Sugerir ideias para este pilar" | 3, 5 ou 8 ideias de conteúdo |
+| `revisar_estrategia` | "Revisar estratégia" (aba Estratégia) | observações |
+| `revisar_linha` | "Revisar linha editorial" (Visão geral, com 3 conteúdos ou mais) | observações |
+
+- **Nada é gravado pela IA.** Um campo só muda em "Aplicar", pelo evento de digitação do próprio campo (autosave de sempre). Pilar e conteúdo sugeridos só são criados para os itens que a pessoa marcar, pela mesma criação de um pilar ou conteúdo feito à mão; depois disso são registros comuns, sem marca de IA.
+- **Contexto por operação.** Um campo da estratégia leva os outros campos da estratégia. Um campo de pilar leva objetivo e posicionamento. Um campo de conteúdo leva objetivo, tom de voz e os outros textos daquele conteúdo. Ideias de conteúdo levam estratégia, pilares e os títulos já planejados **daquela linha** (para não repetir). Nunca vai: outro mês, outro cliente, roteiros, gravações, vídeo, design, aprovações, links de referência, observações internas.
+- **Sem base, sem chamada.** Se a linha não tem estratégia suficiente, a função responde `contexto` ("Preencha um pouco mais da estratégia…") e não chama o modelo.
+- **Listas validadas no servidor.** O modelo responde em JSON; tipo de pilar e formato fora das listas do B7 são descartados, ideias repetidas dentro da própria resposta são removidas, e as parecidas com um conteúdo que já existe chegam marcadas.
+- **Sem percentual.** Pilar sugerido entra com 0%: o peso é decisão da equipe.
+- **Quem pode.** Equipe que edita a linha. Designer (só leitura na linha) não vê as entradas, e o servidor recusa.
+- **Registro.** `ia_uso.recurso = 'linha'`; `acao` é a operação (`sugerir_conteudos`, `campo.conteudo.legenda.criar`…).
 ## Registro de uso
 
 Tabela `ia_uso` (ver `migration_ia_uso.sql`): quem pediu, qual ação, em qual cena, se deu certo, provedor, modelo, motivo do erro, duração, tokens e tamanhos em caracteres. **Não guarda** o texto do roteiro, a instrução nem a sugestão. Só o servidor lê; não há tela para isso. O `id` da linha é o que a função devolve como `id` do pedido.

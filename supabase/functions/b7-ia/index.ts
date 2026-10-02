@@ -9,17 +9,20 @@
 //           → provedor (_shared/ia/gemini.ts, hoje)
 //
 // O navegador nunca fala com provedor de IA e nunca manda prompt: pede
-// uma tarefa conhecida. Hoje existe uma: "roteiro". Uma tarefa nova
-// entra como mais um arquivo em _shared/ia/ e mais um caso aqui — sem
-// tela nova, sem chave nova.
+// uma tarefa conhecida. Hoje existem duas: "roteiro" (uma cena) e
+// "linha" (linha editorial: estratégia, pilares, conteúdos). Uma tarefa
+// nova entra como mais um arquivo em _shared/ia/ e mais um caso aqui —
+// sem tela nova, sem chave nova.
 //
 // Corpo:  { tarefa: 'roteiro', acao, cena_id, texto, cena_inteira?, instrucao? }
+//         { tarefa: 'linha', operacao, linha_id, … }   (ver _shared/ia/linha.ts)
 // Resposta de produto (HTTP 200), no formato do B7 — a tela não conhece
 // o formato do provedor:
-//   { ok: true, texto, id }
+//   { ok: true, texto, id }    um campo de texto
+//   { ok: true, itens, id }    uma lista (pilares, conteúdos, observações)
 //   { ok: false, categoria }   categoria ∈ entrada_invalida | nao_encontrado
-//                              | limite | ocupado | cota | tempo | recusado
-//                              | indisponivel
+//                              | contexto | limite | ocupado | cota | tempo
+//                              | recusado | indisponivel
 // Sessão e permissão respondem 401 / 403 com { ok: false, categoria }.
 // A resposta nunca traz nome de modelo, de provedor nem erro cru: isso
 // fica em public.ia_uso, que só o servidor lê.
@@ -33,7 +36,9 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { gerar, provedorAtual } from '../_shared/ia/servico.ts';
+import type { Mensagem } from '../_shared/ia/provedor.ts';
 import { carregarContexto, limiteDeSaida, limparSaida, montarMensagens, validar } from '../_shared/ia/roteiro.ts';
+import * as Linha from '../_shared/ia/linha.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -81,10 +86,14 @@ Deno.serve(async (req: Request) => {
   if (bruto.length > LIMITE.corpo) return json({ ok: false, categoria: 'entrada_invalida' });
   let corpo: Record<string, unknown> = {};
   try { corpo = JSON.parse(bruto); } catch (_e) { return json({ ok: false, categoria: 'entrada_invalida' }); }
-  if (corpo.tarefa !== 'roteiro') return json({ ok: false, categoria: 'entrada_invalida' });
-  const v = validar(corpo);
-  if (!v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
-  const pedido = v.pedido;
+  const pRoteiro = corpo.tarefa === 'roteiro' ? validar(corpo) : null;
+  const pLinha = corpo.tarefa === 'linha' ? Linha.validar(corpo) : null;
+  const v = pRoteiro || pLinha;
+  if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
+
+  /* Linha editorial: designer só lê (a tela já trava os campos para ele);
+     quem não pode editar não ganha um caminho de escrita pela IA. */
+  if (pLinha && perfil.papel === 'designer') return json({ ok: false, categoria: 'sem_permissao' }, 403);
 
   /* ---- sem provedor configurado: recurso indisponível, nenhuma chamada externa ---- */
   const provedor = provedorAtual(n => Deno.env.get(n));
@@ -94,23 +103,50 @@ Deno.serve(async (req: Request) => {
   const limite = await dentroDoLimite(sb, perfil.id);
   if (limite !== 'ok') return json({ ok: false, categoria: limite });
 
-  /* ---- permissão sobre ESTA cena: o RLS da própria pessoa decide ---- */
+  /* ---- permissão sobre ESTE registro: o RLS da própria pessoa decide ---- */
   const sbDaPessoa = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
     global: { headers: { Authorization: 'Bearer ' + token } }, auth: { persistSession: false }
   });
-  const ctx = await carregarContexto(sbDaPessoa, pedido.cenaId);
-  if (!ctx) return json({ ok: false, categoria: 'nao_encontrado' });
 
-  /* ---- registro: metadados, nunca o texto do roteiro nem a sugestão ---- */
+  /* Cada tarefa entrega a mesma coisa: o que registrar e o que pedir. */
+  let t: {
+    recurso: string; acao: string; entidadeTipo: string; entidadeId: string; tamanhoEntrada: number;
+    mensagens: Mensagem[]; maxTokens: number; temperatura: number; limpar: (b: string) => string; json: boolean;
+  };
+  if (pRoteiro && pRoteiro.ok) {
+    const pedido = pRoteiro.pedido;
+    const ctx = await carregarContexto(sbDaPessoa, pedido.cenaId);
+    if (!ctx) return json({ ok: false, categoria: 'nao_encontrado' });
+    t = {
+      recurso: 'roteiro', acao: pedido.acao, entidadeTipo: 'cena', entidadeId: pedido.cenaId, tamanhoEntrada: pedido.texto.length,
+      mensagens: montarMensagens(pedido, ctx), maxTokens: limiteDeSaida(pedido.acao), temperatura: 0.7, limpar: limparSaida, json: false
+    };
+  } else {
+    const pedido = (pLinha as { ok: true; pedido: Linha.Pedido }).pedido;
+    const ctx = await Linha.carregarContexto(sbDaPessoa, pedido);
+    if (!ctx) return json({ ok: false, categoria: 'nao_encontrado' });
+    /* sem base para ajudar sem inventar: avisa e não gasta uma chamada */
+    if (!Linha.contextoSuficiente(pedido, ctx)) return json({ ok: false, categoria: 'contexto' });
+    /* a linha já tem todos os tipos de pilar: não há o que sugerir */
+    if (pedido.operacao === 'sugerir_pilares' && Linha.tiposLivres(ctx).length < 1) return json({ ok: true, itens: [] });
+    t = {
+      recurso: 'linha', acao: Linha.nomeNoRegistro(pedido),
+      entidadeTipo: pedido.alvoTipo || 'linha', entidadeId: pedido.alvoId || pedido.linhaId, tamanhoEntrada: pedido.texto.length,
+      mensagens: Linha.montarMensagens(pedido, ctx), maxTokens: Linha.limiteDeSaida(pedido),
+      temperatura: pedido.operacao.startsWith('revisar') ? 0.4 : 0.8, limpar: Linha.limpador(pedido, ctx), json: Linha.pedeJson(pedido)
+    };
+  }
+
+  /* ---- registro: metadados, nunca o texto enviado nem a sugestão ---- */
   const { data: reg } = await sb.from('ia_uso').insert({
-    perfil_id: perfil.id, recurso: 'roteiro', acao: pedido.acao,
-    entidade_tipo: 'cena', entidade_id: pedido.cenaId, tamanho_entrada: pedido.texto.length,
+    perfil_id: perfil.id, recurso: t.recurso, acao: t.acao,
+    entidade_tipo: t.entidadeTipo, entidade_id: t.entidadeId, tamanho_entrada: t.tamanhoEntrada,
     provedor: provedor.nome, modelo: provedor.modelo
   }).select('id').maybeSingle();
 
   /* um pedido da pessoa = uma chamada ao provedor */
-  const r = await gerar(provedor, montarMensagens(pedido, ctx), {
-    maxTokens: limiteDeSaida(pedido.acao), temperatura: 0.7, limpar: limparSaida
+  const r = await gerar(provedor, t.mensagens, {
+    maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json
   });
 
   if (reg) {
@@ -122,6 +158,8 @@ Deno.serve(async (req: Request) => {
     }).eq('id', reg.id);
   }
 
-  if (r.ok) return json({ ok: true, texto: r.texto, id: reg ? reg.id : null });
-  return json({ ok: false, categoria: r.categoria });
+  if (!r.ok) return json({ ok: false, categoria: r.categoria });
+  /* listas: o limpador da tarefa já validou e devolveu { itens } */
+  if (t.json) return json({ ok: true, itens: JSON.parse(r.texto).itens, id: reg ? reg.id : null });
+  return json({ ok: true, texto: r.texto, id: reg ? reg.id : null });
 });
