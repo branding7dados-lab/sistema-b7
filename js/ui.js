@@ -218,7 +218,9 @@ B7.UI = (function () {
     lista.style.top = '0px';
     lista.style.right = 'auto';
     lista.style.maxHeight = '';
-    document.body.appendChild(lista);
+    /* com algo em tela cheia (apresentação), o navegador só desenha o que
+       está dentro daquele elemento: a lista solta precisa ir para lá */
+    (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(lista);
     menuAberto = { menu, lista };
 
     const r = botao.getBoundingClientRect();

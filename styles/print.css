@@ -490,17 +490,28 @@
 .preview-acoes{margin-left:auto;display:flex;gap:8px;}
 .preview-palco{position:relative;flex:1;min-height:0;display:flex;align-items:center;
   justify-content:center;overflow:hidden;touch-action:pan-y;}
-.preview-in{transform-origin:center center;}
+.preview-in{position:relative;transform-origin:center center;}
 .preview-in .slide,.preview-in .folha{margin:0;box-shadow:0 30px 80px -30px rgba(0,0,0,.8);}
+/* cada slide vive numa camada: na troca, a antiga e a nova ficam na tela
+   ao mesmo tempo e uma passa para a outra */
+.pv-camada{position:absolute;left:0;top:0;z-index:2;backface-visibility:hidden;}
+.pv-camada.saindo{z-index:1;pointer-events:none;}
+.preview-carrega{margin:auto;display:flex;align-items:center;gap:12px;color:rgba(255,255,255,.7);
+  font-size:13px;letter-spacing:.04em;}
+.preview-carrega i{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.2);
+  border-top-color:#C21C83;animation:girando .8s linear infinite;}
+/* progresso da apresentação: um fio na base do palco */
+.preview-prog{position:absolute;left:0;right:0;bottom:0;height:3px;z-index:6;background:rgba(255,255,255,.07);}
+.preview-prog i{display:block;height:100%;background:linear-gradient(90deg,#3A1E86,#C21C83);
+  transform-origin:left center;transform:scaleX(var(--p,0));transition:transform .7s cubic-bezier(.22,1,.36,1);}
+.preview-fundo:not(.wide) .preview-prog{display:none;}
 
 /* =================================================== movimento do palco
-   Duas camadas, e a divisão entre elas é o que faz parecer apresentação
-   e não carrossel: a PÁGINA troca de forma quase imperceptível (só o
-   suficiente pra dar a sensação de virada), e quem realmente se
-   apresenta é o CONTEÚDO, entrando em cascata na ordem de leitura.
-   Movimento grande na página inteira compete com o conteúdo e cansa em
-   reunião — o slide deve chegar "já assentado" e o olho ser conduzido
-   item a item.
+   Dois tempos. Primeiro a PÁGINA: o slide atual recua e escurece
+   enquanto o próximo entra por cima, vindo do lado para onde a
+   apresentação vai — uma passagem de um slide para o outro, com os dois
+   na tela. Depois o CONTEÚDO do slide novo se apresenta em cascata, na
+   ordem de leitura, cada tipo de elemento com a sua entrada.
 
    Tudo aqui é escopado em .preview-in (o palco da apresentação). As
    exportações — PDF e PNG, os dois — capturam de #area-impressao, que
@@ -511,50 +522,143 @@
    recalcular layout), e por isso a barra cresce com scaleX em vez de
    `width`, que forçaria reflow a cada quadro. */
 
-/* a página: fade curto com um respiro de escala, sem deslocamento lateral */
-@keyframes sl-pagina{
-  from{opacity:0;transform:scale(.992);}
-  to{opacity:1;transform:scale(1);}
+/* ---- a página: transição entre dois slides ----
+   A nova entra por cima, vinda de fora; a antiga recua um pouco, encolhe
+   e apaga atrás dela. Avançar e voltar são o espelho um do outro. */
+@keyframes pv-entra-avanca{
+  from{transform:translateX(104%) scale(.9);}
+  to{transform:translateX(0) scale(1);}
 }
-.preview-in.entra-avanca > *,
-.preview-in.entra-volta > *{animation:sl-pagina .34s cubic-bezier(.22,.61,.36,1) both;}
+@keyframes pv-entra-volta{
+  from{transform:translateX(-104%) scale(.9);}
+  to{transform:translateX(0) scale(1);}
+}
+@keyframes pv-sai-avanca{
+  from{transform:translateX(0) scale(1);opacity:1;}
+  to{transform:translateX(-62%) scale(.84);opacity:0;}
+}
+@keyframes pv-sai-volta{
+  from{transform:translateX(0) scale(1);opacity:1;}
+  to{transform:translateX(62%) scale(.84);opacity:0;}
+}
+/* abertura: a capa cresce do fundo até o lugar */
+@keyframes pv-abre{
+  from{opacity:0;transform:scale(.9) translateY(18px);}
+  to{opacity:1;transform:scale(1) translateY(0);}
+}
+/* a mesma curva nas duas: saem e entram juntas, como uma peça só */
+.pv-camada.entra-avanca{animation:pv-entra-avanca .85s cubic-bezier(.7,0,.2,1) both;}
+.pv-camada.entra-volta{animation:pv-entra-volta .85s cubic-bezier(.7,0,.2,1) both;}
+.pv-camada.sai-avanca{animation:pv-sai-avanca .85s cubic-bezier(.7,0,.2,1) both;}
+.pv-camada.sai-volta{animation:pv-sai-volta .85s cubic-bezier(.7,0,.2,1) both;}
+.pv-camada.entra-abre{animation:pv-abre .9s cubic-bezier(.16,1,.3,1) both;}
+/* durante a passagem, a página que entra projeta sombra na que sai */
+.pv-camada.entra-avanca .slide,
+.pv-camada.entra-volta .slide{box-shadow:0 0 120px rgba(0,0,0,.75);}
 
-/* o item: sobe pouco e revela — deslocamento pequeno com easing longo
-   (expo out) lê como "assentar", enquanto deslocamento grande com easing
-   curto lê como "empurrão" */
+/* ---- o conteúdo: cada tipo com a sua entrada ----
+   --base = tempo de a página assentar; --d = posição do item na leitura */
+.preview-in .slide [class*="sl-ani"]{animation-delay:calc(var(--base,0ms) + var(--d,0ms));}
+
+/* padrão: sobe e assenta */
 @keyframes sl-item{
-  from{opacity:0;transform:translateY(10px);}
+  from{opacity:0;transform:translateY(22px);}
   to{opacity:1;transform:translateY(0);}
 }
-/* o número grande também cresce um fio: é o elemento de maior peso
-   visual do slide e merece chegar com presença */
-@keyframes sl-numero{
-  from{opacity:0;transform:translateY(8px) scale(.94);}
-  to{opacity:1;transform:translateY(0) scale(1);}
+.preview-in .sl-ani{animation:sl-item .7s cubic-bezier(.16,1,.3,1) both;}
+
+/* cabeçalho, rodapé e cabeçalho de tabela só surgem: são moldura */
+@keyframes sl-fade{from{opacity:0;}to{opacity:1;}}
+.preview-in .sl-ani-fade{animation:sl-fade .8s ease-out both;}
+
+/* número da seção: chega grande, gira um fio e assenta */
+@keyframes sl-num{
+  0%{opacity:0;transform:translateY(26px) scale(1.5) rotate(-8deg);}
+  60%{opacity:1;}
+  100%{opacity:1;transform:translateY(0) scale(1) rotate(0);}
 }
-/* barras preenchem a partir da esquerda, como se estivessem sendo
-   medidas na hora */
+.preview-in .sl-ani-num{transform-origin:left bottom;animation:sl-num .9s cubic-bezier(.16,1,.3,1) both;}
+
+/* título: revelado de baixo para cima, como se saísse de trás de uma régua */
+@keyframes sl-titulo{
+  from{clip-path:inset(0 0 100% 0);transform:translateY(55%);}
+  to{clip-path:inset(-20% -4% -25% -4%);transform:translateY(0);}
+}
+.preview-in .sl-ani-titulo{animation:sl-titulo .85s cubic-bezier(.16,1,.3,1) both;}
+
+/* título da capa: linha a linha, cada uma subindo de trás da sua máscara */
+.preview-in .sl-linha{display:block;overflow:hidden;padding:.06em 0 .12em;margin:-.06em 0 -.12em;}
+.preview-in .sl-linha > span{display:block;
+  animation:sl-linha 1s cubic-bezier(.16,1,.3,1) both;
+  animation-delay:calc(var(--base,0ms) + var(--d,0ms) + var(--k,0) * 130ms);}
+@keyframes sl-linha{
+  from{transform:translateY(112%) rotate(3deg);}
+  to{transform:translateY(0) rotate(0);}
+}
+.preview-in .sl-ani-linhas{animation:none;}
+
+/* entra pelo lado: linha de tabela, barra de formato, bloco do objetivo */
+@keyframes sl-lado{
+  from{opacity:0;transform:translateX(-34px);}
+  to{opacity:1;transform:translateX(0);}
+}
+.preview-in .sl-ani-lado{animation:sl-lado .7s cubic-bezier(.16,1,.3,1) both;}
+
+/* cartão (pilar): sobe inclinado, com profundidade, e deita no lugar */
+@keyframes sl-carta{
+  from{opacity:0;transform:perspective(900px) translateY(44px) rotateX(-16deg) scale(.95);}
+  to{opacity:1;transform:perspective(900px) translateY(0) rotateX(0) scale(1);}
+}
+.preview-in .sl-ani-carta{transform-origin:center bottom;animation:sl-carta .85s cubic-bezier(.16,1,.3,1) both;}
+
+/* número grande: cresce passando um fio do tamanho e volta */
+@keyframes sl-numero{
+  0%{opacity:0;transform:translateY(20px) scale(.7);}
+  65%{opacity:1;transform:translateY(0) scale(1.05);}
+  100%{opacity:1;transform:translateY(0) scale(1);}
+}
+.preview-in .sl-ani-numero{transform-origin:left bottom;animation:sl-numero .8s cubic-bezier(.22,1,.36,1) both;}
+.preview-in .sl-numeros b,.preview-in .sl-pilar .pct,.preview-in .sl-dist b{font-variant-numeric:tabular-nums;}
+.preview-in .sl-pilar .pct{text-align:right;}
+
+/* salto: etiqueta de canal, logo do cliente */
+@keyframes sl-pop{
+  0%{opacity:0;transform:scale(.5);}
+  70%{opacity:1;transform:scale(1.07);}
+  100%{opacity:1;transform:scale(1);}
+}
+.preview-in .sl-ani-pop{animation:sl-pop .6s cubic-bezier(.22,1,.36,1) both;}
+
+/* barras e riscos são traçados da esquerda para a direita */
 @keyframes sl-barra{
   from{transform:scaleX(0);}
   to{transform:scaleX(1);}
 }
+.preview-in .sl-ani-barra{transform-origin:left center;animation:sl-barra .95s cubic-bezier(.16,1,.3,1) both;}
+/* o fio do "olho" e do kicker também é traçado, junto com o texto dele */
+.preview-in .sl-ani-lado > i{transform-origin:left center;
+  animation:sl-barra .8s cubic-bezier(.16,1,.3,1) both;
+  animation-delay:calc(var(--base,0ms) + var(--d,0ms) + 160ms);}
 
-.preview-in .sl-ani{
-  animation:sl-item .52s cubic-bezier(.16,1,.3,1) both;
-  animation-delay:var(--d,0ms);
-}
-.preview-in .sl-ani-numero{
-  animation:sl-numero .6s cubic-bezier(.16,1,.3,1) both;
-  animation-delay:var(--d,0ms);
-}
-.preview-in .sl-ani-barra{
-  transform-origin:left center;
-  animation:sl-barra .72s cubic-bezier(.16,1,.3,1) both;
-  animation-delay:var(--d,0ms);
-}
+/* a linha que separa os dados da capa: traçada, em vez de já estar lá */
+.preview-in .sl-dados.sl-ani-traco{position:relative;border-top-color:transparent;animation:none;}
+.preview-in .sl-dados.sl-ani-traco::before{content:"";position:absolute;left:0;right:0;top:-1px;height:1px;
+  background:rgba(255,255,255,.16);transform-origin:left center;
+  animation:sl-barra 1.1s cubic-bezier(.16,1,.3,1) both;
+  animation-delay:calc(var(--base,0ms) + var(--d,0ms));}
 
-/* tela cheia de verdade (Fullscreen API): sem o respiro que fazia
-   sentido dentro da janela — a tela inteira é o palco */
+/* o brilho da capa nunca fica parado: deriva devagar, como luz */
+@keyframes sl-brilho{
+  0%{transform:translate(0,0) scale(1);opacity:.85;}
+  50%{transform:translate(-18mm,10mm) scale(1.18);opacity:1;}
+  100%{transform:translate(8mm,-6mm) scale(.94);opacity:.8;}
+}
+.preview-in .slide.escuro .brilho{animation:sl-brilho 11s ease-in-out infinite alternate;}
+
+/* ---- tela cheia: a tela é só o slide ----
+   O palco ocupa tudo; barra de cima, navegação e setas flutuam por cima
+   e somem quando o mouse para (classe .ocioso), como num player. No
+   documento A4 (Visualizar) a tela cheia continua com as barras fixas. */
 .preview-fundo.tela-cheia{background:#07030D;}
 .preview-fundo.tela-cheia .preview-topo,
 .preview-fundo.tela-cheia .preview-nav{opacity:.25;transition:opacity .2s;}
@@ -563,16 +667,35 @@
 .preview-fundo.tela-cheia .preview-nav:hover,
 .preview-fundo.tela-cheia .preview-nav:focus-within{opacity:1;}
 
+.preview-fundo.wide.tela-cheia{background:#000;}
+.preview-fundo.wide.tela-cheia .preview-palco{position:absolute;inset:0;}
+.preview-fundo.wide.tela-cheia .preview-in .slide{box-shadow:none;}
+.preview-fundo.wide.tela-cheia .preview-topo,
+.preview-fundo.wide.tela-cheia .preview-nav{position:absolute;left:0;right:0;z-index:8;border:0;opacity:1;
+  transition:opacity .35s ease,transform .35s ease;}
+.preview-fundo.wide.tela-cheia .preview-topo{top:0;background:linear-gradient(rgba(0,0,0,.82),rgba(0,0,0,0));padding-bottom:34px;}
+.preview-fundo.wide.tela-cheia .preview-nav{bottom:0;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.82));padding-top:34px;}
+.preview-fundo.wide.tela-cheia .preview-seta{background:rgba(0,0,0,.45);transition:opacity .35s ease,background var(--t-micro,.15s);}
+.preview-fundo.wide.tela-cheia .preview-seta:hover:not(:disabled){background:rgba(0,0,0,.7);}
+.preview-fundo.wide.tela-cheia.ocioso{cursor:none;}
+.preview-fundo.wide.tela-cheia.ocioso .preview-topo{opacity:0;transform:translateY(-12px);pointer-events:none;}
+.preview-fundo.wide.tela-cheia.ocioso .preview-nav{opacity:0;transform:translateY(12px);pointer-events:none;}
+.preview-fundo.wide.tela-cheia.ocioso .preview-seta{opacity:0;pointer-events:none;}
+/* o detalhe de um conteúdo abre DENTRO da apresentação (ver slides.js) */
+.preview-fundo .fundo-modal{z-index:20;}
+
 /* quem pediu menos movimento no sistema vê o slide inteiro de uma vez,
    sem cascata e sem fade — e, importante, com tudo VISÍVEL: as animações
    usam `both`, então sem esta regra o conteúdo ficaria parado no quadro
    inicial (opacity:0) e o slide apareceria vazio */
 @media (prefers-reduced-motion:reduce){
-  .preview-in.entra-avanca > *,
-  .preview-in.entra-volta  > *,
-  .preview-in .sl-ani,
-  .preview-in .sl-ani-numero,
-  .preview-in .sl-ani-barra{animation:none;opacity:1;transform:none;}
+  .pv-camada,
+  .preview-in [class*="sl-ani"],
+  .preview-in .sl-linha > span,
+  .preview-in .sl-ani-lado > i,
+  .preview-in .sl-dados.sl-ani-traco::before,
+  .preview-in .slide.escuro .brilho{animation:none !important;opacity:1;transform:none;clip-path:none;}
+  .preview-prog i{transition:none;}
   .preview-fundo.tela-cheia .preview-topo,
   .preview-fundo.tela-cheia .preview-nav{transition:none;}
 }

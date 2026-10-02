@@ -459,13 +459,37 @@ B7.PreviewLinha = (function () {
   /* Ponto de entrada dedicado ("Apresentar Linha Editorial"): reúne os
      dados (mesma função usada pelo PDF, B7.BaixarLinha.reunir — fonte
      única) e abre direto em 16:9, sem passar pelo modal de exportação. */
+  const menosMovimento = () => {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+  };
+
   async function apresentar(linhaId) {
-    const ctx = await B7.BaixarLinha.reunir(linhaId, { incluirCapa: true });
-    /* Apresentar abre em tela cheia direto — é o que "apresentar" quer
-       dizer. "Visualizar" (o preview antes de exportar) continua dentro
-       da janela: lá a pessoa está conferindo o documento, não mostrando
-       pra ninguém. */
-    await abrir(ctx, 'slides', { telaCheia: true });
+    /* Apresentar É tela cheia. O navegador só aceita o pedido enquanto o
+       clique que abriu a apresentação ainda "vale", e buscar os dados da
+       linha pode demorar mais que isso — então a tela cheia é pedida
+       AGORA, numa caixa de espera, e os dados chegam depois. "Visualizar"
+       (o preview antes de exportar) continua dentro da janela: lá a
+       pessoa está conferindo o documento, não mostrando pra ninguém. */
+    const caixa = document.createElement('div');
+    caixa.className = 'preview-fundo wide';
+    caixa.innerHTML = '<div class="preview-carrega"><i></i>Preparando a apresentação…</div>';
+    document.body.appendChild(caixa);
+    const pedir = caixa.requestFullscreen || caixa.webkitRequestFullscreen || caixa.msRequestFullscreen;
+    const pedido = pedir ? Promise.resolve().then(() => pedir.call(caixa)).catch(() => {}) : Promise.resolve();
+    try {
+      const ctx = await B7.BaixarLinha.reunir(linhaId, { incluirCapa: true });
+      /* espera a resposta da tela cheia só um instante: há navegador que
+         nunca responde ao pedido, e a apresentação não pode ficar presa
+         nisso — se a tela cheia vier depois, o evento reescala o slide */
+      await Promise.race([pedido, new Promise(res => setTimeout(res, 1200))]);
+      await abrir(ctx, 'slides', { apresentacao: true, caixa: caixa });
+    } catch (e) {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e2) {}
+      }
+      caixa.remove();
+      throw e;
+    }
   }
 
   async function abrir(ctx, formato, opcoes) {
@@ -473,9 +497,10 @@ B7.PreviewLinha = (function () {
     estado.ctx = ctx;
     estado.formato = formato || 'slides';
     estado.i = 0;
+    const ehSlides = estado.formato === 'slides';
 
-    const caixa = document.createElement('div');
-    caixa.className = 'preview-fundo' + (estado.formato === 'slides' ? ' wide' : '');
+    const caixa = opcoes.caixa || document.createElement('div');
+    caixa.className = 'preview-fundo' + (ehSlides ? ' wide' : '') + (opcoes.apresentacao ? ' modo-show' : '');
     caixa.innerHTML =
       '<div class="preview-topo">' +
         '<b>' + B7.UI.esc(ctx.linha.cliente_nome || '') + ' · ' +
@@ -495,25 +520,15 @@ B7.PreviewLinha = (function () {
         '<button class="preview-seta esq" data-ant aria-label="Slide anterior">‹</button>' +
         '<div class="preview-in" id="preview-in"></div>' +
         '<button class="preview-seta dir" data-prox aria-label="Próximo slide">›</button>' +
+        '<div class="preview-prog"><i></i></div>' +
       '</div>' +
       '<div class="preview-nav">' +
         '<button class="b p" data-ant2>Anterior</button>' +
         '<span class="cont" id="preview-cont">—</span>' +
         '<button class="b p" data-prox2>Próximo</button>' +
       '</div>';
-    document.body.appendChild(caixa);
+    if (!caixa.isConnected) document.body.appendChild(caixa);
     B7.UI.ligarMenus(caixa);
-
-    /* Tela cheia AGORA, antes de montar as páginas: a API só aceita o
-       pedido enquanto a "ativação" do clique que abriu a apresentação
-       ainda vale, e montar/medir os slides leva tempo o bastante pra
-       essa janela expirar. Se o navegador recusar, a apresentação
-       continua como overlay — o botão "Tela cheia" fica lá pra tentar
-       de novo com um clique novo. */
-    if (opcoes.telaCheia) {
-      const pedir = caixa.requestFullscreen || caixa.webkitRequestFullscreen || caixa.msRequestFullscreen;
-      if (pedir) { try { await pedir.call(caixa); } catch (e) { /* recusado: segue em janela */ } }
-    }
 
     /* monta as páginas de verdade, fora da tela, e depois mostra uma a uma */
     const area = document.getElementById('area-impressao');
@@ -549,13 +564,38 @@ B7.PreviewLinha = (function () {
     const emTelaCheia = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
 
     const btTelaCheia = caixa.querySelector('[data-telacheia]');
+    let esteveCheia = false, fechado = false;
     function pintarBotaoTelaCheia() {
+      if (fechado) return;
       const dentro = emTelaCheia();
+      /* Na apresentação, sair da tela cheia (Esc do navegador) encerra a
+         apresentação, como num programa de slides: não existe o estado
+         "apresentando numa janelinha". Se o navegador nunca deixou entrar
+         em tela cheia, ela segue como overlay e o botão continua ali. */
+      if (opcoes.apresentacao && esteveCheia && !dentro) return fechar();
+      if (dentro) esteveCheia = true;
       btTelaCheia.textContent = dentro ? 'Sair da tela cheia' : 'Tela cheia';
       btTelaCheia.setAttribute('aria-label', dentro ? 'Sair da tela cheia' : 'Entrar em tela cheia');
+      btTelaCheia.style.display = (opcoes.apresentacao && dentro) ? 'none' : '';   /* lá, sair = Fechar */
       caixa.classList.toggle('tela-cheia', dentro);
+      acordar();
       escalar();   /* a área útil mudou: o slide precisa reescalar */
     }
+
+    /* Em tela cheia os controles somem quando o mouse para (como num
+       player) e voltam ao primeiro movimento: a tela é só o slide. */
+    let relogioOcioso = null;
+    function acordar() {
+      caixa.classList.remove('ocioso');
+      clearTimeout(relogioOcioso);
+      relogioOcioso = setTimeout(() => {
+        if (fechado || !emTelaCheia()) return;
+        if (caixa.querySelector('.fundo-modal, .menu.aberto, .preview-topo:hover, .preview-nav:hover, .preview-seta:hover')) return acordar();
+        caixa.classList.add('ocioso');
+      }, 2600);
+    }
+    caixa.addEventListener('mousemove', acordar);
+    caixa.addEventListener('touchstart', acordar, { passive: true });
     btTelaCheia.onclick = () => {
       if (emTelaCheia()) sairTelaCheia();
       else Promise.resolve(pedirTelaCheia(caixa)).catch(() => {
@@ -568,22 +608,30 @@ B7.PreviewLinha = (function () {
     document.addEventListener('fullscreenchange', pintarBotaoTelaCheia);
     document.addEventListener('webkitfullscreenchange', pintarBotaoTelaCheia);
 
-    const fechar = () => {
-      if (emTelaCheia()) Promise.resolve(sairTelaCheia()).catch(() => {});
+    function fechar() {
+      if (fechado) return;
+      fechado = true;
+      clearTimeout(relogioOcioso);
       document.removeEventListener('fullscreenchange', pintarBotaoTelaCheia);
       document.removeEventListener('webkitfullscreenchange', pintarBotaoTelaCheia);
-      caixa.remove();
+      window.removeEventListener('resize', escalar);
       document.removeEventListener('keydown', tecla);
-    };
+      if (emTelaCheia()) Promise.resolve(sairTelaCheia()).catch(() => {});
+      caixa.remove();
+    }
     /* Um detalhe read-only (clique num item) abre por cima como modal
        comum (B7.UI.modal, que também escuta Esc) — quando ele está
        aberto, Esc precisa fechar só o detalhe, não a apresentação
        inteira por baixo. */
     const tecla = e => {
       if (document.querySelector('.fundo-modal')) return;
+      const noBotao = e.target && e.target.closest && e.target.closest('button, a, input, select, textarea');
       if (e.key === 'Escape') fechar();
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') ir(1);
-      if (e.key === 'ArrowLeft' || e.key === 'PageUp') ir(-1);
+      else if (e.key === 'ArrowRight' || e.key === 'PageDown') ir(1);
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') ir(-1);
+      else if ((e.key === ' ' || e.key === 'Enter') && !noBotao) { e.preventDefault(); ir(1); }
+      else if (e.key === 'Home') ir(-estado.paginas.length);
+      else if (e.key === 'End') ir(estado.paginas.length);
     };
     document.addEventListener('keydown', tecla);
 
@@ -621,37 +669,53 @@ B7.PreviewLinha = (function () {
       estado.i = novo;
       desenhar(d > 0 ? 'avanca' : 'volta');
     }
-    /* `direcao` só existe quando a troca veio de navegação: o slide novo
-       entra pelo lado para onde a apresentação está indo (avançar = entra
-       pela direita), como numa passagem de slide de verdade. O primeiro
-       desenho não tem direção e só aparece. Quem pediu menos movimento no
-       sistema (prefers-reduced-motion) recebe a troca seca — a classe é
-       aplicada do mesmo jeito, e o CSS é que zera a animação. */
+    /* A troca é uma TRANSIÇÃO entre dois slides, não um slide piscando:
+       cada slide vive numa camada própria. Na navegação, a camada antiga
+       continua na tela e sai (recua e escurece) enquanto a nova entra por
+       cima, vinda do lado para onde a apresentação está indo. Só depois
+       que a nova assenta é que o conteúdo dela se apresenta, em cascata.
+       O primeiro desenho não tem direção: a capa abre. Navegar rápido não
+       acumula camadas: a que ainda estava saindo é retirada na hora.
+       Quem pediu menos movimento no sistema recebe a troca seca. */
     function desenhar(direcao) {
       const alvo = caixa.querySelector('#preview-in');
-      alvo.classList.remove('entra-avanca', 'entra-volta');
-      if (direcao) {
-        /* reinicia a animação mesmo indo para o mesmo lado duas vezes
-           seguidas: sem forçar um reflow, o navegador não reaplica. */
-        void alvo.offsetWidth;
-        alvo.classList.add(direcao === 'avanca' ? 'entra-avanca' : 'entra-volta');
-      }
-      alvo.innerHTML = estado.paginas[estado.i] || '';
-      encenar(alvo);
+      const animar = ehSlides && !menosMovimento();
+      alvo.querySelectorAll('.pv-camada.saindo').forEach(c => c.remove());
+      const antiga = alvo.querySelector('.pv-camada');
+      const nova = document.createElement('div');
+      nova.className = 'pv-camada';
+      nova.innerHTML = estado.paginas[estado.i] || '';
+      alvo.appendChild(nova);
+      if (antiga) {
+        if (direcao && animar) {
+          antiga.className = 'pv-camada saindo sai-' + direcao;
+          nova.classList.add('entra-' + direcao);
+          const tirar = () => antiga.remove();
+          antiga.addEventListener('animationend', e => { if (e.target === antiga) tirar(); });
+          setTimeout(tirar, 1200);   /* rede de segurança se o evento não vier */
+        } else antiga.remove();
+      } else if (animar) nova.classList.add('entra-abre');
+      if (ehSlides) encenar(nova, animar ? (direcao ? 360 : 260) : 0);
+
       caixa.querySelector('#preview-cont').textContent =
         (estado.i + 1) + ' / ' + estado.paginas.length;
+      caixa.querySelector('.preview-prog i').style.setProperty('--p',
+        estado.paginas.length > 1 ? estado.i / (estado.paginas.length - 1) : 1);
       caixa.querySelectorAll('[data-ant],[data-ant2]').forEach(b => b.disabled = estado.i === 0);
       caixa.querySelectorAll('[data-prox],[data-prox2]').forEach(b => b.disabled = estado.i >= estado.paginas.length - 1);
       escalar();
-      ligarDetalhe(alvo, ctx);
+      ligarDetalhe(nova, ctx, caixa);
     }
     function escalar() {
       const dentro = caixa.querySelector('#preview-in');
-      const pagina = dentro.firstElementChild;
+      const camada = dentro.lastElementChild;
+      const pagina = camada && camada.firstElementChild;
       if (!pagina) return;
+      /* em tela cheia o slide ocupa a tela inteira, sem moldura em volta */
+      const cheia = ehSlides && caixa.classList.contains('tela-cheia');
       const f = Math.min(
-        (palco.clientWidth - 100) / pagina.offsetWidth,
-        (palco.clientHeight - 40) / pagina.offsetHeight);
+        (palco.clientWidth - (cheia ? 0 : 100)) / pagina.offsetWidth,
+        (palco.clientHeight - (cheia ? 0 : 40)) / pagina.offsetHeight);
       dentro.style.transform = 'scale(' + f + ')';
       dentro.style.width = pagina.offsetWidth + 'px';
       dentro.style.height = pagina.offsetHeight + 'px';
@@ -684,18 +748,38 @@ B7.PreviewLinha = (function () {
        aninhamento abaixo pularia os filhos e o cabeçalho inteiro
        apareceria de um golpe só, que é justamente o que se quer evitar
        na abertura do slide. */
-    '.sl-topo', '.sl-num', '.sl-kicker', '.sl-secao h2', '.sl-risco', '.sl-cont',
-    /* capa */
-    '.sl-capa-in > *',
+    /* `.sl-topo` e `.sl-pe` (a moldura) também ficam de fora: a página
+       que entra na transição precisa chegar com cara de slide, não como
+       uma folha em branco. */
+    '.sl-num', '.sl-kicker', '.sl-secao h2', '.sl-risco', '.sl-cont',
+    /* capa: marca, olho, título (linha a linha), mês e cada dado */
+    '.slide.escuro .marca', '.sl-capa .olho', '.sl-capa h1', '.sl-mes', '.sl-dados > div',
     /* blocos de conteúdo */
     '.sl-objetivo-hero', '.sl-objetivo-meta', '.sl-objetivo-apoio',
     '.sl-pos-grid > *', '.sl-campo',
-    '.sl-numeros > div', '.sl-dist > div', '.sl-chips',
+    '.sl-numeros > div', '.sl-dist > div', '.sl-chips > span',
     '.sl-pilar', '.sl-barra-total',
     '.sl-tabela thead', '.sl-tabela tbody tr',
-    '.sl-cri-topo', '.sl-cri-t', '.sl-slides .sl-slide', '.sl-txt', '.sl-links',
-    '.sl-pe'
+    '.sl-cri-topo', '.sl-cri-t', '.sl-slides .sl-slide', '.sl-txt', '.sl-links'
   ].join(',');
+
+  /* Cada tipo de elemento chega do seu jeito — é isso que separa uma
+     apresentação de uma página com fade: o número da seção gira e
+     assenta, o título é revelado de baixo para cima, o risco é traçado,
+     os cartões de pilar sobem com profundidade, as linhas de tabela
+     entram pelo lado, os números contam. O primeiro seletor que casar
+     decide; o que não casa com nenhum usa a entrada padrão (sl-ani). */
+  const ENTRADAS = [
+    ['.sl-num', 'sl-ani-num'],
+    ['.sl-capa h1', 'sl-ani-linhas'],
+    ['.sl-secao h2, .sl-cri-t', 'sl-ani-titulo'],
+    ['.sl-risco', 'sl-ani-barra'],
+    ['.sl-numeros > div', 'sl-ani-numero'],
+    ['.sl-pilar, .sl-slides .sl-slide', 'sl-ani-carta'],
+    ['.sl-tabela tbody tr, .sl-dist > div, .sl-objetivo-hero, .sl-kicker, .sl-capa .olho', 'sl-ani-lado'],
+    ['.sl-chips > span', 'sl-ani-pop'],
+    ['.sl-tabela thead, .slide.escuro .marca', 'sl-ani-fade']
+  ];
 
   /* Ritmo: os primeiros itens respiram, o resto acelera — uma tabela de
      12 linhas com passo fixo levaria a apresentação inteira para
@@ -708,31 +792,80 @@ B7.PreviewLinha = (function () {
     return Math.min(base + (i - inicio) * passo, 1000);
   }
 
-  function encenar(palco) {
-    const slide = palco.firstElementChild;
-    if (!slide) return;
+  /* Número que conta de zero até o valor ("12", "30%"), começando quando
+     o elemento dele entra. A largura final é reservada antes, para o
+     slide não "respirar" enquanto os dígitos mudam. */
+  function contarAte(el, esperaMs) {
+    const m = /^(\d+)(\D*)$/.exec(el.textContent.trim());
+    if (!m || !+m[1]) return;
+    const fim = +m[1], sufixo = m[2];
+    const dono = el.closest('.sl-numeros > div') || el;
+    dono.style.minWidth = dono.offsetWidth + 'px';
+    const dur = Math.min(1200, 520 + fim * 14);
+    const t0 = performance.now() + esperaMs;
+    el.textContent = '0' + sufixo;
+    (function passo(agora) {
+      if (!el.isConnected) return;
+      const p = Math.min(1, Math.max(0, (agora - t0) / dur));
+      el.textContent = Math.round(fim * (1 - Math.pow(1 - p, 3))) + sufixo;
+      if (p < 1) requestAnimationFrame(passo);
+    })(performance.now());
+    /* se o navegador segurar os quadros (aba em segundo plano), o valor
+       final entra de qualquer jeito: número errado na tela, nunca */
+    setTimeout(() => { if (el.isConnected) el.textContent = fim + sufixo; }, esperaMs + dur + 120);
+  }
+
+  /* `base` = quanto esperar antes de o primeiro item entrar: o tempo de
+     a página nova assentar na transição. 0 = sem movimento (a troca foi
+     seca), e aí nada é marcado: o slide aparece inteiro. */
+  function encenar(camada, base) {
+    const slide = camada.firstElementChild;
+    if (!slide || !base) return;
+    slide.style.setProperty('--base', base + 'ms');
     const marcados = [];
     let i = 0;
     slide.querySelectorAll(ALVOS_ANIMADOS).forEach(el => {
       if (marcados.some(m => m.contains(el))) return;   /* já anima junto com um ancestral */
       marcados.push(el);
       el.style.setProperty('--d', atrasoDe(i++) + 'ms');
-      /* o número grande e as barras têm entrada própria: o número cresce
-         um fio, a barra preenche da esquerda para a direita */
-      if (el.matches('.sl-numeros > div')) el.classList.add('sl-ani-numero');
-      /* o risco sob o título é uma régua: cresce da esquerda, como se
-         estivesse sendo traçada, em vez de simplesmente surgir */
-      else if (el.matches('.sl-risco')) el.classList.add('sl-ani-barra');
-      else el.classList.add('sl-ani');
+      const tipo = ENTRADAS.find(par => el.matches(par[0]));
+      el.classList.add(tipo ? tipo[1] : 'sl-ani');
     });
+    const atraso = el => parseInt(el.style.getPropertyValue('--d'), 10) || 0;
+
+    /* título da capa: cada linha sobe de trás de uma máscara, uma depois
+       da outra — a quebra é a do próprio <br> do título */
+    const h1 = slide.querySelector('.sl-capa h1.sl-ani-linhas');
+    if (h1) {
+      h1.innerHTML = h1.innerHTML.split(/<br\s*\/?>/i).map((t, k) =>
+        '<span class="sl-linha"><span style="--k:' + k + '">' + t + '</span></span>').join('');
+    }
+    /* a logo do cliente fecha a capa: entra por último, com um salto */
+    const logo = slide.querySelector('.sl-logo-cliente');
+    if (logo) {
+      logo.style.setProperty('--d', (marcados.length ? atraso(marcados[marcados.length - 1]) + 160 : 0) + 'ms');
+      logo.classList.add('sl-ani-pop');
+    }
+    /* a linha que separa os dados da capa é traçada antes de eles subirem */
+    const dados = slide.querySelector('.sl-dados');
+    if (dados) {
+      const primeiro = dados.querySelector('.sl-ani');
+      dados.style.setProperty('--d', Math.max(0, (primeiro ? atraso(primeiro) : 0) - 120) + 'ms');
+      dados.classList.add('sl-ani-traco');
+    }
     /* as barras internas entram depois da linha que as contém, somando um
        atraso próprio à posição do item — parecem estar sendo preenchidas
        assim que a linha se assenta */
     slide.querySelectorAll('.sl-dist .ba i, .sl-barra-total > *').forEach((b, k) => {
-      const linha = b.closest('.sl-ani, .sl-ani-numero');
-      const base = linha ? parseInt(linha.style.getPropertyValue('--d'), 10) || 0 : 0;
-      b.style.setProperty('--d', (base + 120 + k * 60) + 'ms');
+      const linha = b.closest('.sl-ani, .sl-ani-lado, .sl-ani-numero');
+      b.style.setProperty('--d', ((linha ? atraso(linha) : 0) + 140 + k * 70) + 'ms');
       b.classList.add('sl-ani-barra');
+    });
+    /* números contam: os grandes, o percentual de cada pilar e o total de
+       cada formato */
+    slide.querySelectorAll('.sl-numeros b, .sl-pilar .pct, .sl-dist > div > b').forEach(n => {
+      const dono = n.closest('.sl-ani-numero, .sl-ani-carta, .sl-ani-lado');
+      contarAte(n, base + (dono ? atraso(dono) : 0) + 80);
     });
   }
 
@@ -740,17 +873,21 @@ B7.PreviewLinha = (function () {
      Clicar num item de conteúdo (linha da tabela de postagens, ou o
      cabeçalho de um slide de criativo) abre um detalhe read-only por
      cima, sem sair do slide atual. Só os campos reais do conteúdo. */
-  function ligarDetalhe(area, ctx) {
-    area.querySelectorAll('[data-cid]').forEach(el => el.onclick = () => abrirDetalheConteudo(el.dataset.cid, ctx));
+  function ligarDetalhe(area, ctx, caixa) {
+    area.querySelectorAll('[data-cid]').forEach(el => el.onclick = () => abrirDetalheConteudo(el.dataset.cid, ctx, caixa));
   }
-  function abrirDetalheConteudo(id, ctx) {
+  function abrirDetalheConteudo(id, ctx, caixa) {
     const c = (ctx.conteudos || []).find(x => x.id === id);
     if (!c) return;
     const esc = B7.UI.esc;
     const pilar = (ctx.pilares || []).find(p => p.id === c.pilar_id);
     const campo = (rot, v) => (!v || !String(v).trim()) ? '' :
       '<div class="le-campo"><b>' + rot + '</b><div class="le-txt"><p>' + esc(v) + '</p></div></div>';
-    B7.UI.modal('<h3>' + esc(c.titulo || 'Sem título') + '</h3>' +
+    /* Em tela cheia o navegador só desenha o que está DENTRO do elemento
+       em tela cheia (a caixa da apresentação). O modal nasce no <body>,
+       então ficava invisível até sair da tela cheia — por isso é movido
+       para dentro da caixa logo depois de criado. */
+    const detalhe = B7.UI.modal('<h3>' + esc(c.titulo || 'Sem título') + '</h3>' +
       '<div class="sub">' + esc(c.tipo || '') +
         (c.canal ? ' · ' + esc(c.canal) : '') +
         (c.data_postagem ? ' · ' + esc(B7.UI.dataBR(c.data_postagem)) : '') +
@@ -760,6 +897,7 @@ B7.PreviewLinha = (function () {
       campo('LEGENDA', c.legenda) +
       campo('CTA', c.cta) +
       '<div class="acoes"><button class="b pri" data-fecha>Voltar à apresentação</button></div>');
+    if (caixa && caixa.isConnected && detalhe) caixa.appendChild(detalhe);
   }
 
   /* --------------------------------------------------------------- PNG
