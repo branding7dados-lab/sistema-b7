@@ -90,6 +90,12 @@ B7.Usuarios = (function () {
       .map(v => (v.clientes && v.clientes.nome) || '');
     const funcoesExtraDe = id => funcoesExtraTodas.filter(f => f.perfil_id === id).map(f => f.funcao);
 
+    const presenca = u => B7.Presenca ? B7.Presenca.rotulo(u)
+      : { online: false, texto: u.ultimo_acesso ? 'Último acesso: ' + B7.UI.quando(u.ultimo_acesso) : 'Nunca acessou' };
+    const ativos = usuarios.filter(u => u.estado === 'ativa');
+    const online = ativos.filter(u => presenca(u).online).length;
+    const inativas = usuarios.length - ativos.length;
+
     painel().innerHTML = '<div class="conteudo entra">' +
       '<div class="trilha"><a href="#/config">Configurações</a><span>/</span>' +
       '<b>Usuários e acessos</b></div>' +
@@ -98,56 +104,120 @@ B7.Usuarios = (function () {
       '<button class="b pri" id="novo-usuario">+ Novo usuário</button></div>' +
 
       (usuarios.length
-        ? '<div class="lista-usuarios">' + usuarios.map(u => linhaUsuario(u, empresasDe(u.id), funcoesExtraDe(u.id))).join('') + '</div>'
+        ? '<div class="lu-barra">' +
+            '<label class="lu-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+            '<input id="lu-busca" placeholder="Buscar por nome ou usuário…" autocomplete="off" value="' + esc(filtro.termo) + '"></label>' +
+            '<div class="lu-resumo">' +
+              '<span><b>' + usuarios.length + '</b> conta' + (usuarios.length === 1 ? '' : 's') + '</span>' +
+              '<span class="on"><i></i><b>' + online + '</b> online agora</span>' +
+              (inativas ? '<span class="off"><b>' + inativas + '</b> desativada' + (inativas === 1 ? '' : 's') + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div id="lu-lista"></div>'
         : '<div class="estado-b7"><b>Nenhuma conta ainda.</b>' +
           '<p>Crie a primeira conta de coordenador ou cliente.</p></div>') +
     '</div>';
 
     document.getElementById('novo-usuario').onclick = () => modalNovo(clientes);
-    B7.UI.ligarMenus(painel());
-    painel().querySelectorAll('[data-acao-conta]').forEach(b => b.onclick = () => {
-      const u = usuarios.find(x => x.id === b.dataset.id);
-      const acao = b.dataset.acaoConta;
+
+    const abrirAcao = (u, acao, estado) => {
       if (acao === 'senha') return modalSenha(u);
       if (acao === 'editar') return modalEditar(u, clientes, vinculos, funcoesExtraDe(u.id));
-      if (acao === 'estado') return alterarEstado(u, b.dataset.estado);
+      if (acao === 'estado') return alterarEstado(u, estado);
       if (acao === 'foto') return modalFoto(u);
       if (acao === 'excluir') return excluirConta(u);
-    });
+    };
+
+    /* A lista é redesenhada a partir do que já veio do servidor: buscar
+       não refaz a consulta. Equipe e clientes ficam em blocos separados —
+       são contas de natureza diferente (quem produz × quem acompanha) e
+       só os clientes têm empresas vinculadas. */
+    function pintar() {
+      const alvo = document.getElementById('lu-lista');
+      if (!alvo) return;
+      const termo = filtro.termo.trim().toLowerCase();
+      const passa = u => !termo || (u.nome || '').toLowerCase().includes(termo) ||
+        (u.username || '').toLowerCase().includes(termo);
+      /* dentro de cada bloco: a própria conta, as ativas, e então por nome */
+      const eu = B7.Auth && B7.Auth.usuario && B7.Auth.usuario();
+      const minha = u => (eu && eu.id === u.id ? 0 : 1);
+      const ordem = (a, b) => minha(a) - minha(b) ||
+        (a.estado === 'ativa' ? 0 : 1) - (b.estado === 'ativa' ? 0 : 1) ||
+        String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+      const equipe = usuarios.filter(u => u.papel !== 'cliente' && passa(u)).sort(ordem);
+      const clis = usuarios.filter(u => u.papel === 'cliente' && passa(u)).sort(ordem);
+
+      const bloco = (titulo, ajuda, lista, ehCliente) => !lista.length ? '' :
+        '<section class="lu-bloco' + (ehCliente ? ' clientes' : '') + '">' +
+          '<div class="lu-bloco-cab"><h2>' + titulo + '<span>' + lista.length + '</span></h2><p>' + ajuda + '</p></div>' +
+          '<div class="lu-tabela" role="table">' +
+            '<div class="lu-cab" role="row"><span role="columnheader">Pessoa</span><span role="columnheader">Perfil</span>' +
+              (ehCliente ? '<span role="columnheader">Empresas</span>' : '') +
+              '<span role="columnheader">Acesso</span><span></span></div>' +
+            lista.map(u => linhaUsuario(u, empresasDe(u.id), funcoesExtraDe(u.id), presenca(u), ehCliente)).join('') +
+          '</div></section>';
+
+      alvo.innerHTML = (equipe.length || clis.length)
+        ? bloco('Equipe', 'Quem produz e organiza o trabalho dentro do B7.', equipe, false) +
+          bloco('Clientes', 'Quem acompanha e aprova pelo Portal, só nas empresas vinculadas.', clis, true)
+        : '<div class="estado-b7"><b>Nada encontrado para “' + esc(filtro.termo) + '”.</b></div>';
+
+      B7.UI.ligarMenus(alvo);
+      alvo.querySelectorAll('[data-acao-conta]').forEach(b => b.onclick = e => {
+        e.stopPropagation();
+        abrirAcao(usuarios.find(x => x.id === b.dataset.id), b.dataset.acaoConta, b.dataset.estado);
+      });
+      /* a linha inteira abre "Editar acesso" — é o que se vem fazer aqui
+         na maioria das vezes; o menu ⋯ guarda o resto */
+      alvo.querySelectorAll('.lu-item').forEach(el => {
+        const abrirEdicao = () => abrirAcao(usuarios.find(x => x.id === el.dataset.id), 'editar');
+        el.onclick = e => { if (!e.target.closest('.menu')) abrirEdicao(); };
+        el.onkeydown = e => { if (e.key === 'Enter' && e.target === el) abrirEdicao(); };
+      });
+    }
+    pintar();
+    const busca = document.getElementById('lu-busca');
+    if (busca) busca.oninput = B7.UI.debounce(() => { filtro.termo = busca.value; pintar(); }, 120);
   }
 
-  /* "Online agora" (visto há < 5 min), "Último acesso: …" ou "Nunca
-     acessou". Vem de perfis.last_seen_at / last_login_at (heartbeat e
-     login) — nunca de auth.users. */
-  function acessoHTML(u) {
-    const r = B7.Presenca ? B7.Presenca.rotulo(u)
-      : { online: false, texto: u.ultimo_acesso ? 'Último acesso: ' + B7.UI.quando(u.ultimo_acesso) : 'Nunca acessou' };
-    const classe = r.online ? ' online' : (r.texto === 'Nunca acessou' ? ' nunca' : '');
-    return '<span class="lu-acesso' + classe + '" title="' + esc(r.online ? 'Ativo nos últimos 5 minutos' : r.texto) + '">' + esc(r.texto) + '</span>';
-  }
+  /* o que estava digitado na busca sobrevive a um redesenho da tela
+     (depois de editar uma conta, a lista é recarregada) */
+  const filtro = { termo: '' };
 
-  function linhaUsuario(u, empresas, funcoesExtra) {
+  function linhaUsuario(u, empresas, funcoesExtra, pres, ehCliente) {
     const inativa = u.estado !== 'ativa';
-    /* "Administrador · Videomaker" — nunca o array cru; a função extra
-       aparece como continuação legível do papel principal, não como
-       outro papel. */
-    const rotuloCompleto = rotuloPapel(u.papel) +
-      ((funcoesExtra || []).length ? ' · ' + funcoesExtra.map(rotuloFuncaoExtra).join(' · ') : '');
-    return '<div class="lu-item' + (inativa ? ' inativa' : '') + '">' +
-      B7.UI.avatarPessoa(u, 'lu-avatar') +
-      '<div class="lu-tx">' +
-        '<b>' + esc(u.nome) + '</b>' +
-        '<span class="lu-user">@' + esc(u.username) + '</span>' +
+    const eu = B7.Auth && B7.Auth.usuario && B7.Auth.usuario();
+    const souEu = !!(eu && eu.id === u.id);
+    /* "Último acesso: hoje às 09:03" → a coluna já se chama Acesso */
+    const quando = pres.online ? 'Online agora' : String(pres.texto || '').replace(/^Último acesso:\s*/i, '');
+    const nunca = !pres.online && /^nunca/i.test(quando);
+    return '<div class="lu-item' + (inativa ? ' inativa' : '') + '" role="row" tabindex="0" data-id="' + esc(u.id) + '"' +
+        ' title="Editar acesso de ' + esc(u.nome) + '">' +
+      '<div class="lu-pessoa" role="cell">' +
+        '<span class="lu-av-cx' + (pres.online && !inativa ? ' online' : '') + '">' + B7.UI.avatarPessoa(u, 'lu-avatar') + '</span>' +
+        '<div class="lu-tx">' +
+          '<b>' + esc(u.nome) + (souEu ? '<em>você</em>' : '') + '</b>' +
+          '<span class="lu-user">@' + esc(u.username) + '</span>' +
+        '</div>' +
       '</div>' +
-      '<span class="lu-papel ' + esc(u.papel) + '">' + esc(rotuloCompleto) + '</span>' +
-      '<span class="lu-empresas">' +
-        (empresas.length ? esc(empresas.slice(0, 2).join(', ')) +
-          (empresas.length > 2 ? ' +' + (empresas.length - 2) : '')
-         : (u.papel === 'cliente' ? '<i>sem empresa vinculada</i>' : '—')) +
-      '</span>' +
-      acessoHTML(u) +
-      (inativa ? '<span class="lu-estado">desativada</span>' : '') +
-      '<div class="menu"><button class="ico">⋯</button><div class="lista">' +
+      /* o papel é um só; a função extra é um complemento, e por isso vem
+         como etiqueta à parte, mais leve, em vez de dividir o mesmo selo */
+      '<div class="lu-perfil" role="cell">' +
+        '<span class="lu-papel ' + esc(u.papel) + '">' + esc(rotuloPapel(u.papel)) + '</span>' +
+        (funcoesExtra || []).map(f => '<span class="lu-extra">+ ' + esc(rotuloFuncaoExtra(f)) + '</span>').join('') +
+        (ehCliente && u.pode_aprovar ? '<span class="lu-extra">Pode aprovar</span>' : '') +
+      '</div>' +
+      (ehCliente
+        ? '<div class="lu-empresas" role="cell"' + (empresas.length ? ' title="' + esc(empresas.join(', ')) + '"' : '') + '>' +
+            (empresas.length ? esc(empresas.slice(0, 2).join(', ')) + (empresas.length > 2 ? ' +' + (empresas.length - 2) : '')
+              : '<i>sem empresa vinculada</i>') + '</div>'
+        : '') +
+      '<div class="lu-acesso-cx" role="cell">' +
+        (inativa ? '<span class="lu-estado">Desativada</span>'
+          : '<span class="lu-acesso' + (pres.online ? ' online' : nunca ? ' nunca' : '') + '"' +
+            (pres.online ? ' title="Ativo nos últimos 5 minutos"' : '') + '>' + esc(quando) + '</span>') +
+      '</div>' +
+      '<div class="menu" role="cell"><button class="ico" aria-label="Ações da conta de ' + esc(u.nome) + '">⋯</button><div class="lista">' +
         '<button data-acao-conta="editar" data-id="' + esc(u.id) + '">Editar acesso</button>' +
         '<button data-acao-conta="foto" data-id="' + esc(u.id) + '">Foto de perfil</button>' +
         '<button data-acao-conta="senha" data-id="' + esc(u.id) + '">Redefinir senha</button>' +

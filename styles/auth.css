@@ -164,48 +164,87 @@ body.sem-sessao main{display:none;}
 .trilha a:hover{color:var(--acento);}
 .trilha b{color:var(--ink-2);font-weight:600;}
 
-.lista-usuarios{display:flex;flex-direction:column;gap:10px;margin-top:22px;}
-.lu-item{display:grid;grid-template-columns:44px minmax(180px,1.3fr) max-content minmax(140px,1fr) max-content auto auto;
-  align-items:center;gap:16px;padding:14px 18px;
-  background:var(--card);border:1px solid var(--borda);border-radius:var(--r);
-  transition:border-color var(--t),box-shadow var(--t),transform var(--t);}
-.lu-item:hover{border-color:var(--borda-forte);box-shadow:0 6px 22px rgba(20,12,60,.06);transform:translateY(-1px);}
-.lu-item.inativa{opacity:.62;}
-.lu-item.inativa:hover{opacity:.9;}
+/* Barra: busca e, à direita, o retrato das contas em uma linha. */
+.lu-barra{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;margin:4px 0 22px;}
+.lu-busca{display:flex;align-items:center;gap:9px;flex:1 1 260px;max-width:380px;height:40px;padding:0 13px;
+  background:var(--card);border:1px solid var(--borda);border-radius:var(--r-sm);transition:var(--t);}
+.lu-busca:focus-within{border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave);}
+.lu-busca svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--ink-4);stroke-width:2;stroke-linecap:round;}
+.lu-busca input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:13.5px;color:var(--ink);}
+.lu-busca input::placeholder{color:var(--ink-4);}
+.lu-resumo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-3);}
+.lu-resumo span{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;
+  background:var(--card);border:1px solid var(--borda);}
+.lu-resumo b{color:var(--ink);font-variant-numeric:tabular-nums;}
+.lu-resumo .on i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg);}
+.lu-resumo .off b{color:var(--erro);}
 
+/* Um bloco por natureza de conta. Dentro dele, TODAS as linhas usam a
+   mesma grade (--lu-cols): antes cada linha era uma grade própria, com
+   colunas do tamanho do próprio conteúdo, e o selo de perfil caía num
+   ponto diferente em cada uma. */
+.lu-bloco{margin-bottom:28px;--lu-cols:minmax(220px,1.5fr) minmax(200px,1.3fr) minmax(140px,.9fr) 40px;}
+.lu-bloco.clientes{--lu-cols:minmax(220px,1.4fr) minmax(170px,1fr) minmax(160px,1.2fr) minmax(140px,.8fr) 40px;}
+.lu-bloco-cab{margin:0 2px 10px;}
+.lu-bloco-cab h2{display:flex;align-items:center;gap:9px;margin:0;font-family:'Archivo';font-weight:800;font-size:16px;
+  letter-spacing:-.2px;color:var(--ink);}
+.lu-bloco-cab h2 span{font-family:'Inter';font-size:11.5px;font-weight:700;color:var(--ink-4);background:var(--suave);
+  border-radius:999px;padding:2px 9px;}
+.lu-bloco-cab p{margin:3px 0 0;font-size:12.5px;color:var(--ink-4);}
+.lu-tabela{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);}
+.lu-cab,.lu-item{display:grid;grid-template-columns:var(--lu-cols);align-items:center;gap:16px;padding:0 18px;}
+.lu-cab{height:38px;background:var(--suave);border-bottom:1px solid var(--borda);
+  font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-4);}
+.lu-item{min-height:68px;padding-top:10px;padding-bottom:10px;border-bottom:1px solid var(--borda);cursor:pointer;
+  transition:background var(--t-micro);transform:none !important;box-shadow:none !important;}
+.lu-item:last-child{border-bottom:0;}
+.lu-item:hover{background:var(--suave);}
+.lu-item:focus-visible{outline:0;background:var(--suave);box-shadow:inset 3px 0 0 var(--acento) !important;}
+.lu-item.inativa .lu-pessoa,.lu-item.inativa .lu-perfil,.lu-item.inativa .lu-empresas{opacity:.5;}
+
+.lu-pessoa{display:flex;align-items:center;gap:12px;min-width:0;}
+.lu-av-cx{position:relative;flex:none;display:flex;}
+/* online: um ponto verde no canto do avatar, além do texto na coluna */
+.lu-av-cx.online::after{content:"";position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;
+  background:var(--ok);border:2.5px solid var(--card);box-sizing:border-box;}
+.lu-item:hover .lu-av-cx.online::after{border-color:var(--suave);}
 .lu-avatar{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;
   font-family:'Archivo';font-weight:800;font-size:14px;letter-spacing:.02em;color:#fff;
   background:var(--grad-curto);overflow:hidden;flex-shrink:0;}
-
-
-
 .lu-avatar.foto{background:var(--suave);}
 .lu-avatar img{width:100%;height:100%;object-fit:cover;}
 
 .lu-tx{display:flex;flex-direction:column;gap:2px;min-width:0;}
-.lu-tx b{font-size:14.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.lu-user{font-size:12px;color:var(--ink-3);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+.lu-tx b{display:flex;align-items:center;gap:7px;min-width:0;font-size:14.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lu-tx b em{flex:none;font-style:normal;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 7px;border-radius:999px;background:var(--acento-suave);color:var(--acento);}
+.lu-user{font-size:12px;color:var(--ink-3);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-.lu-papel{display:inline-flex;align-items:center;justify-content:center;padding:5px 11px;justify-self:start;border-radius:999px;
+.lu-perfil{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;}
+.lu-papel{display:inline-flex;align-items:center;justify-content:center;padding:5px 11px;border-radius:999px;
   font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
 .lu-papel.admin{background:rgba(0,21,89,.10);color:#001559;}
 .lu-papel.coordenador{background:rgba(58,30,134,.12);color:#3A1E86;}
 .lu-papel.designer{background:rgba(27,95,166,.12);color:#1B5FA6;}
+.lu-papel.videomaker{background:var(--laranja-bg);color:var(--laranja);}
 .lu-papel.cliente{background:var(--acento-suave);color:var(--acento);}
 [data-theme="dark"] .lu-papel.admin{background:rgba(120,140,255,.16);color:#B7C3FF;}
 [data-theme="dark"] .lu-papel.coordenador{background:rgba(155,120,255,.16);color:#CDB9FF;}
 [data-theme="dark"] .lu-papel.designer{background:rgba(90,165,235,.18);color:#9CCBF2;}
+.lu-extra{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;border:1px solid var(--borda-forte);
+  font-size:11.5px;font-weight:500;color:var(--ink-3);white-space:nowrap;}
 
-.lu-empresas{font-size:13px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:8px;}
+.lu-empresas{font-size:13px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .lu-empresas i{color:var(--ink-4);font-style:normal;}
-.lu-acesso{font-size:12px;color:var(--ink-3);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
+.lu-acesso-cx{min-width:0;}
+.lu-acesso{font-size:12.5px;color:var(--ink-3);white-space:nowrap;display:inline-flex;align-items:center;gap:7px;}
 .lu-acesso.online{color:var(--ok,#1a7f4b);font-weight:600;}
-.lu-acesso.online::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px rgba(26,127,75,.15);}
+.lu-acesso.online::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px var(--ok-bg);}
 .lu-acesso.nunca{color:var(--ink-4);font-style:italic;}
-.lu-estado{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+.lu-estado{display:inline-flex;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
   padding:4px 9px;border-radius:999px;background:var(--erro-bg);color:var(--erro);white-space:nowrap;}
 .lu-item .menu{justify-self:end;}
-
 /* formulário de novo usuário / edição */
 .nu-empresas{display:flex;flex-wrap:wrap;gap:8px;}
 .nu-senha{display:flex;gap:8px;align-items:stretch;}
@@ -216,11 +255,16 @@ body.sem-sessao main{display:none;}
 .ajuda.erro-txt:empty{display:none;}
 .op-mini span{display:inline-flex;flex-direction:column;line-height:1.25;}
 
+/* tela estreita: a tabela vira uma pilha — pessoa e menu na primeira
+   linha, perfil, empresas e acesso embaixo, alinhados ao nome */
 @media (max-width:820px){
-  .lu-item{grid-template-columns:44px 1fr auto;grid-auto-rows:auto;row-gap:6px;}
-  .lu-papel{grid-column:3;}
-  .lu-empresas,.lu-acesso,.lu-estado{grid-column:2 / span 2;}
-  .lu-item .menu{grid-column:3;grid-row:1;}
+  .lu-cab{display:none;}
+  .lu-item{grid-template-columns:minmax(0,1fr) 40px;gap:8px 12px;padding:14px 14px 14px 16px;}
+  .lu-pessoa{grid-column:1;grid-row:1;}
+  .lu-item .menu{grid-column:2;grid-row:1;}
+  .lu-perfil,.lu-empresas,.lu-acesso-cx{grid-column:1 / -1;padding-left:56px;}
+  .lu-barra{margin-bottom:18px;}
+  .lu-busca{flex-basis:100%;max-width:none;}
 }
 
 /* área de escolha da foto de perfil (B7.Foto) */
