@@ -149,14 +149,16 @@
 .linha-gravacao .nm small{font-size:12px;color:var(--ink-3);}
 
 @media (max-width:1240px){
-  .colunas{grid-template-columns:1fr;}
-  .apoio{position:static;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  /* minmax(0,…): sem isso a coluna cresce até o maior texto sem quebra
+     (um título com reticências) e estoura a largura da tela */
+  .colunas{grid-template-columns:minmax(0,1fr);}
+  .apoio{position:static;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;}
   .metricas{grid-template-columns:repeat(2,1fr);}
   .hero .simbolo{display:none;}
 }
 @media (max-width:720px){
   .conteudo{padding:18px 14px 80px;}
-  .apoio{grid-template-columns:1fr;}
+  .apoio{grid-template-columns:minmax(0,1fr);}
   .hero{padding:24px 20px;}
   .hero h1{font-size:26px;}
   .destaque-grav{flex-direction:column;align-items:flex-start;}
