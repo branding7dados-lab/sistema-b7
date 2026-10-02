@@ -1095,7 +1095,12 @@ B7.Design = (function () {
         itens.filter(i => i[1] > 0).map(i =>
           '<button class="ds-precisa-chip ' + i[4] + (F.rapido === i[0] ? ' on' : '') + '" data-rapido="' + i[0] + '" title="' + esc(i[3]) + '" aria-pressed="' + (F.rapido === i[0]) + '">' +
             '<b>' + i[1] + '</b> ' + esc(i[2]) + '</button>').join('')) +
+      /* a fila de revisão inteira, uma peça atrás da outra, sem voltar ao quadro */
+      (pecasParaRevisar().length ? '<button class="b fina pri ds-revisar-fila" id="ds-revisar-fila" title="Abre a peça mais antiga da fila; ao aprovar ou pedir ajuste, a próxima abre sozinha">' +
+        'Revisar em sequência</button>' : '') +
     '</div>';
+    const btFila = cx.querySelector('#ds-revisar-fila');
+    if (btFila) btFila.onclick = iniciarRevisaoEmSequencia;
     cx.querySelectorAll('[data-rapido]').forEach(b => b.onclick = () => {
       F.rapido = F.rapido === b.dataset.rapido ? '' : b.dataset.rapido;
       /* o atalho já recorta por status; a aba "Todas" evita que uma aba
@@ -1654,6 +1659,72 @@ B7.Design = (function () {
      ================================================================= */
   let drawer = null;   /* { id, el, extra, briefing, versaoAtualId, filaUpload, anterior, tecla } */
 
+  /* -----------------------------------------------------------------
+     REVISÃO EM SEQUÊNCIA — a fila de "Revisão interna" percorrida sem
+     voltar ao quadro: abre a peça mais antiga; ao aprovar ou pedir
+     ajuste, a próxima abre sozinha. Nenhuma regra muda: é a MESMA gaveta
+     e são os MESMOS botões de sempre, só com a navegação entre peças.
+     ----------------------------------------------------------------- */
+  let filaRevisao = null;      /* { ids: [...], feitas: Set } enquanto a sequência está ativa */
+  let trocandoPeca = false;    /* fechar a gaveta para abrir a próxima não encerra a sequência */
+
+  /* o que esta pessoa pode revisar agora: em revisão interna, respeitando
+     os filtros da barra (cliente, designer…), nunca o que ela mesma
+     produziu, a mais antiga primeiro */
+  function pecasParaRevisar() {
+    if (!ehEquipe()) return [];
+    const filtroStatus = F.status, aba = F.aba, rapido = F.rapido;
+    F.status = ''; F.aba = 'todas'; F.rapido = '';
+    let lista;
+    try { lista = filtrar(dados); } finally { F.status = filtroStatus; F.aba = aba; F.rapido = rapido; }
+    return lista.filter(d => d.status === 'revisao_interna' && d.designer_id !== meuId())
+      .sort((a, b) => String(a.updated_at || '').localeCompare(String(b.updated_at || '')));
+  }
+  function iniciarRevisaoEmSequencia() {
+    const lista = pecasParaRevisar();
+    if (!lista.length) { B7.UI.toast('Nenhuma peça aguardando a sua revisão.'); return; }
+    filaRevisao = { ids: lista.map(d => d.id), feitas: new Set() };
+    abrirDetalhe(filaRevisao.ids[0]);
+  }
+  function posicaoNaFila() {
+    return filaRevisao && drawer ? filaRevisao.ids.indexOf(drawer.id) : -1;
+  }
+  function irNaFila(delta) {
+    const i = posicaoNaFila(); if (i < 0) return;
+    const alvo = filaRevisao.ids[i + delta];
+    if (alvo) abrirDetalhe(alvo);
+  }
+  function sairDaFila() { filaRevisao = null; if (drawer) desenharDrawer(); }
+  /* depois de uma decisão de revisão: a próxima que ainda está em revisão
+     (primeiro as seguintes, depois as que foram puladas) */
+  function aposRevisar(d) {
+    if (!filaRevisao || !drawer || drawer.id !== d.id || posicaoNaFila() < 0) return;
+    if (d.status === 'revisao_interna') return;                 /* multiparte ainda sem fechamento */
+    filaRevisao.feitas.add(d.id);
+    const i = posicaoNaFila();
+    const pendente = id => !filaRevisao.feitas.has(id) && (dados.find(x => x.id === id) || {}).status === 'revisao_interna';
+    const proxima = filaRevisao.ids.slice(i + 1).find(pendente) || filaRevisao.ids.slice(0, i).find(pendente);
+    const feitas = filaRevisao.feitas.size;
+    setTimeout(() => {
+      if (!filaRevisao || !drawer || drawer.id !== d.id) return;   /* a pessoa já foi para outro lugar */
+      if (proxima) { abrirDetalhe(proxima); return; }
+      filaRevisao = null; fecharDrawer();
+      B7.UI.toast('Fila de revisão concluída: ' + feitas + (feitas === 1 ? ' peça revisada.' : ' peças revisadas.'));
+    }, 650);
+  }
+  function barraFilaHTML() {
+    const i = posicaoNaFila(); if (i < 0) return '';
+    const total = filaRevisao.ids.length, feitas = filaRevisao.feitas.size;
+    return '<div class="ds-fila" role="group" aria-label="Revisão em sequência">' +
+      '<span class="ds-fila-tx"><b>Revisão em sequência</b> · peça ' + (i + 1) + ' de ' + total +
+        (feitas ? ' · ' + feitas + (feitas === 1 ? ' revisada' : ' revisadas') : '') + '</span>' +
+      '<span class="ds-fila-barra"><i style="width:' + Math.round((feitas / total) * 100) + '%"></i></span>' +
+      '<button class="b fina" data-fila="-1"' + (i === 0 ? ' disabled' : '') + '>‹ Anterior</button>' +
+      '<button class="b fina" data-fila="1"' + (i >= total - 1 ? ' disabled' : '') + '>Pular ›</button>' +
+      '<button class="b fina contorno" data-fila-sair title="Continua nesta peça, sem abrir a próxima sozinha">Sair da sequência</button>' +
+    '</div>';
+  }
+
   async function abrirDetalhe(id) {
     /* link direto (#/design/<id>, ex.: vindo de uma notificação) chega
        aqui sem a lista por trás — monta a tela normal primeiro, e a
@@ -1668,7 +1739,9 @@ B7.Design = (function () {
         return;
       }
     }
-    if (drawer && drawer.id !== id) fecharDrawer();
+    if (drawer && drawer.id !== id) { trocandoPeca = true; try { fecharDrawer(); } finally { trocandoPeca = false; } }
+    /* abriu uma peça que não é da sequência (clique no quadro, link): a sequência acaba */
+    if (filaRevisao && !filaRevisao.ids.includes(id)) filaRevisao = null;
 
     if (!drawer) {
       const el = document.createElement('div');
@@ -1707,6 +1780,7 @@ B7.Design = (function () {
     document.body.classList.remove('ds-ws-aberta');
     const foco = drawer.anterior;
     drawer = null;
+    if (!trocandoPeca) filaRevisao = null;
     if (foco && foco.focus && document.contains(foco)) foco.focus();
   }
 
@@ -2764,6 +2838,7 @@ B7.Design = (function () {
         '</div>' +
         '<button class="ico" data-fechar aria-label="Fechar">✕</button>' +
       '</header>' +
+      barraFilaHTML() +
       '<div class="ds-ws-corpo">' +
         '<div class="ds-ws-principal" role="tabpanel">' +
           feedbackAjuste(d, x) +
@@ -3433,6 +3508,9 @@ B7.Design = (function () {
     const detTimeline = el.querySelector('#dv-timeline'); if (detTimeline) detTimeline.ontoggle = () => { drawer.timelineAberta = detTimeline.open; };
     const detEnvio = el.querySelector('details.ds-dr-recolhido:not([id])'); if (detEnvio) detEnvio.ontoggle = () => { drawer.envioAberto = detEnvio.open; };
 
+    el.querySelectorAll('[data-fila]').forEach(b => b.onclick = () => irNaFila(Number(b.dataset.fila)));
+    el.querySelectorAll('[data-fila-sair]').forEach(b => b.onclick = sairDaFila);
+
     /* decisão do cliente registrada pela B7 */
     const decisaoCliente = el.querySelector('#dv-decisao-cliente');
     if (decisaoCliente) decisaoCliente.onclick = () => modalDecisaoCliente(d);
@@ -3451,7 +3529,7 @@ B7.Design = (function () {
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
         B7.UI.toast(resultado === 'aprovado' ? 'Peça aprovada internamente' : 'Ajustes enviados ao designer');
-        desenharDrawer(); redesenharTela();
+        desenharDrawer(); redesenharTela(); aposRevisar(d);
       } catch (e) {
         botao.disabled = false; botao.textContent = rotulo;
         B7.UI.toast('Não foi possível registrar: ' + (e.message || ''), { tipo: 'erro' });
@@ -3467,7 +3545,7 @@ B7.Design = (function () {
         await B7.DB.aprovarInternoDesign(versaoAtual.id);
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
-        B7.UI.toast('Peça aprovada internamente'); desenharDrawer(); redesenharTela();
+        B7.UI.toast('Peça aprovada internamente'); desenharDrawer(); redesenharTela(); aposRevisar(d);
       } catch (e) {
         aprovarInteiro.disabled = false; aprovarInteiro.textContent = rot;
         B7.UI.toast('Não foi possível aprovar: ' + (e.message || ''), { tipo: 'erro' });
@@ -3491,7 +3569,7 @@ B7.Design = (function () {
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
         B7.UI.toast('Peça aprovada internamente');
-        desenharDrawer(); redesenharTela();
+        desenharDrawer(); redesenharTela(); aposRevisar(d);
       } catch (e) {
         aprovar.disabled = false; aprovar.textContent = 'Aprovar internamente';
         B7.UI.toast('Não foi possível aprovar: ' + (e.message || ''), { tipo: 'erro' });
@@ -3508,7 +3586,7 @@ B7.Design = (function () {
         const novo = await B7.DB.design(d.id); Object.assign(d, novo);
         drawer.extra = await B7.DB.historicoDesign(d.id);
         B7.UI.toast('Ajuste solicitado');
-        desenharDrawer(); redesenharTela();
+        desenharDrawer(); redesenharTela(); aposRevisar(d);
       } catch (e) { B7.UI.toast('Não foi possível solicitar ajuste: ' + (e.message || ''), { tipo: 'erro' }); }
     };
 
