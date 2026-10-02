@@ -2098,7 +2098,9 @@ B7.DB = (function () {
       return this.rpc('video_mudar_status', { p_demanda_id: demandaId, p_status: status, p_mensagem: mensagem || null });
     },
     /* Checklist de conclusão (migration_video_conclusao.sql): etapa =
-       'grupo' | 'drive'. Não muda status — só carimba e registra evento. */
+       'grupo' | 'drive'. Não muda status — só carimba e registra evento.
+       Quem fecha a demanda com as duas marcas é a tela (js/video.js),
+       chamando mudarStatusVideo logo em seguida. */
     async marcarConclusaoVideo(demandaId, etapa, marcado) {
       return this.rpc('video_marcar_conclusao', { p_demanda_id: demandaId, p_etapa: etapa, p_marcado: !!marcado });
     },

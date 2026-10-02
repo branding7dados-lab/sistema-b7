@@ -1403,7 +1403,8 @@ B7.Video = (function () {
       '</label>';
     const entregar = podeOperar && feitas === 2 && d.editing_status !== 'entregue' && d.editing_status !== 'descartado'
       ? '<div class="vd-conclusao-pronta"><span>Tudo feito. Quer fechar a demanda?</span><button class="b pri fina" id="vd-marcar-entregue">Marcar como entregue</button></div>'
-      : '';
+      : (podeOperar && feitas < 2 && d.editing_status !== 'entregue' && d.editing_status !== 'descartado'
+        ? '<p class="fraca vd-conclusao-aviso">Com os dois marcados, a demanda vira entregue automaticamente.</p>' : '');
     return '<section class="vd-bloco vd-bloco-conclusao' + (feitas === 2 ? ' completa' : '') + '">' +
       '<div class="vd-bloco-cab"><label class="rot">Conclusão</label><span class="vd-progresso"><i style="width:' + (feitas * 50) + '%"></i></span><small>' + feitas + ' de 2</small></div>' +
       '<div class="vd-checks">' +
@@ -1935,9 +1936,22 @@ B7.Video = (function () {
         chk.disabled = true;
         try {
           await B7.DB.marcarConclusaoVideo(d.id, etapa, marcado);
-          B7.UI.toast(marcado ? 'Marcado.' : 'Desmarcado.');
-          abrirDetalhe(d.id);
-        } catch (e) { chk.disabled = false; chk.checked = !marcado; B7.UI.toast(e.message || 'Não foi possível salvar.'); }
+        } catch (e) { chk.disabled = false; chk.checked = !marcado; B7.UI.toast(e.message || 'Não foi possível salvar.'); return; }
+        /* Regra da B7 (02/10/2026): grupo + Drive marcados = entregue,
+           sem perguntar — com ou sem aprovação do cliente pendente. Usa
+           a mesma ação do botão (video_mudar_status), então permissão,
+           histórico e avisos são os de sempre. Desmarcar depois NÃO
+           reabre a demanda: reabrir é escolha de quem opera. Se a mudança
+           de situação falhar, a marca fica e o botão "Marcar como
+           entregue" continua na tela. */
+        const outra = etapa === 'grupo' ? d.upado_drive_em : d.enviado_grupo_em;
+        const fecha = marcado && !!outra && d.editing_status !== 'entregue' && d.editing_status !== 'descartado';
+        if (!fecha) { B7.UI.toast(marcado ? 'Marcado.' : 'Desmarcado.'); abrirDetalhe(d.id); return; }
+        try {
+          await B7.DB.mudarStatusVideo(d.id, 'entregue', 'Entregue automaticamente: enviado no grupo de concluídos e upado no Drive.');
+          B7.UI.toast('Tudo feito: demanda marcada como entregue.');
+        } catch (e) { B7.UI.toast(e.message || 'Marcado, mas não foi possível marcar como entregue.'); }
+        abrirDetalhe(d.id);
       };
     });
     const btEntregue = document.getElementById('vd-marcar-entregue');
