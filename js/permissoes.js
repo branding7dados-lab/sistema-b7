@@ -56,7 +56,7 @@ B7.Perm = (function () {
       'minhas-gravacoes', 'meus-status', 'historico', 'perfil'
     ]
   };
-  /* Acesso a "#/video" (Produção de Vídeo / Central de Vídeo) por
+  /* Acesso a "#/video" (Produção de Vídeo) por
      ASSOCIAÇÃO, não só pela lista estática acima: além de quem já tem
      'video' no próprio papel (admin '*', coordenador), também entra
      quem ganhou a FUNÇÃO EXTRA "videomaker" (B7 Vídeo Parte 1.1) —

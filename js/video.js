@@ -8,15 +8,18 @@
    muda aqui é a EXPERIÊNCIA, não os dados: nenhuma Demanda de Edição é
    recriada, nenhum dado importado é apagado.
 
-   Duas telas distintas atrás da mesma rota "#/video":
-     - PRODUÇÃO DE VÍDEO (equipe — admin/coordenador): fila inteira,
-       por competência (mês/ano), com filtros, lista/quadro e resumo.
-     - CENTRAL DE VÍDEO (quem é videomaker — papel principal OU função
-       extra, ver migration_video_producao.sql): fila pessoal, o que
-       precisa de atenção agora, sem exigir troca de "modo".
-   Quem é equipe E videomaker (ex.: Kevin, admin + função extra
-   videomaker) vê Produção de Vídeo com uma aba "Minha fila" — não
-   dois itens de menu, nem duas contas.
+   Uma tela só atrás da rota "#/video": PRODUÇÃO DE VÍDEO — a fila
+   inteira, por competência (mês/ano), com filtros, lista/Kanban e
+   resumo. Quem abre:
+     - equipe (admin/coordenador): tudo, inclusive as ferramentas de
+       gestão (nova demanda, importar, pacotes, gestão, descartados,
+       atribuir, editar e excluir demanda);
+     - videomaker (papel principal OU função extra): vê TODAS as
+       demandas e opera qualquer uma (situação, versão, materiais,
+       conclusão, comentários) — um cobre o outro —, sem as ferramentas
+       de gestão. Ver migration_video_videomaker_opera_todas.sql.
+   Quem é videomaker tem o filtro "Minha fila"; o "o que precisa de mim
+   agora" mora no Painel.
 
    Mesma arquitetura de sempre: leitura direta de demandas_edicao_resumo
    (RLS já filtra o que cada um pode ver), toda escrita passa por
@@ -30,6 +33,9 @@ B7.Video = (function () {
   const painel = () => document.getElementById('painel-dashboard');
   const souEquipe = () => B7.Auth && ['admin', 'coordenador'].includes(B7.Auth.papel());
   const souVideomakerElegivel = () => B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel();
+  /* operar = mudar situação, registrar versão, materiais, conclusão e
+     comentar, em QUALQUER demanda. Gerir (souEquipe) continua à parte. */
+  const possoOperar = () => !!(souEquipe() || souVideomakerElegivel());
   /* "eu": em "Visualizar como…" é a pessoa em prévia (a prévia bloqueia
      toda escrita — ver js/previa-usuario.js), senão a sessão real. Assim
      "comigo"/"minha fila" mostram o trabalho de quem está sendo visto,
@@ -166,16 +172,18 @@ B7.Video = (function () {
     aplicarFiltrosDaUrl(params);
     B7.Dashboard.marcarNav('#/video');
     const equipe = souEquipe();
-    B7.Rota.titulo([equipe ? 'Produção de Vídeo' : 'Central de Vídeo']);
+    B7.Rota.titulo(['Produção de Vídeo']);
     painel().innerHTML = '<div class="conteudo vd-tela">' +
-      '<header class="vd-cab"><h1>' + esc(equipe ? 'Produção de Vídeo' : 'Central de Vídeo') + '</h1>' +
+      '<header class="vd-cab"><h1>Produção de Vídeo</h1>' +
       '<p>Carregando as demandas…</p></header>' +
       B7.UI.skeleton('tabela', { n: 5, cols: 5 }) + '</div>';
 
     try {
-      const chamadas = [B7.DB.minhasDemandasVideo()];
-      if (equipe) chamadas.push(B7.DB.listarClientes(), B7.DB.listarVideomakers(), B7.DB.pacotesVideo());
-      const [d, c, v, p] = await Promise.all(chamadas);
+      /* videomakers: o filtro "Responsável" é de todo mundo; clientes e
+         pacotes só servem às ferramentas de gestão */
+      const chamadas = [B7.DB.minhasDemandasVideo(), B7.DB.listarVideomakers().catch(() => [])];
+      if (equipe) chamadas.push(B7.DB.listarClientes(), B7.DB.pacotesVideo());
+      const [d, v, c, p] = await Promise.all(chamadas);
       demandas = d || [];
       clientes = c || [];
       videomakers = v || [];
@@ -191,11 +199,11 @@ B7.Video = (function () {
 
     if (!F.competencia) F.competencia = mesAtualChave();
 
-    if (equipe) desenharProducao(); else desenharCentral();
+    desenharProducao();
   }
 
   /* =================================================================
-     PRODUÇÃO DE VÍDEO — equipe (admin/coordenador)
+     PRODUÇÃO DE VÍDEO — equipe e videomakers
      ================================================================= */
   function competenciasDisponiveis() {
     const chaves = new Set(demandas.map(competenciaChave).filter(Boolean));
@@ -258,6 +266,7 @@ B7.Video = (function () {
     const visiveis = filtrar(base);
     const comp = competenciasDisponiveis();
     const souTambemVideomaker = souVideomakerElegivel();
+    const equipe = souEquipe();
     const descartados = demandas.filter(d => d.editing_status === 'descartado');
 
     /* pendências de meses ANTERIORES ao selecionado, ainda em aberto —
@@ -272,16 +281,19 @@ B7.Video = (function () {
     painel().innerHTML = '<div class="conteudo entra vd-tela">' +
       '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
       '<p>Toda a fila de edição da B7 em um só lugar.</p></div>' +
-      '<div class="vd-acoes-topo">' +
-        '<div class="vd-acoes-sec" role="group" aria-label="Ferramentas">' +
-          '<button class="b fina" id="vd-gestao">' + IC.grafico + 'Gestão</button>' +
-          '<button class="b fina" id="vd-pacotes">' + IC.pacote + 'Pacotes</button>' +
-          '<button class="b fina" id="vd-importar">' + IC.planilha + 'Importar</button>' +
-          (descartados.length
-            ? '<button class="b fina" id="vd-descartados">' + IC.lixeira + 'Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
-            : '') +
-        '</div>' +
-        '<button class="b pri" id="vd-nova">' + IC.mais + 'Nova demanda</button></div>' +
+      /* ferramentas de gestão: só equipe (o banco recusa de qualquer jeito) */
+      (equipe
+        ? '<div class="vd-acoes-topo">' +
+          '<div class="vd-acoes-sec" role="group" aria-label="Ferramentas">' +
+            '<button class="b fina" id="vd-gestao">' + IC.grafico + 'Gestão</button>' +
+            '<button class="b fina" id="vd-pacotes">' + IC.pacote + 'Pacotes</button>' +
+            '<button class="b fina" id="vd-importar">' + IC.planilha + 'Importar</button>' +
+            (descartados.length
+              ? '<button class="b fina" id="vd-descartados">' + IC.lixeira + 'Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
+              : '') +
+          '</div>' +
+          '<button class="b pri" id="vd-nova">' + IC.mais + 'Nova demanda</button></div>'
+        : '') +
       '</div>' +
       '<datalist id="vd-pacotes-lista">' + pacotesVideoCache.map(p => '<option value="' + esc(p.nome) + '">').join('') + '</datalist>' +
       (anteriores.length
@@ -492,7 +504,7 @@ B7.Video = (function () {
     const atrasada = ehAtrasada(d);
     const prio = d.prioridade || 'normal';
     return '<div class="vd-card vd-card-p-' + prio + (atrasada ? ' vd-card-atrasada' : '') + '" data-demanda="' + d.id + '" data-situacao="' + d.editing_status + '"' +
-      (souEquipe() ? ' draggable="true"' : '') + ' tabindex="0">' +
+      (possoOperar() ? ' draggable="true"' : '') + ' tabindex="0">' +
       '<div class="vd-card-topo"><span class="vd-card-cliente">' + logoClienteHTML(d, 'sm') + '<b>' + esc(d.cliente_nome || 'Cliente') + '</b></span>' +
       (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') + '</div>' +
       '<div class="vd-card-titulo">' + tituloComFallback(d) + '</div>' +
@@ -521,7 +533,7 @@ B7.Video = (function () {
       });
       ligarArrastarVideo(cx);
     });
-    if (F.vista === 'kanban' && souEquipe()) ligarArrastarVideo(cx);
+    if (F.vista === 'kanban' && possoOperar()) ligarArrastarVideo(cx);
   }
 
   /* =================================================================
@@ -605,15 +617,10 @@ B7.Video = (function () {
       let versoes = [];
       try { versoes = await B7.DB.versoesDemandaVideo(d.id); } catch (e) { versoes = []; }
       const atual = versoes[0];
-      if (!atual) {
-        const ir = await B7.UI.confirmar({
-          titulo: 'Sem versão registrada',
-          texto: 'Envie ou registre uma versão antes de enviar para aprovação.',
-          confirmar: 'Abrir demanda'
-        });
-        if (ir) location.hash = '#/video/' + d.id;
-        return;
-      }
+      /* Sem versão registrada no B7: o vídeo está no Drive e isso basta.
+         Mover o cartão só atualiza a situação — registrar versão aqui é
+         opcional, nunca condição para avançar. */
+      if (!atual) { await commitStatusVideo(d, 'aguardando_aprovacao', null); return; }
       const ok = await B7.UI.confirmar({
         titulo: 'Enviar para aprovação?',
         texto: 'Enviar V' + String(atual.numero).padStart(2, '0') + ' para a aprovação do cliente?',
@@ -654,90 +661,6 @@ B7.Video = (function () {
 
     /* transições simples, sem dado extra: pendente / em edição / standby */
     await commitStatusVideo(d, destino, null);
-  }
-
-  /* =================================================================
-     CENTRAL DE VÍDEO — quem é videomaker (papel ou função extra), e
-     não é equipe. Mesmo espírito de "Central do Designer" (js/design.js):
-     o que precisa de mim agora, não um painel administrativo.
-     ================================================================= */
-  function desenharCentral() {
-    const minhas = demandas; /* RLS já entrega só o que é meu quando não sou equipe */
-    const ativas = minhas.filter(d => d.editing_status !== 'entregue' && d.editing_status !== 'descartado');
-    const atrasadasAgora = ativas.filter(ehAtrasada);
-    const correcoes = ativas.filter(d => d.editing_status === 'correcao');
-    const emEdicao = ativas.filter(d => d.editing_status === 'em_edicao' && !ehAtrasada(d) && d.editing_status !== 'correcao');
-    const pendentes = ativas.filter(d => d.editing_status === 'pendente' && !ehAtrasada(d));
-    const standby = ativas.filter(d => d.editing_status === 'standby');
-    const mesAtual = mesAtualChave();
-    const anteriores = ativas.filter(d => competenciaChave(d) && competenciaChave(d) < mesAtual);
-    const entreguesRecentes = minhas.filter(d => d.editing_status === 'entregue')
-      .sort((a, b) => (b.entregue_em || '').localeCompare(a.entregue_em || '')).slice(0, 6);
-
-    /* ordem de prioridade da própria tela (não muda status/prioridade
-       real de nada — é só a ordem de leitura): atrasadas, correções,
-       hoje/amanhã, alta prioridade, o resto */
-    const prazoLabel = d => d.prazo === hoje() ? 'hoje' : (d.prazo && d.prazo > hoje() && diasAte(d.prazo) === 1 ? 'amanhã' : '');
-    const precisaAgora = [...atrasadasAgora, ...correcoes,
-      ...emEdicao.filter(d => prazoLabel(d)), ...pendentes.filter(d => prazoLabel(d)),
-      ...emEdicao.filter(d => !prazoLabel(d) && d.prioridade === 'alta'),
-      ...pendentes.filter(d => !prazoLabel(d) && d.prioridade === 'alta')]
-      .filter((d, i, arr) => arr.findIndex(x => x.id === d.id) === i);
-    const restoAtivo = ativas.filter(d => !precisaAgora.some(p => p.id === d.id) && !anteriores.some(a => a.id === d.id));
-
-    painel().innerHTML = '<div class="conteudo entra vd-tela vd-central">' +
-      '<header class="vd-cab"><div><h1>O que precisa de você agora</h1>' +
-      '<p>' + minhas.length + ' demanda' + (minhas.length === 1 ? '' : 's') + ' atribuída' + (minhas.length === 1 ? '' : 's') + ' a você.</p></div></header>' +
-
-      (anteriores.length
-        ? '<section class="vd-sec"><h2>Pendências de meses anteriores <span>' + anteriores.length + '</span></h2>' +
-          '<div class="vd-fila">' + anteriores.map(linhaCentral).join('') + '</div></section>'
-        : '') +
-
-      (precisaAgora.length
-        ? '<section class="vd-sec vd-sec-precisa"><h2>Precisa de você agora <span>' + precisaAgora.length + '</span></h2>' +
-          '<div class="vd-fila">' + precisaAgora.map(linhaCentral).join('') + '</div></section>'
-        : '') +
-
-      (standby.length
-        ? '<section class="vd-sec"><h2>Em standby <span>' + standby.length + '</span></h2>' +
-          '<div class="vd-fila">' + standby.map(linhaCentral).join('') + '</div></section>'
-        : '') +
-
-      (restoAtivo.length
-        ? '<section class="vd-sec"><h2>Demais demandas em aberto <span>' + restoAtivo.length + '</span></h2>' +
-          '<div class="vd-fila">' + restoAtivo.map(linhaCentral).join('') + '</div></section>'
-        : '') +
-
-      (entreguesRecentes.length
-        ? '<section class="vd-sec vd-sec-fraca"><h2>Entregues recentemente</h2>' +
-          '<div class="vd-fila">' + entreguesRecentes.map(linhaCentral).join('') + '</div></section>'
-        : '') +
-
-      (!minhas.length
-        ? '<div class="estado-b7"><b>Nenhuma demanda atribuída a você ainda.</b>' +
-          '<p>Assim que a equipe atribuir algo, aparece aqui.</p></div>'
-        : '') +
-    '</div>';
-
-    ligarArea(painel());
-  }
-
-  function diasAte(iso) { return Math.round((new Date(iso) - new Date(hoje())) / 86400000); }
-
-  function linhaCentral(d) {
-    const atrasada = ehAtrasada(d);
-    return '<article class="vd-item-central" data-demanda="' + d.id + '" tabindex="0" role="button">' +
-      '<div class="vd-ic-tx">' +
-        '<span class="vd-ic-cliente">' + esc(d.cliente_nome || 'Cliente') + (d.codigo ? ' · ' + esc(d.codigo) : '') + '</span>' +
-        '<b>' + tituloComFallback(d) + '</b>' +
-      '</div>' +
-      '<div class="vd-ic-meta">' +
-        statusBadge(d.editing_status) +
-        (d.prioridade && d.prioridade !== 'normal' ? prioridadeBadge(d.prioridade) : '') +
-        (d.prazo ? '<span class="vd-prazo' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo)) + '</span>' : '') +
-      '</div>' +
-    '</article>';
   }
 
   /* =================================================================
@@ -1502,7 +1425,7 @@ B7.Video = (function () {
      ================================================================= */
   async function abrirDetalhe(id) {
     B7.Dashboard.marcarNav('#/video');
-    B7.Rota.titulo([souEquipe() ? 'Produção de Vídeo' : 'Central de Vídeo', 'Demanda']);
+    B7.Rota.titulo(['Produção de Vídeo', 'Demanda']);
     painel().innerHTML = '<div class="conteudo vd-tela">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>';
 
     let d, historico;
@@ -1575,13 +1498,13 @@ B7.Video = (function () {
     }
 
     const podeEditar = souEquipe();
-    const podeOperar = souEquipe() || d.videomaker_id === meuId();
+    const podeOperar = possoOperar();
     const atrasada = ehAtrasada(d);
     const correcoes = versoesAtual.filter(v => v.decisao_cliente === 'correcao' || v.decisao_cliente === 'recusado').length;
 
     const temConclusao = d.enviado_grupo_em !== undefined;
     painel().innerHTML = '<div class="conteudo entra vd-tela vd-detalhe">' +
-      '<div class="trilha"><a href="#/video">' + esc(souEquipe() ? 'Produção de Vídeo' : 'Central de Vídeo') + '</a><span>/</span><b>' + esc(d.titulo) + '</b></div>' +
+      '<div class="trilha"><a href="#/video">Produção de Vídeo</a><span>/</span><b>' + esc(d.titulo) + '</b></div>' +
       '<header class="vd-hero">' +
         '<div class="vd-hero-linha">' +
           '<div class="vd-hero-id">' + logoClienteHTML(d, 'lg') +
