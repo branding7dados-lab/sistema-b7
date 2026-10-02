@@ -971,6 +971,10 @@ B7.Dashboard = (function () {
       e.stopPropagation();
       B7.Semana.modalNovo(b.dataset.novaSemana);
     });
+    painel().querySelectorAll('[data-resumo-mes]').forEach(b => b.onclick = () => {
+      if (B7.UI.fecharMenus) B7.UI.fecharMenus();
+      B7.ResumoMes.abrir(cliente);
+    });
     painel().querySelectorAll('[data-criar-linha]').forEach(b => b.onclick = async e => {
       e.stopPropagation();
       location.hash = '#/cliente/' + b.dataset.criarLinha + '/linhas';
@@ -1058,6 +1062,8 @@ B7.Dashboard = (function () {
         '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
           '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
           '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
+          /* documento, não tela: uma folha A4 com o que foi feito no mês */
+          (B7.ResumoMes && B7.Auth.ehEquipe && B7.Auth.ehEquipe() ? '<button data-resumo-mes>Resumo do mês (PDF)</button>' : '') +
           (ehAdmin() ? '<button data-ir="#/previa/' + esc(c.id) + '">Visualizar como cliente</button>' : '') +
           (window.__ultimaDoCliente ? '' : '') +
           '<hr><button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +

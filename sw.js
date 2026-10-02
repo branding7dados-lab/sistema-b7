@@ -6,12 +6,12 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v142';
+const CACHE = 'roteiros-b7-v143';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
   './js/vendor-supabase.js', './js/supabase.js', './js/database.js', './js/ui.js',
-  './js/autosave.js', './js/print.js', './js/dashboard.js', './js/editor.js', './js/gravacao.js',
+  './js/autosave.js', './js/print.js', './js/resumo-mes.js', './js/dashboard.js', './js/editor.js', './js/gravacao.js',
   './js/backup.js', './js/app.js',
   './js/auth.js', './js/usuarios.js', './js/central.js', './js/conteudo.js',
   './js/linha.js', './js/design.js', './js/video.js', './js/eventos.js', './js/calendario.js', './js/oportunidades.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',

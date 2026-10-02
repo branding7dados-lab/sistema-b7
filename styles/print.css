@@ -918,3 +918,62 @@
   padding:1.2mm 2.4mm;border-radius:1.5mm;}
 .sl-pilar-meta .rf{font-size:9.5px;color:var(--grey);}
 .sl-pilar .sl-txt p{font-size:calc(11px * var(--fs));}
+
+/* =====================================================================
+   RESUMO DO MÊS (js/resumo-mes.js) — folha A4 por cliente e mês.
+   Cores fixas: é documento, sai sempre claro, na tela e no PDF.
+   ===================================================================== */
+.modal-resumo .rm-barra-topo{display:flex;align-items:center;gap:10px;margin:14px 0 12px;}
+.modal-resumo .rm-barra-topo select{width:auto;min-width:200px;}
+.rm-aviso{font-size:12px;color:var(--ink-4);}
+.rm-previa{position:relative;overflow:hidden;border:1px solid var(--borda);border-radius:12px;background:#fff;min-height:160px;}
+.rm-carregando{padding:60px 20px;text-align:center;font-size:13px;color:#8B85A0;}
+.rm-previa .rm-folha{transform-origin:top left;}
+
+.rm-folha{width:794px;height:1123px;box-sizing:border-box;padding:46px 50px 34px;background:#fff;color:#15122B;
+  font-family:'Inter',system-ui,sans-serif;display:flex;flex-direction:column;gap:24px;overflow:hidden;text-align:left;}
+.rm-folha *{box-sizing:border-box;}
+.rm-topo{display:flex;align-items:center;gap:16px;padding-bottom:22px;border-bottom:2px solid #15122B;}
+.rm-logo{width:62px;height:62px;border-radius:16px;object-fit:contain;background:#fff;border:1px solid #E5E0EE;flex:none;}
+.rm-logo-ini{display:flex;align-items:center;justify-content:center;background:#F5F1FB;color:#7C1E85;
+  font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;}
+.rm-topo-tx{flex:1;min-width:0;}
+.rm-topo-tx small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.18em;color:#C21C83;margin-bottom:5px;}
+.rm-topo-tx h1{font-family:'Archivo',sans-serif;font-size:27px;font-weight:800;line-height:1.15;margin:0;color:#15122B;}
+.rm-mes{text-align:right;flex:none;}
+.rm-mes b{display:block;font-family:'Archivo',sans-serif;font-size:21px;font-weight:800;color:#15122B;}
+.rm-mes span{font-size:13px;color:#8B85A0;}
+
+.rm-kpis{display:flex;gap:12px;}
+.rm-kpi{flex:1;min-width:0;background:#F5F1FB;border-radius:14px;padding:16px 15px 14px;}
+.rm-kpi b{display:block;font-family:'Archivo',sans-serif;font-size:32px;font-weight:800;line-height:1;color:#15122B;}
+.rm-kpi b i{font-style:normal;font-size:17px;font-weight:700;color:#8B85A0;}
+.rm-kpi span{display:block;font-size:12px;font-weight:700;margin-top:9px;color:#15122B;}
+.rm-kpi small{display:block;font-size:10.5px;color:#8B85A0;margin-top:3px;line-height:1.35;}
+
+.rm-bloco h2{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8B85A0;margin:0 0 12px;}
+.rm-cresce{flex:1;min-height:0;}
+.rm-formatos{display:flex;flex-direction:column;gap:9px;}
+.rm-formato{display:flex;align-items:center;gap:12px;font-size:12.5px;}
+.rm-formato > span{width:86px;flex:none;font-weight:600;}
+.rm-formato > b{width:70px;flex:none;text-align:right;font-weight:600;color:#3B3557;}
+.rm-barra{flex:1;height:10px;}
+.rm-barra i{display:block;height:10px;border-radius:99px;background:#E5E0EE;overflow:hidden;min-width:10px;}
+.rm-barra u{display:block;height:10px;background:#7C1E85;border-radius:99px;text-decoration:none;}
+.rm-legenda{font-size:10.5px;color:#8B85A0;margin:10px 0 0;}
+.rm-q{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 5px 0 0;vertical-align:middle;}
+.rm-q-pub{background:#7C1E85;}
+.rm-q-plan{background:#E5E0EE;margin-left:12px;}
+
+.rm-tabela{display:flex;flex-direction:column;}
+.rm-linha{display:flex;align-items:center;gap:12px;font-size:12px;height:27px;border-bottom:1px solid #EFEBF5;}
+.rm-data{width:42px;flex:none;color:#8B85A0;font-variant-numeric:tabular-nums;}
+.rm-tipo{width:74px;flex:none;font-weight:600;color:#3B3557;}
+.rm-tit{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rm-st{width:92px;flex:none;text-align:right;font-size:11px;color:#8B85A0;}
+.rm-st.ok{color:#1E8E5A;font-weight:700;}
+.rm-mais{font-size:11.5px;color:#8B85A0;padding-top:9px;}
+.rm-vazio{font-size:13px;color:#8B85A0;margin:0;}
+.rm-pe{display:flex;align-items:center;gap:9px;font-size:10.5px;color:#8B85A0;padding-top:14px;border-top:1px solid #E5E0EE;}
+.rm-pe img{width:18px;height:18px;object-fit:contain;}
+@media print{ .rm-folha{box-shadow:none;} }

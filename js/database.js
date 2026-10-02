@@ -1429,6 +1429,34 @@ B7.DB = (function () {
       };
     },
 
+    /* ------------------------------------------- RESUMO DO MÊS (cliente)
+       Leitura para o documento de js/resumo-mes.js. Tudo pelo mês de
+       REFERÊNCIA que cada tela já usa: a linha editorial do mês (e as
+       peças de Design dela), a competência das demandas de vídeo e das
+       gravações. Nada de tabela nova; o RLS de quem pede vale. */
+    async resumoMensal(clienteId, ano, mes) {
+      const [linhas, videos, gravacoes] = await Promise.all([
+        sb().from('linhas_editoriais').select('id,nome,mes,ano,meta_conteudos')
+          .eq('client_id', clienteId).eq('ano', ano).eq('mes', mes).is('deleted_at', null),
+        sb().from('demandas_edicao_resumo').select('id,titulo,editing_status')
+          .eq('client_id', clienteId).eq('competencia_ano', ano).eq('competencia_mes', mes)
+          .is('deleted_at', null).neq('editing_status', 'descartado'),
+        sb().from('gravacoes_resumo').select('id,nome,situacao,data_gravacao')
+          .eq('client_id', clienteId).eq('competencia_ano', ano).eq('competencia_mes', mes).is('deleted_at', null)
+      ]);
+      const ids = (ok(linhas) || []).map(l => l.id);
+      let conteudos = { data: [] }, design = { data: [] };
+      if (ids.length) {
+        [conteudos, design] = await Promise.all([
+          sb().from('conteudos').select('id,titulo,tipo,status,data_postagem')
+            .in('linha_id', ids).is('deleted_at', null).is('archived_at', null).limit(300),
+          sb().from('design_resumo').select('id,tipo,status').eq('client_id', clienteId).in('linha_id', ids).limit(300)
+        ]);
+      }
+      return { linhas: ok(linhas) || [], conteudos: ok(conteudos) || [], design: ok(design) || [],
+               videos: ok(videos) || [], gravacoes: ok(gravacoes) || [] };
+    },
+
     /* ------------------------------------------------------ RESUMO */
     async resumo() {
       /* Antes eram 7 contagens em paralelo — no plano Free do Supabase
