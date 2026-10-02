@@ -357,9 +357,11 @@ B7.Conteudo = (function () {
      ================================================================= */
   let filtroLinhas = '';
   let filtroRegra = '';   /* chave de REGRAS_LINHA vinda do endereço (?status=) */
+  let filtroStatus = '';  /* um dos STATUS_LINHA, escolhido nos chips da tela */
+  let dadosLinhas = null; /* { linhas, clientes } da última leitura: buscar e filtrar não releem o banco */
 
-  /* params (URLSearchParams) só vem da rota: é ela que define o filtro.
-     A busca redesenha chamando sem params e mantém o filtro atual. */
+  /* params (URLSearchParams) só vem da rota: é ela que define o filtro
+     por regra. Busca e chips de situação só redesenham a lista. */
   async function abrirLinhasGlobais(params) {
     if (params && typeof params.get === 'function') {
       const s = params.get('status') || '';
@@ -375,18 +377,8 @@ B7.Conteudo = (function () {
         B7.DB.listarClientes().catch(() => [])
       ]);
     } catch (e) { return B7.Dashboard.erroConteudo(e); }
-
-    const termo = filtroLinhas.trim().toLowerCase();
-    const regra = filtroRegra && REGRAS_LINHA[filtroRegra];
-    const filtradas = linhas.filter(l => (!regra || regra.teste(l)) && (!termo || (
-          (l.cliente_nome || '').toLowerCase().includes(termo) ||
-          (l.nome || '').toLowerCase().includes(termo) ||
-          (MESES[l.mes - 1] + ' ' + l.ano).toLowerCase().includes(termo))));
-    const chipRegra = regra
-      ? '<div class="filtro-ativo-linhas"><span>Mostrando: <b>' + esc(regra.rotulo) + '</b> · ' +
-        filtradas.length + (filtradas.length === 1 ? ' linha' : ' linhas') + '</span>' +
-        '<a class="b fina contorno" href="#/linhas">Ver todas</a></div>'
-      : '';
+    dadosLinhas = { linhas, clientes };
+    if (filtroStatus && !linhas.some(l => l.status === filtroStatus)) filtroStatus = '';
 
     /* clientes sem nenhuma linha ficam à mão, para criar em um clique */
     const comLinha = new Set(linhas.map(l => l.client_id));
@@ -399,19 +391,19 @@ B7.Conteudo = (function () {
        contexto de uma linha, nunca cria uma nova. */
     const leitura = souDesignerSomenteLeitura();
 
-    painel().innerHTML = '<div class="conteudo entra">' +
+    painel().innerHTML = '<div class="conteudo entra lg-tela">' +
       '<div class="trilha"><a href="#/">Central B7</a><span>/</span><b>Linhas editoriais</b></div>' +
       '<div class="cab-conteudo"><div><h1>Linhas editoriais</h1>' +
       '<p>O planejamento de conteúdo de cada cliente, mês a mês.</p></div>' +
       (leitura ? '' : '<button class="b pri" id="nova-linha-global">+ Nova linha editorial</button>') + '</div>' +
 
       (linhas.length
-        ? '<div class="busca-linhas"><input class="campo" id="busca-linha" ' +
-          'placeholder="Buscar por cliente ou mês…" value="' + esc(filtroLinhas) + '"></div>' + chipRegra +
-          (filtradas.length
-            ? blocoLinhasPorMes(filtradas)
-            : '<div class="estado-b7"><b>' + (termo ? 'Nada encontrado para “' + esc(filtroLinhas) + '”.'
-                : 'Nenhuma linha editorial neste filtro.') + '</b></div>')
+        ? '<div class="lg-barra">' +
+            '<label class="lg-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+            '<input id="busca-linha" placeholder="Buscar por cliente ou mês…" value="' + esc(filtroLinhas) + '" autocomplete="off"></label>' +
+            '<div class="lg-chips" id="lg-chips" role="group" aria-label="Filtrar por situação"></div>' +
+          '</div>' +
+          '<div id="lg-lista"></div>'
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
           '<b>Nenhuma linha editorial ainda.</b>' +
           (leitura ? '<p>Nenhum planejamento foi criado ainda.</p>'
@@ -421,9 +413,9 @@ B7.Conteudo = (function () {
       (semLinha.length && !leitura ? '<div class="secao-sem-linha">' +
         '<div class="ssl-cab"><b>Clientes sem planejamento</b>' +
         '<span>' + semLinha.length + (semLinha.length === 1 ? ' cliente' : ' clientes') +
-        ' ainda sem linha editorial</span></div>' +
+        ' ainda sem linha editorial. Clique para criar a primeira.</span></div>' +
         '<div class="ssl-grade">' + semLinha.slice(0, 12).map(c =>
-          '<button class="ssl-cliente" data-criar-para="' + esc(c.id) + '">' +
+          '<button class="ssl-cliente" data-criar-para="' + esc(c.id) + '" title="Criar linha editorial para ' + esc(c.nome) + '">' +
           B7.UI.avatarCliente(c.nome, c.logo_url, 'p') +
           '<span class="nm">' + esc(c.nome) + '</span>' +
           '<span class="add">+</span></button>').join('') +
@@ -432,9 +424,8 @@ B7.Conteudo = (function () {
         '</div></div>' : '') +
     '</div>';
 
-    painel().querySelectorAll('[data-linha]').forEach(el => el.onclick = () => {
-      location.hash = '#/linha/' + el.dataset.linha;
-    });
+    pintarListaLinhas();
+
     if (!leitura) {
       ['nova-linha-global', 'nova-linha-vazia'].forEach(id => {
         const b = document.getElementById(id);
@@ -447,51 +438,135 @@ B7.Conteudo = (function () {
     }
     const busca = document.getElementById('busca-linha');
     if (busca) {
-      busca.oninput = B7.UI.debounce(() => {
-        filtroLinhas = busca.value;
-        const pos = busca.selectionStart;
-        abrirLinhasGlobais().then(() => {
-          const novo = document.getElementById('busca-linha');
-          if (novo) { novo.focus(); novo.setSelectionRange(pos, pos); }
-        });
-      }, 260);
+      busca.oninput = B7.UI.debounce(() => { filtroLinhas = busca.value; pintarListaLinhas(); }, 140);
     }
   }
 
-  /* agrupa por ano/mês, mais recente primeiro — mesmo padrão visual das
-     Gravações (dashboard.js agrupa por data_gravacao). */
-  function blocoLinhasPorMes(lista) {
+  /* Desenha os chips de situação e a lista, a partir do que já está em
+     memória. Digitar na busca ou trocar de chip não vai ao banco e não
+     pisca a tela inteira: só esta parte muda. */
+  function pintarListaLinhas() {
+    const alvo = document.getElementById('lg-lista');
+    const chips = document.getElementById('lg-chips');
+    if (!alvo || !dadosLinhas) return;
+    const linhas = dadosLinhas.linhas;
+    const termo = filtroLinhas.trim().toLowerCase();
+    const regra = filtroRegra && REGRAS_LINHA[filtroRegra];
+
+    /* a busca e o filtro do endereço valem para as contagens dos chips;
+       o chip escolhido só filtra a lista */
+    const base = linhas.filter(l => (!regra || regra.teste(l)) && (!termo || (
+      (l.cliente_nome || '').toLowerCase().includes(termo) ||
+      (l.nome || '').toLowerCase().includes(termo) ||
+      (MESES[l.mes - 1] + ' ' + l.ano).toLowerCase().includes(termo))));
+    const filtradas = filtroStatus ? base.filter(l => l.status === filtroStatus) : base;
+
+    if (chips) {
+      const conta = s => base.filter(l => l.status === s).length;
+      chips.innerHTML =
+        '<button class="lg-chip' + (filtroStatus ? '' : ' on') + '" data-st="">Todas<b>' + base.length + '</b></button>' +
+        STATUS_LINHA.filter(s => conta(s) || s === filtroStatus).map(s =>
+          '<button class="lg-chip' + (filtroStatus === s ? ' on' : '') + '" data-st="' + esc(s) + '">' +
+          '<i class="' + classeSituacaoLinha(s) + '"></i>' + esc(s) + '<b>' + conta(s) + '</b></button>').join('');
+      chips.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
+        filtroStatus = b.dataset.st; pintarListaLinhas();
+      });
+    }
+
+    const chipRegra = regra
+      ? '<div class="filtro-ativo-linhas"><span>Mostrando: <b>' + esc(regra.rotulo) + '</b> · ' +
+        filtradas.length + (filtradas.length === 1 ? ' linha' : ' linhas') + '</span>' +
+        '<a class="b fina contorno" href="#/linhas">Ver todas</a></div>'
+      : '';
+
+    alvo.innerHTML = chipRegra + (filtradas.length
+      ? blocoLinhasPorMes(filtradas, !!(termo || filtroStatus || regra))
+      : '<div class="estado-b7"><b>' + (termo ? 'Nada encontrado para “' + esc(filtroLinhas) + '”.'
+          : 'Nenhuma linha editorial neste filtro.') + '</b>' +
+        (termo || filtroStatus ? '<div class="acoes"><button class="b" id="lg-limpar">Limpar filtros</button></div>' : '') +
+        '</div>');
+
+    const limpar = document.getElementById('lg-limpar');
+    if (limpar) limpar.onclick = () => {
+      filtroLinhas = ''; filtroStatus = '';
+      const b = document.getElementById('busca-linha'); if (b) b.value = '';
+      pintarListaLinhas();
+    };
+  }
+
+  /* cor da situação da linha — a mesma correspondência do card de linha
+     dentro do cliente (cardLinha): aprovada/finalizada em verde, revisão
+     em âmbar, criação neutra */
+  const classeSituacaoLinha = s =>
+    (s === 'Aprovada' || s === 'Finalizada') ? 'gravado' : s === 'Em revisão' ? 'revisao' : 'criacao';
+
+  /* Agrupa por ano/mês, mais recente primeiro. Os meses antigos (antes do
+     mês passado) nascem recolhidos: a tela abre no que está em jogo agora
+     e o histórico fica a um clique. Com busca ou filtro, tudo abre — quem
+     procura quer ver o resultado, não um título fechado. */
+  function blocoLinhasPorMes(lista, tudoAberto) {
     const grupos = new Map();
     lista.forEach(l => {
       const chave = l.ano && l.mes ? l.ano + '-' + String(l.mes).padStart(2, '0') : '';
       if (!grupos.has(chave)) grupos.set(chave, []);
       grupos.get(chave).push(l);
     });
+    const hoje = new Date();
+    const atual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+    const ant = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    const passado = ant.getFullYear() + '-' + String(ant.getMonth() + 1).padStart(2, '0');
     const chaves = [...grupos.keys()].sort((a, b) => !a ? -1 : !b ? 1 : b.localeCompare(a));
+    let n = 0;
     return chaves.map(chave => {
-      const itens = grupos.get(chave);
+      const itens = grupos.get(chave).slice().sort((a, b) =>
+        String(a.cliente_nome || '').localeCompare(String(b.cliente_nome || ''), 'pt-BR'));
       const rotulo = chave ? (MESES[+chave.slice(5, 7) - 1] + ' ' + chave.slice(0, 4)) : 'Sem mês definido';
-      return '<div class="grupo-mes"><h3 class="grupo-mes-tit">' + esc(rotulo) +
-        '<span class="conta-mes">' + itens.length + '</span></h3>' +
-        '<div class="grade">' + itens.map(cardLinhaGlobal).join('') + '</div></div>';
+      const conteudos = itens.reduce((t, l) => t + (+l.total_conteudos || 0), 0);
+      const emCriacao = itens.filter(l => l.status === 'Em criação').length;
+      const aberto = tudoAberto || !chave || chave >= passado;
+      return '<details class="lg-grupo"' + (aberto ? ' open' : '') + '>' +
+        '<summary><span class="lg-seta-g" aria-hidden="true">›</span>' +
+          '<h3>' + esc(rotulo) + '</h3>' +
+          (chave === atual ? '<span class="lg-agora">Mês atual</span>' : '') +
+          '<span class="lg-resumo">' + itens.length + (itens.length === 1 ? ' linha' : ' linhas') +
+            ' · ' + conteudos + (conteudos === 1 ? ' conteúdo' : ' conteúdos') +
+            (emCriacao ? ' · <b>' + emCriacao + ' em criação</b>' : '') + '</span>' +
+        '</summary>' +
+        '<div class="lg-grade">' + itens.map(l => cardLinhaGlobal(l, n++)).join('') + '</div></details>';
     }).join('');
   }
 
-  function cardLinhaGlobal(l) {
+  /* O card é o cliente: dentro de um grupo "Outubro 2026", repetir o mês
+     em cada card não diz nada. Em destaque ficam quem é, em que pé está e
+     quanto do mês já tem estrutura. O card inteiro é o link. */
+  function cardLinhaGlobal(l, i) {
+    const total = +l.total_conteudos || 0, estr = +l.total_estruturados || 0, meta = +l.meta_conteudos || 0;
+    const pct = total ? Math.round(estr / total * 100) : 0;
     const quando = l.updated_at ? B7.UI.quando(l.updated_at) : '';
-    return '<div class="cartao card-linha" data-linha="' + esc(l.id) + '">' +
-      '<div class="cl-topo">' +
-        B7.UI.avatarCliente(l.cliente_nome || '', l.cliente_logo_url, 'p') +
-        '<span class="cl-cli">' + esc(l.cliente_nome || 'Sem cliente') + '</span>' +
+    const mesRot = MESES[l.mes - 1] ? MESES[l.mes - 1] + ' ' + l.ano : '';
+    const canais = String(l.canais || '').split(',').map(x => x.trim()).filter(Boolean).join(' · ');
+    const sub = (l.nome && l.nome !== mesRot) ? l.nome : (canais || mesRot);
+    const alerta = REGRAS_LINHA.planejamento.teste(l);
+    return '<a class="lg-card" href="#/linha/' + esc(l.id) + '" style="--i:' + Math.min(i || 0, 14) + '">' +
+      '<div class="lg-topo">' +
+        B7.UI.avatarCliente(l.cliente_nome || '', l.cliente_logo_url) +
+        '<div class="lg-id"><b>' + esc(l.cliente_nome || 'Sem cliente') + '</b>' +
+          (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div>' +
+        '<span class="lg-abrir" aria-hidden="true">→</span>' +
       '</div>' +
-      '<h3>' + esc(l.nome || (MESES[l.mes - 1] + ' ' + l.ano)) + '</h3>' +
-      '<div class="cl-meta">' +
-        '<span>' + (l.total_conteudos || 0) + ' conteúdo' +
-          ((l.total_conteudos || 0) === 1 ? '' : 's') + '</span>' +
-        (quando ? '<span>· editada ' + esc(quando) + '</span>' : '') +
-      '</div>' +
-      '<button class="b p">Abrir</button>' +
-    '</div>';
+      (total
+        ? '<div class="lg-prog">' +
+            '<div class="lg-prog-tx"><span><b>' + total + '</b> conteúdo' + (total === 1 ? '' : 's') +
+              (meta ? ' <em>de ' + meta + ' na meta</em>' : '') + '</span>' +
+              '<span>' + estr + ' estruturado' + (estr === 1 ? '' : 's') + '</span></div>' +
+            '<div class="lg-prog-barra" title="' + pct + '% dos conteúdos estruturados"><i style="--p:' + (pct / 100) + '"></i></div>' +
+          '</div>'
+        : '<div class="lg-vazio">Nenhum conteúdo planejado ainda</div>') +
+      '<div class="lg-pe">' +
+        '<span class="chip-revisao ' + classeSituacaoLinha(l.status) + '">' + esc(l.status || 'Em criação') + '</span>' +
+        (alerta ? '<span class="lg-alerta" title="' + esc(REGRAS_LINHA.planejamento.rotulo) + '">Começa em breve</span>' : '') +
+        (quando ? '<span class="lg-quando">editada ' + esc(quando) + '</span>' : '') +
+      '</div></a>';
   }
 
   async function abrirLinhas(clienteId) {
