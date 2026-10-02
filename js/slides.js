@@ -347,7 +347,7 @@ B7.Slides = (function () {
       const totalPost = ordenados.length;
       const unidPost = totalPost === 1 ? 'POSTAGEM' : 'POSTAGENS';
       const linhasPost = ordenados.map(c =>
-        '<tr data-cid="' + esc(c.id) + '" title="Ver detalhes">' +
+        '<tr data-cid="' + esc(c.id) + '" data-lista="post" title="Ver detalhes">' +
         '<td class="d">' + (c.data_postagem ? esc(B7.UI.dataBR(c.data_postagem)) : '') + '</td>' +
         '<td>' + esc(c.canal || '') + '</td>' +
         '<td>' + esc(c.tipo) + '</td>' +
@@ -573,7 +573,16 @@ B7.PreviewLinha = (function () {
          "apresentando numa janelinha". Se o navegador nunca deixou entrar
          em tela cheia, ela segue como overlay e o botão continua ali. */
       if (opcoes.apresentacao && esteveCheia && !dentro) return fechar();
-      if (dentro) esteveCheia = true;
+      if (dentro) {
+        esteveCheia = true;
+        /* Em tela cheia o Esc é do navegador: ele sai da tela cheia sem
+           avisar a página — e, com um detalhe aberto, isso encerraria a
+           apresentação inteira em vez de fechar só o detalhe. Onde o
+           navegador permite (Chrome, Edge), a tecla é reservada para a
+           página: um toque fecha o detalhe (ou a apresentação, se não há
+           detalhe); segurar Esc continua saindo da tela cheia. */
+        try { if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(() => {}); } catch (e) {}
+      }
       btTelaCheia.textContent = dentro ? 'Sair da tela cheia' : 'Tela cheia';
       btTelaCheia.setAttribute('aria-label', dentro ? 'Sair da tela cheia' : 'Entrar em tela cheia');
       btTelaCheia.style.display = (opcoes.apresentacao && dentro) ? 'none' : '';   /* lá, sair = Fechar */
@@ -590,7 +599,7 @@ B7.PreviewLinha = (function () {
       clearTimeout(relogioOcioso);
       relogioOcioso = setTimeout(() => {
         if (fechado || !emTelaCheia()) return;
-        if (caixa.querySelector('.fundo-modal, .menu.aberto, .preview-topo:hover, .preview-nav:hover, .preview-seta:hover')) return acordar();
+        if (caixa.querySelector('.pv-det, .fundo-modal, .menu.aberto,.preview-topo:hover, .preview-nav:hover, .preview-seta:hover')) return acordar();
         caixa.classList.add('ocioso');
       }, 2600);
     }
@@ -616,6 +625,7 @@ B7.PreviewLinha = (function () {
       document.removeEventListener('webkitfullscreenchange', pintarBotaoTelaCheia);
       window.removeEventListener('resize', escalar);
       document.removeEventListener('keydown', tecla);
+      try { if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch (e) {}
       if (emTelaCheia()) Promise.resolve(sairTelaCheia()).catch(() => {});
       caixa.remove();
     }
@@ -625,6 +635,8 @@ B7.PreviewLinha = (function () {
        inteira por baixo. */
     const tecla = e => {
       if (document.querySelector('.fundo-modal')) return;
+      const det = caixa.querySelector('.pv-det');
+      if (det) { if (det.b7Tecla) det.b7Tecla(e); return; }
       const noBotao = e.target && e.target.closest && e.target.closest('button, a, input, select, textarea');
       if (e.key === 'Escape') fechar();
       else if (e.key === 'ArrowRight' || e.key === 'PageDown') ir(1);
@@ -874,30 +886,126 @@ B7.PreviewLinha = (function () {
      cabeçalho de um slide de criativo) abre um detalhe read-only por
      cima, sem sair do slide atual. Só os campos reais do conteúdo. */
   function ligarDetalhe(area, ctx, caixa) {
-    area.querySelectorAll('[data-cid]').forEach(el => el.onclick = () => abrirDetalheConteudo(el.dataset.cid, ctx, caixa));
+    area.querySelectorAll('[data-cid]').forEach(el => el.onclick = () => abrirDetalheConteudo(el.dataset.cid, ctx, caixa, el));
   }
-  function abrirDetalheConteudo(id, ctx, caixa) {
-    const c = (ctx.conteudos || []).find(x => x.id === id);
-    if (!c) return;
+
+  /* O detalhe é uma peça da apresentação, não um modal do sistema: nasce
+     DENTRO da caixa (em tela cheia o navegador só desenha o que está
+     dentro do elemento em tela cheia), tem a cara dos slides e abre a
+     partir da linha clicada — o cartão cresce de onde o clique aconteceu
+     e o conteúdo entra em cascata. Dá para passar de um conteúdo para o
+     outro sem fechar (setas), na mesma ordem da tabela de onde se veio:
+     a de Criativos (ordem dos posts) ou a de Postagens (por data). */
+  function abrirDetalheConteudo(id, ctx, caixa, origem) {
     const esc = B7.UI.esc;
-    const pilar = (ctx.pilares || []).find(p => p.id === c.pilar_id);
-    const campo = (rot, v) => (!v || !String(v).trim()) ? '' :
-      '<div class="le-campo"><b>' + rot + '</b><div class="le-txt"><p>' + esc(v) + '</p></div></div>';
-    /* Em tela cheia o navegador só desenha o que está DENTRO do elemento
-       em tela cheia (a caixa da apresentação). O modal nasce no <body>,
-       então ficava invisível até sair da tela cheia — por isso é movido
-       para dentro da caixa logo depois de criado. */
-    const detalhe = B7.UI.modal('<h3>' + esc(c.titulo || 'Sem título') + '</h3>' +
-      '<div class="sub">' + esc(c.tipo || '') +
-        (c.canal ? ' · ' + esc(c.canal) : '') +
-        (c.data_postagem ? ' · ' + esc(B7.UI.dataBR(c.data_postagem)) : '') +
-        (pilar ? ' · ' + esc(pilar.nome || 'Pilar sem nome') : '') + '</div>' +
-      campo('OBJETIVO', c.objetivo) +
-      campo('IDEIA GERAL', c.ideia_geral) +
-      campo('LEGENDA', c.legenda) +
-      campo('CTA', c.cta) +
-      '<div class="acoes"><button class="b pri" data-fecha>Voltar à apresentação</button></div>');
-    if (caixa && caixa.isConnected && detalhe) caixa.appendChild(detalhe);
+    const todos = ctx.conteudos || [];
+    const lista = (origem && origem.dataset.lista === 'post')
+      ? todos.slice().sort((a, b) => String(a.data_postagem || '9999').localeCompare(String(b.data_postagem || '9999')))
+      : todos;
+    let i = lista.findIndex(x => x.id === id);
+    if (i < 0 || !caixa) return;
+    const anterior = caixa.querySelector('.pv-det');
+    if (anterior) anterior.remove();
+
+    /* texto em parágrafos (uma quebra de linha = um parágrafo), com as
+       hashtags destacadas quando é legenda */
+    const texto = (v, tags) => String(v).split('\n').map(s => s.trim()).filter(Boolean).map(p => {
+      let h = esc(p);
+      if (tags) h = h.replace(/(^|\s)(#[\wÀ-ÿ]+)/g, '$1<span class="tag">$2</span>');
+      return '<p>' + h + '</p>';
+    }).join('');
+    const tem = v => !!String(v || '').trim();
+    const bloco = (rot, v, classe, tags) => !tem(v) ? '' :
+      '<section class="pv-det-bloco' + (classe ? ' ' + classe : '') + '"><b>' + rot + '</b>' +
+      '<div class="pv-det-txt">' + texto(v, tags) + '</div></section>';
+
+    function miolo(c) {
+      const pilar = (ctx.pilares || []).find(p => p.id === c.pilar_id);
+      const dado = (rot, v) => !tem(v) ? '' : '<div><b>' + rot + '</b><span>' + esc(v) + '</span></div>';
+      const corpo = bloco('OBJETIVO', c.objetivo) + bloco('IDEIA GERAL', c.ideia_geral) +
+        bloco('LEGENDA', c.legenda, 'legenda', true);
+      return '<aside class="pv-det-lado">' +
+          '<div class="pv-det-brilho"></div>' +
+          '<div class="pv-det-topo"><span class="pv-det-fmt">' + esc(String(c.tipo || 'Conteúdo').toUpperCase()) + '</span>' +
+            '<span class="pv-det-pos">' + String(i + 1).padStart(2, '0') + ' / ' + String(lista.length).padStart(2, '0') + '</span></div>' +
+          '<h3>' + esc(c.titulo || 'Sem título') + '</h3>' +
+          '<div class="pv-det-dados">' +
+            dado('DATA', c.data_postagem ? B7.UI.dataBR(c.data_postagem) : '') +
+            dado('CANAL', c.canal) +
+            dado('PILAR', pilar ? (pilar.nome || 'Pilar sem nome') : '') +
+          '</div>' +
+          (tem(c.cta) ? '<div class="pv-det-cta"><b>CHAMADA PARA AÇÃO</b><p>' + esc(String(c.cta).trim()) + '</p></div>' : '') +
+        '</aside>' +
+        '<div class="pv-det-corpo">' +
+          (corpo || '<div class="pv-det-vazio">Este conteúdo ainda não tem objetivo, ideia geral nem legenda preenchidos.</div>') +
+        '</div>';
+    }
+
+    const det = document.createElement('div');
+    det.className = 'pv-det';
+    det.setAttribute('role', 'dialog');
+    det.setAttribute('aria-modal', 'true');
+    det.innerHTML = '<div class="pv-det-fundo"></div>' +
+      '<button class="pv-det-nav ant" aria-label="Conteúdo anterior">‹</button>' +
+      '<div class="pv-det-cartao"><div class="pv-det-miolo">' + miolo(lista[i]) + '</div>' +
+        '<button class="pv-det-x" aria-label="Fechar detalhe">×</button></div>' +
+      '<button class="pv-det-nav prox" aria-label="Próximo conteúdo">›</button>';
+
+    /* de onde o cartão nasce: o centro da linha clicada, medido em
+       relação ao centro da tela (onde o cartão vai parar) */
+    if (origem && origem.getBoundingClientRect) {
+      const r = origem.getBoundingClientRect(), k = caixa.getBoundingClientRect();
+      det.style.setProperty('--ox', Math.round(r.left + r.width / 2 - (k.left + k.width / 2)) + 'px');
+      det.style.setProperty('--oy', Math.round(r.top + r.height / 2 - (k.top + k.height / 2)) + 'px');
+      origem.classList.add('sl-ativo');
+    }
+    caixa.appendChild(det);
+
+    const cartao = det.querySelector('.pv-det-cartao');
+    const bAnt = det.querySelector('.pv-det-nav.ant'), bProx = det.querySelector('.pv-det-nav.prox');
+    const pintarSetas = () => { bAnt.disabled = i === 0; bProx.disabled = i >= lista.length - 1; };
+    pintarSetas();
+
+    function trocar(d) {
+      const novo = i + d;
+      if (novo < 0 || novo >= lista.length) return;
+      i = novo;
+      const m = det.querySelector('.pv-det-miolo');
+      m.className = 'pv-det-miolo';
+      void m.offsetWidth;   /* reinicia a animação mesmo indo duas vezes para o mesmo lado */
+      m.innerHTML = miolo(lista[i]);
+      m.classList.add(d > 0 ? 'troca-avanca' : 'troca-volta');
+      pintarSetas();
+    }
+    let fechando = false;
+    function fechar() {
+      if (fechando) return;
+      fechando = true;
+      if (origem) origem.classList.remove('sl-ativo');
+      if (menosMovimento()) return det.remove();
+      det.classList.add('saindo');
+      setTimeout(() => det.remove(), 300);
+    }
+    det.querySelector('.pv-det-fundo').onclick = fechar;
+    det.querySelector('.pv-det-x').onclick = fechar;
+    bAnt.onclick = () => trocar(-1);
+    bProx.onclick = () => trocar(1);
+    /* quem recebe o teclado enquanto o detalhe está aberto (ver `tecla`
+       em abrir): Esc fecha só o detalhe, as setas trocam de conteúdo */
+    det.b7Tecla = e => {
+      if (e.key === 'Escape') { e.preventDefault(); fechar(); }
+      else if (e.key === 'ArrowRight' || e.key === 'PageDown') trocar(1);
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') trocar(-1);
+    };
+    /* toque: arrastar para o lado troca de conteúdo */
+    let tx = null;
+    cartao.addEventListener('touchstart', e => { tx = e.touches.length ? e.touches[0].clientX : null; }, { passive: true });
+    cartao.addEventListener('touchend', e => {
+      if (tx === null) return;
+      const dx = e.changedTouches[0].clientX - tx; tx = null;
+      if (Math.abs(dx) > 70) trocar(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    try { det.querySelector('.pv-det-x').focus({ preventScroll: true }); } catch (e) {}
   }
 
   /* --------------------------------------------------------------- PNG

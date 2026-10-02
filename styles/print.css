@@ -681,8 +681,131 @@
 .preview-fundo.wide.tela-cheia.ocioso .preview-topo{opacity:0;transform:translateY(-12px);pointer-events:none;}
 .preview-fundo.wide.tela-cheia.ocioso .preview-nav{opacity:0;transform:translateY(12px);pointer-events:none;}
 .preview-fundo.wide.tela-cheia.ocioso .preview-seta{opacity:0;pointer-events:none;}
-/* o detalhe de um conteúdo abre DENTRO da apresentação (ver slides.js) */
 .preview-fundo .fundo-modal{z-index:20;}
+
+/* ---- detalhe de um conteúdo (clique numa linha de Criativos/Postagens) ----
+   Peça da apresentação, com a cara dos slides: à esquerda um painel
+   escuro com o que identifica o conteúdo (formato, título, data, canal,
+   pilar, chamada), à direita o texto. Abre a partir da linha clicada
+   (--ox/--oy = de onde o cartão nasce) e o conteúdo entra em cascata. */
+.pv-det{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+  gap:18px;padding:28px;}
+.pv-det-fundo{position:absolute;inset:0;background:rgba(7,3,13,.72);backdrop-filter:blur(14px) saturate(1.2);
+  -webkit-backdrop-filter:blur(14px) saturate(1.2);animation:pv-det-fundo .4s ease-out both;cursor:pointer;}
+@keyframes pv-det-fundo{from{opacity:0;}to{opacity:1;}}
+
+.pv-det-cartao{position:relative;z-index:1;width:min(1060px,100%);max-height:min(680px,100%);
+  display:flex;border-radius:22px;overflow:hidden;background:#fff;color:#15122B;
+  box-shadow:0 50px 140px -30px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.08);
+  animation:pv-det-abre .6s cubic-bezier(.16,1,.3,1) both;}
+@keyframes pv-det-abre{
+  from{opacity:0;transform:translate(var(--ox,0px),var(--oy,40px)) scale(.62,.1);border-radius:60px;}
+  35%{opacity:1;}
+  to{opacity:1;transform:translate(0,0) scale(1,1);border-radius:22px;}
+}
+.pv-det-miolo{display:flex;flex:1;min-width:0;min-height:0;}
+
+/* painel escuro */
+.pv-det-lado{position:relative;flex:none;width:38%;min-width:280px;padding:34px 32px;overflow:hidden;
+  background:linear-gradient(160deg,#0B0512 0%,#1B0C36 55%,#3A1E86 130%);color:#fff;
+  display:flex;flex-direction:column;}
+.pv-det-brilho{position:absolute;right:-110px;top:-90px;width:340px;height:340px;border-radius:50%;
+  background:radial-gradient(circle,rgba(194,28,131,.5),transparent 66%);
+  animation:pv-det-brilho 9s ease-in-out infinite alternate;pointer-events:none;}
+@keyframes pv-det-brilho{from{transform:translate(0,0) scale(1);}to{transform:translate(-50px,60px) scale(1.25);}}
+.pv-det-lado > *:not(.pv-det-brilho){position:relative;}
+.pv-det-topo{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+.pv-det-fmt{font-size:10px;font-weight:800;letter-spacing:.24em;padding:7px 12px;border-radius:99px;
+  background:linear-gradient(90deg,#3A1E86,#C21C83);color:#fff;}
+.pv-det-pos{font-family:'Archivo';font-weight:800;font-size:12px;letter-spacing:.14em;color:rgba(255,255,255,.5);
+  font-variant-numeric:tabular-nums;}
+.pv-det-lado h3{font-family:'Archivo';font-weight:800;font-size:28px;line-height:1.12;letter-spacing:-.02em;
+  margin:0 0 24px;color:#fff;overflow-wrap:break-word;}
+.pv-det-dados{display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid rgba(255,255,255,.16);}
+.pv-det-dados b{display:block;font-size:9px;font-weight:700;letter-spacing:.26em;color:rgba(255,255,255,.5);}
+.pv-det-dados span{display:block;font-family:'Archivo';font-weight:700;font-size:15px;margin-top:4px;}
+.pv-det-cta{margin-top:auto;padding:16px 18px;border-radius:14px;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);}
+.pv-det-dados + .pv-det-cta{margin-top:auto;}
+.pv-det-cta b{display:block;font-size:9px;font-weight:700;letter-spacing:.26em;color:#F09CD0;margin-bottom:6px;}
+.pv-det-cta p{margin:0;font-size:14px;line-height:1.45;font-weight:600;}
+.pv-det-dados{margin-bottom:22px;}
+
+/* texto */
+.pv-det-corpo{flex:1;min-width:0;overflow-y:auto;padding:36px 40px 34px;display:flex;flex-direction:column;gap:26px;
+  scrollbar-width:thin;}
+.pv-det-bloco > b{display:flex;align-items:center;gap:10px;font-size:10px;font-weight:700;letter-spacing:.26em;
+  color:#8A84A0;margin-bottom:10px;}
+.pv-det-bloco > b::before{content:"";width:22px;height:2px;border-radius:2px;background:linear-gradient(90deg,#3A1E86,#C21C83);}
+.pv-det-txt p{margin:0 0 10px;font-size:15.5px;line-height:1.6;color:#3A3555;}
+.pv-det-txt p:last-child{margin-bottom:0;}
+.pv-det-bloco:first-child .pv-det-txt p{font-family:'Archivo';font-weight:700;font-size:18px;line-height:1.42;color:#15122B;}
+.pv-det-bloco.legenda:first-child .pv-det-txt p{font-family:inherit;font-weight:400;font-size:15px;color:#3A3555;}
+/* a legenda aparece como o texto de um post: num cartão próprio */
+.pv-det-bloco.legenda .pv-det-txt{background:#F5F1FB;border-radius:16px;padding:18px 20px;border-left:3px solid #C21C83;}
+.pv-det-bloco.legenda .pv-det-txt p{font-size:15px;}
+.pv-det-txt .tag{color:#C21C83;font-weight:600;}
+.pv-det-vazio{margin:auto;max-width:300px;text-align:center;font-size:14px;line-height:1.5;color:#8A84A0;}
+
+/* fechar e navegar */
+.pv-det-x{position:absolute;top:14px;right:14px;z-index:3;width:36px;height:36px;border-radius:50%;border:0;
+  background:rgba(21,18,43,.07);color:#15122B;font-size:22px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:background .15s,transform .25s cubic-bezier(.16,1,.3,1);}
+.pv-det-x:hover{background:rgba(21,18,43,.14);transform:rotate(90deg);}
+.pv-det-nav{position:relative;z-index:1;flex:none;width:48px;height:48px;border-radius:50%;border:0;
+  background:rgba(255,255,255,.1);color:#fff;font-size:20px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,transform .25s cubic-bezier(.16,1,.3,1);animation:pv-det-fundo .5s .25s ease-out both;}
+.pv-det-nav:hover:not(:disabled){background:rgba(255,255,255,.22);transform:scale(1.1);}
+.pv-det-nav:disabled{opacity:.2 !important;cursor:not-allowed;}
+
+/* cascata do conteúdo: o painel escuro primeiro, depois o texto */
+@keyframes pv-det-item{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+@keyframes pv-det-lado{from{opacity:0;transform:translateX(-22px);}to{opacity:1;transform:translateX(0);}}
+.pv-det-lado > *:not(.pv-det-brilho){animation:pv-det-lado .6s cubic-bezier(.16,1,.3,1) both;}
+.pv-det-lado > :nth-child(2){animation-delay:.2s;}
+.pv-det-lado > :nth-child(3){animation-delay:.27s;}
+.pv-det-lado > :nth-child(4){animation-delay:.34s;}
+.pv-det-lado > :nth-child(5){animation-delay:.41s;}
+.pv-det-corpo > *{animation:pv-det-item .65s cubic-bezier(.16,1,.3,1) both;}
+.pv-det-corpo > :nth-child(1){animation-delay:.3s;}
+.pv-det-corpo > :nth-child(2){animation-delay:.39s;}
+.pv-det-corpo > :nth-child(3){animation-delay:.48s;}
+
+/* passar de um conteúdo para o outro: o miolo desliza para o lado certo */
+@keyframes pv-det-troca-a{from{opacity:0;transform:translateX(46px);}to{opacity:1;transform:translateX(0);}}
+@keyframes pv-det-troca-v{from{opacity:0;transform:translateX(-46px);}to{opacity:1;transform:translateX(0);}}
+.pv-det-miolo.troca-avanca{animation:pv-det-troca-a .45s cubic-bezier(.16,1,.3,1) both;}
+.pv-det-miolo.troca-volta{animation:pv-det-troca-v .45s cubic-bezier(.16,1,.3,1) both;}
+.pv-det-miolo[class*="troca-"] .pv-det-lado > *,
+.pv-det-miolo[class*="troca-"] .pv-det-corpo > *{animation-delay:0s;animation-duration:.4s;}
+
+/* fechar: o cartão volta para a linha de onde saiu */
+.pv-det.saindo{pointer-events:none;}
+.pv-det.saindo .pv-det-fundo,.pv-det.saindo .pv-det-nav{animation:pv-det-some .28s ease-in both;}
+.pv-det.saindo .pv-det-cartao{animation:pv-det-fecha .28s cubic-bezier(.5,0,.75,0) both;}
+@keyframes pv-det-some{to{opacity:0;}}
+@keyframes pv-det-fecha{to{opacity:0;transform:translate(calc(var(--ox,0px) * .5),calc(var(--oy,40px) * .5)) scale(.8,.5);}}
+
+/* a linha de onde o detalhe saiu fica marcada enquanto ele está aberto */
+.sl-tabela tbody tr.sl-ativo td{background:var(--lilac,#F5F1FB);}
+
+@media (max-width:820px){
+  .pv-det{padding:0;gap:0;align-items:flex-end;}
+  .pv-det-cartao{width:100%;max-height:92%;border-radius:22px 22px 0 0;}
+  .pv-det-miolo{flex-direction:column;overflow-y:auto;}
+  .pv-det-lado{width:auto;min-width:0;padding:26px 22px 22px;}
+  .pv-det-lado h3{font-size:22px;margin-bottom:18px;}
+  .pv-det-dados{flex-direction:row;flex-wrap:wrap;gap:12px 26px;}
+  .pv-det-corpo{overflow:visible;padding:24px 22px 30px;}
+  .pv-det-x{background:rgba(255,255,255,.16);color:#fff;}
+  .pv-det-nav{position:absolute;bottom:14px;z-index:4;background:rgba(21,18,43,.75);}
+  .pv-det-nav.ant{left:14px;} .pv-det-nav.prox{right:14px;}
+  @keyframes pv-det-abre{from{opacity:0;transform:translateY(60%);}to{opacity:1;transform:translateY(0);}}
+}
+@media (prefers-reduced-motion:reduce){
+  .pv-det *, .pv-det-cartao{animation:none !important;}
+}
 
 /* quem pediu menos movimento no sistema vê o slide inteiro de uma vez,
    sem cascata e sem fade — e, importante, com tudo VISÍVEL: as animações
