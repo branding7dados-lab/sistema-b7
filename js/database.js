@@ -1740,6 +1740,55 @@ B7.DB = (function () {
       } catch (e) { return null; /* nunca bloqueia o upload do arquivo original por isso */ }
     },
 
+    /* Arte mais leve antes de subir (pacote 2026-10-02-l) — o Storage é
+       o recurso que enche primeiro. Tudo no navegador, sem serviço pago:
+       • PNG sem transparência → JPEG de alta qualidade (a mesma arte
+         costuma cair para um terço do tamanho). PNG com transparência
+         fica como está.
+       • JPEG só é regravado quando é grande demais (mais de 1,2 MB ou
+         lado maior que 2160 px) — regravar JPEG pequeno só perderia
+         qualidade.
+       • Nunca aumenta nem reduz abaixo de 2160 px no lado maior (o dobro
+         do que o Instagram usa), e só vale se economizar pelo menos 20%.
+       JPEG, e não WebP, porque é o formato que as redes aceitam no envio:
+       o arquivo baixado para postar é este.
+       Qualquer falha devolve o arquivo original — otimização nunca
+       bloqueia um envio. */
+    async _otimizarArteDesign(arquivo) {
+      const LADO_MAX = 2160, QUALIDADE = 0.92;
+      try {
+        const tipo = arquivo && arquivo.type;
+        if (tipo !== 'image/png' && tipo !== 'image/jpeg') return arquivo;
+        if (!('createImageBitmap' in window)) return arquivo;
+        const bitmap = await createImageBitmap(arquivo);
+        const largura = bitmap.width, altura = bitmap.height;
+        if (!largura || !altura) return arquivo;
+        const grande = Math.max(largura, altura) > LADO_MAX;
+        if (tipo === 'image/jpeg' && !grande && arquivo.size <= 1.2 * 1048576) { if (bitmap.close) bitmap.close(); return arquivo; }
+        const escala = Math.min(1, LADO_MAX / Math.max(largura, altura));
+        const w = Math.max(1, Math.round(largura * escala)), h = Math.max(1, Math.round(altura * escala));
+        const tela = document.createElement('canvas');
+        tela.width = w; tela.height = h;
+        const ctx = tela.getContext('2d', { willReadFrequently: tipo === 'image/png' });
+        ctx.imageSmoothingQuality = 'high';
+        if (tipo === 'image/png') {
+          /* transparência de verdade → mantém o PNG (JPEG a pintaria) */
+          ctx.drawImage(bitmap, 0, 0, w, h);
+          const px = ctx.getImageData(0, 0, w, h).data;
+          for (let i = 3; i < px.length; i += 4) if (px[i] < 250) { if (bitmap.close) bitmap.close(); return arquivo; }
+          ctx.globalCompositeOperation = 'destination-over';
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        } else {
+          ctx.drawImage(bitmap, 0, 0, w, h);
+        }
+        if (bitmap.close) bitmap.close();
+        const blob = await new Promise(resolve => tela.toBlob(resolve, 'image/jpeg', QUALIDADE));
+        if (!blob || blob.type !== 'image/jpeg' || blob.size > arquivo.size * 0.8) return arquivo;
+        const nome = (arquivo.name || 'arte').replace(/\.[a-z0-9]{1,6}$/i, '') + '.jpg';
+        return new File([blob], nome, { type: 'image/jpeg', lastModified: arquivo.lastModified || Date.now() });
+      } catch (e) { return arquivo; }
+    },
+
     /* upload de arquivo de Design — Storage privado (bucket design-files),
        caminho "<deliverable_id>/<versao_id>/<arquivo>". Progresso real via
        XHR (o cliente supabase-js não expõe progresso em upload()).
@@ -1750,6 +1799,9 @@ B7.DB = (function () {
        de decodificação), o upload segue normal, só sem thumb — sem
        bloquear ninguém por causa de uma otimização. */
     async enviarArquivoDesign({ deliverableId, versaoId, arquivo, papel, parte, aoProgredir }) {
+      /* só a ARTE (prévia para revisão) é otimizada; anexo, arquivo de
+         produção e arquivo final sobem exatamente como vieram */
+      if (papel === 'preview') arquivo = await this._otimizarArteDesign(arquivo);
       const nomeSeguro = arquivo.name.normalize('NFKD').replace(/[^\w.\-]+/g, '_').slice(-140);
       const caminho = deliverableId + '/' + versaoId + '/' + Date.now() + '-' + nomeSeguro;
 
