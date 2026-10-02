@@ -641,6 +641,16 @@ B7.UI = (function () {
           novos = novos.concat(r.semanas.map(w => ({
             fn: () => { location.hash = '#/semana/' + w.id; } })));
         }
+        /* datas (Oportunidades): mesma base em cache da tela, sem consulta
+           nova; abre a folha da data */
+        if (B7.Oportunidades && B7.Oportunidades.buscarTexto && podeIr('oportunidades')) {
+          const ops = await B7.Oportunidades.buscarTexto(termo, 5).catch(() => []);
+          if (entrada.value !== termo) return;
+          if (ops.length) {
+            html += '<div class="cp-grupo">DATAS</div>' + ops.map(o => linha(B7.Oportunidades.IC, o.nome, o.sub)).join('');
+            novos = novos.concat(ops.map(o => ({ fn: () => B7.Oportunidades.folha(o.id, { dia: o.dia }) })));
+          }
+        }
       } catch (e) { /* sem banco: só as ações */ }
       pintar(html || '<div class="nada" style="padding:26px;text-align:center;color:var(--ink-3)">Nada encontrado</div>', novos);
     }, 220);

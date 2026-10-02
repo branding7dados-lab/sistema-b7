@@ -2337,16 +2337,31 @@ B7.DB = (function () {
        resolvidas por ano no navegador (B7.Oportunidades). Escrita só por
        RPC — o banco decide permissão. */
     async oportunidadesBase() {
-      const [ops, datas, provas, temas, segs, ajustes] = await Promise.all([
-        sb().from('oportunidades').select('id,chave,nome,aliases,descricao,tipo_data,mes,dia,regra,duracao_dias,natureza,abrangencia,uf,municipio,categorias,tags,geral,confiabilidade,revisao,possivel_duplicata_de,ativo,verificado_em,sincronizado_em').limit(5000),
-        sb().from('oportunidade_datas').select('oportunidade_id,data,data_fim').limit(10000),
+      /* datas por ano: só de hoje-1 ano em diante (o resto é histórico que
+         nenhuma tela mostra) */
+      const desde = (new Date().getFullYear() - 1) + '-01-01';
+      const [ops, datas, provas, temas, segs, ajustes, locais] = await Promise.all([
+        sb().from('oportunidades').select('id,chave,nome,aliases,descricao,tipo_data,mes,dia,regra,duracao_dias,natureza,abrangencia,uf,municipio,municipio_ibge,categorias,tags,geral,confiabilidade,revisao,possivel_duplicata_de,ativo,verificado_em,sincronizado_em').limit(5000),
+        sb().from('oportunidade_datas').select('oportunidade_id,data,data_fim').gte('data', desde).limit(10000),
         sb().from('oportunidade_provas').select('oportunidade_id,fonte_id,titulo_na_fonte,url,detalhe,visto_em,ativo').limit(10000),
         sb().from('temas').select('id,nome,pai,ordem').order('ordem'),
         sb().from('cliente_segmentos').select('client_id,tema_id,origem'),
-        sb().from('oportunidade_cliente_ajustes').select('oportunidade_id,client_id,decisao,em')
+        sb().from('oportunidade_cliente_ajustes').select('oportunidade_id,client_id,decisao,em'),
+        /* cidade(s) do cliente — tabela nova (migration_oportunidades_geografia.sql);
+           sem ela, a relevância local só fica desligada */
+        sb().from('cliente_municipios').select('client_id,municipio_ibge,origem,municipios(nome,uf)')
       ]);
-      return { ops: ok(ops), datas: ok(datas), provas: ok(provas), temas: ok(temas), segmentos: ok(segs), ajustes: ok(ajustes) };
+      return { ops: ok(ops), datas: ok(datas), provas: ok(provas), temas: ok(temas), segmentos: ok(segs), ajustes: ok(ajustes),
+               locais: locais.error ? [] : (locais.data || []) };
     },
+    /* busca de município pelo nome (tabela do IBGE no banco — nunca a API
+       externa direto do navegador) */
+    async buscarMunicipios(texto) {
+      const t = String(texto || '').trim();
+      if (t.length < 2) return [];
+      return ok(await sb().from('municipios').select('ibge,nome,uf').ilike('nome', '%' + t.replace(/[%_]/g, '') + '%').order('nome').limit(12));
+    },
+    clienteMunicipiosDefinir(cliente, ibges) { return this.rpc('cliente_municipios_definir', { p_client_id: cliente, p_ibges: ibges }); },
     async oportunidadeFontes() {
       return ok(await sb().from('oportunidade_fontes').select('*').order('nome'));
     },

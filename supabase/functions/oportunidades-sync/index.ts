@@ -9,6 +9,10 @@
 //   oms            OMS — campanhas oficiais (HTML oficial): proveniência
 //   onu            ONU — lista de dias e semanas internacionais (HTML oficial)
 //   brasilapi      BrasilAPI — feriados nacionais (API JSON pública)
+//   ibge_municipios IBGE — lista oficial de municípios (só referência)
+//   feriados_br    repositório feriados-brasil (MIT) — feriados estaduais
+//                  e municipais das cidades dos clientes (secundária)
+//   datas_br       mesmo repositório — datas populares/comerciais
 // Câmara/Planalto/conselhos: cadastro assistido/verificação (não há API).
 //
 // Cada adaptador SÓ busca e interpreta. Quem grava é a função do banco
@@ -24,7 +28,7 @@
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-09-30-op2';
+const VERSAO = '2026-10-02-op3';
 const UA = 'Branding7-B7/1.0 (calendario editorial interno)';
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -248,6 +252,11 @@ async function adaptadorONU(url: string): Promise<{ itens: Item[]; ignorados: st
 }
 
 // ------------------------------------------------------------ BrasilAPI
+/* A BrasilAPI marca Carnaval e Corpus Christi como "national", mas a lei
+   federal de feriados não os inclui (ponto facultativo); Páscoa é domingo.
+   Só vale para oportunidades novas: a natureza de uma que já existe não é
+   mudada pela sincronização. */
+const NATUREZA_BRASILAPI: Record<string, string> = { 'carnaval': 'facultativo', 'corpus christi': 'facultativo', 'pascoa': 'comemorativa' };
 async function adaptadorBrasilAPI(url: string): Promise<{ itens: Item[]; ignorados: string[] }> {
   const ano = new Date().getUTCFullYear();
   const porNome = new Map<string, Item>();
@@ -259,8 +268,9 @@ async function adaptadorBrasilAPI(url: string): Promise<{ itens: Item[]; ignorad
       const k = norm(f.name);
       const it = porNome.get(k) || {
         referencia: 'feriado:' + k, nome: f.name, titulo_na_fonte: f.name, tipo_data: 'datas', datas: [] as { data: string }[],
-        natureza: 'feriado', abrangencia: f.type === 'national' ? 'nacional' : 'estadual', categorias: [], tags: ['feriado'],
-        geral: true, confiabilidade: 'verificada', url: url + a, detalhe: 'Feriado nacional (BrasilAPI)'
+        natureza: NATUREZA_BRASILAPI[k] || 'feriado', abrangencia: 'nacional', categorias: [], tags: ['feriado'],
+        geral: true, confiabilidade: 'verificada', url: url + a,
+        detalhe: NATUREZA_BRASILAPI[k] === 'facultativo' ? 'Ponto facultativo nacional (BrasilAPI)' : 'Feriado nacional (BrasilAPI)'
       };
       (it.datas as { data: string }[]).push({ data: f.date });
       porNome.set(k, it);
@@ -269,8 +279,162 @@ async function adaptadorBrasilAPI(url: string): Promise<{ itens: Item[]; ignorad
   return { itens: [...porNome.values()], ignorados: [] };
 }
 
-const ADAPTADORES: Record<string, (url: string) => Promise<{ itens: Item[]; ignorados: string[] }>> = {
-  ms_calendario: adaptadorMS, oms: adaptadorOMS, onu: adaptadorONU, brasilapi: adaptadorBrasilAPI
+// ------------------------------------------------- IBGE — municípios
+/* Lista oficial (API de Localidades, sem chave). Não gera datas: alimenta
+   a tabela municipios, de onde sai a cidade dos clientes. Grava pelo
+   municipios_aplicar_lote, não pelo lote de oportunidades. */
+async function adaptadorIBGE(url: string): Promise<{ itens: Item[]; ignorados: string[] }> {
+  const lista = JSON.parse(await buscar(url, 40000)) as Record<string, unknown>[];
+  if (!Array.isArray(lista)) throw new Error('Resposta inesperada do IBGE');
+  const itens: Item[] = [], ignorados: string[] = [];
+  for (const m of lista) {
+    const ibge = String(m['municipio-id'] ?? ''), nome = String(m['municipio-nome'] ?? '').trim(), uf = String(m['UF-sigla'] ?? '');
+    if (/^\d{7}$/.test(ibge) && nome && /^[A-Z]{2}$/.test(uf)) itens.push({ ibge, nome, uf });
+    else ignorados.push(JSON.stringify(m).slice(0, 80));
+  }
+  return { itens, ignorados };
+}
+
+// ------------------------------------- repositório feriados-brasil (MIT)
+/* github.com/joaopbini/feriados-brasil — base comunitária, licença MIT,
+   um arquivo JSON por ano: { data: 'DD/MM/AAAA', nome, tipo, descricao,
+   uf, codigo_ibge }. Fonte SECUNDÁRIA: nada daqui vira "Oficial".
+   Lê o ano atual (obrigatório) e o seguinte (se já publicado). */
+const RAW_FERIADOS = 'https://raw.githubusercontent.com/joaopbini/feriados-brasil/master/dados/';
+type Fer = { data: string; nome: string; tipo: string; descricao?: string | null; uf?: string | null; codigo_ibge?: number | string | null };
+async function lerFeriados(pasta: string, ano: number, obrigatorio: boolean): Promise<Fer[] | null> {
+  try {
+    const j = JSON.parse(await buscar(RAW_FERIADOS + pasta + '/json/' + ano + '.json', 40000));
+    if (!Array.isArray(j)) throw new Error('formato inesperado em ' + pasta + '/' + ano);
+    return j as Fer[];
+  } catch (e) {
+    if (!obrigatorio && /HTTP 404/.test(String((e as Error).message))) return null;   /* ano ainda não publicado */
+    throw e;
+  }
+}
+const isoDeBR = (s: string) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '').trim()); return m ? m[3] + '-' + m[2] + '-' + m[1] : null; };
+const ehAniversario = (t: string) => /anivers|emancipa|funda[cç][aã]o/i.test(t);
+/* temas por palavra-chave (determinístico) — datas populares e locais */
+const CAT_LOCAL: [RegExp, string][] = [
+  [/\b(namorad|maes|pais|avos|idoso|familia|natal|reveillon|ano novo)/, 'familia'],
+  [/\b(crianca|criancas|jovem|juventude|estudante)/, 'infancia'],
+  [/\b(santo|santa|sao|nossa senhora|catolic|evangel|padroeir|corpus|paixao|cristo|pascoa|natal|reis)\b/, 'religiao'],
+  [/\b(professor|escola|livro|leitura)/, 'educacao'],
+  [/\b(terra|meio ambiente|agua|arvore|floresta)/, 'meio_ambiente'],
+  [/\b(saude)\b/, 'saude'],
+  [/\b(joao|junina|carnaval|folclore|halloween|colono|cultura|independencia|consciencia negra)/, 'cultura'],
+  [/\b(consumidor|cliente|black friday|namorad|maes|pais|criancas|natal)\b/, 'comercio']
+];
+const catLocal = (nome: string) => { const n = norm(nome), s = new Set<string>(); CAT_LOCAL.forEach(([re, c]) => { if (re.test(n)) s.add(c); }); return [...s]; };
+
+async function adaptadorFeriadosBR(_url: string, ctx: Ctx): Promise<{ itens: Item[]; ignorados: string[] }> {
+  /* municipais: só as cidades dos clientes (a base inteira tem ~8.500
+     feriados municipais por ano, a maioria sem nome — não serve a ninguém) */
+  const { data: cms, error } = await ctx.admin.from('cliente_municipios').select('municipio_ibge, municipios(nome, uf)');
+  if (error) throw new Error('Não foi possível ler as cidades dos clientes: ' + error.message);
+  const cidades = new Map<string, { nome: string; uf: string }>();
+  (cms || []).forEach((r: Record<string, unknown>) => {
+    const m = r.municipios as { nome: string; uf: string } | null;
+    if (m) cidades.set(String(r.municipio_ibge), m);
+  });
+  const ano = new Date().getUTCFullYear();
+  const itens = new Map<string, Item>(), ignorados: string[] = [];
+  for (const [a, obrig] of [[ano, true], [ano + 1, false]] as [number, boolean][]) {
+    const [nac, est, mun, fac] = await Promise.all([
+      lerFeriados('feriados/nacional', a, obrig), lerFeriados('feriados/estadual', a, obrig),
+      lerFeriados('feriados/municipal', a, obrig), lerFeriados('feriados/facultativo', a, obrig)
+    ]);
+    if (!nac || !est || !mun || !fac) continue;
+    /* um feriado local na MESMA data de um feriado nacional (ex.: Sexta-
+       -feira Santa por lei municipal) já está coberto pelo nacional */
+    const datasNacionais = new Set(nac.map(f => isoDeBR(f.data)).filter(Boolean) as string[]);
+    for (const f of [...est, ...mun, ...fac]) {
+      const data = isoDeBR(f.data), nomeFonte = String(f.nome || '').trim();
+      if (!data || !nomeFonte) { ignorados.push(JSON.stringify(f).slice(0, 80)); continue; }
+      const ibge = f.codigo_ibge != null && String(f.codigo_ibge).trim() ? String(f.codigo_ibge).padStart(7, '0') : null;
+      const uf = f.uf ? String(f.uf).trim().toUpperCase() : null;
+      const facultativo = String(f.tipo).toUpperCase() === 'FACULTATIVO';
+      let abr: string;
+      if (ibge) { if (!cidades.has(ibge)) continue; abr = 'municipal'; }
+      else if (uf) abr = 'estadual';
+      else continue;   /* facultativo nacional: Carnaval/Corpus Christi já vêm da BrasilAPI */
+      const desc = String(f.descricao || '').trim();
+      if (datasNacionais.has(data) && !ehAniversario(nomeFonte + ' ' + desc)) continue;
+      const cidade = ibge ? cidades.get(ibge)! : null;
+      let nome = nomeFonte;
+      if (cidade && /^anivers[aá]rio d[ao] (cidade|munic[ií]pio)$/i.test(nomeFonte)) nome = 'Aniversário de ' + cidade.nome;
+      else if (cidade && /^(feriado municipal|facultativo|ponto facultativo)$/i.test(nomeFonte)) nome = (facultativo ? 'Ponto facultativo em ' : 'Feriado municipal em ') + cidade.nome;
+      const escopo = ibge ? 'mun:' + ibge : 'uf:' + uf;
+      const ref = 'fer:' + escopo + ':' + (facultativo ? 'fac:' : '') + norm(nomeFonte);
+      const it = itens.get(ref) || {
+        referencia: ref, nome, titulo_na_fonte: nomeFonte, tipo_data: 'datas', datas: [] as { data: string }[],
+        natureza: facultativo ? 'facultativo' : 'feriado', abrangencia: abr,
+        uf: cidade ? cidade.uf : uf, municipio: cidade ? cidade.nome : null, municipio_ibge: ibge,
+        descricao: desc && norm(desc) !== norm(nomeFonte) ? desc.slice(0, 400) : (cidade && nome !== nomeFonte ? 'A fonte não informa o motivo do feriado.' : null),
+        categorias: ehAniversario(nomeFonte + ' ' + desc) ? [] : catLocal(nomeFonte),
+        tags: [facultativo ? 'ponto facultativo' : 'feriado', ...(ehAniversario(nomeFonte + ' ' + desc) && cidade ? ['aniversario cidade'] : [])],
+        confiabilidade: 'pendente', url: 'https://github.com/joaopbini/feriados-brasil',
+        detalhe: (abr === 'municipal' ? 'Feriado municipal — ' + cidade!.nome + '/' + cidade!.uf : 'Feriado estadual — ' + uf) +
+          (facultativo ? ' (ponto facultativo)' : '') + ' · base feriados-brasil'
+      };
+      const ds = it.datas as { data: string }[];
+      if (!ds.some(x => x.data === data)) ds.push({ data });
+      itens.set(ref, it);
+    }
+  }
+  return { itens: [...itens.values()], ignorados };
+}
+
+/* datas populares/comerciais do mesmo repositório (dados/comemorativas).
+   A regra anual só é usada quando a PRÓPRIA descrição da fonte a diz
+   ("celebrado em 12 de junho", "segundo domingo de agosto") e bate com
+   as datas publicadas; senão fica só a data do ano. */
+const ORD: Record<string, number> = { primeiro: 1, segundo: 2, terceiro: 3, quarto: 4, ultimo: -1 };
+const GERAL_POPULAR = new Set(['dia dos namorados', 'dia dos pais', 'dia das maes', 'dia das criancas', 'vespera de natal', 'reveillon']);
+async function adaptadorDatasBR(_url: string): Promise<{ itens: Item[]; ignorados: string[] }> {
+  const ano = new Date().getUTCFullYear();
+  const porNome = new Map<string, { f: Fer; datas: string[] }>(), ignorados: string[] = [];
+  for (const [a, obrig] of [[ano - 1, false], [ano, true], [ano + 1, false]] as [number, boolean][]) {
+    const lista = await lerFeriados('comemorativas', a, obrig);
+    (lista || []).forEach(f => {
+      const d = isoDeBR(f.data); if (!d || !f.nome) { ignorados.push(String(f.nome || '').slice(0, 60)); return; }
+      const k = norm(f.nome), g = porNome.get(k) || { f, datas: [] };
+      g.datas.push(d); porNome.set(k, g);
+    });
+  }
+  const itens: Item[] = [];
+  porNome.forEach(({ f, datas }, k) => {
+    const desc = norm(String(f.descricao || ''));
+    let base: Item | null = null;
+    const r = desc.match(/\b(primeiro|segundo|terceiro|quarto|ultimo) (domingo|segunda|terca|quarta|quinta|sexta|sabado)(?: feira)? de (janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/);
+    if (r) {
+      const regra = 'nth:' + (MESES_PT.indexOf(r[3]) + 1) + ':' + DOW[r[2]] + ':' + ORD[r[1]];
+      base = { tipo_data: 'regra', regra };
+    } else {
+      const fx = desc.match(/\b(?:em|no dia|dia) (\d{1,2})(?:o)? de (janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/);
+      if (fx) {
+        const mes = MESES_PT.indexOf(fx[2]) + 1, dia = +fx[1];
+        const mmdd = '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+        if (datas.every(d => d.endsWith(mmdd))) base = { tipo_data: 'fixa', mes, dia };
+      }
+    }
+    if (!base) base = { tipo_data: 'datas', datas: datas.filter(d => +d.slice(0, 4) >= ano).map(data => ({ data })) };
+    if (base.tipo_data === 'datas' && !(base.datas as unknown[]).length) { ignorados.push(f.nome + ' (só anos passados)'); return; }
+    itens.push({
+      ...base, referencia: 'com:' + k, nome: String(f.nome).trim(), titulo_na_fonte: f.nome,
+      natureza: 'comemorativa', abrangencia: /mundial|internacional/.test(k) ? 'internacional' : 'nacional',
+      descricao: f.descricao ? String(f.descricao).slice(0, 400) : null,
+      categorias: catLocal(f.nome), tags: tagsDe(f.nome), geral: GERAL_POPULAR.has(k), confiabilidade: 'popular',
+      url: 'https://github.com/joaopbini/feriados-brasil/tree/master/dados/comemorativas', detalhe: 'Data popular · base feriados-brasil'
+    });
+  });
+  return { itens, ignorados };
+}
+
+type Ctx = { admin: ReturnType<typeof createClient> };
+const ADAPTADORES: Record<string, (url: string, ctx: Ctx) => Promise<{ itens: Item[]; ignorados: string[] }>> = {
+  ms_calendario: adaptadorMS, oms: adaptadorOMS, onu: adaptadorONU, brasilapi: adaptadorBrasilAPI,
+  ibge_municipios: adaptadorIBGE, feriados_br: adaptadorFeriadosBR, datas_br: adaptadorDatasBR
 };
 
 // ------------------------------------------------------------ handler
@@ -301,7 +465,8 @@ Deno.serve(async (req) => {
   const resultados: Record<string, unknown> = {};
   /* ordem importa: as datas oficiais em português (Ministério da Saúde)
      entram antes das listas em inglês (OMS/ONU), que se ligam a elas */
-  const ORDEM = ['ms_calendario', 'brasilapi', 'oms', 'onu'];
+  /* o IBGE vem antes dos feriados locais (que usam os nomes das cidades) */
+  const ORDEM = ['ms_calendario', 'brasilapi', 'ibge_municipios', 'feriados_br', 'datas_br', 'oms', 'onu'];
   fontes!.sort((a, b) => (ORDEM.indexOf(a.id) + 1 || 99) - (ORDEM.indexOf(b.id) + 1 || 99));
   for (const f of fontes!) {
     if (corpo.fontes && !corpo.fontes.includes(f.id)) continue;
@@ -310,18 +475,23 @@ Deno.serve(async (req) => {
     if (!(vencida || (forcar && agora - ultima > 5 * 60e3))) { resultados[f.id] = 'em dia'; continue; }
     const ad = ADAPTADORES[f.id];
     if (!ad) { resultados[f.id] = 'sem adaptador'; continue; }
+    /* municípios do IBGE gravam na tabela de referência, não em oportunidades */
+    const gravar = (itens: Item[], erro: string | null) => f.id === 'ibge_municipios'
+      ? admin.rpc('municipios_aplicar_lote', { p_itens: itens, p_erro: erro, p_disparo: forcar ? 'manual' : 'cron' })
+      : admin.rpc('oportunidades_aplicar_lote', { p_fonte: f.id, p_itens: itens, p_erro: erro, p_disparo: forcar ? 'manual' : 'cron' });
     try {
-      const { itens, ignorados } = await ad(f.url);
+      const { itens, ignorados } = await ad(f.url, { admin });
       if (corpo.diagnostico && ehAdmin) { resultados[f.id] = { itens: itens.length, amostra: itens.slice(0, 5), ignorados }; continue; }
-      const { data: r, error: e } = await admin.rpc('oportunidades_aplicar_lote', { p_fonte: f.id, p_itens: itens, p_erro: null, p_disparo: forcar ? 'manual' : 'cron' });
+      const { data: r, error: e } = await gravar(itens, null);
       if (e) {
         /* erro ao gravar: registra como falha da fonte (nada parcial fica gravado) */
-        await admin.rpc('oportunidades_aplicar_lote', { p_fonte: f.id, p_itens: [], p_erro: 'Erro ao gravar: ' + e.message, p_disparo: forcar ? 'manual' : 'cron' });
+        await gravar([], 'Erro ao gravar: ' + e.message);
         resultados[f.id] = { status: 'falha', erro: e.message };
       } else resultados[f.id] = { ...(r as object), nao_interpretados: ignorados.length, amostra_nao_interpretados: ignorados.slice(0, 8) };
     } catch (e) {
+      /* uma fonte que falha não derruba as outras e não apaga nada */
       const msg = (e as Error).message || String(e);
-      await admin.rpc('oportunidades_aplicar_lote', { p_fonte: f.id, p_itens: [], p_erro: msg, p_disparo: forcar ? 'manual' : 'cron' });
+      await gravar([], msg);
       resultados[f.id] = { status: 'falha', erro: msg };
     }
   }

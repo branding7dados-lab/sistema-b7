@@ -26,7 +26,10 @@
        Farmácia) ou a data é "ampla" do tema     → Relacionada
      categoria = subtema de um segmento amplo    → Relacionada
      geral / feriado nacional                   → Geral
-     datas estaduais/municipais não casam sozinhas (só por ajuste).
+     data local (estado/cidade), pelo código IBGE da cidade do cliente:
+       aniversário da cidade do cliente         → Muito relevante
+       outro feriado da cidade / do estado      → Relacionada
+       de outra cidade/estado                   → fora (não vaza)
 
    Escrita: só por RPC (o banco decide quem pode). "Usar na Linha
    Editorial" só cria o VÍNCULO — nenhum conteúdo, post, roteiro,
@@ -50,13 +53,19 @@ B7.Oportunidades = (function () {
     popular:    { rot: 'Popular / comercial', tom: 'ambar', desc: 'Data de mercado ou costume, sem instituição oficial.' },
     pendente:   { rot: 'Pendente de verificação', tom: 'neutro', desc: 'Veio de fonte secundária e ainda não foi confirmada em fonte oficial.' }
   };
-  const NATUREZA = { comemorativa: 'Data comemorativa', feriado: 'Feriado', campanha: 'Campanha' };
+  const NATUREZA = { comemorativa: 'Data comemorativa', feriado: 'Feriado', facultativo: 'Ponto facultativo', campanha: 'Campanha' };
   const ABRANGENCIA = { internacional: 'Internacional', nacional: 'Nacional', estadual: 'Estadual', municipal: 'Municipal' };
   const FONTES_ROT = {
     ms_calendario: 'Ministério da Saúde', oms: 'Organização Mundial da Saúde', onu: 'Nações Unidas', brasilapi: 'BrasilAPI (feriados)',
     camara: 'Câmara dos Deputados', planalto: 'Planalto — legislação federal', conselho: 'Conselho profissional',
-    calendarr: 'Calendarr (agregador)', manual: 'Cadastro manual verificado'
+    calendarr: 'Calendarr (agregador)', manual: 'Cadastro manual verificado',
+    ibge_municipios: 'IBGE — municípios', feriados_br: 'Base feriados-brasil (feriados locais)', datas_br: 'Base feriados-brasil (datas populares)'
   };
+  /* "Municipal · Jequié/BA", "Estadual · BA" */
+  const lugarTx = op => op.abrangencia === 'municipal' && op.municipio ? op.municipio + (op.uf ? '/' + op.uf : '')
+    : op.abrangencia === 'estadual' && op.uf ? op.uf : '';
+  const ehLocal = op => op.abrangencia === 'estadual' || op.abrangencia === 'municipal';
+  const ehFeriado = op => op.natureza === 'feriado' || op.natureza === 'facultativo';
   const NIVEL = {
     muito: { rot: 'Muito relevante', ordem: 1, tom: 'verde' },
     relacionada: { rot: 'Relacionada', ordem: 2, tom: 'azul' },
@@ -85,9 +94,16 @@ B7.Oportunidades = (function () {
     const ajustes = new Map((bruto.ajustes || []).map(a => [a.oportunidade_id + '|' + a.client_id, a.decisao]));
     const cls = (clientes || []).filter(c => !c.deleted_at).map(c => ({ id: c.id, nome: c.nome, logo: c.logo_url }))
       .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    /* cidade(s) de cada cliente: [{ ibge, nome, uf, origem }] */
+    const locais = new Map();
+    (bruto.locais || []).forEach(l => {
+      const m = l.municipios || {};
+      if (!locais.has(l.client_id)) locais.set(l.client_id, []);
+      locais.get(l.client_id).push({ ibge: l.municipio_ibge, nome: m.nome || l.municipio_ibge, uf: m.uf || '', origem: l.origem });
+    });
     return {
       ops, todas, datas: agrupar(bruto.datas, 'oportunidade_id'), provas: agrupar(bruto.provas, 'oportunidade_id'),
-      temas, segmentos: agrupar(bruto.segmentos, 'client_id'), ajustes, clientes: cls, clientesMap: new Map(cls.map(c => [c.id, c]))
+      temas, segmentos: agrupar(bruto.segmentos, 'client_id'), ajustes, locais, clientes: cls, clientesMap: new Map(cls.map(c => [c.id, c]))
     };
   }
   async function carregarBase(forcar) {
@@ -168,7 +184,24 @@ B7.Oportunidades = (function () {
     const segs = b.segmentos.get(cid) || [];
     const cats = op.categorias || [], tags = op.tags || [];
     const motivos = []; let nivel = null;
-    const local = op.abrangencia === 'estadual' || op.abrangencia === 'municipal';
+    const local = ehLocal(op);
+    /* data local: só para quem está naquele lugar (pelo código IBGE, não
+       pelo nome). Aniversário da cidade = muito relevante; os demais
+       feriados da cidade/estado = relacionada. Cidade de outro cliente
+       nunca vaza. */
+    if (local) {
+      const lugares = (b.locais && b.locais.get(cid)) || [];
+      const naCidade = op.abrangencia === 'municipal' && lugares.find(l => l.ibge === op.municipio_ibge);
+      const noEstado = op.abrangencia === 'estadual' && lugares.find(l => l.uf === op.uf);
+      if (naCidade) {
+        const aniv = tags.includes('aniversario cidade');
+        nivel = aniv ? 'muito' : 'relacionada';
+        motivos.push((aniv ? 'Aniversário de ' : (op.natureza === 'facultativo' ? 'Ponto facultativo em ' : 'Feriado em ')) + naCidade.nome + ', cidade do cliente' + (naCidade.origem === 'sugerido' ? ' (sugerida)' : ''));
+      } else if (noEstado) {
+        nivel = 'relacionada';
+        motivos.push((op.natureza === 'facultativo' ? 'Ponto facultativo' : 'Feriado estadual') + ' — ' + op.uf + ', estado do cliente' + (noEstado.origem === 'sugerido' ? ' (sugerido)' : ''));
+      }
+    }
     if (!local && segs.length) {
       segs.forEach(s => {
         if (cats.includes(s.tema_id)) { nivel = 'muito'; motivos.push('Relacionada ao segmento ' + nomeTema(s.tema_id) + (s.origem === 'sugerido' ? ' (sugerido)' : '')); }
@@ -197,7 +230,7 @@ B7.Oportunidades = (function () {
         });
       }
     }
-    if (!nivel && !local && (op.geral || op.natureza === 'feriado')) { nivel = 'geral'; motivos.push(op.natureza === 'feriado' ? 'Feriado nacional' : 'Data de interesse geral'); }
+    if (!nivel && !local && (op.geral || ehFeriado(op))) { nivel = 'geral'; motivos.push(op.natureza === 'feriado' ? 'Feriado nacional' : op.natureza === 'facultativo' ? 'Ponto facultativo nacional' : 'Data de interesse geral'); }
     return { nivel, motivos: [...new Set(motivos)] };
   }
   /* "data ampla" do tema: o nome é só o tema (ex.: "Dia Mundial da Saúde",
@@ -229,7 +262,7 @@ B7.Oportunidades = (function () {
         const rels = relacionados(op, b);
         const porCliente = {};
         rels.forEach(r => { if (r.nivel) porCliente[r.cliente.id] = r.nivel; });
-        const geralOk = !!(op.geral || op.natureza === 'feriado') && op.abrangencia !== 'estadual' && op.abrangencia !== 'municipal';
+        const geralOk = !!(op.geral || ehFeriado(op)) && !ehLocal(op);
         const ativos = rels.filter(r => r.nivel === 'muito' || r.nivel === 'relacionada');
         const nivelMax = ativos.some(r => r.nivel === 'muito') ? 'muito' : ativos.length ? 'relacionada' : geralOk ? 'geral' : null;
         const item = { op, ini: oc.ini, fim: oc.fim, relacionados: rels, porCliente, nivelMax, geral: geralOk };
@@ -306,7 +339,8 @@ B7.Oportunidades = (function () {
             '<button type="button" class="ico" data-fecha aria-label="Fechar">' + IC_FECHA + '</button></div>' +
           '<h3>' + esc(op.nome) + '</h3>' +
           '<p class="cb-pv-tit">' + esc(quandoTx(oc.ini, oc.fim)) + ' · <b>' + esc(faltaTx(oc.ini, oc.fim)) + '</b>' + (regraTx(op) ? ' · ' + esc(regraTx(op)) : '') + '</p>' +
-          '<div class="op-selos">' + seloConf(op) + selo(NATUREZA[op.natureza] || op.natureza, 'neutro') + selo(ABRANGENCIA[op.abrangencia] || op.abrangencia, 'neutro') +
+          '<div class="op-selos">' + seloConf(op) + selo(NATUREZA[op.natureza] || op.natureza, 'neutro') +
+            selo((ABRANGENCIA[op.abrangencia] || op.abrangencia) + (lugarTx(op) ? ' · ' + lugarTx(op) : ''), 'neutro') +
             cats.map(c => '<span class="op-cat">' + esc(c) + '</span>').join('') + '</div>' +
           (op.descricao ? '<p class="op-desc">' + esc(op.descricao) + '</p>' : '') +
           ((op.aliases || []).length ? '<p class="op-alias">Também conhecida como: ' + esc(op.aliases.join(' · ')) + '</p>' : '') +
@@ -323,7 +357,8 @@ B7.Oportunidades = (function () {
 
           '<section class="op-sec"><h4>Clientes relacionados <span>' + rels.filter(r => r.nivel).length + '</span></h4>' +
             (rels.length ? '<ul class="op-rels">' + rels.filter(r => !ctxCli || r.cliente.id !== ctxCli.id).map(linhaRel).join('') + '</ul>'
-              : '<p class="op-nada">' + (op.geral || op.natureza === 'feriado' ? 'Data geral: serve para qualquer cliente, sem um segmento específico.' : 'Nenhum cliente com segmento correspondente.') + '</p>') +
+              : '<p class="op-nada">' + (ehLocal(op) ? 'Nenhum cliente com cidade cadastrada ' + (op.abrangencia === 'municipal' ? 'em ' + (op.municipio || 'nesta cidade') : 'neste estado') + '.'
+                : (op.geral || ehFeriado(op)) ? 'Data geral: serve para qualquer cliente, sem um segmento específico.' : 'Nenhum cliente com segmento correspondente.') + '</p>') +
           '</section>' +
 
           '<section class="op-sec"><h4>Fontes <span>' + provas.length + '</span></h4>' +
@@ -431,20 +466,20 @@ B7.Oportunidades = (function () {
   /* =================================================================
      PÁGINA #/oportunidades (admin e coordenação)
      ================================================================= */
-  const P = { aba: 'proximas', dias: 30, cat: '', rel: '', cliente: '', conf: '', abr: '', q: '' };
+  const P = { aba: 'proximas', dias: 30, cat: '', rel: '', cliente: '', conf: '', abr: '', nat: '', q: '' };
   const painel = () => document.getElementById('painel-dashboard');
   function lerParams(p) {
     P.aba = ['proximas', 'revisao', 'fontes'].includes(p.get('aba')) ? p.get('aba') : 'proximas';
     P.dias = [7, 15, 30, 60].includes(+p.get('p')) ? +p.get('p') : 30;
     P.cat = p.get('cat') || ''; P.rel = p.get('rel') || ''; P.cliente = p.get('cliente') || '';
-    P.conf = p.get('conf') || ''; P.abr = p.get('abr') || ''; P.q = p.get('q') || '';
+    P.conf = p.get('conf') || ''; P.abr = p.get('abr') || ''; P.nat = p.get('nat') || ''; P.q = p.get('q') || '';
     if (!souAdmin() && P.aba !== 'proximas') P.aba = 'proximas';
   }
   function gravarParams() {
     const q = new URLSearchParams();
     if (P.aba !== 'proximas') q.set('aba', P.aba);
     if (P.dias !== 30) q.set('p', P.dias);
-    ['cat', 'rel', 'cliente', 'conf', 'abr', 'q'].forEach(k => { if (P[k]) q.set(k, P[k]); });
+    ['cat', 'rel', 'cliente', 'conf', 'abr', 'nat', 'q'].forEach(k => { if (P[k]) q.set(k, P[k]); });
     const s = q.toString();
     try { history.replaceState(null, '', location.pathname + location.search + '#/oportunidades' + (s ? '?' + s : '')); } catch (e) {}
   }
@@ -480,16 +515,17 @@ B7.Oportunidades = (function () {
         sel('op-rel', 'Relevância: todas', [['muito', 'Muito relevante'], ['relacionada', 'Relacionada'], ['geral', 'Geral'], ['relevantes', 'Qualquer relevância']], P.rel) +
         sel('op-cat', 'Categoria: todas', temas.map(t => [t.id, (t.pai ? '— ' : '') + t.nome]), P.cat) +
         sel('op-conf', 'Confiabilidade: todas', Object.keys(CONF).map(k => [k, CONF[k].rot]), P.conf) +
-        sel('op-abr', 'Abrangência: todas', Object.keys(ABRANGENCIA).map(k => [k, ABRANGENCIA[k]]), P.abr) +
-        ((P.cat || P.rel || P.cliente || P.conf || P.abr || P.q) ? '<button class="b fina contorno" id="op-limpar">Limpar</button>' : '') +
+        sel('op-nat', 'Tipo: todos', [['feriados', 'Feriados e pontos facultativos'], ['comemorativa', 'Datas comemorativas'], ['campanha', 'Campanhas']], P.nat) +
+        sel('op-abr', 'Abrangência: todas', [['local', 'Local (estado ou cidade)']].concat(Object.keys(ABRANGENCIA).map(k => [k, ABRANGENCIA[k]])), P.abr) +
+        ((P.cat || P.rel || P.cliente || P.conf || P.abr || P.nat || P.q) ? '<button class="b fina contorno" id="op-limpar">Limpar</button>' : '') +
       '</div></div><div id="op-lista"></div>';
     cx.querySelectorAll('[data-dias]').forEach(x => x.onclick = () => { P.dias = +x.dataset.dias; gravarParams(); pintarProximas(); });
-    [['op-cliente', 'cliente'], ['op-rel', 'rel'], ['op-cat', 'cat'], ['op-conf', 'conf'], ['op-abr', 'abr']].forEach(([id, k]) => {
+    [['op-cliente', 'cliente'], ['op-rel', 'rel'], ['op-cat', 'cat'], ['op-conf', 'conf'], ['op-abr', 'abr'], ['op-nat', 'nat']].forEach(([id, k]) => {
       const s = cx.querySelector('#' + id); if (s) s.onchange = () => { P[k] = s.value; gravarParams(); pintarProximas(); };
     });
     const q = cx.querySelector('#op-q');
     q.oninput = (B7.UI.debounce || (f => f))(() => { P.q = q.value.trim(); gravarParams(); pintarLista(hoje, fim); }, 200);
-    const lp = cx.querySelector('#op-limpar'); if (lp) lp.onclick = () => { Object.assign(P, { cat: '', rel: '', cliente: '', conf: '', abr: '', q: '' }); gravarParams(); pintarProximas(); };
+    const lp = cx.querySelector('#op-limpar'); if (lp) lp.onclick = () => { Object.assign(P, { cat: '', rel: '', cliente: '', conf: '', abr: '', nat: '', q: '' }); gravarParams(); pintarProximas(); };
     pintarLista(hoje, fim);
   }
   const sel = (id, vazio, opcoes, valor) => '<select class="campo fina' + (valor ? ' ativo' : '') + '" id="' + id + '" aria-label="' + esc(vazio.split(':')[0]) + '"><option value="">' + esc(vazio) + '</option>' +
@@ -504,8 +540,11 @@ B7.Oportunidades = (function () {
       if (f.rel === 'relevantes' ? !nivel : (f.rel && nivel !== f.rel)) return false;
       if (f.cat && !(op.categorias || []).includes(f.cat) && !(op.categorias || []).some(c => B.temas.get(c) && B.temas.get(c).pai === f.cat)) return false;
       if (f.conf && op.confiabilidade !== f.conf) return false;
-      if (f.abr && op.abrangencia !== f.abr) return false;
-      if (q && !(norm(op.nome).includes(q) || (op.aliases || []).some(a => norm(a).includes(q)) || (op.tags || []).some(t => t.includes(q)))) return false;
+      if (f.abr === 'local' ? !ehLocal(op) : (f.abr && op.abrangencia !== f.abr)) return false;
+      if (f.nat === 'feriados' ? !ehFeriado(op) : (f.nat && op.natureza !== f.nat)) return false;
+      /* busca também pelo lugar: nome da cidade ou sigla do estado ("ba") */
+      if (q && !(norm(op.nome).includes(q) || (op.aliases || []).some(a => norm(a).includes(q)) || (op.tags || []).some(t => t.includes(q)) ||
+                 norm(op.municipio).includes(q) || (op.uf && norm(op.uf) === q))) return false;
       return true;
     });
   }
@@ -514,7 +553,7 @@ B7.Oportunidades = (function () {
     let itens;
     try { itens = await periodo(hoje, fim, { cliente: P.cliente || null }); } catch (e) { cx.innerHTML = '<div class="cb-aviso erro">Não foi possível calcular as oportunidades.</div>'; return; }
     const lista = filtrarItens(itens, P);
-    if (!lista.length) { cx.innerHTML = '<p class="cb-vazio">Nenhuma oportunidade nos próximos ' + P.dias + ' dias' + ((P.cat || P.rel || P.cliente || P.conf || P.abr || P.q) ? ' com esses filtros' : '') + '.</p>'; return; }
+    if (!lista.length) { cx.innerHTML = '<p class="cb-vazio">Nenhuma oportunidade nos próximos ' + P.dias + ' dias' + ((P.cat || P.rel || P.cliente || P.conf || P.abr || P.nat || P.q) ? ' com esses filtros' : '') + '.</p>'; return; }
     const grupos = new Map();
     lista.forEach(it => { const k = it.ini < hoje ? hoje : it.ini; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(it); });
     cx.innerHTML = '<p class="op-contagem">' + lista.length + ' oportunidade' + (lista.length > 1 ? 's' : '') + ' nos próximos ' + P.dias + ' dias</p>' +
@@ -531,7 +570,7 @@ B7.Oportunidades = (function () {
     return '<button type="button" class="op-card" data-op="' + esc(op.id) + '" data-dia="' + esc(it.ini) + '">' +
       '<i class="op-card-ic">' + IC + '</i>' +
       '<span class="op-card-tx"><b>' + esc(op.nome) + '</b>' +
-        '<small>' + esc([NATUREZA[op.natureza], it.fim !== it.ini ? 'até ' + D().local(it.fim).getDate() + ' ' + MESES[D().local(it.fim).getMonth()] : '', (op.categorias || []).map(nomeTema).slice(0, 3).join(', ')].filter(Boolean).join(' · ')) + '</small>' +
+        '<small>' + esc([NATUREZA[op.natureza], lugarTx(op), it.fim !== it.ini ? 'até ' + D().local(it.fim).getDate() + ' ' + MESES[D().local(it.fim).getMonth()] : '', (op.categorias || []).map(nomeTema).slice(0, 3).join(', ')].filter(Boolean).join(' · ')) + '</small>' +
         (P.cliente && it.rel ? '<small class="op-motivo">' + esc(it.rel.motivos.join(' · ')) + '</small>'
           : rels.length ? '<small class="op-clis">' + esc(rels.slice(0, 3).map(r => r.cliente.nome).join(', ') + (rels.length > 3 ? ' +' + (rels.length - 3) : '')) + '</small>' : '') +
       '</span><span class="op-card-lado">' + seloNivel(nivel) + seloConf(op) + '</span></button>';
@@ -675,7 +714,8 @@ B7.Oportunidades = (function () {
     catch (e) { el.innerHTML = '<section class="op-cli"><header class="op-cli-cab"><h3>' + IC + 'Oportunidades</h3></header><p class="op-nada">Não foi possível carregar as oportunidades.</p></section>'; return; }
     if (!document.body.contains(el)) return;
     const segs = b.segmentos.get(clienteId) || [];
-    const ignoradas = [...b.ajustes.entries()].filter(([k, v]) => k.endsWith('|' + clienteId) && (v === 'ignorar' || v === 'nao_relevante')).length;
+    const lugares = (b.locais && b.locais.get(clienteId)) || [];
+    const ignoradas =[...b.ajustes.entries()].filter(([k, v]) => k.endsWith('|' + clienteId) && (v === 'ignorar' || v === 'nao_relevante')).length;
     const relevantes = itens.filter(i => i.rel.nivel === 'muito' || i.rel.nivel === 'relacionada');
     const gerais = itens.filter(i => i.rel.nivel === 'geral');
     el.innerHTML = '<section class="op-cli">' +
@@ -686,14 +726,66 @@ B7.Oportunidades = (function () {
         (segs.length ? segs.map(s => '<span class="op-seg' + (s.origem === 'sugerido' ? ' sug' : '') + '" title="' + (s.origem === 'sugerido' ? 'Sugerido — confirme editando' : 'Definido pela equipe') + '">' + esc(nomeTema(s.tema_id)) + (s.origem === 'sugerido' ? ' <em>sugerido</em>' : '') + '</span>').join('')
           : '<span class="op-nada">Nenhum segmento — só datas gerais aparecem.</span>') +
         (souGestor() ? '<button class="b fina contorno" data-segs>' + (segs.length ? 'Editar' : 'Definir segmentos') + '</button>' : '') + '</div>' +
+      '<div class="op-segs"><span class="op-segs-rot">Cidade</span>' +
+        (lugares.length ? lugares.map(l => '<span class="op-seg' + (l.origem === 'sugerido' ? ' sug' : '') + '" title="' + (l.origem === 'sugerido' ? 'Sugerida pelo cadastro — confirme editando' : 'Definida pela equipe') + '">' +
+            esc(l.nome + (l.uf ? '/' + l.uf : '')) + (l.origem === 'sugerido' ? ' <em>sugerida</em>' : '') + '</span>').join('')
+          : '<span class="op-nada">Sem cidade — feriados e aniversário da cidade não aparecem.</span>') +
+        (souGestor() ? '<button class="b fina contorno" data-cidades>' + (lugares.length ? 'Editar' : 'Definir cidade') + '</button>' : '') + '</div>' +
       (relevantes.length ? '<ul class="op-cli-lista">' + relevantes.slice(0, 8).map(i => itemCompactoHTML(i, i.rel.nivel, i.rel.motivos)).join('') + '</ul>'
-        : '<p class="op-nada">Nenhuma data do segmento nos próximos 30 dias.</p>') +
+        : '<p class="op-nada">Nenhuma data do segmento ou da cidade nos próximos 30 dias.</p>') +
       (gerais.length ? '<p class="op-gerais">Datas gerais: ' + gerais.slice(0, 4).map(i => '<button class="cb-link" data-op="' + esc(i.op.id) + '" data-dia="' + esc(i.ini) + '">' + esc(i.op.nome) + '</button>').join(', ') + (gerais.length > 4 ? ' e mais ' + (gerais.length - 4) : '') + '</p>' : '') +
       (ignoradas ? '<p class="op-ign">' + ignoradas + ' oportunidade' + (ignoradas > 1 ? 's ignoradas' : ' ignorada') + ' para este cliente.</p>' : '') +
     '</section>';
     const recarregar = () => secaoCliente(el, clienteId);
     el.querySelectorAll('[data-op]').forEach(x => x.onclick = () => folha(x.dataset.op, { dia: x.dataset.dia, cliente: clienteId, aoMudar: recarregar }));
     const bs = el.querySelector('[data-segs]'); if (bs) bs.onclick = () => modalSegmentos(clienteId, recarregar);
+    const bc = el.querySelector('[data-cidades]'); if (bc) bc.onclick = () => modalCidades(clienteId, recarregar);
+  }
+
+  /* Cidade(s) do cliente: busca na tabela de municípios do IBGE (no
+     banco). Só município — endereço não importa aqui. Um cliente pode
+     atuar em mais de uma cidade (ex.: duas lojas). */
+  async function modalCidades(clienteId, aoSalvar) {
+    const b = await carregarBase();
+    const sel = new Map(((b.locais && b.locais.get(clienteId)) || []).map(l => [l.ibge, l]));
+    const cli = b.clientesMap.get(clienteId);
+    const m = B7.UI.modal('<h3>Cidade do cliente</h3><div class="sub">' + esc(cli ? cli.nome : '') +
+        ' · onde o cliente atua. Decide quais feriados locais e aniversários de cidade aparecem para ele.</div>' +
+      '<div class="op-cid-sel" id="op-cid-sel"></div>' +
+      '<div class="mb"><label class="rot" for="op-cid-q">ADICIONAR CIDADE</label>' +
+        '<input class="campo" id="op-cid-q" type="search" placeholder="Digite o nome da cidade" autocomplete="off" data-foco></div>' +
+      '<ul class="op-cid-res" id="op-cid-res" role="listbox" aria-label="Cidades encontradas"></ul>' +
+      '<p class="op-dica">Ao salvar, as cidades sugeridas que ficarem passam a valer como definidas pela equipe.</p>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" data-ok>Salvar</button></div>');
+    const cxSel = m.querySelector('#op-cid-sel'), res = m.querySelector('#op-cid-res'), q = m.querySelector('#op-cid-q');
+    const pintarSel = () => {
+      cxSel.innerHTML = sel.size ? [...sel.values()].map(l => '<span class="op-chip on">' + esc(l.nome + (l.uf ? '/' + l.uf : '')) +
+          (l.origem === 'sugerido' ? ' <em>sugerida</em>' : '') +
+          '<button type="button" class="op-cid-x" data-tirar="' + esc(l.ibge) + '" aria-label="Tirar ' + esc(l.nome) + '">×</button></span>').join('')
+        : '<p class="op-nada">Nenhuma cidade ainda.</p>';
+      cxSel.querySelectorAll('[data-tirar]').forEach(x => x.onclick = () => { sel.delete(x.dataset.tirar); pintarSel(); });
+    };
+    let pedido = 0;
+    const buscar = (B7.UI.debounce || (f => f))(async () => {
+      const n = ++pedido, t = q.value.trim();
+      if (t.length < 2) { res.innerHTML = ''; return; }
+      let l = [];
+      try { l = await B7.DB.buscarMunicipios(t); } catch (e) { res.innerHTML = '<li class="op-nada">Não foi possível buscar.</li>'; return; }
+      if (n !== pedido) return;
+      res.innerHTML = l.length ? l.map(c => '<li><button type="button" class="op-cid-op" data-ibge="' + esc(c.ibge) + '" data-nome="' + esc(c.nome) + '" data-uf="' + esc(c.uf) + '"' +
+          (sel.has(c.ibge) ? ' disabled' : '') + '>' + esc(c.nome) + ' <small>' + esc(c.uf) + '</small></button></li>').join('')
+        : '<li class="op-nada">Nenhuma cidade com esse nome.</li>';
+      res.querySelectorAll('[data-ibge]').forEach(x => x.onclick = () => {
+        sel.set(x.dataset.ibge, { ibge: x.dataset.ibge, nome: x.dataset.nome, uf: x.dataset.uf, origem: 'manual' });
+        q.value = ''; res.innerHTML = ''; pintarSel(); q.focus();
+      });
+    }, 200);
+    q.oninput = buscar;
+    pintarSel();
+    m.querySelector('[data-ok]').onclick = async () => {
+      try { await B7.DB.clienteMunicipiosDefinir(clienteId, [...sel.keys()]); m.fechar(); B7.UI.toast('Cidade salva.'); invalidar(); await carregarBase(true); aoSalvar && aoSalvar(); }
+      catch (e) { B7.UI.toast('Não foi possível salvar: ' + (e.message || 'erro')); }
+    };
   }
   function itemCompactoHTML(i, nivel, motivos) {
     const d = D().local(i.ini < D().hoje() ? D().hoje() : i.ini);
@@ -757,6 +849,21 @@ B7.Oportunidades = (function () {
     });
   }
 
+  /* busca por texto (paleta "Buscar no B7…"): nome, apelido, tag, cidade.
+     Devolve a próxima ocorrência de cada uma, as mais próximas primeiro. */
+  async function buscarTexto(termo, limite) {
+    const q = norm(termo); if (q.length < 3) return [];
+    const b = await carregarBase(), hoje = D().hoje(), out = [];
+    b.ops.forEach(op => {
+      if (!(norm(op.nome).includes(q) || (op.aliases || []).some(a => norm(a).includes(q)) || (op.tags || []).some(t => t.includes(q)) || norm(op.municipio).includes(q))) return;
+      const oc = proxima(op, hoje); if (!oc) return;
+      const d = D().local(oc.ini);
+      out.push({ id: op.id, nome: op.nome, dia: oc.ini,
+        sub: [d.getDate() + ' ' + MESES[d.getMonth()] + ' ' + d.getFullYear(), NATUREZA[op.natureza], lugarTx(op)].filter(Boolean).join(' · ') });
+    });
+    return out.sort((x, y) => x.dia.localeCompare(y.dia)).slice(0, limite || 5);
+  }
+
   /* resumo discreto para o Painel da coordenação */
   async function resumoPainel(dias) {
     const hoje = D().hoje();
@@ -768,7 +875,7 @@ B7.Oportunidades = (function () {
   return {
     CONF, NIVEL, NATUREZA, ABRANGENCIA, FONTES_ROT, IC,
     carregarBase, invalidar, ocorrencias, proxima, nth, relevancia, relacionados, periodo, filtrarItens,
-    folha, modalUsarLinha, abrir, secaoCliente, secaoLinha, resumoPainel, modalSegmentos,
+    folha, modalUsarLinha, abrir, secaoCliente, secaoLinha, resumoPainel, modalSegmentos, modalCidades, buscarTexto,
     _montar: montar, _definirBase: b => { B = b; baseEm = Date.now(); }
   };
 })();
