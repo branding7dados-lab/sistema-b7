@@ -121,6 +121,13 @@ Ligada por `IA: { linhas: true }` em `js/config.js`. A tela é `js/ia-linha.js`;
 - **Registro.** `ia_uso.recurso = 'linha'`; `acao` é a operação (`sugerir_conteudos`, `campo.conteudo.legenda.criar`…).
 - **Revisão do conjunto (`revisar_linha`, desde 2026-10-02-v).** Uma chamada só, com todos os conteúdos **daquela linha** numerados (título, formato, pilar, ideia, objetivo e CTA) e as contagens por formato e por pilar já feitas pelo sistema. Devolve observações estruturadas: tipo (`semelhantes`, `abordagem`, `cta`, `formatos`, `pilares`, `alinhamento`, `variacao`, `oportunidade`), importância, título, texto, sugestão e os conteúdos citados. Lista vazia é resposta válida ("nada relevante").
 
+### Montar linha com IA (pacote 2026-10-02-z)
+
+- Operação nova `sugerir_estrategia`: propõe objetivo, posicionamento, tom de voz, PUV e percepção. Devolve `itens: [{ campo, rotulo, texto }]`; a tela grava só os campos marcados (`B7.Linha` → `aplicarEstrategia`).
+- "Montar linha com IA" (`B7.IALinha` → `abrirMontagem`) encadeia `sugerir_estrategia` → `sugerir_pilares` → `sugerir_conteudos` (8), uma chamada por etapa, com direcionamento opcional. Cada etapa pode ser pulada.
+- As três sugestões recebem o cadastro do cliente (`cliente_inteligencia` e `produtos`, sem preço). `sugerir_estrategia` recebe também a linha anterior DO MESMO cliente — exceção consciente à regra "nunca vai outra linha".
+- As ações de IA de cada aba ficam num bloco único (`B7.IALinha.bloco`).
+
 ## Análise: revisar roteiro e comparar com o planejamento
 
 Ligada pelo mesmo `IA: { roteiros: true }`. A tela é `js/ia-analise.js`; a tarefa no servidor é `_shared/ia/analise.ts` (`tarefa: 'analise'`).

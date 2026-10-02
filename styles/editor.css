@@ -73,12 +73,18 @@
    ===================================================================== */
 .ia-rot{margin-top:10px;}
 /* entrada da IA: um botão de verdade, com o acento B7 — fácil de achar e de tocar */
-.ia-entrada{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:8px 14px;border-radius:10px;
-  border:1px solid var(--acento);background:var(--acento-suave);font-size:13px;font-weight:700;color:var(--acento);
-  transition:background-color var(--t),color var(--t),border-color var(--t);}
-.ia-entrada svg{width:17px;height:17px;color:currentColor;flex:none;}
-.ia-entrada:hover,.ia-entrada.on,.ia-entrada.cheia{background:var(--acento);color:#fff;}
-.ia-entrada.cheia:hover{filter:brightness(1.08);}
+/* A marca da IA no B7: contorno em degradê da marca, fundo do cartão e a
+   estrela em magenta. A ação principal de um bloco vem preenchida. */
+.ia-entrada{display:inline-flex;align-items:center;gap:9px;min-height:40px;padding:8px 16px;border-radius:11px;
+  border:1.5px solid transparent;
+  background:linear-gradient(var(--card),var(--card)) padding-box,var(--grad-curto) border-box;
+  font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.2;text-align:left;
+  transition:box-shadow var(--t),filter var(--t),transform var(--t);}
+.ia-entrada svg{width:18px;height:18px;color:var(--acento);flex:none;}
+.ia-entrada:hover,.ia-entrada.on{box-shadow:0 0 0 3px var(--acento-suave);}
+.ia-entrada.cheia{background:var(--grad-curto) border-box;color:#fff;box-shadow:0 8px 20px -10px rgba(194,28,131,.7);}
+.ia-entrada.cheia svg{color:#fff;}
+.ia-entrada.cheia:hover{filter:brightness(1.08);box-shadow:0 10px 24px -10px rgba(194,28,131,.8);}
 .ia-entrada:focus-visible,.ia-fechar:focus-visible,.ia-acao:focus-visible,.ia-sugestao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 
 .ia-painel{margin-top:8px;padding:12px;border-radius:11px;background:var(--card);border:1px solid var(--borda);
@@ -225,11 +231,27 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
    "atenção" de "observação".
    ===================================================================== */
 /* bloco da IA no topo do roteiro: o ponto de partida, sempre no mesmo lugar */
-.ia-bloco{margin:0 0 14px;padding:14px;border-radius:13px;border:1px solid var(--borda);background:var(--suave);}
-.ia-bloco-cab{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-bottom:11px;font-size:12.5px;color:var(--ink-3);line-height:1.4;}
-.ia-bloco-cab svg{width:18px;height:18px;color:var(--acento);flex:none;}
-.ia-bloco-cab b{font-size:14px;font-weight:800;color:var(--ink);}
-.ia-roteiro-acoes{display:flex;flex-wrap:wrap;gap:8px;}
+.ia-bloco{position:relative;margin:0 0 14px;padding:16px 16px 16px 20px;border-radius:14px;border:1px solid var(--borda);
+  background:linear-gradient(100deg,var(--acento-suave),transparent 55%),var(--card);overflow:hidden;}
+.ia-bloco::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--grad-curto);}
+.ia-bloco-cab{display:flex;align-items:center;flex-wrap:wrap;gap:4px 9px;margin-bottom:12px;font-size:13px;color:var(--ink-3);line-height:1.45;}
+.ia-bloco-cab svg{width:20px;height:20px;color:var(--acento);flex:none;}
+.ia-bloco-cab b{font-family:'Archivo',sans-serif;font-size:15.5px;font-weight:800;letter-spacing:-.01em;color:var(--ink);}
+.ia-bloco-cab span{flex:1 1 260px;min-width:0;}
+.ia-roteiro-acoes{display:flex;flex-wrap:wrap;gap:10px;}
+.ia-bloco-linha{margin:0 0 18px;}
+
+/* trilho de etapas do "Montar linha com IA" */
+.ia-passos{display:flex;gap:6px;list-style:none;margin:14px 0 4px;padding:0;}
+.ia-passos li{flex:1;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;background:var(--suave);
+  font-size:12.5px;font-weight:700;color:var(--ink-4);min-width:0;}
+.ia-passos li i{flex:none;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  font-style:normal;font-size:11.5px;font-weight:800;background:var(--card);color:var(--ink-3);}
+.ia-passos li span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ia-passos li.on{background:var(--acento-suave);color:var(--acento);}
+.ia-passos li.on i{background:var(--grad-curto);color:#fff;}
+.ia-passos li.feito{color:var(--ink-2);}
+.ia-passos li.feito i{background:var(--ok);color:#fff;}
 /* IA que escreve o texto para o cliente (js/ia-texto.js): status semanal e resumo do mês */
 .ia-texto-linha{display:flex;margin:0 0 12px;}
 .ia-texto-painel{margin:0 0 14px;}

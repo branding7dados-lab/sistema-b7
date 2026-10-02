@@ -97,7 +97,8 @@ B7.IALinha = (function () {
         botao.title = 'Assistente de IA';
         botao.setAttribute('aria-label', 'Assistente de IA: ' + nome.toLowerCase());
         botao.setAttribute('aria-expanded', 'false');
-        botao.innerHTML = IC + '<span>IA</span>';
+        /* diz o que faz: campo vazio → escreve; campo com texto → melhora */
+        botao.innerHTML = IC + '<span>' + (String(el.value || '').trim() ? 'Melhorar com IA' : 'Escrever com IA') + '</span>';
         rotulo.appendChild(botao);
         const painel = document.createElement('div');
         painel.className = 'ia-painel ia-campo-painel'; painel.hidden = true;
@@ -468,6 +469,238 @@ B7.IALinha = (function () {
   }
 
   /* ================================================================
+     4. MONTAR A LINHA COM IA — um assistente em etapas
+     Estratégia → Pilares → Conteúdos. Cada etapa é uma chamada (as três
+     operações do servidor: sugerir_estrategia, sugerir_pilares,
+     sugerir_conteudos), mostra a proposta e só grava o que a pessoa
+     marcar — pelos mesmos caminhos de quem preenche à mão. Dá para pular
+     qualquer etapa. Com uma etapa só ("Sugerir estratégia"), é a mesma
+     janela sem o trilho.
+     ================================================================ */
+  const ETAPAS = {
+    estrategia: { op: 'sugerir_estrategia', nome: 'Estratégia', gerando: 'Escrevendo a estratégia…',
+      sub: 'Uma proposta para os campos da estratégia, a partir do cadastro do cliente e da linha anterior.' },
+    pilares: { op: 'sugerir_pilares', nome: 'Pilares', gerando: 'Escolhendo os pilares…',
+      sub: 'Os tipos de conteúdo que sustentam o mês. O peso de cada um continua com você.' },
+    conteudos: { op: 'sugerir_conteudos', nome: 'Conteúdos', gerando: 'Criando as ideias de conteúdo…',
+      sub: 'Ideias de conteúdo a partir da estratégia e dos pilares. Você escolhe quais entram na linha.' }
+  };
+
+  function abrirMontagem(passos) {
+    const varias = passos.length > 1;
+    const S = { i: 0, fase: 'inicio', itens: [], marcados: new Set(), direcao: '', erro: '', aviso: '', token: 0, ctrl: null,
+                ocupado: false, fechada: false, feitos: { estrategia: 0, pilares: 0, conteudos: 0 }, mexeu: false };
+    const m = B7.UI.modal(
+      '<div class="ia-jan-cab"><span class="ia-titulo">' + IC + '<b>' + (varias ? 'Montar linha com IA' : 'Sugerir estratégia') + '</b></span>' +
+        '<button class="ico" data-fecha aria-label="Fechar">✕</button></div>' +
+      '<div data-trilho></div><div class="sub ia-jan-sub" data-sub></div>' +
+      '<div class="ia-jan-corpo" data-corpo></div><div class="acoes" data-rodape></div>',
+      { larga: true, extra: 'ia-janela', aoFechar: () => { S.fechada = true; if (S.ctrl) S.ctrl.abort(); if (S.mexeu) hooks.depois(); } });
+    const corpo = m.querySelector('[data-corpo]'), rodape = m.querySelector('[data-rodape]');
+    const etapa = () => ETAPAS[passos[S.i]];
+    const ultima = () => S.i >= passos.length - 1;
+
+    function itemHTML(it, i) {
+      const on = S.marcados.has(i), k = passos[S.i];
+      const caixa = '<input type="checkbox" data-item="' + i + '"' + (on ? ' checked' : '') + '>';
+      if (k === 'estrategia') {
+        const ja = String((hooks.linha() || {})[it.campo] || '').trim();
+        return '<label class="ia-item' + (on ? ' on' : '') + '">' + caixa +
+          '<span class="ia-item-tx"><span class="ia-item-meta"><span class="ia-chip pilar">' + esc(it.rotulo) + '</span></span>' +
+          '<span class="ia-item-fala">' + esc(it.texto) + '</span>' +
+          (ja ? '<span class="ia-item-nota alerta">Este campo já tem texto. Marcado, a proposta substitui o que está lá.</span>' : '') +
+          '</span></label>';
+      }
+      if (k === 'pilares') {
+        return '<label class="ia-item' + (on ? ' on' : '') + '">' + caixa +
+          '<span class="ia-item-tx"><span class="ia-item-meta"><span class="ia-chip">Funil: ' + esc(it.funil) + '</span></span>' +
+          '<b>' + esc(it.tipo) + '</b><span class="ia-item-ds">' + esc(it.objetivo) + '</span>' +
+          (it.motivo ? '<span class="ia-item-nota">Por quê: ' + esc(it.motivo) + '</span>' : '') + '</span></label>';
+      }
+      return '<label class="ia-item' + (on ? ' on' : '') + '">' + caixa +
+        '<span class="ia-item-tx"><span class="ia-item-meta"><span class="ia-chip">' + esc(it.formato) + '</span>' +
+          (it.pilar ? '<span class="ia-chip pilar">' + esc(it.pilar) + '</span>' : '') + '</span>' +
+        '<b>' + esc(it.titulo) + '</b>' + (it.ideia ? '<span class="ia-item-ds">' + esc(it.ideia) + '</span>' : '') +
+        (it.cta ? '<span class="ia-item-nota">CTA: ' + esc(it.cta) + '</span>' : '') +
+        (it.parecido ? '<span class="ia-item-nota alerta">Parecido com um conteúdo que já está na linha.</span>' : '') + '</span></label>';
+    }
+
+    function pintar() {
+      if (S.fechada) return;
+      const E = etapa();
+      m.querySelector('[data-trilho]').innerHTML = varias
+        ? '<ol class="ia-passos">' + passos.map((k, n) => '<li class="' + (n < S.i || S.fase === 'fim' ? 'feito' : n === S.i && S.fase !== 'inicio' ? 'on' : '') + '">' +
+            '<i>' + (n + 1) + '</i><span>' + ETAPAS[k].nome + '</span></li>').join('') + '</ol>' : '';
+      m.querySelector('[data-sub]').textContent = S.fase === 'inicio'
+        ? (varias ? 'A IA propõe a estratégia, os pilares e os conteúdos do mês, uma etapa por vez. Em cada uma você escolhe o que entra — e pode pular.' : E.sub)
+        : E.sub;
+      let c = '', r = '';
+      if (S.fase === 'inicio') {
+        c = '<label class="rot" for="ia-mont-in">O QUE ESTE MÊS PRECISA <span class="leve">— opcional</span></label>' +
+          '<textarea class="campo" id="ia-mont-in" rows="3" maxlength="' + LIMITE_INSTRUCAO + '" ' +
+            'placeholder="Ex.: mês de lançamento do plano anual; mais conteúdo com o especialista; evitar promoção">' + esc(S.direcao) + '</textarea>' +
+          '<p class="ia-nota">A IA usa o cadastro do cliente (Inteligência e produtos) e a linha do mês anterior. Nada é gravado agora: primeiro você vê a proposta.</p>';
+        r = '<button class="b" data-fecha>Cancelar</button><button class="b pri" data-gerar>' + (varias ? 'Começar' : 'Gerar proposta') + '</button>';
+      } else if (S.fase === 'gerando') {
+        c = GERANDO(E.gerando);
+      } else if (S.fase === 'erro') {
+        c = '<p class="ia-erro" role="alert">' + esc(S.erro) + '</p><p class="ia-nota">Nada foi alterado nesta etapa.</p>';
+        r = '<button class="b" data-inicio>Voltar</button>' + (varias && !ultima() ? '<button class="b contorno" data-pular>Pular etapa</button>' : '') +
+          '<button class="b pri" data-gerar>Tentar novamente</button>';
+      } else if (S.fase === 'vazio') {
+        c = '<p class="ia-nota">' + esc(S.aviso) + '</p>';
+        r = ultima() ? '<button class="b pri" data-concluir>Concluir</button>' : '<button class="b pri" data-pular>Continuar</button>';
+      } else {
+        const n = S.marcados.size, k = passos[S.i];
+        c = (S.aviso ? '<p class="ia-nota erro" role="alert">' + esc(S.aviso) + '</p>' : '') +
+          '<div class="ia-itens" role="group" aria-label="Proposta">' + S.itens.map(itemHTML).join('') + '</div>' +
+          '<p class="ia-nota">' + (k === 'estrategia' ? 'Os campos marcados entram na aba Estratégia e continuam editáveis.'
+            : 'Marque o que quiser manter. O que não for marcado é descartado.') + '</p>';
+        const acao = k === 'estrategia' ? 'Aplicar' : 'Adicionar';
+        r = (varias ? '<button class="b" data-pular' + (S.ocupado ? ' disabled' : '') + '>' + (ultima() ? 'Concluir sem adicionar' : 'Pular etapa') + '</button>' : '<button class="b" data-fecha>Descartar</button>') +
+          '<button class="b contorno" data-gerar' + (S.ocupado ? ' disabled' : '') + '>Gerar outra</button>' +
+          '<button class="b pri" data-aplicar' + (!n || S.ocupado ? ' disabled' : '') + '>' +
+            (S.ocupado ? 'Gravando…' : acao + (n ? ' ' + n : '') + (varias && !ultima() ? ' e continuar' : '')) + '</button>';
+      }
+      corpo.innerHTML = c; rodape.innerHTML = r;
+      m.querySelectorAll('[data-fecha]').forEach(b => b.onclick = () => m.fechar());
+      const campo = corpo.querySelector('#ia-mont-in'); if (campo) campo.oninput = () => { S.direcao = campo.value; };
+      const cancelar = corpo.querySelector('[data-ia-cancelar]'); if (cancelar) cancelar.onclick = () => m.fechar();
+      const q = s => rodape.querySelector(s);
+      if (q('[data-gerar]')) q('[data-gerar]').onclick = () => pedir();
+      if (q('[data-inicio]')) q('[data-inicio]').onclick = () => { S.fase = 'inicio'; pintar(); };
+      if (q('[data-pular]')) q('[data-pular]').onclick = () => avancar();
+      if (q('[data-concluir]')) q('[data-concluir]').onclick = () => concluir();
+      if (q('[data-aplicar]')) q('[data-aplicar]').onclick = () => aplicar();
+      corpo.querySelectorAll('[data-item]').forEach(ch => ch.onchange = () => {
+        const i = +ch.dataset.item;
+        if (ch.checked) S.marcados.add(i); else S.marcados.delete(i);
+        pintar();
+        const de = corpo.querySelector('[data-item="' + i + '"]'); if (de) de.focus();
+      });
+    }
+
+    async function pedir() {
+      if (S.fase === 'gerando' || S.ocupado) return;
+      const E = etapa(), k = passos[S.i];
+      const instrucao = (S.direcao || '').replace(/\s+/g, ' ').trim();
+      S.fase = 'gerando'; S.erro = ''; S.aviso = ''; S.itens = []; S.marcados = new Set();
+      const token = S.token = ++seq;
+      S.ctrl = new AbortController();
+      pintar();
+      try { await B7.Save.agora(); } catch (e) {}
+      const dados = { operacao: E.op, linha_id: hooks.linhaId() };
+      if (k === 'conteudos') dados.quantidade = 8;
+      if (instrucao.length >= 3) dados.instrucao = instrucao;
+      const resp = await B7.IA.pedir('linha', dados, { signal: S.ctrl.signal });
+      if (S.fechada || S.token !== token) return;
+      S.ctrl = null;
+      if (resp.cancelado) return;
+      if (resp.ok && resp.itens) {
+        S.itens = resp.itens;
+        if (!S.itens.length) {
+          S.fase = 'vazio';
+          S.aviso = k === 'pilares' ? 'Esta linha já tem todos os tipos de pilar do B7.' : 'Nenhuma sugestão desta vez.';
+        } else {
+          S.fase = 'lista';
+          const linha = hooks.linha() || {};
+          /* estratégia: campo que já tem texto começa desmarcado — substituir é escolha de quem está montando */
+          S.itens.forEach((it, i) => { if (k !== 'estrategia' || !String(linha[it.campo] || '').trim()) S.marcados.add(i); });
+        }
+      } else {
+        S.fase = 'erro';
+        S.erro = resp.categoria === 'contexto'
+          ? (k === 'estrategia'
+            ? 'Ainda não há informação sobre este cliente para propor uma estratégia. Preencha a Inteligência do cliente (nicho, descrição, público) ou volte e escreva o que este mês precisa.'
+            : 'Ainda não há base para esta etapa. Aplique a estratégia (etapa anterior) ou preencha a Inteligência do cliente.')
+          : (resp.mensagem || 'Não foi possível gerar a proposta.');
+      }
+      pintar();
+    }
+
+    async function aplicar() {
+      if (S.ocupado || !S.marcados.size) return;
+      const k = passos[S.i];
+      S.ocupado = true; S.aviso = '';
+      pintar();
+      const ordem = [...S.marcados].sort((a, b) => a - b);
+      let falhas = 0, ok = 0;
+      if (k === 'estrategia') {
+        const patch = {};
+        ordem.forEach(i => { patch[S.itens[i].campo] = S.itens[i].texto; });
+        try { await hooks.aplicarEstrategia(patch); ok = ordem.length; } catch (e) { falhas = ordem.length; }
+      } else {
+        const criar = k === 'pilares' ? hooks.criarPilar : hooks.criarConteudo;
+        const feitos = new Set();
+        for (const i of ordem) {
+          try { await criar(S.itens[i]); feitos.add(i); ok++; } catch (e) { falhas++; }
+        }
+        if (falhas) {
+          /* falha parcial: fica só o que não entrou, já marcado para tentar de novo */
+          S.itens = S.itens.filter((it, i) => !feitos.has(i));
+          S.marcados = new Set(S.itens.map((it, i) => i));
+        }
+      }
+      S.ocupado = false;
+      if (ok) { S.feitos[k] += ok; S.mexeu = true; }
+      if (falhas) {
+        S.aviso = 'Não foi possível gravar ' + (falhas === 1 ? '1 item' : falhas + ' itens') + '. Confira a conexão e tente de novo.';
+        if (S.fechada) { B7.UI.toast(S.aviso, { tipo: 'erro' }); return; }
+        return pintar();
+      }
+      avancar();
+    }
+
+    function avancar() {
+      if (ultima()) return concluir();
+      S.i++; S.fase = 'inicio';
+      pedir();
+    }
+    function concluir() {
+      const f = S.feitos, partes = [];
+      if (f.estrategia) partes.push('estratégia aplicada');
+      if (f.pilares) partes.push(plural(f.pilares, 'pilar', 'pilares'));
+      if (f.conteudos) partes.push(plural(f.conteudos, 'conteúdo', 'conteúdos'));
+      m.fechar();
+      const frase = partes.join(', ') + '.';
+      B7.UI.toast(!partes.length ? 'Nada foi adicionado.' : varias ? 'Linha montada: ' + frase : frase.charAt(0).toUpperCase() + frase.slice(1));
+    }
+
+    pintar();
+    const campo = corpo.querySelector('#ia-mont-in'); if (campo) { try { campo.focus({ preventScroll: true }); } catch (e) {} }
+    return m;
+  }
+
+  /* ================================================================
+     Bloco da IA de cada aba: as ações ficam juntas, no topo, sempre no
+     mesmo lugar. `info`: { aba, conteudos, pilares, estrategia }
+     ================================================================ */
+  function bloco(info) {
+    if (!ligado()) return '';
+    const bt = (op, rotulo, cheia) => '<button type="button" class="ia-entrada' + (cheia ? ' cheia' : '') + '" data-ia-linha="' + op + '">' + IC + '<span>' + esc(rotulo) + '</span></button>';
+    const vazia = !info.conteudos;
+    let frase = '', acoes = '';
+    if (info.aba === 'geral') {
+      frase = vazia ? 'Comece pela proposta da IA para este cliente: estratégia, pilares e conteúdos. Você escolhe o que entra.'
+                    : 'Uma segunda leitura do mês e novas ideias, a partir do que já está planejado.';
+      acoes = (vazia || info.conteudos < 3 ? bt('montar', 'Montar linha com IA', vazia) : '') +
+        (info.conteudos >= 3 ? bt('revisar_linha', 'Revisar linha editorial', true) : '') +
+        (!vazia ? bt('sugerir_conteudos', 'Sugerir conteúdos') : '');
+    } else if (info.aba === 'estrategia') {
+      frase = info.estrategia ? 'Peça uma revisão do que está escrito ou uma nova proposta. Em cada campo, o botão de IA trabalha só aquele texto.'
+                              : 'A IA propõe a estratégia a partir do cadastro do cliente e da linha anterior. Você escolhe o que entra.';
+      acoes = bt('sugerir_estrategia', 'Sugerir estratégia', !info.estrategia) +
+        (info.estrategia ? bt('revisar_estrategia', 'Revisar estratégia') : '') +
+        (vazia ? bt('montar', 'Montar a linha inteira') : '');
+    } else {
+      frase = 'Ideias novas a partir da estratégia e dos pilares, sem repetir o que já está planejado.';
+      acoes = bt('sugerir_conteudos', 'Sugerir conteúdos', true) + (info.conteudos >= 3 ? bt('revisar_linha', 'Revisar linha editorial') : '');
+    }
+    return '<div class="ia-bloco ia-bloco-linha"><div class="ia-bloco-cab">' + IC + '<b>IA da linha editorial</b><span>' + esc(frase) + '</span></div>' +
+      '<div class="ia-roteiro-acoes">' + acoes + '</div></div>';
+  }
+
+  /* ================================================================
      Ligação com a linha.js
      ================================================================ */
   /* Botão de entrada (HTML). Vazio quando a IA está desligada ou a
@@ -485,9 +718,12 @@ B7.IALinha = (function () {
     ligarCampos(raiz);
     raiz.querySelectorAll('[data-ia-linha]').forEach(b => b.onclick = ev => {
       ev.preventDefault(); ev.stopPropagation();
-      abrirJanela(b.dataset.iaLinha, { pilarId: b.dataset.iaPilar || null });
+      const op = b.dataset.iaLinha;
+      if (op === 'montar') return abrirMontagem(['estrategia', 'pilares', 'conteudos']);
+      if (op === 'sugerir_estrategia') return abrirMontagem(['estrategia']);
+      abrirJanela(op, { pilarId: b.dataset.iaPilar || null });
     });
   }
 
-  return { botao, ligar, ligado };
+  return { botao, bloco, ligar, ligado };
 })();

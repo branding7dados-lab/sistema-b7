@@ -237,20 +237,25 @@ button.badge-design{border:0;}
    campo, as entradas de seção e a janela de sugestões.
    Fechado, o assistente é um botão "IA" com o acento B7 no rótulo do campo.
    ===================================================================== */
-label.rot.rot-ia{display:flex;align-items:center;gap:8px;min-height:30px;}
-.ia-campo-btn{margin-left:auto;flex:none;height:30px;padding:0 11px 0 9px;border-radius:99px;display:inline-flex;align-items:center;gap:5px;
-  justify-content:center;border:1px solid var(--acento);background:var(--acento-suave);color:var(--acento);
-  font-size:11.5px;font-weight:800;letter-spacing:.04em;transition:background-color var(--t),color var(--t);}
-.ia-campo-btn svg{width:15px;height:15px;}
-.ia-campo-btn:hover,.ia-campo-btn.on{background:var(--acento);color:#fff;}
+label.rot.rot-ia{display:flex;align-items:center;gap:10px;min-height:34px;margin-bottom:8px;}
+/* mesmo desenho das outras entradas de IA (contorno em degradê), em tamanho de rótulo */
+.ia-campo-btn{margin-left:auto;flex:none;height:34px;padding:0 13px 0 11px;border-radius:10px;display:inline-flex;align-items:center;gap:7px;
+  justify-content:center;border:1.5px solid transparent;
+  background:linear-gradient(var(--card),var(--card)) padding-box,var(--grad-curto) border-box;color:var(--ink);
+  font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:0;text-transform:none;white-space:nowrap;
+  transition:box-shadow var(--t),filter var(--t);}
+.ia-campo-btn svg{width:16px;height:16px;color:var(--acento);}
+.ia-campo-btn:hover{box-shadow:0 0 0 3px var(--acento-suave);}
+.ia-campo-btn.on{background:var(--grad-curto) border-box;color:#fff;}
+.ia-campo-btn.on svg{color:#fff;}
 .ia-campo-btn:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 .ia-campo-painel{margin-bottom:4px;}
 
 .ia-linha-acao{display:flex;margin:-4px 0 12px;}
 .ia-linha-acao.direita{justify-content:flex-end;}
 .ia-linha-acao.centro{justify-content:center;margin:12px 0 0;}
-.bloco-pilares .ia-linha-acao{margin:8px 0 0;}
-.pilar-corpo > .ia-entrada{margin-top:2px;}
+.bloco-pilares .ia-linha-acao{margin:12px 0 0;}
+.pilar-corpo > .ia-entrada{margin-top:6px;}
 
 .ia-jan-cab{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .ia-jan-cab .ia-titulo{font-family:'Archivo';font-size:19px;font-weight:800;letter-spacing:-.02em;gap:9px;}
@@ -289,7 +294,9 @@ label.rot.rot-ia{display:flex;align-items:center;gap:8px;min-height:30px;}
 
 @media (max-width:720px){
   /* alvo de toque maior sem aumentar muito a altura da linha do rótulo */
-  .ia-campo-btn{height:38px;padding:0 14px 0 11px;margin:-4px 0 -4px auto;font-size:12.5px;}
+  .ia-campo-btn{height:40px;padding:0 14px 0 12px;font-size:13px;}
+  label.rot.rot-ia{min-height:40px;}
+  .ia-passos li{padding:8px;justify-content:center;} .ia-passos li span{display:none;} .ia-passos li.on span{display:inline;}
   .ia-campo-btn svg{width:17px;height:17px;}
   .ia-qtd{display:flex;}
   .ia-qtd button{flex:1;min-height:44px;}

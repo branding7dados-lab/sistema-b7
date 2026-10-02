@@ -7,6 +7,9 @@
 //
 //   campo                trabalha UM campo de texto (da estratégia, de um
 //                        pilar ou de um conteúdo) e devolve texto
+//   sugerir_estrategia   propõe os campos da estratégia de uma linha nova,
+//                        a partir da Inteligência do cliente e da linha
+//                        anterior DO MESMO cliente (pacote 2026-10-02-z)
 //   sugerir_pilares      devolve uma lista de pilares possíveis
 //   sugerir_conteudos    devolve uma lista de ideias de conteúdo
 //   revisar_estrategia   devolve observações sobre a estratégia
@@ -20,6 +23,9 @@
 // montarMensagens(). Nunca vai: outra linha, outro mês, outro cliente,
 // roteiros, gravações, demandas de vídeo ou de design, aprovações,
 // observações internas do cliente, links de referência, pessoas.
+// Exceção consciente: sugerir_estrategia lê a linha ANTERIOR DO MESMO
+// cliente (estratégia e pilares) para dar continuidade, e as sugestões
+// leem o cadastro do cliente (Inteligência e produtos, sem preço).
 //
 // As listas voltam em JSON e são VALIDADAS aqui (limpador): tipo de
 // pilar e formato fora das listas do B7 são descartados, textos são
@@ -30,7 +36,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { Mensagem } from './provedor.ts';
 import { IMPORTANCIAS, REVISOR, temNota } from './analise.ts';
 
-export const OPERACOES = ['campo', 'sugerir_pilares', 'sugerir_conteudos', 'revisar_estrategia', 'revisar_linha'] as const;
+export const OPERACOES = ['campo', 'sugerir_estrategia', 'sugerir_pilares', 'sugerir_conteudos', 'revisar_estrategia', 'revisar_linha'] as const;
 export type Operacao = typeof OPERACOES[number];
 export const ACOES_CAMPO = ['melhorar', 'clarear', 'desenvolver', 'resumir', 'variacao', 'encurtar', 'naturalizar', 'criar', 'instrucao', 'hashtags'] as const;
 export type AcaoCampo = typeof ACOES_CAMPO[number];
@@ -126,7 +132,7 @@ export function validar(corpo: unknown): { ok: true; pedido: Pedido } | { ok: fa
       if (!uuid(c.pilar_id)) return { ok: false };
       p.pilarId = c.pilar_id;
     }
-  } else if (operacao !== 'sugerir_pilares') {
+  } else if (operacao !== 'sugerir_pilares' && operacao !== 'sugerir_estrategia') {
     p.instrucao = null;                    /* revisões não aceitam instrução livre */
   }
   return { ok: true, pedido: p };
@@ -148,8 +154,12 @@ export function limiteDeSaida(p: Pedido): number {
 export const pedeJson = (p: Pedido) => p.operacao !== 'campo';
 /** Formato da resposta estruturada — só a revisão do conjunto usa. */
 export function esquema(p: Pedido): Record<string, unknown> | undefined {
-  if (p.operacao !== 'revisar_linha') return undefined;
   const T = { type: 'STRING' };
+  if (p.operacao === 'sugerir_estrategia') {
+    return { type: 'OBJECT', required: ['objetivo', 'posicionamento', 'tom_voz', 'puv', 'percepcao'],
+      properties: { objetivo: T, posicionamento: T, tom_voz: T, puv: T, percepcao: T } };
+  }
+  if (p.operacao !== 'revisar_linha') return undefined;
   return { type: 'OBJECT', required: ['resumo', 'observacoes'], properties: { resumo: T, observacoes: { type: 'ARRAY', items: {
     type: 'OBJECT', required: ['tipo', 'importancia', 'conteudos', 'titulo', 'texto', 'sugestao'],
     properties: { tipo: { type: 'STRING', enum: TIPOS_REVISAO_LINHA }, importancia: { type: 'STRING', enum: IMPORTANCIAS },
@@ -170,6 +180,11 @@ export type Contexto = {
   conteudos: Conteudo[];
   /** só carregado quando o alvo é um conteúdo */
   alvoConteudo: Record<string, string> | null;
+  /** só nas sugestões: o que o cadastro do cliente diz (público, voz, produtos), já em linhas de prompt */
+  sobreCliente: string[];
+  /** só em sugerir_estrategia: a linha editorial anterior do MESMO cliente, em linhas de prompt */
+  anterior: string[];
+  instrucao: string;
 };
 const corta = (v: unknown, n: number) => String(v ?? '').replace(/[ \t]+/g, ' ').trim().slice(0, n);
 
@@ -186,7 +201,7 @@ export async function carregarContexto(sb: SupabaseClient, p: Pedido): Promise<C
 
   const [cli, intel, pil] = await Promise.all([
     sb.from('clientes').select('nome').eq('id', l.client_id).maybeSingle(),
-    sb.from('cliente_inteligencia').select('nicho, descricao, publico_principal').eq('client_id', l.client_id).maybeSingle(),
+    sb.from('cliente_inteligencia').select('nicho, descricao, publico_principal, publico_dores, publico_desejos, publico_objecoes, voz_tom, voz_caracteristicas, voz_evitar, posicionamento, puv, percepcao').eq('client_id', l.client_id).maybeSingle(),
     sb.from('pilares').select('id, nome, funil, objetivo, percentual').eq('linha_id', l.id).order('position', { ascending: true })
   ]);
   const pilares: Pilar[] = (pil.data || []).map(x => ({
@@ -223,8 +238,44 @@ export async function carregarContexto(sb: SupabaseClient, p: Pedido): Promise<C
     };
   }
 
-  const i = intel.data || {} as Record<string, unknown>;
+  const i = (intel.data || {}) as Record<string, unknown>;
+
+  /* SUGESTÕES: quanto mais a IA sabe do cliente, menos genérico sai. Vai
+     só o que está no cadastro DESTE cliente; preço não vai. */
+  const sobreCliente: string[] = [], anterior: string[] = [];
+  if (p.operacao.startsWith('sugerir')) {
+    const par = (rot: string, v: unknown, n: number) => { const s = corta(v, n); if (s.length >= 3) sobreCliente.push(rot + ': <<<' + s + '>>>'); };
+    par('Dores do público', i.publico_dores, 400); par('Desejos do público', i.publico_desejos, 400); par('Objeções do público', i.publico_objecoes, 400);
+    par('Tom de voz da marca', i.voz_tom, 300); par('Características da voz', i.voz_caracteristicas, 300); par('O que a marca evita dizer', i.voz_evitar, 300);
+    par('Posicionamento no cadastro', i.posicionamento, 500); par('Proposta de valor no cadastro', i.puv, 400); par('Percepção desejada no cadastro', i.percepcao, 400);
+    const { data: prods } = await sb.from('produtos').select('nome, descricao, beneficios, diferenciais')
+      .eq('client_id', l.client_id).is('deleted_at', null).order('position', { ascending: true }).limit(8);
+    (prods || []).forEach(x => {
+      const nome = corta(x.nome, 80); if (!nome) return;
+      const det = [corta(x.descricao, 200), corta(x.beneficios, 160), corta(x.diferenciais, 160)].filter(Boolean).join(' | ');
+      sobreCliente.push('Produto/serviço: <<<' + nome + (det ? ' — ' + det : '') + '>>>');
+    });
+  }
+  if (p.operacao === 'sugerir_estrategia') {
+    /* a linha anterior do mesmo cliente dá continuidade: o que vinha sendo trabalhado */
+    const { data: ant } = await sb.from('linhas_editoriais').select('id, mes, ano, objetivo, posicionamento, tom_voz, puv, percepcao')
+      .eq('client_id', l.client_id).neq('id', l.id).is('deleted_at', null)
+      .order('ano', { ascending: false }).order('mes', { ascending: false }).limit(6);
+    const a = (ant || []).find(x => (Number(x.ano) < Number(l.ano) || (Number(x.ano) === Number(l.ano) && Number(x.mes) < Number(l.mes))) &&
+      [x.objetivo, x.posicionamento, x.tom_voz].some(v => corta(v, 20).length >= 12));
+    if (a) {
+      anterior.push('Linha de ' + (MESES[Number(a.mes) - 1] || '') + ' de ' + a.ano);
+      const par = (rot: string, v: unknown, n: number) => { const s = corta(v, n); if (s.length >= 3) anterior.push(rot + ': <<<' + s + '>>>'); };
+      par('Objetivo', a.objetivo, 700); par('Posicionamento', a.posicionamento, 500); par('Tom de voz', a.tom_voz, 300);
+      par('Proposta de valor', a.puv, 300); par('Percepção desejada', a.percepcao, 300);
+      const { data: pa } = await sb.from('pilares').select('nome').eq('linha_id', a.id).order('position', { ascending: true });
+      const nomes = (pa || []).map(x => corta(x.nome, 40)).filter(Boolean);
+      if (nomes.length) anterior.push('Pilares usados: ' + nomes.join(', '));
+    }
+  }
+
   return {
+    sobreCliente, anterior, instrucao: p.instrucao || '',
     linhaId: l.id, cliente: corta(cli.data && cli.data.nome, 120),
     nicho: corta(i.nicho, 160), descricaoCliente: corta(i.descricao, 600), publico: corta(i.publico_principal, 300),
     mes: Number(l.mes) || 0, ano: Number(l.ano) || 0, canais: corta(l.canais, 160), meta: l.meta_conteudos ? Number(l.meta_conteudos) : null,
@@ -255,8 +306,9 @@ export function contextoSuficiente(p: Pedido, c: Contexto): boolean {
     if (p.alvoTipo === 'linha') return Object.keys(outros).some(k => k !== p.campo && outros[k].length >= 12) || c.descricaoCliente.length >= 12;
     return temEstrategia(c);
   }
-  if (p.operacao === 'sugerir_pilares') return temEstrategia(c);
-  if (p.operacao === 'sugerir_conteudos') return temEstrategia(c) || c.pilares.some(x => x.objetivo.length >= 12);
+  if (p.operacao === 'sugerir_estrategia') return temEstrategia(c) || c.sobreCliente.length > 0 || c.anterior.length > 0 || c.instrucao.length >= 12;
+  if (p.operacao === 'sugerir_pilares') return temEstrategia(c) || c.sobreCliente.length >= 2;
+  if (p.operacao === 'sugerir_conteudos') return temEstrategia(c) || c.pilares.some(x => x.objetivo.length >= 12) || c.sobreCliente.length >= 2;
   if (p.operacao === 'revisar_estrategia') {
     return [c.objetivo, c.posicionamento, c.tomVoz, c.puv, c.percepcao].filter(v => v.length >= 12).length >= 2;
   }
@@ -372,8 +424,27 @@ export function montarMensagens(p: Pedido, c: Contexto): Mensagem[] {
   /* daqui para baixo: respostas em lista (JSON) */
   if (c.descricaoCliente) u.push('Sobre o cliente: <<<' + c.descricaoCliente + '>>>');
   if (c.publico && p.operacao !== 'revisar_estrategia') u.push('Público principal: <<<' + c.publico + '>>>');
+  if (c.sobreCliente.length) u.push('', 'O QUE O CADASTRO DO CLIENTE DIZ', ...c.sobreCliente);
   const e = estrategia(c);
-  if (e.length) u.push('', 'ESTRATÉGIA DO MÊS', ...e);
+  if (e.length) u.push('', p.operacao === 'sugerir_estrategia' ? 'O QUE JÁ ESTÁ ESCRITO NESTA LINHA (mantenha a direção; pode melhorar)' : 'ESTRATÉGIA DO MÊS', ...e);
+
+  if (p.operacao === 'sugerir_estrategia') {
+    if (c.anterior.length) u.push('', 'LINHA EDITORIAL ANTERIOR DESTE CLIENTE (referência de continuidade; não copie)', ...c.anterior);
+    if (c.canais) u.push('Canais: ' + c.canais);
+    u.push('', 'TAREFA',
+      'Proponha a ESTRATÉGIA da linha editorial de ' + periodo(c) + ' para este cliente. É uma proposta para a equipe revisar.',
+      'Escreva cinco campos, cada um específico deste cliente (se servir para qualquer empresa do mesmo ramo, está genérico demais):',
+      '- "objetivo": o que o conteúdo deste mês precisa alcançar para o negócio e de que jeito (que tipo de conteúdo puxa o quê). De 2 a 4 frases, até 600 caracteres.',
+      '- "posicionamento": como a marca quer ser vista e o que a diferencia, a partir do cadastro. De 1 a 3 frases, até 450 caracteres.',
+      '- "tom_voz": COMO a marca fala (jeito, ritmo, o que evita). De 1 a 3 frases, até 320 caracteres.',
+      '- "puv": a proposta única de valor: por que escolher este cliente e não outro. De 1 a 2 frases, até 320 caracteres.',
+      '- "percepcao": o que o público deve pensar e sentir sobre a marca depois de ver os conteúdos do mês. De 1 a 2 frases, até 320 caracteres.',
+      'Se houver linha anterior, dê continuidade ao que vinha sendo trabalhado, com um passo adiante — não repita o texto dela.',
+      'Não prometa resultado (seguidores, vendas, alcance em números). Não invente serviço, diferencial, prêmio nem dado que não esteja acima.');
+    if (p.instrucao) u.push('Pedido de quem está montando a linha (tem prioridade sobre a continuidade): «' + p.instrucao + '»');
+    u.push('', 'FORMATO DA RESPOSTA', '{"objetivo":"…","posicionamento":"…","tom_voz":"…","puv":"…","percepcao":"…"}');
+    return [{ role: 'system', content: BASE + '\n' + SO_JSON }, { role: 'user', content: u.join('\n') }];
+  }
 
   if (p.operacao === 'sugerir_pilares') {
     const livres = tiposLivres(c);
@@ -557,7 +628,15 @@ export function limpador(p: Pedido, c: Contexto): (bruto: string) => string {
   return bruto => {
     const o = extrairJson(bruto);
     let itens: Record<string, unknown>[] = [];
-    if (p.operacao === 'sugerir_pilares') {
+    if (p.operacao === 'sugerir_estrategia') {
+      /* um item por campo da estratégia; a tela aplica só os que a pessoa marcar */
+      const limites: Record<string, number> = { objetivo: 900, posicionamento: 700, tom_voz: 500, puv: 500, percepcao: 500 };
+      for (const campo of Object.keys(limites)) {
+        const texto = tx(o && o[campo], limites[campo]);
+        if (texto.length >= 20) itens.push({ campo, rotulo: CAMPOS.linha[campo].rotulo, texto });
+      }
+      return itens.length >= 2 ? JSON.stringify({ itens }) : '';
+    } else if (p.operacao === 'sugerir_pilares') {
       const livres = tiposLivres(c), vistos = new Set<string>();
       for (const x of lista(o, 'pilares')) {
         const tipo = livres.find(t => norm(t) === norm(tx(x.tipo ?? x.nome, 40)));

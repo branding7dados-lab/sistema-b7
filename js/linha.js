@@ -407,12 +407,28 @@ B7.Linha = (function () {
     const b = B7.IALinha ? B7.IALinha.botao(operacao, rotulo) : '';
     return b ? '<div class="ia-linha-acao' + (alinhar ? ' ' + alinhar : '') + '">' + b + '</div>' : '';
   }
-  const temBaseParaIdeias = () => [L.linha.objetivo, L.linha.posicionamento, L.linha.puv, L.linha.percepcao]
-    .some(v => String(v || '').trim().length >= 12) || L.pilares.some(p => String(p.objetivo || '').trim().length >= 12);
+  /* Bloco da IA no topo de cada aba: as ações de IA daquela aba, juntas e
+     no mesmo lugar (em vez de botões soltos pela tela). */
+  function iaBloco(aba) {
+    if (!B7.IALinha || !B7.IALinha.bloco) return '';
+    return B7.IALinha.bloco({ aba: aba, conteudos: L.conteudos.length, pilares: L.pilares.length,
+      estrategia: [L.linha.objetivo, L.linha.posicionamento, L.linha.tom_voz, L.linha.puv, L.linha.percepcao]
+        .some(v => String(v || '').trim().length >= 12) });
+  }
 
   const iaHooks = {
     linhaId: () => L.linha.id,
+    linha: () => L.linha,
     pilares: () => L.pilares,
+    /* estratégia proposta pela IA: só os campos que a pessoa marcou, gravados
+       de uma vez pelo mesmo caminho do "Usar posicionamento do cliente" */
+    aplicarEstrategia: async patch => {
+      await B7.Save.agora().catch(() => {});
+      await B7.DB.atualizarLinha(L.linha.id, patch);
+      Object.assign(L.linha, patch);
+      B7.DB.registrar({ tipo: 'editar', entidade: 'linha', id: L.linha.id,
+        cliente: L.linha.client_id, texto: 'Estratégia de ' + (L.linha.nome || 'linha editorial') + ' preenchida com sugestão da IA' });
+    },
     /* um conteúdo sugerido vira um conteúdo comum: mesma criação do
        "+ Novo conteúdo", já com título, ideia e pilar preenchidos */
     criarConteudo: async s => {
@@ -459,7 +475,7 @@ B7.Linha = (function () {
 
     /* Linha nova e vazia: nada de gráfico de zero. Só o convite para começar. */
     if (!total) {
-      return '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
+      return iaBloco('geral') + '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
         '<b>Comece o planejamento de ' + esc(L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano)) + '.</b>' +
         '<p>Crie o primeiro conteúdo do mês. As informações de estratégia podem vir depois — ' +
         'ou nunca, se não fizerem falta.</p>' +
@@ -480,8 +496,7 @@ B7.Linha = (function () {
       '<div class="mini-metricas">' + metricas.map(([n, r]) =>
         '<div class="mini-metrica"><b>' + n + '</b><span>' + r + '</span></div>').join('') +
       '</div>' +
-      /* revisar o planejamento só faz sentido com alguns conteúdos na linha */
-      (total >= 3 ? iaAcao('revisar_linha', 'Revisar linha editorial') : '') +
+      iaBloco('geral') +
 
       '<div class="colunas"><div>' +
         /* um único formato não merece gráfico: a métrica acima já disse tudo */
@@ -527,7 +542,7 @@ B7.Linha = (function () {
 
     return '<p class="nota-secao">Todos os campos desta aba são opcionais. O que estiver vazio ' +
       'simplesmente não aparece no documento.</p>' +
-      iaAcao('revisar_estrategia', 'Revisar estratégia') +
+      iaBloco('estrategia') +
 
       '<div class="bloco mb"><h3>Referências do mês</h3>' +
         '<p class="ajuda" style="margin-bottom:10px">Links que servem de base para os ' +
@@ -767,16 +782,14 @@ B7.Linha = (function () {
   /* --------------------------------------------------------- CRIATIVOS */
   function criativos() {
     if (!L.conteudos.length) {
-      return '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
+      /* sem base (estratégia, pilares ou cadastro do cliente) o servidor avisa em vez de inventar */
+      return iaBloco('criativos') + '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
         '<b>Nenhum conteúdo ainda.</b>' +
         '<p>Cada conteúdo vira um card com a estrutura do formato: reel, card, carrossel ou story.</p>' +
         (C.souDesignerSomenteLeitura() ? '' : '<div class="acoes"><button class="b pri" data-novo-conteudo>+ Novo conteúdo</button></div>') +
-        /* sem conteúdo ainda: a IA só é oferecida quando há estratégia ou
-           pilares de onde tirar as ideias (sem base, ela inventaria) */
-        (temBaseParaIdeias() ? iaAcao('sugerir_conteudos', 'Sugerir primeiros conteúdos', 'centro') : '') +
         '</div>';
     }
-    return iaAcao('sugerir_conteudos', 'Sugerir conteúdos', 'direita') +
+    return iaBloco('criativos') +
       '<div class="grade-criativos" id="lista-criativos">' +
       L.conteudos.map((c, i) => cardConteudo(c, i)).join('') + '</div>' +
       (C.souDesignerSomenteLeitura() ? '' : '<button class="add-largo" data-novo-conteudo>+ NOVO CONTEÚDO</button>');
