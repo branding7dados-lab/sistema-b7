@@ -31,7 +31,7 @@ import type { Mensagem } from './provedor.ts';
 
 export const OPERACOES = ['campo', 'sugerir_pilares', 'sugerir_conteudos', 'revisar_estrategia', 'revisar_linha'] as const;
 export type Operacao = typeof OPERACOES[number];
-export const ACOES_CAMPO = ['melhorar', 'clarear', 'desenvolver', 'resumir', 'variacao', 'encurtar', 'naturalizar', 'criar', 'instrucao'] as const;
+export const ACOES_CAMPO = ['melhorar', 'clarear', 'desenvolver', 'resumir', 'variacao', 'encurtar', 'naturalizar', 'criar', 'instrucao', 'hashtags'] as const;
 export type AcaoCampo = typeof ACOES_CAMPO[number];
 
 /* as mesmas listas fechadas da tela (js/conteudo.js) e do banco */
@@ -42,7 +42,7 @@ const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julh
 
 /* Campos que aceitam assistência. Só existem aqui campos que JÁ existem
    no B7; `natureza` decide o tamanho e o jeito do texto. */
-type Natureza = 'estrategia' | 'tom' | 'pilar' | 'titulo' | 'chamada' | 'cta' | 'conceito' | 'legenda';
+type Natureza = 'estrategia' | 'tom' | 'pilar' | 'titulo' | 'chamada' | 'cta' | 'conceito' | 'legenda' | 'direcao';
 type AlvoTipo = 'linha' | 'pilar' | 'conteudo';
 export const CAMPOS: Record<AlvoTipo, Record<string, { rotulo: string; natureza: Natureza }>> = {
   linha: {
@@ -61,7 +61,10 @@ export const CAMPOS: Record<AlvoTipo, Record<string, { rotulo: string; natureza:
     headline: { rotulo: 'Headline', natureza: 'chamada' },
     sub_headline: { rotulo: 'Sub-headline', natureza: 'chamada' },
     cta: { rotulo: 'CTA', natureza: 'cta' },
-    legenda: { rotulo: 'Legenda', natureza: 'legenda' }
+    legenda: { rotulo: 'Legenda', natureza: 'legenda' },
+    /* orientação para quem cria a arte — é o briefing que a peça de Design lê */
+    direcao: { rotulo: 'Direção visual', natureza: 'direcao' },
+    observacao_design: { rotulo: 'Observação para o design', natureza: 'direcao' }
   }
 };
 
@@ -110,6 +113,8 @@ export function validar(corpo: unknown): { ok: true; pedido: Pedido } | { ok: fa
     /* sem texto só faz sentido criar (ou seguir uma instrução) */
     if (!p.texto && acao !== 'criar' && acao !== 'instrucao') return { ok: false };
     if (p.texto && acao === 'criar') return { ok: false };
+    /* hashtags: só na legenda, e só quando já existe legenda */
+    if (acao === 'hashtags' && (alvoTipo !== 'conteudo' || c.campo !== 'legenda')) return { ok: false };
   } else if (operacao === 'sugerir_conteudos') {
     const q = c.quantidade === undefined ? 5 : Number(c.quantidade);
     if (![3, 5, 8].includes(q)) return { ok: false };
@@ -132,7 +137,7 @@ export function limiteDeSaida(p: Pedido): number {
   if (p.operacao === 'sugerir_conteudos') return p.quantidade >= 8 ? 3072 : 2048;
   if (p.operacao === 'campo') {
     const n = CAMPOS[p.alvoTipo!][p.campo!].natureza;
-    return (n === 'titulo' || n === 'chamada' || n === 'cta') ? 512 : 1536;
+    return (n === 'titulo' || n === 'chamada' || n === 'cta' || p.acao === 'hashtags') ? 512 : 1536;
   }
   return 2048;
 }
@@ -188,13 +193,13 @@ export async function carregarContexto(sb: SupabaseClient, p: Pedido): Promise<C
   let alvoConteudo: Record<string, string> | null = null;
   if (p.alvoTipo === 'conteudo') {
     const { data: c } = await sb.from('conteudos')
-      .select('id, linha_id, tipo, titulo, objetivo, ideia_geral, headline, sub_headline, cta, legenda, pilar_id, canal, deleted_at')
+      .select('id, linha_id, tipo, titulo, objetivo, ideia_geral, headline, sub_headline, cta, legenda, direcao, pilar_id, canal, deleted_at')
       .eq('id', p.alvoId).maybeSingle();
     if (!c || c.deleted_at || c.linha_id !== l.id) return null;
     alvoConteudo = {
       tipo: corta(c.tipo, 12), titulo: corta(c.titulo, 200), objetivo: corta(c.objetivo, 500), ideia_geral: corta(c.ideia_geral, 900),
       headline: corta(c.headline, 200), sub_headline: corta(c.sub_headline, 200), cta: corta(c.cta, 200),
-      legenda: corta(c.legenda, 1500), canal: corta(c.canal, 40), pilar_id: c.pilar_id || ''
+      legenda: corta(c.legenda, 1500), direcao: corta(c.direcao, 600), canal: corta(c.canal, 40), pilar_id: c.pilar_id || ''
     };
   }
 
@@ -269,7 +274,8 @@ const FORMA: Record<Natureza, string> = {
   chamada: 'É uma chamada que vai escrita na peça: UMA linha, no máximo 70 caracteres.',
   cta: 'É uma chamada para ação: UMA frase curta, no máximo 90 caracteres, dizendo o que a pessoa deve fazer em seguida.',
   conceito: 'É a descrição de um conteúdo para a equipe: de 2 a 5 frases, no máximo 600 caracteres, dizendo o que o conteúdo comunica e por qual ângulo. Não escreva roteiro, cenas nem falas: o roteiro é feito em outro lugar.',
-  legenda: 'É a legenda do post: texto corrido com quebras de linha onde fizer sentido, no máximo 900 caracteres. Emojis só com moderação. Hashtags só se o texto original já tiver.'
+  legenda: 'É a legenda do post: texto corrido com quebras de linha onde fizer sentido, no máximo 900 caracteres. Emojis só com moderação. Hashtags só se o texto original já tiver.',
+  direcao: 'É uma orientação para o designer que vai criar a arte: de 2 a 5 frases, no máximo 500 caracteres, dizendo o que a peça deve mostrar, o que ganha destaque e qual o clima visual. Não invente cores, fontes, fotos, logotipos nem elementos da marca que não estejam no contexto. Não cite medidas, ferramentas nem nomes de arquivo. Não reescreva a headline nem a legenda.'
 };
 
 function tarefaCampo(p: Pedido, rotulo: string): string {
@@ -282,6 +288,7 @@ function tarefaCampo(p: Pedido, rotulo: string): string {
     case 'encurtar': return 'Encurte o texto de "' + rotulo + '", mantendo a mensagem principal.';
     case 'naturalizar': return 'Deixe o texto de "' + rotulo + '" mais natural e humano, sem soar comercial.';
     case 'criar': return 'O campo "' + rotulo + '" está vazio. Escreva uma SUGESTÃO para ele, coerente com o contexto. Se o contexto não der base, seja genérico em vez de inventar.';
+    case 'hashtags': return 'Sugira hashtags para a legenda acima. Responda SOMENTE com UMA linha contendo de 5 a 8 hashtags em português, separadas por espaço, específicas do assunto deste conteúdo e do nicho do cliente. Não repita hashtags que a legenda já tem. Não use hashtags genéricas (#love, #instagood, #follow) nem nomes de campanha, cidade ou marca que não estejam no contexto. Não reescreva a legenda.';
     case 'instrucao': return (p.texto ? 'Aplique ao texto de "' + rotulo + '"' : 'Escreva o campo "' + rotulo + '" seguindo') + ' esta instrução de quem está montando a linha editorial: «' + p.instrucao + '»';
   }
 }
@@ -333,11 +340,12 @@ export function montarMensagens(p: Pedido, c: Contexto): Mensagem[] {
       u.push('', 'CONTEÚDO EM TRABALHO', 'Formato: ' + (a.tipo || 'não definido') + (a.canal ? ' · Canal: ' + a.canal : ''));
       if (pilar && pilar.nome) u.push('Pilar: ' + pilar.nome + (pilar.objetivo ? ' — <<<' + pilar.objetivo + '>>>' : ''));
       const irmaos: [string, string][] = [['titulo', 'Título'], ['objetivo', 'Objetivo'], ['ideia_geral', 'Ideia geral'], ['headline', 'Headline'], ['sub_headline', 'Sub-headline'], ['cta', 'CTA']];
-      if (meta.natureza === 'legenda' || meta.natureza === 'cta' || meta.natureza === 'chamada' || meta.natureza === 'titulo' || meta.natureza === 'conceito') {
+      if (meta.natureza === 'direcao') irmaos.push(['direcao', 'Direção visual']);
+      if (meta.natureza === 'legenda' || meta.natureza === 'cta' || meta.natureza === 'chamada' || meta.natureza === 'titulo' || meta.natureza === 'conceito' || meta.natureza === 'direcao') {
         irmaos.filter(([k]) => k !== p.campo && a[k]).forEach(([k, r]) => u.push(r + ': <<<' + a[k] + '>>>'));
       }
     }
-    u.push('', 'CAMPO: ' + meta.rotulo, p.texto ? '<<<' + p.texto + '>>>' : '(vazio)', '', 'TAREFA', tarefaCampo(p, meta.rotulo), FORMA[meta.natureza]);
+    u.push('', 'CAMPO: ' + meta.rotulo, p.texto ? '<<<' + p.texto + '>>>' : '(vazio)', '', 'TAREFA', tarefaCampo(p, meta.rotulo), p.acao === 'hashtags' ? '' : FORMA[meta.natureza]);
     return [{ role: 'system', content: BASE + '\n' + SO_TEXTO }, { role: 'user', content: u.join('\n') }];
   }
 
@@ -459,6 +467,24 @@ const tx = (v: unknown, n: number) => String(typeof v === 'string' ? v : '').rep
 export function limpador(p: Pedido, c: Contexto): (bruto: string) => string {
   if (p.operacao === 'campo') {
     const n = CAMPOS[p.alvoTipo!][p.campo!].natureza;
+    if (p.acao === 'hashtags') {
+      /* a legenda nunca passa pelo modelo de volta: daqui só saem as
+         hashtags NOVAS, e quem monta o texto final é este código — a
+         legenda original fica intacta, com as hashtags no fim */
+      const TAG = /#[\p{L}\p{N}_]{2,40}/gu;
+      return bruto => {
+        const tem = new Set((p.texto.match(TAG) || []).map(h => norm(h)));
+        const novas: string[] = [];
+        for (const h of (limparTexto(bruto, 'legenda').match(TAG) || [])) {
+          const k = norm(h);
+          if (!k || tem.has(k)) continue;
+          tem.add(k); novas.push(h);
+          if (novas.length >= 8) break;
+        }
+        if (novas.length < 2) return '';
+        return (p.texto.replace(/\s+$/, '') + '\n\n' + novas.join(' ')).slice(0, LIMITES.saida);
+      };
+    }
     return bruto => limparTexto(bruto, n);
   }
   return bruto => {

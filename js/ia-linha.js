@@ -56,7 +56,9 @@ B7.IALinha = (function () {
     conceito: { com: [A('melhorar', 'Melhorar conceito'), A('desenvolver', 'Desenvolver ideia'), A('encurtar', 'Encurtar'), A('variacao', 'Criar outra versão')], sem: [A('criar', 'Sugerir conceito')] },
     curto:    { com: [A('melhorar', 'Melhorar'), A('variacao', 'Criar outra versão'), A('encurtar', 'Encurtar')], sem: [A('criar', 'Sugerir')] },
     cta:      { com: [A('melhorar', 'Melhorar CTA'), A('variacao', 'Criar outra versão')], sem: [A('criar', 'Sugerir CTA')] },
-    legenda:  { com: [A('melhorar', 'Melhorar legenda'), A('variacao', 'Criar outra versão'), A('encurtar', 'Encurtar'), A('naturalizar', 'Deixar mais natural')], sem: [A('criar', 'Criar legenda')] }
+    legenda:  { com: [A('melhorar', 'Melhorar legenda'), A('variacao', 'Criar outra versão'), A('encurtar', 'Encurtar'), A('naturalizar', 'Deixar mais natural'), A('hashtags', 'Sugerir hashtags')], sem: [A('criar', 'Criar legenda')] },
+    /* orientação para o designer (Direção visual / Observação para o design) */
+    direcao:  { com: [A('melhorar', 'Melhorar'), A('clarear', 'Deixar mais claro'), A('variacao', 'Criar outra versão')], sem: [A('criar', 'Sugerir orientação')] }
   };
   const CAMPOS = {
     'linhas_editoriais.objetivo': ['linha', 'longo'], 'linhas_editoriais.objetivo_detalhe': ['linha', 'longo'],
@@ -65,7 +67,8 @@ B7.IALinha = (function () {
     'pilares.objetivo': ['pilar', 'pilar'],
     'conteudos.titulo': ['conteudo', 'titulo'], 'conteudos.objetivo': ['conteudo', 'longo'], 'conteudos.ideia_geral': ['conteudo', 'conceito'],
     'conteudos.headline': ['conteudo', 'curto'], 'conteudos.sub_headline': ['conteudo', 'curto'],
-    'conteudos.cta': ['conteudo', 'cta'], 'conteudos.legenda': ['conteudo', 'legenda']
+    'conteudos.cta': ['conteudo', 'cta'], 'conteudos.legenda': ['conteudo', 'legenda'],
+    'conteudos.direcao': ['conteudo', 'direcao'], 'conteudos.observacao_design': ['conteudo', 'direcao']
   };
   const LIMITE_TEXTO = 4000, LIMITE_INSTRUCAO = 300;
   const TODOS = Object.keys(TIPOS).reduce((m, k) => { TIPOS[k].com.concat(TIPOS[k].sem).forEach(([a, r]) => { m[k + '.' + a] = r; }); return m; }, {});
