@@ -230,6 +230,9 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
 .ia-bloco-cab svg{width:18px;height:18px;color:var(--acento);flex:none;}
 .ia-bloco-cab b{font-size:14px;font-weight:800;color:var(--ink);}
 .ia-roteiro-acoes{display:flex;flex-wrap:wrap;gap:8px;}
+/* IA que escreve o texto para o cliente (js/ia-texto.js): status semanal e resumo do mês */
+.ia-texto-linha{display:flex;margin:0 0 12px;}
+.ia-texto-painel{margin:0 0 14px;}
 .ia-ach-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;}
 .ia-item-fala{font-size:14px;line-height:1.55;color:var(--ink);overflow-wrap:anywhere;}
 .ia-ach-conta{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--ink);}

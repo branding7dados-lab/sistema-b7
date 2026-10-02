@@ -15,6 +15,7 @@ B7.ResumoMes = (function () {
   const MESES = B7.UI.MESES;
   const FORMATOS = [['Reel', 'Reels'], ['Card', 'Cards'], ['Carrossel', 'Carrosséis'], ['Story', 'Stories']];
   const MAX_LINHAS = 22;
+  const leituras = new Map();     /* cliente:ano-mes → leitura do mês digitada ou aplicada (só em memória) */
 
   const pad = n => String(n).padStart(2, '0');
 
@@ -43,12 +44,18 @@ B7.ResumoMes = (function () {
       (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>';
   }
 
-  function folhaHTML(cliente, ano, mes, d) {
+  /* `leitura`: parágrafo opcional que abre a folha (escrito pela equipe,
+     com ou sem a ajuda da IA). Ocupa o lugar de algumas linhas da lista. */
+  const LEITURA_MAX = 600;
+  function folhaHTML(cliente, ano, mes, d, leitura) {
     const r = calcular(d);
     const temLinha = (d.linhas || []).length > 0;
     const lista = (d.conteudos || []).slice().sort((a, b) =>
       String(a.data_postagem || '9999').localeCompare(String(b.data_postagem || '9999')));
-    const visiveis = lista.slice(0, MAX_LINHAS);
+    leitura = String(leitura || '').replace(/\s+/g, ' ').trim().slice(0, LEITURA_MAX);
+    /* ~98 caracteres por linha de 20px + título e respiro; cada linha da lista tem 27px */
+    const custo = leitura ? Math.ceil((Math.ceil(leitura.length / 98) * 20 + 58) / 27) : 0;
+    const visiveis = lista.slice(0, Math.max(6, MAX_LINHAS - custo));
     const logo = cliente.logo_url
       ? '<img class="rm-logo" src="' + esc(cliente.logo_url) + '" alt="" crossorigin="anonymous">'
       : '<span class="rm-logo rm-logo-ini">' + esc(B7.UI.iniciais(cliente.nome)) + '</span>';
@@ -67,6 +74,8 @@ B7.ResumoMes = (function () {
         kpi(r.videosEntregues, r.videos || null, 'Vídeos entregues', r.videos ? 'das demandas do mês' : 'Nenhuma demanda neste mês') +
         kpi(r.gravadas, r.gravacoes || null, 'Gravações realizadas', r.gravacoes ? 'das gravações do mês' : 'Nenhuma gravação neste mês') +
       '</section>' +
+
+      (leitura ? '<section class="rm-bloco rm-leitura"><h2>Leitura do mês</h2><p>' + esc(leitura) + '</p></section>' : '') +
 
       (r.formatos.length ? '<section class="rm-bloco"><h2>Conteúdos por formato</h2><div class="rm-formatos">' +
         r.formatos.map(f => '<div class="rm-formato"><span>' + esc(f.rotulo) + '</span>' +
@@ -109,13 +118,46 @@ B7.ResumoMes = (function () {
       '<div class="rm-barra-topo"><select class="campo fina" id="rm-mes" aria-label="Mês">' +
         meses.map(([v, r]) => '<option value="' + v + '">' + esc(r) + '</option>').join('') + '</select>' +
         '<span class="rm-aviso" id="rm-aviso"></span></div>' +
+      '<div class="rm-leitura-cx">' +
+        '<label class="rot" for="rm-leitura">LEITURA DO MÊS <span class="leve">— opcional, abre a folha</span></label>' +
+        '<textarea class="campo" id="rm-leitura" rows="3" maxlength="' + LEITURA_MAX + '" ' +
+          'placeholder="Um parágrafo sobre o mês para o cliente. Escreva ou peça para a IA."></textarea>' +
+        (B7.IATexto && B7.IATexto.ligado() ? '<div class="ia-texto-linha">' + B7.IATexto.botaoHTML('Escrever com IA') + '</div>' + B7.IATexto.painelHTML() : '') +
+      '</div>' +
       '<div class="rm-previa" id="rm-previa"><div class="rm-carregando">Montando o resumo…</div></div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button>' +
         '<button class="b pri" id="rm-baixar" disabled>Baixar PDF</button></div>',
       { larga: true, extra: 'modal-resumo', aoFechar: () => window.removeEventListener('resize', ajustar) });
 
     const previa = m.querySelector('#rm-previa'), sel = m.querySelector('#rm-mes'), baixar = m.querySelector('#rm-baixar');
-    let atual = null, vez = 0;
+    const campoLeitura = m.querySelector('#rm-leitura');
+    let atual = null, vez = 0, dadosMes = null;
+    const chaveMes = () => cliente.id + ':' + sel.value;
+
+    /* a leitura não é gravada no banco: fica guardada enquanto o B7 está
+       aberto, por cliente e mês, e sai na folha do jeito que está no campo */
+    function redesenhar() {
+      if (!dadosMes) return;
+      const [ano, mes] = sel.value.split('-').map(Number);
+      atual = { ano, mes, html: folhaHTML(cliente, ano, mes, dadosMes, campoLeitura.value) };
+      previa.innerHTML = atual.html;
+      ajustar();
+    }
+    campoLeitura.oninput = B7.UI.debounce(() => { leituras.set(chaveMes(), campoLeitura.value); redesenhar(); }, 250);
+    function ligarIA() {
+      if (!B7.IATexto) return;
+      const [ano, mes] = sel.value.split('-').map(Number);
+      B7.IATexto.ligar(m.querySelector('.rm-leitura-cx'), {
+        chave: 'mes:' + chaveMes(),
+        titulo: 'Leitura do mês', base: 'A partir dos números de ' + MESES[mes - 1],
+        gerando: 'Escrevendo a leitura do mês…',
+        pouco: 'Este mês ainda não tem registros para resumir.',
+        nota: 'Confira os números antes de enviar. Nada entra na folha até você aplicar.',
+        dados: () => ({ operacao: 'resumo_mes', cliente_id: cliente.id, ano: ano, mes: mes }),
+        atual: () => campoLeitura.value,
+        aplicar: texto => { campoLeitura.value = texto; leituras.set(chaveMes(), texto); redesenhar(); }
+      });
+    }
 
     function ajustar() {
       const folha = previa.querySelector('.rm-folha'); if (!folha) return;
@@ -127,14 +169,15 @@ B7.ResumoMes = (function () {
     async function carregar() {
       const [ano, mes] = sel.value.split('-').map(Number);
       const minha = ++vez;
-      baixar.disabled = true; atual = null;
+      baixar.disabled = true; atual = null; dadosMes = null;
+      campoLeitura.value = leituras.get(chaveMes()) || '';
+      ligarIA();
       previa.style.height = ''; previa.innerHTML = '<div class="rm-carregando">Montando o resumo…</div>';
       try {
         const d = await B7.DB.resumoMensal(cliente.id, ano, mes);
         if (minha !== vez || !m.isConnected) return;
-        atual = { ano, mes, html: folhaHTML(cliente, ano, mes, d) };
-        previa.innerHTML = atual.html;
-        ajustar();
+        dadosMes = d;
+        redesenhar();
         baixar.disabled = false;
       } catch (e) {
         if (minha !== vez) return;

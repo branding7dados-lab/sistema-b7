@@ -564,6 +564,8 @@ B7.Semana = (function () {
       '<textarea class="campo cresce" rows="2" ' + t + ' data-campo="observacao_geral" ' +
       'placeholder="Algo que resume a semana para o cliente.">' +
       esc(r.observacao_geral || '') + '</textarea>' +
+      /* IA: escreve a observação a partir das demandas desta semana; só entra no campo em Aplicar */
+      (B7.IATexto && B7.IATexto.ligado() ? '<div class="ia-texto-linha">' + B7.IATexto.botaoHTML('Escrever com IA') + '</div>' + B7.IATexto.painelHTML() : '') +
       '<div class="sem-opcoes">' +
         '<label class="op-mini' + (r.mostrar_dias_vazios !== false ? ' on' : '') + '">' +
           '<input type="checkbox" data-opcao="mostrar_dias_vazios"' +
@@ -751,6 +753,25 @@ B7.Semana = (function () {
       S.expandido = S.expandido === el.dataset.expandir ? null : el.dataset.expandir;
       render();
     });
+
+    /* IA da observação geral: aplica pelo caminho da digitação (evento
+       input → autosave → prévia), como texto escrito à mão */
+    if (B7.IATexto) {
+      const campoObs = () => painel().querySelector('.sem-info [data-campo="observacao_geral"]');
+      B7.IATexto.ligar(p.querySelector('.sem-info'), {
+        chave: 'semana:' + S.relatorio.id,
+        titulo: 'Observação da semana', base: 'A partir das demandas desta semana',
+        gerando: 'Escrevendo a observação…',
+        pouco: 'Esta semana ainda não tem demandas. Adicione as demandas e tente de novo.',
+        dados: () => ({ operacao: 'status_semana', status_id: S.relatorio.id }),
+        atual: () => { const c = campoObs(); return c ? c.value : ''; },
+        aplicar: texto => {
+          const c = campoObs(); if (!c) return;
+          c.value = texto;
+          c.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+    }
 
     p.querySelectorAll('[data-nova-demanda]').forEach(b => b.onclick = () => modalDemanda(null));
     p.querySelectorAll('[data-add-dia]').forEach(b => b.onclick = () => modalDemanda(b.dataset.addDia));

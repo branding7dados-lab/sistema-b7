@@ -951,6 +951,9 @@
 .rm-kpi span{display:block;font-size:12px;font-weight:700;margin-top:9px;color:#15122B;}
 .rm-kpi small{display:block;font-size:10.5px;color:#8B85A0;margin-top:3px;line-height:1.35;}
 
+.rm-leitura-cx{margin:0 0 12px;}
+.rm-leitura-cx textarea{margin-bottom:10px;resize:vertical;}
+.rm-leitura p{margin:0;font-size:13px;line-height:20px;color:#15122B;}
 .rm-bloco h2{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8B85A0;margin:0 0 12px;}
 .rm-cresce{flex:1;min-height:0;}
 .rm-formatos{display:flex;flex-direction:column;gap:9px;}

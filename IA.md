@@ -142,6 +142,20 @@ Da observação para o ajuste: o cartão da revisão com sugestão e cena tem "A
 - **Resultado velho.** A tela guarda o resultado em memória com a "impressão" do roteiro no momento do pedido; reabrir não gasta outra chamada, e se o roteiro mudou aparece "O conteúdo mudou desde esta revisão".
 - **Registro.** `ia_uso.recurso = 'analise'`; `acao` é a operação; `entidade_tipo = 'roteiro'`.
 
+## Resumo: texto para o cliente (Status Semanal e Resumo do Mês)
+
+Pacote 2026-10-02-x. Ligada pelo mesmo `IA: { linhas: true }`. A tela é `js/ia-texto.js` (`B7.IATexto`, um painel genérico: gerar, pedir ajuste, aplicar, desfazer); a tarefa no servidor é `_shared/ia/resumo.ts` (`tarefa: 'resumo'`).
+
+| Operação | Onde | Contexto lido no servidor |
+|---|---|---|
+| `status_semana` | "Escrever com IA" na observação geral do Status Semanal (`js/semana.js`) | demandas do status (dia, tipo, título, situação, observação), sem as canceladas |
+| `resumo_mes` | "Escrever com IA" na leitura do mês (`js/resumo-mes.js`) | números do mês contados pelo servidor (as mesmas leituras de `B7.DB.resumoMensal`) e até 12 títulos publicados |
+
+- Aceitam `instrucao` opcional (até 300 caracteres).
+- `resumo_mes`: o limpador descarta a resposta se aparecer um número que não está entre os contados (ou um `%`). O detalhe por formato não vai para o modelo: nas provas ele trocava esses números.
+- A leitura do mês não é gravada no banco; fica em memória por cliente e mês.
+- Designer e cliente do Portal: recusados. `ia_uso.recurso = 'resumo'`.
+
 ## Registro de uso
 
 Tabela `ia_uso` (ver `migration_ia_uso.sql`): quem pediu, qual ação, em qual cena, se deu certo, provedor, modelo, motivo do erro, duração, tokens e tamanhos em caracteres. **Não guarda** o texto do roteiro, a instrução nem a sugestão. Só o servidor lê; não há tela para isso. O `id` da linha é o que a função devolve como `id` do pedido.
