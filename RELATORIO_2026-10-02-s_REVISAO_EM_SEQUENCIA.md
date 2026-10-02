@@ -46,6 +46,8 @@ Em página local, com **dados simulados** (3 peças em revisão, 1 produzida pel
 - "Sair da sequência": aprovar depois disso não abre a próxima.
 - Esc encerra a sequência; abrir uma peça avulsa pelo quadro não mostra a faixa.
 
+- **No site, com os dados reais e só leitura** (sessão aberta no navegador daqui): o botão aparece, abre a peça mais antiga com "peça 1 de 39" e o botão "Aprovar internamente" ativo; "Pular" leva à "peça 2 de 39"; Esc fecha. Não aprovei nem pedi ajuste em nada.
+
 ## O que NÃO foi testado
 
 - Aprovar ou pedir ajuste de verdade, com dados reais (não fiz: são decisões da revisão).
