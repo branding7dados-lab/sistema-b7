@@ -1053,6 +1053,8 @@ B7.Dashboard = (function () {
         '<span class="p"></span><span>última atividade ' + B7.UI.quando(c.ultima_atividade) + '</span></div></div>' +
       '<div class="acoes">' +
         '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button>' +
+        /* documento para enviar ao cliente, no padrão do Status Semanal: fica à vista, não no "⋯" */
+        (B7.ResumoMes && B7.Auth.ehEquipe && B7.Auth.ehEquipe() ? '<button class="b clara" data-resumo-mes>Resumo do mês</button>' : '') +
         '<button class="b clara" data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
         /* O botão de destaque saiu daqui: virou o seletor "Visualizar
            como…" da sidebar (js/previa-usuario.js), que busca entre
@@ -1062,8 +1064,7 @@ B7.Dashboard = (function () {
         '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
           '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
           '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
-          /* documento, não tela: uma folha A4 com o que foi feito no mês */
-          (B7.ResumoMes && B7.Auth.ehEquipe && B7.Auth.ehEquipe() ? '<button data-resumo-mes>Resumo do mês (PDF)</button>' : '') +
+          (B7.ResumoMes && B7.Auth.ehEquipe && B7.Auth.ehEquipe() ? '<button data-resumo-mes>Resumo do mês</button>' : '') +
           (ehAdmin() ? '<button data-ir="#/previa/' + esc(c.id) + '">Visualizar como cliente</button>' : '') +
           (window.__ultimaDoCliente ? '' : '') +
           '<hr><button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +

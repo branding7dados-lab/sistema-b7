@@ -148,8 +148,10 @@ Pacote 2026-10-02-x. Ligada pelo mesmo `IA: { linhas: true }`. A tela é `js/ia-
 
 | Operação | Onde | Contexto lido no servidor |
 |---|---|---|
-| `status_semana` | "Escrever com IA" na observação geral do Status Semanal (`js/semana.js`) | demandas do status (dia, tipo, título, situação, observação), sem as canceladas |
-| `resumo_mes` | "Escrever com IA" na leitura do mês (`js/resumo-mes.js`) | números do mês contados pelo servidor (as mesmas leituras de `B7.DB.resumoMensal`) e até 12 títulos publicados |
+| `status_semana` | "Escrever com IA" na observação geral do Status Semanal (`js/semana.js`) | demandas do status (dia, tipo, título, situação, observação), sem as canceladas; objetivo do mês, pilar e "do que trata" das demandas ligadas à linha editorial; marcação do que depende do cliente |
+| `resumo_mes` | "Escrever com IA" na leitura do mês (`js/resumo-mes.js`) | números do mês contados pelo servidor (as mesmas leituras de `B7.DB.resumoMensal`), objetivo do mês, pilares por presença, até 12 conteúdos publicados com pilar e ideia, programados e total em produção |
+
+Pacote 2026-10-02-y: o contexto ficou mais rico (era só contagem e título, e o texto saía raso) e as instruções proíbem enchimento, jargão interno, efeito inventado e cópia das anotações internas. O Resumo do Mês virou documento 4:5 no padrão do Status Semanal (`.pag45`).
 
 - Aceitam `instrucao` opcional (até 300 caracteres).
 - `resumo_mes`: o limpador descarta a resposta se aparecer um número que não está entre os contados (ou um `%`). O detalhe por formato não vai para o modelo: nas provas ele trocava esses números.

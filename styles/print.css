@@ -920,63 +920,76 @@
 .sl-pilar .sl-txt p{font-size:calc(11px * var(--fs));}
 
 /* =====================================================================
-   RESUMO DO MÊS (js/resumo-mes.js) — folha A4 por cliente e mês.
-   Cores fixas: é documento, sai sempre claro, na tela e no PDF.
+   RESUMO DO MÊS (js/resumo-mes.js) — documento 4:5 (1080 × 1350), no
+   mesmo padrão do Status Semanal: usa a casca .pag45 e as peças .ps-*
+   de styles/semana.css (cabeçalho, faixa do cliente, corpo, rodapé).
+   Aqui só o que é próprio do resumo. Cores fixas: é documento, sai
+   sempre claro, na tela e no arquivo.
    ===================================================================== */
 .modal-resumo .rm-barra-topo{display:flex;align-items:center;gap:10px;margin:14px 0 12px;}
 .modal-resumo .rm-barra-topo select{width:auto;min-width:200px;}
 .rm-aviso{font-size:12px;color:var(--ink-4);}
-.rm-previa{position:relative;overflow:hidden;border:1px solid var(--borda);border-radius:12px;background:#fff;min-height:160px;}
-.rm-carregando{padding:60px 20px;text-align:center;font-size:13px;color:#8B85A0;}
-.rm-previa .rm-folha{transform-origin:top left;}
-
-.rm-folha{width:794px;height:1123px;box-sizing:border-box;padding:46px 50px 34px;background:#fff;color:#15122B;
-  font-family:'Inter',system-ui,sans-serif;display:flex;flex-direction:column;gap:24px;overflow:hidden;text-align:left;}
-.rm-folha *{box-sizing:border-box;}
-.rm-topo{display:flex;align-items:center;gap:16px;padding-bottom:22px;border-bottom:2px solid #15122B;}
-.rm-logo{width:62px;height:62px;border-radius:16px;object-fit:contain;background:#fff;border:1px solid #E5E0EE;flex:none;}
-.rm-logo-ini{display:flex;align-items:center;justify-content:center;background:#F5F1FB;color:#7C1E85;
-  font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;}
-.rm-topo-tx{flex:1;min-width:0;}
-.rm-topo-tx small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.18em;color:#C21C83;margin-bottom:5px;}
-.rm-topo-tx h1{font-family:'Archivo',sans-serif;font-size:27px;font-weight:800;line-height:1.15;margin:0;color:#15122B;}
-.rm-mes{text-align:right;flex:none;}
-.rm-mes b{display:block;font-family:'Archivo',sans-serif;font-size:21px;font-weight:800;color:#15122B;}
-.rm-mes span{font-size:13px;color:#8B85A0;}
-
-.rm-kpis{display:flex;gap:12px;}
-.rm-kpi{flex:1;min-width:0;background:#F5F1FB;border-radius:14px;padding:16px 15px 14px;}
-.rm-kpi b{display:block;font-family:'Archivo',sans-serif;font-size:32px;font-weight:800;line-height:1;color:#15122B;}
-.rm-kpi b i{font-style:normal;font-size:17px;font-weight:700;color:#8B85A0;}
-.rm-kpi span{display:block;font-size:12px;font-weight:700;margin-top:9px;color:#15122B;}
-.rm-kpi small{display:block;font-size:10.5px;color:#8B85A0;margin-top:3px;line-height:1.35;}
-
 .rm-leitura-cx{margin:0 0 12px;}
 .rm-leitura-cx textarea{margin-bottom:10px;resize:vertical;}
-.rm-leitura p{margin:0;font-size:13px;line-height:20px;color:#15122B;}
-.rm-bloco h2{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8B85A0;margin:0 0 12px;}
-.rm-cresce{flex:1;min-height:0;}
-.rm-formatos{display:flex;flex-direction:column;gap:9px;}
-.rm-formato{display:flex;align-items:center;gap:12px;font-size:12.5px;}
-.rm-formato > span{width:86px;flex:none;font-weight:600;}
-.rm-formato > b{width:70px;flex:none;text-align:right;font-weight:600;color:#3B3557;}
-.rm-barra{flex:1;height:10px;}
-.rm-barra i{display:block;height:10px;border-radius:99px;background:#E5E0EE;overflow:hidden;min-width:10px;}
-.rm-barra u{display:block;height:10px;background:#7C1E85;border-radius:99px;text-decoration:none;}
-.rm-legenda{font-size:10.5px;color:#8B85A0;margin:10px 0 0;}
-.rm-q{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 5px 0 0;vertical-align:middle;}
-.rm-q-pub{background:#7C1E85;}
-.rm-q-plan{background:#E5E0EE;margin-left:12px;}
+.rm-previa{position:relative;flex:none;overflow:hidden;border:1px solid var(--borda);border-radius:12px;background:#fff;min-height:160px;}
+.rm-carregando{padding:60px 20px;text-align:center;font-size:13px;color:#8B85A0;}
+.rm-previa .pag45{transform-origin:top left;margin:0;box-shadow:none;}
 
-.rm-tabela{display:flex;flex-direction:column;}
-.rm-linha{display:flex;align-items:center;gap:12px;font-size:12px;height:27px;border-bottom:1px solid #EFEBF5;}
-.rm-data{width:42px;flex:none;color:#8B85A0;font-variant-numeric:tabular-nums;}
-.rm-tipo{width:74px;flex:none;font-weight:600;color:#3B3557;}
-.rm-tit{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rm-st{width:92px;flex:none;text-align:right;font-size:11px;color:#8B85A0;}
-.rm-st.ok{color:#1E8E5A;font-weight:700;}
-.rm-mais{font-size:11.5px;color:#8B85A0;padding-top:9px;}
-.rm-vazio{font-size:13px;color:#8B85A0;margin:0;}
-.rm-pe{display:flex;align-items:center;gap:9px;font-size:10.5px;color:#8B85A0;padding-top:14px;border-top:1px solid #E5E0EE;}
-.rm-pe img{width:18px;height:18px;object-fit:contain;}
-@media print{ .rm-folha{box-shadow:none;} }
+.pag45.rm45{--corpo-pad:28px 56px 26px;--corpo-gap:24px;}
+.rm45 .ps-periodo{font-size:15px;}
+
+.rm-leitura{padding:20px 26px 22px;background:var(--lilac);border-radius:16px;border-left:5px solid var(--magenta);}
+.rm-leitura small{display:block;font-size:11px;font-weight:800;letter-spacing:.22em;color:var(--magenta);margin-bottom:9px;}
+.rm-leitura p{margin:0;font-size:19px;line-height:1.5;color:var(--ink-2);}
+
+.rm-kpis{display:flex;gap:14px;}
+.rm-kpi{flex:1;min-width:0;border:1px solid var(--line);border-radius:16px;padding:20px 18px 18px;background:#fff;}
+.rm-kpi b{display:block;font-family:'Archivo',sans-serif;font-size:46px;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--ink);}
+.rm-kpi b i{font-style:normal;font-size:23px;font-weight:700;color:var(--grey);letter-spacing:0;}
+.rm-kpi span{display:block;font-size:15px;font-weight:700;margin-top:11px;color:var(--ink);}
+.rm-kpi small{display:block;font-size:12.5px;color:var(--grey);margin-top:3px;line-height:1.35;}
+.rm-kpi:first-child{background:linear-gradient(160deg,#1B1140,#3A1355);border-color:transparent;}
+.rm-kpi:first-child b,.rm-kpi:first-child span{color:#fff;}
+.rm-kpi:first-child b i{color:rgba(255,255,255,.55);}
+.rm-kpi:first-child small{color:#F09CD0;}
+
+.rm-bloco h2{font-family:'Inter',sans-serif;font-size:12px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--grey);margin:0 0 14px;}
+.rm-formatos{display:flex;flex-direction:column;gap:11px;}
+.rm-formato{display:flex;align-items:center;gap:14px;font-size:15.5px;}
+.rm-formato > span{width:108px;flex:none;font-weight:700;color:var(--ink);}
+.rm-formato > b{width:90px;flex:none;text-align:right;font-weight:700;color:var(--ink-2);}
+.rm-barra{flex:1;height:14px;}
+.rm-barra i{display:block;height:14px;border-radius:99px;background:var(--line);overflow:hidden;min-width:14px;}
+.rm-barra u{display:block;height:14px;background:linear-gradient(90deg,#3A1E86,#C21C83);border-radius:99px;text-decoration:none;}
+
+.rm-tabela{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+.rm-tabela.duas{display:grid;grid-auto-flow:column;grid-template-columns:1fr 1fr;border:0;border-radius:0;column-gap:22px;}
+.rm-linha{display:flex;align-items:center;gap:12px;height:42px;padding:0 16px;font-size:15.5px;border-bottom:1px solid var(--line);min-width:0;}
+.rm-tabela:not(.duas) .rm-linha:last-child{border-bottom:0;}
+.rm-tabela.duas .rm-linha{padding:0 4px;height:39px;font-size:14.5px;gap:10px;}
+.rm-data{width:46px;flex:none;font-family:'Archivo',sans-serif;font-weight:800;color:var(--roxo);font-variant-numeric:tabular-nums;}
+.rm-tipo{flex:none;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);background:var(--lilac);border-radius:99px;padding:3px 10px;}
+.rm-tit{flex:1;min-width:0;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rm-st{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--grey);}
+.rm-st i{width:9px;height:9px;border-radius:50%;background:#B9B3C9;flex:none;}
+.rm-st.pub{color:#1E8E5A;} .rm-st.pub i{background:#1E8E5A;}
+.rm-st.prog{color:var(--roxo);} .rm-st.prog i{background:var(--roxo);}
+.rm-legenda{display:flex;align-items:center;gap:18px;margin-top:12px;}
+.rm-legenda b{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--grey);}
+.rm-vazio{font-size:16px;color:var(--grey);margin:0;}
+
+/* mês leve: letra maior para preencher a página (mesma ideia dos níveis do Status Semanal) */
+.pag45.rm45.rm-grande{--corpo-pad:34px 60px 30px;--corpo-gap:30px;}
+.rm-grande .rm-leitura{padding:24px 30px 26px;} .rm-grande .rm-leitura p{font-size:22px;}
+.rm-grande .rm-kpi{padding:24px 20px 22px;} .rm-grande .rm-kpi b{font-size:54px;} .rm-grande .rm-kpi span{font-size:16.5px;} .rm-grande .rm-kpi small{font-size:13.5px;}
+.rm-grande .rm-formato{font-size:17.5px;} .rm-grande .rm-formatos{gap:14px;} .rm-grande .rm-barra,.rm-grande .rm-barra i,.rm-grande .rm-barra u{height:16px;}
+.rm-grande .rm-linha{height:50px;font-size:17.5px;} .rm-grande .rm-tabela.duas .rm-linha{height:46px;font-size:16px;}
+.rm-grande .rm-tipo{font-size:12px;} .rm-grande .rm-st{font-size:14px;} .rm-grande .rm-data{width:54px;}
+.pag45.rm45.rm-enorme{--corpo-pad:44px 64px 38px;--corpo-gap:40px;}
+.rm-enorme .rm-leitura{padding:30px 34px 32px;} .rm-enorme .rm-leitura small{font-size:13px;} .rm-enorme .rm-leitura p{font-size:26px;}
+.rm-enorme .rm-kpi{padding:30px 22px 28px;} .rm-enorme .rm-kpi b{font-size:64px;} .rm-enorme .rm-kpi b i{font-size:28px;} .rm-enorme .rm-kpi span{font-size:18px;} .rm-enorme .rm-kpi small{font-size:14.5px;}
+.rm-enorme .rm-bloco h2{font-size:14px;margin-bottom:18px;}
+.rm-enorme .rm-formato{font-size:20px;} .rm-enorme .rm-formato > span{width:140px;} .rm-enorme .rm-formato > b{width:110px;} .rm-enorme .rm-formatos{gap:18px;} .rm-enorme .rm-barra,.rm-enorme .rm-barra i,.rm-enorme .rm-barra u{height:20px;}
+.rm-enorme .rm-linha{height:62px;font-size:20px;padding:0 20px;} .rm-enorme .rm-tabela.duas .rm-linha{height:54px;font-size:17px;}
+.rm-enorme .rm-tipo{font-size:13px;padding:4px 12px;} .rm-enorme .rm-st{font-size:15.5px;} .rm-enorme .rm-data{width:64px;}
+.rm-enorme .rm-legenda,.rm-grande .rm-legenda{margin-top:16px;}

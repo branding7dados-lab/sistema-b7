@@ -1,11 +1,15 @@
 /* =====================================================================
-   RESUMO DO MÊS — uma folha A4 por cliente e mês, para a reunião com o
-   cliente: o que foi planejado, publicado, produzido e gravado.
+   RESUMO DO MÊS — um documento 4:5 (1080 × 1350) por cliente e mês, para
+   mandar ao cliente: o que foi planejado, publicado, produzido e gravado.
 
-   Não é tela nem módulo: é um documento, aberto pelo "⋯" da página do
-   cliente. Só LÊ o que já existe (Linha Editorial, Design, Vídeo,
-   Gravações), pelo mês de REFERÊNCIA — o mesmo recorte que a equipe já
-   usa em cada uma dessas telas. Nada é gravado.
+   Segue o MESMO padrão visual do Status Semanal (js/doc-semana.js,
+   styles/semana.css → .pag45): cabeçalho escuro com a marca, faixa do
+   cliente, corpo claro, rodapé B7. Sai como imagem (PNG) ou PDF 4:5.
+
+   Não é tela nem módulo: é um documento, aberto pelo botão "Resumo do
+   mês" da página do cliente. Só LÊ o que já existe (Linha Editorial,
+   Design, Vídeo, Gravações), pelo mês de REFERÊNCIA — o mesmo recorte que
+   a equipe já usa em cada uma dessas telas. Nada é gravado.
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -14,7 +18,9 @@ B7.ResumoMes = (function () {
   const esc = B7.UI.esc;
   const MESES = B7.UI.MESES;
   const FORMATOS = [['Reel', 'Reels'], ['Card', 'Cards'], ['Carrossel', 'Carrosséis'], ['Story', 'Stories']];
-  const MAX_LINHAS = 22;
+  const LARGURA = 1080, ALTURA = 1350;          /* 4:5, igual ao Status Semanal */
+  const LEITURA_MAX = 800;
+  const LOGO = 'assets/brand/logo-white.png', MARCA = 'assets/brand/symbol-color.png';
   const leituras = new Map();     /* cliente:ano-mes → leitura do mês digitada ou aplicada (só em memória) */
 
   const pad = n => String(n).padStart(2, '0');
@@ -44,60 +50,114 @@ B7.ResumoMes = (function () {
       (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>';
   }
 
-  /* `leitura`: parágrafo opcional que abre a folha (escrito pela equipe,
-     com ou sem a ajuda da IA). Ocupa o lugar de algumas linhas da lista. */
-  const LEITURA_MAX = 600;
-  function folhaHTML(cliente, ano, mes, d, leitura) {
+  /* para o cliente só interessam três estados: foi ao ar, vai ao ar, em produção */
+  function estado(c) {
+    if (c.status === 'Publicado') return ['pub', 'Publicado'];
+    if (c.status === 'Programado') return ['prog', 'Programado'];
+    return ['prod', 'Em produção'];
+  }
+  function linhaConteudo(c, duas) {
+    const [cls, rot] = estado(c);
+    return '<div class="rm-linha"><span class="rm-data">' + (c.data_postagem ? esc(c.data_postagem.slice(8, 10) + '/' + c.data_postagem.slice(5, 7)) : '—') + '</span>' +
+      (c.tipo ? '<span class="rm-tipo">' + esc(c.tipo) + '</span>' : '') +
+      '<span class="rm-tit">' + esc(c.titulo || 'Sem título') + '</span>' +
+      '<span class="rm-st ' + cls + '"><i></i>' + (duas ? '' : esc(rot)) + '</span></div>';
+  }
+
+  /* Monta a página. `n` = quantos conteúdos listar; `comFormatos` = mostra
+     ou não o bloco de barras. Quem decide os dois é montar(), medindo. */
+  function paginaHTML(cliente, ano, mes, d, leitura, n, comFormatos, nivel) {
     const r = calcular(d);
-    const temLinha = (d.linhas || []).length > 0;
+    const linhaEd = (d.linhas || [])[0] || null;
+    const temLinha = !!linhaEd;
     const lista = (d.conteudos || []).slice().sort((a, b) =>
       String(a.data_postagem || '9999').localeCompare(String(b.data_postagem || '9999')));
-    leitura = String(leitura || '').replace(/\s+/g, ' ').trim().slice(0, LEITURA_MAX);
-    /* ~98 caracteres por linha de 20px + título e respiro; cada linha da lista tem 27px */
-    const custo = leitura ? Math.ceil((Math.ceil(leitura.length / 98) * 20 + 58) / 27) : 0;
-    const visiveis = lista.slice(0, Math.max(6, MAX_LINHAS - custo));
-    const logo = cliente.logo_url
-      ? '<img class="rm-logo" src="' + esc(cliente.logo_url) + '" alt="" crossorigin="anonymous">'
-      : '<span class="rm-logo rm-logo-ini">' + esc(B7.UI.iniciais(cliente.nome)) + '</span>';
+    const visiveis = lista.slice(0, n);
+    const duas = visiveis.length > 9;
     const maior = Math.max(1, ...r.formatos.map(f => f.total));
 
-    return '<div class="rm-folha">' +
-      '<header class="rm-topo">' + logo +
-        '<div class="rm-topo-tx"><small>RESUMO DO MÊS</small><h1>' + esc(cliente.nome) + '</h1></div>' +
-        '<div class="rm-mes"><b>' + esc(MESES[mes - 1]) + '</b><span>' + ano + '</span></div>' +
-      '</header>' +
+    return '<div class="pag45 rm45' + (nivel ? ' ' + nivel : '') + '">' +
+      '<div class="ps-cabeca"><div class="ps-brilho"></div>' +
+        '<div class="ps-cabeca-in"><div class="ps-olho"><i></i>B7 / BRANDING7</div>' +
+          '<div class="ps-cab-linha"><h1>Resumo do mês</h1>' +
+          '<span class="ps-periodo">' + esc(MESES[mes - 1]) + ' · ' + ano + '</span></div></div>' +
+        '<img class="ps-logo" src="' + LOGO + '" alt="B7">' +
+      '</div>' +
 
-      '<section class="rm-kpis">' +
-        kpi(r.publicados, temLinha ? r.planejados : null, 'Conteúdos publicados',
-          !temLinha ? 'Sem linha editorial neste mês' : r.programados ? r.programados + ' programado' + (r.programados === 1 ? '' : 's') : 'do planejado no mês') +
-        kpi(r.artesProntas, r.artes || null, 'Artes finalizadas', r.artes ? 'das peças da linha do mês' : 'Nenhuma peça neste mês') +
-        kpi(r.videosEntregues, r.videos || null, 'Vídeos entregues', r.videos ? 'das demandas do mês' : 'Nenhuma demanda neste mês') +
-        kpi(r.gravadas, r.gravacoes || null, 'Gravações realizadas', r.gravacoes ? 'das gravações do mês' : 'Nenhuma gravação neste mês') +
-      '</section>' +
+      '<div class="ps-cliente">' +
+        (cliente.logo_url
+          ? '<div class="ps-cli-logo"><img src="' + esc(cliente.logo_url) + '" alt="" crossorigin="anonymous"></div>'
+          : '<div class="ps-cli-logo ps-cli-logo-vazio">' + esc((cliente.nome || '?').trim().slice(0, 1).toUpperCase()) + '</div>') +
+        '<div><small>CLIENTE</small><b>' + esc(cliente.nome || '') + '</b></div>' +
+        (linhaEd ? '<div class="ps-selo"><small>LINHA EDITORIAL</small><b>' + esc(linhaEd.nome || (MESES[mes - 1] + ' ' + ano)) + '</b></div>' : '') +
+      '</div>' +
 
-      (leitura ? '<section class="rm-bloco rm-leitura"><h2>Leitura do mês</h2><p>' + esc(leitura) + '</p></section>' : '') +
+      '<div class="ps-corpo">' +
+        (leitura ? '<div class="rm-leitura"><small>LEITURA DO MÊS</small><p>' + esc(leitura) + '</p></div>' : '') +
 
-      (r.formatos.length ? '<section class="rm-bloco"><h2>Conteúdos por formato</h2><div class="rm-formatos">' +
-        r.formatos.map(f => '<div class="rm-formato"><span>' + esc(f.rotulo) + '</span>' +
-          '<div class="rm-barra"><i style="width:' + Math.round((f.total / maior) * 100) + '%"><u style="width:' +
-            Math.round((f.publicados / f.total) * 100) + '%"></u></i></div>' +
-          '<b>' + f.publicados + ' de ' + f.total + '</b></div>').join('') +
-        '</div><p class="rm-legenda"><i class="rm-q rm-q-pub"></i>publicado <i class="rm-q rm-q-plan"></i>planejado</p></section>' : '') +
+        '<div class="rm-kpis">' +
+          kpi(r.publicados, temLinha ? r.planejados : null, 'Conteúdos publicados',
+            !temLinha ? 'Sem linha editorial neste mês' : r.programados ? r.programados + ' programado' + (r.programados === 1 ? '' : 's') : 'do planejado no mês') +
+          kpi(r.artesProntas, r.artes || null, 'Artes finalizadas', r.artes ? 'das peças do mês' : 'Nenhuma peça neste mês') +
+          kpi(r.videosEntregues, r.videos || null, 'Vídeos entregues', r.videos ? 'das demandas do mês' : 'Nenhuma demanda neste mês') +
+          kpi(r.gravadas, r.gravacoes || null, 'Gravações realizadas', r.gravacoes ? 'das gravações do mês' : 'Nenhuma gravação neste mês') +
+        '</div>' +
 
-      '<section class="rm-bloco rm-cresce"><h2>Conteúdos do mês</h2>' +
-        (visiveis.length
-          ? '<div class="rm-tabela">' + visiveis.map(c =>
-              '<div class="rm-linha"><span class="rm-data">' + (c.data_postagem ? esc(c.data_postagem.slice(8, 10) + '/' + c.data_postagem.slice(5, 7)) : '—') + '</span>' +
-              '<span class="rm-tipo">' + esc(c.tipo || '') + '</span>' +
-              '<span class="rm-tit">' + esc(c.titulo || 'Sem título') + '</span>' +
-              '<span class="rm-st' + (c.status === 'Publicado' ? ' ok' : '') + '">' + esc(c.status || '') + '</span></div>').join('') +
-            (lista.length > visiveis.length ? '<div class="rm-mais">+ ' + (lista.length - visiveis.length) + ' conteúdos</div>' : '') + '</div>'
-          : '<p class="rm-vazio">' + (temLinha ? 'A linha editorial deste mês ainda não tem conteúdos.' : 'Não há linha editorial para este mês.') + '</p>') +
-      '</section>' +
+        (comFormatos && r.formatos.length ? '<div class="rm-bloco"><h2>Conteúdos por formato</h2><div class="rm-formatos">' +
+          r.formatos.map(f => '<div class="rm-formato"><span>' + esc(f.rotulo) + '</span>' +
+            '<div class="rm-barra"><i style="width:' + Math.round((f.total / maior) * 100) + '%"><u style="width:' +
+              Math.round((f.publicados / f.total) * 100) + '%"></u></i></div>' +
+            '<b>' + f.publicados + ' de ' + f.total + '</b></div>').join('') +
+          '</div></div>' : '') +
 
-      '<footer class="rm-pe"><img src="assets/brand/symbol-color.png" alt=""><span>Branding7 · ' +
-        esc(MESES[mes - 1]) + ' de ' + ano + ' · gerado em ' + esc(B7.UI.dataBR(B7.UI.hojeISO())) + '</span></footer>' +
+        '<div class="rm-bloco"><h2>Conteúdos do mês</h2>' +
+          (visiveis.length
+            ? '<div class="rm-tabela' + (duas ? ' duas' : '') + '"' + (duas ? ' style="grid-template-rows:repeat(' + Math.ceil(visiveis.length / 2) + ',auto)"' : '') + '>' +
+                visiveis.map(c => linhaConteudo(c, duas)).join('') + '</div>' +
+              '<div class="rm-legenda"><span class="rm-st pub"><i></i>Publicado</span><span class="rm-st prog"><i></i>Programado</span>' +
+                '<span class="rm-st prod"><i></i>Em produção</span>' +
+                (lista.length > visiveis.length ? '<b>+ ' + (lista.length - visiveis.length) + ' conteúdo' + (lista.length - visiveis.length === 1 ? '' : 's') + ' no mês</b>' : '') + '</div>'
+            : '<p class="rm-vazio">' + (temLinha ? 'A linha editorial deste mês ainda não tem conteúdos.' : 'Não há linha editorial para este mês.') + '</p>') +
+        '</div>' +
+      '</div>' +
+
+      '<div class="ps-rodape"><div class="esq"><img src="' + MARCA + '" alt="">' +
+        '<span>B7 / BRANDING7 &nbsp;·&nbsp; RESUMO DO MÊS</span></div></div>' +
     '</div>';
+  }
+
+  /* UMA PÁGINA, SEMPRE — a mesma regra do Status Semanal: mede de verdade
+     fora da tela. Primeiro tenta a lista inteira; se o corpo estourar,
+     encurta a lista (até 6 linhas); se ainda assim não couber, tira o
+     bloco de barras por formato (os números dele já estão na lista). */
+  function montar(cliente, ano, mes, d, leitura, area) {
+    leitura = String(leitura || '').replace(/\s+/g, ' ').trim().slice(0, LEITURA_MAX);
+    const total = (d.conteudos || []).length;
+    const medidor = document.createElement('div');
+    medidor.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden';
+    (area || document.body).appendChild(medidor);
+    const cabe = (n, comFormatos, nivel) => {
+      medidor.innerHTML = paginaHTML(cliente, ano, mes, d, leitura, n, comFormatos, nivel);
+      const c = medidor.querySelector('.ps-corpo');
+      return c.scrollHeight <= c.clientHeight + 2;
+    };
+    /* mês leve preenche a página com letra grande (como no Status Semanal):
+       testa do maior para o menor e só no último nível começa a cortar */
+    let escolhido = null;
+    for (const nivel of ['rm-enorme', 'rm-grande']) {
+      if (cabe(total, true, nivel)) { escolhido = [total, true, nivel]; break; }
+    }
+    if (!escolhido) {
+      for (const comFormatos of [true, false]) {
+        for (let n = total; n >= Math.min(total, 6); n--) {
+          if (cabe(n, comFormatos, '')) { escolhido = [n, comFormatos, '']; break; }
+        }
+        if (escolhido) break;
+      }
+    }
+    if (!escolhido) escolhido = [Math.min(total, 4), false, ''];
+    medidor.remove();
+    return paginaHTML(cliente, ano, mes, d, leitura, escolhido[0], escolhido[1], escolhido[2]);
   }
 
   /* últimos 12 meses, o atual primeiro */
@@ -110,37 +170,48 @@ B7.ResumoMes = (function () {
     return op;
   }
 
+  const fontes = () => (B7.DocSemana && B7.DocSemana.carregarFontes ? B7.DocSemana.carregarFontes() : Promise.resolve());
+
   function abrir(cliente) {
     const meses = opcoesMes();
     const m = B7.UI.modal(
       '<h3>Resumo do mês</h3>' +
-      '<div class="sub">' + esc(cliente.nome) + ' · uma folha para levar à reunião com o cliente.</div>' +
+      '<div class="sub">' + esc(cliente.nome) + ' · uma imagem para enviar ao cliente, no mesmo padrão do Status Semanal.</div>' +
       '<div class="rm-barra-topo"><select class="campo fina" id="rm-mes" aria-label="Mês">' +
         meses.map(([v, r]) => '<option value="' + v + '">' + esc(r) + '</option>').join('') + '</select>' +
         '<span class="rm-aviso" id="rm-aviso"></span></div>' +
       '<div class="rm-leitura-cx">' +
-        '<label class="rot" for="rm-leitura">LEITURA DO MÊS <span class="leve">— opcional, abre a folha</span></label>' +
-        '<textarea class="campo" id="rm-leitura" rows="3" maxlength="' + LEITURA_MAX + '" ' +
+        '<label class="rot" for="rm-leitura">LEITURA DO MÊS <span class="leve">— opcional, abre o resumo</span></label>' +
+        '<textarea class="campo" id="rm-leitura" rows="4" maxlength="' + LEITURA_MAX + '" ' +
           'placeholder="Um parágrafo sobre o mês para o cliente. Escreva ou peça para a IA."></textarea>' +
         (B7.IATexto && B7.IATexto.ligado() ? '<div class="ia-texto-linha">' + B7.IATexto.botaoHTML('Escrever com IA') + '</div>' + B7.IATexto.painelHTML() : '') +
       '</div>' +
       '<div class="rm-previa" id="rm-previa"><div class="rm-carregando">Montando o resumo…</div></div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button>' +
-        '<button class="b pri" id="rm-baixar" disabled>Baixar PDF</button></div>',
+        '<button class="b contorno" id="rm-pdf" disabled>Baixar PDF</button>' +
+        '<button class="b pri" id="rm-png" disabled>Baixar imagem</button></div>',
       { larga: true, extra: 'modal-resumo', aoFechar: () => window.removeEventListener('resize', ajustar) });
 
-    const previa = m.querySelector('#rm-previa'), sel = m.querySelector('#rm-mes'), baixar = m.querySelector('#rm-baixar');
+    const previa = m.querySelector('#rm-previa'), sel = m.querySelector('#rm-mes');
+    const btPng = m.querySelector('#rm-png'), btPdf = m.querySelector('#rm-pdf');
     const campoLeitura = m.querySelector('#rm-leitura');
     let atual = null, vez = 0, dadosMes = null;
     const chaveMes = () => cliente.id + ':' + sel.value;
 
+    function ajustar() {
+      const pag = previa.querySelector('.pag45'); if (!pag) return;
+      const z = Math.min(1, previa.clientWidth / LARGURA);
+      pag.style.transform = 'scale(' + z + ')';
+      previa.style.height = Math.round(ALTURA * z) + 'px';
+    }
+
     /* a leitura não é gravada no banco: fica guardada enquanto o B7 está
-       aberto, por cliente e mês, e sai na folha do jeito que está no campo */
+       aberto, por cliente e mês, e sai no resumo do jeito que está no campo */
     function redesenhar() {
       if (!dadosMes) return;
       const [ano, mes] = sel.value.split('-').map(Number);
-      atual = { ano, mes, html: folhaHTML(cliente, ano, mes, dadosMes, campoLeitura.value) };
-      previa.innerHTML = atual.html;
+      atual = { ano, mes, leitura: campoLeitura.value };
+      previa.innerHTML = montar(cliente, ano, mes, dadosMes, campoLeitura.value, previa);
       ajustar();
     }
     campoLeitura.oninput = B7.UI.debounce(() => { leituras.set(chaveMes(), campoLeitura.value); redesenhar(); }, 250);
@@ -149,36 +220,30 @@ B7.ResumoMes = (function () {
       const [ano, mes] = sel.value.split('-').map(Number);
       B7.IATexto.ligar(m.querySelector('.rm-leitura-cx'), {
         chave: 'mes:' + chaveMes(),
-        titulo: 'Leitura do mês', base: 'A partir dos números de ' + MESES[mes - 1],
+        titulo: 'Leitura do mês', base: 'A partir do planejamento e das entregas de ' + MESES[mes - 1],
         gerando: 'Escrevendo a leitura do mês…',
         pouco: 'Este mês ainda não tem registros para resumir.',
-        nota: 'Confira os números antes de enviar. Nada entra na folha até você aplicar.',
+        nota: 'Confira os números antes de enviar. Nada entra no resumo até você aplicar.',
         dados: () => ({ operacao: 'resumo_mes', cliente_id: cliente.id, ano: ano, mes: mes }),
         atual: () => campoLeitura.value,
         aplicar: texto => { campoLeitura.value = texto; leituras.set(chaveMes(), texto); redesenhar(); }
       });
     }
 
-    function ajustar() {
-      const folha = previa.querySelector('.rm-folha'); if (!folha) return;
-      const z = Math.min(1, previa.clientWidth / 794);
-      folha.style.transform = 'scale(' + z + ')';
-      previa.style.height = Math.round(1123 * z) + 'px';
-    }
-
     async function carregar() {
       const [ano, mes] = sel.value.split('-').map(Number);
       const minha = ++vez;
-      baixar.disabled = true; atual = null; dadosMes = null;
+      btPng.disabled = btPdf.disabled = true; atual = null; dadosMes = null;
       campoLeitura.value = leituras.get(chaveMes()) || '';
       ligarIA();
       previa.style.height = ''; previa.innerHTML = '<div class="rm-carregando">Montando o resumo…</div>';
       try {
-        const d = await B7.DB.resumoMensal(cliente.id, ano, mes);
+        /* as fontes precisam estar carregadas antes de medir o que cabe na página */
+        const [d] = await Promise.all([B7.DB.resumoMensal(cliente.id, ano, mes), fontes()]);
         if (minha !== vez || !m.isConnected) return;
         dadosMes = d;
         redesenhar();
-        baixar.disabled = false;
+        btPng.disabled = btPdf.disabled = false;
       } catch (e) {
         if (minha !== vez) return;
         previa.innerHTML = '<div class="rm-carregando">Não foi possível montar o resumo. ' + esc(e.message || '') + '</div>';
@@ -188,31 +253,43 @@ B7.ResumoMes = (function () {
     sel.onchange = carregar;
     window.addEventListener('resize', ajustar);
 
-    baixar.onclick = async () => {
-      if (!atual) return;
-      const rot = baixar.textContent; baixar.disabled = true; baixar.textContent = 'Gerando…';
+    /* mesma área fora da tela e mesmo caminho das exportações do Status
+       Semanal: tamanho real (1080 × 1350), sem a escala da prévia */
+    async function exportar(tipo, botao) {
+      if (!atual || !dadosMes) return;
+      const rot = botao.textContent; btPng.disabled = btPdf.disabled = true; botao.textContent = 'Gerando…';
       const area = document.getElementById('area-impressao');
       try {
-        /* mesma área fora da tela das outras exportações: tamanho real, sem escala */
-        area.innerHTML = atual.html; area.style.display = 'block';
-        const folha = area.querySelector('.rm-folha');
-        await Promise.all([...folha.querySelectorAll('img')].map(i => i.complete ? null : new Promise(r => { i.onload = i.onerror = r; })));
-        const canvas = await html2canvas(folha, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
-          windowWidth: 794, windowHeight: 1123 });
-        const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.94), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-        pdf.save(B7.Export.nomeArquivo([cliente.nome, 'RESUMO', MESES[atual.mes - 1], String(atual.ano)], 'pdf'));
+        await fontes();
+        area.style.display = 'block'; area.classList.add('modo-45');
+        area.innerHTML = montar(cliente, atual.ano, atual.mes, dadosMes, atual.leitura, area);
+        const pagina = area.querySelector('.pag45');
+        await Promise.all([...pagina.querySelectorAll('img')].map(i => i.complete ? null : new Promise(r => { i.onload = i.onerror = r; })));
+        const canvas = await html2canvas(pagina, { scale: tipo === 'pdf' ? 3 : 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
+          windowWidth: pagina.offsetWidth, windowHeight: pagina.offsetHeight });
+        const nome = [cliente.nome, 'RESUMO', MESES[atual.mes - 1], String(atual.ano)];
+        if (tipo === 'pdf') {
+          const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: [216, 270], orientation: 'portrait', compress: true });
+          pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 216, 270, undefined, 'FAST');
+          B7.Export.baixarBlob(pdf.output('blob'), B7.Export.nomeArquivo(nome, 'pdf'));
+        } else {
+          const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+          B7.Export.baixarBlob(blob, B7.Export.nomeArquivo(nome, 'png'));
+        }
+        canvas.width = canvas.height = 0;
         B7.UI.toast('Resumo baixado');
       } catch (e) {
-        B7.UI.toast('Não foi possível gerar o PDF.', { tipo: 'erro' });
+        B7.UI.toast('Não foi possível gerar o arquivo.', { tipo: 'erro' });
       } finally {
-        area.innerHTML = ''; area.style.display = '';
-        baixar.disabled = false; baixar.textContent = rot;
+        area.innerHTML = ''; area.style.display = ''; area.classList.remove('modo-45');
+        btPng.disabled = btPdf.disabled = false; botao.textContent = rot;
       }
-    };
+    }
+    btPng.onclick = () => exportar('png', btPng);
+    btPdf.onclick = () => exportar('pdf', btPdf);
 
     carregar();
   }
 
-  return { abrir, folhaHTML, calcular };
+  return { abrir, montar, calcular, LARGURA, ALTURA };
 })();
