@@ -294,6 +294,11 @@ B7.Gravacao = (function () {
     cx.innerHTML = '<div class="gv-sec-cab"><h2 id="gv-t-itens">O que vamos gravar</h2>' +
       (e === 'ok' && total ? '<span class="gv-progresso' + (feitos === total ? ' completo' : '') + '" role="progressbar" aria-valuemin="0" aria-valuemax="' + total + '" aria-valuenow="' + feitos + '" aria-label="' + feitos + ' de ' + total + ' itens gravados">' +
         '<i style="--p:' + Math.round(feitos / total * 100) + '%"></i><span><b>' + feitos + '</b> de ' + total + ' gravados</span></span>' : '') +
+      /* teleprompter: só quando há roteiro na lista — lê o roteiro canônico, sem cópia */
+      (e === 'ok' && S.itens.some(i => i.tipo === 'roteiro' && i.roteiro_id) && window.B7.Teleprompter
+        ? '<button type="button" class="b fina contorno gv-tele" data-gv="teleprompter" title="Mostra os roteiros desta gravação para leitura, em tela cheia">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M7.5 9.5h9M7.5 12.5h6M9 20h6"/></svg>' +
+            '<span>Teleprompter</span></button>' : '') +
       (podeEditar() ? '<button type="button" class="b fina ' + (total ? 'contorno' : 'pri') + ' gv-add" data-gv="adicionar">' + IC.mais + '<span>Adicionar item</span></button>' : '') +
       '</div>' + corpo;
     ligarAcoes(cx);
@@ -418,11 +423,30 @@ B7.Gravacao = (function () {
         if (a === 'concluir') return concluir();
         if (a === 'editar') return modalEditar();
         if (a === 'adicionar') return menuAdicionar(b);
+        if (a === 'teleprompter') return abrirTeleprompter();
         if (a === 'menu') return menuGravacao(b);
         if (a === 'recarregar-itens') return carregarItens(geracao);
         if (a === 'recarregar-hist') return carregarHistorico(geracao);
         if (a === 'hist-tudo') { S.histTudo = true; return pintarHistorico(); }
       };
+    });
+  }
+
+  /* Teleprompter desta gravação: os roteiros da lista, na ordem dela.
+     "Marcar como gravado", lá dentro, é o MESMO check desta lista (mesma
+     função do banco), e só acontece se a pessoa pedir. */
+  function abrirTeleprompter() {
+    const sessao = S;
+    B7.Teleprompter.abrirDaGravacao(S.g, S.itens, {
+      podeMarcar: podeMarcar(),
+      marcar: async itemId => {
+        const it = sessao.itens.find(x => x.id === itemId);
+        if (!it || it.gravado) return;
+        await B7.Save.acao(() => B7.DB.gravacaoItemMarcar(itemId, true));
+        it.gravado = true; it.gravado_por_nome = (B7.Auth.usuario() || {}).nome || '';
+        if (it.tipo === 'roteiro') it.roteiro_status = 'Gravado';
+        if (S === sessao) { pintarItens(); carregarHistorico(geracao); }
+      }
     });
   }
 

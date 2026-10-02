@@ -1,0 +1,210 @@
+/* =====================================================================
+   TELEPROMPTER B7 (js/teleprompter.js)
+   Pensado em PAISAGEM e para ser lido de longe, através do vidro de um
+   teleprompter: fundo preto, texto branco, nada decorativo atrás da fala.
+   A marca aparece só nos controles e nas telas de preparação.
+   Cores fixas de propósito: esta tela não acompanha o tema claro/escuro.
+   ===================================================================== */
+body.tele-aberto{overflow:hidden;}
+
+.tele{position:fixed;inset:0;z-index:700;background:#000;color:#fff;overflow:hidden;
+  font-family:'Inter',system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation;
+  --tele-fonte:56px;--tele-linha:1.38;--tele-largura:76%;--tele-foco:120px;
+  --tele-rosa:#E2409C;--tele-fundo:#0B0A12;--tele-cartao:#17141F;--tele-borda:rgba(255,255,255,.12);
+  --tele-sl:max(14px,env(safe-area-inset-left));--tele-sr:max(14px,env(safe-area-inset-right));
+  --tele-st:max(10px,env(safe-area-inset-top));--tele-sb:max(12px,env(safe-area-inset-bottom));}
+.tele *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.28) transparent;}
+.tele button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.tele button:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+.tele svg{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.tele svg.cheio{fill:currentColor;stroke:none;}
+
+/* ------------------------------------------------- área de leitura */
+.tele-palco{position:absolute;inset:0;overflow:hidden;}
+.tele-palco.espelho{transform:scaleX(-1);}
+.tele-rolo{position:absolute;left:0;right:0;top:0;padding-top:var(--tele-foco);will-change:transform;}
+.tele-texto{position:relative;width:var(--tele-largura);max-width:calc(100% - var(--tele-sl) - var(--tele-sr));margin:0 auto;
+  font-size:var(--tele-fonte);line-height:var(--tele-linha);font-weight:600;letter-spacing:-.012em;text-align:center;
+  overflow-wrap:break-word;}
+.tele-fala{margin:0 0 .85em;}
+.tele-fala span{display:block;}
+.tele-fala span + span{margin-top:.38em;}
+/* cena que cabe na tela: parada, no centro */
+.tele-palco.cabe .tele-rolo{padding-top:0;bottom:0;display:flex;align-items:center;}
+.tele-palco.cabe .tele-fala{margin:0;}
+.tele-palco.cabe .tele-zona{display:none;}
+
+/* faixa de leitura: o que já passou e o que ainda vem ficam mais apagados */
+.tele-zona{position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(to bottom,
+    rgba(0,0,0,.8) 0,
+    rgba(0,0,0,.6) calc(var(--tele-foco) - var(--tele-fonte) * .55),
+    rgba(0,0,0,0) calc(var(--tele-foco) - var(--tele-fonte) * .12),
+    rgba(0,0,0,0) calc(var(--tele-foco) + var(--tele-fonte) * var(--tele-linha) * 2.5),
+    rgba(0,0,0,.42) calc(var(--tele-foco) + var(--tele-fonte) * var(--tele-linha) * 3.8),
+    rgba(0,0,0,.6) 100%);}
+.tele-zona:before,.tele-zona:after{content:"";position:absolute;top:calc(var(--tele-foco) + var(--tele-fonte) * var(--tele-linha) * .5 - 7px);
+  border:7px solid transparent;opacity:.75;}
+.tele-zona:before{left:var(--tele-sl);border-left-color:var(--tele-rosa);}
+.tele-zona:after{right:var(--tele-sr);border-right-color:var(--tele-rosa);}
+
+/* contagem: dentro da área de leitura, então espelha junto com o texto */
+.tele-contagem{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;
+  font-family:'Archivo','Inter',sans-serif;font-weight:800;font-size:min(46vh,260px);line-height:1;font-variant-numeric:tabular-nums;}
+.tele-contagem[hidden]{display:none;}
+.tele-contagem.bate{animation:teleBate .9s ease-out both;}
+@keyframes teleBate{0%{transform:scale(1.18);opacity:.2}18%{transform:scale(1);opacity:1}80%{opacity:1}100%{opacity:.55}}
+.tele-palco.contando .tele-rolo,.tele-palco.contando .tele-zona{opacity:0;}
+
+.tele-prog{position:absolute;left:0;right:0;top:0;height:3px;z-index:9;background:rgba(255,255,255,.08);}
+.tele-prog i{display:block;height:100%;background:var(--tele-rosa);transform-origin:left center;transform:scaleX(0);}
+.tele.com-painel .tele-prog{display:none;}
+
+/* ------------------------------------------------------- controles */
+.tele-topo,.tele-ctrl{position:absolute;left:0;right:0;z-index:8;display:flex;align-items:center;gap:8px;
+  padding-left:var(--tele-sl);padding-right:var(--tele-sr);transition:opacity .22s;}
+.tele-topo{top:0;padding-top:var(--tele-st);padding-bottom:22px;background:linear-gradient(to bottom,rgba(0,0,0,.92),rgba(0,0,0,0));}
+.tele-ctrl{bottom:0;justify-content:center;flex-wrap:wrap;padding-top:26px;padding-bottom:var(--tele-sb);
+  background:linear-gradient(to top,rgba(0,0,0,.97) 0,rgba(0,0,0,.9) 62%,rgba(0,0,0,0));}
+.tele-ctrl:empty{display:none;}
+.tele.com-painel .tele-topo{background:none;}
+.tele.tele-quieto .tele-topo,.tele.tele-quieto .tele-ctrl{opacity:0;pointer-events:none;}
+.tele.tele-quieto{cursor:none;}
+
+.tele-onde{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;padding:0 4px;}
+.tele-onde b{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tele-onde small{font-size:12px;color:rgba(255,255,255,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.tele-bt{flex:none;min-width:48px;height:48px;padding:0 13px;border:0;border-radius:14px;background:rgba(255,255,255,.12);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;white-space:nowrap;
+  transition:background .15s,transform .1s;}
+.tele-bt:hover{background:rgba(255,255,255,.2);}
+.tele-bt:active{transform:scale(.96);}
+.tele-bt:disabled{opacity:.32;cursor:default;}
+.tele-bt.on{background:var(--tele-rosa);}
+.tele-bt.pri{min-width:64px;height:64px;border-radius:50%;background:#fff;color:#000;padding:0;}
+.tele-bt.pri svg{width:28px;height:28px;}
+.tele-bt.texto{font-weight:700;font-size:16px;padding:0 10px;}
+.tele-bt.pri-rot{background:var(--tele-rosa);font-weight:700;}
+.tele-bt.marca{background:rgba(255,255,255,.14);height:52px;padding:0 20px;}
+.tele-grupo{display:inline-flex;align-items:center;gap:3px;padding:3px;border-radius:17px;background:rgba(255,255,255,.07);}
+.tele-grupo .tele-bt{background:transparent;height:44px;min-width:44px;}
+.tele-grupo .tele-bt:hover{background:rgba(255,255,255,.14);}
+.tele-grupo output{min-width:26px;text-align:center;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;}
+
+/* ---------------------------------------------- painéis (preparação) */
+.tele-painel{position:absolute;inset:0;z-index:6;background:var(--tele-fundo);overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(var(--tele-st) + 62px) var(--tele-sr) calc(var(--tele-sb) + 12px) var(--tele-sl);
+  -webkit-user-select:text;user-select:text;}
+.tele-painel[hidden]{display:none;}
+.tele-olho{display:block;font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--tele-rosa);}
+.tele-painel h2{font-family:'Archivo','Inter',sans-serif;font-size:clamp(22px,3.4vw,32px);font-weight:800;line-height:1.15;margin:8px 0 6px;color:#fff;}
+.tele-sub{font-size:14px;color:rgba(255,255,255,.66);margin:0 0 16px;}
+.tele-nota{font-size:12.5px;color:rgba(255,255,255,.55);margin:10px 0 0;line-height:1.45;}
+.tele-nota.erro{color:#FF8FA3;}
+.tele-ok{display:inline-flex;align-items:center;gap:8px;margin:6px 0 0;font-size:14px;font-weight:600;color:#7EE2A8;}
+
+.tele-inicio{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;max-width:1080px;margin:0 auto;align-items:start;}
+.tele-col{min-width:0;}
+.tele-rotulo{display:block;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin:18px 0 6px;}
+.tele-lista{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto;margin:0;padding:4px;border-radius:14px;background:var(--tele-cartao);}
+.tele-lista button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:0;background:none;border-radius:10px;padding:8px 10px;min-height:48px;}
+.tele-lista button[aria-selected="true"]{background:rgba(226,64,156,.2);}
+.tele-lista i{font-style:normal;font-size:12px;font-weight:700;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;}
+.tele-lista span{flex:1;min-width:0;display:flex;flex-direction:column;}
+.tele-lista b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tele-lista small{font-size:11.5px;color:rgba(255,255,255,.55);}
+.tele-lista em{color:#7EE2A8;display:flex;}
+.tele-lista em svg{width:18px;height:18px;stroke-width:2.6;}
+
+.tele-modo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.tele-modo button{text-align:left;border:1.5px solid var(--tele-borda);background:var(--tele-cartao);border-radius:14px;padding:12px 14px;
+  display:flex;flex-direction:column;gap:3px;min-height:64px;}
+.tele-modo button b{font-size:15px;font-weight:700;}
+.tele-modo button small{font-size:12px;color:rgba(255,255,255,.6);line-height:1.35;}
+.tele-modo button[aria-checked="true"]{border-color:var(--tele-rosa);background:rgba(226,64,156,.16);}
+
+.tele-acao{width:100%;min-height:56px;border:0;border-radius:16px;padding:0 22px;display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  background:linear-gradient(118deg,#3A1E86 0%,#7C1E85 50%,#C21C83 100%);font-size:16px;font-weight:700;color:#fff;}
+.tele-acao:disabled{opacity:.38;cursor:default;}
+.tele-acao:active{transform:scale(.985);}
+.tele-acao span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.tele-ajustes{display:flex;flex-direction:column;gap:6px;background:var(--tele-cartao);border-radius:16px;padding:8px 14px;}
+.tele-aj,.tele-liga{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:4px 0;border-bottom:1px solid var(--tele-borda);}
+.tele-ajustes > :last-child{border-bottom:0;}
+.tele-aj > span,.tele-liga > span{font-size:13.5px;font-weight:600;min-width:0;}
+.tele-liga > span{display:flex;flex-direction:column;gap:2px;}
+.tele-liga small{font-size:11.5px;font-weight:400;color:rgba(255,255,255,.55);line-height:1.35;}
+.tele-passo{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.08);border-radius:12px;padding:3px;flex:none;}
+.tele-passo button{border:0;background:none;min-width:46px;height:40px;border-radius:9px;font-weight:700;font-size:15px;}
+.tele-passo button:hover{background:rgba(255,255,255,.14);}
+.tele-passo output{min-width:34px;text-align:center;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;}
+.tele-seg{display:inline-flex;background:rgba(255,255,255,.08);border-radius:12px;padding:3px;flex:none;}
+.tele-seg button{border:0;background:none;height:40px;padding:0 11px;border-radius:9px;font-size:13px;font-weight:600;color:rgba(255,255,255,.72);}
+.tele-seg button[aria-checked="true"]{background:#fff;color:#000;}
+.tele-liga button{flex:none;width:52px;height:32px;border:0;border-radius:99px;background:rgba(255,255,255,.2);position:relative;transition:background .15s;}
+.tele-liga button i{position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:transform .15s;}
+.tele-liga button[aria-checked="true"]{background:var(--tele-rosa);}
+.tele-liga button[aria-checked="true"] i{transform:translateX(20px);}
+
+/* ajustes durante a sessão: folha lateral */
+.tele-folha{position:absolute;top:0;right:0;bottom:0;z-index:10;width:min(400px,94%);background:#14121E;border-left:1px solid var(--tele-borda);
+  box-shadow:-24px 0 60px rgba(0,0,0,.6);overflow-y:auto;overscroll-behavior:contain;
+  padding:var(--tele-st) var(--tele-sr) var(--tele-sb) 16px;}
+.tele-folha[hidden]{display:none;}
+.tele-folha-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.tele-folha-cab b{font-size:15px;font-weight:700;}
+.tele-folha .tele-ajustes{background:none;padding:0;}
+
+/* preparar a cena: para o videomaker, nunca espelha */
+.tele-prep,.tele-fim{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
+.tele-prep-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tele-num{font-family:'Archivo','Inter',sans-serif;font-size:14px;font-weight:800;letter-spacing:.14em;}
+.tele-tipo{font-size:12px;font-weight:700;padding:4px 11px;border-radius:99px;background:rgba(226,64,156,.2);color:#FFB6DD;}
+.tele-campo{background:var(--tele-cartao);border-radius:14px;padding:11px 15px;}
+.tele-campo small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:4px;}
+.tele-campo p{margin:0;font-size:15.5px;line-height:1.45;color:rgba(255,255,255,.88);}
+.tele-campo ul{margin:0;padding-left:18px;font-size:15px;line-height:1.5;color:rgba(255,255,255,.88);}
+.tele-campo.fala{border:1px solid var(--tele-borda);}
+.tele-campo.fala p{font-size:clamp(18px,2.6vw,24px);font-weight:600;color:#fff;line-height:1.4;}
+.tele-campo p.vazio{font-size:15px;font-weight:400;color:rgba(255,255,255,.55);}
+.tele-prep-acoes{position:sticky;bottom:0;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+  padding:14px 0 4px;background:linear-gradient(to top,var(--tele-fundo) 62%,rgba(11,10,18,0));}
+.tele-prep-acoes .tele-acao{width:auto;flex:1 1 240px;max-width:440px;}
+.tele-prep-acoes .tele-bt{height:56px;border-radius:16px;}
+.tele-fim{align-items:center;text-align:center;padding-top:2vh;}
+.tele-fim .tele-prep-acoes{width:100%;}
+
+/* celular em pé: o teleprompter não roda em retrato */
+.tele-gate{position:absolute;inset:0;z-index:20;background:var(--tele-fundo);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;text-align:center;padding:24px;}
+.tele-gate[hidden]{display:none;}
+.tele-gate svg{width:112px;height:112px;stroke-width:2.4;color:#fff;margin-bottom:8px;animation:teleGira 2.4s ease-in-out infinite;}
+.tele-gate svg .alvo{stroke:var(--tele-rosa);stroke-dasharray:4 4;}
+.tele-gate b{font-family:'Archivo','Inter',sans-serif;font-size:22px;font-weight:800;}
+.tele-gate span{font-size:14.5px;color:rgba(255,255,255,.66);max-width:280px;line-height:1.45;}
+.tele-gate .tele-bt{margin-top:14px;padding:0 22px;}
+@keyframes teleGira{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-12deg)}}
+
+/* -------------------------------------------------------- responsivo */
+@media (max-width:760px){
+  .tele-inicio{grid-template-columns:1fr;gap:16px;}
+  .tele-bt[data-tele="espelho"] span{display:none;}
+}
+/* paisagem baixa (celular deitado): cada pixel de altura conta */
+@media (max-height:440px){
+  .tele-painel{padding-top:calc(var(--tele-st) + 54px);}
+  .tele-painel h2{font-size:21px;margin:4px 0 4px;}
+  .tele-sub{margin-bottom:10px;}
+  .tele-modo button{min-height:54px;padding:8px 12px;}
+  .tele-aj,.tele-liga{min-height:46px;}
+  .tele-ctrl{padding-top:14px;gap:6px;}
+  .tele-bt.pri{min-width:56px;height:56px;}
+  .tele-campo{padding:9px 13px;}
+  .tele-prep,.tele-fim{gap:8px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .tele-contagem.bate,.tele-gate svg{animation:none;}
+  .tele-topo,.tele-ctrl,.tele-bt,.tele-liga button,.tele-liga button i{transition:none;}
+}

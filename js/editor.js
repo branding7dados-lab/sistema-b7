@@ -334,7 +334,8 @@ B7.Editor = (function () {
           '<button data-acao="enviar-aprovacao">Enviar para aprovação</button><hr>' +
           '<button data-acao="baixar">Baixar roteiro</button>' +
           '<button data-acao="espiar">Visualização rápida</button>' +
-          '<button data-acao="apresentar">Apresentar roteiros</button><hr>' +
+          '<button data-acao="apresentar">Apresentar roteiros</button>' +
+          '<button data-acao="teleprompter">Abrir Teleprompter</button><hr>' +
           '<button data-acao="duplicar">Duplicar roteiro</button>' +
           '<button data-acao="novo">Novo roteiro</button>' +
           '<button data-acao="fixar">' + (r.is_pinned ? 'Desafixar' : 'Fixar roteiro') + '</button><hr>' +
@@ -468,6 +469,7 @@ B7.Editor = (function () {
       if (a === 'baixar') baixar(r.id);
       if (a === 'espiar') espiar(r);
       if (a === 'apresentar') apresentar();
+      if (a === 'teleprompter') teleprompter();
       if (a === 'fixar') fixarRoteiro(r);
       if (a === 'excluir') excluirRoteiro(r.id);
     });
@@ -761,6 +763,10 @@ B7.Editor = (function () {
   function espiar(roteiro) { B7.QuickView.abrir(contexto(), roteiro || E.roteiros.find(r => r.id === E.atual)); }
   function apresentar() {
     B7.Apresentar.abrir(contexto(), Math.max(0, E.roteiros.findIndex(r => r.id === E.atual)));
+  }
+  /* o teleprompter lê o que está no editor agora — o roteiro é a fonte, nada é copiado */
+  function teleprompter() {
+    B7.Teleprompter.abrirDoEditor(contexto(), Math.max(0, E.roteiros.findIndex(r => r.id === E.atual)));
   }
 
   /* =================================================== impressão */

@@ -40,6 +40,7 @@
 .gv-sec-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
 .gv-sec-cab h2{margin:0;font-family:'Archivo';font-weight:800;font-size:17px;color:var(--ink);}
 .gv-sec-cab .b{margin-left:auto;}
+.gv-sec-cab .gv-tele + .gv-add{margin-left:0;}
 .gv-progresso{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-3);}
 .gv-progresso b{font-family:'Archivo';font-weight:800;color:var(--ink);}
 .gv-progresso i{display:inline-block;width:64px;height:6px;border-radius:4px;background:var(--suave);position:relative;overflow:hidden;}

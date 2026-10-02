@@ -805,7 +805,7 @@ B7.Rota = (function () {
     const ocupado = () => {
       if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias()) return true;
       if (document.fullscreenElement || document.webkitFullscreenElement) return true;
-      if (document.querySelector('.fundo-modal, .preview-fundo, .apresentacao')) return true;
+      if (document.querySelector('.fundo-modal, .preview-fundo, .apresentacao, .tele')) return true;
       const a = document.activeElement;
       return !!(a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
     };

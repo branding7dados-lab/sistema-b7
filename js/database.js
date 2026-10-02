@@ -324,6 +324,13 @@ B7.DB = (function () {
     async roteiro(id) {
       return ok(await sb().from('roteiros').select('*').eq('id', id).single());
     },
+    /* roteiros da lista de uma gravação (podem ter sido escritos em outra):
+       o teleprompter lê título e observação de gravação direto do canônico */
+    async roteirosPorIds(ids) {
+      if (!ids || !ids.length) return [];
+      return ok(await sb().from('roteiros').select('id,titulo,observacao_gravacao,position,recording_session_id')
+        .in('id', ids).is('deleted_at', null));
+    },
 
     async roteirosDoCliente(clienteId, limite = 5) {
       const gravacoes = ok(await sb().from('gravacoes').select('id,nome,status')
