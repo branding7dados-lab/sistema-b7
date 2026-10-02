@@ -3509,5 +3509,5 @@ B7.Design = (function () {
     };
   }
 
-  return { abrir, abrirCentral, abrirDetalhe, abrirLinha };
+  return { abrir, abrirCentral, abrirDetalhe, abrirLinha, rotuloStatus, rotuloTipo };
 })();

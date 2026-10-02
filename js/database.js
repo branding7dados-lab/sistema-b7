@@ -1339,13 +1339,32 @@ B7.DB = (function () {
     },
 
     /* ------------------------------------------------------- BUSCA */
-    async buscar(termo) {
+    async buscar(termo, op) {
+      op = op || {};
       const t = `%${termo.trim()}%`;
+      /* dentro de .or() vírgula, parêntese e aspas são sintaxe do filtro:
+         viram "_" (qualquer caractere, no LIKE) para o termo não quebrar */
+      const tOr = '%' + termo.trim().replace(/[,()"\\]/g, '_') + '%';
       /* Busca no título de tudo e também no texto das cenas: quem procura
          "cashback" quase sempre lembra da fala, não do nome do roteiro.
          As tabelas novas podem não existir ainda — falha nelas não derruba
          a busca inteira. */
       const opcional = q => q.then(r => r.error ? { data: [] } : r, () => ({ data: [] }));
+      /* Peças de Design e demandas de vídeo (pacote 2026-10-02-m): só
+         consulta quando quem chama diz que a pessoa pode abrir essas
+         telas — a paleta manda; a busca antiga não pede e não paga a
+         consulta. Rodam depois do lote principal, que já ocupa quase o
+         pool inteiro do plano gratuito. */
+      const extras = () => Promise.all([
+        op.design ? opcional(sb().from('design_resumo')
+          .select('id,titulo,conteudo_titulo,cliente_nome,tipo,status,designer_nome')
+          .or('titulo.ilike.' + tOr + ',conteudo_titulo.ilike.' + tOr)
+          .order('updated_at', { ascending: false }).limit(8)) : { data: [] },
+        op.video ? opcional(sb().from('demandas_edicao_resumo')
+          .select('id,titulo,codigo,cliente_nome,editing_status,videomaker_nome')
+          .or('titulo.ilike.' + tOr + ',codigo.ilike.' + tOr).is('deleted_at', null)
+          .order('updated_at', { ascending: false }).limit(8)) : { data: [] }
+      ]);
       const [clientes, gravacoes, roteiros, cenas, linhas, conteudos, ideias,
              semanas, itensGrav] = await Promise.all([
         sb().from('clientes_resumo').select('*').ilike('nome', t).is('deleted_at', null).limit(6),
@@ -1393,7 +1412,11 @@ B7.DB = (function () {
         cenasCom = achadas.map(c => ({ ...c, roteiro: mapa[c.script_id] })).filter(c => c.roteiro);
       }
 
+      const [design, video] = await extras();
+
       return {
+        design: design.data || [],
+        video: video.data || [],
         clientes: clientes.data || [],
         gravacoes: gravacoes.data || [],
         roteiros: roteiros.data || [],

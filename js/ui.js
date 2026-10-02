@@ -398,8 +398,17 @@ B7.UI = (function () {
     pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/></svg>',
     play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>',
     grav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>',
-    rot:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h9l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.5V9h5"/></svg>'
+    rot:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h9l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.5V9h5"/></svg>',
+    arte: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 15l4-4 4 3 4-5 4 3"/></svg>'
   };
+  /* pedaço do texto em volta do termo achado, para o resultado da busca */
+  function trecho(texto, termo) {
+    const t = String(texto || '').replace(/\s+/g, ' ').trim();
+    const i = t.toLowerCase().indexOf(String(termo || '').trim().toLowerCase());
+    if (i < 0) return t.slice(0, 80);
+    const ini = Math.max(0, i - 30);
+    return (ini ? '…' : '') + t.slice(ini, i + 60) + (t.length > i + 60 ? '…' : '');
+  }
 
   function paleta(textoInicial) {
     /* Smart actions: o que a paleta oferece depende de onde a pessoa está.
@@ -547,10 +556,12 @@ B7.UI = (function () {
         novos = novos.concat(acoesFiltradas);
       }
       try {
-        const r = await B7.DB.buscar(termo);
+        const r = await B7.DB.buscar(termo, { design: podeIr('design'), video: podeIr('video') });
+        /* resposta de uma busca antiga não pinta por cima da mais nova */
+        if (entrada.value !== termo) return;
         /* só destinos que abrem para esta pessoa (a mesma guarda de rota) */
         if (!podeIr('cliente')) { r.clientes = []; r.ideias = []; }
-        if (!podeIr('gravacao')) { r.gravacoes = []; r.roteiros = []; r.itensGravacao = []; }
+        if (!podeIr('gravacao')) { r.gravacoes = []; r.roteiros = []; r.itensGravacao = []; r.cenas = []; }
         if (!podeIr('linha')) { r.linhas = []; r.conteudos = []; }
         if (!podeIr('semana')) r.semanas = [];
         if (r.clientes.length) {
@@ -572,6 +583,32 @@ B7.UI = (function () {
             linha(ICP.rot, t.titulo || 'Sem título', 'abrir na gravação')).join('');
           novos = novos.concat(r.roteiros.map(t => ({
             fn: () => { location.hash = '#/gravacao/' + t.recording_session_id + '?roteiro=' + t.id; } })));
+        }
+        /* fala de roteiro: quem procura "cashback" lembra do texto, não
+           do título — abre o roteiro onde a frase está */
+        const idsRoteiro = new Set(r.roteiros.map(t => t.id));
+        const falas = (r.cenas || []).filter(c => !idsRoteiro.has(c.roteiro.id)).slice(0, 5);
+        if (falas.length) {
+          html += '<div class="cp-grupo">NO TEXTO DOS ROTEIROS</div>' + falas.map(c =>
+            linha(ICP.rot, c.roteiro.titulo || 'Sem título', trecho(c.texto, termo))).join('');
+          novos = novos.concat(falas.map(c => ({
+            fn: () => { location.hash = '#/gravacao/' + c.roteiro.recording_session_id + '?roteiro=' + c.roteiro.id; } })));
+        }
+        if ((r.design || []).length) {
+          const rotD = B7.Design || {};
+          html += '<div class="cp-grupo">PEÇAS DE DESIGN</div>' + r.design.map(d =>
+            linha(ICP.arte, d.titulo || d.conteudo_titulo || 'Sem título',
+              [d.cliente_nome, rotD.rotuloTipo ? rotD.rotuloTipo(d.tipo) : '',
+               rotD.rotuloStatus ? rotD.rotuloStatus(d.status) : '', d.designer_nome ? d.designer_nome.split(/\s+/)[0] : '']
+                .filter(Boolean).join(' · '))).join('');
+          novos = novos.concat(r.design.map(d => ({ fn: () => { location.hash = '#/design/' + d.id; } })));
+        }
+        if ((r.video || []).length) {
+          html += '<div class="cp-grupo">DEMANDAS DE VÍDEO</div>' + r.video.map(d =>
+            linha(ICP.play, d.titulo || 'Sem título',
+              [d.codigo, d.cliente_nome, B7.Video && B7.Video.rotuloSituacao ? B7.Video.rotuloSituacao(d.editing_status) : '',
+               d.videomaker_nome ? d.videomaker_nome.split(/\s+/)[0] : ''].filter(Boolean).join(' · '))).join('');
+          novos = novos.concat(r.video.map(d => ({ fn: () => { location.hash = '#/video/' + d.id; } })));
         }
         if ((r.itensGravacao || []).length) {
           html += '<div class="cp-grupo">ITENS DE GRAVAÇÃO</div>' + r.itensGravacao.map(i =>
