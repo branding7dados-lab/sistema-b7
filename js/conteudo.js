@@ -66,10 +66,18 @@ B7.Conteudo = (function () {
     '<div class="mb"><label class="rot">' + rot + '</label>' +
     '<input class="campo" value="' + esc(valor || '') + '" ' + attrs + '></div>';
 
-  function secao(id, titulo, resumo, conteudo, aberta) {
+  /* `extra` é opcional: { icone } põe um ícone à esquerda do título e
+     { conta: true } reserva o selo de contagem à direita (quem preenche
+     o selo é a tela — ver resumoInteligencia). */
+  const SETA = '<svg class="seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  function secao(id, titulo, resumo, conteudo, aberta, extra) {
+    extra = extra || {};
     return '<section class="sanfona' + (aberta ? ' aberta' : '') + '" data-secao="' + id + '">' +
-      '<button class="sanfona-topo"><div class="tx"><b>' + esc(titulo) + '</b>' +
-      '<small>' + esc(resumo) + '</small></div><span class="seta">▾</span></button>' +
+      '<button class="sanfona-topo" type="button" aria-expanded="' + (aberta ? 'true' : 'false') + '">' +
+      (extra.icone ? '<span class="sf-ic" aria-hidden="true">' + extra.icone + '</span>' : '') +
+      '<div class="tx"><b>' + esc(titulo) + '</b>' +
+      '<small>' + esc(resumo) + '</small></div>' +
+      (extra.conta ? '<span class="sf-conta"></span>' : '') + SETA + '</button>' +
       '<div class="sanfona-corpo">' + conteudo + '</div></section>';
   }
 
@@ -117,7 +125,10 @@ B7.Conteudo = (function () {
       if (el.tagName === 'TEXTAREA') B7.UI.autoAltura(el);
     });
     raiz.querySelectorAll('.sanfona-topo').forEach(b => b.onclick = () => {
-      b.parentElement.classList.toggle('aberta');
+      const aberta = b.parentElement.classList.toggle('aberta');
+      b.setAttribute('aria-expanded', aberta ? 'true' : 'false');
+      /* os campos nascem escondidos: a altura só pode ser medida agora */
+      if (aberta) b.parentElement.querySelectorAll('textarea.cresce').forEach(B7.UI.autoAltura);
     });
   }
 
@@ -135,26 +146,41 @@ B7.Conteudo = (function () {
     } catch (e) { return B7.Dashboard.erroConteudo(e, clienteId); }
 
     const t = 'data-tab="cliente_inteligencia" data-id="' + esc(clienteId) + '"';
-    const preenchido = campos => campos.filter(Boolean).length + ' de ' + campos.length + ' preenchidos';
+    /* O subtítulo de cada seção nasce com a descrição do que vai ali;
+       resumoInteligencia troca pela prévia do que já está escrito. */
+    const sec = (id, titulo, conteudo, aberta) =>
+      secao(id, titulo, DICA_INTEL[id], conteudo, aberta, { icone: IC_INTEL[id], conta: true });
+    const ex = texto => ' placeholder="' + esc(texto) + '"';
+    /* Instagram e Site ganham um atalho "Abrir" ao lado do rótulo */
+    const campoLink = (rot, valor, attrs) =>
+      '<div class="mb"><label class="rot rot-link"><span>' + rot + '</span>' +
+      '<a class="int-abrir" target="_blank" rel="noopener noreferrer" hidden>Abrir ↗</a></label>' +
+      '<input class="campo" value="' + esc(valor || '') + '" ' + attrs + ' inputmode="url" autocapitalize="none" spellcheck="false"></div>';
 
-    painel().innerHTML = '<div class="conteudo entra">' +
+    painel().innerHTML = '<div class="conteudo entra int-tela">' +
       B7.Dashboard.trilhaCliente(cliente, 'Inteligência') +
       '<div class="cab-conteudo"><div><h1>Inteligência do cliente</h1>' +
       '<p>Contexto permanente da marca. Preencha aos poucos — nada aqui é obrigatório, ' +
       'e o que estiver preenchido vira base para as linhas editoriais.</p></div>' +
       '<div class="salvamento" id="ind-inteligencia"><span class="pt"></span><span class="txt">Salvo ✓</span></div></div>' +
 
-      secao('gerais', 'Informações gerais', preenchido([dados.nicho, dados.site, dados.instagram, dados.descricao]),
-        '<div class="linha">' +
-          '<div>' + campoLinha('NICHO', dados.nicho, t + ' data-campo="nicho"') + '</div>' +
-          '<div>' + campoLinha('INSTAGRAM', dados.instagram, t + ' data-campo="instagram"') + '</div>' +
-          '<div>' + campoLinha('SITE', dados.site, t + ' data-campo="site"') + '</div>' +
-        '</div>' +
-        campo('DESCRIÇÃO DO NEGÓCIO', dados.descricao, t + ' data-campo="descricao"') +
-        campo('OBSERVAÇÕES', dados.observacoes, t + ' data-campo="observacoes"'), true) +
+      '<div class="int-resumo">' + B7.UI.avatarCliente(cliente.nome, cliente.logo_url) +
+        '<div class="int-res-tx"><b>' + esc(cliente.nome) + '</b><small id="int-res-txt"></small>' +
+        '<div class="barra-progresso"><i id="int-res-barra" style="width:0"></i></div></div>' +
+        '<span class="int-res-pct" id="int-res-pct"></span></div>' +
 
-      secao('icp', 'ICP — cliente ideal',
-        preenchido([dados.icp_perfil, dados.icp_segmento, dados.icp_dores, dados.icp_necessidades]),
+      sec('gerais', 'Informações gerais',
+        '<div class="linha">' +
+          '<div>' + campoLinha('NICHO', dados.nicho, t + ' data-campo="nicho"' + ex('Ex.: Odontologia')) + '</div>' +
+          '<div>' + campoLink('INSTAGRAM', dados.instagram, t + ' data-campo="instagram"' + ex('@perfil')) + '</div>' +
+          '<div>' + campoLink('SITE', dados.site, t + ' data-campo="site"' + ex('https://')) + '</div>' +
+        '</div>' +
+        campo('DESCRIÇÃO DO NEGÓCIO', dados.descricao, t + ' data-campo="descricao"' +
+          ex('O que a empresa faz, onde atua e para quem.')) +
+        campo('OBSERVAÇÕES', dados.observacoes, t + ' data-campo="observacoes"' +
+          ex('Regras da conta: hashtags, o que evitar, combinados com o cliente.')), true) +
+
+      sec('icp', 'ICP — cliente ideal',
         campo('PERFIL', dados.icp_perfil, t + ' data-campo="icp_perfil"') +
         '<div class="linha">' +
           '<div>' + campoLinha('SEGMENTO', dados.icp_segmento, t + ' data-campo="icp_segmento"') + '</div>' +
@@ -169,8 +195,7 @@ B7.Conteudo = (function () {
         campo('DORES', dados.icp_dores, t + ' data-campo="icp_dores"') +
         campo('CARACTERÍSTICAS', dados.icp_caracteristicas, t + ' data-campo="icp_caracteristicas"')) +
 
-      secao('publico', 'Público e persona',
-        preenchido([dados.publico_principal, dados.publico_dores, dados.publico_desejos, dados.publico_objecoes]),
+      sec('publico', 'Público e persona',
         campo('PÚBLICO PRINCIPAL', dados.publico_principal, t + ' data-campo="publico_principal"') +
         '<div class="linha">' +
           '<div>' + campoLinha('FAIXA ETÁRIA', dados.publico_faixa, t + ' data-campo="publico_faixa"') + '</div>' +
@@ -182,8 +207,7 @@ B7.Conteudo = (function () {
         campo('OBJEÇÕES', dados.publico_objecoes, t + ' data-campo="publico_objecoes"') +
         campo('COMPORTAMENTOS', dados.publico_comportamentos, t + ' data-campo="publico_comportamentos"')) +
 
-      secao('voz', 'Brand voice',
-        preenchido([dados.voz_tom, dados.voz_usar, dados.voz_evitar, dados.voz_cta]),
+      sec('voz', 'Brand voice',
         campo('TOM DE VOZ', dados.voz_tom, t + ' data-campo="voz_tom"') +
         campo('CARACTERÍSTICAS DA COMUNICAÇÃO', dados.voz_caracteristicas, t + ' data-campo="voz_caracteristicas"') +
         campo('PALAVRAS E EXPRESSÕES A USAR', dados.voz_usar, t + ' data-campo="voz_usar"') +
@@ -192,24 +216,122 @@ B7.Conteudo = (function () {
               'Ex: nomes de concorrentes, termos que o cliente não aceita.') +
         campo('ESTILO DE CTA', dados.voz_cta, t + ' data-campo="voz_cta"')) +
 
-      secao('posicionamento', 'Posicionamento',
-        preenchido([dados.posicionamento, dados.puv, dados.percepcao]),
+      sec('posicionamento', 'Posicionamento',
         campo('POSICIONAMENTO', dados.posicionamento, t + ' data-campo="posicionamento"') +
         campo('PROPOSTA ÚNICA DE VALOR', dados.puv, t + ' data-campo="puv"') +
         campo('PERCEPÇÃO DESEJADA', dados.percepcao, t + ' data-campo="percepcao"',
               'Serve de base para as linhas editoriais deste cliente.')) +
 
-      secao('produtos', 'Produtos e serviços', produtos.length + ' cadastrado' + (produtos.length === 1 ? '' : 's'),
+      sec('produtos', 'Produtos e serviços',
         '<div id="lista-produtos">' + produtos.map(itemProduto).join('') + '</div>' +
         '<button class="add-largo" id="add-produto">+ ADICIONAR PRODUTO</button>') +
 
-      secao('provas', 'Provas e cases', provas.length + ' cadastrada' + (provas.length === 1 ? '' : 's'),
+      sec('provas', 'Provas e cases',
         '<div id="lista-provas">' + provas.map(itemProva).join('') + '</div>' +
         '<button class="add-largo" id="add-prova">+ ADICIONAR PROVA</button>') +
     '</div>';
 
     ligarCampos(painel());
     ligarProdutos(clienteId);
+    resumoInteligencia(painel().querySelector('.int-tela'));
+  }
+
+  /* O que vai em cada seção — aparece enquanto ela está vazia. */
+  const DICA_INTEL = {
+    gerais: 'Nicho, redes e descrição do negócio',
+    icp: 'Perfil, porte e dores do cliente ideal',
+    publico: 'Quem a marca quer alcançar nas redes',
+    voz: 'Como a marca fala e o que evita',
+    posicionamento: 'Como a marca quer ser percebida',
+    produtos: 'O que a marca vende',
+    provas: 'Resultados, números e depoimentos'
+  };
+  const svgI = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+  const IC_INTEL = {
+    gerais: svgI('<path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/>'),
+    icp: svgI('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/>'),
+    publico: svgI('<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6"/><path d="M15.5 6.2a3 3 0 010 5.6M17.5 14.8c1.7.6 2.7 2 3 4.2"/>'),
+    voz: svgI('<path d="M5 5h14v10H10l-5 4z"/>'),
+    posicionamento: svgI('<circle cx="12" cy="12" r="8.5"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>'),
+    produtos: svgI('<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>'),
+    provas: svgI('<circle cx="12" cy="9.5" r="5.5"/><path d="M8.5 14L7 20l5-2.5 5 2.5-1.5-6"/>')
+  };
+
+  /* Contagem, prévia e progresso da Inteligência, sempre lidos dos
+     próprios campos da tela: o que a pessoa digita já conta, sem esperar
+     o autosave nem recarregar. Produtos e provas contam por item. */
+  let atualizaIntel = null;
+  function resumoInteligencia(raiz) {
+    if (!raiz) return;
+    const CAMPOS = '.sanfona-corpo [data-tab="cliente_inteligencia"][data-campo]';
+    const cheio = el => el.value.trim() !== '';
+    const corta = s => { s = s.trim().replace(/\s+/g, ' '); return s.length > 70 ? s.slice(0, 69).trimEnd() + '…' : s; };
+    const LISTAS = { produtos: ['[data-produto]', 'produto', 'produtos'], provas: ['[data-prova]', 'prova', 'provas'] };
+
+    function linkDe(campo, valor) {
+      const v = valor.trim();
+      if (!v) return '';
+      if (/^https?:\/\/\S+$/i.test(v)) return v;
+      if (campo === 'instagram') {
+        const m = v.match(/^@?([A-Za-z0-9._]{2,30})$/);
+        return m ? 'https://www.instagram.com/' + m[1] + '/' : '';
+      }
+      return /^[^\s@]+\.[a-z]{2,}(\/\S*)?$/i.test(v) ? 'https://' + v : '';
+    }
+
+    function atualizar() {
+      let feitosTotal = 0, total = 0;
+      raiz.querySelectorAll('.sanfona').forEach(s => {
+        const selo = s.querySelector('.sf-conta'), sub = s.querySelector('.sanfona-topo small');
+        const id = s.dataset.secao, lista = LISTAS[id];
+        let estado = '';
+        if (lista) {
+          const n = s.querySelectorAll(lista[0]).length;
+          selo.textContent = String(n);
+          sub.textContent = n ? n + ' ' + lista[n === 1 ? 1 : 2] + ' no cadastro' : DICA_INTEL[id];
+          estado = n ? 'cheia' : '';
+        } else {
+          const cs = [...s.querySelectorAll(CAMPOS)], feitos = cs.filter(cheio);
+          total += cs.length; feitosTotal += feitos.length;
+          selo.textContent = feitos.length + '/' + cs.length;
+          /* aberta, os campos já estão à vista: a prévia só serve fechada */
+          sub.textContent = feitos.length && !s.classList.contains('aberta')
+            ? feitos.slice(0, 3).map(el => corta(el.value)).join(' · ') : DICA_INTEL[id];
+          estado = !feitos.length ? '' : feitos.length === cs.length ? 'cheia' : 'parcial';
+        }
+        s.classList.toggle('cheia', estado === 'cheia');
+        s.classList.toggle('parcial', estado === 'parcial');
+      });
+      const pct = total ? Math.round(feitosTotal / total * 100) : 0;
+      raiz.querySelector('#int-res-txt').textContent = feitosTotal
+        ? feitosTotal + ' de ' + total + ' campos preenchidos'
+        : 'Cadastro em branco — comece pelas informações gerais';
+      raiz.querySelector('#int-res-pct').textContent = pct + '%';
+      raiz.querySelector('#int-res-barra').style.width = pct + '%';
+
+      raiz.querySelectorAll('.int-abrir').forEach(a => {
+        const el = a.closest('.mb').querySelector('[data-campo]');
+        const url = linkDe(el.dataset.campo, el.value);
+        a.hidden = !url;
+        if (url) a.href = url; else a.removeAttribute('href');
+      });
+    }
+
+    /* o título do cartão acompanha o nome digitado */
+    raiz.addEventListener('input', e => {
+      const el = e.target;
+      if (!el.dataset || !el.dataset.campo) return;
+      const item = el.closest('.cartao-item');
+      if (item && (el.dataset.campo === 'nome' || el.dataset.campo === 'titulo')) {
+        const b = item.querySelector('.cartao-item-topo b');
+        if (b) b.textContent = el.value.trim() || (item.dataset.produto ? 'Novo produto' : 'Nova prova');
+      }
+      atualizar();
+    });
+    raiz.addEventListener('click', e => { if (e.target.closest('.sanfona-topo')) atualizar(); });
+    atualizaIntel = atualizar;
+    atualizar();
   }
 
   function itemProduto(p) {
@@ -247,7 +369,7 @@ B7.Conteudo = (function () {
       try {
         const novo = await B7.Save.acao(() => B7.DB.criarProduto(clienteId, total), 'Produto adicionado');
         document.getElementById('lista-produtos').insertAdjacentHTML('beforeend', itemProduto(novo));
-        ligarCampos(painel()); ligarProdutos(clienteId);
+        ligarCampos(painel()); ligarProdutos(clienteId); if (atualizaIntel) atualizaIntel();
       } catch (e) {}
     };
     const addP = document.getElementById('add-prova');
@@ -256,19 +378,19 @@ B7.Conteudo = (function () {
       try {
         const nova = await B7.Save.acao(() => B7.DB.criarProva(clienteId, total), 'Prova adicionada');
         document.getElementById('lista-provas').insertAdjacentHTML('beforeend', itemProva(nova));
-        ligarCampos(painel()); ligarProdutos(clienteId);
+        ligarCampos(painel()); ligarProdutos(clienteId); if (atualizaIntel) atualizaIntel();
       } catch (e) {}
     };
     painel().querySelectorAll('[data-excluir-produto]').forEach(b => b.onclick = async () => {
       try {
         await B7.Save.acao(() => B7.DB.excluirProduto(b.dataset.excluirProduto), 'Produto removido');
-        b.closest('[data-produto]').remove();
+        b.closest('[data-produto]').remove(); if (atualizaIntel) atualizaIntel();
       } catch (e) {}
     });
     painel().querySelectorAll('[data-excluir-prova]').forEach(b => b.onclick = async () => {
       try {
         await B7.Save.acao(() => B7.DB.excluirProva(b.dataset.excluirProva), 'Prova removida');
-        b.closest('[data-prova]').remove();
+        b.closest('[data-prova]').remove(); if (atualizaIntel) atualizaIntel();
       } catch (e) {}
     });
   }
