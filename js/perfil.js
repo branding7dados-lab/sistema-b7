@@ -27,6 +27,19 @@ B7.Perfil = (function () {
 
     const empresas = B7.Auth.empresas();
 
+    /* Três abas em vez de uma coluna só: o que a pessoa vem fazer aqui é
+       uma coisa de cada vez (trocar a foto, trocar a senha, ajustar os
+       avisos), e a coluna única obrigava a rolar por tudo para achar. As
+       ações e as regras são as mesmas de antes. */
+    const abaInicial = secao === 'notificacoes' ? 'notif' : secao === 'seguranca' ? 'seg' : 'conta';
+    const ABAS = [['conta', 'Conta'], ['seg', 'Segurança'], ['notif', 'Notificações']];
+    const senha = (id, rot, auto) =>
+      '<label class="rot" for="' + id + '">' + rot + '</label>' +
+      '<div class="pf-senha"><input class="campo" id="' + id + '" type="password" autocomplete="' + auto + '">' +
+      '<button type="button" class="pf-olho" data-olho="' + id + '" aria-label="Mostrar senha" aria-pressed="false">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>' +
+      '</button></div>';
+
     const m = B7.UI.modal(
       '<div class="perfil-topo">' +
         '<div class="perfil-avatar av-pessoa tom-' + B7.UI.tomDoNome(u.nome || u.username) + '" id="pf-avatar">' +
@@ -39,99 +52,121 @@ B7.Perfil = (function () {
           '<span class="perfil-papel ' + esc(u.papel) + '">' +
             esc(ROTULO[u.papel] || u.papel) + '</span>' +
         '</div>' +
+        '<button type="button" class="pf-x" data-fecha aria-label="Fechar">×</button>' +
+      '</div>' +
+
+      '<div class="pf-abas" role="tablist" aria-label="Seções do perfil">' +
+        ABAS.map(a => '<button type="button" role="tab" data-aba="' + a[0] + '" aria-selected="' +
+          (a[0] === abaInicial) + '">' + a[1] + '</button>').join('') +
       '</div>' +
 
       '<div class="corpo">' +
 
-        '<div class="perfil-bloco">' +
-          '<h4>Nome</h4>' +
-          '<p class="ajuda">É o que aparece para a equipe nas ações que você faz.</p>' +
-          '<input class="campo" id="pf-nome" value="' + esc(u.nome) + '" maxlength="80">' +
-          '<div class="perfil-acao">' +
-            '<span class="perfil-msg" id="pf-msg-nome"></span>' +
-            '<button class="b pri fina" id="pf-salvar-nome">Salvar nome</button>' +
+        /* ------------------------------------------------------ conta */
+        '<section class="pf-painel" data-painel="conta" role="tabpanel">' +
+
+          /* A foto é do usuário: ele troca a dele sem passar pelo admin.
+             Escolhe o arquivo, confere no avatar lá em cima e salva. */
+          '<div class="pf-cartao">' +
+            '<h4>Foto de perfil</h4>' +
+            '<p class="ajuda">Aparece no topo, nas listas e nas ações que você faz.</p>' +
+            '<div id="pf-zona"></div>' +
+            '<div class="perfil-acao">' +
+              '<span class="perfil-msg" id="pf-msg-foto" role="status"></span>' +
+              (u.avatar_url ? '<button class="b fina perigo" id="pf-remover-foto">Remover foto</button>' : '') +
+              '<button class="b pri fina" id="pf-salvar-foto" disabled>Salvar foto</button>' +
+            '</div>' +
           '</div>' +
 
-        /* A foto é do usuário: ele troca a dele sem passar pelo admin.
-           Escolhe o arquivo; o envio acontece na hora. */
-        '<div class="perfil-bloco">' +
-          '<h4>Foto de perfil</h4>' +
-          '<div id="pf-zona"></div>' +
-          '<div class="perfil-acao">' +
-            '<span class="perfil-msg" id="pf-msg-foto"></span>' +
-            (u.avatar_url ? '<button class="b fina perigo" id="pf-remover-foto">Remover foto</button>' : '') +
-            '<button class="b pri fina" id="pf-salvar-foto" disabled>Salvar foto</button>' +
+          '<div class="pf-cartao">' +
+            '<h4><label for="pf-nome">Nome</label></h4>' +
+            '<p class="ajuda">É o que aparece para a equipe nas ações que você faz.</p>' +
+            '<div class="pf-campo-acao">' +
+              '<input class="campo" id="pf-nome" value="' + esc(u.nome) + '" maxlength="80">' +
+              '<button class="b pri fina" id="pf-salvar-nome" disabled>Salvar</button>' +
+            '</div>' +
+            '<span class="perfil-msg" id="pf-msg-nome" role="status"></span>' +
           '</div>' +
-        '</div>' +
-        '</div>' +
 
-        '<div class="perfil-bloco">' +
-          '<h4>Senha</h4>' +
-          '<p class="ajuda">Mínimo de 10 caracteres, com letras e números. ' +
-          'Ao trocar, as outras sessões abertas com esta conta são encerradas.</p>' +
-
-          '<label class="rot">SENHA ATUAL</label>' +
-          '<input class="campo" id="pf-atual" type="password" autocomplete="current-password">' +
-
-          '<label class="rot">NOVA SENHA</label>' +
-          '<input class="campo" id="pf-nova" type="password" autocomplete="new-password">' +
-
-          '<label class="rot">REPETIR A NOVA SENHA</label>' +
-          '<input class="campo" id="pf-nova2" type="password" autocomplete="new-password">' +
-
-          '<div class="perfil-acao">' +
-            '<span class="perfil-msg" id="pf-msg-senha"></span>' +
-            '<button class="b pri fina" id="pf-salvar-senha">Trocar senha</button>' +
+          /* o que só o administrador muda: mostrado, nunca editável */
+          '<div class="pf-cartao leitura">' +
+            '<h4>Definido pela Branding7</h4>' +
+            '<div class="perfil-linha"><span>Usuário</span><b>@' + esc(u.username) + '</b></div>' +
+            '<div class="perfil-linha"><span>Perfil</span><b>' +
+              esc(ROTULO[u.papel] || u.papel) + '</b></div>' +
+            (u.papel === 'cliente'
+              ? '<div class="perfil-linha"><span>Empresas</span><b>' +
+                (empresas.length ? esc(empresas.map(e => e.nome).join(', ')) : '—') + '</b></div>' +
+                '<div class="perfil-linha"><span>Aprovação</span><b>' +
+                (u.pode_aprovar ? 'pode aprovar oficialmente' : 'visualiza e comenta') + '</b></div>'
+              : '') +
+            '<p class="ajuda">Para mudar qualquer um destes, fale com o administrador.</p>' +
           '</div>' +
-        '</div>' +
+        '</section>' +
+
+        /* -------------------------------------------------- segurança */
+        '<section class="pf-painel" data-painel="seg" role="tabpanel" hidden>' +
+          '<div class="pf-cartao">' +
+            '<h4>Trocar senha</h4>' +
+            '<p class="ajuda">Ao trocar, as outras sessões abertas com esta conta são encerradas.</p>' +
+            senha('pf-atual', 'SENHA ATUAL', 'current-password') +
+            senha('pf-nova', 'NOVA SENHA', 'new-password') +
+            senha('pf-nova2', 'REPETIR A NOVA SENHA', 'new-password') +
+            '<ul class="pf-req" id="pf-req" aria-label="Requisitos da nova senha">' +
+              '<li data-req="tam">10 caracteres ou mais</li>' +
+              '<li data-req="letra">Pelo menos uma letra</li>' +
+              '<li data-req="num">Pelo menos um número</li>' +
+              '<li data-req="igual">As duas senhas novas iguais</li>' +
+            '</ul>' +
+            '<div class="perfil-acao">' +
+              '<span class="perfil-msg" id="pf-msg-senha" role="status"></span>' +
+              '<button class="b pri fina" id="pf-salvar-senha">Trocar senha</button>' +
+            '</div>' +
+          '</div>' +
+        '</section>' +
 
         /* Notificações: como chega (este aparelho) e o que avisa (por
            função). Cada pessoa decide o seu; nada aqui muda permissão. */
-        '<div class="perfil-bloco" id="pf-notif">' +
-          '<h4>Notificações</h4>' +
-          '<p class="ajuda">Você recebe o que envolve o seu trabalho. O sino sempre guarda esses avisos; ' +
-          'aqui você escolhe como eles chegam e quais podem te interromper.</p>' +
-
-          '<div class="pf-sub">Neste aparelho</div>' +
-          '<dl class="pf-estado" id="pf-estado"></dl>' +
-          opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.') +
-          opcao('som', 'Som das notificações', 'Um toque curto quando chega um aviso novo com o B7 aberto.') +
-          opcao('navegador', 'Aviso do navegador', 'Quando esta aba não estiver em foco, o navegador mostra o aviso.') +
-          '<div class="pf-teste-push">' +
-            '<div class="pf-teste-tx"><b>Testar notificações</b>' +
-            '<small>Envie uma notificação de teste para este dispositivo para confirmar que push, ' +
-            'permissões, som e abertura do B7 estão funcionando.</small></div>' +
-            '<button type="button" class="b fina contorno" id="pf-testar-notif">Enviar notificação de teste</button>' +
+        '<section class="pf-painel" data-painel="notif" role="tabpanel" id="pf-notif" hidden>' +
+          '<div class="pf-cartao">' +
+            '<h4>Neste aparelho</h4>' +
+            '<p class="ajuda">O sino sempre guarda os avisos. Aqui você escolhe como eles chegam neste aparelho.</p>' +
+            '<div class="pf-resumo" id="pf-resumo"></div>' +
+            opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.') +
+            opcao('som', 'Som das notificações', 'Um toque curto quando chega um aviso novo com o B7 aberto.') +
+            opcao('navegador', 'Aviso do navegador', 'Quando esta aba não estiver em foco, o navegador mostra o aviso.') +
+            '<div class="pf-teste-push">' +
+              '<div class="pf-teste-tx"><b>Testar notificações</b>' +
+              '<small>Envia um aviso de teste para este aparelho, para confirmar que push, ' +
+              'permissão e som estão funcionando.</small></div>' +
+              '<button type="button" class="b fina contorno" id="pf-testar-notif">Enviar teste</button>' +
+            '</div>' +
+            '<details class="pf-detalhes"><summary>Detalhes deste aparelho</summary>' +
+              '<dl class="pf-estado" id="pf-estado"></dl>' +
+              '<small class="pf-versao-sw" id="pf-versao-sw"></small>' +
+            '</details>' +
           '</div>' +
-          '<div class="perfil-acao"><span class="perfil-msg" id="pf-msg-notif" role="status"></span></div>' +
-
           gruposNotificacao() +
-          '<small class="pf-versao-sw" id="pf-versao-sw"></small>' +
-        '</div>' +
-
-        /* o que só o administrador muda: mostrado, nunca editável */
-        '<div class="perfil-bloco leitura">' +
-          '<h4>Definido pela Branding7</h4>' +
-          '<div class="perfil-linha"><span>Usuário</span><b>@' + esc(u.username) + '</b></div>' +
-          '<div class="perfil-linha"><span>Perfil</span><b>' +
-            esc(ROTULO[u.papel] || u.papel) + '</b></div>' +
-          (u.papel === 'cliente'
-            ? '<div class="perfil-linha"><span>Empresas</span><b>' +
-              (empresas.length ? esc(empresas.map(e => e.nome).join(', ')) : '—') + '</b></div>' +
-              '<div class="perfil-linha"><span>Aprovação</span><b>' +
-              (u.pode_aprovar ? 'pode aprovar oficialmente' : 'visualiza e comenta') + '</b></div>'
-            : '') +
-          '<p class="ajuda">Para mudar qualquer um destes, fale com o administrador.</p>' +
-        '</div>' +
+          '<div class="pf-msg-fixa"><span class="perfil-msg" id="pf-msg-notif" role="status"></span></div>' +
+        '</section>' +
 
       '</div>' +
 
       '<div class="acoes">' +
-        '<button class="b" data-fecha>Fechar</button>' +
-        '<div style="flex:1"></div>' +
         '<button class="b contorno" id="pf-sair">Sair da conta</button>' +
+        '<div style="flex:1"></div>' +
+        '<button class="b" data-fecha>Fechar</button>' +
       '</div>',
-      { larga: true, extra: 'modal-perfil' });
+      { larga: true, extra: 'modal-perfil pf-modal' });
+
+    /* ---------------------------------------------------------- abas */
+    function irPara(aba) {
+      m.querySelectorAll('[data-aba]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.aba === aba)));
+      m.querySelectorAll('[data-painel]').forEach(p => { p.hidden = p.dataset.painel !== aba; });
+      const cx = m.querySelector('.corpo'); if (cx) cx.scrollTop = 0;
+    }
+    m.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => irPara(b.dataset.aba));
+    irPara(abaInicial);
 
     /* ---------------------------------------------------------- foto */
     const btFoto = m.querySelector('#pf-salvar-foto');
@@ -172,6 +207,11 @@ B7.Perfil = (function () {
     const btNome = m.querySelector('#pf-salvar-nome');
     const msgNome = m.querySelector('#pf-msg-nome');
 
+    /* o botão só acende quando há o que salvar */
+    const nomeMudou = () => { const n = campoNome.value.trim(); return !!n && n !== u.nome; };
+    campoNome.oninput = () => { btNome.disabled = !nomeMudou(); msgNome.className = 'perfil-msg'; msgNome.textContent = ''; };
+    campoNome.onkeydown = e => { if (e.key === 'Enter' && nomeMudou()) btNome.click(); };
+
     btNome.onclick = async () => {
       const nome = campoNome.value.trim();
       msgNome.className = 'perfil-msg';
@@ -195,12 +235,35 @@ B7.Perfil = (function () {
       } catch (e) {
         aviso(msgNome, e.message || 'Não foi possível salvar.', 'erro');
       }
-      btNome.disabled = false; btNome.textContent = 'Salvar nome';
+      btNome.textContent = 'Salvar'; btNome.disabled = !nomeMudou();
     };
 
     /* --------------------------------------------------------- senha */
     const btSenha = m.querySelector('#pf-salvar-senha');
     const msgSenha = m.querySelector('#pf-msg-senha');
+
+    /* mostrar/ocultar cada senha, e os requisitos conferidos enquanto a
+       pessoa digita — em vez de só descobrir o que faltou ao clicar */
+    m.querySelectorAll('[data-olho]').forEach(b => b.onclick = () => {
+      const campo = m.querySelector('#' + b.dataset.olho);
+      const ver = campo.type === 'password';
+      campo.type = ver ? 'text' : 'password';
+      b.setAttribute('aria-pressed', String(ver));
+      b.setAttribute('aria-label', ver ? 'Ocultar senha' : 'Mostrar senha');
+    });
+    function conferirSenha() {
+      const nova = m.querySelector('#pf-nova').value, nova2 = m.querySelector('#pf-nova2').value;
+      const ok = {
+        tam: nova.length >= 10, letra: /[a-zA-Z]/.test(nova), num: /[0-9]/.test(nova),
+        igual: !!nova && nova === nova2
+      };
+      m.querySelectorAll('#pf-req [data-req]').forEach(li => li.classList.toggle('ok', !!ok[li.dataset.req]));
+      msgSenha.className = 'perfil-msg'; msgSenha.textContent = '';
+    }
+    m.querySelectorAll('#pf-atual, #pf-nova, #pf-nova2').forEach(c => {
+      c.oninput = conferirSenha;
+      c.onkeydown = e => { if (e.key === 'Enter') btSenha.click(); };
+    });
 
     btSenha.onclick = async () => {
       const atual = m.querySelector('#pf-atual').value;
@@ -219,6 +282,7 @@ B7.Perfil = (function () {
       try {
         await B7.DB.chamarAuth({ acao: 'minha_senha', senha_atual: atual, senha_nova: nova });
         m.querySelectorAll('#pf-atual, #pf-nova, #pf-nova2').forEach(c => c.value = '');
+        conferirSenha();
         aviso(msgSenha, 'Senha trocada. As outras sessões foram encerradas.', 'ok');
       } catch (e) {
         aviso(msgSenha, e.message || 'Não foi possível trocar a senha.', 'erro');
@@ -230,10 +294,6 @@ B7.Perfil = (function () {
 
     /* --------------------------------------------------- notificações */
     ligarNotificacoes(m);
-    if (secao === 'notificacoes') {
-      const alvo = m.querySelector('#pf-notif');
-      if (alvo) setTimeout(() => alvo.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80);
-    }
   }
 
   function opcao(chave, titulo, ajuda) {
@@ -297,6 +357,21 @@ B7.Perfil = (function () {
         /* "Enviado" = o servidor de push aceitou. O navegador não confirma
            que o aparelho exibiu, então aqui nunca aparece "Entregue". */
         linha('Último teste', t ? quandoTeste(t.em) + ' · ' + (t.ok ? 'Enviado' : 'Não enviado') : 'Nenhum neste aparelho', t ? (t.ok ? 'ok' : 'erro') : '');
+
+      /* a resposta em uma frase: este aparelho recebe avisos ou não? A
+         tabela acima virou detalhe, para quem precisa investigar. */
+      const res = m.querySelector('#pf-resumo');
+      if (!res) return;
+      const semPush = B7.Push && !B7.Push.disponivel();
+      const r = perm === 'bloqueada'
+        ? ['erro', 'Avisos bloqueados neste navegador', 'Libere as notificações deste site nas configurações do navegador e ative o push de novo.']
+        : ligada('push')
+          ? ['ok', 'Este aparelho recebe avisos', 'Push ativado' + (ligada('som') ? ' · som ligado' : ' · som desligado') + '.']
+          : semPush
+            ? ['neutro', 'Push indisponível neste navegador', 'Os avisos aparecem no sino, com o B7 aberto.']
+            : ['aviso', 'Push desativado neste aparelho', 'Os avisos só aparecem com o B7 aberto. Ative o push para receber com ele fechado.'];
+      res.className = 'pf-resumo ' + r[0];
+      res.innerHTML = '<i aria-hidden="true"></i><div><b>' + esc(r[1]) + '</b><span>' + esc(r[2]) + '</span></div>';
     }
 
     pintar('som', p.som);
