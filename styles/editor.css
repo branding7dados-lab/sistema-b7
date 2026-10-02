@@ -214,3 +214,39 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
 @media (max-width:520px){
   #tela-editor .topo{gap:6px;}
 }
+
+/* =====================================================================
+   IA QUE REVISA (js/ia-analise.js) — cartões de observação, usados na
+   revisão do roteiro, na comparação com o planejamento e na revisão do
+   conjunto da linha editorial. Sem nota, sem semáforo: a cor só separa
+   "atenção" de "observação".
+   ===================================================================== */
+.ia-roteiro-acoes{display:flex;flex-wrap:wrap;gap:4px 10px;margin:-4px 0 12px;}
+.ia-ach-conta{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--ink);}
+.ia-ach-resumo{margin:0 0 12px;font-size:13.5px;line-height:1.55;color:var(--ink-2);}
+.ia-ach-lista{display:flex;flex-direction:column;gap:8px;}
+.ia-ach{padding:12px 14px;border-radius:12px;border:1px solid var(--borda);border-left:3px solid var(--borda-forte);background:var(--suave);
+  display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
+.ia-ach.imp-atencao,.ia-ach.sit-atencao{border-left-color:var(--ambar);}
+.ia-ach.imp-importante,.ia-ach.sit-mudanca{border-left-color:var(--acento);}
+.ia-ach.sit-alinhado{border-left-color:var(--ok);}
+.ia-ach-cab{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.ia-ach-tipo{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);}
+.ia-ach.sit-alinhado .ia-ach-tipo{color:var(--ok);}
+.ia-ach.sit-atencao .ia-ach-tipo,.ia-ach.imp-atencao .ia-ach-extra{color:var(--ambar);}
+.ia-ach.sit-mudanca .ia-ach-tipo,.ia-ach.imp-importante .ia-ach-extra{color:var(--acento);}
+.ia-ach-extra,.ia-ach-cena{font-size:11px;font-weight:700;color:var(--ink-4);}
+.ia-ach-cena{padding:1px 8px;border-radius:99px;background:var(--card);color:var(--ink-3);}
+.ia-ach-tit{font-size:14px;font-weight:700;color:var(--ink);line-height:1.35;}
+.ia-ach p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink);overflow-wrap:anywhere;}
+.ia-ach p.ia-ach-sug{color:var(--ink-2);}
+.ia-ach-sug span{display:inline-block;margin-right:6px;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);}
+.ia-ach-itens{display:flex;flex-wrap:wrap;gap:5px;}
+.ia-ach-itens .ia-chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--card);text-transform:none;letter-spacing:0;font-weight:600;font-size:11.5px;padding:3px 9px;}
+.ia-mudou{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border-radius:10px;
+  background:var(--ambar-bg);color:var(--ambar);font-size:12.5px;font-weight:600;}
+.cena.ia-alvo{box-shadow:0 0 0 2px var(--acento);transition:box-shadow .2s;}
+@media (max-width:760px){
+  .ia-ach .b.fina{min-height:40px;}
+  .ia-roteiro-acoes{gap:2px 6px;}
+}

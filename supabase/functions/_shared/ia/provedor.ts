@@ -23,6 +23,10 @@ export type PedidoDeGeracao = {
   prazoMs: number;
   /** true = a resposta deve ser um JSON (quem valida o conteúdo é a tarefa) */
   json?: boolean;
+  /** formato do JSON esperado (subconjunto do OpenAPI: type, properties,
+      items, enum, required). O provedor que souber usa para prender a
+      resposta ao formato; quem não souber ignora. A tarefa valida igual. */
+  esquema?: Record<string, unknown>;
 };
 
 /** O que pode dar errado, em termos do B7 (não do provedor). */

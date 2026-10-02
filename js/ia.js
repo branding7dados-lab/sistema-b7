@@ -7,7 +7,7 @@
 
    Uso:
      const r = await B7.IA.pedir('roteiro', { acao, cena_id, texto }, { signal });
-     r.ok      → r.texto (um campo) ou r.itens (uma lista)
+     r.ok      → r.texto (um campo) ou r.itens (uma lista; as análises trazem também r.resumo)
      !r.ok     → r.mensagem (frase pronta, em português) e r.categoria
      cancelado → r.cancelado === true (nada a mostrar)
 
@@ -34,6 +34,8 @@ B7.IA = (function () {
     nao_encontrado: 'Este item não foi encontrado. Recarregue a página e tente de novo.',
     entrada_invalida: 'Não foi possível usar este texto. Confira o tamanho do trecho e da instrução.',
     contexto: 'Ainda não há informação suficiente para sugerir sem inventar. Preencha um pouco mais da estratégia e tente de novo.',
+    pouco: 'Ainda não há conteúdo suficiente para uma análise completa. Escreva um pouco mais e tente de novo.',
+    sem_vinculo: 'Este roteiro não está ligado a um conteúdo da Linha Editorial, então não há planejamento para comparar.',
     limite: 'Muitos pedidos em sequência. Espere um minuto e tente de novo.',
     ocupado: 'Já existe uma sugestão sendo gerada. Aguarde ela terminar.',
     cota: 'Limite temporário do assistente atingido. Tente novamente mais tarde.',
@@ -80,7 +82,9 @@ B7.IA = (function () {
         return { ok: true, texto: corpo.texto };
       }
       /* tarefas que devolvem lista (pilares, conteúdos, observações) */
-      if (corpo && corpo.ok === true && Array.isArray(corpo.itens)) return { ok: true, itens: corpo.itens };
+      if (corpo && corpo.ok === true && Array.isArray(corpo.itens)) {
+        return { ok: true, itens: corpo.itens, resumo: typeof corpo.resumo === 'string' ? corpo.resumo : '' };
+      }
       if (corpo && typeof corpo.categoria === 'string') return falha(corpo.categoria);
       if (resp.status === 401) return falha('sessao');
       if (resp.status === 403) return falha('sem_permissao');

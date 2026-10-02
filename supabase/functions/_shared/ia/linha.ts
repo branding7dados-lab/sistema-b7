@@ -28,6 +28,7 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { Mensagem } from './provedor.ts';
+import { IMPORTANCIAS, REVISOR, temNota } from './analise.ts';
 
 export const OPERACOES = ['campo', 'sugerir_pilares', 'sugerir_conteudos', 'revisar_estrategia', 'revisar_linha'] as const;
 export type Operacao = typeof OPERACOES[number];
@@ -37,6 +38,8 @@ export type AcaoCampo = typeof ACOES_CAMPO[number];
 /* as mesmas listas fechadas da tela (js/conteudo.js) e do banco */
 export const TIPOS_PILAR = ['Entretenimento', 'Educativo', 'Informativo', 'Inspirador', 'Conversão', 'Institucional'];
 export const FORMATOS = ['Reel', 'Card', 'Carrossel', 'Story'];
+/* aspectos da revisão do CONJUNTO da linha (revisar_linha) */
+export const TIPOS_REVISAO_LINHA = ['semelhantes', 'abordagem', 'cta', 'formatos', 'pilares', 'alinhamento', 'variacao', 'oportunidade'];
 const FUNIL = ['Topo', 'Meio', 'Fundo'];
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -135,6 +138,7 @@ export const nomeNoRegistro = (p: Pedido) => p.operacao === 'campo' ? 'campo.' +
 /** Teto de saída, em tokens, por operação. */
 export function limiteDeSaida(p: Pedido): number {
   if (p.operacao === 'sugerir_conteudos') return p.quantidade >= 8 ? 3072 : 2048;
+  if (p.operacao === 'revisar_linha') return 3072;
   if (p.operacao === 'campo') {
     const n = CAMPOS[p.alvoTipo!][p.campo!].natureza;
     return (n === 'titulo' || n === 'chamada' || n === 'cta' || p.acao === 'hashtags') ? 512 : 1536;
@@ -142,10 +146,21 @@ export function limiteDeSaida(p: Pedido): number {
   return 2048;
 }
 export const pedeJson = (p: Pedido) => p.operacao !== 'campo';
+/** Formato da resposta estruturada — só a revisão do conjunto usa. */
+export function esquema(p: Pedido): Record<string, unknown> | undefined {
+  if (p.operacao !== 'revisar_linha') return undefined;
+  const T = { type: 'STRING' };
+  return { type: 'OBJECT', required: ['resumo', 'observacoes'], properties: { resumo: T, observacoes: { type: 'ARRAY', items: {
+    type: 'OBJECT', required: ['tipo', 'importancia', 'conteudos', 'titulo', 'texto', 'sugestao'],
+    properties: { tipo: { type: 'STRING', enum: TIPOS_REVISAO_LINHA }, importancia: { type: 'STRING', enum: IMPORTANCIAS },
+      conteudos: { type: 'ARRAY', items: { type: 'INTEGER' } }, titulo: T, texto: T, sugestao: T } } } } };
+}
 
 // --------------------------------------------------------------- contexto
 type Pilar = { id: string; nome: string; funil: string; objetivo: string; percentual: number };
-type Conteudo = { id: string; tipo: string; titulo: string; pilarId: string | null; ideia: string };
+type Conteudo = { id: string; tipo: string; titulo: string; pilarId: string | null; ideia: string;
+  /** só na revisão do conjunto: o que ajuda a comparar um conteúdo com o outro */
+  objetivo: string; cta: string };
 export type Contexto = {
   linhaId: string; cliente: string; nicho: string; descricaoCliente: string; publico: string;
   mes: number; ano: number; canais: string; meta: number | null;
@@ -183,10 +198,15 @@ export async function carregarContexto(sb: SupabaseClient, p: Pedido): Promise<C
 
   let conteudos: Conteudo[] = [];
   if (p.operacao === 'sugerir_conteudos' || p.operacao === 'revisar_linha') {
-    const { data } = await sb.from('conteudos').select('id, tipo, titulo, pilar_id, ideia_geral')
-      .eq('linha_id', l.id).is('deleted_at', null).order('position', { ascending: true }).limit(80);
-    conteudos = (data || []).map(x => ({
-      id: x.id, tipo: corta(x.tipo, 12), titulo: corta(x.titulo, 140), pilarId: x.pilar_id, ideia: corta(x.ideia_geral, 160)
+    /* a revisão olha o CONJUNTO do mês: precisa de um pouco mais de cada
+       conteúdo (ideia, objetivo e CTA) para enxergar repetição de assunto,
+       de ângulo e de chamada — e só dos conteúdos DESTA linha */
+    const revisao = p.operacao === 'revisar_linha';
+    const { data } = await sb.from('conteudos').select(revisao ? 'id, tipo, titulo, pilar_id, ideia_geral, objetivo, cta' : 'id, tipo, titulo, pilar_id, ideia_geral')
+      .eq('linha_id', l.id).is('deleted_at', null).is('archived_at', null).order('position', { ascending: true }).limit(80);
+    conteudos = ((data || []) as unknown as Record<string, unknown>[]).map(x => ({
+      id: String(x.id), tipo: corta(x.tipo, 12), titulo: corta(x.titulo, 140), pilarId: (x.pilar_id as string) || null,
+      ideia: corta(x.ideia_geral, revisao ? 220 : 160), objetivo: revisao ? corta(x.objetivo, 140) : '', cta: revisao ? corta(x.cta, 110) : ''
     }));
   }
 
@@ -388,8 +408,55 @@ export function montarMensagens(p: Pedido, c: Contexto): Mensagem[] {
       '- "cta": direção da chamada para ação, até 90 caracteres, ou "" se não fizer sentido. Não cite canal de contato, brinde ou condição que não esteja no contexto.');
     if (p.instrucao) u.push('Pedido de quem está montando a linha: «' + p.instrucao + '»');
     u.push('', 'FORMATO DA RESPOSTA', '{"conteudos":[{"titulo":"…","formato":"…","pilar":"…","ideia":"…","cta":"…"}]}');
+  } else if (p.operacao === 'revisar_linha') {
+    /* REVISÃO DO CONJUNTO: uma chamada só, com todos os conteúdos do mês
+       numerados, para o modelo enxergar a relação ENTRE eles. As contagens
+       são feitas aqui, pelo B7 — o modelo interpreta, não conta. */
+    const pt = pilaresTxt(c, true);
+    if (pt.length) u.push('', 'PILARES DE CONTEÚDO (o peso é o planejado pela equipe)', ...pt);
+    if (c.meta) u.push('Meta de conteúdos do mês: ' + c.meta);
+    const conta = (chaveDe: (x: Conteudo) => string) => {
+      const m = new Map<string, number>();
+      c.conteudos.forEach(x => { const k = chaveDe(x); m.set(k, (m.get(k) || 0) + 1); });
+      return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => k + ': ' + n).join(' · ');
+    };
+    const nomePilar = (x: Conteudo) => { const pn = c.pilares.find(y => y.id === x.pilarId); return pn && pn.nome ? pn.nome : 'sem pilar'; };
+    u.push('', 'CONTAGENS FEITAS PELO SISTEMA (fatos; não recalcule)',
+      'Total de conteúdos: ' + c.conteudos.length,
+      'Por formato — ' + conta(x => x.tipo || 'sem formato'),
+      'Por pilar — ' + conta(nomePilar),
+      'Com CTA preenchido: ' + c.conteudos.filter(x => x.cta).length);
+    u.push('', 'CONTEÚDOS PLANEJADOS NESTE MÊS, numerados');
+    c.conteudos.forEach((x, i) => {
+      u.push('#' + (i + 1) + ' [' + (x.tipo || 'sem formato') + ' · ' + nomePilar(x) + '] <<<' + (x.titulo || 'sem título') + '>>>' +
+        (x.ideia ? ' | ideia: <<<' + x.ideia + '>>>' : '') + (x.objetivo ? ' | objetivo: <<<' + x.objetivo + '>>>' : '') + (x.cta ? ' | CTA: <<<' + x.cta + '>>>' : ''));
+    });
+    u.push('', 'TAREFA',
+      'Revise o PLANEJAMENTO deste mês COMO UM CONJUNTO: o que é difícil de perceber olhando um conteúdo por vez.',
+      'Aspectos possíveis (comente só onde houver algo concreto):',
+      '- semelhantes: dois ou mais conteúdos tratando praticamente da mesma ideia, mesmo com títulos diferentes.',
+      '- abordagem: conteúdos de assuntos diferentes usando o mesmo argumento, a mesma abertura ou a mesma estrutura.',
+      '- cta: muitos conteúdos com essencialmente a mesma chamada para ação.',
+      '- formatos: concentração em um formato. Descreva o que foi observado; não existe distribuição ideal.',
+      '- pilares: pilar com muito mais conteúdo que os outros, ou pilar planejado quase sem conteúdo. Não invente percentual ideal.',
+      '- alinhamento: conteúdo que parece pouco conectado ao objetivo ou ao posicionamento. Diga "parece menos conectado a… porque…": é leitura, não fato.',
+      '- variacao: falta de variedade de ângulo, abertura ou enquadramento no conjunto.',
+      '- oportunidade: um jeito concreto de diversificar, a partir da estratégia e dos pilares acima. Sem tendências nem datas.',
+      'Devolva de 0 a 7 observações, as mais úteis primeiro. Para cada uma:',
+      '"tipo": um dos aspectos acima; "importancia": "observacao", "atencao" ou "importante" (use "importante" raramente);',
+      '"conteudos": os números (#) dos conteúdos envolvidos, ou [] se vale para o conjunto;',
+      '"titulo": até 60 caracteres; "texto": o que foi observado e por quê, 1 ou 2 frases, até 260 caracteres;',
+      '"sugestao": o que a equipe pode fazer, 1 frase, até 180 caracteres, ou "". Não reescreva os conteúdos.',
+      'No "texto" e na "sugestao", cite os conteúdos pelo TÍTULO, nunca pelo número (#): o número só vai em "conteudos".',
+      'Não cite canal de contato (WhatsApp, telefone, link, direct), brinde ou condição que não esteja no material acima.',
+      'Conteúdo sem CTA, sem ideia ou sem pilar preenchido ainda está em planejamento: só comente se isso atrapalhar a leitura do conjunto.',
+      '"resumo": uma frase, até 160 caracteres, com a leitura geral do mês.',
+      'Se não houver repetição nem desequilíbrio relevante, devolva "observacoes": [] e diga isso no resumo.',
+      '', 'FORMATO DA RESPOSTA',
+      '{"resumo":"…","observacoes":[{"tipo":"…","importancia":"…","conteudos":[1,2],"titulo":"…","texto":"…","sugestao":"…"}]}');
+    return [{ role: 'system', content: REVISOR }, { role: 'user', content: u.join('\n') }];
   } else {
-    const linha = p.operacao === 'revisar_linha';
+    const linha = false;
     const pt = pilaresTxt(c, true);
     if (pt.length) u.push('', 'PILARES DE CONTEÚDO', ...pt);
     if (linha) {
@@ -518,6 +585,24 @@ export function limpador(p: Pedido, c: Contexto): (bruto: string) => string {
         });
         if (itens.length >= p.quantidade) break;
       }
+    } else if (p.operacao === 'revisar_linha') {
+      /* lista vazia é resposta válida ("nada relevante"); JSON sem a lista, não */
+      if (!o || !Array.isArray(o.observacoes)) return '';
+      const resumoBruto = tx(o.resumo, 240);
+      const idTipo = (v: unknown) => String(v ?? '').toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
+      for (const x of o.observacoes as Record<string, unknown>[]) {
+        if (!x || typeof x !== 'object') continue;
+        const tipo = TIPOS_REVISAO_LINHA.find(t => t === idTipo(x.tipo));
+        const texto = tx(x.texto ?? x.observacao, 400);
+        if (!tipo || texto.length < 12 || temNota(texto)) continue;
+        /* os números (#) viram os conteúdos reais DESTA linha; número fora da lista é descartado */
+        const citados = (Array.isArray(x.conteudos) ? x.conteudos : []).map(n => c.conteudos[Number(n) - 1]).filter(Boolean)
+          .filter((y, i, arr) => arr.indexOf(y) === i).slice(0, 6).map(y => ({ id: y.id, titulo: y.titulo || 'Sem título', tipo: y.tipo }));
+        itens.push({ tipo, importancia: IMPORTANCIAS.find(i => i === idTipo(x.importancia)) || 'observacao',
+          titulo: tx(x.titulo, 90), texto, sugestao: tx(x.sugestao, 260), conteudos: citados });
+        if (itens.length >= 7) break;
+      }
+      return JSON.stringify({ itens, resumo: temNota(resumoBruto) ? '' : resumoBruto });
     } else {
       for (const x of lista(o, 'observacoes')) {
         const texto = tx(x.texto ?? x.observacao, 400);

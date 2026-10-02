@@ -8,7 +8,8 @@
 //   cabeçalho  x-goog-api-key: <chave>
 //   corpo      { systemInstruction, contents: [{ role, parts: [{ text }] }],
 //                generationConfig: { temperature, maxOutputTokens,
-//                                    responseMimeType (só quando se pede JSON) } }
+//                                    responseMimeType (só quando se pede JSON),
+//                                    responseSchema (quando a tarefa manda o formato) } }
 //   resposta   candidates[].content.parts[].text, candidates[].finishReason,
 //              promptFeedback.blockReason, usageMetadata, modelVersion
 //   erros      401/403 chave · 404 modelo · 429 limite por minuto OU cota
@@ -87,7 +88,10 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
           contents: [{ role: 'user', parts: [{ text: usuario }] }],
           generationConfig: {
             temperature: p.temperatura, maxOutputTokens: p.maxTokens,
-            ...(p.json ? { responseMimeType: 'application/json' } : {})
+            ...(p.json ? { responseMimeType: 'application/json' } : {}),
+            /* resposta estruturada: prende o JSON ao formato pedido (sem
+               campo inventado nem texto em volta) */
+            ...(p.json && p.esquema ? { responseSchema: p.esquema } : {})
           }
         })
       });

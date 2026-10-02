@@ -342,6 +342,8 @@ B7.Editor = (function () {
           '<button class="perigo" data-acao="excluir">Excluir roteiro</button>' +
         '</div></div>' +
       '</div><div class="bloco-corpo">' +
+        /* IA que analisa o roteiro inteiro (não altera nada) */
+        (B7.IAAnalise ? B7.IAAnalise.botoesHTML(r) : '') +
         '<div class="mb" id="ap-status-roteiro">' + (B7.Aprovacoes ? B7.Aprovacoes.blocoStatus(E.aprovacoes[r.id], { botaoEnviar: true }) : '') + '</div>' +
         '<div class="mb"><label class="rot">TÍTULO</label>' +
         '<input class="campo" data-campo="titulo" placeholder="Título do roteiro" value="' + esc(r.titulo) + '"></div>' +
@@ -370,6 +372,30 @@ B7.Editor = (function () {
 
     ligarEscrita(r);
     B7.UI.ligarMenus(cx);
+    if (B7.IAAnalise) B7.IAAnalise.ligar(cx, r, { impressao: () => impressaoDoRoteiro(r.id), salvar: () => B7.Save.agora(), verCena: verCena });
+  }
+
+  /* "Impressão" do roteiro como está na tela agora: título, objetivo e
+     cenas. A análise de IA guarda a impressão do momento do pedido; se o
+     roteiro mudar depois, a tela avisa que a análise ficou velha. */
+  function impressaoDoRoteiro(id) {
+    const r = E.roteiros.find(x => x.id === id); if (!r) return '';
+    const s = JSON.stringify([r.titulo || '', r.objetivo || '', r.content_id || '',
+      (E.cenas[id] || []).map(c => [c.id, c.tipo || '', c.direcao || '', c.texto || ''])]);
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return s.length + ':' + h;
+  }
+  /* leva até a cena citada numa observação: abre se estiver recolhida, rola e destaca */
+  function verCena(cenaId) {
+    const el = document.querySelector('#lista-cenas .cena[data-cena="' + cenaId + '"]');
+    if (!el) { B7.UI.toast('Esta cena não está mais no roteiro.'); return; }
+    if (el.classList.contains('fechada')) { fechadas.delete(cenaId); el.classList.remove('fechada'); }
+    el.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    el.classList.add('ia-alvo');
+    setTimeout(() => el.classList.remove('ia-alvo'), 2200);
+    const campo = el.querySelector('[data-c-campo="texto"]');
+    if (campo) { try { campo.focus({ preventScroll: true }); } catch (e) {} }
   }
 
   function cenaHTML(c, i) {

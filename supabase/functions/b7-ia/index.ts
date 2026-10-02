@@ -16,6 +16,7 @@
 //
 // Corpo:  { tarefa: 'roteiro', acao, cena_id, texto, cena_inteira?, instrucao? }
 //         { tarefa: 'linha', operacao, linha_id, … }   (ver _shared/ia/linha.ts)
+//         { tarefa: 'analise', operacao, roteiro_id }  (ver _shared/ia/analise.ts)
 // Resposta de produto (HTTP 200), no formato do B7 — a tela não conhece
 // o formato do provedor:
 //   { ok: true, texto, id }    um campo de texto
@@ -40,6 +41,7 @@ import { gerar, provedorAtual } from '../_shared/ia/servico.ts';
 import type { Mensagem } from '../_shared/ia/provedor.ts';
 import { carregarContexto, limiteDeSaida, limparSaida, montarMensagens, validar } from '../_shared/ia/roteiro.ts';
 import * as Linha from '../_shared/ia/linha.ts';
+import * as Analise from '../_shared/ia/analise.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -89,12 +91,14 @@ Deno.serve(async (req: Request) => {
   try { corpo = JSON.parse(bruto); } catch (_e) { return json({ ok: false, categoria: 'entrada_invalida' }); }
   const pRoteiro = corpo.tarefa === 'roteiro' ? validar(corpo) : null;
   const pLinha = corpo.tarefa === 'linha' ? Linha.validar(corpo) : null;
-  const v = pRoteiro || pLinha;
+  const pAnalise = corpo.tarefa === 'analise' ? Analise.validar(corpo) : null;
+  const v = pRoteiro || pLinha || pAnalise;
   if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
 
   /* Linha editorial: designer só lê (a tela já trava os campos para ele);
-     quem não pode editar não ganha um caminho de escrita pela IA. */
-  if (pLinha && perfil.papel === 'designer') return json({ ok: false, categoria: 'sem_permissao' }, 403);
+     quem não pode editar não ganha um caminho de escrita pela IA. A
+     análise de roteiro segue a mesma regra: é ferramenta de quem escreve. */
+  if ((pLinha || pAnalise) && perfil.papel === 'designer') return json({ ok: false, categoria: 'sem_permissao' }, 403);
 
   /* ---- sem provedor configurado: recurso indisponível, nenhuma chamada externa ---- */
   const provedor = provedorAtual(n => Deno.env.get(n));
@@ -113,6 +117,7 @@ Deno.serve(async (req: Request) => {
   let t: {
     recurso: string; acao: string; entidadeTipo: string; entidadeId: string; tamanhoEntrada: number;
     mensagens: Mensagem[]; maxTokens: number; temperatura: number; limpar: (b: string) => string; json: boolean;
+    esquema?: Record<string, unknown>;
   };
   if (pRoteiro && pRoteiro.ok) {
     const pedido = pRoteiro.pedido;
@@ -121,6 +126,20 @@ Deno.serve(async (req: Request) => {
     t = {
       recurso: 'roteiro', acao: pedido.acao, entidadeTipo: 'cena', entidadeId: pedido.cenaId, tamanhoEntrada: pedido.texto.length,
       mensagens: montarMensagens(pedido, ctx), maxTokens: limiteDeSaida(pedido.acao), temperatura: 0.7, limpar: limparSaida, json: false
+    };
+  } else if (pAnalise && pAnalise.ok) {
+    /* revisar e comparar: o contexto é montado por operação, com a sessão
+       da pessoa (RLS), e a resposta é uma lista estruturada e validada */
+    const pedido = pAnalise.pedido;
+    const ctx = await Analise.carregarContexto(sbDaPessoa, pedido);
+    if (!ctx) return json({ ok: false, categoria: 'nao_encontrado' });
+    const base = Analise.suficiente(pedido, ctx);
+    if (base !== 'ok') return json({ ok: false, categoria: base });      /* sem base: avisa e não gasta uma chamada */
+    t = {
+      recurso: 'analise', acao: Analise.nomeNoRegistro(pedido), entidadeTipo: 'roteiro', entidadeId: pedido.roteiroId,
+      tamanhoEntrada: ctx.cenas.reduce((n, c) => n + c.fala.length, 0),
+      mensagens: Analise.montarMensagens(pedido, ctx), maxTokens: Analise.limiteDeSaida(pedido),
+      temperatura: 0.3, limpar: Analise.limpador(pedido, ctx), json: true, esquema: Analise.esquema(pedido)
     };
   } else {
     const pedido = (pLinha as { ok: true; pedido: Linha.Pedido }).pedido;
@@ -134,7 +153,8 @@ Deno.serve(async (req: Request) => {
       recurso: 'linha', acao: Linha.nomeNoRegistro(pedido),
       entidadeTipo: pedido.alvoTipo || 'linha', entidadeId: pedido.alvoId || pedido.linhaId, tamanhoEntrada: pedido.texto.length,
       mensagens: Linha.montarMensagens(pedido, ctx), maxTokens: Linha.limiteDeSaida(pedido),
-      temperatura: pedido.operacao.startsWith('revisar') ? 0.4 : 0.8, limpar: Linha.limpador(pedido, ctx), json: Linha.pedeJson(pedido)
+      temperatura: pedido.operacao.startsWith('revisar') ? 0.4 : 0.8, limpar: Linha.limpador(pedido, ctx), json: Linha.pedeJson(pedido),
+      esquema: Linha.esquema(pedido)
     };
   }
 
@@ -147,7 +167,7 @@ Deno.serve(async (req: Request) => {
 
   /* um pedido da pessoa = uma chamada ao provedor */
   const r = await gerar(provedor, t.mensagens, {
-    maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json
+    maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema
   });
 
   if (reg) {
@@ -165,6 +185,10 @@ Deno.serve(async (req: Request) => {
 
   if (!r.ok) return json({ ok: false, categoria: r.categoria });
   /* listas: o limpador da tarefa já validou e devolveu { itens } */
-  if (t.json) return json({ ok: true, itens: JSON.parse(r.texto).itens, id: reg ? reg.id : null });
+  if (t.json) {
+    const lido = JSON.parse(r.texto);
+    return json({ ok: true, itens: lido.itens, id: reg ? reg.id : null,
+      ...(typeof lido.resumo === 'string' ? { resumo: lido.resumo } : {}) });
+  }
   return json({ ok: true, texto: r.texto, id: reg ? reg.id : null });
 });

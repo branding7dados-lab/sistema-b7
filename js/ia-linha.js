@@ -293,7 +293,7 @@ B7.IALinha = (function () {
     revisar_estrategia: { titulo: 'Revisar estratégia', gerando: 'Analisando estratégia…',
       sub: 'Observações sobre o que está preenchido. Nada é alterado.' },
     revisar_linha: { titulo: 'Revisar linha editorial', gerando: 'Analisando o planejamento…',
-      sub: 'Observações sobre os conteúdos planejados em relação à estratégia e aos pilares. Nada é alterado.' }
+      sub: 'O planejamento do mês visto como conjunto: repetições, pilares, formatos, CTAs e alinhamento com a estratégia. Nada é alterado.' }
   };
   const plural = (n, s, p) => n + ' ' + (n === 1 ? s : p);
 
@@ -360,7 +360,13 @@ B7.IALinha = (function () {
           '<button class="b pri" data-adicionar' + (!n || S.ocupado ? ' disabled' : '') + '>' +
           (S.ocupado ? 'Adicionando…' : n ? 'Adicionar ' + plural(n, 'selecionado', 'selecionados') : 'Adicionar selecionados') + '</button>';
       } else {
-        c = '<div class="ia-obs-lista">' + S.itens.map(o => '<div class="ia-obs"><b>' + esc(o.tema) + '</b><p>' + esc(o.texto) + '</p></div>').join('') + '</div>' +
+        /* revisão do conjunto: cartões estruturados (tipo, conteúdos citados, sugestão);
+           revisão da estratégia continua no formato tema + texto */
+        const estruturado = S.itens.some(o => o.tipo) && B7.IAAnalise;
+        c = (estruturado
+            ? '<p class="ia-ach-conta">' + (S.itens.length === 1 ? 'Encontrei 1 observação.' : 'Encontrei ' + S.itens.length + ' observações.') + '</p>' +
+              B7.IAAnalise.cartoesHTML(S.itens, S.resumo)
+            : '<div class="ia-obs-lista">' + S.itens.map(o => '<div class="ia-obs"><b>' + esc(o.tema) + '</b><p>' + esc(o.texto) + '</p></div>').join('') + '</div>') +
           '<p class="ia-nota">São observações para apoiar a sua decisão. Nada foi alterado.</p>';
         r = '<button class="b" data-copiar>Copiar</button><button class="b contorno" data-gerar>Gerar novamente</button><button class="b pri" data-fecha>Fechar</button>';
       }
@@ -383,7 +389,9 @@ B7.IALinha = (function () {
       const ad = rodape.querySelector('[data-adicionar]');
       if (ad) ad.onclick = () => adicionar();
       const cp = rodape.querySelector('[data-copiar]');
-      if (cp) cp.onclick = ev => copiar(S.itens.map(o => o.tema + ': ' + o.texto).join('\n\n'), ev.currentTarget);
+      if (cp) cp.onclick = ev => copiar(S.itens.some(o => o.tipo) && B7.IAAnalise
+        ? B7.IAAnalise.textoParaCopiar(S.itens, S.resumo)
+        : S.itens.map(o => o.tema + ': ' + o.texto).join('\n\n'), ev.currentTarget);
     }
 
     async function pedir() {
@@ -405,10 +413,20 @@ B7.IALinha = (function () {
       S.ctrl = null;
       if (resp.cancelado) return;
       if (resp.ok && resp.itens) {
-        S.itens = resp.itens;
-        if (!S.itens.length) { S.fase = 'vazio'; S.aviso = operacao === 'sugerir_pilares' ? 'Esta linha já tem todos os tipos de pilar do B7.' : 'Nenhuma sugestão desta vez.'; }
+        S.itens = resp.itens; S.resumo = resp.resumo || '';
+        if (!S.itens.length) {
+          S.fase = 'vazio';
+          S.aviso = operacao === 'sugerir_pilares' ? 'Esta linha já tem todos os tipos de pilar do B7.'
+            : operacao === 'revisar_linha' ? (S.resumo || 'Não encontrei repetições nem desequilíbrios relevantes neste planejamento.')
+            : 'Nenhuma sugestão desta vez.';
+        }
         else S.fase = 'lista';
-      } else { S.fase = 'erro'; S.erro = resp.mensagem || 'Não foi possível gerar as sugestões.'; }
+      } else {
+        S.fase = 'erro';
+        S.erro = operacao === 'revisar_linha' && resp.categoria === 'contexto'
+          ? 'Esta linha editorial ainda não possui conteúdos suficientes para uma análise do conjunto.'
+          : (resp.mensagem || 'Não foi possível gerar as sugestões.');
+      }
       pintarJanela();
     }
 
