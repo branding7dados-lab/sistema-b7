@@ -146,8 +146,8 @@ B7.Perfil = (function () {
                sem precisar provocar o evento de verdade */
             (B7.Auth.papel && B7.Auth.papel() !== 'cliente' ? '<div class="pf-teste-push pf-teste-todos">' +
               '<div class="pf-teste-tx"><b>Ver um exemplo de cada aviso</b>' +
-              '<small>Envia só para você um exemplo de cada notificação do B7, com o título começando por “Teste”. ' +
-              'Ninguém mais recebe e nada é alterado nas demandas.</small></div>' +
+              '<small>Envia para os seus aparelhos com push ligado um exemplo de cada notificação do B7, com o título ' +
+              'começando por “Teste”. Não aparece no sino, ninguém mais recebe e nada é alterado nas demandas.</small></div>' +
               '<select class="campo fina" id="pf-exemplos-grupo" aria-label="Quais avisos">' +
                 '<option value="">Todos (43 avisos)</option><option value="design">Design (17)</option>' +
                 '<option value="video">Vídeo (9)</option><option value="gravacoes">Gravações e agenda (8)</option>' +
@@ -460,7 +460,8 @@ B7.Perfil = (function () {
       try {
         const n = await B7.DB.notificarTesteTodos(grupo);
         aviso(msg, n + (n === 1 ? ' aviso de exemplo enviado' : ' avisos de exemplo enviados') +
-          ' para você. Veja no sino' + (ligada('push') ? ' e neste aparelho.' : '. O push está desligado neste aparelho.'), 'ok');
+          (ligada('push') ? ' para os seus aparelhos.' : '. O push está desligado neste aparelho, então aqui não chega nada.'),
+          ligada('push') ? 'ok' : 'erro');
       } catch (e) {
         aviso(msg, 'Não foi possível enviar os exemplos. ' + (e.message || ''), 'erro');
       } finally { btExemplos.disabled = false; btExemplos.textContent = rotulo; }

@@ -954,7 +954,11 @@ B7.DB = (function () {
        cliente) pra o sino poder mostrar de quem é cada aviso sem uma
        segunda consulta. A escrita (marcar lida) continua na tabela. */
     async notificacoes({ limite = 30, antesDe, tipos } = {}) {
-      let q = sb().from('notificacoes_resumo').select('*').order('created_at', { ascending: false }).limit(limite);
+      /* exemplo de teste ("Ver um exemplo de cada aviso") só existe para
+         sair como push no aparelho: não entra na lista do sino */
+      let q = sb().from('notificacoes_resumo').select('*')
+        .or('dados->>teste.is.null,dados->>teste.neq.true')
+        .order('created_at', { ascending: false }).limit(limite);
       if (antesDe) q = q.lt('created_at', antesDe);
       if (tipos && tipos.length) q = q.in('tipo', tipos);   /* filtro do sino */
       return ok(await q);
@@ -1697,7 +1701,8 @@ B7.DB = (function () {
       const [versoes, notifs, eventos] = await Promise.all([
         this.versoesDesign(deliverableId),
         ok(await sb().from('notificacoes').select('*')
-          .eq('link', '#/design/' + deliverableId).order('created_at', { ascending: true })),
+          .eq('link', '#/design/' + deliverableId).or('dados->>teste.is.null,dados->>teste.neq.true')
+          .order('created_at', { ascending: true })),
         equipe
           ? sb().from('eventos_dominio').select('id, tipo, created_at, ator_nome, versao, payload')
               .eq('alvo_tipo', 'design_deliverable').eq('alvo_id', deliverableId)

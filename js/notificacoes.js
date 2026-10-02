@@ -262,6 +262,8 @@ B7.Notif = (function () {
     if (!bruta || bruta.id === ultimoIdAnunciado) return;
     ultimoIdAnunciado = bruta.id; ultimoAnuncio = Date.now();
     if (silenciosa(bruta)) return;        /* a pessoa desligou este tipo: só o sino */
+    /* exemplo de teste: só o push do aparelho, sem som nem aviso do sistema aberto */
+    if (bruta.dados && typeof bruta.dados === 'object' && bruta.dados.teste) return;
     const p = prefs();
     if (p.som) tocarSom();
     const n = await comCliente(bruta);

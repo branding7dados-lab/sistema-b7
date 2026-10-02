@@ -14,6 +14,8 @@
 --     aprov_processar_evento, agenda_verificar_lembretes…), aplicados a
 --     itens reais recentes para o link abrir algo que existe.
 --   • Todo título começa com "Teste · " e dados.teste = true.
+--   • Nasce LIDO (lida_em preenchido) e o sino não lista avisos de teste:
+--     o exemplo só chega como push no aparelho, sem virar pendência.
 --
 -- p_grupo: null (todos) | 'design' | 'video' | 'gravacoes' | 'cliente' | 'geral'
 -- Devolve quantos avisos foram criados.
@@ -159,9 +161,9 @@ begin
             'perfil', eu, s.client_id, eu, p.nome, p.papel, jsonb_build_object('amostra_de', s.tipo), now())
     returning id into evid;
 
-    insert into public.notificacoes (evento_id, destinatario_id, client_id, tipo, titulo, mensagem, link, dados, created_at)
+    insert into public.notificacoes (evento_id, destinatario_id, client_id, tipo, titulo, mensagem, link, dados, created_at, lida_em)
     values (evid, eu, s.client_id, s.tipo, 'Teste · ' || s.titulo, s.mensagem, s.link,
-            coalesce(s.dados, '{}'::jsonb) || '{"teste": true}'::jsonb, clock_timestamp());
+            coalesce(s.dados, '{}'::jsonb) || '{"teste": true}'::jsonb, clock_timestamp(), clock_timestamp());
     n := n + 1;
   end loop;
 
