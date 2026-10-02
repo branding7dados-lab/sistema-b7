@@ -110,7 +110,7 @@ Ligada por `IA: { linhas: true }` em `js/config.js`. A tela é `js/ia-linha.js`;
 | `sugerir_pilares` | "Sugerir pilares", na seção de pilares | lista de tipos de pilar que a linha ainda não tem |
 | `sugerir_conteudos` | "Sugerir conteúdos" (aba Criativos) e "Sugerir ideias para este pilar" | 3, 5 ou 8 ideias de conteúdo |
 | `revisar_estrategia` | "Revisar estratégia" (aba Estratégia) | observações |
-| `revisar_linha` | "Revisar linha editorial" (Visão geral, com 3 conteúdos ou mais) | observações |
+| `revisar_linha` | "Revisar linha editorial" (Visão geral, com 3 conteúdos ou mais) | observações estruturadas sobre o conjunto do mês |
 
 - **Nada é gravado pela IA.** Um campo só muda em "Aplicar", pelo evento de digitação do próprio campo (autosave de sempre). Pilar e conteúdo sugeridos só são criados para os itens que a pessoa marcar, pela mesma criação de um pilar ou conteúdo feito à mão; depois disso são registros comuns, sem marca de IA.
 - **Contexto por operação.** Um campo da estratégia leva os outros campos da estratégia. Um campo de pilar leva objetivo e posicionamento. Um campo de conteúdo leva objetivo, tom de voz e os outros textos daquele conteúdo. Ideias de conteúdo levam estratégia, pilares e os títulos já planejados **daquela linha** (para não repetir). Nunca vai: outro mês, outro cliente, roteiros, gravações, vídeo, design, aprovações, links de referência, observações internas.
@@ -119,6 +119,26 @@ Ligada por `IA: { linhas: true }` em `js/config.js`. A tela é `js/ia-linha.js`;
 - **Sem percentual.** Pilar sugerido entra com 0%: o peso é decisão da equipe.
 - **Quem pode.** Equipe que edita a linha. Designer (só leitura na linha) não vê as entradas, e o servidor recusa.
 - **Registro.** `ia_uso.recurso = 'linha'`; `acao` é a operação (`sugerir_conteudos`, `campo.conteudo.legenda.criar`…).
+- **Revisão do conjunto (`revisar_linha`, desde 2026-10-02-v).** Uma chamada só, com todos os conteúdos **daquela linha** numerados (título, formato, pilar, ideia, objetivo e CTA) e as contagens por formato e por pilar já feitas pelo sistema. Devolve observações estruturadas: tipo (`semelhantes`, `abordagem`, `cta`, `formatos`, `pilares`, `alinhamento`, `variacao`, `oportunidade`), importância, título, texto, sugestão e os conteúdos citados. Lista vazia é resposta válida ("nada relevante").
+
+## Análise: revisar roteiro e comparar com o planejamento
+
+Ligada pelo mesmo `IA: { roteiros: true }`. A tela é `js/ia-analise.js`; a tarefa no servidor é `_shared/ia/analise.ts` (`tarefa: 'analise'`).
+
+| Operação | Onde aparece | O que devolve |
+|---|---|---|
+| `revisar_roteiro` | "Revisar roteiro", no topo do roteiro | até 6 observações (gancho, coerência, repetição, naturalidade, clareza, ritmo, CTA, alinhamento, conferir informação), cada uma com a cena |
+| `comparar_planejamento` | "Comparar com planejamento", só em roteiro ligado a um conteúdo da Linha Editorial | de 2 a 6 pontos (ideia, objetivo, ângulo, pontos-chave, formato, CTA, tom), cada um "alinhado", "atenção" ou "mudança de abordagem" |
+
+- **Análise nunca altera nada.** Não existe "aplicar". Não cria tarefa, não muda status, não bloqueia gravação.
+- **Sem nota.** Observação com nota, "x/10" ou percentual de qualidade ou alinhamento é descartada no servidor.
+- **Vínculo real.** A comparação usa `roteiros.content_id` (e `conteudos.script_id` de volta). Nada é adivinhado por título. O vínculo só vale se o conteúdo for do mesmo cliente da gravação do roteiro e não apontar para outro roteiro. Sem vínculo, o botão não aparece e o servidor responde `sem_vinculo`.
+- **Contexto por operação.** Revisar: título, objetivo e cenas (tipo, orientação e fala) + três campos do conteúdo planejado, se houver. Comparar: o conteúdo planejado, o pilar dele, tom de voz e objetivo do período da linha + o roteiro. Nunca vai: nome do cliente (a não ser que esteja escrito na fala), nota interna, outros roteiros, outros meses, aprovações, pessoas.
+- **Resposta estruturada.** As três análises mandam ao provedor o formato esperado (`responseSchema`), e o servidor valida de novo: tipo fora da lista, cena que não existe e texto vazio são descartados.
+- **Sem base, sem chamada.** Roteiro com pouca fala responde `pouco`; conteúdo planejado vazio responde `contexto`.
+- **Resultado velho.** A tela guarda o resultado em memória com a "impressão" do roteiro no momento do pedido; reabrir não gasta outra chamada, e se o roteiro mudou aparece "O conteúdo mudou desde esta revisão".
+- **Registro.** `ia_uso.recurso = 'analise'`; `acao` é a operação; `entidade_tipo = 'roteiro'`.
+
 ## Registro de uso
 
 Tabela `ia_uso` (ver `migration_ia_uso.sql`): quem pediu, qual ação, em qual cena, se deu certo, provedor, modelo, motivo do erro, duração, tokens e tamanhos em caracteres. **Não guarda** o texto do roteiro, a instrução nem a sugestão. Só o servidor lê; não há tela para isso. O `id` da linha é o que a função devolve como `id` do pedido.
