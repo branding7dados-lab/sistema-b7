@@ -2479,7 +2479,35 @@ B7.Design = (function () {
     return '<div class="ds-dr-bloco ds-dc"><h4>Decisão do cliente' +
       (cabecalho ? ' <span class="ds-dc-status st-' + esc(d.status) + '">' + esc(cabecalho) + '</span>' : '') + '</h4>' +
       (lista.length ? lista.map(item).join('') : '<p class="ds-dc-vazio">O cliente ainda não decidiu. Quando decidir — pelo Portal ou por fora (WhatsApp, ligação…) — use “Registrar decisão do cliente” acima.</p>') +
+      /* texto pronto para pedir (ou cobrar) a aprovação por fora — o
+         sistema só copia; quem envia é a pessoa, pelo canal dela */
+      (equipe && podeRegistrarDecisaoCliente(d)
+        ? '<button class="b fina contorno ds-dc-copiar" data-copiar-cliente title="Copia um texto pronto para colar no WhatsApp do cliente">' +
+            (pendentesDoCliente(d).length > 1 ? 'Copiar mensagem para o cliente (' + pendentesDoCliente(d).length + ' peças)' : 'Copiar mensagem para o cliente') + '</button>'
+        : '') +
     '</div>';
+  }
+
+  /* peças deste cliente que estão esperando a decisão dele: aprovadas
+     por dentro (ainda não mostradas) ou já enviadas e sem resposta */
+  function pendentesDoCliente(d) {
+    const lista = dados.filter(x => x.client_id === d.client_id && (x.status === 'aprovado_interno' || x.status === 'aguardando_cliente'));
+    return lista.some(x => x.id === d.id) ? lista : lista.concat([d]);
+  }
+  function mensagemParaCliente(d) {
+    const pecas = pendentesDoCliente(d);
+    const nome = x => rotuloTipo(x.tipo) + ' — ' + (x.titulo || x.conteudo_titulo || 'sem título');
+    /* lembrete só quando TUDO já foi enviado antes; se há peça nova, é um pedido */
+    const lembrete = pecas.every(x => x.status === 'aguardando_cliente');
+    if (pecas.length === 1) {
+      return lembrete
+        ? 'Olá! Passando para lembrar da arte "' + (d.titulo || d.conteudo_titulo || 'sem título') + '" (' + rotuloTipo(d.tipo) + '), que está aguardando a sua aprovação. Pode nos dizer se está aprovada ou se precisa de algum ajuste?'
+        : 'Olá! A arte "' + (d.titulo || d.conteudo_titulo || 'sem título') + '" (' + rotuloTipo(d.tipo) + ') está pronta para a sua aprovação. Pode nos dizer se está aprovada ou se precisa de algum ajuste?';
+    }
+    return (lembrete ? 'Olá! Passando para lembrar das ' + pecas.length + ' artes que estão aguardando a sua aprovação:'
+                     : 'Olá! Temos ' + pecas.length + ' artes prontas para a sua aprovação:') + '\n' +
+      pecas.map(x => '• ' + nome(x)).join('\n') +
+      '\nPode nos dizer se estão aprovadas ou se alguma precisa de ajuste?';
   }
 
   /* modal "Registrar decisão do cliente" — o que o cliente decidiu, por
@@ -3411,6 +3439,9 @@ B7.Design = (function () {
     el.querySelectorAll('[data-ajuste-cliente]').forEach(b => b.onclick = () => marcarAjusteCliente(d, b.dataset.ajusteCliente));
     el.querySelectorAll('[data-ajuste-cliente-remover]').forEach(b => b.onclick = () => { if (drawer.ajustesCliente) delete drawer.ajustesCliente[b.dataset.ajusteClienteRemover]; desenharDrawer(); });
     el.querySelectorAll('[data-ir-aprovacao]').forEach(b => b.onclick = () => { location.hash = '#/aprovacoes/' + b.dataset.irAprovacao; });
+    el.querySelectorAll('[data-copiar-cliente]').forEach(b => b.onclick = () =>
+      B7.UI.copiarTexto(mensagemParaCliente(d), { msgVazio: 'Não há mensagem para copiar.',
+        msgSucesso: 'Mensagem copiada. Cole na conversa com o cliente.', msgErro: 'Não foi possível copiar a mensagem.' }));
 
     /* fechamento da revisão multiparte (§23/§45): uma ação, uma notificação */
     const fecharRevisao = async (botao, rotulo) => {

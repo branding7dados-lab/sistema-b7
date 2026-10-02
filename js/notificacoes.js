@@ -117,6 +117,7 @@ B7.Notif = (function () {
       'linha.concluida', 'linha.briefing_atualizado', 'roteiro.pronto']],
     ['prazos', 'Prazos', ['video.prazo_amanha', 'video.atrasado', 'video.atrasado_escalado', 'video.atrasado_critico',
       'design.prazo_amanha', 'design.atrasado', 'design.atrasado_escalado', 'design.atrasado_critico',
+      'design.revisao_parada', 'design.cliente_parado',
       'agenda.gravacao_24h', 'agenda.gravacao_1h', 'agenda.apresentacao_24h', 'agenda.apresentacao_1h',
       'agenda.reuniao_24h', 'agenda.reuniao_1h', 'agenda.outro_24h', 'agenda.outro_1h',
       'gravacao.remarcada', 'gravacao.cancelada', 'resumo.diario']],

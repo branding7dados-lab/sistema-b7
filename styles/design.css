@@ -391,6 +391,7 @@ body.ds-ws-aberta{overflow:hidden;}
 .ds-dc h4{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .ds-dc-status{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--suave);color:var(--ink-3);}
 .ds-dc-vazio{font-size:12.5px;color:var(--ink-4);line-height:1.5;margin:0;}
+.ds-dc-copiar{margin-top:10px;}
 .ds-dc-status.st-aprovado_cliente{background:var(--ok-bg);color:var(--ok);}
 .ds-dc-status.st-ajustes_cliente{background:color-mix(in srgb,var(--roxo) 14%,transparent);color:var(--roxo);}
 .ds-dc-status.st-aguardando_cliente{background:var(--ambar-bg);color:var(--ambar);}
