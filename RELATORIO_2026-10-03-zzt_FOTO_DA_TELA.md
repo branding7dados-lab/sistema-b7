@@ -52,3 +52,24 @@ Testes: Chromium headless, quadros congelados (`getAnimations` + `currentTime`):
 - **Abrir a 120–380 ms:** a tela inteira assume;
 - **Voltar a 40, 160 e 320 ms:** lista assentando e cartão "Gravação 3" erguido com sombra, pousando;
 - sem erros.
+
+---
+
+# Ajuste zzv (03/10): a troca só acontece com a tela parada
+
+Vídeo novo (Edição de vídeo → demanda → voltar, várias vezes; depois Gravações) + "é necessário ficar recarregando assim toda hora que entro no card e saio?".
+
+**Resposta à pergunta:** a busca dos dados é necessária, porque a equipe inteira mexe nas mesmas demandas e a lista precisa vir atualizada. Mas ela não precisa **aparecer**. O que aparecia no vídeo:
+- **A tela real monta em etapas:** os contadores passam por "5 pendentes · 2 entregues" e "7 · 3" antes de "9 · 4", e os blocos chegam depois. A foto saía na primeira etapa sem esqueleto, então as etapas viravam piscadas.
+- **A tela remonta uma segunda vez logo depois** (segunda busca ou tempo real). Como as entradas voltavam a valer 400 ms depois de a foto sair, a lista esmaecia de novo.
+
+O que mudou (`js/movimento.js`):
+- A foto só sai quando a tela real está pronta **e parada há 180 ms**, contando qualquer mudança no painel (`MutationObserver`). O limite subiu para 3 s.
+- A troca é seca (60 ms): como a foto e a tela real são iguais e estão na mesma rolagem, um esmaecer só misturava as duas.
+- As animações de entrada ficam desligadas por **1,5 s** depois de a foto sair, para cobrir a segunda remontagem.
+
+Teste: Chromium headless, com um roteador simulado que monta a lista em três etapas (5, 7 e 9 pendentes, aos 400, 550 e 700 ms). O que ficou visível, quadro a quadro:
+- em 19 ms, a foto "9 pendentes";
+- em 967 ms, a tela real "9 pendentes";
+- as etapas "5" e "7" nunca aparecem;
+- sem erros.
