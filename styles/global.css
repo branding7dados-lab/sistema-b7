@@ -1298,17 +1298,56 @@ body.apurando #app{visibility:hidden;}
   animation:abFio 1.4s cubic-bezier(.45,0,.55,1) infinite;}
 @keyframes abFio{from{transform:translate3d(-110%,0,0)}to{transform:translate3d(260%,0,0)}}
 
-/* ---- versão curta: logo já montado, entrada de 0,35 s ---- */
-.ab-curta .b7-abertura.inicial .ab-palco,.b7-abertura:not(.inicial) .ab-palco{animation:abCurta .38s var(--ab-assenta) both;}
-@keyframes abCurta{from{opacity:0;transform:scale(.965);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
-.ab-curta .b7-abertura.inicial .ab-simbolo,.ab-curta .b7-abertura.inicial .ab-palavra,.ab-curta .b7-abertura.inicial .ab-cor,
-.ab-curta .b7-abertura.inicial .ab-bloom,.ab-curta .b7-abertura.inicial .ab-horizonte,
-.b7-abertura:not(.inicial) .ab-simbolo,.b7-abertura:not(.inicial) .ab-palavra,.b7-abertura:not(.inicial) .ab-cor,
-.b7-abertura:not(.inicial) .ab-bloom,.b7-abertura:not(.inicial) .ab-horizonte{animation:none;}
-.ab-curta .b7-abertura.inicial .ab-cor,.b7-abertura:not(.inicial) .ab-cor{filter:drop-shadow(0 0 10px rgba(226,64,156,.45));}
-.ab-curta .b7-abertura.inicial :is(.ab-onda,.ab-chave,.ab-carga,.ab-raios,.ab-clarao,.ab-centelha,.ab-poeira,.ab-flare,.ab-brilho),
-.b7-abertura:not(.inicial) :is(.ab-onda,.ab-chave,.ab-carga,.ab-raios,.ab-clarao,.ab-centelha,.ab-poeira,.ab-flare,.ab-brilho){display:none;}
-.ab-curta .b7-abertura.inicial .ab-espera,.b7-abertura:not(.inicial) .ab-espera{animation-delay:.5s;}
+/* ---- versão curta "relâmpago" (recarregar, puxar para atualizar,
+   entre login e sistema) — pacote zzb, 03/10 ----
+   Antes: logo parado + "Preparando o seu espaço…" + barrinha, e na saída
+   uma bola branca (a íris abrindo sobre o tema claro). Pedido do Kevin:
+   "deixa esse loading cinematográfico". Agora é a abertura em ~1 s:
+     0,00–0,45  a lâmpada sai do escuro e do desfoque
+     0,40       ACENDE (o mesmo clarão cromático da completa), uma onda
+                de luz, bloom e o flare horizontal
+     0,30–0,80  "Branding7" se escreve
+     0,95 →     se ainda carrega: um brilho passa pelo logo a cada 1,8 s
+                e a lâmpada respira — o próprio logo é o indicador
+     1,8 →      só então a frase honesta ("Preparando…") aparece
+   Tema claro: sai esmaecendo (sem o buraco da íris, que lá virava uma
+   bola branca). Sem som (o som é só da completa). */
+.ab-curta .b7-abertura.inicial .ab-palco,.b7-abertura:not(.inicial) .ab-palco{animation:abRelPalco .95s var(--ab-assenta) both;}
+@keyframes abRelPalco{0%{opacity:0;transform:scale(.9);filter:blur(10px)}38%{opacity:1;filter:blur(0)}
+  46%{transform:scale(1.035)}100%{opacity:1;transform:none;filter:none}}
+.ab-curta .b7-abertura.inicial .ab-simbolo,.b7-abertura:not(.inicial) .ab-simbolo{animation:none;}
+.ab-curta .b7-abertura.inicial .ab-cor,.b7-abertura:not(.inicial) .ab-cor{
+  animation:abRelAcende .95s both, abRelRespira 2.4s ease-in-out .95s infinite alternate;}
+@keyframes abRelAcende{
+  0%  {filter:brightness(.15) saturate(.6)}
+  36% {filter:brightness(.55) saturate(.9)}
+  42% {filter:brightness(2.1) saturate(1.3) drop-shadow(4px 0 0 rgba(255,40,110,.75)) drop-shadow(-4px 0 0 rgba(40,190,255,.7)) drop-shadow(0 0 22px rgba(255,150,210,.95))}
+  52% {filter:brightness(1.5) saturate(1.2) drop-shadow(1px 0 0 rgba(255,40,110,.35)) drop-shadow(-1px 0 0 rgba(40,190,255,.3)) drop-shadow(0 0 18px rgba(255,150,210,.8))}
+  100%{filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 12px rgba(226,64,156,.5))}}
+@keyframes abRelRespira{from{filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 12px rgba(226,64,156,.5))}
+  to{filter:brightness(1.22) saturate(1.12) drop-shadow(0 0 22px rgba(255,120,200,.8))}}
+.ab-curta .b7-abertura.inicial .ab-palavra,.b7-abertura:not(.inicial) .ab-palavra{animation:abPalavra .5s var(--ab-assenta) .3s both;}
+.ab-curta .b7-abertura.inicial .ab-horizonte,.b7-abertura:not(.inicial) .ab-horizonte{animation:abHorizonte 1s var(--ab-assenta) both;}
+.ab-curta .b7-abertura.inicial .ab-bloom,.b7-abertura:not(.inicial) .ab-bloom{animation:abBloom 1.3s cubic-bezier(.2,.8,.2,1) .38s both;}
+.ab-curta .b7-abertura.inicial .ab-onda:not(.dois),.b7-abertura:not(.inicial) .ab-onda:not(.dois){animation:abOnda 1.1s cubic-bezier(.16,1,.3,1) .4s both;}
+.ab-curta .b7-abertura.inicial .ab-flare,.b7-abertura:not(.inicial) .ab-flare{animation:abFlare .9s cubic-bezier(.2,.8,.2,1) .4s both;}
+.ab-curta .b7-abertura.inicial .ab-clarao,.b7-abertura:not(.inicial) .ab-clarao{animation:abClarao .7s cubic-bezier(.2,.8,.2,1) .4s both;}
+/* na curta a lâmpada já está no lugar dela no logo: onda e bloom nascem dela */
+.ab-curta .b7-abertura.inicial :is(.ab-onda,.ab-bloom),.b7-abertura:not(.inicial) :is(.ab-onda,.ab-bloom){translate:calc(-1 * var(--ab-dx)) 0;}
+/* enquanto carrega: um brilho passa pelo logo, de tempos em tempos */
+.ab-curta .b7-abertura.inicial .ab-brilho b,.b7-abertura:not(.inicial) .ab-brilho b{animation:abRelBrilho 1.8s cubic-bezier(.45,0,.25,1) .95s infinite;}
+@keyframes abRelBrilho{0%{transform:translate3d(-120%,0,0) skewX(-14deg);opacity:1}45%,100%{transform:translate3d(420%,0,0) skewX(-14deg);opacity:.6}}
+.ab-curta .b7-abertura.inicial :is(.ab-onda.dois,.ab-chave,.ab-carga,.ab-raios,.ab-centelha,.ab-poeira),
+.b7-abertura:not(.inicial) :is(.ab-onda.dois,.ab-chave,.ab-carga,.ab-raios,.ab-centelha,.ab-poeira){display:none;}
+/* a frase só aparece se a espera for de verdade */
+.ab-curta .b7-abertura.inicial .ab-espera,.b7-abertura:not(.inicial) .ab-espera{animation-delay:1.8s;}
+/* saída no tema claro: esmaece (a íris abria uma bola branca sobre o logo) */
+[data-theme="light"] .b7-abertura.saindo .ab-ceu{-webkit-mask:none;mask:none;animation:abCeuSome .6s cubic-bezier(.4,0,.2,1) .05s forwards;}
+@keyframes abCeuSome{to{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .ab-curta .b7-abertura.inicial :is(.ab-cor,.ab-brilho b,.ab-palco,.ab-palavra),.b7-abertura:not(.inicial) :is(.ab-cor,.ab-brilho b,.ab-palco,.ab-palavra){animation:none;}
+  .ab-curta .b7-abertura.inicial :is(.ab-onda,.ab-flare,.ab-clarao,.ab-bloom,.ab-brilho),.b7-abertura:not(.inicial) :is(.ab-onda,.ab-flare,.ab-clarao,.ab-bloom,.ab-brilho){display:none;}
+}
 
 /* ---- saída: a íris abre do centro; o logo voa (js/app.js) ----
    O "buraco" é uma máscara radial cujo raio cresce (@property). Sem

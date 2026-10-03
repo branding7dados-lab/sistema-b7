@@ -319,11 +319,13 @@ B7.Rota = (function () {
        tempo de ver. Se o sistema demorar mais, ela simplesmente continua
        (e a espera honesta aparece); se ficar pronto antes, espera só o
        restante. Nunca mais que isso por estética.
-     • curta (recarregar, atualização automática): 0,35 s.
+     • curta (recarregar, atualização automática): 0,95 s — o tempo da
+       lâmpada acender e o logo se escrever (pacote zzb; antes 0,35 s
+       com o logo parado). No celular o recarregar já leva isso.
      • com "reduzir movimento": nada de mínimo. */
   const reduzMov = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const curta = document.documentElement.classList.contains('ab-curta');
-  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 350 : 4300;
+  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 950 : 4300;
 
   /* Para onde o logo voa: o lugar onde ele mora na tela que ficou pronta.
      Lockup (logo inteiro) → caixa de login ou barra lateral aberta.
