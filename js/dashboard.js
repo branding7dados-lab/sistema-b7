@@ -1673,6 +1673,7 @@ B7.Dashboard = (function () {
     sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/>',
     tela: '<rect x="3" y="4" width="18" height="12.5" rx="2"/><path d="M9 20.5h6M12 16.5v4"/>',
     densidade: '<rect x="3.5" y="4" width="17" height="6.5" rx="1.8"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="1.8"/>',
+    raio: '<path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/>',
     animacao: '<path d="M11 3.5l1.7 4.5 4.6 1.7-4.6 1.7L11 16l-1.7-4.6L4.7 9.7l4.6-1.7z"/><path d="M18.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
     som: '<path d="M11 5.5L6.5 9H3.5v6h3l4.5 3.5z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18.3 6.2a8.5 8.5 0 0 1 0 11.6"/>',
     play: '<circle cx="12" cy="12" r="9"/><path d="M10.2 8.6l5.4 3.4-5.4 3.4z"/>',
@@ -1691,6 +1692,13 @@ B7.Dashboard = (function () {
   const svgF = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICF[k] + '</svg>';
   const SETA_CFG = '<svg class="cfg-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
   const PAPEL_CFG = { admin: 'Administrador', coordenador: 'Coordenação', designer: 'Designer', videomaker: 'Videomaker', cliente: 'Cliente' };
+
+  function descDesempenho() {
+    const e = B7.Desempenho.estado();
+    if (e.modo === 'leve') return 'sem vidro desfocado: mais fluido';
+    if (e.modo === 'completo') return 'vidro em tudo, mesmo se travar';
+    return e.leve ? 'agora: leve — este aparelho travava com o vidro' : 'agora: completo — fica leve sozinho se travar';
+  }
 
   function abrirConfig() {
     marcarNav('#/config');
@@ -1745,7 +1753,10 @@ B7.Dashboard = (function () {
         L({ ic: 'densidade', tom: 'azul', t: 'Densidade', d: 'quanto conteúdo cabe na tela',
             abaixo: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) }) +
         L({ ic: 'animacao', tom: 'rosa', t: 'Animações', d: 'segue a preferência do seu sistema',
-            dir: '<span class="cfg-valor">' + (reduz ? 'Reduzidas' : 'Normais') + '</span>' })) +
+            dir: '<span class="cfg-valor">' + (reduz ? 'Reduzidas' : 'Normais') + '</span>' }) +
+        /* modo leve (js/desempenho.js): vidro sólido onde o aparelho trava */
+        (B7.Desempenho ? L({ ic: 'raio', tom: 'laranja', t: 'Desempenho', d: '<span id="cfg-desemp-d">' + descDesempenho() + '</span>',
+            abaixo: seletor('desempenho', B7.Desempenho.modo(), [['auto', 'Automático'], ['leve', 'Leve'], ['completo', 'Completo']]) }) : '')) +
 
       /* a abertura completa aparece uma vez por sessão; aqui dá para
          rever (com som — o toque no botão destrava o áudio) */
@@ -1822,6 +1833,10 @@ B7.Dashboard = (function () {
         if (g === 'tema') {
           /* mesma função do menu da conta: um lugar só decide o tema */
           if (B7.definirTema) B7.definirTema(v === 'auto' ? 'sistema' : v);
+        }
+        if (g === 'desempenho' && B7.Desempenho) {
+          B7.Desempenho.definir(v);
+          const d = p.querySelector('#cfg-desemp-d'); if (d) d.textContent = descDesempenho();
         }
         if (g === 'densidade') {
           B7.aplicarDensidade(v);

@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-03-zzz1';
+  const VERSAO = '2026-10-03-zzz2';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -252,12 +252,13 @@ B7.Auth = (function () {
        o encerramento comum, abaixo, desconectaria a pessoa de verdade */
     if (naContaDeOutro()) return voltarParaMinhaConta();
     sessao = null;
+    try { if (B7.Memoria) B7.Memoria.limpar(); } catch (e) {}
     try { await B7.DB.encerrarSessao(); } catch (e) {}
     /* limpa o que ficou em memória e em cache local, para a próxima
        pessoa que abrir o navegador não ver dado de quem saiu */
     try {
       Object.keys(localStorage).forEach(k => {
-        if (k.startsWith('b7_') && k !== 'b7_tema' && k !== 'b7_densidade') {
+        if (k.startsWith('b7_') && !['b7_tema', 'b7_densidade', 'b7_desempenho', 'b7_leve_auto'].includes(k)) {
           localStorage.removeItem(k);
         }
       });

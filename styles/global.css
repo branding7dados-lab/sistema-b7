@@ -2123,3 +2123,36 @@ html,body{overscroll-behavior-y:none;}               /* o puxar nativo do navega
   box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 0 16px rgba(219,39,119,.35), 0 0 34px rgba(124,58,237,.18);
   background:linear-gradient(var(--ang,180deg), rgba(255,255,255,.55), rgba(255,255,255,0) 45%);}
 @media (prefers-reduced-motion:reduce){ .ab-luz{display:none !important;} }
+/* =====================================================================
+   MODO LEVE (zzz2) — <html class="modo-leve">
+   No Android mais simples, o que trava a animação é o vidro: cada
+   backdrop-filter redesenha e desfoca tudo o que passa por baixo, a cada
+   quadro da rolagem e da troca de tela. Aqui o vidro vira superfície
+   sólida (a mesma cor, sem a transparência) e os desfoques das entradas
+   (filter: blur nos keyframes) saem; movimento de posição e de
+   opacidade, que a placa de vídeo faz de graça, continua igual.
+   Quem liga: js/desempenho.js (automático, ou Configurações → Desempenho).
+   ===================================================================== */
+html.modo-leve{
+  --vidro-bg:var(--elevado); --vidro-forte:var(--elevado);
+  --vidro-ilha:var(--card); --vidro-filtro:none;
+}
+html.modo-leve *, html.modo-leve *::before, html.modo-leve *::after{
+  -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
+}
+/* desfoque de entrada: !important vence o keyframe; a abertura fica como é */
+html.modo-leve #app *:not(img), html.modo-leve #toasts *, html.modo-leve .b7-voo, html.modo-leve .b7-voo *,
+html.modo-leve .b7-voo-brilho, html.modo-leve .b7-foto, html.modo-leve .fundo-modal *{filter:none !important;}
+/* superfícies que eram vidro: sólidas */
+html.modo-leve body[data-shell="interno"] #tela-dashboard .topo.topo-global,
+html.modo-leve body #tela-dashboard .topo.topo-global{background:color-mix(in srgb, var(--card) 72%, var(--fundo)) !important;}
+html.modo-leve body[data-shell="interno"] .nav-inferior{background:var(--card) !important;}
+html.modo-leve .fundo-modal .modal, html.modo-leve .fundo-modal.tp-folha .modal{background:var(--card) !important;}
+html.modo-leve .tp-menu, html.modo-leve .lista.solta, html.modo-leve .resultados, html.modo-leve .previa-roteiros,
+html.modo-leve .toast{background:var(--elevado) !important;}
+html.modo-leve .gl-grupo-cab, html.modo-leve .vd-m-grupo-cab, html.modo-leve .op-dia h3{background:var(--fundo) !important;}
+html.modo-leve .co-faixa{background:var(--ambar-bg) !important;}
+/* véu do modal sem desfoque: um pouco mais escuro para separar */
+html.modo-leve .fundo-modal{--veu:rgba(5,3,10,.62);}
+/* sombras gigantes custam também: no leve, uma só e curta */
+html.modo-leve body[data-shell="interno"] .nav-inferior{box-shadow:0 6px 18px -10px rgba(10,4,24,.45) !important;}
