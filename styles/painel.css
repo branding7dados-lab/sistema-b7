@@ -703,3 +703,8 @@ a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale
   .pn-ceu .pn-bokeh,.pn-ceu .pn-grao,.pn-cab h1::before,.pn-cab h1::after,.pn .pn-kpi::after{display:none;}
   .pn-resumo{-webkit-mask-image:none;mask-image:none;}
 }
+
+/* zzz4: Painel já visto nesta sessão — chega pronto, sem o filme de
+   entrada (js/painel.js, passar). O céu ambiente continua. */
+.pn.pn-calmo *:not(.pn-ceu):not(.pn-ceu *){animation:none !important;}
+.pn.pn-calmo .pn-cab{animation:none !important;}

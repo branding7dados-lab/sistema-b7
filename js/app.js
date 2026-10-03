@@ -61,7 +61,16 @@ B7.Rota = (function () {
     document.documentElement.dataset.nav = dir;
   }
 
+  /* zzz4: cada navegação é uma "geração". Tela que ainda estava buscando
+     dados quando a pessoa já foi para outra NÃO se desenha mais por cima
+     da nova (era o Vídeo aparecendo dentro do Painel, com o topo e a
+     barra dizendo Painel). Uso: const vale = B7.Rota.marca(); depois de
+     cada await: if (!vale()) return; */
+  let geracaoTela = 0;
+  function marca() { const g = geracaoTela; return () => g === geracaoTela; }
+
   async function ir() {
+    geracaoTela++;
     limpar();
     /* no celular a sidebar é uma gaveta: navegar fecha a gaveta */
     if (B7.fecharGaveta) B7.fecharGaveta(); else document.body.classList.remove('gaveta');
@@ -267,7 +276,7 @@ B7.Rota = (function () {
     return false;
   }
 
-  return { ir, recarregar, titulo, aoSair, aplicarCasaPadrao };
+  return { ir, recarregar, titulo, aoSair, aplicarCasaPadrao, marca };
 })();
 
 

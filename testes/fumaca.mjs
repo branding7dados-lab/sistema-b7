@@ -54,8 +54,10 @@ const ROTAS = ['#/', '#/clientes', '#/cliente/c1', '#/gravacoes', '#/gravacao/g1
 const falhas = [];
 const navegador = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
 const ctx = await navegador.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+let lento = 0;
 await ctx.route(/supabase\.co\//, async rota => {
   const url = new URL(rota.request().url());
+  if (lento && /video|demanda/i.test(url.pathname)) await new Promise(r => setTimeout(r, lento));
   if (url.pathname.startsWith('/rest/v1/')) {
     const um = (rota.request().headers()['accept'] || '').includes('vnd.pgrst.object');
     const dados = respostaRest(url);
@@ -96,6 +98,19 @@ for (const rota of ROTAS) {
   if (erro) falhas.push(rota + ' → a tela mostrou erro: ' + resumo);
   console.log((texto < 20 || erro ? '✗ ' : '✓ ') + rota.padEnd(16) + resumo);
 }
+
+/* troca rápida (zzz4): a tela que ainda carregava não pode se desenhar
+   por cima da tela para onde a pessoa já foi */
+telaAtual = 'troca rápida Vídeo → Clientes';
+lento = 1500;
+await pg.evaluate(() => { if (B7.Memoria) B7.Memoria.limpar(); location.hash = '#/video'; });
+await pg.waitForTimeout(200);
+await pg.evaluate(() => { location.hash = '#/clientes'; });
+await pg.waitForTimeout(2600);
+const ficou = await pg.evaluate(() => (document.getElementById('painel-dashboard').innerText || '').slice(0, 200));
+lento = 0;
+if (/Produção de Vídeo/.test(ficou) || !/Clientes/.test(ficou)) falhas.push(telaAtual + ' → a tela antiga se desenhou por cima: ' + ficou.replace(/\s+/g, ' ').slice(0, 90));
+console.log((/Produção de Vídeo/.test(ficou) ? '✗ ' : '✓ ') + telaAtual);
 
 await navegador.close();
 servidor.close();

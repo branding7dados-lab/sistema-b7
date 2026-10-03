@@ -586,7 +586,9 @@ B7.Dashboard = (function () {
     B7.Rota.titulo(['Gravações']);
     esqueleto('lista');
     let gravacoes;
-    try { gravacoes = await B7.DB.listarGravacoes(); } catch (e) { return erro(e, 'abrirGravacoes'); }
+    const vale = B7.Rota.marca();
+    try { gravacoes = await B7.DB.listarGravacoes(); } catch (e) { if (!vale()) return; return erro(e, 'abrirGravacoes'); }
+    if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
 
     const clientes = [...new Map(gravacoes.map(g => [g.client_id, g.cliente_nome])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR'));
     const meses = () => [...new Set(gravacoes.map(chaveMes).filter(Boolean))].sort().reverse();
@@ -783,7 +785,9 @@ B7.Dashboard = (function () {
     B7.Rota.titulo(['Roteiros']);
     esqueleto('lista', { n: 6 });
     let roteiros;
-    try { roteiros = await B7.DB.roteirosRecentes(1000); } catch (e) { return erro(e, 'abrirRoteiros'); }
+    const vale = B7.Rota.marca();
+    try { roteiros = await B7.DB.roteirosRecentes(1000); } catch (e) { if (!vale()) return; return erro(e, 'abrirRoteiros'); }
+    if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
     roteiros.forEach(r => { r._mes = mesDoRoteiro(r); r._chaveMes = chaveMesRot(r._mes); });
     const agoraMes = chaveMesRot({ ano: new Date().getFullYear(), mes: new Date().getMonth() + 1 });
     const meses = [...new Set(roteiros.map(r => r._chaveMes))].sort().reverse();
@@ -929,8 +933,10 @@ B7.Dashboard = (function () {
     B7.Rota.titulo(['Clientes']);
     esqueleto('lista');
     let clientes;
+    const vale = B7.Rota.marca();
     try { clientes = ordenarClientes(await B7.DB.listarClientes()); }
-    catch (e) { return erro(e, 'abrirClientes'); }
+    catch (e) { if (!vale()) return; return erro(e, 'abrirClientes'); }
+    if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
 
     painel().innerHTML = '<div class="conteudo">' +
       '<div class="secao-topo"><h2 style="font-size:22px">Clientes</h2>' +
