@@ -482,7 +482,8 @@ B7.Dashboard = (function () {
     const legado = !g.competencia_ano;
     const aviso = dataPassou(g) ? '<span class="gl-alerta">Data passou · concluir ou remarcar</span>' : '';
     const quando = quandoRel(g);
-    return '<div class="gl-item' + (g.situacao === 'Cancelada' ? ' cancelada' : '') + '" data-gravacao="' + esc(g.id) + '" ' +
+    /* gl-s-<situação>: a faixa de cor à esquerda (zze) */
+    return '<div class="gl-item gl-s-' + esc(String(g.situacao || 'Pendente').toLowerCase()) + (g.situacao === 'Cancelada' ? ' cancelada' : '') + '" data-gravacao="' + esc(g.id) + '" ' +
       'data-total-roteiros="' + (g.total_roteiros || 0) + '" tabindex="0" role="link" aria-label="Abrir gravação ' + esc(g.cliente_nome + ' — ' + g.nome) + '">' +
       diaTile(g) +
       '<div class="gl-quem">' + B7.UI.avatarCliente(g.cliente_nome, g.cliente_logo_url || null, 'p') +
@@ -546,6 +547,40 @@ B7.Dashboard = (function () {
       } catch (e) {}
     };
   }
+  /* Movimento da lista de Gravações (zze): cada linha aparece quando entra
+     na tela (cascata curta entre vizinhas) e a barra de itens gravados
+     cresce da esquerda nesse momento. Sem IntersectionObserver ou com
+     "reduzir movimento": tudo já visível, nada escondido. */
+  let olhoGrav = null;
+  function animarListaGravacoes(cx) {
+    if (!cx || !('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (olhoGrav) olhoGrav.disconnect();
+    cx.classList.add('gl-anima');
+    let lote = 0, quadro = 0;
+    olhoGrav = new IntersectionObserver(es => {
+      es.forEach(e => {
+        if (!e.isIntersecting) return;
+        olhoGrav.unobserve(e.target);
+        /* as que entram juntas fazem fila (60 ms entre uma e outra) */
+        e.target.style.setProperty('--gl-atraso', Math.min(lote++, 8) * 60 + 'ms');
+        e.target.classList.add('gl-visto');
+      });
+      cancelAnimationFrame(quadro);
+      quadro = requestAnimationFrame(() => { lote = 0; });
+    }, { rootMargin: '0px 0px -4% 0px', threshold: .05 });
+    cx.querySelectorAll('.gl-item, .gl-grupo-cab').forEach(el => olhoGrav.observe(el));
+    /* garantia: o que já está na tela aparece mesmo se o observador
+       atrasar (aba em segundo plano, navegador econômico) */
+    setTimeout(() => {
+      if (!cx.isConnected) return;
+      const h = window.innerHeight;
+      cx.querySelectorAll('.gl-item:not(.gl-visto), .gl-grupo-cab:not(.gl-visto)').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.top < h && r.bottom > 0) { el.classList.add('gl-visto'); if (olhoGrav) olhoGrav.unobserve(el); }
+      });
+    }, 1200);
+  }
+
   async function abrirGravacoes() {
     marcarNav('#/gravacoes');
     B7.Rota.titulo(['Gravações']);
@@ -561,17 +596,24 @@ B7.Dashboard = (function () {
       ops.map(([v, r]) => '<option value="' + esc(v) + '"' + (v === atual ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>';
     const opcoesMes = () => [['', 'Todos os meses'], ['sem', 'Sem mês (antigas)']].concat(meses().map(k => [k, B7.Gravacao.mesRef(+k.slice(0, 4), +k.slice(5, 7))]));
 
+    /* zze: no celular o cabeçalho é compacto (Calendário vira ícone, "+ Nova"
+       em pílula) e os três seletores ficam atrás do botão "Filtros" */
     painel().innerHTML = '<div class="conteudo gl-pagina">' +
-      '<div class="secao-topo"><h2 style="font-size:22px">Gravações</h2>' +
+      '<div class="secao-topo gl-topo"><h2 style="font-size:22px">Gravações</h2>' +
       '<span class="conta" id="gv-conta">' + gravacoes.length + '</span><div class="espaco"></div>' +
-      (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno gl-cal" href="#/calendario?v=mes&amp;tipo=gravacoes">' + IC.gravacoes + 'Calendário</a>' : '') +
-      '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button></div>' +
+      (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno gl-cal" href="#/calendario?v=mes&amp;tipo=gravacoes" aria-label="Calendário de gravações">' + IC_CAL + '<span class="gl-so-largo">Calendário</span></a>' : '') +
+      '<button class="b pri gl-nova" data-nova-gravacao>' + IC.mais + 'Nova<span class="gl-so-largo">&nbsp;gravação</span></button></div>' +
       (gravacoes.length ? '<div class="gl-filtros">' +
-        '<div class="gl-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+        '<div class="gl-linha-busca"><div class="gl-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
           '<input class="campo fina" id="fg-busca" type="search" placeholder="Buscar cliente ou gravação" aria-label="Buscar cliente ou gravação" value="' + esc(FG.busca || '') + '"></div>' +
+          '<button type="button" class="gl-bt-filtros" id="fg-abre" aria-expanded="false" aria-controls="fg-sels">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
+            '<span>Filtros</span><b id="fg-qtd" hidden></b></button></div>' +
+        '<div class="gl-sels" id="fg-sels">' +
         sel('fg-cliente', FG.cliente, [['', 'Todos os clientes']].concat(clientes), 'Cliente') +
         '<span id="fg-mes-cx">' + sel('fg-mes', FG.mes, opcoesMes(), 'Mês de referência') + '</span>' +
         (resps.length ? sel('fg-resp', FG.resp, [['', 'Todos os responsáveis'], ['sem', 'Sem responsável']].concat(resps), 'Responsável') : '') +
+        '</div>' +
         '<button class="b fina contorno gl-limpar" id="fg-limpar" hidden>Limpar filtros</button>' +
         '<span class="gl-quebra"></span><div class="filtro gl-status" id="filtro-status" role="group" aria-label="Status"></div>' +
       '</div>' : '') +
@@ -604,8 +646,12 @@ B7.Dashboard = (function () {
       const conta = document.getElementById('gv-conta'); if (conta) conta.textContent = lista.length;
       const limpar = document.getElementById('fg-limpar');
       if (limpar) limpar.hidden = !(FG.busca || FG.cliente || FG.mes || FG.resp || FG.status);
+      /* quantos seletores estão ativos (no botão "Filtros" do celular) */
+      const qtd = document.getElementById('fg-qtd'), nSel = [FG.cliente, FG.mes, FG.resp].filter(Boolean).length;
+      if (qtd) { qtd.textContent = nSel; qtd.hidden = !nSel; }
       pintarStatus();
       ligar();
+      animarListaGravacoes(cx);
       cx.querySelectorAll('[data-definir-mes]').forEach(b => b.onclick = ev => {
         ev.stopPropagation(); B7.UI.fecharMenus && B7.UI.fecharMenus();
         const g = gravacoes.find(x => x.id === b.dataset.definirMes); if (!g) return;
@@ -620,6 +666,13 @@ B7.Dashboard = (function () {
       if (el) el.onchange = () => { FG[k] = el.value; el.classList.toggle('ativo', !!el.value); aplicar(); };
     };
     [['fg-cliente', 'cliente'], ['fg-mes', 'mes'], ['fg-resp', 'resp']].forEach(([id, k]) => ligarSel(id, k));
+    const abre = document.getElementById('fg-abre'), sels = document.getElementById('fg-sels');
+    if (abre && sels) {
+      /* começa aberto se já há seletor ativo (a pessoa voltou para a tela) */
+      const abrir = v => { sels.classList.toggle('aberto', v); abre.setAttribute('aria-expanded', String(v)); abre.classList.toggle('on', v); };
+      abrir(!!(FG.cliente || FG.mes || FG.resp));
+      abre.onclick = () => abrir(!sels.classList.contains('aberto'));
+    }
     const busca = document.getElementById('fg-busca');
     if (busca) busca.oninput = B7.UI.debounce(() => { FG.busca = busca.value; aplicar(); }, 120);
     const limpar = document.getElementById('fg-limpar');
@@ -631,6 +684,7 @@ B7.Dashboard = (function () {
     };
     ligar();
     aplicar();
+    B7.Rota.aoSair(() => { if (olhoGrav) { olhoGrav.disconnect(); olhoGrav = null; } });
   }
 
   /* ================================================ ROTEIROS RECENTES

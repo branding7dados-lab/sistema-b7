@@ -245,6 +245,74 @@
 #fg-mes-cx{display:contents;}
 
 /* =====================================================================
+   LISTA DE GRAVAÇÕES — acabamento e movimento (pacote zze, 03/10)
+   Faixa de cor por situação, cabeçalho do mês que gruda (celular),
+   busca + "Filtros" recolhendo os seletores no celular, linhas que
+   aparecem ao rolar e barras de itens que crescem.
+   ===================================================================== */
+.gl-linha-busca,.gl-sels{display:contents;}
+.gl-bt-filtros{display:none;}
+.gl-item::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--gl-tom, transparent);}
+.gl-s-agendada{--gl-tom:#7C5CFF;}
+.gl-s-remarcada{--gl-tom:var(--ambar);}
+.gl-s-gravada{--gl-tom:var(--ok);}
+.gl-s-cancelada{--gl-tom:var(--ink-4);}
+.gl-s-pendente{--gl-tom:color-mix(in srgb, var(--ink-4) 60%, transparent);}
+.gl-item{transition:background var(--t), transform var(--m-instante,120ms) ease;}
+.gl-item:active{transform:scale(.99);}
+.gl-dia.hoje{box-shadow:0 0 0 3px var(--acento-suave);animation:glHoje 2.6s ease-in-out infinite;}
+@keyframes glHoje{0%,100%{box-shadow:0 0 0 3px var(--acento-suave)}50%{box-shadow:0 0 0 5px color-mix(in srgb, var(--acento) 25%, transparent), 0 8px 20px -8px var(--acento)}}
+.gl-barra i{transform-origin:0 50%;}
+.gl-prog.completo .gl-barra i{background:linear-gradient(90deg, color-mix(in srgb, var(--ok) 70%, #fff), var(--ok));}
+.gl-barra i{background:linear-gradient(90deg,#B03BE6,var(--acento));}
+.gl-alerta::before{animation:glPisca 1.8s ease-in-out infinite;}
+@keyframes glPisca{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* entrada ao rolar (js: animarListaGravacoes) */
+.gl-anima .gl-item{opacity:0;transform:translate3d(0,14px,0);}
+.gl-anima .gl-item.gl-visto{opacity:1;transform:none;
+  transition:opacity .45s cubic-bezier(.2,.8,.25,1) var(--gl-atraso,0ms), transform .5s cubic-bezier(.2,.8,.25,1) var(--gl-atraso,0ms), background var(--t);}
+.gl-anima .gl-item .gl-barra i{transform:scaleX(0);}
+.gl-anima .gl-item.gl-visto .gl-barra i{transform:none;transition:transform .9s cubic-bezier(.2,.8,.2,1) calc(var(--gl-atraso,0ms) + .2s);}
+.gl-anima .gl-grupo-cab{opacity:0;transform:translate3d(-10px,0,0);}
+.gl-anima .gl-grupo-cab.gl-visto{opacity:1;transform:none;transition:opacity .45s ease, transform .5s cubic-bezier(.2,.8,.25,1);}
+.gl-anima .gl-item.gl-visto:active{transform:scale(.99);transition:transform var(--m-instante,120ms) ease;}
+.gl-tag{animation:glTag 2.4s ease-in-out infinite;}
+@keyframes glTag{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 3px color-mix(in srgb, var(--acento) 18%, transparent)}}
+
+@media (max-width: 680px){
+  .gl-so-largo{display:none;}
+  .gl-topo{flex-wrap:nowrap;gap:8px;}
+  .gl-topo .espaco{flex:1 1 auto;height:auto;}
+  .gl-topo .gl-cal{flex:none;width:42px;height:42px;padding:0;justify-content:center;margin:0;}
+  .gl-topo .gl-nova{flex:none;padding:0 16px;height:42px;border-radius:99px;}
+  .gl-linha-busca{display:flex;gap:8px;width:100%;}
+  .gl-linha-busca .gl-busca{flex:1;}
+  .gl-bt-filtros{display:inline-flex;align-items:center;gap:6px;flex:none;height:40px;padding:0 13px;border-radius:12px;font:inherit;font-size:13px;
+    font-weight:600;color:var(--ink-2);background:var(--card);border:1px solid var(--borda);cursor:pointer;transition:border-color .2s, color .2s;}
+  .gl-bt-filtros svg{width:16px;height:16px;}
+  .gl-bt-filtros.on{border-color:var(--acento);color:var(--acento);}
+  .gl-bt-filtros b{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--acento);color:#fff;font-size:11px;
+    display:inline-flex;align-items:center;justify-content:center;}
+  .gl-bt-filtros b[hidden]{display:none;}
+  .gl-sels{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;width:100%;
+    max-height:0;opacity:0;overflow:hidden;margin-top:-8px;
+    transition:max-height .35s cubic-bezier(.2,.8,.25,1), opacity .25s ease, margin .35s ease;}
+  .gl-sels.aberto{max-height:160px;opacity:1;margin-top:0;}
+  .gl-sels .gv-filtro{width:100%;min-width:0;max-width:none;}
+  .gl-sels #fg-resp{grid-column:1 / -1;}
+  /* cabeçalho do mês gruda abaixo do topo enquanto a lista rola */
+  .gl-grupo-cab{position:sticky;top:0;z-index:3;margin:0 -14px 8px;padding:10px 16px 8px;
+    background:color-mix(in srgb, var(--fundo) 96%, transparent);
+    -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);}
+  .gl-grupo-cab .gl-resumo{font-size:11.5px;}
+  .gl-item::before{top:10px;bottom:10px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .gl-dia.hoje,.gl-alerta::before,.gl-tag{animation:none;}
+}
+
+/* =====================================================================
    DETALHE DA GRAVAÇÃO — rodada de UI/UX (2026-09-30-k)
    ===================================================================== */
 .gv{max-width:1180px;margin-inline:auto;}
