@@ -314,15 +314,16 @@ B7.Rota = (function () {
   if (inicialAbertura) escreverCortina(inicialAbertura, null, null);
 
   /* Quanto a abertura segura a tela, contado do início da página:
-     • completa (1ª vez na sessão do navegador): 2,05 s — o tempo de o logo
-       se montar. Se o sistema demorar mais, ela simplesmente continua
+     • completa (1ª vez na sessão do navegador): 4,3 s — a sequência inteira
+       (ignição, logo montado e o brilho passando). Pedido do Kevin: dar
+       tempo de ver. Se o sistema demorar mais, ela simplesmente continua
        (e a espera honesta aparece); se ficar pronto antes, espera só o
        restante. Nunca mais que isso por estética.
      • curta (recarregar, atualização automática): 0,35 s.
      • com "reduzir movimento": nada de mínimo. */
   const reduzMov = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const curta = document.documentElement.classList.contains('ab-curta');
-  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 350 : 2050;
+  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 350 : 4300;
 
   /* Para onde o logo voa: o lugar onde ele mora na tela que ficou pronta.
      Lockup (logo inteiro) → caixa de login ou barra lateral aberta.
@@ -363,7 +364,7 @@ B7.Rota = (function () {
     const s = d.tipo === 'lockup' ? para.width / de.width : para.height / de.height;
     const dx = (para.left + para.width / 2) - (de.left + de.width / 2);
     const dy = (para.top + para.height / 2) - (de.top + de.height / 2);
-    const DUR = 640, curva = 'cubic-bezier(.7,0,.2,1)';
+    const DUR = 820, curva = 'cubic-bezier(.7,0,.2,1)';
     d.alvo.classList.add('ab-destino');
     voa.style.transformOrigin = '50% 50%';
     /* a animação CSS da peça para aqui: o voo parte do quadro final dela */

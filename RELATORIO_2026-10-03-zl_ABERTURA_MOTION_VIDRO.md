@@ -169,3 +169,29 @@ Nenhuma mudança.
 ## Resultado final
 
 Antes, a abertura era uma lâmpada com muitos efeitos girando em volta, e o sistema aparecia num corte. Agora a abertura é uma sequência só, com a marca real, que termina **dentro** da interface: o logo pousa onde ele mora e o app assenta por baixo. Ela aparece completa uma vez por sessão e curta depois. No dia a dia as telas têm direção, os modais dão profundidade, e o celular ganhou barra flutuante de vidro com luz deslizante e topo que reage à rolagem.
+
+---
+
+## Atualização zo — versão cinema (pedido do Kevin depois de ver no celular)
+
+O vídeo da tela do celular (PWA) mostrou três coisas:
+- a lâmpada estava pequena;
+- na primeira abertura o sistema ficou pronto enquanto o "Branding7" ainda se escrevia, e a saída cortou a palavra;
+- o voo e a íris passavam rápido demais para serem vistos.
+
+A sequência completa ficou **mais longa (~4,3 s + 0,8 s de saída)** e mais dramática, mantendo o mesmo conceito:
+
+| Tempo | O que acontece |
+|---|---|
+| 0–0,9 s | Escuro. Uma **centelha** nasce no centro e respira; **poeira de luz** sobe em volta. |
+| 0,25–1,6 s | A lâmpada surge do desfoque, **bem maior**: ~2,15× o tamanho dela no logo, cerca de metade da largura do celular. |
+| 0,9–1,9 s | A luz sobe por dentro da lâmpada; o **filamento pisca duas vezes**. |
+| 1,9 s | **Ignição:** clarão na tela, **flare horizontal de lente de cinema**, bloom, duas ondas de luz, **raios girando devagar** e um "soco" de escala no palco. |
+| 2,7–3,65 s | A lâmpada recua para o lugar dela no logo. |
+| 3,28–3,9 s | "Branding7" se escreve, sem colidir com a lâmpada. |
+| 3,7–4,3 s | Um **brilho rosa/violeta passa por cima do logo inteiro**. |
+
+- **Saída:** uma **íris** se abre do centro e revela o sistema, enquanto o logo voa até o lugar dele (agora em 0,82 s).
+- **Mínimo:** a versão completa segura **4,3 s**, de propósito, para dar tempo de ver. Ela continua aparecendo **só uma vez por sessão do navegador**. Recarregar mostra a curta (0,35 s), e a navegação interna nunca mostra.
+- **Desempenho:** os efeitos novos são todos transform/opacidade. Os raios giram por transform e somem quando o logo assenta.
+- **Testes:** quadros congelados no navegador do app em 390 px (0,5 / 1,4 / 2,02 / 3,25 / 3,5 / 3,96 s) e saída com íris conferida localmente. **Não testado em aparelho:** vale abrir no celular de novo.
