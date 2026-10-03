@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SistemaB7" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/noite</item>
+        <item name="android:navigationBarColor">@color/noite</item>
+        <item name="android:windowBackground">@color/noite</item>
+    </style>
+    <style name="Theme.SistemaB7.Abertura" parent="Theme.SistemaB7">
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>
