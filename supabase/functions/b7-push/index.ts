@@ -41,7 +41,7 @@ import webpush from 'npm:web-push@3.6.7';
 import { comCors, iguais } from '../_shared/cors.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-10-01-x';
+const VERSAO = '2026-10-03-zzz2';
 
 /* Endereço do cartão do aviso (função b7-arte) e a assinatura que ela
    exige: HMAC do id, com um segredo que só as duas funções conhecem.
@@ -102,7 +102,10 @@ async function enviar(sb: SupabaseClient, lista: Inscricao[], payload: string, t
     try {
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        payload, { TTL: ttl, urgency: 'normal' }
+        /* 'high' (zzz2): com 'normal', o Android em repouso (Doze) segura
+           o aviso até a pessoa acordar o aparelho — chegava "atrasado ou
+           nunca". Aviso do B7 é sempre algo para agir, então vai na hora. */
+        payload, { TTL: ttl, urgency: 'high' }
       );
       enviados++;
     } catch (e) {

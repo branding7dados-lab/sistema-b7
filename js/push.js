@@ -70,10 +70,12 @@ B7.Push = (function () {
     }
     const j = s.toJSON();
     await B7.DB.registrarPush({ endpoint: s.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth });
+    try { localStorage.removeItem('b7-push-desligado-aqui'); } catch (e) {}
     return true;
   }
 
   async function desativar() {
+    try { localStorage.setItem('b7-push-desligado-aqui', '1'); } catch (e) {}
     const s = await inscricao();
     if (s) {
       try { await B7.DB.removerPush(s.endpoint); } catch (e) {}
@@ -164,5 +166,63 @@ B7.Push = (function () {
     }
   } catch (e) {}
 
-  return { disponivel, motivo, ativo, ativar, desativar, inscricao, permissao, aparelho, testar, ultimoTeste };
+  /* ------------------------------------------- manter vivo (zzz2)
+     Chamado a cada login. Duas coisas que faziam o aviso "não chegar":
+     1. A inscrição some ou troca por baixo (navegador limpou dados,
+        app reinstalado, o serviço de push renovou a chave) e o banco
+        continua com a antiga. Com a permissão JÁ dada, refazer a
+        inscrição não pergunta nada à pessoa: aqui ela é conferida e,
+        se preciso, refeita e regravada.
+     2. Quase ninguém da equipe tinha ligado o push (o banco registrava
+        "sem_inscricao"). Quem ainda não ligou recebe um convite com
+        botão — a permissão do navegador só é pedida depois desse toque —
+        no máximo uma vez por semana, por aparelho. */
+  const CHAVE_CONVITE = 'b7-push-convite';
+  const CHAVE_DESLIGADO = 'b7-push-desligado-aqui';
+  async function manter() {
+    try {
+      if (!disponivel() || !B7.Auth || !B7.Auth.usuario()) return;
+      /* dentro da conta de outra pessoa, nada de inscrever o aparelho dela */
+      if (B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro()) return;
+      /* só o "desligado" explícito da pessoa conta (o padrão do sino é push:false) */
+      const prefs = (B7.Auth.usuario() || {}).preferencias || {};
+      let desligadoAqui = false; try { desligadoAqui = localStorage.getItem(CHAVE_DESLIGADO) === '1'; } catch (e) {}
+      if (desligadoAqui) return;          /* a pessoa desligou neste aparelho */
+      if (permissao() === 'permitida') {
+        if (prefs.push === false) return;
+        const r = await registro();
+        await navigator.serviceWorker.ready;
+        let s = await r.pushManager.getSubscription();
+        /* chave do servidor trocada: a inscrição velha nunca mais recebe */
+        if (s && s.options && s.options.applicationServerKey) {
+          const atual = new Uint8Array(s.options.applicationServerKey), certa = base64ParaBytes(chave());
+          if (atual.length !== certa.length || atual.some((b, i) => b !== certa[i])) { try { await s.unsubscribe(); } catch (e) {} s = null; }
+        }
+        if (!s) s = await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ParaBytes(chave()) });
+        if (!(await B7.DB.temPush(s.endpoint))) {
+          const j = s.toJSON();
+          await B7.DB.registrarPush({ endpoint: s.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth });
+        }
+        return;
+      }
+      if (permissao() !== 'nao_solicitada' || prefs.push === false) return;
+      let ultimo = 0; try { ultimo = Number(localStorage.getItem(CHAVE_CONVITE) || 0); } catch (e) {}
+      if (Date.now() - ultimo < 7 * 864e5) return;
+      setTimeout(() => {
+        if (permissao() !== 'nao_solicitada' || !B7.UI || !B7.UI.toast) return;
+        try { localStorage.setItem(CHAVE_CONVITE, String(Date.now())); } catch (e) {}
+        B7.UI.toast('Receba os avisos do B7 neste aparelho, mesmo com o sistema fechado.', {
+          acao: 'Ativar', tempo: 12000,
+          aoClicar: () => ativar().then(
+            () => {
+              if (B7.Notif && B7.Notif.gravarPrefs) B7.Notif.gravarPrefs({ push: true }).catch(() => {});
+              B7.UI.toast('Pronto: os avisos chegam neste aparelho.');
+            },
+            e => B7.UI.toast(e.message || 'Não foi possível ativar.', { tipo: 'erro' }))
+        });
+      }, 6000);
+    } catch (e) { /* manter nunca atrapalha a abertura */ }
+  }
+
+  return { disponivel, motivo, ativo, ativar, desativar, inscricao, permissao, aparelho, testar, ultimoTeste, manter };
 })();

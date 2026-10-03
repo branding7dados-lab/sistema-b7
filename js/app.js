@@ -652,6 +652,7 @@ B7.Rota = (function () {
     pintarSessao();
     if (B7.Notif) B7.Notif.montar();
     if (B7.Presenca) B7.Presenca.iniciar();
+    if (B7.Push && B7.Push.manter) setTimeout(() => B7.Push.manter(), 2500);
   };
 
   /* Itens marcados com data-papel só existem para quem tem aquele papel.

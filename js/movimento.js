@@ -512,6 +512,7 @@ window.B7 = window.B7 || {};
     const t0 = Date.now();
     /* nunca fica preso: se a tela demorar mais de 6 s, o indicador sai assim mesmo */
     try {
+      if (B7.Memoria) B7.Memoria.invalidar();   /* puxar = do banco, nunca da memória */
       if (B7.Rota && B7.Rota.ir) await Promise.race([Promise.resolve(B7.Rota.ir()), new Promise(r => setTimeout(r, 6000))]);
     } catch (e) {}
     await new Promise(r => setTimeout(r, Math.max(0, 820 - (Date.now() - t0))));

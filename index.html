@@ -37,6 +37,14 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
+  /* modo leve antes da primeira pintura (regra completa em js/desempenho.js) */
+  try {
+    var dm = localStorage.getItem('b7_desempenho') || 'auto';
+    var simples = /Android/i.test(navigator.userAgent) &&
+      ((navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4));
+    if (dm === 'leve' || (dm === 'auto' && (simples || localStorage.getItem('b7_leve_auto') === '1')))
+      document.documentElement.classList.add('modo-leve');
+  } catch (e) {}
 })();
 </script>
 <link rel="stylesheet" href="styles/global.css">
@@ -287,6 +295,7 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
 <script src="js/ui.js"></script>
 <script src="js/database.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/memoria.js"></script>
 <script src="js/permissoes.js"></script>
 <script src="js/portal.js"></script>
 <script src="js/previa-usuario.js"></script>
@@ -336,5 +345,6 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
 <script src="js/backup.js"></script>
 <script src="js/app.js"></script>
 <script src="js/movimento.js"></script>
+<script src="js/desempenho.js"></script>
 </body>
 </html>
