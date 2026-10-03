@@ -1690,6 +1690,9 @@ body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaF
   @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
     .fundo-modal.tp-folha .modal{background:var(--vidro-forte);
       -webkit-backdrop-filter:var(--vidro-filtro);backdrop-filter:var(--vidro-filtro);}
+    /* zzw: a barra de botões fixa tinha fundo branco liso — virava uma
+       faixa branca sobre o vidro da folha. No vidro ela fica transparente */
+    .fundo-modal.tp-folha .modal .acoes{background:transparent;box-shadow:none;}
   }
 }
 
@@ -1945,8 +1948,9 @@ html,body{overscroll-behavior-y:none;}               /* o puxar nativo do navega
 .b7-puxa.mostra{opacity:1;}
 .b7-puxa.volta{transition:transform .42s cubic-bezier(.4,0,.2,1), opacity .28s ease .06s;opacity:0;}
 .bp-disco{position:absolute;inset:0;border-radius:50%;display:block;
-  background:color-mix(in srgb, var(--card) 82%, transparent);border:1px solid var(--borda);
-  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
+  /* sem backdrop-filter: girando/escalando, o Chrome do Android desfocava
+     um quadrado em vez do círculo */
+  background:var(--card);border:1px solid var(--borda);
   box-shadow:0 12px 28px -12px rgba(30,10,60,.6);
   transform:rotate(calc(var(--bp-p,0) * 140deg - 140deg)) scale(calc(.55 + var(--bp-p,0) * .45));}
 .b7-puxa.volta .bp-disco{scale:.7;transition:scale .35s ease;}
@@ -1957,6 +1961,10 @@ html,body{overscroll-behavior-y:none;}               /* o puxar nativo do navega
 .bp-disco i{position:absolute;inset:11px;background:url('../assets/brand/symbol-color.png') no-repeat center/contain;}
 .bp-apagada{filter:grayscale(1) brightness(.9);opacity:.35;}
 .bp-acesa{clip-path:inset(calc((1 - var(--bp-p,0)) * 100%) 0 0 0);}
+/* zzw: cheia, o recorte sai — com ele, o brilho (drop-shadow) era cortado
+   na caixa da imagem e aparecia um quadrado rosa translúcido */
+:is(.b7-puxa.cheia,.b7-puxa.estoura,.b7-puxa.girando,.b7-puxa.pronto) .bp-acesa{clip-path:none;}
+:is(.b7-puxa.cheia,.b7-puxa.estoura,.b7-puxa.girando,.b7-puxa.pronto) .bp-apagada{opacity:0;}
 .b7-puxa.cheia .bp-acesa{filter:drop-shadow(0 0 6px rgba(255,120,200,.9));}
 .b7-puxa.cheia .bp-disco{border-color:color-mix(in srgb, var(--acento) 60%, var(--borda));animation:bpPop .34s cubic-bezier(.3,1.6,.5,1);}
 .b7-puxa.cheia .bp-progresso{filter:drop-shadow(0 0 4px color-mix(in srgb, var(--magenta) 90%, transparent));}
