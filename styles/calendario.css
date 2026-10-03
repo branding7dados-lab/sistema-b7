@@ -553,3 +553,160 @@
   .cb-anim *,.cb-anim > *{animation:none !important;}
   .cb-chip:hover,.cb-card:hover,.cb-cel-num:hover b{transform:none;}
 }
+
+/* =====================================================================
+   CALENDÁRIO NO CELULAR — v3 (zzk, 03/10)
+   Faixa da semana com pílula de luz que viaja até o dia, arrastar de
+   lado (lista = dia, faixa = semana), filtros numa gaveta, linhas como
+   cartões com a hora em destaque e a cor do cliente, "dia livre" com
+   atalho para o próximo dia com algo marcado. Só apresentação.
+   ===================================================================== */
+.cb-linha.tem-cli{--cli:hsl(var(--cli-h) 56% 52%);}
+[data-theme="dark"] .cb-linha.tem-cli{--cli:hsl(var(--cli-h) 62% 66%);}
+.cb-linha-h small::before{content:'–';}
+.cb-linha-h small{font-size:inherit;color:inherit;font-weight:inherit;}
+.cb-linha-h b{font-weight:700;}
+.cb-linha-h.sem-hora i{display:none;}
+.cb-linha-h.sem-hora em{font-style:normal;}
+
+/* topo */
+.cb-agenda .cb-topo{flex-wrap:nowrap;align-items:center;gap:10px;margin-bottom:14px;}
+.cb-agenda .cb-titulo{min-width:0;flex:1;}
+.cb-agenda .cb-titulo h1{font-size:25px;letter-spacing:-.5px;line-height:1.1;}
+.cb-sub{display:block;margin-top:4px;font-size:12.5px;line-height:1.35;color:var(--ink-3);min-height:1em;}
+.cb-agenda .cb-lg{display:none;}
+.cb-agenda .cb-topo-acoes{flex:none;}
+.cb-agenda #cb-marcar{height:42px;padding:0 14px 0 12px;border-radius:14px;gap:6px;}
+.cb-agenda #cb-marcar svg{width:18px;height:18px;}
+
+/* cartão da semana */
+.cb-agenda .cb-barra{position:relative;padding:12px 10px 10px;border-radius:22px;gap:10px;
+  background:radial-gradient(130% 120% at 100% 0%, color-mix(in srgb, var(--magenta) 9%, transparent), transparent 60%), var(--card);}
+.cb-agenda .cb-nav{gap:6px;padding:0 2px;}
+.cb-agenda .cb-rotulo{font-size:19px;letter-spacing:-.3px;}
+.cb-agenda .cb-seta{width:36px;height:36px;border-radius:12px;}
+.cb-agenda .cb-hoje{height:36px;border-radius:12px;padding:0 12px;}
+.cb-faixa{position:relative;isolation:isolate;gap:2px;touch-action:pan-y;}
+.cb-faixa button{position:relative;background:transparent;border-radius:15px;min-height:66px;gap:3px;
+  transition:transform .16s var(--mola), color .2s;}
+.cb-faixa button:active{transform:scale(.93);}
+.cb-faixa.tem-luz button.on{background:transparent;border-color:transparent;}
+.cb-faixa-luz{position:absolute;left:0;top:0;z-index:-1;border-radius:15px;pointer-events:none;opacity:0;
+  background:var(--grad-curto);
+  box-shadow:0 12px 26px -12px color-mix(in srgb, var(--magenta) 85%, transparent), inset 0 1px 0 rgba(255,255,255,.22);
+  transition:opacity .2s ease;}
+.cb-faixa-luz::after{content:'';position:absolute;inset:0;border-radius:inherit;
+  background:radial-gradient(80% 60% at 50% 0%, rgba(255,255,255,.28), transparent 70%);}
+.cb-faixa button.passou:not(.on) b{color:var(--ink-3);font-weight:700;}
+.cb-faixa button.hoje:not(.on)::after{content:'';position:absolute;inset:4px;border-radius:12px;
+  border:1.5px solid color-mix(in srgb, var(--acento) 60%, transparent);pointer-events:none;}
+.cb-faixa button.hoje:not(.on) small{color:var(--acento);}
+.cb-faixa button.pulou b{animation:cbNumPula .5s cubic-bezier(.3,1.6,.5,1);}
+.cb-pontos span{animation:cbPonto .38s cubic-bezier(.3,1.6,.5,1) backwards;animation-delay:calc(var(--p,0) * 60ms + 120ms);}
+@keyframes cbNumPula{0%{transform:scale(.72)}55%{transform:scale(1.16)}100%{transform:none}}
+@keyframes cbPonto{from{transform:scale(0);opacity:0}}
+/* entrada da semana: dias em cascata; trocando de semana, deslizam no sentido */
+.cb-faixa-entrada button{animation:cbDiaEntra .5s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--d,0) * 35ms + 60ms);}
+.cb-faixa-entrada .cb-faixa-luz{animation:cbLuzEntra .55s cubic-bezier(.3,1.4,.5,1) .3s backwards;}
+.cb-faixa-prox button{animation:cbDiaLado .4s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--d,0) * 22ms);--lx:28px;}
+.cb-faixa-ant button{animation:cbDiaLado .4s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc((6 - var(--d,0)) * 22ms);--lx:-28px;}
+.cb-faixa-prox .cb-faixa-luz,.cb-faixa-ant .cb-faixa-luz{animation:cbLuzEntra .45s cubic-bezier(.3,1.4,.5,1) .12s backwards;}
+@keyframes cbDiaEntra{from{opacity:0;transform:translateY(10px) scale(.92)}}
+@keyframes cbDiaLado{from{opacity:0;transform:translateX(var(--lx))}}
+@keyframes cbLuzEntra{from{opacity:0;scale:.5}}
+
+/* tipos: só o escolhido mostra o nome; os outros, ícone + número */
+.cb-agenda .cb-tipos{gap:2px;padding:4px;border-radius:14px;}
+.cb-agenda .cb-tipos button{flex:1 0 auto;justify-content:center;gap:5px;padding:7px 8px;border-radius:10px;font-size:13px;min-height:38px;}
+.cb-agenda .cb-tipos button.tem-ic:not(.on) .cb-tipo-rot{display:none;}
+.cb-agenda .cb-tipos button.on{animation:cbTipoAbre .32s cubic-bezier(.2,.8,.2,1);}
+.cb-agenda .cb-tipos .cb-dom-ic svg{width:16px;height:16px;}
+@keyframes cbTipoAbre{from{opacity:.6;transform:scale(.94)}}
+
+/* filtros na gaveta */
+.cb-sels-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cb-bt-filtros{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 10px 0 12px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--borda-forte);background:var(--card);color:var(--ink-2);font-size:13px;font-weight:700;
+  transition:border-color .2s, color .2s, background-color .2s;}
+.cb-bt-filtros svg{width:16px;height:16px;}
+.cb-bt-filtros .cb-n{background:var(--acento-suave);color:var(--acento);}
+.cb-bt-seta{display:inline-flex;transition:transform .3s cubic-bezier(.2,.8,.2,1);}
+.cb-bt-seta svg{width:15px;height:15px;}
+.cb-bt-filtros.on .cb-bt-seta{transform:rotate(180deg);}
+.cb-bt-filtros.on,.cb-bt-filtros.tem{border-color:color-mix(in srgb, var(--acento) 55%, var(--borda));color:var(--acento);}
+.cb-bt-filtros:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.cb-agenda .cb-camada-op{height:36px;}
+.cb-agenda .cb-sels-linha #cb-f-limpar{height:36px;margin-left:auto;}
+.cb-gaveta{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .36s cubic-bezier(.2,.8,.2,1), opacity .25s ease;}
+.cb-gaveta.aberta{grid-template-rows:1fr;opacity:1;}
+.cb-gaveta-in{min-height:0;overflow:hidden;}
+.cb-gaveta:not(.aberta) .cb-gaveta-in{visibility:hidden;transition:visibility 0s .36s;}
+.cb-agenda .cb-gaveta .cb-sels{padding:2px 0 2px;}
+.cb-agenda .cb-gaveta .cb-check{flex:1 1 100%;padding:4px 2px;}
+.cb-agenda .cb-gaveta .cb-sels .campo{flex:1 1 100%;}
+.cb-agenda .cb-filtros{gap:10px;}
+
+/* lista do dia: cartões soltos, sem cartão por fora */
+.cb-agenda .cb-dia{background:none;border:0;padding:4px 0 0;}
+.cb-agenda .cb-dia-cab{margin:0 2px 2px;}
+.cb-agenda .cb-dia-cab h3{font-size:20px;letter-spacing:-.3px;}
+.cb-agenda .cb-dia-cab small{font-weight:600;}
+.cb-agenda .cb-grupo{margin-top:16px;}
+.cb-agenda .cb-grupo h4{margin:0 2px 8px;font-size:11px;}
+.cb-agenda .cb-grupo h4 span{background:var(--suave);border-radius:999px;padding:1px 8px;font-size:11px;}
+.cb-agenda .cb-grupo-lista{border:0;border-radius:0;overflow:visible;gap:8px;}
+.cb-agenda .cb-subcli{background:none;padding:6px 4px 0;}
+.cb-agenda .cb-linha{position:relative;overflow:hidden;grid-template-columns:54px minmax(0,1fr);column-gap:12px;row-gap:6px;
+  min-height:66px;padding:12px 12px 12px 15px;border:1px solid var(--borda);border-radius:16px;
+  background:var(--card);box-shadow:0 10px 24px -20px rgba(20,8,50,.6);
+  transition:transform .16s var(--mola), border-color .2s, background-color .2s;}
+.cb-agenda .cb-linha + .cb-linha{border-top:1px solid var(--borda);}
+.cb-agenda .cb-linha::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--cli,var(--dom));}
+.cb-agenda .cb-linha:active{transform:scale(.975);}
+.cb-agenda .cb-linha.hist{border-style:dashed;background:transparent;box-shadow:none;}
+.cb-agenda .cb-linha-h{grid-row:1 / span 2;align-self:center;display:flex;flex-direction:column;align-items:flex-start;white-space:nowrap;}
+.cb-agenda .cb-linha-h b{font-family:'Archivo';font-size:17px;font-weight:800;letter-spacing:-.2px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.cb-agenda .cb-linha-h small{font-size:11.5px;font-weight:600;color:var(--ink-4);}
+.cb-agenda .cb-linha-h small::before{content:'até ';}
+.cb-agenda .cb-linha-h.sem-hora i{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:14px;
+  color:var(--dom);background:color-mix(in srgb, var(--dom) 15%, var(--card));box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--dom) 22%, transparent);}
+.cb-agenda .cb-linha-h.sem-hora i svg{width:19px;height:19px;}
+.cb-agenda .cb-linha-h.sem-hora em{display:none;}
+.cb-agenda .cb-linha-tx b{font-size:15px;}
+.cb-agenda .cb-linha-lado{grid-column:2;}
+.cb-agenda .cb-linha:not(:has(.cb-linha-lado > *)) .cb-linha-lado{display:none;}
+
+/* dia livre */
+.cb-livre{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;margin-top:10px;padding:30px 18px 24px;
+  border:1px dashed var(--borda-forte);border-radius:20px;
+  background:radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--acento) 9%, transparent), transparent 70%);}
+.cb-livre-ic{display:grid;place-items:center;width:58px;height:58px;margin-bottom:10px;border-radius:19px;color:var(--acento);
+  background:color-mix(in srgb, var(--acento) 13%, var(--card));box-shadow:0 14px 30px -16px color-mix(in srgb, var(--magenta) 80%, transparent);
+  animation:cbFlutua 4.2s ease-in-out infinite;}
+.cb-livre-ic svg{width:28px;height:28px;}
+.cb-livre-ic svg path:last-child{stroke-dasharray:10;stroke-dashoffset:10;animation:cbRisca .5s cubic-bezier(.3,.8,.3,1) .45s forwards;}
+.cb-livre b{font-family:'Archivo';font-size:17px;font-weight:800;color:var(--ink);}
+.cb-livre small{font-size:13px;color:var(--ink-3);}
+.cb-livre-acoes{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px;}
+.cb-livre-acoes .b{display:inline-flex;align-items:center;gap:6px;}
+.cb-livre-acoes .b svg{width:15px;height:15px;}
+@keyframes cbFlutua{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes cbRisca{to{stroke-dashoffset:0}}
+
+/* movimento da lista: a troca de dia vem do lado certo, em cascata */
+.cb-agenda .cb-corpo{touch-action:pan-y;}
+.cb-agenda .cb-anim .cb-dia{animation:none !important;}
+@keyframes cbLinhaEntra{from{opacity:0;transform:translate(var(--lx,0),12px) scale(.98);filter:blur(4px)}}
+.cb-agenda .cb-anim .cb-dia-cab,.cb-agenda .cb-anim .cb-grupo h4,.cb-agenda .cb-anim .cb-livre{animation:cbLinhaEntra .42s cubic-bezier(.2,.8,.2,1) backwards;}
+.cb-agenda .cb-anim .cb-grupo h4{animation-delay:calc(var(--g,0) * 90ms + 40ms);}
+.cb-agenda .cb-anim .cb-livre{animation-delay:.06s;}
+.cb-agenda .cb-anim .cb-linha{animation:cbLinhaEntra .46s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--k,0) * 45ms + 70ms);}
+.cb-agenda .cb-anim-prox{--lx:34px;}
+.cb-agenda .cb-anim-ant{--lx:-34px;}
+.cb-agenda .cb-anim-prox .cb-dia-cab,.cb-agenda .cb-anim-ant .cb-dia-cab{--lx:inherit;}
+
+@media (prefers-reduced-motion:reduce){
+  .cb-faixa button,.cb-faixa-luz,.cb-pontos span,.cb-tipos button,.cb-livre-ic,.cb-livre-ic svg path,.cb-agenda .cb-anim *{animation:none !important;}
+  .cb-livre-ic svg path:last-child{stroke-dashoffset:0;}
+  .cb-gaveta{transition:none;}
+}

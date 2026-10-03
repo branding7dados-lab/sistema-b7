@@ -20,6 +20,10 @@
       tela recarrega os dados (sem recarregar a página). Se há versão
       nova esperando, aí sim recarrega a página. O puxar nativo do
       navegador fica desligado (CSS), para não brigar com este.
+      zzk: anel de progresso em volta da lâmpada, legenda ("Puxe…",
+      "Solte…", "Atualizando…", "Atualizado"), conteúdo descendo junto de
+      verdade (`translate`) e travas para o disco nunca ficar preso na
+      tela (segundo dedo, troca de tela, app em segundo plano, tela lenta).
    Tudo respeita "reduzir movimento" (1 e 2 somem; 3 funciona sem
    firula). Nada de dado ou regra muda.
    ===================================================================== */
@@ -260,18 +264,25 @@ window.B7 = window.B7 || {};
   /* ===================================================================
      3. PUXAR PARA ATUALIZAR COM A LÂMPADA
      =================================================================== */
-  const LIMIAR = 78;            /* px de deslocamento visível para "encher" */
+  const LIMIAR = 72;            /* px de deslocamento visível para "encher" */
+  const ROTULO = { puxa: 'Puxe para atualizar', solta: 'Solte para atualizar', vai: 'Atualizando…', ok: 'Atualizado', nova: 'Abrindo a versão nova…' };
+  const ARCO = 2 * Math.PI * 20; /* circunferência do anel (r = 20) */
   let ind = null;
   function indicador() {
     if (ind && ind.isConnected) return ind;
     ind = document.createElement('div');
     ind.className = 'b7-puxa';
     ind.setAttribute('aria-hidden', 'true');
-    ind.innerHTML = '<span class="bp-disco"><i class="bp-apagada"></i><i class="bp-acesa"></i></span><i class="bp-onda"></i>';
+    ind.innerHTML =
+      '<span class="bp-disco">' +
+        '<svg class="bp-anel" viewBox="0 0 48 48"><circle class="bp-trilho" cx="24" cy="24" r="20"/>' +
+          '<circle class="bp-progresso" cx="24" cy="24" r="20" stroke-dasharray="' + ARCO.toFixed(2) + '" stroke-dashoffset="' + ARCO.toFixed(2) + '"/></svg>' +
+        '<i class="bp-apagada"></i><i class="bp-acesa"></i>' +
+      '</span><i class="bp-onda"></i><span class="bp-rotulo"></span>';
     document.body.appendChild(ind);
     return ind;
   }
-  let y0 = 0, x0 = 0, ativo = false, puxando = false, desloc = 0, ocupado = false, alvoConteudo = null;
+  let y0 = 0, x0 = 0, ativo = false, puxando = false, desloc = 0, ocupado = false, alvoConteudo = null, cheiaAntes = false, fimTimer = 0;
   const podePuxar = () => {
     const p = painel();
     if (!p || p.offsetParent === null || ocupado) return false;
@@ -279,42 +290,74 @@ window.B7 = window.B7 || {};
     if (document.querySelector('.fundo-modal:not(.saindo), .folha-mais.aberta, .b7-abertura, .tele, .apresentacao')) return false;
     return p.scrollTop <= 0;
   };
+  function rotulo(chave) {
+    const r = indicador().querySelector('.bp-rotulo');
+    if (r.dataset.k === chave) return;
+    r.dataset.k = chave; r.textContent = ROTULO[chave];
+    r.classList.remove('troca'); void r.offsetWidth; r.classList.add('troca');
+  }
   function posicionar(d, p) {
     const el = indicador();
     const topo = document.querySelector('#tela-dashboard .topo.topo-global');
     const base = topo ? topo.getBoundingClientRect().bottom : 0;
-    el.style.setProperty('--bp-y', (base - 52 + d) + 'px');
+    el.style.setProperty('--bp-y', (base - 56 + d * .62).toFixed(1) + 'px');
     el.style.setProperty('--bp-p', p.toFixed(3));
-    el.classList.toggle('cheia', p >= 1);
-    if (alvoConteudo) alvoConteudo.style.transform = d ? 'translate3d(0,' + (d * .85) + 'px,0)' : '';
+    el.querySelector('.bp-progresso').setAttribute('stroke-dashoffset', (ARCO * (1 - p)).toFixed(2));
+    const cheia = p >= 1;
+    el.classList.toggle('cheia', cheia);
+    if (puxando && cheia !== cheiaAntes) { rotulo(cheia ? 'solta' : 'puxa'); if (cheia) vibrar(8); }
+    cheiaAntes = cheia;
+    /* `translate` (e não `transform`): a animação de entrada da página usa
+       transform com fill e não pode prender o conteúdo no lugar */
+    if (alvoConteudo) alvoConteudo.style.translate = d ? '0 ' + d.toFixed(1) + 'px' : '';
   }
+  /* devolve tudo ao lugar. Sempre termina limpo, mesmo se algo falhar no meio */
   function recolher() {
     const el = indicador();
+    clearTimeout(fimTimer);
     el.classList.add('volta');
-    if (alvoConteudo) { alvoConteudo.style.transition = 'transform .35s cubic-bezier(.2,.8,.2,1)'; }
+    if (alvoConteudo) alvoConteudo.style.transition = 'translate .42s cubic-bezier(.2,.9,.25,1.15)';
     posicionar(0, 0);
-    setTimeout(() => {
-      el.classList.remove('volta', 'estoura', 'girando', 'cheia', 'mostra');
-      if (alvoConteudo) { alvoConteudo.style.transition = ''; alvoConteudo.style.transform = ''; }
-      alvoConteudo = null;
-    }, 380);
+    const alvo = alvoConteudo;
+    fimTimer = setTimeout(() => {
+      el.classList.remove('volta', 'estoura', 'girando', 'cheia', 'mostra', 'pronto');
+      el.querySelector('.bp-rotulo').dataset.k = '';
+      if (alvo) { alvo.style.transition = ''; alvo.style.translate = ''; }
+      if (alvoConteudo === alvo) alvoConteudo = null;
+      puxando = false; ativo = false; ocupado = false;
+    }, 440);
   }
   async function estourar() {
     ocupado = true;
     const el = indicador();
     el.classList.add('estoura');
     vibrar(18);
-    posicionar(58, 1);
-    setTimeout(() => el.classList.add('girando'), 420);
-    const t0 = Date.now();
+    posicionar(56, 1);
     /* versão nova esperando? então recarrega a página de verdade */
     const aviso = [...document.querySelectorAll('#toasts .toast')].some(t => /Nova versão/.test(t.textContent));
-    if (aviso) { setTimeout(() => location.reload(), 380); return; }
-    try { if (B7.Rota && B7.Rota.ir) await B7.Rota.ir(); } catch (e) {}
-    const resto = Math.max(0, 750 - (Date.now() - t0));
-    setTimeout(() => { recolher(); ocupado = false; }, resto);
+    rotulo(aviso ? 'nova' : 'vai');
+    setTimeout(() => el.classList.add('girando'), 380);
+    if (aviso) { setTimeout(() => location.reload(), 420); return; }
+    const t0 = Date.now();
+    /* nunca fica preso: se a tela demorar mais de 6 s, o indicador sai assim mesmo */
+    try {
+      if (B7.Rota && B7.Rota.ir) await Promise.race([Promise.resolve(B7.Rota.ir()), new Promise(r => setTimeout(r, 6000))]);
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, Math.max(0, 820 - (Date.now() - t0))));
+    el.classList.remove('girando');
+    el.classList.add('pronto');
+    rotulo('ok');
+    setTimeout(recolher, 520);
+  }
+  /* tudo o que pode interromper um puxão no meio: volta ao lugar */
+  function abortar() {
+    if (ocupado) return;
+    if (puxando || (ind && ind.classList.contains('mostra'))) recolher();
+    ativo = false; puxando = false;
   }
   document.addEventListener('touchstart', e => {
+    /* segundo dedo no meio do puxão: cancela (sem atualizar) em vez de deixar o disco preso */
+    if (puxando) { ativo = false; puxando = false; recolher(); return; }
     const p = painel();
     if (e.touches.length !== 1 || !p || !p.contains(e.target) || !podePuxar()) { ativo = false; return; }
     /* começou dentro de algo que rola de lado (abas, chips, carrossel)? ok,
@@ -328,25 +371,32 @@ window.B7 = window.B7 || {};
     const dy = e.touches[0].clientY - y0, dx = e.touches[0].clientX - x0;
     if (!puxando) {
       if (dy > 10 && dy > Math.abs(dx) * 1.4 && podePuxar()) {
-        puxando = true;
+        puxando = true; cheiaAntes = false;
+        clearTimeout(fimTimer);
         alvoConteudo = painel().querySelector(':scope > .conteudo');
-        indicador().classList.add('mostra');
+        if (alvoConteudo) alvoConteudo.style.transition = 'none';
+        const el = indicador();
+        el.classList.remove('volta', 'estoura', 'girando', 'pronto');
+        el.classList.add('mostra');
+        rotulo('puxa');
       } else if (dy < -4 || Math.abs(dx) > 14) { ativo = false; return; }
       else return;
     }
     /* resistência: quanto mais puxa, menos anda */
-    desloc = 120 * (1 - Math.exp(-Math.max(0, dy - 10) / 150));
+    desloc = 124 * (1 - Math.exp(-Math.max(0, dy - 10) / 140));
     posicionar(desloc, Math.min(1, desloc / LIMIAR));
   }, { passive: true });
-  const fim = () => {
-    if (!ativo) return;
+  function fim() {
+    if (!ativo && !puxando) return;
     ativo = false;
     if (!puxando) return;
     puxando = false;
     if (desloc >= LIMIAR) estourar(); else recolher();
-  };
+  }
   document.addEventListener('touchend', fim, { passive: true });
   document.addEventListener('touchcancel', fim, { passive: true });
+  window.addEventListener('hashchange', abortar);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) abortar(); });
 
   /* ===================================================================
      4. KANBAN COM FÍSICA (zzj)

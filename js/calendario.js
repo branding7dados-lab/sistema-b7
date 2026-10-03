@@ -291,19 +291,39 @@ B7.Calendario = (function () {
       '<div id="cb-avisos"></div>' +
       '<div class="cb-corpo" id="cb-corpo" aria-live="polite"></div>' +
     '</div>';
+    animFaixa = 'entrada';
     pintarCabecalho(); pintarBarra(); pintarFiltros(); pintarCorpo();
+    /* celular: arrastar a lista de lado troca o dia */
+    if (agenda) {
+      const corpo = document.getElementById('cb-corpo');
+      ligarDeslize(corpo, () => corpo.querySelector('.cb-palco'), dir => irDia(D().somarDias(V.data, dir), dir));
+    }
   }
 
   function pintarCabecalho() {
     const cx = document.getElementById('cb-topo'); if (!cx) return;
     cx.innerHTML = '<div class="cb-titulo"><h1>Calendário</h1>' +
-        '<p>Gravações, publicações e prazos da operação num lugar só.</p></div>' +
+        '<p>Gravações, publicações e prazos da operação num lugar só.</p>' +
+        (ehAgenda() ? '<small class="cb-sub" id="cb-sub" aria-live="polite"></small>' : '') + '</div>' +
       '<div class="cb-topo-acoes">' +
-        (souGestor() ? '<button class="b pri" id="cb-marcar">' + IC_MAIS + '<span>Marcar gravação</span></button>' : '') +
+        (souGestor() ? '<button class="b pri" id="cb-marcar" aria-label="Marcar gravação">' + IC_MAIS + '<span>Marcar<span class="cb-lg"> gravação</span></span></button>' : '') +
         (souGestor() ? '<button class="b contorno ico" id="cb-config" aria-label="Configurações do Google Calendar" title="Google Calendar">' + IC_ENGRENAGEM + '</button>' : '') +
       '</div>';
     const m = cx.querySelector('#cb-marcar'); if (m) m.onclick = () => modalMarcarGravacao(ehAgenda() || V.vista === 'dia' ? V.data : undefined);
     const c = cx.querySelector('#cb-config'); if (c) c.onclick = () => modalConfiguracoes();
+    pintarSub();
+  }
+
+  /* celular: a semana em uma frase, embaixo do título */
+  function pintarSub() {
+    const el = document.getElementById('cb-sub'); if (!el) return;
+    if (!R.pronto) { el.textContent = ''; return; }
+    const hoje = D().hoje();
+    const l = visiveis().filter(ev => ev.dominio !== 'oportunidade' && !ev.historico);
+    const nh = l.filter(ev => ev.dia === hoje).length;
+    const temHoje = R.ini && hoje >= R.ini && hoje <= R.fim;
+    el.textContent = (l.length ? l.length : 'Nada') + ' nesta semana' +
+      (temHoje ? ' · ' + (nh ? nh + ' hoje' : 'hoje livre') : '');
   }
 
   function pintarBarra() {
@@ -325,8 +345,97 @@ B7.Calendario = (function () {
     cx.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navegar(+b.dataset.nav));
     cx.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => { if (V.vista === b.dataset.vista) return; V.vista = b.dataset.vista; anim = 'vista'; mudou(); });
     const mb = cx.querySelector('#cb-mes-btn'); if (mb) mb.onclick = seletorMes;
-    cx.querySelectorAll('[data-faixa]').forEach(b => b.onclick = () => { V.data = b.dataset.faixa; gravarEstado(); pintarBarra(); pintarCorpo(); });
-    const sel = cx.querySelector('.cb-faixa .on'); if (sel && sel.scrollIntoView) { try { sel.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {} }
+    cx.querySelectorAll('[data-faixa]').forEach(b => b.onclick = () => irDia(b.dataset.faixa));
+    const fx = cx.querySelector('.cb-faixa');
+    if (fx) {
+      /* semana nova: a faixa entra deslizando do lado de onde veio */
+      if (animFaixa) { fx.classList.add('cb-faixa-' + animFaixa); animFaixa = null; }
+      posLuz(false);
+      ligarDeslize(fx, () => fx, dir => navegar(dir));
+    }
+  }
+
+  /* ---- celular: pílula de luz que viaja até o dia escolhido ---- */
+  let animFaixa = 'entrada';
+  const reduz = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function posLuz(animar) {
+    const fx = document.querySelector('.cb-faixa'); if (!fx) return;
+    let luz = fx.querySelector('.cb-faixa-luz');
+    if (!luz) {
+      luz = document.createElement('i'); luz.className = 'cb-faixa-luz'; luz.setAttribute('aria-hidden', 'true');
+      fx.prepend(luz); fx.classList.add('tem-luz');
+      /* largura mudou (fonte carregou, celular girou): a luz acompanha */
+      if (window.ResizeObserver) new ResizeObserver(() => { if (fx.isConnected) posLuz(false); }).observe(fx);
+    }
+    const on = fx.querySelector('button.on');
+    if (!on) { luz.style.opacity = '0'; return; }
+    const x1 = on.offsetLeft, w1 = on.offsetWidth;
+    const x0 = parseFloat(luz.dataset.x), w0 = parseFloat(luz.dataset.w);
+    Object.assign(luz.style, { opacity: '1', top: on.offsetTop + 'px', height: on.offsetHeight + 'px', width: w1 + 'px', transform: 'translateX(' + x1 + 'px)' });
+    luz.dataset.x = x1; luz.dataset.w = w1;
+    if (animar && !isNaN(x0) && x0 !== x1 && luz.animate && !reduz()) {
+      /* estica no sentido da viagem e encolhe ao chegar (como gota) */
+      const xm = Math.min(x0, x1), wm = Math.abs(x1 - x0) + Math.max(w0, w1) * .7;
+      luz.animate([
+        { transform: 'translateX(' + x0 + 'px)', width: w0 + 'px' },
+        { transform: 'translateX(' + (x1 > x0 ? x0 : xm) + 'px)', width: wm + 'px', offset: .45 },
+        { transform: 'translateX(' + x1 + 'px)', width: w1 + 'px' }
+      ], { duration: 460, easing: 'cubic-bezier(.3,.8,.2,1)' });
+    }
+  }
+  /* troca o dia escolhido. Na mesma semana, só move a luz e troca a
+     lista (sem buscar nada); fora dela, carrega a semana nova. */
+  function irDia(novo, dir) {
+    if (!novo || novo === V.data) return;
+    dir = dir || (novo > V.data ? 1 : -1);
+    anim = dir > 0 ? 'prox' : 'ant';
+    const mesmaSemana = D().inicioSemana(novo) === D().inicioSemana(V.data);
+    V.data = novo;
+    if (!mesmaSemana) { animFaixa = anim; mudou(); return; }
+    gravarEstado();
+    document.querySelectorAll('.cb-faixa [data-faixa]').forEach(b => {
+      const on = b.dataset.faixa === novo;
+      b.classList.toggle('on', on); b.setAttribute('aria-selected', on);
+      b.classList.remove('pulou');
+      if (on && !reduz()) { void b.offsetWidth; b.classList.add('pulou'); }
+    });
+    posLuz(true);
+    pintarCorpo();
+  }
+  /* arrastar de lado: o elemento segue o dedo; passou de 56 px, troca */
+  function ligarDeslize(el, alvo, aoIr) {
+    if (!el || el._deslize) return; el._deslize = true;
+    let x0 = null, y0 = 0, dx = 0, modo = null;
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) { modo = 'nao'; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; modo = null;
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (modo === 'nao' || x0 === null) return;
+      const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+      if (!modo) {
+        if (Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my) * 1.4) modo = 'x';
+        else { if (Math.abs(my) > 10) modo = 'nao'; return; }
+      }
+      dx = mx;
+      const a = alvo(); if (!a) return;
+      a.style.transition = 'none';
+      a.style.translate = (dx * .5) + 'px 0';
+      a.style.opacity = String(1 - Math.min(.4, Math.abs(dx) / 520));
+    }, { passive: true });
+    const fim = () => {
+      const ok = modo === 'x' && Math.abs(dx) > 56;
+      const a = alvo();
+      if (a && modo === 'x') {
+        a.style.transition = ok ? '' : 'translate .32s cubic-bezier(.2,.8,.2,1), opacity .32s ease';
+        a.style.translate = ''; a.style.opacity = '';
+        setTimeout(() => { a.style.transition = ''; }, 340);
+      }
+      modo = null; x0 = null;
+      if (ok) aoIr(dx < 0 ? 1 : -1);
+    };
+    el.addEventListener('touchend', fim, { passive: true });
+    el.addEventListener('touchcancel', fim, { passive: true });
   }
 
   /* animação da próxima pintura com dados: direção do mês, troca de
@@ -334,6 +443,12 @@ B7.Calendario = (function () {
      com prefers-reduced-motion). */
   let anim = 'entrada';
   function navegar(dir) {
+    if (ehAgenda()) {
+      if (dir === 0) { irDia(D().hoje()); return; }
+      anim = animFaixa = dir > 0 ? 'prox' : 'ant';
+      V.data = D().somarDias(V.data, 7 * dir);
+      mudou(); return;
+    }
     anim = dir > 0 ? 'prox' : dir < 0 ? 'ant' : 'hoje';
     if (dir === 0) V.data = D().hoje();
     else if (ehAgenda()) V.data = D().somarDias(V.data, 7 * dir);
@@ -360,23 +475,43 @@ B7.Calendario = (function () {
       const ev = R.eventos.find(e => e.clienteId === V.cliente); if (ev) clientes.push({ id: V.cliente, nome: ev.clienteNome });
     }
     const ativos = !!(V.tipo || V.cliente || V.resp || V.canceladas);
-    cx.innerHTML =
-      (tipos.length > 1 ? '<div class="cb-tipos filtro" role="group" aria-label="Tipo de evento">' +
+    const tiposHTML = tipos.length > 1 ? '<div class="cb-tipos filtro" role="group" aria-label="Tipo de evento">' +
         [{ id: '', rot: 'Todos' }].concat(tipos).map(t =>
-          '<button data-tipo="' + t.id + '" class="' + (V.tipo === t.id ? 'on' : '') + '" aria-pressed="' + (V.tipo === t.id) + '">' +
-            (t.id ? '<i class="cb-dom-ic d-' + t.dominios[0] + '">' + E().DOMINIOS[t.dominios[0]].ic + '</i>' : '') + esc(t.rot) +
-            (R.pronto ? '<span class="cb-n">' + nTipo(t.id ? t : null) + '</span>' : '') + '</button>').join('') + '</div>' : '') +
-      '<div class="cb-sels">' +
+          '<button data-tipo="' + t.id + '" class="' + (V.tipo === t.id ? 'on' : '') + (t.id ? ' tem-ic' : '') + '" aria-pressed="' + (V.tipo === t.id) + '" title="' + esc(t.rot) + '">' +
+            (t.id ? '<i class="cb-dom-ic d-' + t.dominios[0] + '">' + E().DOMINIOS[t.dominios[0]].ic + '</i>' : '') + '<span class="cb-tipo-rot">' + esc(t.rot) + '</span>' +
+            (R.pronto ? '<span class="cb-n">' + nTipo(t.id ? t : null) + '</span>' : '') + '</button>').join('') + '</div>' : '';
+    const selsHTML =
         '<select class="campo fina' + (V.cliente ? ' ativo' : '') + '" id="cb-f-cliente" aria-label="Cliente"><option value="">Cliente: todos</option>' +
           clientes.map(c => '<option value="' + esc(c.id) + '"' + (c.id === V.cliente ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select>' +
         (resps.size ? '<select class="campo fina' + (V.resp ? ' ativo' : '') + '" id="cb-f-resp" aria-label="Responsável"><option value="">Responsável: todos</option>' +
           [...resps.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')).map(([id, n]) =>
             '<option value="' + esc(id) + '"' + (id === V.resp ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>' : '') +
-        '<label class="cb-check"><input type="checkbox" id="cb-f-canc"' + (V.canceladas ? ' checked' : '') + '><span>Mostrar canceladas</span></label>' +
-        (B7.Oportunidades ? '<button type="button" class="cb-camada-op' + (V.op ? ' on' : '') + '" id="cb-f-op" aria-pressed="' + V.op + '" title="Datas comemorativas e campanhas relevantes' + (V.cliente ? ' para este cliente' : ' para os clientes') + '">' +
-          '<i class="cb-dom-ic">' + E().DOMINIOS.oportunidade.ic + '</i>Oportunidades' + (V.op && R.pronto ? '<span class="cb-n">' + nOp + '</span>' : '') + '</button>' : '') +
-        (ativos ? '<button class="b fina contorno" id="cb-f-limpar">Limpar</button>' : '') +
-      '</div>';
+        '<label class="cb-check"><input type="checkbox" id="cb-f-canc"' + (V.canceladas ? ' checked' : '') + '><span>Mostrar canceladas</span></label>';
+    const opHTML = B7.Oportunidades ? '<button type="button" class="cb-camada-op' + (V.op ? ' on' : '') + '" id="cb-f-op" aria-pressed="' + V.op + '" title="Datas comemorativas e campanhas relevantes' + (V.cliente ? ' para este cliente' : ' para os clientes') + '">' +
+          '<i class="cb-dom-ic">' + E().DOMINIOS.oportunidade.ic + '</i>Oportunidades' + (V.op && R.pronto ? '<span class="cb-n">' + nOp + '</span>' : '') + '</button>' : '';
+    const limparHTML = ativos ? '<button class="b fina contorno" id="cb-f-limpar">Limpar</button>' : '';
+    if (ehAgenda()) {
+      /* celular: cliente, responsável e canceladas ficam numa gaveta; o
+         botão mostra quantos estão ligados */
+      const nSel = (V.cliente ? 1 : 0) + (V.resp ? 1 : 0) + (V.canceladas ? 1 : 0);
+      cx.innerHTML = tiposHTML +
+        '<div class="cb-sels-linha">' +
+          '<button type="button" class="cb-bt-filtros' + (filtrosAbertos ? ' on' : '') + (nSel ? ' tem' : '') + '" id="cb-f-abre" aria-expanded="' + filtrosAbertos + '" aria-controls="cb-gaveta">' +
+            IC_FILTRO + '<span>Filtros</span>' + (nSel ? '<span class="cb-n">' + nSel + '</span>' : '') + '<i class="cb-bt-seta">' + IC_BAIXO + '</i></button>' +
+          opHTML + limparHTML +
+        '</div>' +
+        '<div class="cb-gaveta' + (filtrosAbertos ? ' aberta' : '') + '" id="cb-gaveta"><div class="cb-gaveta-in"><div class="cb-sels">' + selsHTML + '</div></div></div>';
+      const ab = cx.querySelector('#cb-f-abre');
+      ab.onclick = () => {
+        filtrosAbertos = !filtrosAbertos;
+        ab.classList.toggle('on', filtrosAbertos); ab.setAttribute('aria-expanded', filtrosAbertos);
+        cx.querySelector('#cb-gaveta').classList.toggle('aberta', filtrosAbertos);
+      };
+      const on = cx.querySelector('.cb-tipos .on');
+      if (on && on.scrollIntoView && on.offsetLeft + on.offsetWidth > on.parentElement.clientWidth) { try { on.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {} }
+    } else {
+      cx.innerHTML = tiposHTML + '<div class="cb-sels">' + selsHTML + opHTML + limparHTML + '</div>';
+    }
     cx.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => { V.tipo = b.dataset.tipo; aplicarFiltro(); });
     const sc = cx.querySelector('#cb-f-cliente'); if (sc) sc.onchange = () => { V.cliente = sc.value; aplicarFiltro(); };
     const sr = cx.querySelector('#cb-f-resp'); if (sr) sr.onchange = () => { V.resp = sr.value; aplicarFiltro(); };
@@ -418,7 +553,7 @@ B7.Calendario = (function () {
     }
     const lista = visiveis();
     let html;
-    if (ehAgenda()) html = agendaDiaHTML(lista.filter(ev => ev.dia === V.data), V.data, true);
+    if (ehAgenda()) html = agendaDiaHTML(lista.filter(ev => ev.dia === V.data), V.data, true, lista);
     else if (V.vista === 'mes') html = mesHTML(lista);
     else if (V.vista === 'semana') html = semanaHTML(lista);
     else html = agendaDiaHTML(lista.filter(ev => ev.dia === V.data), V.data, false);
@@ -427,8 +562,11 @@ B7.Calendario = (function () {
     cx.innerHTML = (R.carregando ? '<div class="cb-atualizando" role="status"><i></i>Atualizando…</div>' : '') +
       '<div class="cb-palco' + classeAnim + '">' + html + '</div>';
     cx.classList.toggle('carregando', !!R.carregando);
+    /* ordem de entrada das linhas (cascata contínua entre os grupos) */
+    cx.querySelectorAll('.cb-palco .cb-linha').forEach((l, i) => l.style.setProperty('--k', Math.min(i, 8)));
     pintarResumo(lista);
-    if (ehAgenda()) pintarPontosFaixa();
+    pintarSub();
+    if (ehAgenda()) { pintarPontosFaixa(); posLuz(false); }   /* a lista pode ter mudado a largura (barra de rolagem) */
     ligarCorpo(cx);
   }
 
@@ -447,6 +585,7 @@ B7.Calendario = (function () {
     cx.querySelectorAll('[data-dia-mais]').forEach(b => b.onclick = ev => { ev.stopPropagation(); folhaDia(b.dataset.diaMais); });
     cx.querySelectorAll('[data-grupo]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const [dia, dominio, cliente] = b.dataset.grupo.split('|'); folhaDia(dia, { dominio, cliente }); });
     cx.querySelectorAll('[data-ir-dia]').forEach(b => b.onclick = () => { V.vista = 'dia'; V.data = b.dataset.irDia; mudou(); });
+    cx.querySelectorAll('[data-pular-dia]').forEach(b => b.onclick = () => irDia(b.dataset.pularDia));
   }
 
   /* ---- peças ---- */
@@ -525,8 +664,10 @@ B7.Calendario = (function () {
   }
   function linhaHTML(ev, semCliente) {
     const resp = ev.responsavelNome || (ev.responsavelId && nomesResp.get(ev.responsavelId)) || '';
-    return '<button type="button" class="cb-linha d-' + ev.dominio + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + '" data-ev="' + esc(ev.id) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
-      '<span class="cb-linha-h">' + esc(horaTx(ev)) + '</span>' +
+    return '<button type="button" class="cb-linha d-' + ev.dominio + (ev.clienteId ? ' tem-cli' : '') + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + '" data-ev="' + esc(ev.id) + '" aria-label="' + esc(ariaEvento(ev)) + '"' + estiloCli(ev.clienteId) + '>' +
+      (ev.hora
+        ? '<span class="cb-linha-h"><b>' + esc(ev.hora) + '</b>' + (ev.horaFim ? '<small>' + esc(ev.horaFim) + '</small>' : '') + '</span>'
+        : '<span class="cb-linha-h sem-hora"><i class="cb-dom-ic">' + DOM(ev.dominio).ic + '</i><em>' + esc(horaTx(ev)) + '</em></span>') +
       (ev.dominio === 'oportunidade'
         ? '<span class="cb-linha-tx"><b>' + esc(ev.titulo) + '</b><span>' + esc(ev.sub || '') + '</span>'
         : semCliente
@@ -587,16 +728,30 @@ B7.Calendario = (function () {
   }
 
   /* ---- DIA / agenda: agrupado por domínio, só grupos não vazios ---- */
-  function agendaDiaHTML(lista, dia, compacto) {
+  /* semana (celular): lista de toda a semana carregada, para o "dia livre"
+     apontar o próximo dia com algo marcado */
+  function agendaDiaHTML(lista, dia, compacto, semana) {
     const d = D().local(dia), hoje = D().hoje();
     const rel = dia === hoje ? 'Hoje' : dia === D().somarDias(hoje, 1) ? 'Amanhã' : dia === D().somarDias(hoje, -1) ? 'Ontem' : DIAS_SEMANA[d.getDay()];
     const cab = '<header class="cb-dia-cab"><h3>' + esc(rel) + ' · <span>' + d.getDate() + ' ' + MESES[d.getMonth()].toUpperCase() + '</span></h3>' +
       (lista.length ? '<small>' + lista.length + ' evento' + (lista.length > 1 ? 's' : '') + '</small>' : '') + '</header>';
+    if (!lista.length && semana) {
+      const prox = [...new Set(semana.filter(e => e.dia > dia && e.dominio !== 'oportunidade').map(e => e.dia))].sort()[0];
+      const dp = prox && D().local(prox);
+      return '<div class="cb-dia compacto cb-dia-livre">' + cab +
+        '<div class="cb-livre"><span class="cb-livre-ic" aria-hidden="true">' + IC_CAL + '</span>' +
+          '<b>' + (dia < hoje ? 'Nada aconteceu neste dia' : 'Dia livre') + '</b>' +
+          '<small>Nenhum compromisso' + (filtrando() ? ' com esses filtros' : '') + '.</small>' +
+          '<div class="cb-livre-acoes">' +
+            (prox ? '<button type="button" class="b contorno fina" data-pular-dia="' + prox + '">Próximo: ' + DIAS_SEMANA_ABREV[dp.getDay()] + ' ' + dp.getDate() + IC_DIR + '</button>' : '') +
+            (souGestor() && dia >= hoje ? '<button type="button" class="b pri fina" data-add-dia="' + dia + '">' + IC_MAIS + 'Marcar gravação</button>' : '') +
+          '</div></div></div>';
+    }
     if (!lista.length) return '<div class="cb-dia' + (compacto ? ' compacto' : '') + '">' + cab + '<div class="cb-vazio">Nenhum evento neste dia' + (filtrando() ? ' com esses filtros' : '') + '.</div></div>';
     const grupos = [];
     Object.keys(E().DOMINIOS).sort((a, b) => DOM(a).ordem - DOM(b).ordem).forEach(dom => {
       const evs = lista.filter(e => e.dominio === dom);
-      if (evs.length) grupos.push('<section class="cb-grupo d-' + dom + '"><h4><i class="cb-dom-ic">' + DOM(dom).ic + '</i>' + esc(DOM(dom).grupo) + '<span>' + evs.length + '</span></h4>' +
+      if (evs.length) grupos.push('<section class="cb-grupo d-' + dom + '" style="--g:' + grupos.length + '"><h4><i class="cb-dom-ic">' + DOM(dom).ic + '</i>' + esc(DOM(dom).grupo) + '<span>' + evs.length + '</span></h4>' +
         '<div class="cb-grupo-lista">' + comSubCliente(evs) + '</div></section>');
     });
     return '<div class="cb-dia' + (compacto ? ' compacto' : '') + '">' + cab + grupos.join('') + '</div>';
@@ -629,7 +784,7 @@ B7.Calendario = (function () {
     let h = '<div class="cb-faixa" role="tablist" aria-label="Dias da semana">';
     for (let k = 0; k < 7; k++) {
       const dia = D().somarDias(i, k), d = D().local(dia);
-      h += '<button type="button" role="tab" aria-selected="' + (dia === V.data) + '" class="' + (dia === V.data ? 'on' : '') + (dia === hoje ? ' hoje' : '') + '" data-faixa="' + dia + '">' +
+      h += '<button type="button" role="tab" aria-selected="' + (dia === V.data) + '" class="' + (dia === V.data ? 'on' : '') + (dia === hoje ? ' hoje' : '') + (dia < hoje ? ' passou' : '') + '" data-faixa="' + dia + '" style="--d:' + k + '">' +
         '<small>' + DIAS_SEMANA_ABREV[d.getDay()].toUpperCase() + '</small><b>' + d.getDate() + '</b><i class="cb-pontos" data-pontos="' + dia + '"></i></button>';
     }
     return h + '</div>';
@@ -639,7 +794,8 @@ B7.Calendario = (function () {
     document.querySelectorAll('[data-pontos]').forEach(el => {
       const evs = mapa.get(el.dataset.pontos) || [];
       const doms = [...new Set(evs.map(e => e.dominio))].slice(0, 3);
-      el.innerHTML = doms.map(d => '<span class="d-' + d + '"></span>').join('');
+      const h = doms.map((d, k) => '<span class="d-' + d + '" style="--p:' + k + '"></span>').join('');
+      if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h; }   /* só repinta (e anima) o que mudou */
       el.parentElement.setAttribute('aria-label', el.parentElement.textContent.trim() + (evs.length ? ', ' + evs.length + ' evento' + (evs.length > 1 ? 's' : '') : ', sem eventos'));
     });
   }
@@ -671,7 +827,11 @@ B7.Calendario = (function () {
           if (!k) ref = D().hoje(); else { const x = D().local(D().primeiroDoMes(ref)); x.setMonth(x.getMonth() + k); ref = D().isoLocal(x); }
           pintar();
         });
-        cx.querySelectorAll('[data-sm-dia]').forEach(b => b.onclick = () => { V.data = b.dataset.smDia; m.fechar(); mudou(); });
+        cx.querySelectorAll('[data-sm-dia]').forEach(b => b.onclick = () => {
+          const novo = b.dataset.smDia; m.fechar();
+          if (D().inicioSemana(novo) === D().inicioSemana(V.data)) { irDia(novo); return; }
+          anim = animFaixa = novo > V.data ? 'prox' : 'ant'; V.data = novo; mudou();
+        });
       };
       desenhar(new Map());
       try { const r = await E().carregar(ini, fim); if (document.body.contains(cx)) desenhar(porDia(E().filtrar(r.eventos, V))); } catch (e) {}
@@ -736,6 +896,9 @@ B7.Calendario = (function () {
   const SVGI = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
   const IC_ESQ = SVGI('<path d="M15 6l-6 6 6 6"/>'), IC_DIR = SVGI('<path d="M9 6l6 6-6 6"/>'), IC_BAIXO = SVGI('<path d="M7 10l5 5 5-5"/>');
   const IC_MAIS = SVGI('<path d="M12 5v14M5 12h14"/>');
+  const IC_FILTRO = SVGI('<path d="M4 6h16M7 12h10M10 18h4"/>');
+  const IC_CAL = SVGI('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="M9.5 15l2 2 3.5-3.5"/>');
+  let filtrosAbertos = false;
   const IC_ENGRENAGEM = SVGI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>');
 
   /* =================================================================
