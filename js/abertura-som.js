@@ -219,6 +219,10 @@ B7.SomAbertura = (function () {
   function aoSair() {
     if (!ligado() || !ctx || ctx.state !== 'running') return;
     try { assenta(ctx.currentTime + .02); } catch (e) {}
+    /* onda de luz (zzo): o anel corre pela tela (0,04–0,84 s) e o logo
+       pousa no topo (~0,82 s) — um sopro subindo e um cintilar curto */
+    try { whoosh(ctx.currentTime + .06, .75, 260, 2400, .05); } catch (e) {}
+    try { cintilar(ctx.currentTime + .8); } catch (e) {}
   }
   /* "Ver abertura" (Configurações): toque do usuário → som garantido */
   function reproduzir() {
