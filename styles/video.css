@@ -754,10 +754,16 @@ label.rot em{font-style:normal;font-weight:500;letter-spacing:0;text-transform:n
 
   /* ---- grupos por prazo, cabeçalho de vidro que gruda no topo ---- */
   .vd-m-grupo{display:flex;flex-direction:column;gap:8px;}
-  .vd-m-grupo-cab{position:sticky;top:calc(58px + env(safe-area-inset-top));z-index:2;display:flex;align-items:center;gap:8px;
-    margin:0 -4px;padding:6px 8px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
-    background:color-mix(in srgb, var(--fundo) 78%, transparent);
-    -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);}
+  /* gruda logo abaixo do topo de vidro. O deslocamento conta a partir
+     do recuo do #painel-dashboard (que já é a altura do topo) — com 58px
+     ele ficava solto no meio da tela, por cima dos cartões (print do
+     Kevin, zs→zy). Fundo quase opaco: o cartão passa por baixo sem
+     disputar leitura com o rótulo. */
+  .vd-m-grupo-cab{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:8px;
+    margin:0 -14px;padding:9px 18px 8px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+    background:color-mix(in srgb, var(--fundo) 94%, transparent);
+    -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
+    -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 6px),transparent);mask-image:linear-gradient(180deg,#000 calc(100% - 6px),transparent);}
   .vd-m-grupo-cab b{font-size:11px;min-width:20px;height:20px;padding:0 6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
     background:var(--suave);color:var(--ink-2);letter-spacing:0;}
   .vd-m-g-atrasadas .vd-m-grupo-cab{color:var(--erro);}

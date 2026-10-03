@@ -519,7 +519,7 @@ B7.Video = (function () {
     const atrasada = ehAtrasada(d), prio = d.prioridade || 'normal', rel = prazoRelativo(d);
     return '<article class="vd-m-card vd-m-s-' + esc(d.editing_status) + (atrasada ? ' atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + '">' +
       '<div class="vd-m-topo">' + logoClienteHTML(d, 'sm') + '<span class="vd-m-cli">' + esc(d.cliente_nome || 'Cliente') + '</span>' +
-        (d.codigo ? '<span class="vd-m-cod">#' + esc(d.codigo) + '</span>' : '') + statusBadge(d.editing_status) + '</div>' +
+        (d.codigo ? '<span class="vd-m-cod">#' + esc(String(d.codigo).replace(/^#+/, '')) + '</span>' : '') + statusBadge(d.editing_status) + '</div>' +
       '<div class="vd-m-tit">' + tituloComFallback(d) + '</div>' +
       '<div class="vd-m-pe">' +
         (d.prazo ? '<span class="vd-m-prazo' + (atrasada ? ' atrasado' : rel === 'hoje' ? ' hoje' : '') + '">' + IC_CAL +
