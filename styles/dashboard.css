@@ -347,6 +347,18 @@
 .card-cliente:hover .acoes-card,.card-cliente.no-topo .acoes-card{opacity:1;}
 .card-cliente .acoes-card .ico{width:30px;height:30px;}
 .card-cliente .nm small{padding-right:4px;}
+/* toque (celular/tablet): não existe "passar o mouse". Os botões
+   invisíveis por cima da seta eram tocáveis — o 1º toque os revelava e
+   o 2º fixava o cliente sem querer. Aqui o fixar rápido sai (continua no
+   menu ⋯) e o ⋯ fica sempre visível, no fluxo, antes da seta. */
+@media (hover:none){
+  .card-cliente .acoes-card{position:static;transform:none;opacity:1;background:none;padding-left:0;}
+  .card-cliente .acoes-card .pin:not(.fixado){display:none;}
+  .card-cliente .acoes-card .pin.fixado{pointer-events:none;width:22px;}   /* só indica que está fixado */
+  .card-cliente .acoes-card .ico{width:40px;height:40px;color:var(--ink-3);}
+  .card-cliente:hover{transform:none;}
+  .card-cliente:hover .seta{color:var(--ink-4);}
+}
 
 /* A trilha com links (.trilha) não tinha estilo próprio: os itens ficavam
    colados e sublinhados, sem respiro no separador. Agora usa a mesma
