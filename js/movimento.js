@@ -203,9 +203,15 @@ window.B7 = window.B7 || {};
     const f = fotoAtual; fotoAtual = null;
     if (!f) return;
     clearTimeout(f.limite);
-    setTimeout(() => { if (!fotoAtual) semEntrada(false); }, 400);
+    if (f.obs) f.obs.disconnect();
+    /* a tela costuma remontar mais uma vez logo depois (segunda busca,
+       tempo real): as entradas continuam desligadas por mais 1,5 s */
+    clearTimeout(semEntrada.t);
+    semEntrada.t = setTimeout(() => { if (!fotoAtual) semEntrada(false); }, 1500);
     if (rapido || !f.el.animate) { f.el.remove(); return; }
-    const a = f.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out', fill: 'forwards' });
+    /* troca seca: a tela real é igual à foto (mesma rolagem), então um
+       esmaecer só mostraria as duas misturadas por um instante */
+    const a = f.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 60, easing: 'linear', fill: 'forwards' });
     a.onfinish = () => f.el.remove();
   }
   function montarFoto(foto) {
@@ -227,19 +233,27 @@ window.B7 = window.B7 || {};
     if (!foto || !p || Date.now() - foto.quando > FOTO_VALE) return null;
     tirarFoto(true);
     const el = montarFoto(foto);
-    semEntrada(true);
+    clearTimeout(semEntrada.t); semEntrada(true);
     const f = { el, hash, rolagem: foto.rolagem, antigo };
     fotoAtual = f;
-    f.limite = setTimeout(() => tirarFoto(false), 2500);
+    f.limite = setTimeout(() => { const pn = painel(); if (pn) pn.scrollTop = f.rolagem; tirarFoto(false); }, 3000);
     /* a tela de verdade está pronta quando o conteúdo antigo saiu e não
        há mais esqueleto: troca a foto por ela, na mesma rolagem */
     const t0 = performance.now();
+    /* a tela real monta em etapas (números que sobem 5 → 7 → 9, blocos que
+       chegam depois): a foto só sai quando ela está pronta E parada há
+       180 ms — senão as etapas apareciam como piscadas */
+    let ultimaMudanca = performance.now();
+    try {
+      f.obs = new MutationObserver(() => { ultimaMudanca = performance.now(); });
+      f.obs.observe(p, { childList: true, subtree: true, characterData: true });
+    } catch (e) {}
     const confere = () => {
       if (fotoAtual !== f) return;
       if ((location.hash || '#/') !== hash) { tirarFoto(true); return; }
       const pn = painel();
       const trocou = pn && pn.firstElementChild && pn.firstElementChild !== antigo;
-      if (trocou && !temEsqueleto(pn) && performance.now() - t0 > 60) {
+      if (trocou && !temEsqueleto(pn) && performance.now() - ultimaMudanca > 180) {
         pn.scrollTop = f.rolagem;
         /* a tela nova não refaz a entrada: a foto já fez o papel dela */
         pn.querySelectorAll(':scope > .conteudo.entra').forEach(c => c.classList.remove('entra'));
