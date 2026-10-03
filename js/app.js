@@ -397,9 +397,14 @@ B7.Rota = (function () {
     const el = document.querySelector('.b7-abertura');
     if (!el || el.classList.contains('saindo') || el.dataset.fechando) return;
     el.dataset.fechando = '1';
+    /* marcas reais de tempo (DevTools → Performance, ou
+       performance.getEntriesByType('mark')): quando o sistema ficou
+       pronto e quando a abertura começou a sair */
+    try { performance.mark('b7:pronto'); } catch (e) {}
     const inicial = el.classList.contains('inicial');
     const espera = inicial ? Math.max(0, MINIMO_ABERTURA_MS - performance.now()) : 0;
     setTimeout(() => {
+      try { performance.mark('b7:abertura-sai'); } catch (e) {}
       /* a partir daqui, nesta sessão do navegador, recarregar mostra a curta */
       if (inicial) { try { sessionStorage.setItem('b7_abertura', '1'); } catch (e) {} }
       /* o sistema assenta por baixo do céu que se dissolve (uma vez) */
