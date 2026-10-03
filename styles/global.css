@@ -1370,6 +1370,58 @@ body.apurando #app{visibility:hidden;}
 .ab-pousou{animation:abPousa .22s ease-out both;}
 @keyframes abPousa{from{opacity:0}to{opacity:1}}
 
+/* ---- mais cinema (pacote zzp, 03/10) ----
+   • tarjas de cinema (letterbox): enquadram a cena desde o início e,
+     na saída, recolhem para fora junto com a íris — "o filme acaba,
+     o app começa". O fio interno acende na ignição.
+   • vinheta de lente: as bordas escurecem, o olho vai para o centro.
+   • grão de filme em movimento (antes era parado).
+   • segundo flare, fino e violeta, um instante depois do primeiro.
+   • rastro de luz atrás do logo no voo e um reflexo no logo do topo
+     quando ele pousa (no lugar da onda, que repetia as ondas da ignição). */
+.ab-tarja{position:absolute;left:0;right:0;z-index:2;height:clamp(26px, 8.5vh, 84px);background:#000;pointer-events:none;
+  animation:abTarja 1.5s cubic-bezier(.16,1,.3,1) both;}
+.ab-tarja.cima{top:0;--ab-de:-100%;}
+.ab-tarja.baixo{bottom:0;--ab-de:100%;}
+.ab-tarja:after{content:"";position:absolute;left:0;right:0;height:1px;opacity:0;
+  background:linear-gradient(90deg, transparent, rgba(255,150,210,.7) 30%, #fff 50%, rgba(170,140,255,.7) 70%, transparent);
+  animation:abTarjaFio 1.4s cubic-bezier(.2,.8,.2,1) var(--ab-ign) both;}
+.ab-tarja.cima:after{bottom:0;}
+.ab-tarja.baixo:after{top:0;}
+@keyframes abTarja{from{transform:translate3d(0,var(--ab-de),0)}to{transform:none}}
+@keyframes abTarjaFio{0%{opacity:0;transform:scaleX(.1)}14%{opacity:.85;transform:scaleX(1)}100%{opacity:.12;transform:scaleX(1)}}
+.b7-abertura.saindo .ab-tarja{animation:abTarjaSai .72s cubic-bezier(.7,0,.25,1) .04s forwards;}
+.b7-abertura.saindo .ab-tarja:after{animation:none;opacity:0;}
+@keyframes abTarjaSai{from{transform:none}to{transform:translate3d(0,var(--ab-de),0)}}
+.ab-vinheta{inset:0;background:radial-gradient(120% 90% at 50% 44%, transparent 45%, rgba(0,0,0,.5) 82%, rgba(0,0,0,.78) 100%);}
+.ab-ceu .ab-grao{inset:-80px;animation:abGrao .9s steps(6) infinite;}
+@keyframes abGrao{0%{transform:translate3d(0,0,0)}17%{transform:translate3d(-31px,18px,0)}33%{transform:translate3d(22px,-27px,0)}
+  50%{transform:translate3d(-14px,-9px,0)}67%{transform:translate3d(35px,24px,0)}83%{transform:translate3d(-26px,33px,0)}100%{transform:translate3d(9px,-16px,0)}}
+.ab-flare.fino{height:1px;top:calc(50% - 6vh + 7px);
+  background:linear-gradient(90deg, transparent 4%, rgba(140,110,255,.55) 32%, rgba(220,210,255,.95) 50%, rgba(140,110,255,.55) 68%, transparent 96%);
+  box-shadow:0 0 12px 2px rgba(124,80,220,.5);animation-delay:calc(var(--ab-ign) + .08s);animation-duration:1.5s;}
+.ab-curta .b7-abertura.inicial .ab-flare.fino,.b7-abertura:not(.inicial) .ab-flare.fino{animation:abFlare 1s cubic-bezier(.2,.8,.2,1) .46s both;}
+.ab-curta .b7-abertura.inicial .ab-tarja,.b7-abertura:not(.inicial) .ab-tarja{animation-duration:.8s;}
+.ab-curta .b7-abertura.inicial .ab-tarja:after,.b7-abertura:not(.inicial) .ab-tarja:after{animation-delay:.4s;}
+/* rastro do voo (js/app.js, voarLogo): ecos da lâmpada, cada vez mais apagados */
+.ab-rastro{position:fixed;z-index:600;pointer-events:none;display:block;
+  background:url('../assets/brand/symbol-color.png') no-repeat center/contain;mix-blend-mode:screen;filter:blur(2.5px) brightness(1.4);}
+.ab-rastro.lockup{background-image:url('../assets/brand/logo-white.png');}
+[data-theme="light"] .ab-rastro{mix-blend-mode:normal;}
+/* reflexo no logo do topo quando ele pousa: a faixa de luz da abertura
+   passa por ele uma vez (recortada no próprio desenho do logo) */
+.ab-pouso-reflexo{position:fixed;z-index:602;pointer-events:none;overflow:hidden;
+  -webkit-mask:var(--ab-img) no-repeat center/contain;mask:var(--ab-img) no-repeat center/contain;}
+.ab-pouso-reflexo:before{content:"";position:absolute;top:-30%;bottom:-30%;left:0;width:55%;
+  background:linear-gradient(100deg, transparent, rgba(255,200,235,.9) 35%, #fff 50%, rgba(200,180,255,.9) 65%, transparent);
+  transform:translate3d(-130%,0,0) skewX(-16deg);animation:abPousoReflexo .62s cubic-bezier(.45,0,.25,1) .04s both;}
+@keyframes abPousoReflexo{to{transform:translate3d(260%,0,0) skewX(-16deg)}}
+.ab-pouso-halo{position:fixed;z-index:599;pointer-events:none;border-radius:50%;
+  background:radial-gradient(closest-side, rgba(236,72,153,.45), rgba(124,58,237,.18) 55%, transparent);
+  animation:abPousoHalo .7s cubic-bezier(.16,1,.3,1) both;}
+@keyframes abPousoHalo{0%{opacity:0;transform:scale(.4)}25%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+@media (prefers-reduced-motion:reduce){ .ab-rastro,.ab-pouso-reflexo,.ab-pouso-halo{display:none;} }
+
 /* ---- o sistema assenta por baixo da íris (uma vez, no arranque) ---- */
 body.ab-revela .lateral{animation:abRevelaFade .5s cubic-bezier(.2,.8,.2,1) .1s both;}
 body.ab-revela .topo-global{animation:abRevelaFade .46s cubic-bezier(.2,.8,.2,1) .14s both;}
@@ -2058,11 +2110,6 @@ html,body{overscroll-behavior-y:none;}               /* o puxar nativo do navega
   background:linear-gradient(var(--ang,180deg), rgba(255,255,255,.22), rgba(255,255,255,0) 45%);
   animation:abLuzPeca .78s cubic-bezier(.2,.8,.2,1) both;}
 @keyframes abLuzPeca{0%{opacity:0;transform:scale(.985)}22%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.012)}}
-/* o logo pousou no topo: onda curta saindo dele */
-.ab-pouso-onda{position:fixed;z-index:602;pointer-events:none;border-radius:50%;
-  border:2px solid rgba(255,150,215,.9);box-shadow:0 0 16px rgba(236,72,153,.6);
-  animation:abPousoOnda .75s cubic-bezier(.16,1,.3,1) both;}
-@keyframes abPousoOnda{0%{opacity:.95;transform:scale(.6)}100%{opacity:0;transform:scale(2.6)}}
 /* tema claro: sem "screen" (sumiria no branco) — rosa e violeta mais fortes, brilho mais contido */
 [data-theme="light"] .ab-luz-anel,[data-theme="light"] .ab-luz-clarao{mix-blend-mode:normal;}
 [data-theme="light"] .ab-luz-anel{opacity:.8;
@@ -2073,4 +2120,4 @@ html,body{overscroll-behavior-y:none;}               /* o puxar nativo do navega
 [data-theme="light"] .ab-luz-peca{border-color:rgba(219,39,119,.75);
   box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 0 16px rgba(219,39,119,.35), 0 0 34px rgba(124,58,237,.18);
   background:linear-gradient(var(--ang,180deg), rgba(255,255,255,.55), rgba(255,255,255,0) 45%);}
-@media (prefers-reduced-motion:reduce){ .ab-luz,.ab-pouso-onda{display:none !important;} }
+@media (prefers-reduced-motion:reduce){ .ab-luz{display:none !important;} }
