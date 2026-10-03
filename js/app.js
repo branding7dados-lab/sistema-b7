@@ -309,9 +309,34 @@ B7.Rota = (function () {
       document.body.appendChild(el);
     }
     escreverCortina(el, titulo, texto);
+    pintarBarraDoSistema();
     return el;
   }
   if (inicialAbertura) escreverCortina(inicialAbertura, null, null);
+
+  /* Barra de status do celular (app instalado / Chrome Android): a cor
+     vem da <meta name="theme-color">. Antes ficava sempre no azul-noite
+     da abertura e, no tema claro, virava uma faixa preta em cima do topo.
+     Agora ela "some": durante a abertura acompanha o céu; depois, a mesma
+     cor do topo (cartão a 72% sobre o fundo, como no CSS do topo). */
+  const metaTema = document.querySelector('meta[name="theme-color"]');
+  const hexRgb = h => { h = String(h).trim().replace('#', ''); if (h.length === 3) h = h.replace(/./g, c => c + c);
+    const n = parseInt(h, 16); return isNaN(n) ? null : [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  function pintarBarraDoSistema() {
+    if (!metaTema) return;
+    const ab = document.querySelector('.b7-abertura');
+    let cor = '#05030A';                                   /* céu da abertura */
+    if (!ab || ab.classList.contains('saindo')) {
+      const css = getComputedStyle(document.documentElement);
+      const card = hexRgb(css.getPropertyValue('--card')), fundo = hexRgb(css.getPropertyValue('--fundo'));
+      if (!card || !fundo) return;
+      cor = '#' + card.map((c, i) => Math.round(c * .72 + fundo[i] * .28).toString(16).padStart(2, '0')).join('');
+    }
+    if (metaTema.content !== cor) metaTema.content = cor;
+  }
+  B7.pintarBarraDoSistema = pintarBarraDoSistema;
+  try { new MutationObserver(pintarBarraDoSistema).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
+  pintarBarraDoSistema();
 
   /* Quanto a abertura segura a tela, contado do início da página:
      • completa (1ª vez na sessão do navegador): 4,3 s — a sequência inteira
@@ -523,6 +548,7 @@ B7.Rota = (function () {
     }
     el.classList.add('saindo');
     if (B7.SomAbertura) B7.SomAbertura.aoSair();
+    pintarBarraDoSistema();
     const tempo = voarLogo(el);
     /* remove só depois do pouso e do céu sumir: tirar antes devolve o
        corte seco que a abertura existe para evitar */
@@ -541,6 +567,7 @@ B7.Rota = (function () {
     el.innerHTML = MOLDE_ABERTURA;
     document.body.appendChild(el);
     if (B7.SomAbertura) B7.SomAbertura.reproduzir();
+    pintarBarraDoSistema();
     setTimeout(() => {
       sairCortina(el, false);
       if (eraCurta) setTimeout(() => raiz.classList.add('ab-curta'), 1200);
