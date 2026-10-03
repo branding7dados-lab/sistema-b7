@@ -2156,3 +2156,14 @@ html.modo-leve .co-faixa{background:var(--ambar-bg) !important;}
 html.modo-leve .fundo-modal{--veu:rgba(5,3,10,.62);}
 /* sombras gigantes custam também: no leve, uma só e curta */
 html.modo-leve body[data-shell="interno"] .nav-inferior{box-shadow:0 6px 18px -10px rgba(10,4,24,.45) !important;}
+
+/* =====================================================================
+   ANIMAÇÕES DESLIGADAS (zzz6) — <html class="sem-animacao">
+   Escolha da pessoa (Configurações → Aparência → Animações, ou Sua conta).
+   Tudo aparece direto no estado final: duração de 1 ms, sem atraso, sem
+   repetição. O JS também ouve "reduzir movimento" (index.html).
+   ===================================================================== */
+html.sem-animacao *, html.sem-animacao *::before, html.sem-animacao *::after{
+  animation-duration:1ms !important; animation-delay:0s !important; animation-iteration-count:1 !important;
+  transition-duration:1ms !important; transition-delay:0s !important; scroll-behavior:auto !important;
+}

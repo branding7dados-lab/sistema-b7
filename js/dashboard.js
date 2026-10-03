@@ -1699,6 +1699,11 @@ B7.Dashboard = (function () {
   const SETA_CFG = '<svg class="cfg-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
   const PAPEL_CFG = { admin: 'Administrador', coordenador: 'Coordenação', designer: 'Designer', videomaker: 'Videomaker', cliente: 'Cliente' };
 
+  function descAnimacoes() {
+    if (!B7.Desempenho.animacoesLigadas()) return 'desligadas: tudo aparece na hora, sem movimento';
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'o sistema do aparelho pede movimento reduzido' : 'transições, voo dos cartões e abertura';
+  }
   function descDesempenho() {
     const e = B7.Desempenho.estado();
     if (e.modo === 'leve') return 'sem vidro desfocado: mais fluido';
@@ -1758,8 +1763,13 @@ B7.Dashboard = (function () {
             abaixo: seletor('tema', tema, [['light', 'Claro', 'sol'], ['dark', 'Escuro', 'tema'], ['auto', 'Sistema', 'tela']]) }) +
         L({ ic: 'densidade', tom: 'azul', t: 'Densidade', d: 'quanto conteúdo cabe na tela',
             abaixo: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) }) +
-        L({ ic: 'animacao', tom: 'rosa', t: 'Animações', d: 'segue a preferência do seu sistema',
-            dir: '<span class="cfg-valor">' + (reduz ? 'Reduzidas' : 'Normais') + '</span>' }) +
+        /* zzz6: desligar de verdade (antes só mostrava o que o sistema dizia) */
+        (B7.Desempenho && B7.Desempenho.animacoesLigadas
+          ? L({ ic: 'animacao', tom: 'rosa', t: 'Animações', cls: 'cfg-alterna',
+                d: '<span id="cfg-anim-d">' + descAnimacoes() + '</span>',
+                dir: chave('animacoes', B7.Desempenho.animacoesLigadas(), 'Animações ligadas') })
+          : L({ ic: 'animacao', tom: 'rosa', t: 'Animações', d: 'segue a preferência do seu sistema',
+                dir: '<span class="cfg-valor">' + (reduz ? 'Reduzidas' : 'Normais') + '</span>' })) +
         /* modo leve (js/desempenho.js): vidro sólido onde o aparelho trava */
         (B7.Desempenho ? L({ ic: 'raio', tom: 'laranja', t: 'Desempenho', d: '<span id="cfg-desemp-d">' + descDesempenho() + '</span>',
             abaixo: seletor('desempenho', B7.Desempenho.modo(), [['auto', 'Automático'], ['leve', 'Leve'], ['completo', 'Completo']]) }) : '')) +
@@ -1865,6 +1875,10 @@ B7.Dashboard = (function () {
         B7.pref.gravar('sidebar_recolhida', v);
       }
       if (pref === 'abertura') B7.pref.gravar('abertura', v);
+      if (pref === 'animacoes' && B7.Desempenho) {
+        B7.Desempenho.definirAnimacoes(v);
+        const d = p.querySelector('#cfg-anim-d'); if (d) d.textContent = descAnimacoes();
+      }
       if (pref === 'som_abertura') B7.pref.gravar('som_abertura', v);
     };
     p.querySelectorAll('.cfg-alterna').forEach(l => {

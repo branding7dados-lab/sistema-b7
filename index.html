@@ -37,6 +37,24 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
+  /* zzz6: "Animações: desligadas" (Configurações / Sua conta). Vale como
+     o "reduzir movimento" do sistema: o CSS zera durações (html.sem-animacao,
+     styles/global.css) e todo código que pergunta ao navegador
+     matchMedia('(prefers-reduced-motion: reduce)') passa a ouvir "sim" —
+     a abertura, o voo dos cartões, o confete e o Painel já sabem se calar
+     assim. Desligar é por aparelho. */
+  try {
+    if (localStorage.getItem('b7_animacoes') === 'desligadas') document.documentElement.classList.add('sem-animacao');
+    var mmOriginal = window.matchMedia && window.matchMedia.bind(window);
+    if (mmOriginal) window.matchMedia = function (q) {
+      var r = mmOriginal(q);
+      if (!/prefers-reduced-motion/.test(String(q)) || !document.documentElement.classList.contains('sem-animacao')) return r;
+      var quer = /reduce/.test(String(q));
+      return { matches: quer, media: String(q), onchange: null,
+               addEventListener: function () {}, removeEventListener: function () {},
+               addListener: function () {}, removeListener: function () {}, dispatchEvent: function () { return false; } };
+    };
+  } catch (e) {}
   /* modo leve antes da primeira pintura (regra completa em js/desempenho.js) */
   try {
     var dm = localStorage.getItem('b7_desempenho') || 'auto';
