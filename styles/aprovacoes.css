@@ -215,3 +215,74 @@
 .sino-filtros button[aria-pressed="true"]{background:var(--acento-suave);color:var(--acento);border-color:transparent;}
 .sino-filtros button:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 @media (max-width:600px){ .sino-filtros{padding:8px 12px;} .sino-filtros button{padding:7px 13px;font-size:12.5px;} }
+
+/* =====================================================================
+   APROVAÇÕES — acabamento e movimento (pacote zzx, 03/10)
+   Mesma linguagem das telas já refeitas (Gravações, Status semanal):
+   cabeçalho compacto, números que são as abas, busca + "Filtros",
+   cartões de vidro com faixa de cor pela situação e entrada em cascata.
+   ===================================================================== */
+.ap-cab h1 .conta{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 8px;margin-left:6px;
+  border-radius:99px;background:var(--suave);color:var(--ink-3);font-family:inherit;font-size:12.5px;font-weight:700;vertical-align:4px;}
+.ap-num.todos{display:none;}
+.ap-num{position:relative;overflow:hidden;}
+.ap-num:after{content:"";position:absolute;left:18px;right:18px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:currentColor;opacity:0;
+  transform:scaleX(.3);transition:opacity .25s, transform .35s cubic-bezier(.2,.8,.2,1);}
+.ap-num.aguardando{color:var(--acento);} .ap-num.ajustes{color:var(--ambar);} .ap-num.recusado{color:var(--erro);} .ap-num.aprovado{color:var(--ok);} .ap-num.todos{color:var(--ink-3);}
+.ap-num.on:after{opacity:1;transform:none;}
+/* faixa da situação à esquerda do cartão */
+.ap-item{position:relative;overflow:hidden;animation:apEntra .42s cubic-bezier(.2,.85,.25,1) both;animation-delay:calc(var(--i, 0) * 45ms);}
+.ap-item:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--ap-cor, var(--borda-forte));}
+.ap-item.sit-aguardando{--ap-cor:var(--acento);} .ap-item.sit-ajustes{--ap-cor:var(--ambar);} .ap-item.sit-recusado{--ap-cor:var(--erro);}
+.ap-item.sit-aprovado{--ap-cor:var(--ok);} .ap-item.sit-substituido,.ap-item.sit-cancelado{--ap-cor:var(--ink-4);}
+.ap-item:active{transform:scale(.985);}
+.ap-barra{display:block;position:relative;height:4px;margin-top:5px;border-radius:4px;background:var(--suave);overflow:hidden;}
+.ap-barra:after{content:"";position:absolute;inset:0;width:var(--p,0%);border-radius:inherit;
+  background:linear-gradient(90deg, var(--acento), var(--magenta, var(--acento)));transform-origin:0 50%;animation:apBarra .7s cubic-bezier(.2,.8,.2,1) both;
+  animation-delay:calc(var(--i, 0) * 45ms + .15s);}
+.ap-item.sit-aprovado .ap-barra:after{background:var(--ok);}
+.ap-item.sit-aguardando .ap-sit:before{animation:apPisca 1.8s ease-in-out infinite;}
+@keyframes apEntra{from{opacity:0;transform:translate3d(0,10px,0) scale(.985)}to{opacity:1;transform:none}}
+@keyframes apBarra{from{transform:scaleX(0)}to{transform:none}}
+@keyframes apPisca{50%{opacity:.25}}
+
+@media (max-width:760px){
+  .ap-cab{margin-bottom:4px;}
+  .ap-cab h1{font-size:26px;}
+  .ap-intro{display:none;}
+  /* números = abas: faixa que rola de lado, compacta; as abas somem */
+  .ap-resumo{display:flex;gap:8px;margin:6px calc(-1 * var(--gutter, 16px)) 8px;padding:8px var(--gutter, 16px) 14px;overflow-x:auto;scroll-padding-inline:var(--gutter, 16px);scrollbar-width:none;
+    scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;}
+  .ap-resumo::-webkit-scrollbar{display:none;}
+  .ap-num,.ap-num.todos{display:flex;flex:none;min-width:104px;padding:12px 14px 13px;gap:3px;scroll-snap-align:start;
+    border-radius:16px;background:var(--vidro-bg, var(--card));}
+  .ap-num b{font-size:24px;}
+  .ap-num span{font-size:11.5px;white-space:nowrap;}
+  .ap-num.on{box-shadow:0 0 0 3px color-mix(in srgb, currentColor 16%, transparent), 0 10px 24px -14px currentColor;border-color:currentColor;}
+  .ap-num.on b{color:currentColor;}
+  .ap-abas{display:none !important;}
+  .ap-filtros{margin-bottom:14px;gap:0;}
+  .ap-filtros-linha{display:flex;flex-direction:column;gap:8px;}
+  .ap-filtros-linha .gl-busca{max-width:none;}
+  .ap-sels{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  .ap-sels #ap-periodo{grid-column:1 / -1;}
+  /* cartão: logo | título e meta; embaixo, situação + progresso + resposta */
+  .ap-item{grid-template-columns:42px minmax(0,1fr) auto;column-gap:12px;row-gap:8px;padding:14px 14px 14px 16px;border-radius:18px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 10px 26px -20px rgba(30,10,60,.45);}
+  .ap-item > *{grid-column:auto;}
+  .ap-item .ap-logo{grid-column:1;grid-row:1 / span 2;width:42px;height:42px;align-self:start;}
+  .ap-tx{grid-column:2 / -1;grid-row:1;}
+  .ap-tx b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:14.5px;line-height:1.3;}
+  .ap-sit{grid-column:2;grid-row:2;justify-self:start;font-size:10px;padding:4px 9px;}
+  .ap-resposta{grid-column:3;grid-row:2;align-items:flex-end;text-align:right;}
+  .ap-resposta b{font-size:12px;} .ap-resposta span{font-size:11px;}
+  .ap-cenas{grid-column:2 / -1;grid-row:3;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:0 6px;}
+  .ap-cenas:empty{display:none;}
+  .ap-cenas .ap-barra{flex:1 0 100%;margin-top:4px;}
+  .ap-acao{grid-column:2 / -1;grid-row:4;text-align:left;font-size:11.5px;color:var(--ink-4);display:flex;align-items:center;gap:6px;}
+  .ap-acao:empty{display:none;}
+  .ap-acao:before{content:"→";color:var(--ap-cor, var(--ink-4));font-weight:700;}
+}
+@media (prefers-reduced-motion:reduce){
+  .ap-item,.ap-barra:after,.ap-item.sit-aguardando .ap-sit:before{animation:none !important;}
+}

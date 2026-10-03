@@ -115,20 +115,33 @@ B7.Aprovacoes = (function () {
     }
 
     painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="cab-conteudo"><div><h1>Aprovações</h1>' +
-      '<p>O que foi enviado aos clientes e o que eles decidiram. Corrigir é no editor; aqui você vê e acompanha.</p></div></div>' +
+      /* zzx: no celular o cabeçalho é compacto (título + contador); a
+         frase de apoio fica só no computador */
+      '<div class="cab-conteudo ap-cab"><div><h1>Aprovações <span class="conta">' + itens.length + '</span></h1>' +
+      '<p class="ap-intro">O que foi enviado aos clientes e o que eles decidiram. Corrigir é no editor; aqui você vê e acompanha.</p></div></div>' +
 
       '<div class="ap-resumo">' +
         cartaoResumo('aguardando', resumo.aguardando, 'Aguardando cliente') +
         cartaoResumo('ajustes', resumo.ajustes, 'Ajustes solicitados') +
         cartaoResumo('recusado', resumo.recusado, 'Recusados') +
         cartaoResumo('aprovado', resumo.aprovado, 'Aprovados') +
+        /* no celular os números SÃO as abas (as abas somem): falta o "Todos" */
+        '<button class="ap-num todos so-celular' + (F.situacao === 'todos' ? ' on' : '') + '" data-resumo="todos"><b>' +
+          (resumo.aguardando + resumo.ajustes + resumo.recusado + resumo.aprovado) + '</b><span>Todos</span></button>' +
       '</div>' +
 
       '<div class="ap-filtros">' +
         '<div class="abas-cliente ap-abas">' + SITUACOES.map(([k, r]) =>
           '<button class="aba' + (F.situacao === k ? ' on' : '') + '" data-sit="' + k + '">' + esc(r) + '</button>').join('') + '</div>' +
+        /* zzx: busca + botão "Filtros" no celular (os seletores abrem
+           deslizando, mesmo padrão da lista de Gravações) */
         '<div class="ap-filtros-linha">' +
+          '<div class="gl-linha-busca"><div class="gl-busca ap-busca-cx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+            '<input class="campo" id="ap-busca" type="search" placeholder="Buscar pelo título…" aria-label="Buscar pelo título" value="' + esc(F.busca) + '"></div>' +
+            '<button type="button" class="gl-bt-filtros' + (nFiltros() ? ' on' : '') + '" id="ap-abre" aria-expanded="' + (F.abertos ? 'true' : 'false') + '" aria-controls="ap-sels">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
+              '<span>Filtros</span><b' + (nFiltros() ? '' : ' hidden') + '>' + nFiltros() + '</b></button></div>' +
+          '<div class="gl-sels ap-sels' + (F.abertos ? ' aberto' : '') + '" id="ap-sels">' +
           '<select class="campo" id="ap-cliente"><option value="">Todos os clientes</option>' +
             clientes.map(c => '<option value="' + esc(c.id) + '"' + (F.clienteId === c.id ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select>' +
           '<select class="campo" id="ap-tipo"><option value="">Todos os tipos</option>' +
@@ -136,12 +149,12 @@ B7.Aprovacoes = (function () {
           '<select class="campo" id="ap-periodo">' +
             [['', 'Qualquer período'], ['mes', 'Este mês'], ['30', 'Últimos 30 dias'], ['ano', 'Este ano']].map(([v, r]) =>
               '<option value="' + v + '"' + (F.periodo === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>' +
-          '<input class="campo" id="ap-busca" placeholder="Buscar pelo título…" value="' + esc(F.busca) + '">' +
+          '</div>' +
         '</div>' +
       '</div>' +
 
       (itens.length
-        ? '<div class="ap-lista">' + itens.map(linha).join('') + '</div>'
+        ? '<div class="ap-lista">' + itens.map((a, i) => linha(a, i)).join('') + '</div>'
         : '<div class="estado-b7"><b>' + vazio() + '</b><p>Os filtros valem para a lista e para os números acima.</p></div>') +
     '</div>';
 
@@ -156,7 +169,16 @@ B7.Aprovacoes = (function () {
     if (F.refocar) { F.refocar = false; const b = p.querySelector('#ap-busca'); b.focus(); b.setSelectionRange(b.value.length, b.value.length); }
     p.querySelectorAll('[data-abrir]').forEach(el => el.onclick = () => { location.hash = '#/aprovacoes/' + el.dataset.abrir; });
     p.querySelectorAll('[data-resumo]').forEach(el => el.onclick = () => { F.situacao = el.dataset.resumo; abrir(true); });
+    const abre = p.querySelector('#ap-abre'), sels = p.querySelector('#ap-sels');
+    if (abre && sels) abre.onclick = () => {
+      F.abertos = !sels.classList.contains('aberto');
+      sels.classList.toggle('aberto', F.abertos); abre.setAttribute('aria-expanded', F.abertos ? 'true' : 'false');
+    };
+    /* o número escolhido fica à vista na faixa que rola de lado */
+    const on = p.querySelector('.ap-resumo .ap-num.on');
+    if (on && on.scrollIntoView && matchMedia('(max-width:760px)').matches) on.scrollIntoView({ block: 'nearest', inline: 'center' });
   }
+  const nFiltros = () => [F.clienteId, F.tipo, F.periodo].filter(Boolean).length;
 
   function vazio() {
     return { aguardando: 'Nenhum material aguardando o cliente.', ajustes: 'Nenhum pedido de ajuste em aberto.',
@@ -179,13 +201,14 @@ B7.Aprovacoes = (function () {
     return '<button class="ap-num ' + k + (F.situacao === k ? ' on' : '') + '" data-resumo="' + k + '"><b>' + n + '</b><span>' + r + '</span></button>';
   }
 
-  function linha(a) {
+  function linha(a, i) {
     const pend = a.situacao === 'pendente' || a.situacao === 'parcial';
     const acao = pend ? (a.decisao_anulada ? 'Aprovação anulada · aguardando o cliente' : 'Aguardando o cliente')
       : a.situacao === 'ajustes' ? 'Corrigir e reenviar'
       : a.situacao === 'recusado' ? 'Repensar a proposta'
       : a.situacao === 'aprovado' ? 'Seguir para a produção' : '';
-    return '<div class="ap-item" data-abrir="' + esc(a.id) + '">' +
+    const pct = a.total_partes ? Math.round(100 * (a.partes_aprovadas || 0) / a.total_partes) : 0;
+    return '<div class="ap-item sit-' + esc(pend ? 'aguardando' : a.situacao) + '" data-abrir="' + esc(a.id) + '" style="--i:' + Math.min(i || 0, 8) + '">' +
       B7.UI.avatarCliente(a.cliente_nome, a.cliente_logo_url, 'ap-logo') +
       '<div class="ap-tx">' +
         '<b>' + esc(a.titulo) + '</b>' +
@@ -194,7 +217,8 @@ B7.Aprovacoes = (function () {
           (a.enviado_por_nome ? ' por ' + esc(a.enviado_por_nome) : '') + '</small>' +
       '</div>' +
       '<div class="ap-cenas">' + (a.total_partes
-        ? '<b>' + (a.partes_aprovadas || 0) + '/' + a.total_partes + '</b><span>cenas ok' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' ajuste(s)' : '') + '</span>'
+        ? '<b>' + (a.partes_aprovadas || 0) + '/' + a.total_partes + '</b><span>cenas ok' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' ajuste(s)' : '') + '</span>' +
+          '<i class="ap-barra" style="--p:' + pct + '%"></i>'
         : '') + '</div>' +
       '<div class="ap-resposta">' + (decisaoVale(a)
         ? '<b>' + esc(a.origem_decisao === 'externa' ? 'Via ' + (CANAL[a.canal_decisao] || 'canal externo') : (a.decidido_por_nome || 'Cliente')) + '</b><span>' +

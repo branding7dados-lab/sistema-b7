@@ -489,8 +489,8 @@ B7.Oportunidades = (function () {
     if (!souGestor()) { painel().innerHTML = '<div class="conteudo op"><div class="estado-b7"><b>Sem acesso a Oportunidades.</b></div></div>'; return; }
     lerParams(params || new URLSearchParams(location.hash.split('?')[1] || ''));
     painel().innerHTML = '<div class="conteudo entra op">' +
-      '<div class="cb-topo"><div class="cb-titulo"><h1>Oportunidades</h1><p>Datas comemorativas e campanhas com fonte, e para quais clientes elas fazem sentido.</p></div>' +
-        '<div class="cb-topo-acoes"><a class="b contorno" href="#/calendario?v=mes&op=1">' + IC + '<span>Ver no Calendário</span></a></div></div>' +
+      '<div class="cb-topo op-topo"><div class="cb-titulo"><h1>Oportunidades</h1><p class="op-intro">Datas comemorativas e campanhas com fonte, e para quais clientes elas fazem sentido.</p></div>' +
+        '<div class="cb-topo-acoes"><a class="b contorno op-cal" href="#/calendario?v=mes&op=1" aria-label="Ver no Calendário">' + IC + '<span>Ver no Calendário</span></a></div></div>' +
       (souAdmin() ? '<div class="filtro op-abas" role="tablist">' + [['proximas', 'Próximas'], ['revisao', 'Revisão'], ['fontes', 'Fontes']].map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (P.aba === k ? 'on' : '') + '" aria-selected="' + (P.aba === k) + '">' + r + '<span class="cb-n" data-n-' + k + '></span></button>').join('') + '</div>' : '') +
       '<div id="op-corpo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div></div>';
@@ -509,8 +509,14 @@ B7.Oportunidades = (function () {
     const temas = [...B.temas.values()].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     cx.innerHTML = '<div class="cb-filtros op-filtros">' +
       '<div class="filtro" role="group" aria-label="Período">' + [7, 15, 30, 60].map(n => '<button data-dias="' + n + '" class="' + (P.dias === n ? 'on' : '') + '" aria-pressed="' + (P.dias === n) + '">' + n + ' dias</button>').join('') + '</div>' +
-      '<div class="cb-sels">' +
-        '<input class="campo fina op-busca" id="op-q" type="search" placeholder="Buscar por nome, apelido ou tag" value="' + esc(P.q) + '" aria-label="Buscar">' +
+      /* zzx: busca à vista + "Filtros" (os seis seletores abrem deslizando
+         no celular; no computador continuam todos em linha) */
+      '<div class="gl-linha-busca op-linha-busca"><div class="gl-busca op-busca-cx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+        '<input class="campo fina op-busca" id="op-q" type="search" placeholder="Buscar por nome, apelido ou tag" value="' + esc(P.q) + '" aria-label="Buscar"></div>' +
+        '<button type="button" class="gl-bt-filtros' + (nFiltrosOp() ? ' on' : '') + '" id="op-abre" aria-expanded="' + (P.abertos ? 'true' : 'false') + '" aria-controls="op-sels">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
+          '<span>Filtros</span><b' + (nFiltrosOp() ? '' : ' hidden') + '>' + nFiltrosOp() + '</b></button></div>' +
+      '<div class="cb-sels gl-sels op-sels' + (P.abertos ? ' aberto' : '') + '" id="op-sels">' +
         sel('op-cliente', 'Cliente: todos', B.clientes.map(c => [c.id, c.nome]), P.cliente) +
         sel('op-rel', 'Relevância: todas', [['muito', 'Muito relevante'], ['relacionada', 'Relacionada'], ['geral', 'Geral'], ['relevantes', 'Qualquer relevância']], P.rel) +
         sel('op-cat', 'Categoria: todas', temas.map(t => [t.id, (t.pai ? '— ' : '') + t.nome]), P.cat) +
@@ -520,6 +526,11 @@ B7.Oportunidades = (function () {
         ((P.cat || P.rel || P.cliente || P.conf || P.abr || P.nat || P.q) ? '<button class="b fina contorno" id="op-limpar">Limpar</button>' : '') +
       '</div></div><div id="op-lista"></div>';
     cx.querySelectorAll('[data-dias]').forEach(x => x.onclick = () => { P.dias = +x.dataset.dias; gravarParams(); pintarProximas(); });
+    const abre = cx.querySelector('#op-abre'), sels = cx.querySelector('#op-sels');
+    if (abre && sels) abre.onclick = () => {
+      P.abertos = !sels.classList.contains('aberto');
+      sels.classList.toggle('aberto', P.abertos); abre.setAttribute('aria-expanded', P.abertos ? 'true' : 'false');
+    };
     [['op-cliente', 'cliente'], ['op-rel', 'rel'], ['op-cat', 'cat'], ['op-conf', 'conf'], ['op-abr', 'abr'], ['op-nat', 'nat']].forEach(([id, k]) => {
       const s = cx.querySelector('#' + id); if (s) s.onchange = () => { P[k] = s.value; gravarParams(); pintarProximas(); };
     });
@@ -528,6 +539,7 @@ B7.Oportunidades = (function () {
     const lp = cx.querySelector('#op-limpar'); if (lp) lp.onclick = () => { Object.assign(P, { cat: '', rel: '', cliente: '', conf: '', abr: '', nat: '', q: '' }); gravarParams(); pintarProximas(); };
     pintarLista(hoje, fim);
   }
+  const nFiltrosOp = () => ['cliente', 'rel', 'cat', 'conf', 'nat', 'abr'].filter(k => P[k]).length;
   const sel = (id, vazio, opcoes, valor) => '<select class="campo fina' + (valor ? ' ativo' : '') + '" id="' + id + '" aria-label="' + esc(vazio.split(':')[0]) + '"><option value="">' + esc(vazio) + '</option>' +
     opcoes.map(([v, r]) => '<option value="' + esc(v) + '"' + (v === valor ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>';
 
@@ -559,18 +571,19 @@ B7.Oportunidades = (function () {
     if (!lista.length) { cx.innerHTML = '<p class="cb-vazio">Nenhuma oportunidade nos próximos ' + P.dias + ' dias' + ((P.cat || P.rel || P.cliente || P.conf || P.abr || P.nat || P.q) ? ' com esses filtros' : '') + '.</p>'; return; }
     const grupos = new Map();
     lista.forEach(it => { const k = it.ini < hoje ? hoje : it.ini; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(it); });
+    let n = 0;
     cx.innerHTML = '<p class="op-contagem">' + lista.length + ' oportunidade' + (lista.length > 1 ? 's' : '') + ' nos próximos ' + P.dias + ' dias</p>' +
       [...grupos.entries()].map(([dia, its]) => {
         const d = D().local(dia);
-        return '<section class="op-dia"><h3>' + esc(DIAS[d.getDay()] + ', ' + d.getDate() + ' ' + MESES[d.getMonth()]) + '<span>' + esc(faltaTx(dia)) + '</span></h3>' +
-          its.map(cartaoHTML).join('') + '</section>';
+        return '<section class="op-dia' + (dia <= hoje ? ' hoje' : '') + '"><h3>' + esc(DIAS[d.getDay()] + ', ' + d.getDate() + ' ' + MESES[d.getMonth()]) + '<span>' + esc(faltaTx(dia)) + '</span></h3>' +
+          its.map(it => cartaoHTML(it, n++)).join('') + '</section>';
       }).join('');
     cx.querySelectorAll('[data-op]').forEach(x => x.onclick = () => folha(x.dataset.op, { dia: x.dataset.dia, cliente: P.cliente || null, aoMudar: () => pintarLista(hoje, fim) }));
   }
-  function cartaoHTML(it) {
+  function cartaoHTML(it, i) {
     const op = it.op, rels = it.relacionados.filter(r => r.nivel === 'muito' || r.nivel === 'relacionada');
     const nivel = P.cliente ? it.rel && it.rel.nivel : it.nivelMax;
-    return '<button type="button" class="op-card" data-op="' + esc(op.id) + '" data-dia="' + esc(it.ini) + '">' +
+    return '<button type="button" class="op-card nv-' + esc(nivel || 'nenhum') + '" data-op="' + esc(op.id) + '" data-dia="' + esc(it.ini) + '" style="--i:' + Math.min(i || 0, 8) + '">' +
       '<i class="op-card-ic">' + IC + '</i>' +
       '<span class="op-card-tx"><b>' + esc(op.nome) + '</b>' +
         '<small>' + esc([NATUREZA[op.natureza], lugarTx(op), it.fim !== it.ini ? 'até ' + D().local(it.fim).getDate() + ' ' + MESES[D().local(it.fim).getMonth()] : '', (op.categorias || []).map(nomeTema).slice(0, 3).join(', ')].filter(Boolean).join(' · ')) + '</small>' +

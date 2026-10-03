@@ -335,3 +335,54 @@ select.kb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 .kb-aviso{margin-top:6px;font-size:11px;font-weight:700;color:var(--ambar);background:var(--ambar-bg);padding:4px 8px;border-radius:6px;}
 .kd-aviso{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-radius:var(--r-sm);background:var(--ambar-bg);color:var(--ambar);font-size:13px;margin-bottom:14px;line-height:1.45;}
 .kd-aviso b{font-weight:800;}
+
+/* =====================================================================
+   PRODUÇÃO (Kanban) — acabamento e movimento (pacote zzx, 03/10)
+   Celular: cabeçalho compacto, busca + "Filtros", abas de coluna com a
+   ativa em degradê da marca, a coluna sem a caixa cinza (o título já está
+   na aba), deslizar o dedo para trocar de coluna (a nova entra do lado
+   certo) e cartões em cascata.
+   ===================================================================== */
+.kb-cab h1 .conta{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 8px;margin-left:6px;
+  border-radius:99px;background:var(--suave);color:var(--ink-3);font-family:inherit;font-size:12.5px;font-weight:700;vertical-align:4px;}
+.kb-cab h1 .conta:empty{display:none;}
+.kb-card{animation:kbEntra .4s cubic-bezier(.2,.85,.25,1) both;animation-delay:calc(var(--i, 0) * 40ms);}
+@keyframes kbEntra{from{opacity:0;transform:translate3d(0,10px,0) scale(.985)}to{opacity:1;transform:none}}
+@keyframes kbVemDir{from{opacity:0;transform:translate3d(36px,0,0)}to{opacity:1;transform:none}}
+@keyframes kbVemEsq{from{opacity:0;transform:translate3d(-36px,0,0)}to{opacity:1;transform:none}}
+
+@media (max-width:760px){
+  .conteudo .cab-conteudo.kb-cab{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap;text-align:left;}
+  .conteudo .cab-conteudo.kb-cab > div{flex:1;min-width:0;text-align:left;}
+  .kb-cab h1{font-size:26px;}
+  .kb-intro{display:none;}
+  .kb-cab .kb-nova{flex:none;width:auto;height:42px;padding:0 16px;border-radius:99px;}
+  .kb-so-largo{display:none;}
+  .kb-barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .kb-linha-busca .kb-busca-cx{flex:1;min-width:0;}
+  .kb-sels{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  .kb-sels .kb-filtro{width:100%;min-width:0;max-width:none;}
+  .kb-barra .kb-espaco{display:none;}
+  .kb-barra .kb-total{flex:1;font-size:12.5px;color:var(--ink-3);}
+  /* abas: a ativa em degradê da marca, com brilho */
+  .kb-movel-sel{margin:4px calc(-1 * var(--gutter, 16px)) 4px;padding:6px var(--gutter, 16px) 12px;}
+  .kb-movel-sel button{border-radius:99px;height:38px;transition:background .25s, color .25s, box-shadow .25s, transform .15s;}
+  .kb-movel-sel button:active{transform:scale(.96);}
+  .kb-movel-sel button.on{background:linear-gradient(120deg, var(--acento), var(--magenta, var(--acento)));border-color:transparent;color:#fff;
+    box-shadow:0 10px 22px -12px color-mix(in srgb, var(--magenta, var(--acento)) 80%, transparent);}
+  /* a coluna sem caixa: o nome já está na aba; fica só a dica */
+  .kb-movel .kb-col{background:none;border:0;padding:0;box-shadow:none;}
+  .kb-movel .kb-col header{padding:0 2px 8px;}
+  .kb-movel .kb-col header b,.kb-movel .kb-col header .kb-cont{display:none;}
+  .kb-movel .kb-col header small{font-size:12px;}
+  .kb-movel .kb-col.vem-dir{animation:kbVemDir .32s cubic-bezier(.2,.85,.25,1) both;}
+  .kb-movel .kb-col.vem-esq{animation:kbVemEsq .32s cubic-bezier(.2,.85,.25,1) both;}
+  .kb-movel .kb-lista{gap:10px;}
+  .kb-movel .kb-card{border-radius:16px;padding:14px 14px 12px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 10px 24px -20px rgba(30,10,60,.45);}
+  .kb-movel .kb-card h4{font-size:15px;line-height:1.3;}
+  .kb-movel .kb-card:active{transform:scale(.985);}
+  .kb-movel .kb-vazio{padding:28px 12px;text-align:center;border:1px dashed var(--borda-forte);border-radius:16px;color:var(--ink-4);font-size:13px;}
+}
+@media (prefers-reduced-motion:reduce){ .kb-card,.kb-movel .kb-col.vem-dir,.kb-movel .kb-col.vem-esq{animation:none !important;} }
+.kb-cab .kb-nova{gap:0;}
