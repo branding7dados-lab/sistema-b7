@@ -121,7 +121,7 @@ window.B7 = window.B7 || {};
     const pronto = () => {
       const pn = painel();
       const c = pn && pn.querySelector(':scope > .conteudo');
-      return c && !c.querySelector(':scope > .esqueleto-tela') && performance.now() - t0 > DUR - 60;
+      return (fotoAtual || c && !c.querySelector(':scope > .esqueleto-tela')) && performance.now() - t0 > DUR - 60;
     };
     const sair = () => {
       const c = painel() && painel().querySelector(':scope > .conteudo');
@@ -169,20 +169,129 @@ window.B7 = window.B7 || {};
     setTimeout(procura, 30);
   }
 
-  /* registrado ANTES do roteador agir: o roteador espera o salvamento
-     (B7.Save.agora) antes de trocar a tela, então isto roda primeiro */
+  /* ===================================================================
+     FOTO DA TELA (zzt) — o que fazia o sistema "parecer que carrega".
+     Cada tela busca os dados de novo ao abrir e, enquanto isso, mostra o
+     esqueleto cinza. Voltar para a lista (ou trocar de aba e voltar)
+     piscava esqueleto toda vez. Agora, ao SAIR de uma tela, guardamos
+     uma foto dela (o HTML já desenhado + a rolagem). Ao voltar para ela,
+     a foto aparece na hora, no lugar exato, e a tela de verdade monta
+     por baixo com os dados novos; quando fica pronta (sem esqueleto),
+     a foto sai sem piscar. É só imagem: não recebe toque e some em no
+     máximo 2,5 s, aconteça o que acontecer.
+     =================================================================== */
+  const fotos = new Map();                 /* hash → { html, cls, rolagem, quando } */
+  const FOTO_VALE = 15 * 60 * 1000;
+  let rotaVista = location.hash || '#/';
+  let fotoAtual = null;
+  const telaDoPainel = () => document.getElementById('tela-dashboard');
+  /* esqueleto: o de B7.UI.skeleton (.esq .esq-*) e o dos blocos do Painel (<i class="esq">) —
+     NÃO o .esq de "lado esquerdo" dos documentos (rodapé do Status semanal) */
+  const temEsqueleto = el => !!el.querySelector('.esqueleto-tela, i.esq, .esq[class*=" esq-"]');
+  function guardarFoto(hash) {
+    const p = painel(), t = telaDoPainel();
+    /* tela inteira ainda em esqueleto não vira foto; um bloco ou outro carregando, sim */
+    if (!p || !t || !t.classList.contains('ativa') || !p.firstElementChild || p.querySelector(':scope > .conteudo > .esqueleto-tela, :scope > .esqueleto-tela')) return;
+    fotos.set(hash, { html: p.innerHTML, cls: p.className, rolagem: p.scrollTop, quando: Date.now() });
+    if (fotos.size > 24) fotos.delete(fotos.keys().next().value);
+  }
+  function tirarFoto(rapido) {
+    const f = fotoAtual; fotoAtual = null;
+    if (!f) return;
+    clearTimeout(f.limite);
+    if (rapido || !f.el.animate) { f.el.remove(); return; }
+    const a = f.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out', fill: 'forwards' });
+    a.onfinish = () => f.el.remove();
+  }
+  function mostrarFoto(hash, antigo) {
+    const foto = fotos.get(hash), p = painel();
+    if (!foto || !p || Date.now() - foto.quando > FOTO_VALE) return null;
+    tirarFoto(true);
+    const r = p.getBoundingClientRect(), cs = getComputedStyle(p);
+    const el = document.createElement('div');
+    el.className = foto.cls + ' b7-foto';
+    el.setAttribute('aria-hidden', 'true');
+    Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+      paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight });
+    el.innerHTML = foto.html;
+    el.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+    el.querySelectorAll('.entra').forEach(n => n.classList.remove('entra'));
+    document.body.appendChild(el);
+    el.scrollTop = foto.rolagem;
+    const f = { el, hash, rolagem: foto.rolagem, antigo };
+    fotoAtual = f;
+    f.limite = setTimeout(() => tirarFoto(false), 2500);
+    /* a tela de verdade está pronta quando o conteúdo antigo saiu e não
+       há mais esqueleto: troca a foto por ela, na mesma rolagem */
+    const t0 = performance.now();
+    const confere = () => {
+      if (fotoAtual !== f) return;
+      if ((location.hash || '#/') !== hash) { tirarFoto(true); return; }
+      const pn = painel();
+      const trocou = pn && pn.firstElementChild && pn.firstElementChild !== antigo;
+      if (trocou && !temEsqueleto(pn) && performance.now() - t0 > 60) {
+        pn.scrollTop = f.rolagem;
+        /* a tela nova não refaz a entrada: a foto já fez o papel dela */
+        pn.querySelectorAll(':scope > .conteudo.entra').forEach(c => c.classList.remove('entra'));
+        tirarFoto(false);
+      } else setTimeout(confere, 40);
+    };
+    setTimeout(confere, 40);
+    return f;
+  }
+  B7.fotoDaTela = { guardar: guardarFoto, esquecer: h => h ? fotos.delete(h) : fotos.clear() };
+
+  /* volta COM foto: a lista já está ali na hora. A câmera recua (de leve
+     maior e desfocada para o normal) e o cartão de origem pousa na foto;
+     a tela de verdade assume por baixo sem ninguém perceber */
+  function voltarNaFoto(f, voo) {
+    const el = voo.chave ? f.el.querySelector(voo.chave) : null;
+    f.el.animate([{ transform: 'scale(1.035)', opacity: .5, filter: 'blur(3px)' }, { transform: 'none', opacity: 1, filter: 'none' }],
+      { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    if (!el) return;
+    const alvo = areaAlvo(), r0 = el.getBoundingClientRect();
+    if (r0.top < alvo.top || r0.bottom > innerHeight - 70) { f.el.scrollTop += r0.top - alvo.top - 80; f.rolagem = f.el.scrollTop; }
+    el.classList.add('b7-voo-pousando');
+    el.animate([{ transform: 'translate3d(0,-10px,0) scale(1.06)', boxShadow: '0 30px 60px -20px rgba(40,10,70,.45)' },
+                { transform: 'none', boxShadow: '0 0 0 0 rgba(40,10,70,0)' }],
+      { duration: 520, easing: 'cubic-bezier(.32,.72,0,1)' }).onfinish = () => el.classList.remove('b7-voo-pousando');
+  }
+
+  /* A foto é tirada ANTES de a navegação acontecer: no toque (clique em
+     fase de captura — quase toda navegação nasce de um toque) e no
+     "voltar" do aparelho/navegador (popstate chega antes do hashchange).
+     No hashchange já é tarde: o roteador troca a tela num microtask logo
+     depois do listener dele, que foi registrado antes deste. */
+  let antigoNo = null;
+  const fotografar = () => {
+    const p = painel();
+    /* a chave é a rota que a tela mostra (rotaVista): no popstate o
+       endereço já mudou, mas a tela ainda é a antiga */
+    guardarFoto(rotaVista);
+    antigoNo = p && p.firstElementChild;
+  };
+  document.addEventListener('click', e => {
+    if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) return;
+    fotografar();
+  }, true);
+  window.addEventListener('popstate', fotografar);
   window.addEventListener('hashchange', () => {
-    if (reduz()) { pendente = null; return; }
     const agora = location.hash || '#/';
+    rotaVista = agora;
+    const antigo = antigoNo; antigoNo = null;
+    if (reduz()) { pendente = null; mostrarFoto(agora, antigo); return; }
     if (pendente && performance.now() - pendente.t < 450) {
       const info = pendente; pendente = null;
+      /* detalhe já visitado: a foto fica por baixo do cartão que cresce */
+      mostrarFoto(agora, antigo);
       voarAbrindo(info);
       return;
     }
     pendente = null;
+    const f = mostrarFoto(agora, antigo);
     if (ultimoVoo && ultimoVoo.de === agora && Date.now() - ultimoVoo.quando < 30 * 60 * 1000) {
       const voo = ultimoVoo; ultimoVoo = null;
-      voarVoltando(voo);
+      if (f) voltarNaFoto(f, voo); else voarVoltando(voo);
     }
   });
 
