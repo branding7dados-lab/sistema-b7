@@ -383,7 +383,10 @@ B7.Publicacoes = (function () {
     if (B7.Movimento && B7.Movimento.deslizar) {
       const fx = document.getElementById('pb-faixa'), corpo = document.getElementById('pb-corpo');
       B7.Movimento.deslizar(fx, () => fx.querySelector('.pb-faixa'), dir => irParaDia(somarDias(E.dia, dir)));
-      B7.Movimento.deslizar(corpo, () => corpo.querySelector('.pb-bloco-dia'), dir => irParaDia(somarDias(E.dia, dir)));
+      /* só no bloco do dia: "Próximas publicações" e "Pendentes" rolam e
+         recebem toque normalmente, sem trocar o dia por engano */
+      B7.Movimento.deslizar(corpo, () => corpo.querySelector('.pb-bloco-dia'), dir => { trocaPorGesto = true; irParaDia(somarDias(E.dia, dir)); },
+        { area: '.pb-bloco-dia' });
     }
   }
   const svg = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
@@ -391,6 +394,7 @@ B7.Publicacoes = (function () {
   let primeiraFaixa = true;  /* os dias entram em cascata só ao abrir a tela */
   let animDia = null;        /* 'prox' | 'ant' — direção da próxima troca de dia */
   let passoFaixa = 0;        /* quantos dias a faixa andou (desliza para recentrar) */
+  let trocaPorGesto = false; /* dia trocado arrastando: garante o título do dia à vista */
   let pendentesAbertos = false;
   const PEND_VISIVEIS = 5;
 
@@ -619,6 +623,16 @@ B7.Publicacoes = (function () {
     numerarPendentes(el);
     pintarSub();
     ligarCorpo();
+    /* trocou o dia arrastando com a tela rolada para baixo: sobe com
+       suavidade até o título do dia novo (sem isso, o conteúdo trocava
+       fora de vista e parecia que nada tinha acontecido) */
+    if (trocaPorGesto && anim) {
+      trocaPorGesto = false;
+      const cab = el.querySelector('.pb-dia-cab'), p = painel();
+      const topo = document.querySelector('#tela-dashboard .topo.topo-global');
+      const limite = (topo ? topo.getBoundingClientRect().bottom : 0) + 8;
+      if (cab && p) { const y = cab.getBoundingClientRect().top - limite; if (y < 0) p.scrollBy({ top: y, behavior: reduz() ? 'auto' : 'smooth' }); }
+    }
   }
 
   /* topo: o dia em uma frase ("1 publicação hoje · 50 pendentes") */

@@ -453,40 +453,79 @@ window.B7 = window.B7 || {};
      (com resistência); passou de 56 px, chama aoIr(+1 | -1). Gesto
      vertical não é tocado (rolagem e "puxar para atualizar" seguem).
      =================================================================== */
-  function deslizar(el, alvo, aoIr) {
+  /* Algo entre o dedo e `limite` rola de lado (carrossel, abas, faixa
+     de chips)? Então o gesto é desse elemento, não de "trocar de dia". */
+  function rolaDeLado(alvo, limite) {
+    for (let n = alvo; n && n !== limite && n.nodeType === 1; n = n.parentElement) {
+      if (n.scrollWidth > n.clientWidth + 2) {
+        const ox = getComputedStyle(n).overflowX;
+        if (ox === 'auto' || ox === 'scroll') return true;
+      }
+    }
+    return false;
+  }
+  /* opcoes.area: seletor — o gesto só vale se começar dentro dele */
+  function deslizar(el, alvo, aoIr, opcoes) {
     if (!el || el._deslize) return; el._deslize = true;
-    let x0 = null, y0 = 0, dx = 0, modo = null;
+    const area = opcoes && opcoes.area;
+    let x0 = null, y0 = 0, dx = 0, modo = null, t0 = 0;
     el.addEventListener('touchstart', e => {
+      x0 = null; modo = null; dx = 0;
       if (e.touches.length !== 1) { modo = 'nao'; return; }
-      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; modo = null;
+      const t = e.target;
+      if (area && !(t.closest && t.closest(area))) { modo = 'nao'; return; }
+      if (t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) { modo = 'nao'; return; }
+      if (rolaDeLado(t, el)) { modo = 'nao'; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
     }, { passive: true });
     el.addEventListener('touchmove', e => {
       if (modo === 'nao' || x0 === null) return;
       const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
       if (!modo) {
-        if (Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my) * 1.4) modo = 'x';
+        if (Math.abs(mx) > 14 && Math.abs(mx) > Math.abs(my) * 1.6) modo = 'x';
         else { if (Math.abs(my) > 10) modo = 'nao'; return; }
       }
       dx = mx;
       const a = alvo(); if (!a) return;
+      /* resistência suave: anda menos quanto mais longe vai */
+      const d = Math.sign(dx) * 90 * (1 - Math.exp(-Math.abs(dx) / 160));
       a.style.transition = 'none';
-      a.style.translate = (dx * .5) + 'px 0';
-      a.style.opacity = String(1 - Math.min(.4, Math.abs(dx) / 520));
+      a.style.translate = d.toFixed(1) + 'px 0';
+      a.style.opacity = String(1 - Math.min(.35, Math.abs(d) / 260));
     }, { passive: true });
     const fim = () => {
-      const ok = modo === 'x' && Math.abs(dx) > 56;
+      const eraX = modo === 'x';
+      /* passou de 64 px, ou foi um "peteleco" rápido de 36 px */
+      const rapido = Date.now() - t0 < 260 && Math.abs(dx) > 36;
+      const ok = eraX && (Math.abs(dx) > 64 || rapido);
       const a = alvo();
-      if (a && modo === 'x') {
-        a.style.transition = ok ? '' : 'translate .32s cubic-bezier(.2,.8,.2,1), opacity .32s ease';
-        a.style.translate = ''; a.style.opacity = '';
-        setTimeout(() => { a.style.transition = ''; }, 340);
-      }
       modo = null; x0 = null;
-      if (ok) aoIr(dx < 0 ? 1 : -1);
+      if (!a || !eraX) return;
+      if (!ok) {
+        a.style.transition = 'translate .34s cubic-bezier(.2,.9,.25,1.2), opacity .3s ease';
+        a.style.translate = ''; a.style.opacity = '';
+        setTimeout(() => { a.style.transition = ''; }, 360);
+        return;
+      }
+      const dir = dx < 0 ? 1 : -1;
+      vibrar(6);
+      /* o conteúdo atual sai para o lado do gesto; o novo entra do outro */
+      let foi = false;
+      const ir = () => {
+        if (foi) return; foi = true;
+        aoIr(dir);
+        /* se a troca não redesenhou (ex.: nada a trocar), devolve ao lugar */
+        if (a.isConnected) { a.getAnimations().forEach(x => x.cancel()); a.style.translate = ''; a.style.opacity = ''; a.style.transition = ''; }
+      };
+      if (reduz() || !a.animate) { ir(); return; }
+      const ani = a.animate([{ translate: a.style.translate || '0 0', opacity: a.style.opacity || 1 },
+                             { translate: (dir > 0 ? -70 : 70) + 'px 0', opacity: 0 }],
+        { duration: 140, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
+      ani.onfinish = ir;
+      setTimeout(ir, 220);
     };
     el.addEventListener('touchend', fim, { passive: true });
     el.addEventListener('touchcancel', fim, { passive: true });
   }
-
   B7.Movimento = { soltar, voarAbrindo: info => voarAbrindo(info), arrastoFisico, assentar, deslizar };
 })();

@@ -299,7 +299,7 @@ B7.Calendario = (function () {
     /* celular: arrastar a lista de lado troca o dia */
     if (agenda) {
       const corpo = document.getElementById('cb-corpo');
-      ligarDeslize(corpo, () => corpo.querySelector('.cb-palco'), dir => irDia(D().somarDias(V.data, dir), dir));
+      ligarDeslize(corpo, () => corpo.querySelector('.cb-palco'), dir => irDia(D().somarDias(V.data, dir), dir), { area: '.cb-palco' });
     }
   }
 
@@ -406,7 +406,7 @@ B7.Calendario = (function () {
     pintarCorpo();
   }
   /* arrastar de lado: B7.Movimento.deslizar (js/movimento.js) */
-  function ligarDeslize(el, alvo, aoIr) { if (B7.Movimento && B7.Movimento.deslizar) B7.Movimento.deslizar(el, alvo, aoIr); }
+  function ligarDeslize(el, alvo, aoIr, opcoes) { if (B7.Movimento && B7.Movimento.deslizar) B7.Movimento.deslizar(el, alvo, aoIr, opcoes); }
 
   /* animação da próxima pintura com dados: direção do mês, troca de
      vista, filtro ou entrada. Só decide a classe; o CSS anima (e some
