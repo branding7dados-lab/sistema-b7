@@ -1002,8 +1002,12 @@ B7.Dashboard = (function () {
     });
     B7.UI.ligarMenus(raiz);
     /* no celular as seções rolam de lado: a ativa fica à vista */
-    const on = raiz.querySelector('.cli-secoes a.on');
-    if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+    /* rola SÓ a faixa das abas (scrollIntoView também rolava a página por
+       causa do scroll-padding do painel e escondia o cabeçalho no celular) */
+    const on = raiz.querySelector('.cli-secoes a.on'), rolo = raiz.querySelector('.cli-secoes-rolo');
+    if (on && rolo && rolo.scrollWidth > rolo.clientWidth) {
+      rolo.scrollLeft = Math.max(0, on.offsetLeft - (rolo.clientWidth - on.offsetWidth) / 2);
+    }
     posicionarIndicador(raiz, cliente.id);
   }
   /* O sublinhado da seção ativa desliza da aba anterior para a nova: a tela
