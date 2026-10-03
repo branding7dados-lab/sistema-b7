@@ -1754,13 +1754,6 @@ B7.Dashboard = (function () {
             dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
         L({ ic: 'play', tom: 'rosa', t: 'Ver abertura', d: 'assistir de novo, com som', botao: true, attrs: ' data-ver-abertura' })) +
 
-      /* zzy: app Android — dentro do app, versão + procurar atualização;
-         fora dele, num Android, o link para baixar o APK */
-      (B7.AppAndroid && (B7.AppAndroid.noApp() || B7.AppAndroid.ehAndroid()) ? grupo('App Android', '',
-        B7.AppAndroid.noApp()
-          ? L({ ic: 'versao', tom: 'verde', t: 'Procurar atualização do app', d: 'app instalado · versão ' + B7.AppAndroid.versao(), botao: true, attrs: ' data-app-verificar' })
-          : L({ ic: 'exportar', tom: 'verde', t: 'Baixar o app', d: 'Sistema B7 para Android, com ícone na tela inicial', botao: true, attrs: ' data-app-baixar' })) : '') +
-
       (pode('interface') ? grupo('Interface', '',
         L({ ic: 'lateral', tom: 'cinza', t: 'Começar com a barra recolhida', d: 'só os ícones na lateral', cls: 'cfg-alterna',
             dir: chave('sidebar', recolhida, 'Barra lateral recolhida') }) +
@@ -1859,10 +1852,6 @@ B7.Dashboard = (function () {
       sw.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); alternar(sw); } };
     });
 
-    const avv = p.querySelector('[data-app-verificar]');
-    if (avv) avv.onclick = () => B7.AppAndroid.verificar(true);
-    const avb = p.querySelector('[data-app-baixar]');
-    if (avb) avb.onclick = () => B7.AppAndroid.baixar();
     const va = p.querySelector('[data-ver-abertura]');
     if (va) va.onclick = () => { if (B7.reverAbertura) B7.reverAbertura(); };
     const at = p.querySelector('[data-atalhos]'); if (at) at.onclick = () => B7.UI.atalhos();
