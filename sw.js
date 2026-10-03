@@ -1,12 +1,18 @@
 /* =====================================================================
    Service worker — só a "casca" do app (html, css, js, fontes, logo).
-   Estratégia: REDE PRIMEIRO, cache como reserva.
-   Por quê: com cache primeiro, uma correção publicada no GitHub Pages
-   demoraria a aparecer — e pior, um config.js antigo continuaria valendo.
+   Estratégia (zzz5): CACHE PRIMEIRO. A casca guardada abre na hora.
+   Antes era rede primeiro: cada um dos ~60 arquivos ia perguntar ao
+   servidor antes de a tela aparecer, e no 4G o app ficava 10 s ou mais
+   no ícone (vídeo do Kevin, 03/10).
+   Versão nova não fica presa: a página descobre sozinha que há versão
+   nova (js/app.js lê o js/auth.js publicado, sem passar por cache) e
+   pede aqui "b7-renovar" — a casca inteira é baixada de novo e a
+   recarga já abre a nova. Cada publicação também troca o CACHE abaixo.
+   config.js segue indo à rede (com reserva, se ela demorar ou cair).
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v209';
+const CACHE = 'roteiros-b7-v210';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -53,32 +59,53 @@ self.addEventListener('activate', ev => {
 self.addEventListener('fetch', ev => {
   const url = new URL(ev.request.url);
   if (ev.request.method !== 'GET' || url.origin !== self.location.origin) return;  // Supabase vai direto à rede
-  /* config.js nunca pode vir de cache nenhum — nem do nosso, nem do
-     cache HTTP do navegador (o GitHub Pages manda max-age=600, e dez
-     minutos com o banco antigo já foram suficientes para muita confusão). */
+  /* quem pede "sem cache" quer o servidor (a conferência de versão nova) */
+  if (ev.request.cache === 'no-store' || ev.request.cache === 'reload') return;
+
+  /* config.js: sempre da rede, mas sem segurar a abertura — se a rede não
+     responde em 2,5 s, vale a cópia guardada */
   if (url.pathname.endsWith('/js/config.js')) {
-    ev.respondWith(fetch(ev.request, { cache: 'no-store' }).catch(() => caches.match(ev.request)));
+    const rede = fetch(ev.request, { cache: 'no-store' }).then(resp => {
+      if (resp.ok) { const c = resp.clone(); caches.open(CACHE).then(k => k.put(ev.request, c)).catch(() => {}); }
+      return resp;
+    });
+    ev.respondWith(Promise.race([rede, new Promise(r => setTimeout(r, 2500))])
+      .then(r => r || caches.match(ev.request).then(c => c || rede))
+      .catch(() => caches.match(ev.request)));
     return;
   }
 
-  /* 'no-cache' = sempre perguntar ao servidor se o arquivo mudou (uma
-     consulta leve; sem mudança, vem um 304 e o navegador usa a cópia
-     dele). Sem isto, o fetch daqui pegava a cópia do cache HTTP do
-     navegador, que o GitHub Pages deixa valer por 10 minutos: publicava-
-     se uma versão e a tela continuava a antiga até o prazo vencer. */
+  const navegacao = ev.request.mode === 'navigate';
   ev.respondWith(
-    fetch(ev.request, { cache: 'no-cache' }).then(resp => {
-      const copia = resp.clone();
-      caches.open(CACHE).then(c => c.put(ev.request, copia)).catch(() => {});
-      return resp;
-    }).catch(() =>
-      /* Só navegação cai no index.html. Um .js ou .css ausente precisa
-         falhar de verdade: devolver HTML no lugar de script derruba o
-         app inteiro com SyntaxError. */
-      caches.match(ev.request).then(c => c ||
-        (ev.request.mode === 'navigate' ? caches.match('./index.html') : Response.error()))
-    )
+    caches.open(CACHE).then(cache =>
+      cache.match(navegacao ? './index.html' : ev.request, { ignoreSearch: navegacao }).then(guardada => {
+        if (guardada) return guardada;
+        /* fora da casca (ou casca ainda baixando): rede, e guarda */
+        return fetch(ev.request, { cache: 'no-cache' }).then(resp => {
+          if (resp.ok) { const c = resp.clone(); cache.put(ev.request, c).catch(() => {}); }
+          return resp;
+        }).catch(() =>
+          /* Só navegação cai no index.html. Um .js ou .css ausente precisa
+             falhar de verdade: devolver HTML no lugar de script derruba o
+             app inteiro com SyntaxError. */
+          navegacao ? cache.match('./index.html') : Response.error());
+      }))
   );
+});
+
+/* "b7-renovar": a página viu que há versão nova publicada. Baixa a casca
+   inteira de novo, direto do servidor, e avisa quando terminou — a
+   recarga que vem depois já abre a versão nova. */
+function renovarCasca() {
+  return caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u =>
+    fetch(new Request(u, { cache: 'reload' })).then(r => { if (r.ok) return c.put(u, r); }))));
+}
+self.addEventListener('message', ev => {
+  const d = ev.data || {};
+  if (d.tipo !== 'b7-renovar') return;
+  const porta = ev.ports && ev.ports[0];
+  ev.waitUntil(renovarCasca().then(() => porta && porta.postMessage({ ok: true }),
+                                   () => porta && porta.postMessage({ ok: false })));
 });
 
 /* =====================================================================

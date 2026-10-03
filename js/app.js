@@ -1092,9 +1092,25 @@ B7.Rota = (function () {
        conferência. Abrir o app de novo (ou recarregar) também já traz a
        versão nova, como sempre. */
     let avisoAberto = null;
+    /* zzz5: o service worker abre a casca guardada (cache primeiro). Antes
+       de recarregar, ele baixa a versão nova inteira — senão a recarga
+       abriria a antiga de novo. Teto de 12 s: rede ruim não trava o botão. */
+    let renovando = null, renovadaPara = null;
+    const renovarCasca = () => {
+      if (renovando) return renovando;
+      const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+      if (!sw) return Promise.resolve();
+      renovando = new Promise(res => {
+        const canal = new MessageChannel();
+        canal.port1.onmessage = () => res();
+        try { sw.postMessage({ tipo: 'b7-renovar' }, [canal.port2]); } catch (e) { res(); }
+        setTimeout(res, 12000);
+      }).finally(() => { renovando = null; });
+      return renovando;
+    };
     const recarregar = () => {
       /* algo por salvar? salva antes de recarregar (nada se perde) */
-      const vai = () => location.reload();
+      const vai = () => renovarCasca().then(() => location.reload());
       if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias() && B7.Save.agora) {
         Promise.resolve(B7.Save.agora()).catch(() => {}).then(vai);
       } else vai();
@@ -1105,6 +1121,9 @@ B7.Rota = (function () {
       /* o service worker novo renova a reserva offline; a recarga em si
          já busca os arquivos na rede, com ou sem ele */
       if (registro) registro.update().catch(() => {});
+      /* já deixa a versão nova guardada: abrir o app de novo já abre ela
+         (uma vez por versão — a conferência roda a cada 30 s) */
+      if (renovadaPara !== v) { renovadaPara = v; renovarCasca(); }
       /* um aviso só na tela (a conferência roda a cada 30 s) */
       if (avisoAberto && avisoAberto.isConnected && !avisoAberto.classList.contains('saindo')) return;
       avisou = true;
