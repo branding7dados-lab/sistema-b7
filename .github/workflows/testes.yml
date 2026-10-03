@@ -1,0 +1,26 @@
+# Testes automáticos do Sistema B7 (testes/README no topo de cada arquivo)
+# A cada envio: sintaxe de todos os .js, regras da memória de dados e um
+# teste de fumaça que abre todas as telas num Chromium com banco simulado.
+name: Testes
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: testes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm test

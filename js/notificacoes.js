@@ -77,7 +77,7 @@ B7.Notif = (function () {
       ['aprovacoes', 'Aprovações do meu trabalho', 'O cliente ou a revisão interna aprovou.']
     ] },
     { id: 'video', titulo: 'Gravações', quem: () => tenho('videomaker'), itens: [
-      ['grav_lembretes', 'Lembretes de gravação', 'Na véspera e uma hora antes.'],
+      ['grav_lembretes', 'Lembretes de gravação', 'Na véspera e uma hora antes — e na véspera, se ainda houver roteiro em aberto.'],
       ['grav_mudancas', 'Gravações remarcadas ou canceladas', 'Das gravações em que sou o responsável.'],
       ['roteiros_prontos', 'Roteiros prontos para gravar', 'Das gravações em que sou o responsável.']
     ] },
@@ -85,9 +85,9 @@ B7.Notif = (function () {
       ['design_disponivel', 'Novas demandas disponíveis', 'Linha editorial concluída sem designer definido.']
     ] },
     { id: 'coord', titulo: 'Coordenação', quem: () => tenho('coordenador'), itens: [
-      ['co_revisoes', 'Aguardando revisão', 'Roteiros, linhas editoriais, peças de Design e vídeos enviados para revisar.'],
+      ['co_revisoes', 'Aguardando revisão', 'Roteiros, linhas editoriais, peças de Design e vídeos enviados para revisar — e o que está parado na revisão há 3 dias.'],
       ['co_aprovacoes', 'Decisões dos clientes', 'Aprovações, pedidos de ajuste e recusas.'],
-      ['co_producao', 'Andamento da produção', 'Vídeo entregue, designer assumiu uma peça.'],
+      ['co_producao', 'Andamento da produção', 'Vídeo entregue, designer assumiu uma peça, gravação de amanhã com roteiro em aberto, gravação que passou sem ser concluída.'],
       ['co_escalados', 'Atrasos escalados', 'Demanda que continua atrasada dois dias depois do prazo.']
     ] },
     { id: 'geral', titulo: 'Agenda e resumo', quem: () => true, itens: [
@@ -96,7 +96,7 @@ B7.Notif = (function () {
     ] },
     { id: 'admin', titulo: 'Acompanhar a operação', quem: () => tenho('admin'),
       nota: 'Ser administrador não faz você receber tudo. Ligue só o que quer acompanhar.', itens: [
-      ['adm_atrasos', 'Atrasos críticos', 'Demandas atrasadas há 5 dias ou mais.'],
+      ['adm_atrasos', 'Atrasos críticos', 'Demandas atrasadas há 5 dias ou mais e gravações em risco (roteiro em aberto na véspera, data passada sem conclusão).'],
       ['adm_revisoes', 'Revisões pendentes da agência', 'O mesmo que a coordenação recebe em "Aguardando revisão".'],
       ['adm_tudo', 'Todas as movimentações da agência', 'Tudo, de todo mundo. Costuma ser muito aviso.']
     ] }
@@ -118,6 +118,7 @@ B7.Notif = (function () {
     ['prazos', 'Prazos', ['video.prazo_amanha', 'video.atrasado', 'video.atrasado_escalado', 'video.atrasado_critico',
       'design.prazo_amanha', 'design.atrasado', 'design.atrasado_escalado', 'design.atrasado_critico',
       'design.revisao_parada', 'design.cliente_parado',
+      'gravacao.roteiros_pendentes', 'gravacao.sem_conclusao', 'conteudo.revisao_parada',
       'agenda.gravacao_24h', 'agenda.gravacao_1h', 'agenda.apresentacao_24h', 'agenda.apresentacao_1h',
       'agenda.reuniao_24h', 'agenda.reuniao_1h', 'agenda.outro_24h', 'agenda.outro_1h',
       'gravacao.remarcada', 'gravacao.cancelada', 'resumo.diario']],
