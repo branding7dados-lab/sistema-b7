@@ -1906,6 +1906,14 @@ body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaF
 .b7-voo-miolo{position:absolute;left:0;top:0;pointer-events:none;}
 .b7-voo-volta{background:var(--fundo);border-color:transparent;}
 .b7-voo-origem{opacity:0 !important;transition:none !important;}
+/* zzs: brilho que varre a tela aberta enquanto o detalhe carrega */
+.b7-voo-brilho{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(105deg, transparent 30%, color-mix(in srgb, var(--acento) 10%, transparent) 45%, color-mix(in srgb, #fff 55%, transparent) 50%, color-mix(in srgb, var(--acento) 10%, transparent) 55%, transparent 70%);
+  background-size:250% 100%;background-position:120% 0;mix-blend-mode:soft-light;
+  animation:b7VooBrilho 1.1s cubic-bezier(.45,0,.25,1) .3s infinite;}
+[data-theme="dark"] .b7-voo-brilho{mix-blend-mode:screen;opacity:.5;}
+@keyframes b7VooBrilho{from{background-position:120% 0}to{background-position:-120% 0}}
+.b7-voo-pousando{position:relative;z-index:6;}
 .b7-voo-pouso{animation:b7Pouso .7s cubic-bezier(.2,.8,.25,1);}
 @keyframes b7Pouso{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--acento) 55%, transparent)}
   100%{box-shadow:0 0 0 14px color-mix(in srgb, var(--acento) 0%, transparent)}}

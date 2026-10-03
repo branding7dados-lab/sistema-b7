@@ -99,66 +99,74 @@ window.B7 = window.B7 || {};
     document.body.appendChild(g);
     info.el.classList.add('b7-voo-origem');
     /* garantia: nunca fica preso na tela (aba em segundo plano congela animação) */
-    setTimeout(() => { g.remove(); if (info.el.isConnected) info.el.classList.remove('b7-voo-origem'); }, 2600);
+    setTimeout(() => { g.remove(); if (info.el.isConnected) info.el.classList.remove('b7-voo-origem'); }, 3000);
     const alvo = areaAlvo();
-    const DUR = 440, curva = 'cubic-bezier(.2,.8,.2,1)';
+    /* zzs: antes o conteúdo do cartão se apagava e sobrava uma tela vazia
+       esperando o detalhe carregar ("parece carregamento"). Agora:
+       • o cartão cresce com mola, e o conteúdo dele CONTINUA visível,
+         preso no alto, como o cabeçalho da tela que está abrindo;
+       • enquanto o detalhe carrega, um brilho de luz varre a tela (a
+         espera vira parte da animação, não um vazio);
+       • quando o detalhe chega, o fantasma se dissolve com um leve zoom
+         e o detalhe entra vindo de dentro dele (empurrão de câmera). */
+    const DUR = 420, curva = 'cubic-bezier(.32,.72,0,1)';
     g.animate([Object.assign(px(info.r), { borderRadius: raio + 'px' }), Object.assign(px(alvo), { borderRadius: '22px' })],
       { duration: DUR, easing: curva, fill: 'forwards' });
-    miolo.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translate3d(0,-6px,0) scale(.98)' }],
-      { duration: 220, easing: 'ease-out', fill: 'forwards' });
-    /* segura até a tela nova ter conteúdo de verdade (não só esqueleto),
-       no máximo ~1,1 s; então dissolve revelando o detalhe */
+    /* o miolo viaja junto com o canto do fantasma (fica no alto da tela) */
+    miolo.animate([{ transform: 'none' }, { transform: 'translate3d(0,8px,0)' }], { duration: DUR, easing: curva, fill: 'forwards' });
+    const brilho = document.createElement('i');
+    brilho.className = 'b7-voo-brilho';
+    g.appendChild(brilho);
     const t0 = performance.now();
     const pronto = () => {
       const pn = painel();
       const c = pn && pn.querySelector(':scope > .conteudo');
-      return c && !c.querySelector(':scope > .esqueleto-tela') && performance.now() - t0 > DUR - 40;
+      return c && !c.querySelector(':scope > .esqueleto-tela') && performance.now() - t0 > DUR - 60;
     };
     const sair = () => {
-      const a = g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: 'ease-out', fill: 'forwards' });
+      const c = painel() && painel().querySelector(':scope > .conteudo');
+      if (c && c.animate) c.animate([{ opacity: 0, transform: 'scale(.965)', filter: 'blur(4px)' }, { opacity: 1, transform: 'none', filter: 'none' }],
+        { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      const a = g.animate([{ opacity: 1, transform: 'none', filter: 'none' }, { opacity: 0, transform: 'scale(1.03)', filter: 'blur(6px)' }],
+        { duration: 300, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
       a.onfinish = () => g.remove();
       if (info.el.isConnected) info.el.classList.remove('b7-voo-origem');
     };
     const espera = () => {
-      if (pronto() || performance.now() - t0 > 1100 || document.getElementById('tela-editor')?.classList.contains('ativa') && performance.now() - t0 > DUR) sair();
-      else setTimeout(espera, 50);
+      if (pronto() || performance.now() - t0 > 2200 || document.getElementById('tela-editor')?.classList.contains('ativa') && performance.now() - t0 > DUR) sair();
+      else setTimeout(espera, 40);
     };
-    setTimeout(espera, DUR - 40);
+    setTimeout(espera, DUR - 60);
     ultimoVoo = { de: info.de, chave: info.chave, quando: Date.now() };
   }
 
+  /* volta (zzs): sem a "tela vazia" encolhendo. A lista entra como uma
+     câmera recuando (de leve maior para o tamanho normal) e o cartão de
+     onde se veio "pousa": vem de cima, maior e com sombra, e assenta no
+     lugar dele com um anel de luz. */
   function voarVoltando(voo) {
-    const alvoTela = areaAlvo();
-    const g = document.createElement('div');
-    g.className = 'b7-voo b7-voo-volta';
-    g.setAttribute('aria-hidden', 'true');
-    Object.assign(g.style, px(alvoTela), { borderRadius: '22px' });
-    document.body.appendChild(g);
-    setTimeout(() => g.remove(), 2600);   /* garantia */
     const t0 = performance.now();
     const procura = () => {
       const p = painel();
       const el = p && voo.chave ? p.querySelector(voo.chave) : null;
       const ok = el && el.getBoundingClientRect().height > 10 && !(p.querySelector(':scope > .conteudo > .esqueleto-tela'));
       if (ok) {
-        /* rola até o cartão se ele estiver fora da tela */
+        const alvoTela = areaAlvo();
         const r0 = el.getBoundingClientRect();
-        if (r0.top < alvoTela.top || r0.bottom > innerHeight - 70) {
-          p.scrollTop += r0.top - alvoTela.top - 80;
-        }
-        const r = el.getBoundingClientRect();
-        const raio = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 14;
-        const a = g.animate([Object.assign(px(alvoTela), { borderRadius: '22px', opacity: 1 }),
-                             Object.assign(px(r), { borderRadius: raio + 'px', opacity: .9, offset: .85 }),
-                             Object.assign(px(r), { borderRadius: raio + 'px', opacity: 0 })],
-          { duration: 460, easing: 'cubic-bezier(.3,.7,.2,1)', fill: 'forwards' });
-        a.onfinish = () => { g.remove(); el.classList.add('b7-voo-pouso'); setTimeout(() => el.classList.remove('b7-voo-pouso'), 700); };
-      } else if (performance.now() - t0 > 1500) {
-        const a = g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' });
-        a.onfinish = () => g.remove();
-      } else setTimeout(procura, 40);
+        if (r0.top < alvoTela.top || r0.bottom > innerHeight - 70) p.scrollTop += r0.top - alvoTela.top - 80;
+        const c = p.querySelector(':scope > .conteudo');
+        if (c && c.animate) c.animate([{ transform: 'scale(1.035)', opacity: .4, filter: 'blur(3px)' }, { transform: 'none', opacity: 1, filter: 'none' }],
+          { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        el.classList.add('b7-voo-pousando');
+        el.animate([{ transform: 'translate3d(0,-10px,0) scale(1.06)', boxShadow: '0 30px 60px -20px rgba(40,10,70,.45)', zIndex: 6 },
+                    { transform: 'none', boxShadow: '0 0 0 0 rgba(40,10,70,0)', zIndex: 6 }],
+          { duration: 520, easing: 'cubic-bezier(.32,.72,0,1)' }).onfinish = () => {
+          el.classList.remove('b7-voo-pousando');
+          el.classList.add('b7-voo-pouso'); setTimeout(() => el.classList.remove('b7-voo-pouso'), 700);
+        };
+      } else if (performance.now() - t0 < 2000) setTimeout(procura, 40);
     };
-    setTimeout(procura, 60);
+    setTimeout(procura, 30);
   }
 
   /* registrado ANTES do roteador agir: o roteador espera o salvamento
