@@ -72,7 +72,53 @@ B7.UI = (function () {
     }
   }
 
+  /* ------------------------------------------------- botão ocupado
+     Ação em andamento DENTRO do botão: spinner circular no lugar do
+     texto, mesma largura (nada na tela pula), clique bloqueado. Devolve
+     o resultado da ação; o botão volta ao normal com sucesso ou erro.
+       await B7.UI.ocupado(botao, () => B7.DB.algo()) */
+  async function ocupado(botao, acao) {
+    if (!botao) return acao();
+    if (botao.getAttribute('aria-busy') === 'true') return;   /* duplo clique */
+    const tinhaDisabled = botao.disabled;
+    botao.setAttribute('aria-busy', 'true');
+    botao.disabled = true;
+    try { return await acao(); }
+    finally {
+      if (botao.isConnected) { botao.removeAttribute('aria-busy'); botao.disabled = tinhaDisabled; }
+    }
+  }
+
   /* ------------------------------------------------------------ modais */
+  /* Saída suave de uma sobreposição. O elemento de verdade sai do
+     documento NA HORA (nenhum código acha o modal antigo por id, nem
+     clica nele); no lugar dele fica, por ~180 ms, uma cópia só visual —
+     sem ids, inerte, sem iframe/vídeo (não recarregam) — que desaparece
+     animando. Quem pediu menos movimento não recebe a cópia. */
+  const reduzMovimento = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function sairSuave(el) {
+    if (!el || !el.isConnected) return;
+    if (reduzMovimento()) { el.remove(); return; }
+    const origem = el.querySelector('.modal');
+    const rolagem = origem ? origem.scrollTop : 0;
+    const fantasma = el.cloneNode(true);
+    fantasma.querySelectorAll('iframe, video, audio, canvas, object, embed').forEach(n => n.remove());
+    fantasma.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+    /* o clone traz o valor inicial dos campos, não o digitado: copia */
+    const a = el.querySelectorAll('input, textarea, select'), b = fantasma.querySelectorAll('input, textarea, select');
+    a.forEach((c, i) => { if (b[i] && 'value' in c) { try { b[i].value = c.value; } catch (e) {} } });
+    fantasma.removeAttribute('id');
+    fantasma.classList.add('saindo');
+    fantasma.setAttribute('aria-hidden', 'true');
+    fantasma.inert = true;
+    el.replaceWith(fantasma);
+    const m = fantasma.querySelector('.modal'); if (m) m.scrollTop = rolagem;
+    let feito = false;
+    const tirar = () => { if (!feito) { feito = true; fantasma.remove(); } };
+    fantasma.addEventListener('animationend', e => { if (e.target === fantasma || e.target === m) tirar(); });
+    setTimeout(tirar, 260);   /* rede de segurança se a animação não rodar */
+  }
+
   function modal(html, opcoes = {}) {
     const anterior = document.activeElement;      // para devolver o foco ao fechar
     const fundo = document.createElement('div');
@@ -96,9 +142,12 @@ B7.UI = (function () {
       if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
       else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
     }
+    let fechado = false;
     function fechar() {
+      if (fechado) return;          /* fechar duas vezes não chama aoFechar duas vezes */
+      fechado = true;
       document.removeEventListener('keydown', tecla);
-      fundo.remove();
+      sairSuave(fundo);
       if (anterior && anterior.focus) anterior.focus();
       opcoes.aoFechar && opcoes.aoFechar();
     }
@@ -272,9 +321,12 @@ B7.UI = (function () {
 
   document.addEventListener('click', fecharMenus);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharMenus(); });
-  /* rolar ou redimensionar com o menu aberto deixaria ele flutuando solto */
-  window.addEventListener('resize', fecharMenus);
-  window.addEventListener('scroll', fecharMenus, true);
+  /* rolar ou redimensionar com o menu aberto deixaria ele flutuando solto.
+     Rolagem dispara dezenas de vezes por segundo em qualquer lista da
+     tela: sem menu aberto não há o que fechar, então nem consulta o DOM. */
+  const fecharSeAberto = () => { if (menuAberto) fecharMenus(); };
+  window.addEventListener('resize', fecharSeAberto);
+  window.addEventListener('scroll', fecharSeAberto, { capture: true, passive: true });
 
   /* ------------------------------------------------------------- dica */
   let dicaEl = null;
@@ -755,5 +807,5 @@ B7.UI = (function () {
   }
 
   return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
-           dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton, copiarTexto };
+           dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton, copiarTexto, ocupado };
 })();

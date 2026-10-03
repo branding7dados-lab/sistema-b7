@@ -644,14 +644,14 @@ B7.Oportunidades = (function () {
           (e.buscados != null ? ' · ' + e.buscados + ' lidos, ' + (e.criados || 0) + ' novos, ' + ((e.atualizados || 0) + (e.vinculados || 0)) + ' atualizados' + (e.para_revisao ? ', ' + e.para_revisao + ' p/ revisão' : '') : '') +
           (e.erro ? ' · ' + e.erro : '')) + '</small></li>').join('') + '</ul>' : '<p class="op-nada">Nenhuma sincronização ainda.</p>');
     cx.querySelector('#op-sync').onclick = async ev => {
-      const bt = ev.currentTarget; bt.disabled = true; bt.textContent = 'Sincronizando…';
+      const bt = ev.currentTarget;
       try {
-        const r = await B7.DB.oportunidadesSincronizar(true);
+        const r = await B7.UI.ocupado(bt, () => B7.DB.oportunidadesSincronizar(true));
         const res = (r && r.resultados) || {};
         const falhas = Object.keys(res).filter(k => res[k] && res[k].status && res[k].status !== 'ok');
         B7.UI.toast(r && r.pulado ? r.pulado : falhas.length ? 'Sincronizado, com problema em: ' + falhas.map(k => FONTES_ROT[k] || k).join(', ') : 'Fontes sincronizadas.');
         invalidar(); await carregarBase(true); pintarFontes();
-      } catch (e) { B7.UI.toast('Não foi possível sincronizar: ' + (e.message || 'erro')); bt.disabled = false; bt.textContent = 'Sincronizar agora'; }
+      } catch (e) { B7.UI.toast('Não foi possível sincronizar: ' + (e.message || 'erro')); }
     };
     cx.querySelector('#op-manual').onclick = modalManual;
   }

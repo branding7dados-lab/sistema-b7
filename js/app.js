@@ -719,7 +719,7 @@ B7.Rota = (function () {
       /* atalhos de letra só fora de campos de texto — nunca no meio de um roteiro */
       const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName) || alvo.isContentEditable;
       const noEditor = document.getElementById('tela-editor').classList.contains('ativa');
-      const temModal = !!document.querySelector('.fundo-modal');
+      const temModal = !!document.querySelector('.fundo-modal:not(.saindo)');
 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); B7.Save.agora(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); B7.UI.paleta(); return; }
@@ -805,7 +805,7 @@ B7.Rota = (function () {
     const ocupado = () => {
       if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias()) return true;
       if (document.fullscreenElement || document.webkitFullscreenElement) return true;
-      if (document.querySelector('.fundo-modal, .preview-fundo, .apresentacao, .tele')) return true;
+      if (document.querySelector('.fundo-modal:not(.saindo), .preview-fundo, .apresentacao, .tele')) return true;
       const a = document.activeElement;
       return !!(a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
     };

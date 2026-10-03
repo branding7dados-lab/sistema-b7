@@ -505,27 +505,14 @@ select.campo{appearance:none;cursor:pointer;
 .envio-estado.falhou{display:block;color:var(--erro);}
 
 /* ------------------------------------------------------------ modais */
-.fundo-modal{position:fixed;inset:0;background:rgba(11,10,30,.5);backdrop-filter:blur(4px);
-  display:flex;align-items:center;justify-content:center;z-index:200;padding:32px;animation:aparece .16s ease;}
+.fundo-modal{position:fixed;inset:0;background:rgba(11,10,30,.5);
+  display:flex;align-items:center;justify-content:center;z-index:200;padding:32px;}
 @keyframes aparece{from{opacity:0}to{opacity:1}}
-/* entrada de página: sobe e revela em escada, em vez de piscar de uma vez */
-.conteudo.entra{animation:entraPagina .34s cubic-bezier(.2,.8,.25,1) both;}
-@keyframes entraPagina{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.conteudo.entra > *{animation:sobeItem .38s cubic-bezier(.2,.8,.25,1) both;}
-.conteudo.entra > *:nth-child(1){animation-delay:.02s}
-.conteudo.entra > *:nth-child(2){animation-delay:.06s}
-.conteudo.entra > *:nth-child(3){animation-delay:.10s}
-.conteudo.entra > *:nth-child(4){animation-delay:.14s}
-.conteudo.entra > *:nth-child(n+5){animation-delay:.17s}
-@keyframes sobeItem{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){
-  .conteudo.entra,.conteudo.entra > *{animation:none;}
-}
+/* entrada de página e de modal: ver "SISTEMA DE MOVIMENTO" no fim do arquivo */
 .modal{background:var(--card);border-radius:20px;padding:26px;width:min(560px,100%);max-height:88vh;
-  display:flex;flex-direction:column;box-shadow:var(--sh-3);animation:sobe .2s cubic-bezier(.2,.9,.3,1);
+  display:flex;flex-direction:column;box-shadow:var(--sh-3);
   /* conteúdo longo rolava para fora do modal e ficava inalcançável */
   overflow-y:auto;overscroll-behavior:contain;}
-@keyframes sobe{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
 .modal.larga{width:min(760px,100%);}
 .modal h3{font-family:'Archivo';font-size:19px;font-weight:800;letter-spacing:-.02em;}
 .modal .sub{font-size:13px;color:var(--ink-3);margin:7px 0 20px;line-height:1.55;}
@@ -783,38 +770,61 @@ select.campo{appearance:none;cursor:pointer;
 .nav-trilha.visivel{opacity:1;}
 .nav a.on:before{display:none;}   /* substituída pela trilha deslizante */
 
-/* ---- B7 LOADER: o símbolo oficial pulsando, sem spinner genérico ---- */
+/* ---- B7 LOADER (carregamento de SEÇÃO dentro do sistema) ----
+   Antes: o símbolo (54×62, retangular) pulsava com scale e carregava um
+   anel como pseudo-elemento com inset desigual (-16px -13px) → caixa de
+   80×94 com border-radius:50% = ELIPSE, que ainda encolhia e crescia
+   junto com o símbolo enquanto girava: o "ovo orbitando".
+   Agora: uma caixa QUADRADA fixa (aspect-ratio 1, sem flex-shrink) é o
+   anel; o símbolo é um ::before centralizado dentro dela e só muda de
+   opacidade. Nenhum dos dois herda transform do outro. */
 .b7-load{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:18px;padding:74px 20px;position:relative;}
-/* halo suave por trás do símbolo, no lugar do pulso seco de opacidade */
-.b7-load:before{content:"";position:absolute;width:230px;height:230px;border-radius:50%;
-  background:radial-gradient(circle,var(--acento-suave),transparent 68%);
-  animation:b7halo 2.4s ease-in-out infinite;pointer-events:none;}
-.b7-load .simbolo{width:54px;height:62px;position:relative;z-index:1;
+  gap:16px;padding:64px 20px;position:relative;
+  animation:b7Fade var(--m-rapido,.17s) var(--m-entra,ease-out) .12s both;}   /* carga rápida nem aparece */
+.b7-load .simbolo{position:relative;z-index:1;flex:none;box-sizing:border-box;
+  width:56px;height:56px;aspect-ratio:1;border-radius:50%;}
+.b7-load .simbolo:before{content:"";position:absolute;inset:13px 15px;
   background:url('../assets/brand/symbol-color.png') no-repeat center/contain;
-  animation:b7pulse 1.6s ease-in-out infinite;}
-/* anel girando devagar: dá sensação de progresso sem virar spinner genérico */
-.b7-load .simbolo:after{content:"";position:absolute;inset:-16px -13px;border-radius:50%;
-  border:1.5px solid var(--borda);border-top-color:var(--acento);
-  animation:b7gira 1.5s linear infinite;}
-.b7-load .txt{font-size:13.5px;color:var(--ink-2);letter-spacing:.01em;z-index:1;}
+  animation:b7Respira 1.8s ease-in-out infinite;}
+.b7-load .simbolo:after{content:"";position:absolute;inset:0;box-sizing:border-box;border-radius:50%;
+  border:2px solid color-mix(in srgb, var(--acento) 14%, transparent);border-top-color:var(--acento);
+  animation:b7gira .9s linear infinite;}
+.b7-load .txt{font-size:13.5px;color:var(--ink-3);letter-spacing:.01em;z-index:1;text-align:center;}
 .b7-load .txt small{display:block;font-size:12px;color:var(--ink-4);margin-top:6px;}
 /* barra indeterminada: mostra que algo está acontecendo, sem prometer % */
 .b7-load .barra-load{width:180px;height:3px;border-radius:2px;background:var(--suave);
   overflow:hidden;z-index:1;}
 .b7-load .barra-load i{display:block;width:40%;height:100%;border-radius:2px;
   background:var(--grad);animation:b7corre 1.3s ease-in-out infinite;}
-@keyframes b7pulse{0%,100%{opacity:.7;transform:scale(.97)}50%{opacity:1;transform:scale(1)}}
-@keyframes b7halo{0%,100%{opacity:.35;transform:scale(.9)}50%{opacity:.75;transform:scale(1)}}
+@keyframes b7Respira{0%,100%{opacity:.62}50%{opacity:1}}
 @keyframes b7gira{to{transform:rotate(360deg)}}
 @keyframes b7corre{0%{transform:translateX(-110%)}100%{transform:translateX(360%)}}
 @media (prefers-reduced-motion:reduce){
-  .b7-load:before,.b7-load .simbolo,.b7-load .simbolo:after,.b7-load .barra-load i{
-    animation:none;}
-  .b7-load .simbolo{opacity:1;}
+  .b7-load .simbolo:before,.b7-load .barra-load i{animation:none;}
+  /* o anel ainda gira (é a informação "está carregando"), só mais devagar */
+  .b7-load .simbolo:after{animation-duration:2.4s !important;animation-iteration-count:infinite !important;}
 }
 .b7-load.linha{flex-direction:row;padding:18px;gap:10px;}
-.b7-load.linha .simbolo{width:22px;height:26px;}
+.b7-load.linha .simbolo{width:28px;height:28px;}
+.b7-load.linha .simbolo:before{inset:6px 7px;}
+.b7-load.linha .simbolo:after{border-width:1.5px;}
+
+/* ---- SPINNER DE AÇÃO (dentro de botão / controle) ----
+   Círculo sempre quadrado (aspect-ratio + flex:none), sem mudar a largura
+   do botão: o texto fica transparente e o círculo vai por cima. */
+.b7-gira{display:inline-block;flex:none;box-sizing:border-box;width:16px;height:16px;aspect-ratio:1;
+  border-radius:50%;border:2px solid currentColor;border-right-color:transparent;
+  animation:b7gira .7s linear infinite;vertical-align:-3px;}
+.b.carregando,.b[aria-busy="true"]{position:relative;color:transparent !important;pointer-events:none;}
+.b[aria-busy="true"]:disabled{opacity:1;cursor:progress;}   /* ocupado não é "desligado" */
+.b.carregando > *,.b[aria-busy="true"] > *{visibility:hidden;}
+.b.carregando:after,.b[aria-busy="true"]:after{content:"";position:absolute;left:50%;top:50%;
+  width:16px;height:16px;margin:-8px 0 0 -8px;box-sizing:border-box;border-radius:50%;
+  border:2px solid var(--ink-3);border-right-color:transparent;animation:b7gira .7s linear infinite;}
+.b.pri.carregando:after,.b.pri[aria-busy="true"]:after{border-color:#fff;border-right-color:transparent;}
+@media (prefers-reduced-motion:reduce){
+  .b7-gira,.b.carregando:after,.b[aria-busy="true"]:after{animation-duration:1.6s !important;animation-iteration-count:infinite !important;}
+}
 
 /* ---- B7 SPOTLIGHT: brilho radial seguindo o cursor ----
    O ::before é position:absolute, então por padrão ele pinta ACIMA do
@@ -1023,31 +1033,21 @@ button.chip-revisao:hover{filter:brightness(.96);}
   --t-lento:.42s;
 }
 
-/* entrada de página mais suave e um pouco mais longa */
-.conteudo.entra{animation:entraPagina var(--t-lento) var(--curva-entrada) both;}
-@keyframes entraPagina{
-  from{opacity:0;transform:translate3d(0,14px,0)}
-  to{opacity:1;transform:none}
-}
-.conteudo.entra > *{animation:sobeItem .46s var(--curva-entrada) both;}
-.conteudo.entra > *:nth-child(1){animation-delay:.03s}
-.conteudo.entra > *:nth-child(2){animation-delay:.07s}
-.conteudo.entra > *:nth-child(3){animation-delay:.11s}
-.conteudo.entra > *:nth-child(4){animation-delay:.15s}
-.conteudo.entra > *:nth-child(5){animation-delay:.18s}
-.conteudo.entra > *:nth-child(n+6){animation-delay:.21s}
+/* entrada de página: ver "SISTEMA DE MOVIMENTO" no fim do arquivo.
+   sobeItem continua aqui porque listas próprias (conteudo.css) usam. */
 @keyframes sobeItem{
-  from{opacity:0;transform:translate3d(0,16px,0)}
+  from{opacity:0;transform:translate3d(0,10px,0)}
   to{opacity:1;transform:none}
 }
 
-/* cards e itens de lista: elevação em vez de salto */
+/* cards e itens de lista: elevação em vez de salto. Sem will-change:
+   ele deixava CADA card numa camada de GPU própria o tempo todo (centenas
+   no Kanban e no Calendário) — a transição funciona igual sem ele. */
 .card-cliente,.card-gravacao,.lu-item,.ssl-cliente,.kb-card,
 .cp-num,.destaque-grav{
   transition:transform var(--t-rapido) var(--curva-toque),
              box-shadow var(--t-medio) var(--curva-toque),
              border-color var(--t-medio);
-  will-change:transform;
 }
 
 /* botões respondem na hora e voltam com calma */
@@ -1060,14 +1060,7 @@ button.chip-revisao:hover{filter:brightness(.96);}
 .campo{transition:border-color var(--t-rapido), box-shadow var(--t-medio),
                  background var(--t-rapido);}
 
-/* modais: entram do mesmo jeito em todo o sistema */
-.fundo-modal{animation:fundoEntra var(--t-medio) ease-out;}
-@keyframes fundoEntra{from{opacity:0}to{opacity:1}}
-.modal{animation:modalEntra .34s var(--curva-entrada);}
-@keyframes modalEntra{
-  from{opacity:0;transform:translate3d(0,18px,0) scale(.985)}
-  to{opacity:1;transform:none}
-}
+/* modais: ver "SISTEMA DE MOVIMENTO" no fim do arquivo */
 
 /* trocas de aba e chips */
 .aba,.chip-filtro,.seg-vista button,.seg-linha button{
@@ -1378,3 +1371,125 @@ body.apurando #app{visibility:hidden;}
   .config-linha .tx{flex:1 1 100%;}
 }
 .cfg-versao{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--suave);border:1px solid var(--borda);border-radius:8px;padding:5px 10px;white-space:nowrap;}
+
+/* =====================================================================
+   SISTEMA DE MOVIMENTO, VIDRO E PROFUNDIDADE
+   Um lugar só para tempo, curva, véu e vidro. Quatro tempos:
+     instante 110ms  resposta ao toque (press, ícone)
+     rápido   170ms  menus, abas, saída de qualquer coisa
+     padrão   240ms  entrada de modal, de página, de toast
+     ênfase   300ms  folha subindo no celular
+   Curva de entrada desacelera no fim (chega e assenta); a de saída
+   acelera (some sem arrastar). Movimento só em transform e opacity.
+   ===================================================================== */
+:root{
+  --m-instante:110ms; --m-rapido:170ms; --m-padrao:240ms; --m-enfase:300ms;
+  --m-entra:cubic-bezier(.2,.85,.25,1);
+  --m-sai:cubic-bezier(.4,0,1,1);
+  --m-toque:cubic-bezier(.2,.8,.3,1);
+  /* vidro: superfície que flutua sobre o conteúdo (menus, folhas, toasts).
+     Sempre translúcido o bastante para dar profundidade e opaco o
+     bastante para o texto não disputar com o que passa por baixo. */
+  --vidro-bg:color-mix(in srgb, var(--elevado) 82%, transparent);
+  --vidro-forte:color-mix(in srgb, var(--elevado) 93%, transparent);
+  --vidro-borda:color-mix(in srgb, var(--borda-forte) 75%, transparent);
+  --vidro-filtro:saturate(170%) blur(18px);
+  --vidro-sombra:0 1px 0 rgba(255,255,255,.6) inset, 0 20px 44px -18px rgba(20,8,40,.34);
+  --veu:rgba(11,10,30,.44);
+}
+[data-theme="dark"]{
+  --vidro-bg:color-mix(in srgb, var(--elevado) 84%, transparent);
+  --vidro-forte:color-mix(in srgb, var(--elevado) 95%, transparent);
+  --vidro-borda:rgba(255,255,255,.09);
+  --vidro-sombra:0 1px 0 rgba(255,255,255,.05) inset, 0 24px 54px -20px rgba(0,0,0,.72);
+  --veu:rgba(5,3,10,.58);
+}
+
+/* ---- troca de tela: curta. O conteúdo já está ali; o movimento só diz
+        "isto é novo". Antes eram 0,42 s + cascata até ~0,67 s. ---- */
+.conteudo.entra{animation:b7Pagina var(--m-padrao) var(--m-entra) both;}
+.conteudo.entra > *{animation:b7Fade var(--m-padrao) var(--m-entra) both;}
+.conteudo.entra > :nth-child(2){animation-delay:30ms;}
+.conteudo.entra > :nth-child(3){animation-delay:60ms;}
+.conteudo.entra > :nth-child(n+4){animation-delay:90ms;}
+@keyframes b7Pagina{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+
+/* ---- modal: véu escurece (e desfoca no desktop), janela assenta ---- */
+.fundo-modal,[data-theme="dark"] .fundo-modal{background:var(--veu);}
+.fundo-modal{animation:b7Fade var(--m-padrao) var(--m-entra) both;}
+/* desfoque do fundo só onde é barato: tela grande com mouse. No celular
+   o véu escuro já separa, e desfocar a tela inteira custa caro. */
+@media (min-width:761px) and (pointer:fine){
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .fundo-modal{-webkit-backdrop-filter:blur(6px) saturate(115%);backdrop-filter:blur(6px) saturate(115%);}
+  }
+}
+.modal{animation:b7Modal var(--m-padrao) var(--m-entra) both;}
+@keyframes b7Modal{from{opacity:0;transform:translate3d(0,8px,0) scale(.98)}to{opacity:1;transform:none}}
+/* saída: a cópia visual deixada por B7.UI.modal ao fechar (js/ui.js) */
+.fundo-modal.saindo{animation:b7Some var(--m-rapido) var(--m-sai) forwards;pointer-events:none;}
+.fundo-modal.saindo .modal{animation:b7ModalSai var(--m-rapido) var(--m-sai) forwards;}
+@keyframes b7Some{from{opacity:1}to{opacity:0}}
+@keyframes b7ModalSai{from{opacity:1;transform:none}to{opacity:0;transform:translate3d(0,6px,0) scale(.985)}}
+
+/* ---- folha de baixo (celular): sobe inteira, desce inteira ---- */
+@keyframes b7Folha{from{transform:translate3d(0,100%,0)}to{transform:none}}
+@keyframes b7FolhaSai{from{transform:none}to{transform:translate3d(0,100%,0)}}
+@media (max-width:520px){
+  .fundo-modal:not(.paleta) .modal{animation:b7Folha var(--m-enfase) var(--m-entra) both;}
+  .fundo-modal.saindo:not(.paleta) .modal{animation:b7FolhaSai var(--m-rapido) var(--m-sai) forwards;}
+}
+@media (max-width:760px){
+  .fundo-modal.tp-folha .modal{animation:b7Folha var(--m-enfase) var(--m-entra) both;}
+  .fundo-modal.tp-folha.saindo .modal{animation:b7FolhaSai var(--m-rapido) var(--m-sai) forwards;}
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .fundo-modal.tp-folha .modal{background:var(--vidro-forte);
+      -webkit-backdrop-filter:var(--vidro-filtro);backdrop-filter:var(--vidro-filtro);}
+  }
+}
+
+/* ---- superfícies de vidro: o que flutua sobre a tela ---- */
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .lista.solta,.tp-menu,.resultados,.previa-roteiros{background:var(--vidro-bg);border-color:var(--vidro-borda);
+    box-shadow:var(--vidro-sombra);-webkit-backdrop-filter:var(--vidro-filtro);backdrop-filter:var(--vidro-filtro);}
+  .toast{background:color-mix(in srgb, var(--sidebar) 86%, transparent);border:1px solid rgba(255,255,255,.08);
+    -webkit-backdrop-filter:var(--vidro-filtro);backdrop-filter:var(--vidro-filtro);}
+  [data-theme="dark"] .toast{background:color-mix(in srgb, var(--elevado) 88%, transparent);border-color:var(--vidro-borda);}
+  .toast.erro,[data-theme="dark"] .toast.erro{background:color-mix(in srgb, #48082C 92%, transparent);}
+  .nav-flyout{background:color-mix(in srgb, var(--sidebar-2) 88%, transparent);
+    -webkit-backdrop-filter:var(--vidro-filtro);backdrop-filter:var(--vidro-filtro);}
+}
+
+/* ---- toasts: sobem e assentam; saem rápido ---- */
+.toast{animation:b7Toast var(--m-padrao) var(--m-entra) both;}
+.toast.saindo{animation:b7ToastSai var(--m-rapido) var(--m-sai) forwards;}
+@keyframes b7Toast{from{opacity:0;transform:translate3d(0,10px,0) scale(.98)}to{opacity:1;transform:none}}
+@keyframes b7ToastSai{to{opacity:0;transform:translate3d(0,6px,0) scale(.98)}}
+
+/* ---- toque: resposta imediata, nunca dependente de hover ---- */
+.ico{transition:background var(--m-rapido), color var(--m-rapido), transform var(--m-instante) var(--m-toque);}
+.ico:active{transform:scale(.92);}
+/* no toque, o :hover "gruda" depois do tap: o botão principal ficava
+   levantado 1px até tocar em outro lugar */
+@media (hover:none){ .b.pri:hover:not(:disabled){transform:none;} }
+
+/* ---- barra inferior do celular ---- */
+@media (max-width:760px){
+  .ni-ic{transition:background var(--m-rapido) var(--m-toque), color var(--m-rapido), transform var(--m-instante) var(--m-toque);}
+  .nav-inferior a:active .ni-ic,.nav-inferior button:active .ni-ic{transform:scale(.9);}
+  .nav-inferior .on:before{animation:b7Fio var(--m-padrao) var(--m-entra) both;}
+  @keyframes b7Fio{from{opacity:0;transform:scaleX(.3)}to{opacity:1;transform:none}}
+  /* filete de luz na borda de cima do vidro (só no claro; no escuro some) */
+  body[data-shell="interno"] .nav-inferior{box-shadow:0 -1px 0 rgba(255,255,255,.55) inset, 0 -8px 24px -18px rgba(20,8,40,.35);}
+  [data-theme="dark"] body[data-shell="interno"] .nav-inferior{box-shadow:0 -10px 28px -20px rgba(0,0,0,.7);}
+}
+
+/* ---- esqueletos: pulso de opacidade (o brilho deslizante repintava o
+        fundo de cada bloco a cada quadro) e só aparecem se a espera
+        passar de ~120 ms — carga rápida não pisca esqueleto ---- */
+.esqueleto-tela{animation:b7Fade var(--m-rapido) var(--m-entra) .12s both;}
+.esqueleto-tela .esq,.esqueleto{background:var(--esq-1);animation:b7Pulso 1.5s ease-in-out infinite;}
+@keyframes b7Pulso{0%,100%{opacity:1}50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){
+  .esqueleto-tela .esq,.esqueleto{animation:none !important;opacity:.8;}
+}

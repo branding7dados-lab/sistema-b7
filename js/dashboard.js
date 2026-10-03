@@ -146,12 +146,23 @@ B7.Dashboard = (function () {
   /* spotlight: o brilho acompanha o cursor apenas nos cards principais */
   function ligarSpotlight(raiz) {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    /* uma medida por entrada do mouse e uma escrita por quadro: o mouse
+       dispara mais eventos do que a tela desenha, e medir o card a cada
+       um deles (depois de escrever a posição anterior) forçava layout */
     raiz.querySelectorAll('.spot').forEach(el => {
+      let r = null, x = 0, y = 0, quadro = 0;
+      el.onmouseenter = () => { r = el.getBoundingClientRect(); };
       el.onmousemove = e => {
-        const r = el.getBoundingClientRect();
-        el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-        el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+        if (!r) r = el.getBoundingClientRect();
+        x = e.clientX - r.left; y = e.clientY - r.top;
+        if (quadro) return;
+        quadro = requestAnimationFrame(() => {
+          quadro = 0;
+          el.style.setProperty('--mx', x + 'px');
+          el.style.setProperty('--my', y + 'px');
+        });
       };
+      el.onmouseleave = () => { r = null; };
     });
   }
 

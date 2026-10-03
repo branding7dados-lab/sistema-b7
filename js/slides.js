@@ -599,7 +599,7 @@ B7.PreviewLinha = (function () {
       clearTimeout(relogioOcioso);
       relogioOcioso = setTimeout(() => {
         if (fechado || !emTelaCheia()) return;
-        if (caixa.querySelector('.pv-det, .fundo-modal, .menu.aberto,.preview-topo:hover, .preview-nav:hover, .preview-seta:hover')) return acordar();
+        if (caixa.querySelector('.pv-det, .fundo-modal:not(.saindo), .menu.aberto,.preview-topo:hover, .preview-nav:hover, .preview-seta:hover')) return acordar();
         caixa.classList.add('ocioso');
       }, 2600);
     }
@@ -634,7 +634,7 @@ B7.PreviewLinha = (function () {
        aberto, Esc precisa fechar só o detalhe, não a apresentação
        inteira por baixo. */
     const tecla = e => {
-      if (document.querySelector('.fundo-modal')) return;
+      if (document.querySelector('.fundo-modal:not(.saindo)')) return;
       const det = caixa.querySelector('.pv-det');
       if (det) { if (det.b7Tecla) det.b7Tecla(e); return; }
       const noBotao = e.target && e.target.closest && e.target.closest('button, a, input, select, textarea');
