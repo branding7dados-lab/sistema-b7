@@ -333,6 +333,9 @@ window.B7 = window.B7 || {};
     const agora = location.hash || '#/';
     rotaVista = agora;
     const antigo = antigoNo; antigoNo = null;
+    /* zzz7: troca de módulo com morph (View Transitions, js/app.js): o
+       navegador já anima as duas telas — foto e voo ficam de fora */
+    if (document.documentElement.classList.contains('b7-vt')) { pendente = null; return; }
     if (reduz()) { pendente = null; mostrarFoto(agora, antigo); return; }
     if (pendente && performance.now() - pendente.t < 450) {
       const info = pendente; pendente = null;

@@ -261,5 +261,30 @@ B7.Memoria = (function () {
     try { indexedDB.deleteDatabase('b7-memoria'); } catch (e) {}
   }
 
-  return { invalidar, limpar, _mapa: mapa };
+  /* zzz7: AQUECER — logo depois do login, em segundo plano e uma de cada
+     vez, as leituras das telas principais (mesmos argumentos que elas
+     usam) entram na memória. A 1ª visita a cada aba também abre pronta,
+     sem esqueleto. Só com internet, aba visível e se ainda não estiverem
+     guardadas há pouco. */
+  let aquecido = false;
+  function aquecer() {
+    if (aquecido || !conta() || navigator.onLine === false) return;
+    if (B7.Auth && B7.Auth.ehCliente && B7.Auth.ehCliente()) return;   /* Portal tem as telas dele */
+    aquecido = true;
+    const fila = [
+      ['listarClientes', []], ['listarGravacoes', []], ['roteirosRecentes', [1000]],
+      ['minhasDemandasVideo', []], ['listarVideomakers', []], ['pacotesVideo', []],
+      ['fixados', []], ['gravacoesRecentes', [7]]
+    ].filter(([n]) => typeof B7.DB[n] === 'function');
+    const proximo = () => {
+      const item = fila.shift();
+      if (!item || !conta()) return;
+      if (document.hidden) { setTimeout(() => fila.unshift(item) && proximo(), 4000); return; }
+      Promise.resolve(B7.DB[item[0]].apply(B7.DB, item[1])).catch(() => {})
+        .then(() => setTimeout(proximo, 250));
+    };
+    setTimeout(proximo, 3500);
+  }
+
+  return { invalidar, limpar, aquecer, _mapa: mapa };
 })();
