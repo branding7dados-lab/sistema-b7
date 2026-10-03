@@ -627,11 +627,16 @@ B7.Video = (function () {
         card.classList.add('arrastando');
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', card.dataset.demanda);
+        /* zzj: cartão que inclina ao arrastar (js/movimento.js) */
+        card._fisica = B7.Movimento && B7.Movimento.arrastoFisico ? B7.Movimento.arrastoFisico(card, e) : null;
       };
       /* dragend sempre dispara — solto no destino certo, cancelado com
          Esc, ou solto fora de qualquer coluna: nenhum desses casos
          pode deixar classe/estado grudado na tela. */
-      card.ondragend = () => { card.classList.remove('arrastando'); arrastando = null; limpar(); };
+      card.ondragend = () => {
+        card.classList.remove('arrastando'); arrastando = null; limpar();
+        if (card._fisica) { card._fisica.fim(); card._fisica = null; }
+      };
     });
 
     cx.querySelectorAll('[data-solta]').forEach(zona => {
@@ -645,7 +650,11 @@ B7.Video = (function () {
         const d = demandas.find(x => x.id === id);
         const destino = zona.dataset.solta;
         if (!d || destino === d.editing_status) return;
-        moverCartaoVideo(d, destino);
+        /* quando o quadro redesenha com o cartão na coluna nova, ele assenta */
+        Promise.resolve(moverCartaoVideo(d, destino)).then(() => {
+          if (B7.Movimento && B7.Movimento.assentar && d.editing_status === destino)
+            B7.Movimento.assentar(document.querySelector('.vd-card[data-demanda="' + CSS.escape(id) + '"]'));
+        }).catch(() => {});
       };
     });
   }

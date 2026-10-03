@@ -195,11 +195,11 @@ B7.Topo = (function () {
 
   /* Folha no celular: o B7.UI.modal já vira bottom sheet ≤520px, prende o
      foco, fecha no Esc/fora e devolve o foco ao gatilho. */
-  function abrirFolha(titulo, html, ligar) {
+  function abrirFolha(titulo, html, ligar, aoFechar) {
     const m = B7.UI.modal('<div class="tp-folha-cab"><h3>' + esc(titulo) + '</h3>' +
       '<button type="button" class="ico" data-fecha aria-label="Fechar">' +
       '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
-      '<div class="tp-folha-corpo" role="menu" aria-label="' + esc(titulo) + '">' + html + '</div>', { classe: 'tp-folha' });
+      '<div class="tp-folha-corpo" role="menu" aria-label="' + esc(titulo) + '">' + html + '</div>', { classe: 'tp-folha', aoFechar });
     ligar(m, () => m.fechar());
     const caixa = m.querySelector('.modal');
     if (caixa) { caixa.tabIndex = -1; caixa.setAttribute('aria-label', titulo); caixa.focus({ preventScroll: true }); }
@@ -221,8 +221,17 @@ B7.Topo = (function () {
     const lista = acoesCriar();
     if (!lista.length) return;
     const html = lista.map(itemAcao).join('');
-    if (ehCelular()) return abrirFolha('Criar', html, ligarAcoes);
+    /* zzj: o "+" gira até virar "×" enquanto as opções estão abertas, e
+       elas entram em leque (uma depois da outra, --i lido pelo CSS) */
+    const leque = raiz => raiz && raiz.querySelectorAll('.tp-item').forEach((b, i) => b.style.setProperty('--i', i));
+    if (ehCelular()) {
+      gatilho.classList.add('girou');
+      const m = abrirFolha('Criar', html, ligarAcoes, () => gatilho.classList.remove('girou'));
+      leque(m);
+      return m;
+    }
     abrirMenu(gatilho, html, ligarAcoes, { classe: 'tp-menu-criar', rotulo: 'Criar', teclado });
+    leque(aberto && aberto.caixa);
   }
 
   function renderCriar() {

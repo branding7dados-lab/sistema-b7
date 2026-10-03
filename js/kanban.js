@@ -568,8 +568,13 @@ B7.Kanban = (function () {
         card.classList.add('arrastando');
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', card.dataset.demanda);   /* Firefox exige */
+        /* zzj: cartão que inclina ao arrastar (js/movimento.js) */
+        card._fisica = B7.Movimento && B7.Movimento.arrastoFisico ? B7.Movimento.arrastoFisico(card, e) : null;
       };
-      card.ondragend = () => { card.classList.remove('arrastando'); arrastando = null; limpar(); };
+      card.ondragend = () => {
+        card.classList.remove('arrastando'); arrastando = null; limpar();
+        if (card._fisica) { card._fisica.fim(); card._fisica = null; }
+      };
     });
 
     /* perto da borda do viewport, o quadro rola sozinho */
@@ -601,7 +606,10 @@ B7.Kanban = (function () {
           ? marcador.nextElementSibling.dataset.demanda : null;
         limpar();
         if (!id) return;
-        await mover(id, zona.dataset.drop, antes);
+        const feito = mover(id, zona.dataset.drop, antes);
+        /* a tela já foi redesenhada (otimista): o cartão assenta no lugar novo */
+        if (B7.Movimento && B7.Movimento.assentar) B7.Movimento.assentar(raiz.ownerDocument.querySelector('.kb-card[data-demanda="' + CSS.escape(id) + '"]'));
+        await feito;
       };
     });
   }

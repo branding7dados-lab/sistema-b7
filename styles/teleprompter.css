@@ -208,3 +208,26 @@ body.tele-aberto{overflow:hidden;}
   .tele-contagem.bate,.tele-gate svg{animation:none;}
   .tele-topo,.tele-ctrl,.tele-bt,.tele-liga button,.tele-liga button i{transition:none;}
 }
+
+/* =====================================================================
+   13. MODO FOCO (pacote zzj, 03/10): ao abrir, as luzes da sala se
+   apagam das bordas para o centro (como cinema) e só então o texto
+   surge do desfoque; o topo desce e os controles sobem. Sem transform
+   no palco (o espelho usa transform); topo/controles usam `translate`.
+   ===================================================================== */
+@property --tele-luz{syntax:'<length>';inherits:false;initial-value:-40vmax;}
+.tele{background:radial-gradient(circle at 50% 46%, rgba(0,0,0,0) var(--tele-luz), #000 calc(var(--tele-luz) + 30vmax));
+  animation:teleLuzes 1s cubic-bezier(.35,0,.25,1) backwards;}
+@keyframes teleLuzes{from{--tele-luz:120vmax}to{--tele-luz:-40vmax}}
+.tele > .tele-palco{animation:teleTexto .7s cubic-bezier(.2,.8,.25,1) .7s backwards;}
+@keyframes teleTexto{from{opacity:0;filter:blur(10px)}to{opacity:1;filter:none}}
+.tele > .tele-topo{animation:teleDesce .55s cubic-bezier(.2,.8,.25,1) .65s backwards;}
+.tele > .tele-ctrl{animation:teleSobe .55s cubic-bezier(.2,.8,.25,1) .78s backwards;}
+.tele > .tele-prog{animation:teleSurgeProg .6s ease .7s backwards;}
+@keyframes teleDesce{from{opacity:0;translate:0 -18px}to{opacity:1;translate:0 0}}
+@keyframes teleSobe{from{opacity:0;translate:0 22px}to{opacity:1;translate:0 0}}
+@keyframes teleSurgeProg{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .tele,.tele > .tele-palco,.tele > .tele-topo,.tele > .tele-ctrl,.tele > .tele-prog{animation:none;}
+  .tele{background:#000;}
+}

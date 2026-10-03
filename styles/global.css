@@ -1920,3 +1920,82 @@ html,body{overscroll-behavior-y:none;}               /* o puxar nativo do navega
   .b7-voo,.b7-festa,.b7-carimbo{display:none !important;}
   .b7-puxa.girando .bp-disco,.b7-puxa.estoura .bp-onda,.b7-puxa.estoura .bp-acesa{animation:none;}
 }
+/* =====================================================================
+   ANIMAÇÕES — rodada zzj (03/10): carregamento com brilho da marca,
+   tela vazia com vida, barra de baixo com rastro de luz, "+" que vira
+   menu, Kanban com física. (Teleprompter: styles/teleprompter.css)
+   ===================================================================== */
+/* 12. carregamento: no lugar do cinza piscando, uma onda de luz rosa
+   atravessa cada bloco (só transform num pseudo-elemento — barato) */
+.esqueleto-tela .esq,.esqueleto{position:relative;overflow:hidden;animation:none;}
+.esqueleto-tela .esq::after,.esqueleto::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--acento) 16%, transparent) 45%,
+    rgba(255,255,255,.22) 50%, color-mix(in srgb, #8F6BFF 14%, transparent) 55%, transparent 80%);
+  transform:translate3d(-110%,0,0);animation:esqOnda 1.7s cubic-bezier(.45,0,.25,1) infinite;}
+[data-theme="dark"] .esqueleto-tela .esq::after,[data-theme="dark"] .esqueleto::after{
+  background:linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--acento) 22%, transparent) 45%,
+    rgba(255,255,255,.08) 50%, color-mix(in srgb, #8F6BFF 18%, transparent) 55%, transparent 80%);}
+/* a onda desce em diagonal pela tela: cada bloco começa um tiquinho depois */
+.esqueleto-tela .esq:nth-child(2)::after{animation-delay:.08s}.esqueleto-tela .esq:nth-child(3)::after{animation-delay:.16s}
+.esqueleto-tela .esq:nth-child(4)::after{animation-delay:.24s}.esqueleto-tela .esq:nth-child(n+5)::after{animation-delay:.32s}
+.esqueleto-tela > * > *:nth-child(2) .esq::after{animation-delay:.12s}.esqueleto-tela > * > *:nth-child(3) .esq::after{animation-delay:.24s}
+.esqueleto-tela > * > *:nth-child(n+4) .esq::after{animation-delay:.36s}
+@keyframes esqOnda{0%{transform:translate3d(-110%,0,0)}70%,100%{transform:translate3d(110%,0,0)}}
+
+/* 11. tela vazia com vida: a lâmpada de marca d'água acende e apaga
+   devagar e solta partículas; o ícone flutua */
+.estado-b7 .b7-marca.fraca{animation:b7MarcaRespira 4.6s ease-in-out infinite;transform-origin:50% 60%;}
+@keyframes b7MarcaRespira{0%,100%{opacity:.06;filter:none;transform:translate3d(0,0,0) rotate(-4deg)}
+  50%{opacity:.2;filter:drop-shadow(0 0 18px rgba(226,64,156,.55));transform:translate3d(0,-6px,0) rotate(2deg)}}
+[data-theme="dark"] .estado-b7 .b7-marca.fraca{animation-name:b7MarcaRespiraEsc;}
+@keyframes b7MarcaRespiraEsc{0%,100%{opacity:.1;filter:none;transform:translate3d(0,0,0) rotate(-4deg)}
+  50%{opacity:.32;filter:drop-shadow(0 0 22px rgba(255,120,200,.7));transform:translate3d(0,-6px,0) rotate(2deg)}}
+.estado-b7::before,.estado-b7::after{content:"";position:absolute;right:60px;bottom:40px;width:5px;height:5px;border-radius:50%;pointer-events:none;
+  background:#FF8FCB;box-shadow:0 0 8px 2px rgba(226,64,156,.6);opacity:0;animation:b7Faisca 4.6s ease-out infinite;}
+.estado-b7::after{right:30px;bottom:70px;width:3px;height:3px;background:#B9A2FF;box-shadow:0 0 8px 2px rgba(124,80,220,.6);animation-delay:1.6s;}
+@keyframes b7Faisca{0%,30%{opacity:0;transform:translate3d(0,0,0)}45%{opacity:.9}100%{opacity:0;transform:translate3d(-14px,-70px,0)}}
+:is(.estado-b7,.cartao.vazio,.vazio) .ilu{animation:b7IluFlutua 3.4s ease-in-out .4s infinite;}
+@keyframes b7IluFlutua{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-5px,0)}}
+
+/* 7. barra de baixo: a luz estica no sentido da viagem e deixa rastro;
+   o ícone escolhido dá um pulinho (js/nav.js → moverLuz) */
+@media (max-width:760px){
+  .ni-luz.viaja{animation:nlEstica .48s cubic-bezier(.3,.7,.3,1);}
+  @keyframes nlEstica{0%{scale:1 1}35%{scale:1.5 .8}70%{scale:.94 1.06}100%{scale:1 1}}
+  .ni-luz::after{content:"";position:absolute;top:50%;right:50%;width:70px;height:6px;margin-top:-3px;border-radius:6px;pointer-events:none;
+    background:linear-gradient(to left, color-mix(in srgb, var(--acento) 70%, transparent), transparent);opacity:0;transform-origin:100% 50%;}
+  .ni-luz[data-dir="-1"]::after{right:auto;left:50%;transform-origin:0 50%;
+    background:linear-gradient(to right, color-mix(in srgb, var(--acento) 70%, transparent), transparent);}
+  .ni-luz.viaja::after{animation:nlRastro .5s ease-out;}
+  @keyframes nlRastro{0%{opacity:0;transform:scaleX(.2)}25%{opacity:.85;transform:scaleX(1)}100%{opacity:0;transform:scaleX(.4)}}
+  .ni-ic svg.pula{animation:niPula .6s cubic-bezier(.3,1.6,.5,1);}
+  @keyframes niPula{0%{transform:none}30%{transform:translate3d(0,-7px,0) scale(1.18) rotate(-6deg)}60%{transform:translate3d(0,1px,0) scale(.96)}100%{transform:none}}
+}
+
+/* 8. "+" que vira "×" e opções em leque */
+.tp-criar > svg:first-child{transition:transform .45s cubic-bezier(.3,1.5,.5,1);}
+.tp-criar.girou > svg:first-child,.tp-criar[aria-expanded="true"] > svg:first-child{transform:rotate(135deg);}
+.tp-criar.girou,.tp-criar[aria-expanded="true"]{box-shadow:0 0 0 4px var(--acento-suave);}
+:is(.tp-menu-criar,.tp-folha) .tp-item{animation:tpLeque .42s cubic-bezier(.2,.9,.3,1.15) backwards;animation-delay:calc(var(--i, 0) * 45ms + 40ms);}
+:is(.tp-menu-criar,.tp-folha) .tp-item .tp-item-ic{animation:tpIcone .5s cubic-bezier(.3,1.6,.5,1) backwards;animation-delay:calc(var(--i, 0) * 45ms + 120ms);}
+@keyframes tpLeque{from{opacity:0;transform:translate3d(0,14px,0) scale(.92) rotate(-3deg)}to{opacity:1;transform:none}}
+@keyframes tpIcone{from{transform:scale(.3) rotate(-30deg)}to{transform:none}}
+
+/* 10. Kanban com física: o cartão arrastado (cópia) inclina e flutua;
+   o marcador de posição abre espaço; ao soltar, o cartão assenta */
+.b7-arrasto{position:fixed;left:0;top:0;z-index:800;pointer-events:none;margin:0;
+  box-shadow:0 26px 50px -18px rgba(30,10,60,.55), 0 0 0 1px color-mix(in srgb, var(--acento) 30%, transparent);
+  border-radius:14px;transition:none;will-change:transform;}
+.kb-marcador{animation:kbAbre .22s cubic-bezier(.2,.8,.25,1);}
+@keyframes kbAbre{from{height:0;opacity:0}to{height:3px;opacity:1}}
+.kb-lista.sobre,[data-solta].sobre{transition:background-color .2s ease, box-shadow .2s ease;}
+.b7-assenta{animation:b7Assenta .7s cubic-bezier(.3,1.5,.5,1);}
+@keyframes b7Assenta{0%{transform:scale(1.07) rotate(2deg);box-shadow:0 18px 40px -16px rgba(30,10,60,.5)}
+  45%{transform:scale(.97) rotate(-1deg)}100%{transform:none;box-shadow:none}}
+
+@media (prefers-reduced-motion:reduce){
+  .esqueleto-tela .esq::after,.esqueleto::after,.estado-b7 .b7-marca.fraca,.estado-b7::before,.estado-b7::after,
+  :is(.estado-b7,.cartao.vazio,.vazio) .ilu,.ni-luz.viaja,.ni-luz.viaja::after,.ni-ic svg.pula,
+  :is(.tp-menu-criar,.tp-folha) .tp-item,:is(.tp-menu-criar,.tp-folha) .tp-item .tp-item-ic,.kb-marcador,.b7-assenta{animation:none !important;}
+  .tp-criar > svg:first-child{transition:none;}
+}

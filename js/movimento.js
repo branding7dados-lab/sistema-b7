@@ -348,5 +348,54 @@ window.B7 = window.B7 || {};
   document.addEventListener('touchend', fim, { passive: true });
   document.addEventListener('touchcancel', fim, { passive: true });
 
-  B7.Movimento = { soltar, voarAbrindo: info => voarAbrindo(info) };
+  /* ===================================================================
+     4. KANBAN COM FÍSICA (zzj)
+     No lugar da "foto" padrão do navegador ao arrastar, um cartão de
+     verdade segue o cursor e INCLINA conforme a velocidade de lado (como
+     segurar um papel), voltando a ficar reto quando a mão para. Ao soltar,
+     o cartão no lugar novo "assenta" com mola. Só apresentação: o arrastar
+     e o mover continuam sendo os de kanban.js / video.js.
+     =================================================================== */
+  const IMG_VAZIA = new Image();
+  IMG_VAZIA.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  function arrastoFisico(card, e) {
+    if (reduz() || !e || !e.dataTransfer || !e.dataTransfer.setDragImage) return null;
+    const r = card.getBoundingClientRect();
+    const f = card.cloneNode(true);
+    f.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+    f.removeAttribute('id');
+    f.classList.add('b7-arrasto');
+    f.classList.remove('arrastando');
+    Object.assign(f.style, { width: r.width + 'px', height: r.height + 'px' });
+    try { e.dataTransfer.setDragImage(IMG_VAZIA, 0, 0); } catch (er) { return null; }
+    const offX = e.clientX - r.left, offY = e.clientY - r.top;
+    let ultX = e.clientX, rot = 0, x = r.left, y = r.top;
+    const pinta = () => { f.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + rot.toFixed(2) + 'deg) scale(1.04)'; };
+    pinta();
+    document.body.appendChild(f);
+    const segue = ev => {
+      if (!ev.clientX && !ev.clientY) return;             /* evento sem coordenada (fim do arrasto) */
+      const vx = ev.clientX - ultX; ultX = ev.clientX;
+      rot += (Math.max(-14, Math.min(14, vx * 1.5)) - rot) * .3;
+      x = ev.clientX - offX; y = ev.clientY - offY;
+      pinta();
+    };
+    document.addEventListener('dragover', segue, true);
+    return {
+      fim() {
+        document.removeEventListener('dragover', segue, true);
+        const a = f.animate([{ opacity: 1 }, { opacity: 0, transform: f.style.transform.replace(/scale\([^)]*\)/, 'scale(.92)') }],
+          { duration: 180, easing: 'ease-out', fill: 'forwards' });
+        a.onfinish = () => f.remove();
+        setTimeout(() => f.remove(), 500);
+      }
+    };
+  }
+  function assentar(el) {
+    if (!el || reduz()) return;
+    el.classList.remove('b7-assenta'); void el.offsetWidth; el.classList.add('b7-assenta');
+    setTimeout(() => el.classList.remove('b7-assenta'), 750);
+  }
+
+  B7.Movimento = { soltar, voarAbrindo: info => voarAbrindo(info), arrastoFisico, assentar };
 })();

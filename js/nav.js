@@ -479,6 +479,7 @@ B7.Nav = (function () {
   /* A luz do item ativo é UMA pílula que desliza de um item para o outro
      (só transform). Primeira vez, sem transição: nasce no lugar. */
   let luzPosta = false;
+  let luzX = null;      /* última posição da luz (para saber o sentido da viagem) */
   function moverLuz(barra) {
     const luz = barra.querySelector('.ni-luz'), on = barra.querySelector('[data-inf].on .ni-ic');
     if (!luz) return;
@@ -492,6 +493,17 @@ B7.Nav = (function () {
     const w = luz.offsetWidth || 52, h = luz.offsetHeight || 30;
     const x = rl.left - rb.left + rl.width / 2 - w / 2;
     const y = rl.top - rb.top + on.offsetTop + on.offsetHeight / 2 - h / 2;
+    /* zzj: viajando entre itens, a luz estica no sentido do movimento e
+       deixa um rastro; o ícone que recebe dá um pulinho */
+    const xAnt = luzX;
+    luzX = Math.round(x);
+    if (luzPosta && xAnt != null && Math.abs(luzX - xAnt) > 4 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      luz.dataset.dir = luzX > xAnt ? '1' : '-1';
+      luz.classList.remove('viaja'); void luz.offsetWidth; luz.classList.add('viaja');
+      clearTimeout(luz._viaja); luz._viaja = setTimeout(() => luz.classList.remove('viaja'), 600);
+      const svg = on.querySelector('svg');
+      if (svg) { svg.classList.remove('pula'); void svg.offsetWidth; svg.classList.add('pula'); setTimeout(() => svg.classList.remove('pula'), 650); }
+    }
     luz.style.transform = 'translate3d(' + Math.round(x) + 'px,' + Math.round(y - 8) + 'px,0)';
     barra.classList.add('com-luz');
     if (!luzPosta) { luz.offsetWidth; requestAnimationFrame(() => barra.classList.remove('sem-trans')); luzPosta = true; }
