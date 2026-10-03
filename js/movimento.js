@@ -121,7 +121,7 @@ window.B7 = window.B7 || {};
     const pronto = () => {
       const pn = painel();
       const c = pn && pn.querySelector(':scope > .conteudo');
-      return (fotoAtual || c && !c.querySelector(':scope > .esqueleto-tela')) && performance.now() - t0 > DUR - 60;
+      return c && !c.querySelector(':scope > .esqueleto-tela') && performance.now() - t0 > DUR - 60;
     };
     const sair = () => {
       const c = painel() && painel().querySelector(':scope > .conteudo');
@@ -195,19 +195,21 @@ window.B7 = window.B7 || {};
     fotos.set(hash, { html: p.innerHTML, cls: p.className, rolagem: p.scrollTop, quando: Date.now() });
     if (fotos.size > 24) fotos.delete(fotos.keys().next().value);
   }
+  /* enquanto a foto está na tela, a tela de verdade monta por baixo SEM as
+     animações de entrada (senão elas rodam escondidas e "repetem" quando a
+     foto sai: era o desfoca-foca-desfoca do vídeo) */
+  const semEntrada = liga => { const p = painel(); if (p) p.classList.toggle('b7-sem-entrada', liga); };
   function tirarFoto(rapido) {
     const f = fotoAtual; fotoAtual = null;
     if (!f) return;
     clearTimeout(f.limite);
+    setTimeout(() => { if (!fotoAtual) semEntrada(false); }, 400);
     if (rapido || !f.el.animate) { f.el.remove(); return; }
     const a = f.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease-out', fill: 'forwards' });
     a.onfinish = () => f.el.remove();
   }
-  function mostrarFoto(hash, antigo) {
-    const foto = fotos.get(hash), p = painel();
-    if (!foto || !p || Date.now() - foto.quando > FOTO_VALE) return null;
-    tirarFoto(true);
-    const r = p.getBoundingClientRect(), cs = getComputedStyle(p);
+  function montarFoto(foto) {
+    const p = painel(), r = p.getBoundingClientRect(), cs = getComputedStyle(p);
     const el = document.createElement('div');
     el.className = foto.cls + ' b7-foto';
     el.setAttribute('aria-hidden', 'true');
@@ -218,6 +220,14 @@ window.B7 = window.B7 || {};
     el.querySelectorAll('.entra').forEach(n => n.classList.remove('entra'));
     document.body.appendChild(el);
     el.scrollTop = foto.rolagem;
+    return el;
+  }
+  function mostrarFoto(hash, antigo) {
+    const foto = fotos.get(hash), p = painel();
+    if (!foto || !p || Date.now() - foto.quando > FOTO_VALE) return null;
+    tirarFoto(true);
+    const el = montarFoto(foto);
+    semEntrada(true);
     const f = { el, hash, rolagem: foto.rolagem, antigo };
     fotoAtual = f;
     f.limite = setTimeout(() => tirarFoto(false), 2500);
@@ -241,13 +251,43 @@ window.B7 = window.B7 || {};
   }
   B7.fotoDaTela = { guardar: guardarFoto, esquecer: h => h ? fotos.delete(h) : fotos.clear() };
 
+  /* abrir uma tela JÁ VISTA a partir do cartão (zzu): nada de fantasma
+     por cima — a própria tela de destino (a foto dela) se abre de dentro
+     do retângulo do cartão, como uma janela expandindo: recorte que
+     cresce do cartão até a tela inteira, com cantos arredondando */
+  function abrirNaFoto(f, info) {
+    const el = f.el, R = el.getBoundingClientRect(), r = info.r;
+    el.scrollTop = 0; f.rolagem = 0;          /* abrir de novo começa do alto */
+    const ins = [Math.max(0, r.top - R.top), Math.max(0, R.right - r.right), Math.max(0, R.bottom - r.bottom), Math.max(0, r.left - R.left)];
+    const de = 'inset(' + ins.map(v => v.toFixed(0) + 'px').join(' ') + ' round ' + info.raio + 'px)';
+    const ox = (r.left + r.width / 2 - R.left) + 'px', oy = (r.top + r.height / 2 - R.top) + 'px';
+    el.style.transformOrigin = ox + ' ' + oy;
+    /* por baixo, a tela que está saindo (a lista), parada e recuando um
+       pouco — o roteador já a trocou por esqueleto, então ela vem da foto */
+    const daLista = fotos.get(info.de);
+    if (daLista) {
+      const baixo = montarFoto(daLista);
+      baixo.style.zIndex = '53';
+      baixo.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(.96)', opacity: .5 }],
+        { duration: 400, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' }).onfinish = () => baixo.remove();
+      setTimeout(() => baixo.remove(), 900);
+    }
+    el.animate([{ clipPath: de, transform: 'scale(.985)', boxShadow: '0 30px 80px -30px rgba(40,10,70,.55)' },
+                { clipPath: 'inset(0px 0px 0px 0px round 0px)', transform: 'none', boxShadow: '0 0 0 0 rgba(40,10,70,0)' }],
+      { duration: 420, easing: 'cubic-bezier(.32,.72,0,1)' });
+    /* o cartão de origem some no mesmo instante: é ele que "vira" a tela */
+    info.el.classList.add('b7-voo-origem');
+    setTimeout(() => { if (info.el.isConnected) info.el.classList.remove('b7-voo-origem'); }, 600);
+    ultimoVoo = { de: info.de, chave: info.chave, quando: Date.now() };
+  }
+
   /* volta COM foto: a lista já está ali na hora. A câmera recua (de leve
      maior e desfocada para o normal) e o cartão de origem pousa na foto;
      a tela de verdade assume por baixo sem ninguém perceber */
   function voltarNaFoto(f, voo) {
     const el = voo.chave ? f.el.querySelector(voo.chave) : null;
-    f.el.animate([{ transform: 'scale(1.035)', opacity: .5, filter: 'blur(3px)' }, { transform: 'none', opacity: 1, filter: 'none' }],
-      { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    f.el.animate([{ transform: 'scale(1.03)' }, { transform: 'none' }],
+      { duration: 320, easing: 'cubic-bezier(.32,.72,0,1)' });
     if (!el) return;
     const alvo = areaAlvo(), r0 = el.getBoundingClientRect();
     if (r0.top < alvo.top || r0.bottom > innerHeight - 70) { f.el.scrollTop += r0.top - alvo.top - 80; f.rolagem = f.el.scrollTop; }
@@ -282,9 +322,9 @@ window.B7 = window.B7 || {};
     if (reduz()) { pendente = null; mostrarFoto(agora, antigo); return; }
     if (pendente && performance.now() - pendente.t < 450) {
       const info = pendente; pendente = null;
-      /* detalhe já visitado: a foto fica por baixo do cartão que cresce */
-      mostrarFoto(agora, antigo);
-      voarAbrindo(info);
+      /* detalhe já visitado: ele mesmo se abre do cartão; senão, o fantasma */
+      const fa = mostrarFoto(agora, antigo);
+      if (fa) abrirNaFoto(fa, info); else voarAbrindo(info);
       return;
     }
     pendente = null;

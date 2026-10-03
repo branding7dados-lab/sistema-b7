@@ -32,3 +32,23 @@ Chromium headless, 390×844, lista de 12 gravações simulada, rolada até 300 p
   - sem erros.
 
 **Não testado:** celular físico, dados reais e telas com gráfico em canvas (na foto, um canvas sai em branco até a tela real assumir).
+
+---
+
+# Ajuste zzu (03/10): abrir de dentro do cartão, sem repetição
+
+Vídeo novo (Gravações → gravação → voltar → abrir de novo) + "Ainda tá meio estranho…". Com a foto no ar, sobravam dois problemas:
+1. **Abrir algo já visto:** o detalhe já aparecia na hora, mas o fantasma do cartão voava **por cima** dele. Ficava um cartão flutuando no meio do detalhe.
+2. **Voltar:** a lista desfocava, ficava nítida e desfocava de novo. A animação de entrada da tela de verdade rodava escondida sob a foto e reaparecia quando a foto saía.
+
+O que mudou:
+- **Tela já vista abre de dentro do cartão** (`abrirNaFoto`): a própria tela de destino se recorta a partir do retângulo do cartão e cresce até a tela inteira (`clip-path`, 420 ms, curva de mola). Por baixo, a lista que está saindo recua de leve. Nesse caso não há fantasma, e o detalhe reaberto começa do alto.
+  - A primeira visita continua com o cartão que cresce e o brilho (zzs).
+- **Sem repetição:** enquanto a foto está na tela, o painel fica com `b7-sem-entrada` (animações de entrada desligadas) até 400 ms depois de a foto sair.
+- **Voltar sem desfoque:** só um assentar de escala (103% → 100%) e o pouso do cartão. O desfoque em tela cheia também pesava no celular.
+
+Testes: Chromium headless, quadros congelados (`getAnimations` + `currentTime`):
+- **Abrir a 40 ms:** detalhe recortado na faixa do cartão, com a lista atrás;
+- **Abrir a 120–380 ms:** a tela inteira assume;
+- **Voltar a 40, 160 e 320 ms:** lista assentando e cartão "Gravação 3" erguido com sombra, pousando;
+- sem erros.

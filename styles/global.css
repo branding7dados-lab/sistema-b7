@@ -1918,6 +1918,7 @@ body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaF
 .b7-foto{position:fixed !important;z-index:54;pointer-events:none;overflow:hidden !important;margin:0 !important;
   background:var(--fundo);box-sizing:border-box;contain:strict;}
 .b7-foto *,.b7-foto *::before,.b7-foto *::after{animation:none !important;transition:none !important;}
+#painel-dashboard.b7-sem-entrada *,#painel-dashboard.b7-sem-entrada *::before,#painel-dashboard.b7-sem-entrada *::after{animation:none !important;}
 .b7-voo-pouso{animation:b7Pouso .7s cubic-bezier(.2,.8,.25,1);}
 @keyframes b7Pouso{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--acento) 55%, transparent)}
   100%{box-shadow:0 0 0 14px color-mix(in srgb, var(--acento) 0%, transparent)}}
