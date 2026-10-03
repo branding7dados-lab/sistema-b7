@@ -97,25 +97,19 @@ B7.Semana = (function () {
     try { lista = await B7.DB.listarStatus({}); }
     catch (e) { return B7.Dashboard.erroConteudo(e); }
 
-    const termo = filtro.trim().toLowerCase();
-    const filtradas = termo
-      ? lista.filter(r => (r.cliente_nome || '').toLowerCase().includes(termo) ||
-          D().periodoTexto(r.semana_inicio, r.semana_fim).toLowerCase().includes(termo))
-      : lista;
-
-    painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="trilha"><a href="#/">Central B7</a><span>/</span><b>Status semanal</b></div>' +
-      '<div class="cab-conteudo"><div><h1>Status semanal</h1>' +
+    /* zzf: a busca filtra no lugar (antes recarregava a tela inteira a
+       cada letra, com esqueleto e foco devolvido à força) */
+    painel().innerHTML = '<div class="conteudo entra ss-tela">' +
+      '<div class="trilha ss-so-largo"><a href="#/">Central B7</a><span>/</span><b>Status semanal</b></div>' +
+      '<div class="cab-conteudo ss-cab"><div><h1>Status semanal</h1>' +
       '<p>O acompanhamento de sete dias que vai para o cliente.</p></div>' +
-      '<button class="b pri" id="novo-status">+ Novo status</button></div>' +
+      '<button class="b pri ss-novo" id="novo-status">+ Novo<span class="ss-so-largo">&nbsp;status</span></button></div>' +
 
       (lista.length
-        ? '<div class="busca-linhas"><input class="campo" id="busca-status" ' +
+        ? '<div class="busca-linhas ss-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+          '<input class="campo" id="busca-status" type="search" aria-label="Buscar por cliente ou período" ' +
           'placeholder="Buscar por cliente ou período…" value="' + esc(filtro) + '"></div>' +
-          (filtradas.length
-            ? (termo ? '<div class="lista-status">' + filtradas.map(cardStatus).join('') + '</div>'
-                     : gruposHTML(filtradas))
-            : '<div class="estado-b7"><b>Nada encontrado para “' + esc(filtro) + '”.</b></div>')
+          '<div id="ss-resultado"></div>'
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
           '<b>Nenhum status semanal ainda.</b>' +
           '<p>Monte a semana de um cliente a partir da linha editorial e mande o card ' +
@@ -128,35 +122,46 @@ B7.Semana = (function () {
       const b = document.getElementById(id);
       if (b) b.onclick = () => modalNovo(null);
     });
-    painel().querySelectorAll('[data-abrir-status]').forEach(el => el.onclick = () => {
-      location.hash = '#/semana/' + el.dataset.abrirStatus;
+    const pintar = () => {
+      const cx = document.getElementById('ss-resultado'); if (!cx) return;
+      const termo = filtro.trim().toLowerCase();
+      const filtradas = termo
+        ? lista.filter(r => (r.cliente_nome || '').toLowerCase().includes(termo) ||
+            D().periodoTexto(r.semana_inicio, r.semana_fim).toLowerCase().includes(termo))
+        : lista;
+      cx.innerHTML = filtradas.length
+        ? (termo ? '<div class="lista-status ss-plana">' + filtradas.map(cardStatus).join('') + '</div>' : gruposHTML(filtradas))
+        : '<div class="estado-b7 ss-nada"><b>Nada encontrado para “' + esc(filtro) + '”.</b></div>';
+      cx.classList.remove('ss-troca'); void cx.offsetWidth; cx.classList.add('ss-troca');
+      ligarLista(cx);
+    };
+    const busca = document.getElementById('busca-status');
+    if (busca) busca.oninput = B7.UI.debounce(() => { filtro = busca.value; pintar(); }, 160);
+    pintar();
+  }
+
+  function ligarLista(raiz) {
+    raiz.querySelectorAll('[data-abrir-status]').forEach(el => {
+      el.onclick = () => { location.hash = '#/semana/' + el.dataset.abrirStatus; };
+      el.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); el.click(); } };
     });
-    painel().querySelectorAll('[data-quick-status]').forEach(el => el.onclick = e => {
+    raiz.querySelectorAll('[data-quick-status]').forEach(el => el.onclick = e => {
       e.stopPropagation();
       quickView(el.dataset.quickStatus);
     });
-    painel().querySelectorAll('[data-grupo-mes]').forEach(det => det.addEventListener('toggle', () => {
+    raiz.querySelectorAll('[data-grupo-mes]').forEach(det => det.addEventListener('toggle', () => {
       const k = det.dataset.grupoMes;
       mesesFechados = det.open ? mesesFechados.filter(x => x !== k) : [...new Set([...mesesFechados, k])];
     }));
-    painel().querySelectorAll('[data-grupo-semana]').forEach(det => det.addEventListener('toggle', () => {
+    raiz.querySelectorAll('[data-grupo-semana]').forEach(det => det.addEventListener('toggle', () => {
       const k = det.dataset.grupoSemana;
       semanasFechadas = det.open ? semanasFechadas.filter(x => x !== k) : [...new Set([...semanasFechadas, k])];
     }));
-    painel().querySelectorAll('[data-exportar-semana]').forEach(b => b.onclick = e => {
+    raiz.querySelectorAll('[data-exportar-semana]').forEach(b => b.onclick = e => {
       e.preventDefault();     /* está dentro do <summary>: sem isso, o clique também abre/fecha o grupo */
       e.stopPropagation();
       exportarSemanaEmLote(b.dataset.exportarSemana, b);
     });
-    const busca = document.getElementById('busca-status');
-    if (busca) busca.oninput = B7.UI.debounce(() => {
-      filtro = busca.value;
-      const pos = busca.selectionStart;
-      abrirLista().then(() => {
-        const novo = document.getElementById('busca-status');
-        if (novo) { novo.focus(); novo.setSelectionRange(pos, pos); }
-      });
-    }, 260);
   }
 
   /* Agrupa em Map<mês, Map<semana, linhas[]>> preservando a ordem que
@@ -184,17 +189,27 @@ B7.Semana = (function () {
         ' data-grupo-mes="' + esc(chaveMes) + '">' +
         '<summary><b>' + esc(mes.rotulo) + '</b>' +
           '<span class="grupo-cont">' + totalMes + ' status</span></summary>' +
-        '<div class="grupo-mes-corpo">' + [...mes.semanas.entries()].map(([chaveSemana, sem]) =>
-          '<details class="grupo-semana"' + (semanasFechadas.includes(chaveSemana) ? '' : ' open') +
+        '<div class="grupo-mes-corpo">' + [...mes.semanas.entries()].map(([chaveSemana, sem]) => {
+          /* andamento da semana: quantos rascunho / prontos / enviados */
+          const n = { Rascunho: 0, 'Pronto para envio': 0, Enviado: 0 };
+          sem.linhas.forEach(r => { const k = r.situacao in n ? r.situacao : 'Rascunho'; n[k]++; });
+          const tot = sem.linhas.length, pct = k => (n[k] / tot * 100).toFixed(1) + '%';
+          const resumo = [n.Enviado ? n.Enviado + ' enviado' + (n.Enviado === 1 ? '' : 's') : '',
+            n['Pronto para envio'] ? n['Pronto para envio'] + ' pronto' + (n['Pronto para envio'] === 1 ? '' : 's') : '',
+            n.Rascunho ? n.Rascunho + ' em rascunho' : ''].filter(Boolean).join(' · ');
+          return '<details class="grupo-semana"' + (semanasFechadas.includes(chaveSemana) ? '' : ' open') +
             ' data-grupo-semana="' + esc(chaveSemana) + '">' +
-            '<summary><b>' + esc(D().periodoTexto(sem.inicio, sem.fim)) + '</b>' +
-              '<span class="grupo-cont">' + sem.linhas.length + ' cliente' + (sem.linhas.length === 1 ? '' : 's') + '</span>' +
-              '<button class="b p" data-exportar-semana="' + esc(chaveSemana) + '" ' +
-                'title="Baixar, num só .zip, o status semanal de todos os clientes desta semana">' +
-                'Exportar semana</button></summary>' +
+            '<summary><span class="gs-tx"><b>' + esc(D().periodoTexto(sem.inicio, sem.fim)) + '</b>' +
+              '<span class="grupo-cont">' + tot + ' cliente' + (tot === 1 ? '' : 's') + (resumo ? ' · ' + esc(resumo) : '') + '</span></span>' +
+              '<button class="b p gs-exportar" data-exportar-semana="' + esc(chaveSemana) + '" ' +
+                'title="Baixar, num só .zip, o status semanal de todos os clientes desta semana" aria-label="Exportar semana (.zip)">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5"/><path d="M4.5 16.5v2.5A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5"/></svg>' +
+                '<span>Exportar</span></button>' +
+              '<span class="gs-barra" aria-hidden="true"><i class="env" style="width:' + pct('Enviado') + '"></i>' +
+                '<i class="pro" style="width:' + pct('Pronto para envio') + '"></i></span></summary>' +
             '<div class="lista-status">' + sem.linhas.map(cardStatus).join('') + '</div>' +
-          '</details>'
-        ).join('') + '</div>' +
+          '</details>';
+        }).join('') + '</div>' +
       '</details>';
     }).join('') + '</div>';
   }
@@ -202,20 +217,24 @@ B7.Semana = (function () {
   function cardStatus(r) {
     const classe = { 'Rascunho': 'neutro', 'Pronto para envio': 'pronto',
                      'Enviado': 'enviado' }[r.situacao] || 'neutro';
-    return '<div class="item-status" data-abrir-status="' + esc(r.id) + '">' +
+    /* zzf: linha compacta — nome, "N demandas · quando", situação; a
+       prévia é um botão-ícone (olho) e a linha inteira abre o status */
+    return '<div class="item-status is-' + classe + '" data-abrir-status="' + esc(r.id) + '" role="link" tabindex="0" ' +
+        'aria-label="Abrir status de ' + esc(r.cliente_nome) + '">' +
       B7.UI.avatarCliente(r.cliente_nome, r.cliente_logo_url, 'p') +
       '<div class="is-tx">' +
         '<b>' + esc(r.cliente_nome) + '</b>' +
         '<span class="is-per">' + esc(D().periodoTexto(r.semana_inicio, r.semana_fim)) + '</span>' +
+        '<span class="is-meta">' +
+          '<span>' + r.total_itens + ' demanda' + (r.total_itens === 1 ? '' : 's') + '</span>' +
+          (r.updated_at ? '<span>· ' + esc(B7.UI.quando(r.updated_at)) + '</span>' : '') +
+          (r.total_atencao ? '<span class="is-atencao">' + r.total_atencao + ' aguardando</span>' : '') +
+        '</span>' +
       '</div>' +
-      '<div class="is-meta">' +
-        '<span>' + r.total_itens + ' demanda' + (r.total_itens === 1 ? '' : 's') + '</span>' +
-        (r.updated_at ? '<span>· ' + esc(B7.UI.quando(r.updated_at)) + '</span>' : '') +
-      '</div>' +
-      (r.total_atencao ? '<span class="is-atencao">' + r.total_atencao + ' aguardando</span>' : '') +
       '<span class="is-situacao ' + classe + '">' + esc(r.situacao || 'Rascunho') + '</span>' +
-      '<button class="b p" data-quick-status="' + esc(r.id) + '">Prévia</button>' +
-      '<span class="is-seta">Abrir →</span>' +
+      '<button class="is-previa" data-quick-status="' + esc(r.id) + '" aria-label="Prévia do status de ' + esc(r.cliente_nome) + '" title="Prévia">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
+      '<svg class="is-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>' +
     '</div>';
   }
 
@@ -245,14 +264,15 @@ B7.Semana = (function () {
   async function exportarSemanaEmLote(chave, botao) {
     const linhas = semanasIndex.get(chave) || [];
     if (!linhas.length) return;
-    const rot = botao.textContent;
+    const rot = botao.innerHTML;          /* ícone + texto (zzf) */
+    const rotulo = botao.querySelector('span') || botao;
     botao.disabled = true;
     try {
       const entradas = [];
       const usados = new Set();
       for (let i = 0; i < linhas.length; i++) {
         const r = linhas[i];
-        botao.textContent = 'Gerando ' + (i + 1) + '/' + linhas.length + '…';
+        rotulo.textContent = 'Gerando ' + (i + 1) + '/' + linhas.length + '…';
         try {
           const ctx = await B7.BaixarSemana.reunir(r.id);
           const blob = await B7.BaixarSemana.gerarPNGBlob(ctx, opcoesExportPadrao(r));
@@ -283,7 +303,7 @@ B7.Semana = (function () {
       console.error(e);
       B7.UI.toast('Não foi possível preparar o arquivo.', { tipo: 'erro' });
     } finally {
-      botao.disabled = false; botao.textContent = rot;
+      botao.disabled = false; botao.innerHTML = rot;
     }
   }
 
