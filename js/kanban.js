@@ -65,6 +65,7 @@ B7.Kanban = (function () {
   }
 
   const ehMovel = () => window.matchMedia('(max-width: 760px)').matches;
+  let filtrosAbertos = false, dirMovel = 0;   /* zzx: gaveta de filtros; de que lado a coluna nova entra */
 
   /* =================================================================
      TELA
@@ -99,10 +100,12 @@ B7.Kanban = (function () {
   }
 
   function desenhar() {
+    /* zzx: no celular, título + contador e "+ Nova" em pílula; a frase de
+       apoio fica só no computador */
     painel().innerHTML = '<div class="conteudo entra kanban-tela">' +
-      '<div class="cab-conteudo"><div><h1>Produção</h1>' +
-      '<p>As demandas da equipe. O cliente não vê esta área.</p></div>' +
-      '<button class="b pri" id="kb-nova">+ Nova demanda</button></div>' +
+      '<div class="cab-conteudo kb-cab"><div><h1>Produção <span class="conta" id="kb-conta"></span></h1>' +
+      '<p class="kb-intro">As demandas da equipe. O cliente não vê esta área.</p></div>' +
+      '<button class="b pri kb-nova" id="kb-nova">+ Nova<span class="kb-so-largo">&nbsp;demanda</span></button></div>' +
       '<div id="kb-barra"></div>' +
       '<div id="kb-area"></div>' +
     '</div>';
@@ -128,10 +131,17 @@ B7.Kanban = (function () {
         esc(r) + '</option>').join('') + '</select>';
 
     const concluidas = dados.filter(d => d.coluna === 'concluida').length;
+    const nSel = [F.cliente, F.responsavel, F.tipo, F.prazo].filter(Boolean).length;
+    /* zzx: busca + "Filtros" no celular (os quatro seletores abrem
+       deslizando); no computador seguem todos em linha */
     cx.innerHTML = '<div class="kb-barra">' +
-      '<div class="kb-busca-cx"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
-        '<input class="campo fina kb-busca" id="kb-busca" placeholder="Buscar demanda ou cliente…" ' +
+      '<div class="gl-linha-busca kb-linha-busca"><div class="kb-busca-cx"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
+        '<input class="campo fina kb-busca" id="kb-busca" type="search" placeholder="Buscar demanda ou cliente…" ' +
         'value="' + esc(F.busca) + '" aria-label="Buscar"></div>' +
+        '<button type="button" class="gl-bt-filtros' + (nSel ? ' on' : '') + '" id="kb-abre" aria-expanded="' + (filtrosAbertos ? 'true' : 'false') + '" aria-controls="kb-sels">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
+          '<span>Filtros</span><b' + (nSel ? '' : ' hidden') + '>' + nSel + '</b></button></div>' +
+      '<div class="gl-sels kb-sels' + (filtrosAbertos ? ' aberto' : '') + '" id="kb-sels">' +
       opc('cliente', F.cliente, [['', 'Cliente']].concat(clientes.map(c => [c.id, c.nome])), 'Cliente') +
       opc('responsavel', F.responsavel, [['', 'Responsável'], ['sem', 'Sem responsável']]
         .concat(equipe.map(p => [p.id, p.nome])), 'Responsável') +
@@ -140,6 +150,7 @@ B7.Kanban = (function () {
         .concat(TIPOS.filter(t => t[0] !== 'producao').map(([v, r]) => ['tipo:' + v, r])), 'Tipo') +
       opc('prazo', F.prazo, [['', 'Prazo'], ['atrasadas', 'Atrasadas'], ['hoje', 'Para hoje'],
         ['semana', 'Próximos 7 dias'], ['sem', 'Sem prazo']], 'Prazo') +
+      '</div>' +
       (filtrosAtivos()
         ? '<button class="b fina contorno kb-limpar" id="kb-limpar">Limpar filtros</button>' : '') +
       '<div class="kb-espaco"></div>' +
@@ -153,6 +164,11 @@ B7.Kanban = (function () {
       '</div>' +
     '</div>';
 
+    const abre = cx.querySelector('#kb-abre'), sels = cx.querySelector('#kb-sels');
+    if (abre && sels) abre.onclick = () => {
+      filtrosAbertos = !sels.classList.contains('aberto');
+      sels.classList.toggle('aberto', filtrosAbertos); abre.setAttribute('aria-expanded', filtrosAbertos ? 'true' : 'false');
+    };
     const busca = cx.querySelector('#kb-busca');
     let t;
     busca.oninput = () => {
@@ -239,6 +255,8 @@ B7.Kanban = (function () {
     const vis = filtrar(dados);
     const total = painel().querySelector('#kb-total');
     if (total) total.textContent = vis.length + (vis.length === 1 ? ' demanda' : ' demandas');
+    const conta = painel().querySelector('#kb-conta');
+    if (conta) conta.textContent = vis.length;
 
     /* guarda a rolagem horizontal para um redesenho não "pular" o quadro */
     const rolAntes = area.querySelector('#kb-rol');
@@ -268,7 +286,7 @@ B7.Kanban = (function () {
         '<header><div><b>' + esc(rotulo) + '</b><small>' + esc(ajuda) + '</small></div>' +
         '<span class="kb-cont">' + itens.length + '</span></header>' +
         '<div class="kb-lista" data-drop="' + id + '">' +
-          itens.map(cartao).join('') +
+          itens.map((d, i) => cartao(d).replace('<article class="kb-card', '<article style="--i:' + Math.min(i, 8) + '" class="kb-card')).join('') +
           (itens.length ? '' : '<div class="kb-vazio">nada aqui</div>') +
         '</div>' +
       '</section>';
@@ -284,7 +302,8 @@ B7.Kanban = (function () {
               '" aria-selected="' + (F.colunaMovel === id) + '">' + esc(rotulo) + '<b>' + n + '</b></button>';
           }).join('') +
         '</div>' +
-        coluna(cols.find(c => c[0] === F.colunaMovel)) +
+        coluna(cols.find(c => c[0] === F.colunaMovel)).replace('<section class="kb-col"',
+          '<section class="kb-col' + (dirMovel > 0 ? ' vem-dir' : dirMovel < 0 ? ' vem-esq' : '') + '"') +
       '</div>';
     }
 
@@ -435,9 +454,22 @@ B7.Kanban = (function () {
     area.querySelectorAll('[data-menu]').forEach(b => b.onclick = e => {
       e.stopPropagation(); menuCard(b, b.dataset.menu);
     });
-    area.querySelectorAll('[data-col-movel]').forEach(b => b.onclick = () => {
-      F.colunaMovel = b.dataset.colMovel; guardarFiltros(); desenharArea();
-    });
+    const irColuna = id => {
+      const cols = (F.concluidas ? COLUNAS : PRINCIPAIS).map(c => c[0]);
+      dirMovel = Math.sign(cols.indexOf(id) - cols.indexOf(F.colunaMovel));
+      F.colunaMovel = id; guardarFiltros(); desenharArea(); dirMovel = 0;
+    };
+    area.querySelectorAll('[data-col-movel]').forEach(b => b.onclick = () => irColuna(b.dataset.colMovel));
+    /* celular: deslizar o dedo para o lado troca de coluna */
+    const mv = area.querySelector('.kb-movel');
+    if (mv && B7.Movimento && B7.Movimento.deslizar) {
+      B7.Movimento.deslizar(area, () => area.querySelector('.kb-movel .kb-col'), dir => {
+        if (!area.querySelector('.kb-movel')) return;
+        const cols = (F.concluidas ? COLUNAS : PRINCIPAIS).map(c => c[0]);
+        const i = cols.indexOf(F.colunaMovel) + dir;
+        if (i >= 0 && i < cols.length) irColuna(cols[i]);
+      }, { area: '.kb-col' });
+    }
     area.querySelectorAll('[data-ordem]').forEach(b => b.onclick = () => {
       if (F.ordem === b.dataset.ordem) F.ordemDir = -F.ordemDir;
       else { F.ordem = b.dataset.ordem; F.ordemDir = 1; }

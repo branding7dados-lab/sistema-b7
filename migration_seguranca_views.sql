@@ -9,7 +9,8 @@
 --    lendo da mesma view, sem mudar o app.
 -- 2) Nenhuma view do sistema é escrita pelo app: tira de anon e
 --    authenticated todo privilégio que não seja SELECT.
--- Pode rodar de novo sem problema.
+-- Pode rodar de novo sem problema. APLICADA em 03/10 (equivalência
+-- conferida: mesma saída para o mesmo usuário; UPDATE na view recusado).
 -- =====================================================================
 
 create or replace function public.portal_gravacoes_dados()
@@ -48,9 +49,11 @@ $$;
 revoke all on function public.portal_gravacoes_dados() from public, anon;
 grant execute on function public.portal_gravacoes_dados() to authenticated;
 
-drop view if exists public.portal_gravacoes;
-create view public.portal_gravacoes with (security_invoker = true) as
+-- sem DROP: mesmas colunas, mesma ordem — troca a definição no lugar
+create or replace view public.portal_gravacoes as
   select * from public.portal_gravacoes_dados();
+alter view public.portal_gravacoes set (security_invoker = true);
+alter view public.portal_gravacoes reset (security_barrier);
 revoke all on public.portal_gravacoes from public, anon;
 grant select on public.portal_gravacoes to authenticated;
 
