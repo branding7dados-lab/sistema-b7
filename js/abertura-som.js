@@ -101,30 +101,31 @@ B7.SomAbertura = (function () {
       env(g, tt, .15 - k * .04, .002, .025);
     }
   }
-  function ignicao(t) {
+  /* f = força (1 na completa; menor na relâmpago, que é mais curta) */
+  function ignicao(t, f = 1) {
     /* sub-grave que afunda */
     const sub = ctx.createOscillator(), gs = ctx.createGain(); sub.type = 'sine';
-    sub.frequency.setValueAtTime(78, t); sub.frequency.exponentialRampToValueAtTime(30, t + 1.1);
+    sub.frequency.setValueAtTime(78, t); sub.frequency.exponentialRampToValueAtTime(30, t + 1.1 * f);
     sub.connect(gs); gs.connect(saida); sub.start(t); sub.stop(t + 1.9);
-    env(gs, t, .95, .008, 1.7);
+    env(gs, t, .95 * f, .008, 1.7 * f);
     /* batida (o "tum" do impacto) */
     const k = ctx.createOscillator(), gk = ctx.createGain(); k.type = 'sine';
     k.frequency.setValueAtTime(170, t); k.frequency.exponentialRampToValueAtTime(45, t + .14);
     k.connect(gk); gk.connect(saida); k.start(t); k.stop(t + .4);
-    env(gk, t, .8, .003, .3);
+    env(gk, t, .8 * f, .003, .3);
     /* estouro de ar */
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
     lp.frequency.setValueAtTime(5200, t); lp.frequency.exponentialRampToValueAtTime(300, t + .9);
     const gn = ctx.createGain(); fonteRuido(t, 1.2).connect(lp); lp.connect(gn); gn.connect(saida); gn.connect(sala);
-    env(gn, t, .32, .004, 1);
+    env(gn, t, .32 * f, .004, f);
     /* brilho harmônico: a luz que fica no ar */
-    [523.25, 783.99, 1046.5, 1567.98, 2093].forEach((f, i) => {
+    [523.25, 783.99, 1046.5, 1567.98, 2093].forEach((hz, i) => {
       const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
-      o.frequency.value = f; o.detune.value = (Math.random() - .5) * 8;
+      o.frequency.value = hz; o.detune.value = (Math.random() - .5) * 8;
       o.connect(g); g.connect(saida); g.connect(sala);
       const tt = t + .02 + i * .012;
       o.start(tt); o.stop(tt + 3.2);
-      env(g, tt, .05 - i * .006, .02, 2.8);
+      env(g, tt, (.05 - i * .006) * Math.max(f, .6), .02, 2.8 * f);
     });
   }
   function whoosh(t, dur, de, para, vol) {
@@ -161,12 +162,21 @@ B7.SomAbertura = (function () {
     [1.62, estalo], [1.76, estalo], [1.9, ignicao],
     [3.28, t => whoosh(t, .7, 600, 3800, .1)], [3.7, cintilar]
   ];
-  let inicioAnim = null, tocada = false;
+  /* versão relâmpago (recarregar na mesma sessão, pacote zzc): ~1 s,
+     mesmos tempos do CSS da curta (styles/global.css, abRelAcende etc.):
+       0,00  subida curta de luz        0,34  estalo do filamento
+       0,30  whoosh do "Branding7"       0,40  ACENDE (impacto mais leve)
+       0,95  cintilar do brilho passando pelo logo */
+  const ROTEIRO_CURTO = [
+    [0.0, t => riser(t, .38)], [0.3, t => whoosh(t, .45, 700, 3800, .07)],
+    [0.34, estalo], [0.4, t => ignicao(t, .62)], [0.95, cintilar]
+  ];
+  let inicioAnim = null, tocada = false, roteiro = ROTEIRO;
   function tocarTrilha(decorrido) {
     if (!ctx || ctx.state !== 'running' || tocada) return;
     tocada = true;
     const agora = ctx.currentTime + .03;
-    ROTEIRO.forEach(([quando, fn]) => {
+    roteiro.forEach(([quando, fn]) => {
       const t = quando - decorrido;
       if (t >= -.12) { try { fn(agora + Math.max(0, t)); } catch (e) {} }
     });
@@ -178,11 +188,14 @@ B7.SomAbertura = (function () {
   function aoCarregar() {
     if (!ligado() || !AC) return;
     const el = document.getElementById('abertura');
-    if (!el || document.documentElement.classList.contains('ab-curta') ||
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches) { destravarNoToque(); return; }
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { destravarNoToque(); return; }
+    /* recarregar na mesma sessão: a trilha relâmpago, alinhada ao palco
+       (na curta a lâmpada já está parada no logo; quem anima é o palco) */
+    const curta = document.documentElement.classList.contains('ab-curta');
+    if (curta) roteiro = ROTEIRO_CURTO;
     if (!preparar()) return;
     requestAnimationFrame(() => {
-      const a = el.querySelector('.ab-simbolo');
+      const a = el.querySelector(curta ? '.ab-palco' : '.ab-simbolo');
       const an = a && a.getAnimations ? a.getAnimations()[0] : null;
       inicioAnim = an && an.startTime != null ? an.startTime : 0;   /* startTime = o 0 s da sequência (o atraso conta depois) */
       const vai = () => { if (el.isConnected && !el.classList.contains('saindo')) tocarTrilha(decorridoAgora()); };
@@ -210,21 +223,22 @@ B7.SomAbertura = (function () {
   /* "Ver abertura" (Configurações): toque do usuário → som garantido */
   function reproduzir() {
     if (!ligado() || !preparar()) return;
-    tocada = false;
+    tocada = false; roteiro = ROTEIRO;
     ctx.resume().then(() => { inicioAnim = null; tocarTrilha(0); }).catch(() => {});
   }
 
   /* ensaio sem tocar: renderiza a trilha inteira (+ saída em 4,3 s) num
      contexto offline e devolve o pico por fatia de 100 ms. Serve para
      conferir sincronia e volume sem alto-falante (DevTools). */
-  async function ensaio() {
+  async function ensaio(qual) {
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     if (!OAC) return null;
     const salvo = [ctx, saida, sala, ruido, drone];
-    const off = new OAC(2, 44100 * 6.5, 44100);
+    const curto = qual === 'curta';
+    const off = new OAC(2, 44100 * (curto ? 3.5 : 6.5), 44100);
     preparar(off);
-    ROTEIRO.forEach(([quando, fn]) => fn(quando));
-    assenta(4.3);
+    (curto ? ROTEIRO_CURTO : ROTEIRO).forEach(([quando, fn]) => fn(quando));
+    assenta(curto ? 1.0 : 4.3);
     const buf = await off.startRendering();
     [ctx, saida, sala, ruido, drone] = salvo;
     const d = buf.getChannelData(0), passo = 4410, picos = [];
