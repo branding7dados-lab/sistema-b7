@@ -1142,11 +1142,12 @@ B7.Dashboard = (function () {
      Mesmos registros, mesma tela de detalhe; aqui só o recorte do cliente. */
   const IC_SETA = '<svg class="cs-seta" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
   const dataCurta = d => d ? new Date(String(d).slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : '';
+  /* abre no grupo que tem algo: nada em andamento e tudo entregue → Entregues */
+  const grupoInicial = (abertos, fechados) => !abertos && fechados ? 'fechados' : 'abertos';
   function filtroSecao(abertos, fechados, rotAbertos, rotFechados) {
-    return '<div class="filtro cs-filtro" role="tablist">' +
-      '<button class="on" data-cs-f="abertos" role="tab" aria-selected="true">' + esc(rotAbertos) + ' <span>' + abertos + '</span></button>' +
-      '<button data-cs-f="fechados" role="tab" aria-selected="false">' + esc(rotFechados) + ' <span>' + fechados + '</span></button>' +
-    '</div>';
+    const ini = grupoInicial(abertos, fechados);
+    const bt = (k, rot, n) => '<button' + (ini === k ? ' class="on"' : '') + ' data-cs-f="' + k + '" role="tab" aria-selected="' + (ini === k) + '">' + esc(rot) + ' <span>' + n + '</span></button>';
+    return '<div class="filtro cs-filtro" role="tablist">' + bt('abertos', rotAbertos, abertos) + bt('fechados', rotFechados, fechados) + '</div>';
   }
   function ligarFiltroSecao() {
     const f = painel().querySelector('.cs-filtro'); if (!f) return;
@@ -1188,8 +1189,8 @@ B7.Dashboard = (function () {
     };
     return '<div class="cs-topo">' + filtroSecao(abertos.length, fechados.length, 'Em produção', 'Entregues') +
         (podeIrRota('video') ? '<a class="b fina contorno" href="#/video">Produção de Vídeo</a>' : '') + '</div>' +
-      '<div data-cs-grupo="abertos">' + listaSecao(abertos, linha, 'Nada em produção agora para este cliente.') + '</div>' +
-      '<div data-cs-grupo="fechados" hidden>' + listaSecao(fechados, linha, 'Nenhum vídeo entregue ainda.') + '</div>';
+      '<div data-cs-grupo="abertos"' + (grupoInicial(abertos.length, fechados.length) === 'abertos' ? '' : ' hidden') + '>' + listaSecao(abertos, linha, 'Nada em produção agora para este cliente.') + '</div>' +
+      '<div data-cs-grupo="fechados"' + (grupoInicial(abertos.length, fechados.length) === 'fechados' ? '' : ' hidden') + '>' + listaSecao(fechados, linha, 'Nenhum vídeo entregue ainda.') + '</div>';
   }
 
   function secaoDesignCliente(c, lista) {
@@ -1216,8 +1217,8 @@ B7.Dashboard = (function () {
     };
     return '<div class="cs-topo">' + filtroSecao(abertos.length, fechados.length, 'Em andamento', 'Finalizadas') +
         (podeIrRota('design') ? '<a class="b fina contorno" href="#/design">Design</a>' : '') + '</div>' +
-      '<div data-cs-grupo="abertos">' + listaSecao(abertos, linha, 'Nenhuma peça em andamento para este cliente.') + '</div>' +
-      '<div data-cs-grupo="fechados" hidden>' + listaSecao(fechados, linha, 'Nenhuma peça finalizada ainda.') + '</div>';
+      '<div data-cs-grupo="abertos"' + (grupoInicial(abertos.length, fechados.length) === 'abertos' ? '' : ' hidden') + '>' + listaSecao(abertos, linha, 'Nenhuma peça em andamento para este cliente.') + '</div>' +
+      '<div data-cs-grupo="fechados"' + (grupoInicial(abertos.length, fechados.length) === 'fechados' ? '' : ' hidden') + '>' + listaSecao(fechados, linha, 'Nenhuma peça finalizada ainda.') + '</div>';
   }
 
   /* Bloco da linha editorial atual + histórico dos meses anteriores.
