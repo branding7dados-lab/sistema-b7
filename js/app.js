@@ -250,6 +250,35 @@ B7.Rota = (function () {
      do sistema). Depois disso ela não volta: troca de rota usa os
      skeletons de B7.UI.skeleton, nunca esta tela. */
   let arranqueConcluido = false;
+  /* A marcação da abertura existe UMA vez, no index.html (ela aparece
+     antes de qualquer script). Aqui só guardamos uma cópia dela para
+     remontar a cortina entre o login e a montagem do sistema. */
+  const inicialAbertura = document.getElementById('abertura');
+  const MOLDE_ABERTURA = inicialAbertura ? inicialAbertura.innerHTML : '';
+  const TITULO_PADRAO = 'Branding7', TEXTO_PADRAO = 'Preparando o seu espaço…';
+  /* enquanto o texto é o padrão, as frases se revezam (a espera parece
+     andar); um texto específico ("Entrando…") fica parado */
+  const FRASES = ['Preparando o seu espaço…', 'Acendendo as ideias…', 'Organizando a produção…', 'Quase lá…'];
+  let relogioFrases = null;
+  function letras(t) {
+    return [...String(t)].map((c, i) => '<span style="--i:' + i + '">' + (c === ' ' ? '&nbsp;' : B7.UI.esc(c)) + '</span>').join('');
+  }
+  function escreverCortina(el, titulo, texto) {
+    const nome = el.querySelector('.nome'), frase = el.querySelector('.frase');
+    const t = titulo || TITULO_PADRAO;
+    if (nome && nome.textContent !== t) nome.innerHTML = letras(t);
+    if (frase) frase.textContent = texto || TEXTO_PADRAO;
+    clearInterval(relogioFrases); relogioFrases = null;
+    if (!texto && frase && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      let i = 0;
+      relogioFrases = setInterval(() => {
+        if (!frase.isConnected) { clearInterval(relogioFrases); relogioFrases = null; return; }
+        i = (i + 1) % FRASES.length;
+        frase.classList.add('trocando');
+        setTimeout(() => { frase.textContent = FRASES[i]; frase.classList.remove('trocando'); }, 180);
+      }, 1700);
+    }
+  }
   function abrirCortina(titulo, texto) {
     if (arranqueConcluido) return null;
     let el = document.querySelector('.b7-abertura');
@@ -257,39 +286,34 @@ B7.Rota = (function () {
     if (!el) {
       el = document.createElement('div');
       el.className = 'b7-abertura';
-      el.innerHTML = '<div class="fundo"><span class="a"></span><span class="b"></span><span class="c"></span>' +
-          '<i class="p p1"></i><i class="p p2"></i><i class="p p3"></i>' +
-          '<i class="p p4"></i><i class="p p5"></i><i class="p p6"></i></div>' +
-        '<div class="nucleo">' +
-          '<svg class="giro" viewBox="0 0 200 200" aria-hidden="true">' +
-            '<defs><linearGradient id="abGrad2" x1="0" y1="0" x2="1" y2="1">' +
-              '<stop offset="0" stop-color="#3A1E86" stop-opacity="0"/>' +
-              '<stop offset=".45" stop-color="#7C1E85"/>' +
-              '<stop offset="1" stop-color="#FF6FB5"/></linearGradient></defs>' +
-            '<circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1"/>' +
-            '<circle cx="100" cy="100" r="92" fill="none" stroke="url(#abGrad2)" stroke-width="2.5" ' +
-              'stroke-linecap="round" stroke-dasharray="330 248" transform="rotate(-90 100 100)"/>' +
-          '</svg><div class="marca"></div></div>' +
-        '<div class="txt"><b>' + B7.UI.esc(titulo || 'Branding7') + '</b>' +
-        B7.UI.esc(texto || 'Preparando o seu espaço…') + '</div>' +
-        '<div class="barra"><i></i></div>';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-label', 'Carregando o Sistema B7');
+      el.innerHTML = MOLDE_ABERTURA.replace(/abGrad/g, 'abGrad2');   /* id do degradê não repete */
       document.body.appendChild(el);
-    } else {
-      const t = el.querySelector('.txt');
-      if (t) t.innerHTML = '<b>' + B7.UI.esc(titulo || 'Branding7') + '</b>' +
-        B7.UI.esc(texto || 'Preparando o seu espaço…');
     }
+    escreverCortina(el, titulo, texto);
     return el;
   }
+  if (inicialAbertura) escreverCortina(inicialAbertura, null, null);
 
+  /* A sequência de abertura (faíscas → lâmpada acende → onda) leva ~1 s.
+     Se o sistema ficar pronto antes disso no PRIMEIRO arranque, a saída
+     espera só o restante até 1,1 s desde o início da página — numa
+     conexão comum o carregamento já passa disso e não há espera nenhuma. */
+  const MINIMO_ABERTURA_MS = 1100;
   function fecharCortina() {
     if (jaMontado) arranqueConcluido = true;
     const el = document.querySelector('.b7-abertura');
-    if (!el || el.classList.contains('saindo')) return;
-    el.classList.add('saindo');
-    /* espera a transição antes de remover: tirar na hora devolve o corte
-       seco que a cortina existe para evitar */
-    setTimeout(() => el.remove(), 520);
+    if (!el || el.classList.contains('saindo') || el.dataset.fechando) return;
+    el.dataset.fechando = '1';
+    const espera = el.classList.contains('inicial') ? Math.max(0, MINIMO_ABERTURA_MS - performance.now()) : 0;
+    setTimeout(() => {
+      clearInterval(relogioFrases); relogioFrases = null;
+      el.classList.add('saindo');
+      /* espera o "portal" abrir antes de remover: tirar na hora devolve o
+         corte seco que a cortina existe para evitar */
+      setTimeout(() => el.remove(), 880);   /* .12 s de flash + .72 s de portal */
+    }, espera);
   }
   B7.abrirCortina = abrirCortina;
   B7.fecharCortina = fecharCortina;
