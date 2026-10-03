@@ -262,3 +262,66 @@ body[data-shell="interno"] .lateral{transition:width .18s cubic-bezier(.2,0,0,1)
   .ng-painel,.ng.aberto .ng-painel,.ng-seta,.ng-ponto,.nav-flyout,body[data-shell="interno"] .lateral{transition:none !important;}
   .nav-acordeao,.nav-trilho,.marca-lateral img.simbolo{animation:none !important;}
 }
+
+/* =====================================================================
+   FOLHAS DE VIDRO + "MAIS" (pacote zr, 03/10)
+   Desfoque de verdade, estilo material grosso do iOS. Antes o desfoque
+   não funcionava: o véu (.fundo-modal) animava a própria opacidade e,
+   enquanto um ancestral anima opacidade, o backdrop-filter da folha só
+   enxerga o véu — via-se o app por transparência, sem desfoque nenhum.
+   Agora o véu é um ::before (irmão da folha) e a folha desfoca o app.
+   ===================================================================== */
+@media (max-width:760px){
+  html .fundo-modal.tp-folha{background:transparent;animation:none;}
+  html .fundo-modal.tp-folha::before{content:"";position:fixed;inset:0;background:var(--veu);
+    animation:b7Fade var(--m-padrao) var(--m-entra) both;}
+  html .fundo-modal.tp-folha.saindo{animation:none;}
+  html .fundo-modal.tp-folha.saindo::before{animation:b7Some var(--m-rapido) var(--m-sai) forwards;}
+  html .fundo-modal.tp-folha .modal{position:relative;z-index:1;}
+  .fundo-modal.tp-folha{--veu:rgba(6,3,14,.28);}
+  [data-theme="dark"] .fundo-modal.tp-folha{--veu:rgba(0,0,0,.38);}
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    html .fundo-modal.tp-folha .modal{
+      background:color-mix(in srgb, var(--card) 62%, transparent);
+      -webkit-backdrop-filter:blur(40px) saturate(190%);backdrop-filter:blur(40px) saturate(190%);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 0 0 .5px rgba(255,255,255,.35), 0 -20px 60px -24px rgba(10,4,24,.5);}
+    html[data-theme="dark"] .fundo-modal.tp-folha .modal{
+      background:color-mix(in srgb, #1B1426 58%, transparent);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.1), inset 0 0 0 .5px rgba(255,255,255,.08), 0 -20px 60px -24px rgba(0,0,0,.8);}
+  }
+  html .fundo-modal.tp-folha .modal{border-radius:28px 28px 0 0;padding:8px 12px calc(14px + env(safe-area-inset-bottom));}
+
+  /* ---- "Mais": cabeçalho enxuto, seções em cartões, ícones de app ---- */
+  .nm-folha .tp-folha-cab{padding:2px 2px 10px 8px;}
+  .nm-folha .tp-folha-cab h3{font-size:22px;letter-spacing:-.02em;}
+  .nm-folha .tp-folha-cab .ico{width:32px;height:32px;border-radius:50%;
+    background:color-mix(in srgb, var(--ink) 9%, transparent);color:var(--ink-2);}
+  .nm-folha .tp-folha-cab .ico svg{width:16px;height:16px;}
+  .nm-corpo{gap:12px;padding:0 0 4px;max-height:calc(82dvh - 70px);}
+  .nm-secao{padding:12px 6px 6px;border-radius:22px;
+    background:color-mix(in srgb, var(--card) 55%, transparent);
+    box-shadow:inset 0 0 0 .5px color-mix(in srgb, var(--ink) 8%, transparent);}
+  [data-theme="dark"] .nm-secao{background:rgba(255,255,255,.045);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.06);}
+  .nm-secao h4{margin:0 0 6px 10px;font-size:10px;letter-spacing:.14em;color:var(--ink-4);}
+  html .nm-grade{grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;align-items:start;}
+  html .nm-item{min-height:0;padding:8px 2px 10px;gap:7px;justify-content:flex-start;border-radius:16px;background:transparent;color:var(--ink-2);
+    animation:nmEntra .42s cubic-bezier(.2,.85,.25,1) calc(90ms + var(--i, 0) * 18ms) both;}
+  html .nm-item:hover{background:transparent;}
+  /* ícone de app: bloco com o degradê da marca, brilho no topo */
+  html .nm-ic{width:50px;height:50px;border-radius:15px;color:#fff;
+    background:linear-gradient(150deg, #5B2DB8 0%, #9B1E8E 55%, #D9348F 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 -10px 18px -10px rgba(40,6,60,.5), 0 6px 14px -8px rgba(155,30,142,.75);
+    transition:transform var(--m-instante) var(--m-toque), filter var(--m-rapido);}
+  html .nm-ic svg{width:23px;height:23px;stroke-width:1.8;}
+  html .nm-tx{font-size:11.5px;font-weight:600;line-height:1.2;color:var(--ink-2);}
+  html .nm-item:active{transform:none;}
+  html .nm-item:active .nm-ic{transform:scale(.9);filter:brightness(1.15);}
+  html .nm-item.on .nm-ic{box-shadow:0 0 0 2px var(--card), 0 0 0 4px color-mix(in srgb, var(--acento) 70%, transparent), 0 8px 18px -8px rgba(155,30,142,.8);}
+  html .nm-item.on{background:transparent;box-shadow:none;}
+  html .nm-item.on .nm-tx{color:var(--ink);}
+}
+@keyframes nmEntra{from{opacity:0;transform:translate3d(0,10px,0) scale(.88)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  html .nm-item{animation:none;}
+  html .fundo-modal.tp-folha::before{animation:none;}
+}

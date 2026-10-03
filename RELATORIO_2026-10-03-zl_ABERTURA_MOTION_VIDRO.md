@@ -235,3 +235,20 @@ A sequência completa ficou **mais longa (~4,3 s + 0,8 s de saída)** e mais dra
 
 - **Tarjas de cinema removidas** (pedido do Kevin). Continuam: travelling, tremor, aberração cromática, bokeh e o som.
 - **"Ver abertura"** agora também está no **menu da conta** (sua foto no topo), para todos os papéis, além de Configurações → Aparência. Repete a sequência completa com som.
+
+---
+
+## Atualização zr — folha "Mais" e desfoque de verdade nas folhas
+
+- **Bug do desfoque:** o véu escuro animava a própria opacidade e, enquanto isso, o `backdrop-filter` da folha só "enxergava" o véu. Por isso via-se o app por transparência, sem desfoque. Agora:
+  - o véu é um `::before` irmão da folha;
+  - a folha desfoca de verdade: `blur(40px) saturate(190%)`, o "material grosso" estilo iOS;
+  - vale para **todas as folhas do celular** (Mais, Criar, Conta, Visualizar como…).
+- **"Mais" repaginado:**
+  - título maior;
+  - botão fechar redondo;
+  - cada grupo virou um cartão de vidro;
+  - **4 ícones por linha**, cada um num bloco com o degradê da marca (estilo ícone de app);
+  - rótulos de até 2 linhas, alinhados pelo topo.
+- **Animação:** os ícones entram em cascata (18 ms entre um e outro) depois que a folha sobe, e o toque afunda o ícone. Com "reduzir movimento", sem cascata.
+- **Testes:** navegador do app em 397 px, tema escuro e claro, com o shell de teste. Desfoque confirmado no estilo computado. Não testado em aparelho.

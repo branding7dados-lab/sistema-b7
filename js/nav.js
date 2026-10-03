@@ -438,10 +438,12 @@ B7.Nav = (function () {
         '</div></section>' : '');
     const bt = document.querySelector('#nav-inferior [data-inf="mais"]');
     if (bt) bt.setAttribute('aria-expanded', 'true');
+    /* os ícones entram em cascata (CSS lê --i), depois que a folha sobe */
     folhaMais = B7.UI.modal('<div class="tp-folha-cab"><h3>Mais</h3>' +
       '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
       '<nav class="nm-corpo" aria-label="Mais destinos">' + (html || '<p class="nm-vazio">Nada além da barra.</p>') + '</nav>',
       { classe: 'tp-folha nm-folha', aoFechar: () => { folhaMais = null; if (bt) bt.setAttribute('aria-expanded', 'false'); } });
+    folhaMais.querySelectorAll('.nm-item').forEach((a, i) => a.style.setProperty('--i', Math.min(i, 16)));
     folhaMais.querySelectorAll('[data-mais]').forEach(a => a.onclick = e => {
       const it = ITENS[a.dataset.mais];
       e.preventDefault();
