@@ -483,20 +483,68 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
   60%{opacity:1;filter:blur(0)}100%{opacity:1;transform:none;filter:none}}
 .pn-l-nome{color:transparent;background:linear-gradient(180deg, var(--ink) 30%, color-mix(in srgb, var(--acento) 70%, var(--ink)));
   -webkit-background-clip:text;background-clip:text;}
-/* feixe anamórfico: um traço de luz horizontal corta o título */
-.pn-cab h1::after,.pn-cab h1::before{content:"";position:absolute;pointer-events:none;top:55%;opacity:0;}
-.pn-cab h1::after{left:-10%;width:120%;height:2px;margin-top:-1px;border-radius:2px;
-  background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--acento) 80%, transparent) 30%, #fff 50%, rgba(143,107,255,.8) 70%, transparent);
-  box-shadow:0 0 14px 2px color-mix(in srgb, var(--acento) 55%, transparent);
-  transform-origin:var(--pn-fx, 50%) 50%;
-  animation:pnFeixe calc(1.5s * var(--pn-t)) cubic-bezier(.45,0,.2,1) calc(.95s * var(--pn-t)) both;}
-.pn-cab h1::before{left:0;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
-  background:radial-gradient(circle, #fff 0 8%, color-mix(in srgb, var(--acento) 70%, transparent) 22%, transparent 64%);
-  mix-blend-mode:screen;animation:pnOrbe calc(1.5s * var(--pn-t)) cubic-bezier(.45,0,.2,1) calc(.95s * var(--pn-t)) both;}
-@keyframes pnFeixe{0%{opacity:0;transform:scaleX(.05)}25%{opacity:1}60%{opacity:.9;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1.05)}}
-@keyframes pnOrbe{0%{opacity:0;transform:translate3d(0,0,0) scale(.4)}20%{opacity:1}
-  80%{opacity:.9}100%{opacity:0;transform:translate3d(var(--pn-w, 260px),0,0) scale(1)}}
-[data-theme="light"] .pn-cab h1::before{display:none;}
+/* onda de luz: depois que as letras pousam, um brilho passa por elas
+   uma a uma (no zv era um traço horizontal — no celular parecia texto
+   riscado). Um orbe de luz acompanha a onda por trás das letras. */
+.pn-l{--pn-onda:calc((1.25s + var(--k) * 42ms) * var(--pn-t));
+  animation:pnLetra calc(.85s * var(--pn-t)) var(--pn-ease) calc((.2s + var(--k) * 32ms) * var(--pn-t)) backwards,
+            pnOnda .7s cubic-bezier(.3,0,.3,1) var(--pn-onda);}
+@keyframes pnOnda{0%{filter:none}35%{filter:brightness(1.9) drop-shadow(0 0 7px color-mix(in srgb, var(--acento) 85%, transparent))}100%{filter:none}}
+.pn-cab h1::before{content:"";position:absolute;pointer-events:none;z-index:-1;left:0;top:50%;width:70px;height:70px;margin:-35px 0 0 -35px;
+  border-radius:50%;opacity:0;
+  background:radial-gradient(circle, color-mix(in srgb, #fff 70%, var(--acento)) 0 6%, color-mix(in srgb, var(--acento) 45%, transparent) 26%, transparent 66%);
+  animation:pnOrbe calc(var(--pn-n, 14) * 42ms + .7s) cubic-bezier(.4,0,.3,1) calc(1.15s * var(--pn-t)) both;}
+@keyframes pnOrbe{0%{opacity:0;transform:translate3d(0,0,0) scale(.5)}20%{opacity:.9}
+  80%{opacity:.75}100%{opacity:0;transform:translate3d(var(--pn-w, 260px),0,0) scale(1.1)}}
+[data-theme="light"] .pn-cab h1::before{opacity:0;animation:none;}
+@keyframes pnOndaClaro{0%{color:inherit}35%{color:var(--acento)}100%{color:inherit}}
+[data-theme="light"] .pn-l:not(.pn-l-nome){animation:pnLetra calc(.85s * var(--pn-t)) var(--pn-ease) calc((.2s + var(--k) * 32ms) * var(--pn-t)) backwards,
+  pnOndaClaro .7s ease var(--pn-onda);}
+
+/* clarão de chegada: quando a cortina da abertura sai, uma luz se abre
+   atrás da saudação e assenta (o logo pousa no topo no mesmo instante) */
+.pn-ceu .pn-clarao{left:50%;top:40px;width:640px;height:640px;margin-left:-320px;border-radius:50%;opacity:0;
+  background:radial-gradient(closest-side, color-mix(in srgb, #fff 55%, var(--acento)) 0, color-mix(in srgb, var(--acento) 40%, transparent) 28%, transparent 70%);
+  animation:pnClarao calc(1.6s * var(--pn-t)) cubic-bezier(.2,.7,.2,1) both;}
+@keyframes pnClarao{0%{opacity:0;transform:scale(.2)}14%{opacity:.85}100%{opacity:0;transform:scale(1.5)}}
+[data-theme="light"] .pn-ceu .pn-clarao{display:none;}
+
+/* paralaxe pelo giroscópio (Android; --gx/--gy de -1 a 1, js/painel.js):
+   o céu anda para um lado, o texto um tiquinho para o outro */
+.pn-ceu .pn-luz-a,.pn-ceu .pn-luz-b,.pn-ceu .pn-raios,.pn-ceu .pn-bokeh{transition:translate .25s linear;}
+.pn-ceu .pn-luz-a{translate:calc(var(--gx, 0) * -26px) calc(var(--gy, 0) * -18px);}
+.pn-ceu .pn-luz-b{translate:calc(var(--gx, 0) * 22px) calc(var(--gy, 0) * 16px);}
+.pn-ceu .pn-raios{translate:calc(var(--gx, 0) * -14px) calc(var(--gy, 0) * -10px);}
+.pn-ceu .pn-bokeh{translate:calc(var(--gx, 0) * -34px) calc(var(--gy, 0) * -24px);}
+
+/* ------------------------------------------- odômetro dos indicadores
+   Cada dígito é uma fita 0–9 que gira uma volta inteira e para no
+   valor, um dígito depois do outro. O leitor de tela lê o número em
+   texto (sr-only); a fita é decorativa. No fim volta a ser texto. */
+.pn-odo{display:inline-flex;vertical-align:top;}
+.pn-odo-col{display:inline-block;height:1em;overflow:hidden;line-height:1;}
+.pn-odo-fita{display:flex;flex-direction:column;transform:translate3d(0,0,0);
+  transition:transform calc(1.25s + var(--i) * .16s) cubic-bezier(.16,.84,.24,1.04);transition-delay:calc(var(--i) * 70ms);}
+.pn-odo-fita > span{display:block;height:1em;line-height:1;text-align:center;}
+.pn-odo.gira .pn-odo-fita{transform:translate3d(0,calc(-1em * (10 + var(--d))),0);}
+.pn-odo.gira .pn-odo-col{-webkit-mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);
+  mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);}
+.pn-odo.parou .pn-odo-col{-webkit-mask-image:none;mask-image:none;}
+
+/* atrasadas: quando o número pousa, uma onda de choque vermelha */
+.pn-kpi.pn-tom-erro{animation:pnCartao calc(.85s * var(--pn-t)) var(--pn-mola) calc(.55s * var(--pn-t)) backwards,
+  pnChoque 1s cubic-bezier(.2,.7,.3,1) calc(1.9s * var(--pn-t)),
+  pnRespira 3.2s ease-in-out calc(2.9s * var(--pn-t)) infinite;}
+@keyframes pnChoque{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--erro) 70%, transparent), 0 0 40px 0 color-mix(in srgb, var(--erro) 45%, transparent)}
+  100%{box-shadow:0 0 0 22px color-mix(in srgb, var(--erro) 0%, transparent), 0 0 40px 0 transparent}}
+
+/* o valor da semana atual estoura quando a barra chega */
+.pn-graf-col.atual .pn-graf-val{position:relative;}
+.pn-graf-col.atual .pn-graf-val::after{content:"";position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;
+  pointer-events:none;opacity:0;border:2px solid color-mix(in srgb, var(--acento) 80%, transparent);}
+.pn-cine .pn-graf.pn-cresce .pn-graf-col.atual .pn-graf-val::after{animation:pnEstouro .9s cubic-bezier(.2,.7,.3,1) 1.25s both;}
+.pn-cine .pn-graf.pn-cresce .pn-graf-col.atual .pn-graf-val{animation:pnPouso .6s var(--pn-mola) 1.2s;}
+@keyframes pnEstouro{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.9)}}
 
 /* o botão do topo recebe um reflexo quando assenta */
 .pn-cab-acao{position:relative;overflow:hidden;}
@@ -547,12 +595,12 @@ a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale
 /* uma linha de luz percorre a borda do bloco uma vez */
 @property --pn-ang{syntax:'<angle>';inherits:false;initial-value:0deg;}
 .pn-bloco{position:relative;}
-.pn-cine .pn-bloco::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1.5px;pointer-events:none;opacity:0;
-  background:conic-gradient(from var(--pn-ang), transparent 0 62%, color-mix(in srgb, var(--acento) 85%, transparent) 80%, #fff 86%, rgba(143,107,255,.9) 90%, transparent 97%);
+.pn-cine .pn-bloco::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;
+  background:conic-gradient(from var(--pn-ang), transparent 0 62%, color-mix(in srgb, var(--acento) 70%, transparent) 82%, rgba(143,107,255,.6) 90%, transparent 97%);
   -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);-webkit-mask-composite:xor;
           mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);}
 .pn-cine .pn-bloco.pn-visto::before{animation:pnContorno 1.9s cubic-bezier(.45,0,.25,1) .25s both;}
-@keyframes pnContorno{0%{--pn-ang:0deg;opacity:0}12%{opacity:1}80%{opacity:1}100%{--pn-ang:360deg;opacity:0}}
+@keyframes pnContorno{0%{--pn-ang:0deg;opacity:0}15%{opacity:.8}75%{opacity:.8}100%{--pn-ang:360deg;opacity:0}}
 /* título da seção: entra do desfoque; um fio de luz se desenha embaixo */
 .pn-sec-cab{position:relative;}
 .pn-visto .pn-sec-cab h2{animation:pnSobe .7s var(--pn-ease) .2s backwards;}

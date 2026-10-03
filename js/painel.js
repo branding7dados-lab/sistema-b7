@@ -746,11 +746,36 @@ B7.Painel = (function () {
     const reduz = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const alvo = document.getElementById('painel-dashboard');
     if (!alvo || !window.MutationObserver) return;
-    const contar = el => {
+    /* odômetro: cada dígito do indicador gira uma volta e para no valor */
+    const pousar = el => {
+      el.classList.add('pn-pousou');
+      el.addEventListener('animationend', () => el.classList.remove('pn-pousou'), { once: true });
+    };
+    const rolar = (el, atraso) => {
+      const txt = el.textContent.trim();
+      if (!/^\d{1,4}$/.test(txt)) return false;
+      const fita = Array.from({ length: 20 }, (_, n) => '<span>' + (n % 10) + '</span>').join('');
+      el.innerHTML = '<span class="pn-odo" aria-hidden="true">' + Array.from(txt).map((d, i) =>
+        '<span class="pn-odo-col"><span class="pn-odo-fita" style="--d:' + d + ';--i:' + i + '">' + fita + '</span></span>').join('') +
+        '</span><span class="sr-only">' + txt + '</span>';
+      const odo = el.firstChild;
+      /* a fita já aparece no 0 enquanto o cartão cai; gira quando ele pousa */
+      const total = (atraso || 0) + 1250 + (txt.length - 1) * 230 + 120;
+      setTimeout(() => { void odo.offsetWidth; odo.classList.add('gira'); }, Math.max(30, atraso || 0));
+      setTimeout(() => {
+        if (!odo.isConnected) return;
+        odo.classList.add('parou');
+        el.textContent = txt;
+        pousar(el);
+      }, total);
+      return true;
+    };
+    const contar = (el, atraso) => {
       if (el.dataset.pnContou) return;
       const txt = el.textContent.trim(), m = txt.match(/^(\d+)([.,]\d+)?$/);
       el.dataset.pnContou = '1';
       if (!m || reduz()) return;
+      if (el.classList.contains('pn-kpi-num') && rolar(el, atraso)) return;
       const fim = parseFloat(txt.replace(',', '.')), dec = m[2] ? m[2].length - 1 : 0;
       if (fim <= 1 && !dec) return;
       const t0 = performance.now(), DUR = el.classList.contains('pn-kpi-num') ? 1300 : 900;
@@ -760,22 +785,19 @@ B7.Painel = (function () {
         if (p < 1) return requestAnimationFrame(quadro);
         el.textContent = txt;
         /* o número "pousa": pulo curto com brilho (styles/painel.css) */
-        if (el.classList.contains('pn-kpi-num')) {
-          el.classList.add('pn-pousou');
-          el.addEventListener('animationend', () => el.classList.remove('pn-pousou'), { once: true });
-        }
+        if (el.classList.contains('pn-kpi-num')) pousar(el);
       };
       el.textContent = (0).toFixed(dec).replace('.', ',');
       requestAnimationFrame(quadro);
     };
-    /* céu atrás da saudação: luzes, raios, horizonte, partículas, grão */
+    /* céu atrás da saudação: clarão, luzes, raios, partículas, grão (sem a linha de horizonte: no celular ela caía embaixo do título e parecia sublinhado) */
     const BOKEH = [[8, 6, 9, 0, 30], [19, 4, 11, 2.5, -20], [31, 7, 8, 5, 40], [44, 3, 12, 1.2, 10], [57, 5, 10, 3.6, -30],
                    [68, 8, 9, 6.2, 25], [79, 4, 13, .6, -15], [90, 6, 10, 4.4, 20], [96, 3, 11, 7.5, -25]];
     const ceu = cab => {
       if (cab.querySelector(':scope > .pn-ceu')) return;
       const d = document.createElement('div');
       d.className = 'pn-ceu'; d.setAttribute('aria-hidden', 'true');
-      d.innerHTML = '<i class="pn-luz-a"></i><i class="pn-luz-b"></i><i class="pn-raios"></i><i class="pn-horiz"></i>' +
+      d.innerHTML = '<i class="pn-clarao"></i><i class="pn-luz-a"></i><i class="pn-luz-b"></i><i class="pn-raios"></i>' +
         '<span class="pn-bokeh">' + BOKEH.map(([x, s, dur, t, dx]) =>
           '<i style="--x:' + x + '%;--s:' + s + 'px;--d:' + dur + 's;--t:' + t + 's;--dx:' + dx + 'px"></i>').join('') + '</span>' +
         '<i class="pn-grao"></i>';
@@ -796,6 +818,7 @@ B7.Painel = (function () {
       h1.setAttribute('aria-label', txt);
       h1.innerHTML = '<span aria-hidden="true">' + html + '</span>';
       h1.classList.add('pn-letras');
+      h1.style.setProperty('--pn-n', k);
       requestAnimationFrame(() => {
         const w = h1.firstChild.getBoundingClientRect().width;
         if (w) h1.style.setProperty('--pn-w', Math.round(w) + 'px');
@@ -816,11 +839,31 @@ B7.Painel = (function () {
       clearTimeout(k._pnLuz);
       k._pnLuz = setTimeout(() => k.classList.remove('pn-luz'), e.pointerType === 'mouse' ? 0 : 500);
     };
+    /* o que vive dentro de um bloco (números do gráfico, barras) só anima
+       quando o bloco já apareceu — antes as barras cresciam fora da tela */
+    const animarDentro = raiz => {
+      raiz.querySelectorAll('.pn-graf-resumo b, .pn-graf-val').forEach(el => {
+        const b = el.closest('.pn-bloco');
+        if (!b || b.classList.contains('pn-visto')) contar(el);
+      });
+      raiz.querySelectorAll('.pn-graf:not(.pn-cresce)').forEach(g => {
+        const b = g.closest('.pn-bloco');
+        if (!b || b.classList.contains('pn-visto')) requestAnimationFrame(() => g.classList.add('pn-cresce'));
+      });
+    };
     let olho = null;
+    const mostrar = b => { b.classList.add('pn-visto'); animarDentro(b); };
     const revelar = raiz => {
       if (!('IntersectionObserver' in window) || reduz()) return;
+      /* ordem do filme: topo → indicadores → blocos. Os blocos que já
+         estão na tela esperam os indicadores pousarem (no vídeo do
+         celular eles chegavam antes dos números) */
       if (!olho) olho = new IntersectionObserver(es => es.forEach(e => {
-        if (e.isIntersecting) { e.target.classList.add('pn-visto'); olho.unobserve(e.target); }
+        if (!e.isIntersecting) return;
+        olho.unobserve(e.target);
+        const r = e.target.closest('.pn'), t = r && r.classList.contains('pn-rapido') ? .55 : 1;
+        const falta = r && r._pnInicio ? r._pnInicio + 1250 * t - performance.now() : 0;
+        if (falta > 0) setTimeout(() => mostrar(e.target), falta); else mostrar(e.target);
       }), { rootMargin: '0px 0px -8% 0px', threshold: .08 });
       raiz.querySelectorAll('.pn-bloco:not([data-pn-olho])').forEach((b, i) => {
         b.dataset.pnOlho = '1';
@@ -861,9 +904,40 @@ B7.Painel = (function () {
         return;
       }
       raiz.classList.remove('pn-pausa');
+      if (!raiz._pnInicio) raiz._pnInicio = performance.now();
       revelar(raiz);
-      raiz.querySelectorAll('.pn-kpi-num, .pn-graf-resumo b, .pn-graf-val').forEach(contar);
-      raiz.querySelectorAll('.pn-graf:not(.pn-cresce)').forEach(g => requestAnimationFrame(() => g.classList.add('pn-cresce')));
+      /* o odômetro começa quando o cartão já caiu no lugar */
+      const t = raiz.classList.contains('pn-rapido') ? .55 : 1;
+      const atraso = Math.max(0, raiz._pnInicio + 1000 * t - performance.now());
+      raiz.querySelectorAll('.pn-kpi-num:not([data-pn-contou])').forEach(el => {
+        contar(el, atraso);
+      });
+      animarDentro(raiz);
+      ligarGiro();
+    };
+    /* giroscópio (Android não pede permissão; iPhone pede — lá não ligamos,
+       para não mostrar pedido): o céu acompanha a inclinação do aparelho.
+       O ponto neutro é como a pessoa segura o celular e vai se ajustando. */
+    let giro = false;
+    const ligarGiro = () => {
+      if (giro || !('DeviceOrientationEvent' in window) || typeof DeviceOrientationEvent.requestPermission === 'function') return;
+      giro = true;
+      let b0 = null, g0 = null, gx = 0, gy = 0, quadro = 0;
+      const lim = v => Math.max(-1, Math.min(1, v));
+      window.addEventListener('deviceorientation', e => {
+        if (e.beta == null || e.gamma == null || reduz() || document.hidden) return;
+        if (b0 == null) { b0 = e.beta; g0 = e.gamma; }
+        b0 += (e.beta - b0) * .004; g0 += (e.gamma - g0) * .004;
+        gx = lim((e.gamma - g0) / 18); gy = lim((e.beta - b0) / 18);
+        if (quadro) return;
+        quadro = requestAnimationFrame(() => {
+          quadro = 0;
+          const c = alvo.querySelector('.pn-ceu');
+          if (!c) return;
+          c.style.setProperty('--gx', gx.toFixed(2));
+          c.style.setProperty('--gy', gy.toFixed(2));
+        });
+      }, { passive: true });
     };
     new MutationObserver(() => {
       if (!pedido) pedido = requestAnimationFrame(passar);
