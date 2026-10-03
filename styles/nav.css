@@ -58,7 +58,12 @@ body.recolhida .nav-mais{visibility:visible;}
     box-shadow:0 1px 0 rgba(255,255,255,.04), 0 8px 24px -18px rgba(20,8,40,.35);}
   @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
     body[data-shell="interno"] #tela-dashboard .topo.topo-global{
-      background:color-mix(in srgb, var(--card) 72%, transparent);
+      /* zzs: a barra de status do celular é cor sólida (o Android não
+         desfoca ali). A faixa de cima do topo nasce nessa MESMA cor e se
+         dissolve no vidro, então barra e topo viram uma peça só — sem a
+         "linha" entre o branco liso e o vidro colorido */
+      background:linear-gradient(180deg, color-mix(in srgb, var(--card) 72%, var(--fundo)) 0, color-mix(in srgb, var(--card) 72%, var(--fundo)) env(safe-area-inset-top), color-mix(in srgb, color-mix(in srgb, var(--card) 72%, var(--fundo)) 0%, transparent) 65%),
+                 color-mix(in srgb, var(--card) 72%, transparent);
       -webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);}
   }
   body[data-shell="interno"] #painel-dashboard{
