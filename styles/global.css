@@ -1914,6 +1914,10 @@ body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaF
 [data-theme="dark"] .b7-voo-brilho{mix-blend-mode:screen;opacity:.5;}
 @keyframes b7VooBrilho{from{background-position:120% 0}to{background-position:-120% 0}}
 .b7-voo-pousando{position:relative;z-index:6;}
+/* foto da tela (zzt): a tela já vista aparece na hora enquanto a de verdade monta por baixo */
+.b7-foto{position:fixed !important;z-index:54;pointer-events:none;overflow:hidden !important;margin:0 !important;
+  background:var(--fundo);box-sizing:border-box;contain:strict;}
+.b7-foto *,.b7-foto *::before,.b7-foto *::after{animation:none !important;transition:none !important;}
 .b7-voo-pouso{animation:b7Pouso .7s cubic-bezier(.2,.8,.25,1);}
 @keyframes b7Pouso{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--acento) 55%, transparent)}
   100%{box-shadow:0 0 0 14px color-mix(in srgb, var(--acento) 0%, transparent)}}
