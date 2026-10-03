@@ -513,13 +513,18 @@ B7.Semana = (function () {
         '<span>/</span><button data-ir="#/semanas">Status semanal</button>' +
         '<span>/</span><b>' + esc(D().periodoTexto(r.semana_inicio, r.semana_fim)) + '</b></div>' +
 
+      /* zzg: no celular o título é o cliente (o período fica embaixo, uma
+         vez só) e as ações viram pílula + ícone */
+      '<a class="sem-volta" href="#/semanas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Status semanal</a>' +
       '<div class="sem-cab">' +
-        '<div><small>' + esc(r.cliente_nome) + '</small>' +
-        '<h1>Status semanal</h1>' +
-        '<span class="sem-per">' + esc(D().periodoTexto(r.semana_inicio, r.semana_fim)) + '</span></div>' +
+        '<div class="sem-cab-tx">' + B7.UI.avatarCliente(r.cliente_nome, r.cliente_logo_url || null, 'sem-av') +
+        '<div><small>Status semanal</small>' +
+        '<h1>' + esc(r.cliente_nome) + '</h1>' +
+        '<span class="sem-per">' + esc(D().periodoTexto(r.semana_inicio, r.semana_fim)) +
+          ' · <i class="sem-sit">' + esc(r.situacao || 'Rascunho') + '</i></span></div></div>' +
         '<div class="sem-acoes">' +
-          '<button class="b pri" data-nova-demanda>+ Adicionar demanda</button>' +
-          '<button class="b" data-exportar>Exportar</button>' +
+          '<button class="b pri" data-nova-demanda>+ <span class="sem-so-largo">Adicionar </span>Demanda</button>' +
+          '<button class="b" data-exportar><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5"/><path d="M4.5 16.5v2.5A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5"/></svg><span>Exportar</span></button>' +
           '<div class="menu"><button class="ico">⋯</button><div class="lista">' +
             '<div class="rot">ESTADO DO RELATÓRIO</div>' +
             SITUACOES_RELATORIO.map(v => '<button data-situacao-rel="' + esc(v) + '">' +
@@ -539,8 +544,9 @@ B7.Semana = (function () {
           blocoInfo() +
           blocoLinhaEditorial() +
           blocoRevisao() +
+          '<div class="sem-dias">' +
           dias.map(d => blocoDia(d, (porDia[d] || []))).join('') +
-          (semData.length ? blocoDia(null, semData) : '') +
+          (semData.length ? blocoDia(null, semData) : '') + '</div>' +
         '</div>' +
         '<div class="sem-preview" id="sem-preview">' +
           '<div class="sp-topo"><span>Prévia</span>' +
@@ -586,26 +592,27 @@ B7.Semana = (function () {
       esc(r.observacao_geral || '') + '</textarea>' +
       /* IA: escreve a observação a partir das demandas desta semana; só entra no campo em Aplicar */
       (B7.IATexto && B7.IATexto.ligado() ? '<div class="ia-texto-linha">' + B7.IATexto.botaoHTML('Escrever com IA') + '</div>' + B7.IATexto.painelHTML() : '') +
+      /* zzg: "como aparece para o cliente" — lista de chaves liga/desliga
+         (mesmos inputs e handlers de antes; o desenho é do CSS) */
+      '<div class="sem-opcoes-tit">Como aparece para o cliente</div>' +
       '<div class="sem-opcoes">' +
         '<label class="op-mini' + (r.mostrar_dias_vazios !== false ? ' on' : '') + '">' +
-          '<input type="checkbox" data-opcao="mostrar_dias_vazios"' +
-          (r.mostrar_dias_vazios !== false ? ' checked' : '') + '>' +
-          '<span>Mostrar dias sem atividades</span></label>' +
+          '<span>Mostrar dias sem atividades</span>' +
+          '<input type="checkbox" role="switch" data-opcao="mostrar_dias_vazios"' +
+          (r.mostrar_dias_vazios !== false ? ' checked' : '') + '></label>' +
         '<label class="op-mini' + (r.mostrar_observacoes !== false ? ' on' : '') + '">' +
-          '<input type="checkbox" data-opcao="mostrar_observacoes"' +
-          (r.mostrar_observacoes !== false ? ' checked' : '') + '>' +
-          '<span>Incluir observações</span></label>' +
+          '<span>Incluir observações</span>' +
+          '<input type="checkbox" role="switch" data-opcao="mostrar_observacoes"' +
+          (r.mostrar_observacoes !== false ? ' checked' : '') + '></label>' +
         '<label class="op-mini' + (mostrarConcluidos() ? ' on' : '') + '">' +
-          '<input type="checkbox" data-pref-bool="mostrar_concluidos"' +
-          (mostrarConcluidos() ? ' checked' : '') + '>' +
-          '<span>Mostrar itens concluídos <small>trabalho já postado/finalizado — cancelados nunca aparecem</small></span></label>' +
-      '</div>' +
-      '<div class="mb" style="margin-top:10px;max-width:280px">' +
-        '<label class="rot">MOSTRAR ATIVIDADES</label>' +
-        '<select class="campo" data-pref-select="mostrar_periodo">' +
-          '<option value="toda_semana"' + (mostrarAPartirDeHoje() ? '' : ' selected') + '>Toda a semana</option>' +
-          '<option value="a_partir_hoje"' + (mostrarAPartirDeHoje() ? ' selected' : '') + '>A partir de hoje</option>' +
-        '</select>' +
+          '<span>Mostrar itens concluídos <small>trabalho já postado/finalizado — cancelados nunca aparecem</small></span>' +
+          '<input type="checkbox" role="switch" data-pref-bool="mostrar_concluidos"' +
+          (mostrarConcluidos() ? ' checked' : '') + '></label>' +
+        '<label class="op-mini op-sel"><span>Mostrar atividades</span>' +
+          '<select class="campo" data-pref-select="mostrar_periodo" aria-label="Mostrar atividades">' +
+            '<option value="toda_semana"' + (mostrarAPartirDeHoje() ? '' : ' selected') + '>Toda a semana</option>' +
+            '<option value="a_partir_hoje"' + (mostrarAPartirDeHoje() ? ' selected' : '') + '>A partir de hoje</option>' +
+          '</select></label>' +
       '</div>' +
     '</div>';
   }
@@ -678,20 +685,28 @@ B7.Semana = (function () {
     '</div>';
   }
 
+  /* zzg: a semana vira uma linha do tempo. Cada dia é UMA linha de
+     cabeçalho (dia, data, contagem e um "+" para adicionar ali); dia
+     vazio é só essa linha com "Livre" — antes eram duas faixas por dia
+     ("Sem atividades programadas" + botão tracejado), sete vezes. */
   function blocoDia(iso, itens) {
-    const rot = iso
-      ? D().DIAS[D().diaDaSemana(iso)] + ' · ' + D().curto(iso)
-      : 'SEM DATA';
-    return '<div class="sem-dia" data-dia="' + esc(iso || '') + '">' +
-      '<div class="sd-cab"><b>' + rot + '</b>' +
-        (itens.length ? '<span>' + itens.length + '</span>' : '') +
+    const rot = iso ? D().DIAS[D().diaDaSemana(iso)] : 'SEM DATA';
+    const agora = new Date();
+    const hojeIso = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
+    const hoje = iso === hojeIso, passou = iso && iso < hojeIso;
+    return '<div class="sem-dia' + (itens.length ? '' : ' vazio') + (hoje ? ' hoje' : '') + (passou ? ' passou' : '') + '" data-dia="' + esc(iso || '') + '">' +
+      '<div class="sd-cab"><i class="sd-ponto" aria-hidden="true"></i><b>' + rot + '</b>' +
+        (iso ? '<em class="sd-data">' + esc(D().curto(iso)) + '</em>' : '') +
+        (hoje ? '<span class="sd-hoje">hoje</span>' : '') +
+        (itens.length ? '<span class="sd-n">' + itens.length + '</span>' : '<span class="sd-livre">Livre</span>') +
+        (iso ? '<button class="sd-add" data-add-dia="' + esc(iso) + '" aria-label="Adicionar demanda em ' + esc(rot + ' ' + D().curto(iso)) + '" title="Adicionar demanda neste dia">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>' : '') +
       '</div>' +
       (itens.length
         ? '<div class="sd-itens">' + itens
             .slice().sort((a, b) => (a.position || 0) - (b.position || 0))
             .map((i, n) => cardItem(i, n, itens.length)).join('') + '</div>'
-        : '<div class="sd-vazio">Sem atividades programadas.</div>') +
-      (iso ? '<button class="sd-add" data-add-dia="' + esc(iso) + '">+ Adicionar demanda neste dia</button>' : '') +
+        : '') +
     '</div>';
   }
 
