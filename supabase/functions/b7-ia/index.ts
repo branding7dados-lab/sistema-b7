@@ -38,9 +38,9 @@
 // =====================================================================
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { gerar, provedorAtual } from '../_shared/ia/servico.ts';
+import { gerar, provedorAtual, quaseIgual } from '../_shared/ia/servico.ts';
 import type { Mensagem } from '../_shared/ia/provedor.ts';
-import { carregarContexto, limiteDeSaida, limparSaida, montarMensagens, validar } from '../_shared/ia/roteiro.ts';
+import { carregarContexto, limiteDeSaida, limparSaida, montarMensagens, validar, FORA } from '../_shared/ia/roteiro.ts';
 import * as Linha from '../_shared/ia/linha.ts';
 import * as Analise from '../_shared/ia/analise.ts';
 import * as Resumo from '../_shared/ia/resumo.ts';
@@ -121,6 +121,8 @@ Deno.serve(async (req: Request) => {
     recurso: string; acao: string; entidadeTipo: string; entidadeId: string; tamanhoEntrada: number;
     mensagens: Mensagem[]; maxTokens: number; temperatura: number; limpar: (b: string) => string; json: boolean;
     esquema?: Record<string, unknown>;
+    /** reescrita de um texto existente: a sugestão não pode voltar igual a ele */
+    original?: string;
   };
   if (pRoteiro && pRoteiro.ok) {
     const pedido = pRoteiro.pedido;
@@ -128,7 +130,8 @@ Deno.serve(async (req: Request) => {
     if (!ctx) return json({ ok: false, categoria: 'nao_encontrado' });
     t = {
       recurso: 'roteiro', acao: pedido.acao, entidadeTipo: 'cena', entidadeId: pedido.cenaId, tamanhoEntrada: pedido.texto.length,
-      mensagens: montarMensagens(pedido, ctx), maxTokens: limiteDeSaida(pedido.acao), temperatura: 0.7, limpar: limparSaida, json: false
+      mensagens: montarMensagens(pedido, ctx), maxTokens: limiteDeSaida(pedido.acao), temperatura: 0.7, limpar: limparSaida, json: false,
+      original: pedido.texto || undefined
     };
   } else if (pAnalise && pAnalise.ok) {
     /* revisar e comparar: o contexto é montado por operação, com a sessão
@@ -170,7 +173,8 @@ Deno.serve(async (req: Request) => {
       entidadeTipo: pedido.alvoTipo || 'linha', entidadeId: pedido.alvoId || pedido.linhaId, tamanhoEntrada: pedido.texto.length,
       mensagens: Linha.montarMensagens(pedido, ctx), maxTokens: Linha.limiteDeSaida(pedido),
       temperatura: pedido.operacao.startsWith('revisar') ? 0.4 : 0.8, limpar: Linha.limpador(pedido, ctx), json: Linha.pedeJson(pedido),
-      esquema: Linha.esquema(pedido)
+      esquema: Linha.esquema(pedido),
+      original: pedido.operacao === 'campo' && pedido.texto && pedido.acao !== 'hashtags' ? pedido.texto : undefined
     };
   }
 
@@ -181,10 +185,24 @@ Deno.serve(async (req: Request) => {
     provedor: provedor.nome, modelo: provedor.modelo
   }).select('id').maybeSingle();
 
-  /* um pedido da pessoa = uma chamada ao provedor */
-  const r = await gerar(provedor, t.mensagens, {
-    maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema
-  });
+  /* um pedido da pessoa = uma chamada ao provedor — com UMA exceção: a
+     reescrita que volta praticamente igual ao texto original não serve
+     para nada (a pessoa veria a "sugestão" idêntica ao que já escreveu).
+     Nesse caso o modelo recebe a própria resposta de volta, com o aviso,
+     e tem mais uma chance. Se repetir de novo, a tela recebe "igual" e
+     explica — nunca uma sugestão idêntica. Erro de cota/limite não
+     repete (ver servico.ts). */
+  const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema };
+  let r = await gerar(provedor, t.mensagens, op);
+  let repetiu = false;
+  if (r.ok && t.original && r.texto.trim() !== FORA && quaseIgual(r.texto, t.original)) {
+    repetiu = true;
+    const segunda = await gerar(provedor, [...t.mensagens,
+      { role: 'user', content: 'ATENÇÃO: uma primeira tentativa devolveu <<<' + r.texto + '>>>, que é praticamente igual ao texto original e não ajuda quem pediu. ' +
+        'Escreva uma versão realmente diferente, cumprindo a tarefa: outras palavras e outra construção, sem inventar dados.' }
+    ], { ...op, temperatura: Math.min(1, op.temperatura + 0.2) });
+    if (segunda.ok) r = segunda;
+  }
 
   if (reg) {
     await sb.from('ia_uso').update(r.ok ? {
@@ -200,6 +218,10 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!r.ok) return json({ ok: false, categoria: r.categoria });
+  /* pedido sem relação com o texto: o modelo responde o código combinado
+     (roteiro.ts / linha.ts) em vez de ecoar o original */
+  if (!t.json && r.texto.trim() === FORA) return json({ ok: false, categoria: 'fora' });
+  if (repetiu && t.original && quaseIgual(r.texto, t.original)) return json({ ok: false, categoria: 'igual' });
   /* listas: o limpador da tarefa já validou e devolveu { itens } */
   if (t.json) {
     const lido = JSON.parse(r.texto);

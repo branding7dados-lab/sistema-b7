@@ -48,6 +48,24 @@ export type Opcoes = {
   esquema?: Record<string, unknown>;
 };
 
+/**
+ * A sugestão é praticamente o mesmo texto? Compara as palavras (sem
+ * acento, caixa e pontuação) pelo coeficiente de Dice. 0,9+ = trocou
+ * uma vírgula ou uma palavra: para quem pediu "melhorar", não serve.
+ */
+export function quaseIgual(a: string, b: string, limiar = 0.9): boolean {
+  const pal = (t: string) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  const x = pal(a), y = pal(b);
+  if (!x.length || !y.length) return false;
+  if (x.join(' ') === y.join(' ')) return true;
+  const conta = new Map<string, number>();
+  x.forEach(w => conta.set(w, (conta.get(w) || 0) + 1));
+  let comum = 0;
+  y.forEach(w => { const n = conta.get(w) || 0; if (n > 0) { comum++; conta.set(w, n - 1); } });
+  return (2 * comum) / (x.length + y.length) >= limiar;
+}
+
 /** O provedor desta instalação. null = IA não configurada neste ambiente. */
 export function provedorAtual(env: (nome: string) => string | undefined): Provedor | null {
   return criarOmniRoute(env) || criarGemini(env);

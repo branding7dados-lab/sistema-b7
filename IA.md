@@ -213,3 +213,8 @@ Telas, tarefas, permissões, limites e frases de erro não mudam.
 3. Na tela, `B7.IA.pedir('<tarefa>', dados)`, e uma chave em `B7_CONFIG.IA`.
 
 O serviço, o provedor, a sessão, o limite e o registro são os mesmos.
+
+## Sugestão que volta igual ao texto (2026-10-02-zh)
+
+- O prompt do roteiro e dos campos da linha dizia "se a instrução pedir algo que não seja reescrever, devolva o texto original". Pedidos da revisão ("confira se…", "verifique…") caíam nessa regra e a IA ecoava o texto. Agora: observação de revisão = pedido de reescrita (resolver o ponto sem inventar dado); devolver igual é resposta errada; pedido sem relação com o texto → o modelo responde `SEM_RELACAO` e a tela mostra a categoria `fora`.
+- Servidor (`b7-ia/index.ts`): em reescrita de texto existente, se a sugestão for praticamente igual ao original (`quaseIgual`, Dice de palavras ≥ 0,9), faz UMA segunda chamada avisando o modelo. Se repetir de novo, responde categoria `igual` — nunca mostra uma "sugestão" idêntica. É a única exceção à regra "um pedido = uma chamada"; cota e limite continuam sem repetição.
