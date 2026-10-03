@@ -44,7 +44,8 @@ B7.Memoria = (function () {
     'painelCoordRoteirosDasGravacoes', 'minhasDemandasVideo', 'videoDoCliente', 'resumoGestaoVideo',
     'cargaEquipeVideo', 'producaoPorClienteVideo', 'eventosCalendario', 'ocorrenciasCalendario',
     'publicacoesCalendario', 'prazosVideoPeriodo', 'prazosDesignPeriodo', 'oportunidadesBase',
-    'producaoDoCliente', 'gravacoesDoCliente', 'statusPublicados'
+    'producaoDoCliente', 'gravacoesDoCliente', 'statusPublicados',
+    'pacotesVideo', 'statusConexaoCalendario', 'listarCalendariosGoogle'
   ];
   /* tudo que muda dado no banco; o resto (heartbeat, sessão, leituras de
      detalhe) não mexe na memória */

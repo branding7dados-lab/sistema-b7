@@ -55,12 +55,13 @@ B7.Central = (function () {
     F.de = p.de; F.ate = p.ate;
 
     let dados, clientes;
+    const vale = B7.Rota.marca();
     try {
       [dados, clientes] = await Promise.all([
         B7.DB.painelProducao({ de: F.de, ate: F.ate, clienteId: F.clienteId }),
         B7.DB.listarClientes().catch(() => [])
       ]);
-    } catch (e) { return B7.Dashboard.erroConteudo(e); }
+    } catch (e) { if (!vale()) return; return B7.Dashboard.erroConteudo(e); }
 
     /* listas de apoio são extras: nenhuma delas derruba a Central */
     const [recentesLinhas, recentesRoteiros, aprov] = await Promise.all([
@@ -70,6 +71,7 @@ B7.Central = (function () {
       B7.DB.painelAprovacoes({ somenteAtual: true, clienteId: F.clienteId || null, de: F.de, ate: F.ate, limite: 1000 }).catch(() => null)
     ]);
 
+    if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
     painel().innerHTML = '<div class="conteudo entra">' +
       cabecalho(p, clientes) +
       categoriaGravacoes(dados.gravacoes) +

@@ -885,9 +885,20 @@ B7.Painel = (function () {
         raiz.dataset.pnFilme = '1';
         /* a estreia completa é uma por sessão; depois, o mesmo filme mais rápido */
         try {
-          if (sessionStorage.getItem('b7_pn_estreia')) raiz.classList.add('pn-rapido');
+          if (sessionStorage.getItem('b7_pn_estreia')) raiz.classList.add('pn-calmo');
           else sessionStorage.setItem('b7_pn_estreia', '1');
         } catch (e) {}
+      }
+      /* zzz4: depois da estreia, voltar ao Painel é chegar, não assistir de
+         novo — o filme (desfoque, letras, cartões caindo, odômetro) só uma
+         vez por sessão. Repetido a cada toque na barra, parecia a tela
+         carregando. Fica só o céu, parado no lugar. */
+      if (raiz.classList.contains('pn-calmo')) {
+        raiz.querySelectorAll('.pn-cab').forEach(ceu);
+        raiz.querySelectorAll('.pn-kpi-num:not([data-pn-contou])').forEach(el => { el.dataset.pnContou = '1'; });
+        raiz.querySelectorAll('.pn-bloco').forEach(b => b.classList.add('pn-visto'));
+        raiz.querySelectorAll('.pn-graf').forEach(g => g.classList.add('pn-cresce'));
+        return;
       }
       if ('IntersectionObserver' in window) raiz.classList.add('pn-cine');
       raiz.querySelectorAll('.pn-cab').forEach(ceu);

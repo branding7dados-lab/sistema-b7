@@ -169,6 +169,7 @@ B7.Video = (function () {
   }
 
   async function abrir(params) {
+    const vale = B7.Rota.marca();
     aplicarFiltrosDaUrl(params);
     B7.Dashboard.marcarNav('#/video');
     const equipe = souEquipe();
@@ -189,6 +190,8 @@ B7.Video = (function () {
       videomakers = v || [];
       pacotesVideoCache = p || [];
     } catch (e) {
+      if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
+
       painel().innerHTML = '<div class="conteudo vd-tela"><div class="estado-b7">' +
         '<b>Não foi possível carregar a Produção de Vídeo.</b>' +
         '<p>' + esc(e.message || 'Confira a conexão e tente de novo.') + '</p>' +
@@ -197,6 +200,7 @@ B7.Video = (function () {
       return;
     }
 
+    if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
     if (!F.competencia) F.competencia = mesAtualChave();
 
     desenharProducao();
@@ -1508,6 +1512,7 @@ B7.Video = (function () {
      DETALHE DE UMA DEMANDA — layout principal + painel lateral
      ================================================================= */
   async function abrirDetalhe(id) {
+    const vale = B7.Rota.marca();
     B7.Dashboard.marcarNav('#/video');
     B7.Rota.titulo(['Produção de Vídeo', 'Demanda']);
     painel().innerHTML = '<div class="conteudo vd-tela">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>';
@@ -1567,6 +1572,7 @@ B7.Video = (function () {
          (Lixeira) ou descartada depois que o aviso foi criado. Nesse caso
          a mensagem de erro crua do Postgres ("Cannot coerce…") não ajuda
          ninguém — mostra o motivo real, em português. */
+      if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
       const excluida = e && (e.code === 'PGRST116' || /coerce the result/i.test(e.message || ''));
       painel().innerHTML = '<div class="conteudo vd-tela"><div class="estado-b7">' +
         (excluida
@@ -1581,6 +1587,7 @@ B7.Video = (function () {
       return;
     }
 
+    if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
     const podeEditar = souEquipe();
     const podeOperar = possoOperar();
     const atrasada = ehAtrasada(d);
