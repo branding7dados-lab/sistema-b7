@@ -228,3 +228,10 @@ A sequência completa ficou **mais longa (~4,3 s + 0,8 s de saída)** e mais dra
 - **bokeh**: luzes desfocadas ao fundo depois da ignição, feitas só com gradiente, sem filtro.
 
 **Testes:** quadros congelados em 390 px (2,03 s com tarjas, cromática, raios e flare; 3,55 s com bokeh e logo montado); ensaio offline da trilha. Não testado em aparelho e não ouvido de verdade (não tenho alto-falante); a medição foi por picos de volume.
+
+---
+
+## Atualização zq
+
+- **Tarjas de cinema removidas** (pedido do Kevin). Continuam: travelling, tremor, aberração cromática, bokeh e o som.
+- **"Ver abertura"** agora também está no **menu da conta** (sua foto no topo), para todos os papéis, além de Configurações → Aparência. Repete a sequência completa com som.

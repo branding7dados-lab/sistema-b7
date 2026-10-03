@@ -1248,16 +1248,6 @@ body.apurando #app{visibility:hidden;}
   opacity:0;transform:scaleX(.05);animation:abFlare 1.2s cubic-bezier(.2,.8,.2,1) var(--ab-ign) both;}
 @keyframes abFlare{0%{opacity:0;transform:scaleX(.05)}14%{opacity:1;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1.25)}}
 
-/* tarjas de cinema: entram no começo, recolhem na saída */
-.ab-tarja{position:absolute;left:0;right:0;height:9vh;z-index:3;background:#000;pointer-events:none;}
-.ab-tarja.cima{top:0;box-shadow:0 1px 0 rgba(255,255,255,.04);animation:abTarjaCima 1s var(--ab-assenta) .05s both;}
-.ab-tarja.baixo{bottom:0;box-shadow:0 -1px 0 rgba(255,255,255,.04);animation:abTarjaBaixo 1s var(--ab-assenta) .05s both;}
-@keyframes abTarjaCima{from{transform:translate3d(0,-100%,0)}to{transform:none}}
-@keyframes abTarjaBaixo{from{transform:translate3d(0,100%,0)}to{transform:none}}
-.b7-abertura.saindo .ab-tarja.cima{animation:abTarjaCimaSai .55s cubic-bezier(.6,0,.3,1) forwards;}
-.b7-abertura.saindo .ab-tarja.baixo{animation:abTarjaBaixoSai .55s cubic-bezier(.6,0,.3,1) forwards;}
-@keyframes abTarjaCimaSai{to{transform:translate3d(0,-100%,0)}}
-@keyframes abTarjaBaixoSai{to{transform:translate3d(0,100%,0)}}
 /* bokeh: luzes desfocadas ao fundo, depois da ignição (gradiente, sem filtro) */
 .ab-bokeh{position:absolute;inset:0;}
 .ab-bokeh i{position:absolute;border-radius:50%;opacity:0;
@@ -1269,10 +1259,10 @@ body.apurando #app{visibility:hidden;}
 .ab-bokeh i:nth-child(4){right:16%;bottom:30%;width:140px;height:140px;animation-delay:2.05s;background:radial-gradient(circle, rgba(124,60,210,.3), rgba(124,60,210,.08) 55%, transparent 70%);}
 .ab-bokeh i:nth-child(5){left:56%;top:14%;width:52px;height:52px;animation-delay:2.4s;}
 @keyframes abBokeh{0%{opacity:0;transform:translate3d(0,14px,0) scale(.8)}35%{opacity:1}100%{opacity:.55;transform:translate3d(0,-22px,0) scale(1)}}
-.ab-curta .b7-abertura.inicial :is(.ab-tarja,.ab-bokeh),.b7-abertura:not(.inicial) :is(.ab-tarja,.ab-bokeh){display:none;}
+.ab-curta .b7-abertura.inicial :is(.ab-bokeh),.b7-abertura:not(.inicial) :is(.ab-bokeh){display:none;}
 .ab-curta .b7-abertura.inicial .ab-marca,.b7-abertura:not(.inicial) .ab-marca{animation:none;}
 .b7-abertura.saindo .ab-bokeh{display:none;}
-@media (prefers-reduced-motion:reduce){ .b7-abertura :is(.ab-tarja,.ab-bokeh){display:none;} }
+@media (prefers-reduced-motion:reduce){ .b7-abertura :is(.ab-bokeh){display:none;} }
 /* ---- espera honesta: só se o sistema ainda não estiver pronto ---- */
 .ab-espera{position:absolute;left:0;right:0;top:calc(50% - 6vh + var(--ab-h) / 2 + 38px);z-index:1;
   display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;

@@ -37,6 +37,7 @@ B7.Topo = (function () {
     config: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
     usuarios: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M16 19v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V19"/><circle cx="9" cy="7" r="3.2"/><path d="M22 19v-1.5a4 4 0 0 0-3-3.87M16 4.13a4 4 0 0 1 0 7.75"/></svg>',
     teclado: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>',
+    abertura: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/></svg>',
     sair: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 16l-4-4 4-4M6 12h10"/></svg>',
     sistema: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M9 20h6M12 16.5V20"/></svg>',
     sol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>',
@@ -323,6 +324,8 @@ B7.Topo = (function () {
       (!cliente ? item('data-conta="atalhos"', IC.teclado, 'Atalhos de teclado', ' tp-so-desktop') : '') +
       (B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor && !naContaDeOutro
         ? item('data-conta="vercomo"', IC.olho, 'Visualizar como…') : '') +
+      /* rever a abertura do B7 (com som: o toque destrava o áudio) */
+      (B7.reverAbertura ? item('data-conta="abertura"', IC.abertura, 'Ver abertura') : '') +
       '<div class="tp-secao" role="group" aria-label="Aparência"><span class="tp-secao-rot">Aparência</span>' +
         '<div class="tp-temas">' + tema('sistema', IC.sistema, 'Sistema') + tema('light', IC.sol, 'Claro') + tema('dark', IC.lua, 'Escuro') + '</div>' +
       '</div>' +
@@ -337,6 +340,7 @@ B7.Topo = (function () {
       usuarios: () => { location.hash = '#/usuarios'; },
       atalhos: () => B7.UI.atalhos(),
       vercomo: () => B7.PreviaUsuario.abrirSeletor(),
+      abertura: () => B7.reverAbertura(),
       sair: () => B7.Auth.sair()
     };
     raiz.querySelectorAll('[data-conta]').forEach(b => b.onclick = () => { const k = b.dataset.conta; fechar(); acao[k] && acao[k](); });
