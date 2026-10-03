@@ -945,48 +945,33 @@ B7.Rota = (function () {
       finally { conferindo = false; }
     }
 
-    /* QUANDO APLICAR. A atualização entra sozinha, mas nunca por cima do
-       que a pessoa está fazendo: recarregar apaga o que está digitado
-       num campo, fecha um modal no meio e derruba uma apresentação.
-       Então recarrega na hora se a aba está em segundo plano ou se
-       ninguém mexe há alguns segundos, e nada está aberto/por salvar;
-       senão espera — e aproveita a próxima troca de tela, que é um
-       momento em que recarregar não custa nada. O aviso com "Atualizar"
-       fica na tela enquanto isso, para quem quiser na hora. */
-    let ultimoGesto = Date.now();
-    ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(t =>
-      window.addEventListener(t, () => { ultimoGesto = Date.now(); }, { passive: true, capture: true }));
-    const ocupado = () => {
-      if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias()) return true;
-      if (document.fullscreenElement || document.webkitFullscreenElement) return true;
-      if (document.querySelector('.fundo-modal:not(.saindo), .preview-fundo, .apresentacao, .tele')) return true;
-      const a = document.activeElement;
-      return !!(a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
-    };
-    const parado = () => Date.now() - ultimoGesto > 8000;
-    /* trava contra laço: recarrega sozinho uma vez por versão. Se depois
-       de recarregar a versão ainda não for a publicada (servidor ainda
-       distribuindo os arquivos), fica só o aviso. */
-    const jaTentei = () => { try { return sessionStorage.getItem('b7-recarga-alvo') === alvo; } catch (e) { return false; } };
+    /* QUANDO APLICAR (pedido do Kevin, 03/10, pacote zzh): SÓ quando a
+       pessoa tocar em "Atualizar". Antes a página recarregava sozinha
+       (aba em segundo plano, 8 s sem mexer, ou na próxima troca de tela)
+       e parecia que o aviso não servia para nada. Agora o aviso fica na
+       tela até ser tocado; se for fechado, volta a aparecer na próxima
+       conferência. Abrir o app de novo (ou recarregar) também já traz a
+       versão nova, como sempre. */
+    let avisoAberto = null;
     const recarregar = () => {
-      try { sessionStorage.setItem('b7-recarga-alvo', alvo || ''); } catch (e) {}
-      location.reload();
+      /* algo por salvar? salva antes de recarregar (nada se perde) */
+      const vai = () => location.reload();
+      if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias() && B7.Save.agora) {
+        Promise.resolve(B7.Save.agora()).catch(() => {}).then(vai);
+      } else vai();
     };
-    const tentar = () => { if (alvo && !ocupado() && !jaTentei() && (document.hidden || parado())) recarregar(); };
 
     function haVersaoNova(v) {
       alvo = v;
       /* o service worker novo renova a reserva offline; a recarga em si
          já busca os arquivos na rede, com ou sem ele */
       if (registro) registro.update().catch(() => {});
-      if (!avisou) {
-        avisou = true;
-        B7.UI.toast('Nova versão do B7 disponível.', { acao: 'Atualizar', tempo: 24 * 3600 * 1000, aoClicar: recarregar });
-        setInterval(tentar, 2000);
-        document.addEventListener('visibilitychange', tentar);
-        window.addEventListener('hashchange', () => { if (alvo && !ocupado() && !jaTentei()) recarregar(); });
-      }
-      tentar();
+      /* um aviso só na tela (a conferência roda a cada 30 s) */
+      if (avisoAberto && avisoAberto.isConnected && !avisoAberto.classList.contains('saindo')) return;
+      avisou = true;
+      B7.UI.toast('Nova versão do B7 disponível.', { acao: 'Atualizar', tempo: 24 * 3600 * 1000, aoClicar: recarregar });
+      const ts = document.querySelectorAll('#toasts .toast');
+      avisoAberto = ts[ts.length - 1] || null;
     }
 
     setInterval(() => conferir(false), 30000);
