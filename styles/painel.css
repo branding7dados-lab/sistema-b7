@@ -389,3 +389,108 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
   .pn-graf-tip, .pn-graf-trilho i, .pn-att{transition:none;}
 }
 .pn-sec-sub + .pn-link-cal{margin-left:auto;}
+
+/* =====================================================================
+   PAINEL CINEMATOGRÁFICO (pacote zu, 03/10)
+   Luz ambiente atrás da saudação, título que entra do desfoque com um
+   brilho passando pelas letras, cartões em cascata, números contando
+   (js/painel.js, "cinema"), barras crescendo, dias da semana surgindo,
+   blocos que se revelam ao rolar. Tudo transform/opacity; a luz de
+   fundo é um gradiente parado que só se desloca (transform).
+   ===================================================================== */
+.pn{position:relative;isolation:isolate;overflow-x:clip;}
+/* luz ambiente: duas manchas de luz que derivam devagar atrás do topo */
+.pn-cab{position:relative;}
+.pn-cab::before,.pn-cab::after{content:"";position:absolute;z-index:-1;pointer-events:none;border-radius:50%;}
+.pn-cab::before{left:-30%;top:-90px;width:min(560px,110vw);height:340px;
+  background:radial-gradient(closest-side, color-mix(in srgb, var(--acento) 26%, transparent), transparent 72%);
+  animation:pnLuzA 14s ease-in-out infinite alternate, pnSurge 1.4s ease-out both;}
+.pn-cab::after{right:-25%;top:-40px;width:min(440px,90vw);height:280px;
+  background:radial-gradient(closest-side, rgba(110,70,230,.22), transparent 72%);
+  animation:pnLuzB 17s ease-in-out infinite alternate, pnSurge 1.6s ease-out .2s both;}
+[data-theme="light"] .pn-cab::before{opacity:.55;}
+[data-theme="light"] .pn-cab::after{opacity:.45;}
+@keyframes pnLuzA{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(18%,12px,0) scale(1.12)}}
+@keyframes pnLuzB{from{transform:translate3d(0,0,0) scale(1.05)}to{transform:translate3d(-16%,20px,0) scale(.92)}}
+@keyframes pnSurge{from{opacity:0}to{opacity:1}}
+
+/* cabeçalho: cada linha entra no seu tempo */
+.pn-kicker{animation:pnSobe .6s cubic-bezier(.2,.85,.25,1) .05s both;}
+.pn-cab h1{animation:pnTitulo .9s cubic-bezier(.2,.85,.25,1) .12s both;
+  background:linear-gradient(100deg, var(--ink) 0 42%, #FF8FCB 50%, var(--ink) 58% 100%);background-size:260% 100%;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.pn-cab h1{animation:pnTitulo .9s cubic-bezier(.2,.85,.25,1) .12s both, pnBrilhoTx 1.5s cubic-bezier(.45,0,.2,1) .7s both;}
+.pn-papel{animation:pnSobe .6s cubic-bezier(.2,.85,.25,1) .28s both;}
+.pn-resumo{animation:pnSobe .6s cubic-bezier(.2,.85,.25,1) .4s both;}
+.pn-cab-lado{animation:pnSobe .6s cubic-bezier(.2,.85,.25,1) .5s both;}
+@keyframes pnSobe{from{opacity:0;transform:translate3d(0,12px,0)}to{opacity:1;transform:none}}
+@keyframes pnTitulo{from{opacity:0;transform:translate3d(0,16px,0) scale(.97);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+@keyframes pnBrilhoTx{from{background-position:100% 0}to{background-position:0 0}}
+
+/* KPIs: cascata com leve profundidade; o de alerta respira */
+.pn-kpis > *{animation:pnCartao .62s cubic-bezier(.2,.85,.25,1) both;}
+.pn-kpis > :nth-child(1){animation-delay:.42s}.pn-kpis > :nth-child(2){animation-delay:.5s}
+.pn-kpis > :nth-child(3){animation-delay:.58s}.pn-kpis > :nth-child(4){animation-delay:.66s}
+.pn-kpis > :nth-child(n+5){animation-delay:.74s}
+@keyframes pnCartao{from{opacity:0;transform:translate3d(0,18px,0) scale(.95)}to{opacity:1;transform:none}}
+.pn-kpi.pn-tom-erro{animation:pnCartao .62s cubic-bezier(.2,.85,.25,1) .42s both, pnRespira 3.2s ease-in-out 1.2s infinite;}
+@keyframes pnRespira{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--erro) 0%, transparent), 0 10px 30px -18px color-mix(in srgb, var(--erro) 60%, transparent)}
+  50%{box-shadow:0 0 0 4px color-mix(in srgb, var(--erro) 12%, transparent), 0 14px 40px -14px color-mix(in srgb, var(--erro) 70%, transparent)}}
+.pn-kpi-num{font-variant-numeric:tabular-nums;}
+a.pn-kpi,.pn-att,.pn-comp,.pn-dia-lk{transition:transform var(--m-instante) var(--m-toque);}
+a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale(.975);}
+
+/* blocos: revelam ao entrar na tela (só quando o cinema está ligado) */
+.pn-cine .pn-bloco{opacity:0;transform:translate3d(0,26px,0) scale(.985);
+  transition:opacity .7s cubic-bezier(.2,.85,.25,1), transform .8s cubic-bezier(.2,.85,.25,1);}
+.pn-cine .pn-bloco.pn-visto{opacity:1;transform:none;transition-delay:calc(min(var(--pn-i, 0), 1) * 90ms);}
+
+/* atenção: as linhas deslizam; o ícone de alerta emite um anel */
+.pn-visto .pn-att{animation:pnDesliza .55s cubic-bezier(.2,.85,.25,1) both;}
+.pn-visto .pn-att:nth-child(2){animation-delay:.08s}.pn-visto .pn-att:nth-child(3){animation-delay:.16s}.pn-visto .pn-att:nth-child(n+4){animation-delay:.24s}
+@keyframes pnDesliza{from{opacity:0;transform:translate3d(-18px,0,0)}to{opacity:1;transform:none}}
+.pn-att-erro .pn-att-ic{position:relative;}
+.pn-att-erro .pn-att-ic::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 0 color-mix(in srgb, var(--erro) 55%, transparent);
+  animation:pnAnel 2.2s cubic-bezier(.2,.6,.3,1) 1s infinite;}
+@keyframes pnAnel{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--erro) 55%, transparent)}80%,100%{box-shadow:0 0 0 12px color-mix(in srgb, var(--erro) 0%, transparent)}}
+
+/* semana: os dias surgem em sequência; hoje brilha */
+.pn-visto .pn-dia-w,.pn-visto li.pn-dia{animation:pnDia .5s cubic-bezier(.2,.9,.25,1.15) both;}
+.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(2){animation-delay:.06s}.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(3){animation-delay:.12s}
+.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(4){animation-delay:.18s}.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(5){animation-delay:.24s}
+.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(n+6){animation-delay:.3s}
+@keyframes pnDia{from{opacity:0;transform:translate3d(0,14px,0) scale(.85)}to{opacity:1;transform:none}}
+.pn-dia.hoje{animation:pnHoje 2.8s ease-in-out 1s infinite;}
+@keyframes pnHoje{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--acento) 0%, transparent)}50%{box-shadow:0 0 0 3px color-mix(in srgb, var(--acento) 22%, transparent), 0 8px 24px -10px color-mix(in srgb, var(--acento) 70%, transparent)}}
+
+/* gráfico: barras crescem de baixo, em cascata; a da semana atual brilha */
+.pn-graf .pn-graf-trilho i{transform-origin:50% 100%;}
+.pn-cine .pn-graf:not(.pn-cresce) .pn-graf-trilho i{transform:scaleY(0);}
+.pn-cine .pn-graf .pn-graf-trilho i{transition:transform .9s cubic-bezier(.2,.9,.2,1.08);}
+.pn-graf .pn-graf-col:nth-child(2) .pn-graf-trilho i{transition-delay:.06s}.pn-graf .pn-graf-col:nth-child(3) .pn-graf-trilho i{transition-delay:.12s}
+.pn-graf .pn-graf-col:nth-child(4) .pn-graf-trilho i{transition-delay:.18s}.pn-graf .pn-graf-col:nth-child(5) .pn-graf-trilho i{transition-delay:.24s}
+.pn-graf .pn-graf-col:nth-child(6) .pn-graf-trilho i{transition-delay:.3s}
+.pn-cine .pn-graf:not(.pn-cresce) .pn-graf-val{opacity:0;transform:translate3d(0,6px,0);}
+.pn-cine .pn-graf .pn-graf-val{transition:opacity .4s ease .5s, transform .4s ease .5s;}
+.pn-graf-col.atual .pn-graf-trilho i{position:relative;overflow:hidden;}
+.pn-graf-col.atual .pn-graf-trilho i::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg, transparent, rgba(255,255,255,.4) 50%, transparent);transform:translate3d(0,100%,0);
+  animation:pnVarre 2.6s cubic-bezier(.45,0,.2,1) 1.4s infinite;}
+@keyframes pnVarre{0%{transform:translate3d(0,100%,0)}55%,100%{transform:translate3d(0,-100%,0)}}
+/* "acima da média": um brilho passa de tempos em tempos */
+.pn-delta{position:relative;overflow:hidden;}
+.pn-delta::after{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent);transform:translate3d(-120%,0,0);
+  animation:pnVarreLado 3.6s cubic-bezier(.45,0,.2,1) 1.6s infinite;}
+@keyframes pnVarreLado{0%{transform:translate3d(-120%,0,0)}40%,100%{transform:translate3d(320%,0,0)}}
+
+/* compromissos: entram um a um */
+.pn-visto .pn-comp{animation:pnDesliza .55s cubic-bezier(.2,.85,.25,1) both;}
+.pn-visto .pn-comp:nth-child(2){animation-delay:.07s}.pn-visto .pn-comp:nth-child(3){animation-delay:.14s}
+.pn-visto .pn-comp:nth-child(4){animation-delay:.21s}.pn-visto .pn-comp:nth-child(n+5){animation-delay:.28s}
+
+@media (prefers-reduced-motion:reduce){
+  .pn-cab::before,.pn-cab::after,.pn-kicker,.pn-cab h1,.pn-papel,.pn-resumo,.pn-cab-lado,.pn-kpis > *,.pn-kpi.pn-tom-erro,
+  .pn-att,.pn-att-ic::after,.pn-dia-w,li.pn-dia,.pn-dia.hoje,.pn-comp,.pn-graf-trilho i::after,.pn-delta::after{animation:none !important;}
+  .pn-cab h1{background:none;-webkit-text-fill-color:currentColor;}
+}

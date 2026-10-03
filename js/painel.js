@@ -731,5 +731,63 @@ B7.Painel = (function () {
                diaSemana, cabecalho, comTempoLimite, emPrevia, meuId, umaVez, gravacoesDaJanela,
                datas: { hoje, pad, isoDe, local, somarDias, difDias, segundaDe, ddmm, hora, diaDoTs, quandoDia, DOW, DOW_LONGO, MES } };
 
+  /* =================================================================
+     CINEMA DO PAINEL (pacote zu, 03/10)
+     Cada parte do Painel chega em momentos diferentes (cada fonte pinta
+     a sua seção quando carrega). Em vez de amarrar animação em cada
+     pintura, um observador olha o painel e, quando algo novo aparece:
+     • números (KPIs, resumo da produção, barras) contam de 0 ao valor;
+     • blocos abaixo da dobra se revelam ao entrar na tela;
+     • o gráfico ganha a classe que faz as barras crescerem.
+     Só apresentação: nenhum dado, regra ou link muda. Com "reduzir
+     movimento", nada disso roda (e nada fica escondido).
+     ================================================================= */
+  (function cinema() {
+    const reduz = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const alvo = document.getElementById('painel-dashboard');
+    if (!alvo || !window.MutationObserver) return;
+    const contar = el => {
+      if (el.dataset.pnContou) return;
+      const txt = el.textContent.trim(), m = txt.match(/^(\d+)([.,]\d+)?$/);
+      el.dataset.pnContou = '1';
+      if (!m || reduz()) return;
+      const fim = parseFloat(txt.replace(',', '.')), dec = m[2] ? m[2].length - 1 : 0;
+      if (fim <= 1 && !dec) return;
+      const t0 = performance.now(), DUR = 900;
+      const quadro = agora => {
+        const p = Math.min(1, (agora - t0) / DUR), e = 1 - Math.pow(1 - p, 4);
+        el.textContent = (fim * e).toFixed(dec).replace('.', ',');
+        if (p < 1) requestAnimationFrame(quadro); else el.textContent = txt;
+      };
+      el.textContent = (0).toFixed(dec).replace('.', ',');
+      requestAnimationFrame(quadro);
+    };
+    let olho = null;
+    const revelar = raiz => {
+      if (!('IntersectionObserver' in window) || reduz()) return;
+      if (!olho) olho = new IntersectionObserver(es => es.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('pn-visto'); olho.unobserve(e.target); }
+      }), { rootMargin: '0px 0px -8% 0px', threshold: .08 });
+      raiz.querySelectorAll('.pn-bloco:not([data-pn-olho])').forEach((b, i) => {
+        b.dataset.pnOlho = '1';
+        b.style.setProperty('--pn-i', i);
+        olho.observe(b);
+      });
+    };
+    let pedido = 0;
+    new MutationObserver(() => {
+      if (pedido) return;
+      pedido = requestAnimationFrame(() => {
+        pedido = 0;
+        const raiz = alvo.querySelector('.pn');
+        if (!raiz) return;
+        if (!reduz() && 'IntersectionObserver' in window) raiz.classList.add('pn-cine');
+        revelar(raiz);
+        raiz.querySelectorAll('.pn-kpi-num, .pn-graf-resumo b, .pn-graf-val').forEach(contar);
+        raiz.querySelectorAll('.pn-graf:not(.pn-cresce)').forEach(g => requestAnimationFrame(() => g.classList.add('pn-cresce')));
+      });
+    }).observe(alvo, { childList: true, subtree: true });
+  })();
+
   return { abrir, ui, contexto, adaptador };
 })();
