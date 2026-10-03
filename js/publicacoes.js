@@ -193,6 +193,8 @@ B7.Publicacoes = (function () {
     filtrosAbertos = null;
     E.pendentesCarregadas = false;
     E.pendentes = []; E.pendentesErro = null;
+    E.carregando = true; E.ini = E.fim = null; E.itens = [];
+    animDia = null; passoFaixa = 0; pendentesAbertos = false;
     B7.Dashboard.marcarNav('#/publicacoes');
     B7.Rota.titulo(['Publicações do Dia']);
     desenharTela();
@@ -204,10 +206,12 @@ B7.Publicacoes = (function () {
      corpo é redesenhado — o cabeçalho e a faixa de dias ficam de pé. */
   function irParaDia(d) {
     if (!ehISO(d) || d === E.dia) return;
+    const dif = difDias(E.dia, d);
+    animDia = dif > 0 ? 'prox' : 'ant';
+    passoFaixa = dif;
     E.dia = d;
     try { history.replaceState(null, '', '#/publicacoes/' + d); } catch (e) {}
-    desenharFaixa();
-    carregar();
+    carregar();   /* carregar já redesenha a faixa */
   }
 
   /* ------------------------------------------------------------ consulta */
@@ -215,7 +219,10 @@ B7.Publicacoes = (function () {
     const req = ++pedido;
     /* o atalho para o Calendário B7 acompanha o dia escolhido */
     const cal = document.getElementById('pb-cal'); if (cal && E.dia) cal.setAttribute('href', '#/calendario?v=semana&tipo=publicacoes&d=' + E.dia);
-    E.carregando = true; E.erro = null;
+    /* o dia novo já está entre os que vieram na última consulta? então
+       aparece NA HORA (sem esqueleto) e a busca atualiza por baixo */
+    const jaTem = !E.erro && !E.carregando && E.ini && E.dia >= E.ini && E.dia <= E.fim;
+    if (!jaTem) { E.carregando = true; E.erro = null; }
     desenharFaixa(); desenharCorpo();
 
     const faixaIni = somarDias(E.dia, -Math.floor(DIAS_FAIXA / 2));
@@ -231,6 +238,7 @@ B7.Publicacoes = (function () {
       ]);
       if (req !== pedido) return;
       E.itens = itens || [];
+      E.ini = faixaIni; E.fim = faixaFim;
       E.proximos = contarPorDia(proximos || []);
       E.carregando = false;
     } catch (e) {
@@ -239,7 +247,7 @@ B7.Publicacoes = (function () {
       E.carregando = false;
       /* erro NUNCA se disfarça de vazio: some com a lista e mostra o erro */
       E.erro = e;
-      E.itens = []; E.proximos = [];
+      E.itens = []; E.proximos = []; E.ini = E.fim = null;
     }
     desenharFaixa(); desenharCorpo();
     carregarPendentes();
@@ -260,7 +268,12 @@ B7.Publicacoes = (function () {
       E.pendentes = [];
     }
     const alvo = document.getElementById('pb-pendentes');
-    if (alvo) alvo.outerHTML = htmlPendentes();
+    if (alvo) {
+      alvo.outerHTML = htmlPendentes();
+      const novo = document.getElementById('pb-pendentes');
+      if (novo) { novo.classList.add('pb-chega'); numerarPendentes(novo); }
+    }
+    pintarSub();
     ligarCorpo();
   }
 
@@ -330,20 +343,30 @@ B7.Publicacoes = (function () {
   /* --------------------------------------------------------- desenho */
   function desenharTela() {
     painel().innerHTML =
-      '<div class="conteudo pb-tela">' +
+      '<div class="conteudo pb-tela entra">' +
         '<header class="pb-cab">' +
           '<div class="pb-cab-tx">' +
             '<h1>Publicações do Dia</h1>' +
             '<p>O que está marcado para sair hoje, em todos os clientes. Vem direto das Linhas Editoriais.</p>' +
+            '<small class="pb-sub" id="pb-sub" aria-live="polite"></small>' +
           '</div>' +
           '<div class="pb-cab-acoes">' +
-            (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno" id="pb-cal" href="#/calendario?v=semana&amp;tipo=publicacoes">Ver no calendário</a>' : '') +
-            '<button type="button" class="b contorno" data-hoje>Hoje</button>' +
-            '<label class="pb-seletor-data"><span class="pb-rot">Ir para</span>' +
-              '<input type="date" id="pb-data" aria-label="Escolher um dia"></label>' +
+            (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno pb-bt-cal" id="pb-cal" href="#/calendario?v=semana&amp;tipo=publicacoes" title="Ver no calendário" aria-label="Ver no calendário">' +
+              svg(ICONES.calendario) + '<span>Ver no calendário</span></a>' : '') +
           '</div>' +
         '</header>' +
-        '<nav class="pb-faixa-caixa" id="pb-faixa" aria-label="Navegação de dias"></nav>' +
+        /* cartão da semana: mês, Hoje e "ir para" em cima; os dias embaixo */
+        '<section class="pb-semana">' +
+          '<div class="pb-semana-topo">' +
+            '<b class="pb-mes" id="pb-mes"></b>' +
+            '<div class="pb-semana-acoes">' +
+              '<button type="button" class="b contorno pb-bt-hoje" data-hoje>Hoje</button>' +
+              '<label class="pb-seletor-data" title="Ir para um dia">' + svg(ICONES.escolher) + '<span class="pb-rot">Ir para</span>' +
+                '<input type="date" id="pb-data" aria-label="Escolher um dia"></label>' +
+            '</div>' +
+          '</div>' +
+          '<nav class="pb-faixa-caixa" id="pb-faixa" aria-label="Navegação de dias"></nav>' +
+        '</section>' +
         '<div id="pb-filtros"></div>' +
         '<div id="pb-corpo"></div>' +
       '</div>';
@@ -351,9 +374,25 @@ B7.Publicacoes = (function () {
     painel().querySelector('[data-hoje]').onclick = () => irParaDia(hoje());
     const inp = painel().querySelector('#pb-data');
     inp.onchange = () => { if (ehISO(inp.value)) irParaDia(inp.value); else inp.value = E.dia; };
+    /* celular: o ícone abre o seletor do próprio aparelho */
+    inp.addEventListener('click', () => { try { inp.showPicker && inp.showPicker(); } catch (e) {} });
+    primeira = true; primeiraFaixa = true;
     desenharFaixa();
     desenharCorpo();
+    /* arrastar de lado: na faixa e na lista do dia, troca o dia */
+    if (B7.Movimento && B7.Movimento.deslizar) {
+      const fx = document.getElementById('pb-faixa'), corpo = document.getElementById('pb-corpo');
+      B7.Movimento.deslizar(fx, () => fx.querySelector('.pb-faixa'), dir => irParaDia(somarDias(E.dia, dir)));
+      B7.Movimento.deslizar(corpo, () => corpo.querySelector('.pb-bloco-dia'), dir => irParaDia(somarDias(E.dia, dir)));
+    }
   }
+  const svg = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+  let primeira = true;       /* primeira pintura com dados: entrada em cascata */
+  let primeiraFaixa = true;  /* os dias entram em cascata só ao abrir a tela */
+  let animDia = null;        /* 'prox' | 'ant' — direção da próxima troca de dia */
+  let passoFaixa = 0;        /* quantos dias a faixa andou (desliza para recentrar) */
+  let pendentesAbertos = false;
+  const PEND_VISIVEIS = 5;
 
   function desenharFaixa() {
     const el = document.getElementById('pb-faixa');
@@ -361,7 +400,8 @@ B7.Publicacoes = (function () {
     const inicio = somarDias(E.dia, -Math.floor(DIAS_FAIXA / 2));
     const h = hoje();
     const contagens = new Map();
-    if (!E.carregando && !E.erro) {
+    const temDados = !E.carregando && !E.erro && E.ini;
+    if (temDados) {
       E.itens.forEach(c => {
         const d = String(c.data_postagem || '').slice(0, 10);
         contagens.set(d, (contagens.get(d) || 0) + 1);
@@ -373,21 +413,39 @@ B7.Publicacoes = (function () {
       const d = somarDias(inicio, i);
       const sel = d === E.dia, ehHoje = d === h;
       const n = contagens.get(d) || 0;
+      /* só conta o que a última consulta cobriu: fora dela, em branco
+         (nunca um "—" que diria "zero" sem ter olhado) */
+      const sabe = temDados && d >= E.ini && d <= E.fim;
       dias +=
-        '<button type="button" class="pb-dia' + (sel ? ' on' : '') + (ehHoje ? ' hoje' : '') + '" ' +
-          'data-dia="' + d + '"' + (sel ? ' aria-current="date"' : '') +
-          ' aria-label="' + esc(rotuloDiaLongo(d)) + (ehHoje ? ' (hoje)' : '') + '">' +
+        '<button type="button" class="pb-dia' + (sel ? ' on' : '') + (ehHoje ? ' hoje' : '') + (d < h ? ' passou' : '') + '" ' +
+          'data-dia="' + d + '"' + (sel ? ' aria-current="date"' : '') + ' style="--d:' + i + '"' +
+          ' aria-label="' + esc(rotuloDiaLongo(d)) + (ehHoje ? ' (hoje)' : '') + (sabe ? ', ' + plural(n, 'publicação', 'publicações') : '') + '">' +
           '<span class="pb-dia-semana">' + DIAS_ABREV[diaSemana(d)] + '</span>' +
           '<span class="pb-dia-num">' + comps(d).d + '</span>' +
           (ehHoje ? '<span class="pb-dia-hoje">Hoje</span>'
-                  : '<span class="pb-dia-contagem">' + (E.carregando || E.erro ? '' : (n || '—')) + '</span>') +
+                  : '<span class="pb-dia-contagem' + (sabe && n ? ' tem' : '') + '">' + (sabe ? (n || '—') : '') + '</span>') +
         '</button>';
     }
+    const mes = document.getElementById('pb-mes');
+    if (mes) { const { a, m } = comps(E.dia); mes.textContent = MESES[m - 1].replace(/^./, x => x.toUpperCase()) + ' de ' + a; }
 
+    /* mesma semana na tela? atualiza só o miolo dos dias (as contagens),
+       sem trocar os elementos — não corta a animação que estiver rodando */
+    const fxAntes = el.querySelector('.pb-faixa');
+    if (fxAntes && el.dataset.ini === inicio && el.dataset.sel === E.dia) {
+      const tmp = document.createElement('div'); tmp.innerHTML = dias;
+      const novos = tmp.querySelectorAll('.pb-dia'), velhos = fxAntes.querySelectorAll('.pb-dia');
+      if (novos.length === velhos.length) {
+        velhos.forEach((b, k) => { b.innerHTML = novos[k].innerHTML; b.setAttribute('aria-label', novos[k].getAttribute('aria-label')); });
+        return;
+      }
+    }
+    el.dataset.ini = inicio; el.dataset.sel = E.dia;
+    const faixaNova = primeiraFaixa; primeiraFaixa = false;
     el.innerHTML =
       '<button type="button" class="pb-seta" data-passo="-7" aria-label="Semana anterior">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>' +
-      '<div class="pb-faixa" role="group">' + dias + '</div>' +
+      '<div class="pb-faixa' + (faixaNova ? ' pb-faixa-entra' : '') + '" role="group">' + dias + '</div>' +
       '<button type="button" class="pb-seta" data-passo="7" aria-label="Próxima semana">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg></button>';
 
@@ -396,12 +454,25 @@ B7.Publicacoes = (function () {
 
     const inp = document.getElementById('pb-data');
     if (inp && inp.value !== E.dia) inp.value = E.dia;
-    /* o dia selecionado nunca fica escondido na rolagem do celular */
     const ativo = el.querySelector('.pb-dia.on');
-    if (ativo && ativo.scrollIntoView) {
+    const fx = el.querySelector('.pb-faixa');
+    /* trocou de dia: a faixa desliza o tanto de dias que andou, para o
+       escolhido voltar ao meio (como um carrossel); salto grande, só um
+       deslize curto no sentido certo */
+    if (passoFaixa && fx && fx.animate && !reduz()) {
+      const um = ativo ? ativo.offsetWidth + parseFloat(getComputedStyle(fx).columnGap || getComputedStyle(fx).gap || 0) : 60;
+      const de = Math.abs(passoFaixa) <= 3 ? passoFaixa * um : Math.sign(passoFaixa) * 46;
+      fx.animate([{ transform: 'translateX(' + de + 'px)', opacity: Math.abs(passoFaixa) <= 3 ? 1 : 0 }, { transform: 'none', opacity: 1 }],
+        { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      if (ativo) ativo.classList.add('pulou');
+    }
+    passoFaixa = 0;
+    /* o dia selecionado nunca fica escondido na rolagem */
+    if (ativo && ativo.scrollIntoView && fx && fx.scrollWidth > fx.clientWidth + 2) {
       try { ativo.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
     }
   }
+  const reduz = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ------------------------------------------------------- barra de filtros
      Vive FORA de #pb-corpo (é irmã dele) só quando há dia com conteúdo.
@@ -524,14 +595,42 @@ B7.Publicacoes = (function () {
     desenharFiltros(todos.length ? opc : null);
 
     const itens = aplicarFiltros(todos);
-    el.innerHTML = htmlCabecalhoDia(itens, todos) +
-      (todos.length
-        ? (itens.length ? htmlGrupos(itens) : htmlVazioFiltro(todos.length))
-        : htmlVazio()) +
-      htmlProximos() +
-      htmlPendentes();
+    /* animação: entrada (primeira pintura), direção da troca de dia, ou
+       nada (atualização por baixo / filtro trocado sem mudar de dia) */
+    const anim = primeira ? 'entrada' : animDia;
+    primeira = false; animDia = null;
+    const blocoHTML = htmlCabecalhoDia(itens, todos) +
+      (todos.length ? (itens.length ? htmlGrupos(itens) : htmlVazioFiltro(todos.length)) : htmlVazio());
+    const apoioHTML = htmlProximos() + htmlPendentes();
+    /* atualização por baixo que não mudou nada na tela: não troca os
+       elementos (não corta a animação de entrada que ainda está rodando) */
+    const bVelho = el.querySelector(':scope > .pb-bloco-dia'), aVelho = el.querySelector(':scope > .pb-apoio');
+    if (!anim && bVelho && aVelho && bVelho._html === blocoHTML) {
+      if (aVelho._html !== apoioHTML) { aVelho.innerHTML = apoioHTML; aVelho._html = apoioHTML; aVelho.className = 'pb-apoio'; }
+      numerarPendentes(el); pintarSub(); ligarCorpo();
+      return;
+    }
+    el.innerHTML =
+      '<div class="pb-bloco-dia' + (anim ? ' pb-anim pb-anim-' + anim : '') + '">' + blocoHTML + '</div>' +
+      '<div class="pb-apoio' + (anim === 'entrada' ? ' pb-anim pb-anim-entrada' : '') + '">' + apoioHTML + '</div>';
+    el.querySelector('.pb-bloco-dia')._html = blocoHTML;
+    el.querySelector('.pb-apoio')._html = apoioHTML;
+    el.querySelectorAll('.pb-bloco-dia .pb-grupo-cab, .pb-bloco-dia .pb-card').forEach((c, i) => c.style.setProperty('--k', Math.min(i, 9)));
+    numerarPendentes(el);
+    pintarSub();
     ligarCorpo();
   }
+
+  /* topo: o dia em uma frase ("1 publicação hoje · 50 pendentes") */
+  function pintarSub() {
+    const s = document.getElementById('pb-sub'); if (!s) return;
+    if (E.carregando || E.erro) { s.textContent = ''; return; }
+    const n = doDia().length;
+    s.textContent = (E.dia === hoje() ? (n ? plural(n, 'publicação hoje', 'publicações hoje') : 'Nada para hoje')
+        : plural(n, 'publicação', 'publicações') + ' em ' + rotuloDiaCurto(E.dia).toLowerCase()) +
+      (E.pendentes.length ? ' · ' + plural(E.pendentes.length, 'pendente', 'pendentes') : '');
+  }
+  const numerarPendentes = raiz => raiz.querySelectorAll('.pb-pendente').forEach((p, i) => p.style.setProperty('--k', Math.min(i, 6)));
 
   function htmlCabecalhoDia(itens, todos) {
     const clientes = new Set(itens.map(idCliente)).size;
@@ -611,14 +710,19 @@ B7.Publicacoes = (function () {
   const ICONES = {
     ver: '<circle cx="12" cy="12" r="3"/><path d="M2 12s3.6-6.6 10-6.6S22 12 22 12s-3.6 6.6-10 6.6S2 12 2 12z"/>',
     criativos: '<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>',
-    linha: '<path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M18 14.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4.5"/>'
+    linha: '<path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M18 14.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4.5"/>',
+    copiar: '<rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/>',
+    calendario: '<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+    escolher: '<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="M12 13.5v4M10 15.5h4"/>'
   };
-  function acao(attr, id, rotulo, icone) {
+  /* rótulo inteiro no leitor de tela e no title; no celular aparece o
+     curto ao lado do ícone; em tela larga, só o ícone */
+  function acao(attr, id, rotulo, icone, curto) {
     return '<button type="button" class="pb-acao pb-acao-ico" data-' + attr + '="' + esc(id) + '" ' +
       'title="' + esc(rotulo) + '" aria-label="' + esc(rotulo) + '">' +
       '<svg class="pb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
         'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + icone + '</svg>' +
-      '<span class="pb-acao-tx">' + esc(rotulo) + '</span></button>';
+      '<span class="pb-acao-tx">' + esc(rotulo) + '</span><span class="pb-acao-curto" aria-hidden="true">' + esc(curto || rotulo) + '</span></button>';
   }
 
   function htmlCard(c, g) {
@@ -632,10 +736,12 @@ B7.Publicacoes = (function () {
       '<h3 class="pb-card-titulo">' + esc(c.titulo || 'Sem título') + '</h3>' +
       '<div class="pb-card-meta">' + meta.map(t => '<span>' + esc(t) + '</span>').join('<i class="p"></i>') + '</div>' +
       '<div class="pb-card-acoes">' +
-        (temLegenda ? '<button type="button" class="pb-acao pb-acao-copiar" data-copiar="' + esc(c.id) + '">Copiar legenda</button>' : '') +
-        acao('ver', c.id, 'Ver detalhes', ICONES.ver) +
-        (c.linha_id ? acao('criativos', c.id, 'Abrir nos Criativos', ICONES.criativos) +
-                      acao('linha', c.id, 'Abrir Linha Editorial', ICONES.linha) : '') +
+        (temLegenda ? '<button type="button" class="pb-acao pb-acao-copiar" data-copiar="' + esc(c.id) + '" aria-label="Copiar legenda">' +
+          '<svg class="pb-ico-m" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONES.copiar + '</svg>' +
+          '<span class="pb-acao-tx">Copiar legenda</span><span class="pb-acao-curto" aria-hidden="true">Copiar</span></button>' : '') +
+        acao('ver', c.id, 'Ver detalhes', ICONES.ver, 'Detalhes') +
+        (c.linha_id ? acao('criativos', c.id, 'Abrir nos Criativos', ICONES.criativos, 'Criativos') +
+                      acao('linha', c.id, 'Abrir Linha Editorial', ICONES.linha, 'Linha') : '') +
       '</div>' +
     '</article>';
   }
@@ -655,7 +761,8 @@ B7.Publicacoes = (function () {
       ? 'O próximo dia com publicação é ' + rotuloRelativo(prox.dia).toLowerCase() +
         ' — ' + plural(prox.total, 'publicação', 'publicações') + '.'
       : 'Nada marcado nos próximos ' + JANELA_PROXIMOS + ' dias também.';
-    return '<div class="pb-estado">' +
+    return '<div class="pb-estado pb-estado-livre">' +
+      '<span class="pb-estado-ic" aria-hidden="true">' + svg(ICONES.calendario + '<path d="M9.5 15l2 2 3.5-3.5"/>') + '</span>' +
       '<b>Nenhuma publicação prevista para este dia.</b>' +
       '<p>' + esc(contexto) + '</p>' +
       (prox ? '<div class="acoes"><button class="b contorno" data-dia-ir="' + prox.dia + '">Ver ' +
@@ -665,13 +772,20 @@ B7.Publicacoes = (function () {
 
   function htmlProximos() {
     if (!E.proximos.length) return '';
+    const lista = E.proximos.slice(0, 8);
+    const max = Math.max(...lista.map(p => p.total), 1);
     return '<section class="pb-secao pb-proximos">' +
       '<h3>Próximas publicações</h3>' +
-      '<div class="pb-proximos-lista">' + E.proximos.slice(0, 8).map(p =>
-        '<button type="button" class="pb-proximo" data-dia-ir="' + p.dia + '">' +
-          '<b>' + esc(rotuloRelativo(p.dia)) + '</b>' +
-          '<span>' + plural(p.total, 'publicação', 'publicações') + '</span>' +
-        '</button>').join('') + '</div>' +
+      '<div class="pb-proximos-lista">' + lista.map((p, i) => {
+        const dif = difDias(hoje(), p.dia), { d, m } = comps(p.dia);
+        const nome = dif === 1 ? 'Amanhã' : DIAS_LONGOS[diaSemana(p.dia)].replace('-feira', '');
+        return '<button type="button" class="pb-proximo" data-dia-ir="' + p.dia + '" style="--k:' + i + ';--p:' + (p.total / max).toFixed(3) + '" ' +
+            'aria-label="' + esc(rotuloRelativo(p.dia) + ': ' + plural(p.total, 'publicação', 'publicações')) + '">' +
+          '<span class="pb-prox-topo"><b>' + esc(nome) + '</b><small>' + d + '/' + pad(m) + '</small></span>' +
+          '<span class="pb-prox-n"><b>' + p.total + '</b>' + (p.total === 1 ? 'publicação' : 'publicações') + '</span>' +
+          '<i class="pb-prox-barra" aria-hidden="true"></i>' +
+        '</button>';
+      }).join('') + '</div>' +
       '</section>';
   }
 
@@ -688,18 +802,33 @@ B7.Publicacoes = (function () {
     }
     if (!E.pendentes.length) return '<section class="pb-secao" id="pb-pendentes" hidden></section>';
 
-    const linhas = E.pendentes.map(c =>
+    /* "há 3 dias" diz mais rápido o tamanho do atraso; a data fica no title */
+    const atraso = c => {
+      const n = difDias(String(c.data_postagem || '').slice(0, 10), hoje());
+      return n <= 0 ? 'hoje' : n === 1 ? 'ontem' : 'há ' + n + ' dias';
+    };
+    const linha = c =>
       '<button type="button" class="pb-pendente" data-pendente="' + esc(c.id) + '">' +
-        '<span class="pb-pendente-data">' + esc(B7.UI.dataBR(c.data_postagem)) + '</span>' +
+        '<span class="pb-pendente-data" title="' + esc(B7.UI.dataBR(c.data_postagem)) + '">' +
+          '<span class="pb-pd-rel">' + esc(atraso(c)) + '</span><span class="pb-pd-abs">' + esc(B7.UI.dataBR(c.data_postagem)) + '</span></span>' +
         '<span class="pb-pendente-cliente">' + esc((c.clientes && c.clientes.nome) || 'Cliente') + '</span>' +
         '<span class="pb-pendente-titulo">' + esc(c.titulo || 'Sem título') + '</span>' +
         chip(c.status) +
-      '</button>').join('');
+      '</button>';
+    const total = E.pendentes.length;
+    const primeiros = E.pendentes.slice(0, PEND_VISIVEIS).map(linha).join('');
+    const resto = E.pendentes.slice(PEND_VISIVEIS).map(linha).join('');
 
     return '<section class="pb-secao pb-pendentes-secao" id="pb-pendentes">' +
-      '<h3>Pendentes de dias anteriores <span class="pb-etiqueta">' + E.pendentes.length + '</span></h3>' +
-      '<p class="pb-fraca">Data de postagem já passou e o status ainda não é “Publicado”. Esta tela só mostra — nada aqui muda o status de nada.</p>' +
-      '<div class="pb-pendentes-lista">' + linhas + '</div>' +
+      '<h3>Pendentes de dias anteriores <span class="pb-etiqueta">' + total + '</span></h3>' +
+      '<p class="pb-fraca">A data de postagem já passou e o status ainda não é “Publicado”. Esta tela só mostra — nada aqui muda o status.</p>' +
+      '<div class="pb-pendentes-lista">' + primeiros + '</div>' +
+      (resto
+        ? '<div class="pb-pend-mais' + (pendentesAbertos ? ' aberta' : '') + '" id="pb-pend-mais"><div class="pb-pend-mais-in"><div class="pb-pendentes-lista">' + resto + '</div></div></div>' +
+          '<button type="button" class="pb-pend-alternar" data-pend-alternar aria-expanded="' + pendentesAbertos + '" aria-controls="pb-pend-mais">' +
+            '<span>' + (pendentesAbertos ? 'Mostrar menos' : 'Ver todos os ' + total) + '</span>' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>'
+        : '') +
       '</section>';
   }
 
@@ -713,6 +842,14 @@ B7.Publicacoes = (function () {
     if (!el) return;
 
     el.querySelectorAll('[data-dia-ir]').forEach(b => b.onclick = () => irParaDia(b.dataset.diaIr));
+    /* pendentes: os 5 primeiros sempre; o resto abre e fecha deslizando */
+    el.querySelectorAll('[data-pend-alternar]').forEach(b => b.onclick = () => {
+      pendentesAbertos = !pendentesAbertos;
+      const caixa = document.getElementById('pb-pend-mais');
+      if (caixa) caixa.classList.toggle('aberta', pendentesAbertos);
+      b.setAttribute('aria-expanded', pendentesAbertos);
+      b.querySelector('span').textContent = pendentesAbertos ? 'Mostrar menos' : 'Ver todos os ' + E.pendentes.length;
+    });
 
     /* Clicar num chip do resumo filtra por aquele status; clicar de novo
        limpa. É o mesmo estado F.status do seletor — não existe um segundo

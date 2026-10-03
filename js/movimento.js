@@ -447,5 +447,46 @@ window.B7 = window.B7 || {};
     setTimeout(() => el.classList.remove('b7-assenta'), 750);
   }
 
-  B7.Movimento = { soltar, voarAbrindo: info => voarAbrindo(info), arrastoFisico, assentar };
+  /* ===================================================================
+     5. ARRASTAR DE LADO (zzk/zzl) — usado pelo Calendário e pelas
+     Publicações do Dia. O elemento devolvido por `alvo()` segue o dedo
+     (com resistência); passou de 56 px, chama aoIr(+1 | -1). Gesto
+     vertical não é tocado (rolagem e "puxar para atualizar" seguem).
+     =================================================================== */
+  function deslizar(el, alvo, aoIr) {
+    if (!el || el._deslize) return; el._deslize = true;
+    let x0 = null, y0 = 0, dx = 0, modo = null;
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) { modo = 'nao'; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; modo = null;
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (modo === 'nao' || x0 === null) return;
+      const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+      if (!modo) {
+        if (Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my) * 1.4) modo = 'x';
+        else { if (Math.abs(my) > 10) modo = 'nao'; return; }
+      }
+      dx = mx;
+      const a = alvo(); if (!a) return;
+      a.style.transition = 'none';
+      a.style.translate = (dx * .5) + 'px 0';
+      a.style.opacity = String(1 - Math.min(.4, Math.abs(dx) / 520));
+    }, { passive: true });
+    const fim = () => {
+      const ok = modo === 'x' && Math.abs(dx) > 56;
+      const a = alvo();
+      if (a && modo === 'x') {
+        a.style.transition = ok ? '' : 'translate .32s cubic-bezier(.2,.8,.2,1), opacity .32s ease';
+        a.style.translate = ''; a.style.opacity = '';
+        setTimeout(() => { a.style.transition = ''; }, 340);
+      }
+      modo = null; x0 = null;
+      if (ok) aoIr(dx < 0 ? 1 : -1);
+    };
+    el.addEventListener('touchend', fim, { passive: true });
+    el.addEventListener('touchcancel', fim, { passive: true });
+  }
+
+  B7.Movimento = { soltar, voarAbrindo: info => voarAbrindo(info), arrastoFisico, assentar, deslizar };
 })();

@@ -303,3 +303,167 @@ select.pb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
   .pb-acao{min-height:36px;padding:8px 11px;font-size:12px;}
   .pb-dia-cab h2{font-size:17px;}
 }
+
+/* =====================================================================
+   PUBLICAÇÕES DO DIA — v2 (zzl, 03/10)
+   Cartão da semana (mês, Hoje, ir para + faixa), troca de dia sem
+   esqueleto quando o dia já veio na consulta, faixa que desliza para
+   recentrar, bloco do dia entrando do lado certo, ações com ícone,
+   próximos dias com barra de volume, pendentes recolhidos (5 + "ver
+   todos"). Só apresentação: nada muda em consulta, status ou regra.
+   ===================================================================== */
+.pb-sub{display:block;margin-top:4px;font-size:12.5px;color:var(--ink-3);min-height:1em;}
+.pb-bt-cal{display:inline-flex;align-items:center;gap:7px;}
+.pb-bt-cal svg{width:17px;height:17px;flex:none;}
+
+/* cartão da semana */
+.pb-semana{position:relative;margin-bottom:16px;padding:12px 12px 10px;border:1px solid var(--borda);border-radius:20px;
+  background:radial-gradient(130% 120% at 100% 0%, color-mix(in srgb, var(--magenta) 7%, transparent), transparent 60%), var(--card);
+  box-shadow:var(--sh-1);}
+.pb-semana-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 10px;}
+.pb-mes{font-family:'Archivo';font-weight:800;font-size:18px;letter-spacing:-.3px;color:var(--ink);white-space:nowrap;}
+.pb-semana-acoes{display:flex;align-items:center;gap:6px;}
+.pb-bt-hoje{height:36px;border-radius:12px;padding:0 13px;}
+.pb-semana .pb-seletor-data{min-height:36px;border-radius:12px;padding:4px 10px;}
+.pb-seletor-data svg{width:17px;height:17px;flex:none;color:var(--ink-3);}
+.pb-semana .pb-faixa-caixa{margin-bottom:0;}
+.pb-semana .pb-seta{border-radius:12px;}
+
+/* dias */
+.pb-dia{position:relative;transition:transform .16s var(--mola), background-color .2s, border-color .2s;}
+.pb-dia:active{transform:scale(.93);}
+.pb-dia.on{background:var(--grad-curto);border-color:transparent;
+  box-shadow:0 12px 26px -12px color-mix(in srgb, var(--magenta) 85%, transparent), inset 0 1px 0 rgba(255,255,255,.22);}
+.pb-dia.hoje:not(.on){border-color:color-mix(in srgb, var(--acento) 60%, var(--borda));}
+.pb-dia.passou:not(.on) .pb-dia-num{color:var(--ink-3);}
+.pb-dia-contagem.tem{color:var(--acento);}
+.pb-dia.on .pb-dia-contagem.tem{color:#fff;}
+.pb-dia.pulou .pb-dia-num{animation:pbNumPula .5s cubic-bezier(.3,1.6,.5,1);}
+@keyframes pbNumPula{0%{transform:scale(.7)}55%{transform:scale(1.16)}100%{transform:none}}
+
+/* ações: rótulo curto e ícone só no celular (ver @media abaixo) */
+.pb-acao-curto,.pb-ico-m{display:none;}
+
+/* próximos dias: cartão com o número grande e uma barra de volume */
+.pb-proximo{position:relative;overflow:hidden;gap:4px;min-width:132px;padding:11px 13px 13px;border-radius:14px;
+  transition:transform .16s var(--mola), border-color .2s;}
+.pb-proximo:active{transform:scale(.96);}
+.pb-prox-topo{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+.pb-prox-topo b{font-size:13px;font-weight:700;color:var(--ink);}
+.pb-prox-topo small{font-size:11.5px;color:var(--ink-4);font-weight:600;}
+.pb-prox-n{display:flex;align-items:baseline;gap:5px;font-size:11.5px;color:var(--ink-3);}
+.pb-prox-n b{font-family:'Archivo';font-size:22px;font-weight:800;color:var(--ink);line-height:1.1;}
+.pb-proximo:hover .pb-prox-n b{color:var(--acento);}
+.pb-prox-barra{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--grad-curto);
+  transform:scaleX(var(--p,0));transform-origin:left;border-radius:0 3px 3px 0;opacity:.9;}
+
+/* pendentes */
+.pb-pd-abs{display:none;}
+.pb-pendente{position:relative;transition:transform .16s var(--mola), border-color .2s;}
+.pb-pendente:active{transform:scale(.985);}
+.pb-pendente-data{color:var(--ambar);}
+.pb-pend-mais{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s cubic-bezier(.2,.8,.2,1);}
+.pb-pend-mais.aberta{grid-template-rows:1fr;}
+.pb-pend-mais-in{min-height:0;overflow:hidden;}
+.pb-pend-mais:not(.aberta) .pb-pend-mais-in{visibility:hidden;transition:visibility 0s .45s;}
+.pb-pend-mais .pb-pendentes-lista{padding-top:6px;}
+.pb-pend-mais.aberta .pb-pendente{animation:pbSobe .4s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--k,0) * 0ms + 60ms);}
+.pb-pend-alternar{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;padding:10px;border-radius:12px;
+  border:1px dashed var(--borda-forte);background:transparent;color:var(--acento);font-size:13px;font-weight:700;cursor:pointer;
+  transition:background-color .2s;}
+.pb-pend-alternar:hover{background:var(--acento-suave);}
+.pb-pend-alternar svg{width:16px;height:16px;transition:transform .3s cubic-bezier(.2,.8,.2,1);}
+.pb-pend-alternar[aria-expanded="true"] svg{transform:rotate(180deg);}
+.pb-pend-alternar:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+
+/* dia sem publicação */
+.pb-estado-livre{display:flex;flex-direction:column;align-items:center;
+  background:radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--acento) 8%, transparent), transparent 70%), var(--card);}
+.pb-estado-ic{display:grid;place-items:center;width:56px;height:56px;margin-bottom:10px;border-radius:18px;color:var(--acento);
+  background:color-mix(in srgb, var(--acento) 12%, var(--card));animation:pbFlutua 4.2s ease-in-out infinite;}
+.pb-estado-ic svg{width:27px;height:27px;}
+.pb-estado-ic svg path:last-child{stroke-dasharray:10;stroke-dashoffset:10;animation:pbRisca .5s cubic-bezier(.3,.8,.3,1) .4s forwards;}
+@keyframes pbFlutua{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes pbRisca{to{stroke-dashoffset:0}}
+
+/* ------------------------------------------------------------ movimento */
+@keyframes pbSobe{from{opacity:0;transform:translate(var(--lx,0),12px) scale(.985);filter:blur(3px)}}
+@keyframes pbChip{from{opacity:0;transform:scale(.8)}}
+@keyframes pbBarra{from{transform:scaleX(0)}}
+.pb-bloco-dia{touch-action:pan-y;}
+.pb-anim-prox{--lx:34px;}
+.pb-anim-ant{--lx:-34px;}
+.pb-anim .pb-dia-cab h2,.pb-anim .pb-totais,.pb-anim .pb-estado{animation:pbSobe .42s cubic-bezier(.2,.8,.2,1) backwards;}
+.pb-anim .pb-totais{animation-delay:40ms;}
+.pb-anim .pb-resumo-item{animation:pbChip .36s cubic-bezier(.3,1.5,.5,1) backwards;animation-delay:90ms;}
+.pb-anim .pb-resumo-item + .pb-resumo-item{animation-delay:140ms;}
+.pb-anim .pb-grupo-cab,.pb-anim .pb-card{animation:pbSobe .46s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--k,0) * 45ms + 100ms);}
+.pb-apoio.pb-anim .pb-secao{animation:pbSobe .5s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:.22s;}
+.pb-apoio.pb-anim .pb-proximo{animation:pbSobe .45s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--k,0) * 50ms + 300ms);}
+.pb-apoio.pb-anim .pb-prox-barra{animation:pbBarra .7s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--k,0) * 50ms + 480ms);}
+.pb-chega .pb-pendentes-lista > .pb-pendente,.pb-apoio.pb-anim .pb-pendentes-lista > .pb-pendente{animation:pbSobe .42s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--k,0) * 45ms + 80ms);}
+.pb-chega h3,.pb-chega .pb-fraca{animation:pbSobe .4s cubic-bezier(.2,.8,.2,1) backwards;}
+.pb-faixa-entra .pb-dia{animation:pbDiaEntra .5s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--d,0) * 35ms + 80ms);}
+@keyframes pbDiaEntra{from{opacity:0;transform:translateY(10px) scale(.92)}}
+
+/* ------------------------------------------------------------- celular */
+@media (max-width: 760px){
+  .pb-cab{flex-wrap:nowrap;align-items:center;gap:10px;margin-bottom:14px;}
+  .pb-cab-tx{min-width:0;flex:1;}
+  .pb-cab h1{font-size:25px;letter-spacing:-.5px;line-height:1.1;}
+  .pb-cab p{display:none;}
+  .pb-cab-acoes{width:auto;flex:none;}
+  .pb-bt-cal{width:42px;height:42px;padding:0;justify-content:center;border-radius:14px;}
+  .pb-bt-cal span{display:none;}
+  .pb-bt-cal svg{width:19px;height:19px;}
+
+  .pb-semana{padding:12px 10px 10px;border-radius:22px;}
+  .pb-mes{font-size:19px;}
+  .pb-semana .pb-seletor-data{position:relative;flex:none;width:38px;height:36px;padding:0;justify-content:center;}
+  .pb-semana .pb-seletor-data .pb-rot{display:none;}
+  .pb-semana .pb-seletor-data input{position:absolute;inset:0;width:100%;height:100%;min-width:0;opacity:0;cursor:pointer;}
+  .pb-semana .pb-seta{display:none;}
+  .pb-faixa{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;overflow:visible;padding:0;scroll-snap-type:none;}
+  .pb-dia{min-width:0;padding:9px 0 8px;gap:2px;border:0;background:transparent;border-radius:15px;}
+  .pb-dia.hoje:not(.on){box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--acento) 60%, transparent);}
+  .pb-dia-num{font-size:18px;}
+  .pb-dia-semana{font-size:10px;}
+  .pb-dia-contagem,.pb-dia-hoje{font-size:10px;}
+  .pb-dia.hoje .pb-dia-hoje{font-size:9px;}
+
+  .pb-filtros{margin-bottom:12px;}
+  .pb-dia-cab h2{font-size:20px;letter-spacing:-.3px;}
+
+  /* cartão: o nome do cliente já está no cabeçalho do grupo */
+  .pb-grupos[data-agrupar="cliente"] .pb-card-cliente{display:none;}
+  .pb-grupos[data-agrupar="cliente"] .pb-card-topo{justify-content:flex-start;}
+  .pb-card{padding:13px 13px 12px;border-radius:16px;gap:6px;box-shadow:0 10px 24px -20px rgba(20,8,50,.6);}
+  .pb-card-titulo{font-size:15.5px;}
+  .pb-card-acoes{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;margin-top:6px;}
+  .pb-acao{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:8px 4px;
+    border-radius:11px;font-size:12px;white-space:nowrap;}
+  .pb-acao .pb-ico,.pb-acao .pb-ico-m{display:block;width:16px;height:16px;flex:none;}
+  .pb-acao .pb-acao-tx{display:none;}
+  .pb-acao .pb-acao-curto{display:inline;overflow:hidden;text-overflow:ellipsis;}
+  .pb-acao:active{transform:scale(.95);}
+  .pb-grupo-cab{margin-bottom:8px;}
+  .pb-grupos{gap:18px;}
+
+  .pb-proximo{min-width:128px;}
+  .pb-pendente{border-radius:14px;padding:11px 13px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .pb-anim *,.pb-anim,.pb-chega *,.pb-faixa-entra .pb-dia,.pb-dia.pulou .pb-dia-num,.pb-estado-ic,.pb-estado-ic svg path,.pb-pend-mais .pb-pendente{animation:none !important;}
+  .pb-estado-ic svg path:last-child{stroke-dashoffset:0;}
+  .pb-pend-mais,.pb-pend-alternar svg{transition:none;}
+}/* avatar sem logo usa a classe .vazio, que é também a do estado vazio
+   global (padding grande, lâmpada animada): aqui ela não vale */
+.pb-avatar.vazio{display:inline-flex;padding:0;margin:0;text-align:center;animation:none;}
+.pb-avatar.vazio::before,.pb-avatar.vazio::after{content:none !important;display:none !important;}@media (max-width: 760px){
+  /* com "Copiar legenda" (a ação mais usada) ela ganha a linha inteira;
+     as outras três dividem a de baixo — nada fica cortado */
+  .pb-card-acoes:has(.pb-acao-copiar){grid-auto-flow:row;grid-template-columns:repeat(3,minmax(0,1fr));}
+  .pb-acao-copiar{grid-column:1 / -1;background:var(--acento-suave);color:var(--acento);}
+  .pb-acao.pb-acao-copiar .pb-acao-tx{display:inline;}
+  .pb-acao.pb-acao-copiar .pb-acao-curto{display:none;}
+}
