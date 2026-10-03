@@ -252,7 +252,74 @@ B7.Rota = (function () {
     else ir();
   }
 
+  /* ---------------------------------------------- MORPH ENTRE TELAS (zzz7)
+     Troca de módulo (abas da barra, "Mais", lateral): View Transitions.
+     O navegador fotografa a tela que sai e a que entra e anima as duas
+     na placa de vídeo — não redesenha a página a cada quadro, por isso
+     não pesa nem no celular. O título da página MORFA de uma para a
+     outra (posição, tamanho e texto); o conteúdo desliza no sentido da
+     aba; topo e barra de baixo ficam parados. Abrir/voltar de um cartão
+     continua com o voo e a foto de js/movimento.js (html.b7-vt avisa
+     para eles não entrarem nesta troca). Sem suporte, sem animação ou
+     aba escondida: troca normal. CSS em styles/global.css (MORPH). */
+  const html = document.documentElement;
+  const raizDe = h => {
+    const a = nivel(h)[0] || '';
+    return ({ clientes: 'cliente', linhas: 'cliente', linha: 'cliente', gravacoes: 'gravacao', roteiros: 'gravacao' })[a] || a;
+  };
+  let ultimoHash = location.hash || '#/';
+  function ehTrocaDeModulo(de, para) {
+    if (de === para) return false;
+    const a = nivel(de), b = nivel(para);
+    return raizDe(de) !== raizDe(para) || (a.length <= 1 && b.length <= 1 && (a[0] || '') !== (b[0] || ''));
+  }
+  const posicaoNaBarra = h => {
+    const raiz = '#/' + (nivel(h)[0] || '');
+    const links = [...document.querySelectorAll('#nav-inferior [data-inf]')];
+    const i = links.findIndex(l => (l.getAttribute('href') || '').split('?')[0] === raiz);
+    return i < 0 ? links.length - 1 : i;          /* fora da barra = "Mais" */
+  };
+  const tituloDaTela = () => document.querySelector('#painel-dashboard h1, #painel-dashboard .cab-conteudo h2');
+  function marcarTitulo(liga) {
+    document.querySelectorAll('[data-vt-titulo]').forEach(e => { e.style.viewTransitionName = ''; e.removeAttribute('data-vt-titulo'); });
+    const t = liga && tituloDaTela();
+    if (t) { t.style.viewTransitionName = 'b7-titulo'; t.setAttribute('data-vt-titulo', ''); }
+  }
+  let vtAtual = null;
+  function trocarComMorph(de, para) {
+    const pode = document.startViewTransition && !document.hidden &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+      document.getElementById('tela-dashboard')?.classList.contains('ativa') &&
+      !document.querySelector('.b7-abertura, .fundo-modal:not(.saindo)');
+    if (!pode) return false;
+    const ia = posicaoNaBarra(de), ib = posicaoNaBarra(para);
+    html.dataset.vtDir = ib > ia ? 'dir' : ib < ia ? 'esq' : 'meio';
+    html.classList.add('b7-vt');
+    if (vtAtual) { try { vtAtual.skipTransition(); } catch (e) {} }
+    marcarTitulo(true);
+    let vt;
+    try {
+      vt = document.startViewTransition(async () => {
+        marcarTitulo(false);
+        const feito = Promise.resolve(B7.Save.agora()).catch(() => {}).then(ir);
+        /* com a memória de dados a tela nova fica pronta quase na hora;
+           se ainda for buscar, a foto nova é a do esqueleto (sem segurar) */
+        await Promise.race([feito, new Promise(r => setTimeout(r, 180))]);
+        /* a entrada própria da tela não roda depois do morph (seria repetir) */
+        document.querySelectorAll('#painel-dashboard .conteudo.entra').forEach(c => c.classList.remove('entra'));
+        marcarTitulo(true);
+      });
+    } catch (e) { html.classList.remove('b7-vt'); marcarTitulo(false); return false; }
+    vtAtual = vt;
+    const fim = () => { if (vtAtual === vt) { vtAtual = null; html.classList.remove('b7-vt'); delete html.dataset.vtDir; marcarTitulo(false); } };
+    vt.finished.then(fim, fim);
+    return true;
+  }
+
   window.addEventListener('hashchange', () => {
+    const de = ultimoHash, para = location.hash || '#/';
+    ultimoHash = para;
+    if (ehTrocaDeModulo(de, para) && trocarComMorph(de, para)) return;
     /* garante que nada digitado se perca ao trocar de tela */
     B7.Save.agora().finally(ir);
   });
@@ -662,6 +729,7 @@ B7.Rota = (function () {
     if (B7.Notif) B7.Notif.montar();
     if (B7.Presenca) B7.Presenca.iniciar();
     if (B7.Push && B7.Push.manter) setTimeout(() => B7.Push.manter(), 2500);
+    if (B7.Memoria && B7.Memoria.aquecer) B7.Memoria.aquecer();
   };
 
   /* Itens marcados com data-papel só existem para quem tem aquele papel.
