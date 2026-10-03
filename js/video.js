@@ -1504,8 +1504,14 @@ B7.Video = (function () {
     const correcoes = versoesAtual.filter(v => v.decisao_cliente === 'correcao' || v.decisao_cliente === 'recusado').length;
 
     const temConclusao = d.enviado_grupo_em !== undefined;
+    /* aberta de dentro do cliente (?de=cliente): a trilha volta para os
+       Vídeos dele; de qualquer outro lugar, para a Produção de Vídeo */
+    const doCliente = new URLSearchParams(location.hash.split('?')[1] || '').get('de') === 'cliente' && d.client_id;
     painel().innerHTML = '<div class="conteudo entra vd-tela vd-detalhe">' +
-      '<div class="trilha"><a href="#/video">Produção de Vídeo</a><span>/</span><b>' + esc(d.titulo) + '</b></div>' +
+      (doCliente
+        ? '<div class="trilha"><a href="#/cliente/' + esc(d.client_id) + '">' + esc(d.cliente_nome || 'Cliente') + '</a><span>/</span>' +
+          '<a href="#/cliente/' + esc(d.client_id) + '/video">Vídeos</a><span>/</span><b>' + esc(d.titulo) + '</b></div>'
+        : '<div class="trilha"><a href="#/video">Produção de Vídeo</a><span>/</span><b>' + esc(d.titulo) + '</b></div>') +
       '<header class="vd-hero">' +
         '<div class="vd-hero-linha">' +
           '<div class="vd-hero-id">' + logoClienteHTML(d, 'lg') +

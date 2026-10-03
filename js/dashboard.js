@@ -925,51 +925,137 @@ B7.Dashboard = (function () {
      =================================================================== */
   let abaCliente = 'geral';
 
+  /* =================================================================
+     HUB DO CLIENTE
+     O cliente é o contexto; cada área (Editorial, Gravações, Vídeos…) é
+     uma SEÇÃO dele, com endereço próprio — #/cliente/<id>/<secao> —, então
+     Voltar, recarregar e link direto funcionam. A seção é uma lente sobre
+     os registros canônicos: abrir um item leva à tela canônica dele (a
+     mesma do módulo global), que sabe voltar para cá (?de=cliente).
+     Uma seção só aparece para quem pode abrir o destino canônico dela:
+     o hub nunca dá acesso a nada que o módulo global não daria.
+     Nova seção (ex.: Marca, no futuro) = mais uma linha aqui + o desenho.
+     ================================================================= */
+  const SECOES_CLIENTE = [
+    { k: 'geral', r: 'Visão geral' },
+    { k: 'linhas', r: 'Editorial', rota: 'linha' },
+    { k: 'gravacoes', r: 'Gravações', rota: 'gravacao' },
+    { k: 'roteiros', r: 'Roteiros', rota: 'gravacao' },
+    { k: 'video', r: 'Vídeos', rota: 'video' },
+    { k: 'design', r: 'Design', rota: 'design' },
+    { k: 'ideias', r: 'Ideias' },
+    { k: 'inteligencia', r: 'Inteligência' },
+    { k: 'arquivados', r: 'Arquivados', equipe: true }
+  ];
+  const podeIrRota = r => !B7.Perm || B7.Perm.podeRota(r);
+  const souEquipeCli = () => !(B7.Auth && B7.Auth.usuario()) || (B7.Auth.ehEquipe && B7.Auth.ehEquipe());
+  const secaoVisivel = s => (!s.rota || podeIrRota(s.rota)) && (!s.equipe || souEquipeCli());
+  const hrefSecao = (id, k) => '#/cliente/' + id + (k === 'geral' ? '' : '/' + k);
+
+  /* cabeçalho compacto + seções: o mesmo em todas as seções do cliente
+     (inclusive as que moram em js/conteudo.js: Editorial, Ideias, Inteligência) */
+  function shellCliente(c, secao) {
+    /* as ações são as mesmas que a capa antiga mostrava a toda a equipe
+       interna (o RLS de clientes/gravacoes libera admin, coordenador,
+       designer e videomaker). Restringir é decisão de permissão, não de tela. */
+    const gestor = souEquipeCli();
+    const criaGravacao = gestor;
+    const quandoTx = c.ultima_atividade ? 'atualizado ' + B7.UI.quando(c.ultima_atividade) : '';
+    const resumoMes = B7.ResumoMes && gestor;
+    return '<div class="cli-shell">' +
+      (podeIrRota('clientes') ? '<a class="cli-voltar" href="#/clientes">' + IC_VOLTAR + 'Clientes</a>' : '') +
+      '<header class="cli-cab">' +
+        B7.UI.avatarCliente(c.nome, c.logo_url, 'cli-av') +
+        '<div class="cli-cab-tx"><h1>' + esc(c.nome) + '</h1>' +
+          (quandoTx ? '<p class="cli-meta">' + esc(quandoTx) + '</p>' : '') + '</div>' +
+        (gestor ? '<div class="cli-acoes">' +
+          (criaGravacao ? '<button class="b pri fina cli-so-largo" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + '<span>Nova gravação</span></button>' : '') +
+          (resumoMes ? '<button class="b contorno fina cli-so-largo" data-resumo-mes>Resumo do mês</button>' : '') +
+          '<div class="menu"><button class="ico" aria-label="Mais ações do cliente">⋯</button><div class="lista">' +
+            (criaGravacao ? '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' : '') +
+            (resumoMes ? '<button data-resumo-mes>Resumo do mês</button>' : '') +
+            '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
+            (ehAdmin() ? '<button data-ir="#/previa/' + esc(c.id) + '">Visualizar como cliente</button>' : '') +
+            '<hr><button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +
+          '</div></div></div>' : '') +
+      '</header>' +
+      '<nav class="cli-secoes" aria-label="Seções do cliente"><div class="cli-secoes-rolo">' +
+        SECOES_CLIENTE.filter(secaoVisivel).map(s =>
+          '<a href="' + hrefSecao(c.id, s.k) + '"' + (s.k === secao ? ' class="on" aria-current="page"' : '') + '>' + esc(s.r) + '</a>').join('') +
+      '</div></nav>' +
+    '</div>';
+  }
+  const IC_VOLTAR = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+
+  /* liga as ações do cabeçalho onde quer que ele esteja (telas do
+     conteudo.js não passam pelo ligar() geral desta tela) */
+  function ligarShellCliente(cliente) {
+    const raiz = painel().querySelector('.cli-shell'); if (!raiz) return;
+    raiz.querySelectorAll('[data-nova-gravacao]').forEach(b => b.onclick = ev => { ev.stopPropagation(); modalNovaGravacao(b.dataset.novaGravacao); });
+    raiz.querySelectorAll('[data-editar-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); modalEditarCliente(b.dataset.editarCli); });
+    raiz.querySelectorAll('[data-excluir-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); excluirCliente(b.dataset.excluirCli); });
+    raiz.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
+    raiz.querySelectorAll('[data-resumo-mes]').forEach(b => b.onclick = () => {
+      if (B7.UI.fecharMenus) B7.UI.fecharMenus();
+      B7.ResumoMes.abrir(cliente);
+    });
+    B7.UI.ligarMenus(raiz);
+    /* no celular as seções rolam de lado: a ativa fica à vista */
+    const on = raiz.querySelector('.cli-secoes a.on');
+    if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }
+
   async function abrirCliente(id, aba) {
     marcarNav('#/clientes');
-    abaCliente = aba || 'geral';
+    const def = SECOES_CLIENTE.find(s => s.k === aba);
+    abaCliente = def && secaoVisivel(def) && !['linhas', 'ideias', 'inteligencia'].includes(aba) ? aba : 'geral';
+    const sec = abaCliente;
+    /* seção inexistente ou fora do papel da pessoa: mostra a visão geral
+       e corrige o endereço, sem gerar outra navegação */
+    if (aba && aba !== 'geral' && sec === 'geral') history.replaceState(null, '', hrefSecao(id, 'geral'));
     esqueleto('detalhe');
 
-    let cliente, gravacoes, roteiros, linhas = [], semanas = [];
+    /* cada seção carrega só o que mostra: abrir "Vídeos" não busca
+       gravações, roteiros, linhas e status */
+    let cliente, gravacoes = [], roteiros = [], linhas = [], semanas = [], lista = null;
     try {
-      [cliente, gravacoes, roteiros] = await Promise.all([
-        B7.DB.cliente(id), B7.DB.listarGravacoes(id), B7.DB.roteirosDoCliente(id, aba === 'roteiros' ? 40 : 5)
+      const [c, g, r] = await Promise.all([
+        B7.DB.cliente(id),
+        sec === 'geral' || sec === 'gravacoes' ? B7.DB.listarGravacoes(id) : Promise.resolve([]),
+        sec === 'geral' || sec === 'roteiros' ? B7.DB.roteirosDoCliente(id, sec === 'roteiros' ? 40 : 5) : Promise.resolve([])
       ]);
-      /* as linhas editoriais são um extra: se o migration ainda não rodou,
-         o resto da tela continua funcionando normalmente */
-      linhas = await B7.DB.listarLinhas(id).catch(() => []);
-      /* idem para o status semanal: sem o migration, o resto segue de pé */
-      semanas = await B7.DB.listarStatus({ clienteId: id, limite: 6 }).catch(() => []);
+      cliente = c; gravacoes = g; roteiros = r;
+      if (sec === 'geral') {
+        /* extras: se falharem, o resto da visão geral continua de pé */
+        [linhas, semanas] = await Promise.all([
+          B7.DB.listarLinhas(id).catch(() => []),
+          B7.DB.listarStatus({ clienteId: id, limite: 6 }).catch(() => [])
+        ]);
+      }
+      if (sec === 'video') lista = await B7.DB.videoDoCliente(id).catch(e => { console.error(e); return null; });
+      if (sec === 'design') lista = await B7.DB.listarDesign({ clienteId: id }).catch(e => { console.error(e); return null; });
       gravacoes.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
-      B7.Rota.titulo([cliente.nome]);
-    } catch (e) { return erro(e, 'abrirClientes'); }
+      B7.Rota.titulo(sec === 'geral' ? [cliente.nome] : [cliente.nome, def.r]);
+    } catch (e) { return erroCliente(e, id); }
 
     /* métricas do cliente, tiradas dos dados reais dele */
     const conta = st => gravacoes.filter(g => g.status === st).length;
     const emAndamento = conta('Rascunho') + conta('Pronto para gravar');
     const ultima = gravacoes[0];
 
-    painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="trilha-nav"><button data-ir="#/">Dashboard</button><span>/</span>' +
-        '<button data-ir="#/clientes">Clientes</button><span>/</span><b>' + esc(cliente.nome) + '</b></div>' +
-
-      capaCliente(cliente, gravacoes.length, emAndamento) +
-
-      '<div class="abas-cliente">' +
-        [['geral', 'Visão geral'], ['linhas', 'Linha editorial'], ['ideias', 'Ideias'],
-         ['gravacoes', 'Gravações'], ['roteiros', 'Roteiros'],
-         ['inteligencia', 'Inteligência'], ['onboarding', 'Onboarding'],
-         ['arquivados', 'Arquivados']].map(([k, r]) =>
-          '<button data-aba-cli="' + k + '"' + (abaCliente === k ? ' class="on"' : '') + '>' + r + '</button>').join('') +
-      '</div>' +
-
-      (abaCliente === 'geral' ? visaoGeralCliente(cliente, gravacoes, roteiros, emAndamento, conta, ultima, linhas, semanas)
-       : abaCliente === 'gravacoes' ? abaGravacoesCliente(cliente, gravacoes)
-       : abaCliente === 'arquivados' ? '<div id="aba-arquivados">' + B7.UI.skeleton('cards', { n: 3, titulo: false }) + '</div>'
+    painel().innerHTML = '<div class="conteudo entra cli-tela">' +
+      shellCliente(cliente, sec) +
+      '<div class="cli-corpo">' +
+      (sec === 'geral' ? visaoGeralCliente(cliente, gravacoes, roteiros, emAndamento, conta, ultima, linhas, semanas)
+       : sec === 'gravacoes' ? abaGravacoesCliente(cliente, gravacoes)
+       : sec === 'arquivados' ? '<div id="aba-arquivados">' + B7.UI.skeleton('cards', { n: 3, titulo: false }) + '</div>'
+       : sec === 'video' ? secaoVideoCliente(cliente, lista)
+       : sec === 'design' ? secaoDesignCliente(cliente, lista)
        : abaRoteirosCliente(cliente, roteiros)) +
-    '</div>';
+      '</div></div>';
 
     ligar();
+    ligarShellCliente(cliente);
     painel().querySelectorAll('[data-abrir-linha]').forEach(b => b.onclick = e => {
       e.stopPropagation();
       location.hash = '#/linha/' + b.dataset.abrirLinha;
@@ -982,28 +1068,16 @@ B7.Dashboard = (function () {
       e.stopPropagation();
       B7.Semana.modalNovo(b.dataset.novaSemana);
     });
-    painel().querySelectorAll('[data-resumo-mes]').forEach(b => b.onclick = () => {
-      if (B7.UI.fecharMenus) B7.UI.fecharMenus();
-      B7.ResumoMes.abrir(cliente);
-    });
     painel().querySelectorAll('[data-criar-linha]').forEach(b => b.onclick = async e => {
       e.stopPropagation();
       location.hash = '#/cliente/' + b.dataset.criarLinha + '/linhas';
     });
-    painel().querySelectorAll('[data-aba-cli]').forEach(b => b.onclick = () => {
-      const aba = b.dataset.abaCli;
-      if (aba === 'inteligencia') return location.hash = '#/cliente/' + id + '/inteligencia';
-      if (aba === 'onboarding')   return location.hash = '#/cliente/' + id + '/onboarding';
-      if (aba === 'linhas')       return location.hash = '#/cliente/' + id + '/linhas';
-      if (aba === 'ideias')       return location.hash = '#/cliente/' + id + '/ideias';
-      if (aba === 'ideias')       return location.hash = '#/cliente/' + id + '/ideias';
-      abrirCliente(id, aba);
-    });
-    if (abaCliente === 'gravacoes') ligarFiltrosGravacoes(gravacoes);
-    if (abaCliente === 'arquivados') carregarArquivadosCliente(id);
+    if (sec === 'gravacoes') ligarFiltrosGravacoes(gravacoes);
+    if (sec === 'arquivados') carregarArquivadosCliente(id);
+    if (sec === 'video' || sec === 'design') ligarFiltroSecao();
     /* Oportunidades do cliente (fase 7): segmentos + próximas datas */
-    if (abaCliente === 'geral' && B7.Oportunidades) {
-      const cx = painel().querySelector('.conteudo');
+    if (sec === 'geral' && B7.Oportunidades) {
+      const cx = painel().querySelector('.cli-corpo');
       if (cx) { const el = document.createElement('div'); el.id = 'cli-oportunidades'; cx.appendChild(el); B7.Oportunidades.secaoCliente(el, id); }
     }
   }
@@ -1049,38 +1123,101 @@ B7.Dashboard = (function () {
     });
   }
 
-  function capaCliente(c, totalGravacoes, emAndamento) {
-    const selo = c.logo_url
-      ? '<div class="selo"><img src="' + esc(c.logo_url) + '" alt=""></div>'
-      : '<div class="selo">' + esc(B7.UI.iniciais(c.nome)) + '</div>';
-    return '<div class="capa-cliente">' +
-      '<div class="malha"></div><div class="brilho"></div><div class="b7-marca"></div>' +
-      selo +
-      '<div class="info"><div class="olho">WORKSPACE · BRANDING7</div>' +
-        '<h1>' + esc(c.nome) + '</h1>' +
-        '<div class="meta"><span>' + totalGravacoes + ' gravaç' + (totalGravacoes === 1 ? 'ão' : 'ões') + '</span>' +
-        '<span class="p"></span><span>' + c.total_roteiros + ' roteiro' + (c.total_roteiros === 1 ? '' : 's') + '</span>' +
-        (emAndamento ? '<span class="p"></span><span>' + emAndamento + ' em andamento</span>' : '') +
-        '<span class="p"></span><span>última atividade ' + B7.UI.quando(c.ultima_atividade) + '</span></div></div>' +
-      '<div class="acoes">' +
-        '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button>' +
-        /* documento para enviar ao cliente, no padrão do Status Semanal: fica à vista, não no "⋯" */
-        (B7.ResumoMes && B7.Auth.ehEquipe && B7.Auth.ehEquipe() ? '<button class="b clara" data-resumo-mes>Resumo do mês</button>' : '') +
-        '<button class="b clara" data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
-        /* O botão de destaque saiu daqui: virou o seletor "Visualizar
-           como…" da sidebar (js/previa-usuario.js), que busca entre
-           clientes e usuários num campo só. O atalho continua no menu
-           "⋯" abaixo, pra quem já está com o cliente aberto — mesma
-           rota de sempre (B7.Portal.abrirPrevia), nada mudou nela. */
-        '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
-          '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
-          '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
-          (B7.ResumoMes && B7.Auth.ehEquipe && B7.Auth.ehEquipe() ? '<button data-resumo-mes>Resumo do mês</button>' : '') +
-          (ehAdmin() ? '<button data-ir="#/previa/' + esc(c.id) + '">Visualizar como cliente</button>' : '') +
-          (window.__ultimaDoCliente ? '' : '') +
-          '<hr><button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +
-        '</div></div>' +
-      '</div></div>';
+  /* Cliente que não abre (apagado, sem acesso, link velho): diz o que
+     houve e oferece o caminho de volta — nada de tela branca */
+  function erroCliente(e, id) {
+    console.error(e);
+    B7.Rota.titulo(['Cliente']);
+    const sumiu = e && (e.code === 'PGRST116' || /0 rows|no rows|multiple \(or no\)/i.test(String(e.message || '')));
+    painel().innerHTML = '<div class="conteudo entra">' + estadoB7(IC.clientes,
+      sumiu ? 'Cliente não encontrado.' : 'Não foi possível abrir este cliente.',
+      sumiu ? 'Ele pode ter sido excluído, ou você não tem acesso a ele.' : 'Verifique a conexão e tente de novo.',
+      (sumiu ? '' : '<button class="b pri" onclick="B7.Rota.recarregar()">Tentar novamente</button>') +
+      (podeIrRota('clientes') ? '<button class="b contorno" onclick="location.hash=\'#/clientes\'">Ver clientes</button>'
+        : '<button class="b contorno" onclick="location.hash=\'#/\'">Ir para o início</button>')) +
+      '</div>';
+  }
+
+  /* ---------- seções Vídeos e Design: lentes sobre os módulos globais.
+     Mesmos registros, mesma tela de detalhe; aqui só o recorte do cliente. */
+  const IC_SETA = '<svg class="cs-seta" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  const dataCurta = d => d ? new Date(String(d).slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : '';
+  function filtroSecao(abertos, fechados, rotAbertos, rotFechados) {
+    return '<div class="filtro cs-filtro" role="tablist">' +
+      '<button class="on" data-cs-f="abertos" role="tab" aria-selected="true">' + esc(rotAbertos) + ' <span>' + abertos + '</span></button>' +
+      '<button data-cs-f="fechados" role="tab" aria-selected="false">' + esc(rotFechados) + ' <span>' + fechados + '</span></button>' +
+    '</div>';
+  }
+  function ligarFiltroSecao() {
+    const f = painel().querySelector('.cs-filtro'); if (!f) return;
+    f.querySelectorAll('button').forEach(b => b.onclick = () => {
+      f.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
+      painel().querySelectorAll('[data-cs-grupo]').forEach(g => { g.hidden = g.dataset.csGrupo !== b.dataset.csF; });
+    });
+  }
+  function listaSecao(itens, linha, vazio) {
+    return itens.length ? '<div class="cs-lista">' + itens.map(linha).join('') + '</div>'
+      : '<div class="cs-vazio">' + esc(vazio) + '</div>';
+  }
+  function erroSecao(titulo) {
+    return estadoB7(IC.andamento, 'Não foi possível carregar ' + titulo + '.', 'Verifique a conexão e tente de novo.',
+      '<button class="b pri" onclick="B7.Rota.recarregar()">Tentar novamente</button>');
+  }
+
+  function secaoVideoCliente(c, lista) {
+    if (!lista) return erroSecao('os vídeos');
+    if (!lista.length) return estadoB7(IC.play, 'Nenhum vídeo deste cliente ainda.',
+      'As demandas de edição aparecem aqui assim que forem criadas na Produção de Vídeo.',
+      podeIrRota('video') ? '<button class="b contorno" onclick="location.hash=\'#/video\'">Abrir Produção de Vídeo</button>' : '');
+    const fechado = d => d.editing_status === 'entregue' || d.editing_status === 'descartado';
+    const abertos = lista.filter(d => !fechado(d))
+      .sort((a, b) => String(a.prazo || '9999').localeCompare(String(b.prazo || '9999')));
+    const fechados = lista.filter(fechado);
+    const atrasa = d => B7.Video && B7.Video.ehAtrasada ? B7.Video.ehAtrasada(d) : false;
+    const rot = s => B7.Video && B7.Video.rotuloSituacao ? B7.Video.rotuloSituacao(s) : s;
+    const linha = d => {
+      const atrasada = !fechado(d) && atrasa(d);
+      const quando = fechado(d) ? (d.entregue_em ? 'entregue ' + B7.UI.quando(d.entregue_em) : 'atualizado ' + B7.UI.quando(d.updated_at))
+        : d.prazo ? 'prazo ' + dataCurta(d.prazo) : 'sem prazo';
+      return '<a class="cs-item" href="#/video/' + esc(d.id) + '?de=cliente">' +
+        '<div class="cs-tx"><b>' + esc(d.titulo || 'Sem título') + '</b>' +
+          '<small>' + (d.codigo ? esc(d.codigo) + ' · ' : '') + (d.videomaker_nome ? esc(d.videomaker_nome) + ' · ' : 'sem videomaker · ') +
+          '<span class="' + (atrasada ? 'cs-atraso' : '') + '">' + esc(atrasada ? 'atrasado · ' + quando : quando) + '</span></small></div>' +
+        '<span class="vd-status vd-status-' + esc(d.editing_status) + '">' + esc(rot(d.editing_status)) + '</span>' + IC_SETA +
+      '</a>';
+    };
+    return '<div class="cs-topo">' + filtroSecao(abertos.length, fechados.length, 'Em produção', 'Entregues') +
+        (podeIrRota('video') ? '<a class="b fina contorno" href="#/video">Produção de Vídeo</a>' : '') + '</div>' +
+      '<div data-cs-grupo="abertos">' + listaSecao(abertos, linha, 'Nada em produção agora para este cliente.') + '</div>' +
+      '<div data-cs-grupo="fechados" hidden>' + listaSecao(fechados, linha, 'Nenhum vídeo entregue ainda.') + '</div>';
+  }
+
+  function secaoDesignCliente(c, lista) {
+    if (!lista) return erroSecao('as peças de design');
+    if (!lista.length) return estadoB7(IC.roteiros, 'Nenhuma peça de design deste cliente ainda.',
+      'As peças aparecem aqui quando a linha editorial for enviada para o design.',
+      '<button class="b contorno" onclick="location.hash=\'#/cliente/' + esc(c.id) + '/linhas\'">Ver Editorial</button>');
+    const D = B7.Design || {};
+    const fechado = d => d.status === 'finalizado';
+    const abertos = lista.filter(d => !fechado(d))
+      .sort((a, b) => String(a.prazo || '9999').localeCompare(String(b.prazo || '9999')));
+    const fechados = lista.filter(fechado);
+    const hoje = new Date().toISOString().slice(0, 10);
+    const linha = d => {
+      const atrasada = !fechado(d) && d.prazo && String(d.prazo).slice(0, 10) < hoje;
+      const tipo = D.rotuloTipo ? D.rotuloTipo(d.tipo) : 'Peça';
+      const quando = fechado(d) ? 'atualizada ' + B7.UI.quando(d.updated_at) : d.prazo ? 'prazo ' + dataCurta(d.prazo) : 'sem prazo';
+      return '<a class="cs-item" href="#/design/' + esc(d.id) + '?de=cliente">' +
+        '<div class="cs-tx"><b>' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</b>' +
+          '<small>' + esc(tipo) + (d.linha_nome ? ' · ' + esc(d.linha_nome) : '') + ' · ' +
+          '<span class="' + (atrasada ? 'cs-atraso' : '') + '">' + esc(atrasada ? 'atrasada · ' + quando : quando) + '</span></small></div>' +
+        '<span class="cs-chip cs-ds-' + esc(d.status) + '">' + esc(D.rotuloStatus ? D.rotuloStatus(d.status) : d.status) + '</span>' + IC_SETA +
+      '</a>';
+    };
+    return '<div class="cs-topo">' + filtroSecao(abertos.length, fechados.length, 'Em andamento', 'Finalizadas') +
+        (podeIrRota('design') ? '<a class="b fina contorno" href="#/design">Design</a>' : '') + '</div>' +
+      '<div data-cs-grupo="abertos">' + listaSecao(abertos, linha, 'Nenhuma peça em andamento para este cliente.') + '</div>' +
+      '<div data-cs-grupo="fechados" hidden>' + listaSecao(fechados, linha, 'Nenhuma peça finalizada ainda.') + '</div>';
   }
 
   /* Bloco da linha editorial atual + histórico dos meses anteriores.
@@ -1532,7 +1669,8 @@ B7.Dashboard = (function () {
     const destino = a => {
       if (a.entity_type === 'linha' && a.entity_id) return '#/linha/' + a.entity_id;
       if (a.entity_type === 'conteudo' && a.client_id) return '#/cliente/' + a.client_id + '/linhas';
-      if (a.entity_type === 'onboarding' && a.client_id) return '#/cliente/' + a.client_id + '/onboarding';
+      /* onboarding saiu do produto (02/10): o registro antigo continua no
+         histórico com o rótulo, e leva para o cliente */
       if (a.recording_id) return '#/gravacao/' + a.recording_id;
       if (a.client_id) return '#/cliente/' + a.client_id;
       return '';
@@ -1576,10 +1714,12 @@ B7.Dashboard = (function () {
 
   function ligar() {
     const p = painel();
+    /* dentro do hub do cliente, a gravação sabe voltar para ele */
+    const naCli = !!p.querySelector('.cli-shell');
     p.querySelectorAll('[data-gravacao]').forEach(el => {
       const abrir = () => {
         const r = el.dataset.roteiro;
-        location.hash = '#/gravacao/' + el.dataset.gravacao + (r ? '?roteiro=' + r : '');
+        location.hash = '#/gravacao/' + el.dataset.gravacao + (r ? '?roteiro=' + r : naCli ? '?de=cliente' : '');
       };
       el.onclick = ev => { if (!ev.target.closest('.menu')) abrir(); };
       /* cards focáveis abrem com Enter, como um link */
@@ -1590,9 +1730,10 @@ B7.Dashboard = (function () {
       location.hash = '#/cliente/' + el.dataset.cliente;
     });
     p.querySelectorAll('[data-ir]').forEach(el => el.onclick = () => location.hash = el.dataset.ir);
+    /* "Ver todas/todos" da visão geral: vai para a seção, com endereço */
     p.querySelectorAll('[data-aba-cli]').forEach(b => b.onclick = () => {
-      const cli = location.hash.split('/')[2];
-      if (cli) abrirCliente(cli, b.dataset.abaCli);
+      const cli = location.hash.split('?')[0].split('/')[2];
+      if (cli) location.hash = hrefSecao(cli, b.dataset.abaCli);
     });
     p.querySelectorAll('[data-nova-gravacao]').forEach(b => b.onclick = ev => {
       ev.stopPropagation();
@@ -2183,7 +2324,7 @@ B7.Dashboard = (function () {
   }
 
   return { abrir, marcarNav, semPermissao, abrirClientes, abrirCliente, abrirGravacoes, abrirRoteiros, abrirConfig,
-           trilhaCliente, erroConteudo,
+           trilhaCliente, erroConteudo, shellCliente, ligarShellCliente,
            abrirLixeira, abrirArquivados, arquivarGravacao, paraLixeira,
            modalNovaGravacao, modalNovoCliente, modalEditarCliente, excluirCliente,
            buscar, duplicarGravacao, excluirGravacao, IC,

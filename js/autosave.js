@@ -129,7 +129,6 @@ B7.Save = (function () {
     if (tabela === 'cliente_inteligencia') return B7.DB.salvarInteligencia(id, patch);
     if (tabela === 'produtos') return B7.DB.atualizarProduto(id, patch);
     if (tabela === 'provas') return B7.DB.atualizarProva(id, patch);
-    if (tabela === 'onboardings') return B7.DB.atualizarOnboarding(id, patch);
     if (tabela === 'linhas_editoriais') return B7.DB.atualizarLinha(id, patch);
     if (tabela === 'pilares') return B7.DB.atualizarPilar(id, patch);
     if (tabela === 'conteudos') return B7.DB.atualizarConteudo(id, patch);

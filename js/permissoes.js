@@ -35,8 +35,8 @@ B7.Perm = (function () {
        para entender o briefing e entregar o trabalho. Sem usuários,
        Kanban geral, aprovações de cliente, importar/backup.
        'cliente' entra aqui pela mesma spec de refino: o Designer pode
-       VER o contexto do cliente (ICP, posicionamento — abas Inteligência/
-       Onboarding, que moram sob a rota #/cliente/<id>/...) para entender
+       VER o contexto do cliente (ICP, posicionamento — seção Inteligência,
+       que mora sob a rota #/cliente/<id>/...) para entender
        o briefing, mas nunca editar — a UI trava os campos (ver
        souDesignerSomenteLeitura em js/conteudo.js) e o RLS do banco
        bloqueia a escrita de verdade mesmo se alguém pular a UI. */

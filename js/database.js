@@ -349,7 +349,7 @@ B7.DB = (function () {
 
     /* =================================================================
        CENTRAL DE CONTEÚDO
-       Inteligência do cliente, onboarding mensal, linhas editoriais,
+       Inteligência do cliente, linhas editoriais,
        pilares e conteúdos. Tudo opcional: um cliente só com nome
        continua funcionando em todas as telas.
        ================================================================= */
@@ -398,29 +398,10 @@ B7.DB = (function () {
       return ok(await sb().from('provas').update({ deleted_at: new Date().toISOString() }).eq('id', id));
     },
 
-    /* ---- onboarding mensal ---- */
-    async listarOnboardings(clienteId) {
-      return ok(await sb().from('onboardings').select('*')
-        .eq('client_id', clienteId).is('deleted_at', null)
-        .order('ano', { ascending: false }).order('mes', { ascending: false }));
-    },
-    async criarOnboarding(dados) {
-      const linhas = ok(await sb().from('onboardings').insert([dados]).select());
-      return linhas[0];
-    },
-    async atualizarOnboarding(id, patch) {
-      return ok(await sb().from('onboardings').update(patch).eq('id', id).select());
-    },
-    /* duplicar o mês anterior: copia o contexto e limpa o que é do mês */
-    async duplicarOnboarding(origem, mes, ano) {
-      return this.criarOnboarding({
-        client_id: origem.client_id, mes: mes, ano: ano,
-        objetivo: origem.objetivo, campanhas: '', prioritarios: origem.prioritarios,
-        ofertas: origem.ofertas, datas: '', novidades: '',
-        obrigatorios: origem.obrigatorios, evitar: origem.evitar,
-        pedidos: '', quantidade: origem.quantidade, observacoes: ''
-      });
-    },
+    /* Onboarding mensal: REMOVIDO do produto (2026-10-02) — o onboarding
+       acontece em reunião e fica no Google Docs. A tabela `onboardings`
+       continua no banco só como histórico (e entra no backup); nenhuma
+       tela lê ou grava mais nela. */
 
     /* ---- linhas editoriais ---- */
     async listarLinhas(clienteId, opcoes = {}) {
@@ -2068,6 +2049,13 @@ B7.DB = (function () {
     async minhasDemandasVideo() {
       return ok(await sb().from('demandas_edicao_resumo').select('*')
         .order('prazo', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }));
+    },
+    /* Vídeos de UM cliente (seção Vídeos do cliente): só os campos da
+       lista, as mais recentes primeiro. O RLS decide o que a pessoa vê. */
+    async videoDoCliente(clienteId) {
+      return ok(await sb().from('demandas_edicao_resumo')
+        .select('id,titulo,codigo,editing_status,prazo,videomaker_nome,competencia_ano,competencia_mes,updated_at,entregue_em')
+        .eq('client_id', clienteId).order('updated_at', { ascending: false }).limit(120));
     },
     async demandaVideo(id) {
       return ok(await sb().from('demandas_edicao_resumo').select('*').eq('id', id).single());

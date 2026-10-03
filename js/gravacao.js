@@ -205,6 +205,13 @@ B7.Gravacao = (function () {
           '<span>' + (g.data_gravacao ? (cancelada ? 'Reativar com nova data' : 'Remarcar') : 'Marcar data') + '</span></button>' : '';
     const btConcluir = ed && ativa
       ? '<button type="button" class="b ' + (principal === 'concluir' ? 'pri' : 'contorno') + '" data-gv="concluir">' + IC.check + '<span>Concluir gravação</span></button>' : '';
+    /* aberta de dentro do cliente (?de=cliente): o voltar leva de volta
+       para as Gravações DELE, não para a lista geral */
+    const voltar = document.querySelector('#gv-raiz > .gv-voltar');
+    if (voltar && new URLSearchParams(location.hash.split('?')[1] || '').get('de') === 'cliente' && g.client_id) {
+      voltar.href = '#/cliente/' + g.client_id + '/gravacoes';
+      voltar.innerHTML = IC.voltar + esc(g.cliente_nome || 'Cliente');
+    }
     cx.innerHTML =
       '<div class="gv-cab-topo">' +
         '<a class="gv-cli" href="#/cliente/' + esc(g.client_id) + '">' + B7.UI.avatarCliente(g.cliente_nome, g.cliente_logo_url, 'p') +

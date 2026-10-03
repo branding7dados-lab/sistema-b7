@@ -501,8 +501,6 @@ B7.UI = (function () {
           fn: () => { location.hash = '#/cliente/' + id + '/linhas'; } },
         { ic: ICP.mais, rot: 'Nova ideia', dica: 'guardar no banco de ideias',
           fn: () => { location.hash = '#/cliente/' + id + '/ideias'; } },
-        { ic: ICP.mais, rot: 'Novo onboarding', dica: 'contexto do mês',
-          fn: () => { location.hash = '#/cliente/' + id + '/onboarding'; } },
         { ic: ICP.pessoa, rot: 'Abrir inteligência', dica: 'contexto da marca',
           fn: () => { location.hash = '#/cliente/' + id + '/inteligencia'; } });
     }

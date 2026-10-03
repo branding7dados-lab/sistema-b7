@@ -1750,12 +1750,12 @@ B7.Design = (function () {
         B7.UI.skeleton('tabela', { n: 5, cols: 2 }) + '</div></div></div>';
       document.body.appendChild(el);
       document.body.classList.add('ds-ws-aberta');
-      el.addEventListener('mousedown', e => { if (e.target === el) fecharDrawer(); });
+      el.addEventListener('mousedown', e => { if (e.target === el) fecharPeloUsuario(); });
       /* setas do teclado só navegam slide/story quando o foco já está
          dentro do navegador (uma pill ou uma seta ‹/›) — nunca sequestra
          Left/Right de um campo de texto ou de qualquer outro controle */
       const tecla = e => {
-        if (e.key === 'Escape') { fecharDrawer(); return; }
+        if (e.key === 'Escape') { fecharPeloUsuario(); return; }
         if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
             document.activeElement && document.activeElement.closest('.ds-nav-slides')) {
           e.preventDefault();
@@ -1763,14 +1763,26 @@ B7.Design = (function () {
         }
       };
       document.addEventListener('keydown', tecla);
+      /* aberta de dentro do cliente (?de=cliente): fechar volta para o
+         Design DELE, não para a tela geral de Design que fica por trás */
+      const de = new URLSearchParams(location.hash.split('?')[1] || '').get('de');
       drawer = { id, el, extra: null, briefing: null, versaoAtualId: null, filaUpload: [], ajustesCliente: {},
-                 anterior: document.activeElement, tecla };
+                 anterior: document.activeElement, tecla,
+                 voltar: de === 'cliente' && d.client_id ? '#/cliente/' + d.client_id + '/design' : null };
       if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(fecharDrawer);
     }
 
     await carregarExtra(d);
     if (!drawer || drawer.id !== id) return;
     desenharDrawer();
+  }
+
+  /* fechar por gesto da pessoa (✕, ←, Esc, fundo) respeita de onde ela
+     veio; fecharDrawer sozinho (troca de rota, troca de peça) não navega */
+  function fecharPeloUsuario() {
+    const voltar = drawer && drawer.voltar;
+    fecharDrawer();
+    if (voltar) location.hash = voltar;
   }
 
   function fecharDrawer() {
@@ -3363,7 +3375,7 @@ B7.Design = (function () {
   /* ---------------------------------------------------------- ligações */
   function ligarDrawer(d, x, versaoAtual) {
     const el = drawer.el;
-    el.querySelectorAll('[data-fechar]').forEach(b => b.onclick = fecharDrawer);
+    el.querySelectorAll('[data-fechar]').forEach(b => b.onclick = fecharPeloUsuario);
 
     const salvo = el.querySelector('#dv-salvo');
     const salvar = async (campos, rotulo) => {

@@ -483,3 +483,88 @@
 .rt-mes-cab span{font-size:12.5px;color:var(--ink-3);}
 .rt-mes-cab small{font-size:11.5px;color:var(--ink-4);border:1px dashed var(--borda-forte);border-radius:999px;padding:1px 8px;cursor:help;}
 .rt-mes .rt-lista,.rt-mes .grade-roteiros{margin-top:4px;}
+
+/* =====================================================================
+   HUB DO CLIENTE (02/10) — cabeçalho compacto + seções com endereço.
+   Substitui a capa grande: no celular o nome e as seções aparecem já na
+   primeira dobra; no computador, denso e sem hero decorativo.
+   ===================================================================== */
+.cli-shell{margin-bottom:18px;}
+.cli-voltar{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:var(--ink-3);
+  padding:4px 8px 4px 2px;margin:-4px 0 6px -2px;border-radius:8px;text-decoration:none;transition:color var(--m-rapido,170ms) ease;}
+.cli-voltar:hover{color:var(--ink);}
+.cli-voltar svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.cli-cab{display:flex;align-items:center;gap:14px;min-width:0;}
+.cli-cab .avatar{width:48px;height:48px;border-radius:14px;font-size:16px;flex:none;}
+.cli-cab-tx{flex:1;min-width:0;}
+.cli-cab h1{font-family:'Archivo';font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin:0;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;}
+.cli-meta{font-size:12.5px;color:var(--ink-4);margin:3px 0 0;}
+.cli-acoes{display:flex;align-items:center;gap:8px;flex:none;}
+.cli-acoes .b svg{width:15px;height:15px;}
+.cli-acoes .menu .lista button[data-nova-gravacao],.cli-acoes .menu .lista button[data-resumo-mes]{display:none;}
+
+.cli-secoes{margin-top:16px;border-bottom:1px solid var(--borda);}
+.cli-secoes-rolo{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  scroll-padding-inline:16px;}
+.cli-secoes-rolo::-webkit-scrollbar{display:none;}
+.cli-secoes a{position:relative;flex:none;white-space:nowrap;font-size:13.5px;font-weight:600;color:var(--ink-3);
+  padding:10px 12px 12px;text-decoration:none;border-radius:8px 8px 0 0;transition:color var(--m-rapido,170ms) ease;}
+.cli-secoes a:hover{color:var(--ink);}
+.cli-secoes a::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;
+  background:var(--acento);transform:scaleX(0);transition:transform var(--m-padrao,240ms) var(--m-entra,ease);}
+.cli-secoes a.on{color:var(--ink);}
+.cli-secoes a.on::after{transform:scaleX(1);}
+.cli-secoes a:focus-visible{outline:2px solid var(--acento);outline-offset:-2px;}
+
+/* linha curta que diz o que é a seção (Editorial, Ideias, Inteligência) */
+.cli-sec-cab{display:flex;align-items:center;gap:14px;justify-content:space-between;margin:0 0 16px;}
+.cli-sec-cab p{font-size:13px;line-height:1.55;color:var(--ink-3);margin:0;max-width:640px;}
+.cli-sec-cab .b{flex:none;}
+
+/* seções Vídeos e Design: lista leve, cada linha abre o registro canônico */
+.cs-topo{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px;}
+.cs-topo a.b{text-decoration:none;}
+.cs-filtro button span{font-weight:700;color:var(--ink-4);margin-left:2px;}
+.cs-filtro button.on span{color:inherit;}
+.cs-lista{background:var(--card);border:1px solid var(--borda);border-radius:14px;overflow:hidden;}
+.cs-item{display:flex;align-items:center;gap:12px;padding:12px 14px;color:inherit;text-decoration:none;
+  border-top:1px solid var(--borda);transition:background var(--m-rapido,170ms) ease;}
+.cs-item:first-child{border-top:0;}
+.cs-item:hover{background:var(--suave);}
+.cs-item:focus-visible{outline:2px solid var(--acento);outline-offset:-2px;}
+.cs-tx{flex:1;min-width:0;}
+.cs-tx b{display:block;font-size:14px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cs-tx small{display:block;font-size:12px;color:var(--ink-4);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cs-atraso{color:var(--erro);font-weight:600;}
+.cs-item .vd-status,.cs-chip{flex:none;white-space:nowrap;}
+.cs-chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--suave);color:var(--ink-3);}
+.cs-ds-aguardando_cliente,.cs-ds-ajustes_cliente{background:var(--ambar-bg);color:var(--ambar);}
+.cs-ds-ajustes{background:var(--erro-bg);color:var(--erro);}
+.cs-ds-aprovado_cliente,.cs-ds-aprovado_interno,.cs-ds-finalizado{background:var(--ok-bg);color:var(--ok);}
+.cs-ds-em_criacao,.cs-ds-revisao_interna{background:var(--acento-suave);color:var(--acento);}
+.cs-seta{width:16px;height:16px;flex:none;fill:none;stroke:var(--ink-4);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.cs-vazio{font-size:13px;color:var(--ink-3);padding:22px 16px;text-align:center;background:var(--card);
+  border:1px dashed var(--borda-forte);border-radius:14px;}
+
+@media (max-width:760px){
+  .cli-shell{margin-bottom:14px;}
+  .cli-cab{gap:12px;}
+  .cli-cab .avatar{width:40px;height:40px;border-radius:12px;font-size:14px;}
+  .cli-cab h1{font-size:20px;}
+  .cli-meta{font-size:12px;}
+  .cli-so-largo{display:none !important;}
+  .cli-acoes .menu .lista button[data-nova-gravacao],.cli-acoes .menu .lista button[data-resumo-mes]{display:block;}
+  .cli-secoes{margin:12px -16px 0;padding:0 16px;}
+  .cli-secoes-rolo{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);
+    mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);}
+  .cli-secoes a{padding:9px 10px 11px;font-size:13px;}
+  .cli-sec-cab{flex-direction:column;align-items:stretch;gap:10px;}
+  .cli-sec-cab .b{align-self:flex-start;}
+  .cs-item{padding:11px 12px;gap:10px;}
+  .cs-item .vd-status,.cs-chip{font-size:10.5px;padding:2px 8px;}
+  .cs-seta{display:none;}
+}
+@media (prefers-reduced-motion:reduce){
+  .cli-secoes a::after{transition:none;}
+}

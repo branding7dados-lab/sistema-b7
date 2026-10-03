@@ -124,12 +124,15 @@ B7.Rota = (function () {
     }
     if (partes[0] === 'cliente' && partes[1]) {
       mostrar('tela-dashboard');
-      /* #/cliente/<id>/inteligencia · /onboarding · /linhas */
-      if (partes[2] === 'inteligencia') return B7.Conteudo.abrirInteligencia(partes[1]);
-      if (partes[2] === 'onboarding')   return B7.Conteudo.abrirOnboarding(partes[1]);
-      if (partes[2] === 'linhas')       return B7.Conteudo.abrirLinhas(partes[1]);
-      if (partes[2] === 'ideias')       return B7.Conteudo.abrirIdeias(partes[1]);
-      await B7.Dashboard.abrirCliente(partes[1]);
+      /* hub do cliente: #/cliente/<id>[/<secao>] — linhas (Editorial),
+         ideias e inteligencia moram em js/conteudo.js; o resto no dashboard.
+         Onboarding saiu do produto (02/10): link antigo cai no cliente. */
+      const sec = partes[2] || '';
+      if (sec === 'onboarding') { location.replace('#/cliente/' + partes[1]); return; }
+      if (sec === 'inteligencia') return B7.Conteudo.abrirInteligencia(partes[1]);
+      if (sec === 'linhas')       return B7.Conteudo.abrirLinhas(partes[1]);
+      if (sec === 'ideias')       return B7.Conteudo.abrirIdeias(partes[1]);
+      await B7.Dashboard.abrirCliente(partes[1], sec || 'geral');
       return;
     }
     if (partes[0] === 'linha' && partes[1]) {

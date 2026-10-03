@@ -1,6 +1,6 @@
 /* =====================================================================
    CENTRAL DE CONTEÚDO B7
-   Inteligência do cliente · Onboarding mensal · Linha editorial
+   Inteligência do cliente · Linha editorial
    (estratégia, pilares e conteúdos por formato).
 
    Duas regras que valem para o arquivo inteiro:
@@ -157,16 +157,16 @@ B7.Conteudo = (function () {
       '<a class="int-abrir" target="_blank" rel="noopener noreferrer" hidden>Abrir ↗</a></label>' +
       '<input class="campo" value="' + esc(valor || '') + '" ' + attrs + ' inputmode="url" autocapitalize="none" spellcheck="false"></div>';
 
-    painel().innerHTML = '<div class="conteudo entra int-tela">' +
-      B7.Dashboard.trilhaCliente(cliente, 'Inteligência') +
-      '<div class="cab-conteudo"><div><h1>Inteligência do cliente</h1>' +
-      '<p>Contexto permanente da marca. Preencha aos poucos — nada aqui é obrigatório, ' +
-      'e o que estiver preenchido vira base para as linhas editoriais.</p></div></div>' +
+    painel().innerHTML = '<div class="conteudo entra int-tela cli-tela">' +
+      cabSecaoCliente(cliente, 'inteligencia', 'Inteligência',
+        'Contexto permanente da marca. Preencha aos poucos — nada aqui é obrigatório, ' +
+        'e o que estiver preenchido vira base para as linhas editoriais e para a IA.') +
 
       /* o estado do salvamento aparece no topo global: um selo aqui ficava
-         parado em "Salvo ✓" e empurrava a tela ao aparecer e sumir */
-      '<div class="int-resumo">' + B7.UI.avatarCliente(cliente.nome, cliente.logo_url) +
-        '<div class="int-res-tx"><b>' + esc(cliente.nome) + '</b><small id="int-res-txt"></small>' +
+         parado em "Salvo ✓" e empurrava a tela ao aparecer e sumir.
+         Nome e logo já estão no cabeçalho do cliente: aqui só o progresso. */
+      '<div class="int-resumo">' +
+        '<div class="int-res-tx"><b>Perfil preenchido</b><small id="int-res-txt"></small>' +
         '<div class="barra-progresso"><i id="int-res-barra" style="width:0"></i></div></div>' +
         '<span class="int-res-pct" id="int-res-pct"></span></div>' +
 
@@ -232,6 +232,7 @@ B7.Conteudo = (function () {
         '<button class="add-largo" id="add-prova">+ ADICIONAR PROVA</button>') +
     '</div>';
 
+    B7.Dashboard.ligarShellCliente(cliente);
     ligarCampos(painel());
     ligarProdutos(clienteId);
     resumoInteligencia(painel().querySelector('.int-tela'));
@@ -394,79 +395,6 @@ B7.Conteudo = (function () {
         b.closest('[data-prova]').remove(); if (atualizaIntel) atualizaIntel();
       } catch (e) {}
     });
-  }
-
-  /* =================================================================
-     ONBOARDING MENSAL
-     ================================================================= */
-  async function abrirOnboarding(clienteId) {
-    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>';
-    let cliente, lista;
-    try {
-      [cliente, lista] = await Promise.all([B7.DB.cliente(clienteId), B7.DB.listarOnboardings(clienteId)]);
-    } catch (e) { return B7.Dashboard.erroConteudo(e, clienteId); }
-
-    const atual = lista[0];
-    painel().innerHTML = '<div class="conteudo entra">' +
-      B7.Dashboard.trilhaCliente(cliente, 'Onboarding mensal') +
-      '<div class="cab-conteudo"><div><h1>Onboarding mensal</h1>' +
-      '<p>O que muda neste mês: campanhas, datas, produtos em foco. Separado da ' +
-      'inteligência, que é o contexto permanente da marca.</p></div>' +
-      '<button class="b pri" id="novo-onb">+ Novo mês</button></div>' +
-      (lista.length ? lista.map((o, i) => cartaoOnboarding(o, i === 0)).join('')
-        : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
-          '<b>Nenhum onboarding ainda.</b><p>Comece registrando o que muda neste mês para este cliente.</p>' +
-          '<div class="acoes"><button class="b pri" id="novo-onb-vazio">+ Criar o primeiro mês</button></div></div>') +
-    '</div>';
-
-    ligarCampos(painel());
-    const criar = async () => {
-      const hoje = new Date();
-      const dados = { client_id: clienteId, mes: hoje.getMonth() + 1, ano: hoje.getFullYear() };
-      try {
-        let novo;
-        if (atual) {
-          const m = await confirmarDuplicar(atual);
-          novo = m ? await B7.Save.acao(() => B7.DB.duplicarOnboarding(atual, dados.mes, dados.ano), 'Mês criado')
-                   : await B7.Save.acao(() => B7.DB.criarOnboarding(dados), 'Mês criado');
-        } else {
-          novo = await B7.Save.acao(() => B7.DB.criarOnboarding(dados), 'Mês criado');
-        }
-        B7.DB.registrar({ tipo: 'criar', entidade: 'onboarding', id: novo.id, cliente: clienteId,
-          texto: 'Onboarding de ' + MESES[novo.mes - 1] + ' ' + novo.ano });
-        abrirOnboarding(clienteId);
-      } catch (e) {}
-    };
-    ['novo-onb', 'novo-onb-vazio'].forEach(id => {
-      const b = document.getElementById(id); if (b) b.onclick = criar;
-    });
-  }
-
-  function confirmarDuplicar(anterior) {
-    return new Promise(resolve => {
-      const m = B7.UI.modal('<h3>Novo mês</h3>' +
-        '<div class="sub">Você já tem o onboarding de ' + MESES[anterior.mes - 1] + ' ' + anterior.ano +
-        '. Quer começar do zero ou aproveitar o contexto do mês anterior?</div>' +
-        '<div class="acoes"><button class="b" data-zero>Começar do zero</button>' +
-        '<button class="b pri" data-dup>Duplicar mês anterior</button></div>');
-      m.querySelector('[data-zero]').onclick = () => { m.fechar(); resolve(false); };
-      m.querySelector('[data-dup]').onclick = () => { m.fechar(); resolve(true); };
-    });
-  }
-
-  function cartaoOnboarding(o, aberto) {
-    const t = 'data-tab="onboardings" data-id="' + esc(o.id) + '"';
-    return secao('onb-' + o.id, MESES[o.mes - 1] + ' ' + o.ano,
-      (o.objetivo ? o.objetivo.slice(0, 70) : 'sem objetivo definido'),
-      campo('OBJETIVO DO MÊS', o.objetivo, t + ' data-campo="objetivo"') +
-      campo('CAMPANHAS OU AÇÕES', o.campanhas, t + ' data-campo="campanhas"') +
-      campo('PRODUTOS PRIORITÁRIOS', o.prioritarios, t + ' data-campo="prioritarios"') +
-      campo('OFERTAS E CONDIÇÕES', o.ofertas, t + ' data-campo="ofertas"') +
-      campo('DATAS IMPORTANTES', o.datas, t + ' data-campo="datas"') +
-      campo('NOVIDADES', o.novidades, t + ' data-campo="novidades"') +
-      campo('ASSUNTOS OBRIGATÓRIOS', o.obrigatorios, t + ' data-campo="obrigatorios"') +
-      campo('O QUE EVITAR', o.evitar, t + ' data-campo="evitar"') +
-      campo('PEDIDOS ESPECÍFICOS DO CLIENTE', o.pedidos, t + ' data-campo="pedidos"'), aberto);
   }
 
   /* =================================================================
@@ -670,7 +598,8 @@ B7.Conteudo = (function () {
     const canais = String(l.canais || '').split(',').map(x => x.trim()).filter(Boolean).join(' · ');
     const sub = (l.nome && l.nome !== mesRot) ? l.nome : (canais || mesRot);
     const alerta = REGRAS_LINHA.planejamento.teste(l);
-    return '<a class="lg-card" href="#/linha/' + esc(l.id) + '" style="--i:' + Math.min(i || 0, 14) + '">' +
+    /* ?de=linhas: a linha sabe que veio da lista global e volta para ela */
+    return '<a class="lg-card" href="#/linha/' + esc(l.id) + '?de=linhas" style="--i:' + Math.min(i || 0, 14) + '">' +
       '<div class="lg-topo">' +
         B7.UI.avatarCliente(l.cliente_nome || '', l.cliente_logo_url) +
         '<div class="lg-id"><b>' + esc(l.cliente_nome || 'Sem cliente') + '</b>' +
@@ -692,6 +621,16 @@ B7.Conteudo = (function () {
       '</div></a>';
   }
 
+  /* Seções do hub do cliente que moram aqui (Editorial, Ideias,
+     Inteligência): mesmo cabeçalho e mesmas abas do resto do cliente
+     (B7.Dashboard.shellCliente), + uma linha curta do que é a seção. */
+  function cabSecaoCliente(cliente, secao, rotulo, texto, acao) {
+    B7.Dashboard.marcarNav('#/clientes');
+    B7.Rota.titulo([cliente.nome, rotulo]);
+    return B7.Dashboard.shellCliente(cliente, secao) +
+      '<div class="cli-sec-cab"><p>' + texto + '</p>' + (acao || '') + '</div>';
+  }
+
   async function abrirLinhas(clienteId) {
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('cards', { n: 4 }) + '</div>';
     let cliente, linhas;
@@ -701,12 +640,10 @@ B7.Conteudo = (function () {
 
     const leitura = souDesignerSomenteLeitura();
 
-    painel().innerHTML = '<div class="conteudo entra">' +
-      B7.Dashboard.trilhaCliente(cliente, 'Linhas editoriais') +
-      '<div class="cab-conteudo"><div><h1>Linhas editoriais</h1>' +
-      '<p>O planejamento de conteúdo de cada mês: o que será produzido, para onde vai ' +
-      'e quando.</p></div>' +
-      (leitura ? '' : '<button class="b pri" id="nova-linha">+ Nova linha editorial</button>') + '</div>' +
+    painel().innerHTML = '<div class="conteudo entra cli-tela">' +
+      cabSecaoCliente(cliente, 'linhas', 'Editorial',
+        'As linhas editoriais deste cliente, mês a mês. Abra uma para planejar, revisar e enviar ao design.',
+        leitura ? '' : '<button class="b pri fina" id="nova-linha">+ Nova linha editorial</button>') +
       (linhas.length ? '<div class="grade">' + linhas.map(cardLinha).join('') + '</div>'
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
           '<b>Nenhuma linha editorial ainda.</b>' +
@@ -715,8 +652,12 @@ B7.Conteudo = (function () {
               '<div class="acoes"><button class="b pri" id="nova-linha-vazio">+ Criar linha editorial</button></div>') + '</div>') +
     '</div>';
 
-    painel().querySelectorAll('[data-linha]').forEach(el => el.onclick = () => {
-      location.hash = '#/linha/' + el.dataset.linha;
+    B7.Dashboard.ligarShellCliente(cliente);
+    painel().querySelectorAll('[data-linha]').forEach(el => {
+      const abrir = () => { location.hash = '#/linha/' + el.dataset.linha; };
+      el.onclick = abrir;
+      el.setAttribute('tabindex', '0'); el.setAttribute('role', 'link');
+      el.onkeydown = ev => { if (ev.key === 'Enter') abrir(); };
     });
     if (!leitura) {
       ['nova-linha', 'nova-linha-vazio'].forEach(id => {
@@ -744,7 +685,7 @@ B7.Conteudo = (function () {
   }
 
   /* Criar uma linha editorial é escolher cliente, mês e ano. Nada de ICP,
-     onboarding, posicionamento, pilares ou meta antes de existir a linha:
+     posicionamento, pilares ou meta antes de existir a linha:
      tudo isso é opcional e vem depois, se vier. */
   async function modalNovaLinha(clienteId, existentes) {
     const hoje = new Date();
@@ -868,12 +809,10 @@ B7.Conteudo = (function () {
     const ativas = ideias.filter(i => i.status !== 'Arquivada');
     const arquivadas = ideias.filter(i => i.status === 'Arquivada');
 
-    painel().innerHTML = '<div class="conteudo entra">' +
-      B7.Dashboard.trilhaCliente(cliente, 'Banco de ideias') +
-      '<div class="cab-conteudo"><div><h1>Banco de ideias</h1>' +
-      '<p>Onde as ideias esperam a vez. Quando uma entra no planejamento, ' +
-      'ela vira conteúdo dentro de uma linha editorial.</p></div>' +
-      '<button class="b pri" id="nova-ideia">+ Nova ideia</button></div>' +
+    painel().innerHTML = '<div class="conteudo entra cli-tela">' +
+      cabSecaoCliente(cliente, 'ideias', 'Ideias',
+        'Onde as ideias esperam a vez. Quando uma entra no planejamento, vira conteúdo de uma linha editorial.',
+        souDesignerSomenteLeitura() ? '' : '<button class="b pri fina" id="nova-ideia">+ Nova ideia</button>') +
 
       (ativas.length ? '<div class="grade-ideias" id="lista-ideias">' +
         ativas.map(i => cardIdeia(i, linhas)).join('') + '</div>'
@@ -888,6 +827,7 @@ B7.Conteudo = (function () {
         '<div class="grade-ideias">' + arquivadas.map(i => cardIdeia(i, linhas)).join('') + '</div></div>' : '') +
     '</div>';
 
+    B7.Dashboard.ligarShellCliente(cliente);
     ligarIdeias(clienteId, linhas);
   }
 
@@ -1012,7 +952,7 @@ B7.Conteudo = (function () {
     });
   }
 
-  return { abrirInteligencia, abrirOnboarding, abrirLinhas, abrirLinhasGlobais, abrirIdeias, ligarCampos, campo, campoLinha,
+  return { abrirInteligencia, abrirLinhas, abrirLinhasGlobais, abrirIdeias, ligarCampos, campo, campoLinha,
            secao, FORMATOS, FUNIL, STATUS_CONTEUDO, STATUS_LINHA, TIPO_PILAR, souDesignerSomenteLeitura,
            REGRAS_LINHA, inicioLinha, fimLinha, novaLinha: () => modalNovaLinha(null, null) };
 })();

@@ -73,7 +73,12 @@ B7.Linha = (function () {
      estiver nesta linha, a linha abre normal e nada mais acontece. */
   async function abrir(id, aba, conteudoId) {
     L.aba = ABAS.some(([k]) => k === aba) ? aba : 'geral';
-    B7.Dashboard.marcarNav('#/linhas');
+    /* de onde a pessoa veio decide a trilha e o "voltar": da lista global
+       (?de=linhas) volta para ela; de qualquer outro lugar, a linha é
+       mostrada dentro do cliente dela (Clientes / cliente / Editorial) */
+    const de = new URLSearchParams(location.hash.split('?')[1] || '').get('de');
+    L.daLista = de === 'linhas' || !(B7.Perm ? B7.Perm.podeRota('clientes') : true);
+    B7.Dashboard.marcarNav(L.daLista ? '#/linhas' : '#/clientes');
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
     try {
       L.linha = await B7.DB.linha(id);
@@ -161,11 +166,14 @@ B7.Linha = (function () {
 
   function render() {
     const l = L.linha;
+    const podeCliente = !B7.Perm || B7.Perm.podeRota('cliente');
     painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="trilha-nav"><button data-ir="#/">' + (C.souDesignerSomenteLeitura() ? 'Central de Design' : 'Central B7') + '</button><span>/</span>' +
-        '<button data-ir="#/clientes">Clientes</button><span>/</span>' +
-        '<button data-ir="#/cliente/' + esc(l.client_id) + '">' + esc(l.cliente_nome) + '</button>' +
-        '<span>/</span><button data-ir="#/cliente/' + esc(l.client_id) + '/linhas">Linhas editoriais</button>' +
+      (L.daLista
+        ? '<div class="trilha-nav"><button data-ir="#/linhas">Linhas editoriais</button>' +
+          (podeCliente ? '<span>/</span><button data-ir="#/cliente/' + esc(l.client_id) + '/linhas">' + esc(l.cliente_nome) + '</button>' : '')
+        : '<div class="trilha-nav"><button data-ir="#/clientes">Clientes</button><span>/</span>' +
+          '<button data-ir="#/cliente/' + esc(l.client_id) + '">' + esc(l.cliente_nome) + '</button>' +
+          '<span>/</span><button data-ir="#/cliente/' + esc(l.client_id) + '/linhas">Editorial</button>') +
         '<span>/</span><b>' + esc(l.nome || MESES[l.mes - 1] + ' ' + l.ano) + '</b></div>' +
 
       capa(l) +
