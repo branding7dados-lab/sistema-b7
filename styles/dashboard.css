@@ -570,5 +570,40 @@
   .cli-secoes a::after{transition:none;}
 }
 
+/* ---------------------------------------------------------------------
+   TROCA DE SEÇÃO DO CLIENTE (pacote zz, 03/10)
+   As abas são irmãs do corpo e grudam no topo enquanto a página rola
+   (top:0 — dentro do #painel-dashboard o deslocamento já parte do recuo
+   do topo de vidro). O fundo vai de ponta a ponta sem alargar a página
+   (sombra larga recortada só na vertical). Só o corpo troca: o velho sai
+   para o lado contrário, o novo chega do lado da aba (--cli-dir, js).
+   --------------------------------------------------------------------- */
+.cli-tela{overflow-x:clip;}
+.cli-shell{margin-bottom:0;}
+.cli-secoes{position:sticky;top:0;z-index:6;margin-bottom:18px;
+  background:color-mix(in srgb, var(--fundo) 94%, transparent);
+  box-shadow:0 0 0 100vmax color-mix(in srgb, var(--fundo) 94%, transparent);clip-path:inset(0 -100vmax);}
+.cli-corpo{min-width:0;}
+.cli-corpo.cli-sai{opacity:0;transform:translate3d(calc(var(--cli-dir, 1) * -18px),0,0);pointer-events:none;
+  transition:opacity .15s ease, transform .15s cubic-bezier(.4,0,1,1);}
+.cli-corpo.cli-chega{animation:cliChega .36s cubic-bezier(.2,.8,.25,1) both;}
+.cli-corpo.cli-chega > *{animation:cliChegaFilho .42s cubic-bezier(.2,.8,.25,1) both;}
+.cli-corpo.cli-chega > :nth-child(2){animation-delay:35ms}.cli-corpo.cli-chega > :nth-child(3){animation-delay:70ms}
+.cli-corpo.cli-chega > :nth-child(n+4){animation-delay:105ms}
+@keyframes cliChega{from{opacity:0;transform:translate3d(calc(var(--cli-dir, 1) * 26px),0,0)}to{opacity:1;transform:none}}
+@keyframes cliChegaFilho{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
+.cli-corpo.cli-esq{animation:cliEsq .22s ease both;}
+@keyframes cliEsq{from{opacity:0}to{opacity:1}}
+/* seção lembrada (mostrada na hora enquanto a versão fresca chega):
+   não aceita toque nesse instante — os botões ainda não estão ligados */
+.cli-corpo.cli-previa{pointer-events:none;}
+@media (max-width:760px){
+  .cli-shell{margin-bottom:0;}
+  .cli-secoes{margin-bottom:14px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .cli-corpo.cli-sai,.cli-corpo.cli-chega,.cli-corpo.cli-chega > *,.cli-corpo.cli-esq{animation:none;transition:none;transform:none;opacity:1;}
+}
+
 /* Configurações → Abertura: som + rever (pacote zp) */
 .cfg-abertura{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}

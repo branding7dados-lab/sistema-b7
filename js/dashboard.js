@@ -979,19 +979,21 @@ B7.Dashboard = (function () {
             '<hr><button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +
           '</div></div></div>' : '') +
       '</header>' +
-      '<nav class="cli-secoes" aria-label="Seções do cliente"><div class="cli-secoes-rolo">' +
-        SECOES_CLIENTE.filter(secaoVisivel).map(s =>
-          '<a href="' + hrefSecao(c.id, s.k) + '"' + (s.k === secao ? ' class="on" aria-current="page"' : '') + '>' + esc(s.r) + '</a>').join('') +
-        '<i class="cli-ind" aria-hidden="true"></i>' +
-      '</div></nav>' +
-    '</div>';
+    '</div>' +
+    /* fora do .cli-shell (irmã do corpo) para poder grudar no topo
+       enquanto a página rola */
+    '<nav class="cli-secoes" aria-label="Seções do cliente"><div class="cli-secoes-rolo">' +
+      SECOES_CLIENTE.filter(secaoVisivel).map(s =>
+        '<a href="' + hrefSecao(c.id, s.k) + '"' + (s.k === secao ? ' class="on" aria-current="page"' : '') + '>' + esc(s.r) + '</a>').join('') +
+      '<i class="cli-ind" aria-hidden="true"></i>' +
+    '</div></nav>';
   }
   const IC_VOLTAR = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
 
   /* liga as ações do cabeçalho onde quer que ele esteja (telas do
      conteudo.js não passam pelo ligar() geral desta tela) */
   function ligarShellCliente(cliente) {
-    const raiz = painel().querySelector('.cli-shell'); if (!raiz) return;
+    const raiz = painel().querySelector('.cli-tela') || painel(); if (!raiz.querySelector('.cli-shell')) return;
     raiz.querySelectorAll('[data-nova-gravacao]').forEach(b => b.onclick = ev => { ev.stopPropagation(); modalNovaGravacao(b.dataset.novaGravacao); });
     raiz.querySelectorAll('[data-editar-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); modalEditarCliente(b.dataset.editarCli); });
     raiz.querySelectorAll('[data-excluir-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); excluirCliente(b.dataset.excluirCli); });
@@ -1029,6 +1031,130 @@ B7.Dashboard = (function () {
     indAnterior = { cli: clienteId, x, w };
   }
 
+  /* =================================================================
+     TROCA DE SEÇÃO SEM RECARREGAR A TELA (03/10, pacote zz)
+     Antes, cada aba apagava o painel inteiro (cabeçalho e abas incluídos),
+     mostrava um esqueleto de página e redesenhava tudo — no celular
+     parecia que o app recarregava a cada toque. Agora:
+     • cabeçalho e abas ficam; a aba nova acende e o sublinhado anda já
+       no toque, antes da busca terminar;
+     • só o corpo troca, deslizando no sentido da aba (direita/esquerda);
+     • esqueleto só no corpo e só se a busca passar de ~160ms;
+     • seção já visitada (mesmo cliente, últimos 5 min) reaparece na hora
+       como estava, e a versão fresca substitui sem piscar quando chega;
+     • toque rápido em várias abas: só a última pinta (número de ordem).
+     Vale para as seções daqui e para as do js/conteudo.js (Editorial,
+     Ideias, Inteligência). Só apresentação — mesmas buscas, mesmos dados.
+     ================================================================= */
+  let trocaSeq = 0;
+  const memoriaSecao = new Map();           /* 'id|secao' → { html, t } */
+  const MEMORIA_MS = 5 * 60 * 1000;
+  const ordemSecao = k => SECOES_CLIENTE.findIndex(s => s.k === k);
+  const reduzMov = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function telaViva(id) {
+    const t = painel().querySelector(':scope > .cli-tela');
+    return t && t.dataset.cli === String(id) && t.querySelector(':scope > .cli-corpo') ? t : null;
+  }
+  function guardarSecao(tela) {
+    const corpo = tela && tela.querySelector(':scope > .cli-corpo');
+    if (!corpo || corpo.classList.contains('cli-esq') || corpo.classList.contains('cli-previa')) return;
+    memoriaSecao.set(tela.dataset.cli + '|' + tela.dataset.sec, { html: corpo.innerHTML, t: Date.now() });
+    if (memoriaSecao.size > 24) memoriaSecao.delete(memoriaSecao.keys().next().value);
+  }
+  function marcarAba(tela, id, secao) {
+    tela.querySelectorAll('.cli-secoes a').forEach(a => {
+      const on = a.getAttribute('href') === hrefSecao(id, secao);
+      a.classList.toggle('on', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    const on = tela.querySelector('.cli-secoes a.on'), rolo = tela.querySelector('.cli-secoes-rolo');
+    if (on && rolo && rolo.scrollWidth > rolo.clientWidth) {
+      const alvo = Math.max(0, on.offsetLeft - (rolo.clientWidth - on.offsetWidth) / 2);
+      if (rolo.scrollTo) rolo.scrollTo({ left: alvo, behavior: reduzMov() ? 'auto' : 'smooth' }); else rolo.scrollLeft = alvo;
+    }
+    posicionarIndicador(tela, id);
+  }
+  /* se a pessoa tinha rolado para baixo, sobe até as abas (o conteúdo
+     novo começa logo abaixo delas, não no meio da página) */
+  function subirAteAbas(tela) {
+    const nav = tela.querySelector('.cli-secoes'), cab = tela.querySelector('.cli-shell'), p = painel();
+    if (!nav || !cab) return;
+    /* posição natural das abas = fim do cabeçalho + margem (a posição da
+       própria aba mente: ela está grudada) */
+    const recuo = parseFloat(getComputedStyle(p).paddingTop) || 0;
+    const naturalAbas = cab.getBoundingClientRect().bottom - p.getBoundingClientRect().top + p.scrollTop +
+      (parseFloat(getComputedStyle(nav).marginTop) || 0);
+    const alvo = Math.round(naturalAbas - recuo);
+    if (p.scrollTop > alvo + 4) p.scrollTo({ top: Math.max(0, alvo), behavior: reduzMov() ? 'auto' : 'smooth' });
+  }
+  function prepararSecaoCliente(id, secao, tipoEsq, opEsq) {
+    const seq = ++trocaSeq;
+    const tela = telaViva(id);
+    if (!tela) { esqueleto(tipoEsq, opEsq); return seq; }
+    guardarSecao(tela);
+    const de = ordemSecao(tela.dataset.sec), para = ordemSecao(secao);
+    tela.style.setProperty('--cli-dir', para >= de ? 1 : -1);
+    tela.dataset.sec = secao;
+    marcarAba(tela, id, secao);
+    subirAteAbas(tela);
+    const velho = tela.querySelector(':scope > .cli-corpo');
+    clearTimeout(velho._esq);
+    /* segura a altura durante a troca: a página não "pula" */
+    velho.style.minHeight = velho.offsetHeight + 'px';
+    const lembrado = memoriaSecao.get(id + '|' + secao);
+    const novo = document.createElement('div');
+    if (lembrado && Date.now() - lembrado.t < MEMORIA_MS) {
+      novo.className = 'cli-corpo cli-previa cli-chega';
+      novo.innerHTML = lembrado.html;
+    } else {
+      novo.className = 'cli-corpo cli-esq';
+      novo.innerHTML = B7.UI.skeleton(tipoEsq === 'detalhe' ? 'lista' : tipoEsq, Object.assign({ titulo: false }, opEsq || {}));
+    }
+    novo.style.minHeight = velho.style.minHeight;
+    velho.classList.add('cli-sai');
+    const trocar = () => { if (seq === trocaSeq && velho.isConnected) velho.replaceWith(novo); };
+    if (novo.classList.contains('cli-previa') || reduzMov()) trocar();
+    else velho._esq = setTimeout(trocar, 160);      /* busca rápida: nem chega a mostrar esqueleto */
+    return seq;
+  }
+  /* pinta a seção: corpo novo se o cabeçalho do mesmo cliente está na
+     tela; senão a tela inteira (primeira visita ao cliente). Devolve false
+     se a pessoa já foi para outra aba (resposta velha não pinta). */
+  function pintarSecaoCliente(cliente, secao, corpoHTML, seq, classeTela) {
+    if (seq != null && seq !== trocaSeq) return false;
+    const cls = 'conteudo cli-tela' + (classeTela ? ' ' + classeTela : '');
+    const tela = telaViva(cliente.id);
+    if (tela) {
+      tela.className = cls;
+      tela.dataset.sec = secao;
+      /* o cabeçalho fica — mas se o cliente mudou (nome, logo, "atualizado
+         há…") ele é trocado no lugar, sem animar */
+      const molde = document.createElement('div');
+      molde.innerHTML = shellCliente(cliente, secao);
+      const cabNovo = molde.querySelector('.cli-shell'), cabVelho = tela.querySelector(':scope > .cli-shell');
+      const limpo = el => el.innerHTML.replace(/ data-ligado="1"/g, '');   /* marca do ligarMenus */
+      if (cabNovo && cabVelho && limpo(cabNovo) !== limpo(cabVelho)) cabVelho.replaceWith(cabNovo);
+      const atual = tela.querySelector(':scope > .cli-corpo');
+      clearTimeout(atual._esq);
+      const velhoNaTela = atual.classList.contains('cli-sai');   /* esqueleto nem chegou a entrar */
+      const vinhaDaMemoria = atual.classList.contains('cli-previa');
+      const novo = document.createElement('div');
+      novo.className = 'cli-corpo' + (vinhaDaMemoria || reduzMov() ? '' : ' cli-chega');
+      novo.innerHTML = corpoHTML;
+      atual.replaceWith(novo);
+      if (velhoNaTela) novo.classList.add('cli-chega');
+      setTimeout(() => { novo.style.minHeight = ''; }, 400);
+      return true;
+    }
+    painel().innerHTML = '<div class="' + cls + ' entra" data-cli="' + esc(cliente.id) + '" data-sec="' + esc(secao) + '">' +
+      shellCliente(cliente, secao) + '<div class="cli-corpo">' + corpoHTML + '</div></div>';
+    return true;
+  }
+  /* depois de editar o cliente, o que estava lembrado pode estar velho */
+  function esquecerSecoes(id) {
+    [...memoriaSecao.keys()].forEach(k => { if (!id || k.startsWith(id + '|')) memoriaSecao.delete(k); });
+  }
+
   async function abrirCliente(id, aba) {
     marcarNav('#/clientes');
     const def = SECOES_CLIENTE.find(s => s.k === aba);
@@ -1037,7 +1163,7 @@ B7.Dashboard = (function () {
     /* seção inexistente ou fora do papel da pessoa: mostra a visão geral
        e corrige o endereço, sem gerar outra navegação */
     if (aba && aba !== 'geral' && sec === 'geral') history.replaceState(null, '', hrefSecao(id, 'geral'));
-    esqueleto('detalhe');
+    const seq = prepararSecaoCliente(id, sec, { geral: 'detalhe', gravacoes: 'cards', arquivados: 'cards' }[sec] || 'lista');
 
     /* cada seção carrega só o que mostra: abrir "Vídeos" não busca
        gravações, roteiros, linhas e status */
@@ -1059,24 +1185,22 @@ B7.Dashboard = (function () {
       if (sec === 'video') lista = await B7.DB.videoDoCliente(id).catch(e => { console.error(e); return null; });
       if (sec === 'design') lista = await B7.DB.listarDesign({ clienteId: id }).catch(e => { console.error(e); return null; });
       gravacoes.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+      if (seq !== trocaSeq) return;            /* a pessoa já foi para outra aba */
       B7.Rota.titulo(sec === 'geral' ? [cliente.nome] : [cliente.nome, def.r]);
-    } catch (e) { return erroCliente(e, id); }
+    } catch (e) { if (seq !== trocaSeq) return; return erroCliente(e, id); }
 
     /* métricas do cliente, tiradas dos dados reais dele */
     const conta = st => gravacoes.filter(g => g.status === st).length;
     const emAndamento = conta('Rascunho') + conta('Pronto para gravar');
     const ultima = gravacoes[0];
 
-    painel().innerHTML = '<div class="conteudo entra cli-tela">' +
-      shellCliente(cliente, sec) +
-      '<div class="cli-corpo">' +
-      (sec === 'geral' ? visaoGeralCliente(cliente, gravacoes, roteiros, emAndamento, conta, ultima, linhas, semanas)
+    if (!pintarSecaoCliente(cliente, sec,
+      sec === 'geral' ? visaoGeralCliente(cliente, gravacoes, roteiros, emAndamento, conta, ultima, linhas, semanas)
        : sec === 'gravacoes' ? abaGravacoesCliente(cliente, gravacoes)
        : sec === 'arquivados' ? '<div id="aba-arquivados">' + B7.UI.skeleton('cards', { n: 3, titulo: false }) + '</div>'
        : sec === 'video' ? secaoVideoCliente(cliente, lista)
        : sec === 'design' ? secaoDesignCliente(cliente, lista)
-       : abaRoteirosCliente(cliente, roteiros)) +
-      '</div></div>';
+       : abaRoteirosCliente(cliente, roteiros), seq)) return;
 
     ligar();
     ligarShellCliente(cliente);
@@ -2008,6 +2132,7 @@ B7.Dashboard = (function () {
         if (nova) Object.assign(patch, nova);
         await B7.Save.acao(() => B7.DB.atualizarCliente(c.id, patch), 'Cliente atualizado');
         m.fechar();
+        esquecerSecoes(c.id);
         B7.Rota.recarregar();
       } catch (e) {
         botao.disabled = false;
@@ -2359,6 +2484,7 @@ B7.Dashboard = (function () {
 
   return { abrir, marcarNav, semPermissao, abrirClientes, abrirCliente, abrirGravacoes, abrirRoteiros, abrirConfig,
            trilhaCliente, erroConteudo, shellCliente, ligarShellCliente,
+           prepararSecaoCliente, pintarSecaoCliente, esquecerSecoes, secaoVigente: seq => seq === trocaSeq,
            abrirLixeira, abrirArquivados, arquivarGravacao, paraLixeira,
            modalNovaGravacao, modalNovoCliente, modalEditarCliente, excluirCliente,
            buscar, duplicarGravacao, excluirGravacao, IC,

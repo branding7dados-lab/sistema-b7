@@ -136,14 +136,15 @@ B7.Conteudo = (function () {
      INTELIGÊNCIA DO CLIENTE
      ================================================================= */
   async function abrirInteligencia(clienteId) {
-    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
+    const seq = B7.Dashboard.prepararSecaoCliente(clienteId, 'inteligencia', 'detalhe');
     let cliente, dados, produtos, provas;
     try {
       [cliente, dados, produtos, provas] = await Promise.all([
         B7.DB.cliente(clienteId), B7.DB.inteligencia(clienteId),
         B7.DB.listarProdutos(clienteId), B7.DB.listarProvas(clienteId)
       ]);
-    } catch (e) { return B7.Dashboard.erroConteudo(e, clienteId); }
+    } catch (e) { return B7.Dashboard.secaoVigente(seq) && B7.Dashboard.erroConteudo(e, clienteId); }
+    if (!B7.Dashboard.secaoVigente(seq)) return;
 
     const t = 'data-tab="cliente_inteligencia" data-id="' + esc(clienteId) + '"';
     /* O subtítulo de cada seção nasce com a descrição do que vai ali;
@@ -157,7 +158,7 @@ B7.Conteudo = (function () {
       '<a class="int-abrir" target="_blank" rel="noopener noreferrer" hidden>Abrir ↗</a></label>' +
       '<input class="campo" value="' + esc(valor || '') + '" ' + attrs + ' inputmode="url" autocapitalize="none" spellcheck="false"></div>';
 
-    painel().innerHTML = '<div class="conteudo entra int-tela cli-tela">' +
+    if (!B7.Dashboard.pintarSecaoCliente(cliente, 'inteligencia',
       cabSecaoCliente(cliente, 'inteligencia', 'Inteligência',
         'Contexto permanente da marca. Preencha aos poucos — nada aqui é obrigatório, ' +
         'e o que estiver preenchido vira base para as linhas editoriais e para a IA.') +
@@ -229,8 +230,8 @@ B7.Conteudo = (function () {
 
       sec('provas', 'Provas e cases',
         '<div id="lista-provas">' + provas.map(itemProva).join('') + '</div>' +
-        '<button class="add-largo" id="add-prova">+ ADICIONAR PROVA</button>') +
-    '</div>';
+        '<button class="add-largo" id="add-prova">+ ADICIONAR PROVA</button>'),
+      seq, 'int-tela')) return;
 
     B7.Dashboard.ligarShellCliente(cliente);
     ligarCampos(painel());
@@ -624,23 +625,25 @@ B7.Conteudo = (function () {
   /* Seções do hub do cliente que moram aqui (Editorial, Ideias,
      Inteligência): mesmo cabeçalho e mesmas abas do resto do cliente
      (B7.Dashboard.shellCliente), + uma linha curta do que é a seção. */
+  /* o cabeçalho e as abas são do B7.Dashboard.pintarSecaoCliente (ficam na
+     tela entre uma seção e outra); aqui só a linha da seção */
   function cabSecaoCliente(cliente, secao, rotulo, texto, acao) {
     B7.Dashboard.marcarNav('#/clientes');
     B7.Rota.titulo([cliente.nome, rotulo]);
-    return B7.Dashboard.shellCliente(cliente, secao) +
-      '<div class="cli-sec-cab"><p>' + texto + '</p>' + (acao || '') + '</div>';
+    return '<div class="cli-sec-cab"><p>' + texto + '</p>' + (acao || '') + '</div>';
   }
 
   async function abrirLinhas(clienteId) {
-    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('cards', { n: 4 }) + '</div>';
+    const seq = B7.Dashboard.prepararSecaoCliente(clienteId, 'linhas', 'cards', { n: 4 });
     let cliente, linhas;
     try {
       [cliente, linhas] = await Promise.all([B7.DB.cliente(clienteId), B7.DB.listarLinhas(clienteId)]);
-    } catch (e) { return B7.Dashboard.erroConteudo(e, clienteId); }
+    } catch (e) { return B7.Dashboard.secaoVigente(seq) && B7.Dashboard.erroConteudo(e, clienteId); }
+    if (!B7.Dashboard.secaoVigente(seq)) return;
 
     const leitura = souDesignerSomenteLeitura();
 
-    painel().innerHTML = '<div class="conteudo entra cli-tela">' +
+    if (!B7.Dashboard.pintarSecaoCliente(cliente, 'linhas',
       cabSecaoCliente(cliente, 'linhas', 'Editorial',
         'As linhas editoriais deste cliente, mês a mês. Abra uma para planejar, revisar e enviar ao design.',
         leitura ? '' : '<button class="b pri fina" id="nova-linha">+ Nova linha editorial</button>') +
@@ -649,8 +652,8 @@ B7.Conteudo = (function () {
           '<b>Nenhuma linha editorial ainda.</b>' +
           (leitura ? '<p>Nenhuma linha editorial foi criada ainda para este cliente.</p>'
             : '<p>Crie a linha do mês para organizar os conteúdos deste cliente.</p>' +
-              '<div class="acoes"><button class="b pri" id="nova-linha-vazio">+ Criar linha editorial</button></div>') + '</div>') +
-    '</div>';
+              '<div class="acoes"><button class="b pri" id="nova-linha-vazio">+ Criar linha editorial</button></div>') + '</div>'),
+      seq)) return;
 
     B7.Dashboard.ligarShellCliente(cliente);
     painel().querySelectorAll('[data-linha]').forEach(el => {
@@ -797,19 +800,20 @@ B7.Conteudo = (function () {
   const STATUS_IDEIA = ['Ideia', 'Selecionada', 'Virou conteúdo', 'Arquivada'];
 
   async function abrirIdeias(clienteId) {
-    painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 6 }) + '</div>';
+    const seq = B7.Dashboard.prepararSecaoCliente(clienteId, 'ideias', 'lista', { n: 6 });
     let cliente, ideias, linhas;
     try {
       [cliente, ideias, linhas] = await Promise.all([
         B7.DB.cliente(clienteId), B7.DB.listarIdeias(clienteId),
         B7.DB.listarLinhas(clienteId).catch(() => [])
       ]);
-    } catch (e) { return B7.Dashboard.erroConteudo(e, clienteId); }
+    } catch (e) { return B7.Dashboard.secaoVigente(seq) && B7.Dashboard.erroConteudo(e, clienteId); }
+    if (!B7.Dashboard.secaoVigente(seq)) return;
 
     const ativas = ideias.filter(i => i.status !== 'Arquivada');
     const arquivadas = ideias.filter(i => i.status === 'Arquivada');
 
-    painel().innerHTML = '<div class="conteudo entra cli-tela">' +
+    if (!B7.Dashboard.pintarSecaoCliente(cliente, 'ideias',
       cabSecaoCliente(cliente, 'ideias', 'Ideias',
         'Onde as ideias esperam a vez. Quando uma entra no planejamento, vira conteúdo de uma linha editorial.',
         souDesignerSomenteLeitura() ? '' : '<button class="b pri fina" id="nova-ideia">+ Nova ideia</button>') +
@@ -824,8 +828,8 @@ B7.Conteudo = (function () {
       (arquivadas.length ? '<div class="secao" style="margin-top:22px">' +
         '<div class="secao-topo"><h2>Arquivadas</h2>' +
         '<span class="cont">' + arquivadas.length + '</span></div>' +
-        '<div class="grade-ideias">' + arquivadas.map(i => cardIdeia(i, linhas)).join('') + '</div></div>' : '') +
-    '</div>';
+        '<div class="grade-ideias">' + arquivadas.map(i => cardIdeia(i, linhas)).join('') + '</div></div>' : ''),
+      seq)) return;
 
     B7.Dashboard.ligarShellCliente(cliente);
     ligarIdeias(clienteId, linhas);
