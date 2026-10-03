@@ -1461,6 +1461,12 @@ B7.Dashboard = (function () {
         linha('Animações', 'o sistema respeita a preferência do seu sistema operacional',
               '<span style="font-size:12.5px;color:var(--ink-3)">' +
               (window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduzidas' : 'normais') + '</span>') +
+        /* a abertura completa aparece uma vez por sessão; aqui dá para
+           rever (com som — o toque no botão destrava o áudio) */
+        linha('Abertura', 'a animação de entrada do B7 e a trilha sonora dela',
+              '<div class="cfg-abertura">' +
+              opcao('som_abertura', B7.pref.ler('som_abertura', true) ? 'sim' : 'nao', [['sim', 'Com som'], ['nao', 'Sem som']]) +
+              '<button class="b contorno" data-ver-abertura>Ver abertura</button></div>') +
       '</div>' +
 
       (pode('interface') ? '<div class="config-secao"><h3>Interface</h3>' +
@@ -1558,8 +1564,11 @@ B7.Dashboard = (function () {
           B7.pref.gravar('sidebar_recolhida', v === 'sim');
         }
         if (grupo === 'abertura') B7.pref.gravar('abertura', v === 'sim');
+        if (grupo === 'som_abertura') { B7.pref.gravar('som_abertura', v === 'sim'); B7.UI.toast(v === 'sim' ? 'Abertura com som' : 'Abertura sem som'); }
       });
     });
+    const va = painel().querySelector('[data-ver-abertura]');
+    if (va) va.onclick = () => { if (B7.reverAbertura) B7.reverAbertura(); };
     const at = painel().querySelector('[data-atalhos]'); if (at) at.onclick = () => B7.UI.atalhos();
     if (pode('banco')) desenharBanco();
     desenharAcesso();

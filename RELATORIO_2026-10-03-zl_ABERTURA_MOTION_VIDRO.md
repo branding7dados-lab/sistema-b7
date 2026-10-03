@@ -195,3 +195,36 @@ A sequência completa ficou **mais longa (~4,3 s + 0,8 s de saída)** e mais dra
 - **Mínimo:** a versão completa segura **4,3 s**, de propósito, para dar tempo de ver. Ela continua aparecendo **só uma vez por sessão do navegador**. Recarregar mostra a curta (0,35 s), e a navegação interna nunca mostra.
 - **Desempenho:** os efeitos novos são todos transform/opacidade. Os raios giram por transform e somem quando o logo assenta.
 - **Testes:** quadros congelados no navegador do app em 390 px (0,5 / 1,4 / 2,02 / 3,25 / 3,5 / 3,96 s) e saída com íris conferida localmente. **Não testado em aparelho:** vale abrir no celular de novo.
+
+---
+
+## Atualização zp — trilha sonora e mais cinema
+
+**Som (pedido explícito do Kevin; antes a abertura era muda de propósito):**
+- Trilha de ~4,5 s **100% sintetizada no navegador (Web Audio)**: nenhum arquivo baixado e nenhuma música de terceiros.
+- Sincronizada com o relógio da animação:
+
+| Tempo | Som |
+|---|---|
+| 0,05 s | Zumbido grave de tensão |
+| 0,9 s | Riser subindo junto com a luz |
+| 1,62 / 1,76 s | Estalos elétricos do filamento |
+| 1,9 s | Impacto da ignição: sub-grave, batida, estouro de ar e brilho harmônico em dó maior com reverberação longa |
+| 3,28 s | Whoosh do "Branding7" |
+| 3,7 s | Cintilar do brilho final |
+| Saída | Whoosh + assentamento grave quando o logo voa |
+
+- Compressor no mestre. **Ensaio offline medido:** pico de 0,86 (sem estourar); ignição ~0,52 contra o riser ~0,15–0,21. Baixei riser, zumbido e estalos para a ignição ter contraste.
+- **Limitação honesta:** navegadores bloqueiam som sem um toque antes (política de autoplay). Na abertura de quando o app é aberto pode não haver som. Se bloquear:
+  - a abertura segue muda e nada quebra;
+  - o primeiro toque destrava o áudio (ex.: "Entrar" no login toca a saída).
+- **Configurações → Aparência → Abertura:** "Com som / Sem som" e o botão **"Ver abertura"**, que repete a sequência completa com a trilha inteira (o toque no botão garante o som).
+- Arquivo novo: `js/abertura-som.js` (com `B7.SomAbertura.ensaio()` para medir sem tocar).
+
+**Mais cinema na imagem:**
+- **tarjas de cinema** entram no começo e recolhem na saída;
+- **travelling** lento de câmera (o logo se aproxima de 0,9× a 1× durante toda a sequência);
+- **tremor de câmera** curto e **aberração cromática** (franjas vermelho/ciano) no instante da ignição;
+- **bokeh**: luzes desfocadas ao fundo depois da ignição, feitas só com gradiente, sem filtro.
+
+**Testes:** quadros congelados em 390 px (2,03 s com tarjas, cromática, raios e flare; 3,55 s com bokeh e logo montado); ensaio offline da trilha. Não testado em aparelho e não ouvido de verdade (não tenho alto-falante); a medição foi por picos de volume.

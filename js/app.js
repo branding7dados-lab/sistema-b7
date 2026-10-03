@@ -404,24 +404,47 @@ B7.Rota = (function () {
     try { performance.mark('b7:pronto'); } catch (e) {}
     const inicial = el.classList.contains('inicial');
     const espera = inicial ? Math.max(0, MINIMO_ABERTURA_MS - performance.now()) : 0;
+    setTimeout(() => sairCortina(el, inicial), espera);
+  }
+
+  function sairCortina(el, inicial) {
+    if (!el.isConnected || el.classList.contains('saindo')) return;
+    try { performance.mark('b7:abertura-sai'); } catch (e) {}
+    /* a partir daqui, nesta sessão do navegador, recarregar mostra a curta */
+    if (inicial) { try { sessionStorage.setItem('b7_abertura', '1'); } catch (e) {} }
+    /* o sistema assenta por baixo do céu que se dissolve (uma vez) */
+    if (!reduzMov()) {
+      document.body.classList.add('ab-revela');
+      setTimeout(() => document.body.classList.remove('ab-revela'), 1000);
+    }
+    el.classList.add('saindo');
+    if (B7.SomAbertura) B7.SomAbertura.aoSair();
+    const tempo = voarLogo(el);
+    /* remove só depois do pouso e do céu sumir: tirar antes devolve o
+       corte seco que a abertura existe para evitar */
+    setTimeout(() => el.remove(), Math.max(tempo, reduzMov() ? 220 : 640));
+  }
+
+  /* "Ver abertura" (Configurações → Aparência): a sequência completa de
+     novo, com som — o toque no botão destrava o áudio do navegador. */
+  function reverAbertura() {
+    if (document.querySelector('.b7-abertura') || !MOLDE_ABERTURA) return;
+    const raiz = document.documentElement, eraCurta = raiz.classList.contains('ab-curta');
+    raiz.classList.remove('ab-curta');
+    const el = document.createElement('div');
+    el.className = 'b7-abertura inicial';
+    el.setAttribute('role', 'status'); el.setAttribute('aria-label', 'Abertura do Sistema B7');
+    el.innerHTML = MOLDE_ABERTURA;
+    document.body.appendChild(el);
+    if (B7.SomAbertura) B7.SomAbertura.reproduzir();
     setTimeout(() => {
-      try { performance.mark('b7:abertura-sai'); } catch (e) {}
-      /* a partir daqui, nesta sessão do navegador, recarregar mostra a curta */
-      if (inicial) { try { sessionStorage.setItem('b7_abertura', '1'); } catch (e) {} }
-      /* o sistema assenta por baixo do céu que se dissolve (uma vez) */
-      if (!reduzMov()) {
-        document.body.classList.add('ab-revela');
-        setTimeout(() => document.body.classList.remove('ab-revela'), 1000);
-      }
-      el.classList.add('saindo');
-      const tempo = voarLogo(el);
-      /* remove só depois do pouso e do céu sumir: tirar antes devolve o
-         corte seco que a abertura existe para evitar */
-      setTimeout(() => el.remove(), Math.max(tempo, reduzMov() ? 220 : 640));
-    }, espera);
+      sairCortina(el, false);
+      if (eraCurta) setTimeout(() => raiz.classList.add('ab-curta'), 1200);
+    }, reduzMov() ? 600 : 4300);
   }
   B7.abrirCortina = abrirCortina;
   B7.fecharCortina = fecharCortina;
+  B7.reverAbertura = reverAbertura;
 
   /* =================================================================
      SHELL DA EQUIPE

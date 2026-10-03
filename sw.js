@@ -6,13 +6,13 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v168';
+const CACHE = 'roteiros-b7-v169';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
   './js/vendor-supabase.js', './js/supabase.js', './js/database.js', './js/ui.js',
   './js/autosave.js', './js/print.js', './js/resumo-mes.js', './js/teleprompter.js', './js/ia-analise.js', './js/ia-texto.js','./styles/teleprompter.css', './js/dashboard.js', './js/editor.js', './js/gravacao.js',
-  './js/backup.js', './js/app.js',
+  './js/backup.js', './js/app.js', './js/abertura-som.js',
   './js/auth.js', './js/usuarios.js', './js/central.js', './js/conteudo.js',
   './js/linha.js', './js/design.js', './js/video.js', './js/eventos.js', './js/calendario.js', './js/oportunidades.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
   './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js', './js/painel-coord.js', './js/painel-design.js', './js/painel-multi.js', './js/topo.js', './js/nav.js',

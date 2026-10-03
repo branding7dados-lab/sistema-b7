@@ -569,3 +569,6 @@
 @media (prefers-reduced-motion:reduce){
   .cli-secoes a::after{transition:none;}
 }
+
+/* Configurações → Abertura: som + rever (pacote zp) */
+.cfg-abertura{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
