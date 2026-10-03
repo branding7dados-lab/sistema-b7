@@ -1220,6 +1220,15 @@ B7.Dashboard = (function () {
       e.stopPropagation();
       location.hash = '#/cliente/' + b.dataset.criarLinha + '/linhas';
     });
+    if (sec === 'geral') {
+      const corpo = painel().querySelector('.cli-corpo');
+      /* conta só quando a seção entra animada (não ao trocar a lembrança
+         pela versão fresca, que já estava na tela) */
+      if (corpo && (corpo.classList.contains('cli-chega') || corpo.closest('.entra'))) contarVisaoGeral(corpo);
+      painel().querySelectorAll('.vg-tile[tabindex]').forEach(t => t.onkeydown = e => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target === t) { e.preventDefault(); t.click(); }
+      });
+    }
     if (sec === 'gravacoes') ligarFiltrosGravacoes(gravacoes);
     if (sec === 'arquivados') carregarArquivadosCliente(id);
     if (sec === 'video' || sec === 'design') ligarFiltroSecao();
@@ -1371,79 +1380,121 @@ B7.Dashboard = (function () {
 
   /* Bloco da linha editorial atual + histórico dos meses anteriores.
      Só aparece quando existe pelo menos uma linha: sem linha, sem ruído. */
+  /* =================================================================
+     VISÃO GERAL DO CLIENTE — redesenho (pacote zzd, 03/10)
+     Pedido do Kevin (vídeo no celular): melhorar a UI/UX e as animações.
+     Antes: 4 caixas grandes de número, dois blocos com botão gradiente
+     de largura toda (Linha editorial / Status semanal), capa gigante da
+     última gravação e "Ações rápidas" repetindo o menu do cabeçalho.
+     Agora, de cima para baixo:
+     • faixa de números (um cartão, quatro colunas, contando ao entrar);
+     • atalhos em pílulas que rolam de lado (o que antes era a lista de
+       "Ações rápidas" — mesmas ações, mesmos data-* e handlers);
+     • Linha editorial e Status semanal como cartões tocáveis, com anel de
+       progresso desenhando-se; meses/semanas anteriores em pílulas;
+     • última gravação compacta (selo, nome, meta, situação, ▶) com o
+       mesmo menu ⋯ de antes;
+     • roteiros numa lista única com divisórias; atividade como linha do
+       tempo. Nenhuma ação a menos, nenhum dado a mais.
+     ================================================================= */
+  const IC_CAL = '<svg viewBox="0 0 24 24" ' + traco + '><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
+  const IC_SEMANA = '<svg viewBox="0 0 24 24" ' + traco + '><path d="M4 19V9M9.3 19V5M14.6 19v-7M20 19v-4"/></svg>';
+  const IC_DUP = '<svg viewBox="0 0 24 24" ' + traco + '><rect x="8" y="8" width="12.5" height="12.5" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>';
+  const IC_SETA_VG = '<svg class="vg-seta" viewBox="0 0 24 24" ' + traco + '><path d="M9 6l6 6-6 6"/></svg>';
+  const nomeLinha = l => l.nome || (B7.UI.MESES[l.mes - 1] + ' ' + l.ano);
+  /* anel de progresso (0–100), desenha-se ao entrar (CSS) */
+  const anel = (p, rot) => '<span class="vg-anel" style="--p:' + Math.max(0, Math.min(100, p)) + '" role="img" aria-label="' + esc(rot) + '">' +
+    '<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="vg-anel-f" cx="18" cy="18" r="15.5"/>' +
+    '<circle class="vg-anel-v" cx="18" cy="18" r="15.5" pathLength="100"/></svg><b>' + Math.round(p) + '%</b></span>';
+
   function blocoLinhaEditorial(c, linhas) {
-    /* Sem linha nenhuma, o bloco não some: vira o convite para criar. É o
+    /* Sem linha nenhuma, o cartão não some: vira o convite para criar. É o
        caminho direto para o planejamento, sem passar por gravações. */
     if (!linhas.length) {
-      return '<div class="bloco destaque-linha vazia"><div class="dl-topo">' +
-        '<div><small>LINHA EDITORIAL</small>' +
-        '<h3>Nenhum planejamento ainda</h3></div>' +
-        '<button class="b pri" data-criar-linha="' + esc(c.id) + '">+ Criar linha editorial</button>' +
-        '</div><p class="dl-nota">Organize o que este cliente vai publicar no mês.</p></div>';
+      return '<div class="vg-tile vg-tile-vazio" data-criar-linha="' + esc(c.id) + '" role="button" tabindex="0">' +
+        '<span class="vg-tile-ic vg-tom-rosa">' + IC_CAL + '</span>' +
+        '<span class="vg-tile-tx"><small>Linha editorial</small><b>Nenhum planejamento ainda</b>' +
+        '<em>organize o que este cliente vai publicar no mês</em></span>' +
+        '<span class="vg-pilula">+ Criar</span></div>';
     }
-    const atual = linhas[0];
-    const anteriores = linhas.slice(1, 4);
-    const progresso = atual.total_conteudos
-      ? Math.round((atual.total_estruturados / atual.total_conteudos) * 100) : 0;
-
-    return '<div class="bloco destaque-linha"><div class="dl-topo">' +
-        '<div><small>LINHA EDITORIAL ATUAL</small>' +
-        '<h3>' + esc(atual.nome || (B7.UI.MESES[atual.mes - 1] + ' ' + atual.ano)) + '</h3></div>' +
-        '<button class="b pri" data-abrir-linha="' + esc(atual.id) + '">Abrir linha editorial</button></div>' +
-      '<div class="dl-metricas">' +
-        '<div><b>' + atual.total_conteudos + '</b><span>CONTEÚDOS</span></div>' +
-        '<div><b>' + atual.total_estruturados + '</b><span>ESTRUTURADOS</span></div>' +
+    const atual = linhas[0], anteriores = linhas.slice(1, 4);
+    const progresso = atual.total_conteudos ? (atual.total_estruturados / atual.total_conteudos) * 100 : 0;
+    return '<div class="vg-tile" data-abrir-linha="' + esc(atual.id) + '" role="link" tabindex="0">' +
+        '<span class="vg-tile-ic vg-tom-rosa">' + IC_CAL + '</span>' +
+        '<span class="vg-tile-tx"><small>Linha editorial atual</small><b>' + esc(nomeLinha(atual)) + '</b>' +
+        '<em>' + atual.total_estruturados + ' de ' + atual.total_conteudos + ' conteúdo' + (atual.total_conteudos === 1 ? '' : 's') +
+        ' estruturado' + (atual.total_estruturados === 1 ? '' : 's') + '</em></span>' +
+        anel(progresso, Math.round(progresso) + '% estruturado') +
       '</div>' +
-      '<div class="barra-progresso"><i style="width:' + progresso + '%"></i></div>' +
-      (anteriores.length ? '<div class="dl-historico"><small>MESES ANTERIORES</small>' +
-        anteriores.map(l => '<button data-abrir-linha="' + esc(l.id) + '">' +
-          esc(l.nome || (B7.UI.MESES[l.mes - 1] + ' ' + l.ano)) +
-          '<span>' + l.total_conteudos + ' conteúdos</span></button>').join('') + '</div>' : '') +
-    '</div>';
+      (anteriores.length ? '<div class="vg-anteriores"><small>Anteriores</small>' +
+        anteriores.map(l => '<button type="button" data-abrir-linha="' + esc(l.id) + '">' + esc(nomeLinha(l)) +
+          '<span>' + l.total_conteudos + '</span></button>').join('') + '</div>' : '');
   }
 
-  /* Bloco compacto: a semana mais recente e o caminho para criar outra.
+  /* Status semanal: a semana mais recente e o caminho para criar outra.
      Sem virar um segundo dashboard dentro do client home. */
   function blocoStatusSemanal(c, semanas) {
     semanas = semanas || [];
     if (!semanas.length) {
-      return '<div class="bloco destaque-linha vazia"><div class="dl-topo">' +
-        '<div><small>STATUS SEMANAL</small><h3>Nenhuma semana registrada</h3></div>' +
-        '<button class="b pri" data-nova-semana="' + esc(c.id) + '">+ Novo status</button>' +
-        '</div><p class="dl-nota">O acompanhamento de sete dias que vai para o cliente.</p></div>';
+      return '<div class="vg-tile vg-tile-vazio" data-nova-semana="' + esc(c.id) + '" role="button" tabindex="0">' +
+        '<span class="vg-tile-ic vg-tom-violeta">' + IC_SEMANA + '</span>' +
+        '<span class="vg-tile-tx"><small>Status semanal</small><b>Nenhuma semana registrada</b>' +
+        '<em>o acompanhamento de sete dias que vai para o cliente</em></span>' +
+        '<span class="vg-pilula">+ Novo</span></div>';
     }
-    const atual = semanas[0];
-    const anteriores = semanas.slice(1, 4);
-    return '<div class="bloco destaque-linha"><div class="dl-topo">' +
-        '<div><small>STATUS SEMANAL</small><h3>' +
-        esc(B7.DocSemana.periodoTexto(atual.semana_inicio, atual.semana_fim)) + '</h3></div>' +
-        '<button class="b pri" data-abrir-semana="' + esc(atual.id) + '">Abrir status</button></div>' +
-      '<div class="dl-metricas">' +
-        '<div><b>' + atual.total_itens + '</b><span>DEMANDAS</span></div>' +
-        (atual.total_atencao ? '<div><b>' + atual.total_atencao + '</b><span>AGUARDANDO</span></div>' : '') +
-        '<div><b>' + esc(atual.situacao || 'Rascunho') + '</b><span>ESTADO</span></div>' +
+    const atual = semanas[0], anteriores = semanas.slice(1, 4);
+    return '<div class="vg-tile" data-abrir-semana="' + esc(atual.id) + '" role="link" tabindex="0">' +
+        '<span class="vg-tile-ic vg-tom-violeta">' + IC_SEMANA + '</span>' +
+        '<span class="vg-tile-tx"><small>Status semanal</small><b>' +
+          esc(B7.DocSemana.periodoTexto(atual.semana_inicio, atual.semana_fim)) + '</b>' +
+        '<em>' + atual.total_itens + ' demanda' + (atual.total_itens === 1 ? '' : 's') +
+          (atual.total_atencao ? ' · <i class="vg-atencao">' + atual.total_atencao + ' aguardando</i>' : '') +
+          ' · ' + esc(atual.situacao || 'Rascunho') + '</em></span>' +
+        '<button type="button" class="vg-pilula" data-nova-semana="' + esc(c.id) + '">+ Nova</button>' +
       '</div>' +
-      (anteriores.length ? '<div class="dl-historico"><small>SEMANAS ANTERIORES</small>' +
-        anteriores.map(w => '<button data-abrir-semana="' + esc(w.id) + '">' +
+      (anteriores.length ? '<div class="vg-anteriores"><small>Anteriores</small>' +
+        anteriores.map(w => '<button type="button" data-abrir-semana="' + esc(w.id) + '">' +
           esc(B7.DocSemana.periodoTexto(w.semana_inicio, w.semana_fim)) +
-          '<span>' + w.total_itens + ' demandas</span></button>').join('') + '</div>' : '') +
-      '<div class="dl-acoes-mini"><button class="b p" data-nova-semana="' + esc(c.id) + '">' +
-      '+ Nova semana</button></div>' +
-    '</div>';
+          '<span>' + w.total_itens + '</span></button>').join('') + '</div>' : '');
+  }
+
+  /* última gravação compacta: o mesmo destino e o mesmo menu ⋯ do card grande */
+  function ultimaCompacta(g) {
+    const selo = g.cliente_logo_url ? '<img src="' + esc(g.cliente_logo_url) + '" alt="">' : esc(B7.UI.iniciais(g.cliente_nome));
+    return '<div class="vg-ultima" data-gravacao="' + esc(g.id) + '" tabindex="0" role="link">' +
+      '<span class="vg-ultima-capa"><i class="vg-ultima-malha"></i><span class="vg-ultima-selo">' + selo + '</span></span>' +
+      '<span class="vg-ultima-tx"><small>Última gravação</small><b>' + esc(g.nome) + '</b>' +
+        '<span class="vg-ultima-meta">' + metaGravacao(g) + '</span>' +
+        '<span class="vg-ultima-chip">' + chipGravacao(g) + '</span></span>' +
+      '<span class="vg-play" aria-hidden="true">' + IC.play + '</span>' +
+      '<div class="menu"><button class="ico" aria-label="Mais ações da gravação" onclick="event.stopPropagation()">⋯</button>' +
+        '<div class="lista"><button data-dup="' + esc(g.id) + '">Duplicar gravação</button>' +
+        '<button data-imprimir="' + esc(g.id) + '">Imprimir</button>' +
+        '<button data-fixar-grav="' + esc(g.id) + '" data-fixado="' + (g.is_pinned ? '1' : '0') + '">' + (g.is_pinned ? 'Desafixar' : 'Fixar') + '</button>' +
+        '<button data-arquivar="' + esc(g.id) + '" data-arq="' + (g.archived_at ? '1' : '0') + '">' + (g.archived_at ? 'Desarquivar' : 'Arquivar') + '</button><hr>' +
+        '<button class="perigo" data-excluir="' + esc(g.id) + '" data-nome="' + esc(g.nome) + '">Excluir gravação</button>' +
+      '</div></div></div>';
   }
 
   function visaoGeralCliente(c, gravacoes, roteiros, emAndamento, conta, ultima, linhas, semanas) {
-    const linhaEditorial = blocoLinhaEditorial(c, linhas || []) + blocoStatusSemanal(c, semanas);
-    const metricas =
-      '<div class="mini-metricas">' +
-        '<div class="mini-metrica"><b>' + gravacoes.length + '</b><span>GRAVAÇÕES</span></div>' +
-        '<div class="mini-metrica"><b>' + c.total_roteiros + '</b><span>ROTEIROS</span></div>' +
-        '<div class="mini-metrica"><b>' + emAndamento + '</b><span>EM ANDAMENTO</span></div>' +
-        '<div class="mini-metrica"><b>' + conta('Gravado') + '</b><span>GRAVADAS</span></div>' +
-      '</div>';
+    const numero = (n, rot, tom) => '<div class="vg-num vg-tom-' + tom + '"><b data-vg-conta="' + (+n || 0) + '">' + (+n || 0) + '</b><span>' + rot + '</span></div>';
+    const numeros = '<div class="vg-numeros">' +
+      numero(gravacoes.length, 'gravações', 'rosa') + numero(c.total_roteiros, 'roteiros', 'violeta') +
+      numero(emAndamento, 'em andamento', 'ambar') + numero(conta('Gravado'), 'gravadas', 'verde') + '</div>';
+    /* atalhos: o que era "Ações rápidas" (mesmas ações e handlers) */
+    const atalho = (attrs, ic, rot, pri) => '<button type="button" class="vg-atalho' + (pri ? ' pri' : '') + '" ' + attrs + '>' + ic + '<span>' + rot + '</span></button>';
+    const atalhos = '<div class="vg-atalhos" role="toolbar" aria-label="Atalhos do cliente">' +
+      atalho('data-nova-gravacao="' + esc(c.id) + '"', IC.mais, 'Nova gravação', true) +
+      (ultima ? atalho('data-gravacao="' + esc(ultima.id) + '"', IC.play, 'Continuar ' + esc(ultima.nome)) +
+        atalho('data-imprimir="' + esc(ultima.id) + '"', IC.imprimir, 'Imprimir') +
+        atalho('data-dup="' + esc(ultima.id) + '"', IC_DUP, 'Duplicar') : '') +
+      atalho('data-editar-cli="' + esc(c.id) + '"', IC.pessoa, 'Editar cliente') + '</div>';
+    const planos = '<div class="vg-planos"><div class="vg-plano">' + blocoLinhaEditorial(c, linhas || []) + '</div>' +
+      '<div class="vg-plano">' + blocoStatusSemanal(c, semanas) + '</div></div>';
+    const topo = numeros + atalhos + planos;
 
     if (!gravacoes.length) {
-      return metricas + linhaEditorial + '<div class="cartao vazio" style="position:relative;overflow:hidden">' +
+      return topo + '<div class="cartao vazio vg-vazio" style="position:relative;overflow:hidden">' +
         '<div class="b7-marca fraca" style="right:24px;bottom:-10px;width:110px;height:110px"></div>' +
         '<div class="ilu">' + IC.gravacoes + '</div>' +
         '<b>Nenhuma gravação ainda</b><p>Crie a primeira gravação deste cliente para começar.</p>' +
@@ -1457,43 +1508,43 @@ B7.Dashboard = (function () {
       (g.status === 'Gravado' ? 'marcada como gravada' : 'atualizada') + ' ' + B7.UI.quando(g.updated_at) +
       ' · ' + g.total_roteiros + ' roteiro' + (g.total_roteiros === 1 ? '' : 's') + '</small></div></div>').join('');
 
-    const listaRoteiros = roteiros.length ? roteiros.map(r =>
+    const listaRoteiros = roteiros.length ? '<div class="vg-lista">' + roteiros.map(r =>
       '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id) +
         '" data-roteiro="' + esc(r.id) + '">' +
         '<div class="n">' + String((r.position || 0) + 1).padStart(2, '0') + '</div>' +
         '<div class="tx"><b>' + esc(r.titulo || 'Sem título') + '</b><small>' +
         (r.gravacao ? esc(r.gravacao.nome) + ' · ' : '') + 'editado ' + B7.UI.quando(r.updated_at) + '</small></div>' +
-        (r.gravacao ? B7.UI.chipStatus(r.gravacao.status) : '') + '</div>').join('')
+        (r.gravacao ? B7.UI.chipStatus(r.gravacao.status) : '') + IC_SETA_VG + '</div>').join('') + '</div>'
       : '<div class="vazio" style="padding:26px"><b>Nenhum roteiro ainda</b></div>';
+    const cab = (titulo, n, aba, rot) => '<div class="vg-sec-cab"><h2>' + titulo + '</h2>' + (n ? '<span class="conta">' + n + '</span>' : '') +
+      (aba ? '<button type="button" class="vg-ver" data-aba-cli="' + aba + '">' + rot + IC_SETA_VG + '</button>' : '') + '</div>';
 
-    return metricas + linhaEditorial +
-      '<div class="colunas"><div>' +
-        '<div class="secao"><div class="secao-topo"><h2>Última gravação</h2></div>' +
-          cardDestaque(ultima) + '</div>' +
-        (gravacoes.length > 1 ? '<div class="secao"><div class="secao-topo"><h2>Gravações</h2>' +
-          '<span class="conta">' + gravacoes.length + '</span><div class="espaco"></div>' +
-          '<button class="b fina contorno" data-aba-cli="gravacoes">Ver todas</button></div>' +
+    return topo +
+      '<div class="colunas vg-colunas"><div>' +
+        ultimaCompacta(ultima) +
+        '<div class="secao vg-sec">' + cab('Roteiros recentes', 0, 'roteiros', 'Ver todos') + listaRoteiros + '</div>' +
+        (gravacoes.length > 1 ? '<div class="secao vg-sec vg-outras">' + cab('Outras gravações', gravacoes.length - 1, 'gravacoes', 'Ver todas') +
           '<div class="grade">' + gravacoes.slice(1, 4).map(cardGravacao).join('') + '</div></div>' : '') +
-        '<div class="secao"><div class="secao-topo"><h2>Roteiros recentes</h2>' +
-          '<div class="espaco"></div><button class="b fina contorno" data-aba-cli="roteiros">Ver todos</button></div>' +
-          listaRoteiros + '</div>' +
       '</div><div class="apoio">' +
-        '<div class="bloco"><h3>Ações rápidas</h3>' +
-          '<button class="acao-rapida" data-nova-gravacao="' + esc(c.id) + '"><div class="ic">' + IC.mais + '</div>' +
-            '<div class="tx"><b>Nova gravação</b><small>para ' + esc(c.nome) + '</small></div></button>' +
-          '<button class="acao-rapida" data-editar-cli="' + esc(c.id) + '"><div class="ic">' + IC.pessoa + '</div>' +
-            '<div class="tx"><b>Editar cliente</b><small>nome, logo e observações</small></div></button>' +
-          '<button class="acao-rapida" data-gravacao="' + esc(ultima.id) + '"><div class="ic">' + IC.play + '</div>' +
-            '<div class="tx"><b>Continuar ' + esc(ultima.nome) + '</b><small>editado ' + B7.UI.quando(ultima.updated_at) + '</small></div></button>' +
-          '<button class="acao-rapida" data-imprimir="' + esc(ultima.id) + '"><div class="ic">' + IC.imprimir + '</div>' +
-            '<div class="tx"><b>Imprimir última gravação</b><small>' + esc(ultima.nome) + '</small></div></button>' +
-          '<button class="acao-rapida" data-dup="' + esc(ultima.id) + '"><div class="ic">' + IC.gravacoes + '</div>' +
-            '<div class="tx"><b>Duplicar última gravação</b><small>copia roteiros e cenas</small></div></button>' +
-        '</div>' +
-        '<div class="bloco"><h3>Atividade recente</h3><div class="atividade">' + atividade + '</div></div>' +
+        '<div class="bloco vg-atividade"><h3>Atividade recente</h3><div class="atividade">' + atividade + '</div></div>' +
         (c.observacoes ? '<div class="bloco"><h3>Observações</h3>' +
           '<p style="font-size:13px;line-height:1.6;color:var(--ink-2)">' + esc(c.observacoes) + '</p></div>' : '') +
       '</div></div>';
+  }
+  /* números contam de 0 ao valor quando a visão geral entra */
+  function contarVisaoGeral(raiz) {
+    if (!raiz || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    raiz.querySelectorAll('[data-vg-conta]').forEach((el, i) => {
+      const fim = +el.dataset.vgConta; if (!(fim > 1)) return;
+      const t0 = performance.now() + i * 70, DUR = 800;
+      el.textContent = '0';
+      const passo = agora => {
+        const p = Math.max(0, Math.min(1, (agora - t0) / DUR)), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = String(Math.round(fim * e));
+        if (p < 1 && el.isConnected) requestAnimationFrame(passo); else el.textContent = String(fim);
+      };
+      requestAnimationFrame(passo);
+    });
   }
 
   function abaGravacoesCliente(c, gravacoes) {
@@ -1541,13 +1592,14 @@ B7.Dashboard = (function () {
         '<b>Nenhum roteiro ainda</b><p>Crie uma gravação e comece a escrever.</p>' +
         '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button></div>';
     }
-    return roteiros.map(r =>
+    /* mesma lista única da visão geral (zzd) */
+    return '<div class="vg-lista">' + roteiros.map(r =>
       '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id) +
         '" data-roteiro="' + esc(r.id) + '">' +
         '<div class="n">' + String((r.position || 0) + 1).padStart(2, '0') + '</div>' +
         '<div class="tx"><b>' + esc(r.titulo || 'Sem título') + '</b><small>' +
         (r.gravacao ? esc(r.gravacao.nome) + ' · ' : '') + 'editado ' + B7.UI.quando(r.updated_at) + '</small></div>' +
-        (r.gravacao ? B7.UI.chipStatus(r.gravacao.status) : '') + '</div>').join('');
+        (r.gravacao ? B7.UI.chipStatus(r.gravacao.status) : '') + IC_SETA_VG + '</div>').join('') + '</div>';
   }
 
 
