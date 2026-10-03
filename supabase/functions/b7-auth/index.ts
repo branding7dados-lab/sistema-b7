@@ -20,13 +20,13 @@
 // =====================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { comCors, iguais } from '../_shared/cors.ts';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
 const VERSAO = '2026-10-02-j';
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
@@ -130,6 +130,16 @@ function registrarFalha(chave: string) {
   else t.n++;
 }
 
+/* Token de bootstrap/recuperação: comparação em tempo constante e freio
+   por endereço — 8 erros em 15 minutos bloqueiam aquele endereço. */
+function tokenConfere(req: Request, recebido: unknown, esperado: string): boolean {
+  const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'sem-ip';
+  const chave = 'token:' + ip;
+  if (bloqueado(chave)) return false;
+  const ok = typeof recebido === 'string' && iguais(recebido, esperado);
+  if (!ok) registrarFalha(chave);
+  return ok;
+}
 const identidadeTecnica = (id: string) => `${id}@b7.local`;
 
 /* Política mínima: 10 caracteres, com letra e número. Curta o bastante
@@ -205,7 +215,7 @@ async function auditar(sb: any, autor: any, acao: string, alvo: any, detalhe: an
   }]);
 }
 
-Deno.serve(async (req) => {
+Deno.serve(comCors(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   let corpo: any = {};
@@ -300,7 +310,7 @@ Deno.serve(async (req) => {
       if (!esperado) {
         return json({ erro: 'Bootstrap não está habilitado nesta instalação.' }, 403);
       }
-      if (corpo.token !== esperado) {
+      if (!tokenConfere(req, corpo.token, esperado)) {
         return json({ erro: 'Token de bootstrap inválido.' }, 403);
       }
 
@@ -346,7 +356,7 @@ Deno.serve(async (req) => {
       if (!esperado) {
         return json({ erro: 'Configure o secret B7_BOOTSTRAP_TOKEN para usar a recuperação.' }, 403);
       }
-      if (corpo.token !== esperado) {
+      if (!tokenConfere(req, corpo.token, esperado)) {
         return json({ erro: 'Token inválido.' }, 403);
       }
 
@@ -406,7 +416,7 @@ Deno.serve(async (req) => {
       if (!esperado) {
         return json({ erro: 'Configure o secret B7_BOOTSTRAP_TOKEN para usar esta ação.' }, 403);
       }
-      if (corpo.token !== esperado) return json({ erro: 'Token inválido.' }, 403);
+      if (!tokenConfere(req, corpo.token, esperado)) return json({ erro: 'Token inválido.' }, 403);
       if (corpo.confirmar !== 'REMOVER') {
         return json({
           erro: 'Confirmação ausente. Reenvie com "confirmar": "REMOVER" para apagar a conta.'
@@ -888,15 +898,16 @@ Deno.serve(async (req) => {
     /* Mensagem genérica escondia a causa e travava a instalação. O detalhe
        técnico ajuda quem está configurando e não expõe dado de usuário:
        são erros de banco ou de chamada, nunca conteúdo de conta. */
+    /* o detalhe técnico fica só no log da função: a resposta não expõe
+       mensagem de banco/biblioteca a quem chamou */
     const detalhe = e instanceof Error ? e.message : String(e);
-    console.error('b7-auth:', detalhe);
+    console.error('b7-auth:', String(acao || '(vazia)'), detalhe);
     return json({
       erro: 'Falha ao processar a solicitação.',
-      detalhe: detalhe,
       acao: acao || '(vazia)'
     }, 500);
   }
-});
+}));
 
 /* Cria a identidade no Auth e o perfil público. Se o perfil falhar, a
    identidade é removida — não deixamos um usuário do Auth sem perfil,

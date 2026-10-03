@@ -249,7 +249,7 @@ B7.Gravacao = (function () {
       titulo = it.titulo;
       let host = ''; try { host = new URL(it.url).hostname.replace(/^www\./, ''); } catch (e) {}
       if (host) sub.push(host);
-      acao = '<a class="b fina gv-it-abrir" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer nofollow">Abrir referência' + IC.abrir + '</a>';
+      acao = '<a class="b fina gv-it-abrir" href="' + esc(B7.UI.linkExterno(it.url)) + '" target="_blank" rel="noopener noreferrer nofollow">Abrir referência' + IC.abrir + '</a>';
     } else if (it.tipo === 'conteudo') {
       titulo = it.conteudo_titulo || 'Conteúdo sem título';
       if (it.conteudo_tipo) sub.push(it.conteudo_tipo);

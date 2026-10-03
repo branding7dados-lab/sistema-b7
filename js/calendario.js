@@ -177,6 +177,9 @@ B7.Calendario = (function () {
 
   function aoReceberMensagemPopup(ev) {
     if (!ev.data || ev.data.tipo !== 'b7-google-agenda') return;
+    /* só vale o aviso da própria função google-agenda (servidor do
+       Supabase): outra janela não consegue disparar recarga nem texto aqui */
+    try { if (ev.origin !== new URL(window.B7_CONFIG.SUPABASE_URL).origin) return; } catch (e) { return; }
     B7.UI.toast(ev.data.ok ? 'Google Calendar conectado.' : (ev.data.mensagem || 'Não foi possível conectar.'));
     carregarTudo();
   }
@@ -994,6 +997,9 @@ B7.Calendario = (function () {
        via popup), refaz o conteúdo. */
     window.addEventListener('message', function ouvinte(ev) {
       if (!ev.data || ev.data.tipo !== 'b7-google-agenda') return;
+    /* só vale o aviso da própria função google-agenda (servidor do
+       Supabase): outra janela não consegue disparar recarga nem texto aqui */
+    try { if (ev.origin !== new URL(window.B7_CONFIG.SUPABASE_URL).origin) return; } catch (e) { return; }
       window.removeEventListener('message', ouvinte);
       carregarTudo().then(() => { if (document.body.contains(m)) redesenhar(); });
     });

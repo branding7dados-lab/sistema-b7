@@ -397,7 +397,7 @@ B7.Notif = (function () {
       return;
     }
     lista.innerHTML = ultimas.map(n =>
-      '<a class="sino-item' + (n.lida_em ? '' : ' nova') + '" data-id="' + esc(n.id) + '" href="' + esc(n.link || '#/') + '">' +
+      '<a class="sino-item' + (n.lida_em ? '' : ' nova') + '" data-id="' + esc(n.id) + '" href="' + esc(B7.UI.linkInterno(n.link)) + '">' +
         '<span class="sino-ponto"></span>' +
         logoClienteHTML(n) +
         '<span class="sino-tx">' +

@@ -27,11 +27,11 @@
 // SUPABASE_URL, SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY vêm da plataforma.
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { comCors } from '../_shared/cors.ts';
 
 const VERSAO = '2026-10-02-op3';
 const UA = 'Branding7-B7/1.0 (calendario editorial interno)';
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
@@ -438,7 +438,7 @@ const ADAPTADORES: Record<string, (url: string, ctx: Ctx) => Promise<{ itens: It
 };
 
 // ------------------------------------------------------------ handler
-Deno.serve(async (req) => {
+Deno.serve(comCors(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
   let corpo: { fontes?: string[]; forcar?: boolean; diagnostico?: boolean } = {};
@@ -496,4 +496,4 @@ Deno.serve(async (req) => {
     }
   }
   return json({ versao: VERSAO, resultados });
-});
+}));

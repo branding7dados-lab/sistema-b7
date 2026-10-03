@@ -366,7 +366,7 @@ B7.Oportunidades = (function () {
               '<li class="' + (p.ativo ? '' : 'inativa') + '"><div><b>' + esc(FONTES_ROT[p.fonte_id] || p.fonte_id) + '</b>' +
                 '<small>' + esc([p.titulo_na_fonte !== op.nome ? '“' + p.titulo_na_fonte + '”' : '', p.detalhe].filter(Boolean).join(' · ')) + '</small>' +
                 '<small class="op-visto">' + (p.ativo ? 'Conferida em ' : 'Não aparece mais na fonte desde ') + esc(B7.UI.dataBR ? B7.UI.dataBR(String(p.visto_em).slice(0, 10)) : String(p.visto_em).slice(0, 10)) + '</small></div>' +
-                (p.url ? '<a class="b fina contorno" href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer">' + IC_LINK + 'Ver fonte</a>' : '') + '</li>').join('') + '</ul>'
+                (p.url ? '<a class="b fina contorno" href="' + esc(B7.UI.linkExterno(p.url)) + '" target="_blank" rel="noopener noreferrer">' + IC_LINK + 'Ver fonte</a>' : '') + '</li>').join('') + '</ul>'
               : '<p class="op-nada">Sem fonte registrada.</p>') +
           '</section>' +
 
@@ -636,7 +636,7 @@ B7.Oportunidades = (function () {
               '<div class="cb-pv-l"><dt>Última leitura</dt><dd>' + esc((f.itens_ultimo != null ? f.itens_ultimo + ' itens' : '—') + (f.criados_ultimo ? ' · ' + f.criados_ultimo + ' novas' : '')) + '</dd></div>' : '') +
           '</dl>' + (f.erro ? '<p class="cb-pv-nota erro">' + esc(f.erro) + '</p>' : '') +
           (f.descricao ? '<p class="op-fonte-desc">' + esc(f.descricao) + '</p>' : '') +
-          (f.url ? '<a class="cb-link" href="' + esc(f.url) + '" target="_blank" rel="noopener noreferrer">Abrir a fonte</a>' : '') + '</article>';
+          (f.url ? '<a class="cb-link" href="' + esc(B7.UI.linkExterno(f.url)) + '" target="_blank" rel="noopener noreferrer">Abrir a fonte</a>' : '') + '</article>';
       }).join('') + '</div>' +
       '<h3 class="op-h3">Últimas sincronizações</h3>' +
       (execs.length ? '<ul class="op-execs">' + execs.map(e => '<li>' + selo((ST_FONTE[e.status] || [e.status])[0] || e.status, (ST_FONTE[e.status] || [0, 'neutro'])[1]) +

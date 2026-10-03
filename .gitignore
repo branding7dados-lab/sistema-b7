@@ -1,0 +1,16 @@
+# Segredos e configuração local — nunca no repositório
+.env
+.env.*
+*.pem
+*.key
+*.p12
+supabase/.env
+supabase/functions/.env
+
+# Cache da CLI do Supabase (endereço do banco, versões) — gerado localmente
+supabase/.temp/
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+node_modules/

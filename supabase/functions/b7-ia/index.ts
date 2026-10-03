@@ -38,6 +38,7 @@
 // =====================================================================
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { comCors } from '../_shared/cors.ts';
 import { gerar, provedorAtual, quaseIgual } from '../_shared/ia/servico.ts';
 import type { Mensagem } from '../_shared/ia/provedor.ts';
 import { carregarContexto, limiteDeSaida, limparSaida, montarMensagens, validar, FORA } from '../_shared/ia/roteiro.ts';
@@ -46,7 +47,6 @@ import * as Analise from '../_shared/ia/analise.ts';
 import * as Resumo from '../_shared/ia/resumo.ts';
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
@@ -70,7 +70,7 @@ async function dentroDoLimite(sb: SupabaseClient, perfilId: string): Promise<'ok
   return 'ok';
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comCors(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ ok: false, categoria: 'entrada_invalida' }, 405);
 
@@ -229,4 +229,4 @@ Deno.serve(async (req: Request) => {
       ...(typeof lido.resumo === 'string' ? { resumo: lido.resumo } : {}) });
   }
   return json({ ok: true, texto: r.texto, id: reg ? reg.id : null });
-});
+}));

@@ -38,6 +38,7 @@
 // =====================================================================
 
 import webpush from 'npm:web-push@3.6.7';
+import { comCors, iguais } from '../_shared/cors.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
 const VERSAO = '2026-10-01-x';
@@ -54,7 +55,6 @@ async function assinar(texto: string): Promise<string> {
 }
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-b7-webhook-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
@@ -130,7 +130,7 @@ async function registrar(sb: SupabaseClient, id: string, status: string, info: R
   console.log(JSON.stringify({ b7push: status, id, ...info }));
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comCors(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ erro: 'Use POST.' }, 405);
 
@@ -186,13 +186,15 @@ Deno.serve(async (req: Request) => {
   /* ================================================================
      WEBHOOK — uma notificação acabou de nascer
      ================================================================ */
+  /* Sem segredo configurado, a função RECUSA (antes aceitava qualquer
+     chamada: qualquer um mandaria um aviso com texto inventado para o
+     celular de alguém da equipe). Comparação em tempo constante. */
   const segredo = Deno.env.get('B7_WEBHOOK_SECRET') || '';
-  if (segredo) {
-    const recebido = req.headers.get('x-b7-webhook-secret') || '';
-    if (recebido !== segredo) return json({ erro: 'Segredo do webhook inválido.' }, 401);
-  } else {
-    console.warn('b7-push: B7_WEBHOOK_SECRET não configurado — qualquer chamada é aceita.');
+  if (!segredo) {
+    console.error('b7-push: B7_WEBHOOK_SECRET não configurado — webhook recusado.');
+    return json({ erro: 'Webhook não configurado.' }, 503);
   }
+  if (!iguais(req.headers.get('x-b7-webhook-secret') || '', segredo)) return json({ erro: 'Segredo do webhook inválido.' }, 401);
 
   if (corpo.type && corpo.type !== 'INSERT') return json({ ok: true, ignorado: corpo.type, versao: VERSAO });
   if (corpo.table && corpo.table !== 'notificacoes') return json({ ok: true, ignorado: corpo.table, versao: VERSAO });
@@ -265,4 +267,4 @@ Deno.serve(async (req: Request) => {
     { enviados: r.enviados, removidos: r.removidos, falhas: r.falhas, imagem: !!imagem });
 
   return json({ ok: true, enviados: r.enviados, removidos: r.removidos, falhas: r.falhas, versao: VERSAO });
-});
+}, 'x-b7-webhook-secret'));

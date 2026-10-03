@@ -1498,8 +1498,8 @@ B7.Video = (function () {
         ? '<div class="vd-dt-campo vd-dt-link"><label class="rot">Link no Drive <em>opcional</em></label>' +
           '<div class="vd-link-linha"><input class="campo" id="vd-dt-link" placeholder="https://drive.google.com/…" value="' + esc(d.link_material || '') + '">' +
           '<button class="b" id="vd-dt-link-salvar">Salvar</button></div></div>'
-        : (d.link_material ? '<a class="b fina contorno vd-abrir-materiais" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir no Drive</a>' : '')) +
-      (podeOperar && d.link_material ? '<a class="b fina contorno vd-abrir-materiais" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir no Drive</a>' : '') +
+        : (d.link_material ? '<a class="b fina contorno vd-abrir-materiais" href="' + esc(B7.UI.linkExterno(d.link_material)) + '" target="_blank" rel="noopener">Abrir no Drive</a>' : '')) +
+      (podeOperar && d.link_material ? '<a class="b fina contorno vd-abrir-materiais" href="' + esc(B7.UI.linkExterno(d.link_material)) + '" target="_blank" rel="noopener">Abrir no Drive</a>' : '') +
       entregar +
     '</section>';
   }
@@ -1624,7 +1624,7 @@ B7.Video = (function () {
           '<section class="vd-bloco">' +
             '<div class="vd-bloco-cab"><label class="rot">Material editado</label></div>' +
             (d.link_material
-              ? '<a class="b pri vd-abrir-materiais" href="' + esc(d.link_material) + '" target="_blank" rel="noopener">Abrir materiais</a>'
+              ? '<a class="b pri vd-abrir-materiais" href="' + esc(B7.UI.linkExterno(d.link_material)) + '" target="_blank" rel="noopener">Abrir materiais</a>'
               : (podeOperar ? '' : '<div class="vd-so-leitura">Sem materiais vinculados ainda.</div>')) +
             (podeOperar
               ? '<div class="vd-dt-campo vd-dt-link"><div class="vd-link-linha"><input class="campo" id="vd-dt-link" placeholder="https://drive.google.com/…" value="' + esc(d.link_material || '') + '">' +
@@ -1794,13 +1794,13 @@ B7.Video = (function () {
       const nomeArq = v.arquivo_nome ? ' <span class="vd-quem">' + esc(v.arquivo_nome) + '</span>' : '';
       const driveId = driveIdDe(v.arquivo_url);
       if (!driveId) {
-        return '<a class="b fina" href="' + esc(v.arquivo_url) + '" target="_blank" rel="noopener">Abrir vídeo</a>' + nomeArq;
+        return '<a class="b fina" href="' + esc(B7.UI.linkExterno(v.arquivo_url)) + '" target="_blank" rel="noopener">Abrir vídeo</a>' + nomeArq;
       }
       return '<div class="vd-player"><iframe src="https://drive.google.com/file/d/' + driveId + '/preview" allow="autoplay" loading="lazy" ' +
         'title="' + esc(v.arquivo_nome || 'Vídeo ' + vNum(v.numero)) + '"></iframe>' +
         '<button type="button" class="vd-player-tela-cheia" title="Tela cheia" aria-label="Ver em tela cheia">⛶</button>' +
         '</div>' +
-        '<div class="vd-player-legenda"><a class="b fina" href="' + esc(v.arquivo_url) + '" target="_blank" rel="noopener">Abrir no Drive</a>' + nomeArq + '</div>';
+        '<div class="vd-player-legenda"><a class="b fina" href="' + esc(B7.UI.linkExterno(v.arquivo_url)) + '" target="_blank" rel="noopener">Abrir no Drive</a>' + nomeArq + '</div>';
     };
 
     let acao = '';

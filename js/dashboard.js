@@ -2109,7 +2109,9 @@ B7.Dashboard = (function () {
      Monta a área de logo do modal e devolve um objeto com o estado atual.
      A imagem só sobe para o Storage na hora de salvar — assim, cancelar
      não deixa arquivo perdido no bucket. */
-  const TIPOS_OK = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+  /* SVG ficou de fora (03/10, segurança): pode carregar script, e o bucket
+     de logos é público. O banco também recusa. */
+  const TIPOS_OK = ['image/png', 'image/jpeg', 'image/webp'];
   const LIMITE_MB = 2;
 
   function campoLogo(logoAtual) {
@@ -2121,12 +2123,12 @@ B7.Dashboard = (function () {
       '<div class="upload-logo" id="ul-area">' +
         '<div class="previa" id="ul-previa">' + (logoAtual ? '<img src="' + esc(logoAtual) + '" alt="">' : semLogo) + '</div>' +
         '<div class="txt"><b id="ul-titulo">' + (logoAtual ? 'Logo cadastrada' : 'Arraste uma imagem ou clique') + '</b>' +
-        '<small>PNG, JPG, WEBP ou SVG · até ' + LIMITE_MB + ' MB</small></div>' +
+        '<small>PNG, JPG ou WEBP · até ' + LIMITE_MB + ' MB</small></div>' +
         '<div class="bts">' +
           '<button type="button" class="b" id="ul-trocar">' + (logoAtual ? 'Alterar' : 'Selecionar') + '</button>' +
           '<button type="button" class="b perigo" id="ul-remover" style="' + (logoAtual ? '' : 'display:none') + '">Remover</button>' +
         '</div>' +
-        '<input type="file" id="ul-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none">' +
+        '<input type="file" id="ul-input" accept="image/png,image/jpeg,image/webp" style="display:none">' +
       '</div><div class="envio-estado" id="ul-estado"></div></div>';
   }
 

@@ -92,11 +92,11 @@
 // =====================================================================
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { comCors } from '../_shared/cors.ts';
 
 const VERSAO = '2026-09-15-f';
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
 };
@@ -143,7 +143,7 @@ async function quemChamou(req: Request): Promise<Perfil | null> {
 const ehEquipe = (p: Perfil | null) => !!p && ['admin', 'coordenador'].includes(p.papel);
 const ehEquipeInterna = (p: Perfil | null) => !!p && ['admin', 'coordenador', 'designer', 'videomaker'].includes(p.papel);
 
-Deno.serve(async (req: Request) => {
+Deno.serve(comCors(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   const url = new URL(req.url);
@@ -173,7 +173,7 @@ Deno.serve(async (req: Request) => {
   if (acao === 'excluir_evento') return await excluirEvento(perfil, corpo);
 
   return json({ erro: 'Ação desconhecida: ' + acao }, 400);
-});
+}));
 
 // =====================================================================
 // CONEXÃO
@@ -264,7 +264,12 @@ function paginaRetorno(ok: boolean, mensagem: string): Response {
     '<p style="font-size:15px">' + (ok ? '✓' : '✗') + ' ' + msgSegura + '</p>' +
     '<p style="color:#888;font-size:13px">Redirecionando de volta ao sistema…</p>' +
     '<p><a href="' + destino + '">Clique aqui se não redirecionar sozinho</a></p>' +
-    '<script>try{if(window.opener){window.opener.postMessage({tipo:"b7-google-agenda",ok:' + (ok ? 'true' : 'false') + ',mensagem:' + JSON.stringify(mensagem) + '},"*");window.close();}}catch(e){}</script>' +
+    /* a mensagem pode trazer texto da URL (?error=…): dentro do <script>
+       os sinais < > & viram \u00xx, para nada fechar a tag e virar código;
+       e o aviso só vai para a janela do app (origem fixa, não "*") */
+    '<script>try{if(window.opener){window.opener.postMessage({tipo:"b7-google-agenda",ok:' + (ok ? 'true' : 'false') + ',mensagem:' +
+      JSON.stringify(mensagem).replace(/[<>&]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')) +
+      '},' + JSON.stringify(new URL(APP_URL).origin) + ');window.close();}}catch(e){}</script>' +
     '</body></html>'
   );
 }

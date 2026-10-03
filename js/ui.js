@@ -804,6 +804,19 @@ B7.UI = (function () {
     return '<div class="esqueleto-tela" role="status" aria-live="polite" aria-label="Carregando…">' + corpo + '</div>';
   }
 
-  return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
+  /* Link externo vindo do banco ou de quem digitou: só http/https vira
+     href. esc() impede quebrar o atributo, mas não impede "javascript:" —
+     isto impede. Fora do padrão, devolve '' (a tela mostra sem link). */
+  function linkExterno(u) {
+    const s = String(u == null ? '' : u).trim();
+    return /^https?:\/\/[^\s]+$/i.test(s) ? s : '';
+  }
+  /* Link interno do B7 (notificação, atalho): só rotas "#/…". */
+  function linkInterno(u) {
+    const s = String(u == null ? '' : u).trim();
+    return /^#\//.test(s) ? s : '#/';
+  }
+
+  return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, linkExterno, linkInterno, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
            dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton, copiarTexto, ocupado };
 })();
