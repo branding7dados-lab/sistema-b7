@@ -391,106 +391,267 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
 .pn-sec-sub + .pn-link-cal{margin-left:auto;}
 
 /* =====================================================================
-   PAINEL CINEMATOGRÁFICO (pacote zu, 03/10)
-   Luz ambiente atrás da saudação, título que entra do desfoque com um
-   brilho passando pelas letras, cartões em cascata, números contando
-   (js/painel.js, "cinema"), barras crescendo, dias da semana surgindo,
-   blocos que se revelam ao rolar. Tudo transform/opacity; a luz de
-   fundo é um gradiente parado que só se desloca (transform).
+   PAINEL CINEMATOGRÁFICO (pacotes zu e zv, 03/10)
+   A mesma linguagem da abertura continua dentro do Painel: um céu com
+   raios girando devagar, partículas de luz subindo e grão de filme atrás
+   da saudação; o título entra letra a letra e um feixe anamórfico corta
+   a frase; os cartões caem em 3D, um reflexo passa por eles e o número
+   "pousa" com um brilho; cada bloco sobe com profundidade e uma linha de
+   luz contorna a borda uma vez; ao rolar, o topo recua (paralaxe).
+   O espetáculo começa quando a cortina da abertura sai (classe
+   pn-pausa até lá) e a estreia completa é uma por sessão — nas visitas
+   seguintes tudo roda mais rápido (--pn-t). Só transform/opacity/filter
+   em elementos pequenos; nada muda dado, regra ou link. "Reduzir
+   movimento" desliga tudo e nada fica escondido.
    ===================================================================== */
-.pn{position:relative;isolation:isolate;overflow-x:clip;}
-/* luz ambiente: duas manchas de luz que derivam devagar atrás do topo */
+.pn{--pn-t:1;--pn-ease:cubic-bezier(.2,.85,.25,1);--pn-mola:cubic-bezier(.2,.9,.25,1.12);
+  position:relative;isolation:isolate;overflow-x:clip;}
+.pn.pn-rapido{--pn-t:.55;}
+/* até a cortina da abertura sair, o filme fica parado no primeiro quadro */
+.pn.pn-pausa, .pn.pn-pausa *, .pn.pn-pausa *::before, .pn.pn-pausa *::after{animation-play-state:paused !important;}
+
+/* ------------------------------------------------------------ o céu */
 .pn-cab{position:relative;}
-.pn-cab::before,.pn-cab::after{content:"";position:absolute;z-index:-1;pointer-events:none;border-radius:50%;}
-.pn-cab::before{left:-30%;top:-90px;width:min(560px,110vw);height:340px;
-  background:radial-gradient(closest-side, color-mix(in srgb, var(--acento) 26%, transparent), transparent 72%);
-  animation:pnLuzA 14s ease-in-out infinite alternate, pnSurge 1.4s ease-out both;}
-.pn-cab::after{right:-25%;top:-40px;width:min(440px,90vw);height:280px;
-  background:radial-gradient(closest-side, rgba(110,70,230,.22), transparent 72%);
-  animation:pnLuzB 17s ease-in-out infinite alternate, pnSurge 1.6s ease-out .2s both;}
-[data-theme="light"] .pn-cab::before{opacity:.55;}
-[data-theme="light"] .pn-cab::after{opacity:.45;}
-@keyframes pnLuzA{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(18%,12px,0) scale(1.12)}}
-@keyframes pnLuzB{from{transform:translate3d(0,0,0) scale(1.05)}to{transform:translate3d(-16%,20px,0) scale(.92)}}
+.pn-ceu{position:absolute;z-index:-1;pointer-events:none;left:-60px;right:-60px;top:-110px;height:calc(100% + 190px);
+  overflow:hidden;-webkit-mask-image:linear-gradient(180deg,#000 55%,transparent);mask-image:linear-gradient(180deg,#000 55%,transparent);
+  animation:pnSurge calc(1.4s * var(--pn-t)) ease-out both;}
+.pn-ceu > *{position:absolute;display:block;}
+/* duas manchas de luz que derivam (a cor da marca e um violeta) */
+.pn-ceu .pn-luz-a{left:-10%;top:10px;width:min(620px,120vw);height:380px;border-radius:50%;
+  background:radial-gradient(closest-side, color-mix(in srgb, var(--acento) 30%, transparent), transparent 72%);
+  animation:pnLuzA 14s ease-in-out infinite alternate;}
+.pn-ceu .pn-luz-b{right:-12%;top:60px;width:min(480px,95vw);height:300px;border-radius:50%;
+  background:radial-gradient(closest-side, rgba(120,80,240,.26), transparent 72%);
+  animation:pnLuzB 17s ease-in-out infinite alternate;}
+@keyframes pnLuzA{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(18%,14px,0) scale(1.14)}}
+@keyframes pnLuzB{from{transform:translate3d(0,0,0) scale(1.05)}to{transform:translate3d(-16%,22px,0) scale(.9)}}
+/* raios de luz descendo do alto, girando bem devagar */
+.pn-ceu .pn-raios{left:50%;top:-520px;width:1100px;height:1100px;margin-left:-550px;border-radius:50%;opacity:.5;
+  background:repeating-conic-gradient(from 0deg, rgba(255,255,255,.07) 0deg 3deg, transparent 3deg 14deg);
+  -webkit-mask-image:radial-gradient(closest-side, transparent 30%, #000 52%, transparent 78%);
+          mask-image:radial-gradient(closest-side, transparent 30%, #000 52%, transparent 78%);
+  animation:pnGira 80s linear infinite, pnRaiosEntram calc(2.2s * var(--pn-t)) ease-out both;}
+@keyframes pnGira{to{transform:rotate(360deg)}}
+@keyframes pnRaiosEntram{from{opacity:0}to{opacity:.5}}
+/* linha do horizonte: um fio de luz que se abre do centro */
+.pn-ceu .pn-horiz{left:6%;right:6%;top:calc(100% - 210px);height:1px;
+  background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--acento) 60%, transparent), rgba(255,255,255,.55), color-mix(in srgb, #8F6BFF 60%, transparent), transparent);
+  box-shadow:0 0 18px 2px color-mix(in srgb, var(--acento) 35%, transparent);transform:scaleX(0);opacity:.0;
+  animation:pnHorizonte calc(1.6s * var(--pn-t)) var(--pn-ease) calc(.35s * var(--pn-t)) forwards;}
+@keyframes pnHorizonte{0%{transform:scaleX(0);opacity:0}30%{opacity:1}100%{transform:scaleX(1);opacity:.35}}
+/* partículas de luz (bokeh) subindo */
+.pn-ceu .pn-bokeh{inset:0;}
+.pn-bokeh i{position:absolute;left:var(--x);bottom:-20px;width:var(--s);height:var(--s);border-radius:50%;opacity:0;
+  background:radial-gradient(circle, rgba(255,255,255,.95), color-mix(in srgb, var(--acento) 55%, transparent) 45%, transparent 70%);
+  animation:pnBokeh var(--d) linear var(--t) infinite;}
+@keyframes pnBokeh{0%{transform:translate3d(0,0,0) scale(.6);opacity:0}15%{opacity:.75}
+  80%{opacity:.4}100%{transform:translate3d(var(--dx, 20px),-300px,0) scale(1.1);opacity:0}}
+/* grão de filme, quase invisível, só no céu */
+.pn-ceu .pn-grao{inset:-50%;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  animation:pnGrao .9s steps(5) infinite;}
+@keyframes pnGrao{0%{transform:translate3d(0,0,0)}20%{transform:translate3d(-4%,3%,0)}40%{transform:translate3d(3%,-5%,0)}
+  60%{transform:translate3d(-6%,-2%,0)}80%{transform:translate3d(5%,4%,0)}100%{transform:translate3d(0,0,0)}}
+[data-theme="light"] .pn-ceu .pn-raios{background:repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--acento) 9%, transparent) 0deg 3deg, transparent 3deg 14deg);}
+[data-theme="light"] .pn-ceu .pn-luz-a{opacity:.6;}
+[data-theme="light"] .pn-ceu .pn-luz-b{opacity:.5;}
+[data-theme="light"] .pn-ceu .pn-grao{display:none;}
 @keyframes pnSurge{from{opacity:0}to{opacity:1}}
 
-/* cabeçalho: cada linha entra no seu tempo */
-.pn-kicker{animation:pnSobe .6s cubic-bezier(.2,.85,.25,1) .05s both;}
-.pn-cab h1{animation:pnTitulo .9s cubic-bezier(.2,.85,.25,1) .12s both;
-  background:linear-gradient(100deg, var(--ink) 0 42%, #FF8FCB 50%, var(--ink) 58% 100%);background-size:260% 100%;
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.pn-cab h1{animation:pnTitulo .9s cubic-bezier(.2,.85,.25,1) .12s both, pnBrilhoTx 1.5s cubic-bezier(.45,0,.2,1) .7s both;}
-.pn-papel{animation:pnSobe .6s cubic-bezier(.2,.85,.25,1) .28s both;}
-.pn-resumo{animation:pnSobe .6s cubic-bezier(.2,.85,.25,1) .4s both;}
-.pn-cab-lado{animation:pnSobe .6s cubic-bezier(.2,.85,.25,1) .5s both;}
-@keyframes pnSobe{from{opacity:0;transform:translate3d(0,12px,0)}to{opacity:1;transform:none}}
+/* ------------------------------------------------------- o cabeçalho */
+.pn-kicker{animation:pnSobe calc(.7s * var(--pn-t)) var(--pn-ease) calc(.1s * var(--pn-t)) backwards;}
+.pn-kicker{letter-spacing:.14em;}
+.pn-papel{animation:pnSobe calc(.7s * var(--pn-t)) var(--pn-ease) calc(.75s * var(--pn-t)) backwards;}
+.pn-resumo{animation:pnRevelaTx calc(1.2s * var(--pn-t)) var(--pn-ease) calc(.9s * var(--pn-t)) backwards;}
+.pn-cab-lado{animation:pnSobe calc(.7s * var(--pn-t)) var(--pn-ease) calc(1s * var(--pn-t)) backwards;}
+@keyframes pnSobe{from{opacity:0;transform:translate3d(0,14px,0);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+/* a frase do dia aparece varrida por luz, da esquerda para a direita */
+@keyframes pnRevelaTx{from{opacity:.0;-webkit-mask-position:100% 0;mask-position:100% 0}
+  to{opacity:1;-webkit-mask-position:0 0;mask-position:0 0}}
+.pn-resumo{-webkit-mask-image:linear-gradient(90deg,#000 45%,transparent 55%);mask-image:linear-gradient(90deg,#000 45%,transparent 55%);
+  -webkit-mask-size:240% 100%;mask-size:240% 100%;-webkit-mask-position:0 0;mask-position:0 0;}
+
+/* título: sem js (ou antes de dividir), entra inteiro do desfoque */
+.pn-cab h1{position:relative;animation:pnTitulo calc(.9s * var(--pn-t)) var(--pn-ease) calc(.15s * var(--pn-t)) backwards;}
 @keyframes pnTitulo{from{opacity:0;transform:translate3d(0,16px,0) scale(.97);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
-@keyframes pnBrilhoTx{from{background-position:100% 0}to{background-position:0 0}}
+/* dividido em letras (js/painel.js): cada uma gira para o lugar */
+.pn-cab h1.pn-letras{animation:none;}
+.pn-pal{display:inline-block;white-space:nowrap;perspective:600px;}
+.pn-l{display:inline-block;transform-origin:50% 80%;
+  animation:pnLetra calc(.85s * var(--pn-t)) var(--pn-ease) calc((.2s + var(--k) * 32ms) * var(--pn-t)) backwards;}
+@keyframes pnLetra{0%{opacity:0;transform:translate3d(0,.55em,0) rotateX(-85deg);filter:blur(8px)}
+  60%{opacity:1;filter:blur(0)}100%{opacity:1;transform:none;filter:none}}
+.pn-l-nome{color:transparent;background:linear-gradient(180deg, var(--ink) 30%, color-mix(in srgb, var(--acento) 70%, var(--ink)));
+  -webkit-background-clip:text;background-clip:text;}
+/* feixe anamórfico: um traço de luz horizontal corta o título */
+.pn-cab h1::after,.pn-cab h1::before{content:"";position:absolute;pointer-events:none;top:55%;opacity:0;}
+.pn-cab h1::after{left:-10%;width:120%;height:2px;margin-top:-1px;border-radius:2px;
+  background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--acento) 80%, transparent) 30%, #fff 50%, rgba(143,107,255,.8) 70%, transparent);
+  box-shadow:0 0 14px 2px color-mix(in srgb, var(--acento) 55%, transparent);
+  transform-origin:var(--pn-fx, 50%) 50%;
+  animation:pnFeixe calc(1.5s * var(--pn-t)) cubic-bezier(.45,0,.2,1) calc(.95s * var(--pn-t)) both;}
+.pn-cab h1::before{left:0;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
+  background:radial-gradient(circle, #fff 0 8%, color-mix(in srgb, var(--acento) 70%, transparent) 22%, transparent 64%);
+  mix-blend-mode:screen;animation:pnOrbe calc(1.5s * var(--pn-t)) cubic-bezier(.45,0,.2,1) calc(.95s * var(--pn-t)) both;}
+@keyframes pnFeixe{0%{opacity:0;transform:scaleX(.05)}25%{opacity:1}60%{opacity:.9;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1.05)}}
+@keyframes pnOrbe{0%{opacity:0;transform:translate3d(0,0,0) scale(.4)}20%{opacity:1}
+  80%{opacity:.9}100%{opacity:0;transform:translate3d(var(--pn-w, 260px),0,0) scale(1)}}
+[data-theme="light"] .pn-cab h1::before{display:none;}
 
-/* KPIs: cascata com leve profundidade; o de alerta respira */
-.pn-kpis > *{animation:pnCartao .62s cubic-bezier(.2,.85,.25,1) both;}
-.pn-kpis > :nth-child(1){animation-delay:.42s}.pn-kpis > :nth-child(2){animation-delay:.5s}
-.pn-kpis > :nth-child(3){animation-delay:.58s}.pn-kpis > :nth-child(4){animation-delay:.66s}
-.pn-kpis > :nth-child(n+5){animation-delay:.74s}
-@keyframes pnCartao{from{opacity:0;transform:translate3d(0,18px,0) scale(.95)}to{opacity:1;transform:none}}
-.pn-kpi.pn-tom-erro{animation:pnCartao .62s cubic-bezier(.2,.85,.25,1) .42s both, pnRespira 3.2s ease-in-out 1.2s infinite;}
-@keyframes pnRespira{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--erro) 0%, transparent), 0 10px 30px -18px color-mix(in srgb, var(--erro) 60%, transparent)}
-  50%{box-shadow:0 0 0 4px color-mix(in srgb, var(--erro) 12%, transparent), 0 14px 40px -14px color-mix(in srgb, var(--erro) 70%, transparent)}}
+/* o botão do topo recebe um reflexo quando assenta */
+.pn-cab-acao{position:relative;overflow:hidden;}
+.pn-cab-acao::after{content:"";position:absolute;top:0;bottom:0;left:0;width:45%;pointer-events:none;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);transform:translate3d(-130%,0,0);
+  animation:pnReflexo calc(1.1s * var(--pn-t)) cubic-bezier(.45,0,.2,1) calc(1.55s * var(--pn-t)) both;}
+@keyframes pnReflexo{from{transform:translate3d(-130%,0,0)}to{transform:translate3d(330%,0,0)}}
+
+/* ---------------------------------------------------------- os KPIs */
+.pn-kpis{perspective:1000px;}
+.pn-kpis > *{animation:pnCartao calc(.85s * var(--pn-t)) var(--pn-mola) backwards;transform-origin:50% 0;}
+.pn-kpis > :nth-child(1){animation-delay:calc(.55s * var(--pn-t))}.pn-kpis > :nth-child(2){animation-delay:calc(.65s * var(--pn-t))}
+.pn-kpis > :nth-child(3){animation-delay:calc(.75s * var(--pn-t))}.pn-kpis > :nth-child(4){animation-delay:calc(.85s * var(--pn-t))}
+.pn-kpis > :nth-child(n+5){animation-delay:calc(.95s * var(--pn-t))}
+@keyframes pnCartao{0%{opacity:0;transform:translate3d(0,34px,-60px) rotateX(-38deg) scale(.92);filter:blur(6px)}
+  55%{opacity:1;filter:blur(0)}100%{opacity:1;transform:none;filter:none}}
+/* reflexo que atravessa o cartão logo depois de pousar */
+.pn .pn-kpi::after{content:"";position:absolute;top:-20%;bottom:-20%;left:0;width:38%;pointer-events:none;z-index:1;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.16), transparent);transform:translate3d(-150%,0,0) skewX(-12deg);
+  animation:pnReflexoK calc(1.2s * var(--pn-t)) cubic-bezier(.45,0,.2,1) calc((1.05s + var(--pn-k, 0) * .1s) * var(--pn-t)) both;}
+.pn-kpis > :nth-child(2){--pn-k:1}.pn-kpis > :nth-child(3){--pn-k:2}.pn-kpis > :nth-child(4){--pn-k:3}
+@keyframes pnReflexoK{from{transform:translate3d(-150%,0,0) skewX(-12deg)}to{transform:translate3d(380%,0,0) skewX(-12deg)}}
+[data-theme="light"] .pn .pn-kpi::after{background:linear-gradient(100deg, transparent, color-mix(in srgb, var(--acento) 10%, transparent), transparent);}
+/* lanterna: a luz segue o dedo/o cursor sobre o cartão */
+.pn .pn-kpi::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:0;z-index:0;
+  background:radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--acento) 16%, transparent), transparent 70%);
+  transition:opacity .35s ease;}
+.pn .pn-kpi.pn-luz::before{opacity:1;}
+.pn .pn-kpi > *{position:relative;z-index:1;}
+.pn .pn-kpi > .pn-kpi-seta{position:absolute;}
+/* o número pousa: um pulo curto e um brilho da própria cor */
 .pn-kpi-num{font-variant-numeric:tabular-nums;}
-a.pn-kpi,.pn-att,.pn-comp,.pn-dia-lk{transition:transform var(--m-instante) var(--m-toque);}
-a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale(.975);}
+.pn-pousou{animation:pnPouso .6s var(--pn-mola);}
+@keyframes pnPouso{0%{transform:scale(1.22);text-shadow:0 0 22px currentColor}100%{transform:none;text-shadow:0 0 0 transparent}}
+.pn .pn-kpi .pn-kpi-num{display:inline-block;transform-origin:50% 60%;}
+/* atrasadas respiram em vermelho */
+.pn-kpi.pn-tom-erro{animation:pnCartao calc(.85s * var(--pn-t)) var(--pn-mola) calc(.55s * var(--pn-t)) backwards,
+  pnRespira 3.2s ease-in-out calc(1.6s * var(--pn-t)) infinite;}
+@keyframes pnRespira{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--erro) 0%, transparent), 0 10px 30px -18px color-mix(in srgb, var(--erro) 60%, transparent)}
+  50%{box-shadow:0 0 0 4px color-mix(in srgb, var(--erro) 13%, transparent), 0 14px 40px -12px color-mix(in srgb, var(--erro) 75%, transparent)}}
+a.pn-kpi,.pn-att,.pn-comp,.pn-dia-lk{transition:transform var(--m-instante) var(--m-toque), border-color .2s, background-color .2s;}
+a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale(.97);}
 
-/* blocos: revelam ao entrar na tela (só quando o cinema está ligado) */
-.pn-cine .pn-bloco{opacity:0;transform:translate3d(0,26px,0) scale(.985);
-  transition:opacity .7s cubic-bezier(.2,.85,.25,1), transform .8s cubic-bezier(.2,.85,.25,1);}
-.pn-cine .pn-bloco.pn-visto{opacity:1;transform:none;transition-delay:calc(min(var(--pn-i, 0), 1) * 90ms);}
+/* ------------------------------------------------- blocos ao rolar */
+.pn-cine .pn-bloco{opacity:0;transform:perspective(1400px) translate3d(0,46px,0) rotateX(9deg) scale(.97);transform-origin:50% 0;
+  transition:opacity .8s var(--pn-ease), transform 1s var(--pn-ease);}
+.pn-cine .pn-bloco.pn-visto{opacity:1;transform:none;transition-delay:calc(min(var(--pn-i, 0), 1) * 110ms);}
+/* uma linha de luz percorre a borda do bloco uma vez */
+@property --pn-ang{syntax:'<angle>';inherits:false;initial-value:0deg;}
+.pn-bloco{position:relative;}
+.pn-cine .pn-bloco::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1.5px;pointer-events:none;opacity:0;
+  background:conic-gradient(from var(--pn-ang), transparent 0 62%, color-mix(in srgb, var(--acento) 85%, transparent) 80%, #fff 86%, rgba(143,107,255,.9) 90%, transparent 97%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);}
+.pn-cine .pn-bloco.pn-visto::before{animation:pnContorno 1.9s cubic-bezier(.45,0,.25,1) .25s both;}
+@keyframes pnContorno{0%{--pn-ang:0deg;opacity:0}12%{opacity:1}80%{opacity:1}100%{--pn-ang:360deg;opacity:0}}
+/* título da seção: entra do desfoque; um fio de luz se desenha embaixo */
+.pn-sec-cab{position:relative;}
+.pn-visto .pn-sec-cab h2{animation:pnSobe .7s var(--pn-ease) .2s backwards;}
+.pn-visto .pn-sec-cab .pn-link{animation:pnSobe .7s var(--pn-ease) .35s backwards;}
+.pn-cine .pn-sec-cab::after{content:"";position:absolute;left:0;right:0;bottom:calc(-7px * var(--d, 1));height:1px;pointer-events:none;
+  background:linear-gradient(90deg, color-mix(in srgb, var(--acento) 55%, transparent), transparent 70%);
+  transform:scaleX(0);transform-origin:0 50%;}
+.pn-cine .pn-visto .pn-sec-cab::after{animation:pnFio 1.1s var(--pn-ease) .3s forwards;}
+@keyframes pnFio{0%{transform:scaleX(0);opacity:1}100%{transform:scaleX(1);opacity:.45}}
 
-/* atenção: as linhas deslizam; o ícone de alerta emite um anel */
-.pn-visto .pn-att{animation:pnDesliza .55s cubic-bezier(.2,.85,.25,1) both;}
-.pn-visto .pn-att:nth-child(2){animation-delay:.08s}.pn-visto .pn-att:nth-child(3){animation-delay:.16s}.pn-visto .pn-att:nth-child(n+4){animation-delay:.24s}
-@keyframes pnDesliza{from{opacity:0;transform:translate3d(-18px,0,0)}to{opacity:1;transform:none}}
+/* atenção: linhas deslizam; o alerta emite um anel */
+.pn-visto .pn-att{animation:pnDesliza .6s var(--pn-ease) backwards;animation-delay:.3s;}
+.pn-visto .pn-att:nth-child(2){animation-delay:.38s}.pn-visto .pn-att:nth-child(3){animation-delay:.46s}
+.pn-visto .pn-att:nth-child(4){animation-delay:.54s}.pn-visto .pn-att:nth-child(n+5){animation-delay:.62s}
+@keyframes pnDesliza{from{opacity:0;transform:translate3d(-26px,0,0);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
 .pn-att-erro .pn-att-ic{position:relative;}
-.pn-att-erro .pn-att-ic::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 0 color-mix(in srgb, var(--erro) 55%, transparent);
-  animation:pnAnel 2.2s cubic-bezier(.2,.6,.3,1) 1s infinite;}
+.pn-att-erro .pn-att-ic::after{content:"";position:absolute;inset:0;border-radius:inherit;
+  animation:pnAnel 2.2s cubic-bezier(.2,.6,.3,1) 1.2s infinite;}
 @keyframes pnAnel{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--erro) 55%, transparent)}80%,100%{box-shadow:0 0 0 12px color-mix(in srgb, var(--erro) 0%, transparent)}}
+.pn-visto .pn-vazio{animation:pnSobe .7s var(--pn-ease) .3s backwards;}
+.pn-visto .pn-vazio-ic{animation:pnCheck .7s var(--pn-mola) .55s backwards;}
+@keyframes pnCheck{from{transform:scale(0) rotate(-40deg);opacity:0}to{transform:none;opacity:1}}
 
-/* semana: os dias surgem em sequência; hoje brilha */
-.pn-visto .pn-dia-w,.pn-visto li.pn-dia{animation:pnDia .5s cubic-bezier(.2,.9,.25,1.15) both;}
-.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(2){animation-delay:.06s}.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(3){animation-delay:.12s}
-.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(4){animation-delay:.18s}.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(5){animation-delay:.24s}
-.pn-visto :is(.pn-dia-w,li.pn-dia):nth-child(n+6){animation-delay:.3s}
-@keyframes pnDia{from{opacity:0;transform:translate3d(0,14px,0) scale(.85)}to{opacity:1;transform:none}}
-.pn-dia.hoje{animation:pnHoje 2.8s ease-in-out 1s infinite;}
-@keyframes pnHoje{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--acento) 0%, transparent)}50%{box-shadow:0 0 0 3px color-mix(in srgb, var(--acento) 22%, transparent), 0 8px 24px -10px color-mix(in srgb, var(--acento) 70%, transparent)}}
+/* semana: os dias viram como cartas; hoje recebe luz de cima */
+.pn-semana-lista{perspective:800px;}
+.pn-visto .pn-dia-w,.pn-visto li.pn-dia,.pn-visto button.pn-dia{animation:pnDia .7s var(--pn-mola) backwards;animation-delay:.25s;}
+.pn-visto :is(.pn-dia-w,li.pn-dia,.pn-semana-lista > *):nth-child(2){animation-delay:.32s}
+.pn-visto :is(.pn-dia-w,li.pn-dia,.pn-semana-lista > *):nth-child(3){animation-delay:.39s}
+.pn-visto :is(.pn-dia-w,li.pn-dia,.pn-semana-lista > *):nth-child(4){animation-delay:.46s}
+.pn-visto :is(.pn-dia-w,li.pn-dia,.pn-semana-lista > *):nth-child(5){animation-delay:.53s}
+.pn-visto :is(.pn-dia-w,li.pn-dia,.pn-semana-lista > *):nth-child(n+6){animation-delay:.6s}
+.pn-dia-w > .pn-dia{animation:inherit;}
+@keyframes pnDia{from{opacity:0;transform:translate3d(0,22px,0) rotateY(-70deg) scale(.85)}to{opacity:1;transform:none}}
+.pn-dia.hoje{position:relative;overflow:hidden;animation:pnHoje 2.8s ease-in-out 1.3s infinite;}
+.pn-dia.hoje::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--acento) 22%, transparent), transparent 70%);opacity:.9;}
+.pn-dia.hoje > *{position:relative;}
+@keyframes pnHoje{0%,100%{box-shadow:0 0 0 3px var(--acento-suave)}50%{box-shadow:0 0 0 4px color-mix(in srgb, var(--acento) 30%, transparent), 0 10px 28px -10px color-mix(in srgb, var(--acento) 80%, transparent)}}
+.pn-visto li.pn-dia.hoje,.pn-visto button.pn-dia.hoje{animation:pnDia .7s var(--pn-mola) backwards, pnHoje 2.8s ease-in-out 1.3s infinite;}
 
-/* gráfico: barras crescem de baixo, em cascata; a da semana atual brilha */
+/* gráfico: base se desenha, barras crescem com mola, a atual brilha */
+.pn-graf{position:relative;}
+.pn-cine .pn-graf{border-bottom-color:transparent;}
+.pn-cine .pn-graf::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--borda);
+  transform:scaleX(0);transform-origin:0 50%;transition:transform .9s var(--pn-ease);}
+.pn-cine .pn-graf.pn-cresce::after{transform:scaleX(1);}
 .pn-graf .pn-graf-trilho i{transform-origin:50% 100%;}
 .pn-cine .pn-graf:not(.pn-cresce) .pn-graf-trilho i{transform:scaleY(0);}
-.pn-cine .pn-graf .pn-graf-trilho i{transition:transform .9s cubic-bezier(.2,.9,.2,1.08);}
-.pn-graf .pn-graf-col:nth-child(2) .pn-graf-trilho i{transition-delay:.06s}.pn-graf .pn-graf-col:nth-child(3) .pn-graf-trilho i{transition-delay:.12s}
-.pn-graf .pn-graf-col:nth-child(4) .pn-graf-trilho i{transition-delay:.18s}.pn-graf .pn-graf-col:nth-child(5) .pn-graf-trilho i{transition-delay:.24s}
-.pn-graf .pn-graf-col:nth-child(6) .pn-graf-trilho i{transition-delay:.3s}
-.pn-cine .pn-graf:not(.pn-cresce) .pn-graf-val{opacity:0;transform:translate3d(0,6px,0);}
-.pn-cine .pn-graf .pn-graf-val{transition:opacity .4s ease .5s, transform .4s ease .5s;}
-.pn-graf-col.atual .pn-graf-trilho i{position:relative;overflow:hidden;}
+.pn-cine .pn-graf .pn-graf-trilho i{transition:transform 1.1s cubic-bezier(.2,.9,.2,1.12) .25s, background var(--t);}
+.pn-graf .pn-graf-col:nth-child(2) .pn-graf-trilho i{transition-delay:.33s}.pn-graf .pn-graf-col:nth-child(3) .pn-graf-trilho i{transition-delay:.41s}
+.pn-graf .pn-graf-col:nth-child(4) .pn-graf-trilho i{transition-delay:.49s}.pn-graf .pn-graf-col:nth-child(5) .pn-graf-trilho i{transition-delay:.57s}
+.pn-graf .pn-graf-col:nth-child(6) .pn-graf-trilho i{transition-delay:.65s}.pn-graf .pn-graf-col:nth-child(n+7) .pn-graf-trilho i{transition-delay:.73s}
+.pn-cine .pn-graf:not(.pn-cresce) .pn-graf-val{opacity:0;transform:translate3d(0,10px,0) scale(.8);}
+.pn-cine .pn-graf .pn-graf-val{transition:opacity .5s ease .9s, transform .6s var(--pn-mola) .9s;}
+.pn-cine .pn-graf:not(.pn-cresce) .pn-graf-rot{opacity:0;}
+.pn-cine .pn-graf .pn-graf-rot{transition:opacity .6s ease .6s;}
+.pn-graf-col.atual .pn-graf-trilho i{position:relative;overflow:hidden;
+  box-shadow:0 0 22px -4px color-mix(in srgb, var(--acento) 80%, transparent);}
 .pn-graf-col.atual .pn-graf-trilho i::after{content:"";position:absolute;inset:0;
-  background:linear-gradient(180deg, transparent, rgba(255,255,255,.4) 50%, transparent);transform:translate3d(0,100%,0);
-  animation:pnVarre 2.6s cubic-bezier(.45,0,.2,1) 1.4s infinite;}
+  background:linear-gradient(180deg, transparent, rgba(255,255,255,.45) 50%, transparent);transform:translate3d(0,100%,0);
+  animation:pnVarre 2.6s cubic-bezier(.45,0,.2,1) 1.8s infinite;}
 @keyframes pnVarre{0%{transform:translate3d(0,100%,0)}55%,100%{transform:translate3d(0,-100%,0)}}
+/* coluna de luz atrás da barra da semana atual */
+.pn-graf-col.atual::before{content:"";position:absolute;left:50%;top:-10px;bottom:0;width:70px;margin-left:-35px;pointer-events:none;z-index:-1;
+  background:radial-gradient(50% 60% at 50% 100%, color-mix(in srgb, var(--acento) 22%, transparent), transparent);opacity:0;}
+.pn-cine .pn-graf.pn-cresce .pn-graf-col.atual::before{animation:pnSurge 1.2s ease-out 1.1s forwards;}
+.pn-graf-resumo > div{animation:none;}
+.pn-visto .pn-graf-resumo > div{animation:pnSobe .7s var(--pn-ease) backwards;animation-delay:.3s;}
+.pn-visto .pn-graf-resumo > div:nth-child(2){animation-delay:.4s}.pn-visto .pn-graf-resumo > div:nth-child(3){animation-delay:.5s}
 /* "acima da média": um brilho passa de tempos em tempos */
 .pn-delta{position:relative;overflow:hidden;}
 .pn-delta::after{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;
-  background:linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent);transform:translate3d(-120%,0,0);
-  animation:pnVarreLado 3.6s cubic-bezier(.45,0,.2,1) 1.6s infinite;}
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent);transform:translate3d(-120%,0,0);
+  animation:pnVarreLado 3.6s cubic-bezier(.45,0,.2,1) 1.9s infinite;}
 @keyframes pnVarreLado{0%{transform:translate3d(-120%,0,0)}40%,100%{transform:translate3d(320%,0,0)}}
 
-/* compromissos: entram um a um */
-.pn-visto .pn-comp{animation:pnDesliza .55s cubic-bezier(.2,.85,.25,1) both;}
-.pn-visto .pn-comp:nth-child(2){animation-delay:.07s}.pn-visto .pn-comp:nth-child(3){animation-delay:.14s}
-.pn-visto .pn-comp:nth-child(4){animation-delay:.21s}.pn-visto .pn-comp:nth-child(n+5){animation-delay:.28s}
+/* compromissos e próximas entregas: entram um a um */
+.pn-visto :is(.pn-comp, .cp-ag-item){animation:pnDesliza .6s var(--pn-ease) backwards;animation-delay:.3s;}
+.pn-visto :is(.pn-comp, .cp-ag-item):nth-child(2){animation-delay:.38s}.pn-visto :is(.pn-comp, .cp-ag-item):nth-child(3){animation-delay:.46s}
+.pn-visto :is(.pn-comp, .cp-ag-item):nth-child(4){animation-delay:.54s}.pn-visto :is(.pn-comp, .cp-ag-item):nth-child(n+5){animation-delay:.62s}
+/* fluxo do coordenador: as barras deitadas crescem da esquerda */
+.pnc-etapa-trilho i{transform-origin:0 50%;}
+.pn-cine .pn-bloco:not(.pn-visto) .pnc-etapa-trilho i{transform:scaleX(0);}
+.pn-cine .pnc-etapa-trilho i{transition:transform 1s cubic-bezier(.2,.9,.2,1.08) .35s, background var(--t);}
+
+/* ---------------------------------- paralaxe: ao rolar, o topo recua */
+@supports (animation-timeline: scroll()){
+  .pn-cine .pn-cab-tx{animation:pnRecua linear both;animation-timeline:scroll(nearest);animation-range:0 280px;}
+  .pn-cine .pn-ceu .pn-raios{animation:pnGira 80s linear infinite;}
+  .pn-cine .pn-ceu{animation:pnCeuRecua linear both;animation-timeline:scroll(nearest);animation-range:0 320px;}
+  @keyframes pnRecua{to{transform:translate3d(0,48px,0) scale(.95);opacity:.3}}
+  @keyframes pnCeuRecua{to{transform:translate3d(0,90px,0);opacity:.25}}
+}
 
 @media (prefers-reduced-motion:reduce){
-  .pn-cab::before,.pn-cab::after,.pn-kicker,.pn-cab h1,.pn-papel,.pn-resumo,.pn-cab-lado,.pn-kpis > *,.pn-kpi.pn-tom-erro,
-  .pn-att,.pn-att-ic::after,.pn-dia-w,li.pn-dia,.pn-dia.hoje,.pn-comp,.pn-graf-trilho i::after,.pn-delta::after{animation:none !important;}
-  .pn-cab h1{background:none;-webkit-text-fill-color:currentColor;}
+  .pn-ceu,.pn-ceu *,.pn-kicker,.pn-cab h1,.pn-cab h1::before,.pn-cab h1::after,.pn-l,.pn-papel,.pn-resumo,.pn-cab-lado,.pn-cab-acao::after,
+  .pn-kpis > *,.pn-kpi.pn-tom-erro,.pn .pn-kpi::after,.pn-pousou,.pn-att,.pn-att-ic::after,.pn-dia-w,.pn-dia,.pn-dia.hoje,
+  .pn-comp,.cp-ag-item,.pn-graf-trilho i::after,.pn-graf-col::before,.pn-delta::after,.pn-sec-cab h2,.pn-sec-cab .pn-link,
+  .pn-vazio,.pn-vazio-ic,.pn-graf-resumo > div,.pn-cab-tx{animation:none !important;}
+  .pn-ceu .pn-bokeh,.pn-ceu .pn-grao,.pn-cab h1::before,.pn-cab h1::after,.pn .pn-kpi::after{display:none;}
+  .pn-resumo{-webkit-mask-image:none;mask-image:none;}
 }

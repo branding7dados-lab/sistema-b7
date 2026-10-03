@@ -753,14 +753,68 @@ B7.Painel = (function () {
       if (!m || reduz()) return;
       const fim = parseFloat(txt.replace(',', '.')), dec = m[2] ? m[2].length - 1 : 0;
       if (fim <= 1 && !dec) return;
-      const t0 = performance.now(), DUR = 900;
+      const t0 = performance.now(), DUR = el.classList.contains('pn-kpi-num') ? 1300 : 900;
       const quadro = agora => {
         const p = Math.min(1, (agora - t0) / DUR), e = 1 - Math.pow(1 - p, 4);
         el.textContent = (fim * e).toFixed(dec).replace('.', ',');
-        if (p < 1) requestAnimationFrame(quadro); else el.textContent = txt;
+        if (p < 1) return requestAnimationFrame(quadro);
+        el.textContent = txt;
+        /* o número "pousa": pulo curto com brilho (styles/painel.css) */
+        if (el.classList.contains('pn-kpi-num')) {
+          el.classList.add('pn-pousou');
+          el.addEventListener('animationend', () => el.classList.remove('pn-pousou'), { once: true });
+        }
       };
       el.textContent = (0).toFixed(dec).replace('.', ',');
       requestAnimationFrame(quadro);
+    };
+    /* céu atrás da saudação: luzes, raios, horizonte, partículas, grão */
+    const BOKEH = [[8, 6, 9, 0, 30], [19, 4, 11, 2.5, -20], [31, 7, 8, 5, 40], [44, 3, 12, 1.2, 10], [57, 5, 10, 3.6, -30],
+                   [68, 8, 9, 6.2, 25], [79, 4, 13, .6, -15], [90, 6, 10, 4.4, 20], [96, 3, 11, 7.5, -25]];
+    const ceu = cab => {
+      if (cab.querySelector(':scope > .pn-ceu')) return;
+      const d = document.createElement('div');
+      d.className = 'pn-ceu'; d.setAttribute('aria-hidden', 'true');
+      d.innerHTML = '<i class="pn-luz-a"></i><i class="pn-luz-b"></i><i class="pn-raios"></i><i class="pn-horiz"></i>' +
+        '<span class="pn-bokeh">' + BOKEH.map(([x, s, dur, t, dx]) =>
+          '<i style="--x:' + x + '%;--s:' + s + 'px;--d:' + dur + 's;--t:' + t + 's;--dx:' + dx + 'px"></i>').join('') + '</span>' +
+        '<i class="pn-grao"></i>';
+      cab.insertBefore(d, cab.firstChild);
+    };
+    /* título letra a letra; o leitor de tela continua lendo a frase
+       inteira (aria-label), as letras ficam escondidas dele */
+    const letras = h1 => {
+      if (h1.classList.contains('pn-letras')) return;
+      const txt = h1.textContent, virgula = txt.indexOf(', ');
+      let k = 0, pos = 0;
+      const html = txt.split(' ').map(pal => {
+        const nome = virgula >= 0 && pos > virgula;
+        pos += pal.length + 1;
+        return '<span class="pn-pal">' + Array.from(pal).map(ch =>
+          '<span class="pn-l' + (nome ? ' pn-l-nome' : '') + '" style="--k:' + (k++) + '">' + esc(ch) + '</span>').join('') + '</span>';
+      }).join(' ');
+      h1.setAttribute('aria-label', txt);
+      h1.innerHTML = '<span aria-hidden="true">' + html + '</span>';
+      h1.classList.add('pn-letras');
+      requestAnimationFrame(() => {
+        const w = h1.firstChild.getBoundingClientRect().width;
+        if (w) h1.style.setProperty('--pn-w', Math.round(w) + 'px');
+      });
+    };
+    /* lanterna: a luz do cartão segue o dedo ou o cursor */
+    const luz = (e, liga) => {
+      const k = e.target.closest && e.target.closest('.pn-kpi');
+      if (!k) return;
+      const r = k.getBoundingClientRect();
+      k.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      k.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      if (liga) { clearTimeout(k._pnLuz); k.classList.add('pn-luz'); }
+    };
+    const apaga = e => {
+      const k = e.target.closest && e.target.closest('.pn-kpi');
+      if (!k || (e.relatedTarget && k.contains(e.relatedTarget))) return;
+      clearTimeout(k._pnLuz);
+      k._pnLuz = setTimeout(() => k.classList.remove('pn-luz'), e.pointerType === 'mouse' ? 0 : 500);
     };
     let olho = null;
     const revelar = raiz => {
@@ -774,19 +828,51 @@ B7.Painel = (function () {
         olho.observe(b);
       });
     };
+    /* a abertura ainda cobre a tela? o filme espera (primeiro quadro
+       parado) e só começa quando a cortina sai */
+    const cortina = () => document.querySelector('.b7-abertura:not(.saindo)');
+    let esperando = 0;
     let pedido = 0;
+    const passar = () => {
+      pedido = 0;
+      const raiz = alvo.querySelector('.pn');
+      if (!raiz) return;
+      if (reduz()) return;
+      if (!raiz.dataset.pnFilme) {
+        raiz.dataset.pnFilme = '1';
+        /* a estreia completa é uma por sessão; depois, o mesmo filme mais rápido */
+        try {
+          if (sessionStorage.getItem('b7_pn_estreia')) raiz.classList.add('pn-rapido');
+          else sessionStorage.setItem('b7_pn_estreia', '1');
+        } catch (e) {}
+      }
+      if ('IntersectionObserver' in window) raiz.classList.add('pn-cine');
+      raiz.querySelectorAll('.pn-cab').forEach(ceu);
+      raiz.querySelectorAll('.pn-cab h1').forEach(letras);
+      if (cortina()) {
+        raiz.classList.add('pn-pausa');
+        if (!esperando) esperando = setInterval(() => {
+          if (cortina()) return;
+          clearInterval(esperando); esperando = 0;
+          const r = alvo.querySelector('.pn');
+          if (r) r.classList.remove('pn-pausa');
+          passar();
+        }, 120);
+        return;
+      }
+      raiz.classList.remove('pn-pausa');
+      revelar(raiz);
+      raiz.querySelectorAll('.pn-kpi-num, .pn-graf-resumo b, .pn-graf-val').forEach(contar);
+      raiz.querySelectorAll('.pn-graf:not(.pn-cresce)').forEach(g => requestAnimationFrame(() => g.classList.add('pn-cresce')));
+    };
     new MutationObserver(() => {
-      if (pedido) return;
-      pedido = requestAnimationFrame(() => {
-        pedido = 0;
-        const raiz = alvo.querySelector('.pn');
-        if (!raiz) return;
-        if (!reduz() && 'IntersectionObserver' in window) raiz.classList.add('pn-cine');
-        revelar(raiz);
-        raiz.querySelectorAll('.pn-kpi-num, .pn-graf-resumo b, .pn-graf-val').forEach(contar);
-        raiz.querySelectorAll('.pn-graf:not(.pn-cresce)').forEach(g => requestAnimationFrame(() => g.classList.add('pn-cresce')));
-      });
+      if (!pedido) pedido = requestAnimationFrame(passar);
     }).observe(alvo, { childList: true, subtree: true });
+    alvo.addEventListener('pointermove', e => luz(e, e.pointerType === 'mouse'), { passive: true });
+    alvo.addEventListener('pointerdown', e => luz(e, true), { passive: true });
+    alvo.addEventListener('pointerout', apaga, { passive: true });
+    alvo.addEventListener('pointerup', apaga, { passive: true });
+    alvo.addEventListener('pointercancel', apaga, { passive: true });
   })();
 
   return { abrir, ui, contexto, adaptador };
