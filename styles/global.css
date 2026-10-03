@@ -1094,171 +1094,176 @@ button.chip-revisao:hover{filter:brightness(.96);}
    ===================================================================== */
 body.apurando #app{visibility:hidden;}
 
-/* A mesma linguagem da tela de acesso: fundo com profundidade, marca no
-   centro e um progresso honesto. Trocar de tela branca para o sistema
-   era a parte mais crua da experiência. */
-/* ---- ABERTURA: a lâmpada do B7 acende ----
-   Roteiro (≈1,1 s, tudo em transform/opacity, nada bloqueia o arranque):
-     0,00 s  fundo e raios de luz entram; o núcleo assenta
-     0,00–0,8 s  doze faíscas (os pontos do símbolo) voam até a lâmpada
-     0,35–1,0 s  "Branding7" se monta letra a letra
-     0,55–1,0 s  a lâmpada acende: tremula como filamento e explode em brilho
-     0,85 s  duas ondas de choque saem do centro
-     depois  laço calmo: anel, cometa em órbita, raios girando, halo
-   Saída: flash da lâmpada + um "portal" abre do centro e revela o sistema. */
+/* =====================================================================
+   ABERTURA — "a ideia acende" (pacote zl, 02/10)
+   Um conceito só, com a marca real: o símbolo do B7 é uma lâmpada feita
+   de ideias. Ela surge no escuro, a luz sobe por dentro dela, acende,
+   recua para o lugar que ocupa no logo enquanto o "Branding7" se escreve
+   ao lado — e, quando o sistema está pronto, o logo VOA para onde ele
+   mora na interface (barra lateral, topo do celular ou caixa de login),
+   enquanto o céu escuro se dissolve no app. O último quadro da abertura é
+   o primeiro quadro do sistema.
+
+   Roteiro completo (primeira abertura da sessão do navegador):
+     0,00–1,20 s  céu: luz de horizonte nasce; um feixe de luz cruza
+     0,10–0,95 s  o símbolo sai do desfoque e do escuro, grande, no centro
+     0,45–1,15 s  a "carga": uma faixa de luz sobe por dentro da lâmpada
+     0,95–1,25 s  pico: a lâmpada acende (brilho), bloom e uma onda de luz
+     1,25–1,90 s  o símbolo recua para o lugar dele no logo; quando ele
+     1,56–2,12 s  já está chegando, "Branding7" se revela da esquerda p/ direita
+     2,05 s →     pronto: sai assim que o sistema estiver montado
+     2,50 s →     ainda carregando? aparece, discreta, a espera honesta
+                  (frase + fio de luz). Sem porcentagem inventada.
+   Saída (≈0,65 s): logo voa até o destino real; céu some; o app assenta.
+   Versão curta (recarregar na mesma sessão, entre login e sistema):
+   logo já montado entra em 0,35 s e sai do mesmo jeito.
+   Tudo em transform/opacity; filtro só em elementos pequenos e por pouco
+   tempo. Nada de giro infinito, partícula ou raio de 1500 px.
+   ===================================================================== */
 .b7-abertura{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:22px;overflow:hidden;
-  background:radial-gradient(120% 90% at 50% 0%, #1A0C33 0%, #0B0512 58%, #06030C 100%);
-  animation:aberturaEntra .3s ease-out;}
-/* a inicial vem do HTML, antes de qualquer script: sem fade de entrada,
-   senão pisca o fundo branco por um instante */
+  align-items:center;justify-content:center;overflow:hidden;
+  --ab-w:clamp(232px, 66vw, 400px);
+  --ab-h:calc(var(--ab-w) * .3933);
+  --ab-dx:calc(var(--ab-w) * .3347);     /* centro do logo − centro do símbolo no logo */
+  --ab-curva:cubic-bezier(.65,0,.18,1);  /* deslizes longos: sai devagar, chega macio */
+  --ab-assenta:cubic-bezier(.16,1,.3,1);
+  animation:abEntraCortina .3s ease-out both;}
 .b7-abertura.inicial{animation:none;}
-@keyframes aberturaEntra{from{opacity:0}to{opacity:1}}
+@keyframes abEntraCortina{from{opacity:0}to{opacity:1}}
 
-/* ---- fundo: raios girando, três luzes lentas, partículas subindo ---- */
-.b7-abertura .fundo{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
-.b7-abertura .fundo span{position:absolute;border-radius:50%;}
-.b7-abertura .fundo .raios{left:50%;top:calc(50% - 55px);width:1500px;height:1500px;margin:-750px 0 0 -750px;
-  background:repeating-conic-gradient(from 0deg, rgba(226,64,156,.13) 0deg 5deg, transparent 5deg 24deg);
-  -webkit-mask:radial-gradient(circle, #000 0, rgba(0,0,0,.55) 18%, transparent 46%);
-          mask:radial-gradient(circle, #000 0, rgba(0,0,0,.55) 18%, transparent 46%);
-  animation:abRaiosEntra 1.4s cubic-bezier(.16,1,.3,1) .45s both, aberturaGira 40s linear infinite;}
-@keyframes abRaiosEntra{from{opacity:0}to{opacity:1}}
-.b7-abertura .fundo .a,.b7-abertura .fundo .b,.b7-abertura .fundo .c{filter:blur(22px);}
-.b7-abertura .fundo .a{width:680px;height:680px;top:-260px;right:-180px;
-  background:radial-gradient(circle,rgba(194,28,131,.32),transparent 66%);
-  animation:loginFlutua 18s cubic-bezier(.45,0,.55,1) infinite;}
-.b7-abertura .fundo .b{width:560px;height:560px;bottom:-220px;left:-160px;
-  background:radial-gradient(circle,rgba(58,30,134,.40),transparent 68%);
-  animation:loginFlutua 24s cubic-bezier(.45,0,.55,1) infinite reverse;}
-.b7-abertura .fundo .c{width:420px;height:420px;top:40%;left:50%;margin:-210px 0 0 -210px;
-  background:radial-gradient(circle,rgba(124,30,133,.22),transparent 70%);
-  animation:aberturaRespira 6s ease-in-out infinite;}
-@keyframes aberturaRespira{0%,100%{transform:scale(.92);opacity:.7}50%{transform:scale(1.08);opacity:1}}
-.b7-abertura .fundo .p{position:absolute;bottom:-12px;width:5px;height:5px;border-radius:50%;
-  background:rgba(255,255,255,.55);box-shadow:0 0 12px rgba(226,64,156,.8);
-  animation:aberturaSobe linear infinite;opacity:0;}
-.b7-abertura .fundo .p1{left:14%;animation-duration:11s;animation-delay:0s;}
-.b7-abertura .fundo .p2{left:28%;animation-duration:14s;animation-delay:2.5s;width:3px;height:3px;}
-.b7-abertura .fundo .p3{left:47%;animation-duration:12s;animation-delay:5s;}
-.b7-abertura .fundo .p4{left:63%;animation-duration:15s;animation-delay:1.2s;width:4px;height:4px;}
-.b7-abertura .fundo .p5{left:78%;animation-duration:10s;animation-delay:3.8s;}
-.b7-abertura .fundo .p6{left:90%;animation-duration:13s;animation-delay:6.5s;width:3px;height:3px;}
-@keyframes aberturaSobe{
-  0%{transform:translateY(0) translateX(0);opacity:0}
-  10%{opacity:.9}
-  50%{transform:translateY(-50vh) translateX(18px);opacity:.6}
-  100%{transform:translateY(-105vh) translateX(-10px);opacity:0}}
+/* ---- céu: escuro com profundidade (não um degradê roxo chapado) ---- */
+.ab-ceu{position:absolute;inset:0;overflow:hidden;pointer-events:none;
+  background:radial-gradient(130% 85% at 50% 108%, #1B0B30 0%, #0B0614 46%, #05030A 100%);}
+.ab-ceu i{position:absolute;display:block;pointer-events:none;}
+/* luz de horizonte: um brilho largo que nasce embaixo */
+.ab-horizonte{left:50%;bottom:-38vmax;width:120vmax;height:70vmax;margin-left:-60vmax;border-radius:50%;
+  background:radial-gradient(closest-side, rgba(194,28,131,.30), rgba(58,30,134,.20) 45%, transparent 72%);
+  animation:abHorizonte 1.4s var(--ab-assenta) both;}
+@keyframes abHorizonte{from{opacity:0;transform:translate3d(0,8%,0) scale(.86)}to{opacity:1;transform:none}}
+/* feixe: uma luz diagonal que cruza uma vez, como um holofote passando */
+.ab-chave{top:-30%;left:-60%;width:60%;height:160%;
+  background:linear-gradient(90deg, transparent, rgba(255,214,240,.07) 45%, rgba(255,255,255,.10) 50%, rgba(255,214,240,.07) 55%, transparent);
+  transform:rotate(18deg);opacity:0;
+  animation:abChave 1.7s cubic-bezier(.45,0,.2,1) .45s both;}
+@keyframes abChave{0%{opacity:0;transform:translate3d(0,0,0) rotate(18deg)}20%{opacity:1}
+  100%{opacity:0;transform:translate3d(320%,0,0) rotate(18deg)}}
+/* grão: textura parada e muito leve, tira o aspecto "plástico" do escuro */
+.ab-grao{inset:0;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");}
 
-/* ---- núcleo: caixa fixa de 180 px; tudo centrado nela ---- */
-.b7-abertura .nucleo{position:relative;z-index:1;width:180px;height:180px;flex:none;
-  display:flex;align-items:center;justify-content:center;
-  animation:abNucleo .8s cubic-bezier(.16,1,.3,1) both;}
-@keyframes abNucleo{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:none}}
-.b7-abertura .giro{position:absolute;inset:0;width:100%;height:100%;
-  animation:aberturaGira 2.2s cubic-bezier(.55,.1,.45,.9) infinite;
-  filter:drop-shadow(0 0 8px rgba(226,64,156,.45));}
-@keyframes aberturaGira{to{transform:rotate(360deg)}}
-/* anel interno tracejado, girando ao contrário */
-.b7-abertura .anel-dentro{position:absolute;inset:24px;border-radius:50%;border:1px dashed rgba(255,255,255,.14);
-  animation:aberturaGira 16s linear infinite reverse, abRaiosEntra .8s ease-out .5s both;}
-/* cometa: um ponto de luz em órbita, com rastro */
-.b7-abertura .orbita{position:absolute;inset:-16px;border-radius:50%;
-  animation:aberturaGira 3.4s linear infinite reverse, abRaiosEntra .6s ease-out .9s both;}
-.b7-abertura .orbita:before{content:"";position:absolute;inset:0;border-radius:50%;
-  background:conic-gradient(rgba(255,143,203,.55) 0deg, transparent 70deg, transparent 360deg);
-  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
-          mask:radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));}
-.b7-abertura .orbita i{position:absolute;top:-3px;left:50%;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;
-  background:#fff;box-shadow:0 0 10px 3px rgba(255,143,203,.95), 0 0 26px 8px rgba(194,28,131,.55);}
-/* faíscas: chegam de longe e somem dentro da lâmpada */
-.b7-abertura .faiscas{position:absolute;inset:0;pointer-events:none;}
-.b7-abertura .faiscas i{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;
-  background:#FF8FCB;box-shadow:0 0 10px 2px rgba(255,143,203,.85);opacity:0;
-  animation:abFaisca .62s cubic-bezier(.55,0,.8,.3) var(--d,0ms) both;}
-.b7-abertura .faiscas i:nth-child(even){background:#9C7BFF;box-shadow:0 0 10px 2px rgba(156,123,255,.8);width:4px;height:4px;margin:-2px 0 0 -2px;}
-@keyframes abFaisca{
-  0%{opacity:0;transform:rotate(var(--a)) translateX(190px) scale(1.4)}
-  20%{opacity:1}
-  85%{opacity:1}
-  100%{opacity:0;transform:rotate(var(--a)) translateX(4px) scale(.3)}}
-/* ondas de choque no instante em que a lâmpada acende */
-.b7-abertura .onda{position:absolute;inset:38px;border-radius:50%;opacity:0;
-  border:2px solid rgba(255,143,203,.85);
-  box-shadow:0 0 34px rgba(226,64,156,.6), inset 0 0 24px rgba(226,64,156,.45);
-  animation:abOnda 1.2s cubic-bezier(.16,1,.3,1) .82s both;}
-.b7-abertura .onda.dois{animation-delay:1s;border-color:rgba(156,123,255,.7);}
-@keyframes abOnda{0%{opacity:0;transform:scale(.35)}8%{opacity:.95}100%{opacity:0;transform:scale(2.8)}}
-
-/* ---- a lâmpada: apagada → tremula → acende ---- */
-.b7-abertura .marca{position:relative;width:62px;height:72px;
-  background:url('../assets/brand/symbol-color.png') no-repeat center/contain;
-  animation:abAcende 1.15s cubic-bezier(.2,.8,.2,1) both, aberturaMarca 2.4s ease-in-out 1.15s infinite;
-  filter:drop-shadow(0 8px 24px rgba(194,28,131,.35));}
+/* ---- palco: o logo real, montado em duas peças sem distorcer ----
+   logo-white.png é 900×354; o símbolo ocupa 0–297 px (33,1%) e a palavra
+   começa em 337 px. A palavra é o próprio PNG recortado; o símbolo é o
+   symbol-color.png (mesma proporção) encaixado no lugar dele. */
+.ab-palco{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+  width:var(--ab-w);height:var(--ab-h);margin-top:-6vh;}
+.ab-marca{position:relative;width:var(--ab-w);height:var(--ab-h);}
+.ab-palavra{position:absolute;inset:0;background:url('../assets/brand/logo-white.png') no-repeat 0 0/100% 100%;
+  -webkit-clip-path:inset(0 0 0 36%);clip-path:inset(0 0 0 36%);
+  animation:abPalavra .56s var(--ab-assenta) 1.56s both;}
+@keyframes abPalavra{
+  from{opacity:0;-webkit-clip-path:inset(0 64% 0 36%);clip-path:inset(0 64% 0 36%);transform:translate3d(-10px,0,0);filter:blur(5px)}
+  to{opacity:1;-webkit-clip-path:inset(0 0 0 36%);clip-path:inset(0 0 0 36%);transform:none;filter:none}}
+.ab-simbolo{position:absolute;left:0;top:0;width:33.1%;height:100%;transform-origin:50% 50%;
+  animation:abSimbolo 1.8s .1s both;}
+/* surge grande no centro → segura no pico → recua para o lugar no logo */
+@keyframes abSimbolo{
+  0%  {opacity:0;transform:translate3d(var(--ab-dx),0,0) scale(1.32);animation-timing-function:cubic-bezier(.2,.7,.2,1)}
+  46% {opacity:1;transform:translate3d(var(--ab-dx),0,0) scale(1.62);animation-timing-function:linear}
+  64% {opacity:1;transform:translate3d(var(--ab-dx),0,0) scale(1.66);animation-timing-function:cubic-bezier(.65,0,.18,1)}
+  100%{opacity:1;transform:none}}
+.ab-simbolo i{position:absolute;inset:0;display:block;}
+.ab-cor{background:url('../assets/brand/symbol-color.png') no-repeat center/contain;
+  animation:abAcende 1.25s .1s both;}
+/* do escuro e desfocado → nítido e meio apagado → ACENDE → assenta */
 @keyframes abAcende{
-  0%  {opacity:0;transform:scale(.55);filter:brightness(.15) blur(6px)}
-  40% {opacity:.45;transform:scale(.88);filter:brightness(.35) blur(2px)}
-  50% {opacity:.15}
-  56% {opacity:.85;filter:brightness(1.4) blur(0)}
-  61% {opacity:.3}
-  70% {opacity:1;transform:scale(1.12);filter:brightness(1.7) drop-shadow(0 0 30px rgba(255,143,203,.95))}
-  100%{opacity:1;transform:scale(1);filter:brightness(1) drop-shadow(0 8px 24px rgba(194,28,131,.35))}}
-@keyframes aberturaMarca{0%,100%{transform:scale(.97)}50%{transform:scale(1.02)}}
-.b7-abertura .marca:before{content:"";position:absolute;inset:-46px;border-radius:50%;
-  background:radial-gradient(circle,rgba(194,28,131,.34),transparent 68%);
-  animation:aberturaHalo 2.8s ease-in-out .7s infinite both;z-index:-1;}
-@keyframes aberturaHalo{0%,100%{opacity:.35;transform:scale(.88)}50%{opacity:.95;transform:scale(1.1)}}
+  0%  {filter:blur(12px) brightness(.12) saturate(.6)}
+  58% {filter:blur(0) brightness(.62) saturate(.9);animation-timing-function:cubic-bezier(.3,0,.2,1)}
+  78% {filter:brightness(1.75) saturate(1.25) drop-shadow(0 0 18px rgba(255,143,203,.85))}
+  100%{filter:brightness(1.06) saturate(1.05) drop-shadow(0 0 10px rgba(226,64,156,.45))}}
+/* a carga: faixa de luz subindo por dentro do desenho da lâmpada */
+.ab-carga{-webkit-mask:url('../assets/brand/symbol-white.png') no-repeat center/contain;
+          mask:url('../assets/brand/symbol-white.png') no-repeat center/contain;overflow:hidden;opacity:.95;}
+.ab-carga b{position:absolute;left:0;right:0;top:0;height:60%;display:block;
+  background:linear-gradient(0deg, transparent, rgba(255,240,250,.9) 50%, transparent);
+  transform:translate3d(0,170%,0);animation:abCarga .72s cubic-bezier(.5,0,.3,1) .45s both;}
+@keyframes abCarga{0%{transform:translate3d(0,170%,0);opacity:0}15%{opacity:1}100%{transform:translate3d(0,-110%,0);opacity:.2}}
+/* versão branca do símbolo: só aparece no voo, quando o destino é branco */
+.ab-branca{background:url('../assets/brand/symbol-white.png') no-repeat center/contain;opacity:0;}
 
-/* ---- nome letra a letra + frase que se reveza ---- */
-.b7-abertura .txt{position:relative;z-index:1;font-size:13.5px;margin-top:4px;min-height:52px;
-  color:rgba(255,255,255,.60);letter-spacing:.01em;text-align:center;display:flex;flex-direction:column;align-items:center;}
-.b7-abertura .nome{display:block;font-family:'Archivo';font-weight:900;font-size:24px;letter-spacing:-.02em;margin-bottom:6px;
-  white-space:nowrap;text-shadow:0 0 22px rgba(226,64,156,.35);}
-.b7-abertura .nome span{display:inline-block;color:#fff;
-  animation:abLetra .7s cubic-bezier(.16,1,.3,1) calc(.35s + var(--i,0) * 45ms) both;}
-/* as últimas letras puxam para o magenta, como no degradê da marca */
-.b7-abertura .nome span:nth-child(n+5){color:#F6D2EA;}
-.b7-abertura .nome span:nth-child(n+8){color:#FF8FCB;}
-@keyframes abLetra{
-  0%{opacity:0;transform:translate3d(0,16px,0) scale(.8) rotate(-6deg);filter:blur(8px)}
-  60%{opacity:1;filter:blur(0)}
-  100%{opacity:1;transform:none;filter:none}}
-.b7-abertura .frase{display:block;transition:opacity .18s ease, transform .18s ease;
-  animation:aberturaTexto .9s cubic-bezier(.16,1,.3,1) .7s both;}
-.b7-abertura .frase.trocando{opacity:0;transform:translateY(-4px);}
-@keyframes aberturaTexto{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* bloom atrás do símbolo e uma onda de luz no pico */
+.ab-bloom{position:absolute;left:50%;top:50%;width:min(92vw,460px);height:min(92vw,460px);margin:calc(min(92vw,460px) / -2) 0 0 calc(min(92vw,460px) / -2);
+  border-radius:50%;background:radial-gradient(closest-side, rgba(226,64,156,.42), rgba(124,30,133,.20) 46%, transparent 74%);
+  opacity:.34;transform:scale(1.4);animation:abBloom 1.3s cubic-bezier(.2,.8,.2,1) .92s both;}
+@keyframes abBloom{0%{opacity:0;transform:scale(.36)}24%{opacity:1;transform:scale(1)}100%{opacity:.34;transform:scale(1.4)}}
+.ab-onda{position:absolute;left:50%;top:50%;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;
+  border:1.5px solid rgba(255,173,215,.75);box-shadow:0 0 28px rgba(226,64,156,.45), inset 0 0 18px rgba(226,64,156,.3);
+  opacity:0;animation:abOnda 1s cubic-bezier(.16,1,.3,1) 1s both;}
+@keyframes abOnda{0%{opacity:0;transform:scale(.5)}12%{opacity:.85}100%{opacity:0;transform:scale(2.6)}}
 
-.b7-abertura .barra{position:relative;z-index:1;width:200px;height:3px;border-radius:2px;
-  background:rgba(255,255,255,.10);overflow:hidden;
-  animation:aberturaTexto .9s cubic-bezier(.16,1,.3,1) .85s both;}
-.b7-abertura .barra i{display:block;width:42%;height:100%;border-radius:2px;
-  background:linear-gradient(90deg,#3A1E86,#C21C83,#FF8FCB);box-shadow:0 0 12px rgba(255,111,181,.8);
-  animation:aberturaCorre 1.5s cubic-bezier(.45,0,.55,1) infinite;}
-@keyframes aberturaCorre{0%{transform:translateX(-110%)}100%{transform:translateX(350%)}}
+/* ---- espera honesta: só se o sistema ainda não estiver pronto ---- */
+.ab-espera{position:absolute;left:0;right:0;top:calc(50% - 6vh + var(--ab-h) / 2 + 34px);z-index:1;
+  display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
+  color:rgba(255,255,255,.62);font-size:13px;letter-spacing:.01em;
+  opacity:0;animation:abEspera .45s var(--ab-assenta) 2.5s both;}
+@keyframes abEspera{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+.ab-ola{font-family:'Archivo';font-weight:800;font-size:17px;color:#fff;letter-spacing:-.01em;}
+.ab-ola:empty{display:none;}
+.ab-fio{position:relative;display:block;width:120px;height:2px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,.08);margin-top:4px;}
+.ab-fio:after{content:"";position:absolute;inset:0;width:40%;border-radius:2px;
+  background:linear-gradient(90deg, transparent, #FF8FCB, transparent);
+  animation:abFio 1.4s cubic-bezier(.45,0,.55,1) infinite;}
+@keyframes abFio{from{transform:translate3d(-110%,0,0)}to{transform:translate3d(260%,0,0)}}
 
-/* ---- saída: a lâmpada estoura em luz e um portal abre do centro ----
-   O "buraco" é uma máscara radial cujo raio cresce (@property). Sem
-   suporte a @property, a máscara fica parada e o fim da animação faz o
-   fade normal — nunca trava a tela. */
-@property --ab-raio{syntax:'<length>';inherits:false;initial-value:0px;}
-.b7-abertura.saindo{pointer-events:none;
-  -webkit-mask:radial-gradient(circle at 50% calc(50% - 55px), transparent var(--ab-raio), #000 calc(var(--ab-raio) + 60px));
-          mask:radial-gradient(circle at 50% calc(50% - 55px), transparent var(--ab-raio), #000 calc(var(--ab-raio) + 60px));
-  animation:abPortal .72s cubic-bezier(.7,0,.25,1) .12s forwards;}
-@keyframes abPortal{0%{--ab-raio:0px;opacity:1}80%{opacity:1}100%{--ab-raio:160vmax;opacity:0}}
-.b7-abertura.saindo .marca{animation:abFlash .5s cubic-bezier(.2,.8,.2,1) forwards;}
-@keyframes abFlash{
-  0%{transform:scale(1);filter:brightness(1)}
-  35%{transform:scale(1.3);filter:brightness(2.4) drop-shadow(0 0 46px #FF8FCB)}
-  100%{transform:scale(2.2);opacity:0;filter:brightness(3) blur(4px)}}
-.b7-abertura.saindo .txt,.b7-abertura.saindo .barra,.b7-abertura.saindo .orbita,.b7-abertura.saindo .giro,.b7-abertura.saindo .anel-dentro{
-  animation:abSome .28s ease-in forwards;}
-@keyframes abSome{to{opacity:0;transform:scale(.96)}}
+/* ---- versão curta: logo já montado, entrada de 0,35 s ---- */
+.ab-curta .b7-abertura.inicial .ab-palco,.b7-abertura:not(.inicial) .ab-palco{animation:abCurta .38s var(--ab-assenta) both;}
+@keyframes abCurta{from{opacity:0;transform:scale(.965);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+.ab-curta .b7-abertura.inicial .ab-simbolo,.ab-curta .b7-abertura.inicial .ab-palavra,.ab-curta .b7-abertura.inicial .ab-cor,
+.ab-curta .b7-abertura.inicial .ab-carga b,.ab-curta .b7-abertura.inicial .ab-bloom,.ab-curta .b7-abertura.inicial .ab-horizonte,
+.b7-abertura:not(.inicial) .ab-simbolo,.b7-abertura:not(.inicial) .ab-palavra,.b7-abertura:not(.inicial) .ab-cor,
+.b7-abertura:not(.inicial) .ab-carga b,.b7-abertura:not(.inicial) .ab-bloom,.b7-abertura:not(.inicial) .ab-horizonte{animation:none;}
+.ab-curta .b7-abertura.inicial .ab-cor,.b7-abertura:not(.inicial) .ab-cor{filter:drop-shadow(0 0 10px rgba(226,64,156,.45));}
+.ab-curta .b7-abertura.inicial .ab-onda,.ab-curta .b7-abertura.inicial .ab-chave,.ab-curta .b7-abertura.inicial .ab-carga,
+.b7-abertura:not(.inicial) .ab-onda,.b7-abertura:not(.inicial) .ab-chave,.b7-abertura:not(.inicial) .ab-carga{display:none;}
+.ab-curta .b7-abertura.inicial .ab-espera,.b7-abertura:not(.inicial) .ab-espera{animation-delay:.5s;}
+
+/* ---- saída: o céu se dissolve; o logo voa (js/app.js, Web Animations) ---- */
+.b7-abertura.saindo{pointer-events:none;}
+.b7-abertura.saindo .ab-ceu{animation:abSomeCeu .56s cubic-bezier(.4,0,.2,1) .05s forwards;}
+.b7-abertura.saindo .ab-bloom{animation:abSomeBloom .5s cubic-bezier(.4,0,.2,1) forwards;}
+.b7-abertura.b7-abertura.saindo .ab-espera{animation:abSomeRapido .16s ease-in forwards;}
+.b7-abertura.saindo .ab-onda,.b7-abertura.saindo .ab-chave{display:none;}
+@keyframes abSomeCeu{to{opacity:0}}
+@keyframes abSomeBloom{to{opacity:0;transform:scale(1.9)}}
+@keyframes abSomeRapido{to{opacity:0}}
+/* sem destino para o voo (ex.: tela de configuração): o logo recua e some */
+.b7-abertura.saindo.sem-voo .ab-palco{animation:abSomePalco .42s cubic-bezier(.4,0,.2,1) forwards;}
+@keyframes abSomePalco{to{opacity:0;transform:scale(.92);filter:blur(6px)}}
+/* o destino do voo fica invisível até o logo pousar */
+.ab-destino{opacity:0 !important;}
+.ab-pousou{animation:abPousa .22s ease-out both;}
+@keyframes abPousa{from{opacity:0}to{opacity:1}}
+
+/* ---- o sistema assenta por baixo do céu que some (uma vez, no arranque) ----
+   Ordem: fundo → navegação → topo → conteúdo → barra de baixo. Quem
+   segura o logo de destino (barra lateral, topo) entra só com opacidade,
+   para o pouso cair no lugar exato. */
+body.ab-revela .lateral{animation:abRevelaFade .5s cubic-bezier(.2,.8,.2,1) .08s both;}
+body.ab-revela .topo-global{animation:abRevelaFade .46s cubic-bezier(.2,.8,.2,1) .12s both;}
+body.ab-revela #painel-dashboard{animation:abRevelaCorpo .62s cubic-bezier(.16,1,.3,1) .16s both;}
+body.ab-revela .nav-inferior{animation:abRevelaBase .56s cubic-bezier(.16,1,.3,1) .22s both;}
+body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaFade .4s cubic-bezier(.2,.8,.2,1) .4s both;}
+@keyframes abRevelaFade{from{opacity:0}to{opacity:1}}
+@keyframes abRevelaCorpo{from{opacity:0;transform:translate3d(0,14px,0) scale(.985)}to{opacity:1;transform:none}}
+@keyframes abRevelaBase{from{opacity:0;transform:translate3d(0,26px,0)}to{opacity:1;transform:none}}
 
 @media (prefers-reduced-motion:reduce){
   .b7-abertura,.b7-abertura *{animation:none !important;}
-  .b7-abertura .faiscas,.b7-abertura .onda,.b7-abertura .orbita,.b7-abertura .fundo .raios{display:none;}
-  .b7-abertura.saindo{-webkit-mask:none;mask:none;opacity:0;transition:opacity .2s;}
+  .ab-onda,.ab-chave,.ab-carga{display:none;}
+  .ab-cor{filter:none;}
+  .ab-espera{opacity:1;animation:none;}
+  .b7-abertura.saindo{opacity:0;transition:opacity .2s ease;}
+  body.ab-revela *{animation:none !important;}
 }
 
 /* =====================================================================
@@ -1575,4 +1580,159 @@ body.apurando #app{visibility:hidden;}
 @keyframes b7Pulso{0%,100%{opacity:1}50%{opacity:.5}}
 @media (prefers-reduced-motion:reduce){
   .esqueleto-tela .esq,.esqueleto{animation:none !important;opacity:.8;}
+}
+
+/* =====================================================================
+   MOTION & VIDRO — camada 2 (pacote zl, 02/10)
+   Estende o bloco acima (mesmos tokens). O que entra:
+   • direção na troca de tela (<html data-nav>, js/app.js);
+   • profundidade atrás de modal/folha (a tela de trás recua um pouco);
+   • celular: barra inferior vira uma ilha de vidro flutuante, com a luz
+     do item ativo deslizando entre os itens; topo ganha vidro mais denso
+     e filete quando o conteúdo passa por baixo;
+   • menus e popovers nascem do gatilho (escala + origem);
+   • indicador das seções do cliente desliza (js/dashboard.js).
+   Vidro só no que flutua: cards e listas continuam sólidos.
+   ===================================================================== */
+:root{
+  --m-pagina:280ms; --m-grande:380ms;
+  --m-volta:cubic-bezier(.3,.7,.2,1);
+  --vidro-ilha:color-mix(in srgb, var(--card) 70%, transparent);
+  --vidro-realce:inset 0 1px 0 rgba(255,255,255,.65), inset 0 0 0 1px rgba(255,255,255,.28);
+  --vidro-ilha-sombra:0 18px 40px -16px rgba(30,12,60,.42), 0 4px 12px -6px rgba(30,12,60,.18);
+}
+[data-theme="dark"]{
+  --vidro-ilha:color-mix(in srgb, #1B1426 74%, transparent);
+  --vidro-realce:inset 0 1px 0 rgba(255,255,255,.09), inset 0 0 0 1px rgba(255,255,255,.07);
+  --vidro-ilha-sombra:0 20px 44px -14px rgba(0,0,0,.8), 0 4px 14px -6px rgba(0,0,0,.5);
+}
+
+/* ---- troca de tela com direção ----
+   frente: a tela nova chega de um pouco "mais perto" e assenta;
+   volta:  resolve de trás para o lugar (o caminho inverso);
+   lado:   módulo diferente — o esmaecer curto de sempre. */
+[data-nav="frente"] .conteudo.entra{animation:b7Frente var(--m-pagina) var(--m-entra) both;}
+[data-nav="volta"] .conteudo.entra{animation:b7Volta var(--m-pagina) var(--m-volta) both;}
+@keyframes b7Frente{from{opacity:0;transform:translate3d(0,12px,0) scale(.986)}to{opacity:1;transform:none}}
+@keyframes b7Volta{from{opacity:0;transform:translate3d(0,-6px,0) scale(1.012)}to{opacity:1;transform:none}}
+
+/* ---- profundidade: com um modal ou folha aberto, o sistema recua ---- */
+@supports selector(:has(*)){
+  #app{transition:transform var(--m-grande) var(--m-entra), filter var(--m-grande) var(--m-entra);}
+  @media (max-width:760px){
+    body:has(> .fundo-modal:not(.saindo):not(.paleta)) #app{transform:scale(.965) translate3d(0,6px,0);border-radius:18px;overflow:hidden;}
+  }
+  @media (min-width:761px){
+    body:has(> .fundo-modal:not(.saindo)) #app{transform:scale(.992);}
+  }
+}
+
+/* ---- modal: entra de mais perto, sai para longe (desktop) ---- */
+@media (min-width:521px){
+  .fundo-modal:not(.tp-folha) .modal{animation:b7ModalZ var(--m-padrao) var(--m-entra) both;}
+  .fundo-modal.saindo:not(.tp-folha) .modal{animation:b7ModalZSai var(--m-rapido) var(--m-sai) forwards;}
+}
+@keyframes b7ModalZ{from{opacity:0;transform:translate3d(0,10px,0) scale(.965)}to{opacity:1;transform:none}}
+@keyframes b7ModalZSai{to{opacity:0;transform:translate3d(0,4px,0) scale(.975)}}
+
+/* ---- menus e popovers: nascem do gatilho ---- */
+.lista.solta{transform:translate3d(0,-6px,0) scale(.965);
+  transition:opacity var(--m-rapido) var(--m-entra), transform var(--m-padrao) var(--m-entra);}
+.lista.solta.acima{transform:translate3d(0,6px,0) scale(.965);}
+.lista.solta.mostrando{transform:none;}
+.tp-menu{transform:translate3d(0,-6px,0) scale(.965);transform-origin:top right;
+  transition:opacity var(--m-rapido) var(--m-entra), transform var(--m-padrao) var(--m-entra);}
+.tp-menu.mostrando{transform:none;}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .tp-menu{background:var(--vidro-bg);border-color:var(--vidro-borda);box-shadow:var(--vidro-sombra);
+    -webkit-backdrop-filter:var(--vidro-filtro);backdrop-filter:var(--vidro-filtro);}
+}
+
+/* ---- seções do cliente: o sublinhado desliza entre as abas ---- */
+.cli-secoes-rolo{position:relative;}
+.cli-ind{position:absolute;left:0;bottom:0;height:2px;width:0;border-radius:2px;background:var(--acento);
+  pointer-events:none;transform-origin:0 50%;
+  transition:transform var(--m-padrao) var(--m-entra), width var(--m-padrao) var(--m-entra);}
+.cli-secoes.com-ind a::after{display:none;}
+
+/* =========================================== CELULAR: vidro e toque */
+@media (max-width:760px){
+  /* ---- barra inferior: ilha de vidro flutuante ---- */
+  html body[data-shell="interno"] .nav-inferior{
+    left:max(10px, env(safe-area-inset-left));right:max(10px, env(safe-area-inset-right));
+    bottom:max(10px, env(safe-area-inset-bottom));
+    padding:0 4px;border-radius:24px;border:0;
+    background:color-mix(in srgb, var(--card) 96%, transparent);
+    box-shadow:var(--vidro-realce), var(--vidro-ilha-sombra);}
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    html body[data-shell="interno"] .nav-inferior,
+    html[data-theme="dark"] body[data-shell="interno"] .nav-inferior{background:var(--vidro-ilha);
+      -webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);
+      box-shadow:var(--vidro-realce), var(--vidro-ilha-sombra);}
+  }
+  /* o conteúdo rola por baixo da ilha até o fim */
+  html body[data-shell="interno"] #painel-dashboard{
+    padding-bottom:calc(86px + env(safe-area-inset-bottom));
+    scroll-padding-bottom:calc(92px + env(safe-area-inset-bottom));}
+  html .nav-inferior a,html .nav-inferior button{min-height:60px;}
+  .nav-inferior li{position:relative;z-index:1;}
+  /* a luz do item ativo: uma pílula que desliza entre os itens */
+  .ni-luz{position:absolute;left:0;top:8px;width:52px;height:30px;border-radius:15px;z-index:0;pointer-events:none;
+    background:var(--acento-suave);
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--acento) 14%, transparent), 0 6px 16px -8px color-mix(in srgb, var(--acento) 60%, transparent);
+    opacity:0;transition:transform var(--m-enfase) var(--m-entra), opacity var(--m-rapido) var(--m-entra);}
+  .nav-inferior.com-luz .ni-luz{opacity:1;}
+  .nav-inferior.com-luz .on .ni-ic{background:transparent;}
+  .nav-inferior.sem-trans .ni-luz{transition:none;}
+  .nav-inferior .on:before{display:none;}
+  html .ni-ic{transition:color var(--m-rapido) var(--m-entra), transform var(--m-padrao) var(--m-entra);}
+  .nav-inferior .on .ni-ic{transform:translate3d(0,-1px,0) scale(1.06);}
+  .ni-ic svg{transition:stroke-width var(--m-rapido);}
+  .nav-inferior .on .ni-ic svg{stroke-width:2;}
+  .ni-tx{transition:color var(--m-rapido), opacity var(--m-rapido);}
+  .nav-inferior a:not(.on) .ni-tx,.nav-inferior button:not(.on) .ni-tx{opacity:.82;}
+  html .nav-inferior a:active .ni-ic,html .nav-inferior button:active .ni-ic{transform:scale(.88);background:transparent;}
+  /* toasts sobem acima da ilha */
+  html body[data-shell="interno"] #toasts{bottom:calc(84px + env(safe-area-inset-bottom));}
+  body.teclado-aberto #toasts{bottom:16px;}
+
+  /* ---- topo: vidro mais denso e filete quando há conteúdo por baixo ---- */
+  html body[data-shell="interno"] #tela-dashboard .topo.topo-global{
+    border-bottom-color:transparent;box-shadow:none;
+    transition:background-color var(--m-padrao), box-shadow var(--m-padrao), border-color var(--m-padrao);}
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    html body[data-shell="interno"] #tela-dashboard .topo.topo-global{background:color-mix(in srgb, var(--fundo) 70%, transparent);
+      -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);}
+    html[data-theme="dark"] body[data-shell="interno"] #tela-dashboard .topo.topo-global{background:color-mix(in srgb, var(--fundo) 72%, transparent);}
+    html body.painel-rolou[data-shell="interno"] #tela-dashboard .topo.topo-global{background:color-mix(in srgb, var(--card) 80%, transparent);}
+  }
+  html body.painel-rolou[data-shell="interno"] #tela-dashboard .topo.topo-global{
+    border-bottom-color:color-mix(in srgb, var(--borda) 80%, transparent);
+    box-shadow:0 10px 26px -20px rgba(20,8,40,.5);}
+
+  /* ---- folhas: vidro, alça e cantos maiores; véu um pouco mais fundo ---- */
+  .fundo-modal:not(.paleta) .modal{border-radius:24px 24px 0 0;}
+  html .fundo-modal.tp-folha .modal{border-radius:24px 24px 0 0;box-shadow:var(--vidro-realce), 0 -18px 50px -20px rgba(10,4,24,.55);}
+  html .fundo-modal.tp-folha .modal:before{width:36px;height:5px;border-radius:5px;background:color-mix(in srgb, var(--ink-4) 45%, transparent);margin:2px auto 10px;}
+  .fundo-modal{--veu:rgba(8,4,18,.42);}
+  [data-theme="dark"] .fundo-modal{--veu:rgba(0,0,0,.55);}
+  .modal{overscroll-behavior:contain;}
+
+  /* ---- toque: resposta imediata em itens tocáveis (sem hover) ---- */
+  .nm-item{transition:transform var(--m-instante) var(--m-toque), background var(--m-rapido);}
+  .nm-item:active{transform:scale(.96);}
+  .cs-item:active,.card-gravacao:active,.lg-card:active,.roteiro-linha:active{transform:scale(.985);transition:transform var(--m-instante) var(--m-toque);}
+}
+
+/* ---- toast de sucesso com um pouco de personalidade ---- */
+.toast:not(.erro){animation:b7ToastOk var(--m-grande) var(--m-entra) both;}
+.toast.saindo{animation:b7ToastSai var(--m-rapido) var(--m-sai) forwards;}
+@keyframes b7ToastOk{0%{opacity:0;transform:translate3d(0,14px,0) scale(.96)}60%{opacity:1;transform:translate3d(0,-2px,0) scale(1.005)}100%{opacity:1;transform:none}}
+
+
+@media (prefers-reduced-motion:reduce){
+  [data-nav] .conteudo.entra,.fundo-modal .modal,.toast{animation:none !important;}
+  #app,.cli-ind,.ni-luz,.ni-ic,.lista.solta,.tp-menu{transition:none !important;}
+  body:has(> .fundo-modal) #app{transform:none !important;}
+  .nav-inferior .on .ni-ic{transform:none;}
 }

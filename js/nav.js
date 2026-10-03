@@ -402,7 +402,7 @@ B7.Nav = (function () {
       barra.setAttribute('aria-label', 'Navegação principal');
       document.body.appendChild(barra);
     }
-    barra.innerHTML = '<ul>' + r.inferior.map(id =>
+    barra.innerHTML = '<span class="ni-luz" aria-hidden="true"></span><ul>' + r.inferior.map(id =>
       '<li><a href="' + ITENS[id].rota + '" data-inf="' + id + '" aria-label="' + esc(rotuloDe(id)) + '">' +
         '<span class="ni-ic" aria-hidden="true">' + IC[id] + '</span><span class="ni-tx">' + esc(curtoDe(id)) + '</span></a></li>').join('') +
       '<li><button type="button" data-inf="mais" aria-haspopup="dialog" aria-label="Mais destinos">' +
@@ -472,8 +472,45 @@ B7.Nav = (function () {
       el.classList.toggle('on', on);
       if (on && el.tagName === 'A') el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
     });
+    moverLuz(barra);
   }
+  /* A luz do item ativo é UMA pílula que desliza de um item para o outro
+     (só transform). Primeira vez, sem transição: nasce no lugar. */
+  let luzPosta = false;
+  function moverLuz(barra) {
+    const luz = barra.querySelector('.ni-luz'), on = barra.querySelector('[data-inf].on .ni-ic');
+    if (!luz) return;
+    if (!on) { barra.classList.remove('com-luz'); return; }
+    /* mede pelo item (sem transform) e pela posição de layout do ícone:
+       o ícone ativo sobe 1px e cresce, e isso não pode mexer na luz */
+    const li = on.closest('li');
+    const rb = barra.getBoundingClientRect(), rl = li ? li.getBoundingClientRect() : on.getBoundingClientRect();
+    if (!rb.width || !rl.width) return;
+    if (!luzPosta) barra.classList.add('sem-trans');
+    const w = luz.offsetWidth || 52, h = luz.offsetHeight || 30;
+    const x = rl.left - rb.left + rl.width / 2 - w / 2;
+    const y = rl.top - rb.top + on.offsetTop + on.offsetHeight / 2 - h / 2;
+    luz.style.transform = 'translate3d(' + Math.round(x) + 'px,' + Math.round(y - 8) + 'px,0)';
+    barra.classList.add('com-luz');
+    if (!luzPosta) { luz.offsetWidth; requestAnimationFrame(() => barra.classList.remove('sem-trans')); luzPosta = true; }
+  }
+  window.addEventListener('resize', () => { const b = document.getElementById('nav-inferior'); if (b) { luzPosta = false; moverLuz(b); } }, { passive: true });
   window.addEventListener('hashchange', () => { marcarAtivo(); if (folhaMais) folhaMais.fechar(); });
+
+  /* Topo do celular: com conteúdo passando por baixo, o vidro fica mais
+     denso e ganha um filete. Um ouvinte passivo, uma classe, um rAF. */
+  (function () {
+    let pedido = 0;
+    document.addEventListener('scroll', e => {
+      const p = e.target;
+      if (!p || p.id !== 'painel-dashboard' || pedido) return;
+      pedido = requestAnimationFrame(() => {
+        pedido = 0;
+        document.body.classList.toggle('painel-rolou', p.scrollTop > 6);
+      });
+    }, { capture: true, passive: true });
+    window.addEventListener('hashchange', () => document.body.classList.remove('painel-rolou'));
+  })();
 
   /* -------------------------------------------- teclado virtual
      Com o teclado aberto a barra inferior sai de cena: não cobre o

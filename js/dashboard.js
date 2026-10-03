@@ -982,6 +982,7 @@ B7.Dashboard = (function () {
       '<nav class="cli-secoes" aria-label="Seções do cliente"><div class="cli-secoes-rolo">' +
         SECOES_CLIENTE.filter(secaoVisivel).map(s =>
           '<a href="' + hrefSecao(c.id, s.k) + '"' + (s.k === secao ? ' class="on" aria-current="page"' : '') + '>' + esc(s.r) + '</a>').join('') +
+        '<i class="cli-ind" aria-hidden="true"></i>' +
       '</div></nav>' +
     '</div>';
   }
@@ -1003,6 +1004,25 @@ B7.Dashboard = (function () {
     /* no celular as seções rolam de lado: a ativa fica à vista */
     const on = raiz.querySelector('.cli-secoes a.on');
     if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+    posicionarIndicador(raiz, cliente.id);
+  }
+  /* O sublinhado da seção ativa desliza da aba anterior para a nova: a tela
+     é redesenhada a cada seção, então ele nasce onde estava (mesmo cliente)
+     e anda até o lugar novo. Cliente diferente: nasce já no lugar. */
+  let indAnterior = null;
+  function posicionarIndicador(raiz, clienteId) {
+    const nav = raiz.querySelector('.cli-secoes'), ind = raiz.querySelector('.cli-ind'), on = raiz.querySelector('.cli-secoes a.on');
+    if (!nav || !ind || !on) return;
+    const x = on.offsetLeft + 10, w = Math.max(0, on.offsetWidth - 20);
+    nav.classList.add('com-ind');
+    const pos = (px, pw) => { ind.style.transform = 'translate3d(' + px + 'px,0,0)'; ind.style.width = pw + 'px'; };
+    if (indAnterior && indAnterior.cli === clienteId && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      ind.style.transition = 'none'; pos(indAnterior.x, indAnterior.w);
+      ind.offsetWidth;                       /* fixa o ponto de partida */
+      ind.style.transition = '';
+      requestAnimationFrame(() => pos(x, w));
+    } else pos(x, w);
+    indAnterior = { cli: clienteId, x, w };
   }
 
   async function abrirCliente(id, aba) {

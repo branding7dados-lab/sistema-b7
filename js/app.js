@@ -33,11 +33,40 @@ B7.Rota = (function () {
     fila.forEach(fn => { try { fn(); } catch (e) {} });
   }
 
+  /* Direção da navegação, para o movimento dizer de onde a tela vem:
+     • frente — mais fundo no mesmo assunto (Clientes → cliente → linha):
+       a tela nova chega um pouco "mais perto" e assenta;
+     • volta  — voltar ao endereço anterior ou subir de nível: a tela
+       resolve "de trás", sem empurrar;
+     • lado   — trocar de módulo: só um esmaecer curto.
+     A regra mora em <html data-nav>; o desenho em styles/global.css. */
+  const pilha = [];
+  const nivel = h => h.slice(1).split('?')[0].split('/').filter(Boolean);
+  function marcarDirecao(novo) {
+    let dir = 'lado';
+    if (pilha.length >= 2 && pilha[pilha.length - 2] === novo) { dir = 'volta'; pilha.pop(); }
+    else if (pilha[pilha.length - 1] !== novo) {
+      const a = nivel(pilha[pilha.length - 1] || '#/'), b = nivel(novo);
+      /* mesma família: cliente/<id> → cliente/<id>/linhas → linha/<id>;
+         clientes → cliente; gravacoes → gravacao; video → video/<id> */
+      const raiz = s => ({ clientes: 'cliente', linhas: 'cliente', linha: 'cliente',
+                           gravacoes: 'gravacao', roteiros: 'gravacao' })[s] || s || '';
+      const mesma = raiz(a[0]) === raiz(b[0]) || (a[0] === 'cliente' && ['linha', 'gravacao', 'video', 'design'].includes(b[0]));
+      if (mesma && b.length > a.length) dir = 'frente';
+      else if (mesma && b.length < a.length) dir = 'volta';
+      else if (a[0] === 'cliente' && b[0] !== 'cliente' && mesma) dir = 'frente';
+      pilha.push(novo);
+      if (pilha.length > 30) pilha.shift();
+    }
+    document.documentElement.dataset.nav = dir;
+  }
+
   async function ir() {
     limpar();
     /* no celular a sidebar é uma gaveta: navegar fecha a gaveta */
     if (B7.fecharGaveta) B7.fecharGaveta(); else document.body.classList.remove('gaveta');
     const bruto = location.hash || '#/';
+    marcarDirecao(bruto);
     atual = bruto;
     const [caminho, query] = bruto.slice(1).split('?');
     const partes = caminho.split('/').filter(Boolean);
@@ -258,29 +287,14 @@ B7.Rota = (function () {
      remontar a cortina entre o login e a montagem do sistema. */
   const inicialAbertura = document.getElementById('abertura');
   const MOLDE_ABERTURA = inicialAbertura ? inicialAbertura.innerHTML : '';
-  const TITULO_PADRAO = 'Branding7', TEXTO_PADRAO = 'Preparando o seu espaço…';
-  /* enquanto o texto é o padrão, as frases se revezam (a espera parece
-     andar); um texto específico ("Entrando…") fica parado */
-  const FRASES = ['Preparando o seu espaço…', 'Acendendo as ideias…', 'Organizando a produção…', 'Quase lá…'];
-  let relogioFrases = null;
-  function letras(t) {
-    return [...String(t)].map((c, i) => '<span style="--i:' + i + '">' + (c === ' ' ? '&nbsp;' : B7.UI.esc(c)) + '</span>').join('');
-  }
+  const TEXTO_PADRAO = 'Preparando o seu espaço…';
+  /* A espera mostra UMA frase verdadeira — e só aparece se o sistema ainda
+     não estiver pronto quando a abertura termina (CSS, .ab-espera). Nada
+     de frases revezando nem porcentagem inventada. */
   function escreverCortina(el, titulo, texto) {
-    const nome = el.querySelector('.nome'), frase = el.querySelector('.frase');
-    const t = titulo || TITULO_PADRAO;
-    if (nome && nome.textContent !== t) nome.innerHTML = letras(t);
+    const ola = el.querySelector('.ab-ola'), frase = el.querySelector('.ab-frase');
+    if (ola) ola.textContent = titulo || '';
     if (frase) frase.textContent = texto || TEXTO_PADRAO;
-    clearInterval(relogioFrases); relogioFrases = null;
-    if (!texto && frase && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      let i = 0;
-      relogioFrases = setInterval(() => {
-        if (!frase.isConnected) { clearInterval(relogioFrases); relogioFrases = null; return; }
-        i = (i + 1) % FRASES.length;
-        frase.classList.add('trocando');
-        setTimeout(() => { frase.textContent = FRASES[i]; frase.classList.remove('trocando'); }, 180);
-      }, 1700);
-    }
   }
   function abrirCortina(titulo, texto) {
     if (arranqueConcluido) return null;
@@ -291,7 +305,7 @@ B7.Rota = (function () {
       el.className = 'b7-abertura';
       el.setAttribute('role', 'status');
       el.setAttribute('aria-label', 'Carregando o Sistema B7');
-      el.innerHTML = MOLDE_ABERTURA.replace(/abGrad/g, 'abGrad2');   /* id do degradê não repete */
+      el.innerHTML = MOLDE_ABERTURA;
       document.body.appendChild(el);
     }
     escreverCortina(el, titulo, texto);
@@ -299,23 +313,105 @@ B7.Rota = (function () {
   }
   if (inicialAbertura) escreverCortina(inicialAbertura, null, null);
 
-  /* A sequência de abertura (faíscas → lâmpada acende → onda) leva ~1 s.
-     Se o sistema ficar pronto antes disso no PRIMEIRO arranque, a saída
-     espera só o restante até 1,1 s desde o início da página — numa
-     conexão comum o carregamento já passa disso e não há espera nenhuma. */
-  const MINIMO_ABERTURA_MS = 1100;
+  /* Quanto a abertura segura a tela, contado do início da página:
+     • completa (1ª vez na sessão do navegador): 2,05 s — o tempo de o logo
+       se montar. Se o sistema demorar mais, ela simplesmente continua
+       (e a espera honesta aparece); se ficar pronto antes, espera só o
+       restante. Nunca mais que isso por estética.
+     • curta (recarregar, atualização automática): 0,35 s.
+     • com "reduzir movimento": nada de mínimo. */
+  const reduzMov = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const curta = document.documentElement.classList.contains('ab-curta');
+  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 350 : 2050;
+
+  /* Para onde o logo voa: o lugar onde ele mora na tela que ficou pronta.
+     Lockup (logo inteiro) → caixa de login ou barra lateral aberta.
+     Só o símbolo → barra lateral recolhida ou topo do celular. */
+  function destinoDoLogo() {
+    const visivel = el => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 4 && r.height > 4 && r.bottom > 0 && r.right > 0 &&
+        r.top < innerHeight && r.left < innerWidth && getComputedStyle(el).visibility !== 'hidden';
+    };
+    const tema = document.documentElement.getAttribute('data-theme');
+    const opcoes = [
+      ['.tela-login .login-marca', 'lockup'],
+      ['.marca-lateral img.lockup', 'lockup'],
+      ['.marca-lateral img.simbolo', 'simbolo'],
+      ['.topo-marca ' + (tema === 'dark' ? '.tm-branca' : '.tm-cor'), 'simbolo']
+    ];
+    for (const [sel, tipo] of opcoes) {
+      const alvo = document.querySelector(sel);
+      if (visivel(alvo)) return { alvo, tipo, branco: /white/.test(alvo.getAttribute('src') || '') };
+    }
+    return null;
+  }
+
+  /* O voo: o elemento da abertura sai do lugar dele e pousa exatamente
+     sobre o destino (posição e tamanho medidos na hora). Só transform e
+     opacidade; o destino fica invisível até o pouso e então assume. */
+  function voarLogo(el) {
+    if (reduzMov() || !el.animate) return 0;
+    const d = destinoDoLogo();
+    if (!d) { el.classList.add('sem-voo'); return 420; }
+    const marca = el.querySelector('.ab-marca'), simbolo = el.querySelector('.ab-simbolo');
+    const voa = d.tipo === 'lockup' ? marca : simbolo;
+    if (!voa) { el.classList.add('sem-voo'); return 420; }
+    const de = voa.getBoundingClientRect(), para = d.alvo.getBoundingClientRect();
+    /* o símbolo do logo tem proporção fixa: encaixa pela altura */
+    const s = d.tipo === 'lockup' ? para.width / de.width : para.height / de.height;
+    const dx = (para.left + para.width / 2) - (de.left + de.width / 2);
+    const dy = (para.top + para.height / 2) - (de.top + de.height / 2);
+    const DUR = 640, curva = 'cubic-bezier(.7,0,.2,1)';
+    d.alvo.classList.add('ab-destino');
+    voa.style.transformOrigin = '50% 50%';
+    /* a animação CSS da peça para aqui: o voo parte do quadro final dela */
+    [voa, simbolo, marca].forEach(n => { if (n) n.style.animation = 'none'; });
+    voa.animate([{ transform: 'none' }, { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s + ')' }],
+      { duration: DUR, easing: curva, fill: 'forwards' });
+    /* destino branco (fundo escuro): a lâmpada colorida vira a branca no ar */
+    if (d.branco) {
+      const cor = el.querySelector('.ab-cor'), branca = el.querySelector('.ab-branca');
+      if (cor) cor.animate([{ opacity: 1 }, { opacity: 0 }], { duration: DUR * .7, delay: DUR * .2, easing: 'ease-in-out', fill: 'forwards' });
+      if (branca) branca.animate([{ opacity: 0 }, { opacity: 1 }], { duration: DUR * .7, delay: DUR * .2, easing: 'ease-in-out', fill: 'forwards' });
+    }
+    /* só o símbolo voa: a palavra recua e some no caminho */
+    if (d.tipo === 'simbolo') {
+      const palavra = el.querySelector('.ab-palavra');
+      if (palavra) { palavra.style.animation = 'none';
+        palavra.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translate3d(14px,0,0)' }],
+          { duration: 260, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }); }
+    }
+    /* pouso: o destino assume e a peça da abertura se apaga no mesmo quadro */
+    setTimeout(() => {
+      d.alvo.classList.remove('ab-destino'); d.alvo.classList.add('ab-pousou');
+      voa.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
+      setTimeout(() => d.alvo.classList.remove('ab-pousou'), 260);
+    }, DUR - 20);
+    return DUR + 170;
+  }
+
   function fecharCortina() {
     if (jaMontado) arranqueConcluido = true;
     const el = document.querySelector('.b7-abertura');
     if (!el || el.classList.contains('saindo') || el.dataset.fechando) return;
     el.dataset.fechando = '1';
-    const espera = el.classList.contains('inicial') ? Math.max(0, MINIMO_ABERTURA_MS - performance.now()) : 0;
+    const inicial = el.classList.contains('inicial');
+    const espera = inicial ? Math.max(0, MINIMO_ABERTURA_MS - performance.now()) : 0;
     setTimeout(() => {
-      clearInterval(relogioFrases); relogioFrases = null;
+      /* a partir daqui, nesta sessão do navegador, recarregar mostra a curta */
+      if (inicial) { try { sessionStorage.setItem('b7_abertura', '1'); } catch (e) {} }
+      /* o sistema assenta por baixo do céu que se dissolve (uma vez) */
+      if (!reduzMov()) {
+        document.body.classList.add('ab-revela');
+        setTimeout(() => document.body.classList.remove('ab-revela'), 1000);
+      }
       el.classList.add('saindo');
-      /* espera o "portal" abrir antes de remover: tirar na hora devolve o
-         corte seco que a cortina existe para evitar */
-      setTimeout(() => el.remove(), 880);   /* .12 s de flash + .72 s de portal */
+      const tempo = voarLogo(el);
+      /* remove só depois do pouso e do céu sumir: tirar antes devolve o
+         corte seco que a abertura existe para evitar */
+      setTimeout(() => el.remove(), Math.max(tempo, reduzMov() ? 220 : 640));
     }, espera);
   }
   B7.abrirCortina = abrirCortina;

@@ -18,6 +18,9 @@
                        : window.matchMedia('(prefers-color-scheme: dark)').matches;
     document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
   } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+  /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
+     atualização automática) no meio do dia mostra a versão curta */
+  try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
 })();
 </script>
 <link rel="stylesheet" href="styles/global.css">
@@ -45,32 +48,20 @@
 </head>
 <body class="apurando">
 
-<!-- Abertura: aparece antes de qualquer script rodar, e some quando o
-     sistema (ou a tela de acesso) está pronto. -->
+<!-- Abertura: aparece antes de qualquer script rodar e some quando o
+     sistema (ou a tela de acesso) está pronto. Roteiro e tempos em
+     styles/global.css (ABERTURA); a saída é coordenada por js/app.js. -->
 <div class="b7-abertura inicial" id="abertura" role="status" aria-label="Carregando o Sistema B7">
-  <div class="fundo" aria-hidden="true"><span class="raios"></span><span class="a"></span><span class="b"></span><span class="c"></span>
-    <i class="p p1"></i><i class="p p2"></i><i class="p p3"></i><i class="p p4"></i><i class="p p5"></i><i class="p p6"></i>
+  <div class="ab-ceu" aria-hidden="true"><i class="ab-horizonte"></i><i class="ab-chave"></i><i class="ab-grao"></i></div>
+  <div class="ab-palco" aria-hidden="true">
+    <i class="ab-bloom"></i><i class="ab-onda"></i>
+    <div class="ab-marca">
+      <span class="ab-palavra"></span>
+      <span class="ab-simbolo"><i class="ab-cor"></i><i class="ab-carga"><b></b></i><i class="ab-branca"></i></span>
+    </div>
   </div>
-  <div class="nucleo" aria-hidden="true">
-    <span class="onda"></span><span class="onda dois"></span>
-    <svg class="giro" viewBox="0 0 200 200">
-      <defs><linearGradient id="abGrad" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#3A1E86" stop-opacity="0"/>
-        <stop offset=".45" stop-color="#7C1E85"/>
-        <stop offset="1" stop-color="#FF6FB5"/></linearGradient></defs>
-      <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
-      <circle cx="100" cy="100" r="92" fill="none" stroke="url(#abGrad)" stroke-width="2.5"
-              stroke-linecap="round" stroke-dasharray="330 248" transform="rotate(-90 100 100)"/>
-    </svg>
-    <span class="anel-dentro"></span>
-    <span class="orbita"><i></i></span>
-    <span class="faiscas"><i style="--a:0deg;--d:0ms"></i><i style="--a:30deg;--d:140ms"></i><i style="--a:60deg;--d:60ms"></i><i style="--a:90deg;--d:200ms"></i><i style="--a:120deg;--d:30ms"></i><i style="--a:150deg;--d:170ms"></i><i style="--a:180deg;--d:90ms"></i><i style="--a:210deg;--d:230ms"></i><i style="--a:240deg;--d:10ms"></i><i style="--a:270deg;--d:120ms"></i><i style="--a:300deg;--d:250ms"></i><i style="--a:330deg;--d:70ms"></i></span>
-    <div class="marca"></div>
-  </div>
-  <div class="txt"><b class="nome"><span style="--i:0">B</span><span style="--i:1">r</span><span style="--i:2">a</span><span style="--i:3">n</span><span style="--i:4">d</span><span style="--i:5">i</span><span style="--i:6">n</span><span style="--i:7">g</span><span style="--i:8">7</span></b><span class="frase">Preparando o seu espaço…</span></div>
-  <div class="barra" aria-hidden="true"><i></i></div>
+  <div class="ab-espera"><b class="ab-ola"></b><span class="ab-frase">Preparando o seu espaço…</span><i class="ab-fio"></i></div>
 </div>
-
 <div id="app">
 
   <!-- =========================== SIDEBAR =========================== -->
