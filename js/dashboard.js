@@ -1555,149 +1555,204 @@ B7.Dashboard = (function () {
   /* Uma pergunta só decide o que aparece: a regra vive em B7.Perm. */
   const pode = secao => !B7.Perm || B7.Perm.podeConfig(secao);
 
+  /* Redesenho (03/10, pacote zza): lista agrupada no jeito dos Ajustes do
+     celular — perfil no topo, grupos com ícone colorido, chave liga/
+     desliga para o que é sim/não, seletor com pílula que desliza, linhas
+     com seta para o que abre outra coisa e "Sair" em vermelho no fim.
+     Mesmas preferências, mesmas permissões (pode()), mesmas ações.
+     No celular some o que só existe no computador (barra lateral e
+     atalhos de teclado). */
+  const ICF = {
+    tema: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/>',
+    tela: '<rect x="3" y="4" width="18" height="12.5" rx="2"/><path d="M9 20.5h6M12 16.5v4"/>',
+    densidade: '<rect x="3.5" y="4" width="17" height="6.5" rx="1.8"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="1.8"/>',
+    animacao: '<path d="M11 3.5l1.7 4.5 4.6 1.7-4.6 1.7L11 16l-1.7-4.6L4.7 9.7l4.6-1.7z"/><path d="M18.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+    som: '<path d="M11 5.5L6.5 9H3.5v6h3l4.5 3.5z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18.3 6.2a8.5 8.5 0 0 1 0 11.6"/>',
+    play: '<circle cx="12" cy="12" r="9"/><path d="M10.2 8.6l5.4 3.4-5.4 3.4z"/>',
+    lateral: '<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M9.5 4.5v15"/>',
+    teclado: '<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M8 14h8"/>',
+    impressao: '<path d="M7 9V3.5h10V9"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
+    usuarios: '<path d="M15.5 19v-1.3a3.8 3.8 0 0 0-3.8-3.8H6.3a3.8 3.8 0 0 0-3.8 3.8V19"/><circle cx="9" cy="7.3" r="3.3"/><path d="M21.5 19v-1.3a3.8 3.8 0 0 0-2.8-3.6M15.7 4.1a3.3 3.3 0 0 1 0 6.4"/>',
+    banco: '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13"/><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>',
+    exportar: '<path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5"/><path d="M4.5 16.5v2.5A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5"/>',
+    importar: '<path d="M12 14.5v-11M7.5 8L12 3.5 16.5 8"/><path d="M4.5 16.5v2.5A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5"/>',
+    versao: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.2M12 7.8h.01"/>',
+    rede: '<path d="M2.5 8.8a14 14 0 0 1 19 0M5.5 12.2a9.5 9.5 0 0 1 13 0M8.7 15.5a5 5 0 0 1 6.6 0"/><path d="M12 19.2h.01"/>',
+    acesso: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    sair: '<path d="M14.5 4h4A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>'
+  };
+  const svgF = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICF[k] + '</svg>';
+  const SETA_CFG = '<svg class="cfg-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  const PAPEL_CFG = { admin: 'Administrador', coordenador: 'Coordenação', designer: 'Designer', videomaker: 'Videomaker', cliente: 'Cliente' };
+
   function abrirConfig() {
     marcarNav('#/config');
     B7.Rota.titulo(['Configurações']);
-    const tema = document.documentElement.getAttribute('data-theme');
+    /* sem escolha guardada = segue o sistema (antes "Sistema" nunca
+       aparecia marcado, porque o atributo é sempre light/dark) */
+    let temaGuardado = null; try { temaGuardado = localStorage.getItem('b7_tema'); } catch (e) {}
+    const tema = temaGuardado ? document.documentElement.getAttribute('data-theme') : 'auto';
     const densidade = B7.pref.ler('densidade', 'confortavel');
     const abertura = B7.pref.ler('abertura', false);
     const recolhida = document.body.classList.contains('recolhida');
     const online = navigator.onLine;
+    const u = B7.Auth && B7.Auth.usuario();
+    const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const opcao = (grupo, atual, itens) =>
-      '<div class="opcoes" data-grupo="' + grupo + '">' + itens.map(([v, r]) =>
-        '<button data-v="' + v + '"' + (atual === v ? ' class="on"' : '') + '>' + r + '</button>').join('') + '</div>';
+    const ic = (k, tom) => '<span class="cfg-ic cfg-tom-' + tom + '">' + svgF(k) + '</span>';
+    /* uma linha da lista: ícone, texto, e à direita o controle (ou a seta) */
+    const L = o => {
+      const tag = o.botao ? 'button type="button"' : 'div';
+      return '<' + tag + ' class="cfg-l' + (o.cls ? ' ' + o.cls : '') + '"' + (o.attrs || '') + '>' +
+        ic(o.ic, o.tom) +
+        '<span class="cfg-l-tx"><b>' + o.t + '</b>' + (o.d ? '<small>' + o.d + '</small>' : '') + '</span>' +
+        (o.dir || '') + (o.botao && !o.semSeta ? SETA_CFG : '') +
+        '</' + (o.botao ? 'button' : 'div') + '>' + (o.abaixo ? '<div class="cfg-l-abaixo">' + o.abaixo + '</div>' : '');
+    };
+    /* chave liga/desliga (a linha inteira alterna) */
+    const chave = (pref, ligada, rot) => '<span class="cfg-sw' + (ligada ? ' on' : '') + '" role="switch" tabindex="0" aria-checked="' + ligada +
+      '" aria-label="' + esc(rot) + '" data-chave="' + pref + '"><i></i></span>';
+    /* seletor com pílula deslizante */
+    const seletor = (grupo, atual, itens) =>
+      '<div class="cfg-seg" data-grupo="' + grupo + '" role="radiogroup"><i class="cfg-seg-pill" aria-hidden="true"></i>' + itens.map(([v, r, icone]) =>
+        '<button type="button" role="radio" data-v="' + v + '" aria-checked="' + (atual === v) + '"' + (atual === v ? ' class="on"' : '') + '>' +
+        (icone ? svgF(icone) : '') + '<span>' + r + '</span></button>').join('') + '</div>';
+    const grupo = (titulo, nota, linhas, cls) => linhas ?
+      '<section class="cfg-g' + (cls ? ' ' + cls : '') + '">' + (titulo ? '<h2 class="cfg-g-t">' + titulo + '</h2>' : '') +
+        '<div class="cfg-lista">' + linhas + '</div>' + (nota ? '<p class="cfg-g-nota">' + nota + '</p>' : '') + '</section>' : '';
 
-    const linha = (titulo, desc, controle) =>
-      '<div class="config-linha"><div class="tx"><b>' + titulo + '</b><small>' + desc + '</small></div>' +
-      controle + '</div>';
+    painel().innerHTML = '<div class="conteudo entra cfg-tela">' +
+      '<div class="trilha-nav cfg-so-largo"><button data-ir="#/">Central B7</button><span>/</span><b>Configurações</b></div>' +
+      '<h1 class="cfg-titulo">Configurações</h1>' +
 
-    painel().innerHTML = '<div class="conteudo entra" style="max-width:860px">' +
-      '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span><b>Configurações</b></div>' +
-      '<h1 style="font-family:Archivo;font-size:26px;font-weight:900;letter-spacing:-.03em;margin-bottom:20px">Configurações</h1>' +
+      /* Conta no topo: quem está usando, e o atalho para o perfil */
+      (u ? '<button type="button" class="cfg-perfil" data-abrir-perfil>' +
+        (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-perfil-av') : '') +
+        '<span class="cfg-perfil-tx"><b>' + esc(u.nome || u.username || '') + '</b>' +
+        '<small>@' + esc(u.username || '') + ' · ' + esc(PAPEL_CFG[u.papel] || u.papel || '') + '</small>' +
+        '<em>Editar perfil e senha</em></span>' + SETA_CFG + '</button>' : '') +
 
-      '<div class="config-secao"><h3>Aparência</h3>' +
-        '<div class="desc">Vale só para este navegador — cada pessoa da equipe ajusta o seu.</div>' +
-        linha('Tema', 'claro, escuro ou como está o seu computador',
-              opcao('tema', tema, [['light', 'Claro'], ['dark', 'Escuro'], ['auto', 'Sistema']])) +
-        linha('Densidade', 'quanto conteúdo cabe na tela',
-              opcao('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']])) +
-        linha('Animações', 'o sistema respeita a preferência do seu sistema operacional',
-              '<span style="font-size:12.5px;color:var(--ink-3)">' +
-              (window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduzidas' : 'normais') + '</span>') +
-        /* a abertura completa aparece uma vez por sessão; aqui dá para
-           rever (com som — o toque no botão destrava o áudio) */
-        linha('Abertura', 'a animação de entrada do B7 e a trilha sonora dela',
-              '<div class="cfg-abertura">' +
-              opcao('som_abertura', B7.pref.ler('som_abertura', true) ? 'sim' : 'nao', [['sim', 'Com som'], ['nao', 'Sem som']]) +
-              '<button class="b contorno" data-ver-abertura>Ver abertura</button></div>') +
-      '</div>' +
+      grupo('Aparência', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
+        L({ ic: 'tema', tom: 'violeta', t: 'Tema',
+            abaixo: seletor('tema', tema, [['light', 'Claro', 'sol'], ['dark', 'Escuro', 'tema'], ['auto', 'Sistema', 'tela']]) }) +
+        L({ ic: 'densidade', tom: 'azul', t: 'Densidade', d: 'quanto conteúdo cabe na tela',
+            abaixo: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) }) +
+        L({ ic: 'animacao', tom: 'rosa', t: 'Animações', d: 'segue a preferência do seu sistema',
+            dir: '<span class="cfg-valor">' + (reduz ? 'Reduzidas' : 'Normais') + '</span>' })) +
 
-      (pode('interface') ? '<div class="config-secao"><h3>Interface</h3>' +
-        '<div class="desc">Como a navegação se comporta.</div>' +
-        linha('Barra lateral', 'começar recolhida, só com os ícones',
-              opcao('sidebar', recolhida ? 'sim' : 'nao', [['nao', 'Expandida'], ['sim', 'Recolhida']])) +
-        linha('Atalhos de teclado', 'ver a lista completa',
-              '<button class="b contorno" data-atalhos>Ver atalhos</button>') +
-      '</div>' : '') +
+      /* a abertura completa aparece uma vez por sessão; aqui dá para
+         rever (com som — o toque no botão destrava o áudio) */
+      grupo('Abertura', '',
+        L({ ic: 'som', tom: 'laranja', t: 'Trilha sonora', d: 'som na animação de entrada', cls: 'cfg-alterna',
+            dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
+        L({ ic: 'play', tom: 'rosa', t: 'Ver abertura', d: 'assistir de novo, com som', botao: true, attrs: ' data-ver-abertura' })) +
 
-      (pode('impressao') ? '<div class="config-secao"><h3>Impressão</h3>' +
-        '<div class="desc">A ficha A4 não muda com o tema: ela é sempre clara.</div>' +
-        linha('Folha de abertura', 'vir marcada por padrão na janela de impressão',
-              opcao('abertura', abertura ? 'sim' : 'nao', [['nao', 'Desligada'], ['sim', 'Ligada']])) +
-      '</div>' : '') +
+      (pode('interface') ? grupo('Interface', '',
+        L({ ic: 'lateral', tom: 'cinza', t: 'Começar com a barra recolhida', d: 'só os ícones na lateral', cls: 'cfg-alterna',
+            dir: chave('sidebar', recolhida, 'Barra lateral recolhida') }) +
+        L({ ic: 'teclado', tom: 'cinza', t: 'Atalhos de teclado', d: 'a lista completa', botao: true, attrs: ' data-atalhos' }),
+        'cfg-so-largo') : '') +
 
-      /* O estado do banco vive aqui, e só aqui. Fora das configurações,
-         a equipe vê apenas o que afeta o trabalho. */
+      (pode('impressao') ? grupo('Impressão', 'A ficha A4 não muda com o tema: ela é sempre clara.',
+        L({ ic: 'impressao', tom: 'verde', t: 'Folha de abertura', d: 'já vem marcada na janela de impressão', cls: 'cfg-alterna',
+            dir: chave('abertura', !!abertura, 'Folha de abertura marcada por padrão') })) : '') +
+
       /* Diagnóstico do acesso: aparece enquanto não há sessão, e diz
-         exatamente qual etapa falta. Sem isto, "o login não funciona"
-         não tem como ser investigado por quem está usando o sistema. */
-      (B7.Auth && !B7.Auth.usuario() ?
-        '<div class="config-secao"><h3>Acesso</h3>' +
-          '<div class="desc">Situação da autenticação nesta instalação.</div>' +
-          '<div id="cfg-acesso"><div class="cfg-estado">' +
-          '<span class="cfg-ponto"></span><span>Verificando…</span></div></div>' +
-        '</div>' : '') +
+         exatamente qual etapa falta. */
+      (B7.Auth && !B7.Auth.usuario() ? grupo('Acesso', 'Situação da autenticação nesta instalação.',
+        '<div class="cfg-l cfg-l-livre">' + ic('acesso', 'cinza') + '<div id="cfg-acesso" class="cfg-l-tx"><div class="cfg-estado">' +
+        '<span class="cfg-ponto"></span><span>Verificando…</span></div></div></div>') : '') +
 
       /* a seção só existe para admin: nada de item com cadeado */
-      (pode('usuarios') ?
-        '<div class="config-secao"><h3>Usuários e acessos</h3>' +
-          '<div class="desc">Contas da equipe e dos clientes. Não existe cadastro público.</div>' +
-          '<div class="config-linha"><div class="tx"><b>Gerenciar contas</b>' +
-          '<small>criar, redefinir senha, vincular empresas e desativar</small></div>' +
-          '<button class="b" data-ir="#/usuarios">Abrir</button></div>' +
-        '</div>' : '') +
+      (pode('usuarios') ? grupo('Administração', 'Contas da equipe e dos clientes. Não existe cadastro público.',
+        L({ ic: 'usuarios', tom: 'azul', t: 'Usuários e acessos', d: 'criar, redefinir senha, vincular empresas, desativar',
+            botao: true, attrs: ' data-ir="#/usuarios"' })) : '') +
 
-      /* Banco, backup e sistema são do administrador. Coordenador e
-         cliente veem apenas aparência, interface e a própria conta. */
-      (pode('banco') ? '<div class="config-secao"><h3>Banco de dados</h3>' +
-        '<div class="desc">O estado da conexão com o Supabase, verificado de verdade.</div>' +
-        '<div id="cfg-banco"><div class="cfg-estado">' +
-        '<span class="cfg-ponto"></span><span>Verificando…</span></div></div>' +
-      '</div>' : '') +
+      /* Banco, backup e sistema são do administrador. */
+      (pode('banco') || pode('sistema') ? grupo('Sistema', '',
+        (pode('banco') ? '<div id="cfg-banco">' + L({ ic: 'banco', tom: 'verde', t: 'Banco de dados', d: 'verificando…',
+            dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>' : '') +
+        (pode('sistema') ? L({ ic: 'rede', tom: 'azul', t: 'Conexão deste aparelho',
+            d: online ? 'tudo certo por aqui' : 'reconecte para voltar a salvar',
+            dir: '<span class="cfg-valor ' + (online ? 'ok' : 'erro') + '">' + (online ? 'Online' : 'Sem conexão') + '</span>' }) +
+          /* versão do código carregado — só o administrador vê (conferir deploy) */
+          (B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'admin'
+            ? L({ ic: 'versao', tom: 'cinza', t: 'Versão', d: 'se não mudou após publicar, recarregue a página',
+                  dir: '<code class="cfg-versao">v' + esc(B7.Auth.VERSAO || '') + '</code>' }) : '') : '')) : '') +
 
-      (pode('dados') ? '<div class="config-secao"><h3>Dados</h3>' +
-        '<div class="desc">O banco é o Supabase. Isto aqui é segurança extra.</div>' +
-        linha('Backup', 'baixa um arquivo com clientes, gravações, roteiros e cenas',
-              '<button class="b contorno" data-exportar>Exportar</button>') +
-        linha('Restaurar', 'devolve os registros de um arquivo de backup',
-              '<button class="b contorno" data-importar>Importar</button>') +
-      '</div>' : '') +
+      (pode('dados') ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
+        L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
+        L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '') +
 
-      (pode('sistema') ? '<div class="config-secao"><h3>Sistema</h3>' +
-        linha('Conexão com o banco', online ? 'tudo certo por aqui' : 'reconecte para voltar a salvar',
-              '<span class="chip-status ' + (online ? 'gravado' : 'pronto') + '">' +
-              (online ? 'Conectado' : 'Sem conexão') + '</span>') +
-        /* versão do código carregado — só o administrador vê (conferir deploy) */
-        (B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'admin'
-          ? linha('Versão', 'código carregado neste navegador — se não mudou após publicar, recarregue com Ctrl+Shift+R',
-                  '<code class="cfg-versao">v' + esc(B7.Auth.VERSAO || '') + '</code>') : '') +
-      '</div>' : '') +
-
-      /* Conta: todo mundo tem, inclusive cliente e coordenador. */
-      (B7.Auth && B7.Auth.usuario() ?
-        '<div class="config-secao"><h3>Minha conta</h3>' +
-          '<div class="desc">Seus dados de acesso nesta plataforma.</div>' +
-          linha(esc(B7.Auth.usuario().nome), '@' + esc(B7.Auth.usuario().username) +
-                ' · ' + esc(B7.Auth.usuario().papel),
-                '<button class="b contorno" data-abrir-perfil>Editar perfil</button>') +
-          linha('Sair da conta', 'encerra a sessão neste navegador',
-                '<button class="b contorno" data-sair-config>Sair</button>') +
-        '</div>' : '') +
+      (u ? grupo('', 'Encerra a sessão só neste aparelho.',
+        L({ ic: 'sair', tom: 'vermelho', t: 'Sair da conta', botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-config' })) : '') +
     '</div>';
 
     ligar();
-    const btPerfil = painel().querySelector('[data-abrir-perfil]');
+    const p = painel();
+    const btPerfil = p.querySelector('[data-abrir-perfil]');
     if (btPerfil) btPerfil.onclick = () => B7.Perfil.abrir();
-    const btSair = painel().querySelector('[data-sair-config]');
+    const btSair = p.querySelector('[data-sair-config]');
     if (btSair) btSair.onclick = () => B7.Auth.sair();
 
-    painel().querySelectorAll('.opcoes').forEach(cx => {
+    /* seletores: a pílula desliza até a opção escolhida */
+    const moverPilula = (cx, anima) => {
+      const on = cx.querySelector('button.on'), pill = cx.querySelector('.cfg-seg-pill');
+      if (!on || !pill) return;
+      if (!anima) pill.style.transition = 'none';
+      pill.style.width = on.offsetWidth + 'px';
+      pill.style.transform = 'translate3d(' + on.offsetLeft + 'px,0,0)';
+      if (!anima) { pill.offsetWidth; pill.style.transition = ''; }
+    };
+    p.querySelectorAll('.cfg-seg').forEach(cx => {
+      moverPilula(cx, false);
       cx.querySelectorAll('button').forEach(b => b.onclick = () => {
-        cx.querySelectorAll('button').forEach(x => x.classList.remove('on'));
-        b.classList.add('on');
-        const grupo = cx.dataset.grupo, v = b.dataset.v;
-        if (grupo === 'tema') {
+        if (b.classList.contains('on')) return;
+        cx.querySelectorAll('button').forEach(x => { x.classList.remove('on'); x.setAttribute('aria-checked', 'false'); });
+        b.classList.add('on'); b.setAttribute('aria-checked', 'true');
+        moverPilula(cx, true);
+        const g = cx.dataset.grupo, v = b.dataset.v;
+        if (g === 'tema') {
           /* mesma função do menu da conta: um lugar só decide o tema */
           if (B7.definirTema) B7.definirTema(v === 'auto' ? 'sistema' : v);
-          B7.UI.toast('Tema atualizado');
         }
-        if (grupo === 'densidade') { B7.aplicarDensidade(v); B7.UI.toast('Densidade: ' + b.textContent.toLowerCase()); }
-        if (grupo === 'sidebar') {
-          document.body.classList.toggle('recolhida', v === 'sim');
-          B7.pref.gravar('sidebar_recolhida', v === 'sim');
+        if (g === 'densidade') {
+          B7.aplicarDensidade(v);
+          /* a densidade muda o tamanho das letras: a pílula se ajusta */
+          requestAnimationFrame(() => p.querySelectorAll('.cfg-seg').forEach(x => moverPilula(x, false)));
         }
-        if (grupo === 'abertura') B7.pref.gravar('abertura', v === 'sim');
-        if (grupo === 'som_abertura') { B7.pref.gravar('som_abertura', v === 'sim'); B7.UI.toast(v === 'sim' ? 'Abertura com som' : 'Abertura sem som'); }
       });
     });
-    const va = painel().querySelector('[data-ver-abertura]');
+    const aoRedimensionar = () => p.querySelectorAll('.cfg-seg').forEach(x => moverPilula(x, false));
+    window.addEventListener('resize', aoRedimensionar);
+    B7.Rota.aoSair(() => window.removeEventListener('resize', aoRedimensionar));
+
+    /* chaves: a linha inteira alterna; mesmas preferências de antes */
+    const alternar = sw => {
+      const v = !sw.classList.contains('on');
+      sw.classList.toggle('on', v); sw.setAttribute('aria-checked', String(v));
+      const pref = sw.dataset.chave;
+      if (pref === 'sidebar') {
+        document.body.classList.toggle('recolhida', v);
+        B7.pref.gravar('sidebar_recolhida', v);
+      }
+      if (pref === 'abertura') B7.pref.gravar('abertura', v);
+      if (pref === 'som_abertura') B7.pref.gravar('som_abertura', v);
+    };
+    p.querySelectorAll('.cfg-alterna').forEach(l => {
+      const sw = l.querySelector('.cfg-sw');
+      l.onclick = () => alternar(sw);
+      sw.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); alternar(sw); } };
+    });
+
+    const va = p.querySelector('[data-ver-abertura]');
     if (va) va.onclick = () => { if (B7.reverAbertura) B7.reverAbertura(); };
-    const at = painel().querySelector('[data-atalhos]'); if (at) at.onclick = () => B7.UI.atalhos();
+    const at = p.querySelector('[data-atalhos]'); if (at) at.onclick = () => B7.UI.atalhos();
     if (pode('banco')) desenharBanco();
     desenharAcesso();
-    const ex = painel().querySelector('[data-exportar]'); if (ex) ex.onclick = () => B7.Backup.exportar();
-    const im = painel().querySelector('[data-importar]'); if (im) im.onclick = () => B7.Backup.importar();
+    const ex = p.querySelector('[data-exportar]'); if (ex) ex.onclick = () => B7.Backup.exportar();
+    const im = p.querySelector('[data-importar]'); if (im) im.onclick = () => B7.Backup.importar();
   }
 
 
@@ -2443,18 +2498,21 @@ B7.Dashboard = (function () {
     const r = await B7.DB.verificarBanco();
     const hora = new Date(r.em).toLocaleTimeString('pt-BR',
       { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    /* uma linha só: estado + tempo de resposta + hora; tocar verifica de novo */
     alvo.innerHTML =
-      '<div class="cfg-linha" style="border-top:0"><b>Conexão</b>' +
-        '<span class="cfg-estado"><span class="cfg-ponto ' + (r.ok ? 'ok' : 'erro') + '"></span>' +
-        (r.ok ? 'Respondendo' : 'Sem resposta') + '</span>' +
-        '<button class="b p" data-verificar-banco>Verificar de novo</button></div>' +
-      '<div class="cfg-linha"><b>Última verificação</b><span>' + hora +
-        (r.ok ? ' · ' + r.ms + ' ms' : '') + '</span></div>' +
-      (r.ok ? '' : '<div class="cfg-linha"><b>Detalhe</b><span>' + esc(r.erro) + '</span></div>');
+      '<button type="button" class="cfg-l cfg-banco-l" data-verificar-banco aria-label="Verificar o banco de novo">' +
+        '<span class="cfg-ic cfg-tom-verde">' + svgF('banco') + '</span>' +
+        '<span class="cfg-l-tx"><b>Banco de dados</b><small>' +
+          (r.ok ? 'Respondendo · ' + r.ms + ' ms' : 'Sem resposta') + ' · ' + hora + '</small></span>' +
+        '<span class="cfg-valor ' + (r.ok ? 'ok' : 'erro') + '"><span class="cfg-ponto ' + (r.ok ? 'ok' : 'erro') + '"></span>' +
+          (r.ok ? 'Online' : 'Fora') + '</span>' +
+        '<span class="cfg-refazer">Verificar</span>' +
+      '</button>' +
+      (r.ok ? '' : '<div class="cfg-l cfg-l-detalhe"><small>' + esc(r.erro) + '</small></div>');
     const b = alvo.querySelector('[data-verificar-banco]');
     if (b) b.onclick = () => {
-      alvo.innerHTML = '<div class="cfg-estado"><span class="cfg-ponto"></span>' +
-        '<span>Verificando…</span></div>';
+      const s = b.querySelector('small'); if (s) s.textContent = 'verificando…';
+      const pt = b.querySelector('.cfg-ponto'); if (pt) pt.className = 'cfg-ponto pulsa';
       desenharBanco();
     };
   }
