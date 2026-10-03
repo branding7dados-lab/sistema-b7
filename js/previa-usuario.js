@@ -120,6 +120,28 @@ B7.PreviaUsuario = (function () {
     }
   }
 
+  /* A faixa fica fixa no topo e o #app desce exatamente a altura dela
+     (--faixa-h). A altura varia com o nome e a largura da tela — um
+     valor fixo deixava a faixa por cima do topo no celular. */
+  let medidor = null;
+  function medirFaixa(el) {
+    const raiz = document.documentElement;
+    const aplicar = () => {
+      if (!el.isConnected) { raiz.style.removeProperty('--faixa-h'); return; }
+      const h = el.getBoundingClientRect().height; /* display:none (desktop) → 0 */
+      if (h) raiz.style.setProperty('--faixa-h', Math.ceil(h) + 'px');
+      else raiz.style.removeProperty('--faixa-h');
+    };
+    if (medidor) medidor.disconnect();
+    if (window.ResizeObserver) { medidor = new ResizeObserver(aplicar); medidor.observe(el); }
+    window.addEventListener('resize', aplicar, { passive: true });
+    aplicar();
+  }
+  function esquecerFaixa() {
+    if (medidor) { medidor.disconnect(); medidor = null; }
+    document.documentElement.style.removeProperty('--faixa-h');
+  }
+
   function montarBanner() {
     const antigo = document.getElementById('pv-banner-usuario');
     if (antigo) antigo.remove();
@@ -136,6 +158,7 @@ B7.PreviaUsuario = (function () {
     document.body.appendChild(b);
     document.body.classList.add('modo-previa-usuario');
     b.querySelector('#pv-sair-previa').onclick = sair;
+    medirFaixa(b);
   }
 
   /* =================================================================
@@ -162,6 +185,7 @@ B7.PreviaUsuario = (function () {
     desligarBloqueioEscrita();
     const b = document.getElementById('pv-banner-usuario');
     if (b) b.remove();
+    esquecerFaixa();
     document.body.classList.remove('modo-previa-usuario');
     if (B7.Auth) B7.Auth.encerrarSimulacao();
     remontarNav();
@@ -375,11 +399,13 @@ B7.PreviaUsuario = (function () {
     f.id = 'co-faixa';
     f.className = 'pv-banner-usuario co-faixa';
     f.setAttribute('role', 'status');
-    f.innerHTML = '<div class="pv-banner-tx"><b>Você está como ' + esc(u.nome) + '</b>' +
+    f.innerHTML = '<div class="pv-banner-tx"><b><small>Você está como</small> ' + esc(u.nome) + '</b>' +
       '<span>O que fizer fica registrado nesta conta.</span></div>' +
-      '<button type="button" class="b fina" id="co-voltar-faixa"><span>Voltar para minha conta</span></button>';
+      '<button type="button" class="b fina" id="co-voltar-faixa" aria-label="Voltar para minha conta">' + IC_VOLTA +
+        '<span>Voltar</span></button>';
     document.body.appendChild(f);
     document.body.classList.add('na-conta-de-outro');
+    medirFaixa(f);
     const bt = f.querySelector('#co-voltar-faixa');
     bt.onclick = () => voltarParaMinhaConta(bt);
   }
