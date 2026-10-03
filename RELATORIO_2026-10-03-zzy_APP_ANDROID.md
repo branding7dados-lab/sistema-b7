@@ -48,3 +48,7 @@ Sem isso, o app funciona, só com a barrinha de endereço.
 - O APK é gerado no GitHub Actions, porque o SDK do Android não baixa neste ambiente (dl.google.com bloqueado).
 
 **Não testado:** a compilação (espera os segredos) e a instalação no celular.
+
+---
+
+**Cancelado (03/10, pacote zzz1):** a pedido do Kevin, o app Android saiu do sistema: pasta `android/`, workflow `apk.yml`, `apk.json`, `js/app-android.js`, o item "App Android" em Configurações e `dominio-raiz/`. Continuam fora do repositório: os Releases já publicados no GitHub e o repositório `branding7dados-lab.github.io` (ambos inofensivos e removíveis à mão).

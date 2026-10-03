@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="noite">#0B0A1E</color>
-    <!-- barras do sistema na mesma cor do topo do app (pacote zzr):
-         cartão a 72% sobre o fundo, no claro e no escuro -->
-    <color name="barra_clara">#FCFCFE</color>
-    <color name="barra_escura">#181122</color>
-</resources>

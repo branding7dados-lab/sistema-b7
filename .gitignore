@@ -18,5 +18,3 @@ node_modules/
 *.jks
 *.keystore
 android/chave/
-android/**/build/
-android/.gradle/
