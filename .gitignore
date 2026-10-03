@@ -14,3 +14,9 @@ supabase/.temp/
 .DS_Store
 Thumbs.db
 node_modules/
+# chave de assinatura do app Android — fica nos segredos do GitHub, nunca aqui
+*.jks
+*.keystore
+android/chave/
+android/**/build/
+android/.gradle/
