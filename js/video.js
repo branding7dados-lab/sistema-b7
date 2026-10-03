@@ -351,8 +351,9 @@ B7.Video = (function () {
 
     cx.innerHTML = '<div class="ds-resumo-rapido vd-resumo-rapido">' + chips.map(([chave, n, rot, on]) =>
       '<button class="ds-rapido-item vd-rapido-' + esc(chave.split(':')[1]) + (on ? ' on' : '') + '" data-resumo="' + chave + '">' +
-      '<i class="vd-dot"></i><b>' + n + '</b> ' + esc(rot) + '</button>').join('') +
+      '<i class="vd-dot"></i><b data-n="' + n + '">' + n + '</b> ' + esc(rot) + '</button>').join('') +
       '</div>';
+    contarNumeros(cx);
 
     cx.querySelectorAll('[data-resumo]').forEach(b => b.onclick = () => {
       const [dim, val] = b.dataset.resumo.split(':');
@@ -364,6 +365,20 @@ B7.Video = (function () {
     });
   }
 
+  /* números do resumo sobem de 0 até o valor (só transform-free: texto) */
+  function contarNumeros(raiz) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const els = [...raiz.querySelectorAll('[data-n]')].filter(b => +b.dataset.n > 1);
+    if (!els.length) return;
+    const t0 = performance.now(), DUR = 520;
+    const passo = agora => {
+      const p = Math.min(1, (agora - t0) / DUR), e = 1 - Math.pow(1 - p, 3);
+      els.forEach(b => { if (b.isConnected) b.textContent = Math.round(+b.dataset.n * e); });
+      if (p < 1) requestAnimationFrame(passo);
+    };
+    requestAnimationFrame(passo);
+  }
+  let filtrosAbertos = false;
   function desenharBarra(comp, souTambemVideomaker) {
     const cx = painel().querySelector('#vd-barra');
     if (!cx) return;
@@ -374,10 +389,17 @@ B7.Video = (function () {
     const clientesPresentes = [...new Map(demandas.filter(d => d.client_id).map(d => [d.client_id, d.cliente_nome])).entries()]
       .sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
 
+    /* no celular os seletores ficam recolhidos atrás de "Filtros" (com a
+       contagem do que está ativo); no computador, sempre à vista */
+    const nAtivos = ['cliente', 'status', 'responsavel', 'prioridade', 'prazo'].filter(k => F[k]).length;
     cx.innerHTML = '<div class="ds-barra">' +
       '<div class="ds-busca-cx"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
         '<input class="campo fina ds-busca" id="vd-busca" placeholder="Buscar código, cliente ou título…" ' +
         'value="' + esc(F.busca) + '" aria-label="Buscar"></div>' +
+      '<button type="button" class="b fina contorno vd-bt-filtros' + (nAtivos ? ' ativo' : '') + '" id="vd-bt-filtros" aria-expanded="' + filtrosAbertos + '" aria-controls="vd-filtros">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
+        'Filtros' + (nAtivos ? '<span class="vd-bt-n">' + nAtivos + '</span>' : '') + '</button>' +
+      '<div class="vd-filtros' + (filtrosAbertos ? ' aberto' : '') + '" id="vd-filtros"><div class="vd-filtros-in">' +
       opc('competencia', F.competencia, [['todas', 'Todos os meses']].concat(comp.map(c => [c, competenciaRotulo(c)])), 'Competência') +
       opc('cliente', F.cliente, [['', 'Cliente']].concat(clientesPresentes), 'Cliente') +
       opc('status', F.status, [['', 'Status']].concat(SITUACOES_ATIVAS), 'Status') +
@@ -385,6 +407,7 @@ B7.Video = (function () {
         .concat(videomakers.map(v => [v.id, v.nome])), 'Responsável') +
       opc('prioridade', F.prioridade, [['', 'Prioridade']].concat(PRIORIDADES), 'Prioridade') +
       (filtrosAtivos() ? '<button class="b fina contorno" id="vd-limpar">Limpar filtros</button>' : '') +
+      '</div></div>' +
       '<div class="ds-espaco"></div>' +
       (souTambemVideomaker
         ? '<label class="op-mini vd-minha-fila' + (F.minhaFila ? ' on' : '') + '"><input type="checkbox" id="vd-minha-fila"' +
@@ -396,6 +419,12 @@ B7.Video = (function () {
       '</div>' +
     '</div>';
 
+    const btFiltros = cx.querySelector('#vd-bt-filtros');
+    if (btFiltros) btFiltros.onclick = () => {
+      filtrosAbertos = !filtrosAbertos;
+      btFiltros.setAttribute('aria-expanded', filtrosAbertos);
+      cx.querySelector('#vd-filtros').classList.toggle('aberto', filtrosAbertos);
+    };
     const busca = cx.querySelector('#vd-busca');
     let t;
     busca.oninput = () => { clearTimeout(t); t = setTimeout(() => { F.busca = busca.value; guardarFiltros(); desenharArea(filtrar(baseFiltrada())); desenharResumo(baseFiltrada()); }, 220); };
@@ -438,7 +467,9 @@ B7.Video = (function () {
       const pa = a.prazo || '9999-99-99', pb = b.prazo || '9999-99-99';
       return pa < pb ? -1 : pa > pb ? 1 : 0;
     });
-    return '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
+    /* no celular a tabela vira lista de cartões agrupada por prazo (CSS
+       mostra um ou outro); os dois têm data-demanda e abrem igual */
+    return listaMovelHTML(ordenada) + '<div class="tabela-rolavel vd-so-largo"><table class="vd-tabela"><thead><tr>' +
       '<th>Código</th><th>Cliente</th><th>Título</th><th>Prioridade</th><th>Prazo</th><th>Status</th><th>Responsável</th>' +
       '</tr></thead><tbody>' +
       ordenada.map(d => {
@@ -454,6 +485,49 @@ B7.Video = (function () {
         '</tr>';
       }).join('') +
       '</tbody></table></div>';
+  }
+
+  /* ---------------- LISTA DO CELULAR (pacote zs) ----------------
+     Um cartão por demanda: cliente e status em cima, título forte, prazo
+     com contexto ("em 3 dias", "2 dias em atraso") e responsável embaixo.
+     Agrupada pelo que importa no dia: o que já passou primeiro. */
+  const IC_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>';
+  function diasAte(prazo) { return Math.round((new Date(prazo) - new Date(hoje())) / 86400000); }
+  function grupoPrazo(d) {
+    if (!d.prazo) return 'sem';
+    if (ehAtrasada(d)) return 'atrasadas';
+    const n = diasAte(d.prazo);
+    return n <= 0 ? 'hoje' : n <= 7 ? 'semana' : 'depois';
+  }
+  const GRUPOS_PRAZO = [['atrasadas', 'Atrasadas'], ['hoje', 'Até hoje'], ['semana', 'Próximos 7 dias'], ['depois', 'Mais adiante'], ['sem', 'Sem prazo']];
+  function prazoRelativo(d) {
+    if (!d.prazo) return '';
+    const n = diasAte(d.prazo);
+    if (ehAtrasada(d)) return -n === 1 ? '1 dia em atraso' : -n + ' dias em atraso';
+    return n === 0 ? 'hoje' : n === 1 ? 'amanhã' : n > 1 ? 'em ' + n + ' dias' : '';
+  }
+  function listaMovelHTML(ordenada) {
+    let i = 0;
+    return '<div class="vd-lista-m">' + GRUPOS_PRAZO.map(([k, rot]) => {
+      const itens = ordenada.filter(d => grupoPrazo(d) === k);
+      if (!itens.length) return '';
+      return '<section class="vd-m-grupo vd-m-g-' + k + '"><h3 class="vd-m-grupo-cab"><span>' + esc(rot) + '</span><b>' + itens.length + '</b></h3>' +
+        itens.map(d => cartaoMovel(d, i++)).join('') + '</section>';
+    }).join('') + '</div>';
+  }
+  function cartaoMovel(d, i) {
+    const atrasada = ehAtrasada(d), prio = d.prioridade || 'normal', rel = prazoRelativo(d);
+    return '<article class="vd-m-card vd-m-s-' + esc(d.editing_status) + (atrasada ? ' atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + '">' +
+      '<div class="vd-m-topo">' + logoClienteHTML(d, 'sm') + '<span class="vd-m-cli">' + esc(d.cliente_nome || 'Cliente') + '</span>' +
+        (d.codigo ? '<span class="vd-m-cod">#' + esc(d.codigo) + '</span>' : '') + statusBadge(d.editing_status) + '</div>' +
+      '<div class="vd-m-tit">' + tituloComFallback(d) + '</div>' +
+      '<div class="vd-m-pe">' +
+        (d.prazo ? '<span class="vd-m-prazo' + (atrasada ? ' atrasado' : rel === 'hoje' ? ' hoje' : '') + '">' + IC_CAL +
+          esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + (rel ? '<i>' + esc(rel) + '</i>' : '') + '</span>'
+          : '<span class="vd-m-prazo vazio">' + IC_CAL + 'sem prazo</span>') +
+        (prio !== 'normal' ? prioridadeBadge(prio) : '') +
+        quemHTML(d) + '<span class="vd-m-seta">' + IC.seta + '</span>' +
+      '</div></article>';
   }
 
   function tituloComFallback(d) {
