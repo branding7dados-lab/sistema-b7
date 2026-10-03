@@ -10,7 +10,9 @@
              harmônico (dó maior) com reverberação longa
      3,28 s  whoosh do "Branding7" se escrevendo
      3,7 s   cintilar do brilho passando pelo logo
-     saída   whoosh de ar + assentamento grave quando o logo voa
+     1,95 s  cama: acorde grave e quente sob o logo, até a saída
+     saída   um sopro + a cama se resolve + "toc" abafado no pouso
+             (pacote zzp: nada de repetir o cintilar no pouso)
    Regras:
    • desligável em Configurações → Aparência ("Som da abertura");
    • o navegador pode bloquear som sem um toque antes (política de
@@ -144,13 +146,51 @@ B7.SomAbertura = (function () {
       env(g, tt, .035, .006, .8);
     });
   }
-  function assenta(t) {
-    whoosh(t, .75, 2600, 380, .12);
-    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
-    o.frequency.setValueAtTime(130.81, t + .3); o.frequency.exponentialRampToValueAtTime(98, t + 1.1);
-    o.connect(g); g.connect(saida); g.connect(sala); o.start(t + .3); o.stop(t + 1.6);
-    env(g, t + .3, .09, .03, 1.1);
+  /* cama: um acorde aberto (dó com 9ª), grave e quente, que nasce da
+     ignição e fica sob o logo até a saída — é o que dá "trilha de
+     cinema" em vez de efeitos soltos. aoSair resolve e apaga. */
+  let cama = null;
+  function camaSonora(t, f = 1) {
+    const g = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = .7;
+    lp.frequency.setValueAtTime(280, t); lp.frequency.exponentialRampToValueAtTime(1500, t + 1.6);
+    const oscs = [];
+    [65.41, 130.81, 196, 293.66, 329.63].forEach((hz, i) => {
+      [-6, 6].forEach(dt => {
+        const o = ctx.createOscillator(); o.type = i < 2 ? 'triangle' : 'sawtooth';
+        o.frequency.value = hz; o.detune.value = dt + (Math.random() - .5) * 3;
+        const go = ctx.createGain(); go.gain.value = i < 2 ? .5 : .16;
+        o.connect(go); go.connect(lp); o.start(t); o.stop(t + 20); oscs.push(o);
+      });
+    });
+    lp.connect(g); g.connect(saida); g.connect(sala);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(.05 * f, t + 1.4);
+    g.gain.setValueAtTime(.05 * f, t + 17);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 19.8);   /* rede de segurança: espera longa */
+    cama = { g, lp, oscs };
+  }
+  /* saída (pacote zzp): UM gesto sonoro só, diferente de tudo que já
+     tocou — antes eram dois whooshes opostos ao mesmo tempo + o mesmo
+     cintilar do brilho do logo repetido no pouso ("enjoativo").
+       0,00  sopro de ar subindo junto com a íris e o voo do logo
+       0,00  a cama resolve: o filtro fecha e o acorde se apaga em ~1,2 s
+       0,78  pouso: um "toc" abafado e curto no topo (sem brilho, sem eco) */
+  function partida(t) {
+    whoosh(t, .8, 320, 1900, .075);
+    if (cama) {
+      try {
+        cama.g.gain.cancelScheduledValues(t); cama.g.gain.setTargetAtTime(0.0001, t + .1, .38);
+        cama.lp.frequency.cancelScheduledValues(t); cama.lp.frequency.setTargetAtTime(220, t, .3);
+        cama.oscs.forEach(o => o.stop(t + 2.6));
+      } catch (e) {}
+      cama = null;
+    }
     if (drone) { try { drone.gain.cancelScheduledValues(t); drone.gain.setTargetAtTime(0.0001, t, .12); } catch (e) {} }
+    const tp = t + .78, o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+    o.type = 'sine'; o.frequency.setValueAtTime(196, tp); o.frequency.exponentialRampToValueAtTime(92, tp + .09);
+    lp.type = 'lowpass'; lp.frequency.value = 900;
+    o.connect(lp); lp.connect(g); g.connect(saida); o.start(tp); o.stop(tp + .25);
+    env(g, tp, .07, .004, .16);
   }
 
   /* ---------- trilha completa, alinhada ao relógio da animação ----------
@@ -159,7 +199,7 @@ B7.SomAbertura = (function () {
      O que já passou é pulado — som atrasado soaria fora de sincronia. */
   const ROTEIRO = [
     [0.05, t => tensao(t, t + 1.85)], [0.9, t => riser(t, 1.0)],
-    [1.62, estalo], [1.76, estalo], [1.9, ignicao],
+    [1.62, estalo], [1.76, estalo], [1.9, ignicao], [1.95, camaSonora],
     [3.28, t => whoosh(t, .7, 600, 3800, .1)], [3.7, cintilar]
   ];
   /* versão relâmpago (recarregar na mesma sessão, pacote zzc): ~1 s,
@@ -169,7 +209,7 @@ B7.SomAbertura = (function () {
        0,95  cintilar do brilho passando pelo logo */
   const ROTEIRO_CURTO = [
     [0.0, t => riser(t, .38)], [0.3, t => whoosh(t, .45, 700, 3800, .07)],
-    [0.34, estalo], [0.4, t => ignicao(t, .62)], [0.95, cintilar]
+    [0.34, estalo], [0.4, t => ignicao(t, .62)], [0.45, t => camaSonora(t, .7)], [0.95, cintilar]
   ];
   let inicioAnim = null, tocada = false, roteiro = ROTEIRO;
   function tocarTrilha(decorrido) {
@@ -218,11 +258,7 @@ B7.SomAbertura = (function () {
   /* chamada pela saída da abertura (js/app.js) */
   function aoSair() {
     if (!ligado() || !ctx || ctx.state !== 'running') return;
-    try { assenta(ctx.currentTime + .02); } catch (e) {}
-    /* onda de luz (zzo): o anel corre pela tela (0,04–0,84 s) e o logo
-       pousa no topo (~0,82 s) — um sopro subindo e um cintilar curto */
-    try { whoosh(ctx.currentTime + .06, .75, 260, 2400, .05); } catch (e) {}
-    try { cintilar(ctx.currentTime + .8); } catch (e) {}
+    try { partida(ctx.currentTime + .02); } catch (e) {}
   }
   /* "Ver abertura" (Configurações): toque do usuário → som garantido */
   function reproduzir() {
@@ -237,14 +273,14 @@ B7.SomAbertura = (function () {
   async function ensaio(qual) {
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     if (!OAC) return null;
-    const salvo = [ctx, saida, sala, ruido, drone];
+    const salvo = [ctx, saida, sala, ruido, drone, cama];
     const curto = qual === 'curta';
     const off = new OAC(2, 44100 * (curto ? 3.5 : 6.5), 44100);
     preparar(off);
     (curto ? ROTEIRO_CURTO : ROTEIRO).forEach(([quando, fn]) => fn(quando));
-    assenta(curto ? 1.0 : 4.3);
+    partida(curto ? 1.0 : 4.3);
     const buf = await off.startRendering();
-    [ctx, saida, sala, ruido, drone] = salvo;
+    [ctx, saida, sala, ruido, drone, cama] = salvo;
     const d = buf.getChannelData(0), passo = 4410, picos = [];
     for (let i = 0; i < d.length; i += passo) {
       let p = 0; for (let j = i; j < Math.min(i + passo, d.length); j++) p = Math.max(p, Math.abs(d[j]));

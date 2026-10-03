@@ -371,8 +371,21 @@ B7.Rota = (function () {
     voa.style.transformOrigin = '50% 50%';
     /* a animação CSS da peça para aqui: o voo parte do quadro final dela */
     [voa, simbolo, marca].forEach(n => { if (n) n.style.animation = 'none'; });
-    voa.animate([{ transform: 'none' }, { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s + ')' }],
-      { duration: DUR, easing: curva, fill: 'forwards' });
+    const quadros = [{ transform: 'none' }, { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s + ')' }];
+    voa.animate(quadros, { duration: DUR, easing: curva, fill: 'forwards' });
+    /* rastro de luz (zzp): três ecos da peça seguem o mesmo caminho um
+       pouco atrás, cada vez mais apagados — o logo "risca" a tela */
+    const forca = document.documentElement.getAttribute('data-theme') === 'light' ? .6 : 1;   /* no claro o eco pesa mais */
+    [55, 105, 160].forEach((atraso, k) => {
+      const r = document.createElement('i');
+      r.className = 'ab-rastro' + (d.tipo === 'lockup' ? ' lockup' : '');
+      r.setAttribute('aria-hidden', 'true');
+      Object.assign(r.style, { left: de.left + 'px', top: de.top + 'px', width: de.width + 'px', height: de.height + 'px', transformOrigin: '50% 50%' });
+      document.body.appendChild(r);
+      r.animate(quadros, { duration: DUR, delay: atraso, easing: curva, fill: 'forwards' });
+      r.animate([{ opacity: 0 }, { opacity: (.34 - k * .1) * forca, offset: .25 }, { opacity: 0 }], { duration: DUR, delay: atraso, easing: 'ease-out', fill: 'both' });
+      setTimeout(() => r.remove(), DUR + atraso + 40);
+    });
     /* destino branco (fundo escuro): a lâmpada colorida vira a branca no ar */
     if (d.branco) {
       const cor = el.querySelector('.ab-cor'), branca = el.querySelector('.ab-branca');
@@ -461,17 +474,24 @@ B7.Rota = (function () {
     document.body.appendChild(camada);
     setTimeout(() => camada.remove(), IRIS.atraso + IRIS.dur + 1100);
   }
-  /* o logo pousou no topo: uma onda pequena sai dele */
+  /* o logo pousou no topo (zzp): um halo curto atrás dele e a mesma faixa
+     de luz da abertura passando uma vez pelo desenho do logo — antes era
+     uma onda, que repetia as ondas da ignição */
   function brilhoDoPouso(alvo) {
     if (reduzMov() || !alvo) return;
     const r = alvo.getBoundingClientRect();
-    const b = document.createElement('i');
-    b.className = 'ab-pouso-onda';
-    b.setAttribute('aria-hidden', 'true');
-    const lado = Math.max(r.width, r.height);
-    Object.assign(b.style, { left: (r.left + r.width / 2 - lado / 2) + 'px', top: (r.top + r.height / 2 - lado / 2) + 'px', width: lado + 'px', height: lado + 'px' });
-    document.body.appendChild(b);
-    setTimeout(() => b.remove(), 900);
+    const lado = Math.max(r.width, r.height) * 2.2;
+    const halo = document.createElement('i');
+    halo.className = 'ab-pouso-halo';
+    halo.setAttribute('aria-hidden', 'true');
+    Object.assign(halo.style, { left: (r.left + r.width / 2 - lado / 2) + 'px', top: (r.top + r.height / 2 - lado / 2) + 'px', width: lado + 'px', height: lado + 'px' });
+    const ref = document.createElement('i');
+    ref.className = 'ab-pouso-reflexo';
+    ref.setAttribute('aria-hidden', 'true');
+    Object.assign(ref.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    ref.style.setProperty('--ab-img', 'url("' + alvo.src + '")');
+    document.body.append(halo, ref);
+    setTimeout(() => { halo.remove(); ref.remove(); }, 900);
   }
 
   function fecharCortina() {
