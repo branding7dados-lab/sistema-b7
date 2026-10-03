@@ -310,37 +310,59 @@ B7.Topo = (function () {
     return salvo === 'dark' || salvo === 'light' ? salvo : 'sistema';
   }
 
+  /* zzz6: "Sua conta" redesenhada — cabeçalho com a pessoa em destaque
+     (anel de luz no avatar, funções em pílulas), itens com ícone colorido
+     e uma linha do que fazem, tema com pílula que desliza, chave de
+     animações e entrada em cascata (--i lido por styles/topo.css). */
+  const SETA_TC = '<svg class="tc-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
   function htmlConta(u) {
     const tom = ' tom-' + B7.UI.tomDoNome(u.nome || u.username);
     const foto = u.avatar_url ? '<img src="' + esc(u.avatar_url) + '" alt="">'
       : '<span>' + esc(B7.UI.iniciais(u.nome || u.username)) + '</span>';
-    const item = (attr, ic, tx, extra) => '<button type="button" class="tp-item tp-item-simples' + (extra || '') + '" role="menuitem" ' + attr + '>' +
-      '<span class="tp-item-ic">' + ic + '</span><span class="tp-item-tx"><b>' + esc(tx) + '</b></span></button>';
+    let i = 0;
+    const item = (attr, ic, cor, tx, sub, extra) => '<button type="button" class="tp-item tc-item' + (extra || '') + '" role="menuitem" ' + attr +
+      ' style="--i:' + (i++) + '">' +
+      '<span class="tc-ic tc-' + cor + '">' + ic + '</span>' +
+      '<span class="tc-tx"><b>' + esc(tx) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>' + SETA_TC + '</button>';
     const m = modoTema();
     const tema = (v, ic, tx) => '<button type="button" role="menuitemradio" aria-checked="' + (m === v) + '" class="tp-tema' +
       (m === v ? ' on' : '') + '" data-tema-modo="' + v + '">' + ic + '<span>' + tx + '</span></button>';
     const cliente = B7.Auth.ehCliente && B7.Auth.ehCliente();
     const naContaDeOutro = !!(B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
-    return '<div class="tp-conta-cab">' +
-        '<span class="tp-conta-av av-pessoa' + (u.avatar_url ? ' com-foto' : tom) + '">' + foto + '</span>' +
-        '<span class="tp-conta-tx"><b>' + esc(u.nome || u.username) + '</b>' +
-          '<span class="tp-conta-funcoes">' + esc(funcoesDoUsuario(u)) + '</span>' +
-          '<small>@' + esc(u.username || '') + '</small></span>' +
+    const papeis = funcoesDoUsuario(u).split(' · ').filter(Boolean);
+    const animOn = !(B7.Desempenho && B7.Desempenho.animacoesLigadas) || B7.Desempenho.animacoesLigadas();
+    return '<div class="tc">' +
+      '<div class="tc-cab">' +
+        '<i class="tc-luz" aria-hidden="true"></i>' +
+        '<span class="tc-av"><span class="tp-conta-av av-pessoa' + (u.avatar_url ? ' com-foto' : tom) + '">' + foto + '</span></span>' +
+        '<span class="tc-id"><b>' + esc(u.nome || u.username) + '</b>' +
+          '<small>@' + esc(u.username || '') + '</small>' +
+          '<span class="tc-papeis">' + papeis.map(x => '<i>' + esc(x) + '</i>').join('') + '</span></span>' +
       '</div>' +
-      item('data-conta="perfil"', IC.perfil, 'Meu perfil') +
-      (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'Preferências e configurações') : '') +
-      (B7.Perm && B7.Perm.podeConfig('usuarios') && !cliente ? item('data-conta="usuarios"', IC.usuarios, 'Usuários e acessos') : '') +
-      (!cliente ? item('data-conta="atalhos"', IC.teclado, 'Atalhos de teclado', ' tp-so-desktop') : '') +
-      (B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor && !naContaDeOutro
-        ? item('data-conta="vercomo"', IC.olho, 'Visualizar como…') : '') +
-      /* rever a abertura do B7 (com som: o toque destrava o áudio) */
-      (B7.reverAbertura ? item('data-conta="abertura"', IC.abertura, 'Ver abertura') : '') +
-      '<div class="tp-secao" role="group" aria-label="Aparência"><span class="tp-secao-rot">Aparência</span>' +
-        '<div class="tp-temas">' + tema('sistema', IC.sistema, 'Sistema') + tema('light', IC.sol, 'Claro') + tema('dark', IC.lua, 'Escuro') + '</div>' +
+      '<div class="tc-lista">' +
+        item('data-conta="perfil"', IC.perfil, 'violeta', 'Meu perfil', 'foto, nome, senha e notificações') +
+        (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'azul', 'Preferências e configurações', 'tema, desempenho, abertura e sistema') : '') +
+        (B7.Perm && B7.Perm.podeConfig('usuarios') && !cliente ? item('data-conta="usuarios"', IC.usuarios, 'verde', 'Usuários e acessos', 'contas da equipe e dos clientes') : '') +
+        (!cliente ? item('data-conta="atalhos"', IC.teclado, 'cinza', 'Atalhos de teclado', 'a lista completa', ' tp-so-desktop') : '') +
+        (B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor && !naContaDeOutro
+          ? item('data-conta="vercomo"', IC.olho, 'laranja', 'Visualizar como…', 'ver o sistema com o acesso de outra pessoa') : '') +
+        (B7.reverAbertura ? item('data-conta="abertura"', IC.abertura, 'rosa', 'Ver abertura', 'assistir de novo, com som') : '') +
+      '</div>' +
+      '<div class="tp-secao tc-secao" role="group" aria-label="Aparência" style="--i:' + (i++) + '"><span class="tp-secao-rot">Aparência</span>' +
+        '<div class="tp-temas tc-temas"><i class="tc-pilula" aria-hidden="true"></i>' +
+          tema('sistema', IC.sistema, 'Sistema') + tema('light', IC.sol, 'Claro') + tema('dark', IC.lua, 'Escuro') + '</div>' +
+        (B7.Desempenho && B7.Desempenho.definirAnimacoes
+          ? '<button type="button" class="tc-anim" role="menuitemcheckbox" aria-checked="' + animOn + '" data-conta-anim>' +
+              '<span class="tc-tx"><b>Animações</b><small>' + (animOn ? 'ligadas' : 'desligadas: tudo aparece na hora') + '</small></span>' +
+              '<span class="tc-sw' + (animOn ? ' on' : '') + '" aria-hidden="true"><i></i></span></button>' : '') +
       '</div>' +
       /* dentro da conta de outra pessoa, sair é voltar para a própria
          (B7.Auth.sair já faz isso) — o rótulo diz o que vai acontecer */
-      '<hr>' + item('data-conta="sair"', IC.sair, naContaDeOutro ? 'Voltar para minha conta' : 'Sair da conta', ' perigo');
+      '<div class="tc-fim" style="--i:' + (i++) + '">' +
+        item('data-conta="sair"', IC.sair, 'vermelho', naContaDeOutro ? 'Voltar para minha conta' : 'Sair da conta',
+          naContaDeOutro ? 'sai da conta de ' + (u.nome || u.username) : 'encerra a sessão só neste aparelho', ' perigo') +
+      '</div>' +
+    '</div>';
   }
   function ligarConta(raiz, fechar) {
     const acao = {
@@ -353,12 +375,33 @@ B7.Topo = (function () {
       sair: () => B7.Auth.sair()
     };
     raiz.querySelectorAll('[data-conta]').forEach(b => b.onclick = () => { const k = b.dataset.conta; fechar(); acao[k] && acao[k](); });
+    /* pílula do tema: desliza até a opção escolhida */
+    const caixa = raiz.querySelector('.tc-temas'), pil = caixa && caixa.querySelector('.tc-pilula');
+    const moverPilula = anima => {
+      const on = caixa && caixa.querySelector('.tp-tema.on');
+      if (!on || !pil) return;
+      if (!anima) pil.style.transition = 'none';
+      pil.style.width = on.offsetWidth + 'px';
+      pil.style.transform = 'translate3d(' + on.offsetLeft + 'px,0,0)';
+      pil.style.opacity = '1';
+      if (!anima) { pil.offsetWidth; pil.style.transition = ''; }
+    };
+    requestAnimationFrame(() => moverPilula(false));
     raiz.querySelectorAll('[data-tema-modo]').forEach(b => b.onclick = () => {
       if (B7.definirTema) B7.definirTema(b.dataset.temaModo);
       raiz.querySelectorAll('[data-tema-modo]').forEach(x => {
         const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on));
       });
+      moverPilula(true);
     });
+    const an = raiz.querySelector('[data-conta-anim]');
+    if (an) an.onclick = () => {
+      const v = an.getAttribute('aria-checked') !== 'true';
+      B7.Desempenho.definirAnimacoes(v);
+      an.setAttribute('aria-checked', String(v));
+      an.querySelector('.tc-sw').classList.toggle('on', v);
+      an.querySelector('small').textContent = v ? 'ligadas' : 'desligadas: tudo aparece na hora';
+    };
   }
 
   function pintarConta() {

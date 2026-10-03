@@ -69,8 +69,16 @@ B7.Desempenho = (function () {
   }
   window.addEventListener('hashchange', () => setTimeout(medir, 0));
 
+  /* zzz6: animações ligadas/desligadas (a regra mora no <head> do
+     index.html e em html.sem-animacao, styles/global.css) */
+  const animacoesLigadas = () => !html.classList.contains('sem-animacao');
+  function definirAnimacoes(ligadas) {
+    gravar('b7_animacoes', ligadas ? null : 'desligadas');
+    html.classList.toggle('sem-animacao', !ligadas);
+  }
+
   const estado = () => ({ modo: modo(), leve: html.classList.contains('modo-leve'),
                           automatico: ler('b7_leve_auto', '') === '1', simples: aparelhoSimples() });
   aplicar();
-  return { definir, modo, estado, aplicar };
+  return { definir, modo, estado, aplicar, animacoesLigadas, definirAnimacoes };
 })();
