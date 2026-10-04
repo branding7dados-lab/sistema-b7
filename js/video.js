@@ -282,6 +282,7 @@ B7.Video = (function () {
                              d.editing_status !== 'entregue' && d.editing_status !== 'descartado')
       : [];
 
+    ultAnteriores = anteriores.length;
     painel().innerHTML = '<div class="conteudo entra vd-tela">' +
       '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
       '<p>Toda a fila de edição da B7 em um só lugar.</p><p class="vd-sub-m" id="vd-sub-m"></p></div>' +
@@ -352,6 +353,28 @@ B7.Video = (function () {
     B7.DB.verificarAlertasPrazoVideo().catch(() => {});
   }
 
+  let ultAnteriores = 0;
+  const COR_ETAPA = { pendente: 'var(--ink-4)', em_edicao: '#7C5CFF', aguardando_aprovacao: 'var(--acento)', correcao: 'var(--ambar)', standby: 'var(--ink-3)', entregue: 'var(--ok)' };
+  /* zzz25 (celular): o resumo vira um cartão-herói — quanto do mês já
+     foi entregue, uma barra segmentada por etapa e as etapas como
+     legenda tocável (os mesmos filtros das pílulas do computador). O
+     aviso de meses anteriores mora no rodapé dele. */
+  function heroiHTML(base, chips) {
+    const total = base.length;
+    const entregues = base.filter(d => d.editing_status === 'entregue').length;
+    const pct = total ? Math.round(entregues * 100 / total) : 0;
+    const segs = Object.keys(COR_ETAPA).map(k => [k, base.filter(d => d.editing_status === k).length]).filter(x => x[1]);
+    return '<div class="vd-heroi">' +
+      '<div class="vd-heroi-topo"><div><b data-n="' + entregues + '">' + entregues + '</b><span>de ' + total + ' entregue' + (total === 1 ? '' : 's') + '</span></div>' +
+        '<em>' + pct + '%</em></div>' +
+      '<div class="vd-heroi-barra">' + segs.map(([k, n], i) =>
+        '<i style="flex:' + n + ';background:' + COR_ETAPA[k] + ';--i:' + i + '"></i>').join('') + '</div>' +
+      '<div class="vd-heroi-leg">' + chips.map(([chave, n, rot, on]) =>
+        '<button class="vd-heroi-it vd-rapido-' + esc(chave.split(':')[1]) + (on ? ' on' : '') + '" data-resumo="' + chave + '">' +
+        '<i class="vd-dot"></i><b>' + n + '</b>' + esc(rot) + '</button>').join('') + '</div>' +
+      (ultAnteriores ? '<button class="vd-heroi-aviso" data-ver-anteriores><span><b>' + ultAnteriores + '</b> de meses anteriores ainda em aberto</span><i>Ver ›</i></button>' : '') +
+    '</div>';
+  }
   function desenharResumo(base) {
     const cx = painel().querySelector('#vd-resumo');
     if (!cx) return;
@@ -370,7 +393,9 @@ B7.Video = (function () {
     cx.innerHTML = '<div class="ds-resumo-rapido vd-resumo-rapido">' + chips.map(([chave, n, rot, on]) =>
       '<button class="ds-rapido-item vd-rapido-' + esc(chave.split(':')[1]) + (on ? ' on' : '') + '" data-resumo="' + chave + '">' +
       '<i class="vd-dot"></i><b data-n="' + n + '">' + n + '</b> ' + esc(rot) + '</button>').join('') +
-      '</div>';
+      '</div>' + heroiHTML(base, chips);
+    const verAnt = cx.querySelector('[data-ver-anteriores]');
+    if (verAnt) verAnt.onclick = () => { F.competencia = 'todas'; F.prazo = 'atrasadas'; guardarFiltros(); desenharProducao(); };
     contarNumeros(cx);
 
     cx.querySelectorAll('[data-resumo]').forEach(b => b.onclick = () => {
@@ -527,36 +552,55 @@ B7.Video = (function () {
     if (ehAtrasada(d)) return -n === 1 ? '1 dia em atraso' : -n + ' dias em atraso';
     return n === 0 ? 'hoje' : n === 1 ? 'amanhã' : n > 1 ? 'em ' + n + ' dias' : '';
   }
+  const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  /* zzz25: agrupada POR DIA (o prazo sai de cada linha e vira o
+     cabeçalho do grupo); atrasadas juntas no topo, sem prazo no fim */
   function listaMovelHTML(ordenada) {
     let i = 0;
-    return '<div class="vd-lista-m">' + GRUPOS_PRAZO.map(([k, rot]) => {
-      const itens = ordenada.filter(d => grupoPrazo(d) === k);
-      if (!itens.length) return '';
-      return '<section class="vd-m-grupo vd-m-g-' + k + '"><h3 class="vd-m-grupo-cab"><span>' + esc(rot) + '</span><b>' + itens.length + '</b></h3>' +
-        '<div class="vd-m2-caixa">' + itens.map(d => cartaoMovel(d, i++)).join('') + '</div></section>';
-    }).join('') + '</div>';
+    const grupos = [];
+    const pega = (chave, rot, sub, cls) => {
+      let g = grupos.find(x => x.chave === chave);
+      if (!g) { g = { chave, rot, sub, cls, itens: [] }; grupos.push(g); }
+      return g;
+    };
+    ordenada.forEach(d => {
+      if (!d.prazo) return pega('~sem', 'Sem prazo', '', 'sem').itens.push(d);
+      if (ehAtrasada(d)) return pega('!atr', 'Atrasadas', '', 'atrasadas').itens.push(d);
+      const n = diasAte(d.prazo);
+      const dt = new Date(d.prazo + 'T12:00:00');
+      const rot = n <= 0 ? 'Hoje' : n === 1 ? 'Amanhã' : DIAS_SEMANA[dt.getDay()];
+      const sub = B7.UI.dataBR(d.prazo).slice(0, 5) + (n > 1 ? ' · em ' + n + ' dias' : '');
+      pega(d.prazo, rot, sub, n <= 0 ? 'hoje' : n === 1 ? 'amanha' : 'dia').itens.push(d);
+    });
+    grupos.sort((x, y) => x.chave < y.chave ? -1 : x.chave > y.chave ? 1 : 0);
+    return '<div class="vd-lista-m">' + grupos.map(g =>
+      '<section class="vd-m-grupo vd-m-g-' + g.cls + '"><h3 class="vd-m-grupo-cab vd-dia-cab"><span class="vd-dia-rot">' + esc(g.rot) + '</span>' +
+        (g.sub ? '<span class="vd-dia-sub">' + esc(g.sub) + '</span>' : '') + '<b>' + g.itens.length + '</b></h3>' +
+        '<div class="vd-m2-caixa">' + g.itens.map(d => cartaoMovel(d, i++)).join('') + '</div></section>').join('') + '</div>';
+  }
+  function iniciais(nome) {
+    const p = String(nome || '').trim().split(/\s+/);
+    return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase() || '?';
   }
   function cartaoMovel(d, i) {
-    const atrasada = ehAtrasada(d), prio = d.prioridade || 'normal', rel = prazoRelativo(d);
-    /* zzz23: linha de lista (não mais cartão solto): logo, título forte,
-       cliente/código, etapa com bolinha + responsável, e a data à direita
-       com o "em N dias" colorido pela urgência */
-    const urg = atrasada ? ' atrasado' : rel === 'hoje' || rel === 'amanhã' ? ' hoje' : '';
+    const atrasada = ehAtrasada(d), prio = d.prioridade || 'normal';
+    /* zzz25: linha limpa — logo · título + cliente/código · etapa;
+       à direita só o avatar do responsável (tracejado quando ninguém
+       assumiu). O dia está no cabeçalho do grupo; na pilha de
+       atrasadas a linha diz quanto atrasou. */
     const quem = d.videomaker_id && d.videomaker_nome
-      ? '<span class="vd-m2-quem"><i style="background:' + corVideomaker(d.videomaker_id) + '"></i>' + esc(d.videomaker_nome) + '</span>'
-      : '<span class="vd-m2-quem sem">sem responsável</span>';
-    return '<article class="vd-m-card vd-m2 vd-m-s-' + esc(d.editing_status) + (atrasada ? ' atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + '">' +
+      ? '<span class="vd-m3-av" title="' + esc(d.videomaker_nome) + '" style="--c:' + corVideomaker(d.videomaker_id) + '">' + esc(iniciais(d.videomaker_nome)) + '</span>'
+      : '<span class="vd-m3-av sem" title="Sem responsável"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="9" r="3.5"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span>';
+    return '<article class="vd-m-card vd-m2 vd-m3 vd-m-s-' + esc(d.editing_status) + (atrasada ? ' atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + '">' +
       '<span class="vd-m-logo">' + logoClienteHTML(d, 'md') + '</span>' +
       '<div class="vd-m2-corpo">' +
         '<div class="vd-m2-tit">' + tituloComFallback(d) + '</div>' +
-        '<div class="vd-m2-cli"><span>' + esc(d.cliente_nome || 'Cliente') + '</span>' +
+        '<div class="vd-m3-meta"><span class="vd-m3-cli">' + esc(d.cliente_nome || 'Cliente') + '</span>' +
           (d.codigo ? '<em>#' + esc(String(d.codigo).replace(/^#+/, '')) + '</em>' : '') + '</div>' +
-        '<div class="vd-m2-st"><span class="vd-m2-etapa"><i></i>' + esc(rotuloSituacao(d.editing_status)) + '</span>' +
-          (prio !== 'normal' ? prioridadeBadge(prio) : '') + quem + '</div>' +
-      '</div>' +
-      (d.prazo
-        ? '<div class="vd-m2-data' + urg + '"><b>' + esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + '</b>' + (rel ? '<i>' + esc(rel) + '</i>' : '') + '</div>'
-        : '<div class="vd-m2-data vazio"><b>—</b><i>sem prazo</i></div>') +
+        '<div class="vd-m3-tags"><span class="vd-m3-etapa">' + esc(rotuloSituacao(d.editing_status)) + '</span>' +
+          (prio !== 'normal' ? prioridadeBadge(prio) : '') +
+          (atrasada ? '<span class="vd-m3-atraso">' + esc(prazoRelativo(d)) + '</span>' : '') + '</div>' +
+      '</div>' + quem +
       '</article>';
   }
 
