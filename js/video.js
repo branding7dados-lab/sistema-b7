@@ -505,6 +505,14 @@ B7.Video = (function () {
         : '<div class="estado-b7"><b>Nenhuma demanda com esses filtros.</b>' +
           '<p>Ajuste a busca, o mês ou os filtros ativos.</p></div>');
     ligarArea(cx);
+    /* entrada em cascata a cada troca (filtro, etapa, vista, busca) */
+    cx.classList.remove('vd-troca'); void cx.offsetWidth; cx.classList.add('vd-troca');
+    cx.querySelectorAll('[data-col-vd]').forEach(b => b.onclick = () => {
+      colunaMovel = b.dataset.colVd;
+      desenharArea(filtrar(baseFiltrada()));
+      const sel = painel().querySelector('.vd-col-sel .on');
+      if (sel && sel.scrollIntoView) sel.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    });
   }
 
   /* ---------------- LISTA (versão moderna da planilha) ---------------- */
@@ -636,7 +644,25 @@ B7.Video = (function () {
     const grupos = colunas.map(([chave, nome]) => ({
       chave, nome, itens: lista.filter(d => d.editing_status === chave)
     }));
-    return '<div class="vd-quadro">' + grupos.map(colunaHTML).join('') + '</div>';
+    return quadroMovelHTML(grupos) + '<div class="vd-quadro vd-so-largo-q">' + grupos.map(colunaHTML).join('') + '</div>';
+  }
+  /* zzz26: Kanban no celular — uma etapa por vez (pílulas com a
+     contagem, só as que têm demanda) e a mesma lista limpa da vista
+     Lista. Antes eram as colunas empilhadas, inclusive as vazias. */
+  let colunaMovel = '';
+  function quadroMovelHTML(grupos) {
+    const cheios = grupos.filter(g => g.itens.length);
+    const vis = cheios.length ? cheios : grupos.slice(0, 1);
+    if (!vis.find(g => g.chave === colunaMovel)) colunaMovel = vis[0].chave;
+    const g = vis.find(x => x.chave === colunaMovel);
+    return '<div class="vd-quadro-m">' +
+      '<div class="vd-col-sel" role="tablist">' + vis.map(x =>
+        '<button role="tab" class="vd-m-s-' + x.chave + (x.chave === colunaMovel ? ' on' : '') + '" data-col-vd="' + x.chave + '" aria-selected="' + (x.chave === colunaMovel) + '">' +
+        '<i></i>' + esc(x.nome) + '<b>' + x.itens.length + '</b></button>').join('') + '</div>' +
+      (g.itens.length
+        ? '<div class="vd-m2-caixa vd-col-caixa">' + g.itens.map((d, i) => cartaoMovel(d, i)).join('') + '</div>'
+        : '<div class="estado-b7"><b>Nada nesta etapa.</b></div>') +
+    '</div>';
   }
   function colunaHTML(g) {
     const mostrar = g.itens.slice(0, LIMITE_COLUNA);

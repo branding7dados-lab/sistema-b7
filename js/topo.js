@@ -274,6 +274,9 @@ B7.Topo = (function () {
     if (!lista.length) { slot.innerHTML = ''; slot.hidden = true; return; }
     slot.hidden = false;
     const secundario = TELAS_COM_PRIMARIO.includes(rotaBase());
+    /* zzz26: no celular, tela que já tem o "+" dela não mostra o do
+       topo — eram dois "+" lado a lado fazendo quase a mesma coisa */
+    slot.classList.toggle('tp-criar-dup', secundario);
     const cls = 'b ' + (secundario ? 'contorno' : 'pri') + ' tp-criar';
     /* uma ação só: o botão já é ela, sem menu de um item */
     if (lista.length === 1) {

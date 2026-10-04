@@ -430,6 +430,9 @@ B7.Design = (function () {
 
     ligarArea(area);
     ligarThumbs(area);
+    area.classList.remove('ds-troca'); void area.offsetWidth; area.classList.add('ds-troca');
+    const selOn = area.querySelector('.ds-movel-sel .on');
+    if (selOn && selOn.scrollIntoView && ehMovel()) selOn.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
 
   /* =================================================================
@@ -1083,6 +1086,26 @@ B7.Design = (function () {
      ainda não foi ao cliente, o que aguarda decisão do cliente, o que
      ninguém assumiu e o que estourou o prazo. Cada chip é um atalho de
      filtro (liga/desliga). Sem inventar métrica: são contagens. */
+  /* zzz26 (celular): cartão-herói — quantas peças estão na fila, barra
+     segmentada por etapa (mesmas cores das etiquetas), os atalhos do
+     "precisa de você" como legenda tocável e o "Revisar em sequência"
+     como botão do próprio cartão. */
+  const COR_DS = { aguardando_producao: '#9C93B5', em_criacao: '#D63384', revisao_interna: '#7C5CFF', ajustes: '#F0A443',
+    aprovado_interno: '#38C793', aguardando_cliente: '#4FA3FF', ajustes_cliente: '#FF7A59', aprovado_cliente: '#2BB673' };
+  function heroiDesignHTML(atalhos) {
+    const fila = dados.filter(d => d.status !== 'finalizado');
+    const fin = dados.length - fila.length;
+    const segs = STATUS.map(([k]) => [k, fila.filter(d => d.status === k).length]).filter(x => x[1] && COR_DS[x[0]]);
+    const revisar = pecasParaRevisar().length;
+    return '<div class="ds-heroi">' +
+      '<div class="ds-heroi-topo"><div><b>' + fila.length + '</b><span>peça' + (fila.length === 1 ? '' : 's') + ' na fila</span></div>' +
+        (fin ? '<em>' + fin + ' finalizada' + (fin === 1 ? '' : 's') + '</em>' : '') + '</div>' +
+      '<div class="ds-heroi-barra">' + segs.map(([k, n], i) => '<i style="flex:' + n + ';background:' + COR_DS[k] + ';--i:' + i + '"></i>').join('') + '</div>' +
+      (atalhos.length ? '<div class="ds-heroi-leg">' + atalhos.map(i =>
+        '<button class="ds-heroi-it ' + i[4] + (F.rapido === i[0] ? ' on' : '') + '" data-rapido="' + i[0] + '"><b>' + i[1] + '</b>' + esc(i[2]) + '</button>').join('') + '</div>' : '') +
+      (revisar ? '<button class="ds-heroi-rev" data-ds-revisar><span><b>Revisar em sequência</b><small>' + revisar + ' peça' + (revisar === 1 ? '' : 's') + ' esperando você</small></span><i>▶</i></button>' : '') +
+    '</div>';
+  }
   function desenharResumoEquipe() {
     const cx = painel().querySelector('#ds-resumo');
     if (!cx || !ehEquipe() || F.aba === 'equipe') { if (cx) cx.innerHTML = ''; return; }
@@ -1112,8 +1135,8 @@ B7.Design = (function () {
       (pecasParaRevisar().length ? '<button class="b fina pri ds-revisar-fila" id="ds-revisar-fila" title="Abre a peça mais antiga da fila; ao aprovar ou pedir ajuste, a próxima abre sozinha">' +
         'Revisar em sequência</button>' : '') +
     '</div>';
-    const btFila = cx.querySelector('#ds-revisar-fila');
-    if (btFila) btFila.onclick = iniciarRevisaoEmSequencia;
+    cx.insertAdjacentHTML('beforeend', heroiDesignHTML(itens.filter(i => i[1] > 0)));
+    cx.querySelectorAll('#ds-revisar-fila, [data-ds-revisar]').forEach(b => b.onclick = iniciarRevisaoEmSequencia);
     cx.querySelectorAll('[data-rapido]').forEach(b => b.onclick = () => {
       F.rapido = F.rapido === b.dataset.rapido ? '' : b.dataset.rapido;
       /* o atalho já recorta por status; a aba "Todas" evita que uma aba
@@ -1187,7 +1210,7 @@ B7.Design = (function () {
         '<div class="ds-movel-sel" role="tablist">' + statusPresentes.map(s =>
           '<button data-col-movel="' + s + '" class="' + (F._colMovel === s ? 'on' : '') + '">' +
           esc(rotuloStatus(s)) + '<b>' + porStatus(s).length + '</b></button>').join('') + '</div>' +
-        coluna(F._colMovel) + '</div>';
+        colunaMovelHTML(porStatus(F._colMovel)) + '</div>';
     }
     /* uma etapa só na tela (aba "Revisão interna", um atalho do "Precisa
        de você"): uma coluna estreita com dezenas de cartões desperdiça a
@@ -1199,6 +1222,40 @@ B7.Design = (function () {
       }
     }
     return '<div class="ds-quadro">' + statusPresentes.map(coluna).join('') + '</div>';
+  }
+
+  /* zzz26: a etapa escolhida no celular, agrupada por cliente — logo e
+     nome no cabeçalho do grupo; cada peça vira uma linha limpa */
+  const COR_TIPO = { carrossel: '#7C5CFF', card: '#D63384', stories: '#F0A443', capa_reel: '#4FA3FF' };
+  function colunaMovelHTML(itens) {
+    if (!itens.length) return '<div class="ds-m-vazio">Nada nesta etapa agora.</div>';
+    const grupos = new Map();
+    itens.forEach(d => { const k = d.client_id || '_'; if (!grupos.has(k)) grupos.set(k, { nome: d.cliente_nome || 'Interno', logo: null, itens: [] });
+      const g = grupos.get(k); g.itens.push(d); if (!g.logo && d.cliente_logo_url) g.logo = d.cliente_logo_url; });
+    let i = 0;
+    return '<div class="ds-m-lista">' + [...grupos.values()].sort((a, b) => b.itens.length - a.itens.length || a.nome.localeCompare(b.nome)).map(g =>
+      '<section class="ds-m-grupo"><h3 class="ds-m-cab"><span class="ds-m-logo">' + avatarCliente(g.nome, g.logo) + '</span><b>' + esc(g.nome) + '</b><i>' + g.itens.length + '</i></h3>' +
+      '<div class="ds-m-caixa">' + g.itens.map(d => linhaMovel(d, i++)).join('') + '</div></section>').join('') + '</div>';
+  }
+  function linhaMovel(d, i) {
+    const info = prazoInfo(d);
+    const previa = fontePrevia(d);
+    const nome = d.designer_nome || '';
+    const ini = nome.trim().split(/\s+/).filter(Boolean);
+    const quem = nome
+      ? (d.designer_avatar ? '<img class="ds-m-av" src="' + esc(d.designer_avatar) + '" alt="" title="' + esc(nome) + '">'
+        : '<span class="ds-m-av" title="' + esc(nome) + '">' + esc(((ini[0] || '')[0] || '') + (ini.length > 1 ? ini[ini.length - 1][0] : '')).toUpperCase() + '</span>')
+      : '<span class="ds-m-av sem" title="Sem responsável"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="9" r="3.5"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span>';
+    return '<article class="ds-m-linha' + (d.prioridade === 'urgente' ? ' urgente' : d.prioridade === 'alta' ? ' alta' : '') + '" data-peca="' + esc(d.id) + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + ';--tipo:' + (COR_TIPO[d.tipo] || '#8E86A8') + '">' +
+      (previa ? '<div class="ds-thumb ds-m-ic" data-previa="' + esc(previa) + '"><span class="ds-thumb-esq"></span></div>'
+        : '<div class="ds-m-ic">' + iconeTipo(d.tipo) + '</div>') +
+      '<div class="ds-m-corpo"><b class="ds-m-tit">' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</b>' +
+        '<span class="ds-m-meta"><em>' + esc(rotuloTipo(d.tipo)) + '</em>' +
+          (d.ultima_versao ? '<span class="ds-v">V' + String(d.ultima_versao).padStart(2, '0') + '</span>' : '') +
+          (d.ultima_versao_estado === 'ajuste_solicitado' ? '<span class="ds-m-aj">Ajuste pendente</span>' : '') +
+          (info ? '<span class="ds-m-prazo' + (info.atrasada ? ' atrasada' : info.hoje ? ' hoje' : '') + '">' + esc(info.txt) + '</span>' : '') +
+        '</span></div>' + quem +
+    '</article>';
   }
 
   function ordenarPorUrgencia(a, b) {
