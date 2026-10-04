@@ -2465,27 +2465,47 @@ B7.Dashboard = (function () {
     const opcoes = clientes.map(c =>
       '<option value="' + esc(c.id) + '"' + (c.id === clienteId ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('');
 
+    /* zzz36: no padrão novo — cabeçalho com ícone, três blocos ("Para
+       quem", "Quando", "Quem grava"), atalhos de mês como escolha
+       principal e os botões lado a lado no rodapé. Mesmos ids e regras. */
+    const ICG = {
+      cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="M16 10.5l5-3v9l-5-3"/></svg>',
+      quem: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>',
+      cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+      cli: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>'
+    };
     const m = B7.UI.modal(
-      '<h3>Nova gravação</h3>' +
-      '<div class="sub">Uma gravação é uma sessão de produção: tudo o que a equipe vai gravar para um cliente — roteiros, trends, ' +
-      'conteúdos da Linha Editorial ou algo de improviso. Nenhum roteiro é obrigatório.</div>' +
-      '<div class="mb"><label class="rot">CLIENTE</label>' +
-        '<div class="linha linha-2col"><select class="campo" id="ng-cliente">' +
-        (clientes.length ? opcoes : '<option value="">— nenhum cliente ainda —</option>') +
-        '</select><button class="b contorno" id="ng-novo-cliente" style="flex:none">+ Novo</button></div></div>' +
-      '<div class="mb"><label class="rot">NOME DA GRAVAÇÃO</label>' +
-        '<input class="campo" id="ng-nome" data-foco placeholder="Ex: Conteúdos Setembro"></div>' +
-      '<div class="mb"><label class="rot">MÊS DE REFERÊNCIA <span class="leve">— obrigatório</span></label>' +
-        B7.Gravacao.camposMes(null, null, 'ng') +
-        '<div class="gv-ajuda">O mês de produção a que a gravação pertence — pode ser diferente do dia em que ela acontece.</div></div>' +
-      '<div class="mb"><label class="rot">DATA DA GRAVAÇÃO <span class="leve">— opcional</span></label>' +
-        '<div class="gv-data-hora"><input class="campo" id="ng-data" type="date" aria-label="Data da gravação">' +
-        '<input class="campo" id="ng-hora" type="time" aria-label="Horário (opcional)"></div>' +
-        '<div class="gv-ajuda">Pode marcar depois. Os itens (roteiros, trends, conteúdos) entram na tela da gravação.</div></div>' +
-      '<div class="mb"><label class="rot">RESPONSÁVEL <span class="leve">— opcional</span></label>' +
-        '<select class="campo" id="ng-vm"><option value="">Sem responsável</option></select></div>' +
-      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
-      '<button class="b pri" data-ok>Criar gravação</button></div>');
+      '<div class="ng-topo"><span class="ng-ic">' + ICG.cam + '</span><div><h3>Nova gravação</h3>' +
+      '<div class="sub">Uma sessão de produção para um cliente. Nenhum roteiro é obrigatório.</div></div></div>' +
+      '<section class="ng-bloco"><h4>' + ICG.cli + 'Para quem</h4>' +
+        '<div class="mb"><div class="ng-rot-linha"><label class="rot" for="ng-cliente">CLIENTE</label>' +
+          '<button type="button" class="ng-novo-cli" id="ng-novo-cliente">+ Novo cliente</button></div>' +
+          '<select class="campo" id="ng-cliente">' + (clientes.length ? opcoes : '<option value="">— nenhum cliente ainda —</option>') + '</select></div>' +
+        '<div class="mb ng-ult"><label class="rot" for="ng-nome">NOME DA GRAVAÇÃO</label>' +
+          '<input class="campo" id="ng-nome" data-foco placeholder="Ex.: Conteúdos de Outubro"></div>' +
+      '</section>' +
+      '<section class="ng-bloco"><h4>' + ICG.cal + 'Quando</h4>' +
+        '<div class="mb"><label class="rot">MÊS DE REFERÊNCIA <span class="leve">— obrigatório</span></label>' +
+          B7.Gravacao.camposMes(null, null, 'ng') +
+          '<div class="gv-ajuda">O mês de produção — pode ser diferente do dia em que a gravação acontece.</div></div>' +
+        '<div class="mb ng-ult"><label class="rot">DIA E HORA <span class="leve">— opcional, dá pra marcar depois</span></label>' +
+          '<div class="gv-data-hora"><input class="campo" id="ng-data" type="date" aria-label="Data da gravação">' +
+          '<input class="campo" id="ng-hora" type="time" aria-label="Horário (opcional)"></div></div>' +
+      '</section>' +
+      '<section class="ng-bloco"><h4>' + ICG.quem + 'Quem grava</h4>' +
+        '<div class="mb ng-ult"><label class="rot" for="ng-vm">RESPONSÁVEL <span class="leve">— opcional</span></label>' +
+          '<select class="campo" id="ng-vm"><option value="">Sem responsável</option></select></div>' +
+      '</section>' +
+      '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" data-ok>Criar gravação</button></div>', { extra: 'ng-modal' });
+
+    /* o atalho de mês escolhido fica marcado (e desmarca ao mexer nos selects) */
+    const marcarAtalho = () => {
+      const mm = m.querySelector('#ng-mes').value, aa = m.querySelector('#ng-ano').value;
+      m.querySelectorAll('.gv-mes-atalhos .gv-chip').forEach(c => c.classList.toggle('on', c.dataset.m === mm && c.dataset.a === aa));
+    };
+    m.querySelector('#ng-mes').addEventListener('change', marcarAtalho);
+    m.querySelector('#ng-ano').addEventListener('change', marcarAtalho);
 
     /* mês de referência: a data sugere (se a pessoa ainda não escolheu
        o mês à mão); escolher o mês nunca é desfeito pela data */
