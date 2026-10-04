@@ -1406,3 +1406,71 @@ html.modo-leve .vd-h-bokeh{display:none;}
   .vd-heroi-num b .vd-odo, .vd-heroi-num b .vd-odo span{font-size:inherit !important;font-weight:inherit;color:inherit !important;letter-spacing:inherit;}
   .vd-heroi-num b{display:inline-block !important;}
 }
+
+/* =====================================================================
+   GESTÃO NO CELULAR (zzz34) — js/video.js kpisMovel/cargaMovel/
+   clientesMovel/videomakersMovel. No computador as tabelas continuam.
+   ===================================================================== */
+.vg-m{display:none;}
+@media (max-width:760px){
+  .vd-modal-gestao .vd-gestao-cards, .vd-modal-gestao .tabela-rolavel, .vd-modal-gestao .vg-so-largo{display:none !important;}
+  .vd-modal-gestao .vg-m{display:block;}
+  .vd-modal-gestao h4{display:flex;align-items:center;gap:8px;margin:22px 0 10px !important;font-family:'Archivo',sans-serif;font-size:16px !important;font-weight:800;}
+  .vd-modal-gestao .vd-gestao-topo{display:flex;flex-direction:column;align-items:stretch !important;gap:10px;}
+  .vd-modal-gestao .vd-gestao-comp select{border-radius:999px !important;height:42px;font-weight:700;}
+
+  /* KPIs */
+  .vg-m-kpis{padding:16px;border-radius:22px;color:#fff;position:relative;overflow:hidden;
+    background:radial-gradient(120% 120% at 100% 0%, rgba(232,62,150,.4), transparent 55%), linear-gradient(155deg,#1D1433,#2D1750);
+    box-shadow:0 18px 36px -24px rgba(48,14,96,.9);animation:vgIn .5s cubic-bezier(.16,1,.3,1) both;}
+  .vg-m-total{display:flex;align-items:baseline;gap:8px;margin-bottom:14px;}
+  .vg-m-total b{font-family:'Archivo',sans-serif;font-size:42px;font-weight:900;letter-spacing:-1.4px;line-height:1;}
+  .vg-m-total span{font-size:14px;font-weight:600;color:rgba(255,255,255,.65);}
+  .vg-m-grade{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+  .vg-m-mini{padding:10px 10px 9px;border-radius:14px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+    display:flex;flex-direction:column;gap:2px;animation:vgIn .5s cubic-bezier(.16,1,.3,1) both;}
+  .vg-m-mini:nth-child(2){animation-delay:.04s}.vg-m-mini:nth-child(3){animation-delay:.08s}.vg-m-mini:nth-child(4){animation-delay:.12s}
+  .vg-m-mini:nth-child(5){animation-delay:.16s}.vg-m-mini:nth-child(6){animation-delay:.2s}
+  .vg-m-mini b{font-family:'Archivo',sans-serif;font-size:20px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;}
+  .vg-m-mini span{font-size:11px;font-weight:600;color:rgba(255,255,255,.6);}
+  .vg-m-mini.ok b{color:#5BE3A8;} .vg-m-mini.alerta b{color:#FF7AA2;} .vg-m-mini.atencao b{color:#FFC24D;}
+  .vg-m-info{margin-top:10px;font-size:12px;color:rgba(255,255,255,.62);}
+  .vg-m-info summary{cursor:pointer;list-style:none;font-weight:700;color:rgba(255,255,255,.75);}
+  .vg-m-info summary::-webkit-details-marker{display:none;}
+  .vg-m-info summary:before{content:"ⓘ ";}
+  .vg-m-info p{margin:6px 0 0;line-height:1.45;}
+
+  /* listas em cartão */
+  .vg-m-lista{background:var(--card);border:1px solid color-mix(in srgb, var(--ink) 7%, transparent);border-radius:20px;overflow:hidden;
+    box-shadow:0 12px 30px -26px rgba(20,8,40,.6);}
+  .vg-m-item{padding:14px 15px;display:flex;flex-direction:column;gap:9px;animation:vgIn .45s cubic-bezier(.16,1,.3,1) both;}
+  .vg-m-item + .vg-m-item{border-top:1px solid var(--borda);}
+  .vg-m-topo{display:flex;align-items:center;gap:11px;}
+  .vg-m-av{flex:none;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;background:var(--c);}
+  .vg-m-nome{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .vg-m-nome b{font-size:15px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .vg-m-nome small{font-size:12px;font-weight:600;color:var(--ink-4);display:flex;gap:8px;flex-wrap:wrap;}
+  .vg-m-nome em{font-style:normal;font-weight:700;}
+  .vg-m-nome em.alerta{color:var(--erro);} .vg-m-nome em.atencao{color:var(--ambar);}
+  .vg-m-nome em.pac{padding:1px 8px;border-radius:999px;background:color-mix(in srgb, var(--acento) 10%, transparent);color:var(--acento);}
+  .vg-m-num{flex:none;display:flex;flex-direction:column;align-items:flex-end;}
+  .vg-m-num b{font-family:'Archivo',sans-serif;font-size:22px;font-weight:900;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .vg-m-num b i{font-style:normal;font-size:14px;color:var(--ink-4);font-weight:700;}
+  .vg-m-num small{font-size:11px;font-weight:600;color:var(--ink-4);}
+  .vg-m-barra{display:flex;gap:3px;height:8px;border-radius:99px;overflow:hidden;}
+  .vg-m-barra i{display:block;min-width:6px;border-radius:99px;transform-origin:left;animation:vgSeg .7s cubic-bezier(.16,1,.3,1) both;}
+  .vg-m-barra i.vazia{flex:1;background:color-mix(in srgb, var(--ink) 8%, transparent);}
+  .vg-m-prog{height:8px;border-radius:99px;background:color-mix(in srgb, var(--ink) 8%, transparent);overflow:hidden;}
+  .vg-m-prog i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#2BC48A,#7CF5C4);transform-origin:left;animation:vgSeg .8s cubic-bezier(.16,1,.3,1) both;}
+  .vg-m-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .vg-m-chips:empty{display:none;}
+  .vg-m-chips span{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--ink-2);
+    background:color-mix(in srgb, var(--c) 12%, transparent);}
+  .vg-m-chips i{width:7px;height:7px;border-radius:50%;background:var(--c);}
+  .vg-m-chips b{font-weight:800;color:var(--ink);}
+  .vg-m-nota{margin:0;padding:10px 15px 12px;font-size:11.5px;color:var(--ink-4);border-top:1px solid var(--borda);}
+  .vg-m-vazio{padding:16px;text-align:center;color:var(--ink-4);font-size:13px;background:var(--card);border-radius:18px;border:1px dashed var(--borda);}
+  .vd-modal-gestao .vd-gargalo{border-radius:16px !important;font-size:13px;line-height:1.45;}
+}
+@keyframes vgIn{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:none}}
+@keyframes vgSeg{from{transform:scaleX(0)}to{transform:scaleX(1)}}
