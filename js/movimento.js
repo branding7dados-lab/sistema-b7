@@ -490,7 +490,8 @@ window.B7 = window.B7 || {};
     const el = indicador();
     clearTimeout(fimTimer);
     el.classList.add('volta');
-    if (alvoConteudo) alvoConteudo.style.transition = 'translate .42s cubic-bezier(.2,.9,.25,1.15)';
+    document.documentElement.classList.remove('b7-recarga');
+    if (alvoConteudo) alvoConteudo.style.transition = 'translate .6s cubic-bezier(.16,1,.3,1), opacity .35s ease, filter .35s ease';
     posicionar(0, 0);
     const alvo = alvoConteudo;
     fimTimer = setTimeout(() => {
@@ -499,13 +500,28 @@ window.B7 = window.B7 || {};
       if (alvo) { alvo.style.transition = ''; alvo.style.translate = ''; }
       if (alvoConteudo === alvo) alvoConteudo = null;
       puxando = false; ativo = false; ocupado = false;
-    }, 440);
+    }, 620);
   }
   async function estourar() {
     ocupado = true;
     const el = indicador();
     el.classList.add('estoura');
     vibrar(18);
+    /* zzz32: durante a atualização quem desce é o PAINEL (que não é
+       trocado), não o .conteudo — a tela nova entrava sem o deslocamento
+       e subia por baixo da lâmpada, encavalando o título. O painel fica
+       baixo e esmaecido até a tela nova estar pronta e então volta
+       deslizando; a lâmpada assenta com mola em vez de pular. */
+    const p = painel();
+    if (alvoConteudo && p && alvoConteudo !== p) {
+      const dAtual = alvoConteudo.style.translate;
+      alvoConteudo.style.transition = 'none'; alvoConteudo.style.translate = '';
+      p.style.transition = 'none'; p.style.translate = dAtual || '';
+      void p.offsetWidth;
+      alvoConteudo = p;
+    }
+    if (alvoConteudo) alvoConteudo.style.transition = 'translate .5s cubic-bezier(.16,1,.3,1), opacity .35s ease, filter .35s ease';
+    document.documentElement.classList.add('b7-recarga');
     posicionar(56, 1);
     /* versão nova esperando? então recarrega a página de verdade */
     const aviso = [...document.querySelectorAll('#toasts .toast')].some(t => /Nova versão/.test(t.textContent));
@@ -516,9 +532,14 @@ window.B7 = window.B7 || {};
     /* nunca fica preso: se a tela demorar mais de 6 s, o indicador sai assim mesmo */
     try {
       if (B7.Memoria) B7.Memoria.invalidar();   /* puxar = do banco, nunca da memória */
+      /* telas que sabem atualizar "por baixo" (sem esqueleto nem
+         entrada de novo) olham esta marca — ver js/video.js abrir() */
+      B7.recargaSilenciosa = true;
       if (B7.Rota && B7.Rota.ir) await Promise.race([Promise.resolve(B7.Rota.ir()), new Promise(r => setTimeout(r, 6000))]);
-    } catch (e) {}
-    await new Promise(r => setTimeout(r, Math.max(0, 820 - (Date.now() - t0))));
+    } catch (e) {} finally { B7.recargaSilenciosa = false; }
+    /* o véu sai assim que a tela nova está pronta: os números deslizam à vista */
+    document.documentElement.classList.remove('b7-recarga');
+    await new Promise(r => setTimeout(r, Math.max(0, 900 - (Date.now() - t0))));
     el.classList.remove('girando');
     el.classList.add('pronto');
     rotulo('ok');

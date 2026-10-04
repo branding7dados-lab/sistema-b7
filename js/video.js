@@ -170,12 +170,15 @@ B7.Video = (function () {
 
   async function abrir(params) {
     const vale = B7.Rota.marca();
-    heroiAnt = null;   /* nova visita: o cartão-resumo estreia de novo */
+    /* puxar para atualizar (js/movimento.js): a tela atual fica e só os
+       valores mudam — sem esqueleto e sem a abertura do cartão de novo */
+    const silenciosa = B7.recargaSilenciosa && painel().querySelector('.vd-tela .vd-heroi, .vd-tela #vd-area');
+    if (!silenciosa) heroiAnt = null;   /* nova visita: o cartão-resumo estreia de novo */
     aplicarFiltrosDaUrl(params);
     B7.Dashboard.marcarNav('#/video');
     const equipe = souEquipe();
     B7.Rota.titulo(['Produção de Vídeo']);
-    painel().innerHTML = '<div class="conteudo vd-tela">' +
+    if (!silenciosa) painel().innerHTML = '<div class="conteudo vd-tela">' +
       '<header class="vd-cab"><h1>Produção de Vídeo</h1>' +
       '<p>Carregando as demandas…</p></header>' +
       B7.UI.skeleton('tabela', { n: 5, cols: 5 }) + '</div>';
@@ -286,7 +289,7 @@ B7.Video = (function () {
     document.querySelectorAll('.vd-fantasma').forEach(f => f.remove());
     document.body.classList.remove('vd-arrastando-toque');
     ultAnteriores = anteriores.length;
-    painel().innerHTML = '<div class="conteudo entra vd-tela">' +
+    painel().innerHTML = '<div class="conteudo' + (B7.recargaSilenciosa ? '' : ' entra') + ' vd-tela">' +
       '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
       '<p>Toda a fila de edição da B7 em um só lugar.</p><p class="vd-sub-m" id="vd-sub-m"></p></div>' +
       /* ferramentas de gestão: só equipe (o banco recusa de qualquer jeito) */
