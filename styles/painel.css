@@ -464,7 +464,7 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
 .pn-papel{animation:pnSobe calc(.7s * var(--pn-t)) var(--pn-ease) calc(.75s * var(--pn-t)) backwards;}
 .pn-resumo{animation:pnRevelaTx calc(1.2s * var(--pn-t)) var(--pn-ease) calc(.9s * var(--pn-t)) backwards;}
 .pn-cab-lado{animation:pnSobe calc(.7s * var(--pn-t)) var(--pn-ease) calc(1s * var(--pn-t)) backwards;}
-@keyframes pnSobe{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
+@keyframes pnSobe{from{opacity:0;transform:translate3d(0,14px,0);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
 /* a frase do dia aparece varrida por luz, da esquerda para a direita */
 @keyframes pnRevelaTx{from{opacity:.0;-webkit-mask-position:100% 0;mask-position:100% 0}
   to{opacity:1;-webkit-mask-position:0 0;mask-position:0 0}}
@@ -473,14 +473,14 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
 
 /* título: sem js (ou antes de dividir), entra inteiro do desfoque */
 .pn-cab h1{position:relative;animation:pnTitulo calc(.9s * var(--pn-t)) var(--pn-ease) calc(.15s * var(--pn-t)) backwards;}
-@keyframes pnTitulo{from{opacity:0;transform:translate3d(0,16px,0) scale(.97)}to{opacity:1;transform:none}}
+@keyframes pnTitulo{from{opacity:0;transform:translate3d(0,16px,0) scale(.97);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
 /* dividido em letras (js/painel.js): cada uma gira para o lugar */
 .pn-cab h1.pn-letras{animation:none;}
 .pn-pal{display:inline-block;white-space:nowrap;perspective:600px;}
 .pn-l{display:inline-block;transform-origin:50% 80%;
   animation:pnLetra calc(.85s * var(--pn-t)) var(--pn-ease) calc((.2s + var(--k) * 32ms) * var(--pn-t)) backwards;}
-@keyframes pnLetra{0%{opacity:0;transform:translate3d(0,.55em,0) rotateX(-85deg)}
-  60%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes pnLetra{0%{opacity:0;transform:translate3d(0,.55em,0) rotateX(-85deg);filter:blur(8px)}
+  60%{opacity:1;filter:blur(0)}100%{opacity:1;transform:none;filter:none}}
 .pn-l-nome{color:transparent;background:linear-gradient(180deg, var(--ink) 30%, color-mix(in srgb, var(--acento) 70%, var(--ink)));
   -webkit-background-clip:text;background-clip:text;}
 /* onda de luz: depois que as letras pousam, um brilho passa por elas
@@ -559,8 +559,8 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
 .pn-kpis > :nth-child(1){animation-delay:calc(.55s * var(--pn-t))}.pn-kpis > :nth-child(2){animation-delay:calc(.65s * var(--pn-t))}
 .pn-kpis > :nth-child(3){animation-delay:calc(.75s * var(--pn-t))}.pn-kpis > :nth-child(4){animation-delay:calc(.85s * var(--pn-t))}
 .pn-kpis > :nth-child(n+5){animation-delay:calc(.95s * var(--pn-t))}
-@keyframes pnCartao{0%{opacity:0;transform:translate3d(0,34px,-60px) rotateX(-38deg) scale(.92)}
-  55%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes pnCartao{0%{opacity:0;transform:translate3d(0,34px,-60px) rotateX(-38deg) scale(.92);filter:blur(6px)}
+  55%{opacity:1;filter:blur(0)}100%{opacity:1;transform:none;filter:none}}
 /* reflexo que atravessa o cartão logo depois de pousar */
 .pn .pn-kpi::after{content:"";position:absolute;top:-20%;bottom:-20%;left:0;width:38%;pointer-events:none;z-index:1;
   background:linear-gradient(100deg, transparent, rgba(255,255,255,.16), transparent);transform:translate3d(-150%,0,0) skewX(-12deg);
@@ -615,7 +615,7 @@ a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale
 .pn-visto .pn-att{animation:pnDesliza .6s var(--pn-ease) backwards;animation-delay:.3s;}
 .pn-visto .pn-att:nth-child(2){animation-delay:.38s}.pn-visto .pn-att:nth-child(3){animation-delay:.46s}
 .pn-visto .pn-att:nth-child(4){animation-delay:.54s}.pn-visto .pn-att:nth-child(n+5){animation-delay:.62s}
-@keyframes pnDesliza{from{opacity:0;transform:translate3d(-26px,0,0)}to{opacity:1;transform:none}}
+@keyframes pnDesliza{from{opacity:0;transform:translate3d(-26px,0,0);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
 .pn-att-erro .pn-att-ic{position:relative;}
 .pn-att-erro .pn-att-ic::after{content:"";position:absolute;inset:0;border-radius:inherit;
   animation:pnAnel 2.2s cubic-bezier(.2,.6,.3,1) 1.2s infinite;}
