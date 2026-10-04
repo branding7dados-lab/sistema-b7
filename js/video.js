@@ -282,7 +282,6 @@ B7.Video = (function () {
                              d.editing_status !== 'entregue' && d.editing_status !== 'descartado')
       : [];
 
-    ultAnteriores = anteriores.length;
     painel().innerHTML = '<div class="conteudo entra vd-tela">' +
       '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
       '<p>Toda a fila de edição da B7 em um só lugar.</p><p class="vd-sub-m" id="vd-sub-m"></p></div>' +
@@ -353,28 +352,6 @@ B7.Video = (function () {
     B7.DB.verificarAlertasPrazoVideo().catch(() => {});
   }
 
-  let ultAnteriores = 0;
-  const COR_ETAPA = { pendente: 'var(--ink-4)', em_edicao: '#7C5CFF', aguardando_aprovacao: 'var(--acento)', correcao: 'var(--ambar)', standby: 'var(--ink-3)', entregue: 'var(--ok)' };
-  /* zzz25 (celular): o resumo vira um cartão-herói — quanto do mês já
-     foi entregue, uma barra segmentada por etapa e as etapas como
-     legenda tocável (os mesmos filtros das pílulas do computador). O
-     aviso de meses anteriores mora no rodapé dele. */
-  function heroiHTML(base, chips) {
-    const total = base.length;
-    const entregues = base.filter(d => d.editing_status === 'entregue').length;
-    const pct = total ? Math.round(entregues * 100 / total) : 0;
-    const segs = Object.keys(COR_ETAPA).map(k => [k, base.filter(d => d.editing_status === k).length]).filter(x => x[1]);
-    return '<div class="vd-heroi">' +
-      '<div class="vd-heroi-topo"><div><b data-n="' + entregues + '">' + entregues + '</b><span>de ' + total + ' entregue' + (total === 1 ? '' : 's') + '</span></div>' +
-        '<em>' + pct + '%</em></div>' +
-      '<div class="vd-heroi-barra">' + segs.map(([k, n], i) =>
-        '<i style="flex:' + n + ';background:' + COR_ETAPA[k] + ';--i:' + i + '"></i>').join('') + '</div>' +
-      '<div class="vd-heroi-leg">' + chips.map(([chave, n, rot, on]) =>
-        '<button class="vd-heroi-it vd-rapido-' + esc(chave.split(':')[1]) + (on ? ' on' : '') + '" data-resumo="' + chave + '">' +
-        '<i class="vd-dot"></i><b>' + n + '</b>' + esc(rot) + '</button>').join('') + '</div>' +
-      (ultAnteriores ? '<button class="vd-heroi-aviso" data-ver-anteriores><span><b>' + ultAnteriores + '</b> de meses anteriores ainda em aberto</span><i>Ver ›</i></button>' : '') +
-    '</div>';
-  }
   function desenharResumo(base) {
     const cx = painel().querySelector('#vd-resumo');
     if (!cx) return;
@@ -393,9 +370,7 @@ B7.Video = (function () {
     cx.innerHTML = '<div class="ds-resumo-rapido vd-resumo-rapido">' + chips.map(([chave, n, rot, on]) =>
       '<button class="ds-rapido-item vd-rapido-' + esc(chave.split(':')[1]) + (on ? ' on' : '') + '" data-resumo="' + chave + '">' +
       '<i class="vd-dot"></i><b data-n="' + n + '">' + n + '</b> ' + esc(rot) + '</button>').join('') +
-      '</div>' + heroiHTML(base, chips);
-    const verAnt = cx.querySelector('[data-ver-anteriores]');
-    if (verAnt) verAnt.onclick = () => { F.competencia = 'todas'; F.prazo = 'atrasadas'; guardarFiltros(); desenharProducao(); };
+      '</div>';
     contarNumeros(cx);
 
     cx.querySelectorAll('[data-resumo]').forEach(b => b.onclick = () => {
@@ -507,12 +482,6 @@ B7.Video = (function () {
     ligarArea(cx);
     /* entrada em cascata a cada troca (filtro, etapa, vista, busca) */
     cx.classList.remove('vd-troca'); void cx.offsetWidth; cx.classList.add('vd-troca');
-    cx.querySelectorAll('[data-col-vd]').forEach(b => b.onclick = () => {
-      colunaMovel = b.dataset.colVd;
-      desenharArea(filtrar(baseFiltrada()));
-      const sel = painel().querySelector('.vd-col-sel .on');
-      if (sel && sel.scrollIntoView) sel.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    });
   }
 
   /* ---------------- LISTA (versão moderna da planilha) ---------------- */
@@ -644,25 +613,7 @@ B7.Video = (function () {
     const grupos = colunas.map(([chave, nome]) => ({
       chave, nome, itens: lista.filter(d => d.editing_status === chave)
     }));
-    return quadroMovelHTML(grupos) + '<div class="vd-quadro vd-so-largo-q">' + grupos.map(colunaHTML).join('') + '</div>';
-  }
-  /* zzz26: Kanban no celular — uma etapa por vez (pílulas com a
-     contagem, só as que têm demanda) e a mesma lista limpa da vista
-     Lista. Antes eram as colunas empilhadas, inclusive as vazias. */
-  let colunaMovel = '';
-  function quadroMovelHTML(grupos) {
-    const cheios = grupos.filter(g => g.itens.length);
-    const vis = cheios.length ? cheios : grupos.slice(0, 1);
-    if (!vis.find(g => g.chave === colunaMovel)) colunaMovel = vis[0].chave;
-    const g = vis.find(x => x.chave === colunaMovel);
-    return '<div class="vd-quadro-m">' +
-      '<div class="vd-col-sel" role="tablist">' + vis.map(x =>
-        '<button role="tab" class="vd-m-s-' + x.chave + (x.chave === colunaMovel ? ' on' : '') + '" data-col-vd="' + x.chave + '" aria-selected="' + (x.chave === colunaMovel) + '">' +
-        '<i></i>' + esc(x.nome) + '<b>' + x.itens.length + '</b></button>').join('') + '</div>' +
-      (g.itens.length
-        ? '<div class="vd-m2-caixa vd-col-caixa">' + g.itens.map((d, i) => cartaoMovel(d, i)).join('') + '</div>'
-        : '<div class="estado-b7"><b>Nada nesta etapa.</b></div>') +
-    '</div>';
+    return '<div class="vd-quadro">' + grupos.map(colunaHTML).join('') + '</div>';
   }
   function colunaHTML(g) {
     const mostrar = g.itens.slice(0, LIMITE_COLUNA);
@@ -739,6 +690,8 @@ B7.Video = (function () {
       };
     });
 
+    ligarArrastoToque(cx);
+
     cx.querySelectorAll('[data-solta]').forEach(zona => {
       zona.ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zona.classList.add('sobre'); };
       zona.ondragleave = e => { if (!zona.contains(e.relatedTarget)) zona.classList.remove('sobre'); };
@@ -756,6 +709,85 @@ B7.Video = (function () {
             B7.Movimento.assentar(document.querySelector('.vd-card[data-demanda="' + CSS.escape(id) + '"]'));
         }).catch(() => {});
       };
+    });
+  }
+
+  /* zzz27: arrastar no CELULAR. O drag nativo do HTML5 não é confiável
+     no toque (no Android depende da versão do Chrome). Segurar o cartão
+     ~0,35s "descola" ele: um fantasma segue o dedo, a coluna embaixo
+     acende, a tela rola sozinha perto das bordas e, ao soltar, passa pela
+     MESMA ação do drop (moverCartaoVideo). Mexer o dedo antes do tempo é
+     rolagem normal — não arrasta nada. */
+  function ligarArrastoToque(cx) {
+    cx.querySelectorAll('.vd-card[draggable="true"]').forEach(card => {
+      if (card._toque) return; card._toque = true;
+      let timer = null, x0 = 0, y0 = 0, ativo = false, fantasma = null, alvo = null, rolar = 0, dx = 0, dy = 0;
+      const zonaEm = (x, y) => { const el = document.elementFromPoint(x, y); return el && el.closest('[data-solta]'); };
+      const pararRolagem = () => { cancelAnimationFrame(rolar); rolar = 0; };
+      const fim = solto => {
+        clearTimeout(timer); timer = null; pararRolagem();
+        document.removeEventListener('touchmove', mover, { passive: false });
+        document.removeEventListener('touchend', soltar); document.removeEventListener('touchcancel', cancelar);
+        if (!ativo) return;
+        ativo = false;
+        cx.querySelectorAll('[data-solta]').forEach(z => z.classList.remove('sobre'));
+        card.classList.remove('arrastando'); document.body.classList.remove('vd-arrastando-toque');
+        if (fantasma) { const f = fantasma; fantasma = null; f.classList.add('saindo'); setTimeout(() => f.remove(), 180); }
+        const destino = solto && alvo ? alvo.dataset.solta : null; alvo = null;
+        const d = demandas.find(x => x.id === card.dataset.demanda);
+        if (d && destino && destino !== d.editing_status) {
+          Promise.resolve(moverCartaoVideo(d, destino)).then(() => {
+            if (B7.Movimento && B7.Movimento.assentar && d.editing_status === destino)
+              B7.Movimento.assentar(document.querySelector('.vd-card[data-demanda="' + CSS.escape(d.id) + '"]'));
+          }).catch(() => {});
+        }
+      };
+      const autoRolagem = y => {
+        const h = window.innerHeight, borda = 90;
+        const v = y < borda ? -(borda - y) / 6 : y > h - borda - 70 ? (y - (h - borda - 70)) / 6 : 0;
+        pararRolagem();
+        if (!v) return;
+        const passo = () => { const sc = document.scrollingElement; window.scrollBy(0, v); if (sc) rolar = requestAnimationFrame(passo); };
+        rolar = requestAnimationFrame(passo);
+      };
+      const mover = e => {
+        const t = e.touches[0];
+        if (!ativo) {
+          if (Math.abs(t.clientX - x0) > 8 || Math.abs(t.clientY - y0) > 8) fim(false);   /* é rolagem */
+          return;
+        }
+        e.preventDefault();
+        fantasma.style.transform = 'translate3d(' + (t.clientX - dx) + 'px,' + (t.clientY - dy) + 'px,0) rotate(-2deg) scale(1.03)';
+        const z = zonaEm(t.clientX, t.clientY);
+        if (z !== alvo) { if (alvo) alvo.classList.remove('sobre'); alvo = z; if (alvo) alvo.classList.add('sobre'); }
+        autoRolagem(t.clientY);
+      };
+      const soltar = () => fim(true);
+      const cancelar = () => fim(false);
+      card.addEventListener('touchstart', e => {
+        if (e.touches.length !== 1) return;
+        const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY;
+        document.addEventListener('touchmove', mover, { passive: false });
+        document.addEventListener('touchend', soltar); document.addEventListener('touchcancel', cancelar);
+        timer = setTimeout(() => {
+          ativo = true;
+          const r = card.getBoundingClientRect(); dx = x0 - r.left; dy = y0 - r.top;
+          fantasma = card.cloneNode(true);
+          fantasma.className += ' vd-fantasma';
+          fantasma.style.width = r.width + 'px';
+          fantasma.style.transform = 'translate3d(' + r.left + 'px,' + r.top + 'px,0)';
+          document.body.appendChild(fantasma);
+          requestAnimationFrame(() => fantasma && (fantasma.style.transform = 'translate3d(' + r.left + 'px,' + r.top + 'px,0) rotate(-2deg) scale(1.03)'));
+          card.classList.add('arrastando'); document.body.classList.add('vd-arrastando-toque');
+          if (navigator.vibrate) try { navigator.vibrate(12); } catch (er) {}
+        }, 350);
+      }, { passive: true });
+      /* segurar abre o menu de contexto do navegador e o clique depois
+         do arrasto abriria a demanda — os dois ficam bloqueados */
+      card.addEventListener('dragstart', e => { if (ativo || timer) e.preventDefault(); });
+      card.addEventListener('contextmenu', e => { if (ativo || timer) e.preventDefault(); });
+      card.addEventListener('click', e => { if (card.classList.contains('arrastando') || card._acabouArrasto) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+      card.addEventListener('touchend', () => { if (ativo) { card._acabouArrasto = true; setTimeout(() => { card._acabouArrasto = false; }, 400); } });
     });
   }
 

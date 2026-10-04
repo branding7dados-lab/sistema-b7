@@ -543,6 +543,8 @@ window.B7 = window.B7 || {};
   }, { passive: true });
   document.addEventListener('touchmove', e => {
     if (!ativo || ocupado) return;
+    /* zzz27: cartão do Kanban sendo arrastado no toque não é puxão */
+    if (document.body.classList.contains('vd-arrastando-toque')) { abortar(); return; }
     const dy = e.touches[0].clientY - y0, dx = e.touches[0].clientX - x0;
     if (!puxando) {
       if (dy > 10 && dy > Math.abs(dx) * 1.4 && podePuxar()) {

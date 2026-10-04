@@ -2297,3 +2297,27 @@ html.modo-leve::view-transition-new(b7-pagina){animation-name:b7VtEntraLeve;}
 html.modo-leve .fundo-modal.paleta .modal{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card);animation-name:cpDesceLeve;}
 @keyframes cpDesceLeve{from{opacity:0;transform:translate3d(0,-12px,0)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){ .paleta .modal, .paleta .cp-item, .paleta .cp-grupo{animation:none !important;} }
+
+/* =====================================================================
+   MENUS ⋯ (zzz27) — sólidos (o vidro deixava a tela de trás vazar e
+   piscava no Android ao animar o desfoque), nascem do botão com uma mola
+   curta e saem do mesmo jeito (cópia .lista-fantasma em js/ui.js).
+   ===================================================================== */
+.lista.solta, .lista.lista-fantasma{background:var(--elevado) !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+  border:1px solid color-mix(in srgb, var(--ink) 9%, transparent) !important;border-radius:16px;padding:6px;
+  box-shadow:0 24px 48px -16px rgba(20,8,40,.38), 0 4px 12px -4px rgba(20,8,40,.18) !important;
+  transform-origin:top right;transform:translate3d(0,-4px,0) scale(.92);opacity:0;
+  transition:opacity .16s cubic-bezier(.2,.8,.2,1), transform .26s cubic-bezier(.16,1,.3,1) !important;will-change:transform,opacity;}
+.lista.solta.acima, .lista.lista-fantasma.acima{transform-origin:bottom right;transform:translate3d(0,4px,0) scale(.92);}
+.lista.solta.mostrando{opacity:1;transform:none;}
+.lista.lista-fantasma{display:block;pointer-events:none;transition:opacity .14s ease-in, transform .18s ease-in !important;}
+.lista.lista-fantasma.mostrando{opacity:1;transform:none;}
+[data-theme="dark"] .lista.solta, [data-theme="dark"] .lista.lista-fantasma{background:#211A33 !important;border-color:rgba(255,255,255,.08) !important;
+  box-shadow:0 24px 48px -14px rgba(0,0,0,.7) !important;}
+.lista.solta button{border-radius:10px;font-weight:600;}
+.lista.solta button:active{transform:scale(.98);}
+.lista.solta.mostrando > *{animation:b7ItemMenu .3s cubic-bezier(.16,1,.3,1) both;}
+.lista.solta.mostrando > *:nth-child(2){animation-delay:25ms}.lista.solta.mostrando > *:nth-child(3){animation-delay:50ms}
+.lista.solta.mostrando > *:nth-child(4){animation-delay:75ms}.lista.solta.mostrando > *:nth-child(n+5){animation-delay:100ms}
+@keyframes b7ItemMenu{from{opacity:0;transform:translate3d(0,-4px,0)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.lista.solta,.lista.lista-fantasma{transition:none !important;}.lista.solta.mostrando > *{animation:none;}}

@@ -1086,26 +1086,6 @@ B7.Design = (function () {
      ainda não foi ao cliente, o que aguarda decisão do cliente, o que
      ninguém assumiu e o que estourou o prazo. Cada chip é um atalho de
      filtro (liga/desliga). Sem inventar métrica: são contagens. */
-  /* zzz26 (celular): cartão-herói — quantas peças estão na fila, barra
-     segmentada por etapa (mesmas cores das etiquetas), os atalhos do
-     "precisa de você" como legenda tocável e o "Revisar em sequência"
-     como botão do próprio cartão. */
-  const COR_DS = { aguardando_producao: '#9C93B5', em_criacao: '#D63384', revisao_interna: '#7C5CFF', ajustes: '#F0A443',
-    aprovado_interno: '#38C793', aguardando_cliente: '#4FA3FF', ajustes_cliente: '#FF7A59', aprovado_cliente: '#2BB673' };
-  function heroiDesignHTML(atalhos) {
-    const fila = dados.filter(d => d.status !== 'finalizado');
-    const fin = dados.length - fila.length;
-    const segs = STATUS.map(([k]) => [k, fila.filter(d => d.status === k).length]).filter(x => x[1] && COR_DS[x[0]]);
-    const revisar = pecasParaRevisar().length;
-    return '<div class="ds-heroi">' +
-      '<div class="ds-heroi-topo"><div><b>' + fila.length + '</b><span>peça' + (fila.length === 1 ? '' : 's') + ' na fila</span></div>' +
-        (fin ? '<em>' + fin + ' finalizada' + (fin === 1 ? '' : 's') + '</em>' : '') + '</div>' +
-      '<div class="ds-heroi-barra">' + segs.map(([k, n], i) => '<i style="flex:' + n + ';background:' + COR_DS[k] + ';--i:' + i + '"></i>').join('') + '</div>' +
-      (atalhos.length ? '<div class="ds-heroi-leg">' + atalhos.map(i =>
-        '<button class="ds-heroi-it ' + i[4] + (F.rapido === i[0] ? ' on' : '') + '" data-rapido="' + i[0] + '"><b>' + i[1] + '</b>' + esc(i[2]) + '</button>').join('') + '</div>' : '') +
-      (revisar ? '<button class="ds-heroi-rev" data-ds-revisar><span><b>Revisar em sequência</b><small>' + revisar + ' peça' + (revisar === 1 ? '' : 's') + ' esperando você</small></span><i>▶</i></button>' : '') +
-    '</div>';
-  }
   function desenharResumoEquipe() {
     const cx = painel().querySelector('#ds-resumo');
     if (!cx || !ehEquipe() || F.aba === 'equipe') { if (cx) cx.innerHTML = ''; return; }
@@ -1135,7 +1115,6 @@ B7.Design = (function () {
       (pecasParaRevisar().length ? '<button class="b fina pri ds-revisar-fila" id="ds-revisar-fila" title="Abre a peça mais antiga da fila; ao aprovar ou pedir ajuste, a próxima abre sozinha">' +
         'Revisar em sequência</button>' : '') +
     '</div>';
-    cx.insertAdjacentHTML('beforeend', heroiDesignHTML(itens.filter(i => i[1] > 0)));
     cx.querySelectorAll('#ds-revisar-fila, [data-ds-revisar]').forEach(b => b.onclick = iniciarRevisaoEmSequencia);
     cx.querySelectorAll('[data-rapido]').forEach(b => b.onclick = () => {
       F.rapido = F.rapido === b.dataset.rapido ? '' : b.dataset.rapido;

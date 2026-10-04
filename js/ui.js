@@ -241,6 +241,17 @@ B7.UI = (function () {
     document.querySelectorAll('.menu.aberto').forEach(m => m.classList.remove('aberto', 'para-cima'));
     if (menuAberto) {
       const { menu, lista } = menuAberto;
+      /* zzz27: saída suave — uma cópia visual some no lugar (a lista de
+         verdade volta pro menu na hora, como antes, então reabrir ou
+         redesenhar a tela continua seguro) */
+      if (lista.classList.contains('mostrando') && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const fantasma = lista.cloneNode(true);
+        fantasma.classList.add('lista-fantasma');
+        fantasma.setAttribute('aria-hidden', 'true');
+        (lista.parentNode || document.body).appendChild(fantasma);
+        requestAnimationFrame(() => fantasma.classList.remove('mostrando'));
+        setTimeout(() => fantasma.remove(), 220);
+      }
       lista.removeAttribute('style');
       lista.classList.remove('solta', 'mostrando', 'acima');
       /* Se a tela redesenhou enquanto o menu estava aberto, o dono saiu do
@@ -252,7 +263,7 @@ B7.UI = (function () {
     }
     /* rede de segurança: qualquer lista que tenha sobrado solta no body de
        um render anterior sai junto */
-    document.querySelectorAll('body > .lista').forEach(l => l.remove());
+    document.querySelectorAll('body > .lista:not(.lista-fantasma)').forEach(l => l.remove());
   }
 
   function posicionarMenu(menu, botao) {
