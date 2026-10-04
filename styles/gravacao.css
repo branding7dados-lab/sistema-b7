@@ -530,3 +530,57 @@ button.gv-fato:hover .gv-fato-ed,button.gv-fato:focus-visible .gv-fato-ed{opacit
 @keyframes nl-existe{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.nl-existe{animation:none;}}
 html.modo-leve .nl-existe{animation:none;}
+
+/* Novo status semanal (zzz41) — js/semana.js modalNovo, usa .ng-* e .nl-* */
+.ns-periodo{display:inline-flex;align-items:center;gap:6px;margin-top:8px;height:26px;padding:0 11px;border-radius:999px;
+  font-size:12px;font-weight:700;color:var(--acento);background:color-mix(in srgb, var(--acento) 10%, transparent);}
+.ns-periodo:empty{display:none;}
+.ns-periodo:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+.ns-modal .nl-atalhos .gv-chip b{font-size:14px;}
+
+/* Novo usuário (zzz41) — js/usuarios.js modalNovo, usa .ng-* */
+.nu-modal .ng-bloco h4 .mg-obr{margin-left:auto;}
+.nu-modal .mg-obr:not(.leve){color:var(--acento);}
+.nu-arroba{position:relative;}
+.nu-arroba span{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:700;color:var(--ink-4);pointer-events:none;}
+.nu-arroba .campo{padding-left:32px;width:100%;}
+.nu-papeis{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;}
+.nu-papel{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 12px;border-radius:14px;border:1.5px solid var(--borda);
+  background:var(--card);color:var(--ink-2);font:inherit;font-size:13.5px;text-align:left;cursor:pointer;
+  transition:border-color .2s,background .2s,color .2s,transform .15s;}
+.nu-papel:last-child:nth-child(odd){grid-column:1 / -1;}
+.nu-papel i{flex:none;width:16px;height:16px;border-radius:50%;border:2px solid var(--borda-forte, var(--borda));transition:border .2s, box-shadow .2s;}
+.nu-papel b{font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nu-papel:active{transform:scale(.97);}
+.nu-papel.on{border-color:var(--acento);background:color-mix(in srgb, var(--acento) 10%, var(--card));color:var(--acento);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--acento) 14%, transparent);}
+.nu-papel.on i{border:5px solid var(--acento);}
+.nu-papel-desc{margin-top:10px;font-size:12px;color:var(--ink-4);line-height:1.4;}
+.nu-papel-desc:before{content:"→ ";color:var(--acento);font-weight:800;}
+.nu-busca{margin-bottom:10px;}
+.nu-busca .campo{width:100%;height:42px !important;}
+.nu-modal .nu-pilulas{display:flex;flex-wrap:wrap;gap:7px;max-height:232px;overflow-y:auto;overscroll-behavior:contain;padding:2px 2px 6px;
+  -webkit-mask-image:linear-gradient(#000 calc(100% - 18px), transparent);mask-image:linear-gradient(#000 calc(100% - 18px), transparent);}
+.nu-modal .nu-pilulas .op-mini{width:auto;margin:0;min-height:36px;padding:0 13px 0 9px;gap:7px;font-size:13px;font-weight:600;color:var(--ink-2);
+  border-radius:999px;border:1.5px solid var(--borda);background:var(--card);box-sizing:border-box;}
+.nu-modal .nu-pilulas .op-mini[hidden]{display:none;}
+.nu-modal .nu-pilulas .op-mini input{appearance:none;-webkit-appearance:none;flex:none;width:17px;height:17px;margin:0;border-radius:50%;
+  border:1.5px solid var(--borda-forte, var(--borda));background:transparent center/11px no-repeat;transition:background-color .2s, border-color .2s;}
+.nu-modal .nu-pilulas .op-mini.on{border-color:var(--acento);color:var(--acento);background:color-mix(in srgb, var(--acento) 10%, var(--card));}
+.nu-modal .nu-pilulas .op-mini input:checked{border-color:transparent;background-color:var(--acento);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");}
+.nu-modal .nu-chave-linha{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:12px 0 0;padding:12px 14px;
+  border-radius:14px;border:1px solid var(--borda);background:var(--card);color:var(--ink);font-size:13.5px;font-weight:700;box-sizing:border-box;}
+.nu-modal .nu-chave-linha.on{border-color:color-mix(in srgb, var(--acento) 45%, var(--borda));background:color-mix(in srgb, var(--acento) 6%, var(--card));color:var(--ink);}
+.nu-modal .nu-chave-linha small{font-size:11.5px;font-weight:500;color:var(--ink-4);margin-top:2px;opacity:1;}
+.nu-modal .nu-chave-linha input{appearance:none;-webkit-appearance:none;flex:none;position:relative;width:44px;height:26px;margin:0;border-radius:999px;
+  background:color-mix(in srgb, var(--ink) 16%, transparent);transition:background .25s;cursor:pointer;}
+.nu-modal .nu-chave-linha input:before{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .3s cubic-bezier(.3,1.4,.5,1);}
+.nu-modal .nu-chave-linha input:checked{background:linear-gradient(135deg,#6B3FD8,#D63384);}
+.nu-modal .nu-chave-linha input:checked:before{transform:translateX(18px);}
+.nu-modal .nu-extras-lista{display:flex;flex-direction:column;gap:8px;}
+.nu-modal .nu-extras-lista .nu-chave-linha{margin:0;}
+.nu-modal .nu-senha .campo{height:46px;}
+.nu-modal .nu-senha .b{height:46px;border-radius:13px;padding:0 16px;font-weight:800;}
+.nu-modal .erro-txt{margin:0 0 8px;}
