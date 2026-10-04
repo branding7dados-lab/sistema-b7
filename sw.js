@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v222';
+const CACHE = 'roteiros-b7-v223';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -40,11 +40,22 @@ const CASCA = [
 /* config.js fica de fora de propósito: é o arquivo que você edita e não
    pode, em hipótese alguma, ficar preso numa versão antiga. */
 
+/* zzz18: baixa um arquivo da casca com a versão no endereço (?b7=CACHE).
+   Logo depois de publicar, o CDN do GitHub Pages ainda entrega parte dos
+   arquivos antigos por alguns segundos; quem atualizava nesse intervalo
+   ficava com uma mistura (CSS novo + JS velho) presa no cache até a
+   próxima publicação. O endereço novo nunca está no CDN: vem da origem,
+   sempre a versão publicada. Fica guardado sob o endereço normal. */
+function baixar(u) {
+  return fetch(new Request(u + (u.includes('?') ? '&' : '?') + 'b7=' + CACHE, { cache: 'reload' }))
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status + ' em ' + u); return r; });
+}
+
 self.addEventListener('install', ev => {
   ev.waitUntil(
     /* 'reload': a casca nova é baixada do servidor, nunca do cache HTTP —
        senão a reserva offline nasceria com arquivos da versão anterior */
-    caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u => c.add(new Request(u, { cache: 'reload' })))))
+    caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u => baixar(u).then(r => c.put(u, r)))))
       .then(() => self.skipWaiting())
   );
 });
@@ -97,8 +108,7 @@ self.addEventListener('fetch', ev => {
    inteira de novo, direto do servidor, e avisa quando terminou — a
    recarga que vem depois já abre a versão nova. */
 function renovarCasca() {
-  return caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u =>
-    fetch(new Request(u, { cache: 'reload' })).then(r => { if (r.ok) return c.put(u, r); }))));
+  return caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u => baixar(u).then(r => c.put(u, r)))));
 }
 self.addEventListener('message', ev => {
   const d = ev.data || {};
