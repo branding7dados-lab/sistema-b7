@@ -387,3 +387,69 @@ button.gv-fato:hover .gv-fato-ed,button.gv-fato:focus-visible .gv-fato-ed{opacit
   .gv-progresso i{width:80px;}
 }
 @media (pointer:coarse){ .gv-chip{min-height:36px;} }
+
+/* =====================================================================
+   GRAVAÇÕES 2 (zzz17) — js/dashboard.js abrirGravacoes / linhaGravacao
+   Mesmo padrão de Clientes/Roteiros: título grande, busca e filtros em
+   pílula, status em pílulas soltas, mês com cabeçalho forte e cartões
+   com cantos maiores, logo preenchida, barra em degradê e cascata.
+   ===================================================================== */
+.gl-pagina{--gl-mola:cubic-bezier(.16,1,.3,1);}
+.gl-topo{align-items:flex-start;margin-bottom:18px;animation:cfgEntra .5s var(--gl-mola) both;}
+.gl-tit h1{margin:0;font-family:'Archivo',sans-serif;font-size:28px;font-weight:900;letter-spacing:-.6px;color:var(--ink);}
+.gl-tit p{margin:4px 0 0;font-size:13.5px;color:var(--ink-3);}
+.gl-tit p b{color:var(--ink-2);font-weight:700;}
+.gl-topo .gl-cal{border-radius:13px;}
+.gl-topo .gl-nova{border-radius:13px;}
+
+.gl-filtros{animation:cfgEntra .5s var(--gl-mola) .05s both;}
+.gl-busca .campo{height:42px;border-radius:13px;}
+.gl-busca .campo:focus{border-color:color-mix(in srgb, var(--acento) 50%, transparent);box-shadow:0 0 0 4px var(--acento-suave);}
+.gl-filtros .gv-filtro{height:38px;border-radius:999px;padding:0 32px 0 14px;font-size:13px;font-weight:600;color:var(--ink-2);background-position:right 12px center;}
+.gl-filtros .gv-filtro.ativo{background-color:var(--acento-suave);border-color:transparent;color:var(--acento);}
+.gl-bt-filtros{border-radius:13px !important;}
+
+/* status: pílulas soltas, a escolhida em tinta */
+.gl-status.filtro{background:none !important;padding:2px !important;gap:6px;border:0 !important;box-shadow:none !important;margin:0 -2px;}
+.gl-status.filtro button{height:36px;min-height:36px;padding:0 13px;border-radius:999px;border:1px solid var(--borda);background:var(--card);
+  color:var(--ink-3);font-size:13px;font-weight:600;box-shadow:none;transition:background .2s, color .2s, border-color .2s, transform .15s;}
+.gl-status.filtro button:hover{color:var(--ink);border-color:var(--borda-forte);}
+.gl-status.filtro button:active{transform:scale(.95);}
+.gl-status.filtro button.on{background:var(--ink);border-color:var(--ink);color:var(--card);}
+.gl-status .gl-n{background:none;padding:0;min-width:0;font-size:12px;color:var(--ink-4);}
+.gl-status button.on .gl-n{background:none;color:color-mix(in srgb, var(--card) 65%, transparent);}
+
+/* mês */
+.gl-grupo-cab{margin:0 2px 12px;}
+.gl-grupo-cab h3{font-size:20px;font-weight:900;letter-spacing:-.3px;}
+.gl-tag{border-radius:999px;}
+
+/* lista e cartões */
+.gl-lista{border-radius:22px;border-color:color-mix(in srgb, var(--ink) 8%, transparent);box-shadow:0 12px 30px -26px rgba(20,8,40,.55);}
+.gl-item{transition:background .18s;}
+.gl-item:active{background:var(--suave);}
+.gl-dia{border-radius:14px;box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent);transition:transform .35s var(--gl-mola);}
+.gl-item:hover .gl-dia{transform:scale(1.05);}
+.gl-dia.hoje{background:var(--grad-curto, var(--acento));box-shadow:0 8px 18px -10px rgba(194,28,131,.7);}
+.gl-quem .avatar{width:40px;height:40px;border-radius:12px;box-shadow:0 6px 14px -10px rgba(20,8,40,.5);}
+.gl-quem .avatar.com-logo{border:0;}
+.gl-quem .avatar.com-logo img{object-fit:cover;width:100%;height:100%;}
+.gl-barra{height:7px;}
+.gl-barra i{background:linear-gradient(90deg,#7C5CFF,var(--acento));}
+.gl-prog.completo .gl-barra i{background:linear-gradient(90deg,#3FD08A,var(--ok));}
+.gl-alerta{border-radius:999px;}
+
+@media (max-width:760px){
+  .gl-topo{flex-wrap:nowrap;gap:8px;}
+  .gl-tit{flex:1 1 auto;min-width:0;}
+  .gl-topo .espaco{display:none;}
+  .gl-tit h1{overflow-wrap:normal;word-break:normal;}
+  .gl-tit h1{font-size:30px;}
+  .gl-tit p{font-size:13px;}
+  .gl-topo .gl-cal{width:44px;height:44px;padding:0;justify-content:center;margin-right:0;}
+  .gl-topo .gl-nova{width:44px;height:44px;padding:0;justify-content:center;font-size:0;gap:0;}
+  .gl-topo .gl-nova svg{width:16px;height:16px;margin:0;}
+  .gl-lista{border-radius:20px;}
+  .gl-dia{width:50px;height:56px;}
+}
+@media (prefers-reduced-motion: reduce){ .gl-topo, .gl-filtros{animation:none !important;} }
