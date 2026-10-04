@@ -333,7 +333,9 @@ B7.Portal = (function () {
 
     recentes = recentes.filter(a => a.decidido_em)
       .sort((a, b) => String(b.decidido_em).localeCompare(String(a.decidido_em))).slice(0, 5);
-    const hoje = new Date().toISOString().slice(0, 10);
+    /* zzz45: data local. Com toISOString, depois das 21h no Brasil o
+       "hoje" já virava o dia seguinte e a gravação de hoje sumia. */
+    const hoje = B7.UI.hojeISO();
     const proxima = gravacoes
       .filter(g => g.status_cliente === 'programada' && g.data_gravacao && g.data_gravacao >= hoje)
       .sort((a, b) => String(a.data_gravacao).localeCompare(String(b.data_gravacao)))[0] || null;

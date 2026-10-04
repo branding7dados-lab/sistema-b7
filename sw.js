@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v249';
+const CACHE = 'roteiros-b7-v250';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -23,6 +23,9 @@ const CASCA = [
   './js/linha.js', './js/design.js', './js/video.js', './js/eventos.js', './js/calendario.js', './js/oportunidades.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
   './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js', './js/painel-coord.js', './js/painel-design.js', './js/painel-multi.js', './js/topo.js', './js/nav.js',
   './js/permissoes.js', './js/portal.js', './js/kanban.js', './js/perfil.js', './js/foto.js',
+  /* zzz45: estava faltando. Sem rede, o "Visualizar como…" sumia em
+     silêncio porque o arquivo nunca entrava no cache. */
+  './js/previa-usuario.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js',
   './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js',
   './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js', './js/vendor/xlsx.full.min.js',

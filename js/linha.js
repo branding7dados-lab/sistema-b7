@@ -1148,7 +1148,10 @@ B7.Linha = (function () {
           '<option value="' + (i + 1) + '"' + (i === L.linha.mes % 12 ? ' selected' : '') + '>' +
           n + '</option>').join('') + '</select></div>' +
         '<div><label class="rot">ANO</label><select class="campo" id="dp-ano">' +
-          anos.map(a => '<option' + (a === L.linha.ano ? ' selected' : '') + '>' + a + '</option>').join('') +
+          /* zzz45: dezembro sugere janeiro — e janeiro do ano SEGUINTE.
+             Antes o ano ficava preso no da origem, então duplicar
+             dezembro/2026 criava "janeiro 2026", onze meses atrás. */
+          anos.map(a => '<option' + (a === (L.linha.mes === 12 ? L.linha.ano + 1 : L.linha.ano) ? ' selected' : '') + '>' + a + '</option>').join('') +
         '</select></div></div>' +
       '<label class="rot">O QUE COPIAR</label>' +
       '<div class="lista-check">' +

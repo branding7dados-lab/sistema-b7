@@ -186,7 +186,10 @@ B7.Perfil = (function () {
         '<div style="flex:1"></div>' +
         '<button class="b" data-fecha>Fechar</button>' +
       '</div>',
-      { larga: true, extra: 'modal-perfil pf-modal' });
+      { larga: true, extra: 'modal-perfil pf-modal',
+        /* zzz45: sem isto, cada abertura do perfil deixava um listener de
+           resize preso a um modal já descartado. */
+        aoFechar: () => window.removeEventListener('resize', luz) });
 
     /* ---------------------------------------------------------- abas */
     const ordem = ABAS.map(a => a[0]);
