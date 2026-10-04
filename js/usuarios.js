@@ -249,60 +249,70 @@ B7.Usuarios = (function () {
      CRIAR
      ================================================================= */
   function modalNovo(clientes) {
-    const m = B7.UI.modal('<h3>Novo usuário</h3>' +
-      '<div class="sub">A conta é criada aqui e a senha é entregue pela equipe. ' +
-      'Não há e-mail nem convite.</div>' +
+    /* zzz41: no padrão novo — blocos com ícone, perfil em grade
+       compacta, empresas em pílulas com busca e contador, aprovação como
+       chave e botões lado a lado. Mesmos ids e regras. */
+    const ICU = {
+      pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8.5" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/></svg>',
+      id: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16a3.4 3.4 0 0 1 6.4 0M14.5 10h3.5M14.5 13.5h2.5"/></svg>',
+      perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+      emp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>',
+      extra: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg>',
+      chave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8M16 6l2 2M14 8l2 2"/></svg>'
+    };
+    const papelAtual = PAPEIS.find(x => x[0] === 'cliente');
+    const m = B7.UI.modal(
+      '<div class="ng-topo"><span class="ng-ic">' + ICU.pessoa + '</span><div><h3>Novo usuário</h3>' +
+      '<div class="sub">A conta é criada aqui e a senha é entregue pela equipe. Sem e-mail nem convite.</div></div></div>' +
 
-      /* linha-2col: classe própria (ver styles/dashboard.css) porque a
-         .linha genérica de global.css tem um bug — o ajuste mobile dela
-         usa grid-template-columns num container que é display:flex, ou
-         seja, não faz nada; NOME e USUÁRIO ficavam espremidos lado a
-         lado até em tela de celular estreita. */
-      '<div class="linha mb linha-2col">' +
-        '<div><label class="rot">NOME</label>' +
+      '<section class="ng-bloco"><h4>' + ICU.id + 'Quem é</h4>' +
+        '<div class="mb"><label class="rot" for="nu-nome">NOME</label>' +
           '<input class="campo" id="nu-nome" placeholder="Nome da pessoa"></div>' +
-        '<div><label class="rot">USUÁRIO</label>' +
-          '<input class="campo" id="nu-user" autocapitalize="none" spellcheck="false" ' +
-          'placeholder="ex.: maria.silva"></div>' +
-      '</div>' +
+        '<div class="mb ng-ult"><label class="rot" for="nu-user">USUÁRIO</label>' +
+          '<div class="nu-arroba"><span aria-hidden="true">@</span><input class="campo" id="nu-user" autocapitalize="none" spellcheck="false" ' +
+          'placeholder="maria.silva"></div></div>' +
+      '</section>' +
 
-      '<label class="rot">PERFIL</label>' +
-      '<div class="grade-formatos exp-formatos" id="nu-papel">' +
-        PAPEIS.map(([v, r, d], i) =>
-          '<button class="opcao-formato' + (v === 'cliente' ? ' on' : '') + '" data-papel="' + v + '">' +
-          '<b>' + r + '</b><small>' + d + '</small></button>').join('') +
-      '</div>' +
+      '<section class="ng-bloco"><h4>' + ICU.perfil + 'Perfil</h4>' +
+        '<div class="nu-papeis" id="nu-papel">' +
+        PAPEIS.map(([v, r, d]) =>
+          '<button type="button" class="nu-papel' + (v === 'cliente' ? ' on' : '') + '" data-papel="' + v + '" data-desc="' + esc(d) + '">' +
+          '<i aria-hidden="true"></i><b>' + r.replace(' de mídias', '') + '</b></button>').join('') +
+        '</div>' +
+        '<div class="nu-papel-desc" id="nu-papel-desc">' + esc(papelAtual[2]) + '</div>' +
+      '</section>' +
 
-      '<div id="nu-cliente" class="mb" style="margin-top:14px">' +
-        '<label class="rot">EMPRESAS QUE ESTA PESSOA ACOMPANHA</label>' +
+      '<section class="ng-bloco" id="nu-cliente"><h4>' + ICU.emp + 'Empresas que acompanha' +
+        '<span class="mg-obr leve" id="nu-cont">nenhuma</span></h4>' +
         (clientes.length
-          ? '<div class="nu-empresas">' + clientes.map(c =>
-              '<label class="op-mini"><input type="checkbox" value="' + esc(c.id) + '">' +
+          ? (clientes.length > 8 ? '<div class="nu-busca"><input class="campo" id="nu-busca-emp" type="search" placeholder="Buscar empresa…" aria-label="Buscar empresa"></div>' : '') +
+            '<div class="nu-empresas nu-pilulas">' + clientes.map(c =>
+              '<label class="op-mini" data-nome="' + esc(String(c.nome).toLowerCase()) + '"><input type="checkbox" value="' + esc(c.id) + '">' +
               '<span>' + esc(c.nome) + '</span></label>').join('') + '</div>'
           : '<div class="vazio-leve">Cadastre um cliente primeiro.</div>') +
-        '<label class="op-mini" style="margin-top:10px" id="nu-aprovar">' +
-          '<input type="checkbox"><span>Pode aprovar oficialmente' +
-          '<small>sem isso, a pessoa visualiza e comenta, mas não aprova</small></span></label>' +
-      '</div>' +
+        '<label class="op-mini nu-chave-linha" id="nu-aprovar">' +
+          '<span>Pode aprovar oficialmente' +
+          '<small>sem isso, a pessoa visualiza e comenta, mas não aprova</small></span><input type="checkbox" role="switch"></label>' +
+      '</section>' +
 
-      '<div id="nu-extras" class="mb" style="margin-top:14px">' +
-        '<label class="rot">FUNÇÕES EXTRAS (ALÉM DO PERFIL PRINCIPAL)</label>' +
-        '<div class="nu-empresas">' + FUNCOES_EXTRA.map(([v, r, d]) =>
-          '<label class="op-mini" data-funcao-extra="' + v + '"><input type="checkbox" value="' + v + '">' +
-          '<span>' + r + '<small>' + d + '</small></span></label>').join('') + '</div>' +
-      '</div>' +
+      '<section class="ng-bloco" id="nu-extras"><h4>' + ICU.extra + 'Funções extras <span class="mg-obr leve">opcional</span></h4>' +
+        '<div class="nu-empresas nu-extras-lista">' + FUNCOES_EXTRA.map(([v, r, d]) =>
+          '<label class="op-mini nu-chave-linha" data-funcao-extra="' + v + '">' +
+          '<span>' + r + '<small>' + d + '</small></span><input type="checkbox" role="switch" value="' + v + '"></label>').join('') + '</div>' +
+      '</section>' +
 
-      '<label class="rot" style="margin-top:6px">SENHA INICIAL</label>' +
-      '<div class="nu-senha">' +
-        '<input class="campo" id="nu-senha" autocomplete="new-password">' +
-        '<button class="b p" type="button" id="nu-gerar">Gerar</button>' +
-      '</div>' +
-      '<div class="ajuda">Mínimo de 10 caracteres, com letras e números.</div>' +
+      '<section class="ng-bloco"><h4>' + ICU.chave + 'Senha inicial</h4>' +
+        '<div class="nu-senha">' +
+          '<input class="campo" id="nu-senha" autocomplete="new-password" aria-label="Senha inicial">' +
+          '<button class="b p" type="button" id="nu-gerar">Gerar</button>' +
+        '</div>' +
+        '<div class="gv-ajuda">Mínimo de 10 caracteres, com letras e números.</div>' +
+      '</section>' +
 
       '<div id="nu-erro" class="ajuda erro-txt"></div>' +
 
-      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
-      '<button class="b pri" data-ok>Criar usuário</button></div>', { larga: true });
+      '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" data-ok>Criar usuário</button></div>', { larga: true, extra: 'ng-modal nu-modal' });
 
     let papel = 'cliente';
     const blocoCliente = m.querySelector('#nu-cliente');
@@ -322,13 +332,27 @@ B7.Usuarios = (function () {
       m.querySelectorAll('#nu-papel button').forEach(x => x.classList.remove('on'));
       b.classList.add('on');
       papel = b.dataset.papel;
+      const desc = m.querySelector('#nu-papel-desc');
+      if (desc) desc.textContent = b.dataset.desc || '';
       /* empresa e permissão de aprovação só fazem sentido para cliente */
       blocoCliente.style.display = papel === 'cliente' ? '' : 'none';
       atualizarExtras();
     });
     atualizarExtras();
-    m.querySelectorAll('.op-mini input').forEach(cx => cx.onchange = () =>
-      cx.closest('.op-mini').classList.toggle('on', cx.checked));
+    const contar = () => {
+      const n = m.querySelectorAll('.nu-pilulas input:checked').length;
+      const c = m.querySelector('#nu-cont');
+      if (c) { c.textContent = n ? n + (n === 1 ? ' selecionada' : ' selecionadas') : 'nenhuma'; c.classList.toggle('leve', !n); }
+    };
+    m.querySelectorAll('.op-mini input').forEach(cx => cx.onchange = () => {
+      cx.closest('.op-mini').classList.toggle('on', cx.checked);
+      contar();
+    });
+    const buscaEmp = m.querySelector('#nu-busca-emp');
+    if (buscaEmp) buscaEmp.oninput = () => {
+      const t = buscaEmp.value.trim().toLowerCase();
+      m.querySelectorAll('.nu-pilulas .op-mini').forEach(l => { l.hidden = !!t && !l.dataset.nome.includes(t); });
+    };
 
     m.querySelector('#nu-gerar').onclick = () => {
       m.querySelector('#nu-senha').value = gerarSenha();

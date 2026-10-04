@@ -319,28 +319,48 @@ B7.Semana = (function () {
     }
     const inicioPadrao = segundaDe(hojeISO());
 
-    const m = B7.UI.modal('<h3>Novo status semanal</h3>' +
-      '<div class="sub">Sete dias a partir da data escolhida. O resto vem da linha ' +
-      'editorial, se houver.</div>' +
+    /* zzz41: no padrão novo — cabeçalho com ícone, blocos ("Para quem",
+       "Qual semana", "Fonte"), atalhos de semana e botões lado a lado. */
+    const ICS = {
+      sem: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="M8.5 14.5l2.2 2.2 4.8-4.7"/></svg>',
+      cli: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>',
+      cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+      fonte: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M7.5 13.5h4M7.5 17h7"/></svg>'
+    };
+    const curta = iso => { const p = iso.split('-'); return +p[2] + ' ' + B7.UI.MESES[+p[1] - 1].slice(0, 3).toLowerCase(); };
+    const atalhosSem = [[0, 'Esta semana'], [7, 'Próxima semana']].map(([n, rot]) => {
+      const ini = somarDias(inicioPadrao, n);
+      return '<button type="button" class="gv-chip" data-ini="' + ini + '"><small>' + rot + '</small>' +
+        '<b>' + curta(ini) + ' – ' + curta(somarDias(ini, 6)) + '</b></button>';
+    }).join('');
+
+    const m = B7.UI.modal(
+      '<div class="ng-topo"><span class="ng-ic">' + ICS.sem + '</span><div><h3>Novo status semanal</h3>' +
+      '<div class="sub">Sete dias a partir da data escolhida. O resto vem da linha editorial, se houver.</div></div></div>' +
 
       (clienteId ? '' :
-        '<div class="mb"><label class="rot">CLIENTE</label>' +
+        '<section class="ng-bloco"><h4>' + ICS.cli + 'Para quem</h4>' +
+        '<div class="mb ng-ult"><label class="rot" for="ns-cliente">CLIENTE</label>' +
         '<select class="campo" id="ns-cliente">' + clientes.map(c =>
           '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>').join('') +
-        '</select></div>') +
+        '</select></div></section>') +
 
-      '<div class="mb"><label class="rot">INÍCIO DA SEMANA</label>' +
+      '<section class="ng-bloco"><h4>' + ICS.cal + 'Qual semana</h4>' +
+        '<div class="gv-mes-atalhos nl-atalhos ns-atalhos">' + atalhosSem + '</div>' +
+        '<div class="mb ng-ult"><label class="rot" for="ns-inicio">INÍCIO DA SEMANA</label>' +
         '<input class="campo" type="date" id="ns-inicio" value="' + inicioPadrao + '">' +
-        '<div class="ajuda" id="ns-periodo"></div></div>' +
+        '<div class="ns-periodo" id="ns-periodo"></div></div>' +
+        '<div id="ns-aviso"></div>' +
+      '</section>' +
 
-      '<div class="mb"><label class="rot">FONTE DO PLANEJAMENTO</label>' +
-        '<select class="campo" id="ns-linha"><option value="">Nenhuma — começar vazio</option></select>' +
-        '<div class="ajuda" id="ns-fonte">As postagens previstas no período entram como demandas.</div></div>' +
+      '<section class="ng-bloco"><h4>' + ICS.fonte + 'Fonte do planejamento</h4>' +
+        '<div class="mb ng-ult"><select class="campo" id="ns-linha" aria-label="Fonte do planejamento">' +
+        '<option value="">Nenhuma — começar vazio</option></select>' +
+        '<div class="gv-ajuda" id="ns-fonte">As postagens previstas no período entram como demandas.</div></div>' +
+      '</section>' +
 
-      '<div id="ns-aviso"></div>' +
-
-      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
-      '<button class="b pri" data-ok>Criar status semanal</button></div>');
+      '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" data-ok>Criar status</button></div>', { extra: 'ng-modal nl-modal ns-modal' });
 
     const selCli = m.querySelector('#ns-cliente');
     const campoInicio = m.querySelector('#ns-inicio');
@@ -369,15 +389,16 @@ B7.Semana = (function () {
       if (!ini) return;
       const fim = somarDias(ini, 6);
       m.querySelector('#ns-periodo').textContent = D().periodoTexto(ini, fim);
+      m.querySelectorAll('.ns-atalhos .gv-chip').forEach(c => c.classList.toggle('on', c.dataset.ini === ini));
       const cli = cliente();
       const alvo = m.querySelector('#ns-aviso');
       alvo.innerHTML = '';
       if (!cli) return;
       const existente = await B7.DB.statusDaSemana(cli, ini).catch(() => null);
       if (existente) {
-        alvo.innerHTML = '<div class="aviso-suave" style="display:flex;align-items:center;gap:10px">' +
-          '<span>Já existe um status para esta semana.</span>' +
-          '<button class="b p" data-abrir-existente="' + esc(existente.id) + '">Abrir o existente</button>' +
+        alvo.innerHTML = '<div class="nl-existe"><span class="nl-existe-ic" aria-hidden="true">!</span>' +
+          '<span class="nl-existe-tx"><b>Semana já tem status</b>Você pode abrir o existente ou criar outro.</span>' +
+          '<button type="button" class="nl-existe-b" data-abrir-existente="' + esc(existente.id) + '">Abrir</button>' +
           '</div>';
         alvo.querySelector('[data-abrir-existente]').onclick = () => {
           m.fechar();
@@ -387,6 +408,9 @@ B7.Semana = (function () {
     }
 
     campoInicio.onchange = () => { atualizarPeriodo(); carregarLinhas(); };
+    m.querySelectorAll('.ns-atalhos .gv-chip').forEach(c => c.onclick = () => {
+      campoInicio.value = c.dataset.ini; atualizarPeriodo(); carregarLinhas();
+    });
     if (selCli) selCli.onchange = () => { atualizarPeriodo(); carregarLinhas(); };
     await carregarLinhas();
     await atualizarPeriodo();
@@ -437,7 +461,7 @@ B7.Semana = (function () {
         m.fechar();
         location.hash = '#/semana/' + novo.id;
       } catch (e) {
-        botao.disabled = false; botao.textContent = 'Criar status semanal';
+        botao.disabled = false; botao.textContent = 'Criar status';
       }
     };
   }
