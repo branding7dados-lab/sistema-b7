@@ -1,16 +1,18 @@
 # Vídeo de lançamento B7 — 9:16
 
-Motion design de ~62 s, **1080×1920 nativo** (Reels, TikTok e Shorts), feito em código:
+Motion design de 64 s com narração, **1080×1920 nativo** (Reels, TikTok e Shorts), feito em código:
 cada quadro é uma função do tempo, desenhada em HTML/canvas e capturada pelo Chromium.
 
 | Arquivo | O que é |
 |---|---|
-| `saida/b7-lancamento-9x16.mp4` | versão final com trilha e efeitos sonoros |
-| `saida/b7-lancamento-9x16-sem-som.mp4` | mesma imagem, sem áudio (para usar uma música própria) |
+| `saida/b7-lancamento-9x16.mp4` | versão final: narração + trilha + efeitos sonoros |
+| `saida/b7-lancamento-9x16-sem-som.mp4` | mesma imagem, sem áudio (para usar música ou locução próprias) |
 | `index.html` · `style.css` | palco 1080×1920, paleta e tipografia (Poppins) |
 | `engine.js` | motor: easing, câmera, partículas, lockup oficial, `renderAt(t)` |
 | `scenes.js` | as 14 cenas do roteiro |
 | `audio.mjs` | trilha sintetizada e sincronizada com os eventos do vídeo |
+| `narracao.py` | narração: roteiro com os tempos de cada fala + voz sintetizada |
+| `roteiro-narracao.json` | início e fim de cada fala (gerado), útil para gravar com locutor |
 | `render.mjs` | captura os quadros (Playwright) e codifica com ffmpeg |
 
 ## Marca
@@ -43,19 +45,34 @@ Nenhuma logo foi redesenhada. O vídeo usa apenas `assets/brand/originais/` e
 | 50–54 s | Portal do cliente |
 | 54–57 s | Tudo conectado: seis módulos ligados ao símbolo |
 | 57–59 s | Transformação: antes/depois, "Menos caos. Mais operação. Mais controle." |
-| 59–62 s | Encerramento: lockup + "O sistema operacional da sua operação de conteúdo." |
+| 59–64 s | Encerramento: lockup + "O sistema operacional da sua operação de conteúdo." |
 
-O final ganhou 2 s além dos 60 s do briefing, para a marca ficar na tela por
-tempo suficiente.
+O final ganhou 4 s além dos 60 s do briefing, para a última fala terminar com a
+marca ainda na tela.
+
+## Narração
+
+A voz é sintetizada pelo [Piper](https://github.com/OHF-Voice/piper1-gpl), voz pt-BR
+**faber**, de licença CC0 (pode ser usada comercialmente). As falas e os tempos ficam
+em `FALAS`, dentro de `narracao.py`. "B7" está escrito "Bê Sete" para a voz pronunciar
+certo. Na mixagem, a trilha abaixa sozinha enquanto a voz fala, e o resultado sai
+em −14 LUFS, o volume padrão das redes.
+
+Para trocar por um locutor de verdade, grave cada frase de `roteiro-narracao.json`
+começando no tempo indicado, salve como `saida/narracao.wav` (48 kHz) e rode
+`node render.mjs --mixar`. Não precisa renderizar a imagem de novo.
 
 ## Renderizar de novo
 
-Requer Node 18+, Playwright com Chromium e ffmpeg.
+Requer Node 18+, Playwright com Chromium, ffmpeg e Python 3 com `piper-tts`.
 
 ```sh
 cd video/lancamento-b7
+pip install piper-tts                  # uma vez
 node audio.mjs                         # gera saida/trilha-sfx.wav
-node render.mjs                        # gera os dois MP4 (≈10 min com 4 núcleos)
+python3 narracao.py                    # gera saida/narracao.wav (baixa a voz na 1ª vez)
+node render.mjs                        # gera os dois MP4 (≈30 min com 4 núcleos)
+node render.mjs --mixar                # só refaz o áudio sobre o vídeo já renderizado
 node render.mjs --frames 10.5,42.9     # só alguns quadros, em saida/quadros/
 ```
 

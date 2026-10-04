@@ -2,7 +2,7 @@
    cada quadro é desenhado por renderAt(t), o que torna a renderização
    determinística quadro a quadro. */
 'use strict';
-const W = 1080, H = 1920, FPS = 30, DURATION = 62;
+const W = 1080, H = 1920, FPS = 30, DURATION = 64;
 const BRAND = '../../assets/brand/';
 
 const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;

@@ -1,10 +1,10 @@
 /* Trilha e efeitos sintetizados, sincronizados com os eventos do vídeo.
-   node audio.mjs → saida/trilha-sfx.wav (48 kHz, estéreo, 62 s) */
+   node audio.mjs → saida/trilha-sfx.wav (48 kHz, estéreo, 64 s) */
 import { writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const SR = 48000, DUR = 62, N = SR * DUR;
+const SR = 48000, DUR = 64, N = SR * DUR;
 const L = new Float32Array(N), R = new Float32Array(N);
 let seed = 12345; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
 const add = (i, v, pan = 0) => { if (i < 0 || i >= N) return; L[i] += v * (1 - Math.max(0, pan)); R[i] += v * (1 + Math.min(0, pan)); };
@@ -136,13 +136,13 @@ hit(55.55, { f0: 150, f1: 38, dur: 2, vol: .9 }); shimmer(55.5, 56.4, .03);
 /* ------------------------------------------------ 13–14 transformação e final */
 whoosh(56.9, { dur: .6, vol: .4 });
 for (let i = 0; i < 12; i++) ping(56.9 + i * .07, { f: [1320, 1760, 1480][i % 3], vol: .04, pan: (i % 2) - .5 });
-hit(57.15, { f0: 120, f1: 50, dur: .5, vol: .45 }); hit(57.7, { f0: 130, f1: 48, dur: .5, vol: .55 }); hit(58.25, { f0: 140, f1: 44, dur: .9, vol: .7 });
+hit(57.0, { f0: 120, f1: 50, dur: .5, vol: .45 }); hit(57.75, { f0: 130, f1: 48, dur: .5, vol: .55 }); hit(58.5, { f0: 140, f1: 44, dur: .9, vol: .7 });
 whoosh(58.1, { dur: .9, vol: .3 });
 pad(57.1, 59.3, [nota(45), nota(52), nota(57), nota(60)], .04);
 riser(58.6, 59.1, .15); whoosh(59.15, { dur: .8, vol: .3 });
 shimmer(59.15, 60.1, .035); riser(59.3, 60.1, .18);
 hit(60.1, { f0: 170, f1: 34, dur: 3, vol: 1 });
-pad(60.1, 62, [nota(45), nota(52), nota(57), nota(61), nota(64), nota(69)], .05);
+pad(60.1, 64, [nota(45), nota(52), nota(57), nota(61), nota(64), nota(69)], .05);
 whoosh(61.35, { dur: 1, vol: .14, pan: .8 });
 
 /* ------------------------------------------------ mix: normaliza, satura de leve, fade final */

@@ -844,7 +844,7 @@ scene(53.85, 57.15, c => {
 });
 
 /* ================================================================ 13 · A TRANSFORMAÇÃO (57–59s) */
-scene(56.75, 59.5, c => {
+scene(56.75, 59.65, c => {
   const R = c.root;
   // B7: grade organizada, ocupa a tela inteira e é revelada de baixo para cima
   c.b7 = mk(R, '<div class="L" style="overflow:hidden"></div>');
@@ -872,7 +872,7 @@ scene(56.75, 59.5, c => {
 }, (t, c) => {
   const inn = ep(t, 56.8, 57.25, E.outQ);
   const take = ep(t, 57.75, 58.55, E.ioQ);
-  const out = ep(t, 59.05, 59.5, E.inC);
+  const out = ep(t, 59.2, 59.6, E.inC);
   const split = lerp(960, 0, take);
   // caos em cima (clip), B7 embaixo
   c.chaos.style.clipPath = `inset(0 0 ${1920 - split}px 0)`;
@@ -886,7 +886,7 @@ scene(56.75, 59.5, c => {
   T(c.antes, { o: inn * (1 - take) });
   T(c.depois, { y: split + 40, o: inn * (1 - out) * (1 - ep(t, 58.3, 58.6)) });
   O(c.scrim, ep(t, 56.9, 57.3) * (1 - out));
-  revealHL(c.hl, t, 57.1, { stagger: .55, dur: .6, out: 59.0 });
+  revealHL(c.hl, t, 56.95, { stagger: .75, dur: .6, out: 59.25 });
   const em = c.hl.querySelector('em');
   const f = ep(t, 58.2, 58.6);
   em.style.filter = `drop-shadow(0 0 ${(18 + f * 30).toFixed(0)}px rgba(200,70,255,${(.4 + f * .4).toFixed(2)}))`;
@@ -894,8 +894,8 @@ scene(56.75, 59.5, c => {
   lns[2].style.fontSize = '1.12em';
 });
 
-/* ================================================================ 14 · ENCERRAMENTO (59–62s) */
-scene(59.0, 62.01, c => {
+/* ================================================================ 14 · ENCERRAMENTO (59–64s) */
+scene(59.0, 64.01, c => {
   const R = c.root;
   c.halo = mk(R, `<div class="a" style="left:40px;top:340px;width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(122,43,255,.38),rgba(61,91,255,.12) 45%,rgba(0,0,0,0) 70%)"></div>`);
   c.lock = lockup(R, { w: 860 });
@@ -914,7 +914,7 @@ scene(59.0, 62.01, c => {
   const wp = ep(t, 60.2, 60.8, E.ioC);
   c.lock.word.style.clipPath = `inset(-10px ${((c.lock.w - c.lock.wordX) * (1 - wp)).toFixed(1)}px -10px 0)`;
   T(c.lock.word, { x: (1 - wp) * -30, o: Math.min(1, wp * 2) });
-  T(c.lock.el, { s: 1 + P(t, 60, 62) * .025 });
+  T(c.lock.el, { s: 1 + P(t, 60, 64) * .035 });
   T(c.halo, { s: .7 + ep(t, 59.6, 60.6) * .35 + Math.sin(t * 2) * .02, o: ep(t, 59.5, 60.4) * .9 });
   revealHL(c.hl, t, 60.55, { stagger: .15, dur: .8 });
   T(c.bar, { sx: ep(t, 61.0, 61.5, E.outQ), o: ep(t, 61.0, 61.2) });
