@@ -1115,6 +1115,17 @@ B7.Design = (function () {
       (pecasParaRevisar().length ? '<button class="b fina pri ds-revisar-fila" id="ds-revisar-fila" title="Abre a peça mais antiga da fila; ao aprovar ou pedir ajuste, a próxima abre sozinha">' +
         'Revisar em sequência</button>' : '') +
     '</div>';
+    /* zzz33 (celular): um cartão de ação no lugar da fileira de pílulas —
+       o que fazer agora em destaque, os outros atalhos embaixo */
+    const nRev = pecasParaRevisar().length;
+    const outros = itens.filter(i => i[1] > 0 && i[0] !== 'revisao');
+    cx.insertAdjacentHTML('beforeend', nada ? '' : '<div class="ds-acao-m">' +
+      (nRev ? '<button type="button" class="ds-acao-rev" data-ds-revisar><span class="ds-acao-play" aria-hidden="true">▶</span>' +
+        '<span class="ds-acao-tx"><b>Revisar em sequência</b><small>' + nRev + ' peça' + (nRev === 1 ? '' : 's') + ' esperando você</small></span>' +
+        '<em>' + nRev + '</em></button>' : '') +
+      (outros.length ? '<div class="ds-acao-chips">' + outros.map(i =>
+        '<button class="ds-acao-chip ' + i[4] + (F.rapido === i[0] ? ' on' : '') + '" data-rapido="' + i[0] + '"><b>' + i[1] + '</b>' + esc(i[2]) + '</button>').join('') + '</div>' : '') +
+      '</div>');
     cx.querySelectorAll('#ds-revisar-fila, [data-ds-revisar]').forEach(b => b.onclick = iniciarRevisaoEmSequencia);
     cx.querySelectorAll('[data-rapido]').forEach(b => b.onclick = () => {
       F.rapido = F.rapido === b.dataset.rapido ? '' : b.dataset.rapido;
@@ -1206,17 +1217,32 @@ B7.Design = (function () {
   /* zzz26: a etapa escolhida no celular, agrupada por cliente — logo e
      nome no cabeçalho do grupo; cada peça vira uma linha limpa */
   const COR_TIPO = { carrossel: '#7C5CFF', card: '#D63384', stories: '#F0A443', capa_reel: '#4FA3FF' };
+  const LIMITE_GRUPO_M = 4;
   function colunaMovelHTML(itens) {
     if (!itens.length) return '<div class="ds-m-vazio">Nada nesta etapa agora.</div>';
     const grupos = new Map();
-    itens.forEach(d => { const k = d.client_id || '_'; if (!grupos.has(k)) grupos.set(k, { nome: d.cliente_nome || 'Interno', logo: null, itens: [] });
+    itens.forEach(d => { const k = d.client_id || '_'; if (!grupos.has(k)) grupos.set(k, { k, nome: d.cliente_nome || 'Interno', logo: null, itens: [] });
       const g = grupos.get(k); g.itens.push(d); if (!g.logo && d.cliente_logo_url) g.logo = d.cliente_logo_url; });
+    F._gruposAbertosM = F._gruposAbertosM || [];
+    const podeAtribuir = ehEquipe() && itens[0] && itens[0].status === 'aguardando_producao';
     let i = 0;
-    return '<div class="ds-m-lista">' + [...grupos.values()].sort((a, b) => b.itens.length - a.itens.length || a.nome.localeCompare(b.nome)).map(g =>
-      '<section class="ds-m-grupo"><h3 class="ds-m-cab"><span class="ds-m-logo">' + avatarCliente(g.nome, g.logo) + '</span><b>' + esc(g.nome) + '</b><i>' + g.itens.length + '</i></h3>' +
-      '<div class="ds-m-caixa">' + g.itens.map(d => linhaMovel(d, i++)).join('') + '</div></section>').join('') + '</div>';
+    return '<div class="ds-m-lista">' + [...grupos.values()].sort((a, b) => b.itens.length - a.itens.length || a.nome.localeCompare(b.nome)).map(g => {
+      const semDono = g.itens.filter(d => !d.designer_id).length;
+      const aberto = F._gruposAbertosM.includes(g.k);
+      const resto = g.itens.length - LIMITE_GRUPO_M;
+      return '<section class="ds-m-grupo' + (aberto ? ' aberto' : '') + '" data-grupo-m="' + esc(g.k) + '">' +
+        '<h3 class="ds-m-cab"><span class="ds-m-logo">' + avatarCliente(g.nome, g.logo) + '</span>' +
+          '<span class="ds-m-cab-tx"><b>' + esc(g.nome) + '</b><small>' + g.itens.length + (g.itens.length === 1 ? ' peça' : ' peças') +
+            (semDono ? ' · ' + (semDono === g.itens.length ? 'nenhuma atribuída' : semDono + ' sem responsável') : '') + '</small></span>' +
+          (podeAtribuir && semDono ? '<button type="button" class="ds-m-atribuir" data-atribuir-grupo="' + esc(g.k) + '">Atribuir</button>' : '') +
+        '</h3>' +
+        '<div class="ds-m-caixa">' + g.itens.map((d, j) => linhaMovel(d, i++, j >= LIMITE_GRUPO_M)).join('') +
+          (resto > 0 ? '<button type="button" class="ds-m-mais" data-mais-m="' + esc(g.k) + '"><span>' + (aberto ? 'Mostrar menos' : 'Ver mais ' + resto) + '</span>' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>' : '') +
+        '</div></section>';
+    }).join('') + '</div>';
   }
-  function linhaMovel(d, i) {
+  function linhaMovel(d, i, extra) {
     const info = prazoInfo(d);
     const previa = fontePrevia(d);
     const nome = d.designer_nome || '';
@@ -1224,8 +1250,8 @@ B7.Design = (function () {
     const quem = nome
       ? (d.designer_avatar ? '<img class="ds-m-av" src="' + esc(d.designer_avatar) + '" alt="" title="' + esc(nome) + '">'
         : '<span class="ds-m-av" title="' + esc(nome) + '">' + esc(((ini[0] || '')[0] || '') + (ini.length > 1 ? ini[ini.length - 1][0] : '')).toUpperCase() + '</span>')
-      : '<span class="ds-m-av sem" title="Sem responsável"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="9" r="3.5"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span>';
-    return '<article class="ds-m-linha' + (d.prioridade === 'urgente' ? ' urgente' : d.prioridade === 'alta' ? ' alta' : '') + '" data-peca="' + esc(d.id) + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + ';--tipo:' + (COR_TIPO[d.tipo] || '#8E86A8') + '">' +
+      : '';   /* zzz33: sem o boneco tracejado repetido em toda linha — o grupo já diz */
+    return '<article class="ds-m-linha' + (extra ? ' extra' : '') + (nome ? '' : ' sem-dono') + (d.prioridade === 'urgente' ? ' urgente' : d.prioridade === 'alta' ? ' alta' : '') + '" data-peca="' + esc(d.id) + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + ';--tipo:' + (COR_TIPO[d.tipo] || '#8E86A8') + '">' +
       (previa ? '<div class="ds-thumb ds-m-ic" data-previa="' + esc(previa) + '"><span class="ds-thumb-esq"></span></div>'
         : '<div class="ds-m-ic">' + iconeTipo(d.tipo) + '</div>') +
       '<div class="ds-m-corpo"><b class="ds-m-tit">' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</b>' +
@@ -1521,6 +1547,16 @@ B7.Design = (function () {
       el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirDetalhe(el.dataset.peca); } };
     });
     area.querySelectorAll('[data-col-movel]').forEach(b => b.onclick = () => { F._colMovel = b.dataset.colMovel; desenharArea(); });
+    area.querySelectorAll('[data-mais-m]').forEach(b => b.onclick = () => {
+      const k = b.dataset.maisM, sec = b.closest('.ds-m-grupo');
+      F._gruposAbertosM = F._gruposAbertosM || [];
+      const abre = !sec.classList.contains('aberto');
+      sec.classList.toggle('aberto', abre);
+      F._gruposAbertosM = abre ? F._gruposAbertosM.concat(k) : F._gruposAbertosM.filter(x => x !== k);
+      const resto = sec.querySelectorAll('.ds-m-linha.extra').length;
+      b.querySelector('span').textContent = abre ? 'Mostrar menos' : 'Ver mais ' + resto;
+      if (abre) ligarThumbs(sec);
+    });
     area.querySelectorAll('details.ds-grupo-cli').forEach(det => det.ontoggle = () => {
       const k = det.dataset.grupo; F._backlogAbertos = F._backlogAbertos || [];
       if (!det.open) F._backlogAbertos = F._backlogAbertos.filter(x => x !== k); else if (!F._backlogAbertos.includes(k)) F._backlogAbertos.push(k);
