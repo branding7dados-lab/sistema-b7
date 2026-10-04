@@ -1349,7 +1349,8 @@ html.modo-leve .vd-h-grao{display:none;}
   .vd-h-bokeh i:nth-child(8){width:12px;height:12px;left:16%;top:34%;animation-delay:-2s;animation-duration:15s;}
 
   /* abertura de cinema */
-  .vd-h-faixas, .vd-h-feixe{position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;overflow:hidden;}
+  .vd-h-faixas{display:none !important;}
+  .vd-h-feixe{position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;overflow:hidden;}
   .vd-h-faixas:before, .vd-h-faixas:after{content:"";position:absolute;left:0;right:0;height:51%;background:#07040E;transform:scaleY(0);}
   .vd-h-faixas:before{top:0;transform-origin:top;} .vd-h-faixas:after{bottom:0;transform-origin:bottom;}
   .vd-heroi.estreia .vd-h-faixas:before, .vd-heroi.estreia .vd-h-faixas:after{animation:vdFaixa 1.05s cubic-bezier(.7,0,.2,1) both;}

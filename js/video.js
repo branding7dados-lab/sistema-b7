@@ -385,8 +385,8 @@ B7.Video = (function () {
     /* próximo prazo: a demanda em aberto que vence primeiro (hoje em diante) */
     const prox = base.filter(d => d.prazo && d.editing_status !== 'entregue' && !ehAtrasada(d))
       .sort((x, y) => x.prazo < y.prazo ? -1 : x.prazo > y.prazo ? 1 : 0)[0];
-    /* zzz31 — "mais cinematográfico": abre como tela de cinema (faixas
-       pretas que se afastam do centro + feixe de luz quente), número em
+    /* zzz31 — "mais cinematográfico": abre com um feixe de luz quente
+       (zzz42: as faixas pretas de cinema saíram — pedido do Kevin)), número em
        odômetro, anel que solta um pulso ao completar, partículas de luz
        (bokeh) e parallax pelo giroscópio — as camadas se movem em
        profundidades diferentes quando o celular inclina. */
@@ -394,7 +394,7 @@ B7.Video = (function () {
       '<span class="vd-h-luz" aria-hidden="true"><i></i><i></i><i></i></span>' +
       '<span class="vd-h-bokeh" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
       '<span class="vd-h-grao" aria-hidden="true"></span><span class="vd-h-reflexo" aria-hidden="true"></span>' +
-      '<span class="vd-h-feixe" aria-hidden="true"></span><span class="vd-h-faixas" aria-hidden="true"></span>' +
+      '<span class="vd-h-feixe" aria-hidden="true"></span>' +
       '<div class="vd-heroi-topo">' +
         '<div class="vd-heroi-tx"><small>Entregues <i>·</i> ' + esc(mes) + '</small>' +
           '<div class="vd-heroi-num"><b data-hn>' + odometroHTML(heroiAnt ? heroiAnt.entregues : 0, entregues) + '</b><span>de ' + total + '</span></div></div>' +

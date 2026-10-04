@@ -2340,3 +2340,67 @@ html.b7-recarga #painel-dashboard > .conteudo{opacity:.5;filter:saturate(.7) blu
 .bp-rotulo.troca{animation:bpRotulo2 .32s cubic-bezier(.16,1,.3,1) !important;}
 @keyframes bpRotulo2{from{opacity:0;translate:0 6px;filter:blur(3px)}to{opacity:1;translate:0 0;filter:none}}
 @media (prefers-reduced-motion:reduce){ html.b7-recarga #painel-dashboard > .conteudo{filter:none;} }
+
+/* =====================================================================
+   ABERTURA — CINEMA 2 (zzz42)
+   Pedido do Kevin (vídeo 04/10): "melhora essa animação de loading,
+   deixa ela mais cinematográfica" e "tira essas tarjas". Saem o anel que
+   varria a tela e os contornos neon que acendiam em cada cartão.
+   • espera: a frase ganha um brilho que passa pelas letras, o fio vira um
+     cometa com rastro e um vazamento de luz gira devagar no céu.
+   • saída (tema escuro): a câmera "atravessa" o céu (zoom + desfoque),
+     um flare anamórfico corta a tela na altura do logo e o sistema
+     entra em foco por baixo (rack focus), em vez da íris com anel.
+   ===================================================================== */
+.ab-ceu:after{content:"";position:absolute;left:50%;top:calc(50% - 6vh);width:150vmax;height:150vmax;margin:-75vmax 0 0 -75vmax;
+  pointer-events:none;opacity:0;mix-blend-mode:screen;
+  background:conic-gradient(from 0deg, transparent 0 14%, rgba(236,72,153,.10) 20%, transparent 30% 52%, rgba(124,58,237,.12) 60%, transparent 70% 86%, rgba(255,170,215,.08) 92%, transparent);
+  animation:abVaza 2s ease 1.6s forwards, abVazaGira 22s linear 1.6s infinite;}
+.ab-curta .b7-abertura.inicial .ab-ceu:after,.b7-abertura:not(.inicial) .ab-ceu:after{animation-delay:.9s,.9s;}
+@keyframes abVaza{to{opacity:1}}
+@keyframes abVazaGira{to{transform:rotate(360deg)}}
+.ab-frase{font-weight:600;letter-spacing:.02em;
+  background:linear-gradient(100deg, rgba(255,255,255,.5) 0 38%, #fff 46%, #FFB3DC 50%, #fff 54%, rgba(255,255,255,.5) 62% 100%);
+  background-size:260% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:abFraseBrilho 2.6s cubic-bezier(.45,0,.25,1) infinite;}
+@keyframes abFraseBrilho{from{background-position:100% 0}to{background-position:-60% 0}}
+.ab-fio{width:168px;height:2px;margin-top:8px;overflow:visible;background:linear-gradient(90deg, transparent, rgba(255,255,255,.12) 20%, rgba(255,255,255,.12) 80%, transparent);}
+.ab-fio:after{width:34%;height:2px;border-radius:2px;
+  background:linear-gradient(90deg, transparent, rgba(124,58,237,.6) 40%, #FF8FCB 85%, #fff);
+  box-shadow:0 0 10px 1px rgba(236,72,153,.7), 0 0 22px 2px rgba(124,58,237,.45);
+  animation:abCometa 1.6s cubic-bezier(.65,0,.35,1) infinite;}
+@keyframes abCometa{0%{transform:translate3d(-100%,0,0);opacity:0}15%{opacity:1}85%{opacity:1}100%{transform:translate3d(300%,0,0);opacity:0}}
+.ab-ola{background:linear-gradient(180deg,#fff,#FFD1EA);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:19px;}
+
+/* saída de cinema (escuro): o céu passa pela câmera em vez da íris */
+:root:not([data-theme="light"]) .b7-abertura.saindo .ab-ceu{-webkit-mask:none;mask:none;transform-origin:50% calc(50% - 6vh);
+  animation:abAtravessa .9s cubic-bezier(.65,0,.25,1) forwards;}
+@keyframes abAtravessa{0%{opacity:1;transform:none;filter:none}55%{opacity:.85}100%{opacity:0;transform:scale(1.45);filter:blur(10px) brightness(1.4)}}
+.b7-abertura.saindo .ab-ceu:after{animation:abSomeRapido .3s ease forwards;}
+
+/* flare anamórfico + vazamento de luz (camada .ab-luz, js/app.js) */
+.ab-luz-flare{left:-20vw;right:-20vw;top:var(--cy);height:3px;margin-top:-1.5px;mix-blend-mode:screen;border-radius:50%;
+  background:linear-gradient(90deg, transparent 0%, rgba(124,58,237,.5) 22%, rgba(255,150,215,.9) 42%, #fff 50%, rgba(255,150,215,.9) 58%, rgba(124,58,237,.5) 78%, transparent 100%);
+  box-shadow:0 0 18px 4px rgba(236,72,153,.55), 0 0 60px 10px rgba(124,58,237,.3);
+  animation:abLuzFlare .95s cubic-bezier(.16,1,.3,1) .02s both;}
+.ab-luz-flare.fino{height:1px;margin-top:9px;opacity:.7;box-shadow:0 0 10px 2px rgba(140,110,255,.5);
+  background:linear-gradient(90deg, transparent 10%, rgba(140,110,255,.6) 35%, #E6DEFF 50%, rgba(140,110,255,.6) 65%, transparent 90%);
+  animation-delay:.1s;animation-duration:1.05s;}
+@keyframes abLuzFlare{0%{opacity:0;transform:scaleX(.05)}25%{opacity:1;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1.4) scaleY(.4)}}
+.ab-luz-vaza{inset:-10%;mix-blend-mode:screen;opacity:0;
+  background:radial-gradient(60% 40% at 15% 20%, rgba(255,120,190,.35), transparent 70%),
+             radial-gradient(50% 45% at 90% 85%, rgba(124,58,237,.35), transparent 70%);
+  animation:abLuzVaza 1.2s ease-out .05s both;}
+@keyframes abLuzVaza{0%{opacity:0;transform:translate3d(-6%,0,0)}30%{opacity:1}100%{opacity:0;transform:translate3d(6%,0,0)}}
+.ab-luz-clarao{animation-duration:.75s;}
+[data-theme="light"] .ab-luz-flare,[data-theme="light"] .ab-luz-vaza{mix-blend-mode:normal;opacity:.6;}
+
+/* o sistema entra em foco por baixo (rack focus) */
+body.ab-revela #painel-dashboard{animation:abRevelaFoco 1s cubic-bezier(.16,1,.3,1) .12s both;}
+body.ab-revela .topo-global{animation:abRevelaDesfoca .7s cubic-bezier(.16,1,.3,1) .22s both;}
+body.ab-revela .nav-inferior{animation:abRevelaBase2 .8s cubic-bezier(.16,1,.3,1) .3s both;}
+@keyframes abRevelaFoco{0%{opacity:0;transform:scale(1.06);filter:blur(14px) brightness(1.25)}60%{filter:blur(1px) brightness(1.05)}100%{opacity:1;transform:none;filter:none}}
+@keyframes abRevelaDesfoca{from{opacity:0;filter:blur(8px);transform:translate3d(0,-8px,0)}to{opacity:1;filter:none;transform:none}}
+@keyframes abRevelaBase2{from{opacity:0;filter:blur(8px);transform:translate3d(0,26px,0)}to{opacity:1;filter:none;transform:none}}
+html.modo-leve body.ab-revela :is(#painel-dashboard,.topo-global,.nav-inferior){animation:abRevelaFade .4s ease both;}
+@media (prefers-reduced-motion:reduce){ .ab-ceu:after{display:none;} .ab-frase{animation:none;color:rgba(255,255,255,.7);background:none;} }
