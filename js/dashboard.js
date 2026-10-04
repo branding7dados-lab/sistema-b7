@@ -938,41 +938,97 @@ B7.Dashboard = (function () {
     catch (e) { if (!vale()) return; return erro(e, 'abrirClientes'); }
     if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
 
-    painel().innerHTML = '<div class="conteudo">' +
-      '<div class="secao-topo"><h2 style="font-size:22px">Clientes</h2>' +
-      '<span class="conta">' + clientes.length + '</span><div class="espaco"></div>' +
-      '<div class="filtro" id="filtro-cli">' +
-        ['Todos', 'Mais recentes', 'Com gravações', 'Sem gravações'].map((f, i) =>
-          '<button data-f="' + esc(f) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(f) + '</button>').join('') +
-      '</div>' +
-      '<input class="campo" id="busca-cli" placeholder="Buscar clientes…" style="width:210px;padding:9px 12px">' +
-      '<button class="b pri" data-novo-cliente>' + IC.mais + 'Novo cliente</button></div>' +
-      (clientes.length ? '<div class="grade-clientes" id="lista-cli">' + clientes.map(cardCliente).join('') + '</div>'
-                       : vazioClientes()) + '</div>';
+    /* zzz14: tela redesenhada — cabeçalho padrão (o título grande some do
+       topo enquanto está à vista), busca + pílulas com contagem, ordem
+       Recentes/A–Z, fixados em grupo próprio e cartões com logo grande,
+       contadores e última atividade. Mesmas ações (ligar()) de antes. */
+    const comGrav = clientes.filter(c => c.total_gravacoes > 0).length;
+    const fixadosN = clientes.filter(c => c.is_pinned).length;
+    const pil = (id, rot, n) => '<button type="button" class="cl2-pil' + (id === 'todos' ? ' on' : '') + '" data-f="' + id + '">' + rot + '<b>' + n + '</b></button>';
+    painel().innerHTML = '<div class="conteudo cl2">' +
+      '<div class="cab-conteudo cl2-cab"><div><h1>Clientes</h1>' +
+        '<p>' + clientes.length + ' cliente' + (clientes.length === 1 ? '' : 's') +
+          (fixadosN ? ' · ' + fixadosN + ' fixado' + (fixadosN === 1 ? '' : 's') : '') + ' · cada um com o seu workspace.</p></div>' +
+        '<button class="b pri cl2-novo" data-novo-cliente>' + IC.mais + '<span>Novo cliente</span></button></div>' +
+      (clientes.length
+        ? '<div class="cl2-barra">' +
+            '<label class="cl2-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+              '<input id="busca-cli" placeholder="Buscar cliente…" autocomplete="off" aria-label="Buscar cliente"></label>' +
+            '<div class="cl2-pils" id="filtro-cli" role="group" aria-label="Filtrar clientes">' +
+              pil('todos', 'Todos', clientes.length) + pil('com', 'Com gravações', comGrav) + pil('sem', 'Sem gravações', clientes.length - comGrav) +
+            '</div>' +
+            '<div class="cl2-ordem" id="ordem-cli" role="group" aria-label="Ordem">' +
+              '<button type="button" class="on" data-o="recentes">Recentes</button><button type="button" data-o="az">A–Z</button></div>' +
+          '</div>' +
+          '<div id="lista-cli"></div>'
+        : vazioClientes()) + '</div>';
 
-    ligar();
-
-    let filtroAtual = 'Todos', termo = '';
+    let filtroAtual = 'todos', termo = '', ordem = 'recentes';
     const aplicar = () => {
-      let lista = clientes.slice();
-      lista = ordenarClientes(lista);
-      if (filtroAtual === 'Com gravações') lista = lista.filter(c => c.total_gravacoes > 0);
-      if (filtroAtual === 'Sem gravações') lista = lista.filter(c => c.total_gravacoes === 0);
-      if (termo) lista = lista.filter(c => c.nome.toLowerCase().includes(termo));
       const cx = document.getElementById('lista-cli');
       if (!cx) return;
-      cx.innerHTML = lista.length ? lista.map(cardCliente).join('')
-        : '<div class="vazio" style="grid-column:1/-1"><b>Nenhum cliente aqui</b>' +
-          '<p>Tente outro filtro ou outra busca.</p></div>';
+      let lista = clientes.slice();
+      if (filtroAtual === 'com') lista = lista.filter(c => c.total_gravacoes > 0);
+      if (filtroAtual === 'sem') lista = lista.filter(c => !c.total_gravacoes);
+      if (termo) lista = lista.filter(c => c.nome.toLowerCase().includes(termo));
+      lista.sort(ordem === 'az'
+        ? (a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')
+        : (a, b) => String(b.ultima_atividade).localeCompare(String(a.ultima_atividade)));
+      const fix = lista.filter(c => c.is_pinned), resto = lista.filter(c => !c.is_pinned);
+      let i = 0;
+      const bloco = (tit, l) => !l.length ? '' : '<section class="cl2-grupo">' +
+        (tit ? '<h2 class="cl2-grupo-t">' + tit + '<span>' + l.length + '</span></h2>' : '') +
+        '<div class="cl2-grade">' + l.map(c => cartaoCliente2(c, i++)).join('') + '</div></section>';
+      cx.innerHTML = lista.length
+        ? (fix.length && !termo ? bloco('Fixados', fix) + bloco('Todos os clientes', resto) : bloco('', lista))
+        : '<div class="cl2-vazio"><b>Nenhum cliente aqui' + (termo ? ' para “' + esc(termo) + '”' : '') + '.</b><p>Tente outro filtro ou outra busca.</p></div>';
       ligar();
     };
+    aplicar();
+    ligar();
     const f = document.getElementById('filtro-cli');
     if (f) f.querySelectorAll('button').forEach(b => b.onclick = () => {
-      f.querySelectorAll('button').forEach(x => x.classList.remove('on'));
-      b.classList.add('on'); filtroAtual = b.dataset.f; aplicar();
+      f.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      filtroAtual = b.dataset.f; aplicar();
+    });
+    const o = document.getElementById('ordem-cli');
+    if (o) o.querySelectorAll('button').forEach(b => b.onclick = () => {
+      o.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      ordem = b.dataset.o; aplicar();
     });
     const busca = document.getElementById('busca-cli');
-    if (busca) busca.oninput = () => { termo = busca.value.trim().toLowerCase(); aplicar(); };
+    if (busca) busca.oninput = B7.UI.debounce ? B7.UI.debounce(() => { termo = busca.value.trim().toLowerCase(); aplicar(); }, 100)
+      : () => { termo = busca.value.trim().toLowerCase(); aplicar(); };
+  }
+
+  /* cartão da tela Clientes (zzz14): logo grande, contadores com ícone,
+     última atividade; fixar e ⋯ com as mesmas ações do cartão antigo */
+  const IC_CL2 = {
+    grav: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>',
+    rot: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4.5 4.5V20a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 20V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M13.5 3.5V8.5h5"/></svg>'
+  };
+  function cartaoCliente2(c, i) {
+    const qd = c.ultima_atividade ? B7.UI.quando(c.ultima_atividade) : '';
+    return '<div class="cl2-card' + (c.is_pinned ? ' fixado' : '') + (c.total_gravacoes ? '' : ' sem-grav') + '" data-cliente="' + esc(c.id) + '"' +
+        ' style="--i:' + Math.min(i, 16) + '" tabindex="0" title="Abrir ' + esc(c.nome) + '">' +
+      '<span class="cl2-logo">' + B7.UI.avatarCliente(c.nome, c.logo_url) + '</span>' +
+      '<div class="cl2-tx"><b>' + esc(c.nome) + '</b>' +
+        '<span class="cl2-meta">' +
+          '<span class="cl2-n" title="Gravações">' + IC_CL2.grav + c.total_gravacoes + '</span>' +
+          '<span class="cl2-n" title="Roteiros">' + IC_CL2.rot + c.total_roteiros + '</span>' +
+          (qd ? '<span class="cl2-quando">' + esc(qd) + '</span>' : '') +
+        '</span></div>' +
+      '<div class="cl2-acoes">' +
+        '<button class="ico pin cl2-pin' + (c.is_pinned ? ' fixado' : '') + '" data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '"' +
+          ' title="' + (c.is_pinned ? 'Desafixar cliente' : 'Fixar no topo') + '" aria-label="' + (c.is_pinned ? 'Desafixar ' : 'Fixar ') + esc(c.nome) + '">' + IC_PIN + '</button>' +
+        '<div class="menu"><button class="ico" onclick="event.stopPropagation()" aria-label="Ações de ' + esc(c.nome) + '">⋯</button><div class="lista">' +
+          '<button data-abrir-cli="' + esc(c.id) + '">Abrir workspace</button>' +
+          '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
+          '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
+          '<button data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '">' + (c.is_pinned ? 'Desafixar' : 'Fixar no topo') + '</button><hr>' +
+          '<button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +
+        '</div></div>' +
+      '</div></div>';
   }
 
   /* ====================================================== UM CLIENTE */
@@ -2093,9 +2149,12 @@ B7.Dashboard = (function () {
       /* cards focáveis abrem com Enter, como um link */
       if (el.getAttribute('tabindex') === '0') el.onkeydown = ev => { if (ev.key === 'Enter') abrir(); };
     });
-    p.querySelectorAll('[data-cliente]').forEach(el => el.onclick = ev => {
-      if (ev.target.closest('button')) return;
-      location.hash = '#/cliente/' + el.dataset.cliente;
+    p.querySelectorAll('[data-cliente]').forEach(el => {
+      el.onclick = ev => {
+        if (ev.target.closest('button')) return;
+        location.hash = '#/cliente/' + el.dataset.cliente;
+      };
+      if (el.classList.contains('cl2-card')) el.onkeydown = ev => { if (ev.key === 'Enter' && ev.target === el) location.hash = '#/cliente/' + el.dataset.cliente; };
     });
     p.querySelectorAll('[data-ir]').forEach(el => el.onclick = () => location.hash = el.dataset.ir);
     /* "Ver todas/todos" da visão geral: vai para a seção, com endereço */
