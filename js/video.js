@@ -1332,28 +1332,43 @@ B7.Video = (function () {
      ================================================================= */
   function modalDescartados(lista) {
     const ordenada = [...lista].sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+    /* zzz35: no padrão das listas novas — um cartão com linhas separadas
+       por fio, logo preenchida, título forte, mês em etiqueta, avatar do
+       responsável e a data do descarte à direita; busca quando a lista
+       passa de 6 */
+    const linha = (d, i) => {
+      const quem = d.videomaker_id && d.videomaker_nome
+        ? '<span class="vd-dc-quem"><i style="background:' + corVideomaker(d.videomaker_id) + '"></i>' + esc(d.videomaker_nome) + '</span>'
+        : '<span class="vd-dc-quem sem">sem responsável</span>';
+      const busca = [d.cliente_nome, d.titulo, d.codigo, d.videomaker_nome].filter(Boolean).join(' ').toLowerCase();
+      return '<div class="vd-dc-linha" data-demanda="' + d.id + '" data-busca="' + esc(busca) + '" tabindex="0" role="button" style="--i:' + Math.min(i, 12) + '">' +
+        '<span class="vd-m-logo vd-dc-logo">' + logoClienteHTML(d, 'md') + '</span>' +
+        '<div class="vd-dc-corpo"><small><span class="vd-dc-cli"><span>' + esc(d.cliente_nome || '—') + '</span>' + (d.codigo ? '<em>#' + esc(String(d.codigo).replace(/^#+/, '')) + '</em>' : '') + '</span>' +
+          (d.updated_at ? '<time>' + esc(B7.UI.dataBR(d.updated_at.slice(0, 10)).slice(0, 5)) + '</time>' : '') + '</small>' +
+          '<b>' + tituloComFallback(d) + '</b>' +
+          '<span class="vd-dc-meta">' + (d.competencia_ano ? '<span class="vd-dc-mes">' + esc(competenciaRotulo(competenciaChave(d))) + '</span>' : '') + quem + '</span></div>' +
+      '</div>';
+    };
     const m = B7.UI.modal(
-      '<h3>Descartados <span class="vd-contagem">' + ordenada.length + '</span></h3>' +
-      '<p class="fraca">Demandas marcadas como descartadas. Nada foi apagado — só ficam fora da produção ativa.</p>' +
-      '<div class="vd-lista-modal">' +
-      (ordenada.length ? ordenada.map(d =>
-        '<div class="vd-lm-item" data-demanda="' + d.id + '" tabindex="0" role="button">' +
-          logoClienteHTML(d, 'md') +
-          '<div class="vd-lm-tx"><small>' + esc(d.cliente_nome || '—') + (d.codigo ? ' · <span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') + '</small>' +
-            '<b>' + tituloComFallback(d) + '</b>' +
-            '<div class="vd-lm-meta">' +
-              (d.competencia_ano ? '<span>' + esc(competenciaRotulo(competenciaChave(d))) + '</span>' : '') +
-              '<span>' + quemHTML(d) + '</span>' +
-              (d.updated_at ? '<span>descartada em ' + esc(B7.UI.dataBR(d.updated_at.slice(0, 10))) + '</span>' : '') +
-            '</div></div>' +
-          '<span class="vd-lm-seta">' + IC.seta + '</span>' +
-        '</div>').join('') : '<div class="vd-rot-vazio"><b>Nenhuma demanda descartada.</b></div>') +
-      '</div>' +
-      '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>');
+      '<div class="vd-dc-topo"><h3>Descartados <span class="vd-dc-n">' + ordenada.length + '</span></h3>' +
+      '<p>Nada foi apagado — só saíram da produção ativa. Toque para abrir.</p></div>' +
+      (ordenada.length > 6 ? '<div class="vd-dc-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
+        '<input class="campo" id="vd-dc-busca" placeholder="Buscar cliente, título ou código…" aria-label="Buscar descartados"></div>' : '') +
+      (ordenada.length
+        ? '<div class="vd-dc-caixa">' + ordenada.map(linha).join('') + '<p class="vd-dc-nada" hidden>Nada encontrado.</p></div>'
+        : '<div class="vd-dc-vazio"><b>Nenhuma demanda descartada.</b><span>Quando alguém descartar uma demanda, ela aparece aqui.</span></div>') +
+      '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>', { extra: 'vd-modal-descartados' });
     m.querySelectorAll('[data-demanda]').forEach(tr => {
       tr.onclick = () => { m.fechar(); location.hash = '#/video/' + tr.dataset.demanda; };
       tr.onkeydown = e => { if (e.key === 'Enter') tr.click(); };
     });
+    const campo = m.querySelector('#vd-dc-busca');
+    if (campo) campo.oninput = () => {
+      const q = campo.value.trim().toLowerCase();
+      let n = 0;
+      m.querySelectorAll('.vd-dc-linha').forEach(l => { const ok = !q || l.dataset.busca.includes(q); l.hidden = !ok; if (ok) n++; });
+      m.querySelector('.vd-dc-nada').hidden = n > 0;
+    };
   }
 
   /* =================================================================
