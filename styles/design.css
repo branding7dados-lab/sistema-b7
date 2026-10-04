@@ -1017,7 +1017,6 @@ body.ds-lb-aberta{overflow:hidden;}
    ===================================================================== */
 .ds-heroi, .ds-m-lista{display:none;}
 @media (max-width:760px){
-  .design-tela .ds-precisa{display:none !important;}
   .ds-heroi{display:block;position:relative;overflow:hidden;margin:0 0 14px;padding:16px 16px 14px;border-radius:22px;color:#fff;
     background:radial-gradient(120% 140% at 100% 0%, rgba(214,51,132,.55) 0%, rgba(214,51,132,0) 55%),
                linear-gradient(150deg,#21173A 0%,#2E1F52 55%,#3B2163 100%);
