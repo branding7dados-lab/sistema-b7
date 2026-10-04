@@ -494,3 +494,17 @@ button.gv-fato:hover .gv-fato-ed,button.gv-fato:focus-visible .gv-fato-ed{opacit
 .ng-modal .ng-acoes .b{width:100%;height:50px;border-radius:15px;font-size:15px;font-weight:800;margin:0 !important;}
 @keyframes ngIn{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.ng-bloco{animation:none;}}
+
+/* Marcar gravação (zzz38) — js/calendario.js modalMarcarGravacao, usa os .ng-* acima */
+.mg-selo{display:inline-flex;align-items:center;gap:6px;margin-top:8px;height:24px;padding:0 10px;border-radius:999px;font-size:11.5px;font-weight:700;
+  color:var(--ok);background:color-mix(in srgb, var(--ok) 12%, transparent);}
+.mg-selo i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent);}
+.mg-obr{margin-left:auto;font-size:11px;font-weight:700;color:var(--acento);text-transform:none;letter-spacing:0;}
+.mg-obr.leve{color:var(--ink-4);font-weight:600;}
+.mg-modal .mg-horas{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);}
+.mg-duracoes{display:flex;gap:6px;margin-top:10px;}
+.mg-dur{flex:1;height:36px;border-radius:12px;border:1.5px solid var(--borda);background:var(--card);color:var(--ink-2);font:inherit;font-size:13px;font-weight:700;cursor:pointer;
+  transition:border-color .2s, background .2s, color .2s, transform .15s;}
+.mg-dur:active{transform:scale(.95);}
+.mg-dur.on{border-color:var(--acento);background:color-mix(in srgb, var(--acento) 10%, var(--card));color:var(--acento);}
+.ng-bloco:nth-of-type(4){animation-delay:.18s}
