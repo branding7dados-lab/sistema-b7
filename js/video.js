@@ -283,6 +283,8 @@ B7.Video = (function () {
                              d.editing_status !== 'entregue' && d.editing_status !== 'descartado')
       : [];
 
+    document.querySelectorAll('.vd-fantasma').forEach(f => f.remove());
+    document.body.classList.remove('vd-arrastando-toque');
     ultAnteriores = anteriores.length;
     painel().innerHTML = '<div class="conteudo entra vd-tela">' +
       '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
@@ -779,68 +781,89 @@ B7.Video = (function () {
     });
   }
 
-  /* zzz27: arrastar no CELULAR. O drag nativo do HTML5 não é confiável
-     no toque (no Android depende da versão do Chrome). Segurar o cartão
-     ~0,35s "descola" ele: um fantasma segue o dedo, a coluna embaixo
-     acende, a tela rola sozinha perto das bordas e, ao soltar, passa pela
-     MESMA ação do drop (moverCartaoVideo). Mexer o dedo antes do tempo é
-     rolagem normal — não arrasta nada. */
+  /* Arrastar no CELULAR (zzz27, refeito no zzz29).
+     • Segurar o cartão ~0,35s "descola" ele (vibra); arrastar leva um
+       fantasma junto do dedo, a coluna embaixo acende, a tela rola perto
+       das bordas e soltar passa pela MESMA ação do drop do computador.
+     • Segurar e soltar sem arrastar — ou o navegador cancelar o gesto —
+       abre o painel "Mover para…" com as etapas: mover funciona sempre.
+     • O drag nativo fica desligado no toque (no Chrome do Android ele
+       roubava o gesto e o fantasma ficava preso na tela). Todos os
+       ouvintes do documento são postos no início do toque e tirados no
+       fim, e qualquer cancelamento limpa a tela. */
   function ligarArrastoToque(cx) {
-    cx.querySelectorAll('.vd-card[draggable="true"]').forEach(card => {
+    const toque = window.matchMedia('(pointer: coarse)').matches;
+    cx.querySelectorAll('.vd-quadro .vd-card[data-demanda]').forEach(card => {
       if (card._toque) return; card._toque = true;
-      let timer = null, x0 = 0, y0 = 0, ativo = false, fantasma = null, alvo = null, rolar = 0, dx = 0, dy = 0;
+      if (toque) card.removeAttribute('draggable');
+      let timer = null, x0 = 0, y0 = 0, ativo = false, moveu = false, fantasma = null, alvo = null, rolar = 0, dx = 0, dy = 0;
       const zonaEm = (x, y) => { const el = document.elementFromPoint(x, y); return el && el.closest('[data-solta]'); };
       const pararRolagem = () => { cancelAnimationFrame(rolar); rolar = 0; };
-      const fim = solto => {
-        clearTimeout(timer); timer = null; pararRolagem();
-        document.removeEventListener('touchmove', mover, { passive: false });
-        document.removeEventListener('touchend', soltar); document.removeEventListener('touchcancel', cancelar);
+      const ouvintes = [
+        [document, 'touchmove', e => mover(e), { passive: false }],
+        [document, 'touchend', () => fim(true)],
+        [document, 'touchcancel', () => fim(false)],
+        [document, 'pointercancel', () => fim(false), true],
+        [window, 'blur', () => fim(false)],
+        [window, 'hashchange', () => fim(false, true)]
+      ];
+      const ligar = on => ouvintes.forEach(([alvoEv, tipo, fn, op]) => {
+        if (!fn._ref) fn._ref = fn;
+        on ? alvoEv.addEventListener(tipo, fn, op) : alvoEv.removeEventListener(tipo, fn, op);
+      });
+      const fim = (solto, semMenu) => {
+        clearTimeout(timer); timer = null; pararRolagem(); ligar(false);
         if (!ativo) return;
         ativo = false;
         cx.querySelectorAll('[data-solta]').forEach(z => z.classList.remove('sobre'));
         card.classList.remove('arrastando'); document.body.classList.remove('vd-arrastando-toque');
-        if (fantasma) { const f = fantasma; fantasma = null; f.classList.add('saindo'); setTimeout(() => f.remove(), 180); }
+        if (fantasma) { const f = fantasma; fantasma = null; f.classList.add('saindo'); setTimeout(() => f.remove(), 200); }
+        card._acabouArrasto = true; setTimeout(() => { card._acabouArrasto = false; }, 450);
         const destino = solto && alvo ? alvo.dataset.solta : null; alvo = null;
         const d = demandas.find(x => x.id === card.dataset.demanda);
-        if (d && destino && destino !== d.editing_status) {
+        if (!d || semMenu) return;
+        if (destino && destino !== d.editing_status) {
           Promise.resolve(moverCartaoVideo(d, destino)).then(() => {
             if (B7.Movimento && B7.Movimento.assentar && d.editing_status === destino)
               B7.Movimento.assentar(document.querySelector('.vd-card[data-demanda="' + CSS.escape(d.id) + '"]'));
           }).catch(() => {});
+        } else if (!moveu || !solto) {
+          abrirMoverPara(d);
         }
       };
       const autoRolagem = y => {
         const h = window.innerHeight, borda = 90;
-        const v = y < borda ? -(borda - y) / 6 : y > h - borda - 70 ? (y - (h - borda - 70)) / 6 : 0;
+        const v = y < borda + 60 ? -(borda + 60 - y) / 6 : y > h - borda - 70 ? (y - (h - borda - 70)) / 6 : 0;
         pararRolagem();
         if (!v) return;
-        const passo = () => { const sc = document.scrollingElement; window.scrollBy(0, v); if (sc) rolar = requestAnimationFrame(passo); };
+        const passo = () => { window.scrollBy(0, v); rolar = requestAnimationFrame(passo); };
         rolar = requestAnimationFrame(passo);
       };
       const mover = e => {
         const t = e.touches[0];
+        if (!t) return;
         if (!ativo) {
           if (Math.abs(t.clientX - x0) > 8 || Math.abs(t.clientY - y0) > 8) fim(false);   /* é rolagem */
           return;
         }
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
+        if (Math.abs(t.clientX - x0) > 12 || Math.abs(t.clientY - y0) > 12) moveu = true;
         fantasma.style.transform = 'translate3d(' + (t.clientX - dx) + 'px,' + (t.clientY - dy) + 'px,0) rotate(-2deg) scale(1.03)';
         const z = zonaEm(t.clientX, t.clientY);
         if (z !== alvo) { if (alvo) alvo.classList.remove('sobre'); alvo = z; if (alvo) alvo.classList.add('sobre'); }
         autoRolagem(t.clientY);
       };
-      const soltar = () => fim(true);
-      const cancelar = () => fim(false);
       card.addEventListener('touchstart', e => {
-        if (e.touches.length !== 1) return;
-        const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY;
-        document.addEventListener('touchmove', mover, { passive: false });
-        document.addEventListener('touchend', soltar); document.addEventListener('touchcancel', cancelar);
+        if (e.touches.length !== 1) { fim(false); return; }
+        const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; moveu = false;
+        ligar(true);
         timer = setTimeout(() => {
+          timer = null;
+          if (!card.isConnected) { fim(false); return; }
           ativo = true;
           const r = card.getBoundingClientRect(); dx = x0 - r.left; dy = y0 - r.top;
           fantasma = card.cloneNode(true);
-          fantasma.className += ' vd-fantasma';
+          fantasma.classList.add('vd-fantasma');
           fantasma.style.width = r.width + 'px';
           fantasma.style.transform = 'translate3d(' + r.left + 'px,' + r.top + 'px,0)';
           document.body.appendChild(fantasma);
@@ -849,13 +872,39 @@ B7.Video = (function () {
           if (navigator.vibrate) try { navigator.vibrate(12); } catch (er) {}
         }, 350);
       }, { passive: true });
-      /* segurar abre o menu de contexto do navegador e o clique depois
-         do arrasto abriria a demanda — os dois ficam bloqueados */
-      card.addEventListener('dragstart', e => { if (ativo || timer) e.preventDefault(); });
-      card.addEventListener('contextmenu', e => { if (ativo || timer) e.preventDefault(); });
-      card.addEventListener('click', e => { if (card.classList.contains('arrastando') || card._acabouArrasto) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
-      card.addEventListener('touchend', () => { if (ativo) { card._acabouArrasto = true; setTimeout(() => { card._acabouArrasto = false; }, 400); } });
+      card.addEventListener('dragstart', e => { if (toque || ativo) e.preventDefault(); });
+      card.addEventListener('contextmenu', e => { if (toque) e.preventDefault(); });
+      card.addEventListener('click', e => { if (ativo || card._acabouArrasto) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
     });
+  }
+
+  /* "Mover para…" — folha de baixo com as etapas (mesma ação do drop) */
+  function abrirMoverPara(d) {
+    document.querySelectorAll('.vd-folha-fundo').forEach(f => f.remove());
+    const colunas = COLUNAS_KANBAN;
+    const fundo = document.createElement('div');
+    fundo.className = 'vd-folha-fundo';
+    fundo.innerHTML = '<div class="vd-folha" role="dialog" aria-label="Mover demanda">' +
+      '<span class="vd-folha-pega"></span>' +
+      '<small>Mover para</small><b class="vd-folha-tit">' + esc(d.titulo || 'Demanda') + '</b>' +
+      '<div class="vd-folha-op">' + colunas.map(([k, nome]) =>
+        '<button type="button" class="vd-m-s-' + k + (k === d.editing_status ? ' atual' : '') + '" data-para="' + k + '"' + (k === d.editing_status ? ' disabled' : '') + '>' +
+        '<i></i><span>' + esc(nome) + '</span>' + (k === d.editing_status ? '<em>agora</em>' : '') + '</button>').join('') + '</div>' +
+      '<button type="button" class="vd-folha-cancelar">Cancelar</button></div>';
+    document.body.appendChild(fundo);
+    requestAnimationFrame(() => fundo.classList.add('aberta'));
+    const fechar = () => { fundo.classList.remove('aberta'); setTimeout(() => fundo.remove(), 260); };
+    /* o próprio toque que soltou o cartão gera um clique logo depois —
+       ele não pode fechar a folha que acabou de abrir */
+    const aberta = Date.now();
+    fundo.onclick = e => { if (e.target === fundo && Date.now() - aberta > 450) fechar(); };
+    fundo.querySelector('.vd-folha-cancelar').onclick = fechar;
+    fundo.querySelectorAll('[data-para]').forEach(b => b.onclick = () => {
+      if (Date.now() - aberta < 450) return;
+      fechar();
+      Promise.resolve(moverCartaoVideo(d, b.dataset.para)).catch(() => {});
+    });
+    window.addEventListener('hashchange', fechar, { once: true });
   }
 
   async function commitStatusVideo(d, status, mensagem) {

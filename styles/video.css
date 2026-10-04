@@ -1231,3 +1231,28 @@ body.vd-arrastando-toque .vd-coluna-corpo{transition:background .2s, box-shadow 
 @keyframes vdHeroiIn{from{opacity:0;transform:translate3d(0,14px,0) scale(.97)}to{opacity:1;transform:none}}
 @keyframes vdHeroiChip{from{opacity:0;transform:translate3d(8px,0,0)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.vd-heroi,.vd-heroi-it{animation:none !important;}.vd-seg,.vd-heroi-anel .cheio{transition:none !important;}}
+
+/* zzz29: folha "Mover para…" (segurar e soltar um cartão do Kanban) */
+.vd-folha-fundo{position:fixed;inset:0;z-index:950;display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(14,8,28,0);transition:background .26s;-webkit-tap-highlight-color:transparent;}
+.vd-folha-fundo.aberta{background:rgba(14,8,28,.45);}
+.vd-folha{width:100%;max-width:520px;box-sizing:border-box;padding:10px 16px calc(16px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;
+  background:var(--elevado);box-shadow:0 -18px 40px -18px rgba(20,8,40,.5);transform:translate3d(0,100%,0);
+  transition:transform .34s cubic-bezier(.16,1,.3,1);}
+.vd-folha-fundo.aberta .vd-folha{transform:none;}
+[data-theme="dark"] .vd-folha{background:#211A33;}
+.vd-folha-pega{display:block;width:40px;height:4px;border-radius:2px;margin:0 auto 14px;background:color-mix(in srgb, var(--ink) 18%, transparent);}
+.vd-folha small{display:block;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-4);}
+.vd-folha-tit{display:block;margin:3px 0 14px;font-family:'Archivo',sans-serif;font-size:18px;font-weight:800;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vd-folha-op{display:flex;flex-direction:column;gap:6px;}
+.vd-folha-op button{--tom:var(--ink-4);display:flex;align-items:center;gap:12px;width:100%;min-height:50px;padding:0 16px;border:1px solid var(--borda);
+  border-radius:15px;background:var(--card);color:var(--ink);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:pointer;transition:transform .15s, background .2s;}
+.vd-folha-op button:active{transform:scale(.98);background:color-mix(in srgb, var(--tom) 10%, var(--card));}
+.vd-folha-op button i{width:10px;height:10px;border-radius:50%;background:var(--tom);box-shadow:0 0 0 4px color-mix(in srgb, var(--tom) 18%, transparent);}
+.vd-folha-op button.atual{opacity:.55;cursor:default;}
+.vd-folha-op button em{margin-left:auto;font-style:normal;font-size:12px;color:var(--ink-4);}
+.vd-folha-op .vd-m-s-em_edicao{--tom:#8B6CFF;} .vd-folha-op .vd-m-s-aguardando_aprovacao{--tom:#F0559E;}
+.vd-folha-op .vd-m-s-correcao{--tom:#F0A443;} .vd-folha-op .vd-m-s-standby{--tom:#6F6787;} .vd-folha-op .vd-m-s-entregue{--tom:#3DD69A;}
+.vd-folha-cancelar{display:block;width:100%;margin-top:10px;min-height:48px;border:0;border-radius:15px;background:none;color:var(--ink-3);font:inherit;font-size:15px;font-weight:700;cursor:pointer;}
+.vd-card{-webkit-user-select:none;user-select:none;}
