@@ -111,7 +111,7 @@ B7.Topo = (function () {
   /* Telas que JÁ têm o próprio botão primário de criar no cabeçalho da
      página: ali o "Criar" do topo vira secundário (contorno), para a tela
      não ter dois botões magenta disputando o mesmo clique. */
-  const TELAS_COM_PRIMARIO = ['gravacoes', 'video', 'linhas', 'design', 'clientes', 'semanas', 'kanban'];
+  const TELAS_COM_PRIMARIO = ['gravacoes', 'video', 'linhas', 'design', 'clientes', 'semanas', 'kanban', 'calendario'];
 
   function rotaBase() {
     return String(location.hash || '#/').replace(/^#\//, '').split(/[/?]/)[0];
