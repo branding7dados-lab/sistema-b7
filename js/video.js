@@ -365,6 +365,13 @@ B7.Video = (function () {
   let ultAnteriores = 0, heroiAnt = null;
   const COR_ETAPA = { pendente: '#A59CC0', em_edicao: '#8B6CFF', aguardando_aprovacao: '#F0559E', correcao: '#F0A443', standby: '#6F6787', entregue: '#3DD69A' };
   const ROT_ETAPA = { pendente: 'Pendente', em_edicao: 'Em edição', aguardando_aprovacao: 'Aprovação', correcao: 'Correção', standby: 'Standby', entregue: 'Entregue' };
+  /* odômetro: cada dígito é uma fita 0–9 que rola até o valor */
+  function odometroHTML(de, para) {
+    const alvo = String(para), ini = String(de).padStart(alvo.length, '0').slice(-alvo.length);
+    return '<span class="vd-odo" data-odo="' + alvo + '" aria-label="' + alvo + '">' + alvo.split('').map((c, i) =>
+      '<span class="vd-odo-d" style="--i:' + (alvo.length - 1 - i) + '"><span class="vd-odo-fita" style="--v:' + ini[i] + '">' +
+      '0123456789'.split('').map(x => '<i>' + x + '</i>').join('') + '</span></span>').join('') + '</span>';
+  }
   function heroiHTML(base, chips) {
     const total = base.length;
     const entregues = base.filter(d => d.editing_status === 'entregue').length;
@@ -372,17 +379,23 @@ B7.Video = (function () {
     const mes = F.competencia !== 'todas' ? competenciaRotulo(F.competencia).split(' de ')[0] : 'todos os meses';
     const R = 26, C = 2 * Math.PI * R;
     let iSeg = 0;
-    /* zzz30 "cinematográfico": camadas de luz (aurora que deriva, grão
-       de filme, reflexo que atravessa o vidro), anel em degradê com um
-       cometa na ponta, barra que enche segmento a segmento e recebe um
-       brilho, número que conta e "assenta", e o cartão inclina de leve
-       seguindo o dedo. A coreografia de entrada roda só na 1ª vez. */
+    /* próximo prazo: a demanda em aberto que vence primeiro (hoje em diante) */
+    const prox = base.filter(d => d.prazo && d.editing_status !== 'entregue' && !ehAtrasada(d))
+      .sort((x, y) => x.prazo < y.prazo ? -1 : x.prazo > y.prazo ? 1 : 0)[0];
+    /* zzz31 — "mais cinematográfico": abre como tela de cinema (faixas
+       pretas que se afastam do centro + feixe de luz quente), número em
+       odômetro, anel que solta um pulso ao completar, partículas de luz
+       (bokeh) e parallax pelo giroscópio — as camadas se movem em
+       profundidades diferentes quando o celular inclina. */
     return '<div class="vd-heroi' + (heroiAnt ? ' ja-visto' : ' estreia') + '" data-total="' + total + '" data-entregues="' + entregues + '">' +
-      '<span class="vd-h-luz" aria-hidden="true"><i></i><i></i><i></i></span><span class="vd-h-grao" aria-hidden="true"></span><span class="vd-h-reflexo" aria-hidden="true"></span>' +
+      '<span class="vd-h-luz" aria-hidden="true"><i></i><i></i><i></i></span>' +
+      '<span class="vd-h-bokeh" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
+      '<span class="vd-h-grao" aria-hidden="true"></span><span class="vd-h-reflexo" aria-hidden="true"></span>' +
+      '<span class="vd-h-feixe" aria-hidden="true"></span><span class="vd-h-faixas" aria-hidden="true"></span>' +
       '<div class="vd-heroi-topo">' +
         '<div class="vd-heroi-tx"><small>Entregues <i>·</i> ' + esc(mes) + '</small>' +
-          '<div class="vd-heroi-num"><b data-hn>' + (heroiAnt ? heroiAnt.entregues : 0) + '</b><span>de ' + total + '</span></div></div>' +
-        '<div class="vd-heroi-anel-cx"><svg class="vd-heroi-anel" viewBox="0 0 64 64" aria-hidden="true">' +
+          '<div class="vd-heroi-num"><b data-hn>' + odometroHTML(heroiAnt ? heroiAnt.entregues : 0, entregues) + '</b><span>de ' + total + '</span></div></div>' +
+        '<div class="vd-heroi-anel-cx"><span class="vd-heroi-pulso" aria-hidden="true"></span><svg class="vd-heroi-anel" viewBox="0 0 64 64" aria-hidden="true">' +
           '<defs><linearGradient id="vdAnelGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7CF5C4"/><stop offset="1" stop-color="#2BC48A"/></linearGradient></defs>' +
           '<circle cx="32" cy="32" r="' + R + '" class="trilho"/>' +
           '<circle cx="32" cy="32" r="' + R + '" class="cheio" style="stroke-dasharray:' + C.toFixed(1) + ';stroke-dashoffset:' + C.toFixed(1) + '" data-c="' + C.toFixed(1) + '"/>' +
@@ -397,58 +410,79 @@ B7.Video = (function () {
         return '<button class="vd-heroi-it' + (on ? ' on' : '') + '" data-resumo="' + chave + '" style="--i:' + i + ';--c:' + (COR_ETAPA[k] || (k === 'atrasadas' ? '#FF5C8A' : '#FFC24D')) + '">' +
           '<i></i><b>' + n + '</b>' + esc(rot) + '</button>';
       }).join('') + '</div>' +
+      (prox ? '<a class="vd-heroi-prox" href="#/video/' + esc(prox.id) + '"><span class="vd-heroi-prox-ic" aria-hidden="true">' + IC_CAL + '</span>' +
+        '<span class="vd-heroi-prox-tx"><small>Próximo prazo</small><b>' + esc(prox.titulo || 'Demanda') + '</b></span>' +
+        '<em>' + esc(prazoRelativo(prox) || B7.UI.dataBR(prox.prazo).slice(0, 5)) + '</em></a>' : '') +
       (ultAnteriores ? '<button class="vd-heroi-aviso" data-ver-anteriores><span><b>' + ultAnteriores + '</b> de meses anteriores em aberto</span><i>Ver</i></button>' : '') +
     '</div>';
   }
+  let giroAtivo = null;
   function animarHeroi(cx) {
     const h = cx.querySelector('.vd-heroi');
     if (!h) return;
     const total = +h.dataset.total, ent = +h.dataset.entregues;
     const pct = total ? Math.round(ent * 100 / total) : 0;
-    const de = heroiAnt ? heroiAnt.entregues : 0, pctDe = heroiAnt ? heroiAnt.pct : 0;
+    const pctDe = heroiAnt ? heroiAnt.pct : 0, entDe = heroiAnt ? heroiAnt.entregues : 0;
     const estreia = !heroiAnt;
     const segs = {};
     h.querySelectorAll('.vd-seg').forEach(b => { segs[b.dataset.resumo.split(':')[1]] = +b.dataset.n; });
     heroiAnt = { entregues: ent, pct, segs };
     const anel = h.querySelector('.cheio'), C = +anel.dataset.c, cometa = h.querySelector('.vd-heroi-cometa');
-    const n = h.querySelector('[data-hn]'), p = h.querySelector('[data-hp]');
+    const p = h.querySelector('[data-hp]');
+    const fitas = [...h.querySelectorAll('.vd-odo-fita')], alvo = String(ent);
     const aplicar = () => {
       anel.style.strokeDashoffset = (C * (1 - pct / 100)).toFixed(1);
       cometa.style.transform = 'rotate(' + (pct * 3.6) + 'deg)';
       h.classList.toggle('sem-progresso', !pct);
       h.querySelectorAll('.vd-seg').forEach(b => { b.style.flexGrow = b.dataset.n; b.classList.toggle('vazio', !+b.dataset.n); });
+      fitas.forEach((f, i) => f.style.setProperty('--v', alvo[i]));
     };
     const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('modo-leve');
-    if (reduz) { h.classList.remove('estreia'); h.classList.add('ja-visto'); aplicar(); n.textContent = ent; p.textContent = pct + '%'; return; }
+    if (reduz) { h.classList.remove('estreia'); h.classList.add('ja-visto'); aplicar(); p.textContent = pct + '%'; return; }
     if (pctDe) anel.style.strokeDashoffset = (C * (1 - pctDe / 100)).toFixed(1);
-    const atraso = estreia ? 260 : 0;
+    const atraso = estreia ? 420 : 0;
     setTimeout(() => requestAnimationFrame(aplicar), estreia ? atraso : 16);
-    const t0 = performance.now(), DUR = estreia ? 1250 : 650;
+    const t0 = performance.now(), DUR = estreia ? 1400 : 700;
     const passo = agora => {
-      if (!n.isConnected) return;
+      if (!p.isConnected) return;
       const t = Math.min(1, Math.max(0, (agora - t0 - atraso) / DUR)), e = 1 - Math.pow(1 - t, 4);
-      n.textContent = Math.round(de + (ent - de) * e);
       p.textContent = Math.round(pctDe + (pct - pctDe) * e) + '%';
-      if (t < 1) requestAnimationFrame(passo);
-      else if (ent !== de || estreia) { n.classList.remove('assenta'); void n.offsetWidth; n.classList.add('assenta'); }
+      if (t < 1) { requestAnimationFrame(passo); return; }
+      if (pct && (estreia || pct !== pctDe)) { h.classList.remove('pulsa'); void h.offsetWidth; h.classList.add('pulsa'); }
+      if (estreia || ent !== entDe) { const b = h.querySelector('[data-hn]'); b.classList.remove('assenta'); void b.offsetWidth; b.classList.add('assenta'); }
     };
     requestAnimationFrame(passo);
-    /* inclinação 3D seguindo o dedo/mouse — leve, volta com mola */
-    if (!h._tilt) {
-      h._tilt = true;
-      const mexe = e => {
-        const r = h.getBoundingClientRect();
-        const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
-        h.style.setProperty('--rx', (-y * 5).toFixed(2) + 'deg');
-        h.style.setProperty('--ry', (x * 7).toFixed(2) + 'deg');
-        h.style.setProperty('--mx', ((x + .5) * 100).toFixed(1) + '%');
-        h.style.setProperty('--my', ((y + .5) * 100).toFixed(1) + '%');
-        h.classList.add('inclinado');
-      };
-      const volta = () => { h.classList.remove('inclinado'); h.style.setProperty('--rx', '0deg'); h.style.setProperty('--ry', '0deg'); };
-      h.addEventListener('pointerdown', mexe); h.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || e.buttons || h.matches(':hover')) mexe(e); });
-      ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => h.addEventListener(t, volta));
-    }
+
+    /* inclinação 3D seguindo o dedo/mouse */
+    const mexe = e => {
+      const r = h.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+      h.style.setProperty('--rx', (-y * 5).toFixed(2) + 'deg');
+      h.style.setProperty('--ry', (x * 7).toFixed(2) + 'deg');
+      h.style.setProperty('--mx', ((x + .5) * 100).toFixed(1) + '%');
+      h.style.setProperty('--my', ((y + .5) * 100).toFixed(1) + '%');
+      h.classList.add('inclinado');
+    };
+    const volta = () => { h.classList.remove('inclinado'); h.style.setProperty('--rx', '0deg'); h.style.setProperty('--ry', '0deg'); };
+    h.addEventListener('pointerdown', mexe);
+    h.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || h.matches(':hover')) mexe(e); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => h.addEventListener(t, volta));
+
+    /* parallax pelo giroscópio (Android libera sem pedir; no iPhone,
+       sem permissão, simplesmente não acontece). Um ouvinte só, que se
+       desliga sozinho quando o cartão sai da tela. */
+    if (giroAtivo) window.removeEventListener('deviceorientation', giroAtivo);
+    let base0 = null, raf = 0;
+    giroAtivo = e => {
+      if (!h.isConnected) { window.removeEventListener('deviceorientation', giroAtivo); giroAtivo = null; return; }
+      if (e.beta == null || e.gamma == null) return;
+      if (!base0) base0 = { b: e.beta, g: e.gamma };
+      const gx = Math.max(-1, Math.min(1, (e.gamma - base0.g) / 25));
+      const gy = Math.max(-1, Math.min(1, (e.beta - base0.b) / 25));
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => { h.style.setProperty('--gx', gx.toFixed(3)); h.style.setProperty('--gy', gy.toFixed(3)); });
+    };
+    window.addEventListener('deviceorientation', giroAtivo);
   }
   function desenharResumo(base) {
     const cx = painel().querySelector('#vd-resumo');
