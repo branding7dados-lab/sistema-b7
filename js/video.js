@@ -1940,6 +1940,11 @@ B7.Video = (function () {
          esqueleto pra sempre — o usuário só via "carregando" eternamente.
          Com teto de tempo, isso vira um erro com botão de tentar de novo. */
       const [dd, hh, vv, cc, cl, vm, pc] = await comTempoLimite(Promise.all(chamadas), 20000);
+      /* zzz45: só escreve no estado do módulo se esta ainda for a tela
+         aberta. Antes, abrir a demanda A e trocar para a B antes de
+         carregar deixava `versoesAtual` com as versões de A por cima da
+         tela de B — e os botões "enviar/entregar" agiam na versão errada. */
+      if (!vale()) return;
       d = dd; historico = hh; versoesAtual = vv;
       if (cl) clientes = cl;
       if (vm) videomakers = vm;

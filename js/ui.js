@@ -7,8 +7,12 @@
 window.B7 = window.B7 || {};
 
 B7.UI = (function () {
+  /* zzz45: escapa também a aspa simples. Hoje todo atributo do projeto
+     usa aspas duplas, mas um atributo novo delimitado por ' viraria
+     injeção — esta linha fecha a porta antes de alguém abrir. */
   const esc = t => String(t == null ? '' : t)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
   /* ------------------------------------------------------------ toasts */
   function toast(msg, opcoes = {}) {

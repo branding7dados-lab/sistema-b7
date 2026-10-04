@@ -630,7 +630,18 @@ B7.Design = (function () {
      partir dos dados já em memória, sem nova consulta */
   function redesenharTela() {
     if (painel().querySelector('#dsc-raiz')) desenharCentral();
-    else if (painel().querySelector('#ds-linha-raiz') && linhaAberta) desenharLinha();
+    else if (painel().querySelector('#ds-linha-raiz') && linhaAberta) {
+      /* zzz45: as ações da gaveta atualizam o objeto que veio de `dados`,
+         mas a página da linha desenha a partir de `itensLinha` — duas
+         listas distintas. Sem esta costura, aprovar ou trocar o prazo
+         pela gaveta deixava o progresso e os contadores atrás dela
+         parados no valor antigo. */
+      if (itensLinha && itensLinha.length && dados && dados.length) {
+        const porId = new Map(dados.map(x => [x.id, x]));
+        itensLinha = itensLinha.map(x => porId.get(x.id) || x);
+      }
+      desenharLinha();
+    }
     else if (painel().querySelector('#ds-area')) desenharArea();
   }
 
@@ -918,7 +929,14 @@ B7.Design = (function () {
     '</div>';
 
     const voltar = painel().querySelector('#ds-voltar');
-    if (voltar) voltar.onclick = () => { linhaAberta = null; abrir(); };
+    /* zzz45: o endereço acompanha a tela. Antes ele continuava em
+       #/design/linha/<id>, então recarregar (ou compartilhar o link)
+       levava de volta para a linha, não para a fila. */
+    if (voltar) voltar.onclick = () => {
+      linhaAberta = null;
+      if (location.hash.startsWith('#/design/linha/')) location.hash = '#/design';
+      else abrir();
+    };
     painel().querySelectorAll('[data-aba-linha-topo]').forEach(b => b.onclick = () => trocarAbaLinhaTopo(b.dataset.abaLinhaTopo));
     const assumirTudo = painel().querySelector('#ds-assumir-tudo');
     if (assumirTudo) assumirTudo.onclick = async () => {
@@ -927,8 +945,14 @@ B7.Design = (function () {
         const r = await B7.DB.assumirDemandaLinha(linhaAberta);
         const n = (r && r.assumidas) || 0;
         B7.UI.toast(n > 0 ? (n === 1 ? '1 demanda assumida' : n + ' demandas assumidas') : 'Nenhuma demanda sobrou para assumir.');
-        const linhas = await B7.DB.listarDesign();
+        /* zzz45: a página da linha desenha a partir de `itensLinha`, não
+           de `dados` — recarregar só `dados` deixava a tela igualzinha
+           depois de assumir, como se a ação tivesse falhado. */
+        const [linhas, daLinha] = await Promise.all([
+          B7.DB.listarDesign(), B7.DB.listarDesign({ linhaId: linhaAberta })
+        ]);
         dados = linhas || [];
+        itensLinha = daLinha || itensLinha;
         desenharLinha();
       } catch (e) {
         assumirTudo.disabled = false; assumirTudo.textContent = 'Assumir demanda';

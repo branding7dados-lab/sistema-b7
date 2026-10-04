@@ -204,12 +204,6 @@ B7.DB = (function () {
     async gravacaoConcluir(gravacaoId) { return this.rpc('gravacao_concluir', { p_gravacao_id: gravacaoId }); },
     async gravacaoCancelar(gravacaoId, motivo) { return this.rpc('gravacao_cancelar', { p_gravacao_id: gravacaoId, p_motivo: motivo || null }); },
     /* seletores escopados pelo CLIENTE da gravação (nunca a agência toda) */
-    async roteirosDoCliente(clienteId) {
-      return ok(await sb().from('roteiros')
-        .select('id,titulo,status,recording_session_id,updated_at,gravacoes!inner(id,nome,client_id,competencia_ano,competencia_mes,data_gravacao)')
-        .eq('gravacoes.client_id', clienteId).is('deleted_at', null)
-        .order('updated_at', { ascending: false }).limit(200));
-    },
     async conteudosDoCliente(clienteId) {
       return ok(await sb().from('conteudos')
         .select('id,titulo,tipo,status,data_postagem,linha_id,linhas_editoriais(nome,mes,ano)')
@@ -332,13 +326,20 @@ B7.DB = (function () {
         .in('id', ids).is('deleted_at', null));
     },
 
+    /* zzz45: havia DUAS definições de roteirosDoCliente neste objeto. Em
+       JavaScript a última vence, então a de cima era código morto — e quem
+       chamava sem limite (a tela de Gravações) recebia só 5 roteiros, com
+       a gravação num formato diferente do esperado. Ficou só esta, agora
+       trazendo também a competência, que a tela de Gravações usa para
+       agrupar por mês. */
     async roteirosDoCliente(clienteId, limite = 5) {
-      const gravacoes = ok(await sb().from('gravacoes').select('id,nome,status')
+      const gravacoes = ok(await sb().from('gravacoes')
+        .select('id,nome,status,competencia_ano,competencia_mes,data_gravacao')
         .eq('client_id', clienteId).is('deleted_at', null).is('archived_at', null));
       if (!gravacoes.length) return [];
       const ids = gravacoes.map(g => g.id);
       const roteiros = ok(await sb().from('roteiros')
-        .select('id,titulo,position,recording_session_id,updated_at')
+        .select('id,titulo,status,position,recording_session_id,updated_at')
         .in('recording_session_id', ids).is('deleted_at', null)
         .order('updated_at', { ascending: false }).limit(limite));
       const porId = {};

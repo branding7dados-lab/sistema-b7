@@ -1518,7 +1518,12 @@ B7.Semana = (function () {
         const nova = await B7.Save.acao(() => B7.DB.criarStatus(dados), 'Semana duplicada');
 
         if (quer('demandas') && S.itens.length) {
-          const desloca = 7;
+          /* zzz45: o deslocamento é a distância real entre a semana de
+             origem e a escolhida. Antes era 7 fixo, então duplicar para
+             três semanas à frente jogava as demandas para fora da
+             semana nova (ficavam "sem data" no editor). */
+          const desloca = Math.round(
+            (Date.parse(ini + 'T00:00:00') - Date.parse(r.semana_inicio + 'T00:00:00')) / 864e5);
           await B7.DB.criarItens(S.itens.map((it, i) => ({
             report_id: nova.id,
             data: it.data ? somarDias(it.data, desloca) : null,

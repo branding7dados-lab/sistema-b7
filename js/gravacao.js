@@ -584,13 +584,15 @@ B7.Gravacao = (function () {
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>', { larga: true });
     let lista = [];
     try {
-      lista = tipo === 'roteiro' ? await B7.DB.roteirosDoCliente(g.client_id) : await B7.DB.conteudosDoCliente(g.client_id);
+      /* zzz45: sem o limite vinha o padrão (5) e os roteiros antigos
+         ficavam inalcançáveis neste seletor. */
+      lista = tipo === 'roteiro' ? await B7.DB.roteirosDoCliente(g.client_id, 200) : await B7.DB.conteudosDoCliente(g.client_id);
     } catch (e) {
       m.querySelector('#gv-sel-lista').innerHTML = '<div class="pn-erro"><span>Não foi possível carregar a lista.</span></div>'; return;
     }
     const ja = new Set(S.itens.map(i => tipo === 'roteiro' ? i.roteiro_id : i.conteudo_id).filter(Boolean));
     const mesDe = x => tipo === 'roteiro'
-      ? (x.gravacoes && x.gravacoes.competencia_ano ? x.gravacoes.competencia_ano * 100 + x.gravacoes.competencia_mes : null)
+      ? (x.gravacao && x.gravacao.competencia_ano ? x.gravacao.competencia_ano * 100 + x.gravacao.competencia_mes : null)
       : (x.linhas_editoriais ? x.linhas_editoriais.ano * 100 + x.linhas_editoriais.mes : (x.data_postagem ? +x.data_postagem.slice(0, 4) * 100 + +x.data_postagem.slice(5, 7) : null));
     const alvo = g.competencia_ano ? g.competencia_ano * 100 + g.competencia_mes : null;
     const desenharLista = () => {
@@ -600,7 +602,7 @@ B7.Gravacao = (function () {
       const linha = x => {
         const dentro = ja.has(x.id);
         const sub = tipo === 'roteiro'
-          ? [x.status, x.gravacoes ? x.gravacoes.nome : ''].filter(Boolean).join(' · ')
+          ? [x.status, x.gravacao ? x.gravacao.nome : ''].filter(Boolean).join(' · ')
           : [x.tipo, x.data_postagem ? 'postagem ' + B7.UI.dataBR(x.data_postagem) : '', x.linhas_editoriais ? x.linhas_editoriais.nome : ''].filter(Boolean).join(' · ');
         return '<button type="button" class="gv-sel-it" data-sel="' + esc(x.id) + '"' + (dentro ? ' disabled' : '') + '>' +
           '<b>' + esc(x.titulo || 'Sem título') + '</b><small>' + esc(dentro ? 'já está nesta gravação' : sub) + '</small></button>';
