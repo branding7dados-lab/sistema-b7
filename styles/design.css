@@ -917,3 +917,95 @@ body.ds-lb-aberta{overflow:hidden;}
   .design-tela .ds-nova-mais{font-size:22px;}
   .design-tela .ds-revisar-fila{width:auto !important;align-self:flex-start;}
 }
+
+/* =====================================================================
+   DESIGN NO CELULAR 3 (zzz24) — mesmo raciocínio da Produção de Vídeo:
+   eram ~1100px de controles antes da primeira peça. Agora: título,
+   abas numa fileira, "precisa de você" numa fileira rolável, busca +
+   vista + filtro numa linha (selects atrás do ícone), seletor de etapa
+   e a fila como LISTA dentro de um cartão só.
+   ===================================================================== */
+.ds-bt-filtros-m{display:none;}
+.design-tela .seg-vista button svg{display:none;}
+@media (max-width:760px){
+  /* topo */
+  .design-tela .cab-conteudo{margin-bottom:14px !important;align-items:center !important;}
+  .design-tela .cab-conteudo h1{font-size:25px !important;letter-spacing:-.5px;line-height:1.1;}
+  .design-tela .cab-conteudo p{display:none;}
+  .design-tela #ds-nova{width:42px !important;height:42px !important;min-height:42px !important;border-radius:13px !important;
+    box-shadow:0 8px 18px -10px color-mix(in srgb, var(--acento) 70%, transparent) !important;}
+
+  /* abas: fileira rolável de pílulas baixas, sangrando na borda */
+  .design-tela .ds-abas{flex-wrap:nowrap !important;overflow-x:auto;scrollbar-width:none;margin:0 -16px 10px !important;padding:0 16px !important;}
+  .design-tela .ds-abas::-webkit-scrollbar{display:none;}
+  .design-tela .ds-abas button{flex:none;height:34px !important;padding:0 13px !important;font-size:13px !important;white-space:nowrap;}
+
+  /* precisa de você: uma fileira rolável, "Revisar" primeiro */
+  .design-tela .ds-precisa{display:flex !important;flex-wrap:nowrap !important;align-items:center;gap:6px !important;overflow-x:auto;scrollbar-width:none;
+    margin:0 -16px 12px !important;padding:2px 16px !important;}
+  .design-tela .ds-precisa::-webkit-scrollbar{display:none;}
+  .design-tela .ds-precisa small{display:none;}
+  .design-tela .ds-precisa-chip{flex:none;height:32px !important;min-height:32px;padding:0 12px !important;font-size:12.5px !important;white-space:nowrap;border-radius:999px;}
+  .design-tela .ds-revisar-fila{order:-1;flex:none;height:32px !important;min-height:32px !important;padding:0 14px !important;font-size:12.5px !important;
+    white-space:nowrap;box-shadow:0 8px 16px -12px color-mix(in srgb, var(--acento) 80%, transparent) !important;}
+  .design-tela .ds-revisar-fila:before{content:"▶";font-size:9px;margin-right:6px;}
+
+  /* busca · Quadro/Lista · filtro numa linha; selects só com o filtro aberto */
+  .design-tela .ds-barra{display:flex !important;flex-wrap:wrap !important;gap:8px !important;align-items:center;margin-bottom:12px;}
+  .design-tela .ds-barra .ds-busca-cx{flex:1 1 160px !important;min-width:160px !important;width:auto !important;max-width:none !important;order:1;}
+  .design-tela .ds-busca{height:42px !important;font-size:14px;}
+  .design-tela .ds-barra .seg-vista{order:2;flex:none;height:42px;display:inline-flex;align-items:center;padding:3px !important;border-radius:12px !important;}
+  .design-tela .ds-barra .seg-vista [data-vista]{width:36px;height:34px !important;min-height:34px !important;padding:0 !important;display:inline-flex;align-items:center;justify-content:center;border-radius:9px !important;}
+  .design-tela .ds-barra .seg-vista [data-vista] svg{display:block;width:18px;height:18px;}
+  .design-tela .ds-barra .seg-vista [data-vista] span{display:none;}
+  .design-tela .ds-barra .seg-vista [data-modo]{min-height:34px !important;padding:0 12px !important;font-size:12.5px !important;}
+  .ds-bt-filtros-m{display:inline-flex;order:3;flex:none;position:relative;width:42px;height:42px;min-height:42px !important;padding:0 !important;
+    align-items:center;justify-content:center;border-radius:13px !important;}
+  .ds-bt-filtros-m svg{width:18px;height:18px;}
+  .ds-bt-filtros-m.ativo, .filtros-m-abertos .ds-bt-filtros-m{background:var(--acento-suave);border-color:transparent;color:var(--acento);}
+  .ds-bt-filtros-m .ds-bt-n{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;font-size:10.5px;font-weight:700;
+    display:inline-flex;align-items:center;justify-content:center;background:var(--acento);color:#fff;}
+  .design-tela .ds-barra .ds-filtro, .design-tela .ds-barra #ds-mais, .design-tela .ds-barra #ds-limpar{display:none !important;}
+  .design-tela .ds-barra.filtros-m-abertos .ds-filtro, .design-tela .ds-barra.filtros-m-abertos #ds-mais,
+  .design-tela .ds-barra.filtros-m-abertos #ds-limpar{display:inline-flex !important;order:4;flex:1 1 calc(50% - 4px);min-width:calc(50% - 4px);width:auto !important;
+    height:38px !important;animation:dsFiltroM .32s var(--ds-mola) both;}
+  .design-tela .ds-barra.filtros-m-abertos select.ds-filtro{display:block !important;}
+  .design-tela .ds-barra .ds-espaco, .design-tela .ds-barra .ds-total{display:none !important;}
+
+  /* seletor de etapa */
+  .design-tela .ds-movel-sel{flex-wrap:nowrap !important;overflow-x:auto;scrollbar-width:none;gap:6px !important;margin:0 -16px 12px !important;padding:2px 16px !important;}
+  .design-tela .ds-movel-sel::-webkit-scrollbar{display:none;}
+  .design-tela .ds-movel-sel button{flex:none;height:34px !important;min-height:34px !important;padding:0 13px !important;font-size:13px !important;white-space:nowrap;border-radius:999px !important;}
+  .design-tela .ds-movel-sel button b{margin-left:7px;font-size:11.5px;padding:1px 7px;border-radius:999px;}
+
+  /* coluna: sem fundo cinza nem cabeçalho repetido; a lista é um cartão */
+  .design-tela .ds-movel .ds-col{background:none !important;padding:0 !important;border:0 !important;border-radius:0 !important;}
+  .design-tela .ds-movel .ds-col > header{display:none !important;}
+  .design-tela .ds-movel .ds-col .ds-lista, .design-tela .ds-lista.ds-lista-grade{display:block !important;gap:0 !important;background:var(--card);
+    border:1px solid color-mix(in srgb, var(--ink) 7%, transparent);border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -26px rgba(20,8,40,.6);}
+  .design-tela .ds-movel .ds-col-nada{padding:22px 16px;margin:0;text-align:center;color:var(--ink-4);font-size:13px;}
+
+  /* linha da peça */
+  .design-tela .ds-movel .ds-card, .design-tela .ds-lista-grade .ds-card{display:grid !important;grid-template-columns:46px minmax(0,1fr);column-gap:12px;row-gap:6px;
+    padding:12px 14px !important;margin:0 !important;border:0 !important;border-radius:0 !important;box-shadow:none !important;background:transparent !important;
+    position:relative;transform:none !important;}
+  .design-tela .ds-movel .ds-card + .ds-card:after, .design-tela .ds-lista-grade .ds-card + .ds-card:after{content:"";position:absolute;top:0;left:72px;right:0;height:1px;background:var(--borda);}
+  .design-tela .ds-movel .ds-card:active, .design-tela .ds-lista-grade .ds-card:active{background:color-mix(in srgb, var(--acento) 6%, transparent) !important;}
+  .design-tela .ds-movel .ds-card-topo, .design-tela .ds-lista-grade .ds-card-topo{display:contents !important;}
+  .design-tela .ds-movel .ds-thumb, .design-tela .ds-lista-grade .ds-thumb{grid-row:1 / span 2;width:46px !important;height:46px !important;min-width:0;border-radius:13px !important;align-self:start;}
+  .design-tela .ds-thumb-vazia{background:color-mix(in srgb, var(--acento) 8%, var(--card)) !important;color:var(--acento) !important;}
+  .design-tela .ds-thumb-vazia svg{width:20px;height:20px;}
+  .design-tela .ds-movel .ds-card-info, .design-tela .ds-lista-grade .ds-card-info{min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .design-tela .ds-movel .ds-tipo, .design-tela .ds-lista-grade .ds-tipo{font-size:10.5px;letter-spacing:.08em;}
+  .design-tela .ds-movel .ds-card h4, .design-tela .ds-lista-grade .ds-card h4{font-family:'Archivo',sans-serif;font-size:15px !important;font-weight:800;line-height:1.25;margin:0;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .design-tela .ds-movel .ds-cli, .design-tela .ds-lista-grade .ds-cli{font-size:12.5px;font-weight:600;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .design-tela .ds-movel .ds-pe, .design-tela .ds-lista-grade .ds-pe, .design-tela .ds-lista-grade .ds-tags{grid-column:2;margin:0 !important;padding:0 !important;border:0 !important;
+    font-size:12px;min-height:0;}
+  .design-tela .ds-resp-vazio{font-size:12px;color:var(--ink-4);}
+  .design-tela .ds-sem-resp{width:16px !important;height:16px !important;}
+  .design-tela .ds-card.urgente:before, .design-tela .ds-card.alta:before{display:none;}
+  .design-tela .ds-movel .ds-card.urgente .ds-thumb{box-shadow:0 0 0 2px var(--erro);}
+  .design-tela .ds-movel .ds-card.alta .ds-thumb{box-shadow:0 0 0 2px var(--ambar);}
+}
+@keyframes dsFiltroM{from{opacity:0;transform:translate3d(0,-6px,0)}to{opacity:1;transform:none}}
