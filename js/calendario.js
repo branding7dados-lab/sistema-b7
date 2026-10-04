@@ -1135,20 +1135,67 @@ B7.Calendario = (function () {
     }
     garantirClientes().then(clientes => {
       const dataSugerida = diaSugeridoISO || B7.UI.hojeISO();
+      /* zzz38: no padrão da Nova gravação (estilos .ng-* em gravacao.css):
+         cabeçalho com ícone e selo do Google, blocos "Para quem" / "Quando"
+         / "Mês de referência" / "Onde", durações rápidas e rodapé lado a
+         lado. Mesmos ids de antes. */
+      const ic = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+      const ICM = {
+        cam: ic('<rect x="3" y="6" width="13" height="12" rx="3"/><path d="M16 10.5l5-3v9l-5-3"/>'),
+        cli: ic('<path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/>'),
+        rel: ic('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>'),
+        mes: ic('<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>'),
+        local: ic('<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>')
+      };
       const m = B7.UI.modal(
-        '<h3>Marcar gravação</h3>' +
-        '<div class="sub">Cria a gravação já marcada no calendário' + (conexao.conectado ? ' e o evento na agenda do Google' : '') + '. Os itens (roteiros, trends) entram depois, na tela da gravação.</div>' +
-        '<div class="mb"><label class="rot" for="cal-mg-cliente">CLIENTE</label><select class="campo" id="cal-mg-cliente" data-foco><option value="">Escolha o cliente</option>' +
-          clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') + '</select></div>' +
-        '<div class="mb"><label class="rot" for="cal-mg-data">DATA</label><input class="campo" type="date" id="cal-mg-data" value="' + dataSugerida + '"></div>' +
-        '<div class="mb"><label class="rot">HORÁRIO</label><div class="gv-horas"><input class="campo" type="time" id="cal-mg-hora-ini" value="09:00" aria-label="Início">' +
-          '<span aria-hidden="true">até</span><input class="campo" type="time" id="cal-mg-hora-fim" value="10:00" aria-label="Fim"></div></div>' +
-        '<div class="mb"><label class="rot">MÊS DE REFERÊNCIA <span class="leve">— obrigatório</span></label>' +
-          (B7.Gravacao ? B7.Gravacao.camposMes(+dataSugerida.slice(0, 4), +dataSugerida.slice(5, 7), 'cal-mg') : '') +
-          '<div class="ajuda gv-ajuda">O mês de produção a que a gravação pertence. O calendário mostra a gravação no dia em que ela acontece.</div></div>' +
-        '<div class="mb"><label class="rot" for="cal-mg-local">LOCAL <span class="leve">— opcional</span></label><input class="campo" id="cal-mg-local"></div>' +
-        '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="cal-mg-salvar">Marcar gravação</button></div>'
+        '<div class="ng-topo"><span class="ng-ic">' + ICM.cam + '</span><div><h3>Marcar gravação</h3>' +
+          '<div class="sub">Já entra no calendário' + (conexao.conectado ? ' e na agenda do Google' : '') + '. Roteiros e trends entram depois, na tela da gravação.</div>' +
+          (conexao.conectado ? '<span class="mg-selo"><i></i>Vai pra agenda do Google</span>' : '') + '</div></div>' +
+        '<section class="ng-bloco"><h4>' + ICM.cli + 'Para quem</h4>' +
+          '<div class="mb ng-ult"><label class="rot" for="cal-mg-cliente">CLIENTE</label><select class="campo" id="cal-mg-cliente" data-foco><option value="">Escolha o cliente</option>' +
+            clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('') + '</select></div>' +
+        '</section>' +
+        '<section class="ng-bloco"><h4>' + ICM.rel + 'Quando</h4>' +
+          '<div class="mb"><label class="rot" for="cal-mg-data">DIA</label><input class="campo" type="date" id="cal-mg-data" value="' + dataSugerida + '"></div>' +
+          '<div class="mb ng-ult"><label class="rot">HORÁRIO</label><div class="gv-horas mg-horas"><input class="campo" type="time" id="cal-mg-hora-ini" value="09:00" aria-label="Início">' +
+            '<span aria-hidden="true">até</span><input class="campo" type="time" id="cal-mg-hora-fim" value="10:00" aria-label="Fim"></div>' +
+            '<div class="mg-duracoes" role="group" aria-label="Duração">' + [[30, '30 min'], [60, '1h'], [120, '2h'], [180, '3h']].map(([d, r]) =>
+              '<button type="button" class="mg-dur" data-dur="' + d + '">' + r + '</button>').join('') + '</div></div>' +
+        '</section>' +
+        '<section class="ng-bloco"><h4>' + ICM.mes + 'Mês de referência <span class="mg-obr">obrigatório</span></h4>' +
+          '<div class="mb ng-ult">' + (B7.Gravacao ? B7.Gravacao.camposMes(+dataSugerida.slice(0, 4), +dataSugerida.slice(5, 7), 'cal-mg') : '') +
+          '<div class="ajuda gv-ajuda">O mês de produção. O calendário mostra a gravação no dia em que ela acontece.</div></div>' +
+        '</section>' +
+        '<section class="ng-bloco"><h4>' + ICM.local + 'Onde <span class="mg-obr leve">opcional</span></h4>' +
+          '<div class="mb ng-ult"><input class="campo" id="cal-mg-local" placeholder="Ex.: consultório, estúdio B7" aria-label="Local"></div>' +
+        '</section>' +
+        '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="cal-mg-salvar">Marcar gravação</button></div>',
+        { extra: 'ng-modal mg-modal' }
       );
+      /* durações rápidas: fim = início + duração; a que bate acende */
+      const hIniEl = m.querySelector('#cal-mg-hora-ini'), hFimEl = m.querySelector('#cal-mg-hora-fim');
+      const minutos = v => { const [h, mm] = (v || '0:0').split(':').map(Number); return h * 60 + mm; };
+      const hhmm = t => String(Math.floor(((t % 1440) + 1440) % 1440 / 60)).padStart(2, '0') + ':' + String(((t % 60) + 60) % 60).padStart(2, '0');
+      const marcarDur = () => {
+        const d = minutos(hFimEl.value) - minutos(hIniEl.value);
+        m.querySelectorAll('.mg-dur').forEach(b => b.classList.toggle('on', +b.dataset.dur === d));
+      };
+      m.querySelectorAll('.mg-dur').forEach(b => b.onclick = () => { hFimEl.value = hhmm(minutos(hIniEl.value) + +b.dataset.dur); marcarDur(); });
+      hIniEl.addEventListener('change', () => {
+        const on = m.querySelector('.mg-dur.on');
+        if (on) hFimEl.value = hhmm(minutos(hIniEl.value) + +on.dataset.dur);
+        marcarDur();
+      });
+      hFimEl.addEventListener('change', marcarDur);
+      marcarDur();
+      /* atalho de mês escolhido fica marcado */
+      const marcarAtalhoMes = () => {
+        const mm = (m.querySelector('#cal-mg-mes') || {}).value, aa = (m.querySelector('#cal-mg-ano') || {}).value;
+        m.querySelectorAll('.gv-mes-atalhos .gv-chip').forEach(c => c.classList.toggle('on', c.dataset.m === mm && c.dataset.a === aa));
+      };
+      m.querySelectorAll('#cal-mg-mes, #cal-mg-ano').forEach(el => el.addEventListener('change', marcarAtalhoMes));
+      m.querySelector('#cal-mg-data').addEventListener('change', () => setTimeout(marcarAtalhoMes, 0));
+      marcarAtalhoMes();
       /* o mês de referência acompanha a data até a pessoa escolher outro */
       let mesManual = false;
       const selMes = m.querySelector('#cal-mg-mes'), selAno = m.querySelector('#cal-mg-ano');
