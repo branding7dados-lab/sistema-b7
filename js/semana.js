@@ -507,7 +507,9 @@ B7.Semana = (function () {
     const hoje = D().hojeISO();
     let mudou = false;
     for (const c of porId.values()) {
-      if (c.status === 'Programado' && c.data_postagem && c.data_postagem <= hoje) {
+      /* zzz46: ver a nota em js/linha.js — o conteúdo de hoje só vira
+         "Publicado" depois que o dia passa. */
+      if (c.status === 'Programado' && c.data_postagem && c.data_postagem < hoje) {
         try { await B7.DB.atualizarConteudo(c.id, { status: 'Publicado' }); c.status = 'Publicado'; }
         catch (e) {}
       }

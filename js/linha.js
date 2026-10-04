@@ -113,7 +113,11 @@ B7.Linha = (function () {
   async function verificarPostagensAutomaticas() {
     const hoje = B7.UI.hojeISO();
     const pendentes = (L.conteudos || []).filter(c =>
-      c.status === 'Programado' && c.data_postagem && c.data_postagem <= hoje);
+      /* zzz46: estritamente ANTES de hoje. Com "<=", abrir a linha às 8h da
+         manhã já marcava como publicado o conteúdo que só sai às 18h — e
+         isso ia para o banco. É também a regra que o resto do sistema usa
+         (B7.DB.publicacoesPendentes filtra com .lt). */
+      c.status === 'Programado' && c.data_postagem && c.data_postagem < hoje);
     if (!pendentes.length) return;
     let mudou = false;
     for (const c of pendentes) {
