@@ -252,13 +252,13 @@ B7.Rota = (function () {
     else ir();
   }
 
-  /* ---------------------------------------------- MORPH ENTRE TELAS (zzz7)
+  /* ---------------------------------------------- MORPH ENTRE TELAS (zzz9)
      Troca de módulo (abas da barra, "Mais", lateral): View Transitions.
      O navegador fotografa a tela que sai e a que entra e anima as duas
      na placa de vídeo — não redesenha a página a cada quadro, por isso
-     não pesa nem no celular. O título da página MORFA de uma para a
-     outra (posição, tamanho e texto); o conteúdo desliza no sentido da
-     aba; topo e barra de baixo ficam parados. Abrir/voltar de um cartão
+     não pesa nem no celular. Foco de câmera: a tela que sai desfoca e
+     recua; a nova chega de leve, de baixo, saindo do desfoque para o
+     nítido. Topo e barra de baixo ficam parados. Abrir/voltar de um cartão
      continua com o voo e a foto de js/movimento.js (html.b7-vt avisa
      para eles não entrarem nesta troca). Sem suporte, sem animação ou
      aba escondida: troca normal. CSS em styles/global.css (MORPH). */
@@ -273,26 +273,6 @@ B7.Rota = (function () {
     const a = nivel(de), b = nivel(para);
     return raizDe(de) !== raizDe(para) || (a.length <= 1 && b.length <= 1 && (a[0] || '') !== (b[0] || ''));
   }
-  /* zzz8: onde o dedo tocou — a tela nova nasce dali (íris + onda de luz).
-     Sem toque (teclado, link), nasce do ícone ativo da barra ou do centro. */
-  let toque = null;
-  document.addEventListener('pointerdown', e => { toque = { x: e.clientX, y: e.clientY, t: Date.now() }; }, { capture: true, passive: true });
-  function origemDoMorph() {
-    if (toque && Date.now() - toque.t < 1500) return toque;
-    const on = document.querySelector('#nav-inferior .on .ni-ic');
-    if (on) { const r = on.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
-    return { x: innerWidth / 2, y: innerHeight / 2 };
-  }
-  /* a onda: um anel de luz que sai do toque, em camada própria do morph */
-  function criarOnda(o) {
-    const R = Math.hypot(Math.max(o.x, innerWidth - o.x), Math.max(o.y, innerHeight - o.y));
-    const el = document.createElement('i');
-    el.className = 'b7-vt-onda';
-    el.setAttribute('aria-hidden', 'true');
-    Object.assign(el.style, { left: (o.x - R) + 'px', top: (o.y - R) + 'px', width: 2 * R + 'px', height: 2 * R + 'px' });
-    document.body.appendChild(el);
-    return el;
-  }
   let vtAtual = null;
   function trocarComMorph(de, para) {
     const pode = document.startViewTransition && !document.hidden &&
@@ -300,14 +280,9 @@ B7.Rota = (function () {
       document.getElementById('tela-dashboard')?.classList.contains('ativa') &&
       !document.querySelector('.b7-abertura, .fundo-modal:not(.saindo)');
     if (!pode) return false;
-    const o = origemDoMorph();
-    /* a íris é medida dentro da caixa da página (a foto dela), não da tela */
-    const caixa = document.getElementById('painel-dashboard').getBoundingClientRect();
-    html.style.setProperty('--vt-x', Math.round(o.x - caixa.left) + 'px');
-    html.style.setProperty('--vt-y', Math.round(o.y - caixa.top) + 'px');
     html.classList.add('b7-vt');
     if (vtAtual) { try { vtAtual.skipTransition(); } catch (e) {} }
-    let onda = null, vt;
+    let vt;
     try {
       vt = document.startViewTransition(async () => {
         /* a folha que estava fechando ("Mais") não entra na foto nova:
@@ -319,12 +294,10 @@ B7.Rota = (function () {
         await Promise.race([feito, new Promise(r => setTimeout(r, 450))]);
         /* a entrada própria da tela não roda depois do morph (seria repetir) */
         document.querySelectorAll('#painel-dashboard .conteudo.entra').forEach(c => c.classList.remove('entra'));
-        onda = criarOnda(o);
       });
     } catch (e) { html.classList.remove('b7-vt'); return false; }
     vtAtual = vt;
     const fim = () => {
-      if (onda) onda.remove();
       if (vtAtual === vt) { vtAtual = null; html.classList.remove('b7-vt'); }
     };
     vt.finished.then(fim, fim);
