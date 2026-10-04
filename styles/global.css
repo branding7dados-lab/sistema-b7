@@ -2321,3 +2321,22 @@ html.modo-leve .fundo-modal.paleta .modal{-webkit-backdrop-filter:none;backdrop-
 .lista.solta.mostrando > *:nth-child(4){animation-delay:75ms}.lista.solta.mostrando > *:nth-child(n+5){animation-delay:100ms}
 @keyframes b7ItemMenu{from{opacity:0;transform:translate3d(0,-4px,0)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.lista.solta,.lista.lista-fantasma{transition:none !important;}.lista.solta.mostrando > *{animation:none;}}
+
+/* =====================================================================
+   PUXAR PARA ATUALIZAR — entrada e saída suaves (zzz32, js/movimento.js)
+   Durante a atualização o PAINEL fica baixo e o conteúdo esmaece de leve;
+   a tela nova chega por baixo do véu e tudo volta deslizando junto com a
+   lâmpada, que sobe e some (antes: pulava, encavalava no título e sumia
+   seco).
+   ===================================================================== */
+#painel-dashboard > .conteudo{transition:opacity .4s ease, filter .4s ease;}
+html.b7-recarga #painel-dashboard > .conteudo{opacity:.5;filter:saturate(.7) blur(1.5px);}
+.b7-puxa.estoura, .b7-puxa.girando, .b7-puxa.pronto{transition:transform .5s cubic-bezier(.16,1,.3,1), opacity .25s ease;}
+.b7-puxa.volta{transition:transform .6s cubic-bezier(.16,1,.3,1), opacity .38s ease .12s !important;}
+.b7-puxa.volta .bp-disco{scale:.6;transition:scale .5s cubic-bezier(.16,1,.3,1);}
+.b7-puxa.volta .bp-rotulo{opacity:0 !important;transform:translateX(-50%) translateY(-4px);transition:opacity .2s ease, transform .3s ease;}
+.bp-rotulo{transition:color .25s ease, border-color .25s ease, background .25s ease;}
+.b7-puxa.pronto .bp-rotulo:before{content:"✓ ";}
+.bp-rotulo.troca{animation:bpRotulo2 .32s cubic-bezier(.16,1,.3,1) !important;}
+@keyframes bpRotulo2{from{opacity:0;translate:0 6px;filter:blur(3px)}to{opacity:1;translate:0 0;filter:none}}
+@media (prefers-reduced-motion:reduce){ html.b7-recarga #painel-dashboard > .conteudo{filter:none;} }
