@@ -212,10 +212,17 @@ B7.Design = (function () {
     const nExtras = [F.tipo, F.status, F.linha, F.prioridade].filter(Boolean).length;
     if (F._maisFiltros === undefined) F._maisFiltros = nExtras > 0;
 
-    cx.innerHTML = '<div class="ds-barra">' +
+    /* zzz24: no celular os seletores ficam atrás de um ícone de filtro
+       (com a contagem do que está ligado) — eram três linhas de selects
+       empurrando a fila para baixo */
+    const nFiltrosM = [F.cliente, F.designer, F.tipo, F.status, F.prazo, F.linha, F.prioridade].filter(Boolean).length;
+    cx.innerHTML = '<div class="ds-barra' + (F._filtrosM ? ' filtros-m-abertos' : '') + '">' +
       '<div class="ds-busca-cx"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
-        '<input class="campo fina ds-busca" id="ds-busca" placeholder="Buscar cliente, linha editorial ou peça…" ' +
+        '<input class="campo fina ds-busca" id="ds-busca" placeholder="Buscar cliente, linha ou peça…" ' +
         'value="' + esc(F.busca) + '" aria-label="Buscar"></div>' +
+      '<button type="button" class="b fina contorno ds-bt-filtros-m' + (nFiltrosM ? ' ativo' : '') + '" id="ds-bt-filtros-m" aria-expanded="' + !!F._filtrosM + '" aria-label="Filtros">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
+        (nFiltrosM ? '<span class="ds-bt-n">' + nFiltrosM + '</span>' : '') + '</button>' +
       (equipe ? opc('cliente', F.cliente, [['', 'Cliente']].concat(clientes.map(c => [c.id, c.nome])), 'Cliente')
         : (clientesPresentes.length > 1 ? opc('cliente', F.cliente, [['', 'Cliente']].concat(clientesPresentes), 'Cliente') : '')) +
       (equipe ? opc('designer', F.designer, [['', 'Designer'], ['sem', 'Sem responsável']]
@@ -239,8 +246,8 @@ B7.Design = (function () {
       '<div class="ds-espaco"></div>' +
       '<span class="ds-total" id="ds-total"></span>' +
       (equipe ? '<div class="seg-vista" role="tablist">' +
-        '<button role="tab" class="' + (F.vista === 'quadro' ? 'on' : '') + '" data-vista="quadro">Quadro</button>' +
-        '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista">Lista</button>' +
+        '<button role="tab" class="' + (F.vista === 'quadro' ? 'on' : '') + '" data-vista="quadro" aria-label="Quadro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="4" width="5" height="16" rx="1.5"/><rect x="10.5" y="4" width="5" height="10" rx="1.5"/><rect x="17.5" y="4" width="3" height="13" rx="1.2"/></svg><span>Quadro</span></button>' +
+        '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista" aria-label="Lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg><span>Lista</span></button>' +
       '</div>' : '<div class="seg-vista" role="tablist">' +
         '<button role="tab" class="' + (F.modo === 'linhas' ? 'on' : '') + '" data-modo="linhas">Linhas editoriais</button>' +
         '<button role="tab" class="' + (F.modo === 'pecas' ? 'on' : '') + '" data-modo="pecas">Peças</button>' +
@@ -262,6 +269,12 @@ B7.Design = (function () {
         if (n && i) i.textContent = n; else if (n) mais.insertAdjacentHTML('beforeend', '<i>' + n + '</i>'); else if (i) i.remove();
       }
     });
+    const btFm = cx.querySelector('#ds-bt-filtros-m');
+    if (btFm) btFm.onclick = () => {
+      F._filtrosM = !F._filtrosM;
+      btFm.setAttribute('aria-expanded', F._filtrosM);
+      cx.querySelector('.ds-barra').classList.toggle('filtros-m-abertos', F._filtrosM);
+    };
     const mais = cx.querySelector('#ds-mais');
     if (mais) mais.onclick = () => { F._maisFiltros = !F._maisFiltros; guardarFiltros(); desenharBarra(); };
     cx.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => {
