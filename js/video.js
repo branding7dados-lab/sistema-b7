@@ -284,7 +284,7 @@ B7.Video = (function () {
 
     painel().innerHTML = '<div class="conteudo entra vd-tela">' +
       '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
-      '<p>Toda a fila de edição da B7 em um só lugar.</p></div>' +
+      '<p>Toda a fila de edição da B7 em um só lugar.</p><p class="vd-sub-m" id="vd-sub-m"></p></div>' +
       /* ferramentas de gestão: só equipe (o banco recusa de qualquer jeito) */
       (equipe
         ? '<div class="vd-acoes-topo">' +
@@ -432,8 +432,8 @@ B7.Video = (function () {
           (F.minhaFila ? ' checked' : '') + '><span>Minha fila</span></label>'
         : '') +
       '<div class="seg-vista" role="tablist">' +
-        '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista">Lista</button>' +
-        '<button role="tab" class="' + (F.vista === 'kanban' ? 'on' : '') + '" data-vista="kanban">Kanban</button>' +
+        '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista" aria-label="Lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg><span>Lista</span></button>' +
+        '<button role="tab" class="' + (F.vista === 'kanban' ? 'on' : '') + '" data-vista="kanban" aria-label="Kanban"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="4" width="5" height="16" rx="1.5"/><rect x="10.5" y="4" width="5" height="10" rx="1.5"/><rect x="17.5" y="4" width="3" height="13" rx="1.2"/></svg><span>Kanban</span></button>' +
       '</div>' +
     '</div>';
 
@@ -468,6 +468,9 @@ B7.Video = (function () {
   function desenharArea(visiveis) {
     const cx = painel().querySelector('#vd-area');
     if (!cx) return;
+    const sub = painel().querySelector('#vd-sub-m');
+    if (sub) sub.textContent = (F.competencia !== 'todas' ? competenciaRotulo(F.competencia) : 'Todos os meses') +
+      ' · ' + visiveis.length + ' demanda' + (visiveis.length === 1 ? '' : 's');
     cx.innerHTML = '<p class="vd-total">' + (visiveis.length
       ? visiveis.length + ' demanda' + (visiveis.length === 1 ? '' : 's') +
         (F.competencia !== 'todas' ? ' em ' + esc(competenciaRotulo(F.competencia)) : '')
@@ -530,28 +533,31 @@ B7.Video = (function () {
       const itens = ordenada.filter(d => grupoPrazo(d) === k);
       if (!itens.length) return '';
       return '<section class="vd-m-grupo vd-m-g-' + k + '"><h3 class="vd-m-grupo-cab"><span>' + esc(rot) + '</span><b>' + itens.length + '</b></h3>' +
-        itens.map(d => cartaoMovel(d, i++)).join('') + '</section>';
+        '<div class="vd-m2-caixa">' + itens.map(d => cartaoMovel(d, i++)).join('') + '</div></section>';
     }).join('') + '</div>';
   }
   function cartaoMovel(d, i) {
     const atrasada = ehAtrasada(d), prio = d.prioridade || 'normal', rel = prazoRelativo(d);
-    /* zzz22: logo grande à esquerda; à direita cliente/código + status,
-       título forte e a linha de prazo e responsável */
-    return '<article class="vd-m-card vd-m-s-' + esc(d.editing_status) + (atrasada ? ' atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + '">' +
+    /* zzz23: linha de lista (não mais cartão solto): logo, título forte,
+       cliente/código, etapa com bolinha + responsável, e a data à direita
+       com o "em N dias" colorido pela urgência */
+    const urg = atrasada ? ' atrasado' : rel === 'hoje' || rel === 'amanhã' ? ' hoje' : '';
+    const quem = d.videomaker_id && d.videomaker_nome
+      ? '<span class="vd-m2-quem"><i style="background:' + corVideomaker(d.videomaker_id) + '"></i>' + esc(d.videomaker_nome) + '</span>'
+      : '<span class="vd-m2-quem sem">sem responsável</span>';
+    return '<article class="vd-m-card vd-m2 vd-m-s-' + esc(d.editing_status) + (atrasada ? ' atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + '">' +
       '<span class="vd-m-logo">' + logoClienteHTML(d, 'md') + '</span>' +
-      '<div class="vd-m-corpo">' +
-        '<div class="vd-m-topo"><span class="vd-m-cli">' + esc(d.cliente_nome || 'Cliente') +
-          (d.codigo ? '<span class="vd-m-cod">#' + esc(String(d.codigo).replace(/^#+/, '')) + '</span>' : '') + '</span>' +
-          statusBadge(d.editing_status) + '</div>' +
-        '<div class="vd-m-tit">' + tituloComFallback(d) + '</div>' +
-        '<div class="vd-m-pe">' +
-          (d.prazo ? '<span class="vd-m-prazo' + (atrasada ? ' atrasado' : rel === 'hoje' ? ' hoje' : '') + '">' + IC_CAL +
-            esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + (rel ? '<i>' + esc(rel) + '</i>' : '') + '</span>'
-            : '<span class="vd-m-prazo vazio">' + IC_CAL + 'sem prazo</span>') +
-          (prio !== 'normal' ? prioridadeBadge(prio) : '') +
-          quemHTML(d) +
-        '</div>' +
-      '</div></article>';
+      '<div class="vd-m2-corpo">' +
+        '<div class="vd-m2-tit">' + tituloComFallback(d) + '</div>' +
+        '<div class="vd-m2-cli"><span>' + esc(d.cliente_nome || 'Cliente') + '</span>' +
+          (d.codigo ? '<em>#' + esc(String(d.codigo).replace(/^#+/, '')) + '</em>' : '') + '</div>' +
+        '<div class="vd-m2-st"><span class="vd-m2-etapa"><i></i>' + esc(rotuloSituacao(d.editing_status)) + '</span>' +
+          (prio !== 'normal' ? prioridadeBadge(prio) : '') + quem + '</div>' +
+      '</div>' +
+      (d.prazo
+        ? '<div class="vd-m2-data' + urg + '"><b>' + esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + '</b>' + (rel ? '<i>' + esc(rel) + '</i>' : '') + '</div>'
+        : '<div class="vd-m2-data vazio"><b>—</b><i>sem prazo</i></div>') +
+      '</article>';
   }
 
   function tituloComFallback(d) {
