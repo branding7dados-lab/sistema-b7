@@ -267,6 +267,11 @@ B7.Notif = (function () {
     if (bruta.dados && typeof bruta.dados === 'object' && bruta.dados.teste) return;
     const p = prefs();
     if (p.som) tocarSom();
+    /* o sino balança uma vez: dá pra ver que chegou, mesmo sem som */
+    document.querySelectorAll('.sino').forEach(b => {
+      b.classList.remove('toca'); void b.offsetWidth; b.classList.add('toca');
+      setTimeout(() => b.classList.remove('toca'), 1200);
+    });
     const n = await comCliente(bruta);
     if (p.navegador && document.hidden) avisarNavegador(n);
   }
@@ -320,7 +325,14 @@ B7.Notif = (function () {
   /* ------------------------------------------------------------ painel */
   function alternar(bt) { aberto ? fechar() : abrirPainel(bt); }
   function fechar() {
-    const p = document.querySelector('.sino-painel'); if (p) p.remove(); aberto = false;
+    /* zzz11: sai encolhendo de volta para o sino em vez de sumir seco */
+    document.querySelectorAll('.sino-painel:not(.saindo)').forEach(p => {
+      p.classList.add('saindo'); p.removeAttribute('id');
+      const fim = () => p.remove();
+      p.addEventListener('animationend', fim, { once: true });
+      setTimeout(fim, 260);
+    });
+    aberto = false;
     document.querySelectorAll('.sino').forEach(b => b.setAttribute('aria-expanded', 'false'));
   }
   async function abrirPainel(bt) {
@@ -330,14 +342,17 @@ B7.Notif = (function () {
     try { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { ctx = ctx || new AC(); ctx.resume().catch(() => {}); } } catch (e) {}
     const p = document.createElement('div');
     p.className = 'sino-painel';
-    p.innerHTML = '<div class="sino-cab"><b>Notificações</b>' +
-      '<button class="b fina" id="sino-todas">Marcar todas como lidas</button></div>' +
+    p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Notificações');
+    p.innerHTML = '<div class="sino-cab"><div class="sino-cab-tx"><b>Notificações</b><span class="sino-cab-n" id="sino-cab-n"></span></div>' +
+      '<button type="button" class="sino-acao" id="sino-todas" title="Marcar todas como lidas">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12.5l4 4 8-9M10.5 16.5l1 1 8.5-10"/></svg><span>Marcar lidas</span></button>' +
+      '<button type="button" class="sino-acao so-ic" id="sino-prefs" title="Preferências: o que te avisa, som e push" aria-label="Preferências de notificação">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>' +
       '<div class="sino-filtros" role="group" aria-label="Filtrar notificações">' +
         FILTROS.map(f => '<button type="button" data-filtro="' + f[0] + '" aria-pressed="' + (f[0] === filtro) + '">' + f[1] + '</button>').join('') +
       '</div>' +
-      '<div class="sino-lista"><div class="b7-load"><div class="simbolo"></div></div></div>' +
-      '<div class="sino-pe"><button class="b fina" id="sino-mais">Carregar mais</button>' +
-      '<button class="b fina" id="sino-prefs" title="O que te avisa, som e push">Preferências</button></div>';
+      '<div class="sino-lista">' + esqueleto() + '</div>' +
+      '<div class="sino-pe" hidden><button class="sino-mais" id="sino-mais">Carregar mais</button></div>';
     const r = bt.getBoundingClientRect();
     p.style.top = (r.bottom + 8) + 'px';
     /* no celular o CSS fixa left/right (folha de largura total) —
@@ -345,6 +360,8 @@ B7.Notif = (function () {
     if (window.innerWidth > 600) p.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
     document.body.appendChild(p);
     p.querySelector('#sino-todas').onclick = async () => {
+      /* os pontos apagam em onda antes de a lista ser relida */
+      p.querySelectorAll('.sino-item.nova').forEach((a, i) => setTimeout(() => a.classList.remove('nova'), i * 35));
       try { await B7.DB.marcarTodasLidas(); await atualizar(); listar(); } catch (e) {}
     };
     p.querySelectorAll('[data-filtro]').forEach(b => b.onclick = () => {
@@ -373,9 +390,47 @@ B7.Notif = (function () {
     return '<span class="sino-logo sino-logo-vazia">' + esc(ini) + '</span>';
   }
 
+  /* tipo do aviso → família (a mesma divisão dos filtros), para o selo */
+  function categoria(tipo) {
+    for (const f of FILTROS) if (f[2] && f[2].includes(tipo)) return f[0];
+    if (/^agenda\.|^resumo\./.test(tipo || '')) return 'prazos';
+    return 'outro';
+  }
+  const SVG = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+  const ICONE = {
+    atribuicoes: SVG('<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>'),
+    prazos: SVG('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+    correcoes: SVG('<path d="M4 20h4L19 9l-4-4L4 16z"/>'),
+    aprovacoes: SVG('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+    outro: SVG('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/>'),
+    sino: SVG('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>')
+  };
+  const inicioDia = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+  function rotuloDia(iso) {
+    const dias = Math.round((inicioDia(Date.now()) - inicioDia(iso)) / 864e5);
+    if (dias <= 0) return 'Hoje';
+    if (dias === 1) return 'Ontem';
+    if (dias < 7) return 'Esta semana';
+    if (dias < 31) return 'Este mês';
+    return 'Mais antigas';
+  }
+  /* hora curta à direita: 14:32 hoje, "ontem", "3 d", "12/09" */
+  function curto(iso) {
+    const d = new Date(iso), dias = Math.round((inicioDia(Date.now()) - inicioDia(iso)) / 864e5);
+    const min = Math.round((Date.now() - d) / 6e4);
+    if (min < 1) return 'agora';
+    if (min < 60) return min + ' min';
+    if (dias <= 0) return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    if (dias === 1) return 'ontem';
+    if (dias < 7) return dias + ' d';
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  const esqueleto = () => Array.from({ length: 4 }, (_, i) =>
+    '<div class="sino-esq" style="--i:' + i + '"><span></span><div><i></i><i></i><i></i></div></div>').join('');
+
   let ultimas = [], pedido = 0;
   async function listar(mais) {
-    const p = document.querySelector('.sino-painel'); if (!p) return;
+    const p = document.querySelector('.sino-painel:not(.saindo)'); if (!p) return;
     const lista = p.querySelector('.sino-lista');
     const meu = ++pedido;       /* troca rápida de filtro: só a última resposta pinta */
     try {
@@ -393,18 +448,31 @@ B7.Notif = (function () {
     }
     if (!ultimas.length) {
       lista.innerHTML = filtro === 'todas'
-        ? '<div class="sino-vazio"><b>Nada por aqui.</b><small>O que for atribuído a você, seus prazos e as decisões do seu trabalho aparecem nesta lista.</small></div>'
-        : '<div class="sino-vazio"><b>Nada nesta categoria.</b><small>Veja em “Todas” o que chegou.</small></div>';
+        ? '<div class="sino-vazio"><span class="sino-vazio-ic" aria-hidden="true">' + ICONE.sino + '</span><b>Tudo em dia.</b><small>O que for atribuído a você, seus prazos e as decisões do seu trabalho aparecem aqui.</small></div>'
+        : '<div class="sino-vazio"><span class="sino-vazio-ic" aria-hidden="true">' + ICONE.sino + '</span><b>Nada nesta categoria.</b><small>Veja em “Todas” o que chegou.</small></div>';
+      const pe = p.querySelector('.sino-pe'); if (pe) pe.hidden = true;
       return;
     }
-    lista.innerHTML = ultimas.map(n =>
-      '<a class="sino-item' + (n.lida_em ? '' : ' nova') + '" data-id="' + esc(n.id) + '" href="' + esc(B7.UI.linkInterno(n.link)) + '">' +
-        '<span class="sino-ponto"></span>' +
-        logoClienteHTML(n) +
+    /* zzz11: agrupado por dia, com o tipo do aviso num selo sobre a logo */
+    let ultimoDia = null, i = 0;
+    lista.innerHTML = ultimas.map(n => {
+      const dia = rotuloDia(n.created_at);
+      const cab = dia !== ultimoDia ? '<div class="sino-dia" style="--i:' + Math.min(i++, 14) + '">' + dia + '</div>' : '';
+      ultimoDia = dia;
+      const cat = categoria(n.tipo);
+      return cab +
+      '<a class="sino-item' + (n.lida_em ? '' : ' nova') + '" data-id="' + esc(n.id) + '" href="' + esc(B7.UI.linkInterno(n.link)) + '" style="--i:' + Math.min(i++, 14) + '">' +
+        '<span class="sino-av">' + logoClienteHTML(n) +
+          '<span class="sino-selo sino-c-' + cat + '" aria-hidden="true">' + (ICONE[cat] || ICONE.outro) + '</span></span>' +
         '<span class="sino-tx">' +
-          (n.cliente_nome ? '<i class="sino-cliente">' + esc(n.cliente_nome) + '</i>' : '') +
+          '<span class="sino-linha1">' + (n.cliente_nome ? '<i class="sino-cliente">' + esc(n.cliente_nome) + '</i>' : '<i class="sino-cliente">Sistema B7</i>') +
+            '<small>' + esc(curto(n.created_at)) + '</small></span>' +
           '<b>' + esc(n.titulo) + '</b>' + (n.mensagem ? '<p>' + esc(n.mensagem) + '</p>' : '') +
-        '<small>' + esc(B7.UI.quando(n.created_at)) + '</small></span></a>').join('');
+        '</span><span class="sino-ponto" aria-hidden="true"></span></a>';
+    }).join('');
+    const nn = p.querySelector('#sino-cab-n');
+    if (nn) { nn.textContent = naoLidas ? naoLidas + (naoLidas === 1 ? ' nova' : ' novas') : ''; nn.hidden = !naoLidas; }
+    p.querySelector('.sino-pe').hidden = p.querySelector('#sino-mais').hidden;
     lista.querySelectorAll('img.sino-logo').forEach(img => {
       img.onerror = () => {
         const v = document.createElement('span');
