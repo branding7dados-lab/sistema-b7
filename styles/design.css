@@ -1088,3 +1088,70 @@ body.ds-lb-aberta{overflow:hidden;}
 @keyframes dsLinha{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:none}}
 @keyframes dsCab{from{opacity:0;transform:translate3d(-8px,0,0)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.ds-heroi,.ds-heroi-barra i,.ds-troca .ds-m-linha,.ds-troca .ds-m-cab{animation:none !important;}}
+
+/* =====================================================================
+   DESIGN NO CELULAR 5 (zzz33)
+   • abas viram abas de verdade (texto + sublinhado que desliza) — não
+     brigam mais com as pílulas de etapa;
+   • "precisa de você" vira um cartão de ação: Revisar em sequência em
+     destaque e os outros atalhos embaixo;
+   • grupo por cliente com "Atribuir", 4 peças e "Ver mais N";
+   • linha sem o boneco tracejado repetido.
+   ===================================================================== */
+.ds-acao-m{display:none;}
+@media (max-width:760px){
+  /* abas sublinhadas */
+  .design-tela .ds-abas{gap:2px !important;margin:0 -16px 14px !important;padding:0 16px !important;border-bottom:1px solid var(--borda) !important;}
+  .design-tela .ds-abas button{position:relative;height:40px !important;padding:0 12px !important;border:0 !important;border-radius:0 !important;background:none !important;
+    color:var(--ink-3) !important;font-size:14px !important;font-weight:600;}
+  .design-tela .ds-abas button:after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2.5px;border-radius:2px 2px 0 0;
+    background:linear-gradient(90deg,#6B3FD8,#D63384);transform:scaleX(0);transition:transform .35s cubic-bezier(.16,1,.3,1);}
+  .design-tela .ds-abas button.on{color:var(--ink) !important;font-weight:800;}
+  .design-tela .ds-abas button.on:after{transform:scaleX(1);}
+  .design-tela .ds-abas .ds-aba-n{font-size:11px !important;font-weight:700;margin-left:5px !important;padding:1px 6px;border-radius:999px;
+    background:color-mix(in srgb, var(--ink) 7%, transparent) !important;color:var(--ink-3) !important;}
+  .design-tela .ds-abas button.on .ds-aba-n{background:color-mix(in srgb, var(--acento) 14%, transparent) !important;color:var(--acento) !important;}
+
+  /* cartão de ação */
+  .design-tela .ds-precisa{display:none !important;}
+  .ds-acao-m{display:block;margin:0 0 14px;padding:6px;border-radius:20px;background:var(--card);
+    border:1px solid color-mix(in srgb, var(--ink) 7%, transparent);box-shadow:0 12px 30px -26px rgba(20,8,40,.6);animation:dsAcaoIn .5s cubic-bezier(.16,1,.3,1) both;}
+  .ds-acao-rev{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px 12px 12px;border:0;border-radius:15px;cursor:pointer;text-align:left;color:#fff;font:inherit;
+    background:linear-gradient(120deg,#4B1FA0 0%,#8A2BB0 55%,#D63384 100%);box-shadow:0 10px 22px -14px rgba(160,40,140,.9);transition:transform .15s;}
+  .ds-acao-rev:active{transform:scale(.98);}
+  .ds-acao-play{flex:none;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;
+    background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
+  .ds-acao-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+  .ds-acao-tx b{font-size:15px;font-weight:800;}
+  .ds-acao-tx small{font-size:12px;color:rgba(255,255,255,.78);}
+  .ds-acao-rev em{flex:none;font-style:normal;font-family:'Archivo',sans-serif;font-size:20px;font-weight:900;}
+  .ds-acao-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:6px 4px 2px;}
+  .ds-acao-chips::-webkit-scrollbar{display:none;}
+  .ds-acao-rev + .ds-acao-chips{padding-top:8px;}
+  .ds-acao-chip{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border:0;border-radius:999px;white-space:nowrap;cursor:pointer;
+    background:color-mix(in srgb, var(--ink) 5%, transparent);color:var(--ink-2);font:inherit;font-size:12.5px;font-weight:600;transition:background .2s, transform .15s;}
+  .ds-acao-chip b{font-weight:800;}
+  .ds-acao-chip.urgente b{color:var(--erro);} .ds-acao-chip.atencao b{color:var(--ambar);}
+  .ds-acao-chip:active{transform:scale(.95);}
+  .ds-acao-chip.on{background:var(--ink);color:var(--card);} .ds-acao-chip.on b{color:inherit;}
+
+  /* grupo por cliente */
+  .ds-m-cab{gap:11px !important;}
+  .ds-m-logo{width:36px !important;height:36px !important;border-radius:11px !important;}
+  .ds-m-cab-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+  .ds-m-cab-tx b{font-family:'Archivo',sans-serif;font-size:16px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ds-m-cab-tx small{font-size:12px;font-weight:600;color:var(--ink-4);}
+  .ds-m-cab > i{display:none !important;}
+  .ds-m-atribuir{flex:none;height:32px;padding:0 14px;border-radius:999px;border:1px solid color-mix(in srgb, var(--acento) 35%, var(--borda));
+    background:color-mix(in srgb, var(--acento) 8%, var(--card));color:var(--acento);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:transform .15s;}
+  .ds-m-atribuir:active{transform:scale(.95);}
+  .ds-m-linha.extra{display:none;}
+  .ds-m-grupo.aberto .ds-m-linha.extra{display:grid;animation:dsLinha .45s cubic-bezier(.16,1,.3,1) both;}
+  .ds-m-linha.sem-dono{grid-template-columns:40px minmax(0,1fr) !important;}
+  .ds-m-mais{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:44px;border:0;border-top:1px solid var(--borda);background:none;
+    color:var(--acento);font:inherit;font-size:13px;font-weight:700;cursor:pointer;}
+  .ds-m-mais svg{width:16px;height:16px;transition:transform .3s cubic-bezier(.16,1,.3,1);}
+  .ds-m-grupo.aberto .ds-m-mais svg{transform:rotate(180deg);}
+  .ds-m-mais:active{background:color-mix(in srgb, var(--acento) 6%, transparent);}
+}
+@keyframes dsAcaoIn{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:none}}
