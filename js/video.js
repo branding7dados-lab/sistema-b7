@@ -296,7 +296,7 @@ B7.Video = (function () {
               ? '<button class="b fina" id="vd-descartados">' + IC.lixeira + 'Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
               : '') +
           '</div>' +
-          '<button class="b pri" id="vd-nova">' + IC.mais + 'Nova demanda</button></div>'
+          '<button class="b pri" id="vd-nova" aria-label="Nova demanda">' + IC.mais + '<span>Nova demanda</span></button></div>'
         : '') +
       '</div>' +
       '<datalist id="vd-pacotes-lista">' + pacotesVideoCache.map(p => '<option value="' + esc(p.nome) + '">').join('') + '</datalist>' +
