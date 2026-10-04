@@ -1075,7 +1075,8 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
   transition:transform .4s var(--cl2-mola);}
 .cl2-card:hover .cl2-logo{transform:scale(1.06) rotate(-3deg);}
 .cl2-logo > *{width:100% !important;height:100% !important;border-radius:16px !important;margin:0 !important;font-size:16px !important;}
-.cl2-logo img{object-fit:contain !important;padding:5px;box-sizing:border-box;background:#fff;}
+.cl2-logo .com-logo{padding:0 !important;border:0 !important;background:#fff !important;}
+.cl2-logo img{width:100% !important;height:100% !important;object-fit:cover !important;padding:0 !important;margin:0 !important;border-radius:0 !important;max-width:none !important;max-height:none !important;display:block;}
 .cl2-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
 .cl2-tx b{font-size:15px;font-weight:650;color:var(--ink);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
 .cl2-meta{display:flex;align-items:center;gap:10px;min-width:0;font-size:12.5px;color:var(--ink-3);white-space:nowrap;}
