@@ -1157,7 +1157,7 @@ body.apurando #app{visibility:hidden;}
   animation:abChave 1.9s cubic-bezier(.45,0,.2,1) 2.1s both;}
 @keyframes abChave{0%{opacity:0;transform:translate3d(0,0,0) rotate(18deg)}20%{opacity:1}
   100%{opacity:0;transform:translate3d(320%,0,0) rotate(18deg)}}
-.ab-grao{inset:0;opacity:.07;mix-blend-mode:overlay;
+.ab-grao{inset:0;opacity:.05;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");}
 /* clarão: a tela inteira acende por um instante na ignição */
 .ab-clarao{inset:0;opacity:0;
@@ -2375,7 +2375,7 @@ html.b7-recarga #painel-dashboard > .conteudo{opacity:.5;filter:saturate(.7) blu
 /* saída de cinema (escuro): o céu passa pela câmera em vez da íris */
 :root:not([data-theme="light"]) .b7-abertura.saindo .ab-ceu{-webkit-mask:none;mask:none;transform-origin:50% calc(50% - 6vh);
   animation:abAtravessa .9s cubic-bezier(.65,0,.25,1) forwards;}
-@keyframes abAtravessa{0%{opacity:1;transform:none;filter:none}55%{opacity:.85}100%{opacity:0;transform:scale(1.45);filter:blur(10px) brightness(1.4)}}
+@keyframes abAtravessa{0%{opacity:1;transform:none}55%{opacity:.85}100%{opacity:0;transform:scale(1.45)}}
 .b7-abertura.saindo .ab-ceu:after{animation:abSomeRapido .3s ease forwards;}
 
 /* flare anamórfico + vazamento de luz (camada .ab-luz, js/app.js) */
@@ -2399,8 +2399,31 @@ html.b7-recarga #painel-dashboard > .conteudo{opacity:.5;filter:saturate(.7) blu
 body.ab-revela #painel-dashboard{animation:abRevelaFoco 1s cubic-bezier(.16,1,.3,1) .12s both;}
 body.ab-revela .topo-global{animation:abRevelaDesfoca .7s cubic-bezier(.16,1,.3,1) .22s both;}
 body.ab-revela .nav-inferior{animation:abRevelaBase2 .8s cubic-bezier(.16,1,.3,1) .3s both;}
-@keyframes abRevelaFoco{0%{opacity:0;transform:scale(1.06);filter:blur(14px) brightness(1.25)}60%{filter:blur(1px) brightness(1.05)}100%{opacity:1;transform:none;filter:none}}
-@keyframes abRevelaDesfoca{from{opacity:0;filter:blur(8px);transform:translate3d(0,-8px,0)}to{opacity:1;filter:none;transform:none}}
-@keyframes abRevelaBase2{from{opacity:0;filter:blur(8px);transform:translate3d(0,26px,0)}to{opacity:1;filter:none;transform:none}}
+@keyframes abRevelaFoco{0%{opacity:0;transform:scale(1.06)}100%{opacity:1;transform:none}}
+@keyframes abRevelaDesfoca{from{opacity:0;transform:translate3d(0,-8px,0)}to{opacity:1;transform:none}}
+@keyframes abRevelaBase2{from{opacity:0;transform:translate3d(0,26px,0)}to{opacity:1;transform:none}}
 html.modo-leve body.ab-revela :is(#painel-dashboard,.topo-global,.nav-inferior){animation:abRevelaFade .4s ease both;}
 @media (prefers-reduced-motion:reduce){ .ab-ceu:after{display:none;} .ab-frase{animation:none;color:rgba(255,255,255,.7);background:none;} }
+
+/* =====================================================================
+   DESEMPENHO (zzz43) — "tá travando bastante" (vídeo do Kevin, 04/10)
+   O que pesava: desfoques animados em camadas grandes (o sistema entrando
+   em foco por baixo de cartões que também desfocavam letra a letra),
+   mix-blend-mode em camadas de tela cheia (forçam o celular a recompor
+   tudo o que está atrás a cada quadro) e um cone de luz de 150vmax girando
+   (no celular com tela 3x vira uma textura de ~4000 px). Agora tudo que
+   anima é só transform/opacidade, que a placa de vídeo faz sozinha.
+   ===================================================================== */
+.ab-ceu:after{display:none !important;}
+.ab-luz-clarao,.ab-luz-flare,.ab-luz-vaza{mix-blend-mode:normal !important;}
+.ab-luz-vaza{opacity:0;background:radial-gradient(60% 40% at 15% 20%, rgba(255,120,190,.22), transparent 70%),
+             radial-gradient(50% 45% at 90% 85%, rgba(124,58,237,.22), transparent 70%);}
+.ab-luz > i{will-change:transform,opacity;}
+.b7-abertura .ab-ceu{will-change:transform,opacity;}
+/* grão de filme: parado e sem mistura (o movimento dele custava um quadro inteiro) */
+.pn-ceu .pn-grao{mix-blend-mode:normal;opacity:.035;animation:none !important;}
+.vd-h-grao{mix-blend-mode:normal !important;opacity:.06 !important;}
+.pn-ceu{contain:paint;}
+.pn-ceu .pn-luz-a,.pn-ceu .pn-luz-b,.pn-ceu .pn-raios,.pn-bokeh i{will-change:transform;}
+.ab-rastro{mix-blend-mode:normal !important;filter:none !important;}
+@media (max-width:760px){ .vd-h-feixe:before{mix-blend-mode:normal !important;} }
