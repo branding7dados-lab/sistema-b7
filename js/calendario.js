@@ -451,9 +451,9 @@ B7.Calendario = (function () {
             (t.id ? '<i class="cb-dom-ic d-' + t.dominios[0] + '">' + E().DOMINIOS[t.dominios[0]].ic + '</i>' : '') + '<span class="cb-tipo-rot">' + esc(t.rot) + '</span>' +
             (R.pronto ? '<span class="cb-n">' + nTipo(t.id ? t : null) + '</span>' : '') + '</button>').join('') + '</div>' : '';
     const selsHTML =
-        '<select class="campo fina' + (V.cliente ? ' ativo' : '') + '" id="cb-f-cliente" aria-label="Cliente"><option value="">Cliente: todos</option>' +
+        '<select class="campo fina' + (V.cliente ? ' ativo' : '') + '" id="cb-f-cliente" aria-label="Cliente"><option value="">Cliente</option>' +
           clientes.map(c => '<option value="' + esc(c.id) + '"' + (c.id === V.cliente ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select>' +
-        (resps.size ? '<select class="campo fina' + (V.resp ? ' ativo' : '') + '" id="cb-f-resp" aria-label="Responsável"><option value="">Responsável: todos</option>' +
+        (resps.size ? '<select class="campo fina' + (V.resp ? ' ativo' : '') + '" id="cb-f-resp" aria-label="Responsável"><option value="">Responsável</option>' +
           [...resps.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')).map(([id, n]) =>
             '<option value="' + esc(id) + '"' + (id === V.resp ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>' : '') +
         '<label class="cb-check"><input type="checkbox" id="cb-f-canc"' + (V.canceladas ? ' checked' : '') + '><span>Mostrar canceladas</span></label>';
