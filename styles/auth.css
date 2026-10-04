@@ -600,3 +600,140 @@ body.sem-sessao main{display:none;}
   .lu3-linha + .lu3-linha::before{left:66px;}
 }
 @media (prefers-reduced-motion: reduce){ .lu3-linha{animation:none !important;} }
+
+/* =====================================================================
+   PERFIL 2 (zzz12) — js/perfil.js
+   Cabeçalho com aurora e foto com anel; abas com ícone e uma pílula que
+   desliza; troca de aba no sentido certo; cartões com ícone colorido no
+   título; interruptores de notificação com ícone; medidor de força da
+   senha; "Sair" com ícone. Mesmas ações de antes.
+   ===================================================================== */
+.pf-modal{--pf-mola:cubic-bezier(.16,1,.3,1);}
+.pf-modal .perfil-topo{isolation:isolate;overflow:hidden;padding:26px 64px 20px 26px;margin-bottom:12px;}
+.pf-aurora{position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--acento) 18%, transparent), transparent 55%),
+    radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, #7C5CFF 16%, transparent), transparent 60%);
+  -webkit-mask-image:linear-gradient(#000 55%, transparent);mask-image:linear-gradient(#000 55%, transparent);
+  animation:pfAurora 9s ease-in-out infinite alternate;}
+@keyframes pfAurora{to{filter:hue-rotate(-18deg);transform:scale(1.06) translate3d(-10px,4px,0)}}
+.pf-modal .perfil-avatar{width:72px;height:72px;border-radius:50%;
+  box-shadow:0 0 0 3px var(--card), 0 0 0 5.5px color-mix(in srgb, var(--acento) 70%, #7C5CFF), 0 14px 30px -14px rgba(20,8,40,.6);
+  animation:pfAvatar .7s var(--pf-mola) both;}
+.pf-modal .perfil-avatar.av-pessoa{font-size:72px;}
+@keyframes pfAvatar{from{opacity:0;transform:scale(.7) rotate(-8deg)}to{opacity:1;transform:none}}
+.pf-modal .perfil-id{animation:pfSobe .55s var(--pf-mola) .08s both;}
+.pf-modal .perfil-id b{font-size:21px;letter-spacing:-.3px;}
+.pf-modal .perfil-papel{font-size:10.5px;letter-spacing:.06em;padding:4px 10px;}
+@keyframes pfSobe{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
+.pf-modal .pf-x{top:18px;right:18px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb, var(--card) 70%, transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  transition:background .2s, transform .3s var(--pf-mola);}
+.pf-modal .pf-x svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;}
+.pf-modal .pf-x:hover{transform:rotate(90deg);background:var(--card);}
+
+/* abas */
+.pf-modal .pf-abas{position:relative;gap:0;padding:4px;border-radius:14px;background:color-mix(in srgb, var(--ink) 5%, transparent);}
+.pf-abas-luz{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:11px;background:var(--card);
+  box-shadow:0 1px 2px rgba(20,8,40,.08), 0 6px 16px -8px rgba(20,8,40,.35);
+  transition:transform .42s var(--pf-mola), width .42s var(--pf-mola);}
+.pf-modal .pf-abas button{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;
+  background:none !important;box-shadow:none !important;transition:color .25s;}
+.pf-modal .pf-abas button svg{width:16px;height:16px;flex:none;opacity:.75;transition:transform .35s var(--pf-mola), opacity .25s;}
+.pf-modal .pf-abas button[aria-selected="true"]{color:var(--ink);}
+.pf-modal .pf-abas button[aria-selected="true"] svg{opacity:1;color:var(--acento);transform:scale(1.1);}
+
+/* troca de aba no sentido do toque, e cartões em cascata */
+.pf-painel.vem-dir{animation:pfDir .4s var(--pf-mola) both;}
+.pf-painel.vem-esq{animation:pfEsq .4s var(--pf-mola) both;}
+@keyframes pfDir{from{opacity:0;transform:translate3d(22px,0,0)}to{opacity:1;transform:none}}
+@keyframes pfEsq{from{opacity:0;transform:translate3d(-22px,0,0)}to{opacity:1;transform:none}}
+.pf-painel > *{animation:pfSobe .5s var(--pf-mola) both;}
+.pf-painel > :nth-child(2){animation-delay:.05s;} .pf-painel > :nth-child(3){animation-delay:.1s;}
+.pf-painel > :nth-child(4){animation-delay:.15s;} .pf-painel > :nth-child(n+5){animation-delay:.2s;}
+
+/* cartões */
+.pf-modal .pf-cartao{border-radius:20px;padding:18px;background:var(--card);
+  border:1px solid color-mix(in srgb, var(--ink) 8%, transparent);box-shadow:0 10px 28px -24px rgba(20,8,40,.5);}
+.pf-modal .pf-cartao.leitura{background:color-mix(in srgb, var(--ink) 3%, var(--card));}
+.pf-tit{display:flex;align-items:center;gap:11px;}
+.pf-modal .pf-cartao > .pf-tit + .ajuda{margin:-2px 0 14px 45px;}
+.pf-ic{flex:none;width:34px;height:34px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3), 0 6px 14px -8px rgba(20,8,40,.55);}
+.pf-ic svg{width:17px;height:17px;}
+.pf-rosa{background:linear-gradient(145deg,#FF5FA8,#C2187A);} .pf-violeta{background:linear-gradient(145deg,#9B7BFF,#6A3FE0);}
+.pf-azul{background:linear-gradient(145deg,#4FA3FF,#2A63E0);} .pf-verde{background:linear-gradient(145deg,#3FD08A,#169A5C);}
+.pf-ambar{background:linear-gradient(145deg,#FFB13D,#EC6A12);} .pf-cinza{background:linear-gradient(145deg,#8E86A8,#5B5375);}
+
+/* foto: zona mais leve */
+.pf-modal .foto-zona{border-radius:16px;border-width:1.5px;padding:18px 16px;background:color-mix(in srgb, var(--ink) 2.5%, transparent);
+  transition:border-color .2s, background .2s, transform .25s var(--pf-mola);}
+.pf-modal .foto-zona:hover{transform:translate3d(0,-1px,0);}
+.pf-modal .perfil-acao .b{border-radius:12px;}
+.pf-modal .b.pri:disabled{opacity:.45;filter:saturate(.6);box-shadow:none;}
+
+/* nome */
+.pf-modal .pf-campo-acao .campo{height:46px;border-radius:13px;}
+.pf-modal .pf-campo-acao .b{height:46px;border-radius:13px;padding:0 18px;}
+
+/* leitura */
+.pf-modal .perfil-linha{padding:10px 0;border-bottom:1px solid color-mix(in srgb, var(--ink) 7%, transparent);}
+.pf-modal .perfil-linha b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;}
+
+/* senha */
+.pf-modal .pf-cartao .rot{margin-top:14px;font-size:10.5px;letter-spacing:.1em;}
+.pf-modal .pf-senha .campo{height:48px;border-radius:13px;padding-left:44px;transition:border-color .2s, box-shadow .2s;}
+.pf-modal .pf-senha::before{content:'';position:absolute;left:15px;top:50%;width:16px;height:16px;transform:translateY(-50%);pointer-events:none;
+  background:var(--ink-4);-webkit-mask:var(--pf-cad) center/contain no-repeat;mask:var(--pf-cad) center/contain no-repeat;
+  --pf-cad:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Crect x='5' y='10.5' width='14' height='10' rx='2.5'/%3E%3Cpath d='M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3'/%3E%3C/svg%3E");
+  transition:background .2s;}
+.pf-modal .pf-senha:focus-within::before{background:var(--acento);}
+.pf-modal .pf-senha .campo:focus{border-color:color-mix(in srgb, var(--acento) 55%, transparent);box-shadow:0 0 0 4px var(--acento-suave);}
+.pf-forca{display:flex;align-items:center;gap:5px;margin:16px 0 0;}
+.pf-forca i{flex:1;height:5px;border-radius:5px;background:color-mix(in srgb, var(--ink) 8%, transparent);transition:background .35s, transform .35s var(--pf-mola);}
+.pf-forca span{flex:none;min-width:58px;text-align:right;font-size:11.5px;font-weight:700;color:var(--ink-4);transition:color .3s;}
+.pf-forca[data-n="1"] i:nth-child(-n+1), .pf-forca[data-n="2"] i:nth-child(-n+2){background:#E2409C;}
+.pf-forca[data-n="3"] i:nth-child(-n+3){background:#F08A1E;}
+.pf-forca[data-n="4"] i{background:var(--ok);}
+.pf-forca[data-n="1"] span, .pf-forca[data-n="2"] span{color:#E2409C;} .pf-forca[data-n="3"] span{color:#F08A1E;} .pf-forca[data-n="4"] span{color:var(--ok);}
+.pf-forca[data-n="4"] i{animation:pfPulso .5s var(--pf-mola);}
+@keyframes pfPulso{50%{transform:scaleY(1.8)}}
+.pf-modal .pf-req{margin-top:12px;gap:8px 14px;}
+.pf-modal .pf-req li{transition:color .25s;}
+.pf-modal .pf-req li::before{transition:background-color .25s, border-color .25s, transform .35s var(--pf-mola);}
+.pf-modal .pf-req li.ok::before{transform:scale(1.12);}
+.pf-modal #pf-salvar-senha{height:44px;padding:0 20px;border-radius:13px;}
+
+/* notificações */
+.pf-modal .pf-resumo{border-radius:16px;padding:14px 16px;margin-bottom:8px;}
+.pf-modal .pf-resumo i{position:relative;}
+.pf-modal .pf-resumo.ok i::after{content:'';position:absolute;inset:0;border-radius:50%;background:currentColor;animation:pfOnda 1.8s ease-out infinite;}
+@keyframes pfOnda{from{transform:scale(1);opacity:.6}to{transform:scale(3.2);opacity:0}}
+.pf-modal .perfil-opcao{padding:13px 0;gap:13px;border-bottom-color:color-mix(in srgb, var(--ink) 7%, transparent);}
+.pf-modal .perfil-opcao.com-ic .perfil-opcao-tx{flex:1;}
+.pf-modal .perfil-opcao .pf-ic{width:32px;height:32px;border-radius:10px;}
+.pf-modal .perfil-opcao .pf-ic svg{width:16px;height:16px;}
+.pf-modal .pf-teste-push .b{border-radius:12px;height:42px;}
+.pf-modal .pf-grupo{border-radius:16px;}
+
+/* rodapé */
+.pf-modal .acoes{border-top-color:color-mix(in srgb, var(--ink) 7%, transparent);}
+.pf-modal #pf-sair{display:inline-flex;align-items:center;gap:8px;border-radius:13px;
+  border-color:color-mix(in srgb, var(--erro) 30%, transparent);background:color-mix(in srgb, var(--erro) 5%, transparent);}
+.pf-modal #pf-sair svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--pf-mola);}
+.pf-modal #pf-sair:hover svg{transform:translateX(-3px);}
+.pf-modal .acoes .b[data-fecha]{border-radius:13px;}
+
+@media (max-width:640px){
+  .pf-modal .perfil-topo{padding:22px 58px 16px 18px;}
+  .pf-modal .perfil-avatar{width:64px;height:64px;}
+  .pf-modal .perfil-avatar.av-pessoa{font-size:64px;}
+  .pf-modal .pf-abas button{font-size:12.5px;gap:6px;}
+  .pf-modal .pf-cartao{padding:16px;}
+  .pf-modal .pf-cartao > .pf-tit + .ajuda{margin-left:0;}
+}
+@media (max-width:380px){ .pf-modal .pf-abas button svg{display:none;} }
+html.modo-leve .pf-aurora{animation:none;}
+@media (prefers-reduced-motion: reduce){
+  .pf-aurora, .pf-modal .perfil-avatar, .pf-modal .perfil-id, .pf-painel, .pf-painel > *, .pf-forca i{animation:none !important;}
+  .pf-abas-luz{transition:none;}
+}

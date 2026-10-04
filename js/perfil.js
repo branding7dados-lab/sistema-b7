@@ -13,6 +13,18 @@
 window.B7 = window.B7 || {};
 
 B7.Perfil = (function () {
+  const SVG = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+  const IC = {
+    pessoa: SVG('<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>'),
+    cadeado: SVG('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/>'),
+    sino: SVG('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>'),
+    camera: SVG('<path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.3"/>'),
+    escudo: SVG('<path d="M12 3l7 3v5.5c0 4.5-3 8-7 9.5-4-1.5-7-5-7-9.5V6z"/><path d="M9 12l2 2 4-4"/>'),
+    chave: SVG('<circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/>'),
+    celular: SVG('<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>'),
+    som: SVG('<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>'),
+    janela: SVG('<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M3 9h18M6.5 6.8h.01M9 6.8h.01"/>')
+  };
   const esc = B7.UI.esc;
 
   const ROTULO = {
@@ -32,7 +44,10 @@ B7.Perfil = (function () {
        avisos), e a coluna única obrigava a rolar por tudo para achar. As
        ações e as regras são as mesmas de antes. */
     const abaInicial = secao === 'notificacoes' ? 'notif' : secao === 'seguranca' ? 'seg' : 'conta';
-    const ABAS = [['conta', 'Conta'], ['seg', 'Segurança'], ['notif', 'Notificações']];
+    /* zzz12: abas com ícone e uma pílula que desliza até a escolhida;
+       cada cartão ganha um ícone colorido no título */
+    const ABAS = [['conta', 'Conta', IC.pessoa], ['seg', 'Segurança', IC.cadeado], ['notif', 'Notificações', IC.sino]];
+    const titulo = (ic, tom, tx) => '<h4 class="pf-tit"><span class="pf-ic pf-' + tom + '" aria-hidden="true">' + ic + '</span>' + tx + '</h4>';
     const senha = (id, rot, auto) =>
       '<label class="rot" for="' + id + '">' + rot + '</label>' +
       '<div class="pf-senha"><input class="campo" id="' + id + '" type="password" autocomplete="' + auto + '">' +
@@ -41,7 +56,7 @@ B7.Perfil = (function () {
       '</button></div>';
 
     const m = B7.UI.modal(
-      '<div class="perfil-topo">' +
+      '<div class="perfil-topo"><i class="pf-aurora" aria-hidden="true"></i>' +
         '<div class="perfil-avatar av-pessoa tom-' + B7.UI.tomDoNome(u.nome || u.username) + '" id="pf-avatar">' +
           (u.avatar_url
             ? '<img src="' + esc(u.avatar_url) + '" alt="">'
@@ -52,12 +67,12 @@ B7.Perfil = (function () {
           '<span class="perfil-papel ' + esc(u.papel) + '">' +
             esc(ROTULO[u.papel] || u.papel) + '</span>' +
         '</div>' +
-        '<button type="button" class="pf-x" data-fecha aria-label="Fechar">×</button>' +
+        '<button type="button" class="pf-x" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
       '</div>' +
 
-      '<div class="pf-abas" role="tablist" aria-label="Seções do perfil">' +
+      '<div class="pf-abas" role="tablist" aria-label="Seções do perfil"><i class="pf-abas-luz" aria-hidden="true"></i>' +
         ABAS.map(a => '<button type="button" role="tab" data-aba="' + a[0] + '" aria-selected="' +
-          (a[0] === abaInicial) + '">' + a[1] + '</button>').join('') +
+          (a[0] === abaInicial) + '">' + a[2] + '<span>' + a[1] + '</span></button>').join('') +
       '</div>' +
 
       '<div class="corpo">' +
@@ -68,7 +83,7 @@ B7.Perfil = (function () {
           /* A foto é do usuário: ele troca a dele sem passar pelo admin.
              Escolhe o arquivo, confere no avatar lá em cima e salva. */
           '<div class="pf-cartao">' +
-            '<h4>Foto de perfil</h4>' +
+            titulo(IC.camera, 'rosa', 'Foto de perfil') +
             '<p class="ajuda">Aparece no topo, nas listas e nas ações que você faz.</p>' +
             '<div id="pf-zona"></div>' +
             '<div class="perfil-acao">' +
@@ -79,7 +94,7 @@ B7.Perfil = (function () {
           '</div>' +
 
           '<div class="pf-cartao">' +
-            '<h4><label for="pf-nome">Nome</label></h4>' +
+            titulo(IC.pessoa, 'violeta', '<label for="pf-nome">Nome</label>') +
             '<p class="ajuda">É o que aparece para a equipe nas ações que você faz.</p>' +
             '<div class="pf-campo-acao">' +
               '<input class="campo" id="pf-nome" value="' + esc(u.nome) + '" maxlength="80">' +
@@ -90,7 +105,7 @@ B7.Perfil = (function () {
 
           /* o que só o administrador muda: mostrado, nunca editável */
           '<div class="pf-cartao leitura">' +
-            '<h4>Definido pela Branding7</h4>' +
+            titulo(IC.escudo, 'cinza', 'Definido pela Branding7') +
             '<div class="perfil-linha"><span>Usuário</span><b>@' + esc(u.username) + '</b></div>' +
             '<div class="perfil-linha"><span>Perfil</span><b>' +
               esc(ROTULO[u.papel] || u.papel) + '</b></div>' +
@@ -107,11 +122,12 @@ B7.Perfil = (function () {
         /* -------------------------------------------------- segurança */
         '<section class="pf-painel" data-painel="seg" role="tabpanel" hidden>' +
           '<div class="pf-cartao">' +
-            '<h4>Trocar senha</h4>' +
+            titulo(IC.chave, 'ambar', 'Trocar senha') +
             '<p class="ajuda">Ao trocar, as outras sessões abertas com esta conta são encerradas.</p>' +
             senha('pf-atual', 'SENHA ATUAL', 'current-password') +
             senha('pf-nova', 'NOVA SENHA', 'new-password') +
             senha('pf-nova2', 'REPETIR A NOVA SENHA', 'new-password') +
+            '<div class="pf-forca" id="pf-forca" data-n="0" aria-hidden="true"><i></i><i></i><i></i><i></i><span></span></div>' +
             '<ul class="pf-req" id="pf-req" aria-label="Requisitos da nova senha">' +
               '<li data-req="tam">10 caracteres ou mais</li>' +
               '<li data-req="letra">Pelo menos uma letra</li>' +
@@ -129,12 +145,12 @@ B7.Perfil = (function () {
            função). Cada pessoa decide o seu; nada aqui muda permissão. */
         '<section class="pf-painel" data-painel="notif" role="tabpanel" id="pf-notif" hidden>' +
           '<div class="pf-cartao">' +
-            '<h4>Neste aparelho</h4>' +
+            titulo(IC.celular, 'verde', 'Neste aparelho') +
             '<p class="ajuda">O sino sempre guarda os avisos. Aqui você escolhe como eles chegam neste aparelho.</p>' +
             '<div class="pf-resumo" id="pf-resumo"></div>' +
-            opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.') +
-            opcao('som', 'Som das notificações', 'Um toque curto quando chega um aviso novo com o B7 aberto.') +
-            opcao('navegador', 'Aviso do navegador', 'Quando esta aba não estiver em foco, o navegador mostra o aviso.') +
+            opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.', IC.sino, 'rosa') +
+            opcao('som', 'Som das notificações', 'Um toque curto quando chega um aviso novo com o B7 aberto.', IC.som, 'violeta') +
+            opcao('navegador', 'Aviso do navegador', 'Quando esta aba não estiver em foco, o navegador mostra o aviso.', IC.janela, 'azul') +
             '<div class="pf-teste-push">' +
               '<div class="pf-teste-tx"><b>Testar notificações</b>' +
               '<small>Envia um aviso de teste para este aparelho, para confirmar que push, ' +
@@ -166,18 +182,34 @@ B7.Perfil = (function () {
       '</div>' +
 
       '<div class="acoes">' +
-        '<button class="b contorno" id="pf-sair">Sair da conta</button>' +
+        '<button class="b contorno" id="pf-sair"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/></svg>Sair da conta</button>' +
         '<div style="flex:1"></div>' +
         '<button class="b" data-fecha>Fechar</button>' +
       '</div>',
       { larga: true, extra: 'modal-perfil pf-modal' });
 
     /* ---------------------------------------------------------- abas */
+    const ordem = ABAS.map(a => a[0]);
+    let abaAtual = null;
+    function luz() {
+      const b = m.querySelector('[data-aba][aria-selected="true"]'), l = m.querySelector('.pf-abas-luz');
+      if (b && l) { l.style.width = b.offsetWidth + 'px'; l.style.transform = 'translateX(' + b.offsetLeft + 'px)'; }
+    }
     function irPara(aba) {
+      const lado = abaAtual === null ? '' : ordem.indexOf(aba) > ordem.indexOf(abaAtual) ? 'vem-dir' : 'vem-esq';
+      if (aba === abaAtual) return;
+      abaAtual = aba;
       m.querySelectorAll('[data-aba]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.aba === aba)));
-      m.querySelectorAll('[data-painel]').forEach(p => { p.hidden = p.dataset.painel !== aba; });
+      m.querySelectorAll('[data-painel]').forEach(p => {
+        p.hidden = p.dataset.painel !== aba;
+        p.classList.remove('vem-dir', 'vem-esq');
+        if (!p.hidden && lado) { void p.offsetWidth; p.classList.add(lado); }
+      });
+      luz();
       const cx = m.querySelector('.corpo'); if (cx) cx.scrollTop = 0;
     }
+    requestAnimationFrame(luz);
+    window.addEventListener('resize', luz);
     m.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => irPara(b.dataset.aba));
     irPara(abaInicial);
 
@@ -271,6 +303,12 @@ B7.Perfil = (function () {
         igual: !!nova && nova === nova2
       };
       m.querySelectorAll('#pf-req [data-req]').forEach(li => li.classList.toggle('ok', !!ok[li.dataset.req]));
+      const forca = m.querySelector('#pf-forca');
+      if (forca) {
+        const n = nova ? Object.values(ok).filter(Boolean).length : 0;
+        forca.dataset.n = n;
+        forca.querySelector('span').textContent = !nova ? '' : ['Fraca', 'Fraca', 'Média', 'Quase lá', 'Forte'][n];
+      }
       msgSenha.className = 'perfil-msg'; msgSenha.textContent = '';
     }
     m.querySelectorAll('#pf-atual, #pf-nova, #pf-nova2').forEach(c => {
@@ -309,8 +347,9 @@ B7.Perfil = (function () {
     ligarNotificacoes(m);
   }
 
-  function opcao(chave, titulo, ajuda) {
-    return '<div class="perfil-opcao" data-opcao="' + chave + '">' +
+  function opcao(chave, titulo, ajuda, ic, tom) {
+    return '<div class="perfil-opcao' + (ic ? ' com-ic' : '') + '" data-opcao="' + chave + '">' +
+      (ic ? '<span class="pf-ic pf-' + tom + '" aria-hidden="true">' + ic + '</span>' : '') +
       '<span class="perfil-opcao-tx"><b>' + esc(titulo) + '</b><small>' + esc(ajuda) + '</small>' +
       '<small class="aviso" data-aviso hidden></small></span>' +
       '<button type="button" class="chave" role="switch" aria-checked="false" aria-label="' + esc(titulo) + '" data-chave="' + chave + '"></button>' +
