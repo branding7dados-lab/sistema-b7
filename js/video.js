@@ -170,6 +170,7 @@ B7.Video = (function () {
 
   async function abrir(params) {
     const vale = B7.Rota.marca();
+    heroiAnt = null;   /* nova visita: o cartão-resumo estreia de novo */
     aplicarFiltrosDaUrl(params);
     B7.Dashboard.marcarNav('#/video');
     const equipe = souEquipe();
@@ -277,7 +278,6 @@ B7.Video = (function () {
        nunca somem, só ficam fora da projeção do mês corrente até
        alguém trocar de competência ou clicar no aviso (spec: "não deixe
        trabalho antigo desaparecer operacionalmente"). */
-    if (!painel().querySelector('.vd-tela')) heroiAnt = null;   /* nova visita: entrada completa */
     const anteriores = F.competencia !== 'todas'
       ? demandas.filter(d => competenciaChave(d) && competenciaChave(d) < F.competencia &&
                              d.editing_status !== 'entregue' && d.editing_status !== 'descartado')
@@ -371,19 +371,30 @@ B7.Video = (function () {
     const segs = Object.keys(COR_ETAPA).map(k => [k, base.filter(d => d.editing_status === k).length]);
     const mes = F.competencia !== 'todas' ? competenciaRotulo(F.competencia).split(' de ')[0] : 'todos os meses';
     const R = 26, C = 2 * Math.PI * R;
-    return '<div class="vd-heroi' + (heroiAnt ? ' ja-visto' : '') + '" data-total="' + total + '" data-entregues="' + entregues + '">' +
+    let iSeg = 0;
+    /* zzz30 "cinematográfico": camadas de luz (aurora que deriva, grão
+       de filme, reflexo que atravessa o vidro), anel em degradê com um
+       cometa na ponta, barra que enche segmento a segmento e recebe um
+       brilho, número que conta e "assenta", e o cartão inclina de leve
+       seguindo o dedo. A coreografia de entrada roda só na 1ª vez. */
+    return '<div class="vd-heroi' + (heroiAnt ? ' ja-visto' : ' estreia') + '" data-total="' + total + '" data-entregues="' + entregues + '">' +
+      '<span class="vd-h-luz" aria-hidden="true"><i></i><i></i><i></i></span><span class="vd-h-grao" aria-hidden="true"></span><span class="vd-h-reflexo" aria-hidden="true"></span>' +
       '<div class="vd-heroi-topo">' +
-        '<div class="vd-heroi-tx"><small>Entregues · ' + esc(mes) + '</small>' +
+        '<div class="vd-heroi-tx"><small>Entregues <i>·</i> ' + esc(mes) + '</small>' +
           '<div class="vd-heroi-num"><b data-hn>' + (heroiAnt ? heroiAnt.entregues : 0) + '</b><span>de ' + total + '</span></div></div>' +
-        '<svg class="vd-heroi-anel" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="' + R + '" class="trilho"/>' +
-          '<circle cx="32" cy="32" r="' + R + '" class="cheio" style="stroke-dasharray:' + C.toFixed(1) + ';stroke-dashoffset:' + C.toFixed(1) + '" data-c="' + C.toFixed(1) + '"/></svg>' +
-        '<em class="vd-heroi-pct" data-hp>0%</em>' +
+        '<div class="vd-heroi-anel-cx"><svg class="vd-heroi-anel" viewBox="0 0 64 64" aria-hidden="true">' +
+          '<defs><linearGradient id="vdAnelGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7CF5C4"/><stop offset="1" stop-color="#2BC48A"/></linearGradient></defs>' +
+          '<circle cx="32" cy="32" r="' + R + '" class="trilho"/>' +
+          '<circle cx="32" cy="32" r="' + R + '" class="cheio" style="stroke-dasharray:' + C.toFixed(1) + ';stroke-dashoffset:' + C.toFixed(1) + '" data-c="' + C.toFixed(1) + '"/>' +
+          '<g class="vd-heroi-cometa" style="transform:rotate(' + (heroiAnt ? heroiAnt.pct * 3.6 : 0) + 'deg)"><circle cx="58" cy="32" r="3.6"/></g>' +
+        '</svg><em class="vd-heroi-pct" data-hp>' + (heroiAnt ? heroiAnt.pct : 0) + '%</em></div>' +
       '</div>' +
       '<div class="vd-heroi-barra">' + segs.map(([k, n]) =>
-        '<button type="button" class="vd-seg" data-resumo="status:' + k + '" data-n="' + n + '" style="--c:' + COR_ETAPA[k] + ';flex-grow:' + (heroiAnt ? (heroiAnt.segs[k] || 0) : 0) + '" aria-label="' + esc(ROT_ETAPA[k]) + ': ' + n + '"></button>').join('') + '</div>' +
-      '<div class="vd-heroi-leg">' + chips.map(([chave, n, rot, on]) => {
+        '<button type="button" class="vd-seg" data-resumo="status:' + k + '" data-n="' + n + '" style="--c:' + COR_ETAPA[k] + ';--d:' + (n ? iSeg++ : 0) + ';flex-grow:' + (heroiAnt ? (heroiAnt.segs[k] || 0) : 0) + '" aria-label="' + esc(ROT_ETAPA[k]) + ': ' + n + '"></button>').join('') +
+        '<span class="vd-heroi-brilho" aria-hidden="true"></span></div>' +
+      '<div class="vd-heroi-leg">' + chips.map(([chave, n, rot, on], i) => {
         const k = chave.split(':')[1];
-        return '<button class="vd-heroi-it' + (on ? ' on' : '') + '" data-resumo="' + chave + '" style="--c:' + (COR_ETAPA[k] || (k === 'atrasadas' ? '#FF5C8A' : '#FFC24D')) + '">' +
+        return '<button class="vd-heroi-it' + (on ? ' on' : '') + '" data-resumo="' + chave + '" style="--i:' + i + ';--c:' + (COR_ETAPA[k] || (k === 'atrasadas' ? '#FF5C8A' : '#FFC24D')) + '">' +
           '<i></i><b>' + n + '</b>' + esc(rot) + '</button>';
       }).join('') + '</div>' +
       (ultAnteriores ? '<button class="vd-heroi-aviso" data-ver-anteriores><span><b>' + ultAnteriores + '</b> de meses anteriores em aberto</span><i>Ver</i></button>' : '') +
@@ -395,28 +406,49 @@ B7.Video = (function () {
     const total = +h.dataset.total, ent = +h.dataset.entregues;
     const pct = total ? Math.round(ent * 100 / total) : 0;
     const de = heroiAnt ? heroiAnt.entregues : 0, pctDe = heroiAnt ? heroiAnt.pct : 0;
+    const estreia = !heroiAnt;
     const segs = {};
     h.querySelectorAll('.vd-seg').forEach(b => { segs[b.dataset.resumo.split(':')[1]] = +b.dataset.n; });
     heroiAnt = { entregues: ent, pct, segs };
-    const anel = h.querySelector('.cheio'), C = +anel.dataset.c;
+    const anel = h.querySelector('.cheio'), C = +anel.dataset.c, cometa = h.querySelector('.vd-heroi-cometa');
+    const n = h.querySelector('[data-hn]'), p = h.querySelector('[data-hp]');
     const aplicar = () => {
       anel.style.strokeDashoffset = (C * (1 - pct / 100)).toFixed(1);
+      cometa.style.transform = 'rotate(' + (pct * 3.6) + 'deg)';
+      h.classList.toggle('sem-progresso', !pct);
       h.querySelectorAll('.vd-seg').forEach(b => { b.style.flexGrow = b.dataset.n; b.classList.toggle('vazio', !+b.dataset.n); });
     };
-    const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduz) { aplicar(); h.querySelector('[data-hn]').textContent = ent; h.querySelector('[data-hp]').textContent = pct + '%'; return; }
+    const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('modo-leve');
+    if (reduz) { h.classList.remove('estreia'); h.classList.add('ja-visto'); aplicar(); n.textContent = ent; p.textContent = pct + '%'; return; }
     if (pctDe) anel.style.strokeDashoffset = (C * (1 - pctDe / 100)).toFixed(1);
-    requestAnimationFrame(() => requestAnimationFrame(aplicar));
-    const n = h.querySelector('[data-hn]'), p = h.querySelector('[data-hp]');
-    const t0 = performance.now(), DUR = 700, atraso = h.classList.contains('ja-visto') ? 0 : 180;
+    const atraso = estreia ? 260 : 0;
+    setTimeout(() => requestAnimationFrame(aplicar), estreia ? atraso : 16);
+    const t0 = performance.now(), DUR = estreia ? 1250 : 650;
     const passo = agora => {
-      const t = Math.min(1, Math.max(0, (agora - t0 - atraso) / DUR)), e = 1 - Math.pow(1 - t, 3);
       if (!n.isConnected) return;
+      const t = Math.min(1, Math.max(0, (agora - t0 - atraso) / DUR)), e = 1 - Math.pow(1 - t, 4);
       n.textContent = Math.round(de + (ent - de) * e);
       p.textContent = Math.round(pctDe + (pct - pctDe) * e) + '%';
       if (t < 1) requestAnimationFrame(passo);
+      else if (ent !== de || estreia) { n.classList.remove('assenta'); void n.offsetWidth; n.classList.add('assenta'); }
     };
     requestAnimationFrame(passo);
+    /* inclinação 3D seguindo o dedo/mouse — leve, volta com mola */
+    if (!h._tilt) {
+      h._tilt = true;
+      const mexe = e => {
+        const r = h.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+        h.style.setProperty('--rx', (-y * 5).toFixed(2) + 'deg');
+        h.style.setProperty('--ry', (x * 7).toFixed(2) + 'deg');
+        h.style.setProperty('--mx', ((x + .5) * 100).toFixed(1) + '%');
+        h.style.setProperty('--my', ((y + .5) * 100).toFixed(1) + '%');
+        h.classList.add('inclinado');
+      };
+      const volta = () => { h.classList.remove('inclinado'); h.style.setProperty('--rx', '0deg'); h.style.setProperty('--ry', '0deg'); };
+      h.addEventListener('pointerdown', mexe); h.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || e.buttons || h.matches(':hover')) mexe(e); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => h.addEventListener(t, volta));
+    }
   }
   function desenharResumo(base) {
     const cx = painel().querySelector('#vd-resumo');
