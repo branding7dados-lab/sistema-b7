@@ -806,20 +806,20 @@ B7.Dashboard = (function () {
         (roteiros.length ? '<div class="rt-cab-acoes"><div class="filtro rt-vista" role="group" aria-label="Forma de ver">' +
           '<button data-vista="lista" aria-label="Lista por gravação" title="Lista por gravação">' + ICL + '<span>Lista</span></button>' +
           '<button data-vista="cards" aria-label="Cards" title="Cards">' + ICC + '<span>Cards</span></button></div>' +
-          '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button></div>' : '') +
+          '<button class="b pri rt-novo" data-nova-gravacao aria-label="Nova gravação">' + IC.mais + '<span>Nova gravação</span></button></div>' : '') +
       '</div>' +
       (roteiros.length ?
         '<div class="filtro rolavel rt-status" id="rt-status" role="group" aria-label="Estágio"></div>' +
         '<div class="rt-barra-f">' +
           '<div class="busca-local"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
-            '<input class="campo" id="rt-busca" type="search" placeholder="Buscar por título, cliente, gravação ou objetivo…" autocomplete="off" aria-label="Buscar roteiros"></div>' +
-          '<select class="campo rt-sel" id="rt-mes" aria-label="Mês"><option value="">Mês: todos</option>' +
+            '<input class="campo" id="rt-busca" type="search" placeholder="Buscar roteiro, cliente ou gravação…" autocomplete="off" aria-label="Buscar roteiros"></div>' +
+          '<select class="campo rt-sel" id="rt-mes" aria-label="Mês"><option value="">Mês</option>' +
             meses.map(k => '<option value="' + k + '">' + esc(rotuloMes(k)) + (k === agoraMes ? ' (este mês)' : '') + '</option>').join('') + '</select>' +
           (clientes.length > 1 ? '<select class="campo rt-sel" id="rt-cliente" aria-label="Cliente">' +
-            '<option value="">Cliente: todos</option>' +
+            '<option value="">Cliente</option>' +
             clientes.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('') + '</select>' : '') +
           '<select class="campo rt-sel" id="rt-ordem" aria-label="Ordenar">' +
-            '<option value="recentes">Mexidos por último</option><option value="gravacao">Próximas gravações</option><option value="cliente">Cliente (A–Z)</option></select>' +
+            '<option value="recentes">Recentes</option><option value="gravacao">Próx. gravação</option><option value="cliente">Cliente A–Z</option></select>' +
           '<button class="b fina contorno" id="rt-limpar-f" style="display:none">Limpar</button>' +
         '</div>' +
         '<div id="lista-roteiros"></div>'
