@@ -526,9 +526,15 @@ B7.UI = (function () {
     const acoesEquipe = criar.concat(irPara);
     const acoes = contextuais.concat(acoesEquipe, acoesComuns);
 
+    /* zzz10: a paleta desce do topo como uma lâmina de vidro, o campo é
+       uma pílula com botão de fechar, os itens não têm mais moldura (o
+       estilo das listas da Central vazava aqui) e entram em cascata; a
+       barra fina sob o campo corre enquanto a busca vai ao banco. */
     const m = modal(
       '<div class="busca-cp"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
-      '<input id="cp-in" data-foco placeholder="Buscar ou executar uma ação…"></div>' +
+      '<input id="cp-in" data-foco placeholder="Buscar no B7…" autocomplete="off" enterkeyhint="search">' +
+      '<button type="button" class="cp-fechar" data-fecha aria-label="Fechar">Cancelar</button>' +
+      '<i class="cp-carga" aria-hidden="true"></i></div>' +
       '<div class="cp-lista" id="cp-lista"></div>' +
       '<div class="cp-pe"><span><kbd>↑↓</kbd>navegar</span><span><kbd>Enter</kbd>abrir</span>' +
       '<span><kbd>Esc</kbd>fechar</span></div>', { classe: 'paleta' });
@@ -543,6 +549,10 @@ B7.UI = (function () {
       lista.innerHTML = html;
       itens = novosItens;
       foco = 0;
+      /* cascata: grupos e itens entram um depois do outro */
+      [...lista.children].forEach((el, i) => el.style.setProperty('--i', Math.min(i, 16)));
+      lista.scrollTop = 0;
+      m.classList.remove('cp-buscando');
       marcar();
       [...lista.querySelectorAll('.cp-item')].forEach((b, i) => b.onclick = () => executar(i));
     }
@@ -557,9 +567,11 @@ B7.UI = (function () {
       m.fechar();
       it.fn();
     }
+    const TOM = new Map([[ICP.grav, 'grav'], [ICP.rot, 'rot'], [ICP.arte, 'arte'], [ICP.play, 'play'], [ICP.mais, 'mais'], [ICP.pessoa, 'pessoa']]);
     const linha = (ic, titulo, sub) =>
-      '<button class="cp-item"><div class="ic">' + ic + '</div><div><b>' + esc(titulo) +
-      '</b><small>' + esc(sub) + '</small></div></button>';
+      '<button class="cp-item"><div class="ic cp-t-' + (TOM.get(ic) || (/^<img/.test(ic) ? 'logo' : 'outro')) + '">' + ic + '</div>' +
+      '<div class="cp-tx"><b>' + esc(titulo) + '</b><small>' + esc(sub) + '</small></div>' +
+      '<svg class="cp-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>';
 
     /* sem nada digitado, a paleta funciona como launcher: o que foi mexido
        por último vem primeiro, depois as ações */
@@ -599,6 +611,7 @@ B7.UI = (function () {
 
     const procurar = debounce(async termo => {
       if (!termo.trim()) return inicial();
+      m.classList.add('cp-buscando');
       const acoesFiltradas = acoes.filter(a => (a.rot + ' ' + a.dica).toLowerCase().includes(termo.toLowerCase()));
       let html = '', novos = [];
       if (acoesFiltradas.length) {
