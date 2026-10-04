@@ -1488,6 +1488,75 @@ B7.Video = (function () {
       esc(GARGALO_ROTULOS[maior]) + '</b> — hoje o gargalo é ' + esc(GARGALO_LEITURA[maior]) + '</p>';
   }
 
+  /* ---------- Gestão no celular (zzz34) ----------
+     As tabelas viravam pilhas de "RÓTULO valor" com 8 linhas por pessoa
+     ou cliente. No celular cada bloco vira um cartão de leitura rápida:
+     números grandes, barra segmentada por etapa e só os contadores que
+     não são zero. No computador as tabelas continuam. */
+  const COR_G = { para_iniciar: '#A59CC0', pendente: '#A59CC0', em_edicao: '#8B6CFF', correcao: '#F0A443', aguardando_aprovacao: '#F0559E', standby: '#6F6787', entregues: '#3DD69A', em_producao: '#8B6CFF' };
+  const ROT_G = { para_iniciar: 'p/ iniciar', em_edicao: 'em edição', correcao: 'correção', aguardando_aprovacao: 'aguard. aprovação', standby: 'standby', entregues: 'entregues', em_producao: 'em produção' };
+  const barraG = (obj, chaves) => {
+    const tot = chaves.reduce((s2, k) => s2 + (+obj[k] || 0), 0);
+    return '<div class="vg-m-barra">' + (tot ? chaves.filter(k => +obj[k]).map(k => '<i style="flex:' + obj[k] + ';background:' + COR_G[k] + '"></i>').join('') : '<i class="vazia"></i>') + '</div>';
+  };
+  const chipsG = (obj, chaves) => '<div class="vg-m-chips">' + chaves.filter(k => +obj[k]).map(k =>
+    '<span style="--c:' + COR_G[k] + '"><i></i><b>' + obj[k] + '</b>' + esc(ROT_G[k]) + '</span>').join('') + '</div>';
+  const iniciaisG = n => String(n || '?').trim().split(/\s+/).filter(Boolean).map((p, i, a) => (i === 0 || i === a.length - 1) ? p[0] : '').join('').toUpperCase().slice(0, 2);
+  function kpisMovel(r) {
+    const mini = (n, rot, cls) => '<div class="vg-m-mini' + (cls ? ' ' + cls : '') + '"><b>' + n + '</b><span>' + rot + '</span></div>';
+    return '<div class="vg-m vg-m-kpis">' +
+      '<div class="vg-m-total"><b>' + numFmt(r.total) + '</b><span>demandas no mês</span></div>' +
+      '<div class="vg-m-grade">' +
+        mini(numFmt(r.atrasadas), 'atrasadas', r.atrasadas ? 'alerta' : 'ok') +
+        mini(numFmt(r.vence_hoje), 'vencem hoje', r.vence_hoje ? 'atencao' : '') +
+        mini(numFmt(r.entregues_no_prazo), 'no prazo', 'ok') +
+        mini(numFmt(r.entregues_com_atraso), 'com atraso', r.entregues_com_atraso ? 'alerta' : '') +
+        mini(r.tempo_medio_producao_dias == null ? '—' : r.tempo_medio_producao_dias + 'd', 'tempo médio', '') +
+        mini(numFmt(r.ciclos_correcao_total), 'correções', r.ciclos_correcao_total ? 'atencao' : '') +
+      '</div>' +
+      '<details class="vg-m-info"><summary>Como medimos</summary><p>Tempo médio: do início da edição até o primeiro envio para aprovação (só demandas com a trilha completa). Correções: cliente ' +
+        numFmt(r.ciclos_correcao_cliente) + ' · interna ' + numFmt(r.ciclos_correcao_interna) + ' — "cliente" é inferido pelo texto da decisão.</p></details>' +
+    '</div>';
+  }
+  function cargaMovel(lista) {
+    if (!lista.length) return '<p class="vg-m vg-m-vazio">Sem videomakers ativos.</p>';
+    const ch = ['para_iniciar', 'em_edicao', 'correcao', 'aguardando_aprovacao', 'standby'];
+    return '<div class="vg-m vg-m-lista">' + lista.map(v =>
+      '<div class="vg-m-item">' +
+        '<div class="vg-m-topo"><span class="vg-m-av" style="--c:' + corVideomaker(v.videomaker_id || v.videomaker_nome) + '">' + esc(iniciaisG(v.videomaker_nome)) + '</span>' +
+          '<span class="vg-m-nome"><b>' + esc(v.videomaker_nome) + '</b>' +
+            ((v.atrasadas || v.vence_hoje) ? '<small>' + (v.atrasadas ? '<em class="alerta">' + v.atrasadas + ' atrasada' + (v.atrasadas === 1 ? '' : 's') + '</em>' : '') +
+              (v.vence_hoje ? '<em class="atencao">' + v.vence_hoje + ' vence' + (v.vence_hoje === 1 ? '' : 'm') + ' hoje</em>' : '') + '</small>' : '<small>em dia</small>') + '</span>' +
+          '<span class="vg-m-num"><b>' + v.total_ativo + '</b><small>ativas</small></span></div>' +
+        barraG(v, ch) + chipsG(v, ch) +
+      '</div>').join('') + '</div>';
+  }
+  function clientesMovel(lista) {
+    if (!lista.length) return '<p class="vg-m vg-m-vazio">Nenhuma demanda nesta competência.</p>';
+    return '<div class="vg-m vg-m-lista">' + lista.map(c => {
+      const pct = c.total ? Math.round(c.entregues * 100 / c.total) : 0;
+      return '<div class="vg-m-item">' +
+        '<div class="vg-m-topo"><span class="vg-m-nome"><b>' + esc(c.client_nome) + '</b><small>' +
+          (c.pacote ? '<em class="pac">' + esc(c.pacote) + '</em>' : 'sem pacote') +
+          (c.quantidade_contratada != null ? ' · cota ' + c.quantidade_contratada + '/mês' : '') + '</small></span>' +
+          '<span class="vg-m-num"><b>' + c.entregues + '<i>/' + c.total + '</i></b><small>entregues</small></span></div>' +
+        '<div class="vg-m-prog"><i style="width:' + pct + '%"></i></div>' +
+        chipsG(c, ['em_producao', 'aguardando_aprovacao', 'correcao']) +
+      '</div>';
+    }).join('') + '<p class="vg-m-nota">Cota só aparece quando definida em "Pacotes".</p></div>';
+  }
+  function videomakersMovel(lista) {
+    if (!lista.length) return '<p class="vg-m vg-m-vazio">Nenhuma demanda nesta competência.</p>';
+    return '<div class="vg-m vg-m-lista">' + lista.map(v =>
+      '<div class="vg-m-item">' +
+        '<div class="vg-m-topo"><span class="vg-m-av" style="--c:' + corVideomaker(v.videomaker_id || v.videomaker_nome) + '">' + esc(iniciaisG(v.videomaker_nome)) + '</span>' +
+          '<span class="vg-m-nome"><b>' + esc(v.videomaker_nome) + '</b><small>tempo médio ' + diasFmt(v.tempo_medio_producao_dias) +
+            (v.entregues_com_atraso ? ' · <em class="alerta">' + v.entregues_com_atraso + ' com atraso</em>' : '') + '</small></span>' +
+          '<span class="vg-m-num"><b>' + v.entregues + '</b><small>entregues</small></span></div>' +
+        chipsG(v, ['em_edicao', 'aguardando_aprovacao', 'correcao']) +
+      '</div>').join('') + '</div>';
+  }
+
   function modalGestao() {
     const compChave = (F.competencia && F.competencia !== 'todas') ? F.competencia : mesAtualChave();
     const [anoIni, mesIni] = compChave.split('-').map(Number);
@@ -1523,7 +1592,8 @@ B7.Video = (function () {
             (r.demandas_com_tempo_medido ? '<em>' + r.demandas_com_tempo_medido + ' medida' + (r.demandas_com_tempo_medido === 1 ? '' : 's') + '</em>' : '') + '</span></div>' +
           '<div class="vg-card vg-larga"><b>' + numFmt(r.ciclos_correcao_total) + '</b><span>ciclos de correção<em>cliente ' + numFmt(r.ciclos_correcao_cliente) + ' · interna ' + numFmt(r.ciclos_correcao_interna) + '</em></span></div>' +
         '</div>' +
-        '<p class="fraca">Tempo médio de produção mede do início da edição até o primeiro envio para aprovação — só conta demandas com essa trilha de eventos completa (ver nota no rodapé). Ciclo de correção "cliente" é uma inferência sobre o texto da decisão registrada, não um campo estruturado à parte.</p>' +
+        kpisMovel(r) +
+        '<p class="fraca vg-so-largo">Tempo médio de produção mede do início da edição até o primeiro envio para aprovação — só conta demandas com essa trilha de eventos completa (ver nota no rodapé). Ciclo de correção "cliente" é uma inferência sobre o texto da decisão registrada, não um campo estruturado à parte.</p>' +
         gargaloHTML(porStatus) +
 
         '<h4>Carga da equipe (agora)</h4>' +
@@ -1535,7 +1605,7 @@ B7.Video = (function () {
           '<td data-rot="Correção">' + v.correcao + '</td><td data-rot="Aguard. aprov.">' + v.aguardando_aprovacao + '</td><td data-rot="Standby">' + v.standby + '</td>' +
           '<td data-rot="Atrasadas"' + (v.atrasadas ? ' class="vd-cel-alerta"' : '') + '>' + v.atrasadas + '</td><td data-rot="Vence hoje">' + v.vence_hoje + '</td><td data-rot="Total ativo">' + v.total_ativo + '</td></tr>').join('')
           : '<tr><td colspan="9"><i class="vd-sem">Sem videomakers ativos.</i></td></tr>') +
-        '</tbody></table></div>' +
+        '</tbody></table></div>' + cargaMovel(estado.carga) +
 
         '<h4>Produção por cliente</h4>' +
         '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
@@ -1546,8 +1616,8 @@ B7.Video = (function () {
           '<td data-rot="Cota/mês">' + (c.quantidade_contratada != null ? c.quantidade_contratada : '<i class="vd-sem">não definida</i>') + '</td>' +
           '<td data-rot="Total">' + c.total + '</td><td data-rot="Entregues">' + c.entregues + '</td><td data-rot="Em produção">' + c.em_producao + '</td><td data-rot="Aguard. aprov.">' + c.aguardando_aprovacao + '</td><td data-rot="Correção">' + c.correcao + '</td></tr>').join('')
           : '<tr><td colspan="8"><i class="vd-sem">Nenhuma demanda nesta competência.</i></td></tr>') +
-        '</tbody></table></div>' +
-        '<p class="fraca">Cota/mês só aparece quando alguém define uma quantidade contratada pro pacote com esse nome exato (ver "Pacotes") — sem isso, nunca inventamos uma cota.</p>' +
+        '</tbody></table></div>' + clientesMovel(estado.porCliente) +
+        '<p class="fraca vg-so-largo">Cota/mês só aparece quando alguém define uma quantidade contratada pro pacote com esse nome exato (ver "Pacotes") — sem isso, nunca inventamos uma cota.</p>' +
 
         '<h4>Relatório por videomaker</h4>' +
         '<div class="tabela-rolavel"><table class="vd-tabela"><thead><tr>' +
@@ -1558,7 +1628,7 @@ B7.Video = (function () {
           '<td data-rot="Aguard. aprov.">' + v.aguardando_aprovacao + '</td><td data-rot="Correção">' + v.correcao + '</td><td data-rot="Entregues c/ atraso">' + v.entregues_com_atraso + '</td>' +
           '<td data-rot="Tempo médio">' + diasFmt(v.tempo_medio_producao_dias) + '</td></tr>').join('')
           : '<tr><td colspan="7"><i class="vd-sem">Nenhuma demanda nesta competência.</i></td></tr>') +
-        '</tbody></table></div>' +
+        '</tbody></table></div>' + videomakersMovel(estado.porVideomaker) +
 
         '<h4>Fechamento mensal</h4>' +
         (estado.fechado
