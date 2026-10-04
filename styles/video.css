@@ -903,14 +903,80 @@ label.rot em{font-style:normal;font-weight:500;letter-spacing:0;text-transform:n
   .vd-tela .cab-conteudo{flex-direction:row !important;flex-wrap:wrap;align-items:flex-start;gap:12px;}
   .vd-tela .cab-conteudo > div:first-child{flex:1 1 0;min-width:0;}
   .vd-tela .cab-conteudo h1{font-size:28px;}
-  .vd-tela .vd-acoes-topo{display:contents;}
-  .vd-tela #vd-nova{order:2;width:44px !important;height:44px;padding:0;justify-content:center;flex:none;border-radius:14px;}
-  .vd-tela #vd-nova span{display:none;}
-  .vd-tela .vd-acoes-sec{order:3;flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;justify-content:flex-start;}
-  .vd-tela .vd-acoes-sec::-webkit-scrollbar{display:none;}
-  .vd-tela .vd-acoes-sec .b{flex:none;width:auto !important;}
 }
 .vd-tela .vd-tabela td.vd-codigo, .vd-tela .vd-tabela td[data-rot="Cliente"], .vd-tela .vd-tabela td[data-rot="Responsável"],
 .vd-tela .vd-tabela td[data-rot="Status"], .vd-tela .vd-tabela td[data-rot="Prioridade"]{white-space:nowrap;}
 .vd-tela .vd-tabela td[data-rot="Prazo"]{white-space:nowrap;}
 .vd-tela .vd-tb-cliente span{white-space:nowrap;}
+
+/* =====================================================================
+   VÍDEO NO CELULAR (zzz22) — topo com "+" e ⋯ (as ferramentas foram
+   para o menu), aviso fino, busca e Filtros na mesma linha, e cartão
+   com a logo grande à esquerda.
+   ===================================================================== */
+.vd-ferr-menu{display:none;}
+.vd-ferr-bt{width:44px;height:44px;padding:0;justify-content:center;border-radius:14px;}
+.vd-ferr-bt svg{width:20px;height:20px;fill:currentColor;}
+.vd-aviso-ver{border:0;background:none;padding:0 2px;font:inherit;font-weight:700;color:inherit;text-decoration:underline;cursor:pointer;margin-left:auto;flex:none;}
+.vd-m-logo{display:none;}
+@media (max-width:760px){
+  .vd-tela .vd-acoes-topo{display:flex;flex-wrap:nowrap;gap:8px;flex:none;}
+  .vd-tela .vd-acoes-sec{display:none !important;}
+  .vd-ferr-menu{display:block;}
+  .vd-tela #vd-nova{width:44px !important;height:44px;padding:0;justify-content:center;flex:none;border-radius:14px;}
+  .vd-tela #vd-nova span{display:none;}
+  .vd-tela .cab-conteudo h1{font-size:26px;line-height:1.1;}
+  .vd-tela .cab-conteudo p{display:none;}
+
+  /* aviso de meses anteriores: uma faixa fina */
+  .vd-aviso-anteriores{padding:9px 14px !important;border-radius:14px;font-size:13px;margin-bottom:12px;}
+
+  /* busca + Filtros (só ícone) na mesma linha; Minha fila e Lista/Kanban embaixo */
+  .vd-tela .ds-barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .vd-tela .ds-busca-cx{flex:1 1 0;min-width:0;order:1;}
+  .vd-tela .vd-bt-filtros{order:2;width:42px;height:40px;min-height:40px;padding:0;justify-content:center;font-size:0;gap:0;border-radius:13px;position:relative;}
+  .vd-tela .vd-bt-filtros svg{width:18px;height:18px;margin:0;}
+  .vd-tela .vd-bt-filtros .vd-bt-n{position:absolute;top:-5px;right:-5px;font-size:10.5px;min-width:18px;height:18px;border-radius:9px;
+    display:inline-flex;align-items:center;justify-content:center;background:var(--acento);color:#fff;}
+  .vd-tela .vd-filtros{order:3;flex:1 1 100%;}
+  .vd-tela .ds-espaco{display:none;}
+  .vd-tela .vd-minha-fila{order:4;height:36px;border-radius:999px;font-size:13px;}
+  .vd-tela .seg-vista{order:5;margin-left:auto;}
+  .vd-tela .seg-vista button{min-height:34px !important;padding:0 14px;font-size:13px;}
+
+  /* cartão: logo grande à esquerda */
+  .vd-tela .vd-m-card{flex-direction:row;align-items:flex-start;gap:12px;padding:13px 14px 13px 14px;border-radius:20px;}
+  .vd-tela .vd-m-card:before{display:none;}
+  .vd-m-logo{display:flex;flex:none;width:46px;height:46px;border-radius:14px;overflow:hidden;background:#fff;
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 6px 14px -10px rgba(20,8,40,.5);
+    align-items:center;justify-content:center;}
+  .vd-m-logo .vd-logo-cliente{width:100% !important;height:100% !important;border-radius:0 !important;object-fit:cover;font-size:17px !important;
+    font-family:'Archivo',sans-serif;font-weight:800;}
+  .vd-m-logo .vd-logo-cliente-vazia{color:#fff;background:linear-gradient(145deg,#2B2140,#5B4585);}
+  .vd-m-corpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
+  .vd-tela .vd-m-topo{gap:6px;}
+  .vd-tela .vd-m-cli{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .vd-tela .vd-m-cod{margin-left:6px;font-weight:500;color:var(--ink-4);}
+  .vd-tela .vd-m-tit{font-size:15.5px;}
+  .vd-tela .vd-m-pe{margin-top:4px;flex-wrap:wrap;row-gap:6px;}
+  .vd-tela .vd-m-pe .vd-quem{margin-left:auto;}
+  .vd-tela .vd-m-pe .vd-quem.fraca{font-style:normal;color:var(--ink-4);}
+  /* a cor da etapa vira um anel fino na logo */
+  .vd-m-s-em_edicao .vd-m-logo{box-shadow:0 0 0 2px #7C5CFF;}
+  .vd-m-s-aguardando_aprovacao .vd-m-logo{box-shadow:0 0 0 2px var(--acento);}
+  .vd-m-s-correcao .vd-m-logo{box-shadow:0 0 0 2px var(--ambar);}
+  .vd-m-s-entregue .vd-m-logo{box-shadow:0 0 0 2px var(--ok);}
+  .vd-m-card.atrasada .vd-m-logo{box-shadow:0 0 0 2px var(--erro);}
+}
+@media (max-width:760px){
+  .vd-tela .cab-conteudo{flex-wrap:nowrap !important;align-items:center !important;}
+  .vd-tela .cab-conteudo h1{font-size:24px;}
+  .vd-tela .vd-ferr-bt{min-height:44px !important;}
+  .vd-tela .ds-barra .ds-busca-cx{flex:1 1 0 !important;width:auto !important;max-width:none !important;}
+  .vd-tela .vd-m-pe .vd-quem{white-space:nowrap;}
+}
+@media (max-width:760px){
+  .vd-tela .cab-conteudo > div:first-child{flex:1 1 auto !important;min-width:0;}
+  .vd-tela .cab-conteudo .vd-acoes-topo{width:auto !important;flex:0 0 auto !important;margin-left:auto;}
+}
+@media (max-width:760px){ .vd-tela .vd-ferr-bt{width:44px !important;min-width:44px;flex:none;} }

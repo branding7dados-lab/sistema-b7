@@ -296,14 +296,22 @@ B7.Video = (function () {
               ? '<button class="b fina" id="vd-descartados">' + IC.lixeira + 'Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
               : '') +
           '</div>' +
-          '<button class="b pri" id="vd-nova" aria-label="Nova demanda">' + IC.mais + '<span>Nova demanda</span></button></div>'
+          '<button class="b pri" id="vd-nova" aria-label="Nova demanda">' + IC.mais + '<span>Nova demanda</span></button>' +
+          /* zzz22: no celular as ferramentas moram neste ⋯ (a fileira de
+             botões grandes cortava na borda e empurrava a fila para baixo) */
+          '<div class="menu vd-ferr-menu"><button class="b contorno vd-ferr-bt" aria-label="Ferramentas da Produção de Vídeo">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>' +
+            '<div class="lista">' +
+              '<button data-vd-ferr="vd-gestao">Gestão</button><button data-vd-ferr="vd-pacotes">Pacotes</button><button data-vd-ferr="vd-importar">Importar planilha</button>' +
+              (descartados.length ? '<hr><button data-vd-ferr="vd-descartados">Descartados (' + descartados.length + ')</button>' : '') +
+            '</div></div></div>'
         : '') +
       '</div>' +
       '<datalist id="vd-pacotes-lista">' + pacotesVideoCache.map(p => '<option value="' + esc(p.nome) + '">').join('') + '</datalist>' +
       (anteriores.length
         ? '<div class="vd-aviso-anteriores" id="vd-aviso-anteriores">' +
           '<b>' + anteriores.length + '</b> demanda' + (anteriores.length === 1 ? '' : 's') +
-          ' de meses anteriores ainda em aberto.<button class="b fina contorno" id="vd-ver-anteriores">Ver</button></div>'
+          ' de meses anteriores em aberto<button class="vd-aviso-ver" id="vd-ver-anteriores">Ver</button></div>'
         : '') +
       '<div id="vd-resumo"></div>' +
       '<div id="vd-barra"></div>' +
@@ -312,6 +320,12 @@ B7.Video = (function () {
 
     const btNova = document.getElementById('vd-nova');
     if (btNova) btNova.onclick = () => modalNovaDemanda();
+    painel().querySelectorAll('[data-vd-ferr]').forEach(b => b.onclick = () => {
+      if (B7.UI.fecharMenus) B7.UI.fecharMenus();
+      const alvo = document.getElementById(b.dataset.vdFerr); if (alvo) alvo.click();
+    });
+    const cabVd = painel().querySelector('.cab-conteudo');
+    if (B7.UI.ligarMenus && cabVd && cabVd.querySelector('.vd-ferr-menu')) B7.UI.ligarMenus(cabVd);
     const btImportar = document.getElementById('vd-importar');
     if (btImportar) btImportar.onclick = () => modalImportar();
     const btDescartados = document.getElementById('vd-descartados');
@@ -521,16 +535,22 @@ B7.Video = (function () {
   }
   function cartaoMovel(d, i) {
     const atrasada = ehAtrasada(d), prio = d.prioridade || 'normal', rel = prazoRelativo(d);
+    /* zzz22: logo grande à esquerda; à direita cliente/código + status,
+       título forte e a linha de prazo e responsável */
     return '<article class="vd-m-card vd-m-s-' + esc(d.editing_status) + (atrasada ? ' atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + '">' +
-      '<div class="vd-m-topo">' + logoClienteHTML(d, 'sm') + '<span class="vd-m-cli">' + esc(d.cliente_nome || 'Cliente') + '</span>' +
-        (d.codigo ? '<span class="vd-m-cod">#' + esc(String(d.codigo).replace(/^#+/, '')) + '</span>' : '') + statusBadge(d.editing_status) + '</div>' +
-      '<div class="vd-m-tit">' + tituloComFallback(d) + '</div>' +
-      '<div class="vd-m-pe">' +
-        (d.prazo ? '<span class="vd-m-prazo' + (atrasada ? ' atrasado' : rel === 'hoje' ? ' hoje' : '') + '">' + IC_CAL +
-          esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + (rel ? '<i>' + esc(rel) + '</i>' : '') + '</span>'
-          : '<span class="vd-m-prazo vazio">' + IC_CAL + 'sem prazo</span>') +
-        (prio !== 'normal' ? prioridadeBadge(prio) : '') +
-        quemHTML(d) + '<span class="vd-m-seta">' + IC.seta + '</span>' +
+      '<span class="vd-m-logo">' + logoClienteHTML(d, 'md') + '</span>' +
+      '<div class="vd-m-corpo">' +
+        '<div class="vd-m-topo"><span class="vd-m-cli">' + esc(d.cliente_nome || 'Cliente') +
+          (d.codigo ? '<span class="vd-m-cod">#' + esc(String(d.codigo).replace(/^#+/, '')) + '</span>' : '') + '</span>' +
+          statusBadge(d.editing_status) + '</div>' +
+        '<div class="vd-m-tit">' + tituloComFallback(d) + '</div>' +
+        '<div class="vd-m-pe">' +
+          (d.prazo ? '<span class="vd-m-prazo' + (atrasada ? ' atrasado' : rel === 'hoje' ? ' hoje' : '') + '">' + IC_CAL +
+            esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + (rel ? '<i>' + esc(rel) + '</i>' : '') + '</span>'
+            : '<span class="vd-m-prazo vazio">' + IC_CAL + 'sem prazo</span>') +
+          (prio !== 'normal' ? prioridadeBadge(prio) : '') +
+          quemHTML(d) +
+        '</div>' +
       '</div></article>';
   }
 
