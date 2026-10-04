@@ -702,32 +702,52 @@ B7.Conteudo = (function () {
       if (!clientes.length) return B7.UI.toast('Cadastre um cliente primeiro');
     }
 
-    const m = B7.UI.modal('<h3>Nova linha editorial</h3>' +
-      '<div class="sub">Escolha o mês e comece. As informações de estratégia entram depois, ' +
-      'se fizerem sentido.</div>' +
+    /* zzz40: no padrão novo — cabeçalho com ícone, blocos ("Para quem",
+       "Qual mês", "Nome"), atalhos de mês e botões lado a lado. Mesmos ids. */
+    const ICL = {
+      linha: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3M7.5 13.5h4M7.5 17h7"/></svg>',
+      cli: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>',
+      cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+      nome: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>'
+    };
+    const atalhos = [0, 1].map(k => {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1);
+      return { m: d.getMonth() + 1, a: d.getFullYear(), rot: k ? 'Próximo mês' : 'Este mês' };
+    });
+
+    const m = B7.UI.modal(
+      '<div class="ng-topo"><span class="ng-ic">' + ICL.linha + '</span><div><h3>Nova linha editorial</h3>' +
+      '<div class="sub">Escolha o mês e comece. A estratégia entra depois, se fizer sentido.</div></div></div>' +
 
       (clienteId ? '' :
-        '<div class="mb"><label class="rot">CLIENTE</label>' +
+        '<section class="ng-bloco"><h4>' + ICL.cli + 'Para quem</h4>' +
+        '<div class="mb ng-ult"><label class="rot" for="nl-cliente">CLIENTE</label>' +
         '<select class="campo" id="nl-cliente">' + clientes.map(c =>
           '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>').join('') +
-        '</select></div>') +
+        '</select></div></section>') +
 
-      '<div class="linha mb"><div><label class="rot">MÊS</label>' +
+      '<section class="ng-bloco"><h4>' + ICL.cal + 'Qual mês</h4>' +
+        '<div class="gv-mes-atalhos nl-atalhos">' + atalhos.map(t =>
+          '<button type="button" class="gv-chip" data-a="' + t.a + '" data-m="' + t.m + '">' +
+          '<small>' + t.rot + '</small><b>' + MESES[t.m - 1] + '</b></button>').join('') + '</div>' +
+        '<div class="nl-campos"><div><label class="rot" for="nl-mes">MÊS</label>' +
         '<select class="campo" id="nl-mes">' + MESES.map((n, i) =>
           '<option value="' + (i + 1) + '"' + (i === hoje.getMonth() ? ' selected' : '') + '>' +
           n + '</option>').join('') + '</select></div>' +
-        '<div><label class="rot">ANO</label><select class="campo" id="nl-ano">' +
+        '<div><label class="rot" for="nl-ano">ANO</label><select class="campo" id="nl-ano">' +
           anos.map(a => '<option' + (a === hoje.getFullYear() ? ' selected' : '') + '>' + a +
           '</option>').join('') + '</select></div></div>' +
+        '<div id="nl-aviso"></div>' +
+      '</section>' +
 
-      '<div class="mb"><label class="rot">NOME <span class="leve">— opcional</span></label>' +
-        '<input class="campo" id="nl-nome" value="' +
-        esc(MESES[hoje.getMonth()] + ' ' + hoje.getFullYear()) + '"></div>' +
+      '<section class="ng-bloco"><h4>' + ICL.nome + 'Nome <span class="mg-obr leve">opcional</span></h4>' +
+        '<div class="mb ng-ult"><input class="campo" id="nl-nome" aria-label="Nome da linha editorial" value="' +
+        esc(MESES[hoje.getMonth()] + ' ' + hoje.getFullYear()) + '">' +
+        '<div class="gv-ajuda">Segue o mês escolhido até você editar.</div></div>' +
+      '</section>' +
 
-      '<div id="nl-aviso"></div>' +
-
-      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
-      '<button class="b pri" data-ok>Criar linha editorial</button></div>');
+      '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" data-ok>Criar linha editorial</button></div>', { extra: 'ng-modal nl-modal' });
 
     const selMes = m.querySelector('#nl-mes');
     const selAno = m.querySelector('#nl-ano');
@@ -739,8 +759,14 @@ B7.Conteudo = (function () {
     /* o nome acompanha mês e ano até a pessoa escrever o dela */
     const sincronizar = async () => {
       if (!nomeTocado) campoNome.value = MESES[+selMes.value - 1] + ' ' + selAno.value;
+      marcarAtalho();
       await avisarExistente();
     };
+    const marcarAtalho = () => m.querySelectorAll('.nl-atalhos .gv-chip').forEach(c =>
+      c.classList.toggle('on', c.dataset.m === selMes.value && c.dataset.a === selAno.value));
+    m.querySelectorAll('.nl-atalhos .gv-chip').forEach(c => c.onclick = () => {
+      selMes.value = c.dataset.m; selAno.value = c.dataset.a; sincronizar();
+    });
     selMes.onchange = sincronizar;
     selAno.onchange = sincronizar;
     if (selCli) selCli.onchange = sincronizar;
@@ -755,14 +781,15 @@ B7.Conteudo = (function () {
         ? existentes : await B7.DB.listarLinhas(cli).catch(() => []);
       const igual = lista.find(l => l.mes === +selMes.value && l.ano === +selAno.value);
       alvo.innerHTML = igual
-        ? '<div class="aviso-suave" style="display:flex;align-items:center;gap:10px">' +
-          '<span>Já existe uma linha editorial para este mês.</span>' +
-          '<button class="b p" data-abrir-existente="' + esc(igual.id) + '">Abrir a existente</button>' +
+        ? '<div class="nl-existe"><span class="nl-existe-ic" aria-hidden="true">!</span>' +
+          '<span class="nl-existe-tx"><b>Esse mês já tem linha</b>Você pode abrir a existente ou criar outra.</span>' +
+          '<button type="button" class="nl-existe-b" data-abrir-existente="' + esc(igual.id) + '">Abrir</button>' +
           '</div>'
         : '';
       const b = alvo.querySelector('[data-abrir-existente]');
       if (b) b.onclick = () => { m.fechar(); location.hash = '#/linha/' + b.dataset.abrirExistente; };
     }
+    marcarAtalho();
     avisarExistente();
 
     m.querySelector('[data-ok]').onclick = async () => {
