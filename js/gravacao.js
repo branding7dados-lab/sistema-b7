@@ -728,7 +728,7 @@ B7.Gravacao = (function () {
       "if(![].some.call(A.options,function(o){return o.value=='" + a + "'}))A.insertAdjacentHTML('beforeend','<option>" + a + "</option>');" +
       "M.value='" + m + "';A.value='" + a + "';M.dispatchEvent(new Event('change',{bubbles:true}));A.dispatchEvent(new Event('change',{bubbles:true}));M.classList.remove('erro');";
     return '<div class="gv-mes-atalhos">' + op.map(([a, m], i) =>
-      '<button type="button" class="gv-chip" onclick="' + js(a, m).replace(/"/g, '&quot;') + '">' + (i ? 'Próximo mês' : 'Este mês') + ' · ' + MESES[m - 1] + '</button>').join('') + '</div>';
+      '<button type="button" class="gv-chip" data-a="' + a + '" data-m="' + m + '" onclick="' + js(a, m).replace(/"/g, '&quot;') + '">' + (i ? 'Próximo mês' : 'Este mês') + ' · ' + MESES[m - 1] + '</button>').join('') + '</div>';
   }
 
   /* campos do mês de referência — mês + ano, nunca um dia */
