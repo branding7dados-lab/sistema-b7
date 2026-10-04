@@ -38,6 +38,14 @@ assert.deepEqual(r, [1, 2, 3], 'resposta antiga sai na hora'); assert.ok(ms < 10
 await new Promise(r => setTimeout(r, 300));
 assert.equal(redesenhos, 1, 'resposta nova redesenha a tela');
 assert.deepEqual(await B7.DB.listarClientes(), [7]);
+/* zzz8: passada a janela de uma escrita, o que ficou guardado volta a abrir na hora */
+await B7.DB.criarCliente();
+const agoraReal = Date.now; Date.now = () => agoraReal() + 10000;
+B7.Memoria._mapa.forEach(e => { e.t -= 60000; });
+[r, ms] = await t(() => B7.DB.listarClientes());
+assert.ok(ms < 10, 'depois da janela de escrita, abre na hora');
+Date.now = agoraReal;
+await new Promise(r => setTimeout(r, 100));
 n = 0; await B7.DB.roteiro(); await B7.DB.roteiro();
 assert.equal(n, 2, 'roteiro (editor) nunca vem da memória');
 B7.Auth.usuario = () => null; n = 0; await B7.DB.listarClientes();
