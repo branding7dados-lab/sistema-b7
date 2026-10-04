@@ -922,3 +922,104 @@ button.cfg-l:hover .cfg-seta,.cfg-perfil:hover .cfg-seta{transform:translateX(3p
 
 /* Configurações → Abertura: som + rever (pacote zp) */
 .cfg-abertura{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+
+/* =====================================================================
+   CONFIGURAÇÕES 2 (zzz13) — js/dashboard.js abrirConfig
+   Cartão da conta com aurora, anel e atalhos para o perfil; tema
+   escolhido por miniaturas; linhas em cascata; assinatura no rodapé.
+   ===================================================================== */
+.cfg-tela{--cfg-mola:cubic-bezier(.16,1,.3,1);}
+.cfg-titulo{animation:cfgEntra .5s var(--cfg-mola) both;}
+
+/* conta */
+.cfg-perfil-cx{position:relative;isolation:isolate;overflow:hidden;margin:0 0 26px;border-radius:24px;
+  border:1px solid color-mix(in srgb, var(--acento) 18%, var(--borda));background:var(--card);
+  box-shadow:0 18px 40px -30px color-mix(in srgb, var(--acento) 70%, transparent);
+  animation:cfgEntra .55s var(--cfg-mola) .04s both;}
+.cfg-aurora{position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(110% 140% at 0% 0%, color-mix(in srgb, var(--acento) 20%, transparent), transparent 55%),
+    radial-gradient(80% 120% at 100% 0%, color-mix(in srgb, #7C5CFF 18%, transparent), transparent 60%);
+  animation:pfAuroraCfg 9s ease-in-out infinite alternate;}
+@keyframes pfAuroraCfg{to{filter:hue-rotate(-18deg);transform:scale(1.08) translate3d(-12px,4px,0)}}
+.cfg-perfil-cx .cfg-perfil{margin:0;border:0;border-radius:0;background:none;padding:20px 18px 14px;animation:none;}
+.cfg-perfil-cx .cfg-perfil::after{display:none;}
+.cfg-perfil-cx .cfg-perfil:active{transform:scale(.99);}
+.cfg-perfil-cx .cfg-perfil .av-pessoa{width:64px;height:64px;
+  box-shadow:0 0 0 3px var(--card), 0 0 0 5.5px color-mix(in srgb, var(--acento) 70%, #7C5CFF), 0 12px 26px -14px rgba(20,8,40,.6);}
+.cfg-perfil-cx .cfg-perfil-tx b{font-size:20px;letter-spacing:-.3px;}
+.cfg-pf-atalhos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:0 14px 14px;}
+.cfg-pf-atalhos button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:64px;padding:10px 6px;
+  border-radius:16px;border:1px solid color-mix(in srgb, var(--ink) 7%, transparent);
+  background:color-mix(in srgb, var(--card) 80%, transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;
+  transition:transform .25s var(--cfg-mola), border-color .2s, color .2s, background .2s;}
+.cfg-pf-atalhos button svg{width:20px;height:20px;fill:none;stroke:var(--acento);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;
+  transition:transform .35s var(--cfg-mola);}
+.cfg-pf-atalhos button:hover{border-color:color-mix(in srgb, var(--acento) 35%, transparent);color:var(--ink);}
+.cfg-pf-atalhos button:hover svg{transform:translateY(-2px) scale(1.08);}
+.cfg-pf-atalhos button:active{transform:scale(.95);}
+
+/* linhas em cascata dentro de cada grupo */
+.cfg-lista > *{animation:cfgLinha .45s var(--cfg-mola) both;}
+.cfg-lista > :nth-child(2){animation-delay:.04s} .cfg-lista > :nth-child(3){animation-delay:.08s}
+.cfg-lista > :nth-child(4){animation-delay:.12s} .cfg-lista > :nth-child(n+5){animation-delay:.16s}
+@keyframes cfgLinha{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+.cfg-lista{border-radius:20px;border-color:color-mix(in srgb, var(--ink) 8%, transparent);box-shadow:0 10px 28px -26px rgba(20,8,40,.5);}
+.cfg-ic{width:32px;height:32px;border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.3), 0 6px 14px -8px rgba(20,8,40,.5);
+  transition:transform .35s var(--cfg-mola);}
+button.cfg-l:hover .cfg-ic, .cfg-alterna:hover .cfg-ic{transform:scale(1.08) rotate(-4deg);}
+.cfg-l-abaixo{padding-left:59px;}
+
+/* tema por miniaturas */
+.cfg-seg.cfg-temas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:0;background:none;max-width:440px;}
+.cfg-temas .cfg-seg-pill{display:none;}
+.cfg-temas button{flex-direction:column;gap:8px;min-height:0;padding:0;border-radius:14px;}
+.cfg-tm{position:relative;display:block;width:100%;aspect-ratio:4/3;border-radius:14px;overflow:hidden;
+  border:1.5px solid color-mix(in srgb, var(--ink) 10%, transparent);background:#F6F5FA;
+  transition:border-color .25s, box-shadow .3s, transform .3s var(--cfg-mola);}
+.cfg-tm i{position:absolute;display:block;border-radius:4px;}
+.cfg-tm-lado{left:0;top:0;bottom:0;width:24%;border-radius:0 !important;background:#14102A;}
+.cfg-tm-topo{left:31%;right:8%;top:11%;height:11%;background:#E6E2F0;}
+.cfg-tm-a{left:31%;right:42%;top:32%;bottom:12%;background:#fff;box-shadow:0 2px 6px rgba(20,8,40,.12);}
+.cfg-tm-b{left:62%;right:8%;top:32%;bottom:12%;background:linear-gradient(160deg,#FF5FA8,#7C5CFF);}
+.cfg-tm-dark{background:#0F0A18;}
+.cfg-tm-dark .cfg-tm-lado{background:#06040C;}
+.cfg-tm-dark .cfg-tm-topo{background:#2C2340;}
+.cfg-tm-dark .cfg-tm-a{background:#1B1426;box-shadow:none;}
+.cfg-tm-auto{background:linear-gradient(90deg,#F6F5FA 50%,#0F0A18 50%);}
+.cfg-tm-auto::after{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.18);}
+.cfg-tm-auto .cfg-tm-a{background:#fff;}
+.cfg-tm-auto .cfg-tm-b{background:#1B1426;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);}
+.cfg-tm-auto .cfg-tm-topo{background:linear-gradient(90deg,#E6E2F0 41%,#2C2340 41%);}
+.cfg-tm-ok{position:absolute;right:6px;bottom:6px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--acento);color:#fff;transform:scale(0);transition:transform .35s cubic-bezier(.3,1.5,.5,1);}
+.cfg-temas button .cfg-tm-ok svg, .cfg-temas button.on .cfg-tm-ok svg{color:#fff;stroke:#fff;}
+.cfg-tm-ok svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}
+.cfg-tm-rot{font-size:12.5px;font-weight:600;color:var(--ink-3);transition:color .2s;}
+.cfg-temas button:hover .cfg-tm{transform:translate3d(0,-2px,0);}
+.cfg-temas button.on .cfg-tm{border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave), 0 10px 22px -14px color-mix(in srgb, var(--acento) 80%, transparent);}
+.cfg-temas button.on .cfg-tm-ok{transform:scale(1);}
+.cfg-temas button.on .cfg-tm-rot{color:var(--ink);}
+.cfg-temas button:active .cfg-tm{transform:scale(.96);}
+
+/* sair + assinatura */
+.cfg-perigo{justify-content:center;}
+.cfg-perigo .cfg-l-tx{flex:0 1 auto;}
+.cfg-assina{display:flex;flex-direction:column;align-items:center;gap:3px;margin:8px 0 28px;color:var(--ink-4);
+  animation:cfgEntra .6s var(--cfg-mola) .3s both;}
+.cfg-assina-b7{width:28px;height:28px;margin-bottom:4px;opacity:.85;background:url('../assets/brand/symbol-color.png') center/contain no-repeat;}
+[data-theme="dark"] .cfg-assina-b7{background-image:url('../assets/brand/symbol-white.png');}
+.cfg-assina b{font-family:'Archivo',sans-serif;font-size:13px;font-weight:800;color:var(--ink-3);}
+.cfg-assina small{font-size:11.5px;}
+
+@media (max-width:760px){
+  .cfg-perfil-cx .cfg-perfil{padding:18px 16px 12px;}
+  .cfg-pf-atalhos{padding:0 12px 12px;gap:6px;}
+  .cfg-pf-atalhos button{min-height:60px;font-size:12px;}
+  .cfg-l-abaixo{padding-left:14px;}
+}
+html.modo-leve .cfg-aurora{animation:none;}
+html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card);}
+@media (prefers-reduced-motion: reduce){
+  .cfg-aurora, .cfg-lista > *, .cfg-perfil-cx, .cfg-titulo, .cfg-assina{animation:none !important;}
+}

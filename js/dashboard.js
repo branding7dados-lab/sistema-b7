@@ -1693,6 +1693,8 @@ B7.Dashboard = (function () {
     versao: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.2M12 7.8h.01"/>',
     rede: '<path d="M2.5 8.8a14 14 0 0 1 19 0M5.5 12.2a9.5 9.5 0 0 1 13 0M8.7 15.5a5 5 0 0 1 6.6 0"/><path d="M12 19.2h.01"/>',
     acesso: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    sino: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+    camera: '<path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.3"/>',
     sair: '<path d="M14.5 4h4A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>'
   };
   const svgF = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICF[k] + '</svg>';
@@ -1748,19 +1750,29 @@ B7.Dashboard = (function () {
         '<div class="cfg-lista">' + linhas + '</div>' + (nota ? '<p class="cfg-g-nota">' + nota + '</p>' : '') + '</section>' : '';
 
     painel().innerHTML = '<div class="conteudo entra cfg-tela">' +
-      '<div class="trilha-nav cfg-so-largo"><button data-ir="#/">Central B7</button><span>/</span><b>Configurações</b></div>' +
       '<h1 class="cfg-titulo">Configurações</h1>' +
 
       /* Conta no topo: quem está usando, e o atalho para o perfil */
-      (u ? '<button type="button" class="cfg-perfil" data-abrir-perfil>' +
+      /* zzz13: o cartão da conta ganha a aurora e o anel do perfil, e
+         três atalhos que abrem o perfil já na aba certa */
+      (u ? '<div class="cfg-perfil-cx"><i class="cfg-aurora" aria-hidden="true"></i>' +
+        '<button type="button" class="cfg-perfil" data-abrir-perfil>' +
         (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-perfil-av') : '') +
         '<span class="cfg-perfil-tx"><b>' + esc(u.nome || u.username || '') + '</b>' +
-        '<small>@' + esc(u.username || '') + ' · ' + esc(PAPEL_CFG[u.papel] || u.papel || '') + '</small>' +
-        '<em>Editar perfil e senha</em></span>' + SETA_CFG + '</button>' : '') +
+        '<small>@' + esc(u.username || '') + ' · ' + esc(PAPEL_CFG[u.papel] || u.papel || '') + '</small></span>' + SETA_CFG + '</button>' +
+        '<div class="cfg-pf-atalhos">' +
+          [['conta', 'Foto e nome', 'camera'], ['seguranca', 'Senha', 'acesso'], ['notificacoes', 'Avisos', 'sino']].map(a =>
+            '<button type="button" data-pf="' + a[0] + '">' + svgF(a[2]) + '<span>' + a[1] + '</span></button>').join('') +
+        '</div></div>' : '') +
 
       grupo('Aparência', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
-        L({ ic: 'tema', tom: 'violeta', t: 'Tema',
-            abaixo: seletor('tema', tema, [['light', 'Claro', 'sol'], ['dark', 'Escuro', 'tema'], ['auto', 'Sistema', 'tela']]) }) +
+        L({ ic: 'tema', tom: 'violeta', t: 'Tema', d: 'claro, escuro ou igual ao do aparelho',
+            abaixo: '<div class="cfg-seg cfg-temas" data-grupo="tema" role="radiogroup" aria-label="Tema"><i class="cfg-seg-pill" aria-hidden="true"></i>' +
+              [['light', 'Claro'], ['dark', 'Escuro'], ['auto', 'Sistema']].map(([v, r]) =>
+                '<button type="button" role="radio" data-v="' + v + '" aria-checked="' + (tema === v) + '"' + (tema === v ? ' class="on"' : '') + '>' +
+                '<span class="cfg-tm cfg-tm-' + v + '" aria-hidden="true"><i class="cfg-tm-lado"></i><i class="cfg-tm-topo"></i><i class="cfg-tm-a"></i><i class="cfg-tm-b"></i>' +
+                '<b class="cfg-tm-ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></b></span>' +
+                '<span class="cfg-tm-rot">' + r + '</span></button>').join('') + '</div>' }) +
         L({ ic: 'densidade', tom: 'azul', t: 'Densidade', d: 'quanto conteúdo cabe na tela',
             abaixo: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) }) +
         /* zzz6: desligar de verdade (antes só mostrava o que o sistema dizia) */
@@ -1820,12 +1832,14 @@ B7.Dashboard = (function () {
 
       (u ? grupo('', 'Encerra a sessão só neste aparelho.',
         L({ ic: 'sair', tom: 'vermelho', t: 'Sair da conta', botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-config' })) : '') +
+      '<footer class="cfg-assina"><span class="cfg-assina-b7" aria-hidden="true"></span><b>Sistema B7</b><small>feito pela Branding7</small></footer>' +
     '</div>';
 
     ligar();
     const p = painel();
     const btPerfil = p.querySelector('[data-abrir-perfil]');
     if (btPerfil) btPerfil.onclick = () => B7.Perfil.abrir();
+    p.querySelectorAll('[data-pf]').forEach(b => b.onclick = () => B7.Perfil.abrir(b.dataset.pf));
     const btSair = p.querySelector('[data-sair-config]');
     if (btSair) btSair.onclick = () => B7.Auth.sair();
 
