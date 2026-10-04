@@ -508,3 +508,25 @@ button.gv-fato:hover .gv-fato-ed,button.gv-fato:focus-visible .gv-fato-ed{opacit
 .mg-dur:active{transform:scale(.95);}
 .mg-dur.on{border-color:var(--acento);background:color-mix(in srgb, var(--acento) 10%, var(--card));color:var(--acento);}
 .ng-bloco:nth-of-type(4){animation-delay:.18s}
+
+/* Nova linha editorial (zzz40) — js/conteudo.js modalNovaLinha, usa os .ng-* acima */
+.nl-modal .nl-atalhos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px;}
+.nl-modal .nl-atalhos .gv-chip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;}
+.nl-modal .nl-atalhos .gv-chip small{font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-4);}
+.nl-modal .nl-atalhos .gv-chip b{font-size:15px;font-weight:800;}
+.nl-modal .nl-atalhos .gv-chip.on small{color:color-mix(in srgb, var(--acento) 75%, var(--ink-4));}
+.nl-campos{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:8px;}
+.nl-modal .ng-bloco h4 .mg-obr{margin-left:auto;}
+.nl-existe{display:flex;align-items:center;gap:11px;margin-top:12px;padding:11px 12px;border-radius:14px;
+  background:color-mix(in srgb, var(--aviso, #f5a524) 10%, var(--card));border:1px solid color-mix(in srgb, var(--aviso, #f5a524) 30%, transparent);
+  animation:nl-existe .32s cubic-bezier(.2,.9,.3,1.2) both;}
+.nl-existe-ic{flex:none;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb, var(--aviso, #f5a524) 22%, transparent);color:var(--aviso, #f5a524);font-weight:900;font-size:14px;}
+.nl-existe-tx{flex:1;min-width:0;display:flex;flex-direction:column;font-size:12px;line-height:1.35;color:var(--ink-3);}
+.nl-existe-tx b{font-size:13px;color:var(--ink);font-weight:800;}
+.nl-existe-b{flex:none;height:34px;padding:0 14px;border-radius:999px;border:0;cursor:pointer;font:inherit;font-size:13px;font-weight:800;
+  background:var(--ink);color:var(--card);}
+.nl-existe-b:active{transform:scale(.95);}
+@keyframes nl-existe{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.nl-existe{animation:none;}}
+html.modo-leve .nl-existe{animation:none;}
