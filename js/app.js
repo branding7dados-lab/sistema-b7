@@ -1131,7 +1131,7 @@ B7.Rota = (function () {
       if (!forcar && (document.hidden || Date.now() - ultima < 10000)) return;
       conferindo = true; ultima = Date.now();
       try {
-        const r = await fetch('js/auth.js', { cache: 'no-store' });
+        const r = await fetch('js/auth.js?t=' + Date.now(), { cache: 'no-store' });
         if (r.ok) {
           const m = /VERSAO\s*=\s*'([^']+)'/.exec(await r.text());
           if (m && m[1] !== minha) haVersaoNova(m[1]);
