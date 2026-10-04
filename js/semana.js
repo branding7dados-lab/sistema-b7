@@ -103,7 +103,7 @@ B7.Semana = (function () {
       '<div class="trilha ss-so-largo"><a href="#/">Central B7</a><span>/</span><b>Status semanal</b></div>' +
       '<div class="cab-conteudo ss-cab"><div><h1>Status semanal</h1>' +
       '<p>O acompanhamento de sete dias que vai para o cliente.</p></div>' +
-      '<button class="b pri ss-novo" id="novo-status">+ Novo<span class="ss-so-largo">&nbsp;status</span></button></div>' +
+      '<button class="b pri ss-novo" id="novo-status" aria-label="Novo status"><span class="ss-novo-mais" aria-hidden="true">+</span><span class="ss-novo-tx">Novo status</span></button></div>' +
 
       (lista.length
         ? '<div class="busca-linhas ss-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
@@ -205,8 +205,9 @@ B7.Semana = (function () {
                 'title="Baixar, num só .zip, o status semanal de todos os clientes desta semana" aria-label="Exportar semana (.zip)">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5"/><path d="M4.5 16.5v2.5A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5"/></svg>' +
                 '<span>Exportar</span></button>' +
-              '<span class="gs-barra" aria-hidden="true"><i class="env" style="width:' + pct('Enviado') + '"></i>' +
-                '<i class="pro" style="width:' + pct('Pronto para envio') + '"></i></span></summary>' +
+              '<span class="gs-prog"><span class="gs-barra" aria-hidden="true"><i class="env" style="width:' + pct('Enviado') + '"></i>' +
+                '<i class="pro" style="width:' + pct('Pronto para envio') + '"></i></span>' +
+                '<em class="gs-prog-n' + (n.Enviado === tot ? ' completo' : '') + '">' + n.Enviado + '/' + tot + ' enviado' + (tot === 1 ? '' : 's') + '</em></span></summary>' +
             '<div class="lista-status">' + sem.linhas.map(cardStatus).join('') + '</div>' +
           '</details>';
         }).join('') + '</div>' +
@@ -231,7 +232,7 @@ B7.Semana = (function () {
           (r.total_atencao ? '<span class="is-atencao">' + r.total_atencao + ' aguardando</span>' : '') +
         '</span>' +
       '</div>' +
-      '<span class="is-situacao ' + classe + '">' + esc(r.situacao || 'Rascunho') + '</span>' +
+      '<span class="is-situacao ' + classe + '">' + esc(r.situacao || 'Rascunho').replace(' para envio', '<span class="is-sit-longo"> para envio</span>') + '</span>' +
       '<button class="is-previa" data-quick-status="' + esc(r.id) + '" aria-label="Prévia do status de ' + esc(r.cliente_nome) + '" title="Prévia">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
       '<svg class="is-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>' +

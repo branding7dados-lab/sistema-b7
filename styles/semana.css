@@ -684,3 +684,57 @@
 @media (prefers-reduced-motion:reduce){
   .sem-editor .sem-dia,.sem-editor .sd-item,.sem-editor .sem-info,.sem-editor .sem-linha-editorial,.sem-editor .sem-revisao,.sem-dia.hoje .sd-ponto{animation:none;}
 }
+/* =====================================================================
+   STATUS SEMANAL 3 (zzz39) — padrão novo
+   "+" quadrado no celular, situação em pílula discreta (sem caixa alta),
+   barra da semana com "N/M enviados", logos preenchidas e prévia leve.
+   ===================================================================== */
+.ss-novo-mais{font-size:18px;line-height:1;font-weight:500;margin-right:6px;}
+.ss-tela .ss-novo{display:inline-flex;align-items:center;}
+.ss-tela .ss-busca{margin-bottom:20px !important;}
+.ss-tela .ss-busca .campo{height:46px;border-radius:14px;}
+/* mês */
+.ss-tela .grupo-mes>summary{padding:4px 2px 10px;}
+.ss-tela .grupo-mes>summary b{font-family:'Archivo',sans-serif;font-size:20px;font-weight:900;letter-spacing:-.3px;}
+.ss-tela .grupo-mes>summary .grupo-cont{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:color-mix(in srgb, var(--ink) 7%, transparent);color:var(--ink-3);}
+/* semana */
+.ss-tela .grupo-semana{border-radius:20px;border-color:color-mix(in srgb, var(--ink) 8%, transparent);box-shadow:0 12px 30px -26px rgba(20,8,40,.6);}
+.ss-tela .grupo-semana>summary{flex-wrap:wrap;padding:14px 14px 12px;row-gap:10px;}
+.ss-tela .gs-tx b{font-size:15.5px;}
+.gs-prog{order:5;flex:1 1 100%;display:flex;align-items:center;gap:10px;}
+.ss-tela .gs-prog .gs-barra{position:static;flex:1;height:6px;border-radius:99px;}
+.gs-prog-n{flex:none;font-style:normal;font-size:11.5px;font-weight:700;color:var(--ink-4);font-variant-numeric:tabular-nums;}
+.gs-prog-n.completo{color:var(--ok);}
+.gs-prog-n.completo:before{content:"✓ ";}
+.ss-tela .grupo-semana>summary .gs-exportar{border-radius:12px;}
+/* linhas */
+.ss-tela .item-status{padding:12px 14px !important;}
+.ss-tela .item-status .avatar{width:42px !important;height:42px !important;border-radius:12px !important;overflow:hidden;}
+.ss-tela .item-status .avatar img{width:100%;height:100%;object-fit:cover;}
+.ss-tela .grupo-semana .item-status + .item-status::before, .ss-plana .item-status + .item-status::before{left:70px;}
+.ss-tela .is-tx b{font-size:14.5px;font-weight:800;}
+.ss-tela .is-situacao{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px !important;border-radius:999px;
+  font-size:11.5px !important;font-weight:700;letter-spacing:0 !important;text-transform:none !important;
+  background:color-mix(in srgb, var(--ink) 6%, transparent);color:var(--ink-3);}
+.ss-tela .is-situacao:before{content:"" !important;display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin:0 !important;}
+.ss-tela .is-situacao.pronto{background:color-mix(in srgb, var(--ambar) 14%, transparent);color:var(--ambar);}
+.ss-tela .is-situacao.enviado{background:color-mix(in srgb, var(--ok) 14%, transparent) !important;color:var(--ok) !important;}
+.ss-tela .is-situacao.enviado::after{display:none;}
+.ss-tela .is-previa{width:34px;height:34px;border-radius:50%;color:var(--ink-4);}
+.ss-tela .is-previa svg{width:18px;height:18px;}
+@media (max-width:760px){
+  .ss-tela .ss-cab{align-items:center !important;}
+  .ss-tela .ss-cab h1{font-size:26px !important;}
+  .ss-tela .ss-cab p{display:none;}
+  .ss-tela .ss-cab .ss-novo{width:44px !important;height:44px !important;padding:0 !important;border-radius:14px !important;justify-content:center;}
+  .ss-tela .ss-novo-tx{display:none;}
+  .ss-tela .ss-novo-mais{margin:0;font-size:22px;}
+  .ss-tela svg.is-seta{display:none;}
+  .ss-tela .is-situacao{height:24px;padding:0 9px !important;font-size:11px !important;}
+}
+/* meta numa linha só (pílula longa não quebra a data) */
+.ss-tela .is-meta{flex-wrap:nowrap;min-width:0;overflow:hidden;}
+.ss-tela .is-meta > *{white-space:nowrap;}
+.ss-tela .is-meta > :last-child{overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.ss-tela .is-situacao{flex-shrink:0;}
+@media (max-width:640px){.ss-tela .is-sit-longo{display:none;}}
