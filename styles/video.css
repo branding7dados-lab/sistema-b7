@@ -1277,7 +1277,7 @@ body.vd-arrastando-toque .vd-coluna-corpo{transition:background .2s, box-shadow 
   .vd-heroi.estreia .vd-heroi-it{animation:vdChipIn .6s var(--mola) both;animation-delay:calc(.75s + var(--i) * .07s);}
   .vd-heroi.estreia .vd-heroi-aviso{animation:vdSobe .7s 1.05s var(--mola) both;}
 }
-@keyframes vdEstreia{0%{opacity:0;transform:perspective(900px) translate3d(0,22px,0) scale(.95)}100%{opacity:1;transform:perspective(900px)}}
+@keyframes vdEstreia{0%{opacity:0;transform:perspective(900px) translate3d(0,22px,0) scale(.95);filter:blur(10px)}60%{filter:blur(0)}100%{opacity:1;transform:perspective(900px);filter:none}}
 @keyframes vdRotulo{from{opacity:0;letter-spacing:.32em}to{opacity:1;letter-spacing:.11em}}
 @keyframes vdSobe{from{opacity:0;transform:translate3d(0,12px,0)}to{opacity:1;transform:none}}
 @keyframes vdAnelIn{from{opacity:0;transform:scale(.6) rotate(-40deg)}to{opacity:1;transform:none}}
@@ -1397,7 +1397,7 @@ html.modo-leve .vd-h-grao{display:none;}
 @keyframes vdFaixa{0%,22%{transform:scaleY(1)}100%{transform:scaleY(0)}}
 @keyframes vdFeixe{0%{left:-80%;opacity:0}20%{opacity:1}100%{left:120%;opacity:0}}
 @keyframes vdEstreia2{from{opacity:0;transform:perspective(900px) translate3d(0,16px,0) scale(.97)}to{opacity:1;transform:perspective(900px)}}
-@keyframes vdFoco{from{opacity:.2;transform:scale(1.04)}to{opacity:1;transform:none}}
+@keyframes vdFoco{from{opacity:.2;filter:blur(8px);transform:scale(1.04)}to{opacity:1;filter:none;transform:none}}
 @keyframes vdBokeh{0%{opacity:0;transform:translate3d(0,12px,0) scale(.8)}25%{opacity:.9}50%{opacity:.5;transform:translate3d(10px,-14px,0) scale(1.1)}75%{opacity:.85}100%{opacity:0;transform:translate3d(-6px,-28px,0) scale(.9)}}
 @keyframes vdPulsoAnel{0%{opacity:.9;transform:scale(.9)}100%{opacity:0;transform:scale(1.55)}}
 @keyframes vdPctBrilha{0%{text-shadow:0 0 0 transparent}30%{text-shadow:0 0 14px rgba(124,245,196,.95)}100%{text-shadow:0 0 0 transparent}}
