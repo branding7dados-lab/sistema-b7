@@ -193,6 +193,38 @@ B7.Topo = (function () {
      telas que não chamam marcarNav */
   window.addEventListener('hashchange', () => setTimeout(() => { if (document.getElementById('topo-ctx')) contexto(); }, 0));
 
+  /* zzz13: título grande × título do topo (celular). Enquanto o título
+     grande da página está à vista, o nome no topo some — antes aparecia
+     "Configurações" duas vezes. Ao rolar e o título grande passar por
+     baixo do topo, o nome sobe no topo (como os apps do iPhone). */
+  (function tituloGrande() {
+    let io = null, atual = null;
+    const marcar = v => document.body.classList.toggle('titulo-na-pagina', v);
+    function procurar() {
+      const pn = document.getElementById('painel-dashboard');
+      const h = pn && pn.querySelector('.conteudo h1');
+      if (h === atual) return;
+      atual = h;
+      if (io) { io.disconnect(); io = null; }
+      if (!h || !('IntersectionObserver' in window)) return marcar(false);
+      const topo = document.querySelector('.tela.ativa .topo');
+      const alto = topo ? Math.round(topo.getBoundingClientRect().bottom) : 64;
+      io = new IntersectionObserver(es => marcar(es[es.length - 1].isIntersecting),
+        { rootMargin: '-' + alto + 'px 0px 0px 0px', threshold: 0 });
+      io.observe(h);
+    }
+    let agendado = 0;
+    const agendar = () => { if (!agendado) agendado = requestAnimationFrame(() => { agendado = 0; procurar(); }); };
+    const ligarObs = () => {
+      const pn = document.getElementById('painel-dashboard');
+      if (!pn) return setTimeout(ligarObs, 400);
+      new MutationObserver(agendar).observe(pn, { childList: true, subtree: true });
+      agendar();
+    };
+    ligarObs();
+    window.addEventListener('hashchange', agendar);
+  })();
+
   /* Folha no celular: o B7.UI.modal já vira bottom sheet ≤520px, prende o
      foco, fecha no Esc/fora e devolve o foco ao gatilho. */
   function abrirFolha(titulo, html, ligar, aoFechar) {
