@@ -710,3 +710,57 @@
   .cb-livre-ic svg path:last-child{stroke-dashoffset:0;}
   .cb-gaveta{transition:none;}
 }
+/* =====================================================================
+   CALENDÁRIO 2 (zzz19) — mesmo vocabulário das telas novas: tipos em
+   pílulas soltas (a escolhida em tinta), seletores e Filtros em pílula,
+   barra e grade com cantos maiores, hoje com destaque em degradê e
+   agenda do celular em cartões.
+   ===================================================================== */
+.cb{--cb-mola:cubic-bezier(.16,1,.3,1);}
+.cb .cb-titulo h1{font-size:28px;font-weight:900;letter-spacing:-.6px;}
+.cb #cb-marcar, .cb #cb-config{border-radius:13px;}
+
+/* barra (navegação + vistas) */
+.cb-barra{border-radius:20px;border-color:color-mix(in srgb, var(--ink) 8%, transparent);box-shadow:0 10px 26px -24px rgba(20,8,40,.5);}
+.cb-nav .b{border-radius:12px;}
+.cb-vistas.filtro{border-radius:12px;}
+
+/* tipos: pílulas soltas */
+.cb-tipos.filtro{background:none !important;padding:2px !important;gap:6px;border:0 !important;box-shadow:none !important;margin:0 -2px 10px;}
+.cb-tipos.filtro button{height:36px;min-height:36px;padding:0 13px;border-radius:999px;border:1px solid var(--borda);background:var(--card);
+  color:var(--ink-3);font-size:13px;font-weight:600;box-shadow:none;transition:background .2s, color .2s, border-color .2s, transform .15s;}
+.cb-tipos.filtro button:hover{color:var(--ink);border-color:var(--borda-forte);}
+.cb-tipos.filtro button:active{transform:scale(.95);}
+.cb-tipos.filtro button.on{background:var(--ink);border-color:var(--ink);color:var(--card);}
+.cb-tipos .cb-n{background:none !important;padding:0;min-width:0;font-size:12px;color:var(--ink-4);}
+.cb-tipos button.on .cb-n{color:color-mix(in srgb, var(--card) 65%, transparent) !important;}
+.cb-tipos button.on .cb-dom-ic{color:var(--card) !important;}
+
+/* seletores, Filtros e Oportunidades em pílula */
+.cb-sels .campo{height:38px;border-radius:999px;padding:0 32px 0 14px;font-size:13px;font-weight:600;color:var(--ink-2);background-position:right 12px center;}
+.cb-sels .campo.ativo{background-color:var(--acento-suave);border-color:transparent;color:var(--acento);}
+.cb-bt-filtros, .cb-camada-op{border-radius:999px !important;min-height:38px;}
+
+/* grade do mês */
+.cb-mes{border-radius:22px;border-color:color-mix(in srgb, var(--ink) 8%, transparent);box-shadow:0 14px 34px -28px rgba(20,8,40,.55);}
+.cb-cel{transition:background .2s;}
+.cb-cel:not(.fora):hover{background:color-mix(in srgb, var(--acento) 3%, var(--card));}
+.cb-cel.hoje .cb-cel-num b{background:var(--grad-curto, var(--acento));box-shadow:0 6px 14px -8px rgba(194,28,131,.8);}
+.cb-chip{border-radius:8px;transition:transform .2s var(--cb-mola), box-shadow .2s;}
+.cb-chip:hover{transform:translate3d(0,-1px,0);box-shadow:0 6px 14px -10px rgba(20,8,40,.5);}
+
+/* semana */
+.cb-sem-col{border-radius:18px;}
+.cb-card{border-radius:12px;}
+
+/* agenda (celular) */
+.cb-agenda .cb-titulo h1{font-size:30px;}
+.cb-dia-cab h3{font-size:20px;font-weight:900;letter-spacing:-.3px;}
+.cb-agenda .cb-linha{border-radius:16px !important;overflow:hidden;margin-bottom:8px;
+  border-color:color-mix(in srgb, var(--ink) 8%, transparent);box-shadow:0 10px 24px -22px rgba(20,8,40,.55);
+  transition:transform .2s var(--cb-mola), background .2s;}
+.cb-agenda .cb-linha + .cb-linha{border-top-width:1px;}
+.cb-agenda .cb-linha:active{transform:scale(.985);background:var(--suave);}
+.cb-agenda .cb-linha-h b{font-family:'Archivo',sans-serif;font-size:17px;font-weight:800;}
+.cb-faixa button{border-radius:14px;}
+@media (prefers-reduced-motion: reduce){ .cb-chip{transition:none;} }
