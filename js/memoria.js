@@ -199,7 +199,7 @@ B7.Memoria = (function () {
 
       /* guardado, mas houve escrita depois: espera o banco; a guardada só
          se a rede falhar */
-      if (e.g < geracao) {
+      if (e.g < geracao && Date.now() < redeAte) {
         try { return (await buscar(nome, orig, args, chave)).r; }
         catch (er) { if (navigator.onLine === false) return copia(e.v); throw er; }
       }
@@ -214,7 +214,13 @@ B7.Memoria = (function () {
   }
   LEITURAS.forEach(embrulhar);
 
-  function invalidar() { geracao++; }
+  /* zzz8: a escrita (ou o aviso do Realtime) faz as leituras dos PRÓXIMOS
+     segundos esperarem o banco — é a própria tela redesenhando depois da
+     ação. Passada a janela, o que ficou de antes volta a abrir na hora e é
+     conferido por trás. Antes valia para sempre: qualquer notificação nova
+     ou um autosave apagava a memória de todas as telas (vídeo do Kevin). */
+  let redeAte = 0;
+  function invalidar(janela) { geracao++; redeAte = Math.max(redeAte, Date.now() + (janela || 4000)); }
 
   Object.keys(B7.DB).forEach(nome => {
     if (!ESCRITA.test(nome) || LEITURAS.includes(nome)) return;
@@ -224,7 +230,7 @@ B7.Memoria = (function () {
       invalidar();
       const r = orig.apply(B7.DB, args);
       /* a escrita terminou: o que alguém leu NO MEIO dela também é velho */
-      if (r && typeof r.then === 'function') r.then(invalidar, invalidar);
+      if (r && typeof r.then === 'function') r.then(() => invalidar(), () => invalidar());
       return r;
     };
   });
@@ -242,7 +248,7 @@ B7.Memoria = (function () {
   const canalOrig = B7.DB.canal;
   if (typeof canalOrig === 'function') {
     B7.DB.canal = function (nome, assinaturas, aoMudar) {
-      return canalOrig.call(B7.DB, nome, assinaturas, p => { invalidar(); return aoMudar(p); });
+      return canalOrig.call(B7.DB, nome, assinaturas, p => { invalidar(2500); return aoMudar(p); });
     };
   }
 
