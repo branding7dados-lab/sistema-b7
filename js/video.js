@@ -277,11 +277,13 @@ B7.Video = (function () {
        nunca somem, só ficam fora da projeção do mês corrente até
        alguém trocar de competência ou clicar no aviso (spec: "não deixe
        trabalho antigo desaparecer operacionalmente"). */
+    if (!painel().querySelector('.vd-tela')) heroiAnt = null;   /* nova visita: entrada completa */
     const anteriores = F.competencia !== 'todas'
       ? demandas.filter(d => competenciaChave(d) && competenciaChave(d) < F.competencia &&
                              d.editing_status !== 'entregue' && d.editing_status !== 'descartado')
       : [];
 
+    ultAnteriores = anteriores.length;
     painel().innerHTML = '<div class="conteudo entra vd-tela">' +
       '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
       '<p>Toda a fila de edição da B7 em um só lugar.</p><p class="vd-sub-m" id="vd-sub-m"></p></div>' +
@@ -352,6 +354,68 @@ B7.Video = (function () {
     B7.DB.verificarAlertasPrazoVideo().catch(() => {});
   }
 
+  /* ---------------- CARTÃO-RESUMO DO CELULAR (zzz28) ----------------
+     Volta só no Vídeo, agora sem os tropeços do zzz25: a entrada anima
+     UMA vez por visita; depois, a cada filtro/busca, o anel, a barra e
+     os números deslizam do valor anterior para o novo (antes o cartão
+     inteiro renascia a cada letra digitada). Legenda e segmentos da
+     barra filtram por etapa. */
+  let ultAnteriores = 0, heroiAnt = null;
+  const COR_ETAPA = { pendente: '#A59CC0', em_edicao: '#8B6CFF', aguardando_aprovacao: '#F0559E', correcao: '#F0A443', standby: '#6F6787', entregue: '#3DD69A' };
+  const ROT_ETAPA = { pendente: 'Pendente', em_edicao: 'Em edição', aguardando_aprovacao: 'Aprovação', correcao: 'Correção', standby: 'Standby', entregue: 'Entregue' };
+  function heroiHTML(base, chips) {
+    const total = base.length;
+    const entregues = base.filter(d => d.editing_status === 'entregue').length;
+    const segs = Object.keys(COR_ETAPA).map(k => [k, base.filter(d => d.editing_status === k).length]);
+    const mes = F.competencia !== 'todas' ? competenciaRotulo(F.competencia).split(' de ')[0] : 'todos os meses';
+    const R = 26, C = 2 * Math.PI * R;
+    return '<div class="vd-heroi' + (heroiAnt ? ' ja-visto' : '') + '" data-total="' + total + '" data-entregues="' + entregues + '">' +
+      '<div class="vd-heroi-topo">' +
+        '<div class="vd-heroi-tx"><small>Entregues · ' + esc(mes) + '</small>' +
+          '<div class="vd-heroi-num"><b data-hn>' + (heroiAnt ? heroiAnt.entregues : 0) + '</b><span>de ' + total + '</span></div></div>' +
+        '<svg class="vd-heroi-anel" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="' + R + '" class="trilho"/>' +
+          '<circle cx="32" cy="32" r="' + R + '" class="cheio" style="stroke-dasharray:' + C.toFixed(1) + ';stroke-dashoffset:' + C.toFixed(1) + '" data-c="' + C.toFixed(1) + '"/></svg>' +
+        '<em class="vd-heroi-pct" data-hp>0%</em>' +
+      '</div>' +
+      '<div class="vd-heroi-barra">' + segs.map(([k, n]) =>
+        '<button type="button" class="vd-seg" data-resumo="status:' + k + '" data-n="' + n + '" style="--c:' + COR_ETAPA[k] + ';flex-grow:' + (heroiAnt ? (heroiAnt.segs[k] || 0) : 0) + '" aria-label="' + esc(ROT_ETAPA[k]) + ': ' + n + '"></button>').join('') + '</div>' +
+      '<div class="vd-heroi-leg">' + chips.map(([chave, n, rot, on]) => {
+        const k = chave.split(':')[1];
+        return '<button class="vd-heroi-it' + (on ? ' on' : '') + '" data-resumo="' + chave + '" style="--c:' + (COR_ETAPA[k] || (k === 'atrasadas' ? '#FF5C8A' : '#FFC24D')) + '">' +
+          '<i></i><b>' + n + '</b>' + esc(rot) + '</button>';
+      }).join('') + '</div>' +
+      (ultAnteriores ? '<button class="vd-heroi-aviso" data-ver-anteriores><span><b>' + ultAnteriores + '</b> de meses anteriores em aberto</span><i>Ver</i></button>' : '') +
+    '</div>';
+  }
+  function animarHeroi(cx) {
+    const h = cx.querySelector('.vd-heroi');
+    if (!h) return;
+    const total = +h.dataset.total, ent = +h.dataset.entregues;
+    const pct = total ? Math.round(ent * 100 / total) : 0;
+    const de = heroiAnt ? heroiAnt.entregues : 0, pctDe = heroiAnt ? heroiAnt.pct : 0;
+    const segs = {};
+    h.querySelectorAll('.vd-seg').forEach(b => { segs[b.dataset.resumo.split(':')[1]] = +b.dataset.n; });
+    heroiAnt = { entregues: ent, pct, segs };
+    const anel = h.querySelector('.cheio'), C = +anel.dataset.c;
+    const aplicar = () => {
+      anel.style.strokeDashoffset = (C * (1 - pct / 100)).toFixed(1);
+      h.querySelectorAll('.vd-seg').forEach(b => { b.style.flexGrow = b.dataset.n; b.classList.toggle('vazio', !+b.dataset.n); });
+    };
+    const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduz) { aplicar(); h.querySelector('[data-hn]').textContent = ent; h.querySelector('[data-hp]').textContent = pct + '%'; return; }
+    if (pctDe) anel.style.strokeDashoffset = (C * (1 - pctDe / 100)).toFixed(1);
+    requestAnimationFrame(() => requestAnimationFrame(aplicar));
+    const n = h.querySelector('[data-hn]'), p = h.querySelector('[data-hp]');
+    const t0 = performance.now(), DUR = 700, atraso = h.classList.contains('ja-visto') ? 0 : 180;
+    const passo = agora => {
+      const t = Math.min(1, Math.max(0, (agora - t0 - atraso) / DUR)), e = 1 - Math.pow(1 - t, 3);
+      if (!n.isConnected) return;
+      n.textContent = Math.round(de + (ent - de) * e);
+      p.textContent = Math.round(pctDe + (pct - pctDe) * e) + '%';
+      if (t < 1) requestAnimationFrame(passo);
+    };
+    requestAnimationFrame(passo);
+  }
   function desenharResumo(base) {
     const cx = painel().querySelector('#vd-resumo');
     if (!cx) return;
@@ -370,8 +434,11 @@ B7.Video = (function () {
     cx.innerHTML = '<div class="ds-resumo-rapido vd-resumo-rapido">' + chips.map(([chave, n, rot, on]) =>
       '<button class="ds-rapido-item vd-rapido-' + esc(chave.split(':')[1]) + (on ? ' on' : '') + '" data-resumo="' + chave + '">' +
       '<i class="vd-dot"></i><b data-n="' + n + '">' + n + '</b> ' + esc(rot) + '</button>').join('') +
-      '</div>';
-    contarNumeros(cx);
+      '</div>' + heroiHTML(base, chips);
+    contarNumeros(cx.querySelector('.vd-resumo-rapido'));
+    animarHeroi(cx);
+    const verAnt = cx.querySelector('[data-ver-anteriores]');
+    if (verAnt) verAnt.onclick = () => { F.competencia = 'todas'; F.prazo = 'atrasadas'; guardarFiltros(); desenharProducao(); };
 
     cx.querySelectorAll('[data-resumo]').forEach(b => b.onclick = () => {
       const [dim, val] = b.dataset.resumo.split(':');
