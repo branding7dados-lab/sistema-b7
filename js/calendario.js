@@ -888,44 +888,59 @@ B7.Calendario = (function () {
   }
 
   function modalConfiguracoes() {
+    /* zzz36: no padrão novo — cabeçalho com ícone, cartão de conexão
+       (status, conta, última sincronização e "Desconectar" discreto), a
+       explicação longa recolhida, e as agendas numa lista com chave
+       liga/desliga e duas pílulas por agenda. Mesmos ids/data-* de antes. */
+    const ICC = {
+      cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+      atual: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>'
+    };
     const conteudo = () =>
-      '<h3>Configurações do Calendário</h3>' +
+      '<div class="cc-topo"><span class="cc-ic">' + ICC.cal + '</span><div><h3>Configurações do Calendário</h3>' +
+        '<div class="sub">Conexão com o Google e quais agendas aparecem aqui.</div></div></div>' +
       (conexao.conectado
-        ? '<div class="cal-conexao-ok"><b>Conectado</b><span>' + esc(conexao.conta_email || '') + '</span>' +
-          (conexao.ultima_sincronizacao ? '<small class="fraca">Última sincronização: ' + esc(B7.UI.quando ? B7.UI.quando(conexao.ultima_sincronizacao) : conexao.ultima_sincronizacao) + '</small>' : '') +
-          '</div><button class="b fina contorno" id="cal-cfg-desconectar">Desconectar</button>' +
-          '<p class="fraca" style="margin-top:10px">Conectou antes desta rodada (só leitura)? Desconecte e conecte de novo pra conceder a nova permissão de escrita — sem ela, remarcar/cancelar não move o evento no Google.</p>'
-        : '<p class="fraca">Nenhuma conta do Google conectada ainda.</p><button class="b pri" id="cal-cfg-conectar">Conectar Google Calendar</button>') +
+        ? '<div class="cc-conexao"><span class="cc-g" aria-hidden="true">G</span>' +
+            '<div class="cc-con-tx"><b><i></i>Conectado ao Google</b>' +
+              (conexao.conta_email ? '<span>' + esc(conexao.conta_email) + '</span>' : '') +
+              (conexao.ultima_sincronizacao ? '<small>Sincronizado ' + esc(B7.UI.quando ? B7.UI.quando(conexao.ultima_sincronizacao) : conexao.ultima_sincronizacao) + '</small>' : '') +
+            '</div><button class="cc-desc" id="cal-cfg-desconectar">Desconectar</button></div>' +
+          '<details class="cc-dica"><summary>Remarcar não mexe no evento do Google?</summary>' +
+            '<p>Se você conectou antes da permissão de escrita existir, desconecte e conecte de novo — sem ela, remarcar ou cancelar não move o evento no Google.</p></details>'
+        : '<div class="cc-conexao off"><span class="cc-g" aria-hidden="true">G</span><div class="cc-con-tx"><b>Nenhuma conta conectada</b>' +
+            '<span>Conecte para ver e criar eventos do Google aqui.</span></div></div>' +
+          '<button class="b pri cc-conectar" id="cal-cfg-conectar">Conectar Google Calendar</button>') +
       (conexao.conectado
-        ? '<h4>Agendas</h4><p class="fraca">Escolha quais agendas do Google aparecem no Calendário de Gravações. ' +
-          '<b>Avisar a equipe</b> liga os lembretes automáticos daquela agenda — deixe desmarcado em agendas pessoais ou de feriados.</p>' +
+        ? '<div class="cc-sec-cab"><h4>Agendas</h4><button class="cc-atualizar" id="cal-cfg-listar">' + ICC.atual + '<span>Atualizar</span></button></div>' +
+          '<p class="cc-sec-sub">Ligue as agendas que aparecem no Calendário. Em cada uma: onde nascem as <b>novas gravações</b> e se a equipe recebe <b>lembretes</b> (deixe desligado em agendas pessoais ou de feriados).</p>' +
           '<div id="cal-cfg-agendas">' + agendasListaHTML() + '</div>'
         : '') +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>';
 
-    const m = B7.UI.modal(conteudo(), { larga: true });
+    const m = B7.UI.modal(conteudo(), { larga: true, extra: 'cc-modal' });
     function redesenhar() { m.querySelector('.modal').innerHTML = conteudo(); ligarModal(); }
     function agendasListaHTML() {
-      if (!agendas.length) return '<p class="fraca">Nenhuma agenda encontrada — clique em "Atualizar lista" ou confira a conexão.</p><button class="b fina contorno" id="cal-cfg-listar">Atualizar lista de agendas</button>';
-      return agendas.map(a => {
+      if (!agendas.length) return '<div class="cc-vazio">Nenhuma agenda encontrada — toque em "Atualizar" ou confira a conexão.</div>';
+      return '<div class="cc-lista">' + agendas.map((a, i) => {
         const semEscrita = a.papel_acesso && a.papel_acesso !== 'owner' && a.papel_acesso !== 'writer';
-        return '<div class="cal-agenda-item">' +
-          '<label><input type="checkbox" data-agenda="' + a.id + '"' + (a.ativo ? ' checked' : '') + '><span>' + esc(a.nome) + '</span></label>' +
-          (a.ativo ? '<label class="cal-agenda-padrao"' +
-            (semEscrita ? ' title="Esta conta só tem permissão de leitura nesta agenda — não dá pra criar eventos aqui"' : ' title="Gravações marcadas pelo calendário criam o evento nesta agenda"') +
-            '><input type="radio" name="cal-agenda-escrita" data-agenda-padrao="' + a.id + '"' +
-            (a.escrita_padrao ? ' checked' : '') + (semEscrita ? ' disabled' : '') + '>' +
-            '<span>' + (semEscrita ? 'Só leitura — não pode ser agenda de escrita' : 'Usar para novas gravações') + '</span></label>' : '') +
-          (a.ativo ? '<label class="cal-agenda-lembrete" title="Avisa a equipe antes dos compromissos desta agenda (gravação: 1 dia e 1h antes; o resto: 1h antes)">' +
-            '<input type="checkbox" data-agenda-lembrete="' + a.id + '"' + (a.lembretes === false ? '' : ' checked') + '>' +
-            '<span>Avisar a equipe</span></label>' : '') +
+        return '<div class="cc-ag' + (a.ativo ? ' ativa' : '') + '" style="--i:' + i + '">' +
+          '<label class="cc-ag-topo"><span class="cc-ag-nome">' + esc(a.nome) + '</span>' +
+            '<input type="checkbox" class="cc-chave" data-agenda="' + a.id + '"' + (a.ativo ? ' checked' : '') + ' aria-label="Mostrar ' + esc(a.nome) + '"><i class="cc-chave-vis" aria-hidden="true"></i></label>' +
+          (a.ativo ? '<div class="cc-ag-ops">' +
+            '<label class="cc-pilula' + (semEscrita ? ' bloq' : '') + '"' +
+              (semEscrita ? ' title="Esta conta só tem permissão de leitura nesta agenda — não dá pra criar eventos aqui"' : ' title="Gravações marcadas pelo calendário criam o evento nesta agenda"') + '>' +
+              '<input type="radio" name="cal-agenda-escrita" data-agenda-padrao="' + a.id + '"' + (a.escrita_padrao ? ' checked' : '') + (semEscrita ? ' disabled' : '') + '>' +
+              '<span>' + (semEscrita ? 'Só leitura' : (a.escrita_padrao ? '★ Recebe as novas gravações' : 'Usar para novas gravações')) + '</span></label>' +
+            '<label class="cc-pilula verde" title="Avisa a equipe antes dos compromissos desta agenda (gravação: 1 dia e 1h antes; o resto: 1h antes)">' +
+              '<input type="checkbox" data-agenda-lembrete="' + a.id + '"' + (a.lembretes === false ? '' : ' checked') + '>' +
+              '<span>Avisar a equipe</span></label>' +
+          '</div>' : '') +
         '</div>';
-      }).join('') +
+      }).join('') + '</div>' +
         (agendas.some(a => a.ativo) && !agendas.some(a => a.escrita_padrao) ?
-          '<p class="cal-aviso-sync" style="margin:6px 0 10px">⚠ Nenhuma agenda escolhida pra receber novas gravações — marque uma acima.</p>' : '') +
+          '<p class="cal-aviso-sync cc-aviso">⚠ Nenhuma agenda escolhida pra receber novas gravações — marque uma acima.</p>' : '') +
         (agendas.some(a => a.escrita_padrao && a.papel_acesso && a.papel_acesso !== 'owner' && a.papel_acesso !== 'writer') ?
-          '<p class="cal-aviso-sync" style="margin:6px 0 10px">⚠ A agenda de escrita atual é só leitura pra esta conta — marcar gravação vai falhar no Google. Clique em "Atualizar lista de agendas" e escolha outra.</p>' : '') +
-        '<button class="b fina contorno" id="cal-cfg-listar">Atualizar lista de agendas</button>';
+          '<p class="cal-aviso-sync cc-aviso">⚠ A agenda de escrita atual é só leitura pra esta conta — marcar gravação vai falhar no Google. Toque em "Atualizar" e escolha outra.</p>' : '');
     }
     function ligarModal() {
       m.querySelectorAll('[data-fecha]').forEach(b => b.onclick = m.fechar);
@@ -949,12 +964,12 @@ B7.Calendario = (function () {
       };
       const btListar = m.querySelector('#cal-cfg-listar');
       if (btListar) btListar.onclick = async () => {
-        btListar.disabled = true; btListar.textContent = 'Atualizando…';
+        btListar.disabled = true; btListar.classList.add('girando');
         try {
           const r = await B7.DB.listarCalendariosGoogle();
           agendas = r.agendas || [];
           redesenhar();
-        } catch (e) { btListar.disabled = false; btListar.textContent = 'Atualizar lista de agendas'; B7.UI.toast(e.message || 'Não foi possível listar as agendas.'); }
+        } catch (e) { btListar.disabled = false; btListar.classList.remove('girando'); B7.UI.toast(e.message || 'Não foi possível listar as agendas.'); }
       };
       m.querySelectorAll('[data-agenda]').forEach(chk => {
         chk.onchange = async () => {
