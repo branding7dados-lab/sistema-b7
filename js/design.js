@@ -163,7 +163,7 @@ B7.Design = (function () {
       '<div class="cab-conteudo"><div><h1>Produção de Design</h1>' +
       '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.'
                             : 'A fila de produção visual da equipe.') + '</p></div>' +
-      (equipe ? '<button class="b pri" id="ds-nova">+ Nova demanda de Design</button>' : '') + '</div>' +
+      (equipe ? '<button class="b pri" id="ds-nova" aria-label="Nova demanda de Design"><span class="ds-nova-mais" aria-hidden="true">+</span><span class="ds-nova-tx">Nova demanda de Design</span></button>' : '') + '</div>' +
       (equipe ? '<nav class="ds-abas" role="tablist">' + ABAS_EQUIPE.map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (F.aba === k ? 'on' : '') + '" aria-selected="' + (F.aba === k) + '">' +
         esc(r) + (STATUS_DA_ABA[k] ? '<i class="ds-aba-n" data-aba-n="' + k + '"></i>' : '') + '</button>').join('') + '</nav>' : '') +
