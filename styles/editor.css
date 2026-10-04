@@ -286,3 +286,73 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
   .ia-bloco{padding:12px;}
   .ia-roteiro-acoes .ia-entrada{flex:1 1 100%;justify-content:center;}
 }
+
+/* =====================================================================
+   EDITOR NO CELULAR (zzz16)
+   Topo mais limpo (status vira ponto + texto curto, imprimir discreto),
+   abas Editor/Prévia com pílula, roteiros como pílulas com número e
+   título, cabeçalho do roteiro numa linha, estágio que não corta.
+   ===================================================================== */
+.trilho .chip .chip-t{display:none;}
+@media (max-width:1000px){
+  /* abas */
+  #tela-editor .abas{padding:8px 12px;gap:6px;background:var(--card);border-bottom:1px solid var(--borda);}
+  #tela-editor .abas > button{border-radius:12px;min-height:40px;font-size:13.5px;background:none;transition:color .25s, background .3s, box-shadow .3s;}
+  #tela-editor .abas > button.on{background:color-mix(in srgb, var(--acento) 10%, var(--card));color:var(--acento);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--acento) 25%, transparent);}
+
+  /* roteiros: pílulas com número + título */
+  .trilho{height:64px;gap:8px;padding:0 12px;scrollbar-width:none;align-items:center;}
+  .trilho::-webkit-scrollbar{display:none;}
+  .trilho .chip{width:auto;height:42px;padding:0 14px 0 6px;gap:8px;flex:none;display:inline-flex;align-items:center;max-width:210px;
+    border-radius:14px;background:color-mix(in srgb, var(--ink) 5%, transparent);
+    transition:background .25s, color .25s, box-shadow .3s, transform .2s;}
+  .trilho .chip:active{transform:scale(.96);}
+  .trilho .chip .chip-n{flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:10px;
+    font-family:'Archivo',sans-serif;font-size:12.5px;font-weight:800;background:var(--card);color:var(--ink-2);
+    box-shadow:0 1px 2px rgba(20,8,40,.08);}
+  .trilho .chip .chip-t{display:block;min-width:0;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-3);}
+  .trilho .chip.on{background:var(--grad-curto);box-shadow:0 8px 18px -10px rgba(194,28,131,.7);}
+  .trilho .chip.on .chip-n{background:rgba(255,255,255,.22);color:#fff;box-shadow:none;}
+  .trilho .chip.on .chip-t{color:#fff;}
+  .trilho .add{flex:none;width:42px;height:42px;border-radius:14px;}
+
+  /* cabeçalho do roteiro numa linha */
+  .escrita .bloco{border-radius:20px;}
+  .bloco-topo{gap:6px;padding:12px 12px 12px 16px;}
+  .bloco-topo .rn{white-space:nowrap;font-size:13px;letter-spacing:.08em;}
+  .escala{border-radius:11px;}
+  .escala button{min-height:32px !important;padding:4px 9px;}
+  .auto-bt{min-height:32px;border-radius:10px;}
+
+  /* estágio do roteiro: quebra em grade em vez de cortar */
+  #revisao.opcoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%;overflow:visible;padding:4px;border-radius:14px;}
+  #revisao.opcoes button{white-space:normal;line-height:1.25;min-height:42px;padding:8px 10px;border-radius:10px;}
+  #revisao.opcoes button:last-child:nth-child(odd){grid-column:1 / -1;}
+
+  /* bloco "ainda não enviado": texto à esquerda, botão embaixo largo */
+  .escrita .ap-bloco{border-radius:16px;padding:14px;}
+  .escrita .ap-bloco.vazio{text-align:left;justify-content:flex-start;}
+  .escrita .ap-bloco.vazio .ap-bloco-tx{align-items:flex-start;text-align:left;}
+  .escrita .ap-bloco.vazio [data-ap-enviar]{width:100%;justify-content:center;min-height:42px;border-radius:12px;}
+  .escrita .ia-bloco{border-radius:18px;}
+}
+@media (max-width:720px){
+  /* topo: contexto com espaço; status só com ponto e texto pequeno */
+  #tela-editor .topo .contexto b{font-size:15px;}
+  #tela-editor .topo .contexto small{font-size:12px;}
+  #ed-status .chip-status{font-size:11px;padding:4px 9px;max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;}
+  /* imprimir: botão discreto, não um bloco de degradê */
+  #tela-editor #bt-imprimir{background:color-mix(in srgb, var(--ink) 6%, transparent);color:var(--ink-2);box-shadow:none;border:0;
+    width:40px;height:40px;padding:0;justify-content:center;border-radius:12px;}
+  #tela-editor #bt-imprimir .txt{display:none;}
+  #tela-editor #bt-imprimir svg{width:19px;height:19px;}
+}
+@media (max-width:400px){
+  #ed-status .chip-status{max-width:84px;}
+}
+@media (max-width:720px){
+  #tela-editor .escrita{padding:12px 10px 90px;}
+  #tela-editor .escrita .bloco-corpo{padding:14px 12px;}
+  #ed-status .chip-status{max-width:128px;}
+}

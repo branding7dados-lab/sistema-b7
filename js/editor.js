@@ -182,8 +182,11 @@ B7.Editor = (function () {
   function renderTrilho() {
     const t = document.getElementById('trilho');
     t.innerHTML = E.roteiros.map((r, i) =>
+      /* zzz16: no celular o chip mostra também o começo do título
+         (no desktop o trilho é estreito e o .chip-t fica escondido) */
       '<button class="chip' + (r.id === E.atual ? ' on' : '') + '" draggable="true" data-id="' + esc(r.id) + '">' +
-      String(i + 1).padStart(2, '0') + '</button>').join('') +
+      '<span class="chip-n">' + String(i + 1).padStart(2, '0') + '</span>' +
+      '<span class="chip-t">' + esc(r.titulo || 'Sem título') + '</span></button>').join('') +
       '<button class="add" id="bt-add-roteiro" title="Novo roteiro">+</button>';
 
     t.querySelectorAll('.chip').forEach(c => {
