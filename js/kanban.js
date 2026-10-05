@@ -105,7 +105,9 @@ B7.Kanban = (function () {
     painel().innerHTML = '<div class="conteudo entra kanban-tela">' +
       '<div class="cab-conteudo kb-cab"><div><h1>Produção <span class="conta" id="kb-conta"></span></h1>' +
       '<p class="kb-intro">As demandas da equipe. O cliente não vê esta área.</p></div>' +
-      '<button class="b pri kb-nova" id="kb-nova">+ Nova<span class="kb-so-largo">&nbsp;demanda</span></button></div>' +
+      '<button class="b pri kb-nova" id="kb-nova" aria-label="Nova demanda">' +
+        '<span class="kb-nova-mais" aria-hidden="true">+</span>' +
+        '<span class="kb-nova-tx">Nova<span class="kb-so-largo">&nbsp;demanda</span></span></button></div>' +
       '<div id="kb-barra"></div>' +
       '<div id="kb-area"></div>' +
     '</div>';
