@@ -388,6 +388,10 @@ B7.Design = (function () {
       ligarEquipe(area);
       const total = painel().querySelector('#ds-total');
       if (total) total.textContent = '';
+      /* zzz48: sem isto, os chips de "precisa de você" ficavam na tela
+         por cima da grade de designers — desenharResumoEquipe é quem
+         sabe apagá-los, e o return abaixo pulava a chamada. */
+      desenharResumoEquipe();
       return;
     }
 

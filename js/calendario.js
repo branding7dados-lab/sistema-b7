@@ -917,7 +917,13 @@ B7.Calendario = (function () {
         : '') +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>';
 
-    const m = B7.UI.modal(conteudo(), { larga: true, extra: 'cc-modal' });
+    /* zzz48: o ouvinte de mensagem do popup do Google só se removia
+       quando a mensagem chegava; fechar o modal antes disso deixava ele
+       preso. A limpeza vai nas opções do modal, que é de onde o
+       B7.UI.modal chama aoFechar. */
+    let removerOuvinte = () => {};
+    const m = B7.UI.modal(conteudo(),
+      { larga: true, extra: 'cc-modal', aoFechar: () => removerOuvinte() });
     function redesenhar() { m.querySelector('.modal').innerHTML = conteudo(); ligarModal(); }
     function agendasListaHTML() {
       if (!agendas.length) return '<div class="cc-vazio">Nenhuma agenda encontrada — toque em "Atualizar" ou confira a conexão.</div>';
@@ -1010,14 +1016,16 @@ B7.Calendario = (function () {
 
     /* se a conexão mudar enquanto o modal está aberto (ex.: conectou
        via popup), refaz o conteúdo. */
-    window.addEventListener('message', function ouvinte(ev) {
+    function ouvinte(ev) {
       if (!ev.data || ev.data.tipo !== 'b7-google-agenda') return;
-    /* só vale o aviso da própria função google-agenda (servidor do
-       Supabase): outra janela não consegue disparar recarga nem texto aqui */
-    try { if (ev.origin !== new URL(window.B7_CONFIG.SUPABASE_URL).origin) return; } catch (e) { return; }
+      /* só vale o aviso da própria função google-agenda (servidor do
+         Supabase): outra janela não consegue disparar recarga nem texto aqui */
+      try { if (ev.origin !== new URL(window.B7_CONFIG.SUPABASE_URL).origin) return; } catch (e) { return; }
       window.removeEventListener('message', ouvinte);
       carregarTudo().then(() => { if (document.body.contains(m)) redesenhar(); });
-    });
+    }
+    window.addEventListener('message', ouvinte);
+    removerOuvinte = () => window.removeEventListener('message', ouvinte);
   }
 
   /* =================================================================

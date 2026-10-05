@@ -19,6 +19,11 @@ B7.Editor = (function () {
 
   /* =================================================== carregar */
   async function abrir(gravacaoId, roteiroAlvo) {
+    /* zzz48: o zoom era gravado e nunca lido — a escolha se perdia a cada
+       recarga. E `fechadas` guardava as cenas recolhidas da gravação
+       anterior, que reapareciam recolhidas na próxima. */
+    zoomManual = B7.pref.ler('zoom', null);
+    fechadas = new Set();
     document.getElementById('escrita').innerHTML =
       '<div class="b7-load"><div class="simbolo"></div><div class="txt">Carregando roteiros…</div></div>';
     document.getElementById('folhas').innerHTML = '';

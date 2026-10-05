@@ -571,8 +571,16 @@ B7.Kanban = (function () {
     }, { passive: false });
 
     if (typeof ResizeObserver !== 'undefined') {
-      const ro = new ResizeObserver(estado); ro.observe(rol);
-      B7.Rota.aoSair(() => ro.disconnect());
+      /* zzz48: cada redesenho criava mais um observador. Agora o
+         anterior é desligado antes, e a limpeza da rota é registrada
+         uma vez só. */
+      if (ligarViewport.ro) ligarViewport.ro.disconnect();
+      ligarViewport.ro = new ResizeObserver(estado);
+      ligarViewport.ro.observe(rol);
+      if (!ligarViewport.limpeza) {
+        ligarViewport.limpeza = () => { if (ligarViewport.ro) { ligarViewport.ro.disconnect(); ligarViewport.ro = null; } };
+      }
+      B7.Rota.aoSair(ligarViewport.limpeza);
     } else window.addEventListener('resize', estado);
     estado();
 

@@ -378,7 +378,14 @@ B7.Nav = (function () {
   window.addEventListener('hashchange', () => { fecharFlyout(); setTimeout(() => sincronizar(false), 0); });
 
   /* Recolhida: o nome do item vira dica flutuante (B7.UI.dica, fixa no
-     documento — não alarga o contêiner de rolagem da barra). */
+     documento — não alarga o contêiner de rolagem da barra).
+
+     zzz48: esta função não é chamada, e é de propósito. Quando a barra
+     recolhe, styles/nav.css esconde o acordeão inteiro
+     (`body.recolhida .nav[data-shell="interno"] .nav-acordeao{display:none}`)
+     e quem aparece é o trilho, cujos botões já ganham dica em
+     montarLateral. Fica aqui porque volta a servir no dia em que a barra
+     recolhida mostrar os itens em vez dos grupos. */
   function ligarDicas(nav) {
     nav.querySelectorAll('a').forEach(a => {
       const tx = () => (a.querySelector('span') || {}).textContent || '';

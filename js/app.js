@@ -27,7 +27,10 @@ B7.Rota = (function () {
      tudo o que ficou pendente. Sem isto, cada visita à mesma tela
      somava mais um canal aberto. */
   let limpezas = [];
-  function aoSair(fn) { if (typeof fn === 'function') limpezas.push(fn); }
+  /* zzz48: a mesma função não entra duas vezes. Telas que registram a
+     limpeza a cada redesenho (a prévia dos Clientes registra a cada
+     tecla digitada na busca) enchiam a fila de entradas repetidas. */
+  function aoSair(fn) { if (typeof fn === 'function' && !limpezas.includes(fn)) limpezas.push(fn); }
   function limpar() {
     const fila = limpezas; limpezas = [];
     fila.forEach(fn => { try { fn(); } catch (e) {} });

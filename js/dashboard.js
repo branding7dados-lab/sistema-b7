@@ -839,7 +839,9 @@ B7.Dashboard = (function () {
       const g = r.gravacao || {};
       if (F.cliente && g.cliente_nome !== F.cliente) return false;
       if (F.mes && r._chaveMes !== F.mes) return false;
-      if (F.termo && !norm(r.titulo + ' ' + g.cliente_nome + ' ' + g.nome + ' ' + r.objetivo).includes(F.termo)) return false;
+      /* zzz48: campo vazio virava a palavra "undefined" dentro do texto
+         buscado — digitar "und" trazia justamente os roteiros incompletos. */
+      if (F.termo && !norm([r.titulo, g.cliente_nome, g.nome, r.objetivo].filter(Boolean).join(' ')).includes(F.termo)) return false;
       return true;
     };
     const chaveGrav = g => { const d = g && g.data_gravacao ? String(g.data_gravacao).slice(0, 10) : null; const passou = !d || d < hojeLocal() || (g && (g.gravada_em || g.concluida_em)); return (passou ? '1' : '0') + (d || '9999'); };
