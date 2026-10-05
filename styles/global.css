@@ -1142,14 +1142,19 @@ body.apurando #app{visibility:hidden;}
   background:radial-gradient(closest-side, rgba(194,28,131,.34), rgba(58,30,134,.22) 45%, transparent 72%);
   animation:abHorizonte 2.4s var(--ab-assenta) .2s both;}
 @keyframes abHorizonte{from{opacity:0;transform:translate3d(0,10%,0) scale(.8)}to{opacity:1;transform:none}}
-/* raios de luz: nascem na ignição, giram devagar, somem quando o logo assenta */
+/* raios de luz (zzz50): um sopro de luz na ignição, não um carimbo de brilho.
+   Metade dos feixes, bem mais fracos, ocos no meio (não lavam a lâmpada) e
+   curtos de propósito: morrem em 1,1s, ANTES de a palavra entrar aos 3,28s —
+   antes eles ficavam 2,2s e, quando o símbolo recuava para abrir espaço para
+   "Branding7", continuavam ancorados no centro da tela, convergindo para um
+   ponto onde não havia mais nada. */
 .ab-raios{left:50%;top:calc(50% - 6vh);width:150vmax;height:150vmax;margin:-75vmax 0 0 -75vmax;border-radius:50%;
-  background:repeating-conic-gradient(from 0deg, rgba(255,150,210,.16) 0deg 3deg, transparent 3deg 18deg);
-  -webkit-mask:radial-gradient(circle, #000 0, rgba(0,0,0,.6) 14%, transparent 42%);
-          mask:radial-gradient(circle, #000 0, rgba(0,0,0,.6) 14%, transparent 42%);
-  opacity:0;animation:abRaios 2.2s cubic-bezier(.3,0,.2,1) var(--ab-ign) both;}
-@keyframes abRaios{0%{opacity:0;transform:rotate(-8deg) scale(.7)}15%{opacity:1;transform:rotate(-4deg) scale(1)}
-  55%{opacity:.6}100%{opacity:0;transform:rotate(16deg) scale(1.08)}}
+  background:repeating-conic-gradient(from 0deg, rgba(255,170,220,.07) 0deg 5deg, transparent 5deg 34deg);
+  -webkit-mask:radial-gradient(circle, transparent 3%, rgba(0,0,0,.5) 9%, rgba(0,0,0,.22) 18%, transparent 30%);
+          mask:radial-gradient(circle, transparent 3%, rgba(0,0,0,.5) 9%, rgba(0,0,0,.22) 18%, transparent 30%);
+  opacity:0;animation:abRaios 1.1s cubic-bezier(.2,.8,.2,1) var(--ab-ign) both;}
+@keyframes abRaios{0%{opacity:0;transform:rotate(-5deg) scale(.62)}18%{opacity:1;transform:rotate(-3deg) scale(1)}
+  100%{opacity:0;transform:rotate(5deg) scale(1.3)}}
 /* feixe diagonal: um holofote que cruza depois da ignição */
 .ab-chave{top:-30%;left:-60%;width:60%;height:160%;
   background:linear-gradient(90deg, transparent, rgba(255,214,240,.07) 45%, rgba(255,255,255,.11) 50%, rgba(255,214,240,.07) 55%, transparent);
@@ -1240,11 +1245,9 @@ body.apurando #app{visibility:hidden;}
   border-radius:50%;background:radial-gradient(closest-side, rgba(226,64,156,.5), rgba(124,30,133,.22) 46%, transparent 74%);
   opacity:.34;transform:scale(1.35);animation:abBloom 1.8s cubic-bezier(.2,.8,.2,1) var(--ab-ign) both;}
 @keyframes abBloom{0%{opacity:0;transform:scale(.3)}18%{opacity:1;transform:scale(1)}100%{opacity:.34;transform:scale(1.35)}}
-.ab-onda{position:absolute;left:50%;top:50%;width:170px;height:170px;margin:-85px 0 0 -85px;border-radius:50%;
-  border:1.5px solid rgba(255,173,215,.8);box-shadow:0 0 30px rgba(226,64,156,.5), inset 0 0 20px rgba(226,64,156,.32);
-  opacity:0;animation:abOnda 1.3s cubic-bezier(.16,1,.3,1) var(--ab-ign) both;}
-.ab-onda.dois{border-color:rgba(170,140,255,.7);animation-delay:calc(var(--ab-ign) + .22s);}
-@keyframes abOnda{0%{opacity:0;transform:scale(.45)}10%{opacity:.9}100%{opacity:0;transform:scale(3.2)}}
+/* zzz50: os dois anéis de contorno (.ab-onda) saíram. Um círculo de borda dura
+   que cresce lê como ícone de carregando, não como luz — o .ab-bloom e o
+   .ab-flare já dão a expansão da ignição, e sem desenhar nada. */
 /* flare anamórfico: a linha de luz horizontal de lente de cinema */
 .ab-flare{position:absolute;left:0;right:0;top:calc(50% - 6vh);height:2px;margin-top:-1px;z-index:1;pointer-events:none;
   background:linear-gradient(90deg, transparent, rgba(226,64,156,.0) 8%, rgba(255,150,210,.75) 38%, #fff 50%, rgba(255,150,210,.75) 62%, transparent 92%);
@@ -1252,21 +1255,10 @@ body.apurando #app{visibility:hidden;}
   opacity:0;transform:scaleX(.05);animation:abFlare 1.2s cubic-bezier(.2,.8,.2,1) var(--ab-ign) both;}
 @keyframes abFlare{0%{opacity:0;transform:scaleX(.05)}14%{opacity:1;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1.25)}}
 
-/* bokeh: luzes desfocadas ao fundo, depois da ignição (gradiente, sem filtro) */
-.ab-bokeh{position:absolute;inset:0;}
-.ab-bokeh i{position:absolute;border-radius:50%;opacity:0;
-  background:radial-gradient(circle, rgba(255,140,205,.32), rgba(255,140,205,.1) 55%, transparent 70%);
-  animation:abBokeh 3.2s cubic-bezier(.2,.6,.3,1) 2s both;}
-.ab-bokeh i:nth-child(1){left:8%;top:22%;width:120px;height:120px;}
-.ab-bokeh i:nth-child(2){right:6%;top:30%;width:80px;height:80px;animation-delay:2.15s;background:radial-gradient(circle, rgba(160,130,255,.34), rgba(160,130,255,.1) 55%, transparent 70%);}
-.ab-bokeh i:nth-child(3){left:18%;bottom:24%;width:64px;height:64px;animation-delay:2.3s;}
-.ab-bokeh i:nth-child(4){right:16%;bottom:30%;width:140px;height:140px;animation-delay:2.05s;background:radial-gradient(circle, rgba(124,60,210,.3), rgba(124,60,210,.08) 55%, transparent 70%);}
-.ab-bokeh i:nth-child(5){left:56%;top:14%;width:52px;height:52px;animation-delay:2.4s;}
-@keyframes abBokeh{0%{opacity:0;transform:translate3d(0,14px,0) scale(.8)}35%{opacity:1}100%{opacity:.55;transform:translate3d(0,-22px,0) scale(1)}}
-.ab-curta .b7-abertura.inicial :is(.ab-bokeh),.b7-abertura:not(.inicial) :is(.ab-bokeh){display:none;}
+/* zzz50: as cinco bolas de bokeh saíram. No fundo quase preto do celular elas
+   não liam como luz fora de foco — liam como sujeira na lente, e ficavam
+   paradas em .55 de opacidade o resto da abertura, ao lado da marca. */
 .ab-curta .b7-abertura.inicial .ab-marca,.b7-abertura:not(.inicial) .ab-marca{animation:none;}
-.b7-abertura.saindo .ab-bokeh{display:none;}
-@media (prefers-reduced-motion:reduce){ .b7-abertura :is(.ab-bokeh){display:none;} }
 /* ---- espera honesta: só se o sistema ainda não estiver pronto ---- */
 .ab-espera{position:absolute;left:0;right:0;top:calc(50% - 6vh + var(--ab-h) / 2 + 38px);z-index:1;
   display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
@@ -1312,16 +1304,15 @@ body.apurando #app{visibility:hidden;}
 .ab-curta .b7-abertura.inicial .ab-palavra,.b7-abertura:not(.inicial) .ab-palavra{animation:abPalavra .5s var(--ab-assenta) .3s both;}
 .ab-curta .b7-abertura.inicial .ab-horizonte,.b7-abertura:not(.inicial) .ab-horizonte{animation:abHorizonte 1s var(--ab-assenta) both;}
 .ab-curta .b7-abertura.inicial .ab-bloom,.b7-abertura:not(.inicial) .ab-bloom{animation:abBloom 1.3s cubic-bezier(.2,.8,.2,1) .38s both;}
-.ab-curta .b7-abertura.inicial .ab-onda:not(.dois),.b7-abertura:not(.inicial) .ab-onda:not(.dois){animation:abOnda 1.1s cubic-bezier(.16,1,.3,1) .4s both;}
 .ab-curta .b7-abertura.inicial .ab-flare,.b7-abertura:not(.inicial) .ab-flare{animation:abFlare .9s cubic-bezier(.2,.8,.2,1) .4s both;}
 .ab-curta .b7-abertura.inicial .ab-clarao,.b7-abertura:not(.inicial) .ab-clarao{animation:abClarao .7s cubic-bezier(.2,.8,.2,1) .4s both;}
 /* na curta a lâmpada já está no lugar dela no logo: onda e bloom nascem dela */
-.ab-curta .b7-abertura.inicial :is(.ab-onda,.ab-bloom),.b7-abertura:not(.inicial) :is(.ab-onda,.ab-bloom){translate:calc(-1 * var(--ab-dx)) 0;}
+.ab-curta .b7-abertura.inicial .ab-bloom,.b7-abertura:not(.inicial) .ab-bloom{translate:calc(-1 * var(--ab-dx)) 0;}
 /* enquanto carrega: um brilho passa pelo logo, de tempos em tempos */
 .ab-curta .b7-abertura.inicial .ab-brilho b,.b7-abertura:not(.inicial) .ab-brilho b{animation:abRelBrilho 1.8s cubic-bezier(.45,0,.25,1) .95s infinite;}
 @keyframes abRelBrilho{0%{transform:translate3d(-120%,0,0) skewX(-14deg);opacity:1}45%,100%{transform:translate3d(420%,0,0) skewX(-14deg);opacity:.6}}
-.ab-curta .b7-abertura.inicial :is(.ab-onda.dois,.ab-chave,.ab-carga,.ab-raios,.ab-centelha,.ab-poeira),
-.b7-abertura:not(.inicial) :is(.ab-onda.dois,.ab-chave,.ab-carga,.ab-raios,.ab-centelha,.ab-poeira){display:none;}
+.ab-curta .b7-abertura.inicial :is(.ab-chave,.ab-carga,.ab-raios,.ab-centelha,.ab-poeira),
+.b7-abertura:not(.inicial) :is(.ab-chave,.ab-carga,.ab-raios,.ab-centelha,.ab-poeira){display:none;}
 /* a frase só aparece se a espera for de verdade */
 .ab-curta .b7-abertura.inicial .ab-espera,.b7-abertura:not(.inicial) .ab-espera{animation-delay:1.8s;}
 /* saída no tema claro: esmaece (a íris abria uma bola branca sobre o logo) */
@@ -1329,7 +1320,7 @@ body.apurando #app{visibility:hidden;}
 @keyframes abCeuSome{to{opacity:0}}
 @media (prefers-reduced-motion:reduce){
   .ab-curta .b7-abertura.inicial :is(.ab-cor,.ab-brilho b,.ab-palco,.ab-palavra),.b7-abertura:not(.inicial) :is(.ab-cor,.ab-brilho b,.ab-palco,.ab-palavra){animation:none;}
-  .ab-curta .b7-abertura.inicial :is(.ab-onda,.ab-flare,.ab-clarao,.ab-bloom,.ab-brilho),.b7-abertura:not(.inicial) :is(.ab-onda,.ab-flare,.ab-clarao,.ab-bloom,.ab-brilho){display:none;}
+  .ab-curta .b7-abertura.inicial :is(.ab-flare,.ab-clarao,.ab-bloom,.ab-brilho),.b7-abertura:not(.inicial) :is(.ab-flare,.ab-clarao,.ab-bloom,.ab-brilho){display:none;}
 }
 
 /* ---- saída: a íris abre do centro; o logo voa (js/app.js) ----
@@ -1344,7 +1335,7 @@ body.apurando #app{visibility:hidden;}
 @keyframes abIris{0%{--ab-iris:0px;opacity:1}85%{opacity:1}100%{--ab-iris:120vmax;opacity:0}}
 .b7-abertura.saindo .ab-bloom{animation:abSomeBloom .55s cubic-bezier(.4,0,.2,1) forwards;}
 .b7-abertura.b7-abertura.saindo .ab-espera{animation:abSomeRapido .16s ease-in forwards;}
-.b7-abertura.saindo :is(.ab-onda,.ab-chave,.ab-raios,.ab-clarao,.ab-centelha,.ab-poeira,.ab-flare,.ab-brilho){display:none;}
+.b7-abertura.saindo :is(.ab-chave,.ab-raios,.ab-clarao,.ab-centelha,.ab-poeira,.ab-flare,.ab-brilho){display:none;}
 @keyframes abSomeBloom{to{opacity:0;transform:scale(2)}}
 @keyframes abSomeRapido{to{opacity:0}}
 .b7-abertura.saindo.sem-voo .ab-palco{animation:abSomePalco .42s cubic-bezier(.4,0,.2,1) forwards;}
@@ -1398,7 +1389,7 @@ body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaF
 
 @media (prefers-reduced-motion:reduce){
   .b7-abertura,.b7-abertura *{animation:none !important;}
-  .b7-abertura :is(.ab-onda,.ab-chave,.ab-carga,.ab-raios,.ab-clarao,.ab-centelha,.ab-poeira,.ab-flare,.ab-brilho){display:none;}
+  .b7-abertura :is(.ab-chave,.ab-carga,.ab-raios,.ab-clarao,.ab-centelha,.ab-poeira,.ab-flare,.ab-brilho){display:none;}
   .ab-cor{filter:none;}
   .ab-espera{opacity:1;animation:none;}
   .b7-abertura.saindo{opacity:0;transition:opacity .2s ease;}
@@ -2352,13 +2343,19 @@ html.b7-recarga #painel-dashboard > .conteudo{opacity:.5;filter:saturate(.7) blu
      um flare anamórfico corta a tela na altura do logo e o sistema
      entra em foco por baixo (rack focus), em vez da íris com anel.
    ===================================================================== */
-.ab-ceu:after{content:"";position:absolute;left:50%;top:calc(50% - 6vh);width:150vmax;height:150vmax;margin:-75vmax 0 0 -75vmax;
+/* ambiente de fundo (zzz50): era um conic-gradient girando — e sobre um fundo
+   quase preto as faixas dele viravam cunhas cinzas de borda dura, uma delas
+   descendo em cima da marca como fumaça. Agora são dois halos radiais nos
+   cantos, que só dão profundidade: caem suave, não encostam no centro e não
+   formam banda. */
+.ab-ceu:after{content:"";position:absolute;inset:-20%;
   pointer-events:none;opacity:0;mix-blend-mode:screen;
-  background:conic-gradient(from 0deg, transparent 0 14%, rgba(236,72,153,.10) 20%, transparent 30% 52%, rgba(124,58,237,.12) 60%, transparent 70% 86%, rgba(255,170,215,.08) 92%, transparent);
-  animation:abVaza 2s ease 1.6s forwards, abVazaGira 22s linear 1.6s infinite;}
+  background:radial-gradient(42% 30% at 16% 24%, rgba(236,72,153,.16), transparent 68%),
+             radial-gradient(46% 34% at 86% 76%, rgba(124,58,237,.18), transparent 70%);
+  animation:abVaza 2.4s ease 1.6s forwards, abVazaGira 26s ease-in-out 1.6s infinite alternate;}
 .ab-curta .b7-abertura.inicial .ab-ceu:after,.b7-abertura:not(.inicial) .ab-ceu:after{animation-delay:.9s,.9s;}
 @keyframes abVaza{to{opacity:1}}
-@keyframes abVazaGira{to{transform:rotate(360deg)}}
+@keyframes abVazaGira{to{transform:translate3d(3%,-2%,0) scale(1.08)}}
 .ab-frase{font-weight:600;letter-spacing:.02em;
   background:linear-gradient(100deg, rgba(255,255,255,.5) 0 38%, #fff 46%, #FFB3DC 50%, #fff 54%, rgba(255,255,255,.5) 62% 100%);
   background-size:260% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
