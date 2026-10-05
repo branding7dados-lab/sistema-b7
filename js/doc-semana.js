@@ -91,6 +91,52 @@ B7.DocSemana = (function () {
            dia(b.dia) + ' ' + MESES_CURTO[b.mes - 1] + ' ' + b.ano;
   }
 
+  /* zzz47: as contas de data do sistema moram todas aqui, para poderem
+     ser testadas sem navegador (testes/datas.test.mjs). Antes cada tela
+     tinha a sua cópia, e foi numa dessas cópias que nasceu o bug de
+     duplicar semana. */
+  const iso = t => {
+    const d = new Date(t);
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' +
+           String(d.getUTCDate()).padStart(2, '0');
+  };
+  function somarDias(data, n) {
+    const p = partes(data);
+    return iso(Date.UTC(p.ano, p.mes - 1, p.dia) + n * 864e5);
+  }
+  /* a segunda-feira da semana de uma data (domingo pertence à semana que
+     começou na segunda anterior) */
+  function segundaDe(data) {
+    const dow = diaDaSemana(data);
+    return somarDias(data, -(dow === 0 ? 6 : dow - 1));
+  }
+  const ultimoDiaDoMes = (ano, mes) => new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+  /* Anda n meses mantendo o dia. Quando o dia não existe no mês de
+     destino (31 de janeiro + 1 mês), encosta no último dia dele — nunca
+     escorrega para o mês seguinte, como faria setMonth. */
+  function moverMeses(data, n) {
+    const p = partes(data);
+    const total = (p.ano * 12 + (p.mes - 1)) + n;
+    const ano = Math.floor(total / 12), mes = (total % 12) + 1;
+    const dia = Math.min(p.dia, ultimoDiaDoMes(ano, mes));
+    return ano + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+  }
+  /* quantos DIAS separam duas datas (negativo se "para" vem antes) */
+  function difDias(de, para) {
+    const a = partes(de), b = partes(para);
+    return Math.round((Date.UTC(b.ano, b.mes - 1, b.dia) - Date.UTC(a.ano, a.mes - 1, a.dia)) / 864e5);
+  }
+  /* "esse dia já passou?" — estritamente antes de hoje. O conteúdo de
+     hoje só conta como publicado depois que o dia vira; com "<=", abrir
+     a linha de manhã já publicava o que sai às 18h. */
+  const jaPassou = (data, hoje) => !!data && String(data) < String(hoje);
+
+  /* quantos meses separam duas datas (só ano e mês contam) */
+  const difMeses = (de, para) => {
+    const a = partes(de), b = partes(para);
+    return (b.ano * 12 + b.mes) - (a.ano * 12 + a.mes);
+  };
+
   /* os sete dias do período, em ordem */
   function diasDoPeriodo(inicio, fim) {
     const a = partes(inicio), b = partes(fim);
@@ -764,6 +810,7 @@ B7.DocSemana = (function () {
   }
 
   return { montar, periodoTexto, diasDoPeriodo, diaDaSemana, curto, longa, partes, carregarFontes, hojeISO,
+           somarDias, segundaDe, moverMeses, difMeses, difDias, jaPassou, ultimoDiaDoMes,
            situacaoDeConteudo,
            SITUACOES, TIPOS, FORMATOS, ESTAGIOS, corTipo, corFormato, corSituacao, contextoDe, estagiosDe,
            ehConcluido, ehCancelado, itemLinhaEditorial, EXCLUIR_DO_PLANEJAMENTO, ICONE, DIAS, MESES_CURTO };
