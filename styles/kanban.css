@@ -386,3 +386,24 @@ select.kb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 }
 @media (prefers-reduced-motion:reduce){ .kb-card,.kb-movel .kb-col.vem-dir,.kb-movel .kb-col.vem-esq{animation:none !important;} }
 .kb-cab .kb-nova{gap:0;}
+
+/* =====================================================================
+   KANBAN NO PADRÃO NOVO (zzz49)
+   O "+ Nova" em pílula virava a peça mais pesada da tela no celular,
+   destoando de Vídeo, Design e Status semanal — que usam o "+" quadrado
+   com gradiente. Os controles também vinham em três fileiras
+   empilhadas; agora busca e filtro dividem a primeira, e as abas de
+   coluna rolam numa fileira só.
+   ===================================================================== */
+.kb-nova-mais{font-size:18px;line-height:1;font-weight:500;margin-right:6px;}
+.kanban-tela .kb-nova{display:inline-flex;align-items:center;}
+
+@media (max-width:760px){
+  .kanban-tela .kb-cab .kb-nova{
+    width:44px !important;height:44px !important;padding:0 !important;
+    border-radius:14px !important;justify-content:center;flex:none;}
+  .kanban-tela .kb-nova-tx{display:none;}
+  .kanban-tela .kb-nova-mais{margin:0;font-size:22px;}
+  /* a frase de apoio só no computador, como nas outras telas */
+  .kanban-tela .kb-intro{display:none;}
+}
