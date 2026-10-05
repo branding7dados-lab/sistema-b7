@@ -20,19 +20,31 @@
 // não altera nada; nunca apaga).
 //
 // Disparo:
-//   • pg_cron semanal (chave pública anon): só as fontes "vencidas" e no
-//     máximo uma rodada a cada 30 min — não martela os sites oficiais.
+//   • pg_cron semanal: cabeçalho x-b7-cron-secret com o segredo
+//     B7_CRON_SECRET. Só as fontes "vencidas" e no máximo uma rodada a
+//     cada 30 min — não martela os sites oficiais.
 //   • "Sincronizar agora" (admin, com JWT): pode forçar (mín. 5 min).
 //
-// SUPABASE_URL, SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY vêm da plataforma.
+// zzz51: antes a rodada normal bastava a chave PÚBLICA anon — a mesma que
+// está em js/config.js, à vista de qualquer um que abra o site. Quem
+// soubesse o endereço disparava a sincronização de todas as fontes à
+// vontade: trabalho de graça no nosso servidor e tráfego em nome da
+// Branding7 contra os sites oficiais (Ministério da Saúde, OMS, ONU,
+// IBGE), que é como se perde acesso a eles. Agora toda rodada precisa ou
+// do segredo do cron ou de um JWT de administrador.
+//
+// SUPABASE_URL, SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY vêm da
+// plataforma. B7_CRON_SECRET é nosso:
+//   supabase secrets set B7_CRON_SECRET=<segredo longo e aleatório>
+// e o mesmo valor vai no cabeçalho do cron (migration_oportunidades_cron.sql).
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { comCors } from '../_shared/cors.ts';
+import { comCors, iguais } from '../_shared/cors.ts';
 
 const VERSAO = '2026-10-02-op3';
 const UA = 'Branding7-B7/1.0 (calendario editorial interno)';
 const CORS = {
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-b7-cron-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...CORS, 'Content-Type': 'application/json' } });
@@ -454,6 +466,22 @@ Deno.serve(comCors(async (req) => {
   }
   const forcar = !!corpo.forcar && ehAdmin;
   if ((corpo.forcar || corpo.diagnostico) && !ehAdmin) return json({ erro: 'Só administradores sincronizam manualmente.' }, 403);
+
+  /* ---- quem pode disparar uma rodada NORMAL ----
+     Sem segredo configurado a função RECUSA, em vez de voltar a aceitar
+     qualquer chamada (mesma decisão do b7-push). É o cron que tem de ser
+     consertado, não a porta que tem de ficar aberta. Comparação em tempo
+     constante. */
+  const segredoCron = Deno.env.get('B7_CRON_SECRET') || '';
+  if (!ehAdmin) {
+    if (!segredoCron) {
+      console.error('oportunidades-sync: B7_CRON_SECRET não configurado — rodada recusada.');
+      return json({ erro: 'Sincronização automática não configurada.' }, 503);
+    }
+    if (!iguais(req.headers.get('x-b7-cron-secret') || '', segredoCron)) {
+      return json({ erro: 'Não autorizado.' }, 401);
+    }
+  }
 
   const { data: fontes, error } = await admin.from('oportunidade_fontes').select('*').eq('metodo', 'automatica').eq('ativo', true);
   if (error) return json({ erro: error.message }, 500);
