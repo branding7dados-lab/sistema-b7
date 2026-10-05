@@ -233,7 +233,11 @@ body.ab-revela .nav-inferior{animation:abRevelaBase .6s var(--ab-curva) .26s bot
 }
 /* modo leve: a abertura continua, mas sem a respiração infinita do halo
    nem o fio correndo — nada que anime para sempre */
-html.modo-leve .ab-faisca{display:none;}
+/* zzz54: as faíscas NÃO somem mais no modo leve. O modo leve existe para
+   matar backdrop-filter e blur, que repintam a tela; dez divs de 4px
+   animando transform e opacity por meio segundo não são isso. Escondê-las
+   tirava justamente a energia da abertura de quem está em modo leve — e
+   foi o que o Kevin viu no navegador dele. */
 html.modo-leve .ab-fio:after{animation-duration:2.4s;}
 html.modo-leve body.ab-revela :is(#painel-dashboard,.topo-global,.nav-inferior){animation:abRevelaSimples .36s ease both;}
 @keyframes abRevelaSimples{from{opacity:0}to{opacity:1}}
