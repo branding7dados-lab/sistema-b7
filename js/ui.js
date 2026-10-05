@@ -797,7 +797,14 @@ B7.UI = (function () {
      ================================================================= */
   function skeleton(tipo, o = {}) {
     const n = o.n || 0;
-    const bloco = (cls, estilo) => '<div class="esq ' + cls + '"' + (estilo ? ' style="' + estilo + '"' : '') + '></div>';
+    /* --d é a posição da peça na ordem em que desenhamos. O CSS usa isso
+       como atraso, então a faixa de luz atravessa a página na diagonal em
+       vez de acender tudo junto. Limitado em 14: a partir daí as peças já
+       estão fora da tela, e sem o limite o atraso (e a conta) cresceriam
+       com o tamanho da lista. */
+    let d = 0;
+    const bloco = (cls, estilo) => '<div class="esq ' + cls + '" style="--esq-d:' + Math.min(d++, 14) +
+      (estilo ? ';' + estilo : '') + '"></div>';
     const linhas = (q, larguras) => '<div class="esq-linhas">' +
       Array.from({ length: q }, (_, i) =>
         bloco('esq-linha', 'width:' + (larguras ? larguras[i % larguras.length] : [92, 74, 84, 58][i % 4]) + '%')).join('') +

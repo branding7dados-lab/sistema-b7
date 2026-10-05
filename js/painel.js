@@ -196,7 +196,7 @@ B7.Painel = (function () {
 
   function blocoCarregando(linhas) {
     return '<div class="esqueleto-tela pn-sk-lista" role="status" aria-label="Carregando…">' +
-      Array.from({ length: linhas }, () => '<div class="pn-sk-linha"><i class="esq pn-sk-ic"></i><div><i class="esq pn-sk-l1"></i><i class="esq pn-sk-l2"></i></div></div>').join('') +
+      Array.from({ length: linhas }, (_, i) => '<div class="pn-sk-linha" style="--esq-d:' + i + '"><i class="esq pn-sk-ic"></i><div><i class="esq pn-sk-l1"></i><i class="esq pn-sk-l2"></i></div></div>').join('') +
       '</div>';
   }
   function blocoErro(texto, fontes) {
@@ -476,7 +476,7 @@ B7.Painel = (function () {
     const seg = segundaDe(hoje());
     const titulo = 'Minha semana';
     let corpo;
-    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-semana">' + '<i class="esq"></i>'.repeat(5) + '</div>';
+    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-semana">' + Array.from({ length: 5 }, (_, i) => '<i class="esq" style="--esq-d:' + i + '"></i>').join('') + '</div>';
     else if (e === 'erro') corpo = blocoErro('Não foi possível montar sua semana.', ['ativas', 'agenda'].filter(f => S[f] && S[f].estado === 'erro'));
     else corpo = '<ol class="pn-semana-lista">' + diasDaSemana().map(diaSemana).join('') + '</ol>';
     cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pn-t-semana">' + titulo + '</h2>' +
@@ -488,7 +488,7 @@ B7.Painel = (function () {
   function graficoVideo() {
     const e = estadoDe('entregas');
     let corpo;
-    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-graf">' + '<i class="esq"></i>'.repeat(SEMANAS_GRAFICO) + '</div>';
+    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-graf">' + Array.from({ length: SEMANAS_GRAFICO }, (_, i) => '<i class="esq" style="--esq-d:' + i + '"></i>').join('') + '</div>';
     else if (e === 'erro') corpo = blocoErro('Não foi possível carregar suas entregas.', ['entregas']);
     else {
       const semanas = semanasEntregues();

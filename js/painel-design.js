@@ -269,7 +269,7 @@ B7.PainelDesign = (function () {
     const d = D(), h = d.hoje(), seg = d.segundaDe(h), IC = U().IC;
     const e = estadoDe('minhas');
     let corpo;
-    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-semana">' + '<i class="esq"></i>'.repeat(5) + '</div>';
+    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-semana">' + Array.from({ length: 5 }, (_, i) => '<i class="esq" style="--esq-d:' + i + '"></i>').join('') + '</div>';
     else if (e === 'erro') corpo = U().blocoErro('Não foi possível montar sua semana.', ['minhas']);
     else {
       const ds = minhas();
@@ -312,7 +312,7 @@ B7.PainelDesign = (function () {
   function graficoDesign() {
     const d = D(), e = estadoDe('envios'), mes = D().MES[D().local(D().hoje()).getMonth()];
     let corpo;
-    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-graf">' + '<i class="esq"></i>'.repeat(5) + '</div>';
+    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-graf">' + Array.from({ length: 5 }, (_, i) => '<i class="esq" style="--esq-d:' + i + '"></i>').join('') + '</div>';
     else if (e === 'erro') corpo = U().blocoErro('Não foi possível carregar sua produção.', ['envios']);
     else {
       const semanas = semanasDoMes();
