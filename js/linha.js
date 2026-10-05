@@ -117,7 +117,7 @@ B7.Linha = (function () {
          manhã já marcava como publicado o conteúdo que só sai às 18h — e
          isso ia para o banco. É também a regra que o resto do sistema usa
          (B7.DB.publicacoesPendentes filtra com .lt). */
-      c.status === 'Programado' && c.data_postagem && c.data_postagem < hoje);
+      c.status === 'Programado' && B7.DocSemana.jaPassou(c.data_postagem, hoje));
     if (!pendentes.length) return;
     let mudou = false;
     for (const c of pendentes) {
@@ -1161,7 +1161,7 @@ B7.Linha = (function () {
       '<div class="lista-check">' +
         [['objetivo', 'Objetivo do mês', true], ['posicionamento', 'Posicionamento', true],
          ['canais', 'Canais e meta', true], ['pilares', 'Pilares de conteúdo', true],
-         ['criativos', 'Criativos', false], ['datas', 'Datas de postagem', false]].map(([k, r, on]) =>
+         ['criativos', 'Criativos', false], ['datas', 'Datas de postagem (andam para o mês novo)', false]].map(([k, r, on]) =>
           '<label class="check"><input type="checkbox" data-copiar="' + k + '"' +
           (on ? ' checked' : '') + (k === 'datas' ? ' data-dep="criativos" disabled' : '') + '>' +
           '<span>' + r + '</span></label>').join('') +
@@ -1187,6 +1187,14 @@ B7.Linha = (function () {
       const o = L.linha;
 
       try {
+        /* zzz47: quantos meses a linha andou. As datas de postagem andam
+           junto — antes elas eram copiadas literais, e duplicar outubro
+           para novembro criava a linha de novembro com tudo datado em
+           outubro. Dia 31 que não existe no mês de destino encosta no
+           último dia dele. */
+        const passoMeses = (ano * 12 + mes) - (o.ano * 12 + o.mes);
+        const moverData = d => (d ? B7.DocSemana.moverMeses(d, passoMeses) : null);
+
         const dados = { client_id: o.client_id, nome: MESES[mes - 1] + ' ' + ano, mes: mes, ano: ano };
         if (quer('objetivo')) { dados.objetivo = o.objetivo; dados.objetivo_detalhe = o.objetivo_detalhe; }
         if (quer('posicionamento')) {
@@ -1223,7 +1231,7 @@ B7.Linha = (function () {
               sub_headline: c.sub_headline,
               cta: c.tipo === 'Carrossel' ? null : c.cta,
               legenda: c.legenda, direcao: c.direcao, observacao_design: c.observacao_design,
-              data_postagem: quer('datas') ? c.data_postagem : null,
+              data_postagem: quer('datas') ? moverData(c.data_postagem) : null,
               pilar_id: (c.pilar_id && mapaPilar[c.pilar_id]) || null,
               status: 'Ideia'   /* o mês novo começa do começo, não aprovado */
             });

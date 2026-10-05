@@ -69,20 +69,11 @@ B7.Semana = (function () {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
            String(d.getDate()).padStart(2, '0');
   };
-  /* segunda-feira da semana de uma data, sem passar por fuso */
-  function segundaDe(iso) {
-    const p = D().partes(iso);
-    const t = Date.UTC(p.ano, p.mes - 1, p.dia);
-    const dow = new Date(t).getUTCDay();          /* 0 domingo */
-    const recuo = dow === 0 ? 6 : dow - 1;
-    return somarDias(iso, -recuo);
-  }
-  function somarDias(iso, n) {
-    const p = D().partes(iso);
-    const d = new Date(Date.UTC(p.ano, p.mes - 1, p.dia) + n * 864e5);
-    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' +
-           String(d.getUTCDate()).padStart(2, '0');
-  }
+  /* zzz47: estas duas viviam aqui como cópia própria. Agora vêm de
+     B7.DocSemana, que é onde todas as contas de data do sistema moram e
+     onde os testes alcançam elas. */
+  const segundaDe = data => D().segundaDe(data);
+  const somarDias = (data, n) => D().somarDias(data, n);
 
   /* =================================================================
      LISTA GLOBAL — agrupada por mês e, dentro do mês, por semana. Uma
@@ -509,7 +500,7 @@ B7.Semana = (function () {
     for (const c of porId.values()) {
       /* zzz46: ver a nota em js/linha.js — o conteúdo de hoje só vira
          "Publicado" depois que o dia passa. */
-      if (c.status === 'Programado' && c.data_postagem && c.data_postagem < hoje) {
+      if (c.status === 'Programado' && D().jaPassou(c.data_postagem, hoje)) {
         try { await B7.DB.atualizarConteudo(c.id, { status: 'Publicado' }); c.status = 'Publicado'; }
         catch (e) {}
       }
@@ -1524,8 +1515,7 @@ B7.Semana = (function () {
              origem e a escolhida. Antes era 7 fixo, então duplicar para
              três semanas à frente jogava as demandas para fora da
              semana nova (ficavam "sem data" no editor). */
-          const desloca = Math.round(
-            (Date.parse(ini + 'T00:00:00') - Date.parse(r.semana_inicio + 'T00:00:00')) / 864e5);
+          const desloca = D().difDias(r.semana_inicio, ini);
           await B7.DB.criarItens(S.itens.map((it, i) => ({
             report_id: nova.id,
             data: it.data ? somarDias(it.data, desloca) : null,
