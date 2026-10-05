@@ -997,7 +997,18 @@ B7.Semana = (function () {
         }), 'Demanda duplicada');
         S.itens.push(novo);
         S.expandido = novo.id;
+        /* zzz48: a cópia nascia com a mesma posição do item que vinha
+           depois, e a ordem do dia passava a depender do desempate do
+           banco. Aqui o dia inteiro é renumerado, como no "mover". */
+        const doDia = S.itens.filter(x => x.data === it.data)
+          .sort((a, b2) => (a.position || 0) - (b2.position || 0) ||
+                           (a.id === novo.id ? 1 : b2.id === novo.id ? -1 : 0));
+        doDia.forEach((x, n) => { x.position = n; });
         render();
+        try {
+          for (const x of doDia) if (x.id !== novo.id) await B7.DB.atualizarItem(x.id, { position: x.position });
+          if (novo.position !== (it.position || 0) + 1) await B7.DB.atualizarItem(novo.id, { position: novo.position });
+        } catch (e2) {}
       } catch (e) {}
     });
 

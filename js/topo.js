@@ -65,6 +65,11 @@ B7.Topo = (function () {
     const clicar = () => {
       const inicio = Date.now();
       (function tentar() {
+        /* zzz48: só clica se a pessoa ainda estiver na tela que pediu.
+           Antes a busca continuava por 8s mesmo depois de ela navegar
+           para outro lugar — e se voltasse nesse intervalo, o modal
+           abria sozinho, sem ninguém ter pedido. */
+        if ((location.hash || '#/').split('?')[0] !== hash) return;
         const b = document.querySelector(seletor);
         if (b) return b.click();
         if (Date.now() - inicio < 8000) setTimeout(tentar, 120);
