@@ -263,7 +263,17 @@ window.B7 = window.B7 || {};
     setTimeout(confere, 40);
     return f;
   }
-  B7.fotoDaTela = { guardar: guardarFoto, esquecer: h => h ? fotos.delete(h) : fotos.clear() };
+  B7.fotoDaTela = {
+    guardar: guardarFoto,
+    /* js/app.js, primeira linha do hashchange. O popstate do "voltar"
+       chega primeiro e já fotografou a mesma navegação: a janela de
+       250 ms evita serializar o painel duas vezes por ida. */
+    antesDeNavegar: (de) => {
+      if (performance.now() - fotografadoEm < 250) return;
+      fotografar(de);
+    },
+    esquecer: h => h ? fotos.delete(h) : fotos.clear()
+  };
 
   /* abrir uma tela JÁ VISTA a partir do cartão (zzu): nada de fantasma
      por cima — a própria tela de destino (a foto dela) se abre de dentro
@@ -311,24 +321,35 @@ window.B7 = window.B7 || {};
       { duration: 520, easing: 'cubic-bezier(.32,.72,0,1)' }).onfinish = () => el.classList.remove('b7-voo-pousando');
   }
 
-  /* A foto é tirada ANTES de a navegação acontecer: no toque (clique em
-     fase de captura — quase toda navegação nasce de um toque) e no
-     "voltar" do aparelho/navegador (popstate chega antes do hashchange).
-     No hashchange já é tarde: o roteador troca a tela num microtask logo
-     depois do listener dele, que foi registrado antes deste. */
+  /* A foto é tirada ANTES de a navegação acontecer, e o momento é
+     delicado: no hashchange já é tarde, porque js/app.js chama o roteador
+     num microtask logo depois do listener DELE, que roda antes deste.
+
+     zzz51: antes isto estava pendurado num clique em fase de captura no
+     documento inteiro — ou seja, TODO toque fora de um campo de texto
+     serializava o painel inteiro (`p.innerHTML`), inclusive abrir um
+     filtro, marcar um chip, rolar e tocar, fechar um modal. Era o
+     engasgo que o Kevin sentia: numa tela cheia de cartões isso é caro, e
+     acontecia dezenas de vezes por minuto para usar UMA vez, quando enfim
+     havia navegação.
+
+     Agora a foto é tirada uma vez por NAVEGAÇÃO, em dois pontos:
+       • `popstate` — o "voltar" do aparelho, que chega antes do hashchange;
+       • `B7.fotoDaTela.antesDeNavegar(de)` — chamado por js/app.js como a
+         primeira linha do hashchange dele, antes de o roteador rodar.
+     O `de` vem de quem chama (app.js guarda o endereço anterior), então a
+     chave não depende da ordem em que os listeners foram registrados. */
   let antigoNo = null;
-  const fotografar = () => {
+  let fotografadoEm = 0;
+  const fotografar = (hash) => {
     const p = painel();
-    /* a chave é a rota que a tela mostra (rotaVista): no popstate o
+    /* a chave é a rota que a tela MOSTRA: no popstate (e no hashchange) o
        endereço já mudou, mas a tela ainda é a antiga */
-    guardarFoto(rotaVista);
+    guardarFoto(hash || rotaVista);
     antigoNo = p && p.firstElementChild;
+    fotografadoEm = performance.now();
   };
-  document.addEventListener('click', e => {
-    if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) return;
-    fotografar();
-  }, true);
-  window.addEventListener('popstate', fotografar);
+  window.addEventListener('popstate', () => fotografar());
   window.addEventListener('hashchange', () => {
     const agora = location.hash || '#/';
     rotaVista = agora;

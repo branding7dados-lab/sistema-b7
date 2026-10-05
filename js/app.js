@@ -309,6 +309,11 @@ B7.Rota = (function () {
 
   window.addEventListener('hashchange', () => {
     const de = ultimoHash, para = location.hash || '#/';
+    /* a foto da tela que está saindo (js/movimento.js) precisa ser tirada
+       AQUI, antes de qualquer outra coisa: o roteador roda num microtask
+       logo abaixo e já troca o conteúdo do painel. Passamos `de` porque
+       nesta linha location.hash já é o endereço NOVO. */
+    try { if (B7.fotoDaTela) B7.fotoDaTela.antesDeNavegar(de); } catch (e) {}
     ultimoHash = para;
     if (ehTrocaDeModulo(de, para) && trocarComMorph(de, para)) return;
     /* garante que nada digitado se perca ao trocar de tela */

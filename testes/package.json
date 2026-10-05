@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node sintaxe.mjs && node datas.test.mjs && node memoria.test.mjs && node fumaca.mjs"
+    "test": "node sintaxe.mjs && node datas.test.mjs && node memoria.test.mjs && node foto.test.mjs && node fumaca.mjs"
   },
   "devDependencies": {
     "playwright": "1.56.1"
