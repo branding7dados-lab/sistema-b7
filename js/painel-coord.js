@@ -368,7 +368,7 @@ B7.PainelCoord = (function () {
     const d = D(), h = d.hoje(), seg = d.segundaDe(h);
     const e = estadoDe('conteudos', 'agenda', 'linhas');
     let corpo;
-    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-semana">' + '<i class="esq"></i>'.repeat(5) + '</div>';
+    if (e === 'carregando') corpo = '<div class="esqueleto-tela pn-sk-semana">' + Array.from({ length: 5 }, (_, i) => '<i class="esq" style="--esq-d:' + i + '"></i>').join('') + '</div>';
     else if (e === 'erro') corpo = U().blocoErro('Não foi possível montar a semana.', ['conteudos', 'agenda', 'linhas'].filter(f => S[f] && S[f].estado === 'erro'));
     else {
       const IC = U().IC;
@@ -414,7 +414,7 @@ B7.PainelCoord = (function () {
     const mesIdx = Number(h.slice(5, 7)) - 1;
     const e = estadoDe('conteudos');
     let corpo;
-    if (e === 'carregando') corpo = '<div class="esqueleto-tela pnc-sk-fluxo">' + '<i class="esq"></i>'.repeat(6) + '</div>';
+    if (e === 'carregando') corpo = '<div class="esqueleto-tela pnc-sk-fluxo">' + Array.from({ length: 6 }, (_, i) => '<i class="esq" style="--esq-d:' + i + '"></i>').join('') + '</div>';
     else if (e === 'erro') corpo = U().blocoErro('Não foi possível carregar o fluxo de conteúdos.', ['conteudos']);
     else {
       const doMes = conteudos().filter(c => String(c.data_postagem).slice(0, 7) === h.slice(0, 7));

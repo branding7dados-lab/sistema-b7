@@ -201,7 +201,7 @@ B7.PainelMulti = (function () {
     const d = D(), h = d.hoje(), seg = d.segundaDe(h);
     const dias = Array.from({ length: 7 }, (_, i) => d.somarDias(seg, i));
     let corpo;
-    if (!todosProntos()) corpo = '<div class="esqueleto-tela pn-sk-semana">' + '<i class="esq"></i>'.repeat(5) + '</div>';
+    if (!todosProntos()) corpo = '<div class="esqueleto-tela pn-sk-semana">' + Array.from({ length: 5 }, (_, i) => '<i class="esq" style="--esq-d:' + i + '"></i>').join('') + '</div>';
     else {
       const vistos = new Set();
       eventosSemana = [];

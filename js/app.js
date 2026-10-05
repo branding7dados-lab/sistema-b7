@@ -507,33 +507,33 @@ B7.Rota = (function () {
   }
 
   /* =================================================================
-     ONDA DE LUZ (zzo) — a luz da lâmpada constrói o app.
-     Quando a abertura sai, um clarão nasce no centro da íris e um anel
-     de luz corre pela borda dela até as pontas da tela. Cada peça do
-     app (topo, barra de baixo, blocos e cartões da tela) acende o
-     contorno no instante exato em que o anel passa por ela — na ordem
-     da distância, como se a luz estivesse desenhando o sistema.
-     Tudo numa camada própria por cima (contornos fantasmas medidos na
-     hora): não mexe nas animações de entrada de cada tela (o Painel tem
-     as dele), então nada pisca nem briga.
+     A LUZ DA SAÍDA (zzz52) — duas peças, uma camada, e acabou.
+     Quando a abertura sai, um clarão nasce onde a marca estava e um
+     risco anamórfico atravessa a tela. O sistema assenta por baixo
+     (body.ab-revela, em styles/abertura.css).
+
+     O centro vem MEDIDO do palco, não de uma conta repetida à mão: a
+     versão antiga calculava H/2 - H*.06 para imitar o `margin-top:-6vh`
+     do CSS, e as duas contas saíram do lugar uma da outra. Com o palco
+     na tela, getBoundingClientRect() não tem como errar.
      ================================================================= */
-  const IRIS = { dur: 800, atraso: 40, curva: [.7, 0, .25, 1] };   /* = abIris no CSS */
+  const LUZ_MS = 1100;
   function ondaDeLuz() {
     if (reduzMov()) return;
-    const W = innerWidth, H = innerHeight;
-    const cx = W / 2, cy = H / 2 - H * .06;           /* centro da íris (abIris: 50% calc(50% - 6vh)) */
+    const palco = document.querySelector('.b7-abertura .ab-palco');
+    let cx = innerWidth / 2, cy = innerHeight / 2;
+    if (palco) {
+      const r = palco.getBoundingClientRect();
+      if (r.width > 1 && r.height > 1) { cx = r.left + r.width / 2; cy = r.top + r.height / 2; }
+    }
     const camada = document.createElement('div');
     camada.className = 'ab-luz';
     camada.setAttribute('aria-hidden', 'true');
     camada.style.setProperty('--cx', cx + 'px');
     camada.style.setProperty('--cy', cy + 'px');
-    /* zzz42: sem anel e sem contornos neon nas peças (pedido do Kevin:
-       "tira essas tarjas"). A saída agora é de cinema: clarão, flare
-       anamórfico atravessando a tela, vazamento de luz e o sistema entrando
-       em foco por baixo (body.ab-revela, CSS). */
-    camada.innerHTML = '<i class="ab-luz-clarao"></i><i class="ab-luz-flare"></i><i class="ab-luz-flare fino"></i><i class="ab-luz-vaza"></i>';
+    camada.innerHTML = '<i class="ab-luz-clarao"></i><i class="ab-luz-flare"></i>';
     document.body.appendChild(camada);
-    setTimeout(() => camada.remove(), IRIS.atraso + IRIS.dur + 1100);
+    setTimeout(() => camada.remove(), LUZ_MS);
   }
   /* o logo pousou no topo (zzp): um halo curto atrás dele e a mesma faixa
      de luz da abertura passando uma vez pelo desenho do logo — antes era
