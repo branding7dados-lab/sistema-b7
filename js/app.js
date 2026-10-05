@@ -422,7 +422,10 @@ B7.Rota = (function () {
      • com "reduzir movimento": nada de mínimo. */
   const reduzMov = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const curta = document.documentElement.classList.contains('ab-curta');
-  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 950 : 4300;
+  /* zzz53: 1,25 s em vez de 4,3 s. O Kevin viu a versão longa no celular
+     e odiou — escuro, vazio e demorado. A abertura agora é um estouro
+     curto, e a espera só aparece se o sistema não estiver pronto nela. */
+  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 700 : 1250;
 
   /* Para onde o logo voa: o lugar onde ele mora na tela que ficou pronta.
      Lockup (logo inteiro) → caixa de login ou barra lateral aberta.
@@ -531,7 +534,9 @@ B7.Rota = (function () {
     camada.setAttribute('aria-hidden', 'true');
     camada.style.setProperty('--cx', cx + 'px');
     camada.style.setProperty('--cy', cy + 'px');
-    camada.innerHTML = '<i class="ab-luz-clarao"></i><i class="ab-luz-flare"></i>';
+    /* zzz53: só o clarão radial. O risco horizontal saiu — no celular ele
+       lia como uma barra magenta dura atravessando a tela. */
+    camada.innerHTML = '<i class="ab-luz-clarao"></i>';
     document.body.appendChild(camada);
     setTimeout(() => camada.remove(), LUZ_MS);
   }

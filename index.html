@@ -65,6 +65,10 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   } catch (e) {}
 })();
 </script>
+<!-- cor de fundo ANTES de qualquer folha de estilo: sem o primeiro quadro
+     branco. O tema já foi aplicado pelo script acima, então isto só
+     precisa acompanhá-lo. -->
+<style>html{background:#0A0514}html[data-theme="light"]{background:#FFF7FB}</style>
 <link rel="stylesheet" href="styles/global.css">
 <link rel="stylesheet" href="styles/abertura.css">
 <link rel="stylesheet" href="styles/dashboard.css">
@@ -98,12 +102,12 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   <div class="ab-ceu" aria-hidden="true"><i class="ab-vinheta"></i><i class="ab-grao"></i></div>
   <div class="ab-centro">
     <div class="ab-palco" aria-hidden="true">
-      <i class="ab-halo"></i>
+      <span class="ab-luzes"><i class="ab-brilho"></i><i class="ab-flash"></i></span>
+      <span class="ab-faisca"><i style="--a:18deg;--r:132px;--s:6px;--t:0.00s"></i><i style="--a:62deg;--r:118px;--s:4px;--t:0.05s"></i><i style="--a:118deg;--r:146px;--s:7px;--t:0.02s"></i><i style="--a:165deg;--r:124px;--s:5px;--t:0.09s"></i><i style="--a:205deg;--r:138px;--s:4px;--t:0.04s"></i><i style="--a:248deg;--r:120px;--s:6px;--t:0.07s"></i><i style="--a:292deg;--r:150px;--s:5px;--t:0.01s"></i><i style="--a:330deg;--r:128px;--s:7px;--t:0.06s"></i><i style="--a:84deg;--r:164px;--s:3px;--t:0.11s"></i><i style="--a:272deg;--r:170px;--s:3px;--t:0.10s"></i></span>
       <div class="ab-marca">
         <span class="ab-palavra"></span>
-        <span class="ab-simbolo"><i class="ab-branca"></i><i class="ab-cor"></i></span>
+        <span class="ab-simbolo"><i class="ab-cor"></i><i class="ab-branca"></i></span>
       </div>
-      <i class="ab-risco"></i>
     </div>
     <div class="ab-espera"><b class="ab-ola"></b><span class="ab-frase">Preparando o seu espaço…</span><i class="ab-fio"></i></div>
   </div>
