@@ -2037,6 +2037,7 @@ B7.Video = (function () {
             '</div></div>' +
           (podeEditar
             ? '<div class="vd-acoes-topo">' +
+              '<button class="b fina contorno" id="vd-dt-editar">Editar nome e código</button>' +
               (d.editing_status !== 'descartado' ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar</button>' : '') +
               '<button class="b fina contorno perigo" id="vd-dt-excluir">Excluir</button></div>'
             : '') +
@@ -2299,6 +2300,41 @@ B7.Video = (function () {
             '</div></details>').join('') + '</div>'
         : '') +
       '</section>';
+  }
+
+  /* zzz62: nome e código da demanda podem ser corrigidos depois de
+     criada. Usa a ação que já existia no banco (video_editar_demanda —
+     só a equipe; quem não é equipe nem vê o botão). */
+  function modalEditarDemanda(d) {
+    const semTitulo = /^Sem título \(planilha\)/.test(d.titulo || '');
+    const m = B7.UI.modal(
+      '<h3>Editar demanda</h3>' +
+      '<label class="rot">Nome</label>' +
+      '<input class="campo" id="vd-ed-titulo" maxlength="200" placeholder="Ex.: Reel de lançamento" value="' + esc(semTitulo ? '' : (d.titulo || '')) + '" data-foco>' +
+      '<label class="rot">Código <em>opcional</em></label>' +
+      '<input class="campo" id="vd-ed-codigo" maxlength="40" placeholder="Ex.: 014" value="' + esc(d.codigo || '') + '">' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<button class="b pri" id="vd-ed-salvar">Salvar</button></div>');
+    const iT = m.querySelector('#vd-ed-titulo'), iC = m.querySelector('#vd-ed-codigo'), btn = m.querySelector('#vd-ed-salvar');
+    const salvar = async () => {
+      const titulo = iT.value.trim(), codigo = iC.value.trim();
+      if (!titulo) { B7.UI.toast('A demanda precisa de um nome.'); iT.focus(); return; }
+      if (titulo === (d.titulo || '') && codigo === (d.codigo || '')) { m.fechar(); return; }
+      btn.disabled = true; btn.textContent = 'Salvando…';
+      try {
+        await B7.DB.editarDemandaVideo(d.id, { titulo, codigo });
+        const naLista = demandas.find(x => x.id === d.id);
+        if (naLista) { naLista.titulo = titulo; naLista.codigo = codigo; }
+        m.fechar();
+        B7.UI.toast('Demanda atualizada.');
+        abrirDetalhe(d.id);
+      } catch (e) {
+        btn.disabled = false; btn.textContent = 'Salvar';
+        B7.UI.toast(e.message || 'Não foi possível salvar.');
+      }
+    };
+    btn.onclick = salvar;
+    [iT, iC].forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); salvar(); } }));
   }
 
   function modalNovaVersao(d) {
@@ -2637,6 +2673,8 @@ B7.Video = (function () {
       } catch (e) { btDescartar.disabled = false; B7.UI.toast(e.message || 'Não foi possível descartar.'); }
     };
 
+    const btEditar = document.getElementById('vd-dt-editar');
+    if (btEditar) btEditar.onclick = () => modalEditarDemanda(d);
     const btExcluir = document.getElementById('vd-dt-excluir');
     if (btExcluir) btExcluir.onclick = async () => {
       const ok = await B7.UI.confirmar({ titulo: 'Excluir esta demanda?', texto: 'A demanda sai da lista. Isso não apaga o histórico.', perigo: true, rotulo: 'Excluir' });
