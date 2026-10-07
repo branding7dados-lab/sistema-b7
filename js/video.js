@@ -836,7 +836,12 @@ B7.Video = (function () {
          vazia isso era só a faixa "Nenhuma demanda", e soltar um dedo
          abaixo dela não movia nada. */
       const col = zona.closest('.vd-coluna') || zona;
-      col.ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zona.classList.add('sobre'); };
+      /* zzz61: uma coluna acesa por vez, e só mexe em classe quando troca */
+      col.ondragover = e => {
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+        if (zona.classList.contains('sobre')) return;
+        limpar(); zona.classList.add('sobre');
+      };
       col.ondragleave = e => { if (!col.contains(e.relatedTarget)) zona.classList.remove('sobre'); };
       col.ondrop = e => {
         e.preventDefault();

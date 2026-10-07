@@ -637,24 +637,45 @@ window.B7 = window.B7 || {};
     f.classList.remove('arrastando');
     Object.assign(f.style, { width: r.width + 'px', height: r.height + 'px' });
     try { e.dataTransfer.setDragImage(IMG_VAZIA, 0, 0); } catch (er) { return null; }
+    /* zzz61: a cópia herdava a animação de entrada do cartão (nascia
+       invisível, com atraso) e só andava quando o navegador mandava um
+       "dragover" — que chega aos soluços. Agora o dragover só anota onde
+       o cursor está; quem move a cópia é um laço por quadro, que a
+       aproxima do alvo com amortecimento. Fica fluido mesmo com eventos
+       espaçados, e a inclinação vem da velocidade real da cópia. */
+    f.style.animation = 'none'; f.style.opacity = '1';
+    f.style.backdropFilter = 'none'; f.style.webkitBackdropFilter = 'none';
     const offX = e.clientX - r.left, offY = e.clientY - r.top;
-    let ultX = e.clientX, rot = 0, x = r.left, y = r.top;
-    const pinta = () => { f.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + rot.toFixed(2) + 'deg) scale(1.04)'; };
+    let x = r.left, y = r.top, ax = x, ay = y, rot = 0, sc = 1, quadro = 0, vivo = true, t0 = performance.now();
+    const pinta = () => { f.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) rotate(' + rot.toFixed(2) + 'deg) scale(' + sc.toFixed(3) + ')'; };
     pinta();
     document.body.appendChild(f);
+    const passo = t => {
+      if (!vivo) return;
+      /* amortecimento independente da taxa de quadros */
+      const dt = Math.min(48, t - t0) / 16.67; t0 = t;
+      const k = 1 - Math.pow(1 - .34, dt);
+      const dx = (ax - x) * k; x += dx; y += (ay - y) * k;
+      rot += (Math.max(-9, Math.min(9, dx * .9)) - rot) * (1 - Math.pow(1 - .18, dt));
+      sc += (1.04 - sc) * (1 - Math.pow(1 - .22, dt));
+      pinta();
+      quadro = requestAnimationFrame(passo);
+    };
+    quadro = requestAnimationFrame(passo);
     const segue = ev => {
       if (!ev.clientX && !ev.clientY) return;             /* evento sem coordenada (fim do arrasto) */
-      const vx = ev.clientX - ultX; ultX = ev.clientX;
-      rot += (Math.max(-14, Math.min(14, vx * 1.5)) - rot) * .3;
-      x = ev.clientX - offX; y = ev.clientY - offY;
-      pinta();
+      ax = ev.clientX - offX; ay = ev.clientY - offY;
     };
     document.addEventListener('dragover', segue, true);
     return {
       fim() {
+        vivo = false; cancelAnimationFrame(quadro);
         document.removeEventListener('dragover', segue, true);
-        const a = f.animate([{ opacity: 1 }, { opacity: 0, transform: f.style.transform.replace(/scale\([^)]*\)/, 'scale(.92)') }],
-          { duration: 180, easing: 'ease-out', fill: 'forwards' });
+        /* termina onde o cursor soltou, endireitando, e some */
+        const de = f.style.transform;
+        x = ax; y = ay; rot = 0; sc = .96; pinta();
+        const a = f.animate([{ opacity: 1, transform: de }, { opacity: 0, transform: f.style.transform }],
+          { duration: 170, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' });
         a.onfinish = () => f.remove();
         setTimeout(() => f.remove(), 500);
       }
