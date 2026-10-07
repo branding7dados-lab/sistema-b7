@@ -144,7 +144,13 @@ B7.Topo = (function () {
      role=menu, setas ↑↓, Home/End, Esc fecha e devolve o foco ao botão.
      ================================================================= */
   let aberto = null;   /* { gatilho, caixa } */
+  /* zzz69: no celular o menu da conta e o Criar são uma FOLHA (modal),
+     não o menu suspenso. O sino ficava clicável acima dela e os dois
+     abriam juntos. A folha aberta fica anotada aqui para fecharMenu (que
+     o sino chama ao abrir) conseguir fechá-la também. */
+  let folhaAberta = null;
   function fecharMenu(devolverFoco) {
+    if (folhaAberta) { const f = folhaAberta; folhaAberta = null; try { f.fechar(); } catch (e) {} }
     if (!aberto) return;
     const { gatilho, caixa } = aberto;
     aberto = null;
@@ -236,10 +242,15 @@ B7.Topo = (function () {
   /* Folha no celular: o B7.UI.modal já vira bottom sheet ≤520px, prende o
      foco, fecha no Esc/fora e devolve o foco ao gatilho. */
   function abrirFolha(titulo, html, ligar, aoFechar) {
+    fecharMenu(false);
+    if (B7.Notif && B7.Notif.fechar) B7.Notif.fechar();
+    const aoFecharOriginal = aoFechar;
+    aoFechar = function () { if (folhaAberta === m) folhaAberta = null; if (aoFecharOriginal) return aoFecharOriginal.apply(this, arguments); };
     const m = B7.UI.modal('<div class="tp-folha-cab"><h3>' + esc(titulo) + '</h3>' +
       '<button type="button" class="ico" data-fecha aria-label="Fechar">' +
       '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
       '<div class="tp-folha-corpo" role="menu" aria-label="' + esc(titulo) + '">' + html + '</div>', { classe: 'tp-folha', aoFechar });
+    folhaAberta = m;
     ligar(m, () => m.fechar());
     const caixa = m.querySelector('.modal');
     if (caixa) { caixa.tabIndex = -1; caixa.setAttribute('aria-label', titulo); caixa.focus({ preventScroll: true }); }
