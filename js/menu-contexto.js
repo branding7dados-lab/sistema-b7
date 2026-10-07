@@ -8,8 +8,10 @@
    botões dele e o menu "⋯". Cada opção aciona o controle original, então
    permissões e regras continuam sendo as da tela.
 
-   O menu do navegador continua disponível: em campos de texto, com texto
-   selecionado, no toque e segurando Shift.
+   Não é para tudo: só abre em link, ou em linha/cartão de lista que tem
+   clique próprio ou o seu "⋯". No resto, e também em campos de texto,
+   com texto selecionado, no toque e segurando Shift, vale o menu do
+   navegador.
    ===================================================================== */
 window.B7 = window.B7 || {};
 B7.Ctx = (function () {
@@ -22,12 +24,27 @@ B7.Ctx = (function () {
   /* texto sem letra nenhuma (um contador "5", um "⋯") não é nome: vale o
      aria-label/title do controle */
   const temLetra = s => /[A-Za-zÀ-ÿ]{2}/.test(s);
+  /* Texto de um elemento com espaço entre as partes: "Buscar atualização"
+     e a explicação embaixo são pedaços diferentes, não uma palavra só. */
+  function partes(el) {
+    const out = [];
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) { const s = limpo(n.textContent); if (s) out.push(s); }
+    return out;
+  }
+  /* o nome é o trecho em destaque, quando existe; senão a primeira parte
+     com letras; a explicação que vem depois fica de fora */
+  function nomeDe(el) {
+    const d = el.querySelector('b, strong, h1, h2, h3, h4');
+    const lista = d ? partes(d) : partes(el);
+    const p = lista.find(temLetra);
+    return p || '';
+  }
+  const encurta = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
   const rotulo = el => {
-    const tx = limpo(el.textContent);
-    if (tx && temLetra(tx) && tx.length <= 42) return tx;
-    const al = limpo(el.getAttribute('aria-label') || el.title || '');
-    if (al) return al;
-    return tx && temLetra(tx) ? tx.slice(0, 40) + '…' : '';
+    const tx = nomeDe(el);
+    if (tx) return encurta(tx, 34);
+    return encurta(limpo(el.getAttribute('aria-label') || el.title || ''), 34);
   };
 
   /* ícone escolhido pelo nome da ação */
@@ -59,7 +76,7 @@ B7.Ctx = (function () {
   const clicavel = el => ehControle(el) || typeof el.onclick === 'function';
   const desligado = el => el.disabled || el.getAttribute('aria-disabled') === 'true' || el.hidden || el.style.display === 'none';
   const visivel = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
-  const perigoso = el => el.classList.contains('perigo') || /^(excluir|apagar|remover|descartar|cancelar|tirar|desativar)\b/i.test(limpo(el.textContent));
+  const perigoso = el => el.classList.contains('perigo') || /^(excluir|apagar|remover|descartar|cancelar|tirar|desativar)\b/i.test(nomeDe(el));
 
   /* irmãos com a mesma "cara" = o elemento é um item de lista */
   function repetido(el) {
@@ -75,27 +92,35 @@ B7.Ctx = (function () {
 
   const SEL_ACOES = 'button, a[href], [role="button"]';
 
+  /* O menu só aparece quando o alvo é claramente UMA coisa:
+       • um link (item do menu lateral, atalho);
+       • uma linha/cartão de lista que abre com o clique;
+       • uma linha/cartão de lista que tem o seu "⋯".
+     Fora disso (blocos de configuração, botões soltos, área vazia, grupos
+     inteiros) fica o menu do navegador. */
   function acharItem(alvo) {
-    let reserva = null;
     for (let el = alvo; el && el !== document.body && el.nodeType === 1; el = el.parentElement) {
-      if (el.matches('main, nav, aside, header, footer, .fundo-modal, .modal')) break;
+      if (el.matches('main, nav, aside, header, footer, form, .fundo-modal, .modal')) break;
+      if (el.matches('a[href]')) {
+        const h = el.getAttribute('href') || '';
+        return h && h !== '#' && !/^javascript:/i.test(h) && nomeDe(el) ? el : null;
+      }
+      if (!repetido(el)) continue;
       const r = el.getBoundingClientRect();
-      if (!reserva && clicavel(el) && (ehControle(el) || r.height < window.innerHeight * .5)) reserva = el;
-      if (r.width < 140 || !repetido(el)) continue;
-      if (clicavel(el)) return el;
-      const n = el.querySelectorAll(SEL_ACOES).length;
-      if (n && n <= 14) return el;
+      if (r.width < 180 || r.height > window.innerHeight * .6) continue;
+      const proprioMenu = el.querySelectorAll('.menu > .lista, .menu > button').length && el.querySelectorAll('.menu').length === 1;
+      const abre = typeof el.onclick === 'function' || el.matches('button, [role="button"], [role="link"]');
+      if ((abre || proprioMenu) && tituloDe(el)) return el;
     }
-    return reserva;
+    return null;
   }
 
   function tituloDe(item) {
     const t = item.querySelector('h1, h2, h3, h4, b, strong');
     /* só o texto do próprio título: selos dentro dele ("VOCÊ") ficam fora */
     const proprio = t ? limpo([...t.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ')) : '';
-    const tx = proprio || limpo((t || item).textContent);
-    if (!tx) return limpo(item.getAttribute('aria-label') || item.title || '');
-    return tx.length > 46 ? tx.slice(0, 44) + '…' : tx;
+    const tx = (temLetra(proprio) && proprio) || nomeDe(item) || limpo(item.getAttribute('aria-label') || item.title || '');
+    return encurta(tx, 40);
   }
 
   /* ---------------------------------------------------------- montagem */
@@ -111,21 +136,10 @@ B7.Ctx = (function () {
     };
     const acionar = el => () => { el.click(); };
 
-    /* um controle solto (botão "Criar", o sino, o assistente): a ação é
-       ele mesmo, seguida das opções da tela */
-    if (ehControle(item) && !repetido(item)) {
-      const r = rotulo(item);
-      const tela = opcoesDaTela();
-      if (!r) return tela;
-      const resto = tela.ops.filter(o => !(o.rotulo && /assistente/i.test(o.rotulo) && /assistente/i.test(r)));
-      while (resto.length && resto[resto.length - 1].sep) resto.pop();
-      return { titulo: tela.titulo, ops: [{ rotulo: r, forte: true, fazer: acionar(item) }, { sep: true }].concat(resto) };
-    }
-
     const link = item.matches('a[href]') ? item : (alvo && alvo.closest && alvo.closest('a[href]'));
     const href = link && item.contains(link) ? link.href : '';
 
-    if (clicavel(item)) por({ rotulo: ehControle(item) && !item.matches('a[href]') ? (rotulo(item) || 'Abrir') : 'Abrir', forte: true, fazer: acionar(item) });
+    if (clicavel(item)) por({ rotulo: 'Abrir', forte: true, fazer: acionar(item) });
     if (href) por({ rotulo: 'Abrir em nova aba', fazer: () => window.open(href, '_blank', 'noopener') });
 
     /* botões e links à vista dentro do item */
@@ -146,7 +160,7 @@ B7.Ctx = (function () {
       let pediuSep = ops.length > 0;
       [...lista.children].forEach(f => {
         if (f.tagName === 'HR') { pediuSep = ops.length > 0; return; }
-        if (f.classList.contains('rot')) { if (pediuSep) { ops.push({ sep: true }); pediuSep = false; } ops.push({ rot: limpo(f.textContent) }); return; }
+        if (f.classList.contains('rot')) { if (pediuSep) { ops.push({ sep: true }); pediuSep = false; } ops.push({ rot: partes(f).join(' ') }); return; }
         if (!f.matches('button, a[href]') || desligado(f)) return;
         const r = rotulo(f);
         if (!r || vistos.has(r.toLowerCase())) return;
@@ -162,17 +176,6 @@ B7.Ctx = (function () {
     if (extras.length) { if (ops.length) ops.push({ sep: true }); extras.forEach(por); }
     const img = item.querySelector('img');
     return { titulo: nome, foto: (img && (img.currentSrc || img.src)) || '', ops };
-  }
-
-  function opcoesDaTela() {
-    const ops = [];
-    if (history.length > 1) ops.push({ rotulo: 'Voltar', fazer: () => history.back() });
-    ops.push({ rotulo: 'Recarregar esta tela', fazer: () => location.reload() });
-    ops.push({ rotulo: 'Copiar link desta tela', fazer: () => copiar(location.href, 'Link copiado.') });
-    const fab = document.getElementById('b7-chat-fab');
-    if (fab) { ops.push({ sep: true }); ops.push({ rotulo: 'Perguntar ao assistente', fazer: () => { if (!document.body.classList.contains('chat-aberto')) fab.click(); } }); }
-    const h = document.querySelector('main h1, .topo h1, h1');
-    return { titulo: h ? limpo(h.textContent).slice(0, 46) : '', ops };
   }
 
   function copiar(texto, msg) {
@@ -248,8 +251,9 @@ B7.Ctx = (function () {
     if (sel && sel.trim()) return;
 
     const item = acharItem(t);
-    const r = item ? opcoesDoItem(item, t) : opcoesDaTela();
-    if (!r.ops.length) return;
+    if (!item) return;
+    const r = opcoesDoItem(item, t);
+    if (!r.ops.some(o => o.forte || (o.rotulo && !/^Copiar /.test(o.rotulo)))) return;
     e.preventDefault();
     abrir(e.clientX, e.clientY, r.titulo, r.ops, r.foto);
   });
