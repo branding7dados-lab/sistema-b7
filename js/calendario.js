@@ -35,6 +35,10 @@ B7.Calendario = (function () {
   const papel = () => B7.Auth && B7.Auth.papel && B7.Auth.papel();
   const souEquipeInterna = () => ['admin', 'coordenador', 'designer', 'videomaker'].includes(papel());
   const souGestor = () => ['admin', 'coordenador'].includes(papel());
+  /* zzz67: marcar, remarcar e concluir gravação também é do videomaker
+     (papel ou função extra) — o banco aplica a mesma regra. Cancelar,
+     excluir, editar e as configurações do Google seguem do gestor. */
+  const podeMarcar = () => souGestor() || !!(B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel());
   const E = () => B7.Eventos;
   const D = () => B7.Eventos.DATAS;
 
@@ -309,7 +313,7 @@ B7.Calendario = (function () {
         '<p>Gravações, publicações e prazos da operação num lugar só.</p>' +
         (ehAgenda() ? '<small class="cb-sub" id="cb-sub" aria-live="polite"></small>' : '') + '</div>' +
       '<div class="cb-topo-acoes">' +
-        (souGestor() ? '<button class="b pri" id="cb-marcar" aria-label="Marcar gravação">' + IC_MAIS + '<span>Marcar<span class="cb-lg"> gravação</span></span></button>' : '') +
+        (podeMarcar() ? '<button class="b pri" id="cb-marcar" aria-label="Marcar gravação">' + IC_MAIS + '<span>Marcar<span class="cb-lg"> gravação</span></span></button>' : '') +
         (souGestor() ? '<button class="b contorno ico" id="cb-config" aria-label="Configurações do Google Calendar" title="Google Calendar">' + IC_ENGRENAGEM + '</button>' : '') +
       '</div>';
     const m = cx.querySelector('#cb-marcar'); if (m) m.onclick = () => modalMarcarGravacao(ehAgenda() || V.vista === 'dia' ? V.data : undefined);
@@ -663,7 +667,7 @@ B7.Calendario = (function () {
       const evs = mapa.get(dia) || [], pecas = agrupar(evs);
       const fora = dia.slice(0, 7) !== mesAtual, ehHoje = dia === hoje;
       cel += '<div class="cb-cel' + (fora ? ' fora' : '') + (ehHoje ? ' hoje' : '') + (dia < hoje ? ' passado' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' fds' : '') + (evs.length ? '' : ' livre') + '" role="gridcell" style="--i:' + i + '">' +
-        (souGestor() && dia >= hoje ? '<button type="button" class="cb-cel-add" data-add-dia="' + dia + '" aria-label="Marcar gravação em ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + '" title="Marcar gravação neste dia">' + IC_MAIS + '</button>' : '') +
+        (podeMarcar() && dia >= hoje ? '<button type="button" class="cb-cel-add" data-add-dia="' + dia + '" aria-label="Marcar gravação em ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + '" title="Marcar gravação neste dia">' + IC_MAIS + '</button>' : '') +
         '<button type="button" class="cb-cel-num" data-ir-dia="' + dia + '" aria-label="Abrir ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + (evs.length ? ', ' + evs.length + ' evento' + (evs.length > 1 ? 's' : '') : '') + '">' +
           (ehHoje ? '<span class="cb-hoje-tag">Hoje</span>' : '') + '<b>' + d.getDate() + '</b></button>' +
         '<div class="cb-cel-evs">' + pecas.slice(0, pecas.length > MAX_CEL ? MAX_CEL - 1 : MAX_CEL).map(pecaHTML).join('') +
@@ -714,7 +718,7 @@ B7.Calendario = (function () {
           '<small>Nenhum compromisso' + (filtrando() ? ' com esses filtros' : '') + '.</small>' +
           '<div class="cb-livre-acoes">' +
             (prox ? '<button type="button" class="b contorno fina" data-pular-dia="' + prox + '">Próximo: ' + DIAS_SEMANA_ABREV[dp.getDay()] + ' ' + dp.getDate() + IC_DIR + '</button>' : '') +
-            (souGestor() && dia >= hoje ? '<button type="button" class="b pri fina" data-add-dia="' + dia + '">' + IC_MAIS + 'Marcar gravação</button>' : '') +
+            (podeMarcar() && dia >= hoje ? '<button type="button" class="b pri fina" data-add-dia="' + dia + '">' + IC_MAIS + 'Marcar gravação</button>' : '') +
           '</div></div></div>';
     }
     if (!lista.length) return '<div class="cb-dia' + (compacto ? ' compacto' : '') + '">' + cab + '<div class="cb-vazio">Nenhum evento neste dia' + (filtrando() ? ' com esses filtros' : '') + '.</div></div>';
@@ -833,7 +837,7 @@ B7.Calendario = (function () {
     const quando = DIAS_SEMANA_ABREV[d.getDay()] + ', ' + D().pad(d.getDate()) + ' ' + MESES[d.getMonth()].toUpperCase() + ' ' + d.getFullYear() +
       ' · ' + (ev.hora ? ev.hora + (ev.horaFim ? '–' + ev.horaFim : '') : ev.dominio === 'gravacao' ? 'horário a definir' : ev.dominio === 'publicacao' ? 'data de publicação' : 'prazo');
     const ABRIR = { gravacao: 'Abrir gravação', publicacao: 'Abrir conteúdo', video: 'Abrir demanda de vídeo', design: 'Abrir peça de design' };
-    const podeAgir = ev.dominio === 'gravacao' && souGestor() && !ev.historico;
+    const podeAgir = ev.dominio === 'gravacao' && podeMarcar() && !ev.historico;
     const linha = (rot, val) => val ? '<div class="cb-pv-l"><dt>' + rot + '</dt><dd>' + val + '</dd></div>' : '';
     const m = B7.UI.modal(
       '<div class="cb-pv d-' + ev.dominio + '">' +
@@ -1241,7 +1245,7 @@ B7.Calendario = (function () {
             competenciaAno: selAno ? +selAno.value : null, competenciaMes: selMes ? +selMes.value : null
           });
           m.fechar();
-          B7.UI.toast('Gravação marcada — agora dá pra remarcar, cancelar ou concluir por aqui.');
+          B7.UI.toast(souGestor() ? 'Gravação marcada — agora dá pra remarcar, cancelar ou concluir por aqui.' : 'Gravação marcada — agora dá pra remarcar ou concluir por aqui.');
           if (conexao.conectado && resp && resp.ocorrencia_id) {
             try { await B7.DB.criarEventoGoogle(resp.ocorrencia_id, nome, inicio.toISOString(), fim.toISOString(), local); }
             catch (eGoogle) { B7.UI.toast('Marcada no B7, mas não deu pra criar o evento no Google: ' + (eGoogle.message || ''), { tempo: 8000 }); }
@@ -1262,7 +1266,8 @@ B7.Calendario = (function () {
      ================================================================= */
   function modalOcorrencia(it) {
     const dataHora = B7.UI.dataBR(isoData(it.inicio)) + (it.sem_horario ? ' · sem horário' : ' · ' + horaBR(it.inicio) + (it.fim && it.fim !== it.inicio ? '–' + horaBR(it.fim) : ''));
-    const podeAgir = souGestor() && it.atual;
+    const podeAgir = podeMarcar() && it.atual;
+    const gestor = souGestor();
     const mesRefTx = it.competencia_ano && B7.Gravacao ? B7.Gravacao.mesRef(it.competencia_ano, it.competencia_mes) : '';
     /* remarcada: diz para onde foi (a ocorrência nova aponta para esta) */
     const proxima = it.status === 'remarcada' || (it.status === 'cancelada' && !it.atual) ? ocorrencias.find(o => o.ocorrencia_anterior_id === it.id) : null;
@@ -1284,12 +1289,12 @@ B7.Calendario = (function () {
       (it.erro_sincronizacao ? '<div class="cal-aviso-sync">⚠ Não sincronizado com o Google: ' + esc(it.erro_sincronizacao) + '</div>' : '') +
       (it.gravacao_id ? '<div class="acoes-inline" style="margin-top:8px"><a class="b fina contorno" href="#/gravacao/' + it.gravacao_id + '">Abrir gravação</a></div>' : '') +
       (podeAgir ? '<div class="acoes cal-oc-acoes">' +
-        (it.gravacao_id ? '<button class="b fina contorno" id="cal-oc-editar">Editar</button>' : '') +
+        (gestor && it.gravacao_id ? '<button class="b fina contorno" id="cal-oc-editar">Editar</button>' : '') +
         (it.status !== 'concluida' && it.status !== 'cancelada' ? '<button class="b fina contorno" id="cal-oc-remarcar">Remarcar</button>' : '') +
         (it.status === 'cancelada' ? '<button class="b fina contorno" id="cal-oc-remarcar">Remarcar (reativar)</button>' : '') +
-        (it.status === 'marcada' || it.status === 'remarcada' ? '<button class="b fina contorno" id="cal-oc-cancelar">Cancelar gravação</button>' : '') +
+        (gestor && (it.status === 'marcada' || it.status === 'remarcada') ? '<button class="b fina contorno" id="cal-oc-cancelar">Cancelar gravação</button>' : '') +
         (it.status === 'marcada' || it.status === 'remarcada' ? '<button class="b pri" id="cal-oc-concluir">Marcar como Concluída</button>' : '') +
-        (it.gravacao_id ? '<button class="b fina perigo" id="cal-oc-excluir">Excluir gravação</button>' : '') +
+        (gestor && it.gravacao_id ? '<button class="b fina perigo" id="cal-oc-excluir">Excluir gravação</button>' : '') +
       '</div>' : '') +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>'
     );
