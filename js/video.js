@@ -144,7 +144,7 @@ B7.Video = (function () {
      compartilhados por Lista, Quadro e resumo.
      ================================================================= */
   const F_PADRAO = { competencia: '', cliente: '', status: '', responsavel: '', prioridade: '',
-                     prazo: '', busca: '', vista: 'lista', minhaFila: false };
+                     prazo: '', busca: '', vista: 'kanban', minhaFila: false };
   let F = Object.assign({}, F_PADRAO);
   try { Object.assign(F, JSON.parse(sessionStorage.getItem('b7.video.filtros') || '{}')); } catch (e) {}
   function guardarFiltros() { try { sessionStorage.setItem('b7.video.filtros', JSON.stringify(F)); } catch (e) {} }
