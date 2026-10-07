@@ -1345,6 +1345,12 @@ body.apurando #app{visibility:hidden;}
 @media (min-width:761px) and (pointer:fine){
   @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
     .fundo-modal{-webkit-backdrop-filter:blur(6px) saturate(115%);backdrop-filter:blur(6px) saturate(115%);}
+    /* zzz90: com uma janela aberta, as bordas da tela ficavam claras. O
+       desfoque, na beirada, mistura com "o que há fora da tela" — que é
+       a cor de fundo da página (clara). Enquanto houver janela aberta, o
+       fundo da página fica escuro como a barra lateral: a beirada some
+       debaixo do véu em vez de virar uma moldura branca. */
+    html:has(.fundo-modal){background:var(--sidebar, #0D0B1A);}
   }
 }
 .modal{animation:b7Modal var(--m-padrao) var(--m-entra) both;}
