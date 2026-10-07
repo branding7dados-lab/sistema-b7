@@ -241,3 +241,68 @@ body.modo-portal .topo-criar,body.modo-portal .topo-ctx{display:none !important;
 
 /* zzz26: tela com "+" próprio esconde o "Criar" do topo no celular */
 @media (max-width:760px){ #topo-criar.tp-criar-dup{display:none !important;} }
+
+/* =====================================================================
+   zzz100 — "SUA CONTA" NO CELULAR, no padrão de lista agrupada do iOS:
+   pessoa centralizada no alto, blocos brancos sobre fundo cinza-lilás,
+   linhas separadas por um fio que começa depois do ícone, e "Sair" num
+   bloco próprio, em vermelho. Só a folha do celular; o menu do
+   computador continua como era.
+   ===================================================================== */
+html .fundo-modal.tp-folha .modal:has(.tc){background:color-mix(in srgb, var(--fundo) 95%, transparent);padding-left:14px;padding-right:14px;}
+.tp-folha .modal:has(.tc) .tp-folha-cab{padding:2px 2px 0 6px;}
+.tp-folha .modal:has(.tc) .tp-folha-cab h3{font-size:15px;font-weight:700;color:var(--ink-3);letter-spacing:0;}
+.tp-folha .modal:has(.tc) .tp-folha-cab .ico{width:30px;height:30px;background:color-mix(in srgb, var(--ink) 8%, transparent);color:var(--ink-3);}
+.tp-folha .modal:has(.tc) .tp-folha-cab .ico svg{width:14px;height:14px;stroke-width:2.4;}
+.tp-folha .tc{gap:0;padding:0 0 6px;}
+
+/* a pessoa */
+.tp-folha .tc-cab{flex-direction:column;gap:10px;padding:2px 12px 20px;border:0;border-radius:0;background:none;overflow:visible;text-align:center;}
+.tp-folha .tc-luz{display:none;}
+.tp-folha .tc-av{width:86px;height:86px;padding:3px;box-shadow:0 10px 26px -14px color-mix(in srgb, var(--acento) 70%, transparent);}
+.tp-folha .tc-av .tp-conta-av{font-size:30px;border-width:3px;border-color:var(--fundo);}
+.tp-folha .tc-id{align-items:center;gap:2px;}
+.tp-folha .tc-id b{font-size:23px;letter-spacing:-.02em;}
+.tp-folha .tc-id small{font-size:14px;color:var(--ink-3);}
+.tp-folha .tc-papeis{justify-content:center;margin-top:8px;gap:6px;}
+.tp-folha .tc-papeis i{font-size:12px;padding:4px 11px;}
+
+/* blocos */
+.tp-folha .tc-lista,.tp-folha .tc-secao,.tp-folha .tc-fim{background:var(--card);border:0;border-radius:18px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(21,18,43,.04);}
+.tp-folha .tc-lista{gap:0;}
+.tp-folha .tp-item.tc-item{position:relative;min-height:62px;gap:13px;padding:10px 14px;border-radius:0;}
+.tp-folha .tp-item.tc-item:hover,.tp-folha .tp-item.tc-item:focus-visible{background:none;}
+.tp-folha .tp-item.tc-item:active{transform:none;background:color-mix(in srgb, var(--ink) 6%, transparent);}
+.tp-folha .tp-item.tc-item + .tp-item.tc-item::after{content:"";position:absolute;top:0;left:59px;right:0;height:1px;background:var(--borda);}
+.tp-folha .tc-ic{width:32px;height:32px;border-radius:9px;box-shadow:none;}
+.tp-folha .tc-ic svg{width:18px;height:18px;}
+.tp-folha .tp-item.tc-item:hover .tc-ic,.tp-folha .tp-item.tc-item:focus-visible .tc-ic{transform:none;}
+.tp-folha .tc-tx{gap:1px;}
+.tp-folha .tc-tx b{font-size:16px;font-weight:500;letter-spacing:-.005em;}
+.tp-folha .tc-tx small{font-size:12.5px;color:var(--ink-4);}
+.tp-folha .tc-seta{width:14px;height:14px;stroke-width:2.4;opacity:.65;}
+
+/* aparência */
+.tp-folha .tc-secao{margin:14px 0 0;padding:12px 14px 14px;}
+.tp-folha .tc-secao .tp-secao-rot{display:block;margin:0 0 9px;padding:0;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-4);}
+.tp-folha .tc-temas{background:color-mix(in srgb, var(--ink) 7%, transparent);border-radius:11px;padding:2px;gap:0;}
+.tp-folha .tc-temas .tp-tema{min-height:36px;border-radius:9px;font-size:13.5px;font-weight:500;color:var(--ink-2);}
+.tp-folha .tc-temas .tp-tema.on{font-weight:600;color:var(--ink);}
+.tp-folha .tc-pilula{top:2px;bottom:2px;border-radius:9px;box-shadow:0 1px 3px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04);}
+
+/* sair */
+.tp-folha .tc-fim{margin-top:14px;padding:0;}
+.tp-folha .tc-fim .tp-item.tc-item{min-height:58px;justify-content:center;}
+.tp-folha .tc-fim .tc-ic{display:none;}
+.tp-folha .tc-fim .tc-tx{flex:none;align-items:center;text-align:center;}
+.tp-folha .tc-fim .tc-tx b{font-size:16px;font-weight:600;color:var(--erro);}
+.tp-folha .tc-fim .tc-tx small{font-size:12px;}
+/* cabe inteira sem rolar na maioria dos aparelhos; se rolar, sem barra à vista */
+html .fundo-modal.tp-folha .modal:has(.tc){max-height:94vh;max-height:94dvh;}
+.tp-folha .modal:has(.tc) .tp-folha-corpo{max-height:calc(94vh - 64px);max-height:calc(94dvh - 64px);scrollbar-width:none;}
+.tp-folha .modal:has(.tc) .tp-folha-corpo::-webkit-scrollbar{display:none;}
+.tp-folha .modal:has(.tc) .tp-folha-cab .ico{height:30px;min-height:30px;min-width:30px;}
+.tp-folha .tc-av{width:76px;height:76px;}
+.tp-folha .tc-cab{gap:8px;padding-bottom:16px;}
+.tp-folha .tp-item.tc-item{min-height:58px;}

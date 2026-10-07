@@ -426,8 +426,10 @@ B7.Rota = (function () {
       if (corpo && corpo.classList.contains('tele-aberto')) rgb = [0, 0, 0];
       else {
         if (estreito && corpo && corpo.classList.contains('chat-aberto')) rgb = card.slice();
-        if (document.querySelector('.fundo-modal')) {
-          const v = (css.getPropertyValue('--veu').match(/[\d.]+/g) || []).map(Number);
+        const janela = document.querySelector('.fundo-modal');
+        if (janela) {
+          /* a folha do celular usa um veu mais leve que o das janelas: le o dela */
+          const v = (getComputedStyle(janela).getPropertyValue('--veu').match(/[\d.]+/g) || []).map(Number);
           if (v.length >= 4) rgb = rgb.map((c, i) => c * (1 - v[3]) + v[i] * v[3]);
         }
       }
