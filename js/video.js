@@ -831,9 +831,14 @@ B7.Video = (function () {
     ligarArrastoToque(cx);
 
     cx.querySelectorAll('[data-solta]').forEach(zona => {
-      zona.ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zona.classList.add('sobre'); };
-      zona.ondragleave = e => { if (!zona.contains(e.relatedTarget)) zona.classList.remove('sobre'); };
-      zona.ondrop = e => {
+      /* zzz60: a COLUNA inteira aceita o cartão (cabeçalho e o espaço
+         vazio embaixo também). Antes só a lista aceitava — numa coluna
+         vazia isso era só a faixa "Nenhuma demanda", e soltar um dedo
+         abaixo dela não movia nada. */
+      const col = zona.closest('.vd-coluna') || zona;
+      col.ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zona.classList.add('sobre'); };
+      col.ondragleave = e => { if (!col.contains(e.relatedTarget)) zona.classList.remove('sobre'); };
+      col.ondrop = e => {
         e.preventDefault();
         const id = arrastando || e.dataTransfer.getData('text/plain');
         limpar();
@@ -841,7 +846,6 @@ B7.Video = (function () {
         const d = demandas.find(x => x.id === id);
         const destino = zona.dataset.solta;
         if (!d || destino === d.editing_status) return;
-        /* quando o quadro redesenha com o cartão na coluna nova, ele assenta */
         /* o cartão assenta na coluna nova na hora (moverNaTela) */
         Promise.resolve(moverCartaoVideo(d, destino)).catch(() => {});
       };
@@ -864,7 +868,7 @@ B7.Video = (function () {
       if (card._toque) return; card._toque = true;
       if (toque) card.removeAttribute('draggable');
       let timer = null, x0 = 0, y0 = 0, ativo = false, moveu = false, fantasma = null, alvo = null, rolar = 0, dx = 0, dy = 0;
-      const zonaEm = (x, y) => { const el = document.elementFromPoint(x, y); return el && el.closest('[data-solta]'); };
+      const zonaEm = (x, y) => { const el = document.elementFromPoint(x, y); const col = el && el.closest('.vd-coluna'); return col ? col.querySelector('[data-solta]') : (el && el.closest('[data-solta]')); };
       const pararRolagem = () => { cancelAnimationFrame(rolar); rolar = 0; };
       const ouvintes = [
         [document, 'touchmove', e => mover(e), { passive: false }],

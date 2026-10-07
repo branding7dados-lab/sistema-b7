@@ -1529,3 +1529,8 @@ html.modo-leve .vd-h-bokeh{display:none;}
 .vd-dc-cli > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .vd-dc-corpo small time:before{content:"";}
 .vd-dc-corpo small time{display:inline-flex;align-items:center;gap:4px;}
+
+/* zzz60: a lista ocupa a altura toda da coluna — a área que acende ao
+   arrastar é a coluna inteira, não só a faixa do topo */
+.vd-quadro .vd-coluna{display:flex;flex-direction:column;}
+.vd-quadro .vd-coluna-corpo{flex:1;min-height:56px;}
