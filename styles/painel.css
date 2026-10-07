@@ -708,3 +708,42 @@ a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale
    entrada (js/painel.js, passar). O céu ambiente continua. */
 .pn.pn-calmo *:not(.pn-ceu):not(.pn-ceu *){animation:none !important;}
 .pn.pn-calmo .pn-cab{animation:none !important;}
+
+/* =====================================================================
+   TELA LARGA (pacote zzz56, 07/10)
+   No monitor grande a "Minha produção" ocupava a largura inteira: seis
+   barras finas perdidas em 1.500px e um vazio embaixo da lista de
+   atenção. A partir de 1600px o Painel vira três colunas — o que pede
+   ação, a semana com os compromissos, e o gráfico de pé ao lado — e os
+   blocos fecham na mesma linha de base. Só disposição: nenhum dado,
+   regra ou link muda, e abaixo de 1600px fica como estava.
+   ===================================================================== */
+@media (min-width:1101px){
+  .pn-graf-trilho{max-width:64px;}
+}
+@media (min-width:1600px){
+  .pn-grade{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.92fr);grid-template-rows:auto 1fr;
+    align-items:stretch;grid-template-areas:"at sem prod" "at comp prod";}
+  .pnc-grade{grid-template-areas:"at sem flx" "at pub flx";}
+  .pnd-grade{grid-template-areas:"at sem prod" "at prox prod";}
+  .pnm-grade{grid-template-areas:"at sem graf" "at prox graf";}
+  /* o gráfico de pé: resumo em uma linha, barras ocupando a altura que sobra */
+  :is(#pn-producao,#pnd-producao,#pnc-fluxo,#pnm-grafico){display:flex;flex-direction:column;}
+  .pn-prod-corpo{flex:1;display:flex;flex-direction:column;align-items:stretch;gap:0;min-height:0;}
+  .pn-prod-corpo .pn-graf-resumo{flex-direction:row;flex-wrap:nowrap;gap:0;margin-bottom:20px;}
+  .pn-prod-corpo .pn-graf-resumo > div{flex:1;min-width:0;padding:0 12px;border-left:1px solid var(--borda);}
+  .pn-prod-corpo .pn-graf-resumo > div:nth-child(2){flex:1.3;}
+  .pn-prod-corpo .pn-delta{white-space:normal;line-height:1.2;border-radius:10px;}
+  .pn-prod-corpo .pn-graf-resumo > div:first-child{padding-left:0;border-left:0;}
+  .pn-prod-corpo .pn-graf-resumo b{font-size:24px;}
+  .pn-prod-corpo .pn-graf{flex:1;height:auto;min-height:170px;gap:8px;}
+  .pnc-fluxo-corpo .pnc-fluxo{flex:1;justify-content:space-around;}
+  .pnc-etapa{grid-template-columns:112px minmax(0,1fr) auto;}
+  /* a semana cabe na coluna do meio: dias um pouco mais justos */
+  .pn-semana-lista{gap:5px;}
+  .pn-dia{padding:10px 8px 11px;}
+  /* cabeçalho do gráfico composto: o seletor desce para a segunda linha */
+  #pnm-grafico .pn-sec-cab{flex-wrap:wrap;row-gap:8px;}
+  #pnm-grafico .pn-sec-sub, #pnc-fluxo .pn-sec-sub{display:none;}
+  .pnm-graf-sel{order:3;margin-left:0;}
+}
