@@ -445,6 +445,14 @@ body.recolhida .bt-recolher span{display:none;}
 .lista button:hover{background:var(--suave);color:var(--acento);}
 .lista button.perigo:hover{background:var(--erro-bg);color:var(--erro);}
 .lista hr{border:0;border-top:1px solid var(--borda);margin:5px 8px;}
+/* menu do botão direito (js/menu-contexto.js): mesma caixa dos menus "⋯" */
+.ctx-menu{min-width:214px;z-index:900;transform-origin:top left;}
+.ctx-menu .ctx-tit{font-size:12px;font-weight:700;color:var(--ink);padding:8px 11px 7px;margin-bottom:4px;
+  border-bottom:1px solid var(--borda);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ctx-menu button{padding:8px 11px;font-size:13px;}
+.ctx-menu button.ctx-forte{font-weight:600;color:var(--ink);}
+.ctx-menu button:focus-visible{outline:none;background:var(--suave);color:var(--acento);}
+.ctx-menu .ctx-pe{font-size:10.5px;color:var(--ink-4);padding:7px 11px 4px;margin-top:4px;border-top:1px solid var(--borda);}
 .lista .rot{font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--ink-4);padding:8px 11px 5px;}
 
 /* ------------------------------------------------------------ campos */
