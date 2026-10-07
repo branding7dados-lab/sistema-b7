@@ -57,8 +57,19 @@ function propriedadesCaras(css, onde) {
   }
   return caras;
 }
-const caras = [...propriedadesCaras(abertura, 'abertura.css'), ...propriedadesCaras(esqueleto, 'global.css')];
-ok(caras.length === 0, 'nenhum keyframe anima propriedade cara' + (caras.length ? ' → ' + caras.join('; ') : ''));
+/* A regra vale para o CARREGAMENTO, que é desenho meu.
+   A ABERTURA não: ela é a da versão zzp, restaurada a pedido do Kevin
+   ("a animação que eu quero é da versão zzp"), e a zzp anima filter e
+   clip-path. Isso custa mais caro, e é uma escolha dele, feita com o
+   custo na mesa — não um descuido para o teste esconder. Então aqui o
+   custo da abertura é RELATADO (aparece no log do CI, onde dá para ver
+   se alguém piorou), e só o carregamento reprova. */
+const carasEsq = propriedadesCaras(esqueleto, 'global.css');
+ok(carasEsq.length === 0, 'carregamento: nenhum keyframe anima propriedade cara' +
+   (carasEsq.length ? ' → ' + carasEsq.join('; ') : ''));
+const carasAb = [...new Set(propriedadesCaras(abertura, 'abertura.css'))];
+console.log('· abertura (zzp, restaurada a pedido): ' + carasAb.length +
+  ' propriedade(s) cara(s) em keyframes' + (carasAb.length ? ' — ' + carasAb.length + ' ocorrências' : ''));
 
 function nomesDeAnimacao(css) {
   const PALAVRAS = new Set(['none','ease','linear','both','infinite','forwards','backwards','alternate',
@@ -159,4 +170,4 @@ const entrar = () => {
 
 await nav.close(); sv.close();
 if (falhas.length) { console.error('\n' + falhas.length + ' problema(s):\n- ' + falhas.join('\n- ')); process.exit(1); }
-console.log('\n✓ abertura e carregamento: só transform/opacity, sem sobras.');
+console.log('\n✓ abertura (zzp) e carregamento conferidos, sem sobras na tela.');

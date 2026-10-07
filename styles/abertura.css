@@ -1,239 +1,368 @@
 /* =====================================================================
-   ABERTURA — "a faísca" (zzz53)
-   Segunda reescrita. A primeira (zzz52) ficou lenta, escura e vazia: no
-   celular do Kevin o halo virou uma mancha cinza, o risco de luz virou
-   uma barra magenta dura atravessando a tela, a lâmpada apagada parecia
-   imagem que não carregou, e eram 4,3 segundos disso toda vez.
+   ABERTURA — restaurada da versão zzp (zzz55)
+   Pedido do Kevin, literal: "volta a animação que tava antes, sem ser
+   nessa atualização... a animação que eu quero é da versão zzp, mas é só
+   a abertura mesmo."
 
-   O erro de método: julguei por prints estáticos ampliados numa tela
-   grande. Agora a conferência é um vídeo no tamanho de um celular.
+   O que vem abaixo é o CSS da abertura exatamente como estava no commit
+   019f673 ("Abertura: retira as tarjas de cinema (zzp)", 03/10), que é o
+   último estado da zzp. Copiado como estava, sem retoque meu — os
+   comentários abaixo são os de lá, e falam do contexto daquela época.
 
-   Direção escolhida pelo Kevin: curta e com energia.
-
-     0,00–0,55 s  as faíscas voam de fora para dentro e somem na lâmpada
-     0,30–0,75 s  a lâmpada cresce e acende, já colorida
-     0,52–0,77 s  o estouro: um clarão radial curto (nunca uma barra)
-     0,62–1,00 s  a palavra sai de trás do símbolo
-     1,00–1,25 s  assenta
-     saída        o símbolo voa para o topo
-
-   1,25 s no total, contra 4,3 s. A marca ocupa 86vw em vez de 72vw.
-
-   REGRAS DE CUSTO: keyframes só em transform e opacity; nenhum
-   filter:blur() animado; nenhuma camada de tela cheia com
-   mix-blend-mode. As faíscas são dez divs que vivem meio segundo.
+   SÓ A ABERTURA voltou. O que veio depois e não é abertura fica: as
+   telas de carregamento, o morph entre módulos, a foto da tela e as
+   correções de desempenho e de segurança. Nada disso foi tocado.
    ===================================================================== */
 
-.b7-abertura{
-  --ab-w:clamp(280px, 86vw, 460px);
+/* =====================================================================
+   ABERTURA — "a ideia acende", versão cinema (pacote zo, 03/10)
+   Um conceito só, com a marca real: o símbolo do B7 é uma lâmpada feita
+   de ideias. Pedido do Kevin depois de ver no celular: mais longa, maior
+   e mais cinematográfica. Roteiro (primeira abertura da sessão):
+     0,00–0,9 s  escuro. Uma centelha nasce no centro e respira; poeira
+                 de luz começa a subir
+     0,25–1,6 s  a lâmpada sai do escuro e do desfoque, GRANDE
+     0,9–1,9 s   a "carga": luz sobe por dentro do desenho da lâmpada
+     1,6–1,9 s   o filamento pisca (duas vezes, como lâmpada de verdade)
+     1,9 s       IGNIÇÃO: clarão na tela, flare horizontal anamórfico,
+                 bloom, duas ondas de luz, raios girando devagar e um
+                 "soco" de escala no palco
+     1,9–2,7 s   a lâmpada brilha no auge; raios e poeira continuam
+     2,7–3,65 s  ela recua para o lugar no logo
+     3,28–3,9 s  "Branding7" se escreve (quando ela já está chegando)
+     3,7–4,3 s   um brilho passa por cima do logo inteiro
+     4,3 s →     sai assim que o sistema estiver pronto (íris abre do
+                 centro, o logo voa até onde mora na interface)
+     4,7 s →     ainda carregando? espera honesta (frase + fio de luz)
+   Versão curta (recarregar, entre login e sistema): 0,35 s.
+   Tudo em transform/opacity; filtro só em peças pequenas e só durante
+   a sequência; os raios giram por transform (sem repintar).
+   ===================================================================== */
+.b7-abertura{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;overflow:hidden;
+  --ab-w:clamp(250px, 72vw, 420px);
   --ab-h:calc(var(--ab-w) * .3933);
-  --ab-dx:calc(var(--ab-w) * .3347);     /* centro do logo − centro do símbolo */
-  --ab-ign:.42s;                         /* o instante da ignição */
-  --ab-curva:cubic-bezier(.16,1,.3,1);
-  position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;overflow:hidden;background:#0A0514;
+  --ab-dx:calc(var(--ab-w) * .3347);     /* centro do logo − centro do símbolo no logo */
+  --ab-z:2.15;                           /* tamanho da lâmpada no centro, sobre o do logo */
+  --ab-ign:1.9s;                         /* o instante da ignição */
+  --ab-assenta:cubic-bezier(.16,1,.3,1);
+  animation:abEntraCortina .3s ease-out both;}
+.b7-abertura.inicial{animation:none;}
+@keyframes abEntraCortina{from{opacity:0}to{opacity:1}}
+
+/* ---- céu ---- */
+.ab-ceu{position:absolute;inset:0;overflow:hidden;pointer-events:none;
+  background:radial-gradient(130% 85% at 50% 108%, #1B0B30 0%, #0B0614 46%, #05030A 100%);}
+.ab-ceu i{position:absolute;display:block;pointer-events:none;}
+.ab-horizonte{left:50%;bottom:-38vmax;width:120vmax;height:70vmax;margin-left:-60vmax;border-radius:50%;
+  background:radial-gradient(closest-side, rgba(194,28,131,.34), rgba(58,30,134,.22) 45%, transparent 72%);
+  animation:abHorizonte 2.4s var(--ab-assenta) .2s both;}
+@keyframes abHorizonte{from{opacity:0;transform:translate3d(0,10%,0) scale(.8)}to{opacity:1;transform:none}}
+/* raios de luz: nascem na ignição, giram devagar, somem quando o logo assenta */
+.ab-raios{left:50%;top:calc(50% - 6vh);width:150vmax;height:150vmax;margin:-75vmax 0 0 -75vmax;border-radius:50%;
+  background:repeating-conic-gradient(from 0deg, rgba(255,150,210,.16) 0deg 3deg, transparent 3deg 18deg);
+  -webkit-mask:radial-gradient(circle, #000 0, rgba(0,0,0,.6) 14%, transparent 42%);
+          mask:radial-gradient(circle, #000 0, rgba(0,0,0,.6) 14%, transparent 42%);
+  opacity:0;animation:abRaios 2.2s cubic-bezier(.3,0,.2,1) var(--ab-ign) both;}
+@keyframes abRaios{0%{opacity:0;transform:rotate(-8deg) scale(.7)}15%{opacity:1;transform:rotate(-4deg) scale(1)}
+  55%{opacity:.6}100%{opacity:0;transform:rotate(16deg) scale(1.08)}}
+/* feixe diagonal: um holofote que cruza depois da ignição */
+.ab-chave{top:-30%;left:-60%;width:60%;height:160%;
+  background:linear-gradient(90deg, transparent, rgba(255,214,240,.07) 45%, rgba(255,255,255,.11) 50%, rgba(255,214,240,.07) 55%, transparent);
+  transform:rotate(18deg);opacity:0;
+  animation:abChave 1.9s cubic-bezier(.45,0,.2,1) 2.1s both;}
+@keyframes abChave{0%{opacity:0;transform:translate3d(0,0,0) rotate(18deg)}20%{opacity:1}
+  100%{opacity:0;transform:translate3d(320%,0,0) rotate(18deg)}}
+.ab-grao{inset:0;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");}
+/* clarão: a tela inteira acende por um instante na ignição */
+.ab-clarao{inset:0;opacity:0;
+  background:radial-gradient(60% 50% at 50% 44%, rgba(255,220,240,.55), rgba(226,64,156,.22) 45%, transparent 75%);
+  animation:abClarao .9s cubic-bezier(.2,.8,.2,1) var(--ab-ign) both;}
+@keyframes abClarao{0%{opacity:0}12%{opacity:1}100%{opacity:0}}
+
+/* ---- palco: o logo real em duas peças, sem distorcer ----
+   logo-white.png 900×354; símbolo 0–297 px (33,1%); palavra a partir
+   de 337 px. Símbolo = symbol-color.png (mesma proporção) no lugar dele. */
+.ab-palco{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+  width:var(--ab-w);height:var(--ab-h);margin-top:-6vh;
+  animation:abSoco .7s cubic-bezier(.2,.9,.25,1) var(--ab-ign) both;}
+/* soco de escala + tremor de câmera curto na ignição */
+@keyframes abSoco{0%{transform:none}5%{transform:translate3d(3px,-2px,0) scale(1.03)}10%{transform:translate3d(-3px,2px,0) scale(1.045)}
+  15%{transform:translate3d(2px,1px,0) scale(1.04)}20%{transform:translate3d(-1px,-1px,0) scale(1.035)}30%{transform:scale(1.02)}100%{transform:none}}
+/* travelling: a câmera se aproxima devagar durante toda a sequência */
+.ab-marca{position:relative;width:var(--ab-w);height:var(--ab-h);animation:abDolly 4.3s cubic-bezier(.3,0,.25,1) both;}
+@keyframes abDolly{from{transform:scale(.9)}to{transform:none}}
+.ab-palavra{position:absolute;inset:0;background:url('../assets/brand/logo-white.png') no-repeat 0 0/100% 100%;
+  -webkit-clip-path:inset(0 0 0 36%);clip-path:inset(0 0 0 36%);
+  animation:abPalavra .62s var(--ab-assenta) 3.28s both;}
+@keyframes abPalavra{
+  from{opacity:0;-webkit-clip-path:inset(0 64% 0 36%);clip-path:inset(0 64% 0 36%);transform:translate3d(-14px,0,0);filter:blur(6px)}
+  to{opacity:1;-webkit-clip-path:inset(0 0 0 36%);clip-path:inset(0 0 0 36%);transform:none;filter:none}}
+.ab-simbolo{position:absolute;left:0;top:0;width:33.1%;height:100%;transform-origin:50% 50%;
+  animation:abSimbolo 3.4s .25s both;}
+@keyframes abSimbolo{
+  0%  {opacity:0;transform:translate3d(var(--ab-dx),0,0) scale(calc(var(--ab-z) * .78));animation-timing-function:cubic-bezier(.2,.7,.2,1)}
+  40% {opacity:1;transform:translate3d(var(--ab-dx),0,0) scale(var(--ab-z));animation-timing-function:linear}
+  48% {opacity:1;transform:translate3d(var(--ab-dx),0,0) scale(var(--ab-z));animation-timing-function:cubic-bezier(.2,.9,.25,1)}
+  54% {opacity:1;transform:translate3d(var(--ab-dx),0,0) scale(calc(var(--ab-z) * 1.08));animation-timing-function:ease-out}
+  72% {opacity:1;transform:translate3d(var(--ab-dx),0,0) scale(calc(var(--ab-z) * 1.03));animation-timing-function:cubic-bezier(.65,0,.18,1)}
+  100%{opacity:1;transform:none}}
+.ab-simbolo i{position:absolute;inset:0;display:block;}
+.ab-cor{background:url('../assets/brand/symbol-color.png') no-repeat center/contain;
+  animation:abAcende 2.3s .25s both;}
+/* escuro e desfocado → nítido e meio apagado → filamento pisca → ACENDE */
+@keyframes abAcende{
+  0%  {filter:blur(14px) brightness(.1) saturate(.6)}
+  52% {filter:blur(0) brightness(.5) saturate(.85)}
+  60% {filter:brightness(.95) saturate(1.05)}
+  63% {filter:brightness(.35)}
+  67% {filter:brightness(1.05) saturate(1.1)}
+  70% {filter:brightness(.42)}
+  74% {filter:brightness(2) saturate(1.3) drop-shadow(4px 0 0 rgba(255,40,110,.75)) drop-shadow(-4px 0 0 rgba(40,190,255,.7)) drop-shadow(0 0 22px rgba(255,150,210,.95))}
+  79% {filter:brightness(1.6) saturate(1.2) drop-shadow(1px 0 0 rgba(255,40,110,.4)) drop-shadow(-1px 0 0 rgba(40,190,255,.35)) drop-shadow(0 0 18px rgba(255,150,210,.8))}
+  100%{filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 12px rgba(226,64,156,.5))}}
+.ab-carga{-webkit-mask:url('../assets/brand/symbol-white.png') no-repeat center/contain;
+          mask:url('../assets/brand/symbol-white.png') no-repeat center/contain;overflow:hidden;}
+.ab-carga b{position:absolute;left:0;right:0;top:0;height:60%;display:block;
+  background:linear-gradient(0deg, transparent, rgba(255,240,250,.92) 50%, transparent);
+  transform:translate3d(0,170%,0);animation:abCarga 1s cubic-bezier(.5,0,.3,1) .9s both;}
+@keyframes abCarga{0%{transform:translate3d(0,170%,0);opacity:0}15%{opacity:1}100%{transform:translate3d(0,-110%,0);opacity:.15}}
+.ab-branca{background:url('../assets/brand/symbol-white.png') no-repeat center/contain;opacity:0;}
+/* brilho final: uma faixa de luz passa por cima do logo inteiro
+   (recortada no próprio desenho do logo branco) */
+.ab-brilho{position:absolute;inset:0;overflow:hidden;pointer-events:none;
+  -webkit-mask:url('../assets/brand/logo-white.png') no-repeat 0 0/100% 100%;
+          mask:url('../assets/brand/logo-white.png') no-repeat 0 0/100% 100%;}
+.ab-brilho b{position:absolute;top:-20%;bottom:-20%;left:0;width:28%;display:block;
+  background:linear-gradient(100deg, transparent, rgba(255,120,195,.95) 32%, #fff 50%, rgba(160,120,255,.95) 68%, transparent);
+  transform:translate3d(-120%,0,0) skewX(-14deg);animation:abBrilho .62s cubic-bezier(.45,0,.25,1) 3.7s both;}
+@keyframes abBrilho{from{transform:translate3d(-120%,0,0) skewX(-14deg);opacity:1}to{transform:translate3d(420%,0,0) skewX(-14deg);opacity:.6}}
+
+/* centelha: o primeiro ponto de luz, antes de tudo */
+.ab-centelha{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;
+  background:#fff;box-shadow:0 0 14px 4px rgba(255,180,225,.95), 0 0 46px 14px rgba(226,64,156,.6);
+  opacity:0;animation:abCentelha 1.5s cubic-bezier(.3,0,.2,1) .05s both;}
+@keyframes abCentelha{0%{opacity:0;transform:scale(.2)}22%{opacity:1;transform:scale(1)}45%{opacity:.6;transform:scale(.75)}
+  62%{opacity:1;transform:scale(1.15)}100%{opacity:0;transform:scale(5)}}
+/* poeira de luz subindo em volta da lâmpada */
+.ab-poeira{position:absolute;left:50%;top:50%;width:0;height:0;}
+.ab-poeira i{position:absolute;left:var(--x);top:var(--y);width:3px;height:3px;border-radius:50%;background:rgba(255,220,240,.9);
+  box-shadow:0 0 8px 2px rgba(226,64,156,.6);opacity:0;animation:abPoeira var(--t) cubic-bezier(.2,.6,.3,1) var(--d) both;}
+.ab-poeira i:nth-child(even){width:2px;height:2px;background:rgba(190,170,255,.9);box-shadow:0 0 8px 2px rgba(124,80,220,.55);}
+@keyframes abPoeira{0%{opacity:0;transform:translate3d(0,0,0)}20%{opacity:.9}100%{opacity:0;transform:translate3d(0,-90px,0)}}
+/* bloom e ondas da ignição */
+.ab-bloom{position:absolute;left:50%;top:50%;width:min(110vw,560px);height:min(110vw,560px);margin:calc(min(110vw,560px) / -2) 0 0 calc(min(110vw,560px) / -2);
+  border-radius:50%;background:radial-gradient(closest-side, rgba(226,64,156,.5), rgba(124,30,133,.22) 46%, transparent 74%);
+  opacity:.34;transform:scale(1.35);animation:abBloom 1.8s cubic-bezier(.2,.8,.2,1) var(--ab-ign) both;}
+@keyframes abBloom{0%{opacity:0;transform:scale(.3)}18%{opacity:1;transform:scale(1)}100%{opacity:.34;transform:scale(1.35)}}
+.ab-onda{position:absolute;left:50%;top:50%;width:170px;height:170px;margin:-85px 0 0 -85px;border-radius:50%;
+  border:1.5px solid rgba(255,173,215,.8);box-shadow:0 0 30px rgba(226,64,156,.5), inset 0 0 20px rgba(226,64,156,.32);
+  opacity:0;animation:abOnda 1.3s cubic-bezier(.16,1,.3,1) var(--ab-ign) both;}
+.ab-onda.dois{border-color:rgba(170,140,255,.7);animation-delay:calc(var(--ab-ign) + .22s);}
+@keyframes abOnda{0%{opacity:0;transform:scale(.45)}10%{opacity:.9}100%{opacity:0;transform:scale(3.2)}}
+/* flare anamórfico: a linha de luz horizontal de lente de cinema */
+.ab-flare{position:absolute;left:0;right:0;top:calc(50% - 6vh);height:2px;margin-top:-1px;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg, transparent, rgba(226,64,156,.0) 8%, rgba(255,150,210,.75) 38%, #fff 50%, rgba(255,150,210,.75) 62%, transparent 92%);
+  box-shadow:0 0 18px 3px rgba(226,64,156,.55);
+  opacity:0;transform:scaleX(.05);animation:abFlare 1.2s cubic-bezier(.2,.8,.2,1) var(--ab-ign) both;}
+@keyframes abFlare{0%{opacity:0;transform:scaleX(.05)}14%{opacity:1;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1.25)}}
+
+/* bokeh: luzes desfocadas ao fundo, depois da ignição (gradiente, sem filtro) */
+.ab-bokeh{position:absolute;inset:0;}
+.ab-bokeh i{position:absolute;border-radius:50%;opacity:0;
+  background:radial-gradient(circle, rgba(255,140,205,.32), rgba(255,140,205,.1) 55%, transparent 70%);
+  animation:abBokeh 3.2s cubic-bezier(.2,.6,.3,1) 2s both;}
+.ab-bokeh i:nth-child(1){left:8%;top:22%;width:120px;height:120px;}
+.ab-bokeh i:nth-child(2){right:6%;top:30%;width:80px;height:80px;animation-delay:2.15s;background:radial-gradient(circle, rgba(160,130,255,.34), rgba(160,130,255,.1) 55%, transparent 70%);}
+.ab-bokeh i:nth-child(3){left:18%;bottom:24%;width:64px;height:64px;animation-delay:2.3s;}
+.ab-bokeh i:nth-child(4){right:16%;bottom:30%;width:140px;height:140px;animation-delay:2.05s;background:radial-gradient(circle, rgba(124,60,210,.3), rgba(124,60,210,.08) 55%, transparent 70%);}
+.ab-bokeh i:nth-child(5){left:56%;top:14%;width:52px;height:52px;animation-delay:2.4s;}
+@keyframes abBokeh{0%{opacity:0;transform:translate3d(0,14px,0) scale(.8)}35%{opacity:1}100%{opacity:.55;transform:translate3d(0,-22px,0) scale(1)}}
+.ab-curta .b7-abertura.inicial :is(.ab-bokeh),.b7-abertura:not(.inicial) :is(.ab-bokeh){display:none;}
+.ab-curta .b7-abertura.inicial .ab-marca,.b7-abertura:not(.inicial) .ab-marca{animation:none;}
+.b7-abertura.saindo .ab-bokeh{display:none;}
+@media (prefers-reduced-motion:reduce){ .b7-abertura :is(.ab-bokeh){display:none;} }
+/* ---- espera honesta: só se o sistema ainda não estiver pronto ---- */
+.ab-espera{position:absolute;left:0;right:0;top:calc(50% - 6vh + var(--ab-h) / 2 + 38px);z-index:1;
+  display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
+  color:rgba(255,255,255,.62);font-size:13px;letter-spacing:.01em;
+  opacity:0;animation:abEspera .45s var(--ab-assenta) 4.7s both;}
+@keyframes abEspera{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+.ab-ola{font-family:'Archivo';font-weight:800;font-size:17px;color:#fff;letter-spacing:-.01em;}
+.ab-ola:empty{display:none;}
+.ab-fio{position:relative;display:block;width:120px;height:2px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,.08);margin-top:4px;}
+.ab-fio:after{content:"";position:absolute;inset:0;width:40%;border-radius:2px;
+  background:linear-gradient(90deg, transparent, #FF8FCB, transparent);
+  animation:abFio 1.4s cubic-bezier(.45,0,.55,1) infinite;}
+@keyframes abFio{from{transform:translate3d(-110%,0,0)}to{transform:translate3d(260%,0,0)}}
+
+/* ---- versão curta "relâmpago" (recarregar, puxar para atualizar,
+   entre login e sistema) — pacote zzb, 03/10 ----
+   Antes: logo parado + "Preparando o seu espaço…" + barrinha, e na saída
+   uma bola branca (a íris abrindo sobre o tema claro). Pedido do Kevin:
+   "deixa esse loading cinematográfico". Agora é a abertura em ~1 s:
+     0,00–0,45  a lâmpada sai do escuro e do desfoque
+     0,40       ACENDE (o mesmo clarão cromático da completa), uma onda
+                de luz, bloom e o flare horizontal
+     0,30–0,80  "Branding7" se escreve
+     0,95 →     se ainda carrega: um brilho passa pelo logo a cada 1,8 s
+                e a lâmpada respira — o próprio logo é o indicador
+     1,8 →      só então a frase honesta ("Preparando…") aparece
+   Tema claro: sai esmaecendo (sem o buraco da íris, que lá virava uma
+   bola branca). Sem som (o som é só da completa). */
+.ab-curta .b7-abertura.inicial .ab-palco,.b7-abertura:not(.inicial) .ab-palco{animation:abRelPalco .95s var(--ab-assenta) both;}
+@keyframes abRelPalco{0%{opacity:0;transform:scale(.9);filter:blur(10px)}38%{opacity:1;filter:blur(0)}
+  46%{transform:scale(1.035)}100%{opacity:1;transform:none;filter:none}}
+.ab-curta .b7-abertura.inicial .ab-simbolo,.b7-abertura:not(.inicial) .ab-simbolo{animation:none;}
+.ab-curta .b7-abertura.inicial .ab-cor,.b7-abertura:not(.inicial) .ab-cor{
+  animation:abRelAcende .95s both, abRelRespira 2.4s ease-in-out .95s infinite alternate;}
+@keyframes abRelAcende{
+  0%  {filter:brightness(.15) saturate(.6)}
+  36% {filter:brightness(.55) saturate(.9)}
+  42% {filter:brightness(2.1) saturate(1.3) drop-shadow(4px 0 0 rgba(255,40,110,.75)) drop-shadow(-4px 0 0 rgba(40,190,255,.7)) drop-shadow(0 0 22px rgba(255,150,210,.95))}
+  52% {filter:brightness(1.5) saturate(1.2) drop-shadow(1px 0 0 rgba(255,40,110,.35)) drop-shadow(-1px 0 0 rgba(40,190,255,.3)) drop-shadow(0 0 18px rgba(255,150,210,.8))}
+  100%{filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 12px rgba(226,64,156,.5))}}
+@keyframes abRelRespira{from{filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 12px rgba(226,64,156,.5))}
+  to{filter:brightness(1.22) saturate(1.12) drop-shadow(0 0 22px rgba(255,120,200,.8))}}
+.ab-curta .b7-abertura.inicial .ab-palavra,.b7-abertura:not(.inicial) .ab-palavra{animation:abPalavra .5s var(--ab-assenta) .3s both;}
+.ab-curta .b7-abertura.inicial .ab-horizonte,.b7-abertura:not(.inicial) .ab-horizonte{animation:abHorizonte 1s var(--ab-assenta) both;}
+.ab-curta .b7-abertura.inicial .ab-bloom,.b7-abertura:not(.inicial) .ab-bloom{animation:abBloom 1.3s cubic-bezier(.2,.8,.2,1) .38s both;}
+.ab-curta .b7-abertura.inicial .ab-onda:not(.dois),.b7-abertura:not(.inicial) .ab-onda:not(.dois){animation:abOnda 1.1s cubic-bezier(.16,1,.3,1) .4s both;}
+.ab-curta .b7-abertura.inicial .ab-flare,.b7-abertura:not(.inicial) .ab-flare{animation:abFlare .9s cubic-bezier(.2,.8,.2,1) .4s both;}
+.ab-curta .b7-abertura.inicial .ab-clarao,.b7-abertura:not(.inicial) .ab-clarao{animation:abClarao .7s cubic-bezier(.2,.8,.2,1) .4s both;}
+/* na curta a lâmpada já está no lugar dela no logo: onda e bloom nascem dela */
+.ab-curta .b7-abertura.inicial :is(.ab-onda,.ab-bloom),.b7-abertura:not(.inicial) :is(.ab-onda,.ab-bloom){translate:calc(-1 * var(--ab-dx)) 0;}
+/* enquanto carrega: um brilho passa pelo logo, de tempos em tempos */
+.ab-curta .b7-abertura.inicial .ab-brilho b,.b7-abertura:not(.inicial) .ab-brilho b{animation:abRelBrilho 1.8s cubic-bezier(.45,0,.25,1) .95s infinite;}
+@keyframes abRelBrilho{0%{transform:translate3d(-120%,0,0) skewX(-14deg);opacity:1}45%,100%{transform:translate3d(420%,0,0) skewX(-14deg);opacity:.6}}
+.ab-curta .b7-abertura.inicial :is(.ab-onda.dois,.ab-chave,.ab-carga,.ab-raios,.ab-centelha,.ab-poeira),
+.b7-abertura:not(.inicial) :is(.ab-onda.dois,.ab-chave,.ab-carga,.ab-raios,.ab-centelha,.ab-poeira){display:none;}
+/* a frase só aparece se a espera for de verdade */
+.ab-curta .b7-abertura.inicial .ab-espera,.b7-abertura:not(.inicial) .ab-espera{animation-delay:1.8s;}
+/* saída no tema claro: esmaece (a íris abria uma bola branca sobre o logo) */
+[data-theme="light"] .b7-abertura.saindo .ab-ceu{-webkit-mask:none;mask:none;animation:abCeuSome .6s cubic-bezier(.4,0,.2,1) .05s forwards;}
+@keyframes abCeuSome{to{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .ab-curta .b7-abertura.inicial :is(.ab-cor,.ab-brilho b,.ab-palco,.ab-palavra),.b7-abertura:not(.inicial) :is(.ab-cor,.ab-brilho b,.ab-palco,.ab-palavra){animation:none;}
+  .ab-curta .b7-abertura.inicial :is(.ab-onda,.ab-flare,.ab-clarao,.ab-bloom,.ab-brilho),.b7-abertura:not(.inicial) :is(.ab-onda,.ab-flare,.ab-clarao,.ab-bloom,.ab-brilho){display:none;}
 }
 
-/* ---------------------------------------------------------- o fundo
-   Estático: gradiente + vinheta + grão não animam nada. Mais claro que
-   na zzz52 — o preto quase absoluto é o que fazia a tela parecer morta. */
-.ab-ceu{position:absolute;inset:0;overflow:hidden;pointer-events:none;
-  background:radial-gradient(118% 78% at 50% 50%, #2A1046 0%, #140826 42%, #0A0514 100%);}
-.ab-ceu i{position:absolute;display:block;pointer-events:none;}
-.ab-vinheta{inset:0;background:radial-gradient(110% 76% at 50% 50%, transparent 38%, rgba(0,0,0,.42) 78%, rgba(0,0,0,.68) 100%);}
-.ab-grao{inset:0;opacity:.05;mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");}
-
-/* ---------------------------------------------------------- o palco */
-.ab-centro{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:30px;}
-.ab-palco{position:relative;display:flex;align-items:center;justify-content:center;
-  width:var(--ab-w);height:var(--ab-h);}
-
-/* as luzes seguem a lâmpada por um caminho PRÓPRIO.
-   Primeiro eu as pus dentro do símbolo para que o acompanhassem — mas aí
-   herdavam também a escala dele, e com a lâmpada nascendo grande a luz
-   cobria a tela inteira. Agora .ab-luzes só faz o deslocamento (o mesmo
-   do símbolo, na mesma curva) e cada luz cuida da própria escala. */
-.ab-luzes{position:absolute;left:50%;top:50%;width:0;height:0;
-  animation:abSegue 1.02s cubic-bezier(.3,0,.2,1) both;}
-@keyframes abSegue{0%,62%{transform:none}100%{transform:translate3d(calc(-1 * var(--ab-dx)),0,0)}}
-
-/* o brilho: núcleo quente, para ler como LUZ. Na zzz52 era uma elipse
-   enorme e chapada, que no celular virava mancha cinza. */
-.ab-brilho{position:absolute;left:0;top:0;
-  width:calc(var(--ab-h) * 4.4);height:calc(var(--ab-h) * 4.4);
-  margin:calc(var(--ab-h) * -2.2) 0 0 calc(var(--ab-h) * -2.2);border-radius:50%;
-  background:radial-gradient(closest-side, rgba(255,215,245,.55), rgba(236,72,153,.42) 24%, rgba(124,58,237,.2) 48%, transparent 70%);
-  opacity:0;transform:scale(.35);
-  animation:abBrilho 1.05s var(--ab-curva) .02s both;}
-@keyframes abBrilho{0%{opacity:0;transform:scale(.35)}26%{opacity:1;transform:scale(1)}58%{opacity:.95;transform:scale(.96)}100%{opacity:.5;transform:scale(.42)}}
-
-/* o estouro: radial e curto. NUNCA uma barra atravessando a tela — foi
-   exatamente o que o Kevin odiou. */
-.ab-flash{position:absolute;left:0;top:0;
-  width:calc(var(--ab-h) * 6);height:calc(var(--ab-h) * 6);
-  margin:calc(var(--ab-h) * -3) 0 0 calc(var(--ab-h) * -3);border-radius:50%;
-  background:radial-gradient(closest-side, rgba(255,255,255,.95), rgba(255,195,238,.55) 34%, transparent 68%);
-  opacity:0;transform:scale(.3);
-  animation:abFlash .34s cubic-bezier(.2,.8,.2,1) .4s both;}
-@keyframes abFlash{0%{opacity:0;transform:scale(.3)}24%{opacity:1;transform:scale(.78)}100%{opacity:0;transform:scale(1.35)}}
-
-/* as faíscas: voam de fora para dentro e somem dentro da lâmpada.
-   Cada uma só tem transform e opacity; vivem meio segundo e acabam. */
-.ab-faisca{position:absolute;left:50%;top:50%;width:0;height:0;}
-.ab-faisca i{position:absolute;display:block;width:var(--s);height:var(--s);
-  margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2);border-radius:50%;
-  background:#FFA8D8;opacity:0;
-  animation:abFaisca .52s cubic-bezier(.3,0,.25,1) var(--t) both;}
-.ab-faisca i:nth-child(odd){background:#8AA2FF;}
-@keyframes abFaisca{
-  0%  {opacity:0;transform:rotate(var(--a)) translateX(var(--r)) scale(.4)}
-  18% {opacity:1}
-  72% {opacity:1}
-  100%{opacity:0;transform:rotate(var(--a)) translateX(0) scale(1.25)}}
-
-/* ---------------------------------------------------------- a marca */
-.ab-marca{position:relative;width:var(--ab-w);height:var(--ab-h);
-  animation:abCamera 1.3s cubic-bezier(.3,0,.2,1) both;}
-@keyframes abCamera{0%{transform:scale(1.03)}100%{transform:scale(1)}}
-
-.ab-palavra{position:absolute;inset:0;
-  background:url('../assets/brand/logo-white.png') no-repeat 0 0/100% 100%;
-  -webkit-clip-path:inset(0 0 0 33.1%);clip-path:inset(0 0 0 33.1%);
-  opacity:0;transform:translate3d(-14px,0,0);
-  animation:abPalavra .34s var(--ab-curva) .8s both;}
-@keyframes abPalavra{from{opacity:0;transform:translate3d(-14px,0,0)}to{opacity:1;transform:none}}
-
-/* o símbolo nasce no centro do palco e desliza para o lugar dele. TEM de
-   terminar em transform:none — o voo de saída (voarLogo, js/app.js)
-   desliga a animação e parte do quadro final. */
-.ab-simbolo{position:absolute;left:0;top:0;width:33.1%;height:100%;transform-origin:50% 50%;z-index:2;
-  animation:abSimbolo 1.02s cubic-bezier(.3,0,.2,1) both;}
-.ab-simbolo i{position:absolute;inset:0;display:block;}
-@keyframes abSimbolo{
-  0%  {transform:translate3d(var(--ab-dx),0,0) scale(1.75)}
-  10% {transform:translate3d(var(--ab-dx),0,0) scale(2.05)}
-  42% {transform:translate3d(var(--ab-dx),0,0) scale(1.98)}
-  62% {transform:translate3d(var(--ab-dx),0,0) scale(1)}
-  100%{transform:none}}
-
-/* a lâmpada já nasce COLORIDA: a versão "fria" cinza parecia imagem
-   quebrada no celular.
-   .ab-branca não aparece na abertura — existe só para o voo de saída:
-   quando o destino é a logo BRANCA do topo (tema escuro), voarLogo faz
-   o cross-fade da colorida para ela durante o voo (js/app.js). Sem o
-   elemento, a lâmpada pousava colorida em cima de um destino branco. */
-.ab-branca{background:url('../assets/brand/symbol-white.png') no-repeat center/contain;opacity:0;}
-.ab-cor{background:url('../assets/brand/symbol-color.png') no-repeat center/contain;
-  opacity:0;animation:abAcende .22s ease-out .06s both;}
-@keyframes abAcende{from{opacity:0}to{opacity:1}}
-
-/* ------------------------------------------------- a espera honesta
-   Só aparece se o sistema ainda não estiver pronto em 1,35 s. */
-.ab-espera{display:flex;flex-direction:column;align-items:center;gap:9px;pointer-events:none;
-  animation:abEspera .4s ease 1.35s both;}
-@keyframes abEspera{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
-.ab-ola{font-family:'Archivo';font-weight:800;font-size:19px;letter-spacing:-.01em;color:#fff;}
-.ab-ola:empty{display:none;}
-.ab-frase{font-weight:600;font-size:13.5px;letter-spacing:.02em;color:rgba(255,255,255,.66);}
-.ab-fio{position:relative;display:block;width:150px;height:2px;border-radius:2px;overflow:hidden;
-  background:rgba(255,255,255,.12);}
-.ab-fio:after{content:"";position:absolute;inset:0;width:38%;border-radius:2px;
-  background:linear-gradient(90deg, transparent, rgba(124,58,237,.8) 40%, #FF8FCB 86%, #fff);
-  transform:translate3d(-100%,0,0);animation:abFio 1.5s cubic-bezier(.65,0,.35,1) infinite;}
-@keyframes abFio{0%{transform:translate3d(-100%,0,0)}100%{transform:translate3d(300%,0,0)}}
-
-/* ------------------------------------------------ versão curta (0,7s)
-   Recarregar na mesma sessão: a marca chega montada, só o estouro passa. */
-.ab-curta .b7-abertura.inicial :is(.ab-marca,.ab-simbolo),.b7-abertura:not(.inicial) :is(.ab-marca,.ab-simbolo){animation:none;}
-.ab-curta .b7-abertura.inicial .ab-faisca,.b7-abertura:not(.inicial) .ab-faisca{display:none;}
-.ab-curta .b7-abertura.inicial .ab-cor,.b7-abertura:not(.inicial) .ab-cor{animation:abAcende .26s ease-out both;}
-.ab-curta .b7-abertura.inicial .ab-palavra,.b7-abertura:not(.inicial) .ab-palavra{animation:abPalavra .3s var(--ab-curva) .1s both;}
-.ab-curta .b7-abertura.inicial .ab-brilho,.b7-abertura:not(.inicial) .ab-brilho{animation:abBrilho .6s var(--ab-curva) both;}
-.ab-curta .b7-abertura.inicial .ab-flash,.b7-abertura:not(.inicial) .ab-flash{animation:abFlash .26s cubic-bezier(.2,.8,.2,1) both;}
-.ab-curta .b7-abertura.inicial .ab-espera,.b7-abertura:not(.inicial) .ab-espera{animation-delay:.8s;}
-
-/* ------------------------------------------------------------ a saída
-   O palco sobe e some; a luz atravessa a tela uma vez; o sistema assenta
-   por baixo. Nada de desfoque: só posição e opacidade. */
+/* ---- saída: a íris abre do centro; o logo voa (js/app.js) ----
+   O "buraco" é uma máscara radial cujo raio cresce (@property). Sem
+   suporte, o céu só esmaece — nunca trava a tela. */
+@property --ab-iris{syntax:'<length>';inherits:false;initial-value:0px;}
 .b7-abertura.saindo{pointer-events:none;}
-.b7-abertura.saindo .ab-ceu{animation:abCeuSai .62s cubic-bezier(.4,0,.2,1) forwards;}
-@keyframes abCeuSai{to{opacity:0;transform:scale(1.08)}}
-.b7-abertura.saindo .ab-espera{animation:abSomeJa .18s ease-in forwards;}
-.b7-abertura.saindo :is(.ab-brilho,.ab-flash){animation:abBrilhoSai .42s cubic-bezier(.4,0,.2,1) forwards;}
-@keyframes abBrilhoSai{to{opacity:0;transform:scale(1.4)}}
-@keyframes abSomeJa{to{opacity:0}}
-.b7-abertura.saindo.sem-voo .ab-palco{animation:abPalcoSai .42s cubic-bezier(.4,0,.2,1) forwards;}
-@keyframes abPalcoSai{to{opacity:0;transform:translate3d(0,-26px,0) scale(.96)}}
-
-/* o destino do voo fica invisível até o pouso (js/app.js) */
+.b7-abertura.saindo .ab-ceu{
+  -webkit-mask:radial-gradient(circle at 50% calc(50% - 6vh), transparent var(--ab-iris), #000 calc(var(--ab-iris) + 90px));
+          mask:radial-gradient(circle at 50% calc(50% - 6vh), transparent var(--ab-iris), #000 calc(var(--ab-iris) + 90px));
+  animation:abIris .8s cubic-bezier(.7,0,.25,1) .04s forwards;}
+@keyframes abIris{0%{--ab-iris:0px;opacity:1}85%{opacity:1}100%{--ab-iris:120vmax;opacity:0}}
+.b7-abertura.saindo .ab-bloom{animation:abSomeBloom .55s cubic-bezier(.4,0,.2,1) forwards;}
+.b7-abertura.b7-abertura.saindo .ab-espera{animation:abSomeRapido .16s ease-in forwards;}
+.b7-abertura.saindo :is(.ab-onda,.ab-chave,.ab-raios,.ab-clarao,.ab-centelha,.ab-poeira,.ab-flare,.ab-brilho){display:none;}
+@keyframes abSomeBloom{to{opacity:0;transform:scale(2)}}
+@keyframes abSomeRapido{to{opacity:0}}
+.b7-abertura.saindo.sem-voo .ab-palco{animation:abSomePalco .42s cubic-bezier(.4,0,.2,1) forwards;}
+@keyframes abSomePalco{to{opacity:0;transform:scale(.92);filter:blur(6px)}}
 .ab-destino{opacity:0 !important;}
 .ab-pousou{animation:abPousa .22s ease-out both;}
-@keyframes abPousa{0%{transform:scale(1.1)}100%{transform:none}}
+@keyframes abPousa{from{opacity:0}to{opacity:1}}
 
-/* rastro do voo: ecos da peça seguindo o mesmo caminho (js/app.js) */
-.ab-rastro{position:fixed;z-index:600;pointer-events:none;display:block;opacity:.3;
-  background:url('../assets/brand/symbol-color.png') no-repeat center/contain;}
+/* ---- mais cinema (pacote zzp, 03/10) ----
+   • vinheta de lente: as bordas escurecem, o olho vai para o centro.
+   • grão de filme em movimento (antes era parado).
+   • segundo flare, fino e violeta, um instante depois do primeiro.
+   • rastro de luz atrás do logo no voo e um reflexo no logo do topo
+     quando ele pousa (no lugar da onda, que repetia as ondas da ignição). */
+.ab-vinheta{inset:0;background:radial-gradient(120% 90% at 50% 44%, transparent 45%, rgba(0,0,0,.5) 82%, rgba(0,0,0,.78) 100%);}
+.ab-ceu .ab-grao{inset:-80px;animation:abGrao .9s steps(6) infinite;}
+@keyframes abGrao{0%{transform:translate3d(0,0,0)}17%{transform:translate3d(-31px,18px,0)}33%{transform:translate3d(22px,-27px,0)}
+  50%{transform:translate3d(-14px,-9px,0)}67%{transform:translate3d(35px,24px,0)}83%{transform:translate3d(-26px,33px,0)}100%{transform:translate3d(9px,-16px,0)}}
+.ab-flare.fino{height:1px;top:calc(50% - 6vh + 7px);
+  background:linear-gradient(90deg, transparent 4%, rgba(140,110,255,.55) 32%, rgba(220,210,255,.95) 50%, rgba(140,110,255,.55) 68%, transparent 96%);
+  box-shadow:0 0 12px 2px rgba(124,80,220,.5);animation-delay:calc(var(--ab-ign) + .08s);animation-duration:1.5s;}
+.ab-curta .b7-abertura.inicial .ab-flare.fino,.b7-abertura:not(.inicial) .ab-flare.fino{animation:abFlare 1s cubic-bezier(.2,.8,.2,1) .46s both;}
+/* rastro do voo (js/app.js, voarLogo): ecos da lâmpada, cada vez mais apagados */
+.ab-rastro{position:fixed;z-index:600;pointer-events:none;display:block;
+  background:url('../assets/brand/symbol-color.png') no-repeat center/contain;mix-blend-mode:screen;filter:blur(2.5px) brightness(1.4);}
 .ab-rastro.lockup{background-image:url('../assets/brand/logo-white.png');}
-
-/* halo curto atrás do logo quando ele pousa no topo (js/app.js) */
-.ab-pouso-halo{position:fixed;z-index:599;pointer-events:none;border-radius:50%;
-  background:radial-gradient(closest-side, rgba(236,72,153,.5), rgba(124,58,237,.2) 48%, transparent 72%);
-  animation:abPousoHalo .9s cubic-bezier(.2,.8,.2,1) both;}
-@keyframes abPousoHalo{0%{opacity:0;transform:scale(.4)}30%{opacity:1}100%{opacity:0;transform:scale(1.25)}}
+[data-theme="light"] .ab-rastro{mix-blend-mode:normal;}
+/* reflexo no logo do topo quando ele pousa: a faixa de luz da abertura
+   passa por ele uma vez (recortada no próprio desenho do logo) */
 .ab-pouso-reflexo{position:fixed;z-index:602;pointer-events:none;overflow:hidden;
   -webkit-mask:var(--ab-img) no-repeat center/contain;mask:var(--ab-img) no-repeat center/contain;}
 .ab-pouso-reflexo:before{content:"";position:absolute;top:-30%;bottom:-30%;left:0;width:55%;
-  background:linear-gradient(100deg, transparent, rgba(255,255,255,.85), transparent);
-  transform:translate3d(-180%,0,0);animation:abPousoReflexo .7s cubic-bezier(.3,0,.2,1) .06s both;}
-@keyframes abPousoReflexo{to{transform:translate3d(320%,0,0)}}
+  background:linear-gradient(100deg, transparent, rgba(255,200,235,.9) 35%, #fff 50%, rgba(200,180,255,.9) 65%, transparent);
+  transform:translate3d(-130%,0,0) skewX(-16deg);animation:abPousoReflexo .62s cubic-bezier(.45,0,.25,1) .04s both;}
+@keyframes abPousoReflexo{to{transform:translate3d(260%,0,0) skewX(-16deg)}}
+.ab-pouso-halo{position:fixed;z-index:599;pointer-events:none;border-radius:50%;
+  background:radial-gradient(closest-side, rgba(236,72,153,.45), rgba(124,58,237,.18) 55%, transparent);
+  animation:abPousoHalo .7s cubic-bezier(.16,1,.3,1) both;}
+@keyframes abPousoHalo{0%{opacity:0;transform:scale(.4)}25%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+@media (prefers-reduced-motion:reduce){ .ab-rastro,.ab-pouso-reflexo,.ab-pouso-halo{display:none;} }
 
-/* ------------------------------------------- a luz da saída (js/app.js)
-   Uma camada só, duas peças, sem mix-blend-mode de tela cheia. */
+/* ---- o sistema assenta por baixo da íris (uma vez, no arranque) ---- */
+body.ab-revela .lateral{animation:abRevelaFade .5s cubic-bezier(.2,.8,.2,1) .1s both;}
+body.ab-revela .topo-global{animation:abRevelaFade .46s cubic-bezier(.2,.8,.2,1) .14s both;}
+body.ab-revela #painel-dashboard{animation:abRevelaCorpo .7s cubic-bezier(.16,1,.3,1) .16s both;}
+body.ab-revela .nav-inferior{animation:abRevelaBase .6s cubic-bezier(.16,1,.3,1) .26s both;}
+body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaFade .4s cubic-bezier(.2,.8,.2,1) .45s both;}
+@keyframes abRevelaFade{from{opacity:0}to{opacity:1}}
+@keyframes abRevelaCorpo{from{opacity:0;transform:translate3d(0,18px,0) scale(.975)}to{opacity:1;transform:none}}
+@keyframes abRevelaBase{from{opacity:0;transform:translate3d(0,30px,0)}to{opacity:1;transform:none}}
+
+@media (prefers-reduced-motion:reduce){
+  .b7-abertura,.b7-abertura *{animation:none !important;}
+  .b7-abertura :is(.ab-onda,.ab-chave,.ab-carga,.ab-raios,.ab-clarao,.ab-centelha,.ab-poeira,.ab-flare,.ab-brilho){display:none;}
+  .ab-cor{filter:none;}
+  .ab-espera{opacity:1;animation:none;}
+  .b7-abertura.saindo{opacity:0;transition:opacity .2s ease;}
+  .b7-abertura.saindo .ab-ceu{-webkit-mask:none;mask:none;}
+  body.ab-revela *{animation:none !important;}
+}
+
+/* =====================================================================
+   ONDA DE LUZ (zzo) — a luz da lâmpada constrói o app (js/app.js,
+   ondaDeLuz). Clarão no centro da íris, anel que corre pela borda dela
+   (mesma duração e curva de abIris) e o contorno de cada peça acendendo
+   quando o anel passa. Camada própria por cima de tudo, sem clique.
+   ===================================================================== */
+@property --ab-r{syntax:'<length>';inherits:false;initial-value:0px;}
 .ab-luz{position:fixed;inset:0;z-index:601;pointer-events:none;overflow:hidden;}
 .ab-luz > i{position:absolute;display:block;pointer-events:none;}
-.ab-luz-clarao{left:var(--cx);top:var(--cy);width:52vmin;height:52vmin;margin:-26vmin 0 0 -26vmin;
-  border-radius:50%;background:radial-gradient(closest-side, rgba(255,225,245,.72), rgba(236,72,153,.3) 46%, transparent 74%);
-  opacity:0;animation:abLuzClarao .7s cubic-bezier(.2,.8,.2,1) both;}
-@keyframes abLuzClarao{0%{opacity:0;transform:scale(.3)}22%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.7)}}
-
-/* o sistema assenta por baixo — posição e opacidade, sem rack-focus */
-body.ab-revela #painel-dashboard{animation:abRevelaCorpo .72s var(--ab-curva) .1s both;}
-body.ab-revela .topo-global{animation:abRevelaTopo .56s var(--ab-curva) .2s both;}
-body.ab-revela .nav-inferior{animation:abRevelaBase .6s var(--ab-curva) .26s both;}
-@keyframes abRevelaCorpo{from{opacity:0;transform:scale(1.025)}to{opacity:1;transform:none}}
-@keyframes abRevelaTopo{from{opacity:0;transform:translate3d(0,-10px,0)}to{opacity:1;transform:none}}
-@keyframes abRevelaBase{from{opacity:0;transform:translate3d(0,22px,0)}to{opacity:1;transform:none}}
-
-/* ------------------------------------------------------- tema claro */
-[data-theme="light"] .b7-abertura{background:#FFF7FB;}
-[data-theme="light"] .ab-ceu{background:radial-gradient(125% 85% at 50% 112%, #FFE4F3 0%, #FFF2F8 48%, #FFF7FB 100%);}
-[data-theme="light"] .ab-vinheta{background:radial-gradient(118% 88% at 50% 44%, transparent 46%, rgba(120,40,110,.1) 84%, rgba(120,40,110,.16) 100%);}
-[data-theme="light"] .ab-grao{opacity:.03;}
-[data-theme="light"] .ab-brilho{background:radial-gradient(closest-side, rgba(255,120,190,.42), rgba(236,72,153,.3) 28%, rgba(124,58,237,.14) 52%, transparent 74%);}
-[data-theme="light"] .ab-palavra{filter:invert(1);}
-
-[data-theme="light"] .ab-ola{color:#2A0F2B;}
-[data-theme="light"] .ab-frase{color:rgba(42,15,43,.6);}
-[data-theme="light"] .ab-fio{background:rgba(42,15,43,.1);}
-[data-theme="light"] .ab-rastro.lockup{filter:invert(1);}
-
-/* --------------------------------------------- menos movimento / leve
-   Quem pediu menos movimento não vê animação nenhuma: a marca aparece
-   montada e a abertura sai esmaecendo. */
-@media (prefers-reduced-motion:reduce){
-  .b7-abertura :is(.ab-luzes,.ab-brilho,.ab-marca,.ab-simbolo,.ab-palavra,.ab-cor,.ab-espera,.ab-fio:after){
-    animation:none !important;opacity:1;transform:none;}
-  /* faíscas e estouro só existem como movimento: parados não dizem nada */
-  .b7-abertura :is(.ab-faisca,.ab-flash){display:none;}
-  .b7-abertura.saindo{opacity:0;transition:opacity .2s ease;}
-  .b7-abertura.saindo :is(.ab-ceu,.ab-brilho,.ab-palco){animation:none !important;}
-  .ab-luz{display:none !important;}
-  body.ab-revela :is(#painel-dashboard,.topo-global,.nav-inferior){animation:none !important;}
-}
-/* modo leve: a abertura continua, mas sem a respiração infinita do halo
-   nem o fio correndo — nada que anime para sempre */
-html.modo-leve .ab-faisca{display:none;}
-html.modo-leve .ab-fio:after{animation-duration:2.4s;}
-html.modo-leve body.ab-revela :is(#painel-dashboard,.topo-global,.nav-inferior){animation:abRevelaSimples .36s ease both;}
-@keyframes abRevelaSimples{from{opacity:0}to{opacity:1}}
+/* anel: branco no fio, rosa e violeta por fora, cauda suave por dentro */
+.ab-luz-anel{inset:0;mix-blend-mode:screen;
+  background:radial-gradient(circle at var(--cx) var(--cy),
+    transparent calc(var(--ab-r) - 6px),
+    rgba(124,58,237,.18) calc(var(--ab-r) + 18px),
+    rgba(236,72,153,.55) calc(var(--ab-r) + 32px),
+    rgba(255,255,255,.95) calc(var(--ab-r) + 40px),
+    rgba(255,170,220,.6) calc(var(--ab-r) + 46px),
+    rgba(124,58,237,.28) calc(var(--ab-r) + 70px),
+    transparent calc(var(--ab-r) + 120px));
+  animation:abLuzAnel .8s cubic-bezier(.7,0,.25,1) .04s both;}
+@keyframes abLuzAnel{0%{--ab-r:0px;opacity:0}8%{opacity:1}78%{opacity:1}100%{--ab-r:120vmax;opacity:0}}
+/* clarão: o instante em que a luz "estoura" para fora da lâmpada */
+.ab-luz-clarao{left:var(--cx);top:var(--cy);width:46vmin;height:46vmin;margin:-23vmin 0 0 -23vmin;border-radius:50%;
+  mix-blend-mode:screen;background:radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,150,215,.55) 26%, rgba(124,58,237,.18) 52%, transparent 70%);
+  animation:abLuzClarao .62s cubic-bezier(.16,1,.3,1) both;}
+@keyframes abLuzClarao{0%{opacity:0;transform:scale(.2)}18%{opacity:1}100%{opacity:0;transform:scale(2.4)}}
+/* contorno de cada peça: o fio de luz passa e a borda acende e se apaga */
+.ab-luz-peca{opacity:0;
+  border:1.5px solid rgba(255,160,215,.95);
+  box-shadow:0 0 0 1px rgba(255,255,255,.35), 0 0 18px 2px rgba(236,72,153,.5), 0 0 42px 6px rgba(124,58,237,.28), inset 0 0 22px rgba(255,190,230,.25);
+  background:linear-gradient(var(--ang,180deg), rgba(255,255,255,.22), rgba(255,255,255,0) 45%);
+  animation:abLuzPeca .78s cubic-bezier(.2,.8,.2,1) both;}
+@keyframes abLuzPeca{0%{opacity:0;transform:scale(.985)}22%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.012)}}
+/* tema claro: sem "screen" (sumiria no branco) — rosa e violeta mais fortes, brilho mais contido */
+[data-theme="light"] .ab-luz-anel,[data-theme="light"] .ab-luz-clarao{mix-blend-mode:normal;}
+[data-theme="light"] .ab-luz-anel{opacity:.8;
+  background:radial-gradient(circle at var(--cx) var(--cy),
+    transparent calc(var(--ab-r) - 6px), rgba(124,58,237,.12) calc(var(--ab-r) + 20px),
+    rgba(219,39,119,.45) calc(var(--ab-r) + 36px), rgba(255,255,255,.9) calc(var(--ab-r) + 41px),
+    rgba(219,39,119,.35) calc(var(--ab-r) + 48px), rgba(124,58,237,.14) calc(var(--ab-r) + 72px), transparent calc(var(--ab-r) + 120px));}
+[data-theme="light"] .ab-luz-peca{border-color:rgba(219,39,119,.75);
+  box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 0 16px rgba(219,39,119,.35), 0 0 34px rgba(124,58,237,.18);
+  background:linear-gradient(var(--ang,180deg), rgba(255,255,255,.55), rgba(255,255,255,0) 45%);}
+@media (prefers-reduced-motion:reduce){ .ab-luz{display:none !important;} }

@@ -22,6 +22,23 @@ B7.Desempenho = (function () {
   const gravar = (k, v) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
 
   const modo = () => ler('b7_desempenho', 'auto');
+
+  /* zzz54: o modo leve automático ficava preso para sempre.
+     Quem usou o sistema enquanto ele engasgava de verdade (o fotografar()
+     que serializava o painel a cada toque, corrigido na zzz51) teve
+     b7_leve_auto='1' gravado no aparelho — e esse sinalizador nunca mais
+     saía sozinho, mesmo depois de a causa ter sido consertada. Resultado:
+     aparelho bom rodando em modo leve por causa de um problema que não
+     existe mais. Cada correção grande de desempenho avança esta marca uma
+     vez, e a medição recomeça do zero. Escolha MANUAL (b7_desempenho) não
+     é tocada: só a decisão que o sistema tomou sozinho. */
+  const REVISAO_DESEMPENHO = 'zzz54';
+  try {
+    if (ler('b7_leve_rev', '') !== REVISAO_DESEMPENHO) {
+      gravar('b7_leve_auto', null);
+      gravar('b7_leve_rev', REVISAO_DESEMPENHO);
+    }
+  } catch (e) {}
   function aparelhoSimples() {
     const ua = navigator.userAgent || '';
     return /Android/i.test(ua) &&
