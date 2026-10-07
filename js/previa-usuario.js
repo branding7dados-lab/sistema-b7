@@ -169,8 +169,11 @@ B7.PreviaUsuario = (function () {
     if (!usuario || !usuario.id || !usuario.papel) return false;
     if (usuario.papel === 'cliente') return false; /* isso é prévia de cliente, não de usuário */
     alvo = { id: usuario.id, nome: usuario.nome || usuario.username || 'Usuário',
-             papel: usuario.papel, funcoes_extra: usuario.funcoes_extra || [] };
-    B7.Auth.simularPapel(alvo.papel, alvo.funcoes_extra);
+             papel: usuario.papel, funcoes_extra: usuario.funcoes_extra || [],
+             funcao: usuario.funcao, modulos: usuario.modulos };
+    /* zzz68: a prévia mostra o menu e o Painel pela FUNÇÃO e pelos módulos
+       efetivos da pessoa (padrão da função + exceções) */
+    B7.Auth.simularPapel(alvo.papel, alvo.funcoes_extra, { funcao: alvo.funcao, modulos: alvo.modulos });
     remontarNav();
     montarBanner();
     ligarBloqueioEscrita();
@@ -294,11 +297,23 @@ B7.PreviaUsuario = (function () {
       !(eu && eu.id === u.id));   /* a própria conta não entra: não há o que ver "como eu mesmo" */
     const funcoesExtraTodas = dados.funcoes_extra || [];
     const funcoesExtraDe = id => funcoesExtraTodas.filter(f => f.perfil_id === id).map(f => f.funcao);
+    /* módulos efetivos de cada pessoa, com os mesmos dados que a tela de
+       Usuários usa (registro, padrões por função e exceções) */
+    const modulosDe = u => {
+      if (!dados.modulos || !dados.presets) return undefined;
+      const todos = dados.modulos.map(m => m.id);
+      if (u.eh_admin) return todos;
+      const base = dados.presets.filter(p => p.funcao === u.funcao).map(p => p.modulo);
+      const ex = {}; (dados.excecoes || []).filter(e => e.perfil_id === u.id).forEach(e => { ex[e.modulo] = e.efeito; });
+      return todos.filter(m => ex[m] ? ex[m] === 'permitir' : base.includes(m));
+    };
     itens = {
       clientes: (clientes || []).map(c => ({ tipo: 'cliente', id: c.id, nome: c.nome || 'Sem nome' })),
       usuarios: usuariosTodos.map(u => ({
         tipo: 'usuario', id: u.id, nome: u.nome || u.username || 'Usuário',
-        papel: u.papel, funcoes_extra: funcoesExtraDe(u.id)
+        papel: u.papel, funcoes_extra: funcoesExtraDe(u.id),
+        funcao: u.funcao !== undefined ? (u.funcao || null) : undefined,
+        modulos: modulosDe(u)
       }))
     };
   }

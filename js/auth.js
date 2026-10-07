@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-07-zzz67';
+  const VERSAO = '2026-10-07-zzz68';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -68,11 +68,15 @@ B7.Auth = (function () {
      então a prévia não precisa duplicar regra nenhuma: ela só troca o
      que essas funções devolvem. Só quem é admin de verdade entra em
      simulação (simularPapel confere ehAdminReal); sair sempre limpa. */
-  let simulacao = null;   /* { papel, funcoes_extra } */
+  let simulacao = null;   /* { papel, funcoes_extra, funcao, modulos } */
   const ehAdminReal = () => !!(sessao && sessao.papel === 'admin');
-  function simularPapel(papelAlvo, funcoesExtraAlvo) {
+  /* zzz68: a prévia também carrega a função e os módulos efetivos da
+     pessoa (alvo.funcao / alvo.modulos); sem eles, deriva do papel. */
+  function simularPapel(papelAlvo, funcoesExtraAlvo, alvo) {
     if (!ehAdminReal() || !papelAlvo) return false;
-    simulacao = { papel: papelAlvo, funcoes_extra: funcoesExtraAlvo || [] };
+    simulacao = { papel: papelAlvo, funcoes_extra: funcoesExtraAlvo || [],
+                  funcao: alvo && alvo.funcao !== undefined ? alvo.funcao : undefined,
+                  modulos: alvo && Array.isArray(alvo.modulos) ? alvo.modulos : undefined };
     return true;
   }
   function encerrarSimulacao() { simulacao = null; }
@@ -92,7 +96,36 @@ B7.Auth = (function () {
      instalação sem essa migração, funcoesExtra() simplesmente devolve
      lista vazia (a coluna não existe na sessão e some ao contrato). */
   const funcoesExtra = () => (simulacao ? (simulacao.funcoes_extra || []) : ((sessao && sessao.funcoes_extra) || []));
-  const souVideomakerElegivel = () => papel() === 'videomaker' || funcoesExtra().includes('videomaker');
+
+  /* =================================================================
+     FUNÇÕES E ACESSOS (zzz68)
+     funcao()  — a função principal: 'coordenador' | 'designer' |
+                 'videomaker' | null. Diz o que a pessoa FAZ (Painel,
+                 elegibilidade para ser responsável). Vem do banco
+                 (minha_sessao.funcao); numa sessão antiga, sem o campo,
+                 deriva do papel + função extra.
+     modulos() — os módulos que ela ABRE (acesso efetivo, já resolvido no
+                 banco: padrão da função + exceções). null = sessão antiga,
+                 sem o campo: js/permissoes.js cai no padrão do papel.
+     Ter um módulo NÃO muda a função.
+     ================================================================= */
+  const FUNCOES = ['coordenador', 'designer', 'videomaker'];
+  function funcao() {
+    const fonte = simulacao || sessao;
+    if (!fonte) return null;
+    if (fonte.funcao !== undefined) return fonte.funcao || null;
+    if (FUNCOES.includes(fonte.papel)) return fonte.papel;
+    if (fonte.papel === 'admin') {
+      const ex = fonte.funcoes_extra || [];
+      return ['coordenador', 'videomaker', 'designer'].find(x => ex.includes(x)) || null;
+    }
+    return null;
+  }
+  function modulos() {
+    const fonte = simulacao || sessao;
+    return fonte && Array.isArray(fonte.modulos) ? fonte.modulos : null;
+  }
+  const souVideomakerElegivel = () => funcao() === 'videomaker';
 
   /* Empresas que a sessão alcança. Para a equipe, vazio significa todas. */
   const empresas = () => (sessao && sessao.empresas) || [];
@@ -523,7 +556,7 @@ B7.Auth = (function () {
   }
 
   return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, sair, carregar, telaLogin, sessaoPersiste,
-           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel,
+           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel, funcao, modulos,
            ehAdminReal, simularPapel, encerrarSimulacao, emSimulacao,
            entrarComo, voltarParaMinhaConta, naContaDeOutro, contaDeOrigem };
 })();

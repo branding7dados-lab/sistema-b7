@@ -53,6 +53,186 @@ B7.Usuarios = (function () {
   /* =================================================================
      LISTA
      ================================================================= */
+  /* =================================================================
+     FUNÇÕES E ACESSOS (zzz68)
+     Conta interna = administrador (sim/não) + UMA função principal +
+     módulos. Os módulos vêm do PADRÃO da função (herança de verdade:
+     mudar o padrão muda todo mundo que não tem exceção) e cada pessoa
+     pode ter exceções — um módulo a mais ou um a menos.
+     A função NÃO muda por causa de um módulo. Quem grava é o servidor
+     (b7-auth), que confere se quem chamou é administrador.
+     ================================================================= */
+  const FUNCOES = [
+    ['coordenador', 'Coordenador', 'organiza conteúdo, linha editorial e aprovações'],
+    ['designer', 'Designer', 'produz as artes'],
+    ['videomaker', 'Videomaker', 'filma e edita']
+  ];
+  const rotuloFuncao = fn => (FUNCOES.find(x => x[0] === fn) || [, 'Sem função'])[1];
+  /* carregado a cada abertura da tela (listar_usuarios) */
+  let ACESSO = { modulos: [], presets: {}, excecoes: {} };
+  function carregarAcesso(dados) {
+    const reg = (dados.modulos && dados.modulos.length) ? dados.modulos
+      : (B7.Perm && B7.Perm.MODULOS ? B7.Perm.MODULOS.map(m => ({ id: m.id, rotulo: m.rotulo })) : []);
+    const presets = { coordenador: [], designer: [], videomaker: [] };
+    if (dados.presets) dados.presets.forEach(p => { (presets[p.funcao] = presets[p.funcao] || []).push(p.modulo); });
+    else if (B7.Perm && B7.Perm.PADRAO_FUNCAO) Object.assign(presets, B7.Perm.PADRAO_FUNCAO);
+    const excecoes = {};
+    (dados.excecoes || []).forEach(e => { (excecoes[e.perfil_id] = excecoes[e.perfil_id] || {})[e.modulo] = e.efeito; });
+    ACESSO = { modulos: reg, presets, excecoes };
+  }
+  const identidadeDe = u => ({
+    tipo: u.papel === 'cliente' ? 'cliente' : 'interno',
+    ehAdmin: u.eh_admin !== undefined ? !!u.eh_admin : u.papel === 'admin',
+    funcao: u.funcao !== undefined ? (u.funcao || '') : (['coordenador', 'designer', 'videomaker'].includes(u.papel) ? u.papel : '')
+  });
+  function modulosEfetivosDe(u) {
+    const id = identidadeDe(u);
+    if (id.tipo === 'cliente') return [];
+    if (id.ehAdmin) return ACESSO.modulos.map(m => m.id);
+    const ex = ACESSO.excecoes[u.id] || {}, base = ACESSO.presets[id.funcao] || [];
+    return ACESSO.modulos.map(m => m.id).filter(m => ex[m] ? ex[m] === 'permitir' : base.includes(m));
+  }
+  const rotuloModulo = id => (ACESSO.modulos.find(m => m.id === id) || { rotulo: id }).rotulo;
+
+  const IC_ACESSO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>';
+  function acessoTipoHTML(px, tipo) {
+    return '<section class="ng-bloco ac-tipo"><h4>' + IC_ACESSO + 'Tipo de conta</h4>' +
+      '<div class="nu-papeis ac-dois" id="' + px + '-tipo">' +
+        '<button type="button" class="nu-papel' + (tipo === 'interno' ? ' on' : '') + '" data-tipo="interno"><i aria-hidden="true"></i><b>Equipe B7</b></button>' +
+        '<button type="button" class="nu-papel' + (tipo === 'cliente' ? ' on' : '') + '" data-tipo="cliente"><i aria-hidden="true"></i><b>Cliente</b></button>' +
+      '</div>' +
+      '<div class="nu-papel-desc" id="' + px + '-tipo-desc"></div></section>';
+  }
+  function acessoInternoHTML(px) {
+    return '<section class="ng-bloco ac-interno" id="' + px + '-interno"><h4>' + IC_ACESSO + 'Função e acesso</h4>' +
+      '<label class="op-mini nu-chave-linha" id="' + px + '-admin"><span>Administrador' +
+        '<small>abre tudo e gerencia contas e configurações</small></span><input type="checkbox" role="switch"></label>' +
+      '<label class="rot ac-rot">FUNÇÃO PRINCIPAL</label>' +
+      '<div class="nu-papeis ac-funcoes" id="' + px + '-funcao">' +
+        FUNCOES.map(([v, r]) => '<button type="button" class="nu-papel" data-funcao="' + v + '"><i aria-hidden="true"></i><b>' + r + '</b></button>').join('') +
+        '<button type="button" class="nu-papel" data-funcao=""><i aria-hidden="true"></i><b>Nenhuma</b></button>' +
+      '</div>' +
+      '<p class="gv-ajuda ac-ajuda">A função define o papel operacional. O acesso define quais módulos a pessoa abre.</p>' +
+      '<div class="ac-mod-cab"><label class="rot ac-rot">ACESSO AOS MÓDULOS</label>' +
+        '<button type="button" class="ac-restaurar" id="' + px + '-restaurar" hidden>Restaurar padrão da função</button></div>' +
+      '<p class="gv-ajuda ac-nota" id="' + px + '-nota" hidden></p>' +
+      '<div class="ac-mods" id="' + px + '-mods"></div>' +
+    '</section>';
+  }
+  /* ini: { tipo, ehAdmin, funcao, excecoes } — aoTipo(tipo) avisa a troca cliente/equipe */
+  function ligarAcesso(m, px, ini, aoTipo) {
+    const E = { tipo: ini.tipo, ehAdmin: !!ini.ehAdmin, funcao: ini.funcao || '', excecoes: Object.assign({}, ini.excecoes || {}) };
+    const funcaoInicial = E.funcao;
+    const q = sel => m.querySelector('#' + px + '-' + sel);
+    const base = () => ACESSO.presets[E.funcao] || [];
+    const efetivo = id => E.ehAdmin ? true : (E.excecoes[id] ? E.excecoes[id] === 'permitir' : base().includes(id));
+    /* exceção que ficou igual ao padrão deixa de ser exceção */
+    const limpar = () => { Object.keys(E.excecoes).forEach(id => { if ((E.excecoes[id] === 'permitir') === base().includes(id)) delete E.excecoes[id]; }); };
+
+    function pintar() {
+      limpar();
+      q('tipo').querySelectorAll('[data-tipo]').forEach(b => b.classList.toggle('on', b.dataset.tipo === E.tipo));
+      q('tipo-desc').textContent = E.tipo === 'cliente' ? 'Acompanha e aprova o que foi liberado, só no Portal.'
+        : 'Pessoa da equipe: tem uma função e abre os módulos liberados.';
+      q('interno').style.display = E.tipo === 'interno' ? '' : 'none';
+      const adm = q('admin'); adm.querySelector('input').checked = E.ehAdmin; adm.classList.toggle('on', E.ehAdmin);
+      q('funcao').querySelectorAll('[data-funcao]').forEach(b => {
+        b.classList.toggle('on', b.dataset.funcao === E.funcao);
+        /* "Nenhuma" só para administrador */
+        if (b.dataset.funcao === '') { b.disabled = !E.ehAdmin; b.title = E.ehAdmin ? '' : 'Só administrador pode ficar sem função'; }
+      });
+      const n = Object.keys(E.excecoes).length;
+      q('restaurar').hidden = E.ehAdmin || !n;
+      const nota = q('nota');
+      nota.hidden = !(n && !E.ehAdmin && E.funcao !== funcaoInicial);
+      nota.textContent = 'A função mudou: o padrão passa a ser o de ' + rotuloFuncao(E.funcao) + '. ' +
+        (n === 1 ? 'A personalização continua' : 'As ' + n + ' personalizações continuam') + ' valendo — use "Restaurar padrão" para tirar.';
+      q('mods').innerHTML = ACESSO.modulos.map(md => {
+        const on = efetivo(md.id), pers = !E.ehAdmin && !!E.excecoes[md.id];
+        const origem = E.ehAdmin ? 'Administrador abre tudo' : pers ? 'Personalizado'
+          : E.funcao ? 'Padrão de ' + rotuloFuncao(E.funcao) : 'Sem função';
+        return '<label class="op-mini nu-chave-linha ac-mod' + (on ? ' on' : '') + (pers ? ' pers' : '') + '">' +
+          '<span>' + esc(md.rotulo) + '<small>' + esc(origem) + '</small></span>' +
+          '<input type="checkbox" role="switch" data-mod="' + esc(md.id) + '"' + (on ? ' checked' : '') + (E.ehAdmin ? ' disabled' : '') + '></label>';
+      }).join('');
+      q('mods').querySelectorAll('input[data-mod]').forEach(cx => cx.addEventListener('change', () => {
+        E.excecoes[cx.dataset.mod] = cx.checked ? 'permitir' : 'negar';
+        pintar();
+      }));
+    }
+    q('tipo').querySelectorAll('[data-tipo]').forEach(b => b.addEventListener('click', () => {
+      E.tipo = b.dataset.tipo; pintar(); if (aoTipo) aoTipo(E.tipo);
+    }));
+    q('admin').querySelector('input').addEventListener('change', ev => {
+      E.ehAdmin = ev.target.checked;
+      if (!E.ehAdmin && !E.funcao) E.funcao = funcaoInicial || '';
+      pintar();
+    });
+    q('funcao').querySelectorAll('[data-funcao]').forEach(b => b.addEventListener('click', () => {
+      if (b.disabled) return;
+      E.funcao = b.dataset.funcao; pintar();
+    }));
+    q('restaurar').addEventListener('click', () => { E.excecoes = {}; pintar(); });
+    pintar();
+    if (aoTipo) aoTipo(E.tipo);
+    return {
+      tipo: () => E.tipo,
+      /* devolve os campos do pedido, ou { erro } */
+      ler() {
+        if (E.tipo === 'cliente') return { tipo: 'cliente', papel: 'cliente' };
+        if (!E.ehAdmin && !E.funcao) return { erro: 'Escolha a função principal (ou marque Administrador).' };
+        limpar();
+        return { tipo: 'interno', eh_admin: E.ehAdmin, funcao: E.funcao || null, modulos: E.ehAdmin ? {} : Object.assign({}, E.excecoes) };
+      }
+    };
+  }
+
+  /* Padrões por função: o que cada função abre por padrão. Salvar muda
+     o acesso de TODOS que têm a função e não têm exceção no módulo. */
+  function modalFuncoes() {
+    let atual = 'coordenador';
+    const rasc = {};
+    FUNCOES.forEach(([v]) => { rasc[v] = (ACESSO.presets[v] || []).slice(); });
+    const m = B7.UI.modal('<div class="ng-topo"><span class="ng-ic">' + IC_ACESSO + '</span><div><h3>Funções e acessos</h3>' +
+      '<div class="sub">O que cada função abre por padrão. Quem tem a função herda — menos onde a pessoa tem um acesso personalizado.</div></div></div>' +
+      '<div class="nu-papeis ac-funcoes ac-abas" id="fa-abas">' +
+        FUNCOES.map(([v, r]) => '<button type="button" class="nu-papel" data-funcao="' + v + '"><i aria-hidden="true"></i><b>' + r + '</b><small id="fa-n-' + v + '"></small></button>').join('') +
+      '</div>' +
+      '<div class="ac-mods" id="fa-mods"></div>' +
+      '<div id="fa-erro" class="ajuda erro-txt"></div>' +
+      '<div class="acoes ng-acoes"><button class="b" data-fecha>Fechar</button>' +
+      '<button class="b pri" id="fa-salvar">Salvar padrão</button></div>', { larga: true, extra: 'ng-modal nu-modal' });
+    const mudou = fn => rasc[fn].slice().sort().join() !== (ACESSO.presets[fn] || []).slice().sort().join();
+    function pintar() {
+      m.querySelectorAll('#fa-abas [data-funcao]').forEach(b => b.classList.toggle('on', b.dataset.funcao === atual));
+      FUNCOES.forEach(([v]) => { m.querySelector('#fa-n-' + v).textContent = rasc[v].length + (rasc[v].length === 1 ? ' módulo' : ' módulos') + (mudou(v) ? ' •' : ''); });
+      m.querySelector('#fa-mods').innerHTML = ACESSO.modulos.map(md => {
+        const on = rasc[atual].includes(md.id);
+        return '<label class="op-mini nu-chave-linha ac-mod' + (on ? ' on' : '') + '"><span>' + esc(md.rotulo) + '</span>' +
+          '<input type="checkbox" role="switch" data-mod="' + esc(md.id) + '"' + (on ? ' checked' : '') + '></label>';
+      }).join('');
+      m.querySelectorAll('#fa-mods input').forEach(cx => cx.addEventListener('change', () => {
+        rasc[atual] = cx.checked ? rasc[atual].concat(cx.dataset.mod) : rasc[atual].filter(x => x !== cx.dataset.mod);
+        pintar();
+      }));
+      const bt = m.querySelector('#fa-salvar');
+      bt.disabled = !mudou(atual); bt.textContent = 'Salvar padrão de ' + rotuloFuncao(atual);
+    }
+    m.querySelectorAll('#fa-abas [data-funcao]').forEach(b => b.addEventListener('click', () => { atual = b.dataset.funcao; pintar(); }));
+    m.querySelector('#fa-salvar').onclick = async () => {
+      const bt = m.querySelector('#fa-salvar'), erro = m.querySelector('#fa-erro');
+      erro.textContent = ''; bt.disabled = true; bt.textContent = 'Salvando…';
+      try {
+        await B7.DB.chamarAuth({ acao: 'salvar_preset', funcao: atual, modulos: rasc[atual] });
+        ACESSO.presets[atual] = rasc[atual].slice();
+        B7.UI.toast('Padrão de ' + rotuloFuncao(atual) + ' salvo. Quem tem a função já herda.');
+        pintar();
+        if (location.hash.indexOf('#/usuarios') === 0) abrir();
+      } catch (e) { erro.textContent = e.message || 'Não foi possível salvar o padrão.'; pintar(); }
+    };
+    pintar();
+  }
+
   async function abrir() {
     B7.Dashboard.marcarNav('#/config');
     B7.Rota.titulo(['Usuários e acessos']);
@@ -86,6 +266,7 @@ B7.Usuarios = (function () {
     const usuarios = dados.usuarios || [];
     const vinculos = dados.vinculos || [];
     const funcoesExtraTodas = dados.funcoes_extra || [];
+    carregarAcesso(dados);
     const empresasDe = id => vinculos.filter(v => v.perfil_id === id)
       .map(v => (v.clientes && v.clientes.nome) || '');
     const funcoesExtraDe = id => funcoesExtraTodas.filter(f => f.perfil_id === id).map(f => f.funcao);
@@ -113,6 +294,7 @@ B7.Usuarios = (function () {
         '<p>' + usuarios.length + ' conta' + (usuarios.length === 1 ? '' : 's') +
           (online ? ' · <span class="lu3-on">' + online + ' online agora</span>' : '') +
           ' · criadas pela Branding7, sem cadastro público.</p></div>' +
+        '<button class="b contorno lu3-funcoes" id="lu-funcoes">' + IC_ACESSO + '<span>Funções e acessos</span></button>' +
         '<button class="b pri lu3-novo" id="novo-usuario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Novo usuário</span></button>' +
       '</div>' +
 
@@ -134,6 +316,7 @@ B7.Usuarios = (function () {
     '</div>';
 
     document.getElementById('novo-usuario').onclick = () => modalNovo(clientes);
+    const btFuncoes = document.getElementById('lu-funcoes'); if (btFuncoes) btFuncoes.onclick = modalFuncoes;
 
     const abrirAcao = (u, acao, estado) => {
       if (acao === 'senha') return modalSenha(u);
@@ -205,6 +388,8 @@ B7.Usuarios = (function () {
      A linha inteira abre "Editar acesso"; o ⋯ guarda o resto. */
   function linhaPessoa(u, empresas, funcoesExtra, pres, ehCliente, i) {
     const inativa = u.estado !== 'ativa';
+    const idt = identidadeDe(u), mods = modulosEfetivosDe(u);
+    const pers = !idt.ehAdmin && Object.keys(ACESSO.excecoes[u.id] || {}).length > 0;
     const eu = B7.Auth && B7.Auth.usuario && B7.Auth.usuario();
     const souEu = !!(eu && eu.id === u.id);
     const quando = pres.online ? 'Online agora' : String(pres.texto || '').replace(/^Último acesso:\s*/i, '');
@@ -216,8 +401,14 @@ B7.Usuarios = (function () {
       '<span class="lu3-av">' + B7.UI.avatarPessoa(u, 'lu-avatar') + '</span>' +
       '<div class="lu3-id">' +
         '<b>' + esc(u.nome) + (souEu ? '<em>você</em>' : '') + '</b>' +
-        '<span class="lu3-meta"><span class="lu3-papel lu3-p-' + esc(u.papel) + '">' + esc(rotuloPapel(u.papel)) + '</span>' +
-          (funcoesExtra || []).map(f => '<span class="lu3-extra">+ ' + esc(rotuloFuncaoExtra(f)) + '</span>').join('') +
+        '<span class="lu3-meta">' + (ehCliente
+            ? '<span class="lu3-papel lu3-p-cliente">Cliente</span>'
+            : (idt.ehAdmin ? '<span class="lu3-papel lu3-p-admin">Admin</span>' : '') +
+              (idt.funcao ? '<span class="lu3-papel lu3-p-' + esc(idt.funcao) + '">' + esc(rotuloFuncao(idt.funcao)) + '</span>'
+                : (idt.ehAdmin ? '' : '<span class="lu3-extra">sem função</span>')) +
+              (idt.ehAdmin ? '' : mods.slice(0, 3).map(md => '<span class="lu3-extra lu3-mod">' + esc(rotuloModulo(md)) + '</span>').join('') +
+                (mods.length > 3 ? '<span class="lu3-extra lu3-mod">+' + (mods.length - 3) + '</span>' : '') +
+                (pers ? '<span class="lu3-extra lu3-pers" title="Tem acesso personalizado">personalizado</span>' : ''))) +
           (ehCliente && u.pode_aprovar ? '<span class="lu3-extra">aprova</span>' : '') +
           '<span class="lu3-user">@' + esc(u.username) + '</span></span>' +
         (ehCliente
@@ -273,14 +464,7 @@ B7.Usuarios = (function () {
           'placeholder="maria.silva"></div></div>' +
       '</section>' +
 
-      '<section class="ng-bloco"><h4>' + ICU.perfil + 'Perfil</h4>' +
-        '<div class="nu-papeis" id="nu-papel">' +
-        PAPEIS.map(([v, r, d]) =>
-          '<button type="button" class="nu-papel' + (v === 'cliente' ? ' on' : '') + '" data-papel="' + v + '" data-desc="' + esc(d) + '">' +
-          '<i aria-hidden="true"></i><b>' + r.replace(' de mídias', '') + '</b></button>').join('') +
-        '</div>' +
-        '<div class="nu-papel-desc" id="nu-papel-desc">' + esc(papelAtual[2]) + '</div>' +
-      '</section>' +
+      acessoTipoHTML('nu', 'cliente') +
 
       '<section class="ng-bloco" id="nu-cliente"><h4>' + ICU.emp + 'Empresas que acompanha' +
         '<span class="mg-obr leve" id="nu-cont">nenhuma</span></h4>' +
@@ -295,11 +479,7 @@ B7.Usuarios = (function () {
           '<small>sem isso, a pessoa visualiza e comenta, mas não aprova</small></span><input type="checkbox" role="switch"></label>' +
       '</section>' +
 
-      '<section class="ng-bloco" id="nu-extras"><h4>' + ICU.extra + 'Funções extras <span class="mg-obr leve">opcional</span></h4>' +
-        '<div class="nu-empresas nu-extras-lista">' + FUNCOES_EXTRA.map(([v, r, d]) =>
-          '<label class="op-mini nu-chave-linha" data-funcao-extra="' + v + '">' +
-          '<span>' + r + '<small>' + d + '</small></span><input type="checkbox" role="switch" value="' + v + '"></label>').join('') + '</div>' +
-      '</section>' +
+      acessoInternoHTML('nu') +
 
       '<section class="ng-bloco"><h4>' + ICU.chave + 'Senha inicial</h4>' +
         '<div class="nu-senha">' +
@@ -314,31 +494,10 @@ B7.Usuarios = (function () {
       '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Criar usuário</button></div>', { larga: true, extra: 'ng-modal nu-modal' });
 
-    let papel = 'cliente';
     const blocoCliente = m.querySelector('#nu-cliente');
-    const blocoExtras = m.querySelector('#nu-extras');
-    const atualizarExtras = () => {
-      /* função extra é só para papel interno, e não faz sentido marcar
-         a mesma função que já é o papel principal (ex.: Videomaker não
-         ganha a função extra "Videomaker") */
-      blocoExtras.style.display = papel === 'cliente' ? 'none' : '';
-      blocoExtras.querySelectorAll('[data-funcao-extra]').forEach(l => {
-        const redundante = extraIndisponivel(l.dataset.funcaoExtra, papel);
-        l.style.display = redundante ? 'none' : '';
-        if (redundante) { l.querySelector('input').checked = false; l.classList.remove('on'); }
-      });
-    };
-    m.querySelectorAll('#nu-papel [data-papel]').forEach(b => b.onclick = () => {
-      m.querySelectorAll('#nu-papel button').forEach(x => x.classList.remove('on'));
-      b.classList.add('on');
-      papel = b.dataset.papel;
-      const desc = m.querySelector('#nu-papel-desc');
-      if (desc) desc.textContent = b.dataset.desc || '';
-      /* empresa e permissão de aprovação só fazem sentido para cliente */
-      blocoCliente.style.display = papel === 'cliente' ? '' : 'none';
-      atualizarExtras();
-    });
-    atualizarExtras();
+    /* empresa e permissão de aprovação só fazem sentido para cliente */
+    const acesso = ligarAcesso(m, 'nu', { tipo: 'cliente', ehAdmin: false, funcao: '', excecoes: {} },
+      tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; });
     const contar = () => {
       const n = m.querySelectorAll('.nu-pilulas input:checked').length;
       const c = m.querySelector('#nu-cont');
@@ -364,18 +523,17 @@ B7.Usuarios = (function () {
       const botao = m.querySelector('[data-ok]');
       const empresas = [...m.querySelectorAll('#nu-cliente input[type=checkbox][value]')]
         .filter(c => c.checked).map(c => c.value);
-      const funcoesExtra = [...m.querySelectorAll('#nu-extras input[type=checkbox]')]
-        .filter(c => c.checked).map(c => c.value);
-      const corpo = {
+      const idn = acesso.ler();
+      if (idn.erro) { erro.textContent = idn.erro; return; }
+      const ehCli = idn.tipo === 'cliente';
+      const corpo = Object.assign({
         acao: 'criar_usuario',
         nome: m.querySelector('#nu-nome').value.trim(),
         username: m.querySelector('#nu-user').value.trim(),
         senha: m.querySelector('#nu-senha').value,
-        papel: papel,
-        empresas: papel === 'cliente' ? empresas : [],
-        pode_aprovar: papel === 'cliente' && m.querySelector('#nu-aprovar input').checked,
-        funcoes_extra: papel === 'cliente' ? [] : funcoesExtra
-      };
+        empresas: ehCli ? empresas : [],
+        pode_aprovar: ehCli && m.querySelector('#nu-aprovar input').checked
+      }, idn);
       erro.textContent = '';
       botao.disabled = true; botao.textContent = 'Criando…';
       try {
@@ -403,12 +561,7 @@ B7.Usuarios = (function () {
       '<div class="mb"><label class="rot">NOME</label>' +
         '<input class="campo" id="ed-nome" value="' + esc(u.nome) + '"></div>' +
 
-      '<label class="rot">PERFIL</label>' +
-      '<div class="grade-formatos exp-formatos" id="ed-papel">' +
-        PAPEIS.map(([v, r, d]) =>
-          '<button class="opcao-formato' + (u.papel === v ? ' on' : '') + '" data-papel="' + v + '">' +
-          '<b>' + r + '</b><small>' + d + '</small></button>').join('') +
-      '</div>' +
+      acessoTipoHTML('ed', u.papel === 'cliente' ? 'cliente' : 'interno') +
 
       '<div id="ed-cliente" style="margin-top:14px' +
         (u.papel === 'cliente' ? '' : ';display:none') + '">' +
@@ -425,41 +578,16 @@ B7.Usuarios = (function () {
           '<span>Pode aprovar oficialmente</span></label>' +
       '</div>' +
 
-      '<div id="ed-extras" style="margin-top:14px' +
-        (u.papel === 'cliente' ? ';display:none' : '') + '">' +
-        '<label class="rot">FUNÇÕES EXTRAS (ALÉM DO PERFIL PRINCIPAL)</label>' +
-        '<div class="nu-empresas">' + FUNCOES_EXTRA.map(([v, r, d]) => {
-          const marcada = extrasAtuais.includes(v);
-          const redundante = extraIndisponivel(v, u.papel);
-          return '<label class="op-mini' + (marcada ? ' on' : '') + '" data-funcao-extra="' + v + '"' +
-            (redundante ? ' style="display:none"' : '') + '>' +
-            '<input type="checkbox" value="' + v + '"' + (marcada ? ' checked' : '') + '>' +
-            '<span>' + r + '<small>' + d + '</small></span></label>';
-        }).join('') + '</div>' +
-      '</div>' +
+      acessoInternoHTML('ed') +
 
       '<div id="ed-erro" class="ajuda erro-txt"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
-      '<button class="b pri" data-ok>Salvar</button></div>', { larga: true });
+      '<button class="b pri" data-ok>Salvar</button></div>', { larga: true, extra: 'ng-modal nu-modal ed-modal' });
 
-    let papel = u.papel;
-    const atualizarExtras = () => {
-      const blocoExtras = m.querySelector('#ed-extras');
-      blocoExtras.style.display = papel === 'cliente' ? 'none' : '';
-      blocoExtras.querySelectorAll('[data-funcao-extra]').forEach(l => {
-        const redundante = extraIndisponivel(l.dataset.funcaoExtra, papel);
-        l.style.display = redundante ? 'none' : '';
-        if (redundante) { l.querySelector('input').checked = false; l.classList.remove('on'); }
-      });
-    };
-    m.querySelectorAll('#ed-papel [data-papel]').forEach(b => b.onclick = () => {
-      m.querySelectorAll('#ed-papel button').forEach(x => x.classList.remove('on'));
-      b.classList.add('on');
-      papel = b.dataset.papel;
-      m.querySelector('#ed-cliente').style.display = papel === 'cliente' ? '' : 'none';
-      atualizarExtras();
-    });
-    m.querySelectorAll('.op-mini input').forEach(cx => cx.onchange = () =>
+    const idt0 = identidadeDe(u);
+    const acesso = ligarAcesso(m, 'ed', { tipo: idt0.tipo, ehAdmin: idt0.ehAdmin, funcao: idt0.funcao, excecoes: ACESSO.excecoes[u.id] || {} },
+      tipo => { m.querySelector('#ed-cliente').style.display = tipo === 'cliente' ? '' : 'none'; });
+    m.querySelectorAll('#ed-cliente .op-mini input').forEach(cx => cx.onchange = () =>
       cx.closest('.op-mini').classList.toggle('on', cx.checked));
 
     m.querySelector('[data-ok]').onclick = async () => {
@@ -467,19 +595,18 @@ B7.Usuarios = (function () {
       const botao = m.querySelector('[data-ok]');
       const empresas = [...m.querySelectorAll('#ed-cliente input[type=checkbox][value]')]
         .filter(c => c.checked).map(c => c.value);
-      const funcoesExtra = [...m.querySelectorAll('#ed-extras input[type=checkbox]')]
-        .filter(c => c.checked).map(c => c.value);
+      const idn = acesso.ler();
+      if (idn.erro) { erro.textContent = idn.erro; return; }
+      const ehCli = idn.tipo === 'cliente';
       erro.textContent = '';
       botao.disabled = true; botao.textContent = 'Salvando…';
       try {
-        await B7.DB.chamarAuth({
+        await B7.DB.chamarAuth(Object.assign({
           acao: 'alterar_conta', perfil_id: u.id,
           nome: m.querySelector('#ed-nome').value.trim(),
-          papel: papel,
-          empresas: papel === 'cliente' ? empresas : [],
-          pode_aprovar: papel === 'cliente' && m.querySelector('#ed-aprovar input').checked,
-          funcoes_extra: papel === 'cliente' ? [] : funcoesExtra
-        });
+          empresas: ehCli ? empresas : [],
+          pode_aprovar: ehCli && m.querySelector('#ed-aprovar input').checked
+        }, idn));
         m.fechar();
         B7.UI.toast('Acesso atualizado');
         abrir();

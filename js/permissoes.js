@@ -59,18 +59,60 @@ B7.Perm = (function () {
       'minhas-gravacoes', 'meus-status', 'historico', 'perfil'
     ]
   };
-  /* Acesso a "#/video" (Produção de Vídeo) por
-     ASSOCIAÇÃO, não só pela lista estática acima: além de quem já tem
-     'video' no próprio papel (admin '*', coordenador), também entra
-     quem ganhou a FUNÇÃO EXTRA "videomaker" (B7 Vídeo Parte 1.1) —
-     ex.: um Designer que também é Videomaker. Cliente nunca entra
-     aqui, função extra é só para papéis internos. */
-  function acessoVideoDinamico() {
-    if (semSessao()) return true;
-    if (papel() === 'cliente') return false;
-    if (papel() === 'admin' || (ROTAS[papel()] || []).includes('video')) return true;
-    return !!(B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel());
+  /* =================================================================
+     FUNÇÕES E ACESSOS (zzz68)
+
+     FUNÇÃO ≠ ACESSO A MÓDULO.
+       • B7.Auth.funcao()  — o que a pessoa FAZ (uma só): decide Painel e
+         elegibilidade operacional. Não muda por ganhar um módulo.
+       • B7.Auth.modulos() — o que ela ABRE: o acesso efetivo, resolvido
+         no banco (padrão da função + exceções por usuário).
+       • Administrador abre tudo; isso NÃO faz dele videomaker, designer
+         ou coordenador.
+
+     REGISTRO CANÔNICO: cada módulo é dono de uma ou mais rotas. Os ids
+     são os mesmos da tabela public.modulos. Menu, guarda de rota, busca,
+     "Criar" e atalhos decidem por B7.Perm.podeRota — um lugar só.
+     ================================================================= */
+  const MODULOS = [
+    { id: 'clientes',      rotulo: 'Clientes',            rotas: ['clientes'] },
+    { id: 'linhas',        rotulo: 'Linhas editoriais',   rotas: ['linhas', 'linha'] },
+    { id: 'roteiros',      rotulo: 'Roteiros',            rotas: ['roteiros'] },
+    { id: 'gravacoes',     rotulo: 'Gravações',           rotas: ['gravacoes'] },
+    { id: 'video',         rotulo: 'Vídeo',               rotas: ['video'] },
+    { id: 'design',        rotulo: 'Design',              rotas: ['design'] },
+    { id: 'publicacoes',   rotulo: 'Publicações do Dia',  rotas: ['publicacoes'] },
+    { id: 'aprovacoes',    rotulo: 'Aprovações',          rotas: ['aprovacoes'] },
+    { id: 'semanas',       rotulo: 'Status semanal',      rotas: ['semanas', 'semana'] },
+    { id: 'kanban',        rotulo: 'Produção (quadro)',   rotas: ['kanban'] },
+    { id: 'calendario',    rotulo: 'Calendário',          rotas: ['calendario'] },
+    { id: 'oportunidades', rotulo: 'Oportunidades',       rotas: ['oportunidades'] }
+  ];
+  const ROTA_MODULO = {};
+  MODULOS.forEach(m => m.rotas.forEach(r => { ROTA_MODULO[r] = m.id; }));
+  /* Rotas de CONTEXTO: toda a equipe interna abre, com ou sem o módulo
+     "dono" — o detalhe de um cliente e o de uma gravação são o pano de
+     fundo de uma peça, de uma demanda ou de um roteiro (o Designer já
+     abria os dois sem ter Clientes nem Gravações). O que cada um pode
+     FAZER lá dentro continua sendo regra da tela e do banco. */
+  const ROTAS_INTERNAS = ['', 'config', 'cliente', 'gravacao'];
+  /* Padrão de cada função — só usado se a sessão ainda não trouxer os
+     módulos (aba antiga aberta durante a atualização). O valor de verdade
+     vem do banco (funcao_modulos + perfil_modulos). */
+  const PADRAO_FUNCAO = {
+    coordenador: MODULOS.map(m => m.id),
+    designer: ['design', 'linhas', 'calendario'],
+    videomaker: ['video', 'gravacoes', 'roteiros', 'calendario']
+  };
+  const funcao = () => (B7.Auth && B7.Auth.funcao ? B7.Auth.funcao() : null);
+  const souAdmin = () => papel() === 'admin';
+  function modulosEfetivos() {
+    if (semSessao() || papel() === 'cliente') return [];
+    if (souAdmin()) return MODULOS.map(m => m.id);
+    const doBanco = B7.Auth && B7.Auth.modulos ? B7.Auth.modulos() : null;
+    return doBanco || PADRAO_FUNCAO[funcao()] || [];
   }
+  const temModulo = id => modulosEfetivos().includes(id);
 
   /* PAINEL (#/painel) — espaço de trabalho PESSOAL, montado a partir das
      funções operacionais REAIS da pessoa. Não é troca de perfil: ela
@@ -86,26 +128,14 @@ B7.Perm = (function () {
      Quem tem mais de uma vê todas no mesmo Painel (alternância de visão,
      não de identidade). Admin sem nenhuma dessas funções não vê o
      Painel — a Central B7 segue sendo a casa dele. */
-  function souCoordenadorElegivel() {
-    if (semSessao()) return false;
-    if (papel() === 'coordenador') return true;
-    const extras = (B7.Auth && B7.Auth.funcoesExtra) ? B7.Auth.funcoesExtra() : [];
-    return papel() === 'admin' && extras.includes('coordenador');
-  }
+  /* zzz68: UMA função principal. O Painel é o da função; ter o módulo de
+     Vídeo ou de Design não cria um segundo Painel. Administrador sem
+     função não tem Painel (a casa dele é a Central). */
+  function souCoordenadorElegivel() { return !semSessao() && papel() !== 'cliente' && funcao() === 'coordenador'; }
+  function souDesignerElegivel() { return !semSessao() && papel() !== 'cliente' && funcao() === 'designer'; }
   function painelVisoes() {
     if (semSessao() || papel() === 'cliente') return [];
-    const v = [];
-    if (souCoordenadorElegivel()) v.push('coordenacao');
-    if (B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel()) v.push('video');
-    /* Painel do Designer (fase 3): papel principal ou função extra
-       "designer" — a mesma regra de funcoesOperacionais */
-    if (souDesignerElegivel()) v.push('design');
-    return v;
-  }
-  function souDesignerElegivel() {
-    if (semSessao() || papel() === 'cliente') return false;
-    const extras = (B7.Auth && B7.Auth.funcoesExtra) ? B7.Auth.funcoesExtra() : [];
-    return papel() === 'designer' || extras.includes('designer');
+    return ({ coordenador: ['coordenacao'], videomaker: ['video'], designer: ['design'] })[funcao()] || [];
   }
   function painelElegivel() { return painelVisoes().length > 0; }
 
@@ -119,12 +149,7 @@ B7.Perm = (function () {
      quem decide ACESSO continua sendo podeRota. */
   function funcoesOperacionais() {
     if (semSessao() || papel() === 'cliente') return [];
-    const extras = (B7.Auth && B7.Auth.funcoesExtra) ? B7.Auth.funcoesExtra() : [];
-    const f = [];
-    if (souCoordenadorElegivel()) f.push('coordenador');
-    if (B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel()) f.push('videomaker');
-    if (souDesignerElegivel()) f.push('designer');
-    return f;
+    return funcao() ? [funcao()] : [];
   }
 
   /* "Visualizar como cliente" (#/previa/<id>) é só do administrador:
@@ -176,6 +201,19 @@ B7.Perm = (function () {
 
   const papel = () => (B7.Auth && B7.Auth.papel()) || null;
 
+  /* zzz68: o que some do menu fixo. Cliente segue a lista dele; admin vê
+     tudo; o resto da equipe perde o que é só de administrador e cada
+     módulo que não está no acesso efetivo. */
+  const SO_ADMIN = ['usuarios', 'importar', 'atalhos', 'lixeira'];
+  function regraNav() {
+    if (papel() === 'cliente') return NAV.cliente;
+    if (souAdmin()) return null;
+    const ocultar = SO_ADMIN.map(r => '#/' + r);
+    MODULOS.forEach(m => { if (!temModulo(m.id)) m.rotas.forEach(r => ocultar.push('#/' + r)); });
+    if (!podeRota('arquivados')) ocultar.push('#/arquivados');
+    return { ocultar, grupos: { 'MAIS FERRAMENTAS': podeRota('arquivados') } };
+  }
+
   /* Sem sessão o sistema se comporta como antes da autenticação: é o
      estado da instalação que ainda não tem ninguém cadastrado. */
   function semSessao() { return !B7.Auth || !B7.Auth.usuario(); }
@@ -183,12 +221,14 @@ B7.Perm = (function () {
   function podeRota(rota) {
     if (semSessao()) return true;
     const base = String(rota || '').replace(/^#\//, '').split('/')[0];
-    if (base === 'video') return acessoVideoDinamico();
+    if (papel() === 'cliente') return ROTAS.cliente.includes(base);
     if (base === 'painel') return painelElegivel();
-    const lista = ROTAS[papel()];
-    if (!lista) return false;
-    if (lista === '*') return true;
-    return lista.includes(base);
+    if (souAdmin()) return true;
+    if (ROTAS_INTERNAS.includes(base)) return true;
+    /* Arquivados é ferramenta de gestão (restaura gravações): equipe */
+    if (base === 'arquivados') return !!(B7.Auth.ehEquipe && B7.Auth.ehEquipe());
+    const mod = ROTA_MODULO[base];
+    return !!mod && temModulo(mod);      /* rota sem dono = só administrador */
   }
 
   function podeConfig(secao) {
@@ -220,7 +260,7 @@ B7.Perm = (function () {
     if (elegivel && papel() === 'videomaker') document.querySelectorAll('.nav [data-ir="#/"]').forEach(el => el.remove());
     document.querySelectorAll('.marca-clique').forEach(logo => { logo.dataset.ir = elegivel ? '#/painel' : '#/'; });
 
-    const regra = NAV[papel()];
+    const regra = regraNav();
     if (!regra) return;
 
     (regra.ocultar || []).forEach(destino => {
@@ -238,7 +278,7 @@ B7.Perm = (function () {
        extra — a lista estática de ocultar acima não sabe da função
        extra (decidida em tempo de sessão), então este passo roda
        separado, depois dela. */
-    if (!acessoVideoDinamico()) {
+    if (!podeRota('video')) {
       document.querySelectorAll('.nav [data-ir="#/video"]').forEach(el => el.remove());
     }
 
@@ -267,5 +307,6 @@ B7.Perm = (function () {
   }
 
   return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
-           painelElegivel, painelVisoes, souCoordenadorElegivel, souDesignerElegivel, funcoesOperacionais, ROTAS, CONFIG };
+           painelElegivel, painelVisoes, souCoordenadorElegivel, souDesignerElegivel, funcoesOperacionais, ROTAS, CONFIG,
+           MODULOS, PADRAO_FUNCAO, modulosEfetivos, temModulo, funcao };
 })();

@@ -169,6 +169,51 @@ function senhaFraca(senha: string): string | null {
    RECEBER peças e ganhar o Painel do Designer. Num Videomaker ou Cliente
    ela exigiria permissões que o papel não tem — então é descartada. */
 const FUNCOES_EXTRA_VALIDAS = ['videomaker', 'coordenador', 'designer'];
+
+/* =====================================================================
+   FUNÇÕES E ACESSOS (zzz68) — modelo novo da equipe interna:
+     administrador (sim/não) + UMA função principal + módulos.
+   perfis.eh_admin / perfis.funcao são a fonte da verdade; o banco mantém
+   perfis.papel e perfis_funcoes_extra como espelho (gatilhos em
+   migration_funcoes_e_acessos.sql). Aqui só entram valores validados, e
+   só administrador chega nestas ações (ACOES_ADMIN).
+   ===================================================================== */
+const FUNCOES_VALIDAS = ['coordenador', 'designer', 'videomaker'];
+type Identidade = { ehAdmin: boolean; funcao: string | null; papel: string; erro?: string };
+function identidadeInterna(ehAdminBruto: unknown, funcaoBruta: unknown): Identidade {
+  const ehAdmin = ehAdminBruto === true;
+  const funcao = funcaoBruta === null || funcaoBruta === undefined || funcaoBruta === '' ? null : String(funcaoBruta);
+  if (funcao !== null && !FUNCOES_VALIDAS.includes(funcao)) {
+    return { ehAdmin, funcao: null, papel: '', erro: 'Função inválida.' };
+  }
+  if (!ehAdmin && funcao === null) {
+    return { ehAdmin, funcao, papel: '', erro: 'Quem não é administrador precisa ter uma função.' };
+  }
+  return { ehAdmin, funcao, papel: ehAdmin ? 'admin' : (funcao as string) };
+}
+/* exceções de módulo: { modulo: 'permitir' | 'negar' } — só ids que existem */
+// deno-lint-ignore no-explicit-any
+async function normalizarExcecoes(sb: any, bruto: unknown): Promise<{ lista: { modulo: string; efeito: string }[]; erro?: string }> {
+  if (bruto === undefined || bruto === null) return { lista: [] };
+  if (typeof bruto !== 'object' || Array.isArray(bruto)) return { lista: [], erro: 'Exceções de módulo inválidas.' };
+  const { data: mods } = await sb.from('modulos').select('id');
+  const validos = new Set((mods || []).map((m: { id: string }) => m.id));
+  const lista: { modulo: string; efeito: string }[] = [];
+  for (const [modulo, efeito] of Object.entries(bruto as Record<string, unknown>)) {
+    if (!validos.has(modulo)) return { lista: [], erro: 'Módulo inválido: ' + modulo + '.' };
+    if (efeito !== 'permitir' && efeito !== 'negar') return { lista: [], erro: 'Exceção inválida em ' + modulo + '.' };
+    lista.push({ modulo, efeito: String(efeito) });
+  }
+  return { lista };
+}
+// deno-lint-ignore no-explicit-any
+async function gravarExcecoes(sb: any, perfilId: string, lista: { modulo: string; efeito: string }[], autorId: string) {
+  await sb.from('perfil_modulos').delete().eq('perfil_id', perfilId);
+  if (lista.length) {
+    await sb.from('perfil_modulos').insert(lista.map((x) => ({
+      perfil_id: perfilId, modulo: x.modulo, efeito: x.efeito, alterado_por: autorId })));
+  }
+}
 const PAPEIS_COM_DESIGNER_EXTRA = ['admin', 'coordenador'];
 function normalizarFuncoesExtra(bruto: unknown, papelFinal: string): { lista: string[]; erro?: string } {
   if (bruto === undefined || bruto === null) return { lista: [] };
@@ -505,7 +550,7 @@ Deno.serve(comCors(async (req) => {
 
     const ACOES_ADMIN = ['criar_usuario', 'redefinir_senha',
                          'alterar_conta', 'listar_usuarios', 'excluir_conta',
-                         'avatar_de', 'entrar_como'];
+                         'avatar_de', 'entrar_como', 'salvar_preset'];
     /* qualquer pessoa autenticada edita a própria conta */
     const ACOES_PROPRIAS = ['meu_perfil', 'meu_avatar'];
     if (!ACOES_ADMIN.includes(acao) && !ACOES_PROPRIAS.includes(acao)) {
@@ -734,8 +779,18 @@ Deno.serve(comCors(async (req) => {
     if (acao === 'criar_usuario') {
       const username = String(corpo.username || '').trim();
       const nome = String(corpo.nome || '').trim();
-      const papel = String(corpo.papel || 'cliente');
+      /* zzz68: conta interna chega como { tipo:'interno', eh_admin, funcao,
+         modulos }. O formato antigo (papel + funcoes_extra) segue aceito. */
+      const modeloNovo = corpo.tipo === 'interno';
+      let ident: Identidade | null = null;
+      if (modeloNovo) {
+        ident = identidadeInterna(corpo.eh_admin, corpo.funcao);
+        if (ident.erro) return json({ erro: ident.erro }, 400);
+      }
+      const papel = ident ? ident.papel : String(corpo.papel || 'cliente');
       const senha = String(corpo.senha || '');
+      const excecoes = modeloNovo ? await normalizarExcecoes(sb, corpo.modulos) : { lista: [] };
+      if (excecoes.erro) return json({ erro: excecoes.erro }, 400);
 
       if (!['admin', 'coordenador', 'designer', 'videomaker', 'cliente'].includes(papel)) {
         return json({ erro: 'Perfil inválido.' }, 400);
@@ -752,7 +807,7 @@ Deno.serve(comCors(async (req) => {
          funções extras de produção (por ora, só "videomaker" — o mesmo
          valor do papel principal não conta como extra, e Cliente é
          externo, nunca combina com função interna). */
-      const funcoesExtra = normalizarFuncoesExtra(corpo.funcoes_extra, papel);
+      const funcoesExtra = modeloNovo ? { lista: [] as string[] } : normalizarFuncoesExtra(corpo.funcoes_extra, papel);
       if (funcoesExtra.erro) return json({ erro: funcoesExtra.erro }, 400);
 
       const criado = await criarConta(sb, {
@@ -763,14 +818,21 @@ Deno.serve(comCors(async (req) => {
       });
       if (criado.erro) return json({ erro: criado.erro }, 400);
 
-      if (funcoesExtra.lista.length) {
+      if (ident) {
+        /* o gatilho do banco deriva papel e o espelho de função extra */
+        const { error: eId } = await sb.from('perfis')
+          .update({ eh_admin: ident.ehAdmin, funcao: ident.funcao }).eq('id', criado.id);
+        if (eId) return json({ erro: 'Conta criada, mas não foi possível gravar a função: ' + eId.message }, 500);
+        if (!ident.ehAdmin) await gravarExcecoes(sb, criado.id, excecoes.lista, autor.id);
+      } else if (funcoesExtra.lista.length) {
         await sb.from('perfis_funcoes_extra').insert(
           funcoesExtra.lista.map((f) => ({ perfil_id: criado.id, funcao: f, criado_por: autor.id })));
       }
 
       await auditar(sb, autor, 'criar_usuario',
         { tipo: 'perfil', id: criado.id, descricao: username },
-        { papel, empresas: (corpo.empresas || []).length, funcoes_extra: funcoesExtra.lista });
+        { papel, empresas: (corpo.empresas || []).length, funcoes_extra: funcoesExtra.lista,
+          eh_admin: ident?.ehAdmin, funcao: ident?.funcao, excecoes: excecoes.lista.length });
       return json({ ok: true, id: criado.id, username });
     }
 
@@ -812,6 +874,26 @@ Deno.serve(comCors(async (req) => {
       if (corpo.nome) patch.nome = String(corpo.nome).trim();
       if (typeof corpo.pode_aprovar === 'boolean') patch.pode_aprovar = corpo.pode_aprovar;
 
+      /* zzz68: modelo novo — { tipo:'interno', eh_admin, funcao, modulos }
+         ou { tipo:'cliente' }. Tem precedência sobre o papel legado. */
+      let identNova: Identidade | null = null;
+      if (corpo.tipo === 'interno') {
+        identNova = identidadeInterna(corpo.eh_admin, corpo.funcao);
+        if (identNova.erro) return json({ erro: identNova.erro }, 400);
+        delete patch.papel;
+        patch.eh_admin = identNova.ehAdmin; patch.funcao = identNova.funcao;
+        if (corpo.perfil_id === autor.id && !identNova.ehAdmin) {
+          return json({ erro: 'Você não pode alterar o próprio acesso de administrador.' }, 400);
+        }
+      } else if (corpo.tipo === 'cliente') {
+        patch.papel = 'cliente';
+      }
+      let excecoesNovas: { lista: { modulo: string; efeito: string }[]; erro?: string } | null = null;
+      if (corpo.modulos !== undefined) {
+        excecoesNovas = await normalizarExcecoes(sb, corpo.modulos);
+        if (excecoesNovas.erro) return json({ erro: excecoesNovas.erro }, 400);
+      }
+
       /* o admin não se desativa nem se rebaixa sozinho: seria a forma
          mais fácil de o sistema ficar sem nenhum administrador */
       if (corpo.perfil_id === autor.id &&
@@ -835,7 +917,14 @@ Deno.serve(comCors(async (req) => {
       }
 
       if (Object.keys(patch).length) {
-        await sb.from('perfis').update(patch).eq('id', corpo.perfil_id);
+        const { error: ePatch } = await sb.from('perfis').update(patch).eq('id', corpo.perfil_id);
+        if (ePatch) return json({ erro: 'Não foi possível salvar a conta: ' + ePatch.message }, 400);
+      }
+      /* exceções de módulo: substitui o conjunto inteiro; {} = voltar ao
+         padrão da função. Cliente e administrador não guardam exceção. */
+      if (excecoesNovas || corpo.tipo === 'cliente' || (identNova && identNova.ehAdmin)) {
+        const limpar = corpo.tipo === 'cliente' || (identNova && identNova.ehAdmin);
+        await gravarExcecoes(sb, corpo.perfil_id, limpar ? [] : (excecoesNovas ? excecoesNovas.lista : []), autor.id);
       }
 
       /* vínculos com empresas, quando enviados */
@@ -849,7 +938,7 @@ Deno.serve(comCors(async (req) => {
 
       /* funções extras, quando enviadas (substitui o conjunto inteiro,
          mesmo padrão de perfil_clientes acima) */
-      if (funcoesExtra) {
+      if (funcoesExtra && !identNova) {
         await sb.from('perfis_funcoes_extra').delete().eq('perfil_id', corpo.perfil_id);
         if (funcoesExtra.lista.length) {
           await sb.from('perfis_funcoes_extra').insert(
@@ -862,8 +951,37 @@ Deno.serve(comCors(async (req) => {
       }
 
       await auditar(sb, autor, 'alterar_conta',
-        { tipo: 'perfil', id: corpo.perfil_id }, { ...patch, funcoes_extra: funcoesExtra?.lista });
+        { tipo: 'perfil', id: corpo.perfil_id },
+        { ...patch, funcoes_extra: funcoesExtra?.lista, excecoes: excecoesNovas ? excecoesNovas.lista : undefined });
       return json({ ok: true });
+    }
+
+    /* Padrão de módulos de UMA função. Afeta todo mundo que tem essa
+       função e não tem exceção para o módulo. Valida tudo antes de
+       gravar; se a gravação nova falhar, repõe o conjunto anterior. */
+    if (acao === 'salvar_preset') {
+      const funcao = String(corpo.funcao || '');
+      if (!FUNCOES_VALIDAS.includes(funcao)) return json({ erro: 'Função inválida.' }, 400);
+      if (!Array.isArray(corpo.modulos)) return json({ erro: 'Lista de módulos inválida.' }, 400);
+      const { data: mods } = await sb.from('modulos').select('id');
+      const validos = new Set((mods || []).map((m: { id: string }) => m.id));
+      const lista = [...new Set((corpo.modulos as unknown[]).map((m) => String(m)))];
+      for (const m of lista) if (!validos.has(m)) return json({ erro: 'Módulo inválido: ' + m + '.' }, 400);
+
+      const { data: antes } = await sb.from('funcao_modulos').select('modulo').eq('funcao', funcao);
+      const { error: eDel } = await sb.from('funcao_modulos').delete().eq('funcao', funcao);
+      if (eDel) return json({ erro: 'Não foi possível salvar o padrão: ' + eDel.message }, 500);
+      if (lista.length) {
+        const { error: eIns } = await sb.from('funcao_modulos').insert(lista.map((m) => ({ funcao, modulo: m })));
+        if (eIns) {
+          if (antes && antes.length) {
+            await sb.from('funcao_modulos').insert(antes.map((a: { modulo: string }) => ({ funcao, modulo: a.modulo })));
+          }
+          return json({ erro: 'Não foi possível salvar o padrão: ' + eIns.message }, 500);
+        }
+      }
+      await auditar(sb, autor, 'salvar_preset', { tipo: 'funcao', id: null, descricao: funcao }, { modulos: lista });
+      return json({ ok: true, funcao, modulos: lista });
     }
 
     if (acao === 'listar_usuarios') {
@@ -891,7 +1009,14 @@ Deno.serve(comCors(async (req) => {
         const { data } = await sb.from('perfis_funcoes_extra').select('perfil_id, funcao');
         funcoesExtra = data || [];
       } catch (_e) { /* tabela ainda não existe — segue sem funções extras */ }
-      return json({ usuarios: data || [], vinculos: vinculos || [], funcoes_extra: funcoesExtra });
+      /* zzz68: registro de módulos, padrões por função e exceções por usuário */
+      const [{ data: modulos }, { data: presets }, { data: excecoes }] = await Promise.all([
+        sb.from('modulos').select('id, rotulo, ordem').order('ordem'),
+        sb.from('funcao_modulos').select('funcao, modulo'),
+        sb.from('perfil_modulos').select('perfil_id, modulo, efeito')
+      ]);
+      return json({ usuarios: data || [], vinculos: vinculos || [], funcoes_extra: funcoesExtra,
+                    modulos: modulos || [], presets: presets || [], excecoes: excecoes || [] });
     }
 
   } catch (e) {

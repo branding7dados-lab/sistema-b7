@@ -737,3 +737,38 @@ html.modo-leve .pf-aurora{animation:none;}
   .pf-aurora, .pf-modal .perfil-avatar, .pf-modal .perfil-id, .pf-painel, .pf-painel > *, .pf-forca i{animation:none !important;}
   .pf-abas-luz{transition:none;}
 }
+
+/* zzz68: FUNÇÕES E ACESSOS — tipo de conta, administrador, função e
+   módulos (herdado × personalizado) nos modais de usuário; editor de
+   padrões por função. Mesmas peças do "Novo usuário" (.nu-*). */
+.ac-dois{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+.nu-papeis.ac-funcoes{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:8px;}
+.ac-funcoes .nu-papel{padding:0 10px;gap:7px;}
+.ac-funcoes .nu-papel:disabled{opacity:.4;cursor:not-allowed;}
+.nu-papeis.ac-abas{grid-template-columns:repeat(3,minmax(0,1fr));margin:4px 0 14px;}
+.ac-abas .nu-papel{flex-wrap:wrap;row-gap:0;min-height:54px;padding:6px 12px;}
+.ac-abas .nu-papel small{flex-basis:100%;padding-left:25px;font-size:11px;font-weight:500;color:var(--ink-4);}
+.nu-modal .ac-rot{display:block;margin:16px 0 0;}
+.nu-modal .ac-ajuda{margin:10px 0 0;}
+.ac-mod-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;}
+.ac-restaurar{font:inherit;font-size:12px;font-weight:700;color:var(--acento);background:none;border:0;padding:4px 0;cursor:pointer;}
+.ac-restaurar:hover{text-decoration:underline;}
+.ac-nota{margin:8px 0 0;padding:9px 11px;border-radius:10px;background:var(--ambar-bg, var(--suave));color:var(--ink-2);}
+.ac-mods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px;}
+.nu-modal .ac-mods .nu-chave-linha{margin:0;padding:10px 12px;}
+.nu-modal .ac-mods .nu-chave-linha span{min-width:0;display:flex;flex-direction:column;font-weight:700;font-size:13px;}
+.nu-modal .ac-mod.pers{border-style:dashed;}
+.nu-modal .ac-mod.pers small{color:var(--acento);font-weight:700;}
+.nu-modal .ac-mod input:disabled{opacity:.55;cursor:not-allowed;}
+.ed-modal > h3{margin-bottom:2px;}
+.lu3-funcoes{display:inline-flex;align-items:center;gap:8px;flex:none;}
+.lu3-funcoes svg{width:16px;height:16px;}
+.lu3-mod{background:color-mix(in srgb, var(--acento) 8%, var(--suave));}
+.lu3-pers{background:none;border:1px dashed color-mix(in srgb, var(--acento) 55%, var(--borda));color:var(--acento);}
+@media (max-width:640px){
+  .nu-papeis.ac-funcoes{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .nu-papeis.ac-abas{grid-template-columns:minmax(0,1fr);}
+  .ac-mods{grid-template-columns:minmax(0,1fr);}
+  .lu3-funcoes span{display:none;}
+  .conteudo .lu3-cab .lu3-funcoes{width:44px;height:44px;padding:0;justify-content:center;border-radius:14px;}
+}
