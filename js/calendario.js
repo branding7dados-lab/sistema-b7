@@ -83,13 +83,18 @@ B7.Calendario = (function () {
   /* =================================================================
      URL / ESTADO
      ================================================================= */
+  /* zzz71: visão padrão escolhida em Configurações (deste aparelho) */
+  function vistaPadrao() {
+    const v = B7.pref ? B7.pref.ler('calendario_vista', 'mes') : 'mes';
+    return ['mes', 'semana', 'dia'].includes(v) ? v : 'mes';
+  }
   function lerParams(params) {
     const p = params || new URLSearchParams(location.hash.split('?')[1] || '');
     let pref = {};
     try { pref = JSON.parse(sessionStorage.getItem('b7.calendario.v2') || '{}'); } catch (e) {}
     const temFiltroUrl = ['v', 'd', 'tipo', 'cliente', 'resp', 'canc', 'op'].some(k => p.has(k));
     const base = temFiltroUrl ? {} : pref;
-    V.vista = ['mes', 'semana', 'dia'].includes(p.get('v')) ? p.get('v') : (['mes', 'semana', 'dia'].includes(base.vista) ? base.vista : 'mes');
+    V.vista = ['mes', 'semana', 'dia'].includes(p.get('v')) ? p.get('v') : (['mes', 'semana', 'dia'].includes(base.vista) ? base.vista : vistaPadrao());
     V.data = /^\d{4}-\d{2}-\d{2}$/.test(p.get('d') || '') ? p.get('d') : D().hoje();
     V.tipo = p.get('tipo') || (temFiltroUrl ? '' : base.tipo || '');
     V.cliente = p.get('cliente') || (temFiltroUrl ? '' : base.cliente || '');
@@ -175,6 +180,10 @@ B7.Calendario = (function () {
       }
       pintarCabecalho(); pintarFiltros();
       if (antes !== E().ESTADO.googleConectado) carregar({ silencioso: true });
+      /* zzz71: veio de Configurações → Google Agenda */
+      let pedirCfg = false;
+      try { pedirCfg = sessionStorage.getItem('b7.cal.cfg') === '1'; sessionStorage.removeItem('b7.cal.cfg'); } catch (e) {}
+      if (pedirCfg && souGestor() && location.hash.startsWith('#/calendario')) modalConfiguracoes();
     });
     await carregar();
   }

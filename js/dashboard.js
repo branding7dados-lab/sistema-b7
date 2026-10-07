@@ -1756,6 +1756,18 @@ B7.Dashboard = (function () {
     acesso: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
     sino: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
     camera: '<path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.3"/>',
+    casa: '<path d="M4 11l8-7 8 7"/><path d="M6 10v9.5h12V10"/><path d="M10 19.5v-5h4v5"/>',
+    calendario: '<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+    ler: '<rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M7 9.5h10M7 13h6M9 20.5h6"/>',
+    letra: '<path d="M4 18l5-12 5 12M6 14h6"/><path d="M15.5 18l2.5-6 2.5 6M16.5 16h3"/>',
+    espelho: '<path d="M12 3v18"/><path d="M8.5 7L4 17h4.5zM15.5 7L20 17h-4.5z"/>',
+    relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    filtro: '<path d="M4 6h16M7 12h10M10 18h4"/>',
+    google: '<path d="M20 12.2c0 4.6-3.2 7.8-7.8 7.8a8 8 0 1 1 5.4-13.9"/><path d="M12.2 12.2H20"/>',
+    ia: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/>',
+    atualizar: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/>',
+    celular: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>',
+    vassoura: '<path d="M14 4l6 6"/><path d="M12.5 5.5l6 6-3 3-6-6z"/><path d="M9.5 8.5C6 10 4 14 4 20c5 0 9-1.5 11.5-5.5"/>',
     sair: '<path d="M14.5 4h4A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>'
   };
   const svgF = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICF[k] + '</svg>';
@@ -1810,22 +1822,65 @@ B7.Dashboard = (function () {
       '<section class="cfg-g' + (cls ? ' ' + cls : '') + '">' + (titulo ? '<h2 class="cfg-g-t">' + titulo + '</h2>' : '') +
         '<div class="cfg-lista">' + linhas + '</div>' + (nota ? '<p class="cfg-g-nota">' + nota + '</p>' : '') + '</section>' : '';
 
-    painel().innerHTML = '<div class="conteudo entra cfg-tela">' +
-      '<h1 class="cfg-titulo">Configurações</h1>' +
+    /* =================================================================
+       zzz71: ABAS. A tela ganhou bastante coisa; cada aba fica curta.
+       Uma aba só existe se tiver alguma linha para aquela pessoa.
+       ================================================================= */
+    const ehCli = !!(B7.Auth && B7.Auth.ehCliente && B7.Auth.ehCliente());
+    const ehAdm = !!(u && B7.Auth.papel && B7.Auth.papel() === 'admin');
+    const PM = B7.Perm || {};
+    const abre = r => !!(u && !ehCli && PM.podeRota && PM.podeRota(r));
+    const sel = (id, atual, itens, rot) => '<select class="cfg-sel" data-sel="' + id + '" aria-label="' + esc(rot) + '">' +
+      itens.map(([v, r]) => '<option value="' + esc(v) + '"' + (v === atual ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>';
+    const passo = (id, valor, rot) => '<span class="cfg-passo" data-passo="' + id + '" role="group" aria-label="' + esc(rot) + '">' +
+      '<button type="button" data-d="-1" aria-label="Diminuir">−</button><b>' + valor + '</b>' +
+      '<button type="button" data-d="1" aria-label="Aumentar">+</button></span>';
 
-      /* Conta no topo: quem está usando, e o atalho para o perfil */
-      /* zzz13: o cartão da conta ganha a aurora e o anel do perfil, e
-         três atalhos que abrem o perfil já na aba certa */
-      (u ? '<div class="cfg-perfil-cx"><i class="cfg-aurora" aria-hidden="true"></i>' +
-        '<button type="button" class="cfg-perfil" data-abrir-perfil>' +
-        (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-perfil-av') : '') +
-        '<span class="cfg-perfil-tx"><b>' + esc(u.nome || u.username || '') + '</b>' +
-        '<small>@' + esc(u.username || '') + ' · ' + esc(PAPEL_CFG[u.papel] || u.papel || '') + '</small></span>' + SETA_CFG + '</button>' +
-        '<div class="cfg-pf-atalhos">' +
-          [['conta', 'Foto e nome', 'camera'], ['seguranca', 'Senha', 'acesso'], ['notificacoes', 'Avisos', 'sino']].map(a =>
-            '<button type="button" data-pf="' + a[0] + '">' + svgF(a[2]) + '<span>' + a[1] + '</span></button>').join('') +
-        '</div></div>' : '') +
+    /* tela inicial: só entre as telas que a pessoa abre */
+    const opInicio = [];
+    if (u && !ehCli) {
+      if (PM.painelElegivel && PM.painelElegivel()) opInicio.push(['#/painel', 'Painel']);
+      if (B7.Auth.papel() !== 'videomaker') opInicio.push(['#/', 'Central B7']);
+      (PM.MODULOS || []).forEach(md => { if (PM.temModulo && PM.temModulo(md.id)) opInicio.push(['#/' + md.rotas[0], md.rotulo]); });
+    }
+    const tp = Object.assign({ velocidade: 7, espelho: false, contagem: 3, fonte: 0 }, B7.pref.ler('teleprompter', {}) || {});
+    const iaCfg = (window.B7_CONFIG && window.B7_CONFIG.IA) || {};
+    const iaRemoto = Object.assign({ roteiros: true, linhas: true }, B7.IA && B7.IA.remoto ? B7.IA.remoto() : {});
+    const instalado = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
 
+    const abaGeral =
+      (opInicio.length > 1 ? grupo('Início', 'Um link direto continua abrindo a tela do link.',
+        L({ ic: 'casa', tom: 'violeta', t: 'Tela inicial', d: 'o que abre ao entrar no B7',
+            dir: sel('inicio', B7.pref.ler('inicio', ''), [['', 'Padrão do B7']].concat(opInicio), 'Tela inicial') })) : '') +
+
+      (abre('calendario') ? grupo('Calendário', '',
+        L({ ic: 'calendario', tom: 'azul', t: 'Visão padrão', d: 'como o Calendário abre',
+            abaixo: seletor('cal_vista', B7.pref.ler('calendario_vista', 'mes'), [['mes', 'Mês'], ['semana', 'Semana'], ['dia', 'Dia']]) })) : '') +
+
+      (abre('roteiros') || abre('gravacoes') ? grupo('Teleprompter', 'O que já vem pronto ao abrir. Dá para mudar durante a leitura.',
+        L({ ic: 'ler', tom: 'rosa', t: 'Velocidade', d: 'de 1 (devagar) a 20 (rápido)', dir: passo('tp_velocidade', tp.velocidade, 'Velocidade do teleprompter') }) +
+        L({ ic: 'letra', tom: 'laranja', t: 'Tamanho da letra', d: 'automático ajusta ao tamanho da tela',
+            abaixo: seletor('tp_fonte', String(tp.fonte || 0), [['0', 'Auto'], ['40', 'Pequena'], ['56', 'Média'], ['72', 'Grande'], ['96', 'Enorme']]) }) +
+        L({ ic: 'relogio', tom: 'azul', t: 'Contagem antes de começar', d: 'segundos até o texto andar',
+            abaixo: seletor('tp_contagem', String(tp.contagem), [['0', 'Sem'], ['3', '3 s'], ['5', '5 s'], ['10', '10 s']]) }) +
+        L({ ic: 'espelho', tom: 'cinza', t: 'Texto espelhado', d: 'para usar com vidro de teleprompter', cls: 'cfg-alterna',
+            dir: chave('tp_espelho', !!tp.espelho, 'Texto espelhado') })) : '') +
+
+      (pode('interface') ? grupo('Interface', '',
+        L({ ic: 'lateral', tom: 'cinza', t: 'Começar com a barra recolhida', d: 'só os ícones na lateral', cls: 'cfg-alterna',
+            dir: chave('sidebar', recolhida, 'Barra lateral recolhida') }) +
+        L({ ic: 'teclado', tom: 'cinza', t: 'Atalhos de teclado', d: 'a lista completa', botao: true, attrs: ' data-atalhos' }),
+        'cfg-so-largo') : '') +
+
+      (pode('impressao') ? grupo('Impressão', 'A ficha A4 não muda com o tema: ela é sempre clara.',
+        L({ ic: 'impressao', tom: 'verde', t: 'Folha de abertura', d: 'já vem marcada na janela de impressão', cls: 'cfg-alterna',
+            dir: chave('abertura', !!abertura, 'Folha de abertura marcada por padrão') })) : '') +
+
+      (u && !ehCli ? grupo('Filtros', '',
+        L({ ic: 'filtro', tom: 'cinza', t: 'Limpar filtros guardados', d: 'Calendário, Produção, Vídeo e Design voltam ao padrão',
+            botao: true, semSeta: true, attrs: ' data-limpar-filtros' })) : '');
+
+    const abaAparencia =
       grupo('Aparência', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
         L({ ic: 'tema', tom: 'violeta', t: 'Tema', d: 'claro, escuro ou igual ao do aparelho',
             abaixo: '<div class="cfg-seg cfg-temas" data-grupo="tema" role="radiogroup" aria-label="Tema"><i class="cfg-seg-pill" aria-hidden="true"></i>' +
@@ -1852,47 +1907,87 @@ B7.Dashboard = (function () {
       grupo('Abertura', '',
         L({ ic: 'som', tom: 'laranja', t: 'Trilha sonora', d: 'som na animação de entrada', cls: 'cfg-alterna',
             dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
-        L({ ic: 'play', tom: 'rosa', t: 'Ver abertura', d: 'assistir de novo, com som', botao: true, attrs: ' data-ver-abertura' })) +
+        L({ ic: 'play', tom: 'rosa', t: 'Ver abertura', d: 'assistir de novo, com som', botao: true, attrs: ' data-ver-abertura' }));
 
-      (pode('interface') ? grupo('Interface', '',
-        L({ ic: 'lateral', tom: 'cinza', t: 'Começar com a barra recolhida', d: 'só os ícones na lateral', cls: 'cfg-alterna',
-            dir: chave('sidebar', recolhida, 'Barra lateral recolhida') }) +
-        L({ ic: 'teclado', tom: 'cinza', t: 'Atalhos de teclado', d: 'a lista completa', botao: true, attrs: ' data-atalhos' }),
-        'cfg-so-largo') : '') +
-
-      (pode('impressao') ? grupo('Impressão', 'A ficha A4 não muda com o tema: ela é sempre clara.',
-        L({ ic: 'impressao', tom: 'verde', t: 'Folha de abertura', d: 'já vem marcada na janela de impressão', cls: 'cfg-alterna',
-            dir: chave('abertura', !!abertura, 'Folha de abertura marcada por padrão') })) : '') +
-
+    const emOutraConta = !!(B7.Auth && B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
+    const abaConta =
       /* Diagnóstico do acesso: aparece enquanto não há sessão, e diz
          exatamente qual etapa falta. */
-      (B7.Auth && !B7.Auth.usuario() ? grupo('Acesso', 'Situação da autenticação nesta instalação.',
+      (B7.Auth && !u ? grupo('Acesso', 'Situação da autenticação nesta instalação.',
         '<div class="cfg-l cfg-l-livre">' + ic('acesso', 'cinza') + '<div id="cfg-acesso" class="cfg-l-tx"><div class="cfg-estado">' +
         '<span class="cfg-ponto"></span><span>Verificando…</span></div></div></div>') : '') +
+      (u ? grupo('Sessão', emOutraConta ? '' : 'Sair de todos encerra o B7 também nos outros celulares e computadores desta conta.',
+        (u.last_login_at ? L({ ic: 'relogio', tom: 'azul', t: 'Último login', d: 'quando esta conta entrou pela última vez',
+            dir: '<span class="cfg-valor">' + esc(B7.UI.quando ? B7.UI.quando(u.last_login_at) : '') + '</span>' }) : '') +
+        L({ ic: 'sair', tom: 'vermelho', t: 'Sair da conta', d: 'só neste aparelho', botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-config' }) +
+        (emOutraConta ? '' : L({ ic: 'celular', tom: 'vermelho', t: 'Sair de todos os aparelhos', d: 'encerra todas as sessões desta conta',
+            botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-todos' }))) : '');
 
+    const abaAdmin =
       /* a seção só existe para admin: nada de item com cadeado */
-      (pode('usuarios') ? grupo('Administração', 'Contas da equipe e dos clientes. Não existe cadastro público.',
-        L({ ic: 'usuarios', tom: 'azul', t: 'Usuários e acessos', d: 'criar, redefinir senha, vincular empresas, desativar',
+      (pode('usuarios') ? grupo('Pessoas', 'Contas da equipe e dos clientes. Não existe cadastro público.',
+        L({ ic: 'usuarios', tom: 'azul', t: 'Usuários e acessos', d: 'criar, redefinir senha, funções e módulos',
             botao: true, attrs: ' data-ir="#/usuarios"' })) : '') +
+      (ehAdm ? grupo('Integrações', 'A conta Google é uma só para o sistema inteiro: o que a equipe marca vai para ela.',
+        '<div id="cfg-google">' + L({ ic: 'google', tom: 'azul', t: 'Google Agenda', d: 'verificando…',
+            dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>') : '') +
+      (ehAdm && B7.IA && B7.IA.remoto && (iaCfg.roteiros || iaCfg.linhas) ? grupo('Inteligência artificial',
+        'Vale para toda a equipe. Desligado, o assistente some da tela e o servidor recusa o pedido.',
+        (iaCfg.roteiros ? L({ ic: 'ia', tom: 'violeta', t: 'Assistente nos Roteiros', d: 'sugerir, reescrever e revisar cenas', cls: 'cfg-alterna',
+            dir: chave('ia_roteiros', iaRemoto.roteiros !== false, 'Assistente nos Roteiros') }) : '') +
+        (iaCfg.linhas ? L({ ic: 'ia', tom: 'rosa', t: 'Assistente nas Linhas editoriais', d: 'ideias, textos e resumos da linha', cls: 'cfg-alterna',
+            dir: chave('ia_linhas', iaRemoto.linhas !== false, 'Assistente nas Linhas editoriais') }) : '')) : '') +
+      (pode('dados') ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
+        L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
+        L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '');
 
-      /* Banco, backup e sistema são do administrador. */
-      (pode('banco') || pode('sistema') ? grupo('Sistema', '',
+    const abaSistema =
+      grupo('Este aparelho', u ? 'Limpar não apaga nada do banco nem tira você da conta: só o que o B7 guardou aqui para abrir mais rápido.' : '',
+        L({ ic: 'versao', tom: 'cinza', t: 'Versão', d: 'a que está rodando agora',
+            dir: '<code class="cfg-versao">v' + esc((B7.Auth && B7.Auth.VERSAO) || '') + '</code>' }) +
+        (location.protocol.startsWith('http') ? L({ ic: 'atualizar', tom: 'verde', t: 'Buscar atualização', d: '<span id="cfg-atu-d">confere se saiu versão nova</span>',
+            botao: true, semSeta: true, attrs: ' data-buscar-atu' }) : '') +
+        (instalado
+          ? L({ ic: 'celular', tom: 'azul', t: 'Aplicativo', d: 'o B7 está instalado neste aparelho', dir: '<span class="cfg-valor ok">Instalado</span>' })
+          : L({ ic: 'celular', tom: 'azul', t: 'Instalar como aplicativo',
+                d: '<span id="cfg-inst-d">' + (B7.instalacao ? 'abre direto, sem a barra do navegador' : 'no menu do navegador: “Instalar” ou “Adicionar à tela de início”') + '</span>',
+                botao: !!B7.instalacao, semSeta: true, attrs: ' data-instalar' })) +
+        (u ? L({ ic: 'vassoura', tom: 'laranja', t: 'Limpar dados deste aparelho', d: 'memória das telas, arquivos guardados e filtros',
+            botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : '')) +
+      /* Banco e conexão são do administrador. */
+      (pode('banco') || pode('sistema') ? grupo('Servidor', '',
         (pode('banco') ? '<div id="cfg-banco">' + L({ ic: 'banco', tom: 'verde', t: 'Banco de dados', d: 'verificando…',
             dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>' : '') +
         (pode('sistema') ? L({ ic: 'rede', tom: 'azul', t: 'Conexão deste aparelho',
             d: online ? 'tudo certo por aqui' : 'reconecte para voltar a salvar',
-            dir: '<span class="cfg-valor ' + (online ? 'ok' : 'erro') + '">' + (online ? 'Online' : 'Sem conexão') + '</span>' }) +
-          /* versão do código carregado — só o administrador vê (conferir deploy) */
-          (B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'admin'
-            ? L({ ic: 'versao', tom: 'cinza', t: 'Versão', d: 'se não mudou após publicar, recarregue a página',
-                  dir: '<code class="cfg-versao">v' + esc(B7.Auth.VERSAO || '') + '</code>' }) : '') : '')) : '') +
+            dir: '<span class="cfg-valor ' + (online ? 'ok' : 'erro') + '">' + (online ? 'Online' : 'Sem conexão') + '</span>' }) : '')) : '');
 
-      (pode('dados') ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
-        L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
-        L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '') +
+    const abas = [['geral', 'Geral', abaGeral], ['aparencia', 'Aparência', abaAparencia], ['conta', 'Conta', abaConta],
+                  ['admin', 'Admin', abaAdmin], ['sistema', 'Sistema', abaSistema]].filter(a => a[2]);
+    let abaAtual = B7.pref.ler('cfg_aba', '');
+    if (!abas.some(a => a[0] === abaAtual)) abaAtual = abas[0][0];
 
-      (u ? grupo('', 'Encerra a sessão só neste aparelho.',
-        L({ ic: 'sair', tom: 'vermelho', t: 'Sair da conta', botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-config' })) : '') +
+    painel().innerHTML = '<div class="conteudo entra cfg-tela">' +
+      '<h1 class="cfg-titulo">Configurações</h1>' +
+
+      /* Conta no topo: quem está usando, e o atalho para o perfil */
+      /* zzz13: o cartão da conta ganha a aurora e o anel do perfil, e
+         três atalhos que abrem o perfil já na aba certa */
+      (u ? '<div class="cfg-perfil-cx"><i class="cfg-aurora" aria-hidden="true"></i>' +
+        '<button type="button" class="cfg-perfil" data-abrir-perfil>' +
+        (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-perfil-av') : '') +
+        '<span class="cfg-perfil-tx"><b>' + esc(u.nome || u.username || '') + '</b>' +
+        '<small>@' + esc(u.username || '') + ' · ' + esc(PAPEL_CFG[u.papel] || u.papel || '') + '</small></span>' + SETA_CFG + '</button>' +
+        '<div class="cfg-pf-atalhos">' +
+          [['conta', 'Foto e nome', 'camera'], ['seguranca', 'Senha', 'acesso'], ['notificacoes', 'Avisos', 'sino']].map(a =>
+            '<button type="button" data-pf="' + a[0] + '">' + svgF(a[2]) + '<span>' + a[1] + '</span></button>').join('') +
+        '</div></div>' : '') +
+
+      (abas.length > 1 ? '<div class="cfg-seg cfg-abas" data-grupo="aba" role="tablist" aria-label="Seções das configurações"><i class="cfg-seg-pill" aria-hidden="true"></i>' +
+        abas.map(a => '<button type="button" role="tab" data-v="' + a[0] + '" aria-selected="' + (a[0] === abaAtual) + '"' +
+          (a[0] === abaAtual ? ' class="on"' : '') + '><span>' + a[1] + '</span></button>').join('') + '</div>' : '') +
+      abas.map(a => '<div class="cfg-painel" data-painel="' + a[0] + '"' + (a[0] === abaAtual ? '' : ' hidden') + '>' + a[2] + '</div>').join('') +
+
       '<footer class="cfg-assina"><span class="cfg-assina-b7" aria-hidden="true"></span><b>Sistema B7</b><small>feito pela Branding7</small></footer>' +
     '</div>';
 
@@ -1903,6 +1998,26 @@ B7.Dashboard = (function () {
     p.querySelectorAll('[data-pf]').forEach(b => b.onclick = () => B7.Perfil.abrir(b.dataset.pf));
     const btSair = p.querySelector('[data-sair-config]');
     if (btSair) btSair.onclick = () => B7.Auth.sair();
+
+    /* teleprompter: mesma preferência que o próprio teleprompter lê e grava */
+    const gravarTp = (k, v) => {
+      const o = B7.pref.ler('teleprompter', {}) || {};
+      if (k === 'fonte' && !v) delete o.fonte; else o[k] = v;
+      B7.pref.gravar('teleprompter', o);
+    };
+    /* IA: vale para todos — grava no banco (só administrador consegue) */
+    const salvarIA = async (sw, v) => {
+      const atual = Object.assign({ roteiros: true, linhas: true }, B7.IA.remoto());
+      atual[sw.dataset.chave.slice(3)] = v;
+      try {
+        await B7.DB.rpc('sistema_config_definir', { p_chave: 'ia', p_valor: { roteiros: atual.roteiros !== false, linhas: atual.linhas !== false } });
+        B7.IA.definirRemoto(atual);
+        B7.UI.toast(v ? 'Assistente ligado para a equipe.' : 'Assistente desligado para a equipe.');
+      } catch (e) {
+        sw.classList.toggle('on', !v); sw.setAttribute('aria-checked', String(!v));
+        B7.UI.toast(e.message || 'Não foi possível salvar.');
+      }
+    };
 
     /* seletores: a pílula desliza até a opção escolhida */
     const moverPilula = (cx, anima) => {
@@ -1921,6 +2036,16 @@ B7.Dashboard = (function () {
         b.classList.add('on'); b.setAttribute('aria-checked', 'true');
         moverPilula(cx, true);
         const g = cx.dataset.grupo, v = b.dataset.v;
+        if (g === 'aba') {
+          B7.pref.gravar('cfg_aba', v);
+          cx.querySelectorAll('button').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+          p.querySelectorAll('[data-painel]').forEach(x => { x.hidden = x.dataset.painel !== v; });
+          /* as pílulas das abas escondidas não tinham largura para medir */
+          p.querySelectorAll('.cfg-seg').forEach(x => { if (x !== cx) moverPilula(x, false); });
+        }
+        if (g === 'cal_vista') B7.pref.gravar('calendario_vista', v);
+        if (g === 'tp_fonte') gravarTp('fonte', Number(v) || 0);
+        if (g === 'tp_contagem') gravarTp('contagem', Number(v) || 0);
         if (g === 'tema') {
           /* mesma função do menu da conta: um lugar só decide o tema */
           if (B7.definirTema) B7.definirTema(v === 'auto' ? 'sistema' : v);
@@ -1955,6 +2080,8 @@ B7.Dashboard = (function () {
         const d = p.querySelector('#cfg-anim-d'); if (d) d.textContent = descAnimacoes();
       }
       if (pref === 'som_abertura') B7.pref.gravar('som_abertura', v);
+      if (pref === 'tp_espelho') gravarTp('espelho', v);
+      if (pref === 'ia_roteiros' || pref === 'ia_linhas') salvarIA(sw, v);
     };
     p.querySelectorAll('.cfg-alterna').forEach(l => {
       const sw = l.querySelector('.cfg-sw');
@@ -1968,6 +2095,65 @@ B7.Dashboard = (function () {
     if (pode('banco')) desenharBanco();
     desenharAcesso();
     const ex = p.querySelector('[data-exportar]'); if (ex) ex.onclick = () => B7.Backup.exportar();
+
+    /* ---- zzz71: o que entrou com as abas ---- */
+    p.querySelectorAll('[data-sel]').forEach(sl => sl.onchange = () => {
+      if (sl.dataset.sel === 'inicio') { B7.pref.gravar('inicio', sl.value); B7.UI.toast('Tela inicial guardada neste aparelho.'); }
+    });
+    p.querySelectorAll('[data-passo]').forEach(cx => cx.querySelectorAll('button').forEach(b => b.onclick = () => {
+      const el = cx.querySelector('b');
+      const v = Math.min(20, Math.max(1, (Number(el.textContent) || 7) + Number(b.dataset.d)));
+      el.textContent = v; gravarTp('velocidade', v);
+    }));
+    const FILTROS = ['b7.calendario.v2', 'b7.kanban.filtros', 'b7.video.filtros', 'b7.design.filtros'];
+    const limparFiltros = () => { try { FILTROS.forEach(k => sessionStorage.removeItem(k)); } catch (e) {} };
+    const lf = p.querySelector('[data-limpar-filtros]');
+    if (lf) lf.onclick = () => { limparFiltros(); B7.UI.toast('Filtros limpos.'); };
+    const st = p.querySelector('[data-sair-todos]');
+    if (st) st.onclick = () => B7.UI.confirmar({ titulo: 'Sair de todos os aparelhos?',
+      texto: 'O B7 fecha aqui e em todo celular e computador onde esta conta estiver aberta. Será preciso entrar de novo em cada um.',
+      rotulo: 'Sair de todos', perigo: true, aoConfirmar: () => B7.Auth.sair({ todos: true }) });
+    const ba = p.querySelector('[data-buscar-atu]');
+    if (ba) ba.onclick = async () => {
+      const d = p.querySelector('#cfg-atu-d');
+      if (d) d.textContent = 'procurando…';
+      const r = B7.buscarAtualizacao ? await B7.buscarAtualizacao() : 'erro';
+      if (d) d.textContent = r === 'nova' ? 'tem versão nova — toque em “Atualizar” no aviso'
+        : r === 'atual' ? 'você já está na versão mais recente'
+        : r === 'offline' ? 'sem internet agora' : 'não foi possível conferir agora';
+    };
+    const bi = p.querySelector('button[data-instalar]');
+    if (bi) bi.onclick = async () => {
+      const ev = B7.instalacao; if (!ev) return;
+      try { ev.prompt(); await ev.userChoice; } catch (e) {}
+      B7.instalacao = null;
+      const d = p.querySelector('#cfg-inst-d'); if (d) d.textContent = 'se não instalou, use o menu do navegador';
+    };
+    const la = p.querySelector('[data-limpar-aparelho]');
+    if (la) la.onclick = () => B7.UI.confirmar({ titulo: 'Limpar os dados deste aparelho?',
+      texto: 'Apaga a memória das telas, os arquivos do B7 guardados aqui e os filtros. Você continua na conta e nada muda no banco. A página recarrega em seguida.',
+      rotulo: 'Limpar e recarregar', aoConfirmar: async () => {
+        limparFiltros();
+        try { if (B7.Memoria && B7.Memoria.limpar) B7.Memoria.limpar(); } catch (e) {}
+        try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
+        location.reload();
+      } });
+    const cg = p.querySelector('#cfg-google');
+    if (cg) (async () => {
+      let stG = null;
+      try { stG = await B7.DB.statusConexaoCalendario(); } catch (e) {}
+      if (!cg.isConnected) return;
+      const con = !!(stG && stG.conectado);
+      cg.innerHTML = L({ ic: 'google', tom: 'azul', t: 'Google Agenda', botao: true, attrs: ' data-google',
+        d: con ? esc(stG.conta_email || 'conta conectada') + (stG.ultima_sincronizacao && B7.UI.quando ? ' · sincronizado ' + esc(B7.UI.quando(stG.ultima_sincronizacao)) : '')
+          : stG ? 'nenhuma conta conectada — abrir para conectar' : 'não foi possível verificar agora',
+        dir: '<span class="cfg-valor' + (con ? ' ok' : '') + '">' + (con ? 'Conectado' : 'Conectar') + '</span>' });
+      cg.querySelector('[data-google]').onclick = () => {
+        /* o Calendário abre já com as configurações da conexão na frente */
+        try { sessionStorage.setItem('b7.cal.cfg', '1'); } catch (e) {}
+        location.hash = '#/calendario';
+      };
+    })();
     const im = p.querySelector('[data-importar]'); if (im) im.onclick = () => B7.Backup.importar();
   }
 

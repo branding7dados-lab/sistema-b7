@@ -1189,3 +1189,32 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
   .rt-linha{padding:12px 14px;}
 }
 @media (prefers-reduced-motion: reduce){ .rt-grupo, .rt-cab, .rt-status, .rt-barra-f{animation:none !important;} }
+
+/* =====================================================================
+   CONFIGURAÇÕES 3 (zzz71) — abas no topo e três controles novos
+   (lista de escolha, mais/menos e linha que só informa).
+   ===================================================================== */
+.cfg-abas{margin:0 0 22px;padding:4px;border-radius:14px;overflow-x:auto;scrollbar-width:none;}
+.cfg-abas::-webkit-scrollbar{display:none;}
+.cfg-abas .cfg-seg-pill{top:4px;bottom:4px;border-radius:10px;}
+.cfg-abas button{flex:1 0 auto;min-height:38px;padding:6px 14px;font-size:13.5px;border-radius:10px;}
+.cfg-painel[hidden]{display:none;}
+.cfg-painel{animation:cfgEntra .4s cubic-bezier(.16,1,.3,1) both;}
+.cfg-sel{flex:none;max-width:46%;height:36px;padding:0 30px 0 12px;border-radius:10px;border:1px solid var(--borda);background-color:var(--suave);
+  color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer;appearance:none;-webkit-appearance:none;text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px;}
+.cfg-sel:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.cfg-passo{flex:none;display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:12px;background:var(--suave);}
+.cfg-passo button{width:32px;height:32px;border:0;border-radius:9px;background:var(--card);color:var(--ink);font:inherit;font-size:17px;font-weight:700;
+  line-height:1;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.14);transition:transform .15s ease;}
+.cfg-passo button:active{transform:scale(.92);}
+.cfg-passo button:focus-visible{outline:2px solid var(--acento);outline-offset:1px;}
+.cfg-passo b{min-width:34px;text-align:center;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);}
+#cfg-google + .cfg-l::before,.cfg-l + #cfg-google > .cfg-l::before{content:"";position:absolute;top:0;right:0;left:57px;height:1px;background:var(--borda);}
+@media (max-width:760px){
+  .cfg-abas{margin:0 -4px 18px;}
+  .cfg-abas button{padding:6px 9px;font-size:13px;}
+  .cfg-sel{max-width:52%;}
+}
+@media (prefers-reduced-motion: reduce){ .cfg-painel{animation:none;} }

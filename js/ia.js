@@ -24,7 +24,27 @@ B7.IA = (function () {
   /* Recurso ligado nesta instalação? (js/config.js → IA: { roteiros: true }) */
   function ligada(recurso) {
     const ia = cfg().IA;
-    return !!(ia && ia[recurso] && B7.sb);
+    return !!(ia && ia[recurso] && B7.sb) && remoto()[recurso] !== false;
+  }
+
+  /* zzz71: liga/desliga que vale para TODOS (Configurações →
+     Administração). Mora no banco (sistema_config, chave "ia"); a cópia
+     local só evita o botão piscar ao abrir. O servidor (b7-ia) confere de
+     novo: desligado aqui, o pedido é recusado lá. */
+  let remotoMem = null;
+  function remoto() {
+    return remotoMem || (B7.pref ? B7.pref.ler('sis_ia', null) : null) || {};
+  }
+  function definirRemoto(v) {
+    remotoMem = v || {};
+    if (B7.pref) B7.pref.gravar('sis_ia', remotoMem);
+  }
+  async function sincronizar() {
+    if (!B7.sb) return;
+    try {
+      const { data } = await B7.sb.from('sistema_config').select('valor').eq('chave', 'ia').maybeSingle();
+      if (data && data.valor) definirRemoto(data.valor);
+    } catch (e) {}
   }
 
   /* O que a pessoa lê. Nunca o erro cru do provedor nem nome de modelo. */
@@ -42,6 +62,7 @@ B7.IA = (function () {
     recusado: 'O assistente não conseguiu trabalhar este trecho. Reformule o pedido ou escreva o texto de outro jeito.',
     igual: 'A IA não encontrou uma versão melhor e devolveu o mesmo texto. Escreva um pedido mais específico (ex.: "deixe mais curto e direto", "tire a contradição do pagamento") e gere de novo.',
     fora: 'Esse pedido não é sobre o texto. Escreva o que você quer que mude nele (ex.: "deixe mais descontraído").',
+    desligado: 'O assistente está desligado nas Configurações do sistema.',
     indisponivel: 'Assistente de IA temporariamente indisponível. Tente novamente em alguns minutos.',
     tempo: 'A sugestão demorou demais para chegar. Tente novamente.',
     rede: 'Sem conexão com o servidor. Confira a internet e tente de novo.'
@@ -101,5 +122,5 @@ B7.IA = (function () {
     }
   }
 
-  return { ligada, pedir };
+  return { ligada, pedir, remoto, definirRemoto, sincronizar };
 })();

@@ -336,6 +336,17 @@ B7.Rota = (function () {
      deep link continua valendo. replaceState não dispara hashchange:
      nenhum redirecionamento em cadeia. Chamada uma vez, no arranque. */
   function aplicarCasaPadrao() {
+    /* zzz71: tela inicial escolhida em Configurações (deste aparelho).
+       Só vale se a pessoa ainda pode abrir aquela tela. */
+    if (!location.hash || location.hash === '#') {
+      const pref = B7.pref ? B7.pref.ler('inicio', '') : '';
+      const cliente = B7.Auth && B7.Auth.ehCliente && B7.Auth.ehCliente();
+      if (pref && /^#\/[a-z]*$/.test(pref) && !cliente && B7.Auth && B7.Auth.usuario && B7.Auth.usuario() &&
+          B7.Perm && B7.Perm.podeRota && B7.Perm.podeRota(pref)) {
+        try { history.replaceState(null, '', pref); } catch (e) {}
+        return true;
+      }
+    }
     if ((!location.hash || location.hash === '#') && B7.Perm && B7.Perm.painelElegivel && B7.Perm.painelElegivel()) {
       try { history.replaceState(null, '', '#/painel'); } catch (e) {}
       return true;
@@ -1115,6 +1126,12 @@ B7.Rota = (function () {
 
   /* Service worker e atualização automática. Uma vez por página. */
   B7.ligarAtualizacao = ligarAtualizacao;
+  /* zzz71: o navegador avisa quando o B7 pode ser instalado; guardamos o
+     aviso para o botão "Instalar como aplicativo" das Configurações. Sem
+     preventDefault: o convite do próprio navegador continua como era. */
+  window.addEventListener('beforeinstallprompt', ev => { B7.instalacao = ev; });
+  window.addEventListener('appinstalled', () => { B7.instalacao = null; });
+
   let atualizacaoLigada = false;
   function ligarAtualizacao() {
     if (atualizacaoLigada) return;
@@ -1151,6 +1168,19 @@ B7.Rota = (function () {
       } catch (e) { /* sem rede agora: pergunta de novo depois */ }
       finally { conferindo = false; }
     }
+
+    /* zzz71: "Buscar atualização" (Configurações → Sistema): a mesma
+       pergunta, feita na hora, com resposta para a tela. */
+    B7.buscarAtualizacao = async () => {
+      if (!navigator.onLine) return 'offline';
+      try {
+        const r = await fetch('js/auth.js?t=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return 'erro';
+        const m = /VERSAO\s*=\s*'([^']+)'/.exec(await r.text());
+        if (m && m[1] !== minha) { haVersaoNova(m[1]); return 'nova'; }
+        return 'atual';
+      } catch (e) { return 'erro'; }
+    };
 
     /* QUANDO APLICAR (pedido do Kevin, 03/10, pacote zzh): SÓ quando a
        pessoa tocar em "Atualizar". Antes a página recarregava sozinha

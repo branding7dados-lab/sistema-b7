@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-07-zzz70';
+  const VERSAO = '2026-10-07-zzz71';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -146,6 +146,9 @@ B7.Auth = (function () {
       const linhas = await B7.DB.minhaSessao();
       sessao = linhas || null;
       anotar('perfil', sessao ? ('ok: ' + sessao.username + '/' + sessao.papel) : 'vazio');
+      /* zzz71: configuração do sistema que vale para todos (IA ligada?) —
+         em segundo plano, não segura a abertura */
+      if (sessao && sessao.papel !== 'cliente') { try { if (B7.IA && B7.IA.sincronizar) B7.IA.sincronizar(); } catch (e) {} }
       if (!sessao) {
         /* token válido e perfil ausente é outro problema, não falta de
            login: registrar ajuda a distinguir os dois na instalação */
@@ -279,19 +282,23 @@ B7.Auth = (function () {
     return !!s;
   }
 
-  async function sair() {
-    anotar('sair', 'chamado');
+  /* zzz71: "Sair" encerra só este aparelho; sair({ todos: true })
+     (Configurações → Conta) encerra a conta em todos. */
+  async function sair(opcoes) {
+    const todos = !!(opcoes && opcoes.todos === true);
+    anotar('sair', todos ? 'chamado (todos)' : 'chamado');
     /* dentro da conta de outra pessoa, "sair" é voltar para a própria:
        o encerramento comum, abaixo, desconectaria a pessoa de verdade */
     if (naContaDeOutro()) return voltarParaMinhaConta();
     sessao = null;
     try { if (B7.Memoria) B7.Memoria.limpar(); } catch (e) {}
-    try { await B7.DB.encerrarSessao(); } catch (e) {}
+    try { if (todos) await B7.DB.encerrarSessao(); else await B7.DB.encerrarSessaoLocal(); } catch (e) {}
     /* limpa o que ficou em memória e em cache local, para a próxima
        pessoa que abrir o navegador não ver dado de quem saiu */
     try {
       Object.keys(localStorage).forEach(k => {
-        if (k.startsWith('b7_') && !['b7_tema', 'b7_densidade', 'b7_desempenho', 'b7_leve_auto', 'b7_animacoes'].includes(k)) {
+        if (k.startsWith('b7_') && !['b7_tema', 'b7_densidade', 'b7_desempenho', 'b7_leve_auto', 'b7_animacoes',
+                                       'b7_pref_inicio', 'b7_pref_calendario_vista', 'b7_pref_teleprompter', 'b7_pref_cfg_aba'].includes(k)) {
           localStorage.removeItem(k);
         }
       });

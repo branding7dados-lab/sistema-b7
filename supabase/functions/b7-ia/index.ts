@@ -98,6 +98,16 @@ Deno.serve(comCors(async (req: Request) => {
   const v = pRoteiro || pLinha || pAnalise || pResumo;
   if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
 
+  /* zzz71: liga/desliga do administrador (Configurações → Administração),
+     guardado em sistema_config. Roteiro e análise seguem "roteiros";
+     linha e resumo seguem "linhas". Sem a linha no banco = ligado. */
+  {
+    const { data: cfgIa } = await sb.from('sistema_config').select('valor').eq('chave', 'ia').maybeSingle();
+    const recursoCfg = (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
+    const valorIa = (cfgIa && cfgIa.valor) as Record<string, unknown> | null;
+    if (valorIa && valorIa[recursoCfg] === false) return json({ ok: false, categoria: 'desligado' });
+  }
+
   /* Linha editorial: designer só lê (a tela já trava os campos para ele);
      quem não pode editar não ganha um caminho de escrita pela IA. A
      análise de roteiro segue a mesma regra: é ferramenta de quem escreve. */
