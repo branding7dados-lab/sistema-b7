@@ -842,10 +842,8 @@ B7.Video = (function () {
         const destino = zona.dataset.solta;
         if (!d || destino === d.editing_status) return;
         /* quando o quadro redesenha com o cartão na coluna nova, ele assenta */
-        Promise.resolve(moverCartaoVideo(d, destino)).then(() => {
-          if (B7.Movimento && B7.Movimento.assentar && d.editing_status === destino)
-            B7.Movimento.assentar(document.querySelector('.vd-card[data-demanda="' + CSS.escape(id) + '"]'));
-        }).catch(() => {});
+        /* o cartão assenta na coluna nova na hora (moverNaTela) */
+        Promise.resolve(moverCartaoVideo(d, destino)).catch(() => {});
       };
     });
   }
@@ -976,26 +974,40 @@ B7.Video = (function () {
     window.addEventListener('hashchange', fechar, { once: true });
   }
 
-  async function commitStatusVideo(d, status, mensagem) {
+  /* zzz59: o cartão muda de coluna NA HORA e os contadores acompanham;
+     a gravação segue por baixo, pela mesma ação de negócio de sempre.
+     Se ela falhar (ou a pessoa cancelar a confirmação), o cartão volta
+     para onde estava e um aviso explica. Devolve a função que desfaz. */
+  function moverNaTela(d, status) {
+    const antes = d.editing_status;
+    if (antes === status) return () => {};
+    d.editing_status = status;
+    desenharProducao();
+    if (B7.Movimento && B7.Movimento.assentar)
+      B7.Movimento.assentar(document.querySelector('.vd-card[data-demanda="' + CSS.escape(d.id) + '"]'));
+    return () => {
+      /* só desfaz se ninguém mexeu de novo no cartão nesse meio-tempo */
+      if (d.editing_status !== status) return;
+      d.editing_status = antes;
+      desenharProducao();
+    };
+  }
+  async function commitStatusVideo(d, status, mensagem, desfazer) {
+    desfazer = desfazer || moverNaTela(d, status);
     try {
       await B7.DB.mudarStatusVideo(d.id, status, mensagem || null);
-      d.editing_status = status;
-      B7.UI.toast('Situação atualizada.');
     } catch (e) {
+      desfazer();
       B7.UI.toast(e.message || 'Não foi possível mover a demanda.');
-    } finally {
-      desenharProducao();
     }
   }
-  async function commitAcaoVideo(d, acao, statusFinal) {
+  async function commitAcaoVideo(d, acao, statusFinal, desfazer) {
+    desfazer = desfazer || moverNaTela(d, statusFinal);
     try {
       await acao();
-      d.editing_status = statusFinal;
-      B7.UI.toast('Situação atualizada.');
     } catch (e) {
+      desfazer();
       B7.UI.toast(e.message || 'Não foi possível mover a demanda.');
-    } finally {
-      desenharProducao();
     }
   }
 
@@ -1014,20 +1026,21 @@ B7.Video = (function () {
     }
 
     if (destino === 'aguardando_aprovacao') {
+      const desfazer = moverNaTela(d, 'aguardando_aprovacao');
       let versoes = [];
       try { versoes = await B7.DB.versoesDemandaVideo(d.id); } catch (e) { versoes = []; }
       const atual = versoes[0];
       /* Sem versão registrada no B7: o vídeo está no Drive e isso basta.
          Mover o cartão só atualiza a situação — registrar versão aqui é
          opcional, nunca condição para avançar. */
-      if (!atual) { await commitStatusVideo(d, 'aguardando_aprovacao', null); return; }
+      if (!atual) { await commitStatusVideo(d, 'aguardando_aprovacao', null, desfazer); return; }
       const ok = await B7.UI.confirmar({
         titulo: 'Enviar para aprovação?',
         texto: 'Enviar V' + String(atual.numero).padStart(2, '0') + ' para a aprovação do cliente?',
         confirmar: 'Enviar para aprovação'
       });
-      if (!ok) return;
-      await commitAcaoVideo(d, () => B7.DB.enviarParaAprovacaoVideo(d.id, atual.id), 'aguardando_aprovacao');
+      if (!ok) { desfazer(); return; }
+      await commitAcaoVideo(d, () => B7.DB.enviarParaAprovacaoVideo(d.id, atual.id), 'aguardando_aprovacao', desfazer);
       return;
     }
 
