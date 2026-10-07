@@ -31,11 +31,18 @@ B7.Chat = (function () {
     ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     volta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>'
   };
-  const SUGESTOES = [
+  /* zzz85: sugestões diferentes com e sem cliente em foco */
+  const SUGESTOES_GERAL = [
+    'Resumo do meu dia',
     'O que está atrasado hoje?',
-    'Quais gravações tenho nos próximos dias?',
+    'O que os clientes aprovaram esta semana?',
+    'Quantos vídeos entregamos este mês?'
+  ];
+  const SUGESTOES_CLIENTE = [
+    'Resuma a situação deste cliente',
     'Me dê 5 ideias de conteúdo para este cliente',
-    'Resuma a situação deste cliente'
+    'O que este cliente aprovou ou pediu ajuste?',
+    'O que está programado para publicar esta semana?'
   ];
 
   /* estado da conversa aberta */
@@ -184,9 +191,9 @@ B7.Chat = (function () {
       const temCli = !!S.clienteId;
       return '<div class="ch-vazio"><span class="ch-vazio-ic">' + IC.ia + '</span>' +
         '<b>Como posso ajudar?</b>' +
-        '<p>Pergunte sobre prazos, demandas e gravações, ou peça ideias e recomendações. ' +
+        '<p>Pergunte sobre prazos, entregas, aprovações e publicações, ou peça ideias e recomendações. ' +
           (temCli ? 'Estou olhando a estratégia e a linha editorial do cliente escolhido.' : 'Escolha um cliente lá em cima para respostas sob medida.') + '</p>' +
-        '<div class="ch-sugs">' + SUGESTOES.filter(s => temCli || s.indexOf('este cliente') < 0).map(s =>
+        '<div class="ch-sugs">' + (temCli ? SUGESTOES_CLIENTE : SUGESTOES_GERAL).map(s =>
           '<button type="button" class="ch-sug">' + esc(s) + '</button>').join('') + '</div></div>';
     }
     return S.msgs.map(m => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
