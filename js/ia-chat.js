@@ -196,14 +196,46 @@ B7.Chat = (function () {
         '<div class="ch-sugs">' + (temCli ? SUGESTOES_CLIENTE : SUGESTOES_GERAL).map(s =>
           '<button type="button" class="ch-sug">' + esc(s) + '</button>').join('') + '</div></div>';
     }
-    return S.msgs.map(m => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
-      (m.papel === 'user' ? '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>').join('') +
+    return S.msgs.map((m, i) => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
+      (m.papel === 'user' ? '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
+      (m.acao ? acaoHTML(m.acao, i) : '')).join('') +
       (S.enviando ? '<div class="ch-msg ia ch-pensando" aria-label="Escrevendo"><i></i><i></i><i></i></div>' : '');
   }
+  /* zzz89: a IA só PROPÕE. Este cartão é a confirmação: nada é criado
+     antes de a pessoa tocar em "Criar demanda". */
+  const dataBR = iso => (/^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : 'sem prazo');
+  function acaoHTML(a, i) {
+    const linha = (r, v) => '<div class="ch-ac-l"><span>' + r + '</span><b>' + esc(v) + '</b></div>';
+    return '<div class="ch-acao' + (a.estado ? ' ' + a.estado : '') + '">' +
+      '<div class="ch-ac-cab">' + IC.novo + '<b>Criar demanda de vídeo</b></div>' +
+      linha('Cliente', a.cliente_nome) + linha('Título', a.titulo) + linha('Prazo', dataBR(a.prazo)) +
+      (a.estado === 'feito' ? '<div class="ch-ac-fim ok">Demanda criada. <a href="#/video">Abrir a Edição de vídeo</a></div>'
+        : a.estado === 'cancelado' ? '<div class="ch-ac-fim">Cancelado. Nada foi criado.</div>'
+        : (a.erro ? '<div class="ch-ac-fim erro">' + esc(a.erro) + '</div>' : '') +
+          '<div class="ch-ac-bts"><button type="button" class="ch-ac-nao" data-acao-nao="' + i + '"' + (a.estado === 'indo' ? ' disabled' : '') + '>Cancelar</button>' +
+          '<button type="button" class="ch-ac-ok" data-acao-ok="' + i + '"' + (a.estado === 'indo' ? ' disabled' : '') + '>' + (a.estado === 'indo' ? 'Criando…' : 'Criar demanda') + '</button></div>') +
+    '</div>';
+  }
+  async function confirmarAcao(i) {
+    const m = S.msgs[i], a = m && m.acao;
+    if (!a || a.estado === 'indo' || a.estado === 'feito') return;
+    a.estado = 'indo'; a.erro = ''; pintarCorpo();
+    try {
+      await B7.DB.criarDemandaVideo({ clienteId: a.cliente_id, titulo: a.titulo, prazo: a.prazo || null });
+      a.estado = 'feito';
+      if (B7.UI && B7.UI.toast) B7.UI.toast('Demanda de vídeo criada.');
+    } catch (e) {
+      a.estado = ''; a.erro = (e && e.message) || 'Não foi possível criar a demanda.';
+    }
+    pintarCorpo();
+  }
+
   function pintarCorpo() {
     const c = painel && painel.querySelector('.ch-corpo'); if (!c) return;
     c.innerHTML = corpoHTML();
     c.querySelectorAll('.ch-sug').forEach(b => b.onclick = () => enviar(b.textContent));
+    c.querySelectorAll('[data-acao-ok]').forEach(b => b.onclick = () => confirmarAcao(Number(b.dataset.acaoOk)));
+    c.querySelectorAll('[data-acao-nao]').forEach(b => b.onclick = () => { const m = S.msgs[Number(b.dataset.acaoNao)]; if (m && m.acao) { m.acao.estado = 'cancelado'; pintarCorpo(); } });
     c.scrollTop = c.scrollHeight;
   }
 
@@ -227,7 +259,7 @@ B7.Chat = (function () {
           'name="b7-chat-mensagem" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"></textarea>' +
         '<button type="submit" class="ch-enviar" id="ch-enviar" aria-label="Enviar">' + IC.enviar + '</button>' +
       '</form>' +
-      '<p class="ch-aviso">A IA pode errar. Confira antes de usar. Ela só lê o B7: não altera nada.</p>';
+      '<p class="ch-aviso">A IA pode errar. Confira antes de usar. Ela não altera nada sozinha: só propõe, e você confirma.</p>';
     ligarTopo();
     pintarCorpo();
     const form = painel.querySelector('.ch-form'), ta = painel.querySelector('#ch-texto');
@@ -259,7 +291,7 @@ B7.Chat = (function () {
     S.enviando = false;
     if (r && r.ok) {
       if (r.conversa_id) S.conversaId = r.conversa_id;
-      S.msgs.push({ papel: 'assistant', texto: r.texto });
+      S.msgs.push({ papel: 'assistant', texto: r.texto, acao: r.acao || null });
       S.lista = null;
     } else {
       /* a pergunta não foi guardada: sai da conversa e volta para o campo */

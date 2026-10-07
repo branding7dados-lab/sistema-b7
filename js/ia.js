@@ -104,7 +104,8 @@ B7.IA = (function () {
       let corpo = null;
       try { corpo = await resp.json(); } catch (e) {}
       if (corpo && corpo.ok === true && typeof corpo.texto === 'string' && corpo.texto.trim()) {
-        return { ok: true, texto: corpo.texto, conversa_id: corpo.conversa_id || null, titulo: corpo.titulo || '', cliente_id: corpo.cliente_id || null };
+        return { ok: true, texto: corpo.texto, conversa_id: corpo.conversa_id || null, titulo: corpo.titulo || '', cliente_id: corpo.cliente_id || null,
+                 acao: (corpo.acao && typeof corpo.acao === 'object') ? corpo.acao : null };
       }
       /* tarefas que devolvem lista (pilares, conteúdos, observações) */
       if (corpo && corpo.ok === true && Array.isArray(corpo.itens)) {

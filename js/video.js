@@ -2428,6 +2428,7 @@ B7.Video = (function () {
     else if (ev.tipo === 'versao') texto = esc(ev.mensagem || 'Nova versão registrada');
     else if (ev.tipo === 'decisao_cliente') texto = esc(ev.mensagem || 'Decisão do cliente registrada');
     else if (ev.tipo === 'conclusao') texto = esc(ev.mensagem || 'Conclusão atualizada');
+    else if (ev.tipo === 'edicao') texto = 'alterou — ' + esc(ev.mensagem || 'dados da demanda');
     else texto = esc(ev.tipo);
     const cor = ev.tipo === 'status' ? ' vd-tl-' + esc(ev.para_status || '') : ev.tipo === 'conclusao' ? ' vd-tl-ok' : '';
     return '<li class="vd-tl-item' + cor + '"><i class="vd-tl-dot"></i><div class="vd-tl-corpo"><b>' + esc(ev.ator_nome || 'Alguém') + '</b> ' + texto +

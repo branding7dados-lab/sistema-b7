@@ -109,6 +109,25 @@ body.tem-chat .b7-atu{bottom:92px;}
 .ch-pensando i:nth-child(2){animation-delay:.15s} .ch-pensando i:nth-child(3){animation-delay:.3s}
 @keyframes chPonto{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
 
+/* zzz89: cartão de confirmação de uma ação proposta pela IA */
+.ch-acao{align-self:flex-start;width:min(100%,320px);padding:12px;border-radius:16px;background:var(--card);
+  border:1.5px solid color-mix(in srgb, var(--acento) 40%, var(--borda));box-shadow:0 10px 24px -18px rgba(40,10,70,.5);animation:chMsg .3s cubic-bezier(.16,1,.3,1) both;}
+.ch-ac-cab{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--acento);}
+.ch-ac-cab svg{width:16px;height:16px;flex:none;}
+.ch-ac-cab b{font-family:'Archivo',sans-serif;font-size:14px;font-weight:800;color:var(--ink);}
+.ch-ac-l{display:flex;gap:10px;padding:5px 0;border-top:1px solid color-mix(in srgb, var(--ink) 7%, transparent);font-size:12.5px;}
+.ch-ac-l span{flex:none;width:52px;color:var(--ink-4);}
+.ch-ac-l b{flex:1;min-width:0;font-weight:600;color:var(--ink);overflow-wrap:anywhere;}
+.ch-ac-bts{display:grid;grid-template-columns:auto 1fr;gap:8px;margin-top:10px;}
+.ch-ac-bts button{height:38px;border:0;border-radius:12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;}
+.ch-ac-nao{padding:0 14px;background:color-mix(in srgb, var(--ink) 6%, transparent);color:var(--ink-2);}
+.ch-ac-ok{color:#fff;background:linear-gradient(135deg,#4B1E8F,#C2187A);}
+.ch-ac-bts button:disabled{opacity:.6;cursor:default;}
+.ch-ac-fim{margin-top:9px;font-size:12.5px;color:var(--ink-3);}
+.ch-ac-fim.ok{color:var(--ok);font-weight:600;} .ch-ac-fim.ok a{color:inherit;text-decoration:underline;}
+.ch-ac-fim.erro{color:var(--erro);}
+.ch-acao.feito,.ch-acao.cancelado{border-color:var(--borda);box-shadow:none;}
+
 .ch-vazio{margin:auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;}
 .ch-vazio-ic{width:52px;height:52px;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;color:#fff;margin-bottom:6px;
   background:linear-gradient(135deg,#6B3FD8,#D63384);box-shadow:0 14px 26px -14px rgba(140,40,160,.75);}

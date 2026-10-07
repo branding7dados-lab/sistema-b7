@@ -146,11 +146,12 @@ export async function carregarContexto(sb: SupabaseClient, clienteId: string | n
      sessão da pessoa; cada leitura que falhar só fica de fora. */
   const mesIni = hoje.slice(0, 8) + '01';
   const antIni = (() => { const d = new Date(mesIni + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() - 1); return d.toISOString().slice(0, 10); })();
+  /* zzz89: seis meses de referência para o histórico de vídeo */
+  const sem6 = (() => { const d = new Date(mesIni + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() - 5); return d.toISOString().slice(0, 10); })();
   const [ent, fin, apPend, apDec, pub, rot] = await Promise.all([
     filtra(sb.from('demandas_edicao_resumo').select('titulo, codigo, cliente_nome, videomaker_nome, competencia_ano, competencia_mes, client_id')
       .is('deleted_at', null).eq('editing_status', 'entregue')
-      .or('and(competencia_ano.eq.' + Number(mesIni.slice(0, 4)) + ',competencia_mes.eq.' + Number(mesIni.slice(5, 7)) + '),' +
-          'and(competencia_ano.eq.' + Number(antIni.slice(0, 4)) + ',competencia_mes.eq.' + Number(antIni.slice(5, 7)) + ')')).limit(600),
+      .gte('competencia_ano', Number(sem6.slice(0, 4)))).limit(1500),
     filtra(sb.from('design_resumo').select('titulo, cliente_nome, designer_nome, finalizado_em, client_id')
       .eq('status', 'finalizado').gte('finalizado_em', antIni)).order('finalizado_em', { ascending: false }).limit(400),
     filtra(sb.from('aprovacoes_pendentes').select('cliente_nome, titulo, tipo, enviado_em, comentarios_abertos, client_id'))
@@ -217,6 +218,14 @@ export async function carregarContexto(sb: SupabaseClient, clienteId: string | n
       if (!clienteId) linhas.push('  ' + mesBR(antIni) + ' por cliente: ' + contarPor(anterior, 'cliente_nome', 14) + '.');
       linhas.push('  ' + mesBR(antIni) + ' por videomaker: ' + contarPor(anterior, 'videomaker_nome', 8) + '.');
     }
+    /* zzz89: os seis últimos meses de referência, só a contagem */
+    const serie: string[] = [];
+    for (let k = 5; k >= 0; k--) {
+      const d = new Date(mesIni + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() - k);
+      const iso = d.toISOString().slice(0, 10);
+      serie.push(mesBR(iso) + ': ' + doMes(iso).length);
+    }
+    linhas.push('  Entregues nos últimos 6 meses de referência — ' + serie.join(' · ') + '.');
   }
   doisMeses('Artes finalizadas (pela data em que foram finalizadas)', (fin.data || []) as Record<string, unknown>[], 'finalizado_em', 'designer_nome');
 
@@ -282,6 +291,26 @@ export async function carregarContexto(sb: SupabaseClient, clienteId: string | n
       const cs = (cont.data || []) as Record<string, unknown>[];
       if (cs.length) { linhas.push('Conteúdos desta linha (' + cs.length + '):'); cs.forEach(x => linhas.push('  - ' + corta(x.tipo, 12) + ' · ' + corta(x.titulo, 90) + (x.data_postagem ? ' · ' + br(x.data_postagem) : ''))); }
     } else linhas.push('Este cliente ainda não tem linha editorial nos dados visíveis.');
+
+    /* zzz89: o TEXTO dos roteiros mais recentes do cliente (até 3), para a
+       IA conseguir comentar, comparar e sugerir no mesmo tom */
+    const { data: gs2 } = await sb.from('gravacoes').select('id, nome, data_gravacao').eq('client_id', clienteId)
+      .is('deleted_at', null).order('data_gravacao', { ascending: false, nullsFirst: false }).limit(6);
+    const gravIds = ((gs2 || []) as { id: string }[]).map(g => g.id);
+    if (gravIds.length) {
+      const { data: rs2 } = await sb.from('roteiros').select('id, titulo, status, objetivo, updated_at')
+        .in('recording_session_id', gravIds).is('deleted_at', null).is('archived_at', null).order('updated_at', { ascending: false }).limit(3);
+      const rots = (rs2 || []) as Record<string, unknown>[];
+      if (rots.length) {
+        const { data: cs2 } = await sb.from('cenas').select('script_id, position, texto').in('script_id', rots.map(r => String(r.id)))
+          .order('position', { ascending: true }).limit(120);
+        const porRot: Record<string, string[]> = {};
+        ((cs2 || []) as Record<string, unknown>[]).forEach(x => { const t = corta(x.texto, 400); if (t) (porRot[String(x.script_id)] = porRot[String(x.script_id)] || []).push(t); });
+        linhas.push('Roteiros mais recentes deste cliente (texto das cenas, resumido):');
+        rots.forEach(r => linhas.push('  • ' + corta(r.titulo, 80) + ' [' + corta(r.status, 20) + ']' + (r.objetivo ? ' — objetivo: ' + corta(r.objetivo, 120) : '') +
+          '\n    ' + corta((porRot[String(r.id)] || []).join(' / '), 1100)));
+      }
+    }
   }
 
   let texto = linhas.join('\n');
@@ -295,7 +324,7 @@ const SISTEMA = [
   'Você ajuda com: recomendações de conteúdo, ideias, ângulos, legendas, roteiros, estratégia para os clientes, organização do trabalho e perguntas sobre o que está em andamento.',
   'REGRAS:',
   '1. Quando a pergunta for sobre clientes, prazos, demandas, peças ou gravações, use SOMENTE os DADOS DO SISTEMA abaixo. Nunca invente nome, número, data ou prazo.',
-  '2. Os dados são um recorte: o que está em aberto em vídeo e design, gravações próximas, entregas do mês atual e do anterior, aprovações (pendentes e decididas em 14 dias), publicações de 7 dias para trás e para a frente, roteiros em aberto e, se houver, o cliente em foco. Se a resposta não estiver neles (por exemplo, meses mais antigos ou o texto de um roteiro), diga que não encontrou nos dados que recebeu e indique em que tela do B7 a pessoa confere.',
+  '2. Os dados são um recorte: o que está em aberto em vídeo e design, gravações próximas, entregas do mês atual e do anterior, aprovações (pendentes e decididas em 14 dias), publicações de 7 dias para trás e para a frente, roteiros em aberto e, se houver, o cliente em foco. Se a resposta não estiver neles (por exemplo, detalhes de meses antigos, comentários, ou o texto de roteiros sem cliente em foco), diga que não encontrou nos dados que recebeu e indique em que tela do B7 a pessoa confere.',
   '2b. Para "resumo do dia": comece pelo que está atrasado, depois o que vence hoje, as gravações e publicações de hoje e o que aguarda o cliente — só o que for da pessoa quando os dados permitirem saber, e curto.',
   '3. Você só lê. Não cria, não altera e não apaga nada no sistema. Se pedirem uma ação, explique onde a pessoa faz isso.',
   '4. Para pedir ideias sob medida para um cliente, a pessoa precisa escolher o cliente no topo da conversa. Se não houver cliente em foco e o pedido depender dele, diga isso em uma frase e ajude com o que for geral.',
@@ -303,7 +332,45 @@ const SISTEMA = [
   '6. Formato: texto simples. Parágrafos curtos. Listas com "- " quando ajudar. Sem tabelas, sem títulos com #. Destaque com **negrito** só o essencial. Seja breve: vá direto ao que foi pedido.'
 ].join('\n');
 
-export function montarMensagens(p: Pedido, contexto: string, hist: Fala[], quem: { nome: string; funcao: string }): Mensagem[] {
+/* zzz89: IA QUE AGE COM CONFIRMAÇÃO. O assistente nunca grava nada: ele
+   só PROPÕE, terminando a resposta com um marcador. O servidor confere o
+   marcador (cliente visível para a pessoa, título, data), tira-o do texto
+   e devolve a proposta à tela, que mostra um cartão. A demanda só nasce
+   se a pessoa tocar em "Criar" — e quem cria é a função de sempre do
+   banco, com a sessão e as permissões dela. */
+const ACOES = [
+  '7. AÇÃO (só propor, nunca executar): você pode PROPOR a criação de uma demanda de edição de vídeo, e só quando a pessoa pedir claramente para criar.',
+  '   Para propor, escreva uma frase curta dizendo o que será criado e termine a resposta com UMA linha, sozinha, exatamente neste formato:',
+  '   [[ACAO {"tipo":"video_demanda","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","prazo":"AAAA-MM-DD"}]]',
+  '   Use "prazo":"" se a pessoa não deu prazo. Converta datas faladas ("sexta", "amanhã") usando a data de HOJE dos dados.',
+  '   Se faltar o cliente ou o título, ou o cliente não estiver na lista, PERGUNTE em vez de propor. Nunca diga que criou: quem cria é a pessoa, ao confirmar no cartão que vai aparecer.'
+].join('\n');
+const MARCADOR = /\[\[ACAO\s*(\{[\s\S]*?\})\s*\]\]/g;
+export const semAcao = (texto: string) => String(texto || '').replace(MARCADOR, '').replace(/\n{3,}/g, '\n\n').trim();
+export type Acao = { tipo: 'video_demanda'; cliente_id: string; cliente_nome: string; titulo: string; prazo: string | null };
+
+export async function extrairAcao(texto: string, sb: SupabaseClient): Promise<{ texto: string; acao: Acao | null }> {
+  const limpoTexto = semAcao(texto);
+  let acao: Acao | null = null;
+  try {
+    const achados = [...String(texto || '').matchAll(MARCADOR)];
+    if (achados.length === 1) {
+      const j = JSON.parse(achados[0][1]) as Record<string, unknown>;
+      const titulo = corta(j.titulo, 200);
+      const prazo = typeof j.prazo === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(j.prazo) && !isNaN(Date.parse(j.prazo + 'T12:00:00Z')) ? j.prazo : null;
+      const norm = (v: unknown) => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+      if (j.tipo === 'video_demanda' && titulo.length >= 3 && norm(j.cliente)) {
+        /* o cliente tem de existir E ser visível para esta pessoa */
+        const { data } = await sb.from('clientes').select('id, nome').is('deleted_at', null).limit(300);
+        const iguais = ((data || []) as { id: string; nome: string }[]).filter(x => norm(x.nome) === norm(j.cliente));
+        if (iguais.length === 1) acao = { tipo: 'video_demanda', cliente_id: iguais[0].id, cliente_nome: iguais[0].nome, titulo, prazo };
+      }
+    }
+  } catch (_e) { acao = null; }
+  return { texto: limpoTexto || 'Não consegui montar a proposta. Diga o cliente e o título da demanda.', acao };
+}
+
+export function montarMensagens(p: Pedido, contexto: string, hist: Fala[], quem: { nome: string; funcao: string }, podeAgir = false): Mensagem[] {
   const u: string[] = [];
   u.push('QUEM PERGUNTA: ' + corta(quem.nome, 60) + (quem.funcao ? ' (' + quem.funcao + ')' : '') + '.');
   u.push('', 'DADOS DO SISTEMA (lidos agora, com o acesso desta pessoa):', '<<<', contexto, '>>>');
@@ -312,7 +379,7 @@ export function montarMensagens(p: Pedido, contexto: string, hist: Fala[], quem:
     hist.forEach(m => u.push((m.papel === 'user' ? 'Pessoa: ' : 'Assistente: ') + m.texto));
   }
   u.push('', 'MENSAGEM ATUAL DA PESSOA:', '<<<', p.texto, '>>>', '', 'Responda à mensagem atual.');
-  return [{ role: 'system', content: SISTEMA }, { role: 'user', content: u.join('\n') }];
+  return [{ role: 'system', content: podeAgir ? SISTEMA + '\n' + ACOES : SISTEMA }, { role: 'user', content: u.join('\n') }];
 }
 
 export function limpar(bruto: string): string {

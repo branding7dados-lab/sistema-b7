@@ -730,7 +730,17 @@ B7.Teleprompter = (function () {
      6. ENTRADAS
      ================================================================ */
   /* dados já em mãos (editor de roteiros): { roteiros:[{roteiro,cenas}], indice, cliente } */
+  /* zzz89: o teleprompter é de quem grava ou coordena (e do administrador) */
+  function podeUsar() {
+    const A = B7.Auth;
+    if (!A || !A.usuario || !A.usuario()) return false;
+    if (A.papel && A.papel() === 'admin') return true;
+    const fn = A.funcao ? A.funcao() : null;
+    return fn === 'videomaker' || fn === 'coordenador';
+  }
+  const semAcesso = () => { if (B7.UI && B7.UI.toast) B7.UI.toast('O teleprompter é para videomaker e coordenação.'); };
   function abrir(op) {
+    if (!podeUsar()) return semAcesso();
     criarSessao({ cliente: op.cliente || '', marcar: op.marcar, podeMarcar: !!op.podeMarcar, aoFechar: op.aoFechar });
     S.roteiros = (op.roteiros || []).map(x => normalizar(x.roteiro, x.cenas, { itemId: x.itemId || null, gravado: !!x.gravado }));
     S.i = Math.min(Math.max(0, op.indice || 0), Math.max(0, S.roteiros.length - 1));
@@ -744,6 +754,7 @@ B7.Teleprompter = (function () {
   }
   /* a partir da gravação: os roteiros da lista "O que vamos gravar", na ordem dela */
   async function abrirDaGravacao(gravacao, itens, op) {
+    if (!podeUsar()) return semAcesso();
     op = op || {};
     criarSessao({ cliente: gravacao.cliente_nome || '', marcar: op.marcar, podeMarcar: !!op.podeMarcar, aoFechar: op.aoFechar });
     const minha = S;
@@ -773,6 +784,6 @@ B7.Teleprompter = (function () {
   }
 
   /* _teste: só para a página de testes dar passos na rolagem sem depender de animação */
-  return { abrir, abrirDoEditor, abrirDaGravacao, fechar, normalizar,
+  return { podeUsar, abrir, abrirDoEditor, abrirDaGravacao, fechar, normalizar,
            _teste: { passo: dt => passo(dt), estado: () => S && ({ fase: S.fase, i: S.i, cena: S.cena, y: R.y, max: R.max, tocando: R.tocando, contando: S.contando, prefs: Object.assign({}, P) }) } };
 })();

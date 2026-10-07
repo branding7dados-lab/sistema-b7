@@ -311,7 +311,7 @@ B7.Gravacao = (function () {
       (e === 'ok' && total ? '<span class="gv-progresso' + (feitos === total ? ' completo' : '') + '" role="progressbar" aria-valuemin="0" aria-valuemax="' + total + '" aria-valuenow="' + feitos + '" aria-label="' + feitos + ' de ' + total + ' itens gravados">' +
         '<i style="--p:' + Math.round(feitos / total * 100) + '%"></i><span><b>' + feitos + '</b> de ' + total + ' gravados</span></span>' : '') +
       /* teleprompter: só quando há roteiro na lista — lê o roteiro canônico, sem cópia */
-      (e === 'ok' && S.itens.some(i => i.tipo === 'roteiro' && i.roteiro_id) && window.B7.Teleprompter
+      (e === 'ok' && S.itens.some(i => i.tipo === 'roteiro' && i.roteiro_id) && window.B7.Teleprompter && (!B7.Teleprompter.podeUsar || B7.Teleprompter.podeUsar())
         ? '<button type="button" class="b fina contorno gv-tele" data-gv="teleprompter" title="Mostra os roteiros desta gravação para leitura, em tela cheia">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M7.5 9.5h9M7.5 12.5h6M9 20h6"/></svg>' +
             '<span>Teleprompter</span></button>' : '') +

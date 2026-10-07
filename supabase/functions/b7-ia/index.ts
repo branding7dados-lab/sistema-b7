@@ -148,12 +148,16 @@ Deno.serve(comCors(async (req: Request) => {
     const [hist, contexto] = await Promise.all([Chat.historico(sb, conv), Chat.carregarContexto(sbDaPessoa, conv.clienteId)]);
     const FUNCOES: Record<string, string> = { coordenador: 'Coordenação', designer: 'Designer', videomaker: 'Videomaker' };
     const quem = { nome: String(perfil.nome || ''), funcao: perfil.papel === 'admin' ? 'Administrador' : (FUNCOES[String(perfil.funcao)] || '') };
+    /* zzz89: só recebe a instrução de PROPOR ação quem pode criar demanda
+       de vídeo (a mesma regra da função do banco: equipe ou videomaker) */
+    const podeAgir = perfil.papel === 'admin' || perfil.papel === 'coordenador' || perfil.funcao === 'videomaker';
     t = {
       recurso: 'chat', acao: 'mensagem', entidadeTipo: 'conversa', entidadeId: conv.id, tamanhoEntrada: pedido.texto.length,
-      mensagens: Chat.montarMensagens(pedido, contexto, hist, quem), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
+      mensagens: Chat.montarMensagens(pedido, contexto, hist, quem, podeAgir), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
       aposOk: async (texto: string) => {
-        await Chat.gravar(sb, perfil.id, conv, pedido.texto, texto);
-        return { conversa_id: conv.id, titulo: conv.titulo, cliente_id: conv.clienteId };
+        const ex = podeAgir ? await Chat.extrairAcao(texto, sbDaPessoa) : { texto: Chat.semAcao(texto) || texto, acao: null };
+        await Chat.gravar(sb, perfil.id, conv, pedido.texto, ex.texto);
+        return { conversa_id: conv.id, titulo: conv.titulo, cliente_id: conv.clienteId, texto: ex.texto, ...(ex.acao ? { acao: ex.acao } : {}) };
       }
     };
   } else if (pRoteiro && pRoteiro.ok) {
