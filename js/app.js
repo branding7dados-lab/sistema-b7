@@ -422,10 +422,7 @@ B7.Rota = (function () {
      • com "reduzir movimento": nada de mínimo. */
   const reduzMov = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const curta = document.documentElement.classList.contains('ab-curta');
-  /* zzz53: 1,25 s em vez de 4,3 s. O Kevin viu a versão longa no celular
-     e odiou — escuro, vazio e demorado. A abertura agora é um estouro
-     curto, e a espera só aparece se o sistema não estiver pronto nela. */
-  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 700 : 1250;
+  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 950 : 4300;
 
   /* Para onde o logo voa: o lugar onde ele mora na tela que ficou pronta.
      Lockup (logo inteiro) → caixa de login ou barra lateral aberta.
@@ -510,35 +507,69 @@ B7.Rota = (function () {
   }
 
   /* =================================================================
-     A LUZ DA SAÍDA (zzz52) — duas peças, uma camada, e acabou.
-     Quando a abertura sai, um clarão nasce onde a marca estava e um
-     risco anamórfico atravessa a tela. O sistema assenta por baixo
-     (body.ab-revela, em styles/abertura.css).
-
-     O centro vem MEDIDO do palco, não de uma conta repetida à mão: a
-     versão antiga calculava H/2 - H*.06 para imitar o `margin-top:-6vh`
-     do CSS, e as duas contas saíram do lugar uma da outra. Com o palco
-     na tela, getBoundingClientRect() não tem como errar.
+     ONDA DE LUZ (zzo) — a luz da lâmpada constrói o app.
+     Quando a abertura sai, um clarão nasce no centro da íris e um anel
+     de luz corre pela borda dela até as pontas da tela. Cada peça do
+     app (topo, barra de baixo, blocos e cartões da tela) acende o
+     contorno no instante exato em que o anel passa por ela — na ordem
+     da distância, como se a luz estivesse desenhando o sistema.
+     Tudo numa camada própria por cima (contornos fantasmas medidos na
+     hora): não mexe nas animações de entrada de cada tela (o Painel tem
+     as dele), então nada pisca nem briga.
      ================================================================= */
-  const LUZ_MS = 1100;
+  const IRIS = { dur: 800, atraso: 40, curva: [.7, 0, .25, 1] };   /* = abIris no CSS */
+  /* em quanto tempo (0–1) a curva da íris chega a "y" (0–1) */
+  function tempoDaCurva(y, [x1, y1, x2, y2]) {
+    if (y <= 0) return 0; if (y >= 1) return 1;
+    const b = (t, a, c) => 3 * a * t * (1 - t) * (1 - t) + 3 * c * t * t * (1 - t) + t * t * t;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (b(m, y1, y2) < y) lo = m; else hi = m; }
+    return b((lo + hi) / 2, x1, x2);
+  }
+  function pecasDaOnda() {
+    const H = innerHeight, W = innerWidth;
+    const visivel = r => r.width > 40 && r.height > 22 && r.bottom > 0 && r.top < H && r.right > 0 && r.left < W;
+    let base = [...document.querySelectorAll('.topo-global, .nav-inferior, .lateral, #painel-dashboard .conteudo > *, .tela-login .login-caixa')];
+    /* bloco alto (lista, grade, seção inteira): desce pelos filhos até
+       chegar em peças do tamanho de um cartão — é o cartão que acende */
+    const pecas = [];
+    const coletar = (el, nivel) => {
+      if (pecas.length >= 34) return;
+      const r = el.getBoundingClientRect();
+      if (!visivel(r)) return;
+      if (r.height > H * .42 && el.children.length && nivel < 5) { [...el.children].forEach(f => coletar(f, nivel + 1)); return; }
+      if (r.height <= H * .6) pecas.push([el, r]);
+    };
+    base.forEach(el => coletar(el, 0));
+    return pecas;
+  }
   function ondaDeLuz() {
     if (reduzMov()) return;
-    const palco = document.querySelector('.b7-abertura .ab-palco');
-    let cx = innerWidth / 2, cy = innerHeight / 2;
-    if (palco) {
-      const r = palco.getBoundingClientRect();
-      if (r.width > 1 && r.height > 1) { cx = r.left + r.width / 2; cy = r.top + r.height / 2; }
-    }
+    const W = innerWidth, H = innerHeight;
+    const cx = W / 2, cy = H / 2 - H * .06;           /* centro da íris (abIris: 50% calc(50% - 6vh)) */
+    const RMAX = 1.2 * Math.max(W, H);                /* 120vmax */
     const camada = document.createElement('div');
     camada.className = 'ab-luz';
     camada.setAttribute('aria-hidden', 'true');
     camada.style.setProperty('--cx', cx + 'px');
     camada.style.setProperty('--cy', cy + 'px');
-    /* zzz53: só o clarão radial. O risco horizontal saiu — no celular ele
-       lia como uma barra magenta dura atravessando a tela. */
-    camada.innerHTML = '<i class="ab-luz-clarao"></i>';
+    camada.innerHTML = '<i class="ab-luz-clarao"></i><i class="ab-luz-anel"></i>';
+    /* contornos: cada peça acende quando o anel (≈ raio + 40px) a alcança */
+    pecasDaOnda().forEach(([el, r], i) => {
+      const px = Math.max(r.left, Math.min(cx, r.right)), py = Math.max(r.top, Math.min(cy, r.bottom));
+      const d = Math.hypot(px - cx, py - cy);
+      const quando = IRIS.atraso + IRIS.dur * tempoDaCurva(Math.max(0, d - 40) / RMAX, IRIS.curva);
+      const c = document.createElement('i');
+      c.className = 'ab-luz-peca';
+      const raio = getComputedStyle(el).borderTopLeftRadius;
+      Object.assign(c.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+        borderRadius: raio && raio !== '0px' ? raio : '12px', animationDelay: Math.round(quando) + 'ms' });
+      /* o brilho que atravessa a peça vem do lado da luz */
+      c.style.setProperty('--ang', (Math.atan2((r.top + r.height / 2) - cy, (r.left + r.width / 2) - cx) * 180 / Math.PI + 90).toFixed(0) + 'deg');
+      camada.appendChild(c);
+    });
     document.body.appendChild(camada);
-    setTimeout(() => camada.remove(), LUZ_MS);
+    setTimeout(() => camada.remove(), IRIS.atraso + IRIS.dur + 1100);
   }
   /* o logo pousou no topo (zzp): um halo curto atrás dele e a mesma faixa
      de luz da abertura passando uma vez pelo desenho do logo — antes era
