@@ -2091,5 +2091,8 @@ body.b7-so-leitura [data-duplicar]{display:none !important;}
   .b7-atu{right:14px;left:14px;width:auto;bottom:calc(16px + env(safe-area-inset-bottom));}
   html body[data-shell="interno"] .b7-atu{bottom:calc(84px + env(safe-area-inset-bottom));}
 }
+/* zzz80: atualização pedida pelo administrador — só o botão, em largura total */
+.b7-atu.exigida .b7-atu-bts{grid-template-columns:1fr;}
+.b7-atu.exigida{border-color:color-mix(in srgb, var(--acento) 55%, var(--borda));}
 @media print{ .b7-atu{display:none !important;} }
 @media (prefers-reduced-motion: reduce){ .b7-atu, .b7-atu.saindo, .b7-atu.indo .b7-atu-ic svg{animation:none !important;} }

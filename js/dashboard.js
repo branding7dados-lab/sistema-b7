@@ -1956,6 +1956,9 @@ B7.Dashboard = (function () {
             dir: '<code class="cfg-versao">v' + esc((B7.Auth && B7.Auth.VERSAO) || '') + '</code>' }) +
         (location.protocol.startsWith('http') ? L({ ic: 'atualizar', tom: 'verde', t: 'Buscar atualização', d: '<span id="cfg-atu-d">confere se saiu versão nova</span>',
             botao: true, semSeta: true, attrs: ' data-buscar-atu' }) : '') +
+        (ehAdm && location.protocol.startsWith('http') ? L({ ic: 'usuarios', tom: 'rosa', t: 'Atualizar todos agora',
+            d: '<span id="cfg-todos-d">quem está com o B7 aberto recarrega sozinho na versão publicada</span>',
+            botao: true, semSeta: true, attrs: ' data-atualizar-todos' }) : '') +
         (instalado
           ? L({ ic: 'celular', tom: 'azul', t: 'Aplicativo', d: 'o B7 está instalado neste aparelho', dir: '<span class="cfg-valor ok">Instalado</span>' })
           : L({ ic: 'celular', tom: 'azul', t: 'Instalar como aplicativo',
@@ -2131,6 +2134,26 @@ B7.Dashboard = (function () {
         : r === 'atual' ? 'você já está na versão mais recente'
         : r === 'offline' ? 'sem internet agora' : 'não foi possível conferir agora';
     };
+    const bt = p.querySelector('[data-atualizar-todos]');
+    if (bt) bt.onclick = () => B7.UI.confirmar({ titulo: 'Atualizar o B7 de todo mundo?',
+      texto: 'Quem estiver com o B7 aberto vê uma contagem de 10 segundos e a página recarrega sozinha na versão publicada. ' +
+        'O que tem salvamento automático é salvo antes; um formulário pela metade pode perder o que foi digitado. Teleprompter aberto espera fechar.',
+      rotulo: 'Atualizar todos', aoConfirmar: async () => {
+        const d = p.querySelector('#cfg-todos-d');
+        if (d) d.textContent = 'enviando o pedido…';
+        const v = B7.versaoPublicada ? await B7.versaoPublicada() : null;
+        if (!v) { if (d) d.textContent = 'não consegui ler a versão publicada — confira a internet e tente de novo'; return; }
+        try {
+          await B7.DB.rpc('sistema_config_definir', { p_chave: 'atualizacao', p_valor: { versao: v } });
+          if (d) d.textContent = 'pedido enviado para a v' + v + ' — chega a cada pessoa em até 1 minuto';
+          B7.UI.toast('Pedido enviado. Quem está com o B7 aberto atualiza em até 1 minuto.');
+          /* se esta tela também está atrás, ela entra na contagem já */
+          if (B7.buscarAtualizacao) B7.buscarAtualizacao();
+        } catch (e) {
+          if (d) d.textContent = 'não foi possível enviar o pedido';
+          B7.UI.toast(e.message || 'Não foi possível enviar o pedido.');
+        }
+      } });
     const bi = p.querySelector('button[data-instalar]');
     if (bi) bi.onclick = async () => {
       const ev = B7.instalacao; if (!ev) return;

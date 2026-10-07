@@ -1163,7 +1163,7 @@ B7.Rota = (function () {
         const r = await fetch('js/auth.js?t=' + Date.now(), { cache: 'no-store' });
         if (r.ok) {
           const m = /VERSAO\s*=\s*'([^']+)'/.exec(await r.text());
-          if (m && m[1] !== minha) haVersaoNova(m[1]);
+          if (m && m[1] !== minha) { haVersaoNova(m[1]); conferirExigida(m[1]); }
         }
       } catch (e) { /* sem rede agora: pergunta de novo depois */ }
       finally { conferindo = false; }
@@ -1177,7 +1177,7 @@ B7.Rota = (function () {
         const r = await fetch('js/auth.js?t=' + Date.now(), { cache: 'no-store' });
         if (!r.ok) return 'erro';
         const m = /VERSAO\s*=\s*'([^']+)'/.exec(await r.text());
-        if (m && m[1] !== minha) { adiadoAte = 0; haVersaoNova(m[1]); return 'nova'; }
+        if (m && m[1] !== minha) { adiadoAte = 0; haVersaoNova(m[1]); conferirExigida(m[1]); return 'nova'; }
         return 'atual';
       } catch (e) { return 'erro'; }
     };
@@ -1249,6 +1249,71 @@ B7.Rota = (function () {
       document.body.appendChild(el);
       avisoAberto = el;
     }
+
+    /* =================================================================
+       zzz80: ATUALIZAR TODOS. O administrador pode pedir (Configurações →
+       Sistema) que todo mundo passe para a versão publicada. O pedido é
+       uma linha no banco com a versão exigida. Quando esta tela descobre
+       que há versão nova, pergunta se ela foi exigida; se foi, o cartão
+       vira contagem regressiva e a página recarrega sozinha — salvando
+       antes o que estiver pendente (recarregar()).
+       Sem pedido do administrador, nada muda: só atualiza quem clicar.
+       Teleprompter aberto segura a contagem (não corta uma gravação).
+       ================================================================= */
+    let forcando = false;
+    const SEGUNDOS = 10;
+    async function conferirExigida(v) {
+      if (forcando || !B7.sb) return;
+      try {
+        const { data } = await B7.sb.from('sistema_config').select('valor').eq('chave', 'atualizacao').maybeSingle();
+        if (data && data.valor && data.valor.versao === v && !forcando) forcarAtualizacao(v);
+      } catch (e) { /* sem sessão ou sem rede: fica o cartão normal */ }
+    }
+    function forcarAtualizacao(v) {
+      forcando = true;
+      adiadoAte = 0;
+      if (!(avisoAberto && avisoAberto.isConnected && !avisoAberto.classList.contains('saindo'))) { avisoAberto = null; haVersaoNova(v); }
+      const el = avisoAberto;
+      if (!el) { recarregar(); return; }
+      el.classList.add('exigida');
+      const titulo = el.querySelector('.b7-atu-tx b'), sub = el.querySelector('.b7-atu-tx small');
+      const ok = el.querySelector('.b7-atu-ok'), depois = el.querySelector('.b7-atu-depois');
+      if (depois) depois.remove();
+      if (titulo) titulo.textContent = 'Atualização para toda a equipe';
+      let falta = SEGUNDOS, indo = false;
+      const ir = () => {
+        if (indo) return; indo = true;
+        clearInterval(relogio);
+        ok.disabled = true; ok.textContent = 'Atualizando…';
+        el.classList.add('indo');
+        recarregar();
+      };
+      const pintar = () => {
+        const noTele = document.body.classList.contains('tele-aberto');
+        if (sub) sub.textContent = noTele ? 'Vai atualizar assim que você fechar o teleprompter.'
+          : 'O B7 atualiza sozinho em ' + falta + ' s. O que está aberto é salvo antes.';
+        ok.textContent = noTele ? 'Atualizar agora' : 'Atualizar agora (' + falta + ')';
+      };
+      ok.onclick = ir;
+      pintar();
+      const relogio = setInterval(() => {
+        if (!el.isConnected) { clearInterval(relogio); forcando = false; return; }
+        /* teleprompter aberto: a contagem espera e recomeça ao fechar */
+        if (document.body.classList.contains('tele-aberto')) { falta = SEGUNDOS; pintar(); return; }
+        falta--;
+        if (falta <= 0) return ir();
+        pintar();
+      }, 1000);
+    }
+    /* para o botão do administrador: qual é a versão que o servidor está servindo agora */
+    B7.versaoPublicada = async () => {
+      try {
+        const r = await fetch('js/auth.js?t=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return null;
+        const m = /VERSAO\s*=\s*'([^']+)'/.exec(await r.text());
+        return m ? m[1] : null;
+      } catch (e) { return null; }
+    };
 
     setInterval(() => conferir(false), 30000);
     document.addEventListener('visibilitychange', () => conferir(false));
