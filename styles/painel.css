@@ -747,3 +747,33 @@ a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale
   #pnm-grafico .pn-sec-sub, #pnc-fluxo .pn-sec-sub{display:none;}
   .pnm-graf-sel{order:3;margin-left:0;}
 }
+
+/* =====================================================================
+   ATMOSFERA NO PC (pacote zzz57, 07/10)
+   No monitor o céu da saudação acabava num corte reto nas laterais e o
+   resto da página era fundo liso. Agora o céu se desfaz para os lados,
+   o Painel ocupa a altura da janela e uma luz baixa (a cor da marca e o
+   violeta) sobe do rodapé, derivando devagar. Só fundo: nada clicável,
+   nenhum dado. Modo leve e "reduzir movimento" deixam a luz parada.
+   ===================================================================== */
+@media (min-width:1101px){
+  .pn{min-height:100%;}
+  .pn-ceu{left:-26px;right:-26px;
+    -webkit-mask-image:linear-gradient(180deg,#000 55%,transparent), linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);
+            mask-image:linear-gradient(180deg,#000 55%,transparent), linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);
+    -webkit-mask-composite:source-in;mask-composite:intersect;}
+  .pn::after{content:"";position:absolute;z-index:-1;pointer-events:none;left:0;right:0;bottom:0;height:min(560px,70%);
+    background:
+      radial-gradient(46% 78% at 22% 108%, color-mix(in srgb, var(--acento) 26%, transparent), transparent 72%),
+      radial-gradient(40% 70% at 80% 112%, rgba(120,80,240,.24), transparent 72%),
+      radial-gradient(30% 40% at 52% 118%, color-mix(in srgb, var(--acento) 14%, transparent), transparent 70%);
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);
+            mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);
+    transform-origin:50% 100%;animation:pnChao 16s ease-in-out infinite alternate;}
+  [data-theme="light"] .pn::after{opacity:.55;}
+}
+@keyframes pnChao{from{transform:translate3d(-2%,0,0) scaleY(.92);opacity:.75}to{transform:translate3d(2%,0,0) scaleY(1.08);opacity:1}}
+[data-theme="light"] .pn::after{animation-name:pnChaoClaro;}
+@keyframes pnChaoClaro{from{transform:translate3d(-2%,0,0) scaleY(.92);opacity:.4}to{transform:translate3d(2%,0,0) scaleY(1.08);opacity:.6}}
+html.modo-leve .pn::after{animation:none;}
+@media (prefers-reduced-motion:reduce){ .pn::after{animation:none;} }
