@@ -181,3 +181,74 @@ body.tem-chat .b7-atu{bottom:92px;}
 @media print{ .ch-fab,.ch-painel{display:none !important;} }
 html.modo-leve .ch-fab,html.modo-leve .ch-msg{animation:none;}
 @media (prefers-reduced-motion: reduce){ .ch-fab,.ch-painel,.ch-painel.saindo,.ch-msg,.ch-pensando i,.ch-pop,.ch-pop-cx{animation:none !important;} }
+
+/* =====================================================================
+   zzz95 — VIDRO. O painel do assistente deixa a tela aparecer por trás,
+   com desfoque moderado. Só no computador: no celular ele ocupa a tela
+   inteira e continua opaco. Sem suporte a desfoque (ou no modo leve),
+   também continua opaco.
+   ===================================================================== */
+@media (min-width:761px){
+@supports ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){
+  html:not(.modo-leve) .ch-painel{
+    --ch-sup:color-mix(in srgb, var(--card) 52%, transparent);
+    --ch-sup-forte:color-mix(in srgb, var(--card) 78%, transparent);
+    --ch-fio:rgba(255,255,255,.72);
+    --ch-risco:color-mix(in srgb, var(--ink) 9%, transparent);
+    isolation:isolate;
+    background:linear-gradient(165deg, color-mix(in srgb, var(--card) 64%, transparent), color-mix(in srgb, var(--card) 46%, transparent));
+    -webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);
+    border:1px solid var(--ch-fio);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1px rgba(255,255,255,.18), inset 0 -18px 30px -24px rgba(194,24,122,.22),
+      0 0 0 1px rgba(60,20,90,.07), 0 36px 80px -32px rgba(40,10,70,.55), 0 10px 24px -14px rgba(20,8,40,.28);
+  }
+  /* brilho e cor que passam "por dentro" do vidro */
+  html:not(.modo-leve) .ch-painel::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;
+    background:
+      radial-gradient(90% 55% at 0% 0%, rgba(124,77,255,.16), transparent 62%),
+      radial-gradient(80% 50% at 100% 100%, rgba(214,51,132,.14), transparent 64%),
+      linear-gradient(180deg, rgba(255,255,255,.34), transparent 26%);}
+  [data-theme="dark"]:not(.modo-leve) .ch-painel{
+    --ch-sup:rgba(255,255,255,.055);
+    --ch-sup-forte:color-mix(in srgb, var(--elevado, var(--card)) 82%, transparent);
+    --ch-fio:rgba(255,255,255,.13);
+    --ch-risco:rgba(255,255,255,.08);
+    background:linear-gradient(165deg, color-mix(in srgb, var(--elevado, var(--card)) 76%, transparent), color-mix(in srgb, var(--card) 62%, transparent));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 -18px 30px -24px rgba(226,64,156,.2),
+      0 0 0 1px rgba(0,0,0,.35), 0 36px 80px -30px rgba(0,0,0,.85);
+  }
+  [data-theme="dark"]:not(.modo-leve) .ch-painel::before{
+    background:
+      radial-gradient(90% 55% at 0% 0%, rgba(124,77,255,.2), transparent 62%),
+      radial-gradient(80% 50% at 100% 100%, rgba(226,64,156,.16), transparent 64%),
+      linear-gradient(180deg, rgba(255,255,255,.05), transparent 24%);}
+
+  html:not(.modo-leve) .ch-topo{background:none;border-bottom-color:var(--ch-risco);}
+  html:not(.modo-leve) .ch-cliente,
+  html:not(.modo-leve) .ch-sug,
+  html:not(.modo-leve) .ch-item,
+  html:not(.modo-leve) .ch-form,
+  html:not(.modo-leve) .ch-msg.ia{background:var(--ch-sup);border-color:var(--ch-fio);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 6px 16px -12px rgba(40,10,70,.35);}
+  [data-theme="dark"]:not(.modo-leve) .ch-cliente,
+  [data-theme="dark"]:not(.modo-leve) .ch-sug,
+  [data-theme="dark"]:not(.modo-leve) .ch-item,
+  [data-theme="dark"]:not(.modo-leve) .ch-form,
+  [data-theme="dark"]:not(.modo-leve) .ch-msg.ia{box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
+  html:not(.modo-leve) .ch-sug:hover,
+  html:not(.modo-leve) .ch-cliente:hover{background:var(--ch-sup-forte);border-color:color-mix(in srgb, var(--acento) 45%, var(--ch-fio));}
+  html:not(.modo-leve) .ch-cliente.tem,
+  html:not(.modo-leve) .ch-item.on{background:color-mix(in srgb, var(--acento) 12%, var(--ch-sup));border-color:color-mix(in srgb, var(--acento) 42%, var(--ch-fio));}
+  html:not(.modo-leve) .ch-form:focus-within{background:var(--ch-sup-forte);border-color:color-mix(in srgb, var(--acento) 55%, var(--ch-fio));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 0 0 3px var(--acento-suave);}
+  html:not(.modo-leve) .ch-msg.erro{background:color-mix(in srgb, var(--erro) 10%, var(--ch-sup));}
+  /* o que pede decisão fica mais firme, para ler sem esforço */
+  html:not(.modo-leve) .ch-acao{background:var(--ch-sup-forte);}
+  html:not(.modo-leve) .ch-pop{background:color-mix(in srgb, var(--ink) 10%, transparent);}
+  html:not(.modo-leve) .ch-pop-cx{background:color-mix(in srgb, var(--elevado, var(--card)) 86%, transparent);border-color:var(--ch-fio);
+    -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 22px 46px -22px rgba(40,10,70,.6);}
+  [data-theme="dark"]:not(.modo-leve) .ch-pop-cx{box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 22px 46px -20px rgba(0,0,0,.8);}
+  html:not(.modo-leve) .ch-aviso{color:var(--ink-3);}
+}
+}
