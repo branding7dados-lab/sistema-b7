@@ -188,7 +188,7 @@
    ele diferencia contexto de compromisso).
    ===================================================================== */
 .op-card{position:relative;overflow:hidden;border-style:solid;border-color:var(--borda);background:var(--card);
-  box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 8px 22px -18px rgba(30,10,60,.4);
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 8px 22px -18px rgba(30,10,60,.248);
   animation:opEntra .42s cubic-bezier(.2,.85,.25,1) both;animation-delay:calc(var(--i, 0) * 40ms);
   transition:border-color var(--t), transform .15s ease, box-shadow var(--t);}
 .op-card:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--op-cor, var(--borda-forte));}

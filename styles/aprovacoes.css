@@ -34,7 +34,7 @@
 .ap-item{display:grid;grid-template-columns:40px minmax(200px,2fr) minmax(90px,.8fr) minmax(120px,1fr) auto minmax(120px,1fr);
   align-items:center;gap:14px;padding:12px 16px;border-radius:var(--r);border:1px solid var(--borda);background:var(--card);
   cursor:pointer;transition:border-color var(--t),box-shadow var(--t),transform var(--t);}
-.ap-item:hover{border-color:var(--borda-forte);box-shadow:0 6px 22px rgba(20,12,60,.06);transform:translateY(-1px);}
+.ap-item:hover{border-color:var(--borda-forte);box-shadow:0 6px 22px rgba(20,12,60,.037);transform:translateY(-1px);}
 .ap-logo{width:40px;height:40px;border-radius:12px;font-size:12px;}
 .ap-tx{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .ap-tx b{font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -175,7 +175,7 @@
   .ap-sels #ap-periodo{grid-column:1 / -1;}
   /* cartão: logo | título e meta; embaixo, situação + progresso + resposta */
   .ap-item{grid-template-columns:42px minmax(0,1fr) auto;column-gap:12px;row-gap:8px;padding:14px 14px 14px 16px;border-radius:18px;
-    box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 10px 26px -20px rgba(30,10,60,.45);}
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 10px 26px -20px rgba(30,10,60,.279);}
   .ap-item > *{grid-column:auto;}
   .ap-item .ap-logo{grid-column:1;grid-row:1 / span 2;width:42px;height:42px;align-self:start;}
   .ap-tx{grid-column:2 / -1;grid-row:1;}
@@ -206,7 +206,7 @@
   background:color-mix(in srgb, var(--card) 96%, transparent);
   -webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);
   border:1px solid color-mix(in srgb, var(--ink) 8%, transparent);
-  box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 30px 70px -28px rgba(20,8,40,.5), 0 8px 24px -16px rgba(20,8,40,.3);
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 30px 70px -28px rgba(20,8,40,.31), 0 8px 24px -16px rgba(20,8,40,.186);
   transform-origin:calc(100% - 28px) -8px;animation:sinoNasce .46s cubic-bezier(.16,1,.3,1) both;}
 .sino-painel.saindo{animation:sinoVolta .2s cubic-bezier(.4,0,1,1) forwards;pointer-events:none;}
 @keyframes sinoNasce{from{opacity:0;transform:scale(.88) translate3d(0,-8px,0);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}

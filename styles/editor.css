@@ -11,13 +11,13 @@
   font-family:'Archivo';font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;
   transition:var(--t);flex:none;position:relative;cursor:grab;}
 .trilho .chip:hover{background:var(--neutro-bg);color:var(--acento);}
-.trilho .chip.on{background:var(--grad-curto);color:#fff;box-shadow:0 4px 12px rgba(194,28,131,.28);}
+.trilho .chip.on{background:var(--grad-curto);color:#fff;box-shadow:0 4px 12px rgba(194,28,131,.174);}
 .trilho .chip:active{cursor:grabbing;}
 .trilho .add{width:42px;height:42px;border-radius:12px;border:1.5px dashed var(--borda-forte);color:var(--ink-4);
   font-size:18px;display:flex;align-items:center;justify-content:center;transition:var(--t);flex:none;}
 .trilho .add:hover{border-color:var(--acento);color:var(--acento);}
 .dica{position:fixed;background:#1B0F2E;color:#fff;font-size:12px;padding:7px 10px;border-radius:8px;
-  z-index:150;pointer-events:none;max-width:280px;box-shadow:0 8px 22px rgba(14,6,25,.28);}
+  z-index:150;pointer-events:none;max-width:280px;box-shadow:0 8px 22px rgba(14,6,25,.174);}
 
 /* ---------------------------------------------------- painel escrita */
 .escrita{width:520px;flex:none;overflow-y:auto;padding:18px 16px 140px;}
@@ -82,9 +82,9 @@
   transition:box-shadow var(--t),filter var(--t),transform var(--t);}
 .ia-entrada svg{width:18px;height:18px;color:var(--acento);flex:none;}
 .ia-entrada:hover,.ia-entrada.on{box-shadow:0 0 0 3px var(--acento-suave);}
-.ia-entrada.cheia{background:var(--grad-curto) border-box;color:#fff;box-shadow:0 8px 20px -10px rgba(194,28,131,.7);}
+.ia-entrada.cheia{background:var(--grad-curto) border-box;color:#fff;box-shadow:0 8px 20px -10px rgba(194,28,131,.434);}
 .ia-entrada.cheia svg{color:#fff;}
-.ia-entrada.cheia:hover{filter:brightness(1.08);box-shadow:0 10px 24px -10px rgba(194,28,131,.8);}
+.ia-entrada.cheia:hover{filter:brightness(1.08);box-shadow:0 10px 24px -10px rgba(194,28,131,.496);}
 .ia-entrada:focus-visible,.ia-fechar:focus-visible,.ia-acao:focus-visible,.ia-sugestao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 
 .ia-painel{margin-top:8px;padding:12px;border-radius:11px;background:var(--card);border:1px solid var(--borda);
@@ -159,11 +159,11 @@
 /* no modo escuro o entorno escurece e a folha branca ganha destaque */
 .previa{flex:1;min-width:0;overflow-y:auto;padding:24px 0 90px;position:relative;background:var(--fundo);}
 [data-theme="dark"] .previa{background:#0B0714;}
-[data-theme="dark"] .folha{box-shadow:0 10px 50px rgba(0,0,0,.6);}
+[data-theme="dark"] .folha{box-shadow:0 10px 50px rgba(0,0,0,.372);}
 #palco{display:flex;justify-content:center;}
 #folhas{transform:scale(var(--z,.62));transform-origin:top center;}
 .zoom{position:fixed;right:24px;bottom:20px;background:var(--elevado);border-radius:12px;
-  box-shadow:0 6px 24px rgba(20,8,40,.16);display:flex;align-items:center;gap:2px;padding:5px;z-index:40;}
+  box-shadow:0 6px 24px rgba(20,8,40,.099);display:flex;align-items:center;gap:2px;padding:5px;z-index:40;}
 .zoom button{font-size:13px;font-weight:700;color:var(--ink-2);padding:7px 11px;border-radius:8px;transition:var(--t);}
 .zoom button:hover{background:var(--suave);color:var(--acento);}
 .zoom .zv{font-size:11px;font-weight:700;color:var(--ink-4);min-width:42px;text-align:center;}
@@ -312,7 +312,7 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
     font-family:'Archivo',sans-serif;font-size:12.5px;font-weight:800;background:var(--card);color:var(--ink-2);
     box-shadow:0 1px 2px rgba(20,8,40,.08);}
   .trilho .chip .chip-t{display:block;min-width:0;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-3);}
-  .trilho .chip.on{background:var(--grad-curto);box-shadow:0 8px 18px -10px rgba(194,28,131,.7);}
+  .trilho .chip.on{background:var(--grad-curto);box-shadow:0 8px 18px -10px rgba(194,28,131,.434);}
   .trilho .chip.on .chip-n{background:rgba(255,255,255,.22);color:#fff;box-shadow:none;}
   .trilho .chip.on .chip-t{color:#fff;}
   .trilho .add{flex:none;width:42px;height:42px;border-radius:14px;}

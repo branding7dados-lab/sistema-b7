@@ -29,7 +29,7 @@ body.modo-portal .nav{padding-top:8px;}
   border-radius:var(--r);cursor:pointer;font:inherit;color:inherit;
   transition:var(--t-micro);}
 .ph-item:hover{border-color:var(--acento);transform:translateY(-1px);
-  box-shadow:0 6px 20px -12px rgba(120,20,120,.4);}
+  box-shadow:0 6px 20px -12px rgba(120,20,120,.248);}
 .ph-item-tipo{flex:none;font-size:10px;font-weight:700;letter-spacing:.08em;
   text-transform:uppercase;color:var(--acento);background:var(--acento-suave);
   border-radius:99px;padding:6px 11px;}
@@ -157,7 +157,7 @@ body.modo-portal .nav{padding-top:8px;}
 /* a decisão fica fixa no rodapé: é a ação principal desta tela */
 .pt-decisao{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;
   background:var(--card);border:1px solid var(--borda);border-radius:var(--r);
-  padding:14px 18px;margin-top:30px;box-shadow:0 -8px 24px -14px rgba(20,8,40,.3);
+  padding:14px 18px;margin-top:30px;box-shadow:0 -8px 24px -14px rgba(20,8,40,.186);
   flex-wrap:wrap;}
 .pt-decisao-tx{flex:1;min-width:180px;}
 .pt-decisao-tx b{display:block;font-size:13px;}

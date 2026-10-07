@@ -417,12 +417,30 @@ B7.Rota = (function () {
       const css = getComputedStyle(document.documentElement);
       const card = hexRgb(css.getPropertyValue('--card')), fundo = hexRgb(css.getPropertyValue('--fundo'));
       if (!card || !fundo) return;
-      cor = '#' + card.map((c, i) => Math.round(c * .72 + fundo[i] * .28).toString(16).padStart(2, '0')).join('');
+      let rgb = card.map((c, i) => c * .72 + fundo[i] * .28);
+      /* zzz99: a barra acompanha o que está NA FRENTE, como no iOS.
+         Teleprompter: preta. Assistente em tela cheia (celular): a cor
+         dele. Janela aberta: escurece junto com o véu, em vez de ficar
+         uma faixa clara acima da tela escurecida. */
+      const corpo = document.body, estreito = window.matchMedia('(max-width: 760px)').matches;
+      if (corpo && corpo.classList.contains('tele-aberto')) rgb = [0, 0, 0];
+      else {
+        if (estreito && corpo && corpo.classList.contains('chat-aberto')) rgb = card.slice();
+        if (document.querySelector('.fundo-modal')) {
+          const v = (css.getPropertyValue('--veu').match(/[\d.]+/g) || []).map(Number);
+          if (v.length >= 4) rgb = rgb.map((c, i) => c * (1 - v[3]) + v[i] * v[3]);
+        }
+      }
+      cor = '#' + rgb.map(c => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, '0')).join('');
     }
     if (metaTema.content !== cor) metaTema.content = cor;
   }
   B7.pintarBarraDoSistema = pintarBarraDoSistema;
   try { new MutationObserver(pintarBarraDoSistema).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
+  /* janelas entram e saem como filhas diretas do body; chat e teleprompter
+     trocam classes nele */
+  const vigiarCorpo = () => { try { new MutationObserver(pintarBarraDoSistema).observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true }); } catch (e) {} };
+  if (document.body) vigiarCorpo(); else document.addEventListener('DOMContentLoaded', vigiarCorpo);
   pintarBarraDoSistema();
 
   /* Quanto a abertura segura a tela, contado do início da página:

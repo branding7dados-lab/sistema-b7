@@ -122,7 +122,7 @@ select.pb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
 .pb-card{background:var(--card);border:1px solid var(--borda);border-radius:14px;
   padding:13px 14px;min-width:0;display:flex;flex-direction:column;gap:7px;
   transition:var(--t);}
-.pb-card:hover{border-color:var(--borda-forte);box-shadow:0 6px 18px -12px rgba(0,0,0,.25);}
+.pb-card:hover{border-color:var(--borda-forte);box-shadow:0 6px 18px -12px rgba(0,0,0,.155);}
 .pb-card-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;}
 .pb-card-cliente{display:inline-flex;align-items:center;gap:6px;min-width:0;
   font-size:12px;color:var(--ink-3);}
@@ -437,7 +437,7 @@ select.pb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
   /* cartão: o nome do cliente já está no cabeçalho do grupo */
   .pb-grupos[data-agrupar="cliente"] .pb-card-cliente{display:none;}
   .pb-grupos[data-agrupar="cliente"] .pb-card-topo{justify-content:flex-start;}
-  .pb-card{padding:13px 13px 12px;border-radius:16px;gap:6px;box-shadow:0 10px 24px -20px rgba(20,8,50,.6);}
+  .pb-card{padding:13px 13px 12px;border-radius:16px;gap:6px;box-shadow:0 10px 24px -20px rgba(20,8,50,.372);}
   .pb-card-titulo{font-size:15.5px;}
   .pb-card-acoes{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;margin-top:6px;}
   .pb-acao{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:8px 4px;
