@@ -90,6 +90,7 @@ B7.Chat = (function () {
     const ta = painel.querySelector('#ch-texto'); if (ta && window.matchMedia('(min-width: 761px)').matches) ta.focus();
   }
   function fechar() {
+    if (painel) { const ta = painel.querySelector('#ch-texto'); if (ta && !S.enviando) S.rascunho = ta.value; }
     S.aberto = false;
     document.body.classList.remove('chat-aberto');
     if (fab) fab.setAttribute('aria-expanded', 'false');
@@ -351,6 +352,17 @@ B7.Chat = (function () {
     if (B7.UI && B7.UI.confirmar) B7.UI.confirmar({ titulo: 'Apagar esta conversa?', texto: 'As mensagens dela somem de vez.', rotulo: 'Apagar', perigo: true, aoConfirmar: fazer });
     else fazer();
   }
+
+  /* Clicar fora do painel ou trocar de tela fecha o assistente. O que
+     estava sendo escrito fica guardado para a próxima abertura. */
+  document.addEventListener('pointerdown', e => {
+    if (!S.aberto || !painel) return;
+    const t = e.target;
+    if (!t || !t.isConnected || !t.closest) return;
+    if (t.closest('#b7-chat, #b7-chat-fab, .b7-atu')) return;
+    fechar();
+  }, true);
+  window.addEventListener('hashchange', () => { if (S.aberto) fechar(); });
 
   document.addEventListener('DOMContentLoaded', () => setTimeout(montar, 0));
   return { montar, abrir, fechar, _formatar: formatar };
