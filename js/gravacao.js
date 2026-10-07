@@ -79,7 +79,13 @@ B7.Gravacao = (function () {
     const u = B7.Auth && B7.Auth.usuario(); return u ? u.id : null;
   };
   const podeEditar = () => ehEquipe();
-  const podeMarcar = () => ehEquipe() || (S && S.g && S.g.videomaker_id && S.g.videomaker_id === meuId());
+  /* zzz65: qualquer videomaker (papel ou função extra) marca o que foi
+     gravado e conclui a gravação — antes só o responsável marcava e só
+     a equipe concluía. O banco aplica a mesma regra (gravacao_item_marcar
+     e gravacao_concluir). Agendar, cancelar e editar seguem da equipe. */
+  const souVideo = () => !!(B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel());
+  const podeMarcar = () => ehEquipe() || souVideo();
+  const podeConcluir = () => ehEquipe() || souVideo();
 
   /* ------------------------------------------------------------ datas
      data_gravacao é AAAA-MM-DD (nunca new Date(texto)); hora é HH:MM:SS */
@@ -197,13 +203,14 @@ B7.Gravacao = (function () {
     const dataValor = g.data_gravacao ? esc(dataLonga(g.data_gravacao)) + (horaTx(g) ? ' · ' + esc(horaTx(g)) : '') : 'Sem data';
     const dataExtra = (g.data_gravacao && !horaTx(g) ? '<i class="gv-fato-nota">horário a definir</i>' : '') + rel;
     /* ação principal muda com o momento da gravação */
-    const principal = !ed || !ativa ? '' :
+    const principal = !ativa ? '' :
+      !ed ? (podeConcluir() ? 'concluir' : '') :
       !g.data_gravacao ? 'agendar' :
       (dias != null && dias <= 0) || (S.itens.length && S.itens.every(i => i.gravado)) ? 'concluir' : 'agendar';
     const btAgendar = ed && !concluida
       ? '<button type="button" class="b ' + (principal === 'agendar' ? 'pri' : 'contorno') + '" data-gv="agendar">' + IC.agenda +
           '<span>' + (g.data_gravacao ? (cancelada ? 'Reativar com nova data' : 'Remarcar') : 'Marcar data') + '</span></button>' : '';
-    const btConcluir = ed && ativa
+    const btConcluir = podeConcluir() && ativa
       ? '<button type="button" class="b ' + (principal === 'concluir' ? 'pri' : 'contorno') + '" data-gv="concluir">' + IC.check + '<span>Concluir gravação</span></button>' : '';
     /* aberta de dentro do cliente (?de=cliente): o voltar leva de volta
        para as Gravações DELE, não para a lista geral */
@@ -294,7 +301,7 @@ B7.Gravacao = (function () {
       if (sit === 'Gravada') aviso = '<div class="gv-faixa gv-faixa-ok">' + IC.check + '<span>Gravação concluída' +
         (S.g.concluida_em ? ' em ' + esc(B7.UI.dataBR(String(S.g.concluida_em).slice(0, 10))) : '') + ' — ' + feitos + ' de ' + total + ' itens gravados.' +
         (faltam ? ' ' + (faltam === 1 ? 'O item restante continua pendente.' : 'Os ' + faltam + ' restantes continuam pendentes.') : '') + '</span></div>';
-      else if (!faltam && sit !== 'Cancelada' && podeEditar()) aviso = '<div class="gv-faixa gv-faixa-ok">' + IC.check +
+      else if (!faltam && sit !== 'Cancelada' && podeConcluir()) aviso = '<div class="gv-faixa gv-faixa-ok">' + IC.check +
         '<span>Todos os itens foram gravados.</span><button type="button" class="b pri fina" data-gv="concluir">Concluir gravação</button></div>';
       corpo = aviso + '<ol class="gv-lista">' + S.itens.map((it, i) => linhaItem(it, i, total)).join('') + '</ol>';
     }
