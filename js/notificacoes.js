@@ -337,6 +337,9 @@ B7.Notif = (function () {
   }
   async function abrirPainel(bt) {
     fechar(); aberto = true; filtro = 'todas';
+    /* zzz58: um painel do topo por vez — fecha o menu da conta/Criar */
+    if (B7.Topo && B7.Topo.fecharMenu) B7.Topo.fecharMenu(false);
+    if (B7.UI && B7.UI.fecharMenus) B7.UI.fecharMenus();
     bt.setAttribute('aria-expanded', 'true');
     /* o primeiro clique no sino também "desbloqueia" o áudio */
     try { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { ctx = ctx || new AC(); ctx.resume().catch(() => {}); } } catch (e) {}

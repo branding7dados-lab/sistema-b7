@@ -156,6 +156,8 @@ B7.Topo = (function () {
     fecharMenu(false);
     if (reabrir) return;
     if (B7.UI.fecharMenus) B7.UI.fecharMenus();
+    /* zzz58: o clique no gatilho não borbulha, então o sino não se fechava sozinho */
+    if (B7.Notif && B7.Notif.fechar) B7.Notif.fechar();
     const caixa = document.createElement('div');
     caixa.className = 'tp-menu ' + (opts.classe || '');
     caixa.setAttribute('role', 'menu');
@@ -479,5 +481,5 @@ B7.Topo = (function () {
     contexto();
   }
 
-  return { render, renderCriar, contexto, pintarConta, acoesCriar, executar, abrirBusca, funcoesDoUsuario, ACOES };
+  return { fecharMenu, render, renderCriar, contexto, pintarConta, acoesCriar, executar, abrirBusca, funcoesDoUsuario, ACOES };
 })();
