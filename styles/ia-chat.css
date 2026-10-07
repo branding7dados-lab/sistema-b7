@@ -19,6 +19,10 @@ body.chat-aberto .ch-fab{transform:scale(.9);filter:saturate(.8);}
 body.tele-aberto .ch-fab{display:none;}
 /* o aviso de versão nova sobe para não ficar em cima do botão */
 body.tem-chat .b7-atu{bottom:92px;}
+/* zzz91: com o chat aberto, o aviso de versao vai para o lado dele (antes
+   ficava em cima do campo de escrever) */
+@media (min-width:900px){ body.chat-aberto .b7-atu{right:calc(22px + min(420px, 100vw - 28px) + 14px);bottom:22px;} }
+@media (min-width:761px) and (max-width:899px){ body.chat-aberto .b7-atu{bottom:auto;top:78px;} }
 
 .ch-painel{position:fixed;right:22px;bottom:90px;z-index:190;width:min(420px,calc(100vw - 28px));height:min(640px,calc(100vh - 120px));
   display:flex;flex-direction:column;overflow:hidden;border-radius:22px;background:var(--card);color:var(--ink);

@@ -367,7 +367,11 @@ export async function extrairAcao(texto: string, sb: SupabaseClient): Promise<{ 
       }
     }
   } catch (_e) { acao = null; }
-  return { texto: limpoTexto || 'Não consegui montar a proposta. Diga o cliente e o título da demanda.', acao };
+  /* zzz91: o modelo às vezes devolve só o marcador, sem frase. Com a
+     proposta válida, o texto diz isso — antes saía "não consegui montar"
+     junto do cartão pronto. */
+  return { texto: limpoTexto || (acao ? 'Montei a proposta abaixo. Confira os dados e confirme para criar.'
+    : 'Não consegui montar a proposta. Diga o cliente e o título da demanda.'), acao };
 }
 
 export function montarMensagens(p: Pedido, contexto: string, hist: Fala[], quem: { nome: string; funcao: string }, podeAgir = false): Mensagem[] {

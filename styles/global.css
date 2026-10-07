@@ -1837,6 +1837,15 @@ html.b7-vt #painel-dashboard{view-transition-name:b7-pagina;background:var(--fun
 ::view-transition-group(b7-topo), ::view-transition-group(b7-nav){animation:none;z-index:3;}
 ::view-transition-old(b7-topo), ::view-transition-old(b7-nav){display:none;}
 ::view-transition-new(b7-topo), ::view-transition-new(b7-nav){animation:none;}
+/* zzz91: o chat, o botao dele e o aviso de versao ficam por cima e parados
+   na troca de tela (antes a pagina que entra passava por cima deles e eles
+   piscavam / ficavam fantasma) */
+html.b7-vt #b7-chat{view-transition-name:b7-chat;}
+html.b7-vt #b7-chat-fab{view-transition-name:b7-chat-fab;}
+html.b7-vt .b7-atu{view-transition-name:b7-atu;}
+::view-transition-group(b7-chat), ::view-transition-group(b7-chat-fab), ::view-transition-group(b7-atu){animation:none;z-index:4;}
+::view-transition-old(b7-chat), ::view-transition-old(b7-chat-fab), ::view-transition-old(b7-atu){display:none;}
+::view-transition-new(b7-chat), ::view-transition-new(b7-chat-fab), ::view-transition-new(b7-atu){animation:none;}
 ::view-transition-group(root){animation-duration:.45s;}
 ::view-transition-old(root), ::view-transition-new(root){animation:none;}
 ::view-transition-group(b7-pagina){animation:none;}
