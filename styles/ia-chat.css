@@ -1,0 +1,114 @@
+/* =====================================================================
+   CHAT COM O ASSISTENTE (zzz78) — js/ia-chat.js
+   Botão flutuante no canto inferior direito + painel de conversa.
+   No celular o painel ocupa a tela inteira e o botão fica acima da barra
+   inferior.
+   ===================================================================== */
+.ch-fab{position:fixed;right:22px;bottom:22px;z-index:95;width:56px;height:56px;border:0;border-radius:50%;cursor:pointer;color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#4B1E8F,#C2187A);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 14px 30px -12px rgba(150,30,130,.75), 0 4px 12px -6px rgba(20,8,40,.4);
+  transition:transform .25s cubic-bezier(.16,1,.3,1), filter .2s ease, opacity .2s ease;animation:chFab .5s cubic-bezier(.16,1,.3,1) both;}
+.ch-fab svg{width:25px;height:25px;}
+.ch-fab:hover{transform:translateY(-2px) scale(1.04);filter:brightness(1.08);}
+.ch-fab:active{transform:scale(.94);}
+.ch-fab:focus-visible{outline:3px solid color-mix(in srgb, var(--acento) 55%, #fff);outline-offset:3px;}
+@keyframes chFab{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+body.chat-aberto .ch-fab{transform:scale(.9);filter:saturate(.8);}
+/* telas de foco: o botão não fica por cima do trabalho */
+body.tele-aberto .ch-fab{display:none;}
+/* o aviso de versão nova sobe para não ficar em cima do botão */
+body.tem-chat .b7-atu{bottom:92px;}
+
+.ch-painel{position:fixed;right:22px;bottom:90px;z-index:190;width:min(420px,calc(100vw - 28px));height:min(640px,calc(100vh - 120px));
+  display:flex;flex-direction:column;overflow:hidden;border-radius:22px;background:var(--card);color:var(--ink);
+  border:1px solid color-mix(in srgb, var(--acento) 22%, var(--borda));
+  box-shadow:0 30px 70px -28px rgba(40,10,70,.6), 0 6px 18px -10px rgba(20,8,40,.4);
+  animation:chAbre .32s cubic-bezier(.16,1,.3,1) both;transform-origin:100% 100%;}
+[data-theme="dark"] .ch-painel{background:var(--elevado, var(--card));box-shadow:0 30px 70px -26px rgba(0,0,0,.85);}
+.ch-painel.saindo{animation:chFecha .18s ease forwards;}
+@keyframes chAbre{from{opacity:0;transform:translate3d(0,14px,0) scale(.96)}to{opacity:1;transform:none}}
+@keyframes chFecha{to{opacity:0;transform:translate3d(0,10px,0) scale(.97)}}
+
+.ch-topo{flex:none;display:flex;align-items:center;gap:8px;padding:12px 12px 12px 14px;border-bottom:1px solid var(--borda);
+  background:radial-gradient(120% 160% at 0% 0%, color-mix(in srgb, var(--acento) 12%, transparent), transparent 62%);}
+.ch-ic{flex:none;width:36px;height:36px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;color:#fff;
+  background:linear-gradient(135deg,#6B3FD8,#D63384);box-shadow:inset 0 1px 0 rgba(255,255,255,.28);}
+.ch-ic svg{width:19px;height:19px;}
+.ch-tit{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.ch-tit b{font-family:'Archivo',sans-serif;font-size:15px;font-weight:800;letter-spacing:-.01em;line-height:1.2;}
+.ch-tit small{font-size:11.5px;color:var(--ink-4);}
+.ch-cliente{max-width:100%;border:0;background:none;padding:0 16px 0 0;margin:0;font:inherit;font-size:12px;font-weight:600;color:var(--acento);cursor:pointer;
+  appearance:none;-webkit-appearance:none;text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C2187A' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right center;background-size:12px;}
+.ch-cliente option{color:#111;}
+.ch-cliente:disabled{opacity:.6;cursor:default;}
+.ch-bt{flex:none;width:34px;height:34px;border:0;border-radius:10px;background:none;color:var(--ink-3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  transition:background .15s ease, color .15s ease;}
+.ch-bt svg{width:18px;height:18px;}
+.ch-bt:hover{background:color-mix(in srgb, var(--ink) 7%, transparent);color:var(--ink);}
+.ch-bt:focus-visible,.ch-cliente:focus-visible{outline:2px solid var(--acento);outline-offset:1px;}
+
+.ch-corpo{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px;display:flex;flex-direction:column;gap:10px;}
+.ch-msg{max-width:88%;padding:10px 13px;border-radius:16px;font-size:13.5px;line-height:1.5;word-wrap:break-word;overflow-wrap:anywhere;
+  animation:chMsg .3s cubic-bezier(.16,1,.3,1) both;}
+@keyframes chMsg{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+.ch-msg p{margin:0;} .ch-msg p + p, .ch-msg ul + p, .ch-msg p + ul{margin-top:7px;}
+.ch-msg ul{margin:0;padding-left:18px;} .ch-msg li + li{margin-top:3px;}
+.ch-msg.eu{align-self:flex-end;color:#fff;background:linear-gradient(135deg,#4B1E8F,#C2187A);border-bottom-right-radius:6px;}
+.ch-msg.ia{align-self:flex-start;background:color-mix(in srgb, var(--ink) 5%, var(--card));border:1px solid color-mix(in srgb, var(--ink) 7%, transparent);border-bottom-left-radius:6px;}
+.ch-msg.erro{background:color-mix(in srgb, var(--erro) 8%, var(--card));border-color:color-mix(in srgb, var(--erro) 30%, transparent);color:var(--ink-2);}
+.ch-pensando{display:inline-flex;gap:5px;align-items:center;padding:14px 15px;}
+.ch-pensando i{width:7px;height:7px;border-radius:50%;background:var(--ink-4);animation:chPonto 1.1s ease-in-out infinite;}
+.ch-pensando i:nth-child(2){animation-delay:.15s} .ch-pensando i:nth-child(3){animation-delay:.3s}
+@keyframes chPonto{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+
+.ch-vazio{margin:auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;}
+.ch-vazio-ic{width:52px;height:52px;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;color:#fff;margin-bottom:6px;
+  background:linear-gradient(135deg,#6B3FD8,#D63384);box-shadow:0 14px 26px -14px rgba(140,40,160,.75);}
+.ch-vazio-ic svg{width:26px;height:26px;}
+.ch-vazio b{font-family:'Archivo',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.02em;}
+.ch-vazio p{margin:0;font-size:13px;line-height:1.5;color:var(--ink-3);max-width:300px;}
+.ch-sugs{display:flex;flex-direction:column;gap:7px;width:100%;margin-top:12px;}
+.ch-sug{width:100%;text-align:left;padding:10px 13px;border-radius:13px;border:1px solid var(--borda);background:var(--card);color:var(--ink-2);
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s ease, background .15s ease, transform .15s ease;}
+.ch-sug:hover{border-color:color-mix(in srgb, var(--acento) 45%, var(--borda));background:color-mix(in srgb, var(--acento) 5%, var(--card));}
+.ch-sug:active{transform:scale(.98);}
+
+.ch-form{flex:none;display:flex;align-items:flex-end;gap:8px;margin:0 12px;padding:6px 6px 6px 14px;border-radius:18px;
+  border:1px solid var(--borda);background:color-mix(in srgb, var(--ink) 3%, var(--card));transition:border-color .2s ease, box-shadow .2s ease;}
+.ch-form:focus-within{border-color:color-mix(in srgb, var(--acento) 55%, var(--borda));box-shadow:0 0 0 3px var(--acento-suave);}
+.ch-form textarea{flex:1;min-width:0;border:0;outline:0;background:none;resize:none;font:inherit;font-size:14px;line-height:1.45;color:var(--ink);
+  padding:8px 0;max-height:140px;}
+.ch-form textarea::placeholder{color:var(--ink-4);}
+.ch-enviar{flex:none;width:38px;height:38px;border:0;border-radius:13px;color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#4B1E8F,#C2187A);transition:transform .15s ease, opacity .2s ease;}
+.ch-enviar svg{width:19px;height:19px;}
+.ch-enviar:active{transform:scale(.92);}
+.ch-enviar:disabled{opacity:.45;cursor:default;}
+.ch-aviso{flex:none;margin:7px 14px 11px;font-size:11px;line-height:1.35;color:var(--ink-4);text-align:center;}
+
+.ch-lista{gap:6px;}
+.ch-item{display:flex;align-items:center;gap:4px;border-radius:13px;border:1px solid var(--borda);background:var(--card);}
+.ch-item.on{border-color:color-mix(in srgb, var(--acento) 45%, var(--borda));background:color-mix(in srgb, var(--acento) 5%, var(--card));}
+.ch-item-ab{flex:1;min-width:0;text-align:left;border:0;background:none;padding:10px 4px 10px 13px;font:inherit;color:inherit;cursor:pointer;display:flex;flex-direction:column;gap:2px;}
+.ch-item-ab b{font-size:13.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ch-item-ab small{font-size:11.5px;color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ch-item-ap{margin-right:5px;}
+.ch-item-ap:hover{color:var(--erro);}
+.ch-nada{margin:auto;font-size:13px;color:var(--ink-4);text-align:center;padding:16px;}
+
+@media (max-width:760px){
+  .ch-fab{right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:52px;height:52px;}
+  html body[data-shell="interno"] .ch-fab{bottom:calc(84px + env(safe-area-inset-bottom));}
+  body.chat-aberto .ch-fab, body.teclado-aberto .ch-fab{display:none;}
+  body.tem-chat .b7-atu{bottom:calc(16px + env(safe-area-inset-bottom));right:80px;}
+  html body[data-shell="interno"].tem-chat .b7-atu{bottom:calc(84px + env(safe-area-inset-bottom));}
+  .ch-painel{inset:0;width:auto;height:auto;border-radius:0;border:0;z-index:195;padding-bottom:env(safe-area-inset-bottom);}
+  .ch-topo{padding-top:calc(12px + env(safe-area-inset-top));}
+  .ch-form textarea{font-size:16px;}   /* iOS não dá zoom no campo */
+}
+@media print{ .ch-fab,.ch-painel{display:none !important;} }
+html.modo-leve .ch-fab,html.modo-leve .ch-msg{animation:none;}
+@media (prefers-reduced-motion: reduce){ .ch-fab,.ch-painel,.ch-painel.saindo,.ch-msg,.ch-pensando i{animation:none !important;} }

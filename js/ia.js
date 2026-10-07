@@ -38,6 +38,8 @@ B7.IA = (function () {
   function definirRemoto(v) {
     remotoMem = v || {};
     if (B7.pref) B7.pref.gravar('sis_ia', remotoMem);
+    /* o botão do chat aparece/some conforme a configuração */
+    try { if (B7.Chat && B7.Chat.montar) B7.Chat.montar(); } catch (e) {}
   }
   async function sincronizar() {
     if (!B7.sb) return;
@@ -102,7 +104,7 @@ B7.IA = (function () {
       let corpo = null;
       try { corpo = await resp.json(); } catch (e) {}
       if (corpo && corpo.ok === true && typeof corpo.texto === 'string' && corpo.texto.trim()) {
-        return { ok: true, texto: corpo.texto };
+        return { ok: true, texto: corpo.texto, conversa_id: corpo.conversa_id || null, titulo: corpo.titulo || '', cliente_id: corpo.cliente_id || null };
       }
       /* tarefas que devolvem lista (pilares, conteúdos, observações) */
       if (corpo && corpo.ok === true && Array.isArray(corpo.itens)) {

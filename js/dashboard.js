@@ -1848,7 +1848,7 @@ B7.Dashboard = (function () {
     const usaTp = !!u && !ehCli && (ehAdm || fnc === 'videomaker' || fnc === 'coordenador');
     const tp = Object.assign({ velocidade: 7, espelho: false, contagem: 3, fonte: 0 }, B7.pref.ler('teleprompter', {}) || {});
     const iaCfg = (window.B7_CONFIG && window.B7_CONFIG.IA) || {};
-    const iaRemoto = Object.assign({ roteiros: true, linhas: true }, B7.IA && B7.IA.remoto ? B7.IA.remoto() : {});
+    const iaRemoto = Object.assign({ roteiros: true, linhas: true, chat: true }, B7.IA && B7.IA.remoto ? B7.IA.remoto() : {});
     const instalado = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
 
     const emOutraConta = !!(B7.Auth && B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
@@ -1937,12 +1937,14 @@ B7.Dashboard = (function () {
       (ehAdm ? grupo('Integrações', 'A conta Google é uma só para o sistema inteiro: o que a equipe marca vai para ela.',
         '<div id="cfg-google">' + L({ ic: 'google', tom: 'azul', t: 'Google Agenda', d: 'verificando…',
             dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>') : '') +
-      (ehAdm && B7.IA && B7.IA.remoto && (iaCfg.roteiros || iaCfg.linhas) ? grupo('Inteligência artificial',
+      (ehAdm && B7.IA && B7.IA.remoto && (iaCfg.roteiros || iaCfg.linhas || iaCfg.chat) ? grupo('Inteligência artificial',
         'Vale para toda a equipe. Desligado, o assistente some da tela e o servidor recusa o pedido.',
         (iaCfg.roteiros ? L({ ic: 'ia', tom: 'violeta', t: 'Assistente nos Roteiros', d: 'sugerir, reescrever e revisar cenas', cls: 'cfg-alterna',
             dir: chave('ia_roteiros', iaRemoto.roteiros !== false, 'Assistente nos Roteiros') }) : '') +
         (iaCfg.linhas ? L({ ic: 'ia', tom: 'rosa', t: 'Assistente nas Linhas editoriais', d: 'ideias, textos e resumos da linha', cls: 'cfg-alterna',
-            dir: chave('ia_linhas', iaRemoto.linhas !== false, 'Assistente nas Linhas editoriais') }) : '')) : '') +
+            dir: chave('ia_linhas', iaRemoto.linhas !== false, 'Assistente nas Linhas editoriais') }) : '') +
+        (iaCfg.chat ? L({ ic: 'ia', tom: 'azul', t: 'Chat com o assistente', d: 'botão no canto da tela, para perguntar e pedir ideias', cls: 'cfg-alterna',
+            dir: chave('ia_chat', iaRemoto.chat !== false, 'Chat com o assistente') }) : '')) : '') +
       (pode('dados') ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
         L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
         L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '');
@@ -2014,10 +2016,10 @@ B7.Dashboard = (function () {
     };
     /* IA: vale para todos — grava no banco (só administrador consegue) */
     const salvarIA = async (sw, v) => {
-      const atual = Object.assign({ roteiros: true, linhas: true }, B7.IA.remoto());
+      const atual = Object.assign({ roteiros: true, linhas: true, chat: true }, B7.IA.remoto());
       atual[sw.dataset.chave.slice(3)] = v;
       try {
-        await B7.DB.rpc('sistema_config_definir', { p_chave: 'ia', p_valor: { roteiros: atual.roteiros !== false, linhas: atual.linhas !== false } });
+        await B7.DB.rpc('sistema_config_definir', { p_chave: 'ia', p_valor: { roteiros: atual.roteiros !== false, linhas: atual.linhas !== false, chat: atual.chat !== false } });
         B7.IA.definirRemoto(atual);
         B7.UI.toast(v ? 'Assistente ligado para a equipe.' : 'Assistente desligado para a equipe.');
       } catch (e) {
@@ -2088,7 +2090,7 @@ B7.Dashboard = (function () {
       }
       if (pref === 'som_abertura') B7.pref.gravar('som_abertura', v);
       if (pref === 'tp_espelho') gravarTp('espelho', v);
-      if (pref === 'ia_roteiros' || pref === 'ia_linhas') salvarIA(sw, v);
+      if (pref === 'ia_roteiros' || pref === 'ia_linhas' || pref === 'ia_chat') salvarIA(sw, v);
     };
     p.querySelectorAll('.cfg-alterna').forEach(l => {
       const sw = l.querySelector('.cfg-sw');

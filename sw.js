@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v282';
+const CACHE = 'roteiros-b7-v283';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -27,10 +27,10 @@ const CASCA = [
      silêncio porque o arquivo nunca entrava no cache. */
   './js/previa-usuario.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js',
-  './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js',
+  './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js', './js/ia-chat.js',
   './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js', './js/vendor/xlsx.full.min.js',
   './styles/auth.css', './styles/central.css', './styles/conteudo.css', './styles/semana.css',
-  './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css', './styles/linha.css', './styles/design.css',
+  './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css', './styles/linha.css', './styles/ia-chat.css', './styles/design.css',
   './styles/video.css', './styles/calendario.css', './styles/oportunidades.css', './styles/gravacao.css', './styles/publicacoes.css', './styles/painel.css', './styles/topo.css', './styles/nav.css',
   './assets/brand/logo-color.png', './assets/brand/logo-white.png',
   './assets/brand/symbol-color.png', './assets/brand/symbol-white.png',

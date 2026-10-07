@@ -18,6 +18,7 @@
 //         { tarefa: 'linha', operacao, linha_id, … }   (ver _shared/ia/linha.ts)
 //         { tarefa: 'analise', operacao, roteiro_id }  (ver _shared/ia/analise.ts)
 //         { tarefa: 'resumo', operacao, status_id | cliente_id+ano+mes }  (ver _shared/ia/resumo.ts)
+//         { tarefa: 'chat', texto, conversa_id?, cliente_id? }             (ver _shared/ia/chat.ts)
 // Resposta de produto (HTTP 200), no formato do B7 — a tela não conhece
 // o formato do provedor:
 //   { ok: true, texto, id }    um campo de texto
@@ -45,6 +46,7 @@ import { carregarContexto, limiteDeSaida, limparSaida, montarMensagens, validar,
 import * as Linha from '../_shared/ia/linha.ts';
 import * as Analise from '../_shared/ia/analise.ts';
 import * as Resumo from '../_shared/ia/resumo.ts';
+import * as Chat from '../_shared/ia/chat.ts';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -83,7 +85,7 @@ Deno.serve(comCors(async (req: Request) => {
   if (!user) return json({ ok: false, categoria: 'sessao' }, 401);
 
   /* ---- a IA é ferramenta da equipe: cliente do Portal não usa ---- */
-  const { data: perfil } = await sb.from('perfis').select('id, estado, papel').eq('id', user.id).maybeSingle();
+  const { data: perfil } = await sb.from('perfis').select('id, estado, papel, nome, funcao').eq('id', user.id).maybeSingle();
   if (!perfil || perfil.estado !== 'ativa' || perfil.papel === 'cliente') return json({ ok: false, categoria: 'sem_permissao' }, 403);
 
   /* ---- pedido ---- */
@@ -95,7 +97,8 @@ Deno.serve(comCors(async (req: Request) => {
   const pLinha = corpo.tarefa === 'linha' ? Linha.validar(corpo) : null;
   const pAnalise = corpo.tarefa === 'analise' ? Analise.validar(corpo) : null;
   const pResumo = corpo.tarefa === 'resumo' ? Resumo.validar(corpo) : null;
-  const v = pRoteiro || pLinha || pAnalise || pResumo;
+  const pChat = corpo.tarefa === 'chat' ? Chat.validar(corpo) : null;
+  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat;
   if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
 
   /* zzz71: liga/desliga do administrador (Configurações → Administração),
@@ -103,7 +106,7 @@ Deno.serve(comCors(async (req: Request) => {
      linha e resumo seguem "linhas". Sem a linha no banco = ligado. */
   {
     const { data: cfgIa } = await sb.from('sistema_config').select('valor').eq('chave', 'ia').maybeSingle();
-    const recursoCfg = (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
+    const recursoCfg = pChat ? 'chat' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
     const valorIa = (cfgIa && cfgIa.valor) as Record<string, unknown> | null;
     if (valorIa && valorIa[recursoCfg] === false) return json({ ok: false, categoria: 'desligado' });
   }
@@ -133,8 +136,27 @@ Deno.serve(comCors(async (req: Request) => {
     esquema?: Record<string, unknown>;
     /** reescrita de um texto existente: a sugestão não pode voltar igual a ele */
     original?: string;
+    /** depois de dar certo: grava o que precisar e devolve campos a mais para a tela */
+    aposOk?: (texto: string) => Promise<Record<string, unknown>>;
   };
-  if (pRoteiro && pRoteiro.ok) {
+  if (pChat && pChat.ok) {
+    /* conversa livre: a conversa tem que ser da pessoa; o que o assistente
+       sabe do B7 é lido com a sessão dela (RLS) */
+    const pedido = pChat.pedido;
+    const conv = await Chat.abrirConversa(sb, sbDaPessoa, perfil.id, pedido);
+    if (!conv) return json({ ok: false, categoria: 'nao_encontrado' });
+    const [hist, contexto] = await Promise.all([Chat.historico(sb, conv), Chat.carregarContexto(sbDaPessoa, conv.clienteId)]);
+    const FUNCOES: Record<string, string> = { coordenador: 'Coordenação', designer: 'Designer', videomaker: 'Videomaker' };
+    const quem = { nome: String(perfil.nome || ''), funcao: perfil.papel === 'admin' ? 'Administrador' : (FUNCOES[String(perfil.funcao)] || '') };
+    t = {
+      recurso: 'chat', acao: 'mensagem', entidadeTipo: 'conversa', entidadeId: conv.id, tamanhoEntrada: pedido.texto.length,
+      mensagens: Chat.montarMensagens(pedido, contexto, hist, quem), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
+      aposOk: async (texto: string) => {
+        await Chat.gravar(sb, perfil.id, conv, pedido.texto, texto);
+        return { conversa_id: conv.id, titulo: conv.titulo, cliente_id: conv.clienteId };
+      }
+    };
+  } else if (pRoteiro && pRoteiro.ok) {
     const pedido = pRoteiro.pedido;
     const ctx = await carregarContexto(sbDaPessoa, pedido.cenaId);
     if (!ctx) return json({ ok: false, categoria: 'nao_encontrado' });
@@ -238,5 +260,6 @@ Deno.serve(comCors(async (req: Request) => {
     return json({ ok: true, itens: lido.itens, id: reg ? reg.id : null,
       ...(typeof lido.resumo === 'string' ? { resumo: lido.resumo } : {}) });
   }
-  return json({ ok: true, texto: r.texto, id: reg ? reg.id : null });
+  const extra = t.aposOk ? await t.aposOk(r.texto) : {};
+  return json({ ok: true, texto: r.texto, id: reg ? reg.id : null, ...extra });
 }));
