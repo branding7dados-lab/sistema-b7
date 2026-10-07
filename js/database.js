@@ -1036,6 +1036,17 @@ B7.DB = (function () {
        grava notificação nenhuma. Devolve { ok, enviado } ou { ok: false,
        motivo } — "enviado" é o servidor de push ter aceitado, não a
        confirmação de que o aparelho mostrou. */
+    /* zzz83: situação e teste do WhatsApp (só administrador; o servidor confere) */
+    async whatsapp(acao) {
+      const { data, error } = await sb().functions.invoke('b7-push', { body: { whatsapp: acao } });
+      if (error) {
+        let corpo = null;
+        try { corpo = JSON.parse(await error.context.clone().text()); } catch (x) {}
+        return (corpo && corpo.motivo) ? corpo : { ok: false, motivo: 'funcao_indisponivel' };
+      }
+      return data || { ok: false, motivo: 'funcao_indisponivel' };
+    },
+
     async testarPush(endpoint) {
       const { data, error } = await sb().functions.invoke('b7-push', { body: { teste: true, endpoint: endpoint } });
       if (error) {

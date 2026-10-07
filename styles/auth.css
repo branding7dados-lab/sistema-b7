@@ -817,3 +817,4 @@ html.modo-leve .pf-aurora{animation:none;}
   .ac-funcoes.ac-tres .nu-papel:nth-child(3){grid-column:1 / -1;}
 }
 @media (max-width:560px){ .lu3 .lu3-meta{flex-wrap:wrap;row-gap:3px;overflow:visible;} }
+.lu3-whats{color:var(--ok);background:color-mix(in srgb, var(--ok) 12%, transparent);font-weight:600;}

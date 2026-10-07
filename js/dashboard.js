@@ -1768,6 +1768,7 @@ B7.Dashboard = (function () {
     atualizar: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/>',
     celular: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>',
     vassoura: '<path d="M14 4l6 6"/><path d="M12.5 5.5l6 6-3 3-6-6z"/><path d="M9.5 8.5C6 10 4 14 4 20c5 0 9-1.5 11.5-5.5"/>',
+    whats: '<path d="M4 20l1.3-4.3A8 8 0 1 1 8.4 19z"/><path d="M9.2 8.8c.3 2.6 2.4 4.9 5 5.6l1.2-1.4"/>',
     sair: '<path d="M14.5 4h4A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>'
   };
   const svgF = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICF[k] + '</svg>';
@@ -1936,6 +1937,8 @@ B7.Dashboard = (function () {
             botao: true, attrs: ' data-ir="#/usuarios"' })) : '') +
       (ehAdm ? grupo('Integrações', 'A conta Google é uma só para o sistema inteiro: o que a equipe marca vai para ela.',
         '<div id="cfg-google">' + L({ ic: 'google', tom: 'azul', t: 'Google Agenda', d: 'verificando…',
+            dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>' +
+        '<div id="cfg-whats">' + L({ ic: 'whats', tom: 'verde', t: 'Avisos por WhatsApp', d: 'verificando…',
             dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>') : '') +
       (ehAdm && B7.IA && B7.IA.remoto && (iaCfg.roteiros || iaCfg.linhas || iaCfg.chat) ? grupo('Inteligência artificial',
         'Vale para toda a equipe. Desligado, o assistente some da tela e o servidor recusa o pedido.',
@@ -2170,6 +2173,29 @@ B7.Dashboard = (function () {
         try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
         location.reload();
       } });
+    /* zzz83: WhatsApp — situação do serviço (sem mostrar chave) e teste */
+    const cw = p.querySelector('#cfg-whats');
+    if (cw) (async () => {
+      const MOTIVO = { nao_configurado: 'o serviço ainda não foi configurado no servidor', sem_numero: 'cadastre o seu WhatsApp em Usuários e acessos',
+        falha_envio: 'o serviço recusou o envio — confira se o WhatsApp está conectado nele', sem_permissao: 'só administrador', funcao_indisponivel: 'servidor indisponível agora' };
+      const desenhar = (st, aviso) => {
+        const con = !!(st && st.ok && st.configurado);
+        cw.innerHTML = L({ ic: 'whats', tom: 'verde', t: 'Avisos por WhatsApp', botao: con, semSeta: true, attrs: ' data-whats-teste',
+          d: '<span id="cfg-whats-d">' + esc(aviso || (!st || !st.ok ? 'não foi possível verificar agora'
+            : con ? st.com_numero + (st.com_numero === 1 ? ' pessoa com número' : ' pessoas com número') + ' · toque para enviar um teste para você'
+            : 'serviço não configurado — veja WHATSAPP.md')) + '</span>',
+          dir: '<span class="cfg-valor' + (con ? ' ok' : '') + '">' + (con ? 'Ligado' : 'Desligado') + '</span>' });
+        const b = cw.querySelector('button[data-whats-teste]');
+        if (b) b.onclick = async () => {
+          const d = cw.querySelector('#cfg-whats-d'); if (d) d.textContent = 'enviando o teste…';
+          const r = await B7.DB.whatsapp('teste');
+          if (d) d.textContent = r && r.ok ? 'teste enviado — confira o seu WhatsApp' : 'não enviado: ' + (MOTIVO[r && r.motivo] || 'falha');
+        };
+      };
+      let st = null;
+      try { st = await B7.DB.whatsapp('status'); } catch (e) {}
+      if (cw.isConnected) desenhar(st);
+    })();
     const cg = p.querySelector('#cfg-google');
     if (cg) (async () => {
       let stG = null;

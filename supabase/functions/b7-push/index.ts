@@ -40,6 +40,7 @@
 import webpush from 'npm:web-push@3.6.7';
 import { comCors, iguais } from '../_shared/cors.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { entregarWhats, numeroDe, provedorWhats } from '../_shared/whatsapp.ts';
 
 const VERSAO = '2026-10-03-zzz2';
 
@@ -155,6 +156,31 @@ Deno.serve(comCors(async (req: Request) => {
   );
 
   /* ================================================================
+     WHATSAPP (zzz83) — situação e teste, só para administrador.
+     { whatsapp: 'status' }  diz se há serviço configurado (sem revelar chave)
+     { whatsapp: 'teste' }   manda uma mensagem para o número de quem pediu
+     ================================================================ */
+  if (corpo.whatsapp === 'status' || corpo.whatsapp === 'teste') {
+    const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    const { data: quem } = token ? await sb.auth.getUser(token) : { data: { user: null } };
+    const user = quem && quem.user;
+    if (!user) return json({ ok: false, motivo: 'sem_sessao' }, 401);
+    const { data: adm } = await sb.from('perfis').select('id, estado, papel').eq('id', user.id).maybeSingle();
+    if (!adm || adm.estado !== 'ativa' || adm.papel !== 'admin') return json({ ok: false, motivo: 'sem_permissao' }, 403);
+    const prov = provedorWhats(k => Deno.env.get(k));
+    const numero = await numeroDe(sb, user.id);
+    if (corpo.whatsapp === 'status') {
+      const { count } = await sb.from('perfil_contatos').select('perfil_id', { count: 'exact', head: true }).not('whatsapp', 'is', null);
+      return json({ ok: true, configurado: !!prov, servico: prov ? prov.nome : null, meu_numero: !!numero, com_numero: count || 0 });
+    }
+    if (!prov) return json({ ok: false, motivo: 'nao_configurado' });
+    if (!numero) return json({ ok: false, motivo: 'sem_numero' });
+    const r = await prov.enviar(numero, '*Teste do Sistema B7*\nSe você recebeu esta mensagem, os avisos por WhatsApp estão funcionando.');
+    console.log(JSON.stringify({ b7whats: 'teste', servico: prov.nome, ok: r.ok, status: r.status }));
+    return json(r.ok ? { ok: true } : { ok: false, motivo: 'falha_envio', status: r.status });
+  }
+
+  /* ================================================================
      TESTE — a própria pessoa, para o próprio aparelho
      ================================================================ */
   if (corpo.teste === true) {
@@ -213,9 +239,19 @@ Deno.serve(comCors(async (req: Request) => {
 
   /* ---- preferência da pessoa: push desligado = nada enviado ---- */
   const { data: perfil } = await sb.from('perfis')
-    .select('id, estado, preferencias').eq('id', n.destinatario_id).maybeSingle();
+    .select('id, estado, preferencias, papel').eq('id', n.destinatario_id).maybeSingle();
   if (!perfil || perfil.estado !== 'ativa') return json({ ok: true, enviados: 0, motivo: 'perfil inativo', versao: VERSAO });
   const prefs = (perfil.preferencias && typeof perfil.preferencias === 'object') ? perfil.preferencias as Record<string, unknown> : {};
+
+  /* ---- WhatsApp (zzz83): canal à parte. Não depende de o push estar
+     ligado nem de haver aparelho inscrito; só dos avisos importantes, de
+     ser da equipe e de ter número. Segue em paralelo, sem atrasar o push. */
+  {
+    const zap = entregarWhats(sb, n, perfil, k => Deno.env.get(k));
+    // deno-lint-ignore no-explicit-any
+    try { (globalThis as any).EdgeRuntime.waitUntil(zap); } catch (_e) { await zap; }
+  }
+
   if (prefs.push === false) {
     await registrar(sb, n.id, 'push_desligado');
     return json({ ok: true, enviados: 0, motivo: 'push desligado nas preferências', versao: VERSAO });

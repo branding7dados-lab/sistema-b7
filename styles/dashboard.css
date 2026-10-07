@@ -1211,7 +1211,7 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .cfg-passo button:active{transform:scale(.92);}
 .cfg-passo button:focus-visible{outline:2px solid var(--acento);outline-offset:1px;}
 .cfg-passo b{min-width:34px;text-align:center;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);}
-#cfg-google + .cfg-l::before,.cfg-l + #cfg-google > .cfg-l::before{content:"";position:absolute;top:0;right:0;left:57px;height:1px;background:var(--borda);}
+#cfg-google + .cfg-l::before,.cfg-l + #cfg-google > .cfg-l::before,#cfg-google + #cfg-whats > .cfg-l::before{content:"";position:absolute;top:0;right:0;left:57px;height:1px;background:var(--borda);}
 @media (max-width:760px){
   .cfg-abas{margin:0 -4px 18px;}
   .cfg-abas button{padding:6px 9px;font-size:13px;}
