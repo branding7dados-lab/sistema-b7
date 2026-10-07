@@ -52,7 +52,7 @@ B7.Notif = (function () {
      Espelho de notif_pref_ativa() no banco: tudo ligado por padrão,
      menos o que é acompanhamento amplo. As chaves são as mesmas que
      perfil_preferencias_gravar aceita. */
-  const DESLIGADO_POR_PADRAO = ['adm_revisoes', 'adm_tudo'];   /* zzz86: o resumo diário passou a vir ligado */
+  const DESLIGADO_POR_PADRAO = ['adm_revisoes', 'adm_tudo', 'resumo_diario'];
   function prefTipo(chave) {
     const n = prefs().notif;
     if (n && typeof n[chave] === 'boolean') return n[chave];
