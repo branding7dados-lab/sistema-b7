@@ -1315,6 +1315,49 @@ B7.Rota = (function () {
       } catch (e) { return null; }
     };
 
+    /* =================================================================
+       zzz82: ATUALIZAR SOZINHO QUANDO NINGUÉM ESTÁ USANDO (pedido do
+       Kevin, 07/10). Com versão nova esperando, a página recarrega por
+       conta própria só quando não atrapalha ninguém:
+         • a aba ficou 20 min sem nenhum toque, clique, tecla ou rolagem; ou
+         • a aba ficou 10 min em segundo plano.
+       Nunca com teleprompter aberto, janela (modal) aberta, conversa do
+       assistente com texto por enviar, ou sem internet. O que tem
+       salvamento automático é salvo antes (recarregar()).
+       Quem está usando continua decidindo pelo cartão, como antes.
+       ================================================================= */
+    const PARADO_MS = 20 * 60 * 1000, OCULTO_MS = 10 * 60 * 1000;
+    let ultimoUso = Date.now(), ocultoDesde = document.hidden ? Date.now() : 0, ultimaOculta = 0, autoIndo = false;
+    const usou = () => { ultimoUso = Date.now(); };
+    ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => window.addEventListener(ev, usou, { passive: true, capture: true }));
+    document.addEventListener('visibilitychange', () => { ocultoDesde = document.hidden ? Date.now() : 0; if (!document.hidden) usou(); });
+    const ocupado = () => {
+      if (document.body.classList.contains('tele-aberto')) return true;
+      if (document.querySelector('.fundo-modal')) return true;
+      const rascunho = document.querySelector('#ch-texto');
+      if (rascunho && rascunho.value.trim()) return true;
+      if (document.querySelector('.ch-pensando')) return true;
+      return false;
+    };
+    function talvezAtualizarSozinho() {
+      if (autoIndo || forcando || !navigator.onLine) return;
+      const agora = Date.now();
+      const oculto = ocultoDesde && agora - ocultoDesde >= OCULTO_MS;
+      const parado = agora - ultimoUso >= PARADO_MS;
+      if (!oculto && !parado) return;
+      /* em segundo plano a conferência normal não roda: pergunta aqui, no
+         máximo a cada 5 min */
+      if (!alvo) {
+        if (oculto && agora - ultimaOculta >= 5 * 60 * 1000) { ultimaOculta = agora; conferir(true); }
+        return;
+      }
+      if (ocupado()) return;
+      autoIndo = true;
+      recarregar();
+    }
+    B7._talvezAtualizarSozinho = talvezAtualizarSozinho;   /* para teste */
+    setInterval(talvezAtualizarSozinho, 60000);
+
     setInterval(() => conferir(false), 30000);
     document.addEventListener('visibilitychange', () => conferir(false));
     window.addEventListener('focus', () => conferir(false));
