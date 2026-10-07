@@ -26,6 +26,9 @@ B7.Chat = (function () {
     hist: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 5v4h4M12 8v4.5l3 1.8"/></svg>',
     enviar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 12.5h8L17 7"/></svg>',
+    seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+    alvo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
+    ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     volta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>'
   };
   const SUGESTOES = [
@@ -89,9 +92,9 @@ B7.Chat = (function () {
   async function carregarClientes() {
     try {
       const l = await B7.DB.listarClientes();
-      S.clientes = (l || []).map(c => ({ id: c.id, nome: c.nome }));
+      S.clientes = (l || []).map(c => ({ id: c.id, nome: c.nome, logo: c.logo_url || '' }));
     } catch (e) { S.clientes = []; }
-    if (S.aberto && S.vista === 'conversa') pintarTopo();
+    if (S.aberto && S.vista === 'conversa') { const aberta = !!(painel && painel.querySelector('.ch-pop')); fecharClientes(); pintarTopo(); if (aberta) abrirClientes(); }
   }
 
   /* texto do assistente: escapado, com **negrito**, listas "- " e parágrafos */
@@ -109,17 +112,61 @@ B7.Chat = (function () {
     return html;
   }
 
+  /* zzz79: o cliente em foco deixou de ser a lista nativa do navegador
+     (feia e fora do padrão) e virou um botão que abre uma lista própria,
+     com busca e a marca de cada cliente. */
+  const iniciais = n => String(n || '').trim().split(/\s+/).slice(0, 2).map(p => p.charAt(0)).join('').toUpperCase() || '?';
+  const marca = cl => '<span class="ch-cli-av">' + (cl && cl.logo ? '<img src="' + esc(cl.logo) + '" alt="" loading="lazy">' : esc(iniciais(cl && cl.nome))) + '</span>';
   function topoHTML() {
-    const cl = S.clientes || [];
+    const atual = (S.clientes || []).find(c => c.id === S.clienteId) || null;
     return '<span class="ch-ic">' + IC.ia + '</span>' +
       '<div class="ch-tit"><b>Assistente B7</b>' +
-        '<select id="ch-cliente" class="ch-cliente" aria-label="Cliente em foco na conversa"' + (S.enviando ? ' disabled' : '') + '>' +
-          '<option value="">Sem cliente em foco</option>' +
-          cl.map(c => '<option value="' + esc(c.id) + '"' + (c.id === S.clienteId ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') +
-        '</select></div>' +
+        '<button type="button" id="ch-cliente" class="ch-cliente' + (atual ? ' tem' : '') + '" aria-haspopup="listbox" aria-expanded="false"' + (S.enviando ? ' disabled' : '') + '>' +
+          (atual ? marca(atual) : IC.alvo) + '<span>' + esc(atual ? atual.nome : 'Escolher cliente') + '</span>' + IC.seta + '</button></div>' +
       '<button type="button" class="ch-bt" id="ch-hist" title="Conversas anteriores" aria-label="Conversas anteriores">' + IC.hist + '</button>' +
       '<button type="button" class="ch-bt" id="ch-nova" title="Nova conversa" aria-label="Nova conversa">' + IC.novo + '</button>' +
       '<button type="button" class="ch-bt" id="ch-fechar" title="Fechar" aria-label="Fechar">' + IC.x + '</button>';
+  }
+  function fecharClientes() {
+    const pop = painel && painel.querySelector('.ch-pop'); if (pop) pop.remove();
+    const bt = painel && painel.querySelector('#ch-cliente'); if (bt) bt.setAttribute('aria-expanded', 'false');
+  }
+  function abrirClientes() {
+    if (!painel || S.enviando) return;
+    if (painel.querySelector('.ch-pop')) return fecharClientes();
+    const bt = painel.querySelector('#ch-cliente'); bt.setAttribute('aria-expanded', 'true');
+    const pop = document.createElement('div');
+    pop.className = 'ch-pop';
+    pop.innerHTML = '<div class="ch-pop-cx" role="dialog" aria-label="Cliente em foco">' +
+      '<div class="ch-pop-cab"><b>Cliente em foco</b><small>a IA lê a estratégia e a linha editorial dele</small></div>' +
+      '<input type="search" class="ch-pop-busca" placeholder="Buscar cliente…" aria-label="Buscar cliente" name="b7-chat-cliente" autocomplete="off" ' +
+        'data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">' +
+      '<div class="ch-pop-lista" role="listbox"></div></div>';
+    painel.appendChild(pop);
+    const busca = pop.querySelector('.ch-pop-busca'), lista = pop.querySelector('.ch-pop-lista');
+    const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const desenhar = () => {
+      const t = norm(busca.value.trim());
+      const cl = (S.clientes || []).filter(c => !t || norm(c.nome).includes(t));
+      const linha = (id, nome, av, sub) => '<button type="button" class="ch-pop-it' + (id === S.clienteId ? ' on' : '') + '" role="option" aria-selected="' + (id === S.clienteId) + '" data-cli="' + esc(id) + '">' +
+        av + '<span class="ch-pop-nm"><b>' + esc(nome) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>' +
+        (id === S.clienteId ? '<i class="ch-pop-ok">' + IC.ok + '</i>' : '') + '</button>';
+      lista.innerHTML = (t ? '' : linha('', 'Sem cliente em foco', '<span class="ch-cli-av neutro">' + IC.alvo + '</span>', 'conversa geral e operação da agência')) +
+        (cl.length ? cl.map(c => linha(c.id, c.nome, marca(c), '')).join('')
+          : '<div class="ch-nada">' + (S.clientes ? 'Nenhum cliente com esse nome.' : 'Carregando…') + '</div>');
+      lista.querySelectorAll('[data-cli]').forEach(b => b.onclick = () => {
+        S.clienteId = b.dataset.cli; fecharClientes(); pintarTopo(); pintarCorpo();
+        const ta = painel.querySelector('#ch-texto'); if (ta && window.matchMedia('(min-width: 761px)').matches) ta.focus();
+      });
+    };
+    busca.oninput = desenhar;
+    busca.onkeydown = e => {
+      if (e.key === 'Escape') { e.stopPropagation(); fecharClientes(); bt.focus(); }
+      if (e.key === 'Enter') { e.preventDefault(); const r = lista.querySelectorAll('[data-cli]'); if (r.length === 1 || (busca.value.trim() && r.length)) r[0].click(); }
+    };
+    pop.addEventListener('pointerdown', e => { if (e.target === pop) fecharClientes(); });
+    desenhar();
+    if (window.matchMedia('(min-width: 761px)').matches) busca.focus();
   }
   function pintarTopo() {
     const t = painel && painel.querySelector('.ch-topo'); if (!t || S.vista !== 'conversa') return;
@@ -129,8 +176,7 @@ B7.Chat = (function () {
     painel.querySelector('#ch-fechar').onclick = fechar;
     painel.querySelector('#ch-nova').onclick = () => { if (S.enviando) return; S.conversaId = null; S.msgs = []; pintar(); const ta = painel.querySelector('#ch-texto'); if (ta) ta.focus(); };
     painel.querySelector('#ch-hist').onclick = () => { if (S.enviando) return; S.vista = 'lista'; pintar(); carregarLista(); };
-    const sel = painel.querySelector('#ch-cliente');
-    sel.onchange = () => { S.clienteId = sel.value; pintarCorpo(); };
+    painel.querySelector('#ch-cliente').onclick = abrirClientes;
   }
 
   function corpoHTML() {
