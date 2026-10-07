@@ -2052,3 +2052,44 @@ body.ed-leitura #tela-editor :is(#revisao,.tipos) button:disabled{opacity:1;curs
 body.ed-leitura #tela-editor :is(#revisao,.tipos) button:disabled:not(.on){opacity:.45;}
 body.ed-leitura #tela-editor .cena{cursor:default;}
 body.b7-so-leitura [data-duplicar]{display:none !important;}
+
+/* =====================================================================
+   AVISO DE VERSÃO NOVA (zzz75) — js/app.js haVersaoNova
+   Cartão no canto inferior direito; no celular, acima da barra inferior.
+   ===================================================================== */
+.b7-atu{position:fixed;right:22px;bottom:22px;z-index:310;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px 13px;align-items:center;
+  width:min(360px,calc(100vw - 28px));padding:16px;border-radius:20px;background:var(--card);color:var(--ink);
+  border:1px solid color-mix(in srgb, var(--acento) 26%, var(--borda));
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 22px 50px -22px rgba(40,10,70,.55), 0 4px 14px -8px rgba(20,8,40,.35);
+  animation:b7AtuEntra .55s cubic-bezier(.16,1,.3,1) both;overflow:hidden;isolation:isolate;}
+.b7-atu::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--acento) 14%, transparent), transparent 60%),
+    radial-gradient(90% 80% at 100% 100%, color-mix(in srgb, #7C5CFF 12%, transparent), transparent 62%);}
+[data-theme="dark"] .b7-atu{background:var(--elevado, var(--card));box-shadow:0 24px 54px -22px rgba(0,0,0,.8);}
+.b7-atu.saindo{animation:b7AtuSai .24s ease forwards;}
+@keyframes b7AtuEntra{from{opacity:0;transform:translate3d(0,18px,0) scale(.96)}to{opacity:1;transform:none}}
+@keyframes b7AtuSai{to{opacity:0;transform:translate3d(0,12px,0) scale(.97)}}
+.b7-atu-ic{width:42px;height:42px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;color:#fff;
+  background:linear-gradient(135deg,#6B3FD8,#D63384);box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 10px 20px -10px rgba(140,40,160,.7);}
+.b7-atu-ic svg{width:21px;height:21px;}
+.b7-atu.indo .b7-atu-ic svg{animation:b7AtuGira .9s linear infinite;}
+@keyframes b7AtuGira{to{transform:rotate(360deg)}}
+.b7-atu-tx{min-width:0;display:flex;flex-direction:column;gap:2px;}
+.b7-atu-tx b{font-family:'Archivo',sans-serif;font-size:15.5px;font-weight:800;letter-spacing:-.01em;line-height:1.2;}
+.b7-atu-tx small{font-size:12.5px;line-height:1.4;color:var(--ink-3);}
+.b7-atu-bts{grid-column:1 / -1;display:grid;grid-template-columns:auto 1fr;gap:8px;}
+.b7-atu-bts button{height:42px;border-radius:13px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;border:0;transition:transform .15s ease, filter .2s ease, background .2s ease;}
+.b7-atu-bts button:active{transform:scale(.97);}
+.b7-atu-depois{padding:0 16px;background:color-mix(in srgb, var(--ink) 6%, transparent);color:var(--ink-2);}
+.b7-atu-depois:hover{background:color-mix(in srgb, var(--ink) 10%, transparent);}
+.b7-atu-ok{color:#fff;background:linear-gradient(135deg,#4B1E8F,#C2187A);box-shadow:0 10px 22px -12px rgba(150,30,130,.8);}
+.b7-atu-ok:hover{filter:brightness(1.08);}
+.b7-atu-ok:disabled{opacity:.75;cursor:default;}
+.b7-atu.indo .b7-atu-depois{visibility:hidden;}
+.b7-atu button:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+@media (max-width:760px){
+  .b7-atu{right:14px;left:14px;width:auto;bottom:calc(16px + env(safe-area-inset-bottom));}
+  html body[data-shell="interno"] .b7-atu{bottom:calc(84px + env(safe-area-inset-bottom));}
+}
+@media print{ .b7-atu{display:none !important;} }
+@media (prefers-reduced-motion: reduce){ .b7-atu, .b7-atu.saindo, .b7-atu.indo .b7-atu-ic svg{animation:none !important;} }

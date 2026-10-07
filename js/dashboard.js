@@ -2125,7 +2125,7 @@ B7.Dashboard = (function () {
       const d = p.querySelector('#cfg-atu-d');
       if (d) d.textContent = 'procurando…';
       const r = B7.buscarAtualizacao ? await B7.buscarAtualizacao() : 'erro';
-      if (d) d.textContent = r === 'nova' ? 'tem versão nova — toque em “Atualizar” no aviso'
+      if (d) d.textContent = r === 'nova' ? 'tem versão nova — toque em “Atualizar” no canto da tela'
         : r === 'atual' ? 'você já está na versão mais recente'
         : r === 'offline' ? 'sem internet agora' : 'não foi possível conferir agora';
     };

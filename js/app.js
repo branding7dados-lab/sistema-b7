@@ -1177,7 +1177,7 @@ B7.Rota = (function () {
         const r = await fetch('js/auth.js?t=' + Date.now(), { cache: 'no-store' });
         if (!r.ok) return 'erro';
         const m = /VERSAO\s*=\s*'([^']+)'/.exec(await r.text());
-        if (m && m[1] !== minha) { haVersaoNova(m[1]); return 'nova'; }
+        if (m && m[1] !== minha) { adiadoAte = 0; haVersaoNova(m[1]); return 'nova'; }
         return 'atual';
       } catch (e) { return 'erro'; }
     };
@@ -1189,7 +1189,7 @@ B7.Rota = (function () {
        tela até ser tocado; se for fechado, volta a aparecer na próxima
        conferência. Abrir o app de novo (ou recarregar) também já traz a
        versão nova, como sempre. */
-    let avisoAberto = null;
+    let avisoAberto = null, adiadoAte = 0;
     /* zzz5: o service worker abre a casca guardada (cache primeiro). Antes
        de recarregar, ele baixa a versão nova inteira — senão a recarga
        abriria a antiga de novo. Teto de 12 s: rede ruim não trava o botão. */
@@ -1224,10 +1224,30 @@ B7.Rota = (function () {
       if (renovadaPara !== v) { renovadaPara = v; renovarCasca(); }
       /* um aviso só na tela (a conferência roda a cada 30 s) */
       if (avisoAberto && avisoAberto.isConnected && !avisoAberto.classList.contains('saindo')) return;
+      if (Date.now() < adiadoAte) return;
       avisou = true;
-      B7.UI.toast('Nova versão do B7 disponível.', { acao: 'Atualizar', tempo: 24 * 3600 * 1000, aoClicar: recarregar });
-      const ts = document.querySelectorAll('#toasts .toast');
-      avisoAberto = ts[ts.length - 1] || null;
+      /* zzz75: cartão próprio no canto inferior direito (antes era um
+         aviso comum no meio da tela). Fica até a pessoa decidir:
+         "Atualizar" recarrega; "Depois" some por 30 min. */
+      const el = document.createElement('div');
+      el.className = 'b7-atu'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+      el.innerHTML =
+        '<span class="b7-atu-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg></span>' +
+        '<div class="b7-atu-tx"><b>Nova versão do B7</b><small>Leva poucos segundos. O que está aberto é salvo antes.</small></div>' +
+        '<div class="b7-atu-bts"><button type="button" class="b7-atu-depois">Depois</button>' +
+          '<button type="button" class="b7-atu-ok">Atualizar</button></div>';
+      const sumir = () => { el.classList.add('saindo'); setTimeout(() => el.remove(), 260); };
+      el.querySelector('.b7-atu-depois').onclick = () => { adiadoAte = Date.now() + 30 * 60 * 1000; sumir(); };
+      el.querySelector('.b7-atu-ok').onclick = ev => {
+        const b = ev.currentTarget;
+        if (b.disabled) return;
+        b.disabled = true; b.textContent = 'Atualizando…';
+        el.classList.add('indo');
+        recarregar();
+      };
+      document.body.appendChild(el);
+      avisoAberto = el;
     }
 
     setInterval(() => conferir(false), 30000);
