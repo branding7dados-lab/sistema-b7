@@ -83,7 +83,8 @@ B7.Topo = (function () {
   const ACOES = [
     { id: 'gravacao', rotulo: 'Nova gravação', dica: 'agenda e roteiros de um cliente', ic: IC.grav,
       contexto: ['gravacoes', 'gravacao', 'roteiros'],
-      pode: () => podeRota('gravacoes'),
+      /* zzz64: ver a área de Gravações não é poder criar — criar é da equipe */
+      pode: () => podeRota('gravacoes') && !!(B7.Auth && B7.Auth.ehEquipe && B7.Auth.ehEquipe()),
       fazer: () => B7.Dashboard.modalNovaGravacao() },
     { id: 'video', rotulo: 'Nova demanda de vídeo', dica: 'edição a partir de uma gravação', ic: IC.video,
       contexto: ['video'],

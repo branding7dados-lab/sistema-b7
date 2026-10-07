@@ -82,6 +82,10 @@ B7.Rota = (function () {
     atual = bruto;
     const [caminho, query] = bruto.slice(1).split('?');
     const partes = caminho.split('/').filter(Boolean);
+    /* zzz64: quem é da casa mas não é equipe vê Gravações e Roteiros
+       sem as ações de criar/duplicar/arquivar/excluir (styles/global.css) */
+    document.body.classList.toggle('b7-so-leitura', !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario() &&
+      B7.Auth.ehEquipe && !B7.Auth.ehEquipe() && !(B7.Auth.ehCliente && B7.Auth.ehCliente())));
     const params = new URLSearchParams(query || '');
 
     /* Guarda de rota: esconder o menu não basta, o endereço digitado à mão

@@ -50,7 +50,10 @@ B7.Perm = (function () {
        de edição e do contexto mínimo do cliente/gravação por trás
        delas — mesma lógica do Designer, sem administração nenhuma.
        'calendario' também é só leitura pra ele (mesma nota acima). */
-    videomaker: ['', 'video', 'gravacao', 'cliente', 'config', 'calendario'],
+    /* zzz64: também a ÁREA de Gravações e a de Roteiros (com o
+       Teleprompter e a exportação), sempre em leitura — o banco só
+       deixa a equipe escrever em gravações, roteiros e cenas. */
+    videomaker: ['', 'video', 'gravacao', 'gravacoes', 'roteiros', 'cliente', 'config', 'calendario'],
     cliente: [
       '', 'aprovacoes', 'revisar', 'minha-linha', 'minha-producao',
       'minhas-gravacoes', 'meus-status', 'historico', 'perfil'
@@ -149,7 +152,7 @@ B7.Perm = (function () {
     videomaker: {
       ocultar: ['#/usuarios', '#/importar', '#/atalhos', '#/lixeira', '#/clientes',
                 '#/kanban', '#/aprovacoes', '#/semanas', '#/arquivados',
-                '#/roteiros', '#/linhas', '#/design', '#/publicacoes'],
+                '#/linhas', '#/design', '#/publicacoes'],
       grupos: { 'MAIS FERRAMENTAS': false }
     },
     cliente: {

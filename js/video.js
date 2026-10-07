@@ -187,7 +187,10 @@ B7.Video = (function () {
       /* videomakers: o filtro "Responsável" é de todo mundo; clientes e
          pacotes só servem às ferramentas de gestão */
       const chamadas = [B7.DB.minhasDemandasVideo(), B7.DB.listarVideomakers().catch(() => [])];
-      if (equipe) chamadas.push(B7.DB.listarClientes(), B7.DB.pacotesVideo());
+      /* zzz64: quem cria demanda (equipe e videomaker) precisa dos clientes;
+         a lista de pacotes continua só da equipe (o banco só mostra a ela) */
+      if (possoOperar()) chamadas.push(B7.DB.listarClientes().catch(() => []));
+      if (equipe) chamadas.push(B7.DB.pacotesVideo());
       const [d, v, c, p] = await Promise.all(chamadas);
       demandas = d || [];
       clientes = c || [];
@@ -312,7 +315,10 @@ B7.Video = (function () {
               '<button data-vd-ferr="vd-gestao">Gestão</button><button data-vd-ferr="vd-pacotes">Pacotes</button><button data-vd-ferr="vd-importar">Importar planilha</button>' +
               (descartados.length ? '<hr><button data-vd-ferr="vd-descartados">Descartados (' + descartados.length + ')</button>' : '') +
             '</div></div></div>'
-        : '') +
+        /* zzz64: o videomaker cria demanda, sem as ferramentas de gestão */
+        : (possoOperar()
+          ? '<div class="vd-acoes-topo"><button class="b pri" id="vd-nova" aria-label="Nova demanda">' + IC.mais + '<span>Nova demanda</span></button></div>'
+          : '')) +
       '</div>' +
       '<datalist id="vd-pacotes-lista">' + pacotesVideoCache.map(p => '<option value="' + esc(p.nome) + '">').join('') + '</datalist>' +
       (anteriores.length
@@ -1954,7 +1960,7 @@ B7.Video = (function () {
         B7.DB.historicoDemandaVideo(id),
         B7.DB.versoesDemandaVideo(id).catch(() => []),
         B7.DB.comentariosDemandaVideo(id).catch(() => []),
-        equipe && !clientes.length ? B7.DB.listarClientes().catch(() => null) : Promise.resolve(null),
+        possoOperar() && !clientes.length ? B7.DB.listarClientes().catch(() => null) : Promise.resolve(null),
         equipe && !videomakers.length ? B7.DB.listarVideomakers().catch(() => null) : Promise.resolve(null),
         equipe && !pacotesVideoCache.length ? B7.DB.pacotesVideo().catch(() => null) : Promise.resolve(null)
       ];
@@ -2013,8 +2019,14 @@ B7.Video = (function () {
     }
 
     if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
-    const podeEditar = souEquipe();
+    /* zzz64: três níveis na tela da demanda —
+         podeGerir  (equipe): responsável, descartar, excluir, decisão do cliente, entrega;
+         podeEditar (equipe + videomaker): nome, código, prazo, prioridade, pacote,
+                    gravação, roteiros vinculados, observações;
+         podeOperar (equipe + videomaker): situação, versões, conclusão, link. */
+    const podeGerir = souEquipe();
     const podeOperar = possoOperar();
+    const podeEditar = podeOperar;
     const atrasada = ehAtrasada(d);
     const correcoes = versoesAtual.filter(v => v.decisao_cliente === 'correcao' || v.decisao_cliente === 'recusado').length;
 
@@ -2038,8 +2050,8 @@ B7.Video = (function () {
           (podeEditar
             ? '<div class="vd-acoes-topo">' +
               '<button class="b fina contorno" id="vd-dt-editar">Editar nome e código</button>' +
-              (d.editing_status !== 'descartado' ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar</button>' : '') +
-              '<button class="b fina contorno perigo" id="vd-dt-excluir">Excluir</button></div>'
+              (podeGerir && d.editing_status !== 'descartado' ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar</button>' : '') +
+              (podeGerir ? '<button class="b fina contorno perigo" id="vd-dt-excluir">Excluir</button>' : '') + '</div>'
             : '') +
         '</div>' +
         etapasHTML(d) +
@@ -2049,7 +2061,7 @@ B7.Video = (function () {
         '<div class="vd-detalhe-principal">' +
           secaoRoteiros(d, rc, podeEditar) +
 
-          secaoVersoes(d, versoesAtual, podeEditar, podeOperar) +
+          secaoVersoes(d, versoesAtual, podeGerir, podeOperar) +
 
           secaoConclusao(d, podeOperar) +
 
@@ -2093,7 +2105,7 @@ B7.Video = (function () {
               (correcoes ? ' · ' + correcoes + ' correção(ões)' : '') + '</div></div>'
             : '') +
           '<div class="vd-dt-campo"><label class="rot">Responsável</label>' +
-          (podeEditar
+          (podeGerir
             ? '<select class="campo" id="vd-dt-videomaker"><option value="">Sem atribuir</option>' +
               videomakers.map(v => '<option value="' + v.id + '"' + (v.id === d.videomaker_id ? ' selected' : '') + '>' + esc(v.nome) + '</option>').join('') +
               '</select>'

@@ -2035,3 +2035,20 @@ body.recolhida .ver-como-campo + .ver-como-caixa + .ver-como-bt{display:flex;}
   body[data-shell="interno"] .ver-como-campo + .ver-como-caixa + .ver-como-bt{display:flex;}
 }
 @media (prefers-reduced-motion:reduce){ .ver-como .ver-como-caixa{animation:none;} }
+
+/* zzz64: LEITURA para quem é da casa mas não é equipe (videomaker,
+   designer). Nas listas de Gravações e Roteiros somem as ações que o
+   banco recusaria; no editor de roteiro somem as de escrever. Ficam
+   abrir, Teleprompter, apresentar, visualizar, baixar e imprimir. */
+body.b7-so-leitura #tela-dashboard :is([data-nova-gravacao],[data-dup],[data-fixar-grav],[data-arquivar],[data-definir-mes],[data-excluir][data-nome]){display:none !important;}
+body.b7-so-leitura #tela-dashboard :is(.gl-item,.card,.rt-item) .menu .lista hr{display:none;}
+body.ed-leitura #tela-editor :is(#mn-ed-novo,#mn-ed-dados,#mn-ed-portal,#mn-ed-arquivar,#mn-ed-exportar,#mn-ed-excluir,
+  #bt-add-roteiro,#bt-add-cena,.entre,.puxa,.cena-topo .menu,.bloco-topo .escala,.auto-bt,#indicador-salvamento-editor,
+  [data-acao="enviar-aprovacao"],[data-acao="duplicar"],[data-acao="novo"],[data-acao="fixar"],[data-acao="excluir"]){display:none !important;}
+body.ed-leitura #tela-editor .bloco-topo .menu .lista hr{display:none;}
+body.ed-leitura #tela-editor #ed-status{pointer-events:none;}
+body.ed-leitura #tela-editor :is(input,textarea)[readonly]{cursor:default;caret-color:transparent;}
+body.ed-leitura #tela-editor :is(#revisao,.tipos) button:disabled{opacity:1;cursor:default;}
+body.ed-leitura #tela-editor :is(#revisao,.tipos) button:disabled:not(.on){opacity:.45;}
+body.ed-leitura #tela-editor .cena{cursor:default;}
+body.b7-so-leitura [data-duplicar]{display:none !important;}

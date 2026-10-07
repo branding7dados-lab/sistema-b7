@@ -18,7 +18,22 @@ B7.Editor = (function () {
   let fechadas = new Set();     // cenas recolhidas (só visual)
 
   /* =================================================== carregar */
+  /* zzz64: quem é da casa mas não é equipe (videomaker, designer) abre
+     o roteiro só para LER: nada é editável, nada é salvo. Continuam o
+     Teleprompter, a apresentação, a visualização rápida, baixar e
+     imprimir. O banco já recusava a escrita; isto evita a tela fingir
+     que deixa. */
+  const soLeitura = () => !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario() && B7.Auth.ehEquipe && !B7.Auth.ehEquipe());
+  function travarLeitura(cx) {
+    if (!soLeitura() || !cx) return;
+    cx.querySelectorAll('input, textarea').forEach(el => { el.readOnly = true; el.setAttribute('aria-readonly', 'true'); });
+    cx.querySelectorAll('select').forEach(el => { el.disabled = true; });
+    cx.querySelectorAll('[draggable="true"]').forEach(el => { el.draggable = false; el.ondragstart = e => e.preventDefault(); });
+    cx.querySelectorAll('#revisao button, .tipos button').forEach(b => { b.disabled = true; });
+  }
+
   async function abrir(gravacaoId, roteiroAlvo) {
+    document.body.classList.toggle('ed-leitura', soLeitura());
     /* zzz48: o zoom era gravado e nunca lido — a escolha se perdia a cada
        recarga. E `fechadas` guardava as cenas recolhidas da gravação
        anterior, que reapareciam recolhidas na próxima. */
@@ -78,6 +93,7 @@ B7.Editor = (function () {
      ação explícita: o autosave grava o tempo todo e nunca envia nada.
      ================================================================= */
   async function enviarParaAprovacao() {
+    if (soLeitura()) return;
     /* O estado do editor guarda a lista e o id do roteiro aberto; o
        roteiro em si é encontrado por E.atual. */
     const r = E.roteiros.find(x => x.id === E.atual), g = E.gravacao;
@@ -143,6 +159,7 @@ B7.Editor = (function () {
   }
 
   function menuStatus() {
+    if (soLeitura()) return;
     const m = B7.UI.modal('<h3>Status da gravação</h3><div class="sub">Aparece no dashboard e na lista do cliente.</div>' +
       ['Rascunho', 'Pronto para gravar', 'Gravado'].map(s =>
         '<button class="b" style="width:100%;justify-content:flex-start;margin-bottom:8px" data-s="' + s + '">' +
@@ -212,6 +229,7 @@ B7.Editor = (function () {
       };
     });
     document.getElementById('bt-add-roteiro').onclick = () => novoRoteiro();
+    travarLeitura(t);
   }
 
   function selecionar(id) {
@@ -223,6 +241,7 @@ B7.Editor = (function () {
   }
 
   async function moverRoteiro(idArrastado, idAlvo) {
+    if (soLeitura()) return;
     if (idArrastado === idAlvo) return;
     const de = E.roteiros.findIndex(r => r.id === idArrastado);
     const para = E.roteiros.findIndex(r => r.id === idAlvo);
@@ -238,6 +257,7 @@ B7.Editor = (function () {
 
   /* ================================================== roteiros */
   async function novoRoteiro(silencioso) {
+    if (soLeitura()) return;
     try {
       const r = await B7.Save.acao(() => B7.DB.criarRoteiro({
         recording_session_id: E.gravacao.id,
@@ -262,6 +282,7 @@ B7.Editor = (function () {
   }
 
   async function duplicarRoteiro(id) {
+    if (soLeitura()) return;
     const r = E.roteiros.find(x => x.id === id);
     if (!r) return;
     try {
@@ -274,6 +295,7 @@ B7.Editor = (function () {
   }
 
   function excluirRoteiro(id) {
+    if (soLeitura()) return;
     const idx = E.roteiros.findIndex(r => r.id === id);
     if (idx < 0) return;
     const registro = { ...E.roteiros[idx] };
@@ -310,6 +332,7 @@ B7.Editor = (function () {
   }
 
   async function fixarRoteiro(r) {
+    if (soLeitura()) return;
     try {
       await B7.Save.acao(() => B7.DB.fixar('roteiros', r.id, !r.is_pinned),
         r.is_pinned ? 'Removido dos fixados' : 'Adicionado aos fixados');
@@ -323,7 +346,9 @@ B7.Editor = (function () {
     const cx = document.getElementById('escrita');
     const r = E.roteiros.find(x => x.id === E.atual);
     if (!r) {
-      cx.innerHTML = '<div class="vazio"><b>Nenhum roteiro nesta gravação</b>' +
+      cx.innerHTML = soLeitura()
+        ? '<div class="vazio"><b>Nenhum roteiro nesta gravação</b><p>Quando a equipe escrever os roteiros, eles aparecem aqui.</p></div>'
+        : '<div class="vazio"><b>Nenhum roteiro nesta gravação</b>' +
         '<p>Crie o primeiro roteiro para começar.</p>' +
         '<button class="b pri" onclick="B7.Editor.novoRoteiro()">+ Novo roteiro</button></div>';
       return;
@@ -351,8 +376,8 @@ B7.Editor = (function () {
         '</div></div>' +
       '</div><div class="bloco-corpo">' +
         /* IA que analisa o roteiro inteiro (não altera nada) */
-        (B7.IAAnalise ? B7.IAAnalise.botoesHTML(r, cenas) : '') +
-        '<div class="mb" id="ap-status-roteiro">' + (B7.Aprovacoes ? B7.Aprovacoes.blocoStatus(E.aprovacoes[r.id], { botaoEnviar: true }) : '') + '</div>' +
+        (B7.IAAnalise && !soLeitura() ? B7.IAAnalise.botoesHTML(r, cenas) : '') +
+        '<div class="mb" id="ap-status-roteiro">' + (B7.Aprovacoes ? B7.Aprovacoes.blocoStatus(E.aprovacoes[r.id], { botaoEnviar: !soLeitura() }) : '') + '</div>' +
         '<div class="mb"><label class="rot">TÍTULO</label>' +
         '<input class="campo" data-campo="titulo" placeholder="Título do roteiro" value="' + esc(r.titulo) + '"></div>' +
         '<div class="mb"><label class="rot">OBJETIVO DO ROTEIRO</label>' +
@@ -380,7 +405,8 @@ B7.Editor = (function () {
 
     ligarEscrita(r);
     B7.UI.ligarMenus(cx);
-    if (B7.IAAnalise) B7.IAAnalise.ligar(cx, r, { impressao: () => impressaoDoRoteiro(r.id), salvar: () => B7.Save.agora(), verCena: verCena,
+    travarLeitura(cx);
+    if (B7.IAAnalise && !soLeitura()) B7.IAAnalise.ligar(cx, r, { impressao: () => impressaoDoRoteiro(r.id), salvar: () => B7.Save.agora(), verCena: verCena,
       ajustarCena: (cenaId, instrucao) => { verCena(cenaId); if (B7.IARoteiro) B7.IARoteiro.abrirCom(cenaId, instrucao); },
       adicionarCenas: lista => cenasDoRascunho(r.id, lista) });
   }
@@ -390,6 +416,7 @@ B7.Editor = (function () {
      essas cenas, na ordem, e o que sobrar entra no fim. Roteiro que já
      tem algo escrito: nada é tocado, as cenas novas entram no fim. */
   async function cenasDoRascunho(roteiroId, itens) {
+    if (soLeitura()) return;
     const lista = E.cenas[roteiroId] || (E.cenas[roteiroId] = []);
     const emBranco = c => !String(c.texto || '').trim() && !String(c.sugestao_cenas || '').trim();
     const livres = lista.every(emBranco) ? lista.slice() : [];
@@ -461,7 +488,7 @@ B7.Editor = (function () {
         '<textarea class="campo cresce" data-c-campo="texto" rows="3" ' +
           'placeholder="Texto da cena — Enter cria um novo parágrafo">' + esc(c.texto) + '</textarea>' +
         /* assistente de IA do texto desta cena (só existe se o recurso estiver ligado) */
-        (B7.IARoteiro ? B7.IARoteiro.html(c) : '') +
+        (B7.IARoteiro && !soLeitura() ? B7.IARoteiro.html(c) : '') +
         (c.tipo === 'Narração' ?
           '<div class="sugestao-cx' + (falta ? ' falta' : '') + '">' +
           '<label class="rot">SUGESTÃO DE CENAS' + (falta ? ' · OBRIGATÓRIO' : '') + '</label>' +
@@ -628,6 +655,7 @@ B7.Editor = (function () {
 
   /* ==================================================== cenas */
   async function novaCena(roteiroId, posicao) {
+    if (soLeitura()) return;
     const lista = E.cenas[roteiroId] || (E.cenas[roteiroId] = []);
     try {
       const c = await B7.Save.acao(() => B7.DB.criarCena({
@@ -644,6 +672,7 @@ B7.Editor = (function () {
   }
 
   async function duplicarCena(roteiroId, id) {
+    if (soLeitura()) return;
     const lista = E.cenas[roteiroId];
     const i = lista.findIndex(c => c.id === id);
     const o = lista[i];
@@ -659,6 +688,7 @@ B7.Editor = (function () {
   }
 
   async function moverCena(roteiroId, id, dir) {
+    if (soLeitura()) return;
     const lista = E.cenas[roteiroId];
     const i = lista.findIndex(c => c.id === id);
     const j = i + dir;
@@ -669,6 +699,7 @@ B7.Editor = (function () {
   }
 
   async function soltarCena(roteiroId, idArrastado, idAlvo) {
+    if (soLeitura()) return;
     const lista = E.cenas[roteiroId];
     const de = lista.findIndex(c => c.id === idArrastado);
     const para = lista.findIndex(c => c.id === idAlvo);
@@ -688,6 +719,7 @@ B7.Editor = (function () {
   }
 
   function excluirCena(roteiroId, id) {
+    if (soLeitura()) return;
     const lista = E.cenas[roteiroId];
     const i = lista.findIndex(c => c.id === id);
     if (i < 0) return;
@@ -728,7 +760,7 @@ B7.Editor = (function () {
     const novo = B7.Folha.ajustar(folha);
     if (novo !== +r.escala) {
       r.escala = novo;
-      B7.Save.campo('roteiros', r.id, { escala: novo });
+      if (!soLeitura()) B7.Save.campo('roteiros', r.id, { escala: novo });
       const pc = document.querySelector('#escrita .escala .pc');
       if (pc) pc.textContent = Math.round(novo * 100) + '%';
     }
@@ -837,6 +869,7 @@ B7.Editor = (function () {
 
   /* ============================================== dados da gravação */
   function editarGravacao() {
+    if (soLeitura()) return;
     const g = E.gravacao;
     const m = B7.UI.modal('<h3>Dados da gravação</h3>' +
       '<div class="mb"><label class="rot">NOME DA GRAVAÇÃO</label><input class="campo" id="dd-nome" data-foco value="' + esc(g.nome) + '"></div>' +
