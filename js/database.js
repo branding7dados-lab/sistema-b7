@@ -65,7 +65,33 @@ B7.DB = (function () {
 
     /* ------------------------------------- LOGOS (Supabase Storage) */
     /* A imagem vai para o bucket; na tabela fica só a referência. */
+    /* zzz74: logo em WebP antes de subir — mantém a transparência, lado
+       maior limitado a 1000 px. Só troca se o navegador gravar WebP de
+       verdade e o arquivo ficar menor; qualquer falha devolve o original. */
+    async _logoWebp(arquivo) {
+      try {
+        const tipo = arquivo && arquivo.type;
+        if (tipo !== 'image/png' && tipo !== 'image/jpeg') return arquivo;
+        if (!('createImageBitmap' in window)) return arquivo;
+        const bitmap = await createImageBitmap(arquivo);
+        const largura = bitmap.width, altura = bitmap.height;
+        if (!largura || !altura) return arquivo;
+        const escala = Math.min(1, 1000 / Math.max(largura, altura));
+        const tela = document.createElement('canvas');
+        tela.width = Math.max(1, Math.round(largura * escala)); tela.height = Math.max(1, Math.round(altura * escala));
+        const ctx = tela.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(bitmap, 0, 0, tela.width, tela.height);
+        if (bitmap.close) bitmap.close();
+        const blob = await new Promise(resolve => tela.toBlob(resolve, 'image/webp', 0.92));
+        if (!blob || blob.type !== 'image/webp' || blob.size >= arquivo.size) return arquivo;
+        const nome = (arquivo.name || 'logo').replace(/\.[a-z0-9]{1,6}$/i, '') + '.webp';
+        return new File([blob], nome, { type: 'image/webp', lastModified: Date.now() });
+      } catch (e) { return arquivo; }
+    },
+
     async enviarLogo(arquivo, clienteId) {
+      arquivo = await this._logoWebp(arquivo);
       const ext = (arquivo.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
       const limpo = arquivo.name.replace(/\.[^.]+$/, '').replace(/[^\w\-]+/g, '-').slice(0, 40).toLowerCase();
       /* pasta por cliente + timestamp: sem colisão entre clientes nem entre trocas */
@@ -1784,7 +1810,10 @@ B7.DB = (function () {
         const ctx = tela.getContext('2d');
         ctx.drawImage(bitmap, 0, 0, w, h);
         if (bitmap.close) bitmap.close();
-        const blob = await new Promise(resolve => tela.toBlob(resolve, 'image/jpeg', 0.72));
+        /* zzz74: WebP (mais leve). Navegador que não grava WebP (Safari)
+           devolve outro formato — aí vale o JPEG de sempre. */
+        let blob = await new Promise(resolve => tela.toBlob(resolve, 'image/webp', 0.76));
+        if (!blob || blob.type !== 'image/webp') blob = await new Promise(resolve => tela.toBlob(resolve, 'image/jpeg', 0.72));
         return blob || null;
       } catch (e) { return null; /* nunca bloqueia o upload do arquivo original por isso */ }
     },
@@ -1860,8 +1889,9 @@ B7.DB = (function () {
       const miniatura = await this._gerarMiniaturaImagem(arquivo, 320);
       const medida = this._ultimaMedida || {};
       if (miniatura) {
-        caminhoThumb = caminho + '-thumb.jpg';
-        try { await this._subirArquivoStorage(caminhoThumb, miniatura, 'image/jpeg'); }
+        const thumbWebp = miniatura.type === 'image/webp';
+        caminhoThumb = caminho + (thumbWebp ? '-thumb.webp' : '-thumb.jpg');
+        try { await this._subirArquivoStorage(caminhoThumb, miniatura, thumbWebp ? 'image/webp' : 'image/jpeg'); }
         catch (e) { caminhoThumb = null; /* card cai pro arquivo original */ }
       }
 

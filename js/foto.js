@@ -27,7 +27,7 @@ B7.Foto = (function () {
     });
   }
 
-  /* recorte central quadrado + redução; devolve data URL JPEG */
+  /* recorte central quadrado + redução; devolve data URL WebP (ou JPEG) */
   async function preparar(arquivo) {
     if (!arquivo) throw new Error('Escolha uma imagem.');
     if (!TIPOS.includes(arquivo.type)) throw new Error('Use PNG, JPG, WEBP ou GIF.');
@@ -43,7 +43,9 @@ B7.Foto = (function () {
     ctx.fillRect(0, 0, c.width, c.height);
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, sx, sy, lado, lado, 0, 0, c.width, c.height);
-    return c.toDataURL('image/jpeg', 0.88);
+    /* zzz74: WebP (mais leve); onde o navegador não grava WebP, JPEG */
+    const webp = c.toDataURL('image/webp', 0.86);
+    return webp.indexOf('data:image/webp') === 0 ? webp : c.toDataURL('image/jpeg', 0.88);
   }
 
   /* Monta a área de escolha dentro de um container já existente.
