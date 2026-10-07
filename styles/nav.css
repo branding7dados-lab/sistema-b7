@@ -330,3 +330,19 @@ body[data-shell="interno"] .lateral{transition:width .18s cubic-bezier(.2,0,0,1)
   html .nm-item{animation:none;}
   html .fundo-modal.tp-folha::before{animation:none;}
 }
+
+/* =====================================================================
+   zzz98 — ÍCONES NO ESTILO iOS (navegação)
+   Traço um pouco mais cheio, pontas e cantos redondos; o destino ativo
+   fica PREENCHIDO, como na barra de abas do iOS. Cada ícone tem:
+     .f = corpo (preenche quando ativo)
+     .d = detalhe de dentro (vira "recorte" quando o corpo preenche)
+     .o = traço de fora (sempre na cor do ícone)
+   ===================================================================== */
+svg[viewBox="0 0 24 24"]{stroke-linecap:round;stroke-linejoin:round;}
+.nav a svg,.ni-ic svg,.nm-ic svg{stroke-width:1.9;}
+.nav a svg :is(.f,.d,.o),.ni-ic svg :is(.f,.d,.o),.nm-ic svg :is(.f,.d,.o){transition:fill .18s ease, stroke .18s ease;}
+.nav a.on svg{--ic-vaza:color-mix(in srgb, #fff 10%, var(--sidebar));}
+.nav-inferior .on .ni-ic svg{--ic-vaza:color-mix(in srgb, var(--acento) 12%, var(--card));stroke-width:1.9;}
+.nav a.on svg .f,.nav-inferior .on .ni-ic svg .f{fill:currentColor;}
+.nav a.on svg .d,.nav-inferior .on .ni-ic svg .d{stroke:var(--ic-vaza);}
