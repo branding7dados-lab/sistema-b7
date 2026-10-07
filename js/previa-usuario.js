@@ -237,8 +237,8 @@ B7.PreviaUsuario = (function () {
     '</div>';
   }
 
-  function renderizarLista(q) {
-    const lista = document.getElementById('ver-como-lista');
+  function renderizarLista(q, lista) {
+    lista = lista || document.getElementById('ver-como-lista');
     if (!lista || !itens) return;
     const termo = normal(q);
     const clientes = itens.clientes.filter(c => !termo || normal(c.nome).includes(termo));
@@ -252,46 +252,35 @@ B7.PreviaUsuario = (function () {
       (usuarios.length ? '<div class="grupo">USUÁRIOS</div>' + usuarios.map(linhaResultado).join('') : '');
     lista.querySelectorAll('.res').forEach(el => el.onclick = () => {
       const tipo = el.dataset.tipo, id = el.dataset.id;
-      fecharCaixa();
       if (tipo === 'cliente') {
+        fecharCaixa(); fecharLateral();
         location.hash = '#/previa/' + id;
       } else {
         const u = itens.usuarios.find(x => x.id === id);
-        if (u) escolherModo(u);
+        if (u) entrarDireto(u, el);
       }
     });
   }
 
-  /* Escolhida uma pessoa da equipe, há dois caminhos, e a diferença entre
-     eles é grande demais para ficar implícita: só olhar (nada é salvo) ou
-     entrar na conta dela (tudo é salvo, no nome dela). */
-  function escolherModo(u) {
-    const papeis = rotuloPapel(u.papel) + (u.funcoes_extra.length ? ' · ' + u.funcoes_extra.map(rotuloPapel).join(' · ') : '');
-    const m = B7.UI.modal('<h3>' + esc(u.nome) + '</h3>' +
-      '<div class="sub">' + esc(papeis) + '</div>' +
-      '<div class="vc-opcoes">' +
-        '<button type="button" class="vc-opcao" data-modo="ver">' +
-          '<b>Só visualizar</b><small>Você vê o sistema como esta pessoa vê. Nada do que fizer é salvo.</small></button>' +
-        '<button type="button" class="vc-opcao forte" data-modo="entrar">' +
-          '<b>Entrar na conta</b><small>Você trabalha como esta pessoa: o que fizer é salvo e fica registrado no nome dela. ' +
-          'A entrada fica anotada na auditoria, com o seu nome.</small></button>' +
-      '</div>' +
-      '<div class="ajuda erro-txt" id="vc-erro" role="alert"></div>' +
-      '<div class="acoes"><button class="b" data-fecha>Cancelar</button></div>');
-    m.querySelector('[data-modo="ver"]').onclick = () => { m.fechar(); abrir(u); };
-    const bt = m.querySelector('[data-modo="entrar"]');
-    bt.onclick = async () => {
-      const erro = m.querySelector('#vc-erro');
-      erro.textContent = '';
-      m.querySelectorAll('.vc-opcao').forEach(b => { b.disabled = true; });
-      bt.querySelector('b').textContent = 'Entrando…';
-      try { await B7.Auth.entrarComo(u.id); }   /* recarrega a página ao dar certo */
-      catch (e) {
-        m.querySelectorAll('.vc-opcao').forEach(b => { b.disabled = false; });
-        bt.querySelector('b').textContent = 'Entrar na conta';
-        erro.textContent = (e && e.message) || 'Não foi possível entrar na conta.';
-      }
-    };
+  /* zzz63: escolher alguém da equipe ENTRA na conta (pedido do Kevin em
+     07/10 — antes abria a escolha "só visualizar / entrar"). Só
+     administrador: o servidor (b7-auth, entrar_como) recusa qualquer
+     outra pessoa, recusa conta de cliente e anota a entrada na
+     auditoria. Empresa continua abrindo a prévia do Portal, só leitura. */
+  let entrando = false;
+  async function entrarDireto(u, el) {
+    if (entrando) return;
+    entrando = true;
+    const sm = el && el.querySelector('small'), antes = sm ? sm.textContent : '';
+    if (el) el.classList.add('entrando');
+    if (sm) sm.textContent = 'Entrando na conta…';
+    try { await B7.Auth.entrarComo(u.id); }   /* recarrega a página ao dar certo */
+    catch (e) {
+      entrando = false;
+      if (el) el.classList.remove('entrando');
+      if (sm) sm.textContent = antes;
+      B7.UI.toast((e && e.message) || 'Não foi possível entrar na conta.');
+    }
   }
 
   async function carregarItens() {
@@ -325,7 +314,7 @@ B7.PreviaUsuario = (function () {
     if (modalSeletor) return;
     modalSeletor = B7.UI.modal('<div class="tp-folha-cab"><h3>Visualizar como…</h3>' +
       '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
-      '<p class="sub" style="margin:0 10px 10px">Veja o Portal de uma empresa (somente leitura) ou escolha alguém da equipe para visualizar ou entrar na conta.</p>' +
+      '<p class="sub" style="margin:0 10px 10px">Escolha alguém da equipe para entrar na conta — o que fizer fica registrado no nome da pessoa. Empresa abre o Portal, somente leitura.</p>' +
       '<div class="ver-como-caixa ver-como-dialogo"><input id="ver-como-busca" data-foco placeholder="Buscar cliente ou usuário…" autocomplete="off" aria-label="Buscar cliente ou usuário">' +
       '<div class="ver-como-lista" id="ver-como-lista"><div class="nada">Carregando…</div></div></div>',
       { classe: 'tp-folha', aoFechar: () => { modalSeletor = null; } });
@@ -371,7 +360,7 @@ B7.PreviaUsuario = (function () {
       cx.innerHTML =
         '<div class="co-quem" title="Você está na conta de ' + esc(u.nome) + '. O que fizer fica registrado nesta conta.">' +
           (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'co-av') : '') +
-          '<div class="co-tx"><small>Você está como</small><b>' + esc(u.nome) + '</b></div>' +
+          '<div class="co-tx"><small>Visualizando como</small><b>' + esc(u.nome) + '</b></div>' +
         '</div>' +
         '<button type="button" class="co-voltar" id="co-voltar" title="' + esc(titulo) + '" aria-label="' + esc(titulo) + '">' +
           IC_VOLTA + '<span>Voltar para minha conta</span></button>';
@@ -384,11 +373,48 @@ B7.PreviaUsuario = (function () {
     const pode = A.ehAdminReal && A.ehAdminReal() && !ativa();
     cx.className = 'ver-como';
     cx.hidden = !pode;
+    /* zzz63: a busca fica NO botão. Barra aberta → campo de busca com a
+       lista subindo acima dele; barra recolhida (só ícones) → o botão do
+       olho abre o mesmo seletor em diálogo. */
     cx.innerHTML = pode
-      ? '<button type="button" class="ver-como-bt" id="ver-como-bt" title="Visualizar como…">' + IC_OLHO + '<span>Visualizar como…</span></button>'
+      ? '<label class="ver-como-campo" title="Visualizar como…">' + IC_OLHO +
+          '<input id="ver-como-lat" type="search" placeholder="Visualizar como…" autocomplete="off" spellcheck="false" ' +
+            'role="combobox" aria-expanded="false" aria-controls="ver-como-lista-lat" aria-label="Visualizar como: buscar pessoa ou empresa"></label>' +
+        '<div class="ver-como-caixa"><div class="ver-como-lista" id="ver-como-lista-lat"><div class="nada">Carregando…</div></div></div>' +
+        '<button type="button" class="ver-como-bt" id="ver-como-bt" title="Visualizar como…" aria-label="Visualizar como…">' + IC_OLHO + '</button>'
       : '';
     const bt = cx.querySelector('#ver-como-bt');
     if (bt) bt.onclick = abrirSeletor;
+    const campo = cx.querySelector('#ver-como-lat'), lista = cx.querySelector('#ver-como-lista-lat');
+    if (!campo) return;
+    let carregado = false;
+    const abrirLateral = () => {
+      cx.classList.add('aberto'); campo.setAttribute('aria-expanded', 'true');
+      if (carregado) { renderizarLista(campo.value, lista); return; }
+      carregado = true;
+      carregarItens().then(() => renderizarLista(campo.value, lista)).catch(() => {
+        carregado = false; lista.innerHTML = '<div class="nada">Não foi possível carregar.</div>';
+      });
+    };
+    campo.addEventListener('focus', abrirLateral);
+    campo.addEventListener('input', () => { cx.classList.add('aberto'); renderizarLista(campo.value, lista); });
+    campo.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { fecharLateral(); campo.blur(); }
+      if (e.key === 'Enter') { const r = lista.querySelectorAll('.res'); if (r.length === 1) r[0].click(); }
+    });
+    if (!montarSeletor._fora) {
+      montarSeletor._fora = true;
+      document.addEventListener('pointerdown', e => {
+        const c = document.getElementById('ver-como');
+        if (c && c.classList.contains('aberto') && !c.contains(e.target)) fecharLateral();
+      });
+      window.addEventListener('hashchange', fecharLateral);
+    }
+  }
+  function fecharLateral() {
+    const c = document.getElementById('ver-como'); if (!c) return;
+    c.classList.remove('aberto');
+    const i = c.querySelector('#ver-como-lat'); if (i) { i.setAttribute('aria-expanded', 'false'); i.value = ''; }
   }
 
   /* No celular não existe barra lateral: o mesmo aviso e o mesmo botão
@@ -399,7 +425,7 @@ B7.PreviaUsuario = (function () {
     f.id = 'co-faixa';
     f.className = 'pv-banner-usuario co-faixa';
     f.setAttribute('role', 'status');
-    f.innerHTML = '<div class="pv-banner-tx"><b><small>Você está como</small> ' + esc(u.nome) + '</b>' +
+    f.innerHTML = '<div class="pv-banner-tx"><b><small>Visualizando como</small> ' + esc(u.nome) + '</b>' +
       '<span>O que fizer fica registrado nesta conta.</span></div>' +
       '<button type="button" class="b fina" id="co-voltar-faixa" aria-label="Voltar para minha conta">' + IC_VOLTA +
         '<span>Voltar</span></button>';
