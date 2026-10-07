@@ -1843,10 +1843,27 @@ B7.Dashboard = (function () {
       if (B7.Auth.papel() !== 'videomaker') opInicio.push(['#/', 'Central B7']);
       (PM.MODULOS || []).forEach(md => { if (PM.temModulo && PM.temModulo(md.id)) opInicio.push(['#/' + md.rotas[0], md.rotulo]); });
     }
+    /* zzz72: os ajustes do teleprompter são de quem grava ou coordena */
+    const fnc = u && B7.Auth.funcao ? B7.Auth.funcao() : null;
+    const usaTp = !!u && !ehCli && (ehAdm || fnc === 'videomaker' || fnc === 'coordenador');
     const tp = Object.assign({ velocidade: 7, espelho: false, contagem: 3, fonte: 0 }, B7.pref.ler('teleprompter', {}) || {});
     const iaCfg = (window.B7_CONFIG && window.B7_CONFIG.IA) || {};
     const iaRemoto = Object.assign({ roteiros: true, linhas: true }, B7.IA && B7.IA.remoto ? B7.IA.remoto() : {});
     const instalado = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+
+    const emOutraConta = !!(B7.Auth && B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
+    const blocoSessao =
+      /* Diagnóstico do acesso: aparece enquanto não há sessão, e diz
+         exatamente qual etapa falta. */
+      (B7.Auth && !u ? grupo('Acesso', 'Situação da autenticação nesta instalação.',
+        '<div class="cfg-l cfg-l-livre">' + ic('acesso', 'cinza') + '<div id="cfg-acesso" class="cfg-l-tx"><div class="cfg-estado">' +
+        '<span class="cfg-ponto"></span><span>Verificando…</span></div></div></div>') : '') +
+      (u ? grupo('Sessão', emOutraConta ? '' : 'Sair de todos encerra o B7 também nos outros celulares e computadores desta conta.',
+        (u.last_login_at ? L({ ic: 'relogio', tom: 'azul', t: 'Último login', d: 'quando esta conta entrou pela última vez',
+            dir: '<span class="cfg-valor">' + esc(B7.UI.quando ? B7.UI.quando(u.last_login_at) : '') + '</span>' }) : '') +
+        L({ ic: 'sair', tom: 'vermelho', t: 'Sair da conta', d: 'só neste aparelho', botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-config' }) +
+        (emOutraConta ? '' : L({ ic: 'celular', tom: 'vermelho', t: 'Sair de todos os aparelhos', d: 'encerra todas as sessões desta conta',
+            botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-todos' }))) : '');
 
     const abaGeral =
       (opInicio.length > 1 ? grupo('Início', 'Um link direto continua abrindo a tela do link.',
@@ -1857,7 +1874,7 @@ B7.Dashboard = (function () {
         L({ ic: 'calendario', tom: 'azul', t: 'Visão padrão', d: 'como o Calendário abre',
             abaixo: seletor('cal_vista', B7.pref.ler('calendario_vista', 'mes'), [['mes', 'Mês'], ['semana', 'Semana'], ['dia', 'Dia']]) })) : '') +
 
-      (abre('roteiros') || abre('gravacoes') ? grupo('Teleprompter', 'O que já vem pronto ao abrir. Dá para mudar durante a leitura.',
+      (usaTp ? grupo('Teleprompter', 'O que já vem pronto ao abrir. Dá para mudar durante a leitura.',
         L({ ic: 'ler', tom: 'rosa', t: 'Velocidade', d: 'de 1 (devagar) a 20 (rápido)', dir: passo('tp_velocidade', tp.velocidade, 'Velocidade do teleprompter') }) +
         L({ ic: 'letra', tom: 'laranja', t: 'Tamanho da letra', d: 'automático ajusta ao tamanho da tela',
             abaixo: seletor('tp_fonte', String(tp.fonte || 0), [['0', 'Auto'], ['40', 'Pequena'], ['56', 'Média'], ['72', 'Grande'], ['96', 'Enorme']]) }) +
@@ -1878,7 +1895,10 @@ B7.Dashboard = (function () {
 
       (u && !ehCli ? grupo('Filtros', '',
         L({ ic: 'filtro', tom: 'cinza', t: 'Limpar filtros guardados', d: 'Calendário, Produção, Vídeo e Design voltam ao padrão',
-            botao: true, semSeta: true, attrs: ' data-limpar-filtros' })) : '');
+            botao: true, semSeta: true, attrs: ' data-limpar-filtros' })) : '') +
+
+      /* zzz72: sair da conta mora na aba Geral */
+      blocoSessao;
 
     const abaAparencia =
       grupo('Aparência', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
@@ -1909,20 +1929,6 @@ B7.Dashboard = (function () {
             dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
         L({ ic: 'play', tom: 'rosa', t: 'Ver abertura', d: 'assistir de novo, com som', botao: true, attrs: ' data-ver-abertura' }));
 
-    const emOutraConta = !!(B7.Auth && B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
-    const abaConta =
-      /* Diagnóstico do acesso: aparece enquanto não há sessão, e diz
-         exatamente qual etapa falta. */
-      (B7.Auth && !u ? grupo('Acesso', 'Situação da autenticação nesta instalação.',
-        '<div class="cfg-l cfg-l-livre">' + ic('acesso', 'cinza') + '<div id="cfg-acesso" class="cfg-l-tx"><div class="cfg-estado">' +
-        '<span class="cfg-ponto"></span><span>Verificando…</span></div></div></div>') : '') +
-      (u ? grupo('Sessão', emOutraConta ? '' : 'Sair de todos encerra o B7 também nos outros celulares e computadores desta conta.',
-        (u.last_login_at ? L({ ic: 'relogio', tom: 'azul', t: 'Último login', d: 'quando esta conta entrou pela última vez',
-            dir: '<span class="cfg-valor">' + esc(B7.UI.quando ? B7.UI.quando(u.last_login_at) : '') + '</span>' }) : '') +
-        L({ ic: 'sair', tom: 'vermelho', t: 'Sair da conta', d: 'só neste aparelho', botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-config' }) +
-        (emOutraConta ? '' : L({ ic: 'celular', tom: 'vermelho', t: 'Sair de todos os aparelhos', d: 'encerra todas as sessões desta conta',
-            botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-todos' }))) : '');
-
     const abaAdmin =
       /* a seção só existe para admin: nada de item com cadeado */
       (pode('usuarios') ? grupo('Pessoas', 'Contas da equipe e dos clientes. Não existe cadastro público.',
@@ -1941,7 +1947,8 @@ B7.Dashboard = (function () {
         L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
         L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '');
 
-    const abaSistema =
+    /* zzz72: a aba Sistema é só da administração */
+    const abaSistema = !ehAdm ? '' :
       grupo('Este aparelho', u ? 'Limpar não apaga nada do banco nem tira você da conta: só o que o B7 guardou aqui para abrir mais rápido.' : '',
         L({ ic: 'versao', tom: 'cinza', t: 'Versão', d: 'a que está rodando agora',
             dir: '<code class="cfg-versao">v' + esc((B7.Auth && B7.Auth.VERSAO) || '') + '</code>' }) +
@@ -1962,7 +1969,7 @@ B7.Dashboard = (function () {
             d: online ? 'tudo certo por aqui' : 'reconecte para voltar a salvar',
             dir: '<span class="cfg-valor ' + (online ? 'ok' : 'erro') + '">' + (online ? 'Online' : 'Sem conexão') + '</span>' }) : '')) : '');
 
-    const abas = [['geral', 'Geral', abaGeral], ['aparencia', 'Aparência', abaAparencia], ['conta', 'Conta', abaConta],
+    const abas = [['geral', 'Geral', abaGeral], ['aparencia', 'Aparência', abaAparencia], 
                   ['admin', 'Admin', abaAdmin], ['sistema', 'Sistema', abaSistema]].filter(a => a[2]);
     let abaAtual = B7.pref.ler('cfg_aba', '');
     if (!abas.some(a => a[0] === abaAtual)) abaAtual = abas[0][0];

@@ -395,20 +395,15 @@ B7.Topo = (function () {
       '</div>' +
       '<div class="tc-lista">' +
         item('data-conta="perfil"', IC.perfil, 'violeta', 'Meu perfil', 'foto, nome, senha e notificações') +
-        (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'azul', 'Preferências e configurações', 'tema, desempenho, abertura e sistema') : '') +
+        (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'azul', 'Preferências e configurações', 'tema, tela inicial e ajustes do aparelho') : '') +
         (B7.Perm && B7.Perm.podeConfig('usuarios') && !cliente ? item('data-conta="usuarios"', IC.usuarios, 'verde', 'Usuários e acessos', 'contas da equipe e dos clientes') : '') +
         (!cliente ? item('data-conta="atalhos"', IC.teclado, 'cinza', 'Atalhos de teclado', 'a lista completa', ' tp-so-desktop') : '') +
         (B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor && !naContaDeOutro
           ? item('data-conta="vercomo"', IC.olho, 'laranja', 'Visualizar como…', 'ver o sistema com o acesso de outra pessoa') : '') +
-        (B7.reverAbertura ? item('data-conta="abertura"', IC.abertura, 'rosa', 'Ver abertura', 'assistir de novo, com som') : '') +
       '</div>' +
       '<div class="tp-secao tc-secao" role="group" aria-label="Aparência" style="--i:' + (i++) + '"><span class="tp-secao-rot">Aparência</span>' +
         '<div class="tp-temas tc-temas"><i class="tc-pilula" aria-hidden="true"></i>' +
           tema('sistema', IC.sistema, 'Sistema') + tema('light', IC.sol, 'Claro') + tema('dark', IC.lua, 'Escuro') + '</div>' +
-        (B7.Desempenho && B7.Desempenho.definirAnimacoes
-          ? '<button type="button" class="tc-anim" role="menuitemcheckbox" aria-checked="' + animOn + '" data-conta-anim>' +
-              '<span class="tc-tx"><b>Animações</b><small>' + (animOn ? 'ligadas' : 'desligadas: tudo aparece na hora') + '</small></span>' +
-              '<span class="tc-sw' + (animOn ? ' on' : '') + '" aria-hidden="true"><i></i></span></button>' : '') +
       '</div>' +
       /* dentro da conta de outra pessoa, sair é voltar para a própria
          (B7.Auth.sair já faz isso) — o rótulo diz o que vai acontecer */
