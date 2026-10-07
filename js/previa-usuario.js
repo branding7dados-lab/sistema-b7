@@ -330,7 +330,7 @@ B7.PreviaUsuario = (function () {
     modalSeletor = B7.UI.modal('<div class="tp-folha-cab"><h3>Visualizar como…</h3>' +
       '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
       '<p class="sub" style="margin:0 10px 10px">Escolha alguém da equipe para entrar na conta — o que fizer fica registrado no nome da pessoa. Empresa abre o Portal, somente leitura.</p>' +
-      '<div class="ver-como-caixa ver-como-dialogo"><input id="ver-como-busca" data-foco placeholder="Buscar cliente ou usuário…" autocomplete="off" aria-label="Buscar cliente ou usuário">' +
+      '<div class="ver-como-caixa ver-como-dialogo"><input id="ver-como-busca" type="search" name="b7-buscar-pessoa" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" data-foco placeholder="Buscar cliente ou usuário…" autocomplete="off" aria-label="Buscar cliente ou usuário">' +
       '<div class="ver-como-lista" id="ver-como-lista"><div class="nada">Carregando…</div></div></div>',
       { classe: 'tp-folha', aoFechar: () => { modalSeletor = null; } });
     const campo = modalSeletor.querySelector('#ver-como-busca');
@@ -393,7 +393,7 @@ B7.PreviaUsuario = (function () {
        olho abre o mesmo seletor em diálogo. */
     cx.innerHTML = pode
       ? '<label class="ver-como-campo" title="Visualizar como…">' + IC_OLHO +
-          '<input id="ver-como-lat" type="search" placeholder="Visualizar como…" autocomplete="off" spellcheck="false" ' +
+          '<input id="ver-como-lat" type="search" readonly name="b7-buscar-pessoa" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" placeholder="Visualizar como…" autocomplete="off" spellcheck="false" ' +
             'role="combobox" aria-expanded="false" aria-controls="ver-como-lista-lat" aria-label="Visualizar como: buscar pessoa ou empresa"></label>' +
         '<div class="ver-como-caixa"><div class="ver-como-lista" id="ver-como-lista-lat"><div class="nada">Carregando…</div></div></div>' +
         '<button type="button" class="ver-como-bt" id="ver-como-bt" title="Visualizar como…" aria-label="Visualizar como…">' + IC_OLHO + '</button>'
@@ -411,8 +411,20 @@ B7.PreviaUsuario = (function () {
         carregado = false; lista.innerHTML = '<div class="nada">Não foi possível carregar.</div>';
       });
     };
-    campo.addEventListener('focus', abrirLateral);
-    campo.addEventListener('input', () => { cx.classList.add('aberto'); renderizarLista(campo.value, lista); });
+    /* zzz77: gerenciador de senhas preenchia este campo sozinho com o
+       usuário salvo (e abria a lista com "Nada encontrado"). O campo fica
+       somente-leitura até a pessoa tocar nele — gerenciador não preenche
+       campo assim — e texto que chegar sem o campo estar em foco é
+       descartado. */
+    const destravar = () => { campo.readOnly = false; };
+    campo.addEventListener('pointerdown', destravar);
+    campo.addEventListener('focus', () => { destravar(); abrirLateral(); });
+    campo.addEventListener('blur', () => { campo.readOnly = true; });
+    campo.addEventListener('input', () => {
+      if (document.activeElement !== campo) { campo.value = ''; return; }
+      cx.classList.add('aberto'); renderizarLista(campo.value, lista);
+    });
+    campo.addEventListener('change', () => { if (document.activeElement !== campo) campo.value = ''; });
     campo.addEventListener('keydown', e => {
       if (e.key === 'Escape') { fecharLateral(); campo.blur(); }
       if (e.key === 'Enter') { const r = lista.querySelectorAll('.res'); if (r.length === 1) r[0].click(); }
