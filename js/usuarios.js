@@ -94,6 +94,14 @@ B7.Usuarios = (function () {
   }
   const rotuloModulo = id => (ACESSO.modulos.find(m => m.id === id) || { rotulo: id }).rotulo;
 
+  const ICU = {
+    pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8.5" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/></svg>',
+    id: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16a3.4 3.4 0 0 1 6.4 0M14.5 10h3.5M14.5 13.5h2.5"/></svg>',
+    perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+    emp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>',
+    extra: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg>',
+    chave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8M16 6l2 2M14 8l2 2"/></svg>'
+  };
   const IC_ACESSO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>';
   function acessoTipoHTML(px, tipo) {
     return '<section class="ng-bloco ac-tipo"><h4>' + IC_ACESSO + 'Tipo de conta</h4>' +
@@ -105,19 +113,58 @@ B7.Usuarios = (function () {
   }
   function acessoInternoHTML(px) {
     return '<section class="ng-bloco ac-interno" id="' + px + '-interno"><h4>' + IC_ACESSO + 'Função e acesso</h4>' +
-      '<label class="op-mini nu-chave-linha" id="' + px + '-admin"><span>Administrador' +
+      '<label class="op-mini nu-chave-linha ac-admin" id="' + px + '-admin"><span>Administrador' +
         '<small>abre tudo e gerencia contas e configurações</small></span><input type="checkbox" role="switch"></label>' +
       '<label class="rot ac-rot">FUNÇÃO PRINCIPAL</label>' +
       '<div class="nu-papeis ac-funcoes" id="' + px + '-funcao">' +
         FUNCOES.map(([v, r]) => '<button type="button" class="nu-papel" data-funcao="' + v + '"><i aria-hidden="true"></i><b>' + r + '</b></button>').join('') +
         '<button type="button" class="nu-papel" data-funcao=""><i aria-hidden="true"></i><b>Nenhuma</b></button>' +
       '</div>' +
-      '<p class="gv-ajuda ac-ajuda">A função define o papel operacional. O acesso define quais módulos a pessoa abre.</p>' +
+      '<p class="gv-ajuda ac-ajuda" id="' + px + '-fdesc"></p>' +
       '<div class="ac-mod-cab"><label class="rot ac-rot">ACESSO AOS MÓDULOS</label>' +
-        '<button type="button" class="ac-restaurar" id="' + px + '-restaurar" hidden>Restaurar padrão da função</button></div>' +
+        '<button type="button" class="ac-restaurar" id="' + px + '-restaurar" hidden>Restaurar padrão</button></div>' +
+      '<p class="ac-resumo" id="' + px + '-resumo"></p>' +
       '<p class="gv-ajuda ac-nota" id="' + px + '-nota" hidden></p>' +
       '<div class="ac-mods" id="' + px + '-mods"></div>' +
     '</section>';
+  }
+  /* zzz70: empresas + aprovação do cliente — o mesmo bloco ao criar e ao
+     editar (pílulas com busca e contador, aprovação como chave). */
+  function clienteHTML(px, clientes, ligadas, podeAprovar) {
+    const lig = ligadas || [];
+    return '<section class="ng-bloco" id="' + px + '-cliente"><h4>' + ICU.emp + 'Empresas que acompanha' +
+        '<span class="mg-obr leve" id="' + px + '-cont">nenhuma</span></h4>' +
+        (clientes.length
+          ? (clientes.length > 8 ? '<div class="nu-busca"><input class="campo" id="' + px + '-busca-emp" type="search" placeholder="Buscar empresa…" aria-label="Buscar empresa"></div>' : '') +
+            '<div class="nu-empresas nu-pilulas">' + clientes.map(c =>
+              '<label class="op-mini' + (lig.includes(c.id) ? ' on' : '') + '" data-nome="' + esc(String(c.nome).toLowerCase()) + '">' +
+              '<input type="checkbox" value="' + esc(c.id) + '"' + (lig.includes(c.id) ? ' checked' : '') + '>' +
+              '<span>' + esc(c.nome) + '</span></label>').join('') + '</div>'
+          : '<div class="vazio-leve">Cadastre um cliente primeiro.</div>') +
+        '<label class="op-mini nu-chave-linha' + (podeAprovar ? ' on' : '') + '" id="' + px + '-aprovar">' +
+          '<span>Pode aprovar oficialmente' +
+          '<small>sem isso, a pessoa visualiza e comenta, mas não aprova</small></span>' +
+          '<input type="checkbox" role="switch"' + (podeAprovar ? ' checked' : '') + '></label>' +
+      '</section>';
+  }
+  function ligarCliente(m, px) {
+    const bloco = m.querySelector('#' + px + '-cliente');
+    const contar = () => {
+      const n = bloco.querySelectorAll('.nu-pilulas input:checked').length;
+      const c = m.querySelector('#' + px + '-cont');
+      if (c) { c.textContent = n ? n + (n === 1 ? ' selecionada' : ' selecionadas') : 'nenhuma'; c.classList.toggle('leve', !n); }
+    };
+    bloco.querySelectorAll('.op-mini input').forEach(cx => cx.onchange = () => {
+      cx.closest('.op-mini').classList.toggle('on', cx.checked);
+      contar();
+    });
+    const buscaEmp = m.querySelector('#' + px + '-busca-emp');
+    if (buscaEmp) buscaEmp.oninput = () => {
+      const t = buscaEmp.value.trim().toLowerCase();
+      bloco.querySelectorAll('.nu-pilulas .op-mini').forEach(l => { l.hidden = !!t && !l.dataset.nome.includes(t); });
+    };
+    contar();
+    return bloco;
   }
   /* ini: { tipo, ehAdmin, funcao, excecoes } — aoTipo(tipo) avisa a troca cliente/equipe */
   function ligarAcesso(m, px, ini, aoTipo) {
@@ -136,24 +183,36 @@ B7.Usuarios = (function () {
         : 'Pessoa da equipe: tem uma função e abre os módulos liberados.';
       q('interno').style.display = E.tipo === 'interno' ? '' : 'none';
       const adm = q('admin'); adm.querySelector('input').checked = E.ehAdmin; adm.classList.toggle('on', E.ehAdmin);
+      q('funcao').classList.toggle('ac-tres', !E.ehAdmin);
       q('funcao').querySelectorAll('[data-funcao]').forEach(b => {
         b.classList.toggle('on', b.dataset.funcao === E.funcao);
-        /* "Nenhuma" só para administrador */
-        if (b.dataset.funcao === '') { b.disabled = !E.ehAdmin; b.title = E.ehAdmin ? '' : 'Só administrador pode ficar sem função'; }
+        /* "Nenhuma" só existe para administrador */
+        if (b.dataset.funcao === '') b.hidden = !E.ehAdmin;
       });
+      const fn = FUNCOES.find(x => x[0] === E.funcao);
+      q('fdesc').textContent = fn ? fn[1] + ': ' + fn[2] + '. Define o Painel e o trabalho que a pessoa pode receber.'
+        : E.ehAdmin ? 'Sem função: só administra, sem Painel de produção.' : 'Escolha a função da pessoa.';
       const n = Object.keys(E.excecoes).length;
       q('restaurar').hidden = E.ehAdmin || !n;
       const nota = q('nota');
       nota.hidden = !(n && !E.ehAdmin && E.funcao !== funcaoInicial);
       nota.textContent = 'A função mudou: o padrão passa a ser o de ' + rotuloFuncao(E.funcao) + '. ' +
         (n === 1 ? 'A personalização continua' : 'As ' + n + ' personalizações continuam') + ' valendo — use "Restaurar padrão" para tirar.';
+      const total = ACESSO.modulos.length, abertos = ACESSO.modulos.filter(md => efetivo(md.id)).length;
+      const resumo = q('resumo');
+      resumo.classList.toggle('pers', !E.ehAdmin && n > 0);
+      resumo.textContent = E.ehAdmin ? 'Administrador abre todos os módulos.'
+        : !E.funcao ? 'Os módulos aparecem depois de escolher a função.'
+        : abertos + ' de ' + total + ' · padrão de ' + rotuloFuncao(E.funcao) +
+          (n ? ' + ' + n + (n === 1 ? ' personalização' : ' personalizações') : '');
+      q('mods').hidden = E.ehAdmin || !E.funcao;
       q('mods').innerHTML = ACESSO.modulos.map(md => {
         const on = efetivo(md.id), pers = !E.ehAdmin && !!E.excecoes[md.id];
-        const origem = E.ehAdmin ? 'Administrador abre tudo' : pers ? 'Personalizado'
-          : E.funcao ? 'Padrão de ' + rotuloFuncao(E.funcao) : 'Sem função';
-        return '<label class="op-mini nu-chave-linha ac-mod' + (on ? ' on' : '') + (pers ? ' pers' : '') + '">' +
-          '<span>' + esc(md.rotulo) + '<small>' + esc(origem) + '</small></span>' +
-          '<input type="checkbox" role="switch" data-mod="' + esc(md.id) + '"' + (on ? ' checked' : '') + (E.ehAdmin ? ' disabled' : '') + '></label>';
+        return '<label class="op-mini nu-chave-linha ac-mod' + (on ? ' on' : '') + (pers ? ' pers' : '') + '"' +
+          (pers ? ' title="Diferente do padrão de ' + esc(rotuloFuncao(E.funcao)) + '"' : '') + '>' +
+          '<span>' + esc(md.rotulo) + '</span>' +
+          (pers ? '<em class="ac-tag">' + (on ? 'a mais' : 'tirado') + '</em>' : '') +
+          '<input type="checkbox" role="switch" data-mod="' + esc(md.id) + '"' + (on ? ' checked' : '') + '></label>';
       }).join('');
       q('mods').querySelectorAll('input[data-mod]').forEach(cx => cx.addEventListener('change', () => {
         E.excecoes[cx.dataset.mod] = cx.checked ? 'permitir' : 'negar';
@@ -189,8 +248,9 @@ B7.Usuarios = (function () {
 
   /* Padrões por função: o que cada função abre por padrão. Salvar muda
      o acesso de TODOS que têm a função e não têm exceção no módulo. */
-  function modalFuncoes() {
+  function modalFuncoes(usuarios) {
     let atual = 'coordenador';
+    const pessoas = (usuarios || []).filter(u => u.papel !== 'cliente' && u.estado === 'ativa');
     const rasc = {};
     FUNCOES.forEach(([v]) => { rasc[v] = (ACESSO.presets[v] || []).slice(); });
     const m = B7.UI.modal('<div class="ng-topo"><span class="ng-ic">' + IC_ACESSO + '</span><div><h3>Funções e acessos</h3>' +
@@ -198,6 +258,7 @@ B7.Usuarios = (function () {
       '<div class="nu-papeis ac-funcoes ac-abas" id="fa-abas">' +
         FUNCOES.map(([v, r]) => '<button type="button" class="nu-papel" data-funcao="' + v + '"><i aria-hidden="true"></i><b>' + r + '</b><small id="fa-n-' + v + '"></small></button>').join('') +
       '</div>' +
+      '<p class="ac-quem" id="fa-quem"></p>' +
       '<div class="ac-mods" id="fa-mods"></div>' +
       '<div id="fa-erro" class="ajuda erro-txt"></div>' +
       '<div class="acoes ng-acoes"><button class="b" data-fecha>Fechar</button>' +
@@ -206,6 +267,15 @@ B7.Usuarios = (function () {
     function pintar() {
       m.querySelectorAll('#fa-abas [data-funcao]').forEach(b => b.classList.toggle('on', b.dataset.funcao === atual));
       FUNCOES.forEach(([v]) => { m.querySelector('#fa-n-' + v).textContent = rasc[v].length + (rasc[v].length === 1 ? ' módulo' : ' módulos') + (mudou(v) ? ' •' : ''); });
+      /* quem herda este padrão: administrador abre tudo de qualquer jeito */
+      const daFuncao = pessoas.filter(u => identidadeDe(u).funcao === atual && !identidadeDe(u).ehAdmin);
+      const comExcecao = daFuncao.filter(u => Object.keys(ACESSO.excecoes[u.id] || {}).length).length;
+      const primeiro = u => String(u.nome || '').trim().split(/\s+/)[0];
+      m.querySelector('#fa-quem').innerHTML = daFuncao.length
+        ? '<b>' + daFuncao.length + (daFuncao.length === 1 ? ' pessoa herda' : ' pessoas herdam') + ':</b> ' +
+          esc(daFuncao.map(primeiro).join(', ')) + '.' +
+          (comExcecao ? ' <span>' + comExcecao + ' com acesso personalizado.</span>' : '')
+        : 'Ninguém com esta função por enquanto.';
       m.querySelector('#fa-mods').innerHTML = ACESSO.modulos.map(md => {
         const on = rasc[atual].includes(md.id);
         return '<label class="op-mini nu-chave-linha ac-mod' + (on ? ' on' : '') + '"><span>' + esc(md.rotulo) + '</span>' +
@@ -316,7 +386,7 @@ B7.Usuarios = (function () {
     '</div>';
 
     document.getElementById('novo-usuario').onclick = () => modalNovo(clientes);
-    const btFuncoes = document.getElementById('lu-funcoes'); if (btFuncoes) btFuncoes.onclick = modalFuncoes;
+    const btFuncoes = document.getElementById('lu-funcoes'); if (btFuncoes) btFuncoes.onclick = () => modalFuncoes(usuarios);
 
     const abrirAcao = (u, acao, estado) => {
       if (acao === 'senha') return modalSenha(u);
@@ -389,7 +459,17 @@ B7.Usuarios = (function () {
   function linhaPessoa(u, empresas, funcoesExtra, pres, ehCliente, i) {
     const inativa = u.estado !== 'ativa';
     const idt = identidadeDe(u), mods = modulosEfetivosDe(u);
-    const pers = !idt.ehAdmin && Object.keys(ACESSO.excecoes[u.id] || {}).length > 0;
+    /* zzz70: em vez dos três primeiros módulos, quantos a pessoa abre e
+       só o que é DIFERENTE do padrão da função (+ a mais, − tirado). */
+    const totalMods = ACESSO.modulos.length;
+    const qtd = idt.ehAdmin || (totalMods && mods.length === totalMods) ? 'abre tudo'
+      : !mods.length ? 'nenhum módulo' : mods.length + (mods.length === 1 ? ' módulo' : ' módulos');
+    const basePadrao = ACESSO.presets[idt.funcao] || [], exc = idt.ehAdmin ? {} : (ACESSO.excecoes[u.id] || {});
+    const dif = Object.keys(exc).filter(md => (exc[md] === 'permitir') !== basePadrao.includes(md));
+    const difs = dif.slice(0, 3).map(md => exc[md] === 'permitir'
+        ? '<span class="lu3-extra lu3-mais" title="A mais que o padrão de ' + esc(rotuloFuncao(idt.funcao)) + '">+ ' + esc(rotuloModulo(md)) + '</span>'
+        : '<span class="lu3-extra lu3-menos" title="Tirado do padrão de ' + esc(rotuloFuncao(idt.funcao)) + '">− ' + esc(rotuloModulo(md)) + '</span>').join('') +
+      (dif.length > 3 ? '<span class="lu3-extra">+' + (dif.length - 3) + '</span>' : '');
     const eu = B7.Auth && B7.Auth.usuario && B7.Auth.usuario();
     const souEu = !!(eu && eu.id === u.id);
     const quando = pres.online ? 'Online agora' : String(pres.texto || '').replace(/^Último acesso:\s*/i, '');
@@ -406,9 +486,7 @@ B7.Usuarios = (function () {
             : (idt.ehAdmin ? '<span class="lu3-papel lu3-p-admin">Admin</span>' : '') +
               (idt.funcao ? '<span class="lu3-papel lu3-p-' + esc(idt.funcao) + '">' + esc(rotuloFuncao(idt.funcao)) + '</span>'
                 : (idt.ehAdmin ? '' : '<span class="lu3-extra">sem função</span>')) +
-              (idt.ehAdmin ? '' : mods.slice(0, 3).map(md => '<span class="lu3-extra lu3-mod">' + esc(rotuloModulo(md)) + '</span>').join('') +
-                (mods.length > 3 ? '<span class="lu3-extra lu3-mod">+' + (mods.length - 3) + '</span>' : '') +
-                (pers ? '<span class="lu3-extra lu3-pers" title="Tem acesso personalizado">personalizado</span>' : ''))) +
+              '<span class="lu3-qtd" title="' + esc(mods.map(rotuloModulo).join(', ')) + '">' + qtd + '</span>' + difs) +
           (ehCliente && u.pode_aprovar ? '<span class="lu3-extra">aprova</span>' : '') +
           '<span class="lu3-user">@' + esc(u.username) + '</span></span>' +
         (ehCliente
@@ -443,15 +521,6 @@ B7.Usuarios = (function () {
     /* zzz41: no padrão novo — blocos com ícone, perfil em grade
        compacta, empresas em pílulas com busca e contador, aprovação como
        chave e botões lado a lado. Mesmos ids e regras. */
-    const ICU = {
-      pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8.5" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/></svg>',
-      id: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16a3.4 3.4 0 0 1 6.4 0M14.5 10h3.5M14.5 13.5h2.5"/></svg>',
-      perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
-      emp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>',
-      extra: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg>',
-      chave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8M16 6l2 2M14 8l2 2"/></svg>'
-    };
-    const papelAtual = PAPEIS.find(x => x[0] === 'cliente');
     const m = B7.UI.modal(
       '<div class="ng-topo"><span class="ng-ic">' + ICU.pessoa + '</span><div><h3>Novo usuário</h3>' +
       '<div class="sub">A conta é criada aqui e a senha é entregue pela equipe. Sem e-mail nem convite.</div></div></div>' +
@@ -466,18 +535,7 @@ B7.Usuarios = (function () {
 
       acessoTipoHTML('nu', 'cliente') +
 
-      '<section class="ng-bloco" id="nu-cliente"><h4>' + ICU.emp + 'Empresas que acompanha' +
-        '<span class="mg-obr leve" id="nu-cont">nenhuma</span></h4>' +
-        (clientes.length
-          ? (clientes.length > 8 ? '<div class="nu-busca"><input class="campo" id="nu-busca-emp" type="search" placeholder="Buscar empresa…" aria-label="Buscar empresa"></div>' : '') +
-            '<div class="nu-empresas nu-pilulas">' + clientes.map(c =>
-              '<label class="op-mini" data-nome="' + esc(String(c.nome).toLowerCase()) + '"><input type="checkbox" value="' + esc(c.id) + '">' +
-              '<span>' + esc(c.nome) + '</span></label>').join('') + '</div>'
-          : '<div class="vazio-leve">Cadastre um cliente primeiro.</div>') +
-        '<label class="op-mini nu-chave-linha" id="nu-aprovar">' +
-          '<span>Pode aprovar oficialmente' +
-          '<small>sem isso, a pessoa visualiza e comenta, mas não aprova</small></span><input type="checkbox" role="switch"></label>' +
-      '</section>' +
+      clienteHTML('nu', clientes, [], false) +
 
       acessoInternoHTML('nu') +
 
@@ -494,24 +552,10 @@ B7.Usuarios = (function () {
       '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Criar usuário</button></div>', { larga: true, extra: 'ng-modal nu-modal' });
 
-    const blocoCliente = m.querySelector('#nu-cliente');
     /* empresa e permissão de aprovação só fazem sentido para cliente */
+    const blocoCliente = ligarCliente(m, 'nu');
     const acesso = ligarAcesso(m, 'nu', { tipo: 'cliente', ehAdmin: false, funcao: '', excecoes: {} },
       tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; });
-    const contar = () => {
-      const n = m.querySelectorAll('.nu-pilulas input:checked').length;
-      const c = m.querySelector('#nu-cont');
-      if (c) { c.textContent = n ? n + (n === 1 ? ' selecionada' : ' selecionadas') : 'nenhuma'; c.classList.toggle('leve', !n); }
-    };
-    m.querySelectorAll('.op-mini input').forEach(cx => cx.onchange = () => {
-      cx.closest('.op-mini').classList.toggle('on', cx.checked);
-      contar();
-    });
-    const buscaEmp = m.querySelector('#nu-busca-emp');
-    if (buscaEmp) buscaEmp.oninput = () => {
-      const t = buscaEmp.value.trim().toLowerCase();
-      m.querySelectorAll('.nu-pilulas .op-mini').forEach(l => { l.hidden = !!t && !l.dataset.nome.includes(t); });
-    };
 
     m.querySelector('#nu-gerar').onclick = () => {
       m.querySelector('#nu-senha').value = gerarSenha();
@@ -555,40 +599,29 @@ B7.Usuarios = (function () {
   function modalEditar(u, clientes, vinculos, funcoesExtraAtuais) {
     const ligadas = vinculos.filter(v => v.perfil_id === u.id).map(v => v.client_id);
     const extrasAtuais = funcoesExtraAtuais || [];
-    const m = B7.UI.modal('<h3>Editar acesso</h3>' +
-      '<div class="sub">@' + esc(u.username) + ' — o nome de usuário não muda.</div>' +
+    const m = B7.UI.modal(
+      '<div class="ng-topo ed-topo"><span class="lu3-av ed-av">' + B7.UI.avatarPessoa(u, 'lu-avatar') + '</span><div><h3>' + esc(u.nome) + '</h3>' +
+      '<div class="sub">@' + esc(u.username) + ' · o nome de usuário não muda</div></div></div>' +
 
-      '<div class="mb"><label class="rot">NOME</label>' +
-        '<input class="campo" id="ed-nome" value="' + esc(u.nome) + '"></div>' +
+      '<section class="ng-bloco"><h4>' + ICU.id + 'Quem é</h4>' +
+        '<div class="mb ng-ult"><label class="rot" for="ed-nome">NOME</label>' +
+          '<input class="campo" id="ed-nome" value="' + esc(u.nome) + '"></div>' +
+      '</section>' +
 
       acessoTipoHTML('ed', u.papel === 'cliente' ? 'cliente' : 'interno') +
 
-      '<div id="ed-cliente" style="margin-top:14px' +
-        (u.papel === 'cliente' ? '' : ';display:none') + '">' +
-        '<label class="rot">EMPRESAS</label>' +
-        (clientes.length
-          ? '<div class="nu-empresas">' + clientes.map(c =>
-              '<label class="op-mini' + (ligadas.includes(c.id) ? ' on' : '') + '">' +
-              '<input type="checkbox" value="' + esc(c.id) + '"' +
-              (ligadas.includes(c.id) ? ' checked' : '') + '>' +
-              '<span>' + esc(c.nome) + '</span></label>').join('') + '</div>'
-          : '') +
-        '<label class="op-mini' + (u.pode_aprovar ? ' on' : '') + '" style="margin-top:10px" id="ed-aprovar">' +
-          '<input type="checkbox"' + (u.pode_aprovar ? ' checked' : '') + '>' +
-          '<span>Pode aprovar oficialmente</span></label>' +
-      '</div>' +
+      clienteHTML('ed', clientes, ligadas, !!u.pode_aprovar) +
 
       acessoInternoHTML('ed') +
 
       '<div id="ed-erro" class="ajuda erro-txt"></div>' +
-      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
+      '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Salvar</button></div>', { larga: true, extra: 'ng-modal nu-modal ed-modal' });
 
+    const blocoCliente = ligarCliente(m, 'ed');
     const idt0 = identidadeDe(u);
     const acesso = ligarAcesso(m, 'ed', { tipo: idt0.tipo, ehAdmin: idt0.ehAdmin, funcao: idt0.funcao, excecoes: ACESSO.excecoes[u.id] || {} },
-      tipo => { m.querySelector('#ed-cliente').style.display = tipo === 'cliente' ? '' : 'none'; });
-    m.querySelectorAll('#ed-cliente .op-mini input').forEach(cx => cx.onchange = () =>
-      cx.closest('.op-mini').classList.toggle('on', cx.checked));
+      tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; });
 
     m.querySelector('[data-ok]').onclick = async () => {
       const erro = m.querySelector('#ed-erro');

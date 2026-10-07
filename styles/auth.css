@@ -772,3 +772,48 @@ html.modo-leve .pf-aurora{animation:none;}
   .lu3-funcoes span{display:none;}
   .conteudo .lu3-cab .lu3-funcoes{width:44px;height:44px;padding:0;justify-content:center;border-radius:14px;}
 }
+
+/* zzz70: telas de usuários mais limpas.
+   • abas e funções sempre em colunas iguais (a regra do "Novo usuário"
+     esticava o último botão ímpar e quebrava as 3 abas em 2 + 1);
+   • módulos: uma linha por módulo, sem repetir "Padrão de …" doze vezes —
+     só o que é diferente do padrão ganha etiqueta;
+   • lista: quantos módulos a pessoa abre + só as diferenças (+ / −). */
+.nu-papeis.ac-funcoes .nu-papel:last-child:nth-child(odd), .nu-papeis.ac-abas .nu-papel:last-child:nth-child(odd){grid-column:auto;}
+.ac-interno [hidden], .ac-funcoes .nu-papel[hidden]{display:none !important;}
+.nu-papeis.ac-funcoes.ac-tres{grid-template-columns:repeat(3,minmax(0,1fr));}
+.nu-modal .ac-admin{margin-top:0;}
+.ac-abas .nu-papel{flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;min-height:56px;padding:8px 14px;}
+.ac-abas .nu-papel i{display:none;}
+.ac-abas .nu-papel small{flex-basis:auto;padding-left:0;}
+.ac-abas .nu-papel.on small{color:color-mix(in srgb, var(--acento) 75%, var(--ink-4));}
+.ac-quem{margin:0 0 12px;padding:10px 12px;border-radius:12px;font-size:12.5px;line-height:1.45;color:var(--ink-3);
+  background:color-mix(in srgb, var(--ink) 3%, var(--card));border:1px solid color-mix(in srgb, var(--ink) 7%, transparent);}
+.ac-quem b{color:var(--ink);font-weight:700;}
+.ac-quem span{color:var(--acento);font-weight:600;}
+.ac-resumo{margin:6px 0 0;font-size:12.5px;font-weight:600;color:var(--ink-3);}
+.ac-resumo.pers{color:var(--acento);}
+.nu-modal .ac-mods .nu-chave-linha{min-height:46px;padding:8px 12px;gap:8px;}
+.nu-modal .ac-mods .nu-chave-linha span{flex:1;}
+.nu-modal .ac-mod:not(.on) span{color:var(--ink-3);font-weight:600;}
+.ac-tag{flex:none;font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.02em;padding:2px 7px;border-radius:999px;
+  color:var(--acento);background:color-mix(in srgb, var(--acento) 12%, transparent);}
+.ac-mod.pers:not(.on) .ac-tag{color:var(--ink-3);background:color-mix(in srgb, var(--ink) 9%, transparent);}
+.ed-topo{align-items:center !important;}
+.ed-av{width:50px;height:50px;}
+.ed-av .lu-avatar{width:50px;height:50px;}
+.ed-topo h3{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ed-topo > div{min-width:0;}
+.lu3-qtd{color:var(--ink-3);}
+.lu3-qtd::before{content:'·';margin-right:6px;color:var(--ink-4);}
+.lu3-mais{color:var(--acento);background:color-mix(in srgb, var(--acento) 10%, transparent);font-weight:600;}
+.lu3-menos{color:var(--ink-3);text-decoration:line-through;text-decoration-color:color-mix(in srgb, var(--ink) 35%, transparent);}
+@media (max-width:640px){
+  .nu-papeis.ac-abas{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
+  .ac-abas .nu-papel{padding:8px 9px;min-height:52px;}
+  .ac-abas .nu-papel b{font-size:12.5px;}
+  .ac-abas .nu-papel small{font-size:10.5px;}
+  .nu-papeis.ac-funcoes.ac-tres{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .ac-funcoes.ac-tres .nu-papel:nth-child(3){grid-column:1 / -1;}
+}
+@media (max-width:560px){ .lu3 .lu3-meta{flex-wrap:wrap;row-gap:3px;overflow:visible;} }
