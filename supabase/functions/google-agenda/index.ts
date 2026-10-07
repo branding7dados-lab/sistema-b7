@@ -141,6 +141,9 @@ async function quemChamou(req: Request): Promise<Perfil | null> {
   return perfil as Perfil;
 }
 const ehEquipe = (p: Perfil | null) => !!p && ['admin', 'coordenador'].includes(p.papel);
+// zzz66: marcar/remarcar gravação também é do videomaker (o banco já
+// aceita em gravacao_agendar); o evento no Google acompanha.
+const podeAgendar = (p: Perfil | null) => ehEquipe(p) || (!!p && p.papel === 'videomaker');
 const ehEquipeInterna = (p: Perfil | null) => !!p && ['admin', 'coordenador', 'designer', 'videomaker'].includes(p.papel);
 
 Deno.serve(comCors(async (req: Request) => {
@@ -465,7 +468,7 @@ async function obterEventoEAgenda(sb: SupabaseClient, eventoId: string): Promise
 }
 
 async function atualizarEvento(perfil: Perfil, corpo: Record<string, unknown>): Promise<Response> {
-  if (!ehEquipe(perfil)) return json({ erro: 'Só admin/coordenador remarcam um evento no Google.' }, 403);
+  if (!podeAgendar(perfil)) return json({ erro: 'Só a equipe ou o videomaker remarcam um evento no Google.' }, 403);
   const eventoId = typeof corpo.evento_id === 'string' ? corpo.evento_id : '';
   const inicioISO = typeof corpo.inicio === 'string' ? corpo.inicio : '';
   const fimISO = typeof corpo.fim === 'string' ? corpo.fim : inicioISO;
@@ -557,7 +560,7 @@ async function cancelarEvento(perfil: Perfil, corpo: Record<string, unknown>): P
 // vinculado ainda (o mesmo padrão best-effort das outras duas ações).
 // =====================================================================
 async function criarEvento(perfil: Perfil, corpo: Record<string, unknown>): Promise<Response> {
-  if (!ehEquipe(perfil)) return json({ erro: 'Só admin/coordenador marcam uma gravação com evento no Google.' }, 403);
+  if (!podeAgendar(perfil)) return json({ erro: 'Só a equipe ou o videomaker marcam uma gravação com evento no Google.' }, 403);
   const ocorrenciaId = typeof corpo.ocorrencia_id === 'string' ? corpo.ocorrencia_id : '';
   const titulo = typeof corpo.titulo === 'string' ? corpo.titulo : '';
   const inicioISO = typeof corpo.inicio === 'string' ? corpo.inicio : '';

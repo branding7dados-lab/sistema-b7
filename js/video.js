@@ -1961,7 +1961,7 @@ B7.Video = (function () {
         B7.DB.versoesDemandaVideo(id).catch(() => []),
         B7.DB.comentariosDemandaVideo(id).catch(() => []),
         possoOperar() && !clientes.length ? B7.DB.listarClientes().catch(() => null) : Promise.resolve(null),
-        equipe && !videomakers.length ? B7.DB.listarVideomakers().catch(() => null) : Promise.resolve(null),
+        possoOperar() && !videomakers.length ? B7.DB.listarVideomakers().catch(() => null) : Promise.resolve(null),
         equipe && !pacotesVideoCache.length ? B7.DB.pacotesVideo().catch(() => null) : Promise.resolve(null)
       ];
       /* Rede que trava (sem resposta e sem erro) deixava a tela no
@@ -2019,10 +2019,11 @@ B7.Video = (function () {
     }
 
     if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
-    /* zzz64: três níveis na tela da demanda —
-         podeGerir  (equipe): responsável, descartar, excluir, decisão do cliente, entrega;
-         podeEditar (equipe + videomaker): nome, código, prazo, prioridade, pacote,
-                    gravação, roteiros vinculados, observações;
+    /* zzz64/zzz66: três níveis na tela da demanda —
+         podeGerir  (equipe): decisão do cliente e registro de entrega;
+         podeEditar (equipe + videomaker): nome, código, responsável, prazo,
+                    prioridade, pacote, gravação, roteiros vinculados,
+                    observações, descartar e excluir;
          podeOperar (equipe + videomaker): situação, versões, conclusão, link. */
     const podeGerir = souEquipe();
     const podeOperar = possoOperar();
@@ -2050,8 +2051,8 @@ B7.Video = (function () {
           (podeEditar
             ? '<div class="vd-acoes-topo">' +
               '<button class="b fina contorno" id="vd-dt-editar">Editar nome e código</button>' +
-              (podeGerir && d.editing_status !== 'descartado' ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar</button>' : '') +
-              (podeGerir ? '<button class="b fina contorno perigo" id="vd-dt-excluir">Excluir</button>' : '') + '</div>'
+              (d.editing_status !== 'descartado' ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar</button>' : '') +
+              '<button class="b fina contorno perigo" id="vd-dt-excluir">Excluir</button></div>'
             : '') +
         '</div>' +
         etapasHTML(d) +
@@ -2105,7 +2106,7 @@ B7.Video = (function () {
               (correcoes ? ' · ' + correcoes + ' correção(ões)' : '') + '</div></div>'
             : '') +
           '<div class="vd-dt-campo"><label class="rot">Responsável</label>' +
-          (podeGerir
+          (podeEditar
             ? '<select class="campo" id="vd-dt-videomaker"><option value="">Sem atribuir</option>' +
               videomakers.map(v => '<option value="' + v.id + '"' + (v.id === d.videomaker_id ? ' selected' : '') + '>' + esc(v.nome) + '</option>').join('') +
               '</select>'

@@ -86,6 +86,8 @@ B7.Gravacao = (function () {
   const souVideo = () => !!(B7.Auth && B7.Auth.souVideomakerElegivel && B7.Auth.souVideomakerElegivel());
   const podeMarcar = () => ehEquipe() || souVideo();
   const podeConcluir = () => ehEquipe() || souVideo();
+  /* zzz66: marcar e remarcar a data também (gravacao_agendar no banco) */
+  const podeAgendar = () => ehEquipe() || souVideo();
 
   /* ------------------------------------------------------------ datas
      data_gravacao é AAAA-MM-DD (nunca new Date(texto)); hora é HH:MM:SS */
@@ -196,7 +198,7 @@ B7.Gravacao = (function () {
     /* fato: vira botão para quem pode mudar — clicar no que se quer mudar */
     const fato = (cls, ic, rot, valor, extra, acao) => {
       const miolo = ic + '<span><small>' + rot + '</small><b>' + valor + '</b>' + (extra || '') + '</span>';
-      return acao && ed
+      return acao && (ed || (acao === 'agendar' && podeAgendar()))
         ? '<button type="button" class="gv-fato ' + cls + '" data-gv="' + acao + '" title="Alterar">' + miolo + '<i class="gv-fato-ed">' + IC.lapis + '</i></button>'
         : '<span class="gv-fato ' + cls + '">' + miolo + '</span>';
     };
@@ -204,10 +206,10 @@ B7.Gravacao = (function () {
     const dataExtra = (g.data_gravacao && !horaTx(g) ? '<i class="gv-fato-nota">horário a definir</i>' : '') + rel;
     /* ação principal muda com o momento da gravação */
     const principal = !ativa ? '' :
-      !ed ? (podeConcluir() ? 'concluir' : '') :
+      !(ed || podeAgendar()) ? (podeConcluir() ? 'concluir' : '') :
       !g.data_gravacao ? 'agendar' :
       (dias != null && dias <= 0) || (S.itens.length && S.itens.every(i => i.gravado)) ? 'concluir' : 'agendar';
-    const btAgendar = ed && !concluida
+    const btAgendar = podeAgendar() && !concluida
       ? '<button type="button" class="b ' + (principal === 'agendar' ? 'pri' : 'contorno') + '" data-gv="agendar">' + IC.agenda +
           '<span>' + (g.data_gravacao ? (cancelada ? 'Reativar com nova data' : 'Remarcar') : 'Marcar data') + '</span></button>' : '';
     const btConcluir = podeConcluir() && ativa
