@@ -1,5 +1,5 @@
 -- =====================================================================
--- *** NÃO APLICADA *** — aguardando o Kevin autorizar (ver RELATORIO_2026-10-07-zzz87.md)
+-- Aplicada em 07/10/2026 (zzz88), depois de o Kevin autorizar.
 -- RESUMO DIÁRIO LIGADO POR PADRÃO (zzz86) — decisão delegada pelo Kevin
 -- em 07/10/2026 ("pode decidir por mim").
 -- O aviso das 8h (prazos do dia, gravações de amanhã e, para a gestão,
