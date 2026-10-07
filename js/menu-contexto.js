@@ -19,11 +19,42 @@ B7.Ctx = (function () {
   const MAX_ACOES = 9;
 
   const limpo = s => String(s || '').replace(/\s+/g, ' ').trim();
+  /* texto sem letra nenhuma (um contador "5", um "⋯") não é nome: vale o
+     aria-label/title do controle */
+  const temLetra = s => /[A-Za-zÀ-ÿ]{2}/.test(s);
   const rotulo = el => {
     const tx = limpo(el.textContent);
-    if (tx && tx.length <= 42) return tx;
-    return limpo(el.getAttribute('aria-label') || el.title || '') || (tx ? tx.slice(0, 40) + '…' : '');
+    if (tx && temLetra(tx) && tx.length <= 42) return tx;
+    const al = limpo(el.getAttribute('aria-label') || el.title || '');
+    if (al) return al;
+    return tx && temLetra(tx) ? tx.slice(0, 40) + '…' : '';
   };
+
+  /* ícone escolhido pelo nome da ação */
+  const sv = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const ICONES = [
+    [/nova aba/i, sv('<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>')],
+    [/copiar link/i, sv('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>')],
+    [/^copiar|duplicar/i, sv('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>')],
+    [/excluir|apagar|remover|descartar|lixeira|tirar/i, sv('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/>')],
+    [/desativar|cancelar|bloquear|pausar/i, sv('<circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/>')],
+    [/reativar|ativar|restaurar|desarquivar/i, sv('<path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v5h5"/>')],
+    [/editar|renomear|alterar/i, sv('<path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/>')],
+    [/senha|acesso|permiss/i, sv('<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>')],
+    [/foto|imagem|logo|capa/i, sv('<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4 4 3 3-2 4 3"/>')],
+    [/arquivar/i, sv('<rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 13h4"/>')],
+    [/imprimir|pdf|exportar|baixar/i, sv('<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>')],
+    [/calend|agenda|data|prazo/i, sv('<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>')],
+    [/voltar/i, sv('<path d="M19 12H5M11 6l-6 6 6 6"/>')],
+    [/recarregar|atualizar/i, sv('<path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/>')],
+    [/assistente/i, sv('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM18.5 15.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/>')],
+    [/notifica|aviso/i, sv('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16zM10 20a2 2 0 0 0 4 0"/>')],
+    [/novo|nova|criar|adicionar/i, sv('<path d="M12 5v14M5 12h14"/>')],
+    [/mover|enviar|passar/i, sv('<path d="M5 12h14M13 6l6 6-6 6"/>')],
+    [/abrir|detalhe/i, sv('<path d="M8 5h11v11M19 5L6 18"/>')],
+  ];
+  const PADRAO = sv('<circle cx="12" cy="12" r="2.2"/>');
+  const icone = r => { for (const [re, ic] of ICONES) if (re.test(r)) return ic; return PADRAO; };
   const ehControle = el => el.matches('a[href], button, [role="button"], [role="link"], [role="menuitem"], [role="tab"]');
   const clicavel = el => ehControle(el) || typeof el.onclick === 'function';
   const desligado = el => el.disabled || el.getAttribute('aria-disabled') === 'true' || el.hidden || el.style.display === 'none';
@@ -60,7 +91,9 @@ B7.Ctx = (function () {
 
   function tituloDe(item) {
     const t = item.querySelector('h1, h2, h3, h4, b, strong');
-    const tx = limpo((t || item).textContent);
+    /* só o texto do próprio título: selos dentro dele ("VOCÊ") ficam fora */
+    const proprio = t ? limpo([...t.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ')) : '';
+    const tx = proprio || limpo((t || item).textContent);
     if (!tx) return limpo(item.getAttribute('aria-label') || item.title || '');
     return tx.length > 46 ? tx.slice(0, 44) + '…' : tx;
   }
@@ -77,6 +110,17 @@ B7.Ctx = (function () {
       ops.push(o);
     };
     const acionar = el => () => { el.click(); };
+
+    /* um controle solto (botão "Criar", o sino, o assistente): a ação é
+       ele mesmo, seguida das opções da tela */
+    if (ehControle(item) && !repetido(item)) {
+      const r = rotulo(item);
+      const tela = opcoesDaTela();
+      if (!r) return tela;
+      const resto = tela.ops.filter(o => !(o.rotulo && /assistente/i.test(o.rotulo) && /assistente/i.test(r)));
+      while (resto.length && resto[resto.length - 1].sep) resto.pop();
+      return { titulo: tela.titulo, ops: [{ rotulo: r, forte: true, fazer: acionar(item) }, { sep: true }].concat(resto) };
+    }
 
     const link = item.matches('a[href]') ? item : (alvo && alvo.closest && alvo.closest('a[href]'));
     const href = link && item.contains(link) ? link.href : '';
@@ -116,7 +160,8 @@ B7.Ctx = (function () {
     if (nome) extras.push({ rotulo: 'Copiar nome', fazer: () => copiar(nome, 'Nome copiado.') });
     if (href) extras.push({ rotulo: 'Copiar link', fazer: () => copiar(href, 'Link copiado.') });
     if (extras.length) { if (ops.length) ops.push({ sep: true }); extras.forEach(por); }
-    return { titulo: nome, ops };
+    const img = item.querySelector('img');
+    return { titulo: nome, foto: (img && (img.currentSrc || img.src)) || '', ops };
   }
 
   function opcoesDaTela() {
@@ -149,13 +194,18 @@ B7.Ctx = (function () {
     if (m.isConnected) m.remove();
   }
 
-  function abrir(x, y, titulo, ops) {
+  function abrir(x, y, titulo, ops, foto) {
     fechar();
     if (B7.UI && B7.UI.fecharMenus) { try { B7.UI.fecharMenus(); } catch (e) {} }
     const m = document.createElement('div');
     m.className = 'lista solta ctx-menu';
     m.setAttribute('role', 'menu');
-    if (titulo) { const c = document.createElement('div'); c.className = 'ctx-tit'; c.textContent = titulo; m.appendChild(c); }
+    if (titulo) {
+      const c = document.createElement('div'); c.className = 'ctx-tit';
+      if (foto) { const i = document.createElement('img'); i.src = foto; i.alt = ''; c.appendChild(i); }
+      const s = document.createElement('span'); s.textContent = titulo; c.appendChild(s);
+      m.appendChild(c);
+    }
     ops.forEach(o => {
       if (o.sep) { m.appendChild(document.createElement('hr')); return; }
       if (o.rot) { const d = document.createElement('div'); d.className = 'rot'; d.textContent = o.rot; m.appendChild(d); return; }
@@ -163,19 +213,22 @@ B7.Ctx = (function () {
       b.type = 'button'; b.setAttribute('role', 'menuitem');
       if (o.perigo) b.classList.add('perigo');
       if (o.forte) b.classList.add('ctx-forte');
-      b.textContent = o.rotulo;
+      b.innerHTML = '<i class="ctx-ic">' + icone(o.rotulo) + '</i>';
+      const s = document.createElement('span'); s.textContent = o.rotulo; b.appendChild(s);
       b.addEventListener('click', e => { e.stopPropagation(); fechar(); try { o.fazer(); } catch (err) { console.error(err); } });
       m.appendChild(b);
     });
     const pe = document.createElement('div');
-    pe.className = 'ctx-pe'; pe.textContent = 'Shift + botão direito: menu do navegador';
+    pe.className = 'ctx-pe'; pe.innerHTML = '<kbd>Shift</kbd> + clique direito abre o menu do navegador';
     m.appendChild(pe);
 
     (document.fullscreenElement || document.body).appendChild(m);
     const larg = m.offsetWidth, alt = m.offsetHeight, MG = 8;
     m.style.left = Math.round(Math.max(MG, Math.min(x, window.innerWidth - larg - MG))) + 'px';
     m.style.top = Math.round(Math.max(MG, Math.min(y + alt + MG > window.innerHeight ? y - alt : y, window.innerHeight - alt - MG))) + 'px';
-    m.classList.add('mostrando');
+    m.style.transformOrigin = (x > window.innerWidth - larg - MG ? 'right' : 'left') + ' ' + (y + alt + MG > window.innerHeight ? 'bottom' : 'top');
+    requestAnimationFrame(() => m.classList.add('mostrando'));
+    setTimeout(() => m.classList.add('mostrando'), 60);
     aberto = m;
     const p = m.querySelector('button'); if (p) p.focus({ preventScroll: true });
   }
@@ -198,7 +251,7 @@ B7.Ctx = (function () {
     const r = item ? opcoesDoItem(item, t) : opcoesDaTela();
     if (!r.ops.length) return;
     e.preventDefault();
-    abrir(e.clientX, e.clientY, r.titulo, r.ops);
+    abrir(e.clientX, e.clientY, r.titulo, r.ops, r.foto);
   });
 
   document.addEventListener('pointerdown', e => { if (aberto && !aberto.contains(e.target)) fechar(); }, true);

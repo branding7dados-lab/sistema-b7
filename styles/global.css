@@ -445,14 +445,33 @@ body.recolhida .bt-recolher span{display:none;}
 .lista button:hover{background:var(--suave);color:var(--acento);}
 .lista button.perigo:hover{background:var(--erro-bg);color:var(--erro);}
 .lista hr{border:0;border-top:1px solid var(--borda);margin:5px 8px;}
-/* menu do botão direito (js/menu-contexto.js): mesma caixa dos menus "⋯" */
-.ctx-menu{min-width:214px;z-index:900;transform-origin:top left;}
-.ctx-menu .ctx-tit{font-size:12px;font-weight:700;color:var(--ink);padding:8px 11px 7px;margin-bottom:4px;
-  border-bottom:1px solid var(--borda);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ctx-menu button{padding:8px 11px;font-size:13px;}
-.ctx-menu button.ctx-forte{font-weight:600;color:var(--ink);}
-.ctx-menu button:focus-visible{outline:none;background:var(--suave);color:var(--acento);}
-.ctx-menu .ctx-pe{font-size:10.5px;color:var(--ink-4);padding:7px 11px 4px;margin-top:4px;border-top:1px solid var(--borda);}
+/* menu do botão direito (js/menu-contexto.js) */
+.lista.ctx-menu{min-width:240px;max-width:min(300px,calc(100vw - 16px));padding:6px;border-radius:16px;z-index:900;
+  border:1px solid var(--borda);
+  box-shadow:0 28px 64px -18px rgba(20,8,40,.42),0 6px 18px -8px rgba(20,8,40,.18);
+  transform:scale(.96);transition:opacity .11s ease-out, transform .16s cubic-bezier(.2,.9,.3,1.15);}
+.lista.ctx-menu.mostrando{transform:none;}
+@media (prefers-reduced-motion:reduce){ .lista.ctx-menu{transition:none;transform:none;} }
+.ctx-menu .ctx-tit{display:flex;align-items:center;gap:9px;padding:7px 9px 10px;margin:0 0 5px;border-bottom:1px solid var(--borda);}
+.ctx-menu .ctx-tit img{width:26px;height:26px;border-radius:50%;object-fit:cover;flex:none;}
+.ctx-menu .ctx-tit span{min-width:0;font-size:12.5px;font-weight:700;letter-spacing:-.005em;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ctx-menu button{gap:10px;padding:4px 8px 4px 5px;line-height:1.3;font-size:13px;font-weight:500;border-radius:10px;color:var(--ink-2);}
+.ctx-menu button span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ctx-menu .ctx-ic{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+  background:var(--suave);color:var(--ink-3);transition:var(--t);}
+.ctx-menu .ctx-ic svg{width:15px;height:15px;}
+.ctx-menu button.ctx-forte{font-weight:650;color:var(--ink);}
+.ctx-menu button:hover,.ctx-menu button:focus-visible{outline:none;background:var(--suave);color:var(--acento);}
+.ctx-menu button:hover .ctx-ic,.ctx-menu button:focus-visible .ctx-ic{background:var(--acento);color:#fff;}
+.ctx-menu button.perigo{color:var(--erro);}
+.ctx-menu button.perigo .ctx-ic{background:var(--erro-bg);color:var(--erro);}
+.ctx-menu button.perigo:hover,.ctx-menu button.perigo:focus-visible{background:var(--erro-bg);color:var(--erro);}
+.ctx-menu button.perigo:hover .ctx-ic,.ctx-menu button.perigo:focus-visible .ctx-ic{background:var(--erro);color:#fff;}
+.ctx-menu hr{margin:5px 9px;}
+.ctx-menu .ctx-pe{font-size:10.5px;color:var(--ink-4);padding:9px 9px 4px;margin-top:5px;border-top:1px solid var(--borda);}
+.ctx-menu .ctx-pe kbd{font:inherit;font-weight:600;color:var(--ink-3);background:var(--suave);border:1px solid var(--borda);
+  border-radius:5px;padding:1px 5px;}
 .lista .rot{font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--ink-4);padding:8px 11px 5px;}
 
 /* ------------------------------------------------------------ campos */
