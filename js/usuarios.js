@@ -70,7 +70,6 @@ B7.Usuarios = (function () {
   const rotuloFuncao = fn => (FUNCOES.find(x => x[0] === fn) || [, 'Sem função'])[1];
   /* carregado a cada abertura da tela (listar_usuarios) */
   let ACESSO = { modulos: [], presets: {}, excecoes: {} };
-  let CONTATOS = {};   /* perfil_id → WhatsApp (só dígitos); vem de listar_usuarios */
   function carregarAcesso(dados) {
     const reg = (dados.modulos && dados.modulos.length) ? dados.modulos
       : (B7.Perm && B7.Perm.MODULOS ? B7.Perm.MODULOS.map(m => ({ id: m.id, rotulo: m.rotulo })) : []);
@@ -80,8 +79,6 @@ B7.Usuarios = (function () {
     const excecoes = {};
     (dados.excecoes || []).forEach(e => { (excecoes[e.perfil_id] = excecoes[e.perfil_id] || {})[e.modulo] = e.efeito; });
     ACESSO = { modulos: reg, presets, excecoes };
-    CONTATOS = {};
-    (dados.contatos || []).forEach(k => { if (k.whatsapp) CONTATOS[k.perfil_id] = k.whatsapp; });
   }
   const identidadeDe = u => ({
     tipo: u.papel === 'cliente' ? 'cliente' : 'interno',
@@ -95,13 +92,6 @@ B7.Usuarios = (function () {
     const ex = ACESSO.excecoes[u.id] || {}, base = ACESSO.presets[id.funcao] || [];
     return ACESSO.modulos.map(m => m.id).filter(m => ex[m] ? ex[m] === 'permitir' : base.includes(m));
   }
-  /* 5577999990000 → (77) 99999-0000 */
-  const mascaraWhats = d => {
-    let n = String(d || '').replace(/\D/g, '');
-    if (n.length >= 12 && n.indexOf('55') === 0) n = n.slice(2);
-    if (n.length < 10) return n;
-    return '(' + n.slice(0, 2) + ') ' + n.slice(2, n.length - 4) + '-' + n.slice(-4);
-  };
   const rotuloModulo = id => (ACESSO.modulos.find(m => m.id === id) || { rotulo: id }).rotulo;
 
   const ICU = {
@@ -498,7 +488,6 @@ B7.Usuarios = (function () {
                 : (idt.ehAdmin ? '' : '<span class="lu3-extra">sem função</span>')) +
               '<span class="lu3-qtd" title="' + esc(mods.map(rotuloModulo).join(', ')) + '">' + qtd + '</span>' + difs) +
           (ehCliente && u.pode_aprovar ? '<span class="lu3-extra">aprova</span>' : '') +
-          (!ehCliente && CONTATOS[u.id] ? '<span class="lu3-extra lu3-whats" title="Recebe avisos por WhatsApp">WhatsApp</span>' : '') +
           '<span class="lu3-user">@' + esc(u.username) + '</span></span>' +
         (ehCliente
           ? '<span class="lu3-empresas"' + (empresas.length ? ' title="' + esc(empresas.join(', ')) + '"' : '') + '>' +
@@ -615,12 +604,8 @@ B7.Usuarios = (function () {
       '<div class="sub">@' + esc(u.username) + ' · o nome de usuário não muda</div></div></div>' +
 
       '<section class="ng-bloco"><h4>' + ICU.id + 'Quem é</h4>' +
-        '<div class="mb"><label class="rot" for="ed-nome">NOME</label>' +
+        '<div class="mb ng-ult"><label class="rot" for="ed-nome">NOME</label>' +
           '<input class="campo" id="ed-nome" value="' + esc(u.nome) + '"></div>' +
-        '<div class="mb ng-ult" id="ed-whats-cx"><label class="rot" for="ed-whats">WHATSAPP <span class="leve">— opcional</span></label>' +
-          '<input class="campo" id="ed-whats" type="tel" inputmode="tel" placeholder="(77) 99999-0000" value="' + esc(mascaraWhats(CONTATOS[u.id])) + '" ' +
-            'name="b7-whats-equipe" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">' +
-          '<div class="gv-ajuda">Recebe por WhatsApp os avisos importantes: trabalho atribuído, prazo, correção, decisão do cliente e gravação. Só a equipe.</div></div>' +
       '</section>' +
 
       acessoTipoHTML('ed', u.papel === 'cliente' ? 'cliente' : 'interno') +
@@ -636,8 +621,7 @@ B7.Usuarios = (function () {
     const blocoCliente = ligarCliente(m, 'ed');
     const idt0 = identidadeDe(u);
     const acesso = ligarAcesso(m, 'ed', { tipo: idt0.tipo, ehAdmin: idt0.ehAdmin, funcao: idt0.funcao, excecoes: ACESSO.excecoes[u.id] || {} },
-      tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none';
-                m.querySelector('#ed-whats-cx').style.display = tipo === 'cliente' ? 'none' : ''; });
+      tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; });
 
     m.querySelector('[data-ok]').onclick = async () => {
       const erro = m.querySelector('#ed-erro');
@@ -653,7 +637,6 @@ B7.Usuarios = (function () {
         await B7.DB.chamarAuth(Object.assign({
           acao: 'alterar_conta', perfil_id: u.id,
           nome: m.querySelector('#ed-nome').value.trim(),
-          whatsapp: ehCli ? '' : m.querySelector('#ed-whats').value.trim(),
           empresas: ehCli ? empresas : [],
           pode_aprovar: ehCli && m.querySelector('#ed-aprovar input').checked
         }, idn));

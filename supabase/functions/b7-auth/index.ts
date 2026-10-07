@@ -916,19 +916,6 @@ Deno.serve(comCors(async (req) => {
         if (funcoesExtra.erro) return json({ erro: funcoesExtra.erro }, 400);
       }
 
-      /* zzz83: WhatsApp para os avisos. Vazio = tirar o número. Aceita
-         com máscara; guarda só dígitos, com o 55 na frente. */
-      let whats: string | null | undefined = undefined;
-      if (corpo.whatsapp !== undefined) {
-        const dig = String(corpo.whatsapp == null ? '' : corpo.whatsapp).replace(/\D/g, '');
-        if (!dig) whats = null;
-        else {
-          const num = (dig.length === 10 || dig.length === 11) ? '55' + dig : dig;
-          if (!/^\d{12,15}$/.test(num)) return json({ erro: 'WhatsApp inválido. Use DDD + número, ex.: (77) 99999-0000.' }, 400);
-          whats = num;
-        }
-      }
-
       if (Object.keys(patch).length) {
         const { error: ePatch } = await sb.from('perfis').update(patch).eq('id', corpo.perfil_id);
         if (ePatch) return json({ erro: 'Não foi possível salvar a conta: ' + ePatch.message }, 400);
@@ -938,11 +925,6 @@ Deno.serve(comCors(async (req) => {
       if (excecoesNovas || corpo.tipo === 'cliente' || (identNova && identNova.ehAdmin)) {
         const limpar = corpo.tipo === 'cliente' || (identNova && identNova.ehAdmin);
         await gravarExcecoes(sb, corpo.perfil_id, limpar ? [] : (excecoesNovas ? excecoesNovas.lista : []), autor.id);
-      }
-
-      if (whats !== undefined) {
-        if (whats === null) await sb.from('perfil_contatos').delete().eq('perfil_id', corpo.perfil_id);
-        else await sb.from('perfil_contatos').upsert({ perfil_id: corpo.perfil_id, whatsapp: whats, atualizado_em: new Date().toISOString(), atualizado_por: autor.id });
       }
 
       /* vínculos com empresas, quando enviados */
@@ -1033,10 +1015,8 @@ Deno.serve(comCors(async (req) => {
         sb.from('funcao_modulos').select('funcao, modulo'),
         sb.from('perfil_modulos').select('perfil_id, modulo, efeito')
       ]);
-      /* zzz83: WhatsApp de cada pessoa — só nesta listagem, que é do administrador */
-      const { data: contatos } = await sb.from('perfil_contatos').select('perfil_id, whatsapp');
       return json({ usuarios: data || [], vinculos: vinculos || [], funcoes_extra: funcoesExtra,
-                    modulos: modulos || [], presets: presets || [], excecoes: excecoes || [], contatos: contatos || [] });
+                    modulos: modulos || [], presets: presets || [], excecoes: excecoes || [] });
     }
 
   } catch (e) {
