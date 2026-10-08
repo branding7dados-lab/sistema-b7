@@ -276,8 +276,33 @@ B7.Notif = (function () {
     if (p.navegador && document.hidden) avisarNavegador(n);
   }
 
+  /* ------------------------------------------------ sons disponíveis
+     Cada um recebe `voz(tipo, hz, quando, volume, ataque, queda, até)`.
+     Todos curtos (menos de 1 s) e em volume parecido. */
+  const SONS = {
+    /* madeira: duas notas arredondadas, lá → ré; some rápido */
+    toque(v) {
+      v('sine', 880, 0, 0.2, 0.004, 0.16); v('sine', 1760, 0, 0.05, 0.003, 0.06);
+      v('sine', 1174.66, 0.1, 0.22, 0.004, 0.24); v('sine', 2349.3, 0.1, 0.05, 0.003, 0.08);
+    },
+    /* gota: um "ploc" que escorrega para cima */
+    gota(v) { v('sine', 520, 0, 0.26, 0.006, 0.2, 1040); v('sine', 1040, 0.02, 0.06, 0.004, 0.1, 1560); },
+    /* três notas subindo, no jeito dos celulares */
+    tritom(v) { [[783.99, 0], [987.77, 0.1], [1174.66, 0.2]].forEach(([hz, q]) => { v('sine', hz, q, 0.18, 0.004, 0.2); v('triangle', hz, q, 0.04, 0.003, 0.07); }); },
+    /* sininho: uma nota só, com cauda */
+    sininho(v) { v('sine', 1318.51, 0, 0.2, 0.004, 0.75); v('sine', 2637, 0, 0.05, 0.003, 0.35); v('sine', 3955, 0, 0.02, 0.003, 0.18); },
+    /* suave: grave e macio, quase um "hum" */
+    suave(v) { v('sine', 440, 0, 0.2, 0.03, 0.34); v('sine', 554.37, 0.09, 0.16, 0.03, 0.4); },
+    /* pop: um estalo curto e seco */
+    pop(v) { v('sine', 700, 0, 0.3, 0.003, 0.09, 350); },
+    /* o de antes da zzz110: dois bipes */
+    classico(v) { v('sine', 880, 0, 0.18, 0.015, 0.2); v('sine', 1174.7, 0.11, 0.18, 0.015, 0.2); }
+  };
+  const NOMES_SONS = [['toque', 'Toque'], ['gota', 'Gota'], ['tritom', 'Três notas'], ['sininho', 'Sininho'], ['suave', 'Suave'], ['pop', 'Pop'], ['classico', 'Clássico (antigo)']];
+  const somEscolhido = () => { try { const s = B7.pref && B7.pref.ler ? B7.pref.ler('som_notif', 'toque') : 'toque'; return SONS[s] ? s : 'toque'; } catch (e) { return 'toque'; } };
+
   let ctx = null;
-  function tocarSom(repetindo) {
+  function tocarSom(repetindo, qual) {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -289,34 +314,28 @@ B7.Notif = (function () {
          gesto do usuário o navegador não acorda, e nada toca (como antes). */
       if (ctx.state === 'suspended') {
         const pedido = Date.now();
-        ctx.resume().then(() => { if (!repetindo && ctx.state === 'running' && Date.now() - pedido < 1500) tocarSom(true); }).catch(() => {});
+        ctx.resume().then(() => { if (!repetindo && ctx.state === 'running' && Date.now() - pedido < 1500) tocarSom(true, qual); }).catch(() => {});
       }
       if (ctx.state !== 'running') return;   /* sem gesto do usuário o navegador não deixa tocar */
       const t0 = ctx.currentTime + 0.01;
-      /* zzz110 — som novo (o antigo eram dois bipes secos de senoide):
-         duas notas de "vidro", sol → ré (uma quinta acima, soa como
-         chegada, não como alarme). Cada nota tem o tom principal, um
-         parcial uma oitava acima e um brilho curto no ataque; um eco
-         baixo e abafado dá espaço, como um sino pequeno numa sala. */
+      /* zzz114 — o Kevin odiou o som de "vidro" da zzz110. Em vez de eu
+         chutar outro sem ouvir, o administrador escolhe entre vários em
+         Configurações → Aparência, ouvindo cada um. O padrão passou a ser
+         "Toque": duas notas curtas e arredondadas, de madeira. */
+      const som = SONS[qual] || SONS[somEscolhido()] || SONS.toque;
       const mestre = ctx.createGain(); mestre.gain.value = 0.9; mestre.connect(ctx.destination);
-      const eco = ctx.createDelay(0.5), volta = ctx.createGain(), abafa = ctx.createBiquadFilter();
-      eco.delayTime.value = 0.17; volta.gain.value = 0.24; abafa.type = 'lowpass'; abafa.frequency.value = 2400;
-      mestre.connect(eco); eco.connect(abafa); abafa.connect(volta); volta.connect(eco); abafa.connect(ctx.destination);
-      const nota = (hz, quando, vol, dur) => {
-        [[1, 1, 'sine', dur], [2, 0.22, 'sine', dur * 0.6], [3.01, 0.07, 'sine', dur * 0.35], [1, 0.12, 'triangle', 0.08]].forEach(([m, p, tipo, d]) => {
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.type = tipo; o.frequency.value = hz * m;
-          const t = t0 + quando;
-          g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(vol * p, t + 0.008);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-          o.connect(g); g.connect(mestre);
-          o.start(t); o.stop(t + d + 0.05);
-        });
+      /* peça básica: um oscilador com ataque e queda */
+      const voz = (tipo, hz, quando, vol, ataque, queda, ate) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(), t = t0 + quando;
+        o.type = tipo; o.frequency.setValueAtTime(hz, t);
+        if (ate) o.frequency.exponentialRampToValueAtTime(ate, t + queda * 0.6);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0002), t + ataque);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + ataque + queda);
+        o.connect(g); g.connect(mestre); o.start(t); o.stop(t + ataque + queda + 0.05);
       };
-      nota(783.99, 0, 0.16, 0.5);       /* sol */
-      nota(1174.66, 0.13, 0.19, 0.85);  /* ré */
-      setTimeout(() => { try { mestre.disconnect(); eco.disconnect(); volta.disconnect(); abafa.disconnect(); } catch (e) {} }, 2600);
+      som(voz);
+      setTimeout(() => { try { mestre.disconnect(); } catch (e) {} }, 2200);
     } catch (e) {}
   }
 
@@ -516,6 +535,6 @@ B7.Notif = (function () {
     });
   }
 
-  return { montar, atualizar, fechar, prefs, gravarPrefs, pedirPermissao, tocarSom, anunciar, PADRAO,
+  return { montar, atualizar, fechar, prefs, gravarPrefs, pedirPermissao, tocarSom, anunciar, PADRAO, NOMES_SONS, somEscolhido,
            prefTipo, gravarPrefTipo, grupos };
 })();

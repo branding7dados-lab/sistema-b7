@@ -1930,7 +1930,10 @@ B7.Dashboard = (function () {
             dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
         L({ ic: 'play', tom: 'rosa', t: 'Testar abertura', d: 'a sequência completa, com som', botao: true, attrs: ' data-ver-abertura' }) +
         L({ ic: 'atualizar', tom: 'azul', t: 'Testar tela de carregamento', d: 'a versão curta, que aparece ao recarregar', botao: true, attrs: ' data-ver-carregamento' }) +
-        L({ ic: 'sino', tom: 'verde', t: 'Testar som de notificação', d: 'o aviso sonoro de quando chega algo novo', botao: true, attrs: ' data-testar-som' })));
+        L({ ic: 'sino', tom: 'verde', t: 'Som de notificação', d: 'escolha ouvindo; vale neste aparelho',
+            dir: sel('som_notif', (B7.Notif && B7.Notif.somEscolhido) ? B7.Notif.somEscolhido() : 'toque',
+              (B7.Notif && B7.Notif.NOMES_SONS) || [['toque', 'Toque']], 'Som de notificação') }) +
+        L({ ic: 'play', tom: 'verde', t: 'Testar som de notificação', d: 'toca o som escolhido', botao: true, attrs: ' data-testar-som' })));
 
     const abaAdmin =
       /* a seção só existe para admin: nada de item com cadeado */
@@ -2120,6 +2123,8 @@ B7.Dashboard = (function () {
     /* ---- zzz71: o que entrou com as abas ---- */
     p.querySelectorAll('[data-sel]').forEach(sl => sl.onchange = () => {
       if (sl.dataset.sel === 'inicio') { B7.pref.gravar('inicio', sl.value); B7.UI.toast('Tela inicial guardada neste aparelho.'); }
+      /* zzz114: escolher já toca, para decidir pelo ouvido */
+      if (sl.dataset.sel === 'som_notif') { B7.pref.gravar('som_notif', sl.value); if (B7.Notif && B7.Notif.tocarSom) B7.Notif.tocarSom(false, sl.value); }
     });
     p.querySelectorAll('[data-passo]').forEach(cx => cx.querySelectorAll('button').forEach(b => b.onclick = () => {
       const el = cx.querySelector('b');
