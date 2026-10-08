@@ -46,6 +46,8 @@ export type Opcoes = {
   json?: boolean;
   /** formato do JSON esperado, para o provedor que suporta resposta estruturada */
   esquema?: Record<string, unknown>;
+  /** zzz126: áudio que acompanha o pedido (transcrição) */
+  audio?: { mime: string; base64: string };
 };
 
 /**
@@ -101,7 +103,7 @@ async function gerarCom(provedor: Provedor | null, mensagens: Mensagem[], op: Op
 
   let r;
   try {
-    const pedido = { mensagens, maxTokens: op.maxTokens, temperatura: op.temperatura, prazoMs: op.prazoMs ?? 30_000, json: op.json, esquema: op.esquema };
+    const pedido = { mensagens, maxTokens: op.maxTokens, temperatura: op.temperatura, prazoMs: op.prazoMs ?? 30_000, json: op.json, esquema: op.esquema, audio: op.audio };
     r = aoTrecho && provedor.gerarFluxo && !op.json ? await provedor.gerarFluxo(pedido, aoTrecho) : await provedor.gerar(pedido);
   } catch (_e) {
     return falha('indisponivel');

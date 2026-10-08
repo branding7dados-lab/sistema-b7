@@ -83,6 +83,8 @@ export function criarOmniRoute(env: (nome: string) => string | undefined, fetchF
   if (!/\/v1$/.test(base)) base += '/v1';
 
   async function gerar(p: PedidoDeGeracao): Promise<RespostaDoProvedor> {
+    /* zzz126: o roteador só leva texto; pedido com áudio não é atendido aqui */
+    if (p.audio) return { ok: false, erro: 'pedido_invalido', status: null };
     const ctrl = new AbortController();
     const relogio = setTimeout(() => ctrl.abort(), p.prazoMs);
     try {

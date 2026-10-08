@@ -27,6 +27,9 @@ export type PedidoDeGeracao = {
       items, enum, required). O provedor que souber usa para prender a
       resposta ao formato; quem não souber ignora. A tarefa valida igual. */
   esquema?: Record<string, unknown>;
+  /** zzz126: um áudio curto que acompanha o pedido (transcrição de voz).
+      Só o provedor que aceita áudio usa; os outros recusam o pedido. */
+  audio?: { mime: string; base64: string };
 };
 
 /** O que pode dar errado, em termos do B7 (não do provedor). */

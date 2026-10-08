@@ -20,6 +20,7 @@
 //         { tarefa: 'resumo', operacao, status_id | cliente_id+ano+mes }  (ver _shared/ia/resumo.ts)
 //         { tarefa: 'chat', texto, conversa_id?, cliente_id?, fluxo? }     (ver _shared/ia/chat.ts)
 //         { tarefa: 'oportunidade', oportunidade_id, cliente_id, dia?, instrucao? }  (ver _shared/ia/oportunidade.ts)
+//         { tarefa: 'voz', audio (base64), mime }                          (ver _shared/ia/voz.ts)
 //
 // MEMÓRIA DO CLIENTE (zzz123). Toda tarefa que é de um cliente recebe,
 // antes da mensagem da tarefa, o que a equipe anotou para a IA na ficha
@@ -62,6 +63,7 @@ import * as Resumo from '../_shared/ia/resumo.ts';
 import * as Chat from '../_shared/ia/chat.ts';
 import * as Oportunidade from '../_shared/ia/oportunidade.ts';
 import * as Memoria from '../_shared/ia/memoria.ts';
+import * as Voz from '../_shared/ia/voz.ts';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -105,16 +107,19 @@ Deno.serve(comCors(async (req: Request) => {
 
   /* ---- pedido ---- */
   const bruto = await req.text();
-  if (bruto.length > LIMITE.corpo) return json({ ok: false, categoria: 'entrada_invalida' });
+  /* só a transcrição de voz (zzz126) pode vir grande: o áudio vai no corpo */
+  if (bruto.length > Voz.LIMITE.corpo) return json({ ok: false, categoria: 'entrada_invalida' });
   let corpo: Record<string, unknown> = {};
   try { corpo = JSON.parse(bruto); } catch (_e) { return json({ ok: false, categoria: 'entrada_invalida' }); }
+  if (bruto.length > LIMITE.corpo && corpo.tarefa !== 'voz') return json({ ok: false, categoria: 'entrada_invalida' });
   const pRoteiro = corpo.tarefa === 'roteiro' ? validar(corpo) : null;
   const pLinha = corpo.tarefa === 'linha' ? Linha.validar(corpo) : null;
   const pAnalise = corpo.tarefa === 'analise' ? Analise.validar(corpo) : null;
   const pResumo = corpo.tarefa === 'resumo' ? Resumo.validar(corpo) : null;
   const pChat = corpo.tarefa === 'chat' ? Chat.validar(corpo) : null;
   const pOport = corpo.tarefa === 'oportunidade' ? Oportunidade.validar(corpo) : null;
-  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport;
+  const pVoz = corpo.tarefa === 'voz' ? Voz.validar(corpo) : null;
+  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport || pVoz;
   if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
 
   /* zzz71: liga/desliga do administrador (Configurações → Administração),
@@ -122,7 +127,7 @@ Deno.serve(comCors(async (req: Request) => {
      linha e resumo seguem "linhas". Sem a linha no banco = ligado. */
   {
     const { data: cfgIa } = await sb.from('sistema_config').select('valor').eq('chave', 'ia').maybeSingle();
-    const recursoCfg = pChat ? 'chat' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
+    const recursoCfg = (pChat || pVoz) ? 'chat' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
     const valorIa = (cfgIa && cfgIa.valor) as Record<string, unknown> | null;
     if (valorIa && valorIa[recursoCfg] === false) return json({ ok: false, categoria: 'desligado' });
   }
@@ -154,6 +159,8 @@ Deno.serve(comCors(async (req: Request) => {
     original?: string;
     /** depois de dar certo: grava o que precisar e devolve campos a mais para a tela */
     aposOk?: (texto: string) => Promise<Record<string, unknown>>;
+    /** zzz126: áudio que vai junto (só a transcrição de voz) */
+    audio?: { mime: string; base64: string };
   };
   /* de qual cliente é o pedido, para a memória (o chat diz na conversa) */
   let clienteDoPedido: string | null | undefined = undefined;
@@ -217,6 +224,16 @@ Deno.serve(comCors(async (req: Request) => {
       mensagens: Resumo.montarMensagens(pedido, ctx), maxTokens: Resumo.limiteDeSaida(pedido),
       temperatura: 0.5, limpar: Resumo.limpador(pedido, ctx), json: false
     };
+  } else if (pVoz && pVoz.ok) {
+    /* ditado: o áudio vira texto para o campo de mensagem. Nada é guardado
+       e nada é enviado ao assistente por aqui — quem envia é a pessoa. */
+    const pedido = pVoz.pedido;
+    clienteDoPedido = null;
+    t = {
+      recurso: 'voz', acao: 'transcrever', entidadeTipo: 'perfil', entidadeId: perfil.id, tamanhoEntrada: pedido.audio.length,
+      mensagens: Voz.montarMensagens(await Voz.vocabulario(sbDaPessoa)), maxTokens: 1200, temperatura: 0, limpar: Voz.limpar, json: false,
+      audio: { mime: pedido.mime, base64: pedido.audio }
+    };
   } else if (pOport && pOport.ok) {
     /* ideias para uma data e um cliente: lista para ler e copiar, nada é aplicado */
     const pedido = pOport.pedido;
@@ -267,7 +284,7 @@ Deno.serve(comCors(async (req: Request) => {
      e tem mais uma chance. Se repetir de novo, a tela recebe "igual" e
      explica — nunca uma sugestão idêntica. Erro de cota/limite não
      repete (ver servico.ts). */
-  const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema };
+  const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema, audio: t.audio };
 
   const fecharRegistro = async (r: Resultado) => {
     if (!reg) return;
@@ -324,6 +341,7 @@ Deno.serve(comCors(async (req: Request) => {
   /* pedido sem relação com o texto: o modelo responde o código combinado
      (roteiro.ts / linha.ts) em vez de ecoar o original */
   if (!t.json && r.texto.trim() === FORA) return json({ ok: false, categoria: 'fora' });
+  if (pVoz && r.texto.trim() === Voz.SILENCIO) return json({ ok: false, categoria: 'sem_fala' });
   if (repetiu && t.original && quaseIgual(r.texto, t.original)) return json({ ok: false, categoria: 'igual' });
   /* listas: o limpador da tarefa já validou e devolveu { itens } */
   if (t.json) {

@@ -71,6 +71,7 @@ B7.IA = (function () {
     igual: 'A IA não encontrou uma versão melhor e devolveu o mesmo texto. Escreva um pedido mais específico (ex.: "deixe mais curto e direto", "tire a contradição do pagamento") e gere de novo.',
     fora: 'Esse pedido não é sobre o texto. Escreva o que você quer que mude nele (ex.: "deixe mais descontraído").',
     desligado: 'O assistente está desligado nas Configurações do sistema.',
+    sem_fala: 'Não deu para entender o áudio. Fale mais perto do microfone e tente de novo.',
     indisponivel: 'Assistente de IA temporariamente indisponível. Tente novamente em alguns minutos.',
     tempo: 'A sugestão demorou demais para chegar. Tente novamente.',
     rede: 'Sem conexão com o servidor. Confira a internet e tente de novo.'

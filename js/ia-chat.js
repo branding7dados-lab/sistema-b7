@@ -118,12 +118,13 @@ B7.Chat = (function () {
     const f = painel.querySelector('.ch-form'); if (f) f.classList.toggle('ditando', ouvindo);
   }
   function pararVoz() {
+    if (grav) pararGravacao(true);      /* sair ou enviar descarta o que estava gravando */
     if (!rec) return;
     try { rec.stop(); } catch (e) {}
   }
-  function alternarVoz() {
+  function ditarNavegador() {
     if (!Voz || !painel) return;
-    if (ouvindo) return pararVoz();
+    if (ouvindo) { try { rec.stop(); } catch (e) {} return; }
     const ta = painel.querySelector('#ch-texto'); if (!ta || ta.disabled) return;
     const r = new Voz();
     r.lang = 'pt-BR'; r.interimResults = true; r.maxAlternatives = 1;
@@ -147,6 +148,109 @@ B7.Chat = (function () {
     r.onend = () => { if (rec === r) rec = null; ouvindo = false; marcarVoz(); };
     rec = r;
     try { r.start(); } catch (e) { rec = null; ouvindo = false; marcarVoz(); }
+  }
+
+  /* =================================================================
+     VOZ PELA IA (zzz126) — o ditado do navegador "entendia embolado".
+     Agora o microfone GRAVA a fala e a IA do B7 transcreve (tarefa "voz"
+     da b7-ia): pontuação certa e os nomes dos clientes na grafia certa.
+       toque 1 → grava (até 2 min; a faixa acima do campo mostra o tempo)
+       toque 2 → para, transcreve e põe o texto no campo
+     Nada é enviado sozinho. O áudio não é guardado em lugar nenhum.
+     Navegador que não grava áudio cai no ditado antigo (ditarNavegador).
+     ================================================================= */
+  const podeGravar = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  const TIPO_GRAV = podeGravar ? (['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
+    .find(t => { try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; } }) || '') : '';
+  const MAX_GRAV_MS = 120000, MAX_GRAV_BYTES = 1000000;
+  let grav = null;            /* { rec, stream, partes, t0, relogio, descartar } */
+  let vozEstado = '';         /* '' | 'gravando' | 'transcrevendo' */
+  const mmss = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  function pintarVoz() {
+    if (!painel) return;
+    const b = painel.querySelector('#ch-mic'), faixa = painel.querySelector('#ch-voz'), f = painel.querySelector('.ch-form');
+    if (b) {
+      b.classList.toggle('ouvindo', vozEstado === 'gravando');
+      b.classList.toggle('pensando', vozEstado === 'transcrevendo');
+      b.disabled = vozEstado === 'transcrevendo';
+      b.setAttribute('aria-pressed', String(vozEstado === 'gravando'));
+      const rot = vozEstado === 'gravando' ? 'Parar e transcrever' : vozEstado === 'transcrevendo' ? 'Transcrevendo…' : 'Falar em vez de digitar';
+      b.setAttribute('aria-label', rot); b.title = rot;
+    }
+    if (f) f.classList.toggle('ditando', vozEstado === 'gravando');
+    if (faixa) {
+      faixa.hidden = !vozEstado;
+      faixa.innerHTML = vozEstado === 'gravando'
+        ? '<i class="ch-voz-ponto"></i><span>Gravando <b id="ch-voz-t">' + mmss(Date.now() - grav.t0) + '</b> · toque no microfone para terminar</span>' +
+          '<button type="button" class="ch-voz-x" id="ch-voz-x">Cancelar</button>'
+        : vozEstado === 'transcrevendo' ? '<i class="ch-voz-gira"></i><span>Transcrevendo o que você falou…</span>' : '';
+      const x = faixa.querySelector('#ch-voz-x'); if (x) x.onclick = () => pararGravacao(true);
+    }
+  }
+  async function iniciarGravacao() {
+    const ta = painel && painel.querySelector('#ch-texto'); if (!ta || ta.disabled || vozEstado) return;
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (e) {
+      const n = e && e.name;
+      B7.UI.toast(n === 'NotFoundError' || n === 'DevicesNotFoundError' ? 'Nenhum microfone encontrado.'
+        : n === 'NotAllowedError' || n === 'SecurityError' ? 'Permita o uso do microfone neste site para falar com o assistente.'
+        : 'Não foi possível usar o microfone agora.', { tipo: 'erro' });
+      return;
+    }
+    let rec;
+    try { rec = new MediaRecorder(stream, Object.assign({ audioBitsPerSecond: 32000 }, TIPO_GRAV ? { mimeType: TIPO_GRAV } : {})); }
+    catch (e) { stream.getTracks().forEach(t => t.stop()); B7.UI.toast('Este navegador não consegue gravar áudio.', { tipo: 'erro' }); return; }
+    const g = { rec, stream, partes: [], t0: Date.now(), relogio: 0, descartar: false };
+    rec.ondataavailable = e => { if (e.data && e.data.size) g.partes.push(e.data); };
+    rec.onstop = () => concluirGravacao(g);
+    g.relogio = setInterval(() => {
+      const el = painel && painel.querySelector('#ch-voz-t'); if (el) el.textContent = mmss(Date.now() - g.t0);
+      if (Date.now() - g.t0 >= MAX_GRAV_MS) pararGravacao(false);
+    }, 500);
+    grav = g; vozEstado = 'gravando';
+    try { rec.start(); } catch (e) { g.descartar = true; concluirGravacao(g); return; }
+    pintarVoz();
+  }
+  function pararGravacao(descartar) {
+    const g = grav; if (!g) return;
+    if (descartar) g.descartar = true;
+    try { if (g.rec.state !== 'inactive') g.rec.stop(); else concluirGravacao(g); } catch (e) { concluirGravacao(g); }
+  }
+  async function concluirGravacao(g) {
+    if (g.feito) return; g.feito = true;
+    clearInterval(g.relogio);
+    try { g.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+    if (grav === g) grav = null;
+    const fim = () => { vozEstado = ''; pintarVoz(); };
+    if (g.descartar) return fim();
+    const blob = new Blob(g.partes, { type: g.rec.mimeType || TIPO_GRAV || 'audio/webm' });
+    if (Date.now() - g.t0 < 700 || blob.size < 1500) { B7.UI.toast('Gravação muito curta. Segure um pouco mais e fale.', { tipo: 'erro' }); return fim(); }
+    if (blob.size > MAX_GRAV_BYTES) { B7.UI.toast('Áudio longo demais. Fale em trechos de até 2 minutos.', { tipo: 'erro' }); return fim(); }
+    vozEstado = 'transcrevendo'; pintarVoz();
+    let r = null;
+    try {
+      const base64 = await new Promise((ok, erro) => { const l = new FileReader(); l.onload = () => ok(String(l.result).split(',')[1] || ''); l.onerror = erro; l.readAsDataURL(blob); });
+      r = await B7.IA.pedir('voz', { audio: base64, mime: blob.type });
+    } catch (e) { r = null; }
+    fim();
+    if (r && r.ok && r.texto) {
+      const ta = painel && painel.querySelector('#ch-texto');
+      if (!ta) { S.rascunho = ((S.rascunho || '').replace(/\s+$/, '') + ' ' + r.texto).trim().slice(0, 2000); return; }
+      ta.value = ((ta.value.trim() ? ta.value.replace(/\s+$/, '') + ' ' : '') + r.texto).slice(0, 2000);
+      ta.dispatchEvent(new Event('input'));
+      if (!ta.disabled && window.matchMedia('(min-width: 761px)').matches) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    } else if (!(r && r.cancelado)) {
+      B7.UI.toast((r && r.mensagem) || 'Não foi possível transcrever agora. Tente de novo.', { tipo: 'erro' });
+    }
+  }
+  /* o botão: grava pela IA quando o navegador deixa; senão, o ditado antigo */
+  function alternarVoz() {
+    if (!painel) return;
+    if (!podeGravar) return ditarNavegador();
+    if (vozEstado === 'transcrevendo') return;
+    if (vozEstado === 'gravando') return pararGravacao(false);
+    iniciarGravacao();
   }
 
   function fechar() {
@@ -336,10 +440,11 @@ B7.Chat = (function () {
     }
     painel.innerHTML = '<header class="ch-topo">' + topoHTML() + '</header>' +
       '<div class="ch-corpo" aria-live="polite"></div>' +
+      '<div class="ch-voz" id="ch-voz" role="status" aria-live="polite" hidden></div>' +
       '<form class="ch-form" autocomplete="off">' +
         '<textarea id="ch-texto" rows="1" maxlength="2000" placeholder="Pergunte ou peça uma ideia…" aria-label="Mensagem para o assistente" ' +
           'name="b7-chat-mensagem" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"></textarea>' +
-        (Voz ? '<button type="button" class="ch-mic" id="ch-mic" aria-label="Ditar por voz" aria-pressed="false" title="Ditar por voz">' + IC.mic + '</button>' : '') +
+        ((podeGravar || Voz) ? '<button type="button" class="ch-mic" id="ch-mic" aria-label="Falar em vez de digitar" aria-pressed="false" title="Falar em vez de digitar">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="ch-enviar" id="ch-enviar" aria-label="Enviar">' + IC.enviar + '</button>' +
       '</form>' +
       '<p class="ch-aviso">A IA pode errar. Confira antes de usar. Ela não altera nada sozinha: só propõe, e você confirma.</p>';
@@ -353,6 +458,7 @@ B7.Chat = (function () {
     });
     form.onsubmit = e => { e.preventDefault(); enviar(ta.value); };
     const mic = painel.querySelector('#ch-mic'); if (mic) mic.onclick = alternarVoz;
+    if (vozEstado) pintarVoz();
     if (S.rascunho) { ta.value = S.rascunho; ajustar(); }
   }
 
