@@ -917,6 +917,63 @@ B7.UI = (function () {
     return /^#\//.test(s) ? s : '#/';
   }
 
+  /* ---------------------------------------------- campos de busca
+     zzz107 — O navegador e os gerenciadores de senha tratavam campos de
+     busca como "usuário" ou "endereço": preenchiam sozinhos com o login
+     salvo (a lista ficava vazia sem ninguém ter digitado) e abriam a
+     lista de CEPs/senhas por cima da busca.
+     Todo campo de busca do sistema recebe a mesma blindagem que já
+     funcionava no "Visualizar como…" (zzz77):
+       • marcações para o preenchimento automático ignorar o campo;
+       • somente-leitura até a pessoa tocar/focar — campo assim não é
+         preenchido sozinho;
+       • texto que chegar sem o campo estar em foco é descartado. */
+  const SEL_BUSCA = 'input[type="search"], input[class*="busca"], input[placeholder^="Buscar"], input[placeholder^="Pesquisar"], ' +
+    'input[placeholder^="Procurar"], input[placeholder^="Filtrar"]';
+  let nBusca = 0;
+  function blindarBusca(el) {
+    if (el.dataset.semAuto || el.type === 'password' || el.closest('.login-caixa')) return;
+    el.dataset.semAuto = '1';
+    el.setAttribute('autocomplete', 'off');
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('autocapitalize', 'off');
+    el.setAttribute('spellcheck', 'false');
+    el.setAttribute('data-lpignore', 'true');
+    el.setAttribute('data-1p-ignore', 'true');
+    el.setAttribute('data-bwignore', 'true');
+    el.setAttribute('data-form-type', 'other');
+    if (!el.name) el.name = 'b7-busca-' + (++nBusca);
+    const emFoco = () => document.activeElement === el;
+    /* chegou preenchido sem ninguém digitar: limpa e avisa a tela */
+    let auto = false;
+    try { auto = el.matches(':-webkit-autofill') || el.matches(':autofill'); } catch (e) {}
+    if (auto && el.value && !emFoco()) { el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); }
+    if (el.readOnly || el.disabled) return;      /* já era somente-leitura por regra da tela: não mexe */
+    const destravar = () => { el.readOnly = false; };
+    if (!emFoco()) el.readOnly = true;
+    el.addEventListener('pointerdown', destravar, true);
+    el.addEventListener('touchstart', destravar, { capture: true, passive: true });
+    el.addEventListener('focus', destravar, true);
+    el.addEventListener('keydown', destravar, true);
+    el.addEventListener('click', destravar, true);
+    el.addEventListener('blur', () => { el.readOnly = true; });
+    el.addEventListener('input', e => {
+      if (!emFoco() && e.isTrusted && el.value) { el.value = ''; e.stopImmediatePropagation(); el.dispatchEvent(new Event('input', { bubbles: true })); }
+    }, true);
+  }
+  function blindarBuscas(raiz) {
+    try { (raiz || document).querySelectorAll(SEL_BUSCA).forEach(blindarBusca); } catch (e) {}
+  }
+  (function vigiarBuscas() {
+    let agendado = 0;
+    const agendar = () => { if (!agendado) agendado = setTimeout(() => { agendado = 0; blindarBuscas(); }, 60); };
+    const ligar = () => {
+      blindarBuscas();
+      try { new MutationObserver(agendar).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+    };
+    if (document.body) ligar(); else document.addEventListener('DOMContentLoaded', ligar);
+  })();
+
   return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, linkExterno, linkInterno, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
            dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton, copiarTexto, ocupado };
 })();
