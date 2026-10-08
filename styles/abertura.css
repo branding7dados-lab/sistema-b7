@@ -451,7 +451,9 @@ body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaF
 @keyframes abRegua{from{opacity:0;transform:scaleX(0)}to{opacity:.9;transform:none}}
 .ab-titulo b{font-family:'Archivo',system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:.42em;text-indent:.42em;text-transform:uppercase;
   color:rgba(255,255,255,.78);opacity:0;animation:abTitulo 1s cubic-bezier(.16,1,.3,1) 5.5s both;}
-@keyframes abTitulo{from{opacity:0;letter-spacing:.9em;text-indent:.9em;filter:blur(5px)}to{opacity:1;letter-spacing:.42em;text-indent:.42em;filter:none}}
+/* zzz111: as letras "se aproximam" por escala (só transform), não por
+   espaçamento — animar espaçamento refaz o layout a cada quadro */
+@keyframes abTitulo{from{opacity:0;transform:scale3d(1.5,1,1)}to{opacity:1;transform:none}}
 /* a ignição segura a tela um instante a mais: o palco respira depois do soco */
 .ab-palco{animation:abSoco .7s cubic-bezier(.2,.9,.25,1) var(--ab-ign) both;}
 
@@ -464,3 +466,28 @@ body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaF
 @media (prefers-reduced-motion:reduce){
   .b7-abertura :is(.ab-estrelas,.ab-varredura,.ab-linha,.ab-faiscas,.ab-reflexos,.ab-titulo){display:none;}
 }
+
+/* =====================================================================
+   zzz111 — LEVEZA (pedido do Kevin: "têm que ser fluidas, não podem
+   pesar, tanto no PC quanto no celular")
+   Regras da abertura longa:
+   • só transform e opacity se movem; nada que refaça layout ou repinte
+     a tela inteira a cada quadro;
+   • as camadas grandes viram textura própria na placa de vídeo uma vez
+     (will-change) e são soltas quando a abertura sai do documento;
+   • sombras e brilhos são desenhados parados; quem anima é a camada;
+   • no celular vai metade das faíscas e sem os reflexos de lente;
+   • no modo leve, o corte longo sai inteiro (fica a sequência base).
+   ===================================================================== */
+.b7-abertura.inicial :is(.ab-estrelas,.ab-varredura,.ab-linha,.ab-reflexos,.ab-raios,.ab-bloom,.ab-clarao){will-change:transform,opacity;}
+.b7-abertura.inicial .ab-faiscas i{will-change:transform,opacity;box-shadow:none;}
+.b7-abertura.inicial .ab-linha{box-shadow:none;height:2px;
+  background:linear-gradient(90deg, transparent 6%, rgba(160,130,255,.45) 34%, rgba(255,235,248,.9) 50%, rgba(255,150,210,.45) 66%, transparent 94%);}
+.ab-estrelas{contain:strict;}
+.ab-faiscas,.ab-titulo{contain:layout style;}
+@media (max-width:760px){
+  .b7-abertura .ab-faiscas i:nth-child(even),.b7-abertura .ab-reflexos{display:none;}
+  .ab-estrelas{inset:-6%;}
+}
+html.modo-leve .b7-abertura :is(.ab-estrelas,.ab-varredura,.ab-linha,.ab-faiscas,.ab-reflexos){display:none;}
+html.modo-leve .b7-abertura .ab-titulo :is(i,b){animation-duration:.01s;}

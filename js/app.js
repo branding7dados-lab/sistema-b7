@@ -684,6 +684,24 @@ B7.Rota = (function () {
   B7.fecharCortina = fecharCortina;
   B7.reverAbertura = reverAbertura;
 
+  /* "Testar tela de carregamento" (Configurações → Aparência, zzz111):
+     a versão curta da abertura — a que aparece ao recarregar a página e
+     entre o login e o sistema — fica na tela por 3,2 s, tempo de ver o
+     logo acender, o brilho passar e a frase de espera entrar. Nada é
+     recarregado de verdade. */
+  function testarCarregamento() {
+    if (document.querySelector('.b7-abertura') || !MOLDE_ABERTURA) return;
+    const el = document.createElement('div');
+    el.className = 'b7-abertura';
+    el.setAttribute('role', 'status'); el.setAttribute('aria-label', 'Tela de carregamento do Sistema B7');
+    el.innerHTML = MOLDE_ABERTURA;
+    document.body.appendChild(el);
+    escreverCortina(el, null, null);
+    pintarBarraDoSistema();
+    setTimeout(() => sairCortina(el, false), reduzMov() ? 900 : 3200);
+  }
+  B7.testarCarregamento = testarCarregamento;
+
   /* =================================================================
      SHELL DA EQUIPE
      A navegação interna e os controles do topo (busca, Nova gravação,

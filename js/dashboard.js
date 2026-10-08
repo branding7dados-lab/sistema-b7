@@ -1927,7 +1927,8 @@ B7.Dashboard = (function () {
       grupo('Abertura', '',
         L({ ic: 'som', tom: 'laranja', t: 'Trilha sonora', d: 'som na animação de entrada', cls: 'cfg-alterna',
             dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
-        L({ ic: 'play', tom: 'rosa', t: 'Ver abertura', d: 'assistir de novo, com som', botao: true, attrs: ' data-ver-abertura' }));
+        L({ ic: 'play', tom: 'rosa', t: 'Testar abertura', d: 'a sequência completa, com som', botao: true, attrs: ' data-ver-abertura' }) +
+        L({ ic: 'atualizar', tom: 'azul', t: 'Testar tela de carregamento', d: 'a versão curta, que aparece ao recarregar', botao: true, attrs: ' data-ver-carregamento' }));
 
     const abaAdmin =
       /* a seção só existe para admin: nada de item com cadeado */
@@ -2103,6 +2104,8 @@ B7.Dashboard = (function () {
 
     const va = p.querySelector('[data-ver-abertura]');
     if (va) va.onclick = () => { if (B7.reverAbertura) B7.reverAbertura(); };
+    const vc = p.querySelector('[data-ver-carregamento]');
+    if (vc) vc.onclick = () => { if (B7.testarCarregamento) B7.testarCarregamento(); };
     const at = p.querySelector('[data-atalhos]'); if (at) at.onclick = () => B7.UI.atalhos();
     if (pode('banco')) desenharBanco();
     desenharAcesso();
