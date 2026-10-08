@@ -182,6 +182,18 @@ B7.UI = (function () {
       (opcoes.extra ? ' ' + opcoes.extra : '') + '" role="dialog" aria-modal="true">' + html + '</div>';
     fundo.addEventListener('mousedown', e => { if (e.target === fundo) fechar(); });
     document.addEventListener('keydown', tecla);
+    /* zzz106: abrir uma janela fecha o menu "⋯" (e o do botão direito) que
+       a chamou — ele ficava aberto e nítido por cima do fundo desfocado */
+    try { fecharMenus(); } catch (e) {}
+    try { if (B7.Ctx && B7.Ctx.fechar) B7.Ctx.fechar(); } catch (e) {}
+    /* zzz106: janela que é só pergunta (título, texto e até dois botões),
+       mesmo montada à mão em alguma tela, ganha o desenho de alerta */
+    if (!opcoes.classe && !opcoes.larga && !opcoes.extra) {
+      const cx = fundo.firstElementChild;
+      const so = [...cx.children].every(el => el.matches('h3, .sub, .acoes'));
+      const ac = cx.querySelector(':scope > .acoes');
+      if (so && ac && ac.querySelectorAll('.b').length <= 2 && ac.children.length <= 2) fundo.classList.add('alerta');
+    }
 
     const focaveis = () => [...fundo.querySelectorAll(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]),' +

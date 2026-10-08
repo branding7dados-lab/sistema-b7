@@ -2656,7 +2656,8 @@ B7.Dashboard = (function () {
       (temConteudo ? '<div class="mb"><label class="rot">PARA CONFIRMAR, DIGITE O NOME DO CLIENTE</label>' +
         '<input class="campo" id="xc-nome" data-foco placeholder="' + esc(c.nome) + '"></div>' : '') +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
-      '<button class="b pri" data-ok' + (temConteudo ? ' disabled' : '') + '>Excluir cliente</button></div>');
+      '<button class="b pri perigo" data-ok' + (temConteudo ? ' disabled' : '') + '>Excluir cliente</button></div>',
+      { classe: 'alerta' });
 
     const botao = m.querySelector('[data-ok]');
     if (temConteudo) {

@@ -2173,3 +2173,11 @@ body.b7-so-leitura [data-duplicar]{display:none !important;}
   .fundo-modal.alerta .modal{width:min(320px,100%);border-radius:24px;}
   .fundo-modal.alerta .modal .acoes{flex-direction:initial;}
 }
+
+/* zzz106 — alerta com um campo (ex.: digitar o nome para confirmar a
+   exclusão) e alerta de um botão só */
+.fundo-modal.alerta .modal .sub b{color:var(--ink);font-weight:650;}
+.fundo-modal.alerta .modal .mb{margin:16px 0 0;}
+.fundo-modal.alerta .modal label.rot{margin:0 0 8px;text-align:center;font-size:10.5px;letter-spacing:.08em;line-height:1.35;}
+.fundo-modal.alerta .modal .campo{text-align:center;border-radius:13px;}
+.fundo-modal.alerta .modal .acoes:has(> .b:only-child){grid-template-columns:1fr;}
