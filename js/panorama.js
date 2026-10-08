@@ -289,5 +289,6 @@ B7.Panorama = (function () {
     await carregar(true);
   }
 
-  return { abrir };
+  /* ler/ETAPAS: o Painel (js/painel.js) resume a agência com a MESMA regra */
+  return { abrir, ler, ETAPAS };
 })();

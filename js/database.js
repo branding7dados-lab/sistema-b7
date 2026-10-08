@@ -1986,7 +1986,7 @@ B7.DB = (function () {
        demandas_edicao escopa pelo videomaker numa chamada só. */
     async painelEntregas(uid, desdeISO) {
       return ok(await sb().from('demandas_edicao_eventos')
-        .select('demanda_id,created_at,demandas_edicao!inner(videomaker_id,editing_status,titulo)')
+        .select('demanda_id,created_at,demandas_edicao!inner(videomaker_id,editing_status,titulo,clientes(nome,logo_url))')
         .eq('tipo', 'status').eq('para_status', 'entregue')
         .gte('created_at', desdeISO)
         .eq('demandas_edicao.videomaker_id', uid)

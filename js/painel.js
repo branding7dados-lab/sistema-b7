@@ -90,7 +90,7 @@ B7.Painel = (function () {
 
   /* ------------------------------------------------------------ estado
      Uma entrada por fonte: 'carregando' | 'ok' | 'erro'. */
-  const S = { ativas: null, entregas: null, agenda: null };
+  const S = { ativas: null, entregas: null, agenda: null, agencia: null };
   const SEMANAS_GRAFICO = 6;
   let geracao = 0;   /* descarta resposta de uma abertura anterior da tela */
   /* quando o Painel é COMPOSTO (várias funções, js/painel-multi.js), este
@@ -139,15 +139,21 @@ B7.Painel = (function () {
       .finally(() => clearTimeout(id));
   }
 
-  function carregar(fonte) {
+  /* silencioso (renovação automática do Painel aberto): quem já tem dado
+     continua mostrando o que tem até o novo chegar; se a renovação
+     falhar, fica o dado anterior em vez de um erro no meio da tela */
+  function carregar(fonte, silencioso) {
     const g = geracao, uid = meuId();
-    S[fonte] = { estado: 'carregando' };
-    pintar();
+    const tinha = !!(silencioso && S[fonte] && S[fonte].estado === 'ok');
+    if (!tinha) { S[fonte] = { estado: 'carregando' }; pintar(); }
     let p;
     if (fonte === 'ativas') p = B7.DB.painelDemandasAtivas(uid);
     else if (fonte === 'entregas') {
       const inicio = somarDias(segundaDe(hoje()), -7 * (SEMANAS_GRAFICO - 1));
       p = B7.DB.painelEntregas(uid, local(inicio).toISOString());
+    } else if (fonte === 'agencia') {
+      const a = new Date();
+      p = B7.DB.panoramaMes(a.getFullYear(), a.getMonth() + 1);
     } else {
       /* da segunda desta semana (a "Minha semana" mostra os dias que já
          passaram) até 14 dias à frente (KPI de 7 dias + compromissos) */
@@ -155,7 +161,7 @@ B7.Painel = (function () {
     }
     comTempoLimite(p, 15000)
       .then(dados => { if (g === geracao) { S[fonte] = { estado: 'ok', dados: dados || [] }; pintar(); if (ouvinte) ouvinte(); } })
-      .catch(e => { if (g === geracao) { S[fonte] = { estado: 'erro', erro: (e && e.message) || '' }; pintar(); if (ouvinte) ouvinte(); } });
+      .catch(e => { if (g === geracao && !tinha) { S[fonte] = { estado: 'erro', erro: (e && e.message) || '' }; pintar(); if (ouvinte) ouvinte(); } });
   }
 
   /* =================================================================
@@ -427,6 +433,11 @@ B7.Painel = (function () {
     const agora = Date.now(), em7 = agora + 7 * 86400000;
     const grav7 = gravacoes().filter(g => { const t = new Date(g.inicio).getTime(); return t >= agora && t < em7; });
     const prox = grav7[0];
+    /* zzz120: com o cliente (aguardando aprovação) e entregues no mês */
+    const nCli = ds.filter(d => d.editing_status === 'aguardando_aprovacao').length;
+    const eE = estadoDe('entregas'), mesAtual = hoje().slice(0, 7);
+    const nMes = eE === 'ok' ? ultimasEntregas().filter(x => diaDoTs(x.created_at).slice(0, 7) === mesAtual).length : 0;
+    const nSem = eE === 'ok' ? semanasEntregues().slice(-1)[0].n : 0;
     const subMaos = [nEd && nEd + ' em edição', nCor && nCor + (nCor === 1 ? ' correção' : ' correções'),
                      nPend && nPend + ' para iniciar'].filter(Boolean).join(' · ');
 
@@ -442,6 +453,13 @@ B7.Painel = (function () {
       kpi({ estado: eA, rotulo: 'Em produção', valor: maos.length,
             sub: subMaos || 'nada nas suas mãos agora',
             href: '#/video?minha=1&comp=todas', aria: maos.length + ' demandas em produção — abrir sua fila' }) +
+      kpi({ estado: eA, rotulo: 'Com o cliente', valor: nCli,
+            sub: nCli ? 'aguardando aprovação' : 'nada aguardando aprovação',
+            href: nCli ? '#/video?minha=1&comp=todas&status=aguardando_aprovacao' : null,
+            aria: nCli + ' demandas aguardando aprovação do cliente' }) +
+      kpi({ estado: eE, rotulo: 'Entregues no mês', valor: nMes, tom: nMes ? 'ok' : '',
+            sub: nSem ? nSem + ' nesta semana' : 'nenhuma nesta semana',
+            href: '#/video?minha=1&comp=todas&status=entregue', aria: nMes + ' vídeos entregues em ' + MES[local(hoje()).getMonth()] }) +
       kpi({ estado: eG, rotulo: 'Próximas gravações', valor: grav7.length,
             sub: prox ? 'próxima ' + quandoDia(diaDoTs(prox.inicio)) + (prox.dia_inteiro ? '' : ', ' + hora(prox.inicio)) : 'nenhuma nos próximos 7 dias',
             href: '#/calendario', aria: grav7.length + ' gravações nos próximos 7 dias — abrir o calendário' });
@@ -527,11 +545,11 @@ B7.Painel = (function () {
     else {
       /* o que já aparece em "Precisa da sua atenção" não se repete aqui */
       const listados = new Set(itensAtencao().slice(0, MAX_ATENCAO).map(it => it.chave));
-      const itens = proximosCompromissos(listados);
-      corpo = itens.length ? '<div class="cp-agenda-lista">' + itens.map(compromisso).join('') + '</div>'
-        : blocoVazio('Nada marcado para os próximos dias.', 'Gravações da agenda e prazos seus aparecem aqui.');
+      const itens = proximosCompromissos(listados, 4);
+      corpo = radar() + (itens.length ? '<div class="cp-agenda-lista">' + itens.map(compromisso).join('') + '</div>'
+        : '<p class="pn-nota">Fora o que já está em "Precisa da sua atenção", nada marcado.</p>');
     }
-    cx.innerHTML = cabecalhoSecao('pn-t-comp', 'Próximos compromissos', { href: '#/calendario?v=semana', rotulo: 'Ver no calendário' }) + corpo;
+    cx.innerHTML = cabecalhoSecao('pn-t-comp', 'Próximos 14 dias', { href: '#/calendario', rotulo: 'Ver no calendário' }) + corpo;
   }
 
   /* A frase do dia, logo abaixo da saudação: o Painel diz em uma linha o
@@ -564,6 +582,7 @@ B7.Painel = (function () {
   function pintar() {
     if (!document.getElementById('pn-raiz')) return;
     pintarResumo(); pintarKpis(); pintarAtencao(); pintarSemana(); pintarProducao(); pintarCompromissos();
+    pintarFila(); pintarEntregas(); pintarAgencia(); pintarRelogio();
     /* logo quebrada → iniciais (mesma regra do sino) */
     painel().querySelectorAll('img.pn-logo').forEach(img => {
       img.onerror = () => { const s = document.createElement('span'); s.className = 'pn-logo pn-logo-vazia'; s.textContent = img.dataset.ini || ''; img.replaceWith(s); };
@@ -605,29 +624,175 @@ B7.Painel = (function () {
           '<p class="pn-papel">' + esc(papeis()) + '</p>' +
           (o.resumo ? '<p class="pn-resumo" id="pn-resumo" aria-live="polite"></p>' : '') + '</div>' +
         '<div class="pn-cab-lado">' +
+          (o.relogio ? '<div class="pn-relogio" id="pn-relogio" aria-hidden="true"></div>' : '') +
           (o.acao || '') +
         '</div>' +
       '</header>';
   }
+
+
+  /* =================================================================
+     PAINEL CHEIO (zzz120) — blocos novos do Painel do Videomaker.
+     Nenhuma fonte pessoal nova: fila, radar e entregas saem das mesmas
+     três leituras. A única leitura a mais é o resumo da agência
+     (panorama_mes), só para administrador, com a regra do Panorama.
+     ================================================================= */
+  const ETAPAS_FILA = [
+    ['pendente', 'Para iniciar'], ['em_edicao', 'Em edição'], ['correcao', 'Correção'],
+    ['aguardando_aprovacao', 'Com o cliente'], ['standby', 'Standby']
+  ];
+  function pintarFila() {
+    const cx = document.getElementById('pn-fila'); if (!cx) return;
+    const e = estadoDe('ativas');
+    let corpo;
+    if (e === 'carregando') corpo = blocoCarregando(2);
+    else if (e === 'erro') corpo = blocoErro('Não foi possível carregar sua fila.', ['ativas']);
+    else {
+      const ds = minhas();
+      const n = k => ds.filter(d => d.editing_status === k).length;
+      corpo = !ds.length
+        ? blocoVazio('Fila vazia.', 'Nenhuma demanda de edição com você agora.')
+        : '<div class="pnv-fila-barra" role="img" aria-label="' + esc(ETAPAS_FILA.map(([k, r]) => n(k) + ' ' + r.toLowerCase()).join(', ')) + '">' +
+            ETAPAS_FILA.filter(([k]) => n(k)).map(([k]) => '<i class="pnv-f-' + k + '" style="flex:' + n(k) + '"></i>').join('') + '</div>' +
+          '<div class="pnv-fila-lista">' + ETAPAS_FILA.map(([k, r]) =>
+            '<a class="pnv-fila-l' + (n(k) ? '' : ' zero') + '" href="#/video?minha=1&amp;comp=todas&amp;status=' + k + '">' +
+              '<i class="pnv-ponto pnv-f-' + k + '"></i><span>' + r + '</span><b>' + n(k) + '</b></a>').join('') + '</div>';
+    }
+    cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pn-t-fila">Minha fila</h2>' +
+      (e === 'ok' ? '<span class="pn-sec-sub">' + minhas().length + (minhas().length === 1 ? ' demanda ativa' : ' demandas ativas') + '</span>' : '') +
+      '<a class="pn-link" href="#/video?minha=1&amp;comp=todas">Abrir' + IC.seta + '</a></div>' + corpo;
+  }
+
+  /* Radar: os próximos 14 dias, um quadrado por dia, com o que cai nele */
+  const DOW_1 = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  function radar() {
+    return '<ol class="pnv-radar">' + Array.from({ length: 14 }, (_, i) => {
+      const iso = somarDias(hoje(), i), dow = local(iso).getDay();
+      const nP = minhas().filter(d => comPrazoMeu(d) && d.prazo === iso).length;
+      const nG = gravacoes().filter(g => diaDoTs(g.inicio) === iso).length;
+      const falado = DOW_LONGO[dow] + ' ' + ddmm(iso) + ': ' + ([nG && nG + (nG === 1 ? ' gravação' : ' gravações'), nP && nP + (nP === 1 ? ' prazo' : ' prazos')].filter(Boolean).join(', ') || 'livre');
+      return '<li class="pnv-rd' + (i === 0 ? ' hoje' : '') + (dow === 0 || dow === 6 ? ' fds' : '') + (nP || nG ? ' tem' : '') + '" title="' + esc(falado) + '" aria-label="' + esc(falado) + '" style="--i:' + i + '">' +
+        '<span class="pnv-rd-dow">' + DOW_1[dow] + '</span><b>' + iso.slice(8, 10) + '</b>' +
+        '<span class="pnv-rd-m">' + (nG ? '<i class="g"></i>' : '') + (nP ? '<i class="p"></i>' : '') + '</span></li>';
+    }).join('') + '</ol>' +
+    '<p class="pnv-legenda"><span><i class="g"></i>gravação</span><span><i class="p"></i>prazo de edição</span></p>';
+  }
+
+  function ultimasEntregas() {
+    const ultimo = {};
+    (S.entregas.dados || []).forEach(e => {
+      if (!e.demandas_edicao || e.demandas_edicao.editing_status !== 'entregue') return;
+      if (!ultimo[e.demanda_id] || e.created_at > ultimo[e.demanda_id].created_at) ultimo[e.demanda_id] = e;
+    });
+    return Object.values(ultimo).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  }
+  function pintarEntregas() {
+    const cx = document.getElementById('pn-entregas'); if (!cx) return;
+    const e = estadoDe('entregas');
+    let corpo;
+    if (e === 'carregando') corpo = blocoCarregando(4);
+    else if (e === 'erro') corpo = blocoErro('Não foi possível carregar suas entregas.', ['entregas']);
+    else {
+      const l = ultimasEntregas().slice(0, 6);
+      corpo = l.length ? '<div class="pnv-ent-lista">' + l.map(x => {
+        const d = x.demandas_edicao, cli = d.clientes || {}, dia = diaDoTs(x.created_at);
+        return '<a class="pnv-ent" href="#/video/' + esc(x.demanda_id) + '">' +
+          '<span class="pnv-ent-ic" aria-hidden="true">' + IC.ok + '</span>' +
+          '<span class="pnv-ent-tx"><b>' + esc(d.titulo || 'Demanda sem título') + '</b>' +
+            '<small>' + (cli.nome ? logoMini({ cliente_nome: cli.nome, cliente_logo_url: cli.logo_url }) + '<span>' + esc(cli.nome) + '</span>' : '') + '</small></span>' +
+          '<time>' + esc(difDias(hoje(), dia) <= 1 ? quandoDia(dia) : ddmm(dia)) + '</time></a>';
+      }).join('') + '</div>'
+        : blocoVazio('Nenhuma entrega nas últimas semanas.', 'Quando você marcar uma demanda como entregue, ela aparece aqui.');
+    }
+    cx.innerHTML = cabecalhoSecao('pn-t-ent', 'Últimas entregas', { href: '#/video?minha=1&comp=todas&status=entregue', rotulo: 'Ver todas' }) + corpo;
+  }
+
+  /* Agência no mês — só administrador. Mesma função e mesma regra do
+     Panorama (B7.Panorama.ler); aqui é o resumo e quem precisa primeiro. */
+  const ROT_ESTADO = { atraso: 'com atraso', atencao: 'pede atenção', andamento: 'em andamento', ok: 'em dia', vazio: 'sem movimento' };
+  const temAgencia = () => !!(B7.Auth.ehAdmin && B7.Auth.ehAdmin() && !emPrevia() && B7.Panorama && B7.Panorama.ler && B7.DB.panoramaMes);
+  function pintarAgencia() {
+    const cx = document.getElementById('pn-agencia'); if (!cx) return;
+    const e = estadoDe('agencia');
+    let corpo;
+    if (e === 'carregando') corpo = blocoCarregando(4);
+    else if (e === 'erro') corpo = blocoErro('Não foi possível carregar o resumo da agência.', ['agencia']);
+    else {
+      const linhas = (S.agencia.dados || []).map(B7.Panorama.ler);
+      const n = { atraso: 0, atencao: 0, andamento: 0, ok: 0, vazio: 0 };
+      let soma = 0, com = 0;
+      linhas.forEach(l => { n[l.estado]++; if (l.etapas) { soma += l.pct; com++; } });
+      const pct = com ? Math.round(soma / com * 100) : 0, r = 26, c = 2 * Math.PI * r;
+      const peso = { atraso: 0, atencao: 1, andamento: 2, ok: 3, vazio: 4 };
+      const topo = linhas.filter(l => l.estado !== 'vazio').sort((a, b) => peso[a.estado] - peso[b.estado] || a.pct - b.pct).slice(0, 5);
+      corpo = '<div class="pnv-ag"><div class="pnv-ag-topo">' +
+          '<div class="pnv-anel" role="img" aria-label="Andamento médio do mês: ' + pct + '%"><svg viewBox="0 0 64 64">' +
+            '<circle class="f" cx="32" cy="32" r="' + r + '"/><circle class="v" cx="32" cy="32" r="' + r + '" style="--c:' + c.toFixed(1) + ';--o:' + (c * (1 - pct / 100)).toFixed(1) + '"/></svg>' +
+            '<b><span class="pnv-conta">' + pct + '</span><i>%</i></b></div>' +
+          '<div class="pnv-ag-nums">' + ['atraso', 'atencao', 'andamento', 'ok', 'vazio'].map(k =>
+            '<div class="pnv-ag-n pnv-e-' + k + '"><b class="pnv-conta">' + n[k] + '</b><span>' + ROT_ESTADO[k] + '</span></div>').join('') + '</div></div>' +
+        (topo.length ? '<div class="pnv-ag-lista">' + topo.map(l =>
+          '<a class="pnv-ag-l pnv-e-' + l.estado + '" href="#/cliente/' + esc(l.c.id) + '">' + B7.UI.avatarCliente(l.c.nome, l.c.logo_url, 'pnv-ag-av') +
+            '<span class="pnv-ag-tx"><b>' + esc(l.c.nome) + '</b><small>' + ROT_ESTADO[l.estado] + (l.etapas ? ' · ' + Math.round(l.pct * 100) + '%' : '') + '</small></span>' +
+            '<span class="pnv-ag-pts" aria-hidden="true">' + B7.Panorama.ETAPAS.map(([k, rot]) =>
+              '<i class="pnv-e-' + l.cels[k].estado + '" title="' + esc(rot + ': ' + (l.cels[k].valor ? l.cels[k].valor + ' ' : '') + l.cels[k].sub) + '"></i>').join('') + '</span></a>').join('') + '</div>'
+          : '<p class="pn-nota">Nenhum cliente com movimento neste mês.</p>') + '</div>';
+    }
+    cx.innerHTML = cabecalhoSecao('pn-t-ag', 'Agência em ' + MES[new Date().getMonth()], { href: '#/', rotulo: 'Abrir o Panorama' }) + corpo;
+  }
+
+  /* Relógio do cabeçalho: para quem deixa o Painel aberto na tela */
+  function pintarRelogio() {
+    const cx = document.getElementById('pn-relogio'); if (!cx) return;
+    const a = new Date(), h = pad(a.getHours()) + ':' + pad(a.getMinutes());
+    if (cx.dataset.h !== h) { cx.dataset.h = h; cx.innerHTML = '<b>' + pad(a.getHours()) + '<i>:</i>' + pad(a.getMinutes()) + '</b><span>' + DOW_LONGO[a.getDay()] + ', ' + a.getDate() + ' de ' + MES[a.getMonth()] + '</span>'; }
+  }
+  /* Painel aberto por horas: o relógio anda e os dados se renovam a cada
+     5 min, em silêncio (sem esqueleto e sem refazer a animação). Para
+     sozinho quando a pessoa sai da tela; aba escondida não consulta. */
+  let pulso = 0, ultimaRenova = 0, diaPintado = '';
+  function ligarPulso() {
+    clearInterval(pulso);
+    ultimaRenova = Date.now(); diaPintado = hoje();
+    pulso = setInterval(() => {
+      const raiz = document.getElementById('pn-raiz');
+      if (!raiz || !raiz.classList.contains('pnv')) { clearInterval(pulso); pulso = 0; return; }
+      pintarRelogio();
+      if (document.hidden) return;
+      const virou = diaPintado !== hoje();
+      if (!virou && Date.now() - ultimaRenova < 5 * 60000) return;
+      ultimaRenova = Date.now(); diaPintado = hoje();
+      raiz.classList.add('pn-calmo');
+      reiniciarCompartilhadas();
+      fontesVideo().forEach(f => carregar(f, true));
+    }, 15000);
+  }
+  const fontesVideo = () => ['ativas', 'entregas', 'agenda'].concat(temAgencia() ? ['agencia'] : []);
 
   function abrirVideo(visoes) {
     geracao++;
     B7.Dashboard.marcarNav('#/painel');
     B7.Rota.titulo(['Painel']);
 
-    painel().innerHTML = '<div class="conteudo entra pn" id="pn-raiz">' +
-      cabecalho({ visoes, visao: 'video', resumo: true,
+    const comAg = temAgencia();
+    S.agencia = null;
+    painel().innerHTML = '<div class="conteudo entra pn pnv" id="pn-raiz">' +
+      cabecalho({ visoes, visao: 'video', resumo: true, relogio: true,
         acao: '<a class="b contorno pn-cab-acao" href="#/video?minha=1&comp=todas">' + IC.camera + '<span>Minha fila de edição</span></a>' }) +
       '<section class="pn-kpis" id="pn-kpis" aria-label="Indicadores"></section>' +
-      '<div class="pn-grade">' +
+      '<div class="pn-grade pnv-grade' + (comAg ? '' : ' sem-ag') + '">' +
         '<section class="pn-bloco pn-atencao" id="pn-atencao" aria-labelledby="pn-t-atencao"></section>' +
         '<section class="pn-bloco" id="pn-semana" aria-labelledby="pn-t-semana"></section>' +
-        '<section class="pn-bloco" id="pn-producao" aria-labelledby="pn-t-producao"></section>' +
         '<section class="pn-bloco" id="pn-compromissos" aria-labelledby="pn-t-comp"></section>' +
+        '<section class="pn-bloco" id="pn-fila" aria-labelledby="pn-t-fila"></section>' +
+        '<section class="pn-bloco" id="pn-producao" aria-labelledby="pn-t-producao"></section>' +
+        '<section class="pn-bloco" id="pn-entregas" aria-labelledby="pn-t-ent"></section>' +
+        (comAg ? '<section class="pn-bloco" id="pn-agencia" aria-labelledby="pn-t-ag"></section>' : '') +
       '</div>' +
     '</div>';
 
-    ['ativas', 'entregas', 'agenda'].forEach(carregar);
+    fontesVideo().forEach(f => carregar(f));
+    ligarPulso();
   }
 
 
@@ -842,7 +1007,7 @@ B7.Painel = (function () {
     /* o que vive dentro de um bloco (números do gráfico, barras) só anima
        quando o bloco já apareceu — antes as barras cresciam fora da tela */
     const animarDentro = raiz => {
-      raiz.querySelectorAll('.pn-graf-resumo b, .pn-graf-val').forEach(el => {
+      raiz.querySelectorAll('.pn-graf-resumo b, .pn-graf-val, .pnv-conta').forEach(el => {
         const b = el.closest('.pn-bloco');
         if (!b || b.classList.contains('pn-visto')) contar(el);
       });
