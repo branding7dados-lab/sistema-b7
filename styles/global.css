@@ -1343,6 +1343,8 @@ body.apurando #app{visibility:hidden;}
   /* vidro: superfície que flutua sobre o conteúdo (menus, folhas, toasts).
      Sempre translúcido o bastante para dar profundidade e opaco o
      bastante para o texto não disputar com o que passa por baixo. */
+  /* zzz101: interruptor ligado, o verde do iOS — um só para o sistema todo */
+  --chave-on:#34C759;
   --vidro-bg:color-mix(in srgb, var(--elevado) 82%, transparent);
   --vidro-forte:color-mix(in srgb, var(--elevado) 93%, transparent);
   --vidro-borda:color-mix(in srgb, var(--borda-forte) 75%, transparent);
@@ -1351,6 +1353,7 @@ body.apurando #app{visibility:hidden;}
   --veu:rgba(11,10,30,.44);
 }
 [data-theme="dark"]{
+  --chave-on:#30D158;
   --vidro-bg:color-mix(in srgb, var(--elevado) 84%, transparent);
   --vidro-forte:color-mix(in srgb, var(--elevado) 95%, transparent);
   --vidro-borda:rgba(255,255,255,.09);

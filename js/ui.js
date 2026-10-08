@@ -123,6 +123,57 @@ B7.UI = (function () {
     setTimeout(tirar, 260);   /* rede de segurança se a animação não rodar */
   }
 
+  /* zzz101 — FOLHA DO CELULAR: arrastar para baixo fecha, como no iOS.
+     O gesto começa na alcinha/cabeçalho (os 72 px de cima) ou em qualquer
+     ponto quando o conteúdo já está rolado até o topo. Passou de ~1/4 da
+     altura, ou foi um puxão rápido: fecha. Senão volta para o lugar. */
+  function arrastarParaFechar(fundo, fechar) {
+    const cx = fundo.querySelector('.modal');
+    if (!cx) return;
+    let y0 = 0, dy = 0, t0 = 0, ativo = false, valendo = false, rolavel = null;
+    const noTopo = () => !rolavel || rolavel.scrollTop <= 0;
+    cx.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1 || !window.matchMedia('(max-width: 760px)').matches) return;
+      const t = e.touches[0], r = cx.getBoundingClientRect();
+      if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const naAlca = t.clientY - r.top <= 72;
+      rolavel = null;
+      for (let el = e.target; el && el !== cx; el = el.parentElement) {
+        if (el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY)) { rolavel = el; break; }
+      }
+      if (!naAlca && !noTopo()) return;
+      ativo = true; valendo = false; y0 = t.clientY; dy = 0; t0 = Date.now();
+    }, { passive: true });
+    cx.addEventListener('touchmove', e => {
+      if (!ativo) return;
+      dy = e.touches[0].clientY - y0;
+      if (!valendo) {
+        if (dy < 8) { if (dy < -8) ativo = false; return; }
+        if (!noTopo()) { ativo = false; return; }
+        valendo = true;
+        cx.style.animation = 'none'; cx.style.transition = 'none';
+      }
+      if (e.cancelable) e.preventDefault();
+      cx.style.transform = 'translate3d(0,' + Math.max(0, dy) + 'px,0)';
+    }, { passive: false });
+    const soltar = () => {
+      if (!ativo) return;
+      ativo = false;
+      if (!valendo) return;
+      const rapido = dy > 70 && dy / Math.max(1, Date.now() - t0) > .55;
+      cx.style.transition = 'transform .24s cubic-bezier(.32,.72,0,1)';
+      if (dy > cx.offsetHeight * .25 || rapido) {
+        cx.style.transform = 'translate3d(0,105%,0)';
+        setTimeout(fechar, 180);
+      } else {
+        cx.style.transform = 'translate3d(0,0,0)';
+        setTimeout(() => { cx.style.transition = ''; cx.style.transform = ''; }, 260);
+      }
+    };
+    cx.addEventListener('touchend', soltar);
+    cx.addEventListener('touchcancel', soltar);
+  }
+
   function modal(html, opcoes = {}) {
     const anterior = document.activeElement;      // para devolver o foco ao fechar
     const fundo = document.createElement('div');
@@ -157,6 +208,7 @@ B7.UI = (function () {
     }
     fundo.fechar = fechar;
     document.body.appendChild(fundo);
+    if (fundo.classList.contains('tp-folha')) arrastarParaFechar(fundo, fechar);
     fundo.querySelectorAll('[data-fecha]').forEach(b => b.onclick = fechar);
     const foco = fundo.querySelector('[data-foco]');
     if (foco) { foco.focus(); if (foco.select) foco.select(); }

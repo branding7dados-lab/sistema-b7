@@ -883,7 +883,7 @@ button.cfg-l:hover .cfg-seta,.cfg-perfil:hover .cfg-seta{transform:translateX(3p
   transition:background-color .25s ease;cursor:pointer;}
 .cfg-sw i{position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;
   box-shadow:0 2px 6px rgba(0,0,0,.174);transition:transform .32s cubic-bezier(.3,1.4,.5,1), width .2s ease;}
-.cfg-sw.on{background:linear-gradient(135deg,#FF4FA0,#B03BE6);}
+.cfg-sw.on{background:var(--chave-on);}
 .cfg-sw.on i{transform:translateX(20px);}
 .cfg-alterna:active .cfg-sw i{width:32px;}
 .cfg-alterna:active .cfg-sw.on i{transform:translateX(15px);}
