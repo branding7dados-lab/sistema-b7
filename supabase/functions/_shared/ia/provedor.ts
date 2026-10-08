@@ -53,4 +53,8 @@ export type Provedor = {
   /** modelo configurado, também para o registro */
   modelo: string;
   gerar(pedido: PedidoDeGeracao): Promise<RespostaDoProvedor>;
+  /** opcional (zzz123): a mesma geração, entregando o texto em pedaços
+      conforme o modelo escreve. No fim devolve a resposta inteira, igual
+      a gerar(). Provedor que não tiver isto responde tudo de uma vez. */
+  gerarFluxo?(pedido: PedidoDeGeracao, aoTrecho: (texto: string) => void): Promise<RespostaDoProvedor>;
 };

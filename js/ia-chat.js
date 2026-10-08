@@ -200,7 +200,25 @@ B7.Chat = (function () {
     return S.msgs.map((m, i) => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
       (m.papel === 'user' ? '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
       (m.acao ? acaoHTML(m.acao, i) : '')).join('') +
-      (S.enviando ? '<div class="ch-msg ia ch-pensando" aria-label="Escrevendo"><i></i><i></i><i></i></div>' : '');
+      (S.enviando ? (S.parcial
+        ? '<div class="ch-msg ia ch-fluindo" id="ch-fluxo">' + formatar(S.parcial) + '</div>'
+        : '<div class="ch-msg ia ch-pensando" id="ch-fluxo" aria-label="Escrevendo"><i></i><i></i><i></i></div>') : '');
+  }
+  /* zzz123: a resposta aparece enquanto é escrita. Só a bolha em curso é
+     redesenhada (uma vez por quadro), não a conversa inteira; a rolagem
+     acompanha se a pessoa estava no fim. */
+  let quadroFluxo = 0;
+  function pintarFluxo() {
+    if (quadroFluxo) return;
+    quadroFluxo = requestAnimationFrame(() => {
+      quadroFluxo = 0;
+      const c = painel && painel.querySelector('.ch-corpo'), b = c && c.querySelector('#ch-fluxo');
+      if (!b || !S.enviando || !S.parcial) return;
+      const noFim = c.scrollHeight - c.scrollTop - c.clientHeight < 60;
+      b.className = 'ch-msg ia ch-fluindo'; b.removeAttribute('aria-label');
+      b.innerHTML = formatar(S.parcial);
+      if (noFim) c.scrollTop = c.scrollHeight;
+    });
   }
   /* zzz89: a IA só PROPÕE. Este cartão é a confirmação: nada é criado
      antes de a pessoa tocar em "Criar demanda". */
@@ -287,9 +305,10 @@ B7.Chat = (function () {
 
     const dados = { texto, cliente_id: S.clienteId || null };
     if (S.conversaId) dados.conversa_id = S.conversaId;
-    const r = await B7.IA.pedir('chat', dados);
+    S.parcial = '';
+    const r = await B7.IA.pedir('chat', dados, { aoTrecho: pedaco => { S.parcial += pedaco; pintarFluxo(); } });
 
-    S.enviando = false;
+    S.enviando = false; S.parcial = '';
     if (r && r.ok) {
       if (r.conversa_id) S.conversaId = r.conversa_id;
       S.msgs.push({ papel: 'assistant', texto: r.texto, acao: r.acao || null });

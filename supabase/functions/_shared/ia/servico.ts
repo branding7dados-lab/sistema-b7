@@ -80,7 +80,18 @@ const PARA_A_TELA: Record<ErroDoProvedor | 'nao_configurado', Categoria> = {
   limite: 'limite', cota: 'cota', tempo: 'tempo', recusado: 'recusado'
 };
 
-export async function gerar(provedor: Provedor | null, mensagens: Mensagem[], op: Opcoes): Promise<Resultado> {
+export function gerar(provedor: Provedor | null, mensagens: Mensagem[], op: Opcoes): Promise<Resultado> {
+  return gerarCom(provedor, mensagens, op, null);
+}
+
+/** zzz123: igual a gerar(), repassando o texto em pedaços enquanto ele
+ *  é escrito. Se o provedor não souber fazer fluxo, nenhum pedaço sai e
+ *  o resultado final é o mesmo de gerar(). Só para texto (sem JSON). */
+export function gerarFluxo(provedor: Provedor | null, mensagens: Mensagem[], op: Opcoes, aoTrecho: (texto: string) => void): Promise<Resultado> {
+  return gerarCom(provedor, mensagens, op, aoTrecho);
+}
+
+async function gerarCom(provedor: Provedor | null, mensagens: Mensagem[], op: Opcoes, aoTrecho: ((texto: string) => void) | null): Promise<Resultado> {
   const inicio = Date.now();
   const falha = (erro: ErroDoProvedor | 'nao_configurado'): Resultado => ({
     ok: false, categoria: PARA_A_TELA[erro], erro, ms: Date.now() - inicio,
@@ -90,7 +101,8 @@ export async function gerar(provedor: Provedor | null, mensagens: Mensagem[], op
 
   let r;
   try {
-    r = await provedor.gerar({ mensagens, maxTokens: op.maxTokens, temperatura: op.temperatura, prazoMs: op.prazoMs ?? 30_000, json: op.json, esquema: op.esquema });
+    const pedido = { mensagens, maxTokens: op.maxTokens, temperatura: op.temperatura, prazoMs: op.prazoMs ?? 30_000, json: op.json, esquema: op.esquema };
+    r = aoTrecho && provedor.gerarFluxo && !op.json ? await provedor.gerarFluxo(pedido, aoTrecho) : await provedor.gerar(pedido);
   } catch (_e) {
     return falha('indisponivel');
   }

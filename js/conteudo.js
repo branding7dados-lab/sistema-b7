@@ -224,6 +224,14 @@ B7.Conteudo = (function () {
         campo('PERCEPÇÃO DESEJADA', dados.percepcao, t + ' data-campo="percepcao"',
               'Serve de base para as linhas editoriais deste cliente.')) +
 
+      /* zzz123: o que a IA deve saber SEMPRE sobre este cliente — entra
+         em todas as tarefas de IA (b7-ia → _shared/ia/memoria.ts) */
+      sec('memoria', 'Memória da IA',
+        campo('O QUE A IA DEVE SABER SOBRE ESTE CLIENTE', dados.ia_notas, t + ' data-campo="ia_notas" maxlength="1500"' +
+          ex('Ex.: o dono não gosta de humor; vídeos com a equipe rendem mais; nunca citar preço; sempre chamar para o WhatsApp.'),
+          'A IA lê isto toda vez que trabalha para este cliente: roteiros, linha editorial, ideias, resumos e o assistente. ' +
+          'Também passa a ler as observações da conta, as palavras a usar, as proibidas e o estilo de CTA daqui de cima.')) +
+
       sec('produtos', 'Produtos e serviços',
         '<div id="lista-produtos">' + produtos.map(itemProduto).join('') + '</div>' +
         '<button class="add-largo" id="add-produto">+ ADICIONAR PRODUTO</button>') +
@@ -246,6 +254,7 @@ B7.Conteudo = (function () {
     publico: 'Quem a marca quer alcançar nas redes',
     voz: 'Como a marca fala e o que evita',
     posicionamento: 'Como a marca quer ser percebida',
+    memoria: 'O que funcionou, o que evitar e combinados — a IA lê sempre',
     produtos: 'O que a marca vende',
     provas: 'Resultados, números e depoimentos'
   };
@@ -257,6 +266,7 @@ B7.Conteudo = (function () {
     publico: svgI('<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6"/><path d="M15.5 6.2a3 3 0 010 5.6M17.5 14.8c1.7.6 2.7 2 3 4.2"/>'),
     voz: svgI('<path d="M5 5h14v10H10l-5 4z"/>'),
     posicionamento: svgI('<circle cx="12" cy="12" r="8.5"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>'),
+    memoria: svgI('<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>'),
     produtos: svgI('<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>'),
     provas: svgI('<circle cx="12" cy="9.5" r="5.5"/><path d="M8.5 14L7 20l5-2.5 5 2.5-1.5-6"/>')
   };

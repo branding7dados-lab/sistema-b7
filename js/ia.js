@@ -11,6 +11,12 @@
      !r.ok     → r.mensagem (frase pronta, em português) e r.categoria
      cancelado → r.cancelado === true (nada a mostrar)
 
+   Resposta aparecendo enquanto é escrita (zzz123, só o chat):
+     const r = await B7.IA.pedir('chat', dados, { aoTrecho: pedaco => … });
+   Os pedaços chegam na ordem; o `r` do fim é o mesmo de sempre e traz o
+   texto definitivo (é ele que vale). Se o servidor responder do jeito
+   antigo, nenhum pedaço chega e o resultado é igual.
+
    Nada aqui roda sozinho: não há chamada ao abrir tela, ao digitar nem
    em segundo plano. Sem B7_CONFIG.IA ligado para o recurso, a tela nem
    mostra a entrada — e o resto do B7 funciona igual com a IA fora do ar.
@@ -75,6 +81,47 @@ B7.IA = (function () {
      rede de segurança para a tela nunca ficar "gerando" para sempre. */
   const PRAZO_MS = 70000;
 
+  /* a resposta de produto (JSON comum, ou o evento "fim" do fluxo) */
+  function interpretar(corpo, status) {
+    if (corpo && corpo.ok === true && typeof corpo.texto === 'string' && corpo.texto.trim()) {
+      return { ok: true, texto: corpo.texto, conversa_id: corpo.conversa_id || null, titulo: corpo.titulo || '', cliente_id: corpo.cliente_id || null,
+               acao: (corpo.acao && typeof corpo.acao === 'object') ? corpo.acao : null };
+    }
+    /* tarefas que devolvem lista (pilares, conteúdos, observações, ideias) */
+    if (corpo && corpo.ok === true && Array.isArray(corpo.itens)) {
+      return { ok: true, itens: corpo.itens, resumo: typeof corpo.resumo === 'string' ? corpo.resumo : '' };
+    }
+    if (corpo && typeof corpo.categoria === 'string') return falha(corpo.categoria);
+    if (status === 401) return falha('sessao');
+    if (status === 403) return falha('sem_permissao');
+    return falha('indisponivel');
+  }
+
+  /* lê o fluxo (text/event-stream): repassa os pedaços e devolve o fim */
+  async function lerFluxo(resp, aoTrecho) {
+    const leitor = resp.body.getReader(), dec = new TextDecoder();
+    let resto = '', fim = null;
+    const tratar = linha => {
+      if (linha.slice(0, 5) !== 'data:') return;
+      let ev = null;
+      try { ev = JSON.parse(linha.slice(5).trim()); } catch (e) { return; }
+      if (!ev) return;
+      if (ev.t === 'trecho' && typeof ev.texto === 'string') { try { aoTrecho(ev.texto); } catch (e) {} }
+      else if (ev.t === 'fim') fim = interpretar(ev, 200);
+      else if (ev.t === 'erro') fim = falha(ev.categoria);
+    };
+    for (;;) {
+      const { done, value } = await leitor.read();
+      if (done) break;
+      resto += dec.decode(value, { stream: true });
+      const linhas = resto.split(/\r?\n/);
+      resto = linhas.pop() || '';
+      linhas.forEach(tratar);
+    }
+    if (resto) tratar(resto);
+    return fim || falha('indisponivel');
+  }
+
   async function pedir(tarefa, dados, opcoes) {
     opcoes = opcoes || {};
     if (!B7.sb) return falha('indisponivel');
@@ -84,6 +131,7 @@ B7.IA = (function () {
     try { const s = await B7.sb.auth.getSession(); token = s && s.data && s.data.session && s.data.session.access_token; } catch (e) {}
     if (!token) return falha('sessao');
 
+    const querFluxo = typeof opcoes.aoTrecho === 'function' && !!(window.ReadableStream && window.TextDecoder);
     const ctrl = new AbortController();
     let estourou = false;
     const relogio = setTimeout(() => { estourou = true; ctrl.abort(); }, PRAZO_MS);
@@ -99,22 +147,14 @@ B7.IA = (function () {
       const resp = await fetch(base + '/functions/v1/b7-ia', {
         method: 'POST', signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json', 'apikey': String(cfg().SUPABASE_PUBLISHABLE_KEY || '').trim(), 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify(Object.assign({ tarefa: tarefa }, dados || {}))
+        body: JSON.stringify(Object.assign({ tarefa: tarefa }, dados || {}, querFluxo ? { fluxo: true } : {}))
       });
+      if (querFluxo && resp.ok && resp.body && /text\/event-stream/i.test(resp.headers.get('content-type') || '')) {
+        return await lerFluxo(resp, opcoes.aoTrecho);
+      }
       let corpo = null;
       try { corpo = await resp.json(); } catch (e) {}
-      if (corpo && corpo.ok === true && typeof corpo.texto === 'string' && corpo.texto.trim()) {
-        return { ok: true, texto: corpo.texto, conversa_id: corpo.conversa_id || null, titulo: corpo.titulo || '', cliente_id: corpo.cliente_id || null,
-                 acao: (corpo.acao && typeof corpo.acao === 'object') ? corpo.acao : null };
-      }
-      /* tarefas que devolvem lista (pilares, conteúdos, observações) */
-      if (corpo && corpo.ok === true && Array.isArray(corpo.itens)) {
-        return { ok: true, itens: corpo.itens, resumo: typeof corpo.resumo === 'string' ? corpo.resumo : '' };
-      }
-      if (corpo && typeof corpo.categoria === 'string') return falha(corpo.categoria);
-      if (resp.status === 401) return falha('sessao');
-      if (resp.status === 403) return falha('sem_permissao');
-      return falha('indisponivel');
+      return interpretar(corpo, resp.status);
     } catch (e) {
       if (externo && externo.aborted) return { ok: false, cancelado: true };
       if (estourou) return falha('tempo');
