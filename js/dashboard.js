@@ -1924,11 +1924,12 @@ B7.Dashboard = (function () {
 
       /* a abertura completa aparece uma vez por sessão; aqui dá para
          rever (com som — o toque no botão destrava o áudio) */
-      grupo('Abertura', '',
+      /* zzz112: abertura (trilha e testes) é assunto só do administrador */
+      (!ehAdm ? '' : grupo('Abertura', '',
         L({ ic: 'som', tom: 'laranja', t: 'Trilha sonora', d: 'som na animação de entrada', cls: 'cfg-alterna',
             dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
         L({ ic: 'play', tom: 'rosa', t: 'Testar abertura', d: 'a sequência completa, com som', botao: true, attrs: ' data-ver-abertura' }) +
-        L({ ic: 'atualizar', tom: 'azul', t: 'Testar tela de carregamento', d: 'a versão curta, que aparece ao recarregar', botao: true, attrs: ' data-ver-carregamento' }));
+        L({ ic: 'atualizar', tom: 'azul', t: 'Testar tela de carregamento', d: 'a versão curta, que aparece ao recarregar', botao: true, attrs: ' data-ver-carregamento' })));
 
     const abaAdmin =
       /* a seção só existe para admin: nada de item com cadeado */

@@ -491,3 +491,66 @@ body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaF
 }
 html.modo-leve .b7-abertura :is(.ab-estrelas,.ab-varredura,.ab-linha,.ab-faiscas,.ab-reflexos){display:none;}
 html.modo-leve .b7-abertura .ab-titulo :is(i,b){animation-duration:.01s;}
+
+/* =====================================================================
+   zzz112 — TELA DE CARREGAMENTO (a versão curta) redesenhada
+   Pedido do Kevin: "muito mais estética e cinematográfica".
+   Antes: o logo aceso, parado, com a frase encostada na base da lâmpada.
+   Agora o logo acende igual, mas dentro de uma cena que continua viva
+   enquanto carrega:
+     • céu com o campo de estrelas derivando devagar;
+     • raios de luz muito fracos girando atrás da lâmpada;
+     • poeira de luz subindo, em ciclo;
+     • um feixe diagonal que cruza a tela de tempos em tempos;
+     • a lâmpada e o halo respiram; o brilho continua passando no logo;
+     • embaixo, com mais respiro: um fio de luz largo com um ponto
+       brilhante correndo, e a frase em letras pequenas e espaçadas.
+   Só transform/opacity em ciclo; no modo leve, a cena fica parada.
+   Vale para a cortina curta (recarregar, entre login e sistema).
+   ===================================================================== */
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-estrelas,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-estrelas{display:block;will-change:transform,opacity;
+  animation:abCarSurge 1.4s ease-out both, abCarDeriva 46s linear infinite;}
+@keyframes abCarSurge{from{opacity:0}to{opacity:.8}}
+@keyframes abCarDeriva{from{translate:0 0}to{translate:0 -180px}}
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-raios,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-raios{display:block;will-change:transform,opacity;
+  translate:calc(-1 * var(--ab-dx)) 0;
+  animation:abCarRaios 1.6s ease-out .4s both, abCarGira 70s linear infinite;}
+@keyframes abCarRaios{from{opacity:0;scale:.8}to{opacity:.42;scale:1}}
+@keyframes abCarGira{from{rotate:0deg}to{rotate:360deg}}
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-poeira,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-poeira{display:block;translate:calc(-1 * var(--ab-dx)) 0;}
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-poeira i,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-poeira i{
+  animation:abPoeira calc(var(--t) * 1.3) cubic-bezier(.2,.6,.3,1) calc(.5s + var(--d)) infinite;}
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-chave,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-chave{display:block;
+  animation:abCarFeixe 5.2s cubic-bezier(.45,0,.2,1) 1.1s infinite;}
+@keyframes abCarFeixe{0%{opacity:0;transform:translate3d(0,0,0) rotate(18deg)}8%{opacity:1}
+  38%{opacity:0;transform:translate3d(320%,0,0) rotate(18deg)}100%{opacity:0;transform:translate3d(320%,0,0) rotate(18deg)}}
+/* o halo respira depois de acender */
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-bloom,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-bloom{
+  animation:abBloom 1.3s cubic-bezier(.2,.8,.2,1) .38s both, abCarHalo 3s ease-in-out 1.7s infinite alternate;}
+@keyframes abCarHalo{from{opacity:.34;transform:scale(1.35)}to{opacity:.6;transform:scale(1.5)}}
+
+/* rodapé da cena: fio de luz + frase */
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-espera,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-espera{
+  top:calc(50% - 6vh + var(--ab-h) / 2 + 62px);gap:16px;animation-delay:1.1s;}
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-frase,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-frase{order:2;
+  font-size:10.5px;font-weight:600;letter-spacing:.34em;text-indent:.34em;text-transform:uppercase;color:rgba(255,255,255,.5);}
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-ola,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-ola{order:0;}
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-fio,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-fio{order:1;width:min(58vw,250px);height:1px;margin:0;overflow:visible;border-radius:0;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.16) 20%, rgba(255,255,255,.16) 80%, transparent);}
+.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-fio:after,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-fio:after{inset:auto;left:0;top:-1px;width:34%;height:3px;border-radius:3px;
+  background:linear-gradient(90deg, transparent, rgba(170,140,255,.7) 35%, #fff 78%, rgba(255,150,210,.9) 92%, transparent);
+  animation:abCarFio 1.9s cubic-bezier(.5,0,.3,1) infinite;}
+@keyframes abCarFio{0%{transform:translate3d(-60%,0,0);opacity:0}15%{opacity:1}85%{opacity:1}100%{transform:translate3d(255%,0,0);opacity:0}}
+
+/* saída, movimento reduzido e modo leve */
+.b7-abertura.b7-abertura.saindo :is(.ab-estrelas,.ab-raios,.ab-poeira,.ab-chave){display:none !important;}
+html.modo-leve .b7-abertura.b7-abertura.b7-abertura:not(.inicial) :is(.ab-raios,.ab-poeira,.ab-chave),
+html.modo-leve.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial :is(.ab-raios,.ab-poeira,.ab-chave){display:none !important;}
+html.modo-leve .b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-estrelas,html.modo-leve.ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-estrelas{display:block;animation:abCarSurge 1s ease-out both;}
+@media (max-width:760px){
+  .ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-poeira i:nth-child(even),.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-poeira i:nth-child(even){display:none !important;}
+}
+@media (prefers-reduced-motion:reduce){
+  .ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial :is(.ab-raios,.ab-poeira,.ab-chave),.b7-abertura.b7-abertura.b7-abertura:not(.inicial) :is(.ab-raios,.ab-poeira,.ab-chave){display:none !important;}
+  .ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-estrelas,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-estrelas{display:block;opacity:.7;animation:none !important;}
+}

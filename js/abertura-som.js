@@ -47,14 +47,14 @@ B7.SomAbertura = (function () {
     try { const v = localStorage.getItem('b7_pref_som_abertura'); return v === null ? true : JSON.parse(v); }
     catch (e) { return true; }
   };
-  let ctx = null, saida = null, sala = null, ruido = null, drone = null;
+  let ctx = null, saida = null, sala = null, ruido = null, drone = null, comp = null, conv = null;
 
   function preparar(contexto) {
     if (!contexto && (ctx || !AC)) return !!ctx;
     if (contexto) ctx = contexto;
     else { try { ctx = new AC({ latencyHint: 'interactive' }); } catch (e) { return false; } }
     /* mestre: volume moderado + compressor (nada estoura no alto-falante do celular) */
-    const comp = ctx.createDynamicsCompressor();
+    comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 4;
     comp.attack.value = .004; comp.release.value = .25;
     saida = ctx.createGain(); saida.gain.value = .7;
@@ -66,7 +66,7 @@ B7.SomAbertura = (function () {
       const d = ir.getChannelData(c);
       for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2);
     }
-    const conv = ctx.createConvolver(); conv.buffer = ir;
+    conv = ctx.createConvolver(); conv.buffer = ir;
     sala = ctx.createGain(); sala.gain.value = .42;
     sala.connect(conv); conv.connect(saida);
     /* ruído branco reaproveitado */
@@ -264,7 +264,31 @@ B7.SomAbertura = (function () {
        0,00  sopro de ar subindo junto com a íris e o voo do logo
        0,00  a cama resolve: o filtro fecha e o acorde se apaga em ~1,2 s
        0,78  pouso: um "toc" abafado e curto no topo (sem brilho, sem eco) */
+  /* zzz112 — "a abertura saiu e o áudio da trilha ainda fica no fundo".
+     A trilha longa agenda sons para os próximos segundos (pedal, arpejo,
+     assinatura). Se a abertura saía antes, eles tocavam sem imagem.
+     Na saída, tudo o que é da trilha passa por um barramento que é
+     fechado em ~0,35 s; os sons da própria saída nascem num barramento
+     novo. Nada da trilha sobrevive à abertura. */
+  function cortarTrilha(t) {
+    if (!saida || !comp) return;
+    const velhaSaida = saida, velhaSala = sala;
+    try {
+      velhaSaida.gain.cancelScheduledValues(t); velhaSaida.gain.setValueAtTime(velhaSaida.gain.value, t);
+      velhaSaida.gain.linearRampToValueAtTime(0.0001, t + .35);
+      velhaSala.gain.cancelScheduledValues(t); velhaSala.gain.setValueAtTime(velhaSala.gain.value, t);
+      velhaSala.gain.linearRampToValueAtTime(0.0001, t + .25);
+    } catch (e) {}
+    saida = ctx.createGain(); saida.gain.value = .7; saida.connect(comp);
+    sala = ctx.createGain(); sala.gain.value = .3; sala.connect(conv);
+    try { conv.disconnect(); conv.connect(saida); } catch (e) {}
+    /* a cauda da sala que já soava some junto: entra de volta em rampa */
+    try { saida.gain.setValueAtTime(0.0001, t); saida.gain.linearRampToValueAtTime(.7, t + .12); } catch (e) {}
+    if (ctx.constructor && /Offline/.test(ctx.constructor.name)) return;
+    setTimeout(() => { try { velhaSaida.disconnect(); velhaSala.disconnect(); } catch (e) {} }, 1200);
+  }
   function partida(t) {
+    cortarTrilha(t);
     whoosh(t, .8, 320, 1900, .075);
     if (cama) {
       try {
@@ -361,7 +385,7 @@ B7.SomAbertura = (function () {
   /* ensaio sem tocar: renderiza a trilha inteira (+ saída em 4,3 s) num
      contexto offline e devolve o pico por fatia de 100 ms. Serve para
      conferir sincronia e volume sem alto-falante (DevTools). */
-  async function ensaio(qual) {
+  async function ensaio(qual, saidaEm) {
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     if (!OAC) return null;
     const salvo = [ctx, saida, sala, ruido, drone, cama];
@@ -369,7 +393,7 @@ B7.SomAbertura = (function () {
     const off = new OAC(2, 44100 * (curto ? 3.5 : 9), 44100);
     preparar(off);
     (curto ? ROTEIRO_CURTO : ROTEIRO).forEach(([quando, fn]) => fn(quando));
-    partida(curto ? 1.0 : 6.4);
+    partida(curto ? 1.0 : (saidaEm || 6.4));
     const buf = await off.startRendering();
     [ctx, saida, sala, ruido, drone, cama] = salvo;
     const d = buf.getChannelData(0), passo = 4410, picos = [];

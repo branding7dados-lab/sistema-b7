@@ -626,6 +626,36 @@ B7.Rota = (function () {
     setTimeout(() => { halo.remove(); ref.remove(); }, 900);
   }
 
+  /* zzz112 — "às vezes a abertura não vai toda, vai só metade".
+     O tempo que falta era contado pelo relógio da página
+     (performance.now()), mas a animação tem o relógio DELA: começa só
+     quando a tela é pintada pela primeira vez e para enquanto a aba está
+     em segundo plano. Com carregamento lento ou aba aberta por trás, o
+     relógio da página chegava ao fim com a animação ainda na metade.
+     Agora o que falta é lido da própria animação (o travelling do logo,
+     que dura a sequência inteira). */
+  function faltaDaAbertura(el, total) {
+    if (!total) return 0;
+    try {
+      const marca = el.querySelector('.ab-marca, .ab-palco');
+      const anim = marca && marca.getAnimations ? marca.getAnimations()[0] : null;
+      const agora = anim && anim.currentTime != null ? Number(anim.currentTime) : null;
+      if (agora != null && isFinite(agora)) return Math.max(0, total - agora);
+    } catch (e) {}
+    return Math.max(0, total - performance.now());
+  }
+  /* espera a sequência chegar ao fim de verdade antes de sair (confere de
+     novo: se a aba ficou em segundo plano, a animação ficou parada) */
+  function sairQuandoTerminar(el, total, fazer, desde) {
+    const falta = faltaDaAbertura(el, total);
+    desde = desde || Date.now();
+    /* aba em segundo plano: a animação está parada e ninguém está vendo —
+       não faz sentido segurar o sistema atrás dela */
+    if (document.hidden && Date.now() - desde > 800) return fazer();
+    if (falta <= 30 || !el.isConnected) return fazer();
+    setTimeout(() => sairQuandoTerminar(el, total, fazer, desde), Math.min(falta, 1500));
+  }
+
   function fecharCortina() {
     if (jaMontado) arranqueConcluido = true;
     const el = document.querySelector('.b7-abertura');
@@ -636,8 +666,9 @@ B7.Rota = (function () {
        pronto e quando a abertura começou a sair */
     try { performance.mark('b7:pronto'); } catch (e) {}
     const inicial = el.classList.contains('inicial');
-    const espera = inicial ? Math.max(0, MINIMO_ABERTURA_MS - performance.now()) : 0;
-    setTimeout(() => sairCortina(el, inicial), espera);
+    const espera = inicial ? faltaDaAbertura(el, MINIMO_ABERTURA_MS) : 0;
+    if (inicial && espera > 0) setTimeout(() => sairQuandoTerminar(el, MINIMO_ABERTURA_MS, () => sairCortina(el, inicial)), Math.min(espera, 1500));
+    else sairCortina(el, inicial);
   }
 
   function sairCortina(el, inicial) {
@@ -675,10 +706,12 @@ B7.Rota = (function () {
     document.body.appendChild(el);
     if (B7.SomAbertura) B7.SomAbertura.reproduzir();
     pintarBarraDoSistema();
-    setTimeout(() => {
+    const fim = () => {
       sairCortina(el, false);
       if (eraCurta) setTimeout(() => raiz.classList.add('ab-curta'), 1200);
-    }, reduzMov() ? 600 : 6400);
+    };
+    if (reduzMov()) setTimeout(fim, 600);
+    else setTimeout(() => sairQuandoTerminar(el, 6400, fim), 1500);
   }
   B7.abrirCortina = abrirCortina;
   B7.fecharCortina = fecharCortina;

@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v316';
+const CACHE = 'roteiros-b7-v317';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
