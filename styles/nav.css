@@ -482,3 +482,74 @@ svg[viewBox="0 0 24 24"]{stroke-linecap:round;stroke-linejoin:round;}
   html .nm-folha .nm-item,html .nm-folha .nm-ic,html .nm-folha .nm-secao{animation:none;}
 }
 html.modo-leve .nm-folha .nm-item,html.modo-leve .nm-folha .nm-ic,html.modo-leve .nm-folha .nm-secao{animation:none;}
+
+/* =====================================================================
+   zzz115 — BARRA LATERAL redesenhada (computador)
+   O Kevin não gostava: só um grupo abria por vez, e a barra ficava com
+   quatro títulos soltos e um vazio enorme embaixo.
+   • todos os grupos abertos ao mesmo tempo; o título de cada um recolhe
+     só aquele grupo (a seta aparece ao passar o mouse);
+   • títulos pequenos e discretos, como rótulos de seção;
+   • itens mais altos e redondos; o ativo é uma pílula com o degradê da
+     marca em vidro, sem a barrinha de 3 px na lateral;
+   • fundo com profundidade: um brilho violeta no alto e magenta embaixo;
+   • logo maior; rodapé mais leve (Visualizar como… vira uma linha).
+   ===================================================================== */
+@media (min-width:761px){
+  body[data-shell="interno"] .lateral{
+    background:
+      radial-gradient(120% 34% at 0% 0%, rgba(91,45,184,.26), transparent 70%),
+      radial-gradient(110% 30% at 100% 100%, rgba(194,28,131,.16), transparent 72%),
+      var(--sidebar);}
+  body[data-shell="interno"]:not(.recolhida) .marca-lateral{padding:20px 20px 12px;}
+  body[data-shell="interno"]:not(.recolhida) .marca-lateral img.lockup{height:36px;}
+  body[data-shell="interno"]:not(.recolhida) .nav{padding:4px 12px 12px;scrollbar-width:none;}
+  body[data-shell="interno"]:not(.recolhida) .nav::-webkit-scrollbar{display:none;}
+
+  /* todos abertos */
+  .nav.multi .nav-acordeao{gap:10px;}
+  .nav.multi .ng .ng-painel{grid-template-rows:1fr;opacity:1;visibility:visible;
+    transition:grid-template-rows .2s cubic-bezier(.2,0,0,1), opacity .18s cubic-bezier(.2,0,0,1), visibility 0s;}
+  .nav.multi .ng.fechado .ng-painel{grid-template-rows:0fr;opacity:0;visibility:hidden;
+    transition:grid-template-rows .2s cubic-bezier(.2,0,0,1), opacity .14s cubic-bezier(.2,0,0,1), visibility 0s linear .2s;}
+
+  /* título do grupo: rótulo de seção */
+  .nav.multi .ng-cab{min-height:22px;padding:0 8px 0 12px;border-radius:8px;background:none;color:rgba(255,255,255,.36);}
+  .nav.multi .ng-cab:hover{background:none;color:rgba(255,255,255,.7);}
+  .nav.multi .ng.aberto .ng-cab{color:rgba(255,255,255,.36);}
+  .nav.multi .ng-tit{font-size:10.5px;font-weight:700;letter-spacing:.11em;}
+  .nav.multi .ng-seta{width:12px;height:12px;opacity:0;transform:rotate(90deg);transition:opacity .15s ease, transform .2s cubic-bezier(.2,0,0,1);}
+  .nav.multi .ng-cab:hover .ng-seta,.nav.multi .ng-cab:focus-visible .ng-seta,.nav.multi .ng.fechado .ng-seta{opacity:.8;}
+  .nav.multi .ng.aberto .ng-seta{transform:rotate(90deg);}
+  .nav.multi .ng.fechado .ng-seta{transform:none;}
+  .nav.multi .ng.tem-ativo:not(.aberto) .ng-ponto{opacity:0;transform:scale(.4);}
+  .nav.multi .ng.tem-ativo.fechado .ng-ponto{opacity:1;transform:none;}
+  .nav.multi .ng-lista{gap:2px;padding:2px 0 0;}
+
+  /* itens */
+  .nav.multi[data-shell="interno"] .ng a{min-height:36px;padding:0 12px;gap:12px;border-radius:11px;font-size:13.5px;font-weight:500;
+    color:rgba(255,255,255,.66);border:1px solid transparent;
+    transition:background-color .16s ease, color .16s ease, border-color .16s ease, transform .2s cubic-bezier(.3,1.4,.5,1);}
+  .nav.multi[data-shell="interno"] .ng a svg{width:18px;height:18px;opacity:.85;}
+  .nav.multi[data-shell="interno"] .ng a:hover{background:rgba(255,255,255,.055);color:#fff;}
+  .nav.multi[data-shell="interno"] .ng a:active{transform:scale(.98);}
+  .nav.multi[data-shell="interno"] .ng a.on{color:#fff;font-weight:650;
+    background:linear-gradient(135deg, rgba(214,51,132,.36), rgba(107,63,216,.3));
+    border-color:rgba(255,255,255,.1);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 8px 20px -12px rgba(214,51,132,.7);}
+  .nav.multi[data-shell="interno"] .ng a.on svg{opacity:1;--ic-vaza:#5b2a8a;}
+  .nav.multi[data-shell="interno"] .ng a.on:before{display:none;}
+  /* a trilha luminosa antiga (barrinha que deslizava) sai: a pílula já marca */
+  .nav.multi .nav-trilha{display:none;}
+
+  /* rodapé mais leve */
+  body[data-shell="interno"]:not(.recolhida) .pe-lateral{border-top-color:rgba(255,255,255,.06);padding:10px 12px 12px;}
+  body[data-shell="interno"]:not(.recolhida) .ver-como{padding:0 0 4px;}
+  body[data-shell="interno"]:not(.recolhida) .ver-como-bt{justify-content:flex-start;gap:12px;min-height:40px;padding:0 12px;border-radius:12px;
+    background:none;border:1px solid transparent;color:rgba(255,255,255,.6);font-size:13.5px;font-weight:500;}
+  body[data-shell="interno"]:not(.recolhida) .ver-como-bt:hover{background:rgba(255,255,255,.055);color:#fff;}
+  body[data-shell="interno"]:not(.recolhida) .ver-como-bt svg{width:18px;height:18px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .nav.multi .ng .ng-painel,.nav.multi .ng.fechado .ng-painel,.nav.multi[data-shell="interno"] .ng a{transition:none !important;}
+}

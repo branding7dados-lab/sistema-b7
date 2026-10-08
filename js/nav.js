@@ -215,9 +215,17 @@ B7.Nav = (function () {
     G = { grupos: gruposDe(r), aberto: null, rota: null, funcoes: r.funcoes };
     nav.innerHTML = '<div class="nav-acordeao">' + G.grupos.map(grupoHTML).join('') + '</div>' + trilhoHTML();
     nav.dataset.shell = 'interno';
+    /* zzz115 — todos os grupos ficam abertos ao mesmo tempo (antes só um
+       abria por vez e a barra ficava quase vazia). Cada grupo pode ser
+       recolhido sozinho pelo título; a escolha fica guardada. */
+    nav.classList.add('multi');
+    const fechados = lerFechados();
+    nav.querySelectorAll('.ng').forEach(sec => sec.classList.toggle('fechado', fechados.includes(sec.dataset.grupo)));
     nav.querySelectorAll('.ng-cab').forEach(b => b.onclick = () => {
-      const id = b.closest('.ng').dataset.grupo;
-      abrirGrupo(G.aberto === id ? null : id, true);
+      const sec = b.closest('.ng');
+      sec.classList.toggle('fechado');
+      try { localStorage.setItem(CHAVE_FECHADOS, JSON.stringify([...nav.querySelectorAll('.ng.fechado')].map(s => s.dataset.grupo))); } catch (e) {}
+      ariaMulti(); marcarGrupoAtivo();
     });
     nav.querySelectorAll('.ntr-bt').forEach(b => {
       b.onclick = ev => alternarFlyout(b.dataset.grupoBt, b, ev.detail === 0);
@@ -254,8 +262,25 @@ B7.Nav = (function () {
     if (G.funcoes.length && existe('trabalho')) return 'trabalho';
     return existe('principal') ? 'principal' : (G.grupos[0] && G.grupos[0].id) || null;
   }
+  const CHAVE_FECHADOS = 'b7-nav-fechados';
+  function lerFechados() {
+    try { const v = JSON.parse(localStorage.getItem(CHAVE_FECHADOS) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  /* com todos abertos, "expandido" é simplesmente "não recolhido" */
+  function ariaMulti() {
+    const nav = document.querySelector('.nav.multi'); if (!nav) return;
+    nav.querySelectorAll('.ng').forEach(sec => {
+      const cab = sec.querySelector('.ng-cab'); if (cab) cab.setAttribute('aria-expanded', String(!sec.classList.contains('fechado')));
+    });
+  }
   function abrirGrupo(id, manual) {
     G.aberto = id;
+    /* a rota entrou num grupo que a pessoa tinha recolhido: ele abre,
+       para a tela atual nunca ficar escondida */
+    if (id && !manual) {
+      const alvo = document.querySelector('.nav.multi .ng[data-grupo="' + id + '"]');
+      if (alvo) alvo.classList.remove('fechado');
+    }
     document.querySelectorAll('.nav .ng').forEach(sec => {
       const ab = sec.dataset.grupo === id;
       sec.classList.toggle('aberto', ab);
@@ -263,6 +288,7 @@ B7.Nav = (function () {
       cab.setAttribute('aria-expanded', String(ab));
     });
     if (manual) { try { if (id) localStorage.setItem(CHAVE_GRUPO, id); } catch (e) {} }
+    ariaMulti();
     marcarGrupoAtivo();
   }
   /* ponto discreto no grupo (fechado) que contém a tela atual, e o
@@ -273,7 +299,8 @@ B7.Nav = (function () {
       const tem = sec.dataset.grupo === ativo;
       sec.classList.toggle('tem-ativo', tem);
       const leitor = sec.querySelector('.ng-leitor');
-      if (leitor) leitor.textContent = tem && !sec.classList.contains('aberto') ? ' (tela atual está aqui)' : '';
+      const escondido = sec.closest('.nav.multi') ? sec.classList.contains('fechado') : !sec.classList.contains('aberto');
+      if (leitor) leitor.textContent = tem && escondido ? ' (tela atual está aqui)' : '';
     });
     document.querySelectorAll('.nav .ntr-bt').forEach(b => b.classList.toggle('tem-ativo', b.dataset.grupoBt === ativo));
     document.querySelectorAll('.nav .ng a').forEach(a => { if (a.classList.contains('on')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
