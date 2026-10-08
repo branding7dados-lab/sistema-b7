@@ -314,11 +314,14 @@ body.ab-revela .tela-login .login-caixa > :not(.login-marca){animation:abRevelaF
 @keyframes abRevelaBase{from{opacity:0;transform:translate3d(0,30px,0)}to{opacity:1;transform:none}}
 
 @media (prefers-reduced-motion:reduce){
-  .b7-abertura,.b7-abertura *{animation:none !important;}
+  /* zzz123: os pseudo-elementos (o fio da espera, raios e poeira da cena de
+     carregamento) ficavam de fora do "*" e seguiam animando; e a saída
+     some na hora, sem transição — com "menos movimento" nada se move */
+  .b7-abertura,.b7-abertura *,.b7-abertura::before,.b7-abertura::after,.b7-abertura *::before,.b7-abertura *::after{animation:none !important;transition:none !important;}
   .b7-abertura :is(.ab-onda,.ab-chave,.ab-carga,.ab-raios,.ab-clarao,.ab-centelha,.ab-poeira,.ab-flare,.ab-brilho){display:none;}
   .ab-cor{filter:none;}
   .ab-espera{opacity:1;animation:none;}
-  .b7-abertura.saindo{opacity:0;transition:opacity .2s ease;}
+  .b7-abertura.saindo{opacity:0;}
   .b7-abertura.saindo .ab-ceu{-webkit-mask:none;mask:none;}
   body.ab-revela *{animation:none !important;}
 }

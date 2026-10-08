@@ -76,3 +76,10 @@ A **primeira** chamada do chat em fluxo falhou ("indisponível", em 0,4 s). As t
 ## Rastros do teste
 - Duas conversas de teste no histórico do assistente do Kevin ("Teste do fluxo…"). Podem ser apagadas.
 - Cerca de 8 chamadas de IA na cota gratuita.
+
+## Correção feita por causa do teste automático do PR
+O teste de "menos movimento" da abertura falhou numa das duas rodadas do PR (passou na outra, com o mesmo código). Não tem relação com a IA: com "reduzir movimento" ligado, o teste exige que nada na abertura esteja animando aos 0,9 s, e isso dependia da velocidade da máquina.
+Duas causas possíveis, as duas corrigidas em `styles/abertura.css`:
+- a regra que desliga as animações não alcançava os pseudo-elementos (o fio da espera, por exemplo), que seguiam animando;
+- a saída da abertura usava um esmaecer de 0,2 s; agora, com "reduzir movimento", ela some na hora.
+Não rodei o teste localmente (este computador não tem Node); a confirmação é a rodada do próprio PR.
