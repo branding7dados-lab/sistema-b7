@@ -624,6 +624,7 @@ B7.Painel = (function () {
           '<p class="pn-papel">' + esc(papeis()) + '</p>' +
           (o.resumo ? '<p class="pn-resumo" id="pn-resumo" aria-live="polite"></p>' : '') + '</div>' +
         '<div class="pn-cab-lado">' +
+          '<a class="pn-hoje" id="pn-hoje" href="#/oportunidades" hidden></a>' +
           (o.relogio ? '<div class="pn-relogio" id="pn-relogio" aria-hidden="true"></div>' : '') +
           (o.acao || '') +
         '</div>' +
@@ -763,6 +764,7 @@ B7.Painel = (function () {
       if (!virou && Date.now() - ultimaRenova < 5 * 60000) return;
       ultimaRenova = Date.now(); diaPintado = hoje();
       raiz.classList.add('pn-calmo');
+      pintarHoje();
       reiniciarCompartilhadas();
       fontesVideo().forEach(f => carregar(f, true));
     }, 15000);
@@ -879,7 +881,50 @@ B7.Painel = (function () {
     return { funcoes, principal: funcoes[0] || null, multi: funcoes.length > 1 };
   }
 
+
+  /* =================================================================
+     "HOJE É DIA DE…" (zzz121) — as oportunidades que começam hoje, no
+     cabeçalho de todo Painel, para quem tem o módulo Oportunidades. A
+     mesma base e a mesma relevância da tela de Oportunidades
+     (B7.Oportunidades.periodo). Sem data hoje, mostra a próxima. Data
+     de outra cidade/estado só aparece se for de algum cliente — igual
+     ao aviso das 8h (oportunidades_do_dia, no banco).
+     ================================================================= */
+  function pintarHoje() {
+    const cx = document.getElementById('pn-hoje');
+    if (!cx || !B7.Oportunidades || !B7.Oportunidades.periodo) return;
+    if (!(B7.Perm && B7.Perm.podeRota && B7.Perm.podeRota('oportunidades'))) return;
+    const h = hoje();
+    B7.Oportunidades.periodo(h, somarDias(h, 45)).then(itens => {
+      if (!document.body.contains(cx)) return;
+      const local = i => ['municipal', 'estadual'].includes(i.op.abrangencia);
+      const peso = i => i.nivelMax === 'muito' ? 0 : i.nivelMax === 'relacionada' ? 1 : i.nivelMax === 'geral' ? 2 : i.op.abrangencia === 'nacional' ? 3 : 4;
+      const vale = itens.filter(i => i.nivelMax || !local(i)).sort((a, b) => a.ini.localeCompare(b.ini) || peso(a) - peso(b) || String(a.op.nome).localeCompare(String(b.op.nome), 'pt-BR'));
+      const deHoje = vale.filter(i => i.ini === h);
+      const ic = '<span class="pn-hoje-ic" aria-hidden="true">' + (B7.Oportunidades.IC || '') + '</span>';
+      if (deHoje.length) {
+        const clientes = new Set(deHoje.flatMap(i => i.relacionados.filter(r => r.nivel === 'muito' || r.nivel === 'relacionada').map(r => r.cliente.id))).size;
+        const resto = deHoje.length - 1;
+        const sub = [resto === 1 ? 'e ' + deHoje[1].op.nome : resto > 1 ? 'e mais ' + resto + ' datas' : '',
+                     clientes ? 'combina com ' + clientes + (clientes === 1 ? ' cliente' : ' clientes') : ''].filter(Boolean).join(' · ');
+        cx.className = 'pn-hoje tem';
+        cx.innerHTML = ic + '<span class="pn-hoje-tx"><small>Hoje é dia de</small><b>' + esc(deHoje[0].op.nome) + '</b>' + (sub ? '<em>' + esc(sub) + '</em>' : '') + '</span>';
+        cx.setAttribute('aria-label', 'Hoje é dia de ' + deHoje.map(i => i.op.nome).join(', ') + ' — abrir Oportunidades');
+        cx.hidden = false;
+        return;
+      }
+      const prox = vale.find(i => i.ini > h);
+      if (!prox) { cx.hidden = true; return; }
+      cx.className = 'pn-hoje';
+      cx.innerHTML = ic + '<span class="pn-hoje-tx"><small>Próxima data</small><b>' + esc(prox.op.nome) + '</b><em>' + esc(quandoDia(prox.ini)) + '</em></span>';
+      cx.setAttribute('aria-label', 'Próxima data: ' + prox.op.nome + ', ' + quandoDia(prox.ini) + ' — abrir Oportunidades');
+      cx.hidden = false;
+    }).catch(() => {});
+  }
+
   function abrir() {
+    /* o cabeçalho é o mesmo nos quatro Painéis: a data do dia entra depois que ele existe */
+    setTimeout(pintarHoje, 0);
     reiniciarCompartilhadas();
     ouvinte = null;
     if (B7.PainelMulti && B7.PainelMulti.parar) B7.PainelMulti.parar();

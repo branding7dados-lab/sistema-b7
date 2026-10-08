@@ -94,6 +94,10 @@ B7.Notif = (function () {
       ['agenda', 'Compromissos da agenda', 'Reuniões e apresentações das agendas com lembrete ligado.'],
       ['resumo_diario', 'Resumo diário', 'Um aviso às 8h com os prazos do dia e as gravações de amanhã. Só sai quando há algo.']
     ] },
+    /* zzz121: só para quem tem o módulo Oportunidades (é quem recebe) */
+    { id: 'oport', titulo: 'Oportunidades', quem: () => !!(B7.Perm && B7.Perm.podeRota && B7.Perm.podeRota('oportunidades')), itens: [
+      ['oportunidades', 'Hoje é dia de…', 'Um aviso às 8h com as datas que começam naquele dia. Só sai quando há alguma.']
+    ] },
     { id: 'admin', titulo: 'Acompanhar a operação', quem: () => tenho('admin'),
       nota: 'Ser administrador não faz você receber tudo. Ligue só o que quer acompanhar.', itens: [
       ['adm_atrasos', 'Atrasos críticos', 'Demandas atrasadas há 5 dias ou mais e gravações em risco (roteiro em aberto na véspera, data passada sem conclusão).'],

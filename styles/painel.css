@@ -964,3 +964,36 @@ html.modo-leve .pn::after{animation:none;}
   .pn-relogio b i,.pnv-fila-barra i,.pnv-rd,.pnv-ent,.pnv-ag-l,.pnv-anel .v{animation:none !important;}
 }
 html.modo-leve .pn-relogio b i{animation:none;}
+
+/* =====================================================================
+   "HOJE É DIA DE…" (zzz121) — a oportunidade do dia no cabeçalho do
+   Painel (todos os Painéis; só para quem tem o módulo Oportunidades).
+   ===================================================================== */
+.pn-hoje{display:flex;align-items:center;gap:11px;padding:8px 16px 8px 9px;border-radius:18px;background:var(--card);
+  border:1px solid var(--borda);text-decoration:none;color:inherit;min-width:0;max-width:380px;
+  transition:transform var(--m-instante) var(--m-toque), border-color .2s, box-shadow .2s;}
+.pn-hoje[hidden]{display:none;}
+.pn-hoje:hover{border-color:var(--borda-forte);}
+.pn-hoje:active{transform:scale(.97);}
+.pn-hoje:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.pn-hoje-ic{width:36px;height:36px;border-radius:12px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--suave);color:var(--ink-3);}
+.pn-hoje-ic svg{width:19px;height:19px;}
+.pn-hoje-tx{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.pn-hoje-tx small{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);}
+.pn-hoje-tx b{font-size:14px;font-weight:700;line-height:1.25;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pn-hoje-tx em{font-style:normal;font-size:11.5px;color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* tem data hoje: a cor da marca acende */
+.pn-hoje.tem{border-color:color-mix(in srgb, var(--acento) 34%, var(--borda));
+  background:linear-gradient(120deg, color-mix(in srgb, var(--acento) 10%, var(--card)), var(--card) 70%);
+  box-shadow:0 8px 24px -16px color-mix(in srgb, var(--acento) 70%, transparent);}
+.pn-hoje.tem .pn-hoje-ic{background:var(--acento);color:#fff;}
+.pn-hoje.tem .pn-hoje-tx small{color:var(--acento);}
+.pn-hoje.tem .pn-hoje-ic svg{animation:pnHojeBrilha 3.4s ease-in-out 1.6s infinite;}
+@keyframes pnHojeBrilha{0%,70%,100%{transform:none}80%{transform:scale(1.18) rotate(10deg)}90%{transform:scale(.96) rotate(-4deg)}}
+@media (max-width:600px){
+  .pn-hoje{max-width:none;width:100%;}
+  .pn-hoje-tx b{white-space:normal;}
+}
+@media (prefers-reduced-motion:reduce){ .pn-hoje.tem .pn-hoje-ic svg{animation:none;} }
+html.modo-leve .pn-hoje.tem .pn-hoje-ic svg{animation:none;}
