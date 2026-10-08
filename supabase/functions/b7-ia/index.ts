@@ -174,9 +174,11 @@ Deno.serve(comCors(async (req: Request) => {
       recurso: 'chat', acao: 'mensagem', entidadeTipo: 'conversa', entidadeId: conv.id, tamanhoEntrada: pedido.texto.length,
       mensagens: Chat.montarMensagens(pedido, contexto, hist, quem, podeAgir), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
       aposOk: async (texto: string) => {
-        const ex = podeAgir ? await Chat.extrairAcao(texto, sbDaPessoa) : { texto: Chat.semAcao(texto) || texto, acao: null };
+        const ex = podeAgir ? await Chat.extrairAcao(texto, sbDaPessoa) : { texto: Chat.semAcao(texto) || texto, acao: null, acoes: [] };
         await Chat.gravar(sb, perfil.id, conv, pedido.texto, ex.texto);
-        return { conversa_id: conv.id, titulo: conv.titulo, cliente_id: conv.clienteId, texto: ex.texto, ...(ex.acao ? { acao: ex.acao } : {}) };
+        /* `acoes` = todas as propostas (zzz124); `acao` = a única, para as telas antigas */
+        return { conversa_id: conv.id, titulo: conv.titulo, cliente_id: conv.clienteId, texto: ex.texto,
+          ...(ex.acao ? { acao: ex.acao } : {}), ...(ex.acoes.length ? { acoes: ex.acoes } : {}) };
       }
     };
   } else if (pRoteiro && pRoteiro.ok) {

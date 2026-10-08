@@ -85,7 +85,9 @@ B7.IA = (function () {
   function interpretar(corpo, status) {
     if (corpo && corpo.ok === true && typeof corpo.texto === 'string' && corpo.texto.trim()) {
       return { ok: true, texto: corpo.texto, conversa_id: corpo.conversa_id || null, titulo: corpo.titulo || '', cliente_id: corpo.cliente_id || null,
-               acao: (corpo.acao && typeof corpo.acao === 'object') ? corpo.acao : null };
+               acao: (corpo.acao && typeof corpo.acao === 'object') ? corpo.acao : null,
+               /* zzz124: várias propostas na mesma resposta */
+               acoes: Array.isArray(corpo.acoes) ? corpo.acoes.filter(a => a && typeof a === 'object') : null };
     }
     /* tarefas que devolvem lista (pilares, conteúdos, observações, ideias) */
     if (corpo && corpo.ok === true && Array.isArray(corpo.itens)) {

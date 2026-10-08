@@ -199,7 +199,7 @@ B7.Chat = (function () {
     }
     return S.msgs.map((m, i) => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
       (m.papel === 'user' ? '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
-      (m.acao ? acaoHTML(m.acao, i) : '')).join('') +
+      (m.acoes || []).map((a, j) => acaoHTML(a, i + ':' + j)).join('')).join('') +
       (S.enviando ? (S.parcial
         ? '<div class="ch-msg ia ch-fluindo" id="ch-fluxo">' + formatar(S.parcial) + '</div>'
         : '<div class="ch-msg ia ch-pensando" id="ch-fluxo" aria-label="Escrevendo"><i></i><i></i><i></i></div>') : '');
@@ -235,8 +235,10 @@ B7.Chat = (function () {
           '<button type="button" class="ch-ac-ok" data-acao-ok="' + i + '"' + (a.estado === 'indo' ? ' disabled' : '') + '>' + (a.estado === 'indo' ? 'Criando…' : 'Criar demanda') + '</button></div>') +
     '</div>';
   }
-  async function confirmarAcao(i) {
-    const m = S.msgs[i], a = m && m.acao;
+  /* zzz124: uma mensagem pode trazer várias propostas; "i:j" = mensagem i, proposta j */
+  const acaoDe = ref => { const p = String(ref).split(':'), m = S.msgs[Number(p[0])]; return (m && m.acoes && m.acoes[Number(p[1])]) || null; };
+  async function confirmarAcao(ref) {
+    const a = acaoDe(ref);
     if (!a || a.estado === 'indo' || a.estado === 'feito') return;
     a.estado = 'indo'; a.erro = ''; pintarCorpo();
     try {
@@ -253,8 +255,8 @@ B7.Chat = (function () {
     const c = painel && painel.querySelector('.ch-corpo'); if (!c) return;
     c.innerHTML = corpoHTML();
     c.querySelectorAll('.ch-sug').forEach(b => b.onclick = () => enviar(b.textContent));
-    c.querySelectorAll('[data-acao-ok]').forEach(b => b.onclick = () => confirmarAcao(Number(b.dataset.acaoOk)));
-    c.querySelectorAll('[data-acao-nao]').forEach(b => b.onclick = () => { const m = S.msgs[Number(b.dataset.acaoNao)]; if (m && m.acao) { m.acao.estado = 'cancelado'; pintarCorpo(); } });
+    c.querySelectorAll('[data-acao-ok]').forEach(b => b.onclick = () => confirmarAcao(b.dataset.acaoOk));
+    c.querySelectorAll('[data-acao-nao]').forEach(b => b.onclick = () => { const a = acaoDe(b.dataset.acaoNao); if (a) { a.estado = 'cancelado'; pintarCorpo(); } });
     c.scrollTop = c.scrollHeight;
   }
 
@@ -311,7 +313,7 @@ B7.Chat = (function () {
     S.enviando = false; S.parcial = '';
     if (r && r.ok) {
       if (r.conversa_id) S.conversaId = r.conversa_id;
-      S.msgs.push({ papel: 'assistant', texto: r.texto, acao: r.acao || null });
+      S.msgs.push({ papel: 'assistant', texto: r.texto, acoes: (r.acoes && r.acoes.length) ? r.acoes : (r.acao ? [r.acao] : []) });
       S.lista = null;
     } else {
       /* a pergunta não foi guardada: sai da conversa e volta para o campo */

@@ -340,38 +340,67 @@ const SISTEMA = [
    banco, com a sessão e as permissões dela. */
 const ACOES = [
   '7. AÇÃO (só propor, nunca executar): você pode PROPOR a criação de uma demanda de edição de vídeo, e só quando a pessoa pedir claramente para criar.',
-  '   Para propor, escreva uma frase curta dizendo o que será criado e termine a resposta com UMA linha, sozinha, exatamente neste formato:',
+  '   Para propor, escreva uma frase curta dizendo o que será criado e termine a resposta com uma linha por demanda (até 5 demandas, cada linha sozinha), exatamente neste formato:',
   '   [[ACAO {"tipo":"video_demanda","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","prazo":"AAAA-MM-DD"}]]',
+  '   O título diz o que é a peça, com as palavras da pessoa (ex.: "Flyer animado — Noite do Pop Rock").',
   '   Use "prazo":"" se a pessoa não deu prazo. Converta datas faladas ("sexta", "amanhã") usando a data de HOJE dos dados.',
-  '   Se faltar o cliente ou o título, ou o cliente não estiver na lista, PERGUNTE em vez de propor. Nunca diga que criou: quem cria é a pessoa, ao confirmar no cartão que vai aparecer.'
+  '   Pediram mais de uma demanda? Uma linha [[ACAO …]] para CADA uma, com o título de cada. Não descreva as demandas no texto: o cartão de cada uma aparece sozinho.',
+  '   Se faltar o cliente ou o título, ou o cliente não estiver na lista, PERGUNTE em vez de propor. Nunca diga que criou nem mande a pessoa criar em outra tela: quem cria é a pessoa, ao confirmar nos cartões que vão aparecer.'
 ].join('\n');
 const MARCADOR = /\[\[ACAO\s*(\{[\s\S]*?\})\s*\]\]/g;
 export const semAcao = (texto: string) => String(texto || '').replace(MARCADOR, '').replace(/\n{3,}/g, '\n\n').trim();
 export type Acao = { tipo: 'video_demanda'; cliente_id: string; cliente_nome: string; titulo: string; prazo: string | null };
 
-export async function extrairAcao(texto: string, sb: SupabaseClient): Promise<{ texto: string; acao: Acao | null }> {
-  const limpoTexto = semAcao(texto);
-  let acao: Acao | null = null;
+/* zzz124: mais de uma proposta por resposta ("crie 2 demandas…"). Antes
+   só valia UM marcador: com dois, os dois eram jogados fora e a pessoa
+   lia "seguem as propostas abaixo" sem cartão nenhum. Agora cada marcador
+   válido vira um cartão (até MAX_ACOES); repetidos e inválidos saem, e o
+   texto avisa quando alguma proposta não pôde ser montada. `acao` (uma
+   só) continua indo para as telas antigas. */
+const MAX_ACOES = 5;
+export async function extrairAcao(texto: string, sb: SupabaseClient): Promise<{ texto: string; acao: Acao | null; acoes: Acao[] }> {
+  let limpoTexto = semAcao(texto);
+  const acoes: Acao[] = [];
+  let achados = 0;
   try {
-    const achados = [...String(texto || '').matchAll(MARCADOR)];
-    if (achados.length === 1) {
-      const j = JSON.parse(achados[0][1]) as Record<string, unknown>;
-      const titulo = corta(j.titulo, 200);
-      const prazo = typeof j.prazo === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(j.prazo) && !isNaN(Date.parse(j.prazo + 'T12:00:00Z')) ? j.prazo : null;
+    const marcas = [...String(texto || '').matchAll(MARCADOR)];
+    achados = marcas.length;
+    if (achados) {
       const norm = (v: unknown) => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
-      if (j.tipo === 'video_demanda' && titulo.length >= 3 && norm(j.cliente)) {
-        /* o cliente tem de existir E ser visível para esta pessoa */
-        const { data } = await sb.from('clientes').select('id, nome').is('deleted_at', null).limit(300);
-        const iguais = ((data || []) as { id: string; nome: string }[]).filter(x => norm(x.nome) === norm(j.cliente));
-        if (iguais.length === 1) acao = { tipo: 'video_demanda', cliente_id: iguais[0].id, cliente_nome: iguais[0].nome, titulo, prazo };
+      /* o cliente tem de existir E ser visível para esta pessoa */
+      const { data } = await sb.from('clientes').select('id, nome').is('deleted_at', null).limit(300);
+      const clientes = (data || []) as { id: string; nome: string }[];
+      const vistos = new Set<string>();
+      for (const m of marcas.slice(0, MAX_ACOES)) {
+        let j: Record<string, unknown>;
+        try { j = JSON.parse(m[1]) as Record<string, unknown>; } catch (_e) { continue; }
+        const titulo = corta(j.titulo, 200);
+        const prazo = typeof j.prazo === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(j.prazo) && !isNaN(Date.parse(j.prazo + 'T12:00:00Z')) ? j.prazo : null;
+        if (j.tipo !== 'video_demanda' || titulo.length < 3 || !norm(j.cliente)) continue;
+        const iguais = clientes.filter(x => norm(x.nome) === norm(j.cliente));
+        if (iguais.length !== 1) continue;
+        const chave = iguais[0].id + '|' + norm(titulo);
+        if (vistos.has(chave)) continue;
+        vistos.add(chave);
+        acoes.push({ tipo: 'video_demanda', cliente_id: iguais[0].id, cliente_nome: iguais[0].nome, titulo, prazo });
       }
     }
-  } catch (_e) { acao = null; }
+  } catch (_e) { acoes.length = 0; }
   /* zzz91: o modelo às vezes devolve só o marcador, sem frase. Com a
      proposta válida, o texto diz isso — antes saía "não consegui montar"
      junto do cartão pronto. */
-  return { texto: limpoTexto || (acao ? 'Montei a proposta abaixo. Confira os dados e confirme para criar.'
-    : 'Não consegui montar a proposta. Diga o cliente e o título da demanda.'), acao };
+  if (acoes.length) {
+    /* com cartão na tela, a frase é sempre a mesma: o modelo às vezes
+       escrevia "acesse a tela de Edição de Vídeo" junto das propostas */
+    limpoTexto = (acoes.length > 1 ? 'Montei as ' + acoes.length + ' propostas abaixo. Confira os dados e confirme cada uma para criar.'
+      : 'Montei a proposta abaixo. Confira os dados e confirme para criar.') +
+      (acoes.length < Math.min(achados, MAX_ACOES) ? '\n\nUma das propostas não pôde ser montada (cliente ou título não conferem).' : '');
+  } else if (!limpoTexto) {
+    limpoTexto = 'Não consegui montar a proposta. Diga o cliente e o título da demanda.';
+  } else if (achados) {
+    limpoTexto += '\n\nNão consegui montar a proposta: confira o nome do cliente e o título e peça de novo.';
+  }
+  return { texto: limpoTexto, acao: acoes.length === 1 ? acoes[0] : null, acoes };
 }
 
 /** zzz123 — resposta em fluxo: repassa o texto conforme chega, mas nunca
