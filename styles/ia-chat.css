@@ -259,3 +259,19 @@ html.modo-leve .ch-fab,html.modo-leve .ch-msg{animation:none;}
 @keyframes chCursor{50%{opacity:0}}
 .ch-msg.ch-fluindo{animation:none;}
 @media (prefers-reduced-motion: reduce){ .ch-fluindo > :last-child::after{animation:none;} }
+
+/* zzz125: ditado por voz — o microfone ao lado do enviar */
+.ch-mic{flex:none;width:38px;height:38px;border:0;border-radius:13px;background:none;color:var(--ink-3);cursor:pointer;position:relative;
+  display:inline-flex;align-items:center;justify-content:center;transition:color .15s, background-color .15s, transform .12s;}
+.ch-mic svg{width:20px;height:20px;position:relative;}
+.ch-mic:hover{color:var(--ink);background:color-mix(in srgb, var(--ink) 6%, transparent);}
+.ch-mic:active{transform:scale(.92);}
+.ch-mic:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.ch-mic.ouvindo{color:#fff;background:var(--erro);}
+.ch-mic.ouvindo::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--erro);opacity:.45;
+  animation:chMicPulso 1.4s ease-out infinite;}
+@keyframes chMicPulso{from{transform:scale(1);opacity:.45}to{transform:scale(1.7);opacity:0}}
+.ch-form.ditando{border-color:color-mix(in srgb, var(--erro) 55%, var(--borda));box-shadow:0 0 0 3px color-mix(in srgb, var(--erro) 14%, transparent);}
+.ch-form:has(#ch-texto:disabled) .ch-mic{opacity:.45;pointer-events:none;}
+@media (prefers-reduced-motion: reduce){ .ch-mic.ouvindo::before{animation:none;opacity:0;} }
+html.modo-leve .ch-mic.ouvindo::before{animation:none;opacity:0;}

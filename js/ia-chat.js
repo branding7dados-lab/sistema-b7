@@ -25,6 +25,7 @@ B7.Chat = (function () {
     novo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
     hist: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 5v4h4M12 8v4.5l3 1.8"/></svg>',
     enviar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11.5" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7.5h12l-.8 10.7a2.5 2.5 0 0 1-2.5 2.3H9.3a2.5 2.5 0 0 1-2.5-2.3z"/><path d="M4 7.5h16M9.5 7.5V5.6a1.6 1.6 0 0 1 1.6-1.6h1.8a1.6 1.6 0 0 1 1.6 1.6v1.9M10.2 11.5v5M13.8 11.5v5"/></svg>',
     seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
     alvo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -89,7 +90,67 @@ B7.Chat = (function () {
     if (!S.clientes) carregarClientes();
     const ta = painel.querySelector('#ch-texto'); if (ta && window.matchMedia('(min-width: 761px)').matches) ta.focus();
   }
+
+  /* =================================================================
+     DITADO POR VOZ (zzz125) — o microfone do campo de mensagem.
+     A pessoa toca, fala, e o texto aparece no campo enquanto ela fala.
+     NADA é enviado sozinho: ela lê, corrige se quiser e envia.
+     Quem transforma a fala em texto é o reconhecimento de voz do próprio
+     navegador (Web Speech API) — não passa pela IA do B7, não gasta a
+     cota dela e nenhum áudio é guardado pelo sistema. Navegador sem esse
+     recurso simplesmente não mostra o botão.
+     ================================================================= */
+  const Voz = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let rec = null, ouvindo = false;
+  const AVISO_VOZ = {
+    'not-allowed': 'Permita o uso do microfone neste site para ditar.',
+    'service-not-allowed': 'O ditado por voz está bloqueado neste navegador.',
+    'audio-capture': 'Nenhum microfone encontrado.',
+    'network': 'O ditado precisa de internet. Confira a conexão.',
+    'language-not-supported': 'Este navegador não dita em português.'
+  };
+  function marcarVoz() {
+    const b = painel && painel.querySelector('#ch-mic'); if (!b) return;
+    b.classList.toggle('ouvindo', ouvindo);
+    b.setAttribute('aria-pressed', String(ouvindo));
+    b.setAttribute('aria-label', ouvindo ? 'Parar de ditar' : 'Ditar por voz');
+    b.title = ouvindo ? 'Parar de ditar' : 'Ditar por voz';
+    const f = painel.querySelector('.ch-form'); if (f) f.classList.toggle('ditando', ouvindo);
+  }
+  function pararVoz() {
+    if (!rec) return;
+    try { rec.stop(); } catch (e) {}
+  }
+  function alternarVoz() {
+    if (!Voz || !painel) return;
+    if (ouvindo) return pararVoz();
+    const ta = painel.querySelector('#ch-texto'); if (!ta || ta.disabled) return;
+    const r = new Voz();
+    r.lang = 'pt-BR'; r.interimResults = true; r.maxAlternatives = 1;
+    /* no celular o modo contínuo repete trechos (defeito conhecido do
+       Chrome no Android): lá vai uma frase por toque */
+    r.continuous = !window.matchMedia('(pointer: coarse)').matches;
+    const base = ta.value.trim() ? ta.value.replace(/\s+$/, '') + ' ' : '';
+    r.onstart = () => { ouvindo = true; marcarVoz(); };
+    r.onresult = e => {
+      let falado = '';
+      for (let i = 0; i < e.results.length; i++) falado += e.results[i][0].transcript;
+      const campo = painel && painel.querySelector('#ch-texto'); if (!campo) return;
+      campo.value = (base + falado.replace(/\s+/g, ' ').replace(/^\s+/, '')).slice(0, 2000);
+      campo.dispatchEvent(new Event('input'));
+      campo.scrollTop = campo.scrollHeight;
+    };
+    r.onerror = e => {
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
+      if (B7.UI && B7.UI.toast) B7.UI.toast(AVISO_VOZ[e.error] || 'Não foi possível ditar agora. Tente de novo.', { tipo: 'erro' });
+    };
+    r.onend = () => { if (rec === r) rec = null; ouvindo = false; marcarVoz(); };
+    rec = r;
+    try { r.start(); } catch (e) { rec = null; ouvindo = false; marcarVoz(); }
+  }
+
   function fechar() {
+    pararVoz();
     if (painel) { const ta = painel.querySelector('#ch-texto'); if (ta && !S.enviando) S.rascunho = ta.value; }
     S.aberto = false;
     document.body.classList.remove('chat-aberto');
@@ -278,6 +339,7 @@ B7.Chat = (function () {
       '<form class="ch-form" autocomplete="off">' +
         '<textarea id="ch-texto" rows="1" maxlength="2000" placeholder="Pergunte ou peça uma ideia…" aria-label="Mensagem para o assistente" ' +
           'name="b7-chat-mensagem" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"></textarea>' +
+        (Voz ? '<button type="button" class="ch-mic" id="ch-mic" aria-label="Ditar por voz" aria-pressed="false" title="Ditar por voz">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="ch-enviar" id="ch-enviar" aria-label="Enviar">' + IC.enviar + '</button>' +
       '</form>' +
       '<p class="ch-aviso">A IA pode errar. Confira antes de usar. Ela não altera nada sozinha: só propõe, e você confirma.</p>';
@@ -290,6 +352,7 @@ B7.Chat = (function () {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit ? form.requestSubmit() : enviar(ta.value); }
     });
     form.onsubmit = e => { e.preventDefault(); enviar(ta.value); };
+    const mic = painel.querySelector('#ch-mic'); if (mic) mic.onclick = alternarVoz;
     if (S.rascunho) { ta.value = S.rascunho; ajustar(); }
   }
 
@@ -297,6 +360,7 @@ B7.Chat = (function () {
   async function enviar(textoBruto) {
     const texto = String(textoBruto || '').trim();
     if (!texto || S.enviando || !painel) return;
+    pararVoz();
     const ta = painel.querySelector('#ch-texto');
     S.msgs = S.msgs.filter(m => !m.erro);
     S.msgs.push({ papel: 'user', texto });
