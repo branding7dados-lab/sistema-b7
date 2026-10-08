@@ -284,17 +284,31 @@ B7.Notif = (function () {
       ctx = ctx || new AC();
       if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); }
       if (ctx.state !== 'running') return;   /* sem gesto do usuário o navegador não deixa tocar */
-      const t0 = ctx.currentTime;
-      /* duas notas curtas, suaves: aviso, não alarme */
-      [[880, 0], [1174.7, 0.11]].forEach(([f, dt]) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine'; o.frequency.value = f;
-        g.gain.setValueAtTime(0.0001, t0 + dt);
-        g.gain.exponentialRampToValueAtTime(0.18, t0 + dt + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.22);
-        o.connect(g); g.connect(ctx.destination);
-        o.start(t0 + dt); o.stop(t0 + dt + 0.25);
-      });
+      const t0 = ctx.currentTime + 0.01;
+      /* zzz110 — som novo (o antigo eram dois bipes secos de senoide):
+         duas notas de "vidro", sol → ré (uma quinta acima, soa como
+         chegada, não como alarme). Cada nota tem o tom principal, um
+         parcial uma oitava acima e um brilho curto no ataque; um eco
+         baixo e abafado dá espaço, como um sino pequeno numa sala. */
+      const mestre = ctx.createGain(); mestre.gain.value = 0.9; mestre.connect(ctx.destination);
+      const eco = ctx.createDelay(0.5), volta = ctx.createGain(), abafa = ctx.createBiquadFilter();
+      eco.delayTime.value = 0.17; volta.gain.value = 0.24; abafa.type = 'lowpass'; abafa.frequency.value = 2400;
+      mestre.connect(eco); eco.connect(abafa); abafa.connect(volta); volta.connect(eco); abafa.connect(ctx.destination);
+      const nota = (hz, quando, vol, dur) => {
+        [[1, 1, 'sine', dur], [2, 0.22, 'sine', dur * 0.6], [3.01, 0.07, 'sine', dur * 0.35], [1, 0.12, 'triangle', 0.08]].forEach(([m, p, tipo, d]) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = tipo; o.frequency.value = hz * m;
+          const t = t0 + quando;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(vol * p, t + 0.008);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+          o.connect(g); g.connect(mestre);
+          o.start(t); o.stop(t + d + 0.05);
+        });
+      };
+      nota(783.99, 0, 0.16, 0.5);       /* sol */
+      nota(1174.66, 0.13, 0.19, 0.85);  /* ré */
+      setTimeout(() => { try { mestre.disconnect(); eco.disconnect(); volta.disconnect(); abafa.disconnect(); } catch (e) {} }, 2600);
     } catch (e) {}
   }
 

@@ -457,7 +457,7 @@ B7.Rota = (function () {
      • com "reduzir movimento": nada de mínimo. */
   const reduzMov = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const curta = document.documentElement.classList.contains('ab-curta');
-  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 950 : 4300;
+  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 950 : 6400;   /* zzz110: corte longo */
 
   /* Para onde o logo voa: o lugar onde ele mora na tela que ficou pronta.
      Lockup (logo inteiro) → caixa de login ou barra lateral aberta.
@@ -678,7 +678,7 @@ B7.Rota = (function () {
     setTimeout(() => {
       sairCortina(el, false);
       if (eraCurta) setTimeout(() => raiz.classList.add('ab-curta'), 1200);
-    }, reduzMov() ? 600 : 4300);
+    }, reduzMov() ? 600 : 6400);
   }
   B7.abrirCortina = abrirCortina;
   B7.fecharCortina = fecharCortina;
