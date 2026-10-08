@@ -63,9 +63,9 @@ B7.PainelDesign = (function () {
   const plural = (n, um, varios) => n + ' ' + (n === 1 ? um : varios);
   const pad2 = n => String(n).padStart(2, '0');
 
-  const IC_PINCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M12.5 6.5l5 5"/></svg>';
-  const IC_BRIEF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h4"/></svg>';
-  const IC_INICIAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.5 9l4.5 3-4.5 3z"/></svg>';
+  const IC_PINCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 19.5l.9-3.9L16.2 4.8a1.8 1.8 0 0 1 2.6 0l.4.4a1.8 1.8 0 0 1 0 2.6L8.4 18.6z"/><path d="M14.2 6.8l3 3"/></svg>';
+  const IC_BRIEF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h6.1a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V18a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 18V6A2.5 2.5 0 0 1 7 3.5z"/><path d="M8.5 12.6h7M8.5 16.2h4.5"/></svg>';
+  const IC_INICIAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M10.3 8.8a.6.6 0 0 1 .9-.5l4.7 3.2a.6.6 0 0 1 0 1l-4.7 3.2a.6.6 0 0 1-.9-.5z"/></svg>';
 
   /* ------------------------------------------------------------ estado */
   const S = { minhas: null, partes: null, envios: null };

@@ -48,10 +48,10 @@ B7.Gravacao = (function () {
   const mesRef = (ano, mes) => (ano && mes) ? MESES[mes - 1] + ' de ' + ano : '';
 
   const TIPO = {
-    roteiro: { rot: 'Roteiro', ic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h4"/></svg>' },
+    roteiro: { rot: 'Roteiro', ic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h6.1a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V18a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 18V6A2.5 2.5 0 0 1 7 3.5z"/><path d="M8.5 12.6h7M8.5 16.2h4.5"/></svg>' },
     referencia: { rot: 'Trend', ic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.6 0l3-3a4 4 0 0 0-5.6-5.6l-1 1"/><path d="M14 10a4 4 0 0 0-5.6 0l-3 3a4 4 0 0 0 5.6 5.6l1-1"/></svg>' },
     avulso: { rot: 'Avulso', ic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.4 5 5.4.6-4 3.7 1.1 5.4L12 15.6l-4.9 2.6 1.1-5.4-4-3.7 5.4-.6z"/></svg>' },
-    conteudo: { rot: 'Conteúdo', ic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg>' }
+    conteudo: { rot: 'Conteúdo', ic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.8"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg>' }
   };
   const IC = {
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 12.5l4.2 4.2 8.8-9.4"/></svg>',
@@ -60,13 +60,13 @@ B7.Gravacao = (function () {
     voltar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
     mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     menu: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9" style="fill:currentColor;stroke:none"/><circle cx="12" cy="12" r="1.9" style="fill:currentColor;stroke:none"/><circle cx="18.5" cy="12" r="1.9" style="fill:currentColor;stroke:none"/></svg>',
-    lapis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
+    lapis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 19.5l.9-3.9L16.2 4.8a1.8 1.8 0 0 1 2.6 0l.4.4a1.8 1.8 0 0 1 0 2.6L8.4 18.6z"/><path d="M14.2 6.8l3 3"/></svg>',
     x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-    impressora: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V4h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><path d="M7 14h10v6H7z"/></svg>',
-    agenda: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3"/></svg>',
-    pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.2-3.6 3.8-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>',
+    impressora: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 9V5.5A1.5 1.5 0 0 1 9 4h6a1.5 1.5 0 0 1 1.5 1.5V9"/><rect x="3.5" y="9" width="17" height="8.5" rx="2.6"/><path d="M7.5 14.5h9V19a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1z"/></svg>',
+    agenda: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3.6"/><path d="M3.5 9.5h17M8 2.8v3M16 2.8v3"/></svg>',
+    pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 19.6a7 7 0 0 1 14 0 .9.9 0 0 1-.9.9H5.9a.9.9 0 0 1-.9-.9z"/></svg>',
     local: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>',
-    mes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 13.5h3M8 17h6"/></svg>'
+    mes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3.6"/><path d="M3.5 9.5h17M8 13.5h3M8 17h6"/></svg>'
   };
 
   let S = null;          /* { id, g, itens, ocs, hist, estado:{itens,hist} } */
@@ -313,7 +313,7 @@ B7.Gravacao = (function () {
       /* teleprompter: só quando há roteiro na lista — lê o roteiro canônico, sem cópia */
       (e === 'ok' && S.itens.some(i => i.tipo === 'roteiro' && i.roteiro_id) && window.B7.Teleprompter && (!B7.Teleprompter.podeUsar || B7.Teleprompter.podeUsar())
         ? '<button type="button" class="b fina contorno gv-tele" data-gv="teleprompter" title="Mostra os roteiros desta gravação para leitura, em tela cheia">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M7.5 9.5h9M7.5 12.5h6M9 20h6"/></svg>' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12.5" rx="3"/><path d="M7.5 9.2h9M7.5 12.6h6M9 20.2h6"/></svg>' +
             '<span>Teleprompter</span></button>' : '') +
       (podeEditar() ? '<button type="button" class="b fina ' + (total ? 'contorno' : 'pri') + ' gv-add" data-gv="adicionar">' + IC.mais + '<span>Adicionar item</span></button>' : '') +
       '</div>' + corpo;

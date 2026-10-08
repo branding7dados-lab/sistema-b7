@@ -50,8 +50,8 @@ B7.Video = (function () {
     mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     grafico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19h16M7 16V9M12 16V5M17 16v-6"/></svg>',
     pacote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
-    planilha: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>',
-    lixeira: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>',
+    planilha: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.6"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 3.5v17"/></svg>',
+    lixeira: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 7.5h12l-.8 10.7a2.5 2.5 0 0 1-2.5 2.3H9.3a2.5 2.5 0 0 1-2.5-2.3z"/><path d="M4 7.5h16M9.5 7.5V5.6a1.6 1.6 0 0 1 1.6-1.6h1.8a1.6 1.6 0 0 1 1.6 1.6v1.9M10.2 11.5v5M13.8 11.5v5"/></svg>',
     seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
     versao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4-2.5z" fill="currentColor" stroke="none"/></svg>'
   };
@@ -555,7 +555,7 @@ B7.Video = (function () {
        contagem do que está ativo); no computador, sempre à vista */
     const nAtivos = ['cliente', 'status', 'responsavel', 'prioridade', 'prazo'].filter(k => F[k]).length;
     cx.innerHTML = '<div class="ds-barra">' +
-      '<div class="ds-busca-cx"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
+      '<div class="ds-busca-cx"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
         '<input class="campo fina ds-busca" id="vd-busca" placeholder="Buscar código, cliente ou título…" ' +
         'value="' + esc(F.busca) + '" aria-label="Buscar"></div>' +
       '<button type="button" class="b fina contorno vd-bt-filtros' + (nAtivos ? ' ativo' : '') + '" id="vd-bt-filtros" aria-expanded="' + filtrosAbertos + '" aria-controls="vd-filtros">' +
@@ -577,7 +577,7 @@ B7.Video = (function () {
         : '') +
       '<div class="seg-vista" role="tablist">' +
         '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista" aria-label="Lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg><span>Lista</span></button>' +
-        '<button role="tab" class="' + (F.vista === 'kanban' ? 'on' : '') + '" data-vista="kanban" aria-label="Kanban"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="4" width="5" height="16" rx="1.5"/><rect x="10.5" y="4" width="5" height="10" rx="1.5"/><rect x="17.5" y="4" width="3" height="13" rx="1.2"/></svg><span>Kanban</span></button>' +
+        '<button role="tab" class="' + (F.vista === 'kanban' ? 'on' : '') + '" data-vista="kanban" aria-label="Kanban"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="4" width="4.7" height="16" rx="1.9"/><rect x="9.65" y="4" width="4.7" height="11" rx="1.9"/><rect x="15.8" y="4" width="4.7" height="7" rx="1.9"/></svg><span>Kanban</span></button>' +
       '</div>' +
     '</div>';
 
@@ -658,7 +658,7 @@ B7.Video = (function () {
      Um cartão por demanda: cliente e status em cima, título forte, prazo
      com contexto ("em 3 dias", "2 dias em atraso") e responsável embaixo.
      Agrupada pelo que importa no dia: o que já passou primeiro. */
-  const IC_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>';
+  const IC_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3.6"/><path d="M3.5 9.5h17M8 2.8v3M16 2.8v3"/></svg>';
   function diasAte(prazo) { return Math.round((new Date(prazo) - new Date(hoje())) / 86400000); }
   function grupoPrazo(d) {
     if (!d.prazo) return 'sem';
@@ -711,7 +711,7 @@ B7.Video = (function () {
        atrasadas a linha diz quanto atrasou. */
     const quem = d.videomaker_id && d.videomaker_nome
       ? '<span class="vd-m3-av" title="' + esc(d.videomaker_nome) + '" style="--c:' + corVideomaker(d.videomaker_id) + '">' + esc(iniciais(d.videomaker_nome)) + '</span>'
-      : '<span class="vd-m3-av sem" title="Sem responsável"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="9" r="3.5"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span>';
+      : '<span class="vd-m3-av sem" title="Sem responsável"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 19.6a7 7 0 0 1 14 0 .9.9 0 0 1-.9.9H5.9a.9.9 0 0 1-.9-.9z"/></svg></span>';
     return '<article class="vd-m-card vd-m2 vd-m3 vd-m-s-' + esc(d.editing_status) + (atrasada ? ' atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0" role="button" style="--i:' + Math.min(i, 14) + '">' +
       '<span class="vd-m-logo">' + logoClienteHTML(d, 'md') + '</span>' +
       '<div class="vd-m2-corpo">' +
@@ -1380,7 +1380,7 @@ B7.Video = (function () {
     const m = B7.UI.modal(
       '<div class="vd-dc-topo"><h3>Descartados <span class="vd-dc-n">' + ordenada.length + '</span></h3>' +
       '<p>Nada foi apagado — só saíram da produção ativa. Toque para abrir.</p></div>' +
-      (ordenada.length > 6 ? '<div class="vd-dc-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>' +
+      (ordenada.length > 6 ? '<div class="vd-dc-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
         '<input class="campo" id="vd-dc-busca" placeholder="Buscar cliente, título ou código…" aria-label="Buscar descartados"></div>' : '') +
       (ordenada.length
         ? '<div class="vd-dc-caixa">' + ordenada.map(linha).join('') + '<p class="vd-dc-nada" hidden>Nada encontrado.</p></div>'

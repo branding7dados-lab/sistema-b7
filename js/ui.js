@@ -514,11 +514,11 @@ B7.UI = (function () {
      Navegação por ↑ ↓ Enter Esc. */
   const ICP = {
     mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-    pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/></svg>',
-    play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>',
-    grav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>',
-    rot:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h9l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.5V9h5"/></svg>',
-    arte: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 15l4-4 4 3 4-5 4 3"/></svg>'
+    pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 19.6a7 7 0 0 1 14 0 .9.9 0 0 1-.9.9H5.9a.9.9 0 0 1-.9-.9z"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M10.3 8.8a.6.6 0 0 1 .9-.5l4.7 3.2a.6.6 0 0 1 0 1l-4.7 3.2a.6.6 0 0 1-.9-.5z"/></svg>',
+    grav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6.5" width="12.5" height="11" rx="3.1"/><path d="M15 10.7l4.8-3a.8.8 0 0 1 1.2.7v7.2a.8.8 0 0 1-1.2.7l-4.8-3z"/></svg>',
+    rot:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h6.1a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V18a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 18V6A2.5 2.5 0 0 1 7 3.5z"/></svg>',
+    arte: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="3.6"/><path d="M4.6 16.4l4-4a1.5 1.5 0 0 1 2.1 0l2.3 2.3 1.6-1.6a1.5 1.5 0 0 1 2.1 0l2.7 2.7M15.4 9.2h.01"/></svg>'
   };
   /* pedaço do texto em volta do termo achado, para o resultado da busca */
   function trecho(texto, termo) {
@@ -598,7 +598,7 @@ B7.UI = (function () {
        estilo das listas da Central vazava aqui) e entram em cascata; a
        barra fina sob o campo corre enquanto a busca vai ao banco. */
     const m = modal(
-      '<div class="busca-cp"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+      '<div class="busca-cp"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
       '<input id="cp-in" data-foco placeholder="Buscar no B7…" autocomplete="off" enterkeyhint="search">' +
       '<button type="button" class="cp-fechar" data-fecha aria-label="Fechar">Cancelar</button>' +
       '<i class="cp-carga" aria-hidden="true"></i></div>' +

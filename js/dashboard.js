@@ -14,14 +14,14 @@ B7.Dashboard = (function () {
   /* ícones lineares, todos com a mesma espessura — nada de emoji na interface */
   const traco = 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
   const IC = {
-    clientes:  '<svg viewBox="0 0 24 24" ' + traco + '><path d="M16 19v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V19"/><circle cx="9" cy="7" r="3.2"/><path d="M22 19v-1.5a4 4 0 0 0-3-3.87"/></svg>',
-    gravacoes: '<svg viewBox="0 0 24 24" ' + traco + '><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>',
-    roteiros:  '<svg viewBox="0 0 24 24" ' + traco + '><path d="M5 3.5h9l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.5V9h5"/><path d="M8.5 13.5h7M8.5 17h4.5"/></svg>',
-    andamento: '<svg viewBox="0 0 24 24" ' + traco + '><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>',
+    clientes:  '<svg viewBox="0 0 24 24" ' + traco + '><circle cx="9" cy="8" r="3.4"/><path d="M2.8 19.2a6.2 6.2 0 0 1 12.4 0 .8.8 0 0 1-.8.8H3.6a.8.8 0 0 1-.8-.8z"/><path d="M15.8 4.9a3.4 3.4 0 0 1 0 6.2M17.9 13.7a6 6 0 0 1 3.4 5.5.8.8 0 0 1-.8.8h-1.3"/></svg>',
+    gravacoes: '<svg viewBox="0 0 24 24" ' + traco + '><rect x="2.5" y="6.5" width="12.5" height="11" rx="3.1"/><path d="M15 10.7l4.8-3a.8.8 0 0 1 1.2.7v7.2a.8.8 0 0 1-1.2.7l-4.8-3z"/></svg>',
+    roteiros:  '<svg viewBox="0 0 24 24" ' + traco + '><path d="M7 3.5h6.1a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V18a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 18V6A2.5 2.5 0 0 1 7 3.5z"/><path d="M8.5 13.5h7M8.5 17h4.5"/></svg>',
+    andamento: '<svg viewBox="0 0 24 24" ' + traco + '><circle cx="12" cy="12" r="8.6"/><path d="M12 7.6V12l3 1.9"/></svg>',
     mais:      '<svg viewBox="0 0 24 24" ' + traco + '><path d="M12 5v14M5 12h14"/></svg>',
-    pessoa:    '<svg viewBox="0 0 24 24" ' + traco + '><circle cx="12" cy="8" r="3.4"/><path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/></svg>',
-    play:      '<svg viewBox="0 0 24 24" ' + traco + '><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>',
-    imprimir:  '<svg viewBox="0 0 24 24" ' + traco + '><path d="M6 9V4h12v5M6 18H4v-6h16v6h-2M8 14h8v6H8z"/></svg>'
+    pessoa:    '<svg viewBox="0 0 24 24" ' + traco + '><circle cx="12" cy="8" r="3.6"/><path d="M5 19.6a7 7 0 0 1 14 0 .9.9 0 0 1-.9.9H5.9a.9.9 0 0 1-.9-.9z"/></svg>',
+    play:      '<svg viewBox="0 0 24 24" ' + traco + '><circle cx="12" cy="12" r="8.6"/><path d="M10.3 8.8a.6.6 0 0 1 .9-.5l4.7 3.2a.6.6 0 0 1 0 1l-4.7 3.2a.6.6 0 0 1-.9-.5z"/></svg>',
+    imprimir:  '<svg viewBox="0 0 24 24" ' + traco + '><path d="M7.5 9V5.5A1.5 1.5 0 0 1 9 4h6a1.5 1.5 0 0 1 1.5 1.5V9"/><rect x="3.5" y="9" width="17" height="8.5" rx="2.6"/><path d="M7.5 14.5h9V19a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1z"/></svg>'
   };
 
   let ultimaGravacao = null;    // alimenta as ações rápidas
@@ -608,7 +608,7 @@ B7.Dashboard = (function () {
       (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno gl-cal" href="#/calendario?v=mes&amp;tipo=gravacoes" aria-label="Calendário de gravações">' + IC_CAL + '<span class="gl-so-largo">Calendário</span></a>' : '') +
       '<button class="b pri gl-nova" data-nova-gravacao>' + IC.mais + 'Nova<span class="gl-so-largo">&nbsp;gravação</span></button></div>' +
       (gravacoes.length ? '<div class="gl-filtros">' +
-        '<div class="gl-linha-busca"><div class="gl-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+        '<div class="gl-linha-busca"><div class="gl-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
           '<input class="campo fina" id="fg-busca" type="search" placeholder="Buscar cliente ou gravação" aria-label="Buscar cliente ou gravação" value="' + esc(FG.busca || '') + '"></div>' +
           '<button type="button" class="gl-bt-filtros" id="fg-abre" aria-expanded="false" aria-controls="fg-sels">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
@@ -802,7 +802,7 @@ B7.Dashboard = (function () {
     const F = { status: 'Todos', cliente: '', termo: '', ordem: 'recentes', mes: '' };
 
     const ICL = '<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>';
-    const ICC = '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>';
+    const ICC = '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7.2" height="7.2" rx="2.3"/><rect x="13.3" y="3.5" width="7.2" height="7.2" rx="2.3"/><rect x="3.5" y="13.3" width="7.2" height="7.2" rx="2.3"/><rect x="13.3" y="13.3" width="7.2" height="7.2" rx="2.3"/></svg>';
     painel().innerHTML = '<div class="conteudo entra rt">' +
       '<div class="rt-cab"><div class="rt-cab-tx"><h1>Roteiros</h1>' +
         '<p id="rt-sub">' + roteiros.length + ' roteiros, separados pelo mês da gravação</p></div>' +
@@ -814,7 +814,7 @@ B7.Dashboard = (function () {
       (roteiros.length ?
         '<div class="filtro rolavel rt-status" id="rt-status" role="group" aria-label="Estágio"></div>' +
         '<div class="rt-barra-f">' +
-          '<div class="busca-local"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+          '<div class="busca-local"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
             '<input class="campo" id="rt-busca" type="search" placeholder="Buscar roteiro, cliente ou gravação…" autocomplete="off" aria-label="Buscar roteiros"></div>' +
           '<select class="campo rt-sel" id="rt-mes" aria-label="Mês"><option value="">Mês</option>' +
             meses.map(k => '<option value="' + k + '">' + esc(rotuloMes(k)) + (k === agoraMes ? ' (este mês)' : '') + '</option>').join('') + '</select>' +
@@ -957,7 +957,7 @@ B7.Dashboard = (function () {
         '<button class="b pri cl2-novo" data-novo-cliente>' + IC.mais + '<span>Novo cliente</span></button></div>' +
       (clientes.length
         ? '<div class="cl2-barra">' +
-            '<label class="cl2-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+            '<label class="cl2-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
               '<input id="busca-cli" placeholder="Buscar cliente…" autocomplete="off" aria-label="Buscar cliente"></label>' +
             '<div class="cl2-pils" id="filtro-cli" role="group" aria-label="Filtrar clientes">' +
               pil('todos', 'Todos', clientes.length) + pil('com', 'Com gravações', comGrav) + pil('sem', 'Sem gravações', clientes.length - comGrav) +
@@ -1009,8 +1009,8 @@ B7.Dashboard = (function () {
   /* cartão da tela Clientes (zzz14): logo grande, contadores com ícone,
      última atividade; fixar e ⋯ com as mesmas ações do cartão antigo */
   const IC_CL2 = {
-    grav: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>',
-    rot: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4.5 4.5V20a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 20V5A1.5 1.5 0 0 1 6 3.5z"/><path d="M13.5 3.5V8.5h5"/></svg>'
+    grav: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6.5" width="12.5" height="11" rx="3.1"/><path d="M15 10.7l4.8-3a.8.8 0 0 1 1.2.7v7.2a.8.8 0 0 1-1.2.7l-4.8-3z"/></svg>',
+    rot: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h6.1a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V18a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 18V6A2.5 2.5 0 0 1 7 3.5z"/></svg>'
   };
   function cartaoCliente2(c, i) {
     const qd = c.ultima_atividade ? B7.UI.quando(c.ultima_atividade) : '';
@@ -1518,7 +1518,7 @@ B7.Dashboard = (function () {
      • roteiros numa lista única com divisórias; atividade como linha do
        tempo. Nenhuma ação a menos, nenhum dado a mais.
      ================================================================= */
-  const IC_CAL = '<svg viewBox="0 0 24 24" ' + traco + '><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
+  const IC_CAL = '<svg viewBox="0 0 24 24" ' + traco + '><rect x="3.5" y="4.5" width="17" height="16" rx="3.6"/><path d="M3.5 9.5h17M8 2.8v3M16 2.8v3"/></svg>';
   const IC_SEMANA = '<svg viewBox="0 0 24 24" ' + traco + '><path d="M4 19V9M9.3 19V5M14.6 19v-7M20 19v-4"/></svg>';
   const IC_DUP = '<svg viewBox="0 0 24 24" ' + traco + '><rect x="8" y="8" width="12.5" height="12.5" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>';
   const IC_SETA_VG = '<svg class="vg-seta" viewBox="0 0 24 24" ' + traco + '><path d="M9 6l6 6-6 6"/></svg>';
@@ -1738,37 +1738,37 @@ B7.Dashboard = (function () {
   const ICF = {
     tema: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
     sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/>',
-    tela: '<rect x="3" y="4" width="18" height="12.5" rx="2"/><path d="M9 20.5h6M12 16.5v4"/>',
+    tela: '<rect x="3" y="4.5" width="18" height="12.5" rx="3"/><path d="M9 20.2h6M12 17v3.2"/>',
     densidade: '<rect x="3.5" y="4" width="17" height="6.5" rx="1.8"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="1.8"/>',
     raio: '<path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/>',
     animacao: '<path d="M11 3.5l1.7 4.5 4.6 1.7-4.6 1.7L11 16l-1.7-4.6L4.7 9.7l4.6-1.7z"/><path d="M18.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
     som: '<path d="M11 5.5L6.5 9H3.5v6h3l4.5 3.5z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18.3 6.2a8.5 8.5 0 0 1 0 11.6"/>',
-    play: '<circle cx="12" cy="12" r="9"/><path d="M10.2 8.6l5.4 3.4-5.4 3.4z"/>',
+    play: '<circle cx="12" cy="12" r="8.6"/><path d="M10.3 8.8a.6.6 0 0 1 .9-.5l4.7 3.2a.6.6 0 0 1 0 1l-4.7 3.2a.6.6 0 0 1-.9-.5z"/>',
     lateral: '<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M9.5 4.5v15"/>',
-    teclado: '<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M8 14h8"/>',
-    impressao: '<path d="M7 9V3.5h10V9"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
-    usuarios: '<path d="M15.5 19v-1.3a3.8 3.8 0 0 0-3.8-3.8H6.3a3.8 3.8 0 0 0-3.8 3.8V19"/><circle cx="9" cy="7.3" r="3.3"/><path d="M21.5 19v-1.3a3.8 3.8 0 0 0-2.8-3.6M15.7 4.1a3.3 3.3 0 0 1 0 6.4"/>',
+    teclado: '<rect x="2.5" y="5.5" width="19" height="13" rx="3.2"/><path d="M7 10h.01M10.3 10h.01M13.7 10h.01M17 10h.01M8 14.2h8"/>',
+    impressao: '<path d="M7.5 9V5.5A1.5 1.5 0 0 1 9 4h6a1.5 1.5 0 0 1 1.5 1.5V9"/><rect x="3.5" y="9" width="17" height="8.5" rx="2.6"/><path d="M7.5 14.5h9V19a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1z"/>',
+    usuarios: '<circle cx="9" cy="8" r="3.4"/><path d="M2.8 19.2a6.2 6.2 0 0 1 12.4 0 .8.8 0 0 1-.8.8H3.6a.8.8 0 0 1-.8-.8z"/><path d="M15.8 4.9a3.4 3.4 0 0 1 0 6.2M17.9 13.7a6 6 0 0 1 3.4 5.5.8.8 0 0 1-.8.8h-1.3"/>',
     banco: '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13"/><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>',
     exportar: '<path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5"/><path d="M4.5 16.5v2.5A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5"/>',
     importar: '<path d="M12 14.5v-11M7.5 8L12 3.5 16.5 8"/><path d="M4.5 16.5v2.5A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5"/>',
     versao: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.2M12 7.8h.01"/>',
     rede: '<path d="M2.5 8.8a14 14 0 0 1 19 0M5.5 12.2a9.5 9.5 0 0 1 13 0M8.7 15.5a5 5 0 0 1 6.6 0"/><path d="M12 19.2h.01"/>',
-    acesso: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    acesso: '<rect x="4.5" y="10.5" width="15" height="10" rx="3"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>',
     sino: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
     camera: '<path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.3"/>',
-    casa: '<path d="M4 11l8-7 8 7"/><path d="M6 10v9.5h12V10"/><path d="M10 19.5v-5h4v5"/>',
-    calendario: '<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>',
-    ler: '<rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M7 9.5h10M7 13h6M9 20.5h6"/>',
+    casa: '<path d="M4 10.8L12 4l8 6.8V18a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18z"/><path d="M9.8 20.5v-5a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1v5"/>',
+    calendario: '<rect x="3.5" y="4.5" width="17" height="16" rx="3.6"/><path d="M3.5 9.5h17M8 2.8v3M16 2.8v3"/>',
+    ler: '<rect x="3" y="4.5" width="18" height="12.5" rx="3"/><path d="M7.5 9.2h9M7.5 12.6h6M9 20.2h6"/>',
     letra: '<path d="M4 18l5-12 5 12M6 14h6"/><path d="M15.5 18l2.5-6 2.5 6M16.5 16h3"/>',
     espelho: '<path d="M12 3v18"/><path d="M8.5 7L4 17h4.5zM15.5 7L20 17h-4.5z"/>',
-    relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    relogio: '<circle cx="12" cy="12" r="8.6"/><path d="M12 7.6V12l3 1.9"/>',
     filtro: '<path d="M4 6h16M7 12h10M10 18h4"/>',
     google: '<path d="M20 12.2c0 4.6-3.2 7.8-7.8 7.8a8 8 0 1 1 5.4-13.9"/><path d="M12.2 12.2H20"/>',
-    ia: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/>',
+    ia: '<path d="M10 4.6l1.6 4.3a1.5 1.5 0 0 0 .9.9l4.3 1.6-4.3 1.6a1.5 1.5 0 0 0-.9.9L10 18.2l-1.6-4.3a1.5 1.5 0 0 0-.9-.9l-4.3-1.6 4.3-1.6a1.5 1.5 0 0 0 .9-.9z"/><path d="M18.2 14.6l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
     atualizar: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/>',
-    celular: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>',
+    celular: '<rect x="6.5" y="2.5" width="11" height="19" rx="3.2"/><path d="M10.5 18.2h3"/>',
     vassoura: '<path d="M14 4l6 6"/><path d="M12.5 5.5l6 6-3 3-6-6z"/><path d="M9.5 8.5C6 10 4 14 4 20c5 0 9-1.5 11.5-5.5"/>',
-    sair: '<path d="M14.5 4h4A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>'
+    sair: '<path d="M14 4.5h3A2.5 2.5 0 0 1 19.5 7v10a2.5 2.5 0 0 1-2.5 2.5h-3"/><path d="M10 15.5L6.5 12 10 8.5M6.5 12H15"/>'
   };
   const svgF = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICF[k] + '</svg>';
   const SETA_CFG = '<svg class="cfg-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
@@ -2689,10 +2689,10 @@ B7.Dashboard = (function () {
        quem", "Quando", "Quem grava"), atalhos de mês como escolha
        principal e os botões lado a lado no rodapé. Mesmos ids e regras. */
     const ICG = {
-      cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="M16 10.5l5-3v9l-5-3"/></svg>',
-      quem: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>',
-      cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
-      cli: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>'
+      cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6.5" width="12.5" height="11" rx="3.1"/><path d="M15 10.7l4.8-3a.8.8 0 0 1 1.2.7v7.2a.8.8 0 0 1-1.2.7l-4.8-3z"/></svg>',
+      quem: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 19.6a7 7 0 0 1 14 0 .9.9 0 0 1-.9.9H5.9a.9.9 0 0 1-.9-.9z"/></svg>',
+      cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3.6"/><path d="M3.5 9.5h17M8 2.8v3M16 2.8v3"/></svg>',
+      cli: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.8L12 4l8 6.8V18a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18z"/><path d="M9.8 20.5v-5a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1v5"/></svg>'
     };
     const m = B7.UI.modal(
       '<div class="ng-topo"><span class="ng-ic">' + ICG.cam + '</span><div><h3>Nova gravação</h3>' +

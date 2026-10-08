@@ -46,9 +46,9 @@ B7.PainelMulti = (function () {
   const UNIDADE = { video: ['vídeo', 'vídeos'], design: ['design', 'design'], editorial: ['editorial', 'editorial'] };
   const MAX_ATENCAO = 5, MAX_PROXIMOS = 5, MAX_FOLHA = 30;
 
-  const IC_POST = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg>';
+  const IC_POST = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.8"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg>';
   const IC_LINHA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h14M5 9.5h14M5 14.5h9M5 19.5h6"/></svg>';
-  const IC_PINCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M12.5 6.5l5 5"/></svg>';
+  const IC_PINCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 19.5l.9-3.9L16.2 4.8a1.8 1.8 0 0 1 2.6 0l.4.4a1.8 1.8 0 0 1 0 2.6L8.4 18.6z"/><path d="M14.2 6.8l3 3"/></svg>';
   const IC_MAIS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 
   let ctx = null, ads = [], agendado = false;
