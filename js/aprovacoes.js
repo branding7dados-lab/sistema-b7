@@ -271,7 +271,7 @@ B7.Aprovacoes = (function () {
     const podeAnular = souAdmin();
 
     painel().innerHTML = '<div class="conteudo entra ap-detalhe">' +
-      '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span>' +
+      '<div class="trilha-nav"><button data-ir="#/">Início</button><span>/</span>' +
         '<button data-ir="#/aprovacoes">Aprovações</button><span>/</span><b>' + esc(ap.titulo) + '</b></div>' +
 
       '<div class="cab-conteudo"><div>' +

@@ -250,6 +250,8 @@ B7.Rota = (function () {
       location.replace('#/painel');
       return;
     }
+    /* zzz119: a antiga Central B7 (contadores) deu lugar ao Panorama */
+    if (B7.Panorama) return B7.Panorama.abrir();
     await B7.Central.abrir();
   }
 

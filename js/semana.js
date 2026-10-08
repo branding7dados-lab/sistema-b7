@@ -91,7 +91,7 @@ B7.Semana = (function () {
     /* zzf: a busca filtra no lugar (antes recarregava a tela inteira a
        cada letra, com esqueleto e foco devolvido à força) */
     painel().innerHTML = '<div class="conteudo entra ss-tela">' +
-      '<div class="trilha ss-so-largo"><a href="#/">Central B7</a><span>/</span><b>Status semanal</b></div>' +
+      '<div class="trilha ss-so-largo"><a href="#/">Início</a><span>/</span><b>Status semanal</b></div>' +
       '<div class="cab-conteudo ss-cab"><div><h1>Status semanal</h1>' +
       '<p>O acompanhamento de sete dias que vai para o cliente.</p></div>' +
       '<button class="b pri ss-novo" id="novo-status" aria-label="Novo status"><span class="ss-novo-mais" aria-hidden="true">+</span><span class="ss-novo-tx">Novo status</span></button></div>' +
@@ -526,7 +526,7 @@ B7.Semana = (function () {
     const semData = S.itens.filter(i => !i.data);
 
     painel().innerHTML = '<div class="conteudo entra sem-editor">' +
-      '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span>' +
+      '<div class="trilha-nav"><button data-ir="#/">Início</button><span>/</span>' +
         '<button data-ir="#/cliente/' + esc(r.client_id) + '">' + esc(r.cliente_nome) + '</button>' +
         '<span>/</span><button data-ir="#/semanas">Status semanal</button>' +
         '<span>/</span><b>' + esc(D().periodoTexto(r.semana_inicio, r.semana_fim)) + '</b></div>' +

@@ -444,7 +444,7 @@ B7.Conteudo = (function () {
     const leitura = souDesignerSomenteLeitura();
 
     painel().innerHTML = '<div class="conteudo entra lg-tela">' +
-      '<div class="trilha"><a href="#/">Central B7</a><span>/</span><b>Linhas editoriais</b></div>' +
+      '<div class="trilha"><a href="#/">Início</a><span>/</span><b>Linhas editoriais</b></div>' +
       '<div class="cab-conteudo"><div><h1>Linhas editoriais</h1>' +
       '<p>O planejamento de conteúdo de cada cliente, mês a mês.</p></div>' +
       (leitura ? '' : '<button class="b pri" id="nova-linha-global">+ Nova linha editorial</button>') + '</div>' +

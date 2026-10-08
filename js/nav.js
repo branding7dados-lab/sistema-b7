@@ -61,7 +61,7 @@ B7.Nav = (function () {
                    pode: () => !!(perm() && perm().painelElegivel()) },
     /* Central: para o Designer (papel) a rota "#/" é a Central de Design;
        para o videomaker puro "#/" redireciona ao Painel, então some. */
-    central:     { rota: '#/', rotulo: 'Central B7', curto: 'Central', base: [''],
+    central:     { rota: '#/', rotulo: 'Panorama', curto: 'Panorama', base: [''],
                    pode: () => pode('') && !(papel() === 'videomaker' && perm().painelElegivel()) },
     clientes:    { rota: '#/clientes', rotulo: 'Clientes', curto: 'Clientes', base: ['clientes', 'cliente'], pode: () => pode('clientes') },
     publicacoes: { rota: '#/publicacoes', rotulo: 'Publicações do Dia', curto: 'Publicações', id: 'nav-publicacoes', base: ['publicacoes'], pode: () => pode('publicacoes') },
@@ -128,11 +128,17 @@ B7.Nav = (function () {
   function resolver() {
     if (!B7.Auth || !B7.Auth.usuario() || !perm()) return null;
     const funcoes = perm().funcoesOperacionais ? perm().funcoesOperacionais() : [];
-    const principal = ['painel', 'central'].filter(permitido);
+    /* zzz119 — "Principal é só o meu Painel" (Kevin). O Panorama saiu do
+       grupo Principal e abre a Operação. Exceções, para ninguém ficar sem
+       casa: o designer (para ele "#/" é a Central de Design, a tela de
+       trabalho dele) e quem não tem Painel (aí o Panorama é a casa). */
+    const temPainel = permitido('painel');
+    const centralEhCasa = papel() === 'designer' || !temPainel;
+    const principal = (centralEhCasa ? ['painel', 'central'] : ['painel']).filter(permitido);
     const usados = new Set(principal);
     const trabalho = intercalar(funcoes.map(f => MEU_TRABALHO[f] || [])).filter(id => permitido(id) && !usados.has(id));
     trabalho.forEach(id => usados.add(id));
-    const operacao = OPERACAO.filter(id => permitido(id) && !usados.has(id));
+    const operacao = (centralEhCasa ? [] : ['central']).concat(OPERACAO).filter(id => permitido(id) && !usados.has(id));
     operacao.forEach(id => usados.add(id));
     const ferramentas = FERRAMENTAS.filter(permitido);
 

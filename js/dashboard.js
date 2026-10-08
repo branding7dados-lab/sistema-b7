@@ -182,7 +182,7 @@ B7.Dashboard = (function () {
       navigator.onLine ? 'O banco não respondeu. Confira a conexão e tente de novo.'
                        : 'Você está sem conexão no momento.',
       '<button class="b pri" onclick="B7.Dashboard.' + (acao || 'abrir') + '()">Tentar novamente</button>' +
-      '<button class="b contorno" onclick="location.hash=\'#/\'">Voltar para a Central B7</button>') + '</div>';
+      '<button class="b contorno" onclick="location.hash=\'#/\'">Voltar para o início</button>') + '</div>';
   }
 
   /* ===================================================== DASHBOARD */
@@ -1840,7 +1840,7 @@ B7.Dashboard = (function () {
     const opInicio = [];
     if (u && !ehCli) {
       if (PM.painelElegivel && PM.painelElegivel()) opInicio.push(['#/painel', 'Painel']);
-      if (B7.Auth.papel() !== 'videomaker') opInicio.push(['#/', 'Central B7']);
+      if (B7.Auth.papel() !== 'videomaker') opInicio.push(['#/', 'Panorama']);
       (PM.MODULOS || []).forEach(md => { if (PM.temModulo && PM.temModulo(md.id)) opInicio.push(['#/' + md.rotas[0], md.rotulo]); });
     }
     /* zzz72: os ajustes do teleprompter são de quem grava ou coordena */
@@ -2256,7 +2256,7 @@ B7.Dashboard = (function () {
       .sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
 
     painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span><b>Lixeira</b></div>' +
+      '<div class="trilha-nav"><button data-ir="#/">Início</button><span>/</span><b>Lixeira</b></div>' +
       '<div class="secao-topo"><h2 style="font-size:22px">Lixeira</h2>' +
       '<span class="conta">' + itens.length + '</span></div>' +
       '<p style="font-size:12.5px;color:var(--ink-3);margin-bottom:16px">' +
@@ -2310,12 +2310,12 @@ B7.Dashboard = (function () {
     catch (e) { return erro(e, 'abrirArquivados'); }
 
     painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span><b>Arquivados</b></div>' +
+      '<div class="trilha-nav"><button data-ir="#/">Início</button><span>/</span><b>Arquivados</b></div>' +
       '<div class="secao-topo"><h2 style="font-size:22px">Arquivados</h2>' +
       '<span class="conta">' + gravacoes.length + '</span></div>' +
       (gravacoes.length ? '<div class="grade">' + gravacoes.map(cardGravacao).join('') + '</div>'
         : estadoB7(IC.gravacoes, 'Nenhuma gravação arquivada.',
-                   'Arquive o que já saiu do ar para limpar a Central sem perder nada.')) +
+                   'Arquive o que já saiu do ar para limpar as listas sem perder nada.')) +
       '</div>';
     ligar();
   }
@@ -2348,7 +2348,7 @@ B7.Dashboard = (function () {
 
   /* ---- apoio para a Central de Conteúdo ---- */
   function trilhaCliente(cliente, atual) {
-    return '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span>' +
+    return '<div class="trilha-nav"><button data-ir="#/">Início</button><span>/</span>' +
       '<button data-ir="#/clientes">Clientes</button><span>/</span>' +
       '<button data-ir="#/cliente/' + esc(cliente.id) + '">' + esc(cliente.nome) + '</button>' +
       '<span>/</span><b>' + esc(atual) + '</b></div>';

@@ -681,6 +681,16 @@ B7.DB = (function () {
        Cada número tem uma definição e um filtro equivalente na lista, para
        o total e a lista nunca discordarem. Arquivados e excluídos ficam
        de fora de tudo. */
+    /* Panorama (js/panorama.js): o raio-X do mês por cliente, numa ida só
+       ao banco. A função roda com as permissões de quem chama. Limite de
+       12 s: se o banco não responder, a tela mostra o erro em vez de
+       ficar girando. */
+    async panoramaMes(ano, mes) {
+      return Promise.race([
+        this.rpc('panorama_mes', { p_ano: ano, p_mes: mes }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('O banco demorou para responder.')), 12000))
+      ]);
+    },
     async painelProducao(filtros) {
       filtros = filtros || {};
       /* Antes eram 10 consultas de contagem em paralelo (6 em gravacoes +
