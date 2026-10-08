@@ -374,6 +374,23 @@ export async function extrairAcao(texto: string, sb: SupabaseClient): Promise<{ 
     : 'Não consegui montar a proposta. Diga o cliente e o título da demanda.'), acao };
 }
 
+/** zzz123 — resposta em fluxo: repassa o texto conforme chega, mas nunca
+ *  o marcador de ação ("[[ACAO …]]"), que é coisa do servidor. Segura o
+ *  último caractere quando ele é "[" (pode ser o começo do marcador). O
+ *  texto definitivo, já limpo, vai no fim e substitui o que foi mostrado. */
+export function filtroDeFluxo(emitir: (texto: string) => void): (trecho: string) => void {
+  let tudo = '', enviado = 0, travado = false;
+  return (trecho: string) => {
+    if (travado) return;
+    tudo += trecho;
+    const i = tudo.indexOf('[[');
+    let ate = tudo.length;
+    if (i >= 0) { ate = i; travado = true; }
+    else if (tudo.endsWith('[')) ate = tudo.length - 1;
+    if (ate > enviado) { emitir(tudo.slice(enviado, ate)); enviado = ate; }
+  };
+}
+
 export function montarMensagens(p: Pedido, contexto: string, hist: Fala[], quem: { nome: string; funcao: string }, podeAgir = false): Mensagem[] {
   const u: string[] = [];
   u.push('QUEM PERGUNTA: ' + corta(quem.nome, 60) + (quem.funcao ? ' (' + quem.funcao + ')' : '') + '.');

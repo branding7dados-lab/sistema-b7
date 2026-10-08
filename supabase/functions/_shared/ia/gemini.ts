@@ -125,5 +125,75 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
     }
   }
 
-  return { nome: 'gemini', modelo, gerar };
+  /* zzz123 — a mesma chamada, em fluxo (streamGenerateContent, SSE): o
+     texto chega em pedaços e vai sendo repassado. As regras do fim são
+     as de gerar(): recusa, corte por limite de tokens e resposta vazia
+     continuam sendo erro, mesmo que parte do texto já tenha saído. */
+  async function gerarFluxo(p: PedidoDeGeracao, aoTrecho: (texto: string) => void): Promise<RespostaDoProvedor> {
+    const sistema = p.mensagens.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+    const usuario = p.mensagens.filter(m => m.role === 'user').map(m => m.content).join('\n\n');
+    const ctrl = new AbortController();
+    const relogio = setTimeout(() => ctrl.abort(), p.prazoMs);
+    try {
+      const r = await fetchFn(BASE + modelo + ':streamGenerateContent?alt=sse', {
+        method: 'POST', signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': chave },
+        body: JSON.stringify({
+          ...(sistema ? { systemInstruction: { parts: [{ text: sistema }] } } : {}),
+          contents: [{ role: 'user', parts: [{ text: usuario }] }],
+          generationConfig: { temperature: p.temperatura, maxOutputTokens: p.maxTokens }
+        })
+      });
+      if (!r.ok || !r.body) {
+        let corpo: RespostaGemini | null = null;
+        try { corpo = await r.json(); } catch (_e) { corpo = null; }
+        return { ok: false, erro: r.ok ? 'resposta_invalida' : erroPorStatus(r.status, corpo), status: r.status };
+      }
+
+      const leitor = r.body.getReader(), dec = new TextDecoder();
+      let resto = '', texto = '', fim = '', versao = '', bloqueio = false;
+      let uso: { promptTokenCount?: number; candidatesTokenCount?: number } = {};
+      const tratar = (linha: string) => {
+        if (!linha.startsWith('data:')) return;
+        const dado = linha.slice(5).trim();
+        if (!dado || dado === '[DONE]') return;
+        let j: RespostaGemini | null = null;
+        try { j = JSON.parse(dado); } catch (_e) { return; }
+        if (!j) return;
+        if (j.promptFeedback && j.promptFeedback.blockReason) bloqueio = true;
+        if (j.usageMetadata) uso = j.usageMetadata;
+        if (j.modelVersion) versao = j.modelVersion;
+        const c = j.candidates && j.candidates[0];
+        if (!c) return;
+        if (c.finishReason) fim = c.finishReason;
+        const pedaco = ((c.content && c.content.parts) || [])
+          .filter(x => x && !x.thought && typeof x.text === 'string').map(x => x.text).join('');
+        if (pedaco) { texto += pedaco; try { aoTrecho(pedaco); } catch (_e) { /* quem ouve não derruba a geração */ } }
+      };
+      for (;;) {
+        const { done, value } = await leitor.read();
+        if (done) break;
+        resto += dec.decode(value, { stream: true });
+        const linhas = resto.split(/\r?\n/);
+        resto = linhas.pop() || '';
+        linhas.forEach(tratar);
+      }
+      if (resto) tratar(resto);
+
+      if (bloqueio || RECUSA.has(fim)) return { ok: false, erro: 'recusado', status: r.status };
+      if (fim === 'MAX_TOKENS') return { ok: false, erro: 'resposta_invalida', status: r.status };
+      if (!texto.trim()) return { ok: false, erro: 'resposta_invalida', status: r.status };
+      return {
+        ok: true, texto, modelo: versao || modelo,
+        tokensEntrada: typeof uso.promptTokenCount === 'number' ? uso.promptTokenCount : null,
+        tokensSaida: typeof uso.candidatesTokenCount === 'number' ? uso.candidatesTokenCount : null
+      };
+    } catch (e) {
+      return { ok: false, erro: (e as Error).name === 'AbortError' ? 'tempo' : 'indisponivel', status: null };
+    } finally {
+      clearTimeout(relogio);
+    }
+  }
+
+  return { nome: 'gemini', modelo, gerar, gerarFluxo };
 }

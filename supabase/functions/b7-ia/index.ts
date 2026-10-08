@@ -18,7 +18,20 @@
 //         { tarefa: 'linha', operacao, linha_id, … }   (ver _shared/ia/linha.ts)
 //         { tarefa: 'analise', operacao, roteiro_id }  (ver _shared/ia/analise.ts)
 //         { tarefa: 'resumo', operacao, status_id | cliente_id+ano+mes }  (ver _shared/ia/resumo.ts)
-//         { tarefa: 'chat', texto, conversa_id?, cliente_id? }             (ver _shared/ia/chat.ts)
+//         { tarefa: 'chat', texto, conversa_id?, cliente_id?, fluxo? }     (ver _shared/ia/chat.ts)
+//         { tarefa: 'oportunidade', oportunidade_id, cliente_id, dia?, instrucao? }  (ver _shared/ia/oportunidade.ts)
+//
+// MEMÓRIA DO CLIENTE (zzz123). Toda tarefa que é de um cliente recebe,
+// antes da mensagem da tarefa, o que a equipe anotou para a IA na ficha
+// dele (_shared/ia/memoria.ts). Lida com a sessão da pessoa.
+//
+// FLUXO (zzz123). Só no chat, e só se a tela pedir ("fluxo": true): a
+// resposta sai como text/event-stream, uma linha "data: {json}" por vez:
+//   { t: 'trecho', texto }           pedaço do texto, na ordem
+//   { t: 'fim', ok: true, texto, … } o mesmo objeto da resposta comum
+//   { t: 'erro', categoria }         o mesmo de { ok: false, categoria }
+// Sessão, permissão, limite e pedido inválido continuam respondendo em
+// JSON comum, antes de qualquer fluxo começar.
 // Resposta de produto (HTTP 200), no formato do B7 — a tela não conhece
 // o formato do provedor:
 //   { ok: true, texto, id }    um campo de texto
@@ -40,13 +53,15 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { comCors } from '../_shared/cors.ts';
-import { gerar, provedorAtual, quaseIgual } from '../_shared/ia/servico.ts';
+import { gerar, gerarFluxo, provedorAtual, quaseIgual, type Resultado } from '../_shared/ia/servico.ts';
 import type { Mensagem } from '../_shared/ia/provedor.ts';
 import { carregarContexto, limiteDeSaida, limparSaida, montarMensagens, validar, FORA } from '../_shared/ia/roteiro.ts';
 import * as Linha from '../_shared/ia/linha.ts';
 import * as Analise from '../_shared/ia/analise.ts';
 import * as Resumo from '../_shared/ia/resumo.ts';
 import * as Chat from '../_shared/ia/chat.ts';
+import * as Oportunidade from '../_shared/ia/oportunidade.ts';
+import * as Memoria from '../_shared/ia/memoria.ts';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -98,7 +113,8 @@ Deno.serve(comCors(async (req: Request) => {
   const pAnalise = corpo.tarefa === 'analise' ? Analise.validar(corpo) : null;
   const pResumo = corpo.tarefa === 'resumo' ? Resumo.validar(corpo) : null;
   const pChat = corpo.tarefa === 'chat' ? Chat.validar(corpo) : null;
-  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat;
+  const pOport = corpo.tarefa === 'oportunidade' ? Oportunidade.validar(corpo) : null;
+  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport;
   if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
 
   /* zzz71: liga/desliga do administrador (Configurações → Administração),
@@ -114,7 +130,7 @@ Deno.serve(comCors(async (req: Request) => {
   /* Linha editorial: designer só lê (a tela já trava os campos para ele);
      quem não pode editar não ganha um caminho de escrita pela IA. A
      análise de roteiro segue a mesma regra: é ferramenta de quem escreve. */
-  if ((pLinha || pAnalise || pResumo) && perfil.papel === 'designer') return json({ ok: false, categoria: 'sem_permissao' }, 403);
+  if ((pLinha || pAnalise || pResumo || pOport) && perfil.papel === 'designer') return json({ ok: false, categoria: 'sem_permissao' }, 403);
 
   /* ---- sem provedor configurado: recurso indisponível, nenhuma chamada externa ---- */
   const provedor = provedorAtual(n => Deno.env.get(n));
@@ -139,12 +155,15 @@ Deno.serve(comCors(async (req: Request) => {
     /** depois de dar certo: grava o que precisar e devolve campos a mais para a tela */
     aposOk?: (texto: string) => Promise<Record<string, unknown>>;
   };
+  /* de qual cliente é o pedido, para a memória (o chat diz na conversa) */
+  let clienteDoPedido: string | null | undefined = undefined;
   if (pChat && pChat.ok) {
     /* conversa livre: a conversa tem que ser da pessoa; o que o assistente
        sabe do B7 é lido com a sessão dela (RLS) */
     const pedido = pChat.pedido;
     const conv = await Chat.abrirConversa(sb, sbDaPessoa, perfil.id, pedido);
     if (!conv) return json({ ok: false, categoria: 'nao_encontrado' });
+    clienteDoPedido = conv.clienteId;
     const [hist, contexto] = await Promise.all([Chat.historico(sb, conv), Chat.carregarContexto(sbDaPessoa, conv.clienteId)]);
     const FUNCOES: Record<string, string> = { coordenador: 'Coordenação', designer: 'Designer', videomaker: 'Videomaker' };
     const quem = { nome: String(perfil.nome || ''), funcao: perfil.papel === 'admin' ? 'Administrador' : (FUNCOES[String(perfil.funcao)] || '') };
@@ -196,6 +215,18 @@ Deno.serve(comCors(async (req: Request) => {
       mensagens: Resumo.montarMensagens(pedido, ctx), maxTokens: Resumo.limiteDeSaida(pedido),
       temperatura: 0.5, limpar: Resumo.limpador(pedido, ctx), json: false
     };
+  } else if (pOport && pOport.ok) {
+    /* ideias para uma data e um cliente: lista para ler e copiar, nada é aplicado */
+    const pedido = pOport.pedido;
+    const ctx = await Oportunidade.carregarContexto(sbDaPessoa, pedido);
+    if (!ctx) return json({ ok: false, categoria: 'nao_encontrado' });
+    if (!Oportunidade.suficiente(ctx)) return json({ ok: false, categoria: 'contexto' });
+    clienteDoPedido = pedido.clienteId;
+    t = {
+      recurso: 'oportunidade', acao: 'ideias', entidadeTipo: 'oportunidade', entidadeId: pedido.oportunidadeId, tamanhoEntrada: pedido.instrucao.length,
+      mensagens: Oportunidade.montarMensagens(pedido, ctx), maxTokens: 2200, temperatura: 0.9, limpar: Oportunidade.limpar, json: true,
+      esquema: Oportunidade.esquema()
+    };
   } else {
     const pedido = (pLinha as { ok: true; pedido: Linha.Pedido }).pedido;
     const ctx = await Linha.carregarContexto(sbDaPessoa, pedido);
@@ -214,6 +245,12 @@ Deno.serve(comCors(async (req: Request) => {
     };
   }
 
+  /* ---- memória do cliente: entra antes da mensagem da tarefa ---- */
+  {
+    const cli = clienteDoPedido !== undefined ? clienteDoPedido : await Memoria.clienteDaTarefa(sbDaPessoa, corpo);
+    t.mensagens = Memoria.comMemoria(t.mensagens, await Memoria.memoriaDoCliente(sbDaPessoa, cli));
+  }
+
   /* ---- registro: metadados, nunca o texto enviado nem a sugestão ---- */
   const { data: reg } = await sb.from('ia_uso').insert({
     perfil_id: perfil.id, recurso: t.recurso, acao: t.acao,
@@ -229,6 +266,45 @@ Deno.serve(comCors(async (req: Request) => {
      explica — nunca uma sugestão idêntica. Erro de cota/limite não
      repete (ver servico.ts). */
   const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema };
+
+  const fecharRegistro = async (r: Resultado) => {
+    if (!reg) return;
+    await sb.from('ia_uso').update(r.ok ? {
+      status: 'ok', duracao_ms: r.ms, modelo: r.modelo,
+      tokens_entrada: r.tokensEntrada, tokens_saida: r.tokensSaida, tamanho_saida: r.texto.length,
+      /* com roteador: quem atendeu por trás dele, se houve troca e o custo informado */
+      ...(r.servidoPor ? { provedor: (r.provedor + ':' + r.servidoPor).slice(0, 80) } : {}),
+      ...(r.trocas ? { houve_fallback: true } : {}),
+      ...(r.custo != null ? { custo: r.custo } : {})
+    } : {
+      status: 'erro', erro_categoria: r.erro, duracao_ms: r.ms
+    }).eq('id', reg.id);
+  };
+
+  /* ---- zzz123: chat em fluxo — o texto vai saindo enquanto é escrito ---- */
+  if (pChat && pChat.ok && corpo.fluxo === true) {
+    const enc = new TextEncoder();
+    const tarefa = t;
+    const fluxo = new ReadableStream<Uint8Array>({
+      async start(ctrl) {
+        const manda = (o: unknown) => { try { ctrl.enqueue(enc.encode('data: ' + JSON.stringify(o) + '\n\n')); } catch (_e) { /* a pessoa fechou a tela */ } };
+        try {
+          const rf = await gerarFluxo(provedor, tarefa.mensagens, op, Chat.filtroDeFluxo(texto => manda({ t: 'trecho', texto })));
+          await fecharRegistro(rf);
+          if (!rf.ok) manda({ t: 'erro', categoria: rf.categoria });
+          else {
+            const extra = tarefa.aposOk ? await tarefa.aposOk(rf.texto) : {};
+            manda({ t: 'fim', ok: true, texto: rf.texto, id: reg ? reg.id : null, ...extra });
+          }
+        } catch (_e) {
+          manda({ t: 'erro', categoria: 'indisponivel' });
+        }
+        try { ctrl.close(); } catch (_e) { /* já fechado */ }
+      }
+    });
+    return new Response(fluxo, { headers: { ...CORS, 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' } });
+  }
+
   let r = await gerar(provedor, t.mensagens, op);
   let repetiu = false;
   if (r.ok && t.original && r.texto.trim() !== FORA && quaseIgual(r.texto, t.original)) {
@@ -240,18 +316,7 @@ Deno.serve(comCors(async (req: Request) => {
     if (segunda.ok) r = segunda;
   }
 
-  if (reg) {
-    await sb.from('ia_uso').update(r.ok ? {
-      status: 'ok', duracao_ms: r.ms, modelo: r.modelo,
-      tokens_entrada: r.tokensEntrada, tokens_saida: r.tokensSaida, tamanho_saida: r.texto.length,
-      /* com roteador: quem atendeu por trás dele, se houve troca e o custo informado */
-      ...(r.servidoPor ? { provedor: (r.provedor + ':' + r.servidoPor).slice(0, 80) } : {}),
-      ...(r.trocas ? { houve_fallback: true } : {}),
-      ...(r.custo != null ? { custo: r.custo } : {})
-    } : {
-      status: 'erro', erro_categoria: r.erro, duracao_ms: r.ms
-    }).eq('id', reg.id);
-  }
+  await fecharRegistro(r);
 
   if (!r.ok) return json({ ok: false, categoria: r.categoria });
   /* pedido sem relação com o texto: o modelo responde o código combinado

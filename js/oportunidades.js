@@ -314,6 +314,12 @@ B7.Oportunidades = (function () {
     const m = B7.UI.modal('<div class="op-folha" id="op-folha">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>', { classe: 'tp-folha cb-folha op-fundo', larga: true });
     let b;
     try { b = await carregarBase(); } catch (e) { m.querySelector('#op-folha').innerHTML = '<p class="cb-vazio">Não foi possível carregar a oportunidade.</p>'; return; }
+    /* zzz123 — ideias com IA para esta data e UM cliente. Só sob pedido
+       (o botão), só para ler e copiar: nada é criado nem aplicado. O
+       estado mora aqui, fora do pintar(), para um ajuste de relevância
+       não apagar o que já foi sugerido. */
+    const ia = { cli: null, inst: '', itens: null, indo: false, msg: '' };
+    const podeIA = () => !!(B7.IA && B7.IA.ligada && B7.IA.ligada('linhas')) && papel() !== 'designer';
     const pintar = () => {
       const cx = m.querySelector('#op-folha'); if (!cx) return;
       const op = b.todas.get(opId);
@@ -361,6 +367,8 @@ B7.Oportunidades = (function () {
                 : (op.geral || ehFeriado(op)) ? 'Data geral: serve para qualquer cliente, sem um segmento específico.' : 'Nenhum cliente com segmento correspondente.') + '</p>') +
           '</section>' +
 
+          (podeIA() && op.ativo ? '<section class="op-sec op-ia" id="op-ia"></section>' : '') +
+
           '<section class="op-sec"><h4>Fontes <span>' + provas.length + '</span></h4>' +
             (provas.length ? '<ul class="op-fontes">' + provas.map(p =>
               '<li class="' + (p.ativo ? '' : 'inativa') + '"><div><b>' + esc(FONTES_ROT[p.fonte_id] || p.fonte_id) + '</b>' +
@@ -393,7 +401,51 @@ B7.Oportunidades = (function () {
       const primeiroMuito = rels.find(r => r.nivel === 'muito');
       const sugerido = ctxCli ? ctxCli.id : primeiroMuito ? primeiroMuito.cliente.id : null;
       const us = cx.querySelector('[data-usar]'); if (us) us.onclick = () => modalUsarLinha(op, oc, sugerido, () => { pintarLinhas(); ctx.aoMudar && ctx.aoMudar(); });
+      if (ia.cli === null) ia.cli = sugerido || (rels.find(r => r.nivel) || { cliente: { id: '' } }).cliente.id || '';
+      pintarIA(op, oc, rels);
       pintarLinhas();
+    };
+    const pintarIA = (op, oc, rels) => {
+      const sec = m.querySelector('#op-ia'); if (!sec) return;
+      const relIds = new Set(rels.filter(r => r.nivel).map(r => r.cliente.id));
+      const opt = c => '<option value="' + esc(c.id) + '"' + (c.id === ia.cli ? ' selected' : '') + '>' + esc(c.nome) + '</option>';
+      const relacionados = b.clientes.filter(c => relIds.has(c.id)), outros = b.clientes.filter(c => !relIds.has(c.id));
+      sec.innerHTML = '<h4><i class="op-ia-ic">' + IC + '</i>Ideias de conteúdo' + (ia.itens ? ' <span>' + ia.itens.length + '</span>' : '') + '</h4>' +
+        '<div class="op-ia-form">' +
+          '<select class="campo" id="op-ia-cli" aria-label="Cliente"' + (ia.indo ? ' disabled' : '') + '><option value="">Escolha o cliente…</option>' +
+            (relacionados.length ? '<optgroup label="Relacionados a esta data">' + relacionados.map(opt).join('') + '</optgroup>' : '') +
+            (outros.length ? '<optgroup label="Outros clientes">' + outros.map(opt).join('') + '</optgroup>' : '') + '</select>' +
+          '<input class="campo" id="op-ia-inst" maxlength="300" value="' + esc(ia.inst) + '" placeholder="Algum pedido? (opcional) Ex.: foco em Reels, tom mais leve" ' +
+            'aria-label="Pedido para a IA (opcional)" autocomplete="off"' + (ia.indo ? ' disabled' : '') + '>' +
+          '<button type="button" class="b pri" id="op-ia-go"' + (ia.indo || !ia.cli ? ' disabled' : '') + '>' + (ia.indo ? 'Gerando…' : (ia.itens ? 'Gerar de novo' : 'Sugerir ideias')) + '</button>' +
+        '</div>' +
+        (ia.msg ? '<p class="op-ia-msg" role="alert">' + esc(ia.msg) + '</p>' : '') +
+        (ia.indo ? '<div class="op-ia-lista" aria-busy="true">' + [0, 1, 2].map(() => '<div class="op-ia-item esq-item"><i class="esq" style="width:30%"></i><i class="esq" style="width:70%"></i><i class="esq" style="width:95%"></i></div>').join('') + '</div>'
+          : ia.itens ? '<div class="op-ia-lista">' + ia.itens.map((x, i) =>
+              '<article class="op-ia-item" style="--i:' + i + '"><div class="op-ia-topo"><span class="op-ia-fmt">' + esc(x.formato) + '</span><b>' + esc(x.titulo) + '</b></div>' +
+                (x.gancho ? '<p class="op-ia-gancho"><small>Gancho</small>' + esc(x.gancho) + '</p>' : '') +
+                '<p class="op-ia-leg"><small>Legenda</small>' + esc(x.legenda).replace(/\n/g, '<br>') + '</p>' +
+                '<div class="op-ia-bts"><button type="button" class="b fina contorno" data-ia-leg="' + i + '">Copiar legenda</button>' +
+                  '<button type="button" class="b fina contorno" data-ia-tudo="' + i + '">Copiar tudo</button></div></article>').join('') + '</div>' +
+              '<p class="op-ia-nota">A IA pode errar. Confira antes de usar — nada foi criado nem aplicado.</p>'
+            : '<p class="op-nada">A IA usa a estratégia, a linha editorial e a memória do cliente escolhido. Nada é criado: você lê e copia o que servir.</p>');
+      const sel = sec.querySelector('#op-ia-cli'), inst = sec.querySelector('#op-ia-inst'), go = sec.querySelector('#op-ia-go');
+      sel.onchange = () => { ia.cli = sel.value; ia.itens = null; ia.msg = ''; pintarIA(op, oc, rels); };
+      inst.oninput = () => { ia.inst = inst.value; };
+      inst.onkeydown = e => { if (e.key === 'Enter' && !go.disabled) { e.preventDefault(); go.click(); } };
+      go.onclick = async () => {
+        if (ia.indo || !ia.cli) return;
+        ia.indo = true; ia.msg = ''; pintarIA(op, oc, rels);
+        const r = await B7.IA.pedir('oportunidade', { oportunidade_id: op.id, cliente_id: ia.cli, dia: oc.ini, instrucao: ia.inst.trim() });
+        ia.indo = false;
+        if (r && r.ok && Array.isArray(r.itens) && r.itens.length) ia.itens = r.itens;
+        else if (!(r && r.cancelado)) ia.msg = (r && r.mensagem) || 'Não foi possível gerar ideias agora. Tente de novo.';
+        if (document.body.contains(sec)) pintarIA(op, oc, rels);
+      };
+      const copiar = (texto, msg) => (B7.UI.copiarTexto ? B7.UI.copiarTexto(texto, { msgSucesso: msg }) : navigator.clipboard.writeText(texto).then(() => B7.UI.toast(msg)));
+      sec.querySelectorAll('[data-ia-leg]').forEach(x => x.onclick = () => copiar(ia.itens[+x.dataset.iaLeg].legenda, 'Legenda copiada.'));
+      sec.querySelectorAll('[data-ia-tudo]').forEach(x => x.onclick = () => { const it = ia.itens[+x.dataset.iaTudo];
+        copiar(it.formato + ' — ' + it.titulo + '\n\nGancho: ' + it.gancho + '\n\nLegenda:\n' + it.legenda, 'Ideia copiada.'); });
     };
     const pintarLinhas = async () => {
       const sec = m.querySelector('#op-linhas'); if (!sec) return;
