@@ -897,9 +897,9 @@ B7.Painel = (function () {
     const h = hoje();
     B7.Oportunidades.periodo(h, somarDias(h, 45)).then(itens => {
       if (!document.body.contains(cx)) return;
-      const local = i => ['municipal', 'estadual'].includes(i.op.abrangencia);
       const peso = i => i.nivelMax === 'muito' ? 0 : i.nivelMax === 'relacionada' ? 1 : i.nivelMax === 'geral' ? 2 : i.op.abrangencia === 'nacional' ? 3 : 4;
-      const vale = itens.filter(i => i.nivelMax || !local(i)).sort((a, b) => a.ini.localeCompare(b.ini) || peso(a) - peso(b) || String(a.op.nome).localeCompare(String(b.op.nome), 'pt-BR'));
+      /* zzz122: só o que a tela classifica como relevante para algum cliente ou geral — igual ao aviso */
+      const vale = itens.filter(i => i.nivelMax).sort((a, b) => a.ini.localeCompare(b.ini) || peso(a) - peso(b) || String(a.op.nome).localeCompare(String(b.op.nome), 'pt-BR'));
       const deHoje = vale.filter(i => i.ini === h);
       const ic = '<span class="pn-hoje-ic" aria-hidden="true">' + (B7.Oportunidades.IC || '') + '</span>';
       if (deHoje.length) {
