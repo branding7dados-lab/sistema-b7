@@ -263,8 +263,9 @@ B7.UI = (function () {
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri' + (perigo ? ' perigo' : '') + '" data-ok data-foco>' +
       esc(rotulo) + '</button></div>',
-      /* fechar pelo X, pelo fundo ou pelo Esc conta como cancelar */
-      { aoFechar: () => { if (!decidido) { decidido = true; resolver(false); } } });
+      /* fechar pelo X, pelo fundo ou pelo Esc conta como cancelar.
+         zzz105: toda confirmação usa o desenho de alerta (styles/global.css) */
+      { classe: 'alerta', aoFechar: () => { if (!decidido) { decidido = true; resolver(false); } } });
 
     m.querySelector('[data-ok]').onclick = () => {
       decidido = true;
