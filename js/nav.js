@@ -227,6 +227,15 @@ B7.Nav = (function () {
       try { localStorage.setItem(CHAVE_FECHADOS, JSON.stringify([...nav.querySelectorAll('.ng.fechado')].map(s => s.dataset.grupo))); } catch (e) {}
       ariaMulti(); marcarGrupoAtivo();
     });
+    /* zzz116: recolhida, a barra mostra os ícones de cada destino (não
+       mais um botão por grupo); o nome aparece numa dica ao passar */
+    nav.querySelectorAll('.ng a').forEach(a => {
+      const dica = () => { if (document.body.classList.contains('recolhida')) B7.UI.dica(a, a.getAttribute('aria-label') || a.textContent.trim()); };
+      a.addEventListener('mouseenter', dica);
+      a.addEventListener('focus', dica);
+      a.addEventListener('mouseleave', () => B7.UI.esconderDica());
+      a.addEventListener('blur', () => B7.UI.esconderDica());
+    });
     nav.querySelectorAll('.ntr-bt').forEach(b => {
       b.onclick = ev => alternarFlyout(b.dataset.grupoBt, b, ev.detail === 0);
       const dica = () => { if (!flyout || flyout.dataset.grupo !== b.dataset.grupoBt) B7.UI.dica(b, b.getAttribute('aria-label')); };
