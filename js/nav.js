@@ -497,9 +497,13 @@ B7.Nav = (function () {
     const rb = barra.getBoundingClientRect(), rl = li ? li.getBoundingClientRect() : on.getBoundingClientRect();
     if (!rb.width || !rl.width) return;
     if (!luzPosta) barra.classList.add('sem-trans');
-    const w = luz.offsetWidth || 52, h = luz.offsetHeight || 30;
-    const x = rl.left - rb.left + rl.width / 2 - w / 2;
-    const y = rl.top - rb.top + on.offsetTop + on.offsetHeight / 2 - h / 2;
+    /* zzz102: a luz cobre o item inteiro (ícone + nome), como a cápsula
+       da barra de abas do iOS — largura do item, centrada na altura dele */
+    const w = Math.round(rl.width);
+    luz.style.width = w + 'px';
+    const h = luz.offsetHeight || 54;
+    const x = rl.left - rb.left - barra.clientLeft;
+    const y = rl.top - rb.top - barra.clientTop + (rl.height - h) / 2;
     /* zzj: viajando entre itens, a luz estica no sentido do movimento e
        deixa um rastro; o ícone que recebe dá um pulinho */
     const xAnt = luzX;
@@ -511,7 +515,7 @@ B7.Nav = (function () {
       const svg = on.querySelector('svg');
       if (svg) { svg.classList.remove('pula'); void svg.offsetWidth; svg.classList.add('pula'); setTimeout(() => svg.classList.remove('pula'), 650); }
     }
-    luz.style.transform = 'translate3d(' + Math.round(x) + 'px,' + Math.round(y - 8) + 'px,0)';
+    luz.style.transform = 'translate3d(' + Math.round(x) + 'px,' + Math.round(y) + 'px,0)';
     barra.classList.add('com-luz');
     if (!luzPosta) { luz.offsetWidth; requestAnimationFrame(() => barra.classList.remove('sem-trans')); luzPosta = true; }
   }
