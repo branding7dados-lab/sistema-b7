@@ -229,6 +229,8 @@ B7.Nav = (function () {
     });
     /* zzz116: recolhida, a barra mostra os ícones de cada destino (não
        mais um botão por grupo); o nome aparece numa dica ao passar */
+    /* zzz118: ordem de cada peça de cima para baixo, para a cascata */
+    nav.querySelectorAll('.ng-cab, .ng a').forEach((el, i) => el.style.setProperty('--n', i));
     nav.querySelectorAll('.ng a').forEach(a => {
       const dica = () => { if (document.body.classList.contains('recolhida')) B7.UI.dica(a, a.getAttribute('aria-label') || a.textContent.trim()); };
       a.addEventListener('mouseenter', dica);

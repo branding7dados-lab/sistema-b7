@@ -1042,14 +1042,21 @@ B7.Rota = (function () {
         if (document.getElementById('tela-editor').classList.contains('ativa')) B7.Editor.aplicarZoom();
       };
       const calmo = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (!b.classList.contains('recolhida') && !calmo) {
-        b.classList.add('recolhendo');
-        setTimeout(() => { b.classList.remove('recolhendo'); b.classList.add('recolhida'); B7.pref.gravar('sidebar_recolhida', true); depois(); }, 90);
-      } else {
-        const r = b.classList.toggle('recolhida');
-        B7.pref.gravar('sidebar_recolhida', r);
-        depois();
+      /* zzz118 — um movimento só. Antes eram duas etapas (os nomes sumiam
+         em 90 ms e só então a largura mudava), o que dava um "soluço" no
+         começo. Agora a largura e os nomes andam juntos; as classes
+         sb-indo / sb-vindo ficam no body só durante a transição e ligam a
+         cascata dos nomes e o reflexo que cruza o vidro (styles/nav.css). */
+      const r = b.classList.toggle('recolhida');
+      B7.pref.gravar('sidebar_recolhida', r);
+      if (!calmo) {
+        b.classList.remove('sb-indo', 'sb-vindo');
+        void b.offsetWidth;
+        b.classList.add(r ? 'sb-indo' : 'sb-vindo');
+        clearTimeout(btRecolher._sb);
+        btRecolher._sb = setTimeout(() => b.classList.remove('sb-indo', 'sb-vindo'), 900);
       }
+      depois();
     };
     /* ---- gaveta (sidebar no celular) ----
        Abre pelo hambúrguer; fecha ao tocar fora (o overlay é o próprio

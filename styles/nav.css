@@ -632,7 +632,7 @@ html.modo-leve .nm-folha .nm-item,html.modo-leve .nm-folha .nm-ic,html.modo-leve
     background:rgba(255,255,255,.16);opacity:0;transition:opacity .25s ease;}
   body[data-shell="interno"].recolhida .nav.multi .ng-cab{pointer-events:none;}
   body[data-shell="interno"].recolhida .nav.multi .ng-cab:after{opacity:1;transition-delay:.12s;}
-  body[data-shell="interno"].recolhida .nav.multi :is(.ng-tit,.ng-seta,.ng-ponto){opacity:0 !important;}
+  body[data-shell="interno"].recolhida .nav.multi :is(.ng-tit,.ng-seta,.ng-ponto){opacity:0;}
   body[data-shell="interno"].recolhida .nav.multi .ng:first-child .ng-cab:after{opacity:0;}
   /* recolhida, todo grupo fica aberto: os ícones são a navegação */
   body[data-shell="interno"].recolhida .nav.multi .ng.fechado .ng-painel{grid-template-rows:1fr;opacity:1;visibility:visible;}
@@ -691,3 +691,80 @@ html.modo-leve .nm-folha .nm-item,html.modo-leve .nm-folha .nm-ic,html.modo-leve
 @media (prefers-reduced-motion:reduce){
   body[data-shell="interno"] .lateral,body[data-shell="interno"] .lateral *{transition:none !important;}
 }
+
+/* =====================================================================
+   zzz118 — TRANSIÇÃO DA BARRA LATERAL, refeita a partir do vídeo do Kevin
+   (08/10, 14:36): "quero ela cinematográfica e mais fluida".
+   O que o vídeo mostrava:
+     • duas etapas: os nomes apagavam, DEPOIS a largura mudava (soluço);
+     • ao expandir, os nomes apareciam cortados na borda ("Configur");
+     • tudo aparecia de uma vez, sem ordem.
+   Agora:
+     • um movimento só, mais longo e com freada suave (0,62 s);
+     • ao expandir, os nomes entram em CASCATA de cima para baixo,
+       deslizando da esquerda, só depois que há largura para eles;
+     • ao recolher, saem rápido, também em cascata;
+     • durante o movimento a borda direita da lista se dissolve — nada é
+       cortado seco;
+     • um reflexo de luz atravessa o vidro e a cápsula do ativo pulsa;
+     • só opacidade e posição nos nomes; a largura continua sendo a única
+       coisa que mexe no layout.
+   ===================================================================== */
+@media (min-width:761px){
+  body[data-shell="interno"]{--sb-t:.62s;--sb-curva:cubic-bezier(.22,1,.36,1);}
+
+  /* nomes: fora da transição ficam parados (sem atraso herdado da zzz116) */
+  body[data-shell="interno"] .nav.multi .ng a span,
+  body[data-shell="interno"].recolhida .nav.multi .ng a span,
+  body[data-shell="interno"] .lateral :is(.ver-como-bt,.bt-recolher) span,
+  body[data-shell="interno"].recolhida .lateral :is(.ver-como-bt,.bt-recolher) span,
+  body[data-shell="interno"] .nav.multi .ng-tit{transition:none;}
+
+  /* EXPANDINDO: cascata de entrada */
+  body.sb-vindo[data-shell="interno"] .nav.multi .ng a span{
+    animation:sbNomeEntra .52s var(--sb-curva) calc(.14s + var(--n, 0) * 15ms) both;}
+  body.sb-vindo[data-shell="interno"] .nav.multi .ng-cab .ng-tit{
+    animation:sbNomeEntra .52s var(--sb-curva) calc(.14s + var(--n, 0) * 15ms) both;}
+  body.sb-vindo[data-shell="interno"] .lateral :is(.ver-como-bt,.bt-recolher) span,
+  body.sb-vindo[data-shell="interno"] .lateral .ver-como-campo{animation:sbNomeEntra .5s var(--sb-curva) .42s both;}
+  body.sb-vindo[data-shell="interno"] .marca-lateral img.lockup{animation:sbNomeEntra .55s var(--sb-curva) .12s both;}
+  @keyframes sbNomeEntra{from{opacity:0;transform:translate3d(-14px,0,0)}to{opacity:1;transform:none}}
+
+  /* RECOLHENDO: cascata de saída (os nomes continuam no fluxo; só apagam) */
+  body.sb-indo[data-shell="interno"] .nav.multi .ng a span{
+    animation:sbNomeSai .13s cubic-bezier(.4,0,1,1) calc(var(--n, 0) * 3ms) both;}
+  body.sb-indo[data-shell="interno"] .nav.multi .ng-cab .ng-tit{
+    animation:sbNomeSai .13s cubic-bezier(.4,0,1,1) calc(var(--n, 0) * 3ms) both;}
+  body.sb-indo[data-shell="interno"] .lateral :is(.ver-como-bt,.bt-recolher) span{animation:sbNomeSai .2s ease-in both;}
+  body.sb-indo[data-shell="interno"] .marca-lateral img.simbolo{animation:sbSimbolo .5s var(--sb-curva) .1s both;}
+  @keyframes sbNomeSai{from{opacity:1;transform:none}to{opacity:0;transform:translate3d(-10px,0,0)}}
+  @keyframes sbSimbolo{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+
+  /* recolhendo, a largura sai devagar e acelera: dá tempo dos nomes
+     apagarem antes de a borda chegar neles (no vídeo eles eram cortados) */
+  body[data-shell="interno"].recolhida .lateral{transition-timing-function:cubic-bezier(.7,0,.16,1);}
+  /* durante o movimento, a borda direita da lista se dissolve */
+  body:is(.sb-indo,.sb-vindo)[data-shell="interno"] .nav.multi{
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 46px), transparent);
+            mask-image:linear-gradient(90deg, #000 calc(100% - 46px), transparent);}
+
+  /* reflexo que cruza o vidro */
+  body:is(.sb-indo,.sb-vindo)[data-shell="interno"] .lateral:after{display:block;content:"";position:absolute;inset:0;width:auto;z-index:2;pointer-events:none;
+    background:linear-gradient(104deg, transparent 32%, rgba(255,255,255,.13) 47%, rgba(255,190,235,.1) 53%, transparent 68%);
+    animation:sbVarre .78s cubic-bezier(.3,.1,.2,1) both;}
+  body.sb-indo[data-shell="interno"] .lateral:after{animation-direction:reverse;}
+  @keyframes sbVarre{from{opacity:0;transform:translate3d(-110%,0,0)}18%{opacity:1}82%{opacity:1}to{opacity:0;transform:translate3d(110%,0,0)}}
+
+  /* a cápsula do ativo acende enquanto se adapta */
+  body:is(.sb-indo,.sb-vindo)[data-shell="interno"] .nav.multi .ng a.on{animation:sbPulso .8s ease-out both;}
+  @keyframes sbPulso{
+    0%{box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 1px rgba(226,64,156,.12), 0 10px 26px -10px rgba(226,64,156,.75), 0 0 22px -6px rgba(124,77,255,.55)}
+    35%{box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 0 0 1px rgba(255,170,225,.4), 0 12px 34px -8px rgba(226,64,156,1), 0 0 38px -2px rgba(150,110,255,.9)}
+    100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 1px rgba(226,64,156,.12), 0 10px 26px -10px rgba(226,64,156,.75), 0 0 22px -6px rgba(124,77,255,.55)}}
+  /* os fios que substituem os títulos, recolhida, entram depois */
+  body.sb-indo[data-shell="interno"] .nav.multi .ng-cab:after{transition:opacity .3s ease .28s;}
+}
+@media (prefers-reduced-motion:reduce){
+  body[data-shell="interno"] .lateral *,body[data-shell="interno"] .lateral:after{animation:none !important;}
+}
+html.modo-leve body[data-shell="interno"] .lateral:after{display:none !important;}
