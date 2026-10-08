@@ -277,12 +277,20 @@ B7.Notif = (function () {
   }
 
   let ctx = null;
-  function tocarSom() {
+  function tocarSom(repetindo) {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       ctx = ctx || new AC();
-      if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); }
+      /* zzz113: o áudio começa "dormindo" e acorda de forma assíncrona.
+         Antes, o primeiro pedido saía mudo (só destravava para o próximo).
+         Agora, se acordar em até 1,5 s — caso do botão de teste e de um
+         aviso que chega logo depois de um clique —, toca em seguida. Sem
+         gesto do usuário o navegador não acorda, e nada toca (como antes). */
+      if (ctx.state === 'suspended') {
+        const pedido = Date.now();
+        ctx.resume().then(() => { if (!repetindo && ctx.state === 'running' && Date.now() - pedido < 1500) tocarSom(true); }).catch(() => {});
+      }
       if (ctx.state !== 'running') return;   /* sem gesto do usuário o navegador não deixa tocar */
       const t0 = ctx.currentTime + 0.01;
       /* zzz110 — som novo (o antigo eram dois bipes secos de senoide):

@@ -634,26 +634,39 @@ B7.Rota = (function () {
      relógio da página chegava ao fim com a animação ainda na metade.
      Agora o que falta é lido da própria animação (o travelling do logo,
      que dura a sequência inteira). */
-  function faltaDaAbertura(el, total) {
+  function faltaDaAbertura(el, total, parede) {
     if (!total) return 0;
     try {
-      const marca = el.querySelector('.ab-marca, .ab-palco');
-      const anim = marca && marca.getAnimations ? marca.getAnimations()[0] : null;
-      const agora = anim && anim.currentTime != null ? Number(anim.currentTime) : null;
-      if (agora != null && isFinite(agora)) return Math.max(0, total - agora);
+      /* zzz113: o tempo decorrido é a linha do tempo do documento menos o
+         início da animação. Na zzz112 eu lia o "tempo atual" da animação,
+         que PARA de contar quando ela termina (4,1 s no caso da peça que
+         eu lia) — o que faltava nunca chegava a zero e a abertura ficava
+         presa na tela. */
+      const linha = document.timeline && document.timeline.currentTime;
+      let inicio = null;
+      for (const sel of ['.ab-marca', '.ab-palco', '.ab-simbolo', '.ab-ceu i']) {
+        const peca = el.querySelector(sel);
+        const anim = peca && peca.getAnimations ? peca.getAnimations()[0] : null;
+        if (anim && anim.startTime != null) { inicio = Number(anim.startTime); break; }
+      }
+      if (linha != null && inicio != null && isFinite(linha - inicio)) return Math.max(0, total - (Number(linha) - inicio));
     } catch (e) {}
-    return Math.max(0, total - performance.now());
+    /* sem leitura da animação: relógio comum, contado de quando ela foi posta na tela */
+    return Math.max(0, total - (parede ? Date.now() - parede : performance.now()));
   }
   /* espera a sequência chegar ao fim de verdade antes de sair (confere de
      novo: se a aba ficou em segundo plano, a animação ficou parada) */
-  function sairQuandoTerminar(el, total, fazer, desde) {
-    const falta = faltaDaAbertura(el, total);
+  function sairQuandoTerminar(el, total, fazer, desde, parede) {
+    const falta = faltaDaAbertura(el, total, parede);
     desde = desde || Date.now();
+    /* rede de segurança: aconteça o que acontecer com a medição, a
+       abertura nunca segura a tela por mais que o dobro do previsto */
+    if (Date.now() - desde > total * 2 + 2000) return fazer();
     /* aba em segundo plano: a animação está parada e ninguém está vendo —
        não faz sentido segurar o sistema atrás dela */
     if (document.hidden && Date.now() - desde > 800) return fazer();
     if (falta <= 30 || !el.isConnected) return fazer();
-    setTimeout(() => sairQuandoTerminar(el, total, fazer, desde), Math.min(falta, 1500));
+    setTimeout(() => sairQuandoTerminar(el, total, fazer, desde, parede), Math.min(falta, 1500));
   }
 
   function fecharCortina() {
@@ -703,6 +716,8 @@ B7.Rota = (function () {
     el.className = 'b7-abertura inicial';
     el.setAttribute('role', 'status'); el.setAttribute('aria-label', 'Abertura do Sistema B7');
     el.innerHTML = MOLDE_ABERTURA;
+    /* é um teste: nada está carregando, então a frase de espera não entra */
+    const esp = el.querySelector('.ab-espera'); if (esp) esp.remove();
     document.body.appendChild(el);
     if (B7.SomAbertura) B7.SomAbertura.reproduzir();
     pintarBarraDoSistema();
@@ -711,7 +726,7 @@ B7.Rota = (function () {
       if (eraCurta) setTimeout(() => raiz.classList.add('ab-curta'), 1200);
     };
     if (reduzMov()) setTimeout(fim, 600);
-    else setTimeout(() => sairQuandoTerminar(el, 6400, fim), 1500);
+    else { const posta = Date.now(); setTimeout(() => sairQuandoTerminar(el, 6400, fim, posta, posta), 1500); }
   }
   B7.abrirCortina = abrirCortina;
   B7.fecharCortina = fecharCortina;
