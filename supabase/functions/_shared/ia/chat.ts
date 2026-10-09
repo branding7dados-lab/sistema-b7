@@ -442,7 +442,7 @@ const SISTEMA = [
    instrução dos tipos que ela pode criar (b7-ia decide); um marcador de
    tipo não permitido é ignorado aqui, e o banco recusaria de qualquer
    jeito. */
-export type TipoAcao = 'video_demanda' | 'design_peca' | 'gravacao' | 'conteudo';
+export type TipoAcao = 'video_demanda' | 'design_peca' | 'gravacao' | 'conteudo' | 'admin';
 export type Acao = {
   tipo: TipoAcao; cliente_id: string; cliente_nome: string; titulo: string;
   /** vídeo e design */ prazo?: string | null;
@@ -452,6 +452,7 @@ export type Acao = {
   /** design: card | capa_reel | carrossel | stories | outro */ peca?: string;
   /** gravação */ data?: string | null; hora?: string | null;
   /** conteúdo */ formato?: string; ideia?: string; linha_id?: string; linha_nome?: string;
+  /** zzz142 — comando de administrador (recurso | paleta | comunicado) */ admin?: Record<string, unknown>;
   /** o que a pessoa fez com a proposta: '' | feito | cancelado */ estado?: string;
 };
 const PECAS = ['card', 'capa_reel', 'carrossel', 'stories', 'outro'];
@@ -460,15 +461,62 @@ const FORMATO_ACAO: Record<TipoAcao, string> = {
   video_demanda: '[[ACAO {"tipo":"video_demanda","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","codigo":"CÓDIGO (vazio se não disserem)","responsavel":"NOME DE QUEM EDITA (vazio se não disserem)","gravacao_mes":"AAAA-MM DA GRAVAÇÃO DE ORIGEM (vazio se não disserem)","prazo":"AAAA-MM-DD"}]]',
   design_peca: '[[ACAO {"tipo":"design_peca","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","peca":"card|capa_reel|carrossel|stories|outro","prazo":"AAAA-MM-DD"}]]',
   gravacao: '[[ACAO {"tipo":"gravacao","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"NOME DA GRAVAÇÃO","data":"AAAA-MM-DD","hora":"HH:MM"}]]',
-  conteudo: '[[ACAO {"tipo":"conteudo","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","formato":"Reel|Card|Carrossel|Story","ideia":"A IDEIA EM UMA OU DUAS FRASES","mes":"AAAA-MM"}]]'
+  conteudo: '[[ACAO {"tipo":"conteudo","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","formato":"Reel|Card|Carrossel|Story","ideia":"A IDEIA EM UMA OU DUAS FRASES","mes":"AAAA-MM"}]]',
+  admin: ''
 };
 const QUANDO_ACAO: Record<TipoAcao, string> = {
   video_demanda: 'video_demanda = demanda de EDIÇÃO DE VÍDEO (reels, vídeo, flyer animado, motion).',
   design_peca: 'design_peca = demanda de DESIGN (arte estática: card, capa de reel, carrossel, stories, flyer parado).',
   gravacao: 'gravacao = uma GRAVAÇÃO a marcar (data e hora só se a pessoa disser; sem data, "data":"" e "hora":"").',
-  conteudo: 'conteudo = uma IDEIA de conteúdo que entra na linha editorial do cliente (mês em "mes"; sem mês dito, "mes":"").'
+  conteudo: 'conteudo = uma IDEIA de conteúdo que entra na linha editorial do cliente (mês em "mes"; sem mês dito, "mes":"").',
+  admin: ''
 };
-function instrucoesDeAcao(permitidas: TipoAcao[]): string {
+const INSTRUCAO_ADMIN = [
+  '8. COMANDOS DE ADMINISTRADOR (só propor, nunca executar): esta pessoa é administradora. Quando ela pedir CLARAMENTE para mudar uma configuração do sistema, proponha com uma linha [[ACAO {...}]], num destes formatos:',
+  '   - ligar, desligar ou liberar um recurso: [[ACAO {"tipo":"admin","comando":"recurso","recurso":"ID","modo":"todos|desligado|funcoes","funcoes":["coordenador","videomaker","designer"]}]]',
+  '     IDs dos recursos: conversas = chat da equipe (Conversas); tv = Painel de TV; hoje_dia = "Hoje é dia de…" no Painel; ia_voz = falar com o assistente (microfone); ia_imagem = imagem no assistente; ia_ouvir = ouvir a resposta do assistente; ia_ideias = ideias de conteúdo nas Oportunidades; ia_roteiro_conteudo = criar roteiro com IA pelo conteúdo.',
+  '     "modo":"todos" = todos veem; "desligado" = ninguém vê; "funcoes" = só administradores e as funções listadas em "funcoes" (lista vazia = só administradores).',
+  '   - cor do sistema: [[ACAO {"tipo":"admin","comando":"paleta","paleta":"b7|oceano|floresta|porsol|grafite"}]]  (b7 = o padrão da B7; porsol = pôr do sol)',
+  '   - comunicado para a equipe, pela conversa de cada pessoa: [[ACAO {"tipo":"admin","comando":"comunicado","texto":"TEXTO DO COMUNICADO","para":"todos|coordenador|videomaker|designer"}]]',
+  '   NÃO proponha mudar permissões, funções, módulos, senhas ou contas de pessoas, nem apagar nada: explique que isso se faz em Usuários e acessos. Não existe agendamento ("só até sexta") nesses comandos: diga isso e proponha a mudança sem prazo só se a pessoa quiser assim.',
+  '   Use só os IDs e valores acima; se o pedido não couber neles, explique em vez de propor. Nunca diga que já mudou: a pessoa confirma no cartão.'
+].join('\n');
+
+/* zzz142: comandos de administrador pelo assistente. O servidor só propõe um
+   cartão com valores da lista combinada; quem aplica é o administrador, no
+   navegador, com a sessão dele (o banco confere de novo: só administrador
+   grava configuração). Nada de permissão, conta ou exclusão. */
+const RECURSOS_ADMIN: Record<string, string> = {
+  conversas: 'Conversas da equipe', tv: 'Painel de TV', hoje_dia: '“Hoje é dia de…” no Painel', ia_voz: 'Falar com o assistente',
+  ia_imagem: 'Imagem no assistente', ia_ouvir: 'Ouvir a resposta do assistente', ia_ideias: 'Ideias de conteúdo nas Oportunidades',
+  ia_roteiro_conteudo: 'Criar roteiro com IA pelo conteúdo'
+};
+const FUNCOES_ADMIN = ['coordenador', 'videomaker', 'designer'];
+const PALETAS_ADMIN = ['b7', 'oceano', 'floresta', 'porsol', 'grafite'];
+function validarAdmin(j: Record<string, unknown>): Acao | null {
+  const base = { tipo: 'admin' as TipoAcao, cliente_id: '', cliente_nome: '' };
+  const cmd = String(j.comando || '');
+  if (cmd === 'recurso') {
+    const id = String(j.recurso || ''), modo = String(j.modo || '');
+    if (!RECURSOS_ADMIN[id] || !['todos', 'desligado', 'funcoes'].includes(modo)) return null;
+    const funcoes = modo === 'funcoes' && Array.isArray(j.funcoes)
+      ? [...new Set((j.funcoes as unknown[]).map(String).filter(f => FUNCOES_ADMIN.includes(f)))] : [];
+    return { ...base, titulo: 'Recurso: ' + RECURSOS_ADMIN[id], admin: { comando: 'recurso', recurso: id, nome: RECURSOS_ADMIN[id], modo, funcoes } };
+  }
+  if (cmd === 'paleta') {
+    const p = String(j.paleta || '');
+    return PALETAS_ADMIN.includes(p) ? { ...base, titulo: 'Cor do sistema', admin: { comando: 'paleta', paleta: p } } : null;
+  }
+  if (cmd === 'comunicado') {
+    const texto = corta(j.texto, 500), para = String(j.para || 'todos');
+    return texto.length >= 3 && ['todos', ...FUNCOES_ADMIN].includes(para) ? { ...base, titulo: 'Comunicado', admin: { comando: 'comunicado', texto, para } } : null;
+  }
+  return null;
+}
+
+function instrucoesDeAcao(todas: TipoAcao[]): string {
+  const permitidas = todas.filter(k => k !== 'admin');
+  const adm = todas.includes('admin');
   return [
     '7. AÇÃO (só propor, nunca executar): você pode PROPOR a criação de registros no sistema, e só quando a pessoa pedir claramente para criar, marcar ou adicionar.',
     '   Tipos que ESTA pessoa pode propor:',
@@ -483,7 +531,7 @@ function instrucoesDeAcao(permitidas: TipoAcao[]): string {
     '   Pediram mais de um? Uma linha [[ACAO …]] para CADA um. Não descreva os registros no texto: o cartão de cada um aparece sozinho.',
     '   Se faltar o cliente ou o título, se o cliente não estiver na lista ou se o pedido for de um tipo que não está acima, PERGUNTE ou explique em vez de propor.',
     '   Nunca diga que criou nem mande a pessoa criar em outra tela: quem cria é a pessoa, ao confirmar nos cartões que vão aparecer.'
-  ].join('\n');
+  ].concat(adm ? [INSTRUCAO_ADMIN] : []).join('\n');
 }
 const MARCADOR = /\[\[ACAO\s*(\{[\s\S]*?\})\s*\]\]/g;
 export const semAcao = (texto: string) => String(texto || '').replace(MARCADOR, '').replace(/\n{3,}/g, '\n\n').trim();
@@ -540,6 +588,12 @@ export async function extrairAcao(texto: string, sb: SupabaseClient, permitidas:
       for (const j of marcas) {
         const tipo = String(j.tipo || '') as TipoAcao;
         const titulo = corta(j.titulo, 200);
+        if (tipo === 'admin') {
+          const adm = permitidas.includes('admin') ? validarAdmin(j) : null;
+          const ch = adm ? 'admin|' + JSON.stringify(adm.admin) : '';
+          if (adm && !vistos.has(ch)) { vistos.add(ch); acoes.push(adm); }
+          continue;
+        }
         if (!permitidas.includes(tipo) || titulo.length < 3 || !norm(j.cliente)) continue;
         const iguais = clientes.filter(x => norm(x.nome) === norm(j.cliente));
         if (iguais.length !== 1) continue;
@@ -612,7 +666,9 @@ export async function extrairAcao(texto: string, sb: SupabaseClient, permitidas:
   if (acoes.length) {
     /* com cartão na tela, a frase é sempre a mesma: o modelo às vezes
        escrevia "acesse a tela de Edição de Vídeo" junto das propostas */
-    limpoTexto = (acoes.length > 1 ? 'Montei as ' + acoes.length + ' propostas abaixo. Confira os dados e crie todas de uma vez ou uma por uma.'
+    const soAdmin = acoes.every(a => a.tipo === 'admin');
+    limpoTexto = (soAdmin ? (acoes.length > 1 ? 'Montei as ' + acoes.length + ' alterações abaixo. Confira o antes e o depois e aplique.' : 'Montei a alteração abaixo. Confira o antes e o depois e confirme para aplicar.')
+      : acoes.length > 1 ? 'Montei as ' + acoes.length + ' propostas abaixo. Confira os dados e crie todas de uma vez ou uma por uma.'
       : 'Montei a proposta abaixo. Confira os dados e confirme para criar.') +
       (notaLinha || (acoes.length < Math.min(achados, MAX_ACOES) ? '\n\nUma das propostas não pôde ser montada (cliente, título ou tipo não conferem).' : '')) +
       (avisos.size ? '\n\n' + [...avisos].join('\n') : '');

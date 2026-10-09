@@ -471,6 +471,12 @@ B7.Chat = (function () {
         }
       }
     },
+    /* zzz142: o administrador muda uma configuração conversando. O cartão mostra o antes e o depois; só aplica ao confirmar, pelas mesmas funções das Configurações. */
+    admin: {
+      cab: 'Alterar o sistema', bt: 'Aplicar', feito: 'Alteração aplicada.', link: () => ['#/config', 'Abrir Configurações'],
+      linhas: a => B7.AdminChat ? B7.AdminChat.linhas(a.admin || {}) : [['Comando', a.titulo]],
+      criar: async a => { if (!B7.AdminChat) throw new Error('Indisponível.'); await B7.AdminChat.aplicar(a.admin || {}); }
+    },
     conteudo: {
       cab: 'Adicionar conteúdo à linha editorial', bt: 'Adicionar conteúdo', feito: 'Conteúdo adicionado como Ideia.', link: a => ['#/linha/' + a.linha_id, 'Abrir a linha editorial'],
       linhas: a => [['Cliente', a.cliente_nome], ['Linha', a.linha_nome], ['Formato', a.formato], ['Título', a.titulo]].concat(a.ideia ? [['Ideia', a.ideia]] : []),
@@ -653,8 +659,8 @@ B7.Chat = (function () {
     pintarTopo(); pintarCorpo();
 
     pararFala();
-    /* acoes_v: 2 = esta tela sabe mostrar os quatro tipos de proposta */
-    const dados = { texto, cliente_id: S.clienteId || null, acoes_v: 2 };
+    /* acoes_v: 2 = esta tela sabe mostrar os quatro tipos de proposta; 3 = e o cartão de comando de administrador (zzz142) */
+    const dados = { texto, cliente_id: S.clienteId || null, acoes_v: 3 };
     if (anexo) dados.imagem = { mime: anexo.mime, base64: anexo.base64 };
     if (S.conversaId) dados.conversa_id = S.conversaId;
     S.parcial = '';

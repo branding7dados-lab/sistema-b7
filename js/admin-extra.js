@@ -331,7 +331,15 @@ B7.Comunicado = (function () {
     }
     lista();
   }
-  return { abrir };
+  /* usado pelo assistente (zzz142): o texto vai para todos ou para uma função */
+  async function enviarPara(texto, para) {
+    const l = await equipe();
+    const alvo = para === 'todos' ? l : l.filter(p => p.funcao === para);
+    if (!alvo.length) throw new Error('Ninguém da equipe com essa função.');
+    await B7.DB.rpc('chat_comunicado', { p_texto: texto, p_destinos: alvo.map(p => p.id) });
+    return alvo.length;
+  }
+  return { abrir, enviarPara };
 })();
 
 /* =====================================================================
@@ -413,7 +421,20 @@ B7.Aparencia = (function () {
       '<span class="ap-acoes"><button type="button" class="b fina contorno" data-ver>Ver</button><button type="button" class="adm-link perigo" data-rm>Remover</button></span></div>';
   }
 
-  function abrir() {
+  /* a cópia do aparelho pode estar atrasada: antes de editar, lê o que está no banco */
+  async function trazer() {
+    try { const r = await B7.DB.rpc('sistema_avisos'); if (r && r.aparencia) sincronizar(r.aparencia); } catch (e) {}
+  }
+  async function definirPaleta(p) {
+    await trazer();
+    const nova = { paleta: p, estacoes: cfg.estacoes };
+    await B7.DB.rpc('sistema_config_definir', { p_chave: 'aparencia', p_valor: nova });
+    sincronizar(nova);
+  }
+  const rotuloPaleta = id => (PALETAS.find(x => x[0] === id) || PALETAS[0])[1];
+
+  async function abrir() {
+    await trazer();
     let salvo = JSON.parse(JSON.stringify(cfg)), rascunho = JSON.parse(JSON.stringify(cfg)), gravou = false;
     const m = B7.UI.modal('<h3>Aparência do sistema</h3>' +
       '<p class="sub">Vale para toda a equipe. O tema claro ou escuro continua sendo escolha de cada pessoa. A logo e o desenho da abertura seguem sendo da marca.</p>' +
@@ -482,7 +503,7 @@ B7.Aparencia = (function () {
     const p = PALETAS.find(x => x[0] === cfg.paleta) || PALETAS[0], n = cfg.estacoes.length;
     return p[1] + (n ? ' · ' + n + (n === 1 ? ' data especial' : ' datas especiais') : '');
   };
-  return { abrir, sincronizar, aplicar, resumo, _estacaoDe: estacaoDe, PALETAS };
+  return { abrir, sincronizar, aplicar, resumo, definirPaleta, rotuloPaleta, paletaAtual: () => cfg.paleta, _estacaoDe: estacaoDe, PALETAS };
 })();
 
 /* =====================================================================
@@ -590,4 +611,49 @@ B7.Redistribuicao = (function () {
     carregar();
   }
   return { abrir };
+})();
+
+/* =====================================================================
+   ADMIN PELO ASSISTENTE (zzz142)
+
+   O administrador pede no chat ("desliga a IA de voz", "põe a cor do
+   sistema em oceano", "avisa os designers que…") e o assistente monta um
+   CARTÃO com o antes e o depois. Nada muda sem o toque em Aplicar. A
+   mudança usa as mesmas funções das Configurações; o banco só deixa
+   passar quem é administrador.
+
+   Só três comandos: ligar/desligar/liberar um recurso, cor do sistema e
+   comunicado. Permissões, funções, contas e exclusões ficam de fora de
+   propósito: isso é em Usuários e acessos.
+   ===================================================================== */
+B7.AdminChat = (function () {
+  const FN = { coordenador: 'Coordenação', videomaker: 'Videomakers', designer: 'Designers' };
+  const regraDe = x => x.modo === 'funcoes' ? { modo: 'funcoes', funcoes: Array.isArray(x.funcoes) ? x.funcoes : [] }
+    : x.modo === 'desligado' ? { modo: 'desligado' } : { modo: 'todos' };
+  const rotuloRegra = r => r.modo === 'desligado' ? 'Desligado'
+    : r.modo === 'funcoes' ? (r.funcoes.length ? 'Administradores + ' + r.funcoes.map(f => FN[f] || f).join(', ') : 'Só administradores') : 'Todos';
+
+  function linhas(x) {
+    if (x.comando === 'recurso') return [['Recurso', x.nome || x.recurso], ['Agora', B7.Recursos.rotulo(x.recurso)], ['Fica', rotuloRegra(regraDe(x))]];
+    if (x.comando === 'paleta') return [['O que', 'Cor do sistema'], ['Agora', B7.Aparencia.rotuloPaleta(B7.Aparencia.paletaAtual())], ['Fica', B7.Aparencia.rotuloPaleta(x.paleta)]];
+    if (x.comando === 'comunicado') return [['O que', 'Comunicado pela conversa'], ['Para', x.para === 'todos' ? 'Toda a equipe' : (FN[x.para] || x.para)], ['Mensagem', x.texto]];
+    return [['Comando', 'desconhecido']];
+  }
+
+  async function aplicar(x) {
+    const A = B7.Auth;
+    if (!(A && (A.ehAdminReal ? A.ehAdminReal() : A.ehAdmin()))) throw new Error('Só administrador aplica essa alteração.');
+    if (x.comando === 'recurso') {
+      if (!B7.Recursos.LISTA.some(r => r.id === x.recurso)) throw new Error('Recurso desconhecido.');
+      await B7.Recursos.definir(x.recurso, regraDe(x));
+    } else if (x.comando === 'paleta') {
+      await B7.Aparencia.definirPaleta(x.paleta);
+    } else if (x.comando === 'comunicado') {
+      const n = await B7.Comunicado.enviarPara(x.texto, x.para);
+      B7.UI.toast('Comunicado enviado para ' + n + (n === 1 ? ' pessoa.' : ' pessoas.'));
+    } else throw new Error('Comando desconhecido.');
+    /* a tela de Configurações, se estiver aberta por trás, se refaz */
+    try { if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig(); } catch (e) {}
+  }
+  return { linhas, aplicar };
 })();

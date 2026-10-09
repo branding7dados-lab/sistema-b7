@@ -218,7 +218,9 @@ Deno.serve(comCors(async (req: Request) => {
     const permitidas: Chat.TipoAcao[] = [...(podeAgir ? ['video_demanda' as const] : []),
       /* só para a tela que sabe mostrar esses cartões (acoes_v >= 2): a tela
          antiga trataria qualquer proposta como demanda de vídeo */
-      ...(coordena && Number(corpo.acoes_v) >= 2 ? ['design_peca' as const, 'gravacao' as const, 'conteudo' as const] : [])];
+      ...(coordena && Number(corpo.acoes_v) >= 2 ? ['design_peca' as const, 'gravacao' as const, 'conteudo' as const] : []),
+      /* zzz142: administrador muda configuração conversando (cartão com confirmação; só telas que sabem mostrá-lo, acoes_v >= 3) */
+      ...(perfil.papel === 'admin' && Number(corpo.acoes_v) >= 3 ? ['admin' as const] : [])];
     t = {
       recurso: 'chat', acao: 'mensagem', entidadeTipo: 'conversa', entidadeId: conv.id, tamanhoEntrada: pedido.texto.length,
       mensagens: Chat.montarMensagens(pedido, contexto, hist, quem, permitidas), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
