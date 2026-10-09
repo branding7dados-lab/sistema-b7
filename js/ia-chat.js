@@ -406,6 +406,9 @@ B7.Chat = (function () {
       (m.papel === 'user' ? (m.img ? '<img class="ch-msg-img" src="' + m.img + '" alt="Imagem enviada">' : '') + '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
       (podeFalar && (!B7.Recursos || B7.Recursos.ligado('ia_ouvir')) && m.papel !== 'user' && !m.erro && m.texto ? '<button type="button" class="ch-falar' + (falando === i ? ' on' : '') + '" data-falar="' + i + '" aria-pressed="' + (falando === i) +
         '" aria-label="' + (falando === i ? 'Parar de ouvir' : 'Ouvir a resposta') + '" title="' + (falando === i ? 'Parar' : 'Ouvir') + '">' + IC.som + '<span>Ouvir</span></button>' : '') +
+      /* zzz135: duas ou mais propostas pendentes ganham o "Criar todas" */
+      ((n => n >= 2 ? '<div class="ch-ac-todas"><span>' + n + ' propostas pendentes</span><button type="button" class="ch-ac-ok" data-acao-todas="' + i + '"' +
+        (criandoLote ? ' disabled' : '') + '>' + (criandoLote ? 'Criando…' : 'Criar todas (' + n + ')') + '</button></div>' : '')(pendentesDe(i).length + ((m.acoes || []).filter(a => a.estado === 'indo').length))) +
       (m.acoes || []).map((a, j) => acaoHTML(a, i + ':' + j)).join('')).join('') +
       (S.enviando ? (S.parcial
         ? '<div class="ch-msg ia ch-fluindo" id="ch-fluxo">' + formatar(S.parcial) + '</div>'
@@ -437,8 +440,12 @@ B7.Chat = (function () {
   const TIPOS_ACAO = {
     video_demanda: {
       cab: 'Criar demanda de vídeo', bt: 'Criar demanda', feito: 'Demanda criada.', link: () => ['#/video', 'Abrir a Edição de vídeo'],
-      linhas: a => [['Cliente', a.cliente_nome], ['Título', a.titulo], ['Prazo', dataBR(a.prazo)]],
-      criar: a => B7.DB.criarDemandaVideo({ clienteId: a.cliente_id, titulo: a.titulo, prazo: a.prazo || null })
+      /* zzz135: código, responsável e gravação entram quando a pessoa disse */
+      linhas: a => [['Cliente', a.cliente_nome], ['Título', a.titulo]].concat(a.codigo ? [['Código', a.codigo]] : [],
+        a.responsavel_nome ? [['Responsável', a.responsavel_nome]] : [], a.gravacao_nome ? [['Gravação', a.gravacao_nome]] : [], [['Prazo', dataBR(a.prazo)]]),
+      criar: a => B7.DB.criarDemandaVideo({ clienteId: a.cliente_id, titulo: a.titulo, prazo: a.prazo || null, codigo: a.codigo || '',
+        videomakerId: a.responsavel_id || null, gravacaoId: a.gravacao_id || null,
+        competenciaAno: a.competencia_ano || null, competenciaMes: a.competencia_mes || null })
     },
     design_peca: {
       cab: 'Criar demanda de design', bt: 'Criar peça', feito: 'Peça criada.', link: () => ['#/design', 'Abrir a Produção de Design'],
@@ -500,20 +507,38 @@ B7.Chat = (function () {
     if (!m || !m.id || !B7.sb) return;
     B7.sb.rpc('ia_acao_estado', { p_mensagem: m.id, p_indice: Number(p[1]), p_estado: estado }).then(() => {}, () => {});
   }
-  async function confirmarAcao(ref) {
+  async function confirmarAcao(ref, emLote) {
     const a = acaoDe(ref);
-    if (!a || a.estado === 'indo' || a.estado === 'feito') return;
+    if (!a || a.estado === 'indo' || a.estado === 'feito') return false;
     const T = TIPOS_ACAO[a.tipo] || TIPOS_ACAO.video_demanda;
     a.estado = 'indo'; a.erro = ''; pintarCorpo();
+    let ok = false;
     try {
       await T.criar(a);
-      a.estado = 'feito';
+      a.estado = 'feito'; ok = true;
       guardarEstado(ref, 'feito');
-      if (B7.UI && B7.UI.toast) B7.UI.toast(T.feito);
+      if (!emLote && B7.UI && B7.UI.toast) B7.UI.toast(T.feito);
     } catch (e) {
       a.estado = ''; a.erro = (e && e.message) || 'Não foi possível criar.';
     }
     pintarCorpo();
+    return ok;
+  }
+  /* zzz135 — várias propostas na mesma resposta: um toque cria todas as
+     que ainda estão pendentes, uma depois da outra (a mesma criação de
+     cada cartão). As que falharem ficam com o erro no próprio cartão. */
+  const pendentesDe = i => ((S.msgs[i] && S.msgs[i].acoes) || []).map((a, j) => ({ a, j })).filter(x => !x.a.estado);
+  let criandoLote = false;
+  async function criarTodas(i) {
+    if (criandoLote) return;
+    const lista = pendentesDe(i); if (!lista.length) return;
+    criandoLote = true;
+    let feitas = 0;
+    for (const x of lista) { if (await confirmarAcao(i + ':' + x.j, true)) feitas++; }
+    criandoLote = false;
+    pintarCorpo();
+    if (B7.UI && B7.UI.toast) B7.UI.toast(feitas === lista.length ? feitas + ' registros criados.'
+      : feitas + ' de ' + lista.length + ' criados. Os outros mostram o motivo no cartão.', feitas === lista.length ? {} : { tipo: 'erro' });
   }
 
   /* ---------------------------------------------------------------
@@ -555,6 +580,7 @@ B7.Chat = (function () {
     c.innerHTML = corpoHTML();
     c.querySelectorAll('.ch-sug').forEach(b => b.onclick = () => enviar(b.textContent));
     c.querySelectorAll('[data-acao-ok]').forEach(b => b.onclick = () => confirmarAcao(b.dataset.acaoOk));
+    c.querySelectorAll('[data-acao-todas]').forEach(b => b.onclick = () => criarTodas(Number(b.dataset.acaoTodas)));
     c.querySelectorAll('[data-acao-nao]').forEach(b => b.onclick = () => { const a = acaoDe(b.dataset.acaoNao); if (a) { a.estado = 'cancelado'; guardarEstado(b.dataset.acaoNao, 'cancelado'); pintarCorpo(); } });
     c.querySelectorAll('[data-falar]').forEach(b => b.onclick = () => falar(Number(b.dataset.falar)));
     c.scrollTop = c.scrollHeight;

@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz135', versao: 'zzz135', em: '2026-10-09T17:30:00-03:00', ia: 'chat',
+    titulo: 'Assistente cria várias demandas de uma vez',
+    itens: ['Peça “crie 7 demandas para o cliente X, código do 8 ao 14” e ele monta um cartão para cada uma.',
+            'Dá para dizer quem é o responsável e de qual gravação é: isso já vai na demanda.',
+            'Com mais de uma proposta, o botão “Criar todas” cria tudo de uma vez.'] },
   { id: 'v-zzz134', versao: 'zzz134', em: '2026-10-09T16:00:00-03:00', recurso: 'conversas',
     titulo: 'Conversas da equipe',
     itens: ['O botão de conversa no topo, ao lado do sino, abre o chat interno: fale com qualquer pessoa da equipe sem sair da tela.',

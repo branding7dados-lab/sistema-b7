@@ -446,6 +446,9 @@ export type TipoAcao = 'video_demanda' | 'design_peca' | 'gravacao' | 'conteudo'
 export type Acao = {
   tipo: TipoAcao; cliente_id: string; cliente_nome: string; titulo: string;
   /** vídeo e design */ prazo?: string | null;
+  /** vídeo (zzz135): código, quem edita e a gravação de origem */
+  codigo?: string; responsavel_id?: string; responsavel_nome?: string;
+  gravacao_id?: string; gravacao_nome?: string; competencia_ano?: number; competencia_mes?: number;
   /** design: card | capa_reel | carrossel | stories | outro */ peca?: string;
   /** gravação */ data?: string | null; hora?: string | null;
   /** conteúdo */ formato?: string; ideia?: string; linha_id?: string; linha_nome?: string;
@@ -454,7 +457,7 @@ export type Acao = {
 const PECAS = ['card', 'capa_reel', 'carrossel', 'stories', 'outro'];
 const FORMATOS: Record<string, string> = { reel: 'Reel', reels: 'Reel', video: 'Reel', card: 'Card', post: 'Card', carrossel: 'Carrossel', story: 'Story', stories: 'Story' };
 const FORMATO_ACAO: Record<TipoAcao, string> = {
-  video_demanda: '[[ACAO {"tipo":"video_demanda","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","prazo":"AAAA-MM-DD"}]]',
+  video_demanda: '[[ACAO {"tipo":"video_demanda","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","codigo":"CÓDIGO (vazio se não disserem)","responsavel":"NOME DE QUEM EDITA (vazio se não disserem)","gravacao_mes":"AAAA-MM DA GRAVAÇÃO DE ORIGEM (vazio se não disserem)","prazo":"AAAA-MM-DD"}]]',
   design_peca: '[[ACAO {"tipo":"design_peca","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","peca":"card|capa_reel|carrossel|stories|outro","prazo":"AAAA-MM-DD"}]]',
   gravacao: '[[ACAO {"tipo":"gravacao","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"NOME DA GRAVAÇÃO","data":"AAAA-MM-DD","hora":"HH:MM"}]]',
   conteudo: '[[ACAO {"tipo":"conteudo","cliente":"NOME EXATO DA LISTA DE CLIENTES","titulo":"TÍTULO","formato":"Reel|Card|Carrossel|Story","ideia":"A IDEIA EM UMA OU DUAS FRASES","mes":"AAAA-MM"}]]'
@@ -470,8 +473,11 @@ function instrucoesDeAcao(permitidas: TipoAcao[]): string {
     '7. AÇÃO (só propor, nunca executar): você pode PROPOR a criação de registros no sistema, e só quando a pessoa pedir claramente para criar, marcar ou adicionar.',
     '   Tipos que ESTA pessoa pode propor:',
     ...permitidas.map(k => '   - ' + QUANDO_ACAO[k]),
-    '   Para propor, termine a resposta com uma linha por registro (até 5, cada linha sozinha), exatamente num destes formatos:',
+    '   Para propor, termine a resposta com uma linha por registro (até 20, cada linha sozinha), exatamente num destes formatos:',
     ...permitidas.map(k => '   ' + FORMATO_ACAO[k]),
+    '   VÁRIOS REGISTROS NUMERADOS ("crie 7 demandas, código do 8 ao 14", "5 vídeos numerados"): use UMA linha só, com "de" e "ate" e {n} onde o número entra. O sistema cria um cartão para cada número. Exemplo: [[ACAO {"tipo":"video_demanda","cliente":"C6 Farma","titulo":"Meme {n}","codigo":"{n}","responsavel":"Kaique","gravacao_mes":"2026-10","prazo":"","de":8,"ate":14}]]',
+    '   Se pedirem N registros sem dizer a numeração, use "de":1 e "ate":N. NUNCA proponha menos registros do que a pessoa pediu.',
+    '   Em demanda de vídeo: "responsavel" é o nome que a pessoa disse (quem vai editar ou quem fez); "gravacao_mes" é o mês da gravação citada ("gravação de outubro" → o AAAA-MM de outubro); "codigo" só se a pessoa der um código ou numeração.',
     '   O título diz o que é, com as palavras da pessoa (ex.: "Flyer animado — Noite do Pop Rock").',
     '   Use "" nos campos de data que a pessoa não deu. Converta datas faladas ("sexta", "amanhã") usando a data de HOJE dos dados.',
     '   Pediram mais de um? Uma linha [[ACAO …]] para CADA um. Não descreva os registros no texto: o cartão de cada um aparece sozinho.',
@@ -488,15 +494,38 @@ export const semAcao = (texto: string) => String(texto || '').replace(MARCADOR, 
    válido vira um cartão (até MAX_ACOES); repetidos e inválidos saem, e o
    texto avisa quando alguma proposta não pôde ser montada. `acao` (uma
    só, de vídeo) continua indo para as telas antigas. */
-const MAX_ACOES = 5;
+const MAX_ACOES = 20;
+const dois = (n: number) => String(n).padStart(2, '0');
+/* zzz135 — "crie 7 demandas, código do 8 ao 14": o modelo manda UMA linha
+   com "de"/"ate" e {n}; aqui ela vira um registro por número. Sem {n} no
+   título, o número vai no fim. Sem isso o modelo (pequeno) costumava
+   escrever só a primeira linha das sete. */
+function abrirSeries(marcas: string[]): Record<string, unknown>[] {
+  const saida: Record<string, unknown>[] = [];
+  for (const bruto of marcas) {
+    let j: Record<string, unknown>;
+    try { j = JSON.parse(bruto) as Record<string, unknown>; } catch (_e) { continue; }
+    const de = Number(j.de), ate = Number(j.ate);
+    /* série maior que o teto: entram os primeiros (o laço abaixo para no limite) */
+    const serie = Number.isInteger(de) && Number.isInteger(ate) && de >= 0 && ate >= de;
+    if (!serie) { saida.push(j); continue; }
+    for (let n = de; n <= ate && saida.length < MAX_ACOES; n++) {
+      const troca = (v: unknown) => String(v ?? '').replace(/\{n\}/gi, dois(n));
+      const titulo = String(j.titulo ?? '');
+      saida.push({ ...j, titulo: /\{n\}/i.test(titulo) ? troca(titulo) : (titulo + ' ' + dois(n)).trim(), codigo: troca(j.codigo), ideia: troca(j.ideia) });
+    }
+  }
+  return saida.slice(0, MAX_ACOES);
+}
 const dataOk = (v: unknown): string | null =>
   (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v + 'T12:00:00Z')) ? v : null);
 export async function extrairAcao(texto: string, sb: SupabaseClient, permitidas: TipoAcao[] = ['video_demanda']): Promise<{ texto: string; acao: Acao | null; acoes: Acao[] }> {
   let limpoTexto = semAcao(texto);
   const acoes: Acao[] = [];
   let achados = 0, semLinha = '';
+  const avisos = new Set<string>();
   try {
-    const marcas = [...String(texto || '').matchAll(MARCADOR)];
+    const marcas = abrirSeries([...String(texto || '').matchAll(MARCADOR)].map(m => m[1]));
     achados = marcas.length;
     if (achados) {
       const norm = (v: unknown) => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
@@ -505,9 +534,10 @@ export async function extrairAcao(texto: string, sb: SupabaseClient, permitidas:
       const clientes = (data || []) as { id: string; nome: string }[];
       const vistos = new Set<string>();
       const linhasDe = new Map<string, { id: string; nome: string; mes: number; ano: number }[]>();
-      for (const m of marcas.slice(0, MAX_ACOES)) {
-        let j: Record<string, unknown>;
-        try { j = JSON.parse(m[1]) as Record<string, unknown>; } catch (_e) { continue; }
+      /* zzz135: quem edita e a gravação de origem, lidos com o acesso da pessoa */
+      let equipe: { id: string; nome: string }[] | null = null;
+      const gravDe = new Map<string, { id: string; nome: string; data_gravacao: string | null }[]>();
+      for (const j of marcas) {
         const tipo = String(j.tipo || '') as TipoAcao;
         const titulo = corta(j.titulo, 200);
         if (!permitidas.includes(tipo) || titulo.length < 3 || !norm(j.cliente)) continue;
@@ -517,7 +547,37 @@ export async function extrairAcao(texto: string, sb: SupabaseClient, permitidas:
         if (vistos.has(chave)) continue;
         const base = { tipo, cliente_id: iguais[0].id, cliente_nome: iguais[0].nome, titulo };
         let acao: Acao | null = null;
-        if (tipo === 'video_demanda') acao = { ...base, prazo: dataOk(j.prazo) };
+        if (tipo === 'video_demanda') {
+          acao = { ...base, prazo: dataOk(j.prazo), codigo: corta(j.codigo, 40) };
+          const quem = norm(j.responsavel);
+          if (quem) {
+            if (!equipe) {
+              const { data: ps } = await sb.from('perfis').select('id, nome').neq('papel', 'cliente').eq('estado', 'ativa').limit(100);
+              equipe = (ps || []) as { id: string; nome: string }[];
+            }
+            /* nome inteiro, primeiro nome ou um pedaço — desde que aponte para UMA pessoa só */
+            const achou = equipe.filter(p => norm(p.nome) === quem);
+            const porParte = achou.length ? achou : equipe.filter(p => norm(p.nome).split(' ').includes(quem) || norm(p.nome).startsWith(quem + ' '));
+            if (porParte.length === 1) { acao.responsavel_id = porParte[0].id; acao.responsavel_nome = corta(porParte[0].nome, 80); }
+            else avisos.add('Não achei uma pessoa só na equipe para “' + corta(j.responsavel, 40) + '”: ' + (porParte.length ? 'há mais de uma com esse nome' : 'ninguém com esse nome') + '. As demandas ficam sem responsável; defina na Edição de vídeo.');
+          }
+          const mesG = typeof j.gravacao_mes === 'string' && /^\d{4}-\d{2}$/.test(j.gravacao_mes) ? j.gravacao_mes : '';
+          if (mesG) {
+            const chaveG = iguais[0].id + '|' + mesG;
+            if (!gravDe.has(chaveG)) {
+              const { data: gs } = await sb.from('gravacoes').select('id, nome, data_gravacao').eq('client_id', iguais[0].id)
+                .eq('competencia_ano', Number(mesG.slice(0, 4))).eq('competencia_mes', Number(mesG.slice(5, 7)))
+                .is('deleted_at', null).order('data_gravacao', { ascending: false }).limit(10);
+              gravDe.set(chaveG, (gs || []) as { id: string; nome: string; data_gravacao: string | null }[]);
+            }
+            const gs = gravDe.get(chaveG) || [];
+            acao.competencia_ano = Number(mesG.slice(0, 4)); acao.competencia_mes = Number(mesG.slice(5, 7));
+            if (gs.length) {
+              acao.gravacao_id = gs[0].id; acao.gravacao_nome = corta(gs[0].nome, 80);
+              if (gs.length > 1) avisos.add(iguais[0].nome + ' tem ' + gs.length + ' gravações em ' + mesG.slice(5, 7) + '/' + mesG.slice(0, 4) + ': usei “' + corta(gs[0].nome, 60) + '”. Se for outra, troque na demanda depois de criar.');
+            } else avisos.add('Não achei gravação de ' + iguais[0].nome + ' em ' + mesG.slice(5, 7) + '/' + mesG.slice(0, 4) + ': as demandas ficam sem gravação ligada.');
+          }
+        }
         else if (tipo === 'design_peca') acao = { ...base, prazo: dataOk(j.prazo), peca: PECAS.includes(norm(j.peca)) ? norm(j.peca) : 'outro' };
         else if (tipo === 'gravacao') {
           const dia = dataOk(j.data);
@@ -552,9 +612,10 @@ export async function extrairAcao(texto: string, sb: SupabaseClient, permitidas:
   if (acoes.length) {
     /* com cartão na tela, a frase é sempre a mesma: o modelo às vezes
        escrevia "acesse a tela de Edição de Vídeo" junto das propostas */
-    limpoTexto = (acoes.length > 1 ? 'Montei as ' + acoes.length + ' propostas abaixo. Confira os dados e confirme cada uma para criar.'
+    limpoTexto = (acoes.length > 1 ? 'Montei as ' + acoes.length + ' propostas abaixo. Confira os dados e crie todas de uma vez ou uma por uma.'
       : 'Montei a proposta abaixo. Confira os dados e confirme para criar.') +
-      (notaLinha || (acoes.length < Math.min(achados, MAX_ACOES) ? '\n\nUma das propostas não pôde ser montada (cliente, título ou tipo não conferem).' : ''));
+      (notaLinha || (acoes.length < Math.min(achados, MAX_ACOES) ? '\n\nUma das propostas não pôde ser montada (cliente, título ou tipo não conferem).' : '')) +
+      (avisos.size ? '\n\n' + [...avisos].join('\n') : '');
   } else if (notaLinha) {
     limpoTexto = notaLinha.trim();
   } else if (!limpoTexto) {
