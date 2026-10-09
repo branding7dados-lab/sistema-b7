@@ -11,10 +11,11 @@
      · nada de banco, teste, correção interna ou ressalva — isso é do
        relatório, não daqui;
      · versão que não muda nada visível não entra;
+     · o que é só do administrador NÃO entra (Kevin, 09/10/2026: aqui é
+       só o que interessa à equipe) — isso ele lê no relatório;
      · a mais nova em cima.
 
    Quem vê cada registro (todos opcionais; sem nenhum = toda a equipe):
-     para: 'admin'          só administradores
      funcao: 'videomaker'   só quem tem essa função (administrador também vê)
      rota: 'oportunidades'  só quem abre essa tela
      recurso: 'ia_voz'      só se o recurso estiver liberado para a pessoa
@@ -24,24 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
-  { id: 'v-zzz132', versao: 'zzz132', em: '2026-10-09T13:30:00-03:00', para: 'admin',
-    titulo: 'Modo manutenção no lugar certo',
-    itens: ['Ele agora fica em Configurações → Admin, e a linha mostra o estado de verdade (Desligado, Marcado ou Ligado).',
-            'O lembrete de que está ligado foi para o rodapé, sem cobrir a busca.',
-            'Dá para ver a tela como a equipe vê antes de ligar, e somar 15 minutos sem desligar.'] },
   { id: 'v-zzz131', versao: 'zzz131', em: '2026-10-09T12:00:00-03:00',
     titulo: 'As novidades agora chegam sozinhas',
     itens: ['A cada atualização do B7, este cartão conta o que mudou para você.',
             'Dá para reler tudo em Configurações → Geral → Novidades do B7.'] },
-  { id: 'v-zzz130', versao: 'zzz130', em: '2026-10-09T10:30:00-03:00', para: 'admin',
-    titulo: 'Modo manutenção',
-    itens: ['Em Configurações → Sistema dá para travar a tela da equipe com um aviso, por tempo marcado.',
-            'A equipe vê uma contagem antes, para salvar o que estiver fazendo.'] },
-  { id: 'v-zzz129', versao: 'zzz129', em: '2026-10-09T09:50:00-03:00', para: 'admin',
-    titulo: 'Painel de TV, textos padrão e recursos',
-    itens: ['Painel de TV: a agência no mês, para deixar aberta numa tela (Configurações → Geral).',
-            'As mensagens prontas para o cliente e as frases do Portal podem ser editadas (Configurações → Admin).',
-            'Cada recurso novo pode ser liberado só para você ou para uma função antes de ir para todos.'] },
   { id: 'v-zzz128', versao: 'zzz128', em: '2026-10-09T08:30:00-03:00', ia: 'chat',
     titulo: 'Assistente: imagem, roteiro pelo conteúdo e mais rapidez',
     itens: ['Dá para anexar uma imagem ou colar um print (Ctrl+V) na conversa com o assistente.',
