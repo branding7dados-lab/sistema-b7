@@ -11,7 +11,7 @@
      on…= em partes da interface; reduzir isso fica como passo seguinte.
      frame-ancestors não funciona por <meta>: a proteção contra embutir o
      B7 em outro site é o script logo abaixo. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob: https://rartcafydsaocdzshqcx.supabase.co wss://rartcafydsaocdzshqcx.supabase.co; frame-src https://drive.google.com; media-src 'self' data: blob: https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob: https://rartcafydsaocdzshqcx.supabase.co wss://rartcafydsaocdzshqcx.supabase.co https://api.open-meteo.com https://geocoding-api.open-meteo.com; frame-src https://drive.google.com; media-src 'self' data: blob: https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script>
 /* Anti-clickjacking: o B7 nunca roda dentro de um iframe. Se alguém o

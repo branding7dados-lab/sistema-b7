@@ -257,3 +257,13 @@ grant execute on function public.sistema_avisos() to authenticated;
 --    A função tv_config_definir acima foi atualizada no banco com as
 --    chaves 'vinheta' (booleano) e 'modo' (painel | animacao).
 -- ---------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------
+-- 7) (zzz138) Painel de TV: a configuração passou a aceitar também
+--    visual (cinema | aurora | claro | minimal), fundo (fixo | dia |
+--    atraso), zoom (70 a 150), recado e recado_modo (destaque | faixa),
+--    saudacao, mural, clima e cidade {nome, lat, lon}, modo "logo",
+--    logo_frase, logo_relogio e logo_img (só endereço do espaço público
+--    de logos do próprio sistema). tv_config_definir foi atualizada no
+--    banco com essas validações.
+-- ---------------------------------------------------------------------

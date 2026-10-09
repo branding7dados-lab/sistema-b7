@@ -1904,7 +1904,9 @@ B7.Dashboard = (function () {
         L({ ic: 'play', tom: 'violeta', t: 'Abrir o Painel de TV', d: 'a agência no mês, para deixar aberta numa tela',
             botao: true, attrs: ' data-ir="#/tv"' }) +
         L({ ic: 'animacao', tom: 'rosa', t: 'Abrir só a animação da B7', d: 'a abertura do sistema em ciclo, sem número nenhum',
-            botao: true, attrs: ' data-ir="#/tv?modo=animacao"' })) : '') +
+            botao: true, attrs: ' data-ir="#/tv?modo=animacao"' }) +
+        L({ ic: 'tema', tom: 'azul', t: 'Abrir só a logo', d: 'a marca parada na tela, com a frase e o relógio que você escolher',
+            botao: true, attrs: ' data-ir="#/tv?modo=logo"' })) : '') +
 
       (u && !ehCli ? grupo('Filtros', '',
         L({ ic: 'filtro', tom: 'cinza', t: 'Limpar filtros guardados', d: 'Calendário, Produção, Vídeo e Design voltam ao padrão',

@@ -335,3 +335,225 @@ html.modo-leve .tv-relogio b i{animation:none;}
 }
 html.modo-leve .tv-luz,html.modo-leve .tv-cab::before,html.modo-leve .tv-resumo::before{animation:none;}
 html.modo-leve .tv-grao{display:none;}
+
+/* =====================================================================
+   zzz138 — Painel de TV: 4 visuais, fundo que muda, recado, saudação,
+   mural de logos, clima, tamanho e a tela "só a logo"
+   ===================================================================== */
+
+/* as duas luzes do fundo aceitam a cor escolhida pelo horário ou pela situação */
+.tv-luz{background:radial-gradient(closest-side, var(--tv-luz-a, rgba(214,46,150,.42)), transparent 72%);transition:background 2s ease;}
+.tv-luz.dois{background:radial-gradient(closest-side, var(--tv-luz-b, rgba(92,78,255,.4)), transparent 72%);}
+
+/* clima, ao lado da data */
+.tv-relogio span{display:flex;flex-direction:column;align-items:flex-start;gap:3px;}
+.tv-clima{font-style:normal;font-size:.82em;font-weight:500;color:var(--ink-4);}
+.tv-clima strong{font-weight:800;color:var(--ink-2);}
+
+/* ---- recado: em destaque no alto ---- */
+.tv-recado{flex:none;display:flex;align-items:center;justify-content:center;gap:clamp(12px,1.2vw,22px);padding:clamp(10px,1.6vh,20px) clamp(18px,2vw,40px);
+  border-radius:clamp(16px,2.2vh,26px);background:linear-gradient(90deg, color-mix(in srgb, var(--acento) 26%, transparent), color-mix(in srgb, #7C5CFF 20%, transparent));
+  border:1px solid color-mix(in srgb, var(--acento) 45%, transparent);box-shadow:0 0 60px -22px var(--acento);animation:tvEntraBloco .8s cubic-bezier(.16,1,.3,1) both;}
+.tv-recado[hidden],.tv-faixa[hidden],.tv-sauda[hidden],.tv-logo-tela[hidden]{display:none;}
+.tv-recado i{flex:none;width:clamp(9px,1.2vh,14px);height:clamp(9px,1.2vh,14px);border-radius:50%;background:var(--acento);box-shadow:0 0 18px var(--acento);animation:tvPisca 2.4s ease-in-out infinite;}
+.tv-recado b{font-family:'Archivo';font-weight:800;font-size:clamp(17px,2.9vh,34px);letter-spacing:-.015em;line-height:1.15;text-align:center;overflow-wrap:anywhere;}
+
+/* ---- recado: faixa correndo embaixo ---- */
+.tv-faixa{flex:none;overflow:hidden;border-radius:999px;padding:clamp(7px,1.1vh,13px) 0;background:color-mix(in srgb, var(--acento) 16%, transparent);
+  border:1px solid color-mix(in srgb, var(--acento) 34%, transparent);
+  -webkit-mask-image:linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);mask-image:linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);}
+.tv-faixa-rola{display:inline-flex;align-items:center;white-space:nowrap;animation:tvRola 40s linear infinite;will-change:transform;}
+.tv-faixa-copia{display:inline-flex;align-items:center;}
+.tv-faixa-rola span:not(.tv-faixa-copia){font-size:clamp(14px,2.1vh,24px);font-weight:700;padding:0 clamp(14px,1.4vw,28px);}
+.tv-faixa-rola i{font-style:normal;color:var(--acento);font-size:clamp(11px,1.5vh,17px);}
+@keyframes tvRola{from{transform:translate3d(0,0,0);}to{transform:translate3d(-50%,0,0);}}
+
+/* ---- saudação por horário ---- */
+.tv-sauda{position:absolute !important;inset:0;z-index:4 !important;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(90% 80% at 50% 50%, color-mix(in srgb, var(--fundo) 86%, transparent), var(--fundo) 80%);opacity:0;transition:opacity .6s ease;}
+.tv-sauda.on{opacity:1;}
+.tv-sauda-caixa{text-align:center;max-width:86vw;}
+.tv-sauda.on .tv-sauda-caixa > *{animation:tvEntraBloco 1s cubic-bezier(.16,1,.3,1) both;}
+.tv-sauda.on .tv-sauda-caixa > :nth-child(2){animation-delay:.12s;}
+.tv-sauda.on .tv-sauda-caixa > :nth-child(3){animation-delay:.26s;}
+.tv-sauda.on .tv-sauda-caixa > :nth-child(4){animation-delay:.4s;}
+.tv-sauda small{display:block;font-size:clamp(13px,2vh,22px);font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);}
+.tv-sauda h1{margin:clamp(8px,1.6vh,18px) 0;font-family:'Archivo';font-weight:800;font-size:clamp(44px,12vh,140px);line-height:.95;letter-spacing:-.04em;
+  background:linear-gradient(180deg, var(--ink) 25%, color-mix(in srgb, var(--acento) 70%, var(--ink)) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.tv-sauda p{margin:0 0 clamp(18px,3.4vh,40px);font-size:clamp(16px,2.8vh,32px);color:var(--ink-2);}
+.tv-sauda p b{color:var(--acento);}
+.tv-sauda-fatos{display:flex;justify-content:center;gap:clamp(18px,3vw,60px);flex-wrap:wrap;}
+.tv-sauda-fatos div{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:clamp(120px,12vw,220px);}
+.tv-sauda-fatos b{font-family:'Archivo';font-weight:800;font-size:clamp(34px,8vh,92px);line-height:1;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums;}
+.tv-sauda-fatos b i{font-style:normal;font-size:.5em;color:var(--ink-4);}
+.tv-sauda-fatos span{font-size:clamp(13px,1.9vh,21px);color:var(--ink-3);}
+
+/* ---- mural de hoje ---- */
+.tv-mural{min-height:0;display:flex;flex-direction:column;gap:clamp(10px,1.6vh,20px);animation:tvLinha .5s cubic-bezier(.2,.8,.2,1) both;}
+.tv-mural header{flex:none;display:flex;align-items:baseline;gap:16px;}
+.tv-mural h2{margin:0;font-family:'Archivo';font-weight:800;font-size:clamp(18px,3vh,34px);letter-spacing:-.02em;}
+.tv-mural header span{font-size:clamp(12px,1.6vh,18px);color:var(--ink-4);}
+.tv-mural-grade{flex:1;min-height:0;display:grid;gap:clamp(8px,1vw,18px);grid-auto-rows:minmax(0,1fr);
+  grid-template-columns:repeat(clamp(2, calc(var(--n) / 2 + 1), 6), minmax(0,1fr));}
+.tv-mural-grade article{min-height:0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,1.2vh,14px);padding:clamp(10px,1.6vh,20px);
+  border-radius:clamp(16px,2.2vh,26px);background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.028));border:1px solid var(--borda);
+  animation:tvEntraBloco .8s cubic-bezier(.16,1,.3,1) calc(var(--i) * 50ms) both;}
+.tv-mural-av{width:clamp(56px,11vh,130px);height:clamp(56px,11vh,130px);border-radius:26%;font-size:clamp(18px,3.4vh,40px);flex:none;}
+.tv-mural-grade b{font-size:clamp(14px,2.1vh,24px);font-weight:700;text-align:center;line-height:1.15;overflow-wrap:anywhere;}
+.tv-mural-grade p{margin:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;}
+.tv-mural-grade p span{padding:3px 11px;border-radius:999px;background:var(--suave);font-size:clamp(11px,1.45vh,16px);color:var(--ink-2);white-space:nowrap;}
+.tv-mural-grade p span.g{background:color-mix(in srgb, var(--acento) 24%, transparent);color:var(--ink);font-weight:700;}
+
+/* ---- só a logo ---- */
+.tv-logo-tela{position:absolute !important;inset:0;z-index:3 !important;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.tv.tv-so-logo > :is(.tv-cab,.tv-corpo,.tv-pe,.tv-recado,.tv-faixa){display:none;}
+.tv.tv-so-logo{cursor:none;}
+.tv.tv-so-logo.tv-mexeu{cursor:default;}
+.tv-logo-caixa{display:flex;flex-direction:column;align-items:center;gap:clamp(18px,3.4vh,44px);animation:tvLogoEntra 1.8s cubic-bezier(.16,1,.3,1) both;}
+@keyframes tvLogoEntra{from{opacity:0;transform:scale(.94);filter:blur(10px);}to{opacity:1;transform:none;filter:none;}}
+.tv-logo-img{position:relative;display:block;animation:tvLogoRespira 7s ease-in-out 2s infinite alternate;}
+@keyframes tvLogoRespira{from{transform:scale(1);}to{transform:scale(1.035);}}
+.tv-logo-img img{display:block;max-width:min(56vw,980px);max-height:46vh;width:auto;height:auto;filter:drop-shadow(0 0 60px color-mix(in srgb, var(--acento) 45%, transparent));}
+.tv-logo-img i{position:absolute;inset:0;pointer-events:none;
+  -webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  background:linear-gradient(105deg, transparent 42%, rgba(255,255,255,.75) 50%, transparent 58%) no-repeat;background-size:320% 100%;background-position:130% 0;
+  animation:tvLogoBrilho 9s cubic-bezier(.4,0,.2,1) 3s infinite;}
+@keyframes tvLogoBrilho{0%{background-position:130% 0;}30%,100%{background-position:-40% 0;}}
+.tv-logo-caixa p{margin:0;font-size:clamp(15px,3vh,36px);font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-2);text-align:center;max-width:80vw;}
+.tv-logo-hora{position:absolute;left:0;right:0;bottom:clamp(22px,5vh,60px);display:flex;flex-direction:column;align-items:center;gap:4px;font-variant-numeric:tabular-nums;}
+.tv-logo-hora b{font-family:'Archivo';font-weight:800;font-size:clamp(26px,5.4vh,62px);letter-spacing:-.03em;line-height:1;color:var(--ink);}
+.tv-logo-hora b i{font-style:normal;margin:0 2px;opacity:.45;animation:tvPisca 2s steps(1) infinite;}
+.tv-logo-hora span{font-size:clamp(12px,1.8vh,20px);color:var(--ink-3);}
+
+/* =====================================================================
+   OS QUATRO VISUAIS — "cinema" é o padrão (o que já existia)
+   ===================================================================== */
+
+/* ---- aurora: escuro, em verde-água e violeta ---- */
+.tv.tv-v-aurora{--acento:#3FE0C5; --acento-suave:rgba(63,224,197,.16); --ok:#6BF0A8;
+  background:radial-gradient(110% 90% at 20% 110%, #05303A 0%, transparent 60%), radial-gradient(90% 80% at 100% 0%, #1E1250 0%, transparent 58%), linear-gradient(180deg, #030A12 0%, #06091C 100%);}
+.tv.tv-v-aurora .tv-luz{background:radial-gradient(closest-side, var(--tv-luz-a, rgba(40,220,190,.44)), transparent 72%);opacity:.7;}
+.tv.tv-v-aurora .tv-luz.dois{background:radial-gradient(closest-side, var(--tv-luz-b, rgba(120,90,255,.46)), transparent 72%);opacity:.65;}
+.tv.tv-v-aurora .tv-relogio b{background:linear-gradient(180deg, #fff 20%, #B8FFF0 60%, #9C8CFF 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 22px rgba(63,224,197,.35));}
+.tv.tv-v-aurora .tv-anel svg{filter:drop-shadow(0 0 16px rgba(63,224,197,.55));}
+.tv.tv-v-aurora .tv-anel .v{stroke:#3FE0C5;}
+.tv.tv-v-aurora .tv-hoje{background:linear-gradient(90deg, rgba(63,224,197,.2), rgba(124,92,255,.16));box-shadow:0 0 34px -10px rgba(63,224,197,.6);}
+.tv.tv-v-aurora .tv-cab::before{background:linear-gradient(90deg, transparent, rgba(120,90,255,.75) 35%, #fff 76%, rgba(63,224,197,.95) 92%, transparent);}
+.tv.tv-v-aurora .tv-sdia.hoje{border-color:rgba(63,224,197,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.16), 0 0 60px -20px rgba(63,224,197,.75);}
+
+/* ---- claro: para sala iluminada ---- */
+.tv.tv-v-claro{--fundo:#F3F0FA; --card:#fff; --suave:#F0ECF8; --borda:#E4DEF0; --borda-forte:#D3CAE6;
+  --ink:#15122B; --ink-2:#3B3557; --ink-3:#6F688C; --ink-4:#9E97B5;
+  --ok:#12805A; --ambar:#96601A; --erro:#C2185B; --acento:#C21C83; --acento-suave:rgba(194,28,131,.09);
+  background:linear-gradient(180deg, #F7F4FC 0%, #EEE9F8 100%);}
+.tv.tv-v-claro .tv-logo.claro{display:block;}
+.tv.tv-v-claro .tv-logo.escuro{display:none;}
+.tv.tv-v-claro .tv-luz{opacity:.5;background:radial-gradient(closest-side, var(--tv-luz-a, rgba(226,64,156,.22)), transparent 72%);}
+.tv.tv-v-claro .tv-luz.dois{background:radial-gradient(closest-side, var(--tv-luz-b, rgba(124,92,255,.2)), transparent 72%);}
+.tv.tv-v-claro .tv-grao,.tv.tv-v-claro::after{display:none;}
+.tv.tv-v-claro :is(.tv-resumo,.tv-bloco,.tv-sdia,.tv-mural-grade article){background:#fff;border-color:var(--borda);box-shadow:0 22px 50px -30px rgba(60,30,110,.35);}
+.tv.tv-v-claro .tv-sdia.fds{background:#FAF8FD;}
+.tv.tv-v-claro .tv-sdia.hoje{border-color:var(--acento);box-shadow:0 0 0 2px rgba(194,28,131,.14), 0 22px 50px -30px rgba(60,30,110,.35);}
+.tv.tv-v-claro .tv-relogio b{background:linear-gradient(180deg, #2A1466 10%, #C21C83 100%);-webkit-background-clip:text;background-clip:text;filter:none;}
+.tv.tv-v-claro .tv-relogio b i{-webkit-text-fill-color:rgba(60,30,110,.45);}
+.tv.tv-v-claro :is(.tv-anel b,.tv-sdia header b){background:none;color:var(--ink);-webkit-text-fill-color:currentColor;}
+.tv.tv-v-claro .tv-anel b i{-webkit-text-fill-color:var(--ink-4);}
+.tv.tv-v-claro .tv-anel svg{filter:none;}
+.tv.tv-v-claro .tv-anel .f{stroke:var(--suave);}
+.tv.tv-v-claro .tv-anel .v{stroke:var(--acento);}
+.tv.tv-v-claro :is(.tv-num b,.tv-pub-n b,.tv-cli-pct){text-shadow:none;}
+.tv.tv-v-claro .tv-num{background:color-mix(in srgb, var(--ec) 9%, #fff);border-color:color-mix(in srgb, var(--ec) 26%, var(--borda));box-shadow:none;}
+.tv.tv-v-claro .tv-cli{border-bottom-color:rgba(60,30,110,.08);}
+.tv.tv-v-claro .tv-cli-etapas i{background:color-mix(in srgb, var(--ec) 15%, transparent);color:color-mix(in srgb, var(--ec) 82%, #15122B);box-shadow:none;}
+.tv.tv-v-claro .tv-cli-etapas i.tv-e-vazio{background:rgba(60,30,110,.05);}
+.tv.tv-v-claro .tv-cli-cab .tv-cli-etapas i{background:none;}
+.tv.tv-v-claro .tv-etapa-barra{background:rgba(60,30,110,.07);}
+.tv.tv-v-claro .tv-etapa-barra i{box-shadow:none;}
+.tv.tv-v-claro .tv-hoje{background:rgba(194,28,131,.08);border-color:rgba(194,28,131,.26);box-shadow:none;}
+.tv.tv-v-claro .tv-cab::after{background:linear-gradient(90deg, transparent, rgba(60,30,110,.18) 18%, rgba(60,30,110,.18) 82%, transparent);}
+.tv.tv-v-claro .tv-cab::before{background:linear-gradient(90deg, transparent, rgba(124,92,255,.6) 35%, #C21C83 80%, transparent);}
+.tv.tv-v-claro .tv-resumo::before{background:linear-gradient(100deg, transparent, rgba(194,28,131,.06) 50%, transparent);}
+.tv.tv-v-claro .tv-logo-img i{opacity:.8;}
+.tv.tv-v-claro .tv-logo-img img{filter:drop-shadow(0 20px 50px rgba(124,30,133,.25));}
+
+/* ---- minimalista: preto e branco, sem efeitos ---- */
+.tv.tv-v-minimal{--fundo:#000; --card:transparent; --suave:rgba(255,255,255,.08); --borda:rgba(255,255,255,.16); --acento:#fff; --acento-suave:rgba(255,255,255,.1);
+  --ink:#fff; --ink-2:#D0D0D0; --ink-3:#9A9A9A; --ink-4:#6E6E6E; background:#000;}
+.tv.tv-v-minimal :is(.tv-luz,.tv-grao),.tv.tv-v-minimal::after,.tv.tv-v-minimal .tv-cab::before,.tv.tv-v-minimal .tv-resumo::before{display:none;}
+.tv.tv-v-minimal :is(.tv-resumo,.tv-bloco,.tv-sdia,.tv-mural-grade article,.tv-recado,.tv-hoje,.tv-faixa){background:none;border:1px solid rgba(255,255,255,.16);border-radius:6px;box-shadow:none;}
+.tv.tv-v-minimal .tv-num{background:none;border:0;border-left:2px solid var(--ec);border-radius:0;box-shadow:none;}
+.tv.tv-v-minimal :is(.tv-num b,.tv-pub-n b,.tv-cli-pct){text-shadow:none;}
+.tv.tv-v-minimal .tv-relogio b{background:none;color:#fff;-webkit-text-fill-color:#fff;filter:none;font-weight:700;}
+.tv.tv-v-minimal .tv-relogio b i{-webkit-text-fill-color:rgba(255,255,255,.5);}
+.tv.tv-v-minimal :is(.tv-anel b,.tv-sdia header b,.tv-sauda h1){background:none;color:#fff;-webkit-text-fill-color:#fff;}
+.tv.tv-v-minimal .tv-anel b i{-webkit-text-fill-color:var(--ink-4);}
+.tv.tv-v-minimal .tv-anel svg{filter:none;}
+.tv.tv-v-minimal .tv-anel circle{stroke-width:5;}
+.tv.tv-v-minimal .tv-anel .v{stroke:#fff;}
+.tv.tv-v-minimal .tv-cli-etapas i{background:none;box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ec) 60%, transparent);border-radius:3px;color:var(--ec);}
+.tv.tv-v-minimal .tv-cli-etapas i.tv-e-vazio{box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
+.tv.tv-v-minimal .tv-cli-cab .tv-cli-etapas i{box-shadow:none;}
+.tv.tv-v-minimal .tv-etapa-barra{height:4px;border-radius:0;background:rgba(255,255,255,.08);}
+.tv.tv-v-minimal .tv-etapa-barra i{border-radius:0;box-shadow:none;}
+.tv.tv-v-minimal .tv-sdia.hoje{border-color:#fff;}
+.tv.tv-v-minimal .tv-recado i{box-shadow:none;}
+.tv.tv-v-minimal .tv-mural-grade p span.g{background:#fff;color:#000;}
+.tv.tv-v-minimal .tv-logo-img img{filter:none;}
+.tv.tv-v-minimal .tv-logo-img i{display:none;}
+.tv.tv-v-minimal .tv-mural-av,.tv.tv-v-minimal .tv-cli-av{filter:grayscale(1);}
+
+/* ---- janela de configuração ---- */
+.tv-cfg{max-height:min(66vh,640px);overflow-y:auto;padding-right:6px;}
+.tv-cfg-t{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);margin:16px 0 8px;}
+.tv-cfg-t:first-child{margin-top:0;}
+.tv-cfg-esc{display:flex;flex-wrap:wrap;gap:8px;}
+.tv-cfg-esc label{flex:1;min-width:150px;display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:14px;border:1px solid var(--borda);cursor:pointer;}
+.tv-cfg-esc label:has(input:checked),.tv-cfg-vis label:has(input:checked){border-color:var(--acento);background:var(--acento-suave);}
+.tv-cfg-esc input,.tv-cfg-vis input{margin-top:3px;accent-color:var(--acento);flex:none;}
+.tv-cfg-esc span{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.tv-cfg-esc b{font-size:13px;font-weight:650;color:var(--ink);}
+.tv-cfg-esc small{font-size:11.5px;color:var(--ink-3);line-height:1.35;}
+.tv-cfg-vis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.tv-cfg-vis label{position:relative;display:flex;flex-direction:column;gap:3px;padding:9px;border-radius:14px;border:1px solid var(--borda);cursor:pointer;}
+.tv-cfg-vis input{position:absolute;top:14px;right:14px;margin:0;}
+.tv-cfg-vis b{font-size:13px;font-weight:650;color:var(--ink);margin-top:4px;}
+.tv-cfg-vis small{font-size:11.5px;color:var(--ink-3);line-height:1.35;}
+.tv-cfg-am{display:flex;align-items:flex-end;gap:4px;height:58px;padding:8px;border-radius:9px;overflow:hidden;}
+.tv-cfg-am i{flex:1;border-radius:3px;}
+.tv-am-cinema{background:radial-gradient(80% 90% at 20% 0%, rgba(214,46,150,.55), transparent 70%), radial-gradient(80% 90% at 100% 100%, rgba(92,78,255,.5), transparent 70%), #07040F;}
+.tv-am-cinema i{background:rgba(255,255,255,.2);height:60%;} .tv-am-cinema i:nth-child(2){height:90%;background:#F04FA8;} .tv-am-cinema i:nth-child(3){height:40%;}
+.tv-am-aurora{background:radial-gradient(80% 90% at 20% 100%, rgba(40,220,190,.55), transparent 70%), radial-gradient(80% 90% at 100% 0%, rgba(120,90,255,.5), transparent 70%), #030A12;}
+.tv-am-aurora i{background:rgba(255,255,255,.2);height:60%;} .tv-am-aurora i:nth-child(2){height:90%;background:#3FE0C5;} .tv-am-aurora i:nth-child(3){height:40%;}
+.tv-am-claro{background:#F3F0FA;border:1px solid #E4DEF0;}
+.tv-am-claro i{background:#fff;box-shadow:0 2px 6px rgba(60,30,110,.18);height:60%;} .tv-am-claro i:nth-child(2){height:90%;background:#C21C83;} .tv-am-claro i:nth-child(3){height:40%;}
+.tv-am-minimal{background:#000;}
+.tv-am-minimal i{border:1px solid rgba(255,255,255,.5);height:60%;border-radius:0;} .tv-am-minimal i:nth-child(2){height:90%;background:#fff;} .tv-am-minimal i:nth-child(3){height:40%;}
+.tv-cfg-duas{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;}
+.tv-cfg-duas .tv-cfg-esc label{min-width:110px;}
+.tv-cfg-grade{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.tv-cfg-dica{display:block;margin-top:6px;font-size:12px;line-height:1.45;color:var(--ink-4);}
+.tv-cfg-int{padding:8px 2px 0;}
+.tv-cfg-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.tv-cfg-linha .campo{flex:1;min-width:160px;}
+.tv-cfg-cidade{margin-top:10px;}
+.tv-cfg-cidade[hidden],#tv-cfg-painel[hidden],#tv-cfg-logo[hidden]{display:none;}
+.tv-cfg-cid-r{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:12.5px;}
+.tv-cfg-cid-op{border:1px solid var(--borda);background:none;border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;color:var(--ink-2);cursor:pointer;}
+.tv-cfg-cid-op:hover{border-color:var(--acento);color:var(--ink);}
+.tv-cfg-cid-ok{color:var(--ok);} .tv-cfg-cid-no{color:var(--ink-4);}
+#tv-cfg-recado{margin-bottom:8px;}
+.tv-cfg-img{display:flex;gap:14px;align-items:center;margin-bottom:12px;}
+.tv-cfg-img-pv{flex:none;width:150px;height:84px;border-radius:12px;background:#07040F;display:flex;align-items:center;justify-content:center;padding:12px;}
+.tv-cfg-img-pv img{max-width:100%;max-height:100%;}
+.tv-cfg-img b{display:block;font-size:13.5px;color:var(--ink);margin-bottom:7px;}
+.tv-cfg-ver{margin:18px 0 0;font-size:12.5px;color:var(--ink-3);line-height:1.6;}
+.tv-cfg-ver a{color:var(--acento);font-weight:600;}
+.tv-cfg-ver small{color:var(--ink-4);}
+@media (max-width:640px){
+  .tv-cfg-vis{grid-template-columns:1fr 1fr;}
+  .tv-cfg-duas,.tv-cfg-grade{grid-template-columns:1fr;}
+}
+@media (prefers-reduced-motion: reduce){
+  .tv-faixa-rola,.tv-recado,.tv-recado i,.tv-logo-caixa,.tv-logo-img,.tv-logo-img i,.tv-mural-grade article,.tv-sauda.on .tv-sauda-caixa > *{animation:none !important;}
+}
+html.modo-leve .tv-logo-img,html.modo-leve .tv-logo-img i{animation:none;}
