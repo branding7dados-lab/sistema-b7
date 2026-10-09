@@ -101,3 +101,62 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 @media (prefers-reduced-motion: reduce){
   .mn-faixa,.mn-trava,.nv-cartao,.mn-faixa .mn-ponto{animation:none !important;}
 }
+
+/* =====================================================================
+   ADMIN: SESSÕES ATIVAS E USO DA IA (zzz136) — js/admin-extra.js
+   ===================================================================== */
+.adm-corpo{max-height:min(62vh,600px);overflow-y:auto;padding-right:4px;margin-bottom:4px;transition:opacity .2s;}
+.adm-corpo.carregando{opacity:.5;}
+.adm-vazio{font-size:13px;color:var(--ink-4);margin:10px 0;}
+.adm-sub{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);margin:20px 0 9px;}
+.adm-nota{font-size:12px;line-height:1.5;color:var(--ink-4);margin:18px 0 0;}
+.adm-link{border:0;background:none;padding:0;font:inherit;font-size:12.5px;font-weight:600;color:var(--acento);cursor:pointer;}
+.adm-link.perigo{color:var(--erro);}
+.adm-link:hover{text-decoration:underline;}
+
+/* sessões */
+.adm-grupo{border:1px solid var(--borda);border-radius:16px;padding:4px 14px 6px;margin-bottom:12px;}
+.adm-grupo header{display:flex;align-items:baseline;gap:10px;padding:10px 0 8px;}
+.adm-grupo header b{font-size:14.5px;font-weight:700;color:var(--ink);}
+.adm-grupo header small{font-size:12px;color:var(--ink-4);}
+.adm-grupo header .adm-link{margin-left:auto;}
+.adm-sessao{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid color-mix(in srgb, var(--borda) 70%, transparent);}
+.adm-ic{flex:none;width:36px;height:36px;border-radius:12px;background:var(--suave);color:var(--ink-3);display:inline-flex;align-items:center;justify-content:center;}
+.adm-ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.adm-sessao-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.adm-sessao-tx b{font-size:13.5px;font-weight:650;color:var(--ink);}
+.adm-sessao-tx small{font-size:12px;color:var(--ink-4);}
+.adm-atual{font-style:normal;margin-left:6px;padding:1px 8px;border-radius:999px;background:var(--ok-bg);color:var(--ok);font-size:10.5px;font-weight:700;}
+
+/* uso da IA */
+.adm-periodo{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--suave);margin:10px 0 14px;}
+.adm-periodo button{border:0;background:none;padding:6px 14px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-3);cursor:pointer;}
+.adm-periodo button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.adm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+.adm-kpi{padding:13px 14px;border-radius:16px;border:1px solid var(--borda);display:flex;flex-direction:column;gap:2px;min-width:0;}
+.adm-kpi b{font-family:'Archivo';font-weight:800;font-size:25px;letter-spacing:-.02em;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums;}
+.adm-kpi span{font-size:12px;color:var(--ink-3);}
+.adm-kpi small{font-size:11.5px;color:var(--ink-4);}
+.adm-kpi small.erro,.adm-tab td.erro{color:var(--erro);font-weight:700;}
+.adm-barras{display:flex;align-items:flex-end;gap:3px;height:130px;padding-top:16px;}
+.adm-barra{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;}
+.adm-barra-n{font-size:10px;color:var(--ink-4);font-variant-numeric:tabular-nums;line-height:1;min-height:10px;}
+.adm-barra i{display:flex;align-items:flex-end;width:100%;max-width:34px;border-radius:6px 6px 2px 2px;background:var(--acento);overflow:hidden;min-height:2px;flex:none;}
+.adm-barra u{display:block;width:100%;background:var(--erro);opacity:.85;}
+.adm-barra small{font-size:10px;color:var(--ink-4);height:12px;white-space:nowrap;}
+.adm-duas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:6px 24px;}
+.adm-tab{width:100%;border-collapse:collapse;font-size:13px;}
+.adm-tab th{text-align:left;font-size:11px;font-weight:700;color:var(--ink-4);padding:0 0 6px;}
+.adm-tab td{padding:7px 0;border-top:1px solid color-mix(in srgb, var(--borda) 70%, transparent);color:var(--ink-2);}
+.adm-tab .num{text-align:right;font-variant-numeric:tabular-nums;padding-left:10px;white-space:nowrap;}
+.adm-erros{display:flex;flex-wrap:wrap;gap:8px;margin:0;}
+.adm-erros span{padding:5px 11px;border-radius:999px;background:var(--erro-bg);font-size:12.5px;color:var(--ink-2);}
+.adm-erros b{color:var(--erro);}
+@media (max-width:640px){
+  .adm-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .adm-duas{grid-template-columns:minmax(0,1fr);}
+}
+
+/* manutenção: campo de dia e horário do "Agendar…" */
+.mn-quando{margin-top:9px;max-width:260px;}
+.mn-quando[hidden]{display:none;}

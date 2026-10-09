@@ -152,3 +152,55 @@ body.modo-tv #toasts,body.modo-tv #b7-chat-fab,body.modo-tv #b7-chat,body.modo-t
   .tv-anel .v,.tv-sair{transition:none !important;}
 }
 html.modo-leve .tv-relogio b i{animation:none;}
+
+/* =====================================================================
+   zzz136 — Painel de TV configurável: blocos ligados/desligados e a
+   segunda tela (agenda da semana)
+   ===================================================================== */
+.tv-corpo.sem-lado{grid-template-columns:minmax(0,1fr);}
+.tv-corpo.sem-clientes{grid-template-columns:minmax(0,1fr);}
+.tv-corpo.sem-clientes .tv-lado{flex-direction:row;}
+.tv-corpo.sem-clientes .tv-lado .tv-bloco{flex:1;min-width:0;}
+.tv-corpo.sem-clientes .tv-etapas{gap:clamp(10px,1.8vh,22px);flex:1;justify-content:center;}
+.tv-corpo.sem-clientes .tv-etapa-rot{font-size:clamp(15px,2.3vh,25px);}
+.tv-corpo.sem-clientes .tv-etapa{grid-template-columns:clamp(110px,10vw,190px) minmax(0,1fr);}
+.tv-corpo.sem-clientes .tv-etapa-barra{height:clamp(11px,1.7vh,18px);}
+.tv-corpo.sem-clientes .tv-etapa small{font-size:clamp(12px,1.6vh,17px);}
+.tv-corpo.sem-clientes .tv-lista{gap:clamp(10px,1.6vh,18px);}
+.tv-corpo.sem-clientes .tv-lista-tx b{font-size:clamp(15px,2.2vh,24px);}
+
+.tv-corpo.tv-tela-semana{grid-template-columns:minmax(0,1fr);}
+.tv-semana{min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(8px,.8vw,16px);animation:tvLinha .5s cubic-bezier(.2,.8,.2,1) both;}
+.tv-sdia{min-height:0;min-width:0;display:flex;flex-direction:column;border-radius:clamp(16px,2.2vh,26px);background:var(--card);border:1px solid var(--borda);overflow:hidden;}
+.tv-sdia.fds{background:color-mix(in srgb, var(--card) 60%, var(--fundo));}
+.tv-sdia.hoje{border-color:color-mix(in srgb, var(--acento) 55%, var(--borda));box-shadow:0 0 0 2px color-mix(in srgb, var(--acento) 18%, transparent);}
+.tv-sdia header{flex:none;display:flex;align-items:baseline;gap:8px;padding:clamp(10px,1.6vh,18px) clamp(10px,1vw,18px) clamp(6px,1vh,12px);border-bottom:1px solid var(--borda);}
+.tv-sdia header span{font-size:clamp(11px,1.5vh,16px);font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-4);}
+.tv-sdia.hoje header span{color:var(--acento);}
+.tv-sdia header b{margin-left:auto;font-family:'Archivo';font-weight:800;font-size:clamp(22px,4vh,44px);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;}
+.tv-sdia-corpo{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:clamp(8px,1.3vh,14px);padding:clamp(10px,1.5vh,16px) clamp(10px,1vw,18px);}
+.tv-sdia-corpo p{margin:0;display:flex;flex-direction:column;gap:1px;min-width:0;}
+.tv-sdia-corpo time{font-size:clamp(11px,1.4vh,15px);font-weight:700;color:var(--acento);font-variant-numeric:tabular-nums;}
+.tv-sdia-corpo b{font-size:clamp(13px,1.9vh,20px);font-weight:650;line-height:1.2;overflow-wrap:anywhere;}
+.tv-sdia-livre,.tv-sdia-mais{font-size:clamp(12px,1.5vh,16px);color:var(--ink-4);}
+.tv-sdia footer{flex:none;display:flex;align-items:baseline;gap:7px;padding:clamp(8px,1.2vh,14px) clamp(10px,1vw,18px);border-top:1px solid var(--borda);}
+.tv-sdia footer b{font-family:'Archivo';font-weight:800;font-size:clamp(17px,2.6vh,28px);color:var(--ink);font-variant-numeric:tabular-nums;}
+.tv-sdia footer span{font-size:clamp(11px,1.4vh,15px);color:var(--ink-3);}
+@media (max-width:1100px){
+  .tv-semana{grid-template-columns:minmax(0,1fr);}
+  .tv-corpo.sem-clientes .tv-lado{flex-direction:column;}
+}
+
+/* janela de configuração (Configurações → Admin → Painel de TV) */
+.tv-cfg{display:flex;flex-direction:column;gap:7px;}
+.tv-cfg-l{display:flex;align-items:flex-start;gap:11px;padding:10px 13px;border-radius:14px;border:1px solid var(--borda);cursor:pointer;}
+.tv-cfg-l:has(input:checked){border-color:color-mix(in srgb, var(--acento) 45%, var(--borda));background:var(--acento-suave);}
+.tv-cfg-l input{margin-top:3px;accent-color:var(--acento);flex:none;}
+.tv-cfg-l span{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.tv-cfg-l b{font-size:13.5px;font-weight:650;color:var(--ink);}
+.tv-cfg-l small{font-size:12px;color:var(--ink-3);line-height:1.4;}
+.tv-cfg-int{display:flex;align-items:center;gap:12px;padding:4px 13px 0 37px;font-size:13px;color:var(--ink-2);}
+.tv-cfg-int[hidden]{display:none;}
+.tv-cfg-int select{max-width:170px;}
+.tv-cfg-aviso{margin:4px 0 0;font-size:12px;color:var(--ambar);}
+.tv-cfg-aviso[hidden]{display:none;}

@@ -33,7 +33,18 @@ B7.Manutencao = (function () {
   function fase() {
     if (!atual || !atual.ativo) return 'nenhuma';
     if (atual.fim && new Date(atual.fim).getTime() <= agora()) return 'nenhuma';
-    return new Date(atual.inicio).getTime() > agora() ? 'aviso' : 'ativa';
+    const falta = new Date(atual.inicio).getTime() - agora();
+    /* zzz136: agendada para mais tarde — ainda não é hora nem da contagem */
+    return falta > 10 * 60000 ? 'agendada' : falta > 0 ? 'aviso' : 'ativa';
+  }
+  const DOW = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  /* "hoje às 22:00", "amanhã às 08:00", "sáb 12/10 às 22:00" — na hora deste aparelho */
+  function quandoDe(ts) {
+    const d = new Date(new Date(ts).getTime() - desvio), h = new Date(), a = new Date(); a.setDate(h.getDate() + 1);
+    const hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    if (d.toDateString() === h.toDateString()) return 'hoje às ' + hm;
+    if (d.toDateString() === a.toDateString()) return 'amanhã às ' + hm;
+    return DOW[d.getDay()] + ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' às ' + hm;
   }
 
   async function conferir() {
@@ -55,7 +66,7 @@ B7.Manutencao = (function () {
     const app = document.getElementById('app'); if (app) app.inert = false;
   }
 
-  const ROT_FASE = { nenhuma: 'Desligado', aviso: 'Marcado', ativa: 'Ligado' };
+  const ROT_FASE = { nenhuma: 'Desligado', agendada: 'Agendado', aviso: 'Marcado', ativa: 'Ligado' };
   /* zzz132: a linha em Configurações → Admin acompanha o estado de verdade.
      Antes ela era desenhada uma vez só: aberta antes de a consulta voltar,
      ficava dizendo "Desligado" com a manutenção ligada. */
@@ -75,9 +86,18 @@ B7.Manutencao = (function () {
     clearInterval(tique); tique = 0;
     if (f === 'nenhuma') { destravar(); tirar('b7-manut-faixa'); return; }
     /* enquanto houver manutenção marcada, o relógio anda de segundo em segundo */
-    tique = setInterval(pintar, 1000);
+    tique = setInterval(pintar, f === 'agendada' ? 30000 : 1000);
 
     const fimTx = atual.fim ? 'previsão de volta às ' + horaDe(new Date(atual.fim).getTime() - desvio) : 'sem hora marcada para voltar';
+    if (f === 'agendada') {
+      /* só o administrador recebe o agendamento antes da hora; o lembrete
+         aparece no dia (até 24 h antes) — antes disso fica só nas Configurações */
+      destravar();
+      if (souAdmin() && new Date(atual.inicio).getTime() - agora() <= 24 * 3600000)
+        faixa('adm', 'Manutenção agendada para ' + quandoDe(atual.inicio), 'Gerenciar', () => abrirGerenciar());
+      else tirar('b7-manut-faixa');
+      return;
+    }
     if (souAdmin()) {
       destravar();
       faixa('adm', (f === 'aviso' ? 'Manutenção marcada: a equipe é travada em ' + contagem() : 'Modo manutenção ligado: a equipe está travada') +
@@ -172,18 +192,20 @@ B7.Manutencao = (function () {
             'É uma trava de tela: não altera nenhuma regra de acesso.</p>' +
           '<div class="mb"><label class="rot" for="mn-msg">MENSAGEM PARA A EQUIPE</label>' +
             '<textarea class="campo" id="mn-msg" rows="2" maxlength="300">' + MSG_PADRAO + '</textarea></div>' +
-          '<div class="mb"><label class="rot">COMEÇA</label>' + opcoes('mn-ini', [[2, 'Em 2 minutos'], [5, 'Em 5 minutos'], [0, 'Agora']], 2) +
+          '<div class="mb"><label class="rot">COMEÇA</label>' + opcoes('mn-ini', [[2, 'Em 2 minutos'], [5, 'Em 5 minutos'], [0, 'Agora'], ['agendar', 'Agendar…']], 2) +
+            '<input type="datetime-local" class="campo mn-quando" id="mn-quando" aria-label="Dia e horário de início" hidden>' +
             '<small class="mn-dica">Com antecedência, a equipe vê uma contagem para salvar o que está fazendo. “Agora” pode cortar alguém no meio de um formulário.</small></div>' +
           '<div class="mb"><label class="rot">DURA</label>' + opcoes('mn-dur', [[15, '15 minutos'], [30, '30 minutos'], [60, '1 hora'], ['', 'Até eu desligar']], 15) + '</div>' +
           '<label class="mn-check"><input type="checkbox" id="mn-portal"><span>Travar também o Portal do cliente</span></label>' +
           '<div class="acoes"><button type="button" class="b contorno" id="mn-previa">Ver como a equipe vê</button><span class="mn-esp"></span>' +
             '<button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="mn-ok">Ligar manutenção</button></div>'
-        : '<p class="sub">' + (f === 'aviso' ? 'Marcada: a equipe é travada às ' + horaDe(new Date(atual.inicio).getTime() - desvio) + '.' : 'Ligado agora: a equipe está com a tela travada.') +
+        : '<p class="sub">' + (f === 'agendada' ? 'Agendada para ' + quandoDe(atual.inicio) + '. A equipe vê a contagem 10 minutos antes.'
+            : f === 'aviso' ? 'Marcada: a equipe é travada às ' + horaDe(new Date(atual.inicio).getTime() - desvio) + '.' : 'Ligado agora: a equipe está com a tela travada.') +
             ' ' + (atual.fim ? 'Termina sozinho às ' + horaDe(new Date(atual.fim).getTime() - desvio) + '.' : 'Fica ligado até você desligar.') +
             (atual.portal ? ' Vale também para o Portal do cliente.' : ' O Portal do cliente não é afetado.') + '</p>' +
           '<div class="mn-previa"><small>MENSAGEM</small><p>' + esc((atual.mensagem || '').trim() || 'Estamos fazendo uma melhoria no sistema. Voltamos em instantes.') + '</p></div>' +
           '<div class="acoes">' + (f === 'ativa' && atual.fim ? '<button type="button" class="b contorno" id="mn-mais">+ 15 minutos</button><span class="mn-esp"></span>' : '') +
-            '<button type="button" class="b contorno" data-fecha>Fechar</button><button type="button" class="b pri" id="mn-desligar">Desligar agora</button></div>'));
+            '<button type="button" class="b contorno" data-fecha>Fechar</button><button type="button" class="b pri" id="mn-desligar">' + (f === 'agendada' ? 'Cancelar o agendamento' : 'Desligar agora') + '</button></div>'));
     m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
     const feito = async (bt, rotulo, chamada, aviso) => {
       bt.disabled = true; bt.textContent = 'Enviando…';
@@ -200,19 +222,37 @@ B7.Manutencao = (function () {
       }
     };
     const ok = m.querySelector('#mn-ok');
+    /* zzz136: "Agendar…" abre o campo de dia e horário (até 30 dias à frente) */
+    const quando = m.querySelector('#mn-quando');
+    const localISO = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    if (quando) {
+      const agoraLocal = new Date(), padrao = new Date(agoraLocal.getTime() + 3600000); padrao.setMinutes(0, 0, 0);
+      quando.min = localISO(agoraLocal); quando.max = localISO(new Date(agoraLocal.getTime() + 30 * 86400000)); quando.value = localISO(padrao);
+      const trocar = () => {
+        const ag = m.querySelector('input[name="mn-ini"]:checked').value === 'agendar';
+        quando.hidden = !ag; ok.textContent = ag ? 'Agendar manutenção' : 'Ligar manutenção';
+      };
+      m.querySelectorAll('input[name="mn-ini"]').forEach(x => x.onchange = trocar); trocar();
+    }
     if (ok) ok.onclick = () => {
-      const dur = m.querySelector('input[name="mn-dur"]:checked').value;
-      feito(ok, 'Ligar manutenção', () => B7.DB.rpc('manutencao_definir', {
-        p_ativo: true, p_mensagem: m.querySelector('#mn-msg').value,
-        p_inicio_min: Number(m.querySelector('input[name="mn-ini"]:checked').value),
-        p_duracao_min: dur === '' ? null : Number(dur), p_portal: m.querySelector('#mn-portal').checked
-      }), 'Manutenção ligada. Chega a cada pessoa em até 1 minuto.');
+      const dur = m.querySelector('input[name="mn-dur"]:checked').value, ini = m.querySelector('input[name="mn-ini"]:checked').value;
+      const args = { p_ativo: true, p_mensagem: m.querySelector('#mn-msg').value, p_inicio_min: ini === 'agendar' ? 0 : Number(ini),
+        p_duracao_min: dur === '' ? null : Number(dur), p_portal: m.querySelector('#mn-portal').checked };
+      if (ini === 'agendar') {
+        const d = new Date(quando.value);
+        if (!quando.value || isNaN(d)) { B7.UI.toast('Escolha o dia e o horário.', { tipo: 'erro' }); return; }
+        if (d.getTime() < Date.now()) { B7.UI.toast('Esse horário já passou.', { tipo: 'erro' }); return; }
+        args.p_inicio_em = d.toISOString();
+      }
+      feito(ok, ini === 'agendar' ? 'Agendar manutenção' : 'Ligar manutenção', () => B7.DB.rpc('manutencao_definir', args),
+        ini === 'agendar' ? 'Manutenção agendada. A equipe vê a contagem 10 minutos antes.' : 'Manutenção ligada. Chega a cada pessoa em até 1 minuto.');
     };
     const pv = m.querySelector('#mn-previa');
     if (pv) pv.onclick = () => {
-      const dur = m.querySelector('input[name="mn-dur"]:checked').value, ini = Number(m.querySelector('input[name="mn-ini"]:checked').value);
+      const dur = m.querySelector('input[name="mn-dur"]:checked').value, iniV = m.querySelector('input[name="mn-ini"]:checked').value;
+      const base = iniV === 'agendar' && quando && quando.value ? new Date(quando.value).getTime() : Date.now() + Number(iniV) * 60000;
       previa(m.querySelector('#mn-msg').value, dur === '' ? 'sem hora marcada para voltar'
-        : 'previsão de volta às ' + horaDe(Date.now() + (ini + Number(dur)) * 60000));
+        : 'previsão de volta às ' + horaDe(base + Number(dur) * 60000));
     };
     /* estender: mesma mensagem e mesmo alcance, só empurra o fim */
     const mais = m.querySelector('#mn-mais');
@@ -231,6 +271,7 @@ B7.Manutencao = (function () {
     const f = fase();
     if (f === 'nenhuma') return 'trava a tela da equipe com um aviso seu';
     const fim = atual.fim ? 'termina sozinho às ' + horaDe(new Date(atual.fim).getTime() - desvio) : 'fica ligado até você desligar';
+    if (f === 'agendada') return 'agendado para ' + quandoDe(atual.inicio) + (atual.fim ? ' · dura ' + Math.round((new Date(atual.fim) - new Date(atual.inicio)) / 60000) + ' min' : ' · até você desligar');
     return (f === 'ativa' ? 'ligado agora: a equipe está travada' : 'marcado: trava a equipe às ' + horaDe(new Date(atual.inicio).getTime() - desvio)) + ' · ' + fim;
   }
 

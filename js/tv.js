@@ -36,19 +36,33 @@ B7.TV = (function () {
   /* as sete etapas do Panorama, na mesma ordem, em nome curto para o cabeçalho */
   const ETAPA_CURTA = ['Linha', 'Rot.', 'Grav.', 'Vídeo', 'Design', 'Aprov.', 'Publ.'];
 
-  let raiz = null, pulso = 0, giro = 0, ultima = 0, diaPintado = '', pagina = 0, trava = null, antes = '#/';
-  const S = { panorama: null, gravacoes: null, publicacoes: null, hojeDia: null, erro: false };
+  let raiz = null, pulso = 0, giro = 0, troca = 0, ultima = 0, diaPintado = '', pagina = 0, trava = null, antes = '#/';
+  const S = { panorama: null, gravacoes: null, publicacoes: null, pubSemana: null, hojeDia: null, erro: false };
+  /* zzz136 — o que aparece é escolha do administrador (Configurações → Admin →
+     Painel de TV), guardada em sistema_config "tv". Sem nada guardado, vale isto: */
+  const PADRAO = { clientes: true, nomes: true, etapas: true, gravacoes: true, publicacoes: true, hoje: true, agenda: false, intervalo: 45 };
+  let cfg = Object.assign({}, PADRAO), tela = 'agencia';
+  async function lerConfig() {
+    try {
+      const { data } = await B7.sb.from('sistema_config').select('valor').eq('chave', 'tv').maybeSingle();
+      cfg = Object.assign({}, PADRAO, (data && data.valor && typeof data.valor === 'object') ? data.valor : {});
+    } catch (e) {}
+    return cfg;
+  }
 
   /* ------------------------------------------------------------ leitura */
   async function carregar() {
     const h = hoje(), a = new Date();
     const tenta = p => Promise.resolve(p).catch(() => null);
-    const [pan, grav, pub, ops] = await Promise.all([
+    await lerConfig();
+    const [pan, grav, pub, ops, pubSem] = await Promise.all([
       tenta(B7.DB.panoramaMes(a.getFullYear(), a.getMonth() + 1)),
       tenta(B7.Eventos && B7.Eventos.carregarDominio ? B7.Eventos.carregarDominio('gravacao', h, somarDias(h, 7)) : null),
       tenta(B7.Perm.podeRota('publicacoes') ? B7.DB.publicacoesDoPeriodo(h, h) : null),
-      tenta(B7.Oportunidades && B7.Oportunidades.periodo && B7.Perm.podeRota('oportunidades') ? B7.Oportunidades.periodo(h, h) : null)
+      tenta(B7.Oportunidades && B7.Oportunidades.periodo && B7.Perm.podeRota('oportunidades') ? B7.Oportunidades.periodo(h, h) : null),
+      tenta(cfg.agenda && B7.Perm.podeRota('publicacoes') && B7.DB.contagemPublicacoesPorDia ? B7.DB.contagemPublicacoesPorDia(h, somarDias(h, 6)) : null)
     ]);
+    S.pubSemana = pubSem;
     S.erro = !pan;
     if (pan) S.panorama = pan.map(B7.Panorama.ler);
     S.gravacoes = grav ? grav.filter(e => !e.historico && !e.cancelado && !e.concluido)
@@ -147,8 +161,8 @@ B7.TV = (function () {
       const dia = diaDoTs(g.inicio), eHoje = dia === h, d = local(dia);
       return '<li' + (eHoje ? ' class="hoje"' : '') + '><time><b>' + (eHoje ? 'hoje' : DOW_C[d.getDay()] + ' ' + pad(d.getDate())) + '</b>' +
         (g.diaInteiro ? '' : '<span>' + hora(g.inicio) + '</span>') + '</time>' +
-        '<span class="tv-lista-tx"><b>' + esc(g.cliente || g.titulo || 'Gravação') + '</b>' +
-        (g.cliente && g.titulo ? '<small>' + esc(g.titulo) + '</small>' : '') + '</span></li>';
+        '<span class="tv-lista-tx"><b>' + esc(nomeGrav(g)) + '</b>' +
+        (cfg.nomes && g.cliente && g.titulo ? '<small>' + esc(g.titulo) + '</small>' : '') + '</span></li>';
     }).join('') + '</ul>';
 
     let pub = '';
@@ -157,12 +171,28 @@ B7.TV = (function () {
       pub = '<div class="tv-pub"><div class="tv-pub-n"><b>' + p + '</b><span>de ' + t + (t === 1 ? ' publicação de hoje' : ' publicações de hoje') + '</span></div>' +
         '<span class="tv-etapa-barra"><i class="tv-e-ok" style="flex:' + p + '"></i><i class="tv-e-vazio" style="flex:' + Math.max(t - p, t ? 0 : 1) + '"></i></span></div>';
     }
-    return (pub ? '<h2>Publicações</h2>' + pub : '') + '<h2>Próximas gravações</h2>' + grav;
+    return (pub && cfg.publicacoes ? '<h2>Publicações</h2>' + pub : '') + (cfg.gravacoes ? '<h2>Próximas gravações</h2>' + grav : '');
+  }
+  /* com "nomes de clientes" desligado, a gravação aparece só pelo título */
+  const nomeGrav = g => (cfg.nomes ? (g.cliente || g.titulo || 'Gravação') : (g.titulo || 'Gravação'));
+
+  /* segunda tela (opcional): os próximos 7 dias, um quadro por dia */
+  function semana() {
+    const h = hoje();
+    const porDia = {}; (S.pubSemana || []).forEach(p => { porDia[p.data_postagem] = (porDia[p.data_postagem] || 0) + 1; });
+    return '<section class="tv-semana" aria-label="Próximos 7 dias">' + Array.from({ length: 7 }, (_, i) => {
+      const iso = somarDias(h, i), d = local(iso), gs = (S.gravacoes || []).filter(g => diaDoTs(g.inicio) === iso), np = porDia[iso] || 0;
+      return '<article class="tv-sdia' + (i === 0 ? ' hoje' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' fds' : '') + '">' +
+        '<header><span>' + (i === 0 ? 'hoje' : DOW_C[d.getDay()]) + '</span><b>' + pad(d.getDate()) + '</b></header>' +
+        '<div class="tv-sdia-corpo">' + (gs.length ? gs.slice(0, 4).map(g => '<p><time>' + (g.diaInteiro ? 'dia todo' : hora(g.inicio)) + '</time><b>' + esc(nomeGrav(g)) + '</b></p>').join('') +
+            (gs.length > 4 ? '<p class="tv-sdia-mais">+ ' + (gs.length - 4) + '</p>' : '') : '<p class="tv-sdia-livre">sem gravação</p>') + '</div>' +
+        (S.pubSemana ? '<footer><b>' + np + '</b><span>' + (np === 1 ? 'publicação' : 'publicações') + '</span></footer>' : '') + '</article>';
+    }).join('') + '</section>';
   }
 
   function faixaHoje() {
     const cx = raiz.querySelector('#tv-hoje'); if (!cx) return;
-    const l = S.hojeDia || [];
+    const l = cfg.hoje ? (S.hojeDia || []) : [];
     cx.hidden = !l.length;
     if (l.length) cx.innerHTML = '<small>Hoje é dia de</small><b>' + esc(l[0]) + '</b>' + (l.length > 1 ? '<em>e mais ' + (l.length - 1) + '</em>' : '');
   }
@@ -176,12 +206,16 @@ B7.TV = (function () {
       return;
     }
     const a = new Date();
-    corpo.innerHTML = resumo(S.panorama) +
-      '<section class="tv-bloco tv-clientes"><header><h2>Clientes em ' + MES[a.getMonth()] + '</h2>' +
-        '<span class="tv-nota" id="tv-clientes-nota"></span></header>' +
-        '<div class="tv-clientes-corpo" id="tv-clientes-corpo"></div></section>' +
-      '<aside class="tv-lado"><section class="tv-bloco"><h2>Etapas da agência</h2>' + etapas(S.panorama) + '</section>' +
-        '<section class="tv-bloco tv-agenda">' + agenda() + '</section></aside>';
+    if (!cfg.agenda) tela = 'agencia';
+    const blocoAgenda = cfg.gravacoes || (cfg.publicacoes && S.publicacoes) ? '<section class="tv-bloco tv-agenda">' + agenda() + '</section>' : '';
+    const blocoEtapas = cfg.etapas ? '<section class="tv-bloco"><h2>Etapas da agência</h2>' + etapas(S.panorama) + '</section>' : '';
+    const lado = blocoEtapas + blocoAgenda;
+    corpo.className = 'tv-corpo' + (tela === 'semana' ? ' tv-tela-semana' : (cfg.clientes ? '' : ' sem-clientes') + (lado ? '' : ' sem-lado'));
+    corpo.innerHTML = resumo(S.panorama) + (tela === 'semana' ? semana()
+      : (cfg.clientes ? '<section class="tv-bloco tv-clientes"><header><h2>Clientes em ' + MES[a.getMonth()] + '</h2>' +
+          '<span class="tv-nota" id="tv-clientes-nota"></span></header>' +
+          '<div class="tv-clientes-corpo" id="tv-clientes-corpo"></div></section>' : '') +
+        (lado ? '<aside class="tv-lado">' + lado + '</aside>' : ''));
     clientes(S.panorama);
     const at = raiz.querySelector('#tv-atualizado');
     if (at) at.textContent = (S.erro ? 'sem conexão — mostrando o último dado · ' : '') + 'atualizado às ' + pad(a.getHours()) + ':' + pad(a.getMinutes());
@@ -210,7 +244,7 @@ B7.TV = (function () {
   function sair() { const para = antes && !/^#\/tv/.test(antes) ? antes : '#/config'; fechar(); location.hash = para; }
 
   function fechar() {
-    clearInterval(pulso); clearInterval(giro); clearTimeout(somemEm); pulso = giro = 0;
+    clearInterval(pulso); clearInterval(giro); clearInterval(troca); clearTimeout(somemEm); pulso = giro = troca = 0; tela = 'agencia';
     document.removeEventListener('visibilitychange', aoVoltar);
     document.removeEventListener('keydown', aoTecla);
     window.removeEventListener('resize', aoRedimensionar);
@@ -252,6 +286,13 @@ B7.TV = (function () {
       if (document.hidden) return;
       if (diaPintado !== hoje() || Date.now() - ultima >= 5 * 60000) renovar();
     }, 15000);
+    /* zzz136: com a agenda da semana ligada, as duas telas se alternam */
+    let ultimaTroca = Date.now();
+    troca = setInterval(() => {
+      if (!raiz || document.hidden || !S.panorama || !cfg.agenda) return;
+      if (Date.now() - ultimaTroca < (Number(cfg.intervalo) || 45) * 1000) return;
+      ultimaTroca = Date.now(); tela = tela === 'agencia' ? 'semana' : 'agencia'; pintar();
+    }, 5000);
     /* clientes demais para uma página: a lista roda sozinha */
     giro = setInterval(() => {
       if (!raiz || document.hidden || !S.panorama) return;
@@ -269,5 +310,51 @@ B7.TV = (function () {
     if (raiz && !/^#\/tv/.test(location.hash)) fechar();
   });
 
-  return { abrir };
+  /* ------------------------------------------- configuração (administrador) */
+  function configurar() {
+    const OPCOES = [
+      ['clientes', 'Lista de clientes', 'cada cliente com as sete etapas e o percentual'],
+      ['nomes', 'Nome do cliente nas gravações', 'desligado, a gravação aparece só pelo título'],
+      ['etapas', 'Etapas da agência', 'quantos clientes em dia, andando, em atenção e atraso por etapa'],
+      ['gravacoes', 'Próximas gravações', 'as dos próximos 7 dias'],
+      ['publicacoes', 'Publicações de hoje', 'publicadas de quantas'],
+      ['hoje', '“Hoje é dia de…”', 'a data relevante do dia, no topo'],
+      ['agenda', 'Alternar com a agenda da semana', 'uma segunda tela com os próximos 7 dias']];
+    const m = B7.UI.modal('<h3>Painel de TV</h3><p class="sub">O que aparece na tela da agência. Vale para todo aparelho que abrir o Painel de TV; quem já está com ele aberto recebe em até 5 minutos.</p>' +
+      '<div class="tv-cfg" id="tv-cfg"><p class="adm-vazio">Carregando…</p></div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="tv-cfg-ok" disabled>Salvar</button></div>');
+    m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
+    const cx = m.querySelector('#tv-cfg'), ok = m.querySelector('#tv-cfg-ok');
+    lerConfig().then(c => {
+      if (!cx.isConnected) return;
+      cx.innerHTML = OPCOES.map(([k, t, d]) => '<label class="tv-cfg-l"><input type="checkbox" data-k="' + k + '"' + (c[k] ? ' checked' : '') + '><span><b>' + t + '</b><small>' + d + '</small></span></label>').join('') +
+        '<label class="tv-cfg-int" id="tv-cfg-int"><span>Trocar de tela a cada</span><select class="campo" id="tv-cfg-seg">' +
+          [[20, '20 segundos'], [30, '30 segundos'], [45, '45 segundos'], [60, '1 minuto'], [120, '2 minutos']].map(([v, r]) =>
+            '<option value="' + v + '"' + (Number(c.intervalo) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></label>' +
+        '<p class="tv-cfg-aviso" id="tv-cfg-aviso" hidden></p>';
+      const conferir = () => {
+        const v = k => cx.querySelector('[data-k="' + k + '"]').checked;
+        cx.querySelector('#tv-cfg-int').hidden = !v('agenda');
+        const av = cx.querySelector('#tv-cfg-aviso');
+        av.hidden = v('clientes') || v('etapas') || v('gravacoes') || v('publicacoes');
+        av.textContent = 'Com tudo desligado, a tela fica só com o resumo do mês e o relógio.';
+      };
+      cx.querySelectorAll('input').forEach(i => i.onchange = conferir); conferir();
+      ok.disabled = false;
+    });
+    ok.onclick = async () => {
+      const novo = { intervalo: Number(cx.querySelector('#tv-cfg-seg').value) || 45 };
+      cx.querySelectorAll('[data-k]').forEach(i => { novo[i.dataset.k] = i.checked; });
+      ok.disabled = true; ok.textContent = 'Salvando…';
+      try {
+        await B7.DB.rpc('tv_config_definir', { p_valor: novo });
+        m.fechar(); B7.UI.toast('Painel de TV configurado.');
+      } catch (e) {
+        ok.disabled = false; ok.textContent = 'Salvar';
+        B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' });
+      }
+    };
+  }
+
+  return { abrir, configurar };
 })();

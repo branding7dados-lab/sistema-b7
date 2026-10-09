@@ -1955,7 +1955,14 @@ B7.Dashboard = (function () {
       (ehAdm && B7.Manutencao ? grupo('Manutenção', 'Administradores continuam usando normalmente. É uma trava de tela: não altera regra de acesso.',
         L({ ic: 'acesso', tom: 'laranja', t: 'Modo manutenção', d: '<span data-mn-d>' + esc(B7.Manutencao.descricao()) + '</span>', botao: true, attrs: ' data-manutencao',
             dir: '<span class="cfg-valor' + (B7.Manutencao.fase() === 'nenhuma' ? '' : ' erro') + '" data-mn-v>' +
-              ({ nenhuma: 'Desligado', aviso: 'Marcado', ativa: 'Ligado' })[B7.Manutencao.fase()] + '</span>' })) : '') +
+              ({ nenhuma: 'Desligado', agendada: 'Agendado', aviso: 'Marcado', ativa: 'Ligado' })[B7.Manutencao.fase()] + '</span>' })) : '') +
+      /* zzz136: sessões abertas, uso da IA e o que aparece no Painel de TV */
+      (ehAdm && B7.Sessoes ? grupo('Sessões', 'Em quais aparelhos cada conta está aberta.',
+        L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'ver os aparelhos e encerrar uma sessão', botao: true, attrs: ' data-sessoes' })) : '') +
+      (ehAdm && B7.UsoIA ? grupo('Uso da IA', 'Só números: o conteúdo dos pedidos não é guardado.',
+        L({ ic: 'ia', tom: 'violeta', t: 'Uso da IA', d: 'chamadas por pessoa e por tarefa, erros e tempo de resposta', botao: true, attrs: ' data-uso-ia' })) : '') +
+      (ehAdm && B7.TV && B7.TV.configurar ? grupo('Painel de TV', 'O que aparece na tela da agência.',
+        L({ ic: 'play', tom: 'violeta', t: 'Configurar o Painel de TV', d: 'blocos, nomes de clientes e a troca de tela', botao: true, attrs: ' data-tv-config' })) : '') +
       (ehAdm ? grupo('Integrações', 'A conta Google é uma só para o sistema inteiro: o que a equipe marca vai para ela.',
         '<div id="cfg-google">' + L({ ic: 'google', tom: 'azul', t: 'Google Agenda', d: 'verificando…',
             dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>') : '') +
@@ -2211,6 +2218,11 @@ B7.Dashboard = (function () {
         try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
         location.reload();
       } });
+    /* ---- zzz136: sessões, uso da IA e configuração da TV ---- */
+    const btSe = p.querySelector('[data-sessoes]'); if (btSe) btSe.onclick = () => B7.Sessoes.abrir();
+    const btUi = p.querySelector('[data-uso-ia]'); if (btUi) btUi.onclick = () => B7.UsoIA.abrir();
+    const btTv = p.querySelector('[data-tv-config]'); if (btTv) btTv.onclick = () => B7.TV.configurar();
+
     /* ---- zzz130: manutenção e novidades ---- */
     const btMn = p.querySelector('[data-manutencao]');
     if (btMn) { btMn.onclick = () => B7.Manutencao.abrirGerenciar(() => {}); B7.Manutencao.conferir(); }
