@@ -32,7 +32,7 @@ B7.Editor = (function () {
     cx.querySelectorAll('#revisao button, .tipos button').forEach(b => { b.disabled = true; });
   }
 
-  async function abrir(gravacaoId, roteiroAlvo) {
+  async function abrir(gravacaoId, roteiroAlvo, acaoIA) {
     document.body.classList.toggle('ed-leitura', soLeitura());
     /* zzz48: o zoom era gravado e nunca lido — a escolha se perdia a cada
        recarga. E `fechadas` guardava as cenas recolhidas da gravação
@@ -67,6 +67,14 @@ B7.Editor = (function () {
          no estado vazio abaixo. */
       renderTrilho(); renderEscrita(); renderPrevia();
       B7.Save.atualizar();
+      /* zzz128: veio de "Criar roteiro com IA" (linha editorial): abre a
+         janela de rascunho deste roteiro. Só abre — quem manda gerar e
+         quem escolhe as cenas é a pessoa. O "ia=rascunho" sai do endereço
+         para não reabrir a janela ao recarregar. */
+      if (acaoIA === 'rascunho' && roteiroAlvo && E.atual === roteiroAlvo) {
+        try { history.replaceState(null, '', location.pathname + location.search + location.hash.replace(/[?&]ia=rascunho/, '')); } catch (e) {}
+        setTimeout(() => { const b = document.querySelector('#escrita [data-ia-rascunho]'); if (b) b.click(); }, 250);
+      }
     } catch (e) {
       console.error(e);
       B7.UI.toast('Não consegui carregar a gravação: ' + (e.message || ''), { tipo: 'erro' });

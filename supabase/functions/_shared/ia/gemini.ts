@@ -86,7 +86,8 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
         body: JSON.stringify({
           ...(sistema ? { systemInstruction: { parts: [{ text: sistema }] } } : {}),
           contents: [{ role: 'user', parts: [{ text: usuario },
-            ...(p.audio ? [{ inlineData: { mimeType: p.audio.mime, data: p.audio.base64 } }] : [])] }],
+            ...(p.audio ? [{ inlineData: { mimeType: p.audio.mime, data: p.audio.base64 } }] : []),
+            ...(p.imagem ? [{ inlineData: { mimeType: p.imagem.mime, data: p.imagem.base64 } }] : [])] }],
           generationConfig: {
             temperature: p.temperatura, maxOutputTokens: p.maxTokens,
             ...(p.json ? { responseMimeType: 'application/json' } : {}),
@@ -141,7 +142,8 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': chave },
         body: JSON.stringify({
           ...(sistema ? { systemInstruction: { parts: [{ text: sistema }] } } : {}),
-          contents: [{ role: 'user', parts: [{ text: usuario }] }],
+          contents: [{ role: 'user', parts: [{ text: usuario },
+            ...(p.imagem ? [{ inlineData: { mimeType: p.imagem.mime, data: p.imagem.base64 } }] : [])] }],
           generationConfig: { temperature: p.temperatura, maxOutputTokens: p.maxTokens }
         })
       });

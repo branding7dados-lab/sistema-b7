@@ -27,8 +27,11 @@ export function cors(req: Request, extras = ''): Record<string, string> {
   const ok = lista.includes(origem) || LOCAL.test(origem);
   return {
     'Access-Control-Allow-Origin': ok ? origem : lista[0],
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' + (extras ? ', ' + extras : ''),
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region' + (extras ? ', ' + extras : ''),
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    /* zzz128: o navegador guarda a resposta da consulta prévia por um dia,
+       em vez de repetir uma ida ao servidor antes de cada pedido */
+    'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
   };
 }

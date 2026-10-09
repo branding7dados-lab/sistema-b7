@@ -576,3 +576,7 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
   color:var(--ink-4);border:1px dashed var(--borda);border-radius:var(--r-sm);padding:10px;}
 .vista-postagens a{display:inline-flex;align-items:center;padding:7px 15px;border-radius:8px;font-size:13px;font-weight:500;color:var(--ink-3);text-decoration:none;}
 .vista-postagens a:hover{color:var(--acento);background:var(--card);}
+
+/* zzz128: dois botões no bloco do roteiro (criar com IA · vincular existente) */
+.vr-bts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:none;}
+@media (max-width:640px){ .vr-vazio{flex-wrap:wrap;} .vr-bts{width:100%;justify-content:stretch;} .vr-bts .b{flex:1;justify-content:center;} }

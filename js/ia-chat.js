@@ -27,6 +27,7 @@ B7.Chat = (function () {
     enviar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
     mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11.5" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg>',
     som: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3l4.5-3.7v12.4L7 14.5H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/></svg>',
+    img: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4.5 17l4.6-4.4 3.4 3.1 2.6-2.3 4.4 3.8"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7.5h12l-.8 10.7a2.5 2.5 0 0 1-2.5 2.3H9.3a2.5 2.5 0 0 1-2.5-2.3z"/><path d="M4 7.5h16M9.5 7.5V5.6a1.6 1.6 0 0 1 1.6-1.6h1.8a1.6 1.6 0 0 1 1.6 1.6v1.9M10.2 11.5v5M13.8 11.5v5"/></svg>',
     seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
     alvo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -48,7 +49,7 @@ B7.Chat = (function () {
   ];
 
   /* estado da conversa aberta */
-  const S = { aberto: false, vista: 'conversa', conversaId: null, clienteId: '', msgs: [], enviando: false, clientes: null, lista: null };
+  const S = { aberto: false, vista: 'conversa', conversaId: null, clienteId: '', msgs: [], enviando: false, clientes: null, lista: null, anexo: null };
   let fab = null, painel = null;
 
   const pode = () => !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario() && !(B7.Auth.ehCliente && B7.Auth.ehCliente()) &&
@@ -254,6 +255,44 @@ B7.Chat = (function () {
     iniciarGravacao();
   }
 
+  /* =================================================================
+     IMAGEM NO ASSISTENTE (zzz128) — anexar um print, uma referência ou
+     uma arte à mensagem (botão, ou colar com Ctrl+V). A imagem é
+     reduzida no navegador (lado maior até 1280 px, JPEG) antes de ir, e
+     NÃO é guardada: no histórico fica só "[imagem anexada]".
+     ================================================================= */
+  const MAX_LADO = 1280, MAX_ORIGINAL = 15 * 1024 * 1024;
+  async function prepararImagem(arquivo) {
+    if (!arquivo || !/^image\//.test(arquivo.type)) throw new Error('Escolha um arquivo de imagem.');
+    if (arquivo.size > MAX_ORIGINAL) throw new Error('Imagem grande demais (máximo 15 MB).');
+    const url = URL.createObjectURL(arquivo);
+    try {
+      const img = await new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => erro(new Error('Não foi possível abrir esta imagem.')); i.src = url; });
+      const k = Math.min(1, MAX_LADO / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);
+      const dados = cv.toDataURL('image/jpeg', 0.84);
+      const base64 = dados.split(',')[1] || '';
+      if (base64.length < 200 || base64.length > 1150000) throw new Error('Não foi possível preparar esta imagem.');
+      return { mime: 'image/jpeg', base64, url: dados };
+    } finally { URL.revokeObjectURL(url); }
+  }
+  async function anexar(arquivo) {
+    if (S.enviando || !painel) return;
+    try { S.anexo = await prepararImagem(arquivo); }
+    catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível anexar a imagem.', { tipo: 'erro' }); return; }
+    pintarAnexo();
+    const ta = painel.querySelector('#ch-texto'); if (ta && window.matchMedia('(min-width: 761px)').matches) ta.focus();
+  }
+  function pintarAnexo() {
+    const cx = painel && painel.querySelector('#ch-anexo-previa'); if (!cx) return;
+    cx.hidden = !S.anexo;
+    cx.innerHTML = S.anexo ? '<img src="' + S.anexo.url + '" alt="Imagem anexada"><span>Imagem anexada</span>' +
+      '<button type="button" class="ch-voz-x" id="ch-anexo-x" aria-label="Remover a imagem">Remover</button>' : '';
+    const x = cx.querySelector('#ch-anexo-x'); if (x) x.onclick = () => { S.anexo = null; pintarAnexo(); };
+  }
+
   function fechar() {
     pararVoz(); pararFala();
     if (painel) { const ta = painel.querySelector('#ch-texto'); if (ta && !S.enviando) S.rascunho = ta.value; }
@@ -364,7 +403,7 @@ B7.Chat = (function () {
           '<button type="button" class="ch-sug">' + esc(s) + '</button>').join('') + '</div></div>';
     }
     return S.msgs.map((m, i) => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
-      (m.papel === 'user' ? '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
+      (m.papel === 'user' ? (m.img ? '<img class="ch-msg-img" src="' + m.img + '" alt="Imagem enviada">' : '') + '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
       (podeFalar && m.papel !== 'user' && !m.erro && m.texto ? '<button type="button" class="ch-falar' + (falando === i ? ' on' : '') + '" data-falar="' + i + '" aria-pressed="' + (falando === i) +
         '" aria-label="' + (falando === i ? 'Parar de ouvir' : 'Ouvir a resposta') + '" title="' + (falando === i ? 'Parar' : 'Ouvir') + '">' + IC.som + '<span>Ouvir</span></button>' : '') +
       (m.acoes || []).map((a, j) => acaoHTML(a, i + ':' + j)).join('')).join('') +
@@ -537,9 +576,12 @@ B7.Chat = (function () {
     painel.innerHTML = '<header class="ch-topo">' + topoHTML() + '</header>' +
       '<div class="ch-corpo" aria-live="polite"></div>' +
       '<div class="ch-voz" id="ch-voz" role="status" aria-live="polite" hidden></div>' +
+      '<div class="ch-anexo-previa" id="ch-anexo-previa" hidden></div>' +
       '<form class="ch-form" autocomplete="off">' +
         '<textarea id="ch-texto" rows="1" maxlength="2000" placeholder="Pergunte ou peça uma ideia…" aria-label="Mensagem para o assistente" ' +
           'name="b7-chat-mensagem" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"></textarea>' +
+        '<input type="file" id="ch-arquivo" accept="image/*" hidden>' +
+        '<button type="button" class="ch-mic ch-anexar" id="ch-anexar" aria-label="Anexar uma imagem" title="Anexar uma imagem (ou cole com Ctrl+V)">' + IC.img + '</button>' +
         ((podeGravar || Voz) ? '<button type="button" class="ch-mic" id="ch-mic" aria-label="Falar em vez de digitar" aria-pressed="false" title="Falar em vez de digitar">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="ch-enviar" id="ch-enviar" aria-label="Enviar">' + IC.enviar + '</button>' +
       '</form>' +
@@ -554,18 +596,31 @@ B7.Chat = (function () {
     });
     form.onsubmit = e => { e.preventDefault(); enviar(ta.value); };
     const mic = painel.querySelector('#ch-mic'); if (mic) mic.onclick = alternarVoz;
+    const arq = painel.querySelector('#ch-arquivo'), btAnexo = painel.querySelector('#ch-anexar');
+    if (arq && btAnexo) {
+      btAnexo.onclick = () => { if (!S.enviando) arq.click(); };
+      arq.onchange = () => { const f = arq.files && arq.files[0]; arq.value = ''; if (f) anexar(f); };
+      /* colar um print direto no campo */
+      ta.addEventListener('paste', e => {
+        const it = [...((e.clipboardData && e.clipboardData.items) || [])].find(i => i.kind === 'file' && /^image\//.test(i.type));
+        if (it) { e.preventDefault(); const f = it.getAsFile(); if (f) anexar(f); }
+      });
+    }
+    pintarAnexo();
     if (vozEstado) pintarVoz();
     if (S.rascunho) { ta.value = S.rascunho; ajustar(); }
   }
 
   /* ---------------------------------------------------------- enviar */
   async function enviar(textoBruto) {
-    const texto = String(textoBruto || '').trim();
+    const anexo = S.anexo || null;
+    const texto = String(textoBruto || '').trim() || (anexo ? 'O que você vê nesta imagem?' : '');
     if (!texto || S.enviando || !painel) return;
     pararVoz();
     const ta = painel.querySelector('#ch-texto');
     S.msgs = S.msgs.filter(m => !m.erro);
-    S.msgs.push({ papel: 'user', texto });
+    S.msgs.push({ papel: 'user', texto, img: anexo ? anexo.url : null });
+    S.anexo = null; pintarAnexo();
     S.enviando = true; S.rascunho = '';
     if (ta) { ta.value = ''; ta.style.height = 'auto'; ta.disabled = true; }
     const bt = painel.querySelector('#ch-enviar'); if (bt) bt.disabled = true;
@@ -574,6 +629,7 @@ B7.Chat = (function () {
     pararFala();
     /* acoes_v: 2 = esta tela sabe mostrar os quatro tipos de proposta */
     const dados = { texto, cliente_id: S.clienteId || null, acoes_v: 2 };
+    if (anexo) dados.imagem = { mime: anexo.mime, base64: anexo.base64 };
     if (S.conversaId) dados.conversa_id = S.conversaId;
     S.parcial = '';
     const r = await B7.IA.pedir('chat', dados, { aoTrecho: pedaco => { S.parcial += pedaco; pintarFluxo(); } });
@@ -587,6 +643,7 @@ B7.Chat = (function () {
       /* a pergunta não foi guardada: sai da conversa e volta para o campo */
       S.msgs.pop();
       S.rascunho = texto;
+      S.anexo = anexo;      /* a imagem volta junto com o texto */
       S.msgs.push({ papel: 'assistant', erro: true, texto: (r && r.mensagem) || 'Não foi possível responder agora. Tente de novo.' });
     }
     if (!painel || !painel.isConnected || S.vista !== 'conversa') return;

@@ -163,7 +163,7 @@ B7.Rota = (function () {
         a.classList.toggle('on', a.dataset.ir === '#/gravacoes'));
       if (B7.moverTrilha) B7.moverTrilha();
       document.body.dataset.aba = document.body.dataset.aba || 'editor';
-      await B7.Editor.abrir(partes[1], params.get('roteiro'));
+      await B7.Editor.abrir(partes[1], params.get('roteiro'), params.get('ia'));
       if (params.get('imprimir')) setTimeout(() => B7.Editor.imprimir(), 350);
       return;
     }

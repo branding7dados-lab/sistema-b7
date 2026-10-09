@@ -1468,7 +1468,9 @@ B7.Linha = (function () {
                 '<small>O texto do vídeo vive no editor de roteiros, não aqui.</small></div></div>'
               : '<div class="vr-vazio"><div><b>Nenhum roteiro vinculado</b>' +
                 '<small>O texto do vídeo vive no editor de roteiros, não aqui.</small></div>' +
-                '<button class="b fina contorno" data-vincular>Vincular roteiro existente</button></div>') +
+                '<div class="vr-bts">' +
+                  (B7.IA && B7.IA.ligada && B7.IA.ligada('roteiros') ? '<button class="b fina pri" data-roteiro-ia>Criar roteiro com IA</button>' : '') +
+                  '<button class="b fina contorno" data-vincular>Vincular roteiro existente</button></div></div>') +
         '</div>' +
         /* Legenda do Reel: é o texto que vai NO POST (com emoji, quebras de
            linha e hashtags), não o roteiro falado — esse continua vivendo no
@@ -1609,6 +1611,8 @@ B7.Linha = (function () {
     /* vínculo com o editor de roteiros existente */
     const vincular = m.querySelector('[data-vincular]');
     if (vincular) vincular.onclick = () => escolherRoteiro(c, m);
+    const rotIA = m.querySelector('[data-roteiro-ia]');
+    if (rotIA) rotIA.onclick = () => criarRoteiroDoConteudo(c, m);
     const abrirRot = m.querySelector('[data-abrir-roteiro]');
     if (abrirRot) abrirRot.onclick = async () => {
       const r = await B7.DB.roteiro(c.script_id);
@@ -1678,6 +1682,43 @@ B7.Linha = (function () {
       await B7.Save.acao(() => B7.DB.excluirFrame(b.dataset.excluirFrame), 'Story removido');
       b.closest('[data-frame]').remove();
     });
+  }
+
+  /* zzz128 — "Criar roteiro com IA": o conteúdo planejado vira um roteiro
+     NOVO numa gravação em aberto do cliente, já ligado a este conteúdo, e
+     o editor abre direto na janela de rascunho da IA. As cenas continuam
+     sendo escolhidas pela pessoa lá (nada de fala é gravado sozinho): aqui
+     só nasce o roteiro vazio, com título, objetivo e o vínculo. */
+  async function criarRoteiroDoConteudo(c, modalPai) {
+    let gravs = [];
+    try { gravs = (await B7.DB.gravacoesDoClienteParaVideo(L.linha.client_id)).filter(g => !['Gravada', 'Cancelada'].includes(g.situacao)); } catch (e) {}
+    if (!gravs.length) return B7.UI.toast('Este cliente não tem gravação em aberto. Crie a gravação primeiro, em Gravações.', { tipo: 'erro' });
+    const doMes = gravs.find(g => g.data_gravacao && +String(g.data_gravacao).slice(5, 7) === L.linha.mes && +String(g.data_gravacao).slice(0, 4) === L.linha.ano);
+    const rot = g => (g.nome || 'Gravação') + (g.data_gravacao ? ' · ' + B7.UI.dataBR(String(g.data_gravacao).slice(0, 10)) : ' · sem data');
+    const m = B7.UI.modal('<h3>Criar roteiro com IA</h3>' +
+      '<div class="sub">Cria um roteiro novo para <b>' + esc(c.titulo || 'este conteúdo') + '</b> na gravação escolhida, já ligado a este conteúdo, e abre o editor no rascunho da IA. Lá você escolhe as cenas que entram.</div>' +
+      '<div class="mb"><label class="rot">GRAVAÇÃO</label><select class="campo" id="lr-grav">' +
+        gravs.map(g => '<option value="' + esc(g.id) + '"' + (doMes && g.id === doMes.id ? ' selected' : '') + '>' + esc(rot(g)) + '</option>').join('') + '</select></div>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="lr-ok">Criar roteiro e abrir</button></div>');
+    const ok = m.querySelector('#lr-ok');
+    ok.onclick = async () => {
+      const gid = m.querySelector('#lr-grav').value; if (!gid) return;
+      ok.disabled = true; ok.textContent = 'Criando…';
+      try {
+        const existentes = await B7.DB.listarRoteiros(gid);
+        const r = await B7.DB.criarRoteiro({ recording_session_id: gid, position: existentes.length,
+          titulo: c.titulo || '', objetivo: c.objetivo || '', observacao_gravacao: '', escala: 1, escala_automatica: true,
+          content_id: c.id, formato: c.tipo, tema: c.tema || c.titulo || '' });
+        await B7.DB.atualizarConteudo(c.id, { script_id: r.id });
+        c.script_id = r.id;
+        try { B7.DB.registrar({ tipo: 'criar', entidade: 'roteiro', id: r.id, cliente: L.linha.client_id, gravacao: gid, texto: 'Novo roteiro a partir do conteúdo: ' + (c.titulo || 'sem título') }); } catch (e) {}
+        m.fechar(); modalPai.fechar();
+        location.hash = '#/gravacao/' + gid + '?roteiro=' + r.id + '&ia=rascunho';
+      } catch (e) {
+        ok.disabled = false; ok.textContent = 'Criar roteiro e abrir';
+        B7.UI.toast('Não foi possível criar o roteiro: ' + ((e && e.message) || 'erro'), { tipo: 'erro' });
+      }
+    };
   }
 
   /* escolher um roteiro já existente do cliente */

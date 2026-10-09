@@ -66,7 +66,7 @@ import * as Memoria from '../_shared/ia/memoria.ts';
 import * as Voz from '../_shared/ia/voz.ts';
 
 const CORS = {
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 const json = (corpo: unknown, status = 200) =>
@@ -102,6 +102,11 @@ Deno.serve(comCors(async (req: Request) => {
   if (!user) return json({ ok: false, categoria: 'sessao' }, 401);
 
   /* ---- a IA é ferramenta da equipe: cliente do Portal não usa ---- */
+  /* zzz128: perfil, liga/desliga do administrador e limite de uso são três
+     leituras que só dependem de quem é a pessoa: saem juntas (antes era
+     uma esperando a outra). Cada uma é conferida no mesmo lugar de antes. */
+  const pCfgIa = sb.from('sistema_config').select('valor').eq('chave', 'ia').maybeSingle().then(r => r);
+  const pLimite = dentroDoLimite(sb, user.id).catch(() => 'limite' as const);
   const { data: perfil } = await sb.from('perfis').select('id, estado, papel, nome, funcao').eq('id', user.id).maybeSingle();
   if (!perfil || perfil.estado !== 'ativa' || perfil.papel === 'cliente') return json({ ok: false, categoria: 'sem_permissao' }, 403);
 
@@ -111,7 +116,7 @@ Deno.serve(comCors(async (req: Request) => {
   if (bruto.length > Voz.LIMITE.corpo) return json({ ok: false, categoria: 'entrada_invalida' });
   let corpo: Record<string, unknown> = {};
   try { corpo = JSON.parse(bruto); } catch (_e) { return json({ ok: false, categoria: 'entrada_invalida' }); }
-  if (bruto.length > LIMITE.corpo && corpo.tarefa !== 'voz') return json({ ok: false, categoria: 'entrada_invalida' });
+  if (bruto.length > LIMITE.corpo && corpo.tarefa !== 'voz' && !(corpo.tarefa === 'chat' && corpo.imagem != null)) return json({ ok: false, categoria: 'entrada_invalida' });
   const pRoteiro = corpo.tarefa === 'roteiro' ? validar(corpo) : null;
   const pLinha = corpo.tarefa === 'linha' ? Linha.validar(corpo) : null;
   const pAnalise = corpo.tarefa === 'analise' ? Analise.validar(corpo) : null;
@@ -126,7 +131,7 @@ Deno.serve(comCors(async (req: Request) => {
      guardado em sistema_config. Roteiro e análise seguem "roteiros";
      linha e resumo seguem "linhas". Sem a linha no banco = ligado. */
   {
-    const { data: cfgIa } = await sb.from('sistema_config').select('valor').eq('chave', 'ia').maybeSingle();
+    const { data: cfgIa } = await pCfgIa;
     const recursoCfg = (pChat || pVoz) ? 'chat' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
     const valorIa = (cfgIa && cfgIa.valor) as Record<string, unknown> | null;
     if (valorIa && valorIa[recursoCfg] === false) return json({ ok: false, categoria: 'desligado' });
@@ -142,7 +147,7 @@ Deno.serve(comCors(async (req: Request) => {
   if (!provedor) return json({ ok: false, categoria: 'indisponivel' });
 
   /* ---- limite de uso ---- */
-  const limite = await dentroDoLimite(sb, perfil.id);
+  const limite = await pLimite;
   if (limite !== 'ok') return json({ ok: false, categoria: limite });
 
   /* ---- permissão sobre ESTE registro: o RLS da própria pessoa decide ---- */
@@ -161,9 +166,13 @@ Deno.serve(comCors(async (req: Request) => {
     aposOk?: (texto: string) => Promise<Record<string, unknown>>;
     /** zzz126: áudio que vai junto (só a transcrição de voz) */
     audio?: { mime: string; base64: string };
+    /** zzz128: imagem anexada à mensagem do chat */
+    imagem?: { mime: string; base64: string };
   };
   /* de qual cliente é o pedido, para a memória (o chat diz na conversa) */
   let clienteDoPedido: string | null | undefined = undefined;
+  /* o chat já lê a memória junto do contexto (zzz128) */
+  let memoriaPronta: { memoria: string; exemplos: string } | null = null;
   if (pChat && pChat.ok) {
     /* conversa livre: a conversa tem que ser da pessoa; o que o assistente
        sabe do B7 é lido com a sessão dela (RLS) */
@@ -171,7 +180,9 @@ Deno.serve(comCors(async (req: Request) => {
     const conv = await Chat.abrirConversa(sb, sbDaPessoa, perfil.id, pedido);
     if (!conv) return json({ ok: false, categoria: 'nao_encontrado' });
     clienteDoPedido = conv.clienteId;
-    const [hist, contexto] = await Promise.all([Chat.historico(sb, conv), Chat.carregarContexto(sbDaPessoa, conv.clienteId, sb)]);
+    const [hist, contexto, mem, exs] = await Promise.all([Chat.historico(sb, conv), Chat.carregarContexto(sbDaPessoa, conv.clienteId, sb),
+      Memoria.memoriaDoCliente(sbDaPessoa, conv.clienteId), Memoria.exemplosDoCliente(sbDaPessoa, conv.clienteId, 'legendas')]);
+    memoriaPronta = { memoria: mem, exemplos: exs };
     const FUNCOES: Record<string, string> = { coordenador: 'Coordenação', designer: 'Designer', videomaker: 'Videomaker' };
     const quem = { nome: String(perfil.nome || ''), funcao: perfil.papel === 'admin' ? 'Administrador' : (FUNCOES[String(perfil.funcao)] || '') };
     /* zzz89: só recebe a instrução de PROPOR ação quem pode criar demanda
@@ -188,9 +199,11 @@ Deno.serve(comCors(async (req: Request) => {
     t = {
       recurso: 'chat', acao: 'mensagem', entidadeTipo: 'conversa', entidadeId: conv.id, tamanhoEntrada: pedido.texto.length,
       mensagens: Chat.montarMensagens(pedido, contexto, hist, quem, permitidas), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
+      ...(pedido.imagem ? { imagem: pedido.imagem } : {}),
       aposOk: async (texto: string) => {
         const ex = permitidas.length ? await Chat.extrairAcao(texto, sbDaPessoa, permitidas) : { texto: Chat.semAcao(texto) || texto, acao: null, acoes: [] };
-        const mensagemId = await Chat.gravar(sb, perfil.id, conv, pedido.texto, ex.texto, ex.acoes);
+        /* a imagem não é guardada: no histórico fica só a marca de que havia uma */
+        const mensagemId = await Chat.gravar(sb, perfil.id, conv, pedido.texto + (pedido.imagem ? '\n[imagem anexada]' : ''), ex.texto, ex.acoes);
         /* `acoes` = todas as propostas (zzz124); `acao` = a única de vídeo, para as telas antigas */
         return { conversa_id: conv.id, titulo: conv.titulo, cliente_id: conv.clienteId, texto: ex.texto,
           ...(mensagemId ? { mensagem_id: mensagemId } : {}),
@@ -274,9 +287,15 @@ Deno.serve(comCors(async (req: Request) => {
   }
 
   /* ---- memória do cliente: entra antes da mensagem da tarefa ---- */
-  {
+  if (memoriaPronta) {
+    t.mensagens = Memoria.comMemoria(t.mensagens, memoriaPronta.memoria, memoriaPronta.exemplos);
+  } else {
     const cli = clienteDoPedido !== undefined ? clienteDoPedido : await Memoria.clienteDaTarefa(sbDaPessoa, corpo);
-    t.mensagens = Memoria.comMemoria(t.mensagens, await Memoria.memoriaDoCliente(sbDaPessoa, cli));
+    /* exemplos do que já saiu (zzz128): em tudo que ESCREVE para o cliente;
+       resumo de status e transcrição de voz não precisam */
+    const quais: Memoria.Exemplos = (pResumo || pVoz) ? 'nenhum' : 'todos';
+    const [mem, exs] = await Promise.all([Memoria.memoriaDoCliente(sbDaPessoa, cli), Memoria.exemplosDoCliente(sbDaPessoa, cli, quais)]);
+    t.mensagens = Memoria.comMemoria(t.mensagens, mem, exs);
   }
 
   /* ---- registro: metadados, nunca o texto enviado nem a sugestão ---- */
@@ -293,7 +312,7 @@ Deno.serve(comCors(async (req: Request) => {
      e tem mais uma chance. Se repetir de novo, a tela recebe "igual" e
      explica — nunca uma sugestão idêntica. Erro de cota/limite não
      repete (ver servico.ts). */
-  const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema, audio: t.audio };
+  const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema, audio: t.audio, imagem: t.imagem };
 
   const fecharRegistro = async (r: Resultado) => {
     if (!reg) return;

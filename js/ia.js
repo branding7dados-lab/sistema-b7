@@ -81,6 +81,10 @@ B7.IA = (function () {
   /* Prazo do lado de cá: o servidor desiste antes (30 s), isto é só a
      rede de segurança para a tela nunca ficar "gerando" para sempre. */
   const PRAZO_MS = 70000;
+  /* zzz128: a função de IA roda na MESMA região do banco. Ela faz várias
+     leituras antes de perguntar ao modelo; longe do banco, cada leitura
+     atravessava o continente. Se o banco mudar de região, muda aqui. */
+  const REGIAO_DA_IA = 'us-west-2';
 
   /* a resposta de produto (JSON comum, ou o evento "fim" do fluxo) */
   function interpretar(corpo, status) {
@@ -151,7 +155,8 @@ B7.IA = (function () {
       const base = String(cfg().SUPABASE_URL || '').trim().replace(/\/+$/, '');
       const resp = await fetch(base + '/functions/v1/b7-ia', {
         method: 'POST', signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json', 'apikey': String(cfg().SUPABASE_PUBLISHABLE_KEY || '').trim(), 'Authorization': 'Bearer ' + token },
+        headers: { 'Content-Type': 'application/json', 'apikey': String(cfg().SUPABASE_PUBLISHABLE_KEY || '').trim(), 'Authorization': 'Bearer ' + token,
+                   'x-region': REGIAO_DA_IA },
         body: JSON.stringify(Object.assign({ tarefa: tarefa }, dados || {}, querFluxo ? { fluxo: true } : {}))
       });
       if (querFluxo && resp.ok && resp.body && /text\/event-stream/i.test(resp.headers.get('content-type') || '')) {

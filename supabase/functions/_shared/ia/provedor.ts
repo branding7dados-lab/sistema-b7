@@ -30,6 +30,8 @@ export type PedidoDeGeracao = {
   /** zzz126: um áudio curto que acompanha o pedido (transcrição de voz).
       Só o provedor que aceita áudio usa; os outros recusam o pedido. */
   audio?: { mime: string; base64: string };
+  /** zzz128: uma imagem que acompanha o pedido (anexo do assistente) */
+  imagem?: { mime: string; base64: string };
 };
 
 /** O que pode dar errado, em termos do B7 (não do provedor). */
