@@ -557,3 +557,17 @@ html.modo-leve .b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-estrelas,h
   .ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial :is(.ab-raios,.ab-poeira,.ab-chave),.b7-abertura.b7-abertura.b7-abertura:not(.inicial) :is(.ab-raios,.ab-poeira,.ab-chave){display:none !important;}
   .ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-estrelas,.b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-estrelas{display:block;opacity:.7;animation:none !important;}
 }
+
+/* zzz140: data especial da abertura (Configurações → Admin → Aparência). A cor muda o céu, as luzes e as faíscas; a logo continua a da marca. */
+.ab-titulo b.ab-data{display:none;}
+html[data-estacao][data-estacao-frase] .ab-titulo b.ab-data{display:block;margin-top:-3px;font-size:13px;letter-spacing:.22em;text-indent:.22em;color:#fff;animation-delay:5.9s;text-shadow:0 0 18px rgba(255,255,255,.35);}
+html[data-estacao][data-estacao-frase] .ab-titulo b.ab-data::before{content:var(--estacao-frase);}
+/* o filtro vai na cena inteira (as peças têm animação própria, que ignoraria um filtro individual); a marca recebe a rotação inversa e fica com as cores dela */
+html[data-estacao="vermelho"] .b7-abertura{filter:hue-rotate(40deg);}
+html[data-estacao="vermelho"] .b7-abertura .ab-marca{filter:hue-rotate(-40deg);}
+html[data-estacao="dourado"] .b7-abertura{filter:hue-rotate(95deg);}
+html[data-estacao="dourado"] .b7-abertura .ab-marca{filter:hue-rotate(-95deg);}
+html[data-estacao="verde"] .b7-abertura{filter:hue-rotate(160deg);}
+html[data-estacao="verde"] .b7-abertura .ab-marca{filter:hue-rotate(-160deg);}
+html[data-estacao="azul"] .b7-abertura{filter:hue-rotate(250deg);}
+html[data-estacao="azul"] .b7-abertura .ab-marca{filter:hue-rotate(-250deg);}

@@ -1963,6 +1963,9 @@ B7.Dashboard = (function () {
       /* zzz136: sessões abertas, uso da IA e o que aparece no Painel de TV */
       (ehAdm && B7.Sessoes ? grupo('Sessões', 'Em quais aparelhos cada conta está aberta.',
         L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'ver os aparelhos e encerrar uma sessão', botao: true, attrs: ' data-sessoes' })) : '') +
+      /* zzz140: cor do sistema e datas especiais da abertura */
+      (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe.',
+        L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' })) : '') +
       /* zzz139: saúde do sistema, médico e comunicado */
       (ehAdm && B7.Saude ? grupo('Cuidar do sistema', 'Só leitura: mostra o que precisa de atenção, sem mudar nada.',
         L({ ic: 'raio', tom: 'verde', t: 'Saúde do sistema', d: 'rotinas, avisos, Google Agenda, espaço e IA', botao: true, attrs: ' data-saude' }) +
@@ -2231,6 +2234,7 @@ B7.Dashboard = (function () {
     /* ---- zzz136: sessões, uso da IA e configuração da TV ---- */
     const btSe = p.querySelector('[data-sessoes]'); if (btSe) btSe.onclick = () => B7.Sessoes.abrir();
     const btUi = p.querySelector('[data-uso-ia]'); if (btUi) btUi.onclick = () => B7.UsoIA.abrir();
+    const btAp = p.querySelector('[data-aparencia]'); if (btAp) btAp.onclick = () => B7.Aparencia.abrir();
     const btSa = p.querySelector('[data-saude]'); if (btSa) btSa.onclick = () => B7.Saude.abrir();
     const btMe = p.querySelector('[data-medico]'); if (btMe) btMe.onclick = () => B7.Medico.abrir();
     const btCo = p.querySelector('[data-comunicado]'); if (btCo) btCo.onclick = () => B7.Comunicado.abrir();

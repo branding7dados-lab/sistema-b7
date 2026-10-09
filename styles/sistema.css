@@ -191,3 +191,18 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 .cm-quem-leu{flex-direction:column;gap:2px !important;align-items:flex-start !important;margin-top:4px;}
 .cm-quem-leu span{font-size:12.5px;color:var(--ink-3);}
 .cm-quem-leu .leu{color:var(--ok);}
+
+/* zzz140: janela Aparência do sistema */
+.ap-paletas{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 4px;}
+.ap-pal{display:flex;flex-direction:column;align-items:center;gap:7px;padding:9px 10px 8px;min-width:96px;border-radius:16px;border:1.5px solid var(--borda);background:var(--card);cursor:pointer;font:inherit;color:var(--ink-2);transition:border-color .18s,transform .18s;}
+.ap-pal i{display:block;width:72px;height:34px;border-radius:10px;}
+.ap-pal span{font-size:12.5px;font-weight:650;}
+.ap-pal:hover{transform:translateY(-1px);}
+.ap-pal.on{border-color:var(--acento);color:var(--ink);box-shadow:0 0 0 3px var(--acento-suave);}
+.ap-linha{display:grid;grid-template-columns:minmax(120px,1.2fr) auto minmax(110px,.8fr) minmax(140px,1.4fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid color-mix(in srgb, var(--borda) 70%, transparent);}
+.ap-datas{display:inline-flex;align-items:center;gap:6px;}
+.ap-datas .campo{width:68px;text-align:center;}
+.ap-datas i{font-style:normal;font-size:12px;color:var(--ink-4);}
+.ap-acoes{display:inline-flex;align-items:center;gap:10px;}
+.ap-add{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 6px;}
+@media (max-width:720px){.ap-linha{grid-template-columns:1fr 1fr;}.ap-linha .campo[data-f="nome"],.ap-frase{grid-column:1 / -1;}}

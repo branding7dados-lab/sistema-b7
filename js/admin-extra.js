@@ -333,3 +333,154 @@ B7.Comunicado = (function () {
   }
   return { abrir };
 })();
+
+/* =====================================================================
+   APARÊNCIA DO SISTEMA (zzz140)
+
+   Duas coisas que o administrador escolhe e a equipe toda recebe:
+     · COR DO SISTEMA — troca as cores de destaque (botões, marcações,
+       degradês). Claro/escuro continua sendo escolha de cada pessoa. A
+       logo e o desenho da abertura seguem sendo da marca.
+     · DATAS ESPECIAIS DA ABERTURA — em datas que você define (Natal,
+       Outubro Rosa…) a animação de entrada muda de cor e mostra uma frase.
+
+   Guardado em sistema_config.aparencia e entregue junto com a consulta
+   que cada tela já faz a cada minuto (sistema_avisos). Uma cópia fica no
+   aparelho (b7_sis_aparencia) para a cor e a abertura já saírem certas
+   na hora de abrir, antes de qualquer consulta; o script do <head> em
+   index.html aplica essa cópia. Só visual: nada de regra, acesso ou dado.
+   ===================================================================== */
+B7.Aparencia = (function () {
+  const esc = s => B7.UI.esc(s);
+  const CHAVE = 'b7_sis_aparencia';
+  const PALETAS = [
+    ['b7', 'Padrão B7', ['#3A1E86', '#7C1E85', '#C21C83']],
+    ['oceano', 'Oceano', ['#1E3FA0', '#2A5FB5', '#0E7FB8']],
+    ['floresta', 'Floresta', ['#1D5E4A', '#0E7C6B', '#139A63']],
+    ['porsol', 'Pôr do sol', ['#8A1F3D', '#B4261F', '#D9461F']],
+    ['grafite', 'Grafite', ['#1F2937', '#374151', '#4B5563']]
+  ];
+  const CORES = [['rosa', 'Rosa (o da B7)'], ['vermelho', 'Vermelho'], ['dourado', 'Dourado'], ['verde', 'Verde'], ['azul', 'Azul']];
+  const SUGESTOES = [
+    { nome: 'Natal', de: '15/12', ate: '26/12', cor: 'verde', frase: 'Feliz Natal, equipe' },
+    { nome: 'Ano Novo', de: '27/12', ate: '03/01', cor: 'dourado', frase: 'Feliz Ano Novo' },
+    { nome: 'Outubro Rosa', de: '01/10', ate: '31/10', cor: 'rosa', frase: 'Outubro Rosa' },
+    { nome: 'Novembro Azul', de: '01/11', ate: '30/11', cor: 'azul', frase: 'Novembro Azul' }
+  ];
+  const RE_DATA = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])$/;
+  let cfg = { paleta: 'b7', estacoes: [] };
+  try { const c = JSON.parse(localStorage.getItem(CHAVE) || 'null'); if (c && typeof c === 'object') cfg = { paleta: c.paleta || 'b7', estacoes: Array.isArray(c.estacoes) ? c.estacoes : [] }; } catch (e) {}
+
+  const ordem = dm => { const p = String(dm).split('/'); return Number(p[1]) * 100 + Number(p[0]); };
+  function estacaoDe(c, quando) {
+    const d = quando || new Date(), n = (d.getMonth() + 1) * 100 + d.getDate();
+    return ((c && c.estacoes) || []).find(e => {
+      const i = ordem(e.de), f = ordem(e.ate);
+      return i <= f ? (n >= i && n <= f) : (n >= i || n <= f);   /* 27/12 → 03/01 atravessa o ano */
+    }) || null;
+  }
+  function pintar(paleta, est) {
+    const r = document.documentElement;
+    if (paleta && paleta !== 'b7') r.setAttribute('data-paleta', paleta); else r.removeAttribute('data-paleta');
+    if (est) {
+      r.setAttribute('data-estacao', est.cor);
+      if (est.frase) { r.style.setProperty('--estacao-frase', JSON.stringify(est.frase)); r.setAttribute('data-estacao-frase', '1'); }
+      else { r.removeAttribute('data-estacao-frase'); }
+    } else { r.removeAttribute('data-estacao'); r.removeAttribute('data-estacao-frase'); r.style.removeProperty('--estacao-frase'); }
+  }
+  function aplicar(c) { pintar((c || cfg).paleta, estacaoDe(c || cfg)); }
+
+  /* recebe o que veio do banco; null = conta que não recebe (Portal) */
+  function sincronizar(c) {
+    if (c === null || c === undefined || typeof c !== 'object') return;
+    cfg = { paleta: PALETAS.some(p => p[0] === c.paleta) ? c.paleta : 'b7', estacoes: Array.isArray(c.estacoes) ? c.estacoes : [] };
+    try {
+      if (cfg.paleta === 'b7' && !cfg.estacoes.length) localStorage.removeItem(CHAVE);
+      else localStorage.setItem(CHAVE, JSON.stringify(cfg));
+    } catch (e) {}
+    aplicar();
+  }
+
+  const grad = c => 'linear-gradient(120deg,' + c[0] + ',' + c[1] + ' 52%,' + c[2] + ')';
+
+  function linha(e, i) {
+    return '<div class="ap-linha" data-i="' + i + '">' +
+      '<input class="campo" data-f="nome" maxlength="40" value="' + esc(e.nome) + '" placeholder="Nome (ex.: Natal)" aria-label="Nome da data">' +
+      '<span class="ap-datas"><input class="campo" data-f="de" maxlength="5" value="' + esc(e.de) + '" placeholder="dd/mm" aria-label="Começa em"><i>até</i>' +
+      '<input class="campo" data-f="ate" maxlength="5" value="' + esc(e.ate) + '" placeholder="dd/mm" aria-label="Termina em"></span>' +
+      '<select class="campo" data-f="cor" aria-label="Cor da abertura">' + CORES.map(c => '<option value="' + c[0] + '"' + (c[0] === e.cor ? ' selected' : '') + '>' + c[1] + '</option>').join('') + '</select>' +
+      '<input class="campo ap-frase" data-f="frase" maxlength="40" value="' + esc(e.frase) + '" placeholder="Frase na abertura (opcional)" aria-label="Frase">' +
+      '<span class="ap-acoes"><button type="button" class="b fina contorno" data-ver>Ver</button><button type="button" class="adm-link perigo" data-rm>Remover</button></span></div>';
+  }
+
+  function abrir() {
+    let salvo = JSON.parse(JSON.stringify(cfg)), rascunho = JSON.parse(JSON.stringify(cfg)), gravou = false;
+    const m = B7.UI.modal('<h3>Aparência do sistema</h3>' +
+      '<p class="sub">Vale para toda a equipe. O tema claro ou escuro continua sendo escolha de cada pessoa. A logo e o desenho da abertura seguem sendo da marca.</p>' +
+      '<h4 class="adm-sub">Cor do sistema</h4><div class="ap-paletas" role="radiogroup" aria-label="Cor do sistema" id="ap-paletas"></div>' +
+      '<h4 class="adm-sub">Datas especiais da abertura</h4>' +
+      '<p class="sub">Nessas datas, a animação de entrada muda de cor e mostra a frase. Fora delas, a abertura é a de sempre.</p>' +
+      '<div id="ap-lista"></div>' +
+      '<div class="ap-add"><button type="button" class="b fina contorno" id="ap-nova">+ Data própria</button><button type="button" class="b fina contorno" id="ap-sug">+ Sugestões (Natal, Ano Novo, Outubro Rosa, Novembro Azul)</button></div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="ap-salvar">Salvar</button></div>', { larga: true });
+    const fechar = () => { if (!gravou) aplicar(salvo); m.fechar(); };
+    m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = fechar);
+    const cxP = m.querySelector('#ap-paletas'), cxL = m.querySelector('#ap-lista');
+
+    const pintarPaletas = () => {
+      cxP.innerHTML = PALETAS.map(p => '<button type="button" role="radio" aria-checked="' + (rascunho.paleta === p[0]) + '" data-p="' + p[0] + '" class="ap-pal' + (rascunho.paleta === p[0] ? ' on' : '') + '">' +
+        '<i style="background:' + grad(p[2]) + '"></i><span>' + esc(p[1]) + '</span></button>').join('');
+      cxP.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { rascunho.paleta = b.dataset.p; pintar(rascunho.paleta, estacaoDe(salvo)); pintarPaletas(); });
+    };
+    const ler = () => cxL.querySelectorAll('.ap-linha').forEach(l => {
+      const e = rascunho.estacoes[Number(l.dataset.i)]; if (!e) return;
+      l.querySelectorAll('[data-f]').forEach(c => { e[c.dataset.f] = c.value; });
+    });
+    const pintarLista = () => {
+      cxL.innerHTML = rascunho.estacoes.length ? rascunho.estacoes.map(linha).join('') : '<p class="adm-vazio">Nenhuma data cadastrada.</p>';
+      cxL.querySelectorAll('.ap-linha').forEach(l => {
+        const i = Number(l.dataset.i);
+        l.querySelector('[data-rm]').onclick = () => { ler(); rascunho.estacoes.splice(i, 1); pintarLista(); };
+        l.querySelector('[data-ver]').onclick = () => {
+          ler(); const e = rascunho.estacoes[i];
+          if (!RE_DATA.test(e.de) || !RE_DATA.test(e.ate)) { B7.UI.toast('Use o formato dd/mm nas datas.', { tipo: 'erro' }); return; }
+          pintar(rascunho.paleta, { cor: e.cor, frase: e.frase });
+          if (B7.reverAbertura) B7.reverAbertura();
+          setTimeout(() => pintar(rascunho.paleta, estacaoDe(salvo)), 12000);
+        };
+      });
+    };
+    m.querySelector('#ap-nova').onclick = () => {
+      ler(); if (rascunho.estacoes.length >= 12) { B7.UI.toast('Máximo de 12 datas.', { tipo: 'erro' }); return; }
+      rascunho.estacoes.push({ nome: '', de: '', ate: '', cor: 'rosa', frase: '' }); pintarLista();
+    };
+    m.querySelector('#ap-sug').onclick = () => {
+      ler();
+      SUGESTOES.forEach(s => { if (rascunho.estacoes.length < 12 && !rascunho.estacoes.some(e => e.nome === s.nome)) rascunho.estacoes.push(Object.assign({}, s)); });
+      pintarLista();
+    };
+    m.querySelector('#ap-salvar').onclick = async () => {
+      ler();
+      for (const e of rascunho.estacoes) {
+        e.nome = String(e.nome || '').trim(); e.frase = String(e.frase || '').trim();
+        if (!e.nome) { B7.UI.toast('Dê um nome a cada data.', { tipo: 'erro' }); return; }
+        if (!RE_DATA.test(e.de) || !RE_DATA.test(e.ate)) { B7.UI.toast('“' + e.nome + '”: use o formato dd/mm nas datas (ex.: 25/12).', { tipo: 'erro' }); return; }
+        if (/["\\]/.test(e.nome + e.frase)) { B7.UI.toast('Aspas e barra invertida não entram nos textos.', { tipo: 'erro' }); return; }
+      }
+      const bt = m.querySelector('#ap-salvar'); bt.disabled = true; bt.textContent = 'Salvando…';
+      try {
+        await B7.DB.rpc('sistema_config_definir', { p_chave: 'aparencia', p_valor: { paleta: rascunho.paleta, estacoes: rascunho.estacoes } });
+        gravou = true; sincronizar(rascunho); m.fechar();
+        B7.UI.toast('Aparência salva. A equipe recebe em até 1 minuto.');
+        if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig();
+      } catch (e) { bt.disabled = false; bt.textContent = 'Salvar'; B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
+    };
+    pintarPaletas(); pintarLista();
+  }
+
+  const resumo = () => {
+    const p = PALETAS.find(x => x[0] === cfg.paleta) || PALETAS[0], n = cfg.estacoes.length;
+    return p[1] + (n ? ' · ' + n + (n === 1 ? ' data especial' : ' datas especiais') : '');
+  };
+  return { abrir, sincronizar, aplicar, resumo, _estacaoDe: estacaoDe, PALETAS };
+})();

@@ -65,6 +65,7 @@ B7.Manutencao = (function () {
       if (r.agora) desvio = new Date(r.agora).getTime() - Date.now();
       atual = r.manutencao || null;
       if (r.sessao === false) derrubar();
+      if (r.aparencia !== undefined && B7.Aparencia) B7.Aparencia.sincronizar(r.aparencia);
     } catch (e) { /* sem rede: fica o último estado conhecido */ }
     pintar();
   }

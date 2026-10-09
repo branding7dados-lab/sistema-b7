@@ -2181,3 +2181,29 @@ body.b7-so-leitura [data-duplicar]{display:none !important;}
 .fundo-modal.alerta .modal label.rot{margin:0 0 8px;text-align:center;font-size:10.5px;letter-spacing:.08em;line-height:1.35;}
 .fundo-modal.alerta .modal .campo{text-align:center;border-radius:13px;}
 .fundo-modal.alerta .modal .acoes:has(> .b:only-child){grid-template-columns:1fr;}
+
+/* zzz140: cor do sistema (Configurações → Admin → Aparência). Só troca as cores de destaque. */
+html[data-paleta="oceano"]{--violeta:#1E3FA0; --roxo:#2A5FB5; --magenta:#0E7FB8; --acento:#0E7FB8; --acento-suave:rgba(14,127,184,.09); --violeta-bg:rgba(30,63,160,.12);
+  --grad-curto:linear-gradient(120deg,#1E3FA0 0%,#2A5FB5 52%,#0E7FB8 100%);
+  --grad:linear-gradient(118deg,#001559 0%,#1E3FA0 34%,#2A5FB5 66%,#0E7FB8 100%);}
+html[data-paleta="oceano"][data-theme="dark"]{--violeta:#4A62D8; --roxo:#5B8FE0; --magenta:#3FB0E8; --acento:#3FB0E8; --acento-suave:rgba(63,176,232,.16); --violeta-bg:rgba(74,98,216,.2);
+  --grad-curto:linear-gradient(120deg,#4A62D8 0%,#5B8FE0 52%,#3FB0E8 100%);
+  --grad:linear-gradient(118deg,#001559 0%,#4A62D8 34%,#5B8FE0 66%,#3FB0E8 100%);}
+html[data-paleta="floresta"]{--violeta:#1D5E4A; --roxo:#0E7C6B; --magenta:#139A63; --acento:#139A63; --acento-suave:rgba(19,154,99,.09); --violeta-bg:rgba(29,94,74,.12);
+  --grad-curto:linear-gradient(120deg,#1D5E4A 0%,#0E7C6B 52%,#139A63 100%);
+  --grad:linear-gradient(118deg,#001559 0%,#1D5E4A 34%,#0E7C6B 66%,#139A63 100%);}
+html[data-paleta="floresta"][data-theme="dark"]{--violeta:#3E9C7C; --roxo:#2DB5A0; --magenta:#34D399; --acento:#34D399; --acento-suave:rgba(52,211,153,.16); --violeta-bg:rgba(62,156,124,.2);
+  --grad-curto:linear-gradient(120deg,#3E9C7C 0%,#2DB5A0 52%,#34D399 100%);
+  --grad:linear-gradient(118deg,#001559 0%,#3E9C7C 34%,#2DB5A0 66%,#34D399 100%);}
+html[data-paleta="porsol"]{--violeta:#8A1F3D; --roxo:#B4261F; --magenta:#D9461F; --acento:#D9461F; --acento-suave:rgba(217,70,31,.09); --violeta-bg:rgba(138,31,61,.12);
+  --grad-curto:linear-gradient(120deg,#8A1F3D 0%,#B4261F 52%,#D9461F 100%);
+  --grad:linear-gradient(118deg,#001559 0%,#8A1F3D 34%,#B4261F 66%,#D9461F 100%);}
+html[data-paleta="porsol"][data-theme="dark"]{--violeta:#C0405E; --roxo:#E5503F; --magenta:#FF7A4D; --acento:#FF7A4D; --acento-suave:rgba(255,122,77,.16); --violeta-bg:rgba(192,64,94,.2);
+  --grad-curto:linear-gradient(120deg,#C0405E 0%,#E5503F 52%,#FF7A4D 100%);
+  --grad:linear-gradient(118deg,#001559 0%,#C0405E 34%,#E5503F 66%,#FF7A4D 100%);}
+html[data-paleta="grafite"]{--violeta:#1F2937; --roxo:#374151; --magenta:#4B5563; --acento:#4B5563; --acento-suave:rgba(75,85,99,.09); --violeta-bg:rgba(31,41,55,.12);
+  --grad-curto:linear-gradient(120deg,#1F2937 0%,#374151 52%,#4B5563 100%);
+  --grad:linear-gradient(118deg,#001559 0%,#1F2937 34%,#374151 66%,#4B5563 100%);}
+html[data-paleta="grafite"][data-theme="dark"]{--violeta:#3B4252; --roxo:#566074; --magenta:#6E7A91; --acento:#6E7A91; --acento-suave:rgba(110,122,145,.16); --violeta-bg:rgba(59,66,82,.2);
+  --grad-curto:linear-gradient(120deg,#3B4252 0%,#566074 52%,#6E7A91 100%);
+  --grad:linear-gradient(118deg,#001559 0%,#3B4252 34%,#566074 66%,#6E7A91 100%);}

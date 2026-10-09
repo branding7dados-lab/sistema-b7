@@ -38,6 +38,22 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
                        : window.matchMedia('(prefers-color-scheme: dark)').matches;
     document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
   } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+  /* zzz140: cor do sistema e data especial da abertura, a partir da cópia guardada no aparelho */
+  try {
+    var ap = JSON.parse(localStorage.getItem('b7_sis_aparencia') || 'null');
+    if (ap) {
+      var rz = document.documentElement;
+      if (ap.paleta && ap.paleta !== 'b7') rz.setAttribute('data-paleta', ap.paleta);
+      var hj = new Date(), nn = (hj.getMonth() + 1) * 100 + hj.getDate();
+      (ap.estacoes || []).some(function (e) {
+        var d = e.de.split('/'), a = e.ate.split('/'), i = d[1] * 100 + Number(d[0]), f = a[1] * 100 + Number(a[0]);
+        if (!(i <= f ? (nn >= i && nn <= f) : (nn >= i || nn <= f))) return false;
+        rz.setAttribute('data-estacao', e.cor);
+        if (e.frase) { rz.style.setProperty('--estacao-frase', JSON.stringify(e.frase)); rz.setAttribute('data-estacao-frase', '1'); }
+        return true;
+      });
+    }
+  } catch (e) {}
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
@@ -119,7 +135,7 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
     </div>
   </div>
   <i class="ab-linha" aria-hidden="true"></i><i class="ab-flare" aria-hidden="true"></i><i class="ab-flare fino" aria-hidden="true"></i>
-  <div class="ab-titulo" aria-hidden="true"><i></i><b>Sistema B7</b></div>
+  <div class="ab-titulo" aria-hidden="true"><i></i><b>Sistema B7</b><b class="ab-data"></b></div>
   <div class="ab-espera"><b class="ab-ola"></b><span class="ab-frase">Preparando o seu espaço…</span><i class="ab-fio"></i></div>
 </div>
 <!-- som da abertura: logo depois dela, para sincronizar com a animação -->

@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-09-zzz139';
+  const VERSAO = '2026-10-09-zzz140';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -305,7 +305,7 @@ B7.Auth = (function () {
     try {
       Object.keys(localStorage).forEach(k => {
         if (k.startsWith('b7_') && !['b7_tema', 'b7_densidade', 'b7_desempenho', 'b7_leve_auto', 'b7_animacoes',
-                                       'b7_pref_inicio', 'b7_pref_calendario_vista', 'b7_pref_teleprompter', 'b7_pref_cfg_aba', 'b7_pref_som_notif'].includes(k)) {
+                                       'b7_pref_inicio', 'b7_pref_calendario_vista', 'b7_pref_teleprompter', 'b7_pref_cfg_aba', 'b7_pref_som_notif', 'b7_sis_aparencia'].includes(k)) {
           localStorage.removeItem(k);
         }
       });
