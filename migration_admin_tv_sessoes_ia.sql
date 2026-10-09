@@ -250,3 +250,10 @@ as $$
 $$;
 revoke all on function public.sistema_avisos() from public, anon;
 grant execute on function public.sistema_avisos() to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 6) (zzz137) Painel de TV: a configuração aceita também o MODO
+--    ("painel" ou "animacao" — só a animação da B7) e a vinheta.
+--    A função tv_config_definir acima foi atualizada no banco com as
+--    chaves 'vinheta' (booleano) e 'modo' (painel | animacao).
+-- ---------------------------------------------------------------------

@@ -204,3 +204,134 @@ html.modo-leve .tv-relogio b i{animation:none;}
 .tv-cfg-int select{max-width:170px;}
 .tv-cfg-aviso{margin:4px 0 0;font-size:12px;color:var(--ambar);}
 .tv-cfg-aviso[hidden]{display:none;}
+
+/* =====================================================================
+   zzz137 — PAINEL DE TV CINEMATOGRÁFICO
+   Pedido do Kevin: "mais cinematográfico". A TV passa a ter cena própria,
+   sempre escura (não segue o tema do aparelho): céu profundo com duas
+   luzes derivando devagar, grão, vinheta nas bordas, cartões de vidro
+   com fio de luz no topo, relógio em degradê, anel com brilho, números
+   que sobem até o valor e as telas saindo e entrando em vez de cortar.
+   Só transform/opacity em ciclo; sem desfoque de fundo (TV costuma ter
+   placa fraca). Com movimento reduzido ou modo leve, a cena fica parada.
+   ===================================================================== */
+.tv{
+  --fundo:#06030D; --card:rgba(255,255,255,.045); --suave:rgba(255,255,255,.075);
+  --borda:rgba(255,255,255,.085); --borda-forte:rgba(255,255,255,.16);
+  --ink:#F5F1FB; --ink-2:#D6CEE6; --ink-3:#A99EC2; --ink-4:#7A6F96;
+  --ok:#4FE0A6; --ambar:#F2BE62; --erro:#FF6FAE; --acento:#F04FA8; --acento-suave:rgba(240,79,168,.16);
+  background:
+    radial-gradient(120% 90% at 50% 120%, #1B0B3A 0%, transparent 60%),
+    radial-gradient(90% 70% at 100% 0%, #2A0A3E 0%, transparent 55%),
+    linear-gradient(180deg, #06030D 0%, #0A0518 100%);
+  color:var(--ink);isolation:isolate;}
+.tv > *{position:relative;z-index:2;}
+.tv .tv-logo.claro{display:none;}
+.tv .tv-logo.escuro{display:block;}
+
+/* luzes derivando ao fundo, grão e vinheta */
+.tv-luz,.tv-grao{position:absolute !important;pointer-events:none;z-index:0 !important;}
+.tv-luz{left:-12vw;top:-22vh;width:62vw;height:62vw;border-radius:50%;opacity:.55;
+  background:radial-gradient(closest-side, rgba(214,46,150,.42), rgba(124,30,133,.16) 55%, transparent 72%);
+  animation:tvLuzA 38s ease-in-out infinite alternate;will-change:transform;}
+.tv-luz.dois{left:auto;right:-16vw;top:auto;bottom:-34vh;width:70vw;height:70vw;opacity:.5;
+  background:radial-gradient(closest-side, rgba(92,78,255,.4), rgba(40,22,120,.18) 55%, transparent 72%);
+  animation:tvLuzB 46s ease-in-out infinite alternate;}
+@keyframes tvLuzA{from{transform:translate3d(0,0,0) scale(1);}to{transform:translate3d(16vw,12vh,0) scale(1.18);}}
+@keyframes tvLuzB{from{transform:translate3d(0,0,0) scale(1.1);}to{transform:translate3d(-18vw,-14vh,0) scale(.92);}}
+.tv-grao{inset:0;opacity:.11;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22180%22 height=%22180%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%22.9%22 numOctaves=%222%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22 opacity=%22.9%22/%3E%3C/svg%3E");}
+.tv::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(120% 100% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%);}
+
+/* cabeçalho: relógio em degradê e um fio de luz que atravessa */
+.tv-cab{padding-bottom:clamp(10px,1.4vh,18px);}
+.tv-cab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.2) 18%, rgba(255,255,255,.2) 82%, transparent);}
+.tv-cab::before{content:"";position:absolute;left:0;bottom:-1px;width:22%;height:3px;border-radius:3px;z-index:1;
+  background:linear-gradient(90deg, transparent, rgba(150,120,255,.75) 35%, #fff 76%, rgba(255,130,200,.95) 92%, transparent);
+  animation:tvFio 7s cubic-bezier(.5,0,.3,1) infinite;}
+@keyframes tvFio{0%{transform:translate3d(-30%,0,0);opacity:0;}12%{opacity:1;}70%{opacity:1;}100%{transform:translate3d(460%,0,0);opacity:0;}}
+.tv-relogio b{background:linear-gradient(180deg, #fff 20%, #D9C8FF 62%, #FF9FD2 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 22px rgba(226,64,156,.35));}
+.tv-relogio b i{-webkit-text-fill-color:rgba(255,255,255,.6);}
+.tv-hoje{background:linear-gradient(90deg, rgba(240,79,168,.22), rgba(124,92,255,.14));border-color:rgba(255,255,255,.14);
+  box-shadow:0 0 34px -10px rgba(240,79,168,.6);}
+
+/* cartões de vidro com fio de luz no topo */
+.tv-resumo,.tv-bloco,.tv-sdia{background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.028));
+  border-color:rgba(255,255,255,.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 30px 60px -34px rgba(0,0,0,.8);}
+.tv-resumo{overflow:hidden;}
+.tv-resumo::before{content:"";position:absolute;top:0;bottom:0;left:0;width:26%;pointer-events:none;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.085) 50%, transparent);
+  transform:translate3d(-140%,0,0) skewX(-16deg);animation:tvVarre 11s cubic-bezier(.4,0,.2,1) 2s infinite;}
+@keyframes tvVarre{0%{transform:translate3d(-140%,0,0) skewX(-16deg);}38%,100%{transform:translate3d(520%,0,0) skewX(-16deg);}}
+.tv-bloco h2,.tv-resumo-tx span{letter-spacing:.14em;text-transform:uppercase;font-size:clamp(11px,1.35vh,14.5px);font-weight:800;color:var(--ink-3);}
+.tv-resumo-tx strong{font-size:clamp(19px,3vh,34px);}
+
+/* anel com brilho */
+.tv-anel svg{filter:drop-shadow(0 0 16px rgba(240,79,168,.55));overflow:visible;}
+.tv-anel .f{stroke:rgba(255,255,255,.09);}
+.tv-anel .v{stroke:#F04FA8;}
+.tv-anel b{background:linear-gradient(180deg, #fff, #E6D6FF);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.tv-anel b i{-webkit-text-fill-color:var(--ink-4);}
+
+/* números grandes com luz própria */
+.tv-num{background:linear-gradient(180deg, color-mix(in srgb, var(--ec) 20%, transparent), color-mix(in srgb, var(--ec) 6%, transparent));
+  border-color:color-mix(in srgb, var(--ec) 38%, transparent);box-shadow:0 0 44px -18px var(--ec), inset 0 1px 0 rgba(255,255,255,.12);}
+.tv-num b{text-shadow:0 0 28px color-mix(in srgb, var(--ec) 60%, transparent);}
+
+/* linhas de cliente e barras com brilho da própria cor */
+.tv-cli{border-bottom-color:rgba(255,255,255,.06);}
+.tv-cli-etapas i{background:color-mix(in srgb, var(--ec) 22%, transparent);color:color-mix(in srgb, var(--ec) 70%, #fff);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ec) 28%, transparent);}
+.tv-cli-etapas i.tv-e-vazio{background:rgba(255,255,255,.04);box-shadow:none;}
+.tv-cli-cab .tv-cli-etapas i{background:none;box-shadow:none;}
+.tv-cli.tv-e-atraso .tv-cli-pct{text-shadow:0 0 18px rgba(255,111,174,.6);}
+.tv-etapa-barra{background:rgba(255,255,255,.05);}
+.tv-etapa-barra i{box-shadow:0 0 14px -2px var(--ec);transform-origin:left center;}
+.tv-pub-n b{text-shadow:0 0 26px rgba(79,224,166,.55);}
+.tv-sdia.hoje{border-color:rgba(240,79,168,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.16), 0 0 60px -20px rgba(240,79,168,.75);}
+.tv-sdia.fds{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.012));}
+.tv-sdia header b{background:linear-gradient(180deg, #fff, #D9C8FF);-webkit-background-clip:text;background-clip:text;color:transparent;}
+
+/* as telas entram e saem (em vez de cortar) */
+.tv-corpo.tv-entra > *{animation:tvEntraBloco .8s cubic-bezier(.16,1,.3,1) both;}
+.tv-corpo.tv-entra > *:nth-child(2){animation-delay:.09s;}
+.tv-corpo.tv-entra > *:nth-child(3){animation-delay:.18s;}
+@keyframes tvEntraBloco{from{opacity:0;transform:translate3d(0,26px,0) scale(.985);}to{opacity:1;transform:none;}}
+.tv-corpo.tv-entra .tv-etapa-barra i{animation:tvCresce 1.1s cubic-bezier(.16,1,.3,1) .35s both;}
+@keyframes tvCresce{from{transform:scaleX(0);opacity:.3;}to{transform:none;opacity:1;}}
+.tv-corpo.tv-entra .tv-anel .v{animation:tvAnel 1.5s cubic-bezier(.16,1,.3,1) .2s both;}
+@keyframes tvAnel{from{stroke-dashoffset:var(--c);}to{stroke-dashoffset:var(--o);}}
+.tv-corpo.tv-sai{opacity:0;transform:translate3d(0,-16px,0) scale(.99);transition:opacity .4s ease-in, transform .4s ease-in;}
+
+/* ---- a animação da B7 (modo "só a animação" e vinheta) ---- */
+.tv-anim{position:absolute !important;inset:0;z-index:5 !important;background:#05030A;transition:opacity .4s ease;}
+.tv-anim[hidden]{display:none;}
+.tv-anim.tv-corte{opacity:0;}
+.tv-anim .b7-abertura{position:absolute;z-index:1;animation:none;--ab-w:clamp(280px, 34vw, 640px);}
+.tv.tv-so-anim > :is(.tv-cab,.tv-corpo,.tv-pe,.tv-luz,.tv-grao){display:none;}
+.tv.tv-so-anim::after{display:none;}
+.tv.tv-so-anim{cursor:none;}
+.tv.tv-so-anim.tv-mexeu{cursor:default;}
+.tv > .tv-sair{position:absolute;z-index:9;}
+
+/* janela de configuração: o modo */
+.tv-cfg-modo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;}
+.tv-cfg-modo label{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border-radius:14px;border:1px solid var(--borda);cursor:pointer;}
+.tv-cfg-modo label:has(input:checked){border-color:var(--acento);background:var(--acento-suave);}
+.tv-cfg-modo input{margin-top:3px;accent-color:var(--acento);flex:none;}
+.tv-cfg-modo span{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.tv-cfg-modo b{font-size:13.5px;font-weight:700;color:var(--ink);}
+.tv-cfg-modo small{font-size:12px;color:var(--ink-3);line-height:1.4;}
+.tv-cfg-blocos{display:flex;flex-direction:column;gap:7px;transition:opacity .2s;}
+.tv-cfg-blocos.apagado{opacity:.4;pointer-events:none;}
+@media (max-width:560px){ .tv-cfg-modo{grid-template-columns:1fr;} }
+
+@media (prefers-reduced-motion: reduce){
+  .tv-luz,.tv-cab::before,.tv-resumo::before,.tv-corpo.tv-entra > *,.tv-corpo.tv-entra .tv-etapa-barra i,.tv-corpo.tv-entra .tv-anel .v{animation:none !important;}
+  .tv-corpo.tv-sai,.tv-anim{transition:none !important;}
+}
+html.modo-leve .tv-luz,html.modo-leve .tv-cab::before,html.modo-leve .tv-resumo::before{animation:none;}
+html.modo-leve .tv-grao{display:none;}

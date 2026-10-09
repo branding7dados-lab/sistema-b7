@@ -1902,7 +1902,9 @@ B7.Dashboard = (function () {
       (u && !ehCli && B7.TV && B7.Recursos && B7.Recursos.ligado('tv') ? grupo('Painel de TV',
         'Só leitura: sem nomes da equipe, comentários ou notificações. Para sair, aperte Esc.',
         L({ ic: 'play', tom: 'violeta', t: 'Abrir o Painel de TV', d: 'a agência no mês, para deixar aberta numa tela',
-            botao: true, attrs: ' data-ir="#/tv"' })) : '') +
+            botao: true, attrs: ' data-ir="#/tv"' }) +
+        L({ ic: 'animacao', tom: 'rosa', t: 'Abrir só a animação da B7', d: 'a abertura do sistema em ciclo, sem número nenhum',
+            botao: true, attrs: ' data-ir="#/tv?modo=animacao"' })) : '') +
 
       (u && !ehCli ? grupo('Filtros', '',
         L({ ic: 'filtro', tom: 'cinza', t: 'Limpar filtros guardados', d: 'Calendário, Produção, Vídeo e Design voltam ao padrão',

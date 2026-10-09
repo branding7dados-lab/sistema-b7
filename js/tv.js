@@ -40,8 +40,81 @@ B7.TV = (function () {
   const S = { panorama: null, gravacoes: null, publicacoes: null, pubSemana: null, hojeDia: null, erro: false };
   /* zzz136 — o que aparece é escolha do administrador (Configurações → Admin →
      Painel de TV), guardada em sistema_config "tv". Sem nada guardado, vale isto: */
-  const PADRAO = { clientes: true, nomes: true, etapas: true, gravacoes: true, publicacoes: true, hoje: true, agenda: false, intervalo: 45 };
+  const PADRAO = { clientes: true, nomes: true, etapas: true, gravacoes: true, publicacoes: true, hoje: true, agenda: false, intervalo: 45,
+    modo: 'painel', vinheta: false };
   let cfg = Object.assign({}, PADRAO), tela = 'agencia';
+  /* zzz137 — "só a animação da B7": a TV fica com a cena da abertura do
+     sistema, em ciclo, sem número nenhum. Vale pela configuração ou pelo
+     endereço (#/tv?modo=animacao), que ganha da configuração. */
+  let modoForcado = '', modoAtivo = '', animTimer = 0, vinhetaTimer = 0, ultimaVinheta = 0, eraCurta = false;
+  const modoDaVez = () => modoForcado || (cfg.modo === 'animacao' ? 'animacao' : 'painel');
+  const reduz = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* a mesma marcação da abertura do sistema: `completa` = a sequência de
+     entrada (uns 7 s); senão a cena viva, que fica em ciclo sem fim */
+  function cena(completa) {
+    const el = document.createElement('div');
+    el.className = 'b7-abertura tv-cena' + (completa ? ' inicial' : '');
+    el.dataset.fechando = '1';                 /* o fechamento da cortina do sistema não mexe nesta */
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = B7.moldeAbertura ? B7.moldeAbertura() : '';
+    const esp = el.querySelector('.ab-espera'); if (esp) esp.remove();
+    return el;
+  }
+  function trocarCena(completa, depois) {
+    const palco = raiz && raiz.querySelector('#tv-anim'); if (!palco) return;
+    palco.classList.add('tv-corte');           /* um corte para o preto entre as cenas */
+    setTimeout(() => {
+      if (!raiz) return;
+      palco.innerHTML = ''; palco.appendChild(cena(completa));
+      void palco.offsetWidth; palco.classList.remove('tv-corte');
+      depois && depois();
+    }, 420);
+  }
+  function cicloAnimacao() {
+    clearTimeout(animTimer);
+    const passo = completa => {
+      if (!raiz || modoAtivo !== 'animacao') return;
+      trocarCena(completa && !reduz(), () => { animTimer = setTimeout(() => passo(!completa), completa && !reduz() ? 7400 : 50000); });
+    };
+    passo(true);
+  }
+  /* vinheta: a abertura passa por cima do painel e some */
+  function passarVinheta() {
+    const palco = raiz && raiz.querySelector('#tv-anim'); if (!palco || modoAtivo !== 'painel' || reduz()) return;
+    ultimaVinheta = Date.now();
+    palco.hidden = false; palco.classList.add('tv-corte');
+    trocarCena(true, () => {
+      clearTimeout(vinhetaTimer);
+      vinhetaTimer = setTimeout(() => {
+        palco.classList.add('tv-corte');
+        setTimeout(() => { if (raiz && modoAtivo === 'painel') { palco.hidden = true; palco.innerHTML = ''; palco.classList.remove('tv-corte'); pintar(true); } }, 450);
+      }, 7200);
+    });
+  }
+  function aplicarModo() {
+    if (!raiz) return;
+    const m = modoDaVez(); if (m === modoAtivo) return;
+    modoAtivo = m;
+    clearTimeout(animTimer); clearTimeout(vinhetaTimer);
+    const palco = raiz.querySelector('#tv-anim');
+    raiz.classList.toggle('tv-so-anim', m === 'animacao');
+    if (m === 'animacao') { palco.hidden = false; cicloAnimacao(); }
+    else { palco.hidden = true; palco.innerHTML = ''; palco.classList.remove('tv-corte'); ultimaVinheta = Date.now(); }
+  }
+  /* os números sobem até o valor (só na entrada da tela, não a cada renovação) */
+  function contar(cx) {
+    if (reduz()) return;
+    cx.querySelectorAll('[data-conta]').forEach(el => {
+      const alvo = Number(el.dataset.conta) || 0, t0 = performance.now(), dur = 900 + Math.min(alvo, 100) * 4;
+      if (!alvo) return;
+      el.textContent = '0';
+      const passo = t => {
+        const p = Math.min(1, (t - t0) / dur), v = Math.round(alvo * (1 - Math.pow(1 - p, 3)));
+        if (el.isConnected) { el.textContent = v; if (p < 1) requestAnimationFrame(passo); }
+      };
+      requestAnimationFrame(passo);
+    });
+  }
   async function lerConfig() {
     try {
       const { data } = await B7.sb.from('sistema_config').select('valor').eq('chave', 'tv').maybeSingle();
@@ -55,6 +128,8 @@ B7.TV = (function () {
     const h = hoje(), a = new Date();
     const tenta = p => Promise.resolve(p).catch(() => null);
     await lerConfig();
+    aplicarModo();
+    if (modoAtivo === 'animacao') return;          /* só a animação: nenhum dado é consultado */
     const [pan, grav, pub, ops, pubSem] = await Promise.all([
       tenta(B7.DB.panoramaMes(a.getFullYear(), a.getMonth() + 1)),
       tenta(B7.Eventos && B7.Eventos.carregarDominio ? B7.Eventos.carregarDominio('gravacao', h, somarDias(h, 7)) : null),
@@ -90,10 +165,10 @@ B7.TV = (function () {
     return '<section class="tv-resumo" aria-label="Resumo do mês">' +
       '<div class="tv-anel" role="img" aria-label="Andamento médio do mês: ' + pct + '%"><svg viewBox="0 0 120 120">' +
         '<circle class="f" cx="60" cy="60" r="' + r + '"/><circle class="v" cx="60" cy="60" r="' + r + '" style="--c:' + c.toFixed(1) + ';--o:' + (c * (1 - pct / 100)).toFixed(1) + '"/></svg>' +
-        '<b>' + pct + '<i>%</i></b></div>' +
+        '<b><span data-conta="' + pct + '">' + pct + '</span><i>%</i></b></div>' +
       '<div class="tv-resumo-tx"><span>Andamento do mês</span><strong>' + com + (com === 1 ? ' cliente' : ' clientes') + ' com movimento</strong></div>' +
       '<div class="tv-nums">' + ['ok', 'andamento', 'atencao', 'atraso'].map(k =>
-        '<div class="tv-num tv-e-' + k + '"><b>' + n[k] + '</b><span>' + ROT[k] + '</span></div>').join('') + '</div>' +
+        '<div class="tv-num tv-e-' + k + '"><b data-conta="' + n[k] + '">' + n[k] + '</b><span>' + ROT[k] + '</span></div>').join('') + '</div>' +
     '</section>';
   }
 
@@ -197,8 +272,8 @@ B7.TV = (function () {
     if (l.length) cx.innerHTML = '<small>Hoje é dia de</small><b>' + esc(l[0]) + '</b>' + (l.length > 1 ? '<em>e mais ' + (l.length - 1) + '</em>' : '');
   }
 
-  function pintar() {
-    if (!raiz) return;
+  function pintar(entrando) {
+    if (!raiz || modoAtivo === 'animacao') return;
     const corpo = raiz.querySelector('#tv-corpo');
     faixaHoje();
     if (!S.panorama) {
@@ -210,13 +285,16 @@ B7.TV = (function () {
     const blocoAgenda = cfg.gravacoes || (cfg.publicacoes && S.publicacoes) ? '<section class="tv-bloco tv-agenda">' + agenda() + '</section>' : '';
     const blocoEtapas = cfg.etapas ? '<section class="tv-bloco"><h2>Etapas da agência</h2>' + etapas(S.panorama) + '</section>' : '';
     const lado = blocoEtapas + blocoAgenda;
-    corpo.className = 'tv-corpo' + (tela === 'semana' ? ' tv-tela-semana' : (cfg.clientes ? '' : ' sem-clientes') + (lado ? '' : ' sem-lado'));
+    const primeira = !corpo.dataset.pronto; corpo.dataset.pronto = '1';
+    corpo.className = 'tv-corpo' + (tela === 'semana' ? ' tv-tela-semana' : (cfg.clientes ? '' : ' sem-clientes') + (lado ? '' : ' sem-lado')) +
+      (entrando || primeira ? ' tv-entra' : '');
     corpo.innerHTML = resumo(S.panorama) + (tela === 'semana' ? semana()
       : (cfg.clientes ? '<section class="tv-bloco tv-clientes"><header><h2>Clientes em ' + MES[a.getMonth()] + '</h2>' +
           '<span class="tv-nota" id="tv-clientes-nota"></span></header>' +
           '<div class="tv-clientes-corpo" id="tv-clientes-corpo"></div></section>' : '') +
         (lado ? '<aside class="tv-lado">' + lado + '</aside>' : ''));
     clientes(S.panorama);
+    if (entrando || primeira) contar(corpo);
     const at = raiz.querySelector('#tv-atualizado');
     if (at) at.textContent = (S.erro ? 'sem conexão — mostrando o último dado · ' : '') + 'atualizado às ' + pad(a.getHours()) + ':' + pad(a.getMinutes());
   }
@@ -245,6 +323,8 @@ B7.TV = (function () {
 
   function fechar() {
     clearInterval(pulso); clearInterval(giro); clearInterval(troca); clearTimeout(somemEm); pulso = giro = troca = 0; tela = 'agencia';
+    clearTimeout(animTimer); clearTimeout(vinhetaTimer); modoAtivo = ''; modoForcado = '';
+    if (eraCurta) { document.documentElement.classList.add('ab-curta'); eraCurta = false; }
     document.removeEventListener('visibilitychange', aoVoltar);
     document.removeEventListener('keydown', aoTecla);
     window.removeEventListener('resize', aoRedimensionar);
@@ -266,7 +346,9 @@ B7.TV = (function () {
           '<img class="tv-logo escuro" src="assets/brand/logo-white.png" alt="" aria-hidden="true"></div>' +
         '<div class="tv-hoje" id="tv-hoje" hidden></div>' +
         '<div class="tv-relogio" id="tv-relogio"></div></header>' +
+      '<i class="tv-luz" aria-hidden="true"></i><i class="tv-luz dois" aria-hidden="true"></i><i class="tv-grao" aria-hidden="true"></i>' +
       '<div class="tv-corpo" id="tv-corpo" role="main"></div>' +
+      '<div class="tv-anim" id="tv-anim" hidden></div>' +
       '<footer class="tv-pe"><span id="tv-atualizado"></span><span>somente leitura · sem dados pessoais</span></footer>' +
       '<button type="button" class="tv-sair" id="tv-sair">Sair do Painel de TV <kbd>Esc</kbd></button>';
     document.body.appendChild(raiz);
@@ -278,7 +360,11 @@ B7.TV = (function () {
     B7.Rota.aoSair(fechar);
 
     Object.keys(S).forEach(k => { S[k] = k === 'erro' ? false : null; });
-    pagina = 0;
+    pagina = 0; modoAtivo = '';
+    modoForcado = (m => (m && (m[1] === 'animacao' || m[1] === 'painel')) ? m[1] : '')(/[?&]modo=([a-z]+)/.exec(location.hash));
+    /* a abertura completa só toca inteira sem a marca de "já vi nesta sessão" */
+    eraCurta = document.documentElement.classList.contains('ab-curta'); document.documentElement.classList.remove('ab-curta');
+    if (modoForcado) aplicarModo();
     relogio(); pintar(); renovar(); manterAcesa();
     pulso = setInterval(() => {
       if (!raiz || !raiz.isConnected) { fechar(); return; }
@@ -290,9 +376,20 @@ B7.TV = (function () {
     let ultimaTroca = Date.now();
     troca = setInterval(() => {
       if (!raiz || document.hidden || !S.panorama || !cfg.agenda) return;
+      if (modoAtivo !== 'painel' || !raiz.querySelector('#tv-anim').hidden) return;
       if (Date.now() - ultimaTroca < (Number(cfg.intervalo) || 45) * 1000) return;
-      ultimaTroca = Date.now(); tela = tela === 'agencia' ? 'semana' : 'agencia'; pintar();
+      ultimaTroca = Date.now();
+      /* a tela sai, troca e entra (zzz137) */
+      const corpo = raiz.querySelector('#tv-corpo'); corpo.classList.add('tv-sai');
+      setTimeout(() => { if (raiz) { tela = tela === 'agencia' ? 'semana' : 'agencia'; pintar(true); } }, reduz() ? 0 : 430);
     }, 5000);
+    /* vinheta da B7 a cada 5 minutos, se ligada */
+    ultimaVinheta = Date.now();
+    const vinhetas = setInterval(() => {
+      if (!raiz) { clearInterval(vinhetas); return; }
+      if (document.hidden || !cfg.vinheta || modoAtivo !== 'painel' || !S.panorama) return;
+      if (Date.now() - ultimaVinheta >= 5 * 60000) passarVinheta();
+    }, 10000);
     /* clientes demais para uma página: a lista roda sozinha */
     giro = setInterval(() => {
       if (!raiz || document.hidden || !S.panorama) return;
@@ -319,7 +416,8 @@ B7.TV = (function () {
       ['gravacoes', 'Próximas gravações', 'as dos próximos 7 dias'],
       ['publicacoes', 'Publicações de hoje', 'publicadas de quantas'],
       ['hoje', '“Hoje é dia de…”', 'a data relevante do dia, no topo'],
-      ['agenda', 'Alternar com a agenda da semana', 'uma segunda tela com os próximos 7 dias']];
+      ['agenda', 'Alternar com a agenda da semana', 'uma segunda tela com os próximos 7 dias'],
+      ['vinheta', 'Vinheta da B7 a cada 5 minutos', 'a animação de abertura passa por cima do painel e some']];
     const m = B7.UI.modal('<h3>Painel de TV</h3><p class="sub">O que aparece na tela da agência. Vale para todo aparelho que abrir o Painel de TV; quem já está com ele aberto recebe em até 5 minutos.</p>' +
       '<div class="tv-cfg" id="tv-cfg"><p class="adm-vazio">Carregando…</p></div>' +
       '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="tv-cfg-ok" disabled>Salvar</button></div>');
@@ -327,14 +425,18 @@ B7.TV = (function () {
     const cx = m.querySelector('#tv-cfg'), ok = m.querySelector('#tv-cfg-ok');
     lerConfig().then(c => {
       if (!cx.isConnected) return;
-      cx.innerHTML = OPCOES.map(([k, t, d]) => '<label class="tv-cfg-l"><input type="checkbox" data-k="' + k + '"' + (c[k] ? ' checked' : '') + '><span><b>' + t + '</b><small>' + d + '</small></span></label>').join('') +
+      cx.innerHTML = '<div class="tv-cfg-modo" role="radiogroup" aria-label="O que a TV mostra">' +
+          [['painel', 'Painel da agência', 'os números do mês, em visual de cinema'], ['animacao', 'Só a animação da B7', 'a abertura do sistema em ciclo, sem número nenhum']].map(([v, t, d]) =>
+            '<label><input type="radio" name="tv-modo" value="' + v + '"' + ((c.modo === 'animacao' ? 'animacao' : 'painel') === v ? ' checked' : '') + '><span><b>' + t + '</b><small>' + d + '</small></span></label>').join('') + '</div>' +
+        '<div class="tv-cfg-blocos" id="tv-cfg-blocos">' + OPCOES.map(([k, t, d]) => '<label class="tv-cfg-l"><input type="checkbox" data-k="' + k + '"' + (c[k] ? ' checked' : '') + '><span><b>' + t + '</b><small>' + d + '</small></span></label>').join('') +
         '<label class="tv-cfg-int" id="tv-cfg-int"><span>Trocar de tela a cada</span><select class="campo" id="tv-cfg-seg">' +
           [[20, '20 segundos'], [30, '30 segundos'], [45, '45 segundos'], [60, '1 minuto'], [120, '2 minutos']].map(([v, r]) =>
             '<option value="' + v + '"' + (Number(c.intervalo) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></label>' +
-        '<p class="tv-cfg-aviso" id="tv-cfg-aviso" hidden></p>';
+        '<p class="tv-cfg-aviso" id="tv-cfg-aviso" hidden></p></div>';
       const conferir = () => {
         const v = k => cx.querySelector('[data-k="' + k + '"]').checked;
         cx.querySelector('#tv-cfg-int').hidden = !v('agenda');
+        cx.querySelector('#tv-cfg-blocos').classList.toggle('apagado', cx.querySelector('input[name="tv-modo"]:checked').value === 'animacao');
         const av = cx.querySelector('#tv-cfg-aviso');
         av.hidden = v('clientes') || v('etapas') || v('gravacoes') || v('publicacoes');
         av.textContent = 'Com tudo desligado, a tela fica só com o resumo do mês e o relógio.';
@@ -343,7 +445,7 @@ B7.TV = (function () {
       ok.disabled = false;
     });
     ok.onclick = async () => {
-      const novo = { intervalo: Number(cx.querySelector('#tv-cfg-seg').value) || 45 };
+      const novo = { intervalo: Number(cx.querySelector('#tv-cfg-seg').value) || 45, modo: cx.querySelector('input[name="tv-modo"]:checked').value };
       cx.querySelectorAll('[data-k]').forEach(i => { novo[i.dataset.k] = i.checked; });
       ok.disabled = true; ok.textContent = 'Salvando…';
       try {

@@ -743,6 +743,8 @@ B7.Rota = (function () {
   B7.abrirCortina = abrirCortina;
   B7.fecharCortina = fecharCortina;
   B7.reverAbertura = reverAbertura;
+  /* zzz137: o Painel de TV monta a mesma cena da abertura (js/tv.js) */
+  B7.moldeAbertura = () => MOLDE_ABERTURA;
 
   /* "Testar tela de carregamento" (Configurações → Aparência, zzz111):
      a versão curta da abertura — a que aparece ao recarregar a página e
