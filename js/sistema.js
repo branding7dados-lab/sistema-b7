@@ -55,8 +55,23 @@ B7.Manutencao = (function () {
     const app = document.getElementById('app'); if (app) app.inert = false;
   }
 
+  const ROT_FASE = { nenhuma: 'Desligado', aviso: 'Marcado', ativa: 'Ligado' };
+  /* zzz132: a linha em Configurações → Admin acompanha o estado de verdade.
+     Antes ela era desenhada uma vez só: aberta antes de a consulta voltar,
+     ficava dizendo "Desligado" com a manutenção ligada. */
+  function atualizarLinha() {
+    const f = fase();
+    document.querySelectorAll('[data-mn-v]').forEach(v => {
+      if (v.textContent !== ROT_FASE[f]) v.textContent = ROT_FASE[f];
+      v.classList.toggle('erro', f !== 'nenhuma');
+    });
+    const d = descricao();
+    document.querySelectorAll('[data-mn-d]').forEach(x => { if (x.textContent !== d) x.textContent = d; });
+  }
+
   function pintar() {
     const f = fase();
+    atualizarLinha();
     clearInterval(tique); tique = 0;
     if (f === 'nenhuma') { destravar(); tirar('b7-manut-faixa'); return; }
     /* enquanto houver manutenção marcada, o relógio anda de segundo em segundo */
@@ -100,8 +115,25 @@ B7.Manutencao = (function () {
     bt.hidden = !acao; if (acao) { bt.textContent = rotulo; bt.onclick = acao; }
   }
 
+  const MSG_PADRAO = 'Estamos fazendo uma melhoria no sistema. Voltamos em instantes.';
+  /* a mesma tela que a equipe vê, só para o administrador conferir antes de ligar */
+  function previa(mensagem, fimTx) {
+    tirar('b7-manut-previa');
+    const el = document.createElement('div'); el.id = 'b7-manut-previa'; el.className = 'mn-trava mn-so-previa';
+    el.innerHTML = '<div class="mn-caixa"><img class="mn-logo claro" src="assets/brand/logo-color.png" alt="Branding7">' +
+      '<img class="mn-logo escuro" src="assets/brand/logo-white.png" alt="" aria-hidden="true">' +
+      '<h2>Sistema em manutenção</h2><p class="mn-msg"></p><p class="mn-fim"></p>' +
+      '<p class="mn-nota">Esta tela se libera sozinha quando terminar. O que você já tinha salvo continua guardado.</p>' +
+      '<button type="button" class="b contorno mn-fechar-previa">Fechar prévia</button><small class="mn-previa-aviso">Prévia: é isto que a equipe vê. Nada foi ligado.</small></div>';
+    el.querySelector('.mn-msg').textContent = (mensagem || '').trim() || MSG_PADRAO;
+    el.querySelector('.mn-fim').textContent = fimTx;
+    el.querySelector('.mn-fechar-previa').onclick = () => el.remove();
+    document.body.appendChild(el);
+    el.querySelector('.mn-fechar-previa').focus();
+  }
+
   function travar(fimTx) {
-    const msg = (atual.mensagem || '').trim() || 'Estamos fazendo uma melhoria no sistema. Voltamos em instantes.';
+    const msg = (atual.mensagem || '').trim() || MSG_PADRAO;
     let el = document.getElementById('b7-manut');
     if (!el) {
       el = document.createElement('div'); el.id = 'b7-manut'; el.className = 'mn-trava';
@@ -139,17 +171,19 @@ B7.Manutencao = (function () {
         ? '<p class="sub">Trava a tela de toda a equipe com um aviso seu, enquanto você mexe em algo. Administradores continuam usando normalmente. ' +
             'É uma trava de tela: não altera nenhuma regra de acesso.</p>' +
           '<div class="mb"><label class="rot" for="mn-msg">MENSAGEM PARA A EQUIPE</label>' +
-            '<textarea class="campo" id="mn-msg" rows="2" maxlength="300">Estamos fazendo uma melhoria no sistema. Voltamos em instantes.</textarea></div>' +
+            '<textarea class="campo" id="mn-msg" rows="2" maxlength="300">' + MSG_PADRAO + '</textarea></div>' +
           '<div class="mb"><label class="rot">COMEÇA</label>' + opcoes('mn-ini', [[2, 'Em 2 minutos'], [5, 'Em 5 minutos'], [0, 'Agora']], 2) +
             '<small class="mn-dica">Com antecedência, a equipe vê uma contagem para salvar o que está fazendo. “Agora” pode cortar alguém no meio de um formulário.</small></div>' +
           '<div class="mb"><label class="rot">DURA</label>' + opcoes('mn-dur', [[15, '15 minutos'], [30, '30 minutos'], [60, '1 hora'], ['', 'Até eu desligar']], 15) + '</div>' +
           '<label class="mn-check"><input type="checkbox" id="mn-portal"><span>Travar também o Portal do cliente</span></label>' +
-          '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="mn-ok">Ligar manutenção</button></div>'
+          '<div class="acoes"><button type="button" class="b contorno" id="mn-previa">Ver como a equipe vê</button><span class="mn-esp"></span>' +
+            '<button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="mn-ok">Ligar manutenção</button></div>'
         : '<p class="sub">' + (f === 'aviso' ? 'Marcada: a equipe é travada às ' + horaDe(new Date(atual.inicio).getTime() - desvio) + '.' : 'Ligado agora: a equipe está com a tela travada.') +
             ' ' + (atual.fim ? 'Termina sozinho às ' + horaDe(new Date(atual.fim).getTime() - desvio) + '.' : 'Fica ligado até você desligar.') +
             (atual.portal ? ' Vale também para o Portal do cliente.' : ' O Portal do cliente não é afetado.') + '</p>' +
           '<div class="mn-previa"><small>MENSAGEM</small><p>' + esc((atual.mensagem || '').trim() || 'Estamos fazendo uma melhoria no sistema. Voltamos em instantes.') + '</p></div>' +
-          '<div class="acoes"><button type="button" class="b contorno" data-fecha>Fechar</button><button type="button" class="b pri" id="mn-desligar">Desligar agora</button></div>'));
+          '<div class="acoes">' + (f === 'ativa' && atual.fim ? '<button type="button" class="b contorno" id="mn-mais">+ 15 minutos</button><span class="mn-esp"></span>' : '') +
+            '<button type="button" class="b contorno" data-fecha>Fechar</button><button type="button" class="b pri" id="mn-desligar">Desligar agora</button></div>'));
     m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
     const feito = async (bt, rotulo, chamada, aviso) => {
       bt.disabled = true; bt.textContent = 'Enviando…';
@@ -174,6 +208,20 @@ B7.Manutencao = (function () {
         p_duracao_min: dur === '' ? null : Number(dur), p_portal: m.querySelector('#mn-portal').checked
       }), 'Manutenção ligada. Chega a cada pessoa em até 1 minuto.');
     };
+    const pv = m.querySelector('#mn-previa');
+    if (pv) pv.onclick = () => {
+      const dur = m.querySelector('input[name="mn-dur"]:checked').value, ini = Number(m.querySelector('input[name="mn-ini"]:checked').value);
+      previa(m.querySelector('#mn-msg').value, dur === '' ? 'sem hora marcada para voltar'
+        : 'previsão de volta às ' + horaDe(Date.now() + (ini + Number(dur)) * 60000));
+    };
+    /* estender: mesma mensagem e mesmo alcance, só empurra o fim */
+    const mais = m.querySelector('#mn-mais');
+    if (mais) mais.onclick = () => {
+      const resta = Math.max(0, Math.ceil((new Date(atual.fim).getTime() - agora()) / 60000));
+      feito(mais, '+ 15 minutos', () => B7.DB.rpc('manutencao_definir', {
+        p_ativo: true, p_mensagem: atual.mensagem || '', p_inicio_min: 0, p_duracao_min: Math.min(1440, resta + 15), p_portal: !!atual.portal
+      }), 'Manutenção estendida em 15 minutos.');
+    };
     const des = m.querySelector('#mn-desligar');
     if (des) des.onclick = () => feito(des, 'Desligar agora', () => B7.DB.rpc('manutencao_definir', { p_ativo: false }),
       'Manutenção desligada. As telas se liberam em até 1 minuto.');
@@ -181,7 +229,9 @@ B7.Manutencao = (function () {
 
   function descricao() {
     const f = fase();
-    return f === 'ativa' ? 'ligado agora — a equipe está travada' : f === 'aviso' ? 'marcado para começar em instantes' : 'trava a tela da equipe com um aviso seu';
+    if (f === 'nenhuma') return 'trava a tela da equipe com um aviso seu';
+    const fim = atual.fim ? 'termina sozinho às ' + horaDe(new Date(atual.fim).getTime() - desvio) : 'fica ligado até você desligar';
+    return (f === 'ativa' ? 'ligado agora: a equipe está travada' : 'marcado: trava a equipe às ' + horaDe(new Date(atual.inicio).getTime() - desvio)) + ' · ' + fim;
   }
 
   return { iniciar, conferir, fase, descricao, abrirGerenciar };

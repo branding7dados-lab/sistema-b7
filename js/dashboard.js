@@ -1951,6 +1951,11 @@ B7.Dashboard = (function () {
       (pode('usuarios') ? grupo('Pessoas', 'Contas da equipe e dos clientes. Não existe cadastro público.',
         L({ ic: 'usuarios', tom: 'azul', t: 'Usuários e acessos', d: 'criar, redefinir senha, funções e módulos',
             botao: true, attrs: ' data-ir="#/usuarios"' })) : '') +
+      /* zzz132: o modo manutenção mora no Admin; o estado da linha é mantido por js/sistema.js (data-mn-*) */
+      (ehAdm && B7.Manutencao ? grupo('Manutenção', 'Administradores continuam usando normalmente. É uma trava de tela: não altera regra de acesso.',
+        L({ ic: 'acesso', tom: 'laranja', t: 'Modo manutenção', d: '<span data-mn-d>' + esc(B7.Manutencao.descricao()) + '</span>', botao: true, attrs: ' data-manutencao',
+            dir: '<span class="cfg-valor' + (B7.Manutencao.fase() === 'nenhuma' ? '' : ' erro') + '" data-mn-v>' +
+              ({ nenhuma: 'Desligado', aviso: 'Marcado', ativa: 'Ligado' })[B7.Manutencao.fase()] + '</span>' })) : '') +
       (ehAdm ? grupo('Integrações', 'A conta Google é uma só para o sistema inteiro: o que a equipe marca vai para ela.',
         '<div id="cfg-google">' + L({ ic: 'google', tom: 'azul', t: 'Google Agenda', d: 'verificando…',
             dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>') : '') +
@@ -1994,9 +1999,6 @@ B7.Dashboard = (function () {
                 botao: !!B7.instalacao, semSeta: true, attrs: ' data-instalar' })) +
         (u ? L({ ic: 'vassoura', tom: 'laranja', t: 'Limpar dados deste aparelho', d: 'memória das telas, arquivos guardados e filtros',
             botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : '')) +
-      (B7.Manutencao ? grupo('Manutenção', 'Administradores continuam usando normalmente. É uma trava de tela: não altera regra de acesso.',
-        L({ ic: 'acesso', tom: 'laranja', t: 'Modo manutenção', d: esc(B7.Manutencao.descricao()), botao: true, attrs: ' data-manutencao',
-            dir: '<span class="cfg-valor' + (B7.Manutencao.fase() === 'nenhuma' ? '' : ' erro') + '">' + (B7.Manutencao.fase() === 'nenhuma' ? 'Desligado' : B7.Manutencao.fase() === 'aviso' ? 'Marcado' : 'Ligado') + '</span>' })) : '') +
       /* Banco e conexão são do administrador. */
       (pode('banco') || pode('sistema') ? grupo('Servidor', '',
         (pode('banco') ? '<div id="cfg-banco">' + L({ ic: 'banco', tom: 'verde', t: 'Banco de dados', d: 'verificando…',
@@ -2211,7 +2213,7 @@ B7.Dashboard = (function () {
       } });
     /* ---- zzz130: manutenção e novidades ---- */
     const btMn = p.querySelector('[data-manutencao]');
-    if (btMn) btMn.onclick = () => B7.Manutencao.abrirGerenciar(() => { if (location.hash.indexOf('#/config') === 0) abrirConfig(); });
+    if (btMn) { btMn.onclick = () => B7.Manutencao.abrirGerenciar(() => {}); B7.Manutencao.conferir(); }
     const btNv = p.querySelector('[data-novidades]');
     if (btNv) btNv.onclick = () => { B7.Novidades.abrir(); };
     const btNvA = p.querySelector('[data-novidades-adm]');

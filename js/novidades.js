@@ -24,6 +24,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz132', versao: 'zzz132', em: '2026-10-09T13:30:00-03:00', para: 'admin',
+    titulo: 'Modo manutenção no lugar certo',
+    itens: ['Ele agora fica em Configurações → Admin, e a linha mostra o estado de verdade (Desligado, Marcado ou Ligado).',
+            'O lembrete de que está ligado foi para o rodapé, sem cobrir a busca.',
+            'Dá para ver a tela como a equipe vê antes de ligar, e somar 15 minutos sem desligar.'] },
   { id: 'v-zzz131', versao: 'zzz131', em: '2026-10-09T12:00:00-03:00',
     titulo: 'As novidades agora chegam sozinhas',
     itens: ['A cada atualização do B7, este cartão conta o que mudou para você.',

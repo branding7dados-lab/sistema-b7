@@ -3,11 +3,14 @@
    ===================================================================== */
 
 /* ---- faixa: contagem para a equipe, lembrete para o administrador ---- */
-.mn-faixa{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:470;max-width:min(680px,calc(100vw - 24px));
+/* zzz132: embaixo, no centro — no topo ela cobria a busca */
+.mn-faixa{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:470;max-width:min(680px,calc(100vw - 24px));
   display:flex;align-items:center;gap:11px;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.3;
   background:var(--card);color:var(--ink);border:1px solid var(--borda);box-shadow:0 14px 40px -14px rgba(0,0,0,.3);
   animation:mnDesce .4s cubic-bezier(.2,.8,.2,1) both;}
-@keyframes mnDesce{from{opacity:0;transform:translate(-50%,-14px);}to{opacity:1;transform:translate(-50%,0);}}
+@keyframes mnDesce{from{opacity:0;transform:translate(-50%,14px);}to{opacity:1;transform:translate(-50%,0);}}
+/* os avisos rápidos sobem para não ficar em cima da faixa */
+body:has(#b7-manut-faixa) #toasts{bottom:78px;}
 .mn-faixa .mn-ponto{width:9px;height:9px;border-radius:50%;flex:none;background:var(--ambar);animation:mnPulsa 1.6s ease-in-out infinite;}
 @keyframes mnPulsa{50%{opacity:.35;}}
 .mn-faixa .mn-tx{min-width:0;font-variant-numeric:tabular-nums;}
@@ -36,6 +39,10 @@ html.modo-leve .mn-trava{background:var(--fundo);backdrop-filter:none;-webkit-ba
 .mn-fim{display:inline-block;margin:0 0 16px;padding:6px 14px;border-radius:999px;font-size:13px;font-weight:700;
   background:var(--suave);color:var(--ink-2);}
 .mn-nota{font-size:12.5px;line-height:1.5;color:var(--ink-4);margin:0;}
+.mn-so-previa{z-index:490;}
+.mn-fechar-previa{margin-top:18px;}
+.mn-previa-aviso{display:block;margin-top:10px;font-size:12px;color:var(--ink-4);}
+.mn-esp{flex:1;}
 body.em-manutencao{overflow:hidden;}
 body.em-manutencao #toasts,body.em-manutencao #b7-chat-fab,body.em-manutencao #b7-chat,body.em-manutencao .nv-cartao{display:none !important;}
 
@@ -88,7 +95,8 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 
 @media (max-width:860px){
   .nv-cartao,body[data-shell="interno"] .nv-cartao,body.recolhida[data-shell="interno"] .nv-cartao{left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));max-width:none;}
-  .mn-faixa{border-radius:18px;top:8px;}
+  .mn-faixa{border-radius:18px;bottom:calc(84px + env(safe-area-inset-bottom));}
+  body:has(#b7-manut-faixa) #toasts{bottom:calc(146px + env(safe-area-inset-bottom));}
 }
 @media (prefers-reduced-motion: reduce){
   .mn-faixa,.mn-trava,.nv-cartao,.mn-faixa .mn-ponto{animation:none !important;}
