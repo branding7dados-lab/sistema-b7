@@ -84,7 +84,7 @@ B7.Sessoes = (function () {
 B7.UsoIA = (function () {
   const esc = s => B7.UI.esc(s);
   const ROT_RECURSO = { chat: 'Assistente (conversa)', roteiro: 'Roteiros', analise: 'Análise de roteiro', linha: 'Linha editorial', resumo: 'Resumos',
-    oportunidade: 'Ideias das Oportunidades', voz: 'Voz (transcrição)' };
+    oportunidade: 'Ideias das Oportunidades', voz: 'Voz (transcrição)', agencia: 'Resumo da semana (administrador)' };
   const ROT_ERRO = { indisponivel: 'provedor fora do ar ou lento', limite: 'limite de uso atingido', ocupado: 'muitos pedidos ao mesmo tempo',
     resposta_invalida: 'resposta que não deu para usar', tempo: 'demorou demais', sem_fala: 'áudio sem fala', entrada_invalida: 'pedido inválido', 'sem categoria': 'sem categoria' };
   const seg = ms => (ms >= 1000 ? (ms / 1000).toFixed(1).replace('.', ',') + ' s' : ms + ' ms');
@@ -483,4 +483,111 @@ B7.Aparencia = (function () {
     return p[1] + (n ? ' · ' + n + (n === 1 ? ' data especial' : ' datas especiais') : '');
   };
   return { abrir, sincronizar, aplicar, resumo, _estacaoDe: estacaoDe, PALETAS };
+})();
+
+/* =====================================================================
+   ADMIN: RESUMO DA SEMANA E REDISTRIBUIÇÃO (zzz141)
+
+   B7.ResumoAgencia — um texto curto sobre os últimos 7 dias da agência
+     (o que andou, o que travou, carga, clientes que pedem atenção). Os
+     números são contados pelo banco; a IA só escreve em cima deles. Só
+     roda quando o administrador aperta o botão; nada é guardado.
+   B7.Redistribuicao — quando uma pessoa tem muito mais trabalho que outra
+     da mesma função, o sistema SUGERE passar itens que ainda não
+     começaram. Nada muda sozinho: o administrador marca e aplica, e a
+     troca usa as mesmas funções da tela de Vídeo e de Design (com o
+     histórico delas).
+   ===================================================================== */
+B7.ResumoAgencia = (function () {
+  const esc = s => B7.UI.esc(s);
+  function abrir() {
+    const m = B7.UI.modal('<h3>Resumo da semana</h3>' +
+      '<p class="sub">Os últimos 7 dias da agência, em texto curto. Os números vêm do sistema; a IA só escreve em cima deles. Só é gerado quando você pede, e nada fica guardado.</p>' +
+      '<div class="mb"><label class="rot" for="ra-dir">DIRECIONAMENTO (OPCIONAL)</label><input class="campo" id="ra-dir" maxlength="300" placeholder="Ex.: dê mais atenção ao vídeo" autocomplete="off"></div>' +
+      '<div class="adm-corpo" id="ra-corpo"><p class="adm-vazio">Aperte “Gerar resumo”.</p></div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Fechar</button><button type="button" class="b contorno" id="ra-copiar" hidden>Copiar</button>' +
+      '<button type="button" class="b pri" id="ra-gerar">Gerar resumo</button></div>', { larga: true });
+    m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
+    const cx = m.querySelector('#ra-corpo'), gerar = m.querySelector('#ra-gerar'), copiar = m.querySelector('#ra-copiar');
+    let texto = '';
+    gerar.onclick = async () => {
+      gerar.disabled = true; gerar.textContent = 'Gerando…'; copiar.hidden = true;
+      cx.innerHTML = '<p class="adm-vazio">Lendo os números e escrevendo…</p>';
+      const r = await B7.IA.pedir('agencia', { operacao: 'semana', instrucao: m.querySelector('#ra-dir').value.trim() });
+      if (!cx.isConnected) return;
+      gerar.disabled = false; gerar.textContent = 'Gerar de novo';
+      if (r && r.ok && r.texto) {
+        texto = r.texto;
+        cx.innerHTML = '<div class="ra-texto">' + esc(texto) + '</div>';
+        copiar.hidden = false;
+      } else if (r && r.categoria === 'sem_permissao') cx.innerHTML = '<p class="adm-vazio">Só administrador usa o resumo da agência.</p>';
+      else cx.innerHTML = '<p class="adm-vazio">' + esc((r && r.mensagem) || 'Não foi possível gerar agora.') +
+        ((r && r.categoria === 'recusado') ? ' Tente de novo: o texto só é aceito quando todos os números batem com os do sistema.' : '') + '</p>';
+    };
+    copiar.onclick = async () => {
+      try { await navigator.clipboard.writeText(texto); B7.UI.toast('Resumo copiado.'); }
+      catch (e) { B7.UI.toast('Não foi possível copiar. Selecione o texto e copie.', { tipo: 'erro' }); }
+    };
+  }
+  return { abrir };
+})();
+
+B7.Redistribuicao = (function () {
+  const esc = s => B7.UI.esc(s);
+  const ROT_AREA = { design: 'Design', video: 'Vídeo' };
+  const prazo = p => { if (!p) return 'sem prazo'; const q = String(p).slice(0, 10).split('-'); return 'prazo ' + q[2] + '/' + q[1]; };
+
+  function bloco(a) {
+    const quem = (a.pessoas || []).map(p => esc(p.nome) + ' <b>' + p.abertas + '</b>').join(' · ');
+    const cab = '<header><b>' + ROT_AREA[a.area] + '</b><small>em aberto: ' + quem + '</small></header>';
+    if (a.equilibrado) return '<section class="adm-grupo">' + cab + '<p class="md-dica">Carga equilibrada: nada a sugerir.</p></section>';
+    if (a.sem_itens) {
+      return '<section class="adm-grupo">' + cab + '<p class="md-dica">' + esc(a.origem.nome) + ' tem ' + a.origem.abertas + ' em aberto e ' + esc(a.destino.nome) + ' tem ' + a.destino.abertas +
+        ', mas nenhum item de ' + esc(a.origem.nome) + ' está esperando para começar. Eu não sugiro tirar o que já está em andamento. Se quiser equilibrar, escolha os itens na tela de ' + ROT_AREA[a.area] + '.</p></section>';
+    }
+    return '<section class="adm-grupo rd-sug" data-area="' + a.area + '" data-destino="' + esc(a.destino.id) + '">' + cab +
+      '<p class="md-dica">Sugestão: passar ' + a.itens.length + (a.itens.length === 1 ? ' item' : ' itens') + ' de <b>' + esc(a.origem.nome) + '</b> (' + a.origem.abertas + ' em aberto) para <b>' +
+        esc(a.destino.nome) + '</b> (' + a.destino.abertas + '). Só entram itens que ainda não começaram' + (a.nao_iniciadas > a.itens.length ? '; há ' + a.nao_iniciadas + ' assim' : '') + '.</p>' +
+      a.itens.map(i => '<label class="md-item rd-item"><input type="checkbox" data-id="' + esc(i.id) + '" checked><span>' + esc(i.titulo) + ' <small>· ' + esc(i.cliente) + ' · ' + prazo(i.prazo) + '</small></span></label>').join('') +
+      '<div class="rd-acoes"><button type="button" class="b fina pri" data-aplicar>Passar os marcados para ' + esc(a.destino.nome) + '</button></div></section>';
+  }
+
+  function abrir() {
+    const m = B7.UI.modal('<h3>Sugestão de redistribuição</h3>' +
+      '<p class="sub">Compara a carga de quem tem a mesma função e sugere passar o que ainda não começou. Nada muda sozinho: você marca o que quer e aplica.</p>' +
+      '<div class="adm-corpo" id="rd-corpo"><p class="adm-vazio">Calculando…</p></div>' +
+      '<div class="acoes"><button type="button" class="b contorno" id="rd-atualizar">Calcular de novo</button><button type="button" class="b pri" data-fecha>Fechar</button></div>', { larga: true });
+    m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
+    const cx = m.querySelector('#rd-corpo');
+    async function carregar() {
+      cx.classList.add('carregando');
+      try {
+        const r = await B7.DB.rpc('redistribuicao_sugestoes', {});
+        if (!cx.isConnected) return;
+        cx.innerHTML = (r.areas || []).map(bloco).join('') + '<p class="adm-nota">A carga conta o que está em aberto (vídeo: pendente, em edição e aguardando aprovação; design: tudo que não está finalizado). Os itens sugeridos são os que ainda não começaram, os de prazo mais distante primeiro.</p>';
+        cx.querySelectorAll('.rd-sug').forEach(s => s.querySelector('[data-aplicar]').onclick = () => aplicar(s));
+      } catch (e) { if (cx.isConnected) cx.innerHTML = '<p class="adm-vazio">' + esc((e && e.message) || 'Não foi possível calcular.') + '</p>'; }
+      cx.classList.remove('carregando');
+    }
+    async function aplicar(s) {
+      const ids = [...s.querySelectorAll('input[data-id]:checked')].map(i => i.dataset.id);
+      if (!ids.length) { B7.UI.toast('Marque pelo menos um item.', { tipo: 'erro' }); return; }
+      const area = s.dataset.area, destino = s.dataset.destino;
+      B7.UI.confirmar({
+        titulo: 'Passar ' + ids.length + (ids.length === 1 ? ' item' : ' itens') + ' de ' + ROT_AREA[area] + '?',
+        texto: 'O responsável de cada item marcado muda para a outra pessoa, e a pessoa é avisada pelo caminho de sempre. Fica no histórico do item.',
+        rotulo: 'Passar', aoConfirmar: async () => {
+          let ok = 0, falhou = 0;
+          for (const id of ids) {
+            try { await (area === 'design' ? B7.DB.atribuirDesign(id, destino) : B7.DB.atribuirVideo(id, destino)); ok++; }
+            catch (e) { falhou++; }
+          }
+          B7.UI.toast(ok + (ok === 1 ? ' item passado.' : ' itens passados.') + (falhou ? ' ' + falhou + ' não foi possível passar.' : ''), falhou ? { tipo: 'erro' } : undefined);
+          carregar();
+        } });
+    }
+    m.querySelector('#rd-atualizar').onclick = carregar;
+    carregar();
+  }
+  return { abrir };
 })();

@@ -206,3 +206,10 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 .ap-acoes{display:inline-flex;align-items:center;gap:10px;}
 .ap-add{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 6px;}
 @media (max-width:720px){.ap-linha{grid-template-columns:1fr 1fr;}.ap-linha .campo[data-f="nome"],.ap-frase{grid-column:1 / -1;}}
+
+/* zzz141: resumo da semana e redistribuição */
+.ra-texto{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.55;color:var(--ink);background:var(--suave);border-radius:16px;padding:14px 16px;}
+.rd-item{display:flex;align-items:flex-start;gap:10px;cursor:pointer;}
+.rd-item input{margin-top:3px;}
+.rd-item small{color:var(--ink-4);}
+.rd-acoes{display:flex;justify-content:flex-end;padding:10px 0 4px;}

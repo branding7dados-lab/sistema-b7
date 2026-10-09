@@ -21,6 +21,7 @@
 //         { tarefa: 'chat', texto, conversa_id?, cliente_id?, fluxo? }     (ver _shared/ia/chat.ts)
 //         { tarefa: 'oportunidade', oportunidade_id, cliente_id, dia?, instrucao? }  (ver _shared/ia/oportunidade.ts)
 //         { tarefa: 'voz', audio (base64), mime }                          (ver _shared/ia/voz.ts)
+//         { tarefa: 'agencia', operacao: 'semana', instrucao? }            (só administrador; ver _shared/ia/agencia.ts)
 //
 // MEMÓRIA DO CLIENTE (zzz123). Toda tarefa que é de um cliente recebe,
 // antes da mensagem da tarefa, o que a equipe anotou para a IA na ficha
@@ -64,6 +65,7 @@ import * as Chat from '../_shared/ia/chat.ts';
 import * as Oportunidade from '../_shared/ia/oportunidade.ts';
 import * as Memoria from '../_shared/ia/memoria.ts';
 import * as Voz from '../_shared/ia/voz.ts';
+import * as Agencia from '../_shared/ia/agencia.ts';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
@@ -126,7 +128,8 @@ Deno.serve(comCors(async (req: Request) => {
   const pChat = corpo.tarefa === 'chat' ? Chat.validar(corpo) : null;
   const pOport = corpo.tarefa === 'oportunidade' ? Oportunidade.validar(corpo) : null;
   const pVoz = corpo.tarefa === 'voz' ? Voz.validar(corpo) : null;
-  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport || pVoz;
+  const pAgencia = corpo.tarefa === 'agencia' ? Agencia.validar(corpo) : null;
+  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport || pVoz || pAgencia;
   if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
 
   /* zzz71: liga/desliga do administrador (Configurações → Administração),
@@ -134,7 +137,7 @@ Deno.serve(comCors(async (req: Request) => {
      linha e resumo seguem "linhas". Sem a linha no banco = ligado. */
   {
     const { data: cfgIa } = await pCfgIa;
-    const recursoCfg = (pChat || pVoz) ? 'chat' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
+    const recursoCfg = (pChat || pVoz) ? 'chat' : pAgencia ? 'agencia' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
     const valorIa = (cfgIa && cfgIa.valor) as Record<string, unknown> | null;
     if (valorIa && valorIa[recursoCfg] === false) return json({ ok: false, categoria: 'desligado' });
   }
@@ -159,6 +162,8 @@ Deno.serve(comCors(async (req: Request) => {
      quem não pode editar não ganha um caminho de escrita pela IA. A
      análise de roteiro segue a mesma regra: é ferramenta de quem escreve. */
   if ((pLinha || pAnalise || pResumo || pOport) && perfil.papel === 'designer') return json({ ok: false, categoria: 'sem_permissao' }, 403);
+  /* zzz141: o resumo da agência é do administrador (o banco confere de novo) */
+  if (pAgencia && perfil.papel !== 'admin') return json({ ok: false, categoria: 'sem_permissao' }, 403);
 
   /* ---- sem provedor configurado: recurso indisponível, nenhuma chamada externa ---- */
   const provedor = provedorAtual(n => Deno.env.get(n));
@@ -274,6 +279,16 @@ Deno.serve(comCors(async (req: Request) => {
       mensagens: Voz.montarMensagens(await Voz.vocabulario(sbDaPessoa)), maxTokens: 1200, temperatura: 0, limpar: Voz.limpar, json: false,
       audio: { mime: pedido.mime, base64: pedido.audio }
     };
+  } else if (pAgencia && pAgencia.ok) {
+    /* resumo da semana para o administrador: os números vêm do banco, o modelo só escreve */
+    const pedido = pAgencia.pedido;
+    const ctx = await Agencia.carregarContexto(sbDaPessoa, pedido);
+    if (!ctx) return json({ ok: false, categoria: 'nao_encontrado' });
+    clienteDoPedido = null;
+    t = {
+      recurso: 'agencia', acao: Agencia.nomeNoRegistro(pedido), entidadeTipo: 'perfil', entidadeId: perfil.id, tamanhoEntrada: ctx.linhas.join('\n').length,
+      mensagens: Agencia.montarMensagens(pedido, ctx), maxTokens: Agencia.limiteDeSaida(pedido), temperatura: 0.3, limpar: Agencia.limpador(pedido, ctx), json: false
+    };
   } else if (pOport && pOport.ok) {
     /* ideias para uma data e um cliente: lista para ler e copiar, nada é aplicado */
     const pedido = pOport.pedido;
@@ -311,7 +326,7 @@ Deno.serve(comCors(async (req: Request) => {
     const cli = clienteDoPedido !== undefined ? clienteDoPedido : await Memoria.clienteDaTarefa(sbDaPessoa, corpo);
     /* exemplos do que já saiu (zzz128): em tudo que ESCREVE para o cliente;
        resumo de status e transcrição de voz não precisam */
-    const quais: Memoria.Exemplos = (pResumo || pVoz) ? 'nenhum' : 'todos';
+    const quais: Memoria.Exemplos = (pResumo || pVoz || pAgencia) ? 'nenhum' : 'todos';
     const [mem, exs] = await Promise.all([Memoria.memoriaDoCliente(sbDaPessoa, cli), Memoria.exemplosDoCliente(sbDaPessoa, cli, quais)]);
     t.mensagens = Memoria.comMemoria(t.mensagens, mem, exs);
   }

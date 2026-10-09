@@ -1963,6 +1963,10 @@ B7.Dashboard = (function () {
       /* zzz136: sessões abertas, uso da IA e o que aparece no Painel de TV */
       (ehAdm && B7.Sessoes ? grupo('Sessões', 'Em quais aparelhos cada conta está aberta.',
         L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'ver os aparelhos e encerrar uma sessão', botao: true, attrs: ' data-sessoes' })) : '') +
+      /* zzz141: resumo da semana (IA) e sugestão de redistribuição */
+      (ehAdm && B7.Redistribuicao ? grupo('Equipe e carga', 'Os números vêm do sistema. Nada muda sozinho.',
+        (iaCfg.chat && B7.ResumoAgencia ? L({ ic: 'ia', tom: 'violeta', t: 'Resumo da semana', d: 'o que andou, o que travou e quem está com mais trabalho (IA)', botao: true, attrs: ' data-resumo-semana' }) : '') +
+        L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre', botao: true, attrs: ' data-redistribuir' })) : '') +
       /* zzz140: cor do sistema e datas especiais da abertura */
       (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe.',
         L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' })) : '') +
@@ -2234,6 +2238,8 @@ B7.Dashboard = (function () {
     /* ---- zzz136: sessões, uso da IA e configuração da TV ---- */
     const btSe = p.querySelector('[data-sessoes]'); if (btSe) btSe.onclick = () => B7.Sessoes.abrir();
     const btUi = p.querySelector('[data-uso-ia]'); if (btUi) btUi.onclick = () => B7.UsoIA.abrir();
+    const btRs = p.querySelector('[data-resumo-semana]'); if (btRs) btRs.onclick = () => B7.ResumoAgencia.abrir();
+    const btRd = p.querySelector('[data-redistribuir]'); if (btRd) btRd.onclick = () => B7.Redistribuicao.abrir();
     const btAp = p.querySelector('[data-aparencia]'); if (btAp) btAp.onclick = () => B7.Aparencia.abrir();
     const btSa = p.querySelector('[data-saude]'); if (btSa) btSa.onclick = () => B7.Saude.abrir();
     const btMe = p.querySelector('[data-medico]'); if (btMe) btMe.onclick = () => B7.Medico.abrir();
