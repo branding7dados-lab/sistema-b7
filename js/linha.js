@@ -1469,7 +1469,7 @@ B7.Linha = (function () {
               : '<div class="vr-vazio"><div><b>Nenhum roteiro vinculado</b>' +
                 '<small>O texto do vídeo vive no editor de roteiros, não aqui.</small></div>' +
                 '<div class="vr-bts">' +
-                  (B7.IA && B7.IA.ligada && B7.IA.ligada('roteiros') ? '<button class="b fina pri" data-roteiro-ia>Criar roteiro com IA</button>' : '') +
+                  (B7.IA && B7.IA.ligada && B7.IA.ligada('roteiros') && (!B7.Recursos || B7.Recursos.ligado('ia_roteiro_conteudo')) ? '<button class="b fina pri" data-roteiro-ia>Criar roteiro com IA</button>' : '') +
                   '<button class="b fina contorno" data-vincular>Vincular roteiro existente</button></div></div>') +
         '</div>' +
         /* Legenda do Reel: é o texto que vai NO POST (com emoji, quebras de

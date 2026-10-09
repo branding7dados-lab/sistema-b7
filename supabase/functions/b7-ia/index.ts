@@ -106,6 +106,8 @@ Deno.serve(comCors(async (req: Request) => {
      leituras que só dependem de quem é a pessoa: saem juntas (antes era
      uma esperando a outra). Cada uma é conferida no mesmo lugar de antes. */
   const pCfgIa = sb.from('sistema_config').select('valor').eq('chave', 'ia').maybeSingle().then(r => r);
+  /* zzz129: para quem cada recurso novo aparece (Configurações → Admin → Recursos) */
+  const pRecursos = sb.from('sistema_config').select('valor').eq('chave', 'recursos').maybeSingle().then(r => r);
   const pLimite = dentroDoLimite(sb, user.id).catch(() => 'limite' as const);
   const { data: perfil } = await sb.from('perfis').select('id, estado, papel, nome, funcao').eq('id', user.id).maybeSingle();
   if (!perfil || perfil.estado !== 'ativa' || perfil.papel === 'cliente') return json({ ok: false, categoria: 'sem_permissao' }, 403);
@@ -135,6 +137,22 @@ Deno.serve(comCors(async (req: Request) => {
     const recursoCfg = (pChat || pVoz) ? 'chat' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
     const valorIa = (cfgIa && cfgIa.valor) as Record<string, unknown> | null;
     if (valorIa && valorIa[recursoCfg] === false) return json({ ok: false, categoria: 'desligado' });
+  }
+
+  /* zzz129: recurso de IA que o administrador ainda não liberou para esta
+     pessoa. É a mesma conta de js/recursos.js: sem regra = todos; "eu" =
+     só aquela pessoa; "funcoes" = administradores + funções marcadas. */
+  {
+    const idRecurso = pVoz ? 'ia_voz' : pOport ? 'ia_ideias' : (pChat && corpo.imagem != null) ? 'ia_imagem' : null;
+    if (idRecurso) {
+      const { data: cfgRec } = await pRecursos;
+      const regra = cfgRec && cfgRec.valor ? (cfgRec.valor as Record<string, { modo?: string; pessoa?: string; funcoes?: string[] }>)[idRecurso] : null;
+      const liberado = !regra || !regra.modo || regra.modo === 'todos' ? true
+        : regra.modo === 'desligado' ? false
+        : regra.modo === 'eu' ? regra.pessoa === user.id
+        : perfil.papel === 'admin' || (!!perfil.funcao && (regra.funcoes || []).includes(perfil.funcao));
+      if (!liberado) return json({ ok: false, categoria: 'desligado' });
+    }
   }
 
   /* Linha editorial: designer só lê (a tela já trava os campos para ele);

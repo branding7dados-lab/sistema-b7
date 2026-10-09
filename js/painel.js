@@ -894,6 +894,7 @@ B7.Painel = (function () {
     const cx = document.getElementById('pn-hoje');
     if (!cx || !B7.Oportunidades || !B7.Oportunidades.periodo) return;
     if (!(B7.Perm && B7.Perm.podeRota && B7.Perm.podeRota('oportunidades'))) return;
+    if (B7.Recursos && !B7.Recursos.ligado('hoje_dia')) return;
     const h = hoje();
     B7.Oportunidades.periodo(h, somarDias(h, 45)).then(itens => {
       if (!document.body.contains(cx)) return;

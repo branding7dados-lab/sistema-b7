@@ -1893,6 +1893,12 @@ B7.Dashboard = (function () {
         L({ ic: 'impressao', tom: 'verde', t: 'Folha de abertura', d: 'já vem marcada na janela de impressão', cls: 'cfg-alterna',
             dir: chave('abertura', !!abertura, 'Folha de abertura marcada por padrão') })) : '') +
 
+      /* zzz129: Painel de TV — só aparece para quem o recurso está liberado */
+      (u && !ehCli && B7.TV && B7.Recursos && B7.Recursos.ligado('tv') ? grupo('Painel de TV',
+        'Só leitura: sem nomes da equipe, comentários ou notificações. Para sair, aperte Esc.',
+        L({ ic: 'play', tom: 'violeta', t: 'Abrir o Painel de TV', d: 'a agência no mês, para deixar aberta numa tela',
+            botao: true, attrs: ' data-ir="#/tv"' })) : '') +
+
       (u && !ehCli ? grupo('Filtros', '',
         L({ ic: 'filtro', tom: 'cinza', t: 'Limpar filtros guardados', d: 'Calendário, Produção, Vídeo e Design voltam ao padrão',
             botao: true, semSeta: true, attrs: ' data-limpar-filtros' })) : '') +
@@ -1951,6 +1957,14 @@ B7.Dashboard = (function () {
             dir: chave('ia_linhas', iaRemoto.linhas !== false, 'Assistente nas Linhas editoriais') }) : '') +
         (iaCfg.chat ? L({ ic: 'ia', tom: 'azul', t: 'Chat com o assistente', d: 'botão no canto da tela, para perguntar e pedir ideias', cls: 'cfg-alterna',
             dir: chave('ia_chat', iaRemoto.chat !== false, 'Chat com o assistente') }) : '')) : '') +
+      (ehAdm && B7.Recursos ? grupo('Recursos',
+        'Para quem cada recurso aparece. Serve para testar antes de liberar: não dá acesso a módulo nenhum. A equipe recebe a mudança ao reabrir o B7.',
+        B7.Recursos.LISTA.map(r => L({ ic: r.ia ? 'ia' : 'raio', tom: r.ia ? 'violeta' : 'azul', t: esc(r.nome), d: esc(r.d), botao: true,
+          attrs: ' data-recurso="' + r.id + '"', dir: '<span class="cfg-valor">' + esc(B7.Recursos.rotulo(r.id)) + '</span>' })).join('')) : '') +
+      (ehAdm && B7.Textos ? grupo('Textos padrão', 'As mensagens prontas para o cliente e as frases do Portal.',
+        L({ ic: 'letra', tom: 'rosa', t: 'Editar textos padrão', d:
+            (n => n ? n + (n === 1 ? ' texto alterado' : ' textos alterados') : 'todos no padrão do B7')(B7.Textos.LISTA.filter(t => B7.Textos.mudado(t.id)).length),
+            botao: true, attrs: ' data-textos' })) : '') +
       (pode('dados') ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
         L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
         L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '');
@@ -2184,6 +2198,95 @@ B7.Dashboard = (function () {
         try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
         location.reload();
       } });
+    /* ---- zzz129: liga/desliga de recursos ---- */
+    p.querySelectorAll('[data-recurso]').forEach(bt => bt.onclick = () => {
+      const R = B7.Recursos, id = bt.dataset.recurso, def = R.LISTA.find(x => x.id === id), atual = R.regra(id);
+      const eu = B7.Auth.usuario().id;
+      /* "só uma pessoa" que não sou eu: mantém quem estava se nada mudar */
+      const modoAtual = atual.modo === 'eu' && atual.pessoa !== eu ? 'outra' : (atual.modo || 'todos');
+      const op = (v, t, s) => '<label class="cfg-rec-op"><input type="radio" name="cfg-rec" value="' + v + '"' + (modoAtual === v ? ' checked' : '') + '>' +
+        '<span><b>' + t + '</b><small>' + s + '</small></span></label>';
+      const m = B7.UI.modal('<h3>' + esc(def.nome) + '</h3><p class="sub">' + esc(def.d) + '. Escolha para quem aparece.</p>' +
+        '<div class="cfg-rec-ops" role="radiogroup">' +
+          op('todos', 'Todos', 'toda a equipe que já tem acesso à tela') +
+          op('eu', 'Só você', 'ninguém mais vê; para testar antes') +
+          (modoAtual === 'outra' ? op('outra', 'Só uma pessoa (outro administrador escolheu)', 'fica como está') : '') +
+          op('funcoes', 'Administradores e funções', 'administradores sempre; marque quem mais') +
+          '<div class="cfg-rec-fs" id="cfg-rec-fs">' + R.FUNCOES.map(f => '<label><input type="checkbox" value="' + f[0] + '"' +
+            ((atual.funcoes || []).includes(f[0]) ? ' checked' : '') + '><span>' + f[1] + '</span></label>').join('') + '</div>' +
+          op('desligado', 'Desligado', 'ninguém vê, nem você') +
+        '</div>' +
+        '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="cfg-rec-ok">Salvar</button></div>');
+      const fs = m.querySelector('#cfg-rec-fs');
+      const marcar = () => { fs.hidden = m.querySelector('input[name="cfg-rec"]:checked').value !== 'funcoes'; };
+      m.querySelectorAll('input[name="cfg-rec"]').forEach(x => x.onchange = marcar); marcar();
+      m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
+      const ok = m.querySelector('#cfg-rec-ok');
+      ok.onclick = async () => {
+        const modo = m.querySelector('input[name="cfg-rec"]:checked').value;
+        const regra = modo === 'outra' ? atual : modo === 'eu' ? { modo: 'eu', pessoa: eu }
+          : modo === 'funcoes' ? { modo: 'funcoes', funcoes: [...fs.querySelectorAll('input:checked')].map(x => x.value) } : { modo };
+        ok.disabled = true; ok.textContent = 'Salvando…';
+        try {
+          await R.definir(id, regra);
+          m.fechar();
+          B7.UI.toast('Guardado. A equipe recebe ao reabrir o B7.');
+          abrirConfig();
+        } catch (e) {
+          ok.disabled = false; ok.textContent = 'Salvar';
+          B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' });
+        }
+      };
+    });
+
+    /* ---- zzz129: textos padrão ---- */
+    const btTextos = p.querySelector('[data-textos]');
+    if (btTextos) btTextos.onclick = () => {
+      const T = B7.Textos;
+      let grupoAtual = '';
+      const m = B7.UI.modal('<h3>Textos padrão</h3>' +
+        '<p class="sub">As palavras entre chaves, como <code>{titulo}</code>, são trocadas pelo dado de verdade na hora de usar. Campo vazio volta ao padrão do B7.</p>' +
+        '<div class="cfg-tx-lista">' + T.LISTA.map(t => {
+          const cab = t.grupo !== grupoAtual ? '<h4 class="cfg-tx-g">' + esc(t.grupo) + '</h4>' : ''; grupoAtual = t.grupo;
+          return cab + '<div class="cfg-tx" data-tx="' + t.id + '"><label for="cfg-tx-' + t.id + '"><b>' + esc(t.nome) + '</b><small>' + esc(t.onde) + '</small></label>' +
+            '<textarea class="campo" id="cfg-tx-' + t.id + '" rows="3" maxlength="' + T.LIMITE + '">' + esc(T.modelo(t.id)) + '</textarea>' +
+            '<div class="cfg-tx-pe"><span>' + (t.vars.length ? 'Pode usar: ' + t.vars.map(v => '<code>{' + v + '}</code>').join(' ') : 'Texto fixo, sem palavras entre chaves.') + '</span>' +
+            '<button type="button" class="cfg-tx-padrao" data-padrao="' + t.id + '">Voltar ao padrão</button></div>' +
+            '<p class="cfg-tx-aviso" hidden></p></div>';
+        }).join('') + '</div>' +
+        '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="cfg-tx-ok">Salvar textos</button></div>',
+        { larga: true });
+      const padraoDe = id => T.LISTA.find(x => x.id === id).padrao;
+      /* avisa (sem impedir) quando falta uma palavra que o padrão usa ou sobra uma que não existe */
+      const conferir = t => {
+        const cx = m.querySelector('[data-tx="' + t.id + '"]'), v = cx.querySelector('textarea').value, av = cx.querySelector('.cfg-tx-aviso');
+        const usadas = (v.match(/\{[a-z_]+\}/g) || []).map(x => x.slice(1, -1));
+        const sobra = usadas.filter(x => !t.vars.includes(x)), falta = v.trim() ? t.vars.filter(x => !usadas.includes(x)) : [];
+        const msg = [sobra.length ? 'Não existe: ' + sobra.map(x => '{' + x + '}').join(', ') + ' — vai aparecer assim mesmo no texto.' : '',
+                     falta.length ? 'Sem ' + falta.map(x => '{' + x + '}').join(', ') + ': esse dado não vai aparecer.' : ''].filter(Boolean).join(' ');
+        av.textContent = msg; av.hidden = !msg;
+      };
+      T.LISTA.forEach(t => { const ta = m.querySelector('#cfg-tx-' + t.id); ta.oninput = () => conferir(t); conferir(t); });
+      m.querySelectorAll('[data-padrao]').forEach(b => b.onclick = () => {
+        const t = T.LISTA.find(x => x.id === b.dataset.padrao); m.querySelector('#cfg-tx-' + t.id).value = padraoDe(t.id); conferir(t);
+      });
+      m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
+      const ok = m.querySelector('#cfg-tx-ok');
+      ok.onclick = async () => {
+        const novos = {}; T.LISTA.forEach(t => { novos[t.id] = m.querySelector('#cfg-tx-' + t.id).value; });
+        ok.disabled = true; ok.textContent = 'Salvando…';
+        try {
+          await T.gravar(novos);
+          m.fechar();
+          B7.UI.toast('Textos guardados. A equipe e o Portal recebem ao reabrir o B7.');
+          abrirConfig();
+        } catch (e) {
+          ok.disabled = false; ok.textContent = 'Salvar textos';
+          B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' });
+        }
+      };
+    };
+
     const cg = p.querySelector('#cfg-google');
     if (cg) (async () => {
       let stG = null;

@@ -319,7 +319,7 @@ B7.Oportunidades = (function () {
        estado mora aqui, fora do pintar(), para um ajuste de relevância
        não apagar o que já foi sugerido. */
     const ia = { cli: null, inst: '', itens: null, indo: false, msg: '' };
-    const podeIA = () => !!(B7.IA && B7.IA.ligada && B7.IA.ligada('linhas')) && papel() !== 'designer';
+    const podeIA = () => !!(B7.IA && B7.IA.ligada && B7.IA.ligada('linhas')) && papel() !== 'designer' && (!B7.Recursos || B7.Recursos.ligado('ia_ideias'));
     const pintar = () => {
       const cx = m.querySelector('#op-folha'); if (!cx) return;
       const op = b.todas.get(opId);

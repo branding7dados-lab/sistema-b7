@@ -725,7 +725,7 @@ B7.Usuarios = (function () {
 
     m.querySelector('#se-copiar').onclick = async () => {
       try {
-        await navigator.clipboard.writeText('Usuário: ' + username + '\nSenha: ' + senha);
+        await navigator.clipboard.writeText(B7.Textos.ler('acesso_entrega', { usuario: username, senha: senha }));
         m.querySelector('#se-copiar').textContent = 'Copiado';
       } catch (e) {
         B7.UI.toast('Não foi possível copiar — selecione o texto acima', { tipo: 'erro' });

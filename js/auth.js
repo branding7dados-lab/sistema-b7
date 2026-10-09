@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-09-zzz128';
+  const VERSAO = '2026-10-09-zzz129';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -149,6 +149,9 @@ B7.Auth = (function () {
       /* zzz71: configuração do sistema que vale para todos (IA ligada?) —
          em segundo plano, não segura a abertura */
       if (sessao && sessao.papel !== 'cliente') { try { if (B7.IA && B7.IA.sincronizar) B7.IA.sincronizar(); } catch (e) {} }
+      /* zzz129: para quem cada recurso aparece (equipe) e os textos padrão (todos; o cliente recebe só os do Portal) */
+      if (sessao && sessao.papel !== 'cliente') { try { if (B7.Recursos) B7.Recursos.sincronizar(); } catch (e) {} }
+      if (sessao) { try { if (B7.Textos) B7.Textos.sincronizar(); } catch (e) {} }
       try { if (B7.Chat && B7.Chat.montar) B7.Chat.montar(); } catch (e) {}
       if (!sessao) {
         /* token válido e perfil ausente é outro problema, não falta de

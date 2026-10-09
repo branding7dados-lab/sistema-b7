@@ -1407,9 +1407,8 @@ B7.Semana = (function () {
       cx.closest('.op-mini').classList.toggle('on', cx.checked));
 
     m.querySelector('[data-mensagem]').onclick = async () => {
-      const texto = 'Olá! Segue o acompanhamento das demandas desta semana, de ' +
-        D().periodoTexto(r.semana_inicio, r.semana_fim).replace(' · ', ' de ') +
-        '. Qualquer atualização, estamos à disposição.';
+      const texto = B7.Textos.ler('semana_mensagem',
+        { periodo: D().periodoTexto(r.semana_inicio, r.semana_fim).replace(' · ', ' de ') });
       try {
         await navigator.clipboard.writeText(texto);
         B7.UI.toast('Mensagem copiada');

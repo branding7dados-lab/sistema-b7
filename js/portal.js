@@ -349,7 +349,7 @@ B7.Portal = (function () {
       '<header class="ph-cab">' +
         '<div>' +
           '<h1>Olá' + (primeiro ? ', ' + esc(primeiro) : '') + '.</h1>' +
-          '<p class="ph-emp">Acompanhe a produção da ' + esc(emp.nome) + '.</p>' +
+          '<p class="ph-emp">' + esc(B7.Textos.ler('portal_boas_vindas', { empresa: emp.nome })) + '</p>' +
         '</div>' +
       '</header>' +
 
@@ -488,11 +488,8 @@ B7.Portal = (function () {
         '<div class="ph-bloqueio-caixa">' +
           '<img class="ph-marca" src="assets/brand/logo-color.png" alt="Branding7">' +
           '<h2>' + (cancelado ? 'Serviço encerrado' : 'Serviço temporariamente pausado') + '</h2>' +
-          '<p>' + esc(emp.mensagem || (cancelado
-            ? 'Seu serviço com a Branding7 foi encerrado. O histórico permanece guardado.'
-            : 'O acompanhamento está suspenso no momento. Nada foi perdido: ' +
-              'seus materiais continuam guardados.')) + '</p>' +
-          '<p class="ph-bloqueio-ct">Fale com a Branding7 para mais informações.</p>' +
+          '<p>' + esc(emp.mensagem || B7.Textos.ler(cancelado ? 'portal_encerrado' : 'portal_pausado')) + '</p>' +
+          '<p class="ph-bloqueio-ct">' + esc(B7.Textos.ler('portal_contato')) + '</p>' +
           (previa ? '<p class="ph-bloqueio-ct">Prévia: é isto que o cliente vê enquanto o serviço está ' +
             (cancelado ? 'cancelado' : 'pausado') + '. Nenhum material foi consultado.</p>' : '') +
         '</div>' +

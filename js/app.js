@@ -223,6 +223,8 @@ B7.Rota = (function () {
     if (partes[0] === 'usuarios') { mostrar('tela-dashboard'); return B7.Usuarios.abrir(); }
     if (partes[0] === 'semanas') { mostrar('tela-dashboard'); return B7.Semana.abrirLista(); }
     if (partes[0] === 'semana' && partes[1]) { mostrar('tela-dashboard'); return B7.Semana.abrir(partes[1]); }
+    /* zzz129: Painel de TV — cobre a tela inteira por cima do sistema (js/tv.js) */
+    if (partes[0] === 'tv' && B7.TV) { mostrar('tela-dashboard'); return B7.TV.abrir(); }
     if (partes[0] === 'config')     { mostrar('tela-dashboard'); return B7.Dashboard.abrirConfig(); }
     if (partes[0] === 'lixeira')    { mostrar('tela-dashboard'); return B7.Dashboard.abrirLixeira(); }
     if (partes[0] === 'arquivados') { mostrar('tela-dashboard'); return B7.Dashboard.abrirArquivados(); }

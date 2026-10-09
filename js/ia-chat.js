@@ -404,7 +404,7 @@ B7.Chat = (function () {
     }
     return S.msgs.map((m, i) => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
       (m.papel === 'user' ? (m.img ? '<img class="ch-msg-img" src="' + m.img + '" alt="Imagem enviada">' : '') + '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
-      (podeFalar && m.papel !== 'user' && !m.erro && m.texto ? '<button type="button" class="ch-falar' + (falando === i ? ' on' : '') + '" data-falar="' + i + '" aria-pressed="' + (falando === i) +
+      (podeFalar && (!B7.Recursos || B7.Recursos.ligado('ia_ouvir')) && m.papel !== 'user' && !m.erro && m.texto ? '<button type="button" class="ch-falar' + (falando === i ? ' on' : '') + '" data-falar="' + i + '" aria-pressed="' + (falando === i) +
         '" aria-label="' + (falando === i ? 'Parar de ouvir' : 'Ouvir a resposta') + '" title="' + (falando === i ? 'Parar' : 'Ouvir') + '">' + IC.som + '<span>Ouvir</span></button>' : '') +
       (m.acoes || []).map((a, j) => acaoHTML(a, i + ':' + j)).join('')).join('') +
       (S.enviando ? (S.parcial
@@ -581,8 +581,8 @@ B7.Chat = (function () {
         '<textarea id="ch-texto" rows="1" maxlength="2000" placeholder="Pergunte ou peça uma ideia…" aria-label="Mensagem para o assistente" ' +
           'name="b7-chat-mensagem" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"></textarea>' +
         '<input type="file" id="ch-arquivo" accept="image/*" hidden>' +
-        '<button type="button" class="ch-mic ch-anexar" id="ch-anexar" aria-label="Anexar uma imagem" title="Anexar uma imagem (ou cole com Ctrl+V)">' + IC.img + '</button>' +
-        ((podeGravar || Voz) ? '<button type="button" class="ch-mic" id="ch-mic" aria-label="Falar em vez de digitar" aria-pressed="false" title="Falar em vez de digitar">' + IC.mic + '</button>' : '') +
+        ((!B7.Recursos || B7.Recursos.ligado('ia_imagem')) ? '<button type="button" class="ch-mic ch-anexar" id="ch-anexar" aria-label="Anexar uma imagem" title="Anexar uma imagem (ou cole com Ctrl+V)">' + IC.img + '</button>' : '') +
+        ((podeGravar || Voz) && (!B7.Recursos || B7.Recursos.ligado('ia_voz')) ? '<button type="button" class="ch-mic" id="ch-mic" aria-label="Falar em vez de digitar" aria-pressed="false" title="Falar em vez de digitar">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="ch-enviar" id="ch-enviar" aria-label="Enviar">' + IC.enviar + '</button>' +
       '</form>' +
       '<p class="ch-aviso">A IA pode errar. Confira antes de usar. Ela não altera nada sozinha: só propõe, e você confirma.</p>';

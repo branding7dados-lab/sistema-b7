@@ -2698,15 +2698,13 @@ B7.Design = (function () {
     const nome = x => rotuloTipo(x.tipo) + ' — ' + (x.titulo || x.conteudo_titulo || 'sem título');
     /* lembrete só quando TUDO já foi enviado antes; se há peça nova, é um pedido */
     const lembrete = pecas.every(x => x.status === 'aguardando_cliente');
+    /* zzz129: o texto é um dos "Textos padrão" (Configurações → Admin) */
     if (pecas.length === 1) {
-      return lembrete
-        ? 'Olá! Passando para lembrar da arte "' + (d.titulo || d.conteudo_titulo || 'sem título') + '" (' + rotuloTipo(d.tipo) + '), que está aguardando a sua aprovação. Pode nos dizer se está aprovada ou se precisa de algum ajuste?'
-        : 'Olá! A arte "' + (d.titulo || d.conteudo_titulo || 'sem título') + '" (' + rotuloTipo(d.tipo) + ') está pronta para a sua aprovação. Pode nos dizer se está aprovada ou se precisa de algum ajuste?';
+      return B7.Textos.ler(lembrete ? 'design_lembrete_uma' : 'design_aprovacao_uma',
+        { titulo: d.titulo || d.conteudo_titulo || 'sem título', tipo: rotuloTipo(d.tipo) });
     }
-    return (lembrete ? 'Olá! Passando para lembrar das ' + pecas.length + ' artes que estão aguardando a sua aprovação:'
-                     : 'Olá! Temos ' + pecas.length + ' artes prontas para a sua aprovação:') + '\n' +
-      pecas.map(x => '• ' + nome(x)).join('\n') +
-      '\nPode nos dizer se estão aprovadas ou se alguma precisa de ajuste?';
+    return B7.Textos.ler(lembrete ? 'design_lembrete_varias' : 'design_aprovacao_varias',
+      { quantidade: pecas.length, lista: pecas.map(x => '• ' + nome(x)).join('\n') });
   }
 
   /* modal "Registrar decisão do cliente" — o que o cliente decidiu, por
