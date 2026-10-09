@@ -335,7 +335,7 @@ B7.Dashboard = (function () {
     return '<div class="card-cliente spot eleva" data-cliente="' + esc(c.id) + '" ' +
       'title="' + esc(c.nome) + ' · última atividade ' + esc(B7.UI.quando(c.ultima_atividade)) + '">' +
       B7.UI.avatarCliente(c.nome, c.logo_url) +
-      '<div class="nm"><b>' + esc(c.nome) + '</b><small>' + resumo + '</small></div>' +
+      '<div class="nm"><b>' + esc(c.nome) + (c.teste ? ' <i class="tag-teste" title="Cliente fictício: fora dos números do Panorama e da TV">teste</i>' : '') + '</b><small>' + resumo + '</small></div>' +
       '<div class="acoes-card">' +
         '<button class="ico pin' + (c.is_pinned ? ' fixado' : '') + '" data-fixar="' + esc(c.id) + '" ' +
           'data-fixado="' + (c.is_pinned ? '1' : '0') + '" title="' +
@@ -346,7 +346,7 @@ B7.Dashboard = (function () {
           '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
           '<button data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '">' +
             (c.is_pinned ? 'Desafixar' : 'Fixar no topo') + '</button><hr>' +
-          '<button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +
+          (c.teste ? '' : '<button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>') +
         '</div></div>' +
       '</div><div class="seta">›</div></div>';
   }
@@ -1017,7 +1017,7 @@ B7.Dashboard = (function () {
     return '<div class="cl2-card' + (c.is_pinned ? ' fixado' : '') + (c.total_gravacoes ? '' : ' sem-grav') + '" data-cliente="' + esc(c.id) + '"' +
         ' style="--i:' + Math.min(i, 16) + '" tabindex="0" title="Abrir ' + esc(c.nome) + '">' +
       '<span class="cl2-logo">' + B7.UI.avatarCliente(c.nome, c.logo_url) + '</span>' +
-      '<div class="cl2-tx"><b>' + esc(c.nome) + '</b>' +
+      '<div class="cl2-tx"><b>' + esc(c.nome) + (c.teste ? ' <i class="tag-teste" title="Cliente fictício: fora dos números do Panorama e da TV">teste</i>' : '') + '</b>' +
         '<span class="cl2-meta">' +
           '<span class="cl2-n" title="Gravações">' + IC_CL2.grav + c.total_gravacoes + '</span>' +
           '<span class="cl2-n" title="Roteiros">' + IC_CL2.rot + c.total_roteiros + '</span>' +
@@ -1031,7 +1031,7 @@ B7.Dashboard = (function () {
           '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
           '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
           '<button data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '">' + (c.is_pinned ? 'Desafixar' : 'Fixar no topo') + '</button><hr>' +
-          '<button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +
+          (c.teste ? '' : '<button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>') +
         '</div></div>' +
       '</div></div>';
   }
@@ -1097,7 +1097,7 @@ B7.Dashboard = (function () {
             (resumoMes ? '<button data-resumo-mes>Resumo do mês</button>' : '') +
             '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
             (ehAdmin() ? '<button data-ir="#/previa/' + esc(c.id) + '">Visualizar como cliente</button>' : '') +
-            '<hr><button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +
+            (c.teste ? '' : '<hr><button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>') +
           '</div></div></div>' : '') +
       '</header>' +
     '</div>' +

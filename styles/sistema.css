@@ -213,3 +213,6 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 .rd-item input{margin-top:3px;}
 .rd-item small{color:var(--ink-4);}
 .rd-acoes{display:flex;justify-content:flex-end;padding:10px 0 4px;}
+
+/* zzz143: etiqueta do cliente de teste */
+.tag-teste{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:var(--ambar-bg);color:var(--ambar);font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;}
