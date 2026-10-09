@@ -16,6 +16,7 @@
 // (dados.imagem), ela entra no cartão. Nenhuma outra imagem é usada.
 //
 // Chamada:  GET /functions/v1/b7-arte?n=<id da notificação>&s=<assinatura>
+//           GET /functions/v1/b7-arte?amostra=gravacao|semhora|atraso|item|longo|previa|resumo   (dados fictícios, sem assinatura)
 //           GET /functions/v1/b7-arte?teste=1&s=<assinatura>
 // A assinatura é um HMAC do id, feito pela b7-push ao montar o aviso:
 // sem ela a função não responde, então ninguém enumera cartões. O
@@ -34,6 +35,8 @@ const L = 1200, A = 600;
 const SITE = Deno.env.get('B7_SITE_URL') || 'https://branding7dados-lab.github.io/sistema-b7';
 /* símbolo da B7 com fundo transparente: assenta no quadro branco como as logos dos clientes */
 const MARCA_B7 = SITE + '/assets/brand/symbol-color.png';
+/* o mesmo símbolo em branco, para o selo "Sistema B7" no canto do cartão */
+const MARCA_B7_BRANCA = SITE + '/assets/brand/symbol-white.png';
 
 type Tom = 'violeta' | 'magenta' | 'vermelho' | 'ambar' | 'verde';
 const TONS: Record<Tom, { selo: string; texto: string; brilho: string }> = {
@@ -47,6 +50,10 @@ const TONS: Record<Tom, { selo: string; texto: string; brilho: string }> = {
 type Cartao = {
   selo: string; tom: Tom; destaque: string; linhas: string[];
   cliente: string | null; logo: string | null; previa: string | null;
+  /** zzz144b: dia em folha de calendário, número grande (atraso) e a marca do B7 no canto */
+  quando?: { dia: string; mes: string; semana: string; hora: string } | null;
+  numero?: { valor: string; rotulo: string } | null;
+  marcaB7?: string | null;
 };
 
 /* ------------------------------------------------------------ assinatura */
@@ -122,102 +129,167 @@ const SELOS: [RegExp, string, Tom][] = [
 const DATA = /(\d{2} [A-ZÇ]{3})(?: · (\d{2}:\d{2}))?/;
 const semAspas = (s: string) => s.replace(/^["“]|["”]$/g, '').trim();
 
-function montar(tipo: string, titulo: string, mensagem: string, inicio: string | null): Omit<Cartao, 'cliente' | 'logo' | 'previa'> {
+type Quando = { dia: string; mes: string; semana: string; hora: string };
+type Base = { selo: string; tom: Tom; destaque: string; linhas: string[]; quando: Quando | null; numero: { valor: string; rotulo: string } | null };
+
+function montar(tipo: string, titulo: string, mensagem: string, inicio: string | null): Base {
   const achado = SELOS.find(([re]) => re.test(tipo));
   const selo = achado ? achado[1] : 'SISTEMA B7';
   const tom: Tom = achado ? achado[2] : 'violeta';
   const partes = (mensagem || '').split(' · ').map(p => p.trim()).filter(Boolean);
   const eData = (p: string) => /^\d{2} [A-ZÇ]{3}$/.test(p) || /^\d{2}:\d{2}$/.test(p) || /^Nova data: /.test(p);
 
-  /* modelo "data": gravações e lembretes */
+  /* modelo "data": gravações e lembretes — o dia vira uma folha de calendário */
   if (/^gravacao\.|^agenda\./.test(tipo)) {
-    let destaque = '';
+    let destaque = '', quando: Quando | null = null;
     if (inicio) {
       const d = new Date(inicio);
-      const f = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d);
+      const f = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d);
       const v = (t: string) => (f.find(x => x.type === t) || { value: '' }).value;
-      destaque = v('day') + ' ' + v('month').replace('.', '').toUpperCase() + ' · ' + v('hour') + ':' + v('minute');
+      const mes = v('month').replace('.', '').toUpperCase(), hora = v('hour') + ':' + v('minute');
+      quando = { dia: v('day'), mes, semana: v('weekday').replace('.', '').toUpperCase(), hora };
+      destaque = v('day') + ' ' + mes + ' · ' + hora;
     } else {
       const m = (mensagem || '').match(DATA);
-      if (m) destaque = m[1] + (m[2] ? ' · ' + m[2] : '');
+      if (m) {
+        destaque = m[1] + (m[2] ? ' · ' + m[2] : '');
+        quando = { dia: m[1].slice(0, 2), mes: m[1].slice(3), semana: '', hora: m[2] || '' };
+      }
     }
     const resto = partes.filter(p => !eData(p));
     if (!destaque) destaque = resto.shift() || titulo;
-    return { selo, tom, destaque, linhas: resto.slice(0, 3) };
+    return { selo, tom, destaque, linhas: resto.slice(0, 3), quando, numero: null };
   }
 
-  /* atraso: os dias em destaque */
+  /* atraso: os dias viram o número grande; o item vem ao lado */
   const dias = titulo.match(/há (\d+) dias?/);
   if (dias) {
     const n = Number(dias[1]);
-    return { selo, tom, destaque: n + (n === 1 ? ' DIA' : ' DIAS'), linhas: [semAspas(partes[0] || ''), ...partes.slice(1)].filter(Boolean).slice(0, 3) };
+    return { selo, tom, destaque: semAspas(partes[0] || titulo), linhas: partes.slice(1, 4), quando: null,
+      numero: { valor: String(n), rotulo: n === 1 ? 'DIA' : 'DIAS' } };
   }
   if (/prazo_amanha$/.test(tipo)) {
-    return { selo, tom, destaque: 'AMANHÃ', linhas: [semAspas(partes[0] || ''), ...partes.slice(1)].filter(Boolean).slice(0, 3) };
+    return { selo, tom, destaque: 'AMANHÃ', linhas: [semAspas(partes[0] || ''), ...partes.slice(1)].filter(Boolean).slice(0, 3), quando: null, numero: null };
   }
 
   /* modelo "item": o que é, depois o contexto */
-  return { selo, tom, destaque: semAspas(partes[0] || titulo), linhas: partes.slice(1, 4) };
+  return { selo, tom, destaque: semAspas(partes[0] || titulo), linhas: partes.slice(1, 4), quando: null, numero: null };
 }
 
-/* ------------------------------------------------------------- o desenho */
+/* ------------------------------------------------------------- o desenho
+   zzz144b — cartão redesenhado. Três composições:
+     · folha de calendário + hora (gravações e lembretes);
+     · número grande + item (atrasos);
+     · selo + título (todo o resto), com a prévia da peça quando existe.
+   Em todas: quem é (logo e nome do cliente) no alto à esquerda, a marca
+   do B7 no alto à direita, luz na cor do assunto e um fio em degradê
+   embaixo. O desenhista (satori) só entende flexbox: todo elemento com
+   mais de um filho precisa de display:flex. */
 const iniciais = (nome: string) => nome.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+const encurta = (s: string, n: number) => (s.length > n ? s.slice(0, Math.max(1, n - 1)).trimEnd() + '…' : s);
 
 function desenhar(c: Cartao, temFontes: boolean) {
   const tom = TONS[c.tom];
   const sans = temFontes ? 'Inter' : 'sans-serif';
   const titulo = temFontes ? 'Archivo' : 'sans-serif';
-  const larguraTexto = c.previa ? 640 : 1040;
-  /* o destaque usa o maior corpo que cabe: uma linha nos tamanhos
-     grandes, duas nos menores; passou disso, corta com reticências —
-     nunca uma terceira linha pela metade */
-  const n = c.destaque.length;
-  const cabe = (tam: number, linhas: number) => n <= Math.floor(larguraTexto / (tam * 0.5)) * linhas;
-  const corpo = cabe(108, 1) ? 108 : cabe(84, 1) ? 84 : cabe(64, 2) ? 64 : 50;
-  const limite = Math.floor(larguraTexto / (50 * 0.5)) * 2;
-  const destaque = corpo === 50 && n > limite ? c.destaque.slice(0, limite - 1).trimEnd() + '…' : c.destaque;
+  const PAD = 60, PREVIA = c.previa ? 400 : 0;
+  const temFolha = !!c.quando || !!c.numero;
+  const larguraTexto = L - PAD * 2 - PREVIA - (temFolha ? 220 + 44 : 0);
+  const porLinha = (tam: number) => Math.max(8, Math.floor(larguraTexto / (tam * 0.52)));
 
+  /* ---- fundo: degradê profundo, duas luzes, anéis e o fio da base ---- */
+  const fundo = [
+    h('div', { key: 'l1', style: { position: 'absolute', right: -200, top: -260, width: 720, height: 720, borderRadius: 360, backgroundImage: 'radial-gradient(circle, ' + tom.brilho + ' 0%, rgba(13,10,34,0) 66%)' } }),
+    h('div', { key: 'l2', style: { position: 'absolute', left: -220, bottom: -320, width: 640, height: 640, borderRadius: 320, backgroundImage: 'radial-gradient(circle, rgba(91,68,192,.42) 0%, rgba(13,10,34,0) 66%)' } }),
+    h('div', { key: 'a1', style: { position: 'absolute', right: -150, top: -150, width: 460, height: 460, borderRadius: 230, border: '2px solid rgba(255,255,255,.07)' } }),
+    h('div', { key: 'a2', style: { position: 'absolute', right: -60, top: -60, width: 280, height: 280, borderRadius: 140, border: '2px solid rgba(255,255,255,.06)' } }),
+    h('div', { key: 'fio', style: { position: 'absolute', left: 0, bottom: 0, width: L, height: 10, backgroundImage: 'linear-gradient(90deg, ' + tom.selo + ' 0%, #7C1E85 55%, #C21C83 100%)' } })
+  ];
+
+  /* ---- alto: quem é (esquerda) e a marca do B7 (direita) ---- */
   const marca = c.logo
-    ? h('img', { src: c.logo, width: 76, height: 76, style: { objectFit: 'contain' } })
-    : h('div', { style: { display: 'flex', fontFamily: titulo, fontWeight: 800, fontSize: 38, color: '#3A1E86' } }, c.cliente ? iniciais(c.cliente) : 'B7');
+    ? h('img', { src: c.logo, width: 64, height: 64, style: { objectFit: 'contain' } })
+    : h('div', { style: { display: 'flex', fontFamily: titulo, fontWeight: 800, fontSize: 32, color: '#3A1E86' } }, c.cliente ? iniciais(c.cliente) : 'B7');
+  const cab = h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: L - PAD * 2 } },
+    h('div', { style: { display: 'flex', alignItems: 'center' } },
+      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 88, height: 88, borderRadius: 24, backgroundColor: '#FFFFFF', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,.35)' } }, marca),
+      h('div', { style: { display: 'flex', flexDirection: 'column', marginLeft: 22 } },
+        h('div', { style: { display: 'flex', fontSize: 17, fontWeight: 700, letterSpacing: 4, color: 'rgba(255,255,255,.5)' } }, c.cliente ? 'CLIENTE' : 'AGÊNCIA'),
+        h('div', { style: { display: 'flex', fontSize: 36, fontWeight: 700, color: '#FFFFFF', marginTop: 2 } }, encurta(c.cliente || 'Branding7', c.cliente ? 30 : 30))
+      )
+    ),
+    h('div', { style: { display: 'flex', alignItems: 'center', padding: '10px 20px 10px 14px', borderRadius: 999, backgroundColor: 'rgba(255,255,255,.08)', border: '2px solid rgba(255,255,255,.13)' } },
+      c.marcaB7 ? h('img', { src: c.marcaB7, width: 30, height: 30, style: { objectFit: 'contain' } }) : h('div', { style: { display: 'flex', width: 12, height: 12, borderRadius: 6, backgroundColor: '#C21C83' } }),
+      h('div', { style: { display: 'flex', marginLeft: 10, fontSize: 22, fontWeight: 700, color: 'rgba(255,255,255,.88)' } }, 'Sistema B7')
+    )
+  );
+
+  /* ---- peças comuns ---- */
+  const selo = h('div', { style: { display: 'flex' } },
+    h('div', { style: { display: 'flex', alignItems: 'center', backgroundColor: tom.selo, color: tom.texto, fontSize: 23, fontWeight: 700, letterSpacing: 3, padding: '8px 20px 8px 14px', borderRadius: 999 } },
+      h('div', { style: { display: 'flex', width: 10, height: 10, borderRadius: 5, backgroundColor: tom.texto, marginRight: 10 } }),
+      h('div', { style: { display: 'flex' } }, c.selo)));
+  const linhas = (lista: string[]) => lista.slice(0, 2).map((l, i) =>
+    h('div', { key: 'ln' + i, style: { display: 'flex', fontSize: i === 0 ? 34 : 26, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.25, marginTop: i === 0 ? 14 : 4,
+      color: i === 0 ? 'rgba(255,255,255,.94)' : 'rgba(255,255,255,.6)' } }, encurta(l, porLinha(i === 0 ? 34 : 26))));
+  const folha = (topo: string, grande: string, base: string) =>
+    h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', width: 220, height: 252, borderRadius: 38, backgroundColor: 'rgba(255,255,255,.07)', border: '2px solid rgba(255,255,255,.15)', overflow: 'hidden', boxShadow: '0 24px 50px rgba(0,0,0,.35)' } },
+      h('div', { style: { display: 'flex', justifyContent: 'center', width: 220, padding: '12px 0', backgroundColor: tom.selo, color: tom.texto, fontSize: 27, fontWeight: 700, letterSpacing: topo.length > 4 ? 4 : 7 } }, topo),
+      h('div', { style: { display: 'flex', fontFamily: titulo, fontWeight: 800, fontSize: grande.length > 2 ? 100 : 136, lineHeight: 1, marginTop: grande.length > 2 ? 28 : 12, letterSpacing: -4, color: '#FFFFFF' } }, grande),
+      h('div', { style: { display: 'flex', fontSize: 23, fontWeight: 700, letterSpacing: 6, color: 'rgba(255,255,255,.55)', marginTop: 4 } }, base || ' '));
+
+  /* ---- miolo ---- */
+  let miolo;
+  if (c.quando) {
+    const q = c.quando;
+    /* sem hora, o nome da gravação ocupa o lugar dela */
+    const principal = q.hora || c.linhas[0] || c.destaque;
+    const resto = q.hora ? c.linhas : c.linhas.slice(1);
+    const tam = q.hora ? 128 : (principal.length <= porLinha(72) ? 72 : 54);
+    miolo = h('div', { style: { display: 'flex', alignItems: 'flex-end' } },
+      folha(q.mes, q.dia, q.semana),
+      h('div', { style: { display: 'flex', flexDirection: 'column', marginLeft: 44, width: larguraTexto } },
+        selo,
+        h('div', { style: { display: 'flex', fontFamily: titulo, fontWeight: 800, fontSize: tam, lineHeight: 1, letterSpacing: q.hora ? -4 : -1.5, marginTop: 16, color: '#FFFFFF' } }, q.hora ? principal : encurta(principal, porLinha(tam) * (tam === 54 ? 2 : 1))),
+        ...linhas(resto)));
+  } else if (c.numero) {
+    const n = c.destaque.length;
+    const tam = n <= porLinha(64) ? 64 : 50;
+    miolo = h('div', { style: { display: 'flex', alignItems: 'flex-end' } },
+      folha('ATRASO', c.numero.valor, c.numero.rotulo),
+      h('div', { style: { display: 'flex', flexDirection: 'column', marginLeft: 44, width: larguraTexto } },
+        selo,
+        h('div', { style: { display: 'flex', fontFamily: titulo, fontWeight: 800, fontSize: tam, lineHeight: 1.06, letterSpacing: -1.5, marginTop: 16, color: '#FFFFFF', maxHeight: Math.ceil(tam * 1.06 * 2), overflow: 'hidden' } }, encurta(c.destaque, porLinha(tam) * 2)),
+        ...linhas(c.linhas)));
+  } else {
+    /* o destaque usa o maior corpo que cabe: uma linha nos tamanhos grandes, duas nos menores */
+    const n = c.destaque.length;
+    const cabe = (tam: number, ls: number) => n <= porLinha(tam) * ls;
+    const tam = cabe(108, 1) ? 108 : cabe(84, 1) ? 84 : cabe(66, 2) ? 66 : 52;
+    miolo = h('div', { style: { display: 'flex', flexDirection: 'column', width: larguraTexto } },
+      selo,
+      h('div', { style: { display: 'flex', fontFamily: titulo, fontWeight: 800, fontSize: tam, lineHeight: 1.05, letterSpacing: -1.5, marginTop: 18, color: '#FFFFFF', maxHeight: Math.ceil(tam * 1.05 * 2), overflow: 'hidden' } }, encurta(c.destaque, porLinha(tam) * 2)),
+      ...linhas(c.linhas));
+  }
 
   return h('div', {
     style: {
       width: L, height: A, display: 'flex', position: 'relative', overflow: 'hidden',
-      backgroundColor: '#0D0A22',
-      backgroundImage: 'linear-gradient(120deg, #0D0A22 0%, #1A1040 52%, #2B1157 100%)',
+      backgroundColor: '#0B0820',
+      backgroundImage: 'linear-gradient(135deg, #0B0820 0%, #17103A 50%, #2A1152 100%)',
       fontFamily: sans, color: '#FFFFFF'
     }
   },
-    /* brilho discreto, na cor do tom — acento, não fundo */
-    h('div', { style: { position: 'absolute', right: -180, top: -220, width: 620, height: 620, borderRadius: 310, backgroundImage: 'radial-gradient(circle, ' + tom.brilho + ' 0%, rgba(13,10,34,0) 68%)' } }),
-    h('div', { style: { position: 'absolute', left: 0, top: 0, width: 10, height: A, backgroundColor: tom.selo } }),
-
-    h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '56px 64px 56px 76px', width: c.previa ? L - 420 : L, height: A } },
-      /* quem: a logo do cliente (ou B7) */
-      h('div', { style: { display: 'flex', alignItems: 'center' } },
-        h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 104, height: 104, borderRadius: 26, backgroundColor: '#FFFFFF', overflow: 'hidden' } }, marca),
-        h('div', { style: { display: 'flex', marginLeft: 26, fontSize: 40, fontWeight: 700, maxWidth: larguraTexto - 130, color: '#FFFFFF' } }, c.cliente || 'Sistema B7')
-      ),
-      /* o quê */
-      h('div', { style: { display: 'flex', flexDirection: 'column' } },
-        h('div', { style: { display: 'flex' } },
-          h('div', { style: { display: 'flex', backgroundColor: tom.selo, color: tom.texto, fontSize: 26, fontWeight: 700, letterSpacing: 2, padding: '8px 18px', borderRadius: 10 } }, c.selo)
-        ),
-        h('div', { style: { display: 'flex', marginTop: 18, fontFamily: titulo, fontWeight: 800, fontSize: corpo, lineHeight: 1.04, letterSpacing: -1.5, maxWidth: larguraTexto, maxHeight: Math.ceil(corpo * 1.04 * 2), overflow: 'hidden' } }, destaque)
-      ),
-      /* contexto */
-      h('div', { style: { display: 'flex', flexDirection: 'column', maxWidth: larguraTexto } },
-        ...c.linhas.slice(0, 2).map((l, i) =>
-          h('div', { key: i, style: { display: 'flex', fontSize: i === 0 ? 34 : 28, fontWeight: 500, lineHeight: 1.25, color: i === 0 ? 'rgba(255,255,255,.92)' : 'rgba(255,255,255,.62)', maxHeight: i === 0 ? 86 : 36, overflow: 'hidden' } }, l))
-      )
-    ),
-
-    /* prévia real da peça, quando existe */
-    c.previa
-      ? h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 420, height: A, paddingRight: 56 } },
-          h('img', { src: c.previa, width: 364, height: 364, style: { objectFit: 'cover', borderRadius: 28, border: '4px solid rgba(255,255,255,.14)' } }))
-      : null
+    ...fundo,
+    h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '48px ' + PAD + 'px 58px', width: L, height: A } },
+      cab,
+      h('div', { style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', width: L - PAD * 2 } },
+        miolo,
+        /* prévia real da peça, quando existe */
+        c.previa
+          ? h('div', { style: { display: 'flex', width: 348, height: 348, borderRadius: 30, overflow: 'hidden', border: '4px solid rgba(255,255,255,.18)', boxShadow: '0 30px 60px rgba(0,0,0,.45)' } },
+              h('img', { src: c.previa, width: 340, height: 340, style: { objectFit: 'cover' } }))
+          : null))
   );
 }
 
@@ -230,7 +302,7 @@ async function responder(c: Cartao): Promise<Response> {
     });
   } catch (_e) {
     /* imagem embutida que o desenhista não aceitou: tenta sem logo e sem prévia */
-    return new ImageResponse(desenhar({ ...c, logo: null, previa: null }, f.length === 3), {
+    return new ImageResponse(desenhar({ ...c, logo: null, previa: null, marcaB7: null }, f.length === 3), {
       width: L, height: A, fonts: f.length === 3 ? f : undefined,
       headers: { 'Cache-Control': 'public, max-age=3600' }
     });
@@ -248,8 +320,26 @@ Deno.serve(async (req: Request) => {
     return responder({
       selo: 'TESTE DE NOTIFICAÇÃO', tom: 'violeta', destaque: 'Tudo certo!',
       linhas: ['Push funcionando neste dispositivo.'], cliente: null,
-      logo: await comoDataUrl(MARCA_B7), previa: null
+      logo: await comoDataUrl(MARCA_B7), previa: null, marcaB7: await comoDataUrl(MARCA_B7_BRANCA)
     });
+  }
+
+  /* ---- amostras do desenho (zzz144b): dados FICTÍCIOS, fixos aqui. Não lê
+     o banco nem mostra aviso de ninguém; serve para conferir o visual. ---- */
+  const amostra = q.get('amostra');
+  if (amostra) {
+    const [logoB7, branca] = await Promise.all([comoDataUrl(MARCA_B7), comoDataUrl(MARCA_B7_BRANCA)]);
+    const comum = { cliente: 'Cliente Exemplo', logo: null, previa: null, marcaB7: branca };
+    const modelos: Record<string, Cartao> = {
+      gravacao: { ...comum, selo: 'GRAVAÇÃO HOJE', tom: 'violeta', destaque: '09 OUT · 15:30', linhas: ['Gravação de outubro', 'Estúdio B7'], quando: { dia: '09', mes: 'OUT', semana: 'SEX', hora: '15:30' } },
+      semhora: { ...comum, selo: 'GRAVAÇÃO REMARCADA', tom: 'ambar', destaque: '14 OUT', linhas: ['Gravação de outubro', 'Estúdio B7'], quando: { dia: '14', mes: 'OUT', semana: '', hora: '' } },
+      atraso: { ...comum, selo: 'ATRASO CRÍTICO', tom: 'vermelho', destaque: 'Reels de lançamento da campanha', linhas: ['Edição de vídeo', 'Prazo era 06 OUT'], numero: { valor: '3', rotulo: 'DIAS' } },
+      item: { ...comum, selo: 'AGUARDANDO REVISÃO', tom: 'violeta', destaque: 'Carrossel de outubro', linhas: ['Versão 2 enviada', 'Design'] },
+      longo: { ...comum, selo: 'CORREÇÃO SOLICITADA', tom: 'magenta', destaque: 'Vídeo institucional de fim de ano com depoimentos da equipe e dos clientes', linhas: ['Ajustar a trilha e o corte final', 'Edição de vídeo'] },
+      previa: { ...comum, selo: 'APROVADO', tom: 'verde', destaque: 'Card do dia das crianças', linhas: ['Aprovado pelo cliente', 'Design'], previa: logoB7 },
+      resumo: { selo: 'SEU RESUMO', tom: 'violeta', destaque: '4 itens para hoje', linhas: ['2 gravações · 2 entregas'], cliente: null, logo: logoB7, previa: null, marcaB7: branca }
+    };
+    return responder(modelos[amostra] || modelos.gravacao);
   }
 
   const id = q.get('n') || '';
@@ -289,5 +379,6 @@ Deno.serve(async (req: Request) => {
   const base = montar(n.tipo || '', n.titulo || '', n.mensagem || '', inicio);
   /* o nome do cliente já está no topo do cartão: não repete embaixo */
   const igual = (a: string) => !!cliente && a.trim().toLowerCase() === cliente.trim().toLowerCase();
-  return responder({ ...base, linhas: base.linhas.filter(l => !igual(l)), cliente, logo, previa });
+  const marcaB7 = await comoDataUrl(MARCA_B7_BRANCA);
+  return responder({ ...base, linhas: base.linhas.filter(l => !igual(l)), cliente, logo, previa, marcaB7 });
 });
