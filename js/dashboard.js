@@ -1963,6 +1963,12 @@ B7.Dashboard = (function () {
       /* zzz136: sessões abertas, uso da IA e o que aparece no Painel de TV */
       (ehAdm && B7.Sessoes ? grupo('Sessões', 'Em quais aparelhos cada conta está aberta.',
         L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'ver os aparelhos e encerrar uma sessão', botao: true, attrs: ' data-sessoes' })) : '') +
+      /* zzz139: saúde do sistema, médico e comunicado */
+      (ehAdm && B7.Saude ? grupo('Cuidar do sistema', 'Só leitura: mostra o que precisa de atenção, sem mudar nada.',
+        L({ ic: 'raio', tom: 'verde', t: 'Saúde do sistema', d: 'rotinas, avisos, Google Agenda, espaço e IA', botao: true, attrs: ' data-saude' }) +
+        L({ ic: 'filtro', tom: 'laranja', t: 'Médico do sistema', d: 'cadastros incompletos: sem logo, sem responsável, sem função', botao: true, attrs: ' data-medico' })) : '') +
+      (ehAdm && B7.Comunicado ? grupo('Comunicado', 'Uma mensagem sua que chega na conversa de cada pessoa, com “lido por”.',
+        L({ ic: 'sino', tom: 'rosa', t: 'Enviar comunicado', d: 'para toda a equipe ou só para algumas pessoas', botao: true, attrs: ' data-comunicado' })) : '') +
       (ehAdm && B7.UsoIA ? grupo('Uso da IA', 'Só números: o conteúdo dos pedidos não é guardado.',
         L({ ic: 'ia', tom: 'violeta', t: 'Uso da IA', d: 'chamadas por pessoa e por tarefa, erros e tempo de resposta', botao: true, attrs: ' data-uso-ia' })) : '') +
       (ehAdm && B7.TV && B7.TV.configurar ? grupo('Painel de TV', 'O que aparece na tela da agência.',
@@ -2225,6 +2231,9 @@ B7.Dashboard = (function () {
     /* ---- zzz136: sessões, uso da IA e configuração da TV ---- */
     const btSe = p.querySelector('[data-sessoes]'); if (btSe) btSe.onclick = () => B7.Sessoes.abrir();
     const btUi = p.querySelector('[data-uso-ia]'); if (btUi) btUi.onclick = () => B7.UsoIA.abrir();
+    const btSa = p.querySelector('[data-saude]'); if (btSa) btSa.onclick = () => B7.Saude.abrir();
+    const btMe = p.querySelector('[data-medico]'); if (btMe) btMe.onclick = () => B7.Medico.abrir();
+    const btCo = p.querySelector('[data-comunicado]'); if (btCo) btCo.onclick = () => B7.Comunicado.abrir();
     const btTv = p.querySelector('[data-tv-config]'); if (btTv) btTv.onclick = () => B7.TV.configurar();
 
     /* ---- zzz130: manutenção e novidades ---- */

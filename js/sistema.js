@@ -47,6 +47,15 @@ B7.Manutencao = (function () {
     return DOW[d.getDay()] + ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' às ' + hm;
   }
 
+  /* zzz139: o administrador encerrou esta sessão — sai da conta agora, sem esperar o acesso vencer */
+  let derrubada = false;
+  function derrubar() {
+    if (derrubada || !(B7.Auth && B7.Auth.sair)) return;
+    derrubada = true;
+    try { B7.UI.toast('Sua sessão foi encerrada por um administrador. Entre de novo.', { tipo: 'erro' }); } catch (e) {}
+    setTimeout(() => B7.Auth.sair(), 1800);
+  }
+
   async function conferir() {
     if (!B7.DB || !B7.DB.rpc || !(B7.Auth && B7.Auth.usuario && B7.Auth.usuario())) return;
     ultimaConf = Date.now();
@@ -55,6 +64,7 @@ B7.Manutencao = (function () {
       if (!r) return;
       if (r.agora) desvio = new Date(r.agora).getTime() - Date.now();
       atual = r.manutencao || null;
+      if (r.sessao === false) derrubar();
     } catch (e) { /* sem rede: fica o último estado conhecido */ }
     pintar();
   }

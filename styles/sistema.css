@@ -160,3 +160,34 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 /* manutenção: campo de dia e horário do "Agendar…" */
 .mn-quando{margin-top:9px;max-width:260px;}
 .mn-quando[hidden]{display:none;}
+
+/* zzz139: saúde do sistema, médico e comunicado */
+.sd-resumo{border-radius:16px;padding:13px 16px;margin:6px 0 4px;display:flex;flex-direction:column;gap:4px;}
+.sd-resumo.ok{background:var(--ok-bg);color:var(--ok);}
+.sd-resumo.atencao{background:color-mix(in srgb, var(--erro) 11%, transparent);color:var(--erro);}
+.sd-resumo b{font-size:14.5px;font-weight:750;}
+.sd-resumo small{font-size:12.5px;opacity:.85;}
+.sd-resumo ul{margin:2px 0 0;padding-left:18px;font-size:13px;color:var(--ink-2);}
+.sd-linha{display:flex;align-items:flex-start;gap:12px;padding:9px 0;border-top:1px solid color-mix(in srgb, var(--borda) 70%, transparent);}
+.sd-linha:first-of-type{border-top:0;}
+.sd-linha span{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.sd-linha b{font-size:13.5px;font-weight:650;color:var(--ink);}
+.sd-linha small{font-size:12px;color:var(--ink-4);}
+.sd-ponto{flex:none;width:10px;height:10px;border-radius:50%;margin-top:5px;background:var(--ink-4);}
+.sd-ponto.ok{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);}
+.sd-ponto.erro{background:var(--erro);box-shadow:0 0 0 3px color-mix(in srgb, var(--erro) 20%, transparent);}
+.md-dica{font-size:12.5px;color:var(--ink-4);margin:0 0 6px;}
+.md-item{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid color-mix(in srgb, var(--borda) 70%, transparent);font-size:13px;color:var(--ink-2);}
+.md-item span{flex:1;min-width:0;overflow-wrap:anywhere;}
+.md-mais{font-size:12px;color:var(--ink-4);margin:6px 0 4px;}
+.cm-quem{display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 0;}
+.cm-quem label{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);cursor:pointer;}
+.cm-quem label small{color:var(--ink-4);font-size:11.5px;}
+.cm-todos{font-weight:700;width:100%;}
+.cm-env{border-top:1px solid color-mix(in srgb, var(--borda) 70%, transparent);padding:10px 0;}
+.cm-env p{margin:0 0 4px;font-size:13.5px;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;}
+.cm-env > div{display:flex;gap:12px;align-items:baseline;}
+.cm-env small{font-size:12px;color:var(--ink-4);}
+.cm-quem-leu{flex-direction:column;gap:2px !important;align-items:flex-start !important;margin-top:4px;}
+.cm-quem-leu span{font-size:12.5px;color:var(--ink-3);}
+.cm-quem-leu .leu{color:var(--ok);}

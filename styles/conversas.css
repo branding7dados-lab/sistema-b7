@@ -152,3 +152,6 @@ body.modo-tv .conv-painel,body.em-manutencao .conv-painel{display:none !importan
   .conv-ponto{transition:none;}
 }
 html.modo-leve .conv-painel{box-shadow:none;}
+
+/* zzz139: comunicado do administrador */
+.conv-comun{display:inline-block;margin:0 0 4px;padding:1px 9px;border-radius:999px;background:color-mix(in srgb, var(--acento) 16%, transparent);color:var(--acento);font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}

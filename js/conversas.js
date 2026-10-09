@@ -463,6 +463,7 @@ B7.Conversas = (function () {
         '<span class="conv-arq-ic">' + IC.arquivo + '</span><span class="conv-arq-tx"><b>' + esc(m.arquivo_nome || 'Arquivo') + '</b><small>' + tamanho(m.arquivo_tamanho) + ' · baixar</small></span></button>' +
         (m.texto ? '<p class="conv-tx">' + textoRico(m.texto) + '</p>' : '');
     } else corpo = '<p class="conv-tx">' + textoRico(m.texto) + '</p>';
+    if (m.comunicado_id && !apagada) corpo = '<span class="conv-comun">Comunicado</span>' + corpo;
     return '<div class="conv-msg ' + (minha ? 'minha' : 'outra') + (apagada ? ' apagada' : '') + (m.falhou ? ' falhou' : '') + '" data-msg="' + esc(m.id) + '">' +
       '<div class="conv-balao">' + corpo +
         '<span class="conv-meta"><time>' + hora(m.created_at) + '</time>' + (minha && !apagada ? tique(m) : '') + '</span>' +
