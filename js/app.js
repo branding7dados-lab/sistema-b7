@@ -223,6 +223,14 @@ B7.Rota = (function () {
     if (partes[0] === 'usuarios') { mostrar('tela-dashboard'); return B7.Usuarios.abrir(); }
     if (partes[0] === 'semanas') { mostrar('tela-dashboard'); return B7.Semana.abrirLista(); }
     if (partes[0] === 'semana' && partes[1]) { mostrar('tela-dashboard'); return B7.Semana.abrir(partes[1]); }
+    /* zzz134: link de um aviso de conversa (#/conversa/<id>): abre o painel
+       das conversas por cima do início; o endereço não fica na barra */
+    if (partes[0] === 'conversa') {
+      const idConversa = partes[1];
+      location.replace(B7.Perm && B7.Perm.inicio ? B7.Perm.inicio() : '#/');
+      if (B7.Conversas && idConversa) setTimeout(() => B7.Conversas.abrirConversa(idConversa), 150);
+      return;
+    }
     /* zzz129: Painel de TV — cobre a tela inteira por cima do sistema (js/tv.js) */
     if (partes[0] === 'tv' && B7.TV) { mostrar('tela-dashboard'); return B7.TV.abrir(); }
     if (partes[0] === 'config')     { mostrar('tela-dashboard'); return B7.Dashboard.abrirConfig(); }
@@ -828,6 +836,8 @@ B7.Rota = (function () {
   B7.pintarSessao = function () {
     pintarSessao();
     if (B7.Notif) B7.Notif.montar();
+    /* zzz134: o botão das conversas da equipe, ao lado do sino */
+    if (B7.Conversas) { try { B7.Conversas.montar(); } catch (e) {} }
     if (B7.Presenca) B7.Presenca.iniciar();
     if (B7.Push && B7.Push.manter) setTimeout(() => B7.Push.manter(), 2500);
     if (B7.Memoria && B7.Memoria.aquecer) B7.Memoria.aquecer();

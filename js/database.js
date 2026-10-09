@@ -981,8 +981,11 @@ B7.DB = (function () {
     async notificacoes({ limite = 30, antesDe, tipos } = {}) {
       /* exemplo de teste ("Ver um exemplo de cada aviso") só existe para
          sair como push no aparelho: não entra na lista do sino */
+      /* zzz134: aviso de conversa (chat.mensagem) não entra no sino — quem
+         mostra é o botão das conversas, com o próprio contador */
       let q = sb().from('notificacoes_resumo').select('*')
         .or('dados->>teste.is.null,dados->>teste.neq.true')
+        .neq('tipo', 'chat.mensagem')
         .order('created_at', { ascending: false }).limit(limite);
       if (antesDe) q = q.lt('created_at', antesDe);
       if (tipos && tipos.length) q = q.in('tipo', tipos);   /* filtro do sino */
@@ -996,7 +999,7 @@ B7.DB = (function () {
     },
     async notificacoesNaoLidas() {
       const { count, error } = await sb().from('notificacoes')
-        .select('id', { count: 'exact', head: true }).is('lida_em', null);
+        .select('id', { count: 'exact', head: true }).is('lida_em', null).neq('tipo', 'chat.mensagem');
       if (error) throw error;
       return count || 0;
     },
@@ -1015,7 +1018,7 @@ B7.DB = (function () {
        inteira de não lidas (leitura leve, migration_editorial_versao.sql §8) */
     async ultimaNaoLida() {
       const { data, error } = await sb().from('notificacoes').select('id, created_at')
-        .is('lida_em', null).order('created_at', { ascending: false }).limit(1);
+        .is('lida_em', null).neq('tipo', 'chat.mensagem').order('created_at', { ascending: false }).limit(1);
       if (error) throw error;
       return (data && data[0]) || null;
     },

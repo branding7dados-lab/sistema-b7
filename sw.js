@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v338';
+const CACHE = 'roteiros-b7-v339';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -21,7 +21,7 @@ const CASCA = [
   './js/backup.js', './js/app.js', './js/abertura-som.js', './js/movimento.js', './js/desempenho.js',
   './js/auth.js', './js/usuarios.js', './js/central.js', './js/panorama.js', './js/conteudo.js',
   './js/linha.js', './js/design.js', './js/video.js', './js/eventos.js', './js/calendario.js', './js/oportunidades.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
-  './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js', './js/painel-coord.js', './js/painel-design.js', './js/painel-multi.js', './js/tv.js', './js/recursos.js', './js/sistema.js', './js/novidades.js', './js/topo.js', './js/nav.js',
+  './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js', './js/painel-coord.js', './js/painel-design.js', './js/painel-multi.js', './js/tv.js', './js/recursos.js', './js/sistema.js', './js/conversas.js', './js/novidades.js', './js/topo.js', './js/nav.js',
   './js/permissoes.js', './js/portal.js', './js/kanban.js', './js/perfil.js', './js/foto.js',
   /* zzz45: estava faltando. Sem rede, o "Visualizar como…" sumia em
      silêncio porque o arquivo nunca entrava no cache. */
@@ -31,7 +31,7 @@ const CASCA = [
   './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js', './js/vendor/xlsx.full.min.js',
   './styles/auth.css', './styles/central.css', './styles/panorama.css', './styles/conteudo.css', './styles/semana.css',
   './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css', './styles/linha.css', './styles/ia-chat.css', './styles/design.css',
-  './styles/video.css', './styles/calendario.css', './styles/oportunidades.css', './styles/gravacao.css', './styles/publicacoes.css', './styles/painel.css', './styles/tv.css', './styles/sistema.css', './styles/topo.css', './styles/nav.css',
+  './styles/video.css', './styles/calendario.css', './styles/oportunidades.css', './styles/gravacao.css', './styles/publicacoes.css', './styles/painel.css', './styles/tv.css', './styles/sistema.css', './styles/conversas.css', './styles/topo.css', './styles/nav.css',
   './assets/brand/logo-color.png', './assets/brand/logo-white.png',
   './assets/brand/symbol-color.png', './assets/brand/symbol-white.png',
   './assets/fonts/inter-400.woff2', './assets/fonts/inter-500.woff2',
@@ -217,11 +217,20 @@ self.addEventListener('push', ev => {
     rica.data.links = acoes.reduce((m, a) => { m[a.id] = a.link; return m; }, {});
   }
   if (d.imagem) rica.image = d.imagem;
-  ev.waitUntil(
-    self.registration.showNotification(titulo, rica)
-      /* aparelho que recusa imagem ou botões: o aviso simples sai mesmo assim */
-      .catch(() => self.registration.showNotification(titulo, base))
-  );
+  const mostrar = () => self.registration.showNotification(titulo, rica)
+    /* aparelho que recusa imagem ou botões: o aviso simples sai mesmo assim */
+    .catch(() => self.registration.showNotification(titulo, base));
+  /* zzz134: mensagem de conversa — as de uma mesma conversa se substituem
+     (não empilham), e se o B7 já está aberto e na frente neste aparelho o
+     aviso do sistema não sai: a própria tela toca e mostra. */
+  if (d.tipo === 'chat.mensagem') {
+    const marca = 'b7-chat-' + String(d.link || '').split('/').pop();
+    base.tag = marca; rica.tag = marca; base.renotify = true; rica.renotify = true;
+    ev.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(l => (l.some(c => c.focused && c.visibilityState === 'visible') ? null : mostrar()), mostrar));
+    return;
+  }
+  ev.waitUntil(mostrar());
 });
 
 /* Clique no aviso (no corpo ou num botão): foca uma aba já aberta do

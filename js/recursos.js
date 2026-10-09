@@ -20,6 +20,7 @@ window.B7 = window.B7 || {};
 
 B7.Recursos = (function () {
   const LISTA = [
+    { id: 'conversas', nome: 'Conversas da equipe', d: 'o chat interno, no botão ao lado do sino' },
     { id: 'tv', nome: 'Painel de TV', d: 'a tela da agência para deixar aberta, em Configurações → Geral' },
     { id: 'hoje_dia', nome: '“Hoje é dia de…” no Painel', d: 'a data do dia no cabeçalho do Painel' },
     { id: 'ia_voz', nome: 'Falar com o assistente', d: 'o microfone no campo de mensagem', ia: true },

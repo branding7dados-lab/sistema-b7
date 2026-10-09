@@ -98,7 +98,7 @@ B7.Perm = (function () {
   /* zzz129: 'tv' (Painel de TV) é só leitura e mostra o que o banco já
      entrega a quem está logado; quem vê a entrada é o liga/desliga de
      recursos (B7.Recursos). */
-  const ROTAS_INTERNAS = ['', 'config', 'cliente', 'gravacao', 'tv'];
+  const ROTAS_INTERNAS = ['', 'config', 'cliente', 'gravacao', 'tv', 'conversa'];
   /* Padrão de cada função — só usado se a sessão ainda não trouxer os
      módulos (aba antiga aberta durante a atualização). O valor de verdade
      vem do banco (funcao_modulos + perfil_modulos). */

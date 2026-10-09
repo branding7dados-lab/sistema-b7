@@ -237,6 +237,8 @@ B7.Notif = (function () {
         { event: 'INSERT', table: 'notificacoes', filter: 'destinatario_id=eq.' + u.id }
       ], p => {
         const nova = p && p.new;
+        /* zzz134: mensagem de conversa tem som e aviso próprios (js/conversas.js) */
+        if (nova && nova.tipo === 'chat.mensagem') return;
         if (nova && nova.id) anunciar(nova);
         atualizar();
       });

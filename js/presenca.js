@@ -12,7 +12,8 @@
 window.B7 = window.B7 || {};
 
 B7.Presenca = (function () {
-  const INTERVALO = 5 * 60 * 1000;   /* 5 min */
+  /* zzz134: 2 min (era 5) — o "visto por último" das conversas precisa ser mais fresco */
+  const INTERVALO = 2 * 60 * 1000;
   let ultimo = 0, ligado = false, timer = null, emCurso = false;
 
   async function tocar(forcar) {

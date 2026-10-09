@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz134', versao: 'zzz134', em: '2026-10-09T16:00:00-03:00', recurso: 'conversas',
+    titulo: 'Conversas da equipe',
+    itens: ['O botão de conversa no topo, ao lado do sino, abre o chat interno: fale com qualquer pessoa da equipe sem sair da tela.',
+            'Dá para mandar texto, áudio, imagem e arquivo, e colar um print com Ctrl+V.',
+            'Você vê quem está online, o visto por último, quando a pessoa está digitando ou gravando áudio, e se a mensagem foi entregue e lida.',
+            'Mensagem nova toca um som e chega como aviso no celular, se as notificações estiverem ligadas.'] },
   { id: 'v-zzz131', versao: 'zzz131', em: '2026-10-09T12:00:00-03:00',
     titulo: 'As novidades agora chegam sozinhas',
     itens: ['A cada atualização do B7, este cartão conta o que mudou para você.',
