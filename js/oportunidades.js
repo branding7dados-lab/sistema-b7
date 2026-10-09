@@ -426,7 +426,10 @@ B7.Oportunidades = (function () {
                 (x.gancho ? '<p class="op-ia-gancho"><small>Gancho</small>' + esc(x.gancho) + '</p>' : '') +
                 '<p class="op-ia-leg"><small>Legenda</small>' + esc(x.legenda).replace(/\n/g, '<br>') + '</p>' +
                 '<div class="op-ia-bts"><button type="button" class="b fina contorno" data-ia-leg="' + i + '">Copiar legenda</button>' +
-                  '<button type="button" class="b fina contorno" data-ia-tudo="' + i + '">Copiar tudo</button></div></article>').join('') + '</div>' +
+                  '<button type="button" class="b fina contorno" data-ia-tudo="' + i + '">Copiar tudo</button>' +
+                  (x.criado ? '<a class="b fina op-ia-feito" href="#/linha/' + esc(x.criado) + '" data-ia-ir>Na linha editorial · abrir</a>'
+                    : souGestor() ? '<button type="button" class="b fina pri" data-ia-linha="' + i + '">Usar na linha</button>' : '') +
+                '</div></article>').join('') + '</div>' +
               '<p class="op-ia-nota">A IA pode errar. Confira antes de usar — nada foi criado nem aplicado.</p>'
             : '<p class="op-nada">A IA usa a estratégia, a linha editorial e a memória do cliente escolhido. Nada é criado: você lê e copia o que servir.</p>');
       const sel = sec.querySelector('#op-ia-cli'), inst = sec.querySelector('#op-ia-inst'), go = sec.querySelector('#op-ia-go');
@@ -444,8 +447,57 @@ B7.Oportunidades = (function () {
       };
       const copiar = (texto, msg) => (B7.UI.copiarTexto ? B7.UI.copiarTexto(texto, { msgSucesso: msg }) : navigator.clipboard.writeText(texto).then(() => B7.UI.toast(msg)));
       sec.querySelectorAll('[data-ia-leg]').forEach(x => x.onclick = () => copiar(ia.itens[+x.dataset.iaLeg].legenda, 'Legenda copiada.'));
+      sec.querySelectorAll('[data-ia-linha]').forEach(x => x.onclick = () => usarIdeiaNaLinha(op, oc, rels, +x.dataset.iaLinha));
+      sec.querySelectorAll('[data-ia-ir]').forEach(x => x.addEventListener('click', () => m.fechar()));
       sec.querySelectorAll('[data-ia-tudo]').forEach(x => x.onclick = () => { const it = ia.itens[+x.dataset.iaTudo];
         copiar(it.formato + ' — ' + it.titulo + '\n\nGancho: ' + it.gancho + '\n\nLegenda:\n' + it.legenda, 'Ideia copiada.'); });
+    };
+    /* zzz127 — "Usar na linha": a ideia vira um conteúdo (status Ideia) numa
+       linha editorial do cliente, já com título, gancho e legenda. É a mesma
+       criação do "+ Novo conteúdo" da linha; a pessoa escolhe a linha e
+       confirma. O conteúdo fica ligado a esta oportunidade. */
+    const TIPO_DO_FORMATO = { Reels: 'Reel', Carrossel: 'Carrossel', Post: 'Card', Stories: 'Story' };
+    const usarIdeiaNaLinha = async (op, oc, rels, i) => {
+      const it = ia.itens && ia.itens[i]; if (!it || it.criado || !ia.cli) return;
+      const cli = b.clientesMap.get(ia.cli) || { nome: 'cliente' };
+      let linhas = [];
+      try { linhas = await B7.DB.listarLinhas(ia.cli); } catch (e) { B7.UI.toast('Não foi possível carregar as linhas editoriais.', { tipo: 'erro' }); return; }
+      if (!linhas.length) { B7.UI.toast(cli.nome + ' ainda não tem linha editorial. Crie a linha primeiro.', { tipo: 'erro' }); return; }
+      const mesDaData = +oc.ini.slice(5, 7), anoDaData = +oc.ini.slice(0, 4);
+      const doMes = linhas.find(l => l.mes === mesDaData && l.ano === anoDaData);
+      const rot = l => (l.nome || 'Linha editorial') + ' · ' + String(l.mes).padStart(2, '0') + '/' + l.ano;
+      const tipo = TIPO_DO_FORMATO[it.formato] || 'Card';
+      const mm = B7.UI.modal(
+        '<h3>Usar na linha editorial</h3>' +
+        '<p class="sub">Cria um conteúdo <b>' + esc(tipo) + '</b> como <b>Ideia</b> para ' + esc(cli.nome) + ', com o título, o gancho e a legenda desta sugestão. Você revisa na linha.</p>' +
+        '<div class="mb"><label class="rot">LINHA EDITORIAL</label><select class="campo" id="op-ul-linha">' +
+          linhas.map(l => '<option value="' + esc(l.id) + '"' + (doMes && l.id === doMes.id ? ' selected' : '') + '>' + esc(rot(l)) + '</option>').join('') + '</select>' +
+          (doMes ? '' : '<small class="op-ul-nota">Não há linha de ' + String(mesDaData).padStart(2, '0') + '/' + anoDaData + ' (o mês desta data). Escolha outra ou crie a linha antes.</small>') + '</div>' +
+        '<div class="op-ul-previa"><b>' + esc(it.titulo) + '</b><small>' + esc(it.gancho || '') + '</small></div>' +
+        '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="op-ul-ok">Adicionar como Ideia</button></div>');
+      mm.querySelectorAll('[data-fecha]').forEach(x => x.onclick = mm.fechar);
+      const ok = mm.querySelector('#op-ul-ok');
+      ok.onclick = async () => {
+        const linha = linhas.find(l => l.id === mm.querySelector('#op-ul-linha').value); if (!linha) return;
+        ok.disabled = true; ok.textContent = 'Adicionando…';
+        try {
+          const dados = { client_id: ia.cli, linha_id: linha.id, tipo, position: Number(linha.total_conteudos) || 0, status: 'Ideia',
+            titulo: it.titulo, ideia_geral: it.gancho || '', legenda: it.legenda || '' };
+          /* a data da oportunidade vira a data de postagem só quando cai no mês da linha */
+          if (linha.mes === mesDaData && linha.ano === anoDaData) dados.data_postagem = oc.ini;
+          const novo = await B7.DB.criarConteudo(dados);
+          try { await B7.DB.conteudoDefinirOportunidade(novo.id, op.id); } catch (e) {}
+          try { B7.DB.registrar({ tipo: 'criar', entidade: 'conteudo', id: novo.id, cliente: ia.cli, texto: 'Novo ' + tipo + ' em ' + (linha.nome || 'linha editorial') + ' (ideia da IA para ' + op.nome + ')' }); } catch (e) {}
+          it.criado = linha.id;
+          mm.fechar();
+          B7.UI.toast('Conteúdo adicionado à linha como Ideia.');
+          if (document.body.contains(m)) { pintarIA(op, oc, rels); pintarLinhas(); }
+          ctx.aoMudar && ctx.aoMudar();
+        } catch (e) {
+          ok.disabled = false; ok.textContent = 'Adicionar como Ideia';
+          B7.UI.toast('Não foi possível adicionar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' });
+        }
+      };
     };
     const pintarLinhas = async () => {
       const sec = m.querySelector('#op-linhas'); if (!sec) return;

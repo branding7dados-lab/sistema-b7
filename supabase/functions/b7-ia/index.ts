@@ -171,20 +171,29 @@ Deno.serve(comCors(async (req: Request) => {
     const conv = await Chat.abrirConversa(sb, sbDaPessoa, perfil.id, pedido);
     if (!conv) return json({ ok: false, categoria: 'nao_encontrado' });
     clienteDoPedido = conv.clienteId;
-    const [hist, contexto] = await Promise.all([Chat.historico(sb, conv), Chat.carregarContexto(sbDaPessoa, conv.clienteId)]);
+    const [hist, contexto] = await Promise.all([Chat.historico(sb, conv), Chat.carregarContexto(sbDaPessoa, conv.clienteId, sb)]);
     const FUNCOES: Record<string, string> = { coordenador: 'Coordenação', designer: 'Designer', videomaker: 'Videomaker' };
     const quem = { nome: String(perfil.nome || ''), funcao: perfil.papel === 'admin' ? 'Administrador' : (FUNCOES[String(perfil.funcao)] || '') };
     /* zzz89: só recebe a instrução de PROPOR ação quem pode criar demanda
        de vídeo (a mesma regra da função do banco: equipe ou videomaker) */
     const podeAgir = perfil.papel === 'admin' || perfil.papel === 'coordenador' || perfil.funcao === 'videomaker';
+    /* zzz127: peça de design, gravação e conteúdo na linha — só quem é da
+       equipe de coordenação cria essas coisas nas telas (e o banco confere
+       de novo na hora de criar) */
+    const coordena = perfil.papel === 'admin' || perfil.papel === 'coordenador';
+    const permitidas: Chat.TipoAcao[] = [...(podeAgir ? ['video_demanda' as const] : []),
+      /* só para a tela que sabe mostrar esses cartões (acoes_v >= 2): a tela
+         antiga trataria qualquer proposta como demanda de vídeo */
+      ...(coordena && Number(corpo.acoes_v) >= 2 ? ['design_peca' as const, 'gravacao' as const, 'conteudo' as const] : [])];
     t = {
       recurso: 'chat', acao: 'mensagem', entidadeTipo: 'conversa', entidadeId: conv.id, tamanhoEntrada: pedido.texto.length,
-      mensagens: Chat.montarMensagens(pedido, contexto, hist, quem, podeAgir), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
+      mensagens: Chat.montarMensagens(pedido, contexto, hist, quem, permitidas), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
       aposOk: async (texto: string) => {
-        const ex = podeAgir ? await Chat.extrairAcao(texto, sbDaPessoa) : { texto: Chat.semAcao(texto) || texto, acao: null, acoes: [] };
-        await Chat.gravar(sb, perfil.id, conv, pedido.texto, ex.texto);
-        /* `acoes` = todas as propostas (zzz124); `acao` = a única, para as telas antigas */
+        const ex = permitidas.length ? await Chat.extrairAcao(texto, sbDaPessoa, permitidas) : { texto: Chat.semAcao(texto) || texto, acao: null, acoes: [] };
+        const mensagemId = await Chat.gravar(sb, perfil.id, conv, pedido.texto, ex.texto, ex.acoes);
+        /* `acoes` = todas as propostas (zzz124); `acao` = a única de vídeo, para as telas antigas */
         return { conversa_id: conv.id, titulo: conv.titulo, cliente_id: conv.clienteId, texto: ex.texto,
+          ...(mensagemId ? { mensagem_id: mensagemId } : {}),
           ...(ex.acao ? { acao: ex.acao } : {}), ...(ex.acoes.length ? { acoes: ex.acoes } : {}) };
       }
     };

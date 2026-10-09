@@ -26,6 +26,7 @@ B7.Chat = (function () {
     hist: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 5v4h4M12 8v4.5l3 1.8"/></svg>',
     enviar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
     mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11.5" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg>',
+    som: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3l4.5-3.7v12.4L7 14.5H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7.5h12l-.8 10.7a2.5 2.5 0 0 1-2.5 2.3H9.3a2.5 2.5 0 0 1-2.5-2.3z"/><path d="M4 7.5h16M9.5 7.5V5.6a1.6 1.6 0 0 1 1.6-1.6h1.8a1.6 1.6 0 0 1 1.6 1.6v1.9M10.2 11.5v5M13.8 11.5v5"/></svg>',
     seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
     alvo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -254,7 +255,7 @@ B7.Chat = (function () {
   }
 
   function fechar() {
-    pararVoz();
+    pararVoz(); pararFala();
     if (painel) { const ta = painel.querySelector('#ch-texto'); if (ta && !S.enviando) S.rascunho = ta.value; }
     S.aberto = false;
     document.body.classList.remove('chat-aberto');
@@ -364,6 +365,8 @@ B7.Chat = (function () {
     }
     return S.msgs.map((m, i) => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
       (m.papel === 'user' ? '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
+      (podeFalar && m.papel !== 'user' && !m.erro && m.texto ? '<button type="button" class="ch-falar' + (falando === i ? ' on' : '') + '" data-falar="' + i + '" aria-pressed="' + (falando === i) +
+        '" aria-label="' + (falando === i ? 'Parar de ouvir' : 'Ouvir a resposta') + '" title="' + (falando === i ? 'Parar' : 'Ouvir') + '">' + IC.som + '<span>Ouvir</span></button>' : '') +
       (m.acoes || []).map((a, j) => acaoHTML(a, i + ':' + j)).join('')).join('') +
       (S.enviando ? (S.parcial
         ? '<div class="ch-msg ia ch-fluindo" id="ch-fluxo">' + formatar(S.parcial) + '</div>'
@@ -388,32 +391,124 @@ B7.Chat = (function () {
   /* zzz89: a IA só PROPÕE. Este cartão é a confirmação: nada é criado
      antes de a pessoa tocar em "Criar demanda". */
   const dataBR = iso => (/^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : 'sem prazo');
+  /* zzz127: quatro tipos de proposta. Cada um tem o seu cartão e a SUA
+     função de criar — a mesma que a tela daquele módulo usa, com a
+     sessão e as permissões da pessoa. */
+  const PECA_ROT = { card: 'Card', capa_reel: 'Capa de Reel', carrossel: 'Carrossel', stories: 'Stories', outro: 'Outro' };
+  const TIPOS_ACAO = {
+    video_demanda: {
+      cab: 'Criar demanda de vídeo', bt: 'Criar demanda', feito: 'Demanda criada.', link: () => ['#/video', 'Abrir a Edição de vídeo'],
+      linhas: a => [['Cliente', a.cliente_nome], ['Título', a.titulo], ['Prazo', dataBR(a.prazo)]],
+      criar: a => B7.DB.criarDemandaVideo({ clienteId: a.cliente_id, titulo: a.titulo, prazo: a.prazo || null })
+    },
+    design_peca: {
+      cab: 'Criar demanda de design', bt: 'Criar peça', feito: 'Peça criada.', link: () => ['#/design', 'Abrir a Produção de Design'],
+      linhas: a => [['Cliente', a.cliente_nome], ['Título', a.titulo], ['Tipo', PECA_ROT[a.peca] || 'Outro'], ['Prazo', dataBR(a.prazo)]],
+      criar: a => B7.DB.criarDesignManual({ titulo: a.titulo, clientId: a.cliente_id, tipo: a.peca || 'outro', prazo: a.prazo || null })
+    },
+    gravacao: {
+      cab: 'Criar gravação', bt: 'Criar gravação', feito: 'Gravação criada.', link: a => [a.criado_id ? '#/gravacao/' + a.criado_id : '#/gravacoes', 'Abrir a gravação'],
+      linhas: a => [['Cliente', a.cliente_nome], ['Nome', a.titulo], ['Data', a.data ? dataBR(a.data) + (a.hora ? ' às ' + a.hora : '') : 'sem data']],
+      /* igual ao "Nova gravação": nasce pendente, no mês de referência da
+         data (ou no mês atual); a data entra pela regra de agendar */
+      criar: async a => {
+        const ref = a.data || B7.UI.hojeISO();
+        const g = await B7.DB.criarGravacao({ client_id: a.cliente_id, nome: a.titulo, competencia_ano: +ref.slice(0, 4), competencia_mes: +ref.slice(5, 7),
+          status: 'Rascunho', situacao: 'Pendente' });
+        a.criado_id = g.id;
+        try { B7.DB.registrar({ tipo: 'criar', entidade: 'gravacao', id: g.id, cliente: a.cliente_id, gravacao: g.id, texto: 'Nova gravação: ' + g.nome }); } catch (e) {}
+        if (a.data) {
+          try {
+            const rAg = await B7.DB.gravacaoAgendar(g.id, a.data, a.hora || null, null);
+            if (B7.Gravacao && B7.Gravacao.googleAposAgendar) await B7.Gravacao.googleAposAgendar(rAg, { nome: g.nome, cliente_nome: a.cliente_nome }, a.data, a.hora || null, null);
+          } catch (e) { a.aviso = 'A gravação foi criada, mas a data não foi salva. Marque a data na tela da gravação.'; }
+        }
+      }
+    },
+    conteudo: {
+      cab: 'Adicionar conteúdo à linha editorial', bt: 'Adicionar conteúdo', feito: 'Conteúdo adicionado como Ideia.', link: a => ['#/linha/' + a.linha_id, 'Abrir a linha editorial'],
+      linhas: a => [['Cliente', a.cliente_nome], ['Linha', a.linha_nome], ['Formato', a.formato], ['Título', a.titulo]].concat(a.ideia ? [['Ideia', a.ideia]] : []),
+      criar: async a => {
+        const linha = await B7.DB.linha(a.linha_id);
+        const novo = await B7.DB.criarConteudo({ client_id: a.cliente_id, linha_id: a.linha_id, tipo: a.formato, position: Number(linha && linha.total_conteudos) || 0,
+          status: 'Ideia', titulo: a.titulo, ideia_geral: a.ideia || '' });
+        a.criado_id = novo.id;
+        try { B7.DB.registrar({ tipo: 'criar', entidade: 'conteudo', id: novo.id, cliente: a.cliente_id, texto: 'Novo ' + a.formato + ' em ' + (a.linha_nome || 'linha editorial') }); } catch (e) {}
+      }
+    }
+  };
   function acaoHTML(a, i) {
+    const T = TIPOS_ACAO[a.tipo] || TIPOS_ACAO.video_demanda;
     const linha = (r, v) => '<div class="ch-ac-l"><span>' + r + '</span><b>' + esc(v) + '</b></div>';
+    const lk = T.link(a);
     return '<div class="ch-acao' + (a.estado ? ' ' + a.estado : '') + '">' +
-      '<div class="ch-ac-cab">' + IC.novo + '<b>Criar demanda de vídeo</b></div>' +
-      linha('Cliente', a.cliente_nome) + linha('Título', a.titulo) + linha('Prazo', dataBR(a.prazo)) +
-      (a.estado === 'feito' ? '<div class="ch-ac-fim ok">Demanda criada. <a href="#/video">Abrir a Edição de vídeo</a></div>'
+      '<div class="ch-ac-cab">' + IC.novo + '<b>' + T.cab + '</b></div>' +
+      T.linhas(a).map(l => linha(l[0], l[1])).join('') +
+      (a.estado === 'feito' ? '<div class="ch-ac-fim ok">' + T.feito + ' <a href="' + esc(lk[0]) + '">' + lk[1] + '</a>' + (a.aviso ? '<br>' + esc(a.aviso) : '') + '</div>'
         : a.estado === 'cancelado' ? '<div class="ch-ac-fim">Cancelado. Nada foi criado.</div>'
         : (a.erro ? '<div class="ch-ac-fim erro">' + esc(a.erro) + '</div>' : '') +
           '<div class="ch-ac-bts"><button type="button" class="ch-ac-nao" data-acao-nao="' + i + '"' + (a.estado === 'indo' ? ' disabled' : '') + '>Cancelar</button>' +
-          '<button type="button" class="ch-ac-ok" data-acao-ok="' + i + '"' + (a.estado === 'indo' ? ' disabled' : '') + '>' + (a.estado === 'indo' ? 'Criando…' : 'Criar demanda') + '</button></div>') +
+          '<button type="button" class="ch-ac-ok" data-acao-ok="' + i + '"' + (a.estado === 'indo' ? ' disabled' : '') + '>' + (a.estado === 'indo' ? 'Criando…' : T.bt) + '</button></div>') +
     '</div>';
   }
   /* zzz124: uma mensagem pode trazer várias propostas; "i:j" = mensagem i, proposta j */
   const acaoDe = ref => { const p = String(ref).split(':'), m = S.msgs[Number(p[0])]; return (m && m.acoes && m.acoes[Number(p[1])]) || null; };
+  /* zzz127: o que a pessoa fez com a proposta fica guardado com a resposta
+     (ia_acao_estado), para o cartão voltar igual ao reabrir a conversa.
+     Se não der para guardar, a tela segue: o registro já foi criado. */
+  function guardarEstado(ref, estado) {
+    const p = String(ref).split(':'), m = S.msgs[Number(p[0])];
+    if (!m || !m.id || !B7.sb) return;
+    B7.sb.rpc('ia_acao_estado', { p_mensagem: m.id, p_indice: Number(p[1]), p_estado: estado }).then(() => {}, () => {});
+  }
   async function confirmarAcao(ref) {
     const a = acaoDe(ref);
     if (!a || a.estado === 'indo' || a.estado === 'feito') return;
+    const T = TIPOS_ACAO[a.tipo] || TIPOS_ACAO.video_demanda;
     a.estado = 'indo'; a.erro = ''; pintarCorpo();
     try {
-      await B7.DB.criarDemandaVideo({ clienteId: a.cliente_id, titulo: a.titulo, prazo: a.prazo || null });
+      await T.criar(a);
       a.estado = 'feito';
-      if (B7.UI && B7.UI.toast) B7.UI.toast('Demanda de vídeo criada.');
+      guardarEstado(ref, 'feito');
+      if (B7.UI && B7.UI.toast) B7.UI.toast(T.feito);
     } catch (e) {
-      a.estado = ''; a.erro = (e && e.message) || 'Não foi possível criar a demanda.';
+      a.estado = ''; a.erro = (e && e.message) || 'Não foi possível criar.';
     }
     pintarCorpo();
+  }
+
+  /* ---------------------------------------------------------------
+     OUVIR A RESPOSTA (zzz127) — a voz do próprio navegador lê a resposta
+     do assistente. Só quando a pessoa toca; não passa pela IA do B7.
+     --------------------------------------------------------------- */
+  const podeFalar = !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
+  let falando = -1;
+  function pararFala() {
+    if (!podeFalar) return;
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    if (falando !== -1) { falando = -1; marcarFala(); }
+  }
+  function marcarFala() {
+    if (!painel) return;
+    painel.querySelectorAll('[data-falar]').forEach(b => {
+      const on = Number(b.dataset.falar) === falando;
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
+      b.setAttribute('aria-label', on ? 'Parar de ouvir' : 'Ouvir a resposta'); b.title = on ? 'Parar' : 'Ouvir';
+    });
+  }
+  function falar(i) {
+    if (!podeFalar) return;
+    const era = falando;
+    pararFala();
+    const m = S.msgs[i];
+    if (era === i || !m || !m.texto) return;
+    const texto = String(m.texto).replace(/\*\*/g, '').replace(/^\s*(?:[-•*]|\d+[.)])\s+/gm, '').replace(/^#+\s*/gm, '').replace(/\n{2,}/g, '.\n').trim();
+    const u = new SpeechSynthesisUtterance(texto);
+    u.lang = 'pt-BR';
+    try { const vz = window.speechSynthesis.getVoices().filter(v => /^pt[-_]BR/i.test(v.lang)); const boa = vz.find(v => /google|natural|francisca|luciana/i.test(v.name)) || vz[0]; if (boa) u.voice = boa; } catch (e) {}
+    u.onend = u.onerror = () => { if (falando === i) { falando = -1; marcarFala(); } };
+    falando = i; marcarFala();
+    try { window.speechSynthesis.speak(u); } catch (e) { falando = -1; marcarFala(); }
   }
 
   function pintarCorpo() {
@@ -421,7 +516,8 @@ B7.Chat = (function () {
     c.innerHTML = corpoHTML();
     c.querySelectorAll('.ch-sug').forEach(b => b.onclick = () => enviar(b.textContent));
     c.querySelectorAll('[data-acao-ok]').forEach(b => b.onclick = () => confirmarAcao(b.dataset.acaoOk));
-    c.querySelectorAll('[data-acao-nao]').forEach(b => b.onclick = () => { const a = acaoDe(b.dataset.acaoNao); if (a) { a.estado = 'cancelado'; pintarCorpo(); } });
+    c.querySelectorAll('[data-acao-nao]').forEach(b => b.onclick = () => { const a = acaoDe(b.dataset.acaoNao); if (a) { a.estado = 'cancelado'; guardarEstado(b.dataset.acaoNao, 'cancelado'); pintarCorpo(); } });
+    c.querySelectorAll('[data-falar]').forEach(b => b.onclick = () => falar(Number(b.dataset.falar)));
     c.scrollTop = c.scrollHeight;
   }
 
@@ -475,7 +571,9 @@ B7.Chat = (function () {
     const bt = painel.querySelector('#ch-enviar'); if (bt) bt.disabled = true;
     pintarTopo(); pintarCorpo();
 
-    const dados = { texto, cliente_id: S.clienteId || null };
+    pararFala();
+    /* acoes_v: 2 = esta tela sabe mostrar os quatro tipos de proposta */
+    const dados = { texto, cliente_id: S.clienteId || null, acoes_v: 2 };
     if (S.conversaId) dados.conversa_id = S.conversaId;
     S.parcial = '';
     const r = await B7.IA.pedir('chat', dados, { aoTrecho: pedaco => { S.parcial += pedaco; pintarFluxo(); } });
@@ -483,7 +581,7 @@ B7.Chat = (function () {
     S.enviando = false; S.parcial = '';
     if (r && r.ok) {
       if (r.conversa_id) S.conversaId = r.conversa_id;
-      S.msgs.push({ papel: 'assistant', texto: r.texto, acoes: (r.acoes && r.acoes.length) ? r.acoes : (r.acao ? [r.acao] : []) });
+      S.msgs.push({ papel: 'assistant', id: r.mensagem_id || null, texto: r.texto, acoes: (r.acoes && r.acoes.length) ? r.acoes : (r.acao ? [r.acao] : []) });
       S.lista = null;
     } else {
       /* a pergunta não foi guardada: sai da conversa e volta para o campo */
@@ -522,11 +620,11 @@ B7.Chat = (function () {
   async function abrirConversa(id) {
     const cx = painel.querySelector('#ch-lista');
     try {
-      const { data, error } = await B7.sb.from('ia_mensagens').select('papel, texto, created_at').eq('conversa_id', id).order('created_at', { ascending: true }).limit(200);
+      const { data, error } = await B7.sb.from('ia_mensagens').select('id, papel, texto, acoes, created_at').eq('conversa_id', id).order('created_at', { ascending: true }).limit(200);
       if (error) throw error;
       const c = (S.lista || []).find(x => x.id === id) || {};
       S.conversaId = id; S.clienteId = c.cliente_id || ''; S.rascunho = '';
-      S.msgs = (data || []).map(m => ({ papel: m.papel, texto: m.texto }));
+      S.msgs = (data || []).map(m => ({ papel: m.papel, id: m.id, texto: m.texto, acoes: Array.isArray(m.acoes) ? m.acoes.filter(a => a && typeof a === 'object') : [] }));
       S.vista = 'conversa'; pintar();
     } catch (e) { if (cx) cx.insertAdjacentHTML('afterbegin', '<div class="ch-nada">Não foi possível abrir esta conversa.</div>'); }
   }

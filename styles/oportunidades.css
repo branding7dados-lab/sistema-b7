@@ -253,3 +253,10 @@
 @media (max-width:640px){ .op-ia-form{grid-template-columns:minmax(0,1fr);} .op-ia-form .b{width:100%;justify-content:center;} }
 @media (prefers-reduced-motion:reduce){ .op-ia-item{animation:none;} }
 html.modo-leve .op-ia-item{animation:none;}
+
+/* zzz127: "Usar na linha" — a ideia vira conteúdo da linha editorial */
+.op-ia-feito{background:var(--ok-bg);color:var(--ok);text-decoration:none;font-weight:700;}
+.op-ul-nota{display:block;margin-top:6px;font-size:12px;color:var(--ambar);line-height:1.4;}
+.op-ul-previa{display:flex;flex-direction:column;gap:3px;padding:11px 13px;border-radius:12px;background:var(--suave);margin-bottom:6px;}
+.op-ul-previa b{font-size:13.5px;color:var(--ink);}
+.op-ul-previa small{font-size:12px;color:var(--ink-3);line-height:1.4;}
