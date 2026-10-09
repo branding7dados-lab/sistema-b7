@@ -1966,8 +1966,8 @@ B7.Dashboard = (function () {
         'Para quem cada recurso aparece. Serve para testar antes de liberar: não dá acesso a módulo nenhum. A equipe recebe a mudança ao reabrir o B7.',
         B7.Recursos.LISTA.map(r => L({ ic: r.ia ? 'ia' : 'raio', tom: r.ia ? 'violeta' : 'azul', t: esc(r.nome), d: esc(r.d), botao: true,
           attrs: ' data-recurso="' + r.id + '"', dir: '<span class="cfg-valor">' + esc(B7.Recursos.rotulo(r.id)) + '</span>' })).join('')) : '') +
-      (ehAdm && B7.Novidades ? grupo('Novidades', 'Um resumo do que mudou, que a equipe vê ao abrir o B7.',
-        L({ ic: 'versao', tom: 'rosa', t: 'Publicar novidade', d: (n => n ? n + (n === 1 ? ' publicada' : ' publicadas') : 'nenhuma publicada ainda')(B7.Novidades.total()),
+      (ehAdm && B7.Novidades ? grupo('Novidades', 'As novidades de cada versão chegam sozinhas à equipe. Aqui é só para um aviso a mais, escrito por você.',
+        L({ ic: 'versao', tom: 'rosa', t: 'Publicar um aviso', d: (n => n ? n + (n === 1 ? ' aviso seu publicado' : ' avisos seus publicados') : 'nenhum aviso seu publicado')(B7.Novidades.manuais()),
             botao: true, attrs: ' data-novidades-adm' })) : '') +
       (ehAdm && B7.Textos ? grupo('Textos padrão', 'As mensagens prontas para o cliente e as frases do Portal.',
         L({ ic: 'letra', tom: 'rosa', t: 'Editar textos padrão', d:

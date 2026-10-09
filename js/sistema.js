@@ -12,9 +12,11 @@
      tela aberta confere a cada minuto (e ao voltar para a aba), com a
      hora do servidor. Teleprompter aberto segura a trava até fechar.
 
-   B7.Novidades — o que mudou no B7, escrito pelo administrador. A
-     equipe vê um cartão quando há novidade que ainda não leu, e relê
-     quando quiser em Configurações → Geral.
+   B7.Novidades — o que mudou no B7. As novidades de cada versão vêm
+     junto com o sistema (js/novidades.js) e aparecem sozinhas; o
+     administrador pode publicar um aviso a mais, à mão. A equipe vê um
+     cartão quando há algo que ainda não leu, e relê quando quiser em
+     Configurações → Geral.
    ===================================================================== */
 window.B7 = window.B7 || {};
 
@@ -190,7 +192,22 @@ B7.Novidades = (function () {
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   let lista = null;
 
-  const dados = () => lista || (B7.pref ? B7.pref.ler('sis_novidades', null) : null) || [];
+  /* as que o administrador escreveu à mão (banco) */
+  const doBanco = () => lista || (B7.pref ? B7.pref.ler('sis_novidades', null) : null) || [];
+  /* zzz131: as de cada versão vêm junto com o sistema (js/novidades.js) e
+     aparecem sozinhas; cada pessoa só recebe as que valem para ela */
+  function valePara(n) {
+    const A = B7.Auth || {}, P = B7.Perm || {};
+    const admin = !!(A.ehAdminReal && A.ehAdminReal());
+    if (n.para === 'admin' && !admin) return false;
+    if (n.funcao && !admin && !(A.funcao && A.funcao() === n.funcao)) return false;
+    if (n.rota && !(P.podeRota && P.podeRota(n.rota))) return false;
+    if (n.recurso && B7.Recursos && !B7.Recursos.ligado(n.recurso)) return false;
+    if (n.ia && !(B7.IA && B7.IA.ligada && B7.IA.ligada(n.ia))) return false;
+    return true;
+  }
+  const dasVersoes = () => (B7.NOVIDADES_VERSOES || []).filter(valePara);
+  const dados = () => doBanco().concat(dasVersoes()).sort((a, b) => new Date(b.em) - new Date(a.em));
   const dia = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.getDate() + ' de ' + MESES[d.getMonth()]; };
   const vistas = () => (B7.pref && B7.pref.ler('novidades_vistas', [])) || [];
   const naoLidas = () => { const v = vistas(); return dados().filter(n => !v.includes(n.id)); };
@@ -203,7 +220,7 @@ B7.Novidades = (function () {
       const { data } = await B7.sb.from('sistema_config').select('valor').eq('chave', 'novidades').maybeSingle();
       lista = (data && Array.isArray(data.valor)) ? data.valor : [];
       if (B7.pref) B7.pref.gravar('sis_novidades', lista);
-    } catch (e) { return; }
+    } catch (e) { /* sem rede: as novidades da versão aparecem do mesmo jeito */ }
     cartao();
   }
 
@@ -222,7 +239,7 @@ B7.Novidades = (function () {
   }
 
   function corpoLista(itens, comRemover) {
-    if (!itens.length) return '<p class="nv-vazio">Nenhuma novidade publicada ainda.</p>';
+    if (!itens.length) return '<p class="nv-vazio">' + (comRemover ? 'Nenhum aviso seu publicado.' : 'Nenhuma novidade ainda.') + '</p>';
     const v = vistas();
     return '<div class="nv-lista">' + itens.map(n =>
       '<article class="nv-item' + (!comRemover && !v.includes(n.id) ? ' nova' : '') + '"><header><b>' + esc(n.titulo) + '</b>' +
@@ -243,12 +260,13 @@ B7.Novidades = (function () {
   function abrirPublicar(aoMudar) {
     const versao = ((B7.Auth && B7.Auth.VERSAO) || '').split('-').pop();
     const m = B7.UI.modal('<h3>Publicar novidade</h3>' +
-      '<p class="sub">A equipe vê um cartão no canto da tela ao abrir o B7 e pode reler em Configurações → Geral. O Portal do cliente não recebe.</p>' +
+      '<p class="sub">As novidades de cada versão já entram sozinhas. Use aqui só para um aviso a mais, escrito por você. ' +
+        'A equipe vê um cartão no canto da tela ao abrir o B7; o Portal do cliente não recebe.</p>' +
       '<div class="mb"><label class="rot" for="nv-titulo">TÍTULO</label><input class="campo" id="nv-titulo" maxlength="120" placeholder="Ex.: Painel de TV e textos padrão" data-foco></div>' +
       '<div class="mb"><label class="rot" for="nv-itens">O QUE MUDOU <span class="nv-leve">— uma linha por item, até 12</span></label>' +
         '<textarea class="campo" id="nv-itens" rows="5" placeholder="Agora dá para deixar a agência aberta numa TV&#10;As mensagens prontas para o cliente podem ser editadas"></textarea></div>' +
       '<div class="acoes"><button type="button" class="b contorno" data-fecha>Fechar</button><button type="button" class="b pri" id="nv-ok">Publicar</button></div>' +
-      '<h4 class="nv-sub">Já publicadas</h4><div id="nv-publicadas">' + corpoLista(dados(), true) + '</div>', { larga: true });
+      '<h4 class="nv-sub">Avisos seus já publicados</h4><div id="nv-publicadas">' + corpoLista(doBanco(), true) + '</div>', { larga: true });
     /* a tela de trás (Configurações) só se atualiza depois que a janela fecha */
     let mudou = false;
     const fechar = () => { m.fechar(); if (mudou && aoMudar) aoMudar(); };
@@ -262,8 +280,8 @@ B7.Novidades = (function () {
     const ligarRemover = () => m.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
       b.disabled = true;
       try {
-        await gravar(dados().filter(n => n.id !== b.dataset.rm));
-        m.querySelector('#nv-publicadas').innerHTML = corpoLista(dados(), true); ligarRemover();
+        await gravar(doBanco().filter(n => n.id !== b.dataset.rm));
+        m.querySelector('#nv-publicadas').innerHTML = corpoLista(doBanco(), true); ligarRemover();
         B7.UI.toast('Novidade removida.');
       } catch (e) { b.disabled = false; B7.UI.toast((e && e.message) || 'Não foi possível remover.', { tipo: 'erro' }); }
     });
@@ -277,7 +295,7 @@ B7.Novidades = (function () {
       try {
         const id = 'n-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
         /* a mais nova primeiro; passando de 30, as mais antigas saem */
-        await gravar([{ id, titulo, versao, itens }].concat(dados()).slice(0, 30));
+        await gravar([{ id, titulo, versao, itens }].concat(doBanco()).slice(0, 30));
         fechar();
         B7.UI.toast('Novidade publicada. A equipe vê ao abrir o B7.');
         cartao();
@@ -288,5 +306,5 @@ B7.Novidades = (function () {
     };
   }
 
-  return { sincronizar, abrir, abrirPublicar, total: () => dados().length, pendentes: () => naoLidas().length };
+  return { sincronizar, abrir, abrirPublicar, total: () => dados().length, manuais: () => doBanco().length, pendentes: () => naoLidas().length };
 })();
