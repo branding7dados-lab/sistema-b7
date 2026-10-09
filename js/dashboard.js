@@ -1893,6 +1893,11 @@ B7.Dashboard = (function () {
         L({ ic: 'impressao', tom: 'verde', t: 'Folha de abertura', d: 'já vem marcada na janela de impressão', cls: 'cfg-alterna',
             dir: chave('abertura', !!abertura, 'Folha de abertura marcada por padrão') })) : '') +
 
+      /* zzz130: o que mudou no B7 — a equipe relê quando quiser */
+      (u && !ehCli && B7.Novidades && B7.Novidades.total() ? grupo('Novidades', '',
+        L({ ic: 'versao', tom: 'rosa', t: 'Novidades do B7', d: 'o que mudou no sistema', botao: true, attrs: ' data-novidades',
+            dir: B7.Novidades.pendentes() ? '<span class="cfg-valor ok">' + B7.Novidades.pendentes() + (B7.Novidades.pendentes() === 1 ? ' nova' : ' novas') + '</span>' : '' })) : '') +
+
       /* zzz129: Painel de TV — só aparece para quem o recurso está liberado */
       (u && !ehCli && B7.TV && B7.Recursos && B7.Recursos.ligado('tv') ? grupo('Painel de TV',
         'Só leitura: sem nomes da equipe, comentários ou notificações. Para sair, aperte Esc.',
@@ -1961,6 +1966,9 @@ B7.Dashboard = (function () {
         'Para quem cada recurso aparece. Serve para testar antes de liberar: não dá acesso a módulo nenhum. A equipe recebe a mudança ao reabrir o B7.',
         B7.Recursos.LISTA.map(r => L({ ic: r.ia ? 'ia' : 'raio', tom: r.ia ? 'violeta' : 'azul', t: esc(r.nome), d: esc(r.d), botao: true,
           attrs: ' data-recurso="' + r.id + '"', dir: '<span class="cfg-valor">' + esc(B7.Recursos.rotulo(r.id)) + '</span>' })).join('')) : '') +
+      (ehAdm && B7.Novidades ? grupo('Novidades', 'Um resumo do que mudou, que a equipe vê ao abrir o B7.',
+        L({ ic: 'versao', tom: 'rosa', t: 'Publicar novidade', d: (n => n ? n + (n === 1 ? ' publicada' : ' publicadas') : 'nenhuma publicada ainda')(B7.Novidades.total()),
+            botao: true, attrs: ' data-novidades-adm' })) : '') +
       (ehAdm && B7.Textos ? grupo('Textos padrão', 'As mensagens prontas para o cliente e as frases do Portal.',
         L({ ic: 'letra', tom: 'rosa', t: 'Editar textos padrão', d:
             (n => n ? n + (n === 1 ? ' texto alterado' : ' textos alterados') : 'todos no padrão do B7')(B7.Textos.LISTA.filter(t => B7.Textos.mudado(t.id)).length),
@@ -1986,6 +1994,9 @@ B7.Dashboard = (function () {
                 botao: !!B7.instalacao, semSeta: true, attrs: ' data-instalar' })) +
         (u ? L({ ic: 'vassoura', tom: 'laranja', t: 'Limpar dados deste aparelho', d: 'memória das telas, arquivos guardados e filtros',
             botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : '')) +
+      (B7.Manutencao ? grupo('Manutenção', 'Administradores continuam usando normalmente. É uma trava de tela: não altera regra de acesso.',
+        L({ ic: 'acesso', tom: 'laranja', t: 'Modo manutenção', d: esc(B7.Manutencao.descricao()), botao: true, attrs: ' data-manutencao',
+            dir: '<span class="cfg-valor' + (B7.Manutencao.fase() === 'nenhuma' ? '' : ' erro') + '">' + (B7.Manutencao.fase() === 'nenhuma' ? 'Desligado' : B7.Manutencao.fase() === 'aviso' ? 'Marcado' : 'Ligado') + '</span>' })) : '') +
       /* Banco e conexão são do administrador. */
       (pode('banco') || pode('sistema') ? grupo('Servidor', '',
         (pode('banco') ? '<div id="cfg-banco">' + L({ ic: 'banco', tom: 'verde', t: 'Banco de dados', d: 'verificando…',
@@ -2198,6 +2209,14 @@ B7.Dashboard = (function () {
         try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (e) {}
         location.reload();
       } });
+    /* ---- zzz130: manutenção e novidades ---- */
+    const btMn = p.querySelector('[data-manutencao]');
+    if (btMn) btMn.onclick = () => B7.Manutencao.abrirGerenciar(() => { if (location.hash.indexOf('#/config') === 0) abrirConfig(); });
+    const btNv = p.querySelector('[data-novidades]');
+    if (btNv) btNv.onclick = () => { B7.Novidades.abrir(); };
+    const btNvA = p.querySelector('[data-novidades-adm]');
+    if (btNvA) btNvA.onclick = () => B7.Novidades.abrirPublicar(() => { if (location.hash.indexOf('#/config') === 0) abrirConfig(); });
+
     /* ---- zzz129: liga/desliga de recursos ---- */
     p.querySelectorAll('[data-recurso]').forEach(bt => bt.onclick = () => {
       const R = B7.Recursos, id = bt.dataset.recurso, def = R.LISTA.find(x => x.id === id), atual = R.regra(id);
