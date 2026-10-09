@@ -1969,7 +1969,7 @@ B7.Dashboard = (function () {
         L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre', botao: true, attrs: ' data-redistribuir' })) : '') +
       /* zzz140: cor do sistema e datas especiais da abertura */
       (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe.',
-        L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' })) : '') +
+        L({ ic: 'tema', tom: 'rosa', t: 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' })) : '') +
       /* zzz139: saúde do sistema, médico e comunicado */
       (ehAdm && B7.Saude ? grupo('Cuidar do sistema', 'Só leitura: mostra o que precisa de atenção, sem mudar nada.',
         L({ ic: 'raio', tom: 'verde', t: 'Saúde do sistema', d: 'rotinas, avisos, Google Agenda, espaço e IA', botao: true, attrs: ' data-saude' }) +

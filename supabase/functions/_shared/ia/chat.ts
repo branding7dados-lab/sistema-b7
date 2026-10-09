@@ -476,7 +476,7 @@ const INSTRUCAO_ADMIN = [
   '   - ligar, desligar ou liberar um recurso: [[ACAO {"tipo":"admin","comando":"recurso","recurso":"ID","modo":"todos|desligado|funcoes","funcoes":["coordenador","videomaker","designer"]}]]',
   '     IDs dos recursos: conversas = chat da equipe (Conversas); tv = Painel de TV; hoje_dia = "Hoje é dia de…" no Painel; ia_voz = falar com o assistente (microfone); ia_imagem = imagem no assistente; ia_ouvir = ouvir a resposta do assistente; ia_ideias = ideias de conteúdo nas Oportunidades; ia_roteiro_conteudo = criar roteiro com IA pelo conteúdo.',
   '     "modo":"todos" = todos veem; "desligado" = ninguém vê; "funcoes" = só administradores e as funções listadas em "funcoes" (lista vazia = só administradores).',
-  '   - cor do sistema: [[ACAO {"tipo":"admin","comando":"paleta","paleta":"b7|oceano|floresta|porsol|grafite"}]]  (b7 = o padrão da B7; porsol = pôr do sol)',
+  '   - cor do sistema: [[ACAO {"tipo":"admin","comando":"paleta","paleta":"b7|oceano|floresta|porsol|grafite|rubi|ametista|indigo|dourado"}]]  (b7 = o padrão da B7; porsol = pôr do sol)',
   '   - comunicado para a equipe, pela conversa de cada pessoa: [[ACAO {"tipo":"admin","comando":"comunicado","texto":"TEXTO DO COMUNICADO","para":"todos|coordenador|videomaker|designer"}]]',
   '   NÃO proponha mudar permissões, funções, módulos, senhas ou contas de pessoas, nem apagar nada: explique que isso se faz em Usuários e acessos. Não existe agendamento ("só até sexta") nesses comandos: diga isso e proponha a mudança sem prazo só se a pessoa quiser assim.',
   '   Use só os IDs e valores acima; se o pedido não couber neles, explique em vez de propor. Nunca diga que já mudou: a pessoa confirma no cartão.'
@@ -492,7 +492,7 @@ const RECURSOS_ADMIN: Record<string, string> = {
   ia_roteiro_conteudo: 'Criar roteiro com IA pelo conteúdo'
 };
 const FUNCOES_ADMIN = ['coordenador', 'videomaker', 'designer'];
-const PALETAS_ADMIN = ['b7', 'oceano', 'floresta', 'porsol', 'grafite'];
+const PALETAS_ADMIN = ['b7', 'oceano', 'floresta', 'porsol', 'grafite', 'rubi', 'ametista', 'indigo', 'dourado'];
 function validarAdmin(j: Record<string, unknown>): Acao | null {
   const base = { tipo: 'admin' as TipoAcao, cliente_id: '', cliente_nome: '' };
   const cmd = String(j.comando || '');

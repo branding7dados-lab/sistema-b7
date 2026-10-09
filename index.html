@@ -43,7 +43,7 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
     var ap = JSON.parse(localStorage.getItem('b7_sis_aparencia') || 'null');
     if (ap) {
       var rz = document.documentElement;
-      if (ap.paleta && ap.paleta !== 'b7') rz.setAttribute('data-paleta', ap.paleta);
+      if (ap.css) { var st = document.createElement('style'); st.id = 'b7-aparencia'; st.textContent = ap.css; document.head.appendChild(st); rz.setAttribute('data-ap', '1'); }
       var hj = new Date(), nn = (hj.getMonth() + 1) * 100 + hj.getDate();
       (ap.estacoes || []).some(function (e) {
         var d = e.de.split('/'), a = e.ate.split('/'), i = d[1] * 100 + Number(d[0]), f = a[1] * 100 + Number(a[0]);
