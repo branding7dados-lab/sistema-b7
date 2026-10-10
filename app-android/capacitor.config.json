@@ -9,7 +9,7 @@
   "plugins": {
     "SystemBars": {
       "style": "DARK",
-      "initialViewportFitValueHint": "cover"
+      "insetsHandling": "disable"
     }
   }
 }

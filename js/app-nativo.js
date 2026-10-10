@@ -126,31 +126,49 @@ B7.AppNativo = (function () {
     acompanharBarras();
   }
 
-  /* --------------------------------------------- ícones da barra de cima
-     O app desenha atrás da barra do Android (transparente). Os ícones
-     (hora, bateria) precisam contrastar com o que está atrás: brancos na
-     abertura e no login (sempre escuros) e, no resto, conforme a cor da
-     <meta name="theme-color">, que js/app.js mantém igual à do topo. */
+  /* ------------------------------------------------ barras do Android
+     As telas ficam entre a barra de cima (hora, bateria) e a de baixo,
+     como no Chrome. O Android pinta a faixa atrás de cada barra com a cor
+     que vem daqui, e os ícones ficam brancos ou escuros conforme ela:
+       • cima: a <meta name="theme-color">, que js/app.js mantém igual ao
+         topo da tela (abertura, janela aberta, teleprompter, assistente);
+       • baixo: o fundo da página;
+       • login: as cores do céu do login (ele é sempre escuro). */
   function acompanharBarras() {
     const meta = document.querySelector('meta[name="theme-color"]');
-    let ultima = null, marcado = false;
-    const luz = hex => {
-      const h = String(hex || '').trim().replace('#', '');
-      const n = parseInt(h.length === 3 ? h.replace(/./g, c => c + c) : h, 16);
-      if (isNaN(n)) return 0;
+    let ultima = '', marcado = false;
+    const hex = v => {
+      v = String(v || '').trim();
+      const m = v.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+      if (m) return '#' + (m[1].length === 3 ? m[1].replace(/./g, c => c + c) : m[1]);
+      const r = v.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+      return r ? '#' + [r[1], r[2], r[3]].map(n => (+n).toString(16).padStart(2, '0')).join('') : null;
+    };
+    const luz = h => {
+      const n = parseInt((h || '#000000').slice(1), 16);
       return (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255;
     };
     const conferir = () => {
       marcado = false;
+      const corpo = document.body;
       const ab = document.querySelector('.b7-abertura');
-      const escuro = (ab && !ab.classList.contains('saindo')) ||
-        document.body.classList.contains('sem-sessao') ||
-        luz(meta && meta.content) < 0.6;
-      if (escuro !== ultima) { ultima = escuro; pedir('barras', { claras: escuro }); }
+      let topo, fundo;
+      if (ab && !ab.classList.contains('saindo')) { topo = fundo = '#05030A'; }
+      else if (corpo.classList.contains('sem-sessao')) { topo = '#140A28'; fundo = '#06030C'; }
+      else if (corpo.classList.contains('tele-aberto')) { topo = fundo = '#000000'; }
+      else {
+        topo = hex(meta && meta.content) || '#0B0A1E';
+        fundo = hex(getComputedStyle(document.documentElement).getPropertyValue('--fundo')) ||
+          hex(getComputedStyle(corpo).backgroundColor) || topo;
+      }
+      const claras = luz(topo) < 0.6;
+      const chave = topo + fundo + claras;
+      if (chave !== ultima) { ultima = chave; pedir('barras', { claras, topo, fundo }); }
     };
     const agendar = () => { if (!marcado) { marcado = true; requestAnimationFrame(conferir); } };
     if (meta) new MutationObserver(agendar).observe(meta, { attributes: true, attributeFilter: ['content'] });
     new MutationObserver(agendar).observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
+    new MutationObserver(agendar).observe(document.documentElement, { attributes: true });
     conferir();
   }
 

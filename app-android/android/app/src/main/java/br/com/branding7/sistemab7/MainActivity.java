@@ -3,6 +3,11 @@ package br.com.branding7.sistemab7;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -13,11 +18,16 @@ import android.print.PrintManager;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Base64;
+import android.view.Gravity;
+import android.view.View;
 import android.webkit.MimeTypeMap;
 import android.webkit.WebView;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.core.content.FileProvider;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.JavaScriptReplyProxy;
@@ -49,7 +59,10 @@ import org.json.JSONObject;
  *   • imprimir (window.print não existe no WebView);
  *   • "voltar" do aparelho: volta uma tela; na primeira, minimiza;
  *   • conferir se saiu APK novo e instalar por cima;
- *   • ícones da barra de cima claros ou escuros, conforme a tela atrás deles.
+ *   • barras do Android: as telas ficam ENTRE a barra de cima e a de baixo
+ *     (como no Chrome, para o qual o sistema foi feito) e a faixa atrás de
+ *     cada barra é pintada com a cor da tela: parece transparente, e nenhuma
+ *     tela fica por baixo da hora e da bateria.
  * O lado das telas está em js/app-nativo.js. A ponte (B7Nativo) só existe
  * para as telas do próprio app (ORIGEM): um iframe de fora não a enxerga.
  */
@@ -60,10 +73,30 @@ public class MainActivity extends BridgeActivity {
     static final String APK = "https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk";
     static final String SITE_AUTH = "https://branding7dados-lab.github.io/sistema-b7/js/auth.js";
 
+    /* cores atrás das barras e cor dos ícones — o site manda ("barras") */
+    int corTopo = Color.parseColor("#05030A");
+    int corFundo = Color.parseColor("#05030A");
+    boolean iconesClaros = true;
+    int alturaTopo = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (bridge == null) return;
+
+        /* as telas ficam entre as barras (o SystemBars do Capacitor está
+           desligado: capacitor.config.json → insetsHandling: disable) */
+        View decor = getWindow().getDecorView();
+        ViewCompat.setOnApplyWindowInsetsListener(decor, (v, insets) -> {
+            int tipos = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
+            Insets b = insets.getInsets(tipos);
+            Insets teclado = insets.getInsets(WindowInsetsCompat.Type.ime());
+            v.setPadding(b.left, b.top, b.right, Math.max(b.bottom, teclado.bottom));
+            alturaTopo = b.top;
+            pintarBarras();
+            /* a página não precisa mais se afastar das barras: insets zerados */
+            return new WindowInsetsCompat.Builder(insets).setInsets(tipos, Insets.of(0, 0, 0, 0)).build();
+        });
 
         WebView web = bridge.getWebView();
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
@@ -79,6 +112,27 @@ public class MainActivity extends BridgeActivity {
                 else moveTaskToBack(true);
             }
         });
+    }
+
+    /* faixa de cima com a cor do topo da tela; o resto (barra de baixo)
+       com a cor do fundo; ícones claros ou escuros */
+    void pintarBarras() {
+        View decor = getWindow().getDecorView();
+        LayerDrawable fundo = new LayerDrawable(new Drawable[] { new ColorDrawable(corFundo), new ColorDrawable(corTopo) });
+        fundo.setLayerGravity(1, Gravity.TOP | Gravity.FILL_HORIZONTAL);
+        fundo.setLayerHeight(1, Math.max(alturaTopo, 1));
+        decor.setBackground(fundo);
+        WindowInsetsControllerCompat c = WindowCompat.getInsetsController(getWindow(), decor);
+        c.setAppearanceLightStatusBars(!iconesClaros);
+        c.setAppearanceLightNavigationBars(!iconesClaros);
+    }
+
+    /* o SystemBars do Capacitor repinta a janela ao girar ou trocar o tema
+       do aparelho: devolve as cores do B7 logo depois */
+    @Override
+    public void onConfigurationChanged(Configuration nova) {
+        super.onConfigurationChanged(nova);
+        getWindow().getDecorView().post(this::pintarBarras);
     }
 
     static class Nativo {
@@ -128,7 +182,7 @@ public class MainActivity extends BridgeActivity {
                         ok = salvar(m.optString("base64"), m.optString("nome"), m.optString("tipo"));
                         break;
                     case "barras":
-                        barras(m.optBoolean("claras"));
+                        barras(m.optBoolean("claras"), m.optString("topo"), m.optString("fundo"));
                         ok = true;
                         break;
                     case "imprimir":
@@ -230,12 +284,13 @@ public class MainActivity extends BridgeActivity {
             }
         }
 
-        /* claras = ícones brancos (tela escura atrás); senão, ícones escuros */
-        void barras(boolean claras) {
+        /* claras = ícones brancos (tela escura atrás); topo/fundo = #rrggbb */
+        void barras(boolean claras, String topo, String fundo) {
             act.runOnUiThread(() -> {
-                WindowInsetsControllerCompat c = WindowCompat.getInsetsController(act.getWindow(), act.getWindow().getDecorView());
-                c.setAppearanceLightStatusBars(!claras);
-                c.setAppearanceLightNavigationBars(!claras);
+                act.iconesClaros = claras;
+                try { act.corTopo = Color.parseColor(topo); } catch (Exception e) { /* mantém */ }
+                try { act.corFundo = Color.parseColor(fundo); } catch (Exception e) { /* mantém */ }
+                act.pintarBarras();
             });
         }
 
