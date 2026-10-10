@@ -78,9 +78,11 @@ jobs:
         run: |
           apk=android/app/build/outputs/apk/release/app-release.apk
           # o build-tools mais novo do runner (há vários instalados)
+          ls "$ANDROID_HOME"/build-tools/
           bt=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
-          "${bt}apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/assinatura.txt"
-          grep 'Signer #1 certificate' "$RUNNER_TEMP/assinatura.txt"
+          echo "apksigner de $bt"
+          "${bt}apksigner" verify --verbose --print-certs "$apk" 2>&1 | tee "$RUNNER_TEMP/assinatura.txt"
+          grep -q 'Signer #1 certificate DN' "$RUNNER_TEMP/assinatura.txt"
           cp "$apk" "$RUNNER_TEMP/sistema-b7.apk"
       - name: APK de teste do pull request
         if: github.event_name == 'pull_request'
