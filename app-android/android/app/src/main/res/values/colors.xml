@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- azul-noite da abertura do sistema -->
+    <color name="colorPrimary">#0B0A1E</color>
+    <color name="colorPrimaryDark">#0B0A1E</color>
+    <color name="colorAccent">#D63384</color>
+    <color name="b7_noite">#0B0A1E</color>
+</resources>

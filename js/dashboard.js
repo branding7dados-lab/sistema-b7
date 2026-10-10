@@ -2016,7 +2016,10 @@ B7.Dashboard = (function () {
         (ehAdm && location.protocol.startsWith('http') ? L({ ic: 'usuarios', tom: 'rosa', t: 'Atualizar todos agora',
             d: '<span id="cfg-todos-d">quem está com o B7 aberto recarrega sozinho na versão publicada</span>',
             botao: true, semSeta: true, attrs: ' data-atualizar-todos' }) : '') +
-        (instalado
+        (B7.AppNativo && B7.AppNativo.ativo
+          ? L({ ic: 'celular', tom: 'azul', t: 'App Android', d: 'versão ' + esc(B7.AppNativo.versao() || '…') + ' · o conteúdo se atualiza sozinho',
+                botao: true, semSeta: true, attrs: ' data-app-casca', dir: '<span class="cfg-valor ok">Instalado</span>' })
+          : instalado
           ? L({ ic: 'celular', tom: 'azul', t: 'Aplicativo', d: 'o B7 está instalado neste aparelho', dir: '<span class="cfg-valor ok">Instalado</span>' })
           : L({ ic: 'celular', tom: 'azul', t: 'Instalar como aplicativo',
                 d: '<span id="cfg-inst-d">' + (B7.instalacao ? 'abre direto, sem a barra do navegador' : 'no menu do navegador: “Instalar” ou “Adicionar à tela de início”') + '</span>',
@@ -2226,6 +2229,8 @@ B7.Dashboard = (function () {
       B7.instalacao = null;
       const d = p.querySelector('#cfg-inst-d'); if (d) d.textContent = 'se não instalou, use o menu do navegador';
     };
+    const ac = p.querySelector('[data-app-casca]');
+    if (ac) ac.onclick = () => B7.AppNativo.conferirCasca(true);
     const la = p.querySelector('[data-limpar-aparelho]');
     if (la) la.onclick = () => B7.UI.confirmar({ titulo: 'Limpar os dados deste aparelho?',
       texto: 'Apaga a memória das telas, os arquivos do B7 guardados aqui e os filtros. Você continua na conta e nada muda no banco. A página recarrega em seguida.',

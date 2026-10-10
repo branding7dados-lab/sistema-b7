@@ -1,0 +1,84 @@
+# App Android (Capacitor) — gera o APK e publica em Releases.
+# Roda quando app-android/ muda no main, ou à mão (Actions → App Android → Run).
+# O conteúdo do app é o site publicado: só a "casca" passa por aqui.
+# A chave de assinatura vem de dois segredos do repositório (ver app-android/README.md).
+name: App Android
+on:
+  push:
+    branches: [main]
+    paths: ['app-android/**', '.github/workflows/apk.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: apk
+  cancel-in-progress: false
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Versões batem (build.gradle × versao.json)
+        run: |
+          code=$(grep -oP 'versionCode \K[0-9]+' android/app/build.gradle)
+          nome=$(grep -oP 'versionName "\K[^"]+' android/app/build.gradle)
+          jcode=$(node -p "require('./versao.json').versionCode")
+          jnome=$(node -p "require('./versao.json').versao")
+          if [ "$code" != "$jcode" ] || [ "$nome" != "$jnome" ]; then
+            echo "::error::android/app/build.gradle ($nome / $code) e versao.json ($jnome / $jcode) precisam ter a mesma versão."
+            exit 1
+          fi
+          echo "VERSAO=$nome" >> "$GITHUB_ENV"
+          echo "CODIGO=$code" >> "$GITHUB_ENV"
+      - name: Chave de assinatura
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SENHA: ${{ secrets.ANDROID_KEYSTORE_SENHA }}
+          ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+        run: |
+          if [ -z "$KS" ]; then
+            echo "::error::Faltam os segredos ANDROID_KEYSTORE_BASE64 e ANDROID_KEYSTORE_SENHA (Settings → Secrets and variables → Actions). Ver app-android/README.md."
+            exit 1
+          fi
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/b7.jks"
+          echo "B7_KEYSTORE=$RUNNER_TEMP/b7.jks" >> "$GITHUB_ENV"
+          # sem ANDROID_KEYSTORE_ALIAS, usa o primeiro apelido da chave
+          if [ -z "$ALIAS" ]; then
+            ALIAS=$(keytool -list -keystore "$RUNNER_TEMP/b7.jks" -storepass "$SENHA" | grep -m1 PrivateKeyEntry | cut -d, -f1)
+          fi
+          echo "B7_KEYSTORE_ALIAS=$ALIAS" >> "$GITHUB_ENV"
+      - run: npm ci --no-audit --no-fund
+      - run: npx cap sync android
+      - name: Gerar APK
+        env:
+          B7_KEYSTORE_SENHA: ${{ secrets.ANDROID_KEYSTORE_SENHA }}
+        working-directory: app-android/android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Conferir assinatura
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$apk" | head -5
+          cp "$apk" "$RUNNER_TEMP/sistema-b7.apk"
+      - name: Publicar em Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="apk-v$CODIGO"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$RUNNER_TEMP/sistema-b7.apk" --clobber
+          else
+            gh release create "$tag" "$RUNNER_TEMP/sistema-b7.apk" --latest \
+              --title "App Android $VERSAO" \
+              --notes "Casca Android do Sistema B7 (Capacitor). O conteúdo vem do site publicado e se atualiza sozinho."
+          fi

@@ -1,0 +1,73 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "br.com.branding7.sistemab7"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "br.com.branding7.sistemab7"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        // subir os dois juntos com ../versao.json (o app avisa quando há casca nova)
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    // chave de assinatura: fica nos segredos do GitHub, nunca no repositório
+    // (ver ../README.md). Sem ela, o release sai sem assinatura.
+    def chave = System.getenv("B7_KEYSTORE")
+    signingConfigs {
+        if (chave) {
+            b7 {
+                storeFile file(chave)
+                storePassword System.getenv("B7_KEYSTORE_SENHA")
+                keyAlias System.getenv("B7_KEYSTORE_ALIAS") ?: "b7"
+                keyPassword System.getenv("B7_KEYSTORE_SENHA")
+            }
+        }
+    }
+    buildFeatures {
+        buildConfig true
+    }
+    buildTypes {
+        release {
+            if (chave) signingConfig signingConfigs.b7
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(":capacitor-android")
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion"
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

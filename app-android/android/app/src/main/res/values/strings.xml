@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sistema B7</string>
+    <string name="title_activity_main">Sistema B7</string>
+    <string name="package_name">br.com.branding7.sistemab7</string>
+    <string name="custom_url_scheme">br.com.branding7.sistemab7</string>
+</resources>
