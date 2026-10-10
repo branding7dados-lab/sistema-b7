@@ -7,9 +7,10 @@ android {
         applicationId "br.com.branding7.sistemab7"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // subir os dois juntos com ../versao.json (o app avisa quando há casca nova)
-        versionCode 1
-        versionName "1.0.0"
+        // o GitHub Actions passa o número da execução e a versão do sistema
+        // (js/auth.js → VERSAO): cada publicação vira um APK maior que o anterior
+        versionCode((System.getenv("B7_VERSION_CODE") ?: "1").toInteger())
+        versionName(System.getenv("B7_VERSION_NAME") ?: "dev")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

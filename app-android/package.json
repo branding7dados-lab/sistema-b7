@@ -1,9 +1,10 @@
 {
   "name": "sistema-b7-app",
   "private": true,
-  "description": "Casca Android (Capacitor) do Sistema B7 — abre o site publicado",
+  "description": "App Android (Capacitor) do Sistema B7 — leva as telas do sistema dentro do APK",
   "scripts": {
-    "sync": "cap sync android"
+    "copiar": "node copiar-site.mjs",
+    "sync": "node copiar-site.mjs && cap sync android"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

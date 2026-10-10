@@ -1,16 +1,16 @@
 /* =====================================================================
-   APP ANDROID — o site rodando dentro da casca Capacitor (app-android/)
+   APP ANDROID — as telas rodando dentro do app (app-android/)
 
-   O app abre este mesmo site; cada publicação chega a ele sozinha. Só o
-   que o WebView não faz como o navegador passa pela ponte B7Nativo (que
-   só existe dentro do app e só para este endereço):
+   O APK leva index.html, js/, styles/ e assets/; a internet só serve para
+   o login e os dados. O que o WebView não faz como o navegador passa pela
+   ponte B7Nativo (que só existe dentro do app):
      • baixar arquivo (<a download>, blob:, data:) → Downloads do celular;
      • window.print → impressão do Android (salvar em PDF ou impressora);
      • link de fora (WhatsApp, Drive, Instagram) → o app certo.
    Fora do app, este arquivo não faz nada.
 
-   Casca nova: app-android/versao.json traz a versão publicada; se for
-   maior que a instalada, aparece um aviso com o link do APK.
+   Versão nova: cada publicação no main gera um APK (app-v<número> em
+   Releases). O app confere e mostra "Nova versão do app B7 · Instalar".
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -18,7 +18,6 @@ window.B7 = window.B7 || {};
 B7.AppNativo = (function () {
   const ponte = window.B7Nativo;
   const ativo = !!(ponte && typeof ponte.postMessage === 'function');
-  const APK = 'https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk';
 
   let instalada = '';
   let seq = 0;
@@ -40,6 +39,7 @@ B7.AppNativo = (function () {
       let r = {};
       try { r = JSON.parse(ev.data); } catch (e) { return; }
       if (r.versao) instalada = r.versao;
+      if (r.codigo) codigo = r.codigo;
       const f = esperando[r.id];
       if (f) { delete esperando[r.id]; f(r); }
     };
@@ -122,50 +122,63 @@ B7.AppNativo = (function () {
 
     window.print = () => { pedir('imprimir', { titulo: document.title }); };
 
-    pedir('versao').then(() => conferirCasca(false));
+    pedir('versao');
   }
 
-  /* ------------------------------------------------ casca nova (APK) */
-  const num = v => String(v || '').split('.').map(n => parseInt(n, 10) || 0);
-  function maior(a, b) {
-    const x = num(a), y = num(b);
-    for (let i = 0; i < Math.max(x.length, y.length); i++) {
-      if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
-    }
-    return false;
+  /* ------------------------------------------------- versão nova (APK) */
+  /* As telas estão dentro do APK: versão nova do sistema = APK novo.
+     Quem confere é o lado Android (a página não pode falar com o GitHub). */
+  let codigo = 0, ultimaConferencia = 0, avisoDe = 0;
+
+  async function conferir() {
+    if (!ativo || !navigator.onLine) return 'offline';
+    const r = await pedir('conferirApk');
+    if (!r.ok) return 'erro';
+    ultimaConferencia = Date.now();
+    if (r.codigo) codigo = r.codigo;
+    return r.ultimo > codigo ? 'nova' : 'atual';
   }
 
-  /* devolve a versão publicada se for mais nova que a instalada */
-  async function conferirCasca(perguntou) {
-    if (!ativo) return null;
-    let pub = null;
-    try {
-      const r = await fetch('app-android/versao.json?t=' + Date.now(), { cache: 'no-store' });
-      if (r.ok) pub = (await r.json()).versao;
-    } catch (e) {}
-    const nova = pub && instalada && maior(pub, instalada) ? pub : null;
-    if (nova && B7.UI && B7.UI.toast) {
-      let hoje = '';
-      try { hoje = localStorage.getItem('b7-apk-avisado'); } catch (e) {}
-      if (perguntou || hoje !== nova + new Date().toDateString()) {
-        try { localStorage.setItem('b7-apk-avisado', nova + new Date().toDateString()); } catch (e) {}
-        B7.UI.toast('Nova versão do app Android (' + nova + ')', { acao: 'Baixar', aoClicar: baixarCasca });
+  function avisar() {
+    if (!B7.UI || !B7.UI.toast) return;
+    B7.UI.toast('Nova versão do app B7', { acao: 'Instalar', tempo: 15000, aoClicar: instalar });
+  }
+
+  function instalar() {
+    pedir('instalarApk');
+  }
+
+  /* chamado por js/app.js no lugar da atualização do site: ao abrir,
+     e ao voltar para o app (no máximo a cada 30 min) */
+  function ligarAtualizacao() {
+    const tentar = async (forcar) => {
+      if (!forcar && Date.now() - ultimaConferencia < 30 * 60 * 1000) return;
+      if ((await conferir()) === 'nova' && (forcar || Date.now() - avisoDe > 30 * 60 * 1000)) {
+        avisoDe = Date.now();
+        avisar();
       }
-    } else if (perguntou && B7.UI && B7.UI.toast) {
-      B7.UI.toast(pub ? 'O app já está na versão mais nova.' : 'Não foi possível conferir agora.');
-    }
-    return nova;
+    };
+    setTimeout(() => tentar(true), 4000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) tentar(false); });
+    /* Configurações → "Buscar atualização" */
+    B7.buscarAtualizacao = async () => {
+      const r = await conferir();
+      if (r === 'nova') { avisoDe = Date.now(); avisar(); }
+      return r;
+    };
+    /* "Atualizar todos": a versão do site publicado, não a deste APK */
+    B7.versaoPublicada = async () => {
+      const r = await pedir('versaoSite');
+      return r.ok ? r.site : null;
+    };
   }
-
-  function baixarCasca() { pedir('abrirFora', { url: APK }); }
 
   if (ativo) ligar();
 
   return {
     ativo,
     versao: () => instalada,
-    conferirCasca,
-    baixarCasca,
-    APK
+    ligarAtualizacao,
+    instalar
   };
 })();

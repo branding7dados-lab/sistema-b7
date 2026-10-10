@@ -2017,8 +2017,8 @@ B7.Dashboard = (function () {
             d: '<span id="cfg-todos-d">quem está com o B7 aberto recarrega sozinho na versão publicada</span>',
             botao: true, semSeta: true, attrs: ' data-atualizar-todos' }) : '') +
         (B7.AppNativo && B7.AppNativo.ativo
-          ? L({ ic: 'celular', tom: 'azul', t: 'App Android', d: 'versão ' + esc(B7.AppNativo.versao() || '…') + ' · o conteúdo se atualiza sozinho',
-                botao: true, semSeta: true, attrs: ' data-app-casca', dir: '<span class="cfg-valor ok">Instalado</span>' })
+          ? L({ ic: 'celular', tom: 'azul', t: 'App Android', d: 'as telas do B7 estão neste aparelho; a internet é só para login e dados',
+                dir: '<span class="cfg-valor ok">Instalado</span>' })
           : instalado
           ? L({ ic: 'celular', tom: 'azul', t: 'Aplicativo', d: 'o B7 está instalado neste aparelho', dir: '<span class="cfg-valor ok">Instalado</span>' })
           : L({ ic: 'celular', tom: 'azul', t: 'Instalar como aplicativo',
@@ -2198,7 +2198,7 @@ B7.Dashboard = (function () {
       const d = p.querySelector('#cfg-atu-d');
       if (d) d.textContent = 'procurando…';
       const r = B7.buscarAtualizacao ? await B7.buscarAtualizacao() : 'erro';
-      if (d) d.textContent = r === 'nova' ? 'tem versão nova — toque em “Atualizar” no canto da tela'
+      if (d) d.textContent = r === 'nova' ? (B7.AppNativo && B7.AppNativo.ativo ? 'tem versão nova do app — toque em “Instalar”' : 'tem versão nova — toque em “Atualizar” no canto da tela')
         : r === 'atual' ? 'você já está na versão mais recente'
         : r === 'offline' ? 'sem internet agora' : 'não foi possível conferir agora';
     };
@@ -2229,8 +2229,6 @@ B7.Dashboard = (function () {
       B7.instalacao = null;
       const d = p.querySelector('#cfg-inst-d'); if (d) d.textContent = 'se não instalou, use o menu do navegador';
     };
-    const ac = p.querySelector('[data-app-casca]');
-    if (ac) ac.onclick = () => B7.AppNativo.conferirCasca(true);
     const la = p.querySelector('[data-limpar-aparelho]');
     if (la) la.onclick = () => B7.UI.confirmar({ titulo: 'Limpar os dados deste aparelho?',
       texto: 'Apaga a memória das telas, os arquivos do B7 guardados aqui e os filtros. Você continua na conta e nada muda no banco. A página recarrega em seguida.',
