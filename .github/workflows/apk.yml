@@ -76,7 +76,9 @@ jobs:
               || { echo "::error::GOOGLE_SERVICES_JSON não é um JSON válido."; exit 1; }
             echo "Firebase ligado: o APK sai com notificações."
           else
-            echo "::warning::Sem o segredo GOOGLE_SERVICES_JSON: o APK sai sem notificações (ver app-android/README.md)."
+            test -f android/app/google-services.json \
+              && echo "Firebase ligado pelo google-services.json do repositório." \
+              || echo "::warning::Sem google-services.json: o APK sai sem notificações (ver app-android/README.md)."
           fi
       - run: npm ci --no-audit --no-fund
       - name: Copiar as telas para dentro do app
