@@ -123,6 +123,35 @@ B7.AppNativo = (function () {
     window.print = () => { pedir('imprimir', { titulo: document.title }); };
 
     pedir('versao');
+    acompanharBarras();
+  }
+
+  /* --------------------------------------------- ícones da barra de cima
+     O app desenha atrás da barra do Android (transparente). Os ícones
+     (hora, bateria) precisam contrastar com o que está atrás: brancos na
+     abertura e no login (sempre escuros) e, no resto, conforme a cor da
+     <meta name="theme-color">, que js/app.js mantém igual à do topo. */
+  function acompanharBarras() {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    let ultima = null, marcado = false;
+    const luz = hex => {
+      const h = String(hex || '').trim().replace('#', '');
+      const n = parseInt(h.length === 3 ? h.replace(/./g, c => c + c) : h, 16);
+      if (isNaN(n)) return 0;
+      return (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255;
+    };
+    const conferir = () => {
+      marcado = false;
+      const ab = document.querySelector('.b7-abertura');
+      const escuro = (ab && !ab.classList.contains('saindo')) ||
+        document.body.classList.contains('sem-sessao') ||
+        luz(meta && meta.content) < 0.6;
+      if (escuro !== ultima) { ultima = escuro; pedir('barras', { claras: escuro }); }
+    };
+    const agendar = () => { if (!marcado) { marcado = true; requestAnimationFrame(conferir); } };
+    if (meta) new MutationObserver(agendar).observe(meta, { attributes: true, attributeFilter: ['content'] });
+    new MutationObserver(agendar).observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
+    conferir();
   }
 
   /* ------------------------------------------------- versão nova (APK) */

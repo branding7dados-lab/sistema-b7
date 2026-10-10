@@ -18,6 +18,8 @@ import android.webkit.WebView;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.core.content.FileProvider;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.JavaScriptReplyProxy;
 import androidx.webkit.WebMessageCompat;
 import androidx.webkit.WebViewCompat;
@@ -46,7 +48,8 @@ import org.json.JSONObject;
  *   • salvar arquivo baixado (backup, arte, PDF, imagem) em Downloads;
  *   • imprimir (window.print não existe no WebView);
  *   • "voltar" do aparelho: volta uma tela; na primeira, minimiza;
- *   • conferir se saiu APK novo e instalar por cima.
+ *   • conferir se saiu APK novo e instalar por cima;
+ *   • ícones da barra de cima claros ou escuros, conforme a tela atrás deles.
  * O lado das telas está em js/app-nativo.js. A ponte (B7Nativo) só existe
  * para as telas do próprio app (ORIGEM): um iframe de fora não a enxerga.
  */
@@ -123,6 +126,10 @@ public class MainActivity extends BridgeActivity {
                         break;
                     case "salvar":
                         ok = salvar(m.optString("base64"), m.optString("nome"), m.optString("tipo"));
+                        break;
+                    case "barras":
+                        barras(m.optBoolean("claras"));
+                        ok = true;
                         break;
                     case "imprimir":
                         imprimir(m.optString("titulo"));
@@ -221,6 +228,15 @@ public class MainActivity extends BridgeActivity {
                 act.runOnUiThread(() -> Toast.makeText(act, "Não foi possível salvar o arquivo.", Toast.LENGTH_LONG).show());
                 return false;
             }
+        }
+
+        /* claras = ícones brancos (tela escura atrás); senão, ícones escuros */
+        void barras(boolean claras) {
+            act.runOnUiThread(() -> {
+                WindowInsetsControllerCompat c = WindowCompat.getInsetsController(act.getWindow(), act.getWindow().getDecorView());
+                c.setAppearanceLightStatusBars(!claras);
+                c.setAppearanceLightNavigationBars(!claras);
+            });
         }
 
         void imprimir(String titulo) {

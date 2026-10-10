@@ -5,5 +5,11 @@
   "android": {
     "backgroundColor": "#0B0A1E",
     "appendUserAgent": "SistemaB7App/Android"
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "DARK",
+      "initialViewportFitValueHint": "cover"
+    }
   }
 }
