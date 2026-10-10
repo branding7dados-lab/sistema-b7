@@ -54,7 +54,7 @@ Precisa de dois segredos (uma vez só):
 
 | Onde | Nome | Conteúdo |
 |---|---|---|
-| GitHub (Actions) | `GOOGLE_SERVICES_JSON` | o `google-services.json` do app Android no Firebase (pacote `br.com.branding7.sistemab7`) |
+| repositório | `android/app/google-services.json` | a identificação do app no Firebase (projeto `sistema-b7`, pacote `br.com.branding7.sistemab7`). Não é senha: pode ficar no repositório. O segredo `GOOGLE_SERVICES_JSON`, se existir, tem prioridade |
 | Supabase (Edge Functions) | `FCM_SERVICE_ACCOUNT` | o JSON da conta de serviço (Firebase → Configurações → Contas de serviço → Gerar chave privada) |
 
 Sem o primeiro, o APK sai sem notificações e o app explica isso em Meu perfil.
