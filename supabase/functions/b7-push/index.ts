@@ -24,6 +24,12 @@
 //    push de verdade só para aquele aparelho e NÃO grava notificação: o
 //    teste não vira pendência, não conta como não lida e não escala.
 //
+// zzz148 — APP ANDROID: o aparelho com o app entra em push_subscricoes com
+// endpoint "fcm:<token do Firebase>". Essas inscrições vão pelo Firebase
+// Cloud Messaging (API v1), com a conta de serviço do projeto Firebase no
+// segredo FCM_SERVICE_ACCOUNT (o JSON inteiro). Sem ele, só o app fica sem
+// aviso: o navegador continua pelo Web Push.
+//
 // Segredos (supabase secrets set ...):
 //   VAPID_PUBLIC_KEY    a mesma chave pública de js/config.js
 //   VAPID_PRIVATE_KEY   NUNCA vai para o frontend nem para o banco
@@ -41,7 +47,7 @@ import webpush from 'npm:web-push@3.6.7';
 import { comCors, iguais } from '../_shared/cors.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-10-03-zzz2';
+const VERSAO = '2026-10-10-zzz148';
 
 /* Endereço do cartão do aviso (função b7-arte) e a assinatura que ela
    exige: HMAC do id, com um segredo que só as duas funções conhecem.
@@ -93,6 +99,79 @@ function acoesDe(tipo: string, link: string): Acao[] {
   return [abrir('Abrir B7')];
 }
 
+/* ------------------------------------------------ Firebase (app Android) */
+type Conta = { project_id: string; client_email: string; private_key: string; token_uri?: string };
+let contaFcm: Conta | null | undefined;
+let acessoFcm: { token: string; ate: number } | null = null;
+
+function lerConta(): Conta | null {
+  if (contaFcm !== undefined) return contaFcm;
+  try {
+    const c = JSON.parse(Deno.env.get('FCM_SERVICE_ACCOUNT') || '');
+    contaFcm = c && c.project_id && c.client_email && c.private_key ? c : null;
+  } catch (_e) { contaFcm = null; }
+  return contaFcm ?? null;
+}
+
+const b64url = (b: Uint8Array | string) => {
+  const bytes = typeof b === 'string' ? new TextEncoder().encode(b) : b;
+  let t = ''; bytes.forEach(x => { t += String.fromCharCode(x); });
+  return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+/* token de acesso do Google (vale 1 h; guardado enquanto a função vive) */
+async function tokenFcm(conta: Conta): Promise<string> {
+  if (acessoFcm && acessoFcm.ate > Date.now() + 60000) return acessoFcm.token;
+  const agora = Math.floor(Date.now() / 1000);
+  const cab = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const corpo = b64url(JSON.stringify({
+    iss: conta.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: conta.token_uri || 'https://oauth2.googleapis.com/token', iat: agora, exp: agora + 3600
+  }));
+  const pem = conta.private_key.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
+  const chave = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const ass = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', chave, new TextEncoder().encode(cab + '.' + corpo)));
+  const r = await fetch(conta.token_uri || 'https://oauth2.googleapis.com/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + cab + '.' + corpo + '.' + b64url(ass)
+  });
+  const j = await r.json();
+  if (!r.ok || !j.access_token) throw Object.assign(new Error('oauth'), { statusCode: 500 });
+  acessoFcm = { token: j.access_token, ate: Date.now() + (j.expires_in || 3600) * 1000 };
+  return acessoFcm.token;
+}
+
+/* mesmo aviso, no formato do Firebase: título, texto, imagem e, nos
+   dados, o link e o id (o app abre a tela certa ao tocar) */
+async function enviarFcm(token: string, payload: string, ttl: number) {
+  const conta = lerConta();
+  if (!conta) throw Object.assign(new Error('sem_fcm'), { statusCode: 503 });
+  const p = JSON.parse(payload);
+  const dados: Record<string, string> = { link: String(p.link || '#/'), id: String(p.id || ''), tipo: String(p.tipo || '') };
+  const notif: Record<string, unknown> = {
+    channel_id: 'avisos', color: '#D63384', tag: String(p.id || ''),
+    default_sound: true, notification_priority: 'PRIORITY_HIGH'
+  };
+  if (p.imagem) notif.image = p.imagem;
+  const r = await fetch('https://fcm.googleapis.com/v1/projects/' + conta.project_id + '/messages:send', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + await tokenFcm(conta), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: {
+      token,
+      notification: { title: String(p.titulo || 'Sistema B7'), body: String(p.corpo || '') },
+      data: dados,
+      android: { priority: 'HIGH', ttl: ttl + 's', notification: notif }
+    } })
+  });
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    /* token que o Firebase não conhece mais: igual ao 410 do Web Push */
+    const sumiu = /UNREGISTERED/.test(JSON.stringify(j)) || r.status === 404;
+    throw Object.assign(new Error('fcm'), { statusCode: sumiu ? 410 : r.status });
+  }
+}
+
 /* Envia um payload para uma lista de inscrições. Inscrição que o
    navegador já descartou (404/410) é apagada: não adianta insistir. */
 async function enviar(sb: SupabaseClient, lista: Inscricao[], payload: string, ttl: number) {
@@ -100,6 +179,11 @@ async function enviar(sb: SupabaseClient, lista: Inscricao[], payload: string, t
   const falhas: string[] = [];
   await Promise.all(lista.map(async s => {
     try {
+      if (s.endpoint.startsWith('fcm:')) {
+        await enviarFcm(s.endpoint.slice(4), payload, ttl);
+        enviados++;
+        return;
+      }
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
         /* 'high' (zzz2): com 'normal', o Android em repouso (Doze) segura

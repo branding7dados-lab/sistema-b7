@@ -1,2 +1,4 @@
 /build/*
 !/build/.npmkeep
+# Firebase: vem do segredo GOOGLE_SERVICES_JSON no GitHub Actions
+google-services.json

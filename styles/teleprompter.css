@@ -231,3 +231,30 @@ body.tele-aberto{overflow:hidden;}
   .tele,.tele > .tele-palco,.tele > .tele-topo,.tele > .tele-ctrl,.tele > .tele-prog{animation:none;}
   .tele{background:#000;}
 }
+/* ------------------------------------------------- câmera (zzz148)
+   A câmera da frente fica atrás do texto (espelhada, como um espelho; o
+   vídeo gravado sai normal). A faixa de leitura sobe para perto da lente
+   e um véu escuro no alto deixa o texto legível sobre qualquer imagem. */
+.tele-cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);z-index:0;background:#000;}
+.tele.com-camera{background:#000;}
+.tele.com-camera .tele-palco{z-index:1;}
+/* o véu fica ATRÁS das letras (o da leitura comum fica na frente e apagaria o texto) */
+.tele.com-camera .tele-zona{background:none;}
+.tele.com-camera .tele-palco:before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(to bottom,
+    rgba(0,0,0,.62) 0,
+    rgba(0,0,0,.5) calc(var(--tele-foco) + var(--tele-fonte) * var(--tele-linha) * 3),
+    rgba(0,0,0,0) calc(var(--tele-foco) + var(--tele-fonte) * var(--tele-linha) * 5));}
+.tele.com-camera .tele-rolo{z-index:1;}
+.tele.com-camera .tele-palco.cabe .tele-rolo{align-items:flex-start;padding-top:var(--tele-foco);}
+.tele.com-camera .tele-texto{text-shadow:0 1px 3px rgba(0,0,0,.6);}
+.tele.com-camera .tele-painel{background:rgba(11,10,18,.78);}
+.tele-cam-liga{border-top:1px solid var(--tele-borda);margin-top:10px;}
+
+.tele-rec{position:absolute;z-index:8;left:var(--tele-sl);top:calc(var(--tele-st) + 52px);display:flex;align-items:center;gap:8px;
+  padding:5px 6px 5px 10px;border-radius:99px;background:rgba(0,0,0,.55);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;}
+.tele-rec[hidden]{display:none;}
+.tele-rec i{width:9px;height:9px;border-radius:50%;background:#FF3B4E;animation:teleRec 1.2s ease-in-out infinite;}
+.tele-rec button{border:0;border-radius:99px;background:rgba(255,255,255,.16);padding:4px 10px;font-size:12px;font-weight:700;}
+@keyframes teleRec{50%{opacity:.25}}
+@media (prefers-reduced-motion: reduce){ .tele-rec i{animation:none;} }

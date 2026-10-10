@@ -42,11 +42,38 @@ com o lado das telas em `js/app-nativo.js`:
 A ponte (`B7Nativo`) só existe para as telas do próprio app: um iframe de outro
 site (YouTube, Drive) não a enxerga.
 
+## Notificações (Firebase)
+
+O mesmo aviso que vai para o Chrome chega ao app pelo Firebase Cloud Messaging:
+
+- o app entra em `push_subscricoes` com `endpoint = "fcm:<token>"`;
+- a função `b7-push` reconhece o prefixo e envia pela API v1 do Firebase;
+- tocar no aviso abre a tela dele.
+
+Precisa de dois segredos (uma vez só):
+
+| Onde | Nome | Conteúdo |
+|---|---|---|
+| GitHub (Actions) | `GOOGLE_SERVICES_JSON` | o `google-services.json` do app Android no Firebase (pacote `br.com.branding7.sistemab7`) |
+| Supabase (Edge Functions) | `FCM_SERVICE_ACCOUNT` | o JSON da conta de serviço (Firebase → Configurações → Contas de serviço → Gerar chave privada) |
+
+Sem o primeiro, o APK sai sem notificações e o app explica isso em Meu perfil.
+Sem o segundo, só o app fica sem aviso; o navegador continua pelo Web Push.
+
+## Teleprompter com câmera
+
+- Na tela inicial do teleprompter: **Gravar com a câmera**. Em pé, pelo aviso
+  de girar: **Gravar em pé com a câmera** (vídeo vertical).
+- A câmera da frente aparece atrás do texto. A faixa de leitura fica no alto,
+  perto da lente.
+- Cada leitura vira um vídeo: uma cena (modo por cenas) ou o roteiro inteiro
+  (contínuo).
+- No app, o vídeo vai para a **galeria → Filmes → Sistema B7**, em partes,
+  sem passar inteiro pela memória. No navegador, é baixado ao terminar.
+- O texto não sai no vídeo, só a câmera.
+
 ## Ainda não funciona no app
 
-- **Avisos com o B7 fechado (push).** Precisa de um projeto no Firebase (grátis)
-  e da função `b7-push` enviando também pelo Firebase. É a próxima etapa.
-  Por enquanto, quem quiser os avisos ativa pelo Chrome.
 - **Conectar o Google Agenda** abre o Chrome; a conexão deve ser feita pelo
   navegador.
 
