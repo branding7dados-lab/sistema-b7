@@ -2,6 +2,7 @@
 # A cada publicação no main que mexa nas telas (ou à mão: Actions → App
 # Android → Run workflow), gera um APK novo, assinado, e publica em Releases
 # como app-v<número>. O app confere a última release e oferece "Instalar".
+# Num pull request, só monta e assina (confere a chave), sem publicar.
 # A chave de assinatura vem de dois segredos do repositório (ver app-android/README.md).
 name: App Android
 on:
@@ -15,11 +16,15 @@ on:
       - 'assets/**'
       - 'app-android/**'
       - '.github/workflows/apk.yml'
+  pull_request:
+    paths:
+      - 'app-android/**'
+      - '.github/workflows/apk.yml'
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: apk
+  group: apk-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   apk:
@@ -74,7 +79,15 @@ jobs:
           apk=android/app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$apk" | head -3
           cp "$apk" "$RUNNER_TEMP/sistema-b7.apk"
+      - name: APK de teste do pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sistema-b7-apk
+          path: ${{ runner.temp }}/sistema-b7.apk
+          retention-days: 7
       - name: Publicar em Releases
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -84,6 +97,7 @@ jobs:
             --title "App Android $B7_VERSION_NAME" \
             --notes "Sistema B7 $B7_VERSION_NAME para Android. Instale por cima da versão anterior: nada se perde."
       - name: Guardar só os 5 APKs mais novos
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
