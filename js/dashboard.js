@@ -2016,7 +2016,10 @@ B7.Dashboard = (function () {
         (ehAdm && location.protocol.startsWith('http') ? L({ ic: 'usuarios', tom: 'rosa', t: 'Atualizar todos agora',
             d: '<span id="cfg-todos-d">quem está com o B7 aberto recarrega sozinho na versão publicada</span>',
             botao: true, semSeta: true, attrs: ' data-atualizar-todos' }) : '') +
-        (instalado
+        (B7.AppNativo && B7.AppNativo.ativo
+          ? L({ ic: 'celular', tom: 'azul', t: 'App Android', d: 'as telas do B7 estão neste aparelho; a internet é só para login e dados',
+                dir: '<span class="cfg-valor ok">Instalado</span>' })
+          : instalado
           ? L({ ic: 'celular', tom: 'azul', t: 'Aplicativo', d: 'o B7 está instalado neste aparelho', dir: '<span class="cfg-valor ok">Instalado</span>' })
           : L({ ic: 'celular', tom: 'azul', t: 'Instalar como aplicativo',
                 d: '<span id="cfg-inst-d">' + (B7.instalacao ? 'abre direto, sem a barra do navegador' : 'no menu do navegador: “Instalar” ou “Adicionar à tela de início”') + '</span>',
@@ -2195,7 +2198,7 @@ B7.Dashboard = (function () {
       const d = p.querySelector('#cfg-atu-d');
       if (d) d.textContent = 'procurando…';
       const r = B7.buscarAtualizacao ? await B7.buscarAtualizacao() : 'erro';
-      if (d) d.textContent = r === 'nova' ? 'tem versão nova — toque em “Atualizar” no canto da tela'
+      if (d) d.textContent = r === 'nova' ? (B7.AppNativo && B7.AppNativo.ativo ? 'tem versão nova do app — toque em “Instalar”' : 'tem versão nova — toque em “Atualizar” no canto da tela')
         : r === 'atual' ? 'você já está na versão mais recente'
         : r === 'offline' ? 'sem internet agora' : 'não foi possível conferir agora';
     };

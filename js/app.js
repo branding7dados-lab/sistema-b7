@@ -1245,6 +1245,9 @@ B7.Rota = (function () {
   function ligarAtualizacao() {
     if (atualizacaoLigada) return;
     atualizacaoLigada = true;
+    /* zzz145: no app Android as telas vêm dentro do APK — versão nova é
+       APK novo, e quem confere é js/app-nativo.js. Sem service worker. */
+    if (B7.AppNativo && B7.AppNativo.ativo) { B7.AppNativo.ligarAtualizacao(); return; }
     if (!location.protocol.startsWith('http')) return;
 
     /* COMO DESCOBRIR. A página sabe a versão que está rodando

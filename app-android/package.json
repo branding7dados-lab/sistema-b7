@@ -1,0 +1,16 @@
+{
+  "name": "sistema-b7-app",
+  "private": true,
+  "description": "App Android (Capacitor) do Sistema B7 — leva as telas do sistema dentro do APK",
+  "scripts": {
+    "copiar": "node copiar-site.mjs",
+    "sync": "node copiar-site.mjs && cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

@@ -1,0 +1,112 @@
+# App Android (Capacitor) — as telas do sistema vão dentro do APK.
+# A cada publicação no main que mexa nas telas (ou à mão: Actions → App
+# Android → Run workflow), gera um APK novo, assinado, e publica em Releases
+# como app-v<número>. O app confere a última release e oferece "Instalar".
+# Num pull request, só monta e assina (confere a chave), sem publicar.
+# A chave de assinatura vem de dois segredos do repositório (ver app-android/README.md).
+name: App Android
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'manifest.json'
+      - 'js/**'
+      - 'styles/**'
+      - 'assets/**'
+      - 'app-android/**'
+      - '.github/workflows/apk.yml'
+  pull_request:
+    paths:
+      - 'app-android/**'
+      - '.github/workflows/apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Versão
+        run: |
+          nome=$(grep -oP "VERSAO = '\K[^']+" ../js/auth.js)
+          # o número só cresce: 100 + número da execução deste workflow
+          echo "B7_VERSION_NAME=$nome" >> "$GITHUB_ENV"
+          echo "B7_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "App $nome (código $((100 + GITHUB_RUN_NUMBER)))"
+      - name: Chave de assinatura
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SENHA: ${{ secrets.ANDROID_KEYSTORE_SENHA }}
+          ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+        run: |
+          if [ -z "$KS" ] || [ -z "$SENHA" ]; then
+            echo "::error::Faltam os segredos ANDROID_KEYSTORE_BASE64 e ANDROID_KEYSTORE_SENHA (Settings → Secrets and variables → Actions). Ver app-android/README.md."
+            exit 1
+          fi
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/b7.jks"
+          echo "B7_KEYSTORE=$RUNNER_TEMP/b7.jks" >> "$GITHUB_ENV"
+          # sem ANDROID_KEYSTORE_ALIAS, usa o primeiro apelido da chave
+          if [ -z "$ALIAS" ]; then
+            ALIAS=$(keytool -list -keystore "$RUNNER_TEMP/b7.jks" -storepass "$SENHA" | grep -m1 PrivateKeyEntry | cut -d, -f1)
+          fi
+          echo "B7_KEYSTORE_ALIAS=$ALIAS" >> "$GITHUB_ENV"
+      - run: npm ci --no-audit --no-fund
+      - name: Copiar as telas para dentro do app
+        run: npm run sync
+      - name: Gerar APK
+        env:
+          B7_KEYSTORE_SENHA: ${{ secrets.ANDROID_KEYSTORE_SENHA }}
+        working-directory: app-android/android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Conferir assinatura
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          # o build-tools mais novo do runner (há vários instalados)
+          ls "$ANDROID_HOME"/build-tools/
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          echo "apksigner de $bt"
+          "${bt}apksigner" verify --verbose --print-certs "$apk" 2>&1 | tee "$RUNNER_TEMP/assinatura.txt"
+          grep -qx 'Verifies' "$RUNNER_TEMP/assinatura.txt"
+          grep -q 'certificate DN' "$RUNNER_TEMP/assinatura.txt"
+          cp "$apk" "$RUNNER_TEMP/sistema-b7.apk"
+      - name: APK de teste do pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sistema-b7-apk
+          path: ${{ runner.temp }}/sistema-b7.apk
+          retention-days: 7
+      - name: Publicar em Releases
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="app-v$B7_VERSION_CODE"
+          gh release create "$tag" "$RUNNER_TEMP/sistema-b7.apk" --latest \
+            --target "$GITHUB_SHA" \
+            --title "App Android $B7_VERSION_NAME" \
+            --notes "Sistema B7 $B7_VERSION_NAME para Android. Instale por cima da versão anterior: nada se perde."
+      - name: Guardar só os 5 APKs mais novos
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 100 --json tagName --jq '.[].tagName' \
+            | grep -E '^app-v[0-9]+$' | sort -t v -k2 -n -r | tail -n +6 \
+            | while read -r t; do gh release delete "$t" --cleanup-tag --yes; done

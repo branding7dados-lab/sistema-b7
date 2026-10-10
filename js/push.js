@@ -22,6 +22,9 @@ B7.Push = (function () {
   /* por que não dá — a interface mostra isto no lugar do botão */
   function motivo() {
     if (!chave()) return 'Chave pública VAPID não configurada em js/config.js (VAPID_PUBLIC_KEY).';
+    /* zzz145: o WebView do app Android não tem push da web; os avisos
+       com o B7 fechado ainda vêm pelo Chrome (ver app-android/README.md) */
+    if (B7.AppNativo && B7.AppNativo.ativo) return 'No app Android os avisos ainda não chegam com o B7 fechado. Por enquanto, ative-os abrindo o sistema no Chrome.';
     if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return 'Este navegador não tem service worker (ou o sistema não está em https).';
     if (!('PushManager' in window)) return 'Este navegador não suporta push. No iPhone, adicione o Sistema B7 à tela de início.';
     if (!('Notification' in window)) return 'Este navegador não suporta notificações.';

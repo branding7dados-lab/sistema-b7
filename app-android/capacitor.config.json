@@ -1,0 +1,9 @@
+{
+  "appId": "br.com.branding7.sistemab7",
+  "appName": "Sistema B7",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0B0A1E",
+    "appendUserAgent": "SistemaB7App/Android"
+  }
+}
