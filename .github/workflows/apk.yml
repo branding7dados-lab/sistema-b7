@@ -77,7 +77,10 @@ jobs:
       - name: Conferir assinatura
         run: |
           apk=android/app/build/outputs/apk/release/app-release.apk
-          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$apk" | head -3
+          # o build-tools mais novo do runner (há vários instalados)
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          "${bt}apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/assinatura.txt"
+          grep 'Signer #1 certificate' "$RUNNER_TEMP/assinatura.txt"
           cp "$apk" "$RUNNER_TEMP/sistema-b7.apk"
       - name: APK de teste do pull request
         if: github.event_name == 'pull_request'
