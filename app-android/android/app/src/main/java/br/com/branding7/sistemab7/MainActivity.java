@@ -1,5 +1,7 @@
 package br.com.branding7.sistemab7;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -43,6 +45,8 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Collections;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.json.JSONObject;
@@ -59,6 +63,9 @@ import org.json.JSONObject;
  *   • imprimir (window.print não existe no WebView);
  *   • "voltar" do aparelho: volta uma tela; na primeira, minimiza;
  *   • conferir se saiu APK novo e instalar por cima;
+ *   • teleprompter com câmera: o vídeo chega em partes e vai direto para a
+ *     galeria (Filmes/Sistema B7), sem passar inteiro pela memória;
+ *   • canal "Avisos do B7" das notificações (Firebase, plugin do Capacitor);
  *   • barras do Android: as telas ficam ENTRE a barra de cima e a de baixo
  *     (como no Chrome, para o qual o sistema foi feito) e a faixa atrás de
  *     cada barra é pintada com a cor da tela: parece transparente, e nenhuma
@@ -86,6 +93,8 @@ public class MainActivity extends BridgeActivity {
 
         /* as telas ficam entre as barras (o SystemBars do Capacitor está
            desligado: capacitor.config.json → insetsHandling: disable) */
+        criarCanalDeAvisos();
+
         View decor = getWindow().getDecorView();
         ViewCompat.setOnApplyWindowInsetsListener(decor, (v, insets) -> {
             int tipos = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
@@ -127,6 +136,16 @@ public class MainActivity extends BridgeActivity {
         c.setAppearanceLightNavigationBars(!iconesClaros);
     }
 
+    /* aviso do B7 aparece no topo da tela, com som (importância alta) */
+    void criarCanalDeAvisos() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationChannel c = new NotificationChannel("avisos", "Avisos do B7", NotificationManager.IMPORTANCE_HIGH);
+        c.setDescription("Demandas, aprovações, conversas e lembretes de gravação");
+        c.enableVibration(true);
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm != null) nm.createNotificationChannel(c);
+    }
+
     /* o SystemBars do Capacitor repinta a janela ao girar ou trocar o tema
        do aparelho: devolve as cores do B7 logo depois */
     @Override
@@ -139,6 +158,11 @@ public class MainActivity extends BridgeActivity {
         private final MainActivity act;
         private final WebView web;
         private volatile boolean baixando = false;
+        /* vídeo do teleprompter sendo gravado: uma fila só, na ordem */
+        private final ExecutorService fila = Executors.newSingleThreadExecutor();
+        private Uri videoUri = null;
+        private File videoArquivo = null;
+        private OutputStream videoSaida = null;
 
         Nativo(MainActivity act, WebView web) {
             this.act = act;
@@ -147,6 +171,12 @@ public class MainActivity extends BridgeActivity {
 
         /* mensagens das telas: {"id", "acao", ...}; responde {"id", "ok", ...} */
         void receber(WebMessageCompat msg, JavaScriptReplyProxy resposta) {
+            /* pedaço do vídeo em binário: só acrescenta, sem resposta */
+            if (msg.getType() == WebMessageCompat.TYPE_ARRAY_BUFFER) {
+                byte[] parte = msg.getArrayBuffer();
+                fila.execute(() -> escreverVideo(parte));
+                return;
+            }
             JSONObject m;
             try {
                 m = new JSONObject(msg.getData());
@@ -155,6 +185,26 @@ public class MainActivity extends BridgeActivity {
             }
             String id = m.optString("id");
             String acao = m.optString("acao");
+            /* vídeo: tudo pela mesma fila, para respeitar a ordem das partes */
+            if (acao.startsWith("video")) {
+                fila.execute(() -> {
+                    JSONObject r = new JSONObject();
+                    boolean ok = false;
+                    try {
+                        switch (acao) {
+                            case "videoInicio": ok = abrirVideo(m.optString("nome"), m.optString("tipo")); break;
+                            case "videoParte": escreverVideo(Base64.decode(m.optString("base64"), Base64.DEFAULT)); ok = true; break;
+                            case "videoFim": ok = fecharVideo(r); break;
+                            case "videoCancelar": cancelarVideo(); ok = true; break;
+                        }
+                    } catch (Exception e) {
+                        ok = false;
+                    }
+                    boolean fim = ok;
+                    act.runOnUiThread(() -> responder(resposta, id, fim, r));
+                });
+                return;
+            }
             /* o que usa a internet roda fora da linha da tela */
             if (acao.equals("conferirApk") || acao.equals("versaoSite") || acao.equals("instalarApk")) {
                 new Thread(() -> {
@@ -205,6 +255,8 @@ public class MainActivity extends BridgeActivity {
                 r.put("ok", ok);
                 r.put("versao", BuildConfig.VERSION_NAME);
                 r.put("codigo", BuildConfig.VERSION_CODE);
+                r.put("firebase", BuildConfig.TEM_FIREBASE);
+                r.put("binario", WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER));
                 resposta.postMessage(r.toString());
             } catch (Exception e) {
                 /* a tela já saiu */
@@ -262,6 +314,64 @@ public class MainActivity extends BridgeActivity {
             } finally {
                 baixando = false;
             }
+        }
+
+        /* ------------------------------------------- vídeo (teleprompter) */
+
+        private boolean abrirVideo(String nome, String tipo) throws Exception {
+            cancelarVideo();
+            String mime = (tipo == null || tipo.isEmpty()) ? "video/mp4" : tipo.split(";")[0];
+            String arquivo = nomeSeguro(nome, mime);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.Video.Media.DISPLAY_NAME, arquivo);
+                v.put(MediaStore.Video.Media.MIME_TYPE, mime);
+                v.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/Sistema B7");
+                v.put(MediaStore.Video.Media.IS_PENDING, 1);
+                videoUri = act.getContentResolver().insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, v);
+                if (videoUri == null) throw new Exception("sem acesso à galeria");
+                videoSaida = act.getContentResolver().openOutputStream(videoUri);
+            } else {
+                File dir = act.getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+                if (dir == null) dir = act.getFilesDir();
+                videoArquivo = new File(dir, arquivo);
+                videoSaida = new FileOutputStream(videoArquivo);
+            }
+            return videoSaida != null;
+        }
+
+        private void escreverVideo(byte[] parte) {
+            try {
+                if (videoSaida != null && parte != null) videoSaida.write(parte);
+            } catch (Exception e) {
+                /* falhou no meio: o fim avisa */
+                cancelarVideo();
+            }
+        }
+
+        private boolean fecharVideo(JSONObject r) throws Exception {
+            if (videoSaida == null) return false;
+            videoSaida.close();
+            videoSaida = null;
+            if (videoUri != null) {
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.Video.Media.IS_PENDING, 0);
+                act.getContentResolver().update(videoUri, v, null, null);
+            }
+            videoUri = null;
+            videoArquivo = null;
+            r.put("onde", "Galeria → Filmes → Sistema B7");
+            act.runOnUiThread(() -> Toast.makeText(act, "Vídeo salvo na galeria (Filmes/Sistema B7)", Toast.LENGTH_LONG).show());
+            return true;
+        }
+
+        private void cancelarVideo() {
+            try { if (videoSaida != null) videoSaida.close(); } catch (Exception e) { /* nada */ }
+            videoSaida = null;
+            try { if (videoUri != null) act.getContentResolver().delete(videoUri, null, null); } catch (Exception e) { /* nada */ }
+            if (videoArquivo != null) videoArquivo.delete();
+            videoUri = null;
+            videoArquivo = null;
         }
 
         /* ---------------------------------------------------- arquivos */

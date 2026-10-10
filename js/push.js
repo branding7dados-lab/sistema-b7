@@ -18,13 +18,13 @@ window.B7 = window.B7 || {};
 
 B7.Push = (function () {
   const chave = () => String((window.B7_CONFIG || {}).VAPID_PUBLIC_KEY || '').trim();
+  /* zzz148: dentro do app Android o push vem do Firebase (js/app-nativo.js) */
+  const App = () => (B7.AppNativo && B7.AppNativo.ativo && B7.AppNativo.push) ? B7.AppNativo.push : null;
 
   /* por que não dá — a interface mostra isto no lugar do botão */
   function motivo() {
+    if (App()) return App().motivo();
     if (!chave()) return 'Chave pública VAPID não configurada em js/config.js (VAPID_PUBLIC_KEY).';
-    /* zzz145: o WebView do app Android não tem push da web; os avisos
-       com o B7 fechado ainda vêm pelo Chrome (ver app-android/README.md) */
-    if (B7.AppNativo && B7.AppNativo.ativo) return 'No app Android os avisos ainda não chegam com o B7 fechado. Por enquanto, ative-os abrindo o sistema no Chrome.';
     if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return 'Este navegador não tem service worker (ou o sistema não está em https).';
     if (!('PushManager' in window)) return 'Este navegador não suporta push. No iPhone, adicione o Sistema B7 à tela de início.';
     if (!('Notification' in window)) return 'Este navegador não suporta notificações.';
@@ -49,6 +49,7 @@ B7.Push = (function () {
   /* inscrição atual deste navegador, se houver */
   async function inscricao() {
     if (!disponivel()) return null;
+    if (App()) return App().inscricao();
     try { const r = await registro(); return await r.pushManager.getSubscription(); }
     catch (e) { return null; }
   }
@@ -63,6 +64,11 @@ B7.Push = (function () {
   async function ativar() {
     const m = motivo();
     if (m) throw new Error(m);
+    if (App()) {
+      await App().ativar();
+      try { localStorage.removeItem('b7-push-desligado-aqui'); } catch (e) {}
+      return true;
+    }
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') throw new Error('Permissão de notificação não concedida.');
     const r = await registro();
@@ -82,7 +88,8 @@ B7.Push = (function () {
     const s = await inscricao();
     if (s) {
       try { await B7.DB.removerPush(s.endpoint); } catch (e) {}
-      try { await s.unsubscribe(); } catch (e) {}
+      if (App()) await App().desativar();
+      else try { await s.unsubscribe(); } catch (e) {}
     }
     return true;
   }
@@ -90,6 +97,7 @@ B7.Push = (function () {
   /* --------------------------------------------------- estado do aparelho */
   /* permissão do navegador, em palavras */
   function permissao() {
+    if (App()) return App().permissao();
     if (!('Notification' in window)) return 'indisponivel';
     return Notification.permission === 'granted' ? 'permitida'
       : Notification.permission === 'denied' ? 'bloqueada' : 'nao_solicitada';
@@ -105,6 +113,7 @@ B7.Push = (function () {
       : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
     let app = false;
     try { app = window.matchMedia('(display-mode: standalone)').matches; } catch (e) {}
+    if (App()) return (so || 'Android') + ' · app do B7';
     return ([so, nav].filter(Boolean).join(' · ') || 'Navegador') + (app ? ' (app instalado)' : '');
   }
 
@@ -184,6 +193,7 @@ B7.Push = (function () {
   const CHAVE_DESLIGADO = 'b7-push-desligado-aqui';
   async function manter() {
     try {
+      if (App()) await App().verificar();
       if (!disponivel() || !B7.Auth || !B7.Auth.usuario()) return;
       /* dentro da conta de outra pessoa, nada de inscrever o aparelho dela */
       if (B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro()) return;
@@ -193,6 +203,7 @@ B7.Push = (function () {
       if (desligadoAqui) return;          /* a pessoa desligou neste aparelho */
       if (permissao() === 'permitida') {
         if (prefs.push === false) return;
+        if (App()) { await App().garantir(); return; }
         const r = await registro();
         await navigator.serviceWorker.ready;
         let s = await r.pushManager.getSubscription();

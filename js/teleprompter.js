@@ -17,8 +17,17 @@
    Estado de reprodução é local e some ao sair. Preferências (fonte,
    velocidade, espelho…) ficam neste aparelho, em B7.pref.
 
+   zzz148 — CÂMERA: com "Gravar com a câmera" ligado, a câmera da frente
+   aparece atrás do texto e cada leitura (uma cena, ou o roteiro inteiro no
+   contínuo) vira um vídeo. No app Android o vídeo vai direto para a
+   galeria (Filmes/Sistema B7), em partes, sem passar inteiro pela memória;
+   no navegador, é baixado ao terminar. Em retrato também (vídeo vertical),
+   com a faixa de leitura no alto, perto da câmera, para o olhar não fugir.
+   O texto não sai no vídeo: só a câmera é gravada.
+
    Seções: 1 conteúdo · 2 preferências · 3 aparelho (orientação, tela
-   cheia, tela ligada) · 4 rolagem · 5 sessão e telas · 6 entradas.
+   cheia, tela ligada) · 4 rolagem · 5 sessão e telas · 5b câmera ·
+   6 entradas.
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -52,7 +61,7 @@ B7.Teleprompter = (function () {
      2. PREFERÊNCIAS — deste aparelho (não vão para o banco)
      ================================================================ */
   const PADRAO = { modo: 'cenas', fonte: 0, velocidade: 7, espaco: 'normal', largura: 'media',
-                   espelho: false, contagem: 3, preparar: true };
+                   espelho: false, contagem: 3, preparar: true, camera: false };
   const ESPACO = { compacto: 1.18, normal: 1.38, amplo: 1.62 };
   const LARGURA = { estreita: 58, media: 76, larga: 94 };
   const FONTE = { min: 26, max: 132, passo: 4 };
@@ -83,7 +92,8 @@ B7.Teleprompter = (function () {
   /* pelas medidas da janela, que já estão certas na hora do "resize" — a
      consulta de mídia (orientation) pode atualizar um instante depois */
   const emRetrato = () => window.innerHeight > window.innerWidth;
-  const precisaGirar = () => ehCelular() && emRetrato();
+  /* com a câmera, retrato vale: é o vídeo vertical (Reels, TikTok) */
+  const precisaGirar = () => ehCelular() && emRetrato() && !(S && S.camera);
 
   const elTelaCheia = () => document.fullscreenElement || document.webkitFullscreenElement || null;
   function entrarTelaCheia() {
@@ -123,7 +133,12 @@ B7.Teleprompter = (function () {
   const R = { y: 0, max: 0, tocando: false, raf: 0, ultimo: 0, marcas: [] };
   /* 1 = bem devagar; 7 (padrão) ≈ fala tranquila; 20 = leitura corrida */
   const linhasPorSegundo = () => 0.15 + (P.velocidade - 1) * 0.08;
-  const pxPorSegundo = () => linhasPorSegundo() * P.fonte * ESPACO[P.espaco];
+  /* em pé com a câmera a tela é estreita: a letra cai para ~60% (o ajuste
+     A−/A+ continua mexendo nela, proporcionalmente) e o texto usa a
+     largura toda */
+  const emPeComCamera = () => !!(S && S.camera && emRetrato());
+  const fonte = () => emPeComCamera() ? Math.max(FONTE.min, Math.round(P.fonte * 0.6)) : P.fonte;
+  const pxPorSegundo = () => linhasPorSegundo() * fonte() * ESPACO[P.espaco];
 
   function aplicarRolagem() {
     if (!S) return;
@@ -161,7 +176,8 @@ B7.Teleprompter = (function () {
     if (!S) return;
     const antes = R.max > 0 ? R.y / R.max : 0;
     const h = S.palco.clientHeight;
-    const foco = Math.round(h * 0.36);
+    /* com a câmera, a leitura fica no alto, perto da lente */
+    const foco = Math.round(h * (S.camera ? 0.17 : 0.36));
     S.el.style.setProperty('--tele-foco', foco + 'px');
     const miolo = S.rolo.firstElementChild;
     const alturaTexto = miolo ? miolo.offsetHeight : 0;
@@ -170,7 +186,7 @@ B7.Teleprompter = (function () {
     if (cabe) { R.max = 0; R.y = 0; R.marcas = []; }
     else {
       /* a primeira linha nasce na faixa de leitura e a última sai por ela */
-      R.max = Math.max(0, alturaTexto - Math.round(P.fonte * ESPACO[P.espaco] * 0.6));
+      R.max = Math.max(0, alturaTexto - Math.round(fonte() * ESPACO[P.espaco] * 0.6));
       R.marcas = [...S.rolo.querySelectorAll('[data-cena]')].map(el => ({ i: Number(el.dataset.cena), y: el.offsetTop }));
       R.y = manter ? Math.min(R.max, antes * R.max) : 0;
     }
@@ -212,10 +228,11 @@ B7.Teleprompter = (function () {
 
   function aplicarPrefs() {
     const e = S.el.style;
-    e.setProperty('--tele-fonte', P.fonte + 'px');
+    e.setProperty('--tele-fonte', fonte() + 'px');
     e.setProperty('--tele-linha', ESPACO[P.espaco]);
-    e.setProperty('--tele-largura', LARGURA[P.largura] + '%');
-    S.palco.classList.toggle('espelho', !!P.espelho);
+    e.setProperty('--tele-largura', (emPeComCamera() ? 94 : LARGURA[P.largura]) + '%');
+    /* espelho é para o vidro do teleprompter; gravando com a câmera, não */
+    S.palco.classList.toggle('espelho', !!P.espelho && !S.camera);
     S.el.querySelectorAll('[data-tele="espelho"]').forEach(b => { b.classList.toggle('on', !!P.espelho); b.setAttribute('aria-pressed', String(!!P.espelho)); });
   }
 
@@ -237,11 +254,14 @@ B7.Teleprompter = (function () {
         '<button type="button" class="tele-bt" data-tele="cheia" aria-label="Tela cheia" title="Tela cheia (F)">' + IC.cheia + '</button>' +
         '<button type="button" class="tele-bt" data-tele="ajustes" aria-label="Ajustes de leitura" aria-haspopup="dialog">' + IC.ajustes + '</button>' +
       '</header>' +
+      '<div class="tele-rec" id="tele-rec" hidden><i></i><span id="tele-rec-t">REC 0:00</span>' +
+        '<button type="button" data-tele="parar-gravacao" aria-label="Parar a gravação e salvar">Parar</button></div>' +
       '<footer class="tele-ctrl" id="tele-ctrl"></footer>' +
       '<section class="tele-painel" id="tele-painel" hidden></section>' +
       '<aside class="tele-folha" id="tele-folha" role="dialog" aria-label="Ajustes de leitura" hidden></aside>' +
       '<div class="tele-gate" id="tele-gate" role="alert" hidden>' + IC.girar +
         '<b>Gire o celular para continuar</b><span>O Teleprompter B7 funciona no modo paisagem.</span>' +
+        (camDisponivel() ? '<button type="button" class="tele-acao" data-tele="camera">Gravar em pé com a câmera</button>' : '') +
         '<button type="button" class="tele-bt texto" data-tele="sair">Sair</button></div>';
     document.body.appendChild(el);
     document.body.classList.add('tele-aberto');
@@ -404,7 +424,7 @@ B7.Teleprompter = (function () {
 
   /* ---- tela de início: roteiro, modo e ajustes — pronto em segundos */
   function telaInicio() {
-    pausar(); cancelarContagem();
+    pausar(); cancelarContagem(); pararGravacao();
     S.fase = 'inicio'; S.apresentando = false;
     S.rolo.innerHTML = ''; R.max = 0; R.y = 0; aplicarRolagem();
     const r = roteiro();
@@ -427,7 +447,13 @@ B7.Teleprompter = (function () {
             '<button type="button" role="radio" aria-checked="' + (P.modo === 'cenas') + '" data-modo="cenas"><b>Por cenas</b><small>Uma cena por vez, para gravar em takes</small></button>' +
             '<button type="button" role="radio" aria-checked="' + (P.modo === 'continuo') + '" data-modo="continuo"><b>Contínuo</b><small>O roteiro inteiro, rolando</small></button>' +
           '</div>' +
-          '<button type="button" class="tele-acao" data-tele="iniciar" data-foco' + (semFala ? ' disabled' : '') + '>' + IC.play + '<span>Iniciar</span></button>' +
+          (camDisponivel()
+            ? '<label class="tele-liga tele-cam-liga"><span><b>Gravar com a câmera</b><small>' +
+                (S.camera ? 'Câmera da frente ligada. Cada leitura vira um vídeo' + (B7.AppNativo && B7.AppNativo.ativo ? ' na galeria.' : ', baixado ao terminar.')
+                  : 'A câmera da frente grava enquanto você lê.') + '</small></span>' +
+                '<button type="button" role="switch" aria-checked="' + !!S.camera + '" data-tele="camera" aria-label="Gravar com a câmera"><i></i></button></label>'
+            : '') +
+          '<button type="button" class="tele-acao" data-tele="iniciar" data-foco' + (semFala ? ' disabled' : '') + '>' + IC.play + '<span>' + (S.camera ? 'Iniciar e gravar' : 'Iniciar') + '</span></button>' +
           (semFala ? '<p class="tele-nota">Escreva a fala das cenas no roteiro para usar o teleprompter.</p>' : '') +
           (lista ? '<small class="tele-rotulo">Roteiros desta gravação</small>' + lista : '') +
         '</div>' +
@@ -438,18 +464,18 @@ B7.Teleprompter = (function () {
 
   /* ---------------------------------------------- modo contínuo */
   function iniciarContinuo() {
-    fecharPainel();
+    fecharPainel(); pararGravacao();
     S.fase = 'continuo'; S.cena = 0; ultimaCenaVista = -1; S.apresentando = true;
     const r = roteiro();
     S.rolo.innerHTML = '<div class="tele-texto">' + r.comFala.map((c, i) =>
       '<p class="tele-fala" data-cena="' + i + '">' + falas(c.fala) + '</p>').join('') + '</div>';
     medir(false); pintarOnde(); pintarCtrl();
-    contar(() => tocar());
+    contar(() => { gravar('roteiro'); tocar(); });
   }
 
   /* ------------------------------------------------ modo por cenas */
   function prepararCena(i) {
-    pausar(); cancelarContagem();
+    pausar(); cancelarContagem(); pararGravacao();
     const r = roteiro();
     S.cena = Math.min(r.cenas.length - 1, Math.max(0, i));
     S.fase = 'cena-prep'; S.apresentando = false;
@@ -475,7 +501,7 @@ B7.Teleprompter = (function () {
     pintarOnde(); pintarCtrl(); mostrarControles();
   }
   function apresentarCena(i, repeticao) {
-    pausar(); cancelarContagem(); fecharPainel();
+    pausar(); cancelarContagem(); fecharPainel(); pararGravacao();
     const r = roteiro();
     S.cena = Math.min(r.cenas.length - 1, Math.max(0, i));
     const c = r.cenas[S.cena];
@@ -483,7 +509,7 @@ B7.Teleprompter = (function () {
     S.fase = 'cena-ap'; S.apresentando = true;
     S.rolo.innerHTML = '<div class="tele-texto"><p class="tele-fala">' + falas(c.fala) + '</p></div>';
     medir(false); pintarOnde(); pintarCtrl();
-    contar(() => { if (R.max > 0) tocar(); else { pintarCtrl(); mostrarControles(); } });
+    contar(() => { gravar('cena ' + c.n); if (R.max > 0) tocar(); else { pintarCtrl(); mostrarControles(); } });
   }
   function irCena(delta) {
     const r = roteiro();
@@ -492,7 +518,7 @@ B7.Teleprompter = (function () {
       const alvo = R.marcas.find(m => m.i === atual + delta);
       /* "anterior" no meio de uma cena volta ao começo dela primeiro */
       const inicioAtual = (R.marcas.find(m => m.i === atual) || { y: 0 }).y;
-      if (delta < 0 && R.y - inicioAtual > P.fonte) irPara(inicioAtual);
+      if (delta < 0 && R.y - inicioAtual > fonte()) irPara(inicioAtual);
       else if (alvo) irPara(alvo.y);
       else if (delta > 0) { irPara(R.max); pausar(); aoChegarAoFim(); }
       return;
@@ -514,7 +540,7 @@ B7.Teleprompter = (function () {
 
   /* ---------------------------------------------------- fim do roteiro */
   function telaFim() {
-    pausar(); cancelarContagem();
+    pausar(); cancelarContagem(); pararGravacao();
     S.fase = 'fim'; S.apresentando = false;
     const r = roteiro(); const prox = S.roteiros[S.i + 1];
     const podeMarcar = !!(r.itemId && S.ctx.marcar && S.ctx.podeMarcar);
@@ -565,7 +591,7 @@ B7.Teleprompter = (function () {
     const gate = S.el.querySelector('#tele-gate');
     if (girar && gate.hidden) { pausar(); cancelarContagem(); gate.hidden = false; S.el.classList.add('com-gate'); }
     else if (!girar && !gate.hidden) { gate.hidden = true; S.el.classList.remove('com-gate'); }
-    if (!girar) { medir(true); mostrarControles(); }
+    if (!girar) { if (S.camera) aplicarPrefs(); medir(true); mostrarControles(); }
   }
   let medirT = 0;
   let medirT2 = 0;
@@ -608,6 +634,8 @@ B7.Teleprompter = (function () {
     if (a === 'prox-roteiro') { S.i = Math.min(S.roteiros.length - 1, S.i + 1); return comecarRoteiro(); }
     if (a === 'lista') return telaInicio();
     if (a === 'marcar') return marcarGravado();
+    if (a === 'camera') return alternarCamera();
+    if (a === 'parar-gravacao') return pararGravacao();
   }
   function aoClicar(e) {
     if (!S) return;
@@ -703,12 +731,14 @@ B7.Teleprompter = (function () {
        tela de preparação, e já sumiu quando a leitura começa. */
     entrarTelaCheia();
     manterTelaLigada();
+    if (P.camera && camDisponivel()) ligarCamera();
     conferirOrientacao();
     return S;
   }
   function fechar(semHistorico) {
     if (!S) return;
     pausar(); cancelarContagem(); clearTimeout(tempoQuieto); clearTimeout(medirT); clearTimeout(medirT2); clearInterval(S.vigia);
+    desligarCamera();
     sairTelaCheia(); soltarTela();
     document.removeEventListener('keydown', aoTeclar, true);
     window.removeEventListener('resize', aoRedimensionar);
@@ -724,6 +754,124 @@ B7.Teleprompter = (function () {
     empurrou = false;
     if (foco && foco.focus && document.contains(foco)) { try { foco.focus({ preventScroll: true }); } catch (e) {} }
     if (aoFechar) { try { aoFechar(); } catch (e) {} }
+  }
+
+  /* ================================================================
+     5b. CÂMERA — vídeo da câmera da frente atrás do texto e gravação
+     ================================================================ */
+  const camDisponivel = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  const TIPOS_VIDEO = [
+    ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'mp4'], ['video/mp4', 'mp4'],
+    ['video/webm;codecs=vp9,opus', 'webm'], ['video/webm;codecs=vp8,opus', 'webm'], ['video/webm', 'webm']
+  ];
+  const tipoVideo = () => TIPOS_VIDEO.find(([t]) => { try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; } }) || ['', 'webm'];
+
+  async function ligarCamera() {
+    if (!S || S.camera || S.ligandoCamera) return;
+    const minha = S;
+    S.ligandoCamera = true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+        audio: { echoCancellation: true, noiseSuppression: true }
+      });
+      if (S !== minha) { stream.getTracks().forEach(t => t.stop()); return; }
+      const v = document.createElement('video');
+      v.className = 'tele-cam'; v.muted = true; v.playsInline = true; v.autoplay = true;
+      v.setAttribute('playsinline', ''); v.srcObject = stream;
+      S.el.insertBefore(v, S.el.firstChild);
+      v.play().catch(() => {});
+      S.camera = { stream, video: v, rec: null };
+      S.el.classList.add('com-camera');
+      P.camera = true; gravarPrefs(); aplicarPrefs();
+    } catch (e) {
+      if (S !== minha) return;
+      P.camera = false; gravarPrefs();
+      const negou = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+      B7.UI.toast(negou ? 'Sem permissão para a câmera e o microfone. Libere nas configurações e tente de novo.'
+        : 'Não foi possível abrir a câmera.', { tipo: 'erro' });
+    } finally {
+      if (S === minha) S.ligandoCamera = false;
+    }
+    if (S === minha) { conferirOrientacao(); if (S.fase === 'inicio') telaInicio(); }
+  }
+
+  function desligarCamera() {
+    if (!S || !S.camera) return;
+    pararGravacao();
+    try { S.camera.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+    S.camera.video.remove();
+    S.camera = null;
+    S.el.classList.remove('com-camera');
+    aplicarPrefs();
+  }
+
+  function alternarCamera() {
+    if (S.camera) { desligarCamera(); P.camera = false; gravarPrefs(); conferirOrientacao(); telaInicio(); }
+    else ligarCamera();
+  }
+
+  /* para onde vai o vídeo: galeria do celular (app) ou download (navegador) */
+  function destinoDoVideo(nome, tipo, ext) {
+    const N = B7.AppNativo;
+    if (N && N.ativo && N.pedir) {
+      let fila = N.pedir('videoInicio', { nome: nome + '.' + ext, tipo }).then(r => { if (!r.ok) throw new Error('galeria'); });
+      return {
+        parte: blob => {
+          fila = fila.then(() => blob.arrayBuffer()).then(buf => {
+            if (N.recursos && N.recursos.binario && window.B7Nativo) window.B7Nativo.postMessage(buf);
+            else return new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); })
+              .then(b64 => N.pedir('videoParte', { base64: b64 }));
+          });
+        },
+        fim: () => fila.then(() => N.pedir('videoFim')).then(r => { if (!r.ok) throw new Error('galeria'); })
+          .catch(() => { N.pedir('videoCancelar'); B7.UI.toast('Não foi possível salvar o vídeo na galeria.', { tipo: 'erro' }); })
+      };
+    }
+    const partes = [];
+    return {
+      parte: blob => partes.push(blob),
+      fim: () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob(partes, { type: tipo || 'video/webm' }));
+        a.download = nome + '.' + ext;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+        B7.UI.toast('Vídeo baixado: ' + a.download);
+      }
+    };
+  }
+
+  /* começa a gravar quando a leitura começa (fim da contagem) */
+  function gravar(oQue) {
+    if (!S || !S.camera || S.camera.rec) return;
+    const [tipo, ext] = tipoVideo();
+    const r = roteiro();
+    const agora = new Date();
+    const hora = String(agora.getHours()).padStart(2, '0') + 'h' + String(agora.getMinutes()).padStart(2, '0') + '-' + String(agora.getSeconds()).padStart(2, '0');
+    const nome = ('B7 ' + (r ? r.titulo : 'teleprompter') + ' ' + oQue + ' ' + hora).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+    let rec;
+    try { rec = new MediaRecorder(S.camera.stream, Object.assign({ videoBitsPerSecond: 8000000 }, tipo ? { mimeType: tipo } : {})); }
+    catch (e) { B7.UI.toast('Este aparelho não grava vídeo por aqui.', { tipo: 'erro' }); return; }
+    const destino = destinoDoVideo(nome, rec.mimeType || tipo, ext);
+    rec.ondataavailable = ev => { if (ev.data && ev.data.size) destino.parte(ev.data); };
+    rec.onstop = () => destino.fim();
+    rec.start(1000);
+    const cam = S.camera;
+    cam.rec = rec; cam.inicio = Date.now();
+    const caixa = S.el.querySelector('#tele-rec'), tempo = S.el.querySelector('#tele-rec-t');
+    caixa.hidden = false;
+    const pintar = () => { const t = Math.floor((Date.now() - cam.inicio) / 1000); tempo.textContent = 'REC ' + Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+    pintar(); cam.relogio = setInterval(pintar, 500);
+  }
+
+  function pararGravacao() {
+    if (!S || !S.camera || !S.camera.rec) return;
+    const cam = S.camera;
+    clearInterval(cam.relogio);
+    try { if (cam.rec.state !== 'inactive') cam.rec.stop(); } catch (e) {}
+    cam.rec = null;
+    const caixa = S.el.querySelector('#tele-rec'); if (caixa) caixa.hidden = true;
   }
 
   /* ================================================================

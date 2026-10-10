@@ -20,6 +20,8 @@ B7.AppNativo = (function () {
   const ativo = !!(ponte && typeof ponte.postMessage === 'function');
 
   let instalada = '';
+  /* o que este APK sabe fazer (vem na resposta da ponte) */
+  const recursos = { firebase: null, binario: false };
   let seq = 0;
   const esperando = {};
 
@@ -40,6 +42,8 @@ B7.AppNativo = (function () {
       try { r = JSON.parse(ev.data); } catch (e) { return; }
       if (r.versao) instalada = r.versao;
       if (r.codigo) codigo = r.codigo;
+      if ('firebase' in r) recursos.firebase = !!r.firebase;
+      if ('binario' in r) recursos.binario = !!r.binario;
       const f = esperando[r.id];
       if (f) { delete esperando[r.id]; f(r); }
     };
@@ -220,12 +224,104 @@ B7.AppNativo = (function () {
     };
   }
 
-  if (ativo) ligar();
+  /* ---------------------------------------------- notificações (Firebase)
+     O mesmo aviso que vai para o Chrome (função b7-push) chega ao app pelo
+     Firebase. O aparelho entra em push_subscricoes com endpoint
+     "fcm:<token>"; a b7-push reconhece o prefixo e envia pelo Firebase.
+     Conversa com o plugin @capacitor/push-notifications pela ponte do
+     próprio Capacitor (window.Capacitor.nativePromise). js/push.js usa
+     estas funções no lugar das do navegador quando está dentro do app. */
+  const CAP = () => window.Capacitor && typeof window.Capacitor.nativePromise === 'function' ? window.Capacitor : null;
+  const plugin = (metodo, opcoes) => CAP() ? CAP().nativePromise('PushNotifications', metodo, opcoes || {})
+    : Promise.reject(new Error('Esta versão do app não tem notificações.'));
+  const CHAVE_TOKEN = 'b7-app-fcm-token';
+  let permissaoApp = 'nao_solicitada';
+  let tokenEspera = null;
+  let verificada = null;
+  const verificar = () => (verificada = verificada ||
+    plugin('checkPermissions').then(r => { permissaoApp = traduzir(r && r.receive); }, () => {}));
+
+  const lerToken = () => { try { return localStorage.getItem(CHAVE_TOKEN) || ''; } catch (e) { return ''; } };
+  const traduzir = p => p === 'granted' ? 'permitida' : p === 'denied' ? 'bloqueada' : 'nao_solicitada';
+
+  function iniciarPush() {
+    const cap = CAP();
+    if (!cap) return;
+    cap.addListener('PushNotifications', 'registration', t => {
+      const valor = t && t.value;
+      if (!valor) return;
+      try { localStorage.setItem(CHAVE_TOKEN, valor); } catch (e) {}
+      if (tokenEspera) { tokenEspera.ok(valor); tokenEspera = null; }
+    });
+    cap.addListener('PushNotifications', 'registrationError', e => {
+      if (tokenEspera) { tokenEspera.erro(new Error((e && e.error) || 'O Firebase não respondeu.')); tokenEspera = null; }
+    });
+    /* toque no aviso: abre a tela dele e tira das não lidas */
+    cap.addListener('PushNotifications', 'pushNotificationActionPerformed', ev => {
+      const d = (ev && ev.notification && ev.notification.data) || {};
+      const ir = () => {
+        if (typeof d.link === 'string' && d.link.startsWith('#/')) location.hash = d.link;
+        const pronto = () => { if (B7.Notif) B7.Notif.atualizar(); };
+        if (d.id && B7.DB && B7.DB.marcarLida) B7.DB.marcarLida(d.id).then(pronto, pronto);
+      };
+      /* abriu o app pelo aviso: espera o login montar as telas */
+      if (B7.Auth && B7.Auth.usuario && B7.Auth.usuario()) ir(); else setTimeout(ir, 2500);
+    });
+    /* aviso com o app aberto: o sino já atualiza sozinho; só recarrega a contagem */
+    cap.addListener('PushNotifications', 'pushNotificationReceived', () => { if (B7.Notif) B7.Notif.atualizar(); });
+    verificar();
+  }
+
+  /* pede um token novo ao Firebase (não pergunta nada à pessoa) */
+  function registrarNoFirebase() {
+    return new Promise((ok, erro) => {
+      tokenEspera = { ok, erro };
+      plugin('register').catch(e => { if (tokenEspera) { tokenEspera = null; erro(e); } });
+      setTimeout(() => { if (tokenEspera) { tokenEspera = null; erro(new Error('O Firebase não respondeu. Confira a internet.')); } }, 20000);
+    });
+  }
+
+  async function gravarNoBanco(token) {
+    const endpoint = 'fcm:' + token;
+    if (!(await B7.DB.temPush(endpoint))) await B7.DB.registrarPush({ endpoint, p256dh: 'fcm', auth: 'fcm' });
+  }
+
+  const push = {
+    motivo() {
+      if (!CAP()) return 'Esta versão do app não tem notificações. Atualize o app.';
+      if (recursos.firebase === false) return 'As notificações do app ainda estão sendo ligadas (Firebase). Logo chegam numa atualização.';
+      if (permissaoApp === 'bloqueada') return 'As notificações do B7 estão bloqueadas. Libere em Configurações do Android → Apps → Sistema B7 → Notificações.';
+      return null;
+    },
+    permissao: () => permissaoApp,
+    verificar,
+    inscricao: async () => { const t = lerToken(); return t ? { endpoint: 'fcm:' + t } : null; },
+    async ativar() {
+      const r = await plugin('requestPermissions');
+      permissaoApp = traduzir(r && r.receive);
+      if (permissaoApp !== 'permitida') throw new Error('Permissão de notificação não concedida.');
+      await gravarNoBanco(await registrarNoFirebase());
+    },
+    async desativar() {
+      try { await plugin('unregister'); } catch (e) {}
+      try { localStorage.removeItem(CHAVE_TOKEN); } catch (e) {}
+    },
+    /* a cada login: token renovado e gravado, sem perguntar nada */
+    async garantir() {
+      if (permissaoApp !== 'permitida') return;
+      await gravarNoBanco(await registrarNoFirebase());
+    }
+  };
+
+  if (ativo) { ligar(); iniciarPush(); }
 
   return {
     ativo,
     versao: () => instalada,
     ligarAtualizacao,
-    instalar
+    instalar,
+    push,
+    recursos,
+    pedir
   };
 })();

@@ -66,6 +66,18 @@ jobs:
             ALIAS=$(keytool -list -keystore "$RUNNER_TEMP/b7.jks" -storepass "$SENHA" | grep -m1 PrivateKeyEntry | cut -d, -f1)
           fi
           echo "B7_KEYSTORE_ALIAS=$ALIAS" >> "$GITHUB_ENV"
+      - name: Firebase (notificações)
+        env:
+          GS: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GS" ]; then
+            printf '%s' "$GS" > android/app/google-services.json
+            node -e "JSON.parse(require('fs').readFileSync('android/app/google-services.json','utf8'))" \
+              || { echo "::error::GOOGLE_SERVICES_JSON não é um JSON válido."; exit 1; }
+            echo "Firebase ligado: o APK sai com notificações."
+          else
+            echo "::warning::Sem o segredo GOOGLE_SERVICES_JSON: o APK sai sem notificações (ver app-android/README.md)."
+          fi
       - run: npm ci --no-audit --no-fund
       - name: Copiar as telas para dentro do app
         run: npm run sync
