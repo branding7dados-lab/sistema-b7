@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Atalhos do ícone do app: segurar o ícone do B7 na tela inicial.
+     Cada um abre o app com um link "b7:..." que o js/atalhos-app.js entende. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="hoje"
+        android:enabled="true"
+        android:icon="@drawable/ic_atalho_hoje"
+        android:shortcutShortLabel="@string/atalho_hoje_curto"
+        android:shortcutLongLabel="@string/atalho_hoje_longo">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="br.com.branding7.sistemab7"
+            android:targetClass="br.com.branding7.sistemab7.MainActivity">
+            <extra android:name="b7_link" android:value="b7:hoje" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="grav"
+        android:enabled="true"
+        android:icon="@drawable/ic_atalho_grav"
+        android:shortcutShortLabel="@string/atalho_grav_curto"
+        android:shortcutLongLabel="@string/atalho_grav_longo">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="br.com.branding7.sistemab7"
+            android:targetClass="br.com.branding7.sistemab7.MainActivity">
+            <extra android:name="b7_link" android:value="b7:gravacoes" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="tele"
+        android:enabled="true"
+        android:icon="@drawable/ic_atalho_tele"
+        android:shortcutShortLabel="@string/atalho_tele_curto"
+        android:shortcutLongLabel="@string/atalho_tele_longo">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="br.com.branding7.sistemab7"
+            android:targetClass="br.com.branding7.sistemab7.MainActivity">
+            <extra android:name="b7_link" android:value="b7:teleprompter" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="ideia"
+        android:enabled="true"
+        android:icon="@drawable/ic_atalho_ideia"
+        android:shortcutShortLabel="@string/atalho_ideia_curto"
+        android:shortcutLongLabel="@string/atalho_ideia_longo">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="br.com.branding7.sistemab7"
+            android:targetClass="br.com.branding7.sistemab7.MainActivity">
+            <extra android:name="b7_link" android:value="b7:ideia" />
+        </intent>
+    </shortcut>
+</shortcuts>

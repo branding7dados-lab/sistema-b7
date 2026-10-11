@@ -470,5 +470,8 @@ B7.Hoje = (() => {
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligarAuto); else ligarAuto();
 
-  return { abrir, fechar, carregar, montarTelas, aberto: () => !!S };
+  /* abriu por um atalho do ícone: hoje não abre sozinho por cima */
+  function marcarVisto() { const eu = quemSou(); if (eu) gravar(CHAVE_DIA, eu.id + ':' + hojeISO()); }
+
+  return { abrir, fechar, carregar, montarTelas, marcarVisto, aberto: () => !!S };
 })();

@@ -22,6 +22,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- atalhos ao segurar o ícone: Meu dia, Gravações, Teleprompter, Nova ideia -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+
         </activity>
 
         <!-- notificações (Firebase): ícone branco do B7, cor e canal "Avisos do B7" -->

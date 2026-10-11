@@ -1085,6 +1085,7 @@ B7.Painel = (function () {
     /* a abertura ainda cobre a tela? o filme espera (primeiro quadro
        parado) e só começa quando a cortina sai */
     const cortina = () => document.querySelector('.b7-abertura:not(.saindo)');
+    const dedo = () => { try { return matchMedia('(pointer:coarse)').matches; } catch (e) { return false; } };
     let esperando = 0;
     let pedido = 0;
     const passar = () => {
@@ -1111,7 +1112,11 @@ B7.Painel = (function () {
         raiz.querySelectorAll('.pn-graf').forEach(g => g.classList.add('pn-cresce'));
         return;
       }
-      if ('IntersectionObserver' in window) raiz.classList.add('pn-cine');
+      /* zzz155: no celular, nada de animação presa à rolagem (paralaxe do
+         topo e blocos que surgem ao rolar). No WebView do Android ela
+         matava o embalo do dedo: a tela parava assim que o dedo saía, e
+         só depois de "Atualizar" (que não liga o filme) rolava solta. */
+      if ('IntersectionObserver' in window && !dedo()) raiz.classList.add('pn-cine');
       raiz.querySelectorAll('.pn-cab').forEach(ceu);
       raiz.querySelectorAll('.pn-cab h1').forEach(letras);
       if (cortina()) {
@@ -1127,7 +1132,8 @@ B7.Painel = (function () {
       }
       raiz.classList.remove('pn-pausa');
       if (!raiz._pnInicio) raiz._pnInicio = performance.now();
-      revelar(raiz);
+      if (dedo()) raiz.querySelectorAll('.pn-bloco').forEach(b => b.classList.add('pn-visto'));
+      else revelar(raiz);
       /* o odômetro começa quando o cartão já caiu no lugar */
       const t = raiz.classList.contains('pn-rapido') ? .55 : 1;
       const atraso = Math.max(0, raiz._pnInicio + 1000 * t - performance.now());
