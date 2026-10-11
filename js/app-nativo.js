@@ -325,7 +325,45 @@ B7.AppNativo = (function () {
     }
   };
 
-  if (ativo) { ligar(); iniciarPush(); }
+  /* ------------------------------------------ widget "Hoje no B7"
+     O widget da tela inicial busca os números sozinho, com uma chave só
+     dele (widget_token_novo no banco), nunca com a sessão do app. Aqui:
+     ao entrar na conta, a chave é criada e entregue ao Android; ao trocar
+     de conta, refeita; ao sair, apagada. Abrir o app também atualiza. */
+  function ligarWidget() {
+    let quem = null, ultimaAtualizacao = 0, pedindo = false;
+    const usuario = () => (B7.Auth && B7.Auth.usuario && B7.Auth.usuario()) || null;
+    async function conferir() {
+      if (pedindo) return;
+      const u = usuario();
+      const id = u && u.papel !== 'cliente' && !(B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro()) ? u.id : null;
+      if (id === quem) {
+        if (id && Date.now() - ultimaAtualizacao > 5 * 60 * 1000 && !document.hidden) { ultimaAtualizacao = Date.now(); pedir('widgetAtualizar'); }
+        return;
+      }
+      pedindo = true;
+      try {
+        if (!id) { if (quem) await pedir('widgetSair'); quem = null; return; }
+        const e = await pedir('widgetEstado');
+        if (!(e.temChave && e.perfil === id)) {
+          if (!B7.sb) return;
+          const { data, error } = await B7.sb.rpc('widget_token_novo');
+          if (error || !data) return;
+          const cfg = window.B7_CONFIG || {};
+          await pedir('widgetToken', { token: data, url: cfg.SUPABASE_URL, anon: cfg.SUPABASE_PUBLISHABLE_KEY });
+          await pedir('widgetPerfil', { perfil: id });
+        } else {
+          pedir('widgetAtualizar');
+        }
+        quem = id; ultimaAtualizacao = Date.now();
+      } catch (e) { /* tenta de novo na próxima volta */ }
+      finally { pedindo = false; }
+    }
+    setInterval(conferir, 4000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) conferir(); });
+  }
+
+  if (ativo) { ligar(); iniciarPush(); ligarWidget(); }
 
   return {
     ativo,

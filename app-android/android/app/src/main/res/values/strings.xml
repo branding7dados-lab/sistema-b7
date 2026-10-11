@@ -4,4 +4,5 @@
     <string name="title_activity_main">Sistema B7</string>
     <string name="package_name">br.com.branding7.sistemab7</string>
     <string name="custom_url_scheme">br.com.branding7.sistemab7</string>
+    <string name="widget_descricao">Gravações, prazos e atrasos do dia</string>
 </resources>
