@@ -85,6 +85,7 @@ public class MainActivity extends BridgeActivity {
     int corFundo = Color.parseColor("#05030A");
     boolean iconesClaros = true;
     int alturaTopo = 0;
+    View moldura = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,8 +96,11 @@ public class MainActivity extends BridgeActivity {
            desligado: capacitor.config.json → insetsHandling: disable) */
         criarCanalDeAvisos();
 
-        View decor = getWindow().getDecorView();
-        ViewCompat.setOnApplyWindowInsetsListener(decor, (v, insets) -> {
+        /* zzz150: o espaço vai na moldura em volta do WebView, e não na
+           janela (decorView): no S25 FE a janela ignorava o espaçamento e o
+           topo do sistema ficava por baixo da hora */
+        moldura = (View) bridge.getWebView().getParent();
+        ViewCompat.setOnApplyWindowInsetsListener(moldura, (v, insets) -> {
             int tipos = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
             Insets b = insets.getInsets(tipos);
             Insets teclado = insets.getInsets(WindowInsetsCompat.Type.ime());
@@ -130,7 +134,8 @@ public class MainActivity extends BridgeActivity {
         LayerDrawable fundo = new LayerDrawable(new Drawable[] { new ColorDrawable(corFundo), new ColorDrawable(corTopo) });
         fundo.setLayerGravity(1, Gravity.TOP | Gravity.FILL_HORIZONTAL);
         fundo.setLayerHeight(1, Math.max(alturaTopo, 1));
-        decor.setBackground(fundo);
+        if (moldura != null) moldura.setBackground(fundo);
+        decor.setBackgroundColor(corFundo);
         WindowInsetsControllerCompat c = WindowCompat.getInsetsController(getWindow(), decor);
         c.setAppearanceLightStatusBars(!iconesClaros);
         c.setAppearanceLightNavigationBars(!iconesClaros);
