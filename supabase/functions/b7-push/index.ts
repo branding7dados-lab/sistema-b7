@@ -47,7 +47,7 @@ import webpush from 'npm:web-push@3.6.7';
 import { comCors, iguais } from '../_shared/cors.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-10-10-zzz148';
+const VERSAO = '2026-10-11-zzz152';
 
 /* Endereço do cartão do aviso (função b7-arte) e a assinatura que ela
    exige: HMAC do id, com um segredo que só as duas funções conhecem.
@@ -148,7 +148,12 @@ async function enviarFcm(token: string, payload: string, ttl: number) {
   const conta = lerConta();
   if (!conta) throw Object.assign(new Error('sem_fcm'), { statusCode: 503 });
   const p = JSON.parse(payload);
-  const dados: Record<string, string> = { link: String(p.link || '#/'), id: String(p.id || ''), tipo: String(p.tipo || '') };
+  /* imagem, logo e botões vão também nos dados: com o app aberto quem
+     mostra o aviso é o próprio app (zzz152), e ele monta o mesmo cartão */
+  const dados: Record<string, string> = {
+    link: String(p.link || '#/'), id: String(p.id || ''), tipo: String(p.tipo || ''),
+    imagem: String(p.imagem || ''), logo: String(p.logo || ''), acoes: JSON.stringify(p.acoes || [])
+  };
   const notif: Record<string, unknown> = {
     channel_id: 'avisos', color: '#D63384', tag: String(p.id || ''),
     default_sound: true, notification_priority: 'PRIORITY_HIGH'

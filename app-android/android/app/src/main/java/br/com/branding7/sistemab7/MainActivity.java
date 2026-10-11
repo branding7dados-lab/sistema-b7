@@ -7,6 +7,8 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -45,6 +47,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /*
@@ -127,30 +130,66 @@ public class MainActivity extends BridgeActivity {
         if (nm != null) nm.createNotificationChannel(c);
     }
 
-    /* aviso que chegou com o app aberto: mostra na barra de notificações,
-       igual ao que chega com o app fechado */
-    void mostrarAviso(String titulo, String corpo, String link, String id) {
-        Intent abrir = new Intent(this, MainActivity.class)
-            .putExtra(EXTRA_LINK, link == null ? "" : link)
-            .putExtra(EXTRA_ID, id == null ? "" : id)
-            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    /* aviso que chegou com o app aberto: mostra na barra de notificações o
+       mesmo cartão de quando o app está fechado — imagem grande (b7-arte),
+       logo do cliente e os botões do aviso. Roda fora da linha da tela
+       (baixa as imagens). */
+    void mostrarAviso(String titulo, String corpo, String link, String id, String imagem, String logo, String acoes) {
         int codigo = (id == null || id.isEmpty()) ? (int) System.currentTimeMillis() : id.hashCode();
-        PendingIntent toque = PendingIntent.getActivity(this, codigo, abrir,
-            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Builder n = new NotificationCompat.Builder(this, "avisos")
             .setSmallIcon(R.drawable.ic_notificacao)
             .setColor(Color.parseColor("#D63384"))
             .setContentTitle(titulo == null || titulo.isEmpty() ? "Sistema B7" : titulo)
             .setContentText(corpo)
-            .setStyle(new NotificationCompat.BigTextStyle().bigText(corpo))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setAutoCancel(true)
-            .setContentIntent(toque);
+            .setContentIntent(intencao(link, id, codigo));
+        Bitmap grande = imagemDe(imagem);
+        Bitmap marca = imagemDe(logo);
+        if (marca != null) n.setLargeIcon(marca);
+        if (grande != null) {
+            NotificationCompat.BigPictureStyle estilo = new NotificationCompat.BigPictureStyle().bigPicture(grande).setSummaryText(corpo);
+            if (marca == null) n.setLargeIcon(grande);
+            estilo.bigLargeIcon((Bitmap) null);
+            n.setStyle(estilo);
+        } else {
+            n.setStyle(new NotificationCompat.BigTextStyle().bigText(corpo));
+        }
+        try {
+            JSONArray lista = new JSONArray(acoes == null || acoes.isEmpty() ? "[]" : acoes);
+            for (int i = 0; i < Math.min(3, lista.length()); i++) {
+                JSONObject ac = lista.getJSONObject(i);
+                n.addAction(0, ac.optString("rotulo", "Abrir"), intencao(ac.optString("link", link), id, codigo + 1 + i));
+            }
+        } catch (Exception e) {
+            /* sem botões */
+        }
         try {
             NotificationManagerCompat.from(this).notify(codigo, n.build());
         } catch (SecurityException e) {
             /* sem permissão de notificação: o sino do app já mostra */
+        }
+    }
+
+    PendingIntent intencao(String link, String id, int codigo) {
+        Intent abrir = new Intent(this, MainActivity.class)
+            .setAction("b7.aviso." + codigo)
+            .putExtra(EXTRA_LINK, link == null ? "" : link)
+            .putExtra(EXTRA_ID, id == null ? "" : id)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        return PendingIntent.getActivity(this, codigo, abrir, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    /* imagem do aviso (só https, até 3 MB); falhou = aviso sem imagem */
+    static Bitmap imagemDe(String endereco) {
+        if (endereco == null || !endereco.startsWith("https://")) return null;
+        try {
+            byte[] b = baixar(endereco);
+            if (b.length > 3 * 1024 * 1024) return null;
+            return BitmapFactory.decodeByteArray(b, 0, b.length);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -259,7 +298,8 @@ public class MainActivity extends BridgeActivity {
                         ok = true;
                         break;
                     case "mostrarAviso":
-                        act.runOnUiThread(() -> act.mostrarAviso(m.optString("titulo"), m.optString("corpo"), m.optString("link"), m.optString("id")));
+                        new Thread(() -> act.mostrarAviso(m.optString("titulo"), m.optString("corpo"), m.optString("link"),
+                            m.optString("id"), m.optString("imagem"), m.optString("logo"), m.optString("acoes"))).start();
                         ok = true;
                         break;
                     case "linkPendente":
