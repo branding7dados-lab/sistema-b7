@@ -204,6 +204,16 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    /* foi para segundo plano: o som da abertura (js/abertura-som.js) cala
+       na hora — o WebView não para o áudio sozinho */
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (bridge != null && bridge.getWebView() != null) {
+            bridge.getWebView().evaluateJavascript("window.B7Pausou && window.B7Pausou()", null);
+        }
+    }
+
     /* toque num aviso mostrado pelo app: abre a tela dele */
     @Override
     protected void onNewIntent(Intent intent) {

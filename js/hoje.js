@@ -251,7 +251,12 @@ B7.Hoje = (() => {
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-modal', 'true');
     el.setAttribute('aria-label', 'Meu dia no B7');
-    el.innerHTML = '<div class="hj-barras"></div>' +
+    /* camadas de cinema: céu com luzes que derivam, granulação de filme,
+       vinheta e as faixas pretas (letterbox) da vinheta de abertura */
+    el.innerHTML = '<div class="hj-ceu" aria-hidden="true"><i></i><i></i><i></i></div>' +
+      '<div class="hj-grao" aria-hidden="true"></div><div class="hj-vinheta" aria-hidden="true"></div>' +
+      '<div class="hj-faixa cima" aria-hidden="true"></div><div class="hj-faixa baixo" aria-hidden="true"></div>' +
+      '<div class="hj-barras"></div>' +
       '<div class="hj-topo"><span class="hj-marca"><img src="assets/brand/symbol-white.png" alt=""> Meu dia</span>' +
       '<button type="button" class="hj-x" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
       '<div class="hj-palco"><div class="hj-carregando"><span></span>Montando o seu dia…</div></div>' +
@@ -277,19 +282,87 @@ B7.Hoje = (() => {
     S.telas = montarTelas(dados);
     el.querySelector('.hj-barras').innerHTML = S.telas.map(() => '<span><i></i></span>').join('');
     ligarToques();
+    await vinheta(dados);
+    if (!S || S.el !== el) return;
     ir(0);
+  }
+
+  /* vinheta de abertura (~2 s, um toque pula): faixas de cinema, um fio
+     de luz que se abre e o título surgindo palavra por palavra */
+  function vinheta(d) {
+    return new Promise(pronto => {
+      const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduz) return pronto();
+      const palco = S.el.querySelector('.hj-palco');
+      S.el.classList.add('cinema');
+      S.el.dataset.cor = 'capa';
+      palco.innerHTML = '<div class="hj-titulo">' +
+        '<span class="hj-t-fio"></span>' +
+        '<p class="hj-t-kick">' + esc(d.nome ? d.nome + ', este é' : 'Este é') + '</p>' +
+        '<h1>' + palavrasHTML('o seu dia') + '</h1>' +
+        '<p class="hj-t-data">' + esc(dataLonga()) + '</p></div>';
+      let feito = false;
+      const fim = () => {
+        if (feito) return; feito = true;
+        if (S) { S.pularVinheta = null; S.el.classList.remove('cinema'); }
+        pronto();
+      };
+      S.pularVinheta = fim;
+      setTimeout(fim, 2300);
+    });
+  }
+
+  /* texto que entra palavra por palavra (cada uma sobe de trás de uma máscara) */
+  function palavrasHTML(txt) {
+    return String(txt).split(/\s+/).filter(Boolean).map((w, k) =>
+      '<span class="hj-p" style="--k:' + k + '"><span>' + esc(w) + '</span></span>').join(' ');
+  }
+  function animarTexto(sec) {
+    sec.querySelectorAll('h2').forEach(h => { h.innerHTML = palavrasHTML(h.textContent); });
+    /* números que contam de 0 até o valor */
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    sec.querySelectorAll('.hj-num b').forEach((b, i) => {
+      const alvo = +b.textContent || 0;
+      if (!alvo) return;
+      b.textContent = '0';
+      const atraso = 420 + i * 110, dur = 900;
+      setTimeout(() => {
+        const t0 = performance.now();
+        const passoN = t => {
+          if (!b.isConnected) return;
+          const f = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - f, 3);
+          b.textContent = String(Math.round(alvo * e));
+          if (f < 1) requestAnimationFrame(passoN);
+        };
+        requestAnimationFrame(passoN);
+      }, atraso);
+    });
   }
 
   function ir(n) {
     if (!S) return;
     if (n >= S.telas.length) return fechar();
     n = Math.max(0, n);
+    const dir = n >= S.i ? 1 : -1;
     S.i = n;
     const tela = S.telas[n];
     const palco = S.el.querySelector('.hj-palco');
     S.el.dataset.cor = tela.cor;
-    palco.innerHTML = '<section class="hj-slide" data-tela="' + tela.id + '">' + tela.html + '</section>';
-    palco.firstChild.setAttribute('aria-live', 'polite');
+    /* troca de cena: a anterior sai desfocando (foco que "puxa"), a nova
+       entra do lado certo e ganha foco */
+    palco.querySelectorAll('.hj-carregando, .hj-titulo, .hj-slide:not(.sai)').forEach(v => {
+      v.classList.add('sai'); v.style.setProperty('--dir', dir);
+      v.setAttribute('aria-hidden', 'true');
+      setTimeout(() => v.remove(), 650);
+    });
+    const sec = document.createElement('section');
+    sec.className = 'hj-slide';
+    sec.dataset.tela = tela.id;
+    sec.style.setProperty('--dir', dir);
+    sec.setAttribute('aria-live', 'polite');
+    sec.innerHTML = tela.html;
+    palco.appendChild(sec);
+    animarTexto(sec);
     const rod = S.el.querySelector('.hj-rodape');
     rod.innerHTML = tela.rota && podeVer(tela.rota.slice(2)) ? '<a class="hj-cta" href="' + esc(tela.rota) + '" data-ir>' + esc(tela.rotulo) + ' <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></a>' : '';
     S.el.querySelectorAll('.hj-barras > span').forEach((b, k) => {
@@ -364,6 +437,7 @@ B7.Hoje = (() => {
       if (!ativo || !S) return;
       ativo = false;
       clearTimeout(segurando);
+      if (S.pularVinheta) { S.el.style.removeProperty('--arrasto'); return S.pularVinheta(); }
       const dx = e.clientX - x0, dy = e.clientY - y0, dt = Date.now() - t0;
       S.el.style.removeProperty('--arrasto');
       if (dy > 110 && dy > Math.abs(dx)) return fechar();
@@ -382,6 +456,7 @@ B7.Hoje = (() => {
   function aoTeclar(e) {
     if (!S) return;
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fechar(); }
+    else if (S.pularVinheta) { e.preventDefault(); S.pularVinheta(); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); ir(S.i + 1); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); ir(S.i - 1); }
     else if (e.key === ' ' && !e.target.closest('a, button, input')) { e.preventDefault(); S.pausado ? retomar() : pausar(); }
@@ -400,7 +475,7 @@ B7.Hoje = (() => {
     document.body.classList.remove('hj-aberto');
     el.classList.remove('on');
     el.classList.add('saindo');
-    setTimeout(() => el.remove(), 260);
+    setTimeout(() => el.remove(), 480);
     const seguir = () => {
       if (depois) { try { depois(); } catch (e) {} }
       else if (anterior && anterior.focus && document.contains(anterior)) { try { anterior.focus({ preventScroll: true }); } catch (e) {} }
