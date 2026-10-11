@@ -2,14 +2,12 @@ package br.com.branding7.sistemab7;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,16 +18,14 @@ import android.print.PrintManager;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Base64;
-import android.view.Gravity;
 import android.view.View;
 import android.webkit.MimeTypeMap;
 import android.webkit.WebView;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.FileProvider;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.JavaScriptReplyProxy;
@@ -66,10 +62,11 @@ import org.json.JSONObject;
  *   • teleprompter com câmera: o vídeo chega em partes e vai direto para a
  *     galeria (Filmes/Sistema B7), sem passar inteiro pela memória;
  *   • canal "Avisos do B7" das notificações (Firebase, plugin do Capacitor);
- *   • barras do Android: as telas ficam ENTRE a barra de cima e a de baixo
- *     (como no Chrome, para o qual o sistema foi feito) e a faixa atrás de
- *     cada barra é pintada com a cor da tela: parece transparente, e nenhuma
- *     tela fica por baixo da hora e da bateria.
+ *   • barras do Android transparentes: o B7 desenha por trás delas e cada
+ *     tela se afasta com env(safe-area-inset-*) (SystemBars do Capacitor no
+ *     modo "css"); aqui só a cor dos ícones (claros/escuros) muda;
+ *   • aviso que chega com o app aberto: o Android não mostra sozinho, então
+ *     o app mostra (mostrarAviso), e o toque abre a tela do aviso.
  * O lado das telas está em js/app-nativo.js. A ponte (B7Nativo) só existe
  * para as telas do próprio app (ORIGEM): um iframe de fora não a enxerga.
  */
@@ -80,36 +77,21 @@ public class MainActivity extends BridgeActivity {
     static final String APK = "https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk";
     static final String SITE_AUTH = "https://branding7dados-lab.github.io/sistema-b7/js/auth.js";
 
-    /* cores atrás das barras e cor dos ícones — o site manda ("barras") */
-    int corTopo = Color.parseColor("#05030A");
-    int corFundo = Color.parseColor("#05030A");
+    static final String EXTRA_LINK = "b7_link";
+    static final String EXTRA_ID = "b7_id";
+
+    /* cor dos ícones das barras — o site manda ("barras") */
     boolean iconesClaros = true;
-    int alturaTopo = 0;
-    View moldura = null;
+    /* aviso tocado com o app fechado: a tela pede quando terminar de abrir */
+    String linkPendente = null;
+    String idPendente = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (bridge == null) return;
 
-        /* as telas ficam entre as barras (o SystemBars do Capacitor está
-           desligado: capacitor.config.json → insetsHandling: disable) */
         criarCanalDeAvisos();
-
-        /* zzz150: o espaço vai na moldura em volta do WebView, e não na
-           janela (decorView): no S25 FE a janela ignorava o espaçamento e o
-           topo do sistema ficava por baixo da hora */
-        moldura = (View) bridge.getWebView().getParent();
-        ViewCompat.setOnApplyWindowInsetsListener(moldura, (v, insets) -> {
-            int tipos = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
-            Insets b = insets.getInsets(tipos);
-            Insets teclado = insets.getInsets(WindowInsetsCompat.Type.ime());
-            v.setPadding(b.left, b.top, b.right, Math.max(b.bottom, teclado.bottom));
-            alturaTopo = b.top;
-            pintarBarras();
-            /* a página não precisa mais se afastar das barras: insets zerados */
-            return new WindowInsetsCompat.Builder(insets).setInsets(tipos, Insets.of(0, 0, 0, 0)).build();
-        });
 
         WebView web = bridge.getWebView();
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
@@ -127,15 +109,9 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
-    /* faixa de cima com a cor do topo da tela; o resto (barra de baixo)
-       com a cor do fundo; ícones claros ou escuros */
+    /* ícones das barras claros (tela escura atrás) ou escuros */
     void pintarBarras() {
         View decor = getWindow().getDecorView();
-        LayerDrawable fundo = new LayerDrawable(new Drawable[] { new ColorDrawable(corFundo), new ColorDrawable(corTopo) });
-        fundo.setLayerGravity(1, Gravity.TOP | Gravity.FILL_HORIZONTAL);
-        fundo.setLayerHeight(1, Math.max(alturaTopo, 1));
-        if (moldura != null) moldura.setBackground(fundo);
-        decor.setBackgroundColor(corFundo);
         WindowInsetsControllerCompat c = WindowCompat.getInsetsController(getWindow(), decor);
         c.setAppearanceLightStatusBars(!iconesClaros);
         c.setAppearanceLightNavigationBars(!iconesClaros);
@@ -151,8 +127,49 @@ public class MainActivity extends BridgeActivity {
         if (nm != null) nm.createNotificationChannel(c);
     }
 
-    /* o SystemBars do Capacitor repinta a janela ao girar ou trocar o tema
-       do aparelho: devolve as cores do B7 logo depois */
+    /* aviso que chegou com o app aberto: mostra na barra de notificações,
+       igual ao que chega com o app fechado */
+    void mostrarAviso(String titulo, String corpo, String link, String id) {
+        Intent abrir = new Intent(this, MainActivity.class)
+            .putExtra(EXTRA_LINK, link == null ? "" : link)
+            .putExtra(EXTRA_ID, id == null ? "" : id)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        int codigo = (id == null || id.isEmpty()) ? (int) System.currentTimeMillis() : id.hashCode();
+        PendingIntent toque = PendingIntent.getActivity(this, codigo, abrir,
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        NotificationCompat.Builder n = new NotificationCompat.Builder(this, "avisos")
+            .setSmallIcon(R.drawable.ic_notificacao)
+            .setColor(Color.parseColor("#D63384"))
+            .setContentTitle(titulo == null || titulo.isEmpty() ? "Sistema B7" : titulo)
+            .setContentText(corpo)
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(corpo))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setAutoCancel(true)
+            .setContentIntent(toque);
+        try {
+            NotificationManagerCompat.from(this).notify(codigo, n.build());
+        } catch (SecurityException e) {
+            /* sem permissão de notificação: o sino do app já mostra */
+        }
+    }
+
+    /* toque num aviso mostrado pelo app: abre a tela dele */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        String link = intent == null ? null : intent.getStringExtra(EXTRA_LINK);
+        if (link == null || link.isEmpty()) return;
+        linkPendente = link;
+        idPendente = intent.getStringExtra(EXTRA_ID);
+        intent.removeExtra(EXTRA_LINK);
+        if (bridge == null || bridge.getWebView() == null) return;
+        String js = "window.B7AppAbrir ? (B7AppAbrir(" + JSONObject.quote(link) + "," + JSONObject.quote(idPendente == null ? "" : idPendente) + "), true) : false";
+        bridge.getWebView().evaluateJavascript(js, r -> { if ("true".equals(r)) { linkPendente = null; idPendente = null; } });
+    }
+
+    /* o SystemBars do Capacitor muda os ícones ao girar ou trocar o tema
+       do aparelho: devolve a cor certa logo depois */
     @Override
     public void onConfigurationChanged(Configuration nova) {
         super.onConfigurationChanged(nova);
@@ -228,6 +245,7 @@ public class MainActivity extends BridgeActivity {
                 return;
             }
             boolean ok = false;
+            JSONObject extra = new JSONObject();
             try {
                 switch (acao) {
                     case "versao":
@@ -237,7 +255,20 @@ public class MainActivity extends BridgeActivity {
                         ok = salvar(m.optString("base64"), m.optString("nome"), m.optString("tipo"));
                         break;
                     case "barras":
-                        barras(m.optBoolean("claras"), m.optString("topo"), m.optString("fundo"));
+                        barras(m.optBoolean("claras"));
+                        ok = true;
+                        break;
+                    case "mostrarAviso":
+                        act.runOnUiThread(() -> act.mostrarAviso(m.optString("titulo"), m.optString("corpo"), m.optString("link"), m.optString("id")));
+                        ok = true;
+                        break;
+                    case "linkPendente":
+                        if (act.linkPendente != null) {
+                            extra.put("link", act.linkPendente);
+                            extra.put("aviso", act.idPendente == null ? "" : act.idPendente);
+                            act.linkPendente = null;
+                            act.idPendente = null;
+                        }
                         ok = true;
                         break;
                     case "imprimir":
@@ -251,7 +282,7 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception e) {
                 ok = false;
             }
-            responder(resposta, id, ok, new JSONObject());
+            responder(resposta, id, ok, extra);
         }
 
         private void responder(JavaScriptReplyProxy resposta, String id, boolean ok, JSONObject r) {
@@ -399,12 +430,10 @@ public class MainActivity extends BridgeActivity {
             }
         }
 
-        /* claras = ícones brancos (tela escura atrás); topo/fundo = #rrggbb */
-        void barras(boolean claras, String topo, String fundo) {
+        /* claras = ícones brancos (tela escura atrás) */
+        void barras(boolean claras) {
             act.runOnUiThread(() -> {
                 act.iconesClaros = claras;
-                try { act.corTopo = Color.parseColor(topo); } catch (Exception e) { /* mantém */ }
-                try { act.corFundo = Color.parseColor(fundo); } catch (Exception e) { /* mantém */ }
                 act.pintarBarras();
             });
         }
