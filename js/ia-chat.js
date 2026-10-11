@@ -293,6 +293,71 @@ B7.Chat = (function () {
     const x = cx.querySelector('#ch-anexo-x'); if (x) x.onclick = () => { S.anexo = null; pintarAnexo(); };
   }
 
+  /* =================================================================
+     IDEIAS POR FOTO (zzz154) — a pessoa tira (ou escolhe) uma foto da
+     vitrine, do produto ou do cardápio do cliente, e o assistente
+     devolve 3 ideias de conteúdo, cada uma com o cartão "Criar" que a
+     põe na linha editorial do mês. É o assistente de sempre: cliente em
+     foco, a foto anexada e o pedido já escrito, numa conversa nova.
+     Só para quem pode criar conteúdo na linha (coordenação), a mesma
+     regra que a b7-ia usa para propor conteúdo.
+     ================================================================= */
+  const podeIdeiasPorFoto = () => {
+    if (!pode() || (B7.Recursos && !B7.Recursos.ligado('ia_imagem'))) return false;
+    const A = B7.Auth, papel = A && A.papel ? A.papel() : '';
+    return papel === 'admin' || papel === 'coordenador';
+  };
+  async function ideiasPorFoto(op) {
+    op = op || {};
+    if (!podeIdeiasPorFoto()) return;
+    montar();                      /* o painel abre a partir do botão flutuante */
+    if (!S.clientes) await carregarClientes();
+    const meses = [0, 1].map(k => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + k); return d; });
+    const valMes = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const nomeMes = d => d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const atual = op.clienteId || S.clienteId || '';
+    const m = B7.UI.modal(
+      '<h3>Ideias por foto</h3>' +
+      '<p class="sub">Tire uma foto da vitrine, do produto ou do cardápio do cliente. A IA olha a foto e sugere 3 ideias de conteúdo para a linha editorial.</p>' +
+      '<div class="mb"><label class="rot" for="ipf-cli">CLIENTE</label><select class="campo" id="ipf-cli">' +
+        '<option value="">Escolha o cliente…</option>' +
+        (S.clientes || []).map(c => '<option value="' + esc(c.id) + '"' + (c.id === atual ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') +
+      '</select></div>' +
+      '<div class="mb"><label class="rot" for="ipf-mes">MÊS DA LINHA EDITORIAL</label><select class="campo" id="ipf-mes">' +
+        meses.map(d => '<option value="' + valMes(d) + '">' + esc(nomeMes(d)) + '</option>').join('') +
+      '</select></div>' +
+      '<div class="mb"><label class="rot" for="ipf-obs">O QUE É A FOTO? <span class="leve">— opcional</span></label>' +
+        '<input class="campo" id="ipf-obs" maxlength="160" placeholder="Ex.: vitrine nova, prato do dia, lançamento"></div>' +
+      '<input type="file" id="ipf-arq" accept="image/*" hidden>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
+        '<button class="b pri" id="ipf-foto">Tirar ou escolher a foto</button></div>');
+    const cli = m.querySelector('#ipf-cli'), arq = m.querySelector('#ipf-arq');
+    m.querySelector('#ipf-foto').onclick = () => {
+      if (!cli.value) { B7.UI.toast('Escolha o cliente primeiro.', { tipo: 'erro' }); cli.focus(); return; }
+      arq.click();
+    };
+    arq.onchange = async () => {
+      const foto = arq.files && arq.files[0];
+      if (!foto) return;
+      const c = (S.clientes || []).find(x => x.id === cli.value);
+      const mesSel = m.querySelector('#ipf-mes');
+      const mesTxt = mesSel.options[mesSel.selectedIndex].text, mesVal = mesSel.value;
+      const obs = m.querySelector('#ipf-obs').value.trim();
+      let anexo;
+      try { anexo = await prepararImagem(foto); }
+      catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível abrir a foto.', { tipo: 'erro' }); return; }
+      m.fechar();
+      abrir();
+      if (S.enviando) return;
+      S.conversaId = null; S.msgs = []; S.clienteId = c ? c.id : ''; S.rascunho = '';
+      pintar();
+      S.anexo = anexo;
+      enviar('📷 Ideias por foto · ' + (c ? c.nome : 'cliente') + (obs ? ' (' + obs + ')' : '') + '\n' +
+        'Sugira 3 ideias de conteúdo bem diferentes a partir desta foto, para a linha de ' + mesTxt + ' (' + mesVal + '), ' +
+        'em Reel, Card, Carrossel ou Story, no tom do cliente, cada uma com uma frase do porquê. Proponha as 3 como conteúdo para eu criar.');
+    };
+  }
+
   function fechar() {
     pararVoz(); pararFala();
     if (painel) { const ta = painel.querySelector('#ch-texto'); if (ta && !S.enviando) S.rascunho = ta.value; }
@@ -743,5 +808,5 @@ B7.Chat = (function () {
   window.addEventListener('hashchange', () => { if (S.aberto) fechar(); });
 
   document.addEventListener('DOMContentLoaded', () => setTimeout(montar, 0));
-  return { montar, abrir, fechar, _formatar: formatar };
+  return { montar, abrir, fechar, ideiasPorFoto, podeIdeiasPorFoto, _formatar: formatar };
 })();

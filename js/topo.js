@@ -23,6 +23,7 @@ B7.Topo = (function () {
   const ehMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
   const IC = {
+    foto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.4"/><path d="M18.5 3.5l.5 1.2 1.2.5-1.2.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5z"/></svg>',
     mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
     grav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15.5" rx="3.2"/><path d="M3.5 9.6h17M8.4 4.8L6.8 9.4M13.2 4.8l-1.6 4.6M18 4.8l-1.6 4.6"/></svg>',
@@ -108,6 +109,11 @@ B7.Topo = (function () {
       contexto: ['semanas', 'semana'],
       pode: () => podeRota('semanas') && !!(B7.Semana && B7.Semana.modalNovo),
       fazer: () => B7.Semana.modalNovo(null) },
+    /* zzz154: foto do cliente → 3 ideias de conteúdo pela IA */
+    { id: 'ideias_foto', rotulo: 'Ideias por foto', dica: 'a IA sugere conteúdos a partir de uma foto', ic: IC.foto,
+      contexto: ['linhas', 'linha'],
+      pode: () => !!(B7.Chat && B7.Chat.podeIdeiasPorFoto && B7.Chat.podeIdeiasPorFoto()),
+      fazer: () => B7.Chat.ideiasPorFoto() },
     { id: 'cliente', rotulo: 'Novo cliente', dica: 'cadastrar um cliente', ic: IC.cliente, separar: true,
       contexto: ['clientes', 'cliente'],
       pode: () => podeRota('clientes'),
