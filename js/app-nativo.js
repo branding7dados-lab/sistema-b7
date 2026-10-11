@@ -258,6 +258,9 @@ B7.AppNativo = (function () {
     });
     /* toque no aviso: abre a tela dele e tira das não lidas */
     const abrirAviso = (link, aviso) => {
+      /* atalho do ícone do app (segurar o ícone): js/atalhos-app.js espera
+         o sistema montar sozinho */
+      if (typeof link === 'string' && link.startsWith('b7:')) { if (B7.AtalhosApp) B7.AtalhosApp.executar(link); return; }
       const ir = () => {
         if (typeof link === 'string' && link.startsWith('#/')) location.hash = link;
         const pronto = () => { if (B7.Notif) B7.Notif.atualizar(); };

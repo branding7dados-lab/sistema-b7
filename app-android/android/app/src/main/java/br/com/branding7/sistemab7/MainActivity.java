@@ -97,6 +97,16 @@ public class MainActivity extends BridgeActivity {
 
         criarCanalDeAvisos();
 
+        /* aberto pelo widget ou por um atalho do ícone com o app fechado:
+           o link espera a página pedir ("linkPendente") */
+        Intent inicio = getIntent();
+        String linkInicial = inicio == null ? null : inicio.getStringExtra(EXTRA_LINK);
+        if (linkInicial != null && !linkInicial.isEmpty()) {
+            linkPendente = linkInicial;
+            idPendente = inicio.getStringExtra(EXTRA_ID);
+            inicio.removeExtra(EXTRA_LINK);
+        }
+
         WebView web = bridge.getWebView();
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
             Nativo nativo = new Nativo(this, web);
