@@ -275,7 +275,8 @@ B7.AppNativo = (function () {
        na barra de notificações, igual a quando está fechado */
     cap.addListener('PushNotifications', 'pushNotificationReceived', n => {
       const d = (n && n.data) || {};
-      pedir('mostrarAviso', { titulo: n && n.title || 'Sistema B7', corpo: n && n.body || '', link: d.link || '#/', id: d.id || '' });
+      pedir('mostrarAviso', { titulo: n && n.title || 'Sistema B7', corpo: n && n.body || '', link: d.link || '#/', id: d.id || '',
+        imagem: d.imagem || '', logo: d.logo || '', acoes: d.acoes || '[]' });
       if (B7.Notif) B7.Notif.atualizar();
     });
     /* aviso mostrado pelo app e tocado depois que o app fechou */
