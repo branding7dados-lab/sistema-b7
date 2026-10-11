@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v358';
+const CACHE = 'roteiros-b7-v359';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -26,7 +26,7 @@ const CASCA = [
   /* zzz45: estava faltando. Sem rede, o "Visualizar como…" sumia em
      silêncio porque o arquivo nunca entrava no cache. */
   './js/previa-usuario.js', './js/menu-contexto.js',
-  './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js', './js/app-nativo.js',
+  './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js', './js/app-nativo.js', './js/hoje.js', './styles/hoje.css',
   './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js', './js/ia-chat.js',
   './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js', './js/vendor/xlsx.full.min.js',
   './styles/auth.css', './styles/central.css', './styles/panorama.css', './styles/conteudo.css', './styles/semana.css',
