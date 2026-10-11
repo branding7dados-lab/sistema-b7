@@ -57,6 +57,32 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
+  /* zzz156: app (ou PWA instalado) que o Android fechou em segundo plano
+     para liberar memória. Se a pessoa estava usando há menos de 30 min,
+     não é "abrir do zero": abertura curta e de volta à tela em que ela
+     estava. A hora e a tela são anotadas ao sair do app e a cada troca de
+     tela; sair da conta apaga (js/auth.js). */
+  try {
+    var b7App = location.hostname === 'localhost' || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    var b7Visto = +localStorage.getItem('b7_visto_em') || 0;
+    if (b7App && Date.now() - b7Visto < 30 * 60 * 1000) {
+      document.documentElement.classList.add('ab-curta');
+      var b7Rota = localStorage.getItem('b7_rota');
+      if ((!location.hash || location.hash === '#' || location.hash === '#/') && b7Rota && /^#\/[a-z]/.test(b7Rota) && !/login|sair|redefinir/.test(b7Rota)) {
+        history.replaceState(null, '', location.pathname + location.search + b7Rota);
+      }
+    }
+    var b7Marcar = function () {
+      try {
+        localStorage.setItem('b7_visto_em', String(Date.now()));
+        if (location.hash.indexOf('#/') === 0) localStorage.setItem('b7_rota', location.hash);
+      } catch (e) {}
+    };
+    document.addEventListener('visibilitychange', function () { if (document.hidden) b7Marcar(); });
+    window.addEventListener('pagehide', b7Marcar);
+    window.addEventListener('hashchange', b7Marcar);
+    setInterval(function () { if (!document.hidden) b7Marcar(); }, 60000);
+  } catch (e) {}
   /* zzz6: "Animações: desligadas" (Configurações / Sua conta). Vale como
      o "reduzir movimento" do sistema: o CSS zera durações (html.sem-animacao,
      styles/global.css) e todo código que pergunta ao navegador

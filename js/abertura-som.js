@@ -404,6 +404,21 @@ B7.SomAbertura = (function () {
     return picos;
   }
 
+  /* zzz156: saiu do app (ou trocou de aba) com a trilha tocando: cala na
+     hora. O contexto é fechado (o que estava programado não volta a tocar
+     ao reabrir); "Ver abertura" cria outro quando pedir. O app Android
+     também chama B7Pausou() ao ir para segundo plano (MainActivity.onPause). */
+  function calar() {
+    if (!ctx || (ctx.close === undefined)) return;
+    const c = ctx;
+    ctx = null; saida = null; sala = null; conv = null; comp = null; drone = null;
+    tocada = true;
+    try { c.close().catch(() => {}); } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) calar(); });
+  window.addEventListener('pagehide', calar);
+  window.B7Pausou = calar;
+
   aoCarregar();
-  return { aoSair, reproduzir, ligado, ensaio };
+  return { aoSair, reproduzir, ligado, ensaio, calar };
 })();
