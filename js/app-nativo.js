@@ -257,18 +257,29 @@ B7.AppNativo = (function () {
       if (tokenEspera) { tokenEspera.erro(new Error((e && e.error) || 'O Firebase não respondeu.')); tokenEspera = null; }
     });
     /* toque no aviso: abre a tela dele e tira das não lidas */
-    cap.addListener('PushNotifications', 'pushNotificationActionPerformed', ev => {
-      const d = (ev && ev.notification && ev.notification.data) || {};
+    const abrirAviso = (link, aviso) => {
       const ir = () => {
-        if (typeof d.link === 'string' && d.link.startsWith('#/')) location.hash = d.link;
+        if (typeof link === 'string' && link.startsWith('#/')) location.hash = link;
         const pronto = () => { if (B7.Notif) B7.Notif.atualizar(); };
-        if (d.id && B7.DB && B7.DB.marcarLida) B7.DB.marcarLida(d.id).then(pronto, pronto);
+        if (aviso && !/^teste-/.test(aviso) && B7.DB && B7.DB.marcarLida) B7.DB.marcarLida(aviso).then(pronto, pronto);
       };
       /* abriu o app pelo aviso: espera o login montar as telas */
       if (B7.Auth && B7.Auth.usuario && B7.Auth.usuario()) ir(); else setTimeout(ir, 2500);
+    };
+    window.B7AppAbrir = abrirAviso;
+    cap.addListener('PushNotifications', 'pushNotificationActionPerformed', ev => {
+      const d = (ev && ev.notification && ev.notification.data) || {};
+      abrirAviso(d.link, d.id);
     });
-    /* aviso com o app aberto: o sino já atualiza sozinho; só recarrega a contagem */
-    cap.addListener('PushNotifications', 'pushNotificationReceived', () => { if (B7.Notif) B7.Notif.atualizar(); });
+    /* aviso com o app aberto: o Android não mostra sozinho — o app mostra
+       na barra de notificações, igual a quando está fechado */
+    cap.addListener('PushNotifications', 'pushNotificationReceived', n => {
+      const d = (n && n.data) || {};
+      pedir('mostrarAviso', { titulo: n && n.title || 'Sistema B7', corpo: n && n.body || '', link: d.link || '#/', id: d.id || '' });
+      if (B7.Notif) B7.Notif.atualizar();
+    });
+    /* aviso mostrado pelo app e tocado depois que o app fechou */
+    setTimeout(() => pedir('linkPendente').then(r => { if (r && r.link) abrirAviso(r.link, r.aviso); }), 1500);
     verificar();
   }
 
