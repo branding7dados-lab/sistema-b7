@@ -68,6 +68,7 @@ import org.json.JSONObject;
  *   • barras do Android transparentes: o B7 desenha por trás delas e cada
  *     tela se afasta com env(safe-area-inset-*) (SystemBars do Capacitor no
  *     modo "css"); aqui só a cor dos ícones (claros/escuros) muda;
+ *   • widget "Hoje no B7" (WidgetHoje.java): recebe daqui a chave dele;
  *   • aviso que chega com o app aberto: o Android não mostra sozinho, então
  *     o app mostra (mostrarAviso), e o toque abre a tela do aviso.
  * O lado das telas está em js/app-nativo.js. A ponte (B7Nativo) só existe
@@ -300,6 +301,29 @@ public class MainActivity extends BridgeActivity {
                     case "mostrarAviso":
                         new Thread(() -> act.mostrarAviso(m.optString("titulo"), m.optString("corpo"), m.optString("link"),
                             m.optString("id"), m.optString("imagem"), m.optString("logo"), m.optString("acoes"))).start();
+                        ok = true;
+                        break;
+                    case "widgetToken":
+                        WidgetHoje.guardarChave(act, m.optString("token"), m.optString("url"), m.optString("anon"));
+                        ok = true;
+                        break;
+                    case "widgetEstado":
+                        extra.put("temChave", WidgetHoje.temChave(act));
+                        extra.put("temWidget", WidgetHoje.temWidget(act));
+                        extra.put("perfil", WidgetHoje.prefs(act).getString("perfil", ""));
+                        ok = true;
+                        break;
+                    case "widgetPerfil":
+                        WidgetHoje.prefs(act).edit().putString("perfil", m.optString("perfil")).apply();
+                        ok = true;
+                        break;
+                    case "widgetAtualizar":
+                        WidgetHoje.agendar(act);
+                        WidgetHoje.atualizarAgora(act);
+                        ok = true;
+                        break;
+                    case "widgetSair":
+                        WidgetHoje.sair(act);
                         ok = true;
                         break;
                     case "linkPendente":
