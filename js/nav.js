@@ -492,7 +492,11 @@ B7.Nav = (function () {
     /* os ícones entram em cascata (CSS lê --i), depois que a folha sobe */
     folhaMais = B7.UI.modal('<div class="tp-folha-cab"><h3>Mais</h3>' +
       '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
-      '<nav class="nm-corpo" aria-label="Mais destinos">' + (html || '<p class="nm-vazio">Nada além da barra.</p>') + '</nav>',
+      '<nav class="nm-corpo" aria-label="Mais destinos">' +
+      (B7.Hoje && !(B7.Auth && B7.Auth.ehCliente && B7.Auth.ehCliente())
+        ? '<button type="button" class="nm-hoje" data-hoje><span class="nm-hoje-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>' +
+          '<span><b>Meu dia em 30 segundos</b><small>O que entra no ar, gravações e atrasos</small></span></button>' : '') +
+      (html || '<p class="nm-vazio">Nada além da barra.</p>') + '</nav>',
       { classe: 'tp-folha nm-folha', aoFechar: () => { folhaMais = null; if (bt) bt.setAttribute('aria-expanded', 'false'); } });
     folhaMais.querySelectorAll('.nm-item').forEach((a, i) => a.style.setProperty('--i', Math.min(i, 16)));
     folhaMais.querySelectorAll('[data-mais]').forEach(a => a.onclick = e => {
@@ -502,6 +506,8 @@ B7.Nav = (function () {
       if (it.acao === 'atalhos') return B7.UI.atalhos();
       location.hash = it.rota;
     });
+    const hj = folhaMais.querySelector('[data-hoje]');
+    if (hj) hj.onclick = () => { const m = folhaMais; if (m) m.fechar(); setTimeout(() => B7.Hoje.abrir(), 120); };
     const vc = folhaMais.querySelector('[data-vercomo]');
     if (vc) vc.onclick = e => { e.preventDefault(); const m = folhaMais; if (m) m.fechar(); B7.PreviaUsuario.abrirSeletor(); };
     /* foco no próprio diálogo (leitor de tela anuncia; Tab entra na
