@@ -2981,6 +2981,7 @@ B7.Video = (function () {
       const ehXlsx = /\.xlsx?$/i.test(arquivo.name);
       let linhas;
       try {
+        if (ehXlsx) await B7.vendor('xlsx');
         linhas = ehXlsx ? parseXLSX(await arquivo.arrayBuffer()) : parseCSV(await arquivo.text());
       } catch (e) {
         B7.UI.toast('Não foi possível ler este arquivo (' + (e.message || 'formato inválido') + ').');

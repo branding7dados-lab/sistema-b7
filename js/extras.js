@@ -52,6 +52,7 @@ B7.Export = (function () {
   function limpar(area) { area.innerHTML = ''; area.style.display = ''; }
 
   async function paraCanvas(folha) {
+    await B7.vendor('html2canvas');
     /* escala 3 ≈ 300dpi numa A4; fundo branco fixo, nunca o tema */
     return html2canvas(folha, {
       scale: 3, backgroundColor: '#ffffff', useCORS: true, logging: false,
@@ -73,6 +74,7 @@ B7.Export = (function () {
   async function gerarPDF(ctx, ids, comAbertura, nome, aoAndar) {
     const { area, folhas } = montarFolhas(ctx, ids, comAbertura);
     try {
+      await B7.vendor('jspdf');
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
       for (let i = 0; i < folhas.length; i++) {

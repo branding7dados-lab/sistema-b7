@@ -260,6 +260,7 @@ B7.ResumoMes = (function () {
       const rot = botao.textContent; btPng.disabled = btPdf.disabled = true; botao.textContent = 'Gerando…';
       const area = document.getElementById('area-impressao');
       try {
+        await B7.vendor('html2canvas', 'jspdf');
         await fontes();
         area.style.display = 'block'; area.classList.add('modo-45');
         area.innerHTML = montar(cliente, atual.ano, atual.mes, dadosMes, atual.leitura, area);

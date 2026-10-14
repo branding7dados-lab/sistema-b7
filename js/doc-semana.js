@@ -878,6 +878,7 @@ B7.BaixarSemana = (function () {
     const { area, pagina } = await preparar(ctx, opcoes);
     const escala = (opcoes && opcoes.alta) ? 4 : 2;   /* 2 → 1080×1350, 4 → 2160×2700 */
     try {
+      await B7.vendor('html2canvas');
       const canvas = await html2canvas(pagina, {
         scale: escala, backgroundColor: '#ffffff', useCORS: true, logging: false,
         windowWidth: pagina.offsetWidth, windowHeight: pagina.offsetHeight
@@ -901,6 +902,7 @@ B7.BaixarSemana = (function () {
   async function gerarPDF(ctx, opcoes, aoAndar) {
     const { area, pagina } = await preparar(ctx, opcoes);
     try {
+      await B7.vendor('html2canvas', 'jspdf');
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ unit: 'mm', format: [216, 270],
                               orientation: 'portrait', compress: true });
