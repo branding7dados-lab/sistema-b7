@@ -80,7 +80,7 @@ B7.WhatsApp = (function () {
     const extras = !!(D.zoom && D.desconectar);
     painel.innerHTML = '<div class="wa-tela">' +
       '<div class="wa-barra">' +
-        '<span class="wa-tit">' + icone + '<b>WhatsApp</b><i class="wa-nl" id="wa-nl"' + (naoLidas ? '' : ' hidden') + '>' + naoLidas + ' não lidas</i></span>' +
+        '<span class="wa-tit">' + icone + '<b>WhatsApp</b><i class="wa-nl" id="wa-nl"' + (naoLidas ? '' : ' hidden') + '>' + naoLidas + ' não lidas</i><i class="wa-esp" id="wa-esp" hidden></i></span>' +
         '<div class="wa-assin' + (cfg.assinatura !== false ? ' on' : '') + '" id="wa-assin">' +
           '<button type="button" class="wa-chave" id="wa-ass" role="switch" aria-checked="' + (cfg.assinatura !== false) + '" title="Assinar as mensagens com o seu nome"><i></i></button>' +
           '<span class="wa-assin-rot">Assinatura</span>' +
@@ -88,6 +88,8 @@ B7.WhatsApp = (function () {
           '<span class="wa-prev" id="wa-prev"></span>' +
         '</div>' +
         '<div class="wa-ferr">' +
+          (D.aoConversas ? '<button type="button" class="wa-ic' + (ladoAberto ? ' on' : '') + '" id="wa-lado-bt" title="Mostrar/esconder o painel do cliente" aria-label="Painel do cliente">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M14.5 4.5v15"/></svg></button>' : '') +
           (B7.Chat ? '<button type="button" class="wa-ic wa-ia" id="wa-ia" title="Assistente do B7" aria-label="Abrir o assistente">' +
             '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9z"/><path d="M18.5 15l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg></button>' : '') +
           (extras ? '<button type="button" class="wa-ic" id="wa-menos" title="Letra menor" aria-label="Letra menor">A−</button>' +
@@ -98,7 +100,10 @@ B7.WhatsApp = (function () {
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14M10 16l-4-4 4-4M6 12h9"/></svg></button>' : '') +
         '</div>' +
       '</div>' +
-      '<div class="wa-area" id="wa-area"><div class="wa-espera">' + icone + '<b>WhatsApp</b><span>Carregando…</span></div></div>' +
+      '<div class="wa-corpo' + (ladoAberto && D.aoConversas ? ' com-lado' : '') + '" id="wa-corpo">' +
+        '<div class="wa-area" id="wa-area"><div class="wa-espera"><span class="wa-esp-ic">' + icone + '</span><b>WhatsApp</b><span>Carregando…</span></div></div>' +
+        (D.aoConversas ? '<aside class="wa-lado" id="wa-lado" aria-label="Painel do cliente"></aside>' : '') +
+      '</div>' +
     '</div>';
     const caixa = painel.querySelector('#wa-assin'), cb = painel.querySelector('#wa-ass'), nome = painel.querySelector('#wa-nome'), prev = painel.querySelector('#wa-prev');
     const ligada = () => caixa.classList.contains('on');
@@ -110,6 +115,15 @@ B7.WhatsApp = (function () {
     cb.onclick = () => { caixa.classList.toggle('on'); cb.setAttribute('aria-checked', String(ligada())); salvar(); };
     nome.oninput = previa; nome.onchange = salvar;
     nome.onkeydown = e => { if (e.key === 'Enter') { nome.blur(); salvar(); } };
+    const btLado = painel.querySelector('#wa-lado-bt');
+    if (btLado) btLado.onclick = () => {
+      ladoAberto = !ladoAberto; B7.pref.gravar('wa_lado', ladoAberto);
+      btLado.classList.toggle('on', ladoAberto);
+      painel.querySelector('#wa-corpo').classList.toggle('com-lado', ladoAberto);
+      if (ladoAberto) pintarLado();
+    };
+    if (D.estadoLeitura) D.estadoLeitura().then(e => { if (e) { conversaAberta = e.conversa || null; if (e.lista && e.lista.length) aoLista(e.lista); else pintarLado(); } }).catch(() => {});
+    carregarGrupos().then(() => { pintarLado(); vigiarEsperando(); });
     const btIa = painel.querySelector('#wa-ia');
     if (btIa) btIa.onclick = () => B7.Chat.abrir();
     painel.querySelector('#wa-recarregar').onclick = () => D.recarregar && D.recarregar();
@@ -173,9 +187,10 @@ B7.WhatsApp = (function () {
     const area = document.getElementById('wa-area');
     if (!area) return desligar();
     /* a área vai até o pé da janela */
-    const topo = area.getBoundingClientRect().top + (window.scrollY || 0);
+    const caixa = document.getElementById('wa-corpo') || area;
+    const topo = caixa.getBoundingClientRect().top;
     const alt = Math.max(320, Math.round(innerHeight - topo - 14));
-    if (Math.abs(area.offsetHeight - alt) > 1) area.style.height = alt + 'px';
+    if (Math.abs(caixa.offsetHeight - alt) > 1) caixa.style.height = alt + 'px';
     const r = area.getBoundingClientRect();
     const fora = r.width < 60 || r.height < 60 || document.hidden;
     if (fora || coberta(area, r)) {
@@ -199,11 +214,12 @@ B7.WhatsApp = (function () {
     if (ret === ultimoRet && !escondido) return;
     ultimoRet = ret; escondido = false;
     setTimeout(() => { const a = document.getElementById('wa-area'); if (a && !escondido) { a.classList.remove('com-foto'); a.style.backgroundImage = ''; } }, 120);
-    D.mostrar({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) });
+    D.mostrar({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height), raio: 16 });
+    area.classList.add('pronta');
   }
   /* foto do WhatsApp posta como fundo da área; espera a imagem estar
      decodificada para a troca ser instantânea */
-  let fotoPronta = null;
+  let fotoPronta = null, ligadoEm = 0;
   function porFoto(f) {
     const a = document.getElementById('wa-area');
     if (!a || typeof f !== 'string' || !f.startsWith('data:image') || !escondido) return Promise.resolve();
@@ -224,13 +240,15 @@ B7.WhatsApp = (function () {
     const topoG = document.querySelector('#tela-dashboard .topo');
     if (topoG && !topoG._waFoto) { topoG._waFoto = true; topoG.addEventListener('pointerenter', preFoto); }
     document.body.classList.add('wa-aberta');
-    ativo = true; escondido = true; ultimoRet = '';
+    ativo = true; escondido = true; ultimoRet = ''; ligadoEm = Date.now();
     clearInterval(relogio);
-    relogio = setInterval(medir, 250);           /* barra lateral abrindo, rolagem, zoom: segue junto */
+    relogio = setInterval(() => { if (Date.now() - ligadoEm > 400) medir(); }, 250);           /* barra lateral abrindo, rolagem, zoom: segue junto */
     addEventListener('resize', medir);
-    observador = new MutationObserver(() => requestAnimationFrame(medir));
+    observador = new MutationObserver(() => { if (Date.now() - ligadoEm > 400) requestAnimationFrame(medir); });
     observador.observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['class'] });
-    requestAnimationFrame(medir);
+    /* zzz176: espera a tela terminar de entrar (a animação do sistema)
+       antes de pôr o WhatsApp — ele chega já no lugar certo, sem pulo */
+    setTimeout(() => requestAnimationFrame(medir), 420);
   }
   function desligar() {
     if (!ativo) return;
@@ -241,6 +259,341 @@ B7.WhatsApp = (function () {
     if (D) D.esconder();
   }
   addEventListener('hashchange', () => { if (location.hash.indexOf('#/whatsapp') !== 0) desligar(); });
+
+
+  /* =================================================================
+     GRUPOS (zzz176) — o programa lê a lista de conversas do WhatsApp
+     (só leitura) e o sistema casa o nome de cada grupo com um cliente:
+       "Suporte B7-3X - Infinite Fio Conquista" → Infinite Fio (Suporte B7-3X)
+       "ARTES MERCATO - LOJA"                    → Mercato (Artes · Loja)
+     Casamento certo (o nome inteiro do cliente aparece no grupo, e só um
+     cliente casa) entra sozinho; o resto espera a conferência
+     ("Conferir grupos"). Tudo fica em whatsapp_grupos — vale para toda a
+     equipe, de qualquer computador.
+     ================================================================= */
+  const norm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const VAZIAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'the', 'and', 'ltda', 'me', 'eireli', 'grupo', 'b7', 'cliente']);
+  let grupos = new Map();          /* nome → linha de whatsapp_grupos */
+  let clientes = [];               /* clientes_resumo */
+  let listaViva = [];              /* última leitura da lista do WhatsApp */
+  let conversaAberta = null;       /* { titulo, msgs } */
+  let carregouGrupos = 0;
+
+  async function carregarGrupos(forcar) {
+    if (!forcar && Date.now() - carregouGrupos < 60000) return;
+    carregouGrupos = Date.now();
+    try {
+      const [g, c] = await Promise.all([
+        B7.sb.from('whatsapp_grupos').select('*').limit(1000),
+        clientes.length && !forcar ? Promise.resolve({ data: clientes }) : B7.sb.from('clientes_resumo').select('id,nome,logo_url,whatsapp_grupo,teste').is('deleted_at', null).order('nome')
+      ]);
+      if (g.data) grupos = new Map(g.data.map(x => [x.nome, x]));
+      if (c.data) clientes = c.data.filter(x => !x.teste);
+    } catch (e) { /* sem rede: segue com o que tem */ }
+  }
+  const tokens = t => norm(t).split(' ').filter(w => w.length >= 3 && !VAZIAS.has(w));
+  /* devolve { cliente, tipo, certo } ou null.
+     Os nomes seguem um padrão: "Suporte <pacote> - <cliente>",
+     "<CLIENTE> - <assunto>", "<cliente> | <assunto>". Por isso:
+       • o que vem depois de "Suporte" (antes do traço) é o PACOTE — não
+         casa cliente ali (Núcleo7 é pacote em "Suporte Núcleo7 - Ninno");
+       • grupo interno ("interno", "(você)", equipe) não casa;
+       • o tipo é o nome do grupo sem o nome do cliente. */
+  const INTERNO_RE = /\b(interno|internos|equipe|time b7|\(voce\)|concluidos|producao b7)\b/;
+  function casar(nomeGrupo) {
+    const ng = norm(nomeGrupo);
+    if (INTERNO_RE.test(ng) || /\(você\)/i.test(nomeGrupo)) return null;
+    const segs = String(nomeGrupo).split(/\s+[-–|·:]\s+|\s+-\s*|\s*\|\s*/).map(x => x.trim()).filter(Boolean);
+    /* segmentos onde o cliente PODE estar (o pacote do "Suporte X" fica de fora) */
+    const alvo = segs.map((sg, i) => ({ sg, i, pacote: i === 0 && segs.length > 1 && /^suporte\b/i.test(norm(sg)) }));
+    let melhor = null, empate = false;
+    clientes.forEach(c => {
+      const cn = norm(c.nome); if (cn.length < 3) return;
+      const tc = tokens(c.nome);
+      let pontos = 0;
+      alvo.forEach(a => {
+        if (a.pacote) return;
+        const sn = ' ' + norm(a.sg) + ' ', ts = new Set(tokens(a.sg));
+        let p = 0;
+        if (sn.includes(' ' + cn + ' ')) p = 100 + cn.length;
+        else if (tc.length) {
+          const achou = tc.filter(w => ts.has(w) || [...ts].some(t => t.length >= 5 && (t.startsWith(w) || w.startsWith(t))));
+          if (achou.length === tc.length) p = 70 + cn.length;
+          else if (achou.length && achou.some(w => w.length >= 5)) p = 30 + achou.join('').length;
+        }
+        if (a.i === segs.length - 1 && p) p += 5;     /* o fim do nome costuma ser o cliente */
+        pontos = Math.max(pontos, p);
+      });
+      if (!pontos) return;
+      if (!melhor || pontos > melhor.pontos) { melhor = { c, pontos }; empate = false; }
+      else if (pontos === melhor.pontos) empate = true;
+    });
+    if (!melhor) return null;
+    /* tipo: o nome do grupo sem as palavras do cliente */
+    const fora = new Set(norm(melhor.c.nome).split(' ').filter(Boolean));
+    const tipo = segs.map(sg => sg.split(/\s+/).filter(w => {
+        const wn = norm(w); return wn && !fora.has(wn) && ![...fora].some(f => f.length >= 5 && (wn.startsWith(f) || f.startsWith(wn)));
+      }).join(' ').replace(/[^\p{L}\p{N}\s\-]/gu, '').trim())
+      .filter(Boolean).map(t => t.length > 3 && t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t)
+      .join(' · ').slice(0, 40);
+    return { cliente: melhor.c, tipo, certo: melhor.pontos >= 100 && !empate };
+  }
+  const clienteDe = id => clientes.find(c => c.id === id) || null;
+  /* o grupo já ligado (conferido ou automático) → cliente */
+  function grupoInfo(nome) {
+    const g = grupos.get(nome);
+    if (g && g.ignorar) return { ignorar: true };
+    if (g && g.cliente_id) return { cliente: clienteDe(g.cliente_id), tipo: g.tipo, ligado: true };
+    const s = casar(nome);
+    return s ? { cliente: s.cliente, tipo: s.tipo, sugestao: true, certo: s.certo } : null;
+  }
+  const gruposDoCliente = id => [...grupos.values()].filter(g => g.cliente_id === id && !g.ignorar);
+
+  /* leitura nova chegou do programa: guarda no banco (com calma) e liga
+     sozinho os casamentos certos */
+  let paraMandar = new Map(), tMandar = 0;
+  async function aoLista(l) {
+    listaViva = Array.isArray(l) ? l : [];
+    await carregarGrupos();
+    listaViva.forEach(x => {
+      const g = grupos.get(x.nome);
+      if (!g || g.ultima_em !== x.ultima_em || g.minha !== x.minha || g.nao_lidas !== x.nao_lidas) paraMandar.set(x.nome, x);
+      grupos.set(x.nome, Object.assign({}, g || { nome: x.nome, cliente_id: null, tipo: '', ignorar: false, confirmado: false }, x));
+    });
+    clearTimeout(tMandar); tMandar = setTimeout(mandarLeitura, 4000);
+    vigiarEsperando();
+    pintarLado();
+  }
+  async function mandarLeitura() {
+    if (!paraMandar.size) return;
+    const itens = [...paraMandar.values()]; paraMandar = new Map();
+    try { await B7.sb.rpc('whatsapp_grupos_sincronizar', { p_itens: itens }); } catch (e) {}
+    /* casamentos certos que ainda não estão ligados: liga sozinho */
+    for (const x of itens) {
+      const g = grupos.get(x.nome);
+      if (g && (g.cliente_id || g.ignorar || g.confirmado)) continue;
+      const s = casar(x.nome);
+      if (s && s.certo) {
+        try {
+          await B7.sb.rpc('whatsapp_grupo_vincular', { p_nome: x.nome, p_cliente_id: s.cliente.id, p_tipo: s.tipo, p_ignorar: false });
+          Object.assign(g, { cliente_id: s.cliente.id, tipo: s.tipo, confirmado: true });
+        } catch (e) {}
+      }
+    }
+  }
+
+  /* ------------------------------------- esperando resposta */
+  const ESPERA_MIN = 15;
+  function esperando() {
+    const agora = Date.now();
+    return [...grupos.values()].filter(g => !g.ignorar && !g.minha && g.ultima_em && (g.cliente_id || (!g.confirmado && (casar(g.nome) || {}).certo)) &&
+      agora - new Date(g.ultima_em).getTime() > ESPERA_MIN * 60000 && agora - new Date(g.ultima_em).getTime() < 3 * 86400000)
+      .sort((a, b) => new Date(a.ultima_em) - new Date(b.ultima_em));
+  }
+  const ha = iso => {
+    const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (m < 60) return 'há ' + m + ' min';
+    const h = Math.floor(m / 60);
+    return h < 24 ? 'há ' + h + 'h' + (m % 60 >= 10 && h < 3 ? String(m % 60).padStart(2, '0') : '') : 'há ' + Math.floor(h / 24) + (h < 48 ? ' dia' : ' dias');
+  };
+  /* aviso do Windows quando um grupo de cliente passa de 1 h sem resposta
+     (uma vez por mensagem) */
+  const avisados = new Set();
+  function vigiarEsperando() {
+    const n = esperando();
+    const chip = document.getElementById('wa-esp');
+    if (chip) { chip.hidden = !n.length; chip.textContent = n.length + (n.length === 1 ? ' grupo esperando' : ' grupos esperando'); }
+    n.forEach(g => {
+      const chave = g.nome + '|' + g.ultima_em;
+      if (avisados.has(chave) || Date.now() - new Date(g.ultima_em).getTime() < 60 * 60000) return;
+      avisados.add(chave);
+      try {
+        if (window.Notification && Notification.permission === 'granted') {
+          const c = clienteDe(g.cliente_id) || (casar(g.nome) || {}).cliente;
+          const av = new Notification('Esperando resposta · ' + (c ? c.nome : g.nome), { body: (g.autor ? g.autor + ': ' : '') + (g.previa || 'mensagem nova') + ' (' + ha(g.ultima_em) + ')', tag: 'wa-esp-' + g.nome });
+          av.onclick = () => { location.hash = '#/whatsapp'; if (D && D.abrirGrupo) D.abrirGrupo(g.nome); };
+        }
+      } catch (e) {}
+    });
+  }
+  if (D && D.aoConversas) {
+    D.aoConversas(aoLista);
+    D.aoConversa(c => { conversaAberta = c; pintarLado(); });
+    setInterval(vigiarEsperando, 60000);
+  }
+
+  /* ------------------------------------- cartão do cliente (ao lado) */
+  const pendCache = new Map();
+  async function pendencias(clienteId) {
+    const c = pendCache.get(clienteId);
+    if (c && Date.now() - c.em < 60000) return c.d;
+    const hoje = new Date().toISOString().slice(0, 10);
+    const [v, d, gv] = await Promise.all([
+      B7.sb.from('demandas_edicao_resumo').select('id,titulo,codigo,editing_status,prazo').eq('client_id', clienteId).is('deleted_at', null)
+        .in('editing_status', ['pendente', 'em_edicao', 'aguardando_aprovacao', 'correcao']).order('updated_at', { ascending: false }).limit(8),
+      B7.sb.from('design_deliverables').select('id,titulo,tipo,status,prazo').eq('client_id', clienteId).is('deleted_at', null)
+        .neq('status', 'finalizado').order('updated_at', { ascending: false }).limit(8),
+      B7.sb.from('gravacoes_resumo').select('id,nome,data_gravacao,hora_inicio,hora_fim,local,situacao').eq('client_id', clienteId).is('deleted_at', null)
+        .gte('data_gravacao', hoje).order('data_gravacao').limit(3)
+    ]).catch(() => [{}, {}, {}]);
+    const dados = { videos: v.data || [], design: d.data || [], gravacoes: (gv.data || []).filter(x => x.situacao !== 'Cancelada' && x.situacao !== 'Gravada') };
+    pendCache.set(clienteId, { em: Date.now(), d: dados });
+    return dados;
+  }
+  const ROT_VIDEO = { pendente: 'Na fila', em_edicao: 'Em edição', aguardando_aprovacao: 'Com o cliente', correcao: 'Ajustes' };
+  const ROT_DESIGN = { aguardando_producao: 'Na fila', em_producao: 'Em criação', revisao_interna: 'Revisão interna', aguardando_cliente: 'Com o cliente', ajustes: 'Ajustes', aprovado: 'Aprovada' };
+  const APROVA_RE = /\b(aprovad[oa]s?|aprovo|pode (postar|publicar|seguir|soltar|mandar ver)|t[aá] (otimo|ótimo|perfeito|lindo|top)|ficou (otimo|ótimo|perfeito|lindo|top|show|massa)|perfeito|amei|aprovadíssimo)\b/i;
+  const dataCurta = iso => { const [a, m, d] = String(iso).slice(0, 10).split('-'); return d + '/' + m; };
+
+  let ladoAberto = B7.pref ? B7.pref.ler('wa_lado', innerWidth >= 1250) : true, pintandoLado = 0;
+  async function pintarLado() {
+    const lado = document.getElementById('wa-lado');
+    if (!lado || !ladoAberto) return;
+    const meu = ++pintandoLado;
+    await carregarGrupos();
+    const titulo = conversaAberta && conversaAberta.titulo;
+    const info = titulo ? grupoInfo(titulo) : null;
+    let html = '';
+    if (!titulo) {
+      html = '<div class="wl-vazio">' + icone + '<b>Abra uma conversa</b><span>O que está pendente com o cliente aparece aqui.</span></div>';
+    } else if (!info || info.ignorar || !info.cliente) {
+      html = '<div class="wl-cab"><div class="wl-sem">?</div><div><b>' + esc(titulo) + '</b><small>' + (info && info.ignorar ? 'grupo ignorado' : 'não ligado a um cliente') + '</small></div></div>' +
+        (info && info.ignorar ? '' : '<div class="wl-ligar"><label class="rot">ESTE GRUPO É DE QUAL CLIENTE?</label><select class="campo" id="wl-cli"><option value="">Escolha…</option>' +
+          clientes.map(c => '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>').join('') + '</select>' +
+          '<button type="button" class="b fina contorno" id="wl-ign">Não é de cliente</button></div>');
+    } else {
+      const c = info.cliente, p = await pendencias(c.id);
+      if (meu !== pintandoLado) return;
+      const ultimaDele = (conversaAberta.msgs || []).slice().reverse().find(m => !m.minha && APROVA_RE.test(m.texto));
+      const comCliente = p.videos.filter(v => v.editing_status === 'aguardando_aprovacao');
+      html = '<div class="wl-cab">' + B7.UI.avatarCliente(c.nome, c.logo_url, 'p') +
+          '<div><b>' + esc(c.nome) + '</b><small>' + esc(info.tipo || 'grupo do cliente') + (info.sugestao ? ' · <a href="#" id="wl-conf">confirmar</a>' : '') + '</small></div>' +
+          '<a class="wa-ic" href="#/cliente/' + esc(c.id) + '" title="Abrir o cliente no B7" aria-label="Abrir o cliente">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M17 14v4a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 5 18V8.5A1.5 1.5 0 0 1 6.5 7H10"/></svg></a></div>' +
+        (ultimaDele ? '<div class="wl-aprov"><b>Possível aprovação</b><p>“' + esc(ultimaDele.texto.slice(0, 120)) + '”</p><small>' + esc(ultimaDele.de || 'cliente') + (ultimaDele.quando ? ' · ' + esc(ultimaDele.quando.split(',')[0]) : '') + '</small>' +
+          (comCliente.length ? comCliente.slice(0, 3).map(v => '<a class="b fina pri" href="#/video/' + esc(v.id) + '">Registrar em “' + esc(v.titulo || v.codigo || 'vídeo') + '”</a>').join('') : '<span class="leve">Nada com o cliente esperando decisão agora.</span>') + '</div>' : '') +
+        secao('Vídeo', p.videos.map(v => item('#/video/' + v.id, v.titulo || v.codigo || 'Vídeo', ROT_VIDEO[v.editing_status] || v.editing_status, v.editing_status === 'aguardando_aprovacao',
+            v.editing_status === 'aguardando_aprovacao' || v.editing_status === 'em_edicao' ? '<button type="button" class="wl-mini" data-env-video="' + esc(v.id) + '" title="Enviar no WhatsApp">' + icone + '</button>' : ''))) +
+        secao('Design', p.design.map(d => item('#/design/' + d.id, d.titulo || d.tipo || 'Peça', ROT_DESIGN[d.status] || d.status, d.status === 'aguardando_cliente'))) +
+        secao('Gravações', p.gravacoes.map(g => item('#/gravacao/' + g.id, g.nome || 'Gravação', dataCurta(g.data_gravacao) + (g.hora_inicio ? ' · ' + String(g.hora_inicio).slice(0, 5) : ''), false,
+            '<button type="button" class="wl-mini" data-env-grav="' + esc(g.id) + '" title="Avisar no WhatsApp">' + icone + '</button>')));
+      if (!p.videos.length && !p.design.length && !p.gravacoes.length) html += '<p class="wl-nada">Nada pendente com este cliente. 🎉</p>';
+    }
+    /* quem está esperando resposta (todos os grupos de cliente) */
+    const esp = esperando();
+    html += '<div class="wl-sec wl-esp"><div class="wl-sec-t">Esperando resposta' + (esp.length ? '<i>' + esp.length + '</i>' : '') + '</div>' +
+      (esp.length ? esp.slice(0, 12).map(g => { const c = clienteDe(g.cliente_id);
+        const c2 = c || (casar(g.nome) || {}).cliente;
+        return '<button type="button" class="wl-g" data-abrir-g="' + esc(g.nome) + '"><span class="wl-g-n">' + esc(c2 ? c2.nome : g.nome) + (g.tipo ? ' <em>' + esc(g.tipo) + '</em>' : '') + '</span>' +
+          '<span class="wl-g-p">' + esc((g.autor ? g.autor + ': ' : '') + (g.previa || '')) + '</span><time>' + ha(g.ultima_em) + '</time></button>'; }).join('')
+        : '<p class="wl-nada">Ninguém esperando. ✔</p>') + '</div>' +
+      '<button type="button" class="wl-conf" id="wl-conferir">Conferir grupos' + (pendentesConferir() ? ' · ' + pendentesConferir() + ' sem cliente' : '') + '</button>';
+    if (meu !== pintandoLado) return;
+    lado.innerHTML = html;
+    ligarLado(lado, info, titulo);
+  }
+  function secao(t, itens) { return itens.length ? '<div class="wl-sec"><div class="wl-sec-t">' + t + '<i>' + itens.length + '</i></div>' + itens.join('') + '</div>' : ''; }
+  function item(href, titulo, sit, destaque, extra) {
+    return '<div class="wl-it' + (destaque ? ' quente' : '') + '"><a href="' + esc(href) + '"><b>' + esc(titulo) + '</b><small>' + esc(sit || '') + '</small></a>' + (extra || '') + '</div>';
+  }
+  /* só conta o que parece grupo de cliente (conversa pessoal não entra) */
+  const pendentesConferir = () => [...grupos.values()].filter(g => !g.cliente_id && !g.ignorar && !g.confirmado && casar(g.nome)).length;
+  function ligarLado(lado, info, titulo) {
+    lado.querySelectorAll('[data-abrir-g]').forEach(b => b.onclick = () => D.abrirGrupo && D.abrirGrupo(b.dataset.abrirG));
+    const conf = lado.querySelector('#wl-conferir'); if (conf) conf.onclick = conferirGrupos;
+    const sel = lado.querySelector('#wl-cli');
+    if (sel) sel.onchange = async () => {
+      if (!sel.value) return;
+      const s = casar(titulo);
+      await vincular(titulo, sel.value, s && s.cliente.id === sel.value ? s.tipo : '', false);
+      pintarLado();
+    };
+    const ign = lado.querySelector('#wl-ign'); if (ign) ign.onclick = async () => { await vincular(titulo, null, '', true); pintarLado(); };
+    const cf = lado.querySelector('#wl-conf'); if (cf) cf.onclick = async e => { e.preventDefault(); await vincular(titulo, info.cliente.id, info.tipo, false); pintarLado(); };
+    lado.querySelectorAll('[data-env-video]').forEach(b => b.onclick = () => {
+      const c = info.cliente;
+      enviar({ tipo: 'video', refId: b.dataset.envVideo, demandaId: b.dataset.envVideo, clienteId: c.id, clienteNome: c.nome, comArquivo: true, grupo: titulo,
+               titulo: (b.closest('.wl-it').querySelector('b') || {}).textContent || '' });
+    });
+    lado.querySelectorAll('[data-env-grav]').forEach(async b => b.onclick = async () => {
+      const c = info.cliente, p = await pendencias(c.id), g = p.gravacoes.find(x => x.id === b.dataset.envGrav);
+      if (!g) return;
+      const [a, m, d] = String(g.data_gravacao).slice(0, 10).split('-');
+      const dt = new Date(+a, +m - 1, +d);
+      enviar({ tipo: 'gravacao', refId: g.id, clienteId: c.id, clienteNome: c.nome, titulo: g.nome, grupo: titulo,
+               data: dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }),
+               hora: g.hora_inicio ? String(g.hora_inicio).slice(0, 5) + (g.hora_fim ? '–' + String(g.hora_fim).slice(0, 5) : '') : '', local: g.local || '' });
+    });
+  }
+  async function vincular(nome, clienteId, tipo, ignorar) {
+    try {
+      await B7.sb.rpc('whatsapp_grupo_vincular', { p_nome: nome, p_cliente_id: clienteId, p_tipo: tipo || '', p_ignorar: !!ignorar });
+      const g = grupos.get(nome) || { nome };
+      grupos.set(nome, Object.assign(g, { cliente_id: clienteId, tipo: tipo || '', ignorar: !!ignorar, confirmado: true }));
+      return true;
+    } catch (e) { B7.UI.toast('Não consegui salvar o grupo.', { tipo: 'erro' }); return false; }
+  }
+
+  /* ------------------------------------- conferir grupos (uma vez) */
+  async function conferirGrupos() {
+    await carregarGrupos(true);
+    const m = B7.UI.modal('<h3>Grupos do WhatsApp</h3>' +
+      '<p class="sub">O sistema casou os grupos com os clientes pelo nome. Confira uma vez — grupo novo com o nome de um cliente entra sozinho depois.</p>' +
+      '<div class="wg-acoes"><input class="campo" id="wg-busca" placeholder="Buscar grupo ou cliente…">' +
+        '<label class="wg-i"><input type="checkbox" id="wg-todas"> todas as conversas</label>' +
+        (D && D.escanear ? '<button type="button" class="b contorno" id="wg-escanear">Procurar todos os grupos</button>' : '') + '</div>' +
+      '<div class="wg-lista" id="wg-lista"></div>' +
+      '<div class="acoes"><button type="button" class="b" data-fecha>Fechar</button><button type="button" class="b pri" id="wg-salvar">Salvar</button></div>', { larga: true });
+    const mud = new Map();
+    const pintar = () => {
+      const q = norm(m.querySelector('#wg-busca').value);
+      const lista = [...grupos.values()].map(g => {
+        const s = !g.cliente_id && !g.ignorar ? casar(g.nome) : null;
+        return { g, cli: g.cliente_id || (s ? s.cliente.id : ''), tipo: g.cliente_id ? g.tipo : (s ? s.tipo : ''), sug: !!s && !g.cliente_id };
+      }).filter(x => m.querySelector('#wg-todas').checked || q || x.cli || x.g.ignorar)
+        .filter(x => !q || norm(x.g.nome).includes(q) || norm((clienteDe(x.cli) || {}).nome).includes(q))
+        .sort((a, b) => (a.g.cliente_id ? 1 : 0) - (b.g.cliente_id ? 1 : 0) || a.g.nome.localeCompare(b.g.nome));
+      m.querySelector('#wg-lista').innerHTML = lista.length ? lista.map(x => {
+        const k = mud.get(x.g.nome) || {};
+        const cli = 'cli' in k ? k.cli : x.cli, ign = 'ign' in k ? k.ign : x.g.ignorar, tipo = 'tipo' in k ? k.tipo : x.tipo;
+        return '<div class="wg-l' + (ign ? ' ign' : '') + (x.sug ? ' sug' : '') + '" data-g="' + esc(x.g.nome) + '">' +
+          '<div class="wg-n"><b>' + esc(x.g.nome) + '</b>' + (x.sug ? '<small>sugestão</small>' : x.g.cliente_id ? '<small class="ok">ligado</small>' : '') + '</div>' +
+          '<select class="campo wg-c"' + (ign ? ' disabled' : '') + '><option value="">— sem cliente —</option>' + clientes.map(c => '<option value="' + esc(c.id) + '"' + (c.id === cli ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select>' +
+          '<input class="campo wg-t" placeholder="Tipo (Suporte, Artes…)" maxlength="40" value="' + esc(tipo || '') + '"' + (ign ? ' disabled' : '') + '>' +
+          '<label class="wg-i"><input type="checkbox"' + (ign ? ' checked' : '') + '> ignorar</label></div>';
+      }).join('') : '<p class="wl-nada">' + (grupos.size ? 'Nada com essa busca.' : 'Nenhum grupo lido ainda. Abra o WhatsApp e clique em “Procurar todos os grupos”.') + '</p>';
+      m.querySelectorAll('.wg-l').forEach(l => {
+        const nome = l.dataset.g, k = () => { if (!mud.has(nome)) mud.set(nome, {}); return mud.get(nome); };
+        l.querySelector('.wg-c').onchange = e => { k().cli = e.target.value; };
+        l.querySelector('.wg-t').oninput = e => { k().tipo = e.target.value; };
+        l.querySelector('.wg-i input').onchange = e => { k().ign = e.target.checked; pintar(); };
+      });
+    };
+    m.querySelector('#wg-busca').oninput = pintar;
+    m.querySelector('#wg-todas').onchange = pintar;
+    const esc_ = m.querySelector('#wg-escanear');
+    if (esc_) esc_.onclick = async () => {
+      esc_.disabled = true; esc_.textContent = 'Procurando… (o WhatsApp vai rolar sozinho)';
+      const r = await D.escanear().catch(() => null);
+      if (r && r.ok && r.lista) { await aoLista(r.lista); await mandarLeitura(); B7.UI.toast(r.lista.length + ' conversas lidas.'); }
+      else B7.UI.toast((r && r.motivo) || 'Não consegui ler a lista agora.', { tipo: 'erro' });
+      esc_.disabled = false; esc_.textContent = 'Procurar todos os grupos';
+      pintar();
+    };
+    m.querySelector('#wg-salvar').onclick = async () => {
+      /* sugestões aceitas como estão também contam como conferidas */
+      m.querySelectorAll('.wg-l.sug').forEach(l => { if (!mud.has(l.dataset.g)) mud.set(l.dataset.g, {}); });
+      let n = 0;
+      for (const [nome, k] of mud) {
+        const l = m.querySelector('.wg-l[data-g="' + CSS.escape(nome) + '"]'); if (!l) continue;
+        const ign = l.querySelector('.wg-i input').checked, cli = l.querySelector('.wg-c').value || null, tipo = l.querySelector('.wg-t').value.trim();
+        if (await vincular(nome, ign ? null : cli, tipo, ign)) n++;
+      }
+      m.fechar(); B7.UI.toast(n ? n + ' grupo(s) salvos.' : 'Nada mudou.');
+      pintarLado();
+    };
+    pintar();
+  }
 
   /* ------------------------------------------------ modelos de texto */
   const MODELOS = {
@@ -259,8 +612,12 @@ B7.WhatsApp = (function () {
 
   /* ----------------------------------------- "Enviar ao cliente" */
   async function enviar(d) {
-    let grupo = '';
-    if (d.clienteId) { try { const c = await B7.DB.cliente(d.clienteId); grupo = (c && c.whatsapp_grupo) || ''; } catch (e) {} }
+    let grupo = d.grupo || '';
+    /* zzz176: os grupos reconhecidos do cliente (Suporte, Artes…) */
+    await carregarGrupos();
+    const dele = d.clienteId ? gruposDoCliente(d.clienteId) : [];
+    if (!grupo && dele.length) grupo = dele.slice().sort((a, b) => new Date(b.ultima_em || 0) - new Date(a.ultima_em || 0))[0].nome;
+    if (!grupo && d.clienteId) { try { const c = await B7.DB.cliente(d.clienteId); grupo = (c && c.whatsapp_grupo) || ''; } catch (e) {} }
     const tpl = B7.pref.ler(chaveModelo(d.tipo), MODELOS[d.tipo] || '');
     const prog = !!D, cel = nativo();
     const m = B7.UI.modal('<h3>' + (d.tipo === 'gravacao' ? 'Avisar a gravação no WhatsApp' : 'Enviar o vídeo no WhatsApp') + '</h3>' +
@@ -269,8 +626,11 @@ B7.WhatsApp = (function () {
         : cel ? 'Abre o WhatsApp com a mensagem' + (d.comArquivo ? ' e o vídeo' : '') + ' — você escolhe o grupo e envia.'
         : 'A mensagem é copiada e o WhatsApp Web abre numa aba: cole (Ctrl+V) no grupo' + (d.comArquivo ? ' e anexe o vídeo como documento' : '') + '.') + '</p>' +
       '<div class="mb"><label class="rot" for="wa-g">GRUPO DO CLIENTE</label>' +
-        '<input class="campo" id="wa-g" maxlength="120" value="' + esc(grupo) + '" placeholder="Nome do grupo, igual aparece no WhatsApp">' +
-        '<small class="leve wa-g-dica" id="wa-g-dica">' + (grupo ? '' : 'Este cliente ainda não tem grupo cadastrado — o nome que você puser aqui fica salvo nele.') + '</small></div>' +
+        (dele.length > 1
+          ? '<div class="wa-gs">' + dele.map(g => '<label class="wa-g-op"><input type="radio" name="wa-g-r" value="' + esc(g.nome) + '"' + (g.nome === grupo ? ' checked' : '') + '><span><b>' + esc(g.tipo || g.nome) + '</b><small>' + esc(g.nome) + '</small></span></label>').join('') + '</div>'
+          : '') +
+        '<input class="campo" id="wa-g" maxlength="120" value="' + esc(grupo) + '" placeholder="Nome do grupo, igual aparece no WhatsApp"' + (dele.length > 1 ? ' hidden' : '') + '>' +
+        '<small class="leve wa-g-dica" id="wa-g-dica">' + (grupo ? '' : 'Este cliente ainda não tem grupo reconhecido — o nome que você puser aqui fica ligado a ele.') + '</small></div>' +
       (d.comArquivo && (prog || cel)
         ? '<div class="mb"><label class="rot">VÍDEO</label><div class="wa-arq">' +
             '<button type="button" class="b contorno" id="wa-arq">Escolher o vídeo…</button><span id="wa-arq-nome" class="leve">' +
@@ -282,6 +642,7 @@ B7.WhatsApp = (function () {
           ' <button type="button" class="link" id="wa-modelo">Usar este texto como modelo</button></small></div>' +
       '<div class="acoes"><button type="button" class="b" data-fecha>Cancelar</button>' +
         '<button type="button" class="b pri" id="wa-ok">' + icone + 'Abrir no WhatsApp</button></div>', { larga: true });
+    m.querySelectorAll('input[name="wa-g-r"]').forEach(r => r.onchange = () => { m.querySelector('#wa-g').value = r.value; });
     let arquivo = null;
     const btArq = m.querySelector('#wa-arq');
     if (btArq && prog) btArq.onclick = async () => {
@@ -313,7 +674,10 @@ B7.WhatsApp = (function () {
       }
       bt.disabled = true;
       /* grupo novo ou trocado: guarda no cliente */
-      if (d.clienteId && g && g !== grupo) { try { await B7.DB.atualizarCliente(d.clienteId, { whatsapp_grupo: g }); } catch (e) {} }
+      if (d.clienteId && g && !dele.some(x => x.nome === g)) {
+        try { await B7.DB.atualizarCliente(d.clienteId, { whatsapp_grupo: g }); } catch (e) {}
+        const s0 = casar(g); vincular(g, d.clienteId, s0 && s0.cliente.id === d.clienteId ? s0.tipo : '', false);
+      }
       let ok = false, aviso = '';
       try {
         if (prog) {
@@ -350,5 +714,5 @@ B7.WhatsApp = (function () {
   }
   const tamanho = b => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(b > 104857600 ? 0 : 1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
 
-  return { abrir, enviar, podeEnviar, icone, noPrograma: !!D };
+  return { abrir, enviar, podeEnviar, icone, noPrograma: !!D, conferirGrupos, _casar: casar, _esperando: esperando, _clientes: c => { clientes = c; } };
 })();

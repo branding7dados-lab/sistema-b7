@@ -25,6 +25,13 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz176', versao: 'zzz176', em: '2026-10-15T03:00:00-03:00',
+    titulo: 'WhatsApp mais esperto (programa de Windows)',
+    itens: ['O sistema reconhece sozinho os grupos de cada cliente pelo nome (“Suporte B7-3X - Infinite Fio” → Infinite Fio). Em “Conferir grupos” você confere uma vez.',
+            'Ao lado da conversa, o cartão do cliente: vídeos, artes e gravações pendentes, com atalho para enviar no grupo.',
+            '“Possível aprovação”: quando o cliente escreve “aprovado”, “pode postar”, “ficou ótimo”, o cartão avisa e leva à demanda.',
+            '“Esperando resposta”: grupos de cliente sem resposta há mais de 15 min aparecem na lista; passou de 1 h, chega um aviso.',
+            'Visual novo: cantos arredondados, entrada suave e os avisos do sistema aparecem na frente do WhatsApp.'] },
   { id: 'v-zzz173', versao: 'zzz173', em: '2026-10-15T02:00:00-03:00',
     titulo: 'WhatsApp: tela mais limpa',
     itens: ['Os menus do topo (Criar, avisos, sua conta) não ficam mais cortados atrás do WhatsApp.',
