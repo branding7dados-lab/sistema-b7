@@ -14,6 +14,17 @@
    • Nada é chamado em segundo plano: a IA só roda quando a pessoa envia.
    • Cliente do Portal não tem o botão. O administrador liga/desliga em
      Configurações → Admin → Inteligência artificial.
+
+   zzz169 — a tela inteira do assistente ficou melhor de usar:
+   • Escolher cliente: busca, iniciais/logo, os usados por último no topo,
+     setas ↑ ↓ + Enter, opção clara "Todos os clientes" e o cliente
+     escolhido vira uma etiqueta no topo, com × para tirar.
+   • Histórico: busca, grupos por dia (Hoje, Ontem, Esta semana, Mais
+     antigas), cliente + horário, botão grande de nova conversa. No modo
+     grande do computador o histórico fica numa coluna ao lado.
+     (Renomear não existe: o banco só deixa ler e apagar a conversa.)
+   • Mensagens: botão Copiar nas respostas, "Tentar de novo" quando falha,
+     rolagem suave e um botão para descer até o fim.
    ===================================================================== */
 window.B7 = window.B7 || {};
 
@@ -33,6 +44,9 @@ B7.Chat = (function () {
     alvo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
     ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     expandir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
+    copiar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></svg>',
+    busca: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>',
+    baixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
     volta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>'
   };
   /* zzz85: sugestões diferentes com e sem cliente em foco */
@@ -53,6 +67,21 @@ B7.Chat = (function () {
   /* estado da conversa aberta */
   const S = { aberto: false, vista: 'conversa', conversaId: null, clienteId: '', msgs: [], enviando: false, clientes: null, lista: null, anexo: null };
   let fab = null, painel = null;
+
+  /* zzz169: clientes usados por último (só neste navegador) */
+  const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const desktop = () => window.matchMedia('(min-width: 761px)').matches;
+  const suave = () => !(window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('modo-leve'));
+  function recentes() { try { return JSON.parse(localStorage.getItem('b7_chat_recentes') || '[]').filter(x => typeof x === 'string'); } catch (e) { return []; } }
+  function lembrarCliente(id) {
+    if (!id) return;
+    try { localStorage.setItem('b7_chat_recentes', JSON.stringify([id].concat(recentes().filter(x => x !== id)).slice(0, 5))); } catch (e) {}
+  }
+  function escolherCliente(id) {
+    S.clienteId = id || ''; lembrarCliente(S.clienteId);
+    fecharClientes(); pintarTopo(); pintarCorpo();
+    const ta = painel && painel.querySelector('#ch-texto'); if (ta && desktop()) ta.focus();
+  }
 
   const pode = () => !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario() && !(B7.Auth.ehCliente && B7.Auth.ehCliente()) &&
     B7.IA && B7.IA.ligada && B7.IA.ligada('chat'));
@@ -312,6 +341,7 @@ B7.Chat = (function () {
       S.clientes = (l || []).map(c => ({ id: c.id, nome: c.nome, logo: c.logo_url || '' }));
     } catch (e) { S.clientes = []; }
     if (S.aberto && S.vista === 'conversa') { const aberta = !!(painel && painel.querySelector('.ch-pop')); fecharClientes(); pintarTopo(); if (aberta) abrirClientes(); }
+    desenharLista();
   }
 
   /* texto do assistente: escapado, com **negrito**, listas "- " e parágrafos */
@@ -339,7 +369,8 @@ B7.Chat = (function () {
     return '<span class="ch-ic">' + IC.ia + '</span>' +
       '<div class="ch-tit"><b>Assistente B7</b>' +
         '<button type="button" id="ch-cliente" class="ch-cliente' + (atual ? ' tem' : '') + '" aria-haspopup="listbox" aria-expanded="false"' + (S.enviando ? ' disabled' : '') + '>' +
-          (atual ? marca(atual) : IC.alvo) + '<span>' + esc(atual ? atual.nome : 'Escolher cliente') + '</span>' + IC.seta + '</button></div>' +
+          (atual ? marca(atual) : IC.alvo) + '<span>' + esc(atual ? atual.nome : 'Todos os clientes') + '</span>' + IC.seta + '</button>' +
+          (atual && !S.enviando ? '<button type="button" class="ch-cli-tira" id="ch-cli-tira" aria-label="Tirar o cliente em foco" title="Tirar o cliente">' + IC.x + '</button>' : '') + '</div>' +
       '<button type="button" class="ch-bt" id="ch-hist" title="Conversas anteriores" aria-label="Conversas anteriores">' + IC.hist + '</button>' +
       '<button type="button" class="ch-bt" id="ch-nova" title="Nova conversa" aria-label="Nova conversa">' + IC.novo + '</button>' +
       '<button type="button" class="ch-bt ch-so-pc" id="ch-grande" title="Expandir" aria-label="Expandir o assistente" aria-pressed="' + !!S.grande + '">' + IC.expandir + '</button>' +
@@ -362,29 +393,42 @@ B7.Chat = (function () {
       '<div class="ch-pop-lista" role="listbox"></div></div>';
     painel.appendChild(pop);
     const busca = pop.querySelector('.ch-pop-busca'), lista = pop.querySelector('.ch-pop-lista');
-    const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    let ativo = 0;
+    const marcarAtivo = () => {
+      const r = lista.querySelectorAll('[data-cli]');
+      r.forEach((b, k) => b.classList.toggle('ativo', k === ativo));
+      if (r[ativo]) { r[ativo].scrollIntoView({ block: 'nearest' }); busca.setAttribute('aria-activedescendant', r[ativo].id); }
+    };
     const desenhar = () => {
       const t = norm(busca.value.trim());
-      const cl = (S.clientes || []).filter(c => !t || norm(c.nome).includes(t));
-      const linha = (id, nome, av, sub) => '<button type="button" class="ch-pop-it' + (id === S.clienteId ? ' on' : '') + '" role="option" aria-selected="' + (id === S.clienteId) + '" data-cli="' + esc(id) + '">' +
+      const todos = S.clientes || [];
+      const cl = todos.filter(c => !t || norm(c.nome).includes(t));
+      const rec = t ? [] : recentes().map(id => todos.find(c => c.id === id)).filter(Boolean);
+      let n = 0;
+      const linha = (id, nome, av, sub) => '<button type="button" tabindex="-1" id="ch-op-' + (n++) + '" class="ch-pop-it' + (id === S.clienteId ? ' on' : '') + '" role="option" aria-selected="' + (id === S.clienteId) + '" data-cli="' + esc(id) + '">' +
         av + '<span class="ch-pop-nm"><b>' + esc(nome) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>' +
         (id === S.clienteId ? '<i class="ch-pop-ok">' + IC.ok + '</i>' : '') + '</button>';
-      lista.innerHTML = (t ? '' : linha('', 'Sem cliente em foco', '<span class="ch-cli-av neutro">' + IC.alvo + '</span>', 'conversa geral e operação da agência')) +
-        (cl.length ? cl.map(c => linha(c.id, c.nome, marca(c), '')).join('')
+      const grupo = tx => '<div class="ch-pop-gr" role="presentation">' + tx + '</div>';
+      lista.innerHTML = (t ? '' : linha('', 'Todos os clientes', '<span class="ch-cli-av neutro">' + IC.alvo + '</span>', 'sem cliente em foco · visão da agência inteira')) +
+        (rec.length ? grupo('Usados por último') + rec.map(c => linha(c.id, c.nome, marca(c), '')).join('') : '') +
+        (cl.length ? (t ? '' : grupo(rec.length ? 'Todos' : 'Clientes')) + cl.map(c => linha(c.id, c.nome, marca(c), '')).join('')
           : '<div class="ch-nada">' + (S.clientes ? 'Nenhum cliente com esse nome.' : 'Carregando…') + '</div>');
-      lista.querySelectorAll('[data-cli]').forEach(b => b.onclick = () => {
-        S.clienteId = b.dataset.cli; fecharClientes(); pintarTopo(); pintarCorpo();
-        const ta = painel.querySelector('#ch-texto'); if (ta && window.matchMedia('(min-width: 761px)').matches) ta.focus();
-      });
+      lista.querySelectorAll('[data-cli]').forEach(b => b.onclick = () => escolherCliente(b.dataset.cli));
+      ativo = 0; marcarAtivo();
     };
     busca.oninput = desenhar;
     busca.onkeydown = e => {
-      if (e.key === 'Escape') { e.stopPropagation(); fecharClientes(); bt.focus(); }
-      if (e.key === 'Enter') { e.preventDefault(); const r = lista.querySelectorAll('[data-cli]'); if (r.length === 1 || (busca.value.trim() && r.length)) r[0].click(); }
+      const r = lista.querySelectorAll('[data-cli]');
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fecharClientes(); bt.focus(); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); if (r.length) { ativo = (ativo + 1) % r.length; marcarAtivo(); } }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (r.length) { ativo = (ativo - 1 + r.length) % r.length; marcarAtivo(); } }
+      else if (e.key === 'Enter') { e.preventDefault(); if (r[ativo]) r[ativo].click(); }
     };
+    busca.setAttribute('role', 'combobox'); busca.setAttribute('aria-controls', 'ch-pop-lista'); busca.setAttribute('aria-expanded', 'true');
+    lista.id = 'ch-pop-lista';
     pop.addEventListener('pointerdown', e => { if (e.target === pop) fecharClientes(); });
     desenhar();
-    if (window.matchMedia('(min-width: 761px)').matches) busca.focus();
+    busca.focus({ preventScroll: true });
   }
   function pintarTopo() {
     const t = painel && painel.querySelector('.ch-topo'); if (!t || S.vista !== 'conversa') return;
@@ -392,14 +436,20 @@ B7.Chat = (function () {
   }
   function ligarTopo() {
     painel.querySelector('#ch-fechar').onclick = fechar;
-    painel.querySelector('#ch-nova').onclick = () => { if (S.enviando) return; S.conversaId = null; S.msgs = []; pintar(); const ta = painel.querySelector('#ch-texto'); if (ta) ta.focus(); };
-    painel.querySelector('#ch-hist').onclick = () => { if (S.enviando) return; S.vista = 'lista'; pintar(); carregarLista(); };
+    painel.querySelector('#ch-nova').onclick = novaConversa;
+    painel.querySelector('#ch-hist').onclick = () => {
+      if (S.enviando) return;
+      const bl = painel.querySelector('.ch-lado .ch-hist-busca'); if (bl) { bl.focus(); return; }
+      S.vista = 'lista'; pintar(); carregarLista();
+    };
     painel.querySelector('#ch-cliente').onclick = abrirClientes;
+    const tira = painel.querySelector('#ch-cli-tira'); if (tira) tira.onclick = () => escolherCliente('');
     /* zzz167: assistente grande (no computador) — fica lembrado */
     const btG = painel.querySelector('#ch-grande');
     if (btG) btG.onclick = () => {
       S.grande = !S.grande; painel.classList.toggle('ch-grande', S.grande); btG.setAttribute('aria-pressed', String(S.grande));
       try { localStorage.setItem('b7_chat_grande', S.grande ? '1' : ''); } catch (e) {}
+      pintar();
     };
   }
 
@@ -419,8 +469,12 @@ B7.Chat = (function () {
     }
     return S.msgs.map((m, i) => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
       (m.papel === 'user' ? (m.img ? '<img class="ch-msg-img" src="' + m.img + '" alt="Imagem enviada">' : '') + '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
+      (m.papel !== 'user' && !m.erro && m.texto ? '<div class="ch-msg-bts">' +
+        '<button type="button" class="ch-falar" data-copiar="' + i + '" aria-label="Copiar a resposta" title="Copiar">' + IC.copiar + '<span>Copiar</span></button>' : '') +
+      (m.erro && S.rascunho ? '<div class="ch-msg-bts"><button type="button" class="ch-falar ch-denovo" data-denovo="1">' + IC.hist + '<span>Tentar de novo</span></button></div>' : '') +
       (podeFalar && (!B7.Recursos || B7.Recursos.ligado('ia_ouvir')) && m.papel !== 'user' && !m.erro && m.texto ? '<button type="button" class="ch-falar' + (falando === i ? ' on' : '') + '" data-falar="' + i + '" aria-pressed="' + (falando === i) +
         '" aria-label="' + (falando === i ? 'Parar de ouvir' : 'Ouvir a resposta') + '" title="' + (falando === i ? 'Parar' : 'Ouvir') + '">' + IC.som + '<span>Ouvir</span></button>' : '') +
+      (m.papel !== 'user' && !m.erro && m.texto ? '</div>' : '') +
       /* zzz135: duas ou mais propostas pendentes ganham o "Criar todas" */
       ((n => n >= 2 ? '<div class="ch-ac-todas"><span>' + n + ' propostas pendentes</span><button type="button" class="ch-ac-ok" data-acao-todas="' + i + '"' +
         (criandoLote ? ' disabled' : '') + '>' + (criandoLote ? 'Criando…' : 'Criar todas (' + n + ')') + '</button></div>' : '')(pendentesDe(i).length + ((m.acoes || []).filter(a => a.estado === 'indo').length))) +
@@ -604,24 +658,57 @@ B7.Chat = (function () {
     c.querySelectorAll('[data-acao-todas]').forEach(b => b.onclick = () => criarTodas(Number(b.dataset.acaoTodas)));
     c.querySelectorAll('[data-acao-nao]').forEach(b => b.onclick = () => { const a = acaoDe(b.dataset.acaoNao); if (a) { a.estado = 'cancelado'; guardarEstado(b.dataset.acaoNao, 'cancelado'); pintarCorpo(); } });
     c.querySelectorAll('[data-falar]').forEach(b => b.onclick = () => falar(Number(b.dataset.falar)));
-    c.scrollTop = c.scrollHeight;
+    c.querySelectorAll('[data-copiar]').forEach(b => b.onclick = () => copiar(Number(b.dataset.copiar), b));
+    c.querySelectorAll('[data-denovo]').forEach(b => b.onclick = () => enviar(S.rascunho));
+    descer(false);
+  }
+  /* zzz169: rolagem até o fim (suave quando pode) e o botão "descer" */
+  function descer(animado) {
+    const c = painel && painel.querySelector('.ch-corpo'); if (!c) return;
+    if (animado && suave()) c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' }); else c.scrollTop = c.scrollHeight;
+  }
+  function marcarDescer() {
+    const c = painel && painel.querySelector('.ch-corpo'), b = painel && painel.querySelector('#ch-descer'); if (!c || !b) return;
+    b.hidden = c.scrollHeight - c.scrollTop - c.clientHeight < 120;
+  }
+  /* zzz169: copiar a resposta (texto puro, sem os ** do negrito) */
+  async function copiar(i, bt) {
+    const m = S.msgs[i]; if (!m || !m.texto) return;
+    const texto = String(m.texto).replace(/\*\*/g, '');
+    let ok = false;
+    try { await navigator.clipboard.writeText(texto); ok = true; } catch (e) {
+      try { const t = document.createElement('textarea'); t.value = texto; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); ok = document.execCommand('copy'); t.remove(); } catch (e2) {}
+    }
+    if (!ok) { if (B7.UI && B7.UI.toast) B7.UI.toast('Não foi possível copiar.', { tipo: 'erro' }); return; }
+    if (bt && bt.isConnected) {
+      bt.classList.add('on'); bt.innerHTML = IC.ok + '<span>Copiado</span>';
+      setTimeout(() => { if (bt.isConnected) { bt.classList.remove('on'); bt.innerHTML = IC.copiar + '<span>Copiar</span>'; } }, 1600);
+    }
   }
 
   function pintar() {
     if (!painel) return;
     painel.classList.remove('saindo');
+    const lado = !!S.grande && desktop();
+    painel.classList.toggle('ch-com-lado', lado && S.vista === 'conversa');
     if (S.vista === 'lista') {
       painel.innerHTML = '<header class="ch-topo">' +
           '<button type="button" class="ch-bt" id="ch-volta" aria-label="Voltar para a conversa">' + IC.volta + '</button>' +
           '<div class="ch-tit"><b>Conversas</b><small>só você vê as suas</small></div>' +
           '<button type="button" class="ch-bt" id="ch-fechar" aria-label="Fechar">' + IC.x + '</button></header>' +
+        histCabHTML() +
         '<div class="ch-corpo ch-lista" id="ch-lista"><div class="ch-nada">Carregando…</div></div>';
       painel.querySelector('#ch-volta').onclick = () => { S.vista = 'conversa'; pintar(); };
       painel.querySelector('#ch-fechar').onclick = fechar;
+      ligarHistCab();
       return;
     }
-    painel.innerHTML = '<header class="ch-topo">' + topoHTML() + '</header>' +
-      '<div class="ch-corpo" aria-live="polite"></div>' +
+    painel.innerHTML = (lado ? '<aside class="ch-lado" aria-label="Conversas anteriores"><div class="ch-lado-tit"><b>Conversas</b><small>só você vê</small></div>' + histCabHTML() +
+        '<div class="ch-lista" id="ch-lista"><div class="ch-nada">Carregando…</div></div></aside>' : '') +
+      '<div class="ch-principal">' +
+      '<header class="ch-topo">' + topoHTML() + '</header>' +
+      '<div class="ch-corpo-cx"><div class="ch-corpo" aria-live="polite"></div>' +
+      '<button type="button" class="ch-descer" id="ch-descer" aria-label="Ir para a última mensagem" title="Ir para o fim" hidden>' + IC.baixo + '</button></div>' +
       '<div class="ch-voz" id="ch-voz" role="status" aria-live="polite" hidden></div>' +
       '<div class="ch-anexo-previa" id="ch-anexo-previa" hidden></div>' +
       '<form class="ch-form" autocomplete="off">' +
@@ -632,11 +719,15 @@ B7.Chat = (function () {
         ((podeGravar || Voz) && (!B7.Recursos || B7.Recursos.ligado('ia_voz')) ? '<button type="button" class="ch-mic" id="ch-mic" aria-label="Falar em vez de digitar" aria-pressed="false" title="Falar em vez de digitar">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="ch-enviar" id="ch-enviar" aria-label="Enviar">' + IC.enviar + '</button>' +
       '</form>' +
-      '<p class="ch-aviso">A IA pode errar — confira antes de usar. Ela só propõe; quem confirma é você.</p>';
+      '<p class="ch-aviso">A IA pode errar — confira antes de usar. Ela só propõe; quem confirma é você.</p></div>';
     ligarTopo();
     pintarCorpo();
+    if (lado) { ligarHistCab(); carregarLista(); }
+    const corpo = painel.querySelector('.ch-corpo');
+    corpo.addEventListener('scroll', marcarDescer, { passive: true });
+    painel.querySelector('#ch-descer').onclick = () => descer(true);
     const form = painel.querySelector('.ch-form'), ta = painel.querySelector('#ch-texto');
-    const ajustar = () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; };
+    const ajustar = () => { ta.style.height = 'auto'; ta.style.height = Math.min(160, ta.scrollHeight) + 'px'; };
     ta.addEventListener('input', ajustar);
     ta.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit ? form.requestSubmit() : enviar(ta.value); }
@@ -698,30 +789,83 @@ B7.Chat = (function () {
     if (ta2) { ta2.disabled = false; if (S.rascunho) ta2.value = S.rascunho; if (window.matchMedia('(min-width: 761px)').matches) ta2.focus(); }
     if (bt2) bt2.disabled = false;
     pintarTopo(); pintarCorpo();
+    if (painel.querySelector('.ch-lado')) carregarLista();
   }
 
   /* ---------------------------------------------------------- histórico */
+  function novaConversa() {
+    if (S.enviando || !painel) return;
+    S.conversaId = null; S.msgs = []; S.vista = 'conversa'; pintar();
+    const ta = painel.querySelector('#ch-texto'); if (ta) ta.focus();
+  }
+  /* zzz169: cabeçalho do histórico — nova conversa em destaque + busca */
+  function histCabHTML() {
+    return '<div class="ch-hist-cab"><button type="button" class="ch-hist-nova" data-nova="1">' + IC.novo + '<span>Nova conversa</span></button>' +
+      '<label class="ch-hist-bx">' + IC.busca + '<input type="search" class="ch-hist-busca" placeholder="Buscar conversa ou cliente…" aria-label="Buscar nas conversas" ' +
+        'value="' + esc(S.buscaHist || '') + '" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"></label></div>';
+  }
+  function ligarHistCab() {
+    painel.querySelectorAll('[data-nova]').forEach(b => b.onclick = novaConversa);
+    const bx = painel.querySelector('.ch-hist-busca'); if (!bx) return;
+    bx.oninput = () => { S.buscaHist = bx.value; desenharLista(); };
+    bx.onkeydown = e => {
+      if (e.key === 'Escape' && bx.value) { e.preventDefault(); e.stopPropagation(); bx.value = ''; S.buscaHist = ''; desenharLista(); }
+      if (e.key === 'Enter') { e.preventDefault(); const p = painel.querySelector('#ch-lista [data-id]'); if (p) p.click(); }
+    };
+    if (S.vista === 'lista' && desktop()) bx.focus();
+  }
+  /* grupo de cada conversa pela data da última mensagem */
+  function grupoDia(iso) {
+    const d = new Date(iso); if (isNaN(d)) return 'Mais antigas';
+    const h = new Date(); h.setHours(0, 0, 0, 0);
+    const dia = new Date(d); dia.setHours(0, 0, 0, 0);
+    const dif = Math.round((h - dia) / 86400000);
+    return dif <= 0 ? 'Hoje' : dif === 1 ? 'Ontem' : dif < 7 ? 'Esta semana' : 'Mais antigas';
+  }
+  const hora = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+  const quando = (iso, g) => g === 'Hoje' || g === 'Ontem' ? hora(iso)
+    : (() => { const d = new Date(iso); return isNaN(d) ? '' : g === 'Esta semana' ? d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '') + ' ' + hora(iso) : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', ''); })();
   async function carregarLista() {
     const cx = painel && painel.querySelector('#ch-lista'); if (!cx) return;
     try {
       if (!S.lista) {
-        const { data, error } = await B7.sb.from('ia_conversas').select('id, titulo, cliente_id, updated_at').order('updated_at', { ascending: false }).limit(40);
+        const { data, error } = await B7.sb.from('ia_conversas').select('id, titulo, cliente_id, updated_at').order('updated_at', { ascending: false }).limit(80);
         if (error) throw error;
         S.lista = data || [];
       }
-    } catch (e) { cx.innerHTML = '<div class="ch-nada">Não foi possível carregar as conversas.</div>'; return; }
-    if (!painel || S.vista !== 'lista') return;
-    const nomeCli = id => { const c = (S.clientes || []).find(x => x.id === id); return c ? c.nome : ''; };
-    cx.innerHTML = S.lista.length ? S.lista.map(c =>
-      '<div class="ch-item' + (c.id === S.conversaId ? ' on' : '') + '">' +
-        '<button type="button" class="ch-item-ab" data-id="' + esc(c.id) + '"><b>' + esc(c.titulo || 'Conversa') + '</b>' +
-          '<small>' + esc([nomeCli(c.cliente_id), B7.UI && B7.UI.quando ? B7.UI.quando(c.updated_at) : ''].filter(Boolean).join(' · ')) + '</small></button>' +
-        '<button type="button" class="ch-bt ch-item-ap" data-apagar="' + esc(c.id) + '" aria-label="Apagar conversa" title="Apagar">' + IC.lixo + '</button></div>').join('')
-      : '<div class="ch-nada">Nenhuma conversa guardada ainda.</div>';
+    } catch (e) { const c2 = painel && painel.querySelector('#ch-lista'); if (c2) c2.innerHTML = '<div class="ch-nada">Não foi possível carregar as conversas.</div>'; return; }
+    desenharLista();
+  }
+  function desenharLista() {
+    const cx = painel && painel.querySelector('#ch-lista'); if (!cx || !S.lista) return;
+    const cliDe = id => (S.clientes || []).find(x => x.id === id) || null;
+    const t = norm((S.buscaHist || '').trim());
+    const itens = S.lista.filter(c => !t || norm(c.titulo).includes(t) || norm((cliDe(c.cliente_id) || {}).nome).includes(t));
+    if (!S.lista.length) {
+      cx.innerHTML = '<div class="ch-hist-vazio"><span class="ch-cli-av neutro">' + IC.hist + '</span><b>Nenhuma conversa ainda</b>' +
+        '<small>Quando você conversar com o assistente, as conversas aparecem aqui.</small></div>';
+      return;
+    }
+    if (!itens.length) { cx.innerHTML = '<div class="ch-nada">Nenhuma conversa encontrada.</div>'; return; }
+    let gAtual = '', html = '';
+    itens.forEach(c => {
+      const g = grupoDia(c.updated_at);
+      if (g !== gAtual) { html += '<div class="ch-hist-gr">' + g + '</div>'; gAtual = g; }
+      const cl = cliDe(c.cliente_id);
+      html += '<div class="ch-item' + (c.id === S.conversaId ? ' on' : '') + '">' +
+        '<button type="button" class="ch-item-ab" data-id="' + esc(c.id) + '"' + (c.id === S.conversaId ? ' aria-current="true"' : '') + '>' +
+          (cl ? marca(cl) : '<span class="ch-cli-av neutro">' + IC.ia + '</span>') +
+          '<span class="ch-item-tx"><b>' + esc(c.titulo || 'Conversa') + '</b>' +
+          '<small>' + esc(cl ? cl.nome : 'Todos os clientes') + '</small></span>' +
+          '<time>' + esc(quando(c.updated_at, g)) + '</time></button>' +
+        '<button type="button" class="ch-bt ch-item-ap" data-apagar="' + esc(c.id) + '" aria-label="Apagar conversa" title="Apagar">' + IC.lixo + '</button></div>';
+    });
+    cx.innerHTML = html;
     cx.querySelectorAll('[data-id]').forEach(b => b.onclick = () => abrirConversa(b.dataset.id));
     cx.querySelectorAll('[data-apagar]').forEach(b => b.onclick = () => apagar(b.dataset.apagar));
   }
   async function abrirConversa(id) {
+    if (S.enviando) return;
     const cx = painel.querySelector('#ch-lista');
     try {
       const { data, error } = await B7.sb.from('ia_mensagens').select('id, papel, texto, acoes, created_at').eq('conversa_id', id).order('created_at', { ascending: true }).limit(200);
@@ -739,7 +883,7 @@ B7.Chat = (function () {
         if (error) throw error;
         S.lista = (S.lista || []).filter(c => c.id !== id);
         if (S.conversaId === id) { S.conversaId = null; S.msgs = []; }
-        carregarLista();
+        if (S.conversaId === null && S.vista === 'conversa') pintar(); else desenharLista();
       } catch (e) { if (B7.UI && B7.UI.toast) B7.UI.toast('Não foi possível apagar a conversa.'); }
     };
     if (B7.UI && B7.UI.confirmar) B7.UI.confirmar({ titulo: 'Apagar esta conversa?', texto: 'As mensagens dela somem de vez.', rotulo: 'Apagar', perigo: true, aoConfirmar: fazer });

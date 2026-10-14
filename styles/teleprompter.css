@@ -109,7 +109,7 @@ body.tele-aberto{overflow:hidden;}
 .tele-rotulo{display:block;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin:18px 0 6px;}
 .tele-lista{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto;margin:0;padding:4px;border-radius:14px;background:var(--tele-cartao);}
 .tele-lista button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:0;background:none;border-radius:10px;padding:8px 10px;min-height:48px;}
-.tele-lista button[aria-selected="true"]{background:rgba(226,64,156,.2);}
+.tele-lista button[aria-selected="true"]{background:color-mix(in srgb,var(--magenta) 20%,transparent);}
 .tele-lista i{font-style:normal;font-size:12px;font-weight:700;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;}
 .tele-lista span{flex:1;min-width:0;display:flex;flex-direction:column;}
 .tele-lista b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -122,7 +122,7 @@ body.tele-aberto{overflow:hidden;}
   display:flex;flex-direction:column;gap:3px;min-height:64px;}
 .tele-modo button b{font-size:15px;font-weight:700;}
 .tele-modo button small{font-size:12px;color:rgba(255,255,255,.6);line-height:1.35;}
-.tele-modo button[aria-checked="true"]{border-color:var(--tele-rosa);background:rgba(226,64,156,.16);}
+.tele-modo button[aria-checked="true"]{border-color:var(--tele-rosa);background:color-mix(in srgb,var(--magenta) 16%,transparent);}
 
 .tele-acao{width:100%;min-height:56px;border:0;border-radius:16px;padding:0 22px;display:inline-flex;align-items:center;justify-content:center;gap:10px;
   background:linear-gradient(118deg,#3A1E86 0%,#7C1E85 50%,#C21C83 100%);font-size:16px;font-weight:700;color:#fff;}

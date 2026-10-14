@@ -1064,14 +1064,14 @@ B7.DB = (function () {
     /* ---- Realtime ----
        Devolve o canal (ou null sem Realtime). Quem assina é responsável
        por chamar B7.DB.fecharCanal ao sair da tela. */
-    canal(nome, assinaturas, aoMudar) {
+    canal(nome, assinaturas, aoMudar, aoEstado) {
       try {
         if (!sb().channel) return null;
         let c = sb().channel(nome);
         (assinaturas || []).forEach(a => {
           c = c.on('postgres_changes', Object.assign({ event: '*', schema: 'public' }, a), p => aoMudar(p));
         });
-        c.subscribe();
+        c.subscribe(aoEstado ? (st => { try { aoEstado(st); } catch (e) {} }) : undefined);   /* zzz169: quem quiser sabe se caiu */
         return c;
       } catch (e) { return null; }
     },

@@ -7,5 +7,9 @@ contextBridge.exposeInMainWorld('B7Desktop', {
   ativo: true,
   versao: () => ipcRenderer.invoke('b7:versao'),
   procurarAtualizacao: () => ipcRenderer.invoke('b7:atualizar'),
-  abrirPasta: () => ipcRenderer.invoke('b7:pasta')
+  abrirPasta: () => ipcRenderer.invoke('b7:pasta'),
+  /* zzz169: estado da atualização do programa ({estado:'nada'|'baixando'|'pronta', versao, pct}) */
+  estadoAtualizacao: () => ipcRenderer.invoke('b7:estado-atualizacao'),
+  aoAtualizacao: cb => { ipcRenderer.on('b7:atualizacao', (ev, e) => { try { cb(e); } catch (x) {} }); },
+  instalarAtualizacao: () => ipcRenderer.invoke('b7:instalar')
 });

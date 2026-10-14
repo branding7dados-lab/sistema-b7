@@ -477,8 +477,18 @@ B7.Aparencia = (function () {
     { id: 'ametista', nome: 'Ametista', l: ['#3B1B8F', '#5B2BC4', '#7C3AED'], d: ['#6D4FD6', '#8B5CF6', '#A78BFA'] },
     { id: 'indigo', nome: 'Índigo', l: ['#1E1B6B', '#2F32B3', '#4338CA'], d: ['#4547B8', '#5B63E6', '#818CF8'] },
     { id: 'dourado', nome: 'Dourado', l: ['#7C3A0A', '#A85A0B', '#CF7B06'], d: ['#B45F13', '#D6891A', '#F5A524'] },
-    { id: 'grafite', nome: 'Grafite', l: ['#1F2937', '#374151', '#4B5563'], d: ['#3B4252', '#566074', '#6E7A91'] }
+    { id: 'grafite', nome: 'Grafite', l: ['#1F2937', '#374151', '#4B5563'], d: ['#3B4252', '#566074', '#6E7A91'] },
+    /* zzz169: paletas novas — cada uma com o claro e o escuro pensados juntos */
+    { id: 'turquesa', nome: 'Turquesa', l: ['#0B4A5A', '#0B6670', '#0A7A80'], d: ['#24808E', '#2FA6AD', '#4FD1C5'] },
+    { id: 'coral', nome: 'Coral', l: ['#7D2738', '#A8383F', '#BF4428'], d: ['#B8505E', '#E06A5A', '#FF8A66'] },
+    { id: 'ardosia', nome: 'Ardósia', l: ['#1F2C45', '#2E4266', '#3B5A8C'], d: ['#4A5D86', '#6A82B0', '#8FA9DA'] },
+    { id: 'oliva', nome: 'Oliva', l: ['#34401A', '#4D5F1C', '#5E7417'], d: ['#6A7C30', '#8EA43A', '#B4CB4E'] },
+    { id: 'framboesa', nome: 'Framboesa', l: ['#5A1747', '#8A1C5E', '#B0206F'], d: ['#9A3A7E', '#C9479A', '#F06BB8'] }
   ];
+  /* zzz169: intensidade do tom nos fundos e formato dos cantos */
+  const TINTAS = [['neutro', 'Neutro', 'cinzas quase puros'], ['suave', 'Suave', 'um leve tom da cor'], ['vivo', 'Colorido', 'fundos bem tingidos']];
+  const FATOR_TINTA = { neutro: .12, suave: 1, vivo: 2 };
+  const CANTOS = { retos: [6, 8, 10, 12], padrao: [10, 14, 18, 22], redondos: [14, 18, 24, 28] };
   const MENUS = [['padrao', 'Padrão', 'o azul-noite da B7'], ['tingido', 'Tingido', 'toma o tom da cor escolhida'], ['grafite', 'Grafite', 'cinza bem escuro, neutro']];
   const CORES = [['rosa', 'Rosa (o da B7)', '#C21C83'], ['vermelho', 'Vermelho', '#D6194F'], ['dourado', 'Dourado', '#CF7B06'], ['verde', 'Verde', '#139A63'], ['azul', 'Azul', '#2A5FB5']];
   const SUGESTOES = [
@@ -488,7 +498,7 @@ B7.Aparencia = (function () {
     { nome: 'Novembro Azul', de: '01/11', ate: '30/11', cor: 'azul', frase: 'Novembro Azul' }
   ];
   const RE_DATA = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])$/, RE_HEX = /^#[0-9a-fA-F]{6}$/;
-  const PADRAO = { paleta: 'b7', cor: '', menu: 'padrao', botoes: 'degrade', brilho: false, estacoes: [] };
+  const PADRAO = { paleta: 'b7', cor: '', menu: 'padrao', botoes: 'degrade', brilho: false, tinta: 'suave', cantos: 'padrao', estacoes: [] };
   let cfg = Object.assign({}, PADRAO);
 
   /* ---- cor personalizada: a partir de UMA cor, monta as três do degradê, no claro e no escuro ---- */
@@ -523,14 +533,29 @@ B7.Aparencia = (function () {
     let lc = Math.min(l0, .5);
     while (lc > .12 && contraste(hslHex(h, s, lc), '#FFFFFF') < 4.5) lc -= .02;
     let ld = Math.max(Math.min(l0 + .12, .7), .52);
-    while (ld < .82 && contraste(hslHex(h, s, ld), '#0F0A18') < 4.5) ld += .02;
-    return { l: [hslHex(h - 28, s * .95, lc * .58), hslHex(h - 14, s, lc * .8), hslHex(h, s, lc)],
+    /* zzz169: no escuro mede contra o card (mais claro que o fundo) — vale para os dois */
+    while (ld < .85 && contraste(hslHex(h, s, ld), '#1B1426') < 4.5) ld += .02;
+    return { l: guardar([hslHex(h - 28, s * .95, lc * .58), hslHex(h - 14, s, lc * .8), hslHex(h, s, lc)], false),
              d: [hslHex(h - 28, s * .85, ld - .22), hslHex(h - 14, s * .92, ld - .1), hslHex(h, s, ld)] };
   }
+  /* zzz169: trava de contraste para qualquer trio de cores. No claro, os três
+     tons levam texto branco por cima (botões em degradê) → 4.5:1 contra o
+     branco. No escuro, o acento vira texto/ícone sobre os cards → 4.5:1
+     contra o card escuro. Só mexe na luminosidade; o tom fica. */
+  function guardar(t, escuro) {
+    return t.map((hex, i) => {
+      let [h, s, l] = hexHsl(hex), n = 0;
+      if (!escuro) while (l > .08 && contraste(hslHex(h, s, l), '#FFFFFF') < 4.5 && n++ < 60) l -= .01;
+      else if (i === 2) while (l < .9 && contraste(hslHex(h, s, l), '#1B1426') < 4.5 && n++ < 60) l += .01;
+      return n ? hslHex(h, s, l) : hex;
+    });
+  }
+  const cacheGuard = {};
   function valores(c) {
     if (c.paleta === 'custom' && RE_HEX.test(c.cor || '')) return derivar(c.cor);
     const p = PALETAS.find(x => x.id === c.paleta) || PALETAS[0];
-    return { l: p.l, d: p.d };
+    if (p.id === 'b7') return { l: p.l, d: p.d };   /* o padrão da marca fica exatamente igual */
+    return cacheGuard[p.id] || (cacheGuard[p.id] = { l: guardar(p.l, false), d: guardar(p.d, true) });
   }
   const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; };
   const MENU_GRAFITE = ['#101216', '#191c23'];
@@ -548,16 +573,28 @@ B7.Aparencia = (function () {
   const NEUTROS_ESCURO = { '--fundo': '#0F0A18', '--card': '#1B1426', '--suave': '#221934', '--elevado': '#241A31', '--borda': '#2C2340',
     '--borda-forte': '#3A2F52', '--ink': '#F0ECF7', '--ink-2': '#CFC7DF', '--ink-3': '#A79CBE', '--ink-4': '#7C7295', '--neutro': '#B3A8CC',
     '--esq-1': '#241A31', '--esq-2': '#2E2340', '--topo-bg': '#150F22' };
+  /* zzz169: quanto do tom vai para os neutros — a intensidade (neutro/suave/
+     colorido) só multiplica a saturação; a luminosidade nunca muda, então o
+     contraste dos textos sobre fundo e cards continua o mesmo */
+  const fatorNeutro = (c, val) => {
+    const sp = hexHsl(val.l[0])[1];
+    return Math.max(0, Math.min(1.15, sp / .63)) * (FATOR_TINTA[c.tinta] || 1);
+  };
   function neutros(c, val, escuro) {
-    if (c.paleta === 'b7') return '';
-    const [h, sp] = hexHsl(val.l[0]), f = Math.max(0, Math.min(1.15, sp / .63));
+    if (c.paleta === 'b7' && (c.tinta || 'suave') === 'suave') return '';
+    const h = hexHsl(val.l[0])[0], f = fatorNeutro(c, val);
     const tab = escuro ? NEUTROS_ESCURO : NEUTROS_CLARO;
     return Object.keys(tab).map(k => {
       const [, s0, l0] = hexHsl(tab[k]), hex = hslHex(h, s0 * f, l0);
       return k + ':' + (k === '--topo-bg' ? rgba(hex, .86) : hex) + ';';
     }).join('');
   }
-  const ativo = c => c.paleta !== 'b7' || c.menu !== 'padrao' || c.botoes === 'solido' || !!c.brilho;
+  const cantosVars = c => {
+    const r = CANTOS[c.cantos]; if (!r || c.cantos === 'padrao') return '';
+    return '--r-sm:' + r[0] + 'px;--r:' + r[1] + 'px;--r-lg:' + r[2] + 'px;--r-xl:' + r[3] + 'px;';
+  };
+  const ativo = c => c.paleta !== 'b7' || c.menu !== 'padrao' || c.botoes === 'solido' || !!c.brilho ||
+    (c.tinta && c.tinta !== 'suave') || (c.cantos && c.cantos !== 'padrao');
   function gerarCSS(c) {
     if (!ativo(c)) return '';
     const val = valores(c);
@@ -571,7 +608,7 @@ B7.Aparencia = (function () {
         '--violeta:' + v + ';--roxo:' + r + ';--magenta:' + m + ';--acento:' + m + ';--acento-suave:' + rgba(m, escuro ? .16 : .09) + ';--violeta-bg:' + rgba(v, escuro ? .2 : .12) + ';' +
         '--grad:linear-gradient(118deg,#001559 0%,' + v + ' 34%,' + r + ' 66%,' + m + ' 100%);' +
         '--grad-curto:' + (c.botoes === 'solido' ? 'linear-gradient(0deg,' + m + ',' + m + ')' : 'linear-gradient(120deg,' + v + ' 0%,' + r + ' 52%,' + m + ' 100%)') + ';' +
-        menuVars(c, val.l[0]) + neutros(c, val, escuro) + '}';
+        menuVars(c, val.l[0]) + neutros(c, val, escuro) + (escuro ? '' : cantosVars(c)) + '}';
       if (c.brilho) s += sel + ' body{background-image:radial-gradient(70vmax 50vmax at 100% -8%,' + rgba(m, escuro ? .13 : .1) + ',transparent 70%),radial-gradient(60vmax 46vmax at -8% 108%,' + rgba(v, escuro ? .18 : .1) + ',transparent 70%);background-attachment:fixed;}';
       return s;
     };
@@ -610,6 +647,8 @@ B7.Aparencia = (function () {
       cor: c.paleta === 'custom' && RE_HEX.test(c.cor || '') ? c.cor : '',
       menu: ['padrao', 'tingido', 'grafite'].includes(c.menu) ? c.menu : 'padrao',
       botoes: c.botoes === 'solido' ? 'solido' : 'degrade', brilho: c.brilho === true,
+      /* zzz169: valores antigos (sem estes campos) caem no padrão de antes */
+      tinta: FATOR_TINTA[c.tinta] ? c.tinta : 'suave', cantos: CANTOS[c.cantos] ? c.cantos : 'padrao',
       estacoes: Array.isArray(c.estacoes) ? c.estacoes : [] };
   }
   try { const c = JSON.parse(localStorage.getItem(CHAVE) || 'null'); if (c) cfg = normalizar(c); } catch (e) {}
@@ -658,7 +697,14 @@ B7.Aparencia = (function () {
   async function trazer() {
     try { const r = await B7.DB.rpc('sistema_avisos'); if (r && r.aparencia) sincronizar(r.aparencia); } catch (e) {}
   }
-  const gravar = c => B7.DB.rpc('aparencia_definir', { p_valor: { paleta: c.paleta, cor: c.cor, menu: c.menu, botoes: c.botoes, brilho: c.brilho, estacoes: c.estacoes } });
+  /* zzz169: tinta e cantos vão junto; o banco sem migration_aparencia_v3.sql
+     simplesmente os ignora (e recusa as paletas novas — avisamos abaixo) */
+  const gravar = c => B7.DB.rpc('aparencia_definir', { p_valor: { paleta: c.paleta, cor: c.cor, menu: c.menu, botoes: c.botoes, brilho: c.brilho, tinta: c.tinta, cantos: c.cantos, estacoes: c.estacoes } })
+    .catch(e => {
+      if (e && /inv[aá]lid/i.test(e.message || '') && PALETAS.findIndex(p => p.id === c.paleta) > 8)
+        throw new Error('Esta paleta nova ainda não foi liberada no banco (migration_aparencia_v3.sql). Use outra por enquanto ou salve só para você.');
+      throw e;
+    });
   async function definirPaleta(p) {
     await trazer();
     const nova = Object.assign({}, cfg, { paleta: p, cor: p === 'custom' ? cfg.cor : '' });
@@ -666,21 +712,20 @@ B7.Aparencia = (function () {
   }
   const nomePaleta = c => c.paleta === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === c.paleta) || PALETAS[0]).nome;
   const rotuloPaleta = id => id === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === id) || PALETAS[0]).nome;
-  const resumoDe = c => {
-    const extra = [c.menu !== 'padrao' ? 'menu ' + (c.menu === 'tingido' ? 'tingido' : 'grafite') : '', c.botoes === 'solido' ? 'botões sólidos' : '', c.brilho ? 'brilho' : ''].filter(Boolean);
-    return nomePaleta(c) + (extra.length ? ' · ' + extra.join(', ') : '');
-  };
+  const extrasDe = c => [c.menu !== 'padrao' ? 'menu ' + (c.menu === 'tingido' ? 'tingido' : 'grafite') : '', c.botoes === 'solido' ? 'botões sólidos' : '', c.brilho ? 'brilho' : '',
+    c.tinta === 'neutro' ? 'fundos neutros' : c.tinta === 'vivo' ? 'fundos coloridos' : '', c.cantos === 'retos' ? 'cantos retos' : c.cantos === 'redondos' ? 'cantos redondos' : ''].filter(Boolean);
+  const resumoDe = c => { const extra = extrasDe(c); return nomePaleta(c) + (extra.length ? ' · ' + extra.join(', ') : ''); };
   const resumoPessoal = () => meu ? resumoDe(meu) + ' · sua escolha' : resumoDe(cfg) + ' · o padrão do sistema';
   const resumo = () => {
-    const n = cfg.estacoes.length, extra = [cfg.menu !== 'padrao' ? 'menu ' + (cfg.menu === 'tingido' ? 'tingido' : 'grafite') : '', cfg.botoes === 'solido' ? 'botões sólidos' : '', cfg.brilho ? 'brilho' : ''].filter(Boolean);
-    return nomePaleta(cfg) + (extra.length ? ' · ' + extra.join(', ') : '') + (n ? ' · ' + n + (n === 1 ? ' data especial' : ' datas especiais') : '');
+    const n = cfg.estacoes.length;
+    return resumoDe(cfg) + (n ? ' · ' + n + (n === 1 ? ' data especial' : ' datas especiais') : '');
   };
 
   /* ---- a prévia: uma telinha do B7 com as escolhas, no claro ou no escuro (zzz163) ---- */
   function tom(c, val, hex) {
-    if (c.paleta === 'b7') return hex;
-    const [h, sp] = hexHsl(val.l[0]), [, s0, l0] = hexHsl(hex);
-    return hslHex(h, s0 * Math.max(0, Math.min(1.15, sp / .63)), l0);
+    if (c.paleta === 'b7' && (c.tinta || 'suave') === 'suave') return hex;
+    const h = hexHsl(val.l[0])[0], [, s0, l0] = hexHsl(hex);
+    return hslHex(h, s0 * fatorNeutro(c, val), l0);
   }
   function previa(c, escuro) {
     const val = valores(c), t = escuro ? val.d : val.l, v = t[0], r = t[1], m = t[2];
@@ -691,13 +736,16 @@ B7.Aparencia = (function () {
     const glow = c.brilho ? 'radial-gradient(120% 90% at 100% -10%,' + rgba(m, escuro ? .22 : .16) + ',transparent 65%),radial-gradient(90% 80% at -10% 110%,' + rgba(v, escuro ? .3 : .16) + ',transparent 65%),' : '';
     const heroi = 'linear-gradient(135deg,color-mix(in srgb,' + val.l[0] + ' 46%,#000),' + val.l[0] + ' 55%,' + val.l[1] + ')';
     return '<div class="ap-prev" style="--pv-v:' + v + ';--pv-m:' + m + ';--pv-l1:' + val.d[0] + ';--pv-l2:' + val.d[2] + ';--pv-sb:' + sb + ';--pv-btn:' + btn +
-        ';--pv-bg:' + bg + ';--pv-card:' + card + ';--pv-ink:' + ink + ';--pv-ink3:' + ink3 + ';--pv-borda:' + borda + ';--pv-heroi:' + heroi + ';--pv-glow:' + (glow || 'none') + '" aria-hidden="true">' +
+        ';--pv-bg:' + bg + ';--pv-card:' + card + ';--pv-ink:' + ink + ';--pv-ink3:' + ink3 + ';--pv-borda:' + borda + ';--pv-heroi:' + heroi + ';--pv-glow:' + (glow || 'none') +
+        ';--pv-r:' + (CANTOS[c.cantos] || CANTOS.padrao)[1] + 'px;--pv-c1:' + v + ';--pv-c2:' + r + '" aria-hidden="true">' +
       '<aside class="pv-side"><i class="pv-logo"></i><i></i><i class="on"></i><i></i><i></i><i></i></aside>' +
       '<div class="pv-main">' +
         '<div class="pv-top"><span class="pv-busca"></span><span class="pv-criar">+ Criar</span></div>' +
         '<div class="pv-heroi"><i class="pv-anel"></i><span><small>ANDAMENTO DO MÊS</small><b>Outubro</b></span></div>' +
         '<div class="pv-card"><div class="pv-l"><b>Resumo do mês</b><span class="pv-chip">Em revisão</span></div>' +
           '<small>12 de 18 entregas</small><i class="pv-barra"><u></u></i>' +
+          /* zzz169: mini gráfico com as três cores da paleta */
+          '<span class="pv-graf">' + [46, 70, 38, 88, 60, 76, 52].map((a, i) => '<i style="height:' + a + '%;background:var(--pv-' + ['c1', 'c2', 'm'][i % 3] + ')"></i>').join('') + '</span>' +
           '<div class="pv-btns"><span class="pv-btn">Salvar</span><span class="pv-btn2">Cancelar</span><span class="pv-tg"><i></i></span></div></div>' +
       '</div></div>';
   }
@@ -718,7 +766,14 @@ B7.Aparencia = (function () {
     const base = euMesmo ? efetiva() : cfg;
     const salvo = normalizar(base), rascunho = normalizar(base);
     let gravou = false, escuroPrev = document.documentElement.getAttribute('data-theme') === 'dark';
-    const voltar = () => { if (!gravou) aplicarSuave(euMesmo ? efetiva() : cfg); };
+    /* zzz169: o tema é de cada pessoa (b7_tema, em app.js); aplica na hora e Cancelar devolve */
+    let temaIni = 'sistema'; try { temaIni = localStorage.getItem('b7_tema') || 'sistema'; } catch (e) {}
+    const temaRasc = { tema: temaIni };
+    const voltar = () => {
+      if (gravou) return;
+      if (temaRasc.tema !== temaIni && B7.definirTema) B7.definirTema(temaIni);
+      aplicarSuave(euMesmo ? efetiva() : cfg);
+    };
     const m = B7.UI.modal('<h3>' + (euMesmo ? 'Minha aparência' : 'Aparência do sistema') + '</h3>' +
       '<p class="sub">' + (euMesmo
         ? 'Só para você, neste aparelho. Enquanto você tiver uma escolha aqui, ela manda — mesmo que a administração mude a cor da equipe.'
@@ -735,6 +790,10 @@ B7.Aparencia = (function () {
           '<section class="ap-sec"><h4 class="ad-t">Menu lateral</h4><div class="ap-menus" id="ap-menus" role="radiogroup" aria-label="Menu lateral"></div></section>' +
           '<section class="ap-sec ap-duas"><div><h4 class="ad-t">Botões</h4><div class="ap-seg" id="ap-botoes" role="radiogroup" aria-label="Estilo dos botões"></div></div>' +
             '<div><h4 class="ad-t">Brilho de fundo</h4><label class="ap-troca"><input type="checkbox" id="ap-brilho"><span class="ap-troca-tr" aria-hidden="true"><i></i></span><span>Luz suave da cor atrás das telas</span></label></div></section>' +
+          /* zzz169: intensidade do tom, cantos e (só na folha pessoal) o tema */
+          '<section class="ap-sec"><h4 class="ad-t">Fundos</h4><div class="ap-seg ap-seg-larga" id="ap-tinta" role="radiogroup" aria-label="Intensidade da cor nos fundos"></div><small class="ap-dica" id="ap-tinta-d"></small></section>' +
+          '<section class="ap-sec ap-duas"><div><h4 class="ad-t">Cantos</h4><div class="ap-seg" id="ap-cantos" role="radiogroup" aria-label="Cantos"></div></div>' +
+            (euMesmo ? '<div><h4 class="ad-t">Tema</h4><div class="ap-seg" id="ap-tema" role="radiogroup" aria-label="Tema claro ou escuro"></div></div>' : '<div></div>') + '</section>' +
         '</div></div>' +
       (euMesmo ? '' :
         '<section class="ap-sec ap-sec-datas"><h4 class="ad-t">Datas especiais da abertura</h4>' +
@@ -757,7 +816,7 @@ B7.Aparencia = (function () {
       reabrirConfig();
     };
     const btB7 = m.querySelector('#ap-b7');
-    if (btB7) btB7.onclick = () => { Object.assign(rascunho, { paleta: 'b7', cor: '', menu: 'padrao', botoes: 'degrade', brilho: false }); pintarTudo(true); };
+    if (btB7) btB7.onclick = () => { Object.assign(rascunho, { paleta: 'b7', cor: '', menu: 'padrao', botoes: 'degrade', brilho: false, tinta: 'suave', cantos: 'padrao' }); pintarTudo(true); };
     const gradeDe = t => 'linear-gradient(135deg,' + t[0] + ',' + t[1] + ' 52%,' + t[2] + ')';
 
     const aoVivo = suave => {
@@ -813,6 +872,29 @@ B7.Aparencia = (function () {
       cxB.innerHTML = [['degrade', 'Degradê'], ['solido', 'Sólidos']].map(x => '<button type="button" role="radio" aria-checked="' + (rascunho.botoes === x[0]) + '" data-bt="' + x[0] + '"' + (rascunho.botoes === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>').join('');
       cxB.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { rascunho.botoes = b.dataset.bt; pintarBotoes(); aoVivo(); });
     };
+    const seg = (cx, itens, chave, aoMudar) => {
+      if (!cx) return;
+      cx.innerHTML = itens.map(x => '<button type="button" role="radio" aria-checked="' + (rascunho[chave] === x[0]) + '" data-v="' + x[0] + '"' + (rascunho[chave] === x[0] ? ' class="on"' : '') + ' title="' + esc(x[2] || x[1]) + '">' + x[1] + '</button>').join('');
+      cx.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { rascunho[chave] = b.dataset.v; aoMudar(); });
+    };
+    const cxT = m.querySelector('#ap-tinta'), cxR = m.querySelector('#ap-cantos'), cxTema = m.querySelector('#ap-tema');
+    const pintarTinta = () => {
+      seg(cxT, TINTAS, 'tinta', () => { pintarTinta(); aoVivo(true); });
+      const t = TINTAS.find(x => x[0] === rascunho.tinta); m.querySelector('#ap-tinta-d').textContent = t ? 'Fundos, bordas e textos com ' + t[2] + '.' : '';
+    };
+    const pintarCantos = () => seg(cxR, [['retos', 'Retos'], ['padrao', 'Padrão'], ['redondos', 'Redondos']], 'cantos', () => { pintarCantos(); aoVivo(); });
+    const pintarTema = () => {
+      if (!cxTema) return;
+      cxTema.innerHTML = [['light', 'Claro'], ['dark', 'Escuro'], ['sistema', 'Auto', 'Segue o aparelho']].map(x => '<button type="button" role="radio" aria-checked="' + (temaRasc.tema === x[0]) + '" data-v="' + x[0] + '"' + (temaRasc.tema === x[0] ? ' class="on"' : '') + ' title="' + (x[2] || x[1]) + '">' + x[1] + '</button>').join('');
+      cxTema.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
+        temaRasc.tema = b.dataset.v;
+        const mudar = () => B7.definirTema && B7.definirTema(temaRasc.tema);
+        const anima = document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (anima) { try { document.startViewTransition(mudar); } catch (e) { mudar(); } } else mudar();
+        escuroPrev = document.documentElement.getAttribute('data-theme') === 'dark';
+        pintarTema(); pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev);
+      });
+    };
     const lerLinhas = () => !cxL ? null : cxL.querySelectorAll('.ap-linha').forEach(l => {
       const e = rascunho.estacoes[Number(l.dataset.i)]; if (!e) return;
       l.querySelectorAll('[data-f]').forEach(c => { e[c.dataset.f] = c.value; });
@@ -844,7 +926,7 @@ B7.Aparencia = (function () {
       });
     };
     const chB = m.querySelector('#ap-brilho');
-    function pintarTudo(suave) { chB.checked = rascunho.brilho; pintarPaletas(); pintarMenus(); pintarBotoes(); aoVivo(suave); }
+    function pintarTudo(suave) { chB.checked = rascunho.brilho; pintarPaletas(); pintarMenus(); pintarBotoes(); pintarTinta(); pintarCantos(); pintarTema(); aoVivo(suave); }
     m.querySelectorAll('[data-tp]').forEach(b => b.onclick = () => { escuroPrev = b.dataset.tp === 'd'; pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev); });
     chB.onchange = () => { rascunho.brilho = chB.checked; aoVivo(true); };
     if (!euMesmo) m.querySelector('#ap-nova').onclick = () => {
