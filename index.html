@@ -41,6 +41,10 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* zzz140: cor do sistema e data especial da abertura, a partir da cópia guardada no aparelho */
   try {
     var ap = JSON.parse(localStorage.getItem('b7_sis_aparencia') || 'null');
+    /* zzz159: a aparência pessoal (deste aparelho) manda sobre a do
+       sistema; as datas especiais continuam vindo do sistema */
+    var eu = JSON.parse(localStorage.getItem('b7_ap_pessoal') || 'null');
+    if (eu) ap = { css: eu.css || '', estacoes: (ap && ap.estacoes) || [] };
     if (ap) {
       var rz = document.documentElement;
       if (ap.css) { var st = document.createElement('style'); st.id = 'b7-aparencia'; st.textContent = ap.css; document.head.appendChild(st); rz.setAttribute('data-ap', '1'); }

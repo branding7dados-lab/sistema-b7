@@ -580,12 +580,32 @@ B7.Aparencia = (function () {
   }
   try { const c = JSON.parse(localStorage.getItem(CHAVE) || 'null'); if (c) cfg = normalizar(c); } catch (e) {}
 
-  function aplicar(c) { const x = c || cfg; aplicarCSS(x); pintarEstacao(estacaoDe(x)); }
+  /* ---- APARÊNCIA PESSOAL (zzz159) ------------------------------------
+     O administrador define a aparência PADRÃO da equipe (acima). Cada
+     pessoa pode ter a sua, só neste aparelho: enquanto houver uma escolha
+     pessoal, ela manda — mudar o padrão do sistema não a derruba. "Usar o
+     padrão do sistema" apaga a escolha e volta ao do administrador.
+     As datas especiais da abertura continuam sendo só do sistema. */
+  const CHAVE_EU = 'b7_ap_pessoal';
+  let meu = null;
+  try { const c = JSON.parse(localStorage.getItem(CHAVE_EU) || 'null'); if (c) meu = normalizar(c); } catch (e) {}
+  const efetiva = () => meu || cfg;
+  function guardarPessoal(c) {
+    meu = c ? normalizar(c) : null;
+    try {
+      if (!meu) localStorage.removeItem(CHAVE_EU);
+      else localStorage.setItem(CHAVE_EU, JSON.stringify(Object.assign({}, meu, { css: gerarCSS(meu) })));
+    } catch (e) {}
+    aplicar();
+  }
+
+  function aplicar(c) { const x = c || efetiva(); aplicarCSS(x); pintarEstacao(estacaoDe(cfg)); }
   /* recebe o que veio do banco; null = conta que não recebe (Portal) */
   function sincronizar(c) {
     if (c === null || c === undefined || typeof c !== 'object') return;
     cfg = normalizar(c);
-    const css = aplicarCSS(cfg); pintarEstacao(estacaoDe(cfg));
+    const css = gerarCSS(cfg);
+    aplicarCSS(efetiva()); pintarEstacao(estacaoDe(cfg));
     try {
       if (!css && !cfg.estacoes.length) localStorage.removeItem(CHAVE);
       else localStorage.setItem(CHAVE, JSON.stringify(Object.assign({}, cfg, { css })));
@@ -603,6 +623,11 @@ B7.Aparencia = (function () {
   }
   const nomePaleta = c => c.paleta === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === c.paleta) || PALETAS[0]).nome;
   const rotuloPaleta = id => id === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === id) || PALETAS[0]).nome;
+  const resumoDe = c => {
+    const extra = [c.menu !== 'padrao' ? 'menu ' + (c.menu === 'tingido' ? 'tingido' : 'grafite') : '', c.botoes === 'solido' ? 'botões sólidos' : '', c.brilho ? 'brilho' : ''].filter(Boolean);
+    return nomePaleta(c) + (extra.length ? ' · ' + extra.join(', ') : '');
+  };
+  const resumoPessoal = () => meu ? resumoDe(meu) + ' · sua escolha' : resumoDe(cfg) + ' · o padrão do sistema';
   const resumo = () => {
     const n = cfg.estacoes.length, extra = [cfg.menu !== 'padrao' ? 'menu ' + (cfg.menu === 'tingido' ? 'tingido' : 'grafite') : '', cfg.botoes === 'solido' ? 'botões sólidos' : '', cfg.brilho ? 'brilho' : ''].filter(Boolean);
     return nomePaleta(cfg) + (extra.length ? ' · ' + extra.join(', ') : '') + (n ? ' · ' + n + (n === 1 ? ' data especial' : ' datas especiais') : '');
@@ -622,12 +647,17 @@ B7.Aparencia = (function () {
           '<div class="pv-btns"><span class="pv-btn">Criar demanda</span><span class="pv-btn2">Cancelar</span></div></div></div></div>';
   }
 
-  async function abrir() {
-    await trazer();
-    const salvo = normalizar(cfg), rascunho = normalizar(cfg);
+  /* opcoes.pessoal = a folha da própria pessoa (só neste aparelho) */
+  async function abrir(opcoes) {
+    const euMesmo = !!(opcoes && opcoes.pessoal);
+    if (!euMesmo) await trazer();
+    const base = euMesmo ? efetiva() : cfg;
+    const salvo = normalizar(base), rascunho = normalizar(base);
     let gravou = false, escuroPrev = document.documentElement.getAttribute('data-theme') === 'dark';
-    const m = B7.UI.modal('<h3>Aparência do sistema</h3>' +
-      '<p class="sub">Vale para toda a equipe. O tema claro ou escuro continua sendo escolha de cada pessoa. A logo, o desenho da abertura e as cores de status seguem sendo da marca.</p>' +
+    const m = B7.UI.modal('<h3>' + (euMesmo ? 'Minha aparência' : 'Aparência do sistema') + '</h3>' +
+      '<p class="sub">' + (euMesmo
+        ? 'Só para você, neste aparelho. Enquanto você tiver uma escolha aqui, ela manda — mesmo que a administração mude a cor da equipe.'
+        : 'Vale para toda a equipe. O tema claro ou escuro continua sendo escolha de cada pessoa. A logo, o desenho da abertura e as cores de status seguem sendo da marca.') + '</p>' +
       '<div class="ap-grade"><div class="ap-prev-col"><div class="ap-prev-topo"><span class="rot">PRÉVIA</span><span class="ap-seg" role="radiogroup" aria-label="Tema da prévia"><button type="button" data-tp="l" role="radio">Claro</button><button type="button" data-tp="d" role="radio">Escuro</button></span></div><div id="ap-previa"></div>' +
         '<p class="ad-nota ap-dica">A tela atrás desta janela também já mostra as escolhas. Cancelar volta ao que estava.</p></div>' +
       '<div class="ap-ctl">' +
@@ -636,14 +666,24 @@ B7.Aparencia = (function () {
         '<div class="ap-duas"><div><h4 class="ad-t">Botões</h4><div class="ap-seg" id="ap-botoes" role="radiogroup" aria-label="Estilo dos botões"></div></div>' +
         '<div><h4 class="ad-t">Brilho de fundo</h4><label class="ap-troca"><input type="checkbox" id="ap-brilho"><span class="ap-troca-tr" aria-hidden="true"><i></i></span><span>Uma luz suave da cor atrás das telas</span></label></div></div>' +
       '</div></div>' +
-      '<h4 class="ad-t ad-t-solto">Datas especiais da abertura</h4>' +
-      '<p class="sub ap-sub">Nessas datas, a animação de entrada muda de cor e mostra a frase. Fora delas, a abertura é a de sempre.</p>' +
-      '<div id="ap-lista"></div>' +
-      '<div class="ap-add"><button type="button" class="b fina contorno" id="ap-nova">+ Data própria</button><button type="button" class="b fina contorno" id="ap-sug">+ Sugestões (Natal, Ano Novo, Outubro Rosa, Novembro Azul)</button></div>' +
-      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="ap-salvar">Salvar</button></div>', { larga: true });
-    const fechar = () => { if (!gravou) aplicar(salvo); m.fechar(); };
+      (euMesmo ? '' :
+        '<h4 class="ad-t ad-t-solto">Datas especiais da abertura</h4>' +
+        '<p class="sub ap-sub">Nessas datas, a animação de entrada muda de cor e mostra a frase. Fora delas, a abertura é a de sempre.</p>' +
+        '<div id="ap-lista"></div>' +
+        '<div class="ap-add"><button type="button" class="b fina contorno" id="ap-nova">+ Data própria</button><button type="button" class="b fina contorno" id="ap-sug">+ Sugestões (Natal, Ano Novo, Outubro Rosa, Novembro Azul)</button></div>') +
+      '<div class="acoes">' +
+        (euMesmo && meu ? '<button type="button" class="b contorno" id="ap-padrao">Usar o padrão do sistema</button>' : '') +
+        '<button type="button" class="b contorno" data-fecha>Cancelar</button>' +
+        '<button type="button" class="b pri" id="ap-salvar">Salvar</button></div>', { larga: true });
+    const fechar = () => { if (!gravou) aplicar(euMesmo ? efetiva() : cfg); m.fechar(); };
     m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = fechar);
     const cxP = m.querySelector('#ap-paletas'), cxM = m.querySelector('#ap-menus'), cxB = m.querySelector('#ap-botoes'), cxL = m.querySelector('#ap-lista'), cxV = m.querySelector('#ap-previa');
+    const btPadrao = m.querySelector('#ap-padrao');
+    if (btPadrao) btPadrao.onclick = () => {
+      gravou = true; guardarPessoal(null); m.fechar();
+      B7.UI.toast('Voltou para a aparência do sistema.');
+      if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig();
+    };
     const gradeDe = t => 'linear-gradient(120deg,' + t[0] + ',' + t[1] + ' 52%,' + t[2] + ')';
 
     const aoVivo = () => { aplicarCSS(rascunho); pintarEstacao(estacaoDe(salvo)); cxV.innerHTML = previa(rascunho, escuroPrev); };
@@ -671,7 +711,7 @@ B7.Aparencia = (function () {
       cxB.innerHTML = [['degrade', 'Degradê'], ['solido', 'Sólidos']].map(x => '<button type="button" role="radio" aria-checked="' + (rascunho.botoes === x[0]) + '" data-bt="' + x[0] + '"' + (rascunho.botoes === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>').join('');
       cxB.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { rascunho.botoes = b.dataset.bt; pintarBotoes(); aoVivo(); });
     };
-    const lerLinhas = () => cxL.querySelectorAll('.ap-linha').forEach(l => {
+    const lerLinhas = () => !cxL ? null : cxL.querySelectorAll('.ap-linha').forEach(l => {
       const e = rascunho.estacoes[Number(l.dataset.i)]; if (!e) return;
       l.querySelectorAll('[data-f]').forEach(c => { e[c.dataset.f] = c.value; });
     });
@@ -686,6 +726,7 @@ B7.Aparencia = (function () {
         '<span class="ap-acoes">' + (vigor ? '<em class="ap-vigor">em vigor hoje</em>' : '') + '<button type="button" class="b fina contorno" data-ver>Ver</button><button type="button" class="adm-link perigo" data-rm>Remover</button></span></div>';
     };
     const pintarLista = () => {
+      if (!cxL) return;
       cxL.innerHTML = rascunho.estacoes.length ? rascunho.estacoes.map(linha).join('') : '<p class="ad-vazio">Nenhuma data cadastrada.</p>';
       cxL.querySelectorAll('.ap-linha').forEach(l => {
         const i = Number(l.dataset.i);
@@ -702,16 +743,22 @@ B7.Aparencia = (function () {
     };
     m.querySelectorAll('[data-tp]').forEach(b => b.onclick = () => { escuroPrev = b.dataset.tp === 'd'; pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev); });
     const chB = m.querySelector('#ap-brilho'); chB.checked = rascunho.brilho; chB.onchange = () => { rascunho.brilho = chB.checked; aoVivo(); };
-    m.querySelector('#ap-nova').onclick = () => {
+    if (!euMesmo) m.querySelector('#ap-nova').onclick = () => {
       lerLinhas(); if (rascunho.estacoes.length >= 12) { B7.UI.toast('Máximo de 12 datas.', { tipo: 'erro' }); return; }
       rascunho.estacoes.push({ nome: '', de: '', ate: '', cor: 'rosa', frase: '' }); pintarLista();
     };
-    m.querySelector('#ap-sug').onclick = () => {
+    if (!euMesmo) m.querySelector('#ap-sug').onclick = () => {
       lerLinhas();
       SUGESTOES.forEach(s => { if (rascunho.estacoes.length < 12 && !rascunho.estacoes.some(e => e.nome === s.nome)) rascunho.estacoes.push(Object.assign({}, s)); });
       pintarLista();
     };
     m.querySelector('#ap-salvar').onclick = async () => {
+      if (euMesmo) {
+        gravou = true; guardarPessoal(rascunho); m.fechar();
+        B7.UI.toast('Aparência salva para você, neste aparelho.');
+        if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig();
+        return;
+      }
       lerLinhas();
       for (const e of rascunho.estacoes) {
         e.nome = String(e.nome || '').trim(); e.frase = String(e.frase || '').trim();
@@ -730,7 +777,9 @@ B7.Aparencia = (function () {
     pintarPaletas(); pintarMenus(); pintarBotoes(); pintarLista(); pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev);
   }
 
-  return { abrir, sincronizar, aplicar, resumo, definirPaleta, rotuloPaleta, paletaAtual: () => cfg.paleta, _estacaoDe: estacaoDe, _gerarCSS: gerarCSS, _derivar: derivar, PALETAS };
+  return { abrir, sincronizar, aplicar, resumo, resumoPessoal, definirPaleta, rotuloPaleta,
+           paletaAtual: () => efetiva().paleta, pessoal: () => meu, usarDoSistema: () => guardarPessoal(null),
+           _estacaoDe: estacaoDe, _gerarCSS: gerarCSS, _derivar: derivar, PALETAS };
 })();
 
 /* ------------------------------------------------- RESUMO DA SEMANA (IA) */

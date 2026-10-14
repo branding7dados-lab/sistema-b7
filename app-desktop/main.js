@@ -80,6 +80,11 @@ function criarJanela() {
   });
   if (usar && salva.maximizada) janela.maximize();
 
+  /* o nome na barra de cima fica SEMPRE "Sistema B7": o site troca o título
+     a cada tela ("Configurações · Branding7"), o que no computador fica
+     piscando um nome diferente a toda hora */
+  janela.on('page-title-updated', ev => ev.preventDefault());
+
   janela.once('ready-to-show', () => janela.show());
   ['resize', 'move', 'close'].forEach(ev => janela.on(ev, guardarJanela));
   janela.on('closed', () => { janela = null; });
@@ -118,11 +123,22 @@ function ligarSessao() {
   /* arquivo baixado (PDF, planilha, vídeo do teleprompter): vai para a
      pasta Downloads e o programa mostra onde foi */
   ses.on('will-download', (ev, item) => {
+    /* sem caixa de "salvar onde?": vai para Downloads com o nome que o
+       sistema deu (se já existir, o Electron numera). Uma exportação de
+       vários arquivos abria uma caixa atrás da outra. */
+    try {
+      const nome = item.getFilename();
+      item.setSavePath(path.join(app.getPath('downloads'), nome));
+    } catch (e) { /* sem permissão: o Electron pergunta onde salvar */ }
     item.once('done', (e, estado) => {
-      if (estado !== 'completed' || !janela || janela.isDestroyed()) return;
+      if (!janela || janela.isDestroyed()) return;
       const caminho = item.getSavePath();
+      const aviso = estado === 'completed'
+        ? 'Baixado: ' + path.basename(caminho)
+        : 'Não foi possível baixar o arquivo.';
       janela.webContents.executeJavaScript(
-        'window.B7 && B7.UI && B7.UI.toast && B7.UI.toast(' + JSON.stringify('Baixado: ' + path.basename(caminho)) + ')'
+        'window.B7 && B7.UI && B7.UI.toast && B7.UI.toast(' + JSON.stringify(aviso) +
+        (estado === 'completed' ? ', { acao: "Abrir pasta", aoClicar: () => B7Desktop && B7Desktop.abrirPasta && B7Desktop.abrirPasta() }' : ', { tipo: "erro" }') + ')'
       ).catch(() => {});
     });
   });
@@ -198,6 +214,7 @@ function montarMenu() {
 
 /* o site pergunta por window.B7Desktop (preload.js) */
 ipcMain.handle('b7:versao', () => app.getVersion());
+ipcMain.handle('b7:pasta', () => { shell.openPath(app.getPath('downloads')); return true; });
 ipcMain.handle('b7:atualizar', () => {
   if (!app.isPackaged) return false;
   return autoUpdater.checkForUpdates().then(() => true, () => false);
