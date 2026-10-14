@@ -208,6 +208,10 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return partes[1] ? B7.Video.abrirDetalhe(partes[1]) : B7.Video.abrir(params);
     }
+    if (partes[0] === 'whatsapp' && B7.WhatsApp) {
+      mostrar('tela-dashboard');
+      return B7.WhatsApp.abrir();
+    }
     if (partes[0] === 'trends' && B7.Trends) {
       mostrar('tela-dashboard');
       return B7.Trends.abrir();

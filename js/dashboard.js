@@ -2926,6 +2926,11 @@ B7.Dashboard = (function () {
       '<div class="mb"><label class="rot">OBSERVAÇÕES <span class="leve">— opcional</span></label>' +
       '<textarea class="campo" id="ec-obs" rows="2">' + esc(c.observacoes || '') + '</textarea></div>' +
       (c.modo !== undefined ? campoModo(c.modo) : '') +
+      /* zzz170: o grupo do cliente no WhatsApp ("Enviar no WhatsApp" abre ele) */
+      (c.whatsapp_grupo !== undefined
+        ? '<div class="mb"><label class="rot" for="ec-wa">GRUPO DO WHATSAPP <span class="leve">— opcional</span></label>' +
+          '<input class="campo" id="ec-wa" maxlength="120" placeholder="Nome do grupo, igual aparece no WhatsApp" value="' + esc(c.whatsapp_grupo || '') + '"></div>'
+        : '') +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Salvar alterações</button></div>');
 
@@ -2938,6 +2943,7 @@ B7.Dashboard = (function () {
       botao.disabled = true;
       const patch = { nome: nome.value.trim(), observacoes: m.querySelector('#ec-obs').value };
       if (c.modo !== undefined) patch.modo = lerModo(m);
+      if (c.whatsapp_grupo !== undefined) patch.whatsapp_grupo = m.querySelector('#ec-wa').value.trim();
       try {
         /* a logo resolve primeiro: se o envio falhar, nada é gravado e a
            logo antiga continua onde estava */

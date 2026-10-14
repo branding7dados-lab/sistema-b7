@@ -237,9 +237,17 @@ B7.Gravacao = (function () {
       '<div class="gv-acoes">' +
         (principal === 'concluir' ? btConcluir + btAgendar : btAgendar + btConcluir) +
         '<a class="b contorno" href="#/gravacao/' + esc(g.id) + '/roteiros">' + TIPO.roteiro.ic + '<span>Abrir roteiros</span></a>' +
+        /* zzz170: avisar o cliente no grupo do WhatsApp (js/whatsapp.js) */
+        (g.data_gravacao && !concluida && sit !== 'Cancelada' && B7.WhatsApp && B7.WhatsApp.podeEnviar()
+          ? '<button type="button" class="b contorno" id="gv-wa">' + B7.WhatsApp.icone + '<span>Avisar no WhatsApp</span></button>' : '') +
         '<button type="button" class="b contorno ico gv-mais-acoes" data-gv="menu" aria-label="Mais ações" aria-haspopup="menu">' + IC.menu + '</button>' +
       '</div>';
     ligarAcoes(cx);
+    const btWa = cx.querySelector('#gv-wa');
+    if (btWa) btWa.onclick = () => B7.WhatsApp.enviar({
+      tipo: 'gravacao', refId: g.id, clienteId: g.client_id, clienteNome: g.cliente_nome, titulo: g.nome,
+      data: dataLonga(g.data_gravacao), hora: horaTx(g) || '', local: g.local || ''
+    });
   }
 
   /* resumo "4 de 6 gravados" — no topo do checklist */

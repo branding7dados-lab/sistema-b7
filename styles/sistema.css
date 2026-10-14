@@ -595,3 +595,28 @@ body.em-manutencao .nv-topo,body.modo-tv .nv-topo{display:none !important;}
 @keyframes attPc{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acento) 45%,transparent);}50%{box-shadow:0 0 0 6px transparent;}}
 @media (max-width:720px){ .att-pc span{display:none;} .att-pc{padding:0 9px;} }
 @media (prefers-reduced-motion: reduce){ .att-pc.pronta{animation:none;} }
+
+/* zzz170: WhatsApp dentro do sistema (js/whatsapp.js) */
+.wa-tela{display:flex;flex-direction:column;gap:10px;padding:4px 0 0;}
+.wa-barra{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 12px;border:1px solid var(--borda);border-radius:var(--r,14px);background:var(--card);}
+.wa-tit{display:inline-flex;align-items:center;gap:8px;color:var(--ink);margin-right:auto;}
+.wa-tit svg{width:22px;height:22px;color:#25D366;}
+.wa-tit b{font-family:'Archivo';font-weight:800;font-size:16px;letter-spacing:-.01em;}
+.wa-ass{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);cursor:pointer;}
+.wa-nome{width:140px;height:34px;padding:0 10px;}
+.wa-prev{font-size:12.5px;color:var(--ink-4);}
+.wa-prev b{color:var(--ink-2);}
+.wa-area{position:relative;min-height:320px;border:1px solid var(--borda);border-radius:var(--r,14px);background:var(--suave);overflow:hidden;}
+.wa-espera{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-4);font-size:13px;}
+.wa-espera svg{width:44px;height:44px;color:#25D366;opacity:.8;}
+.wa-espera b{font-size:16px;color:var(--ink-2);}
+.wa-fora{max-width:520px;margin:40px auto;text-align:center;}
+.wa-fora>svg{width:56px;height:56px;color:#25D366;}
+.wa-fora p{color:var(--ink-3);line-height:1.5;}
+.wa-fora .acoes{justify-content:center;}
+.wa-n{font-style:normal;margin-left:auto;min-width:19px;height:19px;padding:0 5px;border-radius:99px;background:#25D366;color:#fff;font-size:10.5px;font-weight:800;display:inline-grid;place-items:center;}
+.wa-arq{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.wa-g-dica:empty{display:none;}
+.vd-wa .b svg,#gv-wa svg{width:17px;height:17px;}
+#wa-ok svg{width:17px;height:17px;margin-right:6px;}
+@media (max-width:720px){ .wa-prev{display:none;} .wa-nome{width:110px;} }

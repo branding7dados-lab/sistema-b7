@@ -2083,6 +2083,13 @@ B7.Video = (function () {
 
           secaoVersoes(d, versoesAtual, podeGerir, podeOperar) +
 
+          /* zzz170: mandar o vídeo no grupo do cliente (js/whatsapp.js) */
+          (podeOperar && B7.WhatsApp && B7.WhatsApp.podeEnviar()
+            ? '<section class="vd-bloco vd-wa"><div class="vd-bloco-cab"><label class="rot">Enviar ao cliente</label></div>' +
+              '<p class="fraca">Abre o grupo do cliente no WhatsApp com o vídeo (como documento) e a mensagem prontos. Quem aperta enviar é você.</p>' +
+              '<button type="button" class="b pri" id="vd-wa-enviar">' + B7.WhatsApp.icone + 'Enviar no WhatsApp</button></section>'
+            : '') +
+
           secaoConclusao(d, podeOperar) +
 
           (temConclusao ? '' :
@@ -2467,6 +2474,7 @@ B7.Video = (function () {
     else if (ev.tipo === 'decisao_cliente') texto = esc(ev.mensagem || 'Decisão do cliente registrada');
     else if (ev.tipo === 'conclusao') texto = esc(ev.mensagem || 'Conclusão atualizada');
     else if (ev.tipo === 'edicao') texto = 'alterou — ' + esc(ev.mensagem || 'dados da demanda');
+    else if (ev.tipo === 'whatsapp') texto = esc(ev.mensagem || 'Enviado ao cliente pelo WhatsApp');   /* zzz170 */
     else texto = esc(ev.tipo);
     const cor = ev.tipo === 'status' ? ' vd-tl-' + esc(ev.para_status || '') : ev.tipo === 'conclusao' ? ' vd-tl-ok' : '';
     return '<li class="vd-tl-item' + cor + '"><i class="vd-tl-dot"></i><div class="vd-tl-corpo"><b>' + esc(ev.ator_nome || 'Alguém') + '</b> ' + texto +
@@ -2497,6 +2505,12 @@ B7.Video = (function () {
       try { await B7.DB.atribuirVideo(d.id, selVm.value || null); B7.UI.toast('Atribuição atualizada.'); abrirDetalhe(d.id); }
       catch (e) { B7.UI.toast(e.message || 'Não foi possível atribuir.'); selVm.value = d.videomaker_id || ''; }
     };
+
+    const btWa = document.getElementById('vd-wa-enviar');
+    if (btWa) btWa.onclick = () => B7.WhatsApp.enviar({
+      tipo: 'video', refId: d.id, demandaId: d.id, clienteId: d.client_id, clienteNome: d.cliente_nome,
+      titulo: d.titulo && !/^Sem título/.test(d.titulo) ? d.titulo : '', comArquivo: true
+    });
 
     const btNovaVersao = document.getElementById('vd-vs-nova');
     if (btNovaVersao) btNovaVersao.onclick = () => modalNovaVersao(d);

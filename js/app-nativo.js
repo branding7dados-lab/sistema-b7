@@ -371,9 +371,11 @@ B7.AppNativo = (function () {
   /* zzz165: ícone do app na tela inicial (activity-alias no APK) */
   const icone = nome => pedir('icone', { nome });
   const iconeAtual = () => pedir('iconeAtual').then(r => (r && r.ok && r.nome) || null);
+  /* zzz170: vídeo (escolhido na hora) + mensagem → WhatsApp */
+  const whatsCompartilhar = (texto, arquivo) => pedir('whatsCompartilhar', { texto, arquivo: !!arquivo });
 
   return {
-    ativo, icone, iconeAtual,
+    ativo, icone, iconeAtual, whatsCompartilhar,
     versao: () => instalada,
     ligarAtualizacao,
     instalar,
