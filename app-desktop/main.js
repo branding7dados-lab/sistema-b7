@@ -156,12 +156,36 @@ function ligarSessao() {
    ("app-desktop"), então o endereço não muda e o programa só precisa ler
    esse arquivo para saber se há versão nova. Baixa em segundo plano e
    pergunta antes de instalar — nada fecha sozinho no meio do trabalho. */
-let avisando = false;
+let avisando = false, pedidoDaPessoa = false;
+const aviso = (texto, erro) => {
+  if (!janela || janela.isDestroyed()) return;
+  janela.webContents.executeJavaScript('window.B7 && B7.UI && B7.UI.toast && B7.UI.toast(' +
+    JSON.stringify(texto) + (erro ? ', { tipo: "erro" }' : '') + ')').catch(() => {});
+};
 function ligarAtualizacao() {
   if (!app.isPackaged) return;                 /* rodando do código: não atualiza */
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;     /* se a pessoa disser "depois", instala ao fechar */
+
+  /* zzz161: quem clica em "Procurar atualização" precisa ver alguma coisa.
+     Antes o programa conferia calado: sem versão nova, sem erro, sem nada —
+     e parecia que o botão não funcionava. */
+  autoUpdater.on('update-available', info => {
+    if (!pedidoDaPessoa) return;
+    aviso('Versão ' + (info && info.version ? info.version : 'nova') + ' encontrada. Baixando…');
+  });
+  autoUpdater.on('update-not-available', () => {
+    if (!pedidoDaPessoa) return;
+    pedidoDaPessoa = false;
+    aviso('Você já está na versão mais nova (' + app.getVersion() + ').');
+  });
+  autoUpdater.on('download-progress', p => {
+    if (!pedidoDaPessoa || !janela || janela.isDestroyed()) return;
+    janela.setProgressBar(Math.max(0, Math.min(1, (p && p.percent ? p.percent : 0) / 100)));
+  });
   autoUpdater.on('update-downloaded', async info => {
+    pedidoDaPessoa = false;
+    if (janela && !janela.isDestroyed()) janela.setProgressBar(-1);
     if (avisando || !janela || janela.isDestroyed()) return;
     avisando = true;
     const r = await dialog.showMessageBox(janela, {
@@ -178,10 +202,24 @@ function ligarAtualizacao() {
     avisando = false;
     if (r.response === 0) setImmediate(() => autoUpdater.quitAndInstall(false, true));
   });
-  autoUpdater.on('error', () => { /* sem internet ou release fora do ar: tenta depois */ });
-  const conferir = () => autoUpdater.checkForUpdates().catch(() => {});
-  setTimeout(conferir, 12000);
-  setInterval(conferir, 2 * 60 * 60 * 1000);
+  autoUpdater.on('error', e => {
+    if (janela && !janela.isDestroyed()) janela.setProgressBar(-1);
+    if (!pedidoDaPessoa) return;               /* sozinho: tenta de novo depois, calado */
+    pedidoDaPessoa = false;
+    aviso('Não deu para conferir agora: ' + ((e && e.message) || 'sem resposta') + '.', true);
+  });
+  setTimeout(() => conferir(false), 12000);
+  setInterval(() => conferir(false), 2 * 60 * 60 * 1000);
+}
+
+/* manual = true quando veio do menu Ajuda ou das Configurações */
+function conferir(manual) {
+  if (!app.isPackaged) {
+    if (manual) aviso('Atualização automática só na versão instalada.', true);
+    return Promise.resolve(false);
+  }
+  if (manual) { pedidoDaPessoa = true; aviso('Procurando versão nova…'); }
+  return autoUpdater.checkForUpdates().then(() => true, () => false);
 }
 
 /* --------------------------------------------------------- menu
@@ -210,7 +248,7 @@ function montarMenu() {
     {
       label: 'Ajuda',
       submenu: [
-        { label: 'Procurar atualização', click: () => { if (app.isPackaged) autoUpdater.checkForUpdates().catch(() => {}); } },
+        { label: 'Procurar atualização', click: () => conferir(true) },
         { label: 'Sobre', click: () => janela && dialog.showMessageBox(janela, {
             type: 'info', title: 'Sistema B7', message: 'Sistema B7 para Windows',
             detail: 'Versão do programa: ' + app.getVersion() + '\nO sistema por dentro se atualiza sozinho.', buttons: ['Fechar'] }) }
@@ -222,10 +260,7 @@ function montarMenu() {
 /* o site pergunta por window.B7Desktop (preload.js) */
 ipcMain.handle('b7:versao', () => app.getVersion());
 ipcMain.handle('b7:pasta', () => { shell.openPath(app.getPath('downloads')); return true; });
-ipcMain.handle('b7:atualizar', () => {
-  if (!app.isPackaged) return false;
-  return autoUpdater.checkForUpdates().then(() => true, () => false);
-});
+ipcMain.handle('b7:atualizar', () => conferir(true));
 
 /* ------------------------------------------------------- arranque */
 app.setAppUserModelId('br.com.branding7.sistemab7');

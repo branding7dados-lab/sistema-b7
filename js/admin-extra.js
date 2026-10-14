@@ -534,7 +534,10 @@ B7.Aparencia = (function () {
     const val = valores(c);
     const bloco = (sel, t, escuro) => {
       const v = t[0], r = t[1], m = t[2];
-      let s = sel + '{--violeta:' + v + ';--roxo:' + r + ';--magenta:' + m + ';--acento:' + m + ';--acento-suave:' + rgba(m, escuro ? .16 : .09) + ';--violeta-bg:' + rgba(v, escuro ? .2 : .12) + ';' +
+      /* o menu lateral é escuro nos dois temas: as luzes dele saem sempre
+         dos tons escuros da paleta (zzz161) */
+      let s = sel + '{--sb-luz1:' + val.d[0] + ';--sb-luz2:' + val.d[2] + ';' +
+        '--violeta:' + v + ';--roxo:' + r + ';--magenta:' + m + ';--acento:' + m + ';--acento-suave:' + rgba(m, escuro ? .16 : .09) + ';--violeta-bg:' + rgba(v, escuro ? .2 : .12) + ';' +
         '--grad:linear-gradient(118deg,#001559 0%,' + v + ' 34%,' + r + ' 66%,' + m + ' 100%);' +
         '--grad-curto:' + (c.botoes === 'solido' ? 'linear-gradient(0deg,' + m + ',' + m + ')' : 'linear-gradient(120deg,' + v + ' 0%,' + r + ' 52%,' + m + ' 100%)') + ';' +
         menuVars(c, val.l[0]) + '}';

@@ -444,11 +444,22 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 .rd-item small{font-size:12px;color:var(--ink-4);}
 .rd-acoes{display:flex;justify-content:flex-end;padding:10px 0 8px;}
 
+/* zzz161: a janela do programa de computador costuma ter menos de 1000px —
+   em duas colunas a aparência ficava espremida. Abaixo disso, a prévia vai
+   para cima e os controles ocupam a largura toda. */
+@media (max-width:980px){
+  .ap-grade,.ap-duas{grid-template-columns:1fr;}
+  .ap-prev-col{position:static;}
+  .ap-prev{height:168px;}
+  .ap-paletas{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));}
+}
+@media (max-width:560px){
+  .ap-menus{grid-template-columns:1fr;}
+}
+
 @media (max-width:760px){
   .ad-kpis,.ra-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
-  .cm-grade,.ap-grade,.ap-duas{grid-template-columns:1fr;}
-  .ap-prev-col{position:static;}
-  .ap-menus{grid-template-columns:1fr;}
+  .cm-grade{grid-template-columns:1fr;}
   .ap-linha{grid-template-columns:14px minmax(0,1fr);}
   .ap-linha .campo[data-f="nome"],.ap-linha .ap-datas,.ap-linha .campo[data-f="cor"],.ap-linha .ap-frase,.ap-linha .ap-acoes{grid-column:2;}
   .rd-b{grid-template-columns:auto minmax(60px,110px) minmax(0,1fr) 30px;}

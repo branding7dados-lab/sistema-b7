@@ -23,6 +23,8 @@
      Um lugar só define as cores da interface. Trocar de tema é trocar
      estes valores — nenhum componente tem cor fixa. */
   --sidebar:#0B0A1E; --sidebar-2:#141230;
+  /* zzz161: luzes do menu lateral — viram a cor escolhida (js/admin-extra.js) */
+  --sb-luz1:#7C4DFF; --sb-luz2:#E2409C;
   --fundo:#F6F5FA; --card:#fff; --suave:#F4F2F9;
   --elevado:#fff; --borda:#EAE7F2; --borda-forte:#DED9EC;
 

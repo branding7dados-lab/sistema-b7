@@ -2034,7 +2034,9 @@ B7.Dashboard = (function () {
         /* zzz157: app de Windows (Electron). No próprio app mostra a
            versão dele; num computador sem ele, o atalho para baixar. */
         (window.B7Desktop
-          ? L({ ic: 'versao', tom: 'azul', t: 'App Windows', d: 'o programa se atualiza sozinho',
+          ? L({ ic: 'versao', tom: 'azul', t: 'App Windows',
+                d: '<span id="cfg-win-d">toque para procurar versão nova</span>',
+                botao: true, semSeta: true, attrs: ' data-win-atu',
                 dir: '<span class="cfg-valor ok" id="cfg-win-v">Instalado</span>' })
           : !toque && !(B7.AppNativo && B7.AppNativo.ativo)
           ? L({ ic: 'versao', tom: 'azul', t: 'App para Windows', d: 'o B7 numa janela própria, sem barra de navegador',
@@ -2247,6 +2249,10 @@ B7.Dashboard = (function () {
     };
     const bw = p.querySelector('[data-baixar-windows]');
     if (bw) bw.onclick = () => window.open('https://github.com/branding7dados-lab/sistema-b7/releases/download/app-desktop/sistema-b7-instalador.exe', '_blank', 'noopener');
+    const btWin = p.querySelector('[data-win-atu]');
+    if (btWin && window.B7Desktop && window.B7Desktop.procurarAtualizacao) {
+      btWin.onclick = () => window.B7Desktop.procurarAtualizacao();
+    }
     if (window.B7Desktop && window.B7Desktop.versao) {
       window.B7Desktop.versao().then(v => { const e = p.querySelector('#cfg-win-v'); if (e && v) e.textContent = 'v' + v; }).catch(() => {});
     }
