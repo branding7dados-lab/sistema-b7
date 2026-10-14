@@ -326,18 +326,22 @@ B7.Novidades = (function () {
     cartao();
   }
 
-  /* cartão discreto no canto: só quando há algo que a pessoa ainda não leu */
+  /* zzz167: em vez do cartão no canto (que cobria a tela), um botão
+     discreto no topo, antes do sino — "✦ Novidades" com o número das que
+     a pessoa ainda não leu. Some quando lê. */
   function cartao() {
     tirarCartao();
     const novas = naoLidas(); if (!novas.length) return;
-    const el = document.createElement('div');
-    el.id = 'b7-novidades'; el.className = 'nv-cartao'; el.setAttribute('role', 'status');
-    el.innerHTML = '<span class="nv-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.2 5.3 5.6.5-4.2 3.8 1.3 5.6L12 15.8l-4.9 2.9 1.3-5.6-4.2-3.8 5.6-.5z"/></svg></span>' +
-      '<span class="nv-tx"><small>' + (novas.length === 1 ? 'Novidade no B7' : novas.length + ' novidades no B7') + '</small><b>' + esc(novas[0].titulo) + '</b></span>' +
-      '<button type="button" class="nv-ver">Ver</button><button type="button" class="nv-x" aria-label="Dispensar">×</button>';
-    document.body.appendChild(el);
-    el.querySelector('.nv-ver').onclick = abrir;
-    el.querySelector('.nv-x').onclick = marcarLidas;
+    const sino = document.querySelector('.topo .sino');
+    if (!sino) { setTimeout(cartao, 1500); return; }
+    const el = document.createElement('button');
+    el.type = 'button'; el.id = 'b7-novidades'; el.className = 'nv-topo';
+    el.title = novas.length === 1 ? 'Novidade: ' + novas[0].titulo : novas.length + ' novidades no B7';
+    el.setAttribute('aria-label', el.title);
+    el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9z"/><path d="M18.5 15l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg>' +
+      '<span>Novidades</span><b>' + novas.length + '</b>';
+    sino.parentNode.insertBefore(el, sino);
+    el.onclick = abrir;
   }
 
   function corpoLista(itens, comRemover) {

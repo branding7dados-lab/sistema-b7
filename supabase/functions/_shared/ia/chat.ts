@@ -19,7 +19,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { Mensagem } from './provedor.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-export const LIMITE = { texto: 2000, historico: 16, porMensagem: 1200, contexto: 19000, resposta: 6000 };
+export const LIMITE = { texto: 2000, historico: 16, porMensagem: 1200, contexto: 32000, resposta: 6000 };
 
 /** zzz128: uma imagem anexada à mensagem (print, referência, arte). */
 export type Imagem = { mime: string; base64: string };
@@ -414,6 +414,54 @@ export async function carregarContexto(sb: SupabaseClient, clienteId: string | n
     linhas.push('', 'ROTEIROS em aberto: ' + rs.filter(r => r.status === 'Em criação').length + ' em criação, ' +
       rs.filter(r => r.status === 'Pronto para gravar').length + ' prontos para gravar.');
   }
+
+  /* zzz167: "a IA tem acesso a tudo" — o resto do que a pessoa enxerga:
+     quadro de Produção, linhas editoriais do mês, roteiros em aberto,
+     a equipe (com cargos) e as datas comemorativas próximas. Cada leitura
+     usa a sessão da pessoa (RLS) e, se falhar, só fica de fora. */
+  try {
+    const ano = Number(hoje.slice(0, 4)), mes = Number(hoje.slice(5, 7));
+    const [kb, lin, rts, eq, ops] = await Promise.all([
+      filtra(sb.from('kanban_demandas').select('titulo, coluna, prazo, prioridade, client_id, responsavel_id')
+        .is('deleted_at', null).is('arquivada_em', null).is('concluida_em', null)).order('prazo', { ascending: true, nullsFirst: false }).limit(120),
+      filtra(sb.from('linhas_editoriais').select('nome, mes, ano, status, meta_conteudos, client_id, concluida_em')
+        .is('deleted_at', null).is('archived_at', null).eq('ano', ano).eq('mes', mes)).limit(80),
+      sb.from('roteiros').select('titulo, status, updated_at, recording_session_id').is('deleted_at', null).is('archived_at', null)
+        .in('status', ['Em criação', 'Pronto para gravar']).order('updated_at', { ascending: false }).limit(40),
+      sb.from('perfis').select('id, nome, papel, funcao, funcoes_adicionais').eq('estado', 'ativa').neq('papel', 'cliente').order('nome').limit(60),
+      sb.from('oportunidades').select('nome, mes, dia, natureza').eq('ativo', true).gte('mes', mes).lte('mes', mes === 12 ? 12 : mes + 1).limit(80)
+    ]);
+    const nomePessoa = new Map<string, string>();
+    ((eq.data || []) as Record<string, unknown>[]).forEach(p => nomePessoa.set(String(p.id), corta(p.nome, 30)));
+    const pessoas = (eq.data || []) as Record<string, unknown>[];
+    if (pessoas.length) {
+      linhas.push('', 'EQUIPE (' + pessoas.length + '):');
+      linhas.push('  ' + pessoas.map(p => corta(p.nome, 30) + ' (' + [p.papel === 'admin' ? 'administrador' : '', p.funcao, ...((p.funcoes_adicionais as string[]) || [])]
+        .filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ') + ')').join('; ') + '.');
+    }
+    const kbs = (kb.data || []) as Record<string, unknown>[];
+    if (kbs.length) {
+      linhas.push('', 'QUADRO DE PRODUÇÃO (Kanban, em aberto): ' + kbs.length + '.');
+      kbs.slice(0, 30).forEach(k => linhas.push('  - ' + corta(k.titulo, 70) + ' · ' + corta(k.coluna, 18) + (k.prazo ? ' · prazo ' + br(k.prazo) : '') +
+        (k.client_id ? ' · ' + (nomeCli.get(String(k.client_id)) || 'cliente') : '') + (k.responsavel_id ? ' · ' + (nomePessoa.get(String(k.responsavel_id)) || '') : ' · sem responsável') +
+        (k.prioridade && k.prioridade !== 'normal' ? ' · ' + corta(k.prioridade, 10) : '')));
+    }
+    const ls = (lin.data || []) as Record<string, unknown>[];
+    if (ls.length) {
+      linhas.push('', 'LINHAS EDITORIAIS DE ' + String(mes).padStart(2, '0') + '/' + ano + ': ' + ls.length + '.');
+      ls.forEach(l => linhas.push('  - ' + (nomeCli.get(String(l.client_id)) || 'cliente') + ' · ' + corta(l.nome, 50) + ' · ' + corta(l.status, 16) +
+        (l.meta_conteudos ? ' · meta ' + l.meta_conteudos + ' conteúdos' : '') + (l.concluida_em ? ' · liberada para design' : '')));
+    }
+    const rr = (rts.data || []) as Record<string, unknown>[];
+    if (rr.length && !clienteId) {
+      linhas.push('', 'ROTEIROS EM ABERTO (mais recentes):');
+      rr.slice(0, 25).forEach(r => linhas.push('  - ' + corta(r.titulo || 'sem título', 70) + ' · ' + corta(r.status, 20) + ' · editado ' + br(r.updated_at)));
+    }
+    const os = ((ops.data || []) as Record<string, unknown>[]).filter(o => o.mes && o.dia)
+      .map(o => ({ o, d: String(o.mes).padStart(2, '0') + '-' + String(o.dia).padStart(2, '0') }))
+      .filter(x => x.d >= hoje.slice(5, 10)).sort((a, b) => a.d.localeCompare(b.d)).slice(0, 15);
+    if (os.length) linhas.push('', 'DATAS COMEMORATIVAS PRÓXIMAS: ' + os.map(x => x.d.slice(3) + '/' + x.d.slice(0, 2) + ' ' + corta(x.o.nome, 50)).join('; ') + '.');
+  } catch (_e) { /* o resto do contexto segue */ }
 
   /* zzz164: o mural de trends da equipe — o assistente usa para sugerir conteúdo */
   try {

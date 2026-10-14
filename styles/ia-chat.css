@@ -319,3 +319,38 @@ html.modo-leve .ch-mic.ouvindo::before{animation:none;opacity:0;}
   background:var(--acento-suave);border:1px solid color-mix(in srgb, var(--acento) 30%, var(--borda));}
 .ch-ac-todas span{font-size:12.5px;font-weight:600;color:var(--ink-2);}
 .ch-ac-l span{flex:none;min-width:84px;}
+
+/* =====================================================================
+   zzz167 — tela do assistente: saudação, orbe, sugestões em cartões e
+   o modo grande (no computador)
+   ===================================================================== */
+.ch-painel{transition:width .35s cubic-bezier(.2,.9,.3,1),height .35s cubic-bezier(.2,.9,.3,1);}
+@media (min-width:761px){
+  .ch-painel.ch-grande{width:min(760px,calc(100vw - 48px));height:calc(100vh - 116px);}
+  .ch-painel.ch-grande .ch-sugs{grid-template-columns:repeat(4,minmax(0,1fr));}
+  .ch-painel.ch-grande .ch-msg{max-width:78%;}
+}
+@media (max-width:760px){ .ch-so-pc{display:none !important;} }
+.ch-bt[aria-pressed="true"]{color:var(--acento);background:var(--acento-suave);}
+.ch-vazio{gap:4px;}
+.ch-orbe{position:relative;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;color:#fff;margin-bottom:10px;
+  background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--magenta) 70%,#fff),var(--violeta) 70%);
+  box-shadow:0 14px 34px -12px var(--magenta),inset 0 1px 0 rgba(255,255,255,.35);animation:chOrbe 4.5s ease-in-out infinite;}
+.ch-orbe i{position:absolute;inset:-8px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--magenta) 35%,transparent);animation:chAnel 3s ease-out infinite;}
+.ch-orbe svg{width:28px;height:28px;}
+@keyframes chOrbe{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-4px) scale(1.04);}}
+@keyframes chAnel{0%{transform:scale(.85);opacity:.9;}100%{transform:scale(1.35);opacity:0;}}
+.ch-ola{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--acento);}
+.ch-vazio b{font-size:21px;}
+.ch-vazio p{max-width:340px;}
+.ch-sugs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:16px;}
+.ch-sug{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:12px;border-radius:15px;min-height:88px;
+  animation:chSug .45s cubic-bezier(.2,.9,.3,1.1) both;animation-delay:calc(var(--i,0) * 60ms + 120ms);transition:transform .2s,border-color .2s,box-shadow .2s;}
+.ch-sug i{font-style:normal;font-size:18px;line-height:1;}
+.ch-sug span{display:flex;flex-direction:column;gap:1px;}
+.ch-sug b{font-family:inherit;font-size:13px;font-weight:700;letter-spacing:0;color:var(--ink);}
+.ch-sug small{font-size:11.5px;color:var(--ink-4);line-height:1.3;}
+.ch-sug:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--acento) 45%,var(--borda));box-shadow:0 10px 22px -14px var(--acento);}
+@keyframes chSug{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.ch-form:focus-within{border-color:color-mix(in srgb,var(--acento) 60%,var(--borda));box-shadow:0 0 0 4px var(--acento-suave);}
+@media (prefers-reduced-motion:reduce){ .ch-orbe,.ch-orbe i,.ch-sug{animation:none;} }

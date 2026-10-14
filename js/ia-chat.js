@@ -32,20 +32,22 @@ B7.Chat = (function () {
     seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
     alvo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
     ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    expandir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
     volta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>'
   };
   /* zzz85: sugestões diferentes com e sem cliente em foco */
+  /* zzz167: sugestões em cartões — [ícone, título, detalhe, o que é enviado] */
   const SUGESTOES_GERAL = [
-    'Resumo do meu dia',
-    'O que está atrasado hoje?',
-    'O que os clientes aprovaram esta semana?',
-    'Quantos vídeos entregamos este mês?'
+    ['☀️', 'Meu dia', 'o que fazer hoje', 'Resumo do meu dia'],
+    ['⏰', 'Atrasos', 'o que está vencido', 'O que está atrasado hoje?'],
+    ['🔥', 'Ideias com trends', 'usar o que a equipe guardou', 'Com as trends que a equipe guardou, me dê ideias de vídeo e para quais clientes servem'],
+    ['📊', 'Números do mês', 'entregas e aprovações', 'Quantos vídeos e artes entregamos este mês, e o que os clientes aprovaram?']
   ];
   const SUGESTOES_CLIENTE = [
-    'Resuma a situação deste cliente',
-    'Me dê 5 ideias de conteúdo para este cliente',
-    'O que este cliente aprovou ou pediu ajuste?',
-    'O que está programado para publicar esta semana?'
+    ['🧭', 'Situação', 'como está este cliente', 'Resuma a situação deste cliente'],
+    ['💡', '5 ideias', 'de conteúdo para ele', 'Me dê 5 ideias de conteúdo para este cliente'],
+    ['✅', 'Aprovações', 'o que aprovou ou pediu', 'O que este cliente aprovou ou pediu ajuste?'],
+    ['📅', 'Esta semana', 'o que vai ao ar', 'O que está programado para publicar esta semana?']
   ];
 
   /* estado da conversa aberta */
@@ -86,6 +88,8 @@ B7.Chat = (function () {
       painel.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); fechar(); } });
     }
     S.aberto = true; S.vista = 'conversa';
+    try { S.grande = localStorage.getItem('b7_chat_grande') === '1'; } catch (e) {}
+    painel.classList.toggle('ch-grande', !!S.grande);
     document.body.classList.add('chat-aberto');
     fab.setAttribute('aria-expanded', 'true');
     pintar();
@@ -338,6 +342,7 @@ B7.Chat = (function () {
           (atual ? marca(atual) : IC.alvo) + '<span>' + esc(atual ? atual.nome : 'Escolher cliente') + '</span>' + IC.seta + '</button></div>' +
       '<button type="button" class="ch-bt" id="ch-hist" title="Conversas anteriores" aria-label="Conversas anteriores">' + IC.hist + '</button>' +
       '<button type="button" class="ch-bt" id="ch-nova" title="Nova conversa" aria-label="Nova conversa">' + IC.novo + '</button>' +
+      '<button type="button" class="ch-bt ch-so-pc" id="ch-grande" title="Expandir" aria-label="Expandir o assistente" aria-pressed="' + !!S.grande + '">' + IC.expandir + '</button>' +
       '<button type="button" class="ch-bt" id="ch-fechar" title="Fechar" aria-label="Fechar">' + IC.x + '</button>';
   }
   function fecharClientes() {
@@ -390,17 +395,27 @@ B7.Chat = (function () {
     painel.querySelector('#ch-nova').onclick = () => { if (S.enviando) return; S.conversaId = null; S.msgs = []; pintar(); const ta = painel.querySelector('#ch-texto'); if (ta) ta.focus(); };
     painel.querySelector('#ch-hist').onclick = () => { if (S.enviando) return; S.vista = 'lista'; pintar(); carregarLista(); };
     painel.querySelector('#ch-cliente').onclick = abrirClientes;
+    /* zzz167: assistente grande (no computador) — fica lembrado */
+    const btG = painel.querySelector('#ch-grande');
+    if (btG) btG.onclick = () => {
+      S.grande = !S.grande; painel.classList.toggle('ch-grande', S.grande); btG.setAttribute('aria-pressed', String(S.grande));
+      try { localStorage.setItem('b7_chat_grande', S.grande ? '1' : ''); } catch (e) {}
+    };
   }
 
   function corpoHTML() {
     if (!S.msgs.length) {
       const temCli = !!S.clienteId;
-      return '<div class="ch-vazio"><span class="ch-vazio-ic">' + IC.ia + '</span>' +
-        '<b>Como posso ajudar?</b>' +
-        '<p>Pergunte sobre prazos, entregas, aprovações e publicações, ou peça ideias e recomendações. ' +
-          (temCli ? 'Estou olhando a estratégia e a linha editorial do cliente escolhido.' : 'Escolha um cliente lá em cima para respostas sob medida.') + '</p>' +
-        '<div class="ch-sugs">' + (temCli ? SUGESTOES_CLIENTE : SUGESTOES_GERAL).map(s =>
-          '<button type="button" class="ch-sug">' + esc(s) + '</button>').join('') + '</div></div>';
+      const u = B7.Auth && B7.Auth.usuario && B7.Auth.usuario(), h = new Date().getHours();
+      const primeiro = u && u.nome ? String(u.nome).split(' ')[0] : '';
+      const ola = (h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite') + (primeiro ? ', ' + primeiro : '');
+      return '<div class="ch-vazio"><span class="ch-orbe" aria-hidden="true"><i></i>' + IC.ia + '</span>' +
+        '<small class="ch-ola">' + esc(ola) + '</small>' +
+        '<b>' + (temCli ? 'O que quer saber deste cliente?' : 'O que vamos resolver?') + '</b>' +
+        '<p>' + (temCli ? 'Estou olhando a estratégia, a linha editorial e a produção do cliente escolhido.'
+          : 'Eu vejo a operação inteira: prazos, entregas, aprovações, publicações, gravações e trends. Escolha um cliente lá em cima para respostas sob medida.') + '</p>' +
+        '<div class="ch-sugs">' + (temCli ? SUGESTOES_CLIENTE : SUGESTOES_GERAL).map((x, i) =>
+          '<button type="button" class="ch-sug" data-pergunta="' + esc(x[3]) + '" style="--i:' + i + '"><i aria-hidden="true">' + x[0] + '</i><span><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></span></button>').join('') + '</div></div>';
     }
     return S.msgs.map((m, i) => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
       (m.papel === 'user' ? (m.img ? '<img class="ch-msg-img" src="' + m.img + '" alt="Imagem enviada">' : '') + '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
@@ -584,7 +599,7 @@ B7.Chat = (function () {
   function pintarCorpo() {
     const c = painel && painel.querySelector('.ch-corpo'); if (!c) return;
     c.innerHTML = corpoHTML();
-    c.querySelectorAll('.ch-sug').forEach(b => b.onclick = () => enviar(b.textContent));
+    c.querySelectorAll('.ch-sug').forEach(b => b.onclick = () => enviar(b.dataset.pergunta || b.textContent));
     c.querySelectorAll('[data-acao-ok]').forEach(b => b.onclick = () => confirmarAcao(b.dataset.acaoOk));
     c.querySelectorAll('[data-acao-todas]').forEach(b => b.onclick = () => criarTodas(Number(b.dataset.acaoTodas)));
     c.querySelectorAll('[data-acao-nao]').forEach(b => b.onclick = () => { const a = acaoDe(b.dataset.acaoNao); if (a) { a.estado = 'cancelado'; guardarEstado(b.dataset.acaoNao, 'cancelado'); pintarCorpo(); } });
@@ -610,14 +625,14 @@ B7.Chat = (function () {
       '<div class="ch-voz" id="ch-voz" role="status" aria-live="polite" hidden></div>' +
       '<div class="ch-anexo-previa" id="ch-anexo-previa" hidden></div>' +
       '<form class="ch-form" autocomplete="off">' +
-        '<textarea id="ch-texto" rows="1" maxlength="2000" placeholder="Pergunte ou peça uma ideia…" aria-label="Mensagem para o assistente" ' +
+        '<textarea id="ch-texto" rows="1" maxlength="2000" placeholder="Pergunte qualquer coisa…" aria-label="Mensagem para o assistente" ' +
           'name="b7-chat-mensagem" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"></textarea>' +
         '<input type="file" id="ch-arquivo" accept="image/*" hidden>' +
         ((!B7.Recursos || B7.Recursos.ligado('ia_imagem')) ? '<button type="button" class="ch-mic ch-anexar" id="ch-anexar" aria-label="Anexar uma imagem" title="Anexar uma imagem (ou cole com Ctrl+V)">' + IC.img + '</button>' : '') +
         ((podeGravar || Voz) && (!B7.Recursos || B7.Recursos.ligado('ia_voz')) ? '<button type="button" class="ch-mic" id="ch-mic" aria-label="Falar em vez de digitar" aria-pressed="false" title="Falar em vez de digitar">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="ch-enviar" id="ch-enviar" aria-label="Enviar">' + IC.enviar + '</button>' +
       '</form>' +
-      '<p class="ch-aviso">A IA pode errar. Confira antes de usar. Ela não altera nada sozinha: só propõe, e você confirma.</p>';
+      '<p class="ch-aviso">A IA pode errar — confira antes de usar. Ela só propõe; quem confirma é você.</p>';
     ligarTopo();
     pintarCorpo();
     const form = painel.querySelector('.ch-form'), ta = painel.querySelector('#ch-texto');

@@ -565,3 +565,16 @@ html.sem-animacao :is(.ad-bar u,.ap-troca-tr i,.cm-leu){transition:none !importa
 .ed-cargo b{font-size:13px;}
 .ed-cargo small{font-size:11.5px;color:var(--ink-4);}
 .ed-cargo:has(input:checked){border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave);}
+
+/* zzz167: novidades no topo, antes do sino */
+.nv-topo{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 6px 0 11px;margin-right:6px;border:1px solid color-mix(in srgb,var(--acento) 35%,var(--borda));
+  border-radius:99px;background:var(--acento-suave);color:var(--acento);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;
+  animation:nvAparece .5s cubic-bezier(.2,.9,.3,1.2) 1s both;transition:background .2s,transform .2s;}
+.nv-topo:hover{background:color-mix(in srgb,var(--acento) 18%,transparent);transform:translateY(-1px);}
+.nv-topo svg{width:16px;height:16px;fill:currentColor;animation:nvBrilha 2.6s ease-in-out infinite;}
+.nv-topo b{min-width:20px;height:20px;padding:0 6px;border-radius:99px;display:grid;place-items:center;font-size:11px;color:#fff;background:var(--grad-curto);}
+@keyframes nvAparece{from{opacity:0;transform:scale(.8);}to{opacity:1;transform:none;}}
+@keyframes nvBrilha{0%,100%{transform:rotate(0) scale(1);}50%{transform:rotate(18deg) scale(1.12);}}
+@media (max-width:760px){ .nv-topo span{display:none;} .nv-topo{padding:0 5px 0 8px;margin-right:2px;} }
+@media (prefers-reduced-motion:reduce){ .nv-topo,.nv-topo svg{animation:none;} }
+body.em-manutencao .nv-topo,body.modo-tv .nv-topo{display:none !important;}
