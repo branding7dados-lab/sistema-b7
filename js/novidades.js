@@ -25,6 +25,13 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz169', versao: 'zzz169', em: '2026-10-14T23:50:00-03:00',
+    titulo: 'Assistente, Conversas e cores de cara nova',
+    itens: ['Assistente: escolher cliente com busca (os últimos usados aparecem primeiro), histórico com busca e separado por dia, botão de copiar a resposta e “Tentar de novo”.',
+            'Conversas: no computador, a lista fica ao lado da conversa; busca, filtro de não lidas, responder uma mensagem, reagir com emoji, editar o que você mandou e arrastar arquivos para enviar.',
+            'Aparência: cinco paletas novas, fundos neutros, suaves ou coloridos, cantos retos ou arredondados e tema claro, escuro ou automático — com prévia na hora.',
+            'As telas se atualizam mais rápido quando alguém muda algo, e voltam sozinhas se a internet cair.',
+            'No programa de Windows, aparece no topo quando há atualização nova — um clique instala.'] },
   { id: 'v-zzz165', versao: 'zzz165', em: '2026-10-14T23:00:00-03:00',
     titulo: 'Tudo ao vivo, arrastar em lote e vídeo só de edição',
     itens: ['As telas se atualizam sozinhas quando alguém da equipe muda algo — sem precisar recarregar.',

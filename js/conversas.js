@@ -21,6 +21,12 @@
      · áudio e anexos — espaço privado "chat-arquivos", aberto só por link
        temporário para quem está na conversa.
 
+   zzz169: painel em duas colunas na tela larga (lista + conversa, largura
+   ajustável), busca e filtro "Não lidas", mensagens agrupadas, responder
+   citando, reações com emoji, editar a própria mensagem de texto
+   (migration_conversas_v2.sql), botão "descer" com contador, emojis no
+   campo e arrastar arquivo para anexar.
+
    Não é o assistente de IA (js/ia-chat.js, B7.Chat): aqui é gente com
    gente. Cliente do Portal não entra.
    ===================================================================== */
@@ -508,6 +514,8 @@ B7.Conversas = (function () {
 
   /* ------------------------------------------------------------ conversa */
   async function abrirCom(outroId) {
+    if (atual && atual.outroId === outroId) { const ta = painel && painel.querySelector('#conv-texto'); if (ta) ta.focus(); return; }
+    if (atual) limparConversa();                             /* zzz169: no largo dá para trocar direto de conversa */
     const c = conversas.get(outroId);
     let conversaId = c && c.conversa_id;
     if (!conversaId) {
@@ -518,8 +526,10 @@ B7.Conversas = (function () {
     }
     atual = { outroId, conversaId, msgs: [], temMais: false, carregando: true };
     pintarConversa();
+    pintarLinhas();
     await carregarMensagens(false);
     marcarLida(conversaId);
+    pintarLinhas();
   }
   /* abrir pela conversa (aviso, push): acha a pessoa pela lista */
   function abrirConversa(conversaId) {
@@ -571,7 +581,24 @@ B7.Conversas = (function () {
     });
   }
 
-  function balao(m) {
+  /* zzz169: o que dá para fazer com cada mensagem */
+  const ehTemp = m => !m || m.enviando || String(m.id).startsWith('temp-');
+  const podeEditar = m => m.autor_id === eu() && m.tipo === 'texto' && !m.apagada_em && !m.comunicado_id && !ehTemp(m) &&
+    Date.now() - new Date(m.created_at).getTime() < 24 * 3600000;
+  const acharMsg = id => atual && atual.msgs.find(x => x.id === id);
+  function citacao(id) {
+    const r = acharMsg(id), quem = r ? (r.autor_id === eu() ? 'Você' : nomeDe(r.autor_id) || 'Mensagem') : 'Mensagem';
+    return '<button type="button" class="conv-cita" data-ir="' + esc(id) + '"><b>' + esc(quem) + '</b><span>' + esc(r ? previa(r).slice(0, 160) : 'Mensagem anterior') + '</span></button>';
+  }
+  function reacoesHtml(m) {
+    const r = m.reacoes; if (!r || typeof r !== 'object') return '';
+    const meu = eu(), ks = Object.keys(r).filter(k => Array.isArray(r[k]) && r[k].length);
+    if (!ks.length) return '';
+    return '<span class="conv-reacoes">' + ks.map(k => '<button type="button" class="conv-reacao' + (r[k].includes(meu) ? ' minha' : '') + '" data-reagir="' + esc(m.id) + '" data-emoji="' + esc(k) + '" title="' +
+      esc(r[k].map(id => id === meu ? 'Você' : nomeDe(id) || 'Alguém').join(', ')) + '">' + esc(k) + (r[k].length > 1 ? '<i>' + r[k].length + '</i>' : '') + '</button>').join('') + '</span>';
+  }
+
+  function balao(m, grupo) {
     const minha = m.autor_id === eu(), apagada = !!m.apagada_em;
     let corpo;
     if (apagada) corpo = '<p class="conv-apagada">Mensagem apagada</p>';
@@ -587,70 +614,117 @@ B7.Conversas = (function () {
         '<span class="conv-arq-ic">' + IC.arquivo + '</span><span class="conv-arq-tx"><b>' + esc(m.arquivo_nome || 'Arquivo') + '</b><small>' + tamanho(m.arquivo_tamanho) + ' · baixar</small></span></button>' +
         (m.texto ? '<p class="conv-tx">' + textoRico(m.texto) + '</p>' : '');
     } else corpo = '<p class="conv-tx">' + textoRico(m.texto) + '</p>';
+    if (m.resposta_id && !apagada) corpo = citacao(m.resposta_id) + corpo;
     if (m.comunicado_id && !apagada) corpo = '<span class="conv-comun">Comunicado</span>' + corpo;
-    return '<div class="conv-msg ' + (minha ? 'minha' : 'outra') + (apagada ? ' apagada' : '') + (m.falhou ? ' falhou' : '') + '" data-msg="' + esc(m.id) + '">' +
+    const id = esc(m.id);
+    const acoes = apagada || ehTemp(m) ? '' : '<span class="conv-acoes">' +
+      '<button type="button" data-responder="' + id + '" aria-label="Responder" title="Responder">' + IC.responder + '</button>' +
+      '<button type="button" data-reagir-menu="' + id + '" aria-label="Reagir" title="Reagir">' + IC.emoji + '</button>' +
+      (podeEditar(m) ? '<button type="button" data-editar="' + id + '" aria-label="Editar mensagem" title="Editar">' + IC.lapis + '</button>' : '') +
+      (minha ? '<button type="button" class="perigo" data-apagar="' + id + '" aria-label="Apagar mensagem" title="Apagar">' + IC.lixo + '</button>' : '') +
+      '</span>';
+    return '<div class="conv-msg ' + (minha ? 'minha' : 'outra') + (grupo || '') + (apagada ? ' apagada' : '') + (m.falhou ? ' falhou' : '') + (m.reacoes && !apagada ? ' com-reacao' : '') + '" data-msg="' + id + '">' +
       '<div class="conv-balao">' + corpo +
-        '<span class="conv-meta"><time>' + hora(m.created_at) + '</time>' + (minha && !apagada ? tique(m) : '') + '</span>' +
-        (minha && !apagada && !m.enviando ? '<button type="button" class="conv-apagar" data-apagar="' + esc(m.id) + '" aria-label="Apagar mensagem" title="Apagar">' + IC.lixo + '</button>' : '') +
+        '<span class="conv-meta">' + (m.editada_em && !apagada ? '<em>editada</em>' : '') + '<time>' + hora(m.created_at) + '</time>' + (minha && !apagada ? tique(m) : '') + '</span>' +
+        acoes + (apagada ? '' : reacoesHtml(m)) +
       '</div></div>';
   }
 
   function pintarConversa() {
     if (!painel || !atual) return;
+    const dir = painel.querySelector('.conv-dir'); if (!dir) return;
+    painel.classList.add('com-conversa');
     const p = pessoas.get(atual.outroId) || { id: atual.outroId, nome: 'Conversa' }, s = statusDe(atual.outroId);
     const podeGravar = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-    painel.innerHTML = '<header class="conv-topo conv-topo-c">' +
-        '<button type="button" class="conv-ic" data-voltar aria-label="Voltar para a lista">' + IC.voltar + '</button>' + avatar(p, 'p') +
+    dir.innerHTML = '<header class="conv-topo conv-topo-c">' +
+        '<button type="button" class="conv-ic conv-so-estreito" data-voltar aria-label="Voltar para a lista">' + IC.voltar + '</button>' + avatar(p, 'p') +
         '<span class="conv-quem"><b>' + esc(p.nome || p.username || '') + '</b><small class="conv-status ' + s.cls + '" id="conv-status">' + esc(s.tx) + '</small></span>' +
-        '<button type="button" class="conv-ic" data-fechar aria-label="Fechar conversas">' + IC.fechar + '</button></header>' +
-      '<div class="conv-corpo" id="conv-corpo" aria-live="polite"></div>' +
+        '<button type="button" class="conv-ic conv-so-estreito" data-fechar aria-label="Fechar conversas">' + IC.fechar + '</button></header>' +
+      '<div class="conv-meio">' +
+        '<div class="conv-corpo" id="conv-corpo" aria-live="polite"></div>' +
+        '<button type="button" class="conv-descer" id="conv-descer" hidden aria-label="Ir para as mensagens mais recentes">' + IC.baixo + '<i hidden></i></button>' +
+        '<div class="conv-solta" aria-hidden="true">' + IC.clipe + '<b>Solte para anexar</b></div>' +
+      '</div>' +
+      '<div class="conv-ctx" id="conv-ctx" hidden></div>' +
       '<div class="conv-anexo" id="conv-anexo" hidden></div>' +
       '<div class="conv-grav" id="conv-grav" hidden></div>' +
+      '<div class="conv-emojis" id="conv-emojis" hidden role="dialog" aria-label="Emojis"></div>' +
       '<form class="conv-form" id="conv-form" autocomplete="off">' +
         '<input type="file" id="conv-arquivo" hidden>' +
-        '<button type="button" class="conv-ic" id="conv-anexar" aria-label="Anexar imagem ou arquivo" title="Anexar (ou cole um print com Ctrl+V)">' + IC.clipe + '</button>' +
+        '<button type="button" class="conv-ic" id="conv-emoji-bt" aria-label="Emojis" title="Emojis">' + IC.emoji + '</button>' +
+        '<button type="button" class="conv-ic" id="conv-anexar" aria-label="Anexar imagem ou arquivo" title="Anexar (ou arraste, ou cole um print com Ctrl+V)">' + IC.clipe + '</button>' +
         '<textarea id="conv-texto" rows="1" maxlength="4000" placeholder="Mensagem" aria-label="Mensagem" name="b7-conversa-mensagem" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea>' +
         (podeGravar ? '<button type="button" class="conv-ic conv-mic" id="conv-mic" aria-label="Gravar mensagem de voz" title="Gravar mensagem de voz">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="conv-enviar" id="conv-enviar" aria-label="Enviar">' + IC.enviar + '</button>' +
       '</form>';
-    painel.querySelector('[data-fechar]').onclick = fechar;
-    painel.querySelector('[data-voltar]').onclick = voltar;
-    const form = painel.querySelector('#conv-form'), ta = painel.querySelector('#conv-texto'), arq = painel.querySelector('#conv-arquivo');
-    const ajustar = () => { ta.style.height = 'auto'; ta.style.height = Math.min(130, ta.scrollHeight) + 'px'; form.classList.toggle('com-texto', !!ta.value.trim() || !!anexo); };
-    ta.addEventListener('input', () => { ajustar(); if (ta.value.trim()) sinalizar('digitando'); else sinalizar(null, true); });
-    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); enviarTexto(); } });
+    dir.querySelector('[data-fechar]').onclick = fechar;
+    dir.querySelector('[data-voltar]').onclick = voltar;
+    const form = dir.querySelector('#conv-form'), ta = dir.querySelector('#conv-texto'), arq = dir.querySelector('#conv-arquivo');
+    ta.addEventListener('input', () => { ajustarCampo(); if (ta.value.trim() && !editando) sinalizar('digitando'); else sinalizar(null, true); });
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); enviarTexto(); return; }
+      /* seta para cima com o campo vazio: edita a minha última mensagem de texto */
+      if (e.key === 'ArrowUp' && !ta.value && !anexo && atual) {
+        const m = [...atual.msgs].reverse().find(x => x.autor_id === eu() && !x.apagada_em && !ehTemp(x));
+        if (m && podeEditar(m)) { e.preventDefault(); editar(m.id); }
+      }
+    });
     ta.addEventListener('paste', e => {
       const it = [...((e.clipboardData && e.clipboardData.items) || [])].find(i => i.kind === 'file');
       if (it) { const f = it.getAsFile(); if (f) { e.preventDefault(); escolherAnexo(f); } }
     });
     form.onsubmit = e => { e.preventDefault(); enviarTexto(); };
-    painel.querySelector('#conv-anexar').onclick = () => arq.click();
+    dir.querySelector('#conv-anexar').onclick = () => arq.click();
+    dir.querySelector('#conv-emoji-bt').onclick = alternarEmojis;
+    dir.querySelector('#conv-emojis').addEventListener('click', e => { const b = e.target.closest('[data-emoji-ins]'); if (b) inserirNoCampo(b.dataset.emojiIns); });
     arq.onchange = () => { const f = arq.files && arq.files[0]; arq.value = ''; if (f) escolherAnexo(f); };
-    const mic = painel.querySelector('#conv-mic'); if (mic) mic.onclick = iniciarGravacao;
-    const corpo = painel.querySelector('#conv-corpo');
+    const mic = dir.querySelector('#conv-mic'); if (mic) mic.onclick = iniciarGravacao;
+    const corpo = dir.querySelector('#conv-corpo');
     corpo.addEventListener('click', aoClicarNoCorpo);
-    corpo.addEventListener('scroll', () => { if (corpo.scrollTop < 60 && atual && atual.temMais && !atual.buscando) { atual.buscando = true; carregarMensagens(true).then(() => { if (atual) atual.buscando = false; }); } });
+    corpo.addEventListener('scroll', () => {
+      if (corpo.scrollTop < 60 && atual && atual.temMais && !atual.buscando) { atual.buscando = true; carregarMensagens(true).then(() => { if (atual) atual.buscando = false; }); }
+      atualizarDescer();
+    }, { passive: true });
+    dir.querySelector('#conv-descer').onclick = () => { novasAbaixo = 0; corpo.scrollTo({ top: corpo.scrollHeight, behavior: movimento() }); };
     pintarMensagens(true);
     pintarAnexo();
+    pintarCtx();
     if (window.matchMedia('(min-width: 721px)').matches) ta.focus();
   }
+  function ajustarCampo() {
+    const form = painel && painel.querySelector('#conv-form'), ta = painel && painel.querySelector('#conv-texto'); if (!ta) return;
+    ta.style.height = 'auto'; ta.style.height = Math.min(160, ta.scrollHeight) + 'px';
+    form.classList.toggle('com-texto', !!ta.value.trim() || !!anexo || !!editando);
+  }
 
+  /* agrupa mensagens seguidas da mesma pessoa (até 5 min entre uma e outra) */
+  const juntas = (a, b) => !!(a && b && a.autor_id === b.autor_id && chaveDia(a.created_at) === chaveDia(b.created_at) &&
+    Math.abs(new Date(b.created_at) - new Date(a.created_at)) < 300000);
   function pintarMensagens(descer, mantendo) {
     const corpo = painel && painel.querySelector('#conv-corpo'); if (!corpo || !atual) return;
     const perto = corpo.scrollHeight - corpo.scrollTop - corpo.clientHeight < 140, alturaAntes = corpo.scrollHeight;
     if (atual.carregando) { corpo.innerHTML = '<p class="conv-vazio">Carregando…</p>'; return; }
     if (atual.erro && !atual.msgs.length) { corpo.innerHTML = '<p class="conv-vazio">Não foi possível carregar a conversa. Feche e abra de novo.</p>'; return; }
-    if (!atual.msgs.length) { corpo.innerHTML = '<p class="conv-vazio">Nenhuma mensagem ainda. Diga oi.</p>'; return; }
-    let html = atual.temMais ? '<p class="conv-mais">Role para cima para ver mensagens anteriores</p>' : '', dia = '';
-    atual.msgs.forEach(m => {
+    if (!atual.msgs.length) { corpo.innerHTML = '<p class="conv-vazio">Nenhuma mensagem ainda. Diga oi 👋</p>'; return; }
+    let html = atual.temMais ? '<p class="conv-mais">Role para cima para ver mensagens anteriores</p>' : '', dia = '', ant = null;
+    atual.msgs.forEach((m, i) => {
       const k = chaveDia(m.created_at);
-      if (k !== dia) { dia = k; html += '<div class="conv-dia"><span>' + rotDia(m.created_at) + '</span></div>'; }
-      html += balao(m);
+      if (k !== dia) { dia = k; ant = null; html += '<div class="conv-dia"><span>' + rotDia(m.created_at) + '</span></div>'; }
+      html += balao(m, (juntas(ant, m) ? ' seguida' : '') + (juntas(m, atual.msgs[i + 1]) ? ' continua' : ''));
+      ant = m;
     });
     corpo.innerHTML = html;
     if (mantendo) corpo.scrollTop = corpo.scrollHeight - alturaAntes;
-    else if (descer || perto) corpo.scrollTop = corpo.scrollHeight;
+    else if (descer || perto) { corpo.scrollTop = corpo.scrollHeight; novasAbaixo = 0; }
     carregarImagens(corpo);
+    atualizarDescer();
+  }
+  function atualizarDescer() {
+    const corpo = painel && painel.querySelector('#conv-corpo'), bt = painel && painel.querySelector('#conv-descer'); if (!corpo || !bt) return;
+    const longe = corpo.scrollHeight - corpo.scrollTop - corpo.clientHeight > 220;
+    if (!longe) novasAbaixo = 0;
+    bt.hidden = !longe;
+    const n = bt.querySelector('i'); n.hidden = !novasAbaixo; n.textContent = novasAbaixo > 99 ? '99+' : novasAbaixo ? String(novasAbaixo) : '';
   }
   /* imagens: o link temporário é pedido depois que o balão existe */
   function carregarImagens(corpo) {
@@ -662,8 +736,99 @@ B7.Conversas = (function () {
     });
   }
 
+  /* ---------------------------------------- zzz169: emojis, responder, editar, reagir */
+  function fecharPopovers() {
+    if (!painel) return false;
+    let algum = false;
+    const em = painel.querySelector('#conv-emojis'); if (em && !em.hidden) { em.hidden = true; algum = true; }
+    painel.querySelectorAll('.conv-reagir-menu').forEach(x => { x.remove(); algum = true; });
+    return algum;
+  }
+  function alternarEmojis() {
+    const cx = painel && painel.querySelector('#conv-emojis'); if (!cx) return;
+    if (!cx.hidden) { cx.hidden = true; return; }
+    fecharPopovers();
+    if (!cx.innerHTML) cx.innerHTML = EMOJIS.map(e => '<button type="button" data-emoji-ins="' + e + '" aria-label="' + e + '">' + e + '</button>').join('');
+    cx.hidden = false;
+  }
+  function inserirNoCampo(t) {
+    const ta = painel && painel.querySelector('#conv-texto'); if (!ta) return;
+    const s = ta.selectionStart != null ? ta.selectionStart : ta.value.length, f = ta.selectionEnd != null ? ta.selectionEnd : s;
+    ta.value = ta.value.slice(0, s) + t + ta.value.slice(f);
+    ta.selectionStart = ta.selectionEnd = s + t.length;
+    ta.focus(); ta.dispatchEvent(new Event('input'));
+  }
+  function pintarCtx() {
+    const cx = painel && painel.querySelector('#conv-ctx'); if (!cx) return;
+    const m = editando || respondendo;
+    cx.hidden = !m;
+    if (!m) { cx.innerHTML = ''; ajustarCampo(); return; }
+    const tit = editando ? 'Editando mensagem' : 'Respondendo a ' + (m.autor_id === eu() ? 'você' : nomeDe(m.autor_id) || 'mensagem');
+    cx.innerHTML = '<span class="conv-ctx-ic">' + (editando ? IC.lapis : IC.responder) + '</span>' +
+      '<span class="conv-ctx-tx"><b>' + esc(tit) + '</b><small>' + esc(previa(m).slice(0, 160)) + '</small></span>' +
+      '<button type="button" class="conv-ic" id="conv-ctx-x" aria-label="Cancelar">' + IC.fechar + '</button>';
+    cx.querySelector('#conv-ctx-x').onclick = cancelarCtx;
+    ajustarCampo();
+  }
+  function cancelarCtx() {
+    const eraEdicao = !!editando;
+    respondendo = null; editando = null; pintarCtx();
+    const ta = painel && painel.querySelector('#conv-texto');
+    if (eraEdicao && ta) { ta.value = ''; ajustarCampo(); }
+  }
+  function responder(id) {
+    const m = acharMsg(id); if (!m) return;
+    if (editando) cancelarCtx();
+    respondendo = m; pintarCtx();
+    const ta = painel && painel.querySelector('#conv-texto'); if (ta) ta.focus();
+  }
+  function editar(id) {
+    const m = acharMsg(id); if (!m || !podeEditar(m)) return;
+    largarAnexo(); pintarAnexo();
+    respondendo = null; editando = m; pintarCtx();
+    const ta = painel && painel.querySelector('#conv-texto'); if (!ta) return;
+    ta.value = m.texto || ''; ajustarCampo(); ta.focus(); ta.selectionStart = ta.selectionEnd = ta.value.length;
+  }
+  function abrirMenuReacao(bt) {
+    const msg = bt.closest('.conv-msg'); if (!msg) return;
+    const ja = msg.querySelector('.conv-reagir-menu'); fecharPopovers(); if (ja) return;
+    const m = acharMsg(bt.dataset.reagirMenu), meu = eu(), r = (m && m.reacoes) || {};
+    const menu = document.createElement('div');
+    menu.className = 'conv-reagir-menu'; menu.setAttribute('role', 'menu');
+    menu.innerHTML = REACOES.map(e => '<button type="button" role="menuitem" class="' + (Array.isArray(r[e]) && r[e].includes(meu) ? 'minha' : '') + '" data-reagir="' + esc(bt.dataset.reagirMenu) + '" data-emoji="' + e + '" aria-label="Reagir com ' + e + '">' + e + '</button>').join('');
+    msg.querySelector('.conv-balao').appendChild(menu);
+    const b0 = menu.querySelector('button'); if (b0) b0.focus();
+  }
+  async function reagir(id, emoji) {
+    fecharPopovers();
+    const conv = atual, m = acharMsg(id); if (!m || ehTemp(m)) return;
+    try {
+      const real = await B7.DB.rpc('chat_reagir', { p_mensagem: id, p_emoji: emoji });
+      if (real && real.id) substituir(conv, real);
+    } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível reagir.', { tipo: 'erro' }); }
+  }
+  function substituir(conv, real) {
+    const i = conv.msgs.findIndex(x => x.id === real.id); if (i < 0) return;
+    conv.msgs[i] = real;
+    if (atual === conv) pintarMensagens(false);
+  }
+  function irPara(id) {
+    const corpo = painel && painel.querySelector('#conv-corpo'), el = corpo && corpo.querySelector('[data-msg="' + id + '"]');
+    if (!el) { B7.UI.toast('Essa mensagem é mais antiga: role para cima para carregá-la.'); return; }
+    el.scrollIntoView({ block: 'center', behavior: movimento() });
+    el.classList.remove('brilha'); void el.offsetWidth; el.classList.add('brilha');
+    setTimeout(() => el.classList.remove('brilha'), 1600);
+  }
+
   async function aoClicarNoCorpo(e) {
     const play = e.target.closest('.conv-play'), img = e.target.closest('[data-img]'), arq = e.target.closest('[data-arq]'), del = e.target.closest('[data-apagar]');
+    const resp = e.target.closest('[data-responder]'), menu = e.target.closest('[data-reagir-menu]'), reac = e.target.closest('[data-reagir]'),
+      ed = e.target.closest('[data-editar]'), ir = e.target.closest('[data-ir]');
+    if (resp) return responder(resp.dataset.responder);
+    if (menu) return abrirMenuReacao(menu);
+    if (reac) return reagir(reac.dataset.reagir, reac.dataset.emoji);
+    if (ed) return editar(ed.dataset.editar);
+    if (ir) return irPara(ir.dataset.ir);
     if (play) return tocar(play.closest('.conv-audio'));
     if (img) {
       const u = await urlDe(img.dataset.img); if (!u) { B7.UI.toast('Não foi possível abrir a imagem.', { tipo: 'erro' }); return; }
@@ -687,6 +852,8 @@ B7.Conversas = (function () {
     try {
       const path = await B7.DB.rpc('chat_apagar', { p_mensagem: id });
       if (path) { try { await B7.sb.storage.from(BUCKET).remove([path]); } catch (e) {} urls.delete(path); }
+      if (editando && editando.id === id) cancelarCtx();
+      if (respondendo && respondendo.id === id) { respondendo = null; pintarCtx(); }
       if (atual) { const m = atual.msgs.find(x => x.id === id); if (m) { m.apagada_em = new Date().toISOString(); m.texto = null; m.arquivo_path = null; pintarMensagens(false); } }
       carregarListaLogo();
     } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível apagar.', { tipo: 'erro' }); }
@@ -774,7 +941,8 @@ B7.Conversas = (function () {
     if (dur < 1) { B7.UI.toast('Gravação curta demais.'); return; }
     const mime = (g.rec.mimeType || TIPO_GRAV || 'audio/webm').split(';')[0];
     const blob = new Blob(g.partes, { type: mime });
-    await enviarArquivo(g.conv, blob, 'audio', { nome: 'voz.' + (mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm'), mime, duracao: dur });
+    const resp = respondendo && atual === g.conv ? respondendo : null; if (resp) { respondendo = null; pintarCtx(); }
+    await enviarArquivo(g.conv, blob, 'audio', { resposta: resp, nome: 'voz.' + (mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm'), mime, duracao: dur });
   }
 
   /* -------------------------------------------------------------- anexos */
@@ -801,6 +969,7 @@ B7.Conversas = (function () {
     const f = await reduzirImagem(arquivo);
     if (f.size > MAX_ARQUIVO) { B7.UI.toast('O arquivo passa de 10 MB.', { tipo: 'erro' }); return; }
     if (!f.size) { B7.UI.toast('O arquivo está vazio.', { tipo: 'erro' }); return; }
+    if (editando) cancelarCtx();                              /* zzz169: anexo não entra na edição */
     largarAnexo();
     const imagem = /^image\//.test(f.type);
     anexo = { arquivo: f, imagem, url: imagem ? URL.createObjectURL(f) : null };
@@ -835,24 +1004,42 @@ B7.Conversas = (function () {
     B7.UI.toast((e && e.message) || 'Não foi possível enviar. Confira a internet.', { tipo: 'erro' });
   }
 
+  /* zzz169: a resposta é marcada logo depois do envio, numa função que confere quem chama */
+  async function comResposta(real, resp) {
+    if (!resp || !real || !real.id) return real;
+    try { const r = await B7.DB.rpc('chat_definir_resposta', { p_mensagem: real.id, p_resposta: resp.id }); return (r && r.id) ? r : real; }
+    catch (e) { return real; }
+  }
   async function enviarTexto() {
     const ta = painel && painel.querySelector('#conv-texto'); if (!ta || !atual) return;
     const texto = ta.value.trim(), conv = atual;
+    fecharPopovers();
+    if (editando) {                                          /* zzz169: salvar a edição */
+      const m = editando; if (!texto) return;
+      editando = null; ta.value = ''; pintarCtx(); ajustarCampo();
+      if (texto === m.texto) return;
+      const antes = { texto: m.texto, editada_em: m.editada_em };
+      m.texto = texto; m.editada_em = new Date().toISOString(); pintarMensagens(false);
+      try { const real = await B7.DB.rpc('chat_editar', { p_mensagem: m.id, p_texto: texto }); if (real && real.id) substituir(conv, real); carregarListaLogo(); }
+      catch (e) { Object.assign(m, antes); if (atual === conv) pintarMensagens(false); B7.UI.toast((e && e.message) || 'Não foi possível editar.', { tipo: 'erro' }); }
+      return;
+    }
+    const resp = respondendo; if (resp) { respondendo = null; pintarCtx(); }
     if (anexo) {
       const a = anexo; anexo = null; pintarAnexo();
       ta.value = ''; ta.style.height = 'auto';
-      await enviarArquivo(conv, a.arquivo, a.imagem ? 'imagem' : 'arquivo', { nome: a.arquivo.name || 'imagem.png', mime: a.arquivo.type || 'application/octet-stream', texto });
+      await enviarArquivo(conv, a.arquivo, a.imagem ? 'imagem' : 'arquivo', { resposta: resp, nome: a.arquivo.name || 'imagem.png', mime: a.arquivo.type || 'application/octet-stream', texto });
       if (a.url) { try { URL.revokeObjectURL(a.url); } catch (e) {} }
       return;
     }
-    if (!texto) return;
+    if (!texto) { if (resp) { respondendo = resp; pintarCtx(); } return; }
     ta.value = ''; ta.style.height = 'auto';
     const form = painel.querySelector('#conv-form'); if (form) form.classList.remove('com-texto');
     sinalizar(null, true);
-    const temp = { id: 'temp-' + Date.now() + Math.random(), conversa_id: conv.conversaId, autor_id: eu(), tipo: 'texto', texto, created_at: new Date().toISOString(), enviando: true };
+    const temp = { id: 'temp-' + Date.now() + Math.random(), conversa_id: conv.conversaId, autor_id: eu(), tipo: 'texto', texto, created_at: new Date().toISOString(), enviando: true, resposta_id: resp ? resp.id : null };
     acrescentar(conv, temp);
-    try { trocar(conv, temp.id, await B7.DB.rpc('chat_enviar', { p_conversa: conv.conversaId, p_tipo: 'texto', p_texto: texto })); }
-    catch (e) { falhar(conv, temp.id, e); if (atual === conv && ta.isConnected && !ta.value) { ta.value = texto; } }
+    try { trocar(conv, temp.id, await comResposta(await B7.DB.rpc('chat_enviar', { p_conversa: conv.conversaId, p_tipo: 'texto', p_texto: texto }), resp)); }
+    catch (e) { falhar(conv, temp.id, e); if (atual === conv && ta.isConnected && !ta.value) { ta.value = texto; ajustarCampo(); } }
   }
 
   async function enviarArquivo(conv, blob, tipo, o) {
@@ -867,7 +1054,7 @@ B7.Conversas = (function () {
       if (error) throw error;
       const real = await B7.DB.rpc('chat_enviar', { p_conversa: conv.conversaId, p_tipo: tipo, p_texto: o.texto || null,
         p_arquivo: { path, nome: o.nome || '', mime: o.mime || '', tamanho: blob.size, duracao: o.duracao || 0 } });
-      trocar(conv, temp.id, real);
+      trocar(conv, temp.id, await comResposta(real, o.resposta));
     } catch (e) {
       try { await B7.sb.storage.from(BUCKET).remove([path]); } catch (x) {}
       falhar(conv, temp.id, e);
