@@ -1850,6 +1850,8 @@ B7.Dashboard = (function () {
     const iaCfg = (window.B7_CONFIG && window.B7_CONFIG.IA) || {};
     const iaRemoto = Object.assign({ roteiros: true, linhas: true, chat: true }, B7.IA && B7.IA.remoto ? B7.IA.remoto() : {});
     const instalado = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    /* zzz157: o app de Windows só é oferecido em computador (sem toque) */
+    const toque = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
     const emOutraConta = !!(B7.Auth && B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
     const blocoSessao =
@@ -2024,6 +2026,15 @@ B7.Dashboard = (function () {
           : L({ ic: 'celular', tom: 'azul', t: 'Instalar como aplicativo',
                 d: '<span id="cfg-inst-d">' + (B7.instalacao ? 'abre direto, sem a barra do navegador' : 'no menu do navegador: “Instalar” ou “Adicionar à tela de início”') + '</span>',
                 botao: !!B7.instalacao, semSeta: true, attrs: ' data-instalar' })) +
+        /* zzz157: app de Windows (Electron). No próprio app mostra a
+           versão dele; num computador sem ele, o atalho para baixar. */
+        (window.B7Desktop
+          ? L({ ic: 'versao', tom: 'azul', t: 'App Windows', d: 'o programa se atualiza sozinho',
+                dir: '<span class="cfg-valor ok" id="cfg-win-v">Instalado</span>' })
+          : !toque && !(B7.AppNativo && B7.AppNativo.ativo)
+          ? L({ ic: 'versao', tom: 'azul', t: 'App para Windows', d: 'o B7 numa janela própria, sem barra de navegador',
+                botao: true, semSeta: true, attrs: ' data-baixar-windows' })
+          : '') +
         (u ? L({ ic: 'vassoura', tom: 'laranja', t: 'Limpar dados deste aparelho', d: 'memória das telas, arquivos guardados e filtros',
             botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : '')) +
       /* Banco e conexão são do administrador. */
@@ -2229,6 +2240,11 @@ B7.Dashboard = (function () {
       B7.instalacao = null;
       const d = p.querySelector('#cfg-inst-d'); if (d) d.textContent = 'se não instalou, use o menu do navegador';
     };
+    const bw = p.querySelector('[data-baixar-windows]');
+    if (bw) bw.onclick = () => window.open('https://github.com/branding7dados-lab/sistema-b7/releases/download/app-desktop/sistema-b7-instalador.exe', '_blank', 'noopener');
+    if (window.B7Desktop && window.B7Desktop.versao) {
+      window.B7Desktop.versao().then(v => { const e = p.querySelector('#cfg-win-v'); if (e && v) e.textContent = 'v' + v; }).catch(() => {});
+    }
     const la = p.querySelector('[data-limpar-aparelho]');
     if (la) la.onclick = () => B7.UI.confirmar({ titulo: 'Limpar os dados deste aparelho?',
       texto: 'Apaga a memória das telas, os arquivos do B7 guardados aqui e os filtros. Você continua na conta e nada muda no banco. A página recarrega em seguida.',

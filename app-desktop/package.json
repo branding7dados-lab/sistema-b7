@@ -1,0 +1,63 @@
+{
+  "name": "sistema-b7-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema B7 para Windows",
+  "author": "Branding7 <contato@branding7.com.br>",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "br.com.branding7.sistemab7",
+    "productName": "Sistema B7",
+    "copyright": "Branding7",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "offline.html",
+      "recursos/icone.ico",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "recursos/icone.ico",
+      "artifactName": "sistema-b7-setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Sistema B7",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/branding7dados-lab/sistema-b7/releases/download/app-desktop/",
+        "channel": "latest"
+      }
+    ]
+  }
+}

@@ -8,6 +8,7 @@
 Do planejamento do mês à entrega para o cliente, num lugar só.
 
 <a href="https://branding7dados-lab.github.io/sistema-b7/"><img alt="Abrir o sistema" src="https://img.shields.io/badge/abrir_o_sistema-D63384?style=for-the-badge&logoColor=white"></a>
+<a href="https://github.com/branding7dados-lab/sistema-b7/releases/download/app-desktop/sistema-b7-instalador.exe"><img alt="Baixar para Windows" src="https://img.shields.io/badge/baixar_para_windows-1E3A8A?style=for-the-badge&logoColor=white"></a>
 <img alt="PWA" src="https://img.shields.io/badge/PWA-instal%C3%A1vel-6B3FD8?style=for-the-badge">
 <img alt="Sem build" src="https://img.shields.io/badge/sem_build-HTML_CSS_JS-1B9E6B?style=for-the-badge">
 

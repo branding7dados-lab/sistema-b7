@@ -1,0 +1,93 @@
+# App de Windows (Electron) — o Sistema B7 numa janela própria, com
+# atualização automática do programa.
+#
+# A cada publicação no main que mexa no programa (ou à mão: Actions → App
+# Windows → Run workflow), gera o instalador e manda SEMPRE para a MESMA
+# release, "app-desktop". O endereço do latest.yml nunca muda, então o
+# programa instalado sabe sozinho quando tem versão nova.
+#
+# As TELAS do sistema não entram no instalador: o programa abre o site do
+# B7, então toda atualização do sistema chega na hora, sem instalador novo.
+# Por isso este workflow só roda quando app-desktop/ muda.
+name: App Windows
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app-desktop/**'
+      - '.github/workflows/desktop.yml'
+  pull_request:
+    paths:
+      - 'app-desktop/**'
+      - '.github/workflows/desktop.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: app-desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app-desktop/package-lock.json
+      - name: Guardar o Electron entre as execuções
+        uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/electron/Cache
+          key: electron-${{ hashFiles('app-desktop/package-lock.json') }}
+      - name: Versão
+        run: |
+          # o número só cresce: 1.0.<número da execução deste workflow>
+          versao="1.0.$GITHUB_RUN_NUMBER"
+          node -e "const f='package.json',j=require('./'+f);j.version='$versao';require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
+          echo "B7_VERSAO_EXE=$versao" >> "$GITHUB_ENV"
+          echo "B7_VERSAO_SITE=$(grep -oP "VERSAO = '\K[^']+" ../js/auth.js)" >> "$GITHUB_ENV"
+          echo "Instalador $versao"
+      - run: npm ci --no-audit --no-fund
+      - name: Gerar o instalador
+        run: npx electron-builder --win --publish never
+      - name: Conferir o que saiu
+        run: |
+          node latest-yml.mjs
+          ls -la dist/
+          test -f dist/latest.yml
+          exe=$(ls dist/sistema-b7-setup-*.exe)
+          echo "B7_EXE=$exe" >> "$GITHUB_ENV"
+          # o latest.yml tem de apontar para o instalador que acabou de sair
+          grep -q "$(basename "$exe")" dist/latest.yml
+          cp "$exe" dist/sistema-b7-instalador.exe
+      - name: Instalador de teste do pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sistema-b7-windows
+          path: app-desktop/dist/sistema-b7-setup-*.exe
+          retention-days: 7
+      - name: Publicar na release app-desktop
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # a release é sempre a mesma (o endereço não pode mudar); ela não
+          # é a "latest" do repositório, que é do APK do Android
+          gh release view app-desktop >/dev/null 2>&1 || \
+            gh release create app-desktop --latest=false \
+              --title "App Windows" \
+              --notes "Instalador do Sistema B7 para Windows. Sempre o mais novo: o programa instalado se atualiza sozinho por esta release."
+          gh release upload app-desktop \
+            "$B7_EXE" dist/latest.yml dist/sistema-b7-instalador.exe --clobber
+          gh release edit app-desktop --latest=false \
+            --notes "Sistema B7 para Windows — programa $B7_VERSAO_EXE (sistema $B7_VERSAO_SITE).
+
+          Baixe **sistema-b7-instalador.exe** aqui embaixo. Quem já tem o programa não precisa baixar nada: ele avisa e instala sozinho."
