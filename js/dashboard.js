@@ -1928,6 +1928,11 @@ B7.Dashboard = (function () {
                 '<span class="cfg-tm-rot">' + r + '</span></button>').join('') + '</div>' }) +
         L({ ic: 'densidade', tom: 'azul', t: 'Densidade', d: 'quanto conteúdo cabe na tela',
             abaixo: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) }) +
+        /* zzz159: cor do sistema por pessoa. O administrador define o padrão
+           da equipe (aba Admin); aqui cada um pode ter a sua, neste aparelho. */
+        (B7.Aparencia ? L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema',
+            d: '<span data-ap-eu-d>' + esc(B7.Aparencia.resumoPessoal()) + '</span>',
+            botao: true, attrs: ' data-ap-pessoal' }) : '') +
         /* zzz6: desligar de verdade (antes só mostrava o que o sistema dizia) */
         (B7.Desempenho && B7.Desempenho.animacoesLigadas
           ? L({ ic: 'animacao', tom: 'rosa', t: 'Animações', cls: 'cfg-alterna',
@@ -1970,7 +1975,7 @@ B7.Dashboard = (function () {
         (iaCfg.chat && B7.ResumoAgencia ? L({ ic: 'ia', tom: 'violeta', t: 'Resumo da semana', d: 'o que andou, o que travou e quem está com mais trabalho (IA)', botao: true, attrs: ' data-resumo-semana' }) : '') +
         L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre', botao: true, attrs: ' data-redistribuir' })) : '') +
       /* zzz140: cor do sistema e datas especiais da abertura */
-      (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe.',
+      (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe (é o padrão de quem não escolheu a sua).',
         L({ ic: 'tema', tom: 'rosa', t: 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' })) : '') +
       /* zzz139: saúde do sistema, médico e comunicado */
       (ehAdm && B7.Saude ? grupo('Cuidar do sistema', 'Só leitura: mostra o que precisa de atenção, sem mudar nada.',
@@ -2260,6 +2265,7 @@ B7.Dashboard = (function () {
     const btRs = p.querySelector('[data-resumo-semana]'); if (btRs) btRs.onclick = () => B7.ResumoAgencia.abrir();
     const btRd = p.querySelector('[data-redistribuir]'); if (btRd) btRd.onclick = () => B7.Redistribuicao.abrir();
     const btAp = p.querySelector('[data-aparencia]'); if (btAp) btAp.onclick = () => B7.Aparencia.abrir();
+    const btApEu = p.querySelector('[data-ap-pessoal]'); if (btApEu) btApEu.onclick = () => B7.Aparencia.abrir({ pessoal: true });
     const btSa = p.querySelector('[data-saude]'); if (btSa) btSa.onclick = () => B7.Saude.abrir();
     const btMe = p.querySelector('[data-medico]'); if (btMe) btMe.onclick = () => B7.Medico.abrir();
     const btCo = p.querySelector('[data-comunicado]'); if (btCo) btCo.onclick = () => B7.Comunicado.abrir();

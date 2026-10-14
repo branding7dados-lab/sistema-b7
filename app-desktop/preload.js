@@ -6,5 +6,6 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('B7Desktop', {
   ativo: true,
   versao: () => ipcRenderer.invoke('b7:versao'),
-  procurarAtualizacao: () => ipcRenderer.invoke('b7:atualizar')
+  procurarAtualizacao: () => ipcRenderer.invoke('b7:atualizar'),
+  abrirPasta: () => ipcRenderer.invoke('b7:pasta')
 });
