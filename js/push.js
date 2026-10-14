@@ -24,6 +24,10 @@ B7.Push = (function () {
   /* por que não dá — a interface mostra isto no lugar do botão */
   function motivo() {
     if (App()) return App().motivo();
+    /* zzz160: o programa de computador (Electron) não tem serviço de push:
+       o aviso aparece enquanto ele está aberto. Dizer isso é melhor do que
+       deixar a pessoa procurando uma permissão que não existe. */
+    if (window.B7Desktop) return 'No programa de computador, o aviso aparece enquanto ele está aberto. Para receber com tudo fechado, use o app do celular.';
     if (!chave()) return 'Chave pública VAPID não configurada em js/config.js (VAPID_PUBLIC_KEY).';
     if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return 'Este navegador não tem service worker (ou o sistema não está em https).';
     if (!('PushManager' in window)) return 'Este navegador não suporta push. No iPhone, adicione o Sistema B7 à tela de início.';

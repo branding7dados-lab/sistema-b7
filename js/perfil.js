@@ -150,7 +150,9 @@ B7.Perfil = (function () {
             '<div class="pf-resumo" id="pf-resumo"></div>' +
             opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.', IC.sino, 'rosa') +
             opcao('som', 'Som das notificações', 'Um toque curto quando chega um aviso novo com o B7 aberto.', IC.som, 'violeta') +
-            opcao('navegador', 'Aviso do navegador', 'Quando esta aba não estiver em foco, o navegador mostra o aviso.', IC.janela, 'azul') +
+            opcao('navegador', window.B7Desktop ? 'Aviso do Windows' : 'Aviso do navegador',
+                  window.B7Desktop ? 'Quando a janela do B7 não estiver na frente, o aviso aparece no canto da tela.'
+                                   : 'Quando esta aba não estiver em foco, o navegador mostra o aviso.', IC.janela, 'azul') +
             '<div class="pf-teste-push">' +
               '<div class="pf-teste-tx"><b>Testar notificações</b>' +
               '<small>Envia um aviso de teste para este aparelho, para confirmar que push, ' +
@@ -419,11 +421,15 @@ B7.Perfil = (function () {
       if (!res) return;
       const semPush = B7.Push && !B7.Push.disponivel();
       const r = perm === 'bloqueada'
-        ? ['erro', 'Avisos bloqueados neste navegador', 'Libere as notificações deste site nas configurações do navegador e ative o push de novo.']
+        ? (window.B7Desktop
+          ? ['erro', 'Avisos bloqueados no Windows', 'Abra Configurações do Windows → Sistema → Notificações e deixe o Sistema B7 ligado.']
+          : ['erro', 'Avisos bloqueados neste navegador', 'Libere as notificações deste site nas configurações do navegador e ative o push de novo.'])
         : ligada('push')
           ? ['ok', 'Este aparelho recebe avisos', 'Push ativado' + (ligada('som') ? ' · som ligado' : ' · som desligado') + '.']
           : semPush
-            ? ['neutro', 'Push indisponível neste navegador', 'Os avisos aparecem no sino, com o B7 aberto.']
+            ? (window.B7Desktop
+              ? ['neutro', 'Avisos com o programa aberto', 'O Windows mostra o aviso quando a janela não está na frente. Para receber com o programa fechado, use o app do celular.']
+              : ['neutro', 'Push indisponível neste navegador', 'Os avisos aparecem no sino, com o B7 aberto.'])
             : ['aviso', 'Push desativado neste aparelho', 'Os avisos só aparecem com o B7 aberto. Ative o push para receber com ele fechado.'];
       res.className = 'pf-resumo ' + r[0];
       res.innerHTML = '<i aria-hidden="true"></i><div><b>' + esc(r[1]) + '</b><span>' + esc(r[2]) + '</span></div>';
@@ -432,7 +438,9 @@ B7.Perfil = (function () {
     pintar('som', p.som);
     pintar('navegador', p.navegador);
     if ('Notification' in window && Notification.permission === 'denied') {
-      avisoOpcao('navegador', 'Bloqueado nas configurações do navegador para este site.');
+      avisoOpcao('navegador', window.B7Desktop
+        ? 'Bloqueado nas notificações do Windows para o Sistema B7.'
+        : 'Bloqueado nas configurações do navegador para este site.');
     }
 
     /* push: depende de chave pública, service worker e permissão */

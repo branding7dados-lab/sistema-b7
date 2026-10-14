@@ -112,13 +112,20 @@ function criarJanela() {
 /* ------------------------------------------- permissões e downloads */
 function ligarSessao() {
   const ses = session.defaultSession;
-  /* câmera e microfone (teleprompter), avisos e tela cheia: só o B7 */
+  /* câmera e microfone (teleprompter), avisos e tela cheia: só o B7.
+     zzz160: a comparação era de texto cru ("https://host" × "https://host/")
+     e por isso o Electron respondia "bloqueada" ao sistema — era o que
+     aparecia em Avisos. Agora compara a ORIGEM de verdade. */
+  const PERMITIDAS = ['media', 'notifications', 'fullscreen', 'clipboard-sanitized-write', 'clipboard-read'];
+  const nossa = u => { try { return new URL(u).origin === ORIGEM; } catch (e) { return false; } };
   ses.setPermissionRequestHandler((wc, permissao, responder, detalhes) => {
     const origem = (detalhes && detalhes.requestingUrl) || (wc && wc.getURL()) || '';
-    const nosso = origem.startsWith(ORIGEM);
-    responder(nosso && ['media', 'notifications', 'fullscreen', 'clipboard-sanitized-write', 'clipboard-read'].includes(permissao));
+    responder(nossa(origem) && PERMITIDAS.includes(permissao));
   });
-  ses.setPermissionCheckHandler((wc, permissao, origem) => origem === ORIGEM);
+  ses.setPermissionCheckHandler((wc, permissao, origem, detalhes) => {
+    const u = origem || (detalhes && detalhes.requestingUrl) || (wc && wc.getURL()) || '';
+    return nossa(u) && PERMITIDAS.includes(permissao);
+  });
 
   /* arquivo baixado (PDF, planilha, vídeo do teleprompter): vai para a
      pasta Downloads e o programa mostra onde foi */
