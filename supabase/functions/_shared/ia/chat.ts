@@ -215,13 +215,17 @@ async function focoDoCliente(sb: SupabaseClient, clienteId: string | null): Prom
     const pGravs = sb.from('gravacoes').select('id, nome, data_gravacao').eq('client_id', clienteId)
       .is('deleted_at', null).order('data_gravacao', { ascending: false, nullsFirst: false }).limit(6).then(r => r);
     const [cli, intel, lin] = await Promise.all([
-      sb.from('clientes').select('nome, servico, observacoes').eq('id', clienteId).maybeSingle(),
+      sb.from('clientes').select('nome, servico, observacoes, modo').eq('id', clienteId).maybeSingle(),
       sb.from('cliente_inteligencia').select('nicho, descricao, publico_principal, publico_dores, publico_desejos, publico_objecoes, voz_tom, voz_caracteristicas, voz_evitar, posicionamento, puv, percepcao').eq('client_id', clienteId).maybeSingle(),
       sb.from('linhas_editoriais').select('id, nome, mes, ano, objetivo, objetivo_detalhe, posicionamento, tom_voz, puv, canais, meta_conteudos, status')
         .eq('client_id', clienteId).is('deleted_at', null).is('archived_at', null).order('ano', { ascending: false }).order('mes', { ascending: false }).limit(1)
     ]);
     const c = (cli.data || {}) as Record<string, unknown>;
     linhas.push('', 'CLIENTE EM FOCO: ' + corta(c.nome, 60) + (c.servico ? ' (serviço: ' + corta(c.servico, 30) + ')' : '') + '.');
+    /* zzz164: como a B7 trabalha com ele — não sugira linha editorial a quem não usa */
+    const MODO: Record<string, string> = { linha: 'com linha editorial mensal', semana: 'conteúdo montado semana a semana, SEM linha editorial',
+      roteiros: 'a B7 faz só roteiros e gravações (e trends), SEM linha editorial nem planejamento' };
+    if (c.modo && MODO[String(c.modo)]) linhas.push('Como a B7 trabalha com este cliente: ' + MODO[String(c.modo)] + '.');
     const i = (intel.data || {}) as Record<string, unknown>;
     const campos: [string, string, number][] = [['nicho', 'Nicho', 120], ['descricao', 'Sobre', 400], ['publico_principal', 'Público', 300],
       ['publico_dores', 'Dores do público', 300], ['publico_desejos', 'Desejos do público', 300], ['publico_objecoes', 'Objeções', 250],
@@ -407,6 +411,20 @@ export async function carregarContexto(sb: SupabaseClient, clienteId: string | n
     linhas.push('', 'ROTEIROS em aberto: ' + rs.filter(r => r.status === 'Em criação').length + ' em criação, ' +
       rs.filter(r => r.status === 'Pronto para gravar').length + ' prontos para gravar.');
   }
+
+  /* zzz164: o mural de trends da equipe — o assistente usa para sugerir conteúdo */
+  try {
+    const { data: trs } = await sb.from('trends').select('titulo, nota, link, usos').is('arquivada_at', null)
+      .order('created_at', { ascending: false }).limit(15);
+    const ts = (trs || []) as Record<string, unknown>[];
+    if (ts.length) {
+      linhas.push('', 'TRENDS GUARDADAS PELA EQUIPE (tela Trends; use para sugerir conteúdo e roteiros):');
+      ts.forEach(t => {
+        const usos = Array.isArray(t.usos) ? (t.usos as Record<string, unknown>[]).map(u => corta(u.cliente_nome, 30)).filter(Boolean) : [];
+        linhas.push('  - ' + corta(t.titulo, 80) + (t.nota ? ' · ' + corta(t.nota, 160) : '') + (usos.length ? ' · já usada para: ' + usos.join(', ') : ' · ainda não usada'));
+      });
+    }
+  } catch (_e) { /* sem a tabela, segue sem trends */ }
 
   linhas.push(...(await pExtras));
   linhas.push(...(await pFoco));

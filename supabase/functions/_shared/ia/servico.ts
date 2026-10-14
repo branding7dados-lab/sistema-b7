@@ -117,7 +117,16 @@ async function gerarCom(provedor: Provedor | null, mensagens: Mensagem[], op: Op
         console.error('[b7-ia] fluxo falhou sem texto:', r.erro, r.status);
         r = await provedor.gerar(pedido);
       }
-    } else r = await provedor.gerar(pedido);
+    } else {
+      r = await provedor.gerar(pedido);
+      /* zzz164: "fora do ar" do Google costuma durar segundos (7% das
+         falhas do chat em 14 dias). Uma segunda tentativa, curta, antes
+         de mostrar erro — nunca para limite/cota, que só gastaria cota. */
+      if (!r.ok && r.erro === 'indisponivel' && Date.now() - inicio < 12_000) {
+        await new Promise(res => setTimeout(res, 1200));
+        r = await provedor.gerar(pedido);
+      }
+    }
   } catch (_e) {
     return falha('indisponivel');
   }
