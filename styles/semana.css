@@ -101,7 +101,7 @@
 /* barra de andamento da semana (enviados + prontos), base do cabeçalho */
 .gs-barra{position:absolute;left:14px;right:14px;bottom:8px;height:3px;border-radius:3px;background:var(--suave);display:flex;overflow:hidden;}
 .gs-barra i{display:block;height:100%;transform-origin:0 50%;animation:gsBarra .9s cubic-bezier(.2,.8,.2,1) .25s backwards;}
-.gs-barra .env{background:linear-gradient(90deg,#B03BE6,var(--acento));}
+.gs-barra .env{background:linear-gradient(90deg,color-mix(in srgb,var(--roxo) 64%,#fff),var(--acento));}
 .gs-barra .pro{background:color-mix(in srgb, var(--acento) 40%, transparent);animation-delay:.4s;}
 @keyframes gsBarra{from{transform:scaleX(0)}}
 /* clientes: lista única com divisórias */

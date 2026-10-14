@@ -34,11 +34,11 @@
 /* --------------------------------------------------------------- herói */
 .pan-heroi{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:22px;flex-wrap:wrap;
   padding:22px 24px;border-radius:26px;color:#fff;margin-bottom:16px;
-  background:linear-gradient(135deg,#1A1036 0%,#2B1450 46%,#4A1560 100%);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--base-violeta) 43%,#000) 0%,color-mix(in srgb,var(--base-violeta) 61%,#000) 46%,color-mix(in srgb,var(--base-roxo) 72%,#000) 100%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 22px 46px -28px rgba(60,14,90,.7);}
 .pan-heroi-luz{position:absolute;z-index:-1;width:340px;height:340px;border-radius:50%;left:-90px;top:-170px;pointer-events:none;
-  background:radial-gradient(circle, rgba(124,92,255,.5), transparent 68%);animation:panLuz 9s ease-in-out infinite alternate;}
-.pan-heroi-luz.dois{left:auto;right:-110px;top:auto;bottom:-210px;background:radial-gradient(circle, rgba(226,64,156,.46), transparent 68%);animation-duration:11s;animation-direction:alternate-reverse;}
+  background:radial-gradient(circle, color-mix(in srgb,var(--sb-luz1) 50%,transparent), transparent 68%);animation:panLuz 9s ease-in-out infinite alternate;}
+.pan-heroi-luz.dois{left:auto;right:-110px;top:auto;bottom:-210px;background:radial-gradient(circle, color-mix(in srgb,color-mix(in srgb,var(--magenta) 77%,#fff) 46%,transparent), transparent 68%);animation-duration:11s;animation-direction:alternate-reverse;}
 @keyframes panLuz{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(46px,26px,0) scale(1.14)}}
 .pan-heroi-esq{display:flex;align-items:center;gap:18px;min-width:0;}
 .pan-heroi-tx{display:flex;flex-direction:column;gap:2px;min-width:0;}

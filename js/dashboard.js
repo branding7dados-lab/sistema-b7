@@ -1756,6 +1756,7 @@ B7.Dashboard = (function () {
     acesso: '<rect x="4.5" y="10.5" width="15" height="10" rx="3"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>',
     sino: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
     camera: '<path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.3"/>',
+    lupa: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
     casa: '<path d="M4 10.8L12 4l8 6.8V18a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18z"/><path d="M9.8 20.5v-5a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1v5"/>',
     calendario: '<rect x="3.5" y="4.5" width="17" height="16" rx="3.6"/><path d="M3.5 9.5h17M8 2.8v3M16 2.8v3"/>',
     ler: '<rect x="3" y="4.5" width="18" height="12.5" rx="3"/><path d="M7.5 9.2h9M7.5 12.6h6M9 20.2h6"/>',
@@ -1867,6 +1868,16 @@ B7.Dashboard = (function () {
         (emOutraConta ? '' : L({ ic: 'celular', tom: 'vermelho', t: 'Sair de todos os aparelhos', d: 'encerra todas as sessões desta conta',
             botao: true, semSeta: true, cls: 'cfg-perigo', attrs: ' data-sair-todos' }))) : '');
 
+    /* zzz163: as cores aparecem aqui mesmo; tocar já troca (só para você,
+       neste aparelho). Menu, botões, brilho e "sua cor" ficam em Mais opções. */
+    const OK_COR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    const coresRapidas = () => '<div class="cfg-cores" role="radiogroup" aria-label="Cor do sistema">' +
+      B7.Aparencia.bolinhas().map(b => '<button type="button" role="radio" class="cfg-cor' + (b.on ? ' on' : '') + '" aria-checked="' + b.on + '" data-cor="' + b.id + '" title="' + esc(b.nome) + '" aria-label="' + esc(b.nome) + '">' +
+        '<i style="background:' + b.fundo + '">' + OK_COR + '</i></button>').join('') +
+      '</div><div class="cfg-cores-pe">' +
+        (B7.Aparencia.pessoal() ? '<button type="button" class="cfg-cor-link" data-cor-equipe>Usar a da equipe</button>' : '<span class="cfg-cor-nota">Igual à da equipe</span>') +
+        '<button type="button" class="cfg-cor-mais" data-ap-pessoal>Mais opções' + SETA_CFG + '</button></div>';
+
     const abaGeral =
       (opInicio.length > 1 ? grupo('Início', 'Um link direto continua abrindo a tela do link.',
         L({ ic: 'casa', tom: 'violeta', t: 'Tela inicial', d: 'o que abre ao entrar no B7',
@@ -1919,6 +1930,11 @@ B7.Dashboard = (function () {
 
     const abaAparencia =
       grupo('Aparência', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
+        /* zzz159: cor do sistema por pessoa. O administrador define o padrão
+           da equipe (aba Admin); aqui cada um pode ter a sua, neste aparelho. */
+        (B7.Aparencia ? L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema',
+            d: '<span data-ap-eu-d>' + esc(B7.Aparencia.resumoPessoal()) + '</span>',
+            abaixo: coresRapidas() }) : '') +
         L({ ic: 'tema', tom: 'violeta', t: 'Tema', d: 'claro, escuro ou igual ao do aparelho',
             abaixo: '<div class="cfg-seg cfg-temas" data-grupo="tema" role="radiogroup" aria-label="Tema"><i class="cfg-seg-pill" aria-hidden="true"></i>' +
               [['light', 'Claro'], ['dark', 'Escuro'], ['auto', 'Sistema']].map(([v, r]) =>
@@ -1928,11 +1944,6 @@ B7.Dashboard = (function () {
                 '<span class="cfg-tm-rot">' + r + '</span></button>').join('') + '</div>' }) +
         L({ ic: 'densidade', tom: 'azul', t: 'Densidade', d: 'quanto conteúdo cabe na tela',
             abaixo: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) }) +
-        /* zzz159: cor do sistema por pessoa. O administrador define o padrão
-           da equipe (aba Admin); aqui cada um pode ter a sua, neste aparelho. */
-        (B7.Aparencia ? L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema',
-            d: '<span data-ap-eu-d>' + esc(B7.Aparencia.resumoPessoal()) + '</span>',
-            botao: true, attrs: ' data-ap-pessoal' }) : '') +
         /* zzz6: desligar de verdade (antes só mostrava o que o sistema dizia) */
         (B7.Desempenho && B7.Desempenho.animacoesLigadas
           ? L({ ic: 'animacao', tom: 'rosa', t: 'Animações', cls: 'cfg-alterna',
@@ -2054,6 +2065,7 @@ B7.Dashboard = (function () {
 
     const abas = [['geral', 'Geral', abaGeral], ['aparencia', 'Aparência', abaAparencia], 
                   ['admin', 'Admin', abaAdmin], ['sistema', 'Sistema', abaSistema]].filter(a => a[2]);
+    const IC_ABA = { geral: 'casa', aparencia: 'tema', admin: 'usuarios', sistema: 'versao' };
     let abaAtual = B7.pref.ler('cfg_aba', '');
     if (!abas.some(a => a[0] === abaAtual)) abaAtual = abas[0][0];
 
@@ -2073,9 +2085,12 @@ B7.Dashboard = (function () {
             '<button type="button" data-pf="' + a[0] + '">' + svgF(a[2]) + '<span>' + a[1] + '</span></button>').join('') +
         '</div></div>' : '') +
 
+      /* zzz163: procurar um ajuste em todas as abas de uma vez */
+      '<label class="cfg-busca">' + svgF('lupa') + '<input type="search" id="cfg-q" placeholder="Procurar um ajuste" autocomplete="off" aria-label="Procurar um ajuste"></label>' +
       (abas.length > 1 ? '<div class="cfg-seg cfg-abas" data-grupo="aba" role="tablist" aria-label="Seções das configurações"><i class="cfg-seg-pill" aria-hidden="true"></i>' +
         abas.map(a => '<button type="button" role="tab" data-v="' + a[0] + '" aria-selected="' + (a[0] === abaAtual) + '"' +
-          (a[0] === abaAtual ? ' class="on"' : '') + '><span>' + a[1] + '</span></button>').join('') + '</div>' : '') +
+          (a[0] === abaAtual ? ' class="on"' : '') + '>' + svgF(IC_ABA[a[0]]) + '<span>' + a[1] + '</span></button>').join('') + '</div>' : '') +
+      '<p class="cfg-nada" hidden>Nenhum ajuste com esse nome.</p>' +
       abas.map(a => '<div class="cfg-painel" data-painel="' + a[0] + '"' + (a[0] === abaAtual ? '' : ' hidden') + '>' + a[2] + '</div>').join('') +
 
       '<footer class="cfg-assina"><span class="cfg-assina-b7" aria-hidden="true"></span><b>Sistema B7</b><small>feito pela Branding7</small></footer>' +
@@ -2272,6 +2287,49 @@ B7.Dashboard = (function () {
     const btRd = p.querySelector('[data-redistribuir]'); if (btRd) btRd.onclick = () => B7.Redistribuicao.abrir();
     const btAp = p.querySelector('[data-aparencia]'); if (btAp) btAp.onclick = () => B7.Aparencia.abrir();
     const btApEu = p.querySelector('[data-ap-pessoal]'); if (btApEu) btApEu.onclick = () => B7.Aparencia.abrir({ pessoal: true });
+    /* zzz163: bolinhas de cor — troca na hora */
+    const pintarCores = () => {
+      const atual = B7.Aparencia.paletaAtual(), d = p.querySelector('[data-ap-eu-d]');
+      p.querySelectorAll('.cfg-cor').forEach(b => { const on = b.dataset.cor === atual; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
+      if (d) d.textContent = B7.Aparencia.resumoPessoal();
+      const pe = p.querySelector('.cfg-cores-pe > :first-child');
+      if (pe) pe.outerHTML = B7.Aparencia.pessoal() ? '<button type="button" class="cfg-cor-link" data-cor-equipe>Usar a da equipe</button>' : '<span class="cfg-cor-nota">Igual à da equipe</span>';
+      const eq = p.querySelector('[data-cor-equipe]'); if (eq) eq.onclick = () => { B7.Aparencia.escolherRapido('equipe'); pintarCores(); };
+    };
+    p.querySelectorAll('.cfg-cor').forEach(b => b.onclick = () => { B7.Aparencia.escolherRapido(b.dataset.cor); pintarCores(); });
+    if (B7.Aparencia && p.querySelector('.cfg-cores')) pintarCores();
+
+    /* zzz163: procurar um ajuste — mostra as linhas que batem, de todas as abas */
+    const campoQ = p.querySelector('#cfg-q');
+    if (campoQ) {
+      const sem = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const abasEl = p.querySelector('.cfg-abas'), nada = p.querySelector('.cfg-nada');
+      const procurar = () => {
+        const q = sem(campoQ.value.trim());
+        p.classList.toggle('cfg-procurando', !!q);
+        if (abasEl) abasEl.hidden = !!q;
+        let achou = 0;
+        p.querySelectorAll('[data-painel]').forEach(pn => {
+          pn.hidden = q ? false : pn.dataset.painel !== (B7.pref.ler('cfg_aba', '') || abas[0][0]);
+          pn.querySelectorAll('.cfg-g').forEach(g => {
+            const tituloBate = q && sem((g.querySelector('.cfg-g-t') || {}).textContent).includes(q);
+            let visiveis = 0;
+            g.querySelectorAll('.cfg-l').forEach(l => {
+              const ok = !q || tituloBate || sem(l.textContent).includes(q);
+              l.hidden = !ok; const ab = l.nextElementSibling;
+              if (ab && ab.classList.contains('cfg-l-abaixo')) ab.hidden = !ok;
+              if (ok) visiveis++;
+            });
+            g.hidden = !!q && !visiveis; achou += visiveis;
+          });
+        });
+        if (nada) nada.hidden = !q || !!achou;
+        if (!q && abasEl) requestAnimationFrame(() => p.querySelectorAll('.cfg-seg').forEach(x => moverPilula(x, false)));
+        else requestAnimationFrame(() => p.querySelectorAll('[data-painel] .cfg-seg').forEach(x => moverPilula(x, false)));
+      };
+      campoQ.addEventListener('input', procurar);
+      campoQ.addEventListener('keydown', e => { if (e.key === 'Escape' && campoQ.value) { e.stopPropagation(); campoQ.value = ''; procurar(); } });
+    }
     const btSa = p.querySelector('[data-saude]'); if (btSa) btSa.onclick = () => B7.Saude.abrir();
     const btMe = p.querySelector('[data-medico]'); if (btMe) btMe.onclick = () => B7.Medico.abrir();
     const btCo = p.querySelector('[data-comunicado]'); if (btCo) btCo.onclick = () => B7.Comunicado.abrir();

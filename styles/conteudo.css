@@ -100,9 +100,9 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
 
 .barra-total{display:flex;height:12px;border-radius:7px;overflow:hidden;background:var(--suave);}
 .barra-total i{display:block;height:100%;transition:width var(--t);}
-.barra-total .faixa-0{background:#3A1E86;}
-.barra-total .faixa-1{background:#7C1E85;}
-.barra-total .faixa-2{background:#C21C83;}
+.barra-total .faixa-0{background:var(--violeta);}
+.barra-total .faixa-1{background:var(--roxo);}
+.barra-total .faixa-2{background:var(--magenta);}
 .barra-total .faixa-3{background:#001559;}
 .barra-legenda{display:flex;align-items:baseline;gap:9px;margin-top:10px;}
 .barra-legenda b{font-family:'Archivo';font-weight:800;font-size:19px;}

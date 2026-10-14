@@ -11,7 +11,7 @@
   font-family:'Archivo';font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;
   transition:var(--t);flex:none;position:relative;cursor:grab;}
 .trilho .chip:hover{background:var(--neutro-bg);color:var(--acento);}
-.trilho .chip.on{background:var(--grad-curto);color:#fff;box-shadow:0 4px 12px rgba(194,28,131,.174);}
+.trilho .chip.on{background:var(--grad-curto);color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--magenta) 17.4%,transparent);}
 .trilho .chip:active{cursor:grabbing;}
 .trilho .add{width:42px;height:42px;border-radius:12px;border:1.5px dashed var(--borda-forte);color:var(--ink-4);
   font-size:18px;display:flex;align-items:center;justify-content:center;transition:var(--t);flex:none;}
@@ -82,9 +82,9 @@
   transition:box-shadow var(--t),filter var(--t),transform var(--t);}
 .ia-entrada svg{width:18px;height:18px;color:var(--acento);flex:none;}
 .ia-entrada:hover,.ia-entrada.on{box-shadow:0 0 0 3px var(--acento-suave);}
-.ia-entrada.cheia{background:var(--grad-curto) border-box;color:#fff;box-shadow:0 8px 20px -10px rgba(194,28,131,.434);}
+.ia-entrada.cheia{background:var(--grad-curto) border-box;color:#fff;box-shadow:0 8px 20px -10px color-mix(in srgb,var(--magenta) 43.4%,transparent);}
 .ia-entrada.cheia svg{color:#fff;}
-.ia-entrada.cheia:hover{filter:brightness(1.08);box-shadow:0 10px 24px -10px rgba(194,28,131,.496);}
+.ia-entrada.cheia:hover{filter:brightness(1.08);box-shadow:0 10px 24px -10px color-mix(in srgb,var(--magenta) 49.6%,transparent);}
 .ia-entrada:focus-visible,.ia-fechar:focus-visible,.ia-acao:focus-visible,.ia-sugestao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 
 .ia-painel{margin-top:8px;padding:12px;border-radius:11px;background:var(--card);border:1px solid var(--borda);
@@ -312,7 +312,7 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
     font-family:'Archivo',sans-serif;font-size:12.5px;font-weight:800;background:var(--card);color:var(--ink-2);
     box-shadow:0 1px 2px rgba(20,8,40,.08);}
   .trilho .chip .chip-t{display:block;min-width:0;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-3);}
-  .trilho .chip.on{background:var(--grad-curto);box-shadow:0 8px 18px -10px rgba(194,28,131,.434);}
+  .trilho .chip.on{background:var(--grad-curto);box-shadow:0 8px 18px -10px color-mix(in srgb,var(--magenta) 43.4%,transparent);}
   .trilho .chip.on .chip-n{background:rgba(255,255,255,.22);color:#fff;box-shadow:none;}
   .trilho .chip.on .chip-t{color:#fff;}
   .trilho .add{flex:none;width:42px;height:42px;border-radius:14px;}
