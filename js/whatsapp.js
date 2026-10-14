@@ -88,6 +88,8 @@ B7.WhatsApp = (function () {
           '<span class="wa-prev" id="wa-prev"></span>' +
         '</div>' +
         '<div class="wa-ferr">' +
+          (B7.Chat ? '<button type="button" class="wa-ic wa-ia" id="wa-ia" title="Assistente do B7" aria-label="Abrir o assistente">' +
+            '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9z"/><path d="M18.5 15l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg></button>' : '') +
           (extras ? '<button type="button" class="wa-ic" id="wa-menos" title="Letra menor" aria-label="Letra menor">A−</button>' +
                     '<button type="button" class="wa-ic" id="wa-mais" title="Letra maior" aria-label="Letra maior">A+</button>' : '') +
           '<button type="button" class="wa-ic" id="wa-recarregar" title="Recarregar o WhatsApp" aria-label="Recarregar o WhatsApp">' +
@@ -108,6 +110,8 @@ B7.WhatsApp = (function () {
     cb.onclick = () => { caixa.classList.toggle('on'); cb.setAttribute('aria-checked', String(ligada())); salvar(); };
     nome.oninput = previa; nome.onchange = salvar;
     nome.onkeydown = e => { if (e.key === 'Enter') { nome.blur(); salvar(); } };
+    const btIa = painel.querySelector('#wa-ia');
+    if (btIa) btIa.onclick = () => B7.Chat.abrir();
     painel.querySelector('#wa-recarregar').onclick = () => D.recarregar && D.recarregar();
     if (extras) {
       painel.querySelector('#wa-menos').onclick = () => D.zoom(-1);
@@ -177,12 +181,17 @@ B7.WhatsApp = (function () {
     if (fora || coberta(area, r)) {
       if (!escondido) {
         escondido = true; ultimoRet = '';
-        /* o programa devolve uma foto do WhatsApp: ela fica no lugar dele
-           enquanto o menu do sistema está aberto — nada de "buraco" */
-        Promise.resolve(D.esconder(!fora)).then(f => {
-          const a = document.getElementById('wa-area');
-          if (a && typeof f === 'string' && f.startsWith('data:image') && escondido) { a.style.backgroundImage = 'url("' + f + '")'; a.classList.add('com-foto'); }
-        }).catch(() => {});
+        if (fora || !D.foto) {
+          /* programa antigo (até 1.0.17): ele mesmo tira a foto e some */
+          Promise.resolve(D.esconder(!fora)).then(f => porFoto(f)).catch(() => {});
+        } else {
+          /* zzz175: SEM PISCADA — primeiro a foto entra no lugar (já pronta
+             na tela), só depois o WhatsApp sai da frente. Antes ele sumia
+             primeiro e a foto chegava um instante depois (o "piscar"). */
+          const usar = f => porFoto(f).then(() => { if (escondido) D.esconder(false); });
+          if (fotoPronta && Date.now() - fotoPronta.em < 4000) usar(fotoPronta.f);
+          else Promise.race([D.foto(), new Promise(r => setTimeout(() => r(null), 400))]).then(usar, () => usar(null));
+        }
       }
       return;
     }
@@ -192,7 +201,29 @@ B7.WhatsApp = (function () {
     setTimeout(() => { const a = document.getElementById('wa-area'); if (a && !escondido) { a.classList.remove('com-foto'); a.style.backgroundImage = ''; } }, 120);
     D.mostrar({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) });
   }
+  /* foto do WhatsApp posta como fundo da área; espera a imagem estar
+     decodificada para a troca ser instantânea */
+  let fotoPronta = null;
+  function porFoto(f) {
+    const a = document.getElementById('wa-area');
+    if (!a || typeof f !== 'string' || !f.startsWith('data:image') || !escondido) return Promise.resolve();
+    const img = new Image(); img.src = f;
+    return (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => {
+      if (!escondido) return;
+      a.style.backgroundImage = 'url("' + f + '")'; a.classList.add('com-foto');
+    });
+  }
+  /* o mouse chegou ao topo (onde ficam Criar, avisos e conta): já deixa
+     uma foto pronta, para o menu abrir sem esperar nada */
+  function preFoto() {
+    if (!ativo || escondido || !D || !D.foto) return;
+    if (fotoPronta && Date.now() - fotoPronta.em < 1500) return;
+    D.foto().then(f => { if (f) fotoPronta = { f, em: Date.now() }; }).catch(() => {});
+  }
   function ligar() {
+    const topoG = document.querySelector('#tela-dashboard .topo');
+    if (topoG && !topoG._waFoto) { topoG._waFoto = true; topoG.addEventListener('pointerenter', preFoto); }
+    document.body.classList.add('wa-aberta');
     ativo = true; escondido = true; ultimoRet = '';
     clearInterval(relogio);
     relogio = setInterval(medir, 250);           /* barra lateral abrindo, rolagem, zoom: segue junto */
@@ -204,6 +235,7 @@ B7.WhatsApp = (function () {
   function desligar() {
     if (!ativo) return;
     ativo = false; clearInterval(relogio); removeEventListener('resize', medir);
+    document.body.classList.remove('wa-aberta'); fotoPronta = null;
     if (observador) { observador.disconnect(); observador = null; }
     escondido = true; ultimoRet = '';
     if (D) D.esconder();

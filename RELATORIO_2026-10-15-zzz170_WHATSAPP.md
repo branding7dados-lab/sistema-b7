@@ -32,3 +32,11 @@
   - Ao esconder, o programa tira uma foto do WhatsApp (`capturePage`) e o sistema mostra a foto no lugar enquanto o menu está aberto.
   - Barra nova: chave da assinatura, nome editável, A−/A+ (zoom guardado), recarregar e desconectar (`clearStorageData` da sessão do WhatsApp).
   - O zoom, a foto e o desconectar dependem do programa 1.0.16 ou mais novo.
+
+## zzz174/175
+- zzz174: o workflow do Windows sobe o instalador antes do `latest.yml`. Juntos, os dois subiam ao mesmo tempo e quem procurava atualização no meio do envio recebia 404.
+- zzz175:
+  - Sem piscada ao abrir menus. O sistema pede só a foto (`b7:wa:foto`), põe a foto como fundo depois de decodificada, e só então pede para esconder o WhatsApp.
+  - Quando o mouse entra no topo, o sistema já deixa uma foto pronta, guardada por até 4 segundos.
+  - Na tela do WhatsApp, o botão flutuante do assistente fica escondido (ele ficava atrás do WhatsApp e só aparecia quando um menu abria). Em troca, há o botão ✦ na barra.
+  - Precisa do programa 1.0.18 ou mais novo. Nos antigos continua o comportamento anterior.

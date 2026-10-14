@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('B7Desktop', {
   wa: {
     mostrar: r => ipcRenderer.invoke('b7:wa:mostrar', r),
     esconder: comFoto => ipcRenderer.invoke('b7:wa:esconder', !!comFoto),
+    foto: () => ipcRenderer.invoke('b7:wa:foto'),
     zoom: passo => ipcRenderer.invoke('b7:wa:zoom', passo),
     desconectar: () => ipcRenderer.invoke('b7:wa:desconectar'),
     recarregar: () => ipcRenderer.invoke('b7:wa:recarregar'),
