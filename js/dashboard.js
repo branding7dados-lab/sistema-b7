@@ -1805,6 +1805,24 @@ B7.Dashboard = (function () {
     return e.leve ? 'agora: leve — este aparelho travava com o vidro' : 'agora: completo — fica leve sozinho se travar';
   }
 
+  /* zzz165: escolher o ícone do app Android */
+  async function escolherIconeApp() {
+    const OPS = [['Padrao', 'Padrão B7', 'padrao'], ['Noite', 'Noite', 'noite'], ['Oceano', 'Oceano', 'oceano'], ['Floresta', 'Floresta', 'floresta'],
+      ['PorDoSol', 'Pôr do sol', 'pordosol'], ['Rosa', 'Rosa', 'rosa'], ['Dourado', 'Dourado', 'dourado']];
+    const atual = (await B7.AppNativo.iconeAtual()) || 'Padrao';
+    const m = B7.UI.modal('<h3>Ícone do app</h3><p class="sub">Escolha como o B7 aparece na tela inicial. Alguns celulares levam alguns segundos para trocar, e atalhos fixados podem precisar ser colocados de novo.</p>' +
+      '<div class="ic-app-grade">' + OPS.map(o => '<button type="button" class="ic-app' + (o[0] === atual ? ' on' : '') + '" data-ic="' + o[0] + '">' +
+        '<img src="assets/icons/app/' + o[2] + '.png" alt="" width="64" height="64"><span>' + o[1] + '</span></button>').join('') + '</div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Fechar</button></div>');
+    m.querySelectorAll('[data-ic]').forEach(b => b.onclick = async () => {
+      if (b.classList.contains('on')) return;
+      const r = await B7.AppNativo.icone(b.dataset.ic);
+      if (!r || !r.ok) { B7.UI.toast('Este app ainda não troca de ícone. Atualize o app e tente de novo.', { tipo: 'erro' }); return; }
+      m.querySelectorAll('[data-ic]').forEach(x => x.classList.toggle('on', x === b));
+      B7.UI.toast('Ícone trocado. Volte à tela inicial para ver.');
+    });
+  }
+
   function abrirConfig() {
     marcarNav('#/config');
     B7.Rota.titulo(['Configurações']);
@@ -1911,6 +1929,8 @@ B7.Dashboard = (function () {
           ? L({ ic: 'versao', tom: 'azul', t: 'App para Windows', d: 'o B7 numa janela própria, sem barra de navegador',
                 botao: true, semSeta: true, attrs: ' data-baixar-windows' })
           : '') +
+      (B7.AppNativo && B7.AppNativo.ativo && B7.AppNativo.icone ? L({ ic: 'tema', tom: 'rosa', t: 'Ícone do app', d: 'a cor do B7 na tela inicial do celular',
+          botao: true, attrs: ' data-icone-app' }) : '') +
       (ehAndroidWeb && !instalado ? L({ ic: 'celular', tom: 'verde', t: 'App para Android', d: 'abre na hora, com avisos e atalhos no ícone',
           botao: true, semSeta: true, attrs: ' data-baixar-android' }) : '');
 
@@ -2290,6 +2310,8 @@ B7.Dashboard = (function () {
     };
     const bw = p.querySelector('[data-baixar-windows]');
     if (bw) bw.onclick = () => B7.ConviteApp ? B7.ConviteApp.baixarWindows() : (location.href = 'https://github.com/branding7dados-lab/sistema-b7/releases/download/app-desktop/sistema-b7-instalador.exe');
+    const bIc = p.querySelector('[data-icone-app]');
+    if (bIc) bIc.onclick = () => escolherIconeApp();
     const bAnd = p.querySelector('[data-baixar-android]');
     if (bAnd) bAnd.onclick = () => { location.href = 'https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk'; B7.UI.toast('Baixando o app. Abra o arquivo quando terminar.'); };
     const btWin = p.querySelector('[data-win-atu]');

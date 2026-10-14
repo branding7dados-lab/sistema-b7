@@ -1277,3 +1277,10 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .cfg-cor-mais{padding:6px 8px 6px 12px;border-radius:99px;background:var(--acento-suave);}
 .cfg-cor-mais .cfg-seta{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;margin:0;}
 @media (max-width:560px){ .cfg-cores{gap:9px;} .cfg-cor i{width:32px;height:32px;} }
+/* zzz165: escolher o ícone do app */
+.ic-app-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:12px;}
+.ic-app{display:flex;flex-direction:column;align-items:center;gap:7px;padding:8px 4px;border:0;background:none;cursor:pointer;font:inherit;font-size:12px;font-weight:650;color:var(--ink-3);}
+.ic-app img{width:64px;height:64px;border-radius:16px;box-shadow:0 6px 16px -8px rgba(0,0,0,.5);transition:transform .25s var(--mola),box-shadow .25s;}
+.ic-app:hover img{transform:scale(1.06);}
+.ic-app.on{color:var(--ink);}
+.ic-app.on img{box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--acento);}

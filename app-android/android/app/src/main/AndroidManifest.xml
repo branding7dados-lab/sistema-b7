@@ -17,17 +17,114 @@
             android:launchMode="singleTask"
             android:exported="true">
 
+        </activity>
+
+        <!-- zzz165: o ícone do app é escolhido pela pessoa (Configurações).
+             Cada cor é um "apelido" da mesma tela; só um fica ligado. -->
+        <activity-alias
+            android:name=".IconePadrao"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/title_activity_main"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
 
-            <!-- atalhos ao segurar o ícone: Meu dia, Gravações, Teleprompter, Nova ideia -->
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
+        <activity-alias
+            android:name=".IconeNoite"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_noite"
+            android:roundIcon="@mipmap/ic_launcher_noite"
+            android:label="@string/title_activity_main"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
 
-        </activity>
+        <activity-alias
+            android:name=".IconeOceano"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_oceano"
+            android:roundIcon="@mipmap/ic_launcher_oceano"
+            android:label="@string/title_activity_main"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconeFloresta"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_floresta"
+            android:roundIcon="@mipmap/ic_launcher_floresta"
+            android:label="@string/title_activity_main"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconePorDoSol"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_pordosol"
+            android:roundIcon="@mipmap/ic_launcher_pordosol"
+            android:label="@string/title_activity_main"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconeRosa"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_rosa"
+            android:roundIcon="@mipmap/ic_launcher_rosa"
+            android:label="@string/title_activity_main"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconeDourado"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_dourado"
+            android:roundIcon="@mipmap/ic_launcher_dourado"
+            android:label="@string/title_activity_main"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
 
         <!-- notificações (Firebase): ícone branco do B7, cor e canal "Avisos do B7" -->
         <meta-data

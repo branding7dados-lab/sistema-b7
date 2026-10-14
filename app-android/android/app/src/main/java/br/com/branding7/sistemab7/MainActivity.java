@@ -76,6 +76,34 @@ import org.json.JSONObject;
  */
 public class MainActivity extends BridgeActivity {
 
+    /* zzz165: ícone escolhido pela pessoa — liga um apelido, desliga os outros */
+    static final String[] ICONES = { "Padrao", "Noite", "Oceano", "Floresta", "PorDoSol", "Rosa", "Dourado" };
+
+    boolean trocarIcone(String nome) {
+        boolean existe = false;
+        for (String n : ICONES) if (n.equals(nome)) existe = true;
+        if (!existe) return false;
+        android.content.pm.PackageManager pm = getPackageManager();
+        /* primeiro liga o novo, depois desliga os outros: nunca fica sem ícone */
+        pm.setComponentEnabledSetting(new android.content.ComponentName(this, getPackageName() + ".Icone" + nome),
+            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED, android.content.pm.PackageManager.DONT_KILL_APP);
+        for (String n : ICONES) {
+            if (n.equals(nome)) continue;
+            pm.setComponentEnabledSetting(new android.content.ComponentName(this, getPackageName() + ".Icone" + n),
+                android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED, android.content.pm.PackageManager.DONT_KILL_APP);
+        }
+        return true;
+    }
+
+    String iconeAtual() {
+        android.content.pm.PackageManager pm = getPackageManager();
+        for (String n : ICONES) {
+            int st = pm.getComponentEnabledSetting(new android.content.ComponentName(this, getPackageName() + ".Icone" + n));
+            if (st == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED) return n;
+        }
+        return "Padrao";
+    }
+
     static final String ORIGEM = "https://localhost";
     static final String RELEASES = "https://api.github.com/repos/branding7dados-lab/sistema-b7/releases/latest";
     static final String APK = "https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk";
@@ -361,6 +389,13 @@ public class MainActivity extends BridgeActivity {
                         break;
                     case "abrirFora":
                         ok = abrirFora(m.optString("url"));
+                        break;
+                    case "icone":
+                        ok = act.trocarIcone(m.optString("nome"));
+                        break;
+                    case "iconeAtual":
+                        extra.put("nome", act.iconeAtual());
+                        ok = true;
                         break;
                 }
             } catch (Exception e) {

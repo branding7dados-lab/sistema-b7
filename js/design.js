@@ -434,9 +434,30 @@ B7.Design = (function () {
 
     ligarArea(area);
     ligarThumbs(area);
+    ligarArrastar(area);
     area.classList.remove('ds-troca'); void area.offsetWidth; area.classList.add('ds-troca');
     const selOn = area.querySelector('.ds-movel-sel .on');
     if (selOn && selOn.scrollIntoView && ehMovel()) selOn.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }
+
+  /* zzz165: o quadro da equipe ganha arrastar (fluido, uma ou várias
+     peças) — igual ao de Edição de vídeo. O banco registra no histórico. */
+  function ligarArrastar(area) {
+    if (!ehEquipe() || !B7.Arrastar) return;
+    B7.Arrastar.ligar(area, {
+      cartao: '.ds-quadro .ds-card[data-peca]', coluna: '.ds-quadro .ds-col[data-status]', lista: '.ds-lista', rolo: '.ds-quadro',
+      id: el => el.dataset.peca, destino: col => col.dataset.status,
+      aoSoltar: async (ids, status) => {
+        await B7.DB.rpc('design_mover_status', { p_ids: ids, p_status: status });
+        ids.forEach(id => { const d = dados.find(x => x.id === id); if (d) d.status = status; });
+        B7.UI.toast(ids.length === 1 ? 'Movida para “' + rotuloStatus(status) + '”.' : ids.length + ' peças movidas para “' + rotuloStatus(status) + '”.');
+      },
+      contar: raiz => raiz.querySelectorAll('.ds-col[data-status]').forEach(col => {
+        const n = col.querySelectorAll('.ds-card[data-peca]').length, c = col.querySelector('.ds-cont');
+        if (c) c.textContent = n;
+        col.classList.toggle('vazia', !n);
+      })
+    });
   }
 
   /* =================================================================
@@ -3400,7 +3421,7 @@ B7.Design = (function () {
         '<div class="ds-versao-cab"><b>V' + String(v.numero).padStart(2, '0') + '</b>' +
         '<span class="ds-chip-v ' + esc(v.estado) + '">' + esc(ESTADOS[v.estado] || v.estado) + '</span>' +
         (v.via === 'externa' ? '<span class="ds-chip-via">Revisada por fora' + (v.canal_externo ? ' — ' + esc(v.canal_externo) : '') + '</span>' : '') +
-        '<small>' + esc(B7.UI.quando(v.enviada_em || v.created_at)) + '</small></div>' +
+        '<small>' + esc(B7.UI.dataHora(v.enviada_em || v.created_at)) + '</small></div>' +
         (v.observacao ? '<p class="ds-versao-obs">' + esc(v.observacao) + '</p>' : '') +
         (v.estado === 'aprovada_interna' && v.aprovada_em ? '<p class="ds-versao-ap">Aprovada em ' + esc(B7.UI.quando(v.aprovada_em)) + '</p>' : '') +
       '</div>').join('') + '</div>';
@@ -3444,6 +3465,7 @@ B7.Design = (function () {
     const por = e.ator_nome ? ' por ' + e.ator_nome : '';
     const T = {
       'design.criada': 'Peça criada' + por,
+      'design.movida': 'Movida de “' + rotuloStatus(p.de) + '” para “' + rotuloStatus(p.para) + '”' + por,
       'design.atribuida': 'Atribuída a ' + (p.designer_nome || 'um designer') + por,
       'design.demanda_assumida': (e.ator_nome || 'Um designer') + ' assumiu a peça',
       'design.versao_enviada': v + ' enviada para revisão' + por,
@@ -3482,7 +3504,7 @@ B7.Design = (function () {
       '<div class="ds-tl"><span class="ds-tl-pt"></span><div>' + esc(n.titulo || '') +
         (n.citacao ? '<p class="ds-tl-msg">“' + esc(n.citacao) + '”</p>' : '') +
         (n.nota ? '<p class="ds-tl-msg">' + esc(n.nota) + '</p>' : '') +
-        '<small>' + esc(B7.UI.quando(n.t)) + '</small></div></div>').join('') + '</div>';
+        '<small>' + esc(B7.UI.dataHora(n.t)) + '</small></div></div>').join('') + '</div>';
   }
 
   /* ---------------------------------------------------------- ligações */
