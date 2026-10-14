@@ -84,7 +84,7 @@ module.exports = function ligarWhatsApp(pegarJanela) {
       const n = m ? +m[1] : 0;
       if (n !== naoLidas) { naoLidas = n; avisarSite('b7:wa:naolidas', n); }
     });
-    wc.on('did-finish-load', mandarCfg);
+    wc.on('did-finish-load', () => { mandarCfg(); if (cfg.zoom) wc.setZoomFactor(cfg.zoom); });
     wc.on('render-process-gone', () => { setTimeout(() => { if (view) wc.reload(); }, 1500); });
     wc.loadURL(URL_WA);
     if (!cfg.usado) { cfg.usado = true; gravarCfg(); }
@@ -106,12 +106,19 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     view.setVisible(true);
     if (!visivel) { visivel = true; view.webContents.focus(); }
   }
-  function esconder() {
-    if (!view) return;
+  /* zzz173: antes de sumir, tira uma foto — o sistema põe a foto no lugar
+     enquanto o menu dele está aberto por cima (sem "buraco" na tela) */
+  async function esconder(comFoto) {
+    if (!view) return null;
+    let foto = null;
+    if (comFoto && visivel) {
+      try { const img = await view.webContents.capturePage(); if (!img.isEmpty()) foto = 'data:image/jpeg;base64,' + img.toJPEG(82).toString('base64'); } catch (e) {}
+    }
     visivel = false;
     view.setVisible(false);
     const j = pegarJanela();
     if (j && !j.isDestroyed()) j.webContents.focus();
+    return foto;
   }
 
   /* ------------------------------------- conversa com o preload */
@@ -157,7 +164,20 @@ module.exports = function ligarWhatsApp(pegarJanela) {
 
   /* ------------------------------------------- pedidos do sistema */
   ipcMain.handle('b7:wa:mostrar', (ev, r) => { mostrar(r); return true; });
-  ipcMain.handle('b7:wa:esconder', () => { esconder(); return true; });
+  ipcMain.handle('b7:wa:esconder', (ev, comFoto) => esconder(!!comFoto));
+  /* tamanho da letra do WhatsApp (guardado) */
+  ipcMain.handle('b7:wa:zoom', (ev, passo) => {
+    cfg.zoom = Math.max(0.7, Math.min(1.5, Math.round(((cfg.zoom || 1) + (passo > 0 ? 0.1 : -0.1)) * 10) / 10));
+    gravarCfg();
+    if (view) view.webContents.setZoomFactor(cfg.zoom);
+    return cfg.zoom;
+  });
+  /* desconectar: apaga o login do WhatsApp só deste programa */
+  ipcMain.handle('b7:wa:desconectar', async () => {
+    try { await session.fromPartition(PARTICAO).clearStorageData(); } catch (e) {}
+    if (view) view.webContents.loadURL(URL_WA);
+    return true;
+  });
   ipcMain.handle('b7:wa:recarregar', () => { if (view) view.webContents.reload(); return true; });
   ipcMain.handle('b7:wa:config', () => ({ nome: cfg.nome, assinatura: cfg.assinatura }));
   ipcMain.handle('b7:wa:definir-config', (ev, c) => {

@@ -24,3 +24,11 @@
 - `B7.Rota.titulo` recebe uma lista, e `B7.WhatsApp.abrir()` passava um texto. O `.join` quebrava antes de desenhar a tela, então o clique no menu "não fazia nada".
 - A conferência "tem algo por cima?" passou a ignorar elementos pequenos (o botão flutuante do assistente, os avisos). Antes, o botão no canto escondia o WhatsApp para sempre.
 - Testado no Electron com a tela real do sistema: a área é medida e a camada do WhatsApp é posta nela.
+
+## zzz172/173
+- zzz172: `abrir()` mostra o erro na tela. A leitura da configuração do programa espera no máximo 2 segundos. A tela não abria no PC do Kevin porque `D.config()` não respondia, e com o limite de 2 segundos ela passou a abrir.
+- zzz173:
+  - A detecção de "algo por cima" usa uma grade de 8×6 pontos. Os menus do topo ficavam cortados atrás do WhatsApp.
+  - Ao esconder, o programa tira uma foto do WhatsApp (`capturePage`) e o sistema mostra a foto no lugar enquanto o menu está aberto.
+  - Barra nova: chave da assinatura, nome editável, A−/A+ (zoom guardado), recarregar e desconectar (`clearStorageData` da sessão do WhatsApp).
+  - O zoom, a foto e o desconectar dependem do programa 1.0.16 ou mais novo.

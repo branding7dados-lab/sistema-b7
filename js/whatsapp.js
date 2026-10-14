@@ -47,7 +47,11 @@ B7.WhatsApp = (function () {
       b.textContent = naoLidas > 99 ? '99+' : naoLidas;
     });
   }
-  if (D && D.aoNaoLidas) D.aoNaoLidas(n => { naoLidas = +n || 0; pintarContagem(); });
+  if (D && D.aoNaoLidas) D.aoNaoLidas(n => {
+    naoLidas = +n || 0; pintarContagem();
+    const el = document.getElementById('wa-nl');
+    if (el) { el.hidden = !naoLidas; el.textContent = naoLidas + (naoLidas === 1 ? ' não lida' : ' não lidas'); }
+  });
   /* clicou no aviso de mensagem do WhatsApp: vem para a tela dele */
   if (D && D.aoIr) D.aoIr(() => { if (location.hash.indexOf('#/whatsapp') !== 0) location.hash = '#/whatsapp'; });
   /* o menu lateral é redesenhado às vezes: recoloca o número */
@@ -73,22 +77,46 @@ B7.WhatsApp = (function () {
     /* o programa pode demorar a responder: não espera mais que 2 s */
     const cfg = await Promise.race([D.config().catch(() => ({})), new Promise(r => setTimeout(() => r({}), 2000))]) || {};
     if (!cfg.nome) { cfg.nome = primeiroNome(); D.definirConfig({ nome: cfg.nome }); }
+    const extras = !!(D.zoom && D.desconectar);
     painel.innerHTML = '<div class="wa-tela">' +
       '<div class="wa-barra">' +
-        '<span class="wa-tit">' + icone + '<b>WhatsApp</b></span>' +
-        '<label class="wa-ass" title="Toda mensagem sai com o seu nome em negrito na primeira linha">' +
-          '<input type="checkbox" id="wa-ass"' + (cfg.assinatura !== false ? ' checked' : '') + '><span>Assinar como</span></label>' +
-        '<input class="campo wa-nome" id="wa-nome" maxlength="40" value="' + esc(cfg.nome || '') + '" placeholder="Seu nome" aria-label="Nome da assinatura">' +
-        '<span class="wa-prev" id="wa-prev"></span>' +
-        '<button type="button" class="b fina contorno" id="wa-recarregar" title="Recarregar o WhatsApp">Recarregar</button>' +
+        '<span class="wa-tit">' + icone + '<b>WhatsApp</b><i class="wa-nl" id="wa-nl"' + (naoLidas ? '' : ' hidden') + '>' + naoLidas + ' não lidas</i></span>' +
+        '<div class="wa-assin' + (cfg.assinatura !== false ? ' on' : '') + '" id="wa-assin">' +
+          '<button type="button" class="wa-chave" id="wa-ass" role="switch" aria-checked="' + (cfg.assinatura !== false) + '" title="Assinar as mensagens com o seu nome"><i></i></button>' +
+          '<span class="wa-assin-rot">Assinatura</span>' +
+          '<span class="wa-assin-ex"><b>*</b><input id="wa-nome" maxlength="40" value="' + esc(cfg.nome || '') + '" placeholder="Seu nome" aria-label="Nome da assinatura" size="8"><b>:*</b></span>' +
+          '<span class="wa-prev" id="wa-prev"></span>' +
+        '</div>' +
+        '<div class="wa-ferr">' +
+          (extras ? '<button type="button" class="wa-ic" id="wa-menos" title="Letra menor" aria-label="Letra menor">A−</button>' +
+                    '<button type="button" class="wa-ic" id="wa-mais" title="Letra maior" aria-label="Letra maior">A+</button>' : '') +
+          '<button type="button" class="wa-ic" id="wa-recarregar" title="Recarregar o WhatsApp" aria-label="Recarregar o WhatsApp">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/></svg></button>' +
+          (extras ? '<button type="button" class="wa-ic" id="wa-sair" title="Desconectar este WhatsApp do programa" aria-label="Desconectar">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14M10 16l-4-4 4-4M6 12h9"/></svg></button>' : '') +
+        '</div>' +
       '</div>' +
       '<div class="wa-area" id="wa-area"><div class="wa-espera">' + icone + '<b>WhatsApp</b><span>Carregando…</span></div></div>' +
     '</div>';
-    const cb = painel.querySelector('#wa-ass'), nome = painel.querySelector('#wa-nome'), prev = painel.querySelector('#wa-prev');
-    const previa = () => { prev.innerHTML = cb.checked && nome.value.trim() ? 'Sai assim: <b>' + esc(nome.value.trim()) + ':</b> sua mensagem…' : 'Sem assinatura'; };
-    const salvar = () => { D.definirConfig({ nome: nome.value.trim(), assinatura: cb.checked }); previa(); };
-    cb.onchange = salvar; nome.oninput = previa; nome.onchange = salvar;
+    const caixa = painel.querySelector('#wa-assin'), cb = painel.querySelector('#wa-ass'), nome = painel.querySelector('#wa-nome'), prev = painel.querySelector('#wa-prev');
+    const ligada = () => caixa.classList.contains('on');
+    const previa = () => {
+      nome.size = Math.max(4, Math.min(18, (nome.value || nome.placeholder).length));
+      prev.innerHTML = ligada() && nome.value.trim() ? 'sai como <b>' + esc(nome.value.trim()) + ':</b>' : 'desligada';
+    };
+    const salvar = () => { D.definirConfig({ nome: nome.value.trim(), assinatura: ligada() }); previa(); };
+    cb.onclick = () => { caixa.classList.toggle('on'); cb.setAttribute('aria-checked', String(ligada())); salvar(); };
+    nome.oninput = previa; nome.onchange = salvar;
+    nome.onkeydown = e => { if (e.key === 'Enter') { nome.blur(); salvar(); } };
     painel.querySelector('#wa-recarregar').onclick = () => D.recarregar && D.recarregar();
+    if (extras) {
+      painel.querySelector('#wa-menos').onclick = () => D.zoom(-1);
+      painel.querySelector('#wa-mais').onclick = () => D.zoom(+1);
+      painel.querySelector('#wa-sair').onclick = async () => {
+        const ok = await B7.UI.confirmar({ titulo: 'Desconectar o WhatsApp?', texto: 'O WhatsApp sai deste programa (as conversas continuam no celular). Para usar de novo, é só ler o QR Code.', rotulo: 'Desconectar', perigo: true });
+        if (ok) D.desconectar();
+      };
+    }
     previa();
     ligar();
     if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(desligar);
@@ -112,9 +140,14 @@ B7.WhatsApp = (function () {
   /* o espaço da tela → o programa. Se alguma coisa do sistema estiver por
      cima (janela, menu, assistente, conversas), esconde o WhatsApp até
      ela fechar. */
+  /* zzz173: confere uma GRADE de pontos (antes eram só o centro e os
+     cantos): os menus do topo (Criar, avisos, conta) caem só na faixa de
+     cima e passavam despercebidos — ficavam cortados atrás do WhatsApp */
   function coberta(area, r) {
-    const pts = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 12, r.top + 12], [r.right - 12, r.top + 12],
-                 [r.left + 12, r.bottom - 12], [r.right - 12, r.bottom - 12]];
+    const pts = [];
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 6; j++)
+      pts.push([r.left + 8 + (r.width - 16) * i / 7, r.top + 6 + (r.height - 12) * j / 5]);
+    const grandes = new Set();
     /* botão flutuante, aviso (toast) e dica pequena não contam: só o que é
        grande de verdade (janela, menu, painel) esconde o WhatsApp */
     return pts.some(([x, y]) => {
@@ -123,8 +156,9 @@ B7.WhatsApp = (function () {
       if (area.contains(el)) return false;
       let c = el;
       while (c && c !== document.body && !c.contains(area)) {
+        if (grandes.has(c)) return true;
         const b = c.getBoundingClientRect();
-        if (b.width >= 160 && b.height >= 120) return true;
+        if (b.width >= 140 && b.height >= 90) { grandes.add(c); return true; }
         c = c.parentElement;
       }
       return false;
@@ -141,12 +175,21 @@ B7.WhatsApp = (function () {
     const r = area.getBoundingClientRect();
     const fora = r.width < 60 || r.height < 60 || document.hidden;
     if (fora || coberta(area, r)) {
-      if (!escondido) { escondido = true; ultimoRet = ''; D.esconder(); }
+      if (!escondido) {
+        escondido = true; ultimoRet = '';
+        /* o programa devolve uma foto do WhatsApp: ela fica no lugar dele
+           enquanto o menu do sistema está aberto — nada de "buraco" */
+        Promise.resolve(D.esconder(!fora)).then(f => {
+          const a = document.getElementById('wa-area');
+          if (a && typeof f === 'string' && f.startsWith('data:image') && escondido) { a.style.backgroundImage = 'url("' + f + '")'; a.classList.add('com-foto'); }
+        }).catch(() => {});
+      }
       return;
     }
     const ret = [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)].join(',');
     if (ret === ultimoRet && !escondido) return;
     ultimoRet = ret; escondido = false;
+    setTimeout(() => { const a = document.getElementById('wa-area'); if (a && !escondido) { a.classList.remove('com-foto'); a.style.backgroundImage = ''; } }, 120);
     D.mostrar({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) });
   }
   function ligar() {
