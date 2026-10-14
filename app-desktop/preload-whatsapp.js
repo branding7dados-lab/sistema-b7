@@ -206,6 +206,99 @@ const ACOES = {
   }
 };
 
+
+/* ------------------------------------------ 3. LEITURA (zzz176)
+   Só LÊ o que já está na tela do WhatsApp — nada é clicado nem enviado:
+     • a lista de conversas (nome, última mensagem, se foi nossa, não
+       lidas, hora) → o sistema casa os grupos com os clientes e vê quem
+       está esperando resposta;
+     • a conversa aberta (nome e as últimas mensagens) → o cartão do
+       cliente ao lado e o "possível aprovação".
+   A lista do WhatsApp só tem na tela as conversas visíveis; "escanear"
+   rola a lista do começo ao fim uma vez para conhecer todos os grupos. */
+const HORA_RE = /^(\d{1,2}:\d{2}|ontem|yesterday|\d{1,2}\/\d{1,2}\/\d{2,4}|segunda-feira|terça-feira|quarta-feira|quinta-feira|sexta-feira|sábado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/i;
+const DIAS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+const DIAS_EN = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+function quandoDe(t) {
+  if (!t) return '';
+  const agora = new Date(), d = new Date(agora);
+  let m = /^(\d{1,2}):(\d{2})$/.exec(t);
+  if (m) { d.setHours(+m[1], +m[2], 0, 0); if (d - agora > 5 * 60000) d.setDate(d.getDate() - 1); return d.toISOString(); }
+  const tl = t.toLowerCase();
+  if (tl === 'ontem' || tl === 'yesterday') { d.setDate(d.getDate() - 1); d.setHours(12, 0, 0, 0); return d.toISOString(); }
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(t);
+  if (m) { const a = +m[3] < 100 ? 2000 + +m[3] : +m[3]; return new Date(a, +m[2] - 1, +m[1], 12).toISOString(); }
+  let i = DIAS.indexOf(tl); if (i < 0) i = DIAS_EN.indexOf(tl);
+  if (i >= 0) { let k = (d.getDay() - i + 7) % 7 || 7; d.setDate(d.getDate() - k); d.setHours(12, 0, 0, 0); return d.toISOString(); }
+  return '';
+}
+const linhasDaLista = () => { const p = qs('#pane-side'); return p ? qsa('[role="listitem"], [role="row"]', p).filter(r => qs('span[title]', r)) : []; };
+function lerLinha(r) {
+  const tit = qsa('span[title]', r);
+  if (!tit.length) return null;
+  const nome = (tit[0].getAttribute('title') || '').trim();
+  if (!nome) return null;
+  const previa = tit.length > 1 ? (tit[tit.length - 1].getAttribute('title') || '').trim() : '';
+  let autor = '';
+  if (previa) {
+    const tx = r.innerText || '', i = tx.lastIndexOf(previa.slice(0, 20));
+    const antes = i > 0 ? tx.slice(0, i).split('\n').pop() : '';
+    const m = /~?\s*([^:\n]{1,40}):\s*$/.exec(antes || '');
+    if (m) autor = m[1].trim();
+  }
+  const minha = !!r.querySelector('[data-icon^="status-"], [data-icon*="dblcheck"], [data-icon="msg-check"], [data-icon*="msg-time"], [data-icon="status-check"]');
+  let naoLidas = 0;
+  const badge = qsa('[aria-label]', r).find(e => /\d+\s*(mensage|unread|não lida|nao lida)/i.test(e.getAttribute('aria-label') || ''));
+  if (badge) { const m = /(\d+)/.exec(badge.getAttribute('aria-label')); naoLidas = m ? +m[1] : 0; }
+  const hora = qsa('div, span', r).filter(e => e.childElementCount === 0).map(e => (e.textContent || '').trim()).find(t => HORA_RE.test(t)) || '';
+  return { nome, previa, autor, minha, nao_lidas: naoLidas, ultima_em: quandoDe(hora) };
+}
+const lerLista = () => linhasDaLista().map(lerLinha).filter(Boolean);
+
+function lerConversa() {
+  const titulo = tituloDaConversa();
+  if (!titulo) return null;
+  const msgs = qsa('#main [data-pre-plain-text]').slice(-14).map(el => {
+    const pre = el.getAttribute('data-pre-plain-text') || '';
+    const m = /^\[([^\]]+)\]\s*([^:]*):/.exec(pre);
+    const caixa = el.closest('.message-out, .message-in');
+    return { de: m ? m[2].trim() : '', quando: m ? m[1] : '', minha: !!(caixa && caixa.classList.contains('message-out')),
+             texto: ((el.querySelector('.selectable-text') || el).innerText || '').trim().slice(0, 400) };
+  }).filter(x => x.texto);
+  return { titulo, msgs };
+}
+
+let ultimaLista = '', ultimaConversa = '', tLer = 0;
+function lerEMandar() {
+  clearTimeout(tLer);
+  tLer = setTimeout(() => {
+    try {
+      const l = lerLista(), jl = JSON.stringify(l);
+      if (l.length && jl !== ultimaLista) { ultimaLista = jl; ipcRenderer.send('b7wa:conversas', l); }
+      const c = lerConversa(), jc = JSON.stringify(c);
+      if (jc !== ultimaConversa) { ultimaConversa = jc; ipcRenderer.send('b7wa:conversa', c); }
+    } catch (e) {}
+  }, 1200);
+}
+new MutationObserver(lerEMandar).observe(document, { childList: true, subtree: true, characterData: true });
+setInterval(lerEMandar, 60000);   /* "há quanto tempo" muda mesmo sem mensagem nova */
+
+ACOES.escanear = async () => {
+  const p = qs('#pane-side');
+  if (!p) return { ok: false, motivo: 'O WhatsApp ainda não está conectado.' };
+  const rolo = [p].concat(qsa('*', p)).find(e => e.scrollHeight > e.clientHeight + 20 && /auto|scroll/.test(getComputedStyle(e).overflowY)) || p;
+  const antes = rolo.scrollTop, achados = new Map();
+  rolo.scrollTop = 0; await esperar(400);
+  for (let i = 0; i < 400; i++) {
+    lerLista().forEach(x => achados.set(x.nome, x));
+    if (rolo.scrollTop + rolo.clientHeight >= rolo.scrollHeight - 4) break;
+    rolo.scrollTop += Math.max(200, rolo.clientHeight * 0.8);
+    await esperar(260);
+  }
+  rolo.scrollTop = antes;
+  return { ok: true, lista: [...achados.values()] };
+};
+
 ipcRenderer.on('b7wa:fazer', async (ev, p) => {
   let r;
   try { r = await (ACOES[p.acao] ? ACOES[p.acao](p.dados || {}) : { ok: false, motivo: 'Pedido desconhecido.' }); }

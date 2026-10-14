@@ -85,6 +85,17 @@ module.exports = function ligarWhatsApp(pegarJanela) {
       if (n !== naoLidas) { naoLidas = n; avisarSite('b7:wa:naolidas', n); }
     });
     wc.on('did-finish-load', () => { mandarCfg(); if (cfg.zoom) wc.setZoomFactor(cfg.zoom); });
+    /* zzz176: um acabamento leve por cima do WhatsApp — barras de rolagem
+       finas e transições suaves; nada que mude como ele funciona */
+    wc.on('dom-ready', () => {
+      wc.insertCSS(`
+        ::-webkit-scrollbar{width:7px;height:7px;}
+        ::-webkit-scrollbar-track{background:transparent;}
+        ::-webkit-scrollbar-thumb{background:rgba(134,150,160,.32);border-radius:8px;}
+        ::-webkit-scrollbar-thumb:hover{background:rgba(134,150,160,.55);}
+        #pane-side [role="listitem"], #pane-side [role="row"]{transition:background-color .15s ease;}
+      `).catch(() => {});
+    });
     wc.on('render-process-gone', () => { setTimeout(() => { if (view) wc.reload(); }, 1500); });
     wc.loadURL(URL_WA);
     if (!cfg.usado) { cfg.usado = true; gravarCfg(); }
@@ -103,6 +114,8 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     criar(); prender();
     const z = j.webContents.getZoomFactor() || 1;
     view.setBounds({ x: Math.round(r.x * z), y: Math.round(r.y * z), width: Math.round(r.width * z), height: Math.round(r.height * z) });
+    /* zzz176: cantos arredondados, iguais aos cartões do sistema */
+    if (view.setBorderRadius) { try { view.setBorderRadius(Math.round((r.raio || 16) * z)); } catch (e) {} }
     view.setVisible(true);
     if (!visivel) { visivel = true; view.webContents.focus(); }
   }
@@ -135,6 +148,25 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     if (f) { respostas.delete(r.id); f(r); }
   });
   ipcMain.handle('b7wa:config', () => ({ nome: cfg.nome, assinatura: cfg.assinatura }));
+  /* zzz176: o que o preload LÊ do WhatsApp vai para o sistema */
+  let ultimaLista = [], ultimaConversa = null;
+  ipcMain.on('b7wa:conversas', (ev, l) => { if (Array.isArray(l)) { ultimaLista = l; avisarSite('b7:wa:conversas', l); } });
+  ipcMain.on('b7wa:conversa', (ev, c) => { ultimaConversa = c || null; avisarSite('b7:wa:conversa', ultimaConversa); });
+  ipcMain.handle('b7:wa:estado-leitura', () => ({ lista: ultimaLista, conversa: ultimaConversa }));
+  ipcMain.handle('b7:wa:escanear', async () => {
+    if (!view) return { ok: false, motivo: 'Abra o WhatsApp primeiro.' };
+    const p = await pedir('esperarPronto', {}, 20000);
+    if (!p.ok) return p;
+    return pedir('escanear', {}, 120000);
+  });
+  ipcMain.handle('b7:wa:abrir-grupo', async (ev, nome) => {
+    if (!view) return { ok: false };
+    const p = await pedir('esperarPronto', {}, 20000);
+    if (!p.ok) return p;
+    const r = await pedir('abrirGrupo', { nome });
+    if (r.ok) view.webContents.focus();
+    return r;
+  });
   /* clicou num aviso de mensagem: traz o programa e vai para a tela do WhatsApp */
   ipcMain.on('b7wa:clique', () => {
     const j = pegarJanela();
