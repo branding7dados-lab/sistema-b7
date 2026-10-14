@@ -87,6 +87,13 @@ jobs:
               --notes "Instalador do Sistema B7 para Windows. Sempre o mais novo: o programa instalado se atualiza sozinho por esta release."
           gh release upload app-desktop \
             "$B7_EXE" dist/latest.yml dist/sistema-b7-instalador.exe --clobber
+          # zzz161: cada publicação deixava mais um instalador de 78 MB na
+          # release. Fica só o desta versão (o latest.yml aponta para ele) e
+          # o sistema-b7-instalador.exe, que é o link fixo.
+          atual=$(basename "$B7_EXE")
+          gh release view app-desktop --json assets --jq '.assets[].name' \
+            | grep -E '^sistema-b7-setup-.*\.exe$' | grep -v "^$atual$" \
+            | while read -r a; do gh release delete-asset app-desktop "$a" --yes || true; done
           gh release edit app-desktop --latest=false \
             --notes "Sistema B7 para Windows — programa $B7_VERSAO_EXE (sistema $B7_VERSAO_SITE).
 
