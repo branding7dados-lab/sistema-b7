@@ -25,6 +25,13 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz170', versao: 'zzz170', em: '2026-10-15T01:00:00-03:00',
+    titulo: 'WhatsApp dentro do B7',
+    itens: ['Novo item “WhatsApp” no menu: no programa de Windows, o WhatsApp abre dentro do sistema (leia o QR Code uma vez) e continua recebendo mensagens enquanto você usa as outras telas.',
+            'Assinatura: suas mensagens saem com o seu nome em negrito na primeira linha. Liga, desliga e muda o nome no topo da tela do WhatsApp.',
+            'Na demanda de vídeo, “Enviar no WhatsApp”: escolha o vídeo, e o sistema abre o grupo do cliente com o vídeo como documento e a mensagem pronta — você confere e aperta enviar.',
+            'Na gravação marcada, “Avisar no WhatsApp” manda dia, hora e local para o grupo do cliente.',
+            'Em Editar cliente, novo campo “Grupo do WhatsApp” (o nome do grupo como aparece no WhatsApp).'] },
   { id: 'v-zzz169', versao: 'zzz169', em: '2026-10-14T23:50:00-03:00',
     titulo: 'Assistente, Conversas e cores de cara nova',
     itens: ['Assistente: escolher cliente com busca (os últimos usados aparecem primeiro), histórico com busca e separado por dia, botão de copiar a resposta e “Tentar de novo”.',

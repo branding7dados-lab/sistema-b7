@@ -34,6 +34,7 @@ B7.Nav = (function () {
       "gravacoes": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"3.5\" y=\"4.5\" width=\"17\" height=\"15.5\" rx=\"3.2\"/><path class=\"d\" d=\"M3.5 9.6h17M8.4 4.8L6.8 9.4M13.2 4.8l-1.6 4.6M18 4.8l-1.6 4.6\"/></svg>",
       "calendario": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"3.5\" y=\"4.5\" width=\"17\" height=\"16\" rx=\"3.6\"/><path class=\"d\" d=\"M3.5 9.5h17M8 13.6h.01M12 13.6h.01M16 13.6h.01M8 17h.01M12 17h.01\"/><path class=\"o\" d=\"M8 2.8v3M16 2.8v3\"/></svg>",
       "oportunidades": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M10 4.6l1.6 4.3a1.5 1.5 0 0 0 .9.9l4.3 1.6-4.3 1.6a1.5 1.5 0 0 0-.9.9L10 18.2l-1.6-4.3a1.5 1.5 0 0 0-.9-.9l-4.3-1.6 4.3-1.6a1.5 1.5 0 0 0 .9-.9z\"/><path class=\"f\" d=\"M18.2 14.6l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7zM18.6 3.6l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z\"/></svg>",
+      "whatsapp": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M4.2 19.8l1.1-3.9A8.2 8.2 0 1 1 8.4 19z\"/><path class=\"d\" d=\"M9.4 9c.4 2.4 2.3 4.6 5.4 5.7\"/></svg>",
       "trends": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M3.5 16.5l5-5.2 3.6 3.4 7.4-7.7\"/><path class=\"d\" d=\"M14.5 7h5v5\"/></svg>",
       "roteiros": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M7 3.5h6.1a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V18a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 18V6A2.5 2.5 0 0 1 7 3.5z\"/><path class=\"d\" d=\"M8.5 12.6h7M8.5 16.2h4.5\"/></svg>",
       "linhas": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"3.5\" y=\"4.5\" width=\"17\" height=\"15\" rx=\"3.6\"/><path class=\"d\" d=\"M7.6 9.6h.01M7.6 14.4h.01M11 9.6h5.5M11 14.4h5.5\"/></svg>",
@@ -73,6 +74,9 @@ B7.Nav = (function () {
     gravacoes:   { rota: '#/gravacoes', rotulo: 'Gravações', curto: 'Gravações', base: ['gravacoes', 'gravacao', 'diaria'], pode: () => pode('gravacoes') },
     calendario:  { rota: '#/calendario', rotulo: 'Calendário', curto: 'Calendário', id: 'nav-calendario', base: ['calendario'], pode: () => pode('calendario') },
     oportunidades: { rota: '#/oportunidades', rotulo: 'Oportunidades', curto: 'Oportunidades', id: 'nav-oportunidades', base: ['oportunidades'], pode: () => pode('oportunidades') },
+    /* zzz170: WhatsApp dentro do sistema (js/whatsapp.js) — só equipe */
+    whatsapp:    { rota: '#/whatsapp', rotulo: 'WhatsApp', curto: 'WhatsApp', id: 'nav-whatsapp', base: ['whatsapp'],
+                   pode: () => !!(B7.Auth && B7.Auth.usuario() && !B7.Auth.ehCliente()) && pode('whatsapp') },
     trends:      { rota: '#/trends', rotulo: 'Trends', curto: 'Trends', id: 'nav-trends', base: ['trends'], pode: () => pode('trends') },
     roteiros:    { rota: '#/roteiros', rotulo: 'Roteiros', curto: 'Roteiros', base: ['roteiros'], pode: () => pode('roteiros') },
     linhas:      { rota: '#/linhas', rotulo: 'Linhas editoriais', curto: 'Linhas', base: ['linhas', 'linha'], pode: () => pode('linhas') },
@@ -136,7 +140,7 @@ B7.Nav = (function () {
        trabalho dele) e quem não tem Painel (aí o Panorama é a casa). */
     const temPainel = permitido('painel');
     const centralEhCasa = papel() === 'designer' || !temPainel;
-    const principal = (centralEhCasa ? ['painel', 'central'] : ['painel']).filter(permitido);
+    const principal = (centralEhCasa ? ['painel', 'central', 'whatsapp'] : ['painel', 'whatsapp']).filter(permitido);
     const usados = new Set(principal);
     const trabalho = intercalar(funcoes.map(f => MEU_TRABALHO[f] || [])).filter(id => permitido(id) && !usados.has(id));
     trabalho.forEach(id => usados.add(id));

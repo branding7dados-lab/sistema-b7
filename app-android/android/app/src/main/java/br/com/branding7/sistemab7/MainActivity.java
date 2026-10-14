@@ -104,6 +104,41 @@ public class MainActivity extends BridgeActivity {
         return "Padrao";
     }
 
+    /* zzz170: "Enviar no WhatsApp" — escolhe o vídeo e manda para o
+       WhatsApp como DOCUMENTO (tipo genérico: o WhatsApp não recomprime),
+       com a mensagem de legenda. A pessoa escolhe o grupo e envia. */
+    String waTexto = null;
+    final androidx.activity.result.ActivityResultLauncher<String[]> escolherVideo =
+        registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.OpenDocument(), uri -> {
+            String t = waTexto;
+            waTexto = null;
+            if (uri != null) compartilharWhats(t, uri);
+        });
+
+    void compartilharWhats(String texto, Uri arquivo) {
+        Intent i = new Intent(Intent.ACTION_SEND);
+        if (arquivo != null) {
+            i.setType("application/octet-stream");
+            i.putExtra(Intent.EXTRA_STREAM, arquivo);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } else {
+            i.setType("text/plain");
+        }
+        if (texto != null && !texto.isEmpty()) i.putExtra(Intent.EXTRA_TEXT, texto);
+        /* um WhatsApp só instalado: vai direto; os dois (normal e Business): pergunta */
+        String alvo = null;
+        int quantos = 0;
+        for (String pkg : new String[] { "com.whatsapp.w4b", "com.whatsapp" }) {
+            if (getPackageManager().getLaunchIntentForPackage(pkg) != null) { quantos++; if (alvo == null) alvo = pkg; }
+        }
+        try {
+            if (quantos == 1) { i.setPackage(alvo); startActivity(i); }
+            else startActivity(Intent.createChooser(i, "Enviar no WhatsApp"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Não encontrei o WhatsApp neste celular.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     static final String ORIGEM = "https://localhost";
     static final String RELEASES = "https://api.github.com/repos/branding7dados-lab/sistema-b7/releases/latest";
     static final String APK = "https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk";
@@ -393,6 +428,21 @@ public class MainActivity extends BridgeActivity {
                     case "icone":
                         ok = act.trocarIcone(m.optString("nome"));
                         break;
+                    case "whatsCompartilhar": {
+                        String texto = m.optString("texto");
+                        boolean comArquivo = m.optBoolean("arquivo");
+                        act.runOnUiThread(() -> {
+                            if (comArquivo) {
+                                act.waTexto = texto;
+                                try { act.escolherVideo.launch(new String[] { "video/*", "*/*" }); }
+                                catch (Exception e) { act.waTexto = null; act.compartilharWhats(texto, null); }
+                            } else {
+                                act.compartilharWhats(texto, null);
+                            }
+                        });
+                        ok = true;
+                        break;
+                    }
                     case "iconeAtual":
                         extra.put("nome", act.iconeAtual());
                         ok = true;

@@ -20,6 +20,7 @@ const { app, BrowserWindow, shell, dialog, Menu, screen, session, ipcMain, Notif
 const { autoUpdater } = require('electron-updater');
 const path = require('node:path');
 const fs = require('node:fs');
+const ligarWhatsApp = require('./whatsapp');   /* zzz170: WhatsApp dentro do programa */
 
 const SITE = 'https://branding7dados-lab.github.io/sistema-b7/';
 const ORIGEM = new URL(SITE).origin;
@@ -29,6 +30,7 @@ const FUNDO = '#05030A';            /* o céu da abertura: nada de piscar branco
 if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 
 let janela = null;
+const whats = ligarWhatsApp(() => janela);
 
 /* ------------------------------------------------- lugar da janela */
 const arquivoJanela = () => path.join(app.getPath('userData'), 'janela.json');
@@ -87,7 +89,8 @@ function criarJanela() {
 
   janela.once('ready-to-show', () => janela.show());
   ['resize', 'move', 'close'].forEach(ev => janela.on(ev, guardarJanela));
-  janela.on('closed', () => { janela = null; });
+  janela.on('closed', () => { janela = null; whats.aoFecharJanela(); });
+  janela.webContents.once('did-finish-load', () => whats.aoAbrirJanela());
 
   /* link de fora (ajuda, release, site de cliente) abre no navegador */
   janela.webContents.setWindowOpenHandler(({ url }) => {

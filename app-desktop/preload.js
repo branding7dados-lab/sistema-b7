@@ -11,5 +11,17 @@ contextBridge.exposeInMainWorld('B7Desktop', {
   /* zzz169: estado da atualização do programa ({estado:'nada'|'baixando'|'pronta', versao, pct}) */
   estadoAtualizacao: () => ipcRenderer.invoke('b7:estado-atualizacao'),
   aoAtualizacao: cb => { ipcRenderer.on('b7:atualizacao', (ev, e) => { try { cb(e); } catch (x) {} }); },
-  instalarAtualizacao: () => ipcRenderer.invoke('b7:instalar')
+  instalarAtualizacao: () => ipcRenderer.invoke('b7:instalar'),
+  /* zzz170: WhatsApp encaixado na tela #/whatsapp (app-desktop/whatsapp.js) */
+  wa: {
+    mostrar: r => ipcRenderer.invoke('b7:wa:mostrar', r),
+    esconder: () => ipcRenderer.invoke('b7:wa:esconder'),
+    recarregar: () => ipcRenderer.invoke('b7:wa:recarregar'),
+    config: () => ipcRenderer.invoke('b7:wa:config'),
+    definirConfig: c => ipcRenderer.invoke('b7:wa:definir-config', c),
+    escolherArquivo: o => ipcRenderer.invoke('b7:wa:escolher-arquivo', o),
+    enviar: d => ipcRenderer.invoke('b7:wa:enviar', d),
+    aoNaoLidas: cb => { ipcRenderer.on('b7:wa:naolidas', (ev, n) => { try { cb(n); } catch (x) {} }); },
+    aoIr: cb => { ipcRenderer.on('b7:wa:ir', () => { try { cb(); } catch (x) {} }); }
+  }
 });

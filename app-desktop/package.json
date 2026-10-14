@@ -26,6 +26,8 @@
     "files": [
       "main.js",
       "preload.js",
+      "whatsapp.js",
+      "preload-whatsapp.js",
       "offline.html",
       "recursos/icone.ico",
       "node_modules/**/*",
