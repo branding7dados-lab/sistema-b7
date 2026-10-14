@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz164', versao: 'zzz164', em: '2026-10-14T21:00:00-03:00', rota: 'trends',
+    titulo: 'Trends: guarde e transforme em roteiro',
+    itens: ['Viu uma trend boa? No menu, “Trends” → “Nova trend”: cole o link e dê um nome.',
+            '“Usar para um cliente” cria o roteiro numa gravação dele, já com a referência, e abre o editor.',
+            'Cada cliente agora diz como trabalhamos com ele: linha editorial, por semana ou só roteiros — e a tela dele mostra só o que usa.'] },
   { id: 'v-zzz163', versao: 'zzz163', em: '2026-10-14T18:00:00-03:00',
     titulo: 'Escolha a cor do seu B7',
     itens: ['Em Configurações → Aparência, toque numa bolinha e o B7 inteiro troca de cor na hora — só para você.',
