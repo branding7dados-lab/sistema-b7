@@ -14,8 +14,12 @@
      • com uma janela aberta, campo em foco (digitando) ou arrastando um
        cartão, espera — e atualiza assim que a pessoa terminar;
      • com a aba escondida, guarda e atualiza ao voltar;
-     • logo depois de a própria pessoa mexer (2,5 s), espera — a mudança
-       provavelmente é dela e a tela dela já mostra.
+     • logo depois de a própria pessoa clicar ou digitar (1 s), espera — a
+       mudança provavelmente é dela e a tela dela já mostra.
+   zzz169 — mais rápido: atualiza ~0,3 s depois da mudança (era 0,9 s +
+   2,5 s de espera a cada rolagem/toque); rolar a tela não segura mais a
+   atualização (a rolagem é mantida); se a ligação cair (Wi-Fi, PC que
+   dormiu, aba parada), reconecta sozinho e atualiza a tela na volta.
    Telas com tempo real próprio (Design, Produção, Aprovações,
    Calendário, Conversas) ficam de fora para não atualizar duas vezes.
    ===================================================================== */
@@ -39,13 +43,13 @@ B7.TempoReal = (function () {
     trends: ['trends'],
     tv: ['demandas_edicao', 'design_deliverables', 'gravacoes', 'conteudos']
   };
-  let canal = null, pendente = false, relogio = 0, ultimaMexida = 0, arrastando = false;
+  let canal = null, pendente = false, relogio = 0, ultimaMexida = 0, arrastando = false, caiu = false, tReconectar = 0, escondidaEm = 0;
 
   const rotaAtual = () => (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0] || '');
   const podeAtualizar = () => {
     if (document.hidden) return false;
     if (arrastando) return false;
-    if (Date.now() - ultimaMexida < 2500) return false;
+    if (Date.now() - ultimaMexida < 1000) return false;
     if (document.querySelector('.fundo-modal, .hj-tela, .b7-abertura, body.tele-aberto')) return false;
     const a = document.activeElement;
     if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && a.closest('#painel-dashboard')) return false;
@@ -55,7 +59,7 @@ B7.TempoReal = (function () {
 
   function atualizar() {
     if (!pendente) return;
-    if (!podeAtualizar()) { agendar(1500); return; }
+    if (!podeAtualizar()) { agendar(500); return; }
     pendente = false;
     /* guarda a rolagem de quem rola (a página ou o painel) */
     const rolagens = [];
@@ -74,22 +78,48 @@ B7.TempoReal = (function () {
     const r = rotaAtual(), dep = DEPENDE[r];
     if (!dep || !dep.includes(p.table)) return;
     pendente = true;
-    agendar(900);   /* várias mudanças juntas viram uma atualização só */
+    agendar(300);   /* várias mudanças juntas viram uma atualização só */
   }
 
   function ligar() {
     if (canal || !B7.DB || !B7.DB.canal) return;
     const u = B7.Auth && B7.Auth.usuario && B7.Auth.usuario();
     if (!u || u.papel === 'cliente') return;
-    canal = B7.DB.canal('b7-tempo-real-' + u.id, TABELAS.map(t => ({ table: t })), aoMudar);
+    let meu = null;
+    meu = canal = B7.DB.canal('b7-tempo-real-' + u.id, TABELAS.map(t => ({ table: t })), aoMudar, st => aoEstado(st, meu));
   }
-  function desligar() { if (canal) { B7.DB.fecharCanal(canal); canal = null; } }
+  /* a ligação caiu: reconecta e, ao voltar, atualiza a tela (pode ter
+     perdido alguma mudança enquanto estava fora) */
+  function aoEstado(st, deQuem) {
+    if (!deQuem || deQuem !== canal) return;     /* aviso de um canal antigo, já trocado */
+    if (st === 'SUBSCRIBED') {
+      if (caiu) { caiu = false; recarregarTela(); }
+      return;
+    }
+    if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') {
+      caiu = true;
+      clearTimeout(tReconectar);
+      tReconectar = setTimeout(() => { desligar(); ligar(); caiu = true; }, 3000);
+    }
+  }
+  function recarregarTela() {
+    if (!DEPENDE[rotaAtual()]) return;
+    pendente = true; agendar(200);
+  }
+  function desligar() { if (canal) { const c = canal; canal = null; B7.DB.fecharCanal(c); } }
 
   /* o que conta como "a pessoa está mexendo" */
-  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, () => { ultimaMexida = Date.now(); }, { passive: true, capture: true }));
+  ['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => { ultimaMexida = Date.now(); }, { passive: true, capture: true }));
   addEventListener('dragstart', () => { arrastando = true; }, true);
   addEventListener('dragend', () => { arrastando = false; ultimaMexida = Date.now(); }, true);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && pendente) agendar(400); });
+  /* aba escondida por mais de 1 min: o navegador pode ter parado a ligação
+     — ao voltar, atualiza do mesmo jeito */
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { escondidaEm = Date.now(); return; }
+    if (escondidaEm && Date.now() - escondidaEm > 60000) recarregarTela();
+    else if (pendente) agendar(150);
+  });
+  addEventListener('online', () => { if (canal) { desligar(); ligar(); } recarregarTela(); });
   /* ao trocar de tela, o que estava pendente para a tela anterior não vale */
   addEventListener('hashchange', () => { pendente = false; clearTimeout(relogio); });
 

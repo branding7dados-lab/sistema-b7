@@ -156,6 +156,16 @@ function ligarSessao() {
    pergunta antes de instalar — nada fecha sozinho no meio do trabalho. */
 let avisando = false, pedidoDaPessoa = false;
 
+/* zzz169: o SITE também fica sabendo da atualização do programa e mostra
+   um selo no topo ("Atualização do programa · baixando 40%" → "Instalar
+   agora"). Antes só aparecia uma caixa quando o download acabava — e se
+   a pessoa não visse, ficava sem saber que havia versão nova. */
+let estadoAtualizacao = { estado: 'nada' };
+function contarAoSite(e) {
+  estadoAtualizacao = e;
+  if (janela && !janela.isDestroyed()) { try { janela.webContents.send('b7:atualizacao', e); } catch (x) {} }
+}
+
 /* zzz162: os avisos eram injetados na página (B7.UI.toast). No programa
    eles saíam brancos e sem texto — a página não é nossa para mexer assim.
    Agora o programa fala pelos meios do Windows: caixa de diálogo quando a
@@ -182,7 +192,12 @@ function ligarAtualizacao() {
      Antes o programa conferia calado: sem versão nova, sem erro, sem nada —
      e parecia que o botão não funcionava. */
   autoUpdater.on('update-available', info => {
-    if (!pedidoDaPessoa) return;
+    const v = info && info.version ? info.version : '';
+    contarAoSite({ estado: 'baixando', versao: v, pct: 0 });
+    if (!pedidoDaPessoa) {
+      avisoDoSistema('Versão nova do programa (' + (v || 'nova') + ') encontrada. Baixando em segundo plano — eu aviso quando puder instalar.');
+      return;
+    }
     caixa('Versão ' + (info && info.version ? info.version : 'nova') + ' encontrada',
           'Estou baixando agora (uns 78 MB). Quando terminar, pergunto se pode instalar. Pode continuar usando.');
   });
@@ -192,12 +207,16 @@ function ligarAtualizacao() {
     caixa('Tudo em dia', 'Você já está na versão mais nova do programa (' + app.getVersion() + ').');
   });
   autoUpdater.on('download-progress', p => {
+    const pct = Math.round(p && p.percent ? p.percent : 0);
+    if (estadoAtualizacao.estado === 'baixando' && pct !== estadoAtualizacao.pct) contarAoSite({ ...estadoAtualizacao, pct });
     if (!pedidoDaPessoa || !janela || janela.isDestroyed()) return;
     janela.setProgressBar(Math.max(0, Math.min(1, (p && p.percent ? p.percent : 0) / 100)));
   });
   autoUpdater.on('update-downloaded', async info => {
     pedidoDaPessoa = false;
     if (janela && !janela.isDestroyed()) janela.setProgressBar(-1);
+    contarAoSite({ estado: 'pronta', versao: info && info.version ? info.version : '' });
+    avisoDoSistema('Atualização do Sistema B7 pronta. Clique para instalar agora.', () => instalarAgora());
     if (avisando || !janela || janela.isDestroyed()) return;
     avisando = true;
     const r = await dialog.showMessageBox(janela, {
@@ -216,13 +235,26 @@ function ligarAtualizacao() {
   });
   autoUpdater.on('error', e => {
     if (janela && !janela.isDestroyed()) janela.setProgressBar(-1);
+    if (estadoAtualizacao.estado === 'baixando') contarAoSite({ estado: 'nada' });
     if (!pedidoDaPessoa) return;               /* sozinho: tenta de novo depois, calado */
     pedidoDaPessoa = false;
     caixa('Não deu para conferir agora', ((e && e.message) || 'Sem resposta do servidor') +
           '.\n\nConfira a internet e tente de novo.', true);
   });
   setTimeout(() => conferir(false), 12000);
-  setInterval(() => conferir(false), 2 * 60 * 60 * 1000);
+  /* zzz169: confere de 30 em 30 min e ao voltar para a janela (no máximo
+     a cada 10 min) — antes eram 2 horas, e a versão nova demorava a aparecer */
+  setInterval(() => conferir(false), 30 * 60 * 1000);
+  let ultimaConferida = Date.now();
+  app.on('browser-window-focus', () => {
+    if (Date.now() - ultimaConferida < 10 * 60 * 1000) return;
+    ultimaConferida = Date.now(); conferir(false);
+  });
+}
+function instalarAgora() {
+  if (estadoAtualizacao.estado !== 'pronta') return false;
+  setImmediate(() => autoUpdater.quitAndInstall(false, true));
+  return true;
 }
 
 /* manual = true quando veio do menu Ajuda ou das Configurações */
@@ -274,6 +306,8 @@ function montarMenu() {
 ipcMain.handle('b7:versao', () => app.getVersion());
 ipcMain.handle('b7:pasta', () => { shell.openPath(app.getPath('downloads')); return true; });
 ipcMain.handle('b7:atualizar', () => conferir(true));
+ipcMain.handle('b7:estado-atualizacao', () => estadoAtualizacao);
+ipcMain.handle('b7:instalar', () => instalarAgora());
 
 /* ------------------------------------------------------- arranque */
 app.setAppUserModelId('br.com.branding7.sistemab7');

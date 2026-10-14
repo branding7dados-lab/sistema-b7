@@ -578,3 +578,12 @@ html.sem-animacao :is(.ad-bar u,.ap-troca-tr i,.cm-leu){transition:none !importa
 @media (max-width:760px){ .nv-topo span{display:none;} .nv-topo{padding:0 5px 0 8px;margin-right:2px;} }
 @media (prefers-reduced-motion:reduce){ .nv-topo,.nv-topo svg{animation:none;} }
 body.em-manutencao .nv-topo,body.modo-tv .nv-topo{display:none !important;}
+
+/* zzz169: selo de atualização do programa de Windows (js/atualizacao-pc.js) */
+.att-pc{padding:0 12px 0 10px;}
+.att-pc svg{width:17px;height:17px;fill:none;animation:none;}
+.att-pc.pronta{background:var(--acento);color:#fff;border-color:transparent;animation:attPc 2.4s ease-in-out infinite;}
+.att-pc.pronta:hover{background:color-mix(in srgb,var(--acento) 85%,#000);}
+@keyframes attPc{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acento) 45%,transparent);}50%{box-shadow:0 0 0 6px transparent;}}
+@media (max-width:720px){ .att-pc span{display:none;} .att-pc{padding:0 9px;} }
+@media (prefers-reduced-motion: reduce){ .att-pc.pronta{animation:none;} }
