@@ -51,13 +51,46 @@ B7.Export = (function () {
 
   function limpar(area) { area.innerHTML = ''; area.style.display = ''; }
 
+  /* zzz166: imagem de outro endereço (a logo do cliente no Storage) que o
+     navegador já tinha guardado sem permissão de cópia "contamina" o
+     desenho, e aí gerar o PDF/PNG falha. Antes de desenhar, cada imagem
+     vira uma cópia local (data:), buscada de novo com permissão; se não
+     der, ela sai da folha — o arquivo sai sem a logo, mas sai. */
+  const copiaLocal = {};
+  async function prepararImagens(folha) {
+    const imgs = [...folha.querySelectorAll('img')].filter(i => i.src && !/^data:/.test(i.src) && new URL(i.src, location.href).origin !== location.origin);
+    await Promise.all(imgs.map(async img => {
+      const url = img.src;
+      try {
+        if (!copiaLocal[url]) {
+          const r = await fetch(url, { mode: 'cors', cache: 'no-store', credentials: 'omit' });
+          if (!r.ok) throw new Error('imagem ' + r.status);
+          const b = await r.blob();
+          copiaLocal[url] = await new Promise((ok, erro) => { const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = erro; f.readAsDataURL(b); });
+        }
+        img.src = copiaLocal[url];
+        if (img.decode) await img.decode().catch(() => {});
+      } catch (e) { img.remove(); }
+    }));
+  }
   async function paraCanvas(folha) {
     await B7.vendor('html2canvas');
+    await prepararImagens(folha);
     /* escala 3 ≈ 300dpi numa A4; fundo branco fixo, nunca o tema */
-    return html2canvas(folha, {
-      scale: 3, backgroundColor: '#ffffff', useCORS: true, logging: false,
+    const desenhar = escala => html2canvas(folha, {
+      scale: escala, backgroundColor: '#ffffff', useCORS: true, logging: false,
       windowWidth: folha.offsetWidth, windowHeight: folha.offsetHeight
     });
+    let c = await desenhar(3);
+    /* canvas grande demais para a memória do aparelho volta vazio: tenta menor */
+    if (!c || !c.width) c = await desenhar(2);
+    try { c.getContext('2d').getImageData(0, 0, 1, 1); }
+    catch (e) {
+      /* ainda contaminado: tira todas as imagens de fora e desenha de novo */
+      folha.querySelectorAll('img').forEach(i => { if (!/^data:/.test(i.src) && new URL(i.src, location.href).origin !== location.origin) i.remove(); });
+      c = await desenhar(3);
+    }
+    return c;
   }
 
   function baixarBlob(blob, nome) {
@@ -244,7 +277,9 @@ B7.Export = (function () {
         setTimeout(() => m.fechar(), 900);
       } catch (e) {
         console.error(e);
-        estado.innerHTML = '<div><b>Não foi possível gerar o arquivo.</b><span>tente de novo</span></div>';
+        /* zzz166: o motivo de verdade aparece, para dar para corrigir */
+        const motivo = String((e && e.message) || e || '').slice(0, 160);
+        estado.innerHTML = '<div><b>Não foi possível gerar o arquivo.</b><span>' + B7.UI.esc(motivo || 'tente de novo') + '</span></div>';
         B7.UI.toast('Não foi possível gerar o arquivo.', { tipo: 'erro' });
         texto.textContent = 'Baixar';
         botao.disabled = false;

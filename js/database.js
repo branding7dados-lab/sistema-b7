@@ -2516,6 +2516,11 @@ B7.DB = (function () {
         if (ids.length) extras = ok(await sb().from('perfis').select('id,nome,avatar_url,estado')
           .in('id', ids).eq('estado', 'ativa'));
       } catch (e) { extras = []; }
+      /* zzz166: cargo adicional de Designer (perfis.funcoes_adicionais) */
+      try {
+        const ad = await sb().from('perfis').select('id,nome,avatar_url,estado').contains('funcoes_adicionais', ['designer']).eq('estado', 'ativa');
+        ((ad && ad.data) || []).forEach(p => { if (!porPapel.some(x => x.id === p.id) && !extras.some(x => x.id === p.id)) extras.push(p); });
+      } catch (e) {}
       return porPapel.concat(extras).sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
     },
 

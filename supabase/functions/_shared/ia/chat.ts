@@ -223,9 +223,12 @@ async function focoDoCliente(sb: SupabaseClient, clienteId: string | null): Prom
     const c = (cli.data || {}) as Record<string, unknown>;
     linhas.push('', 'CLIENTE EM FOCO: ' + corta(c.nome, 60) + (c.servico ? ' (serviço: ' + corta(c.servico, 30) + ')' : '') + '.');
     /* zzz164: como a B7 trabalha com ele — não sugira linha editorial a quem não usa */
-    const MODO: Record<string, string> = { linha: 'com linha editorial mensal', semana: 'conteúdo montado semana a semana, SEM linha editorial',
-      roteiros: 'a B7 faz só roteiros e gravações (e trends), SEM linha editorial nem planejamento' };
-    if (c.modo && MODO[String(c.modo)]) linhas.push('Como a B7 trabalha com este cliente: ' + MODO[String(c.modo)] + '.');
+    /* zzz166: as formas somam ("linha,roteiros") */
+    const MODO: Record<string, string> = { linha: 'linha editorial mensal', semana: 'pauta montada semana a semana (status semanal)',
+      roteiros: 'roteiros, gravações e trends' };
+    const modos = String(c.modo || 'linha').split(',').filter(m => MODO[m]);
+    if (modos.length) linhas.push('Como a B7 trabalha com este cliente: ' + modos.map(m => MODO[m]).join(' + ') + '.' +
+      (modos.includes('linha') ? '' : ' Este cliente NÃO tem linha editorial — não sugira criar uma.'));
     const i = (intel.data || {}) as Record<string, unknown>;
     const campos: [string, string, number][] = [['nicho', 'Nicho', 120], ['descricao', 'Sobre', 400], ['publico_principal', 'Público', 300],
       ['publico_dores', 'Dores do público', 300], ['publico_desejos', 'Desejos do público', 300], ['publico_objecoes', 'Objeções', 250],

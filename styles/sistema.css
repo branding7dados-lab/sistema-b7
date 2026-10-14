@@ -557,3 +557,11 @@ html.sem-animacao :is(.ad-bar u,.ap-troca-tr i,.cm-leu){transition:none !importa
 .modal .acoes .tr-esq{margin-right:auto;}
 @media (max-width:560px){ .tr-busca{max-width:none;flex:1 1 100%;} .modal .acoes .tr-esq{margin-right:0;} }
 .tr-barra .cb-n:empty{display:none;}
+/* zzz166: cargos adicionais */
+.ed-cargos{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:8px;}
+.ed-cargo{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1.5px solid var(--borda);border-radius:13px;cursor:pointer;}
+.ed-cargo input{margin-top:3px;accent-color:var(--acento);}
+.ed-cargo span{display:flex;flex-direction:column;}
+.ed-cargo b{font-size:13px;}
+.ed-cargo small{font-size:11.5px;color:var(--ink-4);}
+.ed-cargo:has(input:checked){border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave);}

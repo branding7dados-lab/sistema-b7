@@ -138,9 +138,21 @@ B7.Perm = (function () {
      função não tem Painel (a casa dele é a Central). */
   function souCoordenadorElegivel() { return !semSessao() && papel() !== 'cliente' && funcao() === 'coordenador'; }
   function souDesignerElegivel() { return !semSessao() && papel() !== 'cliente' && funcao() === 'designer'; }
+  /* zzz166: cargos sem limite — a função principal mais os cargos
+     adicionais (perfis.funcoes_adicionais, que chegam em funcoesExtra) */
+  function todasFuncoes() {
+    if (semSessao() || papel() === 'cliente') return [];
+    const ex = (B7.Auth && B7.Auth.funcoesExtra ? B7.Auth.funcoesExtra() : []) || [];
+    const lista = [funcao()].concat(ex).filter(Boolean);
+    return ['coordenador', 'videomaker', 'designer'].filter(f => lista.includes(f));
+  }
   function painelVisoes() {
     if (semSessao() || papel() === 'cliente') return [];
-    return ({ coordenador: ['coordenacao'], videomaker: ['video'], designer: ['design'] })[funcao()] || [];
+    const V = { coordenador: 'coordenacao', videomaker: 'video', designer: 'design' };
+    /* a visão da função principal vem primeiro */
+    const fs = todasFuncoes().sort((a, b) => (b === funcao()) - (a === funcao()));
+    /* administrador puro sem cargo nenhum continua sem Painel */
+    return fs.map(f => V[f]);
   }
   function painelElegivel() { return painelVisoes().length > 0; }
 
@@ -153,8 +165,7 @@ B7.Perm = (function () {
      aceita a função extra "designer"). Isto decide PRIORIDADE visual;
      quem decide ACESSO continua sendo podeRota. */
   function funcoesOperacionais() {
-    if (semSessao() || papel() === 'cliente') return [];
-    return funcao() ? [funcao()] : [];
+    return todasFuncoes();
   }
 
   /* "Visualizar como cliente" (#/previa/<id>) é só do administrador:
