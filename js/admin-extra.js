@@ -509,10 +509,21 @@ B7.Aparencia = (function () {
     const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
     return '#' + [r, g, b].map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
   }
+  /* contraste WCAG entre duas cores */
+  function luz(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); })
+      .reduce((t, v, i) => t + v * [.2126, .7152, .0722][i], 0);
+  }
+  const contraste = (a, b) => { const x = luz(a), y = luz(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+  /* zzz163: qualquer cor escolhida vira um tom que dá para ler — no claro,
+     texto branco em cima do botão; no escuro, a cor em cima do fundo */
   function derivar(hex) {
     const [h, s0, l0] = hexHsl(hex), s = Math.max(s0, .35);
-    const lc = Math.min(l0, .5);                       /* cor clara demais perde o texto branco: segura no claro */
-    const ld = Math.max(Math.min(l0 + .12, .7), .52);
+    let lc = Math.min(l0, .5);
+    while (lc > .12 && contraste(hslHex(h, s, lc), '#FFFFFF') < 4.5) lc -= .02;
+    let ld = Math.max(Math.min(l0 + .12, .7), .52);
+    while (ld < .82 && contraste(hslHex(h, s, ld), '#0F0A18') < 4.5) ld += .02;
     return { l: [hslHex(h - 28, s * .95, lc * .58), hslHex(h - 14, s, lc * .8), hslHex(h, s, lc)],
              d: [hslHex(h - 28, s * .85, ld - .22), hslHex(h - 14, s * .92, ld - .1), hslHex(h, s, ld)] };
   }
@@ -528,6 +539,24 @@ B7.Aparencia = (function () {
     if (c.menu === 'tingido') return '--sidebar:color-mix(in srgb,' + v + ' 34%,#05040d);--sidebar-2:color-mix(in srgb,' + v + ' 46%,#0a0818);';
     return '';
   }
+  /* zzz163: os neutros do B7 (fundo, bordas, textos, esqueletos) têm um
+     subtom violeta. Com outra cor, eles giram para o tom dela — o verde
+     fica com cinzas esverdeados, e não com um fundo lilás. Mesma
+     luminosidade de antes, então o contraste não muda. */
+  const NEUTROS_CLARO = { '--fundo': '#F6F5FA', '--suave': '#F4F2F9', '--borda': '#EAE7F2', '--ink': '#15122B', '--ink-2': '#3B3557',
+    '--ink-3': '#6F688C', '--ink-4': '#9E97B5', '--neutro': '#5B5480', '--neutro-bg': '#F0EDF8', '--esq-1': '#EEEBF5', '--esq-2': '#F7F5FB' };
+  const NEUTROS_ESCURO = { '--fundo': '#0F0A18', '--card': '#1B1426', '--suave': '#221934', '--elevado': '#241A31', '--borda': '#2C2340',
+    '--borda-forte': '#3A2F52', '--ink': '#F0ECF7', '--ink-2': '#CFC7DF', '--ink-3': '#A79CBE', '--ink-4': '#7C7295', '--neutro': '#B3A8CC',
+    '--esq-1': '#241A31', '--esq-2': '#2E2340', '--topo-bg': '#150F22' };
+  function neutros(c, val, escuro) {
+    if (c.paleta === 'b7') return '';
+    const [h, sp] = hexHsl(val.l[0]), f = Math.max(0, Math.min(1.15, sp / .63));
+    const tab = escuro ? NEUTROS_ESCURO : NEUTROS_CLARO;
+    return Object.keys(tab).map(k => {
+      const [, s0, l0] = hexHsl(tab[k]), hex = hslHex(h, s0 * f, l0);
+      return k + ':' + (k === '--topo-bg' ? rgba(hex, .86) : hex) + ';';
+    }).join('');
+  }
   const ativo = c => c.paleta !== 'b7' || c.menu !== 'padrao' || c.botoes === 'solido' || !!c.brilho;
   function gerarCSS(c) {
     if (!ativo(c)) return '';
@@ -537,10 +566,12 @@ B7.Aparencia = (function () {
       /* o menu lateral é escuro nos dois temas: as luzes dele saem sempre
          dos tons escuros da paleta (zzz161) */
       let s = sel + '{--sb-luz1:' + val.d[0] + ';--sb-luz2:' + val.d[2] + ';' +
+        /* zzz163: os tons do claro também no escuro, para heróis e fundos escuros */
+        '--base-violeta:' + val.l[0] + ';--base-roxo:' + val.l[1] + ';--base-magenta:' + val.l[2] + ';' +
         '--violeta:' + v + ';--roxo:' + r + ';--magenta:' + m + ';--acento:' + m + ';--acento-suave:' + rgba(m, escuro ? .16 : .09) + ';--violeta-bg:' + rgba(v, escuro ? .2 : .12) + ';' +
         '--grad:linear-gradient(118deg,#001559 0%,' + v + ' 34%,' + r + ' 66%,' + m + ' 100%);' +
         '--grad-curto:' + (c.botoes === 'solido' ? 'linear-gradient(0deg,' + m + ',' + m + ')' : 'linear-gradient(120deg,' + v + ' 0%,' + r + ' 52%,' + m + ' 100%)') + ';' +
-        menuVars(c, val.l[0]) + '}';
+        menuVars(c, val.l[0]) + neutros(c, val, escuro) + '}';
       if (c.brilho) s += sel + ' body{background-image:radial-gradient(70vmax 50vmax at 100% -8%,' + rgba(m, escuro ? .13 : .1) + ',transparent 70%),radial-gradient(60vmax 46vmax at -8% 108%,' + rgba(v, escuro ? .18 : .1) + ',transparent 70%);background-attachment:fixed;}';
       return s;
     };
@@ -593,6 +624,15 @@ B7.Aparencia = (function () {
   let meu = null;
   try { const c = JSON.parse(localStorage.getItem(CHAVE_EU) || 'null'); if (c) meu = normalizar(c); } catch (e) {}
   const efetiva = () => meu || cfg;
+  /* zzz163: a cópia do CSS no aparelho foi feita por uma versão anterior;
+     refaz agora para o próximo <head> já pintar com as regras novas */
+  (function renovarCopias() {
+    try {
+      if (meu) localStorage.setItem(CHAVE_EU, JSON.stringify(Object.assign({}, meu, { css: gerarCSS(meu) })));
+      if (localStorage.getItem(CHAVE)) localStorage.setItem(CHAVE, JSON.stringify(Object.assign({}, cfg, { css: gerarCSS(cfg) })));
+    } catch (e) {}
+    if (ativo(efetiva())) aplicarCSS(efetiva());
+  })();
   function guardarPessoal(c) {
     meu = c ? normalizar(c) : null;
     try {
@@ -636,18 +676,39 @@ B7.Aparencia = (function () {
     return nomePaleta(cfg) + (extra.length ? ' · ' + extra.join(', ') : '') + (n ? ' · ' + n + (n === 1 ? ' data especial' : ' datas especiais') : '');
   };
 
-  /* ---- a prévia: uma telinha do B7 com as escolhas, no claro ou no escuro ---- */
+  /* ---- a prévia: uma telinha do B7 com as escolhas, no claro ou no escuro (zzz163) ---- */
+  function tom(c, val, hex) {
+    if (c.paleta === 'b7') return hex;
+    const [h, sp] = hexHsl(val.l[0]), [, s0, l0] = hexHsl(hex);
+    return hslHex(h, s0 * Math.max(0, Math.min(1.15, sp / .63)), l0);
+  }
   function previa(c, escuro) {
     const val = valores(c), t = escuro ? val.d : val.l, v = t[0], r = t[1], m = t[2];
     const sb = c.menu === 'grafite' ? MENU_GRAFITE[0] : c.menu === 'tingido' ? 'color-mix(in srgb,' + val.l[0] + ' 34%,#05040d)' : (escuro ? '#0A0714' : '#0B0A1E');
     const btn = c.botoes === 'solido' ? m : 'linear-gradient(120deg,' + v + ',' + r + ' 52%,' + m + ')';
-    const bg = escuro ? '#0F0A18' : '#F6F5FA', card = escuro ? '#1B1426' : '#fff', ink = escuro ? '#F0ECF7' : '#15122B', borda = escuro ? '#2C2340' : '#EAE7F2';
+    const N = escuro ? NEUTROS_ESCURO : NEUTROS_CLARO, n = k => tom(c, val, N[k]);
+    const bg = n('--fundo'), card = escuro ? n('--card') : '#fff', ink = n('--ink'), ink3 = n('--ink-3'), borda = n('--borda');
     const glow = c.brilho ? 'radial-gradient(120% 90% at 100% -10%,' + rgba(m, escuro ? .22 : .16) + ',transparent 65%),radial-gradient(90% 80% at -10% 110%,' + rgba(v, escuro ? .3 : .16) + ',transparent 65%),' : '';
-    return '<div class="ap-prev" style="--pv-v:' + v + ';--pv-m:' + m + ';--pv-sb:' + sb + ';--pv-btn:' + btn + ';--pv-bg:' + bg + ';--pv-card:' + card + ';--pv-ink:' + ink + ';--pv-borda:' + borda + ';--pv-glow:' + (glow || 'none') + '">' +
-      '<aside class="pv-side"><i class="pv-logo"></i><i></i><i class="on"></i><i></i><i></i></aside>' +
-      '<div class="pv-main"><div class="pv-top"><b>Painel</b><span class="pv-chip">Em dia</span></div>' +
-        '<div class="pv-card"><b>Resumo do mês</b><small>12 de 18 entregas</small><i class="pv-barra"><u></u></i>' +
-          '<div class="pv-btns"><span class="pv-btn">Criar demanda</span><span class="pv-btn2">Cancelar</span></div></div></div></div>';
+    const heroi = 'linear-gradient(135deg,color-mix(in srgb,' + val.l[0] + ' 46%,#000),' + val.l[0] + ' 55%,' + val.l[1] + ')';
+    return '<div class="ap-prev" style="--pv-v:' + v + ';--pv-m:' + m + ';--pv-l1:' + val.d[0] + ';--pv-l2:' + val.d[2] + ';--pv-sb:' + sb + ';--pv-btn:' + btn +
+        ';--pv-bg:' + bg + ';--pv-card:' + card + ';--pv-ink:' + ink + ';--pv-ink3:' + ink3 + ';--pv-borda:' + borda + ';--pv-heroi:' + heroi + ';--pv-glow:' + (glow || 'none') + '" aria-hidden="true">' +
+      '<aside class="pv-side"><i class="pv-logo"></i><i></i><i class="on"></i><i></i><i></i><i></i></aside>' +
+      '<div class="pv-main">' +
+        '<div class="pv-top"><span class="pv-busca"></span><span class="pv-criar">+ Criar</span></div>' +
+        '<div class="pv-heroi"><i class="pv-anel"></i><span><small>ANDAMENTO DO MÊS</small><b>Outubro</b></span></div>' +
+        '<div class="pv-card"><div class="pv-l"><b>Resumo do mês</b><span class="pv-chip">Em revisão</span></div>' +
+          '<small>12 de 18 entregas</small><i class="pv-barra"><u></u></i>' +
+          '<div class="pv-btns"><span class="pv-btn">Salvar</span><span class="pv-btn2">Cancelar</span><span class="pv-tg"><i></i></span></div></div>' +
+      '</div></div>';
+  }
+  const OK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+  /* troca de cor com um esmaecer suave da tela inteira, onde o navegador deixa */
+  function aplicarSuave(c) {
+    const anima = document.startViewTransition && !(B7.Desempenho && B7.Desempenho.animacoesLigadas && !B7.Desempenho.animacoesLigadas()) &&
+      !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!anima) return aplicarCSS(c);
+    try { document.startViewTransition(() => aplicarCSS(c)); } catch (e) { aplicarCSS(c); }
   }
 
   /* opcoes.pessoal = a folha da própria pessoa (só neste aparelho) */
@@ -657,58 +718,96 @@ B7.Aparencia = (function () {
     const base = euMesmo ? efetiva() : cfg;
     const salvo = normalizar(base), rascunho = normalizar(base);
     let gravou = false, escuroPrev = document.documentElement.getAttribute('data-theme') === 'dark';
+    const voltar = () => { if (!gravou) aplicarSuave(euMesmo ? efetiva() : cfg); };
     const m = B7.UI.modal('<h3>' + (euMesmo ? 'Minha aparência' : 'Aparência do sistema') + '</h3>' +
       '<p class="sub">' + (euMesmo
         ? 'Só para você, neste aparelho. Enquanto você tiver uma escolha aqui, ela manda — mesmo que a administração mude a cor da equipe.'
-        : 'Vale para toda a equipe. O tema claro ou escuro continua sendo escolha de cada pessoa. A logo, o desenho da abertura e as cores de status seguem sendo da marca.') + '</p>' +
-      '<div class="ap-grade"><div class="ap-prev-col"><div class="ap-prev-topo"><span class="rot">PRÉVIA</span><span class="ap-seg" role="radiogroup" aria-label="Tema da prévia"><button type="button" data-tp="l" role="radio">Claro</button><button type="button" data-tp="d" role="radio">Escuro</button></span></div><div id="ap-previa"></div>' +
-        '<p class="ad-nota ap-dica">A tela atrás desta janela também já mostra as escolhas. Cancelar volta ao que estava.</p></div>' +
-      '<div class="ap-ctl">' +
-        '<h4 class="ad-t">Cor do sistema</h4><div class="ap-paletas" id="ap-paletas" role="radiogroup" aria-label="Cor do sistema"></div>' +
-        '<h4 class="ad-t">Menu lateral</h4><div class="ap-menus" id="ap-menus" role="radiogroup" aria-label="Menu lateral"></div>' +
-        '<div class="ap-duas"><div><h4 class="ad-t">Botões</h4><div class="ap-seg" id="ap-botoes" role="radiogroup" aria-label="Estilo dos botões"></div></div>' +
-        '<div><h4 class="ad-t">Brilho de fundo</h4><label class="ap-troca"><input type="checkbox" id="ap-brilho"><span class="ap-troca-tr" aria-hidden="true"><i></i></span><span>Uma luz suave da cor atrás das telas</span></label></div></div>' +
-      '</div></div>' +
+        : 'Vale para toda a equipe (quem escolheu a própria cor continua com a dela). Claro ou escuro continua sendo escolha de cada pessoa.') + '</p>' +
+      '<div class="ap-grade">' +
+        '<div class="ap-prev-col"><div id="ap-previa"></div>' +
+          '<div class="ap-prev-pe"><span class="ap-seg" role="radiogroup" aria-label="Tema da prévia"><button type="button" data-tp="l" role="radio">Claro</button><button type="button" data-tp="d" role="radio">Escuro</button></span>' +
+          '<small>A tela atrás já mostra. Cancelar desfaz.</small></div></div>' +
+        '<div class="ap-ctl">' +
+          '<section class="ap-sec"><h4 class="ad-t">Cor</h4><div class="ap-paletas" id="ap-paletas" role="radiogroup" aria-label="Cor do sistema"></div>' +
+            '<div class="ap-custom" id="ap-custom" hidden><label class="ap-conta" title="Escolher no seletor"><input type="color" id="ap-cor" aria-label="Escolher a cor"><i></i></label>' +
+              '<input class="campo ap-hex" id="ap-hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Código da cor (ex.: #1E88E5)" placeholder="#1E88E5">' +
+              '<span class="ap-tons" id="ap-tons"></span><small class="ap-ajuste" id="ap-ajuste"></small></div></section>' +
+          '<section class="ap-sec"><h4 class="ad-t">Menu lateral</h4><div class="ap-menus" id="ap-menus" role="radiogroup" aria-label="Menu lateral"></div></section>' +
+          '<section class="ap-sec ap-duas"><div><h4 class="ad-t">Botões</h4><div class="ap-seg" id="ap-botoes" role="radiogroup" aria-label="Estilo dos botões"></div></div>' +
+            '<div><h4 class="ad-t">Brilho de fundo</h4><label class="ap-troca"><input type="checkbox" id="ap-brilho"><span class="ap-troca-tr" aria-hidden="true"><i></i></span><span>Luz suave da cor atrás das telas</span></label></div></section>' +
+        '</div></div>' +
       (euMesmo ? '' :
-        '<h4 class="ad-t ad-t-solto">Datas especiais da abertura</h4>' +
+        '<section class="ap-sec ap-sec-datas"><h4 class="ad-t">Datas especiais da abertura</h4>' +
         '<p class="sub ap-sub">Nessas datas, a animação de entrada muda de cor e mostra a frase. Fora delas, a abertura é a de sempre.</p>' +
         '<div id="ap-lista"></div>' +
-        '<div class="ap-add"><button type="button" class="b fina contorno" id="ap-nova">+ Data própria</button><button type="button" class="b fina contorno" id="ap-sug">+ Sugestões (Natal, Ano Novo, Outubro Rosa, Novembro Azul)</button></div>') +
+        '<div class="ap-add"><button type="button" class="b fina contorno" id="ap-nova">+ Data própria</button><button type="button" class="b fina contorno" id="ap-sug">+ Sugestões (Natal, Ano Novo, Outubro Rosa, Novembro Azul)</button></div></section>') +
       '<div class="acoes">' +
-        (euMesmo && meu ? '<button type="button" class="b contorno" id="ap-padrao">Usar o padrão do sistema</button>' : '') +
+        (euMesmo
+          ? (meu ? '<button type="button" class="b contorno ap-esq" id="ap-padrao">Usar a da equipe</button>' : '')
+          : '<button type="button" class="b contorno ap-esq" id="ap-b7">Voltar ao padrão B7</button>') +
         '<button type="button" class="b contorno" data-fecha>Cancelar</button>' +
-        '<button type="button" class="b pri" id="ap-salvar">Salvar</button></div>', { larga: true });
-    const fechar = () => { if (!gravou) aplicar(euMesmo ? efetiva() : cfg); m.fechar(); };
-    m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = fechar);
+        '<button type="button" class="b pri" id="ap-salvar">Salvar</button></div>', { larga: true, extra: 'ap-modal', aoFechar: voltar });
     const cxP = m.querySelector('#ap-paletas'), cxM = m.querySelector('#ap-menus'), cxB = m.querySelector('#ap-botoes'), cxL = m.querySelector('#ap-lista'), cxV = m.querySelector('#ap-previa');
+    const cxC = m.querySelector('#ap-custom'), inCor = m.querySelector('#ap-cor'), inHex = m.querySelector('#ap-hex');
+    const reabrirConfig = () => { if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig(); };
     const btPadrao = m.querySelector('#ap-padrao');
     if (btPadrao) btPadrao.onclick = () => {
       gravou = true; guardarPessoal(null); m.fechar();
-      B7.UI.toast('Voltou para a aparência do sistema.');
-      if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig();
+      B7.UI.toast('Voltou para a cor da equipe.');
+      reabrirConfig();
     };
-    const gradeDe = t => 'linear-gradient(120deg,' + t[0] + ',' + t[1] + ' 52%,' + t[2] + ')';
+    const btB7 = m.querySelector('#ap-b7');
+    if (btB7) btB7.onclick = () => { Object.assign(rascunho, { paleta: 'b7', cor: '', menu: 'padrao', botoes: 'degrade', brilho: false }); pintarTudo(true); };
+    const gradeDe = t => 'linear-gradient(135deg,' + t[0] + ',' + t[1] + ' 52%,' + t[2] + ')';
 
-    const aoVivo = () => { aplicarCSS(rascunho); pintarEstacao(estacaoDe(salvo)); cxV.innerHTML = previa(rascunho, escuroPrev); };
-    const pintarTemaPrev = () => m.querySelectorAll('[data-tp]').forEach(b => { const on = (b.dataset.tp === 'd') === escuroPrev; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
-    const pintarPaletas = () => {
-      const cor = RE_HEX.test(rascunho.cor) ? rascunho.cor : '#7C3AED';
-      cxP.innerHTML = PALETAS.map(p => '<button type="button" role="radio" aria-checked="' + (rascunho.paleta === p.id) + '" data-p="' + p.id + '" class="ap-pal' + (rascunho.paleta === p.id ? ' on' : '') + '">' +
-          '<i style="background:' + gradeDe(p.l) + '"></i><span>' + esc(p.nome) + '</span></button>').join('') +
-        '<label role="radio" aria-checked="' + (rascunho.paleta === 'custom') + '" class="ap-pal ap-pal-c' + (rascunho.paleta === 'custom' ? ' on' : '') + '" title="Escolha qualquer cor">' +
-          '<i style="background:' + (rascunho.paleta === 'custom' ? gradeDe(derivar(cor).l) : 'conic-gradient(#e11d48,#f59e0b,#16a34a,#0ea5e9,#7c3aed,#e11d48)') + '"></i><span>Personalizada</span>' +
-          '<input type="color" id="ap-cor" value="' + esc(cor) + '" aria-label="Cor personalizada"></label>';
-      cxP.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { rascunho.paleta = b.dataset.p; rascunho.cor = ''; pintarPaletas(); aoVivo(); });
-      const inp = cxP.querySelector('#ap-cor');
-      inp.oninput = () => { rascunho.paleta = 'custom'; rascunho.cor = inp.value.toUpperCase(); const lab = inp.closest('label'); lab.classList.add('on'); lab.querySelector('i').style.background = gradeDe(derivar(rascunho.cor).l); cxP.querySelectorAll('[data-p]').forEach(x => x.classList.remove('on')); aoVivo(); };
+    const aoVivo = suave => {
+      (suave ? aplicarSuave : aplicarCSS)(rascunho); pintarEstacao(estacaoDe(salvo));
+      cxV.innerHTML = previa(rascunho, escuroPrev);
     };
+    const pintarTemaPrev = () => m.querySelectorAll('[data-tp]').forEach(b => { const on = (b.dataset.tp === 'd') === escuroPrev; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
+    const pintarCustom = () => {
+      const on = rascunho.paleta === 'custom';
+      cxC.hidden = !on;
+      if (!on) return;
+      const cor = RE_HEX.test(rascunho.cor) ? rascunho.cor : '#7C3AED', d = derivar(cor);
+      inCor.value = cor.toLowerCase(); inCor.parentNode.querySelector('i').style.background = cor;
+      if (document.activeElement !== inHex) inHex.value = cor;
+      m.querySelector('#ap-tons').innerHTML = d.l.concat(d.d[2]).map(x => '<i style="background:' + x + '"></i>').join('');
+      m.querySelector('#ap-ajuste').textContent = d.l[2] !== hslHex(...hexHsl(cor).map((x, i) => i === 1 ? Math.max(x, .35) : x))
+        ? 'O tom foi ajustado para o texto branco continuar legível.' : '';
+    };
+    const pintarPaletas = () => {
+      const cor = RE_HEX.test(rascunho.cor) ? rascunho.cor : '';
+      cxP.innerHTML = PALETAS.map(p => '<button type="button" role="radio" aria-checked="' + (rascunho.paleta === p.id) + '" data-p="' + p.id + '" class="ap-pal' + (rascunho.paleta === p.id ? ' on' : '') + '" title="' + esc(p.nome) + '">' +
+          '<i style="background:' + gradeDe(p.l) + '">' + OK_SVG + '</i><span>' + esc(p.nome) + '</span></button>').join('') +
+        '<button type="button" role="radio" aria-checked="' + (rascunho.paleta === 'custom') + '" data-p="custom" class="ap-pal ap-pal-c' + (rascunho.paleta === 'custom' ? ' on' : '') + '" title="Escolha qualquer cor">' +
+          '<i style="background:' + (rascunho.paleta === 'custom' && cor ? gradeDe(derivar(cor).l) : 'conic-gradient(#e11d48,#f59e0b,#16a34a,#0ea5e9,#7c3aed,#e11d48)') + '">' + OK_SVG + '</i><span>Sua cor</span></button>';
+      cxP.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+        if (b.dataset.p === 'custom') {
+          if (rascunho.paleta !== 'custom') { rascunho.paleta = 'custom'; if (!RE_HEX.test(rascunho.cor)) rascunho.cor = '#7C3AED'; }
+          pintarPaletas(); pintarMenus(); aoVivo(true);
+          setTimeout(() => { try { inCor.showPicker ? inCor.showPicker() : inCor.click(); } catch (e) { inHex.focus(); } }, 60);
+          return;
+        }
+        rascunho.paleta = b.dataset.p; rascunho.cor = ''; pintarPaletas(); pintarMenus(); aoVivo(true);
+      });
+      pintarCustom();
+    };
+    const usarCor = (hex, suave) => {
+      rascunho.paleta = 'custom'; rascunho.cor = hex.toUpperCase();
+      const c = cxP.querySelector('.ap-pal-c i'); if (c) c.style.background = gradeDe(derivar(rascunho.cor).l);
+      pintarCustom(); pintarMenus(); aoVivo(suave);
+    };
+    inCor.oninput = () => usarCor(inCor.value);
+    inHex.oninput = () => { let v = inHex.value.trim(); if (v && v[0] !== '#') v = '#' + v; if (RE_HEX.test(v)) usarCor(v, true); };
+    inHex.onblur = () => { inHex.value = rascunho.cor || ''; };
     const pintarMenus = () => {
       cxM.innerHTML = MENUS.map(x => {
-        const tom = x[0] === 'grafite' ? MENU_GRAFITE[0] : x[0] === 'tingido' ? 'color-mix(in srgb,' + valores(rascunho).l[0] + ' 34%,#05040d)' : '#0B0A1E';
+        const fundo = x[0] === 'grafite' ? MENU_GRAFITE[0] : x[0] === 'tingido' ? 'color-mix(in srgb,' + valores(rascunho).l[0] + ' 34%,#05040d)' : '#0B0A1E';
         return '<button type="button" role="radio" aria-checked="' + (rascunho.menu === x[0]) + '" data-mn="' + x[0] + '" class="ap-menu' + (rascunho.menu === x[0] ? ' on' : '') + '">' +
-          '<i style="background:' + tom + '"><u></u><u></u><u></u></i><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></button>';
+          '<i style="background:' + fundo + ';--mn-luz:' + valores(rascunho).d[2] + '"><u></u><u></u><u></u></i><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></button>';
       }).join('');
-      cxM.querySelectorAll('[data-mn]').forEach(b => b.onclick = () => { rascunho.menu = b.dataset.mn; pintarMenus(); aoVivo(); });
+      cxM.querySelectorAll('[data-mn]').forEach(b => b.onclick = () => { rascunho.menu = b.dataset.mn; pintarMenus(); aoVivo(true); });
     };
     const pintarBotoes = () => {
       cxB.innerHTML = [['degrade', 'Degradê'], ['solido', 'Sólidos']].map(x => '<button type="button" role="radio" aria-checked="' + (rascunho.botoes === x[0]) + '" data-bt="' + x[0] + '"' + (rascunho.botoes === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>').join('');
@@ -744,8 +843,10 @@ B7.Aparencia = (function () {
         };
       });
     };
+    const chB = m.querySelector('#ap-brilho');
+    function pintarTudo(suave) { chB.checked = rascunho.brilho; pintarPaletas(); pintarMenus(); pintarBotoes(); aoVivo(suave); }
     m.querySelectorAll('[data-tp]').forEach(b => b.onclick = () => { escuroPrev = b.dataset.tp === 'd'; pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev); });
-    const chB = m.querySelector('#ap-brilho'); chB.checked = rascunho.brilho; chB.onchange = () => { rascunho.brilho = chB.checked; aoVivo(); };
+    chB.onchange = () => { rascunho.brilho = chB.checked; aoVivo(true); };
     if (!euMesmo) m.querySelector('#ap-nova').onclick = () => {
       lerLinhas(); if (rascunho.estacoes.length >= 12) { B7.UI.toast('Máximo de 12 datas.', { tipo: 'erro' }); return; }
       rascunho.estacoes.push({ nome: '', de: '', ate: '', cor: 'rosa', frase: '' }); pintarLista();
@@ -759,7 +860,7 @@ B7.Aparencia = (function () {
       if (euMesmo) {
         gravou = true; guardarPessoal(rascunho); m.fechar();
         B7.UI.toast('Aparência salva para você, neste aparelho.');
-        if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig();
+        reabrirConfig();
         return;
       }
       lerLinhas();
@@ -774,13 +875,29 @@ B7.Aparencia = (function () {
         await gravar(rascunho);
         gravou = true; sincronizar(rascunho); m.fechar();
         B7.UI.toast('Aparência salva. A equipe recebe em até 1 minuto.');
-        if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig();
+        reabrirConfig();
       } catch (e) { bt.disabled = false; bt.textContent = 'Salvar'; B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
     };
-    pintarPaletas(); pintarMenus(); pintarBotoes(); pintarLista(); pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev);
+    pintarTudo(); pintarLista(); pintarTemaPrev();
   }
 
-  return { abrir, sincronizar, aplicar, resumo, resumoPessoal, definirPaleta, rotuloPaleta,
+  /* zzz163: escolher a cor direto na tela de Configurações, sem abrir a
+     janela — vale só para a pessoa, neste aparelho */
+  function escolherRapido(id) {
+    const base = normalizar(efetiva());
+    if (id === 'equipe') { guardarPessoal(null); aplicarSuave(efetiva()); return; }
+    const nova = Object.assign({}, base, { paleta: id, cor: id === 'custom' ? base.cor : '' });
+    meu = normalizar(nova);
+    aplicarSuave(meu);
+    try { localStorage.setItem(CHAVE_EU, JSON.stringify(Object.assign({}, meu, { css: gerarCSS(meu) }))); } catch (e) {}
+  }
+  /* as bolinhas para a tela de Configurações */
+  function bolinhas() {
+    const atual = efetiva();
+    return PALETAS.map(p => ({ id: p.id, nome: p.nome, fundo: 'linear-gradient(135deg,' + p.l[0] + ',' + p.l[1] + ' 52%,' + p.l[2] + ')', on: atual.paleta === p.id }));
+  }
+
+  return { abrir, sincronizar, aplicar, escolherRapido, bolinhas, resumo, resumoPessoal, definirPaleta, rotuloPaleta,
            paletaAtual: () => efetiva().paleta, pessoal: () => meu, usarDoSistema: () => guardarPessoal(null),
            _estacaoDe: estacaoDe, _gerarCSS: gerarCSS, _derivar: derivar, PALETAS };
 })();

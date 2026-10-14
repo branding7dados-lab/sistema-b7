@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz163', versao: 'zzz163', em: '2026-10-14T18:00:00-03:00',
+    titulo: 'Escolha a cor do seu B7',
+    itens: ['Em Configurações → Aparência, toque numa bolinha e o B7 inteiro troca de cor na hora — só para você.',
+            'Agora tudo acompanha a cor: menu lateral, cabeçalhos, calendário, botões, brilhos e até os tons de cinza.',
+            'Em “Mais opções” dá para escolher qualquer cor pelo código e ver a prévia no claro e no escuro.',
+            'Nas Configurações, o campo “Procurar um ajuste” acha qualquer opção sem precisar trocar de aba.'] },
   { id: 'v-zzz135', versao: 'zzz135', em: '2026-10-09T17:30:00-03:00', ia: 'chat',
     titulo: 'Assistente cria várias demandas de uma vez',
     itens: ['Peça “crie 7 demandas para o cliente X, código do 8 ao 14” e ele monta um cartão para cada uma.',

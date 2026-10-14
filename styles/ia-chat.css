@@ -6,8 +6,8 @@
    ===================================================================== */
 .ch-fab{position:fixed;right:22px;bottom:22px;z-index:95;width:56px;height:56px;border:0;border-radius:50%;cursor:pointer;color:#fff;
   display:inline-flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#4B1E8F,#C2187A);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 14px 30px -12px rgba(150,30,130,.465), 0 4px 12px -6px rgba(20,8,40,.248);
+  background:linear-gradient(135deg,var(--violeta),var(--magenta));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 14px 30px -12px color-mix(in srgb,var(--roxo) 46.5%,transparent), 0 4px 12px -6px rgba(20,8,40,.248);
   transition:transform .25s cubic-bezier(.16,1,.3,1), filter .2s ease, opacity .2s ease;animation:chFab .5s cubic-bezier(.16,1,.3,1) both;}
 .ch-fab svg{width:25px;height:25px;}
 .ch-fab:hover{transform:translateY(-2px) scale(1.04);filter:brightness(1.08);}
@@ -37,7 +37,7 @@ body.tem-chat .b7-atu{bottom:92px;}
 .ch-topo{flex:none;display:flex;align-items:center;gap:8px;padding:12px 12px 12px 14px;border-bottom:1px solid var(--borda);
   background:radial-gradient(120% 160% at 0% 0%, color-mix(in srgb, var(--acento) 12%, transparent), transparent 62%);}
 .ch-ic{flex:none;width:36px;height:36px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;color:#fff;
-  background:linear-gradient(135deg,#6B3FD8,#D63384);box-shadow:inset 0 1px 0 rgba(255,255,255,.28);}
+  background:linear-gradient(135deg,color-mix(in srgb,var(--violeta) 67%,#fff),color-mix(in srgb,var(--magenta) 86%,#fff));box-shadow:inset 0 1px 0 rgba(255,255,255,.28);}
 .ch-ic svg{width:19px;height:19px;}
 .ch-tit{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
 .ch-tit b{font-family:'Archivo',sans-serif;font-size:15px;font-weight:800;letter-spacing:-.01em;line-height:1.2;}
@@ -125,7 +125,7 @@ body.tem-chat .b7-atu{bottom:92px;}
 .ch-ac-bts{display:grid;grid-template-columns:auto 1fr;gap:8px;margin-top:10px;}
 .ch-ac-bts button{height:38px;border:0;border-radius:12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;}
 .ch-ac-nao{padding:0 14px;background:color-mix(in srgb, var(--ink) 6%, transparent);color:var(--ink-2);}
-.ch-ac-ok{color:#fff;background:linear-gradient(135deg,#4B1E8F,#C2187A);}
+.ch-ac-ok{color:#fff;background:linear-gradient(135deg,var(--violeta),var(--magenta));}
 .ch-ac-bts button:disabled{opacity:.6;cursor:default;}
 .ch-ac-fim{margin-top:9px;font-size:12.5px;color:var(--ink-3);}
 .ch-ac-fim.ok{color:var(--ok);font-weight:600;} .ch-ac-fim.ok a{color:inherit;text-decoration:underline;}
@@ -134,7 +134,7 @@ body.tem-chat .b7-atu{bottom:92px;}
 
 .ch-vazio{margin:auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;}
 .ch-vazio-ic{width:52px;height:52px;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;color:#fff;margin-bottom:6px;
-  background:linear-gradient(135deg,#6B3FD8,#D63384);box-shadow:0 14px 26px -14px rgba(140,40,160,.465);}
+  background:linear-gradient(135deg,color-mix(in srgb,var(--violeta) 67%,#fff),color-mix(in srgb,var(--magenta) 86%,#fff));box-shadow:0 14px 26px -14px color-mix(in srgb,color-mix(in srgb,var(--roxo) 89%,#fff) 46.5%,transparent);}
 .ch-vazio-ic svg{width:26px;height:26px;}
 .ch-vazio b{font-family:'Archivo',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.02em;}
 .ch-vazio p{margin:0;font-size:13px;line-height:1.5;color:var(--ink-3);max-width:300px;}
@@ -151,7 +151,7 @@ body.tem-chat .b7-atu{bottom:92px;}
   padding:8px 0;max-height:140px;}
 .ch-form textarea::placeholder{color:var(--ink-4);}
 .ch-enviar{flex:none;width:38px;height:38px;border:0;border-radius:13px;color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#4B1E8F,#C2187A);transition:transform .15s ease, opacity .2s ease;}
+  background:linear-gradient(135deg,var(--violeta),var(--magenta));transition:transform .15s ease, opacity .2s ease;}
 .ch-enviar svg{width:19px;height:19px;}
 .ch-enviar:active{transform:scale(.92);}
 .ch-enviar:disabled{opacity:.45;cursor:default;}
@@ -199,14 +199,14 @@ html.modo-leve .ch-fab,html.modo-leve .ch-msg{animation:none;}
     background:linear-gradient(165deg, color-mix(in srgb, var(--card) 64%, transparent), color-mix(in srgb, var(--card) 46%, transparent));
     -webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);
     border:1px solid var(--ch-fio);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1px rgba(255,255,255,.18), inset 0 -18px 30px -24px rgba(194,24,122,.22),
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1px rgba(255,255,255,.18), inset 0 -18px 30px -24px color-mix(in srgb,var(--magenta) 22%,transparent),
       0 0 0 1px rgba(60,20,90,.07), 0 36px 80px -32px rgba(40,10,70,.341), 0 10px 24px -14px rgba(20,8,40,.174);
   }
   /* brilho e cor que passam "por dentro" do vidro */
   html:not(.modo-leve) .ch-painel::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;
     background:
       radial-gradient(90% 55% at 0% 0%, rgba(124,77,255,.16), transparent 62%),
-      radial-gradient(80% 50% at 100% 100%, rgba(214,51,132,.14), transparent 64%),
+      radial-gradient(80% 50% at 100% 100%, color-mix(in srgb,color-mix(in srgb,var(--magenta) 86%,#fff) 14%,transparent), transparent 64%),
       linear-gradient(180deg, rgba(255,255,255,.34), transparent 26%);}
   [data-theme="dark"]:not(.modo-leve) .ch-painel{
     --ch-sup:rgba(255,255,255,.055);
@@ -214,13 +214,13 @@ html.modo-leve .ch-fab,html.modo-leve .ch-msg{animation:none;}
     --ch-fio:rgba(255,255,255,.13);
     --ch-risco:rgba(255,255,255,.08);
     background:linear-gradient(165deg, color-mix(in srgb, var(--elevado, var(--card)) 76%, transparent), color-mix(in srgb, var(--card) 62%, transparent));
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 -18px 30px -24px rgba(226,64,156,.2),
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 -18px 30px -24px color-mix(in srgb,color-mix(in srgb,var(--magenta) 77%,#fff) 20%,transparent),
       0 0 0 1px rgba(0,0,0,.35), 0 36px 80px -30px rgba(0,0,0,.527);
   }
   [data-theme="dark"]:not(.modo-leve) .ch-painel::before{
     background:
       radial-gradient(90% 55% at 0% 0%, rgba(124,77,255,.2), transparent 62%),
-      radial-gradient(80% 50% at 100% 100%, rgba(226,64,156,.16), transparent 64%),
+      radial-gradient(80% 50% at 100% 100%, color-mix(in srgb,color-mix(in srgb,var(--magenta) 77%,#fff) 16%,transparent), transparent 64%),
       linear-gradient(180deg, rgba(255,255,255,.05), transparent 24%);}
 
   html:not(.modo-leve) .ch-topo{background:none;border-bottom-color:var(--ch-risco);}

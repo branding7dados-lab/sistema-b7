@@ -314,14 +314,14 @@ body[data-shell="interno"] .lateral{transition:width .18s cubic-bezier(.2,0,0,1)
   html .nm-item:hover{background:transparent;}
   /* ícone de app: bloco com o degradê da marca, brilho no topo */
   html .nm-ic{width:50px;height:50px;border-radius:15px;color:#fff;
-    background:linear-gradient(150deg, #5B2DB8 0%, #9B1E8E 55%, #D9348F 100%);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 -10px 18px -10px rgba(40,6,60,.5), 0 6px 14px -8px rgba(155,30,142,.465);
+    background:linear-gradient(150deg, color-mix(in srgb,var(--sb-luz1) 69%,#000) 0%, var(--roxo) 55%, var(--sb-luz2) 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 -10px 18px -10px rgba(40,6,60,.5), 0 6px 14px -8px color-mix(in srgb,var(--roxo) 46.5%,transparent);
     transition:transform var(--m-instante) var(--m-toque), filter var(--m-rapido);}
   html .nm-ic svg{width:23px;height:23px;stroke-width:1.8;}
   html .nm-tx{font-size:11.5px;font-weight:600;line-height:1.2;color:var(--ink-2);}
   html .nm-item:active{transform:none;}
   html .nm-item:active .nm-ic{transform:scale(.9);filter:brightness(1.15);}
-  html .nm-item.on .nm-ic{box-shadow:0 0 0 2px var(--card), 0 0 0 4px color-mix(in srgb, var(--acento) 70%, transparent), 0 8px 18px -8px rgba(155,30,142,.496);}
+  html .nm-item.on .nm-ic{box-shadow:0 0 0 2px var(--card), 0 0 0 4px color-mix(in srgb, var(--acento) 70%, transparent), 0 8px 18px -8px color-mix(in srgb,var(--roxo) 49.6%,transparent);}
   html .nm-item.on{background:transparent;box-shadow:none;}
   html .nm-item.on .nm-tx{color:var(--ink);}
 }
@@ -534,10 +534,10 @@ html.modo-leve .nm-folha .nm-item,html.modo-leve .nm-folha .nm-ic,html.modo-leve
   .nav.multi[data-shell="interno"] .ng a:hover{background:rgba(255,255,255,.055);color:#fff;}
   .nav.multi[data-shell="interno"] .ng a:active{transform:scale(.98);}
   .nav.multi[data-shell="interno"] .ng a.on{color:#fff;font-weight:650;
-    background:linear-gradient(135deg, rgba(214,51,132,.36), rgba(107,63,216,.3));
+    background:linear-gradient(135deg, color-mix(in srgb,var(--sb-luz2) 36%,transparent), color-mix(in srgb,color-mix(in srgb,var(--sb-luz1) 84%,#000) 30%,transparent));
     border-color:rgba(255,255,255,.1);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 8px 20px -12px rgba(214,51,132,.7);}
-  .nav.multi[data-shell="interno"] .ng a.on svg{opacity:1;--ic-vaza:#5b2a8a;}
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 8px 20px -12px color-mix(in srgb,var(--sb-luz2) 70%,transparent);}
+  .nav.multi[data-shell="interno"] .ng a.on svg{opacity:1;--ic-vaza:color-mix(in srgb,var(--sb-luz1) 54%,#000);}
   .nav.multi[data-shell="interno"] .ng a.on:before{display:none;}
   /* a trilha luminosa antiga (barrinha que deslizava) sai: a pílula já marca */
   .nav.multi .nav-trilha{display:none;}
@@ -659,10 +659,10 @@ html.modo-leve .nm-folha .nm-item,html.modo-leve .nm-folha .nm-ic,html.modo-leve
 
   /* a cápsula do ativo */
   body[data-shell="interno"] .nav.multi .ng a.on{color:#fff;font-weight:650;
-    background:linear-gradient(135deg, rgba(226,64,156,.42), rgba(124,77,255,.36));
+    background:linear-gradient(135deg, color-mix(in srgb,var(--sb-luz2) 42%,transparent), color-mix(in srgb,var(--sb-luz1) 36%,transparent));
     border-color:rgba(255,255,255,.16);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 1px rgba(226,64,156,.12), 0 10px 26px -10px rgba(226,64,156,.75), 0 0 22px -6px rgba(124,77,255,.55);}
-  body[data-shell="interno"] .nav.multi .ng a.on svg{opacity:1;--ic-vaza:#6a2c93;}
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 1px color-mix(in srgb,var(--sb-luz2) 12%,transparent), 0 10px 26px -10px color-mix(in srgb,var(--sb-luz2) 75%,transparent), 0 0 22px -6px color-mix(in srgb,var(--sb-luz1) 55%,transparent);}
+  body[data-shell="interno"] .nav.multi .ng a.on svg{opacity:1;--ic-vaza:color-mix(in srgb,var(--sb-luz1) 58%,#000);}
   body[data-shell="interno"] .nav.multi .ng a.on:before{display:none;}
   body[data-shell="interno"] .nav.multi .nav-trilha{display:none;}
 
@@ -754,7 +754,7 @@ html.modo-leve .nm-folha .nm-item,html.modo-leve .nm-folha .nm-ic,html.modo-leve
 
   /* reflexo que cruza o vidro */
   body:is(.sb-indo,.sb-vindo)[data-shell="interno"] .lateral:after{display:block;content:"";position:absolute;inset:0;width:auto;z-index:2;pointer-events:none;
-    background:linear-gradient(104deg, transparent 32%, rgba(255,255,255,.13) 47%, rgba(255,190,235,.1) 53%, transparent 68%);
+    background:linear-gradient(104deg, transparent 32%, rgba(255,255,255,.13) 47%, color-mix(in srgb,color-mix(in srgb,var(--sb-luz2) 30%,#fff) 10%,transparent) 53%, transparent 68%);
     animation:sbVarre .78s cubic-bezier(.3,.1,.2,1) both;}
   body.sb-indo[data-shell="interno"] .lateral:after{animation-direction:reverse;}
   @keyframes sbVarre{from{opacity:0;transform:translate3d(-110%,0,0)}18%{opacity:1}82%{opacity:1}to{opacity:0;transform:translate3d(110%,0,0)}}
@@ -762,9 +762,9 @@ html.modo-leve .nm-folha .nm-item,html.modo-leve .nm-folha .nm-ic,html.modo-leve
   /* a cápsula do ativo acende enquanto se adapta */
   body:is(.sb-indo,.sb-vindo)[data-shell="interno"] .nav.multi .ng a.on{animation:sbPulso .8s ease-out both;}
   @keyframes sbPulso{
-    0%{box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 1px rgba(226,64,156,.12), 0 10px 26px -10px rgba(226,64,156,.75), 0 0 22px -6px rgba(124,77,255,.55)}
-    35%{box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 0 0 1px rgba(255,170,225,.4), 0 12px 34px -8px rgba(226,64,156,1), 0 0 38px -2px rgba(150,110,255,.9)}
-    100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 1px rgba(226,64,156,.12), 0 10px 26px -10px rgba(226,64,156,.75), 0 0 22px -6px rgba(124,77,255,.55)}}
+    0%{box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 1px color-mix(in srgb,var(--sb-luz2) 12%,transparent), 0 10px 26px -10px color-mix(in srgb,var(--sb-luz2) 75%,transparent), 0 0 22px -6px color-mix(in srgb,var(--sb-luz1) 55%,transparent)}
+    35%{box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 0 0 1px color-mix(in srgb,color-mix(in srgb,var(--sb-luz2) 39%,#fff) 40%,transparent), 0 12px 34px -8px var(--sb-luz2), 0 0 38px -2px color-mix(in srgb,var(--sb-luz1) 90%,transparent)}
+    100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 1px color-mix(in srgb,var(--sb-luz2) 12%,transparent), 0 10px 26px -10px color-mix(in srgb,var(--sb-luz2) 75%,transparent), 0 0 22px -6px color-mix(in srgb,var(--sb-luz1) 55%,transparent)}}
   /* os fios que substituem os títulos, recolhida, entram depois */
   body.sb-indo[data-shell="interno"] .nav.multi .ng-cab:after{transition:opacity .3s ease .28s;}
 }

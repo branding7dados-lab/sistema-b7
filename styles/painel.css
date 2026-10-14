@@ -421,7 +421,7 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
   background:radial-gradient(closest-side, color-mix(in srgb, var(--acento) 30%, transparent), transparent 72%);
   animation:pnLuzA 14s ease-in-out infinite alternate;}
 .pn-ceu .pn-luz-b{right:-12%;top:60px;width:min(480px,95vw);height:300px;border-radius:50%;
-  background:radial-gradient(closest-side, rgba(120,80,240,.26), transparent 72%);
+  background:radial-gradient(closest-side, color-mix(in srgb,color-mix(in srgb,var(--violeta) 55%,#fff) 26%,transparent), transparent 72%);
   animation:pnLuzB 17s ease-in-out infinite alternate;}
 @keyframes pnLuzA{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(18%,14px,0) scale(1.14)}}
 @keyframes pnLuzB{from{transform:translate3d(0,0,0) scale(1.05)}to{transform:translate3d(-16%,22px,0) scale(.9)}}
@@ -435,7 +435,7 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
 @keyframes pnRaiosEntram{from{opacity:0}to{opacity:.5}}
 /* linha do horizonte: um fio de luz que se abre do centro */
 .pn-ceu .pn-horiz{left:6%;right:6%;top:calc(100% - 210px);height:1px;
-  background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--acento) 60%, transparent), rgba(255,255,255,.55), color-mix(in srgb, #8F6BFF 60%, transparent), transparent);
+  background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--acento) 60%, transparent), rgba(255,255,255,.55), color-mix(in srgb, var(--sb-luz1) 60%, transparent), transparent);
   box-shadow:0 0 18px 2px color-mix(in srgb, var(--acento) 35%, transparent);transform:scaleX(0);opacity:.0;
   animation:pnHorizonte calc(1.6s * var(--pn-t)) var(--pn-ease) calc(.35s * var(--pn-t)) forwards;}
 @keyframes pnHorizonte{0%{transform:scaleX(0);opacity:0}30%{opacity:1}100%{transform:scaleX(1);opacity:.35}}
@@ -596,7 +596,7 @@ a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale
 @property --pn-ang{syntax:'<angle>';inherits:false;initial-value:0deg;}
 .pn-bloco{position:relative;}
 .pn-cine .pn-bloco::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;
-  background:conic-gradient(from var(--pn-ang), transparent 0 62%, color-mix(in srgb, var(--acento) 70%, transparent) 82%, rgba(143,107,255,.6) 90%, transparent 97%);
+  background:conic-gradient(from var(--pn-ang), transparent 0 62%, color-mix(in srgb, var(--acento) 70%, transparent) 82%, color-mix(in srgb,var(--sb-luz1) 60%,transparent) 90%, transparent 97%);
   -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);-webkit-mask-composite:xor;
           mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);}
 .pn-cine .pn-bloco.pn-visto::before{animation:pnContorno 1.9s cubic-bezier(.45,0,.25,1) .25s both;}
@@ -765,7 +765,7 @@ a.pn-kpi:active,.pn-att:active,.pn-comp:active,.pn-dia-lk:active{transform:scale
   .pn::after{content:"";position:absolute;z-index:-1;pointer-events:none;left:0;right:0;bottom:0;height:min(560px,70%);
     background:
       radial-gradient(46% 78% at 22% 108%, color-mix(in srgb, var(--acento) 26%, transparent), transparent 72%),
-      radial-gradient(40% 70% at 80% 112%, rgba(120,80,240,.24), transparent 72%),
+      radial-gradient(40% 70% at 80% 112%, color-mix(in srgb,color-mix(in srgb,var(--violeta) 55%,#fff) 24%,transparent), transparent 72%),
       radial-gradient(30% 40% at 52% 118%, color-mix(in srgb, var(--acento) 14%, transparent), transparent 70%);
     -webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);
             mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);

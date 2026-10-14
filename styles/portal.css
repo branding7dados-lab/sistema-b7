@@ -29,7 +29,7 @@ body.modo-portal .nav{padding-top:8px;}
   border-radius:var(--r);cursor:pointer;font:inherit;color:inherit;
   transition:var(--t-micro);}
 .ph-item:hover{border-color:var(--acento);transform:translateY(-1px);
-  box-shadow:0 6px 20px -12px rgba(120,20,120,.248);}
+  box-shadow:0 6px 20px -12px color-mix(in srgb,var(--roxo) 24.8%,transparent);}
 .ph-item-tipo{flex:none;font-size:10px;font-weight:700;letter-spacing:.08em;
   text-transform:uppercase;color:var(--acento);background:var(--acento-suave);
   border-radius:99px;padding:6px 11px;}
@@ -175,10 +175,10 @@ body.modo-portal .nav{padding-top:8px;}
    O cliente precisa saber, olhando, que está no ambiente dele.
    ===================================================================== */
 .pt-marcador{margin:0 0 18px;padding:12px 14px;border-radius:14px;
-  background:linear-gradient(135deg,rgba(194,28,131,.16),rgba(58,30,134,.16));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--magenta) 16%,transparent),color-mix(in srgb,var(--violeta) 16%,transparent));
   border:1px solid rgba(255,255,255,.09);}
 .pt-marcador-rot{display:block;font-size:9px;font-weight:800;letter-spacing:.2em;
-  color:#F09CD0;}
+  color:color-mix(in srgb,var(--magenta) 40%,#fff);}
 .pt-marcador-emp{display:block;font-size:13px;font-weight:600;color:#fff;margin-top:5px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 body.recolhida .pt-marcador{padding:10px 6px;text-align:center;}
@@ -402,7 +402,7 @@ a.pt-grav-r:hover{background:var(--suave);}
   padding:7px 9px;min-height:36px;}
 .pt-marcador-sel option{color:#111;}
 body.recolhida .pt-marcador-sel{display:none;}
-.pt-marcador.previa{background:linear-gradient(135deg,rgba(232,180,92,.22),rgba(58,30,134,.16));}
+.pt-marcador.previa{background:linear-gradient(135deg,rgba(232,180,92,.22),color-mix(in srgb,var(--violeta) 16%,transparent));}
 .pt-marcador.previa .pt-marcador-rot{color:#E8B45C;}
 .pe-lateral .pt-sair{margin:0 0 8px;}
 
