@@ -29,7 +29,9 @@ B7.Perm = (function () {
       /* Publicações do Dia: visão operacional do que sai hoje em todos os
          clientes. É leitura sobre a Linha Editorial, e coordenação é
          exatamente o trabalho de quem olha isso todo dia. */
-      'publicacoes'
+      'publicacoes',
+      /* zzz164: mural de trends (vai junto com Roteiros) */
+      'trends'
     ],   /* sem usuarios, importar, atalhos e lixeira */
     /* Designer é produção interna, não administração: só o que precisa
        para entender o briefing e entregar o trabalho. Sem usuários,
@@ -53,7 +55,7 @@ B7.Perm = (function () {
     /* zzz64: também a ÁREA de Gravações e a de Roteiros (com o
        Teleprompter e a exportação), sempre em leitura — o banco só
        deixa a equipe escrever em gravações, roteiros e cenas. */
-    videomaker: ['', 'video', 'gravacao', 'gravacoes', 'roteiros', 'cliente', 'config', 'calendario'],
+    videomaker: ['', 'video', 'gravacao', 'gravacoes', 'roteiros', 'trends', 'cliente', 'config', 'calendario'],
     cliente: [
       '', 'aprovacoes', 'revisar', 'minha-linha', 'minha-producao',
       'minhas-gravacoes', 'meus-status', 'historico', 'perfil'
@@ -77,7 +79,7 @@ B7.Perm = (function () {
   const MODULOS = [
     { id: 'clientes',      rotulo: 'Clientes',            rotas: ['clientes'] },
     { id: 'linhas',        rotulo: 'Linhas editoriais',   rotas: ['linhas', 'linha'] },
-    { id: 'roteiros',      rotulo: 'Roteiros',            rotas: ['roteiros'] },
+    { id: 'roteiros',      rotulo: 'Roteiros',            rotas: ['roteiros', 'trends'] },
     { id: 'gravacoes',     rotulo: 'Gravações',           rotas: ['gravacoes'] },
     { id: 'video',         rotulo: 'Vídeo',               rotas: ['video'] },
     { id: 'design',        rotulo: 'Design',              rotas: ['design'] },

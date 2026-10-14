@@ -1071,6 +1071,18 @@ B7.Dashboard = (function () {
   const podeIrRota = r => !B7.Perm || B7.Perm.podeRota(r);
   const souEquipeCli = () => !(B7.Auth && B7.Auth.usuario()) || (B7.Auth.ehEquipe && B7.Auth.ehEquipe());
   const secaoVisivel = s => (!s.rota || podeIrRota(s.rota)) && (!s.equipe || souEquipeCli());
+  /* zzz164: como a B7 trabalha com o cliente — linha editorial (padrão),
+     conteúdo por semana ou só roteiros. Só muda o que a tela mostra. */
+  const MODOS_CLIENTE = [
+    ['linha', 'Linha editorial', 'planejamento do mês, conteúdos e calendário'],
+    ['semana', 'Por semana', 'sem linha editorial: a pauta é montada semana a semana'],
+    ['roteiros', 'Só roteiros', 'a B7 faz os roteiros e as gravações (e trends)']
+  ];
+  const modoDe = c => (c && MODOS_CLIENTE.some(x => x[0] === c.modo)) ? c.modo : 'linha';
+  const campoModo = atual => '<div class="mb"><label class="rot">COMO TRABALHAMOS COM ESTE CLIENTE</label><div class="cli-modos" role="radiogroup">' +
+    MODOS_CLIENTE.map(x => '<label class="cli-modo"><input type="radio" name="cli-modo" value="' + x[0] + '"' + (x[0] === (atual || 'linha') ? ' checked' : '') + '>' +
+      '<span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></label>').join('') + '</div></div>';
+  const lerModo = m => { const r = m.querySelector('input[name="cli-modo"]:checked'); return r ? r.value : 'linha'; };
   const hrefSecao = (id, k) => '#/cliente/' + id + (k === 'geral' ? '' : '/' + k);
 
   /* cabeçalho compacto + seções: o mesmo em todas as seções do cliente
@@ -1088,7 +1100,9 @@ B7.Dashboard = (function () {
       '<header class="cli-cab">' +
         B7.UI.avatarCliente(c.nome, c.logo_url, 'cli-av') +
         '<div class="cli-cab-tx"><h1>' + esc(c.nome) + '</h1>' +
-          (quandoTx ? '<p class="cli-meta">' + esc(quandoTx) + '</p>' : '') + '</div>' +
+          ((quandoTx || modoDe(c) !== 'linha') ? '<p class="cli-meta">' +
+            (modoDe(c) !== 'linha' ? '<span class="cli-modo-chip">' + esc(MODOS_CLIENTE.find(x => x[0] === modoDe(c))[1]) + '</span>' : '') +
+            esc(quandoTx) + '</p>' : '') + '</div>' +
         (gestor ? '<div class="cli-acoes">' +
           (criaGravacao ? '<button class="b pri fina cli-so-largo" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + '<span>Nova gravação</span></button>' : '') +
           (resumoMes ? '<button class="b contorno fina cli-so-largo" data-resumo-mes>Resumo do mês</button>' : '') +
@@ -1104,7 +1118,7 @@ B7.Dashboard = (function () {
     /* fora do .cli-shell (irmã do corpo) para poder grudar no topo
        enquanto a página rola */
     '<nav class="cli-secoes" aria-label="Seções do cliente"><div class="cli-secoes-rolo">' +
-      SECOES_CLIENTE.filter(secaoVisivel).map(s =>
+      SECOES_CLIENTE.filter(s => secaoVisivel(s) && !(s.k === 'linhas' && modoDe(c) !== 'linha' && secao !== 'linhas')).map(s =>
         '<a href="' + hrefSecao(c.id, s.k) + '"' + (s.k === secao ? ' class="on" aria-current="page"' : '') + '>' + esc(s.r) + '</a>').join('') +
       '<i class="cli-ind" aria-hidden="true"></i>' +
     '</div></nav>';
@@ -1610,8 +1624,12 @@ B7.Dashboard = (function () {
         atalho('data-imprimir="' + esc(ultima.id) + '"', IC.imprimir, 'Imprimir') +
         atalho('data-dup="' + esc(ultima.id) + '"', IC_DUP, 'Duplicar') : '') +
       atalho('data-editar-cli="' + esc(c.id) + '"', IC.pessoa, 'Editar cliente') + '</div>';
-    const planos = '<div class="vg-planos"><div class="vg-plano">' + blocoLinhaEditorial(c, linhas || []) + '</div>' +
-      '<div class="vg-plano">' + blocoStatusSemanal(c, semanas) + '</div></div>';
+    /* zzz164: cliente sem linha editorial não vê o bloco dela; "só roteiros" também não vê o status semanal */
+    const md = modoDe(c);
+    const planos = md === 'roteiros' ? '' : md === 'semana'
+      ? '<div class="vg-planos"><div class="vg-plano">' + blocoStatusSemanal(c, semanas) + '</div></div>'
+      : '<div class="vg-planos"><div class="vg-plano">' + blocoLinhaEditorial(c, linhas || []) + '</div>' +
+        '<div class="vg-plano">' + blocoStatusSemanal(c, semanas) + '</div></div>';
     const topo = numeros + atalhos + planos;
 
     if (!gravacoes.length) {
@@ -2817,6 +2835,7 @@ B7.Dashboard = (function () {
       campoLogo(null) +
       '<div class="mb"><label class="rot">OBSERVAÇÕES <span class="leve">— opcional</span></label>' +
       '<textarea class="campo" id="nc-obs" rows="2" placeholder="Tom de voz, contato, particularidades…"></textarea></div>' +
+      campoModo('linha') +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Criar cliente</button></div>');
 
@@ -2834,8 +2853,10 @@ B7.Dashboard = (function () {
           () => B7.DB.criarCliente(nome.value, m.querySelector('#nc-obs').value), 'Cliente criado');
         let completo = c;
         try {
-          const nova = await logo.resolver(c.id, null);
-          if (nova) {
+          const nova = await logo.resolver(c.id, null) || {};
+          const modo = lerModo(m);
+          if (modo !== 'linha' && 'modo' in c) nova.modo = modo;   /* 'modo' só existe depois da migração */
+          if (Object.keys(nova).length) {
             await B7.DB.atualizarCliente(c.id, nova);
             completo = Object.assign({}, c, nova);
           }
@@ -2870,6 +2891,7 @@ B7.Dashboard = (function () {
       campoLogo(c.logo_url) +
       '<div class="mb"><label class="rot">OBSERVAÇÕES <span class="leve">— opcional</span></label>' +
       '<textarea class="campo" id="ec-obs" rows="2">' + esc(c.observacoes || '') + '</textarea></div>' +
+      (c.modo !== undefined ? campoModo(modoDe(c)) : '') +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Salvar alterações</button></div>');
 
@@ -2881,6 +2903,7 @@ B7.Dashboard = (function () {
       if (!nome.value.trim()) { nome.classList.add('erro'); nome.focus(); return; }
       botao.disabled = true;
       const patch = { nome: nome.value.trim(), observacoes: m.querySelector('#ec-obs').value };
+      if (c.modo !== undefined) patch.modo = lerModo(m);
       try {
         /* a logo resolve primeiro: se o envio falhar, nada é gravado e a
            logo antiga continua onde estava */
