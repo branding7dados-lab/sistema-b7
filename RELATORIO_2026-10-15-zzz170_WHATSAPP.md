@@ -19,3 +19,8 @@
   - tabela `whatsapp_envios`, com leitura só pela equipe interna;
   - RPC `whatsapp_registrar_envio`, que também grava no histórico da demanda de vídeo (evento `whatsapp`).
 - **Testado aqui:** o Electron abre o WhatsApp Web encaixado no retângulo certo (tela do QR Code). **Não testado** com uma conta do WhatsApp conectada: a abertura do grupo, o anexo e a assinatura dependem do site do WhatsApp e ainda precisam de teste real.
+
+## zzz171 — correção: a tela do WhatsApp não abria
+- `B7.Rota.titulo` recebe uma lista, e `B7.WhatsApp.abrir()` passava um texto. O `.join` quebrava antes de desenhar a tela, então o clique no menu "não fazia nada".
+- A conferência "tem algo por cima?" passou a ignorar elementos pequenos (o botão flutuante do assistente, os avisos). Antes, o botão no canto escondia o WhatsApp para sempre.
+- Testado no Electron com a tela real do sistema: a área é medida e a camada do WhatsApp é posta nela.
