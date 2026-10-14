@@ -57,7 +57,7 @@ B7.WhatsApp = (function () {
   async function abrir() {
     const painel = document.getElementById('painel-dashboard');
     if (!painel) return;
-    if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo('WhatsApp');
+    if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['WhatsApp']);
     if (!D) return telaFora(painel);
     const cfg = await D.config().catch(() => ({})) || {};
     if (!cfg.nome) { cfg.nome = primeiroNome(); D.definirConfig({ nome: cfg.nome }); }
@@ -103,7 +103,20 @@ B7.WhatsApp = (function () {
   function coberta(area, r) {
     const pts = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 12, r.top + 12], [r.right - 12, r.top + 12],
                  [r.left + 12, r.bottom - 12], [r.right - 12, r.bottom - 12]];
-    return pts.some(([x, y]) => { const el = document.elementFromPoint(x, y); return !el || !area.contains(el); });
+    /* botão flutuante, aviso (toast) e dica pequena não contam: só o que é
+       grande de verdade (janela, menu, painel) esconde o WhatsApp */
+    return pts.some(([x, y]) => {
+      const el = document.elementFromPoint(x, y);
+      if (!el) return true;
+      if (area.contains(el)) return false;
+      let c = el;
+      while (c && c !== document.body && !c.contains(area)) {
+        const b = c.getBoundingClientRect();
+        if (b.width >= 160 && b.height >= 120) return true;
+        c = c.parentElement;
+      }
+      return false;
+    });
   }
   function medir() {
     if (!ativo) return;
