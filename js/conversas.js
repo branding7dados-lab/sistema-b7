@@ -47,7 +47,13 @@ B7.Conversas = (function () {
     lixo: sv('<path d="M5 7h14M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2M7 7l.8 11.2a2 2 0 0 0 2 1.8h4.4a2 2 0 0 0 2-1.8L17 7"/>'),
     um: '<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7.5l3.4 3.4L15 3.2"/></svg>',
     dois: '<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 7.5l3.4 3.4L12.5 3.2M8.6 10.3l.6.6L18.5 3.2"/></svg>',
-    relogio: sv('<circle cx="12" cy="12" r="8"/><path d="M12 7.8V12l2.6 1.8"/>')
+    relogio: sv('<circle cx="12" cy="12" r="8"/><path d="M12 7.8V12l2.6 1.8"/>'),
+    /* zzz169 */
+    responder: sv('<path d="M9.5 7L4.5 12l5 5"/><path d="M4.8 12H14a5.5 5.5 0 0 1 5.5 5.5V19"/>'),
+    emoji: sv('<circle cx="12" cy="12" r="8.5"/><path d="M8.6 14.2a4.3 4.3 0 0 0 6.8 0"/><path d="M9.3 9.6h.01M14.7 9.6h.01" stroke-width="2.6"/>'),
+    lapis: sv('<path d="M14.8 5.2l4 4L9 19H5v-4z"/><path d="M12.8 7.2l4 4"/>'),
+    baixo: sv('<path d="M6 9.5l6 6 6-6"/>'),
+    busca: sv('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/>')
   };
 
   /* ------------------------------------------------------------ estado */
@@ -65,6 +71,19 @@ B7.Conversas = (function () {
   const urls = new Map();           /* path → { url, ate } */
   let tocando = null;               /* <audio> em reprodução */
   let timers = { lista: 0, pessoas: 0, atividade: 0 };
+  /* zzz169: busca, filtro, responder, editar, reações, painel largo */
+  let busca = '', filtro = 'todas';
+  let respondendo = null, editando = null;   /* mensagem citada / em edição */
+  let novasAbaixo = 0;                        /* chegaram com a pessoa lendo lá em cima */
+  const LARGA = window.matchMedia('(min-width: 1100px)');
+  const REACOES = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  const EMOJIS = ['😀', '😂', '😅', '😊', '😍', '😘', '😎', '🤔', '😮', '😢', '😭', '😡', '🙄', '😴', '🤩', '🥳',
+    '👍', '👎', '👏', '🙌', '🙏', '💪', '👀', '🤝', '✌️', '👌', '❤️', '🔥', '✨', '🎉', '✅', '❌',
+    '⚠️', '📌', '📎', '📷', '🎬', '🎨', '💡', '⏰', '📅', '🚀', '☕', '🍕', '💯', '🤣'];
+  const CHAVE_LARGURA = 'b7-conv-largura';
+  const nomeDe = id => { const p = pessoas.get(id); return p ? (p.nome || p.username || '') : ''; };
+  const semAcento = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const movimento = () => (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('modo-leve')) ? 'auto' : 'smooth';
 
   const eu = () => { const u = B7.Auth && B7.Auth.usuario && B7.Auth.usuario(); return u ? u.id : null; };
   const liberado = () => {
@@ -139,7 +158,7 @@ B7.Conversas = (function () {
       (linhas || []).forEach(l => { conversas.set(l.outro_id, l); porConversa.set(l.conversa_id, l.outro_id); });
     } catch (e) { return; }
     pintarBadge();
-    if (aberto && !atual) pintarLista();
+    if (aberto) pintarLinhas();
     if (aberto && atual) pintarTiques();
     if (pendente) { const c = pendente; pendente = null; abrirConversa(c); }
   }
@@ -215,9 +234,10 @@ B7.Conversas = (function () {
       return;
     }
     if (p.eventType === 'UPDATE') {           /* mensagem apagada */
-      if (atual && n.conversa_id === atual.conversaId) {
+      if (atual && n.conversa_id === atual.conversaId) {        /* zzz169: também edição e reação */
         const i = atual.msgs.findIndex(m => m.id === n.id);
         if (i >= 0) { atual.msgs[i] = n; pintarMensagens(false); }
+        if (editando && editando.id === n.id && n.apagada_em) { editando = null; pintarCtx(); }
       }
       carregarListaLogo();
       return;
@@ -226,7 +246,13 @@ B7.Conversas = (function () {
     const minha = n.autor_id === eu();
     const naTela = aberto && atual && atual.conversaId === n.conversa_id;
     if (naTela) {
-      if (!atual.msgs.some(m => m.id === n.id)) { atual.msgs.push(n); pintarMensagens(true); }
+      if (!atual.msgs.some(m => m.id === n.id)) {
+        const corpo = painel && painel.querySelector('#conv-corpo');
+        const longe = corpo && corpo.scrollHeight - corpo.scrollTop - corpo.clientHeight > 220;
+        atual.msgs.push(n);
+        if (!minha && longe) novasAbaixo++;                    /* zzz169: não arranca quem está lendo lá em cima */
+        pintarMensagens(minha);
+      }
       if (!minha) { atividade.delete(n.autor_id); pintarPresenca(); if (!document.hidden) marcarLida(n.conversa_id); else avisar(n); }
     } else if (!minha) {
       atividade.delete(n.autor_id); pintarPresenca();
@@ -277,9 +303,17 @@ B7.Conversas = (function () {
       window.addEventListener('online', () => { ligarCanais(); carregarLista(); });
       document.addEventListener('keydown', e => {
         if (e.key !== 'Escape' || !aberto || document.querySelector('.fundo-modal')) return;
+        if (fecharPopovers()) return;
+        if (respondendo || editando) { cancelarCtx(); return; }
         if (grav) { pararGravacao(true); return; }
         if (atual) voltar(); else fechar();
       });
+      document.addEventListener('pointerdown', e => {
+        if (!painel || e.target.closest('.conv-emojis,#conv-emoji-bt,.conv-reagir-menu,[data-reagir-menu]')) return;
+        fecharPopovers();
+      });
+      const mudouLargura = () => { if (painel) aplicarLargura(); };
+      if (LARGA.addEventListener) LARGA.addEventListener('change', mudouLargura); else if (LARGA.addListener) LARGA.addListener(mudouLargura);
       timers.lista = setInterval(() => { if (!document.hidden) carregarLista(); }, 60000);
       timers.pessoas = setInterval(() => { if (!document.hidden && aberto) carregarPessoas().then(pintarPresenca); }, 120000);
       timers.atividade = setInterval(() => {
@@ -306,36 +340,90 @@ B7.Conversas = (function () {
   }
 
   /* ------------------------------------------------------------- painel */
+  /* zzz169: o painel tem duas colunas — lista (.conv-esq) e conversa (.conv-dir).
+     Na tela larga (≥ 1100 px) as duas aparecem lado a lado e a largura se
+     ajusta pela alça da borda; no resto, uma de cada vez, como antes. */
   function abrir(conversaId) {
     if (!liberado()) return;
     if (!painel) {
       painel = document.createElement('aside');
       painel.className = 'conv-painel'; painel.id = 'b7-conversas';
       painel.setAttribute('role', 'dialog'); painel.setAttribute('aria-label', 'Conversas');
+      painel.innerHTML = '<span class="conv-alca" aria-hidden="true" title="Arraste para ajustar a largura"></span>' +
+        '<section class="conv-esq"></section><section class="conv-dir"></section>';
       document.body.appendChild(painel);
+      ligarAlca(painel.querySelector('.conv-alca'));
+      ligarArrastarArquivo(painel.querySelector('.conv-dir'));
+      aplicarLargura();
     }
     /* o assistente de IA ocupa o mesmo canto: um de cada vez */
     try { if (B7.Chat && B7.Chat.fechar) B7.Chat.fechar(); } catch (e) {}
     aberto = true; document.body.classList.add('conv-aberta');
     document.querySelectorAll('.conv-bt').forEach(b => b.setAttribute('aria-expanded', 'true'));
-    if (conversaId) abrirConversa(conversaId); else if (atual) pintarConversa(); else pintarLista();
-    carregarPessoas().then(() => { if (aberto && !atual) pintarLista(); else pintarPresenca(); });
+    pintarLista();
+    if (conversaId) abrirConversa(conversaId); else if (atual) pintarConversa(); else pintarVazio();
+    carregarPessoas().then(() => { if (aberto) { pintarLinhas(); pintarPresenca(); } });
     carregarLista();
   }
-  function fechar() {
+  function aplicarLargura() {
+    if (!painel) return;
+    const larga = LARGA.matches;
+    painel.classList.toggle('larga', larga);
+    if (!larga) { painel.style.width = ''; return; }
+    let w = 0; try { w = Number(localStorage.getItem(CHAVE_LARGURA)) || 0; } catch (e) {}
+    painel.style.width = limitarLargura(w || 980) + 'px';
+  }
+  const limitarLargura = w => Math.round(Math.max(760, Math.min(w, window.innerWidth - 60, 1600)));
+  function ligarAlca(alca) {
+    alca.addEventListener('pointerdown', e => {
+      if (!painel || !painel.classList.contains('larga')) return;
+      e.preventDefault();
+      try { alca.setPointerCapture(e.pointerId); } catch (x) {}
+      painel.classList.add('ajustando');
+      const mover = ev => { painel.style.width = limitarLargura(window.innerWidth - ev.clientX) + 'px'; };
+      const soltar = () => {
+        alca.removeEventListener('pointermove', mover); alca.removeEventListener('pointerup', soltar); alca.removeEventListener('pointercancel', soltar);
+        if (!painel) return;
+        painel.classList.remove('ajustando');
+        try { localStorage.setItem(CHAVE_LARGURA, String(parseInt(painel.style.width, 10) || 980)); } catch (x) {}
+      };
+      alca.addEventListener('pointermove', mover); alca.addEventListener('pointerup', soltar); alca.addEventListener('pointercancel', soltar);
+    });
+    alca.addEventListener('dblclick', () => { try { localStorage.removeItem(CHAVE_LARGURA); } catch (x) {} aplicarLargura(); });
+  }
+  /* arrastar um arquivo para cima da conversa = anexar */
+  function ligarArrastarArquivo(dir) {
+    let fundo = 0;
+    const temArquivo = e => !!(e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files'));
+    dir.addEventListener('dragenter', e => { if (!atual || !temArquivo(e)) return; e.preventDefault(); fundo++; dir.classList.add('arrastando'); });
+    dir.addEventListener('dragover', e => { if (!atual || !temArquivo(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    dir.addEventListener('dragleave', () => { fundo = Math.max(0, fundo - 1); if (!fundo) dir.classList.remove('arrastando'); });
+    dir.addEventListener('drop', e => {
+      fundo = 0; dir.classList.remove('arrastando');
+      if (!atual || !temArquivo(e)) return;
+      e.preventDefault();
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) escolherAnexo(f);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 1) B7.UI.toast('Vai um arquivo por vez: anexei o primeiro.');
+    });
+  }
+  function limparConversa() {
     if (grav) pararGravacao(true);
     pararAudio(); largarAnexo();
     if (atual) sinalizar(null, true);
+    respondendo = null; editando = null; novasAbaixo = 0;
+  }
+  function fechar() {
+    limparConversa();
     aberto = false; atual = null;
     document.body.classList.remove('conv-aberta');
     if (painel) { painel.remove(); painel = null; }
     document.querySelectorAll('.conv-bt').forEach(b => b.setAttribute('aria-expanded', 'false'));
   }
   function voltar() {
-    if (grav) pararGravacao(true);
-    pararAudio(); largarAnexo();
-    if (atual) sinalizar(null, true);
-    atual = null; pintarLista(); carregarLista();
+    limparConversa();
+    atual = null; pintarVazio(); pintarLinhas(); carregarLista();
+    const b = painel && painel.querySelector('#conv-busca'); if (b && LARGA.matches) b.focus();
   }
 
   const avatar = (p, cls) => '<span class="conv-av' + (cls ? ' ' + cls : '') + '">' + B7.UI.avatarPessoa(p || {}, 'conv-av-img') +
@@ -357,20 +445,56 @@ B7.Conversas = (function () {
     return (minha && !m.apagada ? '<i class="conv-tq ' + estadoTique(m.created_at, c) + '">' + (estadoTique(m.created_at, c) === 'enviada' ? IC.um : IC.dois) + '</i>' : '') +
       '<span>' + esc(previa(m)) + '</span>';
   }
+  /* cabeçalho, busca e filtro são feitos uma vez; só as linhas se renovam (o foco fica na busca) */
   function pintarLista() {
+    const cx = painel && painel.querySelector('.conv-esq'); if (!cx) return;
+    if (!cx.querySelector('.conv-lista')) {
+      cx.innerHTML = '<header class="conv-topo"><h2>Conversas</h2>' +
+          '<button type="button" class="conv-ic" data-fechar aria-label="Fechar conversas">' + IC.fechar + '</button></header>' +
+        '<div class="conv-busca">' + IC.busca +
+          '<input type="search" id="conv-busca" placeholder="Buscar pessoa ou mensagem" aria-label="Buscar pessoa ou mensagem" autocomplete="off" name="b7-conversa-busca" data-lpignore="true" data-1p-ignore="true" data-form-type="other">' +
+        '</div>' +
+        '<div class="conv-filtros" role="group" aria-label="Filtrar conversas">' +
+          '<button type="button" data-filtro="todas">Todas</button><button type="button" data-filtro="nao">Não lidas<i></i></button></div>' +
+        '<div class="conv-lista" role="list"></div>';
+      cx.querySelector('[data-fechar]').onclick = fechar;
+      const b = cx.querySelector('#conv-busca'); b.value = busca;
+      b.addEventListener('input', () => { busca = b.value; pintarLinhas(); });
+      b.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { const p = cx.querySelector('[data-pessoa]'); if (p) { e.preventDefault(); abrirCom(p.dataset.pessoa); } }
+        if (e.key === 'Escape' && b.value) { e.stopPropagation(); b.value = ''; busca = ''; pintarLinhas(); }
+      });
+      cx.querySelectorAll('[data-filtro]').forEach(f => f.onclick = () => { filtro = f.dataset.filtro; pintarLinhas(); });
+      cx.querySelector('.conv-lista').addEventListener('click', e => { const p = e.target.closest('[data-pessoa]'); if (p) abrirCom(p.dataset.pessoa); });
+    }
+    pintarLinhas();
+  }
+  function pintarLinhas() {
+    const cx = painel && painel.querySelector('.conv-lista'); if (!cx) return;
+    const q = semAcento(busca.trim()), totalNao = totalNaoLidas();
+    painel.querySelectorAll('[data-filtro]').forEach(f => { const on = f.dataset.filtro === filtro; f.classList.toggle('on', on); f.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    const nf = painel.querySelector('[data-filtro="nao"] i'); if (nf) nf.textContent = totalNao ? (totalNao > 99 ? '99+' : totalNao) : '';
+    const l = ordemLista().filter(p => {
+      const c = conversas.get(p.id);
+      if (filtro === 'nao' && !(c && c.nao_lidas)) return false;
+      if (!q) return true;
+      return semAcento(p.nome).includes(q) || semAcento(p.username).includes(q) || (c && c.ultima && semAcento(previa(c.ultima)).includes(q));
+    });
+    const vazio = q ? 'Nada encontrado para “' + esc(busca.trim()) + '”.' : filtro === 'nao' ? 'Tudo lido por aqui.' : 'Ninguém mais da equipe por aqui ainda.';
+    cx.innerHTML = l.length ? l.map(p => {
+      const c = conversas.get(p.id), n = (c && c.nao_lidas) || 0, sel = atual && atual.outroId === p.id;
+      return '<button type="button" class="conv-linha' + (n ? ' nova' : '') + (sel ? ' sel' : '') + '" role="listitem" data-pessoa="' + esc(p.id) + '"' + (sel ? ' aria-current="true"' : '') + '>' + avatar(p) +
+        '<span class="conv-linha-tx"><b>' + esc(p.nome || p.username || '') + '</b><small data-previa="' + esc(p.id) + '">' + linhaPrevia(p) + '</small></span>' +
+        '<span class="conv-linha-lado"><time>' + esc(c && c.ultima_em ? quandoCurto(c.ultima_em) : '') + '</time>' +
+          (n ? '<i class="conv-conta">' + (n > 99 ? '99+' : n) + '</i>' : '') + '</span></button>';
+    }).join('') : '<p class="conv-vazio">' + vazio + '</p>';
+  }
+  /* coluna da conversa sem conversa escolhida (só aparece no painel largo) */
+  function pintarVazio() {
     if (!painel) return;
-    const l = ordemLista();
-    painel.innerHTML = '<header class="conv-topo"><h2>Conversas</h2>' +
-        '<button type="button" class="conv-ic" data-fechar aria-label="Fechar conversas">' + IC.fechar + '</button></header>' +
-      '<div class="conv-lista" role="list">' + (l.length ? l.map(p => {
-        const c = conversas.get(p.id), n = (c && c.nao_lidas) || 0;
-        return '<button type="button" class="conv-linha' + (n ? ' nova' : '') + '" role="listitem" data-pessoa="' + esc(p.id) + '">' + avatar(p) +
-          '<span class="conv-linha-tx"><b>' + esc(p.nome || p.username || '') + '</b><small data-previa="' + esc(p.id) + '">' + linhaPrevia(p) + '</small></span>' +
-          '<span class="conv-linha-lado"><time>' + esc(c && c.ultima_em ? quandoCurto(c.ultima_em) : '') + '</time>' +
-            (n ? '<i class="conv-conta">' + (n > 99 ? '99+' : n) + '</i>' : '') + '</span></button>';
-      }).join('') : '<p class="conv-vazio">Ninguém mais da equipe por aqui ainda.</p>') + '</div>';
-    painel.querySelector('[data-fechar]').onclick = fechar;
-    painel.querySelectorAll('[data-pessoa]').forEach(b => b.onclick = () => abrirCom(b.dataset.pessoa));
+    painel.classList.remove('com-conversa');
+    const dir = painel.querySelector('.conv-dir'); if (!dir) return;
+    dir.innerHTML = '<div class="conv-nada">' + IC.conversa + '<b>Suas conversas com a equipe</b><span>Escolha alguém na lista para começar. Arraste arquivos para cá ou cole um print com Ctrl+V.</span></div>';
   }
 
   /* presença, digitando e visto: só os pedaços que mudam, sem redesenhar a tela */

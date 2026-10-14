@@ -457,7 +457,7 @@
 .ps-selo b{display:block;font-family:'Inter';font-size:13px;font-weight:700;
   color:var(--ink);margin-top:2px;}
 .ps-selo span{display:inline-block;margin-top:3px;font-size:11px;font-weight:600;
-  color:var(--magenta);background:rgba(194,28,131,.08);border-radius:99px;padding:2px 11px;}
+  color:var(--magenta);background:var(--acento-suave);border-radius:99px;padding:2px 11px;}
 
 /* ----------------------------------------------------------- corpo */
 .ps-corpo{flex:1;min-height:0;overflow:hidden;padding:var(--corpo-pad);

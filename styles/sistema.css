@@ -329,7 +329,7 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 .ap-seg button{border:0;background:none;padding:6px 14px;border-radius:99px;font:inherit;font-size:12.5px;font-weight:650;color:var(--ink-3);cursor:pointer;transition:background .2s,color .2s,box-shadow .2s;}
 .ap-seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12);}
 /* a telinha */
-.ap-prev{display:flex;height:248px;border-radius:18px;overflow:hidden;border:1px solid var(--pv-borda);background:var(--pv-glow),var(--pv-bg);color:var(--pv-ink);font-size:11px;
+.ap-prev{display:flex;height:280px;border-radius:18px;overflow:hidden;border:1px solid var(--pv-borda);background:var(--pv-glow),var(--pv-bg);color:var(--pv-ink);font-size:11px;
   box-shadow:0 18px 40px -26px rgba(0,0,0,.45);transition:border-color .3s;}
 .pv-side{flex:none;width:58px;background:var(--pv-sb);display:flex;flex-direction:column;gap:9px;padding:13px 9px;}
 .pv-side i{display:block;height:8px;border-radius:5px;background:rgba(255,255,255,.16);}
@@ -340,12 +340,12 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 .pv-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .pv-busca{flex:1;max-width:120px;height:18px;border-radius:7px;background:color-mix(in srgb,var(--pv-ink) 7%,transparent);}
 .pv-criar{background:var(--pv-btn);color:#fff;padding:4px 10px;border-radius:99px;font-weight:700;font-size:10px;}
-.pv-heroi{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:13px;background:var(--pv-heroi);color:#fff;}
+.pv-heroi{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:calc(var(--pv-r,14px) - 1px);background:var(--pv-heroi);color:#fff;}
 .pv-heroi small{display:block;font-size:7.5px;letter-spacing:.14em;opacity:.7;font-weight:700;}
 .pv-heroi b{font-size:14px;font-family:'Archivo';font-weight:800;}
 .pv-anel{flex:none;width:28px;height:28px;border-radius:50%;background:conic-gradient(var(--pv-l2) 0 66%,rgba(255,255,255,.18) 0);
   -webkit-mask:radial-gradient(circle,transparent 9px,#000 10px);mask:radial-gradient(circle,transparent 9px,#000 10px);}
-.pv-card{background:var(--pv-card);border:1px solid var(--pv-borda);border-radius:13px;padding:10px 11px;display:flex;flex-direction:column;gap:5px;}
+.pv-card{background:var(--pv-card);border:1px solid var(--pv-borda);border-radius:calc(var(--pv-r,14px) - 1px);padding:10px 11px;display:flex;flex-direction:column;gap:5px;}
 .pv-l{display:flex;align-items:center;justify-content:space-between;gap:6px;}
 .pv-card b{font-size:12px;}
 .pv-card small{font-size:10px;color:var(--pv-ink3);}
@@ -353,10 +353,18 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
 .pv-barra{display:block;height:6px;border-radius:99px;background:color-mix(in srgb,var(--pv-ink) 9%,transparent);overflow:hidden;}
 .pv-barra u{display:block;height:100%;width:66%;border-radius:inherit;background:var(--pv-btn);}
 .pv-btns{display:flex;align-items:center;gap:6px;margin-top:3px;}
-.pv-btn{background:var(--pv-btn);color:#fff;padding:5px 11px;border-radius:9px;font-weight:700;font-size:10px;box-shadow:0 4px 12px -5px var(--pv-m);}
-.pv-btn2{border:1px solid var(--pv-borda);padding:5px 10px;border-radius:9px;font-weight:650;font-size:10px;}
+.pv-btn{background:var(--pv-btn);color:#fff;padding:5px 11px;border-radius:calc(var(--pv-r,14px) * .64);font-weight:700;font-size:10px;box-shadow:0 4px 12px -5px var(--pv-m);}
+.pv-btn2{border:1px solid var(--pv-borda);padding:5px 10px;border-radius:calc(var(--pv-r,14px) * .64);font-weight:650;font-size:10px;}
 .pv-tg{margin-left:auto;width:26px;height:15px;border-radius:99px;background:var(--pv-m);padding:2px;display:flex;justify-content:flex-end;}
 .pv-tg i{width:11px;height:11px;border-radius:50%;background:#fff;}
+/* zzz169: mini gráfico da prévia, nas três cores da paleta */
+.pv-graf{display:flex;align-items:flex-end;gap:4px;height:26px;margin-top:2px;}
+.pv-graf i{flex:1;border-radius:3px 3px 1px 1px;opacity:.92;}
+.ap-prev,.ap-prev *{transition:background-color .3s var(--mola),border-color .3s var(--mola),color .3s var(--mola);}
+@media (prefers-reduced-motion: reduce){.ap-prev,.ap-prev *{transition:none;}}
+.ap-seg-larga{display:flex;width:100%;}
+.ap-seg-larga button{flex:1;}
+.ap-dica{display:block;margin-top:6px;font-size:11.5px;color:var(--ink-4);}
 /* controles */
 .ap-ctl{display:flex;flex-direction:column;gap:18px;}
 .ap-sec .ad-t{margin-top:0;}
@@ -483,7 +491,7 @@ body.modo-tv .nv-cartao,body.modo-tv .mn-faixa.mn-adm{display:none !important;}
    para cima e os controles ocupam a largura toda. */
 @media (max-width:980px){
   .ap-grade{grid-template-columns:1fr;gap:16px;}
-  .ap-prev{height:200px;}
+  .ap-prev{height:200px;} .pv-graf{display:none;}
 }
 /* no celular a prévia fica presa no alto, pequena, e os controles rolam por baixo */
 @media (max-width:560px){

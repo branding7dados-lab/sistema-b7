@@ -766,7 +766,14 @@ B7.Aparencia = (function () {
     const base = euMesmo ? efetiva() : cfg;
     const salvo = normalizar(base), rascunho = normalizar(base);
     let gravou = false, escuroPrev = document.documentElement.getAttribute('data-theme') === 'dark';
-    const voltar = () => { if (!gravou) aplicarSuave(euMesmo ? efetiva() : cfg); };
+    /* zzz169: o tema é de cada pessoa (b7_tema, em app.js); aplica na hora e Cancelar devolve */
+    let temaIni = 'sistema'; try { temaIni = localStorage.getItem('b7_tema') || 'sistema'; } catch (e) {}
+    const temaRasc = { tema: temaIni };
+    const voltar = () => {
+      if (gravou) return;
+      if (temaRasc.tema !== temaIni && B7.definirTema) B7.definirTema(temaIni);
+      aplicarSuave(euMesmo ? efetiva() : cfg);
+    };
     const m = B7.UI.modal('<h3>' + (euMesmo ? 'Minha aparência' : 'Aparência do sistema') + '</h3>' +
       '<p class="sub">' + (euMesmo
         ? 'Só para você, neste aparelho. Enquanto você tiver uma escolha aqui, ela manda — mesmo que a administração mude a cor da equipe.'
@@ -809,7 +816,7 @@ B7.Aparencia = (function () {
       reabrirConfig();
     };
     const btB7 = m.querySelector('#ap-b7');
-    if (btB7) btB7.onclick = () => { Object.assign(rascunho, { paleta: 'b7', cor: '', menu: 'padrao', botoes: 'degrade', brilho: false }); pintarTudo(true); };
+    if (btB7) btB7.onclick = () => { Object.assign(rascunho, { paleta: 'b7', cor: '', menu: 'padrao', botoes: 'degrade', brilho: false, tinta: 'suave', cantos: 'padrao' }); pintarTudo(true); };
     const gradeDe = t => 'linear-gradient(135deg,' + t[0] + ',' + t[1] + ' 52%,' + t[2] + ')';
 
     const aoVivo = suave => {
@@ -876,9 +883,6 @@ B7.Aparencia = (function () {
       const t = TINTAS.find(x => x[0] === rascunho.tinta); m.querySelector('#ap-tinta-d').textContent = t ? 'Fundos, bordas e textos com ' + t[2] + '.' : '';
     };
     const pintarCantos = () => seg(cxR, [['retos', 'Retos'], ['padrao', 'Padrão'], ['redondos', 'Redondos']], 'cantos', () => { pintarCantos(); aoVivo(); });
-    /* o tema é de cada pessoa (b7_tema, em app.js); aplica na hora e Cancelar devolve */
-    let temaIni = 'sistema'; try { temaIni = localStorage.getItem('b7_tema') || 'sistema'; } catch (e) {}
-    const temaRasc = { tema: temaIni };
     const pintarTema = () => {
       if (!cxTema) return;
       cxTema.innerHTML = [['light', 'Claro'], ['dark', 'Escuro'], ['sistema', 'Auto', 'Segue o aparelho']].map(x => '<button type="button" role="radio" aria-checked="' + (temaRasc.tema === x[0]) + '" data-v="' + x[0] + '"' + (temaRasc.tema === x[0] ? ' class="on"' : '') + ' title="' + (x[2] || x[1]) + '">' + x[1] + '</button>').join('');
@@ -891,7 +895,6 @@ B7.Aparencia = (function () {
         pintarTema(); pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev);
       });
     };
-    if (cxTema) { const v0 = voltar; aoFecharTema = () => { if (!gravou && temaRasc.tema !== temaIni && B7.definirTema) B7.definirTema(temaIni); v0(); }; }
     const lerLinhas = () => !cxL ? null : cxL.querySelectorAll('.ap-linha').forEach(l => {
       const e = rascunho.estacoes[Number(l.dataset.i)]; if (!e) return;
       l.querySelectorAll('[data-f]').forEach(c => { e[c.dataset.f] = c.value; });
@@ -923,7 +926,7 @@ B7.Aparencia = (function () {
       });
     };
     const chB = m.querySelector('#ap-brilho');
-    function pintarTudo(suave) { chB.checked = rascunho.brilho; pintarPaletas(); pintarMenus(); pintarBotoes(); aoVivo(suave); }
+    function pintarTudo(suave) { chB.checked = rascunho.brilho; pintarPaletas(); pintarMenus(); pintarBotoes(); pintarTinta(); pintarCantos(); pintarTema(); aoVivo(suave); }
     m.querySelectorAll('[data-tp]').forEach(b => b.onclick = () => { escuroPrev = b.dataset.tp === 'd'; pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev); });
     chB.onchange = () => { rascunho.brilho = chB.checked; aoVivo(true); };
     if (!euMesmo) m.querySelector('#ap-nova').onclick = () => {
