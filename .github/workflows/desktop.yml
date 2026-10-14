@@ -85,8 +85,12 @@ jobs:
             gh release create app-desktop --latest=false \
               --title "App Windows" \
               --notes "Instalador do Sistema B7 para Windows. Sempre o mais novo: o programa instalado se atualiza sozinho por esta release."
-          gh release upload app-desktop \
-            "$B7_EXE" dist/latest.yml dist/sistema-b7-instalador.exe --clobber
+          # zzz174: o instalador PRIMEIRO e o latest.yml só DEPOIS. Juntos, o
+          # gh sobe os arquivos ao mesmo tempo: o latest.yml (pequeno) ficava
+          # pronto antes do instalador (80 MB) e quem procurava atualização
+          # nesse meio-tempo recebia "Cannot download ... 404".
+          gh release upload app-desktop "$B7_EXE" dist/sistema-b7-instalador.exe --clobber
+          gh release upload app-desktop dist/latest.yml --clobber
           # zzz161: cada publicação deixava mais um instalador de 78 MB na
           # release. Fica só o desta versão (o latest.yml aponta para ele) e
           # o sistema-b7-instalador.exe, que é o link fixo.
