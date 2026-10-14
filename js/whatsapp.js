@@ -54,12 +54,24 @@ B7.WhatsApp = (function () {
   addEventListener('hashchange', () => setTimeout(pintarContagem, 200));
 
   /* --------------------------------------------- a tela #/whatsapp */
+  /* zzz172: se algo der errado, a tela DIZ o quê (antes ficava parada na
+     tela anterior, sem nenhum sinal) */
   async function abrir() {
+    try { await abrirTela(); }
+    catch (e) {
+      const painel = document.getElementById('painel-dashboard');
+      if (painel) painel.innerHTML = '<div class="conteudo entra wa-fora">' + icone + '<h1>WhatsApp</h1>' +
+        '<p>Não consegui abrir o WhatsApp agora.</p><p class="leve"><code>' + esc((e && e.message) || String(e)) + '</code></p>' +
+        '<div class="acoes"><button type="button" class="b pri" onclick="location.reload()">Recarregar</button></div></div>';
+    }
+  }
+  async function abrirTela() {
     const painel = document.getElementById('painel-dashboard');
     if (!painel) return;
     if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['WhatsApp']);
     if (!D) return telaFora(painel);
-    const cfg = await D.config().catch(() => ({})) || {};
+    /* o programa pode demorar a responder: não espera mais que 2 s */
+    const cfg = await Promise.race([D.config().catch(() => ({})), new Promise(r => setTimeout(() => r({}), 2000))]) || {};
     if (!cfg.nome) { cfg.nome = primeiroNome(); D.definirConfig({ nome: cfg.nome }); }
     painel.innerHTML = '<div class="wa-tela">' +
       '<div class="wa-barra">' +
