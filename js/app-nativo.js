@@ -368,8 +368,12 @@ B7.AppNativo = (function () {
 
   if (ativo) { ligar(); iniciarPush(); ligarWidget(); }
 
+  /* zzz165: ícone do app na tela inicial (activity-alias no APK) */
+  const icone = nome => pedir('icone', { nome });
+  const iconeAtual = () => pedir('iconeAtual').then(r => (r && r.ok && r.nome) || null);
+
   return {
-    ativo,
+    ativo, icone, iconeAtual,
     versao: () => instalada,
     ligarAtualizacao,
     instalar,

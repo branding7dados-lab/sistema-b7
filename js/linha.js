@@ -1446,7 +1446,20 @@ B7.Linha = (function () {
     /* cada formato mostra só o que faz sentido para ele */
     let especifico = '';
     if (c.tipo === 'Reel') {
+      /* zzz165: como o vídeo é produzido, se é meme/trend e a referência —
+         "só edição" já vira demanda em Edição de vídeo (gatilho no banco) */
+      const pv = c.producao_video === 'edicao' ? 'edicao' : 'gravacao', fv = c.formato_video || '';
+      const opcoesDe = (id, atual, itens) => leitura
+        ? '<div class="opcoes"><button class="on" disabled>' + esc((itens.find(x => x[0] === atual) || itens[0])[1]) + '</button></div>'
+        : '<div class="opcoes" id="' + id + '">' + itens.map(x => '<button data-v="' + x[0] + '"' + (x[0] === atual ? ' class="on"' : '') + '>' + x[1] + '</button>').join('') + '</div>';
       especifico = '<div class="bloco-formato"><h4>Vídeo / Reel</h4>' +
+        '<div class="mb"><label class="rot">PRODUÇÃO</label>' + opcoesDe('op-producao', pv, [['gravacao', 'Gravação e edição'], ['edicao', 'Só edição']]) +
+          '<div class="ajuda" id="aj-producao">' + (pv === 'edicao'
+            ? 'Já está em Edição de vídeo como demanda — não depende de gravação.'
+            : 'Entra na gravação; a demanda de edição nasce quando marcar que foi gravado.') + '</div></div>' +
+        '<div class="mb"><label class="rot">FORMATO</label>' + opcoesDe('op-formato', fv, [['', 'Normal'], ['meme', 'Meme'], ['trend', 'Trend']]) + '</div>' +
+        '<div class="mb"><label class="rot">LINK DE REFERÊNCIA <span class="leve">— vai junto para a demanda de vídeo</span></label>' +
+          '<input class="campo" id="cv-ref" type="url" inputmode="url" maxlength="600" placeholder="https://www.instagram.com/reel/…" value="' + esc(c.referencia_link || '') + '"' + (leitura ? ' disabled' : '') + '></div>' +
         C.campoLinha('HEADLINE', c.headline, t + ' data-campo="headline"') +
         C.campoLinha('CTA', c.cta, t + ' data-campo="cta"') +
         '<div class="mb"><label class="rot">NECESSITA CAPA? <span class="leve">— opcional</span></label>' +
@@ -1562,6 +1575,31 @@ B7.Linha = (function () {
         B7.DB.registrar({ tipo: 'status', entidade: 'conteudo', id: c.id, cliente: L.linha.client_id,
           texto: (c.titulo || 'Conteúdo') + ' → ' + c.status });
       }
+    });
+
+    /* zzz165: produção, formato e referência do vídeo */
+    const ligarOpcoes = (id, campo, rotulo, depois) => {
+      const cx = m.querySelector('#' + id); if (!cx) return;
+      cx.querySelectorAll('[data-v]').forEach(b => b.onclick = async () => {
+        if (b.classList.contains('on')) return;
+        const antes = c[campo];
+        cx.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+        c[campo] = b.dataset.v;
+        try { await B7.Save.acao(() => B7.DB.atualizarConteudo(c.id, { [campo]: b.dataset.v }), rotulo(b)); if (depois) depois(b.dataset.v); }
+        catch (e) { c[campo] = antes; cx.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.v === (antes || ''))); }
+      });
+    };
+    ligarOpcoes('op-producao', 'producao_video', b => 'Produção: ' + b.textContent, v => {
+      const aj = m.querySelector('#aj-producao');
+      if (aj) aj.textContent = v === 'edicao' ? 'Já está em Edição de vídeo como demanda — não depende de gravação.' : 'Entra na gravação; a demanda de edição nasce quando marcar que foi gravado.';
+      if (v === 'edicao') B7.UI.toast('Demanda criada em Edição de vídeo.');
+    });
+    ligarOpcoes('op-formato', 'formato_video', b => 'Formato: ' + b.textContent);
+    const cvRef = m.querySelector('#cv-ref');
+    if (cvRef && !cvRef.disabled) cvRef.addEventListener('change', async () => {
+      const v = cvRef.value.trim();
+      if (v && !/^https?:\/\//i.test(v)) { B7.UI.toast('O link precisa começar com https://', { tipo: 'erro' }); return; }
+      try { await B7.Save.acao(() => B7.DB.atualizarConteudo(c.id, { referencia_link: v }), 'Referência salva'); c.referencia_link = v; } catch (e) {}
     });
 
     const opCapa = m.querySelector('#op-capa');

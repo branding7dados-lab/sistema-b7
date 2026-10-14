@@ -1534,3 +1534,13 @@ html.modo-leve .vd-h-bokeh{display:none;}
    arrastar é a coluna inteira, não só a faixa do topo */
 .vd-quadro .vd-coluna{display:flex;flex-direction:column;}
 .vd-quadro .vd-coluna-corpo{flex:1;min-height:56px;}
+
+/* zzz165: referência (meme/trend) e hora de criação */
+.vd-hero-criada{font-size:12px;color:var(--ink-4);}
+.vd-ref .vd-bloco-cab{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.vd-ref-tag{padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;background:var(--suave);color:var(--ink-3);}
+.vd-ref-meme{background:#FFF1D6;color:#9A5B00;}
+.vd-ref-trend{background:var(--acento-suave);color:var(--acento);}
+[data-theme="dark"] .vd-ref-meme{background:rgba(245,165,36,.16);color:#F5C26B;}
+.vd-ref-link{align-self:flex-start;}
+.vd-ref-url{display:block;margin-top:6px;font-size:11.5px;color:var(--ink-4);word-break:break-all;}

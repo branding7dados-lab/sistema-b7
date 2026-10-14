@@ -25,6 +25,13 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz165', versao: 'zzz165', em: '2026-10-14T23:00:00-03:00',
+    titulo: 'Tudo ao vivo, arrastar em lote e vídeo só de edição',
+    itens: ['As telas se atualizam sozinhas quando alguém da equipe muda algo — sem precisar recarregar.',
+            'Na linha editorial, o vídeo pode ser “Gravação e edição” ou “Só edição” (que já vira demanda em Edição de vídeo), e pode ser marcado como meme ou trend, com o link de referência indo junto.',
+            'No quadro de Design e de Edição de vídeo, arrastar ficou mais suave; Ctrl ou Shift + clique marca vários cartões para mover juntos.',
+            'O histórico das demandas mostra dia e hora de cada passo.',
+            'No app Android, dá para escolher a cor do ícone em Configurações → Geral → Aplicativos.'] },
   { id: 'v-zzz164', versao: 'zzz164', em: '2026-10-14T21:00:00-03:00', rota: 'trends',
     titulo: 'Trends: guarde e transforme em roteiro',
     itens: ['Viu uma trend boa? No menu, “Trends” → “Nova trend”: cole o link e dê um nome.',

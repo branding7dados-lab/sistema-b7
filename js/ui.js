@@ -974,6 +974,14 @@ B7.UI = (function () {
     if (document.body) ligar(); else document.addEventListener('DOMContentLoaded', ligar);
   })();
 
-  return { atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, linkExterno, linkInterno, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
+  /* zzz165: dia e hora exatos ("hoje às 15:32", "12/10 às 09:05") para históricos */
+  function dataHora(iso) {
+    if (!iso) return '';
+    const d = new Date(iso); if (isNaN(d)) return String(iso);
+    const p = n => String(n).padStart(2, '0'), hoje = new Date();
+    const dia = d.toDateString() === hoje.toDateString() ? 'hoje' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + (d.getFullYear() !== hoje.getFullYear() ? '/' + d.getFullYear() : '');
+    return dia + ' às ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  return { dataHora, atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, linkExterno, linkInterno, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
            dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton, copiarTexto, ocupado };
 })();

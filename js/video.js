@@ -836,6 +836,24 @@ B7.Video = (function () {
 
     ligarArrastoToque(cx);
 
+    /* zzz165: no computador, o arrastar fluido (js/arrastar.js) — também
+       vários cartões de uma vez (Ctrl/Shift + clique). Cada um passa pela
+       mesma ação de negócio de sempre (moverCartaoVideo). */
+    if (B7.Arrastar && possoOperar() && !window.matchMedia('(pointer: coarse)').matches) {
+      cx.querySelectorAll('.vd-quadro .vd-card[draggable="true"]').forEach(c => c.removeAttribute('draggable'));
+      B7.Arrastar.ligar(cx, {
+        cartao: '.vd-quadro .vd-card[data-demanda]', coluna: '.vd-quadro .vd-coluna', lista: '[data-solta]', rolo: '.vd-quadro',
+        soMouse: true, moverDom: false,
+        id: el => el.dataset.demanda, destino: col => (col.querySelector('[data-solta]') || col).dataset.solta,
+        aoSoltar: async (ids, destino) => {
+          for (const id of ids) {
+            const d = demandas.find(x => x.id === id);
+            if (d && destino && destino !== d.editing_status) { try { await moverCartaoVideo(d, destino); } catch (e) {} }
+          }
+        }
+      });
+    }
+
     cx.querySelectorAll('[data-solta]').forEach(zona => {
       /* zzz60: a COLUNA inteira aceita o cartão (cabeçalho e o espaço
          vazio embaixo também). Antes só a lista aceitava — numa coluna
@@ -2044,7 +2062,8 @@ B7.Video = (function () {
         '<div class="vd-hero-linha">' +
           '<div class="vd-hero-id">' + logoClienteHTML(d, 'lg') +
             '<div class="vd-cab-texto"><p class="vd-hero-cliente"><span>' + esc(d.cliente_nome || '') + '</span>' + (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') +
-              (d.competencia_ano ? '<span class="vd-hero-comp">' + esc(competenciaRotulo(competenciaChave(d))) + '</span>' : '') + '</p>' +
+              (d.competencia_ano ? '<span class="vd-hero-comp">' + esc(competenciaRotulo(competenciaChave(d))) + '</span>' : '') +
+              (d.created_at ? '<span class="vd-hero-criada">criada ' + esc(dataHora(d.created_at)) + '</span>' : '') + '</p>' +
               '<h1>' + tituloComFallback(d) + '</h1>' +
               faixaResumoHTML(d, atrasada) +
             '</div></div>' +
@@ -2078,6 +2097,18 @@ B7.Video = (function () {
                 '<p class="fraca">Link externo (Drive, WeTransfer…) — o vídeo não é enviado para dentro do sistema.</p></div>'
               : '') +
           '</section>') +
+
+          /* zzz165: meme/trend e a referência que veio da linha editorial */
+          ((d.referencia_link || d.formato_video || d.origem === 'linha')
+            ? '<section class="vd-bloco vd-ref"><div class="vd-bloco-cab"><label class="rot">Referência</label>' +
+                (d.formato_video ? '<span class="vd-ref-tag vd-ref-' + esc(d.formato_video) + '">' + (d.formato_video === 'meme' ? 'Meme' : 'Trend') + '</span>' : '') +
+                (d.origem === 'linha' ? '<span class="vd-ref-tag">Da linha editorial · só edição</span>' : '') + '</div>' +
+              (/^https?:\/\//i.test(d.referencia_link || '')
+                ? '<a class="b fina contorno vd-ref-link" href="' + esc(d.referencia_link) + '" target="_blank" rel="noopener noreferrer">Abrir a referência ↗</a>' +
+                  '<small class="vd-ref-url">' + esc(d.referencia_link) + '</small>'
+                : '<div class="vd-so-leitura">Sem link de referência.</div>') +
+              '</section>'
+            : '') +
 
           (podeEditar
             ? '<section class="vd-bloco"><div class="vd-bloco-cab"><label class="rot">Observações</label><span class="vd-autosave-dica" id="vd-obs-estado"></span></div>' +
@@ -2419,6 +2450,13 @@ B7.Video = (function () {
     };
   }
 
+  function dataHora(iso) {
+    if (!iso) return '';
+    const d = new Date(iso); if (isNaN(d)) return String(iso);
+    const p = n => String(n).padStart(2, '0'), hoje = new Date();
+    const dia = d.toDateString() === hoje.toDateString() ? 'hoje' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + (d.getFullYear() !== hoje.getFullYear() ? '/' + d.getFullYear() : '');
+    return dia + ' às ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
   function linhaHistorico(ev) {
     let texto;
     if (ev.tipo === 'criada') texto = 'Demanda criada';
@@ -2433,7 +2471,8 @@ B7.Video = (function () {
     const cor = ev.tipo === 'status' ? ' vd-tl-' + esc(ev.para_status || '') : ev.tipo === 'conclusao' ? ' vd-tl-ok' : '';
     return '<li class="vd-tl-item' + cor + '"><i class="vd-tl-dot"></i><div class="vd-tl-corpo"><b>' + esc(ev.ator_nome || 'Alguém') + '</b> ' + texto +
       (ev.mensagem && ev.tipo === 'status' ? '<div class="vd-tl-msg">' + esc(ev.mensagem) + '</div>' : '') +
-      '<span class="vd-tl-quando">' + esc(B7.UI.quando ? B7.UI.quando(ev.created_at) : ev.created_at) + '</span></div></li>';
+      /* zzz165: dia e hora exatos; o "há 2 dias" fica no passar do mouse */
+      '<span class="vd-tl-quando" title="' + esc(B7.UI.quando ? B7.UI.quando(ev.created_at) : '') + '">' + esc(dataHora(ev.created_at)) + '</span></div></li>';
   }
 
   function ligarDetalhe(d, rc) {
