@@ -6,17 +6,17 @@
    no ícone (vídeo do Kevin, 03/10).
    Versão nova não fica presa: a página descobre sozinha que há versão
    nova (js/app.js lê o js/auth.js publicado, sem passar por cache) e
-   pede aqui "b7-renovar" — a casca inteira é baixada de novo e a
-   recarga já abre a nova. Cada publicação também troca o CACHE abaixo.
+   pede aqui "b7-renovar" — só os arquivos que mudaram são baixados
+   (ver baixarPara) e a recarga já abre a nova. Cada publicação também troca o CACHE abaixo.
    config.js segue indo à rede (com reserva, se ela demorar ou cair).
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v362';
+const CACHE = 'roteiros-b7-v363';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
-  './js/vendor-supabase.js', './js/supabase.js', './js/database.js', './js/memoria.js', './js/ui.js',
+  './js/vendor-supabase.js', './js/vendor-carregar.js', './js/supabase.js', './js/database.js', './js/memoria.js', './js/ui.js',
   './js/autosave.js', './js/print.js', './js/resumo-mes.js', './js/teleprompter.js', './js/ia-analise.js', './js/ia-texto.js','./styles/teleprompter.css', './js/dashboard.js', './js/editor.js', './js/gravacao.js',
   './js/backup.js', './js/app.js', './js/abertura-som.js', './js/movimento.js', './js/desempenho.js',
   './js/auth.js', './js/usuarios.js', './js/central.js', './js/panorama.js', './js/conteudo.js',
@@ -26,9 +26,11 @@ const CASCA = [
   /* zzz45: estava faltando. Sem rede, o "Visualizar como…" sumia em
      silêncio porque o arquivo nunca entrava no cache. */
   './js/previa-usuario.js', './js/menu-contexto.js',
-  './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js', './js/app-nativo.js', './js/hoje.js', './js/atalhos-app.js', './styles/hoje.css',
+  './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js', './js/app-nativo.js', './js/hoje.js', './js/convite-app.js', './js/atalhos-app.js', './styles/hoje.css',
   './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js', './js/ia-chat.js',
-  './js/vendor/html2canvas.min.js', './js/vendor/jspdf.umd.min.js', './js/vendor/xlsx.full.min.js',
+  /* zzz158: html2canvas, jsPDF e XLSX (1,4 MB) saíram da casca — elas só
+     chegam quando alguém exporta ou importa (js/vendor-carregar.js), e o
+     próprio service worker as guarda no primeiro uso. */
   './styles/auth.css', './styles/central.css', './styles/panorama.css', './styles/conteudo.css', './styles/semana.css',
   './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css', './styles/linha.css', './styles/ia-chat.css', './styles/design.css',
   './styles/video.css', './styles/calendario.css', './styles/oportunidades.css', './styles/gravacao.css', './styles/publicacoes.css', './styles/painel.css', './styles/tv.css', './styles/sistema.css', './styles/conversas.css', './styles/topo.css', './styles/nav.css',
@@ -49,16 +51,49 @@ const CASCA = [
    ficava com uma mistura (CSS novo + JS velho) presa no cache até a
    próxima publicação. O endereço novo nunca está no CDN: vem da origem,
    sempre a versão publicada. Fica guardado sob o endereço normal. */
-function baixar(u) {
-  return fetch(new Request(u + (u.includes('?') ? '&' : '?') + 'b7=' + CACHE, { cache: 'reload' }))
-    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status + ' em ' + u); return r; });
+/* zzz158: a casca nova só baixa O QUE MUDOU.
+   Antes toda publicação baixava os ~3 MB inteiros de novo em cada
+   aparelho (a URL levava "?b7=<versão>", então nada podia ser
+   reaproveitado). Agora cada arquivo é pedido com a etiqueta (ETag) da
+   cópia que já está guardada: se o servidor responde 304 ("não mudou"),
+   a cópia antiga é reaproveitada sem baixar nada. Numa publicação em que
+   só alguns arquivos mudam, a atualização passa de megabytes para alguns
+   kilobytes — é o que pesava no 4G. */
+function copiaGuardada(u) {
+  return caches.keys()
+    .then(ns => [CACHE].concat(ns.filter(n => n !== CACHE && n.indexOf('roteiros-b7-') === 0).reverse()))
+    .then(async ns => {
+      for (const n of ns) {
+        const c = await caches.open(n);
+        const r = await c.match(u);
+        if (r) return r;
+      }
+      return null;
+    })
+    .catch(() => null);
+}
+
+async function baixarPara(cache, u) {
+  const antiga = await copiaGuardada(u);
+  const etiqueta = antiga && antiga.headers.get('ETag');
+  const r = await fetch(new Request(u, {
+    /* 'no-cache': confere sempre com o servidor, mas pode reaproveitar o
+       corpo que o navegador acabou de baixar para a própria página — na
+       primeira visita a reserva offline sai quase de graça (antes tudo
+       era baixado duas vezes: uma para a tela, outra para a reserva) */
+    cache: 'no-cache',
+    headers: etiqueta ? { 'If-None-Match': etiqueta } : undefined
+  }));
+  if (r.status === 304 && antiga) return cache.put(u, antiga.clone());   /* não mudou: reaproveita */
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' em ' + u);
+  return cache.put(u, r);
 }
 
 self.addEventListener('install', ev => {
   ev.waitUntil(
     /* 'reload': a casca nova é baixada do servidor, nunca do cache HTTP —
        senão a reserva offline nasceria com arquivos da versão anterior */
-    caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u => baixar(u).then(r => c.put(u, r)))))
+    caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u => baixarPara(c, u))))
       .then(() => self.skipWaiting())
   );
 });
@@ -107,11 +142,12 @@ self.addEventListener('fetch', ev => {
   );
 });
 
-/* "b7-renovar": a página viu que há versão nova publicada. Baixa a casca
-   inteira de novo, direto do servidor, e avisa quando terminou — a
-   recarga que vem depois já abre a versão nova. */
+/* "b7-renovar": a página viu que há versão nova publicada. Confere a casca
+   arquivo por arquivo e baixa SÓ o que mudou (o resto é reaproveitado do
+   que já está guardado), e avisa quando terminou — a recarga que vem
+   depois já abre a versão nova. */
 function renovarCasca() {
-  return caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u => baixar(u).then(r => c.put(u, r)))));
+  return caches.open(CACHE).then(c => Promise.allSettled(CASCA.map(u => baixarPara(c, u))));
 }
 self.addEventListener('message', ev => {
   const d = ev.data || {};

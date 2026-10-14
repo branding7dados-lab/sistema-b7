@@ -585,6 +585,7 @@ B7.BaixarLinha = (function () {
     const folhas = [...area.querySelectorAll(slides ? '.slide' : '.le-folha')];
     folhas.forEach(f => B7.Folha.ajustar(f));
     try {
+      await B7.vendor('jspdf');
       const { jsPDF } = window.jspdf;
       const pdf = slides
         ? new jsPDF({ unit: 'mm', format: [338.7, 190.5], orientation: 'landscape', compress: true })
