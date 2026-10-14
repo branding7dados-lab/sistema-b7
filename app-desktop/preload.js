@@ -15,7 +15,9 @@ contextBridge.exposeInMainWorld('B7Desktop', {
   /* zzz170: WhatsApp encaixado na tela #/whatsapp (app-desktop/whatsapp.js) */
   wa: {
     mostrar: r => ipcRenderer.invoke('b7:wa:mostrar', r),
-    esconder: () => ipcRenderer.invoke('b7:wa:esconder'),
+    esconder: comFoto => ipcRenderer.invoke('b7:wa:esconder', !!comFoto),
+    zoom: passo => ipcRenderer.invoke('b7:wa:zoom', passo),
+    desconectar: () => ipcRenderer.invoke('b7:wa:desconectar'),
     recarregar: () => ipcRenderer.invoke('b7:wa:recarregar'),
     config: () => ipcRenderer.invoke('b7:wa:config'),
     definirConfig: c => ipcRenderer.invoke('b7:wa:definir-config', c),

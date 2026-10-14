@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz173', versao: 'zzz173', em: '2026-10-15T02:00:00-03:00',
+    titulo: 'WhatsApp: tela mais limpa',
+    itens: ['Os menus do topo (Criar, avisos, sua conta) não ficam mais cortados atrás do WhatsApp.',
+            'Barra nova: liga/desliga da assinatura com o nome editável, tamanho da letra (A− A+), recarregar e desconectar.'] },
   { id: 'v-zzz170', versao: 'zzz170', em: '2026-10-15T01:00:00-03:00',
     titulo: 'WhatsApp dentro do B7',
     itens: ['Novo item “WhatsApp” no menu: no programa de Windows, o WhatsApp abre dentro do sistema (leia o QR Code uma vez) e continua recebendo mensagens enquanto você usa as outras telas.',
