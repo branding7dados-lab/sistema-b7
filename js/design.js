@@ -459,9 +459,11 @@ B7.Design = (function () {
 
   /* "Precisa de mim": só o que exige AÇÃO minha agora — nunca o que já
      mandei e está esperando revisão/aprovação de outra pessoa. */
+  /* zzz164: peça finalizada/aprovada pelo cliente não tem briefing a conferir */
+  const briefingPendente = d => !!d.briefing_desatualizado && !['finalizado', 'aprovado_cliente'].includes(d.status);
   function precisaDeMim(minhas) {
     return minhas.filter(d => d.status === 'aguardando_producao' || d.status === 'ajustes' ||
-      d.status === 'ajustes_cliente' || d.briefing_desatualizado);
+      d.status === 'ajustes_cliente' || briefingPendente(d));
   }
   /* "Continuar de onde parei": só o que está mesmo em produção comigo
      agora, mais recente primeiro — some sozinho quando não há nada. */
@@ -592,7 +594,7 @@ B7.Design = (function () {
     if (r.criacao) partes.push(r.criacao + ' em criação');
     if (r.ajustes) partes.push('<b class="alerta">' + r.ajustes + ' em ajuste' + (r.ajustes === 1 ? '' : 's') + '</b>');
     if (r.revisao) partes.push(r.revisao + ' em revisão');
-    const briefing = r.itens.some(d => d.briefing_desatualizado);
+    const briefing = r.itens.some(briefingPendente);
     const logoUrl = (r.itens[0] && r.itens[0].cliente_logo_url) || null;
 
     return '<article class="cartao-projeto' + (r.concluida ? ' concluido' : '') + '"' +
@@ -682,7 +684,7 @@ B7.Design = (function () {
   function motivoPrecisa(d) {
     if (d.status === 'ajustes_cliente') return { k: 'cliente', t: 'Ajuste do cliente' };
     if (d.status === 'ajustes') return { k: 'ajuste', t: 'Ajuste solicitado' };
-    if (d.briefing_desatualizado) return { k: 'briefing', t: 'Briefing atualizado' };
+    if (briefingPendente(d)) return { k: 'briefing', t: 'Briefing atualizado' };
     return { k: 'comecar', t: 'Para começar' };
   }
 

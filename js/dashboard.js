@@ -1896,6 +1896,24 @@ B7.Dashboard = (function () {
         (B7.Aparencia.pessoal() ? '<button type="button" class="cfg-cor-link" data-cor-equipe>Usar a da equipe</button>' : '<span class="cfg-cor-nota">Igual à da equipe</span>') +
         '<button type="button" class="cfg-cor-mais" data-ap-pessoal>Mais opções' + SETA_CFG + '</button></div>';
 
+    /* zzz164: os aplicativos ficam na aba Geral, para todo mundo (antes
+       só o administrador via, na aba Sistema). Celular Android no
+       navegador ganha o atalho do APK. */
+    const ehAndroidWeb = /Android/i.test(navigator.userAgent || '') && !(B7.AppNativo && B7.AppNativo.ativo);
+    const linhasApp = /* zzz157: app de Windows (Electron). No próprio app mostra a
+           versão dele; num computador sem ele, o atalho para baixar. */
+        (window.B7Desktop
+          ? L({ ic: 'versao', tom: 'azul', t: 'App Windows',
+                d: '<span id="cfg-win-d">toque para procurar versão nova</span>',
+                botao: true, semSeta: true, attrs: ' data-win-atu',
+                dir: '<span class="cfg-valor ok" id="cfg-win-v">Instalado</span>' })
+          : !toque && !(B7.AppNativo && B7.AppNativo.ativo)
+          ? L({ ic: 'versao', tom: 'azul', t: 'App para Windows', d: 'o B7 numa janela própria, sem barra de navegador',
+                botao: true, semSeta: true, attrs: ' data-baixar-windows' })
+          : '') +
+      (ehAndroidWeb && !instalado ? L({ ic: 'celular', tom: 'verde', t: 'App para Android', d: 'abre na hora, com avisos e atalhos no ícone',
+          botao: true, semSeta: true, attrs: ' data-baixar-android' }) : '');
+
     const abaGeral =
       (opInicio.length > 1 ? grupo('Início', 'Um link direto continua abrindo a tela do link.',
         L({ ic: 'casa', tom: 'violeta', t: 'Tela inicial', d: 'o que abre ao entrar no B7',
@@ -1943,6 +1961,7 @@ B7.Dashboard = (function () {
         L({ ic: 'filtro', tom: 'cinza', t: 'Limpar filtros guardados', d: 'Calendário, Produção, Vídeo e Design voltam ao padrão',
             botao: true, semSeta: true, attrs: ' data-limpar-filtros' })) : '') +
 
+      (u && !ehCli && linhasApp ? grupo('Aplicativos', '', linhasApp) : '') +
       /* zzz72: sair da conta mora na aba Geral */
       blocoSessao;
 
@@ -2060,17 +2079,6 @@ B7.Dashboard = (function () {
           : L({ ic: 'celular', tom: 'azul', t: 'Instalar como aplicativo',
                 d: '<span id="cfg-inst-d">' + (B7.instalacao ? 'abre direto, sem a barra do navegador' : 'no menu do navegador: “Instalar” ou “Adicionar à tela de início”') + '</span>',
                 botao: !!B7.instalacao, semSeta: true, attrs: ' data-instalar' })) +
-        /* zzz157: app de Windows (Electron). No próprio app mostra a
-           versão dele; num computador sem ele, o atalho para baixar. */
-        (window.B7Desktop
-          ? L({ ic: 'versao', tom: 'azul', t: 'App Windows',
-                d: '<span id="cfg-win-d">toque para procurar versão nova</span>',
-                botao: true, semSeta: true, attrs: ' data-win-atu',
-                dir: '<span class="cfg-valor ok" id="cfg-win-v">Instalado</span>' })
-          : !toque && !(B7.AppNativo && B7.AppNativo.ativo)
-          ? L({ ic: 'versao', tom: 'azul', t: 'App para Windows', d: 'o B7 numa janela própria, sem barra de navegador',
-                botao: true, semSeta: true, attrs: ' data-baixar-windows' })
-          : '') +
         (u ? L({ ic: 'vassoura', tom: 'laranja', t: 'Limpar dados deste aparelho', d: 'memória das telas, arquivos guardados e filtros',
             botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : '')) +
       /* Banco e conexão são do administrador. */
@@ -2281,7 +2289,9 @@ B7.Dashboard = (function () {
       const d = p.querySelector('#cfg-inst-d'); if (d) d.textContent = 'se não instalou, use o menu do navegador';
     };
     const bw = p.querySelector('[data-baixar-windows]');
-    if (bw) bw.onclick = () => window.open('https://github.com/branding7dados-lab/sistema-b7/releases/download/app-desktop/sistema-b7-instalador.exe', '_blank', 'noopener');
+    if (bw) bw.onclick = () => B7.ConviteApp ? B7.ConviteApp.baixarWindows() : (location.href = 'https://github.com/branding7dados-lab/sistema-b7/releases/download/app-desktop/sistema-b7-instalador.exe');
+    const bAnd = p.querySelector('[data-baixar-android]');
+    if (bAnd) bAnd.onclick = () => { location.href = 'https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk'; B7.UI.toast('Baixando o app. Abra o arquivo quando terminar.'); };
     const btWin = p.querySelector('[data-win-atu]');
     if (btWin && window.B7Desktop && window.B7Desktop.procurarAtualizacao) {
       btWin.onclick = () => window.B7Desktop.procurarAtualizacao();

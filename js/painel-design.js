@@ -190,7 +190,7 @@ B7.PainelDesign = (function () {
       prio: 2, tom: 'ambar', icone: IC.refazer, tag: 'Revisão pediu ajuste', titulo: nomePeca(p), meta: metaStatus(p, textoPartes(partesEmAjuste(p))) }));
     ds.filter(p => naMaoComPrazo(p) && p.prazo === h).forEach(p => add(p, {
       prio: 3, tom: 'ambar', icone: IC.relogio, tag: 'Vence hoje', titulo: nomePeca(p), meta: cli(p) + '<span>' + esc(rotulo(p.status)) + '</span>' }));
-    ds.filter(p => p.briefing_desatualizado).sort(porPrazo).forEach(p => add(p, {
+    ds.filter(p => p.briefing_desatualizado && !['finalizado', 'aprovado_cliente'].includes(p.status)).sort(porPrazo).forEach(p => add(p, {
       prio: 4, tom: 'neutro', icone: IC_BRIEF, tag: 'Briefing atualizado', titulo: nomePeca(p),
       meta: cli(p) + '<span>confira antes de seguir</span>' }));
     [1, 2].forEach(n => ds.filter(p => naMaoComPrazo(p) && p.prazo === d.somarDias(h, n)).forEach(p => add(p, {
