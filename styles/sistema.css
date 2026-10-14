@@ -621,6 +621,11 @@ body.em-manutencao .nv-topo,body.modo-tv .nv-topo{display:none !important;}
 .wa-ic svg{width:18px;height:18px;}
 .wa-ic:hover{background:var(--suave);color:var(--ink);}
 #wa-sair:hover{color:var(--erro);}
+.wa-ia{color:var(--acento);}
+/* zzz175: na tela do WhatsApp o botão flutuante do assistente fica escondido
+   (ele ficava atrás do WhatsApp e só "aparecia" quando um menu abria);
+   o assistente abre pelo botão ✦ da barra */
+body.wa-aberta #b7-chat-fab{display:none !important;}
 .wa-area{position:relative;min-height:320px;border-radius:var(--r,14px);background:#111b21 center/100% 100% no-repeat;overflow:hidden;box-shadow:0 0 0 1px var(--borda);}
 .wa-area.com-foto .wa-espera{display:none;}
 .wa-espera{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#8696a0;font-size:13px;}

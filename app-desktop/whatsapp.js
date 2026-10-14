@@ -165,6 +165,13 @@ module.exports = function ligarWhatsApp(pegarJanela) {
   /* ------------------------------------------- pedidos do sistema */
   ipcMain.handle('b7:wa:mostrar', (ev, r) => { mostrar(r); return true; });
   ipcMain.handle('b7:wa:esconder', (ev, comFoto) => esconder(!!comFoto));
+  /* zzz175: só a foto, sem esconder — o sistema põe a foto no lugar e
+     DEPOIS pede para esconder (assim não pisca) */
+  ipcMain.handle('b7:wa:foto', async () => {
+    if (!view || !visivel) return null;
+    try { const img = await view.webContents.capturePage(); return img.isEmpty() ? null : 'data:image/jpeg;base64,' + img.toJPEG(82).toString('base64'); }
+    catch (e) { return null; }
+  });
   /* tamanho da letra do WhatsApp (guardado) */
   ipcMain.handle('b7:wa:zoom', (ev, passo) => {
     cfg.zoom = Math.max(0.7, Math.min(1.5, Math.round(((cfg.zoom || 1) + (passo > 0 ? 0.1 : -0.1)) * 10) / 10));
