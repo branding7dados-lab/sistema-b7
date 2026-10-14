@@ -614,6 +614,14 @@ B7.Usuarios = (function () {
 
       acessoInternoHTML('ed') +
 
+      /* zzz166: cargos sem limite — além da função principal, a pessoa pode
+         atuar em quantos outros quiser (os módulos e permissões somam) */
+      '<section class="ng-bloco" id="ed-cargos-bloco"' + (u.papel === 'cliente' ? ' hidden' : '') + '><h4>' + ICU.extra + 'Também atua como</h4>' +
+        '<p class="ajuda">Além da função principal acima. Quem acumula cargos recebe os módulos e o Painel de cada um.</p>' +
+        '<div class="ed-cargos" id="ed-cargos">' + FUNCOES.map(([v, r, d]) =>
+          '<label class="ed-cargo"><input type="checkbox" value="' + v + '"><span><b>' + r + '</b><small>' + d + '</small></span></label>').join('') + '</div>' +
+      '</section>' +
+
       '<div id="ed-erro" class="ajuda erro-txt"></div>' +
       '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Salvar</button></div>', { larga: true, extra: 'ng-modal nu-modal ed-modal' });
@@ -621,7 +629,14 @@ B7.Usuarios = (function () {
     const blocoCliente = ligarCliente(m, 'ed');
     const idt0 = identidadeDe(u);
     const acesso = ligarAcesso(m, 'ed', { tipo: idt0.tipo, ehAdmin: idt0.ehAdmin, funcao: idt0.funcao, excecoes: ACESSO.excecoes[u.id] || {} },
-      tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; });
+      tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; const bc = m.querySelector('#ed-cargos-bloco'); if (bc) bc.hidden = tipo === 'cliente'; });
+
+    /* cargos adicionais atuais (lidos do banco) */
+    const cxCargos = m.querySelector('#ed-cargos');
+    B7.sb.from('perfis').select('funcoes_adicionais').eq('id', u.id).maybeSingle().then(({ data }) => {
+      const atuais = (data && data.funcoes_adicionais) || [];
+      cxCargos.querySelectorAll('input').forEach(i => { i.checked = atuais.includes(i.value) || extrasAtuais.includes(i.value); });
+    }, () => {});
 
     m.querySelector('[data-ok]').onclick = async () => {
       const erro = m.querySelector('#ed-erro');
@@ -640,6 +655,10 @@ B7.Usuarios = (function () {
           empresas: ehCli ? empresas : [],
           pode_aprovar: ehCli && m.querySelector('#ed-aprovar input').checked
         }, idn));
+        if (!ehCli) {
+          const cargos = [...cxCargos.querySelectorAll('input:checked')].map(i => i.value);
+          await B7.DB.rpc('perfil_definir_cargos', { p_id: u.id, p_cargos: cargos });
+        }
         m.fechar();
         B7.UI.toast('Acesso atualizado');
         abrir();
