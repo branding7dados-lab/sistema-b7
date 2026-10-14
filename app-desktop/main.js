@@ -16,7 +16,7 @@
 
    O instalador e o latest.yml saem do .github/workflows/desktop.yml.
    ===================================================================== */
-const { app, BrowserWindow, shell, dialog, Menu, screen, session, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, dialog, Menu, screen, session, ipcMain, Notification } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -138,15 +138,13 @@ function ligarSessao() {
       item.setSavePath(path.join(app.getPath('downloads'), nome));
     } catch (e) { /* sem permissão: o Electron pergunta onde salvar */ }
     item.once('done', (e, estado) => {
-      if (!janela || janela.isDestroyed()) return;
       const caminho = item.getSavePath();
-      const aviso = estado === 'completed'
-        ? 'Baixado: ' + path.basename(caminho)
-        : 'Não foi possível baixar o arquivo.';
-      janela.webContents.executeJavaScript(
-        'window.B7 && B7.UI && B7.UI.toast && B7.UI.toast(' + JSON.stringify(aviso) +
-        (estado === 'completed' ? ', { acao: "Abrir pasta", aoClicar: () => B7Desktop && B7Desktop.abrirPasta && B7Desktop.abrirPasta() }' : ', { tipo: "erro" }') + ')'
-      ).catch(() => {});
+      if (estado === 'completed') {
+        avisoDoSistema('Baixado: ' + path.basename(caminho) + ' (toque para abrir a pasta)',
+                       () => shell.showItemInFolder(caminho));
+      } else {
+        avisoDoSistema('Não foi possível baixar ' + item.getFilename() + '.');
+      }
     });
   });
 }
@@ -157,11 +155,24 @@ function ligarSessao() {
    esse arquivo para saber se há versão nova. Baixa em segundo plano e
    pergunta antes de instalar — nada fecha sozinho no meio do trabalho. */
 let avisando = false, pedidoDaPessoa = false;
-const aviso = (texto, erro) => {
-  if (!janela || janela.isDestroyed()) return;
-  janela.webContents.executeJavaScript('window.B7 && B7.UI && B7.UI.toast && B7.UI.toast(' +
-    JSON.stringify(texto) + (erro ? ', { tipo: "erro" }' : '') + ')').catch(() => {});
-};
+
+/* zzz162: os avisos eram injetados na página (B7.UI.toast). No programa
+   eles saíam brancos e sem texto — a página não é nossa para mexer assim.
+   Agora o programa fala pelos meios do Windows: caixa de diálogo quando a
+   pessoa pediu alguma coisa, e aviso do sistema quando é só uma notícia. */
+function caixa(titulo, detalhe, erro) {
+  const op = { type: erro ? 'warning' : 'info', title: 'Sistema B7', message: titulo,
+               detail: detalhe || '', buttons: ['Fechar'], noLink: true };
+  if (janela && !janela.isDestroyed()) dialog.showMessageBox(janela, op); else dialog.showMessageBox(op);
+}
+function avisoDoSistema(texto, aoTocar) {
+  try {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({ title: 'Sistema B7', body: texto });
+    if (aoTocar) n.on('click', aoTocar);
+    n.show();
+  } catch (e) { /* o Windows pode estar com avisos desligados */ }
+}
 function ligarAtualizacao() {
   if (!app.isPackaged) return;                 /* rodando do código: não atualiza */
   autoUpdater.autoDownload = true;
@@ -172,12 +183,13 @@ function ligarAtualizacao() {
      e parecia que o botão não funcionava. */
   autoUpdater.on('update-available', info => {
     if (!pedidoDaPessoa) return;
-    aviso('Versão ' + (info && info.version ? info.version : 'nova') + ' encontrada. Baixando…');
+    caixa('Versão ' + (info && info.version ? info.version : 'nova') + ' encontrada',
+          'Estou baixando agora (uns 78 MB). Quando terminar, pergunto se pode instalar. Pode continuar usando.');
   });
   autoUpdater.on('update-not-available', () => {
     if (!pedidoDaPessoa) return;
     pedidoDaPessoa = false;
-    aviso('Você já está na versão mais nova (' + app.getVersion() + ').');
+    caixa('Tudo em dia', 'Você já está na versão mais nova do programa (' + app.getVersion() + ').');
   });
   autoUpdater.on('download-progress', p => {
     if (!pedidoDaPessoa || !janela || janela.isDestroyed()) return;
@@ -206,7 +218,8 @@ function ligarAtualizacao() {
     if (janela && !janela.isDestroyed()) janela.setProgressBar(-1);
     if (!pedidoDaPessoa) return;               /* sozinho: tenta de novo depois, calado */
     pedidoDaPessoa = false;
-    aviso('Não deu para conferir agora: ' + ((e && e.message) || 'sem resposta') + '.', true);
+    caixa('Não deu para conferir agora', ((e && e.message) || 'Sem resposta do servidor') +
+          '.\n\nConfira a internet e tente de novo.', true);
   });
   setTimeout(() => conferir(false), 12000);
   setInterval(() => conferir(false), 2 * 60 * 60 * 1000);
@@ -215,10 +228,10 @@ function ligarAtualizacao() {
 /* manual = true quando veio do menu Ajuda ou das Configurações */
 function conferir(manual) {
   if (!app.isPackaged) {
-    if (manual) aviso('Atualização automática só na versão instalada.', true);
+    if (manual) caixa('Rodando do código', 'A atualização automática só vale na versão instalada.', true);
     return Promise.resolve(false);
   }
-  if (manual) { pedidoDaPessoa = true; aviso('Procurando versão nova…'); }
+  if (manual) pedidoDaPessoa = true;
   return autoUpdater.checkForUpdates().then(() => true, () => false);
 }
 
