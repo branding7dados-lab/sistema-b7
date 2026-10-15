@@ -22,6 +22,7 @@
 //         { tarefa: 'oportunidade', oportunidade_id, cliente_id, dia?, instrucao? }  (ver _shared/ia/oportunidade.ts)
 //         { tarefa: 'voz', audio (base64), mime }                          (ver _shared/ia/voz.ts)
 //         { tarefa: 'agencia', operacao: 'semana', instrucao? }            (só administrador; ver _shared/ia/agencia.ts)
+//         { tarefa: 'whatsapp', operacao: 'resumo'|'resposta', mensagens, grupo, cliente_id? }  (ver _shared/ia/whatsapp.ts)
 //
 // MEMÓRIA DO CLIENTE (zzz123). Toda tarefa que é de um cliente recebe,
 // antes da mensagem da tarefa, o que a equipe anotou para a IA na ficha
@@ -66,6 +67,7 @@ import * as Oportunidade from '../_shared/ia/oportunidade.ts';
 import * as Memoria from '../_shared/ia/memoria.ts';
 import * as Voz from '../_shared/ia/voz.ts';
 import * as Agencia from '../_shared/ia/agencia.ts';
+import * as WhatsApp from '../_shared/ia/whatsapp.ts';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
@@ -129,7 +131,8 @@ Deno.serve(comCors(async (req: Request) => {
   const pOport = corpo.tarefa === 'oportunidade' ? Oportunidade.validar(corpo) : null;
   const pVoz = corpo.tarefa === 'voz' ? Voz.validar(corpo) : null;
   const pAgencia = corpo.tarefa === 'agencia' ? Agencia.validar(corpo) : null;
-  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport || pVoz || pAgencia;
+  const pWa = corpo.tarefa === 'whatsapp' ? WhatsApp.validar(corpo) : null;
+  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport || pVoz || pAgencia || pWa;
   if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
 
   /* zzz71: liga/desliga do administrador (Configurações → Administração),
@@ -137,7 +140,7 @@ Deno.serve(comCors(async (req: Request) => {
      linha e resumo seguem "linhas". Sem a linha no banco = ligado. */
   {
     const { data: cfgIa } = await pCfgIa;
-    const recursoCfg = (pChat || pVoz) ? 'chat' : pAgencia ? 'agencia' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
+    const recursoCfg = (pChat || pVoz || pWa) ? 'chat' : pAgencia ? 'agencia' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
     const valorIa = (cfgIa && cfgIa.valor) as Record<string, unknown> | null;
     if (valorIa && valorIa[recursoCfg] === false) return json({ ok: false, categoria: 'desligado' });
   }
@@ -290,6 +293,18 @@ Deno.serve(comCors(async (req: Request) => {
     t = {
       recurso: 'agencia', acao: Agencia.nomeNoRegistro(pedido), entidadeTipo: 'perfil', entidadeId: perfil.id, tamanhoEntrada: ctx.linhas.join('\n').length,
       mensagens: Agencia.montarMensagens(pedido, ctx), maxTokens: Agencia.limiteDeSaida(pedido), temperatura: 0.3, limpar: Agencia.limpador(pedido, ctx), json: false
+    };
+  } else if (pWa && pWa.ok) {
+    /* zzz194: resumo da conversa / sugestão de resposta no WhatsApp — só
+       texto para a pessoa ler; nada é enviado nem guardado */
+    const pedido = pWa.pedido;
+    const ctx = await WhatsApp.carregarContexto(sbDaPessoa, pedido);
+    clienteDoPedido = pedido.clienteId;
+    t = {
+      recurso: 'whatsapp', acao: pedido.operacao, entidadeTipo: pedido.clienteId ? 'cliente' : 'perfil', entidadeId: pedido.clienteId || perfil.id,
+      tamanhoEntrada: pedido.msgs.reduce((n, m) => n + m.texto.length, 0),
+      mensagens: WhatsApp.montarMensagens(pedido, ctx), maxTokens: WhatsApp.limiteDeSaida(pedido),
+      temperatura: pedido.operacao === 'resumo' ? 0.3 : 0.6, limpar: WhatsApp.limpar, json: false
     };
   } else if (pOport && pOport.ok) {
     /* ideias para uma data e um cliente: lista para ler e copiar, nada é aplicado */

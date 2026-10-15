@@ -549,6 +549,7 @@ B7.WhatsApp = (function () {
         secao('Gravações', p.gravacoes.map(g => item('#/gravacao/' + g.id, g.nome || 'Gravação', dataCurta(g.data_gravacao) + (g.hora_inicio ? ' · ' + String(g.hora_inicio).slice(0, 5) : ''), false,
             '<button type="button" class="wl-mini" data-env-grav="' + esc(g.id) + '" title="Avisar no WhatsApp">' + icone + '</button>')));
       if (!p.videos.length && !p.design.length && !p.gravacoes.length) html += '<p class="wl-nada">Nada pendente com este cliente. 🎉</p>';
+      html = html.replace('<label class="wl-acomp">', blocoIA(titulo) + '<label class="wl-acomp">');
     }
     /* quem está esperando resposta (todos os grupos de cliente) */
     const esp = esperando();
@@ -567,6 +568,38 @@ B7.WhatsApp = (function () {
     lado.innerHTML = html;
     ligarLado(lado, info, titulo);
   }
+  /* ---------- zzz194: IA na conversa — resumo e sugestão de resposta.
+     Só roda no clique; usa as mensagens da conversa aberta (lidas pelo
+     programa) + as pendências do cliente (lidas no servidor). */
+  let iaRes = null;          /* { titulo, tipo, texto?, erro?, carregando } */
+  const iaPode = () => !!(B7.IA && B7.IA.ligada && B7.IA.ligada('chat'));
+  function blocoIA(titulo) {
+    if (!iaPode() || !conversaAberta || !(conversaAberta.msgs || []).length) return '';
+    const r = iaRes && iaRes.titulo === titulo ? iaRes : null;
+    const bt = (tipo, rot, svg) => '<button type="button" class="wl-ia-bt' + (r && r.tipo === tipo ? ' on' : '') + '" data-ia="' + tipo + '"' + (r && r.carregando ? ' disabled' : '') + '>' + svg + rot + '</button>';
+    let corpo = '';
+    if (r && r.carregando) corpo = '<div class="wl-ia-res carregando"><i></i><i></i><i></i><span>' + (r.tipo === 'resumo' ? 'Lendo a conversa…' : 'Escrevendo uma resposta…') + '</span></div>';
+    else if (r && r.erro) corpo = '<div class="wl-ia-res erro">' + esc(r.erro) + '</div>';
+    else if (r && r.texto) corpo = '<div class="wl-ia-res"><div class="wl-ia-tx">' + esc(r.texto).replace(/\n/g, '<br>') + '</div><div class="wl-ia-acoes">' +
+      (r.tipo === 'resposta' ? '<button type="button" class="b fina pri" data-ia-por>Colocar no WhatsApp</button>' : '') +
+      '<button type="button" class="b fina" data-ia-copiar>Copiar</button><button type="button" class="b fina" data-ia="' + r.tipo + '">De novo</button>' +
+      '<button type="button" class="wl-ia-x" data-ia-fechar aria-label="Fechar">×</button></div></div>';
+    return '<div class="wl-ia"><div class="wl-ia-bts">' +
+      bt('resumo', 'O que rolou aqui?', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 6h14M5 11h14M5 16h9"/></svg>') +
+      bt('resposta', 'Sugerir resposta', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.6L12 15l-1.8-4.4L5.5 9l4.7-1.4z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>') +
+      '</div>' + corpo + '</div>';
+  }
+  async function pedirIA(tipo, titulo, info) {
+    const msgs = ((conversaAberta && conversaAberta.titulo === titulo && conversaAberta.msgs) || []).slice(-60)
+      .map(m => ({ de: m.de || '', texto: String(m.texto || ''), minha: !!m.minha || ehEquipe(m.de), quando: m.quando || '' }));
+    if (!msgs.length) return;
+    iaRes = { titulo, tipo, carregando: true }; pintarLado();
+    const r = await B7.IA.pedir('whatsapp', { operacao: tipo, grupo: titulo, cliente_id: info && info.cliente ? info.cliente.id : null,
+      mensagens: msgs, autor: primeiroNome() });
+    if (!iaRes || iaRes.titulo !== titulo || iaRes.tipo !== tipo) return;
+    iaRes = r.ok ? { titulo, tipo, texto: r.texto } : r.cancelado ? null : { titulo, tipo, erro: r.mensagem || 'Não deu para gerar agora.' };
+    pintarLado();
+  }
   function secao(t, itens) { return itens.length ? '<div class="wl-sec"><div class="wl-sec-t">' + t + '<i>' + itens.length + '</i></div>' + itens.join('') + '</div>' : ''; }
   function item(href, titulo, sit, destaque, extra) {
     return '<div class="wl-it' + (destaque ? ' quente' : '') + '"><a href="' + esc(href) + '"><b>' + esc(titulo) + '</b><small>' + esc(sit || '') + '</small></a>' + (extra || '') + '</div>';
@@ -576,6 +609,17 @@ B7.WhatsApp = (function () {
   function ligarLado(lado, info, titulo) {
     lado.querySelectorAll('[data-abrir-g]').forEach(b => b.onclick = () => D.abrirGrupo && D.abrirGrupo(b.dataset.abrirG));
     const conf = lado.querySelector('#wl-conferir'); if (conf) conf.onclick = conferirGrupos;
+    lado.querySelectorAll('[data-ia]').forEach(b => b.onclick = () => pedirIA(b.dataset.ia, titulo, info));
+    const iaX = lado.querySelector('[data-ia-fechar]'); if (iaX) iaX.onclick = () => { iaRes = null; pintarLado(); };
+    const iaCp = lado.querySelector('[data-ia-copiar]');
+    if (iaCp) iaCp.onclick = async () => { try { await navigator.clipboard.writeText(iaRes.texto); B7.UI.toast('Copiado.'); } catch (e) {} };
+    const iaPor = lado.querySelector('[data-ia-por]');
+    if (iaPor) iaPor.onclick = async () => {
+      iaPor.disabled = true;
+      const r = await D.enviar({ grupo: titulo, texto: iaRes.texto }).catch(() => null);
+      B7.UI.toast(r && r.ok ? 'Pronto: confira e aperte enviar.' : ((r && r.motivo) || 'Não consegui escrever.') + ' O texto ficou copiado.', r && r.ok ? {} : { tipo: 'erro' });
+      iaPor.disabled = false;
+    };
     lado.querySelectorAll('[data-sem-espera]').forEach(b => b.onclick = () => semEspera(b.dataset.semEspera, true));
     const ac = lado.querySelector('#wl-acomp'); if (ac) ac.onchange = () => semEspera(titulo, !ac.checked);
     const sel = lado.querySelector('#wl-cli');
