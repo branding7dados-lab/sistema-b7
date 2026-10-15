@@ -278,7 +278,13 @@ module.exports = function ligarWhatsApp(pegarJanela) {
   ipcMain.handle('b7:wa:enviar', async (ev, d) => {
     d = d || {};
     criar(); prender();
-    const falhou = motivo => { if (d.texto) clipboard.writeText(d.texto); return { ok: false, motivo }; };
+    const etapas = [];
+    const falhou = async motivo => {
+      if (d.texto) clipboard.writeText(d.texto);
+      let diag = null;
+      try { diag = await pedir('diagAnexo', {}, 4000); } catch (e) {}
+      return { ok: false, motivo, diag: { versao: app.getVersion(), etapas, arquivos: (Array.isArray(d.caminho) ? d.caminho : d.caminho ? [d.caminho] : []).map(c => path.basename(String(c))), urls: (d.urls || []).length, documento: d.documento !== false, tela: diag } };
+    };
     try {
       const pronto = await pedir('esperarPronto', {}, 45000);
       if (!pronto.ok) return falhou(pronto.motivo || 'O WhatsApp ainda não está conectado (leia o QR Code).');
@@ -307,13 +313,18 @@ module.exports = function ligarWhatsApp(pegarJanela) {
            na proporção certa. Escolher o campo de arquivo caía às vezes no
            de figurinha (quadrado, esticado). Documento continua pelo clipe. */
         let soltou = d.documento === false && await soltarArquivos(d.caminho);
+        etapas.push('arrastar:' + soltou);
         /* o editor de fotos abriu? (aparece o campo de legenda) — se não,
            volta para o caminho do clipe */
         if (soltou) soltou = (await pedir('legenda', { texto: '', espera: 6000 }, 9000)).ok;
+        etapas.push('editor_abriu:' + soltou);
         if (!soltou) {
           const a = await pedir('prepararAnexo', { documento: d.documento !== false });
+          etapas.push('clipe:' + a.ok);
           if (!a.ok) return falhou(a.motivo || 'Não consegui abrir o anexo.');
-          if (!(await porArquivo(d.caminho))) return falhou('Não consegui anexar o arquivo.');
+          const pos = await porArquivo(d.caminho);
+          etapas.push('pos_arquivo:' + pos);
+          if (!pos) return falhou('Não consegui anexar o arquivo.');
         }
         const l = await pedir('legenda', { texto: d.texto || '' }, 30000);
         if (!l.ok) return falhou(l.motivo || 'O arquivo foi anexado, mas não consegui escrever a mensagem.');
@@ -322,7 +333,9 @@ module.exports = function ligarWhatsApp(pegarJanela) {
         if (!e.ok) return falhou(e.motivo || 'Não consegui escrever a mensagem.');
       }
       view.webContents.focus();
-      return { ok: true };
+      let tela = null;
+      if (d.caminho) { try { tela = await pedir('diagAnexo', {}, 4000); } catch (e) {} }
+      return { ok: true, diag: { versao: app.getVersion(), etapas, documento: d.documento !== false, tela } };
     } catch (e) {
       return falhou('O WhatsApp não respondeu.');
     }
