@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz186', versao: 'zzz186', em: '2026-10-15T15:00:00-03:00',
+    titulo: 'WhatsApp: várias artes de uma vez',
+    itens: ['Ao enviar uma arte, dá para marcar quais vão e juntar outras do computador — várias de uma vez (a mesma arte em proporções diferentes, por exemplo).',
+            'Abrir uma janela do sistema com o WhatsApp aberto não deixa mais o WhatsApp “boiando” claro por cima.',
+            'A atualização do programa de Windows fecha o programa sozinha, sem o aviso “Não é possível fechar o Sistema B7”.'] },
   { id: 'v-zzz185', versao: 'zzz185', em: '2026-10-15T14:00:00-03:00',
     titulo: 'Artes direto no WhatsApp',
     itens: ['No programa de Windows, a peça de design tem o botão “Enviar no WhatsApp”: o sistema abre o grupo do cliente, anexa as artes da versão mais nova e escreve a mensagem. Quem aperta enviar é você.',

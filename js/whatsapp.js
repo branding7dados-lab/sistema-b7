@@ -220,8 +220,8 @@ B7.WhatsApp = (function () {
              na tela), só depois o WhatsApp sai da frente. Antes ele sumia
              primeiro e a foto chegava um instante depois (o "piscar"). */
           const usar = f => porFoto(f).then(() => { if (escondido) D.esconder(false); });
-          if (fotoPronta && Date.now() - fotoPronta.em < 4000) usar(fotoPronta.f);
-          else Promise.race([D.foto(), new Promise(r => setTimeout(() => r(null), 400))]).then(usar, () => usar(null));
+          if (fotoPronta && Date.now() - fotoPronta.em < 8000) usar(fotoPronta.f);
+          else Promise.race([D.foto(), new Promise(r => setTimeout(() => r(null), 150))]).then(usar, () => usar(null));
         }
       }
       return;
@@ -258,7 +258,14 @@ B7.WhatsApp = (function () {
     document.body.classList.add('wa-aberta');
     ativo = true; escondido = true; ultimoRet = ''; ligadoEm = Date.now();
     clearInterval(relogio);
-    relogio = setInterval(() => { if (Date.now() - ligadoEm > 200) medir(); }, 250);           /* barra lateral abrindo, rolagem, zoom: segue junto */
+    let tique = 0;
+    relogio = setInterval(() => {
+      if (Date.now() - ligadoEm > 200) medir();
+      /* zzz186: foto sempre fresca (a cada 2 s) — janela que abre por cima
+         troca o WhatsApp pela foto NA HORA, sem ele ficar "boiando" claro
+         por cima do escurecido enquanto a foto era tirada */
+      if (++tique % 8 === 0 && document.hasFocus()) preFoto();
+    }, 250);           /* barra lateral abrindo, rolagem, zoom: segue junto */
     addEventListener('resize', medir);
     observador = new MutationObserver(() => { if (Date.now() - ligadoEm > 200) requestAnimationFrame(medir); });
     observador.observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['class'] });
@@ -758,7 +765,8 @@ B7.WhatsApp = (function () {
         '<small class="leve wa-g-dica" id="wa-g-dica">' + (grupo ? '' : 'Este cliente ainda não tem grupo reconhecido — o nome que você puser aqui fica ligado a ele.') + '</small></div>' +
       (autoArtes
         ? '<div class="mb"><label class="rot">' + (artes.length > 1 ? artes.length + ' ARTES' : 'ARTE') + ' · VERSÃO MAIS NOVA</label><div class="wa-artes">' +
-            artes.map(a => '<span class="wa-arte" title="' + esc(a.nome_original || '') + '">' + esc(a.nome_original || 'arte') + '</span>').join('') + '</div></div>'
+            artes.map((a, i) => '<label class="wa-arte" title="' + esc(a.nome_original || '') + '"><input type="checkbox" data-arte="' + i + '" checked><span>' + esc(a.nome_original || 'arte') + '</span></label>').join('') + '</div>' +
+            '<div class="wa-arq"><button type="button" class="b fina contorno" id="wa-arq">+ Outras do computador…</button><span id="wa-arq-nome" class="leve"></span></div></div>'
         : '') +
       (d.comArquivo && (prog || cel)
         ? '<div class="mb"><label class="rot">' + (d.tipo === 'design' ? 'ARTE' : 'VÍDEO') + '</label><div class="wa-arq">' +
@@ -772,13 +780,16 @@ B7.WhatsApp = (function () {
       '<div class="acoes"><button type="button" class="b" data-fecha>Cancelar</button>' +
         '<button type="button" class="b pri" id="wa-ok">' + icone + 'Abrir no WhatsApp</button></div>', { larga: true });
     m.querySelectorAll('input[name="wa-g-r"]').forEach(r => r.onchange = () => { m.querySelector('#wa-g').value = r.value; });
-    let arquivo = null;
+    let arquivo = null, arquivos = [];
     const btArq = m.querySelector('#wa-arq');
     if (btArq && prog) btArq.onclick = async () => {
       const a = await D.escolherArquivo({ tipo: d.tipo }).catch(() => null);
       if (!a) return;
-      arquivo = a;
-      m.querySelector('#wa-arq-nome').textContent = a.nome + ' · ' + tamanho(a.tamanho);
+      arquivo = a; arquivos = a.arquivos || [a];
+      /* zzz186: arte pode ser várias (a mesma arte em proporções diferentes) */
+      m.querySelector('#wa-arq-nome').textContent = arquivos.length > 1
+        ? arquivos.length + ' arquivos · ' + tamanho(arquivos.reduce((t, x) => t + (x.tamanho || 0), 0))
+        : a.nome + ' · ' + tamanho(a.tamanho);
     };
     if (btArq && cel) btArq.remove();
     m.querySelector('#wa-modelo').onclick = () => {
@@ -814,9 +825,10 @@ B7.WhatsApp = (function () {
           let urls = [];
           if (autoArtes) {
             bt.textContent = 'Preparando as artes…';
-            urls = (await Promise.all(artes.map(a => B7.DB.urlArquivoDesign(a.caminho).then(url => ({ url, nome: a.nome_original || 'arte' })).catch(() => null)))).filter(Boolean);
+            const marcadas = artes.filter((a, i) => { const c = m.querySelector('[data-arte="' + i + '"]'); return !c || c.checked; });
+            urls = (await Promise.all(marcadas.map(a => B7.DB.urlArquivoDesign(a.caminho).then(url => ({ url, nome: a.nome_original || 'arte' })).catch(() => null)))).filter(Boolean);
           }
-          const r = await D.enviar({ grupo: g, texto, urls, caminho: arquivo ? arquivo.caminho : '', documento: d.tipo !== 'design' });
+          const r = await D.enviar({ grupo: g, texto, urls, caminho: D.enviaUrls && arquivos.length > 1 ? arquivos.map(x => x.caminho) : arquivo ? arquivo.caminho : '', documento: d.tipo !== 'design' });
           ok = !!(r && r.ok);
           aviso = r && r.ok ? 'Confira no WhatsApp e aperte enviar.' :
             ((r && r.motivo) || 'Não consegui preparar sozinho.') + ' A mensagem ficou copiada: cole (Ctrl+V) no grupo.';
@@ -840,7 +852,7 @@ B7.WhatsApp = (function () {
         try {
           await B7.sb.rpc('whatsapp_registrar_envio', {
             p_tipo: d.tipo, p_ref_id: d.refId || null, p_cliente_id: d.clienteId || null, p_grupo: g,
-            p_arquivo: arquivo ? arquivo.nome : autoArtes ? artes.map(a => a.nome_original).join(', ') : '', p_texto: texto, p_demanda_id: d.demandaId || null
+            p_arquivo: arquivos.length ? arquivos.map(x => x.nome).join(', ') : autoArtes ? artes.map(a => a.nome_original).join(', ') : '', p_texto: texto, p_demanda_id: d.demandaId || null
           });
         } catch (e) { /* o registro é só histórico: não atrapalha o envio */ }
       }
