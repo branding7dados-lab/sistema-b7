@@ -114,11 +114,22 @@ window.addEventListener('message', e => { if (e.source === window && e.data && e
 
 /* ------------------------------------------ 2. pedidos do sistema */
 const conectado = () => !!(qs('#side') || qs('#pane-side'));
+/* zzz180: o cabeçalho do grupo tem o NOME e, embaixo, a lista dos
+   participantes ("César, Kevin, Yury…") — e às vezes o title fica nos
+   participantes. Prefere o texto que é nome de uma conversa da lista, e
+   nunca uma lista separada por vírgulas. */
 const tituloDaConversa = () => {
   const h = qs('#main header');
   if (!h) return '';
-  const s = qs('span[title]', h) || qs('[dir="auto"]', h);
-  return s ? (s.getAttribute('title') || s.textContent || '') : '';
+  const textos = qsa('span, div', h).filter(e => e.childElementCount === 0)
+    .map(e => (e.getAttribute('title') || e.textContent || '').trim()).filter(Boolean);
+  let nomes = new Set();
+  try { nomes = new Set(lerLista().map(x => x.nome)); } catch (e) {}
+  const daLista = textos.find(t => nomes.has(t));
+  if (daLista) return daLista;
+  const sel = qs('#pane-side [aria-selected="true"] span[title]');
+  if (sel) return sel.getAttribute('title');
+  return textos.find(t => !/,\s/.test(t) && !/^(online|digitando|clique|visto|toque)/i.test(t)) || textos[0] || '';
 };
 function campoBusca() {
   const lista = qsa('#side input, #side [contenteditable="true"]').concat(qsa('input[role="textbox"], [contenteditable="true"][role="textbox"]'))
