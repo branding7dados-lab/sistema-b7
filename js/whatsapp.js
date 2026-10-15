@@ -334,7 +334,7 @@ B7.WhatsApp = (function () {
   const EQUIPE = ['matheus', 'mateus', 'kaique', 'alissan', 'pedro', 'yury', 'lucas', 'bruna', 'kevin', 'talita', 'atendimento', 'coordenacao', 'financeiro', 'comercial'];
   const ehEquipe = autor => { const a = norm(autor); return !!a && (EQUIPE.some(n => a === n || a.startsWith(n + ' ') || a.includes(' ' + n)) || AGENCIA_RE.test(a) || /\b(nucleo ?7|branding ?7|b7|n7)\b/.test(a)); };
   /* zzz179: aviso do próprio WhatsApp ("Os membros do grupo mudaram") não é cliente */
-  const SISTEMA_RE = /membros do grupo|adicionou|removeu|saiu do grupo|entrou usando|mudou (o|a|as)|criou o grupo|mensagens tempor|criptografia|codigo de seguranca|código de segurança/i;
+  const SISTEMA_RE = /membros do grupo|adicionou|removeu|saiu do grupo|saiu$|entrou usando|est[aá] no grupo|entrou no grupo|agora [eé] (um )?admin|fixou uma mensagem|mudou (o|a|as)|criou o grupo|mensagens tempor|criptografia|codigo de seguranca|código de segurança/i;
   /* quem mandou: o autor lido, ou o "Nome:" do começo da prévia; prévia que
      é só "B7", "Núcleo7" (nome do remetente da equipe) também conta */
   function daEquipe(g) {
@@ -525,15 +525,17 @@ B7.WhatsApp = (function () {
     let html = '';
     if (!titulo) {
       html = '<div class="wl-vazio">' + icone + '<b>Abra uma conversa</b><span>O que está pendente com o cliente aparece aqui.</span></div>';
-    } else if ((!info || !info.cliente) && !(info && info.ignorar) && !querLigar && (conversaAberta.grupo === false || (conversaAberta.grupo !== true && !casar(titulo)))) {
-      /* zzz195: conversa com uma PESSOA (ou grupo que não parece de cliente):
-         não pergunta "de qual cliente é" — só deixa a opção, se precisar */
-      html = '<div class="wl-cab"><div class="wl-sem">' + (conversaAberta.grupo === false ? '👤' : '#') + '</div><div><b>' + esc(titulo) + '</b><small>' +
-        (conversaAberta.grupo === false ? 'conversa pessoal' : 'não é grupo de cliente') + '</small></div></div>' +
-        '<button type="button" class="wl-ligar-link" id="wl-quer-ligar">É de um cliente? Ligar a um cliente</button>';
+    } else if ((!info || !info.cliente) && !querLigar && ((info && info.ignorar) || ehEquipe(titulo) || conversaAberta.grupo === false || (conversaAberta.grupo !== true && !casar(titulo)))) {
+      /* zzz195/197: conversa com uma PESSOA, da EQUIPE, ou grupo marcado
+         como "não é de cliente": não pergunta "de qual cliente é" — só deixa
+         a opção, se precisar */
+      const daEq = ehEquipe(titulo);
+      html = '<div class="wl-cab"><div class="wl-sem">' + (daEq ? 'B7' : conversaAberta.grupo === false ? '👤' : '#') + '</div><div><b>' + esc(titulo) + '</b><small>' +
+        (daEq ? 'contato da equipe' : conversaAberta.grupo === false ? 'conversa pessoal' : 'não é de cliente') + '</small></div></div>' +
+        (daEq ? '' : '<button type="button" class="wl-ligar-link" id="wl-quer-ligar">É de um cliente? Ligar a um cliente</button>');
     } else if (!info || info.ignorar || !info.cliente) {
       html = '<div class="wl-cab"><div class="wl-sem">?</div><div><b>' + esc(titulo) + '</b><small>' + (info && info.ignorar ? 'grupo ignorado' : 'não ligado a um cliente') + '</small></div></div>' +
-        (info && info.ignorar ? '' : '<div class="wl-ligar"><label class="rot">ESTE GRUPO É DE QUAL CLIENTE?</label><select class="campo" id="wl-cli"><option value="">Escolha…</option>' +
+        (info && info.ignorar && !querLigar ? '' : '<div class="wl-ligar"><label class="rot">ESTE GRUPO É DE QUAL CLIENTE?</label><select class="campo" id="wl-cli"><option value="">Escolha…</option>' +
           clientes.map(c => '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>').join('') + '</select>' +
           '<button type="button" class="b fina contorno" id="wl-ign">Não é de cliente</button></div>');
     } else {
