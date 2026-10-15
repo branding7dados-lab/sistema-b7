@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('B7Desktop', {
     definirConfig: c => ipcRenderer.invoke('b7:wa:definir-config', c),
     escolherArquivo: o => ipcRenderer.invoke('b7:wa:escolher-arquivo', o),
     enviar: d => ipcRenderer.invoke('b7:wa:enviar', d),
+    /* zzz185: enviar() aceita urls [{url, nome}] — baixa e anexa */
+    enviaUrls: true,
     aoNaoLidas: cb => { ipcRenderer.on('b7:wa:naolidas', (ev, n) => { try { cb(n); } catch (x) {} }); },
     aoIr: cb => { ipcRenderer.on('b7:wa:ir', () => { try { cb(); } catch (x) {} }); }
   }

@@ -2031,6 +2031,8 @@ B7.Design = (function () {
          cliente pularia etapa — fica secundário, não some. */
       const r = resumoAjustesCliente();
       const sec = [];
+      /* zzz185: mandar as artes no grupo do cliente (programa de Windows) */
+      if (B7.WhatsApp && B7.WhatsApp.podeEnviar()) sec.push({ id: 'dv-enviar-wa', label: 'Enviar no WhatsApp' });
       if (versaoAtual.estado === 'aprovada_interna') sec.push({ id: 'dv-enviar-cliente', label: 'Enviar pelo Portal do Cliente' });
       if (versaoAtual.estado === 'aprovada_interna' && d.status === 'aprovado_interno') sec.push({ id: 'dv-finalizar', label: 'Finalizar mesmo assim' });
       return { primaria: { id: 'dv-decisao-cliente', label: r ? 'Enviar ajustes do cliente ao Designer' : 'Registrar decisão do cliente' },
@@ -3750,6 +3752,9 @@ B7.Design = (function () {
         desenharDrawer(); redesenharTela();
       } catch (e) { B7.UI.toast('Não foi possível finalizar: ' + (e.message || ''), { tipo: 'erro' }); }
     };
+    const enviarWa = el.querySelector('#dv-enviar-wa');
+    if (enviarWa) enviarWa.onclick = () => B7.WhatsApp.enviar({ tipo: 'design', refId: d.id, clienteId: d.client_id,
+      clienteNome: d.cliente_nome || '', titulo: d.titulo || '' });
     const enviarCliente = el.querySelector('#dv-enviar-cliente');
     if (enviarCliente) enviarCliente.onclick = async () => {
       const msg = await B7.UI.perguntar({ titulo: 'Enviar para aprovação do cliente', rotulo: 'Observação opcional para o cliente.',

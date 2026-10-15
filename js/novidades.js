@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz185', versao: 'zzz185', em: '2026-10-15T14:00:00-03:00',
+    titulo: 'Artes direto no WhatsApp',
+    itens: ['No programa de Windows, a peça de design tem o botão “Enviar no WhatsApp”: o sistema abre o grupo do cliente, anexa as artes da versão mais nova e escreve a mensagem. Quem aperta enviar é você.',
+            'O botão aparece no painel ao lado da conversa e na própria peça, depois de aprovada pela B7.'] },
   { id: 'v-zzz184', versao: 'zzz184', em: '2026-10-15T12:00:00-03:00',
     titulo: 'Painel do WhatsApp de cara nova',
     itens: ['O painel ao lado das conversas ficou mais limpo: cliente em destaque e lista de quem espera resposta com foto e tempo.',

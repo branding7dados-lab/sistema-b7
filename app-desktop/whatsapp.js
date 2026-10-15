@@ -178,6 +178,7 @@ module.exports = function ligarWhatsApp(pegarJanela) {
 
   /* põe o arquivo no campo de anexo marcado pelo preload (data-b7-alvo) */
   async function porArquivo(caminho) {
+    const files = Array.isArray(caminho) ? caminho : [caminho];
     const dbg = view.webContents.debugger;
     let presoAqui = false;
     try {
@@ -185,7 +186,7 @@ module.exports = function ligarWhatsApp(pegarJanela) {
       const doc = await dbg.sendCommand('DOM.getDocument', { depth: 0 });
       const q = await dbg.sendCommand('DOM.querySelector', { nodeId: doc.root.nodeId, selector: 'input[data-b7-alvo]' });
       if (!q || !q.nodeId) return false;
-      await dbg.sendCommand('DOM.setFileInputFiles', { nodeId: q.nodeId, files: [caminho] });
+      await dbg.sendCommand('DOM.setFileInputFiles', { nodeId: q.nodeId, files });
       return true;
     } catch (e) {
       return false;
@@ -248,12 +249,29 @@ module.exports = function ligarWhatsApp(pegarJanela) {
       if (!pronto.ok) return falhou(pronto.motivo || 'O WhatsApp ainda não está conectado (leia o QR Code).');
       const g = await pedir('abrirGrupo', { nome: d.grupo });
       if (!g.ok) return falhou(g.motivo || 'Não achei o grupo "' + d.grupo + '".');
+      /* zzz185: arquivos do próprio B7 (peças de design): baixa para uma
+         pasta temporária e anexa todos de uma vez */
+      if (Array.isArray(d.urls) && d.urls.length) {
+        const pasta = path.join(app.getPath('temp'), 'b7-whatsapp', String(Date.now()));
+        fs.mkdirSync(pasta, { recursive: true });
+        const locais = [];
+        for (const [i, u] of d.urls.slice(0, 30).entries()) {
+          if (!/^https:\/\//.test(String(u && u.url))) continue;
+          const resp = await fetch(u.url).catch(() => null);
+          if (!resp || !resp.ok) return falhou('Não consegui baixar "' + (u.nome || 'arquivo') + '".');
+          const nome = String(u.nome || ('arquivo-' + (i + 1))).replace(/[\\/:*?"<>|]/g, '_').slice(0, 120);
+          const destino = path.join(pasta, (d.urls.length > 1 ? String(i + 1).padStart(2, '0') + '-' : '') + nome);
+          fs.writeFileSync(destino, Buffer.from(await resp.arrayBuffer()));
+          locais.push(destino);
+        }
+        if (locais.length) d.caminho = locais;
+      }
       if (d.caminho) {
         const a = await pedir('prepararAnexo', { documento: d.documento !== false });
         if (!a.ok) return falhou(a.motivo || 'Não consegui abrir o anexo.');
         if (!(await porArquivo(d.caminho))) return falhou('Não consegui anexar o arquivo.');
         const l = await pedir('legenda', { texto: d.texto || '' }, 30000);
-        if (!l.ok) return falhou(l.motivo || 'O vídeo foi anexado, mas não consegui escrever a mensagem.');
+        if (!l.ok) return falhou(l.motivo || 'O arquivo foi anexado, mas não consegui escrever a mensagem.');
       } else if (d.texto) {
         const e = await pedir('escrever', { texto: d.texto });
         if (!e.ok) return falhou(e.motivo || 'Não consegui escrever a mensagem.');
