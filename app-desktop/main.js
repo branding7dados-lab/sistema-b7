@@ -257,11 +257,29 @@ function ligarAtualizacao() {
 /* zzz186: fecha TUDO antes de chamar o instalador (WhatsApp e janelas);
    se algo ainda segurar, sai à força — o instalador nunca mais encontra o
    programa aberto */
+/* zzz190: tela de "atualizando" com a cara do B7 no lugar da janelinha
+   cinza do instalador — a instalação roda calada e o programa reabre */
+const TELA_ATUALIZANDO = 'data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8">
+<style>html,body{margin:0;height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:radial-gradient(120% 90% at 20% 0%,#3b1d6e 0%,#140d24 55%,#0b0716 100%);color:#fff;display:grid;place-items:center;overflow:hidden}
+.c{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.l{width:76px;height:76px;border-radius:22px;background:linear-gradient(140deg,#7c4dff,#d6336c);display:grid;place-items:center;box-shadow:0 18px 50px -12px #7c4dffaa;animation:p 1.6s ease-in-out infinite}
+.l b{font-size:30px;font-weight:800;letter-spacing:-1px}
+h1{margin:0;font-size:21px;font-weight:700}p{margin:0;color:#bfb3d9;font-size:13.5px}
+.bar{width:220px;height:5px;border-radius:9px;background:#ffffff1a;overflow:hidden}.bar i{display:block;height:100%;width:40%;border-radius:9px;background:linear-gradient(90deg,#7c4dff,#d6336c);animation:a 1.1s ease-in-out infinite}
+@keyframes a{0%{transform:translateX(-110%)}100%{transform:translateX(280%)}}@keyframes p{50%{transform:scale(1.06)}}</style></head>
+<body><div class="c"><div class="l"><b>B7</b></div><h1>Atualizando o Sistema B7</h1><p>Leva só alguns segundos — o programa abre sozinho de novo.</p><div class="bar"><i></i></div></div></body></html>`);
 function fecharParaInstalar() {
+  try { whats.encerrar(); } catch (e) {}
+  if (janela && !janela.isDestroyed()) {
+    try { janela.loadURL(TELA_ATUALIZANDO); } catch (e) {}
+    setTimeout(fecharDeVez, 1400);
+  } else fecharDeVez();
+}
+function fecharDeVez() {
   try { whats.encerrar(); } catch (e) {}
   app.removeAllListeners('window-all-closed');
   BrowserWindow.getAllWindows().forEach(w => { try { w.removeAllListeners('close'); w.destroy(); } catch (e) {} });
-  autoUpdater.quitAndInstall(false, true);
+  autoUpdater.quitAndInstall(true, true);   /* calado (sem a janelinha) e reabre depois */
   setTimeout(() => app.exit(0), 4000);
 }
 function instalarAgora() {
