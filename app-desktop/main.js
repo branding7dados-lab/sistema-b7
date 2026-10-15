@@ -234,7 +234,7 @@ function ligarAtualizacao() {
       noLink: true
     });
     avisando = false;
-    if (r.response === 0) setImmediate(() => autoUpdater.quitAndInstall(false, true));
+    if (r.response === 0) instalarAgora();
   });
   autoUpdater.on('error', e => {
     if (janela && !janela.isDestroyed()) janela.setProgressBar(-1);
@@ -254,9 +254,19 @@ function ligarAtualizacao() {
     ultimaConferida = Date.now(); conferir(false);
   });
 }
+/* zzz186: fecha TUDO antes de chamar o instalador (WhatsApp e janelas);
+   se algo ainda segurar, sai à força — o instalador nunca mais encontra o
+   programa aberto */
+function fecharParaInstalar() {
+  try { whats.encerrar(); } catch (e) {}
+  app.removeAllListeners('window-all-closed');
+  BrowserWindow.getAllWindows().forEach(w => { try { w.removeAllListeners('close'); w.destroy(); } catch (e) {} });
+  autoUpdater.quitAndInstall(false, true);
+  setTimeout(() => app.exit(0), 4000);
+}
 function instalarAgora() {
   if (estadoAtualizacao.estado !== 'pronta') return false;
-  setImmediate(() => autoUpdater.quitAndInstall(false, true));
+  setImmediate(fecharParaInstalar);
   return true;
 }
 

@@ -76,6 +76,10 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     });
     view.setBackgroundColor('#00000000');
     const wc = view.webContents;
+    /* zzz186: o WhatsApp Web pede "tem certeza que quer sair?" ao fechar —
+       isso segurava o programa aberto e o instalador da atualização dizia
+       "Não é possível fechar o Sistema B7". Fechar é sempre permitido. */
+    wc.on('will-prevent-unload', ev => ev.preventDefault());
     wc.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) shell.openExternal(url); return { action: 'deny' }; });
     wc.on('will-navigate', (ev, url) => { if (!doWa(url)) { ev.preventDefault(); shell.openExternal(url); } });
     /* "(3) WhatsApp" no título = 3 conversas não lidas */
@@ -226,17 +230,24 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     gravarCfg(); mandarCfg();
     return true;
   });
-  ipcMain.handle('b7:wa:escolher-arquivo', async () => {
+  /* zzz186: arte → imagens e vários de uma vez (a mesma arte em
+     proporções diferentes); vídeo continua um só */
+  ipcMain.handle('b7:wa:escolher-arquivo', async (ev, o) => {
     const j = pegarJanela();
+    const arte = o && o.tipo === 'design';
     const r = await dialog.showOpenDialog(j, {
-      title: 'Escolha o vídeo para mandar ao cliente',
-      properties: ['openFile'],
-      filters: [{ name: 'Vídeos', extensions: ['mp4', 'mov', 'm4v', 'avi', 'mkv', 'webm', 'wmv'] }, { name: 'Todos os arquivos', extensions: ['*'] }]
+      title: arte ? 'Escolha as artes para mandar ao cliente' : 'Escolha o vídeo para mandar ao cliente',
+      properties: arte ? ['openFile', 'multiSelections'] : ['openFile'],
+      filters: arte
+        ? [{ name: 'Imagens e PDF', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf', 'mp4', 'mov'] }, { name: 'Todos os arquivos', extensions: ['*'] }]
+        : [{ name: 'Vídeos', extensions: ['mp4', 'mov', 'm4v', 'avi', 'mkv', 'webm', 'wmv'] }, { name: 'Todos os arquivos', extensions: ['*'] }]
     });
     if (r.canceled || !r.filePaths[0]) return null;
-    const caminho = r.filePaths[0];
-    let tamanho = 0; try { tamanho = fs.statSync(caminho).size; } catch (e) {}
-    return { caminho, nome: path.basename(caminho), tamanho };
+    const arquivos = r.filePaths.map(caminho => {
+      let tamanho = 0; try { tamanho = fs.statSync(caminho).size; } catch (e) {}
+      return { caminho, nome: path.basename(caminho), tamanho };
+    });
+    return Object.assign({ arquivos }, arquivos[0]);
   });
   /* {grupo, texto, caminho, documento} → abre o grupo, anexa e escreve.
      Se alguma etapa falhar, a mensagem fica na área de transferência. */
@@ -264,7 +275,7 @@ module.exports = function ligarWhatsApp(pegarJanela) {
           fs.writeFileSync(destino, Buffer.from(await resp.arrayBuffer()));
           locais.push(destino);
         }
-        if (locais.length) d.caminho = locais;
+        if (locais.length) d.caminho = locais.concat(Array.isArray(d.caminho) ? d.caminho : d.caminho ? [d.caminho] : []);
       }
       if (d.caminho) {
         const a = await pedir('prepararAnexo', { documento: d.documento !== false });
@@ -287,6 +298,11 @@ module.exports = function ligarWhatsApp(pegarJanela) {
      avisos de mensagem chegarem mesmo sem abrir a tela */
   return {
     aoAbrirJanela() { if (cfg.usado) { criar(); prender(); view.setVisible(false); } },
-    aoFecharJanela() { presa = false; visivel = false; }
+    aoFecharJanela() { presa = false; visivel = false; },
+    /* antes de instalar atualização: fecha o WhatsApp de vez */
+    encerrar() {
+      try { if (view && !view.webContents.isDestroyed()) view.webContents.close({ waitForBeforeUnload: false }); } catch (e) {}
+      view = null; presa = false; visivel = false;
+    }
   };
 };
