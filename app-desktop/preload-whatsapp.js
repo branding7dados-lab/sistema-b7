@@ -180,7 +180,16 @@ const ACOES = {
     qsa('input[data-b7-alvo]').forEach(i => i.removeAttribute('data-b7-alvo'));
     const acharCampo = () => {
       const files = qsa('input[type="file"]');
-      if (documento) return files.find(i => (i.getAttribute('accept') || '') === '*') || files.find(i => !i.getAttribute('accept'));
+      const rotuloDe = i => { const c = i.closest('li, [role="button"], [role="menuitem"], div[aria-label]'); return ((c && (c.getAttribute('aria-label') || c.textContent)) || '').toLowerCase(); };
+      /* zzz196: o WhatsApp mudou o campo de documento (não é mais accept="*"):
+         acha pelo nome do item ("Documento"), depois por accept aberto, e
+         por fim o campo que NÃO é só de imagem/vídeo */
+      if (documento) {
+        const ac = i => (i.getAttribute('accept') || '').trim();
+        return files.find(i => /documento|document/.test(rotuloDe(i))) ||
+               files.find(i => ac(i) === '*' || ac(i) === '*/*' || !ac(i)) ||
+               files.find(i => !/^(image|video)\//.test(ac(i)) && !/^image\/\*,?\s*video/.test(ac(i)) && !/figurinha|sticker/.test(rotuloDe(i))) || null;
+      }
       /* zzz187: "Fotos e vídeos" aceita vídeo e vários arquivos; o campo só
          de imagem é o de FIGURINHA (corta quadrado e aceita uma só) */
       /* zzz191: o WhatsApp nem sempre marca vídeo no campo de fotos — acha
