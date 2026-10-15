@@ -14,3 +14,8 @@ end $$;
 revoke all on function public.whatsapp_grupo_espera(text, boolean) from public, anon;
 grant execute on function public.whatsapp_grupo_espera(text, boolean) to authenticated;
 update public.whatsapp_grupos set sem_espera = true where nome ilike '%mercato%';
+
+-- zzz185: envio de peças de design pelo WhatsApp também fica no histórico
+alter table public.whatsapp_envios drop constraint if exists whatsapp_envios_tipo_check;
+alter table public.whatsapp_envios add constraint whatsapp_envios_tipo_check check (tipo in ('video', 'gravacao', 'design', 'outro'));
+-- whatsapp_registrar_envio passa a aceitar p_tipo = 'design' (mesmo corpo de migration_whatsapp.sql)

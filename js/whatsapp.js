@@ -500,7 +500,7 @@ B7.WhatsApp = (function () {
     return dados;
   }
   const ROT_VIDEO = { pendente: 'Na fila', em_edicao: 'Em edição', aguardando_aprovacao: 'Com o cliente', correcao: 'Ajustes' };
-  const ROT_DESIGN = { aguardando_producao: 'Na fila', em_producao: 'Em criação', revisao_interna: 'Revisão interna', aguardando_cliente: 'Com o cliente', ajustes: 'Ajustes', aprovado: 'Aprovada' };
+  const ROT_DESIGN = { aguardando_producao: 'Na fila', em_producao: 'Em criação', revisao_interna: 'Revisão interna', aguardando_cliente: 'Com o cliente', ajustes: 'Ajustes', aprovado: 'Aprovada', aprovado_interno: 'Aprovada pela B7', aprovado_cliente: 'Aprovada pelo cliente' };
   const APROVA_RE = /\b(aprovad[oa]s?|aprovo|pode (postar|publicar|seguir|soltar|mandar ver)|t[aá] (otimo|ótimo|perfeito|lindo|top)|ficou (otimo|ótimo|perfeito|lindo|top|show|massa)|perfeito|amei|aprovadíssimo)\b/i;
   const dataCurta = iso => { const [a, m, d] = String(iso).slice(0, 10).split('-'); return d + '/' + m; };
 
@@ -534,7 +534,8 @@ B7.WhatsApp = (function () {
           (comCliente.length ? comCliente.slice(0, 3).map(v => '<a class="b fina pri" href="#/video/' + esc(v.id) + '">Registrar em “' + esc(v.titulo || v.codigo || 'vídeo') + '”</a>').join('') : '<span class="leve">Nada com o cliente esperando decisão agora.</span>') + '</div>' : '') +
         secao('Vídeo', p.videos.map(v => item('#/video/' + v.id, v.titulo || v.codigo || 'Vídeo', ROT_VIDEO[v.editing_status] || v.editing_status, v.editing_status === 'aguardando_aprovacao',
             v.editing_status === 'aguardando_aprovacao' || v.editing_status === 'em_edicao' ? '<button type="button" class="wl-mini" data-env-video="' + esc(v.id) + '" title="Enviar no WhatsApp">' + icone + '</button>' : ''))) +
-        secao('Design', p.design.map(d => item('#/design/' + d.id, d.titulo || d.tipo || 'Peça', ROT_DESIGN[d.status] || d.status, d.status === 'aguardando_cliente'))) +
+        secao('Design', p.design.map(d => item('#/design/' + d.id, d.titulo || d.tipo || 'Peça', ROT_DESIGN[d.status] || d.status, d.status === 'aguardando_cliente' || d.status === 'aprovado_interno',
+            d.status !== 'aguardando_producao' ? '<button type="button" class="wl-mini" data-env-design="' + esc(d.id) + '" title="Enviar a arte no WhatsApp">' + icone + '</button>' : ''))) +
         secao('Gravações', p.gravacoes.map(g => item('#/gravacao/' + g.id, g.nome || 'Gravação', dataCurta(g.data_gravacao) + (g.hora_inicio ? ' · ' + String(g.hora_inicio).slice(0, 5) : ''), false,
             '<button type="button" class="wl-mini" data-env-grav="' + esc(g.id) + '" title="Avisar no WhatsApp">' + icone + '</button>')));
       if (!p.videos.length && !p.design.length && !p.gravacoes.length) html += '<p class="wl-nada">Nada pendente com este cliente. 🎉</p>';
@@ -579,6 +580,11 @@ B7.WhatsApp = (function () {
     lado.querySelectorAll('[data-env-video]').forEach(b => b.onclick = () => {
       const c = info.cliente;
       enviar({ tipo: 'video', refId: b.dataset.envVideo, demandaId: b.dataset.envVideo, clienteId: c.id, clienteNome: c.nome, comArquivo: true, grupo: titulo,
+               titulo: (b.closest('.wl-it').querySelector('b') || {}).textContent || '' });
+    });
+    lado.querySelectorAll('[data-env-design]').forEach(b => b.onclick = () => {
+      const c = info.cliente;
+      enviar({ tipo: 'design', refId: b.dataset.envDesign, clienteId: c.id, clienteNome: c.nome, grupo: titulo,
                titulo: (b.closest('.wl-it').querySelector('b') || {}).textContent || '' });
     });
     lado.querySelectorAll('[data-env-grav]').forEach(async b => b.onclick = async () => {
@@ -711,6 +717,7 @@ B7.WhatsApp = (function () {
   /* ------------------------------------------------ modelos de texto */
   const MODELOS = {
     video: 'Olá, {cliente}! 🎬\nSegue o vídeo{titulo} para vocês conferirem. Qualquer ajuste, é só nos falar por aqui.',
+    design: 'Olá, {cliente}! 🎨\nSegue a arte{titulo} para vocês conferirem. Qualquer ajuste, é só nos falar por aqui.',
     gravacao: 'Olá, {cliente}! 🎥\nPassando para confirmar a nossa gravação:\n📅 {data}{hora}{local}\nQualquer mudança, nos avise por aqui. Até lá!'
   };
   const chaveModelo = t => 'wa_modelo_' + t;
@@ -733,20 +740,29 @@ B7.WhatsApp = (function () {
     if (!grupo && d.clienteId) { try { const c = await B7.DB.cliente(d.clienteId); grupo = (c && c.whatsapp_grupo) || ''; } catch (e) {} }
     const tpl = B7.pref.ler(chaveModelo(d.tipo), MODELOS[d.tipo] || '');
     const prog = !!D, cel = nativo();
-    const m = B7.UI.modal('<h3>' + (d.tipo === 'gravacao' ? 'Avisar a gravação no WhatsApp' : 'Enviar o vídeo no WhatsApp') + '</h3>' +
+    /* zzz185: peça de design — as artes da última versão vão junto, sem escolher arquivo */
+    const artes = d.tipo === 'design' ? await arquivosDesign(d.refId) : [];
+    const autoArtes = prog && D.enviaUrls && artes.length;
+    if (d.tipo === 'design' && prog && !autoArtes) d.comArquivo = true;
+    const oQue = d.tipo === 'design' ? 'a arte' : 'o vídeo';
+    const m = B7.UI.modal('<h3>' + (d.tipo === 'gravacao' ? 'Avisar a gravação no WhatsApp' : d.tipo === 'design' ? 'Enviar a arte no WhatsApp' : 'Enviar o vídeo no WhatsApp') + '</h3>' +
       '<p class="sub">' + (prog
-        ? 'O sistema abre o grupo, ' + (d.comArquivo ? 'anexa o vídeo como documento ' : '') + 'e escreve a mensagem. <b>Quem aperta enviar é você.</b>'
-        : cel ? 'Abre o WhatsApp com a mensagem' + (d.comArquivo ? ' e o vídeo' : '') + ' — você escolhe o grupo e envia.'
-        : 'A mensagem é copiada e o WhatsApp Web abre numa aba: cole (Ctrl+V) no grupo' + (d.comArquivo ? ' e anexe o vídeo como documento' : '') + '.') + '</p>' +
+        ? 'O sistema abre o grupo, ' + (autoArtes ? 'anexa ' + (artes.length > 1 ? 'as ' + artes.length + ' artes ' : 'a arte ') : d.comArquivo ? 'anexa ' + oQue + (d.tipo === 'video' ? ' como documento ' : ' ') : '') + 'e escreve a mensagem. <b>Quem aperta enviar é você.</b>'
+        : cel ? 'Abre o WhatsApp com a mensagem' + (d.comArquivo ? ' e ' + oQue : '') + ' — você escolhe o grupo e envia.'
+        : 'A mensagem é copiada e o WhatsApp Web abre numa aba: cole (Ctrl+V) no grupo' + (d.comArquivo || artes.length ? ' e anexe ' + oQue : '') + '.') + '</p>' +
       '<div class="mb"><label class="rot" for="wa-g">GRUPO DO CLIENTE</label>' +
         (dele.length > 1
           ? '<div class="wa-gs">' + dele.map(g => '<label class="wa-g-op"><input type="radio" name="wa-g-r" value="' + esc(g.nome) + '"' + (g.nome === grupo ? ' checked' : '') + '><span><b>' + esc(g.tipo || g.nome) + '</b><small>' + esc(g.nome) + '</small></span></label>').join('') + '</div>'
           : '') +
         '<input class="campo" id="wa-g" maxlength="120" value="' + esc(grupo) + '" placeholder="Nome do grupo, igual aparece no WhatsApp"' + (dele.length > 1 ? ' hidden' : '') + '>' +
         '<small class="leve wa-g-dica" id="wa-g-dica">' + (grupo ? '' : 'Este cliente ainda não tem grupo reconhecido — o nome que você puser aqui fica ligado a ele.') + '</small></div>' +
+      (autoArtes
+        ? '<div class="mb"><label class="rot">' + (artes.length > 1 ? artes.length + ' ARTES' : 'ARTE') + ' · VERSÃO MAIS NOVA</label><div class="wa-artes">' +
+            artes.map(a => '<span class="wa-arte" title="' + esc(a.nome_original || '') + '">' + esc(a.nome_original || 'arte') + '</span>').join('') + '</div></div>'
+        : '') +
       (d.comArquivo && (prog || cel)
-        ? '<div class="mb"><label class="rot">VÍDEO</label><div class="wa-arq">' +
-            '<button type="button" class="b contorno" id="wa-arq">Escolher o vídeo…</button><span id="wa-arq-nome" class="leve">' +
+        ? '<div class="mb"><label class="rot">' + (d.tipo === 'design' ? 'ARTE' : 'VÍDEO') + '</label><div class="wa-arq">' +
+            '<button type="button" class="b contorno" id="wa-arq">Escolher ' + oQue + '…</button><span id="wa-arq-nome" class="leve">' +
             (cel ? 'você escolhe ao tocar em “Abrir no WhatsApp”' : 'nenhum escolhido') + '</span></div></div>'
         : '') +
       '<div class="mb"><label class="rot" for="wa-tx">MENSAGEM</label>' +
@@ -782,7 +798,7 @@ B7.WhatsApp = (function () {
       const bt = m.querySelector('#wa-ok');
       if (prog && !g) { m.querySelector('#wa-g').classList.add('erro'); m.querySelector('#wa-g').focus(); return; }
       if (prog && d.comArquivo && !arquivo) {
-        const seguir = await B7.UI.confirmar({ titulo: 'Sem vídeo?', texto: 'Nenhum vídeo foi escolhido. Mandar só a mensagem?', rotulo: 'Só a mensagem' });
+        const seguir = await B7.UI.confirmar({ titulo: d.tipo === 'design' ? 'Sem arte?' : 'Sem vídeo?', texto: 'Nenhum arquivo foi escolhido. Mandar só a mensagem?', rotulo: 'Só a mensagem' });
         if (!seguir) return;
       }
       bt.disabled = true;
@@ -795,7 +811,12 @@ B7.WhatsApp = (function () {
       try {
         if (prog) {
           location.hash = '#/whatsapp';
-          const r = await D.enviar({ grupo: g, texto, caminho: arquivo ? arquivo.caminho : '', documento: true });
+          let urls = [];
+          if (autoArtes) {
+            bt.textContent = 'Preparando as artes…';
+            urls = (await Promise.all(artes.map(a => B7.DB.urlArquivoDesign(a.caminho).then(url => ({ url, nome: a.nome_original || 'arte' })).catch(() => null)))).filter(Boolean);
+          }
+          const r = await D.enviar({ grupo: g, texto, urls, caminho: arquivo ? arquivo.caminho : '', documento: d.tipo !== 'design' });
           ok = !!(r && r.ok);
           aviso = r && r.ok ? 'Confira no WhatsApp e aperte enviar.' :
             ((r && r.motivo) || 'Não consegui preparar sozinho.') + ' A mensagem ficou copiada: cole (Ctrl+V) no grupo.';
@@ -819,11 +840,22 @@ B7.WhatsApp = (function () {
         try {
           await B7.sb.rpc('whatsapp_registrar_envio', {
             p_tipo: d.tipo, p_ref_id: d.refId || null, p_cliente_id: d.clienteId || null, p_grupo: g,
-            p_arquivo: arquivo ? arquivo.nome : '', p_texto: texto, p_demanda_id: d.demandaId || null
+            p_arquivo: arquivo ? arquivo.nome : autoArtes ? artes.map(a => a.nome_original).join(', ') : '', p_texto: texto, p_demanda_id: d.demandaId || null
           });
         } catch (e) { /* o registro é só histórico: não atrapalha o envio */ }
       }
     };
+  }
+  /* arquivos da última versão enviada da peça (prévias e finais, na ordem) */
+  async function arquivosDesign(id) {
+    try {
+      const { data: vs } = await B7.sb.from('design_versoes').select('id,numero,estado').eq('deliverable_id', id).neq('estado', 'rascunho').order('numero', { ascending: false }).limit(1);
+      if (!vs || !vs.length) return [];
+      const { data } = await B7.sb.from('design_arquivos').select('nome_original,caminho,papel,posicao,parte_posicao,mime').eq('versao_id', vs[0].id).in('papel', ['preview', 'final']);
+      const l = (data || []).filter(a => a.caminho);
+      const finais = l.filter(a => a.papel === 'final');
+      return (finais.length ? finais : l).sort((a, b) => (a.parte_posicao || 0) - (b.parte_posicao || 0) || (a.posicao || 0) - (b.posicao || 0));
+    } catch (e) { return []; }
   }
   const tamanho = b => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(b > 104857600 ? 0 : 1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
 
