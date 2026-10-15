@@ -108,7 +108,9 @@ B7.Nav = (function () {
   const OPERACAO = ['clientes', 'publicacoes', 'aprovacoes', 'kanban', 'design', 'video', 'gravacoes', 'calendario', 'oportunidades',
                     'roteiros', 'trends', 'linhas', 'semanas'];
   /* Atalhos saiu da barra permanente: continua no menu da conta e na tecla "?" */
-  const FERRAMENTAS = ['arquivados', 'lixeira', 'usuarios', 'config'];
+  /* zzz200: Usuários e acessos saiu da lateral e do "Mais": fica em
+     Configurações → Admin → Pessoas e no menu da conta */
+  const FERRAMENTAS = ['arquivados', 'lixeira', 'config'];
 
   function rotuloDe(id) {
     if (id === 'central' && papel() === 'designer') return 'Central de Design';

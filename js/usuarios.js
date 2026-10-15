@@ -347,37 +347,82 @@ B7.Usuarios = (function () {
     const online = ativos.filter(u => presenca(u).online).length;
     const inativas = usuarios.length - ativos.length;
 
-    /* zzz9: tela mais calma — cabeçalho igual ao das outras telas, filtros
-       numa fileira de pílulas com contagem e as pessoas numa lista
-       agrupada (Equipe / Clientes), uma linha por conta. Mesmas ações e
-       mesmos dados de antes. */
-    const equipeN = ativos.filter(u => u.papel !== 'cliente').length;
-    const clientesN = ativos.filter(u => u.papel === 'cliente').length;
-    const pilula = (id, rot, n) => '<button type="button" class="lu3-pil' + (filtro.tipo === id ? ' on' : '') + '" data-lu-tipo="' + id + '">' +
-      (id === 'online' ? '<i class="lu3-ponto' + (n ? ' vivo' : '') + '" aria-hidden="true"></i>' : '') +
-      rot + '<b>' + n + '</b></button>';
+    /* zzz200: Usuários em cartões. No alto, os números da equipe (cada um
+       filtra a lista); embaixo, um cartão por conta com função, funções
+       extras, o mapa dos módulos (cheio = abre; contorno = mudou do padrão
+       da função), os alertas da conta e o último acesso. Mesmas ações e
+       mesmos dados de antes: nada aqui decide permissão. */
+    const extrasDe = id => funcoesExtraDe(id).filter(f => f !== identidadeDe(usuarios.find(x => x.id === id) || {}).funcao);
+    const diasSem = u => {
+      const c = [u.last_seen_at, u.last_login_at, u.ultimo_acesso].filter(Boolean).map(x => new Date(x).getTime()).filter(x => !isNaN(x));
+      return c.length ? Math.floor((Date.now() - Math.max.apply(null, c)) / 864e5) : null;
+    };
+    const difDe = u => {
+      const idt = identidadeDe(u);
+      if (idt.tipo === 'cliente' || idt.ehAdmin) return [];
+      const base = ACESSO.presets[idt.funcao] || [], exc = ACESSO.excecoes[u.id] || {};
+      return Object.keys(exc).filter(md => (exc[md] === 'permitir') !== base.includes(md));
+    };
+    const alertasDe = u => {
+      if (u.estado !== 'ativa') return [{ t: 'Conta desativada', c: 'cinza' }];
+      const a = [], d = diasSem(u), idt = identidadeDe(u);
+      if (presenca(u).online) { /* online agora: nada de "sem acesso" */ }
+      else if (d === null) a.push({ t: 'Nunca acessou', c: 'ambar' });
+      else if (d >= 30) a.push({ t: 'Sem acesso há ' + d + ' dias', c: 'ambar' });
+      if (idt.tipo === 'cliente') { if (!empresasDe(u.id).length) a.push({ t: 'Sem empresa vinculada', c: 'ambar' }); }
+      else {
+        if (!idt.ehAdmin && !idt.funcao) a.push({ t: 'Sem função', c: 'ambar' });
+        if (difDe(u).length) a.push({ t: 'Acesso personalizado', c: 'violeta' });
+      }
+      return a;
+    };
+    const atencao = u => alertasDe(u).some(x => x.c === 'ambar');
+    const equipeAtiva = ativos.filter(u => u.papel !== 'cliente');
+    const conta = {
+      todos: usuarios.length,
+      online,
+      admin: equipeAtiva.filter(u => identidadeDe(u).ehAdmin).length,
+      coordenador: equipeAtiva.filter(u => identidadeDe(u).funcao === 'coordenador').length,
+      designer: equipeAtiva.filter(u => identidadeDe(u).funcao === 'designer').length,
+      videomaker: equipeAtiva.filter(u => identidadeDe(u).funcao === 'videomaker').length,
+      clientes: ativos.filter(u => u.papel === 'cliente').length,
+      personalizado: equipeAtiva.filter(u => difDe(u).length).length,
+      atencao: usuarios.filter(atencao).length,
+      inativas
+    };
+    const FILTROS = [['todos', 'Todas'], ['online', 'Online'], ['admin', 'Administradores'], ['coordenador', 'Coordenação'], ['designer', 'Design'],
+      ['videomaker', 'Vídeo'], ['clientes', 'Clientes'], ['personalizado', 'Acesso personalizado'], ['atencao', 'Pedem atenção'], ['inativas', 'Desativadas']];
+    if (!FILTROS.some(f => f[0] === filtro.tipo)) filtro.tipo = 'todos';
+    const pilula = (id, rot) => '<button type="button" class="lu3-pil' + (filtro.tipo === id ? ' on' : '') + '" data-lu-tipo="' + id + '">' +
+      (id === 'online' ? '<i class="lu3-ponto' + (conta.online ? ' vivo' : '') + '" aria-hidden="true"></i>' : '') +
+      (id === 'atencao' ? '<i class="lu4-ponto-at" aria-hidden="true"></i>' : '') +
+      rot + '<b>' + conta[id] + '</b></button>';
+    const kpi = (id, n, rot, cls, i) => '<button type="button" class="lu4-kpi ' + (cls || '') + (filtro.tipo === id ? ' on' : '') + '" data-lu-tipo="' + id + '" style="--i:' + i + '">' +
+      '<b>' + n + '</b><span>' + rot + '</span></button>';
 
-    painel().innerHTML = '<div class="conteudo entra lu3">' +
+    painel().innerHTML = '<div class="conteudo entra lu3 lu4">' +
       '<div class="trilha"><a href="#/config">Configurações</a><span>/</span>' +
       '<b>Usuários e acessos</b></div>' +
       '<div class="cab-conteudo lu3-cab"><div><h1>Usuários e acessos</h1>' +
-        '<p>' + usuarios.length + ' conta' + (usuarios.length === 1 ? '' : 's') +
-          (online ? ' · <span class="lu3-on">' + online + ' online agora</span>' : '') +
-          ' · criadas pela Branding7, sem cadastro público.</p></div>' +
+        '<p>' + usuarios.length + ' conta' + (usuarios.length === 1 ? '' : 's') + ' · criadas pela Branding7, sem cadastro público.</p></div>' +
         '<button class="b contorno lu3-funcoes" id="lu-funcoes">' + IC_ACESSO + '<span>Funções e acessos</span></button>' +
         '<button class="b pri lu3-novo" id="novo-usuario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Novo usuário</span></button>' +
       '</div>' +
 
       (usuarios.length
-        ? '<div class="lu3-barra">' +
+        ? '<div class="lu4-kpis">' +
+            kpi('todos', equipeAtiva.length, 'na equipe', '', 0) +
+            kpi('online', conta.online, 'online agora', conta.online ? 'ok' : '', 1) +
+            kpi('admin', conta.admin, conta.admin === 1 ? 'administrador' : 'administradores', '', 2) +
+            kpi('personalizado', conta.personalizado, 'com acesso personalizado', conta.personalizado ? 'violeta' : '', 3) +
+            kpi('atencao', conta.atencao, conta.atencao === 1 ? 'conta pede atenção' : 'contas pedem atenção', conta.atencao ? 'ambar' : 'ok', 4) +
+            (conta.clientes ? kpi('clientes', conta.clientes, 'no Portal', '', 5) : '') +
+          '</div>' +
+          '<div class="lu3-barra">' +
             '<label class="lu-busca lu3-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
             '<input id="lu-busca" placeholder="Buscar por nome ou usuário…" autocomplete="off" value="' + esc(filtro.termo) + '"></label>' +
             '<div class="lu3-pils" role="group" aria-label="Filtrar contas">' +
-              pilula('todos', 'Todas', usuarios.length) +
-              pilula('online', 'Online', online) +
-              pilula('equipe', 'Equipe', equipeN) +
-              (clientesN ? pilula('clientes', 'Clientes', clientesN) : '') +
-              (inativas ? pilula('inativas', 'Desativadas', inativas) : '') +
+              FILTROS.filter(f => f[0] === 'todos' || conta[f[0]]).map(f => pilula(f[0], f[1])).join('') +
             '</div>' +
           '</div>' +
           '<div id="lu-lista"></div>'
@@ -403,10 +448,14 @@ B7.Usuarios = (function () {
       const alvo = document.getElementById('lu-lista');
       if (!alvo) return;
       const termo = filtro.termo.trim().toLowerCase();
-      const passaTipo = u => filtro.tipo === 'online' ? (u.estado === 'ativa' && presenca(u).online)
-        : filtro.tipo === 'equipe' ? u.papel !== 'cliente'
-        : filtro.tipo === 'clientes' ? u.papel === 'cliente'
-        : filtro.tipo === 'inativas' ? u.estado !== 'ativa' : true;
+      const t = filtro.tipo, idt = u => identidadeDe(u);
+      const passaTipo = u => t === 'online' ? (u.estado === 'ativa' && presenca(u).online)
+        : t === 'admin' ? u.estado === 'ativa' && u.papel !== 'cliente' && idt(u).ehAdmin
+        : ['coordenador', 'designer', 'videomaker'].includes(t) ? u.estado === 'ativa' && u.papel !== 'cliente' && idt(u).funcao === t
+        : t === 'clientes' ? u.papel === 'cliente' && u.estado === 'ativa'
+        : t === 'personalizado' ? u.estado === 'ativa' && difDe(u).length > 0
+        : t === 'atencao' ? atencao(u)
+        : t === 'inativas' ? u.estado !== 'ativa' : true;
       const passa = u => passaTipo(u) && (!termo || (u.nome || '').toLowerCase().includes(termo) ||
         (u.username || '').toLowerCase().includes(termo));
       const eu = B7.Auth && B7.Auth.usuario && B7.Auth.usuario();
@@ -421,8 +470,8 @@ B7.Usuarios = (function () {
       const bloco = (titulo, ajuda, lista, ehCliente) => !lista.length ? '' :
         '<section class="lu3-grupo">' +
           '<h2 class="lu3-grupo-tit" title="' + ajuda + '">' + titulo + '<span>' + lista.length + '</span></h2>' +
-          '<div class="lu3-lista">' +
-            lista.map(u => linhaPessoa(u, empresasDe(u.id), funcoesExtraDe(u.id), presenca(u), ehCliente, n++)).join('') +
+          '<div class="lu4-grade">' +
+            lista.map(u => cartaoPessoa(u, empresasDe(u.id), extrasDe(u.id), presenca(u), alertasDe(u), ehCliente, n++)).join('') +
           '</div></section>';
 
       alvo.innerHTML = (equipe.length || clis.length)
@@ -436,78 +485,86 @@ B7.Usuarios = (function () {
         abrirAcao(usuarios.find(x => x.id === b.dataset.id), b.dataset.acaoConta, b.dataset.estado);
       });
       /* o cartão inteiro abre "Editar acesso"; o menu ⋯ guarda o resto */
-      alvo.querySelectorAll('.lu3-linha').forEach(el => {
+      alvo.querySelectorAll('.lu4-card').forEach(el => {
         const abrirEdicao = () => abrirAcao(usuarios.find(x => x.id === el.dataset.id), 'editar');
         el.onclick = e => { if (!e.target.closest('.menu')) abrirEdicao(); };
         el.onkeydown = e => { if (e.key === 'Enter' && e.target === el) abrirEdicao(); };
       });
     }
     pintar();
+    const marcarFiltro = () => painel().querySelectorAll('[data-lu-tipo]').forEach(x => x.classList.toggle('on', x.dataset.luTipo === filtro.tipo));
     painel().querySelectorAll('[data-lu-tipo]').forEach(b => b.onclick = () => {
       const t = b.dataset.luTipo;
       filtro.tipo = filtro.tipo === t || t === 'todos' ? 'todos' : t;
-      painel().querySelectorAll('[data-lu-tipo]').forEach(x => x.classList.toggle('on', x.dataset.luTipo === filtro.tipo));
+      marcarFiltro();
       pintar();
     });
     const busca = document.getElementById('lu-busca');
     if (busca) busca.oninput = B7.UI.debounce(() => { filtro.termo = busca.value; pintar(); }, 120);
   }
 
-  /* uma conta = uma linha: foto (com o ponto verde de online), nome,
-     @usuário e papel; à direita, empresas (cliente) e o último acesso.
-     A linha inteira abre "Editar acesso"; o ⋯ guarda o resto. */
-  function linhaPessoa(u, empresas, funcoesExtra, pres, ehCliente, i) {
+  /* uma conta = um cartão: foto (com o ponto verde de online), nome,
+     @usuário, função e funções extras; o mapa dos módulos (equipe) ou as
+     empresas (cliente); os alertas; e o último acesso. O cartão inteiro
+     abre "Editar acesso"; o ⋯ guarda o resto. */
+  function cartaoPessoa(u, empresas, extras, pres, alertas, ehCliente, i) {
     const inativa = u.estado !== 'ativa';
     const idt = identidadeDe(u), mods = modulosEfetivosDe(u);
-    /* zzz70: em vez dos três primeiros módulos, quantos a pessoa abre e
-       só o que é DIFERENTE do padrão da função (+ a mais, − tirado). */
     const totalMods = ACESSO.modulos.length;
-    const qtd = idt.ehAdmin || (totalMods && mods.length === totalMods) ? 'abre tudo'
-      : !mods.length ? 'nenhum módulo' : mods.length + (mods.length === 1 ? ' módulo' : ' módulos');
-    const basePadrao = ACESSO.presets[idt.funcao] || [], exc = idt.ehAdmin ? {} : (ACESSO.excecoes[u.id] || {});
-    const dif = Object.keys(exc).filter(md => (exc[md] === 'permitir') !== basePadrao.includes(md));
-    const difs = dif.slice(0, 3).map(md => exc[md] === 'permitir'
-        ? '<span class="lu3-extra lu3-mais" title="A mais que o padrão de ' + esc(rotuloFuncao(idt.funcao)) + '">+ ' + esc(rotuloModulo(md)) + '</span>'
-        : '<span class="lu3-extra lu3-menos" title="Tirado do padrão de ' + esc(rotuloFuncao(idt.funcao)) + '">− ' + esc(rotuloModulo(md)) + '</span>').join('') +
-      (dif.length > 3 ? '<span class="lu3-extra">+' + (dif.length - 3) + '</span>' : '');
+    const base = ACESSO.presets[idt.funcao] || [], exc = idt.ehAdmin ? {} : (ACESSO.excecoes[u.id] || {});
     const eu = B7.Auth && B7.Auth.usuario && B7.Auth.usuario();
     const souEu = !!(eu && eu.id === u.id);
     const quando = pres.online ? 'Online agora' : String(pres.texto || '').replace(/^Último acesso:\s*/i, '');
     const nunca = !pres.online && /^nunca/i.test(quando);
-    const acesso = inativa ? '<span class="lu-estado">Desativada</span>'
-      : '<span class="lu3-acesso' + (pres.online ? ' online' : nunca ? ' nunca' : '') + '">' + esc(quando) + '</span>';
-    return '<div class="lu3-linha' + (inativa ? ' inativa' : '') + (pres.online && !inativa ? ' online' : '') + '" tabindex="0" data-id="' + esc(u.id) + '"' +
-        ' style="--i:' + Math.min(i, 14) + '" title="Editar acesso de ' + esc(u.nome) + '">' +
-      '<span class="lu3-av">' + B7.UI.avatarPessoa(u, 'lu-avatar') + '</span>' +
-      '<div class="lu3-id">' +
-        '<b>' + esc(u.nome) + (souEu ? '<em>você</em>' : '') + '</b>' +
-        '<span class="lu3-meta">' + (ehCliente
-            ? '<span class="lu3-papel lu3-p-cliente">Cliente</span>'
-            : (idt.ehAdmin ? '<span class="lu3-papel lu3-p-admin">Admin</span>' : '') +
-              (idt.funcao ? '<span class="lu3-papel lu3-p-' + esc(idt.funcao) + '">' + esc(rotuloFuncao(idt.funcao)) + '</span>'
-                : (idt.ehAdmin ? '' : '<span class="lu3-extra">sem função</span>')) +
-              '<span class="lu3-qtd" title="' + esc(mods.map(rotuloModulo).join(', ')) + '">' + qtd + '</span>' + difs) +
-          (ehCliente && u.pode_aprovar ? '<span class="lu3-extra">aprova</span>' : '') +
-          '<span class="lu3-user">@' + esc(u.username) + '</span></span>' +
-        (ehCliente
-          ? '<span class="lu3-empresas"' + (empresas.length ? ' title="' + esc(empresas.join(', ')) + '"' : '') + '>' +
-              (empresas.length ? esc(empresas.slice(0, 2).join(', ')) + (empresas.length > 2 ? ' +' + (empresas.length - 2) : '')
-                : '<i>sem empresa vinculada</i>') + '</span>'
-          : '') +
-        '<span class="lu3-acesso-cx lu3-so-estreito">' + acesso + '</span>' +
-      '</div>' +
-      '<span class="lu3-acesso-cx lu3-so-largo">' + acesso + '</span>' +
-      '<div class="menu"><button class="ico" aria-label="Ações da conta de ' + esc(u.nome) + '">⋯</button><div class="lista">' +
-        '<button data-acao-conta="editar" data-id="' + esc(u.id) + '">Editar acesso</button>' +
-        '<button data-acao-conta="foto" data-id="' + esc(u.id) + '">Foto de perfil</button>' +
-        '<button data-acao-conta="senha" data-id="' + esc(u.id) + '">Redefinir senha</button>' +
-        '<hr>' +
-        (inativa
-          ? '<button data-acao-conta="estado" data-estado="ativa" data-id="' + esc(u.id) + '">Reativar conta</button>'
-          : '<button data-acao-conta="estado" data-estado="desativada" data-id="' + esc(u.id) + '">Desativar conta</button>') +
-        '<button class="perigo" data-acao-conta="excluir" data-id="' + esc(u.id) + '">Excluir conta</button>' +
-      '</div></div>' +
-    '</div>';
+
+    const tags = ehCliente
+      ? '<span class="lu4-tag lu3-p-cliente">Cliente</span>' + (u.pode_aprovar ? '<span class="lu4-tag leve">aprova</span>' : '')
+      : (idt.ehAdmin ? '<span class="lu4-tag lu3-p-admin">Administrador</span>' : '') +
+        (idt.funcao ? '<span class="lu4-tag lu3-p-' + esc(idt.funcao) + '">' + esc(rotuloFuncao(idt.funcao)) + '</span>' : '') +
+        extras.map(f => '<span class="lu4-tag leve" title="Função extra">+ ' + esc(rotuloFuncaoExtra(f)) + '</span>').join('');
+
+    let meio = '';
+    if (ehCliente) {
+      meio = '<div class="lu4-emp"><span class="lu4-rot">Empresas</span>' + (empresas.length
+        ? '<b title="' + esc(empresas.join(', ')) + '">' + esc(empresas.slice(0, 3).join(', ')) + (empresas.length > 3 ? ' +' + (empresas.length - 3) : '') + '</b>'
+        : '<i>nenhuma vinculada</i>') + '</div>';
+    } else if (totalMods) {
+      const tudo = idt.ehAdmin;
+      const pontos = ACESSO.modulos.map(m => {
+        const on = tudo || mods.includes(m.id);
+        const mudou = !tudo && exc[m.id] && ((exc[m.id] === 'permitir') !== base.includes(m.id));
+        const cls = (on ? 'on' : 'off') + (mudou ? (on ? ' mais' : ' menos') : '');
+        const dica = m.rotulo + (on ? '' : ': sem acesso') + (mudou ? (on ? ' (a mais que o padrão)' : ' (tirado do padrão)') : '');
+        return '<i class="' + cls + '" title="' + esc(dica) + '"></i>';
+      }).join('');
+      meio = '<div class="lu4-mods"><div class="lu4-mods-cab"><span class="lu4-rot">Acesso</span><b>' +
+          (tudo ? 'abre tudo' : mods.length + ' de ' + totalMods + ' módulos') + '</b></div>' +
+        '<div class="lu4-pontos" aria-label="' + esc(tudo ? 'Abre todos os módulos' : mods.map(rotuloModulo).join(', ') || 'Nenhum módulo') + '">' + pontos + '</div></div>';
+    }
+
+    return '<article class="lu4-card' + (inativa ? ' inativa' : '') + (pres.online && !inativa ? ' online' : '') + '" tabindex="0" data-id="' + esc(u.id) + '"' +
+        ' style="--i:' + Math.min(i, 16) + '" title="Editar acesso de ' + esc(u.nome) + '">' +
+      '<header class="lu4-topo">' +
+        '<span class="lu3-av">' + B7.UI.avatarPessoa(u, 'lu-avatar') + '</span>' +
+        '<div class="lu4-id"><b>' + esc(u.nome) + (souEu ? '<em>você</em>' : '') + '</b><span>@' + esc(u.username) + '</span></div>' +
+        '<div class="menu"><button class="ico" aria-label="Ações da conta de ' + esc(u.nome) + '">⋯</button><div class="lista">' +
+          '<button data-acao-conta="editar" data-id="' + esc(u.id) + '">Editar acesso</button>' +
+          '<button data-acao-conta="foto" data-id="' + esc(u.id) + '">Foto de perfil</button>' +
+          '<button data-acao-conta="senha" data-id="' + esc(u.id) + '">Redefinir senha</button>' +
+          '<hr>' +
+          (inativa
+            ? '<button data-acao-conta="estado" data-estado="ativa" data-id="' + esc(u.id) + '">Reativar conta</button>'
+            : '<button data-acao-conta="estado" data-estado="desativada" data-id="' + esc(u.id) + '">Desativar conta</button>') +
+          '<button class="perigo" data-acao-conta="excluir" data-id="' + esc(u.id) + '">Excluir conta</button>' +
+        '</div></div>' +
+      '</header>' +
+      '<div class="lu4-tags">' + tags + '</div>' +
+      meio +
+      (alertas.length ? '<div class="lu4-alertas">' + alertas.map(a => '<span class="lu4-al ' + a.c + '">' + esc(a.t) + '</span>').join('') + '</div>' : '') +
+      '<footer class="lu4-pe"><span class="lu3-acesso' + (pres.online && !inativa ? ' online' : nunca ? ' nunca' : '') + '">' +
+        (pres.online && !inativa ? '<i class="lu3-ponto vivo" aria-hidden="true"></i>' : '') + esc(inativa ? 'Desativada' : quando) + '</span>' +
+        '<span class="lu4-abrir" aria-hidden="true">Editar acesso<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></footer>' +
+    '</article>';
   }
 
   /* o que estava digitado na busca sobrevive a um redesenho da tela
