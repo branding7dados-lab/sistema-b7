@@ -181,7 +181,10 @@ const ACOES = {
     const acharCampo = () => {
       const files = qsa('input[type="file"]');
       if (documento) return files.find(i => (i.getAttribute('accept') || '') === '*') || files.find(i => !i.getAttribute('accept'));
-      return files.find(i => /image|video/.test(i.getAttribute('accept') || ''));
+      /* zzz187: "Fotos e vídeos" aceita vídeo e vários arquivos; o campo só
+         de imagem é o de FIGURINHA (corta quadrado e aceita uma só) */
+      const midia = files.filter(i => /image/.test(i.getAttribute('accept') || '') && /video/.test(i.getAttribute('accept') || ''));
+      return midia.find(i => i.multiple) || midia[0];
     };
     let campo = acharCampo();
     if (!campo) {
@@ -193,6 +196,7 @@ const ACOES = {
     }
     if (!campo) return { ok: false, motivo: 'Não achei onde anexar ' + (documento ? 'o documento.' : 'o arquivo.') };
     campo.setAttribute('data-b7-alvo', '1');
+    if (!documento) campo.multiple = true;
     return { ok: true };
   },
 

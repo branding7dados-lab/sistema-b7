@@ -863,10 +863,17 @@ B7.WhatsApp = (function () {
     try {
       const { data: vs } = await B7.sb.from('design_versoes').select('id,numero,estado').eq('deliverable_id', id).neq('estado', 'rascunho').order('numero', { ascending: false }).limit(1);
       if (!vs || !vs.length) return [];
-      const { data } = await B7.sb.from('design_arquivos').select('nome_original,caminho,papel,posicao,parte_posicao,mime').eq('versao_id', vs[0].id).in('papel', ['preview', 'final']);
-      const l = (data || []).filter(a => a.caminho);
-      const finais = l.filter(a => a.papel === 'final');
-      return (finais.length ? finais : l).sort((a, b) => (a.parte_posicao || 0) - (b.parte_posicao || 0) || (a.posicao || 0) - (b.posicao || 0));
+      const { data } = await B7.sb.from('design_arquivos').select('nome_original,caminho,papel,posicao,parte_posicao,mime').eq('versao_id', vs[0].id).in('papel', ['preview', 'final', 'anexo']);
+      /* zzz187: as proporções costumam vir como anexo (a prévia é uma delas):
+         junta tudo que é imagem/PDF/vídeo, sem repetir a mesma arte em
+         formato diferente (prefere final > anexo > prévia) */
+      const peso = { final: 0, anexo: 1, preview: 2 };
+      const base = n => String(n || '').replace(/\.[^.]+$/, '').toLowerCase();
+      const l = (data || []).filter(a => a.caminho && /^(image|video)\/|pdf/.test(a.mime || ''))
+        .sort((a, b) => peso[a.papel] - peso[b.papel]);
+      const vistos = new Set(), r = [];
+      l.forEach(a => { const k = base(a.nome_original); if (!vistos.has(k)) { vistos.add(k); r.push(a); } });
+      return r.sort((a, b) => (a.parte_posicao || 0) - (b.parte_posicao || 0) || String(a.nome_original).localeCompare(String(b.nome_original), 'pt', { numeric: true }));
     } catch (e) { return []; }
   }
   const tamanho = b => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(b > 104857600 ? 0 : 1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
