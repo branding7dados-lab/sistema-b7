@@ -305,6 +305,11 @@ B7.WhatsApp = (function () {
      O que vem antes do traço é o tipo (Suporte + pacote, Artes…). Só se a
      parte depois do traço não for cliente nenhum é que o resto do nome é
      tentado — e aí vira só sugestão. Grupo interno não casa. */
+  const TIPO_GRUPO_RE = /\b(suporte|producao|produca|artes?|social|trafego|design|video|videos|midias?|marketing|conteudo|grupo)\b/;
+  const AGENCIA_RE = /^(b7|n7|nucleo ?7|branding ?7)\b|\b(da|do) (nucleo ?7|branding ?7)$/;
+  /* equipe B7/N7/Núcleo7/Branding7: mensagem deles não é "cliente esperando" */
+  const EQUIPE = ['matheus', 'mateus', 'kaique', 'alissan', 'pedro', 'yury', 'lucas', 'bruna', 'kevin', 'talita'];
+  const ehEquipe = autor => { const a = norm(autor); return !!a && (EQUIPE.some(n => a === n || a.startsWith(n + ' ') || a.includes(' ' + n)) || AGENCIA_RE.test(a) || /\b(nucleo ?7|branding ?7|b7|n7)\b/.test(a)); };
   const INTERNO_RE = /\b(interno|internos|equipe|time b7|\(voce\)|concluidos|producao b7)\b/;
   const limpar = t => String(t || '').replace(/[^\p{L}\p{N}\s.&'’-]/gu, ' ').replace(/\s+/g, ' ').trim();
   function pontuar(parte) {
@@ -336,6 +341,11 @@ B7.WhatsApp = (function () {
     const partes = bruto.split(/\s+[-–—|]\s+/).map(limpar).filter(Boolean);
     if (!partes.length) return null;
     const fim = partes[partes.length - 1], antes = partes.slice(0, -1).join(' - ');
+    /* zzz178: só GRUPO de cliente — "Suporte …", "Produção …", "Artes …".
+       Contato salvo como "Pessoa - Empresa" não entra; nem a própria
+       agência (B7, N7, Núcleo7, Branding7) do lado do cliente. */
+    if (partes.length > 1 && !TIPO_GRUPO_RE.test(norm(antes))) return null;
+    if (AGENCIA_RE.test(norm(fim)) || /\b(nucleo ?7|branding ?7)\b/.test(norm(fim))) return null;
     let r = pontuar(fim), tipo = antes, regra = true;
     if (!r.length && partes.length > 1) {
       /* fora da regra (ex.: "ARTES MERCATO - LOJA"): tenta o resto, só como sugestão */
@@ -401,7 +411,7 @@ B7.WhatsApp = (function () {
   const ESPERA_MIN = 15;
   function esperando() {
     const agora = Date.now();
-    return [...grupos.values()].filter(g => !g.ignorar && !g.minha && g.ultima_em && (g.cliente_id || (!g.confirmado && (casar(g.nome) || {}).certo)) &&
+    return [...grupos.values()].filter(g => !g.ignorar && !g.minha && !ehEquipe(g.autor) && g.ultima_em && (g.cliente_id || (!g.confirmado && (casar(g.nome) || {}).certo)) &&
       agora - new Date(g.ultima_em).getTime() > ESPERA_MIN * 60000 && agora - new Date(g.ultima_em).getTime() < 3 * 86400000)
       .sort((a, b) => new Date(a.ultima_em) - new Date(b.ultima_em));
   }

@@ -51,3 +51,8 @@
   - contador de alterações.
   - As classes `.sug`, `.ok` e `.ign` colidiam com estilos de impressão (era isso que deixava as letras espaçadas e a borda tracejada) e foram renomeadas.
 - **Dado corrigido:** o tipo de "Suporte B7-3X - Infinite Fio Conquista" passou de "Suporte B7-3X · Conquista" para "Suporte B7-3X".
+
+## zzz178 — só grupos de cliente; a equipe não conta como "esperando"
+- **Só grupos de cliente:** só casa o grupo cujo prefixo (antes do traço) é suporte, produção, artes, social, tráfego, design, vídeo, mídias, marketing ou conteúdo. Contatos salvos como "Pessoa - Empresa" ficam de fora.
+- **Agência fora:** grupos com B7, N7, Núcleo7 ou Branding7 no lado do cliente nunca casam (Atendimento Suporte Branding7, Financeiro da Núcleo7, Comercial da Núcleo7).
+- **"Esperando resposta":** ignora a última mensagem quando ela é de alguém da equipe. Lista no código: Matheus/Mateus, Kaique, Alissan, Pedro, Yury, Lucas, Bruna, Kevin e Talita, além de nomes com B7/N7/Núcleo7/Branding7.
