@@ -2033,7 +2033,7 @@ B7.Design = (function () {
       const sec = [];
       /* zzz185: mandar as artes no grupo do cliente (programa de Windows) */
       if (B7.WhatsApp && B7.WhatsApp.podeEnviar()) sec.push({ id: 'dv-enviar-wa', label: 'Enviar no WhatsApp' });
-      if (versaoAtual.estado === 'aprovada_interna') sec.push({ id: 'dv-enviar-cliente', label: 'Enviar pelo Portal do Cliente' });
+      if (versaoAtual.estado === 'aprovada_interna' && !B7.PORTAL_PAUSADO) sec.push({ id: 'dv-enviar-cliente', label: 'Enviar pelo Portal do Cliente' });
       if (versaoAtual.estado === 'aprovada_interna' && d.status === 'aprovado_interno') sec.push({ id: 'dv-finalizar', label: 'Finalizar mesmo assim' });
       return { primaria: { id: 'dv-decisao-cliente', label: r ? 'Enviar ajustes do cliente ao Designer' : 'Registrar decisão do cliente' },
                secundarias: sec, resumo: r ? r + ' com ajuste do cliente marcado — confirme e envie' : (versaoAtual.estado === 'enviada_cliente' ? 'Aguardando a decisão do cliente (Portal, WhatsApp, ligação…).' : null) };
