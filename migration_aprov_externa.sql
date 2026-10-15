@@ -1,0 +1,6 @@
+-- zzz188: registrar a decisão do cliente dada por fora (WhatsApp, ligação…)
+-- para qualquer material (linha, roteiro, conteúdo, semana). Já aplicada.
+-- Corpo igual ao do banco: public.aprov_registrar_externa(uuid, text, text, text)
+--   só Administrador/Coordenador; aprovado | ajustes | recusado; ajustes e
+--   recusa exigem o que o cliente disse; grava origem 'externa' + canal e
+--   emite o evento de sempre (aprov_emitir).

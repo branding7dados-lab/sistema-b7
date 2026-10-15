@@ -277,8 +277,11 @@ B7.Linha = (function () {
     const ultima = L.aprovacao;
     const proxima = ultima ? (ultima.versao || 0) + 1 : 1;
     const m = B7.UI.modal('<h3>Enviar planejamento para aprovação</h3>' +
-      '<div class="sub">O cliente vê a linha editorial como está agora (' + L.conteudos.length + ' conteúdo(s)). ' +
-      'Alterações depois do envio não mudam esta versão.</div>' +
+      (B7.PORTAL_PAUSADO
+        ? '<div class="sub">Marca esta versão (' + L.conteudos.length + ' conteúdo(s)) como enviada ao cliente — mande pelo WhatsApp. ' +
+          'Quando ele responder, use <b>Cliente respondeu</b>.</div>'
+        : '<div class="sub">O cliente vê a linha editorial como está agora (' + L.conteudos.length + ' conteúdo(s)). ' +
+          'Alterações depois do envio não mudam esta versão.</div>') +
       (ultima ? '<div class="env-anterior">Última versão: <b>v' + ultima.versao + '</b> — ' +
         esc(B7.Aprovacoes.rotulo(ultima.situacao).toLowerCase()) + '. Este envio cria a <b>v' + proxima + '</b>.</div>'
         : '<div class="env-anterior">Primeiro envio deste planejamento: será a <b>v1</b>.</div>') +

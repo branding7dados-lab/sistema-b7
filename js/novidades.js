@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz188', versao: 'zzz188', em: '2026-10-15T16:00:00-03:00',
+    titulo: 'Aprovação do cliente pelo WhatsApp',
+    itens: ['Quando o cliente aprova (ou pede ajuste) pelo WhatsApp, clique em “Cliente respondeu” na linha editorial ou no roteiro e registre — sai do “Aguardando cliente”.',
+            'O Portal do cliente está pausado: “Enviar para aprovação” só marca a versão como enviada; o envio de verdade é pelo WhatsApp.'] },
   { id: 'v-zzz186', versao: 'zzz186', em: '2026-10-15T15:00:00-03:00',
     titulo: 'WhatsApp: várias artes de uma vez',
     itens: ['Ao enviar uma arte, dá para marcar quais vão e juntar outras do computador — várias de uma vez (a mesma arte em proporções diferentes, por exemplo).',

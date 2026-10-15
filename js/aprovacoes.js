@@ -8,6 +8,11 @@
 
 window.B7 = window.B7 || {};
 
+/* zzz188: Portal do cliente PAUSADO (Kevin, 15/10/2026) — hoje a conversa
+   com o cliente é toda pelo WhatsApp. Enviar para aprovação só marca a
+   versão como "enviada" e a equipe registra a resposta ("Cliente
+   respondeu"). Para reativar o Portal, troque para false. */
+B7.PORTAL_PAUSADO = true;
 B7.Aprovacoes = (function () {
   const esc = B7.UI.esc;
   const painel = () => document.getElementById('painel-dashboard');
@@ -482,11 +487,50 @@ B7.Aprovacoes = (function () {
           (a.total_partes ? (a.partes_aprovadas || 0) + '/' + a.total_partes + ' cenas aprovadas' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' com ajustes' : '') + ' · ' : '') +
           (a.comentarios_abertos ? a.comentarios_abertos + ' observação(ões) em aberto' : 'sem observações em aberto') +
           (a.motivo && decisaoVale(a) ? ' · “' + esc(a.motivo.slice(0, 90)) + (a.motivo.length > 90 ? '…' : '') + '”' : '') + '</small></span>' +
-      '<span class="ap-bloco-acoes"><button class="b fina" data-ir="#/aprovacoes/' + esc(a.id) + '">Ver feedback</button>' +
+      '<span class="ap-bloco-acoes">' +
+      /* zzz188: o cliente responde pelo WhatsApp — a equipe registra aqui */
+      (pend && podeRegistrar() ? '<button class="b fina pri" data-ap-externa="' + esc(a.id) + '">Cliente respondeu</button>' : '') +
+      '<button class="b fina" data-ir="#/aprovacoes/' + esc(a.id) + '">Ver feedback</button>' +
       (opcoes.botaoEnviar && !pend ? '<button class="b fina pri" data-ap-enviar>Enviar nova versão</button>' : '') +
       (opcoes.botaoEnviar && pend ? '<button class="b fina" data-ap-enviar title="Cria a versão ' + (a.versao + 1) + ' e substitui a atual">Reenviar</button>' : '') +
       '</span></div>';
   }
 
-  return { abrir, abrirDetalhe, blocoStatus, rotulo, TIPO, modalAnular, decisaoVale };
+  /* ---------- decisão que o cliente deu por fora (WhatsApp, ligação…) */
+  function podeRegistrar() { const u = B7.Auth && B7.Auth.usuario && B7.Auth.usuario(); return !!u && (u.papel === 'admin' || u.papel === 'coordenador'); }
+  function modalExterna(id) {
+    const m = B7.UI.modal('<h3>O que o cliente respondeu?</h3>' +
+      '<p class="sub">Fica registrado como decisão do cliente, com o canal e quem registrou.</p>' +
+      '<div class="ap-ext-ops">' +
+        [['aprovado', 'Aprovou'], ['ajustes', 'Pediu ajustes'], ['recusado', 'Recusou']].map(([v, t], i) =>
+          '<label class="ap-ext-op ' + v + '"><input type="radio" name="ap-ext" value="' + v + '"' + (i ? '' : ' checked') + '><span>' + t + '</span></label>').join('') + '</div>' +
+      '<div class="mb"><label class="rot" for="ap-ext-canal">POR ONDE</label><select class="campo" id="ap-ext-canal">' +
+        Object.keys(CANAL).map(k => '<option value="' + k + '">' + esc(CANAL[k].charAt(0).toUpperCase() + CANAL[k].slice(1)) + '</option>').join('') + '</select></div>' +
+      '<div class="mb"><label class="rot" for="ap-ext-obs">O QUE O CLIENTE DISSE <span class="leve">— obrigatório se pediu ajustes ou recusou</span></label>' +
+        '<textarea class="campo alta" id="ap-ext-obs" rows="3" placeholder="ex.: “ficou ótimo, pode seguir”"></textarea></div>' +
+      '<div id="ap-ext-erro" class="ajuda erro-txt"></div>' +
+      '<div class="acoes"><button type="button" class="b" data-fecha>Cancelar</button><button type="button" class="b pri" id="ap-ext-ok">Registrar</button></div>');
+    m.querySelector('#ap-ext-ok').onclick = async () => {
+      const bt = m.querySelector('#ap-ext-ok');
+      const sit = m.querySelector('input[name="ap-ext"]:checked').value;
+      bt.disabled = true;
+      try {
+        const { error } = await B7.sb.rpc('aprov_registrar_externa', { p_aprovacao_id: id, p_situacao: sit,
+          p_canal: m.querySelector('#ap-ext-canal').value, p_observacao: m.querySelector('#ap-ext-obs').value.trim() || null });
+        if (error) throw error;
+        m.fechar();
+        B7.UI.toast(sit === 'aprovado' ? 'Aprovação do cliente registrada.' : 'Resposta do cliente registrada.');
+        if (B7.Rota && B7.Rota.recarregar) B7.Rota.recarregar();
+      } catch (e) {
+        bt.disabled = false;
+        m.querySelector('#ap-ext-erro').textContent = (e && e.message) || 'Não deu para registrar.';
+      }
+    };
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('[data-ap-externa]');
+    if (b) { e.preventDefault(); modalExterna(b.dataset.apExterna); }
+  });
+
+  return { abrir, abrirDetalhe, blocoStatus, modalExterna, rotulo, TIPO, modalAnular, decisaoVale };
 })();
