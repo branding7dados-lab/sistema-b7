@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz184', versao: 'zzz184', em: '2026-10-15T12:00:00-03:00',
+    titulo: 'Painel do WhatsApp de cara nova',
+    itens: ['O painel ao lado das conversas ficou mais limpo: cliente em destaque e lista de quem espera resposta com foto e tempo.',
+            'Grupo que outra área cuida pode sair do “esperando resposta”: passe o mouse e clique no ×, ou desmarque o aviso dentro do grupo.',
+            'Mensagens da equipe (inclusive do comercial) não aparecem mais como cliente esperando.'] },
   { id: 'v-zzz176', versao: 'zzz176', em: '2026-10-15T03:00:00-03:00',
     titulo: 'WhatsApp mais esperto (programa de Windows)',
     itens: ['O sistema reconhece sozinho os grupos de cada cliente pelo nome (“Suporte B7-3X - Infinite Fio” → Infinite Fio). Em “Conferir grupos” você confere uma vez.',
