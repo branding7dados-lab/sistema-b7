@@ -199,6 +199,30 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     }
   }
 
+  async function soltarArquivos(caminho) {
+    const files = Array.isArray(caminho) ? caminho : [caminho];
+    const dbg = view.webContents.debugger;
+    let presoAqui = false;
+    try {
+      const r = await view.webContents.executeJavaScript(
+        '(()=>{const m=document.querySelector("#main");if(!m)return null;const b=m.getBoundingClientRect();return {x:Math.round(b.left+b.width/2),y:Math.round(b.top+b.height/2)}})()');
+      if (!r) return false;
+      const z = view.webContents.getZoomFactor() || 1;
+      r.x = Math.round(r.x * z); r.y = Math.round(r.y * z);
+      if (!dbg.isAttached()) { dbg.attach('1.3'); presoAqui = true; }
+      const data = { items: [], files, dragOperationsMask: 1 };
+      for (const type of ['dragEnter', 'dragOver', 'drop']) {
+        await dbg.sendCommand('Input.dispatchDragEvent', { type, x: r.x, y: r.y, data });
+        await new Promise(ok => setTimeout(ok, 120));
+      }
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      if (presoAqui) { try { dbg.detach(); } catch (e) {} }
+    }
+  }
+
   /* ------------------------------------------- pedidos do sistema */
   ipcMain.handle('b7:wa:mostrar', (ev, r) => { mostrar(r); return true; });
   ipcMain.handle('b7:wa:esconder', (ev, comFoto) => esconder(!!comFoto));
@@ -278,9 +302,19 @@ module.exports = function ligarWhatsApp(pegarJanela) {
         if (locais.length) d.caminho = locais.concat(Array.isArray(d.caminho) ? d.caminho : d.caminho ? [d.caminho] : []);
       }
       if (d.caminho) {
-        const a = await pedir('prepararAnexo', { documento: d.documento !== false });
-        if (!a.ok) return falhou(a.motivo || 'Não consegui abrir o anexo.');
-        if (!(await porArquivo(d.caminho))) return falhou('Não consegui anexar o arquivo.');
+        /* zzz192: foto/arte vai ARRASTADA para a conversa (como a pessoa
+           faria com o mouse) — o WhatsApp abre o editor de fotos com todas,
+           na proporção certa. Escolher o campo de arquivo caía às vezes no
+           de figurinha (quadrado, esticado). Documento continua pelo clipe. */
+        let soltou = d.documento === false && await soltarArquivos(d.caminho);
+        /* o editor de fotos abriu? (aparece o campo de legenda) — se não,
+           volta para o caminho do clipe */
+        if (soltou) soltou = (await pedir('legenda', { texto: '', espera: 6000 }, 9000)).ok;
+        if (!soltou) {
+          const a = await pedir('prepararAnexo', { documento: d.documento !== false });
+          if (!a.ok) return falhou(a.motivo || 'Não consegui abrir o anexo.');
+          if (!(await porArquivo(d.caminho))) return falhou('Não consegui anexar o arquivo.');
+        }
         const l = await pedir('legenda', { texto: d.texto || '' }, 30000);
         if (!l.ok) return falhou(l.motivo || 'O arquivo foi anexado, mas não consegui escrever a mensagem.');
       } else if (d.texto) {
