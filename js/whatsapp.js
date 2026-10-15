@@ -287,56 +287,70 @@ B7.WhatsApp = (function () {
         B7.sb.from('whatsapp_grupos').select('*').limit(1000),
         clientes.length && !forcar ? Promise.resolve({ data: clientes }) : B7.sb.from('clientes_resumo').select('id,nome,logo_url,whatsapp_grupo,teste').is('deleted_at', null).order('nome')
       ]);
-      if (g.data) grupos = new Map(g.data.map(x => [x.nome, x]));
+      if (g.data) {
+        const novo = new Map(g.data.map(x => [x.nome, x]));
+        /* o que acabou de ser lido e ainda não chegou ao banco continua valendo */
+        listaViva.forEach(x => { if (!novo.has(x.nome)) novo.set(x.nome, Object.assign({ cliente_id: null, tipo: '', ignorar: false, confirmado: false }, grupos.get(x.nome) || {}, x)); });
+        grupos = novo;
+      }
       if (c.data) clientes = c.data.filter(x => !x.teste);
     } catch (e) { /* sem rede: segue com o que tem */ }
   }
   const tokens = t => norm(t).split(' ').filter(w => w.length >= 3 && !VAZIAS.has(w));
   /* devolve { cliente, tipo, certo } ou null.
-     Os nomes seguem um padrão: "Suporte <pacote> - <cliente>",
-     "<CLIENTE> - <assunto>", "<cliente> | <assunto>". Por isso:
-       • o que vem depois de "Suporte" (antes do traço) é o PACOTE — não
-         casa cliente ali (Núcleo7 é pacote em "Suporte Núcleo7 - Ninno");
-       • grupo interno ("interno", "(você)", equipe) não casa;
-       • o tipo é o nome do grupo sem o nome do cliente. */
+     zzz177 — a regra da equipe (Kevin): o NOME DO CLIENTE vem sempre
+     DEPOIS do traço, ou o grupo é só o nome do cliente:
+       "Suporte B7 Start - AutoEscola Sudoeste" → AutoEscola Sudoeste, tipo "Suporte B7 Start"
+       "Sabor da Feira"                          → Sabor da Feira, sem tipo
+     O que vem antes do traço é o tipo (Suporte + pacote, Artes…). Só se a
+     parte depois do traço não for cliente nenhum é que o resto do nome é
+     tentado — e aí vira só sugestão. Grupo interno não casa. */
   const INTERNO_RE = /\b(interno|internos|equipe|time b7|\(voce\)|concluidos|producao b7)\b/;
-  function casar(nomeGrupo) {
-    const ng = norm(nomeGrupo);
-    if (INTERNO_RE.test(ng) || /\(você\)/i.test(nomeGrupo)) return null;
-    const segs = String(nomeGrupo).split(/\s+[-–|·:]\s+|\s+-\s*|\s*\|\s*/).map(x => x.trim()).filter(Boolean);
-    /* segmentos onde o cliente PODE estar (o pacote do "Suporte X" fica de fora) */
-    const alvo = segs.map((sg, i) => ({ sg, i, pacote: i === 0 && segs.length > 1 && /^suporte\b/i.test(norm(sg)) }));
-    let melhor = null, empate = false;
+  const limpar = t => String(t || '').replace(/[^\p{L}\p{N}\s.&'’-]/gu, ' ').replace(/\s+/g, ' ').trim();
+  function pontuar(parte) {
+    const pn = norm(parte), tp = tokens(parte);
+    if (pn.length < 2) return [];
+    const r = [];
     clientes.forEach(c => {
-      const cn = norm(c.nome); if (cn.length < 3) return;
+      const cn = norm(c.nome); if (cn.length < 2) return;
       const tc = tokens(c.nome);
-      let pontos = 0;
-      alvo.forEach(a => {
-        if (a.pacote) return;
-        const sn = ' ' + norm(a.sg) + ' ', ts = new Set(tokens(a.sg));
-        let p = 0;
-        if (sn.includes(' ' + cn + ' ')) p = 100 + cn.length;
-        else if (tc.length) {
-          const achou = tc.filter(w => ts.has(w) || [...ts].some(t => t.length >= 5 && (t.startsWith(w) || w.startsWith(t))));
-          if (achou.length === tc.length) p = 70 + cn.length;
-          else if (achou.length && achou.some(w => w.length >= 5)) p = 30 + achou.join('').length;
-        }
-        if (a.i === segs.length - 1 && p) p += 5;     /* o fim do nome costuma ser o cliente */
-        pontos = Math.max(pontos, p);
-      });
-      if (!pontos) return;
-      if (!melhor || pontos > melhor.pontos) { melhor = { c, pontos }; empate = false; }
-      else if (pontos === melhor.pontos) empate = true;
+      let p = 0;
+      const pj = pn.replace(/ /g, ''), cj = cn.replace(/ /g, '');
+      if (pn === cn || pj === cj) p = 200;                                                   /* "Auto Escola" = "AutoEscola" */
+      else if (cj.length >= 5 && pj.includes(cj)) p = 140 + cn.length;
+      else if ((' ' + pn + ' ').includes(' ' + cn + ' ')) p = 150 + cn.length;           /* "Infinite Fio Conquista" ⊃ "Infinite Fio" */
+      else if (pn.length >= 4 && (' ' + cn + ' ').includes(' ' + pn + ' ')) p = 120 + pn.length;   /* "Mercato" ⊂ "Mercato Sadia" */
+      else if (tc.length) {
+        const casa = w => tp.some(t => t === w || (Math.min(t.length, w.length) >= 5 && (t.startsWith(w) || w.startsWith(t))));
+        const achou = tc.filter(casa);
+        if (achou.length === tc.length) p = 110 + cn.length;
+        else if (achou.some(w => w.length >= 5)) p = 40 + achou.join('').length;
+      }
+      if (p) r.push({ c, p });
     });
-    if (!melhor) return null;
-    /* tipo: o nome do grupo sem as palavras do cliente */
-    const fora = new Set(norm(melhor.c.nome).split(' ').filter(Boolean));
-    const tipo = segs.map(sg => sg.split(/\s+/).filter(w => {
-        const wn = norm(w); return wn && !fora.has(wn) && ![...fora].some(f => f.length >= 5 && (wn.startsWith(f) || f.startsWith(wn)));
-      }).join(' ').replace(/[^\p{L}\p{N}\s\-]/gu, '').trim())
-      .filter(Boolean).map(t => t.length > 3 && t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t)
-      .join(' · ').slice(0, 40);
-    return { cliente: melhor.c, tipo, certo: melhor.pontos >= 100 && !empate };
+    return r.sort((a, b) => b.p - a.p);
+  }
+  function casar(nomeGrupo) {
+    const bruto = String(nomeGrupo || '');
+    if (INTERNO_RE.test(norm(bruto)) || /\(você\)/i.test(bruto)) return null;
+    const partes = bruto.split(/\s+[-–—|]\s+/).map(limpar).filter(Boolean);
+    if (!partes.length) return null;
+    const fim = partes[partes.length - 1], antes = partes.slice(0, -1).join(' - ');
+    let r = pontuar(fim), tipo = antes, regra = true;
+    if (!r.length && partes.length > 1) {
+      /* fora da regra (ex.: "ARTES MERCATO - LOJA"): tenta o resto, só como sugestão */
+      for (let k = partes.length - 2; k >= 0 && !r.length; k--) {
+        if (/^suporte\b/.test(norm(partes[k]))) continue;      /* "Suporte <pacote>": pacote não é cliente */
+        r = pontuar(partes[k]);
+        if (r.length) tipo = partes.filter((_, i) => i !== k).join(' - ');
+      }
+      regra = false;
+    }
+    if (!r.length) return null;
+    const melhor = r[0], empate = r.length > 1 && r[1].p === melhor.p;
+    const certo = regra && melhor.p >= 110 && !empate;
+    const tipoBonito = tipo && tipo === tipo.toUpperCase() ? tipo.toLowerCase().replace(/(^|\s)\p{L}/gu, m => m.toUpperCase()) : tipo;
+    return { cliente: melhor.c, tipo: (tipoBonito || '').slice(0, 40), certo };
   }
   const clienteDe = id => clientes.find(c => c.id === id) || null;
   /* o grupo já ligado (conferido ou automático) → cliente */
@@ -365,11 +379,12 @@ B7.WhatsApp = (function () {
     pintarLado();
   }
   async function mandarLeitura() {
-    if (!paraMandar.size) return;
     const itens = [...paraMandar.values()]; paraMandar = new Map();
-    try { await B7.sb.rpc('whatsapp_grupos_sincronizar', { p_itens: itens }); } catch (e) {}
-    /* casamentos certos que ainda não estão ligados: liga sozinho */
-    for (const x of itens) {
+    if (itens.length) { try { await B7.sb.rpc('whatsapp_grupos_sincronizar', { p_itens: itens }); } catch (e) {} }
+    /* casamentos certos que ainda não estão ligados: liga sozinho (todos os
+       grupos conhecidos, não só os que mudaram — a regra pode ter ficado
+       melhor desde a última vez) */
+    for (const x of [...grupos.values()]) {
       const g = grupos.get(x.nome);
       if (g && (g.cliente_id || g.ignorar || g.confirmado)) continue;
       const s = casar(x.nome);
@@ -537,57 +552,96 @@ B7.WhatsApp = (function () {
   /* ------------------------------------- conferir grupos (uma vez) */
   async function conferirGrupos() {
     await carregarGrupos(true);
-    const m = B7.UI.modal('<h3>Grupos do WhatsApp</h3>' +
-      '<p class="sub">O sistema casou os grupos com os clientes pelo nome. Confira uma vez — grupo novo com o nome de um cliente entra sozinho depois.</p>' +
-      '<div class="wg-acoes"><input class="campo" id="wg-busca" placeholder="Buscar grupo ou cliente…">' +
-        '<label class="wg-i"><input type="checkbox" id="wg-todas"> todas as conversas</label>' +
-        (D && D.escanear ? '<button type="button" class="b contorno" id="wg-escanear">Procurar todos os grupos</button>' : '') + '</div>' +
+    /* zzz177: tela refeita — separada em "Para conferir", "Ligados" e
+       "Ignorados"; cada grupo é um cartão com o nome inteiro em cima e os
+       campos embaixo (antes ficava tudo espremido numa linha só) */
+    const m = B7.UI.modal('<div class="wg">' +
+      '<div class="wg-cab"><span class="wg-ic">' + icone + '</span><div><h3>Grupos do WhatsApp</h3>' +
+        '<p class="sub">O cliente é o nome <b>depois do traço</b> (“Suporte B7 - <b>Arena Deck</b>”); o que vem antes vira o tipo. Confira uma vez — grupo novo entra sozinho depois.</p></div></div>' +
+      '<div class="wg-barra"><div class="wg-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>' +
+          '<input id="wg-busca" placeholder="Buscar grupo ou cliente…" autocomplete="off"></div>' +
+        '<div class="wg-filtros" role="tablist">' +
+          '<button type="button" class="on" data-f="conferir">Para conferir <i id="wg-n-conferir"></i></button>' +
+          '<button type="button" data-f="ligados">Ligados <i id="wg-n-ligados"></i></button>' +
+          '<button type="button" data-f="ignorados">Ignorados <i id="wg-n-ignorados"></i></button>' +
+          '<button type="button" data-f="todas">Todas <i id="wg-n-todas"></i></button></div>' +
+        (D && D.escanear ? '<button type="button" class="b fina contorno" id="wg-escanear">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/></svg>Procurar todos os grupos</button>' : '') + '</div>' +
       '<div class="wg-lista" id="wg-lista"></div>' +
-      '<div class="acoes"><button type="button" class="b" data-fecha>Fechar</button><button type="button" class="b pri" id="wg-salvar">Salvar</button></div>', { larga: true });
+      '<div class="acoes wg-pe"><span class="wg-mud" id="wg-mud"></span><button type="button" class="b" data-fecha>Fechar</button><button type="button" class="b pri" id="wg-salvar">Salvar</button></div>' +
+      '</div>', { larga: true, classe: 'wg-modal' });
     const mud = new Map();
+    let filtro = 'conferir';
+    const estado = g => {
+      const k = mud.get(g.nome) || {};
+      const s0 = !g.cliente_id && !g.ignorar ? casar(g.nome) : null;
+      const cli = 'cli' in k ? k.cli : (g.cliente_id || (s0 ? s0.cliente.id : ''));
+      const tipo = 'tipo' in k ? k.tipo : (g.cliente_id ? g.tipo : (s0 ? s0.tipo : ''));
+      const ign = 'ign' in k ? k.ign : !!g.ignorar;
+      const grupo = ign ? 'ignorados' : (g.cliente_id && !('cli' in k) ? 'ligados' : (cli ? 'conferir' : (g.confirmado ? 'ligados' : 'outros')));
+      return { cli, tipo, ign, sug: !!s0 && !('cli' in k), grupo, mexeu: !!mud.get(g.nome) };
+    };
     const pintar = () => {
       const q = norm(m.querySelector('#wg-busca').value);
-      const lista = [...grupos.values()].map(g => {
-        const s = !g.cliente_id && !g.ignorar ? casar(g.nome) : null;
-        return { g, cli: g.cliente_id || (s ? s.cliente.id : ''), tipo: g.cliente_id ? g.tipo : (s ? s.tipo : ''), sug: !!s && !g.cliente_id };
-      }).filter(x => m.querySelector('#wg-todas').checked || q || x.cli || x.g.ignorar)
-        .filter(x => !q || norm(x.g.nome).includes(q) || norm((clienteDe(x.cli) || {}).nome).includes(q))
-        .sort((a, b) => (a.g.cliente_id ? 1 : 0) - (b.g.cliente_id ? 1 : 0) || a.g.nome.localeCompare(b.g.nome));
-      m.querySelector('#wg-lista').innerHTML = lista.length ? lista.map(x => {
-        const k = mud.get(x.g.nome) || {};
-        const cli = 'cli' in k ? k.cli : x.cli, ign = 'ign' in k ? k.ign : x.g.ignorar, tipo = 'tipo' in k ? k.tipo : x.tipo;
-        return '<div class="wg-l' + (ign ? ' ign' : '') + (x.sug ? ' sug' : '') + '" data-g="' + esc(x.g.nome) + '">' +
-          '<div class="wg-n"><b>' + esc(x.g.nome) + '</b>' + (x.sug ? '<small>sugestão</small>' : x.g.cliente_id ? '<small class="ok">ligado</small>' : '') + '</div>' +
-          '<select class="campo wg-c"' + (ign ? ' disabled' : '') + '><option value="">— sem cliente —</option>' + clientes.map(c => '<option value="' + esc(c.id) + '"' + (c.id === cli ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select>' +
-          '<input class="campo wg-t" placeholder="Tipo (Suporte, Artes…)" maxlength="40" value="' + esc(tipo || '') + '"' + (ign ? ' disabled' : '') + '>' +
-          '<label class="wg-i"><input type="checkbox"' + (ign ? ' checked' : '') + '> ignorar</label></div>';
-      }).join('') : '<p class="wl-nada">' + (grupos.size ? 'Nada com essa busca.' : 'Nenhum grupo lido ainda. Abra o WhatsApp e clique em “Procurar todos os grupos”.') + '</p>';
+      const todas = [...grupos.values()].map(g => ({ g, e: estado(g) }));
+      const conta = f => todas.filter(x => f === 'todas' ? true : x.e.grupo === f).length;
+      ['conferir', 'ligados', 'ignorados', 'todas'].forEach(f => { const el = m.querySelector('#wg-n-' + f); if (el) el.textContent = conta(f) || ''; });
+      const lista = todas.filter(x => filtro === 'todas' || x.e.grupo === filtro)
+        .filter(x => !q || norm(x.g.nome).includes(q) || norm((clienteDe(x.e.cli) || {}).nome).includes(q))
+        .sort((a, b) => a.g.nome.localeCompare(b.g.nome, 'pt-BR'));
+      const vazio = { conferir: 'Nada para conferir. ✔ Os grupos com o nome de um cliente já foram ligados sozinhos.',
+        ligados: 'Nenhum grupo ligado ainda.', ignorados: 'Nenhum grupo ignorado.', todas: 'Nenhuma conversa lida ainda — clique em “Procurar todos os grupos”.' };
+      m.querySelector('#wg-lista').innerHTML = lista.length ? lista.map(({ g, e }) => {
+        const c = clienteDe(e.cli);
+        const pill = e.ign ? '<span class="wg-pill p-ign">Ignorado</span>' : g.cliente_id && !e.mexeu ? '<span class="wg-pill p-ok">Ligado</span>' : e.sug ? '<span class="wg-pill p-sug">Sugestão</span>' : e.mexeu ? '<span class="wg-pill p-mud">Alterado</span>' : '';
+        return '<div class="wg-l' + (e.ign ? ' wg-ign-l' : '') + (e.sug ? ' wg-sug' : '') + (e.mexeu ? ' mexeu' : '') + '" data-g="' + esc(g.nome) + '">' +
+          '<div class="wg-top">' + (c ? B7.UI.avatarCliente(c.nome, c.logo_url, 'p') : '<span class="wg-sem">?</span>') +
+            '<div class="wg-nm"><b title="' + esc(g.nome) + '">' + esc(g.nome) + '</b>' +
+              '<small>' + (c ? esc(c.nome) + (e.tipo ? ' · ' + esc(e.tipo) : '') : 'sem cliente') + '</small></div>' + pill + '</div>' +
+          (e.ign ? '<div class="wg-campos"><span class="leve">Este grupo não aparece no painel nem em “esperando resposta”.</span><button type="button" class="b fina contorno wg-ign">Voltar a usar</button></div>'
+            : '<div class="wg-campos">' +
+              '<label><span>Cliente</span><select class="campo wg-c"><option value="">— sem cliente —</option>' + clientes.map(cl => '<option value="' + esc(cl.id) + '"' + (cl.id === e.cli ? ' selected' : '') + '>' + esc(cl.nome) + '</option>').join('') + '</select></label>' +
+              '<label><span>Tipo</span><input class="campo wg-t" placeholder="Suporte, Artes…" maxlength="40" value="' + esc(e.tipo || '') + '"></label>' +
+              '<button type="button" class="b fina wg-ign" title="Não é grupo de cliente">Ignorar</button></div>') +
+        '</div>';
+      }).join('') : '<div class="wg-vazio">' + vazio[filtro] + '</div>';
+      const n = [...mud.keys()].length + (filtro === 'conferir' ? 0 : 0);
+      const sugs = todas.filter(x => x.e.sug && !x.e.ign).length;
+      m.querySelector('#wg-mud').textContent = n ? n + ' alteração(ões) para salvar' : (sugs ? sugs + ' sugestão(ões) — “Salvar” aceita como estão' : '');
       m.querySelectorAll('.wg-l').forEach(l => {
         const nome = l.dataset.g, k = () => { if (!mud.has(nome)) mud.set(nome, {}); return mud.get(nome); };
-        l.querySelector('.wg-c').onchange = e => { k().cli = e.target.value; };
-        l.querySelector('.wg-t').oninput = e => { k().tipo = e.target.value; };
-        l.querySelector('.wg-i input').onchange = e => { k().ign = e.target.checked; pintar(); };
+        const sc = l.querySelector('.wg-c'), ti = l.querySelector('.wg-t');
+        if (sc) sc.onchange = () => {
+          k().cli = sc.value;
+          const s1 = casar(nome); if (s1 && s1.cliente.id === sc.value && !ti.value) { ti.value = s1.tipo; k().tipo = s1.tipo; }
+          pintar();
+        };
+        if (ti) ti.oninput = () => { k().tipo = ti.value; m.querySelector('#wg-mud').textContent = mud.size + ' alteração(ões) para salvar'; };
+        l.querySelector('.wg-ign').onclick = () => { const e = estado(grupos.get(nome)); k().ign = !e.ign; pintar(); };
       });
     };
     m.querySelector('#wg-busca').oninput = pintar;
-    m.querySelector('#wg-todas').onchange = pintar;
-    const esc_ = m.querySelector('#wg-escanear');
-    if (esc_) esc_.onclick = async () => {
-      esc_.disabled = true; esc_.textContent = 'Procurando… (o WhatsApp vai rolar sozinho)';
+    m.querySelectorAll('.wg-filtros button').forEach(b => b.onclick = () => {
+      filtro = b.dataset.f; m.querySelectorAll('.wg-filtros button').forEach(x => x.classList.toggle('on', x === b)); pintar();
+    });
+    const btE = m.querySelector('#wg-escanear');
+    if (btE) btE.onclick = async () => {
+      btE.disabled = true; btE.classList.add('girando'); const tx = btE.lastChild; tx.textContent = 'Procurando… (o WhatsApp rola sozinho)';
       const r = await D.escanear().catch(() => null);
       if (r && r.ok && r.lista) { await aoLista(r.lista); await mandarLeitura(); B7.UI.toast(r.lista.length + ' conversas lidas.'); }
       else B7.UI.toast((r && r.motivo) || 'Não consegui ler a lista agora.', { tipo: 'erro' });
-      esc_.disabled = false; esc_.textContent = 'Procurar todos os grupos';
+      btE.disabled = false; btE.classList.remove('girando'); tx.textContent = 'Procurar todos os grupos';
       pintar();
     };
     m.querySelector('#wg-salvar').onclick = async () => {
-      /* sugestões aceitas como estão também contam como conferidas */
-      m.querySelectorAll('.wg-l.sug').forEach(l => { if (!mud.has(l.dataset.g)) mud.set(l.dataset.g, {}); });
+      const bt = m.querySelector('#wg-salvar'); bt.disabled = true;
+      /* as sugestões aceitas como estão também contam */
+      [...grupos.values()].forEach(g => { const e = estado(g); if (e.sug && !e.ign && !mud.has(g.nome)) mud.set(g.nome, {}); });
       let n = 0;
-      for (const [nome, k] of mud) {
-        const l = m.querySelector('.wg-l[data-g="' + CSS.escape(nome) + '"]'); if (!l) continue;
-        const ign = l.querySelector('.wg-i input').checked, cli = l.querySelector('.wg-c').value || null, tipo = l.querySelector('.wg-t').value.trim();
-        if (await vincular(nome, ign ? null : cli, tipo, ign)) n++;
+      for (const [nome] of mud) {
+        const g = grupos.get(nome); if (!g) continue;
+        const e = estado(g);
+        if (await vincular(nome, e.ign ? null : (e.cli || null), e.ign ? '' : (e.tipo || '').trim(), e.ign)) n++;
       }
       m.fechar(); B7.UI.toast(n ? n + ' grupo(s) salvos.' : 'Nada mudou.');
       pintarLado();
