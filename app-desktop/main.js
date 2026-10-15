@@ -271,7 +271,7 @@ h1{margin:0;font-size:21px;font-weight:700}p{margin:0;color:#bfb3d9;font-size:13
 function fecharParaInstalar() {
   try { whats.encerrar(); } catch (e) {}
   if (janela && !janela.isDestroyed()) {
-    try { janela.loadURL(TELA_ATUALIZANDO); } catch (e) {}
+    try { janela.loadURL(TELA_ATUALIZANDO).catch(() => {}); } catch (e) {}
     setTimeout(fecharDeVez, 1400);
   } else fecharDeVez();
 }

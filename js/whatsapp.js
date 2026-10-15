@@ -348,8 +348,11 @@ B7.WhatsApp = (function () {
     const m = /^~?\s*([^:]{1,40}):\s/.exec(pv);
     /* prévia que começa com o nome de alguém da equipe ("Talita  Bom dia…",
        assinatura no começo) também é da equipe */
-    const primeira = norm(pv.split(/\s/)[0] || '');
-    return ehEquipe(g.autor) || (m && ehEquipe(m[1])) || ehEquipe(pv.length <= 20 ? pv : '') || EQUIPE.includes(primeira);
+    /* zzz193: só vale como ASSINATURA — o nome seguido de quebra de linha
+       (vira 2+ espaços na prévia). "Pedro, consegue ver?" é o CLIENTE
+       falando COM o Pedro e continua esperando resposta. */
+    const assin = /^([^\s,:!?.]{2,20})(?:\s{2,}|\n)\s*\S/.exec(pv);
+    return ehEquipe(g.autor) || (m && ehEquipe(m[1])) || ehEquipe(pv.length <= 20 ? pv : '') || !!(assin && EQUIPE.includes(norm(assin[1])));
   }
   const INTERNO_RE = /\b(interno|internos|equipe|time b7|\(voce\)|concluidos|producao b7)\b/;
   const limpar = t => String(t || '').replace(/[^\p{L}\p{N}\s.&'’-]/gu, ' ').replace(/\s+/g, ' ').trim();
