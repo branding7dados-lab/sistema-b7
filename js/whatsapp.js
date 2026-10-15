@@ -310,6 +310,15 @@ B7.WhatsApp = (function () {
   /* equipe B7/N7/Núcleo7/Branding7: mensagem deles não é "cliente esperando" */
   const EQUIPE = ['matheus', 'mateus', 'kaique', 'alissan', 'pedro', 'yury', 'lucas', 'bruna', 'kevin', 'talita'];
   const ehEquipe = autor => { const a = norm(autor); return !!a && (EQUIPE.some(n => a === n || a.startsWith(n + ' ') || a.includes(' ' + n)) || AGENCIA_RE.test(a) || /\b(nucleo ?7|branding ?7|b7|n7)\b/.test(a)); };
+  /* zzz179: aviso do próprio WhatsApp ("Os membros do grupo mudaram") não é cliente */
+  const SISTEMA_RE = /membros do grupo|adicionou|removeu|saiu do grupo|entrou usando|mudou (o|a|as)|criou o grupo|mensagens tempor|criptografia|codigo de seguranca|código de segurança/i;
+  /* quem mandou: o autor lido, ou o "Nome:" do começo da prévia; prévia que
+     é só "B7", "Núcleo7" (nome do remetente da equipe) também conta */
+  function daEquipe(g) {
+    const pv = String(g.previa || '');
+    const m = /^~?\s*([^:]{1,40}):\s/.exec(pv);
+    return ehEquipe(g.autor) || (m && ehEquipe(m[1])) || ehEquipe(pv.length <= 20 ? pv : '');
+  }
   const INTERNO_RE = /\b(interno|internos|equipe|time b7|\(voce\)|concluidos|producao b7)\b/;
   const limpar = t => String(t || '').replace(/[^\p{L}\p{N}\s.&'’-]/gu, ' ').replace(/\s+/g, ' ').trim();
   function pontuar(parte) {
@@ -411,7 +420,7 @@ B7.WhatsApp = (function () {
   const ESPERA_MIN = 15;
   function esperando() {
     const agora = Date.now();
-    return [...grupos.values()].filter(g => !g.ignorar && !g.minha && !ehEquipe(g.autor) && g.ultima_em && (g.cliente_id || (!g.confirmado && (casar(g.nome) || {}).certo)) &&
+    return [...grupos.values()].filter(g => !g.ignorar && !g.minha && !daEquipe(g) && !SISTEMA_RE.test(g.previa || '') && g.ultima_em && (g.cliente_id || (!g.confirmado && (casar(g.nome) || {}).certo)) &&
       agora - new Date(g.ultima_em).getTime() > ESPERA_MIN * 60000 && agora - new Date(g.ultima_em).getTime() < 3 * 86400000)
       .sort((a, b) => new Date(a.ultima_em) - new Date(b.ultima_em));
   }
