@@ -117,7 +117,14 @@ B7.WhatsApp = (function () {
         '</div>' +
       '</div>' +
       '<div class="wa-corpo' + (ladoAberto && D.aoConversas ? ' com-lado' : '') + '" id="wa-corpo">' +
-        '<div class="wa-area" id="wa-area"><div class="wa-espera"><span class="wa-esp-ic">' + icone + '</span><b>WhatsApp</b><span>Carregando…</span></div></div>' +
+        /* zzz198: abre com a FOTO da última vez (o WhatsApp como estava) —
+           quando o de verdade chega, é idêntico: sem tela preta, sem pulo.
+           Sem foto guardada: um esqueleto com a cara do WhatsApp. */
+        (fotoGuardada()
+          ? '<div class="wa-area com-foto abrindo" id="wa-area" style="background-image:url(&quot;' + fotoGuardada() + '&quot;)"></div>'
+          : '<div class="wa-area abrindo" id="wa-area"><div class="wa-esq" aria-hidden="true"><div class="wa-esq-lista">' +
+              '<i class="wa-esq-busca"></i>' + Array.from({ length: 7 }, (_, i) => '<div class="wa-esq-it" style="--i:' + i + '"><i class="av"></i><span><i></i><i></i></span></div>').join('') +
+            '</div><div class="wa-esq-chat"><span class="wa-esp-ic">' + icone + '</span><b>Abrindo o WhatsApp…</b></div></div></div>') +
         (D.aoConversas ? '<aside class="wa-lado" id="wa-lado" aria-label="Painel do cliente"></aside>' : '') +
       '</div>' +
     '</div>';
@@ -235,7 +242,13 @@ B7.WhatsApp = (function () {
   }
   /* foto do WhatsApp posta como fundo da área; espera a imagem estar
      decodificada para a troca ser instantânea */
-  let fotoPronta = null, ligadoEm = 0;
+  let fotoPronta = null, ligadoEm = 0, fotoSalvaEm = 0;
+  const fotoGuardada = () => { try { return localStorage.getItem('b7_wa_foto') || ''; } catch (e) { return ''; } };
+  function guardarFoto(f) {
+    if (!f || Date.now() - fotoSalvaEm < 30000) return;
+    fotoSalvaEm = Date.now();
+    try { localStorage.setItem('b7_wa_foto', f); } catch (e) { try { localStorage.removeItem('b7_wa_foto'); } catch (x) {} }
+  }
   function porFoto(f) {
     const a = document.getElementById('wa-area');
     if (!a || typeof f !== 'string' || !f.startsWith('data:image') || !escondido) return Promise.resolve();
@@ -250,7 +263,7 @@ B7.WhatsApp = (function () {
   function preFoto() {
     if (!ativo || escondido || !D || !D.foto) return;
     if (fotoPronta && Date.now() - fotoPronta.em < 1500) return;
-    D.foto().then(f => { if (f) fotoPronta = { f, em: Date.now() }; }).catch(() => {});
+    D.foto().then(f => { if (f) { fotoPronta = { f, em: Date.now() }; guardarFoto(f); } }).catch(() => {});
   }
   function ligar() {
     const topoG = document.querySelector('#tela-dashboard .topo');
@@ -271,11 +284,12 @@ B7.WhatsApp = (function () {
     observador.observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['class'] });
     /* zzz176: espera a tela terminar de entrar (a animação do sistema)
        antes de pôr o WhatsApp — ele chega já no lugar certo, sem pulo */
-    setTimeout(() => requestAnimationFrame(medir), 220);
+    setTimeout(() => requestAnimationFrame(medir), 430);   /* zzz198: depois da abertura (0,42 s) */
   }
   function desligar() {
     if (!ativo) return;
     ativo = false; clearInterval(relogio); removeEventListener('resize', medir);
+    if (fotoPronta) { fotoSalvaEm = 0; guardarFoto(fotoPronta.f); }
     document.body.classList.remove('wa-aberta'); fotoPronta = null;
     if (observador) { observador.disconnect(); observador = null; }
     escondido = true; ultimoRet = '';

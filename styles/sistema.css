@@ -794,3 +794,34 @@ body.wa-aberta #toasts{bottom:auto;top:72px;}
 
 .wl-ligar-link{align-self:flex-start;border:0;background:none;padding:2px 4px;color:var(--ink-3);font:600 12px/1.3 inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
 .wl-ligar-link:hover{color:var(--ink);}
+
+/* zzz198: abertura do WhatsApp — entra em camadas, com a foto da última vez */
+.wa-tela{position:relative;animation:none;}
+.wa-tela::before{content:"";position:absolute;inset:-40px -20px auto;height:260px;pointer-events:none;z-index:-1;
+  background:radial-gradient(60% 100% at 18% 0%,color-mix(in srgb,#25D366 14%,transparent),transparent 70%),radial-gradient(50% 90% at 90% 10%,color-mix(in srgb,var(--acento) 10%,transparent),transparent 70%);
+  animation:waBrilho .9s ease-out both;}
+@keyframes waBrilho{from{opacity:0;}to{opacity:1;}}
+.wa-barra{animation:waDesce .42s cubic-bezier(.2,.9,.25,1) both;}
+@keyframes waDesce{from{opacity:0;transform:translateY(-10px) scale(.985);}to{opacity:1;transform:none;}}
+.wa-area{border-radius:18px;}
+.wa-area.abrindo{animation:waSurge .42s cubic-bezier(.2,.9,.25,1) .04s both;}
+@keyframes waSurge{from{opacity:0;transform:translateY(12px) scale(.975);filter:blur(6px);}to{opacity:1;transform:none;filter:none;}}
+.wa-corpo.com-lado .wa-lado{animation:waLado .46s cubic-bezier(.2,.9,.25,1) .08s both;}
+@keyframes waLado{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:none;}}
+/* esqueleto com a cara do WhatsApp (quando ainda não há foto guardada) */
+.wa-area:not(.com-foto){background:var(--card);}
+.wa-esq{position:absolute;inset:0;display:flex;}
+.wa-esq-lista{width:min(34%,420px);border-right:1px solid var(--borda);padding:16px 12px;display:flex;flex-direction:column;gap:14px;background:var(--card);}
+.wa-esq-busca{display:block;height:36px;border-radius:12px;background:var(--suave);}
+.wa-esq-it{display:flex;align-items:center;gap:12px;opacity:0;animation:waEsq .5s ease-out calc(.12s + var(--i) * .05s) forwards;}
+.wa-esq-it .av{width:46px;height:46px;border-radius:50%;flex:none;}
+.wa-esq-it span{flex:1;display:flex;flex-direction:column;gap:7px;}
+.wa-esq-it span i{display:block;height:10px;border-radius:6px;}
+.wa-esq-it span i:last-child{width:70%;}
+.wa-esq-it .av,.wa-esq-it span i{background:linear-gradient(90deg,var(--suave) 25%,color-mix(in srgb,var(--suave) 45%,var(--card)) 50%,var(--suave) 75%);background-size:300% 100%;animation:waBrilhoEsq 1.4s linear infinite;}
+@keyframes waEsq{to{opacity:1;}}
+@keyframes waBrilhoEsq{from{background-position:100% 0;}to{background-position:-200% 0;}}
+.wa-esq-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--ink-3);font-size:13px;
+  background:radial-gradient(circle at 50% 45%,color-mix(in srgb,#25D366 9%,transparent),transparent 60%),var(--fundo);}
+.wa-esq-chat b{font-size:14.5px;color:var(--ink-2);font-weight:700;}
+@media (prefers-reduced-motion:reduce){.wa-barra,.wa-area.abrindo,.wa-corpo.com-lado .wa-lado,.wa-tela::before,.wa-esq-it{animation:none !important;opacity:1;}}
