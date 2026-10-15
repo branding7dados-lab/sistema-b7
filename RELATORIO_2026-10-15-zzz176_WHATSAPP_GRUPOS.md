@@ -37,3 +37,17 @@
   - o carregando pulsa;
   - os avisos (toasts) sobem para a faixa da barra, porque ficavam atrás do WhatsApp.
 - As partes novas precisam do programa 1.0.20 ou mais novo. Nos programas antigos, a tela continua como antes, sem o painel.
+
+## zzz177 — regra do nome e tela "Grupos do WhatsApp" refeita
+- **Regra do Kevin:** o cliente é o nome DEPOIS do traço, ou o grupo inteiro é o nome do cliente. O que vem antes do traço é o tipo (por exemplo, "Suporte B7 Start").
+  - O casamento compara também sem espaços ("Auto Escola Sudoeste" = "AutoEscola Sudoeste").
+  - "Suporte <pacote>" nunca casa como cliente.
+  - Fora da regra (ex.: "ARTES MERCATO - LOJA"), vira só sugestão.
+- **Ligação automática:** agora vale para todos os grupos conhecidos, e não só os que mudaram. Os grupos que ficaram como sugestão pela regra antiga se ligam sozinhos na próxima leitura.
+- **Tela refeita:**
+  - filtros Para conferir / Ligados / Ignorados / Todas;
+  - cada grupo virou um cartão com o nome inteiro, o cliente e o tipo;
+  - "Ignorar" e "Voltar a usar";
+  - contador de alterações.
+  - As classes `.sug`, `.ok` e `.ign` colidiam com estilos de impressão (era isso que deixava as letras espaçadas e a borda tracejada) e foram renomeadas.
+- **Dado corrigido:** o tipo de "Suporte B7-3X - Infinite Fio Conquista" passou de "Suporte B7-3X · Conquista" para "Suporte B7-3X".
