@@ -487,7 +487,7 @@ B7.WhatsApp = (function () {
   }
   if (D && D.aoConversas) {
     D.aoConversas(aoLista);
-    D.aoConversa(c => { conversaAberta = c; pintarLado(); });
+    D.aoConversa(c => { if (!c || !conversaAberta || c.titulo !== conversaAberta.titulo) querLigar = false; conversaAberta = c; pintarLado(); });
     setInterval(vigiarEsperando, 60000);
   }
 
@@ -525,6 +525,12 @@ B7.WhatsApp = (function () {
     let html = '';
     if (!titulo) {
       html = '<div class="wl-vazio">' + icone + '<b>Abra uma conversa</b><span>O que está pendente com o cliente aparece aqui.</span></div>';
+    } else if ((!info || !info.cliente) && !(info && info.ignorar) && !querLigar && (conversaAberta.grupo === false || (conversaAberta.grupo !== true && !casar(titulo)))) {
+      /* zzz195: conversa com uma PESSOA (ou grupo que não parece de cliente):
+         não pergunta "de qual cliente é" — só deixa a opção, se precisar */
+      html = '<div class="wl-cab"><div class="wl-sem">' + (conversaAberta.grupo === false ? '👤' : '#') + '</div><div><b>' + esc(titulo) + '</b><small>' +
+        (conversaAberta.grupo === false ? 'conversa pessoal' : 'não é grupo de cliente') + '</small></div></div>' +
+        '<button type="button" class="wl-ligar-link" id="wl-quer-ligar">É de um cliente? Ligar a um cliente</button>';
     } else if (!info || info.ignorar || !info.cliente) {
       html = '<div class="wl-cab"><div class="wl-sem">?</div><div><b>' + esc(titulo) + '</b><small>' + (info && info.ignorar ? 'grupo ignorado' : 'não ligado a um cliente') + '</small></div></div>' +
         (info && info.ignorar ? '' : '<div class="wl-ligar"><label class="rot">ESTE GRUPO É DE QUAL CLIENTE?</label><select class="campo" id="wl-cli"><option value="">Escolha…</option>' +
@@ -571,6 +577,7 @@ B7.WhatsApp = (function () {
   /* ---------- zzz194: IA na conversa — resumo e sugestão de resposta.
      Só roda no clique; usa as mensagens da conversa aberta (lidas pelo
      programa) + as pendências do cliente (lidas no servidor). */
+  let querLigar = false;      /* zzz195: a pessoa pediu para ligar uma conversa pessoal a um cliente */
   let iaRes = null;          /* { titulo, tipo, texto?, erro?, carregando } */
   const iaPode = () => !!(B7.IA && B7.IA.ligada && B7.IA.ligada('chat'));
   function blocoIA(titulo) {
@@ -609,6 +616,7 @@ B7.WhatsApp = (function () {
   function ligarLado(lado, info, titulo) {
     lado.querySelectorAll('[data-abrir-g]').forEach(b => b.onclick = () => D.abrirGrupo && D.abrirGrupo(b.dataset.abrirG));
     const conf = lado.querySelector('#wl-conferir'); if (conf) conf.onclick = conferirGrupos;
+    const ql = lado.querySelector('#wl-quer-ligar'); if (ql) ql.onclick = () => { querLigar = true; pintarLado(); };
     lado.querySelectorAll('[data-ia]').forEach(b => b.onclick = () => pedirIA(b.dataset.ia, titulo, info));
     const iaX = lado.querySelector('[data-ia-fechar]'); if (iaX) iaX.onclick = () => { iaRes = null; pintarLado(); };
     const iaCp = lado.querySelector('[data-ia-copiar]');

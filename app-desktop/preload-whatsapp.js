@@ -293,14 +293,22 @@ const lerLista = () => linhasDaLista().map(lerLinha).filter(Boolean);
 function lerConversa() {
   const titulo = tituloDaConversa();
   if (!titulo) return null;
-  const msgs = qsa('#main [data-pre-plain-text]').slice(-14).map(el => {
+  /* zzz195: grupo ou contato? No cabeçalho, grupo mostra a lista de
+     participantes ("Ana, Bruno, Você"); contato mostra "visto por último",
+     "online"… */
+  const h = qs('#main header');
+  const cab = h ? qsa('span, div', h).filter(e => e.childElementCount === 0).map(e => (e.getAttribute('title') || e.textContent || '').trim()).filter(t => t && t !== titulo) : [];
+  const ehGrupo = cab.some(t => /,\s/.test(t) || /\b(voc[eê]|you)\b/i.test(t) || /dados do grupo|group info|membros|participants/i.test(t)) ? true
+    : cab.some(t => /^(visto por [úu]ltimo|online|last seen|digitando|typing|dados do contato|contact info)/i.test(t)) ? false : null;
+  /* zzz194: mais mensagens para a IA resumir (antes eram 14) */
+  const msgs = qsa('#main [data-pre-plain-text]').slice(-60).map(el => {
     const pre = el.getAttribute('data-pre-plain-text') || '';
     const m = /^\[([^\]]+)\]\s*([^:]*):/.exec(pre);
     const caixa = el.closest('.message-out, .message-in');
     return { de: m ? m[2].trim() : '', quando: m ? m[1] : '', minha: !!(caixa && caixa.classList.contains('message-out')),
              texto: ((el.querySelector('.selectable-text') || el).innerText || '').trim().slice(0, 400) };
   }).filter(x => x.texto);
-  return { titulo, msgs };
+  return { titulo, msgs, grupo: ehGrupo };
 }
 
 let ultimaLista = '', ultimaConversa = '', tLer = 0;
