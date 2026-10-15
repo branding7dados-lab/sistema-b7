@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz194', versao: 'zzz194', em: '2026-10-15T18:00:00-03:00',
+    titulo: 'IA nas conversas do WhatsApp',
+    itens: ['No painel ao lado da conversa, “O que rolou aqui?” resume o grupo: o que o cliente pediu, o que está pendente e o que já foi resolvido.',
+            '“Sugerir resposta” escreve uma mensagem para responder o cliente, usando a conversa e o que está pendente no sistema. Você confere, ajusta e envia.'] },
   { id: 'v-zzz188', versao: 'zzz188', em: '2026-10-15T16:00:00-03:00',
     titulo: 'Aprovação do cliente pelo WhatsApp',
     itens: ['Quando o cliente aprova (ou pede ajuste) pelo WhatsApp, clique em “Cliente respondeu” na linha editorial ou no roteiro e registre — sai do “Aguardando cliente”.',
