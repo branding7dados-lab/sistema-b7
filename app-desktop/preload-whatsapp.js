@@ -217,6 +217,17 @@ const ACOES = {
     return { ok: true };
   },
 
+  /* zzz199: quando o envio falha, o que havia na tela (para achar a causa) */
+  async diagAnexo() {
+    const rot = i => { const c = i.closest('li, [role="button"], [role="menuitem"], div[aria-label]'); return ((c && (c.getAttribute('aria-label') || c.textContent)) || '').trim().slice(0, 60); };
+    return { ok: true,
+      inputs: qsa('input[type="file"]').map(i => ({ accept: i.getAttribute('accept') || '', multiple: !!i.multiple, rotulo: rot(i) })),
+      icones: qsa('#main footer [data-icon], [role="application"] [data-icon], div[role="dialog"] [data-icon]').map(e => e.getAttribute('data-icon')).slice(0, 40),
+      menu: qsa('[role="menuitem"], li[role="button"], [role="application"] li').map(e => (e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 40)).slice(0, 20),
+      editaveis: qsa('[contenteditable="true"]').map(e => ({ lab: (e.getAttribute('aria-label') || e.getAttribute('title') || '').slice(0, 40), visivel: visivel(e), rodape: !!e.closest('#main footer') })),
+      temMain: !!qs('#main'), titulo: tituloDaConversa() };
+  },
+
   async legenda({ texto, espera }) {
     /* depois do arquivo, o WhatsApp abre a prévia com o campo de legenda */
     const campo = await ate(() => {

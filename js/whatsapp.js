@@ -901,6 +901,11 @@ B7.WhatsApp = (function () {
           }
           const r = await D.enviar({ grupo: g, texto, urls, caminho: D.enviaUrls && arquivos.length > 1 ? arquivos.map(x => x.caminho) : arquivo ? arquivo.caminho : '', documento: d.tipo !== 'design' });
           ok = !!(r && r.ok);
+          /* zzz199: registro do que aconteceu no envio com arquivo (para achar a causa quando falha) */
+          if (urls.length || arquivo || !ok) {
+            try { B7.sb.rpc('whatsapp_diagnostico_registrar', { p_etapa: d.tipo + (ok ? ':ok' : ':erro'), p_motivo: (r && r.motivo) || '',
+              p_dados: Object.assign({ app: !!D.enviaUrls, urls: urls.length, local: arquivos.length || (arquivo ? 1 : 0) }, (r && r.diag) || {}) }).then(() => {}, () => {}); } catch (e) {}
+          }
           aviso = r && r.ok ? 'Confira no WhatsApp e aperte enviar.' :
             ((r && r.motivo) || 'Não consegui preparar sozinho.') + ' A mensagem ficou copiada: cole (Ctrl+V) no grupo.';
         } else if (cel) {
