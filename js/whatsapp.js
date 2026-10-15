@@ -336,9 +336,13 @@ B7.WhatsApp = (function () {
       const u = conversaAberta.msgs[conversaAberta.msgs.length - 1];
       if (u.minha || ehEquipe(u.de)) return true;
     }
-    const pv = String(g.previa || '');
+    /* zzz184: tira as marcas invisíveis de direção (‪…‬) que o WhatsApp põe na prévia */
+    const pv = String(g.previa || '').replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim();
     const m = /^~?\s*([^:]{1,40}):\s/.exec(pv);
-    return ehEquipe(g.autor) || (m && ehEquipe(m[1])) || ehEquipe(pv.length <= 20 ? pv : '');
+    /* prévia que começa com o nome de alguém da equipe ("Talita  Bom dia…",
+       assinatura no começo) também é da equipe */
+    const primeira = norm(pv.split(/\s/)[0] || '');
+    return ehEquipe(g.autor) || (m && ehEquipe(m[1])) || ehEquipe(pv.length <= 20 ? pv : '') || EQUIPE.includes(primeira);
   }
   const INTERNO_RE = /\b(interno|internos|equipe|time b7|\(voce\)|concluidos|producao b7)\b/;
   const limpar = t => String(t || '').replace(/[^\p{L}\p{N}\s.&'’-]/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -441,7 +445,7 @@ B7.WhatsApp = (function () {
   const ESPERA_MIN = 15;
   function esperando() {
     const agora = Date.now();
-    return [...grupos.values()].filter(g => !g.ignorar && !g.minha && !daEquipe(g) && !SISTEMA_RE.test(g.previa || '') && g.ultima_em && (g.cliente_id || (!g.confirmado && (casar(g.nome) || {}).certo)) &&
+    return [...grupos.values()].filter(g => !g.ignorar && !g.sem_espera && !g.minha && !daEquipe(g) && !SISTEMA_RE.test(g.previa || '') && g.ultima_em && (g.cliente_id || (!g.confirmado && (casar(g.nome) || {}).certo)) &&
       agora - new Date(g.ultima_em).getTime() > ESPERA_MIN * 60000 && agora - new Date(g.ultima_em).getTime() < 3 * 86400000)
       .sort((a, b) => new Date(a.ultima_em) - new Date(b.ultima_em));
   }
@@ -525,6 +529,7 @@ B7.WhatsApp = (function () {
           '<div><b>' + esc(c.nome) + '</b><small>' + esc(info.tipo || 'grupo do cliente') + (info.sugestao ? ' · <a href="#" id="wl-conf">confirmar</a>' : '') + '</small></div>' +
           '<a class="wa-ic" href="#/cliente/' + esc(c.id) + '" title="Abrir o cliente no B7" aria-label="Abrir o cliente">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M17 14v4a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 5 18V8.5A1.5 1.5 0 0 1 6.5 7H10"/></svg></a></div>' +
+        '<label class="wl-acomp"><input type="checkbox" id="wl-acomp"' + (grupos.get(titulo) && grupos.get(titulo).sem_espera ? '' : ' checked') + '><span>Avisar quando este grupo esperar resposta</span></label>' +
         (ultimaDele ? '<div class="wl-aprov"><b>Possível aprovação</b><p>“' + esc(ultimaDele.texto.slice(0, 120)) + '”</p><small>' + esc(ultimaDele.de || 'cliente') + (ultimaDele.quando ? ' · ' + esc(ultimaDele.quando.split(',')[0]) : '') + '</small>' +
           (comCliente.length ? comCliente.slice(0, 3).map(v => '<a class="b fina pri" href="#/video/' + esc(v.id) + '">Registrar em “' + esc(v.titulo || v.codigo || 'vídeo') + '”</a>').join('') : '<span class="leve">Nada com o cliente esperando decisão agora.</span>') + '</div>' : '') +
         secao('Vídeo', p.videos.map(v => item('#/video/' + v.id, v.titulo || v.codigo || 'Vídeo', ROT_VIDEO[v.editing_status] || v.editing_status, v.editing_status === 'aguardando_aprovacao',
@@ -539,8 +544,12 @@ B7.WhatsApp = (function () {
     html += '<div class="wl-sec wl-esp"><div class="wl-sec-t">Esperando resposta' + (esp.length ? '<i>' + esp.length + '</i>' : '') + '</div>' +
       (esp.length ? esp.slice(0, 12).map(g => { const c = clienteDe(g.cliente_id);
         const c2 = c || (casar(g.nome) || {}).cliente;
-        return '<button type="button" class="wl-g" data-abrir-g="' + esc(g.nome) + '"><span class="wl-g-n">' + esc(c2 ? c2.nome : g.nome) + (g.tipo ? ' <em>' + esc(g.tipo) + '</em>' : '') + '</span>' +
-          '<span class="wl-g-p">' + esc((g.autor ? g.autor + ': ' : '') + (g.previa || '')) + '</span><time>' + ha(g.ultima_em) + '</time></button>'; }).join('')
+        const nm = c2 ? c2.nome : g.nome;
+        return '<div class="wl-g-l"><button type="button" class="wl-g" data-abrir-g="' + esc(g.nome) + '">' + B7.UI.avatarCliente(nm, c2 && c2.logo_url, 'p') +
+          '<span class="wl-g-n">' + esc(nm) + (g.tipo ? ' <em>' + esc(g.tipo) + '</em>' : '') + '</span>' +
+          '<span class="wl-g-p">' + esc((g.autor ? g.autor + ': ' : '') + String(g.previa || '').replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')) + '</span><time>' + ha(g.ultima_em) + '</time></button>' +
+          '<button type="button" class="wl-g-x" data-sem-espera="' + esc(g.nome) + '" title="Não acompanhar este grupo (outra área cuida)" aria-label="Não acompanhar este grupo">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></button></div>'; }).join('')
         : '<p class="wl-nada">Ninguém esperando. ✔</p>') + '</div>' +
       '<button type="button" class="wl-conf" id="wl-conferir">Conferir grupos' + (pendentesConferir() ? ' · ' + pendentesConferir() + ' sem cliente' : '') + '</button>';
     if (meu !== pintandoLado) return;
@@ -556,6 +565,8 @@ B7.WhatsApp = (function () {
   function ligarLado(lado, info, titulo) {
     lado.querySelectorAll('[data-abrir-g]').forEach(b => b.onclick = () => D.abrirGrupo && D.abrirGrupo(b.dataset.abrirG));
     const conf = lado.querySelector('#wl-conferir'); if (conf) conf.onclick = conferirGrupos;
+    lado.querySelectorAll('[data-sem-espera]').forEach(b => b.onclick = () => semEspera(b.dataset.semEspera, true));
+    const ac = lado.querySelector('#wl-acomp'); if (ac) ac.onchange = () => semEspera(titulo, !ac.checked);
     const sel = lado.querySelector('#wl-cli');
     if (sel) sel.onchange = async () => {
       if (!sel.value) return;
@@ -579,6 +590,14 @@ B7.WhatsApp = (function () {
                data: dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }),
                hora: g.hora_inicio ? String(g.hora_inicio).slice(0, 5) + (g.hora_fim ? '–' + String(g.hora_fim).slice(0, 5) : '') : '', local: g.local || '' });
     });
+  }
+  /* zzz184: grupo que outra área cuida (ex.: designers) sai do "esperando resposta" */
+  async function semEspera(nome, sem) {
+    const g = grupos.get(nome); if (g) g.sem_espera = sem;
+    pintarLado(); vigiarEsperando();
+    try { await B7.sb.rpc('whatsapp_grupo_espera', { p_nome: nome, p_sem: sem }); }
+    catch (e) { B7.UI.toast && B7.UI.toast('Não deu para salvar. Tente de novo.', { tipo: 'erro' }); }
+    if (sem && B7.UI.toast) B7.UI.toast('Grupo fora do “esperando resposta”. Para voltar, abra o grupo e marque o aviso.');
   }
   async function vincular(nome, clienteId, tipo, ignorar) {
     try {
