@@ -251,7 +251,19 @@ function lerLinha(r) {
   if (!nome) return null;
   const previa = tit.length > 1 ? (tit[tit.length - 1].getAttribute('title') || '').trim() : '';
   let autor = '';
-  if (previa) {
+  /* zzz183: o remetente fica num pedaço ao lado da prévia ("Atendimento
+     Suporte Branding7: Prorizando…"). Sobe a partir da prévia até achar a
+     linha inteira e pega o que vem antes dos dois-pontos. */
+  if (previa && tit.length > 1) {
+    let el = tit[tit.length - 1];
+    for (let k = 0; k < 4 && el && el !== r; k++) {
+      el = el.parentElement;
+      const linha = (el && el.textContent || '').trim();
+      const i = linha.lastIndexOf(previa.slice(0, 15));
+      if (i > 0) { const m = /~?\s*([^:]{1,60}):\s*$/.exec(linha.slice(0, i)); if (m) { autor = m[1].trim(); break; } }
+    }
+  }
+  if (!autor && previa) {
     const tx = r.innerText || '', i = tx.lastIndexOf(previa.slice(0, 20));
     const antes = i > 0 ? tx.slice(0, i).split('\n').pop() : '';
     const m = /~?\s*([^:\n]{1,40}):\s*$/.exec(antes || '');

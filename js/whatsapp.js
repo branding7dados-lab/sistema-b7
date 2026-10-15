@@ -324,13 +324,18 @@ B7.WhatsApp = (function () {
   const TIPO_GRUPO_RE = /\b(suporte|producao|produca|artes?|social|trafego|design|video|videos|midias?|marketing|conteudo|grupo)\b/;
   const AGENCIA_RE = /^(b7|n7|nucleo ?7|branding ?7)\b|\b(da|do) (nucleo ?7|branding ?7)$/;
   /* equipe B7/N7/Núcleo7/Branding7: mensagem deles não é "cliente esperando" */
-  const EQUIPE = ['matheus', 'mateus', 'kaique', 'alissan', 'pedro', 'yury', 'lucas', 'bruna', 'kevin', 'talita'];
+  const EQUIPE = ['matheus', 'mateus', 'kaique', 'alissan', 'pedro', 'yury', 'lucas', 'bruna', 'kevin', 'talita', 'atendimento', 'coordenacao', 'financeiro', 'comercial'];
   const ehEquipe = autor => { const a = norm(autor); return !!a && (EQUIPE.some(n => a === n || a.startsWith(n + ' ') || a.includes(' ' + n)) || AGENCIA_RE.test(a) || /\b(nucleo ?7|branding ?7|b7|n7)\b/.test(a)); };
   /* zzz179: aviso do próprio WhatsApp ("Os membros do grupo mudaram") não é cliente */
   const SISTEMA_RE = /membros do grupo|adicionou|removeu|saiu do grupo|entrou usando|mudou (o|a|as)|criou o grupo|mensagens tempor|criptografia|codigo de seguranca|código de segurança/i;
   /* quem mandou: o autor lido, ou o "Nome:" do começo da prévia; prévia que
      é só "B7", "Núcleo7" (nome do remetente da equipe) também conta */
   function daEquipe(g) {
+    /* a conversa aberta é a fonte mais certa: quem mandou a última mensagem */
+    if (conversaAberta && conversaAberta.titulo === g.nome && (conversaAberta.msgs || []).length) {
+      const u = conversaAberta.msgs[conversaAberta.msgs.length - 1];
+      if (u.minha || ehEquipe(u.de)) return true;
+    }
     const pv = String(g.previa || '');
     const m = /^~?\s*([^:]{1,40}):\s/.exec(pv);
     return ehEquipe(g.autor) || (m && ehEquipe(m[1])) || ehEquipe(pv.length <= 20 ? pv : '');
@@ -514,7 +519,7 @@ B7.WhatsApp = (function () {
     } else {
       const c = info.cliente, p = await pendencias(c.id);
       if (meu !== pintandoLado) return;
-      const ultimaDele = (conversaAberta.msgs || []).slice().reverse().find(m => !m.minha && APROVA_RE.test(m.texto));
+      const ultimaDele = (conversaAberta.msgs || []).slice().reverse().find(m => !m.minha && !ehEquipe(m.de) && !/^\*?[^\n:*]{1,30}:\*?\s*\n/.test(m.texto) && APROVA_RE.test(m.texto));   /* zzz183: só o CLIENTE aprova — equipe (e mensagem assinada "Nome:") não conta */
       const comCliente = p.videos.filter(v => v.editing_status === 'aguardando_aprovacao');
       html = '<div class="wl-cab">' + B7.UI.avatarCliente(c.nome, c.logo_url, 'p') +
           '<div><b>' + esc(c.nome) + '</b><small>' + esc(info.tipo || 'grupo do cliente') + (info.sugestao ? ' · <a href="#" id="wl-conf">confirmar</a>' : '') + '</small></div>' +
