@@ -73,6 +73,11 @@ B7.WhatsApp = (function () {
     const painel = document.getElementById('painel-dashboard');
     if (!painel) return;
     if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['WhatsApp']);
+    /* zzz182: o menu lateral marca o WhatsApp (ficava aceso o da tela anterior) */
+    const marcar = () => document.querySelectorAll('.nav a[data-nav], #nav-inferior a[data-nav]').forEach(x => {
+      const on = x.dataset.nav === 'whatsapp'; x.classList.toggle('on', on); if (on) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
+    });
+    marcar(); setTimeout(marcar, 120); setTimeout(marcar, 500);
     if (!D) return telaFora(painel);
     /* o programa pode demorar a responder: não espera mais que 2 s */
     /* zzz181: a tela desenha NA HORA com o que ficou guardado da última vez;
