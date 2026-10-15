@@ -519,7 +519,7 @@ B7.WhatsApp = (function () {
     } else {
       const c = info.cliente, p = await pendencias(c.id);
       if (meu !== pintandoLado) return;
-      const ultimaDele = (conversaAberta.msgs || []).slice().reverse().find(m => !m.minha && APROVA_RE.test(m.texto));
+      const ultimaDele = (conversaAberta.msgs || []).slice().reverse().find(m => !m.minha && !ehEquipe(m.de) && !/^\*?[^\n:*]{1,30}:\*?\s*\n/.test(m.texto) && APROVA_RE.test(m.texto));   /* zzz183: só o CLIENTE aprova — equipe (e mensagem assinada "Nome:") não conta */
       const comCliente = p.videos.filter(v => v.editing_status === 'aguardando_aprovacao');
       html = '<div class="wl-cab">' + B7.UI.avatarCliente(c.nome, c.logo_url, 'p') +
           '<div><b>' + esc(c.nome) + '</b><small>' + esc(info.tipo || 'grupo do cliente') + (info.sugestao ? ' · <a href="#" id="wl-conf">confirmar</a>' : '') + '</small></div>' +
