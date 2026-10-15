@@ -75,8 +75,19 @@ B7.WhatsApp = (function () {
     if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['WhatsApp']);
     if (!D) return telaFora(painel);
     /* o programa pode demorar a responder: não espera mais que 2 s */
-    const cfg = await Promise.race([D.config().catch(() => ({})), new Promise(r => setTimeout(() => r({}), 2000))]) || {};
-    if (!cfg.nome) { cfg.nome = primeiroNome(); D.definirConfig({ nome: cfg.nome }); }
+    /* zzz181: a tela desenha NA HORA com o que ficou guardado da última vez;
+       a resposta do programa chega depois e só acerta o nome/assinatura
+       (antes a tela esperava o programa — até 2 s parada na tela anterior) */
+    const cfg = Object.assign({}, B7.pref.ler('wa_cfg', {}));
+    if (!cfg.nome) cfg.nome = primeiroNome();
+    D.config().then(c => {
+      if (!c) return;
+      if (!c.nome) { c.nome = cfg.nome; D.definirConfig({ nome: c.nome }); }
+      B7.pref.gravar('wa_cfg', { nome: c.nome, assinatura: c.assinatura !== false });
+      const n = document.getElementById('wa-nome'), cx = document.getElementById('wa-assin');
+      if (n && document.activeElement !== n && n.value !== c.nome) { n.value = c.nome; n.dispatchEvent(new Event('input')); }
+      if (cx) { cx.classList.toggle('on', c.assinatura !== false); const b = document.getElementById('wa-ass'); if (b) b.setAttribute('aria-checked', String(c.assinatura !== false)); }
+    }).catch(() => {});
     const extras = !!(D.zoom && D.desconectar);
     painel.innerHTML = '<div class="wa-tela">' +
       '<div class="wa-barra">' +
@@ -111,7 +122,7 @@ B7.WhatsApp = (function () {
       nome.size = Math.max(4, Math.min(18, (nome.value || nome.placeholder).length));
       prev.innerHTML = ligada() && nome.value.trim() ? 'sai como <b>' + esc(nome.value.trim()) + ':</b>' : 'desligada';
     };
-    const salvar = () => { D.definirConfig({ nome: nome.value.trim(), assinatura: ligada() }); previa(); };
+    const salvar = () => { D.definirConfig({ nome: nome.value.trim(), assinatura: ligada() }); B7.pref.gravar('wa_cfg', { nome: nome.value.trim(), assinatura: ligada() }); previa(); };
     cb.onclick = () => { caixa.classList.toggle('on'); cb.setAttribute('aria-checked', String(ligada())); salvar(); };
     nome.oninput = previa; nome.onchange = salvar;
     nome.onkeydown = e => { if (e.key === 'Enter') { nome.blur(); salvar(); } };
@@ -242,13 +253,13 @@ B7.WhatsApp = (function () {
     document.body.classList.add('wa-aberta');
     ativo = true; escondido = true; ultimoRet = ''; ligadoEm = Date.now();
     clearInterval(relogio);
-    relogio = setInterval(() => { if (Date.now() - ligadoEm > 400) medir(); }, 250);           /* barra lateral abrindo, rolagem, zoom: segue junto */
+    relogio = setInterval(() => { if (Date.now() - ligadoEm > 200) medir(); }, 250);           /* barra lateral abrindo, rolagem, zoom: segue junto */
     addEventListener('resize', medir);
-    observador = new MutationObserver(() => { if (Date.now() - ligadoEm > 400) requestAnimationFrame(medir); });
+    observador = new MutationObserver(() => { if (Date.now() - ligadoEm > 200) requestAnimationFrame(medir); });
     observador.observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['class'] });
     /* zzz176: espera a tela terminar de entrar (a animação do sistema)
        antes de pôr o WhatsApp — ele chega já no lugar certo, sem pulo */
-    setTimeout(() => requestAnimationFrame(medir), 420);
+    setTimeout(() => requestAnimationFrame(medir), 220);
   }
   function desligar() {
     if (!ativo) return;

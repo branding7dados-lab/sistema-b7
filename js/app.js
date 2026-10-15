@@ -339,7 +339,9 @@ B7.Rota = (function () {
        nesta linha location.hash já é o endereço NOVO. */
     try { if (B7.fotoDaTela) B7.fotoDaTela.antesDeNavegar(de); } catch (e) {}
     ultimoHash = para;
-    if (ehTrocaDeModulo(de, para) && trocarComMorph(de, para)) return;
+    /* zzz181: o WhatsApp é uma camada do programa — o morph só atrasava */
+    const wa = h => /^#\/whatsapp/.test(h);
+    if (!wa(de) && !wa(para) && ehTrocaDeModulo(de, para) && trocarComMorph(de, para)) return;
     /* garante que nada digitado se perca ao trocar de tela */
     B7.Save.agora().finally(ir);
   });
