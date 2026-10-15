@@ -208,13 +208,13 @@ const ACOES = {
     return { ok: true };
   },
 
-  async legenda({ texto }) {
+  async legenda({ texto, espera }) {
     /* depois do arquivo, o WhatsApp abre a prévia com o campo de legenda */
     const campo = await ate(() => {
       const a = document.activeElement;
       if (a && a.isContentEditable && !naBusca(a) && !a.closest('#main footer')) return a;
       return qsa('[contenteditable="true"]').find(el => visivel(el) && !naBusca(el) && !el.closest('#main footer') && !el.closest('#side')) || null;
-    }, 25000, 200);
+    }, espera || 25000, 200);
     if (!campo) return { ok: false, motivo: 'O arquivo foi anexado, mas não achei o campo da legenda.' };
     if (texto) { cursorNoFim(campo); await esperar(40); colar(campo, texto); }
     return { ok: true };
