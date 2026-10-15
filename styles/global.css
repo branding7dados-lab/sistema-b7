@@ -1846,8 +1846,12 @@ html.modo-leve body[data-shell="interno"] #tela-dashboard .topo.topo-global,
 html.modo-leve body #tela-dashboard .topo.topo-global{background:color-mix(in srgb, var(--card) 72%, var(--fundo)) !important;}
 html.modo-leve body[data-shell="interno"] .nav-inferior{background:var(--card) !important;}
 html.modo-leve .fundo-modal .modal, html.modo-leve .fundo-modal.tp-folha .modal{background:var(--card) !important;}
-html.modo-leve .tp-menu, html.modo-leve .lista.solta, html.modo-leve .resultados, html.modo-leve .previa-roteiros,
-html.modo-leve .toast{background:var(--elevado) !important;}
+html.modo-leve .tp-menu, html.modo-leve .lista.solta, html.modo-leve .resultados, html.modo-leve .previa-roteiros{background:var(--elevado) !important;}
+/* zzz189: o aviso tem texto BRANCO — no modo leve + tema claro o fundo
+   "elevado" (branco) apagava o texto: caixinha branca vazia na tela */
+html.modo-leve .toast{background:var(--sidebar) !important;}
+html.modo-leve .toast.erro{background:#48082C !important;}
+html.modo-leve[data-theme="dark"] .toast:not(.erro),html.modo-leve [data-theme="dark"] .toast:not(.erro){background:var(--elevado) !important;}
 html.modo-leve .gl-grupo-cab, html.modo-leve .vd-m-grupo-cab, html.modo-leve .op-dia h3{background:var(--fundo) !important;}
 html.modo-leve .co-faixa{background:var(--ambar-bg) !important;}
 /* véu do modal sem desfoque: um pouco mais escuro para separar */

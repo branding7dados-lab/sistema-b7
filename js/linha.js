@@ -72,7 +72,11 @@ B7.Linha = (function () {
      por ID: nunca se procura um registro por título ou data. Se o ID não
      estiver nesta linha, a linha abre normal e nada mais acontece. */
   async function abrir(id, aba, conteudoId) {
-    L.aba = ABAS.some(([k]) => k === aba) ? aba : 'geral';
+    /* zzz189: a tela é refeita ao salvar (tempo real / recarregar) sem a
+       aba no endereço — a MESMA linha continua na aba em que a pessoa
+       estava, em vez de voltar para a Visão geral */
+    const mesma = L.linha && L.linha.id === id;
+    L.aba = ABAS.some(([k]) => k === aba) ? aba : (mesma && L.aba) || 'geral';
     /* de onde a pessoa veio decide a trilha e o "voltar": da lista global
        (?de=linhas) volta para ela; de qualquer outro lugar, a linha é
        mostrada dentro do cliente dela (Clientes / cliente / Editorial) */
