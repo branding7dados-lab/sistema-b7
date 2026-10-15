@@ -183,8 +183,16 @@ const ACOES = {
       if (documento) return files.find(i => (i.getAttribute('accept') || '') === '*') || files.find(i => !i.getAttribute('accept'));
       /* zzz187: "Fotos e vídeos" aceita vídeo e vários arquivos; o campo só
          de imagem é o de FIGURINHA (corta quadrado e aceita uma só) */
-      const midia = files.filter(i => /image/.test(i.getAttribute('accept') || '') && /video/.test(i.getAttribute('accept') || ''));
-      return midia.find(i => i.multiple) || midia[0];
+      /* zzz191: o WhatsApp nem sempre marca vídeo no campo de fotos — acha
+         pelo NOME do item do menu ("Fotos e vídeos"), depois pelo tipo, e
+         só por último qualquer campo de imagem que NÃO seja de figurinha */
+      const rotulo = i => { const c = i.closest('li, [role="button"], [role="menuitem"], div[aria-label]'); return ((c && (c.getAttribute('aria-label') || c.textContent)) || '').toLowerCase(); };
+      const img = files.filter(i => /image/.test(i.getAttribute('accept') || ''));
+      const figurinha = i => /figurinha|sticker/.test(rotulo(i));
+      return img.find(i => /foto|photo|v[íi]deo|video/.test(rotulo(i)) && !figurinha(i)) ||
+             img.find(i => /video/.test(i.getAttribute('accept') || '')) ||
+             img.find(i => i.multiple && !figurinha(i)) ||
+             img.find(i => !figurinha(i)) || null;
     };
     let campo = acharCampo();
     if (!campo) {
@@ -207,7 +215,7 @@ const ACOES = {
       if (a && a.isContentEditable && !naBusca(a) && !a.closest('#main footer')) return a;
       return qsa('[contenteditable="true"]').find(el => visivel(el) && !naBusca(el) && !el.closest('#main footer') && !el.closest('#side')) || null;
     }, 25000, 200);
-    if (!campo) return { ok: false, motivo: 'O vídeo foi anexado, mas não achei o campo da legenda.' };
+    if (!campo) return { ok: false, motivo: 'O arquivo foi anexado, mas não achei o campo da legenda.' };
     if (texto) { cursorNoFim(campo); await esperar(40); colar(campo, texto); }
     return { ok: true };
   },
