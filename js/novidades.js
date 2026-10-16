@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz206', versao: 'zzz206', em: '2026-10-16T17:00:00-03:00',
+    titulo: 'Dia fixo de gravar e preparação da gravação',
+    itens: ['Em Editar cliente, nova opção “Gravação fixa” (toda semana ou todo mês). O sistema cria sozinho a gravação alguns dias antes, uma vez por data.',
+            'Cada gravação ganha a “Preparação”: data marcada, linha do mês, roteiros dos Reels, referências decididas e lista montada — com o que falta e quantos dias restam.',
+            'Na lista de Gravações, cada gravação que ainda vai acontecer mostra “Preparação 3/5 · em 4 dias” (ou “Tudo pronto”).'] },
   { id: 'v-zzz205', versao: 'zzz205', em: '2026-10-16T15:00:00-03:00',
     titulo: 'Referências da linha editorial vão para a gravação',
     itens: ['Todo link de referência colocado na linha editorial (no conteúdo ou no mês) aparece na gravação do cliente, em “Referências da linha editorial”.',
