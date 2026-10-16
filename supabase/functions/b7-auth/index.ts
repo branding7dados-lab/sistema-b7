@@ -191,27 +191,30 @@ function identidadeInterna(ehAdminBruto: unknown, funcaoBruta: unknown): Identid
   }
   return { ehAdmin, funcao, papel: ehAdmin ? 'admin' : (funcao as string) };
 }
-/* exceções de módulo: { modulo: 'permitir' | 'negar' } — só ids que existem */
+/* exceções de módulo: { modulo: 'permitir' | 'negar' | 'ver' | 'editar' | 'total' } — só ids que existem.
+   zzz215: 'ver'/'editar'/'total' = permitir com esse nível; 'negar' = sem acesso. */
+const NIVEIS = ['ver', 'editar', 'total'];
 // deno-lint-ignore no-explicit-any
-async function normalizarExcecoes(sb: any, bruto: unknown): Promise<{ lista: { modulo: string; efeito: string }[]; erro?: string }> {
+async function normalizarExcecoes(sb: any, bruto: unknown): Promise<{ lista: { modulo: string; efeito: string; nivel?: string | null }[]; erro?: string }> {
   if (bruto === undefined || bruto === null) return { lista: [] };
   if (typeof bruto !== 'object' || Array.isArray(bruto)) return { lista: [], erro: 'Exceções de módulo inválidas.' };
   const { data: mods } = await sb.from('modulos').select('id');
   const validos = new Set((mods || []).map((m: { id: string }) => m.id));
-  const lista: { modulo: string; efeito: string }[] = [];
+  const lista: { modulo: string; efeito: string; nivel?: string | null }[] = [];
   for (const [modulo, efeito] of Object.entries(bruto as Record<string, unknown>)) {
     if (!validos.has(modulo)) return { lista: [], erro: 'Módulo inválido: ' + modulo + '.' };
-    if (efeito !== 'permitir' && efeito !== 'negar') return { lista: [], erro: 'Exceção inválida em ' + modulo + '.' };
-    lista.push({ modulo, efeito: String(efeito) });
+    if (efeito !== 'permitir' && efeito !== 'negar' && !NIVEIS.includes(String(efeito))) return { lista: [], erro: 'Exceção inválida em ' + modulo + '.' };
+    if (NIVEIS.includes(String(efeito))) lista.push({ modulo, efeito: 'permitir', nivel: String(efeito) });
+    else lista.push({ modulo, efeito: String(efeito), nivel: null });
   }
   return { lista };
 }
 // deno-lint-ignore no-explicit-any
-async function gravarExcecoes(sb: any, perfilId: string, lista: { modulo: string; efeito: string }[], autorId: string) {
+async function gravarExcecoes(sb: any, perfilId: string, lista: { modulo: string; efeito: string; nivel?: string | null }[], autorId: string) {
   await sb.from('perfil_modulos').delete().eq('perfil_id', perfilId);
   if (lista.length) {
     await sb.from('perfil_modulos').insert(lista.map((x) => ({
-      perfil_id: perfilId, modulo: x.modulo, efeito: x.efeito, alterado_por: autorId })));
+      perfil_id: perfilId, modulo: x.modulo, efeito: x.efeito, nivel: x.nivel || null, alterado_por: autorId })));
   }
 }
 const PAPEIS_COM_DESIGNER_EXTRA = ['admin', 'coordenador'];
@@ -888,7 +891,7 @@ Deno.serve(comCors(async (req) => {
       } else if (corpo.tipo === 'cliente') {
         patch.papel = 'cliente';
       }
-      let excecoesNovas: { lista: { modulo: string; efeito: string }[]; erro?: string } | null = null;
+      let excecoesNovas: { lista: { modulo: string; efeito: string; nivel?: string | null }[]; erro?: string } | null = null;
       if (corpo.modulos !== undefined) {
         excecoesNovas = await normalizarExcecoes(sb, corpo.modulos);
         if (excecoesNovas.erro) return json({ erro: excecoesNovas.erro }, 400);
@@ -962,25 +965,33 @@ Deno.serve(comCors(async (req) => {
     if (acao === 'salvar_preset') {
       const funcao = String(corpo.funcao || '');
       if (!FUNCOES_VALIDAS.includes(funcao)) return json({ erro: 'Função inválida.' }, 400);
-      if (!Array.isArray(corpo.modulos)) return json({ erro: 'Lista de módulos inválida.' }, 400);
+      /* aceita a lista antiga (tudo Total) ou { modulo: 'ver' | 'editar' | 'total' } (zzz215) */
+      const bruto = corpo.modulos;
+      if (!bruto || typeof bruto !== 'object') return json({ erro: 'Lista de módulos inválida.' }, 400);
       const { data: mods } = await sb.from('modulos').select('id');
       const validos = new Set((mods || []).map((m: { id: string }) => m.id));
-      const lista = [...new Set((corpo.modulos as unknown[]).map((m) => String(m)))];
-      for (const m of lista) if (!validos.has(m)) return json({ erro: 'Módulo inválido: ' + m + '.' }, 400);
+      const pares: [string, string][] = Array.isArray(bruto)
+        ? [...new Set((bruto as unknown[]).map((m) => String(m)))].map((m) => [m, 'total'])
+        : Object.entries(bruto as Record<string, unknown>).map(([m, n]) => [m, String(n)]);
+      for (const [m, n] of pares) {
+        if (!validos.has(m)) return json({ erro: 'Módulo inválido: ' + m + '.' }, 400);
+        if (!NIVEIS.includes(n)) return json({ erro: 'Nível inválido em ' + m + '.' }, 400);
+      }
+      const lista = pares.map(([m]) => m);
 
-      const { data: antes } = await sb.from('funcao_modulos').select('modulo').eq('funcao', funcao);
+      const { data: antes } = await sb.from('funcao_modulos').select('modulo, nivel').eq('funcao', funcao);
       const { error: eDel } = await sb.from('funcao_modulos').delete().eq('funcao', funcao);
       if (eDel) return json({ erro: 'Não foi possível salvar o padrão: ' + eDel.message }, 500);
       if (lista.length) {
-        const { error: eIns } = await sb.from('funcao_modulos').insert(lista.map((m) => ({ funcao, modulo: m })));
+        const { error: eIns } = await sb.from('funcao_modulos').insert(pares.map(([m, n]) => ({ funcao, modulo: m, nivel: n })));
         if (eIns) {
           if (antes && antes.length) {
-            await sb.from('funcao_modulos').insert(antes.map((a: { modulo: string }) => ({ funcao, modulo: a.modulo })));
+            await sb.from('funcao_modulos').insert(antes.map((a: { modulo: string; nivel: string }) => ({ funcao, modulo: a.modulo, nivel: a.nivel || 'total' })));
           }
           return json({ erro: 'Não foi possível salvar o padrão: ' + eIns.message }, 500);
         }
       }
-      await auditar(sb, autor, 'salvar_preset', { tipo: 'funcao', id: null, descricao: funcao }, { modulos: lista });
+      await auditar(sb, autor, 'salvar_preset', { tipo: 'funcao', id: null, descricao: funcao }, { modulos: Object.fromEntries(pares) });
       return json({ ok: true, funcao, modulos: lista });
     }
 
@@ -1012,8 +1023,8 @@ Deno.serve(comCors(async (req) => {
       /* zzz68: registro de módulos, padrões por função e exceções por usuário */
       const [{ data: modulos }, { data: presets }, { data: excecoes }] = await Promise.all([
         sb.from('modulos').select('id, rotulo, ordem').order('ordem'),
-        sb.from('funcao_modulos').select('funcao, modulo'),
-        sb.from('perfil_modulos').select('perfil_id, modulo, efeito')
+        sb.from('funcao_modulos').select('funcao, modulo, nivel'),
+        sb.from('perfil_modulos').select('perfil_id, modulo, efeito, nivel')
       ]);
       return json({ usuarios: data || [], vinculos: vinculos || [], funcoes_extra: funcoesExtra,
                     modulos: modulos || [], presets: presets || [], excecoes: excecoes || [] });

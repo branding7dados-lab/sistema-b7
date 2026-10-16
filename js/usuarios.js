@@ -69,16 +69,28 @@ B7.Usuarios = (function () {
   ];
   const rotuloFuncao = fn => (FUNCOES.find(x => x[0] === fn) || [, 'Sem função'])[1];
   /* carregado a cada abertura da tela (listar_usuarios) */
-  let ACESSO = { modulos: [], presets: {}, excecoes: {} };
+  let ACESSO = { modulos: [], presets: {}, presetNivel: {}, excecoes: {} };
+  /* zzz215: nível dentro de cada módulo. Total = editar + aprovar + excluir. */
+  const NIVEIS = [['sem', 'Sem acesso', 'a tela some'], ['ver', 'Ver', 'abre e consulta, sem alterar'],
+                  ['editar', 'Editar', 'cria e altera, sem aprovar nem excluir'], ['total', 'Total', 'edita, aprova e exclui']];
+  const rotuloNivel = n => (NIVEIS.find(x => x[0] === n) || NIVEIS[3])[1];
+  function seletorNivel(mod, atual, pers, base) {
+    return '<div class="ac-nv" role="radiogroup" aria-label="Nível">' + NIVEIS.map(([v, r, d]) =>
+      '<button type="button" role="radio" aria-checked="' + (v === atual) + '" class="ac-nv-b anv-' + v + (v === atual ? ' on' : '') +
+      (base && v === base && v !== atual ? ' base' : '') + '" data-mod="' + esc(mod) + '" data-nv="' + v + '" title="' + esc(r + ': ' + d) + '">' + r + '</button>').join('') + '</div>';
+  }
   function carregarAcesso(dados) {
     const reg = (dados.modulos && dados.modulos.length) ? dados.modulos
       : (B7.Perm && B7.Perm.MODULOS ? B7.Perm.MODULOS.map(m => ({ id: m.id, rotulo: m.rotulo })) : []);
-    const presets = { coordenador: [], designer: [], videomaker: [] };
-    if (dados.presets) dados.presets.forEach(p => { (presets[p.funcao] = presets[p.funcao] || []).push(p.modulo); });
+    const presets = { coordenador: [], designer: [], videomaker: [] }, presetNivel = { coordenador: {}, designer: {}, videomaker: {} };
+    if (dados.presets) dados.presets.forEach(p => {
+      (presets[p.funcao] = presets[p.funcao] || []).push(p.modulo);
+      (presetNivel[p.funcao] = presetNivel[p.funcao] || {})[p.modulo] = p.nivel || 'total';
+    });
     else if (B7.Perm && B7.Perm.PADRAO_FUNCAO) Object.assign(presets, B7.Perm.PADRAO_FUNCAO);
     const excecoes = {};
-    (dados.excecoes || []).forEach(e => { (excecoes[e.perfil_id] = excecoes[e.perfil_id] || {})[e.modulo] = e.efeito; });
-    ACESSO = { modulos: reg, presets, excecoes };
+    (dados.excecoes || []).forEach(e => { (excecoes[e.perfil_id] = excecoes[e.perfil_id] || {})[e.modulo] = e.efeito === 'negar' ? 'negar' : (e.nivel || 'permitir'); });
+    ACESSO = { modulos: reg, presets, presetNivel, excecoes };
   }
   const identidadeDe = u => ({
     tipo: u.papel === 'cliente' ? 'cliente' : 'interno',
@@ -90,7 +102,22 @@ B7.Usuarios = (function () {
     if (id.tipo === 'cliente') return [];
     if (id.ehAdmin) return ACESSO.modulos.map(m => m.id);
     const ex = ACESSO.excecoes[u.id] || {}, base = ACESSO.presets[id.funcao] || [];
-    return ACESSO.modulos.map(m => m.id).filter(m => ex[m] ? ex[m] === 'permitir' : base.includes(m));
+    return ACESSO.modulos.map(m => m.id).filter(m => ex[m] ? ex[m] !== 'negar' : base.includes(m));
+  }
+  /* zzz215: nível da pessoa no módulo e o do padrão da função dela */
+  function nivelPadraoDe(u, md) {
+    const f = identidadeDe(u).funcao;
+    return (ACESSO.presets[f] || []).includes(md) ? ((ACESSO.presetNivel[f] || {})[md] || 'total') : 'sem';
+  }
+  function nivelDe(u, md) {
+    const idt = identidadeDe(u);
+    if (idt.tipo === 'cliente') return 'sem';
+    if (idt.ehAdmin) return 'total';
+    const ex = (ACESSO.excecoes[u.id] || {})[md], nb = nivelPadraoDe(u, md);
+    if (!ex) return nb;
+    if (ex === 'negar') return 'sem';
+    if (ex === 'permitir') return nb === 'sem' ? 'total' : nb;
+    return ex;
   }
   const rotuloModulo = id => (ACESSO.modulos.find(m => m.id === id) || { rotulo: id }).rotulo;
 
@@ -172,9 +199,18 @@ B7.Usuarios = (function () {
     const funcaoInicial = E.funcao;
     const q = sel => m.querySelector('#' + px + '-' + sel);
     const base = () => ACESSO.presets[E.funcao] || [];
-    const efetivo = id => E.ehAdmin ? true : (E.excecoes[id] ? E.excecoes[id] === 'permitir' : base().includes(id));
+    const nivelBase = id => base().includes(id) ? ((ACESSO.presetNivel[E.funcao] || {})[id] || 'total') : 'sem';
+    const nivelEf = id => {
+      if (E.ehAdmin) return 'total';
+      const ex = E.excecoes[id];
+      if (!ex) return nivelBase(id);
+      if (ex === 'negar') return 'sem';
+      if (ex === 'permitir') return nivelBase(id) === 'sem' ? 'total' : nivelBase(id);
+      return ex;
+    };
+    const efetivo = id => nivelEf(id) !== 'sem';
     /* exceção que ficou igual ao padrão deixa de ser exceção */
-    const limpar = () => { Object.keys(E.excecoes).forEach(id => { if ((E.excecoes[id] === 'permitir') === base().includes(id)) delete E.excecoes[id]; }); };
+    const limpar = () => { Object.keys(E.excecoes).forEach(id => { if (nivelEf(id) === nivelBase(id)) delete E.excecoes[id]; }); };
 
     function pintar() {
       limpar();
@@ -207,15 +243,16 @@ B7.Usuarios = (function () {
           (n ? ' + ' + n + (n === 1 ? ' personalização' : ' personalizações') : '');
       q('mods').hidden = E.ehAdmin || !E.funcao;
       q('mods').innerHTML = ACESSO.modulos.map(md => {
-        const on = efetivo(md.id), pers = !E.ehAdmin && !!E.excecoes[md.id];
-        return '<label class="op-mini nu-chave-linha ac-mod' + (on ? ' on' : '') + (pers ? ' pers' : '') + '"' +
-          (pers ? ' title="Diferente do padrão de ' + esc(rotuloFuncao(E.funcao)) + '"' : '') + '>' +
-          '<span>' + esc(md.rotulo) + '</span>' +
-          (pers ? '<em class="ac-tag">' + (on ? 'a mais' : 'tirado') + '</em>' : '') +
-          '<input type="checkbox" role="switch" data-mod="' + esc(md.id) + '"' + (on ? ' checked' : '') + '></label>';
+        const nv = nivelEf(md.id), nb = nivelBase(md.id), pers = !E.ehAdmin && !!E.excecoes[md.id];
+        return '<div class="ac-mod ac-mod-nv' + (nv !== 'sem' ? ' on' : '') + (pers ? ' pers' : '') + '"' +
+          (pers ? ' title="Padrão de ' + esc(rotuloFuncao(E.funcao)) + ': ' + esc(rotuloNivel(nb)) + '"' : '') + '>' +
+          '<span>' + esc(md.rotulo) + (pers ? '<em class="ac-tag">personalizado · padrão ' + esc(rotuloNivel(nb)) + '</em>' : '') + '</span>' +
+          seletorNivel(md.id, nv, pers, nb) + '</div>';
       }).join('');
-      q('mods').querySelectorAll('input[data-mod]').forEach(cx => cx.addEventListener('change', () => {
-        E.excecoes[cx.dataset.mod] = cx.checked ? 'permitir' : 'negar';
+      q('mods').querySelectorAll('[data-nv]').forEach(b => b.addEventListener('click', () => {
+        const id = b.dataset.mod, v = b.dataset.nv;
+        if (v === nivelBase(id)) delete E.excecoes[id];
+        else E.excecoes[id] = v === 'sem' ? 'negar' : v;
         pintar();
       }));
     }
@@ -252,7 +289,10 @@ B7.Usuarios = (function () {
     let atual = 'coordenador';
     const pessoas = (usuarios || []).filter(u => u.papel !== 'cliente' && u.estado === 'ativa');
     const rasc = {};
-    FUNCOES.forEach(([v]) => { rasc[v] = (ACESSO.presets[v] || []).slice(); });
+    /* rasc[funcao] = { modulo: 'ver' | 'editar' | 'total' } — módulo fora = sem acesso */
+    const doPadrao = v => { const o = {}; (ACESSO.presets[v] || []).forEach(md => { o[md] = (ACESSO.presetNivel[v] || {})[md] || 'total'; }); return o; };
+    const assinatura = o => Object.keys(o).sort().map(k => k + ':' + o[k]).join();
+    FUNCOES.forEach(([v]) => { rasc[v] = doPadrao(v); });
     const m = B7.UI.modal('<div class="ng-topo"><span class="ng-ic">' + IC_ACESSO + '</span><div><h3>Funções e acessos</h3>' +
       '<div class="sub">O que cada função abre por padrão. Quem tem a função herda — menos onde a pessoa tem um acesso personalizado.</div></div></div>' +
       '<div class="nu-papeis ac-funcoes ac-abas" id="fa-abas">' +
@@ -263,10 +303,10 @@ B7.Usuarios = (function () {
       '<div id="fa-erro" class="ajuda erro-txt"></div>' +
       '<div class="acoes ng-acoes"><button class="b" data-fecha>Fechar</button>' +
       '<button class="b pri" id="fa-salvar">Salvar padrão</button></div>', { larga: true, extra: 'ng-modal nu-modal' });
-    const mudou = fn => rasc[fn].slice().sort().join() !== (ACESSO.presets[fn] || []).slice().sort().join();
+    const mudou = fn => assinatura(rasc[fn]) !== assinatura(doPadrao(fn));
     function pintar() {
       m.querySelectorAll('#fa-abas [data-funcao]').forEach(b => b.classList.toggle('on', b.dataset.funcao === atual));
-      FUNCOES.forEach(([v]) => { m.querySelector('#fa-n-' + v).textContent = rasc[v].length + (rasc[v].length === 1 ? ' módulo' : ' módulos') + (mudou(v) ? ' •' : ''); });
+      FUNCOES.forEach(([v]) => { const n = Object.keys(rasc[v]).length; m.querySelector('#fa-n-' + v).textContent = n + (n === 1 ? ' módulo' : ' módulos') + (mudou(v) ? ' •' : ''); });
       /* quem herda este padrão: administrador abre tudo de qualquer jeito */
       const daFuncao = pessoas.filter(u => identidadeDe(u).funcao === atual && !identidadeDe(u).ehAdmin);
       const comExcecao = daFuncao.filter(u => Object.keys(ACESSO.excecoes[u.id] || {}).length).length;
@@ -277,12 +317,11 @@ B7.Usuarios = (function () {
           (comExcecao ? ' <span>' + comExcecao + ' com acesso personalizado.</span>' : '')
         : 'Ninguém com esta função por enquanto.';
       m.querySelector('#fa-mods').innerHTML = ACESSO.modulos.map(md => {
-        const on = rasc[atual].includes(md.id);
-        return '<label class="op-mini nu-chave-linha ac-mod' + (on ? ' on' : '') + '"><span>' + esc(md.rotulo) + '</span>' +
-          '<input type="checkbox" role="switch" data-mod="' + esc(md.id) + '"' + (on ? ' checked' : '') + '></label>';
+        const nv = rasc[atual][md.id] || 'sem';
+        return '<div class="ac-mod ac-mod-nv' + (nv !== 'sem' ? ' on' : '') + '"><span>' + esc(md.rotulo) + '</span>' + seletorNivel(md.id, nv) + '</div>';
       }).join('');
-      m.querySelectorAll('#fa-mods input').forEach(cx => cx.addEventListener('change', () => {
-        rasc[atual] = cx.checked ? rasc[atual].concat(cx.dataset.mod) : rasc[atual].filter(x => x !== cx.dataset.mod);
+      m.querySelectorAll('#fa-mods [data-nv]').forEach(b => b.addEventListener('click', () => {
+        if (b.dataset.nv === 'sem') delete rasc[atual][b.dataset.mod]; else rasc[atual][b.dataset.mod] = b.dataset.nv;
         pintar();
       }));
       const bt = m.querySelector('#fa-salvar');
@@ -293,8 +332,9 @@ B7.Usuarios = (function () {
       const bt = m.querySelector('#fa-salvar'), erro = m.querySelector('#fa-erro');
       erro.textContent = ''; bt.disabled = true; bt.textContent = 'Salvando…';
       try {
-        await B7.DB.chamarAuth({ acao: 'salvar_preset', funcao: atual, modulos: rasc[atual] });
-        ACESSO.presets[atual] = rasc[atual].slice();
+        await B7.DB.chamarAuth({ acao: 'salvar_preset', funcao: atual, modulos: Object.assign({}, rasc[atual]) });
+        ACESSO.presets[atual] = Object.keys(rasc[atual]);
+        ACESSO.presetNivel[atual] = Object.assign({}, rasc[atual]);
         B7.UI.toast('Padrão de ' + rotuloFuncao(atual) + ' salvo. Quem tem a função já herda.');
         pintar();
         if (location.hash.indexOf('#/usuarios') === 0) abrir();
@@ -360,8 +400,8 @@ B7.Usuarios = (function () {
     const difDe = u => {
       const idt = identidadeDe(u);
       if (idt.tipo === 'cliente' || idt.ehAdmin) return [];
-      const base = ACESSO.presets[idt.funcao] || [], exc = ACESSO.excecoes[u.id] || {};
-      return Object.keys(exc).filter(md => (exc[md] === 'permitir') !== base.includes(md));
+      const exc = ACESSO.excecoes[u.id] || {};
+      return Object.keys(exc).filter(md => nivelDe(u, md) !== nivelPadraoDe(u, md));
     };
     const alertasDe = u => {
       if (u.estado !== 'ativa') return [{ t: 'Conta desativada', c: 'cinza' }];
@@ -531,10 +571,11 @@ B7.Usuarios = (function () {
     } else if (totalMods) {
       const tudo = idt.ehAdmin;
       const pontos = ACESSO.modulos.map(m => {
-        const on = tudo || mods.includes(m.id);
-        const mudou = !tudo && exc[m.id] && ((exc[m.id] === 'permitir') !== base.includes(m.id));
-        const cls = (on ? 'on' : 'off') + (mudou ? (on ? ' mais' : ' menos') : '');
-        const dica = m.rotulo + (on ? '' : ': sem acesso') + (mudou ? (on ? ' (a mais que o padrão)' : ' (tirado do padrão)') : '');
+        const on = tudo || mods.includes(m.id), nv = nivelDe(u, m.id), np = nivelPadraoDe(u, m.id);
+        const ordem = { sem: 0, ver: 1, editar: 2, total: 3 };
+        const mudou = !tudo && exc[m.id] && nv !== np;
+        const cls = (on ? 'on' : 'off') + (on && nv !== 'total' ? ' nv-' + nv : '') + (mudou ? (ordem[nv] > ordem[np] ? ' mais' : ' menos') : '');
+        const dica = m.rotulo + ': ' + (on ? rotuloNivel(nv) : 'sem acesso') + (mudou ? ' (padrão: ' + rotuloNivel(np) + ')' : '');
         return '<i class="' + cls + '" title="' + esc(dica) + '"></i>';
       }).join('');
       meio = '<div class="lu4-mods"><div class="lu4-mods-cab"><span class="lu4-rot">Acesso</span><b>' +

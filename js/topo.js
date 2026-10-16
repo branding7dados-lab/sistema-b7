@@ -57,7 +57,9 @@ B7.Topo = (function () {
      duplica: "Nova gravação" vale uma vez, venha do admin ou do
      coordenador. Sem sessão ou sem B7.Perm → lista vazia (falha segura).
      ================================================================= */
-  const podeRota = r => !!(B7.Perm && B7.Perm.podeRota(r));
+  /* Criar exige poder editar no módulo (zzz215: nível Ver não cria) */
+  const podeRota = r => !!(B7.Perm && B7.Perm.podeRota(r)) &&
+    !(B7.Perm.moduloDaRota && B7.Perm.moduloDaRota(r) && !B7.Perm.podeNivel(B7.Perm.moduloDaRota(r), 'editar'));
   const ehEquipe = () => !!(B7.Auth && B7.Auth.ehEquipe && B7.Auth.ehEquipe());
 
   /* Abre a tela dona do fluxo e aciona o MESMO botão que a pessoa

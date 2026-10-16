@@ -170,10 +170,10 @@ B7.PreviaUsuario = (function () {
     if (usuario.papel === 'cliente') return false; /* isso é prévia de cliente, não de usuário */
     alvo = { id: usuario.id, nome: usuario.nome || usuario.username || 'Usuário',
              papel: usuario.papel, funcoes_extra: usuario.funcoes_extra || [],
-             funcao: usuario.funcao, modulos: usuario.modulos };
+             funcao: usuario.funcao, modulos: usuario.modulos, niveis: usuario.niveis };
     /* zzz68: a prévia mostra o menu e o Painel pela FUNÇÃO e pelos módulos
        efetivos da pessoa (padrão da função + exceções) */
-    B7.Auth.simularPapel(alvo.papel, alvo.funcoes_extra, { funcao: alvo.funcao, modulos: alvo.modulos });
+    B7.Auth.simularPapel(alvo.papel, alvo.funcoes_extra, { funcao: alvo.funcao, modulos: alvo.modulos, niveis: alvo.niveis });
     remontarNav();
     montarBanner();
     ligarBloqueioEscrita();
@@ -307,13 +307,26 @@ B7.PreviaUsuario = (function () {
       const ex = {}; (dados.excecoes || []).filter(e => e.perfil_id === u.id).forEach(e => { ex[e.modulo] = e.efeito; });
       return todos.filter(m => ex[m] ? ex[m] === 'permitir' : base.includes(m));
     };
+    /* zzz215: o nível em cada módulo, igual ao banco (nivel_modulo) */
+    const niveisDe = u => {
+      const mods = modulosDe(u); if (!mods) return undefined;
+      const r = {};
+      dados.modulos.forEach(m => {
+        if (!mods.includes(m.id)) { r[m.id] = 'sem'; return; }
+        if (u.eh_admin) { r[m.id] = 'total'; return; }
+        const e = (dados.excecoes || []).find(x => x.perfil_id === u.id && x.modulo === m.id && x.efeito === 'permitir');
+        const p = dados.presets.find(x => x.funcao === u.funcao && x.modulo === m.id);
+        r[m.id] = (e && e.nivel) || (p && p.nivel) || 'total';
+      });
+      return r;
+    };
     itens = {
       clientes: (clientes || []).map(c => ({ tipo: 'cliente', id: c.id, nome: c.nome || 'Sem nome' })),
       usuarios: usuariosTodos.map(u => ({
         tipo: 'usuario', id: u.id, nome: u.nome || u.username || 'Usuário',
         papel: u.papel, funcoes_extra: funcoesExtraDe(u.id),
         funcao: u.funcao !== undefined ? (u.funcao || null) : undefined,
-        modulos: modulosDe(u)
+        modulos: modulosDe(u), niveis: niveisDe(u)
       }))
     };
   }

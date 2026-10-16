@@ -118,6 +118,21 @@ B7.Perm = (function () {
     return doBanco || PADRAO_FUNCAO[funcao()] || [];
   }
   const temModulo = id => modulosEfetivos().includes(id);
+  /* zzz215: nível dentro do módulo — 'sem' | 'ver' | 'editar' | 'total'.
+     Total = editar + aprovar + excluir. A trava de verdade é no banco
+     (exigir_nivel); aqui é só para a tela não oferecer o que vai ser recusado. */
+  const NIVEL_NUM = { sem: 0, ver: 1, editar: 2, total: 3 };
+  function nivel(id) {
+    if (semSessao()) return 'total';
+    if (!temModulo(id)) return 'sem';
+    if (souAdmin()) return 'total';
+    const n = B7.Auth && B7.Auth.niveis ? B7.Auth.niveis() : null;
+    return n && NIVEL_NUM[n[id]] ? n[id] : 'total';
+  }
+  const podeNivel = (id, min) => NIVEL_NUM[nivel(id)] >= NIVEL_NUM[min];
+  const moduloDaRota = rota => ROTA_MODULO[String(rota || '').replace(/^#\//, '').split('/')[0]] || null;
+  /* rota sem módulo (ou módulo sem nível definido) = Total */
+  const nivelDaRota = rota => { const m = moduloDaRota(rota); return m ? nivel(m) : 'total'; };
 
   /* PAINEL (#/painel) — espaço de trabalho PESSOAL, montado a partir das
      funções operacionais REAIS da pessoa. Não é troca de perfil: ela
@@ -324,5 +339,5 @@ B7.Perm = (function () {
 
   return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
            painelElegivel, painelVisoes, souCoordenadorElegivel, souDesignerElegivel, funcoesOperacionais, ROTAS, CONFIG,
-           MODULOS, PADRAO_FUNCAO, modulosEfetivos, temModulo, funcao };
+           MODULOS, PADRAO_FUNCAO, modulosEfetivos, temModulo, funcao, nivel, podeNivel, moduloDaRota, nivelDaRota };
 })();

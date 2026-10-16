@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-17-zzz214';
+  const VERSAO = '2026-10-17-zzz215';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -76,7 +76,8 @@ B7.Auth = (function () {
     if (!ehAdminReal() || !papelAlvo) return false;
     simulacao = { papel: papelAlvo, funcoes_extra: funcoesExtraAlvo || [],
                   funcao: alvo && alvo.funcao !== undefined ? alvo.funcao : undefined,
-                  modulos: alvo && Array.isArray(alvo.modulos) ? alvo.modulos : undefined };
+                  modulos: alvo && Array.isArray(alvo.modulos) ? alvo.modulos : undefined,
+                  niveis: alvo && alvo.niveis && typeof alvo.niveis === 'object' ? alvo.niveis : undefined };
     return true;
   }
   function encerrarSimulacao() { simulacao = null; }
@@ -124,6 +125,12 @@ B7.Auth = (function () {
   function modulos() {
     const fonte = simulacao || sessao;
     return fonte && Array.isArray(fonte.modulos) ? fonte.modulos : null;
+  }
+  /* zzz215: nível dentro de cada módulo ({ modulo: 'sem'|'ver'|'editar'|'total' }),
+     resolvido no banco (minha_sessao.niveis). null = sessão antiga: vale Total. */
+  function niveis() {
+    const fonte = simulacao || sessao;
+    return fonte && fonte.niveis && typeof fonte.niveis === 'object' ? fonte.niveis : null;
   }
   const souVideomakerElegivel = () => funcao() === 'videomaker';
 
@@ -570,7 +577,7 @@ B7.Auth = (function () {
   }
 
   return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, sair, carregar, telaLogin, sessaoPersiste,
-           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel, funcao, modulos,
+           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel, funcao, modulos, niveis,
            ehAdminReal, simularPapel, encerrarSimulacao, emSimulacao,
            entrarComo, voltarParaMinhaConta, naContaDeOutro, contaDeOrigem };
 })();

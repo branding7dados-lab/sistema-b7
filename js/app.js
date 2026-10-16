@@ -87,6 +87,10 @@ B7.Rota = (function () {
     document.body.classList.toggle('b7-so-leitura', !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario() &&
       B7.Auth.ehEquipe && !B7.Auth.ehEquipe() && !(B7.Auth.ehCliente && B7.Auth.ehCliente())));
     const params = new URLSearchParams(query || '');
+    /* zzz215: nível no módulo da rota — some o que a pessoa não pode fazer ali */
+    const nvRota = B7.Perm && B7.Perm.nivelDaRota ? B7.Perm.nivelDaRota(partes[0] || '') : 'total';
+    document.body.classList.toggle('b7-nv-ver', nvRota === 'ver');
+    document.body.classList.toggle('b7-nv-editar', nvRota === 'editar');
 
     /* Guarda de rota: esconder o menu não basta, o endereço digitado à mão
        também precisa recusar. A regra vive em um lugar só (B7.Perm), para
