@@ -212,6 +212,10 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return B7.WhatsApp.abrir();
     }
+    if (partes[0] === 'ajuda' && B7.Ajuda) {
+      mostrar('tela-dashboard');
+      return B7.Ajuda.abrir(partes[1] || null);
+    }
     if (partes[0] === 'suporte' && B7.Suporte) {
       mostrar('tela-dashboard');
       return B7.Suporte.abrir(partes[1] || null);
@@ -854,6 +858,8 @@ B7.Rota = (function () {
     if (B7.Notif) B7.Notif.montar();
     /* zzz134: o botão das conversas da equipe, ao lado do sino */
     if (B7.Conversas) { try { B7.Conversas.montar(); } catch (e) {} }
+    /* zzz209: o "?" da ajuda, ao lado das conversas */
+    if (B7.Ajuda) { try { B7.Ajuda.montar(); } catch (e) {} }
     if (B7.Presenca) B7.Presenca.iniciar();
     if (B7.Push && B7.Push.manter) setTimeout(() => B7.Push.manter(), 2500);
     if (B7.Memoria && B7.Memoria.aquecer) B7.Memoria.aquecer();

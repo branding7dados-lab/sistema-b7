@@ -182,7 +182,7 @@ B7.Suporte = (function () {
     if (id && typeof id === 'string') sel = id;
     painel().innerHTML = '<div class="conteudo entra sp-tela">' +
       '<div class="cb-topo"><div class="cb-titulo"><h1>Suporte e feedback</h1><p>Relate um problema, mande uma ideia, tire uma dúvida ou elogie. A equipe responde aqui mesmo.</p></div>' +
-      '<div class="cb-topo-acoes"><button type="button" class="b pri" id="sp-novo">+ Novo chamado</button></div></div>' +
+      '<div class="cb-topo-acoes"><a class="b contorno" href="#/ajuda">Ver tutoriais</a><button type="button" class="b pri" id="sp-novo">+ Novo chamado</button></div></div>' +
       '<div id="sp-barra"></div><div class="sp-grade" id="sp-grade">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
     painel().querySelector('#sp-novo').onclick = () => novo();
     try { lista = ok(await sb().from('suporte_chamados').select('*').order('created_at', { ascending: false }).limit(300)) || []; }
