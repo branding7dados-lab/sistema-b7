@@ -1,0 +1,3216 @@
+/* GERADO a partir dos tutoriais (zzz209): conteúdo da tela Ajuda e tutoriais. Para mudar um texto, edite aqui. */
+window.B7 = window.B7 || {};
+B7.AJUDA_DADOS = [
+ {
+  "id": "intro",
+  "nome": "Comece aqui",
+  "itens": [
+   {
+    "id": "por-onde-comecar",
+    "titulo": "Por onde começar",
+    "onde": "Você já está aqui.",
+    "quem": "Todo mundo que usa o Sistema B7: coordenação, designers, videomakers e administração.",
+    "serve": "Ter o mínimo na cabeça antes de abrir as outras telas. Cada tutorial abaixo explica uma parte do sistema, do jeito que ela é hoje.",
+    "antes": "",
+    "passos": [
+     [
+      "Entre no sistema com o seu usuário e senha. O que aparece no menu da esquerda depende da sua função: cada pessoa vê só o que usa no dia a dia.",
+      []
+     ],
+     [
+      "Abra o \"Painel\" (se você tiver) para ver o seu trabalho de hoje: o que está atrasado, o que vence hoje e o que vem pela frente.",
+      []
+     ],
+     [
+      "Olhe o sino, no topo. Ali chegam os avisos: o que foi passado para você, prazos e respostas.",
+      []
+     ],
+     [
+      "Use Ctrl+K para buscar qualquer cliente, gravação ou demanda sem navegar pelo menu.",
+      []
+     ],
+     [
+      "Clique na sua foto, no topo, para ver o seu perfil, o modo claro/escuro, os atalhos e o \"Suporte e feedback\".",
+      []
+     ],
+     [
+      "Achou algo estranho ou tem uma ideia? Abra um chamado em \"Suporte e feedback\". É para isso que ele existe.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Use a busca desta página (no alto) para achar um assunto: digite, por exemplo, \"print\", \"entregue\" ou \"WhatsApp\".",
+      []
+     ],
+     [
+      "No celular, instale o sistema como aplicativo. O tutorial \"Aplicativo no celular\" mostra como.",
+      []
+     ]
+    ],
+    "cuidados": [],
+    "rotas": []
+   }
+  ]
+ },
+ {
+  "id": "comeco",
+  "nome": "Primeiros passos e rotina",
+  "itens": [
+   {
+    "id": "painel",
+    "titulo": "Painel",
+    "onde": "Barra lateral → PRINCIPAL → Painel. É a primeira tela de quem tem função de trabalho. No celular, é o primeiro botão da barra de baixo.",
+    "quem": "Coordenador, Videomaker e Designer (cada um vê o Painel da sua função). Quem tem mais de uma função vê tudo num Painel só. Administrador sem função de trabalho não tem Painel (a casa dele é o Panorama). Cliente não usa.",
+    "serve": "Mostrar só o SEU trabalho de hoje: o que está atrasado, o que vence hoje, a sua semana e o que vem pela frente. É o lugar para abrir o sistema de manhã.",
+    "antes": "Sua conta precisa ter uma função (Coordenador, Videomaker ou Designer). Se o Painel não aparece no menu, peça ao administrador.",
+    "passos": [
+     [
+      "Entre no sistema. O Painel abre sozinho. Se não abrir, clique em \"Painel\" na barra lateral.",
+      []
+     ],
+     [
+      "Leia o cumprimento no alto (\"Bom dia, seu nome\"). Logo abaixo aparece uma frase resumindo o dia. No Painel do Videomaker, por exemplo: quantas demandas estão atrasadas, quantas entregas são para hoje e quantas gravações você tem hoje.",
+      []
+     ],
+     [
+      "Olhe os cartões de números. Cada cartão é um atalho: clique para ver a lista daquele número. O Videomaker vê \"Atrasadas\", \"Vencem hoje\", \"Em produção\", \"Com o cliente\", \"Entregues no mês\" e \"Próximas gravações\". O Designer vê \"Ajustes pendentes\", \"Vencem hoje\", \"Em criação\" e \"Aguardando revisão\". O Coordenador vê \"Linhas editoriais em andamento\", \"Precisam de atenção\", \"Próximas publicações\" e \"Revisões pendentes\".",
+      []
+     ],
+     [
+      "Vá em \"Precisa da sua atenção\". É a lista do que fazer primeiro (no máximo 5 itens), com etiquetas como \"Atrasada há 2 dias\", \"Vence hoje\" ou \"Correção solicitada\". Clique no item para abrir direto aquela demanda, peça ou gravação.",
+      []
+     ],
+     [
+      "Veja \"Minha semana\". Cada dia mostra o que cai nele (atrasos, prazos, gravações). Quem tem várias funções clica no dia para abrir uma janelinha com tudo daquele dia.",
+      []
+     ],
+     [
+      "Confira o gráfico \"Minha produção\" (entregas por semana). Quem tem mais de uma função escolhe qual gráfico quer ver pelos botões acima dele.",
+      []
+     ],
+     [
+      "Veja \"Próximos 14 dias\" (Videomaker) ou \"Próximos\" / \"Próximas publicações\" / \"Próximos prazos\" (outras funções). Clique em \"Ver no calendário\" para abrir o Calendário.",
+      []
+     ],
+     [
+      "Use o botão grande do alto para ir ao seu trabalho principal: \"Minha fila de edição\" (Videomaker), \"Produção de Design\" (Designer) ou \"Nova linha editorial\" (Coordenador).",
+      []
+     ],
+     [
+      "Se aparecer \"Tentar de novo\" em algum bloco, clique nele. Só aquele bloco recarrega; o resto da tela continua funcionando.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Resolva de cima para baixo em \"Precisa da sua atenção\": a lista já vem na ordem de urgência (atrasos primeiro).",
+      []
+     ],
+     [
+      "No Painel do Videomaker, \"Minha fila\" mostra quantas demandas estão em cada etapa (\"Para iniciar\", \"Em edição\", \"Correção\", \"Com o cliente\", \"Standby\"). Clique numa etapa para ver só ela.",
+      []
+     ],
+     [
+      "Se hoje for uma data comemorativa, aparece \"Hoje é dia de…\" no alto (ou \"Próxima data\"). Clique para abrir as Oportunidades.",
+      []
+     ],
+     [
+      "O Painel se atualiza sozinho. Se um bloco mostrar \"—\" e \"Não carregou\", é só a conexão: clique em \"Tentar de novo\".",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "O Painel só mostra o que é SEU. Se uma demanda não aparece, ela pode estar com outra pessoa.",
+      []
+     ],
+     [
+      "Administrador com função extra vê o Painel dessa função, mas continua sendo administrador.",
+      []
+     ]
+    ],
+    "rotas": [
+     "painel"
+    ]
+   },
+   {
+    "id": "panorama",
+    "titulo": "Panorama",
+    "onde": "Barra lateral → OPERAÇÃO → Panorama. Para quem não tem Painel, ele fica no grupo PRINCIPAL.",
+    "quem": "Administrador e Coordenador. O Designer, ao clicar no mesmo lugar, vê a \"Central de Design\" (outra tela, dele). O Videomaker não tem Panorama; a casa dele é o Painel.",
+    "serve": "Ver, numa tabela só, como está cada cliente no mês, etapa por etapa, e descobrir rápido quem está travado.",
+    "antes": "",
+    "passos": [
+     [
+      "Clique em \"Panorama\" na barra lateral.",
+      []
+     ],
+     [
+      "Veja o mês no alto. Use as setas (mês anterior e próximo mês) para mudar. Clique em \"Este mês\" para voltar ao mês de hoje.",
+      []
+     ],
+     [
+      "Leia o resumo \"Andamento do mês\": o círculo mostra a porcentagem média e diz quantos clientes têm movimento.",
+      []
+     ],
+     [
+      "Olhe os cinco botões coloridos: \"com atraso\", \"pedem atenção\", \"em andamento\", \"em dia\" e \"sem movimento\". Clique em um para mostrar só os clientes daquele grupo. Clique de novo (ou em \"Mostrar todos\") para voltar.",
+      []
+     ],
+     [
+      "Procure um cliente digitando no campo \"Buscar cliente…\".",
+      []
+     ],
+     [
+      "Escolha a ordem: \"Quem precisa primeiro\" (atrasos no topo) ou \"A–Z\".",
+      []
+     ],
+     [
+      "Leia cada linha. As colunas são as etapas do mês: Linha, Roteiros, Gravação, Vídeos, Design, Aprovação e Publicações. Cada quadradinho mostra feito/total (ex.: 3/5) e uma frase curta (ex.: \"data passou\", \"sem data\").",
+      []
+     ],
+     [
+      "Clique na linha do cliente para abrir a página dele.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Cores dizem a situação: atraso e atenção chamam você; \"em dia\" está resolvido; \"·\" ou \"—\" significa que a etapa não começou no mês.",
+      []
+     ],
+     [
+      "Em \"Gravação\", \"sem data\" significa que a gravação existe mas ainda não foi marcada.",
+      []
+     ],
+     [
+      "Em \"Aprovação\" o número é quantas peças estão esperando o cliente.",
+      []
+     ],
+     [
+      "Passe o mouse num quadradinho para ler o texto completo.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "O Panorama só mostra; nada que você faz ali muda dados.",
+      []
+     ],
+     [
+      "Você só vê os clientes e números que a sua conta já pode ver.",
+      []
+     ]
+    ],
+    "rotas": [
+     ""
+    ]
+   },
+   {
+    "id": "publicacoes-do-dia",
+    "titulo": "Publicações do Dia",
+    "onde": "Barra lateral → MEU TRABALHO (Coordenador) ou OPERAÇÃO → Publicações do Dia. No celular, aparece como \"Publicações\".",
+    "quem": "Administrador e Coordenador. Designer e Videomaker não veem por padrão (o administrador pode liberar para alguém).",
+    "serve": "Ver tudo o que está marcado para sair num dia, em todos os clientes, e copiar a legenda na hora de postar.",
+    "antes": "As publicações vêm das Linhas Editoriais. Para aparecer aqui, o conteúdo precisa ter uma data de postagem na linha.",
+    "passos": [
+     [
+      "Clique em \"Publicações do Dia\". A tela abre no dia de hoje.",
+      []
+     ],
+     [
+      "Leia a frase do alto, por exemplo \"3 publicações hoje · 5 pendentes\".",
+      []
+     ],
+     [
+      "Troque de dia clicando num dia da faixa da semana. Use as setas para ir à semana anterior ou à próxima.",
+      []
+     ],
+     [
+      "Para ir longe, clique em \"Hoje\" ou em \"Ir para\" e escolha uma data.",
+      []
+     ],
+     [
+      "Veja os números coloridos por status (Ideia, Em criação, Em revisão, Aprovado, Programado, Publicado). Clique em um deles para mostrar só aquele status.",
+      []
+     ],
+     [
+      "Abra \"Filtros\" para filtrar por cliente, status, formato ou canal. Escolha \"Por cliente\" ou \"Por status\" para agrupar. Clique em \"Limpar filtros\" para tirar tudo.",
+      []
+     ],
+     [
+      "Em cada cartão, clique em \"Copiar legenda\" (só aparece se houver legenda) e cole na rede social.",
+      []
+     ],
+     [
+      "Clique em \"Ver detalhes\" para abrir a gaveta com o conteúdo completo.",
+      []
+     ],
+     [
+      "Clique em \"Abrir nos Criativos\" para ver as artes, ou em \"Abrir Linha Editorial\" para ir à linha do cliente.",
+      []
+     ],
+     [
+      "Role até \"Pendentes de dias anteriores\". Ali estão os conteúdos cuja data já passou e que ainda não estão como \"Publicado\". Clique em \"Ver todos\" para listar todos.",
+      []
+     ],
+     [
+      "Clique em \"Ver no calendário\" (no alto) para ver as publicações no Calendário da semana.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Se o dia está vazio, a tela sugere \"Ver\" o próximo dia com publicação.",
+      []
+     ],
+     [
+      "Seus filtros ficam guardados para a próxima vez.",
+      []
+     ],
+     [
+      "Em computador, os botões dos cartões mostram só o ícone; passe o mouse para ler o nome.",
+      []
+     ],
+     [
+      "A lista \"Próximas publicações\" mostra quantas saem nos próximos dias; clique para pular para o dia.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Esta tela só mostra. Ela não muda o status do conteúdo. Para marcar como publicado ou mudar a data, vá na Linha Editorial.",
+      []
+     ],
+     [
+      "Mudar a data na Linha Editorial move o conteúdo de dia aqui automaticamente.",
+      []
+     ],
+     [
+      "Não existe horário de publicação; a ordem dentro do dia é por cliente.",
+      []
+     ]
+    ],
+    "rotas": [
+     "publicacoes"
+    ]
+   },
+   {
+    "id": "calendario",
+    "titulo": "Calendário",
+    "onde": "Barra lateral → OPERAÇÃO (ou MEU TRABALHO, para o Videomaker) → Calendário.",
+    "quem": "Administrador, Coordenador, Designer e Videomaker. O Designer só olha. O Videomaker olha e também marca/remarca/conclui gravações. Editar, cancelar, excluir e as configurações do Google são do Administrador e do Coordenador.",
+    "serve": "Ver num lugar só as gravações, publicações e prazos de vídeo e de design, e marcar gravações.",
+    "antes": "",
+    "passos": [
+     [
+      "Clique em \"Calendário\". No computador escolha a vista no alto: \"Mês\", \"Semana\" ou \"Dia\". No celular a tela é uma agenda: uma faixa de dias e a lista do dia.",
+      []
+     ],
+     [
+      "Use as setas para voltar ou avançar o período e o botão \"Hoje\" para voltar ao dia de hoje. No celular, arrastar a lista de lado troca o dia.",
+      []
+     ],
+     [
+      "Filtre por tipo nos botões \"Todos\", \"Gravações\", \"Publicações\", \"Vídeo\" e \"Design\". Cada botão mostra quantos eventos há.",
+      []
+     ],
+     [
+      "Filtre também por \"Cliente\" e \"Responsável\". Marque \"Mostrar canceladas\" se quiser ver as canceladas. Clique em \"Limpar\" para tirar os filtros.",
+      []
+     ],
+     [
+      "Ligue o botão \"Oportunidades\" para ver datas comemorativas e campanhas no calendário.",
+      []
+     ],
+     [
+      "Clique num evento para abrir os detalhes (cliente, quando, responsável, local). Use o botão azul embaixo (\"Abrir gravação\", \"Abrir conteúdo\", \"Abrir demanda de vídeo\" ou \"Abrir peça de design\") para ir ao registro de verdade.",
+      []
+     ],
+     [
+      "No Mês, clique no número do dia para abrir a lista daquele dia. Se houver muitos eventos, um chip do cliente (ex.: \"Cliente · 14 vídeos\") abre a janela do dia.",
+      []
+     ],
+     [
+      "Para marcar uma gravação, clique em \"Marcar gravação\" (alto da tela) ou no \"+\" do dia. Escolha o cliente, o dia, o horário (ou toque em 30 min, 1h, 2h, 3h), o \"Mês de referência\" (obrigatório) e o local (opcional). Clique em \"Marcar gravação\".",
+      []
+     ],
+     [
+      "Para mexer numa gravação já marcada, abra o evento e clique em \"Remarcar, concluir…\". Ali há \"Remarcar\", \"Marcar como Concluída\" e, para gestão, \"Editar\", \"Cancelar gravação\" e \"Excluir gravação\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Ao concluir uma gravação, o sistema avisa e oferece \"Gerar demandas de edição\".",
+      []
+     ],
+     [
+      "Gravações remarcadas deixam a data antiga no calendário como histórico (aparece apagada). A gravação vale pela data mais nova.",
+      []
+     ],
+     [
+      "Gestão que conectou o Google Calendar vê o ícone de engrenagem (\"Configurações do Google Calendar\") e pode \"Vincular gravação\" ou \"Criar gravação\" a partir de eventos do Google ainda sem vínculo.",
+      []
+     ],
+     [
+      "Quem prefere abrir sempre na mesma vista muda em Configurações → Geral → Calendário → \"Visão padrão\".",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Excluir gravação\" apaga de vez (histórico, roteiros e cenas ligados e o evento no Google). Não dá para desfazer. \"Cancelar\" é diferente: guarda a gravação como cancelada.",
+      []
+     ],
+     [
+      "Se a sincronização com o Google falhar, o calendário avisa que o Google pode estar desatualizado.",
+      []
+     ],
+     [
+      "Designer não vê \"Marcar gravação\" nem botões de ação.",
+      []
+     ]
+    ],
+    "rotas": [
+     "calendario"
+    ]
+   },
+   {
+    "id": "meu-dia-em-30-segundos",
+    "titulo": "Meu dia em 30 segundos",
+    "onde": "No celular: botão \"Mais\" da barra de baixo → \"Meu dia em 30 segundos\". Também abre sozinho na primeira vez do dia no celular ou no app (se houver algo a mostrar). No app Android, também pelo atalho do ícone.",
+    "quem": "Equipe interna (cliente não). Gestão vê a operação toda; os outros veem o que é deles.",
+    "serve": "Ver o seu dia como nos \"stories\": publicações, gravações, prazos e atrasos, em telas rápidas.",
+    "antes": "",
+    "passos": [
+     [
+      "Toque em \"Mais\" e depois em \"Meu dia em 30 segundos\".",
+      []
+     ],
+     [
+      "Veja a capa com o cumprimento e os números do dia. Cada tela passa sozinha em poucos segundos.",
+      []
+     ],
+     [
+      "Toque no lado direito da tela para avançar e no lado esquerdo para voltar.",
+      []
+     ],
+     [
+      "Segure o dedo na tela para pausar.",
+      []
+     ],
+     [
+      "Em cada tela, toque no botão do rodapé (ex.: \"Ver publicações\", \"Ver gravações\", \"Abrir produção\", \"Resolver atrasos\") para ir ao assunto.",
+      []
+     ],
+     [
+      "Para fechar, toque no X, arraste para baixo ou use \"Esc\".",
+      []
+     ],
+     [
+      "Na última tela, use \"Abrir o Painel\", \"Ver o calendário\" ou \"Ver de novo\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Só entram as telas que têm algo a mostrar: \"No ar hoje\", \"Gravações\", \"Vence hoje\" e \"Atenção\" (atrasados).",
+      []
+     ],
+     [
+      "Na última tela, desmarque \"Mostrar sozinho na primeira vez que abro o dia\" se não quiser que abra sozinho.",
+      []
+     ]
+    ],
+    "cuidados": [],
+    "rotas": []
+   },
+   {
+    "id": "busca-global-ctrl-k",
+    "titulo": "Busca global (Ctrl K)",
+    "onde": "Barra do topo → campo \"Buscar no B7…\" (mostra \"Ctrl K\"; no Mac, \"⌘ K\"). No celular é o ícone de lupa.",
+    "quem": "Toda a equipe. Cada pessoa só encontra o que a sua conta pode abrir.",
+    "serve": "Achar rápido clientes, gravações, roteiros, linhas e outras coisas, e executar ações sem procurar no menu.",
+    "antes": "",
+    "passos": [
+     [
+      "Aperte \"Ctrl\" e \"K\" juntos (no Mac, \"⌘\" e \"K\"), ou clique em \"Buscar no B7…\". A tecla \"/\" também abre a busca quando você não está digitando.",
+      []
+     ],
+     [
+      "Com o campo vazio, a janela mostra \"RECENTES\" (últimas gravações e clientes mexidos) e \"AÇÕES\".",
+      []
+     ],
+     [
+      "Digite o que procura. Os resultados chegam agrupados: \"CLIENTES\", \"GRAVAÇÕES\", \"ROTEIROS\", \"NO TEXTO DOS ROTEIROS\", \"PEÇAS DE DESIGN\", \"DEMANDAS DE VÍDEO\", \"ITENS DE GRAVAÇÃO\", \"LINHAS EDITORIAIS\", \"CONTEÚDOS\", \"IDEIAS\", \"STATUS SEMANAL\" e \"DATAS\".",
+      []
+     ],
+     [
+      "Use as setas para cima e para baixo para escolher e \"Enter\" para abrir.",
+      []
+     ],
+     [
+      "Para fechar, aperte \"Esc\" ou clique em \"Cancelar\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "As \"AÇÕES\" também são filtradas pelo que você digita. Digite \"nova\" para achar as ações de criar.",
+      []
+     ],
+     [
+      "Dentro de uma Linha Editorial, a busca oferece \"Baixar linha editorial\", \"Novo conteúdo\" e \"Duplicar mês\". Dentro de um cliente: \"Nova linha editorial\", \"Nova ideia\" e \"Abrir inteligência\".",
+      []
+     ],
+     [
+      "\"Alternar tema\" na lista de ações troca claro/escuro na hora.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Resultado que a sua conta não pode abrir simplesmente não aparece. Isso é normal.",
+      []
+     ],
+     [
+      "Designer não vê as ações de criar gravação, cliente etc.",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "menu-criar",
+    "titulo": "Menu \"Criar\"",
+    "onde": "Barra do topo → botão \"Criar\" (com \"+\"), à direita, ao lado do sino e da sua conta.",
+    "quem": "Equipe interna. A lista muda conforme o que a sua conta pode criar. Cliente não vê.",
+    "serve": "Começar algo novo de qualquer tela, sem ir antes até a tela dona do assunto.",
+    "antes": "",
+    "passos": [
+     [
+      "Clique em \"Criar\". No celular abre uma folha de baixo para cima.",
+      []
+     ],
+     [
+      "Escolha uma opção. Dependendo da sua conta, a lista pode ter: \"Nova gravação\", \"Nova demanda de vídeo\", \"Nova linha editorial\", \"Nova demanda de Design\", \"Nova demanda de produção\", \"Novo status semanal\" e \"Novo cliente\".",
+      []
+     ],
+     [
+      "O sistema abre a tela certa e já chama a janela de criar.",
+      []
+     ],
+     [
+      "Preencha a janela e salve.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "A opção ligada à tela onde você está sobe para o topo, com a marca \"nesta tela\".",
+      []
+     ],
+     [
+      "Se a sua conta só pode criar uma coisa, o botão já vira essa ação (ex.: \"Nova gravação\"), sem lista.",
+      []
+     ],
+     [
+      "Em telas que já têm o próprio botão de criar, o \"Criar\" do topo fica mais discreto (só contorno).",
+      []
+     ],
+     [
+      "Dá para usar o teclado: \"N\" abre nova gravação e \"C\" novo cliente (só fora de campos de texto).",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Se o botão \"Criar\" não aparece, a sua conta não tem permissão para criar nada. Fale com o administrador.",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "notificacoes-sino",
+    "titulo": "Notificações (sino)",
+    "onde": "Barra do topo → ícone de sino. Um número aparece quando há avisos não lidos.",
+    "quem": "Toda a equipe.",
+    "serve": "Receber avisos do seu trabalho: coisas atribuídas a você, prazos, atrasos, correções e aprovações.",
+    "antes": "",
+    "passos": [
+     [
+      "Clique no sino. O painel \"Notificações\" abre.",
+      []
+     ],
+     [
+      "Use os botões \"Todas\", \"Atribuições\", \"Prazos\", \"Correções\" e \"Aprovações\" para filtrar.",
+      []
+     ],
+     [
+      "Clique num aviso para abrir direto o assunto dele. O aviso novo (com ponto) passa a lido.",
+      []
+     ],
+     [
+      "Clique em \"Marcar lidas\" para marcar todos como lidos de uma vez.",
+      []
+     ],
+     [
+      "Role até o fim e clique em \"Carregar mais\" para ver avisos mais antigos.",
+      []
+     ],
+     [
+      "Clique na engrenagem do painel (Preferências de notificação) para escolher o que avisa. Ela abre o seu perfil na aba \"Notificações\".",
+      []
+     ],
+     [
+      "Nessa aba, ligue \"Push neste aparelho\" (receber mesmo com o B7 fechado), \"Som das notificações\" e \"Aviso do navegador\". O navegador vai pedir permissão: aceite.",
+      []
+     ],
+     [
+      "Clique em \"Enviar teste\" para confirmar que o aviso chega neste aparelho.",
+      []
+     ],
+     [
+      "Mais abaixo, ligue ou desligue cada tipo de aviso (ex.: \"Meus prazos\", \"Meus atrasos\", \"Resumo diário\").",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "O sino confere sozinho a cada minuto e quando você volta para a aba.",
+      []
+     ],
+     [
+      "\"Resumo diário\" é um aviso às 8h com prazos do dia e gravações de amanhã. Só sai se houver algo.",
+      []
+     ],
+     [
+      "Desligar um tipo de aviso tira o push e o som dele, mas o registro continua no sino.",
+      []
+     ],
+     [
+      "No iPhone, o push só funciona depois de adicionar o Sistema B7 à tela de início.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Se o navegador bloqueou as notificações do site, o push não funciona. Libere nas configurações do navegador e ative de novo.",
+      []
+     ],
+     [
+      "O push é por aparelho: ligue em cada celular ou computador que usa.",
+      []
+     ],
+     [
+      "Administrador não recebe tudo automaticamente. Em \"Acompanhar a operação\" ele liga só o que quer.",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "atalhos-de-teclado",
+    "titulo": "Atalhos de teclado",
+    "onde": "Menu da sua conta (foto no canto do topo) → \"Atalhos de teclado\" (só em computador). Ou aperte \"?\" em qualquer tela. O administrador também tem \"Atalhos\" na barra lateral.",
+    "quem": "Equipe interna, no computador.",
+    "serve": "Trabalhar mais rápido sem tirar a mão do teclado.",
+    "antes": "",
+    "passos": [
+     [
+      "Aperte \"?\" fora de campos de texto. A janela \"Atalhos\" abre.",
+      []
+     ],
+     [
+      "Para abrir a busca, aperte \"Ctrl K\" (no Mac, \"⌘ K\") ou \"/\".",
+      []
+     ],
+     [
+      "Para começar uma nova gravação, aperte \"N\".",
+      []
+     ],
+     [
+      "Para cadastrar um novo cliente, aperte \"C\".",
+      []
+     ],
+     [
+      "Para salvar na hora, aperte \"Ctrl S\".",
+      []
+     ],
+     [
+      "No editor de roteiro: \"F\" liga o modo foco, \"P\" imprime, \"D\" baixa e \"V\" espia.",
+      []
+     ],
+     [
+      "Para fechar qualquer janela aberta, aperte \"Esc\". Clique em \"Entendi\" para fechar a lista.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Atalhos de letra só funcionam quando você NÃO está digitando num campo.",
+      []
+     ],
+     [
+      "\"N\" e \"C\" só funcionam se a sua conta pode criar gravação ou cliente.",
+      []
+     ],
+     [
+      "Menus e listas aceitam setas para cima/baixo, \"Home\", \"End\", \"Esc\" e \"Enter\".",
+      []
+     ],
+     [
+      "No app Android, segurar o ícone do B7 mostra atalhos: \"Meu dia\", gravação de hoje, teleprompter da próxima gravação e \"Nova ideia\".",
+      []
+     ]
+    ],
+    "cuidados": [],
+    "rotas": []
+   },
+   {
+    "id": "menu-do-botao-direito",
+    "titulo": "Menu do botão direito",
+    "onde": "Clique com o botão direito do mouse sobre um item de lista (cliente, demanda, cartão, link do menu etc.). Só em computador.",
+    "quem": "Toda a equipe logada.",
+    "serve": "Ver na hora as ações daquele item, sem abrir a tela dele.",
+    "antes": "",
+    "passos": [
+     [
+      "Passe o mouse sobre um item de uma lista ou um link do menu.",
+      []
+     ],
+     [
+      "Clique com o botão direito. Abre um pequeno menu com o nome do item no alto.",
+      []
+     ],
+     [
+      "Escolha \"Abrir\" para entrar nele, ou \"Abrir em nova aba\" para manter a tela atual.",
+      []
+     ],
+     [
+      "Veja as outras ações do item (as mesmas que ele já oferece na tela, como editar, duplicar ou arquivar).",
+      []
+     ],
+     [
+      "Use \"Copiar nome\" ou \"Copiar link\" para copiar.",
+      []
+     ],
+     [
+      "Use as setas do teclado para andar no menu e \"Esc\" para fechar.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Ações que apagam ou desativam aparecem marcadas como perigosas.",
+      []
+     ],
+     [
+      "Para ver o menu normal do navegador, segure \"Shift\" e clique com o botão direito.",
+      []
+     ],
+     [
+      "O menu respeita as mesmas permissões da tela: você só vê o que poderia fazer lá.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Em campos de texto, com texto selecionado, no celular (toque) e dentro do teleprompter, o menu especial não abre.",
+      []
+     ],
+     [
+      "Escolher uma ação do menu é igual a clicar no botão dela: o que for apagado pode não voltar.",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "barra-lateral",
+    "titulo": "Barra lateral",
+    "onde": "Lado esquerdo da tela, no computador. No celular vira a barra de baixo, com o botão \"Mais\".",
+    "quem": "Toda a equipe. Cada pessoa vê só os itens que a sua conta pode abrir.",
+    "serve": "Ir de uma tela para outra.",
+    "antes": "",
+    "passos": [
+     [
+      "Olhe os grupos da barra: \"Principal\", \"Meu trabalho\", \"Operação\" (ou \"Produção\", se você não tem \"Meu trabalho\") e \"Mais ferramentas\". Cada um só aparece se tiver item para você.",
+      []
+     ],
+     [
+      "Clique no título de um grupo para fechá-lo ou abri-lo. O sistema lembra a sua escolha. Se você abrir uma tela de um grupo fechado, ele abre sozinho.",
+      []
+     ],
+     [
+      "Clique num item para ir à tela (por exemplo \"Publicações do Dia\", \"Gravações\", \"Calendário\").",
+      []
+     ],
+     [
+      "Clique em \"Recolher\", no pé da barra, para deixá-la só com ícones. Clique de novo para expandir.",
+      []
+     ],
+     [
+      "Com a barra recolhida, clique no ícone de um grupo: abre um painel ao lado com os itens. Passe o mouse num ícone para ler o nome.",
+      []
+     ],
+     [
+      "No celular, use os 4 botões da barra de baixo. Toque em \"Mais\" para ver o resto, em grupos.",
+      []
+     ],
+     [
+      "Para a barra já começar recolhida, ligue \"Começar com a barra recolhida\" em Configurações → Geral.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "\"Meu trabalho\" muda conforme a sua função. Coordenador vê Linhas, Publicações, Roteiros, Gravações e Aprovações; Videomaker vê Edição de vídeo, Gravações, Roteiros e Calendário; Designer vê Design e Linhas.",
+      []
+     ],
+     [
+      "No tablet, a barra é sempre só de ícones.",
+      []
+     ],
+     [
+      "O ícone/logo do alto leva ao seu início (Painel, se você tem).",
+      []
+     ],
+     [
+      "No \"Mais\" do celular há \"Meu dia em 30 segundos\".",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Esconder um item não é segurança. Se um item não aparece para você, é porque a sua conta não tem esse acesso. Peça ao administrador.",
+      []
+     ],
+     [
+      "\"Lixeira\" e \"Usuários e acessos\" são do administrador.",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "modo-claro-escuro-e-aparencia",
+    "titulo": "Modo claro/escuro e aparência",
+    "onde": "Menu da sua conta (foto no topo) → seção \"Aparência\" (Sistema, Claro, Escuro). Mais opções em Configurações → aba \"Aparência\" (administrador acessa pela barra lateral; os outros por \"Preferências e configurações\" no menu da conta).",
+    "quem": "Toda a equipe. O ajuste vale só para o seu aparelho.",
+    "serve": "Deixar o sistema mais confortável para os olhos e do jeito que você gosta.",
+    "antes": "",
+    "passos": [
+     [
+      "Clique na sua foto no topo.",
+      []
+     ],
+     [
+      "Em \"Aparência\", escolha \"Claro\", \"Escuro\" ou \"Sistema\" (segue o tema do aparelho). A mudança é na hora.",
+      []
+     ],
+     [
+      "Para mais ajustes, clique em \"Preferências e configurações\" e abra a aba \"Aparência\".",
+      []
+     ],
+     [
+      "Em \"Cor do sistema\", clique numa das bolinhas de cor. \"Usar a da equipe\" volta à cor padrão definida pelo administrador. \"Mais opções\" abre outros ajustes.",
+      []
+     ],
+     [
+      "Em \"Tema\", escolha \"Claro\", \"Escuro\" ou \"Sistema\".",
+      []
+     ],
+     [
+      "Em \"Densidade\", escolha \"Confortável\" ou \"Compacta\" (cabe mais conteúdo na tela).",
+      []
+     ],
+     [
+      "Ligue ou desligue \"Animações\".",
+      []
+     ],
+     [
+      "Em \"Desempenho\", escolha \"Automático\", \"Leve\" ou \"Completo\". \"Leve\" ajuda aparelhos que travam.",
+      []
+     ],
+     [
+      "Se precisar, use o campo \"Procurar um ajuste\" no alto das Configurações.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Pelo teclado: abra a busca (Ctrl K) e escolha \"Alternar tema\".",
+      []
+     ],
+     [
+      "Enquanto você não escolher manualmente, o sistema segue o tema do seu aparelho.",
+      []
+     ],
+     [
+      "Em \"Configurações → Geral\" você escolhe a \"Tela inicial\" e a \"Visão padrão\" do Calendário.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "A cor e o tema valem só para este aparelho. Em outro celular ou computador, ajuste de novo.",
+      []
+     ],
+     [
+      "A \"Aparência do sistema\" (padrão para a equipe toda) é só do administrador.",
+      []
+     ]
+    ],
+    "rotas": []
+   }
+  ]
+ },
+ {
+  "id": "planejar",
+  "nome": "Clientes e planejamento",
+  "itens": [
+   {
+    "id": "clientes",
+    "titulo": "Clientes",
+    "onde": "Barra lateral → OPERAÇÃO → Clientes. Quem não tem a parte \"MEU TRABALHO\" cheia pode ver o item em \"PRODUÇÃO\".",
+    "quem": "Administrador e Coordenação (criam, editam, excluem). Designer e Videomaker conseguem abrir a página de um cliente só para ler o contexto, sem os botões de gestão (Nova gravação, Editar cliente, Excluir).",
+    "serve": "Guardar a ficha de cada cliente (nome, logo, observações, forma de trabalho, grupo do WhatsApp, dia fixo de gravar) e ser a porta de entrada para tudo dele: linha editorial, gravações, roteiros, vídeos e design.",
+    "antes": "Nada. O nome do cliente é o único dado obrigatório.",
+    "passos": [
+     [
+      "Abra **Clientes** no menu. Você vê os cartões com logo, número de gravações, número de roteiros e quando houve a última atividade.",
+      []
+     ],
+     [
+      "Para achar alguém, digite no campo \"Buscar cliente…\". Use os botões \"Todos\", \"Com gravações\" e \"Sem gravações\" para filtrar. Use \"Recentes\" ou \"A–Z\" para mudar a ordem.",
+      []
+     ],
+     [
+      "Para criar, clique em \"Novo cliente\". Escreva o nome (obrigatório). Se quiser, arraste a logo para a área (ou clique em \"Selecionar\") e escreva observações como tom de voz e contato.",
+      []
+     ],
+     [
+      "Em \"COMO TRABALHAMOS COM ESTE CLIENTE\", marque tudo o que vale: \"Linha editorial\", \"Pauta semanal\" e/ou \"Roteiros e trends\". Pode marcar mais de uma. Se não marcar nenhuma, fica só \"Linha editorial\".",
+      []
+     ],
+     [
+      "Clique em \"Criar cliente\". Se a logo falhar, o cliente é criado do mesmo jeito. Depois você tenta de novo em \"Editar cliente\".",
+      []
+     ],
+     [
+      "Para abrir um cliente, clique no cartão dele (ou no \"⋯\" → \"Abrir workspace\"). No topo da página do cliente ficam as abas: \"Visão geral\", \"Editorial\", \"Gravações\", \"Roteiros\", \"Vídeos\", \"Design\", \"Ideias\", \"Inteligência\" e \"Arquivados\". A aba \"Editorial\" só aparece se \"Linha editorial\" estiver marcada nos modos de trabalho.",
+      []
+     ],
+     [
+      "Para mudar nome, logo, observações ou modos, clique em \"Editar cliente\" (no \"⋯\" do cartão ou no \"⋯\" do topo da página do cliente). Altere e clique em \"Salvar alterações\".",
+      []
+     ],
+     [
+      "Na mesma janela \"Editar cliente\", preencha \"GRUPO DO WHATSAPP\" com o nome do grupo exatamente como aparece no WhatsApp. É esse nome que o \"Enviar no WhatsApp\" usa para abrir o grupo certo.",
+      []
+     ],
+     [
+      "Ainda em \"Editar cliente\", se o cliente grava sempre no mesmo dia, ligue \"Este cliente tem dia fixo de gravar\" (veja \"Gravação fixa\" nas dicas). Escolha \"Toda semana\" (e o dia da semana) ou \"Todo mês\" (e o dia do mês). Se quiser, preencha o horário \"das … às …\". Escolha \"criar com … de antecedência\" (3, 5, 7, 10 ou 14 dias). Clique em \"Salvar alterações\".",
+      []
+     ],
+     [
+      "Na página do cliente, use \"Nova gravação\" para marcar uma gravação dele e \"Resumo do mês\" para o resumo mensal.",
+      []
+     ],
+     [
+      "Para deixar um cliente no topo da lista, clique no alfinete do cartão (ou \"⋯\" → \"Fixar no topo\"). Ele passa para o grupo \"Fixados\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Os três modos de trabalho **somam**. Um cliente pode ter \"Linha editorial\", \"Pauta semanal\" e \"Roteiros e trends\" ao mesmo tempo. O cabeçalho do cliente mostra uma etiqueta para cada modo que não seja só linha editorial.",
+      []
+     ],
+     [
+      "Mudar o modo só muda o que a tela mostra. Nada é apagado. Se voltar a marcar \"Linha editorial\", a aba \"Editorial\" volta com tudo.",
+      []
+     ],
+     [
+      "\"Gravação fixa\": ao salvar, o sistema já cria as gravações que cabem na antecedência escolhida. Depois, uma rotina diária (de manhã) cria a próxima. A gravação se chama \"Gravação DD/MM\". Se já existe gravação nesse dia, nada é criado de novo. Dá para remarcar, cancelar ou excluir como qualquer outra gravação.",
+      []
+     ],
+     [
+      "O campo de dia fixo só aparece para Administrador e Coordenação.",
+      []
+     ],
+     [
+      "Cliente marcado como \"teste\" tem uma etiqueta e não entra nos números do Panorama e da TV.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Excluir cliente\" apaga junto todas as gravações, roteiros e cenas dele. Não dá para desfazer. Se ele tem conteúdo, o sistema pede para você digitar o nome do cliente para confirmar. Cliente de teste não tem esse botão.",
+      []
+     ],
+     [
+      "Dois clientes não podem ter o mesmo nome. O sistema avisa \"Já existe um cliente com esse nome\".",
+      []
+     ],
+     [
+      "Logo aceita PNG, JPG ou WEBP, com limite de tamanho. Arquivo maior ou de outro tipo é recusado.",
+      []
+     ]
+    ],
+    "rotas": [
+     "clientes",
+     "cliente"
+    ]
+   },
+   {
+    "id": "linhas-editoriais",
+    "titulo": "Linhas editoriais",
+    "onde": "Barra lateral → MEU TRABALHO → Linhas editoriais para Coordenação e Designer. Também dentro de um cliente, na aba \"Editorial\".",
+    "quem": "Administrador e Coordenação criam e editam. O Designer só lê (o botão \"+ Novo conteúdo\", o menu \"⋯\" e os campos ficam travados). Videomaker não vê esta tela.",
+    "serve": "Planejar o mês de um cliente: estratégia, pilares e cada conteúdo (Reel, Card, Carrossel, Story). Dela saem as peças para o Design, o envio para o cliente aprovar e o PDF/apresentação.",
+    "antes": "O cliente precisa estar cadastrado. Para \"Criar roteiro com IA\" no Reel, o cliente precisa ter uma gravação em aberto.",
+    "passos": [
+     [
+      "Abra **Linhas editoriais**. Use a busca (\"Buscar por cliente ou mês…\") e os botões de situação (\"Todas\", \"Em criação\", \"Em revisão\", \"Aprovada\", \"Finalizada\") para achar uma linha.",
+      []
+     ],
+     [
+      "Clique em \"+ Nova linha editorial\". Escolha o cliente (se estiver fora da página dele), o mês (atalhos \"Este mês\" e \"Próximo mês\", ou os campos MÊS e ANO) e o nome, se quiser mudar. Clique em \"Criar linha editorial\".",
+      []
+     ],
+     [
+      "Se o mês já tem linha, aparece o aviso \"Esse mês já tem linha\" com o botão \"Abrir\". Você pode abrir a que existe ou criar outra mesmo assim.",
+      []
+     ],
+     [
+      "Dentro da linha há cinco abas: \"Visão geral\", \"Estratégia\", \"Criativos\", \"Postagens\" e \"Produção\". Comece pela \"Estratégia\" se quiser (tudo ali é opcional): \"Referências do mês\", datas do período, meta de conteúdos, canais, objetivo e posicionamento. O botão \"Usar posicionamento do cliente\" puxa o que já está na Inteligência do cliente.",
+      []
+     ],
+     [
+      "Ainda em \"Estratégia\", monte os pilares: clique em \"+ ADICIONAR PILAR\", escolha o tipo, o percentual e o funil. Para tirar um pilar, use o \"✕\" (os conteúdos dele ficam sem pilar, nada é apagado).",
+      []
+     ],
+     [
+      "Vá em \"Criativos\" e clique em \"+ Novo conteúdo\". Escolha o formato: \"Reel\" (vídeo com roteiro), \"Card\" (peça única), \"Carrossel\" (sequência de slides) ou \"Story\" (sequência de stories). O conteúdo abre numa janela.",
+      []
+     ],
+     [
+      "Preencha título, canal, data de postagem, pilar (se houver), objetivo e ideia geral. No \"Status\", escolha: Ideia, Em criação, Em revisão, Aprovado, Programado ou Publicado. Cada formato tem seus campos (headline, CTA, legenda, slides, stories…). O botão \"Copiar legenda\" copia a legenda. Feche com \"Concluir\".",
+      []
+     ],
+     [
+      "Se o conteúdo é um **Reel**, escolha em \"PRODUÇÃO\": \"Gravação e edição\" (entra na gravação do cliente; o pedido de edição nasce quando marcarem que foi gravado) ou \"Só edição\" (vira na hora um pedido em Edição de vídeo, sem depender de gravação). Em \"FORMATO\" escolha \"Normal\", \"Meme\" ou \"Trend\".",
+      []
+     ],
+     [
+      "Ainda no Reel, cole o \"LINK DE REFERÊNCIA\" (precisa começar com https://). Logo abaixo aparece a pergunta \"Na gravação, serve para:\". Escolha \"Só edição\" ou \"Edição e gravação\". Se o conteúdo é \"Só edição\", a referência já vai direto para quem edita. A mesma escolha vale para os links de \"Referências do mês\" e aparece na gravação do cliente.",
+      []
+     ],
+     [
+      "Para ligar o Reel a um roteiro, use \"Vincular roteiro existente\" ou \"Criar roteiro com IA\" (aparece só se a IA estiver ligada). Com roteiro ligado, o botão \"Abrir roteiro\" leva ao editor.",
+      []
+     ],
+     [
+      "Para mandar as peças ao Design, você tem três caminhos: (a) no menu \"⋯\" da linha, \"Concluir Linha Editorial\" (libera as peças com versão, deixa escolher o responsável pelo design e avisa a equipe); (b) \"Enviar para Design (rápido, sem versão)\" no mesmo menu; (c) no \"⋯\" de um cartão de conteúdo, \"Enviar para Design\". Na aba \"Produção\" há também \"Enviar linha para Design\". Reel só gera peça de capa se \"NECESSITA CAPA?\" estiver em \"Sim\".",
+      []
+     ],
+     [
+      "Para o cliente aprovar, abra o \"⋯\" e clique em \"Enviar para aprovação do cliente\". Escreva um recado (opcional) e clique em \"Enviar v1\" (ou v2, v3…). A versão enviada fica congelada. Quando o cliente responder pelo WhatsApp, use \"Cliente respondeu\" no bloco de status e registre \"Aprovou\", \"Pediu ajustes\" ou \"Recusou\".",
+      []
+     ],
+     [
+      "Para mostrar ou guardar: \"Apresentar\" abre a apresentação em tela cheia (16:9). \"Baixar PDF\" abre a janela \"Exportar linha editorial\", onde você escolhe \"Documento A4\" ou \"Apresentação 16:9\", marca ou não \"Incluir capa\", e clica em \"Visualizar\" ou \"Baixar PDF\" (no 16:9 também \"Baixar PNG\").",
+      []
+     ],
+     [
+      "Para repetir o planejamento no mês seguinte, use \"Duplicar para outro mês\". Escolha mês, ano e o que copiar (objetivo, posicionamento, canais, pilares, criativos, datas).",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Tudo é salvo sozinho enquanto você digita. Ao fechar a janela do conteúdo, a tela atualiza.",
+      []
+     ],
+     [
+      "Existe um assistente de IA em vários campos (\"Escrever com IA\" / \"Melhorar com IA\"), nos pilares (\"Sugerir pilares\"), nos conteúdos (\"Sugerir conteúdos\") e na linha toda (\"Montar linha com IA\", \"Revisar linha editorial\"). A IA só sugere. Nada muda até você clicar em Aplicar ou Adicionar.",
+      []
+     ],
+     [
+      "Um conteúdo \"Programado\" cuja data já passou vira \"Publicado\" sozinho quando alguém abre a linha.",
+      []
+     ],
+     [
+      "A cor da situação da linha: \"Aprovada\" e \"Finalizada\" em verde, \"Em revisão\" em destaque de revisão. Mude a situação no \"⋯\" → \"STATUS DA LINHA\".",
+      []
+     ],
+     [
+      "\"Criar status semanal\" no \"⋯\" já abre o Status semanal ligado a esta linha.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Excluir linha editorial\" manda a linha e os conteúdos dela para a lixeira. Dá para restaurar depois, mas confirme antes.",
+      []
+     ],
+     [
+      "Mudar o link de referência de um conteúdo faz a escolha \"Só edição / Edição e gravação\" voltar a ficar pendente. É preciso escolher de novo.",
+      []
+     ],
+     [
+      "Concluir a linha de novo (v2, v3…) avisa o Designer das peças cujo briefing mudou.",
+      []
+     ],
+     [
+      "Escolher \"Só edição\" cria na hora a demanda em Edição de vídeo.",
+      []
+     ],
+     [
+      "\"Liberar no portal do cliente\" é uma decisão sua: nada fica visível ao cliente só porque foi salvo.",
+      []
+     ]
+    ],
+    "rotas": [
+     "linhas",
+     "linha"
+    ]
+   },
+   {
+    "id": "roteiros",
+    "titulo": "Roteiros",
+    "onde": "Barra lateral → MEU TRABALHO → Roteiros para Coordenação e Videomaker. Para os outros, em OPERAÇÃO. O editor abre pela gravação.",
+    "quem": "Administrador e Coordenação escrevem e editam. Videomaker abre a lista e o editor só para ler (campos travados), e usa o Teleprompter. Designer e Cliente não veem esta tela.",
+    "serve": "Escrever o roteiro de cada vídeo, cena por cena, deixar a folha pronta para imprimir ou baixar e ler o texto no teleprompter na hora de gravar.",
+    "antes": "Todo roteiro mora dentro de uma gravação de um cliente. Crie a gravação primeiro (botão \"Nova gravação\").",
+    "passos": [
+     [
+      "Abra **Roteiros**. A lista vem separada por mês da gravação. Troque entre \"Lista\" (agrupada por gravação) e \"Cards\" nos botões do topo.",
+      []
+     ],
+     [
+      "Filtre pelos estágios (Todos, Em criação, Em revisão, Aprovado internamente, Pronto para gravar, Gravado), pelo campo \"Buscar roteiro, cliente ou gravação…\", pelo mês e pelo cliente. Ordene por \"Recentes\", \"Próx. gravação\" ou \"Cliente A–Z\". \"Limpar\" tira os filtros.",
+      []
+     ],
+     [
+      "Para criar um roteiro, abra a gravação do cliente e clique em \"Abrir roteiros\". No editor, clique no \"+\" da coluna da esquerda (ou no \"⋯\" → \"Novo roteiro\", ou o botão \"+ Novo roteiro\" se a gravação ainda não tem nenhum). O roteiro já nasce com 3 cenas: Gancho, Narrativa e CTA.",
+      []
+     ],
+     [
+      "Escreva o \"TÍTULO\" e o \"OBJETIVO DO ROTEIRO\". Escolha o \"ESTÁGIO DO ROTEIRO\": Em criação, Em revisão, Aprovado internamente, Pronto para gravar ou Gravado.",
+      []
+     ],
+     [
+      "Em \"CENAS\", escreva a fala no campo de texto (Enter cria novo parágrafo). Escolha o tipo da cena: Gancho, Narrativa, Narração ou CTA. Preencha a \"DIREÇÃO\" (orientação para quem grava). Na cena de tipo Narração, a \"SUGESTÃO DE CENAS\" é obrigatória (uma imagem por linha).",
+      []
+     ],
+     [
+      "Para mexer nas cenas: \"+ NOVA CENA\" no fim, \"+ ADICIONAR CENA\" entre duas cenas, e o \"⋯\" de cada cena (Duplicar cena, Mover para cima, Mover para baixo, Excluir cena). Dá para arrastar pela alça \"⠿\". Clicar no topo da cena recolhe e abre.",
+      []
+     ],
+     [
+      "Use \"OBSERVAÇÃO DE GRAVAÇÃO\" para notas de produção (ex.: plano fechado, mais energia). Ela sai na folha, mas não é fala. Use \"NOTA INTERNA B7\" para avisos só da equipe. Essa nunca sai na folha, no PDF nem no PNG.",
+      []
+     ],
+     [
+      "Olhe a folha ao lado (a \"Prévia\"). No celular, troque entre as abas \"Editor\" e \"Prévia\". O botão \"A−\" / \"A+\" muda o tamanho da letra da folha. O botão \"auto\" deixa o sistema ajustar a letra sozinho para caber.",
+      []
+     ],
+     [
+      "Para ler na hora de gravar, no \"⋯\" do roteiro clique em \"Abrir Teleprompter\" (ou use o botão \"Teleprompter\" na página da gravação). Escolha o modo: \"Por cenas\" (uma cena por vez, para gravar em takes) ou \"Contínuo\" (o roteiro inteiro rolando). Clique em \"Iniciar\".",
+      []
+     ],
+     [
+      "No teleprompter: Espaço pausa e continua; setas para a direita e para a esquerda trocam de cena; seta para cima e para baixo mudam a velocidade; \"+\" e \"-\" mudam a letra; \"M\" espelha o texto; \"F\" tela cheia; \"R\" volta ao início; \"Esc\" sai. O ícone de ajustes abre espaçamento, largura do texto, contagem regressiva (desligada, 3s, 5s ou 10s) e \"Preparar antes de cada cena\".",
+      []
+     ],
+     [
+      "Ao terminar a leitura, o teleprompter oferece \"Marcar como gravado\" (para roteiros que estão na lista da gravação) e \"Finalizar roteiro\" / \"Concluir\".",
+      []
+     ],
+     [
+      "Para entregar: \"Imprimir\" e \"Baixar\" no topo do editor (atalhos: P para imprimir, D para baixar, V para visualização rápida, F para modo foco). No \"⋯\" do roteiro ainda há \"Apresentar roteiros\" e \"Visualização rápida\".",
+      []
+     ],
+     [
+      "Para o cliente aprovar o roteiro, no \"⋯\" do roteiro clique em \"Enviar para aprovação\", escreva um recado (opcional) e clique em \"Enviar v1\" (ou v2…).",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Com a IA ligada, o bloco \"IA do roteiro\" oferece \"Criar rascunho\" (quando ainda há pouca fala), \"Revisar roteiro\" e, se o roteiro nasceu de um conteúdo da linha editorial, \"Comparar com planejamento\". Dentro de cada cena há \"Melhorar com IA\": ações como \"Melhorar este trecho\", \"Criar outra versão\", \"Melhorar o gancho\", \"Sugerir CTA\", \"Encurtar\", \"Deixar mais natural\", ou escrever sua própria instrução e clicar em \"Gerar\". Se você selecionar um trecho do texto antes, a IA mexe só nele.",
+      []
+     ],
+     [
+      "A IA nunca altera o roteiro sozinha. A sugestão só entra quando você clica em \"Aplicar\". Logo depois aparece \"Desfazer\" por alguns instantes.",
+      []
+     ],
+     [
+      "Não existe cronômetro de tempo no editor. A \"escala\" é só o tamanho da letra da folha. Para ter ideia do ritmo, use a velocidade do teleprompter.",
+      []
+     ],
+     [
+      "O \"⋯\" também tem \"Duplicar roteiro\" e \"Fixar roteiro\". Arrastar os botões numerados da coluna da esquerda muda a ordem dos roteiros.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Excluir roteiro\" manda para a lixeira (aparece um aviso para desfazer), mas confirme antes.",
+      []
+     ],
+     [
+      "O Teleprompter é só para Videomaker, Coordenação e Administrador. Para outros, aparece o aviso \"O teleprompter é para videomaker e coordenação.\".",
+      []
+     ],
+     [
+      "Roteiro sem fala escrita não abre no teleprompter (\"Este roteiro ainda não tem fala escrita.\").",
+      []
+     ],
+     [
+      "Gravar com a câmera no teleprompter pede permissão de câmera e microfone. Sem permissão, não grava. Depende do aparelho (confirmar em cada aparelho).",
+      []
+     ]
+    ],
+    "rotas": [
+     "roteiros"
+    ]
+   },
+   {
+    "id": "status-semanal",
+    "titulo": "Status semanal",
+    "onde": "Barra lateral → OPERAÇÃO → Status semanal. Também pelo cartão \"Status semanal\" na página do cliente e pelo \"⋯\" da linha editorial (\"Criar status semanal\").",
+    "quem": "Administrador e Coordenação.",
+    "serve": "Montar o acompanhamento de sete dias de um cliente (o que sai, o que está em produção, o que depende do cliente) e gerar um card 4:5 pronto para mandar no WhatsApp.",
+    "antes": "O cliente cadastrado. Se ele tem linha editorial, o sistema já traz as postagens da semana. Sem linha, dá para criar vazio e adicionar à mão.",
+    "passos": [
+     [
+      "Abra **Status semanal**. A lista é agrupada por mês e por semana, com a barra de progresso \"N/N enviados\". Use \"Buscar por cliente ou período…\" para filtrar.",
+      []
+     ],
+     [
+      "Clique em \"Novo status\" (ou \"+ Criar primeiro status\" se não houver nenhum).",
+      []
+     ],
+     [
+      "Em \"Novo status semanal\", escolha o cliente, a semana (atalhos \"Esta semana\" e \"Próxima semana\", ou o campo \"INÍCIO DA SEMANA\") e a \"Fonte do planejamento\". A fonte sugere sozinha a linha editorial do mês da semana. \"Nenhuma — começar vazio\" cria sem demandas. Clique em \"Criar status\".",
+      []
+     ],
+     [
+      "Se a semana já tem status desse cliente, aparece \"Semana já tem status\" com o botão \"Abrir\". Você pode abrir o existente ou criar outro.",
+      []
+     ],
+     [
+      "Quando há linha, entram só os conteúdos com data de postagem dentro dos sete dias, como demandas da etapa Postagem. A situação já acompanha o status do conteúdo na linha.",
+      []
+     ],
+     [
+      "No editor, escreva a \"OBSERVAÇÃO GERAL DA SEMANA\" (opcional). O botão \"Escrever com IA\" gera um texto a partir das demandas e só entra no campo se você aplicar.",
+      []
+     ],
+     [
+      "Em \"Como aparece para o cliente\", ligue ou desligue: \"Mostrar dias sem atividades\", \"Incluir observações\", \"Mostrar itens concluídos\" e \"Mostrar atividades\" (\"Toda a semana\" ou \"A partir de hoje\").",
+      []
+     ],
+     [
+      "Para adicionar uma demanda, clique em \"+ Adicionar Demanda\" (ou no \"+\" do dia). Escolha \"Conteúdo existente\" (busque e clique no conteúdo) ou \"Demanda avulsa\" (gravação, reunião, aprovação, ajustes, entrega…). Defina título, data, tipo, situação e uma observação para o cliente. Clique em \"Adicionar\".",
+      []
+     ],
+     [
+      "Clique numa demanda para abrir e ajustar: título, datas, tipo, canal e \"SITUAÇÃO\". Em \"COMO APARECE PARA O CLIENTE\" você pode escrever um texto mais simples sem mudar a situação real. Use as setas para cima e para baixo para mudar a ordem no dia. O \"⋯\" tem \"Duplicar demanda\", \"Desvincular da origem\" e \"Remover do relatório\".",
+      []
+     ],
+     [
+      "Se aparecer o aviso \"situações genéricas pra especificar\", escolha a situação real nos seletores dele. Assim o cliente não vê textos vagos como \"Previsto\".",
+      []
+     ],
+     [
+      "Confira a \"Prévia\" ao lado (é exatamente o que vai sair no arquivo). \"Recolher\" esconde a prévia.",
+      []
+     ],
+     [
+      "No \"⋯\", em \"ESTADO DO RELATÓRIO\", escolha \"Rascunho\", \"Pronto para envio\" ou \"Enviado\". \"Publicar no portal do cliente\" é uma ação separada.",
+      []
+     ],
+     [
+      "Clique em \"Exportar\". Escolha \"PNG 4:5\" (imagem para o WhatsApp) ou \"PDF 4:5\". Em \"Opções\" dá para marcar alta resolução, dias vazios, observações e itens concluídos. Clique em \"Baixar PNG\" (ou PDF), ou em \"Copiar mensagem\" para copiar o texto de acompanhamento.",
+      []
+     ],
+     [
+      "Para exportar a semana de todos os clientes de uma vez, na lista clique em \"Exportar\" ao lado da semana. Sai um arquivo .zip.",
+      []
+     ],
+     [
+      "Para repetir a semana, no \"⋯\" use \"Duplicar para outra semana\", escolha o início da nova semana e o que copiar.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Etapa e situação são coisas diferentes: a etapa é o que será feito (por exemplo Postagem, Gravação, Aprovação); a situação é em que pé está. O sistema sugere as situações que combinam com o tipo da demanda.",
+      []
+     ],
+     [
+      "Enquanto você não mexe na situação de uma demanda vinda da linha, ela acompanha sozinha o status do conteúdo na linha editorial. Escolher a situação à mão tira ela do automático.",
+      []
+     ],
+     [
+      "\"Versões exportadas\" (no \"⋯\") mostra o histórico de cada exportação (V01, V02…).",
+      []
+     ],
+     [
+      "Marcar \"Enviado\" é só um registro seu. O sistema não sabe se o cliente recebeu ou viu.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Duplicar para outra semana\" nunca copia situações: tudo volta para \"Previsto\". Isso é de propósito, para não aparecer \"Publicado\" numa semana nova.",
+      []
+     ],
+     [
+      "\"Excluir\" remove o status. Apagar o conteúdo original da linha não apaga a demanda do status.",
+      []
+     ],
+     [
+      "Mudar o título na linha editorial não muda um relatório já exportado.",
+      []
+     ]
+    ],
+    "rotas": [
+     "semanas",
+     "semana"
+    ]
+   },
+   {
+    "id": "oportunidades",
+    "titulo": "Oportunidades",
+    "onde": "Barra lateral → OPERAÇÃO → Oportunidades. Também no Calendário (botão \"Ver no Calendário\") e na página de cada cliente (bloco \"Oportunidades · próximos 30 dias\").",
+    "quem": "Administrador e Coordenação. As abas \"Revisão\" e \"Fontes\" são só do Administrador. Designer e Videomaker veem o bloco de oportunidades dentro da página do cliente, só para ler.",
+    "serve": "Mostrar datas comemorativas, feriados e campanhas dos próximos dias, com a fonte de cada uma, e dizer para quais clientes cada data faz sentido.",
+    "antes": "Para a lista ficar certa, defina o \"segmento\" e a \"cidade\" de cada cliente (veja passo 8). Sem isso só aparecem datas gerais.",
+    "passos": [
+     [
+      "Abra **Oportunidades**. A aba \"Próximas\" lista as datas por dia, com quantos dias faltam.",
+      []
+     ],
+     [
+      "Escolha o período: \"7 dias\", \"15 dias\", \"30 dias\" ou \"60 dias\".",
+      []
+     ],
+     [
+      "Busque pelo campo \"Buscar por nome, apelido ou tag\". Clique em \"Filtros\" para abrir os seletores: Cliente, Relevância, Categoria, Confiabilidade, Tipo e Abrangência. \"Limpar\" tira todos os filtros.",
+      []
+     ],
+     [
+      "Escolha um cliente no filtro para ver só o que serve a ele. Cada cartão mostra o selo de relevância (\"Muito relevante\", \"Relacionada\", \"Geral\") e o selo de confiabilidade (\"Oficial\", \"Verificada\", \"Popular / comercial\", \"Pendente de verificação\").",
+      []
+     ],
+     [
+      "Clique num cartão para abrir os detalhes: quando é, descrição, clientes relacionados, fontes (com o botão \"Ver fonte\") e linhas editoriais em que já foi usada.",
+      []
+     ],
+     [
+      "Se a data não serve para um cliente, clique em \"Ignorar para este cliente\". Isso vale só para ele. Para desfazer, \"Desfazer\" ou \"Desfazer ajuste\". Se a data serve e o sistema não percebeu, clique em \"Marcar como relevante\".",
+      []
+     ],
+     [
+      "Para ganhar ideias, na seção \"Ideias de conteúdo\" escolha o cliente, escreva um pedido (opcional) e clique em \"Sugerir ideias\". Use \"Copiar legenda\" ou \"Copiar tudo\" para levar o texto. Nada é criado sozinho.",
+      []
+     ],
+     [
+      "Para a data entrar no planejamento, clique em \"Usar na Linha Editorial\" (ou \"Usar na linha\" numa ideia da IA). Escolha o cliente e a linha e clique em \"Vincular\" (ou \"Adicionar como Ideia\", no caso da ideia da IA).",
+      []
+     ],
+     [
+      "Na página do cliente, no bloco \"Oportunidades\", clique em \"Definir segmentos\" (ou \"Editar\") e \"Definir cidade\" para ensinar o sistema o que é relevante para ele.",
+      []
+     ],
+     [
+      "Administrador: na aba \"Revisão\", veja datas que talvez sejam a mesma. Escolha \"Unir\", \"Não é duplicata\" ou \"Desativar\". Na aba \"Fontes\", veja se cada fonte está funcionando, use \"Sincronizar agora\" e \"Adicionar data verificada\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "A relevância não usa IA: vem do segmento do cliente, da cidade dele e dos ajustes que a equipe fez. Cada cartão explica o motivo.",
+      []
+     ],
+     [
+      "Aniversário da cidade do cliente aparece como \"Muito relevante\". Datas locais de outra cidade ou estado não aparecem para ele.",
+      []
+     ],
+     [
+      "\"Ver no Calendário\" mostra as mesmas datas na visão de calendário.",
+      []
+     ],
+     [
+      "A IA pode errar. Confira antes de usar.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Usar na Linha Editorial\" só registra a data na linha. Nenhum conteúdo, roteiro, design, vídeo ou gravação é criado. Quem usou \"Adicionar como Ideia\" cria só um conteúdo com status Ideia.",
+      []
+     ],
+     [
+      "\"Desativar\" tira a oportunidade do Calendário e das listas (as fontes continuam registradas).",
+      []
+     ],
+     [
+      "\"Adicionar data verificada\" só aceita com fonte (link).",
+      []
+     ]
+    ],
+    "rotas": [
+     "oportunidades"
+    ]
+   },
+   {
+    "id": "trends",
+    "titulo": "Trends",
+    "onde": "Barra lateral → OPERAÇÃO → Trends. Vai junto com o acesso a Roteiros.",
+    "quem": "Administrador, Coordenação e Videomaker. Designer e Cliente não veem.",
+    "serve": "Guardar trends que a equipe viu (Reels, TikTok, YouTube, áudios) e transformar em roteiro ou referência de gravação para o cliente certo, em poucos cliques.",
+    "antes": "Para usar uma trend num cliente, ele precisa existir. Para criar roteiro com ela, precisa haver uma gravação em aberto (ou escolha a opção de criar uma gravação \"Trends\").",
+    "passos": [
+     [
+      "Abra **Trends**. As abas são \"Para usar\", \"Já usadas\" e \"Arquivadas\". O campo \"Buscar trend\" procura no nome, na nota, no link e nas etiquetas.",
+      []
+     ],
+     [
+      "Para guardar uma nova, clique em \"+ Nova trend\". Cole o \"LINK\" (Reels, TikTok, YouTube, áudio…) e escreva o \"NOME\". Link e nome não são obrigatórios juntos, mas precisa ter pelo menos link, nome ou ideia. O link precisa começar com https://.",
+      []
+     ],
+     [
+      "Preencha \"COMO USAR (opcional)\" com a dica (ex.: serve para clínicas, usar o áudio original).",
+      []
+     ],
+     [
+      "Preencha \"ETIQUETAS (opcional)\": palavras separadas por vírgula, como saúde, humor, antes e depois. As etiquetas já usadas aparecem para você clicar. Se a trend é só de um cliente, escolha em \"SÓ PARA UM CLIENTE (opcional)\". Clique em \"Guardar trend\".",
+      []
+     ],
+     [
+      "Para filtrar, clique numa etiqueta nos botões do topo (as mais usadas ficam ali). \"Todas\" volta ao normal. Clicar numa etiqueta do cartão também filtra.",
+      []
+     ],
+     [
+      "Para ver o que combina com um cliente, em \"Sugerir para\" escolha o cliente. A lista mostra só as trends que combinam, da que mais combina para a que menos, com \"Combina por: …\". Trends feitas só para esse cliente vão ao topo. As que ele já usou ou que são de outro cliente ficam de fora. Clique em \"Limpar\" para sair da sugestão.",
+      []
+     ],
+     [
+      "Para criar um roteiro com uma trend, clique em \"Usar para um cliente\" no cartão. Escolha o cliente e a gravação em aberto (ou \"+ Gravação nova “Trends” (sem data)\"). Clique em \"Criar roteiro e abrir\". O roteiro nasce com o nome da trend e a referência dentro, e o editor abre.",
+      []
+     ],
+     [
+      "Para pôr várias trends numa gravação de uma vez, marque a caixinha de cada cartão. Aparece a barra \"N escolhidas\" com o botão \"Adicionar à gravação…\". Escolha o cliente e a gravação e clique em \"Adicionar\". Elas entram como referência na lista \"O que vamos gravar\".",
+      []
+     ],
+     [
+      "Com um cliente escolhido em \"Sugerir para\", clique em \"Pasta de referências\" para ver todas as referências dele: as postas nas gravações e os links da linha editorial (de cada conteúdo e do mês), com a escolha de cada uma (só edição, edição e gravação, ou a decidir). A mesma pasta abre pelo link no card \"Preparação\" da gravação.",
+      []
+     ],
+     [
+      "Para corrigir, clique em \"Editar\" no cartão. Para guardar sem apagar, \"Arquivar\" (e \"Desarquivar\" depois). \"Excluir\" fica dentro da janela de edição.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Quando você escolhe a trend para um cliente, o cartão passa a mostrar o nome dele em \"Já usadas\" e o nome vira link para a gravação ou roteiro.",
+      []
+     ],
+     [
+      "Como a sugestão é por palavras em comum (etiqueta pesa mais que o nome, que pesa mais que a nota), etiquetar bem melhora muito a lista.",
+      []
+     ],
+     [
+      "O perfil do cliente na sugestão vem da linha editorial mais recente dele (posicionamento, tom, proposta, objetivo, pilares e títulos), então ter linha preenchida ajuda.",
+      []
+     ],
+     [
+      "Na adição em lote, trend sem link e link que já está na gravação são puladas. O aviso diz quantas entraram.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Excluir uma trend é definitivo. Prefira \"Arquivar\".",
+      []
+     ],
+     [
+      "A sugestão por cliente esconde as trends sem relação. O aviso mostra quantas ficaram escondidas. Para ver todas, limpe o \"Sugerir para\".",
+      []
+     ]
+    ],
+    "rotas": [
+     "trends"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "producao",
+  "nome": "Produção",
+  "itens": [
+   {
+    "id": "gravacoes",
+    "titulo": "Gravações",
+    "onde": "Barra lateral → MEU TRABALHO → Gravações (para coordenação e videomaker). Quem não tem o grupo \"Meu trabalho\" acha em OPERAÇÃO (ou no grupo chamado PRODUÇÃO).",
+    "quem": "Administrador, coordenador e videomaker (pelo acesso padrão; o administrador pode mudar o acesso de cada pessoa). O designer não vê \"Gravações\" no menu, mas consegue abrir a página de uma gravação quando chega nela por uma peça ou por um link.",
+    "serve": "Planejar o dia de gravar de cada cliente: o que vai ser gravado, quando, quem grava e o que já foi gravado. Também serve para conferir se tudo está pronto antes do dia.",
+    "antes": "O cliente precisa estar cadastrado. Se a gravação for de Reels da linha editorial, é bom a linha do mês já estar montada.",
+    "passos": [
+     [
+      "Clique em \"Gravações\" no menu. A lista vem organizada por mês de referência. Cada linha mostra o dia, o cliente, o nome da gravação, quanto já foi gravado (ex.: \"2/6 gravados\"), quem grava e o status.",
+      []
+     ],
+     [
+      "Para achar uma gravação, use a busca (\"Buscar cliente ou gravação\"). Clique em \"Filtros\" para escolher cliente, mês ou responsável. Os botões de status (Todas, Marcadas, Remarcadas, Sem data, Concluídas, Canceladas) mostram quantas há em cada um. Para voltar ao normal, clique em \"Limpar filtros\".",
+      []
+     ],
+     [
+      "Para criar uma gravação, clique em \"Nova gravação\". Escolha o cliente, escreva o nome (ex.: \"Conteúdos de Outubro\") e escolha o mês de referência. O mês é obrigatório. Dia e hora são opcionais, e o responsável também. Clique em \"Criar gravação\". A página dela abre logo em seguida.",
+      []
+     ],
+     [
+      "Na página da gravação, veja no alto o mês de referência, a data e o responsável. Para mudar qualquer um, clique nele.",
+      []
+     ],
+     [
+      "Olhe o quadro \"Preparação da gravação\". É uma lista do que falta para o dia chegar tudo pronto. Mostra \"faltam N dias\" e fica em destaque quando faltam 3 dias ou menos. Nos itens que faltam há botões como \"Marcar\", \"Adicionar\" e \"Decidir\" que levam direto ao que fazer.",
+      []
+     ],
+     [
+      "Veja o quadro \"Referências da linha editorial\" (ele só aparece se a linha do mês tiver links). Em cada link, escolha \"Só edição\" (quem edita usa de inspiração) ou \"Edição e gravação\" (também orienta o que vamos gravar). Se o link for trocado na linha editorial, a escolha volta para \"decidir\".",
+      []
+     ],
+     [
+      "Em \"O que vamos gravar\", clique em \"Adicionar item\". Escolha entre \"Roteiro novo\", \"Roteiro existente\", \"Trend / referência\", \"Conteúdo avulso\" ou \"Conteúdo da Linha Editorial\".",
+      []
+     ],
+     [
+      "Para mexer em um item, clique nos três pontinhos dele. Dá para \"Mover para cima\", \"Mover para baixo\", \"Editar\" (só trend e avulso) e \"Tirar da gravação\". Tirar da gravação não apaga o roteiro nem o conteúdo.",
+      []
+     ],
+     [
+      "Para marcar o que já foi gravado, clique na caixinha redonda de cada item. O sistema mostra \"Gravado por\" e o nome de quem marcou.",
+      []
+     ],
+     [
+      "Para ler os roteiros em tela cheia na hora de gravar, clique em \"Teleprompter\" (o botão só aparece se a lista tiver pelo menos um roteiro). Escolha \"Por cenas\" (uma cena por vez) ou \"Contínuo\" (o roteiro inteiro rolando) e clique em \"Iniciar\".",
+      []
+     ],
+     [
+      "Para marcar o dia, clique em \"Marcar data\". Escolha a data, o horário (opcional) e clique em \"Marcar data\". Se a gravação já tem data, o botão vira \"Remarcar\": escolha a nova data, escreva o motivo se quiser e clique em \"Salvar nova data\". A data antiga fica guardada no histórico.",
+      []
+     ],
+     [
+      "Para avisar o cliente, clique em \"Avisar no WhatsApp\" (aparece quando a gravação tem data e ainda não foi concluída). Abre uma janela com a mensagem pronta. Quem aperta enviar é você.",
+      []
+     ],
+     [
+      "Quando a gravação acontecer, clique em \"Concluir gravação\" e confirme. Isso registra que a gravação aconteceu e libera as demandas de edição. Depois aparece um aviso com o botão \"Gerar demandas de edição\", que leva para a tela de Edição de vídeo.",
+      []
+     ],
+     [
+      "Para cancelar, clique nos três pontinhos do alto (\"Mais ações\") e escolha \"Cancelar gravação\". O motivo é opcional. Nada é apagado: a gravação fica como cancelada e dá para reativar com o botão \"Reativar com nova data\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Cliente com dia fixo de gravar: em Clientes, clique em \"Editar cliente\" e ligue \"Este cliente tem dia fixo de gravar\". Escolha \"Toda semana\" ou \"Todo mês\", o dia, o horário (opcional) e \"criar com N dias de antecedência\". O sistema cria sozinho a gravação \"Gravação DD/MM\" e não repete se já existir uma naquele dia. Isso é só para administrador e coordenador.",
+      []
+     ],
+     [
+      "Na lista, cada gravação futura mostra \"Preparação 3/5 · em 4 dias\" ou \"Tudo pronto\". Passe o mouse para ver o que falta.",
+      []
+     ],
+     [
+      "Nos três pontinhos de cada linha da lista há: \"Duplicar\" (copia nome, roteiros e cenas, sem a data), \"Imprimir roteiros\", \"Fixar\", \"Arquivar\" e \"Excluir\".",
+      []
+     ],
+     [
+      "Gravações antigas, sem mês de referência, ficam num grupo à parte. Clique em \"Definir mês\" nelas para arrumar.",
+      []
+     ],
+     [
+      "Nos três pontinhos de dentro da gravação há também \"Editar detalhes\" (nome, mês, responsável, local), \"Imprimir roteiros\" e \"Ver no calendário\".",
+      []
+     ],
+     [
+      "Teclas do Teleprompter: Espaço começa/pausa, setas para a direita e para a esquerda trocam de cena, seta para cima e para baixo mudam a velocidade, M espelha o texto, F abre em tela cheia, R repete, + e - mudam o tamanho da letra, Esc sai.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Excluir\" na lista manda a gravação para a Lixeira. A Lixeira é aberta só pelo administrador.",
+      []
+     ],
+     [
+      "Videomaker pode marcar o que foi gravado, marcar/remarcar a data e concluir a gravação. Criar item, editar detalhes e cancelar são da coordenação.",
+      []
+     ],
+     [
+      "O Teleprompter só abre para administrador, coordenador e videomaker.",
+      []
+     ],
+     [
+      "Se o Google Agenda estiver conectado e a gravação tiver horário, o evento é criado ou remarcado lá também. Sem horário, o evento não é criado.",
+      []
+     ]
+    ],
+    "rotas": [
+     "gravacoes",
+     "gravacao"
+    ]
+   },
+   {
+    "id": "edicao-de-video",
+    "titulo": "Edição de vídeo",
+    "onde": "Barra lateral → MEU TRABALHO → Edição de vídeo (videomaker). Para os demais, em OPERAÇÃO (ou no grupo PRODUÇÃO). O título da tela é \"Produção de Vídeo\".",
+    "quem": "Administrador, coordenador e videomaker. Videomaker vê e trabalha em todas as demandas (situação, versões, link, comentários) e cria demanda nova. Só administrador e coordenador usam Gestão, Pacotes, Importar, Descartados, \"Registrar decisão do cliente\" e \"Registrar entrega\". O designer não tem esta tela.",
+    "serve": "Acompanhar toda a fila de edição de vídeo da B7, do pedido até a entrega. Cada pedido de edição é uma \"demanda\".",
+    "antes": "O cliente precisa estar cadastrado. Para criar demandas a partir de uma gravação, ela precisa ter roteiros.",
+    "passos": [
+     [
+      "Clique em \"Edição de vídeo\". A tela abre no mês atual, em Kanban (ou na forma que você usou da última vez). Acima há números clicáveis: atrasadas, vencem hoje, pendentes, em edição, aguardando aprovação, em correção, em standby e entregues. Clique em um para filtrar, clique de novo para tirar.",
+      []
+     ],
+     [
+      "Para achar uma demanda, use \"Buscar código, cliente ou título…\". Em \"Filtros\" estão mês (ou \"Todos os meses\"), Cliente, Status, Responsável (inclui \"Sem responsável\") e Prioridade. Quem é videomaker tem também \"Minha fila\". \"Limpar filtros\" volta ao normal.",
+      []
+     ],
+     [
+      "Troque entre Lista e Kanban nos dois botões do canto direito. As colunas do Kanban são: Pendente, Em edição, Aguardando aprovação, Correção e Standby. As entregues somem da tela; para vê-las, escolha o status \"Entregue\" nos filtros ou clique em \"entregues\" nos números do alto.",
+      []
+     ],
+     [
+      "Para criar demandas, clique em \"Nova demanda\". Escolha o cliente. Você pode escolher uma gravação: aparecem os roteiros dela e você marca os que viram demanda (o botão vira \"Gerar N demandas\"; cada demanda nasce com o título do roteiro). Ou então deixe sem gravação e preencha o título (e código e pacote, se quiser). Depois ponha prazo, prioridade e responsável e clique em \"Criar demanda\".",
+      []
+     ],
+     [
+      "Para mudar a fase, arraste o cartão para outra coluna. Ao soltar em \"Correção\", o sistema pergunta \"O que precisa corrigir?\". Ao soltar em \"Aguardando aprovação\", pede confirmação. Para \"Entregue\" pelo arraste, a versão precisa já estar aprovada pelo cliente.",
+      []
+     ],
+     [
+      "Clique no cartão para abrir a demanda. À esquerda ficam roteiros (com \"Ler roteiro\", \"Ficha A4\" e \"Abrir no editor\"), versões, conclusão, observações e histórico. À direita ficam Situação, Responsável, Prazo, Prioridade, Gravação vinculada e Pacote. O que você muda nesse painel lateral é salvo sozinho.",
+      []
+     ],
+     [
+      "Quando o vídeo estiver pronto, clique em \"Registrar V01\" (depois \"Registrar nova versão\"). Cole o link do vídeo, escreva o nome do arquivo e uma observação se quiser, e clique em \"Registrar\". O vídeo não sobe para o sistema: fica no Drive. Se o link for do Drive e estiver compartilhado para \"qualquer pessoa com o link\", o vídeo aparece para assistir ali mesmo.",
+      []
+     ],
+     [
+      "Para comentar um ponto do vídeo, escreva o tempo (ex.: 1:23) e o texto no campo de comentários e clique em \"Comentar\".",
+      []
+     ],
+     [
+      "Para mandar para o cliente, clique em \"Enviar para aprovação\" e confirme. A demanda vai para \"Aguardando aprovação\". O Portal do cliente está pausado, então o combinado com o cliente é feito pelo WhatsApp: clique em \"Enviar no WhatsApp\" (bloco \"Enviar ao cliente\"). Abre o grupo do cliente com a mensagem e o vídeo prontos; quem aperta enviar é você.",
+      []
+     ],
+     [
+      "Quando o cliente responder, administrador ou coordenador clica em \"Registrar decisão do cliente\". Escolha \"Aprovado pelo cliente\", \"Cliente solicitou correção\" ou \"Recusado pelo cliente\", escolha o canal (WhatsApp, Ligação, Reunião, Presencial, Outro) e escreva o que o cliente pediu (obrigatório se não for aprovação). Se pediu correção, a demanda vai para \"Correção\" e aparece o botão \"Enviar nova versão\".",
+      []
+     ],
+     [
+      "Para entregar, use o bloco \"Conclusão\". Marque \"Enviado no grupo de concluídos\" e \"Upado no Drive\". Se quiser, cole o \"Link no Drive\" e clique em \"Salvar\". Quando os dois estiverem marcados, a demanda vira entregue sozinha. Também dá para clicar em \"Marcar como entregue\" ou, depois da aprovação do cliente, em \"Registrar entrega\".",
+      []
+     ],
+     [
+      "Para entregar várias de uma vez: segure Ctrl (ou Cmd no Mac) e clique nos cartões, ou use \"Selecionar todas\". Depois clique com o botão direito em um deles e escolha \"Marcar N como entregues\" (ou use o botão \"Marcar como entregue\" da barra que aparece embaixo). Confirme. Para limpar a escolha, clique em \"Limpar\" ou aperte Esc.",
+      []
+     ],
+     [
+      "Para importar uma planilha (só administrador e coordenador), clique em \"Importar\", arraste o arquivo CSV ou XLSX, clique em \"Continuar\", resolva os clientes não encontrados (\"resolver cliente…\") e clique em \"Confirmar linhas prontas\". Nada vira demanda antes de você confirmar.",
+      []
+     ],
+     [
+      "No alto há ainda (só administrador e coordenador): \"Gestão\" (números do mês, carga de cada videomaker e produção por cliente), \"Pacotes\" (cadastrar pacotes e a cota de vídeos por mês) e \"Descartados\" (demandas descartadas, que continuam guardadas e podem ser abertas).",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Nos cartões do Kanban, \"Ctrl + clique\" e o botão direito valem só para demandas ainda não entregues. Shift + clique também escolhe.",
+      []
+     ],
+     [
+      "Um aviso no alto diz quantas demandas de meses anteriores continuam em aberto. Clique em \"Ver\" para listar as atrasadas de todos os meses.",
+      []
+     ],
+     [
+      "Na demanda, o bloco \"Referência\" mostra o link de referência (trend ou meme) e a etiqueta \"Da linha editorial · só edição\" quando ela veio da linha editorial.",
+      []
+     ],
+     [
+      "\"Editar nome e código\", \"Descartar\" e \"Excluir\" ficam no alto da demanda. Descartar tira da fila, mas guarda em \"Descartados\".",
+      []
+     ],
+     [
+      "O prazo sugerido ao criar a partir de uma gravação é a data da gravação mais 3 dias úteis. Dá para mudar à mão.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Marcar como entregue em lote não passa pela aprovação do cliente. Confira antes de confirmar.",
+      []
+     ],
+     [
+      "Se um cartão não puder ser entregue no lote, ele volta ao status de antes e aparece o aviso \"N de M não puderam ser entregues\".",
+      []
+     ],
+     [
+      "Reabrir uma demanda entregue pede confirmação.",
+      []
+     ],
+     [
+      "Excluir uma demanda não pode ser desfeito pela tela. A demanda sai da lista, mas o histórico fica guardado. Para tirar da fila sem perder de vista, prefira \"Descartar\".",
+      []
+     ],
+     [
+      "\"Registrar decisão do cliente\" e \"Registrar entrega\" aparecem só para administrador e coordenador.",
+      []
+     ]
+    ],
+    "rotas": [
+     "video"
+    ]
+   },
+   {
+    "id": "design",
+    "titulo": "Design",
+    "onde": "Barra lateral → MEU TRABALHO → Design (designer). Para os demais, em OPERAÇÃO (ou no grupo PRODUÇÃO). O título da tela é \"Produção de Design\". Para o designer, a tela inicial do sistema é a \"Central de Design\", com \"Ver toda a fila\" levando a esta tela.",
+    "quem": "Administrador, coordenador e designer. A coordenação e o administrador veem a fila inteira, atribuem, revisam e aprovam. O designer vê as peças dele e as que estão sem dono. O videomaker não tem esta tela.",
+    "serve": "Acompanhar as peças visuais (card, capa de Reel, carrossel, stories) do pedido até a entrega ao cliente, passando por revisão interna e aprovação do cliente.",
+    "antes": "As peças nascem do botão \"Enviar para Design\" no conteúdo da linha editorial, ou são criadas aqui em \"Nova demanda de Design\".",
+    "passos": [
+     [
+      "Clique em \"Design\". A coordenação vê as abas Todas, Revisão interna, Ajustes, Aprovadas, Finalizadas e Equipe, e o quadro com as fases: Aguardando produção, Em criação, Revisão interna, Ajustes, Aprovado internamente, Aguardando cliente, Ajustes do cliente, Aprovado pelo cliente e Finalizado. O designer escolhe entre \"Linhas editoriais\" e \"Peças\".",
+      []
+     ],
+     [
+      "Para criar uma peça à mão (coordenação), clique em \"Nova demanda de Design\". Só o título é obrigatório. Dá para escolher cliente, tipo, designer, prazo, prioridade e descrição. Clique em \"Criar demanda\".",
+      []
+     ],
+     [
+      "Para achar peças, use a busca e os filtros: Cliente, Designer, Prazo (Atrasadas, Para hoje, Próximos 7 dias, Sem prazo) e, em \"Mais filtros\", Tipo, Status, Linha editorial e Prioridade. \"Limpar filtros\" volta ao normal. A coordenação alterna entre Quadro e Lista.",
+      []
+     ],
+     [
+      "Para dar a peça a alguém, abra a peça e escolha o designer em \"Responsável\". Na Lista também dá para marcar várias peças e clicar em \"Atribuir a…\". O designer pode clicar em \"Assumir esta peça\" numa peça sem dono. Se já trabalha na mesma linha, pode escolher um colega e clicar em \"Compartilhar\".",
+      []
+     ],
+     [
+      "Clique na peça para abrir. No meio fica o briefing e a arte (o conteúdo vem da linha editorial). À direita ficam as ações, Responsável, Prazo, Prioridade, Decisão do cliente, \"Histórico de versões\" e \"Linha do tempo\".",
+      []
+     ],
+     [
+      "O designer manda a arte com \"Enviar arquivo\" (ou \"Substituir arquivo\"); em carrossel e stories, um arquivo por slide ou frame. Depois escreve uma observação, se quiser, e clica em \"Enviar para revisão interna\". Se a arte foi revisada por fora, escolha a aba \"Revisada por fora (sem arquivo)\" e clique em \"Marcar como enviada para revisão interna\".",
+      []
+     ],
+     [
+      "A coordenação revisa. Clique em \"Aprovar internamente\" ou em \"Solicitar ajuste\" e escreva o que precisa mudar. No carrossel e nos stories dá para aprovar ou pedir ajuste em cada slide; depois clique em \"Aprovar carrossel inteiro\" (ou \"Aprovar carrossel\") ou em \"Enviar ajustes ao Designer\". Quem produziu a peça não pode revisar a própria peça.",
+      []
+     ],
+     [
+      "Se houve pedido de ajuste, o designer vê a mensagem na peça, faz de novo e usa \"Enviar nova versão\".",
+      []
+     ],
+     [
+      "Com a peça aprovada por dentro, clique em \"Copiar mensagem para o cliente\" para ter o texto pronto, ou em \"Enviar no WhatsApp\". Nesse último, o programa de Windows da B7 abre o grupo do cliente, anexa as artes da última versão (dá para desmarcar alguma) e escreve a mensagem. Clique em \"Abrir no WhatsApp\" e confira. Quem aperta enviar é você.",
+      []
+     ],
+     [
+      "Quando o cliente responder, clique em \"Registrar decisão do cliente\". Escolha \"Aprovado pelo cliente\", \"Cliente solicitou ajustes\", \"Recusado pelo cliente\" ou \"Só marcar como enviado ao cliente\", escolha o canal e escreva a observação. Ajuste e recusa pedem o texto do cliente. Os ajustes pedidos voltam para o designer.",
+      []
+     ],
+     [
+      "Para fechar, clique em \"Finalizar\" e confirme. A peça sai da fila de produção e passa a aparecer na aba \"Finalizadas\". O material continua no histórico.",
+      []
+     ],
+     [
+      "Para baixar a arte, use \"Baixar arquivo\" (ou \"Baixar V…\" para versões). \"Ver em tela cheia\" mostra a arte grande. Em \"Histórico de versões\" dá para ver versões antigas.",
+      []
+     ],
+     [
+      "Para mudar peças de fase rápido, a coordenação pode arrastar os cartões no Quadro. Ctrl (ou Shift) + clique escolhe várias peças e elas se movem juntas.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Na aba \"Equipe\" a coordenação vê a carga de cada designer.",
+      []
+     ],
+     [
+      "Em \"Enviar no WhatsApp\", se o programa de Windows não estiver em uso, a mensagem é copiada e o WhatsApp Web abre numa aba: cole com Ctrl+V e anexe a arte. No celular, abre o app do WhatsApp.",
+      []
+     ],
+     [
+      "Se a arte foi só revisada fora do sistema, use \"Revisada por fora (sem arquivo)\": o resto do fluxo continua igual.",
+      []
+     ],
+     [
+      "Quando há peças esperando revisão, a coordenação vê o botão \"Revisar em sequência\". Ele abre uma peça atrás da outra, com \"Anterior\", \"Pular\" e \"Sair da sequência\".",
+      []
+     ],
+     [
+      "Enviar a arte em nome do designer (quando ele não teve tempo) fica na parte recolhida \"Enviar versão em nome do designer\", para quem revisa.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Como o Portal do cliente está pausado, o botão \"Enviar pelo Portal do Cliente\" não aparece. A resposta do cliente é registrada pela equipe em \"Registrar decisão do cliente\".",
+      []
+     ],
+     [
+      "\"Finalizar mesmo assim\" pula a decisão do cliente. Use só se o cliente realmente não precisa aprovar.",
+      []
+     ],
+     [
+      "Quem produziu a peça não consegue aprová-la: o botão \"Aprovar internamente\" fica desligado para essa pessoa.",
+      []
+     ],
+     [
+      "Designer não cria demanda nova (o botão \"Nova demanda de Design\" só aparece para a coordenação) e não registra decisão do cliente.",
+      []
+     ],
+     [
+      "\"Enviar no WhatsApp\" anexar sozinho as artes depende da versão nova do programa de Windows. Sem ela, é preciso escolher o arquivo à mão.",
+      []
+     ]
+    ],
+    "rotas": [
+     "design"
+    ]
+   },
+   {
+    "id": "producao",
+    "titulo": "Produção",
+    "onde": "Barra lateral → OPERAÇÃO → Produção (ou no grupo PRODUÇÃO).",
+    "quem": "Administrador e coordenador (pelo acesso padrão). Designer e videomaker não têm esta tela. O cliente não vê esta área.",
+    "serve": "Ser o quadro geral da equipe: todas as tarefas e demandas num lugar só, em colunas, do \"A fazer\" até o \"Pronto\". Misturando roteiro, linha editorial, vídeo, design, gravação, reunião e o que mais precisar.",
+    "antes": "Nada. Mas, para vincular a demanda a um material, ele (roteiro, linha editorial, conteúdo ou gravação) já precisa existir.",
+    "passos": [
+     [
+      "Clique em \"Produção\". As colunas são: A fazer, Em produção, Revisão interna, Aguardando cliente, Ajustes e Pronto. A coluna \"Concluída\" fica escondida até você clicar em \"Concluídas\".",
+      []
+     ],
+     [
+      "Para criar uma demanda, clique em \"Nova demanda\". Só o título é obrigatório. Dá para escolher cliente, responsável, prazo, tipo (Vídeo, Design, Gravação, Reunião, Entrega, Ajuste, Outro), prioridade (Normal ou Alta), vincular a um material, escrever descrição e colar links de referência (um por linha). Clique em \"Criar demanda\".",
+      []
+     ],
+     [
+      "Para mudar de coluna, arraste o cartão. Se preferir teclado ou celular, clique nos três pontinhos do cartão (\"Ações da demanda\") e escolha em \"MOVER PARA\" a coluna. Com o cartão selecionado, a tecla M abre esse menu.",
+      []
+     ],
+     [
+      "Para achar uma demanda, use a busca e os filtros Cliente, Responsável (inclui \"Sem responsável\"), Tipo e Prazo (Atrasadas, Para hoje, Próximos 7 dias, Sem prazo). \"Limpar filtros\" volta ao normal. Os botões Quadro e Lista mudam o jeito de ver.",
+      []
+     ],
+     [
+      "Clique no cartão para abrir a demanda. Há as abas \"Detalhes\", \"Feedback do cliente\" (se houver aprovação), \"Notas internas\" e \"Histórico\". Em Detalhes dá para mudar responsável, prazo e prioridade, e o que você muda é salvo sozinho.",
+      []
+     ],
+     [
+      "Para abrir o material ligado ao cartão (roteiro, linha, conteúdo ou gravação), use \"Abrir\" na demanda ou o item no menu do cartão. Para ver a aprovação ligada, clique em \"Ver aprovação\".",
+      []
+     ],
+     [
+      "Para falar com a equipe sem o cliente ver, use \"Notas internas\" e clique em \"Adicionar\". Dá para \"Resolver\" e \"Reabrir\" uma nota.",
+      []
+     ],
+     [
+      "Quando o cliente pede ajustes, o cartão ganha um aviso (\"N ajustes pendentes\"). Clique nele para ler o feedback, e use \"Marcar resolvido\" em cada ponto já corrigido.",
+      []
+     ],
+     [
+      "Para ver o que já foi concluído, clique em \"Concluídas\" (mostra as dos últimos 30 dias).",
+      []
+     ],
+     [
+      "Para tirar uma demanda do quadro sem apagar, abra-a e clique em \"Arquivar\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "O quadro se move sozinho com as aprovações do cliente: enviar para aprovação leva a \"Aguardando cliente\", pedido de ajuste leva a \"Ajustes\" e aprovação leva a \"Pronto\". \"Pronto\" não é \"Concluída\": ainda falta gravar, editar ou publicar.",
+      []
+     ],
+     [
+      "Para uma demanda não ser movida pela aprovação, abra-a e ligue \"Travar automação\". O cartão mostra um cadeado.",
+      []
+     ],
+     [
+      "No celular, o quadro mostra uma coluna por vez; deslize o dedo para os lados para trocar.",
+      []
+     ],
+     [
+      "Cartão com \"Ajuste solicitado pelo cliente\" tem destaque, para ninguém esquecer.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Não confunda esta tela com \"Edição de vídeo\" e \"Design\": cada uma tem a fila e as fases próprias. A Produção é o quadro geral da equipe.",
+      []
+     ],
+     [
+      "\"Excluir\" só aparece ao editar a demanda (botão \"Editar\" no menu do cartão). Prefira \"Arquivar\" quando for só tirar do quadro.",
+      []
+     ],
+     [
+      "\"Concluída\" não é automática: uma aprovação do cliente leva a \"Pronto\", nunca a \"Concluída\".",
+      []
+     ]
+    ],
+    "rotas": [
+     "kanban"
+    ]
+   },
+   {
+    "id": "aprovacoes",
+    "titulo": "Aprovações",
+    "onde": "Barra lateral → MEU TRABALHO → Aprovações (coordenação). Para os demais, em OPERAÇÃO (ou no grupo PRODUÇÃO).",
+    "quem": "Administrador e coordenador. Designer e videomaker não têm esta tela. Só administrador e coordenador registram a resposta do cliente. Só o administrador pode anular uma decisão.",
+    "serve": "Ver tudo o que foi enviado para os clientes aprovarem (roteiro, linha editorial, conteúdo, status semanal e peça de Design) e o que cada cliente respondeu.",
+    "antes": "O material precisa ter sido enviado para aprovação. O envio é feito no editor do roteiro ou na linha editorial, com \"Enviar para aprovação\".",
+    "passos": [
+     [
+      "Clique em \"Aprovações\". No alto estão os números: Aguardando cliente, Ajustes solicitados, Recusados e Aprovados. Clique em um número ou nas abas (Aguardando cliente, Ajustes solicitados, Recusados, Aprovados, Todos) para trocar a lista.",
+      []
+     ],
+     [
+      "Use a busca (\"Buscar pelo título…\") e, em \"Filtros\", escolha cliente, tipo (Roteiro, Linha editorial, Conteúdo, Status semanal, Peça de Design) e período (Qualquer período, Este mês, Últimos 30 dias, Este ano).",
+      []
+     ],
+     [
+      "Leia cada linha: título, cliente, tipo, versão (v1, v2…), quando e quem enviou, quantas cenas estão ok, a resposta do cliente, a situação e o que fazer: \"Aguardando o cliente\", \"Corrigir e reenviar\", \"Repensar a proposta\" ou \"Seguir para a produção\".",
+      []
+     ],
+     [
+      "Clique numa linha para abrir. Você vê o resultado (quem decidiu, por qual canal, quando), as cenas da versão, as \"Observações gerais\", as \"Versões\" e a \"Linha do tempo\". Os botões \"Abrir no editor\" e \"Demanda: …\" levam ao material e ao quadro de Produção.",
+      []
+     ],
+     [
+      "Para mandar algo para aprovação, vá no editor do roteiro ou na linha editorial e clique em \"Enviar para aprovação\". Escreva um recado para o cliente se quiser. Isso cria uma versão nova (v1, v2…) e substitui a anterior. O Portal do cliente está pausado: o envio só marca a versão como enviada, e você manda o conteúdo para o cliente pelo WhatsApp.",
+      []
+     ],
+     [
+      "Quando o cliente responder, vá na linha editorial ou no roteiro (no quadro de status da aprovação, enquanto está \"Aguardando cliente\") e clique em \"Cliente respondeu\". Escolha \"Aprovou\", \"Pediu ajustes\" ou \"Recusou\". Escolha \"Por onde\" (WhatsApp, Ligação, Reunião, Presencial ou Outro) e escreva \"O que o cliente disse\" (obrigatório se pediu ajustes ou recusou). Clique em \"Registrar\".",
+      []
+     ],
+     [
+      "Para peça de Design, o equivalente é \"Registrar decisão do cliente\" dentro da própria peça em Design. O botão \"Ver nas Aprovações\" nessa peça leva para cá.",
+      []
+     ],
+     [
+      "Se o cliente pediu ajustes ou recusou, corrija no editor e use \"Enviar para aprovação\" de novo (o botão aparece como \"Enviar nova versão\" ou \"Reenviar\"). O sistema cria a versão seguinte.",
+      []
+     ],
+     [
+      "Na tela da aprovação, escreva em \"Observações gerais\" e clique em \"Enviar\" para comentar. Nos comentários do cliente, clique em \"Resolvido\" quando o ponto for corrigido.",
+      []
+     ],
+     [
+      "Se aparecer um aviso de eventos não processados, clique em \"Reprocessar …\" para tentar de novo.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Uma decisão registrada pela B7 aparece como \"cliente via WhatsApp · registrado por (nome)\". Fica claro que o cliente não entrou no Portal.",
+      []
+     ],
+     [
+      "Os números do alto e a lista seguem os mesmos filtros de cliente e período.",
+      []
+     ],
+     [
+      "Um roteiro com 5 cenas aprovadas conta como uma aprovação só, não cinco.",
+      []
+     ],
+     [
+      "A tela se atualiza sozinha quando algo muda.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "O botão \"Cliente respondeu\" não fica na lista de Aprovações: fica na linha editorial e no roteiro.",
+      []
+     ],
+     [
+      "\"Excluir aprovação\" (só administrador) anula a decisão do cliente. A decisão antiga continua registrada, a versão volta a aguardar o cliente e o cliente é avisado com um texto neutro. Existe também \"Excluir\" por cena.",
+      []
+     ],
+     [
+      "Enviar nova versão substitui a anterior: a versão antiga não aceita mais decisão.",
+      []
+     ]
+    ],
+    "rotas": [
+     "aprovacoes"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "comunicar",
+  "nome": "Comunicação e IA",
+  "itens": [
+   {
+    "id": "whatsapp",
+    "titulo": "WhatsApp",
+    "onde": "Barra lateral → Principal → WhatsApp. O WhatsApp só abre dentro do sistema no programa do B7 para Windows. No navegador, a tela só tem um botão para abrir o WhatsApp Web em outra aba. No celular (app Android), abre o app do WhatsApp.",
+    "quem": "toda a equipe (admin, coordenador, designer, videomaker). Cliente do Portal não vê.",
+    "serve": "conversar com os clientes no WhatsApp sem sair do B7. Ao lado da conversa aparece o painel do cliente, com o que está pendente com ele.",
+    "antes": "instalar o programa do B7 para Windows e entrar nele. Na primeira vez, ler o QR Code com o celular (WhatsApp → Aparelhos conectados).",
+    "passos": [
+     [
+      "Abra o programa do B7 no Windows e clique em \"WhatsApp\" na barra lateral.",
+      []
+     ],
+     [
+      "Na primeira vez, leia o QR Code com o celular. Depois disso o WhatsApp fica conectado neste computador.",
+      []
+     ],
+     [
+      "Confira a barra de cima. O botão \"Assinatura\" deixa suas mensagens com seu nome em negrito na primeira linha (aparece \"sai como Nome:\"). Para mudar o nome, escreva no campo e aperte Enter.",
+      []
+     ],
+     [
+      "Se quiser, ligue \"Corrigir texto\". Quando você aperta Enter para enviar, o B7 corrige ortografia e gramática da mensagem antes de mandar.",
+      []
+     ],
+     [
+      "Abra uma conversa de cliente. O painel do cliente aparece ao lado, com os vídeos, as artes e as gravações pendentes dele. Para esconder ou mostrar esse painel, clique no ícone de painel na barra de cima (\"Painel do cliente\").",
+      []
+     ],
+     [
+      "No painel, clique em \"O que rolou aqui?\" para a IA resumir a conversa: o que o cliente pediu, o que está pendente e o que já foi resolvido.",
+      []
+     ],
+     [
+      "Clique em \"Sugerir resposta\" para a IA escrever uma resposta para o cliente. Depois clique em \"Colocar no WhatsApp\" (o texto vai para o campo de mensagem), leia, ajuste e aperte enviar. Também há \"Copiar\" e \"De novo\".",
+      []
+     ],
+     [
+      "Para mandar um vídeo, uma arte ou o aviso de uma gravação: no painel, clique no pequeno ícone do WhatsApp ao lado do item. Ou então abra o vídeo, a peça de design ou a gravação e use \"Enviar no WhatsApp\" (nas gravações o botão se chama \"Avisar no WhatsApp\").",
+      []
+     ],
+     [
+      "Na janela que abrir, confira o grupo do cliente, os arquivos e a mensagem. Em vídeo, clique em \"Escolher o vídeo…\". Nas artes, as da versão mais nova já vêm marcadas e dá para tirar o que não quiser. Clique em \"Abrir no WhatsApp\".",
+      []
+     ],
+     [
+      "O B7 abre o grupo, anexa os arquivos e escreve a mensagem. Confira no WhatsApp e aperte enviar você mesmo. O B7 nunca envia sozinho.",
+      []
+     ],
+     [
+      "Veja a caixa \"Esperando resposta\" no painel: ela lista os grupos de clientes em que a última mensagem é do cliente e já passou de 15 minutos sem resposta. Clique no nome para abrir a conversa. Se outra área cuida daquele grupo, clique no \"x\" ao lado para não acompanhar.",
+      []
+     ],
+     [
+      "Clique em \"Conferir grupos\" para ligar cada grupo ao cliente certo. Veja a seção Dicas.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Grupo com o nome no formato \"Suporte B7 - Nome do Cliente\": o cliente é o nome depois do traço. Esses grupos entram sozinhos no cliente certo.",
+      []
+     ],
+     [
+      "Em \"Conferir grupos\" há as abas \"Para conferir\", \"Ligados\", \"Ignorados\" e \"Todas\". Escolha o cliente, escreva o tipo (Suporte, Artes…) e clique em \"Salvar\". Use \"Ignorar\" para grupos que não são de cliente. \"Procurar todos os grupos\" faz o WhatsApp rolar sozinho para ler a lista inteira.",
+      []
+     ],
+     [
+      "Conversa com uma pessoa ou com a equipe não pergunta de qual cliente é. Se for de cliente, clique em \"É de um cliente? Ligar a um cliente\".",
+      []
+     ],
+     [
+      "Em \"Enviar no WhatsApp\", o botão \"Usar este texto como modelo\" guarda a mensagem para os próximos envios.",
+      []
+     ],
+     [
+      "Se o cliente disser algo como \"aprovado\", aparece \"Possível aprovação\" no painel, com o botão para registrar no vídeo que está com o cliente.",
+      []
+     ],
+     [
+      "Passou de 1 hora sem resposta? O Windows mostra um aviso \"Esperando resposta\". Clique nele para abrir o grupo.",
+      []
+     ],
+     [
+      "Os botões \"A−\" e \"A+\" mudam o tamanho da letra. O botão de seta circular recarrega o WhatsApp.",
+      []
+     ],
+     [
+      "A estrela de IA na barra abre o Assistente B7.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Desconectar\" (ícone de sair, na barra) tira o WhatsApp deste computador. As conversas continuam no celular, mas é preciso ler o QR Code de novo.",
+      []
+     ],
+     [
+      "No navegador, não dá para usar o WhatsApp dentro do B7. \"Enviar no WhatsApp\" copia a mensagem e abre o WhatsApp Web: cole com Ctrl+V no grupo e anexe o arquivo à mão.",
+      []
+     ],
+     [
+      "Se algum passo do envio falhar, a mensagem fica copiada. Cole com Ctrl+V no grupo.",
+      []
+     ],
+     [
+      "\"Sugerir resposta\" e \"O que rolou aqui?\" só aparecem se a IA estiver ligada e só funcionam com a conversa aberta. Sempre leia antes de enviar.",
+      []
+     ],
+     [
+      "Quando uma janela do B7 abre por cima (menus, pop-ups), o WhatsApp some por um instante e volta quando ela fechar.",
+      []
+     ],
+     [
+      "A assinatura e a correção só valem no programa de Windows.",
+      []
+     ]
+    ],
+    "rotas": [
+     "whatsapp"
+    ]
+   },
+   {
+    "id": "conversas",
+    "titulo": "Conversas",
+    "onde": "botão de balão de conversa no topo do sistema, ao lado do sino (nome \"Conversas\"). Não está na barra lateral.",
+    "quem": "toda a equipe (admin, coordenador, designer, videomaker). Cliente do Portal não vê. Também some se o administrador desligou o recurso \"Conversas da equipe\".",
+    "serve": "falar com colegas dentro do B7, no estilo do WhatsApp, e enviar texto, imagem, arquivo e áudio. Os avisos chegam em tempo real.",
+    "antes": "estar logado como equipe. Cada conversa é entre duas pessoas (não encontrei grupos de várias pessoas no código).",
+    "passos": [
+     [
+      "Clique no botão \"Conversas\" no topo, ao lado do sino. Um número no botão mostra as mensagens não lidas.",
+      []
+     ],
+     [
+      "Escolha uma pessoa na lista. Use o campo \"Buscar pessoa ou mensagem\" e aperte Enter para abrir a primeira da lista. O filtro \"Não lidas\" mostra só quem te escreveu.",
+      []
+     ],
+     [
+      "Escreva no campo \"Mensagem\" e aperte Enter para enviar. Para pular de linha, use Shift+Enter.",
+      []
+     ],
+     [
+      "Para mandar imagem ou arquivo, clique no clipe, arraste o arquivo para a conversa ou cole um print com Ctrl+V. O arquivo fica esperando no campo: escreva uma legenda, se quiser, e aperte Enter.",
+      []
+     ],
+     [
+      "Para mandar áudio, clique no microfone, fale e clique no botão de enviar. A lixeira descarta a gravação.",
+      []
+     ],
+     [
+      "Para responder uma mensagem específica, passe o mouse sobre ela e clique em \"Responder\".",
+      []
+     ],
+     [
+      "Para reagir, clique em \"Reagir\" e escolha um emoji (👍 ❤️ 😂 😮 😢 🙏).",
+      []
+     ],
+     [
+      "Para consertar uma mensagem sua, clique em \"Editar\" (lápis) ou, com o campo vazio, aperte a seta para cima. Escreva a nova versão e aperte Enter.",
+      []
+     ],
+     [
+      "Para apagar, clique em \"Apagar\" (lixeira) e confirme.",
+      []
+     ],
+     [
+      "Clique no rosto sorridente para abrir os emojis.",
+      []
+     ],
+     [
+      "O botão ✨ (certinho) liga ou desliga \"Corrigir ortografia e gramática ao enviar\". Se estiver ligado, o B7 arruma o texto na hora de enviar.",
+      []
+     ],
+     [
+      "Aperte Esc para voltar à lista e depois fechar o painel.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Os tiques mostram o estado: um tique é enviada, dois é entregue, dois coloridos é lida. O relógio significa que ainda está enviando.",
+      []
+     ],
+     [
+      "Embaixo do nome da pessoa aparece \"online\", \"visto por último\", \"digitando…\" ou \"gravando áudio…\".",
+      []
+     ],
+     [
+      "Quando chega mensagem com a conversa fechada, o B7 toca um som (se o som estiver ligado nas notificações) e mostra um aviso na tela com o botão \"Abrir\".",
+      []
+     ],
+     [
+      "Na tela larga, a lista e a conversa ficam lado a lado, e dá para arrastar a borda do painel para ajustar a largura.",
+      []
+     ],
+     [
+      "O botão de seta para baixo leva até as mensagens mais novas.",
+      []
+     ],
+     [
+      "A correção ✨ só aparece se a IA do B7 estiver ligada. Se a IA falhar, a mensagem sai do jeito que você escreveu.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Cada arquivo pode ter no máximo 10 MB. Se arrastar vários, só o primeiro é anexado. Áudio vai até 3 minutos; áudio muito curto (menos de 1 segundo) não é enviado.",
+      []
+     ],
+     [
+      "Só dá para editar mensagens de texto suas, com menos de 24 horas.",
+      []
+     ],
+     [
+      "Apagar não dá para desfazer. A mensagem some para as duas pessoas e fica \"Mensagem apagada\".",
+      []
+     ],
+     [
+      "Dentro da \"conta de outra pessoa\" ou em simulação, o botão de Conversas não aparece.",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "assistente-de-ia",
+    "titulo": "Assistente de IA",
+    "onde": "botão rosa redondo com brilhos no canto de baixo à direita da tela (\"Assistente B7\"). No programa de Windows há também um ícone de brilho na barra da tela WhatsApp. Não está na barra lateral.",
+    "quem": "toda a equipe. Cliente do Portal não vê o botão. O administrador liga ou desliga em Configurações → Admin → Inteligência artificial (confirmar o caminho exato do menu).",
+    "serve": "conversar com a IA do B7 sobre o seu trabalho, pedir ideias e resumos, e pedir para ela montar demandas que você confirma.",
+    "antes": "a IA precisa estar ligada. Se não houver o botão, ela está desligada para todos.",
+    "passos": [
+     [
+      "Clique no botão rosa do canto da tela. O painel \"Assistente B7\" abre.",
+      []
+     ],
+     [
+      "Se quiser falar de um cliente específico, clique no botão \"Todos os clientes\" no topo, busque pelo nome e escolha. Para tirar, clique no \"x\" ao lado do nome do cliente.",
+      []
+     ],
+     [
+      "Escolha um cartão de sugestão ou escreva no campo \"Pergunte qualquer coisa…\". Exemplos de cartões: \"Meu dia\", \"Atrasos\", \"Ideias com trends\" e \"Números do mês\". Com cliente escolhido: \"Situação\", \"5 ideias\", \"Aprovações\" e \"Esta semana\".",
+      []
+     ],
+     [
+      "Aperte Enter ou clique na seta para enviar. A resposta aparece enquanto é escrita.",
+      []
+     ],
+     [
+      "Para ditar em vez de digitar, clique no microfone. Fale e confira o texto antes de enviar. Se o microfone for de gravação, fale em trechos de até 2 minutos.",
+      []
+     ],
+     [
+      "Para mandar uma imagem (um print, por exemplo), clique no botão de imagem ou cole com Ctrl+V.",
+      []
+     ],
+     [
+      "Em cada resposta há \"Copiar\" e \"Ouvir\". \"Ouvir\" lê a resposta em voz alta.",
+      []
+     ],
+     [
+      "Se a resposta falhar, clique em \"Tentar de novo\".",
+      []
+     ],
+     [
+      "O assistente pode propor criar uma demanda de vídeo, uma peça de design, uma gravação ou um conteúdo da linha editorial. Aparece um cartão com os dados. Leia e clique no botão do cartão (por exemplo \"Criar demanda\") ou em \"Cancelar\". Nada é criado antes de você confirmar. Se vierem várias propostas, há um botão para criar todas de uma vez.",
+      []
+     ],
+     [
+      "Para ver conversas antigas, clique em \"Conversas anteriores\" (relógio). Para começar do zero, clique em \"Nova conversa\" (+). O botão \"Expandir\" aumenta o painel no computador.",
+      []
+     ],
+     [
+      "Para apagar uma conversa antiga, abra o histórico e clique em \"Apagar conversa\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Seja específico: diga o cliente, o período e o que quer. Exemplo: \"Quais vídeos da Arena Deck estão atrasados esta semana?\" funciona melhor do que \"o que está atrasado?\".",
+      []
+     ],
+     [
+      "Escolha o cliente no topo antes de pedir ideias. Assim a IA usa a estratégia e a linha editorial dele.",
+      []
+     ],
+     [
+      "Peça por partes: primeiro o resumo, depois \"agora escreva 3 legendas\".",
+      []
+     ],
+     [
+      "O assistente só consulta o que a sua conta enxerga. Ele não muda nada sozinho.",
+      []
+     ],
+     [
+      "Outros lugares com IA no sistema:",
+      [
+       "Roteiro: em cada cena, o botão \"Melhorar com IA\" abre o assistente da cena (\"Melhorar este trecho\", \"Criar outra versão\", \"Encurtar\", \"Deixar mais natural\", \"Melhorar o gancho\", \"Sugerir CTA\" ou uma instrução sua). A sugestão só entra no texto se você clicar em \"Aplicar\". No topo do roteiro há \"Revisar roteiro\", \"Comparar com planejamento\" e \"Criar rascunho\".",
+       "Linha editorial: \"Sugerir pilares\", \"Sugerir conteúdos\", \"Revisar estratégia\", \"Revisar linha editorial\", \"Montar linha com IA\" e o botão \"Escrever com IA\" nos campos de texto.",
+       "Status semanal e Resumo do mês: botão \"Escrever com IA\" para o texto para o cliente.",
+       "WhatsApp (Windows): \"O que rolou aqui?\" e \"Sugerir resposta\".",
+       "Conversas e WhatsApp: correção de ortografia ao enviar."
+      ]
+     ]
+    ],
+    "cuidados": [
+     [
+      "O assistente pode errar. Confira números, datas e nomes antes de usar.",
+      []
+     ],
+     [
+      "Os limites de uso são por pessoa. O arquivo IA.md fala em 8 pedidos por minuto e 80 por hora (pode estar desatualizado, confirmar). Se aparecer \"Muitos pedidos em sequência\", espere um minuto.",
+      []
+     ],
+     [
+      "Apagar uma conversa do assistente apaga as mensagens dela de vez.",
+      []
+     ],
+     [
+      "Só você vê suas conversas com o assistente.",
+      []
+     ],
+     [
+      "Não escreva no assistente dados muito sensíveis de clientes. O IA.md avisa que, na camada gratuita do provedor, o conteúdo pode ser usado para melhorar o produto dele.",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "notificacoes-e-avisos",
+    "titulo": "Notificações e avisos",
+    "onde": "o sino no topo do sistema (lista de avisos). Para escolher o que recebe: menu da conta → Meu perfil → aba \"Notificações\" (ou o ícone de engrenagem dentro do painel do sino).",
+    "quem": "toda a equipe. Os grupos de avisos mudam conforme a função (videomaker, designer, coordenação, administração).",
+    "serve": "avisar o que é seu: atribuições, prazos, atrasos, correções, aprovações e gravações. O sino sempre guarda os avisos. O push avisa até com o B7 fechado.",
+    "antes": "para receber push, é preciso permitir as notificações no navegador ou no celular.",
+    "passos": [
+     [
+      "Clique no sino no topo. O número vermelho mostra quantos avisos novos você tem.",
+      []
+     ],
+     [
+      "Os avisos são agrupados por dia (Hoje, Ontem, Esta semana…). Use os filtros \"Todas\", \"Atribuições\", \"Prazos\", \"Correções\" e \"Aprovações\".",
+      []
+     ],
+     [
+      "Clique em um aviso para abrir direto a tela dele. Ele fica marcado como lido.",
+      []
+     ],
+     [
+      "Clique em \"Marcar lidas\" para limpar tudo de uma vez. \"Carregar mais\" mostra avisos antigos.",
+      []
+     ],
+     [
+      "Para ajustar, clique no ícone de engrenagem no painel do sino. Abre Meu perfil → \"Notificações\".",
+      []
+     ],
+     [
+      "Ligue \"Push neste aparelho\". O navegador vai pedir permissão. Clique em permitir.",
+      []
+     ],
+     [
+      "Ligue ou desligue \"Som das notificações\" (toque curto com o B7 aberto).",
+      []
+     ],
+     [
+      "Ligue \"Aviso do navegador\" (no Windows, \"Aviso do Windows\") para ver o aviso no canto da tela quando o B7 não estiver na frente.",
+      []
+     ],
+     [
+      "Em \"O que te avisa\", abra cada grupo (por exemplo \"Meu trabalho\", \"Gravações\") e desligue o que não quiser receber.",
+      []
+     ],
+     [
+      "Clique em \"Enviar teste\" para conferir se push, permissão e som estão funcionando neste aparelho.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Desligar um tipo de aviso tira o push e o som dele, mas ele continua aparecendo no sino.",
+      []
+     ],
+     [
+      "Nos \"Detalhes deste aparelho\" dá para ver se a permissão do navegador está liberada e se o push está ativo.",
+      []
+     ],
+     [
+      "Resumo diário: um aviso às 8h com os prazos do dia e as gravações de amanhã (ligado por padrão; só sai quando há algo).",
+      []
+     ],
+     [
+      "Lembretes de gravação chegam na véspera e uma hora antes.",
+      []
+     ],
+     [
+      "Administrador: ser admin não faz receber tudo. Ligue só o que quer acompanhar, em \"Acompanhar a operação\".",
+      []
+     ],
+     [
+      "Cada aparelho precisa do próprio \"Push neste aparelho\".",
+      []
+     ],
+     [
+      "O botão \"Enviar exemplos\" mostra um exemplo de cada tipo de aviso, só para você.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Se o navegador bloqueou as notificações, o push não liga. Libere o site nas configurações do navegador e tente de novo.",
+      []
+     ],
+     [
+      "No iPhone, o push só funciona se o Sistema B7 estiver adicionado à tela de início.",
+      []
+     ],
+     [
+      "No programa de Windows não há push com o programa fechado: o aviso aparece enquanto ele está aberto. Para receber com tudo fechado, use o app do celular. Se o Windows bloquear, vá em Configurações do Windows → Sistema → Notificações e deixe o Sistema B7 ligado.",
+      []
+     ],
+     [
+      "Mensagens de Conversas e do WhatsApp contam em lugares separados: Conversas tem o próprio número no botão, e o WhatsApp mostra \"não lidas\" na barra lateral e na tela dele.",
+      []
+     ]
+    ],
+    "rotas": []
+   }
+  ]
+ },
+ {
+  "id": "admin",
+  "nome": "Administração, aplicativos e ajuda",
+  "itens": [
+   {
+    "id": "configuracoes",
+    "titulo": "Configurações",
+    "onde": "Barra lateral → MAIS FERRAMENTAS → Configurações. Quem não é administrador não vê esse item na barra: abre pelo menu da conta (clique na sua foto no topo) → \"Preferências e configurações\". No celular: botão \"Mais\" → Configurações (confirmar para não administradores).",
+    "quem": "todos da equipe (administrador, coordenador, designer, videomaker). O administrador vê abas e linhas a mais (Admin e Sistema). Cliente não usa.",
+    "serve": "ajustar o sistema do seu jeito (cor, tema, tela inicial, avisos) e, para o administrador, cuidar das opções da agência inteira (IA, recursos, backup, manutenção).",
+    "antes": "nada. Os ajustes de Aparência valem só para o aparelho que você está usando.",
+    "passos": [
+     [
+      "Abra \"Configurações\". No alto aparece o seu cartão com foto, nome e função.",
+      []
+     ],
+     [
+      "Para achar algo rápido, escreva no campo \"Procurar um ajuste\" (ex.: som, senha, backup). Ele procura em todas as abas.",
+      []
+     ],
+     [
+      "Na aba \"Geral\", escolha a \"Tela inicial\" (o que abre quando você entra), a \"Visão padrão\" do Calendário (Mês, Semana ou Dia) e, se aparecer, os ajustes do Teleprompter (velocidade, tamanho da letra, contagem, texto espelhado).",
+      []
+     ],
+     [
+      "Ainda na \"Geral\", use \"Começar com a barra recolhida\" se quiser só os ícones na lateral, e \"Limpar filtros guardados\" se Calendário, Produção, Vídeo ou Design estiverem filtrados sem você querer.",
+      []
+     ],
+     [
+      "Abra a aba \"Aparência\". Em \"Cor do sistema\", toque numa bolinha: a cor muda na hora, só para você. Para voltar à cor da equipe, toque em \"Usar a da equipe\". \"Mais opções\" abre a janela completa (menu, botões, brilho, sua própria cor).",
+      []
+     ],
+     [
+      "Em \"Tema\", escolha \"Claro\", \"Escuro\" ou \"Sistema\" (igual ao do aparelho). Em \"Densidade\", escolha \"Confortável\" ou \"Compacta\".",
+      []
+     ],
+     [
+      "Se o aparelho estiver travando, em \"Desempenho\" escolha \"Leve\". \"Animações\" liga e desliga os movimentos.",
+      []
+     ],
+     [
+      "(Administrador) Abra a aba \"Admin\". Ali ficam: \"Pessoas\" (leva para Usuários e acessos), \"Modo manutenção\", \"Sessões ativas\", \"Aparência do sistema\" (cor da equipe toda), \"Saúde do sistema\", \"Médico do sistema\", \"Enviar comunicado\", \"Uso da IA\", \"Configurar o Painel de TV\", \"Google Agenda\", \"Editar textos padrão\" e \"Publicar um aviso\" (Novidades).",
+      []
+     ],
+     [
+      "(Administrador) Em \"Inteligência artificial\" ligue ou desligue com as chaves: \"Assistente nos Roteiros\", \"Assistente nas Linhas editoriais\" e \"Chat com o assistente\". Desligado, o assistente some da tela para todos.",
+      []
+     ],
+     [
+      "(Administrador) Em \"Recursos\", toque num recurso (ex.: \"Painel de TV\", \"Conversas da equipe\") e escolha para quem aparece: \"Todos\", \"Só você\" (para testar), \"Administradores e funções\" (marque quais) ou \"Desligado\". Toque em \"Salvar\".",
+      []
+     ],
+     [
+      "(Administrador) Em \"Backup\", toque em \"Exportar backup\" para baixar um arquivo com os dados. \"Restaurar de um arquivo\" devolve os registros de um backup.",
+      []
+     ],
+     [
+      "(Administrador) Na aba \"Sistema\", veja a \"Versão\", use \"Buscar atualização\", \"Atualizar todos agora\" e \"Limpar dados deste aparelho\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Cada pessoa escolhe a sua cor e o seu tema. O administrador define só o padrão para quem não escolheu.",
+      []
+     ],
+     [
+      "Se escolher uma cor muito clara, o sistema escurece sozinho para o texto continuar legível, e avisa.",
+      []
+     ],
+     [
+      "Ao lado do seu nome, os atalhos \"Foto e nome\", \"Senha\" e \"Avisos\" abrem direto o seu perfil.",
+      []
+     ],
+     [
+      "Para testar um recurso novo antes de liberar, use \"Só você\" em \"Recursos\".",
+      []
+     ],
+     [
+      "No fim da aba \"Geral\" está \"Sair da conta\" (só neste aparelho).",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Sair de todos os aparelhos\" encerra a sua conta em todo celular e computador; será preciso entrar de novo em cada um.",
+      []
+     ],
+     [
+      "\"Atualizar todos agora\" recarrega o sistema de quem estiver com ele aberto, depois de uma contagem de 10 segundos.",
+      []
+     ],
+     [
+      "\"Limpar dados deste aparelho\" recarrega a página e apaga a memória das telas e filtros daquele aparelho (não apaga nada do sistema nem tira você da conta).",
+      []
+     ],
+     [
+      "\"Restaurar de um arquivo\" sobrescreve registros que tenham o mesmo código no arquivo. Nada é apagado, mas use só com backup do próprio sistema.",
+      []
+     ],
+     [
+      "Desligar a IA ou um recurso vale para toda a equipe.",
+      []
+     ],
+     [
+      "As abas \"Admin\" e \"Sistema\" e as linhas de Backup só existem para administrador.",
+      []
+     ]
+    ],
+    "rotas": [
+     "config"
+    ]
+   },
+   {
+    "id": "usuarios-e-acessos",
+    "titulo": "Usuários e acessos",
+    "onde": "Configurações → aba \"Admin\" → Pessoas → \"Usuários e acessos\". Também no menu da conta (clique na sua foto no topo → \"Usuários e acessos\"). Não fica mais na barra lateral.",
+    "quem": "só administrador.",
+    "serve": "criar contas da equipe e dos clientes, mudar função e acesso a cada tela, trocar senha, desativar ou excluir.",
+    "antes": "para conta de cliente, a empresa já precisa estar cadastrada em Clientes.",
+    "passos": [
+     [
+      "Abra \"Usuários e acessos\". No alto há números que também filtram a lista (na equipe, online agora, administradores, acesso personalizado, contas que pedem atenção, clientes). Use \"Buscar por nome ou usuário…\" para achar alguém.",
+      []
+     ],
+     [
+      "Para criar, clique em \"Novo usuário\". Preencha o nome e o usuário (sem espaços, ex.: maria.silva).",
+      []
+     ],
+     [
+      "Em \"Tipo de conta\", escolha \"Equipe B7\" ou \"Cliente\".",
+      []
+     ],
+     [
+      "Se for equipe: escolha a \"Função principal\" (Coordenador, Designer ou Videomaker). Marque \"Administrador\" só se a pessoa for administrar o sistema. Administrador pode ficar sem função (\"Nenhuma\").",
+      []
+     ],
+     [
+      "Em \"Acesso aos módulos\", veja o que a função abre por padrão. Ligue ou desligue uma chave para dar um módulo a mais ou tirar um. Quando isso muda o padrão, a chave ganha a marca \"a mais\" ou \"tirado\". \"Restaurar padrão\" desfaz.",
+      []
+     ],
+     [
+      "Se for cliente: marque as \"Empresas que acompanha\" e ligue \"Pode aprovar oficialmente\" só se a pessoa puder aprovar (sem isso, ela vê e comenta).",
+      []
+     ],
+     [
+      "Em \"Senha inicial\", clique em \"Gerar\" (ou digite: mínimo de 10 caracteres, com letras e números). Clique em \"Criar usuário\".",
+      []
+     ],
+     [
+      "Na janela \"Conta criada\", clique em \"Copiar usuário e senha\" e entregue à pessoa. Depois clique em \"Concluído\".",
+      []
+     ],
+     [
+      "Para mudar algo, abra o menu do cartão da pessoa → \"Editar acesso\". Mude nome, função, módulos e, em \"Também atua como\", marque outros cargos que ela acumula (Coordenador, Designer, Videomaker). Clique em \"Salvar\".",
+      []
+     ],
+     [
+      "No mesmo menu do cartão: \"Foto de perfil\", \"Redefinir senha\" (gera nova senha; a antiga não aparece), \"Desativar conta\" / \"Reativar conta\" e \"Excluir conta\".",
+      []
+     ],
+     [
+      "Para mudar o padrão de uma função inteira, clique em \"Funções e acessos\" (botão no alto), escolha a função, ligue/desligue os módulos e clique em \"Salvar padrão de ...\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "No cartão, os pontinhos mostram os módulos que a pessoa abre. Contorno diferente quer dizer que mudou do padrão da função.",
+      []
+     ],
+     [
+      "Avisos no cartão: \"Nunca acessou\", \"Sem acesso há X dias\", \"Sem função\", \"Sem empresa vinculada\", \"Acesso personalizado\". Use o filtro \"Pedem atenção\".",
+      []
+     ],
+     [
+      "Quem acumula cargos recebe os módulos e o Painel de cada um.",
+      []
+     ],
+     [
+      "Prefira \"Desativar conta\" a excluir: o histórico e a autoria continuam.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "A senha só aparece uma vez, na criação ou na redefinição. Depois ninguém consegue ver.",
+      []
+     ],
+     [
+      "\"Redefinir senha\" e \"Desativar conta\" encerram as sessões abertas da pessoa.",
+      []
+     ],
+     [
+      "\"Excluir conta\" não tem volta.",
+      []
+     ],
+     [
+      "Mudar o \"Padrão\" de uma função muda o acesso de todos que têm a função e não têm acesso personalizado.",
+      []
+     ],
+     [
+      "O nome de usuário (@) não muda depois de criado.",
+      []
+     ]
+    ],
+    "rotas": [
+     "usuarios"
+    ]
+   },
+   {
+    "id": "arquivados",
+    "titulo": "Arquivados",
+    "onde": "Barra lateral → MAIS FERRAMENTAS → Arquivados. No celular: \"Mais\" → Arquivados.",
+    "quem": "equipe interna (administrador e coordenador com certeza; designer e videomaker: confirmar). Cliente não vê.",
+    "serve": "guardar gravações que já saíram do ar, sem perder nada, e trazê-las de volta quando precisar.",
+    "antes": "a gravação precisa ter sido arquivada antes.",
+    "passos": [
+     [
+      "Para arquivar, vá em Gravações (ou na lista de gravações do cliente) e abra o menu \"⋯\" do cartão da gravação.",
+      []
+     ],
+     [
+      "Clique em \"Arquivar\". Aparece o aviso \"Gravação arquivada\" com o botão \"Desfazer\".",
+      []
+     ],
+     [
+      "Abra \"Arquivados\" na barra lateral. Aparecem os cartões das gravações arquivadas e o total.",
+      []
+     ],
+     [
+      "Clique no cartão para abrir a gravação.",
+      []
+     ],
+     [
+      "Para trazer de volta, abra o menu \"⋯\" do cartão e clique em \"Desarquivar\". Aparece \"Gravação restaurada\".",
+      []
+     ],
+     [
+      "Se não houver nada, a tela mostra \"Nenhuma gravação arquivada.\"",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Arquivar limpa as listas, mas não apaga nada.",
+      []
+     ],
+     [
+      "O botão \"Desfazer\" do aviso volta a gravação na hora.",
+      []
+     ],
+     [
+      "Arquivar é diferente de excluir: excluir manda para a Lixeira.",
+      []
+     ]
+    ],
+    "cuidados": [],
+    "rotas": [
+     "arquivados"
+    ]
+   },
+   {
+    "id": "lixeira",
+    "titulo": "Lixeira",
+    "onde": "Barra lateral → MAIS FERRAMENTAS → Lixeira.",
+    "quem": "só administrador.",
+    "serve": "recuperar gravações, roteiros e clientes excluídos, ou apagar de vez.",
+    "antes": "algo precisa ter sido excluído antes (ele vai para a Lixeira em vez de sumir).",
+    "passos": [
+     [
+      "Ao excluir uma gravação, roteiro ou cliente, aparece o aviso \"Movido para a lixeira\" com \"Desfazer\". Se clicar na hora, volta.",
+      []
+     ],
+     [
+      "Depois, abra \"Lixeira\" na barra lateral. Cada linha mostra o tipo (Gravação, Roteiro ou Cliente), o nome e quando foi excluído.",
+      []
+     ],
+     [
+      "Para recuperar, clique em \"Restaurar\". O item volta ao lugar de antes.",
+      []
+     ],
+     [
+      "Para apagar de vez, clique em \"Excluir\" na linha.",
+      []
+     ],
+     [
+      "Na janela \"Excluir permanentemente?\", leia o aviso e clique em \"Excluir para sempre\".",
+      []
+     ],
+     [
+      "Lixeira vazia mostra \"A lixeira está vazia.\"",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Enquanto está na Lixeira, nada foi apagado de verdade.",
+      []
+     ],
+     [
+      "Confira o nome e a data antes de restaurar, principalmente se houver itens parecidos.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "\"Excluir para sempre\" apaga também tudo que depende daquele item (por exemplo, o que está dentro de um cliente). Não dá para desfazer.",
+      []
+     ],
+     [
+      "A lista não tem esvaziar tudo de uma vez: é item por item.",
+      []
+     ]
+    ],
+    "rotas": [
+     "lixeira"
+    ]
+   },
+   {
+    "id": "painel-de-tv",
+    "titulo": "Painel de TV",
+    "onde": "Configurações → aba \"Geral\" → Painel de TV → \"Abrir o Painel de TV\". A configuração fica em Configurações → aba \"Admin\" → Painel de TV → \"Configurar o Painel de TV\".",
+    "quem": "quem está na equipe e tem o recurso liberado (o administrador liga em Configurações → Admin → Recursos → \"Painel de TV\"). Configurar: só administrador.",
+    "serve": "deixar numa TV da agência uma tela só de leitura com o mês: clientes, etapas, gravações da semana e publicações de hoje.",
+    "antes": "o aparelho da TV precisa estar com o B7 aberto e logado. O administrador deve ter liberado o recurso e (se quiser) feito a configuração.",
+    "passos": [
+     [
+      "Na TV, entre no B7 e vá em Configurações → \"Geral\" → \"Painel de TV\".",
+      []
+     ],
+     [
+      "Escolha uma das três opções: \"Abrir o Painel de TV\" (os números do mês), \"Abrir só a animação da B7\" ou \"Abrir só a logo\".",
+      []
+     ],
+     [
+      "A tela ocupa tudo e esconde menu, topo e sino. Deixe aberta.",
+      []
+     ],
+     [
+      "Para sair, aperte Esc. Ou mexa o mouse e clique em \"Sair do Painel de TV\".",
+      []
+     ],
+     [
+      "(Administrador) Para configurar, vá em Configurações → \"Admin\" → \"Configurar o Painel de TV\".",
+      []
+     ],
+     [
+      "Em \"O que a TV mostra\", escolha \"Painel da agência\", \"Só a animação da B7\" ou \"Só a logo\". Escolha o \"Visual\": Cinema, Aurora, Claro ou Minimalista.",
+      []
+     ],
+     [
+      "Em \"Blocos do painel\", ligue o que quiser: lista de clientes, nome dos clientes, etapas, próximas gravações, publicações de hoje, \"Hoje é dia de…\". Em \"Telas que se alternam\", marque \"Agenda da semana\" e \"Mural de hoje\" e escolha o tempo de troca.",
+      []
+     ],
+     [
+      "Em \"Extras\": \"Saudação por horário\" (Bom dia às 8h e resumo às 18h), vinheta da B7 e \"Clima\" (busque a cidade em \"Buscar\").",
+      []
+     ],
+     [
+      "Em \"Recado na TV\", escreva uma frase (até 200 letras) e escolha \"Em destaque, no alto\" ou \"Faixa correndo embaixo\". Em branco, não aparece.",
+      []
+     ],
+     [
+      "Para a tela \"Só a logo\", dá para \"Enviar uma imagem\", escrever uma frase e ligar o relógio. Clique em \"Salvar\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Os links no fim da janela (\"painel\", \"animação\", \"só a logo\", \"Bom dia\", \"resumo das 18h\") mostram como fica, com o que já está salvo.",
+      []
+     ],
+     [
+      "A TV não mostra nomes da equipe, comentários nem notificações, e ninguém opera nada por ali.",
+      []
+     ],
+     [
+      "Quem já está com a TV aberta recebe a mudança em até 5 minutos.",
+      []
+     ],
+     [
+      "Para sala clara, o visual \"Claro\" reflete menos.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Tamanho \"Maior\" deixa as letras grandes, mas cabe menos coisa por tela.",
+      []
+     ],
+     [
+      "Com \"Nome dos clientes\" desligado, gravações e mural aparecem sem o nome.",
+      []
+     ],
+     [
+      "O clima usa um serviço de fora (Open-Meteo); só as coordenadas da cidade são enviadas.",
+      []
+     ],
+     [
+      "A imagem enviada para \"Só a logo\" fica num espaço público de logos (quem tiver o endereço consegue abrir).",
+      []
+     ]
+    ],
+    "rotas": [
+     "tv"
+    ]
+   },
+   {
+    "id": "aplicativo-para-windows",
+    "titulo": "Aplicativo para Windows",
+    "onde": "Configurações → aba \"Geral\" → Aplicativos → \"App para Windows\". Também aparece um convite quando você usa o B7 no navegador de um computador com Windows.",
+    "quem": "equipe interna, em computador com Windows. Não aparece para cliente nem em celular.",
+    "serve": "usar o B7 numa janela própria, sem barra de navegador, com avisos do Windows e atualização automática. Dentro do programa também funciona o WhatsApp dentro do sistema.",
+    "antes": "um computador com Windows e a internet para baixar o instalador.",
+    "passos": [
+     [
+      "Abra Configurações → \"Geral\" → \"App para Windows\" (ou clique em \"Baixar para Windows\" no convite que aparece embaixo da tela).",
+      []
+     ],
+     [
+      "O instalador começa a baixar. Quando terminar, abra o arquivo.",
+      []
+     ],
+     [
+      "Se o Windows mostrar \"O Windows protegeu o computador\", clique em \"Mais informações\" e depois em \"Executar assim mesmo\". Isso só acontece na primeira instalação.",
+      []
+     ],
+     [
+      "Ele instala só para o seu usuário (sem senha de administrador) e abre sozinho. Fica no Menu Iniciar e na Área de trabalho.",
+      []
+     ],
+     [
+      "Entre com o seu usuário e senha, como no navegador.",
+      []
+     ],
+     [
+      "Dentro do programa, a linha \"App Windows\" em Configurações → \"Geral\" mostra \"Instalado\" e a versão. Toque nela para procurar versão nova.",
+      []
+     ],
+     [
+      "Quando sai versão nova do programa, aparece um selo no topo, antes do sino: \"Atualização · baixando X%\" e depois \"Atualizar agora\".",
+      []
+     ],
+     [
+      "Clique em \"Atualizar agora\" e confirme em \"Instalar agora\". O programa fecha e abre de novo em segundos.",
+      []
+     ],
+     [
+      "Para receber avisos, ative em Meu perfil → \"Notificações\" a opção \"Aviso do Windows\". Com a janela do B7 atrás de outra, o aviso aparece no canto da tela.",
+      []
+     ],
+     [
+      "Para o WhatsApp, clique em \"WhatsApp\" na barra lateral e leia o QR Code com o celular, como no WhatsApp Web.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "O programa lembra o tamanho e o lugar da janela.",
+      []
+     ],
+     [
+      "Arquivos baixados (PDF, planilha…) geram um aviso do Windows; clicar nele abre a pasta com o arquivo.",
+      []
+     ],
+     [
+      "As telas do sistema se atualizam sozinhas; só o programa em si pede \"Atualizar agora\".",
+      []
+     ],
+     [
+      "O WhatsApp dentro do sistema só funciona no programa de Windows. No navegador, a tela só oferece abrir o WhatsApp Web numa aba.",
+      []
+     ],
+     [
+      "Câmera e microfone (teleprompter) funcionam só para o site do B7.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Os avisos do Windows só chegam com o programa aberto. Para receber com tudo fechado, use o app do celular.",
+      []
+     ],
+     [
+      "Se o Windows tiver as notificações do B7 desligadas, ligue em Configurações do Windows → Sistema → Notificações.",
+      []
+     ],
+     [
+      "Para sair do WhatsApp dentro do sistema, use o botão de desconectar na barra do WhatsApp (confirmar o nome exato do botão).",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "aplicativo-no-celular-android-e-instalar-pelo-navegador",
+    "titulo": "Aplicativo no celular (Android) e instalar pelo navegador",
+    "onde": "Configurações → aba \"Geral\" → Aplicativos (no Android: \"App para Android\"; no app: \"Ícone do app\"). Também o convite \"O B7 tem app para Android\" que aparece embaixo da tela. Pelo navegador: Configurações → aba \"Sistema\" → \"Instalar como aplicativo\" (esta aba só para administrador).",
+    "quem": "equipe interna. O app de Android é para celular Android; a instalação pelo navegador serve para quem não usa o app.",
+    "serve": "abrir o B7 direto da tela inicial do celular, com avisos mesmo com o app fechado, atalhos no ícone e o widget do seu dia.",
+    "antes": "celular Android (7 ou mais novo) e internet.",
+    "passos": [
+     [
+      "No Android, abra o B7 no navegador e entre na conta.",
+      []
+     ],
+     [
+      "Quando aparecer o convite, toque em \"Baixar o app\". Ou vá em Configurações → \"Geral\" → \"App para Android\".",
+      []
+     ],
+     [
+      "Abra o arquivo baixado. O Android vai pedir para permitir a instalação desse arquivo: confirme.",
+      []
+     ],
+     [
+      "Abra o app e entre com o seu usuário e senha.",
+      []
+     ],
+     [
+      "No app, a cada abertura ele confere se há versão nova. Quando houver, aparece \"Nova versão do app B7\" com \"Instalar\". Toque para instalar por cima.",
+      []
+     ],
+     [
+      "Para trocar a cor do ícone, vá em Configurações → \"Geral\" → \"Ícone do app\" e escolha.",
+      []
+     ],
+     [
+      "Segure o ícone do B7 na tela inicial: aparecem os atalhos \"Meu dia\", \"Gravações\", \"Teleprompter\" e \"Nova ideia\".",
+      []
+     ],
+     [
+      "Para o widget, adicione \"Hoje no B7\" na tela inicial: mostra os números do seu dia e a próxima gravação.",
+      []
+     ],
+     [
+      "Sem o app, pelo navegador: abra o menu do navegador e escolha \"Instalar\" ou \"Adicionar à tela de início\". Se o navegador oferecer, o administrador também pode tocar em \"Instalar como aplicativo\".",
+      []
+     ],
+     [
+      "Para ativar os avisos, vá em Meu perfil → \"Notificações\" e ligue \"Push neste aparelho\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Se tocar em \"Agora não\" no convite, ele só volta depois de 30 dias. \"Já tenho o app\" faz o convite não voltar.",
+      []
+     ],
+     [
+      "O teleprompter pode usar a câmera e gravar direto na galeria.",
+      []
+     ],
+     [
+      "Cliente não recebe o convite.",
+      []
+     ],
+     [
+      "Em iPhone não existe o arquivo do app; use \"Adicionar à tela de início\" no navegador.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "No app de Android as telas ficam dentro do aplicativo: versão nova do sistema só chega com o app novo (por isso o aviso \"Instalar\").",
+      []
+     ],
+     [
+      "O arquivo do app não vem da loja do Android; por isso o aviso de permissão.",
+      []
+     ],
+     [
+      "Notificações push dependem de permissão no celular (confirmar o passo exato no aparelho).",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "visualizar-como",
+    "titulo": "Visualizar como…",
+    "onde": "Barra lateral (rodapé) → campo \"Visualizar como…\". Também no menu da conta (sua foto no topo) → \"Visualizar como…\" e no celular em \"Mais\" → FERRAMENTAS → \"Visualizar como…\".",
+    "quem": "só administrador, na própria conta.",
+    "serve": "ver (e usar) o sistema com o acesso de outra pessoa da equipe, ou ver o Portal de um cliente só para olhar.",
+    "antes": "a pessoa precisa ter conta ativa. A sua própria conta e as contas desativadas não aparecem. Conta de cliente não permite entrar; só dá para ver a empresa em prévia.",
+    "passos": [
+     [
+      "No rodapé da barra lateral, clique em \"Visualizar como…\" e escreva o nome da pessoa ou da empresa.",
+      []
+     ],
+     [
+      "Para entrar numa conta da equipe, escolha a pessoa. O sistema entra direto na conta dela e recarrega.",
+      []
+     ],
+     [
+      "Agora menus, permissões e Painel são os dela. Aparece o aviso \"Você está como …\" (no celular, uma faixa no topo).",
+      []
+     ],
+     [
+      "O que você fizer ali fica salvo e registrado no nome dessa pessoa.",
+      []
+     ],
+     [
+      "Para empresa, escolha a empresa: abre a \"Prévia do cliente\", só para ler, sem salvar nada.",
+      []
+     ],
+     [
+      "Para voltar, clique em \"Voltar para minha conta\" (no celular, \"Voltar\"). Na prévia de empresa, o botão é \"Voltar ao Admin\".",
+      []
+     ],
+     [
+      "Dentro da conta de outra pessoa, \"Sair da conta\" no menu vira \"Voltar para minha conta\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "Serve para conferir o que uma pessoa realmente enxerga, por exemplo se um módulo está liberado.",
+      []
+     ],
+     [
+      "A entrada não deixa a pessoa \"online\" nem muda o último acesso dela.",
+      []
+     ],
+     [
+      "Para testar o que um cliente vê, use a empresa, que é só leitura.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Em \"Entrar na conta\" tudo o que você faz é gravado como se fosse da pessoa (comentários, aprovações internas, mudanças). Não faça nada que não faria no nome dela.",
+      []
+     ],
+     [
+      "Não dá para entrar em outra conta estando dentro de uma: volte primeiro.",
+      []
+     ],
+     [
+      "Cada entrada fica registrada para auditoria (quem entrou, em qual conta, quando).",
+      []
+     ],
+     [
+      "Sair \"normalmente\" não derruba as sessões da outra pessoa; o botão só devolve você à sua conta.",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "meu-perfil",
+    "titulo": "Meu perfil",
+    "onde": "Clique na sua foto no topo → \"Meu perfil\" (foto, nome, senha e notificações). Também em Configurações, no cartão do seu nome, ou nos atalhos \"Foto e nome\", \"Senha\" e \"Avisos\".",
+    "quem": "todos que têm conta (equipe e cliente).",
+    "serve": "trocar a sua foto, o seu nome e a sua senha, e escolher como os avisos chegam.",
+    "antes": "estar logado.",
+    "passos": [
+     [
+      "Abra \"Meu perfil\". Há três abas: \"Conta\", \"Segurança\" e \"Notificações\".",
+      []
+     ],
+     [
+      "Na aba \"Conta\", em \"Foto de perfil\", escolha a imagem, confira no círculo e clique em \"Salvar foto\". Para tirar a foto, clique em \"Remover foto\".",
+      []
+     ],
+     [
+      "Em \"Nome\", ajuste o seu nome (até 80 letras) e clique em \"Salvar\". É o nome que a equipe vê nas suas ações.",
+      []
+     ],
+     [
+      "Em \"Definido pela Branding7\" você vê seu usuário e seu perfil. Para mudar, fale com o administrador.",
+      []
+     ],
+     [
+      "Na aba \"Segurança\", em \"Trocar senha\", escreva a \"Senha atual\", a \"Nova senha\" e repita em \"Repetir a nova senha\".",
+      []
+     ],
+     [
+      "Confira os requisitos: 10 caracteres ou mais, pelo menos uma letra, pelo menos um número e as duas senhas novas iguais. O olhinho mostra ou esconde a senha.",
+      []
+     ],
+     [
+      "Clique em \"Trocar senha\".",
+      []
+     ],
+     [
+      "Na aba \"Notificações\", escolha como os avisos chegam neste aparelho: \"Push neste aparelho\", \"Som das notificações\" e \"Aviso do navegador\" (no programa de Windows, \"Aviso do Windows\").",
+      []
+     ],
+     [
+      "Clique em \"Enviar teste\" para ver se o aviso chegou. Para equipe, \"Enviar exemplos\" manda um exemplo de cada tipo de aviso, só para você.",
+      []
+     ],
+     [
+      "Mais abaixo, escolha quais tipos de aviso você quer receber. Clique em \"Fechar\" ao terminar.",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "A foto aparece no topo, nas listas e nas ações que você faz.",
+      []
+     ],
+     [
+      "Ao trocar a senha, as outras sessões abertas dessa conta são encerradas.",
+      []
+     ],
+     [
+      "Se esquecer a senha, peça ao administrador para usar \"Redefinir senha\".",
+      []
+     ],
+     [
+      "Os exemplos de aviso começam com \"Teste\" e não aparecem no sino de ninguém.",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Se o aviso não chegar, confira se o aparelho permitiu notificações. Dentro do programa de Windows, push com o programa fechado não existe.",
+      []
+     ],
+     [
+      "Você não troca o seu próprio usuário nem a sua função: só o administrador.",
+      []
+     ]
+    ],
+    "rotas": []
+   },
+   {
+    "id": "suporte-e-feedback",
+    "titulo": "Suporte e feedback",
+    "onde": "Foto no topo (menu da conta) → \"Suporte e feedback\". Fica em todas as telas, também no celular.",
+    "quem": "Toda a equipe. Administração e coordenação também veem os chamados dos outros e respondem.",
+    "serve": "Relatar um problema, mandar uma sugestão, tirar uma dúvida ou elogiar, sem sair do sistema. A resposta chega aqui e no sino.",
+    "antes": "",
+    "passos": [
+     [
+      "Clique na sua foto, no topo, e escolha \"Suporte e feedback\".",
+      []
+     ],
+     [
+      "Clique em \"+ Novo chamado\".",
+      []
+     ],
+     [
+      "Escolha o tipo: \"Problema\" (algo não funciona), \"Sugestão\" (uma ideia), \"Dúvida\" (não sei como fazer) ou \"Elogio\".",
+      []
+     ],
+     [
+      "Escreva um \"Resumo\" curto e, em \"Detalhes\", conte o que você estava fazendo, o que esperava e o que aconteceu.",
+      []
+     ],
+     [
+      "Se o problema impede você de trabalhar, marque \"Está me impedindo de trabalhar\". Isso destaca o chamado para a equipe.",
+      []
+     ],
+     [
+      "Cole um print com Ctrl+V (ou arraste a imagem, ou clique em \"escolha um arquivo\"). Dá para mandar até 3.",
+      []
+     ],
+     [
+      "Deixe marcado \"Enviar junto as informações da tela\". Clique em \"ver o que vai\" para conferir: é a tela em que você estava, a versão, o aparelho e os últimos erros.",
+      []
+     ],
+     [
+      "Clique em \"Enviar\". Você ganha um número de chamado.",
+      []
+     ],
+     [
+      "Depois, volte em \"Suporte e feedback\" para acompanhar. Cada resposta da equipe e cada mudança de andamento também avisam no sino.",
+      []
+     ],
+     [
+      "Para responder a equipe, abra o chamado e escreva em \"Escrever uma mensagem…\" e clique em \"Enviar\".",
+      []
+     ]
+    ],
+    "dicas": [
+     [
+      "No Windows, Win+Shift+S tira print de só uma parte da tela. É só colar no chamado com Ctrl+V.",
+      []
+     ],
+     [
+      "Um chamado por assunto. Fica mais fácil de responder e de marcar como resolvido.",
+      []
+     ],
+     [
+      "Em \"Meus chamados\" você vê o andamento: Novo, Em análise, Em andamento, Resolvido ou Não será feito.",
+      []
+     ],
+     [
+      "Quem é da administração ou da coordenação vê também \"Todos da equipe\", pode responder, deixar \"Nota interna\" (só a equipe vê) e mudar a \"Situação\" e a \"Prioridade\" em \"Andamento\".",
+      []
+     ]
+    ],
+    "cuidados": [
+     [
+      "Não escreva senhas nem dados pessoais de clientes no chamado ou no print.",
+      []
+     ],
+     [
+      "As \"informações da tela\" ajudam muito a achar o problema. Só desmarque se tiver algo que você não quer mostrar.",
+      []
+     ]
+    ],
+    "rotas": [
+     "suporte"
+    ]
+   }
+  ]
+ }
+];

@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz209', versao: 'zzz209', em: '2026-10-16T23:00:00-03:00',
+    titulo: 'Ajuda e tutoriais dentro do sistema',
+    itens: ['Novo botão “?” no topo, ao lado das conversas: abre o tutorial da tela em que você está.',
+            'No menu da sua foto, “Ajuda e tutoriais”: 38 passo a passo, um para cada parte do sistema, com busca. Dá para voltar para a tela em que você estava com um clique.',
+            'Não achou o que precisa ou algo está diferente? Os tutoriais têm o atalho para o “Suporte e feedback”.'] },
   { id: 'v-zzz208', versao: 'zzz208', em: '2026-10-16T21:00:00-03:00',
     titulo: 'Suporte e feedback dentro do sistema',
     itens: ['No menu da sua foto, novo item “Suporte e feedback”: relate um problema, mande uma sugestão, tire uma dúvida ou elogie.',
