@@ -298,6 +298,81 @@ function conferir(manual) {
   return autoUpdater.checkForUpdates().then(() => true, () => false);
 }
 
+/* zzz212: "Sobre" com a cara do B7 no lugar da caixa cinza do Windows.
+   Janela pequena, sem moldura, presa à janela principal. Mostra a versão
+   do programa, a versão do sistema (lida da própria página) e a situação
+   da atualização; os botões falam com o programa por endereços b7sobre://,
+   que a janela intercepta — nada é aberto de verdade. Esc ou clicar fora
+   fecha. */
+let janelaSobre = null;
+const escSobre = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+function telaSobre(programa, sistema, at) {
+  const sit = at && at.estado === 'pronta' ? ['pronta', 'Versão nova pronta: instale quando quiser']
+    : at && at.estado === 'baixando' ? ['baixando', 'Baixando a versão nova' + (at.pct ? ' · ' + at.pct + '%' : '…')]
+    : ['ok', 'Programa em dia'];
+  return 'data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;font-family:'Segoe UI Variable','Segoe UI',system-ui,sans-serif;color:#fff;background:transparent;user-select:none}
+.c{position:absolute;inset:8px;border-radius:22px;overflow:hidden;background:radial-gradient(130% 90% at 15% 0%,#3d1f73 0%,#170e2b 52%,#0c0818 100%);border:1px solid #ffffff1f;box-shadow:0 24px 60px -18px #000c;display:flex;flex-direction:column;align-items:center;text-align:center;padding:34px 30px 24px;animation:e .42s cubic-bezier(.2,.9,.25,1) both}
+.c:before{content:"";position:absolute;right:-90px;top:-110px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,#d6336c66 0%,transparent 68%)}
+.c:after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(90deg,#7c4dff,#9a44a8,#d6336c)}
+.x{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:50%;border:0;background:#ffffff14;color:#fff;font-size:15px;cursor:pointer;display:grid;place-items:center;-webkit-app-region:no-drag}
+.x:hover{background:#ffffff2a}
+.l{position:relative;width:84px;height:84px;border-radius:24px;background:#fff;display:grid;place-items:center;box-shadow:0 18px 44px -12px #7c4dffcc;animation:p 3.2s ease-in-out infinite}
+.l img{width:56px;height:56px;object-fit:contain}.l b{display:none;color:#3a1e86;font-size:30px;font-weight:800}
+.l.sem img{display:none}.l.sem b{display:block}
+h1{position:relative;margin:18px 0 2px;font-size:21px;font-weight:700;letter-spacing:-.2px}
+.s{position:relative;margin:0;color:#c9bde6;font-size:13px}
+.g{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin:22px 0 14px}
+.k{padding:12px 10px;border-radius:14px;background:#ffffff0f;border:1px solid #ffffff1a}
+.k small{display:block;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#a99cc8;font-weight:700}
+.k b{display:block;margin-top:3px;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.st{position:relative;display:flex;align-items:center;gap:8px;font-size:12.5px;color:#d8cff0;margin-bottom:20px}
+.st i{width:9px;height:9px;border-radius:50%;background:#4fd69f;box-shadow:0 0 0 4px #4fd69f2e}
+.st.baixando i{background:#f2be62;box-shadow:0 0 0 4px #f2be622e;animation:p 1.2s infinite}.st.pronta i{background:#e2409c;box-shadow:0 0 0 4px #e2409c33}
+.a{position:relative;display:flex;gap:10px;width:100%;margin-top:auto}
+.a a{flex:1;display:block;padding:11px 0;border-radius:12px;font-size:13.5px;font-weight:700;text-decoration:none;color:#fff;background:#ffffff14;border:1px solid #ffffff22;transition:background .15s,transform .15s}
+.a a:hover{background:#ffffff26;transform:translateY(-1px)}.a a.pri{background:linear-gradient(120deg,#7c4dff,#9a44a8 52%,#d6336c);border-color:transparent}
+.r{position:relative;margin-top:14px;font-size:11px;color:#8f84ad}
+@keyframes e{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}@keyframes p{50%{transform:scale(1.05)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style></head><body><div class="c">
+<button class="x" onclick="location.href='b7sobre://fechar'" title="Fechar (Esc)">✕</button>
+<div class="l" id="l"><img src="${SITE}assets/brand/symbol-color.png" alt="" onerror="document.getElementById('l').classList.add('sem')"><b>B7</b></div>
+<h1>Sistema B7 para Windows</h1><p class="s">Branding7 · a agência num programa só</p>
+<div class="g"><div class="k"><small>Programa</small><b>${escSobre(programa)}</b></div><div class="k"><small>Sistema</small><b>${escSobre(sistema || '—')}</b></div></div>
+<div class="st ${sit[0]}"><i></i>${escSobre(sit[1])}</div>
+<div class="a">${sit[0] === 'pronta' ? '<a class="pri" href="b7sobre://instalar">Instalar agora</a>' : '<a class="pri" href="b7sobre://atualizar">Procurar atualização</a>'}<a href="b7sobre://fechar">Fechar</a></div>
+<div class="r">O sistema por dentro se atualiza sozinho. O programa avisa quando há versão nova.</div>
+</div><script>addEventListener('keydown',e=>{if(e.key==='Escape')location.href='b7sobre://fechar'})</script></body></html>`);
+}
+async function abrirSobre() {
+  if (janelaSobre && !janelaSobre.isDestroyed()) { janelaSobre.focus(); return; }
+  let sistema = '';
+  try {
+    if (janela && !janela.isDestroyed())
+      sistema = String(await janela.webContents.executeJavaScript("(window.B7&&B7.Auth&&B7.Auth.VERSAO)||''", true) || '').split('-').pop();
+  } catch (e) {}
+  janelaSobre = new BrowserWindow({
+    width: 420, height: 470, parent: janela || undefined, modal: false, show: false, frame: false, resizable: false,
+    minimizable: false, maximizable: false, transparent: true, backgroundColor: '#00000000', skipTaskbar: true, title: 'Sobre o Sistema B7',
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, javascript: true }
+  });
+  janelaSobre.setMenu(null);
+  const fechar = () => { if (janelaSobre && !janelaSobre.isDestroyed()) janelaSobre.close(); };
+  janelaSobre.webContents.on('will-navigate', (ev, url) => {
+    ev.preventDefault();
+    if (url === 'b7sobre://fechar') return fechar();
+    if (url === 'b7sobre://atualizar') { fechar(); return conferir(true); }
+    if (url === 'b7sobre://instalar') { fechar(); return instalarAgora(); }
+  });
+  janelaSobre.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  janelaSobre.on('blur', () => setTimeout(fechar, 120));
+  janelaSobre.on('closed', () => { janelaSobre = null; });
+  janelaSobre.once('ready-to-show', () => janelaSobre && janelaSobre.show());
+  janelaSobre.loadURL(telaSobre(app.getVersion(), sistema, estadoAtualizacao)).catch(() => {});
+}
+
 /* --------------------------------------------------------- menu
    Menu escondido (o sistema tem a navegação dele), mas os atalhos de
    sempre continuam valendo: copiar, colar, recarregar, zoom, F12. */
@@ -325,9 +400,7 @@ function montarMenu() {
       label: 'Ajuda',
       submenu: [
         { label: 'Procurar atualização', click: () => conferir(true) },
-        { label: 'Sobre', click: () => janela && dialog.showMessageBox(janela, {
-            type: 'info', title: 'Sistema B7', message: 'Sistema B7 para Windows',
-            detail: 'Versão do programa: ' + app.getVersion() + '\nO sistema por dentro se atualiza sozinho.', buttons: ['Fechar'] }) }
+        { label: 'Sobre', click: () => abrirSobre() }
       ]
     }
   ]));
