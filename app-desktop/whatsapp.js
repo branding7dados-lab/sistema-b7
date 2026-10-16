@@ -34,10 +34,10 @@ module.exports = function ligarWhatsApp(pegarJanela) {
 
   /* -------------------------------------------------------- ajustes */
   const arquivoCfg = () => path.join(app.getPath('userData'), 'whatsapp.json');
-  let cfg = { nome: '', assinatura: true, usado: false };
+  let cfg = { nome: '', assinatura: true, corrigir: false, usado: false };
   try { cfg = Object.assign(cfg, JSON.parse(fs.readFileSync(arquivoCfg(), 'utf8'))); } catch (e) {}
   const gravarCfg = () => { try { fs.writeFileSync(arquivoCfg(), JSON.stringify(cfg)); } catch (e) {} };
-  const mandarCfg = () => { if (view) view.webContents.send('b7wa:config', { nome: cfg.nome, assinatura: cfg.assinatura }); };
+  const mandarCfg = () => { if (view) view.webContents.send('b7wa:config', { nome: cfg.nome, assinatura: cfg.assinatura, corrigir: cfg.corrigir }); };
 
   function avisarSite(canal, dado) {
     const j = pegarJanela();
@@ -151,7 +151,17 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     const f = r && respostas.get(r.id);
     if (f) { respostas.delete(r.id); f(r); }
   });
-  ipcMain.handle('b7wa:config', () => ({ nome: cfg.nome, assinatura: cfg.assinatura }));
+  /* zzz202: o preload pede a correção do texto; quem tem a sessão e a IA é a tela do sistema */
+  ipcMain.handle('b7wa:corrigir', async (ev, texto) => {
+    const j = pegarJanela();
+    if (!cfg.corrigir || !j || j.isDestroyed() || typeof texto !== 'string' || texto.length > 2000) return { ok: false };
+    try {
+      const js = '(window.B7 && B7.Corretor && B7.Corretor.ligado()) ? B7.Corretor.corrigir(' + JSON.stringify(texto) + ') : null';
+      const r = await Promise.race([j.webContents.executeJavaScript(js), new Promise(res => setTimeout(() => res(null), 9000))]);
+      return r && r.ok && r.mudou && typeof r.texto === 'string' ? { ok: true, texto: r.texto } : { ok: false };
+    } catch (e) { return { ok: false }; }
+  });
+  ipcMain.handle('b7wa:config', () => ({ nome: cfg.nome, assinatura: cfg.assinatura, corrigir: cfg.corrigir }));
   /* zzz176: o que o preload LÊ do WhatsApp vai para o sistema */
   let ultimaLista = [], ultimaConversa = null;
   ipcMain.on('b7wa:conversas', (ev, l) => { if (Array.isArray(l)) { ultimaLista = l; avisarSite('b7:wa:conversas', l); } });
@@ -247,10 +257,11 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     return true;
   });
   ipcMain.handle('b7:wa:recarregar', () => { if (view) view.webContents.reload(); return true; });
-  ipcMain.handle('b7:wa:config', () => ({ nome: cfg.nome, assinatura: cfg.assinatura }));
+  ipcMain.handle('b7:wa:config', () => ({ nome: cfg.nome, assinatura: cfg.assinatura, corrigir: cfg.corrigir }));
   ipcMain.handle('b7:wa:definir-config', (ev, c) => {
     if (c && typeof c.nome === 'string') cfg.nome = c.nome.slice(0, 40);
     if (c && typeof c.assinatura === 'boolean') cfg.assinatura = c.assinatura;
+    if (c && typeof c.corrigir === 'boolean') cfg.corrigir = c.corrigir;
     gravarCfg(); mandarCfg();
     return true;
   });

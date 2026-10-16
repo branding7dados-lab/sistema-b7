@@ -807,13 +807,21 @@ B7.Video = (function () {
      ================================================================= */
   const SEL = new Set();
   const ENCERRADAS = ['entregue', 'descartado'];
+  /* No Kanban o Ctrl+clique é do arrastar fluido (js/arrastar.js, marca .arr-sel);
+     na Lista é o SEL daqui. O que vale é a soma das duas. */
+  function idsSel() {
+    const s = new Set(SEL);
+    const cx = painel() && painel().querySelector('#vd-area');
+    if (cx) cx.querySelectorAll('.arr-sel[data-demanda]').forEach(c => s.add(c.dataset.demanda));
+    return s;
+  }
   const visiveisAgora = () => filtrar(baseFiltrada()).filter(d => !ENCERRADAS.includes(d.editing_status));
   function ligarCliqueCartoes(raiz) {
     raiz.querySelectorAll('[data-demanda]').forEach(el => {
       const id = el.dataset.demanda;
       const ir = () => location.hash = '#/video/' + id;
       el.onclick = e => {
-        if (possoOperar() && (e.ctrlKey || e.metaKey || e.shiftKey || SEL.size)) { e.preventDefault(); alternarSel(id); return; }
+        if (possoOperar() && (e.ctrlKey || e.metaKey || e.shiftKey || idsSel().size)) { e.preventDefault(); alternarSel(id); return; }
         ir();
       };
       el.onkeydown = e => {
@@ -823,7 +831,13 @@ B7.Video = (function () {
     });
   }
   function alternarSel(id) { if (SEL.has(id)) SEL.delete(id); else SEL.add(id); pintarSelecao(); }
-  function limparSel() { SEL.clear(); pintarSelecao(); }
+  function limparSel() {
+    SEL.clear();
+    const cx = painel() && painel().querySelector('#vd-area');
+    if (cx) cx.querySelectorAll('.arr-sel').forEach(c => c.classList.remove('arr-sel'));
+    document.querySelectorAll('.arr-barra.on').forEach(b => b.classList.remove('on'));
+    pintarSelecao();
+  }
   function pintarSelecao() {
     const cx = painel() && painel().querySelector('#vd-area');
     if (cx) {
@@ -841,12 +855,13 @@ B7.Video = (function () {
   function barraSel() {
     let b = document.getElementById('vd-selbar');
     const tela = painel() && painel().querySelector('#vd-area');
-    if (!SEL.size || !tela) { if (b) b.remove(); return; }
+    const total = idsSel().size;
+    if (!total || !tela) { if (b) b.remove(); return; }
     if (!b) {
       b = document.createElement('div'); b.id = 'vd-selbar'; b.setAttribute('role', 'toolbar');
       document.body.appendChild(b);
     }
-    const n = SEL.size;
+    const n = total;
     b.innerHTML = '<span><b>' + n + '</b> selecionada' + (n === 1 ? '' : 's') + '</span>' +
       '<button type="button" class="b pri fina" data-a="entregar">Marcar como entregue</button>' +
       '<button type="button" class="b fina" data-a="todas">Selecionar todas</button>' +
@@ -860,7 +875,8 @@ B7.Video = (function () {
   }
   function selecionarTodas() { visiveisAgora().forEach(d => SEL.add(d.id)); pintarSelecao(); }
   async function entregarSelecionadas() {
-    const alvo = demandas.filter(d => SEL.has(d.id) && !ENCERRADAS.includes(d.editing_status));
+    const marcadas = idsSel();
+    const alvo = demandas.filter(d => marcadas.has(d.id) && !ENCERRADAS.includes(d.editing_status));
     if (!alvo.length) return;
     const n = alvo.length;
     const ok = await B7.UI.confirmar({
@@ -872,7 +888,7 @@ B7.Video = (function () {
     if (!ok) return;
     const antes = new Map(alvo.map(d => [d.id, d.editing_status]));
     alvo.forEach(d => { d.editing_status = 'entregue'; });
-    SEL.clear(); desenharProducao();
+    limparSel(); desenharProducao();
     const falhas = [];
     for (const d of alvo) {
       try { await B7.DB.mudarStatusVideo(d.id, 'entregue', 'Marcada como entregue (seleção em lote).'); }
@@ -889,8 +905,12 @@ B7.Video = (function () {
     if (tot && !tot.querySelector('.vd-sel-todas') && visiveisAgora().length) {
       const bt = document.createElement('button');
       bt.type = 'button'; bt.className = 'vd-sel-todas'; bt.textContent = 'Selecionar todas';
-      bt.onclick = () => { if (SEL.size >= visiveisAgora().length) limparSel(); else selecionarTodas(); };
+      bt.onclick = () => { if (idsSel().size >= visiveisAgora().length) limparSel(); else selecionarTodas(); };
       tot.appendChild(bt);
+    }
+    if (!cx._obsSel && window.MutationObserver) {
+      cx._obsSel = new MutationObserver(() => barraSel());
+      cx._obsSel.observe(cx, { subtree: true, attributes: true, attributeFilter: ['class'] });
     }
     cx.oncontextmenu = e => {
       if (e.shiftKey || window.matchMedia('(hover: none)').matches) return;
@@ -900,14 +920,14 @@ B7.Video = (function () {
       const d = demandas.find(x => x.id === id);
       if (!d || ENCERRADAS.includes(d.editing_status)) return;
       e.preventDefault(); e.stopPropagation();
-      if (!SEL.has(id)) { SEL.clear(); SEL.add(id); pintarSelecao(); }
+      if (!idsSel().has(id)) { limparSel(); SEL.add(id); pintarSelecao(); }
       abrirMenuLote(e.clientX, e.clientY, id);
     };
   }
   function abrirMenuLote(x, y, id) {
     fecharMenuLote();
     if (B7.Ctx && B7.Ctx.fechar) B7.Ctx.fechar();
-    const n = SEL.size;
+    const n = idsSel().size;
     const itens = [
       ['entregar', n === 1 ? 'Marcar como entregue' : 'Marcar ' + n + ' como entregues', true],
       n === 1 ? ['abrir', 'Abrir demanda'] : null,
@@ -935,7 +955,7 @@ B7.Video = (function () {
     };
   }
   document.addEventListener('pointerdown', e => { if (menuLote && !menuLote.contains(e.target)) fecharMenuLote(); }, true);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (menuLote) fecharMenuLote(); else if (SEL.size && document.getElementById('vd-selbar')) limparSel(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (menuLote) fecharMenuLote(); else if (idsSel().size && document.getElementById('vd-selbar')) limparSel(); } });
   window.addEventListener('hashchange', () => { fecharMenuLote(); SEL.clear(); const b = document.getElementById('vd-selbar'); if (b) b.remove(); });
   window.addEventListener('scroll', () => fecharMenuLote(), { capture: true, passive: true });
 

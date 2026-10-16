@@ -281,3 +281,7 @@ html.modo-leve .conv-painel{box-shadow:none;}
 }
 html.modo-leve .conv-acoes,html.modo-leve .conv-descer,html.modo-leve .conv-reagir-menu,html.modo-leve .conv-emojis{box-shadow:none;}
 html.modo-leve .conv-balao,html.modo-leve .conv-reagir-menu,html.modo-leve .conv-emojis,html.modo-leve .conv-msg.brilha .conv-balao{animation:none;}
+
+/* ---- corretor de texto (zzz202) ---- */
+.conv-ic.conv-corr.on{color:#25D366;background:color-mix(in srgb,#25D366 16%,transparent);}
+#conv-texto.corrigindo{opacity:.55;animation:b7Fade .6s ease infinite alternate;}
