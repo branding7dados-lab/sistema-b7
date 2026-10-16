@@ -89,8 +89,10 @@ B7.Ajuda = (function () {
   }
 
   /* ---- busca: pontua e devolve o trecho com a palavra destacada ---- */
-  const VAZIAS = new Set('como que qual quais onde para pra por com sem uma um uns umas the de da do das dos em no na nos nas eu meu minha se ao aos as os ja nao sim mais esta este isso faco fazer quero'.split(' '));
-  function procurar(q) {
+  const VAZIAS = new Set('como que qual quais onde para pra por com sem uma um uns umas the de da do das dos em no na nos nas eu meu minha se ao aos as os ja nao sim mais esta este isso faco fazer quero consigo consegui pra pro fica tem ter vou vai posso pode botao tela sistema b7 aqui ai la isso essa esse algum alguma'.split(' '));
+  /* qualquer = true (zzz211, para o assistente): perguntas inteiras não
+     têm todas as palavras num tutorial só; basta a maioria. */
+  function procurar(q, qualquer) {
     /* palavras soltas ("como", "de") não contam; o fim da palavra é
        cortado para "gravação" achar "gravações" e "remarcar" achar "remarcada" */
     const termos = normal(q).split(/[^a-z0-9]+/).filter(w => w.length > 1 && !VAZIAS.has(w)).map(w => w.length > 5 ? w.slice(0, -2) : w);
@@ -98,8 +100,9 @@ B7.Ajuda = (function () {
     const vezes = (t, w) => { let n = 0, k = t.indexOf(w); while (k > -1 && n < 8) { n++; k = t.indexOf(w, k + w.length); } return n; };
     return todos().map(i => {
       const cs = campos(i), txt = normal(cs.join(' '));
-      if (!termos.every(w => txt.includes(w))) return null;
-      let pts = 0; termos.forEach(w => { if (normal(i.titulo).includes(w)) pts += 6; if (normal(i.serve).includes(w)) pts += 2; pts += 1 + vezes(txt, w) * .5; });
+      const achou = termos.filter(w => txt.includes(w));
+      if (qualquer ? achou.length < Math.max(1, Math.ceil(termos.length * 0.5)) : achou.length < termos.length) return null;
+      let pts = 0; achou.forEach(w => { if (normal(i.titulo).includes(w)) pts += 6; if (normal(i.serve).includes(w)) pts += 2; pts += 1 + vezes(txt, w) * .5; });
       const campo = cs.slice(1).find(c => termos.some(w => normal(c).includes(w))) || i.serve || '';
       return { i, pts, trecho: trecho(campo, termos) };
     }).filter(Boolean).sort((a, b) => b.pts - a.pts);

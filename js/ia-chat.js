@@ -475,6 +475,7 @@ B7.Chat = (function () {
       (podeFalar && (!B7.Recursos || B7.Recursos.ligado('ia_ouvir')) && m.papel !== 'user' && !m.erro && m.texto ? '<button type="button" class="ch-falar' + (falando === i ? ' on' : '') + '" data-falar="' + i + '" aria-pressed="' + (falando === i) +
         '" aria-label="' + (falando === i ? 'Parar de ouvir' : 'Ouvir a resposta') + '" title="' + (falando === i ? 'Parar' : 'Ouvir') + '">' + IC.som + '<span>Ouvir</span></button>' : '') +
       (m.papel !== 'user' && !m.erro && m.texto ? '</div>' : '') +
+      (m.papel !== 'user' && !m.erro && m.texto ? tutoriaisHTML(m) : '') +
       /* zzz135: duas ou mais propostas pendentes ganham o "Criar todas" */
       ((n => n >= 2 ? '<div class="ch-ac-todas"><span>' + n + ' propostas pendentes</span><button type="button" class="ch-ac-ok" data-acao-todas="' + i + '"' +
         (criandoLote ? ' disabled' : '') + '>' + (criandoLote ? 'Criando…' : 'Criar todas (' + n + ')') + '</button></div>' : '')(pendentesDe(i).length + ((m.acoes || []).filter(a => a.estado === 'indo').length))) +
@@ -650,6 +651,34 @@ B7.Chat = (function () {
     try { window.speechSynthesis.speak(u); } catch (e) { falando = -1; marcarFala(); }
   }
 
+  /* zzz211: TUTORIAIS NO ASSISTENTE. Quando a mensagem parece uma dúvida
+     de uso ("como faço", "onde fica", "não acho"), a tela procura os
+     tutoriais da Ajuda mais parecidos e manda só os ids; o servidor junta
+     o texto deles à pergunta. Na resposta, os tutoriais citados viram
+     botões "Abrir tutorial". */
+  const COMO = /\b(como|onde|aonde|cad[eê]|qual (bot[aã]o|tela|menu)|n[aã]o (acho|achei|consigo|sei|encontro|aparece)|tutorial|passo a passo|d[aá] pra|da para|consigo|funciona|serve)(?!\w)/i;
+  function tutoriaisPara(texto) {
+    if (!B7.Ajuda || !B7.Ajuda.procurar || !COMO.test(texto)) return [];
+    let r = [];
+    try { r = B7.Ajuda.procurar(texto, true); } catch (e) { return []; }
+    /* sem palavra forte em comum, a busca devolve tudo pela metade: corta pelo melhor */
+    const topo = r.length ? r[0].pts : 0;
+    return r.filter(x => x.pts >= Math.max(3, topo * 0.5)).slice(0, 3).map(x => x.i.id);
+  }
+  const normalT = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  function tutoriaisHTML(m) {
+    if (!B7.Ajuda || !B7.AJUDA_DADOS) return '';
+    const tx = normalT(m.texto);
+    let cand = m.tutoriais;
+    if (!cand) {   /* conversa reaberta: o que a resposta cita entre aspas, se fala de tutorial */
+      if (!/tutorial/.test(tx)) return '';
+      cand = B7.AJUDA_DADOS.flatMap(g => g.itens).filter(i => new RegExp('["“\u201d]' + normalT(i.titulo).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '["”\u201d]').test(tx)).map(i => ({ id: i.id, titulo: i.titulo }));
+    } else cand = cand.filter(t => t && t.id && tx.includes(normalT(t.titulo)));
+    if (!cand.length) return '';
+    return '<div class="ch-tuts">' + cand.slice(0, 3).map(t => '<a href="#/ajuda/' + esc(t.id) + '" class="ch-tut" data-tut="1">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg>' +
+      '<span><small>Abrir tutorial</small><b>' + esc(t.titulo) + '</b></span></a>').join('') + '</div>';
+  }
   function pintarCorpo() {
     const c = painel && painel.querySelector('.ch-corpo'); if (!c) return;
     c.innerHTML = corpoHTML();
@@ -660,6 +689,8 @@ B7.Chat = (function () {
     c.querySelectorAll('[data-falar]').forEach(b => b.onclick = () => falar(Number(b.dataset.falar)));
     c.querySelectorAll('[data-copiar]').forEach(b => b.onclick = () => copiar(Number(b.dataset.copiar), b));
     c.querySelectorAll('[data-denovo]').forEach(b => b.onclick = () => enviar(S.rascunho));
+    /* no celular o chat cobre a tela: fecha para o tutorial aparecer */
+    c.querySelectorAll('[data-tut]').forEach(a => a.onclick = () => { if (!desktop() && typeof fechar === 'function') setTimeout(fechar, 0); });
     descer(false);
   }
   /* zzz169: rolagem até o fim (suave quando pode) e o botão "descer" */
@@ -769,13 +800,15 @@ B7.Chat = (function () {
     const dados = { texto, cliente_id: S.clienteId || null, acoes_v: 3 };
     if (anexo) dados.imagem = { mime: anexo.mime, base64: anexo.base64 };
     if (S.conversaId) dados.conversa_id = S.conversaId;
+    const tuts = tutoriaisPara(texto); if (tuts.length) dados.ajuda_ids = tuts;
     S.parcial = '';
     const r = await B7.IA.pedir('chat', dados, { aoTrecho: pedaco => { S.parcial += pedaco; pintarFluxo(); } });
 
     S.enviando = false; S.parcial = '';
     if (r && r.ok) {
       if (r.conversa_id) S.conversaId = r.conversa_id;
-      S.msgs.push({ papel: 'assistant', id: r.mensagem_id || null, texto: r.texto, acoes: (r.acoes && r.acoes.length) ? r.acoes : (r.acao ? [r.acao] : []) });
+      S.msgs.push({ papel: 'assistant', id: r.mensagem_id || null, texto: r.texto, acoes: (r.acoes && r.acoes.length) ? r.acoes : (r.acao ? [r.acao] : []),
+        tutoriais: Array.isArray(r.tutoriais) ? r.tutoriais : null });
       S.lista = null;
     } else {
       /* a pergunta não foi guardada: sai da conversa e volta para o campo */
