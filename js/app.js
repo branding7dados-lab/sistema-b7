@@ -212,6 +212,10 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return B7.WhatsApp.abrir();
     }
+    if (partes[0] === 'suporte' && B7.Suporte) {
+      mostrar('tela-dashboard');
+      return B7.Suporte.abrir(partes[1] || null);
+    }
     if (partes[0] === 'trends' && B7.Trends) {
       mostrar('tela-dashboard');
       return B7.Trends.abrir();
