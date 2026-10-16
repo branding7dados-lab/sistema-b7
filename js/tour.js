@@ -149,8 +149,24 @@ B7.Tour = (function () {
     admin: [['panorama', 'Panorama', 'A agência inteira no mês: cada cliente, o que andou e o que está atrasado.'],
       ['config', 'Configurações', 'Contas, aparência, recursos, manutenção e as telas do administrador.']]
   };
+  /* zzz215: o administrador tem um tour próprio, da administração */
+  function passosAdmin(nome) {
+    return [
+      { icone: IC.oi, titulo: 'Olá' + (nome ? ', ' + nome : '') + '! Este é o tour da administração', texto: 'Onde ficam as ferramentas que só o administrador usa. Dá para pular e refazer pela Ajuda.' },
+      { icone: IC.menu, alvo: ['.lateral', '#nav-inferior'], titulo: 'O menu', texto: 'Você vê todas as telas. A equipe vê só as da função de cada um (você define isso em Usuários e acessos).' },
+      { icone: IC.tela, alvo: nav('config'), titulo: 'Configurações → Admin', texto: 'Aparência do sistema, recursos, manutenção, sessões, IA, comunicado, saúde do sistema, resumo da semana e redistribuição.' },
+      { icone: IC.tela, alvo: nav('panorama'), titulo: 'Panorama', texto: 'A agência inteira no mês: cada cliente, o que andou e o que está atrasado.' },
+      { icone: IC.busca, alvo: ['#busca-gatilho', '.busca-gatilho'], titulo: 'Busca', texto: 'Ache qualquer cliente, demanda, tela ou configuração. No teclado: Ctrl+K.' },
+      { icone: IC.sino, alvo: ['.topo .sino'], titulo: 'Avisos', texto: 'Inclui os chamados novos da equipe e os que estão parados há mais de 24 h.' },
+      { icone: IC.conta, alvo: ['.topo .area-sessao'], titulo: 'O menu da sua foto', texto: 'Usuários e acessos, a Central de atendimento (os chamados da equipe) e o Visualizar como… ficam aqui.' },
+      { icone: IC.ajuda, alvo: ['.topo .aj-bt'], titulo: 'Ajuda da administração', texto: 'O ? abre a ajuda: para você, primeiro os tutoriais da administração; os da equipe ficam numa aba ao lado.' },
+      { icone: IC.ok, titulo: 'Pronto!', texto: 'Na Ajuda da administração tem a lista do que conferir primeiro.', botao: 'Abrir a ajuda da administração',
+        aoConcluir: () => { location.hash = '#/ajuda'; } }
+    ];
+  }
   function passosBoasVindas() {
     const u = usuario() || {}, f = funcao(), nome = String(u.nome || '').trim().split(/\s+/)[0];
+    if (ehAdmin()) return passosAdmin(nome);
     return [
       { icone: IC.oi, titulo: 'Bem-vindo ao Sistema B7' + (nome ? ', ' + nome : '') + '!', texto: 'Um tour de 1 minuto pelo que você mais vai usar. Dá para pular quando quiser e refazer depois pela Ajuda.' },
       { icone: IC.menu, alvo: ['.lateral', '#nav-inferior'], titulo: 'O menu', texto: 'Aqui ficam as telas da sua função. Cada pessoa vê só o que usa no dia a dia.' },
@@ -166,7 +182,7 @@ B7.Tour = (function () {
     ];
   }
   function boasVindas() {
-    marcar('tour');
+    marcar(ehAdmin() ? 'tour-adm' : 'tour');
     return rodar(passosBoasVindas(), { nome: 'Tour de boas-vindas', aoFim: () => { const e = est(); e.boasVindas = Date.now(); salvar(e); } });
   }
 
@@ -217,20 +233,30 @@ B7.Tour = (function () {
     coordenador: [{ id: 'r:linhas', t: 'Abrir as Linhas editoriais', rota: 'linhas' }, { id: 'r:calendario', t: 'Olhar o Calendário', rota: 'calendario' }, { id: 'r:publicacoes', t: 'Ver as Publicações do dia', rota: 'publicacoes' }, { id: 'r:aprovacoes', t: 'Abrir as Aprovações', rota: 'aprovacoes' }],
     admin: [{ id: 'r:panorama', t: 'Abrir o Panorama', rota: 'panorama' }, { id: 'r:config', t: 'Conhecer as Configurações', rota: 'config' }, { id: 'r:usuarios', t: 'Ver Usuários e acessos', rota: 'usuarios' }]
   };
-  const lista = () => (POR_FUNCAO[funcao()] || []).concat(COMUNS).filter(p => !p.rota || p.rota === 'ajuda' || !B7.Perm || !B7.Perm.podeRota || B7.Perm.podeRota(p.rota));
+  const ADMIN_PASSOS = [
+    { id: 'tour-adm', t: 'Fazer o tour da administração' },
+    { id: 'r:config', t: 'Abrir as Configurações (aba Admin)', rota: 'config' },
+    { id: 'r:usuarios', t: 'Conferir Usuários e acessos', rota: 'usuarios' },
+    { id: 'r:suporte', t: 'Abrir a Central de atendimento', rota: 'suporte' },
+    { id: 'r:panorama', t: 'Abrir o Panorama', rota: 'panorama' },
+    { id: 'ajuda', t: 'Ler um tutorial da administração', rota: 'ajuda' }
+  ];
+  let modoCartao = false;
+  const lista = () => (modoCartao ? ADMIN_PASSOS : (POR_FUNCAO[funcao() === 'admin' ? 'coordenador' : funcao()] || []).concat(COMUNS)).filter(p => !p.rota || p.rota === 'ajuda' || !B7.Perm || !B7.Perm.podeRota || B7.Perm.podeRota(p.rota));
   function marcar(id) {
     if (!usuario()) return;
     const e = est(); if (e.passos[id]) return;
     e.passos[id] = Date.now(); salvar(e);
-    const cx = document.getElementById('tr-check'); if (cx) cx.outerHTML = cartao();
+    const cx = document.getElementById('tr-check'); if (cx) cx.outerHTML = cartao(modoCartao);
     ligarCartao();
   }
-  function cartao() {
+  function cartao(adm) {
+    modoCartao = !!adm && ehAdmin();
     const e = est(), l = lista(), feitos = l.filter(p => e.passos[p.id]).length, pct = Math.round(feitos / Math.max(1, l.length) * 100);
     const C = 2 * Math.PI * 22;
     return '<section class="tr-check" id="tr-check"><div class="tr-check-cab">' +
         '<svg class="tr-anel" viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="22"/><circle class="v" cx="27" cy="27" r="22" style="stroke-dasharray:' + C.toFixed(1) + ';stroke-dashoffset:' + (C * (1 - pct / 100)).toFixed(1) + '"/></svg>' +
-        '<div><h2>Primeiros passos</h2><small>' + (feitos === l.length ? 'Tudo feito. Você já conhece o essencial!' : feitos + ' de ' + l.length + ' · vão se marcando sozinhos conforme você usa') + '</small></div>' +
+        '<div><h2>' + (modoCartao ? 'Para conferir primeiro' : 'Primeiros passos') + '</h2><small>' + (feitos === l.length ? 'Tudo feito. Você já conhece o essencial!' : feitos + ' de ' + l.length + ' · vão se marcando sozinhos conforme você usa') + '</small></div>' +
         '<div class="tr-check-ac"><button type="button" class="b contorno fina" data-tr-tour>' + (e.boasVindas ? 'Refazer o tour' : 'Fazer o tour') + '</button>' +
           '<button type="button" class="tr-link" data-tr-dicas>' + (e.semDicas ? 'Religar as dicas' : 'Desligar as dicas') + '</button></div></div>' +
       '<ul>' + l.map(p => '<li class="' + (e.passos[p.id] ? 'ok' : '') + '">' +
@@ -244,7 +270,7 @@ B7.Tour = (function () {
     const dc = cx.querySelector('[data-tr-dicas]'); if (dc) dc.onclick = () => {
       const e = est(); e.semDicas = !e.semDicas; if (!e.semDicas) e.telas = {}; salvar(e);
       B7.UI.toast(e.semDicas ? 'Dicas desligadas.' : 'Dicas religadas: elas aparecem de novo na primeira visita a cada tela.');
-      cx.outerHTML = cartao(); ligarCartao();
+      cx.outerHTML = cartao(modoCartao); ligarCartao();
     };
   }
 

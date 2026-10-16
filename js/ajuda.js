@@ -19,8 +19,15 @@ window.B7 = window.B7 || {};
 B7.Ajuda = (function () {
   const esc = s => B7.UI.esc(s);
   const painel = () => document.getElementById('painel-dashboard');
-  const dados = () => (B7.AJUDA_DADOS || []);
-  let busca = '', voltarPara = '', idxBusca = '';
+  /* zzz215: administração e equipe têm ajudas diferentes. O administrador vê
+     os tutoriais da administração (js/ajuda-admin.js) e, numa aba, os da
+     equipe; a equipe não vê nada que seja só do administrador. */
+  const SO_ADMIN = ['usuarios-e-acessos', 'lixeira', 'visualizar-como'];
+  const souAdm = () => !!(B7.Auth && (B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin && B7.Auth.ehAdmin()));
+  const daEquipe = () => (B7.AJUDA_DADOS || []).map(g => Object.assign({}, g, { itens: g.itens.filter(i => souAdm() || !SO_ADMIN.includes(i.id)) })).filter(g => g.itens.length);
+  const dados = () => daEquipe().concat(souAdm() ? (B7.AJUDA_ADMIN || []) : []);
+  const ehDoAdm = g => /^adm-/.test(g.id);
+  let busca = '', voltarPara = '', idxBusca = '', abaAdm = true;
 
   const todos = () => dados().reduce((a, g) => a.concat(g.itens.map(i => Object.assign({ grupo: g.nome, grupoId: g.id }, i))), []);
   const normal = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -44,7 +51,7 @@ B7.Ajuda = (function () {
     comunicar: '<path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-5.2L8 19.4V16H7a2.5 2.5 0 0 1-2.5-2.5z"/>',
     admin: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.4H2.9a2 2 0 1 1 0-4H3a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9.6 4V3.9a2 2 0 1 1 4 0V4a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.1a2 2 0 1 1 0 4h-.1A1.6 1.6 0 0 0 19.4 15z"/>'
   };
-  const ic = (k, cl) => '<svg class="' + (cl || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONES[k] || ICONES.intro) + '</svg>';
+  const ic = (k, cl) => '<svg class="' + (cl || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONES[k] || (/^adm-/.test(k) ? ICONES.admin : ICONES.intro)) + '</svg>';
   const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 12.5l4.2 4.2 8.8-9.4"/></svg>';
 
   /* os tutoriais que mais importam para cada função */
@@ -63,7 +70,9 @@ B7.Ajuda = (function () {
 
   function daRota(base) {
     const b = base == null ? rotaBase() : base;
-    return todos().find(i => (i.rotas || []).includes(b)) || null;
+    /* para o administrador, o tutorial da administração vem primeiro (ex.: Suporte → Central de atendimento) */
+    const l = todos();
+    return (souAdm() && l.find(i => /^adm-/.test(i.grupoId) && (i.rotas || []).includes(b))) || l.find(i => (i.rotas || []).includes(b)) || null;
   }
 
   /* ---- botão "?" do topo ---- */
@@ -134,24 +143,28 @@ B7.Ajuda = (function () {
 
   /* ---------------- início ---------------- */
   function inicio() {
-    const e = est(), lista = todos(), f = minhaFuncao();
+    const adm = souAdm(), modoAdm = adm && abaAdm;
+    const e = est(), lista = todos().filter(i => modoAdm ? /^adm-/.test(i.grupoId) : !/^adm-/.test(i.grupoId)), f = minhaFuncao();
     const daTela = voltarPara ? daRota(rotaBase(voltarPara)) : null;
     const lidos = lista.filter(i => e.lidos[i.id]).length;
     const cartao = i => '<a class="aj-card" href="#/ajuda/' + esc(i.id) + '">' +
       '<span class="aj-card-g">' + ic(i.grupoId, 'aj-ic') + esc(i.grupo) + '</span>' +
       '<b>' + esc(i.titulo) + '</b><small>' + esc(String(i.serve || '').replace(/\*\*/g, '').slice(0, 110)) + (String(i.serve || '').length > 110 ? '…' : '') + '</small>' +
       '<span class="aj-card-pe">' + (e.lidos[i.id] ? '<em class="aj-lido">' + CHECK + 'Lido</em>' : '<em>' + minutos(i) + ' min de leitura</em>') + '</span></a>';
-    const para = (PARA[f] || []).map(id => lista.find(i => i.id === id)).filter(Boolean);
-    const grupos = dados().filter(g => g.id !== 'intro').map(g => {
+    const PARA_ADM = ['adm-central', 'adm-usuarios', 'adm-saude', 'adm-aparencia-sis', 'adm-resumo', 'adm-videos'];
+    const para = (modoAdm ? PARA_ADM : (PARA[f] || [])).map(id => lista.find(i => i.id === id)).filter(Boolean);
+    const grupos = dados().filter(g => g.id !== 'intro' && (modoAdm ? ehDoAdm(g) : !ehDoAdm(g))).map(g => {
       const n = g.itens.length, l = g.itens.filter(i => e.lidos[i.id]).length;
       return '<section class="aj-assunto"><div class="aj-assunto-cab">' + ic(g.id, 'aj-ic-g') + '<div><h3>' + esc(g.nome) + '</h3><small>' + n + ' tutoriais · ' + l + ' lido' + (l === 1 ? '' : 's') + '</small></div></div>' +
         '<div class="aj-barra" aria-hidden="true"><i style="--p:' + Math.round(l / n * 100) + '%"></i></div>' +
         '<ul>' + g.itens.map(i => '<li><a href="#/ajuda/' + esc(i.id) + '"' + (e.lidos[i.id] ? ' class="lido"' : '') + '>' + (e.lidos[i.id] ? CHECK : '<i></i>') + esc(i.titulo) + '</a></li>').join('') + '</ul></section>';
     }).join('');
-    const SUGS = ['print', 'entregue', 'gravação fixa', 'referência', 'WhatsApp', 'senha'];
+    const SUGS = modoAdm ? ['chamado', 'senha', 'manutenção', 'cor do sistema', 'comunicado', 'vídeo'] : ['print', 'entregue', 'gravação fixa', 'referência', 'WhatsApp', 'senha'];
     painel().innerHTML = '<div class="conteudo entra aj-tela aj-home">' +
-      '<header class="aj-hero"><span class="aj-hero-tag">' + ic('intro') + 'Ajuda do Sistema B7</span>' +
-        '<h1>Como podemos ajudar?</h1><p>Um passo a passo para cada parte do sistema, com os nomes dos botões do jeito que aparecem na tela.</p>' +
+      '<header class="aj-hero' + (modoAdm ? ' aj-hero-adm' : '') + '"><span class="aj-hero-tag">' + ic('intro') + (modoAdm ? 'Ajuda da administração' : 'Ajuda do Sistema B7') + '</span>' +
+        (adm ? '<div class="aj-abas" role="tablist"><button role="tab" data-aba="adm" class="' + (modoAdm ? 'on' : '') + '">Administração</button><button role="tab" data-aba="eq" class="' + (modoAdm ? '' : 'on') + '">Tutoriais da equipe</button></div>' : '') +
+        (modoAdm ? '<h1>Como administrar o B7</h1><p>Contas, atendimento da equipe, aparência, manutenção e as ferramentas que só o administrador usa.</p>'
+          : '<h1>Como podemos ajudar?</h1><p>Um passo a passo para cada parte do sistema, com os nomes dos botões do jeito que aparecem na tela.</p>') +
         '<label class="aj-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.2-4.2"/></svg>' +
           '<input id="aj-q" type="search" placeholder="O que você quer fazer? Ex.: entregar várias demandas" aria-label="Buscar nos tutoriais" value="' + esc(busca) + '" autocomplete="off"></label>' +
         '<div class="aj-sugs">Procure por: ' + SUGS.map(s => '<button type="button" data-sug="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div>' +
@@ -159,10 +172,10 @@ B7.Ajuda = (function () {
       '</header>' +
       '<div id="aj-res"></div>' +
       '<div id="aj-blocos">' +
-        (B7.Tour ? B7.Tour.cartao() : '') +
+        (B7.Tour && !modoAdm ? B7.Tour.cartao() : '') + (B7.Tour && modoAdm ? B7.Tour.cartao(true) : '') +
         (daTela ? '<a class="aj-aqui" href="#/ajuda/' + esc(daTela.id) + '">' + ic(daTela.grupoId, 'aj-ic-g') + '<div><small>Você estava em</small><b>' + esc(daTela.titulo) + '</b></div><span>Ver o tutorial desta tela →</span></a>' : '') +
-        (!e.lidos['por-onde-comecar'] ? '<a class="aj-aqui aj-comece" href="#/ajuda/por-onde-comecar">' + ic('intro', 'aj-ic-g') + '<div><small>Primeira vez aqui?</small><b>Por onde começar</b></div><span>Ler em 1 minuto →</span></a>' : '') +
-        (para.length ? '<h2 class="aj-sec">Para você <small>· ' + esc(NOME_FUNCAO[f] || '') + '</small></h2><div class="aj-cards">' + para.map(cartao).join('') + '</div>' : '') +
+        (!modoAdm && !e.lidos['por-onde-comecar'] ? '<a class="aj-aqui aj-comece" href="#/ajuda/por-onde-comecar">' + ic('intro', 'aj-ic-g') + '<div><small>Primeira vez aqui?</small><b>Por onde começar</b></div><span>Ler em 1 minuto →</span></a>' : '') +
+        (para.length ? '<h2 class="aj-sec">' + (modoAdm ? 'Mais usados na administração' : 'Para você <small>· ' + esc(NOME_FUNCAO[f] || '') + '</small>') + '</h2><div class="aj-cards">' + para.map(cartao).join('') + '</div>' : '') +
         '<h2 class="aj-sec">Por assunto</h2><div class="aj-assuntos">' + grupos + '</div>' +
         '<div class="aj-fim"><div><b>Não achou o que precisava?</b><p>Conte para a equipe pelo Suporte: a gente responde e melhora o tutorial.</p></div>' +
           '<div class="aj-fim-ac"><a class="b contorno" href="#/suporte">Meus chamados</a><button type="button" class="b pri" id="aj-chamado">Abrir um chamado</button></div></div>' +
@@ -172,6 +185,7 @@ B7.Ajuda = (function () {
     painel().querySelectorAll('[data-sug]').forEach(b => b.onclick = () => { q.value = busca = b.dataset.sug; resultados(); q.focus(); });
     painel().querySelector('#aj-chamado').onclick = () => B7.Suporte && B7.Suporte.novo('duvida');
     if (B7.Tour) B7.Tour.ligarCartao();
+    painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => { abaAdm = b.dataset.aba === 'adm'; busca = ''; inicio(); });
     if (busca) resultados();
     if (!estreito()) setTimeout(() => { try { q.focus({ preventScroll: true }); } catch (x) {} }, 60);
   }
@@ -255,11 +269,12 @@ B7.Ajuda = (function () {
     try { window.scrollTo(0, 0); } catch (x) {}
   }
 
-  /* zzz213: um vídeo curto por tutorial, enviado pelo administrador (espaço
-     público "ajuda-videos", até 50 MB). Sem vídeo, a equipe não vê nada;
-     o administrador vê o botão para enviar. */
+  /* zzz215: o vídeo do tutorial fica no YouTube (não listado), não no
+     sistema: o administrador cola o link e a equipe assiste ali mesmo
+     (youtube-nocookie, sem rastrear quem assiste). */
   let videos = null;
-  const ehAdm = () => !!(B7.Auth && (B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin && B7.Auth.ehAdmin()));
+  const ehAdm = () => souAdm();
+  const idYT = u => { const m = /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/.exec(String(u || '')); return m ? m[1] : (/^[A-Za-z0-9_-]{11}$/.test(String(u || '')) ? u : ''); };
   async function carregarVideos(forcar) {
     if (videos && !forcar) return videos;
     try { videos = (await B7.DB.rpc('ajuda_videos', {})) || {}; } catch (e) { videos = videos || {}; }
@@ -267,39 +282,27 @@ B7.Ajuda = (function () {
   }
   async function pintarVideo(i) {
     const cx = document.getElementById('aj-video'); if (!cx) return;
-    const v = (await carregarVideos())[i.id], adm = ehAdm();
+    const id = idYT((await carregarVideos())[i.id]), adm = ehAdm();
     if (!cx.isConnected) return;
-    if (!v && !adm) { cx.hidden = true; return; }
+    if (!id && !adm) { cx.hidden = true; return; }
     cx.hidden = false;
-    cx.innerHTML = (v ? '<video controls preload="metadata" playsinline src="' + esc(v) + '"></video>'
-        : '<div class="aj-video-vazio"><b>Sem vídeo neste tutorial</b><small>Grave a tela fazendo o passo a passo (até 50 MB, MP4 ou WebM). A equipe vê o vídeo aqui.</small></div>') +
-      (adm ? '<div class="aj-video-adm"><input type="file" id="aj-vid-arq" accept="video/mp4,video/webm,video/quicktime" hidden>' +
-        '<button type="button" class="b contorno fina" id="aj-vid-env">' + (v ? 'Trocar vídeo' : 'Enviar vídeo') + '</button>' +
-        (v ? '<button type="button" class="adm-link perigo" id="aj-vid-rm">Remover vídeo</button>' : '') + '<span id="aj-vid-st"></span></div>' : '');
+    cx.innerHTML = (id ? '<div class="aj-yt"><iframe src="https://www.youtube-nocookie.com/embed/' + esc(id) + '?rel=0&modestbranding=1" title="Vídeo do tutorial" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>' : '') +
+      (adm ? '<div class="aj-video-adm"><label class="rot" for="aj-yt-url">VÍDEO DESTE TUTORIAL <span class="leve">— link do YouTube (pode ser "não listado")</span></label>' +
+        '<div class="aj-yt-linha"><input class="campo fina" id="aj-yt-url" placeholder="https://youtu.be/…" value="' + (id ? 'https://youtu.be/' + esc(id) : '') + '" autocomplete="off">' +
+        '<button type="button" class="b fina pri" id="aj-yt-ok">Salvar</button>' + (id ? '<button type="button" class="adm-link perigo" id="aj-yt-rm">Remover</button>' : '') + '</div></div>' : '');
     if (!adm) return;
-    const arq = cx.querySelector('#aj-vid-arq'), st = cx.querySelector('#aj-vid-st');
-    cx.querySelector('#aj-vid-env').onclick = () => arq.click();
-    arq.onchange = async () => {
-      const f = arq.files && arq.files[0]; arq.value = ''; if (!f) return;
-      if (f.size > 52428800) { B7.UI.toast('Vídeo grande demais: o limite é 50 MB.', { tipo: 'erro' }); return; }
-      st.textContent = 'Enviando…';
-      try {
-        const ext = (/\.(mp4|webm|mov)$/i.exec(f.name) || [, 'mp4'])[1].toLowerCase();
-        const caminho = i.id + '/' + Date.now() + '.' + ext;
-        const { error } = await B7.sb.storage.from('ajuda-videos').upload(caminho, f, { contentType: f.type || 'video/mp4', upsert: false });
-        if (error) throw error;
-        const url = B7.sb.storage.from('ajuda-videos').getPublicUrl(caminho).data.publicUrl;
-        videos = await B7.DB.rpc('ajuda_video_definir', { p_id: i.id, p_url: url });
-        B7.UI.toast('Vídeo publicado neste tutorial.');
-        pintarVideo(i);
-      } catch (e) { st.textContent = ''; B7.UI.toast((e && e.message) || 'Não foi possível enviar o vídeo.', { tipo: 'erro' }); }
+    const inp = cx.querySelector('#aj-yt-url');
+    cx.querySelector('#aj-yt-ok').onclick = async () => {
+      const v = idYT(inp.value.trim());
+      if (!v) { B7.UI.toast('Cole um link do YouTube (youtube.com/watch?v=… ou youtu.be/…).', { tipo: 'erro' }); inp.focus(); return; }
+      try { videos = await B7.DB.rpc('ajuda_video_definir', { p_id: i.id, p_url: v }); B7.UI.toast('Vídeo colocado neste tutorial.'); pintarVideo(i); }
+      catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
     };
-    const rm = cx.querySelector('#aj-vid-rm');
-    if (rm) rm.onclick = () => B7.UI.confirmar({ titulo: 'Remover o vídeo deste tutorial?', texto: 'A equipe deixa de ver o vídeo aqui.', rotulo: 'Remover', perigo: true,
-      aoConfirmar: async () => {
-        try { videos = await B7.DB.rpc('ajuda_video_definir', { p_id: i.id, p_url: '' }); B7.UI.toast('Vídeo removido.'); pintarVideo(i); }
-        catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível remover.', { tipo: 'erro' }); }
-      } });
+    const rm = cx.querySelector('#aj-yt-rm');
+    if (rm) rm.onclick = async () => {
+      try { videos = await B7.DB.rpc('ajuda_video_definir', { p_id: i.id, p_url: '' }); B7.UI.toast('Vídeo tirado do tutorial (continua no seu YouTube).'); pintarVideo(i); }
+      catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível remover.', { tipo: 'erro' }); }
+    };
   }
 
   function pintarUtil(i) {

@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz214', versao: 'zzz214', em: '2026-10-17T15:00:00-03:00', rota: 'suporte',
+    titulo: 'Suporte de cara nova',
+    itens: ['A tela de Suporte ficou mais simples: escolha Problema, Sugestão, Dúvida ou Elogio em um toque e acompanhe seus chamados como conversas.',
+            'Antes de abrir um chamado, procure nos tutoriais direto ali.',
+            'As Ideias da equipe aparecem na própria tela, para votar.'] },
   { id: 'v-zzz213', versao: 'zzz213', em: '2026-10-17T12:00:00-03:00',
     titulo: 'Tour guiado, dicas e um Suporte mais completo',
     itens: ['Tour de boas-vindas: um passeio de 1 minuto pela tela, do jeito da sua função. Dá para pular e refazer pela Ajuda.',

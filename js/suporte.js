@@ -228,13 +228,19 @@ B7.Suporte = (function () {
     };
   }
 
-  /* ============================================================== tela
-     zzz210: números no alto, busca, "nova resposta" (o que mudou desde a
-     última vez que a pessoa abriu), linha do tempo do andamento, "Isso
-     resolveu?" (reabre), respostas prontas para a equipe e atualização
-     sozinha enquanto a tela está aberta. */
-  let lista = [], sel = null, filtro = 'abertos', visao = 'meus', vez = 0, q = '', relogio = null;
+  /* ============================================================== telas
+     zzz215: DUAS telas no mesmo endereço (#/suporte):
+       · EQUIPE — "Suporte": pedir ajuda em um toque (os quatro tipos), os
+         seus chamados como conversas e as ideias da equipe para votar.
+       · ADMINISTRAÇÃO (admin e coordenação) — "Central de atendimento":
+         números da fila, filas à esquerda (caixa de entrada, urgentes,
+         sem resposta há 24 h…), lista no meio e o chamado à direita, com
+         andamento em um toque, respostas prontas, nota interna e as
+         informações técnicas. Ideias em ranking.
+     Mesmos dados e mesmas funções do banco de antes. */
+  let lista = [], sel = null, fila = 'entrada', tipoF = '', pessoaF = '', vez = 0, q = '', relogio = null, aba = 'chamados';
   const quando = iso => (B7.UI.quando ? B7.UI.quando(iso) : String(iso || '').slice(0, 10));
+  const horas = iso => (Date.now() - new Date(iso).getTime()) / 36e5;
   const chipStatus = s => '<span class="sp-st sp-st-' + esc(s) + '">' + esc(STATUS[s] || s) + '</span>';
   const ini = n => (B7.UI.iniciais ? B7.UI.iniciais(n || '?') : String(n || '?').slice(0, 2).toUpperCase());
   const av = n => '<span class="sp-av tom-' + esc(B7.UI.tomDoNome ? B7.UI.tomDoNome(n || '') : '1') + '" aria-hidden="true">' + esc(ini(n)) + '</span>';
@@ -244,42 +250,49 @@ B7.Suporte = (function () {
     duvida: '<circle cx="12" cy="12" r="8.6"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8"/><path d="M12 16.6h.01"/>',
     elogio: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'
   };
-  const icTipo = t => '<span class="sp-ict sp-tp-' + esc(t) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICT[t] || ICT.duvida) + '</svg></span>';
+  const SVG = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+  const icTipo = t => '<span class="sp-ict sp-tp-' + esc(t) + '">' + SVG(ICT[t] || ICT.duvida) + '</span>';
+  const IC = {
+    entrada: '<path d="M4 13h4l2 3h4l2-3h4"/><path d="M5.5 5h13l1.5 8v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5z"/>',
+    urg: '<path d="M12 4l9 15.5H3z"/><path d="M12 10v4.2M12 17.3v.1"/>',
+    relogio: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.2l3.3 2"/>',
+    and: '<path d="M4 12h3l2-5 4 10 2-5h5"/>',
+    ok: '<circle cx="12" cy="12" r="8.5"/><path d="M8 12.5l2.8 2.8L16.3 9.6"/>',
+    nao: '<circle cx="12" cy="12" r="8.5"/><path d="M6.5 6.5l11 11"/>',
+    todos: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    voltar: '<path d="M15 6l-6 6 6 6"/>',
+    enviar: '<path d="M21 3L10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/>',
+    ideia: ICT.sugestao,
+    seta: '<path d="M6 14l6-6 6 6"/>'
+  };
   /* "visto" por chamado, neste aparelho: mostra a bolinha de novidade */
   const chaveVisto = () => 'suporte_visto_' + (eu() || 'anon');
   const vistos = () => (B7.pref && B7.pref.ler(chaveVisto(), {})) || {};
   const marcarVisto = c => { const v = vistos(); v[c.id] = c.updated_at; if (B7.pref) B7.pref.gravar(chaveVisto(), v); };
   const temNovidade = c => { const v = vistos()[c.id]; return v ? new Date(c.updated_at) > new Date(v) : (c.criado_por !== eu() && ABERTOS.includes(c.status)); };
   const RESPOSTAS = [
-    'Recebemos! Vamos olhar e te avisamos por aqui.',
-    'Consegue mandar um print da tela quando acontecer? Ajuda muito a achar o problema.',
-    'Corrigido na versão mais nova. Atualize o sistema (feche e abra de novo) e confira, por favor.',
-    'Boa ideia! Entrou na nossa lista. Te avisamos quando sair.'
+    ['Recebido', 'Recebemos! Vamos olhar e te avisamos por aqui.'],
+    ['Pedir print', 'Consegue mandar um print da tela quando acontecer? Ajuda muito a achar o problema.'],
+    ['Corrigido', 'Corrigido na versão mais nova. Atualize o sistema (feche e abra de novo) e confira, por favor.'],
+    ['Boa ideia', 'Boa ideia! Entrou na nossa lista. Te avisamos quando sair.'],
+    ['Explicar', 'Para fazer isso: '],
   ];
+  const semResposta = c => c.status === 'novo' && horas(c.created_at) >= 24;
 
   async function carregar() { lista = ok(await sb().from('suporte_chamados').select('*').order('updated_at', { ascending: false }).limit(300)) || []; }
 
   async function abrir(id) {
     const minha = ++vez;
     if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/suporte');
-    if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['Suporte e feedback']);
-    if (!equipe()) visao = 'meus';
+    const adm = equipe();
+    if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo([adm ? 'Central de atendimento' : 'Suporte']);
     sel = id && typeof id === 'string' ? id : (/^#\/suporte$/.test(location.hash) ? null : sel);
-    painel().innerHTML = '<div class="conteudo entra sp-tela">' +
-      '<header class="sp-hero"><div class="sp-hero-tx"><span class="sp-hero-tag">Suporte e feedback</span><h1>Fale com a equipe do sistema</h1>' +
-        '<p>Relate um problema, mande uma ideia, tire uma dúvida ou elogie. A resposta chega aqui e no sino.</p></div>' +
-        '<div class="sp-hero-ac"><button type="button" class="b pri" id="sp-novo">+ Novo chamado</button><button type="button" class="b contorno" id="sp-ideias">Ideias da equipe</button><a class="b contorno" href="#/ajuda">Ver tutoriais</a></div>' +
-        '<div class="sp-tipos-rap">' + Object.keys(TIPOS).map(k => '<button type="button" data-rap="' + k + '">' + icTipo(k) + '<span><b>' + TIPOS[k].rot + '</b><small>' + TIPOS[k].dica + '</small></span></button>').join('') + '</div>' +
-      '</header>' +
-      '<div id="sp-nums" class="sp-nums"></div><div id="sp-barra"></div><div class="sp-grade" id="sp-grade">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
-    painel().querySelector('#sp-novo').onclick = () => novo();
-    painel().querySelector('#sp-ideias').onclick = () => ideias();
-    painel().querySelectorAll('[data-rap]').forEach(b => b.onclick = () => novo(b.dataset.rap));
+    painel().innerHTML = '<div class="conteudo entra spx ' + (adm ? 'spx-adm' : 'spx-eq') + '" id="spx">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>';
     try { await carregar(); }
     catch (e) {
       if (minha !== vez) return;
       const semTabela = e && (e.code === '42P01' || e.code === 'PGRST205');
-      painel().querySelector('#sp-grade').innerHTML = '<div class="cb-aviso erro">' + (semTabela ? 'O Suporte ainda está sendo ligado no banco. Volte daqui a pouco.' : 'Não foi possível carregar os chamados.') + '</div>';
+      document.getElementById('spx').innerHTML = '<div class="cb-aviso erro">' + (semTabela ? 'O Suporte ainda está sendo ligado no banco. Volte daqui a pouco.' : 'Não foi possível carregar os chamados.') + '</div>';
       return;
     }
     if (minha !== vez) return;
@@ -288,11 +301,11 @@ B7.Suporte = (function () {
     vigiar(minha);
   }
 
-  /* atualiza sozinho a cada 40 s com a tela aberta e visível */
+  /* atualiza sozinho a cada 40 s com a tela aberta e visível, sem perder o que está sendo escrito */
   function vigiar(minha) {
     clearInterval(relogio);
     relogio = setInterval(async () => {
-      if (minha !== vez || !document.getElementById('sp-grade')) { clearInterval(relogio); return; }
+      if (minha !== vez || !document.getElementById('spx')) { clearInterval(relogio); return; }
       if (document.hidden) return;
       const antes = JSON.stringify(lista.map(c => [c.id, c.updated_at, c.status]));
       try { await carregar(); } catch (e) { return; }
@@ -302,113 +315,169 @@ B7.Suporte = (function () {
       const t2 = document.getElementById('sp-resp-t'); if (t2 && rascunho) t2.value = rascunho;
     }, 40000);
   }
+  const pintar = () => (equipe() ? pintarAdm() : pintarEquipe());
 
-  const daVisao = () => lista.filter(c => visao === 'todos' || c.criado_por === eu());
-  const precisaResposta = c => equipe() ? (ABERTOS.includes(c.status) && c.criado_por !== eu() && temNovidade(c)) : temNovidade(c);
-  const doFiltro = () => {
+  /* ============================================================ EQUIPE */
+  function pintarEquipe() {
+    const raiz = document.getElementById('spx'); if (!raiz) return;
+    if (sel) return conversa(raiz, lista.find(c => c.id === sel), false);
+    const meus = lista.filter(c => c.criado_por === eu());
+    const abertos = meus.filter(c => ABERTOS.includes(c.status)), fechados = meus.filter(c => !ABERTOS.includes(c.status));
+    const card = (c, i) => '<button type="button" class="spx-th' + (temNovidade(c) ? ' nov' : '') + '" data-id="' + esc(c.id) + '" style="--i:' + i + '">' + icTipo(c.tipo) +
+      '<span class="spx-th-tx"><b>' + esc(c.titulo) + '</b><small>#' + c.numero + ' · ' + esc(TIPOS[c.tipo].rot) + ' · ' + esc(quando(c.updated_at || c.created_at)) + '</small></span>' +
+      (temNovidade(c) ? '<i class="sp-dot" title="Resposta nova"></i>' : '') + chipStatus(c.status) + '</button>';
+    raiz.innerHTML =
+      '<header class="spx-eq-cab"><div><span class="spx-tag">Suporte</span><h1>Como podemos ajudar?</h1>' +
+        '<p>Escolha o que você quer contar. A equipe responde aqui e você recebe um aviso no sino.</p></div></header>' +
+      '<div class="spx-tipos">' + Object.keys(TIPOS).map((k, i) => '<button type="button" class="spx-tipo spx-t-' + k + '" data-novo="' + k + '" style="--i:' + i + '">' + icTipo(k) +
+        '<b>' + esc(TIPOS[k].rot) + '</b><small>' + esc(TIPOS[k].dica) + '</small><span class="spx-tipo-ir">' + SVG('<path d="M5 12h14M13 6l6 6-6 6"/>') + '</span></button>').join('') + '</div>' +
+      '<label class="spx-antes">' + SVG('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/>') +
+        '<input id="spx-q" type="search" placeholder="Antes, procure nos tutoriais: ex. remarcar gravação" autocomplete="off" aria-label="Procurar nos tutoriais"></label>' +
+      '<div id="spx-tut"></div>' +
+      '<div class="spx-eq-grade">' +
+        '<section class="spx-bloco"><h2>Seus chamados' + (abertos.length ? ' <small>' + abertos.length + ' em aberto</small>' : '') + '</h2>' +
+          (meus.length ? '<div class="spx-ths">' + abertos.concat(fechados).slice(0, 30).map(card).join('') + '</div>'
+            : '<div class="spx-vazio">' + SVG(IC.ok) + '<b>Nenhum chamado ainda</b><p>Quando você abrir um, a conversa com a equipe fica aqui.</p></div>') + '</section>' +
+        '<section class="spx-bloco"><h2>Ideias da equipe <small>vote nas que você também quer</small></h2><div id="spx-ideias">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>' +
+          '<button type="button" class="spx-link" id="spx-ideia-nova">+ Mandar uma ideia</button></section>' +
+      '</div>';
+    raiz.querySelectorAll('[data-novo]').forEach(b => b.onclick = () => novo(b.dataset.novo));
+    raiz.querySelectorAll('.spx-th').forEach(b => b.onclick = () => { sel = b.dataset.id; pintar(); });
+    raiz.querySelector('#spx-ideia-nova').onclick = () => novo('sugestao');
+    const qi = raiz.querySelector('#spx-q'), tut = raiz.querySelector('#spx-tut');
+    qi.oninput = () => {
+      const r = qi.value.trim().length >= 3 && B7.Ajuda && B7.Ajuda.procurar ? B7.Ajuda.procurar(qi.value).slice(0, 4) : [];
+      tut.innerHTML = r.length ? '<div class="spx-tut">' + r.map(x => '<a href="#/ajuda/' + esc(x.i.id) + '"><b>' + esc(x.i.titulo) + '</b><small>' + esc(x.i.grupo) + '</small></a>').join('') + '</div>'
+        : (qi.value.trim().length >= 3 ? '<p class="spx-tut-nada">Nenhum tutorial para isso. <button type="button" class="spx-link" data-nd>Abrir uma dúvida</button></p>' : '');
+      const nd = tut.querySelector('[data-nd]'); if (nd) nd.onclick = () => novo('duvida', { titulo: qi.value.trim() });
+    };
+    ideiasInline(raiz.querySelector('#spx-ideias'), 5);
+  }
+
+  /* ===================================================== ADMINISTRAÇÃO */
+  const FILAS = [
+    ['entrada', 'Caixa de entrada', IC.entrada, c => ABERTOS.includes(c.status)],
+    ['urgentes', 'Urgentes', IC.urg, c => c.urgente && ABERTOS.includes(c.status)],
+    ['semresp', 'Sem resposta há 24 h', IC.relogio, semResposta],
+    ['andamento', 'Em andamento', IC.and, c => c.status === 'em_andamento' || c.status === 'em_analise'],
+    ['resolvidos', 'Resolvidos', IC.ok, c => c.status === 'resolvido'],
+    ['naofeito', 'Não será feito', IC.nao, c => c.status === 'nao_vamos_fazer'],
+    ['todos', 'Todos', IC.todos, () => true]
+  ];
+  const daFila = () => {
+    const f = (FILAS.find(x => x[0] === fila) || FILAS[0])[3];
     const t = String(q || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-    return daVisao().filter(c =>
-      (filtro === 'todos' ? true : filtro === 'abertos' ? ABERTOS.includes(c.status) : filtro === 'novidade' ? temNovidade(c) : c.status === filtro) &&
+    return lista.filter(c => f(c) && (!tipoF || c.tipo === tipoF) && (!pessoaF || c.criado_por === pessoaF) &&
       (!t || (c.titulo + ' ' + (c.descricao || '') + ' ' + (c.criado_por_nome || '') + ' #' + c.numero).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(t)));
   };
-
-  function pintarNums() {
-    const cx = document.getElementById('sp-nums'); if (!cx) return;
-    const base = daVisao(), mes = Date.now() - 30 * 864e5;
-    const n = { abertos: base.filter(c => ABERTOS.includes(c.status)).length, novidade: base.filter(temNovidade).length,
-      urg: base.filter(c => c.urgente && ABERTOS.includes(c.status)).length, res: base.filter(c => c.status === 'resolvido' && new Date(c.resolvido_em || c.updated_at) > mes).length };
-    const num = (k, v, r, cl) => '<button type="button" class="sp-num ' + (cl || '') + (filtro === k ? ' on' : '') + '" data-num="' + k + '"><b>' + v + '</b><span>' + r + '</span></button>';
-    cx.innerHTML = num('abertos', n.abertos, 'em aberto') + num('novidade', n.novidade, equipe() ? 'com novidade' : 'com resposta nova', n.novidade ? 'quente' : '') +
-      (equipe() ? num('urgentes', n.urg, 'urgentes', n.urg ? 'alerta' : '') : '') + num('resolvido', n.res, 'resolvidos em 30 dias', 'ok');
-    cx.querySelectorAll('[data-num]').forEach(b => b.onclick = () => { filtro = b.dataset.num === 'urgentes' ? 'abertos' : b.dataset.num; if (b.dataset.num === 'urgentes') q = ''; sel = null; pintar(); });
+  function pintarAdm() {
+    const raiz = document.getElementById('spx'); if (!raiz) return;
+    const abertos = lista.filter(c => ABERTOS.includes(c.status));
+    const res7 = lista.filter(c => c.status === 'resolvido' && horas(c.resolvido_em || c.updated_at) <= 24 * 7).length;
+    const res30 = lista.filter(c => c.status === 'resolvido' && c.resolvido_em && horas(c.resolvido_em) <= 24 * 30);
+    const media = res30.length ? res30.reduce((s, c) => s + (new Date(c.resolvido_em) - new Date(c.created_at)) / 36e5, 0) / res30.length : null;
+    const fmtH = h => h == null ? '—' : h < 1 ? '< 1 h' : h < 48 ? Math.round(h) + ' h' : Math.round(h / 24) + ' dias';
+    const kpi = (v, r, cls, f) => '<button type="button" class="spx-kpi ' + (cls || '') + (f && fila === f ? ' on' : '') + '"' + (f ? ' data-fila="' + f + '"' : ' disabled') + '><b>' + v + '</b><span>' + r + '</span></button>';
+    const pessoas = [...new Map(lista.map(c => [c.criado_por, c.criado_por_nome || 'Alguém'])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR'));
+    raiz.innerHTML =
+      '<header class="spx-adm-cab"><div><span class="spx-tag">Administração</span><h1>Central de atendimento</h1>' +
+        '<p>Os chamados da equipe: responder, mudar o andamento e acompanhar as ideias.</p></div>' +
+        '<div class="spx-adm-ac"><div class="spx-abas" role="tablist"><button role="tab" data-aba="chamados" class="' + (aba === 'chamados' ? 'on' : '') + '">Chamados</button>' +
+          '<button role="tab" data-aba="ideias" class="' + (aba === 'ideias' ? 'on' : '') + '">Ideias</button></div>' +
+          '<button type="button" class="b pri" id="spx-novo">+ Novo chamado</button></div></header>' +
+      '<div class="spx-kpis">' +
+        kpi(lista.filter(c => c.status === 'novo').length, 'novos', '', 'entrada') +
+        kpi(abertos.filter(c => c.urgente).length, 'urgentes', abertos.some(c => c.urgente) ? 'alerta' : '', 'urgentes') +
+        kpi(lista.filter(semResposta).length, 'sem resposta há 24 h', lista.some(semResposta) ? 'alerta' : '', 'semresp') +
+        kpi(lista.filter(c => c.status === 'em_andamento' || c.status === 'em_analise').length, 'em análise ou andamento', '', 'andamento') +
+        kpi(res7, 'resolvidos em 7 dias', 'ok', 'resolvidos') +
+        kpi(fmtH(media), 'tempo médio para resolver (30 dias)', '', '') + '</div>' +
+      (aba === 'ideias' ? '<section class="spx-bloco spx-ideias-adm"><h2>Ideias da equipe <small>mais votadas primeiro</small></h2><div id="spx-ideias">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></section>' :
+      '<div class="spx-caixa' + (sel ? ' com-sel' : '') + '">' +
+        '<aside class="spx-filas"><nav>' + FILAS.map(f => {
+          const n = lista.filter(f[3]).length;
+          return '<button type="button" class="spx-fila' + (fila === f[0] ? ' on' : '') + (f[0] === 'urgentes' || f[0] === 'semresp' ? (n ? ' quente' : '') : '') + '" data-fila="' + f[0] + '">' + SVG(f[2]) + '<span>' + f[1] + '</span><i>' + n + '</i></button>';
+        }).join('') + '</nav>' +
+          '<h4>Tipo</h4><div class="spx-tipos-f">' + [['', 'Todos']].concat(Object.keys(TIPOS).map(k => [k, TIPOS[k].plural])).map(([k, r]) => '<button type="button" data-tipof="' + k + '"' + (tipoF === k ? ' class="on"' : '') + '>' + esc(r) + '</button>').join('') + '</div>' +
+          '<h4>Pessoa</h4><select class="campo fina" id="spx-pessoa"><option value="">Todas</option>' + pessoas.map(([id, n]) => '<option value="' + esc(id) + '"' + (pessoaF === id ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>' +
+        '</aside>' +
+        '<section class="spx-lista"><label class="spx-busca">' + SVG('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/>') +
+          '<input id="spx-q" type="search" placeholder="Buscar por título, pessoa ou número" value="' + esc(q) + '" autocomplete="off" aria-label="Buscar chamados"></label><div id="spx-itens"></div></section>' +
+        '<section class="spx-ws" id="spx-ws"></section>' +
+      '</div>');
+    raiz.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => { aba = b.dataset.aba; pintar(); });
+    raiz.querySelector('#spx-novo').onclick = () => novo();
+    raiz.querySelectorAll('[data-fila]').forEach(b => b.onclick = () => { fila = b.dataset.fila; aba = 'chamados'; sel = null; pintar(); });
+    if (aba === 'ideias') return ideiasInline(raiz.querySelector('#spx-ideias'), 100, true);
+    raiz.querySelectorAll('[data-tipof]').forEach(b => b.onclick = () => { tipoF = b.dataset.tipof; sel = null; pintar(); });
+    raiz.querySelector('#spx-pessoa').onchange = e => { pessoaF = e.target.value; sel = null; pintar(); };
+    const qi = raiz.querySelector('#spx-q'); qi.oninput = () => { q = qi.value; pintarItens(); };
+    pintarItens();
+    const ws = raiz.querySelector('#spx-ws');
+    if (sel && lista.some(c => c.id === sel)) conversa(ws, lista.find(c => c.id === sel), true);
+    else ws.innerHTML = '<div class="spx-ws-vazio">' + SVG(IC.entrada) + '<b>Escolha um chamado</b><p>A conversa, o andamento e as informações técnicas aparecem aqui.</p></div>';
+  }
+  function pintarItens() {
+    const cx = document.getElementById('spx-itens'); if (!cx) return;
+    const itens = daFila();
+    cx.innerHTML = itens.length ? itens.map(c => {
+      const nov = temNovidade(c) && sel !== c.id, h = horas(c.created_at);
+      return '<button type="button" class="spx-it' + (sel === c.id ? ' on' : '') + (nov ? ' nov' : '') + '" data-id="' + esc(c.id) + '">' +
+        av(c.criado_por_nome) +
+        '<span class="spx-it-tx"><span class="spx-it-l1"><b>' + esc(c.titulo) + '</b>' + (nov ? '<i class="sp-dot"></i>' : '') + '</span>' +
+        '<small>' + icTipo(c.tipo) + '#' + c.numero + ' · ' + esc((c.criado_por_nome || 'alguém').split(' ')[0]) + ' · ' + esc(quando(c.updated_at || c.created_at)) + '</small>' +
+        '<span class="spx-it-tags">' + chipStatus(c.status) + (c.urgente && ABERTOS.includes(c.status) ? '<em class="spx-urg">urgente</em>' : '') +
+          (c.prioridade === 'alta' ? '<em class="spx-prio">alta</em>' : '') + (semResposta(c) ? '<em class="spx-sla">há ' + Math.floor(h) + ' h sem resposta</em>' : '') + '</span></span></button>';
+    }).join('') : '<div class="spx-vazio">' + SVG(IC.ok) + '<b>Fila vazia</b><p>Nada aqui com esses filtros.</p></div>';
+    cx.querySelectorAll('.spx-it').forEach(b => b.onclick = () => { sel = b.dataset.id; pintar(); });
   }
 
-  function pintarBarra() {
-    const cx = document.getElementById('sp-barra'); if (!cx) return;
-    const base = daVisao();
-    const n = f => f === 'todos' ? base.length : f === 'abertos' ? base.filter(c => ABERTOS.includes(c.status)).length : base.filter(c => c.status === f).length;
-    cx.innerHTML = '<div class="sp-barra">' +
-      '<div class="sp-barra-l">' + (equipe() ? '<div class="filtro" role="tablist" aria-label="De quem">' +
-        '<button role="tab" data-v="meus" class="' + (visao === 'meus' ? 'on' : '') + '">Meus</button>' +
-        '<button role="tab" data-v="todos" class="' + (visao === 'todos' ? 'on' : '') + '">Todos da equipe</button></div>' : '') +
-        '<label class="sp-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.2-4.2"/></svg>' +
-          '<input id="sp-q" type="search" placeholder="Buscar por título, pessoa ou número" value="' + esc(q) + '" aria-label="Buscar chamados" autocomplete="off"></label></div>' +
-      '<div class="sp-filtros" role="group" aria-label="Andamento">' +
-        [['abertos', 'Em aberto'], ['novo', 'Novos'], ['em_analise', 'Em análise'], ['em_andamento', 'Em andamento'], ['resolvido', 'Resolvidos'], ['nao_vamos_fazer', 'Não será feito'], ['todos', 'Todos']]
-          .map(([k, r]) => '<button type="button" class="sp-f' + (filtro === k ? ' on' : '') + '" data-f="' + k + '">' + r + '<i>' + n(k) + '</i></button>').join('') + '</div></div>';
-    cx.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { visao = b.dataset.v; sel = null; pintar(); });
-    cx.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filtro = b.dataset.f; sel = null; pintar(); });
-    const qi = cx.querySelector('#sp-q');
-    qi.oninput = () => { q = qi.value; pintarLista(); };
-  }
-
-  function pintar() {
-    pintarNums(); pintarBarra();
-    const cx = document.getElementById('sp-grade'); if (!cx) return;
-    cx.className = 'sp-grade' + (sel ? ' com-sel' : '');
-    const tela = cx.closest('.sp-tela'); if (tela) tela.classList.toggle('com-sel', !!sel);
-    cx.innerHTML = '<div class="sp-lista" id="sp-lista"></div><div class="sp-detalhe" id="sp-det"></div>';
-    pintarLista();
-    if (sel) detalhe(sel);
-    else document.getElementById('sp-det').innerHTML = '<div class="sp-det-vazio"><span class="sp-det-vazio-ic">' + icTipo('duvida') + '</span><b>Escolha um chamado</b><p>A conversa com a equipe e o andamento aparecem aqui.</p></div>';
-  }
-
-  function pintarLista() {
-    const cx = document.getElementById('sp-lista'); if (!cx) return;
-    const itens = doFiltro();
-    const itemHTML = c => {
-      const nov = temNovidade(c) && sel !== c.id;
-      return '<button type="button" class="sp-item' + (sel === c.id ? ' on' : '') + (nov ? ' nov' : '') + '" data-id="' + esc(c.id) + '">' + icTipo(c.tipo) +
-        '<span class="sp-item-tx"><span class="sp-item-l1"><b>' + esc(c.titulo) + '</b>' + (nov ? '<i class="sp-dot" title="Novidade"></i>' : '') + '</span>' +
-        '<span class="sp-meta">#' + c.numero + ' · ' + (visao === 'todos' ? esc((c.criado_por_nome || 'alguém').split(' ')[0]) + ' · ' : '') + esc(quando(c.updated_at || c.created_at)) +
-          (c.urgente && ABERTOS.includes(c.status) ? ' · <em class="sp-urgente">urgente</em>' : '') + '</span></span>' + chipStatus(c.status) + '</button>';
-    };
-    cx.innerHTML = itens.length ? itens.map(itemHTML).join('') :
-      '<div class="sp-vazio"><b>' + (lista.length ? 'Nenhum chamado aqui.' : 'Nenhum chamado ainda.') + '</b><p>' + (lista.length ? 'Troque o filtro ou a busca.' : 'Achou algo estranho, tem uma ideia ou ficou com dúvida? Conte pra gente.') + '</p>' +
-        '<button type="button" class="b pri" data-novo-vazio>+ Novo chamado</button></div>';
-    const nv = cx.querySelector('[data-novo-vazio]'); if (nv) nv.onclick = () => novo();
-    cx.querySelectorAll('.sp-item').forEach(b => b.onclick = () => { sel = b.dataset.id; pintar(); });
-  }
-
+  /* ======================================== CONVERSA (as duas telas) */
   const ETAPAS = [['novo', 'Recebido'], ['em_analise', 'Em análise'], ['em_andamento', 'Em andamento'], ['resolvido', 'Resolvido']];
   function linhaTempo(c) {
     if (c.status === 'nao_vamos_fazer') return '<div class="sp-tempo fim-nao"><span class="sp-et feito"><i></i>Recebido</span><span class="sp-et atual"><i></i>Não será feito</span></div>';
     const at = ETAPAS.findIndex(e => e[0] === c.status);
     return '<div class="sp-tempo" style="--at:' + at + '">' + ETAPAS.map((e, k) => '<span class="sp-et' + (k < at ? ' feito' : k === at ? ' atual' : '') + '"><i></i>' + e[1] + '</span>').join('') + '</div>';
   }
-
-  async function detalhe(id) {
-    const cx = document.getElementById('sp-det'); if (!cx) return;
-    const c = lista.find(x => x.id === id); if (!c) return;
+  function conversa(cx, c, adm) {
+    if (!cx || !c) return;
     marcarVisto(c);
     const t = TIPOS[c.tipo] || TIPOS.bug, souAutor = c.criado_por === eu(), fechado = !ABERTOS.includes(c.status);
-    cx.innerHTML = '<button type="button" class="sp-volta" id="sp-volta">← Voltar</button>' +
-      '<header class="sp-det-cab">' + icTipo(c.tipo) + '<div class="sp-det-tit"><div class="sp-det-l1"><span class="sp-tp sp-tp-' + esc(c.tipo) + '">' + esc(t.rot) + '</span><span class="sp-meta">#' + c.numero + '</span>' +
-        (c.urgente && !fechado ? '<em class="sp-urgente">urgente</em>' : '') + (equipe() && c.prioridade !== 'normal' ? '<span class="sp-prio sp-prio-' + esc(c.prioridade) + '">prioridade ' + esc(PRIO[c.prioridade]) + '</span>' : '') + '</div>' +
-        '<h2>' + esc(c.titulo) + '</h2><span class="sp-meta">' + av(c.criado_por_nome) + esc(c.criado_por_nome || 'alguém') + ' · aberto ' + esc(quando(c.created_at)) + '</span></div></header>' +
-      linhaTempo(c) +
-      (c.status === 'resolvido' && souAutor ? '<div class="sp-resolveu"><div><b>Isso resolveu?</b><p>Se ainda acontece, reabra e conte o que viu.</p></div><div><button type="button" class="b contorno" id="sp-sim">Sim, obrigado</button><button type="button" class="b pri" id="sp-reabrir">Não, ainda acontece</button></div></div>' : '') +
-      (equipe() ? '<div class="sp-andamento"><label>Situação <select class="campo fina" id="sp-st">' + Object.keys(STATUS).map(k => '<option value="' + k + '"' + (c.status === k ? ' selected' : '') + '>' + STATUS[k] + '</option>').join('') + '</select></label>' +
-        '<label>Prioridade <select class="campo fina" id="sp-pr">' + Object.keys(PRIO).map(k => '<option value="' + k + '"' + (c.prioridade === k ? ' selected' : '') + '>' + PRIO[k] + '</option>').join('') + '</select></label>' +
-        '<button type="button" class="b fina pri" id="sp-and-b" disabled>Salvar</button></div>' : '') +
-      '<div class="sp-desc-box">' + (c.descricao ? '<p class="sp-desc">' + esc(c.descricao).replace(/\n/g, '<br>') + '</p>' : '<p class="sp-desc leve">Sem detalhes.</p>') +
-        '<div class="sp-anexos" id="sp-anexos"></div>' + contextoHTML(c) + '</div>' +
-      '<h3 class="sp-h">Conversa</h3><div class="sp-msgs" id="sp-msgs">' + B7.UI.skeleton('lista', { n: 2 }) + '</div>' +
-      '<div class="sp-resp">' +
-        (equipe() && !souAutor ? '<div class="sp-prontas">' + RESPOSTAS.map((r, k) => '<button type="button" data-pronta="' + k + '">' + esc(r.slice(0, 34)) + '…</button>').join('') + '</div>' : '') +
-        '<textarea class="campo" id="sp-resp-t" rows="3" maxlength="4000" placeholder="' + (equipe() && !souAutor ? 'Responder para ' + esc((c.criado_por_nome || 'a pessoa').split(' ')[0]) + '…' : fechado ? 'Escrever (o chamado continua ' + esc(STATUS[c.status].toLowerCase()) + ')…' : 'Escrever uma mensagem para a equipe…') + '"></textarea>' +
-        '<div class="sp-resp-ac">' + (equipe() ? '<label class="sp-nota"><input type="checkbox" id="sp-resp-i"> Nota interna (só a equipe vê)</label>' : '<small class="leve">Ctrl+Enter envia</small>') +
-        '<button type="button" class="b pri" id="sp-resp-b">Enviar</button></div></div>';
+    cx.innerHTML = '<div class="spx-conv' + (adm ? ' adm' : '') + '">' +
+      '<button type="button" class="spx-voltar" id="sp-volta">' + SVG(IC.voltar) + (adm ? 'Fila' : 'Seus chamados') + '</button>' +
+      '<header class="spx-conv-cab">' + icTipo(c.tipo) + '<div><div class="spx-conv-l1"><span class="sp-tp sp-tp-' + esc(c.tipo) + '">' + esc(t.rot) + '</span><span>#' + c.numero + '</span>' +
+          (c.urgente && !fechado ? '<em class="spx-urg">urgente</em>' : '') + '</div>' +
+        '<h2>' + esc(c.titulo) + '</h2><small>' + av(c.criado_por_nome) + esc(souAutor ? 'Você' : (c.criado_por_nome || 'alguém')) + ' · aberto ' + esc(quando(c.created_at)) + '</small></div></header>' +
+      (adm ? '<div class="spx-and"><div class="spx-st-pills" role="group" aria-label="Andamento">' + Object.keys(STATUS).map(k => '<button type="button" data-st="' + k + '" class="' + (c.status === k ? 'on' : '') + '">' + esc(STATUS[k]) + '</button>').join('') + '</div>' +
+          '<label class="spx-prio-sel">Prioridade <select class="campo fina" id="sp-pr">' + Object.keys(PRIO).map(k => '<option value="' + k + '"' + (c.prioridade === k ? ' selected' : '') + '>' + PRIO[k] + '</option>').join('') + '</select></label></div>'
+        : linhaTempo(c)) +
+      (c.status === 'resolvido' && souAutor && !adm ? '<div class="sp-resolveu"><div><b>Isso resolveu?</b><p>Se ainda acontece, reabra e conte o que viu.</p></div><div><button type="button" class="b contorno" id="sp-sim">Sim, obrigado</button><button type="button" class="b pri" id="sp-reabrir">Ainda acontece</button></div></div>' : '') +
+      '<div class="spx-pedido"><p>' + (c.descricao ? esc(c.descricao).replace(/\n/g, '<br>') : '<span class="leve">Sem detalhes.</span>') + '</p><div class="sp-anexos" id="sp-anexos"></div>' + (adm ? contextoHTML(c) : '') + '</div>' +
+      '<div class="spx-msgs" id="sp-msgs">' + B7.UI.skeleton('lista', { n: 2 }) + '</div>' +
+      '<div class="spx-resp">' +
+        (adm ? '<div class="spx-modo" role="tablist"><button role="tab" data-modo="resp" class="on">Responder para ' + esc((c.criado_por_nome || 'a pessoa').split(' ')[0]) + '</button><button role="tab" data-modo="nota">Nota interna</button></div>' +
+          '<div class="sp-prontas">' + RESPOSTAS.map((r, k) => '<button type="button" data-pronta="' + k + '">' + esc(r[0]) + '</button>').join('') + '</div>' : '') +
+        '<div class="spx-resp-cx"><textarea class="campo" id="sp-resp-t" rows="2" maxlength="4000" placeholder="' + (adm ? 'Escreva a resposta…' : fechado ? 'Escrever (o chamado continua ' + esc(STATUS[c.status].toLowerCase()) + ')' : 'Escreva para a equipe…') + '"></textarea>' +
+          '<button type="button" class="spx-env" id="sp-resp-b" aria-label="Enviar">' + SVG(IC.enviar) + '</button></div>' +
+        '<small class="leve">Ctrl+Enter envia' + (adm ? ' · a pessoa recebe aviso no sino (a nota interna, não)' : '') + '</small></div></div>';
     cx.querySelector('#sp-volta').onclick = () => { sel = null; pintar(); };
     anexos(c); mensagens(c);
+    let interno = false;
     const tx = cx.querySelector('#sp-resp-t');
-    cx.querySelectorAll('[data-pronta]').forEach(b => b.onclick = () => { tx.value = RESPOSTAS[+b.dataset.pronta]; tx.focus(); });
+    tx.addEventListener('input', () => { tx.style.height = 'auto'; tx.style.height = Math.min(200, tx.scrollHeight + 2) + 'px'; });
+    cx.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => {
+      interno = b.dataset.modo === 'nota';
+      cx.querySelectorAll('[data-modo]').forEach(x => x.classList.toggle('on', x === b));
+      cx.querySelector('.spx-resp').classList.toggle('nota', interno);
+      tx.placeholder = interno ? 'Nota só para a equipe…' : 'Escreva a resposta…';
+    });
+    cx.querySelectorAll('[data-pronta]').forEach(b => b.onclick = () => { tx.value = RESPOSTAS[+b.dataset.pronta][1]; tx.focus(); tx.dispatchEvent(new Event('input')); });
     const enviar = async () => {
       const texto = tx.value.trim(); if (!texto) return;
       const bt = cx.querySelector('#sp-resp-b'); bt.disabled = true;
       try {
-        await B7.DB.rpc('suporte_responder', { p_id: c.id, p_texto: texto, p_interno: !!(cx.querySelector('#sp-resp-i') && cx.querySelector('#sp-resp-i').checked) });
-        tx.value = ''; c.updated_at = new Date().toISOString(); marcarVisto(c); await mensagens(c);
+        await B7.DB.rpc('suporte_responder', { p_id: c.id, p_texto: texto, p_interno: adm && interno });
+        tx.value = ''; tx.style.height = ''; c.updated_at = new Date().toISOString(); marcarVisto(c); await mensagens(c);
       } catch (e) { B7.UI.toast('Não foi possível enviar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
       bt.disabled = false;
     };
@@ -423,29 +492,26 @@ B7.Suporte = (function () {
       try { await B7.DB.rpc('suporte_reabrir', { p_id: c.id, p_motivo: motivo || '' }); await carregar(); B7.UI.toast('Chamado reaberto. A equipe foi avisada.'); pintar(); }
       catch (e) { B7.UI.toast('Não foi possível reabrir: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
     };
-    const ab = cx.querySelector('#sp-and-b');
-    if (ab) {
-      const st = cx.querySelector('#sp-st'), pr = cx.querySelector('#sp-pr');
-      const mudou = () => { ab.disabled = st.value === c.status && pr.value === c.prioridade; };
-      st.onchange = mudou; pr.onchange = mudou;
-      ab.onclick = async () => {
-        ab.disabled = true;
-        try {
-          await B7.DB.rpc('suporte_status', { p_id: c.id, p_status: st.value, p_prioridade: pr.value });
-          await carregar(); B7.UI.toast('Andamento salvo. ' + (c.criado_por !== eu() ? 'A pessoa foi avisada.' : '')); pintar();
-        } catch (e) { B7.UI.toast('Não foi possível salvar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); mudou(); }
-      };
-    }
+    /* andamento em um toque; prioridade ao trocar */
+    const salvarAnd = async (st, pr) => {
+      try {
+        await B7.DB.rpc('suporte_status', { p_id: c.id, p_status: st, p_prioridade: pr });
+        await carregar(); B7.UI.toast('Andamento: ' + STATUS[st] + (c.criado_por !== eu() ? '. A pessoa foi avisada.' : '.')); pintar();
+      } catch (e) { B7.UI.toast('Não foi possível salvar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
+    };
+    cx.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { if (b.dataset.st !== c.status) salvarAnd(b.dataset.st, cx.querySelector('#sp-pr').value); });
+    const pr = cx.querySelector('#sp-pr'); if (pr) pr.onchange = () => salvarAnd(c.status, pr.value);
+    if (!adm || window.matchMedia('(min-width: 1100px)').matches) setTimeout(() => { try { tx.focus({ preventScroll: true }); } catch (e) {} }, 80);
   }
 
   function contextoHTML(c) {
     const x = c.contexto || {}; if (!Object.keys(x).length) return '';
     const l = (r, v) => v ? '<div><span>' + r + '</span><b>' + esc(String(v)) + '</b></div>' : '';
-    return '<details class="sp-ctx"><summary>Informações da tela' + ((x.erros || []).length ? ' · <em>' + x.erros.length + ' erro' + (x.erros.length === 1 ? '' : 's') + '</em>' : '') + '</summary><div class="sp-ctx-g">' +
+    return '<details class="sp-ctx"><summary>Informações técnicas' + ((x.erros || []).length ? ' · <em>' + x.erros.length + ' erro' + (x.erros.length === 1 ? '' : 's') + '</em>' : '') + '</summary><div class="sp-ctx-g">' +
       l('Tela', x.tela) + l('Versão', x.versao) + l('Onde', x.plataforma) + l('Janela', x.janela) + l('Perfil', x.papel) + (x.online === false ? l('Conexão', 'sem internet') : '') +
       (x.navegador ? '<div class="sp-ctx-l"><span>Navegador</span><b>' + esc(x.navegador) + '</b></div>' : '') +
       ((x.erros || []).length ? '<div class="sp-ctx-l"><span>Erros recentes</span><pre>' + esc(x.erros.map(e => e.msg).join('\n')) + '</pre></div>' : '') +
-      ((x.rastro || []).length && equipe() ? '<div class="sp-ctx-l"><span>Rastro</span><pre>' + esc(JSON.stringify(x.rastro).slice(0, 900)) + '</pre></div>' : '') +
+      ((x.rastro || []).length ? '<div class="sp-ctx-l"><span>Rastro</span><pre>' + esc(JSON.stringify(x.rastro).slice(0, 900)) + '</pre></div>' : '') +
       '</div></details>';
   }
 
@@ -468,8 +534,36 @@ B7.Suporte = (function () {
       : '<div class="sp-msg' + (m.autor_id === eu() ? ' minha' : '') + (m.interno ? ' interna' : '') + '">' + (m.autor_id === eu() ? '' : av(m.autor_nome)) +
         '<div class="sp-bolha"><div class="sp-msg-c"><b>' + esc(m.autor_id === eu() ? 'Você' : (m.autor_nome || 'Alguém')) + '</b>' + (m.interno ? '<em>nota interna</em>' : '') + '<small>' + esc(quando(m.created_at)) + '</small></div>' +
         '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p></div></div>').join('')
-      : '<div class="sp-sem-msg">Ainda sem mensagens. ' + (equipe() && c.criado_por !== eu() ? 'Responda para a pessoa saber que o chamado foi visto.' : 'A equipe responde por aqui.') + '</div>';
+      : '<p class="spx-msgs-vazio">' + (equipe() ? 'Ainda sem respostas. A primeira resposta tira o chamado da fila de "sem resposta".' : 'A equipe ainda não respondeu. Você recebe um aviso quando responder.') + '</p>';
     box.scrollTop = box.scrollHeight;
+  }
+
+  /* ideias com votos, dentro da tela (equipe: as 5 primeiras; administração: todas, com o andamento) */
+  async function ideiasInline(cx, max, adm) {
+    if (!cx) return;
+    let l = [];
+    try { l = (await B7.DB.rpc('suporte_ideias', {})) || []; }
+    catch (e) { cx.innerHTML = '<p class="leve">Não foi possível carregar as ideias.</p>'; return; }
+    if (!cx.isConnected) return;
+    const mostra = l.slice(0, max);
+    cx.innerHTML = mostra.length ? '<div class="sp-ideias">' + mostra.map((x, i) => '<div class="sp-ideia" style="--i:' + i + '">' +
+        '<button type="button" class="sp-voto' + (x.eu_votei ? ' on' : '') + '" data-voto="' + esc(x.id) + '" aria-pressed="' + x.eu_votei + '" aria-label="Votar">' + SVG(IC.seta) + '<b>' + x.votos + '</b></button>' +
+        '<div class="sp-ideia-tx"><b>' + esc(x.titulo) + '</b><small>#' + x.numero + ' · ' + esc(x.autor || 'alguém') + ' · ' + esc(quando(x.created_at)) + '</small></div>' + chipStatus(x.status) +
+        (adm ? '<button type="button" class="b fina contorno" data-abrir="' + esc(x.id) + '">Abrir</button>' : '') + '</div>').join('') + '</div>' +
+        (l.length > max ? '<button type="button" class="spx-link" data-todas>Ver todas as ' + l.length + ' ideias</button>' : '')
+      : '<div class="spx-vazio">' + SVG(IC.ideia) + '<b>Nenhuma ideia ainda</b><p>Mande a primeira!</p></div>';
+    cx.querySelectorAll('[data-voto]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const n = await B7.DB.rpc('suporte_votar', { p_id: b.dataset.voto });
+        const on = !b.classList.contains('on');
+        b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.querySelector('b').textContent = n;
+        b.classList.remove('pulo'); void b.offsetWidth; b.classList.add('pulo');
+      } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível votar.', { tipo: 'erro' }); }
+      b.disabled = false;
+    });
+    cx.querySelectorAll('[data-abrir]').forEach(b => b.onclick = () => { aba = 'chamados'; fila = 'todos'; sel = b.dataset.abrir; pintar(); });
+    const td = cx.querySelector('[data-todas]'); if (td) td.onclick = () => ideias();
   }
 
   /* zzz214: as sugestões da equipe, para todos votarem. Só o resumo (os
