@@ -604,3 +604,33 @@ html.modo-leve .nl-existe{animation:none;}
 .gv-ref-uso button{border:0;background:none;color:var(--ink-3);font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:9px;cursor:pointer;}
 .gv-ref-uso button:hover{color:var(--ink);}
 .gv-ref-uso button.on{background:var(--rosa,#F0559E);color:#fff;}
+
+/* ---- preparação da gravação (zzz206) ---- */
+.gv-prep-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 11px;border-radius:99px;background:color-mix(in srgb,#F0A443 20%,transparent);color:#F0A443;}
+.gv-prep-chip.ok{background:color-mix(in srgb,#3DD69A 20%,transparent);color:#3DD69A;}
+.gv-prep-chip.urgente{background:color-mix(in srgb,#F0559E 20%,transparent);color:#F0559E;}
+.gv-prep-chip svg{width:13px;height:13px;}
+.gv-prep-barra{height:6px;border-radius:99px;background:var(--borda);overflow:hidden;margin:2px 0 12px;}
+.gv-prep-barra i{display:block;height:100%;width:var(--p,0%);border-radius:99px;background:linear-gradient(90deg,#8B6CFF,#3DD69A);transition:width .5s cubic-bezier(.2,.8,.2,1);}
+.gv-prep-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.gv-prep-lista li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:var(--fundo);border:1px solid var(--borda);}
+.gv-prep-lista li.falta{border-color:color-mix(in srgb,#F0A443 45%,var(--borda));}
+.gv-prep-ic{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--borda-forte);display:inline-flex;align-items:center;justify-content:center;color:#fff;}
+.gv-prep-lista li.ok .gv-prep-ic{background:#3DD69A;border-color:#3DD69A;}
+.gv-prep-ic svg{width:12px;height:12px;}
+.gv-prep-tx{flex:1;min-width:0;font-size:13.5px;display:flex;flex-direction:column;}
+.gv-prep-tx small{font-size:12px;color:var(--ink-3);}
+.gv-prep-lista li.ok .gv-prep-tx{color:var(--ink-3);}
+/* lista de gravações */
+.gl-prep{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:8px;background:color-mix(in srgb,#F0A443 20%,transparent);color:#F0A443;white-space:nowrap;}
+.gl-prep.ok{background:color-mix(in srgb,#3DD69A 20%,transparent);color:#3DD69A;}
+.gl-prep.urgente{background:color-mix(in srgb,#F0559E 20%,transparent);color:#F0559E;}
+/* gravação fixa no cliente */
+.gfx-liga{display:flex;align-items:center;gap:8px;font-size:13.5px;margin:6px 0;cursor:pointer;}
+.gfx-campos{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+.gfx-campos[hidden]{display:none;}
+.gfx-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;}
+.gfx-linha label{display:inline-flex;align-items:center;gap:6px;}
+.gfx-linha input[type=number]{width:64px;}
+.gfx-linha input[type=time]{width:112px;}
+.gfx-linha [hidden]{display:none !important;}

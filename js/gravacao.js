@@ -131,12 +131,13 @@ B7.Gravacao = (function () {
       return;
     }
     if (g0 !== geracao) return;
-    S = { id, g, itens: [], ocs: [], hist: [], refs: [], estado: { itens: 'carregando', hist: 'carregando', refs: 'carregando' } };
+    S = { id, g, itens: [], ocs: [], hist: [], refs: [], prep: null, estado: { itens: 'carregando', hist: 'carregando', refs: 'carregando' } };
     B7.Rota.titulo([g.nome, g.cliente_nome]);
     desenhar();
     carregarItens(g0);
     carregarHistorico(g0);
     carregarRefs(g0);
+    carregarPrep(g0);
   }
 
   function carregarItens(g0) {
@@ -144,14 +145,45 @@ B7.Gravacao = (function () {
     B7.DB.gravacaoItens(S.id).then(l => {
       if (g0 !== geracao) return;
       S.itens = (l || []).filter(i => !(i.tipo === 'roteiro' && i.roteiro_removido));
-      S.estado.itens = 'ok'; pintarItens(); pintarResumoTopo();
+      S.estado.itens = 'ok'; pintarItens(); pintarResumoTopo(); if (S.prep) carregarPrep(g0);
     }).catch(() => { if (g0 !== geracao) return; S.estado.itens = 'erro'; pintarItens(); });
   }
   /* zzz205: referências da linha editorial do mês — cada uma pede "só edição" ou "edição e gravação" */
+  /* zzz206: preparação da gravação — o que já está pronto e o que falta antes do dia */
+  function carregarPrep(g0) {
+    B7.DB.gravacaoPreparacao(S.id).then(p => {
+      if (g0 !== geracao) return;
+      S.prep = p || null; pintarPrep();
+    }).catch(() => { if (g0 !== geracao) return; S.prep = null; pintarPrep(); });
+  }
+  function pintarPrep() {
+    const cx = document.getElementById('gv-prep'); if (!cx || !S) return;
+    const p = S.prep, sit = S.g && S.g.situacao;
+    if (!p || sit === 'Gravada' || sit === 'Cancelada') { cx.hidden = true; cx.innerHTML = ''; return; }
+    cx.hidden = false;
+    const tudo = p.feitos === p.total;
+    const quando = p.dias == null ? '' : p.dias < 0 ? 'a data já passou' : p.dias === 0 ? 'é hoje' : p.dias === 1 ? 'falta 1 dia' : 'faltam ' + p.dias + ' dias';
+    const urgente = !tudo && p.dias != null && p.dias <= 3;
+    const acao = { data: ['agendar', 'Marcar'], lista: ['adicionar', 'Adicionar'], refs: ['refs', 'Decidir'] };
+    cx.innerHTML = '<div class="gv-sec-cab"><h2 id="gv-t-prep">Preparação da gravação</h2>' +
+      '<span class="gv-prep-chip' + (tudo ? ' ok' : urgente ? ' urgente' : '') + '">' + (tudo ? IC.check + 'Tudo pronto' : p.feitos + ' de ' + p.total + ' prontos') +
+      (quando && !tudo ? ' · ' + esc(quando) : '') + '</span></div>' +
+      '<div class="gv-prep-barra" aria-hidden="true"><i style="--p:' + Math.round(p.feitos / p.total * 100) + '%"></i></div>' +
+      '<ul class="gv-prep-lista">' + (p.itens || []).map(x =>
+        '<li class="' + (x.ok ? 'ok' : 'falta') + '"><span class="gv-prep-ic">' + (x.ok ? IC.check : '') + '</span>' +
+        '<span class="gv-prep-tx">' + esc(x.texto) + (!x.ok && x.detalhe ? '<small>' + esc(x.detalhe) + '</small>' : '') + '</span>' +
+        (!x.ok && acao[x.chave] && podeEditar() ? '<button type="button" class="b fina contorno" data-prep="' + x.chave + '">' + acao[x.chave][1] + '</button>' : '') + '</li>').join('') + '</ul>';
+    cx.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => {
+      const k = b.dataset.prep;
+      if (k === 'data') return modalAgendar();
+      if (k === 'lista') return menuAdicionar(b);
+      if (k === 'refs') { const r = document.getElementById('gv-refs'); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    });
+  }
   function carregarRefs(g0) {
     B7.DB.gravacaoReferenciasLinha(S.id).then(l => {
       if (g0 !== geracao) return;
-      S.refs = l || []; S.estado.refs = 'ok'; pintarRefs();
+      S.refs = l || []; S.estado.refs = 'ok'; pintarRefs(); if (S.prep) carregarPrep(g0);
     }).catch(() => { if (g0 !== geracao) return; S.refs = []; S.estado.refs = 'erro'; pintarRefs(); });
   }
   function pintarRefs() {
@@ -201,7 +233,7 @@ B7.Gravacao = (function () {
   async function recarregarGravacao() {
     try { S.g = await B7.DB.gravacao(S.id); } catch (e) {}
     pintarCabecalho(); pintarResumoTopo(); pintarDetalhes();
-    carregarHistorico(geracao); carregarRefs(geracao);
+    carregarHistorico(geracao); carregarRefs(geracao); carregarPrep(geracao);
   }
 
   /* ======================================================= desenho */
@@ -211,6 +243,7 @@ B7.Gravacao = (function () {
       '<header class="gv-cab" id="gv-cab"></header>' +
       '<div class="gv-grade">' +
         '<div class="gv-principal">' +
+          '<section class="gv-bloco gv-prep" id="gv-prep" aria-labelledby="gv-t-prep" hidden></section>' +
           '<section class="gv-bloco" id="gv-itens" aria-labelledby="gv-t-itens"></section>' +
           '<section class="gv-bloco gv-refs" id="gv-refs" aria-labelledby="gv-t-refs" hidden></section>' +
           '<section class="gv-bloco" id="gv-obs" aria-labelledby="gv-t-obs"></section>' +

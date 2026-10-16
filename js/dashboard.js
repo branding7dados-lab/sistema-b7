@@ -642,6 +642,26 @@ B7.Dashboard = (function () {
       }).join('');
       f.querySelectorAll('button').forEach(b => b.onclick = () => { FG.status = b.dataset.f; aplicar(); });
     };
+    /* zzz206: "Preparação 3/5 · faltam 2 dias" nas gravações que ainda vão acontecer */
+    let prepMapa = null;
+    const decorarPreparacao = cx => {
+      if (!prepMapa) return;
+      cx.querySelectorAll('.gl-item[data-gravacao]').forEach(el => {
+        const p = prepMapa.get(el.dataset.gravacao), sub = el.querySelector('.gl-sub');
+        if (!p || !sub || sub.querySelector('.gl-prep')) return;
+        const tudo = p.feitos === p.total, urgente = !tudo && p.dias != null && p.dias <= 3;
+        const faltas = (p.itens || []).filter(x => !x.ok).map(x => x.texto + (x.detalhe ? ' — ' + x.detalhe : ''));
+        const s = document.createElement('span');
+        s.className = 'gl-prep' + (tudo ? ' ok' : urgente ? ' urgente' : '');
+        s.title = tudo ? 'Tudo pronto para gravar' : 'Falta: ' + faltas.join('; ');
+        s.textContent = tudo ? 'Tudo pronto' : 'Preparação ' + p.feitos + '/' + p.total + (p.dias != null && p.dias >= 0 ? ' · ' + (p.dias === 0 ? 'hoje' : p.dias === 1 ? 'amanhã' : 'em ' + p.dias + ' dias') : '');
+        sub.appendChild(s);
+      });
+    };
+    B7.DB.gravacoesPreparacaoResumo().then(l => {
+      prepMapa = new Map((l || []).map(p => [p.gravacao_id, p]));
+      const cx = document.getElementById('lista-gravacoes'); if (cx) decorarPreparacao(cx);
+    }).catch(() => {});
     const aplicar = () => {
       const lista = gravacoes.filter(g => passa(g));
       const cx = document.getElementById('lista-gravacoes'); if (!cx) return;
@@ -657,6 +677,7 @@ B7.Dashboard = (function () {
       pintarStatus();
       ligar();
       animarListaGravacoes(cx);
+      decorarPreparacao(cx);
       cx.querySelectorAll('[data-definir-mes]').forEach(b => b.onclick = ev => {
         ev.stopPropagation(); B7.UI.fecharMenus && B7.UI.fecharMenus();
         const g = gravacoes.find(x => x.id === b.dataset.definirMes); if (!g) return;
@@ -2912,10 +2933,52 @@ B7.Dashboard = (function () {
 
 
   /* ================================================== editar cliente */
+  /* ---- gravação fixa do cliente (zzz206) ---- */
+  const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  function blocoGravacaoFixa(f) {
+    const on = !!(f && f.ativa), freq = f ? f.freq : 'semanal';
+    const hh = t => t ? String(t).slice(0, 5) : '';
+    return '<div class="mb gfx" id="gfx">' +
+      '<label class="rot">GRAVAÇÃO FIXA <span class="leve">— o sistema cria a gravação sozinho, alguns dias antes</span></label>' +
+      '<label class="gfx-liga"><input type="checkbox" id="gfx-ativa"' + (on ? ' checked' : '') + '> Este cliente tem dia fixo de gravar</label>' +
+      '<div class="gfx-campos" id="gfx-campos"' + (on ? '' : ' hidden') + '>' +
+        '<div class="gfx-linha"><select class="campo fina" id="gfx-freq" aria-label="Frequência">' +
+          '<option value="semanal"' + (freq === 'semanal' ? ' selected' : '') + '>Toda semana</option>' +
+          '<option value="mensal"' + (freq === 'mensal' ? ' selected' : '') + '>Todo mês</option></select>' +
+        '<select class="campo fina" id="gfx-dsem" aria-label="Dia da semana"' + (freq === 'semanal' ? '' : ' hidden') + '>' +
+          DIAS_SEMANA.map((n, i) => '<option value="' + i + '"' + ((f && f.dia_semana === i) || (!f && i === 2) ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>' +
+        '<label class="gfx-dmes" id="gfx-dmes"' + (freq === 'mensal' ? '' : ' hidden') + '>dia <input class="campo fina" id="gfx-dmes-n" type="number" min="1" max="31" value="' + ((f && f.dia_mes) || 10) + '"></label></div>' +
+        '<div class="gfx-linha"><label>das <input class="campo fina" id="gfx-ini" type="time" value="' + hh(f && f.hora_inicio) + '"></label>' +
+          '<label>às <input class="campo fina" id="gfx-fim" type="time" value="' + hh(f && f.hora_fim) + '"></label>' +
+          '<label>criar com <select class="campo fina" id="gfx-ant">' + [3, 5, 7, 10, 14].map(n => '<option value="' + n + '"' + (((f && f.antecedencia_dias) || 7) === n ? ' selected' : '') + '>' + n + ' dias</option>').join('') + '</select> de antecedência</label></div>' +
+        '<small class="leve">Horário é opcional. Se a gravação do dia já existir, nada é criado de novo.</small>' +
+      '</div></div>';
+  }
+  function ligarGravacaoFixa(m) {
+    const q = id => m.querySelector('#' + id);
+    const ativa = q('gfx-ativa'), campos = q('gfx-campos'), freq = q('gfx-freq');
+    const mostrar = () => {
+      campos.hidden = !ativa.checked;
+      q('gfx-dsem').hidden = freq.value !== 'semanal'; q('gfx-dmes').hidden = freq.value !== 'mensal';
+    };
+    ativa.onchange = mostrar; freq.onchange = mostrar;
+    const inicial = JSON.stringify([ativa.checked, freq.value, q('gfx-dsem').value, q('gfx-dmes-n').value, q('gfx-ini').value, q('gfx-fim').value, q('gfx-ant').value]);
+    return () => {
+      const valor = { ativa: ativa.checked, freq: freq.value, diaSemana: +q('gfx-dsem').value, diaMes: +q('gfx-dmes-n').value,
+        inicio: q('gfx-ini').value || null, fim: q('gfx-fim').value || null, antecedencia: +q('gfx-ant').value };
+      const atual = JSON.stringify([ativa.checked, freq.value, q('gfx-dsem').value, q('gfx-dmes-n').value, q('gfx-ini').value, q('gfx-fim').value, q('gfx-ant').value]);
+      /* só grava se a pessoa mexeu (ou ligou a primeira vez) */
+      return { mudou: atual !== inicial, valor };
+    };
+  }
   async function modalEditarCliente(id) {
     let c;
     try { c = await B7.DB.cliente(id); }
     catch (e) { return B7.UI.toast('Não consegui carregar o cliente', { tipo: 'erro' }); }
+    /* zzz206: dia fixo de gravar (só admin/coordenador) */
+    const podeFixa = !!(B7.Auth && B7.Auth.ehEquipe && B7.Auth.ehEquipe());
+    let fixa = null;
+    if (podeFixa) { try { fixa = await B7.DB.gravacaoFixaDoCliente(id); } catch (e) { fixa = null; } }
 
     const m = B7.UI.modal(
       '<h3>Editar cliente</h3><div class="sub">Trocar o nome não afeta gravações, roteiros nem cenas — ' +
@@ -2931,10 +2994,12 @@ B7.Dashboard = (function () {
         ? '<div class="mb"><label class="rot" for="ec-wa">GRUPO DO WHATSAPP <span class="leve">— opcional</span></label>' +
           '<input class="campo" id="ec-wa" maxlength="120" placeholder="Nome do grupo, igual aparece no WhatsApp" value="' + esc(c.whatsapp_grupo || '') + '"></div>'
         : '') +
+      (podeFixa ? blocoGravacaoFixa(fixa) : '') +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Salvar alterações</button></div>');
 
     const logo = ligarCampoLogo(m, c.logo_url);
+    const lerFixa = podeFixa ? ligarGravacaoFixa(m) : null;
     const nome = m.querySelector('#ec-nome');
     const botao = m.querySelector('[data-ok]');
 
@@ -2950,6 +3015,22 @@ B7.Dashboard = (function () {
         const nova = await logo.resolver(c.id, c.logo_path);
         if (nova) Object.assign(patch, nova);
         await B7.Save.acao(() => B7.DB.atualizarCliente(c.id, patch), 'Cliente atualizado');
+        if (lerFixa) {
+          const f = lerFixa();
+          if (f.mudou) {
+            try {
+              await B7.DB.salvarGravacaoFixa(c.id, f.valor);
+              if (f.valor.ativa) {
+                const n = await B7.DB.gerarGravacoesFixasAgora().catch(() => 0);
+                if (n) B7.UI.toast(n === 1 ? 'Gravação fixa salva e 1 gravação criada.' : 'Gravação fixa salva e ' + n + ' gravações criadas.');
+              }
+            } catch (e2) {
+              botao.disabled = false;
+              B7.UI.toast((e2 && e2.message) || 'O cliente foi salvo, mas a gravação fixa não.', { tipo: 'erro' });
+              return;
+            }
+          }
+        }
         m.fechar();
         esquecerSecoes(c.id);
         B7.Rota.recarregar();

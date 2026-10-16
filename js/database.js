@@ -219,6 +219,19 @@ B7.DB = (function () {
       const r = ok(await sb().from('linha_ref_uso').select('uso').eq('conteudo_id', conteudoId).eq('link', link).limit(1));
       return r && r[0] ? r[0].uso : null;
     },
+    /* zzz206: gravação fixa do cliente + preparação da gravação */
+    async gravacaoFixaDoCliente(clienteId) {
+      const r = ok(await sb().from('cliente_gravacao_fixa').select('*').eq('client_id', clienteId).limit(1));
+      return r && r[0] ? r[0] : null;
+    },
+    async salvarGravacaoFixa(clienteId, f) {
+      return this.rpc('cliente_gravacao_fixa_salvar', { p_client: clienteId, p_ativa: !!f.ativa, p_freq: f.freq,
+        p_dia_semana: f.freq === 'semanal' ? f.diaSemana : null, p_dia_mes: f.freq === 'mensal' ? f.diaMes : null,
+        p_inicio: f.inicio || null, p_fim: f.fim || null, p_antecedencia: f.antecedencia || 7 });
+    },
+    async gerarGravacoesFixasAgora() { return this.rpc('gravacoes_fixas_gerar_agora', {}); },
+    async gravacaoPreparacao(gravacaoId) { return this.rpc('gravacao_preparacao', { p_gravacao_id: gravacaoId }); },
+    async gravacoesPreparacaoResumo() { return this.rpc('gravacoes_preparacao_resumo', {}); },
     async gravacaoItemAdicionar(gravacaoId, { tipo, roteiroId, conteudoId, titulo, url, observacao }) {
       return this.rpc('gravacao_item_adicionar', {
         p_gravacao_id: gravacaoId, p_tipo: tipo, p_roteiro_id: roteiroId || null, p_conteudo_id: conteudoId || null,
