@@ -235,7 +235,8 @@ Deno.serve(comCors(async (req: Request) => {
         /* `acoes` = todas as propostas (zzz124); `acao` = a única de vídeo, para as telas antigas */
         return { conversa_id: conv.id, titulo: conv.titulo, cliente_id: conv.clienteId, texto: ex.texto,
           ...(mensagemId ? { mensagem_id: mensagemId } : {}),
-          ...(ex.acao ? { acao: ex.acao } : {}), ...(ex.acoes.length ? { acoes: ex.acoes } : {}) };
+          ...(ex.acao ? { acao: ex.acao } : {}), ...(ex.acoes.length ? { acoes: ex.acoes } : {}),
+          ...(pedido.ajuda && pedido.ajuda.length ? { tutoriais: Chat.tutoriaisDe(pedido.ajuda) } : {}) };
       }
     };
   } else if (pRoteiro && pRoteiro.ok) {
