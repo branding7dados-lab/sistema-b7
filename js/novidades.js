@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz202', versao: 'zzz202', em: '2026-10-16T12:00:00-03:00',
+    titulo: 'Corretor de texto no WhatsApp e no chat',
+    itens: ['Ao enviar uma mensagem no chat de Conversas ou no WhatsApp do programa de Windows, o B7 corrige ortografia e gramática antes de mandar — sem mudar o que você quis dizer.',
+            'Dá para ligar e desligar: botão ✨ no chat de Conversas e “Corrigir texto” na barra do WhatsApp. Se a IA estiver fora do ar, a mensagem sai do jeito que você escreveu.'] },
   { id: 'v-zzz201', versao: 'zzz201', em: '2026-10-16T10:00:00-03:00',
     titulo: 'Entregar várias demandas de vídeo de uma vez',
     itens: ['Na Edição de vídeo (Kanban e Lista), segure Ctrl e clique para escolher várias demandas — ou use “Selecionar todas”.',

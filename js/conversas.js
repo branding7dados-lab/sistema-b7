@@ -43,6 +43,7 @@ B7.Conversas = (function () {
   const IC = {
     conversa: sv('<path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-5.2L8 19.4V16H7a2.5 2.5 0 0 1-2.5-2.5z"/><path d="M8.5 9h7M8.5 12h4.5"/>'),
     voltar: sv('<path d="M15 6l-6 6 6 6"/>'),
+    corrigir: sv('<path d="M5 12.5l4.2 4.2L19 7"/><path d="M4 5.5h6M4 8.5h3" opacity=".55"/>'),
     fechar: sv('<path d="M6 6l12 12M18 6L6 18"/>'),
     enviar: sv('<path d="M4.5 12L19.5 5l-4.2 14-3.3-5.7z"/><path d="M12 13.3L19.5 5"/>'),
     mic: sv('<rect x="9" y="3.5" width="6" height="10.5" rx="3"/><path d="M5.8 11.2a6.2 6.2 0 0 0 12.4 0M12 17.4V20.5M9 20.5h6"/>'),
@@ -654,6 +655,7 @@ B7.Conversas = (function () {
         '<button type="button" class="conv-ic" id="conv-emoji-bt" aria-label="Emojis" title="Emojis">' + IC.emoji + '</button>' +
         '<button type="button" class="conv-ic" id="conv-anexar" aria-label="Anexar imagem ou arquivo" title="Anexar (ou arraste, ou cole um print com Ctrl+V)">' + IC.clipe + '</button>' +
         '<textarea id="conv-texto" rows="1" maxlength="4000" placeholder="Mensagem" aria-label="Mensagem" name="b7-conversa-mensagem" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></textarea>' +
+        (B7.Corretor && B7.Corretor.disponivel() ? '<button type="button" class="conv-ic conv-corr' + (B7.Corretor.ligado() ? ' on' : '') + '" id="conv-corr" aria-pressed="' + B7.Corretor.ligado() + '" aria-label="Corrigir ortografia e gramática ao enviar" title="Corrigir ortografia e gramática ao enviar">' + IC.corrigir + '</button>' : '') +
         (podeGravar ? '<button type="button" class="conv-ic conv-mic" id="conv-mic" aria-label="Gravar mensagem de voz" title="Gravar mensagem de voz">' + IC.mic + '</button>' : '') +
         '<button type="submit" class="conv-enviar" id="conv-enviar" aria-label="Enviar">' + IC.enviar + '</button>' +
       '</form>';
@@ -675,6 +677,12 @@ B7.Conversas = (function () {
     });
     form.onsubmit = e => { e.preventDefault(); enviarTexto(); };
     dir.querySelector('#conv-anexar').onclick = () => arq.click();
+    const btCorr = dir.querySelector('#conv-corr');
+    if (btCorr) btCorr.onclick = () => {
+      const novo = !B7.Corretor.ligado(); B7.Corretor.definir(novo);
+      btCorr.classList.toggle('on', novo); btCorr.setAttribute('aria-pressed', String(novo));
+      B7.UI.toast(novo ? 'Correção ligada: vou ajeitar a ortografia e a gramática ao enviar.' : 'Correção desligada.');
+    };
     dir.querySelector('#conv-emoji-bt').onclick = alternarEmojis;
     dir.querySelector('#conv-emojis').addEventListener('click', e => { const b = e.target.closest('[data-emoji-ins]'); if (b) inserirNoCampo(b.dataset.emojiIns); });
     arq.onchange = () => { const f = arq.files && arq.files[0]; arq.value = ''; if (f) escolherAnexo(f); };
@@ -1010,10 +1018,22 @@ B7.Conversas = (function () {
     try { const r = await B7.DB.rpc('chat_definir_resposta', { p_mensagem: real.id, p_resposta: resp.id }); return (r && r.id) ? r : real; }
     catch (e) { return real; }
   }
+  let corrigindoMsg = false;
   async function enviarTexto() {
     const ta = painel && painel.querySelector('#conv-texto'); if (!ta || !atual) return;
-    const texto = ta.value.trim(), conv = atual;
+    if (corrigindoMsg) return;
+    let texto = ta.value.trim();
+    const conv = atual;
     fecharPopovers();
+    /* zzz202: ortografia e gramática antes de enviar; qualquer falha manda o texto como está */
+    if (texto && B7.Corretor && B7.Corretor.ligado()) {
+      const antes = ta.value.trim();
+      corrigindoMsg = true; ta.classList.add('corrigindo');
+      try { const r = await B7.Corretor.corrigir(texto); if (r.ok && r.mudou) texto = r.texto.trim(); } catch (e) {}
+      corrigindoMsg = false; if (ta.isConnected) ta.classList.remove('corrigindo');
+      if (!ta.isConnected || atual !== conv) return;
+      if (ta.value.trim() !== antes) return;      /* continuou digitando enquanto corrigia: não envia nada pela metade */
+    }
     if (editando) {                                          /* zzz169: salvar a edição */
       const m = editando; if (!texto) return;
       editando = null; ta.value = ''; pintarCtx(); ajustarCampo();

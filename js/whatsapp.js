@@ -103,6 +103,9 @@ B7.WhatsApp = (function () {
           '<span class="wa-assin-ex"><b>*</b><input id="wa-nome" maxlength="40" value="' + esc(cfg.nome || '') + '" placeholder="Seu nome" aria-label="Nome da assinatura" size="8"><b>:*</b></span>' +
           '<span class="wa-prev" id="wa-prev"></span>' +
         '</div>' +
+        (B7.Corretor && B7.Corretor.disponivel() && D.config ? '<div class="wa-assin wa-corr' + (B7.Corretor.ligado() ? ' on' : '') + '" id="wa-corr" title="Corrige ortografia e gramática da mensagem quando você aperta enviar">' +
+          '<button type="button" class="wa-chave" id="wa-corr-bt" role="switch" aria-checked="' + B7.Corretor.ligado() + '" aria-label="Corrigir texto ao enviar"><i></i></button>' +
+          '<span class="wa-assin-rot">Corrigir texto</span></div>' : '') +
         '<div class="wa-ferr">' +
           (D.aoConversas ? '<button type="button" class="wa-ic' + (ladoAberto ? ' on' : '') + '" id="wa-lado-bt" title="Mostrar/esconder o painel do cliente" aria-label="Painel do cliente">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M14.5 4.5v15"/></svg></button>' : '') +
@@ -138,6 +141,15 @@ B7.WhatsApp = (function () {
     cb.onclick = () => { caixa.classList.toggle('on'); cb.setAttribute('aria-checked', String(ligada())); salvar(); };
     nome.oninput = previa; nome.onchange = salvar;
     nome.onkeydown = e => { if (e.key === 'Enter') { nome.blur(); salvar(); } };
+    const cxCorr = painel.querySelector('#wa-corr'), btCorr = painel.querySelector('#wa-corr-bt');
+    const mandarCorr = v => { try { D.definirConfig({ corrigir: !!v }); } catch (e) {} };
+    if (cxCorr && btCorr) {
+      mandarCorr(B7.Corretor.ligado());                /* o programa só corrige quando o sistema mandou ligado */
+      btCorr.onclick = () => {
+        const v = !B7.Corretor.ligado(); B7.Corretor.definir(v);
+        cxCorr.classList.toggle('on', v); btCorr.setAttribute('aria-checked', String(v)); mandarCorr(v);
+      };
+    }
     const btLado = painel.querySelector('#wa-lado-bt');
     if (btLado) btLado.onclick = () => {
       ladoAberto = !ladoAberto; B7.pref.gravar('wa_lado', ladoAberto);

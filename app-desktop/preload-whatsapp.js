@@ -18,7 +18,7 @@
    ===================================================================== */
 const { ipcRenderer, webFrame } = require('electron');
 
-let cfg = { nome: '', assinatura: true };
+let cfg = { nome: '', assinatura: true, corrigir: false };
 ipcRenderer.invoke('b7wa:config').then(c => { if (c) cfg = c; }).catch(() => {});
 ipcRenderer.on('b7wa:config', (ev, c) => { if (c) cfg = c; });
 
@@ -74,15 +74,63 @@ async function assinarEnviar(campo, enviarDepois) {
   nosso = true;
   try { enviarDepois(); } finally { setTimeout(() => { nosso = false; }, 50); }
 }
+/* ---------------------------------------- 1b. corrigir o texto (zzz202)
+   Antes de assinar e enviar, o texto vai para a tela do sistema, que pede à
+   IA só a ortografia e a gramática (js/corretor.js). Se algo falhar, demorar
+   ou o texto voltar diferente demais, a mensagem sai como a pessoa escreveu. */
+function textoDoCampo(c) {
+  const ler = n => {
+    let t = '';
+    const w = x => { if (x.nodeType === 3) t += x.nodeValue; else if (x.nodeName === 'IMG') t += x.alt || ''; else if (x.nodeName !== 'BR') x.childNodes.forEach(w); };
+    w(n); return t;
+  };
+  const blocos = [...c.children].filter(e => /^(P|DIV)$/.test(e.nodeName));
+  const linhas = blocos.length ? blocos.map(ler) : [ler(c)];
+  return linhas.join('\n').replace(/​/g, '');
+}
+function precisaCorrigir(campo) {
+  if (!cfg.corrigir || !campo || naBusca(campo)) return false;
+  const t = textoDoCampo(campo).trim();
+  /* @menção virou "chip" no editor: colar por cima desfaria o vínculo; deixa como está */
+  return t.length >= 4 && t.length <= 2000 && !t.includes('@');
+}
+function trocarTudo(campo, texto) {
+  campo.focus();
+  const r = document.createRange(); r.selectNodeContents(campo);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  colar(campo, texto);
+}
+async function corrigirCampo(campo) {
+  const antes = textoDoCampo(campo).trim();
+  campo.style.opacity = '.6';
+  try {
+    const r = await ipcRenderer.invoke('b7wa:corrigir', antes).catch(() => null);
+    if (!r || !r.ok || typeof r.texto !== 'string' || !r.texto.trim() || r.texto.trim() === antes) return;
+    trocarTudo(campo, r.texto.trim());
+    await esperar(160);
+    /* o editor não aceitou a troca: devolve o que a pessoa escreveu */
+    if (normal(textoDoCampo(campo)) !== normal(r.texto)) { trocarTudo(campo, antes); await esperar(120); }
+  } catch (e) {} finally { campo.style.opacity = ''; }
+}
+let ocupado = false;
+async function preparar(campo, enviarDepois) {
+  ocupado = true;
+  try {
+    if (precisaCorrigir(campo)) await corrigirCampo(campo);
+    if (precisa(campo)) await assinarEnviar(campo, enviarDepois);
+    else { nosso = true; try { enviarDepois(); } finally { setTimeout(() => { nosso = false; }, 50); } }
+  } finally { ocupado = false; }
+}
 function teclaEnter(campo) {
   campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
 }
 document.addEventListener('keydown', e => {
   if (nosso || e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return;
   const campo = editavel(e.target);
-  if (!precisa(campo)) return;
+  if (ocupado && campo && !naBusca(campo)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+  if (!precisa(campo) && !precisaCorrigir(campo)) return;
   e.preventDefault(); e.stopImmediatePropagation();
-  assinarEnviar(campo, () => teclaEnter(campo));
+  preparar(campo, () => teclaEnter(campo));
 }, true);
 
 const BOTAO_ENVIAR = '[data-icon="send"], [data-icon="wds-ic-send-filled"], [data-icon="send-light"], button[aria-label="Enviar"], button[aria-label="Send"], [role="button"][aria-label="Enviar"], [role="button"][aria-label="Send"]';
@@ -91,10 +139,11 @@ document.addEventListener('click', e => {
   const bt = e.target.closest && e.target.closest(BOTAO_ENVIAR);
   if (!bt) return;
   const campo = (ultimoCampo && ultimoCampo.isConnected && visivel(ultimoCampo)) ? ultimoCampo : campoDaConversa();
-  if (!precisa(campo)) return;
+  if (ocupado) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+  if (!precisa(campo) && !precisaCorrigir(campo)) return;
   e.preventDefault(); e.stopImmediatePropagation();
   const alvo = bt.closest('button, [role="button"]') || bt;
-  assinarEnviar(campo, () => alvo.click());
+  preparar(campo, () => alvo.click());
 }, true);
 
 /* aviso de mensagem clicado → o programa vem para a frente na tela do

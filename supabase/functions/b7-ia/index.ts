@@ -22,7 +22,7 @@
 //         { tarefa: 'oportunidade', oportunidade_id, cliente_id, dia?, instrucao? }  (ver _shared/ia/oportunidade.ts)
 //         { tarefa: 'voz', audio (base64), mime }                          (ver _shared/ia/voz.ts)
 //         { tarefa: 'agencia', operacao: 'semana', instrucao? }            (só administrador; ver _shared/ia/agencia.ts)
-//         { tarefa: 'whatsapp', operacao: 'resumo'|'resposta', mensagens, grupo, cliente_id? }  (ver _shared/ia/whatsapp.ts)
+//         { tarefa: 'whatsapp', operacao: 'resumo'|'resposta', mensagens, grupo, cliente_id? }  ou  { tarefa: 'whatsapp', operacao: 'corrigir', texto }  (ver _shared/ia/whatsapp.ts)
 //
 // MEMÓRIA DO CLIENTE (zzz123). Toda tarefa que é de um cliente recebe,
 // antes da mensagem da tarefa, o que a equipe anotou para a IA na ficha
@@ -304,7 +304,7 @@ Deno.serve(comCors(async (req: Request) => {
       recurso: 'whatsapp', acao: pedido.operacao, entidadeTipo: pedido.clienteId ? 'cliente' : 'perfil', entidadeId: pedido.clienteId || perfil.id,
       tamanhoEntrada: pedido.msgs.reduce((n, m) => n + m.texto.length, 0),
       mensagens: WhatsApp.montarMensagens(pedido, ctx), maxTokens: WhatsApp.limiteDeSaida(pedido),
-      temperatura: pedido.operacao === 'resumo' ? 0.3 : 0.6, limpar: WhatsApp.limpar, json: false
+      temperatura: pedido.operacao === 'resumo' ? 0.3 : pedido.operacao === 'corrigir' ? 0.1 : 0.6, limpar: pedido.operacao === 'corrigir' ? WhatsApp.limparCorrecao : WhatsApp.limpar, json: false
     };
   } else if (pOport && pOport.ok) {
     /* ideias para uma data e um cliente: lista para ler e copiar, nada é aplicado */
