@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz207', versao: 'zzz207', em: '2026-10-16T19:00:00-03:00',
+    titulo: 'Trends mais inteligentes e pasta de referências',
+    itens: ['Trends ganham etiquetas (nicho, assunto, formato) e podem ser só de um cliente. Dá para filtrar por etiqueta.',
+            'Em Trends, “Sugerir para” um cliente: o B7 mostra as trends que combinam com a linha editorial dele, da que mais combina para a que menos, e diz por quê.',
+            'Escolha várias trends e use “Adicionar à gravação…” — elas entram de uma vez como referência na gravação do cliente.',
+            'Na gravação, “Ver todas as referências deste cliente” abre a pasta com as trends usadas e os links da linha editorial.'] },
   { id: 'v-zzz206', versao: 'zzz206', em: '2026-10-16T17:00:00-03:00',
     titulo: 'Dia fixo de gravar e preparação da gravação',
     itens: ['Em Editar cliente, nova opção “Gravação fixa” (toda semana ou todo mês). O sistema cria sozinho a gravação alguns dias antes, uma vez por data.',
