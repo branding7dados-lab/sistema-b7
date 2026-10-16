@@ -172,12 +172,14 @@ B7.Gravacao = (function () {
       '<ul class="gv-prep-lista">' + (p.itens || []).map(x =>
         '<li class="' + (x.ok ? 'ok' : 'falta') + '"><span class="gv-prep-ic">' + (x.ok ? IC.check : '') + '</span>' +
         '<span class="gv-prep-tx">' + esc(x.texto) + (!x.ok && x.detalhe ? '<small>' + esc(x.detalhe) + '</small>' : '') + '</span>' +
-        (!x.ok && acao[x.chave] && podeEditar() ? '<button type="button" class="b fina contorno" data-prep="' + x.chave + '">' + acao[x.chave][1] + '</button>' : '') + '</li>').join('') + '</ul>';
+        (!x.ok && acao[x.chave] && podeEditar() ? '<button type="button" class="b fina contorno" data-prep="' + x.chave + '">' + acao[x.chave][1] + '</button>' : '') + '</li>').join('') + '</ul>' +
+      (window.B7.Trends && B7.Trends.pasta ? '<button type="button" class="gv-prep-pasta" data-prep="pasta">Ver todas as referências deste cliente (trends e linha)</button>' : '');
     cx.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => {
       const k = b.dataset.prep;
       if (k === 'data') return modalAgendar();
       if (k === 'lista') return menuAdicionar(b);
       if (k === 'refs') { const r = document.getElementById('gv-refs'); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      if (k === 'pasta') return B7.Trends.pasta(S.g.client_id, S.g.cliente_nome);
     });
   }
   function carregarRefs(g0) {
