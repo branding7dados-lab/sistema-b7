@@ -565,7 +565,7 @@ B7.Linha = (function () {
 
       '<div class="bloco mb"><h3>Referências do mês</h3>' +
         '<p class="ajuda" style="margin-bottom:10px">Links que servem de base para os ' +
-        'conteúdos deste mês. Um por linha.</p>' +
+        'conteúdos deste mês. Um por linha. Cada link aparece na gravação do cliente, onde você escolhe se serve só para a edição ou também para a gravação.</p>' +
         C.campo('LINKS DE REFERÊNCIA', l.referencias,
           t + ' data-campo="referencias" placeholder="https://…"') +
       '</div>' +
@@ -1466,7 +1466,8 @@ B7.Linha = (function () {
             : 'Entra na gravação; a demanda de edição nasce quando marcar que foi gravado.') + '</div></div>' +
         '<div class="mb"><label class="rot">FORMATO</label>' + opcoesDe('op-formato', fv, [['', 'Normal'], ['meme', 'Meme'], ['trend', 'Trend']]) + '</div>' +
         '<div class="mb"><label class="rot">LINK DE REFERÊNCIA <span class="leve">— vai junto para a demanda de vídeo</span></label>' +
-          '<input class="campo" id="cv-ref" type="url" inputmode="url" maxlength="600" placeholder="https://www.instagram.com/reel/…" value="' + esc(c.referencia_link || '') + '"' + (leitura ? ' disabled' : '') + '></div>' +
+          '<input class="campo" id="cv-ref" type="url" inputmode="url" maxlength="600" placeholder="https://www.instagram.com/reel/…" value="' + esc(c.referencia_link || '') + '"' + (leitura ? ' disabled' : '') + '>' +
+          '<div class="ref-uso" id="cv-ref-uso"></div></div>' +
         C.campoLinha('HEADLINE', c.headline, t + ' data-campo="headline"') +
         C.campoLinha('CTA', c.cta, t + ' data-campo="cta"') +
         '<div class="mb"><label class="rot">NECESSITA CAPA? <span class="leve">— opcional</span></label>' +
@@ -1600,6 +1601,7 @@ B7.Linha = (function () {
       const aj = m.querySelector('#aj-producao');
       if (aj) aj.textContent = v === 'edicao' ? 'Já está em Edição de vídeo como demanda — não depende de gravação.' : 'Entra na gravação; a demanda de edição nasce quando marcar que foi gravado.';
       if (v === 'edicao') B7.UI.toast('Demanda criada em Edição de vídeo.');
+      pintarRefUso();
     });
     ligarOpcoes('op-formato', 'formato_video', b => 'Formato: ' + b.textContent);
     const cvRef = m.querySelector('#cv-ref');
@@ -1607,7 +1609,30 @@ B7.Linha = (function () {
       const v = cvRef.value.trim();
       if (v && !/^https?:\/\//i.test(v)) { B7.UI.toast('O link precisa começar com https://', { tipo: 'erro' }); return; }
       try { await B7.Save.acao(() => B7.DB.atualizarConteudo(c.id, { referencia_link: v }), 'Referência salva'); c.referencia_link = v; } catch (e) {}
+      pintarRefUso();
     });
+    /* zzz205: o link também aparece na gravação do cliente; aqui já dá para dizer para que serve */
+    async function pintarRefUso() {
+      const box = m.querySelector('#cv-ref-uso'); if (!box) return;
+      const link = String(c.referencia_link || '').trim();
+      if (!link) { box.innerHTML = ''; return; }
+      if (c.producao_video === 'edicao') { box.innerHTML = '<span class="leve">Conteúdo só edição: a referência vai direto para quem edita.</span>'; return; }
+      let uso = null;
+      try { uso = await B7.DB.refUsoDoConteudo(c.id, link); } catch (e) {}
+      if (String(c.referencia_link || '').trim() !== link || !box.isConnected) return;
+      const opt = (v, r) => '<button type="button" data-uso="' + v + '"' + (uso === v ? ' class="on"' : '') + (leitura ? ' disabled' : '') + '>' + r + '</button>';
+      box.innerHTML = '<span class="rot-uso">' + (uso ? 'Na gravação, serve para:' : 'Vai para a gravação do cliente — <b>falta escolher</b> para que serve:') + '</span>' +
+        '<div class="opcoes">' + opt('edicao', 'Só edição') + opt('gravacao', 'Edição e gravação') + '</div>';
+      box.querySelectorAll('[data-uso]').forEach(b => b.onclick = async () => {
+        if (b.classList.contains('on')) return;
+        try {
+          await B7.DB.refUsoDecidir(c.linha_id, c.id, link, b.dataset.uso);
+          B7.UI.toast(b.dataset.uso === 'edicao' ? 'Referência: só edição.' : 'Referência: edição e gravação.');
+          pintarRefUso();
+        } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível salvar a escolha.', { tipo: 'erro' }); }
+      });
+    }
+    pintarRefUso();
 
     const opCapa = m.querySelector('#op-capa');
     if (opCapa) opCapa.querySelectorAll('[data-capa]').forEach(b => b.onclick = async () => {

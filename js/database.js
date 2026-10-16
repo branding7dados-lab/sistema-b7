@@ -210,6 +210,15 @@ B7.DB = (function () {
         .select('id,status,inicio,fim,atual,sem_horario,evento_id,ocorrencia_anterior_id,motivo_cancelamento,criado_em')
         .eq('gravacao_id', gravacaoId).order('criado_em'));
     },
+    /* zzz205: referências da linha editorial do mês desta gravação + a escolha de cada uma */
+    async gravacaoReferenciasLinha(gravacaoId) { return this.rpc('gravacao_referencias_linha', { p_gravacao_id: gravacaoId }); },
+    async refUsoDecidir(linhaId, conteudoId, link, uso) {
+      return this.rpc('ref_uso_decidir', { p_linha_id: linhaId, p_conteudo_id: conteudoId || null, p_link: link, p_uso: uso });
+    },
+    async refUsoDoConteudo(conteudoId, link) {
+      const r = ok(await sb().from('linha_ref_uso').select('uso').eq('conteudo_id', conteudoId).eq('link', link).limit(1));
+      return r && r[0] ? r[0].uso : null;
+    },
     async gravacaoItemAdicionar(gravacaoId, { tipo, roteiroId, conteudoId, titulo, url, observacao }) {
       return this.rpc('gravacao_item_adicionar', {
         p_gravacao_id: gravacaoId, p_tipo: tipo, p_roteiro_id: roteiroId || null, p_conteudo_id: conteudoId || null,

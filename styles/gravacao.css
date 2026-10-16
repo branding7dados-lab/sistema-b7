@@ -584,3 +584,23 @@ html.modo-leve .nl-existe{animation:none;}
 .nu-modal .nu-senha .campo{height:46px;}
 .nu-modal .nu-senha .b{height:46px;border-radius:13px;padding:0 16px;font-weight:800;}
 .nu-modal .erro-txt{margin:0 0 8px;}
+
+/* ---- referências da linha editorial (zzz205) ---- */
+.gv-ref-ajuda{margin:0 0 12px;font-size:12.5px;color:var(--ink-3);line-height:1.45;}
+.gv-ref-aviso{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:color-mix(in srgb,#F0A443 22%,transparent);color:#F0A443;}
+.gv-ref-ok{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#3DD69A;}
+.gv-ref-ok svg{width:14px;height:14px;}
+.gv-ref-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.gv-ref{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:11px 13px;border:1px solid var(--borda);border-radius:14px;background:var(--card);}
+.gv-ref.pendente{border-color:color-mix(in srgb,#F0A443 55%,var(--borda));background:color-mix(in srgb,#F0A443 7%,var(--card));}
+.gv-ref-tx{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px;}
+.gv-ref-org{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-4);}
+.gv-ref-tx b{font-size:14px;overflow-wrap:anywhere;}
+.gv-ref-tx a{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-3);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gv-ref-tx a:hover{color:var(--ink);text-decoration:underline;}
+.gv-ref-tx a svg{width:13px;height:13px;flex:none;}
+.gv-ref-tx small{font-size:11.5px;color:var(--ink-4);}
+.gv-ref-uso{display:inline-flex;gap:4px;padding:3px;border-radius:12px;background:var(--fundo);border:1px solid var(--borda);}
+.gv-ref-uso button{border:0;background:none;color:var(--ink-3);font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:9px;cursor:pointer;}
+.gv-ref-uso button:hover{color:var(--ink);}
+.gv-ref-uso button.on{background:var(--rosa,#F0559E);color:#fff;}
