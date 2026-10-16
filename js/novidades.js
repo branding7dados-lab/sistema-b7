@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz208', versao: 'zzz208', em: '2026-10-16T21:00:00-03:00',
+    titulo: 'Suporte e feedback dentro do sistema',
+    itens: ['No menu da sua foto, novo item “Suporte e feedback”: relate um problema, mande uma sugestão, tire uma dúvida ou elogie.',
+            'Dá para colar um print (Ctrl+V). O chamado leva sozinho a tela, a versão e o aparelho, para a gente resolver mais rápido (você pode desmarcar).',
+            'A equipe responde na própria tela e você recebe um aviso no sino a cada resposta e a cada mudança de andamento.'] },
   { id: 'v-zzz207', versao: 'zzz207', em: '2026-10-16T19:00:00-03:00',
     titulo: 'Trends mais inteligentes e pasta de referências',
     itens: ['Trends ganham etiquetas (nicho, assunto, formato) e podem ser só de um cliente. Dá para filtrar por etiqueta.',

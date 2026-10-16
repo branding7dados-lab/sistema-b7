@@ -33,6 +33,7 @@ B7.Topo = (function () {
     semana: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3.6"/><path d="M3.5 9.5h17M8 2.8v3M16 2.8v3M7.5 13h3M13.5 13h3M7.5 16.5h3"/></svg>',
     cliente: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9.3" cy="8" r="3.4"/><path d="M3.1 19.2a6.2 6.2 0 0 1 12.4 0 .8.8 0 0 1-.8.8H3.9a.8.8 0 0 1-.8-.8z"/><path d="M19 8.2v5.2M21.6 10.8h-5.2"/></svg>',
     olho: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2.5 12s3.4-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.4 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+    suporte: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-5.2L8 19.4V16H7a2.5 2.5 0 0 1-2.5-2.5z"/><path d="M9 9.2h6M9 12h3.5"/></svg>',
     perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 19.6a7 7 0 0 1 14 0 .9.9 0 0 1-.9.9H5.9a.9.9 0 0 1-.9-.9z"/></svg>',
     config: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
     usuarios: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 19.2a6.2 6.2 0 0 1 12.4 0 .8.8 0 0 1-.8.8H3.6a.8.8 0 0 1-.8-.8z"/><path d="M15.8 4.9a3.4 3.4 0 0 1 0 6.2M17.9 13.7a6 6 0 0 1 3.4 5.5.8.8 0 0 1-.8.8h-1.3"/></svg>',
@@ -397,6 +398,7 @@ B7.Topo = (function () {
         item('data-conta="perfil"', IC.perfil, 'violeta', 'Meu perfil', 'foto, nome, senha e notificações') +
         (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'azul', 'Preferências e configurações', 'tema, tela inicial e ajustes do aparelho') : '') +
         (B7.Perm && B7.Perm.podeConfig('usuarios') && !cliente ? item('data-conta="usuarios"', IC.usuarios, 'verde', 'Usuários e acessos', 'contas da equipe e dos clientes') : '') +
+        (!cliente ? item('data-conta="suporte"', IC.suporte, 'azul', 'Suporte e feedback', 'relatar um problema, mandar uma ideia ou tirar uma dúvida') : '') +
         (!cliente ? item('data-conta="atalhos"', IC.teclado, 'cinza', 'Atalhos de teclado', 'a lista completa', ' tp-so-desktop') : '') +
         (B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor && !naContaDeOutro
           ? item('data-conta="vercomo"', IC.olho, 'laranja', 'Visualizar como…', 'ver o sistema com o acesso de outra pessoa') : '') +
@@ -418,6 +420,7 @@ B7.Topo = (function () {
       perfil: () => (B7.Perfil ? B7.Perfil.abrir() : B7.Auth.abrirPerfil()),
       config: () => { location.hash = '#/config'; },
       usuarios: () => { location.hash = '#/usuarios'; },
+      suporte: () => { location.hash = '#/suporte'; },
       atalhos: () => B7.UI.atalhos(),
       vercomo: () => B7.PreviaUsuario.abrirSeletor(),
       abertura: () => B7.reverAbertura(),
