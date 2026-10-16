@@ -399,8 +399,8 @@ B7.Topo = (function () {
         item('data-conta="perfil"', IC.perfil, 'violeta', 'Meu perfil', 'foto, nome, senha e notificações') +
         (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'azul', 'Preferências e configurações', 'tema, tela inicial e ajustes do aparelho') : '') +
         (B7.Perm && B7.Perm.podeConfig('usuarios') && !cliente ? item('data-conta="usuarios"', IC.usuarios, 'verde', 'Usuários e acessos', 'contas da equipe e dos clientes') : '') +
-        (!cliente ? item('data-conta="ajuda"', IC.ajuda, 'verde', 'Ajuda e tutoriais', 'um passo a passo para cada parte do sistema') : '') +
-        (!cliente ? item('data-conta="suporte"', IC.suporte, 'azul', 'Suporte e feedback', 'relatar um problema, mandar uma ideia ou tirar uma dúvida') : '') +
+        (!cliente ? item('data-conta="ajuda"', IC.ajuda, 'ciano', 'Ajuda e tutoriais', 'um passo a passo para cada parte do sistema') : '') +
+        (!cliente ? item('data-conta="suporte"', IC.suporte, 'rosa', 'Suporte e feedback', 'relatar um problema, mandar uma ideia ou tirar uma dúvida') : '') +
         (!cliente ? item('data-conta="atalhos"', IC.teclado, 'cinza', 'Atalhos de teclado', 'a lista completa', ' tp-so-desktop') : '') +
         (B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor && !naContaDeOutro
           ? item('data-conta="vercomo"', IC.olho, 'laranja', 'Visualizar como…', 'ver o sistema com o acesso de outra pessoa') : '') +
