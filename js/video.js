@@ -785,25 +785,159 @@ B7.Video = (function () {
   }
 
   function ligarArea(cx) {
-    cx.querySelectorAll('[data-demanda]').forEach(el => {
-      const ir = () => location.hash = '#/video/' + el.dataset.demanda;
-      el.onclick = ir;
-      el.onkeydown = e => { if (e.key === 'Enter') ir(); };
-    });
+    ligarCliqueCartoes(cx);
     cx.querySelectorAll('[data-coluna-ver-mais]').forEach(b => b.onclick = e => {
       e.stopPropagation();
       const col = b.closest('.vd-coluna');
       const chave = b.dataset.colunaVerMais;
       const todos = filtrar(baseFiltrada()).filter(d => d.editing_status === chave);
       col.querySelector('.vd-coluna-corpo').innerHTML = todos.map(cardHTML).join('');
-      col.querySelectorAll('[data-demanda]').forEach(el => {
-        const ir = () => location.hash = '#/video/' + el.dataset.demanda;
-        el.onclick = ir; el.onkeydown = ev => { if (ev.key === 'Enter') ir(); };
-      });
+      ligarCliqueCartoes(col); pintarSelecao();
       ligarArrastarVideo(cx);
     });
     if (F.vista === 'kanban' && possoOperar()) ligarArrastarVideo(cx);
+    ligarSelecaoLote(cx);
+    pintarSelecao();
   }
+
+  /* =================================================================
+     SELEÇÃO EM LOTE (zzz201) — escolher várias demandas (Ctrl/Cmd+clique,
+     ou "Selecionar todas") e, com o botão direito, marcar como entregue
+     de uma vez. Com alguma selecionada, o clique simples só alterna.
+     ================================================================= */
+  const SEL = new Set();
+  const ENCERRADAS = ['entregue', 'descartado'];
+  const visiveisAgora = () => filtrar(baseFiltrada()).filter(d => !ENCERRADAS.includes(d.editing_status));
+  function ligarCliqueCartoes(raiz) {
+    raiz.querySelectorAll('[data-demanda]').forEach(el => {
+      const id = el.dataset.demanda;
+      const ir = () => location.hash = '#/video/' + id;
+      el.onclick = e => {
+        if (possoOperar() && (e.ctrlKey || e.metaKey || e.shiftKey || SEL.size)) { e.preventDefault(); alternarSel(id); return; }
+        ir();
+      };
+      el.onkeydown = e => {
+        if (e.key === 'Enter') ir();
+        else if (e.key === ' ' && possoOperar()) { e.preventDefault(); alternarSel(id); }
+      };
+    });
+  }
+  function alternarSel(id) { if (SEL.has(id)) SEL.delete(id); else SEL.add(id); pintarSelecao(); }
+  function limparSel() { SEL.clear(); pintarSelecao(); }
+  function pintarSelecao() {
+    const cx = painel() && painel().querySelector('#vd-area');
+    if (cx) {
+      /* some o que saiu da tela (filtro, entregue) */
+      const vivos = new Set(demandas.filter(d => !ENCERRADAS.includes(d.editing_status)).map(d => d.id));
+      [...SEL].forEach(id => { if (!vivos.has(id)) SEL.delete(id); });
+      cx.querySelectorAll('[data-demanda]').forEach(el => {
+        const on = SEL.has(el.dataset.demanda);
+        el.classList.toggle('vd-sel', on);
+        el.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+    }
+    barraSel();
+  }
+  function barraSel() {
+    let b = document.getElementById('vd-selbar');
+    const tela = painel() && painel().querySelector('#vd-area');
+    if (!SEL.size || !tela) { if (b) b.remove(); return; }
+    if (!b) {
+      b = document.createElement('div'); b.id = 'vd-selbar'; b.setAttribute('role', 'toolbar');
+      document.body.appendChild(b);
+    }
+    const n = SEL.size;
+    b.innerHTML = '<span><b>' + n + '</b> selecionada' + (n === 1 ? '' : 's') + '</span>' +
+      '<button type="button" class="b pri fina" data-a="entregar">Marcar como entregue</button>' +
+      '<button type="button" class="b fina" data-a="todas">Selecionar todas</button>' +
+      '<button type="button" class="b fina" data-a="limpar">Limpar</button>';
+    b.onclick = e => {
+      const a = e.target.closest('button') && e.target.closest('button').dataset.a;
+      if (a === 'entregar') entregarSelecionadas();
+      else if (a === 'todas') selecionarTodas();
+      else if (a === 'limpar') limparSel();
+    };
+  }
+  function selecionarTodas() { visiveisAgora().forEach(d => SEL.add(d.id)); pintarSelecao(); }
+  async function entregarSelecionadas() {
+    const alvo = demandas.filter(d => SEL.has(d.id) && !ENCERRADAS.includes(d.editing_status));
+    if (!alvo.length) return;
+    const n = alvo.length;
+    const ok = await B7.UI.confirmar({
+      titulo: n === 1 ? 'Marcar como entregue?' : 'Marcar ' + n + ' demandas como entregues?',
+      texto: n === 1 ? 'A demanda sai da fila ativa e entra nos entregues do mês.'
+        : 'Elas saem da fila ativa e entram nos entregues do mês.',
+      confirmar: 'Marcar como entregue'
+    });
+    if (!ok) return;
+    const antes = new Map(alvo.map(d => [d.id, d.editing_status]));
+    alvo.forEach(d => { d.editing_status = 'entregue'; });
+    SEL.clear(); desenharProducao();
+    const falhas = [];
+    for (const d of alvo) {
+      try { await B7.DB.mudarStatusVideo(d.id, 'entregue', 'Marcada como entregue (seleção em lote).'); }
+      catch (e) { d.editing_status = antes.get(d.id); falhas.push(d); }
+    }
+    if (falhas.length) { desenharProducao(); B7.UI.toast(falhas.length + ' de ' + n + ' não puderam ser entregues.', { tipo: 'erro' }); }
+    else B7.UI.toast(n === 1 ? 'Demanda entregue.' : n + ' demandas marcadas como entregues.');
+  }
+  let menuLote = null;
+  function fecharMenuLote() { if (menuLote) { menuLote.remove(); menuLote = null; } }
+  function ligarSelecaoLote(cx) {
+    if (!possoOperar()) return;
+    const tot = cx.querySelector('.vd-total');
+    if (tot && !tot.querySelector('.vd-sel-todas') && visiveisAgora().length) {
+      const bt = document.createElement('button');
+      bt.type = 'button'; bt.className = 'vd-sel-todas'; bt.textContent = 'Selecionar todas';
+      bt.onclick = () => { if (SEL.size >= visiveisAgora().length) limparSel(); else selecionarTodas(); };
+      tot.appendChild(bt);
+    }
+    cx.oncontextmenu = e => {
+      if (e.shiftKey || window.matchMedia('(hover: none)').matches) return;
+      const el = e.target.closest && e.target.closest('[data-demanda]');
+      if (!el) return;
+      const id = el.dataset.demanda;
+      const d = demandas.find(x => x.id === id);
+      if (!d || ENCERRADAS.includes(d.editing_status)) return;
+      e.preventDefault(); e.stopPropagation();
+      if (!SEL.has(id)) { SEL.clear(); SEL.add(id); pintarSelecao(); }
+      abrirMenuLote(e.clientX, e.clientY, id);
+    };
+  }
+  function abrirMenuLote(x, y, id) {
+    fecharMenuLote();
+    if (B7.Ctx && B7.Ctx.fechar) B7.Ctx.fechar();
+    const n = SEL.size;
+    const itens = [
+      ['entregar', n === 1 ? 'Marcar como entregue' : 'Marcar ' + n + ' como entregues', true],
+      n === 1 ? ['abrir', 'Abrir demanda'] : null,
+      ['todas', 'Selecionar todas'],
+      ['limpar', 'Limpar seleção']
+    ].filter(Boolean);
+    const m = document.createElement('div');
+    m.className = 'lista solta ctx-menu'; m.setAttribute('role', 'menu');
+    m.innerHTML = itens.map(([a, r, f]) => '<button type="button" role="menuitem" data-a="' + a + '"' + (f ? ' class="ctx-forte"' : '') + '><span>' + esc(r) + '</span></button>').join('') +
+      '<div class="ctx-pe">Ctrl + clique escolhe várias</div>';
+    document.body.appendChild(m);
+    const MG = 8, w = m.offsetWidth, h = m.offsetHeight;
+    m.style.left = Math.max(MG, Math.min(x, window.innerWidth - w - MG)) + 'px';
+    m.style.top = Math.max(MG, Math.min(y + h + MG > window.innerHeight ? y - h : y, window.innerHeight - h - MG)) + 'px';
+    requestAnimationFrame(() => m.classList.add('mostrando')); setTimeout(() => m.classList.add('mostrando'), 60);
+    menuLote = m;
+    m.onclick = e => {
+      const a = e.target.closest('button') && e.target.closest('button').dataset.a;
+      if (!a) return;
+      e.stopPropagation(); fecharMenuLote();
+      if (a === 'entregar') entregarSelecionadas();
+      else if (a === 'abrir') location.hash = '#/video/' + id;
+      else if (a === 'todas') selecionarTodas();
+      else limparSel();
+    };
+  }
+  document.addEventListener('pointerdown', e => { if (menuLote && !menuLote.contains(e.target)) fecharMenuLote(); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (menuLote) fecharMenuLote(); else if (SEL.size && document.getElementById('vd-selbar')) limparSel(); } });
+  window.addEventListener('hashchange', () => { fecharMenuLote(); SEL.clear(); const b = document.getElementById('vd-selbar'); if (b) b.remove(); });
+  window.addEventListener('scroll', () => fecharMenuLote(), { capture: true, passive: true });
 
   /* =================================================================
      ARRASTAR E SOLTAR NO KANBAN — mesmo padrão nativo (HTML5 drag/drop,

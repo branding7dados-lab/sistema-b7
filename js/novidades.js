@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz201', versao: 'zzz201', em: '2026-10-16T10:00:00-03:00',
+    titulo: 'Entregar várias demandas de vídeo de uma vez',
+    itens: ['Na Edição de vídeo (Kanban e Lista), segure Ctrl e clique para escolher várias demandas — ou use “Selecionar todas”.',
+            'Clique com o botão direito e escolha “Marcar como entregue”: todas as selecionadas viram entregues de uma vez.'] },
   { id: 'v-zzz194', versao: 'zzz194', em: '2026-10-15T18:00:00-03:00',
     titulo: 'IA nas conversas do WhatsApp',
     itens: ['No painel ao lado da conversa, “O que rolou aqui?” resume o grupo: o que o cliente pediu, o que está pendente e o que já foi resolvido.',
