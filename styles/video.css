@@ -1544,3 +1544,13 @@ html.modo-leve .vd-h-bokeh{display:none;}
 [data-theme="dark"] .vd-ref-meme{background:rgba(245,165,36,.16);color:#F5C26B;}
 .vd-ref-link{align-self:flex-start;}
 .vd-ref-url{display:block;margin-top:6px;font-size:11.5px;color:var(--ink-4);word-break:break-all;}
+
+/* ---- seleção em lote (zzz201) ---- */
+.vd-card.vd-sel,.vd-m-card.vd-sel,.vd-tabela tr.vd-sel{outline:2px solid var(--rosa,#F0559E);outline-offset:-2px;
+  background:color-mix(in srgb,var(--rosa,#F0559E) 12%,var(--card));}
+.vd-sel-todas{margin-left:10px;background:none;border:0;padding:0;color:var(--rosa,#F0559E);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+#vd-selbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:850;display:flex;align-items:center;gap:8px;
+  padding:9px 12px 9px 16px;border-radius:16px;background:var(--elevado,var(--card));color:var(--ink,inherit);
+  border:1px solid var(--borda-forte);box-shadow:0 12px 36px rgba(0,0,0,.35);font-size:13px;animation:b7Fade .2s ease both;}
+#vd-selbar b{font-size:15px;}
+@media (max-width:700px){#vd-selbar{width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center;bottom:84px;}}
