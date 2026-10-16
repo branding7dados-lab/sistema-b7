@@ -131,11 +131,12 @@ B7.Gravacao = (function () {
       return;
     }
     if (g0 !== geracao) return;
-    S = { id, g, itens: [], ocs: [], hist: [], estado: { itens: 'carregando', hist: 'carregando' } };
+    S = { id, g, itens: [], ocs: [], hist: [], refs: [], estado: { itens: 'carregando', hist: 'carregando', refs: 'carregando' } };
     B7.Rota.titulo([g.nome, g.cliente_nome]);
     desenhar();
     carregarItens(g0);
     carregarHistorico(g0);
+    carregarRefs(g0);
   }
 
   function carregarItens(g0) {
@@ -146,6 +147,50 @@ B7.Gravacao = (function () {
       S.estado.itens = 'ok'; pintarItens(); pintarResumoTopo();
     }).catch(() => { if (g0 !== geracao) return; S.estado.itens = 'erro'; pintarItens(); });
   }
+  /* zzz205: referências da linha editorial do mês — cada uma pede "só edição" ou "edição e gravação" */
+  function carregarRefs(g0) {
+    B7.DB.gravacaoReferenciasLinha(S.id).then(l => {
+      if (g0 !== geracao) return;
+      S.refs = l || []; S.estado.refs = 'ok'; pintarRefs();
+    }).catch(() => { if (g0 !== geracao) return; S.refs = []; S.estado.refs = 'erro'; pintarRefs(); });
+  }
+  function pintarRefs() {
+    const cx = document.getElementById('gv-refs'); if (!cx || !S) return;
+    const lista = S.refs || [];
+    if (S.estado.refs !== 'ok' || !lista.length) { cx.hidden = true; cx.innerHTML = ''; return; }
+    cx.hidden = false;
+    const pend = lista.filter(r => !r.uso).length;
+    const ordem = [...lista.keys()].sort((a, b) => (!lista[a].uso ? 0 : 1) - (!lista[b].uso ? 0 : 1) || a - b);
+    const linha = i => {
+      const r = lista[i];
+      let host = ''; try { host = new URL(r.link).hostname.replace(/^www\./, ''); } catch (e) {}
+      const doMes = r.origem === 'linha';
+      const rot = doMes ? 'Referência do mês' : 'Conteúdo' + (r.conteudo_tipo ? ' · ' + r.conteudo_tipo : '');
+      return '<li class="gv-ref' + (r.uso ? '' : ' pendente') + '" data-ref="' + i + '">' +
+        '<div class="gv-ref-tx"><span class="gv-ref-org">' + esc(rot) + '</span>' +
+          (doMes ? '' : '<b>' + esc(r.conteudo_titulo || 'Conteúdo sem título') + '</b>') +
+          '<a href="' + esc(B7.UI.linkExterno(r.link)) + '" target="_blank" rel="noopener noreferrer nofollow">' + esc(host || r.link) + IC.abrir + '</a>' +
+          (r.automatico ? '<small>Conteúdo marcado como só edição na linha.</small>' : '') + '</div>' +
+        '<div class="gv-ref-uso" role="group" aria-label="Para que serve esta referência">' +
+          '<button type="button" data-uso="edicao" class="' + (r.uso === 'edicao' ? 'on' : '') + '" aria-pressed="' + (r.uso === 'edicao') + '">Só edição</button>' +
+          '<button type="button" data-uso="gravacao" class="' + (r.uso === 'gravacao' ? 'on' : '') + '" aria-pressed="' + (r.uso === 'gravacao') + '">Edição e gravação</button>' +
+        '</div></li>';
+    };
+    cx.innerHTML = '<div class="gv-sec-cab"><h2 id="gv-t-refs">Referências da linha editorial</h2>' +
+      (pend ? '<span class="gv-ref-aviso">' + pend + (pend === 1 ? ' para decidir' : ' para decidir') + '</span>'
+            : '<span class="gv-ref-ok">' + IC.check + 'Tudo decidido</span>') + '</div>' +
+      '<p class="gv-ref-ajuda">Escolha para que cada referência serve: <b>só edição</b> (quem edita usa de inspiração) ou <b>edição e gravação</b> (também orienta o que vamos gravar).</p>' +
+      '<ul class="gv-ref-lista">' + ordem.map(linha).join('') + '</ul>';
+    cx.querySelectorAll('.gv-ref [data-uso]').forEach(b => b.onclick = async () => {
+      const li = b.closest('.gv-ref'), r = lista[+li.dataset.ref];
+      if (!r || r.uso === b.dataset.uso && !r.automatico) return;
+      const antes = [r.uso, r.automatico];
+      r.uso = b.dataset.uso; r.automatico = false; pintarRefs();
+      try { await B7.DB.refUsoDecidir(r.linha_id, r.conteudo_id, r.link, r.uso); }
+      catch (e) { r.uso = antes[0]; r.automatico = antes[1]; pintarRefs(); B7.UI.toast((e && e.message) || 'Não foi possível salvar a escolha.', { tipo: 'erro' }); }
+    });
+  }
+
   function carregarHistorico(g0) {
     S.estado.hist = 'carregando'; pintarHistorico();
     Promise.all([B7.DB.gravacaoHistorico(S.id), B7.DB.gravacaoOcorrencias(S.id)]).then(([h, o]) => {
@@ -156,7 +201,7 @@ B7.Gravacao = (function () {
   async function recarregarGravacao() {
     try { S.g = await B7.DB.gravacao(S.id); } catch (e) {}
     pintarCabecalho(); pintarResumoTopo(); pintarDetalhes();
-    carregarHistorico(geracao);
+    carregarHistorico(geracao); carregarRefs(geracao);
   }
 
   /* ======================================================= desenho */
@@ -167,6 +212,7 @@ B7.Gravacao = (function () {
       '<div class="gv-grade">' +
         '<div class="gv-principal">' +
           '<section class="gv-bloco" id="gv-itens" aria-labelledby="gv-t-itens"></section>' +
+          '<section class="gv-bloco gv-refs" id="gv-refs" aria-labelledby="gv-t-refs" hidden></section>' +
           '<section class="gv-bloco" id="gv-obs" aria-labelledby="gv-t-obs"></section>' +
         '</div>' +
         '<aside class="gv-lado">' +

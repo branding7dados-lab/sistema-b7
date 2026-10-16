@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz205', versao: 'zzz205', em: '2026-10-16T15:00:00-03:00',
+    titulo: 'Referências da linha editorial vão para a gravação',
+    itens: ['Todo link de referência colocado na linha editorial (no conteúdo ou no mês) aparece na gravação do cliente, em “Referências da linha editorial”.',
+            'Para cada link, escolha: “Só edição” (quem edita usa de inspiração) ou “Edição e gravação” (também orienta o que vamos gravar). Se o link mudar, volta a pedir a escolha.',
+            'No conteúdo da linha, logo abaixo do link, já dá para escolher na hora.'] },
   { id: 'v-zzz202', versao: 'zzz202', em: '2026-10-16T12:00:00-03:00',
     titulo: 'Corretor de texto no WhatsApp e no chat',
     itens: ['Ao enviar uma mensagem no chat de Conversas ou no WhatsApp do programa de Windows, o B7 corrige ortografia e gramática antes de mandar — sem mudar o que você quis dizer.',

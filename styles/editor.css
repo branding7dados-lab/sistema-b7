@@ -356,3 +356,9 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
   #tela-editor .escrita .bloco-corpo{padding:14px 12px;}
   #ed-status .chip-status{max-width:128px;}
 }
+
+/* ---- referência: para que serve (zzz205) ---- */
+.ref-uso{margin-top:8px;display:flex;flex-direction:column;gap:6px;}
+.ref-uso:empty{display:none;}
+.ref-uso .rot-uso{font-size:12.5px;color:var(--ink-3);}
+.ref-uso .rot-uso b{color:#F0A443;}
