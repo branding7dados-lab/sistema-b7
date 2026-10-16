@@ -677,6 +677,11 @@ B7.Conversas = (function () {
     });
     form.onsubmit = e => { e.preventDefault(); enviarTexto(); };
     dir.querySelector('#conv-anexar').onclick = () => arq.click();
+    let relogioCorr = null;
+    ta.addEventListener('input', () => {
+      clearTimeout(relogioCorr);
+      relogioCorr = setTimeout(() => { if (B7.Corretor && ta.isConnected && !editando) B7.Corretor.preparar(ta.value); }, 1400);
+    });
     const btCorr = dir.querySelector('#conv-corr');
     if (btCorr) btCorr.onclick = () => {
       const novo = !B7.Corretor.ligado(); B7.Corretor.definir(novo);

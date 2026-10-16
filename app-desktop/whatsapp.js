@@ -152,12 +152,17 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     if (f) { respostas.delete(r.id); f(r); }
   });
   /* zzz202: o preload pede a correção do texto; quem tem a sessão e a IA é a tela do sistema */
+  ipcMain.on('b7wa:preparar', (ev, texto) => {
+    const j = pegarJanela();
+    if (!cfg.corrigir || !j || j.isDestroyed() || typeof texto !== 'string' || texto.length > 2000) return;
+    j.webContents.executeJavaScript('window.B7 && B7.Corretor && B7.Corretor.preparar(' + JSON.stringify(texto) + ')').catch(() => {});
+  });
   ipcMain.handle('b7wa:corrigir', async (ev, texto) => {
     const j = pegarJanela();
     if (!cfg.corrigir || !j || j.isDestroyed() || typeof texto !== 'string' || texto.length > 2000) return { ok: false };
     try {
       const js = '(window.B7 && B7.Corretor && B7.Corretor.ligado()) ? B7.Corretor.corrigir(' + JSON.stringify(texto) + ') : null';
-      const r = await Promise.race([j.webContents.executeJavaScript(js), new Promise(res => setTimeout(() => res(null), 9000))]);
+      const r = await Promise.race([j.webContents.executeJavaScript(js), new Promise(res => setTimeout(() => res(null), 18000))]);
       return r && r.ok && r.mudou && typeof r.texto === 'string' ? { ok: true, texto: r.texto } : { ok: false };
     } catch (e) { return { ok: false }; }
   });

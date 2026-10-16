@@ -67,13 +67,21 @@ function precisa(campo) {
   return !(inicio === n + ':' || inicio.startsWith(n + ':'));
 }
 async function assinarEnviar(campo, enviarDepois) {
+  const antes = textoDoCampo(campo).trim();
   cursorNoComeco(campo);
-  await esperar(40);                               /* o editor lê a posição do cursor um instante depois */
+  await esperar(60);                               /* o editor lê a posição do cursor um instante depois */
   colar(campo, prefixo() + '\n');
-  await esperar(80);
+  await esperar(120);
+  /* zzz204: às vezes o editor põe o nome no FIM (cursor que ainda não tinha mudado de lugar).
+     Se o começo não tem o nome, refaz o texto inteiro já assinado. */
+  if (precisa(campo) && antes && !antes.includes('@')) {
+    trocarTudo(campo, prefixo() + '\n' + antes);
+    await esperar(160);
+  }
   nosso = true;
   try { enviarDepois(); } finally { setTimeout(() => { nosso = false; }, 50); }
 }
+
 /* ---------------------------------------- 1b. corrigir o texto (zzz202)
    Antes de assinar e enviar, o texto vai para a tela do sistema, que pede à
    IA só a ortografia e a gramática (js/corretor.js). Se algo falhar, demorar
@@ -112,11 +120,22 @@ async function corrigirCampo(campo) {
     if (normal(textoDoCampo(campo)) !== normal(r.texto)) { trocarTudo(campo, antes); await esperar(120); }
   } catch (e) {} finally { campo.style.opacity = ''; }
 }
+let relogioPrep = null;
+document.addEventListener('input', e => {
+  if (!cfg.corrigir) return;
+  const campo = editavel(e.target);
+  if (!campo || naBusca(campo)) return;
+  clearTimeout(relogioPrep);
+  relogioPrep = setTimeout(() => {
+    if (!campo.isConnected || !precisaCorrigir(campo)) return;
+    ipcRenderer.send('b7wa:preparar', textoDoCampo(campo).trim());
+  }, 1400);
+}, true);
 let ocupado = false;
 async function preparar(campo, enviarDepois) {
   ocupado = true;
   try {
-    if (precisaCorrigir(campo)) await corrigirCampo(campo);
+    if (precisaCorrigir(campo)) { await corrigirCampo(campo); await esperar(250); }
     if (precisa(campo)) await assinarEnviar(campo, enviarDepois);
     else { nosso = true; try { enviarDepois(); } finally { setTimeout(() => { nosso = false; }, 50); } }
   } finally { ocupado = false; }
