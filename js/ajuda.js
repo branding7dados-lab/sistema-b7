@@ -159,6 +159,7 @@ B7.Ajuda = (function () {
       '</header>' +
       '<div id="aj-res"></div>' +
       '<div id="aj-blocos">' +
+        (B7.Tour ? B7.Tour.cartao() : '') +
         (daTela ? '<a class="aj-aqui" href="#/ajuda/' + esc(daTela.id) + '">' + ic(daTela.grupoId, 'aj-ic-g') + '<div><small>Você estava em</small><b>' + esc(daTela.titulo) + '</b></div><span>Ver o tutorial desta tela →</span></a>' : '') +
         (!e.lidos['por-onde-comecar'] ? '<a class="aj-aqui aj-comece" href="#/ajuda/por-onde-comecar">' + ic('intro', 'aj-ic-g') + '<div><small>Primeira vez aqui?</small><b>Por onde começar</b></div><span>Ler em 1 minuto →</span></a>' : '') +
         (para.length ? '<h2 class="aj-sec">Para você <small>· ' + esc(NOME_FUNCAO[f] || '') + '</small></h2><div class="aj-cards">' + para.map(cartao).join('') + '</div>' : '') +
@@ -170,6 +171,7 @@ B7.Ajuda = (function () {
     q.oninput = () => { busca = q.value; resultados(); };
     painel().querySelectorAll('[data-sug]').forEach(b => b.onclick = () => { q.value = busca = b.dataset.sug; resultados(); q.focus(); });
     painel().querySelector('#aj-chamado').onclick = () => B7.Suporte && B7.Suporte.novo('duvida');
+    if (B7.Tour) B7.Tour.ligarCartao();
     if (busca) resultados();
     if (!estreito()) setTimeout(() => { try { q.focus({ preventScroll: true }); } catch (x) {} }, 60);
   }
@@ -209,6 +211,7 @@ B7.Ajuda = (function () {
           '<div class="aj-chips"><span>' + minutos(i) + ' min de leitura</span>' + (np ? '<span>' + np + ' passos</span>' : '') + (e.lidos[i.id] ? '<span class="ok">' + CHECK + 'Lido</span>' : '') + '</div></div></header>' +
         '<div class="aj-acoes">' + (podeIr ? '<a class="b pri" href="#/' + esc(rota) + '">Ir para a tela</a>' : '') +
           '<button type="button" class="b contorno" id="aj-lido">' + (e.lidos[i.id] ? 'Marcar como não lido' : 'Marcar como lido') + '</button></div>' +
+        '<section class="aj-video" id="aj-video" hidden></section>' +
         '<dl class="aj-meta">' + meta('Serve para', i.serve, 'serve') + meta('Onde fica', i.onde, 'onde') + meta('Quem usa', i.quem, 'quem') + meta('Antes de começar', i.antes, 'antes') + '</dl>' +
         (np ? '<section class="aj-bloco"><div class="aj-bloco-cab"><h2>Passo a passo</h2><span class="aj-prog" id="aj-prog"></span></div>' +
           '<p class="aj-dica-uso">Fazendo agora? Toque no número de cada passo quando terminar.</p>' +
@@ -240,6 +243,7 @@ B7.Ajuda = (function () {
       const s = est(); if (s.lidos[i.id]) delete s.lidos[i.id]; else s.lidos[i.id] = Date.now(); salvar(s); tutorial(i);
     };
     pintarUtil(i);
+    pintarVideo(i);
     const iq = raiz.querySelector('#aj-iq');
     const filtrar = () => {
       idxBusca = iq.value; const t = normal(idxBusca).trim();
@@ -249,6 +253,53 @@ B7.Ajuda = (function () {
     iq.oninput = filtrar; filtrar();
     const on = raiz.querySelector('#aj-ind .aj-it.on'); if (on && on.scrollIntoView && !estreito()) { try { on.scrollIntoView({ block: 'center' }); } catch (x) {} }
     try { window.scrollTo(0, 0); } catch (x) {}
+  }
+
+  /* zzz213: um vídeo curto por tutorial, enviado pelo administrador (espaço
+     público "ajuda-videos", até 50 MB). Sem vídeo, a equipe não vê nada;
+     o administrador vê o botão para enviar. */
+  let videos = null;
+  const ehAdm = () => !!(B7.Auth && (B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin && B7.Auth.ehAdmin()));
+  async function carregarVideos(forcar) {
+    if (videos && !forcar) return videos;
+    try { videos = (await B7.DB.rpc('ajuda_videos', {})) || {}; } catch (e) { videos = videos || {}; }
+    return videos;
+  }
+  async function pintarVideo(i) {
+    const cx = document.getElementById('aj-video'); if (!cx) return;
+    const v = (await carregarVideos())[i.id], adm = ehAdm();
+    if (!cx.isConnected) return;
+    if (!v && !adm) { cx.hidden = true; return; }
+    cx.hidden = false;
+    cx.innerHTML = (v ? '<video controls preload="metadata" playsinline src="' + esc(v) + '"></video>'
+        : '<div class="aj-video-vazio"><b>Sem vídeo neste tutorial</b><small>Grave a tela fazendo o passo a passo (até 50 MB, MP4 ou WebM). A equipe vê o vídeo aqui.</small></div>') +
+      (adm ? '<div class="aj-video-adm"><input type="file" id="aj-vid-arq" accept="video/mp4,video/webm,video/quicktime" hidden>' +
+        '<button type="button" class="b contorno fina" id="aj-vid-env">' + (v ? 'Trocar vídeo' : 'Enviar vídeo') + '</button>' +
+        (v ? '<button type="button" class="adm-link perigo" id="aj-vid-rm">Remover vídeo</button>' : '') + '<span id="aj-vid-st"></span></div>' : '');
+    if (!adm) return;
+    const arq = cx.querySelector('#aj-vid-arq'), st = cx.querySelector('#aj-vid-st');
+    cx.querySelector('#aj-vid-env').onclick = () => arq.click();
+    arq.onchange = async () => {
+      const f = arq.files && arq.files[0]; arq.value = ''; if (!f) return;
+      if (f.size > 52428800) { B7.UI.toast('Vídeo grande demais: o limite é 50 MB.', { tipo: 'erro' }); return; }
+      st.textContent = 'Enviando…';
+      try {
+        const ext = (/\.(mp4|webm|mov)$/i.exec(f.name) || [, 'mp4'])[1].toLowerCase();
+        const caminho = i.id + '/' + Date.now() + '.' + ext;
+        const { error } = await B7.sb.storage.from('ajuda-videos').upload(caminho, f, { contentType: f.type || 'video/mp4', upsert: false });
+        if (error) throw error;
+        const url = B7.sb.storage.from('ajuda-videos').getPublicUrl(caminho).data.publicUrl;
+        videos = await B7.DB.rpc('ajuda_video_definir', { p_id: i.id, p_url: url });
+        B7.UI.toast('Vídeo publicado neste tutorial.');
+        pintarVideo(i);
+      } catch (e) { st.textContent = ''; B7.UI.toast((e && e.message) || 'Não foi possível enviar o vídeo.', { tipo: 'erro' }); }
+    };
+    const rm = cx.querySelector('#aj-vid-rm');
+    if (rm) rm.onclick = () => B7.UI.confirmar({ titulo: 'Remover o vídeo deste tutorial?', texto: 'A equipe deixa de ver o vídeo aqui.', rotulo: 'Remover', perigo: true,
+      aoConfirmar: async () => {
+        try { videos = await B7.DB.rpc('ajuda_video_definir', { p_id: i.id, p_url: '' }); B7.UI.toast('Vídeo removido.'); pintarVideo(i); }
+        catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível remover.', { tipo: 'erro' }); }
+      } });
   }
 
   function pintarUtil(i) {

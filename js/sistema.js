@@ -351,7 +351,9 @@ B7.Novidades = (function () {
       '<article class="nv-item' + (!comRemover && !v.includes(n.id) ? ' nova' : '') + '"><header><b>' + esc(n.titulo) + '</b>' +
         '<small>' + esc([dia(n.em), n.versao || ''].filter(Boolean).join(' · ')) + '</small>' +
         (comRemover ? '<button type="button" class="nv-rm" data-rm="' + esc(n.id) + '">Remover</button>' : '') + '</header>' +
-        ((n.itens || []).length ? '<ul>' + n.itens.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '') + '</article>').join('') + '</div>';
+        ((n.itens || []).length ? '<ul>' + n.itens.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '') +
+        /* zzz213: a novidade leva até a tela onde ela está */
+        (!comRemover && (n.irPara || n.rota) ? '<a class="nv-ir" href="#/' + esc(n.irPara || n.rota) + '" data-fecha-nv>Ver na tela →</a>' : '') + '</article>').join('') + '</div>';
   }
 
   function abrir() {
@@ -359,6 +361,7 @@ B7.Novidades = (function () {
       corpoLista(dados(), false) +
       '<div class="acoes"><button type="button" class="b pri" data-fecha>Entendi</button></div>', { larga: true });
     m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
+    m.querySelectorAll("[data-fecha-nv]").forEach(a => a.addEventListener("click", () => m.fechar()));
     marcarLidas();
   }
 

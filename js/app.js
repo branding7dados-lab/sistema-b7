@@ -860,6 +860,8 @@ B7.Rota = (function () {
     if (B7.Conversas) { try { B7.Conversas.montar(); } catch (e) {} }
     /* zzz209: o "?" da ajuda, ao lado das conversas */
     if (B7.Ajuda) { try { B7.Ajuda.montar(); } catch (e) {} }
+    /* zzz213: tour de boas-vindas, dica da primeira visita e primeiros passos */
+    if (B7.Tour) { try { B7.Tour.aoEntrar(); } catch (e) {} }
     if (B7.Presenca) B7.Presenca.iniciar();
     if (B7.Push && B7.Push.manter) setTimeout(() => B7.Push.manter(), 2500);
     if (B7.Memoria && B7.Memoria.aquecer) B7.Memoria.aquecer();

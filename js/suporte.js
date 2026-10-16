@@ -107,7 +107,8 @@ B7.Suporte = (function () {
       '<label class="sp-urg" id="sp-urg"><input type="checkbox" id="sp-urg-c"> Está me impedindo de trabalhar</label>' +
       '<div class="mb"><label class="rot">PRINT <span class="leve">— opcional</span></label>' +
         '<div class="sp-solta" id="sp-solta" tabindex="0"><span>Cole um print aqui (<kbd>Ctrl</kbd>+<kbd>V</kbd>), arraste ou <button type="button" class="adm-link" id="sp-escolher">escolha um arquivo</button></span>' +
-        '<small>Dica: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> tira print de uma parte da tela.</small></div>' +
+        '<small>Dica: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> tira print de uma parte da tela.' +
+          (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && window.MediaRecorder ? ' Ou <button type="button" class="adm-link" id="sp-gravar">grave a tela (até 15 s)</button>.' : '') + '</small></div>' +
         '<input type="file" id="sp-arq" accept="image/*" multiple hidden><div class="sp-minis" id="sp-minis"></div></div>' +
       '<label class="sp-info"><input type="checkbox" id="sp-info-c" checked> Enviar junto as informações da tela <button type="button" class="adm-link" id="sp-info-ver">ver o que vai</button></label>' +
       '<pre class="sp-info-tx" id="sp-info-tx" hidden>' + esc(contextoTexto(ctx)) + '</pre>' +
@@ -123,9 +124,18 @@ B7.Suporte = (function () {
     const sugerir = () => {
       const cx = q('#sp-sug'), t = q('#sp-tit').value.trim();
       const r = (tipo === 'duvida' || tipo === 'bug') && t.length >= 4 && B7.Ajuda && B7.Ajuda.procurar ? B7.Ajuda.procurar(t).slice(0, 3) : [];
-      cx.hidden = !r.length;
-      cx.innerHTML = r.length ? '<b>Talvez um tutorial resolva:</b>' + r.map(x => '<a href="#/ajuda/' + esc(x.i.id) + '" data-tut><span>' + esc(x.i.titulo) + '</span><small>' + esc(x.i.grupo) + '</small></a>').join('') : '';
+      const ia = (tipo === 'duvida' || tipo === 'bug') && t.length >= 4 && B7.Chat && B7.Chat.abrir && B7.IA && B7.IA.ligada && B7.IA.ligada('chat');
+      cx.hidden = !r.length && !ia;
+      cx.innerHTML = (r.length ? '<b>Talvez um tutorial resolva:</b>' + r.map(x => '<a href="#/ajuda/' + esc(x.i.id) + '" data-tut><span>' + esc(x.i.titulo) + '</span><small>' + esc(x.i.grupo) + '</small></a>').join('') : '') +
+        /* zzz214: o assistente responde pelos tutoriais; só pergunta quando a pessoa toca */
+        (ia ? '<button type="button" class="sp-ia" data-ia><span>Perguntar ao assistente antes</span><small>ele responde na hora, com base nos tutoriais</small></button>' : '');
       cx.querySelectorAll('[data-tut]').forEach(a => a.onclick = () => m.fechar());
+      const bia = cx.querySelector('[data-ia]');
+      if (bia) bia.onclick = () => {
+        const texto = q('#sp-tit').value.trim() + (q('#sp-desc').value.trim() ? '\n' + q('#sp-desc').value.trim() : '');
+        m.fechar(); B7.Chat.abrir();
+        setTimeout(() => { const ta = document.querySelector('#ch-texto'); if (ta) { ta.value = (tipo === 'bug' ? 'Estou com um problema: ' : 'Dúvida: ') + texto; ta.dispatchEvent(new Event('input')); ta.focus(); } }, 250);
+      };
     };
     q('#sp-tit').addEventListener('input', () => { clearTimeout(relSug); relSug = setTimeout(sugerir, 250); });
     m.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => { tipo = b.dataset.tipo; pintarTipo(); sugerir(); });
@@ -144,6 +154,39 @@ B7.Suporte = (function () {
         catch (e) { B7.UI.toast((e && e.message) || 'Não consegui ler essa imagem.', { tipo: 'erro' }); }
       }
     };
+    /* zzz214: gravação da tela (até 15 s), para mostrar o problema acontecendo */
+    let video = null;
+    const pintarVideo = () => {
+      let v = q('#sp-vid'); if (v) v.remove();
+      if (!video) return;
+      v = document.createElement('span'); v.className = 'sp-mini sp-vid'; v.id = 'sp-vid';
+      v.innerHTML = '<video src="' + video.url + '" muted playsinline></video><button type="button" aria-label="Tirar a gravação">×</button>';
+      v.querySelector('button').onclick = () => { URL.revokeObjectURL(video.url); video = null; pintarVideo(); };
+      q('#sp-minis').appendChild(v);
+    };
+    const bg = q('#sp-gravar');
+    const gravar = async () => {
+      let fluxo;
+      try { fluxo = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false }); }
+      catch (e) { return; }
+      const tipoV = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+      const rec = new MediaRecorder(fluxo, { mimeType: tipoV, videoBitsPerSecond: 1200000 }), partes = [];
+      rec.ondataavailable = e => { if (e.data && e.data.size) partes.push(e.data); };
+      rec.onstop = () => {
+        fluxo.getTracks().forEach(t => t.stop());
+        const blob = new Blob(partes, { type: 'video/webm' });
+        bg.textContent = 'grave de novo (até 15 s)'; bg.onclick = gravar;
+        if (blob.size > 24 * 1048576) { B7.UI.toast('A gravação ficou grande demais. Grave menos tempo.', { tipo: 'erro' }); return; }
+        if (video) URL.revokeObjectURL(video.url);
+        video = { blob, url: URL.createObjectURL(blob) }; pintarVideo();
+      };
+      fluxo.getVideoTracks()[0].addEventListener('ended', () => { if (rec.state !== 'inactive') rec.stop(); });
+      rec.start(1000); let s = 15;
+      bg.textContent = 'gravando… parar (15 s)';
+      const tic = setInterval(() => { s--; if (rec.state === 'inactive' || s <= 0) { clearInterval(tic); if (rec.state !== 'inactive') rec.stop(); } else bg.textContent = 'gravando… parar (' + s + ' s)'; }, 1000);
+      bg.onclick = () => { clearInterval(tic); if (rec.state !== 'inactive') rec.stop(); };
+    };
+    if (bg) bg.onclick = gravar;
     const arq = q('#sp-arq');
     q('#sp-escolher').onclick = () => arq.click();
     arq.onchange = () => { adicionar([...arq.files]); arq.value = ''; };
@@ -168,6 +211,11 @@ B7.Suporte = (function () {
           const caminho = id + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random().toString(16).slice(2)) + '.jpg';
           const r = await sb().storage.from(BUCKET).upload(caminho, im.blob, { contentType: 'image/jpeg', upsert: false });
           if (!r.error) paths.push(caminho);
+        }
+        if (video) {
+          const cv = id + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now()) + '.webm';
+          const rv = await sb().storage.from(BUCKET).upload(cv, video.blob, { contentType: 'video/webm', upsert: false });
+          if (!rv.error) paths.push(cv);
         }
         if (paths.length) await B7.DB.rpc('suporte_anexar', { p_id: id, p_paths: paths });
         m.fechar();
@@ -220,11 +268,12 @@ B7.Suporte = (function () {
     painel().innerHTML = '<div class="conteudo entra sp-tela">' +
       '<header class="sp-hero"><div class="sp-hero-tx"><span class="sp-hero-tag">Suporte e feedback</span><h1>Fale com a equipe do sistema</h1>' +
         '<p>Relate um problema, mande uma ideia, tire uma dúvida ou elogie. A resposta chega aqui e no sino.</p></div>' +
-        '<div class="sp-hero-ac"><button type="button" class="b pri" id="sp-novo">+ Novo chamado</button><a class="b contorno" href="#/ajuda">Ver tutoriais</a></div>' +
+        '<div class="sp-hero-ac"><button type="button" class="b pri" id="sp-novo">+ Novo chamado</button><button type="button" class="b contorno" id="sp-ideias">Ideias da equipe</button><a class="b contorno" href="#/ajuda">Ver tutoriais</a></div>' +
         '<div class="sp-tipos-rap">' + Object.keys(TIPOS).map(k => '<button type="button" data-rap="' + k + '">' + icTipo(k) + '<span><b>' + TIPOS[k].rot + '</b><small>' + TIPOS[k].dica + '</small></span></button>').join('') + '</div>' +
       '</header>' +
       '<div id="sp-nums" class="sp-nums"></div><div id="sp-barra"></div><div class="sp-grade" id="sp-grade">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
     painel().querySelector('#sp-novo').onclick = () => novo();
+    painel().querySelector('#sp-ideias').onclick = () => ideias();
     painel().querySelectorAll('[data-rap]').forEach(b => b.onclick = () => novo(b.dataset.rap));
     try { await carregar(); }
     catch (e) {
@@ -404,7 +453,8 @@ B7.Suporte = (function () {
     if (!(c.anexos || []).length) return;
     const urls = await Promise.all(c.anexos.map(async p => { try { const { data } = await sb().storage.from(BUCKET).createSignedUrl(p, 3600); return data && data.signedUrl; } catch (e) { return null; } }));
     const box = document.getElementById('sp-anexos'); if (!box) return;
-    box.innerHTML = urls.filter(Boolean).map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer"><img alt="Print ' + (i + 1) + '" src="' + esc(u) + '"></a>').join('');
+    box.innerHTML = urls.map((u, i) => !u ? '' : /\.(webm|mp4)(\?|$)/i.test(c.anexos[i]) ? '<video class="sp-anexo-video" controls preload="metadata" src="' + esc(u) + '"></video>'
+      : '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer"><img alt="Print ' + (i + 1) + '" src="' + esc(u) + '"></a>').join('');
   }
 
   async function mensagens(c) {
@@ -422,5 +472,34 @@ B7.Suporte = (function () {
     box.scrollTop = box.scrollHeight;
   }
 
-  return { abrir, novo };
+  /* zzz214: as sugestões da equipe, para todos votarem. Só o resumo (os
+     detalhes do chamado continuam com quem abriu e com a equipe). */
+  async function ideias() {
+    const m = B7.UI.modal('<h3>Ideias da equipe</h3><p class="sub">As sugestões que a equipe mandou pelo Suporte. Vote nas que você também quer: as mais votadas sobem.</p>' +
+      '<div class="sp-ideias" id="sp-ideias-l">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Fechar</button><button type="button" class="b pri" id="sp-ideia-nova">+ Mandar uma ideia</button></div>', { larga: true });
+    m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
+    m.querySelector('#sp-ideia-nova').onclick = () => { m.fechar(); novo('sugestao'); };
+    const cx = m.querySelector('#sp-ideias-l');
+    const pintarI = l => {
+      cx.innerHTML = l.length ? l.map(x => '<div class="sp-ideia"><button type="button" class="sp-voto' + (x.eu_votei ? ' on' : '') + '" data-voto="' + esc(x.id) + '" aria-pressed="' + x.eu_votei + '" aria-label="Votar">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l6-6 6 6"/></svg><b>' + x.votos + '</b></button>' +
+          '<div class="sp-ideia-tx"><b>' + esc(x.titulo) + '</b><small>#' + x.numero + ' · ' + esc(x.autor || 'alguém') + ' · ' + esc(quando(x.created_at)) + '</small></div>' + chipStatus(x.status) + '</div>').join('')
+        : '<div class="sp-vazio"><b>Nenhuma ideia ainda.</b><p>Seja a primeira pessoa a mandar uma.</p></div>';
+      cx.querySelectorAll('[data-voto]').forEach(b => b.onclick = async () => {
+        b.disabled = true;
+        try {
+          const n = await B7.DB.rpc('suporte_votar', { p_id: b.dataset.voto });
+          const on = !b.classList.contains('on');
+          b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.querySelector('b').textContent = n;
+          b.classList.remove('pulo'); void b.offsetWidth; b.classList.add('pulo');
+        } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível votar.', { tipo: 'erro' }); }
+        b.disabled = false;
+      });
+    };
+    try { pintarI((await B7.DB.rpc('suporte_ideias', {})) || []); }
+    catch (e) { cx.innerHTML = '<p class="sp-vazio">' + esc((e && e.message) || 'Não foi possível carregar as ideias.') + '</p>'; }
+  }
+
+  return { abrir, novo, ideias };
 })();

@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz213', versao: 'zzz213', em: '2026-10-17T12:00:00-03:00',
+    titulo: 'Tour guiado, dicas e um Suporte mais completo',
+    itens: ['Tour de boas-vindas: um passeio de 1 minuto pela tela, do jeito da sua função. Dá para pular e refazer pela Ajuda.',
+            'Na primeira vez em cada tela aparece uma dica curta de para que ela serve, com o atalho para o tutorial.',
+            'Na Ajuda, a lista “Primeiros passos” se marca sozinha conforme você usa o sistema. Alguns tutoriais ganham vídeo.',
+            'Suporte: grave a tela (até 15 s) para mostrar o problema, pergunte ao assistente antes de abrir o chamado e vote nas “Ideias da equipe”.'] },
   { id: 'v-zzz211', versao: 'zzz211', em: '2026-10-17T00:30:00-03:00',
     titulo: 'O assistente agora conhece os tutoriais',
     itens: ['Pergunte ao assistente “como faço…”, “onde fica…” ou “não acho…”: ele responde pelo tutorial certo, com os nomes dos botões iguais aos da tela.',
