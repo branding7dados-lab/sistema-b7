@@ -51,3 +51,46 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('suporte', 'suporte', false, 5242880, array['image/jpeg', 'image/png', 'image/webp']) on conflict (id) do nothing;
 create policy "suporte select" on storage.objects for select to authenticated using (bucket_id = 'suporte' and public.suporte_pode_arquivo(name));
 create policy "suporte insert" on storage.objects for insert to authenticated with check (bucket_id = 'suporte' and public.suporte_pode_arquivo(name));
+
+-- =====================================================================
+-- zzz210: mensagens de sistema (mudança de situação) e "reabrir"
+-- =====================================================================
+alter table public.suporte_mensagens add column if not exists sistema boolean not null default false;
+
+CREATE OR REPLACE FUNCTION public.suporte_status(p_id uuid, p_status text, p_prioridade text)
+ RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+declare c public.suporte_chamados%rowtype; rot text; nome text;
+begin
+  if not public.sou_equipe() then raise exception 'Só admin/coordenador mudam o andamento do chamado.' using errcode = '42501'; end if;
+  select * into c from public.suporte_chamados where id = p_id;
+  if not found then raise exception 'Chamado não encontrado.'; end if;
+  if p_status not in ('novo', 'em_analise', 'em_andamento', 'resolvido', 'nao_vamos_fazer') then raise exception 'Andamento inválido.'; end if;
+  if coalesce(p_prioridade, c.prioridade) not in ('baixa', 'normal', 'alta') then raise exception 'Prioridade inválida.'; end if;
+  update public.suporte_chamados set status = p_status, prioridade = coalesce(p_prioridade, prioridade), updated_at = now(),
+    resolvido_em = case when p_status in ('resolvido', 'nao_vamos_fazer') then coalesce(resolvido_em, now()) else null end where id = p_id;
+  if p_status is distinct from c.status then
+    rot := case p_status when 'em_analise' then 'em análise' when 'em_andamento' then 'em andamento' when 'resolvido' then 'resolvido' when 'nao_vamos_fazer' then 'não será feito' else 'novo' end;
+    select p.nome into nome from public.perfis p where p.id = auth.uid();
+    insert into public.suporte_mensagens (chamado_id, autor_id, autor_nome, texto, interno, sistema)
+    values (p_id, auth.uid(), nome, 'Situação: ' || rot, false, true);
+    perform public._suporte_notificar(c.criado_por, 'suporte.status', 'Chamado #' || c.numero || ': ' || rot, c.titulo, p_id);
+  end if;
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.suporte_reabrir(p_id uuid, p_motivo text)
+ RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+declare c public.suporte_chamados%rowtype; nome text; r record;
+begin
+  select * into c from public.suporte_chamados where id = p_id;
+  if not found or not (c.criado_por = auth.uid() or public.sou_equipe()) then raise exception 'Chamado não encontrado.'; end if;
+  if c.status not in ('resolvido', 'nao_vamos_fazer') then raise exception 'Este chamado já está em aberto.'; end if;
+  select p.nome into nome from public.perfis p where p.id = auth.uid();
+  update public.suporte_chamados set status = 'em_analise', resolvido_em = null, updated_at = now() where id = p_id;
+  insert into public.suporte_mensagens (chamado_id, autor_id, autor_nome, texto, interno, sistema)
+  values (p_id, auth.uid(), nome, 'Reaberto: ' || coalesce(nullif(btrim(left(p_motivo, 600)), ''), 'ainda não resolveu'), false, true);
+  for r in select id from public.perfis where papel in ('admin', 'coordenador') and estado = 'ativa' loop
+    perform public._suporte_notificar(r.id, 'suporte.resposta', 'Chamado #' || c.numero || ' reaberto por ' || coalesce(nome, 'alguém'), c.titulo, p_id);
+  end loop;
+end $function$;

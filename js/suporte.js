@@ -92,7 +92,8 @@ B7.Suporte = (function () {
   }
 
   /* ======================================================== novo chamado */
-  function novo(tipoInicial) {
+  function novo(tipoInicial, pre) {
+    pre = pre || {};
     let tipo = TIPOS[tipoInicial] ? tipoInicial : 'bug';
     const imagens = [];                         /* { blob, mini } */
     const ctx = contexto();
@@ -100,11 +101,12 @@ B7.Suporte = (function () {
       '<p class="sub">Conte o que aconteceu ou o que você quer. A equipe responde por aqui e você recebe um aviso no sino.</p>' +
       '<div class="sp-tipos" role="group" aria-label="Tipo">' +
         Object.keys(TIPOS).map(k => '<button type="button" class="sp-tipo" data-tipo="' + k + '"><b>' + TIPOS[k].rot + '</b><small>' + TIPOS[k].dica + '</small></button>').join('') + '</div>' +
-      '<div class="mb"><label class="rot" for="sp-tit">RESUMO</label><input class="campo" id="sp-tit" maxlength="140" data-foco></div>' +
-      '<div class="mb"><label class="rot" for="sp-desc">DETALHES <span class="leve">— quanto mais, mais rápido a gente resolve</span></label><textarea class="campo" id="sp-desc" rows="5" maxlength="4000"></textarea></div>' +
+      '<div class="mb"><label class="rot" for="sp-tit">RESUMO</label><input class="campo" id="sp-tit" maxlength="140" data-foco value="' + esc(pre.titulo || '') + '"></div>' +
+      '<div class="sp-sug" id="sp-sug" hidden></div>' +
+      '<div class="mb"><label class="rot" for="sp-desc">DETALHES <span class="leve">— quanto mais, mais rápido a gente resolve</span></label><textarea class="campo" id="sp-desc" rows="5" maxlength="4000">' + esc(pre.descricao || '') + '</textarea></div>' +
       '<label class="sp-urg" id="sp-urg"><input type="checkbox" id="sp-urg-c"> Está me impedindo de trabalhar</label>' +
       '<div class="mb"><label class="rot">PRINT <span class="leve">— opcional</span></label>' +
-        '<div class="sp-solta" id="sp-solta" tabindex="0">Cole um print aqui (<kbd>Ctrl</kbd>+<kbd>V</kbd>), arraste ou <button type="button" class="adm-link" id="sp-escolher">escolha um arquivo</button>' +
+        '<div class="sp-solta" id="sp-solta" tabindex="0"><span>Cole um print aqui (<kbd>Ctrl</kbd>+<kbd>V</kbd>), arraste ou <button type="button" class="adm-link" id="sp-escolher">escolha um arquivo</button></span>' +
         '<small>Dica: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> tira print de uma parte da tela.</small></div>' +
         '<input type="file" id="sp-arq" accept="image/*" multiple hidden><div class="sp-minis" id="sp-minis"></div></div>' +
       '<label class="sp-info"><input type="checkbox" id="sp-info-c" checked> Enviar junto as informações da tela <button type="button" class="adm-link" id="sp-info-ver">ver o que vai</button></label>' +
@@ -116,8 +118,18 @@ B7.Suporte = (function () {
       q('#sp-tit').placeholder = TIPOS[tipo].titulo; q('#sp-desc').placeholder = TIPOS[tipo].desc;
       q('#sp-urg').hidden = tipo !== 'bug';
     };
-    m.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => { tipo = b.dataset.tipo; pintarTipo(); });
-    pintarTipo();
+    /* zzz210: enquanto a pessoa escreve, mostra tutoriais que talvez resolvam (dúvida e problema) */
+    let relSug = null;
+    const sugerir = () => {
+      const cx = q('#sp-sug'), t = q('#sp-tit').value.trim();
+      const r = (tipo === 'duvida' || tipo === 'bug') && t.length >= 4 && B7.Ajuda && B7.Ajuda.procurar ? B7.Ajuda.procurar(t).slice(0, 3) : [];
+      cx.hidden = !r.length;
+      cx.innerHTML = r.length ? '<b>Talvez um tutorial resolva:</b>' + r.map(x => '<a href="#/ajuda/' + esc(x.i.id) + '" data-tut><span>' + esc(x.i.titulo) + '</span><small>' + esc(x.i.grupo) + '</small></a>').join('') : '';
+      cx.querySelectorAll('[data-tut]').forEach(a => a.onclick = () => m.fechar());
+    };
+    q('#sp-tit').addEventListener('input', () => { clearTimeout(relSug); relSug = setTimeout(sugerir, 250); });
+    m.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => { tipo = b.dataset.tipo; pintarTipo(); sugerir(); });
+    pintarTipo(); sugerir();
     q('#sp-info-ver').onclick = () => { const p = q('#sp-info-tx'); p.hidden = !p.hidden; };
 
     const pintarMinis = () => {
@@ -168,24 +180,53 @@ B7.Suporte = (function () {
     };
   }
 
-  /* ============================================================== tela */
-  let lista = [], sel = null, filtro = 'abertos', visao = 'meus', vez = 0;
-
-  const chipStatus = s => '<span class="sp-st sp-st-' + esc(s) + '">' + esc(STATUS[s] || s) + '</span>';
+  /* ============================================================== tela
+     zzz210: números no alto, busca, "nova resposta" (o que mudou desde a
+     última vez que a pessoa abriu), linha do tempo do andamento, "Isso
+     resolveu?" (reabre), respostas prontas para a equipe e atualização
+     sozinha enquanto a tela está aberta. */
+  let lista = [], sel = null, filtro = 'abertos', visao = 'meus', vez = 0, q = '', relogio = null;
   const quando = iso => (B7.UI.quando ? B7.UI.quando(iso) : String(iso || '').slice(0, 10));
+  const chipStatus = s => '<span class="sp-st sp-st-' + esc(s) + '">' + esc(STATUS[s] || s) + '</span>';
+  const ini = n => (B7.UI.iniciais ? B7.UI.iniciais(n || '?') : String(n || '?').slice(0, 2).toUpperCase());
+  const av = n => '<span class="sp-av tom-' + esc(B7.UI.tomDoNome ? B7.UI.tomDoNome(n || '') : '1') + '" aria-hidden="true">' + esc(ini(n)) + '</span>';
+  const ICT = {
+    bug: '<path d="M8 8.5V7a4 4 0 0 1 8 0v1.5"/><rect x="6.5" y="8.5" width="11" height="11" rx="5.5"/><path d="M12 11v8M3.5 13h3M17.5 13h3M4.5 8.5l2 1.5M19.5 8.5l-2 1.5M4.5 18.5l2.2-1.6M19.5 18.5l-2.2-1.6"/>',
+    sugestao: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
+    duvida: '<circle cx="12" cy="12" r="8.6"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8"/><path d="M12 16.6h.01"/>',
+    elogio: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'
+  };
+  const icTipo = t => '<span class="sp-ict sp-tp-' + esc(t) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICT[t] || ICT.duvida) + '</svg></span>';
+  /* "visto" por chamado, neste aparelho: mostra a bolinha de novidade */
+  const chaveVisto = () => 'suporte_visto_' + (eu() || 'anon');
+  const vistos = () => (B7.pref && B7.pref.ler(chaveVisto(), {})) || {};
+  const marcarVisto = c => { const v = vistos(); v[c.id] = c.updated_at; if (B7.pref) B7.pref.gravar(chaveVisto(), v); };
+  const temNovidade = c => { const v = vistos()[c.id]; return v ? new Date(c.updated_at) > new Date(v) : (c.criado_por !== eu() && ABERTOS.includes(c.status)); };
+  const RESPOSTAS = [
+    'Recebemos! Vamos olhar e te avisamos por aqui.',
+    'Consegue mandar um print da tela quando acontecer? Ajuda muito a achar o problema.',
+    'Corrigido na versão mais nova. Atualize o sistema (feche e abra de novo) e confira, por favor.',
+    'Boa ideia! Entrou na nossa lista. Te avisamos quando sair.'
+  ];
+
+  async function carregar() { lista = ok(await sb().from('suporte_chamados').select('*').order('updated_at', { ascending: false }).limit(300)) || []; }
 
   async function abrir(id) {
     const minha = ++vez;
     if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/suporte');
     if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['Suporte e feedback']);
     if (!equipe()) visao = 'meus';
-    if (id && typeof id === 'string') sel = id;
+    sel = id && typeof id === 'string' ? id : (/^#\/suporte$/.test(location.hash) ? null : sel);
     painel().innerHTML = '<div class="conteudo entra sp-tela">' +
-      '<div class="cb-topo"><div class="cb-titulo"><h1>Suporte e feedback</h1><p>Relate um problema, mande uma ideia, tire uma dúvida ou elogie. A equipe responde aqui mesmo.</p></div>' +
-      '<div class="cb-topo-acoes"><a class="b contorno" href="#/ajuda">Ver tutoriais</a><button type="button" class="b pri" id="sp-novo">+ Novo chamado</button></div></div>' +
-      '<div id="sp-barra"></div><div class="sp-grade" id="sp-grade">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
+      '<header class="sp-hero"><div class="sp-hero-tx"><span class="sp-hero-tag">Suporte e feedback</span><h1>Fale com a equipe do sistema</h1>' +
+        '<p>Relate um problema, mande uma ideia, tire uma dúvida ou elogie. A resposta chega aqui e no sino.</p></div>' +
+        '<div class="sp-hero-ac"><button type="button" class="b pri" id="sp-novo">+ Novo chamado</button><a class="b contorno" href="#/ajuda">Ver tutoriais</a></div>' +
+        '<div class="sp-tipos-rap">' + Object.keys(TIPOS).map(k => '<button type="button" data-rap="' + k + '">' + icTipo(k) + '<span><b>' + TIPOS[k].rot + '</b><small>' + TIPOS[k].dica + '</small></span></button>').join('') + '</div>' +
+      '</header>' +
+      '<div id="sp-nums" class="sp-nums"></div><div id="sp-barra"></div><div class="sp-grade" id="sp-grade">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
     painel().querySelector('#sp-novo').onclick = () => novo();
-    try { lista = ok(await sb().from('suporte_chamados').select('*').order('created_at', { ascending: false }).limit(300)) || []; }
+    painel().querySelectorAll('[data-rap]').forEach(b => b.onclick = () => novo(b.dataset.rap));
+    try { await carregar(); }
     catch (e) {
       if (minha !== vez) return;
       const semTabela = e && (e.code === '42P01' || e.code === 'PGRST205');
@@ -195,93 +236,163 @@ B7.Suporte = (function () {
     if (minha !== vez) return;
     if (sel && !lista.some(c => c.id === sel)) sel = null;
     pintar();
+    vigiar(minha);
   }
 
-  const doFiltro = () => lista.filter(c =>
-    (visao === 'todos' || c.criado_por === eu()) &&
-    (filtro === 'todos' ? true : filtro === 'abertos' ? ABERTOS.includes(c.status) : c.status === filtro));
+  /* atualiza sozinho a cada 40 s com a tela aberta e visível */
+  function vigiar(minha) {
+    clearInterval(relogio);
+    relogio = setInterval(async () => {
+      if (minha !== vez || !document.getElementById('sp-grade')) { clearInterval(relogio); return; }
+      if (document.hidden) return;
+      const antes = JSON.stringify(lista.map(c => [c.id, c.updated_at, c.status]));
+      try { await carregar(); } catch (e) { return; }
+      if (JSON.stringify(lista.map(c => [c.id, c.updated_at, c.status])) === antes) return;
+      const txt = document.getElementById('sp-resp-t'); const rascunho = txt ? txt.value : '';
+      pintar();
+      const t2 = document.getElementById('sp-resp-t'); if (t2 && rascunho) t2.value = rascunho;
+    }, 40000);
+  }
+
+  const daVisao = () => lista.filter(c => visao === 'todos' || c.criado_por === eu());
+  const precisaResposta = c => equipe() ? (ABERTOS.includes(c.status) && c.criado_por !== eu() && temNovidade(c)) : temNovidade(c);
+  const doFiltro = () => {
+    const t = String(q || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    return daVisao().filter(c =>
+      (filtro === 'todos' ? true : filtro === 'abertos' ? ABERTOS.includes(c.status) : filtro === 'novidade' ? temNovidade(c) : c.status === filtro) &&
+      (!t || (c.titulo + ' ' + (c.descricao || '') + ' ' + (c.criado_por_nome || '') + ' #' + c.numero).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(t)));
+  };
+
+  function pintarNums() {
+    const cx = document.getElementById('sp-nums'); if (!cx) return;
+    const base = daVisao(), mes = Date.now() - 30 * 864e5;
+    const n = { abertos: base.filter(c => ABERTOS.includes(c.status)).length, novidade: base.filter(temNovidade).length,
+      urg: base.filter(c => c.urgente && ABERTOS.includes(c.status)).length, res: base.filter(c => c.status === 'resolvido' && new Date(c.resolvido_em || c.updated_at) > mes).length };
+    const num = (k, v, r, cl) => '<button type="button" class="sp-num ' + (cl || '') + (filtro === k ? ' on' : '') + '" data-num="' + k + '"><b>' + v + '</b><span>' + r + '</span></button>';
+    cx.innerHTML = num('abertos', n.abertos, 'em aberto') + num('novidade', n.novidade, equipe() ? 'com novidade' : 'com resposta nova', n.novidade ? 'quente' : '') +
+      (equipe() ? num('urgentes', n.urg, 'urgentes', n.urg ? 'alerta' : '') : '') + num('resolvido', n.res, 'resolvidos em 30 dias', 'ok');
+    cx.querySelectorAll('[data-num]').forEach(b => b.onclick = () => { filtro = b.dataset.num === 'urgentes' ? 'abertos' : b.dataset.num; if (b.dataset.num === 'urgentes') q = ''; sel = null; pintar(); });
+  }
 
   function pintarBarra() {
     const cx = document.getElementById('sp-barra'); if (!cx) return;
-    const base = lista.filter(c => visao === 'todos' || c.criado_por === eu());
+    const base = daVisao();
     const n = f => f === 'todos' ? base.length : f === 'abertos' ? base.filter(c => ABERTOS.includes(c.status)).length : base.filter(c => c.status === f).length;
     cx.innerHTML = '<div class="sp-barra">' +
-      (equipe() ? '<div class="filtro" role="tablist" aria-label="De quem">' +
-        '<button role="tab" data-v="meus" class="' + (visao === 'meus' ? 'on' : '') + '">Meus chamados</button>' +
+      '<div class="sp-barra-l">' + (equipe() ? '<div class="filtro" role="tablist" aria-label="De quem">' +
+        '<button role="tab" data-v="meus" class="' + (visao === 'meus' ? 'on' : '') + '">Meus</button>' +
         '<button role="tab" data-v="todos" class="' + (visao === 'todos' ? 'on' : '') + '">Todos da equipe</button></div>' : '') +
+        '<label class="sp-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.2-4.2"/></svg>' +
+          '<input id="sp-q" type="search" placeholder="Buscar por título, pessoa ou número" value="' + esc(q) + '" aria-label="Buscar chamados" autocomplete="off"></label></div>' +
       '<div class="sp-filtros" role="group" aria-label="Andamento">' +
         [['abertos', 'Em aberto'], ['novo', 'Novos'], ['em_analise', 'Em análise'], ['em_andamento', 'Em andamento'], ['resolvido', 'Resolvidos'], ['nao_vamos_fazer', 'Não será feito'], ['todos', 'Todos']]
-          .map(([k, r]) => '<button type="button" class="tr-etq' + (filtro === k ? ' on' : '') + '" data-f="' + k + '">' + r + '<i>' + n(k) + '</i></button>').join('') + '</div></div>';
+          .map(([k, r]) => '<button type="button" class="sp-f' + (filtro === k ? ' on' : '') + '" data-f="' + k + '">' + r + '<i>' + n(k) + '</i></button>').join('') + '</div></div>';
     cx.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { visao = b.dataset.v; sel = null; pintar(); });
     cx.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filtro = b.dataset.f; sel = null; pintar(); });
+    const qi = cx.querySelector('#sp-q');
+    qi.oninput = () => { q = qi.value; pintarLista(); };
   }
 
   function pintar() {
-    pintarBarra();
+    pintarNums(); pintarBarra();
     const cx = document.getElementById('sp-grade'); if (!cx) return;
+    cx.className = 'sp-grade' + (sel ? ' com-sel' : '');
+    const tela = cx.closest('.sp-tela'); if (tela) tela.classList.toggle('com-sel', !!sel);
+    cx.innerHTML = '<div class="sp-lista" id="sp-lista"></div><div class="sp-detalhe" id="sp-det"></div>';
+    pintarLista();
+    if (sel) detalhe(sel);
+    else document.getElementById('sp-det').innerHTML = '<div class="sp-det-vazio"><span class="sp-det-vazio-ic">' + icTipo('duvida') + '</span><b>Escolha um chamado</b><p>A conversa com a equipe e o andamento aparecem aqui.</p></div>';
+  }
+
+  function pintarLista() {
+    const cx = document.getElementById('sp-lista'); if (!cx) return;
     const itens = doFiltro();
     const itemHTML = c => {
-      const t = TIPOS[c.tipo] || TIPOS.bug;
-      return '<button type="button" class="sp-item' + (sel === c.id ? ' on' : '') + '" data-id="' + esc(c.id) + '">' +
-        '<span class="sp-tp sp-tp-' + esc(c.tipo) + '">' + esc(t.rot) + '</span>' +
-        '<b>' + esc(c.titulo) + '</b>' +
-        '<span class="sp-meta">#' + c.numero + ' · ' + esc(visao === 'todos' ? (c.criado_por_nome || 'alguém') + ' · ' : '') + esc(quando(c.created_at)) +
-          (c.urgente && ABERTOS.includes(c.status) ? ' · <em class="sp-urgente">urgente</em>' : '') + '</span>' + chipStatus(c.status) + '</button>';
+      const nov = temNovidade(c) && sel !== c.id;
+      return '<button type="button" class="sp-item' + (sel === c.id ? ' on' : '') + (nov ? ' nov' : '') + '" data-id="' + esc(c.id) + '">' + icTipo(c.tipo) +
+        '<span class="sp-item-tx"><span class="sp-item-l1"><b>' + esc(c.titulo) + '</b>' + (nov ? '<i class="sp-dot" title="Novidade"></i>' : '') + '</span>' +
+        '<span class="sp-meta">#' + c.numero + ' · ' + (visao === 'todos' ? esc((c.criado_por_nome || 'alguém').split(' ')[0]) + ' · ' : '') + esc(quando(c.updated_at || c.created_at)) +
+          (c.urgente && ABERTOS.includes(c.status) ? ' · <em class="sp-urgente">urgente</em>' : '') + '</span></span>' + chipStatus(c.status) + '</button>';
     };
-    const vazio = '<div class="estado-b7"><b>' + (lista.length ? 'Nenhum chamado nesse filtro.' : 'Você ainda não abriu nenhum chamado.') + '</b>' +
-      '<span>Achou algo estranho, tem uma ideia ou ficou com dúvida? Conte pra gente.</span><button type="button" class="b pri" data-novo-vazio>+ Novo chamado</button></div>';
-    cx.className = 'sp-grade' + (sel ? ' com-sel' : '');
-    cx.innerHTML = '<div class="sp-lista">' + (itens.length ? itens.map(itemHTML).join('') : vazio) + '</div><div class="sp-detalhe" id="sp-det">' +
-      (sel ? '' : '<div class="sp-det-vazio">Escolha um chamado para ver a conversa.</div>') + '</div>';
+    cx.innerHTML = itens.length ? itens.map(itemHTML).join('') :
+      '<div class="sp-vazio"><b>' + (lista.length ? 'Nenhum chamado aqui.' : 'Nenhum chamado ainda.') + '</b><p>' + (lista.length ? 'Troque o filtro ou a busca.' : 'Achou algo estranho, tem uma ideia ou ficou com dúvida? Conte pra gente.') + '</p>' +
+        '<button type="button" class="b pri" data-novo-vazio>+ Novo chamado</button></div>';
     const nv = cx.querySelector('[data-novo-vazio]'); if (nv) nv.onclick = () => novo();
     cx.querySelectorAll('.sp-item').forEach(b => b.onclick = () => { sel = b.dataset.id; pintar(); });
-    if (sel) detalhe(sel);
+  }
+
+  const ETAPAS = [['novo', 'Recebido'], ['em_analise', 'Em análise'], ['em_andamento', 'Em andamento'], ['resolvido', 'Resolvido']];
+  function linhaTempo(c) {
+    if (c.status === 'nao_vamos_fazer') return '<div class="sp-tempo fim-nao"><span class="sp-et feito"><i></i>Recebido</span><span class="sp-et atual"><i></i>Não será feito</span></div>';
+    const at = ETAPAS.findIndex(e => e[0] === c.status);
+    return '<div class="sp-tempo" style="--at:' + at + '">' + ETAPAS.map((e, k) => '<span class="sp-et' + (k < at ? ' feito' : k === at ? ' atual' : '') + '"><i></i>' + e[1] + '</span>').join('') + '</div>';
   }
 
   async function detalhe(id) {
     const cx = document.getElementById('sp-det'); if (!cx) return;
     const c = lista.find(x => x.id === id); if (!c) return;
-    const t = TIPOS[c.tipo] || TIPOS.bug;
+    marcarVisto(c);
+    const t = TIPOS[c.tipo] || TIPOS.bug, souAutor = c.criado_por === eu(), fechado = !ABERTOS.includes(c.status);
     cx.innerHTML = '<button type="button" class="sp-volta" id="sp-volta">← Voltar</button>' +
-      '<div class="sp-det-cab"><span class="sp-tp sp-tp-' + esc(c.tipo) + '">' + esc(t.rot) + '</span><span class="sp-meta">#' + c.numero + ' · ' + esc(c.criado_por_nome || 'alguém') + ' · ' + esc(quando(c.created_at)) + '</span>' + chipStatus(c.status) +
-        (c.urgente && ABERTOS.includes(c.status) ? '<em class="sp-urgente">urgente</em>' : '') + '</div>' +
-      '<h2>' + esc(c.titulo) + '</h2>' +
-      (c.descricao ? '<p class="sp-desc">' + esc(c.descricao).replace(/\n/g, '<br>') + '</p>' : '<p class="leve">Sem detalhes.</p>') +
-      '<div class="sp-anexos" id="sp-anexos"></div>' + contextoHTML(c) +
-      '<h3 class="sp-h">Conversa</h3><div class="sp-msgs" id="sp-msgs">' + B7.UI.skeleton('lista', { n: 2 }) + '</div>' +
-      '<div class="sp-resp"><textarea class="campo" id="sp-resp-t" rows="3" maxlength="4000" placeholder="' + (equipe() && c.criado_por !== eu() ? 'Responder para ' + esc((c.criado_por_nome || 'a pessoa').split(' ')[0]) + '…' : 'Escrever uma mensagem…') + '"></textarea>' +
-        '<div class="sp-resp-ac">' + (equipe() ? '<label class="sp-nota"><input type="checkbox" id="sp-resp-i"> Nota interna (só a equipe vê)</label>' : '') +
-        '<button type="button" class="b pri" id="sp-resp-b">Enviar</button></div></div>' +
-      (equipe() ? '<div class="sp-andamento"><h3 class="sp-h">Andamento</h3><div class="sp-and-campos">' +
-        '<label>Situação <select class="campo fina" id="sp-st">' + Object.keys(STATUS).map(k => '<option value="' + k + '"' + (c.status === k ? ' selected' : '') + '>' + STATUS[k] + '</option>').join('') + '</select></label>' +
+      '<header class="sp-det-cab">' + icTipo(c.tipo) + '<div class="sp-det-tit"><div class="sp-det-l1"><span class="sp-tp sp-tp-' + esc(c.tipo) + '">' + esc(t.rot) + '</span><span class="sp-meta">#' + c.numero + '</span>' +
+        (c.urgente && !fechado ? '<em class="sp-urgente">urgente</em>' : '') + (equipe() && c.prioridade !== 'normal' ? '<span class="sp-prio sp-prio-' + esc(c.prioridade) + '">prioridade ' + esc(PRIO[c.prioridade]) + '</span>' : '') + '</div>' +
+        '<h2>' + esc(c.titulo) + '</h2><span class="sp-meta">' + av(c.criado_por_nome) + esc(c.criado_por_nome || 'alguém') + ' · aberto ' + esc(quando(c.created_at)) + '</span></div></header>' +
+      linhaTempo(c) +
+      (c.status === 'resolvido' && souAutor ? '<div class="sp-resolveu"><div><b>Isso resolveu?</b><p>Se ainda acontece, reabra e conte o que viu.</p></div><div><button type="button" class="b contorno" id="sp-sim">Sim, obrigado</button><button type="button" class="b pri" id="sp-reabrir">Não, ainda acontece</button></div></div>' : '') +
+      (equipe() ? '<div class="sp-andamento"><label>Situação <select class="campo fina" id="sp-st">' + Object.keys(STATUS).map(k => '<option value="' + k + '"' + (c.status === k ? ' selected' : '') + '>' + STATUS[k] + '</option>').join('') + '</select></label>' +
         '<label>Prioridade <select class="campo fina" id="sp-pr">' + Object.keys(PRIO).map(k => '<option value="' + k + '"' + (c.prioridade === k ? ' selected' : '') + '>' + PRIO[k] + '</option>').join('') + '</select></label>' +
-        '<button type="button" class="b fina contorno" id="sp-and-b">Salvar andamento</button></div></div>' : '');
+        '<button type="button" class="b fina pri" id="sp-and-b" disabled>Salvar</button></div>' : '') +
+      '<div class="sp-desc-box">' + (c.descricao ? '<p class="sp-desc">' + esc(c.descricao).replace(/\n/g, '<br>') + '</p>' : '<p class="sp-desc leve">Sem detalhes.</p>') +
+        '<div class="sp-anexos" id="sp-anexos"></div>' + contextoHTML(c) + '</div>' +
+      '<h3 class="sp-h">Conversa</h3><div class="sp-msgs" id="sp-msgs">' + B7.UI.skeleton('lista', { n: 2 }) + '</div>' +
+      '<div class="sp-resp">' +
+        (equipe() && !souAutor ? '<div class="sp-prontas">' + RESPOSTAS.map((r, k) => '<button type="button" data-pronta="' + k + '">' + esc(r.slice(0, 34)) + '…</button>').join('') + '</div>' : '') +
+        '<textarea class="campo" id="sp-resp-t" rows="3" maxlength="4000" placeholder="' + (equipe() && !souAutor ? 'Responder para ' + esc((c.criado_por_nome || 'a pessoa').split(' ')[0]) + '…' : fechado ? 'Escrever (o chamado continua ' + esc(STATUS[c.status].toLowerCase()) + ')…' : 'Escrever uma mensagem para a equipe…') + '"></textarea>' +
+        '<div class="sp-resp-ac">' + (equipe() ? '<label class="sp-nota"><input type="checkbox" id="sp-resp-i"> Nota interna (só a equipe vê)</label>' : '<small class="leve">Ctrl+Enter envia</small>') +
+        '<button type="button" class="b pri" id="sp-resp-b">Enviar</button></div></div>';
     cx.querySelector('#sp-volta').onclick = () => { sel = null; pintar(); };
     anexos(c); mensagens(c);
-    cx.querySelector('#sp-resp-b').onclick = async () => {
-      const tx = cx.querySelector('#sp-resp-t'), texto = tx.value.trim(); if (!texto) return;
+    const tx = cx.querySelector('#sp-resp-t');
+    cx.querySelectorAll('[data-pronta]').forEach(b => b.onclick = () => { tx.value = RESPOSTAS[+b.dataset.pronta]; tx.focus(); });
+    const enviar = async () => {
+      const texto = tx.value.trim(); if (!texto) return;
       const bt = cx.querySelector('#sp-resp-b'); bt.disabled = true;
       try {
         await B7.DB.rpc('suporte_responder', { p_id: c.id, p_texto: texto, p_interno: !!(cx.querySelector('#sp-resp-i') && cx.querySelector('#sp-resp-i').checked) });
-        tx.value = ''; await mensagens(c);
+        tx.value = ''; c.updated_at = new Date().toISOString(); marcarVisto(c); await mensagens(c);
       } catch (e) { B7.UI.toast('Não foi possível enviar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
       bt.disabled = false;
     };
-    const ab = cx.querySelector('#sp-and-b');
-    if (ab) ab.onclick = async () => {
-      ab.disabled = true;
-      try {
-        await B7.DB.rpc('suporte_status', { p_id: c.id, p_status: cx.querySelector('#sp-st').value, p_prioridade: cx.querySelector('#sp-pr').value });
-        c.status = cx.querySelector('#sp-st').value; c.prioridade = cx.querySelector('#sp-pr').value;
-        B7.UI.toast('Andamento salvo.'); pintar();
-      } catch (e) { B7.UI.toast('Não foi possível salvar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); ab.disabled = false; }
+    cx.querySelector('#sp-resp-b').onclick = enviar;
+    tx.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); enviar(); } });
+    const sim = cx.querySelector('#sp-sim');
+    if (sim) sim.onclick = () => { B7.UI.toast('Que bom! Obrigado por avisar.'); sim.closest('.sp-resolveu').remove(); };
+    const re = cx.querySelector('#sp-reabrir');
+    if (re) re.onclick = async () => {
+      const motivo = await B7.UI.perguntar({ titulo: 'O que ainda acontece?', confirmar: 'Reabrir chamado' });
+      if (motivo === null) return;
+      try { await B7.DB.rpc('suporte_reabrir', { p_id: c.id, p_motivo: motivo || '' }); await carregar(); B7.UI.toast('Chamado reaberto. A equipe foi avisada.'); pintar(); }
+      catch (e) { B7.UI.toast('Não foi possível reabrir: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
     };
+    const ab = cx.querySelector('#sp-and-b');
+    if (ab) {
+      const st = cx.querySelector('#sp-st'), pr = cx.querySelector('#sp-pr');
+      const mudou = () => { ab.disabled = st.value === c.status && pr.value === c.prioridade; };
+      st.onchange = mudou; pr.onchange = mudou;
+      ab.onclick = async () => {
+        ab.disabled = true;
+        try {
+          await B7.DB.rpc('suporte_status', { p_id: c.id, p_status: st.value, p_prioridade: pr.value });
+          await carregar(); B7.UI.toast('Andamento salvo. ' + (c.criado_por !== eu() ? 'A pessoa foi avisada.' : '')); pintar();
+        } catch (e) { B7.UI.toast('Não foi possível salvar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); mudou(); }
+      };
+    }
   }
 
   function contextoHTML(c) {
     const x = c.contexto || {}; if (!Object.keys(x).length) return '';
     const l = (r, v) => v ? '<div><span>' + r + '</span><b>' + esc(String(v)) + '</b></div>' : '';
-    return '<details class="sp-ctx"><summary>Informações da tela</summary><div class="sp-ctx-g">' +
+    return '<details class="sp-ctx"><summary>Informações da tela' + ((x.erros || []).length ? ' · <em>' + x.erros.length + ' erro' + (x.erros.length === 1 ? '' : 's') + '</em>' : '') + '</summary><div class="sp-ctx-g">' +
       l('Tela', x.tela) + l('Versão', x.versao) + l('Onde', x.plataforma) + l('Janela', x.janela) + l('Perfil', x.papel) + (x.online === false ? l('Conexão', 'sem internet') : '') +
       (x.navegador ? '<div class="sp-ctx-l"><span>Navegador</span><b>' + esc(x.navegador) + '</b></div>' : '') +
       ((x.erros || []).length ? '<div class="sp-ctx-l"><span>Erros recentes</span><pre>' + esc(x.erros.map(e => e.msg).join('\n')) + '</pre></div>' : '') +
@@ -290,7 +401,7 @@ B7.Suporte = (function () {
   }
 
   async function anexos(c) {
-    const cx = document.getElementById('sp-anexos'); if (!cx || !(c.anexos || []).length) return;
+    if (!(c.anexos || []).length) return;
     const urls = await Promise.all(c.anexos.map(async p => { try { const { data } = await sb().storage.from(BUCKET).createSignedUrl(p, 3600); return data && data.signedUrl; } catch (e) { return null; } }));
     const box = document.getElementById('sp-anexos'); if (!box) return;
     box.innerHTML = urls.filter(Boolean).map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer"><img alt="Print ' + (i + 1) + '" src="' + esc(u) + '"></a>').join('');
@@ -302,9 +413,12 @@ B7.Suporte = (function () {
     try { ms = ok(await sb().from('suporte_mensagens').select('*').eq('chamado_id', c.id).order('created_at')) || []; }
     catch (e) { cx.innerHTML = '<p class="leve">Não foi possível carregar a conversa.</p>'; return; }
     const box = document.getElementById('sp-msgs'); if (!box || sel !== c.id) return;
-    box.innerHTML = ms.length ? ms.map(m => '<div class="sp-msg' + (m.autor_id === eu() ? ' minha' : '') + (m.interno ? ' interna' : '') + '"><div class="sp-msg-c"><b>' + esc(m.autor_nome || 'Alguém') + '</b>' +
-      (m.interno ? '<em>nota interna</em>' : '') + '<small>' + esc(quando(m.created_at)) + '</small></div><p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p></div>').join('')
-      : '<p class="leve">Ainda sem mensagens.</p>';
+    box.innerHTML = ms.length ? ms.map(m => m.sistema
+      ? '<div class="sp-sis"><span>' + esc(m.texto) + ' · ' + esc((m.autor_nome || '').split(' ')[0]) + ' · ' + esc(quando(m.created_at)) + '</span></div>'
+      : '<div class="sp-msg' + (m.autor_id === eu() ? ' minha' : '') + (m.interno ? ' interna' : '') + '">' + (m.autor_id === eu() ? '' : av(m.autor_nome)) +
+        '<div class="sp-bolha"><div class="sp-msg-c"><b>' + esc(m.autor_id === eu() ? 'Você' : (m.autor_nome || 'Alguém')) + '</b>' + (m.interno ? '<em>nota interna</em>' : '') + '<small>' + esc(quando(m.created_at)) + '</small></div>' +
+        '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p></div></div>').join('')
+      : '<div class="sp-sem-msg">Ainda sem mensagens. ' + (equipe() && c.criado_por !== eu() ? 'Responda para a pessoa saber que o chamado foi visto.' : 'A equipe responde por aqui.') + '</div>';
     box.scrollTop = box.scrollHeight;
   }
 

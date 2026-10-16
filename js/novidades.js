@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz210', versao: 'zzz210', em: '2026-10-16T23:59:00-03:00',
+    titulo: 'Ajuda e Suporte de cara nova',
+    itens: ['Ajuda: nova tela inicial com busca grande, sugestões para a sua função e o seu progresso de leitura. Cada tutorial tem índice ao lado, passos que você marca como feitos, “Ir para a tela” e “Este tutorial ajudou?”.',
+            'Suporte: números no alto (em aberto, com resposta nova, resolvidos), busca, bolinha nos chamados com novidade e linha do tempo do andamento.',
+            'Quando a equipe marca como resolvido, você responde “Isso resolveu?”. Se ainda acontece, dá para reabrir o chamado.',
+            'Ao escrever uma dúvida ou problema, o sistema já sugere tutoriais que podem resolver. A tela de suporte se atualiza sozinha.'] },
   { id: 'v-zzz209', versao: 'zzz209', em: '2026-10-16T23:00:00-03:00',
     titulo: 'Ajuda e tutoriais dentro do sistema',
     itens: ['Novo botão “?” no topo, ao lado das conversas: abre o tutorial da tela em que você está.',
