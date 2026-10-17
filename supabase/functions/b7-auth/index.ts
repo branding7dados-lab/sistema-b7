@@ -217,6 +217,54 @@ async function gravarExcecoes(sb: any, perfilId: string, lista: { modulo: string
       perfil_id: perfilId, modulo: x.modulo, efeito: x.efeito, nivel: x.nivel || null, alterado_por: autorId })));
   }
 }
+/* zzz216: função personalizada ('p_...') = pacote de módulos apoiado numa função de base.
+   perfis.funcao fica com a BASE (Painel, quem pode receber trabalho, espelho do papel);
+   perfis.funcao_personalizada aponta o pacote. */
+// deno-lint-ignore no-explicit-any
+async function resolverFuncao(sb: any, bruta: unknown): Promise<{ funcao: string | null; personalizada: string | null; erro?: string }> {
+  const f = bruta === null || bruta === undefined || bruta === '' ? null : String(bruta);
+  if (!f || !f.startsWith('p_')) return { funcao: f, personalizada: null };
+  const { data } = await sb.from('funcoes_personalizadas').select('id, base').eq('id', f).maybeSingle();
+  if (!data) return { funcao: null, personalizada: null, erro: 'Função personalizada não encontrada.' };
+  return { funcao: data.base, personalizada: data.id };
+}
+/* zzz216: funções secundárias { funcao: 'ver' | 'editar' | 'total' } — abrem o pacote da
+   função até esse nível, sem mudar a função nem quem pode receber trabalho */
+// deno-lint-ignore no-explicit-any
+async function normalizarSecundarias(sb: any, bruto: unknown): Promise<{ lista: { funcao: string; nivel_max: string }[]; erro?: string }> {
+  if (bruto === undefined || bruto === null) return { lista: [] };
+  if (typeof bruto !== 'object' || Array.isArray(bruto)) return { lista: [], erro: 'Funções secundárias inválidas.' };
+  const { data: pers } = await sb.from('funcoes_personalizadas').select('id');
+  const validas = new Set([...FUNCOES_VALIDAS, ...((pers || []).map((p: { id: string }) => p.id))]);
+  const lista: { funcao: string; nivel_max: string }[] = [];
+  for (const [funcao, nivel] of Object.entries(bruto as Record<string, unknown>)) {
+    if (!validas.has(funcao)) return { lista: [], erro: 'Função secundária inválida: ' + funcao + '.' };
+    if (!NIVEIS.includes(String(nivel))) return { lista: [], erro: 'Nível inválido na função secundária.' };
+    lista.push({ funcao, nivel_max: String(nivel) });
+  }
+  return { lista };
+}
+// deno-lint-ignore no-explicit-any
+async function gravarSecundarias(sb: any, perfilId: string, lista: { funcao: string; nivel_max: string }[], autorId: string) {
+  await sb.from('perfil_funcoes_secundarias').delete().eq('perfil_id', perfilId);
+  if (lista.length) {
+    await sb.from('perfil_funcoes_secundarias').insert(lista.map((x) => ({ perfil_id: perfilId, funcao: x.funcao, nivel_max: x.nivel_max, alterado_por: autorId })));
+  }
+}
+/* zzz216: foto do acesso de uma pessoa, para o histórico mostrar o antes e o depois */
+// deno-lint-ignore no-explicit-any
+async function fotoAcesso(sb: any, perfilId: string) {
+  try {
+    const [{ data: p }, { data: niveis }, { data: sec }] = await Promise.all([
+      sb.from('perfis').select('eh_admin, funcao, funcao_personalizada, estado, papel').eq('id', perfilId).maybeSingle(),
+      sb.rpc('modulos_niveis', { p_id: perfilId }),
+      sb.from('perfil_funcoes_secundarias').select('funcao, nivel_max').eq('perfil_id', perfilId)
+    ]);
+    if (!p) return null;
+    return { eh_admin: !!p.eh_admin, funcao: p.funcao_personalizada || p.funcao, estado: p.estado, papel: p.papel,
+             niveis: niveis || {}, secundarias: Object.fromEntries((sec || []).map((s: { funcao: string; nivel_max: string }) => [s.funcao, s.nivel_max])) };
+  } catch (_e) { return null; }
+}
 const PAPEIS_COM_DESIGNER_EXTRA = ['admin', 'coordenador'];
 function normalizarFuncoesExtra(bruto: unknown, papelFinal: string): { lista: string[]; erro?: string } {
   if (bruto === undefined || bruto === null) return { lista: [] };
@@ -786,8 +834,12 @@ Deno.serve(comCors(async (req) => {
          modulos }. O formato antigo (papel + funcoes_extra) segue aceito. */
       const modeloNovo = corpo.tipo === 'interno';
       let ident: Identidade | null = null;
+      const fnCriar = modeloNovo ? await resolverFuncao(sb, corpo.funcao) : { funcao: null, personalizada: null };
+      if (fnCriar.erro) return json({ erro: fnCriar.erro }, 400);
+      const secCriar = modeloNovo ? await normalizarSecundarias(sb, corpo.secundarias) : { lista: [] };
+      if (secCriar.erro) return json({ erro: secCriar.erro }, 400);
       if (modeloNovo) {
-        ident = identidadeInterna(corpo.eh_admin, corpo.funcao);
+        ident = identidadeInterna(corpo.eh_admin, fnCriar.funcao);
         if (ident.erro) return json({ erro: ident.erro }, 400);
       }
       const papel = ident ? ident.papel : String(corpo.papel || 'cliente');
@@ -824,9 +876,10 @@ Deno.serve(comCors(async (req) => {
       if (ident) {
         /* o gatilho do banco deriva papel e o espelho de função extra */
         const { error: eId } = await sb.from('perfis')
-          .update({ eh_admin: ident.ehAdmin, funcao: ident.funcao }).eq('id', criado.id);
+          .update({ eh_admin: ident.ehAdmin, funcao: ident.funcao, funcao_personalizada: ident.funcao ? fnCriar.personalizada : null }).eq('id', criado.id);
         if (eId) return json({ erro: 'Conta criada, mas não foi possível gravar a função: ' + eId.message }, 500);
         if (!ident.ehAdmin) await gravarExcecoes(sb, criado.id, excecoes.lista, autor.id);
+        if (!ident.ehAdmin && secCriar.lista.length) await gravarSecundarias(sb, criado.id, secCriar.lista, autor.id);
       } else if (funcoesExtra.lista.length) {
         await sb.from('perfis_funcoes_extra').insert(
           funcoesExtra.lista.map((f) => ({ perfil_id: criado.id, funcao: f, criado_por: autor.id })));
@@ -835,7 +888,8 @@ Deno.serve(comCors(async (req) => {
       await auditar(sb, autor, 'criar_usuario',
         { tipo: 'perfil', id: criado.id, descricao: username },
         { papel, empresas: (corpo.empresas || []).length, funcoes_extra: funcoesExtra.lista,
-          eh_admin: ident?.ehAdmin, funcao: ident?.funcao, excecoes: excecoes.lista.length });
+          eh_admin: ident?.ehAdmin, funcao: fnCriar.personalizada || ident?.funcao, excecoes: excecoes.lista.length,
+          acesso: { antes: null, depois: await fotoAcesso(sb, criado.id) } });
       return json({ ok: true, id: criado.id, username });
     }
 
@@ -880,11 +934,20 @@ Deno.serve(comCors(async (req) => {
       /* zzz68: modelo novo — { tipo:'interno', eh_admin, funcao, modulos }
          ou { tipo:'cliente' }. Tem precedência sobre o papel legado. */
       let identNova: Identidade | null = null;
+      const antesAcesso = await fotoAcesso(sb, String(corpo.perfil_id));
+      let secNovas: { lista: { funcao: string; nivel_max: string }[]; erro?: string } | null = null;
       if (corpo.tipo === 'interno') {
-        identNova = identidadeInterna(corpo.eh_admin, corpo.funcao);
+        const fnNova = await resolverFuncao(sb, corpo.funcao);
+        if (fnNova.erro) return json({ erro: fnNova.erro }, 400);
+        identNova = identidadeInterna(corpo.eh_admin, fnNova.funcao);
         if (identNova.erro) return json({ erro: identNova.erro }, 400);
         delete patch.papel;
         patch.eh_admin = identNova.ehAdmin; patch.funcao = identNova.funcao;
+        patch.funcao_personalizada = identNova.funcao ? fnNova.personalizada : null;
+        if (corpo.secundarias !== undefined) {
+          secNovas = await normalizarSecundarias(sb, corpo.secundarias);
+          if (secNovas.erro) return json({ erro: secNovas.erro }, 400);
+        }
         if (corpo.perfil_id === autor.id && !identNova.ehAdmin) {
           return json({ erro: 'Você não pode alterar o próprio acesso de administrador.' }, 400);
         }
@@ -929,6 +992,10 @@ Deno.serve(comCors(async (req) => {
         const limpar = corpo.tipo === 'cliente' || (identNova && identNova.ehAdmin);
         await gravarExcecoes(sb, corpo.perfil_id, limpar ? [] : (excecoesNovas ? excecoesNovas.lista : []), autor.id);
       }
+      if (secNovas || corpo.tipo === 'cliente' || (identNova && identNova.ehAdmin)) {
+        const limparSec = corpo.tipo === 'cliente' || (identNova && identNova.ehAdmin);
+        await gravarSecundarias(sb, corpo.perfil_id, limparSec ? [] : (secNovas ? secNovas.lista : []), autor.id);
+      }
 
       /* vínculos com empresas, quando enviados */
       if (Array.isArray(corpo.empresas)) {
@@ -955,7 +1022,8 @@ Deno.serve(comCors(async (req) => {
 
       await auditar(sb, autor, 'alterar_conta',
         { tipo: 'perfil', id: corpo.perfil_id },
-        { ...patch, funcoes_extra: funcoesExtra?.lista, excecoes: excecoesNovas ? excecoesNovas.lista : undefined });
+        { ...patch, funcoes_extra: funcoesExtra?.lista, excecoes: excecoesNovas ? excecoesNovas.lista : undefined,
+          acesso: { antes: antesAcesso, depois: await fotoAcesso(sb, String(corpo.perfil_id)) } });
       return json({ ok: true });
     }
 
@@ -980,6 +1048,7 @@ Deno.serve(comCors(async (req) => {
       const lista = pares.map(([m]) => m);
 
       const { data: antes } = await sb.from('funcao_modulos').select('modulo, nivel').eq('funcao', funcao);
+      const antesObj = Object.fromEntries((antes || []).map((a: { modulo: string; nivel: string }) => [a.modulo, a.nivel || 'total']));
       const { error: eDel } = await sb.from('funcao_modulos').delete().eq('funcao', funcao);
       if (eDel) return json({ erro: 'Não foi possível salvar o padrão: ' + eDel.message }, 500);
       if (lista.length) {
@@ -991,7 +1060,7 @@ Deno.serve(comCors(async (req) => {
           return json({ erro: 'Não foi possível salvar o padrão: ' + eIns.message }, 500);
         }
       }
-      await auditar(sb, autor, 'salvar_preset', { tipo: 'funcao', id: null, descricao: funcao }, { modulos: Object.fromEntries(pares) });
+      await auditar(sb, autor, 'salvar_preset', { tipo: 'funcao', id: null, descricao: funcao }, { modulos: Object.fromEntries(pares), antes: antesObj, depois: Object.fromEntries(pares) });
       return json({ ok: true, funcao, modulos: lista });
     }
 
@@ -1026,8 +1095,18 @@ Deno.serve(comCors(async (req) => {
         sb.from('funcao_modulos').select('funcao, modulo, nivel'),
         sb.from('perfil_modulos').select('perfil_id, modulo, efeito, nivel')
       ]);
+      /* zzz216: funções personalizadas e secundárias (tabelas novas: falha em silêncio) */
+      let personalizadas: unknown[] = [], secundarias: unknown[] = [];
+      try {
+        const [{ data: fp }, { data: sc }] = await Promise.all([
+          sb.from('funcoes_personalizadas').select('id, rotulo, descricao, base').order('rotulo'),
+          sb.from('perfil_funcoes_secundarias').select('perfil_id, funcao, nivel_max')
+        ]);
+        personalizadas = fp || []; secundarias = sc || [];
+      } catch (_e) { /* segue sem */ }
       return json({ usuarios: data || [], vinculos: vinculos || [], funcoes_extra: funcoesExtra,
-                    modulos: modulos || [], presets: presets || [], excecoes: excecoes || [] });
+                    modulos: modulos || [], presets: presets || [], excecoes: excecoes || [],
+                    personalizadas, secundarias });
     }
 
   } catch (e) {

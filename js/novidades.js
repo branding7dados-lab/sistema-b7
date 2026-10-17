@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz216', versao: 'zzz216', em: '2026-10-17T22:00:00-03:00',
+    titulo: 'Pedir acesso pelo sistema',
+    itens: ['Se uma tela aparece só para ver, ou você ainda não tem acesso a ela, toque em "Pedir mais acesso" e diga por quê.',
+            'A administração recebe o pedido na hora e você recebe um aviso com a resposta.'] },
   { id: 'v-zzz214', versao: 'zzz214', em: '2026-10-17T15:00:00-03:00', rota: 'suporte',
     titulo: 'Suporte de cara nova',
     itens: ['A tela de Suporte ficou mais simples: escolha Problema, Sugestão, Dúvida ou Elogio em um toque e acompanhe seus chamados como conversas.',

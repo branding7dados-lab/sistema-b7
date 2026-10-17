@@ -91,6 +91,7 @@ B7.Rota = (function () {
     const nvRota = B7.Perm && B7.Perm.nivelDaRota ? B7.Perm.nivelDaRota(partes[0] || '') : 'total';
     document.body.classList.toggle('b7-nv-ver', nvRota === 'ver');
     document.body.classList.toggle('b7-nv-editar', nvRota === 'editar');
+    if (B7.PedidoAcesso) B7.PedidoAcesso.aviso(partes[0] || '');
 
     /* Guarda de rota: esconder o menu não basta, o endereço digitado à mão
        também precisa recusar. A regra vive em um lugar só (B7.Perm), para

@@ -3400,10 +3400,14 @@ B7.Dashboard = (function () {
       ? 'Aqui você acompanha e aprova os materiais da sua empresa. ' +
         'O resto é a operação interna da Branding7.'
       : 'Sua conta não tem acesso a esta parte do sistema.';
+    /* zzz216: num módulo, a equipe pode pedir acesso à administração */
+    const pedir = B7.PedidoAcesso ? B7.PedidoAcesso.botaoSemAcesso(rota) : '';
     painel().innerHTML = '<div class="conteudo entra">' +
-      estadoB7(IC.roteiros || '', titulo, texto,
-        '<button class="b pri" onclick="location.hash=\'#/\'">Voltar ao início</button>') +
+      estadoB7(IC.roteiros || '', pedir ? 'Você ainda não tem acesso a esta tela.' : titulo,
+        pedir ? 'Se precisar dela no seu trabalho, peça à administração. Você recebe um aviso com a resposta.' : texto,
+        pedir + '<button class="b' + (pedir ? '' : ' pri') + '" onclick="location.hash=\'#/\'">Voltar ao início</button>') +
     '</div>';
+    if (pedir) B7.PedidoAcesso.ligarSemAcesso(painel());
   }
 
   return { abrir, marcarNav, semPermissao, abrirClientes, abrirCliente, abrirGravacoes, abrirRoteiros, abrirConfig,
