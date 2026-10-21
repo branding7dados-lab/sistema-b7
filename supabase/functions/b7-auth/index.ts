@@ -338,7 +338,7 @@ Deno.serve(comCors(async (req) => {
         admin_existe: (count || 0) > 0,
         /* zzz218: o envio de código por e-mail está pronto? (ok | sem_chave | sem_remetente) */
         email_2fa: await DF.estadoEmail(),
-        acoes: ['ping', 'login', 'login_2fa', 'login_2fa_reenviar', ...DF.ACOES_SEG, ...DF.ACOES_SEG_ADMIN, 'bootstrap', 'recuperar_admin', 'remover_admin',
+        acoes: ['ping', 'login', 'login_2fa', 'login_2fa_reenviar', 'login_2fa_status', 'email_link', ...DF.ACOES_SEG, ...DF.ACOES_SEG_ADMIN, 'bootstrap', 'recuperar_admin', 'remover_admin',
                 'criar_usuario', 'redefinir_senha', 'alterar_conta', 'listar_usuarios', 'entrar_como']
       });
     }
@@ -572,7 +572,11 @@ Deno.serve(comCors(async (req) => {
     // =================================================================
     // VERIFICAÇÃO EM 2 ETAPAS (zzz218) — dois_fatores.ts
     // =================================================================
-    if (acao === 'login_2fa' || acao === 'login_2fa_reenviar') {
+    if (acao === 'email_link') {
+      try { const r = await DF.acaoLink(admin(), corpo); return json(r.corpo, r.status); }
+      catch (e) { return json({ erro: (e as Error).message || 'Falha ao confirmar.' }, 503); }
+    }
+    if (acao === 'login_2fa' || acao === 'login_2fa_reenviar' || acao === 'login_2fa_status') {
       try { const r = await DF.acaoLogin(admin(), acao, corpo); return json(r.corpo, r.status); }
       catch (e) { return json({ erro: (e as Error).message || 'Falha na verificação.' }, 503); }
     }

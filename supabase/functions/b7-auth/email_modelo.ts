@@ -16,12 +16,19 @@ function quandoBrasilia(): string {
   return p.day + '/' + p.month + ' às ' + p.hour + ':' + p.minute;
 }
 
-export function emailCodigo(o: { codigo: string; motivo: 'login' | 'cadastro'; nome?: string | null; aparelho?: string | null }) {
+export function emailCodigo(o: { codigo: string; motivo: 'login' | 'cadastro'; nome?: string | null; aparelho?: string | null; link?: string | null }) {
   const login = o.motivo === 'login';
   const titulo = login ? 'Seu código de acesso' : 'Confirme seu e-mail';
   const sub = login ? 'Verificação em 2 etapas' : 'Verificação em 2 etapas · cadastro do e-mail';
-  const frase = login ? 'Para terminar de entrar no B7, digite este código na tela de acesso:'
-    : 'Para usar este e-mail na verificação em 2 etapas, digite este código no B7:';
+  const frase = o.link
+    ? (login ? 'Para terminar de entrar no B7, toque no botão abaixo — ou digite o código na tela de acesso.'
+             : 'Para usar este e-mail na verificação em 2 etapas, toque no botão abaixo — ou digite o código no B7.')
+    : (login ? 'Para terminar de entrar no B7, digite este código na tela de acesso:'
+             : 'Para usar este e-mail na verificação em 2 etapas, digite este código no B7:');
+  const botao = o.link ? `<tr><td class="pad" align="center" style="padding:20px 36px 4px;">
+<a href="${esc(o.link)}" style="display:inline-block;background:#3A1E86;background-image:linear-gradient(135deg,#3A1E86,#C21C83);color:#FFFFFF;font:800 16px/1 Arial,Helvetica,sans-serif;text-decoration:none;padding:17px 34px;border-radius:14px;">${login ? 'Sou eu — confirmar entrada' : 'Confirmar meu e-mail'}</a>
+<div class="tx2" style="font:400 12.5px/1.5 Arial,Helvetica,sans-serif;color:#9A93B3;padding-top:14px;">ou digite o código</div>
+</td></tr>` : '';
   const cod = o.codigo.slice(0, 3) + ' ' + o.codigo.slice(3);
   const primeiro = String(o.nome || '').trim().split(/\s+/)[0];
   const quando = 'Hoje, ' + quandoBrasilia() + (o.aparelho ? ' · ' + esc(String(o.aparelho).slice(0, 80)) : '');
@@ -50,7 +57,8 @@ export function emailCodigo(o: { codigo: string; motivo: 'login' | 'cadastro'; n
 <div class="tx" style="font:400 16px/1.55 Arial,Helvetica,sans-serif;color:#1B1631;">Olá${primeiro ? ', <b>' + esc(primeiro) + '</b>' : ''}!</div>
 <div class="tx2" style="font:400 15px/1.6 Arial,Helvetica,sans-serif;color:#5D5675;padding-top:8px;">${esc(frase)}</div>
 </td></tr>
-<tr><td class="pad" align="center" style="padding:18px 36px 6px;">
+${botao}
+<tr><td class="pad" align="center" style="padding:${o.link ? '8px' : '18px'} 36px 6px;">
 <table role="presentation" cellpadding="0" cellspacing="0" class="cod" style="background:#F7F5FD;border:1.5px solid #E2DBF7;border-radius:18px;"><tr><td align="center" style="padding:20px 30px;">
 <div class="dig" style="font:800 38px/1 'Courier New',Courier,monospace;letter-spacing:12px;color:#3A1E86;padding-left:12px;">${cod}</div>
 </td></tr></table>
@@ -75,7 +83,7 @@ ${login ? `<div style="padding-top:12px;"><a href="${SITE}" style="display:inlin
 </td></tr></table>
 </td></tr></table>
 </body></html>`;
-  const texto = frase + ' ' + cod + '\nVale por 10 minutos e só funciona uma vez.\n' +
+  const texto = frase + '\nCódigo: ' + cod + (o.link ? '\nOu abra: ' + o.link : '') + '\nVale por 10 minutos e só funciona uma vez.\n' +
     (login ? 'Não foi você? Alguém tem a sua senha: troque agora no B7 (menu da sua foto → Meu perfil → Segurança).' : 'Se não foi você que pediu, ignore este e-mail.') +
     '\n\nE-mail automático do Sistema B7.';
   return { assunto, html, texto };

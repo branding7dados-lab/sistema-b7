@@ -53,7 +53,7 @@ B7.Seguranca = (function () {
       '<img class="login-marca" src="assets/brand/logo-white.png" alt="Branding7">' +
       '<span class="lg2-ic" aria-hidden="true">' + SVG(porEmail ? IC.email : IC.app) + '</span>' +
       '<h1>Confirme que é você</h1>' +
-      '<p class="login-sub">' + (porEmail ? 'Enviamos um código de 6 números para <b>' + esc(info.email) + '</b>. Ele vale por 10 minutos.'
+      '<p class="login-sub">' + (porEmail ? 'Enviamos um e-mail para <b>' + esc(info.email) + '</b>. Toque em <b>“Sou eu”</b> no e-mail (pode ser no celular) ou digite o código de 6 números. Vale por 10 minutos.'
         : 'Abra o seu app autenticador e digite o código de 6 números do <b>Sistema B7</b>.') + '</p>' +
       '<label class="rot" for="lg-cod">CÓDIGO</label>' +
       '<input class="campo lg2-cod" id="lg-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" placeholder="000000" required>' +
@@ -89,6 +89,25 @@ B7.Seguranca = (function () {
       }
     };
     setTimeout(() => cod.focus(), 60);
+    /* zzz221: o botão do e-mail aprova a entrada; esta tela pergunta de tempos em tempos e entra sozinha */
+    if (porEmail) {
+      const inicio = Date.now();
+      const espiar = async () => {
+        if (!cod.isConnected || indo || Date.now() - inicio > 11 * 60 * 1000) return;
+        try {
+          const r = await auth({ acao: 'login_2fa_status', desafio: info.desafio, lembrar: form.querySelector('#lg-lembrar').checked, aparelho_nome: nomeAparelho() });
+          if (r && !r.pendente && r.access_token && !indo && cod.isConnected) {
+            indo = true; bt.disabled = true; bt.textContent = 'Confirmado pelo e-mail…';
+            if (r.aparelho) gravarAparelho(opcoes.username, r.aparelho);
+            return await opcoes.concluir(r);
+          }
+        } catch (e) {
+          if (/entre de novo|expirou/i.test(e.message || '')) return;
+        }
+        setTimeout(espiar, 3000);
+      };
+      setTimeout(espiar, 4000);
+    }
   }
 
   /* =============================================================== Google */
@@ -250,8 +269,21 @@ B7.Seguranca = (function () {
         if (etapa === 1) {
           const r = await auth({ acao: 'seg_email_enviar', email: q('#seg-email').value.trim() });
           etapa = 2; q('#seg-p1').hidden = true; q('#seg-p2').hidden = false; ok.textContent = 'Confirmar';
-          q('#seg-dica').textContent = 'Enviamos para ' + r.email + '. Não chegou? Confira o spam ou toque em Cancelar e tente de novo.';
+          q('#seg-dica').textContent = 'Enviamos para ' + r.email + '. Toque em “Confirmar meu e-mail” no e-mail (pode ser no celular) ou digite o código aqui. Não chegou? Confira o spam.';
           q('#seg-cod').focus();
+          /* zzz221: se a pessoa confirmar pelo botão do e-mail, esta janela percebe sozinha */
+          const alvo = q('#seg-email').value.trim().toLowerCase(), inicio = Date.now();
+          const espiar = async () => {
+            if (!m.isConnected || Date.now() - inicio > 11 * 60 * 1000) return;
+            try {
+              const s2 = await auth({ acao: 'seg_status' });
+              if (s2 && s2.metodo === 'email' && String(s2.email || '').toLowerCase() === alvo && m.isConnected) {
+                m.fechar(); B7.UI.toast('E-mail confirmado. Verificação em 2 etapas ligada.'); aoTerminar && aoTerminar(true); return;
+              }
+            } catch (e) {}
+            setTimeout(espiar, 3500);
+          };
+          setTimeout(espiar, 4000);
         } else {
           await auth({ acao: 'seg_email_confirmar', codigo: q('#seg-cod').value });
           m.fechar(); B7.UI.toast('Verificação em 2 etapas ligada por e-mail.'); aoTerminar && aoTerminar(true);

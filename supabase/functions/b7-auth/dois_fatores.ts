@@ -26,6 +26,9 @@ const descartavel = () => createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.g
   { auth: { autoRefreshToken: false, persistSession: false } });
 
 const DEZ_MIN = 10 * 60 * 1000;
+/* zzz221: link do e-mail que confirma com um clique (o código continua valendo) */
+const SITE = 'https://branding7dados-lab.github.io/sistema-b7/';
+const linkDe = (id: string, t: string) => SITE + 'confirmar.html#' + id + '.' + t;
 const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
 export const ACOES_SEG = ['seg_status', 'seg_email_enviar', 'seg_email_confirmar', 'seg_app_iniciar',
   'seg_app_confirmar', 'seg_desligar', 'seg_aparelhos_esquecer'];
@@ -106,13 +109,13 @@ export async function estadoEmail(): Promise<string> {
 async function nomeDe(sb: SB, perfilId: string): Promise<string | null> {
   try { const { data } = await sb.from('perfis').select('nome').eq('id', perfilId).maybeSingle(); return (data && data.nome) || null; } catch (_e) { return null; }
 }
-async function enviarCodigo(para: string, codigo: string, motivo: 'login' | 'cadastro', ctx: { nome?: string | null; aparelho?: string | null } = {}) {
+async function enviarCodigo(para: string, codigo: string, motivo: 'login' | 'cadastro', ctx: { nome?: string | null; aparelho?: string | null; link?: string | null } = {}) {
   const chave = Deno.env.get('B7_BREVO_API_KEY');
   if (!chave) throw new Error('O envio de e-mail não está configurado. Fale com o administrador.');
   const de = await remetente(chave);
   if (!de) throw new Error('O envio de e-mail não está configurado (sem remetente). Fale com o administrador.');
   /* zzz220: o e-mail com a cara do B7 (email_modelo.ts) */
-  const m = emailCodigo({ codigo, motivo, nome: ctx.nome, aparelho: ctx.aparelho });
+  const m = emailCodigo({ codigo, motivo, nome: ctx.nome, aparelho: ctx.aparelho, link: ctx.link });
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST', headers: { 'api-key': chave, 'Content-Type': 'application/json', accept: 'application/json' },
     body: JSON.stringify({ sender: de, to: [{ email: para }], subject: m.assunto, htmlContent: m.html, textContent: m.texto })
@@ -157,17 +160,18 @@ export async function depoisDaSenha(sb: SB, perfilId: string, sessao: any, apare
       .eq('revogado', false).gt('expira_em', new Date().toISOString()).maybeSingle();
     if (data) return { pedir: null, extra: {} };
   }
-  let codigoHash: string | null = null, codigo = '';
+  let codigoHash: string | null = null, codigo = '', linkT = '', linkHash: string | null = null;
   if (cfg.metodo === 'email') {
     if (!cfg.email) return { pedir: null, extra: {} };
     codigo = codigo6(); codigoHash = await hash('login', perfilId, codigo);
+    linkT = tokenAleatorio(); linkHash = await hash('link', perfilId, linkT);
   }
   const { data: d, error } = await sb.from('seguranca_codigos').insert({
-    perfil_id: perfilId, finalidade: 'login', metodo: cfg.metodo, codigo_hash: codigoHash,
+    perfil_id: perfilId, finalidade: 'login', metodo: cfg.metodo, codigo_hash: codigoHash, link_hash: linkHash,
     refresh_token: sessao.refresh_token, expira_em: new Date(Date.now() + DEZ_MIN).toISOString()
   }).select('id').single();
   if (error || !d) throw new Error('Não foi possível iniciar a verificação. Tente de novo.');
-  if (cfg.metodo === 'email') await enviarCodigo(cfg.email, codigo, 'login', { nome: await nomeDe(sb, perfilId) });
+  if (cfg.metodo === 'email') await enviarCodigo(cfg.email, codigo, 'login', { nome: await nomeDe(sb, perfilId), link: linkDe(d.id, linkT) });
   /* `erro` só é lido por telas antigas (app de Android sem atualizar): explica o que fazer */
   return { pedir: { precisa_2fa: true, metodo: cfg.metodo, desafio: d.id, email: mascarar(cfg.email),
     erro: 'Sua conta usa verificação em 2 etapas. Atualize o app (ou abra o B7 pelo navegador) para digitar o código.' }, extra: {} };
@@ -185,15 +189,20 @@ export async function acaoLogin(sb: SB, acao: string, corpo: any) {
   const d = await desafioValido(sb, corpo.desafio);
   if (!d) return { status: 400, corpo: { erro: 'O código expirou. Entre de novo com usuário e senha.', codigo: 'expirou' } };
 
+  if (acao === 'login_2fa_status') {
+    if (!d.aprovado_em) return { status: 200, corpo: { pendente: true } };
+    return await concluirLogin(sb, d, corpo);
+  }
+
   if (acao === 'login_2fa_reenviar') {
     if (d.metodo !== 'email') return { status: 400, corpo: { erro: 'Use o código do seu app autenticador.' } };
     if (d.envios >= 4) return { status: 429, corpo: { erro: 'Muitos envios. Espere alguns minutos e entre de novo.' } };
     const cfg = await config2fa(sb, d.perfil_id);
     if (!cfg || !cfg.email) return { status: 400, corpo: { erro: 'E-mail não cadastrado.' } };
-    const codigo = codigo6();
-    await sb.from('seguranca_codigos').update({ codigo_hash: await hash('login', d.perfil_id, codigo), envios: d.envios + 1, tentativas: 0,
-      expira_em: new Date(Date.now() + DEZ_MIN).toISOString() }).eq('id', d.id);
-    await enviarCodigo(cfg.email, codigo, 'login', { nome: await nomeDe(sb, d.perfil_id) });
+    const codigo = codigo6(), linkT = tokenAleatorio();
+    await sb.from('seguranca_codigos').update({ codigo_hash: await hash('login', d.perfil_id, codigo), link_hash: await hash('link', d.perfil_id, linkT),
+      envios: d.envios + 1, tentativas: 0, expira_em: new Date(Date.now() + DEZ_MIN).toISOString() }).eq('id', d.id);
+    await enviarCodigo(cfg.email, codigo, 'login', { nome: await nomeDe(sb, d.perfil_id), link: linkDe(d.id, linkT) });
     return { status: 200, corpo: { ok: true } };
   }
 
@@ -210,6 +219,11 @@ export async function acaoLogin(sb: SB, acao: string, corpo: any) {
     await sb.from('seguranca_codigos').update({ tentativas: d.tentativas + 1 }).eq('id', d.id);
     return { status: 401, corpo: { erro: 'Código incorreto. Confira e tente de novo.' } };
   }
+  return await concluirLogin(sb, d, corpo);
+}
+
+/* entra de vez: troca o refresh guardado por uma sessão nova (código certo ou link aberto) */
+async function concluirLogin(sb: SB, d: any, corpo: any) {
   await sb.from('seguranca_codigos').update({ usado: true, refresh_token: null }).eq('id', d.id);
   const { data: s, error } = await descartavel().auth.refreshSession({ refresh_token: d.refresh_token });
   if (error || !s || !s.session) return { status: 400, corpo: { erro: 'A verificação demorou demais. Entre de novo com usuário e senha.', codigo: 'expirou' } };
@@ -221,6 +235,31 @@ export async function acaoLogin(sb: SB, acao: string, corpo: any) {
     resp.aparelho = t;
   }
   return { status: 200, corpo: resp };
+}
+
+/* -------------------------------------------- link do e-mail (zzz221) */
+/** email_link — sem sessão: o segredo do link é a prova (igual ao código).
+ *  Cadastro: confirma o e-mail e liga a verificação. Login: marca como
+ *  aprovado; quem conclui a entrada é a tela que estava esperando. */
+export async function acaoLink(sb: SB, corpo: any) {
+  const m = /^([0-9a-f-]{36})\.([A-Za-z0-9_-]{20,128})$/i.exec(String(corpo.c || ''));
+  if (!m) return { status: 400, corpo: { erro: 'Link inválido.', codigo: 'invalido' } };
+  const { data: d } = await sb.from('seguranca_codigos').select('*').eq('id', m[1]).maybeSingle();
+  if (!d || !d.link_hash) return { status: 400, corpo: { erro: 'Link inválido.', codigo: 'invalido' } };
+  if (d.usado) return { status: 400, corpo: { erro: 'Este link já foi usado.', codigo: 'usado' } };
+  if (new Date(d.expira_em).getTime() < Date.now()) return { status: 400, corpo: { erro: 'Este link expirou. Peça um novo código.', codigo: 'expirou' } };
+  if ((await hash('link', d.perfil_id, m[2])) !== d.link_hash) return { status: 400, corpo: { erro: 'Link inválido.', codigo: 'invalido' } };
+  if (d.finalidade === 'cadastro_email') {
+    await sb.from('seguranca_codigos').update({ usado: true }).eq('id', d.id);
+    await sb.from('seguranca_2fa').upsert({ perfil_id: d.perfil_id, metodo: 'email', email: d.email, totp_pendente: null,
+      ligado_em: new Date().toISOString(), atualizado_em: new Date().toISOString() }, { onConflict: 'perfil_id' });
+    return { status: 200, corpo: { ok: true, tipo: 'cadastro', email: mascarar(d.email) } };
+  }
+  if (d.finalidade === 'login') {
+    if (!d.aprovado_em) await sb.from('seguranca_codigos').update({ aprovado_em: new Date().toISOString() }).eq('id', d.id);
+    return { status: 200, corpo: { ok: true, tipo: 'login' } };
+  }
+  return { status: 400, corpo: { erro: 'Link inválido.', codigo: 'invalido' } };
 }
 
 /* --------------------------------------------- ações da própria conta */
@@ -243,10 +282,11 @@ export async function acaoPropria(sb: SB, eu: any, acao: string, corpo: any, con
     const { count } = await sb.from('seguranca_codigos').select('id', { count: 'exact', head: true })
       .eq('perfil_id', eu.id).eq('finalidade', 'cadastro_email').gt('created_at', umaHora);
     if ((count || 0) >= 5) return { status: 429, corpo: { erro: 'Muitos envios. Espere um pouco e tente de novo.' } };
-    const codigo = codigo6();
-    await sb.from('seguranca_codigos').insert({ perfil_id: eu.id, finalidade: 'cadastro_email', metodo: 'email', email,
-      codigo_hash: await hash('cadastro', eu.id, codigo), expira_em: new Date(Date.now() + DEZ_MIN).toISOString() });
-    await enviarCodigo(email, codigo, 'cadastro', { nome: await nomeDe(sb, eu.id) });
+    const codigo = codigo6(), linkT = tokenAleatorio();
+    const { data: nova } = await sb.from('seguranca_codigos').insert({ perfil_id: eu.id, finalidade: 'cadastro_email', metodo: 'email', email,
+      codigo_hash: await hash('cadastro', eu.id, codigo), link_hash: await hash('link', eu.id, linkT),
+      expira_em: new Date(Date.now() + DEZ_MIN).toISOString() }).select('id').single();
+    await enviarCodigo(email, codigo, 'cadastro', { nome: await nomeDe(sb, eu.id), link: nova ? linkDe(nova.id, linkT) : null });
     return { status: 200, corpo: { ok: true, email: mascarar(email) } };
   }
 
