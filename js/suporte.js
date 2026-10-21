@@ -123,6 +123,7 @@ B7.Suporte = (function () {
     let relSug = null;
     const sugerir = () => {
       const cx = q('#sp-sug'), t = q('#sp-tit').value.trim();
+      if (pre.semSugestao) { cx.hidden = true; return; }
       const r = (tipo === 'duvida' || tipo === 'bug') && t.length >= 4 && B7.Ajuda && B7.Ajuda.procurar ? B7.Ajuda.procurar(t).slice(0, 3) : [];
       const ia = (tipo === 'duvida' || tipo === 'bug') && t.length >= 4 && B7.Chat && B7.Chat.abrir && B7.IA && B7.IA.ligada && B7.IA.ligada('chat');
       cx.hidden = !r.length && !ia;
@@ -239,6 +240,9 @@ B7.Suporte = (function () {
          informações técnicas. Ideias em ranking.
      Mesmos dados e mesmas funções do banco de antes. */
   let lista = [], sel = null, fila = 'entrada', tipoF = '', pessoaF = '', vez = 0, q = '', relogio = null, aba = 'chamados';
+  let qEq = '', semResReg = '';
+  const ultimaResp = {};
+  const tentou = { faq: [], ia: '' };
   const quando = iso => (B7.UI.quando ? B7.UI.quando(iso) : String(iso || '').slice(0, 10));
   const horas = iso => (Date.now() - new Date(iso).getTime()) / 36e5;
   const chipStatus = s => '<span class="sp-st sp-st-' + esc(s) + '">' + esc(STATUS[s] || s) + '</span>';
@@ -278,6 +282,51 @@ B7.Suporte = (function () {
     ['Explicar', 'Para fazer isso: '],
   ];
   const semResposta = c => c.status === 'novo' && horas(c.created_at) >= 24;
+
+  /* ============================================ PERGUNTAS FREQUENTES (zzz217)
+     Respostas curtas e prontas, cadastradas pela administração. A equipe
+     escreve a dúvida e vê na hora a resposta; se não resolver, pergunta ao
+     assistente ali mesmo; só então fala com a equipe (o chamado já vai com
+     o que a pessoa tentou). Cada desfecho fica registrado
+     (suporte_autoajuda) para a administração ver o que funciona e o que
+     falta escrever. */
+  let faqs = null, faqCarregando = null;
+  const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const VAZIAS = new Set('a o as os um uma uns umas de da do das dos em no na nos nas para pra pro por com sem que qual quais como onde e ou eu meu minha me se ao aos ja nao sim mais esta este isso essa esse faco fazer quero consigo consegui fica tem ter vou vai posso pode botao tela sistema b7 aqui ai la algum alguma'.split(' '));
+  const termosDe = q => norm(q).split(/[^a-z0-9]+/).filter(w => w.length > 1 && !VAZIAS.has(w)).map(w => w.length > 5 ? w.slice(0, -2) : w);
+  function carregarFaq(forcar) {
+    if (faqs && !forcar) return Promise.resolve(faqs);
+    if (faqCarregando && !forcar) return faqCarregando;
+    faqCarregando = (async () => {
+      try { faqs = ok(await sb().from('suporte_faq').select('*').order('ordem').order('pergunta')) || []; }
+      catch (e) { faqs = faqs || []; }
+      faqCarregando = null; return faqs;
+    })();
+    return faqCarregando;
+  }
+  function acharFaq(q) {
+    const termos = termosDe(q); if (!termos.length) return [];
+    return (faqs || []).filter(f => f.ativo).map(f => {
+      const p = norm(f.pergunta), t = norm(f.termos), r = norm(f.resposta);
+      let pts = 0, n = 0;
+      termos.forEach(w => { const a = p.includes(w), b = t.includes(w), c = r.includes(w); if (a || b || c) n++; pts += (a ? 5 : 0) + (b ? 4 : 0) + (c ? 1 : 0); });
+      return n >= Math.max(1, Math.ceil(termos.length * 0.5)) ? { f, pts } : null;
+    }).filter(Boolean).sort((a, b) => b.pts - a.pts);
+  }
+  const melhores = r => { const topo = r.length ? r[0].pts : 0; return r.filter(x => x.pts >= Math.max(4, topo * 0.5)); };
+  /* usado também pelo chat do assistente */
+  async function faqIds(texto) { await carregarFaq(); return melhores(acharFaq(texto)).slice(0, 3).map(x => x.f.id); }
+  const registrar = (texto, desfecho, faq) => {
+    try { Promise.resolve(B7.DB.rpc('suporte_autoajuda_registrar', { p_texto: String(texto || '').slice(0, 300), p_desfecho: desfecho, p_faq: faq || null })).catch(() => {}); } catch (e) {}
+  };
+  const formatarResp = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(&quot;|")([^"<]{1,60}?)(&quot;|")/g, '<b>"$2"</b>').replace(/\n/g, '<br>');
+  const tutPara = texto => {
+    if (!B7.Ajuda || !B7.Ajuda.procurar) return [];
+    let r = []; try { r = B7.Ajuda.procurar(texto, true); } catch (e) { return []; }
+    const topo = r.length ? r[0].pts : 0;
+    return r.filter(x => x.pts >= Math.max(3, topo * 0.5)).slice(0, 3);
+  };
+  const iaLigada = () => !!(B7.IA && B7.IA.pedir && B7.IA.ligada && B7.IA.ligada('chat'));
 
   async function carregar() { lista = ok(await sb().from('suporte_chamados').select('*').order('updated_at', { ascending: false }).limit(300)) || []; }
 
@@ -326,14 +375,15 @@ B7.Suporte = (function () {
     const card = (c, i) => '<button type="button" class="spx-th' + (temNovidade(c) ? ' nov' : '') + '" data-id="' + esc(c.id) + '" style="--i:' + i + '">' + icTipo(c.tipo) +
       '<span class="spx-th-tx"><b>' + esc(c.titulo) + '</b><small>#' + c.numero + ' · ' + esc(TIPOS[c.tipo].rot) + ' · ' + esc(quando(c.updated_at || c.created_at)) + '</small></span>' +
       (temNovidade(c) ? '<i class="sp-dot" title="Resposta nova"></i>' : '') + chipStatus(c.status) + '</button>';
+    const ATALHOS = [['bug', 'Relatar um problema'], ['sugestao', 'Mandar uma ideia'], ['elogio', 'Elogiar'], ['duvida', 'Abrir uma dúvida']];
     raiz.innerHTML =
-      '<header class="spx-eq-cab"><div><span class="spx-tag">Suporte</span><h1>Como podemos ajudar?</h1>' +
-        '<p>Escolha o que você quer contar. A equipe responde aqui e você recebe um aviso no sino.</p></div></header>' +
-      '<div class="spx-tipos">' + Object.keys(TIPOS).map((k, i) => '<button type="button" class="spx-tipo spx-t-' + k + '" data-novo="' + k + '" style="--i:' + i + '">' + icTipo(k) +
-        '<b>' + esc(TIPOS[k].rot) + '</b><small>' + esc(TIPOS[k].dica) + '</small><span class="spx-tipo-ir">' + SVG('<path d="M5 12h14M13 6l6 6-6 6"/>') + '</span></button>').join('') + '</div>' +
-      '<label class="spx-antes">' + SVG('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/>') +
-        '<input id="spx-q" type="search" placeholder="Antes, procure nos tutoriais: ex. remarcar gravação" autocomplete="off" aria-label="Procurar nos tutoriais"></label>' +
-      '<div id="spx-tut"></div>' +
+      '<header class="spx-eq-cab spx-pergunta"><div><span class="spx-tag">Suporte</span><h1>Como podemos ajudar?</h1>' +
+        '<p>Escreva a sua dúvida. Quase sempre a resposta já está aqui; se não estiver, a equipe responde.</p></div>' +
+        '<label class="spx-q-grande">' + SVG('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/>') +
+          '<input id="spx-q" type="search" placeholder="Ex.: como troco minha senha?" autocomplete="off" aria-label="Escreva a sua dúvida" value="' + esc(qEq) + '"></label>' +
+        '<div class="spx-atalhos"><span>Ou vá direto:</span>' + ATALHOS.map(([k, r]) => '<button type="button" data-novo="' + k + '">' + icTipo(k) + esc(r) + '</button>').join('') + '</div>' +
+      '</header>' +
+      '<div id="spx-res" class="spx-res"></div>' +
       '<div class="spx-eq-grade">' +
         '<section class="spx-bloco"><h2>Seus chamados' + (abertos.length ? ' <small>' + abertos.length + ' em aberto</small>' : '') + '</h2>' +
           (meus.length ? '<div class="spx-ths">' + abertos.concat(fechados).slice(0, 30).map(card).join('') + '</div>'
@@ -344,14 +394,103 @@ B7.Suporte = (function () {
     raiz.querySelectorAll('[data-novo]').forEach(b => b.onclick = () => novo(b.dataset.novo));
     raiz.querySelectorAll('.spx-th').forEach(b => b.onclick = () => { sel = b.dataset.id; pintar(); });
     raiz.querySelector('#spx-ideia-nova').onclick = () => novo('sugestao');
-    const qi = raiz.querySelector('#spx-q'), tut = raiz.querySelector('#spx-tut');
-    qi.oninput = () => {
-      const r = qi.value.trim().length >= 3 && B7.Ajuda && B7.Ajuda.procurar ? B7.Ajuda.procurar(qi.value).slice(0, 4) : [];
-      tut.innerHTML = r.length ? '<div class="spx-tut">' + r.map(x => '<a href="#/ajuda/' + esc(x.i.id) + '"><b>' + esc(x.i.titulo) + '</b><small>' + esc(x.i.grupo) + '</small></a>').join('') + '</div>'
-        : (qi.value.trim().length >= 3 ? '<p class="spx-tut-nada">Nenhum tutorial para isso. <button type="button" class="spx-link" data-nd>Abrir uma dúvida</button></p>' : '');
-      const nd = tut.querySelector('[data-nd]'); if (nd) nd.onclick = () => novo('duvida', { titulo: qi.value.trim() });
-    };
+    const qi = raiz.querySelector('#spx-q');
+    let rel = null;
+    qi.oninput = () => { clearTimeout(rel); rel = setTimeout(() => { qEq = qi.value; tentou.faq = []; tentou.ia = ''; pintarRes(); }, 220); };
+    qi.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(rel); qEq = qi.value; pintarRes(); } };
+    carregarFaq().then(() => pintarRes());
+    pintarRes();
     ideiasInline(raiz.querySelector('#spx-ideias'), 5);
+  }
+
+  /* respostas da dúvida: perguntas frequentes, tutoriais, assistente, equipe */
+  const faqHTML = (f, aberta) => '<details class="spx-faq" data-faq="' + esc(f.id) + '"' + (aberta ? ' open' : '') + '><summary><span>' + esc(f.pergunta) + '</span>' + SVG('<path d="M6 9l6 6 6-6"/>') + '</summary>' +
+    '<div class="spx-faq-r"><p>' + formatarResp(f.resposta) + '</p>' +
+      (f.tutorial_id ? '<a class="spx-faq-tut" href="#/ajuda/' + esc(f.tutorial_id) + '">Ver o passo a passo completo →</a>' : '') +
+      '<div class="spx-util"><span>Isso resolveu?</span><button type="button" data-fsim>Sim</button><button type="button" data-fnao>Não</button></div></div></details>';
+  function pintarRes() {
+    const cx = document.getElementById('spx-res'); if (!cx) return;
+    const t = String(qEq || '').trim();
+    if (t.length < 3) {
+      const l = (faqs || []).filter(f => f.ativo);
+      cx.innerHTML = l.length ? '<section class="spx-faqs"><h2>Perguntas frequentes</h2>' + l.slice(0, 8).map(f => faqHTML(f, false)).join('') +
+          (l.length > 8 ? '<button type="button" class="spx-link" data-faq-todas>Ver todas as ' + l.length + ' perguntas</button>' : '') + '</section>'
+        : (faqs ? '' : '<div class="spx-faqs">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>');
+      const td = cx.querySelector('[data-faq-todas]');
+      if (td) td.onclick = () => { td.insertAdjacentHTML('beforebegin', l.slice(8).map(f => faqHTML(f, false)).join('')); td.remove(); ligarFaq(cx, ''); };
+      ligarFaq(cx, '');
+      return;
+    }
+    const fr = melhores(acharFaq(t)).slice(0, 3), tr = tutPara(t);
+    const nada = !fr.length && !tr.length;
+    cx.innerHTML = '<section class="spx-faqs">' +
+      (fr.length ? '<h2>Respostas prontas</h2>' + fr.map((x, i) => faqHTML(x.f, i === 0)).join('') : '') +
+      (tr.length ? '<h3 class="spx-res-h">Tutoriais sobre isso</h3><div class="spx-tut">' + tr.map(x => '<a href="#/ajuda/' + esc(x.i.id) + '"><b>' + esc(x.i.titulo) + '</b><small>' + esc(x.i.grupo) + '</small></a>').join('') + '</div>' : '') +
+      (nada ? '<p class="spx-res-nada">Não achei uma resposta pronta para isso.</p>' : '') +
+      '<div class="spx-ainda" id="spx-ainda"><div><b>' + (nada ? 'Vamos resolver de outro jeito' : 'Ainda com dúvida?') + '</b><small>' +
+        (iaLigada() ? 'O assistente responde na hora. Se não resolver, fale com a equipe.' : 'Fale com a equipe: ela responde aqui e você recebe aviso no sino.') + '</small></div>' +
+        '<div class="spx-ainda-bts">' + (iaLigada() ? '<button type="button" class="b contorno" id="spx-ia-b">' + SVG('<path d="M10 4.6l1.6 4.3a1.5 1.5 0 0 0 .9.9l4.3 1.6-4.3 1.6a1.5 1.5 0 0 0-.9.9L10 18.2l-1.6-4.3a1.5 1.5 0 0 0-.9-.9l-4.3-1.6 4.3-1.6a1.5 1.5 0 0 0 .9-.9z"/>') + 'Perguntar ao assistente</button>' : '') +
+          '<button type="button" class="b pri" id="spx-equipe-b">Falar com a equipe</button></div></div>' +
+      '<div id="spx-ia" class="spx-ia"></div></section>';
+    ligarFaq(cx, t);
+    const bia = cx.querySelector('#spx-ia-b'); if (bia) bia.onclick = () => perguntarIA(t);
+    cx.querySelector('#spx-equipe-b').onclick = () => falarComEquipe(t);
+    /* busca sem resposta pronta: anota uma vez (vira a lista "o que procuram e não acham") */
+    if (nada && t.length >= 6 && norm(t) !== semResReg) {
+      const agora = t;
+      setTimeout(() => { if (String(qEq || '').trim() === agora && norm(agora) !== semResReg) { semResReg = norm(agora); registrar(agora, 'sem_resultado'); } }, 2500);
+    }
+  }
+  function ligarFaq(cx, texto) {
+    cx.querySelectorAll('.spx-faq').forEach(d => {
+      const f = (faqs || []).find(x => x.id === d.dataset.faq); if (!f) return;
+      d.addEventListener('toggle', () => { if (d.open && !tentou.faq.includes(f.pergunta)) tentou.faq.push(f.pergunta); });
+      if (d.open && !tentou.faq.includes(f.pergunta)) tentou.faq.push(f.pergunta);
+      const util = d.querySelector('.spx-util');
+      d.querySelector('[data-fsim]').onclick = () => { registrar(texto || f.pergunta, 'faq_sim', f.id); util.innerHTML = '<span class="spx-util-ok">' + SVG(IC.ok) + 'Que bom! Obrigado por avisar.</span>'; };
+      d.querySelector('[data-fnao]').onclick = () => {
+        registrar(texto || f.pergunta, 'faq_nao', f.id);
+        util.innerHTML = '<span class="spx-util-nao">Que pena. ' + (iaLigada() ? 'Pergunte ao assistente ou fale com a equipe.' : 'Fale com a equipe.') + '</span>';
+        if (!texto) { qEq = f.pergunta; const qi = document.getElementById('spx-q'); if (qi) qi.value = f.pergunta; pintarRes(); }
+        const a = document.getElementById('spx-ainda'); if (a) { a.classList.remove('pisca'); void a.offsetWidth; a.classList.add('pisca'); a.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      };
+    });
+  }
+  async function perguntarIA(texto) {
+    const cx = document.getElementById('spx-ia'), bt = document.getElementById('spx-ia-b'); if (!cx) return;
+    if (bt) bt.disabled = true;
+    let parcial = '';
+    const pinta = (html, fim) => { if (cx.isConnected) cx.innerHTML = '<div class="spx-ia-cx' + (fim ? '' : ' indo') + '"><span class="spx-ia-tag">' + SVG('<path d="M10 4.6l1.6 4.3a1.5 1.5 0 0 0 .9.9l4.3 1.6-4.3 1.6a1.5 1.5 0 0 0-.9.9L10 18.2l-1.6-4.3a1.5 1.5 0 0 0-.9-.9l-4.3-1.6 4.3-1.6a1.5 1.5 0 0 0 .9-.9z"/>') + 'Assistente</span>' + html + '</div>'; };
+    pinta('<div class="spx-ia-pensa"><i></i><i></i><i></i></div>');
+    const dados = { texto: texto.slice(0, 2000), origem: 'suporte' };
+    const tuts = tutPara(texto).map(x => x.i.id); if (tuts.length) dados.ajuda_ids = tuts;
+    try { const f = await faqIds(texto); if (f.length) dados.faq_ids = f; } catch (e) {}
+    let r = null;
+    try { r = await B7.IA.pedir('chat', dados, { aoTrecho: p => { parcial += p; pinta('<p>' + formatarResp(parcial) + '</p>'); } }); }
+    catch (e) { r = null; }
+    if (bt) bt.disabled = false;
+    if (!cx.isConnected) return;
+    if (!r || !r.ok) { pinta('<p class="spx-ia-erro">' + esc((r && r.mensagem) || 'O assistente não conseguiu responder agora.') + ' Fale com a equipe.</p>', true); return; }
+    tentou.ia = String(r.texto || '');
+    const links = (Array.isArray(r.tutoriais) ? r.tutoriais : []).filter(x => x && x.id);
+    pinta('<p>' + formatarResp(r.texto) + '</p>' +
+      (links.length ? '<div class="spx-ia-tuts">' + links.map(x => '<a href="#/ajuda/' + esc(x.id) + '">Tutorial: ' + esc(x.titulo) + ' →</a>').join('') + '</div>' : '') +
+      '<div class="spx-util"><span>Isso resolveu?</span><button type="button" data-isim>Sim</button><button type="button" data-inao>Não</button></div>', true);
+    const util = cx.querySelector('.spx-util');
+    cx.querySelector('[data-isim]').onclick = () => { registrar(texto, 'ia_sim'); util.innerHTML = '<span class="spx-util-ok">' + SVG(IC.ok) + 'Que bom! Obrigado por avisar.</span>'; };
+    cx.querySelector('[data-inao]').onclick = () => {
+      registrar(texto, 'ia_nao');
+      util.innerHTML = '<span class="spx-util-nao">Vamos chamar a equipe.</span><button type="button" class="b pri fina" data-equipe>Falar com a equipe</button>';
+      util.querySelector('[data-equipe]').onclick = () => falarComEquipe(texto);
+    };
+  }
+  function falarComEquipe(texto) {
+    registrar(texto, 'chamado');
+    const linhas = [];
+    if (tentou.faq.length) linhas.push('- Perguntas frequentes: ' + tentou.faq.slice(0, 3).join('; '));
+    if (tentou.ia) linhas.push('- Assistente respondeu: ' + tentou.ia.replace(/\s+/g, ' ').slice(0, 280) + (tentou.ia.length > 280 ? '…' : ''));
+    novo('duvida', { titulo: texto.slice(0, 140), semSugestao: true,
+      descricao: (linhas.length ? 'Já tentei:\n' + linhas.join('\n') + '\n\n' : '') + 'O que ainda preciso: ' });
   }
 
   /* ===================================================== ADMINISTRAÇÃO */
@@ -383,6 +522,7 @@ B7.Suporte = (function () {
       '<header class="spx-adm-cab"><div><span class="spx-tag">Administração</span><h1>Central de atendimento</h1>' +
         '<p>Os chamados da equipe: responder, mudar o andamento e acompanhar as ideias.</p></div>' +
         '<div class="spx-adm-ac"><div class="spx-abas" role="tablist"><button role="tab" data-aba="chamados" class="' + (aba === 'chamados' ? 'on' : '') + '">Chamados</button>' +
+          '<button role="tab" data-aba="faq" class="' + (aba === 'faq' ? 'on' : '') + '">Perguntas frequentes</button>' +
           '<button role="tab" data-aba="ideias" class="' + (aba === 'ideias' ? 'on' : '') + '">Ideias</button></div>' +
           '<button type="button" class="b pri" id="spx-novo">+ Novo chamado</button></div></header>' +
       '<div class="spx-kpis">' +
@@ -392,7 +532,8 @@ B7.Suporte = (function () {
         kpi(lista.filter(c => c.status === 'em_andamento' || c.status === 'em_analise').length, 'em análise ou andamento', '', 'andamento') +
         kpi(res7, 'resolvidos em 7 dias', 'ok', 'resolvidos') +
         kpi(fmtH(media), 'tempo médio para resolver (30 dias)', '', '') + '</div>' +
-      (aba === 'ideias' ? '<section class="spx-bloco spx-ideias-adm"><h2>Ideias da equipe <small>mais votadas primeiro</small></h2><div id="spx-ideias">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></section>' :
+      (aba === 'faq' ? '<section class="spx-bloco spx-faq-adm" id="spx-faq-adm">' + B7.UI.skeleton('lista', { n: 4 }) + '</section>' :
+      aba === 'ideias' ? '<section class="spx-bloco spx-ideias-adm"><h2>Ideias da equipe <small>mais votadas primeiro</small></h2><div id="spx-ideias">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></section>' :
       '<div class="spx-caixa' + (sel ? ' com-sel' : '') + '">' +
         '<aside class="spx-filas"><nav>' + FILAS.map(f => {
           const n = lista.filter(f[3]).length;
@@ -409,6 +550,7 @@ B7.Suporte = (function () {
     raiz.querySelector('#spx-novo').onclick = () => novo();
     raiz.querySelectorAll('[data-fila]').forEach(b => b.onclick = () => { fila = b.dataset.fila; aba = 'chamados'; sel = null; pintar(); });
     if (aba === 'ideias') return ideiasInline(raiz.querySelector('#spx-ideias'), 100, true);
+    if (aba === 'faq') return faqAdm(raiz.querySelector('#spx-faq-adm'));
     raiz.querySelectorAll('[data-tipof]').forEach(b => b.onclick = () => { tipoF = b.dataset.tipof; sel = null; pintar(); });
     raiz.querySelector('#spx-pessoa').onchange = e => { pessoaF = e.target.value; sel = null; pintar(); };
     const qi = raiz.querySelector('#spx-q'); qi.oninput = () => { q = qi.value; pintarItens(); };
@@ -417,6 +559,59 @@ B7.Suporte = (function () {
     if (sel && lista.some(c => c.id === sel)) conversa(ws, lista.find(c => c.id === sel), true);
     else ws.innerHTML = '<div class="spx-ws-vazio">' + SVG(IC.entrada) + '<b>Escolha um chamado</b><p>A conversa, o andamento e as informações técnicas aparecem aqui.</p></div>';
   }
+  /* zzz217: perguntas frequentes — o que funciona, o que falta escrever, e a lista para editar */
+  async function faqAdm(cx) {
+    if (!cx) return;
+    let res = null;
+    try { [, res] = await Promise.all([carregarFaq(true), B7.DB.rpc('suporte_autoajuda_resumo', { p_dias: 30 })]); } catch (e) { res = null; }
+    if (!cx.isConnected) return;
+    const d = (res && res.desfechos) || {}, pf = {}; ((res && res.por_faq) || []).forEach(x => { pf[x.faq_id] = x; });
+    const n = k => Number(d[k] || 0);
+    const kpi = (v, r, cls) => '<div class="spx-kpi ' + (cls || '') + '"><b>' + v + '</b><span>' + r + '</span></div>';
+    const lista = faqs || [];
+    const falta = (res && res.sem_resultado) || [];
+    cx.innerHTML = '<div class="spx-kpis spx-faq-kpis">' + kpi(n('faq_sim'), 'resolvidas pelas perguntas', 'ok') + kpi(n('ia_sim'), 'resolvidas pelo assistente', 'ok') +
+        kpi(n('chamado'), 'viraram chamado') + kpi(n('sem_resultado') + n('faq_nao') + n('ia_nao'), 'sem resposta ou não resolveu', (n('sem_resultado') + n('faq_nao') + n('ia_nao')) ? 'alerta' : '') + '</div>' +
+      '<p class="spx-faq-nota leve">Últimos 30 dias. Cada dúvida conta uma vez por desfecho.</p>' +
+      '<div class="spx-faq-cols"><div><div class="spx-faq-cab"><h2>Perguntas frequentes <small>' + lista.filter(f => f.ativo).length + ' no ar</small></h2><button type="button" class="b pri fina" id="spx-faq-nova">+ Nova pergunta</button></div>' +
+        (lista.length ? '<div class="spx-faq-lista">' + lista.map(f => {
+          const x = pf[f.id] || { sim: 0, nao: 0 };
+          return '<div class="spx-faq-it' + (f.ativo ? '' : ' fora') + '"><div><b>' + esc(f.pergunta) + '</b><small>' + (f.tutorial_id ? 'tutorial ligado · ' : '') + '<span class="ok">' + x.sim + ' resolveu</span> · <span class="nao">' + x.nao + ' não resolveu</span>' + (f.ativo ? '' : ' · fora do ar') + '</small></div>' +
+            '<button type="button" class="b fina contorno" data-faq-ed="' + esc(f.id) + '">Editar</button></div>';
+        }).join('') + '</div>' : '<div class="spx-vazio"><b>Nenhuma pergunta ainda</b></div>') + '</div>' +
+      '<div><h2>O que procuram e não acham <small>vire uma pergunta</small></h2>' +
+        (falta.length ? '<div class="spx-faq-lista">' + falta.map((x, i) => '<div class="spx-faq-it"><div><b>' + esc(x.texto) + '</b><small>' + x.n + (x.n === 1 ? ' vez' : ' vezes') + '</small></div><button type="button" class="b fina contorno" data-faq-falta="' + i + '">Criar pergunta</button></div>').join('') + '</div>'
+          : '<div class="spx-vazio">' + SVG(IC.ok) + '<b>Nada por enquanto</b><p>Quando alguém procurar algo sem resposta pronta, aparece aqui.</p></div>') + '</div></div>';
+    cx.querySelector('#spx-faq-nova').onclick = () => editarFaq(null, {});
+    cx.querySelectorAll('[data-faq-ed]').forEach(b => b.onclick = () => editarFaq(lista.find(f => f.id === b.dataset.faqEd), {}));
+    cx.querySelectorAll('[data-faq-falta]').forEach(b => b.onclick = () => editarFaq(null, { pergunta: falta[+b.dataset.faqFalta].texto }));
+  }
+  function editarFaq(f, pre) {
+    f = f || {}; pre = pre || {};
+    const tuts = (B7.AJUDA_DADOS || []).flatMap(g => g.itens.map(i => [i.id, g.nome + ' · ' + i.titulo]));
+    const m = B7.UI.modal('<h3>' + (f.id ? 'Editar pergunta frequente' : 'Nova pergunta frequente') + '</h3>' +
+      '<p class="sub">Resposta curta, em passos, com os nomes dos botões como aparecem na tela. A equipe vê ao escrever a dúvida no Suporte, e o assistente usa nas respostas.</p>' +
+      '<div class="mb"><label class="rot" for="fq-p">PERGUNTA</label><input class="campo" id="fq-p" maxlength="200" data-foco value="' + esc(f.pergunta || pre.pergunta || '') + '" placeholder="Ex.: Como troco minha senha?"></div>' +
+      '<div class="mb"><label class="rot" for="fq-r">RESPOSTA</label><textarea class="campo" id="fq-r" rows="6" maxlength="2000" placeholder="Ex.: Clique na sua foto → Meu perfil → aba Segurança…">' + esc(f.resposta || pre.resposta || '') + '</textarea></div>' +
+      '<div class="mb"><label class="rot" for="fq-t">PALAVRAS PARECIDAS <span class="leve">— ajudam a achar (ex.: mudar alterar esqueci)</span></label><input class="campo" id="fq-t" maxlength="400" value="' + esc(f.termos || '') + '"></div>' +
+      '<div class="spx-fq-linha"><div class="mb"><label class="rot" for="fq-tut">TUTORIAL LIGADO <span class="leve">— opcional</span></label><select class="campo" id="fq-tut"><option value="">Nenhum</option>' +
+        tuts.map(([id, r]) => '<option value="' + esc(id) + '"' + (f.tutorial_id === id ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></div>' +
+        '<div class="mb"><label class="rot" for="fq-o">ORDEM</label><input class="campo" id="fq-o" type="number" min="0" max="9999" value="' + esc(f.ordem == null ? 100 : f.ordem) + '"></div></div>' +
+      '<label class="sp-info"><input type="checkbox" id="fq-a"' + (f.ativo === false ? '' : ' checked') + '> No ar (a equipe vê)</label>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="fq-salvar">Salvar</button></div>', { larga: true });
+    const q = s => m.querySelector(s);
+    q('#fq-salvar').onclick = async () => {
+      const bt = q('#fq-salvar'); bt.disabled = true;
+      try {
+        await B7.DB.rpc('suporte_faq_salvar', { p_id: f.id || null, p_pergunta: q('#fq-p').value, p_resposta: q('#fq-r').value, p_termos: q('#fq-t').value,
+          p_tutorial: q('#fq-tut').value, p_ordem: parseInt(q('#fq-o').value, 10) || 100, p_ativo: q('#fq-a').checked });
+        m.fechar(); B7.UI.toast(f.id ? 'Pergunta salva.' : 'Pergunta criada. A equipe já vê no Suporte.');
+        await carregarFaq(true);
+        if (aba === 'faq') faqAdm(document.getElementById('spx-faq-adm'));
+      } catch (e) { bt.disabled = false; B7.UI.toast('Não foi possível salvar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
+    };
+  }
+
   function pintarItens() {
     const cx = document.getElementById('spx-itens'); if (!cx) return;
     const itens = daFila();
@@ -447,7 +642,8 @@ B7.Suporte = (function () {
       '<button type="button" class="spx-voltar" id="sp-volta">' + SVG(IC.voltar) + (adm ? 'Fila' : 'Seus chamados') + '</button>' +
       '<header class="spx-conv-cab">' + icTipo(c.tipo) + '<div><div class="spx-conv-l1"><span class="sp-tp sp-tp-' + esc(c.tipo) + '">' + esc(t.rot) + '</span><span>#' + c.numero + '</span>' +
           (c.urgente && !fechado ? '<em class="spx-urg">urgente</em>' : '') + '</div>' +
-        '<h2>' + esc(c.titulo) + '</h2><small>' + av(c.criado_por_nome) + esc(souAutor ? 'Você' : (c.criado_por_nome || 'alguém')) + ' · aberto ' + esc(quando(c.created_at)) + '</small></div></header>' +
+        '<h2>' + esc(c.titulo) + '</h2><small>' + av(c.criado_por_nome) + esc(souAutor ? 'Você' : (c.criado_por_nome || 'alguém')) + ' · aberto ' + esc(quando(c.created_at)) + '</small></div>' +
+        (adm ? '<button type="button" class="b fina contorno spx-virar" id="sp-virar-faq" title="Usa o título e a última resposta da equipe">Virar pergunta frequente</button>' : '') + '</header>' +
       (adm ? '<div class="spx-and"><div class="spx-st-pills" role="group" aria-label="Andamento">' + Object.keys(STATUS).map(k => '<button type="button" data-st="' + k + '" class="' + (c.status === k ? 'on' : '') + '">' + esc(STATUS[k]) + '</button>').join('') + '</div>' +
           '<label class="spx-prio-sel">Prioridade <select class="campo fina" id="sp-pr">' + Object.keys(PRIO).map(k => '<option value="' + k + '"' + (c.prioridade === k ? ' selected' : '') + '>' + PRIO[k] + '</option>').join('') + '</select></label></div>'
         : linhaTempo(c)) +
@@ -462,6 +658,8 @@ B7.Suporte = (function () {
         '<small class="leve">Ctrl+Enter envia' + (adm ? ' · a pessoa recebe aviso no sino (a nota interna, não)' : '') + '</small></div></div>';
     cx.querySelector('#sp-volta').onclick = () => { sel = null; pintar(); };
     anexos(c); mensagens(c);
+    const vf = cx.querySelector('#sp-virar-faq');
+    if (vf) vf.onclick = () => editarFaq(null, { pergunta: c.titulo, resposta: ultimaResp[c.id] || '' });
     let interno = false;
     const tx = cx.querySelector('#sp-resp-t');
     tx.addEventListener('input', () => { tx.style.height = 'auto'; tx.style.height = Math.min(200, tx.scrollHeight + 2) + 'px'; });
@@ -529,6 +727,8 @@ B7.Suporte = (function () {
     try { ms = ok(await sb().from('suporte_mensagens').select('*').eq('chamado_id', c.id).order('created_at')) || []; }
     catch (e) { cx.innerHTML = '<p class="leve">Não foi possível carregar a conversa.</p>'; return; }
     const box = document.getElementById('sp-msgs'); if (!box || sel !== c.id) return;
+    const resp = ms.filter(m => !m.interno && !m.sistema && m.autor_id !== c.criado_por);
+    if (resp.length) ultimaResp[c.id] = resp[resp.length - 1].texto;
     box.innerHTML = ms.length ? ms.map(m => m.sistema
       ? '<div class="sp-sis"><span>' + esc(m.texto) + ' · ' + esc((m.autor_nome || '').split(' ')[0]) + ' · ' + esc(quando(m.created_at)) + '</span></div>'
       : '<div class="sp-msg' + (m.autor_id === eu() ? ' minha' : '') + (m.interno ? ' interna' : '') + '">' + (m.autor_id === eu() ? '' : av(m.autor_nome)) +
@@ -595,5 +795,5 @@ B7.Suporte = (function () {
     catch (e) { cx.innerHTML = '<p class="sp-vazio">' + esc((e && e.message) || 'Não foi possível carregar as ideias.') + '</p>'; }
   }
 
-  return { abrir, novo, ideias };
+  return { abrir, novo, ideias, faqIds };
 })();

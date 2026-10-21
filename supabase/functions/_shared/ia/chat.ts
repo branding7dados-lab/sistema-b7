@@ -33,7 +33,12 @@ export type Pedido = {
   texto: string;
   /** zzz211: tutoriais da Ajuda que a tela achou parecidos com a pergunta (só ids conhecidos) */
   ajuda?: string[];
+  /** zzz217: perguntas frequentes do Suporte parecidas com a pergunta (ids; o texto vem do banco) */
+  faq?: string[];
+  /** zzz217: veio da tela de Suporte (responde a dúvida; não propõe criar nada) */
+  suporte?: boolean;
 };
+export type Faq = { pergunta: string; resposta: string };
 export type Conversa = { id: string; nova: boolean; titulo: string; clienteId: string | null };
 type Fala = { papel: 'user' | 'assistant'; texto: string };
 
@@ -69,7 +74,19 @@ export function validar(corpo: Record<string, unknown>): { ok: true; pedido: Ped
     if (!Array.isArray(corpo.ajuda_ids) || corpo.ajuda_ids.length > 3) return { ok: false };
     ajuda = [...new Set(corpo.ajuda_ids.filter((x): x is string => typeof x === 'string' && Object.prototype.hasOwnProperty.call(TUTORIAIS, x)))];
   }
-  return { ok: true, pedido: { conversaId, clienteId, texto, imagem, ajuda } };
+  let faq: string[] = [];
+  if (corpo.faq_ids != null) {
+    if (!Array.isArray(corpo.faq_ids) || corpo.faq_ids.length > 3) return { ok: false };
+    faq = [...new Set(corpo.faq_ids.filter((x): x is string => typeof x === 'string' && UUID.test(x)))];
+  }
+  return { ok: true, pedido: { conversaId, clienteId, texto, imagem, ajuda, faq, suporte: corpo.origem === 'suporte' } };
+}
+
+/** zzz217: as perguntas frequentes pedidas, só as que estão no ar */
+export async function carregarFaq(sb: SupabaseClient, ids: string[] = []): Promise<Faq[]> {
+  if (!ids.length) return [];
+  const { data } = await sb.from('suporte_faq').select('pergunta, resposta').in('id', ids).eq('ativo', true);
+  return (data || []).map(f => ({ pergunta: corta(f.pergunta, 200), resposta: String(f.resposta || '').slice(0, 2000) }));
 }
 
 /** zzz211: os tutoriais que foram junto (id + título), para a tela oferecer "Abrir tutorial" */
@@ -782,10 +799,16 @@ export function filtroDeFluxo(emitir: (texto: string) => void): (trecho: string)
   };
 }
 
-export function montarMensagens(p: Pedido, contexto: string, hist: Fala[], quem: { nome: string; funcao: string }, permitidas: TipoAcao[] = []): Mensagem[] {
+export function montarMensagens(p: Pedido, contexto: string, hist: Fala[], quem: { nome: string; funcao: string }, permitidas: TipoAcao[] = [], faqs: Faq[] = []): Mensagem[] {
   const u: string[] = [];
   u.push('QUEM PERGUNTA: ' + corta(quem.nome, 60) + (quem.funcao ? ' (' + quem.funcao + ')' : '') + '.');
   u.push('', 'DADOS DO SISTEMA (lidos agora, com o acesso desta pessoa):', '<<<', contexto, '>>>');
+  if (faqs.length) {
+    u.push('', 'PERGUNTAS FREQUENTES DO SUPORTE (respostas oficiais da equipe; prefira estas quando servirem):', '<<<');
+    faqs.forEach(f => u.push('P: ' + f.pergunta, 'R: ' + f.resposta, ''));
+    u.push('>>>');
+  }
+  if (p.suporte) u.push('', 'A pessoa está na tela de SUPORTE tentando resolver uma dúvida sozinha antes de abrir um chamado. Responda curto e direto, em passos. Se não tiver certeza, diga isso e sugira tocar em "Falar com a equipe".');
   const tuts = (p.ajuda || []).map(id => TUTORIAIS[id]).filter(Boolean);
   if (tuts.length) {
     u.push('', 'TUTORIAIS DO SISTEMA (os mais parecidos com a pergunta; use só se ela for sobre como usar o B7):', '<<<');

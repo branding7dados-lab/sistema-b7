@@ -224,9 +224,12 @@ Deno.serve(comCors(async (req: Request) => {
       ...(coordena && Number(corpo.acoes_v) >= 2 ? ['design_peca' as const, 'gravacao' as const, 'conteudo' as const] : []),
       /* zzz142: administrador muda configuração conversando (cartão com confirmação; só telas que sabem mostrá-lo, acoes_v >= 3) */
       ...(perfil.papel === 'admin' && Number(corpo.acoes_v) >= 3 ? ['admin' as const] : [])];
+    /* zzz217: na tela de Suporte o assistente só responde (nada de propor criar) */
+    if (pedido.suporte) permitidas.length = 0;
+    const faqs = await Chat.carregarFaq(sbDaPessoa, pedido.faq);
     t = {
       recurso: 'chat', acao: 'mensagem', entidadeTipo: 'conversa', entidadeId: conv.id, tamanhoEntrada: pedido.texto.length,
-      mensagens: Chat.montarMensagens(pedido, contexto, hist, quem, permitidas), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
+      mensagens: Chat.montarMensagens(pedido, contexto, hist, quem, permitidas, faqs), maxTokens: 1200, temperatura: 0.6, limpar: Chat.limpar, json: false,
       ...(pedido.imagem ? { imagem: pedido.imagem } : {}),
       aposOk: async (texto: string) => {
         const ex = permitidas.length ? await Chat.extrairAcao(texto, sbDaPessoa, permitidas) : { texto: Chat.semAcao(texto) || texto, acao: null, acoes: [] };
