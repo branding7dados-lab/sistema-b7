@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Seu código de acesso ao B7</title>
+<!-- Modelo do e-mail do código (verificação em 2 etapas). As marcas {{...}}
+     são trocadas pelo sistema na hora do envio. HTML de e-mail: tabelas e
+     estilo inline, porque Gmail/Outlook ignoram CSS moderno. -->
+<style>
+  @media (max-width:600px){ .card{width:100% !important;border-radius:0 !important;} .pad{padding-left:24px !important;padding-right:24px !important;} .dig{font-size:30px !important;letter-spacing:8px !important;} }
+  @media (prefers-color-scheme:dark){
+    .fundo{background:#0A0714 !important;} .card{background:#150F22 !important;}
+    .tx{color:#EDEAF7 !important;} .tx2{color:#A9A2C4 !important;}
+    .cod{background:#1E1730 !important;border-color:#3A2C66 !important;} .dig{color:#FFFFFF !important;}
+    .alerta{background:#231A10 !important;border-color:#4A3615 !important;} .alerta-tx{color:#F0C98A !important;}
+    .linha{border-color:#2A2140 !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#F3F1FA;">
+<!-- prévia na caixa de entrada -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Seu código é {{codigo}}. Ele vale por 10 minutos.</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="fundo" style="background:#F3F1FA;">
+  <tr><td align="center" style="padding:32px 12px;">
+
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" class="card" style="width:560px;max-width:560px;background:#FFFFFF;border-radius:24px;overflow:hidden;box-shadow:0 24px 60px -30px rgba(58,30,134,.45);">
+
+      <!-- topo -->
+      <tr><td style="background:#0B0A1E;background-image:linear-gradient(135deg,#0B0A1E 0%,#3A1E86 62%,#C21C83 130%);padding:30px 36px 28px;" class="pad">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td><img src="https://branding7dados-lab.github.io/sistema-b7/assets/brand/logo-white.png" width="132" alt="Branding7" style="display:block;width:132px;height:auto;border:0;"></td>
+          <td align="right" style="font:600 11px/1 Arial,Helvetica,sans-serif;letter-spacing:.14em;color:rgba(255,255,255,.65);text-transform:uppercase;">Sistema B7</td>
+        </tr></table>
+        <div style="height:26px;line-height:26px;">&nbsp;</div>
+        <div style="font:800 26px/1.2 Arial,Helvetica,sans-serif;color:#FFFFFF;letter-spacing:-.01em;">Seu código de acesso</div>
+        <div style="font:400 14px/1.5 Arial,Helvetica,sans-serif;color:rgba(255,255,255,.75);padding-top:6px;">Confirmação em 2 etapas</div>
+      </td></tr>
+
+      <!-- corpo -->
+      <tr><td class="pad" style="padding:32px 36px 8px;">
+        <div class="tx" style="font:400 16px/1.55 Arial,Helvetica,sans-serif;color:#1B1631;">Olá, <b>{{nome}}</b>!</div>
+        <div class="tx2" style="font:400 15px/1.6 Arial,Helvetica,sans-serif;color:#5D5675;padding-top:8px;">Para terminar de entrar no B7, digite este código na tela de acesso:</div>
+      </td></tr>
+
+      <!-- código -->
+      <tr><td class="pad" align="center" style="padding:18px 36px 6px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" class="cod" style="background:#F7F5FD;border:1.5px solid #E2DBF7;border-radius:18px;">
+          <tr><td align="center" style="padding:20px 30px;">
+            <div class="dig" style="font:800 38px/1 'Courier New',Courier,monospace;letter-spacing:12px;color:#3A1E86;padding-left:12px;">{{codigo}}</div>
+          </td></tr>
+        </table>
+        <div class="tx2" style="font:600 13px/1.5 Arial,Helvetica,sans-serif;color:#7A7393;padding-top:12px;">⏱ Vale por <b style="color:#C21C83;">10 minutos</b> e só funciona uma vez.</div>
+      </td></tr>
+
+      <!-- de onde veio -->
+      <tr><td class="pad" style="padding:22px 36px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="linha" style="border-top:1px solid #EEEAF8;">
+          <tr><td style="padding-top:16px;">
+            <div class="tx2" style="font:700 11px/1 Arial,Helvetica,sans-serif;letter-spacing:.12em;color:#9A93B3;text-transform:uppercase;">Pedido feito</div>
+            <div class="tx" style="font:400 14px/1.6 Arial,Helvetica,sans-serif;color:#1B1631;padding-top:6px;">{{quando}} · {{aparelho}}<br><span class="tx2" style="color:#7A7393;">{{local}}</span></div>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <!-- não foi você -->
+      <tr><td class="pad" style="padding:22px 36px 30px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="alerta" style="background:#FFF7EA;border:1px solid #F6E0B6;border-radius:16px;">
+          <tr><td style="padding:16px 18px;">
+            <div class="alerta-tx" style="font:700 14px/1.4 Arial,Helvetica,sans-serif;color:#8A5A0B;">Não foi você?</div>
+            <div class="alerta-tx" style="font:400 13.5px/1.55 Arial,Helvetica,sans-serif;color:#8A5A0B;padding-top:4px;">Não passe esse código para ninguém — a equipe da Branding7 nunca pede. Alguém tem a sua senha: troque agora.</div>
+            <div style="padding-top:12px;">
+              <a href="{{link_senha}}" style="display:inline-block;background:#3A1E86;background-image:linear-gradient(135deg,#3A1E86,#C21C83);color:#FFFFFF;font:700 13.5px/1 Arial,Helvetica,sans-serif;text-decoration:none;padding:12px 18px;border-radius:12px;">Trocar minha senha</a>
+            </div>
+          </td></tr>
+        </table>
+      </td></tr>
+
+    </table>
+
+    <!-- rodapé -->
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" class="card" style="width:560px;max-width:560px;">
+      <tr><td align="center" class="pad" style="padding:20px 36px 0;">
+        <div class="tx2" style="font:400 12px/1.6 Arial,Helvetica,sans-serif;color:#9A93B3;">E-mail automático do Sistema B7 · não precisa responder.<br>Branding7 · comunicação e marketing</div>
+      </td></tr>
+    </table>
+
+  </td></tr>
+</table>
+</body>
+</html>

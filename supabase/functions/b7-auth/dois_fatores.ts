@@ -16,6 +16,7 @@
 // =====================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { emailCodigo } from './email_modelo.ts';
 
 type SB = any;
 /* Cliente novo, sem sessão: depois de um signIn/refresh, o cliente passa a
@@ -102,21 +103,19 @@ export async function estadoEmail(): Promise<string> {
   if (!chave) return 'sem_chave';
   try { return (await remetente(chave)) ? 'ok' : 'sem_remetente'; } catch (_e) { return 'sem_remetente'; }
 }
-async function enviarCodigo(para: string, codigo: string, motivo: 'login' | 'cadastro') {
+async function nomeDe(sb: SB, perfilId: string): Promise<string | null> {
+  try { const { data } = await sb.from('perfis').select('nome').eq('id', perfilId).maybeSingle(); return (data && data.nome) || null; } catch (_e) { return null; }
+}
+async function enviarCodigo(para: string, codigo: string, motivo: 'login' | 'cadastro', ctx: { nome?: string | null; aparelho?: string | null } = {}) {
   const chave = Deno.env.get('B7_BREVO_API_KEY');
   if (!chave) throw new Error('O envio de e-mail não está configurado. Fale com o administrador.');
   const de = await remetente(chave);
   if (!de) throw new Error('O envio de e-mail não está configurado (sem remetente). Fale com o administrador.');
-  const titulo = motivo === 'login' ? 'Seu código para entrar no Sistema B7' : 'Confirme seu e-mail no Sistema B7';
-  const frase = motivo === 'login' ? 'Use este código para terminar de entrar:' : 'Use este código para confirmar este e-mail na verificação em 2 etapas:';
-  const html = '<div style="font-family:Arial,sans-serif;max-width:440px;margin:auto;padding:24px;color:#1d1a2b">' +
-    '<h2 style="margin:0 0 12px">' + titulo + '</h2><p>' + frase + '</p>' +
-    '<p style="font-size:34px;font-weight:700;letter-spacing:8px;margin:18px 0">' + codigo + '</p>' +
-    '<p style="color:#615c77">Vale por 10 minutos. Se não foi você, ignore este e-mail e troque a sua senha no sistema.</p></div>';
+  /* zzz220: o e-mail com a cara do B7 (email_modelo.ts) */
+  const m = emailCodigo({ codigo, motivo, nome: ctx.nome, aparelho: ctx.aparelho });
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST', headers: { 'api-key': chave, 'Content-Type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({ sender: de, to: [{ email: para }], subject: titulo + ': ' + codigo, htmlContent: html,
-      textContent: frase + ' ' + codigo + '\nVale por 10 minutos. Se não foi você, ignore e troque a sua senha.' })
+    body: JSON.stringify({ sender: de, to: [{ email: para }], subject: m.assunto, htmlContent: m.html, textContent: m.texto })
   });
   if (!r.ok) {
     console.error('brevo envio falhou', r.status, (await r.text().catch(() => '')).slice(0, 300));
@@ -168,7 +167,7 @@ export async function depoisDaSenha(sb: SB, perfilId: string, sessao: any, apare
     refresh_token: sessao.refresh_token, expira_em: new Date(Date.now() + DEZ_MIN).toISOString()
   }).select('id').single();
   if (error || !d) throw new Error('Não foi possível iniciar a verificação. Tente de novo.');
-  if (cfg.metodo === 'email') await enviarCodigo(cfg.email, codigo, 'login');
+  if (cfg.metodo === 'email') await enviarCodigo(cfg.email, codigo, 'login', { nome: await nomeDe(sb, perfilId) });
   /* `erro` só é lido por telas antigas (app de Android sem atualizar): explica o que fazer */
   return { pedir: { precisa_2fa: true, metodo: cfg.metodo, desafio: d.id, email: mascarar(cfg.email),
     erro: 'Sua conta usa verificação em 2 etapas. Atualize o app (ou abra o B7 pelo navegador) para digitar o código.' }, extra: {} };
@@ -194,7 +193,7 @@ export async function acaoLogin(sb: SB, acao: string, corpo: any) {
     const codigo = codigo6();
     await sb.from('seguranca_codigos').update({ codigo_hash: await hash('login', d.perfil_id, codigo), envios: d.envios + 1, tentativas: 0,
       expira_em: new Date(Date.now() + DEZ_MIN).toISOString() }).eq('id', d.id);
-    await enviarCodigo(cfg.email, codigo, 'login');
+    await enviarCodigo(cfg.email, codigo, 'login', { nome: await nomeDe(sb, d.perfil_id) });
     return { status: 200, corpo: { ok: true } };
   }
 
@@ -247,7 +246,7 @@ export async function acaoPropria(sb: SB, eu: any, acao: string, corpo: any, con
     const codigo = codigo6();
     await sb.from('seguranca_codigos').insert({ perfil_id: eu.id, finalidade: 'cadastro_email', metodo: 'email', email,
       codigo_hash: await hash('cadastro', eu.id, codigo), expira_em: new Date(Date.now() + DEZ_MIN).toISOString() });
-    await enviarCodigo(email, codigo, 'cadastro');
+    await enviarCodigo(email, codigo, 'cadastro', { nome: await nomeDe(sb, eu.id) });
     return { status: 200, corpo: { ok: true, email: mascarar(email) } };
   }
 
