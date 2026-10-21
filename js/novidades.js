@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz223', versao: 'zzz223', em: '2026-10-21T18:00:00-03:00', rota: 'suporte',
+    titulo: 'Suporte com atendimento na hora',
+    itens: ['Abriu uma dúvida ou um problema? O assistente responde na hora, no próprio chamado. Se não resolver, toque em "Falar com uma pessoa" (ou ele mesmo chama alguém da equipe).',
+            'Quando resolver, toque em "Resolveu" e dê de 1 a 5 estrelas para o atendimento.',
+            'Chamado encerrado não recebe mais mensagens: para outro assunto, é só abrir um novo.'] },
   { id: 'v-zzz218', versao: 'zzz218', em: '2026-10-21T15:00:00-03:00',
     titulo: 'Conta mais segura: verificação em 2 etapas',
     itens: ['Em Meu perfil → Segurança, ligue a verificação em 2 etapas: além da senha, o sistema pede um código de 6 números ao entrar.',

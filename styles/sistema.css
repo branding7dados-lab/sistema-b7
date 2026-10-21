@@ -1530,3 +1530,63 @@ body.wa-aberta #toasts{bottom:auto;top:72px;}
   .spx-ainda-bts{width:100%;}
   .spx-ainda-bts .b{flex:1;justify-content:center;}
 }
+
+/* ===================== zzz223: ATENDIMENTO PELO ASSISTENTE, ENCERRADO E AVALIAÇÃO ===================== */
+.spx-eq-grade.so-um{grid-template-columns:minmax(0,1fr);}
+.spx-atend{display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:12px 14px;border-radius:16px;border:1px solid var(--borda);background:var(--card);animation:spx-sobe .4s cubic-bezier(.2,.8,.2,1) both;}
+@keyframes spx-sobe{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.spx-atend > div:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.spx-atend b{font-size:13.5px;} .spx-atend small{font-size:12px;color:var(--ink-3);}
+.spx-atend-ic{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:12px;color:#fff;background:linear-gradient(135deg,#3A1E86,#C21C83);}
+.spx-atend.eq .spx-atend-ic{background:linear-gradient(135deg,#0e7c86,#2fb39a);}
+.spx-atend-ic svg{width:19px;height:19px;}
+.spx-atend.ia{border-color:color-mix(in srgb, #8b5cf6 35%, var(--borda));background:linear-gradient(180deg,color-mix(in srgb, #8b5cf6 6%, var(--card)),var(--card));}
+.spx-atend-bts{display:flex;gap:6px;flex:none;}
+.spx-atend-bts .b svg{width:15px;height:15px;margin-right:4px;vertical-align:-3px;}
+@media (max-width:640px){ .spx-atend{flex-wrap:wrap;} .spx-atend-bts{width:100%;} .spx-atend-bts .b{flex:1;} }
+
+.sp-msg-ia .sp-bolha{background:linear-gradient(180deg,color-mix(in srgb, #8b5cf6 7%, var(--card)),var(--card));border-color:color-mix(in srgb, #8b5cf6 25%, var(--borda));}
+.sp-av-ia{display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#3A1E86,#C21C83) !important;}
+.sp-av-ia svg{width:15px;height:15px;}
+.sp-ia-tag{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;padding:1px 6px;border-radius:6px;color:#8b5cf6;background:color-mix(in srgb, #8b5cf6 12%, transparent);}
+.sp-msg-ia p{margin:4px 0 0;}
+.sp-msg-ia.indo .sp-bolha{animation:spx-pulso 1.6s ease-in-out infinite;}
+@keyframes spx-pulso{50%{box-shadow:0 0 0 4px color-mix(in srgb, #8b5cf6 12%, transparent);}}
+.sp-sis.ia span{color:#8b5cf6;}
+
+.spx-fim{margin-top:12px;padding:16px;border-radius:18px;border:1px solid var(--borda);background:var(--card);display:flex;flex-direction:column;gap:14px;align-items:flex-start;}
+.spx-fim-cab{display:flex;gap:12px;align-items:flex-start;}
+.spx-fim-cab > svg{flex:none;width:28px;height:28px;color:var(--ok);}
+.spx-fim-cab b{display:block;font-size:14.5px;} .spx-fim-cab small{color:var(--ink-3);font-size:12.5px;}
+.spx-avaliar{width:100%;padding:14px;border-radius:14px;background:color-mix(in srgb, #f5b301 7%, var(--card));border:1px solid color-mix(in srgb, #f5b301 25%, var(--borda));display:flex;flex-direction:column;gap:8px;align-items:flex-start;}
+.spx-est-esc{display:flex;gap:4px;}
+.spx-est-esc button{border:0;background:none;padding:2px;cursor:pointer;color:color-mix(in srgb, var(--ink) 22%, transparent);transition:transform .15s,color .15s;}
+.spx-est-esc button svg{width:32px;height:32px;}
+.spx-est-esc button.on{color:#f5b301;}
+.spx-est-esc button.on svg{fill:#f5b301;}
+.spx-est-esc button:hover{transform:scale(1.12);}
+.spx-est-rot{font-size:12.5px;font-weight:700;color:var(--ink-3);}
+.spx-avaliar textarea{width:100%;}
+.spx-estrelas{color:#f5b301;letter-spacing:1px;font-size:16px;white-space:nowrap;}
+.spx-estrelas .apagada{color:color-mix(in srgb, var(--ink) 20%, transparent);}
+.spx-aval-feita{display:flex;align-items:center;gap:10px;}
+.spx-aval-feita small{color:var(--ink-3);}
+.spx-aval-vista{display:flex;gap:12px;align-items:flex-start;margin:0 0 12px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb, #f5b301 7%, var(--card));border:1px solid color-mix(in srgb, #f5b301 25%, var(--borda));}
+.spx-aval-vista b{font-size:13px;} .spx-aval-vista p{margin:4px 0 0;font-size:13px;color:var(--ink-2);font-style:italic;}
+.spx-fechado-adm{margin:0 0 8px;font-size:12.5px;color:var(--ink-3);}
+
+.spx-cli,.spx-iat,.spx-esc,.spx-nota-it{font-style:normal;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:99px;}
+.spx-cli{color:#0e7c86;background:color-mix(in srgb, #0e7c86 12%, transparent);}
+.spx-iat{color:#8b5cf6;background:color-mix(in srgb, #8b5cf6 12%, transparent);}
+.spx-esc{color:#c2410c;background:color-mix(in srgb, #c2410c 12%, transparent);}
+.spx-nota-it{color:#b7791f;background:color-mix(in srgb, #f5b301 14%, transparent);letter-spacing:.5px;}
+.spx-nota-it .apagada{color:color-mix(in srgb, var(--ink) 20%, transparent);}
+.spx-kpi-nota b{font-size:15px;}
+
+.spx-aval-adm h2{margin:16px 0 8px;font-size:15px;}
+.spx-aval-lista{display:grid;gap:6px;}
+.spx-aval-it{display:flex;align-items:flex-start;gap:12px;width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--borda);background:var(--card);font:inherit;text-align:left;cursor:pointer;transition:border-color .2s,transform .2s;}
+.spx-aval-it:hover{border-color:var(--acento);transform:translateY(-1px);}
+.spx-aval-tx{min-width:0;display:flex;flex-direction:column;gap:2px;font-size:13.5px;}
+.spx-aval-tx small{font-size:12px;color:var(--ink-3);}
+.spx-aval-tx q{font-size:12.5px;color:var(--ink-2);font-style:italic;margin-top:2px;}

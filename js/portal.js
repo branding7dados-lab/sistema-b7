@@ -139,7 +139,8 @@ B7.Portal = (function () {
     ['minhas-gravacoes', 'gravacoes', 'Gravações'],
     ['meus-status', 'semana', 'Status Semanal'],
     ['historico', 'historico', 'Histórico'],
-    ['perfil', 'perfil', 'Meu perfil']
+    ['perfil', 'perfil', 'Meu perfil'],
+    ['suporte', 'suporte', 'Suporte']
   ];
 
   function montarLayout() {
@@ -284,7 +285,8 @@ B7.Portal = (function () {
     gravacoes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>',
     semana: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>',
     historico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 7v5l3.5 2"/><circle cx="12" cy="12" r="8.5"/></svg>',
-    perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20.5v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>'
+    perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20.5v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>',
+    suporte: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-5.2L8 19.4V16H7a2.5 2.5 0 0 1-2.5-2.5z"/><path d="M9 9.2h6M9 12h3.5"/></svg>'
   };
 
   /* Toda tela do portal começa por aqui: marca o item da navegação e

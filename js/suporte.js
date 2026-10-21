@@ -24,6 +24,9 @@ B7.Suporte = (function () {
   const ok = ({ data, error }) => { if (error) throw error; return data; };
   const eu = () => { const u = B7.Auth && B7.Auth.usuario && B7.Auth.usuario(); return u ? u.id : null; };
   const equipe = () => !!(B7.Auth && B7.Auth.ehEquipe && B7.Auth.ehEquipe());
+  /* zzz223: o cliente do Portal também tem Suporte (sem ideias da equipe, sem tutoriais internos) */
+  const souCliente = () => !!(B7.Auth && B7.Auth.ehCliente && B7.Auth.ehCliente());
+  const FECHADOS = ['resolvido', 'nao_vamos_fazer'];
 
   const TIPOS = {
     bug: { rot: 'Problema', plural: 'Problemas', dica: 'Algo não funciona ou apareceu errado',
@@ -98,7 +101,7 @@ B7.Suporte = (function () {
     const imagens = [];                         /* { blob, mini } */
     const ctx = contexto();
     const m = B7.UI.modal('<h3>Suporte e feedback</h3>' +
-      '<p class="sub">Conte o que aconteceu ou o que você quer. A equipe responde por aqui e você recebe um aviso no sino.</p>' +
+      '<p class="sub">Conte o que aconteceu ou o que você quer. Dúvidas e problemas são atendidos primeiro pelo assistente, na hora; se ele não resolver, chama alguém da equipe. Você recebe aviso no sino.</p>' +
       '<div class="sp-tipos" role="group" aria-label="Tipo">' +
         Object.keys(TIPOS).map(k => '<button type="button" class="sp-tipo" data-tipo="' + k + '"><b>' + TIPOS[k].rot + '</b><small>' + TIPOS[k].dica + '</small></button>').join('') + '</div>' +
       '<div class="mb"><label class="rot" for="sp-tit">RESUMO</label><input class="campo" id="sp-tit" maxlength="140" data-foco value="' + esc(pre.titulo || '') + '"></div>' +
@@ -220,7 +223,7 @@ B7.Suporte = (function () {
         }
         if (paths.length) await B7.DB.rpc('suporte_anexar', { p_id: id, p_paths: paths });
         m.fechar();
-        B7.UI.toast(imagens.length && paths.length < imagens.length ? 'Chamado enviado, mas algum print não subiu.' : 'Chamado enviado. A equipe responde por aqui.');
+        B7.UI.toast(imagens.length && paths.length < imagens.length ? 'Chamado enviado, mas algum print não subiu.' : 'Chamado aberto. O atendimento responde por aqui.');
         if (/^#\/suporte/.test(location.hash)) abrir(id); else location.hash = '#/suporte/' + id;
       } catch (e) {
         bt.disabled = false; bt.textContent = 'Enviar';
@@ -267,6 +270,8 @@ B7.Suporte = (function () {
     voltar: '<path d="M15 6l-6 6 6 6"/>',
     enviar: '<path d="M21 3L10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/>',
     ideia: ICT.sugestao,
+    ia: '<path d="M10 4.6l1.6 4.3a1.5 1.5 0 0 0 .9.9l4.3 1.6-4.3 1.6a1.5 1.5 0 0 0-.9.9L10 18.2l-1.6-4.3a1.5 1.5 0 0 0-.9-.9l-4.3-1.6 4.3-1.6a1.5 1.5 0 0 0 .9-.9z"/><path d="M18 3.5v3M16.5 5h3"/>',
+    estrela: '<path d="M12 3.8l2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z"/>',
     seta: '<path d="M6 14l6-6 6 6"/>'
   };
   /* "visto" por chamado, neste aparelho: mostra a bolinha de novidade */
@@ -281,7 +286,8 @@ B7.Suporte = (function () {
     ['Boa ideia', 'Boa ideia! Entrou na nossa lista. Te avisamos quando sair.'],
     ['Explicar', 'Para fazer isso: '],
   ];
-  const semResposta = c => c.status === 'novo' && horas(c.created_at) >= 24;
+  /* com o assistente atendendo não conta como "sem resposta"; chamado que ele passou adiante conta a partir daí */
+  const semResposta = c => c.status === 'novo' && c.atendente !== 'ia' && horas(c.escalado_em || c.created_at) >= 24;
 
   /* ============================================ PERGUNTAS FREQUENTES (zzz217)
      Respostas curtas e prontas, cadastradas pela administração. A equipe
@@ -321,12 +327,12 @@ B7.Suporte = (function () {
   };
   const formatarResp = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(&quot;|")([^"<]{1,60}?)(&quot;|")/g, '<b>"$2"</b>').replace(/\n/g, '<br>');
   const tutPara = texto => {
-    if (!B7.Ajuda || !B7.Ajuda.procurar) return [];
+    if (souCliente() || !B7.Ajuda || !B7.Ajuda.procurar) return [];
     let r = []; try { r = B7.Ajuda.procurar(texto, true); } catch (e) { return []; }
     const topo = r.length ? r[0].pts : 0;
     return r.filter(x => x.pts >= Math.max(3, topo * 0.5)).slice(0, 3);
   };
-  const iaLigada = () => !!(B7.IA && B7.IA.pedir && B7.IA.ligada && B7.IA.ligada('chat'));
+  const iaLigada = () => !souCliente() && !!(B7.IA && B7.IA.pedir && B7.IA.ligada && B7.IA.ligada('chat'));
 
   async function carregar() { lista = ok(await sb().from('suporte_chamados').select('*').order('updated_at', { ascending: false }).limit(300)) || []; }
 
@@ -375,32 +381,33 @@ B7.Suporte = (function () {
     const card = (c, i) => '<button type="button" class="spx-th' + (temNovidade(c) ? ' nov' : '') + '" data-id="' + esc(c.id) + '" style="--i:' + i + '">' + icTipo(c.tipo) +
       '<span class="spx-th-tx"><b>' + esc(c.titulo) + '</b><small>#' + c.numero + ' · ' + esc(TIPOS[c.tipo].rot) + ' · ' + esc(quando(c.updated_at || c.created_at)) + '</small></span>' +
       (temNovidade(c) ? '<i class="sp-dot" title="Resposta nova"></i>' : '') + chipStatus(c.status) + '</button>';
-    const ATALHOS = [['bug', 'Relatar um problema'], ['sugestao', 'Mandar uma ideia'], ['elogio', 'Elogiar'], ['duvida', 'Abrir uma dúvida']];
+    const ATALHOS = [['duvida', 'Abrir uma dúvida'], ['bug', 'Relatar um problema'], ['sugestao', 'Mandar uma ideia'], ['elogio', 'Elogiar']];
+    const cli = souCliente();
     raiz.innerHTML =
       '<header class="spx-eq-cab spx-pergunta"><div><span class="spx-tag">Suporte</span><h1>Como podemos ajudar?</h1>' +
-        '<p>Escreva a sua dúvida. Quase sempre a resposta já está aqui; se não estiver, a equipe responde.</p></div>' +
+        '<p>Escreva a sua dúvida. Quase sempre a resposta já está aqui; se não estiver, abra um chamado: o assistente responde na hora e, se precisar, chama alguém da equipe.</p></div>' +
         '<label class="spx-q-grande">' + SVG('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/>') +
           '<input id="spx-q" type="search" placeholder="Ex.: como troco minha senha?" autocomplete="off" aria-label="Escreva a sua dúvida" value="' + esc(qEq) + '"></label>' +
         '<div class="spx-atalhos"><span>Ou vá direto:</span>' + ATALHOS.map(([k, r]) => '<button type="button" data-novo="' + k + '">' + icTipo(k) + esc(r) + '</button>').join('') + '</div>' +
       '</header>' +
       '<div id="spx-res" class="spx-res"></div>' +
-      '<div class="spx-eq-grade">' +
+      '<div class="spx-eq-grade' + (cli ? ' so-um' : '') + '">' +
         '<section class="spx-bloco"><h2>Seus chamados' + (abertos.length ? ' <small>' + abertos.length + ' em aberto</small>' : '') + '</h2>' +
           (meus.length ? '<div class="spx-ths">' + abertos.concat(fechados).slice(0, 30).map(card).join('') + '</div>'
             : '<div class="spx-vazio">' + SVG(IC.ok) + '<b>Nenhum chamado ainda</b><p>Quando você abrir um, a conversa com a equipe fica aqui.</p></div>') + '</section>' +
-        '<section class="spx-bloco"><h2>Ideias da equipe <small>vote nas que você também quer</small></h2><div id="spx-ideias">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>' +
-          '<button type="button" class="spx-link" id="spx-ideia-nova">+ Mandar uma ideia</button></section>' +
+        (cli ? '' : '<section class="spx-bloco"><h2>Ideias da equipe <small>vote nas que você também quer</small></h2><div id="spx-ideias">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>' +
+          '<button type="button" class="spx-link" id="spx-ideia-nova">+ Mandar uma ideia</button></section>') +
       '</div>';
     raiz.querySelectorAll('[data-novo]').forEach(b => b.onclick = () => novo(b.dataset.novo));
     raiz.querySelectorAll('.spx-th').forEach(b => b.onclick = () => { sel = b.dataset.id; pintar(); });
-    raiz.querySelector('#spx-ideia-nova').onclick = () => novo('sugestao');
+    const bIdeia = raiz.querySelector('#spx-ideia-nova'); if (bIdeia) bIdeia.onclick = () => novo('sugestao');
     const qi = raiz.querySelector('#spx-q');
     let rel = null;
     qi.oninput = () => { clearTimeout(rel); rel = setTimeout(() => { qEq = qi.value; tentou.faq = []; tentou.ia = ''; pintarRes(); }, 220); };
     qi.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(rel); qEq = qi.value; pintarRes(); } };
     carregarFaq().then(() => pintarRes());
     pintarRes();
-    ideiasInline(raiz.querySelector('#spx-ideias'), 5);
+    if (!cli) ideiasInline(raiz.querySelector('#spx-ideias'), 5);
   }
 
   /* respostas da dúvida: perguntas frequentes, tutoriais, assistente, equipe */
@@ -428,9 +435,9 @@ B7.Suporte = (function () {
       (tr.length ? '<h3 class="spx-res-h">Tutoriais sobre isso</h3><div class="spx-tut">' + tr.map(x => '<a href="#/ajuda/' + esc(x.i.id) + '"><b>' + esc(x.i.titulo) + '</b><small>' + esc(x.i.grupo) + '</small></a>').join('') + '</div>' : '') +
       (nada ? '<p class="spx-res-nada">Não achei uma resposta pronta para isso.</p>' : '') +
       '<div class="spx-ainda" id="spx-ainda"><div><b>' + (nada ? 'Vamos resolver de outro jeito' : 'Ainda com dúvida?') + '</b><small>' +
-        (iaLigada() ? 'O assistente responde na hora. Se não resolver, fale com a equipe.' : 'Fale com a equipe: ela responde aqui e você recebe aviso no sino.') + '</small></div>' +
+        (iaLigada() ? 'O assistente responde na hora. Se não resolver, abra um chamado.' : 'Abra um chamado: o atendimento responde aqui e você recebe aviso no sino.') + '</small></div>' +
         '<div class="spx-ainda-bts">' + (iaLigada() ? '<button type="button" class="b contorno" id="spx-ia-b">' + SVG('<path d="M10 4.6l1.6 4.3a1.5 1.5 0 0 0 .9.9l4.3 1.6-4.3 1.6a1.5 1.5 0 0 0-.9.9L10 18.2l-1.6-4.3a1.5 1.5 0 0 0-.9-.9l-4.3-1.6 4.3-1.6a1.5 1.5 0 0 0 .9-.9z"/>') + 'Perguntar ao assistente</button>' : '') +
-          '<button type="button" class="b pri" id="spx-equipe-b">Falar com a equipe</button></div></div>' +
+          '<button type="button" class="b pri" id="spx-equipe-b">Abrir um chamado</button></div></div>' +
       '<div id="spx-ia" class="spx-ia"></div></section>';
     ligarFaq(cx, t);
     const bia = cx.querySelector('#spx-ia-b'); if (bia) bia.onclick = () => perguntarIA(t);
@@ -495,7 +502,8 @@ B7.Suporte = (function () {
 
   /* ===================================================== ADMINISTRAÇÃO */
   const FILAS = [
-    ['entrada', 'Caixa de entrada', IC.entrada, c => ABERTOS.includes(c.status)],
+    ['entrada', 'Caixa de entrada', IC.entrada, c => ABERTOS.includes(c.status) && c.atendente !== 'ia'],
+    ['ia', 'Com o assistente', IC.ia, c => ABERTOS.includes(c.status) && c.atendente === 'ia'],
     ['urgentes', 'Urgentes', IC.urg, c => c.urgente && ABERTOS.includes(c.status)],
     ['semresp', 'Sem resposta há 24 h', IC.relogio, semResposta],
     ['andamento', 'Em andamento', IC.and, c => c.status === 'em_andamento' || c.status === 'em_analise'],
@@ -520,9 +528,10 @@ B7.Suporte = (function () {
     const pessoas = [...new Map(lista.map(c => [c.criado_por, c.criado_por_nome || 'Alguém'])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR'));
     raiz.innerHTML =
       '<header class="spx-adm-cab"><div><span class="spx-tag">Administração</span><h1>Central de atendimento</h1>' +
-        '<p>Os chamados da equipe: responder, mudar o andamento e acompanhar as ideias.</p></div>' +
+        '<p>Os chamados da equipe e dos clientes: o assistente atende primeiro; aqui você responde o que ele passou adiante, muda o andamento e acompanha as avaliações.</p></div>' +
         '<div class="spx-adm-ac"><div class="spx-abas" role="tablist"><button role="tab" data-aba="chamados" class="' + (aba === 'chamados' ? 'on' : '') + '">Chamados</button>' +
           '<button role="tab" data-aba="faq" class="' + (aba === 'faq' ? 'on' : '') + '">Perguntas frequentes</button>' +
+          '<button role="tab" data-aba="avaliacoes" class="' + (aba === 'avaliacoes' ? 'on' : '') + '">Avaliações</button>' +
           '<button role="tab" data-aba="ideias" class="' + (aba === 'ideias' ? 'on' : '') + '">Ideias</button></div>' +
           '<button type="button" class="b pri" id="spx-novo">+ Novo chamado</button></div></header>' +
       '<div class="spx-kpis">' +
@@ -531,8 +540,10 @@ B7.Suporte = (function () {
         kpi(lista.filter(semResposta).length, 'sem resposta há 24 h', lista.some(semResposta) ? 'alerta' : '', 'semresp') +
         kpi(lista.filter(c => c.status === 'em_andamento' || c.status === 'em_analise').length, 'em análise ou andamento', '', 'andamento') +
         kpi(res7, 'resolvidos em 7 dias', 'ok', 'resolvidos') +
-        kpi(fmtH(media), 'tempo médio para resolver (30 dias)', '', '') + '</div>' +
+        kpi(fmtH(media), 'tempo médio para resolver (30 dias)', '', '') +
+        '<div class="spx-kpi spx-kpi-nota" id="spx-kpi-nota"><b>—</b><span>nota do atendimento (30 dias)</span></div>' + '</div>' +
       (aba === 'faq' ? '<section class="spx-bloco spx-faq-adm" id="spx-faq-adm">' + B7.UI.skeleton('lista', { n: 4 }) + '</section>' :
+      aba === 'avaliacoes' ? '<section class="spx-bloco spx-aval-adm" id="spx-aval">' + B7.UI.skeleton('lista', { n: 4 }) + '</section>' :
       aba === 'ideias' ? '<section class="spx-bloco spx-ideias-adm"><h2>Ideias da equipe <small>mais votadas primeiro</small></h2><div id="spx-ideias">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></section>' :
       '<div class="spx-caixa' + (sel ? ' com-sel' : '') + '">' +
         '<aside class="spx-filas"><nav>' + FILAS.map(f => {
@@ -550,7 +561,9 @@ B7.Suporte = (function () {
     raiz.querySelector('#spx-novo').onclick = () => novo();
     raiz.querySelectorAll('[data-fila]').forEach(b => b.onclick = () => { fila = b.dataset.fila; aba = 'chamados'; sel = null; pintar(); });
     if (aba === 'ideias') return ideiasInline(raiz.querySelector('#spx-ideias'), 100, true);
+    resumoAtendimento();
     if (aba === 'faq') return faqAdm(raiz.querySelector('#spx-faq-adm'));
+    if (aba === 'avaliacoes') return avaliacoesAdm(raiz.querySelector('#spx-aval'));
     raiz.querySelectorAll('[data-tipof]').forEach(b => b.onclick = () => { tipoF = b.dataset.tipof; sel = null; pintar(); });
     raiz.querySelector('#spx-pessoa').onchange = e => { pessoaF = e.target.value; sel = null; pintar(); };
     const qi = raiz.querySelector('#spx-q'); qi.oninput = () => { q = qi.value; pintarItens(); };
@@ -576,7 +589,7 @@ B7.Suporte = (function () {
       '<div class="spx-faq-cols"><div><div class="spx-faq-cab"><h2>Perguntas frequentes <small>' + lista.filter(f => f.ativo).length + ' no ar</small></h2><button type="button" class="b pri fina" id="spx-faq-nova">+ Nova pergunta</button></div>' +
         (lista.length ? '<div class="spx-faq-lista">' + lista.map(f => {
           const x = pf[f.id] || { sim: 0, nao: 0 };
-          return '<div class="spx-faq-it' + (f.ativo ? '' : ' fora') + '"><div><b>' + esc(f.pergunta) + '</b><small>' + (f.tutorial_id ? 'tutorial ligado · ' : '') + '<span class="ok">' + x.sim + ' resolveu</span> · <span class="nao">' + x.nao + ' não resolveu</span>' + (f.ativo ? '' : ' · fora do ar') + '</small></div>' +
+          return '<div class="spx-faq-it' + (f.ativo ? '' : ' fora') + '"><div><b>' + esc(f.pergunta) + '</b><small>' + ({ clientes: 'clientes · ', todos: 'equipe e clientes · ' }[f.publico] || '') + (f.tutorial_id ? 'tutorial ligado · ' : '') + '<span class="ok">' + x.sim + ' resolveu</span> · <span class="nao">' + x.nao + ' não resolveu</span>' + (f.ativo ? '' : ' · fora do ar') + '</small></div>' +
             '<button type="button" class="b fina contorno" data-faq-ed="' + esc(f.id) + '">Editar</button></div>';
         }).join('') + '</div>' : '<div class="spx-vazio"><b>Nenhuma pergunta ainda</b></div>') + '</div>' +
       '<div><h2>O que procuram e não acham <small>vire uma pergunta</small></h2>' +
@@ -597,14 +610,18 @@ B7.Suporte = (function () {
       '<div class="spx-fq-linha"><div class="mb"><label class="rot" for="fq-tut">TUTORIAL LIGADO <span class="leve">— opcional</span></label><select class="campo" id="fq-tut"><option value="">Nenhum</option>' +
         tuts.map(([id, r]) => '<option value="' + esc(id) + '"' + (f.tutorial_id === id ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></div>' +
         '<div class="mb"><label class="rot" for="fq-o">ORDEM</label><input class="campo" id="fq-o" type="number" min="0" max="9999" value="' + esc(f.ordem == null ? 100 : f.ordem) + '"></div></div>' +
-      '<label class="sp-info"><input type="checkbox" id="fq-a"' + (f.ativo === false ? '' : ' checked') + '> No ar (a equipe vê)</label>' +
+      '<div class="mb"><label class="rot" for="fq-pub">QUEM VÊ</label><select class="campo" id="fq-pub">' +
+        [['equipe', 'Só a equipe'], ['clientes', 'Só os clientes (Portal)'], ['todos', 'Equipe e clientes']].map(([v, r]) => '<option value="' + v + '"' + ((f.publico || 'equipe') === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div>' +
+      '<label class="sp-info"><input type="checkbox" id="fq-a"' + (f.ativo === false ? '' : ' checked') + '> No ar</label>' +
       '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="fq-salvar">Salvar</button></div>', { larga: true });
     const q = s => m.querySelector(s);
     q('#fq-salvar').onclick = async () => {
       const bt = q('#fq-salvar'); bt.disabled = true;
       try {
-        await B7.DB.rpc('suporte_faq_salvar', { p_id: f.id || null, p_pergunta: q('#fq-p').value, p_resposta: q('#fq-r').value, p_termos: q('#fq-t').value,
+        const fid = await B7.DB.rpc('suporte_faq_salvar', { p_id: f.id || null, p_pergunta: q('#fq-p').value, p_resposta: q('#fq-r').value, p_termos: q('#fq-t').value,
           p_tutorial: q('#fq-tut').value, p_ordem: parseInt(q('#fq-o').value, 10) || 100, p_ativo: q('#fq-a').checked });
+        const idF = f.id || fid;
+        if (idF && q('#fq-pub').value !== (f.publico || 'equipe')) await B7.DB.rpc('suporte_faq_publico', { p_id: idF, p_publico: q('#fq-pub').value });
         m.fechar(); B7.UI.toast(f.id ? 'Pergunta salva.' : 'Pergunta criada. A equipe já vê no Suporte.');
         await carregarFaq(true);
         if (aba === 'faq') faqAdm(document.getElementById('spx-faq-adm'));
@@ -622,9 +639,152 @@ B7.Suporte = (function () {
         '<span class="spx-it-tx"><span class="spx-it-l1"><b>' + esc(c.titulo) + '</b>' + (nov ? '<i class="sp-dot"></i>' : '') + '</span>' +
         '<small>' + icTipo(c.tipo) + '#' + c.numero + ' · ' + esc((c.criado_por_nome || 'alguém').split(' ')[0]) + ' · ' + esc(quando(c.updated_at || c.created_at)) + '</small>' +
         '<span class="spx-it-tags">' + chipStatus(c.status) + (c.urgente && ABERTOS.includes(c.status) ? '<em class="spx-urg">urgente</em>' : '') +
+          (c.do_cliente ? '<em class="spx-cli">cliente</em>' : '') + (c.atendente === 'ia' && ABERTOS.includes(c.status) ? '<em class="spx-iat">assistente</em>' : '') +
+          (c.escalado_em && ABERTOS.includes(c.status) ? '<em class="spx-esc">chamou a equipe</em>' : '') + (c.avaliacao ? '<em class="spx-nota-it">' + estrelas(c.avaliacao) + '</em>' : '') +
           (c.prioridade === 'alta' ? '<em class="spx-prio">alta</em>' : '') + (semResposta(c) ? '<em class="spx-sla">há ' + Math.floor(h) + ' h sem resposta</em>' : '') + '</span></span></button>';
     }).join('') : '<div class="spx-vazio">' + SVG(IC.ok) + '<b>Fila vazia</b><p>Nada aqui com esses filtros.</p></div>';
     cx.querySelectorAll('.spx-it').forEach(b => b.onclick = () => { sel = b.dataset.id; pintar(); });
+  }
+
+  /* ============================================ ATENDIMENTO (zzz223)
+     Dúvida e problema começam com o assistente: ele responde na hora, no
+     próprio chamado. Quem pediu marca "Resolveu" ou "Falar com uma pessoa";
+     o assistente também chama a equipe sozinho quando não resolve. Quem é
+     da equipe e responde assume o atendimento. Encerrado não recebe mais
+     mensagem de quem pediu: a pessoa avalia e, se precisar, abre outro. */
+  const atendendo = {};
+  const IC_IA = '<path d="M10 4.6l1.6 4.3a1.5 1.5 0 0 0 .9.9l4.3 1.6-4.3 1.6a1.5 1.5 0 0 0-.9.9L10 18.2l-1.6-4.3a1.5 1.5 0 0 0-.9-.9l-4.3-1.6 4.3-1.6a1.5 1.5 0 0 0 .9-.9z"/>';
+  const bolhaIA = (html, qd, indo) => '<div class="sp-msg sp-msg-ia' + (indo ? ' indo' : '') + '"><span class="sp-av sp-av-ia" aria-hidden="true">' + SVG(IC_IA) + '</span>' +
+    '<div class="sp-bolha"><div class="sp-msg-c"><b>Assistente B7</b><em class="sp-ia-tag">IA</em>' + (qd ? '<small>' + esc(qd) + '</small>' : '') + '</div>' + html + '</div></div>';
+  const estrelas = n => '★★★★★'.slice(0, n) + '<span class="apagada">' + '★★★★★'.slice(n) + '</span>';
+
+  function atendimentoHTML(c, adm, souAutor) {
+    const fechado = !ABERTOS.includes(c.status);
+    if (fechado) {
+      if (!adm || !c.avaliacao) return adm ? '' : '';
+      return '<div class="spx-aval-vista"><span class="spx-estrelas">' + estrelas(c.avaliacao) + '</span><div><b>Avaliação de ' + esc((c.criado_por_nome || 'quem pediu').split(' ')[0]) +
+        ' · atendimento ' + (c.avaliacao_alvo === 'ia' ? 'do assistente' : 'da equipe') + '</b>' + (c.avaliacao_comentario ? '<p>"' + esc(c.avaliacao_comentario) + '"</p>' : '') + '</div></div>';
+    }
+    if (c.atendente === 'ia') {
+      return '<div class="spx-atend ia"><span class="spx-atend-ic">' + SVG(IC_IA) + '</span><div><b>' + (adm ? 'O assistente está atendendo' : 'Atendimento do assistente') + '</b><small>' +
+        (adm ? 'Se você responder, assume o atendimento no lugar dele.' : 'Ele responde na hora. Se não resolver, chame uma pessoa da equipe.') + '</small></div>' +
+        (souAutor ? '<div class="spx-atend-bts"><button type="button" class="b fina contorno" data-humano>Falar com uma pessoa</button><button type="button" class="b fina pri" data-resolvi>' + SVG(IC.ok) + 'Resolveu</button></div>' : '') + '</div>';
+    }
+    return '<div class="spx-atend eq"><span class="spx-atend-ic">' + SVG('<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9.5" r="2.4"/><path d="M15.5 14.2a4.5 4.5 0 0 1 5 4.8"/>') + '</span><div><b>' +
+      (c.escalado_em ? (adm ? 'Chamaram a equipe' : 'Alguém da equipe vai continuar o atendimento') : (adm ? 'Atendimento da equipe' : 'Atendimento da equipe')) + '</b><small>' +
+      (adm ? (c.escalado_motivo ? 'Motivo: ' + esc(c.escalado_motivo) : 'A pessoa recebe aviso no sino a cada resposta.') : 'A resposta chega aqui e você recebe aviso no sino.') + '</small></div>' +
+      (souAutor ? '<div class="spx-atend-bts"><button type="button" class="b fina contorno" data-resolvi>' + SVG(IC.ok) + 'Já resolveu</button></div>' : '') + '</div>';
+  }
+
+  function encerradoHTML(c, souAutor) {
+    const avaliar = souAutor && !c.avaliacao;
+    return '<div class="spx-fim">' +
+      '<div class="spx-fim-cab">' + SVG(IC.ok) + '<div><b>Chamado ' + (c.status === 'resolvido' ? 'resolvido' : 'encerrado') + '</b><small>Este chamado não recebe mais mensagens. Precisa de mais alguma coisa? Abra um novo chamado.</small></div></div>' +
+      (avaliar ? '<div class="spx-avaliar" id="sp-avaliar"><b>Como foi o atendimento' + (c.atendente === 'ia' ? ' do assistente' : ' da equipe') + '?</b>' +
+          '<div class="spx-est-esc" role="radiogroup" aria-label="Nota">' + [1, 2, 3, 4, 5].map(n => '<button type="button" role="radio" data-nota="' + n + '" aria-label="' + n + ' de 5">' + SVG(IC.estrela) + '</button>').join('') + '</div>' +
+          '<small class="spx-est-rot" id="sp-est-rot">Toque nas estrelas</small>' +
+          '<textarea class="campo" id="sp-aval-t" rows="2" maxlength="600" placeholder="Quer contar algo? (opcional)" hidden></textarea>' +
+          '<button type="button" class="b pri fina" id="sp-aval-ok" hidden>Enviar avaliação</button></div>'
+        : c.avaliacao ? '<div class="spx-aval-feita"><span class="spx-estrelas">' + estrelas(c.avaliacao) + '</span><small>Obrigado pela avaliação!</small></div>' : '') +
+      (souAutor ? '<button type="button" class="b contorno" id="sp-novo-sobre">Abrir um novo chamado</button>' : '') +
+    '</div>';
+  }
+
+  function ligarAtendimento(cx, c) {
+    const resolvi = cx.querySelector('[data-resolvi]');
+    if (resolvi) resolvi.onclick = async () => {
+      resolvi.disabled = true;
+      try { await B7.DB.rpc('suporte_resolvi', { p_id: c.id }); await carregar(); B7.UI.toast('Que bom que resolveu! Conte como foi o atendimento.'); pintar(); }
+      catch (e) { resolvi.disabled = false; B7.UI.toast((e && e.message) || 'Não foi possível.', { tipo: 'erro' }); }
+    };
+    const hum = cx.querySelector('[data-humano]');
+    if (hum) hum.onclick = async () => {
+      hum.disabled = true;
+      try { await B7.DB.rpc('suporte_chamar_equipe', { p_id: c.id, p_motivo: 'a pessoa pediu para falar com alguém' }); await carregar(); B7.UI.toast('Chamamos alguém da equipe. A resposta chega aqui.'); pintar(); }
+      catch (e) { hum.disabled = false; B7.UI.toast((e && e.message) || 'Não foi possível.', { tipo: 'erro' }); }
+    };
+    const nv = cx.querySelector('#sp-novo-sobre');
+    if (nv) nv.onclick = () => novo(c.tipo === 'elogio' || c.tipo === 'sugestao' ? c.tipo : 'duvida', { titulo: '', descricao: 'Sobre o chamado #' + c.numero + ' (' + c.titulo + '): ' });
+    const av = cx.querySelector('#sp-avaliar');
+    if (av) {
+      let nota = 0;
+      const ROT = ['', 'Muito ruim', 'Ruim', 'Ok', 'Bom', 'Ótimo'];
+      const pintaNota = n => av.querySelectorAll('[data-nota]').forEach(b => { b.classList.toggle('on', +b.dataset.nota <= n); b.setAttribute('aria-checked', String(+b.dataset.nota === n)); });
+      av.querySelectorAll('[data-nota]').forEach(b => {
+        b.onmouseenter = () => pintaNota(+b.dataset.nota);
+        b.onmouseleave = () => pintaNota(nota);
+        b.onclick = () => { nota = +b.dataset.nota; pintaNota(nota); av.querySelector('#sp-est-rot').textContent = ROT[nota];
+          av.querySelector('#sp-aval-t').hidden = false; av.querySelector('#sp-aval-ok').hidden = false;
+          av.querySelector('#sp-aval-t').placeholder = nota <= 3 ? 'O que podia ter sido melhor? (opcional)' : 'Quer contar algo? (opcional)'; };
+      });
+      av.querySelector('#sp-aval-ok').onclick = async () => {
+        const bt = av.querySelector('#sp-aval-ok'); bt.disabled = true;
+        try { await B7.DB.rpc('suporte_avaliar', { p_id: c.id, p_nota: nota, p_comentario: av.querySelector('#sp-aval-t').value.trim() || null });
+          await carregar(); B7.UI.toast('Obrigado pela avaliação!'); pintar(); }
+        catch (e) { bt.disabled = false; B7.UI.toast((e && e.message) || 'Não foi possível enviar.', { tipo: 'erro' }); }
+      };
+    }
+  }
+
+  /* o assistente responde no chamado (texto aparece enquanto é escrito) */
+  async function atender(c) {
+    if (atendendo[c.id] || !(B7.IA && B7.IA.pedir)) return;
+    atendendo[c.id] = true;
+    const box = document.getElementById('sp-msgs');
+    const vazio = box && box.querySelector('.spx-msgs-vazio'); if (vazio) vazio.remove();
+    let el = null;
+    if (box) { box.insertAdjacentHTML('beforeend', bolhaIA('<div class="spx-ia-pensa"><i></i><i></i><i></i></div>', '', true)); el = box.lastElementChild; box.scrollTop = box.scrollHeight; }
+    let parcial = '';
+    let r = null;
+    try {
+      r = await B7.IA.pedir('suporte', { chamado_id: c.id }, { aoTrecho: p => {
+        parcial += p;
+        if (el && el.isConnected) { el.querySelector('.sp-bolha').innerHTML = '<div class="sp-msg-c"><b>Assistente B7</b><em class="sp-ia-tag">IA</em></div><p>' + formatarResp(parcial) + '</p>'; const b = document.getElementById('sp-msgs'); if (b) b.scrollTop = b.scrollHeight; }
+      } });
+    } catch (e) { r = null; }
+    atendendo[c.id] = false;
+    if (!r || !r.ok) {
+      if (r && r.categoria === 'fora') { if (sel === c.id) mensagens(c); return; }
+      if (el && el.isConnected) el.querySelector('.sp-bolha').innerHTML = '<div class="sp-msg-c"><b>Assistente B7</b><em class="sp-ia-tag">IA</em></div>' +
+        '<p class="spx-ia-erro">' + esc((r && r.mensagem) || 'O assistente não conseguiu responder agora.') + '</p><button type="button" class="b fina pri" data-humano2>Falar com uma pessoa</button>';
+      const h2 = el && el.querySelector('[data-humano2]');
+      if (h2) h2.onclick = async () => { h2.disabled = true; try { await B7.DB.rpc('suporte_chamar_equipe', { p_id: c.id, p_motivo: 'o assistente não conseguiu responder' }); await carregar(); pintar(); } catch (e) { h2.disabled = false; } };
+      return;
+    }
+    await carregar();
+    if (r.escalou) B7.UI.toast('O assistente chamou alguém da equipe. A resposta chega aqui.');
+    if (sel === c.id && document.getElementById('spx')) pintar();
+  }
+
+  /* números do atendimento na Central */
+  async function resumoAtendimento() {
+    let r = null;
+    try { r = await B7.DB.rpc('suporte_atendimento_resumo', { p_dias: 30 }); } catch (e) { return; }
+    const k = document.getElementById('spx-kpi-nota'); if (!k || !r) return;
+    const partes = [];
+    if (r.nota_ia != null) partes.push('assistente ' + String(r.nota_ia).replace('.', ','));
+    if (r.nota_equipe != null) partes.push('equipe ' + String(r.nota_equipe).replace('.', ','));
+    k.innerHTML = '<b>' + (partes.length ? partes.join(' · ') : '—') + '</b><span>nota do atendimento (30 dias)' +
+      (r.com_ia ? ' · ' + r.resolvidos_ia + ' de ' + r.com_ia + ' resolvidos pelo assistente' : '') + '</span>';
+    window.__suporteResumo = r;
+  }
+  async function avaliacoesAdm(cx) {
+    if (!cx) return;
+    let r = null;
+    try { r = await B7.DB.rpc('suporte_atendimento_resumo', { p_dias: 90 }); } catch (e) { cx.innerHTML = '<div class="cb-aviso erro">Não foi possível carregar as avaliações.</div>'; return; }
+    if (!cx.isConnected) return;
+    const nota = (v, n) => v == null ? '—' : String(v).replace('.', ',') + ' <small>(' + n + ')</small>';
+    const kpi = (v, rot, cls) => '<div class="spx-kpi ' + (cls || '') + '"><b>' + v + '</b><span>' + rot + '</span></div>';
+    const us = r.ultimas || [];
+    cx.innerHTML = '<div class="spx-kpis">' + kpi(nota(r.nota_ia, r.n_ia), 'nota do assistente') + kpi(nota(r.nota_equipe, r.n_equipe), 'nota da equipe') +
+        kpi(r.resolvidos_ia + ' de ' + r.com_ia, 'resolvidos pelo assistente', 'ok') + kpi(r.escalados, 'chamaram a equipe') + '</div>' +
+      '<p class="spx-faq-nota leve">Últimos 90 dias. Nota de 1 a 5, dada por quem abriu o chamado depois de encerrado.</p>' +
+      '<h2>Últimas avaliações</h2>' +
+      (us.length ? '<div class="spx-aval-lista">' + us.map(a => '<button type="button" class="spx-aval-it" data-id="' + esc(a.id) + '"><span class="spx-estrelas">' + estrelas(a.avaliacao) + '</span>' +
+          '<span class="spx-aval-tx"><b>#' + a.numero + ' · ' + esc(a.titulo) + '</b><small>' + esc((a.criado_por_nome || 'alguém').split(' ')[0]) + (a.do_cliente ? ' (cliente)' : '') + ' · ' +
+          (a.avaliacao_alvo === 'ia' ? 'assistente' : 'equipe') + ' · ' + esc(quando(a.avaliado_em)) + '</small>' + (a.avaliacao_comentario ? '<q>' + esc(a.avaliacao_comentario) + '</q>' : '') + '</span></button>').join('') + '</div>'
+        : '<div class="spx-vazio">' + SVG(IC.estrela) + '<b>Nenhuma avaliação ainda</b><p>Quando um chamado for encerrado, quem abriu pode dar a nota.</p></div>');
+    cx.querySelectorAll('.spx-aval-it').forEach(b => b.onclick = () => { aba = 'chamados'; fila = 'todos'; sel = b.dataset.id; pintar(); });
   }
 
   /* ======================================== CONVERSA (as duas telas) */
@@ -638,29 +798,37 @@ B7.Suporte = (function () {
     if (!cx || !c) return;
     marcarVisto(c);
     const t = TIPOS[c.tipo] || TIPOS.bug, souAutor = c.criado_por === eu(), fechado = !ABERTOS.includes(c.status);
+    const comIA = c.atendente === 'ia' && !fechado;
+    /* zzz223: encerrado = sem mais mensagens de quem pediu (para outro assunto, um chamado novo) */
+    const travado = fechado && !adm;
     cx.innerHTML = '<div class="spx-conv' + (adm ? ' adm' : '') + '">' +
       '<button type="button" class="spx-voltar" id="sp-volta">' + SVG(IC.voltar) + (adm ? 'Fila' : 'Seus chamados') + '</button>' +
       '<header class="spx-conv-cab">' + icTipo(c.tipo) + '<div><div class="spx-conv-l1"><span class="sp-tp sp-tp-' + esc(c.tipo) + '">' + esc(t.rot) + '</span><span>#' + c.numero + '</span>' +
           (c.urgente && !fechado ? '<em class="spx-urg">urgente</em>' : '') + '</div>' +
         '<h2>' + esc(c.titulo) + '</h2><small>' + av(c.criado_por_nome) + esc(souAutor ? 'Você' : (c.criado_por_nome || 'alguém')) + ' · aberto ' + esc(quando(c.created_at)) + '</small></div>' +
         (adm ? '<button type="button" class="b fina contorno spx-virar" id="sp-virar-faq" title="Usa o título e a última resposta da equipe">Virar pergunta frequente</button>' : '') + '</header>' +
+      atendimentoHTML(c, adm, souAutor) +
       (adm ? '<div class="spx-and"><div class="spx-st-pills" role="group" aria-label="Andamento">' + Object.keys(STATUS).map(k => '<button type="button" data-st="' + k + '" class="' + (c.status === k ? 'on' : '') + '">' + esc(STATUS[k]) + '</button>').join('') + '</div>' +
           '<label class="spx-prio-sel">Prioridade <select class="campo fina" id="sp-pr">' + Object.keys(PRIO).map(k => '<option value="' + k + '"' + (c.prioridade === k ? ' selected' : '') + '>' + PRIO[k] + '</option>').join('') + '</select></label></div>'
         : linhaTempo(c)) +
-      (c.status === 'resolvido' && souAutor && !adm ? '<div class="sp-resolveu"><div><b>Isso resolveu?</b><p>Se ainda acontece, reabra e conte o que viu.</p></div><div><button type="button" class="b contorno" id="sp-sim">Sim, obrigado</button><button type="button" class="b pri" id="sp-reabrir">Ainda acontece</button></div></div>' : '') +
+
       '<div class="spx-pedido"><p>' + (c.descricao ? esc(c.descricao).replace(/\n/g, '<br>') : '<span class="leve">Sem detalhes.</span>') + '</p><div class="sp-anexos" id="sp-anexos"></div>' + (adm ? contextoHTML(c) : '') + '</div>' +
       '<div class="spx-msgs" id="sp-msgs">' + B7.UI.skeleton('lista', { n: 2 }) + '</div>' +
-      '<div class="spx-resp">' +
-        (adm ? '<div class="spx-modo" role="tablist"><button role="tab" data-modo="resp" class="on">Responder para ' + esc((c.criado_por_nome || 'a pessoa').split(' ')[0]) + '</button><button role="tab" data-modo="nota">Nota interna</button></div>' +
+      (travado ? encerradoHTML(c, souAutor) :
+      '<div class="spx-resp' + (adm && fechado ? ' nota' : '') + '">' +
+        (adm && fechado ? '<p class="spx-fechado-adm">Chamado encerrado: a pessoa não escreve mais aqui. Você ainda pode deixar uma nota interna (ou mudar o andamento para reabrir).</p>' : '') +
+        (adm && !fechado ? '<div class="spx-modo" role="tablist"><button role="tab" data-modo="resp" class="on">Responder para ' + esc((c.criado_por_nome || 'a pessoa').split(' ')[0]) + '</button><button role="tab" data-modo="nota">Nota interna</button></div>' +
           '<div class="sp-prontas">' + RESPOSTAS.map((r, k) => '<button type="button" data-pronta="' + k + '">' + esc(r[0]) + '</button>').join('') + '</div>' : '') +
-        '<div class="spx-resp-cx"><textarea class="campo" id="sp-resp-t" rows="2" maxlength="4000" placeholder="' + (adm ? 'Escreva a resposta…' : fechado ? 'Escrever (o chamado continua ' + esc(STATUS[c.status].toLowerCase()) + ')' : 'Escreva para a equipe…') + '"></textarea>' +
+        '<div class="spx-resp-cx"><textarea class="campo" id="sp-resp-t" rows="2" maxlength="4000" placeholder="' + (adm ? (fechado ? 'Nota só para a equipe…' : comIA ? 'Responder (você assume o atendimento no lugar do assistente)…' : 'Escreva a resposta…') : comIA ? 'Escreva para o assistente…' : 'Escreva para a equipe…') + '"></textarea>' +
           '<button type="button" class="spx-env" id="sp-resp-b" aria-label="Enviar">' + SVG(IC.enviar) + '</button></div>' +
-        '<small class="leve">Ctrl+Enter envia' + (adm ? ' · a pessoa recebe aviso no sino (a nota interna, não)' : '') + '</small></div></div>';
+        '<small class="leve">Ctrl+Enter envia' + (adm ? ' · a pessoa recebe aviso no sino (a nota interna, não)' : '') + '</small></div>') + '</div>';
     cx.querySelector('#sp-volta').onclick = () => { sel = null; pintar(); };
     anexos(c); mensagens(c);
     const vf = cx.querySelector('#sp-virar-faq');
     if (vf) vf.onclick = () => editarFaq(null, { pergunta: c.titulo, resposta: ultimaResp[c.id] || '' });
-    let interno = false;
+    ligarAtendimento(cx, c);
+    if (travado) return;
+    let interno = adm && fechado;
     const tx = cx.querySelector('#sp-resp-t');
     tx.addEventListener('input', () => { tx.style.height = 'auto'; tx.style.height = Math.min(200, tx.scrollHeight + 2) + 'px'; });
     cx.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => {
@@ -675,21 +843,15 @@ B7.Suporte = (function () {
       const bt = cx.querySelector('#sp-resp-b'); bt.disabled = true;
       try {
         await B7.DB.rpc('suporte_responder', { p_id: c.id, p_texto: texto, p_interno: adm && interno });
-        tx.value = ''; tx.style.height = ''; c.updated_at = new Date().toISOString(); marcarVisto(c); await mensagens(c);
+        tx.value = ''; tx.style.height = ''; c.updated_at = new Date().toISOString(); marcarVisto(c);
+        /* quem da equipe responde assume o chamado: redesenha o cabeçalho */
+        if (adm && !interno && c.atendente === 'ia' && c.criado_por !== eu()) { await carregar(); return pintar(); }
+        await mensagens(c);
       } catch (e) { B7.UI.toast('Não foi possível enviar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
       bt.disabled = false;
     };
     cx.querySelector('#sp-resp-b').onclick = enviar;
     tx.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); enviar(); } });
-    const sim = cx.querySelector('#sp-sim');
-    if (sim) sim.onclick = () => { B7.UI.toast('Que bom! Obrigado por avisar.'); sim.closest('.sp-resolveu').remove(); };
-    const re = cx.querySelector('#sp-reabrir');
-    if (re) re.onclick = async () => {
-      const motivo = await B7.UI.perguntar({ titulo: 'O que ainda acontece?', confirmar: 'Reabrir chamado' });
-      if (motivo === null) return;
-      try { await B7.DB.rpc('suporte_reabrir', { p_id: c.id, p_motivo: motivo || '' }); await carregar(); B7.UI.toast('Chamado reaberto. A equipe foi avisada.'); pintar(); }
-      catch (e) { B7.UI.toast('Não foi possível reabrir: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
-    };
     /* andamento em um toque; prioridade ao trocar */
     const salvarAnd = async (st, pr) => {
       try {
@@ -730,12 +892,16 @@ B7.Suporte = (function () {
     const resp = ms.filter(m => !m.interno && !m.sistema && m.autor_id !== c.criado_por);
     if (resp.length) ultimaResp[c.id] = resp[resp.length - 1].texto;
     box.innerHTML = ms.length ? ms.map(m => m.sistema
-      ? '<div class="sp-sis"><span>' + esc(m.texto) + ' · ' + esc((m.autor_nome || '').split(' ')[0]) + ' · ' + esc(quando(m.created_at)) + '</span></div>'
+      ? '<div class="sp-sis' + (m.ia ? ' ia' : '') + '"><span>' + esc(m.texto) + (m.ia ? '' : ' · ' + esc((m.autor_nome || '').split(' ')[0])) + ' · ' + esc(quando(m.created_at)) + '</span></div>'
+      : m.ia ? bolhaIA(formatarResp(m.texto), quando(m.created_at))
       : '<div class="sp-msg' + (m.autor_id === eu() ? ' minha' : '') + (m.interno ? ' interna' : '') + '">' + (m.autor_id === eu() ? '' : av(m.autor_nome)) +
         '<div class="sp-bolha"><div class="sp-msg-c"><b>' + esc(m.autor_id === eu() ? 'Você' : (m.autor_nome || 'Alguém')) + '</b>' + (m.interno ? '<em>nota interna</em>' : '') + '<small>' + esc(quando(m.created_at)) + '</small></div>' +
         '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p></div></div>').join('')
-      : '<p class="spx-msgs-vazio">' + (equipe() ? 'Ainda sem respostas. A primeira resposta tira o chamado da fila de "sem resposta".' : 'A equipe ainda não respondeu. Você recebe um aviso quando responder.') + '</p>';
+      : '<p class="spx-msgs-vazio">' + (equipe() ? 'Ainda sem respostas. A primeira resposta tira o chamado da fila de "sem resposta".' : c.atendente === 'ia' ? 'O assistente está lendo o seu chamado…' : 'A equipe ainda não respondeu. Você recebe um aviso quando responder.') + '</p>';
     box.scrollTop = box.scrollHeight;
+    /* zzz223: com o assistente atendendo, ele responde a quem pediu (no começo e a cada mensagem nova) */
+    const falas = ms.filter(m => !m.sistema && !m.interno);
+    if (c.atendente === 'ia' && ABERTOS.includes(c.status) && c.criado_por === eu() && (!falas.length || (!falas[falas.length - 1].ia && falas[falas.length - 1].autor_id === eu()))) atender(c);
   }
 
   /* ideias com votos, dentro da tela (equipe: as 5 primeiras; administração: todas, com o andamento) */

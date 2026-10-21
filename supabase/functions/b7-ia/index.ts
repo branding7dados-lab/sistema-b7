@@ -21,6 +21,7 @@
 //         { tarefa: 'chat', texto, conversa_id?, cliente_id?, fluxo? }     (ver _shared/ia/chat.ts)
 //         { tarefa: 'oportunidade', oportunidade_id, cliente_id, dia?, instrucao? }  (ver _shared/ia/oportunidade.ts)
 //         { tarefa: 'voz', audio (base64), mime }                          (ver _shared/ia/voz.ts)
+//         { tarefa: 'suporte', chamado_id }   (atendimento de um chamado do Suporte; ver _shared/ia/suporte.ts — único pedido que o cliente do Portal pode fazer)
 //         { tarefa: 'agencia', operacao: 'semana', instrucao? }            (só administrador; ver _shared/ia/agencia.ts)
 //         { tarefa: 'whatsapp', operacao: 'resumo'|'resposta', mensagens, grupo, cliente_id? }  ou  { tarefa: 'whatsapp', operacao: 'corrigir', texto }  (ver _shared/ia/whatsapp.ts)
 //
@@ -68,6 +69,7 @@ import * as Memoria from '../_shared/ia/memoria.ts';
 import * as Voz from '../_shared/ia/voz.ts';
 import * as Agencia from '../_shared/ia/agencia.ts';
 import * as WhatsApp from '../_shared/ia/whatsapp.ts';
+import * as Suporte from '../_shared/ia/suporte.ts';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
@@ -113,8 +115,8 @@ Deno.serve(comCors(async (req: Request) => {
   /* zzz129: para quem cada recurso novo aparece (Configurações → Admin → Recursos) */
   const pRecursos = sb.from('sistema_config').select('valor').eq('chave', 'recursos').maybeSingle().then(r => r);
   const pLimite = dentroDoLimite(sb, user.id).catch(() => 'limite' as const);
-  const { data: perfil } = await sb.from('perfis').select('id, estado, papel, nome, funcao').eq('id', user.id).maybeSingle();
-  if (!perfil || perfil.estado !== 'ativa' || perfil.papel === 'cliente') return json({ ok: false, categoria: 'sem_permissao' }, 403);
+  const { data: perfil } = await sb.from('perfis').select('id, estado, papel, nome, funcao, eh_admin').eq('id', user.id).maybeSingle();
+  if (!perfil || perfil.estado !== 'ativa') return json({ ok: false, categoria: 'sem_permissao' }, 403);
 
   /* ---- pedido ---- */
   const bruto = await req.text();
@@ -132,17 +134,21 @@ Deno.serve(comCors(async (req: Request) => {
   const pVoz = corpo.tarefa === 'voz' ? Voz.validar(corpo) : null;
   const pAgencia = corpo.tarefa === 'agencia' ? Agencia.validar(corpo) : null;
   const pWa = corpo.tarefa === 'whatsapp' ? WhatsApp.validar(corpo) : null;
-  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport || pVoz || pAgencia || pWa;
+  const pSuporte = corpo.tarefa === 'suporte' ? Suporte.validar(corpo) : null;
+  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport || pVoz || pAgencia || pWa || pSuporte;
   if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
+  /* zzz223: o cliente do Portal só usa o atendimento do Suporte (e só no chamado dele) */
+  if (perfil.papel === 'cliente' && !pSuporte) return json({ ok: false, categoria: 'sem_permissao' }, 403);
 
   /* zzz71: liga/desliga do administrador (Configurações → Administração),
      guardado em sistema_config. Roteiro e análise seguem "roteiros";
      linha e resumo seguem "linhas". Sem a linha no banco = ligado. */
   {
     const { data: cfgIa } = await pCfgIa;
-    const recursoCfg = (pChat || pVoz || pWa) ? 'chat' : pAgencia ? 'agencia' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
+    const recursoCfg = (pChat || pVoz || pWa || pSuporte) ? 'chat' : pAgencia ? 'agencia' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
     const valorIa = (cfgIa && cfgIa.valor) as Record<string, unknown> | null;
     if (valorIa && valorIa[recursoCfg] === false) return json({ ok: false, categoria: 'desligado' });
+    if (pSuporte && valorIa && valorIa.suporte === false) return json({ ok: false, categoria: 'desligado' });
   }
 
   /* zzz129: recurso de IA que o administrador ainda não liberou para esta
@@ -199,7 +205,24 @@ Deno.serve(comCors(async (req: Request) => {
   let clienteDoPedido: string | null | undefined = undefined;
   /* o chat já lê a memória junto do contexto (zzz128) */
   let memoriaPronta: { memoria: string; exemplos: string } | null = null;
-  if (pChat && pChat.ok) {
+  if (pSuporte && pSuporte.ok) {
+    /* zzz223: atendimento de um chamado. Só quem abriu, chamado aberto e com o
+       assistente; o que ele sabe são os tutoriais e as perguntas frequentes do
+       público da pessoa (nada de dados de clientes: resposta rápida e sem vazar) */
+    const lido = await Suporte.carregar(sb, perfil.id, pSuporte.pedido);
+    if (!lido.ok) return json({ ok: false, categoria: lido.categoria });
+    const publico = Suporte.publicoDe(perfil);
+    const faqs = await Suporte.faqsPara(sb, publico);
+    const chamado = lido.chamado;
+    clienteDoPedido = null; memoriaPronta = { memoria: '', exemplos: '' };
+    t = {
+      recurso: 'suporte', acao: 'atender', entidadeTipo: 'suporte_chamado', entidadeId: chamado.id,
+      tamanhoEntrada: (chamado.descricao || '').length + lido.falas.reduce((n, f) => n + f.texto.length, 0),
+      mensagens: Suporte.montarMensagens(chamado, lido.falas, publico, String(perfil.nome || ''), faqs),
+      maxTokens: 900, temperatura: 0.3, limpar: Suporte.limpar, json: false,
+      aposOk: async (texto: string) => { const r = await Suporte.gravar(sb, chamado, texto); return { texto: r.texto, escalou: r.escalou }; }
+    };
+  } else if (pChat && pChat.ok) {
     /* conversa livre: a conversa tem que ser da pessoa; o que o assistente
        sabe do B7 é lido com a sessão dela (RLS) */
     const pedido = pChat.pedido;
@@ -383,7 +406,7 @@ Deno.serve(comCors(async (req: Request) => {
   };
 
   /* ---- zzz123: chat em fluxo — o texto vai saindo enquanto é escrito ---- */
-  if (pChat && pChat.ok && corpo.fluxo === true) {
+  if (((pChat && pChat.ok) || (pSuporte && pSuporte.ok)) && corpo.fluxo === true) {
     const enc = new TextEncoder();
     const tarefa = t;
     const fluxo = new ReadableStream<Uint8Array>({
