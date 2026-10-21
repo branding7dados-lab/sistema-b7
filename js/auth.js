@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-21-zzz217';
+  const VERSAO = '2026-10-21-zzz218';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -181,13 +181,24 @@ B7.Auth = (function () {
      ================================================================= */
   async function entrar(username, senha) {
     anotar('entrar', username);
-    const r = await B7.DB.chamarAuth({ acao: 'login', username, senha });
+    /* zzz218: o aparelho de confiança (se houver) pula o código da verificação em 2 etapas */
+    const aparelho = B7.Seguranca && B7.Seguranca.lerAparelho ? B7.Seguranca.lerAparelho(username) : null;
+    const r = await B7.DB.chamarAuth(Object.assign({ acao: 'login', username, senha }, aparelho ? { aparelho } : {}));
+    /* senha certa, falta o código: quem chamou mostra o segundo passo */
+    if (r && r.precisa_2fa) { anotar('entrar', '2 etapas: ' + r.metodo); return { etapa2: r }; }
+    return concluirLogin(r);
+  }
+
+  /* zzz218: pedir para configurar a verificação depois de entrar (a administração exige) */
+  let pedirConfigurar2fa = false;
+  async function concluirLogin(r) {
     if (!r || !r.access_token) {
       throw new Error(r && r.erro ? r.erro : 'Não foi possível entrar.');
     }
     /* assume a sessão devolvida pela função; a partir daqui o supabase-js
        cuida da renovação do token */
     anotar('entrar', 'credencial aceita');
+    pedirConfigurar2fa = !!r.configurar_2fa;
     await B7.DB.assumirSessao(r.access_token, r.refresh_token);
     await carregar();
     if (sessao) { try { sessionStorage.removeItem('b7_voltas_login'); } catch (e) {} }
@@ -393,13 +404,23 @@ B7.Auth = (function () {
       erro.textContent = '';
       botao.disabled = true;
       botao.textContent = 'Entrando…';
-      try {
-        await entrar(u, s);
-        /* a senha não fica em memória depois de enviada */
-        campoSenha.value = '';
+      const fim = () => {
         tela.remove();
         document.body.classList.remove('sem-sessao');
         if (B7.aoEntrar) B7.aoEntrar();
+        if (pedirConfigurar2fa && B7.Seguranca) setTimeout(() => B7.Seguranca.configurar({ obrigatorio: true }), 1400);
+      };
+      try {
+        const res = await entrar(u, s);
+        /* a senha não fica em memória depois de enviada */
+        campoSenha.value = '';
+        if (res && res.etapa2 && B7.Seguranca) {
+          B7.Seguranca.passoLogin(form, res.etapa2, { username: u,
+            concluir: async r2 => { await concluirLogin(r2); fim(); },
+            voltar: () => { tela.remove(); telaLogin(); } });
+          return;
+        }
+        fim();
       } catch (ex) {
         botao.disabled = false;
         botao.textContent = 'Entrar';
@@ -408,6 +429,9 @@ B7.Auth = (function () {
         campoSenha.focus();
       }
     };
+
+    /* zzz218: "Entrar com Google" só aparece quando o Google está ligado no projeto */
+    if (B7.Seguranca && B7.Seguranca.botaoGoogleLogin) B7.Seguranca.botaoGoogleLogin(form);
 
     setTimeout(() => campoUser.focus(), 60);
     return tela;
@@ -428,6 +452,16 @@ B7.Auth = (function () {
     let disponivel = true;
     try { await B7.DB.chamarAuth({ acao: 'ping' }); }
     catch (e) { disponivel = !(e && e.rede); }   /* erro da função ≠ função ausente */
+
+    /* zzz218: volta do Google (?code=…) — troca pela sessão antes de abrir */
+    let avisoGoogle = '';
+    if (B7.Seguranca && B7.Seguranca.retornoOAuth) {
+      try {
+        const ro = await B7.Seguranca.retornoOAuth();
+        if (ro && ro.erro) avisoGoogle = ro.erro;
+        if (ro && ro.ok && ro.tipo === 'vincular') setTimeout(() => { if (B7.UI) B7.UI.toast('Conta Google vinculada. Da próxima vez, use "Entrar com Google".'); }, 1500);
+      } catch (e) { avisoGoogle = 'Não foi possível entrar com o Google.'; }
+    }
 
     await carregar();
 
@@ -476,7 +510,7 @@ B7.Auth = (function () {
     }
 
     anotar('telaLogin', 'volta ' + voltas);
-    telaLogin(aviso);
+    telaLogin(avisoGoogle || aviso);
     return { sessao: null, exigido: true, voltas };
   }
 
@@ -576,7 +610,7 @@ B7.Auth = (function () {
     };
   }
 
-  return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, sair, carregar, telaLogin, sessaoPersiste,
+  return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, concluirLogin, sair, carregar, telaLogin, sessaoPersiste,
            usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel, funcao, modulos, niveis,
            ehAdminReal, simularPapel, encerrarSimulacao, emSimulacao,
            entrarComo, voltarParaMinhaConta, naContaDeOutro, contaDeOrigem };

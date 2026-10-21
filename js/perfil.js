@@ -139,6 +139,9 @@ B7.Perfil = (function () {
               '<button class="b pri fina" id="pf-salvar-senha">Trocar senha</button>' +
             '</div>' +
           '</div>' +
+          /* zzz218: verificação em 2 etapas e Google (js/seguranca.js) */
+          '<div class="pf-cartao" id="pf-2fa"></div>' +
+          '<div class="pf-cartao" id="pf-google" hidden></div>' +
         '</section>' +
 
         /* Notificações: como chega (este aparelho) e o que avisa (por
@@ -289,6 +292,7 @@ B7.Perfil = (function () {
     };
 
     /* --------------------------------------------------------- senha */
+    if (B7.Seguranca) B7.Seguranca.montarCartao(m.querySelector('#pf-2fa'), m.querySelector('#pf-google'));
     const btSenha = m.querySelector('#pf-salvar-senha');
     const msgSenha = m.querySelector('#pf-msg-senha');
 

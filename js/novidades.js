@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz218', versao: 'zzz218', em: '2026-10-21T15:00:00-03:00',
+    titulo: 'Conta mais segura: verificação em 2 etapas',
+    itens: ['Em Meu perfil → Segurança, ligue a verificação em 2 etapas: além da senha, o sistema pede um código de 6 números ao entrar.',
+            'Escolha como receber: por e-mail (você cadastra e confirma o seu) ou pelo app autenticador do celular (Google Authenticator, Authy, Microsoft Authenticator).',
+            'Marque "Confiar neste aparelho por 30 dias" para não precisar do código toda vez neste computador ou celular.',
+            'Quando a administração ligar o Google, dá para vincular a sua conta Google e entrar com um clique pelo navegador.'] },
   { id: 'v-zzz217', versao: 'zzz217', em: '2026-10-21T12:00:00-03:00', irPara: 'suporte',
     titulo: 'Suporte: escreva a dúvida e veja a resposta na hora',
     itens: ['No Suporte, escreva a sua dúvida: as perguntas frequentes e os tutoriais certos aparecem na hora, com "Isso resolveu?".',

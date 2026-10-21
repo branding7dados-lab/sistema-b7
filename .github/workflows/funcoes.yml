@@ -24,3 +24,9 @@ jobs:
         run: |
           if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN não configurado — nada publicado"; exit 0; fi
           supabase functions deploy b7-ia --project-ref "$PROJETO" --no-verify-jwt
+      # zzz218: a b7-auth (login, verificação em 2 etapas) também sai daqui.
+      # O código dela no repositório é o mesmo que estava publicado à mão.
+      - name: Publicar b7-auth
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN não configurado — nada publicado"; exit 0; fi
+          supabase functions deploy b7-auth --project-ref "$PROJETO" --no-verify-jwt

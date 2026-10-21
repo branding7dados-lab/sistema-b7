@@ -742,6 +742,15 @@ B7.Usuarios = (function () {
 
     const abrirAcao = (u, acao, estado) => {
       if (acao === 'senha') return modalSenha(u);
+      /* zzz218: para quem perdeu o celular ou o acesso ao e-mail */
+      if (acao === '2fa') return (async () => {
+        const ok = await B7.UI.confirmar({ titulo: 'Desligar a verificação em 2 etapas de ' + u.nome + '?',
+          texto: 'Use quando a pessoa perdeu o celular ou o acesso ao e-mail. Ela entra só com a senha e pode ligar de novo em Meu perfil → Segurança. Os aparelhos de confiança dela são esquecidos.',
+          confirmar: 'Desligar' });
+        if (!ok) return;
+        try { await B7.DB.chamarAuth({ acao: 'seg_resetar', perfil_id: u.id }); B7.UI.toast('Verificação em 2 etapas desligada para ' + u.nome + '.'); }
+        catch (e) { B7.UI.toast('Não foi possível: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
+      })();
       if (acao === 'editar') return modalEditar(u, clientes, vinculos, funcoesExtraDe(u.id));
       if (acao === 'estado') return alterarEstado(u, estado);
       if (acao === 'foto') return modalFoto(u);
@@ -861,6 +870,7 @@ B7.Usuarios = (function () {
           '<button data-acao-conta="historico" data-id="' + esc(u.id) + '">Histórico de acesso</button>' +
           '<button data-acao-conta="foto" data-id="' + esc(u.id) + '">Foto de perfil</button>' +
           '<button data-acao-conta="senha" data-id="' + esc(u.id) + '">Redefinir senha</button>' +
+          '<button data-acao-conta="2fa" data-id="' + esc(u.id) + '">Desligar verificação em 2 etapas</button>' +
           '<hr>' +
           (inativa
             ? '<button data-acao-conta="estado" data-estado="ativa" data-id="' + esc(u.id) + '">Reativar conta</button>'

@@ -21,6 +21,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { comCors, iguais } from '../_shared/cors.ts';
+import * as DF from './dois_fatores.ts';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
@@ -335,7 +336,9 @@ Deno.serve(comCors(async (req) => {
         versao: VERSAO,
         bootstrap_disponivel: !!Deno.env.get('B7_BOOTSTRAP_TOKEN'),
         admin_existe: (count || 0) > 0,
-        acoes: ['ping', 'login', 'bootstrap', 'recuperar_admin', 'remover_admin',
+        /* zzz218: o envio de código por e-mail está pronto? (ok | sem_chave | sem_remetente) */
+        email_2fa: await DF.estadoEmail(),
+        acoes: ['ping', 'login', 'login_2fa', 'login_2fa_reenviar', ...DF.ACOES_SEG, ...DF.ACOES_SEG_ADMIN, 'bootstrap', 'recuperar_admin', 'remover_admin',
                 'criar_usuario', 'redefinir_senha', 'alterar_conta', 'listar_usuarios', 'entrar_como']
       });
     }
@@ -385,12 +388,21 @@ Deno.serve(comCors(async (req) => {
         await sb.from('perfis').update({ ultimo_acesso: agora }).eq('id', perfil.perfil_id);
       }
 
+      /* zzz218: verificação em 2 etapas. Com ela ligada, a sessão não sai
+         daqui: fica guardada no desafio até o código conferir (login_2fa).
+         Cliente novo de propósito — o `sb` agora fala como a pessoa. */
+      let passo;
+      try { passo = await DF.depoisDaSenha(admin(), perfil.perfil_id, sessao.session, corpo.aparelho); }
+      catch (e) { return json({ erro: (e as Error).message || 'Não foi possível iniciar a verificação.' }, 503); }
+      if (passo.pedir) return json(passo.pedir);
+
       /* devolve a sessão para o frontend assumir; a identidade técnica
          não vai junto */
       return json({
         access_token: sessao.session.access_token,
         refresh_token: sessao.session.refresh_token,
-        expires_at: sessao.session.expires_at
+        expires_at: sessao.session.expires_at,
+        ...passo.extra
       });
     }
 
@@ -557,6 +569,40 @@ Deno.serve(comCors(async (req) => {
        ação desconhecida — típica de função desatualizada — respondia
        "sessão inválida", mandando quem instala investigar o lugar
        errado. Foi exatamente o que aconteceu na primeira instalação. */
+    // =================================================================
+    // VERIFICAÇÃO EM 2 ETAPAS (zzz218) — dois_fatores.ts
+    // =================================================================
+    if (acao === 'login_2fa' || acao === 'login_2fa_reenviar') {
+      try { const r = await DF.acaoLogin(admin(), acao, corpo); return json(r.corpo, r.status); }
+      catch (e) { return json({ erro: (e as Error).message || 'Falha na verificação.' }, 503); }
+    }
+    if (DF.ACOES_SEG.includes(acao)) {
+      const eu = await quemChamou(req);
+      if (!eu) return json({ erro: 'Sessão inválida ou expirada.' }, 401);
+      /* conferir a senha num cliente descartável (signIn troca a identidade do cliente) */
+      const confere = async (senha: string) => {
+        if (!senha) return false;
+        const { error } = await admin().auth.signInWithPassword({ email: identidadeTecnica(eu.id), password: senha });
+        return !error;
+      };
+      try {
+        const r = await DF.acaoPropria(admin(), eu, acao, corpo, confere);
+        if (r.status === 200 && ['seg_email_confirmar', 'seg_app_confirmar', 'seg_desligar'].includes(acao)) {
+          await auditar(sb, eu, acao === 'seg_desligar' ? 'desligar_2fa' : 'ligar_2fa', { tipo: 'perfil', id: eu.id, descricao: eu.username },
+            { metodo: (r.corpo as any).metodo || null });
+        }
+        return json(r.corpo, r.status);
+      } catch (e) { return json({ erro: (e as Error).message || 'Não foi possível concluir.' }, 503); }
+    }
+    if (DF.ACOES_SEG_ADMIN.includes(acao)) {
+      const eu = await quemChamou(req);
+      if (!eu || eu.papel !== 'admin') return json({ erro: 'Só o administrador pode fazer isso.' }, 403);
+      const r = await DF.acaoAdmin(admin(), acao, corpo);
+      if (r.status === 200) await auditar(sb, eu, acao === 'seg_politica' ? 'politica_2fa' : 'resetar_2fa',
+        { tipo: 'perfil', id: acao === 'seg_resetar' ? String(corpo.perfil_id || '') : eu.id, descricao: acao }, acao === 'seg_politica' ? { exigir_2fa: corpo.exigir_2fa } : {});
+      return json(r.corpo, r.status);
+    }
+
     /* Ações da própria conta: exigem sessão, mas não exigem ser admin.
        Só alteram o próprio registro — o id vem do token, nunca do corpo,
        então ninguém edita a conta de outra pessoa por aqui. */

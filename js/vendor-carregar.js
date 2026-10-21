@@ -20,7 +20,9 @@ B7.vendor = (function () {
   const BIBLIOTECAS = {
     html2canvas: { src: 'js/vendor/html2canvas.min.js', pronta: () => !!window.html2canvas, nome: 'de imagem' },
     jspdf:       { src: 'js/vendor/jspdf.umd.min.js',   pronta: () => !!window.jspdf,       nome: 'de PDF' },
-    xlsx:        { src: 'js/vendor/xlsx.full.min.js',   pronta: () => !!window.XLSX,        nome: 'de planilha' }
+    xlsx:        { src: 'js/vendor/xlsx.full.min.js',   pronta: () => !!window.XLSX,        nome: 'de planilha' },
+    /* zzz218: QR Code do app autenticador (verificação em 2 etapas) — MIT, Kazuhiko Arase */
+    qrcode:      { src: 'js/vendor/qrcode.js',          pronta: () => !!window.qrcode,      nome: 'do QR Code' }
   };
   const indo = {};
 
