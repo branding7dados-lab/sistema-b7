@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v423';
+const CACHE = 'roteiros-b7-v424';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -110,6 +110,9 @@ self.addEventListener('fetch', ev => {
   if (ev.request.method !== 'GET' || url.origin !== self.location.origin) return;  // Supabase vai direto à rede
   /* quem pede "sem cache" quer o servidor (a conferência de versão nova) */
   if (ev.request.cache === 'no-store' || ev.request.cache === 'reload') return;
+  /* zzz222: a página do botão do e-mail (confirmar.html) é outra página, não o app:
+     vai sempre direto à rede. Antes, toda navegação recebia o index.html e o link caía no login. */
+  if (url.pathname.endsWith('/confirmar.html')) return;
 
   /* config.js: sempre da rede, mas sem segurar a abertura — se a rede não
      responde em 2,5 s, vale a cópia guardada */
