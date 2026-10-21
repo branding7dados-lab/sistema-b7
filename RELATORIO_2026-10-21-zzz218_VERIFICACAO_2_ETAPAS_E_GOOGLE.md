@@ -35,7 +35,7 @@
 - Supabase com `flowType: 'pkce'` (a volta do Google chega como `?code=`, sem mexer nas rotas `#/`).
 
 ## O que você precisa fazer
-1. **E-mail:** o envio usa a conta Brevo do projeto (já existe a chave `BREVO_API_KEY`). Precisa de um **remetente confirmado** na Brevo (Brevo → Senders). O sistema usa o primeiro ativo; para fixar um, crie o segredo `B7_EMAIL_REMETENTE` no Supabase. Enquanto não houver remetente, a opção "Código por e-mail" aparece desativada e o app autenticador funciona normalmente.
+1. **E-mail:** o B7 usa uma conta Brevo **própria**, no segredo `B7_BREVO_API_KEY` do Supabase (zzz219). A `BREVO_API_KEY` que já estava no projeto é de outra pessoa (função `promo1010-brevo`) e não é usada. Crie a conta Brevo da Branding7, confirme um remetente (Brevo → Senders) e coloque a chave em `B7_BREVO_API_KEY`. Para fixar o remetente, `B7_EMAIL_REMETENTE`. Enquanto não houver, "Código por e-mail" aparece desativado e o app autenticador funciona.
 2. **Google (opcional):**
    - **Antes de tudo:** Supabase → Authentication → Sign In / Providers → desligue **"Allow new users to sign up"**. Hoje está ligado; com o Google ativo, qualquer conta Google criaria um usuário vazio (sem perfil, sem acesso, mas sujando a lista).
    - Google Cloud Console → APIs e serviços → Credenciais → "ID do cliente OAuth" (Aplicativo da Web). Em "URIs de redirecionamento autorizados": `https://rartcafydsaocdzshqcx.supabase.co/auth/v1/callback`.
