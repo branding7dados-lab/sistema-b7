@@ -53,7 +53,8 @@ window.B7 = window.B7 || {};
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false,   /* não há fluxo de redirecionamento aqui */
+        detectSessionInUrl: false,   /* a volta do Google é tratada à mão (B7.Seguranca.retornoOAuth) */
+        flowType: 'pkce',            /* zzz218: Google devolve ?code=, sem token na URL (o # é das rotas) */
         storageKey: 'b7-sessao'
       }
     });

@@ -1,0 +1,336 @@
+/* =====================================================================
+   SEGURANÇA DA CONTA (zzz218) — B7.Seguranca
+
+   · Verificação em 2 etapas: depois da senha, um código de 6 números
+     por e-mail (a pessoa cadastra e confirma o e-mail) ou do app
+     autenticador (Google Authenticator, Authy, Microsoft Authenticator).
+     Quem decide se liga é a pessoa; o administrador pode exigir para a
+     administração e coordenação ou para todos.
+   · "Confiar neste aparelho": 30 dias sem pedir o código neste
+     navegador (o servidor guarda só o hash do token).
+   · Entrar com Google: a pessoa vincula a conta Google em Meu perfil →
+     Segurança e passa a ter o botão "Entrar com Google" no login. Só no
+     navegador (o Google não deixa entrar por dentro do programa de
+     Windows nem do app de Android) e só quando o Google está ligado no
+     projeto.
+
+   Quem confere tudo é o servidor (b7-auth, dois_fatores.ts): sem o
+   código certo, a sessão não sai de lá.
+   ===================================================================== */
+window.B7 = window.B7 || {};
+
+B7.Seguranca = (function () {
+  const esc = s => (B7.UI && B7.UI.esc ? B7.UI.esc(s) : String(s == null ? '' : s));
+  const auth = corpo => B7.DB.chamarAuth(corpo);
+  const SVG = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+  const IC = {
+    escudo: '<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6z"/><path d="M8.8 12.2l2.2 2.2 4.3-4.6"/>',
+    email: '<rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="M4 7l8 6 8-6"/>',
+    app: '<rect x="7" y="2.8" width="10" height="18.4" rx="2.4"/><path d="M11 17.6h2"/>',
+    google: '<path d="M20.6 12.2c0-.6-.1-1.2-.2-1.8H12v3.4h4.8a4.1 4.1 0 0 1-1.8 2.7v2.2h2.9c1.7-1.6 2.7-3.9 2.7-6.5z"/><path d="M12 21c2.4 0 4.5-.8 5.9-2.2L15 16.6c-.8.5-1.8.9-3 .9-2.3 0-4.3-1.6-5-3.7H4v2.3A9 9 0 0 0 12 21z"/><path d="M7 13.8a5.4 5.4 0 0 1 0-3.6V7.9H4a9 9 0 0 0 0 8.2z"/><path d="M12 6.5c1.3 0 2.5.5 3.4 1.3l2.6-2.6A9 9 0 0 0 4 7.9l3 2.3c.7-2.1 2.7-3.7 5-3.7z"/>',
+    ok: '<circle cx="12" cy="12" r="8.5"/><path d="M8 12.5l2.8 2.8L16.3 9.6"/>'
+  };
+  const mascara = e => { if (!e) return ''; const [u, d] = String(e).split('@'); return (u.length <= 2 ? u[0] + '*' : u.slice(0, 2) + '*'.repeat(Math.min(6, u.length - 2))) + '@' + d; };
+
+  /* ---------------------------------------------- aparelho de confiança */
+  const chaveAparelho = u => 'b7_aparelho_' + String(u || '').trim().toLowerCase();
+  function lerAparelho(username) { try { return localStorage.getItem(chaveAparelho(username)) || null; } catch (e) { return null; } }
+  function gravarAparelho(username, token) { try { if (token) localStorage.setItem(chaveAparelho(username), token); } catch (e) {} }
+  function esquecerAparelhosLocais() {
+    try { Object.keys(localStorage).filter(k => k.startsWith('b7_aparelho_')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+  }
+  const nomeAparelho = () => {
+    const ua = navigator.userAgent || '';
+    const so = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iPhone' : /Mac OS/.test(ua) ? 'Mac' : 'Aparelho';
+    const nav = /Electron\//.test(ua) ? 'programa do B7' : /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'navegador';
+    return so + ' · ' + nav;
+  };
+
+  /* ===================================================== passo do login */
+  function passoLogin(form, info, opcoes) {
+    const porEmail = info.metodo === 'email';
+    form.innerHTML =
+      '<img class="login-marca" src="assets/brand/logo-white.png" alt="Branding7">' +
+      '<span class="lg2-ic" aria-hidden="true">' + SVG(porEmail ? IC.email : IC.app) + '</span>' +
+      '<h1>Confirme que é você</h1>' +
+      '<p class="login-sub">' + (porEmail ? 'Enviamos um código de 6 números para <b>' + esc(info.email) + '</b>. Ele vale por 10 minutos.'
+        : 'Abra o seu app autenticador e digite o código de 6 números do <b>Sistema B7</b>.') + '</p>' +
+      '<label class="rot" for="lg-cod">CÓDIGO</label>' +
+      '<input class="campo lg2-cod" id="lg-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" placeholder="000000" required>' +
+      '<label class="lg2-lembrar"><input type="checkbox" id="lg-lembrar"> Confiar neste aparelho por 30 dias</label>' +
+      '<div class="login-erro" id="lg-erro" role="alert"></div>' +
+      '<button class="b pri login-entrar" type="submit">Confirmar</button>' +
+      '<div class="lg2-links">' + (porEmail ? '<button type="button" class="lg2-link" id="lg-reenviar">Reenviar código</button>' : '<span></span>') +
+        '<button type="button" class="lg2-link" id="lg-voltar">Voltar</button></div>';
+    const cod = form.querySelector('#lg-cod'), erro = form.querySelector('#lg-erro'), bt = form.querySelector('.login-entrar');
+    cod.addEventListener('input', () => { cod.value = cod.value.replace(/\D/g, '').slice(0, 6); if (cod.value.length === 6) form.requestSubmit ? form.requestSubmit() : form.onsubmit(new Event('submit')); });
+    form.querySelector('#lg-voltar').onclick = () => opcoes.voltar();
+    const re = form.querySelector('#lg-reenviar');
+    if (re) re.onclick = async () => {
+      re.disabled = true; erro.textContent = '';
+      try { await auth({ acao: 'login_2fa_reenviar', desafio: info.desafio }); erro.textContent = ''; re.textContent = 'Código reenviado'; setTimeout(() => { re.textContent = 'Reenviar código'; re.disabled = false; }, 30000); }
+      catch (e) { erro.textContent = e.message || 'Não foi possível reenviar.'; re.disabled = false; }
+    };
+    let indo = false;
+    form.onsubmit = async e => {
+      if (e && e.preventDefault) e.preventDefault();
+      if (indo || cod.value.length !== 6) return;
+      indo = true; erro.textContent = ''; bt.disabled = true; bt.textContent = 'Conferindo…';
+      const lembrar = form.querySelector('#lg-lembrar').checked;
+      try {
+        const r = await auth({ acao: 'login_2fa', desafio: info.desafio, codigo: cod.value, lembrar, aparelho_nome: nomeAparelho() });
+        if (r && r.aparelho) gravarAparelho(opcoes.username, r.aparelho);
+        await opcoes.concluir(r);
+      } catch (ex) {
+        indo = false; bt.disabled = false; bt.textContent = 'Confirmar';
+        const msg = ex.message || 'Não foi possível confirmar.';
+        erro.textContent = msg; cod.value = ''; cod.focus();
+        if (/entre de novo/i.test(msg)) { bt.textContent = 'Voltar ao login'; bt.type = 'button'; bt.onclick = () => opcoes.voltar(); }
+      }
+    };
+    setTimeout(() => cod.focus(), 60);
+  }
+
+  /* =============================================================== Google */
+  const semGoogleAqui = () => /Electron\//.test(navigator.userAgent || '') ||
+    !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  let googleCache = null;
+  async function googleLigado() {
+    if (googleCache !== null) return googleCache;
+    if (semGoogleAqui() || !B7.sb) return (googleCache = false);
+    try {
+      const cfg = window.B7_CONFIG || {};
+      const base = String(cfg.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+      const r = await fetch(base + '/auth/v1/settings', { headers: { apikey: String(cfg.SUPABASE_PUBLISHABLE_KEY || '').trim() } });
+      const d = await r.json();
+      googleCache = !!(d && d.external && d.external.google);
+    } catch (e) { googleCache = false; }
+    return googleCache;
+  }
+  const voltaUrl = () => location.origin + location.pathname;
+  const marcarOauth = t => { try { localStorage.setItem('b7_oauth', t); } catch (e) {} };
+  async function entrarComGoogle() {
+    marcarOauth('login');
+    const { error } = await B7.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: voltaUrl(), queryParams: { prompt: 'select_account' } } });
+    if (error) throw error;
+  }
+  async function vincularGoogle() {
+    marcarOauth('vincular');
+    const { error } = await B7.sb.auth.linkIdentity({ provider: 'google', options: { redirectTo: voltaUrl(), queryParams: { prompt: 'select_account' } } });
+    if (error) throw error;
+  }
+  async function identidadeGoogle() {
+    try { const { data } = await B7.sb.auth.getUserIdentities(); return ((data && data.identities) || []).find(i => i.provider === 'google') || null; }
+    catch (e) { return null; }
+  }
+  function traduzirErro(msg, tipo) {
+    const m = String(msg || '');
+    if (/sign ?ups? not allowed|signup.*disabled|user not found/i.test(m)) return 'Essa conta Google não está ligada a nenhum usuário do B7. Entre com usuário e senha e vincule o Google em Meu perfil → Segurança.';
+    if (/manual linking/i.test(m)) return 'O administrador precisa ativar o "Manual linking" no Supabase para vincular contas Google.';
+    if (/already|identity.*exists/i.test(m)) return 'Essa conta Google já está ligada a outro usuário do B7.';
+    if (/access_denied|cancel/i.test(m)) return tipo === 'vincular' ? 'Vinculação com o Google cancelada.' : 'Entrada com o Google cancelada.';
+    return (tipo === 'vincular' ? 'Não foi possível vincular o Google: ' : 'Não foi possível entrar com o Google: ') + m;
+  }
+  /* volta do Google (?code=… ou ?error=…): troca o código pela sessão */
+  async function retornoOAuth() {
+    const u = new URL(location.href);
+    const code = u.searchParams.get('code'), erro = u.searchParams.get('error_description') || u.searchParams.get('error');
+    if (!code && !erro) return null;
+    let tipo = '';
+    try { tipo = localStorage.getItem('b7_oauth') || ''; localStorage.removeItem('b7_oauth'); } catch (e) {}
+    ['code', 'error', 'error_code', 'error_description', 'state', 'sb'].forEach(k => u.searchParams.delete(k));
+    try { history.replaceState(null, '', u.pathname + (u.searchParams.toString() ? '?' + u.searchParams : '') + location.hash); } catch (e) {}
+    if (erro) return { erro: traduzirErro(erro, tipo) };
+    if (!B7.sb) return null;
+    const { error } = await B7.sb.auth.exchangeCodeForSession(code);
+    if (error) return { erro: traduzirErro(error.message, tipo) };
+    return { ok: true, tipo };
+  }
+  async function botaoGoogleLogin(form) {
+    if (!(await googleLigado()) || !form.isConnected) return;
+    const bt = form.querySelector('.login-entrar'); if (!bt) return;
+    bt.insertAdjacentHTML('afterend', '<div class="lg-ou"><span>ou</span></div><button type="button" class="b contorno lg-google">' + SVG(IC.google) + 'Entrar com Google</button>');
+    form.querySelector('.lg-google').onclick = async () => {
+      try { await entrarComGoogle(); } catch (e) { const er = form.querySelector('#lg-erro'); if (er) er.textContent = traduzirErro(e.message, 'login'); }
+    };
+  }
+
+  /* ==================================================== cartão do perfil */
+  let st = null;
+  async function montarCartao(cx, cxGoogle) {
+    if (!cx) return;
+    cx.innerHTML = '<div class="pf-carregando">' + (B7.UI.skeleton ? B7.UI.skeleton('lista', { n: 2 }) : 'Carregando…') + '</div>';
+    try { st = await auth({ acao: 'seg_status' }); }
+    catch (e) { cx.innerHTML = '<p class="ajuda">Não foi possível ver a verificação em 2 etapas agora. ' + esc(e.message || '') + '</p>'; return; }
+    if (!cx.isConnected) return;
+    const ligado = !!st.metodo, adm = !!(B7.Auth && B7.Auth.ehAdminReal && B7.Auth.ehAdminReal());
+    const emailOk = st.email_envio === 'ok';
+    const como = st.metodo === 'email' ? 'por e-mail · ' + esc(mascara(st.email)) : st.metodo === 'app' ? 'pelo app autenticador' : '';
+    cx.innerHTML =
+      '<h4 class="pf-tit"><span class="pf-ic pf-verde" aria-hidden="true">' + SVG(IC.escudo) + '</span>Verificação em 2 etapas' +
+        '<span class="seg-pill' + (ligado ? ' on' : '') + '">' + (ligado ? 'Ligada' : 'Desligada') + '</span></h4>' +
+      '<p class="ajuda">' + (ligado ? 'Ao entrar com usuário e senha, o sistema pede também um código ' + como + '.'
+        : 'Mais proteção: além da senha, o sistema pede um código de 6 números. Mesmo que alguém descubra a sua senha, não entra.') + '</p>' +
+      (st.exigido && !ligado ? '<div class="seg-aviso">A administração pede que você ligue a verificação em 2 etapas.</div>' : '') +
+      (ligado
+        ? '<div class="seg-acoes"><button type="button" class="b fina contorno" data-seg="trocar">Trocar para ' + (st.metodo === 'email' ? 'app autenticador' : 'e-mail') + '</button>' +
+            (st.aparelhos ? '<button type="button" class="b fina contorno" data-seg="esquecer">Esquecer aparelhos de confiança (' + st.aparelhos + ')</button>' : '') +
+            '<button type="button" class="b fina contorno perigo" data-seg="desligar">Desligar</button></div>'
+        : '<div class="seg-opcoes">' +
+            '<button type="button" class="seg-op" data-seg="email"' + (emailOk ? '' : ' disabled') + '>' + SVG(IC.email) + '<span><b>Código por e-mail</b><small>' +
+              (emailOk ? 'Chega no seu e-mail a cada entrada' : 'O envio de e-mail ainda não está configurado') + '</small></span></button>' +
+            '<button type="button" class="seg-op" data-seg="app">' + SVG(IC.app) + '<span><b>App autenticador</b><small>Google Authenticator, Authy ou Microsoft Authenticator</small></span></button>' +
+          '</div>') +
+      (adm ? '<div class="seg-politica"><label class="rot" for="seg-pol">PARA A EQUIPE (SÓ ADMINISTRADOR)</label><div class="seg-pol-l">' +
+          '<select class="campo fina" id="seg-pol"><option value="ninguem">Cada pessoa decide</option><option value="gestao">Exigir de administração e coordenação</option><option value="todos">Exigir de toda a equipe</option></select>' +
+          '<button type="button" class="b fina pri" id="seg-pol-b" disabled>Salvar</button></div>' +
+          '<small class="ajuda">Quem é exigido e ainda não ligou recebe o pedido ao entrar. Quem perdeu o celular: Usuários e acessos → ⋯ → "Desligar verificação em 2 etapas".</small></div>' : '');
+    cx.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => {
+      const a = b.dataset.seg;
+      if (a === 'email') return fluxoEmail(() => montarCartao(cx, cxGoogle));
+      if (a === 'app') return fluxoApp(() => montarCartao(cx, cxGoogle));
+      if (a === 'trocar') return (st.metodo === 'email' ? fluxoApp : fluxoEmail)(() => montarCartao(cx, cxGoogle));
+      if (a === 'esquecer') return (async () => {
+        try { await auth({ acao: 'seg_aparelhos_esquecer' }); esquecerAparelhosLocais(); B7.UI.toast('Pronto. Todo aparelho vai pedir o código de novo.'); montarCartao(cx, cxGoogle); }
+        catch (e) { B7.UI.toast(e.message || 'Não foi possível.', { tipo: 'erro' }); }
+      })();
+      if (a === 'desligar') return desligar(() => montarCartao(cx, cxGoogle));
+    });
+    const pol = cx.querySelector('#seg-pol');
+    if (pol) {
+      pol.value = st.politica || 'ninguem';
+      const bp = cx.querySelector('#seg-pol-b');
+      pol.onchange = () => { bp.disabled = pol.value === (st.politica || 'ninguem'); };
+      bp.onclick = async () => {
+        bp.disabled = true;
+        try { await auth({ acao: 'seg_politica', exigir_2fa: pol.value }); st.politica = pol.value; B7.UI.toast('Regra salva. Vale a partir da próxima entrada de cada pessoa.'); }
+        catch (e) { B7.UI.toast(e.message || 'Não foi possível salvar.', { tipo: 'erro' }); bp.disabled = false; }
+      };
+    }
+    montarGoogle(cxGoogle);
+  }
+
+  async function montarGoogle(cx) {
+    if (!cx) return;
+    if (!(await googleLigado())) { cx.hidden = true; return; }
+    cx.hidden = false;
+    const idt = await identidadeGoogle();
+    const email = idt && idt.identity_data && idt.identity_data.email;
+    cx.innerHTML = '<h4 class="pf-tit"><span class="pf-ic pf-azul" aria-hidden="true">' + SVG(IC.google) + '</span>Entrar com Google' +
+        '<span class="seg-pill' + (idt ? ' on' : '') + '">' + (idt ? 'Vinculada' : 'Não vinculada') + '</span></h4>' +
+      '<p class="ajuda">' + (idt ? 'Você pode entrar com a conta Google <b>' + esc(email || '') + '</b> no lugar do usuário e senha (só no navegador).'
+        : 'Vincule a sua conta Google para entrar com um clique, sem digitar a senha (só no navegador).') + '</p>' +
+      '<div class="seg-acoes">' + (idt ? '<button type="button" class="b fina contorno" id="seg-g-sair">Desvincular</button>' : '<button type="button" class="b fina pri" id="seg-g-ligar">Vincular conta Google</button>') + '</div>';
+    const ligar = cx.querySelector('#seg-g-ligar');
+    if (ligar) ligar.onclick = async () => { try { await vincularGoogle(); } catch (e) { B7.UI.toast(traduzirErro(e.message, 'vincular'), { tipo: 'erro' }); } };
+    const sair = cx.querySelector('#seg-g-sair');
+    if (sair) sair.onclick = async () => {
+      if (!(await B7.UI.confirmar({ titulo: 'Desvincular a conta Google?', texto: 'Você volta a entrar só com usuário e senha.', confirmar: 'Desvincular' }))) return;
+      try { const { error } = await B7.sb.auth.unlinkIdentity(idt); if (error) throw error; B7.UI.toast('Conta Google desvinculada.'); montarGoogle(cx); }
+      catch (e) { B7.UI.toast('Não foi possível desvincular: ' + (e.message || ''), { tipo: 'erro' }); }
+    };
+  }
+
+  /* ---------------------------------------------------- ligar por e-mail */
+  function fluxoEmail(aoTerminar) {
+    const m = B7.UI.modal('<h3>Código por e-mail</h3>' +
+      '<p class="sub">Escreva um e-mail seu, que você abre no celular. Vamos mandar um código para confirmar.</p>' +
+      '<div class="seg-passo" id="seg-p1"><label class="rot" for="seg-email">SEU E-MAIL</label>' +
+        '<input class="campo" id="seg-email" type="email" autocomplete="email" data-foco placeholder="voce@gmail.com" value="' + esc((st && st.email) || '') + '"></div>' +
+      '<div class="seg-passo" id="seg-p2" hidden><label class="rot" for="seg-cod">CÓDIGO QUE CHEGOU</label>' +
+        '<input class="campo seg-cod" id="seg-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"><small class="ajuda" id="seg-dica"></small></div>' +
+      '<div class="login-erro" id="seg-erro" role="alert"></div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="seg-ok">Enviar código</button></div>');
+    const q = s => m.querySelector(s), ok = q('#seg-ok'), erro = q('#seg-erro');
+    let etapa = 1;
+    q('#seg-cod').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
+    ok.onclick = async () => {
+      erro.textContent = ''; ok.disabled = true;
+      try {
+        if (etapa === 1) {
+          const r = await auth({ acao: 'seg_email_enviar', email: q('#seg-email').value.trim() });
+          etapa = 2; q('#seg-p1').hidden = true; q('#seg-p2').hidden = false; ok.textContent = 'Confirmar';
+          q('#seg-dica').textContent = 'Enviamos para ' + r.email + '. Não chegou? Confira o spam ou toque em Cancelar e tente de novo.';
+          q('#seg-cod').focus();
+        } else {
+          await auth({ acao: 'seg_email_confirmar', codigo: q('#seg-cod').value });
+          m.fechar(); B7.UI.toast('Verificação em 2 etapas ligada por e-mail.'); aoTerminar && aoTerminar(true);
+        }
+      } catch (e) { erro.textContent = e.message || 'Não foi possível.'; }
+      ok.disabled = false;
+    };
+    return m;
+  }
+
+  /* --------------------------------------------- ligar pelo app autenticador */
+  async function fluxoApp(aoTerminar) {
+    const m = B7.UI.modal('<h3>App autenticador</h3>' +
+      '<ol class="seg-lista"><li>Instale no celular um app autenticador (Google Authenticator, Microsoft Authenticator ou Authy).</li>' +
+        '<li>No app, toque em <b>+</b> e leia o QR Code abaixo (ou digite a chave).</li><li>Digite aqui o código de 6 números que aparece no app.</li></ol>' +
+      '<div class="seg-qr" id="seg-qr">' + (B7.UI.skeleton ? B7.UI.skeleton('lista', { n: 1 }) : '') + '</div>' +
+      '<label class="rot" for="seg-cod">CÓDIGO DO APP</label><input class="campo seg-cod" id="seg-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">' +
+      '<div class="login-erro" id="seg-erro" role="alert"></div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="seg-ok" disabled>Confirmar</button></div>', { larga: true });
+    const q = s => m.querySelector(s), ok = q('#seg-ok'), erro = q('#seg-erro');
+    q('#seg-cod').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
+    try {
+      const [r] = await Promise.all([auth({ acao: 'seg_app_iniciar' }), B7.vendor ? B7.vendor('qrcode').catch(() => null) : null]);
+      let svg = '';
+      if (window.qrcode) { const c = window.qrcode(0, 'M'); c.addData(r.uri); c.make(); svg = c.createSvgTag(5, 10); }
+      q('#seg-qr').innerHTML = (svg ? '<div class="seg-qr-img">' + svg + '</div>' : '') +
+        '<div class="seg-qr-tx"><small>Chave (se não der para ler o QR Code):</small><code>' + esc(r.segredo.replace(/(.{4})/g, '$1 ').trim()) + '</code>' +
+        (/Android|iPhone|iPad/.test(navigator.userAgent || '') ? '<a class="b fina contorno" href="' + esc(r.uri) + '">Abrir no app do celular</a>' : '') + '</div>';
+      ok.disabled = false;
+    } catch (e) { q('#seg-qr').innerHTML = '<p class="ajuda">' + esc(e.message || 'Não foi possível começar.') + '</p>'; }
+    ok.onclick = async () => {
+      erro.textContent = ''; ok.disabled = true;
+      try { await auth({ acao: 'seg_app_confirmar', codigo: q('#seg-cod').value }); m.fechar(); B7.UI.toast('Verificação em 2 etapas ligada pelo app.'); aoTerminar && aoTerminar(true); }
+      catch (e) { erro.textContent = e.message || 'Não foi possível.'; ok.disabled = false; }
+    };
+    return m;
+  }
+
+  /* ----------------------------------------------------------- desligar */
+  function desligar(aoTerminar) {
+    const m = B7.UI.modal('<h3>Desligar a verificação em 2 etapas?</h3><p class="sub">Para confirmar, digite a sua senha.</p>' +
+      '<input class="campo" id="seg-senha" type="password" autocomplete="current-password" data-foco>' +
+      '<div class="login-erro" id="seg-erro" role="alert"></div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri perigo" id="seg-ok">Desligar</button></div>');
+    const ok = m.querySelector('#seg-ok'), erro = m.querySelector('#seg-erro');
+    ok.onclick = async () => {
+      ok.disabled = true; erro.textContent = '';
+      try { await auth({ acao: 'seg_desligar', senha: m.querySelector('#seg-senha').value }); esquecerAparelhosLocais(); m.fechar(); B7.UI.toast('Verificação em 2 etapas desligada.'); aoTerminar && aoTerminar(); }
+      catch (e) { erro.textContent = e.message || 'Não foi possível.'; ok.disabled = false; }
+    };
+  }
+
+  /* ------------------------------ quando a administração exige (ao entrar) */
+  function configurar(opcoes) {
+    opcoes = opcoes || {};
+    let pronto = false;
+    const reabrir = () => { if (!pronto && opcoes.obrigatorio) setTimeout(() => configurar(opcoes), 250); };
+    const m = B7.UI.modal('<div class="seg-intro"><span class="lg2-ic">' + SVG(IC.escudo) + '</span>' +
+      '<h3>Ligue a verificação em 2 etapas</h3><p class="sub">' + (opcoes.obrigatorio ? 'A administração pediu mais proteção para a sua conta. ' : '') +
+        'Além da senha, o sistema vai pedir um código de 6 números ao entrar. Escolha como quer receber:</p></div>' +
+      '<div class="seg-opcoes"><button type="button" class="seg-op" data-c="email">' + SVG(IC.email) + '<span><b>Código por e-mail</b><small>Chega no seu e-mail a cada entrada</small></span></button>' +
+        '<button type="button" class="seg-op" data-c="app">' + SVG(IC.app) + '<span><b>App autenticador</b><small>Google Authenticator, Authy ou Microsoft Authenticator</small></span></button></div>' +
+      '<div class="acoes">' + (opcoes.obrigatorio ? '<button type="button" class="b contorno" id="seg-sair">Sair da conta</button>' : '<button type="button" class="b contorno" data-fecha>Agora não</button>') + '</div>',
+      { aoFechar: () => setTimeout(() => { if (!fluxoAberto) reabrir(); }, 0) });
+    let fluxoAberto = false;
+    const terminou = ok => { fluxoAberto = false; if (ok) pronto = true; else reabrir(); };
+    m.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
+      fluxoAberto = true; m.fechar();
+      const f = b.dataset.c === 'email' ? fluxoEmail(terminou) : null;
+      const prom = b.dataset.c === 'app' ? fluxoApp(terminou) : Promise.resolve(f);
+      /* fechar o passo sem terminar volta para a escolha */
+      Promise.resolve(prom).then(mm => { if (mm && mm.addEventListener) {
+        const obs = new MutationObserver(() => { if (!mm.isConnected) { obs.disconnect(); setTimeout(() => { if (!pronto) terminou(false); }, 50); } });
+        obs.observe(document.body, { childList: true });
+      } });
+    });
+    const sair = m.querySelector('#seg-sair');
+    if (sair) sair.onclick = () => { pronto = true; m.fechar(); if (B7.Auth && B7.Auth.sair) B7.Auth.sair(); };
+  }
+
+  return { lerAparelho, passoLogin, retornoOAuth, botaoGoogleLogin, montarCartao, configurar, googleLigado };
+})();
