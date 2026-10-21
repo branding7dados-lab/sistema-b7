@@ -3,7 +3,9 @@
 //
 // Quem ligou precisa, depois da senha, de um código de 6 números:
 //   · por e-mail (o e-mail é cadastrado e confirmado pela pessoa; o envio
-//     sai pela Brevo — secret BREVO_API_KEY, remetente B7_EMAIL_REMETENTE
+//     sai pela Brevo DA BRANDING7 — secret B7_BREVO_API_KEY (própria do B7;
+//     a BREVO_API_KEY do projeto é de outra pessoa e NÃO é usada), remetente
+//     B7_EMAIL_REMETENTE
 //     ou o primeiro remetente ativo da conta Brevo);
 //   · do app autenticador (TOTP, RFC 6238: Google Authenticator, Authy…).
 //
@@ -96,12 +98,12 @@ async function remetente(chave: string) {
 }
 /** 'ok' | 'sem_chave' | 'sem_remetente' — vai no ping, sem revelar nada */
 export async function estadoEmail(): Promise<string> {
-  const chave = Deno.env.get('BREVO_API_KEY');
+  const chave = Deno.env.get('B7_BREVO_API_KEY');
   if (!chave) return 'sem_chave';
   try { return (await remetente(chave)) ? 'ok' : 'sem_remetente'; } catch (_e) { return 'sem_remetente'; }
 }
 async function enviarCodigo(para: string, codigo: string, motivo: 'login' | 'cadastro') {
-  const chave = Deno.env.get('BREVO_API_KEY');
+  const chave = Deno.env.get('B7_BREVO_API_KEY');
   if (!chave) throw new Error('O envio de e-mail não está configurado. Fale com o administrador.');
   const de = await remetente(chave);
   if (!de) throw new Error('O envio de e-mail não está configurado (sem remetente). Fale com o administrador.');
