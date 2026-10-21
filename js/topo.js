@@ -400,6 +400,7 @@ B7.Topo = (function () {
       '<div class="tc-lista">' +
         item('data-conta="perfil"', IC.perfil, 'violeta', 'Meu perfil', 'foto, nome, senha e notificações') +
         (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'azul', 'Preferências e configurações', 'tema, tela inicial e ajustes do aparelho') : '') +
+        (B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() ? item('data-conta="super"', IC.usuarios, 'roxo', B7.Auth.superadmin() === 'supremo' ? 'Super admin · supremo' : 'Super admin', 'administradores, aprovações, segurança e o sistema todo') : '') +
         (B7.Perm && B7.Perm.podeConfig('usuarios') && !cliente ? item('data-conta="usuarios"', IC.usuarios, 'verde', 'Usuários e acessos', 'contas da equipe e dos clientes') : '') +
         (!cliente ? item('data-conta="ajuda"', IC.ajuda, 'ciano', 'Ajuda e tutoriais', 'um passo a passo para cada parte do sistema') : '') +
         item('data-conta="suporte"', IC.suporte, 'rosa', cliente ? 'Suporte' : 'Suporte e feedback', cliente ? 'tirar uma dúvida ou relatar um problema' : 'relatar um problema, mandar uma ideia ou tirar uma dúvida') +
@@ -424,6 +425,7 @@ B7.Topo = (function () {
       perfil: () => (B7.Perfil ? B7.Perfil.abrir() : B7.Auth.abrirPerfil()),
       config: () => { location.hash = '#/config'; },
       usuarios: () => { location.hash = '#/usuarios'; },
+      super: () => { location.hash = '#/super'; },
       suporte: () => { location.hash = '#/suporte'; },
       ajuda: () => { location.hash = '#/ajuda'; },
       atalhos: () => B7.UI.atalhos(),

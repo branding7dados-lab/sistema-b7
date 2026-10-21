@@ -26,7 +26,9 @@ B7.Manutencao = (function () {
   let atual = null, desvio = 0, poll = 0, tique = 0, ligado = false, ultimaConf = 0;
 
   const agora = () => Date.now() + desvio;
-  const souAdmin = () => !!(B7.Auth && B7.Auth.ehAdminReal && B7.Auth.ehAdminReal());
+  /* zzz225: na EMERGÊNCIA (ligada pelo admin supremo) só os super admins passam */
+  const souAdmin = () => (atual && atual.emergencia) ? !!(B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin())
+    : !!(B7.Auth && B7.Auth.ehAdminReal && B7.Auth.ehAdminReal());
   const horaDe = ts => { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
 
   /* nenhuma | aviso (vai começar) | ativa (em vigor) */

@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-21-zzz224';
+  const VERSAO = '2026-10-21-zzz225';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -70,6 +70,8 @@ B7.Auth = (function () {
      simulação (simularPapel confere ehAdminReal); sair sempre limpa. */
   let simulacao = null;   /* { papel, funcoes_extra, funcao, modulos } */
   const ehAdminReal = () => !!(sessao && sessao.papel === 'admin');
+  /* zzz225: super admin ('super' | 'supremo' | null) — da sessão de verdade, nunca da prévia */
+  const superadmin = () => (sessao && sessao.eh_admin && (sessao.superadmin === 'super' || sessao.superadmin === 'supremo') ? sessao.superadmin : null);
   /* zzz68: a prévia também carrega a função e os módulos efetivos da
      pessoa (alvo.funcao / alvo.modulos); sem eles, deriva do papel. */
   function simularPapel(papelAlvo, funcoesExtraAlvo, alvo) {
@@ -612,6 +614,6 @@ B7.Auth = (function () {
 
   return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, concluirLogin, sair, carregar, telaLogin, sessaoPersiste,
            usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel, funcao, modulos, niveis,
-           ehAdminReal, simularPapel, encerrarSimulacao, emSimulacao,
+           ehAdminReal, superadmin, simularPapel, encerrarSimulacao, emSimulacao,
            entrarComo, voltarParaMinhaConta, naContaDeOutro, contaDeOrigem };
 })();

@@ -16,11 +16,12 @@ function quandoBrasilia(): string {
   return p.day + '/' + p.month + ' às ' + p.hour + ':' + p.minute;
 }
 
-export function emailCodigo(o: { codigo: string; motivo: 'login' | 'cadastro'; nome?: string | null; aparelho?: string | null; link?: string | null }) {
+export function emailCodigo(o: { codigo: string; motivo: 'login' | 'cadastro'; nome?: string | null; aparelho?: string | null; link?: string | null; acao?: string | null }) {
   const login = o.motivo === 'login';
-  const titulo = login ? 'Seu código de acesso' : 'Confirme seu e-mail';
-  const sub = login ? 'Verificação em 2 etapas' : 'Verificação em 2 etapas · cadastro do e-mail';
-  const frase = o.link
+  /* zzz225: confirmar uma ação sensível (ex.: passar o cargo de admin supremo) */
+  const titulo = o.acao ? 'Confirme esta ação' : login ? 'Seu código de acesso' : 'Confirme seu e-mail';
+  const sub = o.acao ? 'Ação do super admin' : login ? 'Verificação em 2 etapas' : 'Verificação em 2 etapas · cadastro do e-mail';
+  const frase = o.acao ? 'Para confirmar: ' + o.acao + ', digite este código no B7. Se não foi você, troque a sua senha agora.' : o.link
     ? (login ? 'Para terminar de entrar no B7, toque no botão abaixo — ou digite o código na tela de acesso.'
              : 'Para usar este e-mail na verificação em 2 etapas, toque no botão abaixo — ou digite o código no B7.')
     : (login ? 'Para terminar de entrar no B7, digite este código na tela de acesso:'
@@ -32,7 +33,7 @@ export function emailCodigo(o: { codigo: string; motivo: 'login' | 'cadastro'; n
   const cod = o.codigo.slice(0, 3) + ' ' + o.codigo.slice(3);
   const primeiro = String(o.nome || '').trim().split(/\s+/)[0];
   const quando = 'Hoje, ' + quandoBrasilia() + (o.aparelho ? ' · ' + esc(String(o.aparelho).slice(0, 80)) : '');
-  const assunto = (login ? 'Seu código para entrar no B7: ' : 'Confirme seu e-mail no B7: ') + o.codigo;
+  const assunto = (o.acao ? 'Confirme a ação no B7: ' : login ? 'Seu código para entrar no B7: ' : 'Confirme seu e-mail no B7: ') + o.codigo;
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${esc(titulo)}</title>
 <style>

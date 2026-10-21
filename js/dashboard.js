@@ -2100,7 +2100,7 @@ B7.Dashboard = (function () {
         L({ ic: 'letra', tom: 'rosa', t: 'Editar textos padrão', d:
             (n => n ? n + (n === 1 ? ' texto alterado' : ' textos alterados') : 'todos no padrão do B7')(B7.Textos.LISTA.filter(t => B7.Textos.mudado(t.id)).length),
             botao: true, attrs: ' data-textos' })) : '') +
-      (pode('dados') ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
+      (pode('dados') && B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
         L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
         L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '');
 
@@ -3048,6 +3048,18 @@ B7.Dashboard = (function () {
     let c;
     try { c = await B7.DB.cliente(id); }
     catch (e) { return B7.UI.toast('Não consegui carregar o cliente', { tipo: 'erro' }); }
+    /* zzz225: limite do administrador — excluir cliente pode precisar de um super admin */
+    let lim = 'livre';
+    try { lim = (await B7.DB.rpc('limite_admin', { p_acao: 'excluir_cliente' })) || 'livre'; } catch (e) { lim = 'livre'; }
+    if (lim === 'bloqueado') return B7.UI.toast('Excluir cliente está liberado só para super admin.', { tipo: 'erro' });
+    if (lim === 'aprovacao') {
+      const motivo = await B7.UI.perguntar({ titulo: 'Pedir para excluir ' + c.nome + '?', rotulo: 'Excluir cliente precisa da aprovação de um super admin. Conte o motivo (opcional).', confirmar: 'Pedir aprovação' });
+      if (motivo === null) return;
+      try { await B7.DB.rpc('super_pedir', { p_acao: 'excluir_cliente', p_alvo_tipo: 'cliente', p_alvo_id: c.id, p_alvo_desc: c.nome, p_resumo: 'Excluir o cliente ' + c.nome, p_motivo: motivo || null });
+        B7.UI.toast('Pedido enviado. Um super admin aprova e o cliente vai para a lixeira.'); }
+      catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível pedir.', { tipo: 'erro' }); }
+      return;
+    }
 
     const temConteudo = c.total_gravacoes > 0 || c.total_roteiros > 0;
     const detalhe = temConteudo

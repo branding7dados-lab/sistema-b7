@@ -227,6 +227,11 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return B7.Suporte.abrir(partes[1] || null);
     }
+    /* zzz225: Super admin (a tela confere o cargo; o banco confere de novo) */
+    if (partes[0] === 'super' && B7.Super) {
+      mostrar('tela-dashboard');
+      return B7.Super.abrir(partes[1] || null);
+    }
     if (partes[0] === 'trends' && B7.Trends) {
       mostrar('tela-dashboard');
       return B7.Trends.abrir();

@@ -109,13 +109,13 @@ export async function estadoEmail(): Promise<string> {
 async function nomeDe(sb: SB, perfilId: string): Promise<string | null> {
   try { const { data } = await sb.from('perfis').select('nome').eq('id', perfilId).maybeSingle(); return (data && data.nome) || null; } catch (_e) { return null; }
 }
-async function enviarCodigo(para: string, codigo: string, motivo: 'login' | 'cadastro', ctx: { nome?: string | null; aparelho?: string | null; link?: string | null } = {}) {
+async function enviarCodigo(para: string, codigo: string, motivo: 'login' | 'cadastro', ctx: { nome?: string | null; aparelho?: string | null; link?: string | null; acao?: string | null } = {}) {
   const chave = Deno.env.get('B7_BREVO_API_KEY');
   if (!chave) throw new Error('O envio de e-mail não está configurado. Fale com o administrador.');
   const de = await remetente(chave);
   if (!de) throw new Error('O envio de e-mail não está configurado (sem remetente). Fale com o administrador.');
   /* zzz220: o e-mail com a cara do B7 (email_modelo.ts) */
-  const m = emailCodigo({ codigo, motivo, nome: ctx.nome, aparelho: ctx.aparelho, link: ctx.link });
+  const m = emailCodigo({ codigo, motivo, nome: ctx.nome, aparelho: ctx.aparelho, link: ctx.link, acao: ctx.acao });
   const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST', headers: { 'api-key': chave, 'Content-Type': 'application/json', accept: 'application/json' },
     body: JSON.stringify({ sender: de, to: [{ email: para }], subject: m.assunto, htmlContent: m.html, textContent: m.texto })
@@ -134,9 +134,11 @@ export async function politica(sb: SB): Promise<string> {
 }
 async function exigidoPara(sb: SB, perfilId: string) {
   const p = await politica(sb);
-  if (p === 'ninguem') return false;
   const { data } = await sb.from('perfis').select('papel, eh_admin').eq('id', perfilId).maybeSingle();
   if (!data || data.papel === 'cliente') return false;
+  /* zzz225: administrador (e super admin) sempre com verificação em 2 etapas */
+  if (data.eh_admin || data.papel === 'admin') return true;
+  if (p === 'ninguem') return false;
   return p === 'todos' || data.papel === 'admin' || data.papel === 'coordenador' || !!data.eh_admin;
 }
 async function config2fa(sb: SB, perfilId: string) {
@@ -333,6 +335,40 @@ export async function acaoPropria(sb: SB, eu: any, acao: string, corpo: any, con
     return { status: 200, corpo: { ok: true } };
   }
   return { status: 400, corpo: { erro: 'Ação desconhecida.' } };
+}
+
+/* ------------------------------------- passar o admin supremo (zzz225) */
+/** O supremo escolhe outro administrador; o código vai para o e-mail da
+ *  verificação em 2 etapas do supremo e vale 10 minutos. */
+export async function transferirIniciar(sb: SB, eu: { id: string; nome?: string }, paraId: string) {
+  const cfg = await config2fa(sb, eu.id);
+  if (!cfg || !cfg.email) return { status: 400, corpo: { erro: 'Cadastre um e-mail na verificação em 2 etapas (Meu perfil → Segurança) para confirmar esta ação.' } };
+  const { data: alvo } = await sb.from('perfis').select('id, nome, eh_admin, estado').eq('id', paraId).maybeSingle();
+  if (!alvo || alvo.estado !== 'ativa' || !alvo.eh_admin || alvo.id === eu.id) return { status: 400, corpo: { erro: 'Escolha outro administrador ativo.' } };
+  const codigo = codigo6();
+  await sb.from('seguranca_codigos').update({ usado: true }).eq('perfil_id', eu.id).eq('finalidade', 'transferir_supremo').eq('usado', false);
+  await sb.from('seguranca_codigos').insert({ perfil_id: eu.id, finalidade: 'transferir_supremo', metodo: 'email', email: cfg.email, alvo: alvo.id,
+    codigo_hash: await hash('supremo', eu.id, codigo), expira_em: new Date(Date.now() + DEZ_MIN).toISOString() });
+  await enviarCodigo(cfg.email, codigo, 'cadastro', { nome: await nomeDe(sb, eu.id), acao: 'passar o cargo de admin supremo para ' + alvo.nome });
+  return { status: 200, corpo: { ok: true, email: mascarar(cfg.email), para: alvo.nome } };
+}
+export async function transferirConfirmar(sb: SB, eu: { id: string }, codigoBruto: unknown) {
+  const codigo = soDigitos(codigoBruto);
+  const { data: d } = await sb.from('seguranca_codigos').select('*').eq('perfil_id', eu.id).eq('finalidade', 'transferir_supremo')
+    .eq('usado', false).gt('expira_em', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (!d) return { status: 400, corpo: { erro: 'O código expirou. Comece de novo.' } };
+  if (d.tentativas >= 5) return { status: 429, corpo: { erro: 'Muitas tentativas. Comece de novo.' } };
+  if (codigo.length !== 6 || (await hash('supremo', eu.id, codigo)) !== d.codigo_hash) {
+    await sb.from('seguranca_codigos').update({ tentativas: d.tentativas + 1 }).eq('id', d.id);
+    return { status: 401, corpo: { erro: 'Código incorreto.' } };
+  }
+  await sb.from('seguranca_codigos').update({ usado: true }).eq('id', d.id);
+  /* primeiro o atual deixa de ser supremo (só pode existir um) */
+  const r1 = await sb.from('perfis').update({ superadmin: 'super' }).eq('id', eu.id);
+  if (r1.error) return { status: 500, corpo: { erro: 'Não foi possível passar o cargo: ' + r1.error.message } };
+  const r2 = await sb.from('perfis').update({ superadmin: 'supremo' }).eq('id', d.alvo);
+  if (r2.error) { await sb.from('perfis').update({ superadmin: 'supremo' }).eq('id', eu.id); return { status: 500, corpo: { erro: 'Não foi possível passar o cargo: ' + r2.error.message } }; }
+  return { status: 200, corpo: { ok: true, para: d.alvo } };
 }
 
 /* ------------------------------------------------ ações do administrador */

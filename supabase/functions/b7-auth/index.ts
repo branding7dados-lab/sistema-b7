@@ -299,6 +299,86 @@ async function quemChamou(req: Request) {
   return perfil;
 }
 
+/* =====================================================================
+   SUPER ADMIN (zzz225) — limites dos administradores comuns e aprovação dupla.
+   'livre' | 'aprovacao' | 'bloqueado' por ação (sistema_config.limites_admin;
+   o padrão é o mesmo de public.limites_admin_padrao()). Super admin é sempre livre.
+   ===================================================================== */
+const LIMITES_PADRAO: Record<string, string> = { acessos: 'livre', excluir_conta: 'aprovacao', entrar_como: 'livre',
+  excluir_cliente: 'aprovacao', seguranca: 'aprovacao', config_critica: 'bloqueado' };
+// deno-lint-ignore no-explicit-any
+async function nivelSuper(sb: any, id: string): Promise<string | null> {
+  const { data } = await sb.from('perfis').select('superadmin, eh_admin').eq('id', id).maybeSingle();
+  return data && data.eh_admin && data.superadmin ? String(data.superadmin) : null;
+}
+// deno-lint-ignore no-explicit-any
+async function limiteDe(sb: any, autorId: string, chave: string): Promise<string> {
+  if (await nivelSuper(sb, autorId)) return 'livre';
+  const { data } = await sb.from('sistema_config').select('valor').eq('chave', 'limites_admin').maybeSingle();
+  const v = data && data.valor && data.valor[chave];
+  return typeof v === 'string' ? v : (LIMITES_PADRAO[chave] || 'livre');
+}
+// deno-lint-ignore no-explicit-any
+async function pedirAprovacao(sb: any, autor: any, acao: string, corpo: Record<string, unknown>, alvo: { tipo: string; id: string | null; desc: string | null }, resumo: string) {
+  const limpo: Record<string, unknown> = { ...corpo }; delete limpo.senha; delete limpo.aprovacao_id;
+  const { data } = await sb.from('super_aprovacoes').insert({ acao, alvo_tipo: alvo.tipo, alvo_id: alvo.id, alvo_desc: alvo.desc,
+    corpo: limpo, resumo: resumo.slice(0, 400), motivo: null, pedido_por: autor.id }).select('id').single();
+  await sb.rpc('_super_avisar', { p_tipo: 'super.aprovacao', p_titulo: 'Aprovação pedida por ' + String(autor.nome || autor.username || 'alguém').split(' ')[0],
+    p_msg: resumo.slice(0, 200), p_link: '#/super/aprovacoes', p_ref: data ? data.id : null });
+  return json({ erro: 'Pedido enviado para um super admin aprovar. Você recebe um aviso com a resposta.', codigo: 'aguardando_aprovacao', aprovacao_id: data ? data.id : null }, 409);
+}
+/* aparelho novo de administrador: avisa os super admins (rede = começo do IP; nada de localização) */
+// deno-lint-ignore no-explicit-any
+async function alertaAparelho(sb: any, perfilId: string, req: Request) {
+  const { data: p } = await sb.from('perfis').select('nome, username, eh_admin').eq('id', perfilId).maybeSingle();
+  if (!p || !p.eh_admin) return;
+  const ua = (req.headers.get('user-agent') || '').slice(0, 300);
+  const ip = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || '').split(',')[0].trim();
+  const rede = ip.includes(':') ? ip.split(':').slice(0, 3).join(':') : ip.split('.').slice(0, 2).join('.');
+  const so = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iPhone' : /Mac OS/.test(ua) ? 'Mac' : 'Aparelho';
+  const nav = /Electron\//.test(ua) ? 'programa do B7' : /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'navegador';
+  const chave = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(so + '|' + nav + '|' + rede))))
+    .map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 40);
+  const descricao = so + ' · ' + nav + (rede ? ' · rede ' + rede + (ip.includes(':') ? ':…' : '.x.x') : '');
+  const { data: ja } = await sb.from('acesso_aparelhos').select('chave').eq('perfil_id', perfilId).eq('chave', chave).maybeSingle();
+  if (ja) { await sb.from('acesso_aparelhos').update({ ultimo_em: new Date().toISOString() }).eq('perfil_id', perfilId).eq('chave', chave); return; }
+  const { count } = await sb.from('acesso_aparelhos').select('chave', { count: 'exact', head: true }).eq('perfil_id', perfilId);
+  await sb.from('acesso_aparelhos').insert({ perfil_id: perfilId, chave, descricao });
+  if ((count || 0) > 0) {
+    await sb.rpc('_super_avisar', { p_tipo: 'super.acesso', p_titulo: 'Acesso de um aparelho novo: ' + String(p.nome || p.username).split(' ')[0],
+      p_msg: descricao + '. Se não reconhecer, derrube as sessões dessa conta.', p_link: '#/super', p_ref: perfilId });
+    await auditar(sb, { id: perfilId, username: p.username }, 'acesso_aparelho_novo', { tipo: 'perfil', id: perfilId, descricao: p.username }, { aparelho: descricao });
+  }
+}
+/* o acesso de uma conta mudou de verdade? (o editor manda os campos mesmo sem mudar nada) */
+// deno-lint-ignore no-explicit-any
+async function mudaAcesso(sb: any, corpo: any): Promise<boolean> {
+  const id = String(corpo.perfil_id || '');
+  const [{ data: p }, { data: ex }, { data: sec }] = await Promise.all([
+    sb.from('perfis').select('papel, estado, eh_admin, funcao, funcao_personalizada').eq('id', id).maybeSingle(),
+    sb.from('perfil_modulos').select('modulo, efeito, nivel').eq('perfil_id', id),
+    sb.from('perfil_funcoes_secundarias').select('funcao, nivel_max').eq('perfil_id', id)]);
+  if (!p) return true;
+  if (corpo.estado !== undefined && corpo.estado !== p.estado) return true;
+  if (corpo.papel !== undefined && corpo.papel !== p.papel) return true;
+  if (corpo.tipo === 'cliente' && p.papel !== 'cliente') return true;
+  if (corpo.tipo === 'interno' && p.papel === 'cliente') return true;
+  if (corpo.eh_admin !== undefined && !!corpo.eh_admin !== !!p.eh_admin) return true;
+  if (corpo.funcao !== undefined && (corpo.funcao || null) !== ((p.funcao_personalizada || p.funcao) || null)) return true;
+  const mapa = (o: Record<string, unknown>) => Object.keys(o || {}).sort().map((k) => k + ':' + o[k]).join();
+  if (corpo.modulos !== undefined && corpo.modulos && typeof corpo.modulos === 'object' && !Array.isArray(corpo.modulos)) {
+    const atual: Record<string, unknown> = {};
+    (ex || []).forEach((e: { modulo: string; efeito: string; nivel: string | null }) => { atual[e.modulo] = e.efeito === 'negar' ? 'negar' : (e.nivel || 'permitir'); });
+    if (mapa(corpo.modulos) !== mapa(atual)) return true;
+  }
+  if (corpo.secundarias !== undefined && corpo.secundarias && typeof corpo.secundarias === 'object') {
+    const atual: Record<string, unknown> = {};
+    (sec || []).forEach((x: { funcao: string; nivel_max: string }) => { atual[x.funcao] = x.nivel_max; });
+    if (mapa(corpo.secundarias) !== mapa(atual)) return true;
+  }
+  return false;
+}
+
 async function auditar(sb: any, autor: any, acao: string, alvo: any, detalhe: any = {}) {
   await sb.from('auditoria').insert([{
     autor_id: autor?.id || null,
@@ -387,6 +467,8 @@ Deno.serve(comCors(async (req) => {
       if (erroAcesso) {
         await sb.from('perfis').update({ ultimo_acesso: agora }).eq('id', perfil.perfil_id);
       }
+      /* zzz225: administrador entrando de um aparelho/rede novos avisa os super admins */
+      try { await alertaAparelho(admin(), perfil.perfil_id, req); } catch (_e) { /* o aviso nunca impede de entrar */ }
 
       /* zzz218: verificação em 2 etapas. Com ela ligada, a sessão não sai
          daqui: fica guardada no desafio até o código conferir (login_2fa).
@@ -601,6 +683,15 @@ Deno.serve(comCors(async (req) => {
     if (DF.ACOES_SEG_ADMIN.includes(acao)) {
       const eu = await quemChamou(req);
       if (!eu || eu.papel !== 'admin') return json({ erro: 'Só o administrador pode fazer isso.' }, 403);
+      if (acao === 'seg_politica') {
+        const lim = await limiteDe(admin(), eu.id, 'seguranca');
+        if (lim === 'bloqueado') return json({ erro: 'A política de segurança está liberada só para super admin.' }, 403);
+        if (lim === 'aprovacao') return await pedirAprovacao(admin(), eu, 'seguranca', corpo, { tipo: 'config', id: null, desc: 'Verificação em 2 etapas' },
+          'Mudar a verificação em 2 etapas para: ' + ({ ninguem: 'opcional', gestao: 'obrigatória para a gestão', todos: 'obrigatória para todos' } as Record<string, string>)[String(corpo.exigir_2fa)] );
+      }
+      if (acao === 'seg_resetar' && corpo.perfil_id && corpo.perfil_id !== eu.id && (await nivelSuper(admin(), String(corpo.perfil_id))) && !(await nivelSuper(admin(), eu.id))) {
+        return json({ erro: 'Esta conta é de um super admin: só um super admin mexe nela.' }, 403);
+      }
       const r = await DF.acaoAdmin(admin(), acao, corpo);
       if (r.status === 200) await auditar(sb, eu, acao === 'seg_politica' ? 'politica_2fa' : 'resetar_2fa',
         { tipo: 'perfil', id: acao === 'seg_resetar' ? String(corpo.perfil_id || '') : eu.id, descricao: acao }, acao === 'seg_politica' ? { exigir_2fa: corpo.exigir_2fa } : {});
@@ -651,7 +742,10 @@ Deno.serve(comCors(async (req) => {
 
     const ACOES_ADMIN = ['criar_usuario', 'redefinir_senha',
                          'alterar_conta', 'listar_usuarios', 'excluir_conta',
-                         'avatar_de', 'entrar_como', 'salvar_preset'];
+                         'avatar_de', 'entrar_como', 'salvar_preset',
+                         /* zzz225: só super admin (conferido abaixo) */
+                         'super_derrubar_todos', 'super_derrubar', 'super_brevo', 'super_emergencia', 'super_rebaixar',
+                         'super_transferir_iniciar', 'super_transferir_confirmar'];
     /* qualquer pessoa autenticada edita a própria conta */
     const ACOES_PROPRIAS = ['meu_perfil', 'meu_avatar'];
     if (!ACOES_ADMIN.includes(acao) && !ACOES_PROPRIAS.includes(acao)) {
@@ -774,6 +868,93 @@ Deno.serve(comCors(async (req) => {
     // Presença não é tocada: entrar na conta de alguém não pode fazê-lo
     // aparecer "online agora" nem mudar o "último acesso" dele.
     // =================================================================
+    /* zzz225: AÇÕES DO SUPER ADMIN */
+    if (acao.startsWith('super_')) {
+      const nivel = await nivelSuper(sb, autor.id);
+      if (!nivel) return json({ erro: 'Só super admin.' }, 403);
+      const soSupremo = ['super_emergencia', 'super_rebaixar', 'super_transferir_iniciar', 'super_transferir_confirmar'].includes(acao);
+      if (soSupremo && nivel !== 'supremo') return json({ erro: 'Só o admin supremo.' }, 403);
+      if (acao === 'super_derrubar_todos' || acao === 'super_derrubar') {
+        /* derruba as sessões (menos a de quem pediu); todos entram de novo com senha */
+        let q = sb.from('perfis').select('id, superadmin').eq('estado', 'ativa').neq('id', autor.id);
+        if (acao === 'super_derrubar') q = q.eq('id', String(corpo.perfil_id || ''));
+        const { data: alvos } = await q;
+        let n = 0;
+        for (const a of (alvos || [])) {
+          if (a.superadmin === 'supremo' && nivel !== 'supremo') continue;
+          try { await sb.auth.admin.signOut(a.id, 'global'); n++; } catch (_e) { /* segue */ }
+          await sb.from('seguranca_aparelhos').update({ revogado: true }).eq('perfil_id', a.id);
+        }
+        await auditar(sb, autor, acao, { tipo: 'sistema', id: acao === 'super_derrubar' ? String(corpo.perfil_id) : null, descricao: n + ' sessões' }, { contas: n });
+        return json({ ok: true, contas: n });
+      }
+      if (acao === 'super_brevo') {
+        const k = Deno.env.get('B7_BREVO_API_KEY');
+        if (!k) return json({ ok: true, configurado: false });
+        try {
+          const r = await fetch('https://api.brevo.com/v3/account', { headers: { 'api-key': k, accept: 'application/json' } });
+          const d = await r.json().catch(() => ({}));
+          // deno-lint-ignore no-explicit-any
+          return json({ ok: r.ok, configurado: true, plano: (d.plan || []).map((p: any) => ({ tipo: p.type, creditos: p.credits ?? null, unidade: p.creditsType || null })) });
+        } catch (_e) { return json({ ok: false, configurado: true }); }
+      }
+      if (acao === 'super_emergencia') {
+        /* congela o sistema para todos, menos os super admins */
+        const ativo = corpo.ativo === true;
+        const valor = ativo ? { ativo: true, emergencia: true, mensagem: String(corpo.mensagem || 'O sistema está temporariamente fora do ar.').slice(0, 300),
+          inicio: new Date().toISOString(), fim: null, portal: true, agendada: false, por: autor.id } : { ativo: false, por: autor.id };
+        await sb.from('sistema_config').upsert({ chave: 'manutencao', valor, atualizado_em: new Date().toISOString(), atualizado_por: autor.id }, { onConflict: 'chave' });
+        await auditar(sb, autor, ativo ? 'emergencia_ligada' : 'emergencia_desligada', { tipo: 'sistema', id: null, descricao: 'emergência' }, {});
+        return json({ ok: true, ativo });
+      }
+      if (acao === 'super_rebaixar') {
+        /* tira o administrador (e o super admin) de alguém; a pessoa fica com uma função */
+        const id = String(corpo.perfil_id || ''), fn = await resolverFuncao(sb, corpo.funcao);
+        if (!id || id === autor.id) return json({ erro: 'Escolha outra pessoa.' }, 400);
+        if (fn.erro || !fn.funcao) return json({ erro: fn.erro || 'Escolha a função que a pessoa passa a ter.' }, 400);
+        const antes = await fotoAcesso(sb, id);
+        const { error } = await sb.from('perfis').update({ superadmin: null, eh_admin: false, funcao: fn.funcao, funcao_personalizada: fn.personalizada }).eq('id', id);
+        if (error) return json({ erro: 'Não foi possível: ' + error.message }, 400);
+        await sb.auth.admin.signOut(id, 'global').catch(() => {});
+        await auditar(sb, autor, 'super_rebaixou', { tipo: 'perfil', id }, { acesso: { antes, depois: await fotoAcesso(sb, id) } });
+        return json({ ok: true });
+      }
+      if (acao === 'super_transferir_iniciar') {
+        const r = await DF.transferirIniciar(sb, autor, String(corpo.para || ''));
+        return json(r.corpo, r.status);
+      }
+      if (acao === 'super_transferir_confirmar') {
+        const r = await DF.transferirConfirmar(sb, autor, corpo.codigo);
+        if (r.status === 200) await auditar(sb, autor, 'supremo_transferido', { tipo: 'perfil', id: String(r.corpo.para || '') }, {});
+        return json(r.corpo, r.status);
+      }
+    }
+
+    /* zzz225: LIMITES DOS ADMINISTRADORES COMUNS (aprovação dupla) */
+    if (acao === 'entrar_como' && (await limiteDe(sb, autor.id, 'entrar_como')) === 'bloqueado') {
+      return json({ erro: 'Entrar na conta de outra pessoa está liberado só para super admin.' }, 403);
+    }
+    if (acao === 'excluir_conta') {
+      const lim = await limiteDe(sb, autor.id, 'excluir_conta');
+      if (lim === 'bloqueado') return json({ erro: 'Excluir contas está liberado só para super admin.' }, 403);
+      if (lim === 'aprovacao') {
+        const { data: alvo } = await sb.from('perfis').select('nome, username').eq('id', corpo.perfil_id).maybeSingle();
+        return await pedirAprovacao(sb, autor, 'excluir_conta', corpo, { tipo: 'perfil', id: String(corpo.perfil_id || ''), desc: alvo ? alvo.nome : null },
+          'Excluir a conta de ' + (alvo ? alvo.nome + ' (@' + alvo.username + ')' : 'alguém'));
+      }
+    }
+    if (acao === 'criar_usuario' || acao === 'salvar_preset' || (acao === 'alterar_conta' && await mudaAcesso(sb, corpo))) {
+      const lim = await limiteDe(sb, autor.id, 'acessos');
+      if (lim === 'bloqueado' || (lim === 'aprovacao' && acao === 'criar_usuario')) return json({ erro: 'Criar contas e mudar acessos está liberado só para super admin.' }, 403);
+      if (lim === 'aprovacao') {
+        const { data: alvo } = acao === 'alterar_conta' ? await sb.from('perfis').select('nome, username').eq('id', corpo.perfil_id).maybeSingle() : { data: null };
+        return await pedirAprovacao(sb, autor, 'acessos', corpo, { tipo: acao === 'salvar_preset' ? 'funcao' : 'perfil', id: acao === 'alterar_conta' ? String(corpo.perfil_id || '') : null,
+          desc: alvo ? alvo.nome : String(corpo.funcao || '') },
+          acao === 'salvar_preset' ? 'Mudar o padrão da função ' + String(corpo.funcao || '') : 'Mudar o acesso de ' + (alvo ? alvo.nome : 'alguém') +
+            (corpo.estado === 'desativada' ? ' (desativar a conta)' : ''));
+      }
+    }
+
     /* zzz224: SUPER ADMIN. Administrador comum não mexe na conta de um super admin
        (senha, acesso, desativar, excluir, foto, entrar como); o admin supremo só
        ele mesmo. O cargo em si só muda pelo banco (gatilho _perfis_trava_super). */
