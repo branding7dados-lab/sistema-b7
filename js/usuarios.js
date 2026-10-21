@@ -836,7 +836,9 @@ B7.Usuarios = (function () {
 
     const tags = ehCliente
       ? '<span class="lu4-tag lu3-p-cliente">Cliente</span>' + (u.pode_aprovar ? '<span class="lu4-tag leve">aprova</span>' : '')
-      : (idt.ehAdmin ? '<span class="lu4-tag lu3-p-admin">Administrador</span>' : '') +
+      : (idt.ehAdmin ? (u.superadmin === 'supremo' ? '<span class="lu4-tag lu3-p-super supremo" title="Acima de todos os administradores">Admin supremo</span>'
+          : u.superadmin === 'super' ? '<span class="lu4-tag lu3-p-super" title="Acima dos administradores">Super admin</span>'
+          : '<span class="lu4-tag lu3-p-admin">Administrador</span>') : '') +
         (idt.funcao ? '<span class="lu4-tag lu3-p-' + esc(idt.funcao) + '">' + esc(rotuloFuncao(idt.funcao)) + '</span>' : '') +
         extras.map(f => '<span class="lu4-tag leve" title="Função extra">+ ' + esc(rotuloFuncaoExtra(f)) + '</span>').join('');
 

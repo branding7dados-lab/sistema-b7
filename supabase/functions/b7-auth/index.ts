@@ -774,6 +774,18 @@ Deno.serve(comCors(async (req) => {
     // Presença não é tocada: entrar na conta de alguém não pode fazê-lo
     // aparecer "online agora" nem mudar o "último acesso" dele.
     // =================================================================
+    /* zzz224: SUPER ADMIN. Administrador comum não mexe na conta de um super admin
+       (senha, acesso, desativar, excluir, foto, entrar como); o admin supremo só
+       ele mesmo. O cargo em si só muda pelo banco (gatilho _perfis_trava_super). */
+    if (['alterar_conta', 'redefinir_senha', 'excluir_conta', 'entrar_como', 'avatar_de'].includes(acao) && corpo.perfil_id) {
+      const [{ data: alvoSup }, { data: euSup }] = await Promise.all([
+        sb.from('perfis').select('superadmin').eq('id', corpo.perfil_id).maybeSingle(),
+        sb.from('perfis').select('superadmin').eq('id', autor.id).maybeSingle()]);
+      const nivelAlvo = alvoSup && alvoSup.superadmin, nivelEu = euSup && euSup.superadmin;
+      if (corpo.perfil_id !== autor.id && nivelAlvo === 'supremo') return json({ erro: 'Esta conta é do admin supremo: só ele mexe nela.' }, 403);
+      if (corpo.perfil_id !== autor.id && nivelAlvo === 'super' && !nivelEu) return json({ erro: 'Esta conta é de um super admin: só um super admin mexe nela.' }, 403);
+    }
+
     if (acao === 'entrar_como') {
       const { data: alvo } = await sb.from('perfis')
         .select('id, username, nome, papel, estado').eq('id', corpo.perfil_id).maybeSingle();

@@ -1082,3 +1082,7 @@ body.b7-nv-editar #tela-dashboard :is([data-decidir],[data-excluir],[data-apagar
 .seg-intro .lg2-ic{margin-bottom:8px;}
 .modal .login-erro{color:#d6336c;margin-top:8px;}
 @media (max-width:560px){.seg-opcoes{grid-template-columns:minmax(0,1fr);}}
+
+/* zzz224: super admin e admin supremo nos cartões de Usuários */
+.lu4-tag.lu3-p-super{color:#fff;background:linear-gradient(135deg,#3A1E86,#C21C83);border-color:transparent;}
+.lu4-tag.lu3-p-super.supremo{background:linear-gradient(135deg,#8a5a0b,#d4a017 55%,#f5d061);color:#1b1200;}
