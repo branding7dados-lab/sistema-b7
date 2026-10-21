@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz217', versao: 'zzz217', em: '2026-10-21T12:00:00-03:00', irPara: 'suporte',
+    titulo: 'Suporte: escreva a dúvida e veja a resposta na hora',
+    itens: ['No Suporte, escreva a sua dúvida: as perguntas frequentes e os tutoriais certos aparecem na hora, com "Isso resolveu?".',
+            'Não resolveu? Toque em "Perguntar ao assistente" e ele responde ali mesmo.',
+            'Ainda não? "Falar com a equipe" abre o chamado já com o que você tentou, para ninguém perguntar de novo.',
+            'Administração: nova aba "Perguntas frequentes" na Central, com o que mais resolve, o que a equipe procura e não acha, e "Virar pergunta frequente" em cada chamado.'] },
   { id: 'v-zzz216', versao: 'zzz216', em: '2026-10-17T22:00:00-03:00',
     titulo: 'Pedir acesso pelo sistema',
     itens: ['Se uma tela aparece só para ver, ou você ainda não tem acesso a ela, toque em "Pedir mais acesso" e diga por quê.',

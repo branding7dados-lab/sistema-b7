@@ -801,6 +801,8 @@ B7.Chat = (function () {
     if (anexo) dados.imagem = { mime: anexo.mime, base64: anexo.base64 };
     if (S.conversaId) dados.conversa_id = S.conversaId;
     const tuts = tutoriaisPara(texto); if (tuts.length) dados.ajuda_ids = tuts;
+    /* zzz217: e as perguntas frequentes do Suporte parecidas */
+    if (COMO.test(texto) && B7.Suporte && B7.Suporte.faqIds) { try { const f = await B7.Suporte.faqIds(texto); if (f.length) dados.faq_ids = f; } catch (e) {} }
     S.parcial = '';
     const r = await B7.IA.pedir('chat', dados, { aoTrecho: pedaco => { S.parcial += pedaco; pintarFluxo(); } });
 
