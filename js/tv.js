@@ -78,7 +78,7 @@ B7.TV = (function () {
     clearTimeout(animTimer);
     const passo = completa => {
       if (!raiz || modoAtivo !== 'animacao') return;
-      trocarCena(completa && !reduz(), () => { animTimer = setTimeout(() => passo(!completa), completa && !reduz() ? 7400 : 50000); });
+      trocarCena(completa && !reduz(), () => { animTimer = setTimeout(() => passo(!completa), completa && !reduz() ? (B7.duracaoAbertura ? B7.duracaoAbertura() + 1000 : 7400) : 50000); });
     };
     passo(true);
   }
@@ -92,7 +92,7 @@ B7.TV = (function () {
       vinhetaTimer = setTimeout(() => {
         palco.classList.add('tv-corte');
         setTimeout(() => { if (raiz && modoAtivo === 'painel') { palco.hidden = true; palco.innerHTML = ''; palco.classList.remove('tv-corte'); pintar(true); } }, 450);
-      }, 7200);
+      }, B7.duracaoAbertura ? B7.duracaoAbertura() + 800 : 7200);
     });
   }
   function aplicarModo() {

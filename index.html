@@ -61,6 +61,16 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
+  /* zzz230: estilo da abertura completa (Configurações → Aparência), antes
+     da primeira pintura porque o CSS da sequência começa a andar nela.
+     streaming (padrão) · bigbang (partículas, zzz227) · classica (zzp).
+     Quem tinha desligado as partículas fica com a clássica. */
+  try {
+    var b7Est = JSON.parse(localStorage.getItem('b7_pref_abertura_estilo') || 'null');
+    if (!b7Est) { var b7Pp = localStorage.getItem('b7_pref_abertura_particulas'); b7Est = b7Pp !== null && JSON.parse(b7Pp) === false ? 'classica' : 'streaming'; }
+    if (!/^(streaming|bigbang|classica)$/.test(b7Est)) b7Est = 'streaming';
+    document.documentElement.setAttribute('data-ab-estilo', b7Est);
+  } catch (e) { document.documentElement.setAttribute('data-ab-estilo', 'streaming'); }
   /* zzz156: app (ou PWA instalado) que o Android fechou em segundo plano
      para liberar memória. Se a pessoa estava usando há menos de 30 min,
      não é "abrir do zero": abertura curta e de volta à tela em que ela
@@ -173,6 +183,8 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
 <script src="js/abertura-som.js"></script>
 <!-- zzz227: partículas da abertura (montam a lâmpada e escrevem o logo) -->
 <script src="js/abertura-particulas.js"></script>
+<!-- zzz230: abertura "streaming" (mergulho no logo e faixas de luz) -->
+<script src="js/abertura-faixas.js"></script>
 
 <div id="app">
 

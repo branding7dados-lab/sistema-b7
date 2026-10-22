@@ -415,7 +415,13 @@ B7.Rota = (function () {
      antes de qualquer script). Aqui só guardamos uma cópia dela para
      remontar a cortina entre o login e a montagem do sistema. */
   const inicialAbertura = document.getElementById('abertura');
-  const MOLDE_ABERTURA = inicialAbertura ? inicialAbertura.innerHTML : '';
+  /* zzz230: sem os <canvas> que as camadas da abertura (partículas, faixas)
+     já tenham posto nela: cada cópia ganha os seus */
+  const MOLDE_ABERTURA = inicialAbertura ? (() => {
+    const c = inicialAbertura.cloneNode(true);
+    c.querySelectorAll('canvas').forEach(n => n.remove());
+    return c.innerHTML;
+  })() : '';
   const TEXTO_PADRAO = 'Preparando o seu espaço…';
   /* A espera mostra UMA frase verdadeira — e só aparece se o sistema ainda
      não estiver pronto quando a abertura termina (CSS, .ab-espera). Nada
@@ -499,7 +505,11 @@ B7.Rota = (function () {
      • com "reduzir movimento": nada de mínimo. */
   const reduzMov = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const curta = document.documentElement.classList.contains('ab-curta');
-  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 950 : 6400;   /* zzz110: corte longo */
+  /* zzz230: a duração da sequência completa depende do estilo escolhido
+     (streaming 4,9 s; big bang e clássica 6,4 s) */
+  const duracaoAbertura = () => document.documentElement.getAttribute('data-ab-estilo') === 'streaming' && !reduzMov() ? 4900 : 6400;
+  B7.duracaoAbertura = duracaoAbertura;
+  const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 950 : duracaoAbertura();   /* zzz110: corte longo */
 
   /* Para onde o logo voa: o lugar onde ele mora na tela que ficou pronta.
      Lockup (logo inteiro) → caixa de login ou barra lateral aberta.
@@ -768,7 +778,7 @@ B7.Rota = (function () {
       if (eraCurta) setTimeout(() => raiz.classList.add('ab-curta'), 1200);
     };
     if (reduzMov()) setTimeout(fim, 600);
-    else { const posta = Date.now(); setTimeout(() => sairQuandoTerminar(el, 6400, fim, posta, posta), 1500); }
+    else { const posta = Date.now(); setTimeout(() => sairQuandoTerminar(el, duracaoAbertura(), fim, posta, posta), 1500); }
   }
   B7.abrirCortina = abrirCortina;
   B7.fecharCortina = fecharCortina;

@@ -25,11 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
-  { id: 'v-zzz227', versao: 'zzz229', em: '2026-10-22T09:00:00-03:00',
-    titulo: 'Abertura nova',
-    itens: ['Ao abrir o B7, a câmera atravessa uma nebulosa de luz, os pontos montam a lâmpada da B7, ela acende com feixes de luz, as faíscas voam na direção da tela e escrevem o "Branding7".',
-            'Trilha sonora nova, de cinema: coral, impacto de trailer e uma nota para cada letra do logo.',
-            'Prefere a abertura de antes? Configurações → Aparência → desligue "Partículas na abertura".'] },
+  { id: 'v-zzz230', versao: 'zzz230', em: '2026-10-22T10:00:00-03:00',
+    titulo: 'Abertura nova, estilo streaming',
+    itens: ['Ao abrir o B7: o logo surge no escuro com duas batidas graves, a câmera mergulha na lâmpada e ela se abre em faixas de luz nas cores da B7, até o logo voltar.',
+            'Prefere outra? Configurações → Aparência → "Estilo da abertura": Streaming, Big bang (partículas) ou Clássica.'] },
   { id: 'v-zzz223', versao: 'zzz223', em: '2026-10-21T18:00:00-03:00', rota: 'suporte',
     titulo: 'Suporte com atendimento na hora',
     itens: ['Abriu uma dúvida ou um problema? O assistente responde na hora, no próprio chamado. Se não resolver, toque em "Falar com uma pessoa" (ou ele mesmo chama alguém da equipe).',
