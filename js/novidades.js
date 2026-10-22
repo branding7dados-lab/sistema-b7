@@ -25,9 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
-  { id: 'v-zzz227', versao: 'zzz227', em: '2026-10-22T09:00:00-03:00',
+  { id: 'v-zzz227', versao: 'zzz228', em: '2026-10-22T09:00:00-03:00',
     titulo: 'Abertura nova',
-    itens: ['Ao abrir o B7, pontos de luz giram como uma galáxia, montam a lâmpada da B7, ela acende e as faíscas escrevem o "Branding7".',
+    itens: ['Ao abrir o B7, a câmera atravessa uma nebulosa de luz, os pontos montam a lâmpada da B7, ela acende, as faíscas voam na direção da tela e escrevem o "Branding7".',
             'Prefere a abertura de antes? Configurações → Aparência → desligue "Partículas na abertura".'] },
   { id: 'v-zzz223', versao: 'zzz223', em: '2026-10-21T18:00:00-03:00', rota: 'suporte',
     titulo: 'Suporte com atendimento na hora',
