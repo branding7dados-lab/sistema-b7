@@ -228,7 +228,7 @@ B7.Trends = (function () {
       if (!sCli.value) return;
       let gravs = [];
       try { gravs = (await B7.DB.gravacoesDoClienteParaVideo(sCli.value)).filter(g => !['Gravada', 'Cancelada'].includes(g.situacao)); } catch (e) {}
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = B7.UI.hojeISO();   /* zzz234: data de hoje no Brasil, não em UTC */
       gravs.sort((a, b) => {                                              /* a próxima data primeiro; sem data por último */
         const da = a.data_gravacao ? String(a.data_gravacao).slice(0, 10) : '9999', db2 = b.data_gravacao ? String(b.data_gravacao).slice(0, 10) : '9999';
         const fa = da >= hoje ? 0 : 1, fb = db2 >= hoje ? 0 : 1;

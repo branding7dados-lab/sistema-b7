@@ -1323,6 +1323,7 @@ B7.Dashboard = (function () {
        e corrige o endereço, sem gerar outra navegação */
     if (aba && aba !== 'geral' && sec === 'geral') history.replaceState(null, '', hrefSecao(id, 'geral'));
     const seq = prepararSecaoCliente(id, sec, { geral: 'detalhe', gravacoes: 'cards', arquivados: 'cards' }[sec] || 'lista');
+    const vale = B7.Rota.marca();   /* zzz234: sair da rota também invalida (trocaSeq só muda entre seções) */
 
     /* cada seção carrega só o que mostra: abrir "Vídeos" não busca
        gravações, roteiros, linhas e status */
@@ -1344,9 +1345,9 @@ B7.Dashboard = (function () {
       if (sec === 'video') lista = await B7.DB.videoDoCliente(id).catch(e => { console.error(e); return null; });
       if (sec === 'design') lista = await B7.DB.listarDesign({ clienteId: id }).catch(e => { console.error(e); return null; });
       gravacoes.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
-      if (seq !== trocaSeq) return;            /* a pessoa já foi para outra aba */
+      if (seq !== trocaSeq || !vale()) return;            /* a pessoa já foi para outra aba */
       B7.Rota.titulo(sec === 'geral' ? [cliente.nome] : [cliente.nome, def.r]);
-    } catch (e) { if (seq !== trocaSeq) return; return erroCliente(e, id); }
+    } catch (e) { if (seq !== trocaSeq || !vale()) return; return erroCliente(e, id); }
 
     /* métricas do cliente, tiradas dos dados reais dele */
     const conta = st => gravacoes.filter(g => g.status === st).length;
@@ -1519,7 +1520,7 @@ B7.Dashboard = (function () {
     const abertos = lista.filter(d => !fechado(d))
       .sort((a, b) => String(a.prazo || '9999').localeCompare(String(b.prazo || '9999')));
     const fechados = lista.filter(fechado);
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = B7.UI.hojeISO();
     const linha = d => {
       const atrasada = !fechado(d) && d.prazo && String(d.prazo).slice(0, 10) < hoje;
       const tipo = D.rotuloTipo ? D.rotuloTipo(d.tipo) : 'Peça';

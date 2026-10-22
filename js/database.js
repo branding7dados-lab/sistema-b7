@@ -1008,8 +1008,10 @@ B7.DB = (function () {
       let q = sb().from('notificacoes_resumo').select('*')
         .or('dados->>teste.is.null,dados->>teste.neq.true')
         .neq('tipo', 'chat.mensagem')
-        .order('created_at', { ascending: false }).limit(limite);
-      if (antesDe) q = q.lt('created_at', antesDe);
+        .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(limite);
+      /* zzz234: lte (não lt): avisos criados juntos têm o mesmo horário e os da
+         borda da página sumiam; quem pede a próxima página tira os repetidos */
+      if (antesDe) q = q.lte('created_at', antesDe);
       if (tipos && tipos.length) q = q.in('tipo', tipos);   /* filtro do sino */
       return ok(await q);
     },

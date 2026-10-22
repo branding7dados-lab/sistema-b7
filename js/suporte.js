@@ -203,13 +203,16 @@ B7.Suporte = (function () {
       if (fs.length) { e.preventDefault(); adicionar(fs); }
     });
 
+    /* zzz234: o chamado criado fica guardado; se só o anexo falhar, tentar
+       de novo anexa no MESMO chamado em vez de abrir outro */
+    let criado = null;
     q('#sp-enviar').onclick = async () => {
       const titulo = q('#sp-tit').value.trim(), desc = q('#sp-desc').value.trim();
       if (titulo.length < 3) { q('#sp-tit').classList.add('erro'); q('#sp-tit').focus(); return B7.UI.toast('Escreva um resumo (pelo menos 3 letras).', { tipo: 'erro' }); }
       const bt = q('#sp-enviar'); bt.disabled = true; bt.textContent = 'Enviando…';
       try {
-        const id = await B7.DB.rpc('suporte_criar', { p_tipo: tipo, p_titulo: titulo, p_descricao: desc, p_urgente: tipo === 'bug' && q('#sp-urg-c').checked,
-          p_contexto: q('#sp-info-c').checked ? ctx : { tela: ctx.tela, versao: ctx.versao } });
+        const id = criado || (criado = await B7.DB.rpc('suporte_criar', { p_tipo: tipo, p_titulo: titulo, p_descricao: desc, p_urgente: tipo === 'bug' && q('#sp-urg-c').checked,
+          p_contexto: q('#sp-info-c').checked ? ctx : { tela: ctx.tela, versao: ctx.versao } }));
         const paths = [];
         for (const im of imagens) {
           const caminho = id + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random().toString(16).slice(2)) + '.jpg';
@@ -226,8 +229,8 @@ B7.Suporte = (function () {
         B7.UI.toast(imagens.length && paths.length < imagens.length ? 'Chamado enviado, mas algum print não subiu.' : 'Chamado aberto. O atendimento responde por aqui.');
         if (/^#\/suporte/.test(location.hash)) abrir(id); else location.hash = '#/suporte/' + id;
       } catch (e) {
-        bt.disabled = false; bt.textContent = 'Enviar';
-        B7.UI.toast('Não foi possível enviar: ' + ((e && e.message) || 'erro'), { tipo: 'erro' });
+        bt.disabled = false; bt.textContent = criado ? 'Tentar anexar de novo' : 'Enviar';
+        B7.UI.toast((criado ? 'O chamado foi aberto, mas os anexos não subiram: ' : 'Não foi possível enviar: ') + ((e && e.message) || 'erro'), { tipo: 'erro' });
       }
     };
   }

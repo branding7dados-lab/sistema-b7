@@ -78,19 +78,25 @@ B7.Kanban = (function () {
       '<p>As demandas da equipe. O cliente não vê esta área.</p></div></div>' +
       B7.UI.skeleton('tabela', { n: 6, cols: 4 }) + '</div>';
 
+    /* zzz234: quem já foi para outra tela não recebe este Kanban por cima */
+    const vale = B7.Rota.marca();
+    let r;
     try {
-      [dados, clientes, equipe] = await Promise.all([
+      r = await Promise.all([
         B7.DB.listarDemandas(),
         B7.DB.listarClientes().catch(() => []),
         B7.DB.listarEquipe().catch(() => [])
       ]);
     } catch (e) {
+      if (!vale()) return;
       return painel().innerHTML = '<div class="conteudo entra">' +
         '<div class="estado-b7"><b>Não foi possível carregar o Kanban.</b>' +
         '<p>' + esc(e.message || '') + '</p>' +
         '<p>Se o sistema acabou de ser atualizado, rode migration_kanban_v2.sql no Supabase.</p>' +
         '</div></div>';
     }
+    if (!vale()) return;
+    [dados, clientes, equipe] = r;
     desenhar();
     assinar();
 

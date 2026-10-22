@@ -84,25 +84,43 @@ B7.Linha = (function () {
     L.daLista = de === 'linhas' || !(B7.Perm ? B7.Perm.podeRota('clientes') : true);
     B7.Dashboard.marcarNav(L.daLista ? '#/linhas' : '#/clientes');
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('detalhe') + '</div>';
+    /* zzz234: tudo chega primeiro em variáveis locais e só entra em L de uma
+       vez, se a pessoa ainda estiver nesta tela — abrir a linha A e logo a B
+       misturava o cabeçalho de uma com os conteúdos da outra */
+    const vale = B7.Rota.marca();
+    let linha, conteudos, cliente, pilares, aprovacao, design;
     try {
-      L.linha = await B7.DB.linha(id);
-      [L.conteudos, L.cliente, L.pilares] = await Promise.all([
-        B7.DB.listarConteudos(id), B7.DB.cliente(L.linha.client_id),
+      linha = await B7.DB.linha(id);
+      [conteudos, cliente, pilares] = await Promise.all([
+        B7.DB.listarConteudos(id), B7.DB.cliente(linha.client_id),
         B7.DB.listarPilares(id).catch(() => [])
       ]);
-      try { L.aprovacao = (await B7.DB.ultimasAprovacoes('linha', [id]))[id] || null; } catch (e) { L.aprovacao = null; }
+      try { aprovacao = (await B7.DB.ultimasAprovacoes('linha', [id]))[id] || null; } catch (e) { aprovacao = null; }
       /* (fase 6) as gravações do cliente não são mais carregadas aqui: o
          calendário da linha é o Calendário B7, que lê as gravações dele. */
-    } catch (e) { return B7.Dashboard.erroConteudo(e, (L.linha || {}).client_id || ''); }
+    } catch (e) { if (vale()) B7.Dashboard.erroConteudo(e, (linha || {}).client_id || ''); return; }
 
     /* Design (B7 Design): busca só uma vez ao abrir a linha, nunca por
        card — falha aqui não impede a linha de abrir. */
-    await carregarDesign();
+    design = await buscarDesign(id);
+    if (!vale()) return;
+    Object.assign(L, { linha, conteudos, cliente, pilares, aprovacao }, design);
 
     B7.Rota.titulo([L.linha.nome || (MESES[L.linha.mes - 1] + ' ' + L.linha.ano), L.linha.cliente_nome]);
     render();
     verificarPostagensAutomaticas();
     if (conteudoId && (L.conteudos || []).some(c => c.id === conteudoId)) abrirConteudo(conteudoId);
+    /* zzz234: o ?conteudo= vale uma vez só. Ficando no endereço, cada
+       atualização em tempo real (até o salvamento do próprio criativo)
+       reabria o criativo depois que a pessoa fechava */
+    if (conteudoId) {
+      try {
+        const [rota, q] = location.hash.split('?'), ps = new URLSearchParams(q || '');
+        ps.delete('conteudo');
+        const resto = ps.toString();
+        history.replaceState(history.state, '', rota + (resto ? '?' + resto : ''));
+      } catch (e) {}
+    }
   }
 
   /* Um conteúdo Programado cuja data de postagem já passou foi, na
@@ -139,15 +157,16 @@ B7.Linha = (function () {
     return !(B7.Auth && B7.Auth.usuario()) || B7.Auth.ehEquipe();
   }
 
+  async function buscarDesign(linhaId) {
+    const r = { design: [], designProducao: null, designPorConteudo: {} };
+    try { r.design = await B7.DB.listarDesign({ linhaId }); } catch (e) { r.design = []; }
+    try { r.designProducao = await B7.DB.designProducaoDaLinha(linhaId); } catch (e) { r.designProducao = null; }
+    r.design.forEach(p => { if (p.conteudo_id) r.designPorConteudo[p.conteudo_id] = p; });
+    return r;
+  }
   async function carregarDesign() {
-    try {
-      L.design = await B7.DB.listarDesign({ linhaId: L.linha.id });
-    } catch (e) { L.design = []; }
-    try {
-      L.designProducao = await B7.DB.designProducaoDaLinha(L.linha.id);
-    } catch (e) { L.designProducao = null; }
-    L.designPorConteudo = {};
-    L.design.forEach(p => { if (p.conteudo_id) L.designPorConteudo[p.conteudo_id] = p; });
+    const id = L.linha.id, r = await buscarDesign(id);
+    if (L.linha && L.linha.id === id) Object.assign(L, r);
   }
 
   /* --------------------------------------------- espelho em memória
