@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz236', versao: 'zzz236', em: '2026-10-22T16:00:00-03:00',
+    titulo: 'Portal do cliente revisado',
+    itens: ['Peças de design enviadas para aprovação agora mostram a arte no Portal. Antes o cliente via só o título. Os botões de decisão só liberam depois que a arte carrega.',
+            'No celular, o cliente volta a ver as abas das Aprovações (Pendentes, Ajustes, Aprovados…).',
+            'Quando algo não carrega, o Portal diz isso e oferece "Tentar de novo", em vez de mostrar a tela vazia.'] },
   { id: 'v-zzz235', versao: 'zzz235', em: '2026-10-22T15:00:00-03:00',
     titulo: 'Correções',
     itens: ['Trocar de tela com a internet lenta não faz mais a tela anterior aparecer por cima da nova (Produção, Design, Linhas, Aprovações, Gravação, Clientes).',
