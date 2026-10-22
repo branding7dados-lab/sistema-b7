@@ -1789,3 +1789,12 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .cfg-v2 [data-hospede="matriz"] .cfg-g{display:block;}
 .cfg-v2 [data-hospede="matriz"] .cfg-g-nota{margin:0 0 14px;}
 .cfg-v2 [data-hospede="matriz"] .cfg-g-nota + .cfg-lista,.cfg-v2 [data-hospede="matriz"] .cfg-lista + .cfg-g-nota{margin-top:14px;}
+/* zzz251: conferência de segurança (Funções e permissões) */
+.pm-conf:empty{display:none;}
+.pm-conf-ok{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--ok) 12%,var(--card));color:var(--ink);}
+.pm-conf-ok svg{width:22px;height:22px;flex:none;color:var(--ok);}
+.pm-conf-ok span{display:flex;flex-direction:column;gap:2px;}
+.pm-conf-ok small,.pm-conf-mal small{color:var(--ink-3);font-size:12px;}
+.pm-conf-mal{padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--erro) 10%,var(--card));border:1px solid color-mix(in srgb,var(--erro) 35%,transparent);}
+.pm-conf-mal ul{margin:8px 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;}
+.pm-conf-mal li small{display:block;}

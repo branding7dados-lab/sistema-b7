@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz251', versao: 'zzz251', em: '2026-10-23T04:00:00-03:00',
+    titulo: 'Conferência automática de permissões',
+    itens: ['Em Configurações → Funções e permissões, a administração vê a "Conferência de segurança": o B7 testa cada pessoa em cada módulo e cada regra do banco e diz se está tudo certo.',
+            'A conferência também roda sozinha todo dia de manhã e só avisa a administração se achar algum problema.',
+            'Quem não tem permissão para mexer no WhatsApp ou na Agenda da equipe agora recebe um aviso claro, como já acontecia nas outras áreas.'] },
   { id: 'v-zzz250', versao: 'zzz250', em: '2026-10-23T03:00:00-03:00',
     titulo: 'Observações internas ficam só com a equipe',
     itens: ['As observações para o design de cada conteúdo nunca aparecem para o cliente, e as observações dos itens do status semanal só aparecem quando o status foi publicado com "mostrar observações".',
