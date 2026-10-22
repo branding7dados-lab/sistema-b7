@@ -65,16 +65,19 @@
     el.appendChild(cv);
     const g = cv.getContext('2d');
     const celular = Math.min(innerWidth, innerHeight) < 600;
-    const dpr = Math.min(window.devicePixelRatio || 1, celular ? 2 : 1.5);
+    /* zzz232: luz borrada não precisa de resolução dupla; no celular desenhar em 2x
+       custava 4x mais e travava as faixas (medido: 160 ms por quadro) */
+    const dpr = Math.min(window.devicePixelRatio || 1, celular ? 1 : 1.25);
     let W = 0, H = 0;
-    const medir = () => { const r = el.getBoundingClientRect(); W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); g.setTransform(dpr, 0, 0, dpr, 0, 0); };
+    let cx = 0, cy = 0;
+    /* zzz232: o centro também é medido de novo ao girar o celular (antes as faixas ficavam fora do centro) */
+    const medir = () => {
+      const r = el.getBoundingClientRect(); W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const rp = (el.querySelector('.ab-palco') || marca).getBoundingClientRect();
+      cx = rp.left - r.left + rp.width / 2; cy = rp.top - r.top + rp.height / 2;
+    };
     medir(); addEventListener('resize', medir);
-    /* o centro do mergulho: o centro do palco (é para lá que a lâmpada vai ao crescer) */
-    const palco = el.querySelector('.ab-palco') || marca;
-    const rp = palco.getBoundingClientRect(), re0 = el.getBoundingClientRect();
-    const cx = rp.left - re0.left + rp.width / 2, cy = rp.top - re0.top + rp.height / 2;
-
-    const N = celular ? 64 : 110;
+    const N = celular ? 48 : 96;
     const fx = Array.from({ length: N }, (_, i) => {
       const u = Math.random();                                  /* posição na lâmpada: esquerda azul, direita rosa */
       const k = Math.min(CORES.length - 1, Math.floor(u * CORES.length + (Math.random() - .5) * 1.4));
@@ -131,7 +134,7 @@
       if (clarao > .01) {
         const gr = g.createRadialGradient(cx, cy, 0, cx, cy, W * .3);
         gr.addColorStop(0, 'rgba(255,220,240,.55)'); gr.addColorStop(.4, 'rgba(226,64,156,.18)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
-        g.globalAlpha = clarao; g.fillStyle = gr; g.fillRect(0, 0, W, H);
+        g.globalAlpha = clarao; g.fillStyle = gr; g.fillRect(cx - W * .3, cy - W * .3, W * .6, W * .6);   /* só onde o brilho existe */
       }
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       requestAnimationFrame(quadro);

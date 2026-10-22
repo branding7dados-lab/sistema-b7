@@ -604,22 +604,26 @@ html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-marca{t
   animation:abStMarca 3.6s both;}
 /* zzz231: o logo não volta — depois do mergulho a abertura fica dentro das faixas e elas abrem o sistema */
 @keyframes abStMarca{
-  0%    {opacity:0;transform:scale(.9);filter:blur(8px)}
-  6.9%  {opacity:0;transform:scale(.9);filter:blur(8px);animation-timing-function:cubic-bezier(.16,1,.3,1)}
-  20.8% {opacity:1;transform:scale(1);filter:blur(0);animation-timing-function:linear}
-  48.6% {opacity:1;transform:translate3d(0,0,0) scale(1.1);filter:none;animation-timing-function:cubic-bezier(.7,0,.84,0)}
-  65.3% {opacity:1;transform:translate3d(var(--ab-dx),0,0) scale(16);filter:none}
-  69.4% {opacity:0;transform:translate3d(var(--ab-dx),0,0) scale(19);filter:none}
-  100%  {opacity:0;transform:translate3d(var(--ab-dx),0,0) scale(19);filter:none}}
+  /* zzz232: entrada sem desfoque (filter): só transform e opacidade, que a
+     placa de vídeo anima sozinha mesmo com o sistema carregando por trás */
+  0%    {opacity:0;transform:scale(.88)}
+  6.9%  {opacity:0;transform:scale(.88);animation-timing-function:cubic-bezier(.16,1,.3,1)}
+  20.8% {opacity:1;transform:scale(1);animation-timing-function:linear}
+  48.6% {opacity:1;transform:translate3d(0,0,0) scale(1.1);animation-timing-function:cubic-bezier(.7,0,.84,0)}
+  65.3% {opacity:1;transform:translate3d(var(--ab-dx),0,0) scale(16)}
+  69.4% {opacity:0;transform:translate3d(var(--ab-dx),0,0) scale(19);visibility:visible}
+  70%   {opacity:0;transform:translate3d(var(--ab-dx),0,0) scale(19);visibility:hidden}
+  100%  {opacity:0;transform:translate3d(var(--ab-dx),0,0) scale(19);visibility:hidden}}
 html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-simbolo{animation:none;}
-html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-cor{animation:abStCor 3.6s both;}
+/* zzz232: o brilho (filter) termina antes do mergulho. Antes ele seguia
+   animando com o logo ampliado 16x: o navegador redesenhava uma imagem
+   enorme a cada quadro e as faixas engasgavam (medido no celular) */
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-cor{animation:abStCor 1.4s both;}
 @keyframes abStCor{
-  0%,23%{filter:brightness(1) saturate(1)}
-  25.3% {filter:brightness(1.75) saturate(1.25) drop-shadow(0 0 26px rgba(226,64,156,.9))}
-  38%   {filter:brightness(1.08) saturate(1.05) drop-shadow(0 0 12px rgba(226,64,156,.45))}
-  49%   {filter:brightness(1.1) saturate(1.05)}
-  65%   {filter:brightness(2.4) saturate(1.3)}
-  100%  {filter:brightness(2.4) saturate(1.3)}}
+  0%,59% {filter:brightness(1) saturate(1)}
+  65%    {filter:brightness(1.75) saturate(1.25) drop-shadow(0 0 26px rgba(226,64,156,.9))}
+  98%    {filter:brightness(1.08) saturate(1.05) drop-shadow(0 0 12px rgba(226,64,156,.45))}
+  100%   {filter:none}}
 html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-palavra{animation:abStPalavra 3.6s both;}
 @keyframes abStPalavra{0%,41.7%{opacity:1}54.4%,100%{opacity:0}}
 html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-espera{animation-delay:4.2s;}
@@ -651,12 +655,12 @@ html[data-ab-estilo="hiper"]:not(.ab-curta) .b7-abertura.inicial .ab-marca{anima
   45%   {opacity:.6;transform:scale(1.3);filter:blur(10px);animation-timing-function:cubic-bezier(.16,1,.3,1)}
   57%   {opacity:1;transform:scale(1.02);filter:blur(0)}
   100%  {opacity:1;transform:none;filter:none}}
-html[data-ab-estilo="hiper"]:not(.ab-curta) .b7-abertura.inicial .ab-cor{animation:abHiCor 4s both;}
+/* zzz232: o brilho anima só até o logo assentar (2,5 s), não até o fim */
+html[data-ab-estilo="hiper"]:not(.ab-curta) .b7-abertura.inicial .ab-cor{animation:abHiCor 2.5s both;}
 @keyframes abHiCor{
-  0%,44%{filter:brightness(2.6) saturate(1.4)}
-  50%   {filter:brightness(2) saturate(1.3) drop-shadow(4px 0 0 rgba(255,40,110,.7)) drop-shadow(-4px 0 0 rgba(40,190,255,.65)) drop-shadow(0 0 24px rgba(255,150,210,.9))}
-  62%   {filter:brightness(1.12) saturate(1.08) drop-shadow(0 0 14px rgba(226,64,156,.55))}
-  100%  {filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 12px rgba(226,64,156,.45))}}
+  0%,70.4%{filter:brightness(2.6) saturate(1.4)}
+  80%     {filter:brightness(2) saturate(1.3) drop-shadow(4px 0 0 rgba(255,40,110,.7)) drop-shadow(-4px 0 0 rgba(40,190,255,.65)) drop-shadow(0 0 24px rgba(255,150,210,.9))}
+  100%    {filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 12px rgba(226,64,156,.45))}}
 html[data-ab-estilo="hiper"]:not(.ab-curta) .b7-abertura.inicial .ab-palavra{animation:abHiPalavra 4s both;}
 @keyframes abHiPalavra{
   0%,62.5%{opacity:0;-webkit-clip-path:inset(0 64% 0 36%);clip-path:inset(0 64% 0 36%);transform:translate3d(-14px,0,0);filter:blur(6px)}

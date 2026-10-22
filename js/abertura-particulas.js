@@ -165,7 +165,8 @@
     const g = cv.getContext('2d');
     const simbolo = el.querySelector('.ab-simbolo'), marca = el.querySelector('.ab-marca');
     const celular = Math.min(innerWidth, innerHeight) < 600;
-    const dpr = Math.min(window.devicePixelRatio || 1, celular ? 2 : 1.75);
+    /* zzz232: pontos de luz borrados — 1x no celular (2x custava 4x mais) */
+    const dpr = Math.min(window.devicePixelRatio || 1, celular ? 1 : 1.25);
     let W = 0, H = 0;
     const medir = () => {
       const r = el.getBoundingClientRect();
@@ -180,7 +181,7 @@
        relativa à câmera (X, Y, Z); a tela é a projeção x = cx + X·F/Z.
        Z = F é o plano de foco (escala 1, nítido); mais longe fica pequeno
        e desfocado, mais perto fica grande e desfocado (bokeh). */
-    const N = celular ? 420 : 900;
+    const N = celular ? 320 : 760;
     const fonte = P.lampada.slice().sort(() => Math.random() - .5).slice(0, N);
     const F = Math.max(W, H) * .9;
     const ps = fonte.map((pt, i) => {
@@ -284,7 +285,7 @@
       if (fundoVisivel > 0) {
         for (const n of nevoa) {
           const Z = n.z0 - percorrido * .9; if (Z < F * .4) continue;
-          const f = F / Z, q = F * .55 * n.tam * f;
+          const f = F / Z, q = Math.min(Math.max(W, H) * .5, F * .55 * n.tam * f);   /* zzz232: nuvem gigante = tela inteira repintada */
           g.globalAlpha = .17 * fundo * fundoVisivel * lim((Z - F * .4) / F, 0, 1);
           g.drawImage(n.sp, cx + n.x * f - q, cy + n.y * f - q, q * 2, q * 2);
         }
@@ -342,7 +343,8 @@
       }
 
       /* feixes volumétricos: nascem na ignição, ficam atrás do logo e se apagam */
-      if (t > T.ign - .05 && t < 6.3 && !leve) {
+      /* zzz232: no celular os raios do CSS já bastam — os feixes em canvas pesavam na explosão */
+      if (t > T.ign - .05 && t < 6.3 && !leve && !celular) {
         const env = t < T.ign + .15 ? (t - T.ign + .05) / .2 : t < 4.2 ? 1 - (t - T.ign - .15) / .65 * .55 : Math.max(0, .45 * (1 - (t - 4.2) / 2.1));
         if (env > 0) {
           const L = Math.max(W, H) * 1.1;
