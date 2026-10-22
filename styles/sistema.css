@@ -1829,3 +1829,8 @@ a.sa-item:hover{background:var(--suave);}
   .sa-aval summary .sa-estrelas{display:none;}
 }
 .tc-roxo{background:linear-gradient(145deg,#8b5cf6,#3A1E86);}
+/* zzz231: janela "Abertura do sistema" */
+.abadm-linha{display:flex;gap:8px;align-items:center;}
+.abadm-linha .campo{flex:1;}
+.adm-sub small{text-transform:none;letter-spacing:0;font-weight:500;margin-left:6px;}
+.adm-sessao select.campo{width:auto;min-width:150px;flex:none;}

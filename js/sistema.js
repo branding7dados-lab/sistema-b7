@@ -68,6 +68,13 @@ B7.Manutencao = (function () {
       atual = r.manutencao || null;
       if (r.sessao === false) derrubar();
       if (r.aparencia !== undefined && B7.Aparencia) B7.Aparencia.sincronizar(r.aparencia);
+      /* zzz231: a abertura que o administrador escolheu para esta pessoa (ou
+         para todos). Guardada aqui porque a abertura é decidida no <head>,
+         antes de saber quem é: vale a partir da próxima vez que o B7 abrir. */
+      if ('abertura' in r) {
+        try { if (r.abertura) localStorage.setItem('b7_ab_padrao', r.abertura); else localStorage.removeItem('b7_ab_padrao'); } catch (e) {}
+        if (B7.Abertura && !document.querySelector('.b7-abertura')) B7.Abertura.aplicar();
+      }
     } catch (e) { /* sem rede: fica o último estado conhecido */ }
     pintar();
   }

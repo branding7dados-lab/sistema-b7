@@ -2032,9 +2032,11 @@ B7.Dashboard = (function () {
           : L({ ic: 'animacao', tom: 'rosa', t: 'Animações', d: 'segue a preferência do seu sistema',
                 dir: '<span class="cfg-valor">' + (reduz ? 'Reduzidas' : 'Normais') + '</span>' })) +
         /* zzz230: estilo da abertura (decidido no <head> do index.html, antes da primeira pintura) */
-        L({ ic: 'animacao', tom: 'violeta', t: 'Estilo da abertura', d: 'como o B7 abre; vale neste aparelho',
-            dir: sel('abertura_estilo', document.documentElement.getAttribute('data-ab-estilo') || 'streaming',
-              [['streaming', 'Streaming'], ['bigbang', 'Big bang'], ['classica', 'Clássica']], 'Estilo da abertura') }) +
+        /* zzz231: "Padrão do sistema" segue o que o administrador escolheu (para todos ou para esta pessoa) */
+        (B7.Abertura ? L({ ic: 'animacao', tom: 'violeta', t: 'Estilo da abertura',
+            d: 'como o B7 abre; vale neste aparelho · padrão do sistema: ' + esc((B7.Abertura.ESTILOS.find(e => e[0] === B7.Abertura.padraoDoSistema()) || ['', 'Streaming'])[1]),
+            dir: sel('abertura_estilo', B7.Abertura.valido(B7.pref.ler('abertura_estilo', null)) || 'padrao',
+              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.ESTILOS), 'Estilo da abertura') }) : '') +
         /* modo leve (js/desempenho.js): vidro sólido onde o aparelho trava */
         (B7.Desempenho ? L({ ic: 'raio', tom: 'laranja', t: 'Desempenho', d: '<span id="cfg-desemp-d">' + descDesempenho() + '</span>',
             abaixo: seletor('desempenho', B7.Desempenho.modo(), [['auto', 'Automático'], ['leve', 'Leve'], ['completo', 'Completo']]) }) : '')) +
@@ -2071,7 +2073,9 @@ B7.Dashboard = (function () {
         L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre', botao: true, attrs: ' data-redistribuir' })) : '') +
       /* zzz140: cor do sistema e datas especiais da abertura */
       (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe (é o padrão de quem não escolheu a sua).',
-        L({ ic: 'tema', tom: 'rosa', t: 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' })) : '') +
+        L({ ic: 'tema', tom: 'rosa', t: 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' }) +
+        /* zzz231: a abertura de todo mundo ou de uma pessoa só */
+        (B7.AberturaAdm ? L({ ic: 'play', tom: 'violeta', t: 'Abertura do sistema', d: 'a animação de entrada para todos ou para uma pessoa', botao: true, attrs: ' data-abertura-adm' }) : '')) : '') +
       /* zzz139: saúde do sistema, médico e comunicado */
       (ehAdm && B7.Saude ? grupo('Cuidar do sistema', 'Só leitura: mostra o que precisa de atenção, sem mudar nada.',
         L({ ic: 'raio', tom: 'verde', t: 'Saúde do sistema', d: 'rotinas, avisos, Google Agenda, espaço e IA', botao: true, attrs: ' data-saude' }) +
@@ -2284,8 +2288,8 @@ B7.Dashboard = (function () {
     p.querySelectorAll('[data-sel]').forEach(sl => sl.onchange = () => {
       if (sl.dataset.sel === 'abertura_estilo') {
         B7.pref.gravar('abertura_estilo', sl.value);
-        document.documentElement.setAttribute('data-ab-estilo', sl.value);
-        B7.UI.toast('Estilo da abertura guardado neste aparelho. Toque em "Testar abertura" para ver.');
+        if (B7.Abertura) B7.Abertura.aplicar();
+        B7.UI.toast(sl.value === 'padrao' ? 'Você segue a abertura padrão do sistema.' : 'Estilo da abertura guardado neste aparelho. Toque em "Testar abertura" para ver.');
       }
       if (sl.dataset.sel === 'inicio') { B7.pref.gravar('inicio', sl.value); B7.UI.toast('Tela inicial guardada neste aparelho.'); }
       /* zzz114: escolher já toca, para decidir pelo ouvido */
@@ -2368,6 +2372,7 @@ B7.Dashboard = (function () {
     const btRs = p.querySelector('[data-resumo-semana]'); if (btRs) btRs.onclick = () => B7.ResumoAgencia.abrir();
     const btRd = p.querySelector('[data-redistribuir]'); if (btRd) btRd.onclick = () => B7.Redistribuicao.abrir();
     const btAp = p.querySelector('[data-aparencia]'); if (btAp) btAp.onclick = () => B7.Aparencia.abrir();
+    const btAb = p.querySelector('[data-abertura-adm]'); if (btAb) btAb.onclick = () => B7.AberturaAdm.abrir();
     const btApEu = p.querySelector('[data-ap-pessoal]'); if (btApEu) btApEu.onclick = () => B7.Aparencia.abrir({ pessoal: true });
     /* zzz163: bolinhas de cor — troca na hora */
     const pintarCores = () => {

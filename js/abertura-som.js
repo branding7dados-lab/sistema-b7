@@ -285,6 +285,24 @@ B7.SomAbertura = (function () {
     const gn = ctx.createGain(); fonteRuido(t, .06).connect(bp); bp.connect(gn); gn.connect(saida);
     env(gn, t, grande ? .22 : .16, .001, .05);
   }
+  /* ---------- estilo "hiperespaço" (zzz231) ---------- */
+  /* o motor: um zumbido que sobe de tom até o salto, com ar correndo junto */
+  function motor(t, ate) {
+    const g = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 4;
+    lp.frequency.setValueAtTime(220, t); lp.frequency.exponentialRampToValueAtTime(4200, ate);
+    [0, 7, -5].forEach((dt, i) => {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.detune.value = dt;
+      o.frequency.setValueAtTime(48 * (i === 2 ? .5 : 1), t); o.frequency.exponentialRampToValueAtTime(620 * (i === 2 ? .5 : 1), ate);
+      o.connect(lp); o.start(t); o.stop(ate + .08);
+    });
+    lp.connect(g); g.connect(saida); g.connect(sala);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.05, t + (ate - t) * .4);
+    g.gain.exponentialRampToValueAtTime(.12, ate - .02); g.gain.exponentialRampToValueAtTime(0.0001, ate + .06);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = .8;
+    bp.frequency.setValueAtTime(300, t); bp.frequency.exponentialRampToValueAtTime(6000, ate);
+    const gn = ctx.createGain(); fonteRuido(t, ate - t + .1).connect(bp); bp.connect(gn); gn.connect(saida); gn.connect(sala);
+    gn.gain.setValueAtTime(0.0001, t); gn.gain.exponentialRampToValueAtTime(.11, ate - .02); gn.gain.exponentialRampToValueAtTime(0.0001, ate + .05);
+  }
   /* ---------- peças da trilha longa (zzz110) ---------- */
   /* sino: fundamental + dois parciais, ataque seco e cauda longa na sala */
   function sino(t, hz, vol, dur) {
@@ -480,8 +498,8 @@ B7.SomAbertura = (function () {
        1,40–2,35  o mergulho: coral e riser subindo, ar entrando
        2,30  a lâmpada se abre em luz: impacto suave + cama
        2,6–3,4  as faixas passando pelos lados (estéreo) e brilhos
-       3,45  a câmera atravessa: sopro
-       3,95  o logo volta (assinatura) e 4,05 uma nota por letra */
+       3,30  sopro: as faixas vão abrir o sistema (zzz231: o logo não volta;
+             a saída da abertura, com o sistema aparecendo, é o próprio fim) */
   const ROTEIRO_STREAMING = [
     [0.42, t => tumba(t, false)], [0.86, t => tumba(t, true)],
     [0.9, t => { sino(t, 523.25, .03, 2.4); sino(t + .03, 659.25, .02, 2.2); sino(t + .06, 783.99, .02, 2.2); }],
@@ -489,8 +507,23 @@ B7.SomAbertura = (function () {
     [1.7, t => whoosh(t, .7, 300, 2600, .07)],
     [2.3, t => ignicao(t, .7)], [2.3, camaSonora], [2.3, t => coro(t, 2.2, [261.63, 392, 523.25, 659.25], .06, .1)],
     [2.6, t => passagem(t, -.9, .06)], [2.95, t => passagem(t, .9, .07)], [2.7, t => brilhos(t, t + .8, 50, .02)],
-    [3.45, t => whoosh(t, .55, 500, 4200, .09)],
-    [3.95, assinatura], [4.05, letras]
+    [3.3, t => whoosh(t, .5, 500, 4200, .09)]
+  ];
+  /* zzz231 — estilo "hiperespaço" (4,0 s), alinhado a styles/abertura.css (abHiMarca) e js/abertura-hiper.js:
+       0,00  o escuro: pedal grave e coral bem baixo
+       0,50–1,70  o motor sobe (tom e ar) e o prato ao contrário
+       1,64  fôlego; 1,72 O SALTO: impacto, boom e braam
+       1,75  a saída do salto: sopro descendo
+       1,85  o logo: coral em acorde e sinos; 2,5 uma nota por letra
+       3,00  cintilar do brilho; 3,2 assinatura */
+  const ROTEIRO_HIPER = [
+    [0.0, t => prologo(t, t + 1.8)], [0.0, t => coro(t, 1.9, [65.41, 98, 130.81], .035, 1.5)],
+    [0.5, t => motor(t, t + 1.2)], [0.9, t => pratoReverso(t, t + .8)], [1.64, t => folego(t, t + .08)],
+    [1.72, t => ignicao(t, 1)], [1.72, t => boom(t, .5)], [1.72, t => braam(t, 1.1)],
+    [1.75, t => whoosh(t, .8, 4200, 260, .1)],
+    [1.85, camaSonora], [1.85, t => coro(t, 2.2, [261.63, 392, 523.25, 659.25], .06, .08)],
+    [1.9, t => { sino(t, 523.25, .03, 2.2); sino(t + .05, 783.99, .025, 2); }],
+    [2.5, letras], [3.0, cintilar], [3.2, assinatura]
   ];
   /* versão relâmpago (recarregar na mesma sessão, pacote zzc): ~1 s,
      mesmos tempos do CSS da curta (styles/global.css, abRelAcende etc.):
@@ -502,7 +535,8 @@ B7.SomAbertura = (function () {
     [0.34, estalo], [0.4, t => ignicao(t, .62)], [0.45, t => camaSonora(t, .7)], [0.95, cintilar]
   ];
   const streaming = () => document.documentElement.getAttribute('data-ab-estilo') === 'streaming';
-  const roteiroCompleto = () => streaming() ? ROTEIRO_STREAMING : ROTEIRO;
+  const estiloAtual = () => document.documentElement.getAttribute('data-ab-estilo');
+  const roteiroCompleto = () => estiloAtual() === 'streaming' ? ROTEIRO_STREAMING : estiloAtual() === 'hiper' ? ROTEIRO_HIPER : ROTEIRO;
   let inicioAnim = null, tocada = false, roteiro = ROTEIRO;
   function tocarTrilha(decorrido) {
     if (!ctx || ctx.state !== 'running' || tocada) return;
@@ -527,7 +561,7 @@ B7.SomAbertura = (function () {
     if (curta) roteiro = ROTEIRO_CURTO; else roteiro = roteiroCompleto();
     if (!preparar()) return;
     requestAnimationFrame(() => {
-      const a = el.querySelector(curta ? '.ab-palco' : streaming() ? '.ab-marca' : '.ab-simbolo');
+      const a = el.querySelector(curta ? '.ab-palco' : (streaming() || estiloAtual() === 'hiper') ? '.ab-marca' : '.ab-simbolo');
       const an = a && a.getAnimations ? a.getAnimations()[0] : null;
       inicioAnim = an && an.startTime != null ? an.startTime : 0;   /* startTime = o 0 s da sequência (o atraso conta depois) */
       const vai = () => { if (el.isConnected && !el.classList.contains('saindo')) tocarTrilha(decorridoAgora()); };
@@ -569,8 +603,8 @@ B7.SomAbertura = (function () {
     const curto = qual === 'curta';
     const off = new OAC(2, 44100 * (curto ? 3.5 : 9), 44100);
     preparar(off);
-    (curto ? ROTEIRO_CURTO : qual === 'streaming' ? ROTEIRO_STREAMING : ROTEIRO).forEach(([quando, fn]) => fn(quando));
-    partida(curto ? 1.0 : (saidaEm || (qual === 'streaming' ? 4.9 : 6.4)));
+    (curto ? ROTEIRO_CURTO : qual === 'streaming' ? ROTEIRO_STREAMING : qual === 'hiper' ? ROTEIRO_HIPER : ROTEIRO).forEach(([quando, fn]) => fn(quando));
+    partida(curto ? 1.0 : (saidaEm || ({ streaming: 3.6, hiper: 4.0 })[qual] || 6.4));
     const buf = await off.startRendering();
     [ctx, saida, sala, ruido, drone, cama] = salvo;
     if (cru) return [buf.getChannelData(0), buf.getChannelData(1)];

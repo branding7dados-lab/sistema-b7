@@ -1177,3 +1177,73 @@ B7.AdminChat = (function () {
   }
   return { linhas, aplicar };
 })();
+
+/* =====================================================================
+   ABERTURA DO SISTEMA (zzz231) — Configurações → Admin → Aparência do sistema.
+   Pedido do Kevin: "uma opção em que eu possa escolher qual vai ser a
+   abertura padrão do sistema para todo mundo, ou para uma pessoa só".
+   Grava em sistema_config 'abertura' (abertura_definir, só administrador).
+   Cada pessoa recebe a sua por sistema_avisos() e passa a ver a partir da
+   próxima vez que abrir o B7. Quem escolheu um estilo em Configurações →
+   Aparência fica com o dela; quem está em "Padrão do sistema" segue este.
+   ===================================================================== */
+B7.AberturaAdm = (function () {
+  const esc = s => B7.UI.esc(s);
+  const ROT_PAPEL = { admin: 'Administrador', coordenador: 'Coordenação', designer: 'Design', videomaker: 'Vídeo' };
+  const opcoes = (atual, comHerdar) => (comHerdar ? [['', 'Padrão do sistema']] : []).concat(B7.Abertura.ESTILOS)
+    .map(([v, r]) => '<option value="' + v + '"' + (v === (atual || '') ? ' selected' : '') + '>' + esc(r) + '</option>').join('');
+  async function abrir() {
+    if (!B7.Abertura) return;
+    const m = B7.UI.modal('<h3>Abertura do sistema</h3>' +
+      '<p class="sub">A animação que aparece quando o B7 abre. Vale a partir da próxima vez que cada pessoa abrir o sistema. Quem escolheu outra em Configurações → Aparência continua com a dela.</p>' +
+      '<div class="adm-corpo" id="abadm-corpo"><p class="adm-vazio">Carregando…</p></div>' +
+      '<div class="acoes"><button type="button" class="b" data-fecha>Cancelar</button><button type="button" class="b pri" id="abadm-salvar" disabled>Salvar</button></div>', { larga: true });
+    m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
+    const cx = m.querySelector('#abadm-corpo');
+    let cfg, pessoas;
+    try {
+      const [c, { data, error }] = await Promise.all([
+        B7.DB.rpc('abertura_config', {}),
+        B7.sb.from('perfis').select('id, nome, papel, estado').neq('papel', 'cliente').order('nome')
+      ]);
+      if (error) throw error;
+      cfg = c || { padrao: 'streaming', pessoas: {} };
+      pessoas = (data || []).filter(p => p.estado !== 'removida' && p.estado !== 'desativada');
+    } catch (e) { cx.innerHTML = '<p class="adm-vazio">' + esc((e && e.message) || 'Não foi possível carregar.') + '</p>'; return; }
+    const testar = estilo => {
+      if (!B7.reverAbertura || document.querySelector('.b7-abertura')) return;
+      m.fechar();
+      document.documentElement.setAttribute('data-ab-estilo', estilo);
+      B7.reverAbertura();
+      setTimeout(() => { if (!document.querySelector('.b7-abertura')) B7.Abertura.aplicar(); else setTimeout(() => B7.Abertura.aplicar(), 2500); }, (B7.duracaoAbertura ? B7.duracaoAbertura() : 6400) + 2500);
+    };
+    cx.innerHTML =
+      '<div class="adm-sub">Para todo mundo</div>' +
+      '<div class="abadm-linha"><select class="campo" id="abadm-padrao" aria-label="Abertura para todo mundo">' + opcoes(cfg.padrao, false) + '</select>' +
+        '<button type="button" class="b fina contorno" id="abadm-testar">Testar</button></div>' +
+      '<div class="adm-sub">Para uma pessoa só <small>deixe em "Padrão do sistema" para seguir a de cima</small></div>' +
+      pessoas.map(p => '<div class="adm-sessao"><span class="adm-sessao-tx"><b>' + esc(p.nome) + '</b><small>' + esc(ROT_PAPEL[p.papel] || p.papel || '') + '</small></span>' +
+        '<select class="campo fina" data-pessoa="' + esc(p.id) + '" aria-label="Abertura de ' + esc(p.nome) + '">' + opcoes((cfg.pessoas || {})[p.id], true) + '</select></div>').join('') +
+      '<p class="adm-nota">Estilos: Streaming (o logo, duas batidas e o mergulho em faixas de luz que abrem o sistema) · Hiperespaço (o salto para a velocidade da luz) · Big bang (partículas e nebulosa) · Clássica (a lâmpada que acende).</p>';
+    const salvar = m.querySelector('#abadm-salvar');
+    cx.querySelectorAll('select').forEach(s => s.onchange = () => { salvar.disabled = false; });
+    cx.querySelector('#abadm-testar').onclick = () => testar(cx.querySelector('#abadm-padrao').value);
+    salvar.onclick = async () => {
+      const novo = { padrao: cx.querySelector('#abadm-padrao').value, pessoas: {} };
+      cx.querySelectorAll('[data-pessoa]').forEach(s => { if (s.value) novo.pessoas[s.dataset.pessoa] = s.value; });
+      salvar.disabled = true;
+      try {
+        await B7.DB.rpc('abertura_definir', { p_valor: novo });
+        /* a de quem está salvando já vale neste aparelho */
+        const eu = B7.Auth.usuario() && B7.Auth.usuario().id;
+        try { localStorage.setItem('b7_ab_padrao', (eu && novo.pessoas[eu]) || novo.padrao); } catch (e) {}
+        B7.Abertura.aplicar();
+        const n = Object.keys(novo.pessoas).length;
+        B7.UI.toast('Abertura salva' + (n ? ' (com ' + n + (n === 1 ? ' pessoa' : ' pessoas') + ' à parte)' : '') + '. Vale na próxima vez que cada um abrir o B7.');
+        m.fechar();
+        try { if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig(); } catch (e) {}
+      } catch (e) { salvar.disabled = false; B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
+    };
+  }
+  return { abrir };
+})();
