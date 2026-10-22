@@ -2116,7 +2116,16 @@ B7.Dashboard = (function () {
         (u ? L({ ic: 'vassoura', tom: 'laranja', t: 'Limpar dados deste aparelho', d: 'memória das telas, arquivos guardados e filtros',
             botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : ''));
 
+    /* zzz247: tudo o que o admin ajusta da equipe, num lugar só */
     const secEquipe = !ehAdm ? '' :
+      (B7.Equipe || B7.Comunicado ? grupo('Recado e comunicado', 'O recado fica fixo no alto da tela de todo mundo até a data escolhida; o comunicado chega na conversa de cada pessoa.',
+        (B7.Equipe ? L({ ic: 'sino', tom: 'violeta', t: 'Recado fixo para a equipe', d: '<span data-recado-d>verificando…</span>', botao: true, acao: 'Escrever', attrs: ' data-recado' }) : '') +
+        (B7.Comunicado ? L({ ic: 'sino', tom: 'rosa', t: 'Enviar comunicado', d: 'para toda a equipe ou só para algumas pessoas', botao: true, acao: 'Enviar', attrs: ' data-comunicado' }) : '')) : '') +
+      grupo('Segurança da equipe', 'Vale para todas as contas da equipe. O banco confere de novo em cada ação.',
+        L({ ic: 'escudo', tom: 'verde', t: 'Verificação em 2 etapas', d: 'quem precisa ligar ao entrar',
+            dir: '<select class="cfg-sel" data-eq-2fa aria-label="Verificação em 2 etapas para a equipe" disabled><option value="">verificando…</option></select>' }) +
+        (B7.Sessoes ? L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'em quais aparelhos cada conta está aberta; encerre uma sessão', botao: true, acao: 'Ver', attrs: ' data-sessoes' }) : '') +
+        (B7.Equipe ? L({ ic: 'exportar', tom: 'violeta', t: 'Exportar lista da equipe', d: 'planilha com nome, função, situação, último acesso, aniversário e ausência', botao: true, acao: 'Exportar', attrs: ' data-eq-csv' }) : '')) +
       grupo('Arquivo', 'Nada que vai para a lixeira é apagado do banco: dá para restaurar.',
         L({ ic: 'lixo', tom: 'vermelho', t: 'Lixeira', d: 'clientes, gravações e peças excluídos', botao: true, attrs: ' data-ir="#/lixeira"' }) +
         L({ ic: 'caixa', tom: 'cinza', t: 'Arquivados', d: 'o que saiu de circulação, guardado', botao: true, attrs: ' data-ir="#/arquivados"' })) +
@@ -2125,13 +2134,9 @@ B7.Dashboard = (function () {
           !(B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro())
           ? L({ ic: 'usuarios', tom: 'laranja', t: 'Visualizar como outra pessoa', d: 'o sistema com o acesso de alguém da equipe', botao: true, attrs: ' data-ver-como' }) : '') +
         L({ ic: 'versao', tom: 'violeta', t: 'Ajuda da administração', d: 'onde fica cada ferramenta de admin e para que serve', botao: true, attrs: ' data-ir="#/ajuda"' })) +
-      (ehAdm && B7.Sessoes ? grupo('Sessões', 'Em quais aparelhos cada conta está aberta.',
-        L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'ver os aparelhos e encerrar uma sessão', botao: true, attrs: ' data-sessoes' })) : '') +
       (ehAdm && B7.Redistribuicao ? grupo('Equipe e carga', 'Os números vêm do sistema. Nada muda sozinho.',
         (iaCfg.chat && B7.ResumoAgencia ? L({ ic: 'ia', tom: 'violeta', t: 'Resumo da semana', d: 'o que andou, o que travou e quem está com mais trabalho (IA)', botao: true, attrs: ' data-resumo-semana' }) : '') +
-        L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre', botao: true, attrs: ' data-redistribuir' })) : '') +
-      (ehAdm && B7.Comunicado ? grupo('Comunicado', 'Uma mensagem sua que chega na conversa de cada pessoa, com “lido por”.',
-        L({ ic: 'sino', tom: 'rosa', t: 'Enviar comunicado', d: 'para toda a equipe ou só para algumas pessoas', botao: true, attrs: ' data-comunicado' })) : '');
+        L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre (avisa quem está de férias)', botao: true, attrs: ' data-redistribuir' })) : '');
 
     const secSisEquipe = !ehAdm ? '' :
       (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe (é o padrão de quem não escolheu a sua).',
@@ -2199,10 +2204,11 @@ B7.Dashboard = (function () {
       ['teleprompter', 'Teleprompter', 'ler', 'rosa', 'Velocidade, letra e contagem', 'voce', secTp],
       ['apps', 'Apps e TV', 'celular', 'verde', 'Aplicativos, Painel de TV e novidades', 'voce', secApps],
       ['aparelho', 'Este aparelho', 'versao', 'cinza', 'Versão, atualização e limpeza', 'voce', secAparelho],
-      ['equipe', 'Equipe e acessos', 'usuarios', 'azul', 'Pessoas, sessões, carga e comunicados', 'adm', secEquipe, true],
+      ['pessoas', 'Pessoas e acessos', 'usuarios', 'azul', 'Contas, senhas, funções e módulos', 'adm', ehAdm && pode('usuarios') && B7.Usuarios ? hospede('usuarios') : '', true],
+      ['equipe', 'Equipe', 'usuarios', 'azul', 'Recado, segurança, carga e o que a equipe vê', 'adm', secEquipe, true],
+      ['agenda-equipe', 'Ausências e aniversários', 'calendario', 'rosa', 'Férias, folgas e os aniversários da equipe', 'adm', ehAdm && B7.Equipe ? '<div class="cfg-eq-agenda" data-eq-agenda></div>' : '', true],
       ['sis-equipe', 'Sistema da equipe', 'tema', 'rosa', 'Aparência, recursos, IA e textos para todos', 'adm', secSisEquipe, true],
-      ['saude', 'Saúde e manutenção', 'raio', 'verde', 'Manutenção, diagnóstico, uso da IA e servidor', 'adm', secSaude, true],
-      ['pessoas', 'Pessoas e acessos', 'usuarios', 'azul', 'Contas, senhas, funções e módulos', 'adm', ehAdm && pode('usuarios') && B7.Usuarios ? hospede('usuarios') : '', true]
+      ['saude', 'Saúde e manutenção', 'raio', 'verde', 'Manutenção, diagnóstico, uso da IA e servidor', 'adm', secSaude, true]
     ].concat(ehSuper && B7.Super ? SUPER_AREAS.map(([k, r, icone, tom, d]) =>
       ['super-' + k, r, icone, tom, d.charAt(0).toUpperCase() + d.slice(1), 'super', hospede('super:' + k) + (k === 'uso' ? secBackup : ''), true]) : [])
       .filter(x => x[6]);
@@ -2245,6 +2251,29 @@ B7.Dashboard = (function () {
     const p = painel();
     p.querySelectorAll('[data-abrir-perfil]').forEach(b => b.onclick = () => irSecao('conta'));
     if (B7.Perfil && B7.Perfil.montar) p.querySelectorAll('[data-perfil]').forEach(el => B7.Perfil.montar(el, el.dataset.perfil));
+    /* zzz247: equipe — agenda, recado, exportar e a regra de 2 etapas */
+    if (B7.Equipe) {
+      p.querySelectorAll('[data-eq-agenda]').forEach(el => B7.Equipe.montar(el));
+      const pintarRecado = () => { const d = p.querySelector('[data-recado-d]'); if (d) B7.Equipe.resumoRecado().then(t => { d.textContent = t; }); };
+      const btRec = p.querySelector('[data-recado]'); if (btRec) { btRec.onclick = () => B7.Equipe.modalRecado(pintarRecado); pintarRecado(); }
+      const btCsv = p.querySelector('[data-eq-csv]'); if (btCsv) btCsv.onclick = () => B7.Equipe.exportarCSV();
+    }
+    const sel2fa = p.querySelector('[data-eq-2fa]');
+    if (sel2fa) (async () => {
+      const OPS = [['ninguem', 'Cada pessoa decide'], ['gestao', 'Exigir de admin e coordenação'], ['todos', 'Exigir de toda a equipe']];
+      let st = null;
+      try { st = await B7.DB.chamarAuth({ acao: 'seg_status' }); } catch (e) { sel2fa.innerHTML = '<option>indisponível</option>'; return; }
+      if (!sel2fa.isConnected) return;
+      sel2fa.innerHTML = OPS.map(([v, r]) => '<option value="' + v + '">' + r + '</option>').join('');
+      sel2fa.value = st.politica || 'ninguem'; sel2fa.disabled = false;
+      sel2fa.onchange = async () => {
+        const antes = st.politica || 'ninguem', v = sel2fa.value;
+        sel2fa.disabled = true;
+        try { await B7.DB.chamarAuth({ acao: 'seg_politica', exigir_2fa: v }); st.politica = v; B7.UI.toast('Regra salva. Vale a partir da próxima entrada de cada pessoa.'); }
+        catch (e) { sel2fa.value = antes; B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
+        sel2fa.disabled = false;
+      };
+    })();
     /* zzz240: menu das seções. No computador troca no lugar; no celular entra
        na seção pelo endereço (o Voltar do aparelho volta para o menu) */
     const largo = () => !!(window.matchMedia && window.matchMedia('(min-width:1024px)').matches);

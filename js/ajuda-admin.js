@@ -30,8 +30,18 @@ B7.AJUDA_ADMIN = [
      ['Para uma pessoa só, abra o cartão dela em Usuários e acessos e mude ali: vira um **acesso personalizado** (o mapa de módulos mostra em verde o que tem a mais e tracejado o que foi tirado).', []]
     ],
     cuidados: [['Administrador abre tudo, sempre. Funções e módulos só mudam o que as outras pessoas veem.', []]] },
+  { id: 'adm-agenda-equipe', titulo: 'Ausências, aniversários e recado para a equipe', rotas: [],
+    onde: 'Configurações → Administração → **Ausências e aniversários**; o recado fica em **Equipe** → Recado e comunicado.',
+    quem: 'Só administrador muda; a equipe vê.',
+    serve: 'Marcar férias, folgas e atestados (a pessoa aparece como fora e a redistribuição avisa antes de passar trabalho para ela), guardar o aniversário de cada um (no dia aparece um cartão de parabéns) e deixar um recado fixo no alto da tela de todo mundo.',
+    passos: [
+     ['Em **Marcar uma ausência**, escolha a pessoa, o tipo e as datas. **Tirar** encerra a ausência sem apagar o registro.', []],
+     ['Em Aniversários, toque em **Definir** ao lado da pessoa e escolha dia e mês (a idade não aparece).', []],
+     ['Em **Recado fixo para a equipe**, escreva até 280 caracteres, escolha até quando fica no ar (no máximo 60 dias) e o estilo. Cada pessoa pode fechar o dela; **Tirar do ar** some para todos.', []],
+     ['**Exportar lista da equipe** (em Equipe) baixa uma planilha com função, situação, último acesso, aniversário e ausência de cada pessoa.', []]
+    ] },
   { id: 'adm-sessoes', titulo: 'Sessões abertas e "Visualizar como"', rotas: [],
-    onde: 'Configurações → Admin → **Sessões**. "Visualizar como…" fica no menu da sua foto.',
+    onde: 'Configurações → Administração → **Equipe** → Segurança da equipe → Sessões ativas. "Visualizar como…" fica no menu da sua foto e em Equipe.',
     quem: 'Só administrador.',
     serve: 'Ver em quais aparelhos cada conta está aberta e derrubar uma sessão (celular perdido, pessoa que saiu). "Visualizar como" mostra o sistema com o acesso de outra pessoa.',
     passos: [

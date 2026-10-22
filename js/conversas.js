@@ -1088,5 +1088,8 @@ B7.Conversas = (function () {
     }
   }
 
-  return { montar, abrir, fechar, abrirConversa, liberado, naoLidas: totalNaoLidas };
+  /* zzz247: abre o painel já na conversa com a pessoa (ex.: "Mandar parabéns") */
+  function conversarCom(outroId) { if (!liberado()) return; abrir(); setTimeout(() => abrirCom(outroId), 250); }
+
+  return { montar, abrir, fechar, abrirConversa, conversarCom, liberado, naoLidas: totalNaoLidas };
 })();
