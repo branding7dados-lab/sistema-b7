@@ -22,3 +22,8 @@ Pedido do Kevin, com um print da página "Conta e segurança" do Canva: "não go
 - Capturas no computador, em tema claro e escuro: Conta, Equipe e acessos, Aparência e Sistema da equipe.
 - Capturas no celular, com a seção Conta aberta.
 - `npm test` passou.
+
+## zzz242: menos "Abrir"
+Kevin: "achei que ficou muito repetitivo esse trem de abrir toda hora".
+- O botão contornado aparece só quando a linha **faz** algo: Sair, Buscar, Atualizar, Limpar, Instalar, Testar, Enviar, Publicar, Exportar, Restaurar, Visualizar, Refazer, e Baixar/Verificar nos apps.
+- A linha que só abre outra tela ou janela fica com uma setinha discreta à direita, que acende com a cor da marca ao passar o mouse. A linha inteira continua clicável.

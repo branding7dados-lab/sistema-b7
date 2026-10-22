@@ -1874,18 +1874,19 @@ B7.Dashboard = (function () {
 
     const ic = (k, tom) => '<span class="cfg-ic cfg-tom-' + tom + '">' + svgF(k) + '</span>';
     /* uma linha da lista: ícone, texto, e à direita o controle (ou a seta) */
-    /* zzz241: nas seções, a linha clicável mostra à direita um botão com a
-       ação ("Abrir", "Alterar", "Sair"…) em vez do ícone e da setinha */
-    const VERBO_CFG = /^(Sair|Buscar|Atualizar|Limpar|Instalar|Testar|Abrir|Enviar|Publicar|Editar|Exportar|Restaurar|Configurar|Visualizar|Refazer)\b/;
+    /* zzz241/zzz242: botão com a ação só quando a linha FAZ algo (Sair, Testar,
+       Buscar…). A linha que só abre outra tela fica com a setinha discreta —
+       um "Abrir" em cada linha ficava repetitivo (Kevin) */
+    const VERBO_CFG = /^(Sair|Buscar|Atualizar|Limpar|Instalar|Testar|Enviar|Publicar|Exportar|Restaurar|Visualizar|Refazer)\b/;
     const acaoDe = o => o.acao || (VERBO_CFG.exec(String(o.t)) || [])[1] ||
-      (/^App /.test(String(o.t)) ? (o.dir ? 'Verificar' : 'Baixar') : (o.dir ? 'Alterar' : 'Abrir'));
+      (/^App /.test(String(o.t)) ? (o.dir ? 'Verificar' : 'Baixar') : '');
     const L = o => {
       const tag = o.botao ? 'button type="button"' : 'div';
       return '<' + tag + ' class="cfg-l' + (o.cls ? ' ' + o.cls : '') + '"' + (o.attrs || '') + '>' +
         ic(o.ic, o.tom) +
         '<span class="cfg-l-tx"><b>' + o.t + '</b>' + (o.d ? '<small>' + o.d + '</small>' : '') + '</span>' +
         (o.dir || '') + (o.botao && !o.semSeta ? SETA_CFG : '') +
-        (o.botao ? '<span class="cfg-acao" aria-hidden="true">' + acaoDe(o) + '</span>' : '') +
+        (o.botao && acaoDe(o) ? '<span class="cfg-acao" aria-hidden="true">' + acaoDe(o) + '</span>' : '') +
         '</' + (o.botao ? 'button' : 'div') + '>' + (o.abaixo ? '<div class="cfg-l-abaixo">' + o.abaixo + '</div>' : '');
     };
     /* chave liga/desliga (a linha inteira alterna) */

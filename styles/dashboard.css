@@ -1550,3 +1550,7 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
   .cfg-v2 .cfg-painel .cfg-acao{min-width:0;height:34px;padding:0 13px;font-size:13px;}
   .cfg-v2 .cfg-conta{padding:16px;}
 }
+/* zzz242: sem ação própria, a linha mostra só a setinha (o "Abrir" repetido saiu) */
+.cfg-v2 .cfg-painel .cfg-seta{display:block;opacity:.6;}
+.cfg-v2 .cfg-painel .cfg-l:has(.cfg-acao) .cfg-seta{display:none;}
+.cfg-v2 .cfg-painel button.cfg-l:hover .cfg-seta{opacity:1;stroke:var(--acento);}
