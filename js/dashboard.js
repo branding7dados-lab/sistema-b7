@@ -2149,11 +2149,19 @@ B7.Dashboard = (function () {
     const abas = [['geral', 'Geral', abaGeral], ['aparencia', 'Aparência', abaAparencia], 
                   ['admin', 'Admin', abaAdmin], ['sistema', 'Sistema', abaSistema]].filter(a => a[2]);
     const IC_ABA = { geral: 'casa', aparencia: 'tema', admin: 'usuarios', sistema: 'versao' };
+    /* zzz239: no computador as seções viram um menu ao lado, com o que tem em cada uma */
+    const DESC_ABA = { geral: 'Tela inicial, calendário, teleprompter e apps', aparencia: 'Tema, cores, abertura e carregamento',
+      admin: 'Pessoas, recursos, IA e textos do sistema', sistema: 'Versão, diagnóstico, manutenção e dados' };
     let abaAtual = B7.pref.ler('cfg_aba', '');
     if (!abas.some(a => a[0] === abaAtual)) abaAtual = abas[0][0];
 
+    /* zzz239: no computador, duas colunas — à esquerda a conta, a busca e as
+       seções (menu vertical); à direita a seção aberta, com os grupos lado a
+       lado. No celular continua uma coluna só, como os Ajustes do telefone. */
     painel().innerHTML = '<div class="conteudo entra cfg-tela">' +
-      '<h1 class="cfg-titulo">Configurações</h1>' +
+      '<header class="cfg-topo"><h1 class="cfg-titulo">Configurações</h1>' +
+        '<p class="cfg-sub">Sua conta, a aparência e o funcionamento do B7' + (ehAdm ? ' para a equipe' : '') + '.</p></header>' +
+      '<div class="cfg-grade"><aside class="cfg-lado">' +
 
       /* Conta no topo: quem está usando, e o atalho para o perfil */
       /* zzz13: o cartão da conta ganha a aurora e o anel do perfil, e
@@ -2172,9 +2180,14 @@ B7.Dashboard = (function () {
       '<label class="cfg-busca">' + svgF('lupa') + '<input type="search" id="cfg-q" placeholder="Procurar um ajuste" autocomplete="off" aria-label="Procurar um ajuste"></label>' +
       (abas.length > 1 ? '<div class="cfg-seg cfg-abas" data-grupo="aba" role="tablist" aria-label="Seções das configurações"><i class="cfg-seg-pill" aria-hidden="true"></i>' +
         abas.map(a => '<button type="button" role="tab" data-v="' + a[0] + '" aria-selected="' + (a[0] === abaAtual) + '"' +
-          (a[0] === abaAtual ? ' class="on"' : '') + '>' + svgF(IC_ABA[a[0]]) + '<span>' + a[1] + '</span></button>').join('') + '</div>' : '') +
+          (a[0] === abaAtual ? ' class="on"' : '') + '>' + svgF(IC_ABA[a[0]]) + '<span>' + a[1] +
+          '<small class="cfg-aba-d">' + esc(DESC_ABA[a[0]] || '') + '</small></span></button>').join('') + '</div>' : '') +
+      '</aside><div class="cfg-main">' +
       '<p class="cfg-nada" hidden>Nenhum ajuste com esse nome.</p>' +
-      abas.map(a => '<div class="cfg-painel" data-painel="' + a[0] + '"' + (a[0] === abaAtual ? '' : ' hidden') + '>' + a[2] + '</div>').join('') +
+      abas.map(a => '<div class="cfg-painel" data-painel="' + a[0] + '"' + (a[0] === abaAtual ? '' : ' hidden') + '>' +
+        '<header class="cfg-painel-cab">' + svgF(IC_ABA[a[0]]) + '<div><h2>' + a[1] + '</h2><p>' + esc(DESC_ABA[a[0]] || '') + '</p></div></header>' +
+        '<div class="cfg-painel-corpo">' + a[2] + '</div></div>').join('') +
+      '</div></div>' +
 
       '<footer class="cfg-assina"><span class="cfg-assina-b7" aria-hidden="true"></span><b>Sistema B7</b><small>feito pela Branding7</small></footer>' +
     '</div>';
@@ -2213,9 +2226,21 @@ B7.Dashboard = (function () {
       if (!on || !pill) return;
       if (!anima) pill.style.transition = 'none';
       pill.style.width = on.offsetWidth + 'px';
-      pill.style.transform = 'translate3d(' + on.offsetLeft + 'px,0,0)';
+      /* zzz239: as seções no computador ficam em coluna — a pílula desce em vez de andar de lado */
+      if (getComputedStyle(cx).flexDirection === 'column') {
+        pill.style.height = on.offsetHeight + 'px';
+        pill.style.transform = 'translate3d(0,' + on.offsetTop + 'px,0)';
+      } else {
+        pill.style.height = '';
+        pill.style.transform = 'translate3d(' + on.offsetLeft + 'px,0,0)';
+      }
       if (!anima) { pill.offsetWidth; pill.style.transition = ''; }
     };
+    /* virar o celular ou redimensionar a janela troca o desenho das seções */
+    const reposicionar = B7.UI.debounce ? B7.UI.debounce(() => p.querySelectorAll('.cfg-seg').forEach(x => moverPilula(x, false)), 120)
+      : () => p.querySelectorAll('.cfg-seg').forEach(x => moverPilula(x, false));
+    addEventListener('resize', reposicionar);
+    if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(() => removeEventListener('resize', reposicionar));
     p.querySelectorAll('.cfg-seg').forEach(cx => {
       moverPilula(cx, false);
       cx.querySelectorAll('button').forEach(b => b.onclick = () => {

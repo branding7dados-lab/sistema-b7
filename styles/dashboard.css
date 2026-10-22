@@ -1284,3 +1284,97 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .ic-app:hover img{transform:scale(1.06);}
 .ic-app.on{color:var(--ink);}
 .ic-app.on img{box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--acento);}
+
+/* =====================================================================
+   CONFIGURAÇÕES 5 (zzz239) — pedido do Kevin: "no pc tá com a mesma cara
+   de celular". No computador (≥1024px) a tela vira duas colunas:
+     • à esquerda (fixa ao rolar): a conta, a busca e as seções num menu
+       vertical, cada uma com o que tem dentro;
+     • à direita: o cabeçalho da seção e os grupos lado a lado (duas
+       colunas a partir de 1280px), aproveitando a largura.
+   No celular continua uma coluna só, mais leve: título menor, cartão da
+   conta mais baixo, seções em pílulas que rolam de lado.
+   ===================================================================== */
+.cfg-topo{margin:0 0 18px;}
+.cfg-topo .cfg-titulo{margin:0;}
+.cfg-sub{margin:4px 0 0;font-size:13.5px;color:var(--ink-4);}
+.cfg-aba-d{display:none;}
+.cfg-painel-cab{display:none;}
+.cfg-main{min-width:0;}
+
+@media (min-width:1024px){
+  .cfg-tela{max-width:1240px;}
+  .cfg-topo{margin:4px 0 26px;}
+  .cfg-topo .cfg-titulo{font-size:32px;}
+  .cfg-grade{display:grid;grid-template-columns:300px minmax(0,1fr);gap:36px;align-items:start;}
+  .cfg-lado{position:sticky;top:12px;display:flex;flex-direction:column;gap:14px;}
+  .cfg-lado .cfg-perfil-cx{margin:0;}
+  .cfg-lado .cfg-perfil-cx .cfg-perfil{padding:18px 16px 12px;gap:12px;}
+  .cfg-lado .cfg-perfil-cx .cfg-perfil .av-pessoa{width:52px;height:52px;}
+  .cfg-lado .cfg-perfil-cx .cfg-perfil-tx b{font-size:17px;}
+  .cfg-lado .cfg-pf-atalhos{padding:0 12px 12px;gap:6px;}
+  .cfg-lado .cfg-pf-atalhos button{min-height:54px;font-size:11.5px;border-radius:13px;}
+  .cfg-lado .cfg-pf-atalhos button svg{width:18px;height:18px;}
+  .cfg-lado .cfg-busca{margin:0;}
+  /* seções: menu vertical com a pílula que desce */
+  .cfg-lado .cfg-abas{flex-direction:column;margin:0;padding:6px;border-radius:18px;overflow:visible;
+    background:var(--card);border:1px solid color-mix(in srgb, var(--ink) 8%, transparent);}
+  .cfg-lado .cfg-abas .cfg-seg-pill{top:0;bottom:auto;left:0;border-radius:13px;background:var(--acento-suave, var(--suave));
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--acento) 22%, transparent);transition:transform .38s cubic-bezier(.3,1.15,.5,1), height .3s ease;}
+  .cfg-lado .cfg-abas button{flex:none;justify-content:flex-start;align-items:flex-start;gap:12px;min-height:0;padding:12px 14px;
+    border-radius:13px;text-align:left;white-space:normal;font-size:14px;}
+  .cfg-lado .cfg-abas button svg{width:19px;height:19px;margin-top:1px;color:var(--ink-4);}
+  .cfg-lado .cfg-abas button.on svg{color:var(--acento);}
+  .cfg-lado .cfg-abas button > span{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .cfg-lado .cfg-abas button:not(.on):hover{background:color-mix(in srgb, var(--suave) 70%, transparent);color:var(--ink-2);}
+  .cfg-aba-d{display:block;font-size:11.5px;font-weight:500;color:var(--ink-4);line-height:1.35;}
+  /* cabeçalho da seção aberta */
+  .cfg-painel-cab{display:flex;align-items:center;gap:14px;margin:0 0 20px;padding:0 0 18px;border-bottom:1px solid var(--borda);}
+  .cfg-painel-cab > svg{width:24px;height:24px;flex:none;padding:11px;box-sizing:content-box;border-radius:14px;fill:none;stroke:var(--acento);
+    stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;background:var(--acento-suave, var(--suave));}
+  .cfg-painel-cab h2{margin:0;font-family:'Archivo';font-size:22px;font-weight:800;letter-spacing:-.02em;}
+  .cfg-painel-cab p{margin:2px 0 0;font-size:13px;color:var(--ink-4);}
+  .cfg-procurando .cfg-painel-cab{display:none;}
+  .cfg-g{margin-bottom:24px;}
+  .cfg-g-t{margin-left:4px;}
+  .cfg-g-nota{margin-left:4px;margin-right:4px;}
+  .cfg-assina{margin-top:30px;}
+}
+/* área larga: os grupos ficam lado a lado (em colunas, como um mural).
+   Mede a própria coluna da direita, não a janela: num notebook com o menu
+   aberto fica uma coluna só; com o menu recolhido ou tela grande, duas. */
+@media (min-width:1024px){ .cfg-main{container-type:inline-size;} }
+@container (min-width:780px){
+  /* só quando a seção tem 3 grupos ou mais: com um grupo grande sozinho a
+     segunda coluna ficava vazia */
+  .cfg-painel-corpo:has(> .cfg-g ~ .cfg-g ~ .cfg-g){column-count:2;column-gap:28px;}
+  .cfg-painel-corpo > .cfg-g{break-inside:avoid;display:inline-block;width:100%;}
+}
+
+/* celular: mais leve */
+@media (max-width:760px){
+  .cfg-topo{margin:2px 0 14px;}
+  .cfg-topo .cfg-titulo{font-size:27px;margin:0;}
+  .cfg-sub{font-size:12.5px;}
+  .cfg-perfil-cx{margin-bottom:16px;border-radius:20px;}
+  .cfg-perfil-cx .cfg-perfil{padding:16px 14px 10px;gap:12px;}
+  .cfg-perfil-cx .cfg-perfil .av-pessoa{width:50px;height:50px;}
+  .cfg-perfil-cx .cfg-perfil-tx b{font-size:17px;}
+  .cfg-pf-atalhos{padding:0 10px 10px;gap:6px;}
+  .cfg-pf-atalhos button{flex-direction:row;min-height:40px;gap:6px;border-radius:12px;font-size:12px;}
+  .cfg-pf-atalhos button svg{width:16px;height:16px;}
+  .cfg-busca{margin-bottom:12px;}
+  .cfg-busca input{height:42px;border-radius:13px;}
+  /* seções: pílulas que rolam de lado, a escolhida em destaque */
+  .cfg-abas{background:none;padding:0;gap:6px;margin:0 0 18px;}
+  .cfg-abas .cfg-seg-pill{display:none;}
+  .cfg-abas button{flex:none;min-height:36px;padding:6px 15px;border-radius:99px;background:var(--card);
+    border:1px solid color-mix(in srgb, var(--ink) 9%, transparent);font-size:13px;}
+  .cfg-abas button.on{background:var(--acento);border-color:var(--acento);color:#fff;
+    box-shadow:0 8px 18px -10px color-mix(in srgb, var(--acento) 80%, transparent);}
+  .cfg-abas button svg{display:inline-block !important;width:15px;height:15px;}
+  .cfg-abas button.on svg{color:#fff;}
+  .cfg-g-t{margin-left:12px;}
+  .cfg-lista{border-radius:18px;}
+}
+@media (min-width:1024px){ .cfg-main .cfg-l-abaixo > .cfg-seg:not(.cfg-temas){max-width:460px;} }
