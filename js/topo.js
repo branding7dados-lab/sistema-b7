@@ -37,6 +37,7 @@ B7.Topo = (function () {
     suporte: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-5.2L8 19.4V16H7a2.5 2.5 0 0 1-2.5-2.5z"/><path d="M9 9.2h6M9 12h3.5"/></svg>',
     perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 19.6a7 7 0 0 1 14 0 .9.9 0 0 1-.9.9H5.9a.9.9 0 0 1-.9-.9z"/></svg>',
     config: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
+    coroa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8l4.2 3.6L12 5l4.3 6.6L20.5 8l-1.6 10H5.1z"/><path d="M5.5 21h13"/></svg>',
     usuarios: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 19.2a6.2 6.2 0 0 1 12.4 0 .8.8 0 0 1-.8.8H3.6a.8.8 0 0 1-.8-.8z"/><path d="M15.8 4.9a3.4 3.4 0 0 1 0 6.2M17.9 13.7a6 6 0 0 1 3.4 5.5.8.8 0 0 1-.8.8h-1.3"/></svg>',
     teclado: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="5.5" width="19" height="13" rx="3.2"/><path d="M7 10h.01M10.3 10h.01M13.7 10h.01M17 10h.01M8 14.2h8"/></svg>',
     abertura: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M10.3 8.8a.6.6 0 0 1 .9-.5l4.7 3.2a.6.6 0 0 1 0 1l-4.7 3.2a.6.6 0 0 1-.9-.5z"/></svg>',
@@ -395,12 +396,14 @@ B7.Topo = (function () {
         '<span class="tc-av"><span class="tp-conta-av av-pessoa' + (u.avatar_url ? ' com-foto' : tom) + '">' + foto + '</span></span>' +
         '<span class="tc-id"><b>' + esc(u.nome || u.username) + '</b>' +
           '<small>@' + esc(u.username || '') + '</small>' +
-          '<span class="tc-papeis">' + papeis.map(x => '<i>' + esc(x) + '</i>').join('') + '</span></span>' +
+          '<span class="tc-papeis">' + (B7.Auth.superadmin && B7.Auth.superadmin() && !naContaDeOutro
+            ? '<i class="tc-super' + (B7.Auth.superadmin() === 'supremo' ? ' supremo' : '') + '">' + (B7.Auth.superadmin() === 'supremo' ? 'Admin supremo' : 'Super admin') + '</i>' : '') +
+            papeis.map(x => '<i>' + esc(x) + '</i>').join('') + '</span></span>' +
       '</div>' +
       '<div class="tc-lista">' +
         item('data-conta="perfil"', IC.perfil, 'violeta', 'Meu perfil', 'foto, nome, senha e notificações') +
         (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'azul', 'Preferências e configurações', 'tema, tela inicial e ajustes do aparelho') : '') +
-        (B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() ? item('data-conta="super"', IC.usuarios, 'roxo', B7.Auth.superadmin() === 'supremo' ? 'Super admin · supremo' : 'Super admin', 'administradores, aprovações, segurança e o sistema todo') : '') +
+        (B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() ? item('data-conta="super"', IC.coroa, 'roxo', B7.Auth.superadmin() === 'supremo' ? 'Super admin · supremo' : 'Super admin', 'administradores, aprovações, segurança e o sistema todo') : '') +
         (B7.Perm && B7.Perm.podeConfig('usuarios') && !cliente ? item('data-conta="usuarios"', IC.usuarios, 'verde', 'Usuários e acessos', 'contas da equipe e dos clientes') : '') +
         (!cliente ? item('data-conta="ajuda"', IC.ajuda, 'ciano', 'Ajuda e tutoriais', 'um passo a passo para cada parte do sistema') : '') +
         item('data-conta="suporte"', IC.suporte, 'rosa', cliente ? 'Suporte' : 'Suporte e feedback', cliente ? 'tirar uma dúvida ou relatar um problema' : 'relatar um problema, mandar uma ideia ou tirar uma dúvida') +
