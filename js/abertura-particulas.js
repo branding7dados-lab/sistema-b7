@@ -1,6 +1,9 @@
 /* =====================================================================
-   ABERTURA — "BIG BANG DE IDEIAS" (zzz227)
-   Pedido do Kevin: "quero uma animação de abertura mais foda que essa".
+   ABERTURA — "BIG BANG DE IDEIAS" (zzz227, câmera 3D na zzz228)
+   Pedido do Kevin: "quero uma animação de abertura mais foda que essa" e
+   depois "mais cinematográfico ainda": as partículas ganharam
+   profundidade (perspectiva, foco, bokeh de lente e nebulosa ao fundo) e
+   a explosão manda faíscas na direção da câmera.
 
    Por cima da abertura de cinema que já existia (styles/abertura.css),
    uma camada de partículas desenhada em <canvas>:
@@ -97,6 +100,32 @@
     sprites.set(chave, c);
     return c;
   }
+  /* bokeh de lente: disco quase chapado com a borda um pouco mais clara */
+  function disco(r, g, b) {
+    const q = 48, chave = 'd' + r + ',' + g + ',' + b;
+    if (sprites.has(chave)) return sprites.get(chave);
+    const c = document.createElement('canvas'); c.width = c.height = q * 2;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(q, q, 0, q, q, q);
+    const cor = a => 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+    gr.addColorStop(0, cor(.55)); gr.addColorStop(.72, cor(.5)); gr.addColorStop(.86, cor(.85)); gr.addColorStop(.94, cor(.25)); gr.addColorStop(1, cor(0));
+    x.fillStyle = gr; x.fillRect(0, 0, q * 2, q * 2);
+    sprites.set(chave, c);
+    return c;
+  }
+  /* nuvem da nebulosa: grande e bem macia */
+  function nuvem(r, g, b) {
+    const q = 128, chave = 'n' + r + ',' + g + ',' + b;
+    if (sprites.has(chave)) return sprites.get(chave);
+    const c = document.createElement('canvas'); c.width = c.height = q * 2;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(q, q, 0, q, q, q);
+    const cor = a => 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+    gr.addColorStop(0, cor(1)); gr.addColorStop(.35, cor(.55)); gr.addColorStop(.7, cor(.15)); gr.addColorStop(1, cor(0));
+    x.fillStyle = gr; x.fillRect(0, 0, q * 2, q * 2);
+    sprites.set(chave, c);
+    return c;
+  }
   const PALETA = [[255, 143, 203], [226, 64, 156], [169, 139, 255], [124, 80, 220], [255, 214, 240]];
 
   /* ----------------------------------------------------------- curvas */
@@ -146,26 +175,44 @@
     medir();
     addEventListener('resize', medir);
 
-    /* partículas da lâmpada */
+    /* zzz228 — câmera em 3D. Cada partícula tem posição no espaço
+       relativa à câmera (X, Y, Z); a tela é a projeção x = cx + X·F/Z.
+       Z = F é o plano de foco (escala 1, nítido); mais longe fica pequeno
+       e desfocado, mais perto fica grande e desfocado (bokeh). */
     const N = celular ? 420 : 900;
     const fonte = P.lampada.slice().sort(() => Math.random() - .5).slice(0, N);
-    const base = Math.max(W, H);
+    const F = Math.max(W, H) * .9;
     const ps = fonte.map((pt, i) => {
       const cor = pt.cor || PALETA[i % PALETA.length];
       /* clareia um pouco: no escuro a cor do logo some */
       const c = cor.map(x => Math.min(255, Math.round(x * .75 + 70)));
       return {
         u: pt.u, v: pt.v, sp: sprite(c[0], c[1], c[2]),
-        r0: base * (.06 + Math.pow(Math.random(), 1.35) * .36),
+        r0: F * (.12 + Math.pow(Math.random(), .8) * 1.05),
         a0: Math.random() * Math.PI * 2,
-        w: (.35 + Math.random() * .45),
+        w: (.3 + Math.random() * .45),
+        z0: F * (1.5 + Math.random() * 4),
         d: Math.random() * .55,
         tam: .7 + Math.random() * 1.1,
         fase: Math.random() * 6.28,
-        vel: (260 + Math.random() * 820) * (celular ? .7 : 1),
+        /* explosão: velocidade no plano e em profundidade (a maioria vem para a lente) */
+        vel: (300 + Math.random() * 900) * (celular ? .7 : 1),
+        vz: -F * (Math.random() < .35 ? .9 + Math.random() * 1.6 : Math.random() * .5),
         desvio: (Math.random() - .5) * .9
       };
     });
+    /* bokeh: luzes grandes e fora de foco que passam perto da câmera */
+    const bokeh = Array.from({ length: celular ? 12 : 22 }, (_, i) => {
+      const c = PALETA[i % PALETA.length];
+      return { sp: disco(c[0], c[1], c[2]), x: (Math.random() - .5) * 2.4 * F, y: (Math.random() - .5) * 1.6 * F,
+        z0: F * (.3 + Math.random() * 3), tam: .6 + Math.random() * .9, a: .1 + Math.random() * .12 };
+    });
+    /* nebulosa: nuvens de cor ao fundo, para o espaço ter volume */
+    const NEB = [[124, 60, 210], [194, 28, 131], [58, 30, 134], [226, 64, 156], [80, 70, 220], [160, 40, 170], [90, 40, 160]];
+    const nevoa = NEB.map((c, i) => ({ sp: nuvem(c[0], c[1], c[2]), x: (Math.random() - .5) * 1.8 * F, y: (Math.random() - .5) * 1.1 * F,
+      z0: F * (2.4 + i * .8 + Math.random()), tam: .7 + Math.random() * .6 }));
+    /* quanto a câmera andou: rápido no começo, freando até parar na lâmpada */
+    const voo = t => F * 1.4 * (1 - Math.pow(1 - lim(t / T.monta, 0, 1), 2));
     /* partículas da palavra */
     const NW = celular ? 260 : 420;
     const fw = P.palavra.slice().sort(() => Math.random() - .5).slice(0, NW);
@@ -218,22 +265,39 @@
       /* o brilho de cada ponto acompanha o tamanho da lâmpada na tela */
       const escala = lim(lado / 40, 3.2, 8.5);
 
+      /* plano de fundo: nebulosa e bokeh (no rastro, o quadro anterior soma: compensa) */
+      const fundo = rastro ? .34 : 1;
+      const percorrido = voo(t);
+      const fundoVisivel = lim(t / .9, 0, 1) * (t > T.ign + .6 ? lim(1 - (t - T.ign - .6) / 1.4, 0, 1) : 1);
+      if (fundoVisivel > 0) {
+        for (const n of nevoa) {
+          const Z = n.z0 - percorrido * .9; if (Z < F * .4) continue;
+          const f = F / Z, q = F * .55 * n.tam * f;
+          g.globalAlpha = .17 * fundo * fundoVisivel * lim((Z - F * .4) / F, 0, 1);
+          g.drawImage(n.sp, cx + n.x * f - q, cy + n.y * f - q, q * 2, q * 2);
+        }
+        for (const b of bokeh) {
+          /* volta para o fundo quando passa pela câmera */
+          const Z = F * .25 + ((b.z0 - percorrido * 2.6) % (F * 3.2) + F * 3.2) % (F * 3.2);
+          const f = F / Z, q = Math.min(F * .14, F * .02 * b.tam * f);
+          g.globalAlpha = b.a * fundo * fundoVisivel * lim((Z - F * .25) / (F * .35), 0, 1) * lim((F * 3.4 - Z) / F, 0, 1);
+          g.drawImage(b.sp, cx + b.x * f - q, cy + b.y * f - q, q * 2, q * 2);
+        }
+      }
+
       for (let i = 0; i < ps.length; i++) {
         const p = ps[i];
         if (leve && (i & 1)) continue;
         const tx = ox + p.u * lado, ty = oy + p.v * alt;
-        let x, y, a, s = p.tam;
+        let X, Y, Z, a, s = p.tam;
         if (t < T.ign) {
-          /* galáxia: anel achatado girando, raio fechando aos poucos */
-          const giro = p.a0 + p.w * t + (t > T.galaxia ? (t - T.galaxia) * p.w * 1.8 : 0);
-          const rr = p.r0 * (1 - .12 * lim(t / T.galaxia, 0, 1));
-          const gx = cx + Math.cos(giro) * rr, gy = cy + Math.sin(giro) * rr * .42;
+          /* voo: a câmera atravessa um redemoinho de luz em profundidade */
+          const giro = p.a0 + p.w * t + (t > T.galaxia ? (t - T.galaxia) * p.w * 1.6 : 0);
+          const gX = Math.cos(giro) * p.r0, gY = Math.sin(giro) * p.r0 * .55, gZ = p.z0 - percorrido;
           const k = suave(lim((t - T.galaxia - p.d) / (T.monta - T.galaxia - .55), 0, 1));
-          x = misturar(gx, tx, k); y = misturar(gy, ty, k);
-          a = lim((t - .15) / 1.1, 0, 1) * (.45 + .55 * k);
-          if (k >= 1) {                                   /* montada: respira */
-            x += Math.sin(t * 9 + p.fase) * .6; y += Math.cos(t * 7 + p.fase) * .6;
-          }
+          X = misturar(gX, tx - cx, k); Y = misturar(gY, ty - cy, k); Z = misturar(gZ, F, k);
+          a = lim((t - .05) / .8, 0, 1) * (.7 + .3 * k);
+          if (k >= 1) { X += Math.sin(t * 9 + p.fase) * .6; Y += Math.cos(t * 7 + p.fase) * .6; }   /* montada: respira */
           /* carga: uma faixa de luz sobe por dentro dos pontos */
           if (t > T.carga) {
             const nivel = 1 - (t - T.carga) / (T.ign - T.carga);
@@ -243,19 +307,26 @@
           /* a lâmpada de verdade entra por cima: os pontos cedem o lugar */
           if (t > T.ign - .2) a *= .55;
         } else {
-          /* explosão: cada ponto sai na direção do centro para fora */
+          /* explosão em 3D: parte das faíscas vem na direção da lente */
           const dt = t - T.ign;
           if (dt > T.explode) continue;
           const ang = Math.atan2(ty - cy, tx - cx) + p.desvio;
-          const dist = p.vel * (1 - Math.exp(-dt * 2.6)) / 2.6;
-          x = tx + Math.cos(ang) * dist; y = ty + Math.sin(ang) * dist + dt * dt * 40;
-          a = Math.pow(1 - dt / T.explode, 1.6);
+          const amort = (1 - Math.exp(-dt * 2.4)) / 2.4;
+          X = tx - cx + Math.cos(ang) * p.vel * amort; Y = ty - cy + Math.sin(ang) * p.vel * amort + dt * dt * 40;
+          Z = F + p.vz * amort;
+          a = Math.pow(1 - dt / T.explode, 1.5);
           s *= 1 + (1 - dt / T.explode) * .8;
         }
+        if (Z < F * .12) continue;
+        const f = F / Z;
+        /* profundidade de campo: fora do plano de foco, maior e mais apagado */
+        const dof = Math.min(2.6, Math.abs(Math.log(f)) * .9);
+        /* neblina: bem ao fundo, quase some */
+        a *= lim(1.8 - Z / (F * 5), .25, 1) / (1 + dof * .55);
         if (a <= .01) continue;
-        const q = s * escala;
+        const q = Math.min(F * (celular ? .045 : .07), s * escala * f * (1 + dof));
         g.globalAlpha = a;
-        g.drawImage(p.sp, x - q, y - q, q * 2, q * 2);
+        g.drawImage(p.sp, cx + X * f - q, cy + Y * f - q, q * 2, q * 2);
       }
 
       /* a palavra: sai da lâmpada e se escreve da esquerda para a direita */
