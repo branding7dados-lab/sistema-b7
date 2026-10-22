@@ -2037,6 +2037,11 @@ B7.Dashboard = (function () {
             d: 'como o B7 abre; vale neste aparelho · padrão do sistema: ' + esc((B7.Abertura.ESTILOS.find(e => e[0] === B7.Abertura.padraoDoSistema()) || ['', 'Streaming'])[1]),
             dir: sel('abertura_estilo', B7.Abertura.valido(B7.pref.ler('abertura_estilo', null)) || 'padrao',
               [['padrao', 'Padrão do sistema']].concat(B7.Abertura.ESTILOS), 'Estilo da abertura') }) : '') +
+        /* zzz234: o carregamento (a versão curta: recarregar, entre login e sistema) também tem estilos */
+        (B7.Abertura && B7.Abertura.CARGAS ? L({ ic: 'atualizar', tom: 'azul', t: 'Tela de carregamento',
+            d: 'o que aparece enquanto o B7 carrega; vale neste aparelho · padrão do sistema: ' + esc((B7.Abertura.CARGAS.find(e => e[0] === B7.Abertura.cargaDoSistema()) || ['', 'Relâmpago'])[1]),
+            dir: sel('carregamento_estilo', B7.Abertura.cargaValida(B7.pref.ler('carregamento_estilo', null)) || 'padrao',
+              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.CARGAS), 'Estilo da tela de carregamento') }) : '') +
         /* modo leve (js/desempenho.js): vidro sólido onde o aparelho trava */
         (B7.Desempenho ? L({ ic: 'raio', tom: 'laranja', t: 'Desempenho', d: '<span id="cfg-desemp-d">' + descDesempenho() + '</span>',
             abaixo: seletor('desempenho', B7.Desempenho.modo(), [['auto', 'Automático'], ['leve', 'Leve'], ['completo', 'Completo']]) }) : '')) +
@@ -2289,7 +2294,15 @@ B7.Dashboard = (function () {
       if (sl.dataset.sel === 'abertura_estilo') {
         B7.pref.gravar('abertura_estilo', sl.value);
         if (B7.Abertura) B7.Abertura.aplicar();
-        B7.UI.toast(sl.value === 'padrao' ? 'Você segue a abertura padrão do sistema.' : 'Estilo da abertura guardado neste aparelho. Toque em "Testar abertura" para ver.');
+        /* zzz234: o "Testar abertura" é só do administrador; o aviso já oferece a prévia para todo mundo */
+        B7.UI.toast(sl.value === 'padrao' ? 'Você segue a abertura padrão do sistema.' : 'Estilo da abertura guardado neste aparelho.',
+          { tipo: 'ok', acao: 'Ver agora', aoClicar: () => { if (B7.reverAbertura) B7.reverAbertura(); } });
+      }
+      if (sl.dataset.sel === 'carregamento_estilo') {
+        B7.pref.gravar('carregamento_estilo', sl.value);
+        if (B7.Abertura) B7.Abertura.aplicar();
+        B7.UI.toast(sl.value === 'padrao' ? 'Você segue o carregamento padrão do sistema.' : 'Tela de carregamento guardada neste aparelho.',
+          { tipo: 'ok', acao: 'Ver agora', aoClicar: () => { if (B7.testarCarregamento) B7.testarCarregamento(); } });
       }
       if (sl.dataset.sel === 'inicio') { B7.pref.gravar('inicio', sl.value); B7.UI.toast('Tela inicial guardada neste aparelho.'); }
       /* zzz114: escolher já toca, para decidir pelo ouvido */

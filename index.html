@@ -69,13 +69,16 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
      as partículas (zzz227) fica com a clássica.
      streaming · hiper · bigbang · classica */
   try {
-    var b7Ok = function (e) { return /^(streaming|hiper|bigbang|classica)$/.test(e || '') ? e : null; };
+    var b7Ok = function (e) { return /^(streaming|hiper|bigbang|classica|tinta|glitch|aurora|neon|mosaico)$/.test(e || '') ? e : null; };
     var b7Est = b7Ok(JSON.parse(localStorage.getItem('b7_pref_abertura_estilo') || 'null'));
     if (!b7Est) {
       var b7Pp = localStorage.getItem('b7_pref_abertura_particulas');
       b7Est = b7Pp !== null && JSON.parse(b7Pp) === false ? 'classica' : (b7Ok(localStorage.getItem('b7_ab_padrao')) || 'streaming');
     }
     document.documentElement.setAttribute('data-ab-estilo', b7Est);
+    /* zzz234: estilo do carregamento (a versão curta): o da pessoa, senão o do sistema */
+    var b7Cg = function (e) { return /^(relampago|pulso|orbita|barra|brilho|pontos)$/.test(e || '') ? e : null; };
+    document.documentElement.setAttribute('data-ab-carga', b7Cg(JSON.parse(localStorage.getItem('b7_pref_carregamento_estilo') || 'null')) || b7Cg(localStorage.getItem('b7_carga_padrao')) || 'relampago');
   } catch (e) { document.documentElement.setAttribute('data-ab-estilo', 'streaming'); }
   /* zzz156: app (ou PWA instalado) que o Android fechou em segundo plano
      para liberar memória. Se a pessoa estava usando há menos de 30 min,
@@ -193,6 +196,8 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
 <script src="js/abertura-faixas.js"></script>
 <!-- zzz231: abertura "hiperespaço" (estrelas que viram riscos de luz) -->
 <script src="js/abertura-hiper.js"></script>
+<!-- zzz234: aberturas tinta, glitch, aurora, neon e mosaico -->
+<script src="js/abertura-cenas.js"></script>
 
 <div id="app">
 

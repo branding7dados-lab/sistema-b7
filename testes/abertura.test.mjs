@@ -127,7 +127,7 @@ const entrar = () => {
    logo voa para a barra). zzz231: no streaming não há voo — o logo some
    dentro das faixas de luz, que abrem o sistema; ali o quadro final é o
    logo invisível. */
-for (const estilo of ['hiper', 'bigbang', 'classica', 'streaming']) {
+for (const estilo of ['hiper', 'bigbang', 'classica', 'streaming', 'tinta', 'glitch', 'aurora', 'neon', 'mosaico']) {
   const ctx = await nav.newContext({ viewport:{width:390,height:844} });
   await ctx.addInitScript(e => { try { localStorage.setItem('b7_pref_abertura_estilo', JSON.stringify(e)); } catch (x) {} }, estilo);
   const pg = await ctx.newPage(); await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(500);

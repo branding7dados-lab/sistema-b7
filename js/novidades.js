@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz234', versao: 'zzz234', em: '2026-10-22T14:00:00-03:00',
+    titulo: 'Cinco aberturas e cinco telas de carregamento novas',
+    itens: ['Aberturas novas: Tinta (gotas de tinta que giram até o logo), Glitch (um terminal que quebra e estoura no logo), Aurora (cortinas de luz no céu), Neon (o letreiro que liga piscando) e Mosaico (quadrados que viram e se abrem no logo). Cada uma tem a sua trilha.',
+            'A tela de carregamento (a que aparece ao recarregar) também tem estilos: Relâmpago, Pulso, Órbita, Barra, Brilho e Pontos.',
+            'Para escolher: Configurações → Aparência → "Estilo da abertura" e "Tela de carregamento". Ao trocar, toque em "Ver agora" no aviso para ver na hora.'] },
   { id: 'v-zzz233', versao: 'zzz233', em: '2026-10-22T12:00:00-03:00',
     titulo: 'Avisos novos',
     itens: ['Os avisos que aparecem depois de salvar, enviar ou quando algo dá errado ganharam ícone e cor: verde deu certo, vermelho deu erro, âmbar é atenção.',

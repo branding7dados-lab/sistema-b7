@@ -534,9 +534,59 @@ B7.SomAbertura = (function () {
     [0.0, t => riser(t, .38)], [0.3, t => whoosh(t, .45, 700, 3800, .07)],
     [0.34, estalo], [0.4, t => ignicao(t, .62)], [0.45, t => camaSonora(t, .7)], [0.95, cintilar]
   ];
-  const streaming = () => document.documentElement.getAttribute('data-ab-estilo') === 'streaming';
+  /* zzz234 — os 5 estilos novos, alinhados a styles/abertura.css e js/abertura-cenas.js:
+       tinta (4,2 s)    gotas caindo na água, coral subindo; 2,3 o logo nasce: impacto suave
+       glitch (4,2 s)   estalos digitais e uma nota por letra digitada; 1,72 estouro; 1,9 o logo
+       aurora (4,2 s)   coral e sinos calmos; 1,6 o logo aparece num acorde aberto
+       neon (3,8 s)     o zumbido do letreiro e um estalo em cada piscada; 1,2 aceso de vez
+       mosaico (4,2 s)  as peças virando (estalos em cascata); 2,0 se abrem; 2,3 o logo */
+  const ROTEIRO_TINTA = [
+    [0.0, t => coro(t, 2.4, [65.41, 98, 130.81], .04, 1.8)],
+    [0.1, t => sino(t, 392, .03, 1.6)], [0.45, t => sino(t, 466.16, .025, 1.6)], [0.8, t => sino(t, 523.25, .03, 1.8)],
+    [0.3, t => passagem(t, -.8, .045)], [1.0, t => passagem(t, .8, .05)],
+    [1.3, t => riser(t, 1.0)], [1.4, t => whoosh(t, .9, 300, 2200, .06)], [2.22, t => folego(t, t + .08)],
+    [2.3, t => ignicao(t, .75)], [2.3, t => boom(t, .35)], [2.3, camaSonora],
+    [2.3, t => coro(t, 2.2, [261.63, 392, 523.25, 659.25], .06, .1)],
+    [2.8, letras], [3.3, cintilar], [3.5, assinatura]
+  ];
+  const ROTEIRO_GLITCH = [
+    [0.0, t => prologo(t, t + 1.7)],
+    [0.25, t => { for (let i = 0; i < 10; i++) estalo(t + i * .09); }],
+    [0.9, t => motor(t, t + .8)], [1.2, t => pratoReverso(t, t + .5)], [1.66, t => folego(t, t + .06)],
+    [1.72, t => ignicao(t, .9)], [1.72, t => boom(t, .45)], [1.72, t => braam(t, .9)],
+    [1.9, camaSonora], [1.9, t => coro(t, 2.0, [261.63, 392, 523.25, 659.25], .055, .06)],
+    [1.92, t => { estalo(t); estalo(t + .05); }],
+    [2.2, letras], [2.8, cintilar], [3.1, assinatura]
+  ];
+  const ROTEIRO_AURORA = [
+    [0.0, t => coro(t, 2.0, [65.41, 98, 130.81, 196], .05, 1.6)],
+    [0.2, t => brilhos(t, t + 1.6, 60, .016)],
+    [0.3, t => sino(t, 659.25, .02, 2.4)], [0.75, t => sino(t, 783.99, .018, 2.4)], [1.2, t => sino(t, 987.77, .016, 2.4)],
+    [0.6, t => passagem(t, -.7, .04)], [1.1, t => passagem(t, .7, .045)],
+    [1.2, t => riser(t, .5)],
+    [1.6, t => ignicao(t, .55)], [1.6, camaSonora], [1.6, t => coro(t, 2.6, [196, 261.63, 392, 493.88, 659.25], .06, .25)],
+    [2.4, letras], [3.1, cintilar], [3.3, assinatura]
+  ];
+  const ROTEIRO_NEON = [
+    [0.0, t => motor(t, t + .55)],
+    [0.6, estalo], [0.7, estalo], [0.9, estalo], [1.2, estalo],
+    [0.6, t => metal(t, 120, .03)], [0.9, t => metal(t, 120, .035)],
+    [1.2, t => ignicao(t, .6)], [1.2, t => boom(t, .3)], [1.25, camaSonora],
+    [1.25, t => coro(t, 2.2, [130.81, 196, 261.63, 329.63], .055, .1)],
+    [1.8, estalo], [1.9, estalo], [2.0, letras], [2.6, cintilar], [2.8, assinatura]
+  ];
+  const ROTEIRO_MOSAICO = [
+    [0.0, t => coro(t, 2.2, [65.41, 98, 130.81], .04, 1.5)],
+    [0.2, t => { for (let i = 0; i < 16; i++) estalo(t + Math.pow(i / 16, 1.3) * 1.75); }],
+    [0.6, t => passagem(t, -.8, .04)], [1.2, t => passagem(t, .8, .05)],
+    [1.4, t => riser(t, .6)], [1.95, t => folego(t, t + .06)],
+    [2.0, t => whoosh(t, .6, 500, 3800, .08)], [2.05, t => brilhos(t, t + .5, 40, .02)],
+    [2.3, t => ignicao(t, .7)], [2.3, camaSonora], [2.3, t => coro(t, 2.0, [261.63, 392, 523.25, 659.25], .06, .08)],
+    [2.6, letras], [3.2, cintilar], [3.4, assinatura]
+  ];
+  const ROTEIROS_EST = { streaming: ROTEIRO_STREAMING, hiper: ROTEIRO_HIPER, tinta: ROTEIRO_TINTA, glitch: ROTEIRO_GLITCH, aurora: ROTEIRO_AURORA, neon: ROTEIRO_NEON, mosaico: ROTEIRO_MOSAICO };
   const estiloAtual = () => document.documentElement.getAttribute('data-ab-estilo');
-  const roteiroCompleto = () => estiloAtual() === 'streaming' ? ROTEIRO_STREAMING : estiloAtual() === 'hiper' ? ROTEIRO_HIPER : ROTEIRO;
+  const roteiroCompleto = () => ROTEIROS_EST[estiloAtual()] || ROTEIRO;
   let inicioAnim = null, tocada = false, roteiro = ROTEIRO;
   function tocarTrilha(decorrido) {
     if (!ctx || ctx.state !== 'running' || tocada) return;
@@ -561,7 +611,7 @@ B7.SomAbertura = (function () {
     if (curta) roteiro = ROTEIRO_CURTO; else roteiro = roteiroCompleto();
     if (!preparar()) return;
     requestAnimationFrame(() => {
-      const a = el.querySelector(curta ? '.ab-palco' : (streaming() || estiloAtual() === 'hiper') ? '.ab-marca' : '.ab-simbolo');
+      const a = el.querySelector(curta ? '.ab-palco' : ROTEIROS_EST[estiloAtual()] ? '.ab-marca' : '.ab-simbolo');
       const an = a && a.getAnimations ? a.getAnimations()[0] : null;
       inicioAnim = an && an.startTime != null ? an.startTime : 0;   /* startTime = o 0 s da sequência (o atraso conta depois) */
       const vai = () => { if (el.isConnected && !el.classList.contains('saindo')) tocarTrilha(decorridoAgora()); };
@@ -603,8 +653,8 @@ B7.SomAbertura = (function () {
     const curto = qual === 'curta';
     const off = new OAC(2, 44100 * (curto ? 3.5 : 9), 44100);
     preparar(off);
-    (curto ? ROTEIRO_CURTO : qual === 'streaming' ? ROTEIRO_STREAMING : qual === 'hiper' ? ROTEIRO_HIPER : ROTEIRO).forEach(([quando, fn]) => fn(quando));
-    partida(curto ? 1.0 : (saidaEm || ({ streaming: 3.6, hiper: 4.0 })[qual] || 6.4));
+    (curto ? ROTEIRO_CURTO : ROTEIROS_EST[qual] || ROTEIRO).forEach(([quando, fn]) => fn(quando));
+    partida(curto ? 1.0 : (saidaEm || ({ streaming: 3.6, hiper: 4.0, tinta: 4.2, glitch: 4.2, aurora: 4.2, neon: 3.8, mosaico: 4.2 })[qual] || 6.4));
     const buf = await off.startRendering();
     [ctx, saida, sala, ruido, drone, cama] = salvo;
     if (cru) return [buf.getChannelData(0), buf.getChannelData(1)];

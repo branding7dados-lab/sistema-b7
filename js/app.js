@@ -508,21 +508,32 @@ B7.Rota = (function () {
   /* zzz230: a duração da sequência completa depende do estilo escolhido
      (streaming 4,9 s; big bang e clássica 6,4 s) */
   /* zzz231: streaming encurtou (as faixas abrem direto o sistema) e entrou o hiperespaço */
-  const DURACAO_ESTILO = { streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400 };
+  /* zzz234: tinta · glitch · aurora · neon · mosaico */
+  const DURACAO_ESTILO = { streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400, tinta: 4200, glitch: 4200, aurora: 4200, neon: 3800, mosaico: 4200 };
   const duracaoAbertura = () => reduzMov() ? 6400 : (DURACAO_ESTILO[document.documentElement.getAttribute('data-ab-estilo')] || 6400);
   B7.duracaoAbertura = duracaoAbertura;
   /* qual abertura vale para esta pessoa neste aparelho (a mesma regra do <head> do index.html) */
+  const ESTILOS_AB = [['streaming', 'Streaming'], ['hiper', 'Hiperespaço'], ['tinta', 'Tinta'], ['glitch', 'Glitch'], ['aurora', 'Aurora'],
+                      ['neon', 'Neon'], ['mosaico', 'Mosaico'], ['bigbang', 'Big bang'], ['classica', 'Clássica']];
+  /* zzz234: o carregamento (a versão curta, ao recarregar) também tem estilos */
+  const CARGAS = [['relampago', 'Relâmpago'], ['pulso', 'Pulso'], ['orbita', 'Órbita'], ['barra', 'Barra'], ['brilho', 'Brilho'], ['pontos', 'Pontos']];
   B7.Abertura = {
-    ESTILOS: [['streaming', 'Streaming'], ['hiper', 'Hiperespaço'], ['bigbang', 'Big bang'], ['classica', 'Clássica']],
-    valido: e => ['streaming', 'hiper', 'bigbang', 'classica'].includes(e) ? e : null,
+    ESTILOS: ESTILOS_AB, CARGAS,
+    valido: e => ESTILOS_AB.some(x => x[0] === e) ? e : null,
+    cargaValida: e => CARGAS.some(x => x[0] === e) ? e : null,
     padraoDoSistema() { try { return B7.Abertura.valido(localStorage.getItem('b7_ab_padrao')) || 'streaming'; } catch (e) { return 'streaming'; } },
+    cargaDoSistema() { try { return B7.Abertura.cargaValida(localStorage.getItem('b7_carga_padrao')) || 'relampago'; } catch (e) { return 'relampago'; } },
     resolver() {
       const minha = B7.Abertura.valido(B7.pref ? B7.pref.ler('abertura_estilo', null) : null);
       if (minha) return minha;
       try { const pp = localStorage.getItem('b7_pref_abertura_particulas'); if (pp !== null && JSON.parse(pp) === false) return 'classica'; } catch (e) {}
       return B7.Abertura.padraoDoSistema();
     },
-    aplicar() { document.documentElement.setAttribute('data-ab-estilo', B7.Abertura.resolver()); }
+    resolverCarga() { return B7.Abertura.cargaValida(B7.pref ? B7.pref.ler('carregamento_estilo', null) : null) || B7.Abertura.cargaDoSistema(); },
+    aplicar() {
+      document.documentElement.setAttribute('data-ab-estilo', B7.Abertura.resolver());
+      document.documentElement.setAttribute('data-ab-carga', B7.Abertura.resolverCarga());
+    }
   };
   /* no streaming a abertura termina dentro das faixas de luz: não há logo para voar */
   const semVoo = el => el.classList.contains('inicial') && document.documentElement.getAttribute('data-ab-estilo') === 'streaming' && !reduzMov();
