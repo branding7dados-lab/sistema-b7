@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz250', versao: 'zzz250', em: '2026-10-23T03:00:00-03:00',
+    titulo: 'Observações internas ficam só com a equipe',
+    itens: ['As observações para o design de cada conteúdo nunca aparecem para o cliente, e as observações dos itens do status semanal só aparecem quando o status foi publicado com "mostrar observações".',
+            'O assistente do B7 foi atualizado com a ajuda das telas novas.'] },
   { id: 'v-zzz249', versao: 'zzz249', em: '2026-10-23T02:00:00-03:00',
     titulo: 'Permissões levadas a sério',
     itens: ['O nível de cada pessoa em cada parte do B7 (Ver, Editar ou Total) agora vale de verdade em Clientes, Linhas editoriais, Roteiros, Gravações e Status semanal: quem só pode ver recebe um aviso claro se tentar alterar, em vez de a alteração sumir.',
