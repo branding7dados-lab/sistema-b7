@@ -1,5 +1,10 @@
 /* =====================================================================
-   SOM DA ABERTURA (pacote zp, 03/10; trilha refeita na zzz110, 08/10)
+   SOM DA ABERTURA (pacote zp, 03/10; trilha refeita na zzz110, 08/10;
+   épica na zzz229, 22/10 — "melhorar a trilha sonora... muito mais
+   cinematográfico": coral sintetizado, passagens em estéreo, brilhos da
+   montagem, prato ao contrário, fôlego antes do impacto, golpe metálico,
+   boom longo, brasas, uma nota por letra e sala de cinema. O roteiro
+   atual está em ROTEIRO, mais abaixo)
    Trilha de ~6,6 s sincronizada com a abertura "a ideia acende",
    100% sintetizada com Web Audio: nenhum arquivo baixado, nenhuma
    música de terceiros.
@@ -59,12 +64,21 @@ B7.SomAbertura = (function () {
     comp.attack.value = .004; comp.release.value = .25;
     saida = ctx.createGain(); saida.gain.value = .7;
     saida.connect(comp); comp.connect(ctx.destination);
-    /* sala: reverberação gerada (ruído com cauda que decai) */
-    const seg = 3.6, n = Math.floor(ctx.sampleRate * seg);
+    /* sala: reverberação de cinema gerada (zzz229): pré-atraso, primeiras
+       reflexões e uma cauda longa que escurece com o tempo (o agudo morre
+       antes do grave), com os dois lados diferentes (largura estéreo) */
+    const seg = 4.6, n = Math.floor(ctx.sampleRate * seg), pre = Math.floor(ctx.sampleRate * .022);
     const ir = ctx.createBuffer(2, n, ctx.sampleRate);
     for (let c = 0; c < 2; c++) {
       const d = ir.getChannelData(c);
-      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2);
+      let lp = 0;
+      for (let i = pre; i < n; i++) {
+        const x = (i - pre) / (n - pre);
+        const a = .35 + .6 * x;                              /* filtro fecha com o tempo */
+        lp = lp * a + (Math.random() * 2 - 1) * (1 - a);
+        d[i] = lp * Math.pow(1 - x, 2.4) * 2.2;
+      }
+      [.011, .019, .029, .041, .057].forEach((r, k) => { const j = pre + Math.floor(ctx.sampleRate * (r + c * .003)); if (j < n) d[j] += (k % 2 ? -1 : 1) * (.5 - k * .07); });
     }
     conv = ctx.createConvolver(); conv.buffer = ir;
     sala = ctx.createGain(); sala.gain.value = .42;
@@ -147,6 +161,110 @@ B7.SomAbertura = (function () {
       const tt = t + .02 + i * .012;
       o.start(tt); o.stop(tt + 3.2);
       env(g, tt, (.05 - i * .006) * Math.max(f, .6), .02, 2.8 * f);
+    });
+  }
+  /* ---------- peças da trilha épica (zzz229) ---------- */
+  /* posição no estéreo (-1 esquerda, 1 direita); sem suporte, fica no meio */
+  function lado(no, p) {
+    if (!ctx.createStereoPanner) return no;
+    const sp = ctx.createStereoPanner(); sp.pan.value = Math.max(-1, Math.min(1, p)); no.connect(sp); return sp;
+  }
+  /* coral: serras desafinadas passando por filtros de vogal ("aah") —
+     o "coro de trailer" sintetizado */
+  function coro(t, dur, notas, vol, ataque) {
+    const soma = ctx.createGain(); soma.gain.value = 1;
+    notas.forEach(hz => [-9, -3, 4, 10].forEach(dt => {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz; o.detune.value = dt + (Math.random() - .5) * 4;
+      const vib = ctx.createOscillator(), vg = ctx.createGain(); vib.frequency.value = 4.6 + Math.random() * .8; vg.gain.value = 7;
+      vib.connect(vg); vg.connect(o.detune); vib.start(t); vib.stop(t + dur + .2);
+      o.connect(soma); o.start(t); o.stop(t + dur + .2);
+    }));
+    const g = ctx.createGain(), sai = ctx.createGain(); sai.gain.value = 1 / Math.sqrt(notas.length * 4);
+    [[730, 7, 1], [1090, 9, .55], [2440, 11, .22]].forEach(([f, q, v]) => {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+      const gv = ctx.createGain(); gv.gain.value = v * 3; soma.connect(bp); bp.connect(gv); gv.connect(sai);
+    });
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3600;
+    sai.connect(lp); lp.connect(g); g.connect(saida); g.connect(sala);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + (ataque || dur * .6));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    return g;
+  }
+  /* algo passando rente à câmera: ar + um tom que cai (efeito Doppler), da esquerda para a direita (ou ao contrário) */
+  function passagem(t, de, vol) {
+    const dur = .85;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1;
+    bp.frequency.setValueAtTime(500, t); bp.frequency.exponentialRampToValueAtTime(2600, t + dur * .5); bp.frequency.exponentialRampToValueAtTime(700, t + dur);
+    const g = ctx.createGain(); fonteRuido(t, dur).connect(bp); bp.connect(g);
+    let fim = g;
+    if (ctx.createStereoPanner) { const sp = ctx.createStereoPanner(); sp.pan.setValueAtTime(de, t); sp.pan.linearRampToValueAtTime(-de, t + dur); g.connect(sp); fim = sp; }
+    fim.connect(saida); fim.connect(sala);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + dur * .5); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const o = ctx.createOscillator(), go = ctx.createGain(); o.type = 'sine';
+    o.frequency.setValueAtTime(980, t); o.frequency.exponentialRampToValueAtTime(520, t + dur);
+    o.connect(go); go.connect(fim); o.start(t); o.stop(t + dur + .05);
+    go.gain.setValueAtTime(0.0001, t); go.gain.exponentialRampToValueAtTime(vol * .18, t + dur * .5); go.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  }
+  /* brilhos: notinhas da escala pentatônica de dó, cada vez mais juntas, espalhadas no estéreo — a lâmpada se montando */
+  function brilhos(t0, t1, qtd, vol) {
+    const ESC = [1046.5, 1174.66, 1318.51, 1567.98, 1760, 2093, 2349.32, 2637.02, 3135.96, 3520];
+    for (let i = 0; i < qtd; i++) {
+      const u = Math.sqrt(Math.random()), t = t0 + (t1 - t0) * u;
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.value = ESC[Math.floor(Math.random() * ESC.length)] * (Math.random() < .15 ? 2 : 1);
+      o.connect(g); lado(g, Math.random() * 2 - 1).connect(sala);
+      g.connect(saida);
+      o.start(t); o.stop(t + .3);
+      env(g, t, vol * (.4 + .6 * u), .002, .22);
+    }
+  }
+  /* prato ao contrário: sobe até um instante antes do impacto e corta seco */
+  function pratoReverso(t, ate) {
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.setValueAtTime(2200, t); hp.frequency.exponentialRampToValueAtTime(5200, ate);
+    const g = ctx.createGain(); fonteRuido(t, ate - t + .02).connect(hp); hp.connect(g); g.connect(saida); g.connect(sala);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.16, ate - .01); g.gain.setValueAtTime(0.0001, ate);
+  }
+  /* o fôlego antes do golpe: tudo some por um instante (só na saída direta; a sala continua) */
+  function folego(t, ate) {
+    try {
+      saida.gain.setValueAtTime(.7, t); saida.gain.linearRampToValueAtTime(.12, t + .05);
+      saida.gain.setValueAtTime(.12, ate - .005); saida.gain.linearRampToValueAtTime(.7, ate);
+    } catch (e) {}
+  }
+  /* golpe metálico com parciais inarmônicos, que fica soando na sala */
+  function metal(t, hz, vol) {
+    [[1, 1], [2.76, .5], [5.4, .25], [8.93, .12]].forEach(([m, p]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = hz * m;
+      o.connect(g); g.connect(saida); g.connect(sala); o.start(t); o.stop(t + 3);
+      env(g, t, vol * p, .003, 2.6 / Math.sqrt(m));
+    });
+  }
+  /* boom longo: o grave que fica tremendo depois do impacto */
+  function boom(t, vol) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+    o.frequency.setValueAtTime(52, t); o.frequency.exponentialRampToValueAtTime(24, t + 2.8);
+    o.connect(g); g.connect(saida); o.start(t); o.stop(t + 3.2);
+    env(g, t, vol, .01, 3);
+  }
+  /* brasas: estalinhos esparsos depois da explosão */
+  function brasas(t0, t1, qtd) {
+    for (let i = 0; i < qtd; i++) {
+      const t = t0 + (t1 - t0) * Math.pow(Math.random(), 1.6);
+      const hp = ctx.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 2500 + Math.random() * 4000; hp.Q.value = 2;
+      const g = ctx.createGain(); fonteRuido(t, .02).connect(hp); hp.connect(g); lado(g, Math.random() * 1.6 - .8).connect(saida);
+      env(g, t, .05 + Math.random() * .07, .001, .015 + Math.random() * .02);
+    }
+  }
+  /* uma nota por letra do "Branding7", da esquerda para a direita (como as partículas escrevem) */
+  function letras(t) {
+    [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51, 1567.98].forEach((hz, i) => {
+      const tt = t + i * .052;
+      const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = hz; o2.type = 'sine'; o2.frequency.value = hz * 2;
+      o.connect(g); o2.connect(g); const p = lado(g, -.5 + i * .13); p.connect(saida); p.connect(sala);
+      o.start(tt); o2.start(tt); o.stop(tt + .5); o2.stop(tt + .5);
+      env(g, tt, .028, .003, .38);
     });
   }
   /* ---------- peças da trilha longa (zzz110) ---------- */
@@ -310,12 +428,33 @@ B7.SomAbertura = (function () {
      decorrido = quanto da abertura já passou quando o som pôde começar
      (o CSS começa a animar antes deste script e antes do áudio destravar).
      O que já passou é pulado — som atrasado soaria fora de sincronia. */
+  /* zzz229 — trilha épica, alinhada à abertura com câmera 3D:
+       0,00  boom distante + pedal grave + coral que nasce do escuro
+       0,40 / 0,95  as duas notas de sino (a pergunta)
+       0,7 / 1,3 / 1,95  luzes passando rente à câmera (esquerda ↔ direita)
+       1,6–3,3  brilhos cada vez mais juntos: a lâmpada se montando
+       1,55  tensão; 2,4 riser; 2,55 e 2,98 o coração
+       1,8–3,33  prato ao contrário subindo
+       3,30  FÔLEGO: um instante quase mudo
+       3,40  IMPACTO: sub-grave, batida, ar, braam, golpe metálico, boom
+             longo e o coral em acorde cheio
+       3,5–5,2  brasas estalando; 3,8 arpejo
+       4,62  uma nota por letra do "Branding7"
+       5,2  cintilar; 5,5 assinatura com o coral embaixo */
   const ROTEIRO = [
-    [0.0, t => prologo(t, t + 3.4)], [0.4, t => sino(t, 392, .05, 2.2)], [0.95, t => sino(t, 523.25, .06, 2.6)],
-    [1.55, t => tensao(t, t + 1.85)], [2.4, t => riser(t, 1.0)],
+    [0.0, t => prologo(t, t + 3.4)], [0.0, t => coro(t, 3.5, [65.41, 98, 130.81, 196], .07, 3.1)],
+    [0.4, t => sino(t, 392, .05, 2.2)], [0.95, t => sino(t, 523.25, .06, 2.6)],
+    [0.7, t => passagem(t, -.9, .05)], [1.3, t => passagem(t, .9, .06)], [1.95, t => passagem(t, -.8, .07)],
+    [1.6, t => brilhos(t, t + 1.7, 130, .026)],
+    [1.55, t => tensao(t, t + 1.85)], [2.4, t => riser(t, .9)],
     [2.55, t => batida(t, .34)], [2.98, t => batida(t, .46)],
-    [3.12, estalo], [3.26, estalo], [3.4, ignicao], [3.4, braam], [3.45, camaSonora], [3.8, arpejo],
-    [4.78, t => whoosh(t, .7, 600, 3800, .1)], [5.2, cintilar], [5.5, assinatura]
+    [1.8, t => pratoReverso(t, t + 1.53)], [3.3, t => folego(t, t + .1)],
+    [3.12, estalo], [3.26, estalo],
+    [3.4, ignicao], [3.4, t => braam(t, 1.35)], [3.4, t => metal(t, 196, .06)], [3.4, t => boom(t, .55)],
+    [3.4, t => coro(t, 3.2, [130.81, 196, 261.63, 329.63, 392], .09, .06)],
+    [3.45, camaSonora], [3.5, t => brasas(t, t + 1.7, 34)], [3.8, arpejo],
+    [4.62, letras], [4.78, t => whoosh(t, .7, 600, 3800, .08)], [5.2, cintilar],
+    [5.5, assinatura], [5.5, t => coro(t + .19, 2.6, [130.81, 196, 261.63, 392], .04, .3)]
   ];
   /* versão relâmpago (recarregar na mesma sessão, pacote zzc): ~1 s,
      mesmos tempos do CSS da curta (styles/global.css, abRelAcende etc.):
@@ -385,7 +524,7 @@ B7.SomAbertura = (function () {
   /* ensaio sem tocar: renderiza a trilha inteira (+ saída em 4,3 s) num
      contexto offline e devolve o pico por fatia de 100 ms. Serve para
      conferir sincronia e volume sem alto-falante (DevTools). */
-  async function ensaio(qual, saidaEm) {
+  async function ensaio(qual, saidaEm, cru) {
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     if (!OAC) return null;
     const salvo = [ctx, saida, sala, ruido, drone, cama];
@@ -396,6 +535,7 @@ B7.SomAbertura = (function () {
     partida(curto ? 1.0 : (saidaEm || 6.4));
     const buf = await off.startRendering();
     [ctx, saida, sala, ruido, drone, cama] = salvo;
+    if (cru) return [buf.getChannelData(0), buf.getChannelData(1)];
     const d = buf.getChannelData(0), passo = 4410, picos = [];
     for (let i = 0; i < d.length; i += passo) {
       let p = 0; for (let j = i; j < Math.min(i + passo, d.length); j++) p = Math.max(p, Math.abs(d[j]));
