@@ -1761,3 +1761,31 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .rp-desativar input{accent-color:var(--erro);}
 @media (max-width:600px){ .rp-area > header{flex-direction:column;align-items:stretch;} .rp-area > header select{flex:none;width:100%;} }
 .rp-area{flex:none;}
+
+/* =====================================================================
+   zzz249 — Funções e permissões (matriz) nas Configurações
+   ===================================================================== */
+.pm-rolar{overflow-x:auto;border:1px solid var(--borda);border-radius:14px;background:var(--card);}
+.pm-tabela{width:100%;border-collapse:collapse;font-size:13px;}
+.pm-tabela th,.pm-tabela td{padding:10px 12px;text-align:center;border-bottom:1px solid var(--borda);white-space:nowrap;}
+.pm-tabela thead th{position:sticky;top:0;background:color-mix(in srgb, var(--ink) 3%, var(--card));font-size:11.5px;font-weight:700;color:var(--ink-3);}
+.pm-tabela tbody th{text-align:left;font-weight:650;color:var(--ink);position:sticky;left:0;background:var(--card);z-index:1;}
+.pm-tabela tbody tr:last-child th,.pm-tabela tbody tr:last-child td{border-bottom:0;}
+.pm-nv{display:inline-flex;align-items:center;justify-content:center;min-width:52px;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700;
+  color:var(--ink-4);background:color-mix(in srgb, var(--ink) 5%, transparent);}
+.pm-nv.pm-ver{color:#1B5FA6;background:rgba(27,95,166,.12);}
+.pm-nv.pm-editar{color:var(--ambar);background:var(--ambar-bg);}
+.pm-nv.pm-total{color:#fff;background:var(--grad-curto);}
+[data-theme="dark"] .pm-nv.pm-ver{color:#8DBEF0;background:rgba(111,168,220,.16);}
+.pm-nv.pm-dif{box-shadow:0 0 0 2px var(--card), 0 0 0 3.5px var(--acento);}
+.pm-nv.pm-trab{position:relative;}
+.pm-nv.pm-trab::after{content:"";position:absolute;top:-2px;right:-2px;width:7px;height:7px;border-radius:50%;background:var(--ambar);box-shadow:0 0 0 2px var(--card);}
+.pm-pessoa{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:0;border:0;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left;}
+.pm-pessoa b{font-size:13.5px;}
+.pm-pessoa small{font-size:11.5px;font-weight:500;color:var(--ink-3);}
+.pm-pessoa:hover b{color:var(--acento);}
+.pm-acoes{display:flex;justify-content:flex-end;margin-top:12px;}
+.cfg-v2 .cfg-painel .cfg-l .pm-nv{margin-right:6px;}
+.cfg-v2 [data-hospede="matriz"] .cfg-g{display:block;}
+.cfg-v2 [data-hospede="matriz"] .cfg-g-nota{margin:0 0 14px;}
+.cfg-v2 [data-hospede="matriz"] .cfg-g-nota + .cfg-lista,.cfg-v2 [data-hospede="matriz"] .cfg-lista + .cfg-g-nota{margin-top:14px;}

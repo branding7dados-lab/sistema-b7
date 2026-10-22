@@ -36,6 +36,8 @@ B7.Equipe = (function () {
   const hoje = () => B7.UI.hojeISO();
   const dm = iso => { const p = String(iso || '').slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] : ''; };
   const ehAdm = () => !!(B7.Auth && B7.Auth.ehAdminReal && B7.Auth.ehAdminReal());
+  /* zzz249: quem tem "Agenda e recado da equipe" em Editar também mexe aqui */
+  const podeEditar = () => ehAdm() || !!(B7.Perm && B7.Perm.podeNivel && B7.Perm.podeNivel('equipe', 'editar'));
   const nomeDe = id => { const p = cache.pessoas.find(x => x.id === id); return p ? p.nome : 'Alguém'; };
   const pessoaDe = id => cache.pessoas.find(x => x.id === id) || { id, nome: 'Alguém' };
   const av = p => B7.UI.avatarPessoa ? B7.UI.avatarPessoa(p, 'eq-av') : '';
@@ -82,7 +84,7 @@ B7.Equipe = (function () {
     const linhaAus = x => linha(av(pessoaDe(x.perfil_id)) +
       '<span class="cfg-l-tx"><b>' + esc(nomeDe(x.perfil_id)) + ' <em class="eq-tipo eq-' + esc(x.tipo) + '">' + esc(TIPOS[x.tipo] || 'Fora') + '</em></b>' +
         '<small>' + (x.inicio === x.fim ? 'dia ' + dm(x.inicio) : dm(x.inicio) + ' a ' + dm(x.fim)) + (x.nota ? ' · ' + esc(x.nota) : '') + '</small></span>',
-      ehAdm() ? botao('Tirar', ' data-eq-tirar="' + esc(x.id) + '"') : '');
+      podeEditar() ? botao('Tirar', ' data-eq-tirar="' + esc(x.id) + '"') : '');
     const aniv = cache.pessoas.map(p => {
       const a = cache.ani.find(x => x.perfil_id === p.id);
       return { p, a, dias: a ? diasAte(a.dia, a.mes) : null };
@@ -90,11 +92,14 @@ B7.Equipe = (function () {
     const quando = d => d === 0 ? 'é hoje!' : d === 1 ? 'amanhã' : 'em ' + d + ' dias';
 
     alvo.innerHTML =
+      (!ehAdm() && podeEditar() ? '<section class="cfg-g"><h2 class="cfg-g-t">Recado para a equipe</h2>' +
+        '<p class="cfg-g-nota">Uma frase no alto da tela de todo mundo da equipe, até a data que você escolher.</p>' +
+        '<div class="cfg-lista"><button type="button" class="cfg-l eq-novo" data-eq-recado><span class="cfg-l-tx"><b>Recado fixo para a equipe</b><small data-eq-recado-d>verificando…</small></span><span class="cfg-acao" aria-hidden="true">Escrever</span></button></div></section>' : '') +
       '<section class="cfg-g"><h2 class="cfg-g-t">Quem está fora</h2>' +
         '<p class="cfg-g-nota">Férias, folgas e atestados. Aparece no cartão da pessoa e a redistribuição avisa antes de passar trabalho para ela.</p>' +
         '<div class="cfg-lista">' +
           (agora.length ? agora.map(linhaAus).join('') : linha('<span class="cfg-l-tx"><b>Todo mundo por aqui hoje</b><small>ninguém de férias, folga ou atestado</small></span>')) +
-          (ehAdm() ? '<button type="button" class="cfg-l eq-novo" data-eq-nova><span class="cfg-l-tx"><b>Marcar uma ausência</b><small>férias, folga, atestado ou viagem</small></span><span class="cfg-acao" aria-hidden="true">Marcar</span></button>' : '') +
+          (podeEditar() ? '<button type="button" class="cfg-l eq-novo" data-eq-nova><span class="cfg-l-tx"><b>Marcar uma ausência</b><small>férias, folga, atestado ou viagem</small></span><span class="cfg-acao" aria-hidden="true">Marcar</span></button>' : '') +
         '</div>' +
         (depois.length ? '<h3 class="eq-sub">Próximas</h3><div class="cfg-lista">' + depois.map(linhaAus).join('') + '</div>' : '') +
       '</section>' +
@@ -103,9 +108,14 @@ B7.Equipe = (function () {
         '<div class="cfg-lista">' + aniv.map(({ p, a, dias }) => linha(av(p) +
           '<span class="cfg-l-tx"><b>' + esc(p.nome) + (dias === 0 ? ' <em class="eq-tipo eq-festa">hoje</em>' : '') + '</b>' +
             '<small>' + (a ? a.dia + ' de ' + MESES[a.mes - 1] + ' · ' + quando(dias) : 'sem data') + '</small></span>',
-          ehAdm() ? botao(a ? 'Mudar' : 'Definir', ' data-eq-aniv="' + esc(p.id) + '"') : '')).join('') +
+          podeEditar() ? botao(a ? 'Mudar' : 'Definir', ' data-eq-aniv="' + esc(p.id) + '"') : '')).join('') +
         '</div></section>';
 
+    const btRec = alvo.querySelector('[data-eq-recado]');
+    if (btRec) {
+      const pintar = () => resumoRecado().then(t => { const d = alvo.querySelector('[data-eq-recado-d]'); if (d) d.textContent = t; });
+      btRec.onclick = () => modalRecado(pintar); pintar();
+    }
     alvo.querySelectorAll('[data-eq-tirar]').forEach(b => b.onclick = () => tirarAusencia(b.dataset.eqTirar, () => montar(alvo)));
     const nova = alvo.querySelector('[data-eq-nova]'); if (nova) nova.onclick = () => modalAusencia(() => montar(alvo));
     alvo.querySelectorAll('[data-eq-aniv]').forEach(b => b.onclick = () => modalAniversario(b.dataset.eqAniv, () => montar(alvo)));
