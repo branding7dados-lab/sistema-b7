@@ -507,8 +507,25 @@ B7.Rota = (function () {
   const curta = document.documentElement.classList.contains('ab-curta');
   /* zzz230: a duração da sequência completa depende do estilo escolhido
      (streaming 4,9 s; big bang e clássica 6,4 s) */
-  const duracaoAbertura = () => document.documentElement.getAttribute('data-ab-estilo') === 'streaming' && !reduzMov() ? 4900 : 6400;
+  /* zzz231: streaming encurtou (as faixas abrem direto o sistema) e entrou o hiperespaço */
+  const DURACAO_ESTILO = { streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400 };
+  const duracaoAbertura = () => reduzMov() ? 6400 : (DURACAO_ESTILO[document.documentElement.getAttribute('data-ab-estilo')] || 6400);
   B7.duracaoAbertura = duracaoAbertura;
+  /* qual abertura vale para esta pessoa neste aparelho (a mesma regra do <head> do index.html) */
+  B7.Abertura = {
+    ESTILOS: [['streaming', 'Streaming'], ['hiper', 'Hiperespaço'], ['bigbang', 'Big bang'], ['classica', 'Clássica']],
+    valido: e => ['streaming', 'hiper', 'bigbang', 'classica'].includes(e) ? e : null,
+    padraoDoSistema() { try { return B7.Abertura.valido(localStorage.getItem('b7_ab_padrao')) || 'streaming'; } catch (e) { return 'streaming'; } },
+    resolver() {
+      const minha = B7.Abertura.valido(B7.pref ? B7.pref.ler('abertura_estilo', null) : null);
+      if (minha) return minha;
+      try { const pp = localStorage.getItem('b7_pref_abertura_particulas'); if (pp !== null && JSON.parse(pp) === false) return 'classica'; } catch (e) {}
+      return B7.Abertura.padraoDoSistema();
+    },
+    aplicar() { document.documentElement.setAttribute('data-ab-estilo', B7.Abertura.resolver()); }
+  };
+  /* no streaming a abertura termina dentro das faixas de luz: não há logo para voar */
+  const semVoo = el => el.classList.contains('inicial') && document.documentElement.getAttribute('data-ab-estilo') === 'streaming' && !reduzMov();
   const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 950 : duracaoAbertura();   /* zzz110: corte longo */
 
   /* Para onde o logo voa: o lugar onde ele mora na tela que ficou pronta.
@@ -540,6 +557,7 @@ B7.Rota = (function () {
      opacidade; o destino fica invisível até o pouso e então assume. */
   function voarLogo(el) {
     if (reduzMov() || !el.animate) return 0;
+    if (semVoo(el)) return 0;
     const d = destinoDoLogo();
     if (!d) { el.classList.add('sem-voo'); return 420; }
     const marca = el.querySelector('.ab-marca'), simbolo = el.querySelector('.ab-simbolo');

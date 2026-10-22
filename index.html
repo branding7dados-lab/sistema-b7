@@ -61,14 +61,20 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
-  /* zzz230: estilo da abertura completa (Configurações → Aparência), antes
-     da primeira pintura porque o CSS da sequência começa a andar nela.
-     streaming (padrão) · bigbang (partículas, zzz227) · classica (zzp).
-     Quem tinha desligado as partículas fica com a clássica. */
+  /* zzz230/zzz231: estilo da abertura completa, antes da primeira pintura
+     (o CSS da sequência começa a andar nela). Ordem: a escolha da pessoa
+     neste aparelho (Configurações → Aparência); se for "Padrão do sistema",
+     o que o administrador definiu para ela ou para todos (guardado por
+     js/sistema.js em b7_ab_padrao); senão streaming. Quem tinha desligado
+     as partículas (zzz227) fica com a clássica.
+     streaming · hiper · bigbang · classica */
   try {
-    var b7Est = JSON.parse(localStorage.getItem('b7_pref_abertura_estilo') || 'null');
-    if (!b7Est) { var b7Pp = localStorage.getItem('b7_pref_abertura_particulas'); b7Est = b7Pp !== null && JSON.parse(b7Pp) === false ? 'classica' : 'streaming'; }
-    if (!/^(streaming|bigbang|classica)$/.test(b7Est)) b7Est = 'streaming';
+    var b7Ok = function (e) { return /^(streaming|hiper|bigbang|classica)$/.test(e || '') ? e : null; };
+    var b7Est = b7Ok(JSON.parse(localStorage.getItem('b7_pref_abertura_estilo') || 'null'));
+    if (!b7Est) {
+      var b7Pp = localStorage.getItem('b7_pref_abertura_particulas');
+      b7Est = b7Pp !== null && JSON.parse(b7Pp) === false ? 'classica' : (b7Ok(localStorage.getItem('b7_ab_padrao')) || 'streaming');
+    }
     document.documentElement.setAttribute('data-ab-estilo', b7Est);
   } catch (e) { document.documentElement.setAttribute('data-ab-estilo', 'streaming'); }
   /* zzz156: app (ou PWA instalado) que o Android fechou em segundo plano
@@ -185,6 +191,8 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
 <script src="js/abertura-particulas.js"></script>
 <!-- zzz230: abertura "streaming" (mergulho no logo e faixas de luz) -->
 <script src="js/abertura-faixas.js"></script>
+<!-- zzz231: abertura "hiperespaço" (estrelas que viram riscos de luz) -->
+<script src="js/abertura-hiper.js"></script>
 
 <div id="app">
 

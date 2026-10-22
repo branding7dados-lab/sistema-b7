@@ -25,10 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
-  { id: 'v-zzz230', versao: 'zzz230', em: '2026-10-22T10:00:00-03:00',
-    titulo: 'Abertura nova, estilo streaming',
-    itens: ['Ao abrir o B7: o logo surge no escuro com duas batidas graves, a câmera mergulha na lâmpada e ela se abre em faixas de luz nas cores da B7, até o logo voltar.',
-            'Prefere outra? Configurações → Aparência → "Estilo da abertura": Streaming, Big bang (partículas) ou Clássica.'] },
+  { id: 'v-zzz231', versao: 'zzz231', em: '2026-10-22T11:00:00-03:00',
+    titulo: 'Aberturas novas',
+    itens: ['Streaming: o logo surge no escuro com duas batidas graves, a câmera mergulha na lâmpada e as faixas de luz abrem direto o sistema.',
+            'Hiperespaço: as estrelas viram riscos de luz, vem o clarão do salto e o logo da B7 aparece.',
+            'Para escolher a sua: Configurações → Aparência → "Estilo da abertura" (ou deixe em "Padrão do sistema").'] },
   { id: 'v-zzz223', versao: 'zzz223', em: '2026-10-21T18:00:00-03:00', rota: 'suporte',
     titulo: 'Suporte com atendimento na hora',
     itens: ['Abriu uma dúvida ou um problema? O assistente responde na hora, no próprio chamado. Se não resolver, toque em "Falar com uma pessoa" (ou ele mesmo chama alguém da equipe).',

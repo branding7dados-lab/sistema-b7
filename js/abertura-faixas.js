@@ -16,7 +16,9 @@
   'use strict';
   window.B7 = window.B7 || {};
   const html = document.documentElement;
-  const T = { nasce: 2.15, cheio: 2.7, acelera: 3.5, some: 4.0 };
+  /* zzz231: depois de cheias, as faixas ficam deslizando até o sistema estar
+     pronto; na saída da abertura (.saindo) aceleram para fora por cima dele */
+  const T = { nasce: 2.15, cheio: 2.7, saida: .6 };
   const ligada = () => {
     if (html.getAttribute('data-ab-estilo') !== 'streaming') return false;
     try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (e) {}
@@ -87,19 +89,22 @@
       };
     });
 
-    let fim = false;
+    let fim = false, saiuEm = 0;
     const parar = () => { if (fim) return; fim = true; removeEventListener('resize', medir); cv.remove(); };
     function quadro() {
       if (fim) return;
-      if (!el.isConnected || el.classList.contains('saindo')) return parar();
+      if (!el.isConnected) return parar();
+      const agora = performance.now();
+      if (el.classList.contains('saindo') && !saiuEm) saiuEm = agora;
       const t = relogio();
-      if (t > T.some + .2) return parar();
+      if (saiuEm && agora - saiuEm > T.saida * 1000 + 80) return parar();
+      if (!saiuEm && t > 30) return parar();
       g.clearRect(0, 0, W, H);
       if (t < T.nasce) { requestAnimationFrame(quadro); return; }
       g.globalCompositeOperation = 'lighter';
       /* abertura da fresta: a largura útil vai da lâmpada à tela inteira (e além, na saída) */
       const abre = suave(lim((t - T.nasce) / (T.cheio - T.nasce), 0, 1));
-      const sai = lim((t - T.acelera) / (T.some - T.acelera), 0, 1);
+      const sai = saiuEm ? lim((agora - saiuEm) / (T.saida * 1000), 0, 1) : 0;
       const meia = (W * .04) + abre * W * .62 + Math.pow(sai, 2) * W * 2.4;
       const brilhoGeral = lim((t - T.nasce) / .25, 0, 1) * (1 - Math.pow(sai, 1.4));
       /* brilho que atravessa da esquerda para a direita */
@@ -107,7 +112,10 @@
       for (const f of fx) {
         const lt = t - T.nasce - f.d * (1 - abre);
         if (lt < 0) continue;
-        const x = cx + f.u * meia / Math.pow(f.z, .35) + f.vx * Math.max(0, t - T.cheio) * (1 + sai * 3);
+        /* deslize: enquanto espera, cada faixa dá a volta na tela em vez de sumir pelo lado */
+        let deriva = f.vx * Math.max(0, t - T.cheio);
+        { const faixa = W * 1.3; deriva = ((deriva + faixa / 2) % faixa + faixa) % faixa - faixa / 2; }
+        const x = cx + f.u * meia / Math.pow(f.z, .35) + deriva * (1 + sai * 3);
         const largura = f.w * (.35 + abre * .9 + sai * 2.2);
         const altura = H * f.alt * (.55 + abre * .6 + sai * .4);
         const y = cy - altura / 2 + f.dy * H;
