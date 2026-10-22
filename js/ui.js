@@ -15,26 +15,90 @@ B7.UI = (function () {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
   /* ------------------------------------------------------------ toasts */
+  /* zzz233 — aviso (toast) refeito. Pedido do Kevin: "esse popup aparece em
+     várias coisas do sistema, mas eu queria ele diferente".
+     • ícone por tipo: ok (verde), erro (vermelho), aviso (âmbar), info.
+       Sem tipo, um texto de "deu certo" (salvo, enviado, copiado…) vira ok;
+       o resto, info;
+     • barra do tempo que falta (pausa com o mouse em cima ou o dedo);
+     • × para fechar; no celular, arrastar para o lado dispensa;
+     • o mesmo aviso repetido não empilha: vira um só com "×2", "×3";
+     • no máximo 3 na tela (o mais antigo sai);
+     • erro fica mais tempo e é lido na hora pelo leitor de tela.
+     A assinatura não mudou: toast(msg, { tipo, acao, aoClicar, tempo }). */
+  const IC_TOAST = {
+    ok: '<path d="M5 12.5l4.2 4.2L19 7"/>',
+    erro: '<path d="M12 7.5v5.5M12 16.6v.1"/><circle cx="12" cy="12" r="9"/>',
+    aviso: '<path d="M12 4l9 15.5H3z"/><path d="M12 10v4M12 17v.1"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/>'
+  };
+  const PARECE_OK = /\b(salv|guardad|feit[oa]|copiad|enviad|aprovad|pront[oa]|criad|atualizad|adicionad|removid|exclu[ií]d|restaurad|marcad|ligad|desligad|conclu[ií]d|publicad|registrad|confirmad|vinculad|derrubad|movid|duplicad|arquivad|entregue)/i;
   function toast(msg, opcoes = {}) {
     const cx = document.getElementById('toasts');
+    if (!cx) return () => {};
+    const texto = String(msg == null ? '' : msg);
+    const tipo = ['ok', 'erro', 'aviso', 'info'].includes(opcoes.tipo) ? opcoes.tipo : (PARECE_OK.test(texto) ? 'ok' : 'info');
+    /* repetido: soma no que já está na tela */
+    const igual = [...cx.querySelectorAll('.toast:not(.saindo)')].find(t => t.dataset.msg === texto && t.dataset.tipo === tipo && !opcoes.acao);
+    if (igual && igual._renovar) { igual._renovar(); return igual._fechar; }
     const el = document.createElement('div');
-    el.className = 'toast' + (opcoes.tipo === 'erro' ? ' erro' : '');
-    el.innerHTML = '<span>' + esc(msg) + '</span>';
+    el.className = 'toast t-' + tipo + (tipo === 'erro' ? ' erro' : '');
+    el.dataset.msg = texto; el.dataset.tipo = tipo;
+    el.setAttribute('role', tipo === 'erro' ? 'alert' : 'status');
+    el.innerHTML = '<span class="toast-ic" aria-hidden="true"><svg viewBox="0 0 24 24">' + IC_TOAST[tipo] + '</svg></span>' +
+      '<span class="toast-tx">' + esc(texto) + '<b class="toast-n" hidden></b></span>' +
+      '<button type="button" class="toast-x" aria-label="Fechar aviso"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+      '<i class="toast-tempo" aria-hidden="true"></i>';
     if (opcoes.acao) {
       const b = document.createElement('button');
-      b.className = 'acao';
-      b.textContent = opcoes.acao;
+      b.type = 'button'; b.className = 'acao'; b.textContent = opcoes.acao;
       b.onclick = () => { fecha(); opcoes.aoClicar && opcoes.aoClicar(); };
-      el.appendChild(b);
+      el.insertBefore(b, el.querySelector('.toast-x'));
     }
+    /* no máximo 3: o mais antigo sai */
+    const vivos = [...cx.querySelectorAll('.toast:not(.saindo)')];
+    if (vivos.length >= 3 && vivos[0]._fechar) vivos[0]._fechar();
     cx.appendChild(el);
-    const tempo = opcoes.tempo || (opcoes.acao ? 7000 : 3200);
-    const t = setTimeout(fecha, tempo);
+    const tempo = opcoes.tempo || (opcoes.acao ? 7000 : tipo === 'erro' ? 5200 : 3400);
+    const barra = el.querySelector('.toast-tempo');
+    let resta = tempo, desde = Date.now(), t = 0, fechado = false, vezes = 1;
+    const correr = () => {
+      clearTimeout(t); desde = Date.now(); t = setTimeout(fecha, resta);
+      barra.style.transition = 'none'; barra.style.transform = 'scaleX(' + (resta / tempo) + ')';
+      void barra.offsetWidth;
+      barra.style.transition = 'transform ' + resta + 'ms linear'; barra.style.transform = 'scaleX(0)';
+    };
+    const pausar = () => {
+      if (fechado) return;
+      clearTimeout(t); resta = Math.max(400, resta - (Date.now() - desde));
+      barra.style.transition = 'none'; barra.style.transform = 'scaleX(' + (resta / tempo) + ')';
+    };
     function fecha() {
+      if (fechado) return; fechado = true;
       clearTimeout(t);
       el.classList.add('saindo');
-      setTimeout(() => el.remove(), 200);
+      setTimeout(() => el.remove(), 220);
     }
+    el._fechar = fecha;
+    el._renovar = () => {
+      vezes++; const n = el.querySelector('.toast-n'); n.hidden = false; n.textContent = '×' + vezes;
+      el.classList.remove('pulsa'); void el.offsetWidth; el.classList.add('pulsa');
+      resta = tempo; correr();
+    };
+    el.querySelector('.toast-x').onclick = fecha;
+    el.addEventListener('mouseenter', pausar);
+    el.addEventListener('mouseleave', () => { if (!fechado) correr(); });
+    /* arrastar para o lado dispensa (celular) */
+    let x0 = null, dx = 0;
+    el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' || e.target.closest('button')) return; x0 = e.clientX; dx = 0; pausar(); el.style.transition = 'none'; });
+    el.addEventListener('pointermove', e => { if (x0 === null) return; dx = e.clientX - x0; el.style.transform = 'translate3d(' + dx + 'px,0,0)'; el.style.opacity = String(Math.max(.2, 1 - Math.abs(dx) / 220)); });
+    const soltar = () => {
+      if (x0 === null) return; x0 = null; el.style.transition = '';
+      if (Math.abs(dx) > 70) { el.style.transform = 'translate3d(' + (dx > 0 ? 420 : -420) + 'px,0,0)'; el.style.opacity = '0'; fecha(); }
+      else { el.style.transform = ''; el.style.opacity = ''; correr(); }
+    };
+    el.addEventListener('pointerup', soltar); el.addEventListener('pointercancel', soltar);
+    correr();
     return fecha;
   }
 

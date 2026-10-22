@@ -2264,3 +2264,50 @@ html.arr-ativo,html.arr-ativo *{cursor:grabbing !important;user-select:none !imp
 .arr-barra button{border:0;border-radius:99px;padding:6px 12px;background:var(--suave);color:var(--ink);font:inherit;font-weight:650;cursor:pointer;}
 @media (max-width:760px){ .arr-barra{bottom:96px;} .arr-barra span{display:none;} }
 @media (prefers-reduced-motion:reduce){ .arr-barra,.arr-origem,.arr-pronto{transition:none;} }
+
+/* =====================================================================
+   zzz233 — AVISO (TOAST) NOVO. Cartão com ícone por tipo, texto, ×, barra
+   do tempo que falta. No computador fica no canto de baixo à direita; no
+   celular, centralizado em baixo (acima da barra de navegação).
+   Vem depois das regras antigas e ganha delas.
+   ===================================================================== */
+@media (min-width:761px){
+  #toasts{left:auto;right:24px;bottom:24px;transform:none;align-items:stretch;width:380px;}
+}
+.toast{position:relative;overflow:hidden;gap:12px;padding:12px 10px 12px 12px;min-width:min(300px,92vw);max-width:min(440px,92vw);
+  border-radius:16px;font-size:13.5px;line-height:1.4;color:var(--ink);
+  background:color-mix(in srgb, var(--card) 94%, transparent);border:1px solid var(--borda);
+  box-shadow:0 18px 44px -14px rgba(11,10,30,.35), 0 2px 6px rgba(11,10,30,.08);touch-action:pan-y;}
+[data-theme="dark"] .toast{background:color-mix(in srgb, var(--elevado) 94%, transparent);border-color:var(--vidro-borda, var(--borda));}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .toast,[data-theme="dark"] .toast{-webkit-backdrop-filter:var(--vidro-filtro);backdrop-filter:var(--vidro-filtro);}
+}
+.toast.erro,[data-theme="dark"] .toast.erro{background:color-mix(in srgb, var(--card) 94%, transparent);}
+[data-theme="dark"] .toast.erro{background:color-mix(in srgb, var(--elevado) 94%, transparent);}
+.toast-ic{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:11px;}
+.toast-ic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.t-ok .toast-ic{background:var(--ok-bg);color:var(--ok);}
+.t-erro .toast-ic{background:var(--erro-bg);color:var(--erro);}
+.t-aviso .toast-ic{background:var(--ambar-bg);color:var(--ambar);}
+.t-info .toast-ic{background:var(--violeta-bg);color:var(--violeta);}
+.toast-tx{flex:1;min-width:0;font-weight:550;}
+.toast-n{display:inline-block;margin-left:6px;padding:0 6px;border-radius:99px;font-size:11px;font-weight:800;background:var(--suave);color:var(--ink-3);vertical-align:1px;}
+.toast .acao{flex:none;font-size:12.5px;font-weight:750;color:var(--acento);padding:6px 10px;border-radius:9px;background:color-mix(in srgb, var(--acento) 10%, transparent);}
+.toast .acao:hover{background:color-mix(in srgb, var(--acento) 18%, transparent);}
+.toast-x{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:9px;border:0;background:none;color:var(--ink-4);cursor:pointer;}
+.toast-x svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;}
+.toast-x:hover{background:var(--suave);color:var(--ink);}
+.toast-tempo{position:absolute;left:0;right:0;bottom:0;height:3px;transform-origin:left center;opacity:.8;}
+.t-ok .toast-tempo{background:var(--ok);} .t-erro .toast-tempo{background:var(--erro);}
+.t-aviso .toast-tempo{background:var(--ambar);} .t-info .toast-tempo{background:var(--acento);}
+.toast.pulsa{animation:b7ToastPulsa .32s cubic-bezier(.2,.9,.3,1);}
+@keyframes b7ToastPulsa{40%{transform:scale(1.025)}}
+.toast:not(.saindo){animation:b7ToastNovo var(--m-padrao, .32s) var(--m-entra, cubic-bezier(.2,.9,.3,1)) both;}
+@keyframes b7ToastNovo{from{opacity:0;transform:translate3d(0,12px,0) scale(.97)}to{opacity:1;transform:none}}
+@media (min-width:761px){
+  @keyframes b7ToastNovo{from{opacity:0;transform:translate3d(24px,0,0) scale(.98)}to{opacity:1;transform:none}}
+}
+.toast.saindo{animation:b7ToastSai var(--m-rapido, .18s) var(--m-sai, ease) forwards;}
+html.modo-leve .toast,html.modo-leve .toast.erro{background:var(--card) !important;}
+html.modo-leve[data-theme="dark"] .toast,html.modo-leve [data-theme="dark"] .toast{background:var(--elevado) !important;}
+@media (prefers-reduced-motion:reduce){ .toast,.toast.pulsa{animation:none !important;} .toast-tempo{transition:none !important;} }
