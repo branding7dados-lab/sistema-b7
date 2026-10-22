@@ -1156,8 +1156,10 @@ B7.DB = (function () {
         .order('versao', { ascending: false }));
     },
 
+    /* zzz250: o portal lê pela visão própria (sem a observação quando o
+       status não mostra observações) — o cliente não lê mais a tabela */
     async itensDoStatus(reportId) {
-      return ok(await sb().from('status_itens').select('*')
+      return ok(await sb().from('status_itens_portal').select('*')
         .eq('report_id', reportId).is('deleted_at', null)
         .order('data', { ascending: true }).order('position', { ascending: true }));
     },
@@ -1170,7 +1172,8 @@ B7.DB = (function () {
        repetidos aqui pela mesma razão. Tudo somente leitura. */
 
     async conteudosVisiveis(clientId) {
-      let q = sb().from('conteudos').select('*')
+      /* zzz250: visão do portal, sem a "observação para o design" */
+      let q = sb().from('conteudos_portal').select('*')
         .eq('visivel_cliente', true).is('deleted_at', null);
       if (clientId) q = q.eq('client_id', clientId);
       return ok(await q.order('data_postagem', { ascending: true }).limit(60));
