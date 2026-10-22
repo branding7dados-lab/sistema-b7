@@ -1874,12 +1874,18 @@ B7.Dashboard = (function () {
 
     const ic = (k, tom) => '<span class="cfg-ic cfg-tom-' + tom + '">' + svgF(k) + '</span>';
     /* uma linha da lista: ícone, texto, e à direita o controle (ou a seta) */
+    /* zzz241: nas seções, a linha clicável mostra à direita um botão com a
+       ação ("Abrir", "Alterar", "Sair"…) em vez do ícone e da setinha */
+    const VERBO_CFG = /^(Sair|Buscar|Atualizar|Limpar|Instalar|Testar|Abrir|Enviar|Publicar|Editar|Exportar|Restaurar|Configurar|Visualizar|Refazer)\b/;
+    const acaoDe = o => o.acao || (VERBO_CFG.exec(String(o.t)) || [])[1] ||
+      (/^App /.test(String(o.t)) ? (o.dir ? 'Verificar' : 'Baixar') : (o.dir ? 'Alterar' : 'Abrir'));
     const L = o => {
       const tag = o.botao ? 'button type="button"' : 'div';
       return '<' + tag + ' class="cfg-l' + (o.cls ? ' ' + o.cls : '') + '"' + (o.attrs || '') + '>' +
         ic(o.ic, o.tom) +
         '<span class="cfg-l-tx"><b>' + o.t + '</b>' + (o.d ? '<small>' + o.d + '</small>' : '') + '</span>' +
         (o.dir || '') + (o.botao && !o.semSeta ? SETA_CFG : '') +
+        (o.botao ? '<span class="cfg-acao" aria-hidden="true">' + acaoDe(o) + '</span>' : '') +
         '</' + (o.botao ? 'button' : 'div') + '>' + (o.abaixo ? '<div class="cfg-l-abaixo">' + o.abaixo + '</div>' : '');
     };
     /* chave liga/desliga (a linha inteira alterna) */
@@ -2227,8 +2233,8 @@ B7.Dashboard = (function () {
       '</aside><div class="cfg-main">' +
         '<button type="button" class="cfg-voltar" data-cfg-voltar>' + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Configurações</button>' +
         '<p class="cfg-nada" hidden>Nenhum ajuste com esse nome.</p>' +
-        SECOES.map(x => '<section class="cfg-painel' + (x[7] ? ' cfg-mosaico' : '') + '" data-painel="' + x[0] + '"' + (x[0] === abaAtual ? '' : ' hidden') + '>' +
-          '<header class="cfg-painel-cab">' + ic(x[2], x[3]) + '<div><h2>' + x[1] + '</h2><p>' + esc(x[4]) + '</p></div></header>' +
+        SECOES.map(x => '<section class="cfg-painel" data-painel="' + x[0] + '"' + (x[0] === abaAtual ? '' : ' hidden') + '>' +
+          '<header class="cfg-painel-cab"><h2>' + x[1] + '</h2><p>' + esc(x[4]) + '</p></header>' +
           '<div class="cfg-painel-corpo">' + x[6] + '</div></section>').join('') +
       '</div></div>' +
     '</div>';

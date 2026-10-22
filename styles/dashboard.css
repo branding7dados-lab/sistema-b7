@@ -1496,3 +1496,57 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .cfg-mosaico .cfg-painel-corpo > .cfg-g{margin-bottom:18px;}
 .cfg-mosaico .cfg-painel-corpo > .cfg-g:has(.cfg-lista > :nth-child(3)){grid-column:1/-1;}
 @media (max-width:1023px){ .cfg-mosaico .cfg-painel-corpo{display:block;} }
+
+/* =====================================================================
+   CONFIGURAÇÕES 7 (zzz241) — o miolo das seções no estilo que o Kevin
+   mandou (página de conta "limpa"): sem ícones nas linhas; cada grupo com
+   título grande e a explicação logo abaixo; um cartão de borda fina com
+   as linhas separadas por traço; título em negrito, explicação embaixo e,
+   à direita, o controle ou um botão contornado com a ação.
+   ===================================================================== */
+.cfg-acao{display:none;}
+.cfg-v2 .cfg-painel-cab{display:block;border-bottom:0;padding:0;margin:0 0 30px;}
+.cfg-v2 .cfg-painel-cab h2{font-size:30px;font-weight:850;letter-spacing:-.025em;}
+.cfg-v2 .cfg-painel-cab p{font-size:14px;margin-top:6px;}
+.cfg-v2 .cfg-painel-corpo{column-count:auto !important;display:block;}
+.cfg-v2 .cfg-g{display:flex;flex-direction:column;margin:0 0 34px;animation:none;}
+.cfg-v2 .cfg-g-t{order:0;margin:0 0 6px;font-family:'Archivo';font-size:21px;font-weight:800;letter-spacing:-.015em;text-transform:none;color:var(--ink);}
+.cfg-v2 .cfg-g-nota{order:1;margin:0 0 14px;font-size:13.5px;line-height:1.5;color:var(--ink-3);}
+.cfg-v2 .cfg-g-t + .cfg-lista{margin-top:8px;}
+.cfg-v2 .cfg-lista{order:2;border-radius:14px;border:1px solid var(--borda);background:var(--card);box-shadow:none;overflow:hidden;}
+.cfg-v2 .cfg-lista > *{animation:none;}
+/* linhas */
+.cfg-v2 .cfg-painel .cfg-ic{display:none;}
+.cfg-v2 .cfg-painel .cfg-l{gap:20px;min-height:0;padding:20px 24px;}
+.cfg-v2 .cfg-painel .cfg-l + .cfg-l::before,.cfg-v2 .cfg-painel .cfg-l-abaixo + .cfg-l::before,
+.cfg-v2 .cfg-painel #cfg-banco + .cfg-l::before,.cfg-v2 .cfg-painel .cfg-l + #cfg-banco > .cfg-l::before,
+.cfg-v2 .cfg-painel #cfg-google + .cfg-l::before,.cfg-v2 .cfg-painel .cfg-l + #cfg-google > .cfg-l::before{left:0;right:0;}
+.cfg-v2 .cfg-painel .cfg-l-tx{gap:5px;}
+.cfg-v2 .cfg-painel .cfg-l-tx b{font-size:14.5px;font-weight:700;}
+.cfg-v2 .cfg-painel .cfg-l-tx small{font-size:13px;line-height:1.5;color:var(--ink-3);}
+.cfg-v2 .cfg-painel .cfg-l-abaixo{padding:0 24px 20px;}
+.cfg-v2 .cfg-painel .cfg-seta{display:none;}
+.cfg-v2 .cfg-painel button.cfg-l:hover{background:color-mix(in srgb, var(--suave) 45%, transparent);}
+.cfg-v2 .cfg-painel button.cfg-l:hover .cfg-ic{transform:none;}
+/* o botão da ação, contornado como no modelo */
+.cfg-v2 .cfg-painel .cfg-acao{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:92px;height:38px;padding:0 16px;
+  border-radius:10px;border:1px solid var(--borda-forte, var(--borda));background:var(--card);font-size:13.5px;font-weight:700;color:var(--ink);
+  transition:border-color .18s, color .18s, background .18s;}
+.cfg-v2 .cfg-painel button.cfg-l:hover .cfg-acao{border-color:var(--acento);color:var(--acento);}
+.cfg-v2 .cfg-painel button.cfg-l:active .cfg-acao{transform:scale(.97);}
+.cfg-v2 .cfg-painel .cfg-perigo .cfg-acao{color:var(--erro);border-color:color-mix(in srgb, var(--erro) 40%, var(--borda));}
+.cfg-v2 .cfg-painel .cfg-perigo .cfg-l-tx b{color:var(--ink);}
+.cfg-v2 .cfg-painel .cfg-valor{font-weight:600;}
+/* conta no topo da seção Conta: sem enfeite, como um cabeçalho */
+.cfg-v2 .cfg-conta{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:20px 24px;margin-bottom:34px;}
+.cfg-v2 .cfg-conta .b{display:inline-flex;}
+@media (max-width:1023px){
+  .cfg-v2 .cfg-painel-cab h2{font-size:26px;}
+  .cfg-v2 .cfg-painel-cab{margin-bottom:22px;}
+  .cfg-v2 .cfg-g{margin-bottom:26px;}
+  .cfg-v2 .cfg-g-t{font-size:18px;}
+  .cfg-v2 .cfg-painel .cfg-l{padding:16px;gap:14px;}
+  .cfg-v2 .cfg-painel .cfg-l-abaixo{padding:0 16px 16px;}
+  .cfg-v2 .cfg-painel .cfg-acao{min-width:0;height:34px;padding:0 13px;font-size:13px;}
+  .cfg-v2 .cfg-conta{padding:16px;}
+}
