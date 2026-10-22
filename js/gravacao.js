@@ -118,19 +118,19 @@ B7.Gravacao = (function () {
 
   /* ========================================================= abrir */
   async function abrir(id) {
-    const g0 = ++geracao;
+    const g0 = ++geracao, vale = B7.Rota.marca();   /* zzz234: sair da rota também invalida */
     B7.Dashboard.marcarNav('#/gravacoes');
     B7.Rota.titulo(['Gravação']);
     painel().innerHTML = '<div class="conteudo gv entra">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>';
     let g;
     try { g = await B7.DB.gravacao(id); }
     catch (e) {
-      if (g0 !== geracao) return;
+      if (g0 !== geracao || !vale()) return;
       painel().innerHTML = '<div class="conteudo gv"><div class="estado-b7"><b>Não foi possível abrir esta gravação.</b><p>' +
         esc(e.message || '') + '</p><a class="b contorno" href="#/gravacoes">Voltar para Gravações</a></div></div>';
       return;
     }
-    if (g0 !== geracao) return;
+    if (g0 !== geracao || !vale()) return;
     S = { id, g, itens: [], ocs: [], hist: [], refs: [], prep: null, estado: { itens: 'carregando', hist: 'carregando', refs: 'carregando' } };
     B7.Rota.titulo([g.nome, g.cliente_nome]);
     desenhar();

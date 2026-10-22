@@ -152,7 +152,9 @@ B7.Design = (function () {
       '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.' : 'A fila de produção visual da equipe.') + '</p></div></div>' +
       B7.UI.skeleton('cards', { n: 6, titulo: false }) + '</div>';
 
-    try { await carregarDados(); } catch (e) { erroCarga(e); return; }
+    const vale = B7.Rota.marca();
+    try { await carregarDados(); } catch (e) { if (vale()) erroCarga(e); return; }
+    if (!vale()) return;   /* zzz234: já foi para outra tela */
     desenhar();
     assinar();
   }
@@ -687,7 +689,9 @@ B7.Design = (function () {
     painel().innerHTML = '<div class="conteudo design-tela dsc-tela">' +
       '<header class="dsc-cab"><h1>' + esc(saudacao()) + '</h1><p>Carregando o que precisa da sua atenção…</p></header>' +
       B7.UI.skeleton('tabela', { n: 4, cols: 3 }) + '</div>';
-    try { await carregarDados(); } catch (e) { erroCarga(e); return; }
+    const vale = B7.Rota.marca();
+    try { await carregarDados(); } catch (e) { if (vale()) erroCarga(e); return; }
+    if (!vale()) return;
     desenharCentral();
     assinar();
   }
@@ -915,12 +919,17 @@ B7.Design = (function () {
     B7.Dashboard.marcarNav('#/design');
     B7.Rota.titulo(['Design', 'Linha']);
     painel().innerHTML = '<div class="conteudo design-tela">' + B7.UI.skeleton('tabela', { n: 5, cols: 3 }) + '</div>';
-    try { itensLinha = await B7.DB.listarDesign({ linhaId }); }
+    const vale = B7.Rota.marca();
+    let itens;
+    try { itens = await B7.DB.listarDesign({ linhaId }); }
     catch (e) {
+      if (!vale()) return;
       painel().innerHTML = '<div class="conteudo entra"><div class="estado-b7"><b>Não foi possível carregar esta linha.</b><p>' + esc(e.message || '') + '</p></div></div>';
       linhaAberta = null;
       return;
     }
+    if (!vale()) return;
+    itensLinha = itens;
     desenharLinha();
     assinar();
   }
@@ -1867,13 +1876,17 @@ B7.Design = (function () {
        gaveta abre por cima dela, como no Kanban */
     /* Central (#dsc-raiz) e vista por linha também são telas de Design:
        a gaveta abre por cima delas sem trocar a tela de trás */
+    /* zzz234: se a pessoa saiu da tela enquanto carregava, a peça não abre por cima da tela nova */
+    const vale = B7.Rota.marca();
     if (!painel().querySelector('.design-tela')) await abrir();
+    if (!vale()) return;
     let d = dados.find(x => x.id === id);
     if (!d) {
       try { d = await B7.DB.design(id); dados.push(d); } catch (e) {
-        B7.UI.toast('Essa peça de Design não foi encontrada.', { tipo: 'erro' });
+        if (vale()) B7.UI.toast('Essa peça de Design não foi encontrada.', { tipo: 'erro' });
         return;
       }
+      if (!vale()) return;
     }
     if (drawer && drawer.id !== id) { trocandoPeca = true; try { fecharDrawer(); } finally { trocandoPeca = false; } }
     /* abriu uma peça que não é da sequência (clique no quadro, link): a sequência acaba */
@@ -1932,14 +1945,24 @@ B7.Design = (function () {
     if (foco && foco.focus && document.contains(foco)) foco.focus();
   }
 
+  /* zzz234: grava no painel para o qual começou; se ele fechou ou virou
+     outra peça no meio do caminho, o resultado é descartado */
   async function carregarExtra(d) {
+    const alvo = drawer;
+    if (!alvo) return;
+    let extra;
     try {
       const [hist] = await Promise.all([B7.DB.historicoDesign(d.id)]);
-      drawer.extra = hist;
+      extra = hist;
       await carregarNomesRevisores();
-    } catch (e) { drawer.extra = { versoes: [], notificacoes: [] }; }
-    if (!drawer.briefing) {
-      try { drawer.briefing = await carregarBriefing(d); } catch (e) { drawer.briefing = { erro: true }; }
+    } catch (e) { extra = { versoes: [], notificacoes: [] }; }
+    if (alvo !== drawer) return;
+    alvo.extra = extra;
+    if (!alvo.briefing) {
+      let b;
+      try { b = await carregarBriefing(d); } catch (e) { b = { erro: true }; }
+      if (alvo !== drawer) return;
+      alvo.briefing = b;
     }
   }
 
@@ -2525,10 +2548,13 @@ B7.Design = (function () {
     };
     const anterior = document.activeElement;
     function fechar() {
+      if (!el.isConnected) return;
       document.removeEventListener('keydown', tecla, true);
       el.remove(); document.body.classList.remove('ds-lb-aberta');
       if (anterior && anterior.focus && document.contains(anterior)) anterior.focus();
     }
+    /* zzz234: voltar no navegador (troca de tela) também fecha a tela cheia */
+    if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(fechar);
     document.addEventListener('keydown', tecla, true);   // captura: fecha SÓ a tela cheia, nunca o workspace por trás
     el.addEventListener('mousedown', e => { if (e.target === el || e.target.classList.contains('ds-lb-area')) fechar(); });
     document.body.appendChild(el); document.body.classList.add('ds-lb-aberta');
@@ -3276,9 +3302,11 @@ B7.Design = (function () {
       '<div class="ds-lb-corpo"><div class="ds-lb-area"><img class="ds-lb-img" alt="" draggable="false"></div></div>';
     const tecla = e => { if (e.key === 'Escape') { e.stopImmediatePropagation(); fechar(); } };
     function fechar() {
+      if (!el.isConnected) return;
       document.removeEventListener('keydown', tecla, true);
       el.remove(); document.body.classList.remove('ds-lb-aberta');
     }
+    if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(fechar);
     document.addEventListener('keydown', tecla, true);
     el.addEventListener('mousedown', e => { if (e.target === el || e.target.classList.contains('ds-lb-area')) fechar(); });
     el.querySelector('[data-lb-fechar]').onclick = fechar;

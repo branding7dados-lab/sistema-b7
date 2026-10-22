@@ -50,7 +50,13 @@ B7.TempoReal = (function () {
     if (document.hidden) return false;
     if (arrastando) return false;
     if (Date.now() - ultimaMexida < 1000) return false;
-    if (document.querySelector('.fundo-modal, .hj-tela, .b7-abertura, body.tele-aberto')) return false;
+    if (document.querySelector('.fundo-modal, .hj-tela, .b7-abertura, body.tele-aberto, .ds-lightbox, .ds-ws-fundo')) return false;
+    /* zzz234: na demanda de vídeo os campos só valem ao tocar em Salvar; um
+       link digitado e ainda não salvo não some com a atualização, mesmo sem
+       foco (as telas com salvamento automático não precisam disso) */
+    const painel = document.getElementById('painel-dashboard');
+    if (painel && rotaAtual() === 'video' && [...painel.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=search]), textarea')]
+      .some(c => c.value !== c.defaultValue)) return false;
     const a = document.activeElement;
     if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && a.closest('#painel-dashboard')) return false;
     if (window.getSelection && String(window.getSelection() || '').length > 0) return false;   /* selecionando texto */

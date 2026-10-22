@@ -522,7 +522,7 @@ B7.WhatsApp = (function () {
   async function pendencias(clienteId) {
     const c = pendCache.get(clienteId);
     if (c && Date.now() - c.em < 60000) return c.d;
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = B7.UI.hojeISO();   /* zzz234: data de hoje no Brasil, não em UTC */
     const [v, d, gv] = await Promise.all([
       B7.sb.from('demandas_edicao_resumo').select('id,titulo,codigo,editing_status,prazo').eq('client_id', clienteId).is('deleted_at', null)
         .in('editing_status', ['pendente', 'em_edicao', 'aguardando_aprovacao', 'correcao']).order('updated_at', { ascending: false }).limit(8),

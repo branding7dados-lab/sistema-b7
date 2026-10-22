@@ -525,10 +525,12 @@ B7.Conversas = (function () {
       porConversa.set(conversaId, outroId);
       if (!conversas.has(outroId)) conversas.set(outroId, { conversa_id: conversaId, outro_id: outroId, nao_lidas: 0, ultima: null });
     }
-    atual = { outroId, conversaId, msgs: [], temMais: false, carregando: true };
+    const conv = atual = { outroId, conversaId, msgs: [], temMais: false, carregando: true };
     pintarConversa();
     pintarLinhas();
     await carregarMensagens(false);
+    /* zzz234: trocou de conversa antes de carregar → esta não foi vista, não marca como lida */
+    if (atual !== conv) return;
     marcarLida(conversaId);
     pintarLinhas();
   }

@@ -609,6 +609,7 @@ B7.Usuarios = (function () {
     B7.Rota.titulo(['Usuários e acessos']);
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div>';
 
+    const vale = B7.Rota.marca();   /* zzz234: não desenha por cima de outra tela */
     let dados, clientes, pedidos;
     try {
       [dados, clientes, pedidos] = await Promise.all([
@@ -617,6 +618,7 @@ B7.Usuarios = (function () {
         B7.DB.rpc('acesso_pedidos_listar', {}).catch(() => [])
       ]);
     } catch (e) {
+      if (!vale()) return;
       /* sem sessão o caminho é entrar, não ficar lendo mensagem de erro */
       const semSessao = !B7.Auth || !B7.Auth.usuario();
       return painel().innerHTML = '<div class="conteudo entra">' +
@@ -635,6 +637,7 @@ B7.Usuarios = (function () {
       if (b) b.onclick = () => B7.Auth.telaLogin();
     }
 
+    if (!vale()) return;
     const usuarios = dados.usuarios || [];
     const vinculos = dados.vinculos || [];
     const funcoesExtraTodas = dados.funcoes_extra || [];

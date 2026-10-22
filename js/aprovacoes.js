@@ -85,6 +85,7 @@ B7.Aprovacoes = (function () {
   }
 
   /* ============================================================ LISTA */
+  let seqLista = 0;
   async function abrir(silencioso) {
     if (B7.Perm && !B7.Perm.podeRota('aprovacoes')) { location.hash = '#/'; return; }
     if (!silencioso) {
@@ -103,6 +104,10 @@ B7.Aprovacoes = (function () {
       });
     }
 
+    /* zzz234: só a última busca desenha (trocar de aba depressa mostrava a
+       lista de uma com a aba da outra) e nada desenha se a pessoa já saiu */
+    const meu = ++seqLista, vale = B7.Rota.marca();
+    const atual = () => meu === seqLista && vale();
     let itens = [], clientes = [], resumo = null;
     try {
       const sit = SITUACOES.find(x => x[0] === F.situacao) || SITUACOES[0];
@@ -115,9 +120,11 @@ B7.Aprovacoes = (function () {
         resumoContagens({ clienteId: F.clienteId || null, de: per.de, ate: per.ate })
       ]);
     } catch (e) {
+      if (!atual()) return;
       return painel().innerHTML = '<div class="conteudo"><div class="estado-b7"><b>Não foi possível carregar as aprovações.</b>' +
         '<p>' + esc(e.message || '') + '</p><p class="ajuda">Se a mensagem falar de tabela ou função inexistente, rode migration_aprovacoes_v2.sql no Supabase.</p></div></div>';
     }
+    if (!atual()) return;
 
     painel().innerHTML = '<div class="conteudo entra">' +
       /* zzx: no celular o cabeçalho é compacto (título + contador); a
@@ -251,6 +258,7 @@ B7.Aprovacoes = (function () {
         abrirDetalhe(id, true);
       });
     }
+    const vale = B7.Rota.marca();
     let ap, cru, partes = [], comentarios = [], eventos = [], versoes = [];
     try {
       [ap, cru] = await Promise.all([B7.DB.painelAprovacao(id), B7.DB.aprovacao(id)]);
@@ -262,8 +270,10 @@ B7.Aprovacoes = (function () {
         B7.DB.aprovacoesDoMaterial(ap.tipo, ap.alvo_id).catch(() => [])
       ]);
     } catch (e) {
+      if (!vale()) return;
       return painel().innerHTML = '<div class="conteudo"><div class="estado-b7"><b>' + esc(e.message) + '</b></div></div>';
     }
+    if (!vale()) return;   /* zzz234: já foi para outra tela */
     B7.Rota.titulo([ap.titulo, 'Aprovações']);
     const snap = (cru && cru.snapshot) || {};
     const cenas = Array.isArray(snap.cenas) ? snap.cenas : [];

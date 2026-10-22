@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz235', versao: 'zzz235', em: '2026-10-22T15:00:00-03:00',
+    titulo: 'Correções',
+    itens: ['Trocar de tela com a internet lenta não faz mais a tela anterior aparecer por cima da nova (Produção, Design, Linhas, Aprovações, Gravação, Clientes).',
+            'O criativo aberto pelas Publicações do Dia não reabre sozinho depois de fechado.',
+            'Prazos de Design de hoje não aparecem mais como atrasados à noite.',
+            'O sino de notificações não pula avisos nem volta para o começo enquanto você lê.'] },
   { id: 'v-zzz234', versao: 'zzz234', em: '2026-10-22T14:00:00-03:00',
     titulo: 'Cinco aberturas e cinco telas de carregamento novas',
     itens: ['Aberturas novas: Tinta (gotas de tinta que giram até o logo), Glitch (um terminal que quebra e estoura no logo), Aurora (cortinas de luz no céu), Neon (o letreiro que liga piscando) e Mosaico (quadrados que viram e se abrem no logo). Cada uma tem a sua trilha.',

@@ -222,7 +222,8 @@ B7.Notif = (function () {
         if (ultima && !ultima.lida_em) anunciar(ultima);
       } catch (e) {}
     }
-    if (aberto) listar();
+    /* zzz234: só recarrega a lista aberta se o número mudou, e do mesmo tamanho */
+    if (aberto && n !== antes) listar(false, ultimas.length);
   }
 
   /* --------------------------------------------------------- realtime */
@@ -479,18 +480,22 @@ B7.Notif = (function () {
     '<div class="sino-esq" style="--i:' + i + '"><span></span><div><i></i><i></i><i></i></div></div>').join('');
 
   let ultimas = [], pedido = 0;
-  async function listar(mais) {
+  /* manter: quantas já estavam na tela (a atualização de fundo recarrega
+     o mesmo tanto, sem jogar fora as páginas do "Carregar mais") */
+  async function listar(mais, manter) {
     const p = document.querySelector('.sino-painel:not(.saindo)'); if (!p) return;
     const lista = p.querySelector('.sino-lista');
     const meu = ++pedido;       /* troca rápida de filtro: só a última resposta pinta */
     try {
+      const limite = mais ? 20 : Math.max(20, manter || 0);
       const novas = await B7.DB.notificacoes({
-        limite: 20, tipos: tiposDoFiltro(),
+        limite, tipos: tiposDoFiltro(),
         antesDe: mais && ultimas.length ? ultimas[ultimas.length - 1].created_at : null
       });
       if (meu !== pedido) return;
-      ultimas = mais ? ultimas.concat(novas) : novas;
-      p.querySelector('#sino-mais').hidden = novas.length < 20;
+      const ja = new Set(ultimas.map(n => n.id));
+      ultimas = mais ? ultimas.concat(novas.filter(n => !ja.has(n.id))) : novas;
+      p.querySelector('#sino-mais').hidden = novas.length < limite;
     } catch (e) {
       if (meu !== pedido) return;
       lista.innerHTML = '<div class="sino-vazio">Não foi possível carregar. <small>' + esc(e.message || '') + '</small></div>';
