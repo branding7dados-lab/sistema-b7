@@ -36,6 +36,14 @@ B7.Perfil = (function () {
   function abrir(secao) {
     const u = B7.Auth && B7.Auth.usuario();
     if (!u) return B7.UI.toast('Entre para ver o seu perfil.', { tipo: 'erro' });
+    /* zzz245: a equipe tem o perfil nas Configurações (uma seção para cada
+       parte); a janela fica para o cliente, que não tem Configurações */
+    const ehCli = B7.Auth.ehCliente && B7.Auth.ehCliente();
+    if (!ehCli && B7.Perm && B7.Perm.podeRota && B7.Perm.podeRota('config')) {
+      const alvo = '#/config?s=' + (secao === 'notificacoes' ? 'notificacoes' : secao === 'seguranca' ? 'seguranca' : 'conta');
+      if (location.hash !== alvo) location.hash = alvo;
+      return;
+    }
 
     const empresas = B7.Auth.empresas();
 
@@ -47,20 +55,9 @@ B7.Perfil = (function () {
     /* zzz12: abas com ícone e uma pílula que desliza até a escolhida;
        cada cartão ganha um ícone colorido no título */
     const ABAS = [['conta', 'Conta', IC.pessoa], ['seg', 'Segurança', IC.cadeado], ['notif', 'Notificações', IC.sino]];
-    const titulo = (ic, tom, tx) => '<h4 class="pf-tit"><span class="pf-ic pf-' + tom + '" aria-hidden="true">' + ic + '</span>' + tx + '</h4>';
-    const senha = (id, rot, auto) =>
-      '<label class="rot" for="' + id + '">' + rot + '</label>' +
-      '<div class="pf-senha"><input class="campo" id="' + id + '" type="password" autocomplete="' + auto + '">' +
-      '<button type="button" class="pf-olho" data-olho="' + id + '" aria-label="Mostrar senha" aria-pressed="false">' +
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>' +
-      '</button></div>';
-
     const m = B7.UI.modal(
       '<div class="perfil-topo"><i class="pf-aurora" aria-hidden="true"></i>' +
-        '<div class="perfil-avatar av-pessoa tom-' + B7.UI.tomDoNome(u.nome || u.username) + '" id="pf-avatar">' +
-          (u.avatar_url
-            ? '<img src="' + esc(u.avatar_url) + '" alt="">'
-            : '<span>' + esc(B7.UI.iniciais(u.nome || u.username)) + '</span>') + '</div>' +
+        avatarHtml(u) +
         '<div class="perfil-id">' +
           '<b>' + esc(u.nome) + '</b>' +
           '<span>@' + esc(u.username) + '</span>' +
@@ -80,108 +77,18 @@ B7.Perfil = (function () {
         /* ------------------------------------------------------ conta */
         '<section class="pf-painel" data-painel="conta" role="tabpanel">' +
 
-          /* A foto é do usuário: ele troca a dele sem passar pelo admin.
-             Escolhe o arquivo, confere no avatar lá em cima e salva. */
-          '<div class="pf-cartao">' +
-            titulo(IC.camera, 'rosa', 'Foto de perfil') +
-            '<p class="ajuda">Aparece no topo, nas listas e nas ações que você faz.</p>' +
-            '<div id="pf-zona"></div>' +
-            '<div class="perfil-acao">' +
-              '<span class="perfil-msg" id="pf-msg-foto" role="status"></span>' +
-              (u.avatar_url ? '<button class="b fina perigo" id="pf-remover-foto">Remover foto</button>' : '') +
-              '<button class="b pri fina" id="pf-salvar-foto" disabled>Salvar foto</button>' +
-            '</div>' +
-          '</div>' +
-
-          '<div class="pf-cartao">' +
-            titulo(IC.pessoa, 'violeta', '<label for="pf-nome">Nome</label>') +
-            '<p class="ajuda">É o que aparece para a equipe nas ações que você faz.</p>' +
-            '<div class="pf-campo-acao">' +
-              '<input class="campo" id="pf-nome" value="' + esc(u.nome) + '" maxlength="80">' +
-              '<button class="b pri fina" id="pf-salvar-nome" disabled>Salvar</button>' +
-            '</div>' +
-            '<span class="perfil-msg" id="pf-msg-nome" role="status"></span>' +
-          '</div>' +
-
-          /* o que só o administrador muda: mostrado, nunca editável */
-          '<div class="pf-cartao leitura">' +
-            titulo(IC.escudo, 'cinza', 'Definido pela Branding7') +
-            '<div class="perfil-linha"><span>Usuário</span><b>@' + esc(u.username) + '</b></div>' +
-            '<div class="perfil-linha"><span>Perfil</span><b>' +
-              esc(ROTULO[u.papel] || u.papel) + '</b></div>' +
-            (u.papel === 'cliente'
-              ? '<div class="perfil-linha"><span>Empresas</span><b>' +
-                (empresas.length ? esc(empresas.map(e => e.nome).join(', ')) : '—') + '</b></div>' +
-                '<div class="perfil-linha"><span>Aprovação</span><b>' +
-                (u.pode_aprovar ? 'pode aprovar oficialmente' : 'visualiza e comenta') + '</b></div>'
-              : '') +
-            '<p class="ajuda">Para mudar qualquer um destes, fale com o administrador.</p>' +
-          '</div>' +
+          htmlConta(u, empresas, false) +
         '</section>' +
 
         /* -------------------------------------------------- segurança */
         '<section class="pf-painel" data-painel="seg" role="tabpanel" hidden>' +
-          '<div class="pf-cartao">' +
-            titulo(IC.chave, 'ambar', 'Trocar senha') +
-            '<p class="ajuda">Ao trocar, as outras sessões abertas com esta conta são encerradas.</p>' +
-            senha('pf-atual', 'SENHA ATUAL', 'current-password') +
-            senha('pf-nova', 'NOVA SENHA', 'new-password') +
-            senha('pf-nova2', 'REPETIR A NOVA SENHA', 'new-password') +
-            '<div class="pf-forca" id="pf-forca" data-n="0" aria-hidden="true"><i></i><i></i><i></i><i></i><span></span></div>' +
-            '<ul class="pf-req" id="pf-req" aria-label="Requisitos da nova senha">' +
-              '<li data-req="tam">10 caracteres ou mais</li>' +
-              '<li data-req="letra">Pelo menos uma letra</li>' +
-              '<li data-req="num">Pelo menos um número</li>' +
-              '<li data-req="igual">As duas senhas novas iguais</li>' +
-            '</ul>' +
-            '<div class="perfil-acao">' +
-              '<span class="perfil-msg" id="pf-msg-senha" role="status"></span>' +
-              '<button class="b pri fina" id="pf-salvar-senha">Trocar senha</button>' +
-            '</div>' +
-          '</div>' +
-          /* zzz218: verificação em 2 etapas e Google (js/seguranca.js) */
-          '<div class="pf-cartao" id="pf-2fa"></div>' +
-          '<div class="pf-cartao" id="pf-google" hidden></div>' +
+          htmlSeg() +
         '</section>' +
 
         /* Notificações: como chega (este aparelho) e o que avisa (por
            função). Cada pessoa decide o seu; nada aqui muda permissão. */
         '<section class="pf-painel" data-painel="notif" role="tabpanel" id="pf-notif" hidden>' +
-          '<div class="pf-cartao">' +
-            titulo(IC.celular, 'verde', 'Neste aparelho') +
-            '<p class="ajuda">O sino sempre guarda os avisos. Aqui você escolhe como eles chegam neste aparelho.</p>' +
-            '<div class="pf-resumo" id="pf-resumo"></div>' +
-            opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.', IC.sino, 'rosa') +
-            opcao('som', 'Som das notificações', 'Um toque curto quando chega um aviso novo com o B7 aberto.', IC.som, 'violeta') +
-            opcao('navegador', window.B7Desktop ? 'Aviso do Windows' : 'Aviso do navegador',
-                  window.B7Desktop ? 'Quando a janela do B7 não estiver na frente, o aviso aparece no canto da tela.'
-                                   : 'Quando esta aba não estiver em foco, o navegador mostra o aviso.', IC.janela, 'azul') +
-            '<div class="pf-teste-push">' +
-              '<div class="pf-teste-tx"><b>Testar notificações</b>' +
-              '<small>Envia um aviso de teste para este aparelho, para confirmar que push, ' +
-              'permissão e som estão funcionando.</small></div>' +
-              '<button type="button" class="b fina contorno" id="pf-testar-notif">Enviar teste</button>' +
-            '</div>' +
-            /* um exemplo de cada aviso do sistema, só para a própria pessoa:
-               serve para ver como cada um chega (texto, imagem, som, link)
-               sem precisar provocar o evento de verdade */
-            (B7.Auth.papel && B7.Auth.papel() !== 'cliente' ? '<div class="pf-teste-push pf-teste-todos">' +
-              '<div class="pf-teste-tx"><b>Ver um exemplo de cada aviso</b>' +
-              '<small>Envia para os seus aparelhos com push ligado um exemplo de cada notificação do B7, com o título ' +
-              'começando por “Teste”. Não aparece no sino, ninguém mais recebe e nada é alterado nas demandas.</small></div>' +
-              '<select class="campo fina" id="pf-exemplos-grupo" aria-label="Quais avisos">' +
-                '<option value="">Todos (43 avisos)</option><option value="design">Design (17)</option>' +
-                '<option value="video">Vídeo (9)</option><option value="gravacoes">Gravações e agenda (8)</option>' +
-                '<option value="cliente">Decisões do cliente (6)</option><option value="geral">Revisão e resumo (3)</option></select>' +
-              '<button type="button" class="b fina contorno" id="pf-exemplos">Enviar exemplos</button>' +
-            '</div>' : '') +
-            '<details class="pf-detalhes"><summary>Detalhes deste aparelho</summary>' +
-              '<dl class="pf-estado" id="pf-estado"></dl>' +
-              '<small class="pf-versao-sw" id="pf-versao-sw"></small>' +
-            '</details>' +
-          '</div>' +
-          gruposNotificacao() +
-          '<div class="pf-msg-fixa"><span class="perfil-msg" id="pf-msg-notif" role="status"></span></div>' +
+          htmlNotif() +
         '</section>' +
 
       '</div>' +
@@ -221,6 +128,158 @@ B7.Perfil = (function () {
     m.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => irPara(b.dataset.aba));
     irPara(abaInicial);
 
+    ligarConta(m, u);
+    ligarSeg(m);
+
+    m.querySelector('#pf-sair').onclick = () => B7.Auth.sair();
+
+    /* --------------------------------------------------- notificações */
+    ligarNotificacoes(m);
+  }
+
+  /* ------------------------------------------------------------------
+     zzz245: as três partes do perfil (conta, segurança, notificações)
+     viraram peças. A janela do perfil junta as três em abas (só o
+     cliente ainda usa a janela); as Configurações mostram cada uma como
+     uma seção própria (montar), editável ali mesmo.
+     ------------------------------------------------------------------ */
+  const titulo = (ic, tom, tx) => '<h4 class="pf-tit"><span class="pf-ic pf-' + tom + '" aria-hidden="true">' + ic + '</span>' + tx + '</h4>';
+  const senha = (id, rot, auto) =>
+    '<label class="rot" for="' + id + '">' + rot + '</label>' +
+    '<div class="pf-senha"><input class="campo" id="' + id + '" type="password" autocomplete="' + auto + '">' +
+    '<button type="button" class="pf-olho" data-olho="' + id + '" aria-label="Mostrar senha" aria-pressed="false">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>' +
+    '</button></div>';
+  const avatarHtml = u => '<div class="perfil-avatar av-pessoa tom-' + B7.UI.tomDoNome(u.nome || u.username) + '" id="pf-avatar">' +
+    (u.avatar_url ? '<img src="' + esc(u.avatar_url) + '" alt="">' : '<span>' + esc(B7.UI.iniciais(u.nome || u.username)) + '</span>') + '</div>';
+
+  function htmlConta(u, empresas, inline) {
+    return (
+      /* A foto é do usuário: ele troca a dele sem passar pelo admin.
+             Escolhe o arquivo, confere no avatar lá em cima e salva. */
+          '<div class="pf-cartao">' +
+            titulo(IC.camera, 'rosa', 'Foto de perfil') +
+            '<p class="ajuda">Aparece no topo, nas listas e nas ações que você faz.</p>' +
+            (inline ? '<div class="pf-foto-linha">' + avatarHtml(u) + '<div id="pf-zona"></div></div>' : '<div id="pf-zona"></div>') +
+            '<div class="perfil-acao">' +
+              '<span class="perfil-msg" id="pf-msg-foto" role="status"></span>' +
+              (u.avatar_url ? '<button class="b fina perigo" id="pf-remover-foto">Remover foto</button>' : '') +
+              '<button class="b pri fina" id="pf-salvar-foto" disabled>Salvar foto</button>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="pf-cartao">' +
+            titulo(IC.pessoa, 'violeta', '<label for="pf-nome">Nome</label>') +
+            '<p class="ajuda">É o que aparece para a equipe nas ações que você faz.</p>' +
+            '<div class="pf-campo-acao">' +
+              '<input class="campo" id="pf-nome" value="' + esc(u.nome) + '" maxlength="80">' +
+              '<button class="b pri fina" id="pf-salvar-nome" disabled>Salvar</button>' +
+            '</div>' +
+            '<span class="perfil-msg" id="pf-msg-nome" role="status"></span>' +
+          '</div>' +
+
+          /* o que só o administrador muda: mostrado, nunca editável */
+          '<div class="pf-cartao leitura">' +
+            titulo(IC.escudo, 'cinza', 'Definido pela Branding7') +
+            '<div class="perfil-linha"><span>Usuário</span><b>@' + esc(u.username) + '</b></div>' +
+            '<div class="perfil-linha"><span>Perfil</span><b>' +
+              esc(ROTULO[u.papel] || u.papel) + '</b></div>' +
+            (u.papel === 'cliente'
+              ? '<div class="perfil-linha"><span>Empresas</span><b>' +
+                (empresas.length ? esc(empresas.map(e => e.nome).join(', ')) : '—') + '</b></div>' +
+                '<div class="perfil-linha"><span>Aprovação</span><b>' +
+                (u.pode_aprovar ? 'pode aprovar oficialmente' : 'visualiza e comenta') + '</b></div>'
+              : '') +
+            '<p class="ajuda">Para mudar qualquer um destes, fale com o administrador.</p>' +
+          '</div>'
+    );
+  }
+  function htmlSeg() {
+    return (
+      '<div class="pf-cartao">' +
+            titulo(IC.chave, 'ambar', 'Trocar senha') +
+            '<p class="ajuda">Ao trocar, as outras sessões abertas com esta conta são encerradas.</p>' +
+            senha('pf-atual', 'SENHA ATUAL', 'current-password') +
+            senha('pf-nova', 'NOVA SENHA', 'new-password') +
+            senha('pf-nova2', 'REPETIR A NOVA SENHA', 'new-password') +
+            '<div class="pf-forca" id="pf-forca" data-n="0" aria-hidden="true"><i></i><i></i><i></i><i></i><span></span></div>' +
+            '<ul class="pf-req" id="pf-req" aria-label="Requisitos da nova senha">' +
+              '<li data-req="tam">10 caracteres ou mais</li>' +
+              '<li data-req="letra">Pelo menos uma letra</li>' +
+              '<li data-req="num">Pelo menos um número</li>' +
+              '<li data-req="igual">As duas senhas novas iguais</li>' +
+            '</ul>' +
+            '<div class="perfil-acao">' +
+              '<span class="perfil-msg" id="pf-msg-senha" role="status"></span>' +
+              '<button class="b pri fina" id="pf-salvar-senha">Trocar senha</button>' +
+            '</div>' +
+          '</div>' +
+          /* zzz218: verificação em 2 etapas e Google (js/seguranca.js) */
+          '<div class="pf-cartao" id="pf-2fa"></div>' +
+          '<div class="pf-cartao" id="pf-google" hidden></div>'
+    );
+  }
+  function htmlNotif() {
+    return (
+      '<div class="pf-cartao">' +
+            titulo(IC.celular, 'verde', 'Neste aparelho') +
+            '<p class="ajuda">O sino sempre guarda os avisos. Aqui você escolhe como eles chegam neste aparelho.</p>' +
+            '<div class="pf-resumo" id="pf-resumo"></div>' +
+            opcao('push', 'Push neste aparelho', 'Recebe o aviso mesmo com o Sistema B7 fechado.', IC.sino, 'rosa') +
+            opcao('som', 'Som das notificações', 'Um toque curto quando chega um aviso novo com o B7 aberto.', IC.som, 'violeta') +
+            opcao('navegador', window.B7Desktop ? 'Aviso do Windows' : 'Aviso do navegador',
+                  window.B7Desktop ? 'Quando a janela do B7 não estiver na frente, o aviso aparece no canto da tela.'
+                                   : 'Quando esta aba não estiver em foco, o navegador mostra o aviso.', IC.janela, 'azul') +
+            '<div class="pf-teste-push">' +
+              '<div class="pf-teste-tx"><b>Testar notificações</b>' +
+              '<small>Envia um aviso de teste para este aparelho, para confirmar que push, ' +
+              'permissão e som estão funcionando.</small></div>' +
+              '<button type="button" class="b fina contorno" id="pf-testar-notif">Enviar teste</button>' +
+            '</div>' +
+            /* um exemplo de cada aviso do sistema, só para a própria pessoa:
+               serve para ver como cada um chega (texto, imagem, som, link)
+               sem precisar provocar o evento de verdade */
+            (B7.Auth.papel && B7.Auth.papel() !== 'cliente' ? '<div class="pf-teste-push pf-teste-todos">' +
+              '<div class="pf-teste-tx"><b>Ver um exemplo de cada aviso</b>' +
+              '<small>Envia para os seus aparelhos com push ligado um exemplo de cada notificação do B7, com o título ' +
+              'começando por “Teste”. Não aparece no sino, ninguém mais recebe e nada é alterado nas demandas.</small></div>' +
+              '<select class="campo fina" id="pf-exemplos-grupo" aria-label="Quais avisos">' +
+                '<option value="">Todos (43 avisos)</option><option value="design">Design (17)</option>' +
+                '<option value="video">Vídeo (9)</option><option value="gravacoes">Gravações e agenda (8)</option>' +
+                '<option value="cliente">Decisões do cliente (6)</option><option value="geral">Revisão e resumo (3)</option></select>' +
+              '<button type="button" class="b fina contorno" id="pf-exemplos">Enviar exemplos</button>' +
+            '</div>' : '') +
+            '<details class="pf-detalhes"><summary>Detalhes deste aparelho</summary>' +
+              '<dl class="pf-estado" id="pf-estado"></dl>' +
+              '<small class="pf-versao-sw" id="pf-versao-sw"></small>' +
+            '</details>' +
+          '</div>' +
+          gruposNotificacao() +
+          '<div class="pf-msg-fixa"><span class="perfil-msg" id="pf-msg-notif" role="status"></span></div>'
+    );
+  }
+
+  /* Configurações: desenha uma parte do perfil dentro de "alvo" */
+  function montar(alvo, qual) {
+    const u = B7.Auth && B7.Auth.usuario();
+    if (!alvo || !u) return;
+    alvo.innerHTML = qual === 'seg' ? htmlSeg() : qual === 'notif' ? htmlNotif() : htmlConta(u, B7.Auth.empresas(), true);
+    if (qual === 'seg') ligarSeg(alvo);
+    else if (qual === 'notif') ligarNotificacoes(alvo);
+    else ligarConta(alvo, u);
+  }
+
+  /* o cartão da conta no alto das Configurações acompanha foto e nome novos */
+  function atualizarCartoes() {
+    const u = B7.Auth && B7.Auth.usuario(); if (!u) return;
+    document.querySelectorAll('.cfg-eu').forEach(c => {
+      const b = c.querySelector('.cfg-eu-tx b'); if (b) b.textContent = u.nome || u.username || '';
+      const av = c.querySelector('.av-pessoa');
+      if (av && B7.UI.avatarPessoa) { const t = document.createElement('div'); t.innerHTML = B7.UI.avatarPessoa(u, 'cfg-eu-av'); if (t.firstElementChild) av.replaceWith(t.firstElementChild); }
+    });
+  }
+
+  function ligarConta(m, u) {
     /* ---------------------------------------------------------- foto */
     const btFoto = m.querySelector('#pf-salvar-foto');
     const msgFoto = m.querySelector('#pf-msg-foto');
@@ -242,6 +301,7 @@ B7.Perfil = (function () {
         u.avatar_url = novo ? novo.avatar_url : null;
         if (!imagem) avatarEl.innerHTML = '<span>' + esc(B7.UI.iniciais(u.nome || u.username)) + '</span>';
         if (B7.pintarSessao) B7.pintarSessao();
+        atualizarCartoes();
         aviso(msgFoto, imagem ? 'Foto atualizada.' : 'Foto removida.', 'ok');
         const rem = m.querySelector('#pf-remover-foto');
         if (rem && !imagem) rem.remove();
@@ -281,6 +341,7 @@ B7.Perfil = (function () {
         aviso(msgNome, 'Perfil atualizado.', 'ok');
         /* o avatar e o menu do topo passam a mostrar o nome novo */
         if (B7.pintarSessao) B7.pintarSessao();
+        atualizarCartoes();
         const idNome = m.querySelector('.perfil-id b');
         if (idNome) idNome.textContent = nome;
         const av = m.querySelector('.perfil-avatar');
@@ -290,7 +351,9 @@ B7.Perfil = (function () {
       }
       btNome.textContent = 'Salvar'; btNome.disabled = !nomeMudou();
     };
+  }
 
+  function ligarSeg(m) {
     /* --------------------------------------------------------- senha */
     if (B7.Seguranca) B7.Seguranca.montarCartao(m.querySelector('#pf-2fa'), m.querySelector('#pf-google'));
     const btSenha = m.querySelector('#pf-salvar-senha');
@@ -349,11 +412,6 @@ B7.Perfil = (function () {
       }
       btSenha.disabled = false; btSenha.textContent = 'Trocar senha';
     };
-
-    m.querySelector('#pf-sair').onclick = () => B7.Auth.sair();
-
-    /* --------------------------------------------------- notificações */
-    ligarNotificacoes(m);
   }
 
   function opcao(chave, titulo, ajuda, ic, tom) {
@@ -589,5 +647,5 @@ B7.Perfil = (function () {
     el.className = 'perfil-msg' + (tipo ? ' ' + tipo : '');
   }
 
-  return { abrir };
+  return { abrir, montar };
 })();
