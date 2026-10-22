@@ -1378,3 +1378,179 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
   .cfg-lista{border-radius:18px;}
 }
 @media (min-width:1024px){ .cfg-main .cfg-l-abaixo > .cfg-seg:not(.cfg-temas){max-width:460px;} }
+
+/* =====================================================================
+   CONFIGURAÇÕES 6 (zzz240) — repaginada. Pedido do Kevin: "muda toda
+   essas configurações… quero repaginado". Seções curtas num menu com
+   ícones, em três blocos (Você · Administração · Super admin).
+   • Computador: menu à esquerda (fixo), seção aberta à direita.
+   • Celular: o menu é a primeira tela; a seção abre por cima, com
+     "‹ Configurações" para voltar (.cfg-dentro).
+   • Administração e Super admin: mosaico de atalhos em vez de lista.
+   ===================================================================== */
+.cfg-v2{max-width:1240px;}
+.cfg-v2 .cfg-topo{margin:0 0 16px;}
+.cfg-v2 .cfg-assina{margin:22px 0 0;}
+.cfg-v2 .cfg-assina small{display:block;}
+/* quem está usando */
+.cfg-eu{position:relative;display:flex;align-items:center;gap:12px;width:100%;margin:0 0 12px;padding:14px;border-radius:18px;text-align:left;
+  font:inherit;color:inherit;cursor:pointer;overflow:hidden;isolation:isolate;
+  border:1px solid color-mix(in srgb, var(--acento) 22%, var(--borda));
+  background:linear-gradient(135deg, color-mix(in srgb, var(--acento) 16%, var(--card)), var(--card) 70%);
+  transition:transform .2s var(--cfg-mola, ease), border-color .2s;}
+.cfg-eu:hover{border-color:color-mix(in srgb, var(--acento) 45%, var(--borda));}
+.cfg-eu:active{transform:scale(.985);}
+.cfg-eu .av-pessoa{width:46px;height:46px;flex:none;border-radius:50%;box-shadow:0 0 0 2px var(--card), 0 0 0 4px color-mix(in srgb, var(--acento) 60%, transparent);}
+.cfg-eu .av-pessoa span{font-size:16px;font-weight:800;}
+.cfg-eu .av-pessoa img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.cfg-eu-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.cfg-eu-tx b{font-family:'Archivo';font-size:15.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cfg-eu-tx small{font-size:12px;color:var(--ink-3);}
+.cfg-v2 .cfg-busca{margin:0 0 14px;}
+/* menu das seções */
+.cfg-nav-g{margin:16px 0 7px 6px;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-4);}
+.cfg-nav-g:first-child{margin-top:4px;}
+.cfg-nav-lista{display:flex;flex-direction:column;padding:5px;border-radius:18px;background:var(--card);
+  border:1px solid color-mix(in srgb, var(--ink) 8%, transparent);box-shadow:0 10px 28px -26px rgba(20,8,40,.31);}
+.cfg-nav-i{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:9px 10px;border:0;border-radius:13px;background:none;
+  font:inherit;color:inherit;text-align:left;cursor:pointer;transition:background-color .18s ease;}
+.cfg-nav-i:hover{background:color-mix(in srgb, var(--suave) 70%, transparent);}
+.cfg-nav-i:focus-visible{outline:2px solid var(--acento);outline-offset:-2px;}
+.cfg-nav-i .cfg-ic{width:34px;height:34px;border-radius:10px;}
+.cfg-nav-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.cfg-nav-tx b{font-size:14px;font-weight:650;color:var(--ink);}
+.cfg-nav-tx small{font-size:11.5px;color:var(--ink-4);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cfg-nav-i .cfg-seta{opacity:.55;}
+/* cabeçalho da seção */
+.cfg-v2 .cfg-painel-cab{display:flex;align-items:center;gap:14px;margin:0 0 20px;padding:0 0 16px;border-bottom:1px solid var(--borda);}
+.cfg-v2 .cfg-painel-cab > svg{display:none;}
+.cfg-v2 .cfg-painel-cab .cfg-ic{width:46px;height:46px;border-radius:14px;}
+.cfg-v2 .cfg-painel-cab .cfg-ic svg{width:23px;height:23px;}
+.cfg-v2 .cfg-painel-cab h2{margin:0;font-family:'Archivo';font-size:24px;font-weight:850;letter-spacing:-.02em;}
+.cfg-v2 .cfg-painel-cab p{margin:2px 0 0;font-size:13px;color:var(--ink-4);}
+.cfg-voltar{display:none;}
+/* conta */
+.cfg-conta{display:flex;align-items:center;gap:16px;margin:0 0 22px;padding:18px;border-radius:22px;position:relative;overflow:hidden;
+  border:1px solid color-mix(in srgb, var(--acento) 20%, var(--borda));
+  background:radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--acento) 18%, transparent), transparent 60%), var(--card);}
+.cfg-conta .av-pessoa{width:64px;height:64px;flex:none;border-radius:50%;box-shadow:0 0 0 3px var(--card), 0 0 0 5px color-mix(in srgb, var(--acento) 65%, transparent);}
+.cfg-conta .av-pessoa span{font-size:21px;font-weight:800;}
+.cfg-conta .av-pessoa img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.cfg-conta-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.cfg-conta-tx b{font-family:'Archivo';font-size:20px;font-weight:850;letter-spacing:-.01em;}
+.cfg-conta-tx small{font-size:12.5px;color:var(--ink-3);}
+/* mosaico de atalhos (Administração e Super admin) */
+.cfg-mosaico .cfg-painel-corpo{column-count:auto !important;}
+.cfg-mosaico .cfg-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;background:none;border:0;box-shadow:none;border-radius:0;overflow:visible;}
+.cfg-mosaico .cfg-lista > *{animation:none;}
+.cfg-mosaico .cfg-l{height:100%;min-height:86px;align-items:flex-start;padding:14px;border-radius:16px;background:var(--card);
+  border:1px solid color-mix(in srgb, var(--ink) 8%, transparent);box-shadow:0 10px 26px -24px rgba(20,8,40,.35);
+  transition:transform .22s var(--cfg-mola, ease), border-color .2s, box-shadow .2s;}
+.cfg-mosaico .cfg-l::before{display:none !important;}
+.cfg-mosaico button.cfg-l:hover{transform:translate3d(0,-2px,0);border-color:color-mix(in srgb, var(--acento) 35%, transparent);
+  box-shadow:0 14px 30px -22px color-mix(in srgb, var(--acento) 60%, transparent);background:var(--card);}
+.cfg-mosaico .cfg-l .cfg-seta,.cfg-mosaico .cfg-l .cfg-valor,.cfg-mosaico .cfg-l .cfg-sw{align-self:center;}
+.cfg-mosaico .cfg-l-abaixo{grid-column:1/-1;padding-left:14px;}
+.cfg-mosaico .cfg-g-nota{margin-left:4px;}
+
+@media (min-width:1024px){
+  .cfg-v2 .cfg-grade{display:grid;grid-template-columns:320px minmax(0,1fr);gap:34px;align-items:start;}
+  .cfg-v2 .cfg-lado{position:sticky;top:12px;display:block;}
+  .cfg-v2 .cfg-nav-i.on{background:color-mix(in srgb, var(--acento) 12%, transparent);}
+  .cfg-v2 .cfg-nav-i.on::before{content:"";position:absolute;left:-5px;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--acento);}
+  .cfg-v2 .cfg-nav-i.on .cfg-nav-tx b{color:var(--acento);}
+  .cfg-v2 .cfg-nav-i.on .cfg-seta{opacity:0;}
+  .cfg-v2.cfg-procurando .cfg-painel-cab{display:none;}
+}
+@media (max-width:1023px){
+  .cfg-v2 .cfg-main{display:none;}
+  .cfg-v2.cfg-dentro .cfg-lado{display:none;}
+  .cfg-v2.cfg-dentro .cfg-main,.cfg-v2.cfg-procurando .cfg-main{display:block;}
+  .cfg-v2.cfg-procurando .cfg-nav,.cfg-v2.cfg-procurando .cfg-assina{display:none;}
+  .cfg-v2.cfg-dentro .cfg-voltar{display:inline-flex;align-items:center;gap:4px;margin:0 0 12px -6px;padding:6px 8px;border:0;background:none;
+    font:inherit;font-size:14.5px;font-weight:650;color:var(--acento);cursor:pointer;border-radius:10px;}
+  .cfg-voltar svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+  .cfg-v2.cfg-dentro .cfg-painel{animation:cfgEntraLado .35s var(--cfg-mola, ease) both;}
+  .cfg-v2 .cfg-nav-i{padding:11px 10px;}
+  .cfg-v2 .cfg-nav-i .cfg-ic{width:32px;height:32px;}
+  .cfg-v2 .cfg-nav-i + .cfg-nav-i::after{content:"";position:absolute;top:0;left:56px;right:8px;height:1px;background:var(--borda);}
+  .cfg-v2 .cfg-painel-cab{border-bottom:0;padding-bottom:0;margin-bottom:18px;}
+  .cfg-v2 .cfg-painel-cab h2{font-size:26px;}
+  .cfg-mosaico .cfg-lista{grid-template-columns:1fr 1fr;gap:8px;}
+  .cfg-mosaico .cfg-l{flex-direction:column;gap:9px;min-height:118px;padding:13px;}
+  .cfg-mosaico .cfg-l .cfg-seta{display:none;}
+  .cfg-mosaico .cfg-l .cfg-l-tx b{font-size:13.5px;}
+  .cfg-mosaico .cfg-l .cfg-l-tx small{font-size:11.5px;}
+  .cfg-mosaico .cfg-l .cfg-valor,.cfg-mosaico .cfg-l .cfg-sw{align-self:flex-start;}
+  .cfg-conta{padding:14px;gap:12px;}
+  .cfg-conta .av-pessoa{width:52px;height:52px;}
+  .cfg-conta-tx b{font-size:17px;}
+  .cfg-conta .b{display:none;}
+}
+@keyframes cfgEntraLado{from{opacity:0;transform:translate3d(18px,0,0)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){ .cfg-v2.cfg-dentro .cfg-painel{animation:none;} .cfg-mosaico button.cfg-l:hover{transform:none;} }
+.cfg-v2 .cfg-perigo{justify-content:flex-start;}
+.cfg-v2 .cfg-perigo .cfg-l-tx{flex:1;}
+/* mosaico: cada grupo vira uma célula; grupos com 3 atalhos ou mais ocupam a largura toda */
+.cfg-mosaico .cfg-painel-corpo{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:4px 18px;align-items:start;}
+.cfg-mosaico .cfg-painel-corpo > .cfg-g{margin-bottom:18px;}
+.cfg-mosaico .cfg-painel-corpo > .cfg-g:has(.cfg-lista > :nth-child(3)){grid-column:1/-1;}
+@media (max-width:1023px){ .cfg-mosaico .cfg-painel-corpo{display:block;} }
+
+/* =====================================================================
+   CONFIGURAÇÕES 7 (zzz241) — o miolo das seções no estilo que o Kevin
+   mandou (página de conta "limpa"): sem ícones nas linhas; cada grupo com
+   título grande e a explicação logo abaixo; um cartão de borda fina com
+   as linhas separadas por traço; título em negrito, explicação embaixo e,
+   à direita, o controle ou um botão contornado com a ação.
+   ===================================================================== */
+.cfg-acao{display:none;}
+.cfg-v2 .cfg-painel-cab{display:block;border-bottom:0;padding:0;margin:0 0 30px;}
+.cfg-v2 .cfg-painel-cab h2{font-size:30px;font-weight:850;letter-spacing:-.025em;}
+.cfg-v2 .cfg-painel-cab p{font-size:14px;margin-top:6px;}
+.cfg-v2 .cfg-painel-corpo{column-count:auto !important;display:block;}
+.cfg-v2 .cfg-g{display:flex;flex-direction:column;margin:0 0 34px;animation:none;}
+.cfg-v2 .cfg-g-t{order:0;margin:0 0 6px;font-family:'Archivo';font-size:21px;font-weight:800;letter-spacing:-.015em;text-transform:none;color:var(--ink);}
+.cfg-v2 .cfg-g-nota{order:1;margin:0 0 14px;font-size:13.5px;line-height:1.5;color:var(--ink-3);}
+.cfg-v2 .cfg-g-t + .cfg-lista{margin-top:8px;}
+.cfg-v2 .cfg-lista{order:2;border-radius:14px;border:1px solid var(--borda);background:var(--card);box-shadow:none;overflow:hidden;}
+.cfg-v2 .cfg-lista > *{animation:none;}
+/* linhas */
+.cfg-v2 .cfg-painel .cfg-ic{display:none;}
+.cfg-v2 .cfg-painel .cfg-l{gap:20px;min-height:0;padding:20px 24px;}
+.cfg-v2 .cfg-painel .cfg-l + .cfg-l::before,.cfg-v2 .cfg-painel .cfg-l-abaixo + .cfg-l::before,
+.cfg-v2 .cfg-painel #cfg-banco + .cfg-l::before,.cfg-v2 .cfg-painel .cfg-l + #cfg-banco > .cfg-l::before,
+.cfg-v2 .cfg-painel #cfg-google + .cfg-l::before,.cfg-v2 .cfg-painel .cfg-l + #cfg-google > .cfg-l::before{left:0;right:0;}
+.cfg-v2 .cfg-painel .cfg-l-tx{gap:5px;}
+.cfg-v2 .cfg-painel .cfg-l-tx b{font-size:14.5px;font-weight:700;}
+.cfg-v2 .cfg-painel .cfg-l-tx small{font-size:13px;line-height:1.5;color:var(--ink-3);}
+.cfg-v2 .cfg-painel .cfg-l-abaixo{padding:0 24px 20px;}
+.cfg-v2 .cfg-painel .cfg-seta{display:none;}
+.cfg-v2 .cfg-painel button.cfg-l:hover{background:color-mix(in srgb, var(--suave) 45%, transparent);}
+.cfg-v2 .cfg-painel button.cfg-l:hover .cfg-ic{transform:none;}
+/* o botão da ação, contornado como no modelo */
+.cfg-v2 .cfg-painel .cfg-acao{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:92px;height:38px;padding:0 16px;
+  border-radius:10px;border:1px solid var(--borda-forte, var(--borda));background:var(--card);font-size:13.5px;font-weight:700;color:var(--ink);
+  transition:border-color .18s, color .18s, background .18s;}
+.cfg-v2 .cfg-painel button.cfg-l:hover .cfg-acao{border-color:var(--acento);color:var(--acento);}
+.cfg-v2 .cfg-painel button.cfg-l:active .cfg-acao{transform:scale(.97);}
+.cfg-v2 .cfg-painel .cfg-perigo .cfg-acao{color:var(--erro);border-color:color-mix(in srgb, var(--erro) 40%, var(--borda));}
+.cfg-v2 .cfg-painel .cfg-perigo .cfg-l-tx b{color:var(--ink);}
+.cfg-v2 .cfg-painel .cfg-valor{font-weight:600;}
+/* conta no topo da seção Conta: sem enfeite, como um cabeçalho */
+.cfg-v2 .cfg-conta{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:20px 24px;margin-bottom:34px;}
+.cfg-v2 .cfg-conta .b{display:inline-flex;}
+@media (max-width:1023px){
+  .cfg-v2 .cfg-painel-cab h2{font-size:26px;}
+  .cfg-v2 .cfg-painel-cab{margin-bottom:22px;}
+  .cfg-v2 .cfg-g{margin-bottom:26px;}
+  .cfg-v2 .cfg-g-t{font-size:18px;}
+  .cfg-v2 .cfg-painel .cfg-l{padding:16px;gap:14px;}
+  .cfg-v2 .cfg-painel .cfg-l-abaixo{padding:0 16px 16px;}
+  .cfg-v2 .cfg-painel .cfg-acao{min-width:0;height:34px;padding:0 13px;font-size:13px;}
+  .cfg-v2 .cfg-conta{padding:16px;}
+}
+/* zzz242: sem ação própria, a linha mostra só a setinha (o "Abrir" repetido saiu) */
+.cfg-v2 .cfg-painel .cfg-seta{display:block;opacity:.6;}
+.cfg-v2 .cfg-painel .cfg-l:has(.cfg-acao) .cfg-seta{display:none;}
+.cfg-v2 .cfg-painel button.cfg-l:hover .cfg-seta{opacity:1;stroke:var(--acento);}
