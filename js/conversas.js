@@ -501,7 +501,7 @@ B7.Conversas = (function () {
     if (!painel) return;
     painel.classList.remove('com-conversa');
     const dir = painel.querySelector('.conv-dir'); if (!dir) return;
-    dir.innerHTML = '<div class="conv-nada">' + IC.conversa + '<b>Suas conversas com a equipe</b><span>Escolha alguém na lista para começar. Arraste arquivos para cá ou cole um print com Ctrl+V.</span></div>';
+    dir.innerHTML = '<div class="conv-nada">' + IC.conversa + '<b>Suas conversas com a equipe</b><span>Escolha alguém na lista para começar. ' + (B7.UI.toque() ? 'Para mandar fotos e arquivos, toque no clipe.' : 'Arraste arquivos para cá ou cole um print com Ctrl+V.') + '</span></div>';
   }
 
   /* presença, digitando e visto: só os pedaços que mudam, sem redesenhar a tela */

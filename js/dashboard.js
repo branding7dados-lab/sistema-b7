@@ -2928,7 +2928,7 @@ B7.Dashboard = (function () {
     return '<div class="mb"><label class="rot">LOGO DO CLIENTE <span class="leve">— opcional</span></label>' +
       '<div class="upload-logo" id="ul-area">' +
         '<div class="previa" id="ul-previa">' + (logoAtual ? '<img src="' + esc(logoAtual) + '" alt="">' : semLogo) + '</div>' +
-        '<div class="txt"><b id="ul-titulo">' + (logoAtual ? 'Logo cadastrada' : 'Arraste uma imagem ou clique') + '</b>' +
+        '<div class="txt"><b id="ul-titulo">' + (logoAtual ? 'Logo cadastrada' : (B7.UI.toque() ? 'Toque para escolher uma imagem' : 'Arraste uma imagem ou clique')) + '</b>' +
         '<small>PNG, JPG ou WEBP · até ' + LIMITE_MB + ' MB</small></div>' +
         '<div class="bts">' +
           '<button type="button" class="b" id="ul-trocar">' + (logoAtual ? 'Alterar' : 'Selecionar') + '</button>' +
@@ -2984,7 +2984,7 @@ B7.Dashboard = (function () {
       e.stopPropagation();
       st.arquivo = null; st.removida = !!st.atual; st.atual = null;
       previa.innerHTML = campoLogo(null).match(/<div class="previa"[^>]*>([\s\S]*?)<\/div>/)[1];
-      titulo.textContent = 'Arraste uma imagem ou clique';
+      titulo.textContent = B7.UI.toque() ? 'Toque para escolher uma imagem' : 'Arraste uma imagem ou clique';
       remover.style.display = 'none';
       trocar.textContent = 'Selecionar';
       mostrarEstado('');

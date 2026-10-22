@@ -1046,6 +1046,10 @@ B7.UI = (function () {
     const dia = d.toDateString() === hoje.toDateString() ? 'hoje' : p(d.getDate()) + '/' + p(d.getMonth() + 1) + (d.getFullYear() !== hoje.getFullYear() ? '/' + d.getFullYear() : '');
     return dia + ' às ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
-  return { dataHora, atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, linkExterno, linkInterno, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
+  /* zzz246: celular/tablet de toque (Android, iPhone): lá não existe
+     arrastar arquivo para a tela — os textos dizem "toque para escolher" */
+  const toque = () => { try { return matchMedia('(hover: none) and (pointer: coarse)').matches; } catch (e) { return false; } };
+
+  return { toque, dataHora, atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, linkExterno, linkInterno, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
            dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton, copiarTexto, ocupado };
 })();
