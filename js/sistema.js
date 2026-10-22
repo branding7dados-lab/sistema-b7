@@ -73,6 +73,7 @@ B7.Manutencao = (function () {
          antes de saber quem é: vale a partir da próxima vez que o B7 abrir. */
       if ('abertura' in r) {
         try { if (r.abertura) localStorage.setItem('b7_ab_padrao', r.abertura); else localStorage.removeItem('b7_ab_padrao'); } catch (e) {}
+        try { if (r.carregamento) localStorage.setItem('b7_carga_padrao', r.carregamento); else localStorage.removeItem('b7_carga_padrao'); } catch (e) {}
         if (B7.Abertura && !document.querySelector('.b7-abertura')) B7.Abertura.aplicar();
       }
     } catch (e) { /* sem rede: fica o último estado conhecido */ }

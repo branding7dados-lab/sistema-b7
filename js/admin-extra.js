@@ -1221,22 +1221,34 @@ B7.AberturaAdm = (function () {
       '<div class="adm-sub">Para todo mundo</div>' +
       '<div class="abadm-linha"><select class="campo" id="abadm-padrao" aria-label="Abertura para todo mundo">' + opcoes(cfg.padrao, false) + '</select>' +
         '<button type="button" class="b fina contorno" id="abadm-testar">Testar</button></div>' +
+      /* zzz234: o carregamento (a versão curta) para todo mundo */
+      '<div class="adm-sub">Tela de carregamento <small>ao recarregar e entre o login e o sistema</small></div>' +
+      '<div class="abadm-linha"><select class="campo" id="abadm-carga" aria-label="Tela de carregamento para todo mundo">' +
+        B7.Abertura.CARGAS.map(([v, r]) => '<option value="' + v + '"' + (v === (cfg.carregamento || 'relampago') ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>' +
+        '<button type="button" class="b fina contorno" id="abadm-testar-carga">Testar</button></div>' +
       '<div class="adm-sub">Para uma pessoa só <small>deixe em "Padrão do sistema" para seguir a de cima</small></div>' +
       pessoas.map(p => '<div class="adm-sessao"><span class="adm-sessao-tx"><b>' + esc(p.nome) + '</b><small>' + esc(ROT_PAPEL[p.papel] || p.papel || '') + '</small></span>' +
         '<select class="campo fina" data-pessoa="' + esc(p.id) + '" aria-label="Abertura de ' + esc(p.nome) + '">' + opcoes((cfg.pessoas || {})[p.id], true) + '</select></div>').join('') +
-      '<p class="adm-nota">Estilos: Streaming (o logo, duas batidas e o mergulho em faixas de luz que abrem o sistema) · Hiperespaço (o salto para a velocidade da luz) · Big bang (partículas e nebulosa) · Clássica (a lâmpada que acende).</p>';
+      '<p class="adm-nota">Estilos: Streaming (o logo, duas batidas e o mergulho em faixas de luz que abrem o sistema) · Hiperespaço (o salto para a velocidade da luz) · Tinta (gotas de tinta que giram até o logo) · Glitch (um terminal que quebra e estoura no logo) · Aurora (cortinas de luz no céu) · Neon (o letreiro que liga piscando) · Mosaico (quadrados que viram e se abrem no logo) · Big bang (partículas e nebulosa) · Clássica (a lâmpada que acende).</p>';
     const salvar = m.querySelector('#abadm-salvar');
     cx.querySelectorAll('select').forEach(s => s.onchange = () => { salvar.disabled = false; });
     cx.querySelector('#abadm-testar').onclick = () => testar(cx.querySelector('#abadm-padrao').value);
+    cx.querySelector('#abadm-testar-carga').onclick = () => {
+      if (!B7.testarCarregamento || document.querySelector('.b7-abertura')) return;
+      m.fechar();
+      document.documentElement.setAttribute('data-ab-carga', cx.querySelector('#abadm-carga').value);
+      B7.testarCarregamento();
+      setTimeout(() => B7.Abertura.aplicar(), 4200);
+    };
     salvar.onclick = async () => {
-      const novo = { padrao: cx.querySelector('#abadm-padrao').value, pessoas: {} };
+      const novo = { padrao: cx.querySelector('#abadm-padrao').value, pessoas: {}, carregamento: cx.querySelector('#abadm-carga').value };
       cx.querySelectorAll('[data-pessoa]').forEach(s => { if (s.value) novo.pessoas[s.dataset.pessoa] = s.value; });
       salvar.disabled = true;
       try {
         await B7.DB.rpc('abertura_definir', { p_valor: novo });
         /* a de quem está salvando já vale neste aparelho */
         const eu = B7.Auth.usuario() && B7.Auth.usuario().id;
-        try { localStorage.setItem('b7_ab_padrao', (eu && novo.pessoas[eu]) || novo.padrao); } catch (e) {}
+        try { localStorage.setItem('b7_ab_padrao', (eu && novo.pessoas[eu]) || novo.padrao); localStorage.setItem('b7_carga_padrao', novo.carregamento); } catch (e) {}
         B7.Abertura.aplicar();
         const n = Object.keys(novo.pessoas).length;
         B7.UI.toast('Abertura salva' + (n ? ' (com ' + n + (n === 1 ? ' pessoa' : ' pessoas') + ' à parte)' : '') + '. Vale na próxima vez que cada um abrir o B7.');
