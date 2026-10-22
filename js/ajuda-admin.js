@@ -21,7 +21,7 @@ B7.AJUDA_ADMIN = [
     ],
     dicas: [['Prefira **Desativar** a excluir: a pessoa perde o acesso, mas o histórico do que ela fez continua.', []]] },
   { id: 'adm-funcoes', titulo: 'Funções e módulos (o que cada um vê)', rotas: [],
-    onde: 'Usuários e acessos → botão **Funções e acessos**.',
+    onde: 'Configurações → Administração → **Funções e permissões** (a matriz de tudo) → **Editar funções e acessos**. Também em Pessoas e acessos → botão Funções e acessos.',
     quem: 'Só administrador.',
     serve: 'Definir o padrão de cada função (Coordenador, Designer, Videomaker): quais módulos ela abre. Quem tem a função herda o padrão.',
     passos: [
@@ -29,7 +29,10 @@ B7.AJUDA_ADMIN = [
      ['Salve o padrão: todo mundo daquela função passa a ver igual, menos quem tem acesso personalizado.', []],
      ['Para uma pessoa só, abra o cartão dela em Usuários e acessos e mude ali: vira um **acesso personalizado** (o mapa de módulos mostra em verde o que tem a mais e tracejado o que foi tirado).', []]
     ],
-    cuidados: [['Administrador abre tudo, sempre. Funções e módulos só mudam o que as outras pessoas veem.', []]] },
+    cuidados: [['Administrador abre tudo, sempre. Funções e módulos só mudam o que as outras pessoas veem.', []],
+               ['O banco confere o nível em cada ação: quem tem **Ver** não consegue alterar (recebe um aviso), e **Editar** não aprova nem exclui.', []],
+               ['Para designer e videomaker, o nível vale para o trabalho deles. Para alterar o conteúdo de Clientes, Linhas, Roteiros, Gravações ou Status semanal, dê o nível na conta da pessoa ou use uma função personalizada.', []],
+               ['WhatsApp, Lixeira e Agenda e recado da equipe também são permissões: dá para dar ou tirar por função ou por pessoa.', []]] },
   { id: 'adm-repasse', titulo: 'Passar o trabalho de quem sai', rotas: [],
     onde: 'Configurações → Administração → **Equipe** → Equipe e carga → **Passar o trabalho de alguém**. Também no ⋯ do cartão da pessoa em Pessoas e acessos (**Passar o trabalho…**) e, sozinho, ao **Desativar conta** de quem ainda tem trabalho em aberto.',
     quem: 'Só administrador.',

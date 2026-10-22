@@ -14,8 +14,23 @@ B7.DB = (function () {
   };
   /* O status HTTP vai junto no erro: o autosave precisa distinguir
      "o servidor caiu" (tenta de novo) de "o banco recusou" (descarta). */
+  /* zzz249: o banco agora recusa com erro (e não em silêncio) quando o nível
+     da pessoa no módulo não deixa alterar; a frase técnica vira uma que diz o que fazer */
+  const TABELA_MODULO = { clientes: 'Clientes', cliente_inteligencia: 'Clientes', produtos: 'Clientes', provas: 'Clientes', onboardings: 'Clientes',
+    atividades: 'Clientes', linhas_editoriais: 'Linhas editoriais', conteudos: 'Linhas editoriais', slides: 'Linhas editoriais', frames: 'Linhas editoriais',
+    pilares: 'Linhas editoriais', ideias: 'Linhas editoriais', roteiros: 'Roteiros', cenas: 'Roteiros', gravacoes: 'Gravações',
+    status_semanais: 'Status semanal', status_itens: 'Status semanal', status_versoes: 'Status semanal' };
+  function traduzirPermissao(error) {
+    const msg = String((error && error.message) || '');
+    if (!/row-level security/i.test(msg)) return error;
+    const t = (msg.match(/table "([a-z_]+)"/) || [])[1];
+    const e = new Error('Seu acesso ' + (TABELA_MODULO[t] ? 'a ' + TABELA_MODULO[t] + ' ' : '') +
+      'não deixa fazer esta alteração. Se precisar, peça à administração para ajustar o seu nível em Funções e acessos.');
+    e.code = error.code || '42501'; e.status = error.status; e.permissao = true;
+    return e;
+  }
   const ok = ({ data, error, status }) => {
-    if (error) { if (status !== undefined && error.status === undefined) error.status = status; throw error; }
+    if (error) { if (status !== undefined && error.status === undefined) error.status = status; throw traduzirPermissao(error); }
     return data;
   };
 

@@ -88,7 +88,11 @@ B7.Perm = (function () {
     { id: 'semanas',       rotulo: 'Status semanal',      rotas: ['semanas', 'semana'] },
     { id: 'kanban',        rotulo: 'Produção (quadro)',   rotas: ['kanban'] },
     { id: 'calendario',    rotulo: 'Calendário',          rotas: ['calendario'] },
-    { id: 'oportunidades', rotulo: 'Oportunidades',       rotas: ['oportunidades'] }
+    { id: 'oportunidades', rotulo: 'Oportunidades',       rotas: ['oportunidades'] },
+    /* zzz249: módulos que eram fixos (por cargo) e agora entram na matriz */
+    { id: 'whatsapp',      rotulo: 'WhatsApp',            rotas: ['whatsapp'] },
+    { id: 'lixeira',       rotulo: 'Lixeira',             rotas: ['lixeira'] },
+    { id: 'equipe',        rotulo: 'Agenda e recado da equipe', rotas: [] }
   ];
   const ROTA_MODULO = {};
   MODULOS.forEach(m => m.rotas.forEach(r => { ROTA_MODULO[r] = m.id; }));
@@ -100,14 +104,14 @@ B7.Perm = (function () {
   /* zzz129: 'tv' (Painel de TV) é só leitura e mostra o que o banco já
      entrega a quem está logado; quem vê a entrada é o liga/desliga de
      recursos (B7.Recursos). */
-  const ROTAS_INTERNAS = ['', 'config', 'cliente', 'gravacao', 'tv', 'conversa', 'whatsapp', 'suporte', 'ajuda'];
+  const ROTAS_INTERNAS = ['', 'config', 'cliente', 'gravacao', 'tv', 'conversa', 'suporte', 'ajuda'];
   /* Padrão de cada função — só usado se a sessão ainda não trouxer os
      módulos (aba antiga aberta durante a atualização). O valor de verdade
      vem do banco (funcao_modulos + perfil_modulos). */
   const PADRAO_FUNCAO = {
-    coordenador: MODULOS.map(m => m.id),
-    designer: ['design', 'linhas', 'calendario'],
-    videomaker: ['video', 'gravacoes', 'roteiros', 'calendario']
+    coordenador: MODULOS.map(m => m.id).filter(m => m !== 'lixeira' && m !== 'equipe'),
+    designer: ['design', 'linhas', 'calendario', 'whatsapp'],
+    videomaker: ['video', 'gravacoes', 'roteiros', 'calendario', 'whatsapp']
   };
   const funcao = () => (B7.Auth && B7.Auth.funcao ? B7.Auth.funcao() : null);
   const souAdmin = () => papel() === 'admin';
@@ -235,7 +239,7 @@ B7.Perm = (function () {
   /* zzz68: o que some do menu fixo. Cliente segue a lista dele; admin vê
      tudo; o resto da equipe perde o que é só de administrador e cada
      módulo que não está no acesso efetivo. */
-  const SO_ADMIN = ['usuarios', 'importar', 'atalhos', 'lixeira'];
+  const SO_ADMIN = ['usuarios', 'importar', 'atalhos'];
   function regraNav() {
     if (papel() === 'cliente') return NAV.cliente;
     if (souAdmin()) return null;

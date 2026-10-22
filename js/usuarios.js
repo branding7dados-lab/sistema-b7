@@ -16,10 +16,17 @@ B7.Usuarios = (function () {
   const esc = B7.UI.esc;
   /* zzz244: Usuários e acessos mora dentro das Configurações (seção
      "Pessoas e acessos"); lá abrir() recebe { alvo } e desenha nele */
-  let hospede = null;
+  let hospede = null, matrizAlvo = null;
   const painel = () => hospede || document.getElementById('painel-dashboard');
-  const naTela = () => location.hash.indexOf('#/usuarios') === 0 || !!(hospede && hospede.isConnected);
-  const reabrir = () => abrir(hospede ? { alvo: hospede } : undefined);
+  const vivo = el => !!(el && el.isConnected && el.dataset.montado);
+  const naTela = () => location.hash.indexOf('#/usuarios') === 0 || vivo(hospede) || vivo(matrizAlvo);
+  /* zzz249: depois de salvar, redesenha onde a pessoa está (lista de contas
+     nas Configurações, a matriz de permissões ou a tela antiga #/usuarios) */
+  const reabrir = () => {
+    if (vivo(matrizAlvo)) montarMatriz(matrizAlvo);
+    if (vivo(hospede)) return abrir({ alvo: hospede });
+    if (location.hash.indexOf('#/usuarios') === 0) return abrir();
+  };
 
   const PAPEIS = [
     ['admin', 'Administrador', 'controla a plataforma, contas e configurações'],
@@ -530,7 +537,7 @@ B7.Usuarios = (function () {
         try {
           await B7.DB.rpc('acesso_decidir', { p_id: el.dataset.pedido, p_aprovar: aprovar, p_nivel: el.querySelector('[data-nivel]').value, p_resposta: typeof resposta === 'string' ? resposta : null });
           B7.UI.toast(aprovar ? 'Acesso liberado. A pessoa já recebeu o aviso.' : 'Pedido recusado.');
-          abrir();
+          reabrir();
         } catch (e) {
           B7.UI.toast((e && e.message) || 'Não foi possível responder.', { tipo: 'erro' });
           el.querySelectorAll('button,select').forEach(x => { x.disabled = false; });
@@ -981,7 +988,7 @@ B7.Usuarios = (function () {
         const senha = corpo.senha;
         m.fechar();
         mostrarSenha(corpo.username, senha, 'Conta criada');
-        abrir();
+        reabrir();
       } catch (e) {
         botao.disabled = false; botao.textContent = 'Criar usuário';
         erro.textContent = e.message || 'Não foi possível criar a conta.';
@@ -1048,7 +1055,7 @@ B7.Usuarios = (function () {
         }
         m.fechar();
         B7.UI.toast('Acesso atualizado');
-        abrir();
+        reabrir();
       } catch (e) {
         botao.disabled = false; botao.textContent = 'Salvar';
         erro.textContent = e.message || 'Não foi possível salvar.';
@@ -1192,7 +1199,7 @@ B7.Usuarios = (function () {
         await B7.DB.chamarAuth({ acao: 'avatar_de', perfil_id: u.id, imagem: imagem });
         m.fechar();
         B7.UI.toast(imagem ? 'Foto atualizada' : 'Foto removida');
-        abrir();
+        reabrir();
       } catch (e) {
         botao.disabled = !escolha.dataUrl(); botao.textContent = 'Salvar foto';
         erro.textContent = e.message || 'Não foi possível salvar.';
@@ -1222,7 +1229,7 @@ B7.Usuarios = (function () {
     try {
       await B7.DB.chamarAuth({ acao: 'excluir_conta', perfil_id: u.id, confirmar: 'EXCLUIR' });
       B7.UI.toast('Conta excluída');
-      abrir();
+      reabrir();
     } catch (e) {
       B7.UI.toast(e.message || 'Não foi possível excluir', { tipo: 'erro' });
     }
@@ -1242,5 +1249,67 @@ B7.Usuarios = (function () {
     return s.slice(0, 12) + maius[bytes[12] % maius.length] + nums[bytes[13] % nums.length];
   }
 
-  return { abrir, gerarSenha };
+
+  /* =================================================================
+     zzz249: MATRIZ DE PERMISSÕES (Configurações → Funções e permissões)
+     Uma visão geral: o padrão de cada função e o que vale para cada
+     pessoa hoje, módulo a módulo. Mudar continua nos mesmos lugares
+     (Funções e acessos; conta da pessoa) — aqui só abre.
+     ================================================================= */
+  const CONTEUDO = ['clientes', 'linhas', 'roteiros', 'gravacoes', 'semanas'];
+  const chipNv = (n, cls) => '<span class="pm-nv pm-' + n + (cls ? ' ' + cls : '') + '" title="' + esc(rotuloNivel(n)) + '">' + (n === 'sem' ? '—' : esc(rotuloNivel(n))) + '</span>';
+  async function montarMatriz(alvo) {
+    if (!alvo) return;
+    matrizAlvo = alvo;
+    if (!alvo.innerHTML.trim()) alvo.innerHTML = B7.UI.skeleton('lista', { n: 5 });
+    let dados, clientes;
+    try {
+      [dados, clientes] = await Promise.all([B7.DB.chamarAuth({ acao: 'listar_usuarios' }), B7.DB.listarClientes().catch(() => [])]);
+    } catch (e) { alvo.innerHTML = '<p class="cfg-g-nota">Não foi possível carregar as permissões. ' + esc((e && e.message) || '') + '</p>'; return; }
+    if (!alvo.isConnected) return;
+    carregarAcesso(dados);
+    const usuarios = dados.usuarios || [], vinculos = dados.vinculos || [], extras = dados.funcoes_extra || [];
+    const equipe = usuarios.filter(u => u.papel !== 'cliente' && u.estado === 'ativa')
+      .sort((a, b) => (identidadeDe(b).ehAdmin - identidadeDe(a).ehAdmin) || String(a.nome).localeCompare(b.nome));
+    const fns = todasFuncoes(), mods = ACESSO.modulos;
+    const so = id => ['designer', 'videomaker'].includes(id);
+    alvo.innerHTML =
+      '<section class="cfg-g"><h2 class="cfg-g-t">Por função</h2>' +
+        '<p class="cfg-g-nota">O padrão de cada função: quem tem a função herda. Para uma pessoa só, mude na conta dela (abaixo).</p>' +
+        '<div class="pm-rolar"><table class="pm-tabela"><thead><tr><th>Módulo</th>' + fns.map(f => '<th>' + esc(f.rotulo) + '</th>').join('') + '</tr></thead><tbody>' +
+          mods.map(m => '<tr><th>' + esc(m.rotulo) + '</th>' + fns.map(f => {
+            const n = nivelPacote(f.id, m.id);
+            return '<td>' + chipNv(n, so(f.id) && CONTEUDO.includes(m.id) && ORD[n] >= 2 ? 'pm-trab' : '') + '</td>';
+          }).join('') + '</tr>').join('') +
+        '</tbody></table></div>' +
+        '<div class="pm-acoes"><button type="button" class="b pri fina" data-pm-funcoes>Editar funções e acessos</button></div>' +
+      '</section>' +
+      '<section class="cfg-g"><h2 class="cfg-g-t">Por pessoa</h2>' +
+        '<p class="cfg-g-nota">O que vale para cada um hoje. Com contorno: diferente do padrão da função (exceção dada na conta). Toque no nome para mudar.</p>' +
+        '<div class="pm-rolar"><table class="pm-tabela pm-pessoas"><thead><tr><th>Pessoa</th>' + mods.map(m => '<th>' + esc(m.rotulo) + '</th>').join('') + '</tr></thead><tbody>' +
+          equipe.map(u => {
+            const idt = identidadeDe(u);
+            return '<tr><th><button type="button" class="pm-pessoa" data-pm-pessoa="' + esc(u.id) + '"><b>' + esc(u.nome) + '</b><small>' +
+                esc(idt.ehAdmin ? 'Administrador' : rotuloFuncao(idt.funcao)) + '</small></button></th>' +
+              mods.map(m => {
+                const n = nivelDe(u, m.id), dif = !idt.ehAdmin && n !== nivelPadraoDe(u, m.id);
+                return '<td>' + chipNv(n, dif ? 'pm-dif' : '') + '</td>';
+              }).join('') + '</tr>';
+          }).join('') +
+        '</tbody></table></div>' +
+      '</section>' +
+      '<section class="cfg-g"><h2 class="cfg-g-t">Como os níveis funcionam</h2>' +
+        '<div class="cfg-lista">' + NIVEIS.map(([v, r, d]) => '<div class="cfg-l"><span class="cfg-l-tx"><b>' + chipNv(v) + ' ' + esc(r) + '</b><small>' + esc(d) + '</small></span></div>').join('') + '</div>' +
+        '<p class="cfg-g-nota">O banco confere cada ação pelo nível: quem só pode ver recebe um aviso se tentar alterar. ' +
+        'Administrador tem tudo em Total. <b>Designer e videomaker</b>: o nível marcado com pontinho vale para o trabalho deles (peças, demandas, entregas); ' +
+        'para alterar o conteúdo de Clientes, Linhas, Roteiros, Gravações ou Status semanal, dê o nível na conta da pessoa ou use uma função personalizada.</p>' +
+      '</section>';
+    const btF = alvo.querySelector('[data-pm-funcoes]'); if (btF) btF.onclick = () => modalFuncoes(usuarios);
+    alvo.querySelectorAll('[data-pm-pessoa]').forEach(b => b.onclick = () => {
+      const u = usuarios.find(x => x.id === b.dataset.pmPessoa); if (!u) return;
+      modalEditar(u, clientes, vinculos, extras.filter(f => f.perfil_id === u.id).map(f => f.funcao));
+    });
+  }
+
+  return { abrir, gerarSenha, montarMatriz };
 })();

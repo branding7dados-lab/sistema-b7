@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz249', versao: 'zzz249', em: '2026-10-23T02:00:00-03:00',
+    titulo: 'Permissões levadas a sério',
+    itens: ['O nível de cada pessoa em cada parte do B7 (Ver, Editar ou Total) agora vale de verdade em Clientes, Linhas editoriais, Roteiros, Gravações e Status semanal: quem só pode ver recebe um aviso claro se tentar alterar, em vez de a alteração sumir.',
+            'WhatsApp, Lixeira e Agenda e recado da equipe passaram a ser permissões que a administração pode dar ou tirar de cada função ou pessoa.'] },
   { id: 'v-zzz248', versao: 'zzz248', em: '2026-10-23T01:00:00-03:00',
     titulo: 'Repasse de trabalho entre a equipe',
     itens: ['Quando alguém sai da equipe ou vai ficar um tempo fora, a administração pode passar o que estava com a pessoa (peças de design, demandas de vídeo, gravações marcadas e cards da Produção) para outras pessoas.',

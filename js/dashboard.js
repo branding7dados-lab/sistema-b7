@@ -2206,8 +2206,10 @@ B7.Dashboard = (function () {
       ['apps', 'Apps e TV', 'celular', 'verde', 'Aplicativos, Painel de TV e novidades', 'voce', secApps],
       ['aparelho', 'Este aparelho', 'versao', 'cinza', 'Versão, atualização e limpeza', 'voce', secAparelho],
       ['pessoas', 'Pessoas e acessos', 'usuarios', 'azul', 'Contas, senhas, funções e módulos', 'adm', ehAdm && pode('usuarios') && B7.Usuarios ? hospede('usuarios') : '', true],
+      ['funcoes', 'Funções e permissões', 'escudo', 'violeta', 'O que cada função e cada pessoa pode fazer', 'adm', ehAdm && pode('usuarios') && B7.Usuarios && B7.Usuarios.montarMatriz ? hospede('matriz') : '', true],
       ['equipe', 'Equipe', 'usuarios', 'azul', 'Recado, segurança, carga e o que a equipe vê', 'adm', secEquipe, true],
-      ['agenda-equipe', 'Ausências e aniversários', 'calendario', 'rosa', 'Férias, folgas e os aniversários da equipe', 'adm', ehAdm && B7.Equipe ? '<div class="cfg-eq-agenda" data-eq-agenda></div>' : '', true],
+      ['agenda-equipe', 'Ausências e aniversários', 'calendario', 'rosa', 'Férias, folgas e os aniversários da equipe', 'adm',
+        (ehAdm || (B7.Perm && B7.Perm.podeNivel('equipe', 'editar'))) && B7.Equipe ? '<div class="cfg-eq-agenda" data-eq-agenda></div>' : '', true],
       ['sis-equipe', 'Sistema da equipe', 'tema', 'rosa', 'Aparência, recursos, IA e textos para todos', 'adm', secSisEquipe, true],
       ['saude', 'Saúde e manutenção', 'raio', 'verde', 'Manutenção, diagnóstico, uso da IA e servidor', 'adm', secSaude, true]
     ].concat(ehSuper && B7.Super ? SUPER_AREAS.map(([k, r, icone, tom, d]) =>
@@ -2289,6 +2291,7 @@ B7.Dashboard = (function () {
       alvo.dataset.montado = '1';
       const [mod, k] = alvo.dataset.hospede.split(':');
       if (mod === 'usuarios') B7.Usuarios.abrir({ alvo });
+      if (mod === 'matriz') B7.Usuarios.montarMatriz(alvo);
       if (mod === 'super') B7.Super.abrir(k, { alvo, irAba: k2 => irSecao('super-' + k2) });
     };
     const irSecao = id => {
