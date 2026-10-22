@@ -487,3 +487,26 @@ body.recolhida .pt-marcador-sel{display:none;}
 @keyframes ptArteBrilho{from{background-position:200% 0}to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.pt-arte-img.carregando{animation:none;}}
 .pt-erro .acoes{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
+
+/* zzz238: melhorias de uso do Portal */
+.pt-aba-n{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:6px;
+  border-radius:9px;font-size:10.5px;font-weight:700;background:var(--rosa, #E2409C);color:#fff;vertical-align:1px;}
+.ph-espera{display:block;margin-top:4px;font-style:normal;font-size:11.5px;font-weight:600;color:#B7791F;}
+.ph-item.espera{border-color:color-mix(in srgb, #E8A33D 45%, var(--borda));}
+a.pt-item{display:block;color:inherit;text-decoration:none;}
+.pt-item.abre{cursor:pointer;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;}
+.pt-item.abre:hover{transform:translateY(-1px);border-color:color-mix(in srgb, var(--rosa, #E2409C) 35%, var(--borda));box-shadow:0 8px 22px -16px rgba(30,10,60,.35);}
+.pt-item .pt-sit.mini{display:inline-block;margin-top:10px;}
+.pt-versao-nova{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:12px 14px;
+  border-radius:12px;background:color-mix(in srgb, var(--rosa, #E2409C) 9%, var(--card));border:1px solid color-mix(in srgb, var(--rosa, #E2409C) 30%, var(--borda));
+  animation:ptSurge .3s ease-out both;}
+.pt-versao-nova b{font-size:13.5px;}
+@keyframes ptSurge{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.pt-decisao-tx .pt-progresso{display:inline-block;margin-left:8px;font-size:11.5px;font-weight:600;color:var(--rosa, #E2409C);}
+.pt-prox-cena{display:block;margin-top:6px;padding:0;border:0;background:none;font:inherit;font-size:12px;font-weight:600;color:var(--rosa, #E2409C);cursor:pointer;}
+.pt-prox-cena:hover{text-decoration:underline;}
+.pt-cena.foco{box-shadow:0 0 0 3px color-mix(in srgb, var(--rosa, #E2409C) 35%, transparent);transition:box-shadow .3s ease;}
+.pt-novo-com{align-items:flex-end;}
+.pt-novo-com textarea.campo{resize:none;min-height:42px;line-height:1.45;}
+@media (prefers-reduced-motion:reduce){.pt-versao-nova{animation:none;}.pt-item.abre:hover{transform:none;}}
+.pt-cena{scroll-margin-top:84px;}
