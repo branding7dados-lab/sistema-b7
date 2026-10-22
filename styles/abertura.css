@@ -581,3 +581,58 @@ html[data-estacao="azul"] .b7-abertura .ab-marca{filter:hue-rotate(-250deg);}
 .ab-particulas{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;}
 .b7-abertura.ab-part .ab-carga{visibility:hidden;}
 .b7-abertura.saindo .ab-particulas{opacity:0;transition:opacity .25s ease-out;}
+
+/* =====================================================================
+   zzz230 — ABERTURA "STREAMING" (padrão). Pedido do Kevin: "queria estilo
+   aquela intro da Netflix". Sem copiar marca nem som: a mesma gramática
+   de cinema, com o logo da B7.
+     0,25–0,75 s  o logo surge no preto (as duas batidas graves)
+     0,75–1,75 s  a câmera se aproxima devagar
+     1,75–2,40 s  MERGULHO: a câmera entra na lâmpada (a palavra sai antes)
+     1,95–4,00 s  dentro dela, faixas verticais de luz nas cores da marca
+                  se abrem, deslizam e passam pela câmera (js/abertura-faixas.js)
+     3,90–4,45 s  o logo volta nítido; 4,05 a palavra se escreve
+     4,9 s        fim (depois disso, o voo do logo de sempre)
+   Duração: B7.duracaoAbertura() em js/app.js (4,9 s neste estilo).
+   ===================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-ceu{background:radial-gradient(120% 90% at 50% 44%, #0d0716 0%, #040208 58%, #000 100%);}
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-ceu > :not(.ab-grao):not(.ab-vinheta){display:none;}
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial :is(.ab-bloom,.ab-onda,.ab-centelha,.ab-faiscas,.ab-poeira,.ab-brilho,.ab-carga,.ab-linha,.ab-flare,.ab-titulo){display:none;}
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-palco{animation:none;}
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-marca{transform-origin:16.55% 50%;will-change:transform,opacity;
+  animation:abStMarca 4.9s both;}
+@keyframes abStMarca{
+  0%    {opacity:0;transform:scale(.9);filter:blur(8px)}
+  5.1%  {opacity:0;transform:scale(.9);filter:blur(8px);animation-timing-function:cubic-bezier(.16,1,.3,1)}
+  15.3% {opacity:1;transform:scale(1);filter:blur(0);animation-timing-function:linear}
+  35.7% {opacity:1;transform:translate3d(0,0,0) scale(1.1);filter:none;animation-timing-function:cubic-bezier(.7,0,.84,0)}
+  48%   {opacity:1;transform:translate3d(var(--ab-dx),0,0) scale(16);filter:none}
+  51%   {opacity:0;transform:translate3d(var(--ab-dx),0,0) scale(19);filter:none}
+  79.5% {opacity:0;transform:scale(.94);filter:blur(10px);animation-timing-function:cubic-bezier(.16,1,.3,1)}
+  90.8% {opacity:1;transform:none;filter:blur(0)}
+  100%  {opacity:1;transform:none;filter:none}}
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-simbolo{animation:none;}
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-cor{animation:abStCor 4.9s both;}
+@keyframes abStCor{
+  0%,17%{filter:brightness(1) saturate(1)}
+  18.6% {filter:brightness(1.75) saturate(1.25) drop-shadow(0 0 26px rgba(226,64,156,.9))}
+  28%   {filter:brightness(1.08) saturate(1.05) drop-shadow(0 0 12px rgba(226,64,156,.45))}
+  36%   {filter:brightness(1.1) saturate(1.05)}
+  48%   {filter:brightness(2.4) saturate(1.3)}
+  80%   {filter:brightness(1.6) saturate(1.2)}
+  92%   {filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 14px rgba(226,64,156,.5))}
+  100%  {filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 12px rgba(226,64,156,.45))}}
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-palavra{animation:abStPalavra 4.9s both;}
+@keyframes abStPalavra{
+  0%,15%{opacity:1;-webkit-clip-path:inset(0 0 0 36%);clip-path:inset(0 0 0 36%)}
+  30.6% {opacity:1}
+  40%   {opacity:0;-webkit-clip-path:inset(0 0 0 36%);clip-path:inset(0 0 0 36%)}
+  82.6% {opacity:0;-webkit-clip-path:inset(0 64% 0 36%);clip-path:inset(0 64% 0 36%);transform:translate3d(-12px,0,0)}
+  83%   {opacity:1;animation-timing-function:cubic-bezier(.16,1,.3,1)}
+  93%   {opacity:1;-webkit-clip-path:inset(0 0 0 36%);clip-path:inset(0 0 0 36%);transform:none}
+  100%  {opacity:1;-webkit-clip-path:inset(0 0 0 36%);clip-path:inset(0 0 0 36%);transform:none}}
+html[data-ab-estilo="streaming"]:not(.ab-curta) .b7-abertura.inicial .ab-espera{animation-delay:5.4s;}
+}
+.ab-faixas{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
+.b7-abertura.saindo .ab-faixas{display:none;}

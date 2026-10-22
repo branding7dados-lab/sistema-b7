@@ -2031,9 +2031,10 @@ B7.Dashboard = (function () {
                 dir: chave('animacoes', B7.Desempenho.animacoesLigadas(), 'Animações ligadas') })
           : L({ ic: 'animacao', tom: 'rosa', t: 'Animações', d: 'segue a preferência do seu sistema',
                 dir: '<span class="cfg-valor">' + (reduz ? 'Reduzidas' : 'Normais') + '</span>' })) +
-        /* zzz227: partículas que montam a lâmpada (js/abertura-particulas.js); desligado = a abertura de antes */
-        L({ ic: 'animacao', tom: 'violeta', t: 'Partículas na abertura', d: 'pontos de luz montam a lâmpada e escrevem o logo; vale neste aparelho', cls: 'cfg-alterna',
-            dir: chave('abertura_particulas', B7.pref.ler('abertura_particulas', true) !== false, 'Partículas na abertura') }) +
+        /* zzz230: estilo da abertura (decidido no <head> do index.html, antes da primeira pintura) */
+        L({ ic: 'animacao', tom: 'violeta', t: 'Estilo da abertura', d: 'como o B7 abre; vale neste aparelho',
+            dir: sel('abertura_estilo', document.documentElement.getAttribute('data-ab-estilo') || 'streaming',
+              [['streaming', 'Streaming'], ['bigbang', 'Big bang'], ['classica', 'Clássica']], 'Estilo da abertura') }) +
         /* modo leve (js/desempenho.js): vidro sólido onde o aparelho trava */
         (B7.Desempenho ? L({ ic: 'raio', tom: 'laranja', t: 'Desempenho', d: '<span id="cfg-desemp-d">' + descDesempenho() + '</span>',
             abaixo: seletor('desempenho', B7.Desempenho.modo(), [['auto', 'Automático'], ['leve', 'Leve'], ['completo', 'Completo']]) }) : '')) +
@@ -2257,7 +2258,6 @@ B7.Dashboard = (function () {
         const d = p.querySelector('#cfg-anim-d'); if (d) d.textContent = descAnimacoes();
       }
       if (pref === 'som_abertura') B7.pref.gravar('som_abertura', v);
-      if (pref === 'abertura_particulas') B7.pref.gravar('abertura_particulas', v);
       if (pref === 'tp_espelho') gravarTp('espelho', v);
       if (pref === 'ia_roteiros' || pref === 'ia_linhas' || pref === 'ia_chat') salvarIA(sw, v);
     };
@@ -2282,6 +2282,11 @@ B7.Dashboard = (function () {
 
     /* ---- zzz71: o que entrou com as abas ---- */
     p.querySelectorAll('[data-sel]').forEach(sl => sl.onchange = () => {
+      if (sl.dataset.sel === 'abertura_estilo') {
+        B7.pref.gravar('abertura_estilo', sl.value);
+        document.documentElement.setAttribute('data-ab-estilo', sl.value);
+        B7.UI.toast('Estilo da abertura guardado neste aparelho. Toque em "Testar abertura" para ver.');
+      }
       if (sl.dataset.sel === 'inicio') { B7.pref.gravar('inicio', sl.value); B7.UI.toast('Tela inicial guardada neste aparelho.'); }
       /* zzz114: escolher já toca, para decidir pelo ouvido */
       if (sl.dataset.sel === 'som_notif') { B7.pref.gravar('som_notif', sl.value); if (B7.Notif && B7.Notif.tocarSom) B7.Notif.tocarSom(false, sl.value); }

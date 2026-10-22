@@ -36,7 +36,8 @@
   const T = { galaxia: 1.6, monta: 3.1, carga: 2.9, ign: 3.4, explode: 1.5, palavra: 4.35, escreve: 4.62 };
 
   const ligada = () => {
-    try { const v = localStorage.getItem('b7_pref_abertura_particulas'); if (v !== null && JSON.parse(v) === false) return false; } catch (e) {}
+    /* zzz230: só no estilo "Big bang" (o estilo é decidido no <head> do index.html) */
+    if (html.getAttribute('data-ab-estilo') !== 'bigbang') return false;
     if (html.classList.contains('modo-leve')) return false;
     try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (e) {}
     return !!document.createElement('canvas').getContext;

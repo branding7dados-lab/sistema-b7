@@ -267,6 +267,24 @@ B7.SomAbertura = (function () {
       env(g, tt, .028, .003, .38);
     });
   }
+  /* ---------- estilo "streaming" (zzz230) ---------- */
+  /* uma batida grave e cheia; "grande" = a segunda, que fica soando na sala */
+  function tumba(t, grande) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+    o.frequency.setValueAtTime(grande ? 88 : 104, t); o.frequency.exponentialRampToValueAtTime(grande ? 36 : 50, t + (grande ? .5 : .22));
+    o.connect(g); g.connect(saida); if (grande) g.connect(sala); o.start(t); o.stop(t + (grande ? 2.2 : .6));
+    env(g, t, grande ? .95 : .7, .004, grande ? 1.9 : .42);
+    /* corpo: um tom médio abafado que dá o "dum" */
+    const c = ctx.createOscillator(), gc = ctx.createGain(), lp = ctx.createBiquadFilter(); c.type = 'triangle';
+    c.frequency.setValueAtTime(grande ? 176 : 208, t); c.frequency.exponentialRampToValueAtTime(grande ? 88 : 120, t + .3);
+    lp.type = 'lowpass'; lp.frequency.value = grande ? 900 : 700;
+    c.connect(lp); lp.connect(gc); gc.connect(saida); gc.connect(sala); c.start(t); c.stop(t + 1.4);
+    env(gc, t, grande ? .22 : .16, .003, grande ? 1.1 : .3);
+    /* ataque: um "toc" curto de ruído */
+    const bp = ctx.createBiquadFilter(); bp.type = 'lowpass'; bp.frequency.value = 2400;
+    const gn = ctx.createGain(); fonteRuido(t, .06).connect(bp); bp.connect(gn); gn.connect(saida);
+    env(gn, t, grande ? .22 : .16, .001, .05);
+  }
   /* ---------- peças da trilha longa (zzz110) ---------- */
   /* sino: fundamental + dois parciais, ataque seco e cauda longa na sala */
   function sino(t, hz, vol, dur) {
@@ -456,6 +474,24 @@ B7.SomAbertura = (function () {
     [4.62, letras], [4.78, t => whoosh(t, .7, 600, 3800, .08)], [5.2, cintilar],
     [5.5, assinatura], [5.5, t => coro(t + .19, 2.6, [130.81, 196, 261.63, 392], .04, .3)]
   ];
+  /* zzz230 — estilo "streaming" (4,9 s), alinhado a styles/abertura.css (abStMarca):
+       0,42  "tu" — batida grave curta        0,86  "DUM" — a batida grande, com sala
+       0,90  um acorde de sinos acende com o logo
+       1,40–2,35  o mergulho: coral e riser subindo, ar entrando
+       2,30  a lâmpada se abre em luz: impacto suave + cama
+       2,6–3,4  as faixas passando pelos lados (estéreo) e brilhos
+       3,45  a câmera atravessa: sopro
+       3,95  o logo volta (assinatura) e 4,05 uma nota por letra */
+  const ROTEIRO_STREAMING = [
+    [0.42, t => tumba(t, false)], [0.86, t => tumba(t, true)],
+    [0.9, t => { sino(t, 523.25, .03, 2.4); sino(t + .03, 659.25, .02, 2.2); sino(t + .06, 783.99, .02, 2.2); }],
+    [1.4, t => coro(t, 1.4, [130.81, 196, 261.63, 329.63], .07, 1.1)], [1.5, t => riser(t, .8)],
+    [1.7, t => whoosh(t, .7, 300, 2600, .07)],
+    [2.3, t => ignicao(t, .7)], [2.3, camaSonora], [2.3, t => coro(t, 2.2, [261.63, 392, 523.25, 659.25], .06, .1)],
+    [2.6, t => passagem(t, -.9, .06)], [2.95, t => passagem(t, .9, .07)], [2.7, t => brilhos(t, t + .8, 50, .02)],
+    [3.45, t => whoosh(t, .55, 500, 4200, .09)],
+    [3.95, assinatura], [4.05, letras]
+  ];
   /* versão relâmpago (recarregar na mesma sessão, pacote zzc): ~1 s,
      mesmos tempos do CSS da curta (styles/global.css, abRelAcende etc.):
        0,00  subida curta de luz        0,34  estalo do filamento
@@ -465,6 +501,8 @@ B7.SomAbertura = (function () {
     [0.0, t => riser(t, .38)], [0.3, t => whoosh(t, .45, 700, 3800, .07)],
     [0.34, estalo], [0.4, t => ignicao(t, .62)], [0.45, t => camaSonora(t, .7)], [0.95, cintilar]
   ];
+  const streaming = () => document.documentElement.getAttribute('data-ab-estilo') === 'streaming';
+  const roteiroCompleto = () => streaming() ? ROTEIRO_STREAMING : ROTEIRO;
   let inicioAnim = null, tocada = false, roteiro = ROTEIRO;
   function tocarTrilha(decorrido) {
     if (!ctx || ctx.state !== 'running' || tocada) return;
@@ -486,10 +524,10 @@ B7.SomAbertura = (function () {
     /* recarregar na mesma sessão: a trilha relâmpago, alinhada ao palco
        (na curta a lâmpada já está parada no logo; quem anima é o palco) */
     const curta = document.documentElement.classList.contains('ab-curta');
-    if (curta) roteiro = ROTEIRO_CURTO;
+    if (curta) roteiro = ROTEIRO_CURTO; else roteiro = roteiroCompleto();
     if (!preparar()) return;
     requestAnimationFrame(() => {
-      const a = el.querySelector(curta ? '.ab-palco' : '.ab-simbolo');
+      const a = el.querySelector(curta ? '.ab-palco' : streaming() ? '.ab-marca' : '.ab-simbolo');
       const an = a && a.getAnimations ? a.getAnimations()[0] : null;
       inicioAnim = an && an.startTime != null ? an.startTime : 0;   /* startTime = o 0 s da sequência (o atraso conta depois) */
       const vai = () => { if (el.isConnected && !el.classList.contains('saindo')) tocarTrilha(decorridoAgora()); };
@@ -517,7 +555,7 @@ B7.SomAbertura = (function () {
   /* "Ver abertura" (Configurações): toque do usuário → som garantido */
   function reproduzir() {
     if (!ligado() || !preparar()) return;
-    tocada = false; roteiro = ROTEIRO;
+    tocada = false; roteiro = roteiroCompleto();
     ctx.resume().then(() => { inicioAnim = null; tocarTrilha(0); }).catch(() => {});
   }
 
@@ -531,8 +569,8 @@ B7.SomAbertura = (function () {
     const curto = qual === 'curta';
     const off = new OAC(2, 44100 * (curto ? 3.5 : 9), 44100);
     preparar(off);
-    (curto ? ROTEIRO_CURTO : ROTEIRO).forEach(([quando, fn]) => fn(quando));
-    partida(curto ? 1.0 : (saidaEm || 6.4));
+    (curto ? ROTEIRO_CURTO : qual === 'streaming' ? ROTEIRO_STREAMING : ROTEIRO).forEach(([quando, fn]) => fn(quando));
+    partida(curto ? 1.0 : (saidaEm || (qual === 'streaming' ? 4.9 : 6.4)));
     const buf = await off.startRendering();
     [ctx, saida, sala, ruido, drone, cama] = salvo;
     if (cru) return [buf.getChannelData(0), buf.getChannelData(1)];
