@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz239', versao: 'zzz239', em: '2026-10-22T18:00:00-03:00',
+    titulo: 'Configurações de cara nova',
+    itens: ['No computador, as Configurações agora usam a tela inteira. À esquerda ficam sua conta, a busca e as seções (Geral, Aparência…), cada uma dizendo o que tem dentro. À direita fica a seção aberta, com os grupos lado a lado quando a tela permite.',
+            'No celular, a tela ficou mais leve: título e cartão da conta menores, e as seções viraram pílulas que rolam de lado.'] },
   { id: 'v-zzz238', versao: 'zzz238', em: '2026-10-22T17:00:00-03:00',
     titulo: 'Portal do cliente mais fácil de usar',
     itens: ['Ao decidir uma cena, o cliente continua no mesmo ponto do roteiro e o Portal o leva até a próxima cena sem decisão. A barra de baixo mostra quantas cenas ele já decidiu.',
