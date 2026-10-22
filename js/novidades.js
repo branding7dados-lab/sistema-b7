@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz243', versao: 'zzz243', em: '2026-10-22T20:00:00-03:00',
+    titulo: '"Mais" do celular novo e Configurações com a cara da B7',
+    itens: ['No celular, o botão "Mais" abre uma tela nova: no topo, o degradê da B7 com sua saudação e o "Meu dia em 30 segundos"; logo abaixo, uma busca para achar qualquer tela pelo nome.',
+            'As telas que você mais abre pelo "Mais" aparecem primeiro, em "Usados por você". Os grupos agora têm título e os ícones seguem as cores da B7.',
+            'Quem não é administrador também encontra Configurações e Ajuda no "Mais".',
+            'Nas Configurações, o cartão da sua conta, os ícones do menu e as chaves ligadas ganharam as cores da B7.'] },
   { id: 'v-zzz242', versao: 'zzz242', em: '2026-10-22T19:00:00-03:00',
     titulo: 'Configurações repaginadas',
     itens: ['As Configurações agora são seções curtas num menu com ícones: Conta, Preferências, Aparência, Abertura e sons, Teleprompter, Apps e TV e Este aparelho.',

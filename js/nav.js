@@ -470,57 +470,133 @@ B7.Nav = (function () {
     marcarAtivo();
   }
 
-  /* ------------------------------------------------ folha "Mais" */
+  /* ------------------------------------------------ folha "Mais"
+     zzz243 — quarta versão (Kevin: "faltou a identidade da B7"; a lista
+     do iOS com ícones de arco-íris saiu). Topo no degradê da marca com o
+     símbolo, saudação e o "Meu dia"; busca; "Usados por você" (os que a
+     pessoa mais abre por aqui); grupos com título visível e ícones que
+     percorrem o degradê da B7 de cima para baixo. */
   let folhaMais = null;
+  const USO_MAIS = 'b7-mais-uso';
+  const IC_EXTRA = {
+    ajuda: '<svg viewBox="0 0 24 24"><circle class="f" cx="12" cy="12" r="8.6"/><path class="d" d="M9.6 9.6a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.4M12 16.8h.01"/></svg>'
+  };
+  function lerUso() { try { return JSON.parse(localStorage.getItem(USO_MAIS) || '{}') || {}; } catch (e) { return {}; } }
+  function contarUso(id) {
+    try { const u = lerUso(); u[id] = (u[id] || 0) + 1; localStorage.setItem(USO_MAIS, JSON.stringify(u)); } catch (e) {}
+  }
+  const semAcento = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   function abrirMais() {
     const r = resolver(); if (!r) return;
     const ativo = itemDaRota();
     const fora = id => !r.inferior.includes(id);
-    const item = id => {
-      const it = ITENS[id];
-      return '<a class="nm-item' + (ativo === id ? ' on' : '') + '"' + (ativo === id ? ' aria-current="page"' : '') +
-        (it.rota ? ' href="' + it.rota + '"' : ' href="#" role="button"') + ' data-mais="' + id + '">' +
-        '<span class="nm-ic" aria-hidden="true">' + IC[id] + '</span><span class="nm-tx">' + esc(rotuloDe(id)) + '</span></a>';
+    const ehCli = !!(B7.Auth && B7.Auth.ehCliente && B7.Auth.ehCliente());
+    /* destinos extras que não moram na lateral */
+    const EXTRA = {
+      ajuda: { rota: '#/ajuda', rotulo: 'Ajuda', ic: IC_EXTRA.ajuda },
+      prefs: { rota: '#/config', rotulo: 'Configurações', ic: IC.config }
     };
-    const secao = (titulo, ids) => ids.length ? '<section class="nm-secao"><h4>' + titulo + '</h4><div class="nm-grade">' + ids.map(item).join('') + '</div></section>' : '';
+    const dados = id => ITENS[id] ? { rota: ITENS[id].rota, rotulo: rotuloDe(id), ic: IC[id], acao: ITENS[id].acao } : EXTRA[id];
+    const naRota = id => { const d = dados(id); return d && d.rota && (location.hash || '#/').split('?')[0] === d.rota; };
+    const item = (id, extra) => {
+      const d = dados(id), on = ativo === id || (EXTRA[id] && naRota(id));
+      return '<a class="nm-item' + (on ? ' on' : '') + '"' + (on ? ' aria-current="page"' : '') +
+        (d.rota ? ' href="' + d.rota + '"' : ' href="#" role="button"') + ' data-mais="' + id + '"' + (extra || '') +
+        ' data-busca="' + esc(semAcento(d.rotulo)) + '">' +
+        '<span class="nm-ic" aria-hidden="true">' + d.ic + '</span><span class="nm-tx">' + esc(d.rotulo) + '</span>' +
+        (on ? '<span class="nm-aqui">Você está aqui</span>' : '') + '</a>';
+    };
+    const secao = (titulo, ids, extraHtml) => (ids.length || extraHtml) ? '<section class="nm-secao"><h4>' + titulo + '</h4><div class="nm-grade">' +
+      ids.map(id => item(id)).join('') + (extraHtml || '') + '</div></section>' : '';
     const gestao = r.ferramentas.filter(id => ['usuarios', 'config'].includes(id));
     const ferr = r.ferramentas.filter(id => !gestao.includes(id) && id !== 'atalhos');
     const podeVerComo = ehAdmin() && B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor &&
       !(B7.Auth && B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
+    /* quem não é administrador também chega às Configurações por aqui */
+    const extrasFerr = (!gestao.includes('config') && !ehCli ? ['prefs'] : []).concat(B7.Ajuda ? ['ajuda'] : []);
     const html =
-      secao('PRINCIPAL', r.principal.filter(fora)) +
-      secao('MEU TRABALHO', r.trabalho.filter(fora)) +
-      secao(r.trabalho.length ? 'OPERAÇÃO' : 'PRODUÇÃO', r.operacao.filter(fora)) +
-      secao('GESTÃO', gestao) +
-      (ferr.length || podeVerComo ? '<section class="nm-secao"><h4>FERRAMENTAS</h4><div class="nm-grade">' + ferr.map(item).join('') +
-        (podeVerComo ? '<a class="nm-item" href="#" role="button" data-vercomo><span class="nm-ic" aria-hidden="true">' + IC.vercomo + '</span><span class="nm-tx">Visualizar como…</span></a>' : '') +
-        '</div></section>' : '');
+      /* Principal e Meu trabalho num grupo só: quase tudo deles já está na barra */
+      secao('Para você', r.principal.concat(r.trabalho.filter(id => !r.principal.includes(id))).filter(fora)) +
+      secao(r.trabalho.length ? 'Operação' : 'Produção', r.operacao.filter(fora)) +
+      secao('Gestão', gestao) +
+      secao('Ferramentas', ferr.concat(extrasFerr),
+        podeVerComo ? '<a class="nm-item" href="#" role="button" data-vercomo data-busca="visualizar como outra pessoa"><span class="nm-ic" aria-hidden="true">' + IC.vercomo + '</span><span class="nm-tx">Visualizar como…</span></a>' : '');
+    /* usados por você: até 4, só quem não está na barra de baixo */
+    const todos = [].concat(r.principal, r.trabalho, r.operacao, r.ferramentas).filter(fora);
+    const uso = lerUso();
+    const usados = Object.keys(uso).filter(id => todos.includes(id) && uso[id] >= 2 && id !== 'atalhos')
+      .sort((a, b) => uso[b] - uso[a]).slice(0, 4);
+    const u = B7.Auth && B7.Auth.usuario && B7.Auth.usuario();
+    const primeiro = String((u && (u.nome || u.username)) || '').trim().split(/\s+/)[0];
+    const h = new Date().getHours();
+    const sauda = (h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite') + (primeiro ? ', ' + esc(primeiro) : '');
+    let dataTx = '';
+    try { dataTx = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }); dataTx = dataTx.charAt(0).toUpperCase() + dataTx.slice(1); } catch (e) {}
+    const temHoje = B7.Hoje && !ehCli;
     const bt = document.querySelector('#nav-inferior [data-inf="mais"]');
     if (bt) bt.setAttribute('aria-expanded', 'true');
-    /* os ícones entram em cascata (CSS lê --i), depois que a folha sobe */
-    folhaMais = B7.UI.modal('<div class="tp-folha-cab"><h3>Mais</h3>' +
-      '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
-      '<nav class="nm-corpo" aria-label="Mais destinos">' +
-      (B7.Hoje && !(B7.Auth && B7.Auth.ehCliente && B7.Auth.ehCliente())
-        ? '<button type="button" class="nm-hoje" data-hoje><span class="nm-hoje-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>' +
+    folhaMais = B7.UI.modal(
+      '<header class="nm-topo">' +
+        '<span class="nm-topo-marca" aria-hidden="true"></span>' +
+        '<div class="nm-topo-tx"><small>' + esc(dataTx) + '</small><h3>' + sauda + '</h3></div>' +
+        '<button type="button" class="nm-fechar" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+        (temHoje ? '<button type="button" class="nm-hoje" data-hoje><span class="nm-hoje-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>' +
           '<span><b>Meu dia em 30 segundos</b><small>O que entra no ar, gravações e atrasos</small></span></button>' : '') +
-      (html || '<p class="nm-vazio">Nada além da barra.</p>') + '</nav>',
+      '</header>' +
+      '<label class="nm-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>' +
+        '<input type="search" placeholder="Procurar uma tela" autocomplete="off" enterkeyhint="go" aria-label="Procurar uma tela"></label>' +
+      '<nav class="nm-corpo" aria-label="Mais destinos">' +
+        (usados.length ? '<section class="nm-usados"><h4>Usados por você</h4><div class="nm-usados-fila">' +
+          usados.map(id => '<a class="nm-chip" href="' + ITENS[id].rota + '" data-mais="' + id + '"><span class="nm-ic" aria-hidden="true">' + IC[id] + '</span>' + esc(curtoDe(id)) + '</a>').join('') +
+          '</div></section>' : '') +
+        (html || '<p class="nm-vazio">Nada além da barra.</p>') +
+        '<p class="nm-vazio nm-sem" hidden>Nenhuma tela com esse nome.</p>' +
+      '</nav>',
       { classe: 'tp-folha nm-folha', aoFechar: () => { folhaMais = null; if (bt) bt.setAttribute('aria-expanded', 'false'); } });
-    folhaMais.querySelectorAll('.nm-item').forEach((a, i) => a.style.setProperty('--i', Math.min(i, 16)));
+    /* posição no degradê da marca (0 = violeta, 1 = magenta) e a cascata */
+    const linhas = [...folhaMais.querySelectorAll('.nm-secao .nm-item')];
+    linhas.forEach((a, i) => {
+      a.style.setProperty('--i', Math.min(i, 16));
+      a.style.setProperty('--k', linhas.length > 1 ? (i / (linhas.length - 1)).toFixed(3) : '0');
+    });
     folhaMais.querySelectorAll('[data-mais]').forEach(a => a.onclick = e => {
-      const it = ITENS[a.dataset.mais];
+      const id = a.dataset.mais, d = dados(id);
       e.preventDefault();
+      if (ITENS[id]) contarUso(id);
       const m = folhaMais; if (m) m.fechar();
-      if (it.acao === 'atalhos') return B7.UI.atalhos();
-      location.hash = it.rota;
+      if (d.acao === 'atalhos') return B7.UI.atalhos();
+      location.hash = d.rota;
     });
     const hj = folhaMais.querySelector('[data-hoje]');
     if (hj) hj.onclick = () => { const m = folhaMais; if (m) m.fechar(); setTimeout(() => B7.Hoje.abrir(), 120); };
     const vc = folhaMais.querySelector('[data-vercomo]');
     if (vc) vc.onclick = e => { e.preventDefault(); const m = folhaMais; if (m) m.fechar(); B7.PreviaUsuario.abrirSeletor(); };
-    /* foco no próprio diálogo (leitor de tela anuncia; Tab entra na
-       grade) — sem anel de foco pintado num item ao tocar */
+    /* busca: filtra as linhas, some com grupos vazios; Enter abre a primeira */
     const caixa = folhaMais.querySelector('.modal');
+    const q = folhaMais.querySelector('.nm-busca input'), corpo = folhaMais.querySelector('.nm-corpo');
+    if (q) {
+      q.oninput = () => {
+        const t = semAcento(q.value).trim();
+        /* a folha não encolhe enquanto filtra (nada pula embaixo do dedo) */
+        if (caixa && !caixa.style.height) caixa.style.height = caixa.offsetHeight + 'px';
+        corpo.classList.toggle('nm-procurando', !!t);
+        let algum = false;
+        corpo.querySelectorAll('.nm-secao').forEach(sec => {
+          let n = 0;
+          sec.querySelectorAll('.nm-item').forEach(a => { const ok = !t || a.dataset.busca.includes(t); a.hidden = !ok; if (ok) n++; });
+          sec.hidden = !n; if (n) algum = true;
+        });
+        const sem = corpo.querySelector('.nm-sem'); if (sem) sem.hidden = algum || !t;
+      };
+      q.onkeydown = e => {
+        if (e.key !== 'Enter') return;
+        const prim = corpo.querySelector('.nm-secao:not([hidden]) .nm-item:not([hidden])');
+        if (prim) { e.preventDefault(); prim.click(); }
+      };
+    }
+    /* foco no próprio diálogo (leitor de tela anuncia; Tab entra na
+       grade) — sem anel de foco pintado num item ao tocar e sem abrir o
+       teclado sozinho */
     if (caixa) { caixa.tabIndex = -1; caixa.setAttribute('aria-label', 'Mais destinos'); caixa.focus({ preventScroll: true }); }
   }
 

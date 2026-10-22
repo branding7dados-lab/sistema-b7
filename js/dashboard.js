@@ -2219,15 +2219,17 @@ B7.Dashboard = (function () {
       '<div class="cfg-grade"><aside class="cfg-lado">' +
         '<header class="cfg-topo"><h1 class="cfg-titulo">Configurações</h1>' +
           '<p class="cfg-sub">Sua conta e o jeito do B7' + (ehAdm ? ' — e o da equipe' : '') + '.</p></header>' +
-        (u ? '<button type="button" class="cfg-eu" data-abrir-perfil>' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-eu-av') : '') +
+        (u ? '<button type="button" class="cfg-eu" data-abrir-perfil><span class="cfg-eu-marca" aria-hidden="true"></span>' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-eu-av') : '') +
           '<span class="cfg-eu-tx"><b>' + esc(u.nome || u.username || '') + '</b><small>' + esc(PAPEL_CFG[u.papel] || u.papel || '') +
           (ehSuper ? ' · Super admin' : '') + '</small></span>' + SETA_CFG + '</button>' : '') +
         '<label class="cfg-busca">' + svgF('lupa') + '<input type="search" id="cfg-q" placeholder="Procurar um ajuste" autocomplete="off" aria-label="Procurar um ajuste"></label>' +
         '<nav class="cfg-nav" aria-label="Seções das configurações">' + BLOCOS.map(([b, rot]) => {
           const lista = SECOES.filter(x => x[5] === b);
           if (!lista.length) return '';
+          /* zzz243: --k = posição no degradê da B7 (violeta → magenta) */
+          const kDe = x => (SECOES.length > 1 ? SECOES.indexOf(x) / (SECOES.length - 1) : 0).toFixed(3);
           return '<p class="cfg-nav-g">' + rot + '</p><div class="cfg-nav-lista">' + lista.map(x =>
-            '<button type="button" class="cfg-nav-i' + (x[0] === abaAtual ? ' on' : '') + '" data-secao="' + x[0] + '"' + (x[0] === abaAtual ? ' aria-current="page"' : '') + '>' +
+            '<button type="button" class="cfg-nav-i' + (x[0] === abaAtual ? ' on' : '') + '" data-secao="' + x[0] + '" style="--k:' + kDe(x) + '"' + (x[0] === abaAtual ? ' aria-current="page"' : '') + '>' +
               ic(x[2], x[3]) + '<span class="cfg-nav-tx"><b>' + x[1] + '</b><small>' + esc(x[4]) + '</small></span>' + SETA_CFG + '</button>').join('') + '</div>';
         }).join('') + '</nav>' +
         '<footer class="cfg-assina"><span class="cfg-assina-b7" aria-hidden="true"></span><b>Sistema B7</b><small>v' + esc((B7.Auth && B7.Auth.VERSAO) || '') + ' · feito pela Branding7</small></footer>' +
@@ -2235,7 +2237,7 @@ B7.Dashboard = (function () {
         '<button type="button" class="cfg-voltar" data-cfg-voltar>' + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Configurações</button>' +
         '<p class="cfg-nada" hidden>Nenhum ajuste com esse nome.</p>' +
         SECOES.map(x => '<section class="cfg-painel" data-painel="' + x[0] + '"' + (x[0] === abaAtual ? '' : ' hidden') + '>' +
-          '<header class="cfg-painel-cab"><h2>' + x[1] + '</h2><p>' + esc(x[4]) + '</p></header>' +
+          '<header class="cfg-painel-cab"><span class="cfg-painel-bloco">' + ((BLOCOS.find(b => b[0] === x[5]) || [])[1] || '') + '</span><h2>' + x[1] + '</h2><p>' + esc(x[4]) + '</p></header>' +
           '<div class="cfg-painel-corpo">' + x[6] + '</div></section>').join('') +
       '</div></div>' +
     '</div>';
