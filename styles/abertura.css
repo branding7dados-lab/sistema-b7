@@ -571,3 +571,13 @@ html[data-estacao="verde"] .b7-abertura{filter:hue-rotate(160deg);}
 html[data-estacao="verde"] .b7-abertura .ab-marca{filter:hue-rotate(-160deg);}
 html[data-estacao="azul"] .b7-abertura{filter:hue-rotate(250deg);}
 html[data-estacao="azul"] .b7-abertura .ab-marca{filter:hue-rotate(-250deg);}
+
+/* =====================================================================
+   zzz227 — "Big bang de ideias": camada de partículas (js/abertura-particulas.js)
+   O canvas fica entre o céu e o palco; a lâmpada CSS só aparece na
+   ignição (o JS controla a opacidade dela) e a carga branca dá lugar à
+   faixa de luz que sobe pelos pontos.
+   ===================================================================== */
+.ab-particulas{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;}
+.b7-abertura.ab-part .ab-carga{visibility:hidden;}
+.b7-abertura.saindo .ab-particulas{opacity:0;transition:opacity .25s ease-out;}
