@@ -1813,7 +1813,18 @@ B7.Dashboard = (function () {
     vassoura: '<path d="M14 4l6 6"/><path d="M12.5 5.5l6 6-3 3-6-6z"/><path d="M9.5 8.5C6 10 4 14 4 20c5 0 9-1.5 11.5-5.5"/>',
     sair: '<path d="M14 4.5h3A2.5 2.5 0 0 1 19.5 7v10a2.5 2.5 0 0 1-2.5 2.5h-3"/><path d="M10 15.5L6.5 12 10 8.5M6.5 12H15"/>'
   };
-  const svgF = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICF[k] + '</svg>';
+  /* zzz240: ícones das seções novas (Super admin, arquivo) */
+  Object.assign(ICF, {
+    coroa: '<path d="M3.5 8l4.2 3.6L12 5l4.3 6.6L20.5 8l-1.6 10H5.1z"/><path d="M5.5 21h13"/>',
+    escudo: '<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6z"/>',
+    painel: '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+    caixa: '<path d="M3.5 13.5l2.6-7.2A2 2 0 0 1 8 5h8a2 2 0 0 1 1.9 1.3l2.6 7.2V18a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.5 13.5h4.5l1.5 2.5h5l1.5-2.5h4.5"/>',
+    limites: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+    grafico: '<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+    estrela: '<path d="M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/>',
+    lixo: '<path d="M5 7h14M10 7V5h4v2M6.5 7l.8 12.2a1.5 1.5 0 0 0 1.5 1.3h6.4a1.5 1.5 0 0 0 1.5-1.3L17.5 7"/>'
+  });
+  const svgF = k => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICF[k] || '') + '</svg>';
   const SETA_CFG = '<svg class="cfg-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
   const PAPEL_CFG = { admin: 'Administrador', coordenador: 'Coordenação', designer: 'Designer', videomaker: 'Videomaker', cliente: 'Cliente' };
 
@@ -1958,7 +1969,41 @@ B7.Dashboard = (function () {
       (ehAndroidWeb && !instalado ? L({ ic: 'celular', tom: 'verde', t: 'App para Android', d: 'abre na hora, com avisos e atalhos no ícone',
           botao: true, semSeta: true, attrs: ' data-baixar-android' }) : '');
 
-    const abaGeral =
+    /* =================================================================
+       zzz240: CONFIGURAÇÕES REPAGINADAS. Pedido do Kevin: "muda toda essas
+       configurações… quero mais opções de admin, super admin tb tem que
+       aparecer ai". Em vez de 4 abas, seções curtas em três blocos —
+       Você · Administração · Super admin — num menu com ícones:
+         • computador: o menu fica à esquerda e a seção aberta à direita;
+         • celular: o menu é a primeira tela (como os Ajustes do telefone)
+           e tocar numa seção entra nela (#/config?s=<seção>, o Voltar do
+           aparelho volta para o menu).
+       As seções de administração viram um mosaico de atalhos.
+       ================================================================= */
+    const ehSuper = !!(B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin());
+    const ehSupremo = !!(B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() === 'supremo');
+    const SUPER_AREAS = [
+      ['painel', 'Painel do super admin', 'painel', 'violeta', 'alertas, pedidos e o que a equipe fez hoje'],
+      ['aprovacoes', 'Pedidos para aprovar', 'caixa', 'rosa', 'o que precisa do seu aval antes de valer'],
+      ['limites', 'Limites dos administradores', 'limites', 'azul', 'o que cada administrador pode fazer'],
+      ['seguranca', 'Segurança', 'escudo', 'verde', 'sessões, verificação em 2 etapas e emergência'],
+      ['uso', 'Uso e backup', 'grafico', 'laranja', 'espaço ocupado, uso do sistema e cópias'],
+      ['avaliacoes', 'Avaliações do suporte', 'estrela', 'rosa', 'as notas que a equipe deu aos atendimentos'],
+      ['supremo', 'Supremo', 'coroa', 'violeta', 'o cargo supremo e as ações mais críticas']
+    ].filter(a => a[0] !== 'supremo' || ehSupremo);
+
+    const secConta = !u ? '' :
+      '<div class="cfg-conta">' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-conta-av') : '') +
+        '<div class="cfg-conta-tx"><b>' + esc(u.nome || u.username || '') + '</b><small>@' + esc(u.username || '') +
+        ' · ' + esc(PAPEL_CFG[u.papel] || u.papel || '') + (ehSuper ? ' · Super admin' : '') + '</small></div>' +
+        '<button type="button" class="b contorno fina" data-abrir-perfil>Abrir perfil</button></div>' +
+      grupo('Sua conta', 'Foto, nome, senha e avisos ficam no seu perfil.',
+        L({ ic: 'camera', tom: 'rosa', t: 'Foto e nome', d: 'como a equipe vê você', botao: true, attrs: ' data-pf="conta"' }) +
+        L({ ic: 'acesso', tom: 'violeta', t: 'Senha e verificação em 2 etapas', d: 'trocar a senha e proteger a entrada', botao: true, attrs: ' data-pf="seguranca"' }) +
+        L({ ic: 'sino', tom: 'laranja', t: 'Avisos e notificações', d: 'o que chega no sino, no celular e no e-mail', botao: true, attrs: ' data-pf="notificacoes"' })) +
+      blocoSessao;
+
+    const secPref =
       (opInicio.length > 1 ? grupo('Início', 'Um link direto continua abrindo a tela do link.',
         L({ ic: 'casa', tom: 'violeta', t: 'Tela inicial', d: 'o que abre ao entrar no B7',
             dir: sel('inicio', B7.pref.ler('inicio', ''), [['', 'Padrão do B7']].concat(opInicio), 'Tela inicial') })) : '') +
@@ -1966,53 +2011,22 @@ B7.Dashboard = (function () {
       (abre('calendario') ? grupo('Calendário', '',
         L({ ic: 'calendario', tom: 'azul', t: 'Visão padrão', d: 'como o Calendário abre',
             abaixo: seletor('cal_vista', B7.pref.ler('calendario_vista', 'mes'), [['mes', 'Mês'], ['semana', 'Semana'], ['dia', 'Dia']]) })) : '') +
-
-      (usaTp ? grupo('Teleprompter', 'O que já vem pronto ao abrir. Dá para mudar durante a leitura.',
-        L({ ic: 'ler', tom: 'rosa', t: 'Velocidade', d: 'de 1 (devagar) a 20 (rápido)', dir: passo('tp_velocidade', tp.velocidade, 'Velocidade do teleprompter') }) +
-        L({ ic: 'letra', tom: 'laranja', t: 'Tamanho da letra', d: 'automático ajusta ao tamanho da tela',
-            abaixo: seletor('tp_fonte', String(tp.fonte || 0), [['0', 'Auto'], ['40', 'Pequena'], ['56', 'Média'], ['72', 'Grande'], ['96', 'Enorme']]) }) +
-        L({ ic: 'relogio', tom: 'azul', t: 'Contagem antes de começar', d: 'segundos até o texto andar',
-            abaixo: seletor('tp_contagem', String(tp.contagem), [['0', 'Sem'], ['3', '3 s'], ['5', '5 s'], ['10', '10 s']]) }) +
-        L({ ic: 'espelho', tom: 'cinza', t: 'Texto espelhado', d: 'para usar com vidro de teleprompter', cls: 'cfg-alterna',
-            dir: chave('tp_espelho', !!tp.espelho, 'Texto espelhado') })) : '') +
-
       (pode('interface') ? grupo('Interface', '',
         L({ ic: 'lateral', tom: 'cinza', t: 'Começar com a barra recolhida', d: 'só os ícones na lateral', cls: 'cfg-alterna',
             dir: chave('sidebar', recolhida, 'Barra lateral recolhida') }) +
         L({ ic: 'teclado', tom: 'cinza', t: 'Atalhos de teclado', d: 'a lista completa', botao: true, attrs: ' data-atalhos' }),
         'cfg-so-largo') : '') +
-
       (pode('impressao') ? grupo('Impressão', 'A ficha A4 não muda com o tema: ela é sempre clara.',
         L({ ic: 'impressao', tom: 'verde', t: 'Folha de abertura', d: 'já vem marcada na janela de impressão', cls: 'cfg-alterna',
             dir: chave('abertura', !!abertura, 'Folha de abertura marcada por padrão') })) : '') +
-
-      /* zzz130: o que mudou no B7 — a equipe relê quando quiser */
-      (u && !ehCli && B7.Novidades && B7.Novidades.total() ? grupo('Novidades', '',
-        L({ ic: 'versao', tom: 'rosa', t: 'Novidades do B7', d: 'o que mudou no sistema', botao: true, attrs: ' data-novidades',
-            dir: B7.Novidades.pendentes() ? '<span class="cfg-valor ok">' + B7.Novidades.pendentes() + (B7.Novidades.pendentes() === 1 ? ' nova' : ' novas') + '</span>' : '' })) : '') +
-
-      /* zzz129: Painel de TV — só aparece para quem o recurso está liberado */
-      (u && !ehCli && B7.TV && B7.Recursos && B7.Recursos.ligado('tv') ? grupo('Painel de TV',
-        'Só leitura: sem nomes da equipe, comentários ou notificações. Para sair, aperte Esc.',
-        L({ ic: 'play', tom: 'violeta', t: 'Abrir o Painel de TV', d: 'a agência no mês, para deixar aberta numa tela',
-            botao: true, attrs: ' data-ir="#/tv"' }) +
-        L({ ic: 'animacao', tom: 'rosa', t: 'Abrir só a animação da B7', d: 'a abertura do sistema em ciclo, sem número nenhum',
-            botao: true, attrs: ' data-ir="#/tv?modo=animacao"' }) +
-        L({ ic: 'tema', tom: 'azul', t: 'Abrir só a logo', d: 'a marca parada na tela, com a frase e o relógio que você escolher',
-            botao: true, attrs: ' data-ir="#/tv?modo=logo"' })) : '') +
-
       (u && !ehCli ? grupo('Filtros', '',
         L({ ic: 'filtro', tom: 'cinza', t: 'Limpar filtros guardados', d: 'Calendário, Produção, Vídeo e Design voltam ao padrão',
             botao: true, semSeta: true, attrs: ' data-limpar-filtros' })) : '') +
+      (u && !ehCli && B7.Tour ? grupo('Ajuda', '',
+        L({ ic: 'play', tom: 'azul', t: 'Refazer o tour', d: 'o passeio de 1 minuto pelo que você mais usa', botao: true, attrs: ' data-refazer-tour' })) : '');
 
-      (u && !ehCli && linhasApp ? grupo('Aplicativos', '', linhasApp) : '') +
-      /* zzz72: sair da conta mora na aba Geral */
-      blocoSessao;
-
-    const abaAparencia =
-      grupo('Aparência', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
-        /* zzz159: cor do sistema por pessoa. O administrador define o padrão
-           da equipe (aba Admin); aqui cada um pode ter a sua, neste aparelho. */
+    const secAparencia =
+      grupo('Visual', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
         (B7.Aparencia ? L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema',
             d: '<span data-ap-eu-d>' + esc(B7.Aparencia.resumoPessoal()) + '</span>',
             abaixo: coresRapidas() }) : '') +
@@ -2024,102 +2038,61 @@ B7.Dashboard = (function () {
                 '<b class="cfg-tm-ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></b></span>' +
                 '<span class="cfg-tm-rot">' + r + '</span></button>').join('') + '</div>' }) +
         L({ ic: 'densidade', tom: 'azul', t: 'Densidade', d: 'quanto conteúdo cabe na tela',
-            abaixo: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) }) +
-        /* zzz6: desligar de verdade (antes só mostrava o que o sistema dizia) */
+            abaixo: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) })) +
+      grupo('Movimento e desempenho', '',
         (B7.Desempenho && B7.Desempenho.animacoesLigadas
           ? L({ ic: 'animacao', tom: 'rosa', t: 'Animações', cls: 'cfg-alterna',
                 d: '<span id="cfg-anim-d">' + descAnimacoes() + '</span>',
                 dir: chave('animacoes', B7.Desempenho.animacoesLigadas(), 'Animações ligadas') })
           : L({ ic: 'animacao', tom: 'rosa', t: 'Animações', d: 'segue a preferência do seu sistema',
                 dir: '<span class="cfg-valor">' + (reduz ? 'Reduzidas' : 'Normais') + '</span>' })) +
-        /* zzz230: estilo da abertura (decidido no <head> do index.html, antes da primeira pintura) */
-        /* zzz231: "Padrão do sistema" segue o que o administrador escolheu (para todos ou para esta pessoa) */
+        (B7.Desempenho ? L({ ic: 'raio', tom: 'laranja', t: 'Desempenho', d: '<span id="cfg-desemp-d">' + descDesempenho() + '</span>',
+            abaixo: seletor('desempenho', B7.Desempenho.modo(), [['auto', 'Automático'], ['leve', 'Leve'], ['completo', 'Completo']]) }) : ''));
+
+    const secAbertura =
+      grupo('Abertura e carregamento', 'Vale neste aparelho. Ao trocar, o aviso traz “Ver agora”.',
         (B7.Abertura ? L({ ic: 'animacao', tom: 'violeta', t: 'Estilo da abertura',
             d: 'como o B7 abre; vale neste aparelho · padrão do sistema: ' + esc((B7.Abertura.ESTILOS.find(e => e[0] === B7.Abertura.padraoDoSistema()) || ['', 'Streaming'])[1]),
             dir: sel('abertura_estilo', B7.Abertura.valido(B7.pref.ler('abertura_estilo', null)) || 'padrao',
               [['padrao', 'Padrão do sistema']].concat(B7.Abertura.ESTILOS), 'Estilo da abertura') }) : '') +
-        /* zzz234: o carregamento (a versão curta: recarregar, entre login e sistema) também tem estilos */
         (B7.Abertura && B7.Abertura.CARGAS ? L({ ic: 'atualizar', tom: 'azul', t: 'Tela de carregamento',
             d: 'o que aparece enquanto o B7 carrega; vale neste aparelho · padrão do sistema: ' + esc((B7.Abertura.CARGAS.find(e => e[0] === B7.Abertura.cargaDoSistema()) || ['', 'Relâmpago'])[1]),
             dir: sel('carregamento_estilo', B7.Abertura.cargaValida(B7.pref.ler('carregamento_estilo', null)) || 'padrao',
               [['padrao', 'Padrão do sistema']].concat(B7.Abertura.CARGAS), 'Estilo da tela de carregamento') }) : '') +
-        /* modo leve (js/desempenho.js): vidro sólido onde o aparelho trava */
-        (B7.Desempenho ? L({ ic: 'raio', tom: 'laranja', t: 'Desempenho', d: '<span id="cfg-desemp-d">' + descDesempenho() + '</span>',
-            abaixo: seletor('desempenho', B7.Desempenho.modo(), [['auto', 'Automático'], ['leve', 'Leve'], ['completo', 'Completo']]) }) : '')) +
-
-      /* a abertura completa aparece uma vez por sessão; aqui dá para
-         rever (com som — o toque no botão destrava o áudio) */
-      /* zzz112: abertura (trilha e testes) é assunto só do administrador */
-      (!ehAdm ? '' : grupo('Abertura', '',
-        L({ ic: 'som', tom: 'laranja', t: 'Trilha sonora', d: 'som na animação de entrada', cls: 'cfg-alterna',
+        (ehAdm ?         L({ ic: 'som', tom: 'laranja', t: 'Trilha sonora', d: 'som na animação de entrada', cls: 'cfg-alterna',
             dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
         L({ ic: 'play', tom: 'rosa', t: 'Testar abertura', d: 'a sequência completa, com som', botao: true, attrs: ' data-ver-abertura' }) +
-        L({ ic: 'atualizar', tom: 'azul', t: 'Testar tela de carregamento', d: 'a versão curta, que aparece ao recarregar', botao: true, attrs: ' data-ver-carregamento' }) +
+        L({ ic: 'atualizar', tom: 'azul', t: 'Testar tela de carregamento', d: 'a versão curta, que aparece ao recarregar', botao: true, attrs: ' data-ver-carregamento' }) : '')) +
+      grupo('Sons', 'O som que toca quando chega um aviso. Vale neste aparelho.',
         L({ ic: 'sino', tom: 'verde', t: 'Som de notificação', d: 'escolha ouvindo; vale neste aparelho',
             dir: sel('som_notif', (B7.Notif && B7.Notif.somEscolhido) ? B7.Notif.somEscolhido() : 'toque',
               (B7.Notif && B7.Notif.NOMES_SONS) || [['toque', 'Toque']], 'Som de notificação') }) +
-        L({ ic: 'play', tom: 'verde', t: 'Testar som de notificação', d: 'toca o som escolhido', botao: true, attrs: ' data-testar-som' })));
+        L({ ic: 'play', tom: 'verde', t: 'Testar som de notificação', d: 'toca o som escolhido', botao: true, attrs: ' data-testar-som' }));
 
-    const abaAdmin =
-      /* a seção só existe para admin: nada de item com cadeado */
-      (pode('usuarios') ? grupo('Pessoas', 'Contas da equipe e dos clientes. Não existe cadastro público.',
-        L({ ic: 'usuarios', tom: 'azul', t: 'Usuários e acessos', d: 'criar, redefinir senha, funções e módulos',
-            botao: true, attrs: ' data-ir="#/usuarios"' })) : '') +
-      /* zzz132: o modo manutenção mora no Admin; o estado da linha é mantido por js/sistema.js (data-mn-*) */
-      (ehAdm && B7.Manutencao ? grupo('Manutenção', 'Administradores continuam usando normalmente. É uma trava de tela: não altera regra de acesso.',
-        L({ ic: 'acesso', tom: 'laranja', t: 'Modo manutenção', d: '<span data-mn-d>' + esc(B7.Manutencao.descricao()) + '</span>', botao: true, attrs: ' data-manutencao',
-            dir: '<span class="cfg-valor' + (B7.Manutencao.fase() === 'nenhuma' ? '' : ' erro') + '" data-mn-v>' +
-              ({ nenhuma: 'Desligado', agendada: 'Agendado', aviso: 'Marcado', ativa: 'Ligado' })[B7.Manutencao.fase()] + '</span>' })) : '') +
-      /* zzz136: sessões abertas, uso da IA e o que aparece no Painel de TV */
-      (ehAdm && B7.Sessoes ? grupo('Sessões', 'Em quais aparelhos cada conta está aberta.',
-        L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'ver os aparelhos e encerrar uma sessão', botao: true, attrs: ' data-sessoes' })) : '') +
-      /* zzz141: resumo da semana (IA) e sugestão de redistribuição */
-      (ehAdm && B7.Redistribuicao ? grupo('Equipe e carga', 'Os números vêm do sistema. Nada muda sozinho.',
-        (iaCfg.chat && B7.ResumoAgencia ? L({ ic: 'ia', tom: 'violeta', t: 'Resumo da semana', d: 'o que andou, o que travou e quem está com mais trabalho (IA)', botao: true, attrs: ' data-resumo-semana' }) : '') +
-        L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre', botao: true, attrs: ' data-redistribuir' })) : '') +
-      /* zzz140: cor do sistema e datas especiais da abertura */
-      (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe (é o padrão de quem não escolheu a sua).',
-        L({ ic: 'tema', tom: 'rosa', t: 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' }) +
-        /* zzz231: a abertura de todo mundo ou de uma pessoa só */
-        (B7.AberturaAdm ? L({ ic: 'play', tom: 'violeta', t: 'Abertura do sistema', d: 'a animação de entrada para todos ou para uma pessoa', botao: true, attrs: ' data-abertura-adm' }) : '')) : '') +
-      /* zzz139: saúde do sistema, médico e comunicado */
-      (ehAdm && B7.Saude ? grupo('Cuidar do sistema', 'Só leitura: mostra o que precisa de atenção, sem mudar nada.',
-        L({ ic: 'raio', tom: 'verde', t: 'Saúde do sistema', d: 'rotinas, avisos, Google Agenda, espaço e IA', botao: true, attrs: ' data-saude' }) +
-        L({ ic: 'filtro', tom: 'laranja', t: 'Médico do sistema', d: 'cadastros incompletos: sem logo, sem responsável, sem função', botao: true, attrs: ' data-medico' })) : '') +
-      (ehAdm && B7.Comunicado ? grupo('Comunicado', 'Uma mensagem sua que chega na conversa de cada pessoa, com “lido por”.',
-        L({ ic: 'sino', tom: 'rosa', t: 'Enviar comunicado', d: 'para toda a equipe ou só para algumas pessoas', botao: true, attrs: ' data-comunicado' })) : '') +
-      (ehAdm && B7.UsoIA ? grupo('Uso da IA', 'Só números: o conteúdo dos pedidos não é guardado.',
-        L({ ic: 'ia', tom: 'violeta', t: 'Uso da IA', d: 'chamadas por pessoa e por tarefa, erros e tempo de resposta', botao: true, attrs: ' data-uso-ia' })) : '') +
-      (ehAdm && B7.TV && B7.TV.configurar ? grupo('Painel de TV', 'O que aparece na tela da agência.',
-        L({ ic: 'play', tom: 'violeta', t: 'Configurar o Painel de TV', d: 'blocos, nomes de clientes e a troca de tela', botao: true, attrs: ' data-tv-config' })) : '') +
-      (ehAdm ? grupo('Integrações', 'A conta Google é uma só para o sistema inteiro: o que a equipe marca vai para ela.',
-        '<div id="cfg-google">' + L({ ic: 'google', tom: 'azul', t: 'Google Agenda', d: 'verificando…',
-            dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>') : '') +
-      (ehAdm && B7.IA && B7.IA.remoto && (iaCfg.roteiros || iaCfg.linhas || iaCfg.chat) ? grupo('Inteligência artificial',
-        'Vale para toda a equipe. Desligado, o assistente some da tela e o servidor recusa o pedido.',
-        (iaCfg.roteiros ? L({ ic: 'ia', tom: 'violeta', t: 'Assistente nos Roteiros', d: 'sugerir, reescrever e revisar cenas', cls: 'cfg-alterna',
-            dir: chave('ia_roteiros', iaRemoto.roteiros !== false, 'Assistente nos Roteiros') }) : '') +
-        (iaCfg.linhas ? L({ ic: 'ia', tom: 'rosa', t: 'Assistente nas Linhas editoriais', d: 'ideias, textos e resumos da linha', cls: 'cfg-alterna',
-            dir: chave('ia_linhas', iaRemoto.linhas !== false, 'Assistente nas Linhas editoriais') }) : '') +
-        (iaCfg.chat ? L({ ic: 'ia', tom: 'azul', t: 'Chat com o assistente', d: 'botão no canto da tela, para perguntar e pedir ideias', cls: 'cfg-alterna',
-            dir: chave('ia_chat', iaRemoto.chat !== false, 'Chat com o assistente') }) : '')) : '') +
-      (ehAdm && B7.Recursos ? grupo('Recursos',
-        'Para quem cada recurso aparece. Serve para testar antes de liberar: não dá acesso a módulo nenhum. A equipe recebe a mudança ao reabrir o B7.',
-        B7.Recursos.LISTA.map(r => L({ ic: r.ia ? 'ia' : 'raio', tom: r.ia ? 'violeta' : 'azul', t: esc(r.nome), d: esc(r.d), botao: true,
-          attrs: ' data-recurso="' + r.id + '"', dir: '<span class="cfg-valor">' + esc(B7.Recursos.rotulo(r.id)) + '</span>' })).join('')) : '') +
-      (ehAdm && B7.Novidades ? grupo('Novidades', 'As novidades de cada versão chegam sozinhas à equipe. Aqui é só para um aviso a mais, escrito por você.',
-        L({ ic: 'versao', tom: 'rosa', t: 'Publicar um aviso', d: (n => n ? n + (n === 1 ? ' aviso seu publicado' : ' avisos seus publicados') : 'nenhum aviso seu publicado')(B7.Novidades.manuais()),
-            botao: true, attrs: ' data-novidades-adm' })) : '') +
-      (ehAdm && B7.Textos ? grupo('Textos padrão', 'As mensagens prontas para o cliente e as frases do Portal.',
-        L({ ic: 'letra', tom: 'rosa', t: 'Editar textos padrão', d:
-            (n => n ? n + (n === 1 ? ' texto alterado' : ' textos alterados') : 'todos no padrão do B7')(B7.Textos.LISTA.filter(t => B7.Textos.mudado(t.id)).length),
-            botao: true, attrs: ' data-textos' })) : '') +
-      (pode('dados') && B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
-        L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
-        L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '');
+    const secTp = (usaTp ? grupo('Teleprompter', 'O que já vem pronto ao abrir. Dá para mudar durante a leitura.',
+        L({ ic: 'ler', tom: 'rosa', t: 'Velocidade', d: 'de 1 (devagar) a 20 (rápido)', dir: passo('tp_velocidade', tp.velocidade, 'Velocidade do teleprompter') }) +
+        L({ ic: 'letra', tom: 'laranja', t: 'Tamanho da letra', d: 'automático ajusta ao tamanho da tela',
+            abaixo: seletor('tp_fonte', String(tp.fonte || 0), [['0', 'Auto'], ['40', 'Pequena'], ['56', 'Média'], ['72', 'Grande'], ['96', 'Enorme']]) }) +
+        L({ ic: 'relogio', tom: 'azul', t: 'Contagem antes de começar', d: 'segundos até o texto andar',
+            abaixo: seletor('tp_contagem', String(tp.contagem), [['0', 'Sem'], ['3', '3 s'], ['5', '5 s'], ['10', '10 s']]) }) +
+        L({ ic: 'espelho', tom: 'cinza', t: 'Texto espelhado', d: 'para usar com vidro de teleprompter', cls: 'cfg-alterna',
+            dir: chave('tp_espelho', !!tp.espelho, 'Texto espelhado') })) : '');
 
-    /* zzz72: a aba Sistema é só da administração */
-    const abaSistema = !ehAdm ? '' :
+    const secApps =
+      (u && !ehCli && linhasApp ? grupo('Aplicativos', '', linhasApp) : '') +
+      (u && !ehCli && B7.TV && B7.Recursos && B7.Recursos.ligado('tv') ? grupo('Painel de TV',
+        'Só leitura: sem nomes da equipe, comentários ou notificações. Para sair, aperte Esc.',
+        L({ ic: 'play', tom: 'violeta', t: 'Abrir o Painel de TV', d: 'a agência no mês, para deixar aberta numa tela',
+            botao: true, attrs: ' data-ir="#/tv"' }) +
+        L({ ic: 'animacao', tom: 'rosa', t: 'Abrir só a animação da B7', d: 'a abertura do sistema em ciclo, sem número nenhum',
+            botao: true, attrs: ' data-ir="#/tv?modo=animacao"' }) +
+        L({ ic: 'tema', tom: 'azul', t: 'Abrir só a logo', d: 'a marca parada na tela, com a frase e o relógio que você escolher',
+            botao: true, attrs: ' data-ir="#/tv?modo=logo"' })) : '') +
+      (u && !ehCli && B7.Novidades && B7.Novidades.total() ? grupo('Novidades', '',
+        L({ ic: 'versao', tom: 'rosa', t: 'Novidades do B7', d: 'o que mudou no sistema', botao: true, attrs: ' data-novidades',
+            dir: B7.Novidades.pendentes() ? '<span class="cfg-valor ok">' + B7.Novidades.pendentes() + (B7.Novidades.pendentes() === 1 ? ' nova' : ' novas') + '</span>' : '' })) : '');
+
+    const secAparelho = !u ? '' :
       grupo('Este aparelho', u ? 'Limpar não apaga nada do banco nem tira você da conta: só o que o B7 guardou aqui para abrir mais rápido.' : '',
         L({ ic: 'versao', tom: 'cinza', t: 'Versão', d: 'a que está rodando agora',
             dir: '<code class="cfg-versao">v' + esc((B7.Auth && B7.Auth.VERSAO) || '') + '</code>' }) +
@@ -2137,8 +2110,68 @@ B7.Dashboard = (function () {
                 d: '<span id="cfg-inst-d">' + (B7.instalacao ? 'abre direto, sem a barra do navegador' : 'no menu do navegador: “Instalar” ou “Adicionar à tela de início”') + '</span>',
                 botao: !!B7.instalacao, semSeta: true, attrs: ' data-instalar' })) +
         (u ? L({ ic: 'vassoura', tom: 'laranja', t: 'Limpar dados deste aparelho', d: 'memória das telas, arquivos guardados e filtros',
-            botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : '')) +
-      /* Banco e conexão são do administrador. */
+            botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : ''));
+
+    const secEquipe = !ehAdm ? '' :
+      (pode('usuarios') ? grupo('Pessoas', 'Contas da equipe e dos clientes. Não existe cadastro público.',
+        L({ ic: 'usuarios', tom: 'azul', t: 'Usuários e acessos', d: 'criar, redefinir senha, funções e módulos',
+            botao: true, attrs: ' data-ir="#/usuarios"' })) : '') +
+      grupo('Arquivo', 'Nada que vai para a lixeira é apagado do banco: dá para restaurar.',
+        L({ ic: 'lixo', tom: 'vermelho', t: 'Lixeira', d: 'clientes, gravações e peças excluídos', botao: true, attrs: ' data-ir="#/lixeira"' }) +
+        L({ ic: 'caixa', tom: 'cinza', t: 'Arquivados', d: 'o que saiu de circulação, guardado', botao: true, attrs: ' data-ir="#/arquivados"' })) +
+      grupo('Ver como a equipe vê', 'Só para conferir: nada é decidido em nome de ninguém.',
+        (B7.PreviaUsuario && B7.PreviaUsuario.abrirSeletor && B7.Auth.ehAdminReal && B7.Auth.ehAdminReal() &&
+          !(B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro())
+          ? L({ ic: 'usuarios', tom: 'laranja', t: 'Visualizar como outra pessoa', d: 'o sistema com o acesso de alguém da equipe', botao: true, attrs: ' data-ver-como' }) : '') +
+        L({ ic: 'versao', tom: 'violeta', t: 'Ajuda da administração', d: 'onde fica cada ferramenta de admin e para que serve', botao: true, attrs: ' data-ir="#/ajuda"' })) +
+      (ehAdm && B7.Sessoes ? grupo('Sessões', 'Em quais aparelhos cada conta está aberta.',
+        L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'ver os aparelhos e encerrar uma sessão', botao: true, attrs: ' data-sessoes' })) : '') +
+      (ehAdm && B7.Redistribuicao ? grupo('Equipe e carga', 'Os números vêm do sistema. Nada muda sozinho.',
+        (iaCfg.chat && B7.ResumoAgencia ? L({ ic: 'ia', tom: 'violeta', t: 'Resumo da semana', d: 'o que andou, o que travou e quem está com mais trabalho (IA)', botao: true, attrs: ' data-resumo-semana' }) : '') +
+        L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre', botao: true, attrs: ' data-redistribuir' })) : '') +
+      (ehAdm && B7.Comunicado ? grupo('Comunicado', 'Uma mensagem sua que chega na conversa de cada pessoa, com “lido por”.',
+        L({ ic: 'sino', tom: 'rosa', t: 'Enviar comunicado', d: 'para toda a equipe ou só para algumas pessoas', botao: true, attrs: ' data-comunicado' })) : '');
+
+    const secSisEquipe = !ehAdm ? '' :
+      (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe (é o padrão de quem não escolheu a sua).',
+        L({ ic: 'tema', tom: 'rosa', t: 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' }) +
+        /* zzz231: a abertura de todo mundo ou de uma pessoa só */
+        (B7.AberturaAdm ? L({ ic: 'play', tom: 'violeta', t: 'Abertura do sistema', d: 'a animação de entrada para todos ou para uma pessoa', botao: true, attrs: ' data-abertura-adm' }) : '')) : '') +
+      (ehAdm && B7.Recursos ? grupo('Recursos',
+        'Para quem cada recurso aparece. Serve para testar antes de liberar: não dá acesso a módulo nenhum. A equipe recebe a mudança ao reabrir o B7.',
+        B7.Recursos.LISTA.map(r => L({ ic: r.ia ? 'ia' : 'raio', tom: r.ia ? 'violeta' : 'azul', t: esc(r.nome), d: esc(r.d), botao: true,
+          attrs: ' data-recurso="' + r.id + '"', dir: '<span class="cfg-valor">' + esc(B7.Recursos.rotulo(r.id)) + '</span>' })).join('')) : '') +
+      (ehAdm && B7.IA && B7.IA.remoto && (iaCfg.roteiros || iaCfg.linhas || iaCfg.chat) ? grupo('Inteligência artificial',
+        'Vale para toda a equipe. Desligado, o assistente some da tela e o servidor recusa o pedido.',
+        (iaCfg.roteiros ? L({ ic: 'ia', tom: 'violeta', t: 'Assistente nos Roteiros', d: 'sugerir, reescrever e revisar cenas', cls: 'cfg-alterna',
+            dir: chave('ia_roteiros', iaRemoto.roteiros !== false, 'Assistente nos Roteiros') }) : '') +
+        (iaCfg.linhas ? L({ ic: 'ia', tom: 'rosa', t: 'Assistente nas Linhas editoriais', d: 'ideias, textos e resumos da linha', cls: 'cfg-alterna',
+            dir: chave('ia_linhas', iaRemoto.linhas !== false, 'Assistente nas Linhas editoriais') }) : '') +
+        (iaCfg.chat ? L({ ic: 'ia', tom: 'azul', t: 'Chat com o assistente', d: 'botão no canto da tela, para perguntar e pedir ideias', cls: 'cfg-alterna',
+            dir: chave('ia_chat', iaRemoto.chat !== false, 'Chat com o assistente') }) : '')) : '') +
+      (ehAdm && B7.Textos ? grupo('Textos padrão', 'As mensagens prontas para o cliente e as frases do Portal.',
+        L({ ic: 'letra', tom: 'rosa', t: 'Editar textos padrão', d:
+            (n => n ? n + (n === 1 ? ' texto alterado' : ' textos alterados') : 'todos no padrão do B7')(B7.Textos.LISTA.filter(t => B7.Textos.mudado(t.id)).length),
+            botao: true, attrs: ' data-textos' })) : '') +
+      (ehAdm && B7.Novidades ? grupo('Novidades', 'As novidades de cada versão chegam sozinhas à equipe. Aqui é só para um aviso a mais, escrito por você.',
+        L({ ic: 'versao', tom: 'rosa', t: 'Publicar um aviso', d: (n => n ? n + (n === 1 ? ' aviso seu publicado' : ' avisos seus publicados') : 'nenhum aviso seu publicado')(B7.Novidades.manuais()),
+            botao: true, attrs: ' data-novidades-adm' })) : '') +
+      (ehAdm && B7.TV && B7.TV.configurar ? grupo('Painel de TV', 'O que aparece na tela da agência.',
+        L({ ic: 'play', tom: 'violeta', t: 'Configurar o Painel de TV', d: 'blocos, nomes de clientes e a troca de tela', botao: true, attrs: ' data-tv-config' })) : '') +
+      (ehAdm ? grupo('Integrações', 'A conta Google é uma só para o sistema inteiro: o que a equipe marca vai para ela.',
+        '<div id="cfg-google">' + L({ ic: 'google', tom: 'azul', t: 'Google Agenda', d: 'verificando…',
+            dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>') : '');
+
+    const secSaude = !ehAdm ? '' :
+      (ehAdm && B7.Manutencao ? grupo('Manutenção', 'Administradores continuam usando normalmente. É uma trava de tela: não altera regra de acesso.',
+        L({ ic: 'acesso', tom: 'laranja', t: 'Modo manutenção', d: '<span data-mn-d>' + esc(B7.Manutencao.descricao()) + '</span>', botao: true, attrs: ' data-manutencao',
+            dir: '<span class="cfg-valor' + (B7.Manutencao.fase() === 'nenhuma' ? '' : ' erro') + '" data-mn-v>' +
+              ({ nenhuma: 'Desligado', agendada: 'Agendado', aviso: 'Marcado', ativa: 'Ligado' })[B7.Manutencao.fase()] + '</span>' })) : '') +
+      (ehAdm && B7.Saude ? grupo('Cuidar do sistema', 'Só leitura: mostra o que precisa de atenção, sem mudar nada.',
+        L({ ic: 'raio', tom: 'verde', t: 'Saúde do sistema', d: 'rotinas, avisos, Google Agenda, espaço e IA', botao: true, attrs: ' data-saude' }) +
+        L({ ic: 'filtro', tom: 'laranja', t: 'Médico do sistema', d: 'cadastros incompletos: sem logo, sem responsável, sem função', botao: true, attrs: ' data-medico' })) : '') +
+      (ehAdm && B7.UsoIA ? grupo('Uso da IA', 'Só números: o conteúdo dos pedidos não é guardado.',
+        L({ ic: 'ia', tom: 'violeta', t: 'Uso da IA', d: 'chamadas por pessoa e por tarefa, erros e tempo de resposta', botao: true, attrs: ' data-uso-ia' })) : '') +
       (pode('banco') || pode('sistema') ? grupo('Servidor', '',
         (pode('banco') ? '<div id="cfg-banco">' + L({ ic: 'banco', tom: 'verde', t: 'Banco de dados', d: 'verificando…',
             dir: '<span class="cfg-ponto pulsa"></span>' }) + '</div>' : '') +
@@ -2146,56 +2179,83 @@ B7.Dashboard = (function () {
             d: online ? 'tudo certo por aqui' : 'reconecte para voltar a salvar',
             dir: '<span class="cfg-valor ' + (online ? 'ok' : 'erro') + '">' + (online ? 'Online' : 'Sem conexão') + '</span>' }) : '')) : '');
 
-    const abas = [['geral', 'Geral', abaGeral], ['aparencia', 'Aparência', abaAparencia], 
-                  ['admin', 'Admin', abaAdmin], ['sistema', 'Sistema', abaSistema]].filter(a => a[2]);
-    const IC_ABA = { geral: 'casa', aparencia: 'tema', admin: 'usuarios', sistema: 'versao' };
-    /* zzz239: no computador as seções viram um menu ao lado, com o que tem em cada uma */
-    const DESC_ABA = { geral: 'Tela inicial, calendário, teleprompter e apps', aparencia: 'Tema, cores, abertura e carregamento',
-      admin: 'Pessoas, recursos, IA e textos do sistema', sistema: 'Versão, diagnóstico, manutenção e dados' };
-    let abaAtual = B7.pref.ler('cfg_aba', '');
-    if (!abas.some(a => a[0] === abaAtual)) abaAtual = abas[0][0];
+    const secSuper = !ehSuper ? '' :
+      grupo('Super admin', 'As áreas que só o super admin enxerga. O banco confere o cargo de novo em cada ação.',
+        SUPER_AREAS.map(([k, r, icone, tom, d]) => L({ ic: icone, tom, t: r, d, botao: true, attrs: ' data-ir="#/super/' + k + '"' })).join('')) +
+      (pode('dados') && B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
+        L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
+        L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '');
 
-    /* zzz239: no computador, duas colunas — à esquerda a conta, a busca e as
-       seções (menu vertical); à direita a seção aberta, com os grupos lado a
-       lado. No celular continua uma coluna só, como os Ajustes do telefone. */
-    painel().innerHTML = '<div class="conteudo entra cfg-tela">' +
-      '<header class="cfg-topo"><h1 class="cfg-titulo">Configurações</h1>' +
-        '<p class="cfg-sub">Sua conta, a aparência e o funcionamento do B7' + (ehAdm ? ' para a equipe' : '') + '.</p></header>' +
+    /* seção: [id, rótulo, ícone, cor, descrição, bloco, conteúdo, mosaico] */
+    const SECOES = [
+      ['conta', 'Conta', 'camera', 'rosa', 'Perfil, senha, avisos e sessões', 'voce', secConta],
+      ['preferencias', 'Preferências', 'casa', 'violeta', 'Tela inicial, calendário e impressão', 'voce', secPref],
+      ['aparencia', 'Aparência', 'tema', 'azul', 'Cores, tema, densidade e animações', 'voce', secAparencia],
+      ['abertura', 'Abertura e sons', 'animacao', 'laranja', 'Abertura, carregamento e som dos avisos', 'voce', secAbertura],
+      ['teleprompter', 'Teleprompter', 'ler', 'rosa', 'Velocidade, letra e contagem', 'voce', secTp],
+      ['apps', 'Apps e TV', 'celular', 'verde', 'Aplicativos, Painel de TV e novidades', 'voce', secApps],
+      ['aparelho', 'Este aparelho', 'versao', 'cinza', 'Versão, atualização e limpeza', 'voce', secAparelho],
+      ['equipe', 'Equipe e acessos', 'usuarios', 'azul', 'Pessoas, sessões, carga e comunicados', 'adm', secEquipe, true],
+      ['sis-equipe', 'Sistema da equipe', 'tema', 'rosa', 'Aparência, recursos, IA e textos para todos', 'adm', secSisEquipe, true],
+      ['saude', 'Saúde e manutenção', 'raio', 'verde', 'Manutenção, diagnóstico, uso da IA e servidor', 'adm', secSaude, true],
+      ['super', 'Super admin', 'coroa', 'violeta', 'Pedidos, limites, segurança e backup', 'super', secSuper, true]
+    ].filter(x => x[6]);
+    const BLOCOS = [['voce', 'Você'], ['adm', 'Administração'], ['super', 'Super admin']];
+    const qsCfg = new URLSearchParams((location.hash.split('?')[1]) || '');
+    const pedida = qsCfg.get('s');
+    let abaAtual = SECOES.some(x => x[0] === pedida) ? pedida : B7.pref.ler('cfg_aba', '');
+    if (!SECOES.some(x => x[0] === abaAtual)) abaAtual = SECOES[0][0];
+    const dentro = !!pedida && SECOES.some(x => x[0] === pedida);
+    const secDe = id => SECOES.find(x => x[0] === id);
+
+    painel().innerHTML = '<div class="conteudo entra cfg-tela cfg-v2' + (dentro ? ' cfg-dentro' : '') + '">' +
       '<div class="cfg-grade"><aside class="cfg-lado">' +
-
-      /* Conta no topo: quem está usando, e o atalho para o perfil */
-      /* zzz13: o cartão da conta ganha a aurora e o anel do perfil, e
-         três atalhos que abrem o perfil já na aba certa */
-      (u ? '<div class="cfg-perfil-cx"><i class="cfg-aurora" aria-hidden="true"></i>' +
-        '<button type="button" class="cfg-perfil" data-abrir-perfil>' +
-        (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-perfil-av') : '') +
-        '<span class="cfg-perfil-tx"><b>' + esc(u.nome || u.username || '') + '</b>' +
-        '<small>@' + esc(u.username || '') + ' · ' + esc(PAPEL_CFG[u.papel] || u.papel || '') + '</small></span>' + SETA_CFG + '</button>' +
-        '<div class="cfg-pf-atalhos">' +
-          [['conta', 'Foto e nome', 'camera'], ['seguranca', 'Senha', 'acesso'], ['notificacoes', 'Avisos', 'sino']].map(a =>
-            '<button type="button" data-pf="' + a[0] + '">' + svgF(a[2]) + '<span>' + a[1] + '</span></button>').join('') +
-        '</div></div>' : '') +
-
-      /* zzz163: procurar um ajuste em todas as abas de uma vez */
-      '<label class="cfg-busca">' + svgF('lupa') + '<input type="search" id="cfg-q" placeholder="Procurar um ajuste" autocomplete="off" aria-label="Procurar um ajuste"></label>' +
-      (abas.length > 1 ? '<div class="cfg-seg cfg-abas" data-grupo="aba" role="tablist" aria-label="Seções das configurações"><i class="cfg-seg-pill" aria-hidden="true"></i>' +
-        abas.map(a => '<button type="button" role="tab" data-v="' + a[0] + '" aria-selected="' + (a[0] === abaAtual) + '"' +
-          (a[0] === abaAtual ? ' class="on"' : '') + '>' + svgF(IC_ABA[a[0]]) + '<span>' + a[1] +
-          '<small class="cfg-aba-d">' + esc(DESC_ABA[a[0]] || '') + '</small></span></button>').join('') + '</div>' : '') +
+        '<header class="cfg-topo"><h1 class="cfg-titulo">Configurações</h1>' +
+          '<p class="cfg-sub">Sua conta e o jeito do B7' + (ehAdm ? ' — e o da equipe' : '') + '.</p></header>' +
+        (u ? '<button type="button" class="cfg-eu" data-abrir-perfil>' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-eu-av') : '') +
+          '<span class="cfg-eu-tx"><b>' + esc(u.nome || u.username || '') + '</b><small>' + esc(PAPEL_CFG[u.papel] || u.papel || '') +
+          (ehSuper ? ' · Super admin' : '') + '</small></span>' + SETA_CFG + '</button>' : '') +
+        '<label class="cfg-busca">' + svgF('lupa') + '<input type="search" id="cfg-q" placeholder="Procurar um ajuste" autocomplete="off" aria-label="Procurar um ajuste"></label>' +
+        '<nav class="cfg-nav" aria-label="Seções das configurações">' + BLOCOS.map(([b, rot]) => {
+          const lista = SECOES.filter(x => x[5] === b);
+          if (!lista.length) return '';
+          return '<p class="cfg-nav-g">' + rot + '</p><div class="cfg-nav-lista">' + lista.map(x =>
+            '<button type="button" class="cfg-nav-i' + (x[0] === abaAtual ? ' on' : '') + '" data-secao="' + x[0] + '"' + (x[0] === abaAtual ? ' aria-current="page"' : '') + '>' +
+              ic(x[2], x[3]) + '<span class="cfg-nav-tx"><b>' + x[1] + '</b><small>' + esc(x[4]) + '</small></span>' + SETA_CFG + '</button>').join('') + '</div>';
+        }).join('') + '</nav>' +
+        '<footer class="cfg-assina"><span class="cfg-assina-b7" aria-hidden="true"></span><b>Sistema B7</b><small>v' + esc((B7.Auth && B7.Auth.VERSAO) || '') + ' · feito pela Branding7</small></footer>' +
       '</aside><div class="cfg-main">' +
-      '<p class="cfg-nada" hidden>Nenhum ajuste com esse nome.</p>' +
-      abas.map(a => '<div class="cfg-painel" data-painel="' + a[0] + '"' + (a[0] === abaAtual ? '' : ' hidden') + '>' +
-        '<header class="cfg-painel-cab">' + svgF(IC_ABA[a[0]]) + '<div><h2>' + a[1] + '</h2><p>' + esc(DESC_ABA[a[0]] || '') + '</p></div></header>' +
-        '<div class="cfg-painel-corpo">' + a[2] + '</div></div>').join('') +
+        '<button type="button" class="cfg-voltar" data-cfg-voltar>' + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Configurações</button>' +
+        '<p class="cfg-nada" hidden>Nenhum ajuste com esse nome.</p>' +
+        SECOES.map(x => '<section class="cfg-painel' + (x[7] ? ' cfg-mosaico' : '') + '" data-painel="' + x[0] + '"' + (x[0] === abaAtual ? '' : ' hidden') + '>' +
+          '<header class="cfg-painel-cab">' + ic(x[2], x[3]) + '<div><h2>' + x[1] + '</h2><p>' + esc(x[4]) + '</p></div></header>' +
+          '<div class="cfg-painel-corpo">' + x[6] + '</div></section>').join('') +
       '</div></div>' +
-
-      '<footer class="cfg-assina"><span class="cfg-assina-b7" aria-hidden="true"></span><b>Sistema B7</b><small>feito pela Branding7</small></footer>' +
     '</div>';
 
     ligar();
     const p = painel();
-    const btPerfil = p.querySelector('[data-abrir-perfil]');
-    if (btPerfil) btPerfil.onclick = () => B7.Perfil.abrir();
+    p.querySelectorAll('[data-abrir-perfil]').forEach(b => b.onclick = () => B7.Perfil.abrir());
+    /* zzz240: menu das seções. No computador troca no lugar; no celular entra
+       na seção pelo endereço (o Voltar do aparelho volta para o menu) */
+    const largo = () => !!(window.matchMedia && window.matchMedia('(min-width:1024px)').matches);
+    const mostrarSecao = id => {
+      B7.pref.gravar('cfg_aba', id);
+      p.querySelectorAll('[data-painel]').forEach(x => { x.hidden = x.dataset.painel !== id; });
+      p.querySelectorAll('.cfg-nav-i').forEach(b => { const on = b.dataset.secao === id; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+      try { history.replaceState(history.state, '', '#/config?s=' + id); } catch (e) {}
+      requestAnimationFrame(() => p.querySelectorAll('.cfg-seg').forEach(x => moverPilula(x, false)));
+    };
+    p.querySelectorAll('.cfg-nav-i').forEach(b => b.onclick = () => {
+      if (largo()) mostrarSecao(b.dataset.secao);
+      else { B7.pref.gravar('cfg_aba', b.dataset.secao); location.hash = '#/config?s=' + b.dataset.secao; }
+    });
+    const btVoltar = p.querySelector('[data-cfg-voltar]');
+    if (btVoltar) btVoltar.onclick = () => { location.hash = '#/config'; };
+    const btVc = p.querySelector('[data-ver-como]');
+    if (btVc) btVc.onclick = () => B7.PreviaUsuario.abrirSeletor();
+    const btTour = p.querySelector('[data-refazer-tour]');
+    if (btTour) btTour.onclick = () => { if (B7.Tour && B7.Tour.boasVindas) B7.Tour.boasVindas(); };
     p.querySelectorAll('[data-pf]').forEach(b => b.onclick = () => B7.Perfil.abrir(b.dataset.pf));
     const btSair = p.querySelector('[data-sair-config]');
     if (btSair) btSair.onclick = () => B7.Auth.sair();
@@ -2425,18 +2485,17 @@ B7.Dashboard = (function () {
     p.querySelectorAll('.cfg-cor').forEach(b => b.onclick = () => { B7.Aparencia.escolherRapido(b.dataset.cor); pintarCores(); });
     if (B7.Aparencia && p.querySelector('.cfg-cores')) pintarCores();
 
-    /* zzz163: procurar um ajuste — mostra as linhas que batem, de todas as abas */
+    /* zzz163/zzz240: procurar um ajuste — mostra as linhas que batem, de todas as seções */
     const campoQ = p.querySelector('#cfg-q');
     if (campoQ) {
       const sem = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const abasEl = p.querySelector('.cfg-abas'), nada = p.querySelector('.cfg-nada');
+      const tela = p.querySelector('.cfg-tela'), nada = p.querySelector('.cfg-nada');
       const procurar = () => {
         const q = sem(campoQ.value.trim());
-        p.classList.toggle('cfg-procurando', !!q);
-        if (abasEl) abasEl.hidden = !!q;
+        tela.classList.toggle('cfg-procurando', !!q);
         let achou = 0;
         p.querySelectorAll('[data-painel]').forEach(pn => {
-          pn.hidden = q ? false : pn.dataset.painel !== (B7.pref.ler('cfg_aba', '') || abas[0][0]);
+          let noPainel = 0;
           pn.querySelectorAll('.cfg-g').forEach(g => {
             const tituloBate = q && sem((g.querySelector('.cfg-g-t') || {}).textContent).includes(q);
             let visiveis = 0;
@@ -2446,12 +2505,13 @@ B7.Dashboard = (function () {
               if (ab && ab.classList.contains('cfg-l-abaixo')) ab.hidden = !ok;
               if (ok) visiveis++;
             });
-            g.hidden = !!q && !visiveis; achou += visiveis;
+            g.hidden = !!q && !visiveis; noPainel += visiveis;
           });
+          pn.hidden = q ? !noPainel : pn.dataset.painel !== (B7.pref.ler('cfg_aba', '') || abaAtual);
+          achou += noPainel;
         });
         if (nada) nada.hidden = !q || !!achou;
-        if (!q && abasEl) requestAnimationFrame(() => p.querySelectorAll('.cfg-seg').forEach(x => moverPilula(x, false)));
-        else requestAnimationFrame(() => p.querySelectorAll('[data-painel] .cfg-seg').forEach(x => moverPilula(x, false)));
+        requestAnimationFrame(() => p.querySelectorAll('[data-painel]:not([hidden]) .cfg-seg').forEach(x => moverPilula(x, false)));
       };
       campoQ.addEventListener('input', procurar);
       campoQ.addEventListener('keydown', e => { if (e.key === 'Escape' && campoQ.value) { e.stopPropagation(); campoQ.value = ''; procurar(); } });

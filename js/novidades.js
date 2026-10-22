@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz240', versao: 'zzz240', em: '2026-10-22T19:00:00-03:00',
+    titulo: 'Configurações repaginadas',
+    itens: ['As Configurações agora são seções curtas num menu com ícones: Conta, Preferências, Aparência, Abertura e sons, Teleprompter, Apps e TV e Este aparelho.',
+            'No celular o menu é a primeira tela: toque numa seção para entrar e em "‹ Configurações" para voltar, como nos ajustes do telefone.',
+            'O som de notificação e o teste dele agora aparecem para todo mundo, em "Abertura e sons". Em Preferências dá para refazer o tour do B7.'] },
   { id: 'v-zzz239', versao: 'zzz239', em: '2026-10-22T18:00:00-03:00',
     titulo: 'Configurações de cara nova',
     itens: ['No computador, as Configurações agora usam a tela inteira. À esquerda ficam sua conta, a busca e as seções (Geral, Aparência…), cada uma dizendo o que tem dentro. À direita fica a seção aberta, com os grupos lado a lado quando a tela permite.',
