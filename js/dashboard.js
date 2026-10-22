@@ -2136,6 +2136,7 @@ B7.Dashboard = (function () {
         L({ ic: 'versao', tom: 'violeta', t: 'Ajuda da administração', d: 'onde fica cada ferramenta de admin e para que serve', botao: true, attrs: ' data-ir="#/ajuda"' })) +
       (ehAdm && B7.Redistribuicao ? grupo('Equipe e carga', 'Os números vêm do sistema. Nada muda sozinho.',
         (iaCfg.chat && B7.ResumoAgencia ? L({ ic: 'ia', tom: 'violeta', t: 'Resumo da semana', d: 'o que andou, o que travou e quem está com mais trabalho (IA)', botao: true, attrs: ' data-resumo-semana' }) : '') +
+        (B7.Equipe ? L({ ic: 'usuarios', tom: 'rosa', t: 'Passar o trabalho de alguém', d: 'quando alguém sai ou vai ficar fora: tudo o que está em aberto com a pessoa vai para quem você escolher', botao: true, acao: 'Passar', attrs: ' data-repasse' }) : '') +
         L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre (avisa quem está de férias)', botao: true, attrs: ' data-redistribuir' })) : '');
 
     const secSisEquipe = !ehAdm ? '' :
@@ -2257,6 +2258,7 @@ B7.Dashboard = (function () {
       const pintarRecado = () => { const d = p.querySelector('[data-recado-d]'); if (d) B7.Equipe.resumoRecado().then(t => { d.textContent = t; }); };
       const btRec = p.querySelector('[data-recado]'); if (btRec) { btRec.onclick = () => B7.Equipe.modalRecado(pintarRecado); pintarRecado(); }
       const btCsv = p.querySelector('[data-eq-csv]'); if (btCsv) btCsv.onclick = () => B7.Equipe.exportarCSV();
+      const btRp = p.querySelector('[data-repasse]'); if (btRp) btRp.onclick = () => B7.Equipe.escolherRepasse();
     }
     const sel2fa = p.querySelector('[data-eq-2fa]');
     if (sel2fa) (async () => {

@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz248', versao: 'zzz248', em: '2026-10-23T01:00:00-03:00',
+    titulo: 'Repasse de trabalho entre a equipe',
+    itens: ['Quando alguém sai da equipe ou vai ficar um tempo fora, a administração pode passar o que estava com a pessoa (peças de design, demandas de vídeo, gravações marcadas e cards da Produção) para outras pessoas.',
+            'Quem recebe ganha um aviso só, com o total do que chegou, e o histórico de cada item mostra de quem ele veio.'] },
   { id: 'v-zzz247', versao: 'zzz247', em: '2026-10-23T00:00:00-03:00',
     titulo: 'Equipe: recado fixo, ausências e aniversários',
     itens: ['Recado da administração: quando houver, aparece um cartão no alto da tela com o aviso da semana. Feche o seu quando quiser.',

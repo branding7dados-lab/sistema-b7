@@ -1,0 +1,13 @@
+-- zzz248: passar o trabalho de quem sai (já aplicada no Supabase pelo MCP; registro).
+-- saida_resumo(p_perfil uuid) → jsonb: o que está em aberto com a pessoa
+--   (design_deliverables não finalizadas, demandas_edicao pendente/em edição/
+--   aguardando aprovação, gravações futuras não gravadas/canceladas, cards da
+--   Produção abertos que não são de design/vídeo) e quem pode receber.
+-- saida_transferir(p_de uuid, p_destinos jsonb, p_excluir uuid[]) → jsonb com
+--   quantos itens passaram por área. Só admin. Cada item: muda o responsável,
+--   ajusta o card ligado da Produção, grava o histórico (eventos_dominio já
+--   marcado como processado, demandas_edicao_eventos, gravacao_historico) e
+--   quem recebe ganha UM aviso 'equipe.repasse' com o total. Registro em
+--   auditoria ('repasse_trabalho'). Sem DELETE.
+-- Definições completas: ver as migrations 'equipe_repasse_trabalho' e
+-- 'equipe_repasse_trabalho_sem_avisos_em_massa' no histórico do Supabase.

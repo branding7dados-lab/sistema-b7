@@ -765,6 +765,7 @@ B7.Usuarios = (function () {
         catch (e) { B7.UI.toast('Não foi possível: ' + ((e && e.message) || 'erro'), { tipo: 'erro' }); }
       })();
       if (acao === 'editar') return modalEditar(u, clientes, vinculos, funcoesExtraDe(u.id));
+      if (acao === 'repasse') return B7.Equipe.repasse(u, { aoTerminar: reabrir });
       if (acao === 'estado') return alterarEstado(u, estado);
       if (acao === 'foto') return modalFoto(u);
       if (acao === 'excluir') return excluirConta(u);
@@ -886,6 +887,7 @@ B7.Usuarios = (function () {
           '<button data-acao-conta="foto" data-id="' + esc(u.id) + '">Foto de perfil</button>' +
           '<button data-acao-conta="senha" data-id="' + esc(u.id) + '">Redefinir senha</button>' +
           '<button data-acao-conta="2fa" data-id="' + esc(u.id) + '">Desligar verificação em 2 etapas</button>' +
+          (u.papel !== 'cliente' && !souEu && B7.Equipe ? '<button data-acao-conta="repasse" data-id="' + esc(u.id) + '">Passar o trabalho…</button>' : '') +
           '<hr>' +
           (inativa
             ? '<button data-acao-conta="estado" data-estado="ativa" data-id="' + esc(u.id) + '">Reativar conta</button>'
@@ -1094,6 +1096,11 @@ B7.Usuarios = (function () {
 
   async function alterarEstado(u, estado) {
     const desativando = estado !== 'ativa';
+    /* zzz248: quem sai com trabalho em aberto: primeiro escolher para quem vai */
+    if (desativando && u.papel !== 'cliente' && B7.Equipe) {
+      const tem = await B7.Equipe.temTrabalho(u.id).catch(() => 0);
+      if (tem) return B7.Equipe.repasse(u, { desativar: true, aoTerminar: reabrir });
+    }
     const ok = await B7.UI.confirmar({
       titulo: desativando ? 'Desativar esta conta?' : 'Reativar esta conta?',
       texto: desativando
@@ -1107,7 +1114,7 @@ B7.Usuarios = (function () {
     try {
       await B7.DB.chamarAuth({ acao: 'alterar_conta', perfil_id: u.id, estado });
       B7.UI.toast(desativando ? 'Conta desativada' : 'Conta reativada');
-      abrir();
+      reabrir();
     } catch (e) {
       B7.UI.toast(e.message || 'Não foi possível alterar', { tipo: 'erro' });
     }

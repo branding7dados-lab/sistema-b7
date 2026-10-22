@@ -232,6 +232,126 @@ B7.Equipe = (function () {
     B7.UI.toast('Lista da equipe baixada (' + us.length + (us.length === 1 ? ' pessoa' : ' pessoas') + ').');
   }
 
+  /* ================================================ PASSAR O TRABALHO
+     zzz248: quando alguém sai (ou vai ficar fora muito tempo), o que está
+     com a pessoa passa para outras: peças de design, demandas de vídeo,
+     gravações marcadas e cards da Produção. Nada é apagado — só muda o
+     responsável; cada item guarda no histórico que veio de um repasse, e
+     quem recebe ganha UM aviso com o total (saida_transferir). */
+  const AREAS = [
+    ['design', 'Design', 'peça em aberto', 'peças em aberto', 'design'],
+    ['video', 'Edição de vídeo', 'demanda em aberto', 'demandas em aberto', 'video'],
+    ['gravacoes', 'Gravações marcadas', 'gravação', 'gravações', 'video'],
+    ['kanban', 'Produção', 'card em aberto', 'cards em aberto', 'equipe']
+  ];
+  const ROT_STATUS = { aguardando_producao: 'aguardando', em_criacao: 'em criação', pendente: 'pendente', em_edicao: 'em edição', aguardando_aprovacao: 'com o cliente' };
+  async function temTrabalho(id) {
+    const r = await B7.DB.rpc('saida_resumo', { p_perfil: id });
+    return AREAS.reduce((n, a) => n + (r[a[0]] || []).length, 0);
+  }
+  async function repasse(pessoa, op) {
+    op = op || {};
+    const m = B7.UI.modal('<h3>Passar o trabalho de ' + esc(String(pessoa.nome || '').split(' ')[0] || 'alguém') + '</h3>' +
+      '<p class="sub">Tudo o que está em aberto com ' + esc(pessoa.nome || 'a pessoa') + ' passa para quem você escolher. Nada é apagado: só muda o responsável, ' +
+        'o histórico de cada item registra o repasse e quem recebe ganha um aviso com o total.</p>' +
+      '<div class="rp-corpo" id="rp-corpo">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>' +
+      '<p class="perfil-msg" id="rp-msg" role="status"></p>' +
+      '<div class="acoes rp-acoes"><label class="rp-desativar"><input type="checkbox" id="rp-desat"' + (op.desativar ? ' checked' : '') + '> Desativar a conta no fim</label>' +
+        '<div style="flex:1"></div><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="rp-ok" disabled>Passar</button></div>',
+      { larga: true, extra: 'rp-modal' });
+    const corpo = m.querySelector('#rp-corpo'), ok = m.querySelector('#rp-ok'), msg = m.querySelector('#rp-msg'), desat = m.querySelector('#rp-desat');
+    let r;
+    try { r = await B7.DB.rpc('saida_resumo', { p_perfil: pessoa.id }); }
+    catch (e) { corpo.innerHTML = '<p class="cfg-g-nota">' + esc((e && e.message) || 'Não foi possível ler o trabalho da pessoa.') + '</p>'; return; }
+    try { await carregar(); } catch (e) {}
+    if (!corpo.isConnected) return;
+    const cand = { design: r.candidatos.design || [], video: r.candidatos.video || [], equipe: r.candidatos.equipe || [] };
+    const com = AREAS.filter(a => (r[a[0]] || []).length);
+    const fora = id => ausenciaDe(id);
+    const opcoes = (lista, area) => {
+      /* sugere quem está com menos trabalho e não está de férias */
+      const boa = lista.find(c => !fora(c.id)) || lista[0];
+      return '<option value="">Não passar (fica com ' + esc(String(pessoa.nome || '').split(' ')[0]) + ')</option>' +
+        lista.map(c => '<option value="' + esc(c.id) + '"' + (boa && c.id === boa.id ? ' selected' : '') + '>' + esc(c.nome) +
+          (c.abertas != null ? ' · ' + c.abertas + ' em aberto' : '') + (fora(c.id) ? ' · fora' : '') + '</option>').join('');
+    };
+    corpo.innerHTML = com.length ? com.map(([k, rot, um, varios, tipoCand]) => {
+      const itens = r[k], lista = tipoCand === 'equipe' ? cand.equipe : cand[tipoCand];
+      return '<section class="rp-area" data-area="' + k + '">' +
+        '<header><div><b>' + rot + '</b><small>' + itens.length + ' ' + (itens.length === 1 ? um : varios) + '</small></div>' +
+          (lista.length ? '<select class="campo fina" data-para="' + k + '" aria-label="Passar ' + rot + ' para">' + opcoes(lista, k) + '</select>'
+            : '<span class="rp-sem">ninguém da equipe pode receber</span>') + '</header>' +
+        '<details><summary>Ver ' + (itens.length === 1 ? 'o item' : 'os ' + itens.length + ' itens') + ' e escolher</summary>' +
+          '<label class="rp-todos"><input type="checkbox" data-todos checked> Todos</label>' +
+          itens.map(x => '<label class="rp-item"><input type="checkbox" data-item="' + esc(x.id) + '" checked><span><b>' + esc(x.titulo || 'sem título') + '</b><small>' +
+            esc([x.cliente, x.prazo ? (k === 'gravacoes' ? 'dia ' : 'prazo ') + dm(x.prazo) : '', ROT_STATUS[x.status] || x.status || ''].filter(Boolean).join(' · ')) + '</small></span></label>').join('') +
+        '</details></section>';
+    }).join('') : '<div class="rp-vazio"><b>' + esc(pessoa.nome || 'A pessoa') + ' não tem nada em aberto.</b><span>Nenhuma peça, demanda, gravação ou card da Produção para passar.</span></div>';
+
+    const pintarBotao = () => {
+      let n = 0;
+      corpo.querySelectorAll('.rp-area').forEach(a => {
+        const sel = a.querySelector('[data-para]');
+        if (sel && sel.value) n += a.querySelectorAll('[data-item]:checked').length;
+      });
+      ok.disabled = !n && !desat.checked;
+      ok.textContent = n ? 'Passar ' + n + (n === 1 ? ' item' : ' itens') + (desat.checked ? ' e desativar' : '') : desat.checked ? 'Só desativar' : 'Passar';
+      ok.classList.toggle('perigo', !n && desat.checked);
+    };
+    corpo.querySelectorAll('.rp-area').forEach(a => {
+      const todos = a.querySelector('[data-todos]'), itens = [...a.querySelectorAll('[data-item]')];
+      todos.onchange = () => { itens.forEach(i => { i.checked = todos.checked; }); pintarBotao(); };
+      itens.forEach(i => i.onchange = () => { todos.checked = itens.every(x => x.checked); pintarBotao(); });
+      const sel = a.querySelector('[data-para]'); if (sel) sel.onchange = pintarBotao;
+    });
+    desat.onchange = pintarBotao;
+    pintarBotao();
+
+    ok.onclick = async () => {
+      const destinos = {}, excluir = [];
+      let n = 0;
+      corpo.querySelectorAll('.rp-area').forEach(a => {
+        const sel = a.querySelector('[data-para]');
+        if (!sel || !sel.value) return;
+        destinos[a.dataset.area] = sel.value;
+        a.querySelectorAll('[data-item]').forEach(i => { if (i.checked) n++; else excluir.push(i.dataset.item); });
+      });
+      const desativar = desat.checked;
+      const certo = await B7.UI.confirmar({
+        titulo: n ? 'Passar ' + n + (n === 1 ? ' item' : ' itens') + (desativar ? ' e desativar a conta?' : '?') : 'Desativar a conta de ' + (pessoa.nome || '') + '?',
+        texto: (n ? 'Os responsáveis mudam agora e cada pessoa que recebe é avisada. ' : '') +
+          (desativar ? (pessoa.nome || 'A pessoa') + ' deixa de entrar e as sessões abertas são encerradas. O histórico continua.' : ''),
+        confirmar: desativar && !n ? 'Desativar' : 'Passar', perigo: desativar });
+      if (!certo) return;
+      ok.disabled = true; ok.textContent = 'Passando…'; msg.className = 'perfil-msg'; msg.textContent = '';
+      let res = {};
+      try {
+        if (n) res = await B7.DB.rpc('saida_transferir', { p_de: pessoa.id, p_destinos: destinos, p_excluir: excluir });
+        if (desativar) await B7.DB.chamarAuth({ acao: 'alterar_conta', perfil_id: pessoa.id, estado: 'desativada' });
+      } catch (e) {
+        msg.className = 'perfil-msg erro'; msg.textContent = (e && e.message) || 'Não foi possível concluir.'; pintarBotao(); return;
+      }
+      const total = Object.values(res || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+      m.fechar();
+      B7.UI.toast((total ? total + (total === 1 ? ' item passado' : ' itens passados') : 'Nada passado') + (desativar ? ' e conta desativada.' : '.'));
+      if (op.aoTerminar) op.aoTerminar();
+    };
+  }
+  /* Configurações → Equipe: escolher de quem passar */
+  function escolherRepasse() {
+    carregar(true).then(() => {
+      const m = B7.UI.modal('<h3>Passar o trabalho de alguém</h3>' +
+        '<p class="sub">Para quando alguém sai da equipe ou vai ficar fora muito tempo. No próximo passo você vê tudo o que está com a pessoa e escolhe para quem vai.</p>' +
+        '<div class="mb"><label class="rot" for="rp-quem">DE QUEM</label><select class="campo" id="rp-quem">' +
+          cache.pessoas.map(p => '<option value="' + esc(p.id) + '">' + esc(p.nome) + (ausenciaDe(p.id) ? ' · ' + esc(rotuloAusencia(ausenciaDe(p.id)).toLowerCase()) : '') + '</option>').join('') + '</select></div>' +
+        '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="rp-seguir">Ver o trabalho</button></div>');
+      m.querySelector('#rp-seguir').onclick = () => {
+        const id = m.querySelector('#rp-quem').value; m.fechar();
+        setTimeout(() => repasse(pessoaDe(id)), 180);
+      };
+    }).catch(e => B7.UI.toast((e && e.message) || 'Não foi possível ler a equipe.', { tipo: 'erro' }));
+  }
+
   /* ================================================ NO DIA A DIA */
   let recadoMostrado = null;
   const FECHADOS = 'b7-recado-fechado';
@@ -306,5 +426,5 @@ B7.Equipe = (function () {
     setTimeout(() => { mostrarRecado(); aniversariosDeHoje(); }, 3500);
   }
 
-  return { carregar, montar, ausenciaDe, rotuloAusencia, modalRecado, resumoRecado, exportarCSV, aoEntrar };
+  return { carregar, montar, ausenciaDe, rotuloAusencia, modalRecado, resumoRecado, exportarCSV, aoEntrar, repasse, temTrabalho, escolherRepasse };
 })();
