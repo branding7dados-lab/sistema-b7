@@ -52,7 +52,8 @@
     if (ceu && ceu.nextSibling) el.insertBefore(cv, ceu.nextSibling); else el.appendChild(cv);
     const g = cv.getContext('2d');
     const celular = Math.min(innerWidth, innerHeight) < 600;
-    const dpr = Math.min(window.devicePixelRatio || 1, celular ? 2 : 1.5);
+    /* zzz232: os riscos são finos, mas 1x no celular basta (2x custava 4x mais) */
+    const dpr = Math.min(window.devicePixelRatio || 1, celular ? 1.25 : 1.25);
     let W = 0, H = 0, cx = 0, cy = 0;
     const medir = () => {
       const r = el.getBoundingClientRect(); W = r.width; H = r.height;
@@ -88,7 +89,8 @@
       if (tunel > 0) {
         const gr = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * .55);
         gr.addColorStop(0, 'rgba(255,160,220,' + (.35 * tunel) + ')'); gr.addColorStop(.35, 'rgba(124,60,210,' + (.18 * tunel) + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');
-        g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(0, 0, W, H);
+        const R = Math.max(W, H) * .55;
+        g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(cx - R, cy - R, R * 2, R * 2);   /* só onde o brilho existe */
       }
       const rastro = Math.min(.9, v * .07);                     /* comprimento do risco em profundidade */
       g.lineCap = 'round';
