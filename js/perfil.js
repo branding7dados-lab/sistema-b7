@@ -509,7 +509,10 @@ B7.Perfil = (function () {
     const btPush = chave('push');
     if (B7.Push && !B7.Push.disponivel()) {
       btPush.disabled = true; pintar('push', false);
-      avisoOpcao('push', B7.Push.motivo());
+      /* zzz246: sem push aqui (programa do computador, navegador sem
+         suporte), a linha some — o resumo acima já explica, e um
+         interruptor que não liga com um texto vermelho parecia defeito */
+      const linhaPush = m.querySelector('[data-opcao="push"]'); if (linhaPush) linhaPush.hidden = true;
     } else if (B7.Push) {
       btPush.disabled = true;
       B7.Push.ativo().then(ativo => { pintar('push', ativo); btPush.disabled = false; pintarEstado(); })

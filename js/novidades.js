@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz246', versao: 'zzz246', em: '2026-10-22T23:00:00-03:00',
+    titulo: 'Correções nas Notificações e nos envios pelo celular',
+    itens: ['Com uma cor do sistema escolhida e o tema escuro, algumas caixas ficavam quase brancas e com o título sumido (como a de "Neste aparelho", nas Notificações). Corrigido.',
+            'No programa do computador, a opção de push (que só existe no celular e no navegador) não aparece mais desligada com um texto vermelho: o aviso no alto já explica como os avisos chegam.',
+            'No celular, onde não dá para arrastar arquivos, a foto de perfil, a logo do cliente, o print do suporte, os anexos das conversas e a importação de vídeo dizem "toque para escolher".'] },
   { id: 'v-zzz245', versao: 'zzz245', em: '2026-10-22T22:00:00-03:00',
     titulo: 'Seu perfil agora fica nas Configurações',
     itens: ['Nas Configurações, o perfil ganhou três seções próprias: Perfil (foto e nome), Senha e segurança (senha, verificação em 2 etapas e Google) e Notificações. Cada uma abre no lugar, sem janela por cima.',

@@ -3133,8 +3133,8 @@ B7.Video = (function () {
       'arquivo é lida. Nada é gravado como demanda antes de você revisar e confirmar.</p>' +
       '<div class="vd-imp-solta" id="vd-imp-solta" tabindex="0" role="button" aria-label="Escolher arquivo">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M12 4l-4 4M12 4l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>' +
-        '<b>Arraste um arquivo aqui</b>' +
-        '<span>ou <u>selecionar arquivo</u> — CSV ou XLSX</span>' +
+        (B7.UI.toque() ? '<b>Toque para escolher um arquivo</b><span>CSV ou XLSX</span>'
+          : '<b>Arraste um arquivo aqui</b><span>ou <u>selecionar arquivo</u> — CSV ou XLSX</span>') +
         '<input type="file" accept="' + ACEITA_IMPORTACAO + '" id="vd-imp-arquivo" class="vd-imp-input-oculto" data-foco>' +
       '</div>' +
       '<div class="vd-imp-arquivo-escolhido" id="vd-imp-escolhido" hidden></div>' +

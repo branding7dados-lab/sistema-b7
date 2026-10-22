@@ -572,7 +572,12 @@ B7.Aparencia = (function () {
     '--ink-3': '#6F688C', '--ink-4': '#9E97B5', '--neutro': '#5B5480', '--neutro-bg': '#F0EDF8', '--esq-1': '#EEEBF5', '--esq-2': '#F7F5FB' };
   const NEUTROS_ESCURO = { '--fundo': '#0F0A18', '--card': '#1B1426', '--suave': '#221934', '--elevado': '#241A31', '--borda': '#2C2340',
     '--borda-forte': '#3A2F52', '--ink': '#F0ECF7', '--ink-2': '#CFC7DF', '--ink-3': '#A79CBE', '--ink-4': '#7C7295', '--neutro': '#B3A8CC',
+    /* zzz246: sem esta linha o escuro herdava o --neutro-bg CLARO do tema
+       (caixas "neutras" ficavam quase brancas, com o título branco sumido) */
+    '--neutro-bg': '#B3A8CC',
     '--esq-1': '#241A31', '--esq-2': '#2E2340', '--topo-bg': '#150F22' };
+  /* no escuro estes viram transparência por cima do fundo, como no global.css */
+  const ALFA_ESCURO = { '--topo-bg': .86, '--neutro-bg': .13 };
   /* zzz169: quanto do tom vai para os neutros — a intensidade (neutro/suave/
      colorido) só multiplica a saturação; a luminosidade nunca muda, então o
      contraste dos textos sobre fundo e cards continua o mesmo */
@@ -586,7 +591,7 @@ B7.Aparencia = (function () {
     const tab = escuro ? NEUTROS_ESCURO : NEUTROS_CLARO;
     return Object.keys(tab).map(k => {
       const [, s0, l0] = hexHsl(tab[k]), hex = hslHex(h, s0 * f, l0);
-      return k + ':' + (k === '--topo-bg' ? rgba(hex, .86) : hex) + ';';
+      return k + ':' + (escuro && ALFA_ESCURO[k] ? rgba(hex, ALFA_ESCURO[k]) : k === '--topo-bg' ? rgba(hex, .86) : hex) + ';';
     }).join('');
   }
   const cantosVars = c => {

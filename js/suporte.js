@@ -109,8 +109,11 @@ B7.Suporte = (function () {
       '<div class="mb"><label class="rot" for="sp-desc">DETALHES <span class="leve">— quanto mais, mais rápido a gente resolve</span></label><textarea class="campo" id="sp-desc" rows="5" maxlength="4000">' + esc(pre.descricao || '') + '</textarea></div>' +
       '<label class="sp-urg" id="sp-urg"><input type="checkbox" id="sp-urg-c"> Está me impedindo de trabalhar</label>' +
       '<div class="mb"><label class="rot">PRINT <span class="leve">— opcional</span></label>' +
-        '<div class="sp-solta" id="sp-solta" tabindex="0"><span>Cole um print aqui (<kbd>Ctrl</kbd>+<kbd>V</kbd>), arraste ou <button type="button" class="adm-link" id="sp-escolher">escolha um arquivo</button></span>' +
-        '<small>Dica: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> tira print de uma parte da tela.' +
+        '<div class="sp-solta" id="sp-solta" tabindex="0">' + (B7.UI.toque()
+          ? '<span><button type="button" class="adm-link" id="sp-escolher">Toque para escolher um print ou foto</button></span>' +
+            '<small>Tire o print no celular antes e escolha ele aqui, da galeria.'
+          : '<span>Cole um print aqui (<kbd>Ctrl</kbd>+<kbd>V</kbd>), arraste ou <button type="button" class="adm-link" id="sp-escolher">escolha um arquivo</button></span>' +
+            '<small>Dica: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> tira print de uma parte da tela.') +
           (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && window.MediaRecorder ? ' Ou <button type="button" class="adm-link" id="sp-gravar">grave a tela (até 15 s)</button>.' : '') + '</small></div>' +
         '<input type="file" id="sp-arq" accept="image/*" multiple hidden><div class="sp-minis" id="sp-minis"></div></div>' +
       '<label class="sp-info"><input type="checkbox" id="sp-info-c" checked> Enviar junto as informações da tela <button type="button" class="adm-link" id="sp-info-ver">ver o que vai</button></label>' +

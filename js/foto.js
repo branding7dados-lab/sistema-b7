@@ -57,7 +57,7 @@ B7.Foto = (function () {
       '<div class="foto-zona" tabindex="0">' +
         '<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>' +
         '<div class="foto-zona-tx"><b>Escolher imagem</b>' +
-        '<span>ou arraste aqui · PNG, JPG ou WEBP · será recortada ao quadrado</span></div>' +
+        '<span>' + (B7.UI.toque() ? 'Toque para escolher da galeria ou tirar uma foto' : 'ou arraste aqui') + ' · PNG, JPG ou WEBP · será recortada ao quadrado</span></div>' +
       '</div>' +
       '<div class="ajuda erro-txt"></div>';
     const zona = container.querySelector('.foto-zona');
