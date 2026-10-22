@@ -200,7 +200,8 @@ B7.Seguranca = (function () {
               (emailOk ? 'Chega no seu e-mail a cada entrada' : 'O envio de e-mail ainda não está configurado') + '</small></span></button>' +
             '<button type="button" class="seg-op" data-seg="app">' + SVG(IC.app) + '<span><b>App autenticador</b><small>Google Authenticator, Authy ou Microsoft Authenticator</small></span></button>' +
           '</div>') +
-      (adm ? '<div class="seg-politica"><label class="rot" for="seg-pol">PARA A EQUIPE (SÓ ADMINISTRADOR)</label><div class="seg-pol-l">' +
+      /* zzz247: nas Configurações a regra da equipe fica em Equipe → Segurança da equipe */
+      (adm && !cx.closest('.cfg-meu-perfil') ? '<div class="seg-politica"><label class="rot" for="seg-pol">PARA A EQUIPE (SÓ ADMINISTRADOR)</label><div class="seg-pol-l">' +
           '<select class="campo fina" id="seg-pol"><option value="ninguem">Cada pessoa decide</option><option value="gestao">Exigir de administração e coordenação</option><option value="todos">Exigir de toda a equipe</option></select>' +
           '<button type="button" class="b fina pri" id="seg-pol-b" disabled>Salvar</button></div>' +
           '<small class="ajuda">Quem é exigido e ainda não ligou recebe o pedido ao entrar. Quem perdeu o celular: Usuários e acessos → ⋯ → "Desligar verificação em 2 etapas".</small></div>' : '');

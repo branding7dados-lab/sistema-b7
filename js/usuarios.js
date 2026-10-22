@@ -621,7 +621,8 @@ B7.Usuarios = (function () {
       [dados, clientes, pedidos] = await Promise.all([
         B7.DB.chamarAuth({ acao: 'listar_usuarios' }),
         B7.DB.listarClientes().catch(() => []),
-        B7.DB.rpc('acesso_pedidos_listar', {}).catch(() => [])
+        B7.DB.rpc('acesso_pedidos_listar', {}).catch(() => []),
+        B7.Equipe ? B7.Equipe.carregar().catch(() => null) : null
       ]);
     } catch (e) {
       if (!vale()) return;
@@ -677,6 +678,9 @@ B7.Usuarios = (function () {
     const alertasDe = u => {
       if (u.estado !== 'ativa') return [{ t: 'Conta desativada', c: 'cinza' }];
       const a = [], d = diasSem(u), idt = identidadeDe(u);
+      /* zzz247: férias, folga, atestado (Configurações → Ausências e aniversários) */
+      const fora = B7.Equipe && B7.Equipe.ausenciaDe(u.id);
+      if (fora) a.push({ t: B7.Equipe.rotuloAusencia(fora), c: 'violeta' });
       if (presenca(u).online) { /* online agora: nada de "sem acesso" */ }
       else if (d === null) a.push({ t: 'Nunca acessou', c: 'ambar' });
       else if (d >= 30) a.push({ t: 'Sem acesso há ' + d + ' dias', c: 'ambar' });

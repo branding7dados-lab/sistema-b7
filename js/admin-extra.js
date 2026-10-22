@@ -1087,6 +1087,8 @@ B7.Redistribuicao = (function () {
     return '<section class="ad-cartao rd-sug ad-in" style="--i:' + i + '" data-area="' + a.area + '" data-destino="' + esc(a.destino.id) + '">' + cab +
       '<div class="rd-fluxo"><span>' + U.avatar(a.origem.nome, 'p') + esc(a.origem.nome) + '</span>' + U.IC.seta + '<span>' + U.avatar(a.destino.nome, 'p') + esc(a.destino.nome) + '</span>' +
         '<em>' + a.itens.length + (a.itens.length === 1 ? ' item' : ' itens') + '</em></div>' +
+      (B7.Equipe && B7.Equipe.ausenciaDe(a.destino.id) ? '<p class="rd-msg rd-fora">' + U.IC.alerta + '<span><b>' + esc(a.destino.nome) + '</b> está fora (' +
+        esc(B7.Equipe.rotuloAusencia(B7.Equipe.ausenciaDe(a.destino.id)).toLowerCase()) + '). Melhor escolher outra pessoa na tela de ' + ROT_AREA[a.area] + '.</span></p>' : '') +
       '<p class="rd-msg">Só entram itens que ainda não começaram' + (a.nao_iniciadas > a.itens.length ? '; há ' + a.nao_iniciadas + ' assim' : '') + ', os de prazo mais distante primeiro.</p>' +
       '<label class="rd-todos"><input type="checkbox" data-todos checked> Marcar todos</label>' +
       a.itens.map(x => '<label class="rd-item"><input type="checkbox" data-id="' + esc(x.id) + '" checked><span><b>' + esc(x.titulo) + '</b><small>' + esc(x.cliente) + ' · ' + prazo(x.prazo) + '</small></span></label>').join('') +
@@ -1102,7 +1104,7 @@ B7.Redistribuicao = (function () {
     async function carregar() {
       bt.classList.add('girando'); bt.disabled = true; cx.classList.add('carregando');
       try {
-        const r = await B7.DB.rpc('redistribuicao_sugestoes', {});
+        const [r] = await Promise.all([B7.DB.rpc('redistribuicao_sugestoes', {}), B7.Equipe ? B7.Equipe.carregar(true).catch(() => null) : null]);
         if (!cx.isConnected) return;
         cx.innerHTML = (r.areas || []).map(bloco).join('') + '<p class="ad-nota">A carga conta o que está em aberto (vídeo: pendente, em edição e aguardando aprovação; design: tudo que não está finalizado). Não inclui o Kanban.</p>';
         U.crescer(cx);

@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz247', versao: 'zzz247', em: '2026-10-23T00:00:00-03:00',
+    titulo: 'Equipe: recado fixo, ausências e aniversários',
+    itens: ['Recado da administração: quando houver, aparece um cartão no alto da tela com o aviso da semana. Feche o seu quando quiser.',
+            'Aniversários: no dia, aparece um cartão com o botão "Mandar parabéns", que abre a conversa com o aniversariante. E quem faz aniversário ganha um cartão só dele.',
+            'Férias, folgas e atestados: quem estiver fora aparece marcado no cartão de Pessoas e acessos.'] },
   { id: 'v-zzz246', versao: 'zzz246', em: '2026-10-22T23:00:00-03:00',
     titulo: 'Correções nas Notificações e nos envios pelo celular',
     itens: ['Com uma cor do sistema escolhida e o tema escuro, algumas caixas ficavam quase brancas e com o título sumido (como a de "Neste aparelho", nas Notificações). Corrigido.',
