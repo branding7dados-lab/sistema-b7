@@ -170,7 +170,8 @@ B7.Portal = (function () {
                 esc(e.nome) + '</option>').join('') + '</select>'
           : (emp ? '<span class="pt-marcador-emp">' + esc(emp.nome) + '</span>' : '')) +
       '</div>' +
-      ITENS_NAV.map(([secao, icone, texto]) =>
+      /* zzz238: na prévia o Suporte abriria o do administrador, não o do cliente */
+      ITENS_NAV.filter(([secao]) => !(previa && secao === 'suporte')).map(([secao, icone, texto]) =>
         '<a data-ir="' + rota(secao) + '">' + ICONE[icone] +
         '<span>' + esc(texto) + '</span></a>').join('');
 
@@ -339,6 +340,8 @@ B7.Portal = (function () {
     } catch (e) { /* segue com o que veio */ }
     if (!vale()) return;   /* zzz236: a pessoa já foi para outra tela */
 
+    /* zzz238: o que espera há mais tempo vem primeiro */
+    pendentes.sort((a, b) => String(a.enviado_em || '').localeCompare(String(b.enviado_em || '')));
     recentes = recentes.filter(a => a.decidido_em)
       .sort((a, b) => String(b.decidido_em).localeCompare(String(a.decidido_em))).slice(0, 5);
     /* zzz45: data local. Com toISOString, depois das 21h no Brasil o
@@ -398,9 +401,11 @@ B7.Portal = (function () {
   function cartaoPendente(a) {
     const quando = a.enviado_em ? B7.UI.quando(a.enviado_em) : '';
     const aberta = a.situacao === 'pendente' || a.situacao === 'parcial';
+    /* zzz238: há quanto tempo a decisão espera o cliente */
+    const dias = aberta && a.enviado_em ? Math.floor((Date.now() - new Date(a.enviado_em).getTime()) / 864e5) : 0;
     const acao = a.situacao === 'parcial' ? 'Continuar a revisão'
                : a.situacao === 'pendente' ? 'Revisar e decidir' : 'Abrir';
-    return '<button class="ph-item" data-aprovacao="' + esc(a.id) + '">' +
+    return '<button class="ph-item' + (dias >= 3 ? ' espera' : '') + '" data-aprovacao="' + esc(a.id) + '">' +
       '<span class="ph-item-tipo">' + esc(FORMATOS[a.tipo] || a.tipo) + '</span>' +
       '<span class="ph-item-tx">' +
         '<b>' + esc(a.titulo || 'Sem título') + '</b>' +
@@ -409,6 +414,7 @@ B7.Portal = (function () {
         (a.total_partes ? ' · ' + (a.partes_aprovadas || 0) + '/' + a.total_partes + ' cenas aprovadas' : '') +
         (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' com ajustes' : '') +
         '</small>' +
+        (dias >= 2 ? '<em class="ph-espera">Aguardando você há ' + dias + ' dias</em>' : '') +
       '</span>' +
       '<span class="pt-sit mini ' + esc(a.situacao) + '">' + esc(rotuloSituacao(a.situacao)) + '</span>' +
       '<span class="ph-item-ir">' + esc(acao) + (aberta ? ' →' : '') + '</span>' +
@@ -524,12 +530,16 @@ B7.Portal = (function () {
                    aprovado: ['aprovado'], todos: null, historico: null };
     /* zzz236: só a última troca de aba desenha, e nada desenha se a pessoa já saiu */
     const meu = ++seqAprov, vale = B7.Rota.marca();
-    let itens = [];
+    let itens = [], atuais = [];
     try {
-      itens = await B7.DB.painelAprovacoes({
-        clienteId: emp.id, situacao: mapa[situacao] || null,
-        somenteAtual: situacao !== 'historico' && situacao !== 'aprovado'
-      });
+      [itens, atuais] = await Promise.all([
+        B7.DB.painelAprovacoes({
+          clienteId: emp.id, situacao: mapa[situacao] || null,
+          somenteAtual: situacao !== 'historico' && situacao !== 'aprovado'
+        }),
+        /* zzz238: uma leitura das versões atuais dá o número de cada aba */
+        B7.DB.painelAprovacoes({ clienteId: emp.id, somenteAtual: true }).catch(() => [])
+      ]);
     } catch (e) {
       if (meu !== seqAprov || !vale()) return;
       /* zzz236: erro não é "nada por aqui" — o cliente precisa saber que não carregou */
@@ -540,6 +550,11 @@ B7.Portal = (function () {
     /* histórico = o que já foi decidido (parcial ainda está aberto) */
     if (situacao === 'historico') itens = itens.filter(a => a.situacao !== 'pendente' && a.situacao !== 'parcial');
 
+    const conta = {
+      pendente: atuais.filter(a => a.situacao === 'pendente' || a.situacao === 'parcial').length,
+      ajustes: atuais.filter(a => a.situacao === 'ajustes').length,
+      recusado: atuais.filter(a => a.situacao === 'recusado').length
+    };
     const vazioTexto = {
       pendente: 'Nenhum material aguardando sua decisão.',
       ajustes: 'Nenhum material com ajustes solicitados.',
@@ -555,17 +570,22 @@ B7.Portal = (function () {
 
       /* zzz236: sem a classe ap-abas — o CSS das Aprovações internas a esconde no
          celular (lá os números viram abas) e o cliente ficava sem abas */
-      '<div class="abas-cliente pt-abas" role="tablist">' + ABAS.map(([v, r]) =>
-        '<button class="aba' + (v === situacao ? ' on' : '') + '" data-filtro="' + v + '">' +
-        esc(r) + '</button>').join('') + '</div>' +
+      '<div class="abas-cliente pt-abas" role="tablist">' + ABAS.map(([v, r]) => {
+        const n = conta[v] || 0;
+        return '<button class="aba' + (v === situacao ? ' on' : '') + '" data-filtro="' + v + '">' +
+          esc(r) + (n ? '<span class="pt-aba-n">' + n + '</span>' : '') + '</button>';
+      }).join('') + '</div>' +
 
       (itens.length
         ? '<div class="ph-lista">' + itens.map(cartaoPendente).join('') + '</div>'
         : '<div class="ph-vazio"><b>Nada por aqui.</b><p>' + esc(vazioTexto) + '</p></div>') +
     '</div>';
 
-    painel().querySelectorAll('[data-filtro]').forEach(b =>
-      b.onclick = () => abrirAprovacoes(b.dataset.filtro, true));
+    /* zzz238: a aba vai para o endereço (atualizar a página e voltar mantêm a aba) */
+    painel().querySelectorAll('[data-filtro]').forEach(b => b.onclick = () => {
+      try { history.replaceState(history.state, '', rota('aprovacoes') + '?f=' + b.dataset.filtro); } catch (e) {}
+      abrirAprovacoes(b.dataset.filtro, true);
+    });
     ligar();
   }
 
@@ -597,10 +617,13 @@ B7.Portal = (function () {
     if (!emp) return;
 
     const vale = B7.Rota.marca();
-    let linha = null, conteudos = [];
+    let linha = null, conteudos = [], producao = [];
     try {
       linha = await B7.DB.linhaVisivelAtual(emp.id);
-      if (linha) conteudos = await B7.DB.conteudosVisiveis(emp.id).catch(() => []);
+      if (linha) [conteudos, producao] = await Promise.all([
+        B7.DB.conteudosVisiveis(emp.id).catch(() => []),
+        B7.DB.producaoDoCliente(emp.id).catch(() => [])
+      ]);
     } catch (e) {
       if (vale()) erroTela('Não foi possível carregar o planejamento.', e, () => abrirLinha());
       return;
@@ -614,7 +637,11 @@ B7.Portal = (function () {
               'Assim que a Branding7 publicar a linha editorial do mês, ela aparece aqui.'));
     }
 
-    const doMes = conteudos.filter(c => c.linha_id === linha.id);
+    /* zzz238: na ordem das postagens, como um calendário; cada conteúdo traz
+       a situação dele e, quando há aprovação, abre direto nela */
+    const doMes = conteudos.filter(c => c.linha_id === linha.id)
+      .sort((a, b) => String(a.data_postagem || '9999').localeCompare(String(b.data_postagem || '9999')));
+    const prodDe = {}; producao.forEach(p => { prodDe[p.id] = p; });
     /* a aprovação do planejamento é uma decisão separada da visualização */
     let ap = null;
     try {
@@ -636,14 +663,19 @@ B7.Portal = (function () {
           esc(linha.objetivo) + '</p></div>' : '') +
 
       (doMes.length
-        ? '<div class="pt-grade">' + doMes.map(c =>
-            '<article class="pt-item">' +
+        ? '<div class="pt-grade">' + doMes.map(c => {
+            const p = prodDe[c.id] || {};
+            const tag = p.aprovacao_id ? 'a' : 'article';
+            return '<' + tag + ' class="pt-item' + (p.aprovacao_id ? ' abre' : '') + '"' +
+                (p.aprovacao_id ? ' href="' + rota('revisar/' + p.aprovacao_id) + '"' : '') + '>' +
               '<span class="pt-formato">' + esc(c.tipo || 'Conteúdo') + '</span>' +
               '<h4>' + esc(c.titulo || 'Sem título') + '</h4>' +
               (c.data_postagem
                 ? '<span class="pt-data">' + esc(B7.UI.dataBR(c.data_postagem)) + '</span>' : '') +
               (c.objetivo ? '<p>' + esc(c.objetivo) + '</p>' : '') +
-            '</article>').join('') + '</div>'
+              (p.status_cliente ? '<span class="pt-sit mini ' + esc(p.status_cliente) + '">' + esc(STATUS_CLIENTE[p.status_cliente] || p.status_cliente) + '</span>' : '') +
+            '</' + tag + '>';
+          }).join('') + '</div>'
         : vazio('O planejamento ainda não tem conteúdos liberados.',
                 'A equipe libera cada peça conforme fica pronta.')));
   }
@@ -662,10 +694,12 @@ B7.Portal = (function () {
     return nome.charAt(0).toUpperCase() + nome.slice(1) + ' de ' + m[1];
   };
 
-  async function abrirProducao(filtros) {
-    const emp = prepararTela('minha-producao', 'Carregando a produção…');
+  /* zzz238: os filtros moram no endereço (?tipo=&status=); a atualização em
+     tempo real redesenha em silêncio, com os filtros que estão na tela */
+  async function abrirProducao(filtros, silencioso) {
+    const emp = prepararTela('minha-producao', silencioso ? null : 'Carregando a produção…');
     if (!emp) return;
-    if (!canal) assinar(() => { if (naRota(rota('minha-producao'))) abrirProducao(filtros); else desassinar(); },
+    if (!canal) assinar(() => { if (naRota(rota('minha-producao'))) abrirProducao(null, true); else desassinar(); },
                         ['conteudos', 'aprovacoes']);
 
     const vale = B7.Rota.marca();
@@ -710,8 +744,15 @@ B7.Portal = (function () {
         : vazio('Nenhum material com esse filtro.', 'Experimente outra combinação de tipo e situação.')));
 
     const c = conteudo();
-    c.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => abrirProducao(Object.assign({}, f, { tipo: b.dataset.tipo })));
-    c.querySelectorAll('[data-status]').forEach(b => b.onclick = () => abrirProducao(Object.assign({}, f, { status: b.dataset.status })));
+    const filtrar = novo => {
+      const nf = Object.assign({}, f, novo), qs = new URLSearchParams();
+      if (nf.tipo) qs.set('tipo', nf.tipo);
+      if (nf.status) qs.set('status', nf.status);
+      try { history.replaceState(history.state, '', rota('minha-producao') + (qs.toString() ? '?' + qs : '')); } catch (e) {}
+      abrirProducao(null, true);
+    };
+    c.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => filtrar({ tipo: b.dataset.tipo }));
+    c.querySelectorAll('[data-status]').forEach(b => b.onclick = () => filtrar({ status: b.dataset.status }));
     ligar();
   }
 
@@ -736,10 +777,10 @@ B7.Portal = (function () {
      como ausente, nunca inventada. O cliente não "aprova" que a
      gravação aconteceu: isso é registro da equipe.
      ================================================================= */
-  async function abrirGravacoes() {
-    const emp = prepararTela('minhas-gravacoes', 'Carregando as gravações…');
+  async function abrirGravacoes(silencioso) {
+    const emp = prepararTela('minhas-gravacoes', silencioso ? null : 'Carregando as gravações…');
     if (!emp) return;
-    if (!canal) assinar(() => { if (naRota(rota('minhas-gravacoes'))) abrirGravacoes(); else desassinar(); },
+    if (!canal) assinar(() => { if (naRota(rota('minhas-gravacoes'))) abrirGravacoes(true); else desassinar(); },
                         ['gravacoes', 'aprovacoes']);
 
     const vale = B7.Rota.marca();
@@ -818,7 +859,7 @@ B7.Portal = (function () {
           '<button class="b contorno fina" data-baixar="png">Baixar PNG</button>' +
         '</div>' +
       '</div>' +
-      '<div class="pt-lista" id="pt-semana-itens">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>' +
+      '<div class="pt-lista" id="pt-semana-itens" data-id="' + esc(atual.id) + '">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>' +
       (anteriores.length
         ? '<section class="pt-bloco"><h3>Relatórios anteriores</h3><div class="pt-lista">' +
           anteriores.map(s => '<button class="pt-linha-item abre" data-status="' + esc(s.id) + '">' +
@@ -846,7 +887,8 @@ B7.Portal = (function () {
     try {
       const itens = await B7.DB.itensDoStatus(atual.id);
       const alvo = document.getElementById('pt-semana-itens');
-      if (!alvo) return;
+      /* zzz238: abrir dois relatórios depressa punha os itens de um sob o outro */
+      if (!alvo || alvo.dataset.id !== atual.id || !vale()) return;
       alvo.innerHTML = itens.length
         ? itens.map(i => '<div class="pt-linha-item"><div><b>' + esc(i.titulo) + '</b>' +
             '<span>' + esc(i.formato || i.etapa || '') +
@@ -855,7 +897,7 @@ B7.Portal = (function () {
         : '<p class="pt-nada">Sem demandas registradas nesta semana.</p>';
     } catch (e) {
       const alvo = document.getElementById('pt-semana-itens');
-      if (alvo) alvo.innerHTML = '<p class="pt-nada">Não foi possível carregar as demandas desta semana.</p>';
+      if (alvo && alvo.dataset.id === atual.id) alvo.innerHTML = '<p class="pt-nada">Não foi possível carregar as demandas desta semana.</p>';
     }
   }
 
@@ -988,13 +1030,21 @@ B7.Portal = (function () {
      edita: o texto pertence ao editor da equipe. O que ele escreve vira
      comentário, não substituição.
      ================================================================= */
-  async function abrirRevisao(id) {
+  /* opcoes.manter (zzz238): redesenha sem o esqueleto e sem perder a rolagem —
+     decidir uma cena num roteiro longo não joga mais a pessoa para o topo.
+     opcoes.proxima: depois, leva até a próxima cena sem decisão. */
+  async function abrirRevisao(id, opcoes) {
+    const o = opcoes || {};
     marcarNav(rota('aprovacoes'));
     /* serviço pausado/cancelado: nada é carregado, nem por link direto */
     const empRev = empresa();
     if (empRev && empRev.servico !== 'ativo') return telaServico(empRev);
-    painel().innerHTML = '<div class="conteudo entra portal-revisao"></div>';
-    conteudo().innerHTML = '<span class="sr-only">Abrindo material…</span>' + B7.UI.skeleton('detalhe');
+    const manter = o.manter && painel().querySelector('.portal-revisao[data-ap="' + id + '"]');
+    const voltarRolagem = manter ? guardarRolagem() : null;
+    if (!manter) {
+      painel().innerHTML = '<div class="conteudo entra portal-revisao" data-ap="' + esc(id) + '"></div>';
+      conteudo().innerHTML = '<span class="sr-only">Abrindo material…</span>' + B7.UI.skeleton('detalhe');
+    }
 
     const vale = B7.Rota.marca();
     let ap, partes = [], comentarios = [], versoes = [];
@@ -1025,6 +1075,9 @@ B7.Portal = (function () {
       return;
     }
     if (!vale()) return;
+    /* zzz238: versão nova ou decisão de outra pessoa enquanto a tela está aberta */
+    if (!canal) assinar(() => novidadeNaRevisao(id), ['aprovacoes']);
+    assinaturaRevisao = chaveRevisao(ap, partes, comentarios);
 
     const snap = ap.snapshot || {};
     const cenas = Array.isArray(snap.cenas) ? snap.cenas : [];
@@ -1085,23 +1138,29 @@ B7.Portal = (function () {
           (comentarios.length ? comentarios.map(comentario).join('')
             : '<p class="pt-nada">Nenhuma observação ainda.</p>') +
         '</div>' +
-        (B7.Portal.somenteLeitura || !aberta ? '' :
+        /* zzz238: dá para perguntar também depois de decidido (só versão
+           substituída ou cancelada não recebe mais); Ctrl/⌘+Enter envia */
+        (B7.Portal.somenteLeitura || ap.situacao === 'substituido' || ap.situacao === 'cancelado' ? '' :
           '<div class="pt-novo-com">' +
-            '<input class="campo" id="pt-com" placeholder="Escrever uma observação geral…">' +
+            '<textarea class="campo" id="pt-com" rows="2" placeholder="' +
+              (aberta ? 'Escrever uma observação geral…' : 'Tem alguma dúvida sobre este material? Escreva para a equipe…') + '"></textarea>' +
             '<button class="b pri" id="pt-com-add">Enviar</button>' +
           '</div>') +
       '</section>' +
 
       (mostraDecisao
         ? '<div class="pt-decisao' + (previaAtiva ? ' previa' : '') + '">' +
-            '<div class="pt-decisao-tx"><b>Sua decisão sobre a versão ' + (ap.versao || 1) + '</b>' +
+            '<div class="pt-decisao-tx"><b>Sua decisão sobre a versão ' + (ap.versao || 1) +
+              (cenas.length ? ' <span class="pt-progresso">' + (cenas.length - cenasPendentes) + ' de ' + cenas.length + ' cenas decididas</span>' : '') + '</b>' +
               '<span id="pt-aviso">' + (previaAtiva
                 ? 'Prévia do cliente: as decisões ficam desativadas. Nenhum comando é enviado ao banco.'
                 : cenasAjustes
                 ? cenasAjustes + ' cena(s) com ajustes pedidos — a aprovação completa fica bloqueada até uma nova versão.'
                 : (cenas.length && cenasPendentes
                     ? cenasPendentes + ' cena(s) ainda sem decisão. Aprovar o ' + rotuloTipo(ap.tipo).toLowerCase() + ' completo vale para todas.'
-                    : 'Escolha uma ação. Ela vale para esta versão inteira.')) + '</span></div>' +
+                    : 'Escolha uma ação. Ela vale para esta versão inteira.')) + '</span>' +
+              (cenas.length && cenasPendentes && !previaAtiva ? '<button type="button" class="pt-prox-cena" id="pt-prox-cena">Ir para a próxima cena sem decisão ↓</button>' : '') +
+            '</div>' +
             '<div class="pt-decisao-bts">' +
               '<button class="b perigo contorno" id="pt-recusar"' + desab + '>Recusar</button>' +
               '<button class="b contorno" id="pt-ajustes"' + desab + '>Solicitar ajustes</button>' +
@@ -1129,8 +1188,69 @@ B7.Portal = (function () {
         ? '<div class="pt-baixar"><button class="b contorno" id="pt-pdf">Baixar PDF</button></div>'
         : '');
 
-    ligarRevisao(ap, cenas, partes);
+    ligarRevisao(ap, cenas, partes, comentarios);
     if (ap.tipo === 'design_versao') carregarArte();
+    if (voltarRolagem) voltarRolagem();
+    if (o.proxima) irParaProximaCena();
+  }
+
+  /* ---- zzz238: apoio da revisão ---- */
+  function guardarRolagem() {
+    const pares = [];
+    let el = document.getElementById('painel-dashboard');
+    while (el) { if (el.scrollTop > 0) pares.push([el, el.scrollTop]); el = el.parentElement; }
+    const raiz = document.scrollingElement; if (raiz && raiz.scrollTop) pares.push([raiz, raiz.scrollTop]);
+    return () => pares.forEach(([e, t]) => { try { e.scrollTop = t; } catch (x) {} });
+  }
+  function irParaProximaCena() {
+    const cena = conteudo().querySelector('.pt-cena.pendente [data-cena-ok]');
+    const card = cena && cena.closest('.pt-cena');
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });   /* topo: no celular a barra de decisão cobre a metade de baixo */
+    card.classList.add('foco'); setTimeout(() => card.classList.remove('foco'), 1400);
+  }
+  let assinaturaRevisao = '';
+  const chaveRevisao = (ap, partes, comentarios) => [ap.situacao, ap.versao, ap.updated_at,
+    partes.map(p => p.parte_id + ':' + p.situacao).sort().join(','), comentarios.length].join('|');
+  /* o canal avisa qualquer mudança nas aprovações da empresa; aqui decide se
+     é com este material: versão nova → faixa com o atalho; mudou o estado
+     (outra pessoa decidiu, a equipe respondeu) → redesenha no lugar */
+  async function novidadeNaRevisao(id) {
+    if (!naRota(rota('revisar/' + id))) return desassinar();
+    let ap, partes, comentarios, versoes;
+    try {
+      ap = await B7.DB.painelAprovacao(id);
+      if (!ap) return;
+      [partes, comentarios, versoes] = await Promise.all([
+        B7.DB.partesDaAprovacao(id).catch(() => []),
+        B7.DB.comentariosAprovacao(id).catch(() => []),
+        B7.DB.aprovacoesDoMaterial(ap.tipo, ap.alvo_id).catch(() => [])
+      ]);
+    } catch (e) { return; }
+    if (!naRota(rota('revisar/' + id))) return;
+    const nova = versoes.find(v => v.versao > ap.versao && v.situacao !== 'cancelado');
+    if (nova && !document.getElementById('pt-versao-nova')) {
+      const f = document.createElement('div');
+      f.id = 'pt-versao-nova'; f.className = 'pt-versao-nova'; f.setAttribute('role', 'status');
+      f.innerHTML = '<b>Chegou a versão ' + nova.versao + ' deste material.</b>' +
+        '<a class="b fina pri" href="' + rota('revisar/' + nova.id) + '">Abrir a versão nova</a>';
+      conteudo().insertBefore(f, conteudo().firstChild);
+      return;
+    }
+    if (chaveRevisao(ap, partes, comentarios) === assinaturaRevisao) return;
+    /* alguém escrevendo: não redesenha por baixo; avisa */
+    const ativo = document.activeElement;
+    if (ativo && ativo.closest && ativo.closest('.portal-revisao') && /^(INPUT|TEXTAREA)$/.test(ativo.tagName) && ativo.value.trim()) {
+      if (!document.getElementById('pt-atualizou')) {
+        const f = document.createElement('div');
+        f.id = 'pt-atualizou'; f.className = 'pt-versao-nova'; f.setAttribute('role', 'status');
+        f.innerHTML = '<b>Este material foi atualizado.</b><button type="button" class="b fina contorno">Atualizar</button>';
+        f.querySelector('button').onclick = () => abrirRevisao(id, { manter: true });
+        conteudo().insertBefore(f, conteudo().firstChild);
+      }
+      return;
+    }
+    abrirRevisao(id, { manter: true });
   }
 
   /* zzz236: carrega a arte da peça. Enquanto ela não aparece, as decisões
@@ -1329,8 +1449,11 @@ B7.Portal = (function () {
   /* zzz236: a versão mudou ou foi decidida por outra pessoa enquanto a tela
      estava aberta — em QUALQUER comando, a tela é refeita com o estado novo */
   const conflito = e => /versão|versao|substitu|encerrad|decidid|cancelad/i.test((e && e.message) || '');
-  function ligarRevisao(ap, cenas, partes) {
+  function ligarRevisao(ap, cenas, partes, comentarios) {
     const c = conteudo();
+    comentarios = comentarios || [];
+    const prox = c.querySelector('#pt-prox-cena');
+    if (prox) prox.onclick = irParaProximaCena;
     /* Prévia do admin: nenhum comando é ligado. Os botões já vêm
        desabilitados; se algum for reativado à mão, só avisa. */
     if (previa) {
@@ -1349,7 +1472,7 @@ B7.Portal = (function () {
         const r = await B7.DB.decidirParte(ap.id, b.dataset.cenaOk, rotuloDe(b.dataset.cenaOk), 'aprovada');
         if (r && r.resultado === 'inalterado') B7.UI.toast('Esta cena já estava aprovada');
         else B7.UI.toast(rotuloDe(b.dataset.cenaOk) + ' aprovada');
-        abrirRevisao(ap.id);
+        abrirRevisao(ap.id, { manter: true, proxima: true });
       } catch (e) { explicarErro(e, 'Não foi possível registrar a decisão'); if (conflito(e)) abrirRevisao(ap.id); }
     }));
 
@@ -1365,18 +1488,23 @@ B7.Portal = (function () {
         try {
           await B7.DB.decidirParte(ap.id, b.dataset.cenaAjuste, rotuloDe(b.dataset.cenaAjuste), 'ajustes', texto);
           B7.UI.toast('Ajuste pedido na ' + rotuloDe(b.dataset.cenaAjuste).toLowerCase());
-          abrirRevisao(ap.id);
+          abrirRevisao(ap.id, { manter: true, proxima: true });
         } catch (e) { explicarErro(e, 'Não foi possível registrar o pedido'); if (conflito(e)) abrirRevisao(ap.id); }
       });
     });
 
     const add = c.querySelector('#pt-com-add');
+    const campoCom = c.querySelector('#pt-com');
+    if (campoCom) {
+      campoCom.addEventListener('input', () => B7.UI.autoAltura(campoCom));
+      campoCom.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && add) { e.preventDefault(); add.click(); } });
+    }
     if (add) add.onclick = async () => {
       const campo = c.querySelector('#pt-com');
       const texto = campo.value.trim();
       if (!texto) return;
       add.disabled = true;
-      try { await B7.DB.comentarAprovacao(ap.id, texto); abrirRevisao(ap.id); }
+      try { await B7.DB.comentarAprovacao(ap.id, texto); campo.value = ''; B7.UI.toast('Observação enviada para a equipe'); abrirRevisao(ap.id, { manter: true }); }
       catch (e) { add.disabled = false; explicarErro(e, 'Não foi possível enviar a observação'); if (conflito(e)) abrirRevisao(ap.id); }
     };
 
@@ -1410,7 +1538,10 @@ B7.Portal = (function () {
         placeholder: 'ex.: o tom está formal demais para o nosso público', confirmar: 'Solicitar ajustes'
       });
       if (texto === null) return;
-      if (!texto && !cenasAj) return B7.UI.toast('Descreva o que precisa ser ajustado', { tipo: 'erro' });
+      /* zzz238: quem já explicou numa observação pode pedir sem repetir (o banco aceita) */
+      const eu = (B7.Auth.usuario() || {}).id;
+      const comentou = comentarios.some(x => x.autor_id === eu || x.autor_papel === 'cliente');
+      if (!texto && !cenasAj && !comentou) return B7.UI.toast('Descreva o que precisa ser ajustado', { tipo: 'erro' });
       comando(todos(), async () => {
         try {
           await B7.DB.decidirAprovacao(ap.id, 'ajustes', texto, ap.versao);

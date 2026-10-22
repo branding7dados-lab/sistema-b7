@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz238', versao: 'zzz238', em: '2026-10-22T17:00:00-03:00',
+    titulo: 'Portal do cliente mais fácil de usar',
+    itens: ['Ao decidir uma cena, o cliente continua no mesmo ponto do roteiro e o Portal o leva até a próxima cena sem decisão. A barra de baixo mostra quantas cenas ele já decidiu.',
+            'Quando a equipe envia uma versão nova enquanto o cliente está olhando a anterior, aparece um aviso com o atalho para a versão nova.',
+            'O cliente pode mandar observações também depois de decidir, por exemplo para tirar uma dúvida sobre algo já aprovado.',
+            'O que espera há mais tempo aparece primeiro, com "Aguardando você há N dias". As abas mostram quantos itens têm, e a Linha Editorial abre a aprovação de cada conteúdo.'] },
   { id: 'v-zzz236', versao: 'zzz236', em: '2026-10-22T16:00:00-03:00',
     titulo: 'Portal do cliente revisado',
     itens: ['Peças de design enviadas para aprovação agora mostram a arte no Portal. Antes o cliente via só o título. Os botões de decisão só liberam depois que a arte carrega.',
