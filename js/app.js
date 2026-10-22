@@ -228,10 +228,9 @@ B7.Rota = (function () {
       return B7.Suporte.abrir(partes[1] || null);
     }
     /* zzz225: Super admin (a tela confere o cargo; o banco confere de novo) */
-    if (partes[0] === 'super' && B7.Super) {
-      mostrar('tela-dashboard');
-      return B7.Super.abrir(partes[1] || null);
-    }
+    /* zzz244: Super admin e Usuários moram nas Configurações; os
+       endereços antigos (avisos, favoritos) levam para lá */
+    if (partes[0] === 'super') return location.replace('#/config?s=super-' + (partes[1] || 'painel'));
     if (partes[0] === 'trends' && B7.Trends) {
       mostrar('tela-dashboard');
       return B7.Trends.abrir();
@@ -248,7 +247,7 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return partes[1] ? B7.Aprovacoes.abrirDetalhe(partes[1]) : B7.Aprovacoes.abrir();
     }
-    if (partes[0] === 'usuarios') { mostrar('tela-dashboard'); return B7.Usuarios.abrir(); }
+    if (partes[0] === 'usuarios') return location.replace('#/config?s=pessoas' + (params.get('pedidos') ? '&pedidos=1' : ''));
     if (partes[0] === 'semanas') { mostrar('tela-dashboard'); return B7.Semana.abrirLista(); }
     if (partes[0] === 'semana' && partes[1]) { mostrar('tela-dashboard'); return B7.Semana.abrir(partes[1]); }
     /* zzz134: link de um aviso de conversa (#/conversa/<id>): abre o painel

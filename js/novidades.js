@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz244', versao: 'zzz244', em: '2026-10-22T21:00:00-03:00',
+    titulo: 'Toda a administração dentro das Configurações',
+    itens: ['"Pessoas e acessos" (contas, senhas, funções e módulos) agora é uma seção das Configurações, no bloco Administração.',
+            'Para o super admin, cada área virou uma seção do bloco Super admin: Painel, Pedidos para aprovar, Limites, Segurança, Uso e backup, Avaliações e, para o supremo, Supremo.',
+            'Os links antigos (avisos, menu da conta) levam direto para a seção certa das Configurações.',
+            'O cartão da sua conta não aparece mais repetido: fica só no alto do menu das Configurações.'] },
   { id: 'v-zzz243', versao: 'zzz243', em: '2026-10-22T20:00:00-03:00',
     titulo: '"Mais" do celular novo e Configurações com a cara da B7',
     itens: ['No celular, o botão "Mais" abre uma tela nova: no topo, o degradê da B7 com sua saudação e o "Meu dia em 30 segundos"; logo abaixo, uma busca para achar qualquer tela pelo nome.',

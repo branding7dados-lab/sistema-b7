@@ -1614,3 +1614,18 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
   [data-theme="dark"] .cfg-v2 .cfg-nav-i.on{background:linear-gradient(90deg, color-mix(in srgb, var(--violeta) 30%, transparent), color-mix(in srgb, var(--magenta) 16%, transparent));}
 }
 @media (max-width:600px){ .cfg-v2 .cfg-conta .b{display:none;} }
+
+/* =====================================================================
+   CONFIGURAÇÕES 9 (zzz244) — toda a administração aqui dentro
+   Pessoas e acessos (B7.Usuarios) e cada área do Super admin (B7.Super)
+   são seções do menu; o miolo delas é desenhado em .cfg-hospede. O
+   cabeçalho da seção (rótulo do bloco + título) substitui a trilha, o
+   título e as abas próprias dessas telas.
+   ===================================================================== */
+.cfg-hospede > .conteudo{padding:0 !important;margin:0 !important;max-width:none !important;width:auto;}
+.cfg-hospede .trilha{display:none;}
+.cfg-hospede .lu3-cab{margin-top:0;}
+.cfg-hospede .lu3-cab h1{display:none;}
+.cfg-hospede .lu3-cab p{margin-top:0;}
+.cfg-hospede .sa-hospede{padding-top:0;}
+.cfg-v2 .cfg-hospede + .cfg-g{margin-top:34px;}

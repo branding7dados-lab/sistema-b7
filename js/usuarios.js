@@ -14,7 +14,12 @@ window.B7 = window.B7 || {};
 
 B7.Usuarios = (function () {
   const esc = B7.UI.esc;
-  const painel = () => document.getElementById('painel-dashboard');
+  /* zzz244: Usuários e acessos mora dentro das Configurações (seção
+     "Pessoas e acessos"); lá abrir() recebe { alvo } e desenha nele */
+  let hospede = null;
+  const painel = () => hospede || document.getElementById('painel-dashboard');
+  const naTela = () => location.hash.indexOf('#/usuarios') === 0 || !!(hospede && hospede.isConnected);
+  const reabrir = () => abrir(hospede ? { alvo: hospede } : undefined);
 
   const PAPEIS = [
     ['admin', 'Administrador', 'controla a plataforma, contas e configurações'],
@@ -429,7 +434,7 @@ B7.Usuarios = (function () {
             p_descricao: (mt.descricao || '').trim() || null, p_base: mt.base, p_modulos: Object.assign({}, rasc[atual]) });
           B7.UI.toast(atual === NOVA ? 'Função "' + mt.rotulo.trim() + '" criada. Agora é só escolher ela na conta de cada pessoa.' : 'Função salva.');
           m.fechar();
-          if (location.hash.indexOf('#/usuarios') === 0) abrir();
+          if (naTela()) reabrir();
           return;
         }
         await B7.DB.chamarAuth({ acao: 'salvar_preset', funcao: atual, modulos: Object.assign({}, rasc[atual]) });
@@ -437,7 +442,7 @@ B7.Usuarios = (function () {
         ACESSO.presetNivel[atual] = Object.assign({}, rasc[atual]);
         B7.UI.toast('Padrão de ' + rotuloFuncao(atual) + ' salvo. Quem tem a função já herda.');
         pintar();
-        if (location.hash.indexOf('#/usuarios') === 0) abrir();
+        if (naTela()) reabrir();
       } catch (e) { erro.textContent = e.message || 'Não foi possível salvar.'; pintar(); }
     };
     async function excluir() {
@@ -447,7 +452,7 @@ B7.Usuarios = (function () {
       try {
         await B7.DB.rpc('funcao_personalizada_excluir', { p_id: atual });
         B7.UI.toast('Função excluída.'); m.fechar();
-        if (location.hash.indexOf('#/usuarios') === 0) abrir();
+        if (naTela()) reabrir();
       } catch (e) { m.querySelector('#fa-erro').textContent = e.message || 'Não foi possível excluir.'; }
     }
     pintar();
@@ -604,9 +609,10 @@ B7.Usuarios = (function () {
     carregar(pessoa ? pessoa.id : null);
   }
 
-  async function abrir() {
+  async function abrir(opc) {
+    hospede = (opc && opc.alvo) || null;
     B7.Dashboard.marcarNav('#/config');
-    B7.Rota.titulo(['Usuários e acessos']);
+    if (!hospede) B7.Rota.titulo(['Usuários e acessos']);
     painel().innerHTML = '<div class="conteudo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div>';
 
     const vale = B7.Rota.marca();   /* zzz234: não desenha por cima de outra tela */

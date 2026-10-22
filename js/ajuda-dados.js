@@ -2518,7 +2518,7 @@ B7.AJUDA_DADOS = [
    {
     "id": "usuarios-e-acessos",
     "titulo": "Usuários e acessos",
-    "onde": "Configurações → aba \"Admin\" → Pessoas → \"Usuários e acessos\". Também no menu da conta (clique na sua foto no topo → \"Usuários e acessos\"). Não fica mais na barra lateral.",
+    "onde": "Configurações → Administração → \"Pessoas e acessos\". Também no menu da conta (clique na sua foto no topo → \"Usuários e acessos\"). Não fica mais na barra lateral.",
     "quem": "só administrador.",
     "serve": "criar contas da equipe e dos clientes, mudar função e acesso a cada tela, trocar senha, desativar ou excluir.",
     "antes": "para conta de cliente, a empresa já precisa estar cadastrada em Clientes.",
