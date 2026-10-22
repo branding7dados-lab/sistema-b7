@@ -1554,3 +1554,78 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .cfg-v2 .cfg-painel .cfg-seta{display:block;opacity:.6;}
 .cfg-v2 .cfg-painel .cfg-l:has(.cfg-acao) .cfg-seta{display:none;}
 .cfg-v2 .cfg-painel button.cfg-l:hover .cfg-seta{opacity:1;stroke:var(--acento);}
+
+/* =====================================================================
+   CONFIGURAÇÕES 8 (zzz243) — com a identidade da B7
+   Kevin: "faltou um pouco da identidade da B7". O miolo limpo (estilo
+   Canva) fica; a marca entra nos lugares de destaque:
+   • cartão de quem está usando e o da Conta no degradê da B7 (marinho →
+     violeta → roxo → magenta) com o símbolo em marca-d'água;
+   • ícones do menu sem arco-íris: cada um é um passo do degradê da marca,
+     de cima para baixo (--k posto pelo dashboard.js);
+   • filete da marca no título, nos grupos do menu e no rótulo da seção;
+   • seção aberta marcada com o degradê; chaves ligadas no degradê.
+   ===================================================================== */
+.cfg-v2 .cfg-titulo{position:relative;padding-bottom:12px;}
+.cfg-v2 .cfg-titulo::after{content:"";position:absolute;left:0;bottom:0;width:46px;height:4px;border-radius:4px;background:var(--grad-curto);}
+.cfg-v2 .cfg-sub{margin-top:10px;}
+/* quem está usando: cartão da marca */
+.cfg-v2 .cfg-eu{color:#fff;border:0;padding:16px;
+  background:radial-gradient(120% 100% at 100% 0%, rgba(226,64,156,.5), transparent 60%), var(--grad);
+  box-shadow:0 18px 36px -24px rgba(58,30,134,.75), inset 0 1px 0 rgba(255,255,255,.2);}
+.cfg-v2 .cfg-eu:hover{border:0;box-shadow:0 22px 40px -22px rgba(58,30,134,.85), inset 0 1px 0 rgba(255,255,255,.22);}
+.cfg-eu-marca{position:absolute;right:-14px;top:-18px;z-index:-1;width:110px;height:130px;opacity:.14;transform:rotate(-8deg);pointer-events:none;
+  background:url('../assets/brand/symbol-white.png') center/contain no-repeat;}
+.cfg-v2 .cfg-eu .av-pessoa{box-shadow:0 0 0 2px rgba(255,255,255,.9), 0 6px 16px -6px rgba(0,0,0,.45);}
+.cfg-v2 .cfg-eu-tx b{color:#fff;}
+.cfg-v2 .cfg-eu-tx small{color:rgba(255,255,255,.78);}
+.cfg-v2 .cfg-eu .cfg-seta{stroke:#fff;opacity:.8;}
+/* grupos do menu com o filete da marca */
+.cfg-v2 .cfg-nav-g{display:flex;align-items:center;gap:8px;font-family:'Archivo';font-size:12.5px;font-weight:700;letter-spacing:.01em;text-transform:none;color:var(--ink-2);}
+.cfg-v2 .cfg-nav-g::before{content:"";width:14px;height:4px;border-radius:4px;background:var(--grad-curto);}
+/* ícones do menu: degradê da B7 em vez do arco-íris */
+.cfg-v2 .cfg-nav-i{--cfg-c:var(--roxo);--cfg-c:color-mix(in oklab, var(--violeta) calc((1 - var(--k, 0)) * 100%), var(--magenta));}
+.cfg-v2 .cfg-nav-i .cfg-ic{background:linear-gradient(150deg, color-mix(in oklab, var(--cfg-c) 72%, #fff), var(--cfg-c) 70%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 6px 12px -8px var(--cfg-c);}
+/* rótulo do bloco acima do título da seção */
+.cfg-painel-bloco{display:inline-flex;align-items:center;gap:8px;margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--grad-curto);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.cfg-painel-bloco::before{content:"";width:14px;height:4px;border-radius:4px;background:var(--grad-curto);}
+.cfg-painel-bloco:empty{display:none;}
+/* Conta: cartão da marca */
+.cfg-v2 .cfg-conta{position:relative;isolation:isolate;overflow:hidden;color:#fff;border:0;
+  background:radial-gradient(120% 120% at 100% 0%, rgba(226,64,156,.5), transparent 60%), var(--grad);
+  box-shadow:0 20px 40px -26px rgba(58,30,134,.75), inset 0 1px 0 rgba(255,255,255,.2);}
+.cfg-v2 .cfg-conta::after{content:"";position:absolute;right:20px;top:-26px;z-index:-1;width:150px;height:178px;opacity:.12;transform:rotate(-8deg);pointer-events:none;
+  background:url('../assets/brand/symbol-white.png') center/contain no-repeat;}
+.cfg-v2 .cfg-conta .av-pessoa{box-shadow:0 0 0 3px rgba(255,255,255,.9), 0 8px 18px -8px rgba(0,0,0,.45);}
+.cfg-v2 .cfg-conta-tx b{color:#fff;}
+.cfg-v2 .cfg-conta-tx small{color:rgba(255,255,255,.8);}
+.cfg-v2 .cfg-conta .b{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;}
+.cfg-v2 .cfg-conta .b:hover{background:rgba(255,255,255,.24);}
+/* chaves ligadas e botões de ação com a marca */
+.cfg-v2 .cfg-sw.on{background:var(--grad-curto);}
+.cfg-v2 .cfg-painel button.cfg-l:hover .cfg-acao{border-color:transparent;color:#fff;background:var(--grad-curto);}
+.cfg-v2 .cfg-painel button.cfg-l.cfg-perigo:hover .cfg-acao{background:var(--erro);color:#fff;}
+@media (min-width:1024px){
+  .cfg-v2 .cfg-nav-i.on{background:linear-gradient(90deg, color-mix(in srgb, var(--violeta) 13%, transparent), color-mix(in srgb, var(--magenta) 9%, transparent));}
+  .cfg-v2 .cfg-nav-i.on::before{background:var(--grad-curto);width:4px;left:-5px;}
+  .cfg-v2 .cfg-nav-i.on .cfg-nav-tx b{color:var(--ink);font-weight:750;}
+  [data-theme="dark"] .cfg-v2 .cfg-nav-i.on{background:linear-gradient(90deg, color-mix(in srgb, var(--violeta) 30%, transparent), color-mix(in srgb, var(--magenta) 16%, transparent));}
+}
+@media (max-width:600px){ .cfg-v2 .cfg-conta .b{display:none;} }
+
+/* =====================================================================
+   CONFIGURAÇÕES 9 (zzz244) — toda a administração aqui dentro
+   Pessoas e acessos (B7.Usuarios) e cada área do Super admin (B7.Super)
+   são seções do menu; o miolo delas é desenhado em .cfg-hospede. O
+   cabeçalho da seção (rótulo do bloco + título) substitui a trilha, o
+   título e as abas próprias dessas telas.
+   ===================================================================== */
+.cfg-hospede > .conteudo{padding:0 !important;margin:0 !important;max-width:none !important;width:auto;}
+.cfg-hospede .trilha{display:none;}
+.cfg-hospede .lu3-cab{margin-top:0;}
+.cfg-hospede .lu3-cab h1{display:none;}
+.cfg-hospede .lu3-cab p{margin-top:0;}
+.cfg-hospede .sa-hospede{padding-top:0;}
+.cfg-v2 .cfg-hospede + .cfg-g{margin-top:34px;}

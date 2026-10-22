@@ -9,7 +9,7 @@ window.B7 = window.B7 || {};
 B7.AJUDA_ADMIN = [
  { id: 'adm-equipe', nome: 'Pessoas e acessos', itens: [
   { id: 'adm-usuarios', titulo: 'Criar e cuidar das contas', rotas: ['usuarios'],
-    onde: 'Menu da sua foto → **Usuários e acessos** (ou Configurações → Admin → Pessoas).',
+    onde: 'Configurações → Administração → **Pessoas e acessos** (ou menu da sua foto → Usuários e acessos).',
     quem: 'Só administrador.',
     serve: 'Criar a conta de quem entra na equipe ou de um cliente, trocar a função, redefinir senha, desativar e ver quem está online.',
     passos: [

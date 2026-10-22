@@ -772,3 +772,104 @@ html.modo-leve .nm-folha .nm-item,html.modo-leve .nm-folha .nm-ic,html.modo-leve
   body[data-shell="interno"] .lateral *,body[data-shell="interno"] .lateral:after{animation:none !important;}
 }
 html.modo-leve body[data-shell="interno"] .lateral:after{display:none !important;}
+
+/* =====================================================================
+   zzz243 — FOLHA "MAIS" (celular), quarta versão: com a cara da B7
+   Kevin: "faltou um pouco da identidade da B7… o mais no celular, eu não
+   tô gostando muito do design da UI e o UX dele". Saem os ícones de
+   arco-íris do iOS. Entram:
+   • topo no degradê da marca (marinho → violeta → roxo → magenta) com o
+     símbolo B7 em marca-d'água, saudação, data e o "Meu dia";
+   • busca ("Procurar uma tela"), Enter abre a primeira;
+   • "Usados por você" em pílulas;
+   • grupos com título visível; os ícones percorrem o degradê da B7 de
+     cima para baixo (--k vai de 0 a 1, posto pelo nav.js).
+   ===================================================================== */
+@media (max-width:760px){
+  html body .fundo-modal.tp-folha.nm-folha .modal{padding:8px 14px calc(14px + env(safe-area-inset-bottom));display:flex;flex-direction:column;}
+  html body .nm-folha .tp-folha-cab{display:none;}
+
+  /* topo da marca */
+  .nm-topo{position:relative;flex:none;overflow:hidden;isolation:isolate;margin:6px 0 12px;padding:16px 16px 14px;border-radius:24px;color:#fff;
+    background:radial-gradient(120% 90% at 100% 0%, rgba(226,64,156,.55), transparent 60%), var(--grad);
+    box-shadow:0 18px 40px -22px rgba(58,30,134,.7), inset 0 1px 0 rgba(255,255,255,.22);
+    animation:nmGrupo .55s cubic-bezier(.2,1.05,.3,1) 30ms both;}
+  .nm-topo::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(60% 80% at 0% 100%, rgba(0,21,89,.55), transparent 70%);}
+  .nm-topo-marca{position:absolute;right:-18px;top:-10px;z-index:-1;width:150px;height:178px;opacity:.13;transform:rotate(-8deg);
+    background:url('../assets/brand/symbol-white.png') center/contain no-repeat;pointer-events:none;}
+  .nm-topo-tx{padding-right:44px;}
+  .nm-topo-tx small{display:block;font-size:12px;font-weight:600;letter-spacing:.02em;opacity:.78;}
+  .nm-topo-tx h3{margin:2px 0 0;font-family:'Archivo';font-size:25px;font-weight:700;letter-spacing:-.025em;line-height:1.1;color:#fff;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .nm-fechar{position:absolute;top:12px;right:12px;width:32px;height:32px;display:grid;place-items:center;padding:0;border-radius:50%;cursor:pointer;
+    border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.14);color:#fff;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:transform .15s ease, background .15s ease;}
+  .nm-fechar:active{transform:scale(.9);background:rgba(255,255,255,.24);}
+  .nm-fechar svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;}
+  html body .nm-topo .nm-hoje{margin:14px 0 0;padding:10px 12px;border-radius:16px;color:#fff;
+    background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.2);box-shadow:none;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:transform .15s ease, background .15s ease;}
+  html body .nm-topo .nm-hoje:active{transform:scale(.98);background:rgba(255,255,255,.2);}
+  html body .nm-topo .nm-hoje .nm-hoje-ic{width:36px;height:36px;background:#fff;box-shadow:0 6px 14px -6px rgba(0,0,0,.4);}
+  html body .nm-topo .nm-hoje .nm-hoje-ic svg{fill:var(--magenta);width:16px;height:16px;}
+  html body .nm-topo .nm-hoje b{font-size:14.5px;}
+  html body .nm-topo .nm-hoje small{font-size:12px;opacity:.82;}
+
+  /* busca */
+  .nm-busca{flex:none;display:flex;align-items:center;gap:10px;height:46px;margin:0 0 14px;padding:0 14px;border-radius:15px;
+    background:var(--card);border:1px solid var(--borda);transition:border-color .15s ease, box-shadow .15s ease;
+    animation:nmGrupo .55s cubic-bezier(.2,1.05,.3,1) 70ms both;}
+  .nm-busca:focus-within{border-color:color-mix(in srgb, var(--acento) 55%, var(--borda));box-shadow:0 0 0 4px var(--acento-suave);}
+  .nm-busca svg{width:18px;height:18px;flex:none;fill:none;stroke:var(--ink-4);stroke-width:2;stroke-linecap:round;}
+  .nm-busca input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;font:inherit;font-size:16px;color:var(--ink);}
+  .nm-busca input::placeholder{color:var(--ink-4);}
+  .nm-busca input::-webkit-search-cancel-button{-webkit-appearance:none;}
+
+  html body .nm-folha .nm-corpo{flex:1 1 auto;min-height:0;gap:18px;padding:0 0 10px;max-height:none;}
+
+  /* títulos dos grupos, agora visíveis, com o filete da marca */
+  html[data-theme] body .nm-folha .nm-secao,.nm-usados{background:none;box-shadow:none;border-radius:0;overflow:visible;}
+  html body .nm-folha .nm-secao h4,.nm-usados h4{position:static;width:auto;height:auto;margin:0 0 8px 4px;padding:0;overflow:visible;clip:auto;white-space:normal;
+    display:flex;align-items:center;gap:8px;font-family:'Archivo';font-size:13px;font-weight:700;letter-spacing:.01em;text-transform:none;color:var(--ink-2);}
+  html body .nm-folha .nm-secao h4::before,.nm-usados h4::before{content:"";width:14px;height:4px;border-radius:4px;background:var(--grad-curto);}
+
+  /* cartão da lista */
+  html body .nm-folha .nm-grade{border-radius:18px;overflow:hidden;background:var(--card);border:1px solid var(--borda);
+    box-shadow:0 12px 30px -26px rgba(58,30,134,.45);}
+  [data-theme="dark"] body .nm-folha .nm-grade{background:var(--card);border-color:var(--borda);box-shadow:none;}
+
+  /* linha: ícone no degradê da B7 (cada um um passo de violeta a magenta) */
+  html body .nm-folha .nm-secao .nm-item[data-mais],html body .nm-folha .nm-secao .nm-item[data-vercomo]{--nm-c:var(--roxo);
+    --nm-c:color-mix(in oklab, var(--violeta) calc((1 - var(--k, 0)) * 100%), var(--magenta));}
+  html body .nm-folha .nm-item{
+    min-height:52px;padding:8px 40px 8px 12px;gap:13px;}
+  html body .nm-folha .nm-item + .nm-item::before{left:57px;}
+  html body .nm-folha .nm-ic{width:32px;height:32px;border-radius:10px;
+    background:linear-gradient(150deg, color-mix(in oklab, var(--nm-c) 72%, #fff), var(--nm-c) 70%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 6px 12px -8px var(--nm-c);}
+  html body .nm-folha .nm-tx{font-size:15.5px;font-weight:600;}
+  html body .nm-folha .nm-item:active{background:color-mix(in srgb, var(--acento) 7%, transparent);}
+  html body .nm-folha .nm-item[hidden],html body .nm-folha .nm-secao[hidden]{display:none;}
+
+  /* onde você está */
+  html body .nm-folha .nm-item.on{background:linear-gradient(90deg, color-mix(in srgb, var(--violeta) 10%, transparent), color-mix(in srgb, var(--magenta) 7%, transparent));}
+  html body .nm-folha .nm-item.on::after{display:none;}
+  html body .nm-folha .nm-item.on .nm-tx{color:var(--ink);font-weight:700;}
+  .nm-aqui{flex:none;margin-right:-28px;padding:3px 8px;border-radius:99px;font-size:10.5px;font-weight:700;color:#fff;background:var(--grad-curto);white-space:nowrap;}
+
+  /* usados por você */
+  .nm-usados-fila{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:2px 14px 4px;scroll-padding:0 14px;}
+  .nm-usados-fila::-webkit-scrollbar{display:none;}
+  .nm-chip{flex:none;display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px 0 5px;border-radius:99px;text-decoration:none;
+    background:var(--card);border:1px solid var(--borda);color:var(--ink);font-size:13.5px;font-weight:650;
+    animation:nmLinha .45s cubic-bezier(.2,.9,.3,1) 120ms both;transition:transform .15s ease;}
+  .nm-chip:active{transform:scale(.95);}
+  html body .nm-folha .nm-chip .nm-ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;background:var(--grad-curto);animation:none;}
+  html body .nm-folha .nm-chip .nm-ic svg{--ic-vaza:var(--roxo);width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;}
+
+  html body .nm-folha .nm-vazio{margin:6px 0;}
+}
+@media (max-width:760px) and (prefers-reduced-motion:reduce){
+  .nm-topo,.nm-busca,.nm-chip{animation:none;}
+}

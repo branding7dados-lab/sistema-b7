@@ -427,8 +427,8 @@ B7.Topo = (function () {
     const acao = {
       perfil: () => (B7.Perfil ? B7.Perfil.abrir() : B7.Auth.abrirPerfil()),
       config: () => { location.hash = '#/config'; },
-      usuarios: () => { location.hash = '#/usuarios'; },
-      super: () => { location.hash = '#/super'; },
+      usuarios: () => { location.hash = '#/config?s=pessoas'; },
+      super: () => { location.hash = '#/config?s=super-painel'; },
       suporte: () => { location.hash = '#/suporte'; },
       ajuda: () => { location.hash = '#/ajuda'; },
       atalhos: () => B7.UI.atalhos(),

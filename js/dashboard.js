@@ -1999,11 +1999,8 @@ B7.Dashboard = (function () {
       ['supremo', 'Supremo', 'coroa', 'violeta', 'o cargo supremo e as ações mais críticas']
     ].filter(a => a[0] !== 'supremo' || ehSupremo);
 
+    /* zzz244: o cartão da conta fica só no alto do menu (aqui ele se repetia) */
     const secConta = !u ? '' :
-      '<div class="cfg-conta">' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-conta-av') : '') +
-        '<div class="cfg-conta-tx"><b>' + esc(u.nome || u.username || '') + '</b><small>@' + esc(u.username || '') +
-        ' · ' + esc(PAPEL_CFG[u.papel] || u.papel || '') + (ehSuper ? ' · Super admin' : '') + '</small></div>' +
-        '<button type="button" class="b contorno fina" data-abrir-perfil>Abrir perfil</button></div>' +
       grupo('Sua conta', 'Foto, nome, senha e avisos ficam no seu perfil.',
         L({ ic: 'camera', tom: 'rosa', t: 'Foto e nome', d: 'como a equipe vê você', botao: true, attrs: ' data-pf="conta"' }) +
         L({ ic: 'acesso', tom: 'violeta', t: 'Senha e verificação em 2 etapas', d: 'trocar a senha e proteger a entrada', botao: true, attrs: ' data-pf="seguranca"' }) +
@@ -2120,9 +2117,6 @@ B7.Dashboard = (function () {
             botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : ''));
 
     const secEquipe = !ehAdm ? '' :
-      (pode('usuarios') ? grupo('Pessoas', 'Contas da equipe e dos clientes. Não existe cadastro público.',
-        L({ ic: 'usuarios', tom: 'azul', t: 'Usuários e acessos', d: 'criar, redefinir senha, funções e módulos',
-            botao: true, attrs: ' data-ir="#/usuarios"' })) : '') +
       grupo('Arquivo', 'Nada que vai para a lixeira é apagado do banco: dá para restaurar.',
         L({ ic: 'lixo', tom: 'vermelho', t: 'Lixeira', d: 'clientes, gravações e peças excluídos', botao: true, attrs: ' data-ir="#/lixeira"' }) +
         L({ ic: 'caixa', tom: 'cinza', t: 'Arquivados', d: 'o que saiu de circulação, guardado', botao: true, attrs: ' data-ir="#/arquivados"' })) +
@@ -2186,9 +2180,10 @@ B7.Dashboard = (function () {
             d: online ? 'tudo certo por aqui' : 'reconecte para voltar a salvar',
             dir: '<span class="cfg-valor ' + (online ? 'ok' : 'erro') + '">' + (online ? 'Online' : 'Sem conexão') + '</span>' }) : '')) : '');
 
-    const secSuper = !ehSuper ? '' :
-      grupo('Super admin', 'As áreas que só o super admin enxerga. O banco confere o cargo de novo em cada ação.',
-        SUPER_AREAS.map(([k, r, icone, tom, d]) => L({ ic: icone, tom, t: r, d, botao: true, attrs: ' data-ir="#/super/' + k + '"' })).join('')) +
+    /* zzz244: cada área do Super admin é uma seção daqui; o miolo é
+       desenhado pelo B7.Super dentro de .cfg-hospede quando a seção abre */
+    const hospede = qual => '<div class="cfg-hospede" data-hospede="' + qual + '">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>';
+    const secBackup = !ehSuper ? '' :
       (pode('dados') && B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() ? grupo('Backup', 'O banco é o Supabase. O arquivo de backup é segurança extra.',
         L({ ic: 'exportar', tom: 'violeta', t: 'Exportar backup', d: 'clientes, gravações, roteiros e cenas', botao: true, attrs: ' data-exportar' }) +
         L({ ic: 'importar', tom: 'laranja', t: 'Restaurar de um arquivo', d: 'devolve os registros de um backup', botao: true, attrs: ' data-importar' })) : '');
@@ -2205,11 +2200,13 @@ B7.Dashboard = (function () {
       ['equipe', 'Equipe e acessos', 'usuarios', 'azul', 'Pessoas, sessões, carga e comunicados', 'adm', secEquipe, true],
       ['sis-equipe', 'Sistema da equipe', 'tema', 'rosa', 'Aparência, recursos, IA e textos para todos', 'adm', secSisEquipe, true],
       ['saude', 'Saúde e manutenção', 'raio', 'verde', 'Manutenção, diagnóstico, uso da IA e servidor', 'adm', secSaude, true],
-      ['super', 'Super admin', 'coroa', 'violeta', 'Pedidos, limites, segurança e backup', 'super', secSuper, true]
-    ].filter(x => x[6]);
+      ['pessoas', 'Pessoas e acessos', 'usuarios', 'azul', 'Contas, senhas, funções e módulos', 'adm', ehAdm && pode('usuarios') && B7.Usuarios ? hospede('usuarios') : '', true]
+    ].concat(ehSuper && B7.Super ? SUPER_AREAS.map(([k, r, icone, tom, d]) =>
+      ['super-' + k, r, icone, tom, d.charAt(0).toUpperCase() + d.slice(1), 'super', hospede('super:' + k) + (k === 'uso' ? secBackup : ''), true]) : [])
+      .filter(x => x[6]);
     const BLOCOS = [['voce', 'Você'], ['adm', 'Administração'], ['super', 'Super admin']];
     const qsCfg = new URLSearchParams((location.hash.split('?')[1]) || '');
-    const pedida = qsCfg.get('s');
+    const pedida = qsCfg.get('s') === 'super' ? 'super-painel' : qsCfg.get('s');
     let abaAtual = SECOES.some(x => x[0] === pedida) ? pedida : B7.pref.ler('cfg_aba', '');
     if (!SECOES.some(x => x[0] === abaAtual)) abaAtual = SECOES[0][0];
     const dentro = !!pedida && SECOES.some(x => x[0] === pedida);
@@ -2219,15 +2216,17 @@ B7.Dashboard = (function () {
       '<div class="cfg-grade"><aside class="cfg-lado">' +
         '<header class="cfg-topo"><h1 class="cfg-titulo">Configurações</h1>' +
           '<p class="cfg-sub">Sua conta e o jeito do B7' + (ehAdm ? ' — e o da equipe' : '') + '.</p></header>' +
-        (u ? '<button type="button" class="cfg-eu" data-abrir-perfil>' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-eu-av') : '') +
+        (u ? '<button type="button" class="cfg-eu" data-abrir-perfil><span class="cfg-eu-marca" aria-hidden="true"></span>' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-eu-av') : '') +
           '<span class="cfg-eu-tx"><b>' + esc(u.nome || u.username || '') + '</b><small>' + esc(PAPEL_CFG[u.papel] || u.papel || '') +
           (ehSuper ? ' · Super admin' : '') + '</small></span>' + SETA_CFG + '</button>' : '') +
         '<label class="cfg-busca">' + svgF('lupa') + '<input type="search" id="cfg-q" placeholder="Procurar um ajuste" autocomplete="off" aria-label="Procurar um ajuste"></label>' +
         '<nav class="cfg-nav" aria-label="Seções das configurações">' + BLOCOS.map(([b, rot]) => {
           const lista = SECOES.filter(x => x[5] === b);
           if (!lista.length) return '';
+          /* zzz243: --k = posição no degradê da B7 (violeta → magenta) */
+          const kDe = x => (SECOES.length > 1 ? SECOES.indexOf(x) / (SECOES.length - 1) : 0).toFixed(3);
           return '<p class="cfg-nav-g">' + rot + '</p><div class="cfg-nav-lista">' + lista.map(x =>
-            '<button type="button" class="cfg-nav-i' + (x[0] === abaAtual ? ' on' : '') + '" data-secao="' + x[0] + '"' + (x[0] === abaAtual ? ' aria-current="page"' : '') + '>' +
+            '<button type="button" class="cfg-nav-i' + (x[0] === abaAtual ? ' on' : '') + '" data-secao="' + x[0] + '" style="--k:' + kDe(x) + '"' + (x[0] === abaAtual ? ' aria-current="page"' : '') + '>' +
               ic(x[2], x[3]) + '<span class="cfg-nav-tx"><b>' + x[1] + '</b><small>' + esc(x[4]) + '</small></span>' + SETA_CFG + '</button>').join('') + '</div>';
         }).join('') + '</nav>' +
         '<footer class="cfg-assina"><span class="cfg-assina-b7" aria-hidden="true"></span><b>Sistema B7</b><small>v' + esc((B7.Auth && B7.Auth.VERSAO) || '') + ' · feito pela Branding7</small></footer>' +
@@ -2235,7 +2234,7 @@ B7.Dashboard = (function () {
         '<button type="button" class="cfg-voltar" data-cfg-voltar>' + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Configurações</button>' +
         '<p class="cfg-nada" hidden>Nenhum ajuste com esse nome.</p>' +
         SECOES.map(x => '<section class="cfg-painel" data-painel="' + x[0] + '"' + (x[0] === abaAtual ? '' : ' hidden') + '>' +
-          '<header class="cfg-painel-cab"><h2>' + x[1] + '</h2><p>' + esc(x[4]) + '</p></header>' +
+          '<header class="cfg-painel-cab"><span class="cfg-painel-bloco">' + ((BLOCOS.find(b => b[0] === x[5]) || [])[1] || '') + '</span><h2>' + x[1] + '</h2><p>' + esc(x[4]) + '</p></header>' +
           '<div class="cfg-painel-corpo">' + x[6] + '</div></section>').join('') +
       '</div></div>' +
     '</div>';
@@ -2246,17 +2245,33 @@ B7.Dashboard = (function () {
     /* zzz240: menu das seções. No computador troca no lugar; no celular entra
        na seção pelo endereço (o Voltar do aparelho volta para o menu) */
     const largo = () => !!(window.matchMedia && window.matchMedia('(min-width:1024px)').matches);
+    /* zzz244: seções que outro módulo desenha (Pessoas, Super admin). Só uma
+       fica montada por vez: as outras esvaziam (os ids internos não repetem) */
+    const carregarHospede = id => {
+      const pn = p.querySelector('[data-painel="' + id + '"]');
+      const alvo = pn && pn.querySelector('.cfg-hospede');
+      p.querySelectorAll('.cfg-hospede').forEach(h => { if (h !== alvo && h.dataset.montado) { h.innerHTML = ''; delete h.dataset.montado; } });
+      if (!alvo || alvo.dataset.montado) return;
+      alvo.dataset.montado = '1';
+      const [mod, k] = alvo.dataset.hospede.split(':');
+      if (mod === 'usuarios') B7.Usuarios.abrir({ alvo });
+      if (mod === 'super') B7.Super.abrir(k, { alvo, irAba: k2 => irSecao('super-' + k2) });
+    };
+    const irSecao = id => {
+      if (!p.querySelector('[data-painel="' + id + '"]')) return;
+      if (largo()) mostrarSecao(id);
+      else { B7.pref.gravar('cfg_aba', id); location.hash = '#/config?s=' + id; }
+    };
     const mostrarSecao = id => {
       B7.pref.gravar('cfg_aba', id);
+      carregarHospede(id);
       p.querySelectorAll('[data-painel]').forEach(x => { x.hidden = x.dataset.painel !== id; });
       p.querySelectorAll('.cfg-nav-i').forEach(b => { const on = b.dataset.secao === id; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
       try { history.replaceState(history.state, '', '#/config?s=' + id); } catch (e) {}
       requestAnimationFrame(() => p.querySelectorAll('.cfg-seg').forEach(x => moverPilula(x, false)));
     };
-    p.querySelectorAll('.cfg-nav-i').forEach(b => b.onclick = () => {
-      if (largo()) mostrarSecao(b.dataset.secao);
-      else { B7.pref.gravar('cfg_aba', b.dataset.secao); location.hash = '#/config?s=' + b.dataset.secao; }
-    });
+    p.querySelectorAll('.cfg-nav-i').forEach(b => b.onclick = () => irSecao(b.dataset.secao));
+    if (largo() || dentro) carregarHospede(abaAtual);
     const btVoltar = p.querySelector('[data-cfg-voltar]');
     if (btVoltar) btVoltar.onclick = () => { location.hash = '#/config'; };
     const btVc = p.querySelector('[data-ver-como]');

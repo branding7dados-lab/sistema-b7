@@ -25,7 +25,12 @@
 window.B7 = window.B7 || {};
 B7.Super = (function () {
   const esc = s => B7.UI.esc(s);
-  const painel = () => document.getElementById('painel-dashboard');
+  /* zzz244: o Super admin mora dentro das Configurações (Kevin: "a parte
+     de administração… quero tudo nas configurações"). Lá, abrir() recebe
+     { alvo, irAba }: desenha no miolo da seção, sem cabeçalho nem abas
+     próprias (o menu das Configurações faz esse papel). */
+  let hospede = null, irFora = null;
+  const painel = () => hospede || document.getElementById('painel-dashboard');
   const SVG = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
   const IC = {
     coroa: '<path d="M3.5 8l4.2 3.6L12 5l4.3 6.6L20.5 8l-1.6 10H5.1z"/><path d="M5.5 21h13"/>',
@@ -93,21 +98,24 @@ B7.Super = (function () {
   const ROT_IA = { chat: 'Chat com o assistente', linha: 'Linhas editoriais', resumo: 'Resumos', whatsapp: 'WhatsApp', voz: 'Voz', analise: 'Análises',
     roteiro: 'Roteiros', oportunidade: 'Oportunidades', agencia: 'Resumo da agência', suporte: 'Suporte' };
 
-  async function abrir(sub) {
+  async function abrir(sub, opc) {
     const minha = ++vez;
-    if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/super');
-    if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['Super admin']);
-    if (!ehSuper()) return B7.Dashboard.semPermissao('super');
+    hospede = (opc && opc.alvo) || null; irFora = (opc && opc.irAba) || null;
+    if (!hospede) {
+      if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/super');
+      if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['Super admin']);
+    }
+    if (!ehSuper()) return hospede ? (hospede.innerHTML = '') : B7.Dashboard.semPermissao('super');
     if (sub && ABAS.some(a => a[0] === sub)) aba = sub;
     if (aba === 'supremo' && nivel() !== 'supremo') aba = 'painel';
     const sup = nivel() === 'supremo';
-    painel().innerHTML = '<div class="conteudo entra sa" id="sa">' +
+    painel().innerHTML = '<div class="conteudo entra sa' + (hospede ? ' sa-hospede' : '') + '" id="sa">' + (hospede ? '' :
       '<header class="sa-cab"><span class="sa-coroa' + (sup ? ' supremo' : '') + '">' + SVG(IC.coroa) + '</span>' +
         '<div class="sa-cab-tx"><span class="sa-tag">' + (sup ? 'Admin supremo' : 'Super admin') + '</span><h1>Super admin</h1>' +
         '<p>Acima dos administradores: o que eles fazem, o que precisam pedir, a segurança e o sistema todo.</p></div></header>' +
       '<nav class="sa-abas" role="tablist" aria-label="Seções do super admin">' + ABAS.filter(a => a[0] !== 'supremo' || sup).map(([k, r, i]) =>
         '<button type="button" role="tab" aria-selected="' + (aba === k) + '" data-aba="' + k + '" class="' + (aba === k ? 'on' : '') + (k === 'supremo' ? ' sa-aba-supremo' : '') + '">' +
-          SVG(IC[i]) + '<span>' + r + '</span><i id="sa-n-' + k + '"></i></button>').join('') + '</nav>' +
+          SVG(IC[i]) + '<span>' + r + '</span><i id="sa-n-' + k + '"></i></button>').join('') + '</nav>') +
       '<div id="sa-corpo" class="sa-corpo">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
     painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => irAba(b.dataset.aba));
     const on = painel().querySelector('.sa-abas .on');
@@ -128,7 +136,10 @@ B7.Super = (function () {
       const t = cx.querySelector('[data-sa-tentar]'); if (t) t.onclick = () => abrir(aba);
     }
   }
-  function irAba(k) { aba = k; history.replaceState(null, '', '#/super/' + aba); abrir(aba); }
+  function irAba(k) {
+    if (irFora) return irFora(k);
+    aba = k; history.replaceState(null, '', '#/super/' + aba); abrir(aba);
+  }
   async function contarPendentes() {
     try {
       const { count } = await B7.sb.from('super_aprovacoes').select('id', { count: 'exact', head: true }).eq('estado', 'pendente');
