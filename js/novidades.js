@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz233', versao: 'zzz233', em: '2026-10-22T12:00:00-03:00',
+    titulo: 'Avisos novos',
+    itens: ['Os avisos que aparecem depois de salvar, enviar ou quando algo dá errado ganharam ícone e cor: verde deu certo, vermelho deu erro, âmbar é atenção.',
+            'Dá para fechar no ×, ou arrastar para o lado no celular. Com o mouse em cima, o aviso espera você terminar de ler.'] },
   { id: 'v-zzz231', versao: 'zzz231', em: '2026-10-22T11:00:00-03:00',
     titulo: 'Aberturas novas',
     itens: ['Streaming: o logo surge no escuro com duas batidas graves, a câmera mergulha na lâmpada e as faixas de luz abrem direto o sistema.',
