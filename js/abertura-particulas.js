@@ -152,7 +152,7 @@
       };
       if (relogio() > 1.3) return;
       rodar(el, p, relogio);
-    }).catch(() => { /* sem leitura do logo: fica a abertura de antes */ });
+    }).catch(e => { /* sem leitura do logo: fica a abertura de antes */ if (window.B7_DEBUG_ABERTURA) console.error(e); });
   }
 
   function rodar(el, P, relogio) {
@@ -211,6 +211,17 @@
     const NEB = [[124, 60, 210], [194, 28, 131], [58, 30, 134], [226, 64, 156], [80, 70, 220], [160, 40, 170], [90, 40, 160]];
     const nevoa = NEB.map((c, i) => ({ sp: nuvem(c[0], c[1], c[2]), x: (Math.random() - .5) * 1.8 * F, y: (Math.random() - .5) * 1.1 * F,
       z0: F * (2.4 + i * .8 + Math.random()), tam: .7 + Math.random() * .6 }));
+    /* brasas (zzz229): sobem devagar depois da explosão, tremulando */
+    const brasa = Array.from({ length: celular ? 36 : 70 }, (_, i) => {
+      const pt = fonte[Math.floor(Math.random() * fonte.length)];
+      const c = [[255, 170, 90], [255, 120, 160], [255, 200, 140], [255, 90, 140]][i % 4];
+      return { u: pt.u, v: pt.v, sp: sprite(c[0], c[1], c[2]), vx: (Math.random() - .5) * 90, vy: -(25 + Math.random() * 70),
+        vida: 2 + Math.random() * 1.8, d: Math.random() * .4, tam: .35 + Math.random() * .5, fase: Math.random() * 6.28 };
+    });
+    /* feixes de luz da lâmpada (zzz229): fatias de luz que giram devagar */
+    const NF = celular ? 9 : 14;
+    const feixes = Array.from({ length: NF }, (_, i) => ({ a: i / NF * Math.PI * 2 + Math.random() * .3,
+      w: .025 + Math.random() * .06, alfa: .5 + Math.random() * .5, vel: (Math.random() < .5 ? -1 : 1) * (.04 + Math.random() * .06) }));
     /* quanto a câmera andou: rápido no começo, freando até parar na lâmpada */
     const voo = t => F * 1.4 * (1 - Math.pow(1 - lim(t / T.monta, 0, 1), 2));
     /* partículas da palavra */
@@ -327,6 +338,36 @@
         const q = Math.min(F * (celular ? .045 : .07), s * escala * f * (1 + dof));
         g.globalAlpha = a;
         g.drawImage(p.sp, cx + X * f - q, cy + Y * f - q, q * 2, q * 2);
+      }
+
+      /* feixes volumétricos: nascem na ignição, ficam atrás do logo e se apagam */
+      if (t > T.ign - .05 && t < 6.3 && !leve) {
+        const env = t < T.ign + .15 ? (t - T.ign + .05) / .2 : t < 4.2 ? 1 - (t - T.ign - .15) / .65 * .55 : Math.max(0, .45 * (1 - (t - 4.2) / 2.1));
+        if (env > 0) {
+          const L = Math.max(W, H) * 1.1;
+          const gr = g.createRadialGradient(cx, cy, lado * .25, cx, cy, L);
+          gr.addColorStop(0, 'rgba(255,200,235,.55)'); gr.addColorStop(.25, 'rgba(226,64,156,.22)'); gr.addColorStop(.6, 'rgba(124,60,210,.07)'); gr.addColorStop(1, 'rgba(124,60,210,0)');
+          g.fillStyle = gr;
+          for (const f of feixes) {
+            const a = f.a + f.vel * (t - T.ign);
+            g.globalAlpha = env * f.alfa * (celular ? .5 : .6);
+            g.beginPath(); g.moveTo(cx, cy);
+            g.lineTo(cx + Math.cos(a - f.w) * L, cy + Math.sin(a - f.w) * L);
+            g.lineTo(cx + Math.cos(a + f.w) * L, cy + Math.sin(a + f.w) * L);
+            g.closePath(); g.fill();
+          }
+        }
+      }
+      /* brasas: saem de onde estavam os pontos e sobem tremulando */
+      if (t > T.ign) {
+        for (const b of brasa) {
+          const dt = t - T.ign - b.d; if (dt < 0 || dt > b.vida) continue;
+          const x = ox + b.u * lado + b.vx * dt + Math.sin(dt * 3 + b.fase) * 10, y = oy + b.v * alt + b.vy * dt - dt * dt * 6;
+          const a = Math.min(1, dt * 4) * (1 - dt / b.vida) * (.6 + .4 * Math.sin(t * 17 + b.fase));
+          if (a <= .02) continue;
+          const q = b.tam * escala;
+          g.globalAlpha = a; g.drawImage(b.sp, x - q, y - q, q * 2, q * 2);
+        }
       }
 
       /* a palavra: sai da lâmpada e se escreve da esquerda para a direita */
