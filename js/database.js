@@ -1683,8 +1683,19 @@ B7.DB = (function () {
        design_versao) — Portal ou registradas pela B7; RLS de aprovacoes
        vale (designer pode não enxergar: cai em []) */
     async aprovacoesDesign(deliverableId) {
-      return ok(await sb().from('aprovacoes').select('*').eq('tipo', 'design_versao').eq('alvo_id', deliverableId)
+      const lista = ok(await sb().from('aprovacoes').select('*').eq('tipo', 'design_versao').eq('alvo_id', deliverableId)
         .is('deleted_at', null).order('versao', { ascending: false }));
+      /* zzz237: o motivo de anulação que o cliente não deve ver mora em
+         aprovacao_notas_internas (só a equipe lê; para os outros vem vazio) */
+      const semMotivo = lista.filter(a => a.anulada_em && !a.anulacao_motivo).map(a => a.id);
+      if (semMotivo.length) {
+        try {
+          const { data } = await sb().from('aprovacao_notas_internas').select('aprovacao_id, anulacao_motivo')
+            .in('aprovacao_id', semMotivo).is('parte_id', null);
+          (data || []).forEach(n => { const a = lista.find(x => x.id === n.aprovacao_id); if (a && n.anulacao_motivo) a.anulacao_motivo = n.anulacao_motivo; });
+        } catch (e) {}
+      }
+      return lista;
     },
     /* Registrar decisão do cliente (Admin/Coordenador) — decisao:
        'enviado' | 'aprovado' | 'ajustes' | 'recusado'; canal: whatsapp |
