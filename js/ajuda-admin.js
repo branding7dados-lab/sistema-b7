@@ -30,6 +30,17 @@ B7.AJUDA_ADMIN = [
      ['Para uma pessoa só, abra o cartão dela em Usuários e acessos e mude ali: vira um **acesso personalizado** (o mapa de módulos mostra em verde o que tem a mais e tracejado o que foi tirado).', []]
     ],
     cuidados: [['Administrador abre tudo, sempre. Funções e módulos só mudam o que as outras pessoas veem.', []]] },
+  { id: 'adm-repasse', titulo: 'Passar o trabalho de quem sai', rotas: [],
+    onde: 'Configurações → Administração → **Equipe** → Equipe e carga → **Passar o trabalho de alguém**. Também no ⋯ do cartão da pessoa em Pessoas e acessos (**Passar o trabalho…**) e, sozinho, ao **Desativar conta** de quem ainda tem trabalho em aberto.',
+    quem: 'Só administrador.',
+    serve: 'Quando alguém sai da equipe ou vai ficar fora muito tempo: o que está em aberto com a pessoa (peças de design, demandas de vídeo, gravações marcadas e cards da Produção) passa para quem você escolher.',
+    passos: [
+     ['Escolha a pessoa. Aparece cada tipo de trabalho com quantos itens estão em aberto.', []],
+     ['Em cada tipo, escolha para quem vai. O B7 sugere quem está com menos trabalho e não está de férias. "Não passar" deixa aquele tipo com a pessoa.', []],
+     ['Em **Ver os itens e escolher**, desmarque o que não quer passar.', []],
+     ['Marque **Desativar a conta no fim** se a pessoa saiu. Confirme: os responsáveis mudam na hora e cada pessoa que recebe ganha um aviso com o total.', []]
+    ],
+    cuidados: [['Nada é apagado: só muda o responsável. O histórico de cada item mostra que ele veio de um repasse.', []]] },
   { id: 'adm-agenda-equipe', titulo: 'Ausências, aniversários e recado para a equipe', rotas: [],
     onde: 'Configurações → Administração → **Ausências e aniversários**; o recado fica em **Equipe** → Recado e comunicado.',
     quem: 'Só administrador muda; a equipe vê.',

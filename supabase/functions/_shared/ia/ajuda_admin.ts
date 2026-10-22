@@ -12,6 +12,11 @@ export const TUTORIAIS_ADMIN: Record<string, Tutorial> = {
   "grupo": "Pessoas e acessos",
   "texto": "Onde fica: Usuários e acessos → botão Funções e acessos.\nQuem usa: Só administrador.\nServe para: Definir o padrão de cada função (Coordenador, Designer, Videomaker): quais módulos ela abre. Quem tem a função herda o padrão.\nPasso a passo:\n1. Escolha a função nas abas do alto e ligue ou desligue os módulos.\n2. Salve o padrão: todo mundo daquela função passa a ver igual, menos quem tem acesso personalizado.\n3. Para uma pessoa só, abra o cartão dela em Usuários e acessos e mude ali: vira um acesso personalizado (o mapa de módulos mostra em verde o que tem a mais e tracejado o que foi tirado).\nCuidado:\n- Administrador abre tudo, sempre. Funções e módulos só mudam o que as outras pessoas veem."
  },
+ "adm-repasse": {
+  "titulo": "Passar o trabalho de quem sai",
+  "grupo": "Pessoas e acessos",
+  "texto": "Onde fica: Configurações → Administração → Equipe → Equipe e carga → Passar o trabalho de alguém. Também no ⋯ do cartão da pessoa em Pessoas e acessos (Passar o trabalho…) e, sozinho, ao Desativar conta de quem ainda tem trabalho em aberto.\nQuem usa: Só administrador.\nServe para: Quando alguém sai da equipe ou vai ficar fora muito tempo: o que está em aberto com a pessoa (peças de design, demandas de vídeo, gravações marcadas e cards da Produção) passa para quem você escolher.\nPasso a passo:\n1. Escolha a pessoa. Aparece cada tipo de trabalho com quantos itens estão em aberto.\n2. Em cada tipo, escolha para quem vai. O B7 sugere quem está com menos trabalho e não está de férias. \"Não passar\" deixa aquele tipo com a pessoa.\n3. Em Ver os itens e escolher, desmarque o que não quer passar.\n4. Marque Desativar a conta no fim se a pessoa saiu. Confirme: os responsáveis mudam na hora e cada pessoa que recebe ganha um aviso com o total.\nCuidado:\n- Nada é apagado: só muda o responsável. O histórico de cada item mostra que ele veio de um repasse."
+ },
  "adm-agenda-equipe": {
   "titulo": "Ausências, aniversários e recado para a equipe",
   "grupo": "Pessoas e acessos",
