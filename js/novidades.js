@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz245', versao: 'zzz245', em: '2026-10-22T22:00:00-03:00',
+    titulo: 'Seu perfil agora fica nas Configurações',
+    itens: ['Nas Configurações, o perfil ganhou três seções próprias: Perfil (foto e nome), Senha e segurança (senha, verificação em 2 etapas e Google) e Notificações. Cada uma abre no lugar, sem janela por cima.',
+            'A foto aparece grande ao lado de onde você escolhe a imagem nova, e o cartão com seu nome no alto do menu muda na hora.',
+            '"Meu perfil" no menu da sua foto e o atalho de preferências do sino levam direto para a seção certa.'] },
   { id: 'v-zzz244', versao: 'zzz244', em: '2026-10-22T21:00:00-03:00',
     titulo: 'Toda a administração dentro das Configurações',
     itens: ['"Pessoas e acessos" (contas, senhas, funções e módulos) agora é uma seção das Configurações, no bloco Administração.',

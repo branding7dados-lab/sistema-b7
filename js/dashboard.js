@@ -1999,13 +1999,13 @@ B7.Dashboard = (function () {
       ['supremo', 'Supremo', 'coroa', 'violeta', 'o cargo supremo e as ações mais críticas']
     ].filter(a => a[0] !== 'supremo' || ehSupremo);
 
-    /* zzz244: o cartão da conta fica só no alto do menu (aqui ele se repetia) */
-    const secConta = !u ? '' :
-      grupo('Sua conta', 'Foto, nome, senha e avisos ficam no seu perfil.',
-        L({ ic: 'camera', tom: 'rosa', t: 'Foto e nome', d: 'como a equipe vê você', botao: true, attrs: ' data-pf="conta"' }) +
-        L({ ic: 'acesso', tom: 'violeta', t: 'Senha e verificação em 2 etapas', d: 'trocar a senha e proteger a entrada', botao: true, attrs: ' data-pf="seguranca"' }) +
-        L({ ic: 'sino', tom: 'laranja', t: 'Avisos e notificações', d: 'o que chega no sino, no celular e no e-mail', botao: true, attrs: ' data-pf="notificacoes"' })) +
-      blocoSessao;
+    /* zzz245: o perfil mora aqui. Cada parte é uma seção editável no lugar
+       (B7.Perfil.montar desenha em .cfg-perfil); antes as três linhas abriam
+       a mesma janela. O cartão da conta fica só no alto do menu. */
+    const perfilEm = qual => '<div class="cfg-meu-perfil cfg-g" data-perfil="' + qual + '"></div>';
+    const secConta = !u ? '' : perfilEm('conta') + blocoSessao;
+    const secSeg = !u ? '' : perfilEm('seg');
+    const secNotif = !u || !B7.Notif ? '' : perfilEm('notif');
 
     const secPref =
       (opInicio.length > 1 ? grupo('Início', 'Um link direto continua abrindo a tela do link.',
@@ -2190,7 +2190,9 @@ B7.Dashboard = (function () {
 
     /* seção: [id, rótulo, ícone, cor, descrição, bloco, conteúdo, mosaico] */
     const SECOES = [
-      ['conta', 'Conta', 'camera', 'rosa', 'Perfil, senha, avisos e sessões', 'voce', secConta],
+      ['conta', 'Perfil', 'camera', 'rosa', 'Foto, nome e sua conta', 'voce', secConta],
+      ['seguranca', 'Senha e segurança', 'acesso', 'violeta', 'Senha, verificação em 2 etapas e Google', 'voce', secSeg],
+      ['notificacoes', 'Notificações', 'sino', 'laranja', 'O que chega no sino, no celular e no computador', 'voce', secNotif],
       ['preferencias', 'Preferências', 'casa', 'violeta', 'Tela inicial, calendário e impressão', 'voce', secPref],
       ['aparencia', 'Aparência', 'tema', 'azul', 'Cores, tema, densidade e animações', 'voce', secAparencia],
       ['abertura', 'Abertura e sons', 'animacao', 'laranja', 'Abertura, carregamento e som dos avisos', 'voce', secAbertura],
@@ -2241,7 +2243,8 @@ B7.Dashboard = (function () {
 
     ligar();
     const p = painel();
-    p.querySelectorAll('[data-abrir-perfil]').forEach(b => b.onclick = () => B7.Perfil.abrir());
+    p.querySelectorAll('[data-abrir-perfil]').forEach(b => b.onclick = () => irSecao('conta'));
+    if (B7.Perfil && B7.Perfil.montar) p.querySelectorAll('[data-perfil]').forEach(el => B7.Perfil.montar(el, el.dataset.perfil));
     /* zzz240: menu das seções. No computador troca no lugar; no celular entra
        na seção pelo endereço (o Voltar do aparelho volta para o menu) */
     const largo = () => !!(window.matchMedia && window.matchMedia('(min-width:1024px)').matches);
@@ -2527,6 +2530,8 @@ B7.Dashboard = (function () {
               if (ab && ab.classList.contains('cfg-l-abaixo')) ab.hidden = !ok;
               if (ok) visiveis++;
             });
+            /* zzz245: cartão do perfil (sem linhas): vale o texto dele */
+            if (!g.querySelector('.cfg-l') && q && sem(g.textContent).includes(q)) visiveis = 1;
             g.hidden = !!q && !visiveis; noPainel += visiveis;
           });
           pn.hidden = q ? !noPainel : pn.dataset.painel !== (B7.pref.ler('cfg_aba', '') || abaAtual);

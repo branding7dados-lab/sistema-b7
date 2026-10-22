@@ -1629,3 +1629,53 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .cfg-hospede .lu3-cab p{margin-top:0;}
 .cfg-hospede .sa-hospede{padding-top:0;}
 .cfg-v2 .cfg-hospede + .cfg-g{margin-top:34px;}
+
+/* =====================================================================
+   CONFIGURAÇÕES 10 (zzz245) — o perfil dentro das Configurações
+   Kevin: "as opções de perfil da configuração levam sempre pra mesma
+   tela". Perfil, Senha e segurança e Notificações viraram seções; o
+   conteúdo é o do perfil (js/perfil.js → montar), no visual do miolo
+   das Configurações: cartões de borda fina, título grande, sem ícones.
+   ===================================================================== */
+.cfg-v2 .cfg-meu-perfil{display:block;margin:0 0 34px;}
+.cfg-meu-perfil .pf-cartao{position:relative;margin:0 0 20px;padding:22px 24px;border:1px solid var(--borda);border-radius:14px;background:var(--card);box-shadow:none;}
+.cfg-meu-perfil .pf-cartao.leitura{background:color-mix(in srgb, var(--ink) 3%, var(--card));}
+.cfg-meu-perfil .pf-cartao:empty{display:none;}
+.cfg-meu-perfil .pf-tit{display:block;margin:0 0 4px;font-family:'Archivo';font-size:18px;font-weight:800;letter-spacing:-.015em;color:var(--ink);}
+.cfg-meu-perfil .pf-tit .pf-ic{display:none;}
+.cfg-meu-perfil .pf-cartao > .ajuda,.cfg-meu-perfil .pf-cartao > p.ajuda{margin:0 0 16px;font-size:13.5px;line-height:1.5;color:var(--ink-3);}
+.cfg-meu-perfil .pf-cartao.leitura > .ajuda{margin:12px 0 0;}
+/* foto: a pessoa vê o resultado ao lado de onde escolhe */
+.pf-foto-linha{display:flex;align-items:center;gap:20px;}
+.pf-foto-linha .perfil-avatar{width:88px;height:88px;flex:none;border-radius:50%;font-size:26px;
+  box-shadow:0 0 0 3px var(--card), 0 0 0 5px color-mix(in srgb, var(--acento) 55%, transparent);}
+.pf-foto-linha .perfil-avatar span{font-size:26px;font-weight:800;}
+.pf-foto-linha .perfil-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.pf-foto-linha #pf-zona{flex:1;min-width:0;}
+.cfg-meu-perfil .perfil-acao{margin-top:16px;}
+.cfg-meu-perfil .perfil-linha{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--borda);font-size:14px;}
+.cfg-meu-perfil .perfil-linha:first-of-type{border-top:0;}
+.cfg-meu-perfil .perfil-linha span{color:var(--ink-3);}
+/* interruptores: texto à esquerda, chave à direita, sem ícone */
+.cfg-meu-perfil .perfil-opcao{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--borda);}
+.cfg-meu-perfil .perfil-opcao .pf-ic{display:none;}
+.cfg-meu-perfil .perfil-opcao-tx{flex:1;text-align:left;gap:3px;}
+.cfg-meu-perfil .perfil-opcao-tx b{font-size:14.5px;font-weight:700;}
+.cfg-meu-perfil .perfil-opcao-tx small{font-size:13px;}
+.cfg-meu-perfil .chave[aria-checked="true"]{background:var(--grad-curto);}
+.cfg-meu-perfil .pf-teste-push{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 0 0;}
+.cfg-meu-perfil .pf-teste-tx{flex:1 1 260px;display:flex;flex-direction:column;gap:3px;}
+.cfg-meu-perfil .pf-teste-tx b{font-size:14.5px;}
+.cfg-meu-perfil .pf-teste-tx small{font-size:13px;color:var(--ink-3);line-height:1.5;}
+/* "O que te avisa": título de grupo como os outros */
+.cfg-meu-perfil .pf-sub{margin:30px 0 4px;font-family:'Archivo';font-size:18px;font-weight:800;letter-spacing:-.015em;text-transform:none;color:var(--ink);text-align:left;}
+.cfg-meu-perfil .pf-sub-ajuda{margin:0 0 14px;font-size:13.5px;color:var(--ink-3);text-align:left;}
+.cfg-meu-perfil .pf-grupo{margin:0 0 10px;padding:0 20px;border-radius:14px;}
+.cfg-meu-perfil .pf-grupo summary{padding:16px 0;font-weight:700;font-size:14.5px;}
+.cfg-meu-perfil .pf-msg-fixa{position:sticky;bottom:12px;}
+@media (max-width:1023px){
+  .cfg-meu-perfil .pf-cartao{padding:16px;}
+  .pf-foto-linha{flex-direction:column;align-items:stretch;}
+  .pf-foto-linha .perfil-avatar{align-self:center;width:96px;height:96px;}
+  .cfg-meu-perfil .pf-grupo{padding:0 16px;}
+}
