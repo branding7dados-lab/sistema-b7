@@ -30,8 +30,30 @@ B7.DB = (function () {
     e.code = error.code || '42501'; e.status = error.status; e.permissao = true;
     return e;
   }
+  /* zzz262: erro técnico do banco/rede vira frase que qualquer pessoa entende
+     (o cliente do portal vê estas mensagens). O texto original fica em
+     e.tecnico para o suporte. Mensagens nossas (RAISE em português) passam. */
+  const AMIGAVEIS = [
+    [/failed to fetch|networkerror|network request failed|load failed|fetch failed/i, 'Sem conexão com o servidor. Confira a internet e tente de novo.'],
+    [/jwt expired|invalid jwt|refresh token|not authenticated/i, 'Sua sessão expirou. Entre de novo para continuar.'],
+    [/permission denied/i, 'Seu acesso não permite esta ação. Se precisar, fale com a administração.'],
+    [/statement timeout|canceling statement/i, 'O servidor demorou para responder. Tente de novo em instantes.'],
+    [/duplicate key/i, 'Isso já está cadastrado.'],
+    [/violates foreign key/i, 'Este item está ligado a outro registro e não pode ser alterado assim.'],
+    [/invalid input syntax|violates check constraint|violates not-null/i, 'Algum dado não está no formato esperado. Confira e tente de novo.']
+  ];
+  function amigavel(error) {
+    const tp = traduzirPermissao(error);
+    if (tp !== error) return tp;
+    const msg = String((error && error.message) || '');
+    const achado = AMIGAVEIS.find(([re]) => re.test(msg));
+    if (!achado) return error;
+    const e = new Error(achado[1]);
+    e.code = error.code; e.status = error.status; e.details = error.details; e.tecnico = msg;
+    return e;
+  }
   const ok = ({ data, error, status }) => {
-    if (error) { if (status !== undefined && error.status === undefined) error.status = status; throw traduzirPermissao(error); }
+    if (error) { if (status !== undefined && error.status === undefined) error.status = status; throw amigavel(error); }
     return data;
   };
 
@@ -951,8 +973,8 @@ B7.DB = (function () {
     rpc(nome, args) {
       return sb().rpc(nome, args).then(({ data, error }) => {
         if (error) {
-          const e = new Error(error.message || 'Falha no banco');
-          e.code = error.code; e.details = error.details; throw e;
+          const e = new Error(error.message || 'Não foi possível concluir. Tente de novo.');
+          e.code = error.code; e.details = error.details; throw amigavel(e);
         }
         return data;
       });

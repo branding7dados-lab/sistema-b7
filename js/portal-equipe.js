@@ -68,6 +68,40 @@ B7.PortalEquipe = (function () {
     avisoSenha();
   }
 
+  /* zzz262: boas-vindas no primeiro acesso. Aparece uma vez por pessoa
+     neste aparelho (e nunca na prévia): o que é o portal e onde ficam as
+     coisas, no papel que a pessoa tem na empresa aberta. */
+  function boasVindas() {
+    const u = B7.Auth && B7.Auth.usuario();
+    if (!u || u.papel !== 'cliente' || (B7.Portal && B7.Portal.emPrevia())) return;
+    const chave = 'b7-portal-boasvindas-' + u.id;
+    try { if (localStorage.getItem(chave)) return; } catch (e) { return; }
+    if (document.querySelector('.fundo-modal')) return;
+    const emp = B7.Portal && B7.Portal.empresa();
+    const id = emp && emp.id;
+    const aprova = podeAprovarEm(id), dono = souDonoDe(id);
+    const itens = [
+      ['Aprovações', aprova ? 'Tudo o que a B7 manda para você aprovar: aprove ou peça ajustes num clique.'
+                            : 'Veja o que a B7 enviou e deixe seus comentários. Quem decide é o dono ou o gestor.'],
+      ['Linha editorial e produção', 'Acompanhe o planejamento e cada conteúdo, do roteiro até a publicação.'],
+      ['Gravações', 'Datas, local e o que vai ser gravado em cada dia.']
+    ];
+    if (dono) itens.push(['Equipe', 'Convide as pessoas da sua empresa e escolha o que cada uma pode fazer.']);
+    itens.push(['Suporte', 'Dúvida ou pedido? Fale com a B7 por aqui.']);
+    const nome = String(u.nome || '').split(' ')[0];
+    const m = B7.UI.modal(
+      '<h3>Boas-vindas' + (nome ? ', ' + esc(nome) : '') + '!</h3>' +
+      '<p class="sub">Este é o portal ' + (emp ? 'da ' + esc(emp.nome) + ' ' : '') + 'na Branding7. Aqui você acompanha tudo o que estamos produzindo.' +
+        '</p>' +
+      '<ol class="pt-bv">' + itens.map(([t, d]) => '<li><b>' + esc(t) + '</b><span>' + esc(d) + '</span></li>').join('') + '</ol>' +
+      '<div class="acoes">' + (u.senha_provisoria
+        ? '<button class="b" data-fecha>Depois</button><button class="b pri" data-senha>Criar minha senha</button>'
+        : '<button class="b pri" data-fecha>Começar</button>') + '</div>', { extra: 'pt-bv-modal' });
+    try { localStorage.setItem(chave, '1'); } catch (e) {}
+    const bt = m.querySelector('[data-senha]');
+    if (bt) bt.onclick = () => { m.fechar(); if (B7.Perfil) B7.Perfil.abrir('seguranca'); else B7.Auth.abrirPerfil(); };
+  }
+
   /* --------------------------------------------- tela Minha equipe */
   async function abrir() {
     const P = B7.Portal;
@@ -212,5 +246,5 @@ B7.PortalEquipe = (function () {
     m.querySelector('[data-copiar]').onclick = () => B7.UI.copiarTexto(texto, { msgSucesso: 'Mensagem copiada', msgErro: 'Não foi possível copiar' });
   }
 
-  return { papelEm, podeAprovarEm, souDonoDe, nomePapel, abrir, avisoSenha, senhaTrocada, PAPEIS };
+  return { papelEm, podeAprovarEm, souDonoDe, nomePapel, abrir, avisoSenha, senhaTrocada, boasVindas, PAPEIS };
 })();

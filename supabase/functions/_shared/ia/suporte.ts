@@ -77,7 +77,7 @@ function tutoriaisPara(publico: Publico, texto: string): { escolhidos: Tutorial[
     : Object.fromEntries(Object.entries(TUTORIAIS).filter(([id]) => publico === 'admin' || !SO_ADMIN.includes(id)));
   if (publico === 'admin') Object.assign(base, TUTORIAIS_ADMIN);
   if (publico !== 'cliente') Object.assign(base, { 'portal-visao': { titulo: 'O que o cliente vê (Portal)', grupo: 'Portal do cliente',
-    texto: Object.values(TUTORIAIS_PORTAL).map(t => '## ' + t.titulo + '\n' + t.texto).join('\n').slice(0, 3500) } });
+    texto: Object.values(TUTORIAIS_PORTAL).map(t => '## ' + t.titulo + '\n' + t.texto).join('\n').slice(0, 5000) } });
   const ps = palavras(texto);
   const pontos = Object.entries(base).map(([id, t]) => {
     const tit = norm(t.titulo), corpo = norm(t.texto);

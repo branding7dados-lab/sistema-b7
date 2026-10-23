@@ -22,7 +22,17 @@ export const TUTORIAIS_PORTAL: Record<string, Tutorial> = {
       '4. Nos roteiros dá para decidir cena por cena: "Aprovar cena" ou "Pedir ajuste" em cada uma. "Aprovar roteiro completo" vale para todas as cenas que ainda não têm decisão.\n' +
       '5. Para deixar um recado sem decidir, escreva nos comentários e toque em "Enviar".\n' +
       'Dicas:\n- Seja específico no ajuste (ex.: "trocar a foto da segunda arte", "o preço certo é R$ 49,90"): a equipe resolve mais rápido.\n- Algumas artes podem ser baixadas em "Baixar PNG" ou "Baixar PDF".\n' +
-      'Cuidado:\n- Só aprova quem tem permissão de aprovar na conta. Se os botões não aparecem, a sua conta é só de acompanhamento: peça à Branding7 para liberar.\n- Depois de aprovado, o material segue para a produção/publicação.'
+      'Cuidado:\n- Só aprova quem é Dono ou Gestor da empresa. Quem é da Equipe vê "Ver e comentar" no lugar dos botões: pode ler e comentar, e o dono ou o gestor decide. Para mudar o papel, fale com o dono da empresa (menu → "Equipe") ou com a Branding7.\n- Depois de aprovado, o material segue para a produção/publicação.'
+  },
+  'portal-equipe': {
+    titulo: 'Portal do cliente: papéis (Dono, Gestor, Equipe) e convidar pessoas', grupo: 'Portal do cliente',
+    texto: 'Cada pessoa tem um papel em cada empresa:\n- Dono: aprova, pede ajustes e cuida dos acessos da empresa (convida, troca papel, gera senha nova, tira pessoas).\n' +
+      '- Gestor: aprova e pede ajustes, mas não mexe nos acessos.\n- Equipe: acompanha tudo e comenta; não aprova.\n' +
+      'Onde fica: menu → "Equipe" (só aparece para o Dono). O seu papel aparece em "Meu perfil".\n' +
+      'Passo a passo para convidar:\n1. Abra "Equipe" e toque em "Convidar pessoa".\n2. Escreva o nome e escolha o papel.\n' +
+      '3. O portal mostra endereço, usuário e senha UMA vez: toque em "Copiar mensagem" ou "Mandar no WhatsApp".\n4. No primeiro acesso, a pessoa cria uma senha só dela.\n' +
+      'Outras ações (na lista da Equipe): mudar o papel no seletor; "Senha nova" quando a pessoa esqueceu a senha (a sessão dela é encerrada e ela recebe uma senha provisória); "Tirar" para remover o acesso a esta empresa.\n' +
+      'Cuidado:\n- A empresa sempre precisa de pelo menos um Dono: o último não pode ser tirado nem rebaixado.\n- Se você não é Dono e precisa de acesso para alguém, peça ao Dono da sua empresa ou à Branding7.'
   },
   'portal-linha': {
     titulo: 'Portal do cliente: linha editorial', grupo: 'Portal do cliente',
@@ -48,7 +58,7 @@ export const TUTORIAIS_PORTAL: Record<string, Tutorial> = {
     texto: 'Onde fica: menu → "Meu perfil" (ou a sua foto, no topo).\nServe para: trocar o nome que aparece, a foto, a senha e ligar a verificação em 2 etapas.\n' +
       'Passo a passo para trocar a senha:\n1. Abra "Meu perfil" e toque em "Editar perfil e foto".\n2. Vá na aba "Segurança": em "Trocar senha", escreva a senha atual, a nova e repita a nova.\n3. Toque em "Trocar senha".\n' +
       'Verificação em 2 etapas: na mesma aba "Segurança", escolha "Código por e-mail" (chega um código ou um botão "Sou eu" no seu e-mail a cada entrada) ou "App autenticador".\n' +
-      'Cuidado:\n- Esqueceu a senha e não consegue entrar? Fale com a Branding7: por segurança, a senha é redefinida pela equipe.\n- Ninguém da Branding7 pede a sua senha ou o código que chega no e-mail.'
+      'Cuidado:\n- Esqueceu a senha e não consegue entrar? Fale com o Dono da sua empresa (ele gera uma senha nova em "Equipe") ou com a Branding7.\n- Entrou com a senha que recebeu? O portal mostra "Crie a sua senha" no alto até você trocar por uma só sua.\n- Ninguém da Branding7 pede a sua senha ou o código que chega no e-mail.'
   },
   'portal-suporte': {
     titulo: 'Portal do cliente: suporte', grupo: 'Portal do cliente',

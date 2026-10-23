@@ -557,3 +557,11 @@ a.pt-item{display:block;color:inherit;text-decoration:none;}
   .pq-bts .b{flex:1;justify-content:center;}
   .ph-cab.com-acao > .b{width:100%;}
 }
+
+/* zzz262: boas-vindas do primeiro acesso */
+.pt-bv{list-style:none;counter-reset:bv;margin:6px 0 4px;padding:0;display:grid;gap:10px;}
+.pt-bv li{counter-increment:bv;display:grid;grid-template-columns:28px 1fr;column-gap:12px;align-items:start;}
+.pt-bv li::before{content:counter(bv);grid-row:span 2;width:28px;height:28px;border-radius:50%;
+  display:grid;place-items:center;font-size:13px;font-weight:700;background:var(--acento);color:#fff;}
+.pt-bv b{font-size:14px;}
+.pt-bv span{font-size:13px;color:var(--ink-3);line-height:1.45;}
