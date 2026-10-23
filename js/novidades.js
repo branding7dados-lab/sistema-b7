@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz257', versao: 'zzz257', em: '2026-10-23T14:00:00-03:00',
+    titulo: 'Widget "Hoje no B7" novo',
+    itens: ['O widget da tela inicial do Android ganhou a cara da B7: brilho nas cores da marca, símbolo colorido e saudação pelo horário.',
+            'Os números vêm com ícone e cor; o de atrasos fica vermelho quando tem atraso e verde quando está tudo em dia. Cada número abre a tela dele.',
+            'Embaixo: próxima gravação (ou o alerta de atraso), botão de atualizar e atalhos para Painel, Gravações, Ideia e Prompter.'] },
   { id: 'v-zzz256', versao: 'zzz256', em: '2026-10-23T13:00:00-03:00',
     titulo: 'App Android mais caprichado',
     itens: ['Abertura nova no app: o símbolo da B7 se monta (o bulbo acende, a base sobe e as bolhas saem uma a uma) com a marca Branding7 no rodapé, e a tela só sai quando o sistema já carregou.',
