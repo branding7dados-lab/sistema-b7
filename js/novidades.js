@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz253', versao: 'zzz253', em: '2026-10-23T10:00:00-03:00',
+    titulo: 'Prazos que avisam antes',
+    itens: ['Peça de design ou vídeo que vence hoje ou amanhã e ainda não começou: quem é responsável recebe um aviso às 9h.',
+            'A coordenação recebe um resumo só com tudo o que está em risco (inclusive o que ninguém pegou e os posts de amanhã que ainda estão em ideia), e o Painel mostra "entregas que não começaram" em Precisa da sua atenção.',
+            'Continua igual: atrasou, a pessoa é avisada; com 2 dias de atraso a coordenação é chamada; com 5, vira crítico.'] },
   { id: 'v-zzz252', versao: 'zzz252', em: '2026-10-23T09:00:00-03:00',
     titulo: 'Horário de silêncio',
     itens: ['Em Configurações → Notificações, escolha um horário de silêncio: fora dele os avisos ficam guardados no sino, sem push nem som, e quando o silêncio acaba chega um aviso só com o resumo do que aconteceu.',

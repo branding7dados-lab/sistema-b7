@@ -65,7 +65,7 @@ B7.PainelCoord = (function () {
   const IC_MAIS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 
   /* ------------------------------------------------------------ estado */
-  const S = { linhas: null, conteudos: null, pendentes: null, revisao: null, ajustes: null, agenda: null };
+  const S = { linhas: null, conteudos: null, pendentes: null, revisao: null, ajustes: null, agenda: null, risco: null };
   const FONTES = Object.keys(S);
   let geracao = 0;
   let ouvinte = null;   /* Painel composto: só carrega e avisa (js/painel-multi.js) */
@@ -85,6 +85,8 @@ B7.PainelCoord = (function () {
     if (fonte === 'linhas') return B7.DB.listarTodasLinhas(60);
     if (fonte === 'conteudos') { const r = intervaloConteudos(); return B7.DB.painelCoordConteudos(r.de, r.ate); }
     if (fonte === 'pendentes') return B7.DB.publicacoesPendentes(h, D().somarDias(h, -60), 50);
+    /* zzz253: peças e vídeos que vencem hoje/amanhã e não começaram (ou sem responsável) */
+    if (fonte === 'risco') return B7.DB.rpc('prazos_em_risco_lista', {}).then(l => (l || []).filter(x => x.tipo !== 'post'));
     if (fonte === 'ajustes') return B7.DB.painelAprovacoes({ situacao: ['ajustes'], somenteAtual: true, limite: 200 });
     if (fonte === 'revisao') {
       return Promise.all([
@@ -234,6 +236,21 @@ B7.PainelCoord = (function () {
         }).filter(Boolean);
     };
 
+    /* zzz253: entregas que vencem hoje/amanhã e ninguém começou */
+    if (ok('risco')) {
+      const r = S.risco.dados, um = r[0];
+      const quem = x => x.responsavel_nome ? x.responsavel_nome + ' ainda não começou' : 'ninguém pegou';
+      add({ risco: true, prio: 2, chave: r.length === 1 ? 'risco:' + um.id : 'grupo:entregas-risco', dia: um ? um.prazo : null,
+        n: r.length, rotulo: plural(r.length, 'entrega que não começou', 'entregas que não começaram'),
+        linha: r.length === 1
+          ? { tom: um.prazo === h ? 'erro' : 'ambar', icone: IC.relogio, tag: (um.tipo === 'video' ? 'Vídeo' : 'Arte') + ' vence ' + d.quandoDia(um.prazo),
+              titulo: um.titulo || 'Sem título', meta: (um.cliente ? '<span>' + esc(um.cliente) + '</span>' : '') + '<span>' + esc(quem(um)) + '</span>', href: um.link }
+          : { tom: r.some(x => x.prazo === h) ? 'erro' : 'ambar', icone: IC.relogio, tag: 'Vencem hoje ou amanhã e não começaram',
+              titulo: r.length + ' entregas em risco',
+              meta: '<span>' + esc(r.slice(0, 3).map(x => x.titulo + ' (' + quem(x) + ')').join(' · ')) + (r.length > 3 ? '…' : '') + '</span>',
+              href: r.every(x => x.tipo === 'video') ? '#/video' : '#/design' } });
+    }
+
     add(naoProntas(h, 'ambar', IC.relogio, 'de hoje'));
     gravacoesRisco(h, 'hoje', 'acento').forEach(add);
     add(naoProntas(amanha, 'neutro', IC.agenda, 'de amanhã'));
@@ -298,7 +315,7 @@ B7.PainelCoord = (function () {
                   porSt('Aprovada') && plural(porSt('Aprovada'), 'aprovada', 'aprovadas')].filter(Boolean).join(' · ');
 
     /* 2 e 4. atenção (riscos) e revisões — dos mesmos grupos da lista */
-    const eRisco = estadoDe('pendentes', 'linhas', 'ajustes', 'conteudos', 'agenda');
+    const eRisco = estadoDe('pendentes', 'linhas', 'ajustes', 'conteudos', 'agenda', 'risco');
     const eRev = estadoDe('linhas', 'revisao');
     const gs = grupos();
     const riscos = gs.filter(g => g.risco), revs = gs.filter(g => g.revisao);
@@ -344,7 +361,7 @@ B7.PainelCoord = (function () {
 
   function pintarAtencao() {
     const cx = document.getElementById('pnc-atencao'); if (!cx) return;
-    const fontes = ['pendentes', 'linhas', 'ajustes', 'conteudos', 'agenda', 'revisao'];
+    const fontes = ['pendentes', 'linhas', 'ajustes', 'conteudos', 'agenda', 'revisao', 'risco'];
     const carregando = fontes.filter(f => !S[f] || S[f].estado === 'carregando');
     const comErro = fontes.filter(f => S[f] && S[f].estado === 'erro');
     let corpo;
