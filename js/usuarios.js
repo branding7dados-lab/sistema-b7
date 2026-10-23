@@ -1298,6 +1298,11 @@ B7.Usuarios = (function () {
           }).join('') +
         '</tbody></table></div>' +
       '</section>' +
+      (B7.Auth.ehAdmin && B7.Auth.ehAdmin() ? '<section class="cfg-g"><h2 class="cfg-g-t">Conferência de segurança</h2>' +
+        '<p class="cfg-g-nota">O banco testa sozinho cada pessoa em cada módulo e cada regra de acesso: ninguém pode alterar mais do que o nível dado, cliente não entra em módulo da equipe e nenhuma tabela fica aberta.</p>' +
+        '<div class="pm-conf" data-pm-conf></div>' +
+        '<div class="pm-acoes"><button type="button" class="b fina" data-pm-conferir>Conferir agora</button></div>' +
+      '</section>' : '') +
       '<section class="cfg-g"><h2 class="cfg-g-t">Como os níveis funcionam</h2>' +
         '<div class="cfg-lista">' + NIVEIS.map(([v, r, d]) => '<div class="cfg-l"><span class="cfg-l-tx"><b>' + chipNv(v) + ' ' + esc(r) + '</b><small>' + esc(d) + '</small></span></div>').join('') + '</div>' +
         '<p class="cfg-g-nota">O banco confere cada ação pelo nível: quem só pode ver recebe um aviso se tentar alterar. ' +
@@ -1305,10 +1310,28 @@ B7.Usuarios = (function () {
         'para alterar o conteúdo de Clientes, Linhas, Roteiros, Gravações ou Status semanal, dê o nível na conta da pessoa ou use uma função personalizada.</p>' +
       '</section>';
     const btF = alvo.querySelector('[data-pm-funcoes]'); if (btF) btF.onclick = () => modalFuncoes(usuarios);
+    const btC = alvo.querySelector('[data-pm-conferir]');
+    if (btC) { btC.onclick = () => conferir(alvo, btC); conferir(alvo, btC); }
     alvo.querySelectorAll('[data-pm-pessoa]').forEach(b => b.onclick = () => {
       const u = usuarios.find(x => x.id === b.dataset.pmPessoa); if (!u) return;
       modalEditar(u, clientes, vinculos, extras.filter(f => f.perfil_id === u.id).map(f => f.funcao));
     });
+  }
+
+  async function conferir(alvo, bt) {
+    const caixa = alvo.querySelector('[data-pm-conf]'); if (!caixa) return;
+    bt.disabled = true; caixa.innerHTML = '<p class="cfg-g-nota">Conferindo…</p>';
+    let r;
+    try { r = await B7.DB.conferirPermissoes(); }
+    catch (e) { caixa.innerHTML = '<p class="cfg-g-nota">Não foi possível conferir. ' + esc((e && e.message) || '') + '</p>'; bt.disabled = false; return; }
+    if (!caixa.isConnected) return;
+    bt.disabled = false;
+    const quando = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    caixa.innerHTML = !r || !r.length
+      ? '<div class="pm-conf-ok">' + ICU.perfil + '<span><b>Tudo certo</b><small>Nenhum problema encontrado · conferido às ' + quando + '</small></span></div>'
+      : '<div class="pm-conf-mal"><b>' + r.length + (r.length === 1 ? ' problema encontrado' : ' problemas encontrados') + '</b>' +
+          '<ul>' + r.map(p => '<li><b>' + esc(p.onde) + '</b><small>' + esc(p.detalhe) + '</small></li>').join('') + '</ul>' +
+          '<small>Conferido às ' + quando + '. Corrija em Funções e acessos ou na conta da pessoa; se for uma regra do banco, peça ajuda ao suporte.</small></div>';
   }
 
   return { abrir, gerarSenha, montarMatriz };

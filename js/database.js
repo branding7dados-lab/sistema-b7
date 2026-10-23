@@ -19,7 +19,8 @@ B7.DB = (function () {
   const TABELA_MODULO = { clientes: 'Clientes', cliente_inteligencia: 'Clientes', produtos: 'Clientes', provas: 'Clientes', onboardings: 'Clientes',
     atividades: 'Clientes', linhas_editoriais: 'Linhas editoriais', conteudos: 'Linhas editoriais', slides: 'Linhas editoriais', frames: 'Linhas editoriais',
     pilares: 'Linhas editoriais', ideias: 'Linhas editoriais', roteiros: 'Roteiros', cenas: 'Roteiros', gravacoes: 'Gravações',
-    status_semanais: 'Status semanal', status_itens: 'Status semanal', status_versoes: 'Status semanal' };
+    status_semanais: 'Status semanal', status_itens: 'Status semanal', status_versoes: 'Status semanal',
+    whatsapp_envios: 'WhatsApp', whatsapp_grupos: 'WhatsApp', equipe_aniversarios: 'Agenda e recado da equipe', equipe_ausencias: 'Agenda e recado da equipe' };
   function traduzirPermissao(error) {
     const msg = String((error && error.message) || '');
     if (!/row-level security/i.test(msg)) return error;
@@ -244,6 +245,8 @@ B7.DB = (function () {
         p_dia_semana: f.freq === 'semanal' ? f.diaSemana : null, p_dia_mes: f.freq === 'mensal' ? f.diaMes : null,
         p_inicio: f.inicio || null, p_fim: f.fim || null, p_antecedencia: f.antecedencia || 7 });
     },
+    /* zzz251: conferência de permissões (só admin) — cada linha é um problema */
+    async conferirPermissoes() { return this.rpc('conferir_permissoes', {}); },
     async gerarGravacoesFixasAgora() { return this.rpc('gravacoes_fixas_gerar_agora', {}); },
     async gravacaoPreparacao(gravacaoId) { return this.rpc('gravacao_preparacao', { p_gravacao_id: gravacaoId }); },
     async gravacoesPreparacaoResumo() { return this.rpc('gravacoes_preparacao_resumo', {}); },
