@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz255', versao: 'zzz255', em: '2026-10-23T12:00:00-03:00',
+    titulo: 'Pacotes de produção',
+    itens: ['Em Configurações → Pacotes de produção, monte o que cada cliente contrata por mês (ex.: 6 cards + 6 carrosséis + 4 reels) e os dias de postagem.',
+            'Ao criar uma linha editorial, escolha o pacote: os conteúdos já nascem com o tipo e a data espalhada pelo mês. O último pacote usado com o cliente já vem escolhido na próxima linha.'] },
   { id: 'v-zzz254', versao: 'zzz254', em: '2026-10-23T11:00:00-03:00',
     titulo: 'Relatório do mês',
     itens: ['No Panorama, o botão "Relatório do mês" mostra, para o mês na tela: posts publicados, artes e vídeos entregues, quanto saiu no prazo e quantas aprovações voltaram com ajuste.',

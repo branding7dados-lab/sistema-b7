@@ -1817,6 +1817,7 @@ B7.Dashboard = (function () {
   Object.assign(ICF, {
     coroa: '<path d="M3.5 8l4.2 3.6L12 5l4.3 6.6L20.5 8l-1.6 10H5.1z"/><path d="M5.5 21h13"/>',
     escudo: '<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6z"/>',
+    pacote: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
     painel: '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
     caixa: '<path d="M3.5 13.5l2.6-7.2A2 2 0 0 1 8 5h8a2 2 0 0 1 1.9 1.3l2.6 7.2V18a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.5 13.5h4.5l1.5 2.5h5l1.5-2.5h4.5"/>',
     limites: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
@@ -2207,6 +2208,8 @@ B7.Dashboard = (function () {
       ['aparelho', 'Este aparelho', 'versao', 'cinza', 'Versão, atualização e limpeza', 'voce', secAparelho],
       ['pessoas', 'Pessoas e acessos', 'usuarios', 'azul', 'Contas, senhas, funções e módulos', 'adm', ehAdm && pode('usuarios') && B7.Usuarios ? hospede('usuarios') : '', true],
       ['funcoes', 'Funções e permissões', 'escudo', 'violeta', 'O que cada função e cada pessoa pode fazer', 'adm', ehAdm && pode('usuarios') && B7.Usuarios && B7.Usuarios.montarMatriz ? hospede('matriz') : '', true],
+      ['pacotes', 'Pacotes de produção', 'pacote', 'verde', 'O que cada cliente contrata por mês', 'adm',
+        B7.Pacotes && B7.Perm && B7.Perm.podeNivel('linhas', 'ver') ? '<div data-pacotes></div>' : '', true],
       ['equipe', 'Equipe', 'usuarios', 'azul', 'Recado, segurança, carga e o que a equipe vê', 'adm', secEquipe, true],
       ['agenda-equipe', 'Ausências e aniversários', 'calendario', 'rosa', 'Férias, folgas e os aniversários da equipe', 'adm',
         (ehAdm || (B7.Perm && B7.Perm.podeNivel('equipe', 'editar'))) && B7.Equipe ? '<div class="cfg-eq-agenda" data-eq-agenda></div>' : '', true],
@@ -2253,6 +2256,7 @@ B7.Dashboard = (function () {
     ligar();
     const p = painel();
     p.querySelectorAll('[data-abrir-perfil]').forEach(b => b.onclick = () => irSecao('conta'));
+    if (B7.Pacotes) p.querySelectorAll('[data-pacotes]').forEach(el => B7.Pacotes.montar(el));
     if (B7.Perfil && B7.Perfil.montar) p.querySelectorAll('[data-perfil]').forEach(el => B7.Perfil.montar(el, el.dataset.perfil));
     /* zzz247: equipe — agenda, recado, exportar e a regra de 2 etapas */
     if (B7.Equipe) {
