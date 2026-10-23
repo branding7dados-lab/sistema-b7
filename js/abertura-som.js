@@ -681,6 +681,8 @@ B7.SomAbertura = (function () {
   window.addEventListener('pagehide', calar);
   window.B7Pausou = calar;
 
-  aoCarregar();
+  /* zzz259: no app a abertura começa depois do código carregar */
+  if (document.documentElement.classList.contains('ab-espera-app')) document.addEventListener('b7:abertura-solta', aoCarregar, { once: true });
+  else aoCarregar();
   return { aoSair, reproduzir, ligado, ensaio, calar };
 })();

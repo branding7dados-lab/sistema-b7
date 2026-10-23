@@ -716,6 +716,7 @@ B7.Rota = (function () {
      que dura a sequência inteira). */
   function faltaDaAbertura(el, total, parede) {
     if (!total) return 0;
+    if (document.documentElement.classList.contains('ab-espera-app')) return total;   /* zzz259: ainda não começou */
     try {
       /* zzz113: o tempo decorrido é a linha do tempo do documento menos o
          início da animação. Na zzz112 eu lia o "tempo atual" da animação,

@@ -855,3 +855,9 @@ html[data-ab-carga="pontos"].ab-curta .b7-abertura.b7-abertura.b7-abertura.inici
   33%{translate:0 -9px;box-shadow:-20px 9px 0 #8C6CFF,20px 9px 0 #FF8FCB}
   50%{translate:0 0;box-shadow:-20px 0 0 #8C6CFF,20px -9px 0 #FF8FCB}}
 }
+
+/* zzz259: app Android — a abertura parada no primeiro quadro até o código
+   carregar (index.html tira a classe); as camadas em canvas leem o relógio
+   destas animações, então param junto */
+html.ab-espera-app .b7-abertura, html.ab-espera-app .b7-abertura *,
+html.ab-espera-app .b7-abertura *::before, html.ab-espera-app .b7-abertura *::after{animation-play-state:paused !important;}

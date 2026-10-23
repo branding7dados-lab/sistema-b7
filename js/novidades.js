@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz259', versao: 'zzz259', em: '2026-10-23T16:00:00-03:00',
+    titulo: 'Abertura lisa no app Android',
+    itens: ['No app, a abertura agora espera o sistema terminar de carregar e só então começa, do início ao fim, sem trancos.',
+            'O código do sistema vai compactado dentro do app: o celular lê bem menos ao abrir (cerca de 40% a menos), então abre mais rápido.'] },
   { id: 'v-zzz258', versao: 'zzz258', em: '2026-10-23T15:00:00-03:00',
     titulo: 'Uma abertura só no app Android',
     itens: ['No app, a abertura do Android agora é a mesma abertura do sistema: a que você escolheu em Configurações → Abertura e sons (as 9 opções, com som). Nada de duas aberturas seguidas.',

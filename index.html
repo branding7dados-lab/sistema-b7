@@ -58,6 +58,9 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
       });
     }
   } catch (e) {}
+  /* zzz259: dentro do app Android a abertura espera o código carregar (ver
+     o script logo depois do bloco da abertura) */
+  try { if (window.B7Nativo) document.documentElement.classList.add('ab-espera-app'); } catch (e) {}
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
@@ -188,9 +191,26 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   <div class="ab-titulo" aria-hidden="true"><i></i><b>Sistema B7</b><b class="ab-data"></b></div>
   <div class="ab-espera"><b class="ab-ola"></b><span class="ab-frase">Preparando o seu espaço…</span><i class="ab-fio"></i></div>
 </div>
-<!-- app Android: a abertura do sistema já está na tela, a do Android pode sair
-     (MainActivity, "aberturaVisivel"): uma abertura só, sem emenda -->
-<script>try { if (window.B7Nativo) requestAnimationFrame(function () { B7Nativo.postMessage(JSON.stringify({ acao: 'aberturaVisivel' })); }); } catch (e) {}</script>
+<!-- zzz259 — app Android: a abertura fica parada no primeiro quadro (atrás da
+     abertura do Android, da mesma cor) até o código do sistema terminar de
+     carregar; aí ela começa do zero, sem os trancos de quando o celular ainda
+     estava lendo os scripts, e o app tira a abertura do Android
+     (MainActivity, "aberturaVisivel"): uma abertura só, inteira e lisa. -->
+<script>
+(function () {
+  if (!document.documentElement.classList.contains('ab-espera-app')) return;
+  var soltou = false;
+  function soltar() {
+    if (soltou) return; soltou = true;
+    document.documentElement.classList.remove('ab-espera-app');
+    try { document.dispatchEvent(new Event('b7:abertura-solta')); } catch (e) {}
+    try { B7Nativo.postMessage(JSON.stringify({ acao: 'aberturaVisivel' })); } catch (e) {}
+  }
+  /* dois quadros depois do DOMContentLoaded: os scripts já rodaram e a tela assentou */
+  document.addEventListener('DOMContentLoaded', function () { requestAnimationFrame(function () { requestAnimationFrame(soltar); }); });
+  setTimeout(soltar, 4000);   /* rede de segurança */
+})();
+</script>
 <!-- som da abertura: logo depois dela, para sincronizar com a animação -->
 <script src="js/abertura-som.js"></script>
 <!-- zzz227: partículas da abertura (montam a lâmpada e escrevem o logo) -->
