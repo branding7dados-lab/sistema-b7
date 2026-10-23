@@ -14,7 +14,8 @@ import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const RAIZ = fileURLToPath(new URL('..', import.meta.url));
+/* B7_RAIZ: roda a mesma fumaça em outra pasta (ex.: app-android/www, o que vai dentro do APK) */
+const RAIZ = process.env.B7_RAIZ ? normalize(process.env.B7_RAIZ + '/') : fileURLToPath(new URL('..', import.meta.url));
 const TIPOS = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 
