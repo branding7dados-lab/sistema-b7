@@ -214,6 +214,7 @@ B7.Portal = (function () {
     document.body.classList.toggle('modo-previa', !!previa);
     montarBanner();
     if (B7.PortalEquipe) B7.PortalEquipe.avisoSenha();
+    if (B7.PortalEquipe) setTimeout(() => B7.PortalEquipe.boasVindas(), 600);
     if (B7.moverTrilha) setTimeout(() => B7.moverTrilha(), 0);
   }
 

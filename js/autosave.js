@@ -87,7 +87,7 @@ B7.Save = (function () {
     if (status === 0 || (status >= 500 && status < 600)) return true;   // gateway/servidor
     const code = String((e && e.code) || '');
     if (code === 'PGRST301' || code === 'PGRST302') return true;        // JWT expirado: o refresh resolve
-    const msg = String((e && e.message) || e || '').toLowerCase();
+    const msg = String((e && (e.tecnico || e.message)) || e || '').toLowerCase();
     if (/failed to fetch|network|load failed|timeout|não respondeu|upstream server/.test(msg)) return true;
     /* erro sem código e sem status é indistinguível de queda: na dúvida,
        guarda — só o que o banco claramente recusou é descartado */

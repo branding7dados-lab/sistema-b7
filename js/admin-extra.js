@@ -706,7 +706,7 @@ B7.Aparencia = (function () {
      simplesmente os ignora (e recusa as paletas novas — avisamos abaixo) */
   const gravar = c => B7.DB.rpc('aparencia_definir', { p_valor: { paleta: c.paleta, cor: c.cor, menu: c.menu, botoes: c.botoes, brilho: c.brilho, tinta: c.tinta, cantos: c.cantos, estacoes: c.estacoes } })
     .catch(e => {
-      if (e && /inv[aá]lid/i.test(e.message || '') && PALETAS.findIndex(p => p.id === c.paleta) > 8)
+      if (e && /inv[aá]lid/i.test(e.tecnico || e.message || '') && PALETAS.findIndex(p => p.id === c.paleta) > 8)
         throw new Error('Esta paleta nova ainda não foi liberada no banco (migration_aparencia_v3.sql). Use outra por enquanto ou salve só para você.');
       throw e;
     });

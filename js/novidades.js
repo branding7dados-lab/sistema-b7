@@ -25,6 +25,14 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz262', versao: 'zzz262', em: '2026-10-23T21:00:00-03:00',
+    titulo: 'Pronto para o lançamento: segurança, portal e IA',
+    itens: ['Segurança: 50 funções do banco que respondiam até para quem não tinha entrado agora só respondem para quem está logado. As internas (avisos e rotinas) ficaram fechadas para todos.',
+            'Mais rápido: novos índices nas tabelas mais usadas e regras de acesso das conversas com a IA calculadas uma vez por consulta, não por linha.',
+            'Mensagens de erro em português claro: "sem conexão", "sessão expirou", "seu acesso não permite" no lugar de texto técnico — no sistema e no portal do cliente.',
+            'Portal do cliente: no primeiro acesso, uma tela de boas-vindas explica onde aprovar, acompanhar a produção, ver gravações, falar com o suporte e (para o Dono) convidar a equipe.',
+            'IA: quando o serviço do Google cai por alguns segundos, o B7 tenta de novo até duas vezes antes de mostrar erro.',
+            'O assistente do Suporte do portal agora sabe explicar Dono, Gestor e Equipe, como convidar pessoas e como gerar senha nova.'] },
   { id: 'v-zzz261', versao: 'zzz261', em: '2026-10-23T19:00:00-03:00',
     titulo: 'Portal do cliente: Dono, Gestor e Equipe',
     itens: ['Cada pessoa do cliente agora tem um papel em cada empresa: Dono (vê tudo, aprova e cuida da equipe), Gestor (vê tudo e aprova) e Equipe (vê e comenta).',

@@ -22,7 +22,7 @@
 
 import { criarGemini } from './gemini.ts';
 import { criarOmniRoute } from './omniroute.ts';
-import type { ErroDoProvedor, Mensagem, Provedor } from './provedor.ts';
+import type { ErroDoProvedor, Mensagem, Provedor, RespostaDoProvedor } from './provedor.ts';
 
 export type { Mensagem } from './provedor.ts';
 
@@ -95,6 +95,22 @@ export function gerarFluxo(provedor: Provedor | null, mensagens: Mensagem[], op:
   return gerarCom(provedor, mensagens, op, aoTrecho);
 }
 
+/* zzz164/zzz262: "fora do ar" do Google costuma durar segundos. Em 30 dias,
+   10 das 11 falhas foram "indisponível" em menos de 4 s, e várias vieram
+   em sequência (a 2ª tentativa, 1,2 s depois, também caía). Agora são até
+   duas tentativas a mais, com espera crescente (1,2 s e 3 s), enquanto o
+   pedido inteiro não passa de 15 s — nunca para limite/cota, que só
+   gastaria cota, nem para tempo esgotado, que dobraria a espera. */
+async function comNovaTentativa(chamar: () => Promise<RespostaDoProvedor>, inicio: number): Promise<RespostaDoProvedor> {
+  let r = await chamar();
+  for (const espera of [1200, 3000]) {
+    if (r.ok || r.erro !== 'indisponivel' || Date.now() - inicio + espera > 15_000) break;
+    await new Promise(res => setTimeout(res, espera));
+    r = await chamar();
+  }
+  return r;
+}
+
 async function gerarCom(provedor: Provedor | null, mensagens: Mensagem[], op: Opcoes, aoTrecho: ((texto: string) => void) | null): Promise<Resultado> {
   const inicio = Date.now();
   const falha = (erro: ErroDoProvedor | 'nao_configurado'): Resultado => ({
@@ -115,17 +131,10 @@ async function gerarCom(provedor: Provedor | null, mensagens: Mensagem[], op: Op
       r = await provedor.gerarFluxo(pedido, texto => { emitiu = true; aoTrecho(texto); });
       if (!r.ok && !emitiu && (r.erro === 'indisponivel' || r.erro === 'resposta_invalida')) {
         console.error('[b7-ia] fluxo falhou sem texto:', r.erro, r.status);
-        r = await provedor.gerar(pedido);
+        r = await comNovaTentativa(() => provedor.gerar(pedido), inicio);
       }
     } else {
-      r = await provedor.gerar(pedido);
-      /* zzz164: "fora do ar" do Google costuma durar segundos (7% das
-         falhas do chat em 14 dias). Uma segunda tentativa, curta, antes
-         de mostrar erro — nunca para limite/cota, que só gastaria cota. */
-      if (!r.ok && r.erro === 'indisponivel' && Date.now() - inicio < 12_000) {
-        await new Promise(res => setTimeout(res, 1200));
-        r = await provedor.gerar(pedido);
-      }
+      r = await comNovaTentativa(() => provedor.gerar(pedido), inicio);
     }
   } catch (_e) {
     return falha('indisponivel');
