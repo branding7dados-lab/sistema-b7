@@ -105,6 +105,10 @@ B7.Portal = (function () {
     aguardando_voce: 'Aguardando você', aprovado: 'Aprovado',
     programado: 'Programado', publicado: 'Publicado'
   };
+  /* zzz261: quem é da Equipe da empresa não aprova — o que espera decisão
+     espera o dono ou o gestor, não "você" */
+  const soComenta = () => !previa && !!B7.PortalEquipe && !!empresa() && !B7.PortalEquipe.podeAprovarEm(empresa().id);
+  const statusCli = s => s === 'aguardando_voce' && soComenta() ? 'Aguardando aprovação' : STATUS_CLIENTE[s];
   const ORDEM_STATUS = ['aguardando_voce', 'em_producao', 'em_revisao', 'aprovado', 'programado', 'publicado'];
   const STATUS_GRAVACAO = {
     em_preparacao: 'Em preparação', programada: 'Programada',
@@ -143,9 +147,16 @@ B7.Portal = (function () {
     ['minhas-gravacoes', 'gravacoes', 'Gravações'],
     ['meus-status', 'semana', 'Status Semanal'],
     ['historico', 'historico', 'Histórico'],
+    ['equipe', 'equipe', 'Equipe'],
     ['perfil', 'perfil', 'Meu perfil'],
     ['suporte', 'suporte', 'Suporte']
   ];
+  /* zzz261: "Equipe" é do dono da empresa (na prévia, o admin também vê) */
+  const navVisivel = (secao, emp) => {
+    if (secao === 'suporte') return !previa;
+    if (secao === 'equipe') return !!emp && (!!previa || (B7.PortalEquipe && B7.PortalEquipe.souDonoDe(emp.id)));
+    return true;
+  };
 
   function montarLayout() {
     const nav = document.querySelector('.nav');
@@ -171,13 +182,14 @@ B7.Portal = (function () {
           : (emp ? '<span class="pt-marcador-emp">' + esc(emp.nome) + '</span>' : '')) +
       '</div>' +
       /* zzz238: na prévia o Suporte abriria o do administrador, não o do cliente */
-      ITENS_NAV.filter(([secao]) => !(previa && secao === 'suporte')).map(([secao, icone, texto]) =>
+      ITENS_NAV.filter(([secao]) => navVisivel(secao, emp)).map(([secao, icone, texto]) =>
         '<a data-ir="' + rota(secao) + '">' + ICONE[icone] +
         '<span>' + esc(texto) + '</span></a>').join('');
 
     const sel = nav.querySelector('#pt-empresa');
     if (sel) sel.onchange = () => {
-      if (definirEmpresa(sel.value)) { location.hash = '#/'; if (naRota('#/')) abrirHome(); }
+      /* o menu muda com o papel na empresa escolhida (Equipe só para o dono) */
+      if (definirEmpresa(sel.value)) { montarLayout(); location.hash = '#/'; if (naRota('#/')) abrirHome(); }
     };
 
     /* Sair fica no rodapé da barra, onde a pessoa procura. Na prévia o
@@ -201,6 +213,7 @@ B7.Portal = (function () {
     document.body.classList.add('modo-portal');
     document.body.classList.toggle('modo-previa', !!previa);
     montarBanner();
+    if (B7.PortalEquipe) B7.PortalEquipe.avisoSenha();
     if (B7.moverTrilha) setTimeout(() => B7.moverTrilha(), 0);
   }
 
@@ -264,6 +277,7 @@ B7.Portal = (function () {
     if (secao === 'meus-status')      return abrirStatus();
     if (secao === 'historico')        return abrirHistorico();
     if (secao === 'perfil')           return abrirPerfil();
+    if (secao === 'equipe' && B7.PortalEquipe) return B7.PortalEquipe.abrir();
     if (secao === 'revisar' && partes[1]) return abrirRevisao(partes[1]);
     return abrirHome();
   }
@@ -291,6 +305,7 @@ B7.Portal = (function () {
     semana: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>',
     historico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 7v5l3.5 2"/><circle cx="12" cy="12" r="8.5"/></svg>',
     perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20.5v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>',
+    equipe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20v-.5A5.5 5.5 0 0 1 8 14h2a5.5 5.5 0 0 1 5.5 5.5v.5"/><path d="M15.5 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a5.5 5.5 0 0 1 3.5 5.3v.5"/></svg>',
     suporte: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-5.2L8 19.4V16H7a2.5 2.5 0 0 1-2.5-2.5z"/><path d="M9 9.2h6M9 12h3.5"/></svg>'
   };
 
@@ -366,7 +381,7 @@ B7.Portal = (function () {
 
       /* ---- o que depende do cliente vem primeiro ---- */
       '<section class="ph-secao" id="ph-atencao">' +
-        '<div class="ph-titulo"><h2>Precisa da sua atenção</h2>' +
+        '<div class="ph-titulo"><h2>' + (soComenta() ? 'Esperando a aprovação da empresa' : 'Precisa da sua atenção') + '</h2>' +
           (pendentes.length
             ? '<span class="ph-conta">' + pendentes.length + '</span>' : '') +
         '</div>' +
@@ -374,7 +389,7 @@ B7.Portal = (function () {
           ? '<div class="ph-lista">' + pendentes.map(cartaoPendente).join('') + '</div>'
           : '<div class="ph-vazio"><div class="ph-vazio-ic">' + ICONE.aprovacoes + '</div>' +
             '<b>Tudo certo por aqui.</b>' +
-            '<p>Não há materiais aguardando sua aprovação.</p>' +
+            '<p>Não há materiais aguardando ' + (soComenta() ? 'aprovação' : 'sua aprovação') + '.</p>' +
             '</div>') +
       '</section>' +
 
@@ -403,7 +418,9 @@ B7.Portal = (function () {
     const aberta = a.situacao === 'pendente' || a.situacao === 'parcial';
     /* zzz238: há quanto tempo a decisão espera o cliente */
     const dias = aberta && a.enviado_em ? Math.floor((Date.now() - new Date(a.enviado_em).getTime()) / 864e5) : 0;
-    const acao = a.situacao === 'parcial' ? 'Continuar a revisão'
+    const so = soComenta();
+    const acao = so ? (aberta ? 'Ver e comentar' : 'Abrir')
+               : a.situacao === 'parcial' ? 'Continuar a revisão'
                : a.situacao === 'pendente' ? 'Revisar e decidir' : 'Abrir';
     return '<button class="ph-item' + (dias >= 3 ? ' espera' : '') + '" data-aprovacao="' + esc(a.id) + '">' +
       '<span class="ph-item-tipo">' + esc(FORMATOS[a.tipo] || a.tipo) + '</span>' +
@@ -414,7 +431,7 @@ B7.Portal = (function () {
         (a.total_partes ? ' · ' + (a.partes_aprovadas || 0) + '/' + a.total_partes + ' cenas aprovadas' : '') +
         (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' com ajustes' : '') +
         '</small>' +
-        (dias >= 2 ? '<em class="ph-espera">Aguardando você há ' + dias + ' dias</em>' : '') +
+        (dias >= 2 ? '<em class="ph-espera">' + (so ? 'Aguardando aprovação há ' : 'Aguardando você há ') + dias + ' dias</em>' : '') +
       '</span>' +
       '<span class="pt-sit mini ' + esc(a.situacao) + '">' + esc(rotuloSituacao(a.situacao)) + '</span>' +
       '<span class="ph-item-ir">' + esc(acao) + (aberta ? ' →' : '') + '</span>' +
@@ -432,7 +449,7 @@ B7.Portal = (function () {
     lista.forEach(c => { conta[c.status_cliente] = (conta[c.status_cliente] || 0) + 1; });
     return '<div class="ph-status">' + ORDEM_STATUS.filter(s => conta[s]).map(s =>
       '<a class="ph-st ' + esc(s) + '" href="' + rota('minha-producao') + '?status=' + esc(s) + '">' +
-        '<b>' + conta[s] + '</b><span>' + esc(STATUS_CLIENTE[s]) + '</span></a>').join('') + '</div>';
+        '<b>' + conta[s] + '</b><span>' + esc(statusCli(s)) + '</span></a>').join('') + '</div>';
   }
 
   function blocoRecentes(lista) {
@@ -673,7 +690,7 @@ B7.Portal = (function () {
               (c.data_postagem
                 ? '<span class="pt-data">' + esc(B7.UI.dataBR(c.data_postagem)) + '</span>' : '') +
               (c.objetivo ? '<p>' + esc(c.objetivo) + '</p>' : '') +
-              (p.status_cliente ? '<span class="pt-sit mini ' + esc(p.status_cliente) + '">' + esc(STATUS_CLIENTE[p.status_cliente] || p.status_cliente) + '</span>' : '') +
+              (p.status_cliente ? '<span class="pt-sit mini ' + esc(p.status_cliente) + '">' + esc(statusCli(p.status_cliente) || p.status_cliente) + '</span>' : '') +
             '</' + tag + '>';
           }).join('') + '</div>'
         : vazio('O planejamento ainda não tem conteúdos liberados.',
@@ -734,7 +751,7 @@ B7.Portal = (function () {
         '</div>' +
         '<div class="pt-chips" role="group" aria-label="Situação">' +
           chip('status', '', 'Todas as situações', !f.status) +
-          statusPresentes.map(s => chip('status', s, STATUS_CLIENTE[s], f.status === s)).join('') +
+          statusPresentes.map(s => chip('status', s, statusCli(s), f.status === s)).join('') +
         '</div>' +
       '</div>' +
       (filtrada.length
@@ -764,9 +781,9 @@ B7.Portal = (function () {
       '<span>' + esc(c.tipo || 'Conteúdo') +
       (c.data_postagem ? ' · ' + esc(B7.UI.dataBR(c.data_postagem)) : '') +
       (c.aprovacao_versao ? ' · versão ' + c.aprovacao_versao : '') + '</span></div>' +
-      '<span class="pt-sit ' + esc(c.status_cliente) + '">' + esc(STATUS_CLIENTE[c.status_cliente] || c.status_cliente) + '</span>' +
+      '<span class="pt-sit ' + esc(c.status_cliente) + '">' + esc(statusCli(c.status_cliente) || c.status_cliente) + '</span>' +
       (c.aprovacao_id ? '<span class="ph-item-ir">' +
-        (c.status_cliente === 'aguardando_voce' ? 'Revisar →' : 'Abrir →') + '</span>' : '') +
+        (c.status_cliente === 'aguardando_voce' && !soComenta() ? 'Revisar →' : 'Abrir →') + '</span>' : '') +
     '</' + tag + '>';
   }
 
@@ -957,11 +974,10 @@ B7.Portal = (function () {
           '<div class="pt-perfil-av av-pessoa' + tom + '">' + foto + '</div>' +
           '<div class="pt-perfil-id"><b>' + esc(u.nome || '') + '</b>' +
             '<span>@' + esc(u.username || '') + '</span>' +
-            (u.papel === 'cliente' && u.pode_aprovar
-              ? '<small>Sua conta aprova materiais em nome da empresa.</small>'
-              : u.papel === 'cliente'
-                ? '<small>Sua conta acompanha e comenta; a aprovação oficial fica com o responsável da empresa.</small>'
-                : '') +
+            (u.papel === 'cliente' && emp && B7.PortalEquipe
+              ? '<small>' + esc(B7.PortalEquipe.nomePapel(B7.PortalEquipe.papelEm(emp.id))) + ' na ' + esc(emp.nome) + ': ' +
+                  esc(((B7.PortalEquipe.PAPEIS[B7.PortalEquipe.papelEm(emp.id)] || {}).txt || '').replace(/^./, c => c.toLowerCase())) + '</small>'
+              : '') +
           '</div>' +
           '<button class="b pri" id="pt-editar-perfil"' + (previa ? ' disabled title="Na prévia, o perfil é o do administrador"' : '') +
             '>Editar perfil e foto</button>' +
@@ -975,6 +991,8 @@ B7.Portal = (function () {
             '<div class="pt-perfil-e' + (emp && e.id === emp.id ? ' atual' : '') + '">' +
               (e.logo_url ? '<img src="' + esc(e.logo_url) + '" alt="">' : '<i>' + esc(B7.UI.iniciais(e.nome)) + '</i>') +
               '<b>' + esc(e.nome) + '</b>' +
+              (!previa && B7.PortalEquipe && B7.PortalEquipe.papelEm(e.id) !== 'b7'
+                ? '<span class="pq-tag pq-' + esc(B7.PortalEquipe.papelEm(e.id)) + '">' + esc(B7.PortalEquipe.nomePapel(B7.PortalEquipe.papelEm(e.id))) + '</span>' : '') +
               (e.servico && e.servico !== 'ativo' ? '<span class="pt-sit mini">' + (e.servico === 'pausado' ? 'Pausado' : 'Encerrado') + '</span>' : '') +
             '</div>').join('') || '<p class="pt-nada">Nenhuma empresa vinculada.</p>') +
         '</div>' +
@@ -1084,7 +1102,8 @@ B7.Portal = (function () {
     const aberta = ap.situacao === 'pendente' || ap.situacao === 'parcial';
     const decisaoDe = pid => partes.find(x => x.parte_id === pid) || null;
     const u = B7.Auth.usuario() || {};
-    const aprovador = u.papel !== 'cliente' || !!u.pode_aprovar;
+    /* zzz261: aprova quem é Dono ou Gestor da empresa do material */
+    const aprovador = B7.PortalEquipe ? B7.PortalEquipe.podeAprovarEm(ap.client_id) : (u.papel !== 'cliente' || !!u.pode_aprovar);
     const podeAprovar = !B7.Portal.somenteLeitura && aberta && aprovador;
     /* Prévia do admin: os botões de decisão aparecem, mas desabilitados
        e com o motivo — o admin precisa ver o que o cliente vê, sem
@@ -1173,7 +1192,7 @@ B7.Portal = (function () {
             (!aberta
               ? textoEncerrado(ap)
               : (aprovador ? 'Modo de visualização: nenhuma decisão é registrada.'
-                           : 'Sua conta acompanha e comenta; a aprovação oficial fica com o responsável da empresa.')) +
+                           : 'Você está na equipe da empresa: pode ler e comentar. Quem aprova é o dono ou o gestor.')) +
           '</div>') +
 
       (versoes.length > 1
@@ -1607,7 +1626,7 @@ B7.Portal = (function () {
 
   const rotuloTipo = t => ({ roteiro: 'Roteiro', linha: 'Linha editorial',
     conteudo: 'Conteúdo', semana: 'Status semanal', design_versao: 'Peça de design' }[t] || t);
-  const rotuloSituacao = s => ({ pendente: 'Aguardando você', parcial: 'Parcialmente revisado',
+  const rotuloSituacao = s => ({ pendente: soComenta() ? 'Aguardando aprovação' : 'Aguardando você', parcial: 'Parcialmente revisado',
     aprovado: 'Aprovado', ajustes: 'Ajustes solicitados', recusado: 'Recusado',
     substituido: 'Versão substituída', cancelado: 'Cancelado' }[s] || s);
 

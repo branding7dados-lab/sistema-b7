@@ -1102,3 +1102,11 @@ body.b7-nv-editar #tela-dashboard :is([data-decidir],[data-excluir],[data-apagar
 .sl-acoes{display:flex;align-items:center;gap:10px;justify-content:flex-end;}
 .sl-frase{margin:0;}
 .sl-caixa .perfil-opcao{padding:0;border:0;}
+
+/* zzz261: papel do cliente em cada empresa marcada */
+.nu-papel-emp{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+.nu-papel-emp:empty{display:none;}
+.nu-pe-linha{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.nu-pe-linha b{flex:1;min-width:140px;font-size:13.5px;font-weight:600;}
+.nu-pe-linha select{flex:0 1 360px;min-width:0;}
+@media (max-width:640px){.nu-pe-linha select{flex:1 1 100%;}}

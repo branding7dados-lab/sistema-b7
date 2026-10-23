@@ -25,6 +25,13 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz261', versao: 'zzz261', em: '2026-10-23T19:00:00-03:00',
+    titulo: 'Portal do cliente: Dono, Gestor e Equipe',
+    itens: ['Cada pessoa do cliente agora tem um papel em cada empresa: Dono (vê tudo, aprova e cuida da equipe), Gestor (vê tudo e aprova) e Equipe (vê e comenta).',
+            'Em Configurações → Pessoas, ao criar ou editar um cliente, você escolhe o papel dele em cada empresa marcada. O "pode aprovar" virou isso.',
+            'O Dono tem a tela Equipe no portal: convida pessoas (o sistema cria usuário e senha e já monta a mensagem para mandar no WhatsApp), muda papéis, gera senha nova e tira alguém do portal. A administração recebe um aviso a cada mudança.',
+            'Quem entra com a senha recebida vê um aviso pedindo para criar uma senha própria.',
+            'Para quem é Equipe, o portal fala "Aguardando aprovação" e "Ver e comentar" em vez de "Aguardando você".'] },
   { id: 'v-zzz260', versao: 'zzz260', em: '2026-10-23T17:00:00-03:00',
     titulo: 'Abertura completa sempre no app',
     itens: ['No app Android, abrir o B7 agora mostra sempre a abertura completa que você escolheu, mesmo que tenha usado há pouco. Ele continua voltando para a tela em que você estava.'] },

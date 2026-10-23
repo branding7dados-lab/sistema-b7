@@ -129,6 +129,7 @@ B7.Rota = (function () {
       if (partes[0] === 'meus-status')   return B7.Portal.abrirStatus();
       if (partes[0] === 'historico')     return B7.Portal.abrirHistorico();
       if (partes[0] === 'perfil')        return B7.Portal.abrirPerfil();
+      if (partes[0] === 'equipe' && B7.PortalEquipe) return B7.PortalEquipe.abrir();
       /* zzz223: o cliente também tem Suporte (com o assistente e avaliação) */
       if (partes[0] === 'suporte' && B7.Suporte) return B7.Suporte.abrir(partes[1] || null);
       if (partes[0] === 'revisar' && partes[1]) return B7.Portal.abrirRevisao(partes[1]);
