@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz260', versao: 'zzz260', em: '2026-10-23T17:00:00-03:00',
+    titulo: 'Abertura completa sempre no app',
+    itens: ['No app Android, abrir o B7 agora mostra sempre a abertura completa que você escolheu, mesmo que tenha usado há pouco. Ele continua voltando para a tela em que você estava.'] },
   { id: 'v-zzz259', versao: 'zzz259', em: '2026-10-23T16:00:00-03:00',
     titulo: 'Abertura lisa no app Android',
     itens: ['No app, a abertura agora espera o sistema terminar de carregar e só então começa, do início ao fim, sem trancos.',
