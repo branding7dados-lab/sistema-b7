@@ -12,6 +12,9 @@ await mkdir(WWW, { recursive: true });
 for (const item of ['index.html', 'manifest.json', 'js', 'styles', 'assets']) {
   await cp(RAIZ + item, WWW + item, { recursive: true });
 }
+/* dentro do app a marca vai em alta resolução (3×, mesma proporção do site):
+   nítida em tela de celular de alta densidade. No site fica a leve. */
+await cp(fileURLToPath(new URL('./hd/brand/', import.meta.url)), WWW + 'assets/brand/', { recursive: true });
 const auth = await readFile(RAIZ + 'js/auth.js', 'utf8');
 const versao = (/VERSAO\s*=\s*'([^']+)'/.exec(auth) || [])[1] || 'dev';
 console.log('✓ telas copiadas para www/ (versão ' + versao + ')');

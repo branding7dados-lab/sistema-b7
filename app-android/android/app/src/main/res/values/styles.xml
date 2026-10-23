@@ -17,11 +17,11 @@
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
-    <!-- abertura do Android 12+: ícone da B7 sobre o azul-noite -->
+    <!-- abertura: o símbolo da B7 em vetor, nítido em qualquer tela. Até o
+         Android 11 ele aparece parado (values-v31 tem a versão animada). -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/b7_noite</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/b7_abertura_estatica</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
