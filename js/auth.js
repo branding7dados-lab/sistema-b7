@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-23-zzz260';
+  const VERSAO = '2026-10-23-zzz261';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -604,6 +604,7 @@ B7.Auth = (function () {
         await carregar();
         m.fechar();
         if (B7.pintarSessao) B7.pintarSessao();
+        if (B7.PortalEquipe) B7.PortalEquipe.avisoSenha();
         B7.UI.toast(nova ? 'Perfil e senha atualizados' : 'Perfil atualizado');
       } catch (e) {
         botao.disabled = false; botao.textContent = 'Salvar';

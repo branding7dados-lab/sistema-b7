@@ -184,10 +184,13 @@ B7.Usuarios = (function () {
       '<div class="ac-mods" id="' + px + '-mods"></div>' +
     '</section>';
   }
-  /* zzz70: empresas + aprovação do cliente — o mesmo bloco ao criar e ao
-     editar (pílulas com busca e contador, aprovação como chave). */
-  function clienteHTML(px, clientes, ligadas, podeAprovar) {
-    const lig = ligadas || [];
+  /* zzz70: empresas do cliente — o mesmo bloco ao criar e ao editar
+     (pílulas com busca e contador). zzz261: em cada empresa marcada, o
+     papel da pessoa (Dono, Gestor, Equipe), no lugar do "pode aprovar".
+     ligadas: [{ client_id, papel }] */
+  const PAPEIS_CLI = [['dono', 'Dono', 'vê tudo, aprova e cuida da equipe'], ['gestor', 'Gestor', 'vê tudo e aprova'], ['equipe', 'Equipe', 'vê e comenta']];
+  function clienteHTML(px, clientes, ligadas) {
+    const lig = (ligadas || []).map(v => v.client_id);
     return '<section class="ng-bloco" id="' + px + '-cliente"><h4>' + ICU.emp + 'Empresas que acompanha' +
         '<span class="mg-obr leve" id="' + px + '-cont">nenhuma</span></h4>' +
         (clientes.length
@@ -197,14 +200,27 @@ B7.Usuarios = (function () {
               '<input type="checkbox" value="' + esc(c.id) + '"' + (lig.includes(c.id) ? ' checked' : '') + '>' +
               '<span>' + esc(c.nome) + '</span></label>').join('') + '</div>'
           : '<div class="vazio-leve">Cadastre um cliente primeiro.</div>') +
-        '<label class="op-mini nu-chave-linha' + (podeAprovar ? ' on' : '') + '" id="' + px + '-aprovar">' +
-          '<span>Pode aprovar oficialmente' +
-          '<small>sem isso, a pessoa visualiza e comenta, mas não aprova</small></span>' +
-          '<input type="checkbox" role="switch"' + (podeAprovar ? ' checked' : '') + '></label>' +
+        '<div class="nu-papel-emp" id="' + px + '-papeis"></div>' +
       '</section>';
   }
-  function ligarCliente(m, px) {
+  function ligarCliente(m, px, ligadas, clientes) {
     const bloco = m.querySelector('#' + px + '-cliente');
+    /* papel escolhido por empresa; quem é marcada agora começa como Dono
+       (a B7 cria o dono, e o dono convida o resto pelo portal) */
+    const papel = {};
+    (ligadas || []).forEach(v => { papel[v.client_id] = v.papel || 'gestor'; });
+    const nomeDe = id => ((clientes || []).find(c => c.id === id) || {}).nome || '';
+    const marcadas = () => [...bloco.querySelectorAll('.nu-pilulas input:checked')].map(c => c.value);
+    const pintarPapeis = () => {
+      const alvo = m.querySelector('#' + px + '-papeis');
+      const ids = marcadas();
+      alvo.innerHTML = ids.length ? '<span class="rot">PAPEL EM CADA EMPRESA</span>' + ids.map(id =>
+        '<div class="nu-pe-linha"><b>' + esc(nomeDe(id)) + '</b><select class="campo fina" data-papel-emp="' + esc(id) + '" aria-label="Papel em ' + esc(nomeDe(id)) + '">' +
+          PAPEIS_CLI.map(([k, r, t]) => '<option value="' + k + '"' + ((papel[id] || 'dono') === k ? ' selected' : '') + '>' + r + ' · ' + t + '</option>').join('') +
+        '</select></div>').join('') : '';
+      alvo.querySelectorAll('[data-papel-emp]').forEach(sel => sel.onchange = () => { papel[sel.dataset.papelEmp] = sel.value; });
+    };
+    bloco.lerEmpresas = () => marcadas().map(id => ({ client_id: id, papel: papel[id] || 'dono' }));
     const contar = () => {
       const n = bloco.querySelectorAll('.nu-pilulas input:checked').length;
       const c = m.querySelector('#' + px + '-cont');
@@ -212,16 +228,18 @@ B7.Usuarios = (function () {
     };
     bloco.querySelectorAll('.op-mini input').forEach(cx => cx.onchange = () => {
       cx.closest('.op-mini').classList.toggle('on', cx.checked);
-      contar();
+      contar(); pintarPapeis();
     });
     const buscaEmp = m.querySelector('#' + px + '-busca-emp');
     if (buscaEmp) buscaEmp.oninput = () => {
       const t = buscaEmp.value.trim().toLowerCase();
       bloco.querySelectorAll('.nu-pilulas .op-mini').forEach(l => { l.hidden = !!t && !l.dataset.nome.includes(t); });
     };
-    contar();
+    contar(); pintarPapeis();
     return bloco;
   }
+  /* o "pode aprovar" da conta acompanha os papéis (sessões antigas ainda o leem) */
+  const aprovaPorPapel = lista => lista.some(e => e.papel === 'dono' || e.papel === 'gestor');
   /* ini: { tipo, ehAdmin, funcao, excecoes, secundarias, cargos } — aoTipo(tipo) avisa a troca cliente/equipe.
      zzz216: secundarias = { funcao: 'ver'|'editar'|'total' } (abre o pacote até o nível, sem mudar a função);
      cargos = funções que a pessoa também exerce de verdade (recebe trabalho e ganha o Painel). */
@@ -656,8 +674,9 @@ B7.Usuarios = (function () {
     const vinculos = dados.vinculos || [];
     const funcoesExtraTodas = dados.funcoes_extra || [];
     carregarAcesso(dados);
+    const ROT_PAPEL = { dono: 'dono', gestor: 'gestor', equipe: 'equipe' };
     const empresasDe = id => vinculos.filter(v => v.perfil_id === id)
-      .map(v => (v.clientes && v.clientes.nome) || '');
+      .map(v => ((v.clientes && v.clientes.nome) || '') + (v.papel ? ' (' + ROT_PAPEL[v.papel] + ')' : ''));
     const funcoesExtraDe = id => funcoesExtraTodas.filter(f => f.perfil_id === id).map(f => f.funcao);
 
     const presenca = u => B7.Presenca ? B7.Presenca.rotulo(u)
@@ -856,7 +875,9 @@ B7.Usuarios = (function () {
     const nunca = !pres.online && /^nunca/i.test(quando);
 
     const tags = ehCliente
-      ? '<span class="lu4-tag lu3-p-cliente">Cliente</span>' + (u.pode_aprovar ? '<span class="lu4-tag leve">aprova</span>' : '')
+      ? '<span class="lu4-tag lu3-p-cliente">Cliente</span>' +
+        (empresas.some(e => / \(dono\)$/.test(e)) ? '<span class="lu4-tag leve">dono</span>'
+          : empresas.some(e => / \(gestor\)$/.test(e)) ? '<span class="lu4-tag leve">aprova</span>' : '')
       : (idt.ehAdmin ? (u.superadmin === 'supremo' ? '<span class="lu4-tag lu3-p-super supremo" title="Acima de todos os administradores">Admin supremo</span>'
           : u.superadmin === 'super' ? '<span class="lu4-tag lu3-p-super" title="Acima dos administradores">Super admin</span>'
           : '<span class="lu4-tag lu3-p-admin">Administrador</span>') : '') +
@@ -936,7 +957,7 @@ B7.Usuarios = (function () {
 
       acessoTipoHTML('nu', 'cliente') +
 
-      clienteHTML('nu', clientes, [], false) +
+      clienteHTML('nu', clientes, []) +
 
       acessoInternoHTML('nu') +
 
@@ -954,7 +975,7 @@ B7.Usuarios = (function () {
       '<button class="b pri" data-ok>Criar usuário</button></div>', { larga: true, extra: 'ng-modal nu-modal' });
 
     /* empresa e permissão de aprovação só fazem sentido para cliente */
-    const blocoCliente = ligarCliente(m, 'nu');
+    const blocoCliente = ligarCliente(m, 'nu', [], clientes);
     const acesso = ligarAcesso(m, 'nu', { tipo: 'cliente', ehAdmin: false, funcao: '', excecoes: {} },
       tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; });
 
@@ -966,8 +987,7 @@ B7.Usuarios = (function () {
     m.querySelector('[data-ok]').onclick = async () => {
       const erro = m.querySelector('#nu-erro');
       const botao = m.querySelector('[data-ok]');
-      const empresas = [...m.querySelectorAll('#nu-cliente input[type=checkbox][value]')]
-        .filter(c => c.checked).map(c => c.value);
+      const empresas = m.querySelector('#nu-cliente').lerEmpresas();
       const idn = acesso.ler();
       if (idn.erro) { erro.textContent = idn.erro; return; }
       const ehCli = idn.tipo === 'cliente';
@@ -977,7 +997,7 @@ B7.Usuarios = (function () {
         username: m.querySelector('#nu-user').value.trim(),
         senha: m.querySelector('#nu-senha').value,
         empresas: ehCli ? empresas : [],
-        pode_aprovar: ehCli && m.querySelector('#nu-aprovar input').checked
+        pode_aprovar: ehCli && aprovaPorPapel(empresas)
       }, idn);
       const cargosNovos = corpo.cargos || []; delete corpo.cargos;
       erro.textContent = '';
@@ -1000,7 +1020,7 @@ B7.Usuarios = (function () {
      EDITAR ACESSO
      ================================================================= */
   function modalEditar(u, clientes, vinculos, funcoesExtraAtuais) {
-    const ligadas = vinculos.filter(v => v.perfil_id === u.id).map(v => v.client_id);
+    const ligadas = vinculos.filter(v => v.perfil_id === u.id).map(v => ({ client_id: v.client_id, papel: v.papel || (u.pode_aprovar ? 'gestor' : 'equipe') }));
     const extrasAtuais = funcoesExtraAtuais || [];
     const m = B7.UI.modal(
       '<div class="ng-topo ed-topo"><span class="lu3-av ed-av">' + B7.UI.avatarPessoa(u, 'lu-avatar') + '</span><div><h3>' + esc(u.nome) + '</h3>' +
@@ -1013,7 +1033,7 @@ B7.Usuarios = (function () {
 
       acessoTipoHTML('ed', u.papel === 'cliente' ? 'cliente' : 'interno') +
 
-      clienteHTML('ed', clientes, ligadas, !!u.pode_aprovar) +
+      clienteHTML('ed', clientes, ligadas) +
 
       acessoInternoHTML('ed') +
 
@@ -1021,7 +1041,7 @@ B7.Usuarios = (function () {
       '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Salvar</button></div>', { larga: true, extra: 'ng-modal nu-modal ed-modal' });
 
-    const blocoCliente = ligarCliente(m, 'ed');
+    const blocoCliente = ligarCliente(m, 'ed', ligadas, clientes);
     const idt0 = identidadeDe(u);
     const acesso = ligarAcesso(m, 'ed', { tipo: idt0.tipo, ehAdmin: idt0.ehAdmin, funcao: idt0.funcao, excecoes: ACESSO.excecoes[u.id] || {},
         secundarias: ACESSO.secundarias[u.id] || {}, cargos: (extrasAtuais || []).slice() },
@@ -1036,8 +1056,7 @@ B7.Usuarios = (function () {
     m.querySelector('[data-ok]').onclick = async () => {
       const erro = m.querySelector('#ed-erro');
       const botao = m.querySelector('[data-ok]');
-      const empresas = [...m.querySelectorAll('#ed-cliente input[type=checkbox][value]')]
-        .filter(c => c.checked).map(c => c.value);
+      const empresas = blocoCliente.lerEmpresas();
       const idn = acesso.ler();
       if (idn.erro) { erro.textContent = idn.erro; return; }
       const ehCli = idn.tipo === 'cliente';
@@ -1048,7 +1067,7 @@ B7.Usuarios = (function () {
           acao: 'alterar_conta', perfil_id: u.id,
           nome: m.querySelector('#ed-nome').value.trim(),
           empresas: ehCli ? empresas : [],
-          pode_aprovar: ehCli && m.querySelector('#ed-aprovar input').checked
+          pode_aprovar: ehCli && aprovaPorPapel(empresas)
         }, Object.assign({}, idn, { cargos: undefined })));
         if (!ehCli) {
           await B7.DB.rpc('perfil_definir_cargos', { p_id: u.id, p_cargos: idn.cargos || [] });

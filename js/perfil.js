@@ -187,8 +187,9 @@ B7.Perfil = (function () {
             (u.papel === 'cliente'
               ? '<div class="perfil-linha"><span>Empresas</span><b>' +
                 (empresas.length ? esc(empresas.map(e => e.nome).join(', ')) : '—') + '</b></div>' +
-                '<div class="perfil-linha"><span>Aprovação</span><b>' +
-                (u.pode_aprovar ? 'pode aprovar oficialmente' : 'visualiza e comenta') + '</b></div>'
+                '<div class="perfil-linha"><span>Papel</span><b>' +
+                esc(empresas.map(e => (empresas.length > 1 ? e.nome + ': ' : '') +
+                  (B7.PortalEquipe ? B7.PortalEquipe.nomePapel(B7.PortalEquipe.papelEm(e.id)) : '')).join(', ') || '—') + '</b></div>'
               : '') +
             '<p class="ajuda">Para mudar qualquer um destes, fale com o administrador.</p>' +
           '</div>'
@@ -408,6 +409,7 @@ B7.Perfil = (function () {
         m.querySelectorAll('#pf-atual, #pf-nova, #pf-nova2').forEach(c => c.value = '');
         conferirSenha();
         aviso(msgSenha, 'Senha trocada. As outras sessões foram encerradas.', 'ok');
+        if (B7.PortalEquipe) B7.PortalEquipe.senhaTrocada();
       } catch (e) {
         aviso(msgSenha, e.message || 'Não foi possível trocar a senha.', 'erro');
       }

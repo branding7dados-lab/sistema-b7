@@ -58,7 +58,7 @@ B7.Perm = (function () {
     videomaker: ['', 'video', 'gravacao', 'gravacoes', 'roteiros', 'trends', 'cliente', 'config', 'calendario'],
     cliente: [
       '', 'aprovacoes', 'revisar', 'minha-linha', 'minha-producao',
-      'minhas-gravacoes', 'meus-status', 'historico', 'perfil', 'suporte'
+      'minhas-gravacoes', 'meus-status', 'historico', 'perfil', 'suporte', 'equipe'
     ]
   };
   /* =================================================================

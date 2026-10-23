@@ -25,7 +25,7 @@ import * as DF from './dois_fatores.ts';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
-const VERSAO = '2026-10-02-j';
+const VERSAO = '2026-10-23-papeis';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -731,6 +731,7 @@ Deno.serve(comCors(async (req) => {
 
       const { error } = await sb.auth.admin.updateUserById(eu.id, { password: nova });
       if (error) return json({ erro: 'Não foi possível trocar a senha.' }, 500);
+      await sb.from('perfis').update({ senha_provisoria: false }).eq('id', eu.id);
 
       /* derruba as outras sessões; a atual segue com o token que já tem */
       await sb.auth.admin.signOut(eu.id, 'others').catch(() => {});
@@ -748,14 +749,16 @@ Deno.serve(comCors(async (req) => {
                          'super_transferir_iniciar', 'super_transferir_confirmar'];
     /* qualquer pessoa autenticada edita a própria conta */
     const ACOES_PROPRIAS = ['meu_perfil', 'meu_avatar'];
-    if (!ACOES_ADMIN.includes(acao) && !ACOES_PROPRIAS.includes(acao)) {
+    /* zzz261: o dono da empresa cuida das pessoas dela (conferido abaixo) */
+    const ACOES_DONO = ['cliente_convidar', 'cliente_remover', 'cliente_nova_senha'];
+    if (!ACOES_ADMIN.includes(acao) && !ACOES_PROPRIAS.includes(acao) && !ACOES_DONO.includes(acao)) {
       return json({
         erro: 'Ação desconhecida: "' + String(acao || '(vazia)') + '". ' +
               'Se você esperava que ela existisse, a função publicada pode estar ' +
               'desatualizada — republique o b7-auth com a versão mais recente.',
         codigo: 'acao_desconhecida',
         acoes_disponiveis: ['ping', 'login', 'bootstrap', 'recuperar_admin',
-                            'remover_admin', 'meu_perfil', 'minha_senha'].concat(ACOES_ADMIN)
+                            'remover_admin', 'meu_perfil', 'minha_senha'].concat(ACOES_ADMIN, ACOES_DONO)
       }, 400);
     }
 
@@ -805,6 +808,7 @@ Deno.serve(comCors(async (req) => {
         const { error } = await sb.auth.admin
           .updateUserById(autor.id, { password: String(corpo.senha) });
         if (error) return json({ erro: 'Não foi possível alterar a senha.' }, 500);
+        patch.senha_provisoria = false;
       }
 
       if (Object.keys(patch).length) {
@@ -840,6 +844,89 @@ Deno.serve(comCors(async (req) => {
       await auditar(sb, autor, url ? 'avatar_definido' : 'avatar_removido',
         { tipo: 'perfil', id: autor.id, descricao: autor.username });
       return json({ ok: true });
+    }
+
+    // =================================================================
+    // EQUIPE DA EMPRESA (zzz261) — o dono convida, troca a senha e tira
+    // pessoas da empresa dele. A administração da B7 também pode.
+    // Quem é dono é lido do banco (perfil_clientes), nunca do corpo.
+    // Papel e remoção sem senha ficam no banco (cliente_definir_papel).
+    // =================================================================
+    if (ACOES_DONO.includes(acao)) {
+      const clientId = String(corpo.client_id || '');
+      const { data: cli } = await sb.from('clientes').select('id, nome, servico').eq('id', clientId).maybeSingle();
+      if (!cli) return json({ erro: 'Empresa não encontrada.' }, 404);
+      if (autor.papel !== 'admin') {
+        const { data: v } = await sb.from('perfil_clientes').select('papel')
+          .eq('perfil_id', autor.id).eq('client_id', clientId).maybeSingle();
+        if (autor.papel !== 'cliente' || !v || v.papel !== 'dono') {
+          return json({ erro: 'Só o dono da empresa cuida da equipe dela.' }, 403);
+        }
+        if ((cli.servico || 'ativo') !== 'ativo') return json({ erro: 'O serviço desta empresa está pausado.' }, 403);
+      }
+      const avisarB7 = async (titulo: string, msg: string) => {
+        if (autor.papel === 'admin') return;
+        await sb.rpc('_cliente_avisar_b7', { p_client: clientId, p_titulo: cli.nome + ': ' + titulo, p_msg: msg })
+          .then(() => {}, () => {});
+      };
+      const PAPEL_NOME: Record<string, string> = { dono: 'Dono', gestor: 'Gestor', equipe: 'Equipe' };
+
+      if (acao === 'cliente_convidar') {
+        const nome = String(corpo.nome || '').trim().slice(0, 80);
+        const papelEmp = String(corpo.papel || 'equipe');
+        if (!nome) return json({ erro: 'Informe o nome da pessoa.' }, 400);
+        if (!PAPEL_NOME[papelEmp]) return json({ erro: 'Papel inválido.' }, 400);
+        const username = await usernameLivre(sb, nome);
+        const senha = senhaProvisoria();
+        const criado = await criarConta(sb, { username, nome, senha, papel: 'cliente',
+          empresas: [{ client_id: clientId, papel: papelEmp }], criadoPor: autor.id, convidadoPor: autor.id });
+        if (criado.erro) return json({ erro: criado.erro }, 400);
+        await auditar(sb, autor, 'cliente_convidar', { tipo: 'perfil', id: criado.id, descricao: username },
+          { client_id: clientId, papel: papelEmp });
+        await avisarB7('nova pessoa no portal', autor.nome + ' convidou ' + nome + ' (' + PAPEL_NOME[papelEmp] + ').');
+        return json({ ok: true, id: criado.id, username, senha, nome, papel: papelEmp });
+      }
+
+      /* as duas ações abaixo mexem numa pessoa que precisa ser desta empresa */
+      const perfilId = String(corpo.perfil_id || '');
+      const { data: alvo } = await sb.from('perfis').select('id, nome, username, papel').eq('id', perfilId).maybeSingle();
+      const { data: vAlvo } = await sb.from('perfil_clientes').select('papel')
+        .eq('perfil_id', perfilId).eq('client_id', clientId).maybeSingle();
+      if (!alvo || !vAlvo || alvo.papel !== 'cliente') return json({ erro: 'Essa pessoa não é desta empresa.' }, 404);
+
+      if (acao === 'cliente_nova_senha') {
+        if (perfilId === autor.id) return json({ erro: 'Para trocar a sua senha, use Meu perfil.' }, 400);
+        /* conta ligada a outras empresas: só a B7 mexe na senha */
+        const { count } = await sb.from('perfil_clientes').select('client_id', { count: 'exact', head: true }).eq('perfil_id', perfilId);
+        if (autor.papel !== 'admin' && (count || 0) > 1) {
+          return json({ erro: 'Essa pessoa também acessa outra empresa. Peça a nova senha à B7.' }, 403);
+        }
+        const senha = senhaProvisoria();
+        const { error } = await sb.auth.admin.updateUserById(perfilId, { password: senha });
+        if (error) return json({ erro: 'Não foi possível gerar a nova senha.' }, 500);
+        await sb.from('perfis').update({ senha_provisoria: true, estado: 'ativa' }).eq('id', perfilId);
+        await sb.auth.admin.signOut(perfilId, 'global').catch(() => {});
+        await auditar(sb, autor, 'cliente_nova_senha', { tipo: 'perfil', id: perfilId, descricao: alvo.username }, { client_id: clientId });
+        return json({ ok: true, username: alvo.username, senha, nome: alvo.nome });
+      }
+
+      if (acao === 'cliente_remover') {
+        if (vAlvo.papel === 'dono') {
+          const { count } = await sb.from('perfil_clientes').select('perfil_id', { count: 'exact', head: true })
+            .eq('client_id', clientId).eq('papel', 'dono');
+          if ((count || 0) < 2) return json({ erro: 'A empresa precisa de pelo menos um dono.' }, 400);
+        }
+        await sb.from('perfil_clientes').delete().eq('perfil_id', perfilId).eq('client_id', clientId);
+        const { count: resta } = await sb.from('perfil_clientes').select('client_id', { count: 'exact', head: true }).eq('perfil_id', perfilId);
+        if (!resta) {
+          await sb.from('perfis').update({ estado: 'desativada' }).eq('id', perfilId).eq('papel', 'cliente');
+          await sb.auth.admin.signOut(perfilId, 'global').catch(() => {});
+        }
+        await auditar(sb, autor, 'cliente_remover', { tipo: 'perfil', id: perfilId, descricao: alvo.username },
+          { client_id: clientId, papel: vAlvo.papel });
+        await avisarB7('acesso removido', (alvo.nome || 'Alguém') + ' não acessa mais o portal da empresa.');
+        return json({ ok: true });
+      }
     }
 
     if (autor.papel !== 'admin') {
@@ -1111,7 +1198,7 @@ Deno.serve(comCors(async (req) => {
       const criado = await criarConta(sb, {
         username, nome, senha, papel,
         podeAprovar: !!corpo.pode_aprovar,
-        empresas: Array.isArray(corpo.empresas) ? corpo.empresas : [],
+        empresas: normEmpresas(corpo.empresas, corpo.papel_cliente),
         criadoPor: autor.id
       });
       if (criado.erro) return json({ erro: criado.erro }, 400);
@@ -1147,6 +1234,8 @@ Deno.serve(comCors(async (req) => {
 
       const { error } = await sb.auth.admin.updateUserById(alvo.id, { password: senha });
       if (error) return json({ erro: 'Não foi possível redefinir a senha.' }, 500);
+      /* cliente que recebe senha nova é convidado a trocá-la no portal */
+      await sb.from('perfis').update({ senha_provisoria: true }).eq('id', alvo.id).eq('papel', 'cliente');
 
       /* derruba as sessões abertas: quem estava logado precisa entrar de
          novo com a senha nova */
@@ -1241,12 +1330,18 @@ Deno.serve(comCors(async (req) => {
       }
 
       /* vínculos com empresas, quando enviados */
+      /* zzz261: cada empresa leva o papel da pessoa nela (dono, gestor,
+         equipe); quem não manda papel mantém o que já tinha */
       if (Array.isArray(corpo.empresas)) {
+        const { data: antes } = await sb.from('perfil_clientes').select('client_id, papel, convidado_por').eq('perfil_id', corpo.perfil_id);
+        const velho = new Map((antes || []).map((v: { client_id: string }) => [v.client_id, v]));
+        const novas = normEmpresas(corpo.empresas, corpo.papel_cliente, true).map((e) => {
+          const v = velho.get(e.client_id) as { papel: string; convidado_por: string | null } | undefined;
+          return { perfil_id: corpo.perfil_id, client_id: e.client_id, papel: e.papel || (v && v.papel) || 'gestor',
+                   convidado_por: v ? v.convidado_por : null };
+        });
         await sb.from('perfil_clientes').delete().eq('perfil_id', corpo.perfil_id);
-        if (corpo.empresas.length) {
-          await sb.from('perfil_clientes').insert(
-            corpo.empresas.map((c: string) => ({ perfil_id: corpo.perfil_id, client_id: c })));
-        }
+        if (novas.length) await sb.from('perfil_clientes').insert(novas);
       }
 
       /* funções extras, quando enviadas (substitui o conjunto inteiro,
@@ -1322,7 +1417,7 @@ Deno.serve(comCors(async (req) => {
                       codigo: 'leitura_perfis' }, 500);
       }
       const { data: vinculos } = await sb.from('perfil_clientes')
-        .select('perfil_id, client_id, clientes(nome)');
+        .select('perfil_id, client_id, papel, clientes(nome)');
       /* funções extras: tabela pode não existir ainda numa instalação
          que não rodou migration_video_producao.sql — falha em silêncio
          pra não derrubar a listagem inteira por causa de um recurso
@@ -1372,7 +1467,7 @@ Deno.serve(comCors(async (req) => {
    que seria um login capaz de entrar sem papel nenhum. */
 async function criarConta(sb: any, dados: {
   username: string; nome: string; senha: string; papel: string;
-  podeAprovar?: boolean; empresas?: string[]; criadoPor?: string;
+  podeAprovar?: boolean; empresas?: { client_id: string; papel?: string | null }[]; criadoPor?: string; convidadoPor?: string;
 }) {
   const { data: existente } = await sb.rpc('resolver_login', { p_username: dados.username });
   if (existente && existente.length) return { erro: 'Esse username já está em uso.' };
@@ -1395,6 +1490,8 @@ async function criarConta(sb: any, dados: {
     nome: dados.nome,
     papel: dados.papel,
     pode_aprovar: dados.papel === 'cliente' ? !!dados.podeAprovar : false,
+    /* cliente entra com a senha que recebeu e é convidado a trocá-la */
+    senha_provisoria: dados.papel === 'cliente',
     criado_por: dados.criadoPor || null
   }]);
   if (erroPerfil) {
@@ -1404,7 +1501,51 @@ async function criarConta(sb: any, dados: {
 
   if (dados.empresas && dados.empresas.length) {
     await sb.from('perfil_clientes').insert(
-      dados.empresas.map(c => ({ perfil_id: criado.user.id, client_id: c })));
+      dados.empresas.map(e => ({ perfil_id: criado.user.id, client_id: e.client_id, papel: e.papel || 'gestor',
+                                 convidado_por: dados.convidadoPor || null })));
   }
   return { id: criado.user.id };
+}
+
+/* Empresas de uma conta de cliente: aceita ['id', …] (formato antigo) ou
+   [{ client_id, papel }, …]. Papel fora de dono/gestor/equipe vira o
+   padrão; com manterVazio, fica null (alterar_conta mantém o que havia). */
+const PAPEIS_CLIENTE = ['dono', 'gestor', 'equipe'];
+function normEmpresas(lista: unknown, padrao?: unknown, manterVazio = false): { client_id: string; papel: string | null }[] {
+  if (!Array.isArray(lista)) return [];
+  const pad = PAPEIS_CLIENTE.includes(String(padrao)) ? String(padrao) : (manterVazio ? null : 'gestor');
+  const vistos = new Set<string>();
+  const saida: { client_id: string; papel: string | null }[] = [];
+  for (const item of lista) {
+    const id = typeof item === 'string' ? item : String((item as { client_id?: string })?.client_id || '');
+    if (!/^[0-9a-f-]{36}$/i.test(id) || vistos.has(id)) continue;
+    vistos.add(id);
+    const p = typeof item === 'object' && item ? String((item as { papel?: string }).papel || '') : '';
+    saida.push({ client_id: id, papel: PAPEIS_CLIENTE.includes(p) ? p : pad });
+  }
+  return saida;
+}
+
+/* Senha provisória para convite: 12 caracteres sem os que se confundem
+   (0/O, 1/l/I), com letras e números — passa em senhaFraca. */
+function senhaProvisoria(): string {
+  const letras = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ', nums = '23456789', todos = letras + nums;
+  const r = crypto.getRandomValues(new Uint32Array(12));
+  const s = Array.from(r, (n, i) => (i === 0 ? letras : i === 1 ? nums : todos)[n % (i === 0 ? letras.length : i === 1 ? nums.length : todos.length)]);
+  return s.slice(2).concat(s.slice(0, 2)).join('');
+}
+
+/* Username a partir do nome: "Maria da Silva" → maria.silva (ou maria.silva2…) */
+// deno-lint-ignore no-explicit-any
+async function usernameLivre(sb: any, nome: string): Promise<string> {
+  const partes = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((p) => p && !['da', 'de', 'do', 'das', 'dos', 'e'].includes(p));
+  let base = (partes.length > 1 ? partes[0] + '.' + partes[partes.length - 1] : (partes[0] || 'cliente')).slice(0, 28);
+  if (base.length < 3) base = (base + '.b7').slice(0, 28);
+  for (let i = 0; i < 50; i++) {
+    const tentativa = i === 0 ? base : base + (i + 1);
+    const { data } = await sb.rpc('resolver_login', { p_username: tentativa });
+    if (!data || !data.length) return tentativa;
+  }
+  return base + '.' + crypto.randomUUID().slice(0, 4);
 }
