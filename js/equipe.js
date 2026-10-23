@@ -92,6 +92,7 @@ B7.Equipe = (function () {
     const quando = d => d === 0 ? 'é hoje!' : d === 1 ? 'amanhã' : 'em ' + d + ' dias';
 
     alvo.innerHTML =
+      (ehAdm() && B7.Silencio ? '<div data-sl-equipe></div>' : '') +
       (!ehAdm() && podeEditar() ? '<section class="cfg-g"><h2 class="cfg-g-t">Recado para a equipe</h2>' +
         '<p class="cfg-g-nota">Uma frase no alto da tela de todo mundo da equipe, até a data que você escolher.</p>' +
         '<div class="cfg-lista"><button type="button" class="cfg-l eq-novo" data-eq-recado><span class="cfg-l-tx"><b>Recado fixo para a equipe</b><small data-eq-recado-d>verificando…</small></span><span class="cfg-acao" aria-hidden="true">Escrever</span></button></div></section>' : '') +
@@ -111,6 +112,7 @@ B7.Equipe = (function () {
           podeEditar() ? botao(a ? 'Mudar' : 'Definir', ' data-eq-aniv="' + esc(p.id) + '"') : '')).join('') +
         '</div></section>';
 
+    if (B7.Silencio) B7.Silencio.montarEquipe(alvo.querySelector('[data-sl-equipe]'));
     const btRec = alvo.querySelector('[data-eq-recado]');
     if (btRec) {
       const pintar = () => resumoRecado().then(t => { const d = alvo.querySelector('[data-eq-recado-d]'); if (d) d.textContent = t; });

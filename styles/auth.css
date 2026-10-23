@@ -1088,3 +1088,17 @@ body.b7-nv-editar #tela-dashboard :is([data-decidir],[data-excluir],[data-apagar
 .lu4-tag.lu3-p-super.supremo{background:linear-gradient(135deg,#8a5a0b,#d4a017 55%,#f5d061);color:#1b1200;}
 .lu4-tag.lu3-p-super::before{display:none;} /* zzz226: o selo já é a cor; o ponto cinza sobre o dourado sujava */
 .perfil-opcao[hidden]{display:none !important;}
+/* zzz252: horário de silêncio (Notificações e Equipe) */
+.sl-caixa{border:1px solid var(--borda);border-radius:var(--r);padding:12px 14px;background:var(--card);display:flex;flex-direction:column;gap:10px;}
+.sl-ops{display:flex;gap:4px;padding:3px;border-radius:999px;background:var(--suave);align-self:flex-start;flex-wrap:wrap;}
+.sl-op{border:0;background:none;padding:7px 14px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-3);cursor:pointer;}
+.sl-op[aria-checked="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18);}
+.sl-op:focus-visible{outline:2px solid var(--acento);outline-offset:1px;}
+.sl-campos{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;}
+.sl-campos.sl-off{opacity:.45;}
+.sl-hora{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--ink-3);}
+.sl-hora input{width:136px;}
+.sl-fds{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);flex-basis:100%;}
+.sl-acoes{display:flex;align-items:center;gap:10px;justify-content:flex-end;}
+.sl-frase{margin:0;}
+.sl-caixa .perfil-opcao{padding:0;border:0;}
