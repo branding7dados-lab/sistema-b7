@@ -7,21 +7,21 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-    <!-- tela do app: fundo azul-noite enquanto o site carrega (sem flash branco) -->
+    <!-- tela do app: o céu da abertura enquanto o site carrega (sem flash branco) -->
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:windowBackground">@color/b7_noite</item>
-        <item name="android:statusBarColor">@color/b7_noite</item>
-        <item name="android:navigationBarColor">@color/b7_noite</item>
+        <item name="android:windowBackground">@color/b7_ceu</item>
+        <item name="android:statusBarColor">@color/b7_ceu</item>
+        <item name="android:navigationBarColor">@color/b7_ceu</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
-    <!-- abertura: o símbolo da B7 em vetor, nítido em qualquer tela. Até o
-         Android 11 ele aparece parado (values-v31 tem a versão animada). -->
+    <!-- abertura do Android = o céu da abertura do sistema, sem ícone: a abertura
+         escolhida (a mesma do site) começa por baixo e assume sem emenda -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/b7_noite</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/b7_abertura_estatica</item>
+        <item name="windowSplashScreenBackground">@color/b7_ceu</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/b7_abertura_vazio</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

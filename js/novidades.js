@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz258', versao: 'zzz258', em: '2026-10-23T15:00:00-03:00',
+    titulo: 'Uma abertura só no app Android',
+    itens: ['No app, a abertura do Android agora é a mesma abertura do sistema: a que você escolheu em Configurações → Abertura e sons (as 9 opções, com som). Nada de duas aberturas seguidas.',
+            'A tela do Android abre direto no céu escuro da abertura e passa para ela sem emenda.'] },
   { id: 'v-zzz257', versao: 'zzz257', em: '2026-10-23T14:00:00-03:00',
     titulo: 'Widget "Hoje no B7" novo',
     itens: ['O widget da tela inicial do Android ganhou a cara da B7: brilho nas cores da marca, símbolo colorido e saudação pelo horário.',

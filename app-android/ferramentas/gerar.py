@@ -46,38 +46,8 @@ def gravar(caminho_rel, xml):
     open(RES + caminho_rel, 'w').write('<?xml version="1.0" encoding="utf-8"?>\n' + xml + '\n')
 
 os.makedirs(RES + 'drawable', exist_ok=True)
-# Abertura do Android 12+: tela de 288dp, só o círculo central de 192dp aparece.
-# O símbolo cabe nesse círculo (diagonal ≈ 2976 px): viewport 4800, escala 1.
-gravar('drawable/b7_abertura_simbolo.xml', vetor(288, 4800, 1.0, inicial=True))
-anim = []
-def alvo(nome, props):
-    anim.append('<target android:name="%s"><aapt:attr name="android:animation"><set>%s</set></aapt:attr></target>' % (nome, props))
-def obj(prop, de, ate, dur, atraso=0, interp='@android:interpolator/fast_out_slow_in'):
-    return ('<objectAnimator android:propertyName="%s" android:valueFrom="%s" android:valueTo="%s" android:duration="%d" android:startOffset="%d" android:valueType="floatType" android:interpolator="%s"/>' %
-            (prop, de, ate, dur, atraso, interp))
-OVER = '@android:interpolator/overshoot'
-alvo('g_bulbo', obj('scaleX', 0.82, 1, 520) + obj('scaleY', 0.82, 1, 520))
-alvo('bulbo', obj('fillAlpha', 0, 1, 380))
-for i in range(len(base)):
-    alvo('g_base%d' % i, obj('translateY', 160, 0, 360, 120 + i * 70))
-    alvo('base%d' % i, obj('fillAlpha', 0, 1, 300, 120 + i * 70))
-for i in range(len(bolhas)):
-    # as bolhas "sobem" da maior (junto do bulbo) para a menor, uma atrás da outra
-    atraso = 340 + (len(bolhas) - 1 - i) * 75
-    alvo('g_bolha%d' % i, obj('scaleX', 0, 1, 340, atraso, OVER) + obj('scaleY', 0, 1, 340, atraso, OVER))
-gravar('drawable/b7_abertura_animada.xml',
-       '<animated-vector %s android:drawable="@drawable/b7_abertura_simbolo">%s</animated-vector>' % (NS, ''.join(anim)))
 
 # Ícone temático (Android 13+): uma cor só, o sistema pinta. Área segura de 66dp em 108dp.
 gravar('drawable/ic_launcher_monocromatico.xml', vetor(108, 4800, 1.0, cor='#FFFFFFFF'))
 
-# Marca "Branding7" no rodapé da abertura (até 200×80dp)
-tw, th = txt['w'], txt['h']
-paths = ''.join('<path android:fillType="evenOdd" android:fillColor="#B3FFFFFF" android:pathData="%s"/>' % p['d'] for p in txt['partes'])
-gravar('drawable/b7_abertura_marca.xml',
-       '<vector %s android:width="200dp" android:height="80dp" android:viewportWidth="%d" android:viewportHeight="%d">'
-       '<group android:translateX="%.1f" android:translateY="%.1f" android:scaleX="0.62" android:scaleY="0.62">%s</group></vector>' % (
-           NS, tw, int(tw * 0.4), tw * 0.19, (tw * 0.4 - th * 0.62) / 2, paths))
 print('bolhas', len(bolhas), 'base', len(base))
-# Android 11 e anteriores mostram o desenho parado: a versão final, sem animação
-gravar('drawable/b7_abertura_estatica.xml', vetor(288, 4800, 1.0))

@@ -188,6 +188,9 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   <div class="ab-titulo" aria-hidden="true"><i></i><b>Sistema B7</b><b class="ab-data"></b></div>
   <div class="ab-espera"><b class="ab-ola"></b><span class="ab-frase">Preparando o seu espaço…</span><i class="ab-fio"></i></div>
 </div>
+<!-- app Android: a abertura do sistema já está na tela, a do Android pode sair
+     (MainActivity, "aberturaVisivel"): uma abertura só, sem emenda -->
+<script>try { if (window.B7Nativo) requestAnimationFrame(function () { B7Nativo.postMessage(JSON.stringify({ acao: 'aberturaVisivel' })); }); } catch (e) {}</script>
 <!-- som da abertura: logo depois dela, para sincronizar com a animação -->
 <script src="js/abertura-som.js"></script>
 <!-- zzz227: partículas da abertura (montam a lâmpada e escrevem o logo) -->
