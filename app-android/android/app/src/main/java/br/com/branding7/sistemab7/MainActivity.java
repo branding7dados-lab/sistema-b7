@@ -73,9 +73,10 @@ import org.json.JSONObject;
  *   • widget "Hoje no B7" (WidgetHoje.java): recebe daqui a chave dele;
  *   • aviso que chega com o app aberto: o Android não mostra sozinho, então
  *     o app mostra (mostrarAviso), e o toque abre a tela do aviso;
- *   • abertura: o símbolo da B7 se monta (res/drawable/b7_abertura_animada)
- *     e a tela segura até as telas do sistema carregarem — nada de piscar
- *     o fundo vazio —, saindo com um zoom suave.
+ *   • abertura: UMA só — a mesma do site, a que a pessoa escolheu em
+ *     Configurações. A abertura do Android é só o céu escuro dela, sem
+ *     ícone, e sai no instante em que a abertura do sistema aparece por
+ *     baixo (aviso "aberturaVisivel", do index.html): sem emenda.
  * O lado das telas está em js/app-nativo.js. A ponte (B7Nativo) só existe
  * para as telas do próprio app (ORIGEM): um iframe de fora não a enxerga.
  */
@@ -158,7 +159,7 @@ public class MainActivity extends BridgeActivity {
     String linkPendente = null;
     String idPendente = null;
 
-    /* abertura segura até a página do sistema terminar de carregar (ou 3 s) */
+    /* a abertura do Android segura até a do sistema aparecer (ou 3 s) */
     volatile boolean telasProntas = false;
 
     @Override
@@ -166,17 +167,14 @@ public class MainActivity extends BridgeActivity {
         SplashScreen abertura = SplashScreen.installSplashScreen(this);
         long inicioAbertura = System.currentTimeMillis();
         abertura.setKeepOnScreenCondition(() -> !telasProntas && System.currentTimeMillis() - inicioAbertura < 3000);
-        abertura.setOnExitAnimationListener(tela -> {
-            View icone = tela.getIconView();
-            if (icone != null) icone.animate().scaleX(1.35f).scaleY(1.35f).alpha(0f).setDuration(320).start();
-            tela.getView().animate().alpha(0f).setStartDelay(90).setDuration(320)
-                .withEndAction(tela::remove).start();
-        });
+        /* mesma cor por baixo: sai seca, sem animação (a do sistema já está andando) */
+        abertura.setOnExitAnimationListener(tela -> tela.remove());
         super.onCreate(savedInstanceState);
         if (bridge == null) { telasProntas = true; return; }
         bridge.addWebViewListener(new WebViewListener() {
+            /* rede de segurança: página pronta sem o aviso da abertura */
             @Override
-            public void onPageLoaded(WebView webView) { telasProntas = true; }
+            public void onPageLoaded(WebView webView) { webView.postDelayed(() -> telasProntas = true, 400); }
             @Override
             public void onReceivedError(WebView webView) { telasProntas = true; }
         });
@@ -194,6 +192,9 @@ public class MainActivity extends BridgeActivity {
         }
 
         WebView web = bridge.getWebView();
+        /* o som da abertura toca sem precisar de um toque antes */
+        web.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        web.setBackgroundColor(Color.parseColor("#05030A"));
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
             Nativo nativo = new Nativo(this, web);
             WebViewCompat.addWebMessageListener(web, "B7Nativo", Collections.singleton(ORIGEM),
@@ -353,6 +354,8 @@ public class MainActivity extends BridgeActivity {
             }
             String id = m.optString("id");
             String acao = m.optString("acao");
+            /* a abertura do sistema já está na tela: a do Android sai */
+            if (acao.equals("aberturaVisivel")) { act.telasProntas = true; return; }
             /* vídeo: tudo pela mesma fila, para respeitar a ordem das partes */
             if (acao.startsWith("video")) {
                 fila.execute(() -> {
