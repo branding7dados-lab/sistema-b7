@@ -92,7 +92,9 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
     var b7App = location.hostname === 'localhost' || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
     var b7Visto = +localStorage.getItem('b7_visto_em') || 0;
     if (b7App && Date.now() - b7Visto < 30 * 60 * 1000) {
-      document.documentElement.classList.add('ab-curta');
+      /* zzz260: no app Android abrir é sempre a abertura completa (pedido do
+         Kevin); continua voltando para a tela em que a pessoa estava */
+      if (!window.B7Nativo) document.documentElement.classList.add('ab-curta');
       var b7Rota = localStorage.getItem('b7_rota');
       if ((!location.hash || location.hash === '#' || location.hash === '#/') && b7Rota && /^#\/[a-z]/.test(b7Rota) && !/login|sair|redefinir/.test(b7Rota)) {
         history.replaceState(null, '', location.pathname + location.search + b7Rota);
