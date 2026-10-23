@@ -1798,3 +1798,16 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .pm-conf-mal{padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--erro) 10%,var(--card));border:1px solid color-mix(in srgb,var(--erro) 35%,transparent);}
 .pm-conf-mal ul{margin:8px 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;}
 .pm-conf-mal li small{display:block;}
+/* zzz255: pacotes de produção */
+.pc-qtds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.pc-qtd{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-3);}
+.pc-qtd input{width:100%;text-align:center;font-weight:700;}
+.pc-edicao{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--ink-2);}
+.pc-dias{display:flex;flex-wrap:wrap;gap:6px;}
+.pc-dia{position:relative;cursor:pointer;}
+.pc-dia input{position:absolute;opacity:0;pointer-events:none;}
+.pc-dia span{display:inline-block;padding:7px 12px;border-radius:999px;border:1px solid var(--borda);font-size:12.5px;font-weight:600;color:var(--ink-3);}
+.pc-dia input:checked+span{background:var(--acento-suave);border-color:var(--acento);color:var(--acento);}
+.pc-dia input:focus-visible+span{outline:2px solid var(--acento);outline-offset:2px;}
+.pc-arquivar{margin-right:auto;}
+@media (max-width:520px){.pc-qtds{grid-template-columns:repeat(2,minmax(0,1fr));}}

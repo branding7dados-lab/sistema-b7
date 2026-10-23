@@ -25,6 +25,19 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz255', versao: 'zzz255', em: '2026-10-23T12:00:00-03:00',
+    titulo: 'Pacotes de produção',
+    itens: ['Em Configurações → Pacotes de produção, monte o que cada cliente contrata por mês (ex.: 6 cards + 6 carrosséis + 4 reels) e os dias de postagem.',
+            'Ao criar uma linha editorial, escolha o pacote: os conteúdos já nascem com o tipo e a data espalhada pelo mês. O último pacote usado com o cliente já vem escolhido na próxima linha.'] },
+  { id: 'v-zzz254', versao: 'zzz254', em: '2026-10-23T11:00:00-03:00',
+    titulo: 'Relatório do mês',
+    itens: ['No Panorama, o botão "Relatório do mês" mostra, para o mês na tela: posts publicados, artes e vídeos entregues, quanto saiu no prazo e quantas aprovações voltaram com ajuste.',
+            'Duas visões: por cliente (inclui o tempo médio que o cliente leva para responder) e por pessoa da equipe (entregas, prazo, versões por arte e o que está atrasado hoje). Dá para baixar em planilha.'] },
+  { id: 'v-zzz253', versao: 'zzz253', em: '2026-10-23T10:00:00-03:00',
+    titulo: 'Prazos que avisam antes',
+    itens: ['Peça de design ou vídeo que vence hoje ou amanhã e ainda não começou: quem é responsável recebe um aviso às 9h.',
+            'A coordenação recebe um resumo só com tudo o que está em risco (inclusive o que ninguém pegou e os posts de amanhã que ainda estão em ideia), e o Painel mostra "entregas que não começaram" em Precisa da sua atenção.',
+            'Continua igual: atrasou, a pessoa é avisada; com 2 dias de atraso a coordenação é chamada; com 5, vira crítico.'] },
   { id: 'v-zzz252', versao: 'zzz252', em: '2026-10-23T09:00:00-03:00',
     titulo: 'Horário de silêncio',
     itens: ['Em Configurações → Notificações, escolha um horário de silêncio: fora dele os avisos ficam guardados no sino, sem push nem som, e quando o silêncio acaba chega um aviso só com o resumo do que aconteceu.',

@@ -485,6 +485,19 @@ B7.DB = (function () {
     async linha(id) {
       return ok(await sb().from('linhas_resumo').select('*').eq('id', id).single());
     },
+    /* zzz255: pacotes de produção */
+    async listarPacotes() {
+      return ok(await sb().from('pacotes_producao').select('*').is('arquivado_em', null).order('nome'));
+    },
+    async salvarPacote(id, dados) {
+      const d = Object.assign({}, dados, { updated_at: new Date().toISOString() });
+      return id ? ok(await sb().from('pacotes_producao').update(d).eq('id', id).select().single())
+                : ok(await sb().from('pacotes_producao').insert(d).select().single());
+    },
+    async pacoteDoCliente(clienteId) {
+      const r = ok(await sb().from('clientes').select('pacote_id').eq('id', clienteId).maybeSingle());
+      return r ? r.pacote_id : null;
+    },
     async criarLinha(dados) {
       const linhas = ok(await sb().from('linhas_editoriais').insert([dados]).select());
       return linhas[0];

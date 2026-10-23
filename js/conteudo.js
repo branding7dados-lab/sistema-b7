@@ -718,7 +718,8 @@ B7.Conteudo = (function () {
       linha: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8.5 3v3M15.5 3v3M7.5 13.5h4M7.5 17h7"/></svg>',
       cli: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>',
       cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
-      nome: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>'
+      nome: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
+      pacote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>'
     };
     const atalhos = [0, 1].map(k => {
       const d = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1);
@@ -750,6 +751,7 @@ B7.Conteudo = (function () {
         '<div id="nl-aviso"></div>' +
       '</section>' +
 
+      (B7.Pacotes ? B7.Pacotes.blocoNovaLinha(ICL.pacote) : '') +
       '<section class="ng-bloco"><h4>' + ICL.nome + 'Nome <span class="mg-obr leve">opcional</span></h4>' +
         '<div class="mb ng-ult"><input class="campo" id="nl-nome" aria-label="Nome da linha editorial" value="' +
         esc(MESES[hoje.getMonth()] + ' ' + hoje.getFullYear()) + '">' +
@@ -801,6 +803,9 @@ B7.Conteudo = (function () {
     }
     marcarAtalho();
     avisarExistente();
+    /* zzz255: pacote de produção — o do cliente já vem escolhido */
+    const pacote = B7.Pacotes ? await B7.Pacotes.ligarNovaLinha(m, () => clienteId || (selCli && selCli.value)).catch(() => null) : null;
+    if (pacote && selCli) selCli.addEventListener('change', () => pacote.doCliente());
 
     m.querySelector('[data-ok]').onclick = async () => {
       const cli = clienteId || (selCli && selCli.value);
@@ -817,6 +822,8 @@ B7.Conteudo = (function () {
         }), 'Linha editorial criada');
         B7.DB.registrar({ tipo: 'criar', entidade: 'linha', id: nova.id, cliente: cli,
           texto: 'Linha editorial: ' + nova.nome });
+        const idPacote = pacote && pacote.escolhido();
+        if (idPacote) { try { await B7.Pacotes.aplicar(nova.id, idPacote); } catch (e) { B7.UI.toast('A linha foi criada, mas o pacote não: ' + ((e && e.message) || ''), { tipo: 'erro' }); } }
         m.fechar();
         /* abre direto no que acabou de ser criado */
         location.hash = '#/linha/' + nova.id;
