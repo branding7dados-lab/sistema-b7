@@ -134,7 +134,7 @@ B7.Perfil = (function () {
     m.querySelector('#pf-sair').onclick = () => B7.Auth.sair();
 
     /* --------------------------------------------------- notificações */
-    ligarNotificacoes(m);
+    ligarNotificacoes(m); if (B7.Silencio) B7.Silencio.montarPessoa(m.querySelector('[data-sl-pessoa]'));
   }
 
   /* ------------------------------------------------------------------
@@ -254,6 +254,7 @@ B7.Perfil = (function () {
               '<small class="pf-versao-sw" id="pf-versao-sw"></small>' +
             '</details>' +
           '</div>' +
+          (B7.Silencio ? '<div data-sl-pessoa></div>' : '') +
           gruposNotificacao() +
           '<div class="pf-msg-fixa"><span class="perfil-msg" id="pf-msg-notif" role="status"></span></div>'
     );
@@ -265,7 +266,7 @@ B7.Perfil = (function () {
     if (!alvo || !u) return;
     alvo.innerHTML = qual === 'seg' ? htmlSeg() : qual === 'notif' ? htmlNotif() : htmlConta(u, B7.Auth.empresas(), true);
     if (qual === 'seg') ligarSeg(alvo);
-    else if (qual === 'notif') ligarNotificacoes(alvo);
+    else if (qual === 'notif') { ligarNotificacoes(alvo); if (B7.Silencio) B7.Silencio.montarPessoa(alvo.querySelector('[data-sl-pessoa]')); }
     else ligarConta(alvo, u);
   }
 

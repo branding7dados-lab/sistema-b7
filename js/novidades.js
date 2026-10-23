@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz252', versao: 'zzz252', em: '2026-10-23T09:00:00-03:00',
+    titulo: 'Horário de silêncio',
+    itens: ['Em Configurações → Notificações, escolha um horário de silêncio: fora dele os avisos ficam guardados no sino, sem push nem som, e quando o silêncio acaba chega um aviso só com o resumo do que aconteceu.',
+            'A administração define o expediente da equipe em Configurações → Equipe; cada pessoa pode seguir a equipe, ter o próprio horário ou receber sempre.'] },
   { id: 'v-zzz251', versao: 'zzz251', em: '2026-10-23T04:00:00-03:00',
     titulo: 'Conferência automática de permissões',
     itens: ['Em Configurações → Funções e permissões, a administração vê a "Conferência de segurança": o B7 testa cada pessoa em cada módulo e cada regra do banco e diz se está tudo certo.',
