@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz256', versao: 'zzz256', em: '2026-10-23T13:00:00-03:00',
+    titulo: 'App Android mais caprichado',
+    itens: ['Abertura nova no app: o símbolo da B7 se monta (o bulbo acende, a base sobe e as bolhas saem uma a uma) com a marca Branding7 no rodapé, e a tela só sai quando o sistema já carregou.',
+            'Ícone temático: no Android 13 ou mais novo, com "ícones temáticos" ligado, o B7 acompanha as cores do seu celular.',
+            'Logos e símbolo da B7 em alta resolução dentro do app: nítidos em qualquer tela.'] },
   { id: 'v-zzz255', versao: 'zzz255', em: '2026-10-23T12:00:00-03:00',
     titulo: 'Pacotes de produção',
     itens: ['Em Configurações → Pacotes de produção, monte o que cada cliente contrata por mês (ex.: 6 cards + 6 carrosséis + 4 reels) e os dias de postagem.',

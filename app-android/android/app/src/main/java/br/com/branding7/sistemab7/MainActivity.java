@@ -34,7 +34,9 @@ import androidx.webkit.JavaScriptReplyProxy;
 import androidx.webkit.WebMessageCompat;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
+import androidx.core.splashscreen.SplashScreen;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.WebViewListener;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -70,7 +72,10 @@ import org.json.JSONObject;
  *     modo "css"); aqui só a cor dos ícones (claros/escuros) muda;
  *   • widget "Hoje no B7" (WidgetHoje.java): recebe daqui a chave dele;
  *   • aviso que chega com o app aberto: o Android não mostra sozinho, então
- *     o app mostra (mostrarAviso), e o toque abre a tela do aviso.
+ *     o app mostra (mostrarAviso), e o toque abre a tela do aviso;
+ *   • abertura: o símbolo da B7 se monta (res/drawable/b7_abertura_animada)
+ *     e a tela segura até as telas do sistema carregarem — nada de piscar
+ *     o fundo vazio —, saindo com um zoom suave.
  * O lado das telas está em js/app-nativo.js. A ponte (B7Nativo) só existe
  * para as telas do próprio app (ORIGEM): um iframe de fora não a enxerga.
  */
@@ -153,10 +158,28 @@ public class MainActivity extends BridgeActivity {
     String linkPendente = null;
     String idPendente = null;
 
+    /* abertura segura até a página do sistema terminar de carregar (ou 3 s) */
+    volatile boolean telasProntas = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        SplashScreen abertura = SplashScreen.installSplashScreen(this);
+        long inicioAbertura = System.currentTimeMillis();
+        abertura.setKeepOnScreenCondition(() -> !telasProntas && System.currentTimeMillis() - inicioAbertura < 3000);
+        abertura.setOnExitAnimationListener(tela -> {
+            View icone = tela.getIconView();
+            if (icone != null) icone.animate().scaleX(1.35f).scaleY(1.35f).alpha(0f).setDuration(320).start();
+            tela.getView().animate().alpha(0f).setStartDelay(90).setDuration(320)
+                .withEndAction(tela::remove).start();
+        });
         super.onCreate(savedInstanceState);
-        if (bridge == null) return;
+        if (bridge == null) { telasProntas = true; return; }
+        bridge.addWebViewListener(new WebViewListener() {
+            @Override
+            public void onPageLoaded(WebView webView) { telasProntas = true; }
+            @Override
+            public void onReceivedError(WebView webView) { telasProntas = true; }
+        });
 
         criarCanalDeAvisos();
 
