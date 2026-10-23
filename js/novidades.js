@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz254', versao: 'zzz254', em: '2026-10-23T11:00:00-03:00',
+    titulo: 'Relatório do mês',
+    itens: ['No Panorama, o botão "Relatório do mês" mostra, para o mês na tela: posts publicados, artes e vídeos entregues, quanto saiu no prazo e quantas aprovações voltaram com ajuste.',
+            'Duas visões: por cliente (inclui o tempo médio que o cliente leva para responder) e por pessoa da equipe (entregas, prazo, versões por arte e o que está atrasado hoje). Dá para baixar em planilha.'] },
   { id: 'v-zzz253', versao: 'zzz253', em: '2026-10-23T10:00:00-03:00',
     titulo: 'Prazos que avisam antes',
     itens: ['Peça de design ou vídeo que vence hoje ou amanhã e ainda não começou: quem é responsável recebe um aviso às 9h.',
