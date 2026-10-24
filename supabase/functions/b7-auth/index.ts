@@ -22,10 +22,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { comCors, iguais } from '../_shared/cors.ts';
 import * as DF from './dois_fatores.ts';
+import * as EM from './email_modelo.ts';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
-const VERSAO = '2026-10-23-papeis';
+const VERSAO = '2026-10-24-resumo-semanal';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -421,6 +422,25 @@ Deno.serve(comCors(async (req) => {
         acoes: ['ping', 'login', 'login_2fa', 'login_2fa_reenviar', 'login_2fa_status', 'email_link', ...DF.ACOES_SEG, ...DF.ACOES_SEG_ADMIN, 'bootstrap', 'recuperar_admin', 'remover_admin',
                 'criar_usuario', 'redefinir_senha', 'alterar_conta', 'listar_usuarios', 'entrar_como']
       });
+    }
+
+    // =================================================================
+    // RESUMO SEMANAL (zzz268) — só o agendamento do banco chama, com o
+    // cabeçalho x-b7-cron-secret (B7_CRON_SECRET). Um e-mail por pessoa
+    // e empresa que pediu o resumo no portal; semana vazia não manda.
+    // =================================================================
+    if (acao === 'resumo_semanal') {
+      const segredo = Deno.env.get('B7_CRON_SECRET') || '';
+      if (!segredo || !iguais(segredo, req.headers.get('x-b7-cron-secret') || '')) return json({ erro: 'Sem permissão.' }, 403);
+      const { data, error } = await sb.rpc('resumo_semanal_dados');
+      if (error) return json({ erro: 'Não foi possível montar os resumos.' }, 500);
+      let enviados = 0, vazios = 0, falhas = 0;
+      for (const r of (data || []) as (EM.Resumo & { email: string })[]) {
+        if (!EM.temAlgo(r)) { vazios++; continue; }
+        const m = EM.emailResumoSemanal(r);
+        if (await DF.enviarEmail(r.email, m.assunto, m.html, m.texto)) enviados++; else falhas++;
+      }
+      return json({ ok: true, enviados, vazios, falhas });
     }
 
     // =================================================================

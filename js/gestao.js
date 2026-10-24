@@ -29,7 +29,7 @@ B7.Gestao = (function () {
     if (!B7.Auth.ehAdmin()) { painel().innerHTML = '<div class="conteudo"><div class="estado-b7"><b>Só o administrador abre a Gestão.</b></div></div>'; return; }
     painel().innerHTML = '<div class="conteudo entra gs">' +
       '<div class="cb-topo"><div class="cb-titulo"><h1>Gestão</h1><p class="gt-intro">A agência num olhar: entregas, saúde de cada cliente e o que eles estão pedindo.</p></div></div>' +
-      '<div class="filtro rolavel gt-abas" role="tablist">' + [['geral', 'Visão geral'], ['saude', 'Saúde dos clientes'], ['pedidos', 'Pedidos']].map(([k, r]) =>
+      '<div class="filtro rolavel gt-abas" role="tablist">' + [['geral', 'Visão geral'], ['saude', 'Saúde dos clientes'], ['pedidos', 'Pedidos'], ['recados', 'Recados']].map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (aba === k ? 'on' : '') + '" aria-selected="' + (aba === k) + '">' + r + '<span class="gt-n" data-n-' + k + '></span></button>').join('') + '</div>' +
       '<div id="gt-corpo">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
     painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => {
@@ -57,6 +57,7 @@ B7.Gestao = (function () {
   function pintar() {
     const cx = document.getElementById('gt-corpo');
     if (!cx || !dados) return;
+    if (aba === 'recados') return recados(cx);
     cx.innerHTML = aba === 'saude' ? saude() : aba === 'pedidos' ? pedidos() : geral();
     cx.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
     const ia = cx.querySelector('[data-ia-riscos]');
@@ -138,6 +139,50 @@ B7.Gestao = (function () {
             (p.dias != null ? ' · pronto em ' + String(p.dias).replace('.', ',') + ' d' : '') + '</small></span>' +
           '<span class="gt-sit ' + esc(p.situacao) + '">' + esc(SIT[p.situacao] || p.situacao) + '</span></button>').join('') + '</div>'
         : '<p class="gt-vazio">Nenhum pedido ainda. Os clientes pedem pelo portal, em "Pedidos".</p>') + '</section>';
+  }
+
+  /* ---------------------------------------------------------- recados
+     zzz268: avisos da B7 que aparecem no Início do portal do cliente */
+  const TIPOS_REC = [['info', '📣 Aviso'], ['novidade', '✨ Novidade'], ['feriado', '🗓️ Feriado / horário'], ['atencao', '⚠️ Atenção']];
+  async function recados(cx) {
+    cx.innerHTML = B7.UI.skeleton('lista', { n: 3 });
+    let l = [], cli = [];
+    try {
+      const [r, c] = await Promise.all([
+        B7.sb.from('b7_recados').select('*').is('arquivado_em', null).order('created_at', { ascending: false }).limit(30),
+        B7.DB.listarClientes().catch(() => [])]);
+      l = r.data || []; cli = c || [];
+    } catch (e) { cx.innerHTML = '<div class="cb-aviso erro">Não foi possível carregar os recados.</div>'; return; }
+    const nomeCli = id => id ? ((cli.find(c => c.id === id) || {}).nome || 'um cliente') : 'Todos os clientes';
+    const hoje = new Date().toISOString().slice(0, 10);
+    cx.innerHTML = '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Novo recado</h2></div>' +
+      '<div class="gt-rec-form">' +
+        '<select class="campo" id="gt-rec-tipo">' + TIPOS_REC.map(([k, r]) => '<option value="' + k + '">' + r + '</option>').join('') + '</select>' +
+        '<select class="campo" id="gt-rec-cli"><option value="">Todos os clientes</option>' + cli.map(c => '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>').join('') + '</select>' +
+        '<input class="campo" id="gt-rec-tit" maxlength="100" placeholder="Título (ex.: Recesso de fim de ano)">' +
+        '<textarea class="campo" id="gt-rec-tx" rows="2" maxlength="600" placeholder="Detalhes (opcional)"></textarea>' +
+        '<label class="gt-rec-ate">Mostrar até <input class="campo" type="date" id="gt-rec-ate" min="' + hoje + '"></label>' +
+        '<button type="button" class="b pri" data-rec-pub>Publicar no portal</button></div></section>' +
+      '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>No ar</h2></div>' + (l.length ? l.map(r =>
+        '<div class="gt-rec"><div><b>' + esc((TIPOS_REC.find(t => t[0] === r.tipo) || TIPOS_REC[0])[1]) + ' · ' + esc(r.titulo) + '</b>' +
+          '<small>' + esc(nomeCli(r.client_id)) + (r.ate ? ' · até ' + esc(r.ate.split('-').reverse().join('/')) : ' · sem data para sair') + '</small>' +
+          (r.texto ? '<p>' + esc(r.texto) + '</p>' : '') + '</div>' +
+          '<button type="button" class="b fina contorno" data-rec-arq="' + esc(r.id) + '">Tirar do ar</button></div>').join('')
+        : '<p class="gt-vazio">Nenhum recado no ar. Os clientes veem os recados no Início do portal.</p>') + '</section>';
+    cx.querySelector('[data-rec-pub]').onclick = async e => {
+      const bt = e.currentTarget, tit = cx.querySelector('#gt-rec-tit').value.trim();
+      if (tit.length < 3) return B7.UI.toast('Escreva o título do recado', { tipo: 'erro' });
+      bt.disabled = true;
+      try {
+        await B7.DB.rpc('recado_salvar', { p_client: cx.querySelector('#gt-rec-cli').value || null, p_tipo: cx.querySelector('#gt-rec-tipo').value,
+          p_titulo: tit, p_texto: cx.querySelector('#gt-rec-tx').value.trim() || null, p_ate: cx.querySelector('#gt-rec-ate').value || null });
+        B7.UI.toast('Recado publicado no portal'); recados(cx);
+      } catch (err) { bt.disabled = false; B7.UI.toast(err.message || 'Não foi possível publicar.', { tipo: 'erro' }); }
+    };
+    cx.querySelectorAll('[data-rec-arq]').forEach(b => b.onclick = async () => {
+      try { await B7.DB.rpc('recado_arquivar', { p_id: b.dataset.recArq }); B7.UI.toast('Recado tirado do ar'); recados(cx); }
+      catch (err) { B7.UI.toast(err.message || 'Não foi possível.', { tipo: 'erro' }); }
+    });
   }
 
   return { abrir };

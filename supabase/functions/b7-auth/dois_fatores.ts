@@ -106,6 +106,19 @@ export async function estadoEmail(): Promise<string> {
   if (!chave) return 'sem_chave';
   try { return (await remetente(chave)) ? 'ok' : 'sem_remetente'; } catch (_e) { return 'sem_remetente'; }
 }
+/** zzz268: envio genérico (resumo semanal). Devolve true/false, sem lançar. */
+export async function enviarEmail(para: string, assunto: string, html: string, texto: string): Promise<boolean> {
+  const chave = Deno.env.get('B7_BREVO_API_KEY');
+  if (!chave) return false;
+  const de = await remetente(chave);
+  if (!de) return false;
+  const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST', headers: { 'api-key': chave, 'Content-Type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ sender: { email: de.email, name: 'Branding7' }, to: [{ email: para }], subject: assunto, htmlContent: html, textContent: texto })
+  });
+  if (!r.ok) console.error('brevo resumo falhou', r.status, (await r.text().catch(() => '')).slice(0, 200));
+  return r.ok;
+}
 async function nomeDe(sb: SB, perfilId: string): Promise<string | null> {
   try { const { data } = await sb.from('perfis').select('nome').eq('id', perfilId).maybeSingle(); return (data && data.nome) || null; } catch (_e) { return null; }
 }

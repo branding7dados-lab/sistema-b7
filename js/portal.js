@@ -386,7 +386,7 @@ B7.Portal = (function () {
         '</div>' +
       '</header>' +
       /* zzz265: pesquisa do mês e recados da B7 entram aqui */
-      '<div id="ph-extra"></div>' +
+      '<div id="ph-extra"><div id="ph-recados"></div><div id="ph-pesquisa"></div></div>' +
 
       /* ---- o que depende do cliente vem primeiro ---- */
       '<section class="ph-secao" id="ph-atencao">' +
@@ -420,7 +420,8 @@ B7.Portal = (function () {
     '</div>';
 
     ligar();
-    if (B7.PortalSatisfacao && !silencioso) B7.PortalSatisfacao.talvez(emp, document.getElementById('ph-extra'));
+    if (B7.PortalSatisfacao && !silencioso) B7.PortalSatisfacao.talvez(emp, document.getElementById('ph-pesquisa'));
+    if (B7.PortalComunicacao && !silencioso) B7.PortalComunicacao.recados(emp, document.getElementById('ph-recados'));
   }
 
   function cartaoPendente(a) {
@@ -1006,10 +1007,12 @@ B7.Portal = (function () {
               (e.servico && e.servico !== 'ativo' ? '<span class="pt-sit mini">' + (e.servico === 'pausado' ? 'Pausado' : 'Encerrado') + '</span>' : '') +
             '</div>').join('') || '<p class="pt-nada">Nenhuma empresa vinculada.</p>') +
         '</div>' +
+        '<div id="pt-resumo-email"></div>' +
         '<p class="pt-nada">Tema e aparência ficam no botão do topo.' +
           (lista.length > 1 ? ' Para mudar de empresa, use o seletor na barra lateral.' : '') + '</p>' +
       '</div>');
 
+    if (B7.PortalComunicacao && !previa) B7.PortalComunicacao.blocoEmail(document.getElementById('pt-resumo-email'));
     const bt = document.getElementById('pt-editar-perfil');
     if (bt && !previa) bt.onclick = () => {
       if (B7.Perfil) B7.Perfil.abrir(); else B7.Auth.abrirPerfil();
