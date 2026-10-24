@@ -93,10 +93,11 @@ const SISTEMA_CORRIGIR = [
 export function montarMensagens(p: Pedido, ctx: Contexto): Mensagem[] {
   if (p.operacao === 'corrigir') return [{ role: 'system', content: SISTEMA_CORRIGIR.join('\n') }, { role: 'user', content: '<<<\n' + p.texto + '\n>>>' }];
   const tarefa = p.operacao === 'resumo'
-    ? ['TAREFA: resuma a conversa para alguém da equipe que vai assumir agora. Responda em tópicos curtos, nesta ordem e só com as seções que tiverem conteúdo:',
-       '• O que o cliente pediu / perguntou (o que ainda não foi respondido primeiro)',
-       '• O que está pendente com a agência',
-       '• O que já foi resolvido ou aprovado',
+    ? ['TAREFA: resuma a conversa para alguém da equipe que vai assumir agora. Use exatamente estas seções, nesta ordem, e só as que tiverem conteúdo:',
+       '## 🙋 O que o cliente pediu',
+       '## ⏳ Pendente com a agência',
+       '## ✅ Já resolvido',
+       'Em cada seção, tópicos curtos com "- " (o que ainda não foi respondido primeiro). Se algo estiver urgente ou atrasado, coloque ANTES das seções uma linha "> 🚨 …" com o que é.',
        'No máximo 10 tópicos no total. Sem introdução e sem conclusão.']
     : ['TAREFA: escreva UMA mensagem curta para a agência mandar agora no grupo, respondendo o que o cliente pediu ou perguntou por último e ainda não foi respondido.',
        'Se a resposta depende de algo que você não sabe (prazo, valor, decisão), diga que vai confirmar e retornar — sem inventar.',

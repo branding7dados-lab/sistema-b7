@@ -344,8 +344,10 @@ B7.Chat = (function () {
     desenharLista();
   }
 
-  /* texto do assistente: escapado, com **negrito**, listas "- " e parágrafos */
-  function formatar(texto) {
+  /* texto do assistente: zzz264 — mensagens ricas (js/ia-rico.js); o
+     formato antigo (negrito, listas e parágrafos) segue como reserva */
+  function formatar(texto, animar) {
+    if (B7.IARico) return B7.IARico.html(texto, { animar });
     const linhas = String(texto || '').split('\n');
     let html = '', emLista = false;
     const inline = s => esc(s).replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
@@ -468,7 +470,7 @@ B7.Chat = (function () {
           '<button type="button" class="ch-sug" data-pergunta="' + esc(x[3]) + '" style="--i:' + i + '"><i aria-hidden="true">' + x[0] + '</i><span><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></span></button>').join('') + '</div></div>';
     }
     return S.msgs.map((m, i) => '<div class="ch-msg ' + (m.papel === 'user' ? 'eu' : 'ia') + (m.erro ? ' erro' : '') + '">' +
-      (m.papel === 'user' ? (m.img ? '<img class="ch-msg-img" src="' + m.img + '" alt="Imagem enviada">' : '') + '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto)) + '</div>' +
+      (m.papel === 'user' ? (m.img ? '<img class="ch-msg-img" src="' + m.img + '" alt="Imagem enviada">' : '') + '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p>' : formatar(m.texto, m.novo && i === S.msgs.length - 1 && !(m.novo = false))) + '</div>' +
       (m.papel !== 'user' && !m.erro && m.texto ? '<div class="ch-msg-bts">' +
         '<button type="button" class="ch-falar" data-copiar="' + i + '" aria-label="Copiar a resposta" title="Copiar">' + IC.copiar + '<span>Copiar</span></button>' : '') +
       (m.erro && S.rascunho ? '<div class="ch-msg-bts"><button type="button" class="ch-falar ch-denovo" data-denovo="1">' + IC.hist + '<span>Tentar de novo</span></button></div>' : '') +
@@ -642,7 +644,7 @@ B7.Chat = (function () {
     pararFala();
     const m = S.msgs[i];
     if (era === i || !m || !m.texto) return;
-    const texto = String(m.texto).replace(/\*\*/g, '').replace(/^\s*(?:[-•*]|\d+[.)])\s+/gm, '').replace(/^#+\s*/gm, '').replace(/\n{2,}/g, '.\n').trim();
+    const texto = (B7.IARico ? B7.IARico.texto(m.texto) : String(m.texto)).replace(/\*\*/g, '').replace(/^\s*(?:[-•*]|\d+[.)])\s+/gm, '').replace(/^#+\s*/gm, '').replace(/\n{2,}/g, '.\n').trim();
     const u = new SpeechSynthesisUtterance(texto);
     u.lang = 'pt-BR';
     try { const vz = window.speechSynthesis.getVoices().filter(v => /^pt[-_]BR/i.test(v.lang)); const boa = vz.find(v => /google|natural|francisca|luciana/i.test(v.name)) || vz[0]; if (boa) u.voice = boa; } catch (e) {}
@@ -705,7 +707,7 @@ B7.Chat = (function () {
   /* zzz169: copiar a resposta (texto puro, sem os ** do negrito) */
   async function copiar(i, bt) {
     const m = S.msgs[i]; if (!m || !m.texto) return;
-    const texto = String(m.texto).replace(/\*\*/g, '');
+    const texto = B7.IARico ? B7.IARico.texto(m.texto) : String(m.texto).replace(/\*\*/g, '');
     let ok = false;
     try { await navigator.clipboard.writeText(texto); ok = true; } catch (e) {
       try { const t = document.createElement('textarea'); t.value = texto; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); ok = document.execCommand('copy'); t.remove(); } catch (e2) {}
@@ -809,7 +811,7 @@ B7.Chat = (function () {
     S.enviando = false; S.parcial = '';
     if (r && r.ok) {
       if (r.conversa_id) S.conversaId = r.conversa_id;
-      S.msgs.push({ papel: 'assistant', id: r.mensagem_id || null, texto: r.texto, acoes: (r.acoes && r.acoes.length) ? r.acoes : (r.acao ? [r.acao] : []),
+      S.msgs.push({ papel: 'assistant', novo: true, id: r.mensagem_id || null, texto: r.texto, acoes: (r.acoes && r.acoes.length) ? r.acoes : (r.acao ? [r.acao] : []),
         tutoriais: Array.isArray(r.tutoriais) ? r.tutoriais : null });
       S.lista = null;
     } else {

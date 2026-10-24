@@ -615,7 +615,9 @@ B7.WhatsApp = (function () {
     let corpo = '';
     if (r && r.carregando) corpo = '<div class="wl-ia-res carregando"><i></i><i></i><i></i><span>' + (r.tipo === 'resumo' ? 'Lendo a conversa…' : 'Escrevendo uma resposta…') + '</span></div>';
     else if (r && r.erro) corpo = '<div class="wl-ia-res erro">' + esc(r.erro) + '</div>';
-    else if (r && r.texto) corpo = '<div class="wl-ia-res"><div class="wl-ia-tx">' + esc(r.texto).replace(/\n/g, '<br>') + '</div><div class="wl-ia-acoes">' +
+    else if (r && r.texto) corpo = '<div class="wl-ia-res"><div class="wl-ia-tx">' +
+      /* zzz264: o resumo vem em blocos ricos; a resposta sugerida é texto puro (vai para o WhatsApp) */
+      (r.tipo === 'resumo' && B7.IARico ? B7.IARico.html(r.texto, { animar: true }) : esc(r.texto).replace(/\n/g, '<br>')) + '</div><div class="wl-ia-acoes">' +
       (r.tipo === 'resposta' ? '<button type="button" class="b fina pri" data-ia-por>Colocar no WhatsApp</button>' : '') +
       '<button type="button" class="b fina" data-ia-copiar>Copiar</button><button type="button" class="b fina" data-ia="' + r.tipo + '">De novo</button>' +
       '<button type="button" class="wl-ia-x" data-ia-fechar aria-label="Fechar">×</button></div></div>';
@@ -648,7 +650,7 @@ B7.WhatsApp = (function () {
     lado.querySelectorAll('[data-ia]').forEach(b => b.onclick = () => pedirIA(b.dataset.ia, titulo, info));
     const iaX = lado.querySelector('[data-ia-fechar]'); if (iaX) iaX.onclick = () => { iaRes = null; pintarLado(); };
     const iaCp = lado.querySelector('[data-ia-copiar]');
-    if (iaCp) iaCp.onclick = async () => { try { await navigator.clipboard.writeText(iaRes.texto); B7.UI.toast('Copiado.'); } catch (e) {} };
+    if (iaCp) iaCp.onclick = async () => { try { await navigator.clipboard.writeText(iaRes.tipo === 'resumo' && B7.IARico ? B7.IARico.texto(iaRes.texto) : iaRes.texto); B7.UI.toast('Copiado.'); } catch (e) {} };
     const iaPor = lado.querySelector('[data-ia-por]');
     if (iaPor) iaPor.onclick = async () => {
       iaPor.disabled = true;

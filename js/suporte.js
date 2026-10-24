@@ -331,6 +331,8 @@ B7.Suporte = (function () {
   const registrar = (texto, desfecho, faq) => {
     try { Promise.resolve(B7.DB.rpc('suporte_autoajuda_registrar', { p_texto: String(texto || '').slice(0, 300), p_desfecho: desfecho, p_faq: faq || null })).catch(() => {}); } catch (e) {}
   };
+  /* zzz264: resposta da IA com o visual rico (js/ia-rico.js) */
+  const rico = (t, animar) => B7.IARico ? B7.IARico.html(t, { animar }) : '<p>' + formatarResp(t) + '</p>';
   const formatarResp = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(&quot;|")([^"<]{1,60}?)(&quot;|")/g, '<b>"$2"</b>').replace(/\n/g, '<br>');
   const tutPara = texto => {
     if (souCliente() || !B7.Ajuda || !B7.Ajuda.procurar) return [];
@@ -479,14 +481,14 @@ B7.Suporte = (function () {
     const tuts = tutPara(texto).map(x => x.i.id); if (tuts.length) dados.ajuda_ids = tuts;
     try { const f = await faqIds(texto); if (f.length) dados.faq_ids = f; } catch (e) {}
     let r = null;
-    try { r = await B7.IA.pedir('chat', dados, { aoTrecho: p => { parcial += p; pinta('<p>' + formatarResp(parcial) + '</p>'); } }); }
+    try { r = await B7.IA.pedir('chat', dados, { aoTrecho: p => { parcial += p; pinta(rico(parcial)); } }); }
     catch (e) { r = null; }
     if (bt) bt.disabled = false;
     if (!cx.isConnected) return;
     if (!r || !r.ok) { pinta('<p class="spx-ia-erro">' + esc((r && r.mensagem) || 'O assistente não conseguiu responder agora.') + ' Fale com a equipe.</p>', true); return; }
     tentou.ia = String(r.texto || '');
     const links = (Array.isArray(r.tutoriais) ? r.tutoriais : []).filter(x => x && x.id);
-    pinta('<p>' + formatarResp(r.texto) + '</p>' +
+    pinta(rico(r.texto, true) +
       (links.length ? '<div class="spx-ia-tuts">' + links.map(x => '<a href="#/ajuda/' + esc(x.id) + '">Tutorial: ' + esc(x.titulo) + ' →</a>').join('') + '</div>' : '') +
       '<div class="spx-util"><span>Isso resolveu?</span><button type="button" data-isim>Sim</button><button type="button" data-inao>Não</button></div>', true);
     const util = cx.querySelector('.spx-util');
@@ -745,7 +747,7 @@ B7.Suporte = (function () {
     try {
       r = await B7.IA.pedir('suporte', { chamado_id: c.id }, { aoTrecho: p => {
         parcial += p;
-        if (el && el.isConnected) { el.querySelector('.sp-bolha').innerHTML = '<div class="sp-msg-c"><b>Assistente B7</b><em class="sp-ia-tag">IA</em></div><p>' + formatarResp(parcial) + '</p>'; const b = document.getElementById('sp-msgs'); if (b) b.scrollTop = b.scrollHeight; }
+        if (el && el.isConnected) { el.querySelector('.sp-bolha').innerHTML = '<div class="sp-msg-c"><b>Assistente B7</b><em class="sp-ia-tag">IA</em></div>' + rico(parcial); const b = document.getElementById('sp-msgs'); if (b) b.scrollTop = b.scrollHeight; }
       } });
     } catch (e) { r = null; }
     atendendo[c.id] = false;
@@ -899,7 +901,7 @@ B7.Suporte = (function () {
     if (resp.length) ultimaResp[c.id] = resp[resp.length - 1].texto;
     box.innerHTML = ms.length ? ms.map(m => m.sistema
       ? '<div class="sp-sis' + (m.ia ? ' ia' : '') + '"><span>' + esc(m.texto) + (m.ia ? '' : ' · ' + esc((m.autor_nome || '').split(' ')[0])) + ' · ' + esc(quando(m.created_at)) + '</span></div>'
-      : m.ia ? bolhaIA(formatarResp(m.texto), quando(m.created_at))
+      : m.ia ? bolhaIA(rico(m.texto), quando(m.created_at))
       : '<div class="sp-msg' + (m.autor_id === eu() ? ' minha' : '') + (m.interno ? ' interna' : '') + '">' + (m.autor_id === eu() ? '' : av(m.autor_nome)) +
         '<div class="sp-bolha"><div class="sp-msg-c"><b>' + esc(m.autor_id === eu() ? 'Você' : (m.autor_nome || 'Alguém')) + '</b>' + (m.interno ? '<em>nota interna</em>' : '') + '<small>' + esc(quando(m.created_at)) + '</small></div>' +
         '<p>' + esc(m.texto).replace(/\n/g, '<br>') + '</p></div></div>').join('')
