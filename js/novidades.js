@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz264', versao: 'zzz264', em: '2026-10-24T12:00:00-03:00',
+    titulo: 'As respostas da IA ficaram muito mais bonitas',
+    itens: ['O Assistente, o Suporte (da equipe e do portal do cliente) e o "O que rolou aqui?" do WhatsApp agora respondem com blocos visuais: destaques coloridos (dica, atenção, resolvido, urgente), números em cartões, passos numerados, listas de checagem, cartões por cliente, tabelas e marca-texto.',
+            'A resposta entra na tela bloco por bloco, com uma animação suave.',
+            'A IA pode colocar botões que levam direto para a tela certa do B7 (ex.: "Abrir o Kanban").',
+            '"Copiar" e "Ouvir" continuam entregando o texto limpo, sem as marcações. Textos para publicar ou mandar no WhatsApp seguem simples.'] },
   { id: 'v-zzz263', versao: 'zzz263', em: '2026-10-24T10:00:00-03:00',
     titulo: 'Pedidos do cliente e lembrete de aprovação',
     itens: ['Portal do cliente: nova tela "Pedidos". O cliente pede algo novo (arte, vídeo, post, texto) com detalhes e data, e acompanha: Recebido → Em produção → Pronto.',
