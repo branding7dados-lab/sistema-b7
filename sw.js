@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v468';
+const CACHE = 'roteiros-b7-v469';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -27,7 +27,7 @@ const CASCA = [
      silêncio porque o arquivo nunca entrava no cache. */
   './js/previa-usuario.js', './js/menu-contexto.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js', './js/app-nativo.js', './js/hoje.js', './js/convite-app.js', './js/atalhos-app.js', './styles/hoje.css',
-  './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js', './js/ia-rico.js', './js/ia-chat.js',
+  './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js', './js/ia-rico.js', './js/ia-ferramentas.js', './js/ia-chat.js',
   /* zzz158: html2canvas, jsPDF e XLSX (1,4 MB) saíram da casca — elas só
      chegam quando alguém exporta ou importa (js/vendor-carregar.js), e o
      próprio service worker as guarda no primeiro uso. */

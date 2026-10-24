@@ -23,6 +23,7 @@ B7.Topo = (function () {
   const ehMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
   const IC = {
+    ia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4.6l1.6 4.3a1.5 1.5 0 0 0 .9.9l4.3 1.6-4.3 1.6a1.5 1.5 0 0 0-.9.9L10 18.2l-1.6-4.3a1.5 1.5 0 0 0-.9-.9L3.2 11.4l4.3-1.6a1.5 1.5 0 0 0 .9-.9z"/><path d="M18 3.5v4M16 5.5h4M18.5 15.5v3M17 17h3"/></svg>',
     mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     seta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
     grav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15.5" rx="3.2"/><path d="M3.5 9.6h17M8.4 4.8L6.8 9.4M13.2 4.8l-1.6 4.6M18 4.8l-1.6 4.6"/></svg>',
@@ -116,7 +117,17 @@ B7.Topo = (function () {
     { id: 'cliente', rotulo: 'Novo cliente', dica: 'cadastrar um cliente', ic: IC.cliente, separar: true,
       contexto: ['clientes', 'cliente'],
       pode: () => podeRota('clientes'),
-      fazer: () => B7.Dashboard.modalNovoCliente() }
+      fazer: () => B7.Dashboard.modalNovoCliente() },
+    /* zzz267: ferramentas de IA (js/ia-ferramentas.js) */
+    { id: 'ia-reuniao', rotulo: 'Ata de reunião com IA', dica: 'grave ou envie o áudio', ic: IC.ia, separar: true, contexto: [],
+      pode: () => ehEquipe() && !!(B7.IAFerramentas && B7.IAFerramentas.ligada()),
+      fazer: () => B7.IAFerramentas.reuniao() },
+    { id: 'ia-legenda', rotulo: 'Legenda a partir da arte', dica: 'a IA olha a arte e escreve', ic: IC.ia, contexto: [],
+      pode: () => ehEquipe() && !!(B7.IAFerramentas && B7.IAFerramentas.ligada()),
+      fazer: () => B7.IAFerramentas.legenda() },
+    { id: 'ia-marca', rotulo: 'Revisar na voz da marca', dica: 'o texto está no tom do cliente?', ic: IC.ia, contexto: [],
+      pode: () => ehEquipe() && !!(B7.IAFerramentas && B7.IAFerramentas.ligada()),
+      fazer: () => B7.IAFerramentas.marca() }
   ];
 
   /* Telas que JÁ têm o próprio botão primário de criar no cabeçalho da

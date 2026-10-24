@@ -70,6 +70,7 @@ import * as Voz from '../_shared/ia/voz.ts';
 import * as Agencia from '../_shared/ia/agencia.ts';
 import * as WhatsApp from '../_shared/ia/whatsapp.ts';
 import * as Suporte from '../_shared/ia/suporte.ts';
+import * as Extra from '../_shared/ia/extra.ts';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region',
@@ -121,10 +122,12 @@ Deno.serve(comCors(async (req: Request) => {
   /* ---- pedido ---- */
   const bruto = await req.text();
   /* só a transcrição de voz (zzz126) pode vir grande: o áudio vai no corpo */
-  if (bruto.length > Voz.LIMITE.corpo) return json({ ok: false, categoria: 'entrada_invalida' });
+  /* zzz267: o áudio de uma reunião (tarefa extra/reuniao) pode ser maior */
+  if (bruto.length > Extra.LIMITE.audio + 200_000) return json({ ok: false, categoria: 'entrada_invalida' });
   let corpo: Record<string, unknown> = {};
   try { corpo = JSON.parse(bruto); } catch (_e) { return json({ ok: false, categoria: 'entrada_invalida' }); }
-  if (bruto.length > LIMITE.corpo && corpo.tarefa !== 'voz' && !(corpo.tarefa === 'chat' && corpo.imagem != null)) return json({ ok: false, categoria: 'entrada_invalida' });
+  if (bruto.length > Voz.LIMITE.corpo && !(corpo.tarefa === 'extra' && corpo.operacao === 'reuniao')) return json({ ok: false, categoria: 'entrada_invalida' });
+  if (bruto.length > LIMITE.corpo && corpo.tarefa !== 'voz' && corpo.tarefa !== 'extra' && !(corpo.tarefa === 'chat' && corpo.imagem != null)) return json({ ok: false, categoria: 'entrada_invalida' });
   const pRoteiro = corpo.tarefa === 'roteiro' ? validar(corpo) : null;
   const pLinha = corpo.tarefa === 'linha' ? Linha.validar(corpo) : null;
   const pAnalise = corpo.tarefa === 'analise' ? Analise.validar(corpo) : null;
@@ -135,17 +138,19 @@ Deno.serve(comCors(async (req: Request) => {
   const pAgencia = corpo.tarefa === 'agencia' ? Agencia.validar(corpo) : null;
   const pWa = corpo.tarefa === 'whatsapp' ? WhatsApp.validar(corpo) : null;
   const pSuporte = corpo.tarefa === 'suporte' ? Suporte.validar(corpo) : null;
-  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport || pVoz || pAgencia || pWa || pSuporte;
+  const pExtra = corpo.tarefa === 'extra' ? Extra.validar(corpo) : null;
+  const v = pRoteiro || pLinha || pAnalise || pResumo || pChat || pOport || pVoz || pAgencia || pWa || pSuporte || pExtra;
   if (!v || !v.ok) return json({ ok: false, categoria: 'entrada_invalida' });
   /* zzz223: o cliente do Portal só usa o atendimento do Suporte (e só no chamado dele) */
-  if (perfil.papel === 'cliente' && !pSuporte) return json({ ok: false, categoria: 'sem_permissao' }, 403);
+  if (perfil.papel === 'cliente' && !pSuporte && !(pExtra && pExtra.ok && pExtra.pedido.operacao === 'pedido')) return json({ ok: false, categoria: 'sem_permissao' }, 403);
+  if (pExtra && pExtra.ok && !Extra.permitido(pExtra.pedido, String(perfil.papel))) return json({ ok: false, categoria: 'sem_permissao' }, 403);
 
   /* zzz71: liga/desliga do administrador (Configurações → Administração),
      guardado em sistema_config. Roteiro e análise seguem "roteiros";
      linha e resumo seguem "linhas". Sem a linha no banco = ligado. */
   {
     const { data: cfgIa } = await pCfgIa;
-    const recursoCfg = (pChat || pVoz || pWa || pSuporte) ? 'chat' : pAgencia ? 'agencia' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
+    const recursoCfg = (pChat || pVoz || pWa || pSuporte || pExtra) ? 'chat' : pAgencia ? 'agencia' : (pRoteiro || pAnalise) ? 'roteiros' : 'linhas';
     const valorIa = (cfgIa && cfgIa.valor) as Record<string, unknown> | null;
     if (valorIa && valorIa[recursoCfg] === false) return json({ ok: false, categoria: 'desligado' });
     if (pSuporte && valorIa && valorIa.suporte === false) return json({ ok: false, categoria: 'desligado' });
@@ -200,6 +205,8 @@ Deno.serve(comCors(async (req: Request) => {
     audio?: { mime: string; base64: string };
     /** zzz128: imagem anexada à mensagem do chat */
     imagem?: { mime: string; base64: string };
+    /** zzz267: espera maior (reunião longa) */
+    prazoMs?: number;
   };
   /* de qual cliente é o pedido, para a memória (o chat diz na conversa) */
   let clienteDoPedido: string | null | undefined = undefined;
@@ -333,6 +340,23 @@ Deno.serve(comCors(async (req: Request) => {
       mensagens: WhatsApp.montarMensagens(pedido, ctx), maxTokens: WhatsApp.limiteDeSaida(pedido),
       temperatura: pedido.operacao === 'resumo' ? 0.3 : pedido.operacao === 'corrigir' ? 0.1 : 0.6, limpar: pedido.operacao === 'corrigir' ? WhatsApp.limparCorrecao : WhatsApp.limpar, json: false
     };
+  } else if (pExtra && pExtra.ok) {
+    /* zzz267: recursos novos (pedido, riscos, legenda, marca, ajustes, reunião) */
+    const pedido = pExtra.pedido;
+    const ctx = await Extra.carregarContexto(sbDaPessoa, pedido, String(perfil.papel));
+    if (!ctx) return json({ ok: false, categoria: 'nao_encontrado' });
+    clienteDoPedido = pedido.clienteId;
+    /* memória do cliente só onde ajuda a escrever na voz dele — e nunca
+       numa resposta que o próprio cliente lê */
+    if (perfil.papel === 'cliente' || !['legenda', 'marca'].includes(pedido.operacao)) memoriaPronta = { memoria: '', exemplos: '' };
+    t = {
+      recurso: pedido.operacao, acao: pedido.operacao, entidadeTipo: pedido.clienteId ? 'cliente' : 'perfil', entidadeId: pedido.clienteId || perfil.id,
+      tamanhoEntrada: pedido.texto.length + pedido.titulo.length + (pedido.audio ? pedido.audio.base64.length : 0),
+      mensagens: Extra.montarMensagens(pedido, ctx), maxTokens: Extra.limiteDeSaida(pedido),
+      temperatura: pedido.operacao === 'legenda' ? 0.85 : pedido.operacao === 'pedido' ? 0.4 : 0.3,
+      limpar: Extra.limpador(pedido), json: Extra.ehLista(pedido), esquema: Extra.esquema(pedido), prazoMs: Extra.prazo(pedido),
+      ...(pedido.imagem ? { imagem: pedido.imagem } : {}), ...(pedido.audio ? { audio: pedido.audio } : {})
+    };
   } else if (pOport && pOport.ok) {
     /* ideias para uma data e um cliente: lista para ler e copiar, nada é aplicado */
     const pedido = pOport.pedido;
@@ -389,7 +413,7 @@ Deno.serve(comCors(async (req: Request) => {
      e tem mais uma chance. Se repetir de novo, a tela recebe "igual" e
      explica — nunca uma sugestão idêntica. Erro de cota/limite não
      repete (ver servico.ts). */
-  const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema, audio: t.audio, imagem: t.imagem };
+  const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema, audio: t.audio, imagem: t.imagem, prazoMs: t.prazoMs };
 
   const fecharRegistro = async (r: Resultado) => {
     if (!reg) return;
@@ -446,7 +470,7 @@ Deno.serve(comCors(async (req: Request) => {
   /* pedido sem relação com o texto: o modelo responde o código combinado
      (roteiro.ts / linha.ts) em vez de ecoar o original */
   if (!t.json && r.texto.trim() === FORA) return json({ ok: false, categoria: 'fora' });
-  if (pVoz && r.texto.trim() === Voz.SILENCIO) return json({ ok: false, categoria: 'sem_fala' });
+  if ((pVoz || (pExtra && pExtra.ok && pExtra.pedido.operacao === 'reuniao')) && r.texto.trim() === Voz.SILENCIO) return json({ ok: false, categoria: 'sem_fala' });
   if (repetiu && t.original && quaseIgual(r.texto, t.original)) return json({ ok: false, categoria: 'igual' });
   /* listas: o limpador da tarefa já validou e devolveu { itens } */
   if (t.json) {

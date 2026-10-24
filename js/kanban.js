@@ -1160,6 +1160,9 @@ B7.Kanban = (function () {
           resolvidos.filter(c => c.resolvido).map(com).join('') + '</details>'
         : '') +
 
+      /* zzz267: a IA separa o que o cliente pediu em tarefas (viram notas internas) */
+      ((partesAjuste.length || abertos.length) && B7.IAFerramentas && B7.IAFerramentas.ligada()
+        ? '<button type="button" class="b fina contorno kd-ia-tarefas" data-ia-tarefas>✨ Virar tarefas com IA</button>' : '') +
       '<p class="kd-nota-fim">Versões anteriores e a conversa completa ficam na tela de aprovação.</p>';
   }
 
@@ -1300,6 +1303,15 @@ B7.Kanban = (function () {
       } catch (e) { B7.UI.toast('Não foi possível atualizar a nota', { tipo: 'erro' }); }
     });
     /* comentários do cliente: resolver = "a equipe tratou" (fica no histórico) */
+    const iaT = el.querySelector('[data-ia-tarefas]');
+    if (iaT) iaT.onclick = () => {
+      const cli = (x.comentarios || []).filter(c => c.autor_papel === 'cliente' && !c.resolvido);
+      const partes = (x.partes || []).filter(p => p.situacao === 'ajustes');
+      const texto = partes.map(p => (p.parte_rotulo || 'Cena') + ': ' + cli.filter(c => String(c.parte_id) === String(p.parte_id)).map(c => c.texto).join(' / '))
+        .concat(cli.filter(c => !c.parte_id).map(c => c.texto)).filter(Boolean).join('\n');
+      B7.IAFerramentas.ajustesTarefas({ titulo: d.aprovacao_titulo || d.titulo, texto: texto || 'Ajustes pedidos sem comentário.',
+        aoConfirmar: async lista => { for (const t of lista) await B7.DB.comentarDemanda(d.id, '☐ ' + t); await atualizarDrawerSeAberto(d.id); } });
+    };
     el.querySelectorAll('[data-resolver]').forEach(b => b.onclick = async () => {
       try {
         await B7.DB.resolverComentario(b.dataset.resolver);

@@ -2056,13 +2056,16 @@ B7.Design = (function () {
       const sec = [];
       /* zzz185: mandar as artes no grupo do cliente (programa de Windows) */
       if (B7.WhatsApp && B7.WhatsApp.podeEnviar()) sec.push({ id: 'dv-enviar-wa', label: 'Enviar no WhatsApp' });
+      /* zzz267: legenda + hashtags a partir da arte aprovada */
+      if (B7.IAFerramentas && B7.IAFerramentas.ligada()) sec.push({ id: 'dv-ia-legenda', label: '✨ Legenda com IA' });
       if (versaoAtual.estado === 'aprovada_interna' && !B7.PORTAL_PAUSADO) sec.push({ id: 'dv-enviar-cliente', label: 'Enviar pelo Portal do Cliente' });
       if (versaoAtual.estado === 'aprovada_interna' && d.status === 'aprovado_interno') sec.push({ id: 'dv-finalizar', label: 'Finalizar mesmo assim' });
       return { primaria: { id: 'dv-decisao-cliente', label: r ? 'Enviar ajustes do cliente ao Designer' : 'Registrar decisão do cliente' },
                secundarias: sec, resumo: r ? r + ' com ajuste do cliente marcado — confirme e envie' : (versaoAtual.estado === 'enviada_cliente' ? 'Aguardando a decisão do cliente (Portal, WhatsApp, ligação…).' : null) };
     }
     if (equipe && (d.status === 'aprovado_interno' || d.status === 'aprovado_cliente')) {
-      return { primaria: { id: 'dv-finalizar', label: 'Finalizar' } };
+      return { primaria: { id: 'dv-finalizar', label: 'Finalizar' },
+               secundarias: B7.IAFerramentas && B7.IAFerramentas.ligada() ? [{ id: 'dv-ia-legenda', label: '✨ Legenda com IA' }] : [] };
     }
     return null;
   }
@@ -3779,6 +3782,13 @@ B7.Design = (function () {
         B7.UI.toast('Peça finalizada');
         desenharDrawer(); redesenharTela();
       } catch (e) { B7.UI.toast('Não foi possível finalizar: ' + (e.message || ''), { tipo: 'erro' }); }
+    };
+    const iaLeg = el.querySelector('#dv-ia-legenda');
+    if (iaLeg) iaLeg.onclick = async () => {
+      const arte = [...arquivosEfetivos().values()].find(ehImagem);
+      let url = null;
+      if (arte) { try { url = cacheUrlArte.get(arte.caminho) || await B7.DB.urlArquivoDesign(arte.caminho); } catch (e) {} }
+      B7.IAFerramentas.legenda({ clienteId: d.client_id, imagemUrl: url, tema: [d.titulo, d.descricao].filter(Boolean).join(' — ').slice(0, 900) });
     };
     const enviarWa = el.querySelector('#dv-enviar-wa');
     if (enviarWa) enviarWa.onclick = () => B7.WhatsApp.enviar({ tipo: 'design', refId: d.id, clienteId: d.client_id,

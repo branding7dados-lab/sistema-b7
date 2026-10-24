@@ -570,3 +570,64 @@ html.modo-leve .ch-painel{transition:none;}
 .ia-rico.ir-anima > :nth-child(5){animation-delay:.24s;}
 .ia-rico.ir-anima > :nth-child(n+6){animation-delay:.3s;}
 @media (prefers-reduced-motion:reduce){.ia-rico.ir-anima > *{animation:none;}}
+.ch-sugs > :last-child:nth-child(odd){grid-column:1 / -1;}
+.ch-painel.ch-grande .ch-sugs > :last-child:nth-child(odd){grid-column:auto;}
+
+/* =====================================================================
+   zzz267 — FERRAMENTAS DE IA (js/ia-ferramentas.js)
+   ===================================================================== */
+.iaf-modal .iaf-saida:not(:empty){margin-top:14px;padding-top:14px;border-top:1px solid var(--borda);}
+.iaf-pensa{display:flex;align-items:center;gap:12px;padding:14px 4px;color:var(--ink-2);font-size:13.5px;}
+.iaf-orbe{width:26px;height:26px;border-radius:50%;flex:none;position:relative;
+  background:conic-gradient(from 0deg,var(--sb-luz1),var(--sb-luz2),var(--sb-luz1));animation:iafGira 1.2s linear infinite;}
+.iaf-orbe::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--card);}
+@keyframes iafGira{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce){.iaf-orbe{animation:none;}}
+.iaf-erro{padding:12px 14px;border-radius:12px;background:var(--erro-bg);color:var(--erro);font-size:13px;}
+.iaf-bts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px;}
+.iaf-grav{display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;background:var(--suave);border:1px dashed var(--borda-forte);}
+.iaf-grav b{display:block;font-size:14px;}
+.iaf-grav small{font-size:12px;color:var(--ink-3);}
+.iaf-up{cursor:pointer;}
+.iaf-rec{flex:none;width:52px;height:52px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));box-shadow:0 8px 20px -8px color-mix(in srgb,var(--sb-luz2) 70%,transparent);}
+.iaf-rec i{width:18px;height:18px;border-radius:50%;background:#fff;transition:border-radius .2s ease,transform .2s ease;}
+.iaf-rec.on i{border-radius:4px;transform:scale(.9);}
+.iaf-rec.on{animation:iafPulsa 1.4s ease-in-out infinite;}
+@keyframes iafPulsa{50%{box-shadow:0 0 0 10px color-mix(in srgb,var(--sb-luz2) 15%,transparent);}}
+.iaf-arte{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start;}
+.iaf-arte-img{aspect-ratio:4/5;border-radius:12px;overflow:hidden;background:var(--suave);display:grid;place-items:center;border:1px solid var(--borda);}
+.iaf-arte-img img{width:100%;height:100%;object-fit:cover;}
+.iaf-arte-img span{font-size:12px;color:var(--ink-4);}
+.iaf-legs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;}
+.iaf-leg{padding:14px 16px;border-radius:14px;background:var(--card);border:1px solid var(--borda);box-shadow:var(--sh-1);
+  animation:irEntra .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * .08s);}
+.iaf-leg-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.iaf-leg-cab b{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--acento);}
+.iaf-leg p{font-size:13.5px;line-height:1.55;margin:0;color:var(--ink-2);}
+.iaf-tags{margin-top:8px !important;color:var(--violeta) !important;font-weight:600;font-size:12.5px !important;}
+.iaf-tarefas{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:6px;}
+.iaf-tarefas li{animation:irEntra .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * .05s);}
+.iaf-tarefas label{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-radius:11px;background:var(--suave);cursor:pointer;font-size:13.5px;}
+.iaf-tarefas input{margin-top:3px;accent-color:var(--acento);}
+.iaf-bloco{background:var(--card);border:1px solid var(--borda);border-radius:var(--r);padding:16px 18px;margin-bottom:16px;position:relative;overflow:hidden;}
+.iaf-bloco::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--sb-luz1),var(--sb-luz2));}
+.iaf-bloco-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.iaf-selo{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--acento);}
+.gt-ia-bt{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;width:100%;text-align:left;margin-bottom:16px;padding:14px 18px;
+  border-radius:var(--r);border:1px solid color-mix(in srgb,var(--sb-luz2) 30%,var(--borda));cursor:pointer;font:inherit;color:inherit;
+  background:linear-gradient(120deg,color-mix(in srgb,var(--sb-luz1) 9%,var(--card)),color-mix(in srgb,var(--sb-luz2) 9%,var(--card)));
+  transition:transform .15s ease,box-shadow .15s ease;}
+.gt-ia-bt:hover{transform:translateY(-1px);box-shadow:var(--sh-2);}
+.gt-ia-bt span{grid-row:span 2;font-size:22px;}
+.gt-ia-bt b{font-size:14.5px;}
+.gt-ia-bt small{font-size:12.5px;color:var(--ink-3);}
+.kd-ia-tarefas{margin:4px 0 10px;}
+.pp-ia{margin-top:6px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--sb-luz1) 7%,var(--suave));border:1px solid color-mix(in srgb,var(--sb-luz1) 18%,transparent);font-size:13px;}
+.pp-ia ul{margin:6px 0 10px;padding-left:18px;}
+.pp-ia li{margin:3px 0;}
+.pp-ia-tit{font-weight:700;margin:0;}
+.pp-ia-ok{margin:0;color:var(--ok);font-weight:600;}
+.pp-ia-erro{margin:0;color:var(--ink-3);}
+.pp-ia-bt{margin-right:auto;}
+@media (max-width:560px){ .iaf-arte{grid-template-columns:1fr;} .iaf-arte-img{max-width:180px;} .pp-ia-bt{margin-right:0;} }
