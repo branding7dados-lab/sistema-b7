@@ -43,7 +43,7 @@ for (const m of MODS) ok(P.nivel(m) === 'total', 'admin tem Total em ' + m);
 /* Cliente: só o portal, nenhum módulo da equipe */
 como({ id: 'c', papel: 'cliente', funcao: null, modulos: MODS });
 for (const r of ROTAS_MOD.filter(r => r !== 'aprovacoes').concat(ADMIN_SO, ['config', 'previa', 'painel', 'cliente', 'gravacao'])) ok(!P.podeRota(r), 'cliente não abre #/' + r);
-for (const r of ['aprovacoes', 'minha-linha', 'meus-status', 'suporte', 'equipe', 'pedidos']) ok(P.podeRota(r), 'cliente abre #/' + r);
+for (const r of ['aprovacoes', 'minha-linha', 'meus-status', 'suporte', 'equipe', 'pedidos', 'meu-calendario']) ok(P.podeRota(r), 'cliente abre #/' + r);
 for (const m of MODS) ok(P.nivel(m) === 'sem', 'cliente sem ' + m + ' (mesmo se a sessão trouxer módulos)');
 ok(P.modulosEfetivos().length === 0, 'cliente sem módulos efetivos');
 

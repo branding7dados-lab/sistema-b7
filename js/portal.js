@@ -142,6 +142,7 @@ B7.Portal = (function () {
   const ITENS_NAV = [
     ['', 'inicio', 'Início'],
     ['aprovacoes', 'aprovacoes', 'Aprovações'],
+    ['meu-calendario', 'calendario', 'Calendário'],
     ['pedidos', 'pedidos', 'Pedidos'],
     ['minha-linha', 'linha', 'Linha Editorial'],
     ['minha-producao', 'producao', 'Produção'],
@@ -281,6 +282,7 @@ B7.Portal = (function () {
     if (secao === 'perfil')           return abrirPerfil();
     if (secao === 'equipe' && B7.PortalEquipe) return B7.PortalEquipe.abrir();
     if (secao === 'pedidos' && B7.PortalPedidos) return B7.PortalPedidos.abrir();
+    if (secao === 'meu-calendario' && B7.PortalCalendario) return B7.PortalCalendario.abrir();
     if (secao === 'revisar' && partes[1]) return abrirRevisao(partes[1]);
     return abrirHome();
   }
@@ -308,6 +310,7 @@ B7.Portal = (function () {
     semana: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>',
     historico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 7v5l3.5 2"/><circle cx="12" cy="12" r="8.5"/></svg>',
     perfil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20.5v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>',
+    calendario: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14.5" r=".9" fill="currentColor"/><circle cx="12" cy="14.5" r=".9" fill="currentColor"/></svg>',
     pedidos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
     equipe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20v-.5A5.5 5.5 0 0 1 8 14h2a5.5 5.5 0 0 1 5.5 5.5v.5"/><path d="M15.5 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a5.5 5.5 0 0 1 3.5 5.3v.5"/></svg>',
     suporte: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-5.2L8 19.4V16H7a2.5 2.5 0 0 1-2.5-2.5z"/><path d="M9 9.2h6M9 12h3.5"/></svg>'
@@ -382,6 +385,8 @@ B7.Portal = (function () {
           '<p class="ph-emp">' + esc(B7.Textos.ler('portal_boas_vindas', { empresa: emp.nome })) + '</p>' +
         '</div>' +
       '</header>' +
+      /* zzz265: pesquisa do mês e recados da B7 entram aqui */
+      '<div id="ph-extra"></div>' +
 
       /* ---- o que depende do cliente vem primeiro ---- */
       '<section class="ph-secao" id="ph-atencao">' +
@@ -415,6 +420,7 @@ B7.Portal = (function () {
     '</div>';
 
     ligar();
+    if (B7.PortalSatisfacao && !silencioso) B7.PortalSatisfacao.talvez(emp, document.getElementById('ph-extra'));
   }
 
   function cartaoPendente(a) {
@@ -1637,5 +1643,5 @@ B7.Portal = (function () {
   return { montarLayout, abrirHome, abrirAprovacoes, abrirRevisao,
            abrirLinha, abrirProducao, abrirGravacoes, abrirStatus, abrirHistorico, abrirPerfil,
            abrirPrevia, sairPrevia, emPrevia, definirEmpresa, rota,
-           telaServico, empresa, marcarNav, somenteLeitura: false };
+           telaServico, empresa, marcarNav, statusCli, somenteLeitura: false };
 })();
