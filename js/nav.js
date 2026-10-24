@@ -24,6 +24,7 @@ B7.Nav = (function () {
   const esc = s => B7.UI.esc(s);
   const IC = {
       "painel": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M3.5 17.5a8.5 8.5 0 1 1 17 0v.5a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z\"/><path class=\"d\" d=\"M12 16.2l3.5-4.7M12 16.2h.01\"/></svg>",
+      "gestao": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"3.5\" y=\"12\" width=\"4\" height=\"8\" rx=\"1.6\"/><rect class=\"f\" x=\"10\" y=\"7.5\" width=\"4\" height=\"12.5\" rx=\"1.6\"/><rect class=\"f\" x=\"16.5\" y=\"3.5\" width=\"4\" height=\"16.5\" rx=\"1.6\"/></svg>",
       "central": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"3.5\" y=\"3.5\" width=\"7.2\" height=\"7.2\" rx=\"2.3\"/><rect class=\"f\" x=\"13.3\" y=\"3.5\" width=\"7.2\" height=\"7.2\" rx=\"2.3\"/><rect class=\"f\" x=\"3.5\" y=\"13.3\" width=\"7.2\" height=\"7.2\" rx=\"2.3\"/><rect class=\"f\" x=\"13.3\" y=\"13.3\" width=\"7.2\" height=\"7.2\" rx=\"2.3\"/></svg>",
       "clientes": "<svg viewBox=\"0 0 24 24\"><circle class=\"f\" cx=\"9\" cy=\"8\" r=\"3.4\"/><path class=\"f\" d=\"M2.8 19.2a6.2 6.2 0 0 1 12.4 0 .8.8 0 0 1-.8.8H3.6a.8.8 0 0 1-.8-.8z\"/><path class=\"o\" d=\"M15.8 4.9a3.4 3.4 0 0 1 0 6.2M17.9 13.7a6 6 0 0 1 3.4 5.5.8.8 0 0 1-.8.8h-1.3\"/></svg>",
       "publicacoes": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"3.5\" y=\"4.5\" width=\"17\" height=\"16\" rx=\"3.6\"/><path class=\"d\" d=\"M3.5 9.5h17\"/><rect class=\"d\" x=\"9.8\" y=\"12.3\" width=\"4.4\" height=\"4.4\" rx=\"1.3\"/><path class=\"o\" d=\"M8 2.8v3M16 2.8v3\"/></svg>",
@@ -59,6 +60,8 @@ B7.Nav = (function () {
   const ehAdmin = () => papel() === 'admin';
 
   const ITENS = {
+    /* zzz266: Gestão — painel do dono, saúde dos clientes e pedidos (só admin) */
+    gestao:      { rota: '#/gestao', rotulo: 'Gestão', curto: 'Gestão', id: 'nav-gestao', base: ['gestao'], pode: () => ehAdmin() },
     painel:      { rota: '#/painel', rotulo: 'Painel', curto: 'Painel', id: 'nav-painel', base: ['painel'],
                    pode: () => !!(perm() && perm().painelElegivel()) },
     /* Central: para o Designer (papel) a rota "#/" é a Central de Design;
@@ -142,7 +145,7 @@ B7.Nav = (function () {
        trabalho dele) e quem não tem Painel (aí o Panorama é a casa). */
     const temPainel = permitido('painel');
     const centralEhCasa = papel() === 'designer' || !temPainel;
-    const principal = (centralEhCasa ? ['painel', 'central', 'whatsapp'] : ['painel', 'whatsapp']).filter(permitido);
+    const principal = (centralEhCasa ? ['painel', 'central', 'gestao', 'whatsapp'] : ['painel', 'gestao', 'whatsapp']).filter(permitido);
     const usados = new Set(principal);
     const trabalho = intercalar(funcoes.map(f => MEU_TRABALHO[f] || [])).filter(id => permitido(id) && !usados.has(id));
     trabalho.forEach(id => usados.add(id));

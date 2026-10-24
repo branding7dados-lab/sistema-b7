@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz266', versao: 'zzz266', em: '2026-10-24T16:00:00-03:00',
+    titulo: 'Gestão: o painel do dono da agência',
+    itens: ['Nova tela "Gestão" (só administrador, no grupo Principal) com três abas.',
+            'Visão geral: clientes ativos, entregas do mês (e o ritmo comparado ao mês passado), entregas atrasadas, aprovações com o cliente, pedidos e a satisfação do mês, mais o gráfico de entregas dos últimos 6 meses.',
+            'Saúde dos clientes: um semáforo por cliente (nota de 0 a 100) com os motivos — atrasos, aprovação parada, demora para responder, muitas peças voltando com ajuste, nota baixa na pesquisa e meses sem entregas.',
+            'Pedidos: o que os clientes pediram pelo portal, quanto tempo levou até ficar pronto e quem mais pede.'] },
   { id: 'v-zzz265', versao: 'zzz265', em: '2026-10-24T14:00:00-03:00',
     titulo: 'Portal: calendário do mês e pesquisa de satisfação',
     itens: ['Portal do cliente: nova tela "Calendário" com o mês inteiro — o que vai ao ar em cada dia (com a miniatura da arte, quando há) e as gravações marcadas. No celular vira uma agenda por dia. Tocar num item com aprovação abre a revisão.',

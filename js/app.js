@@ -238,6 +238,10 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return B7.Trends.abrir();
     }
+    if (partes[0] === 'gestao' && B7.Gestao) {
+      mostrar('tela-dashboard');
+      return B7.Gestao.abrir(params);
+    }
     if (partes[0] === 'oportunidades' && B7.Oportunidades) {
       mostrar('tela-dashboard');
       return B7.Oportunidades.abrir(params);
