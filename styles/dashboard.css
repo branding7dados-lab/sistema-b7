@@ -1903,3 +1903,15 @@ button.gt-kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-2);}
   .gt-semaforos{gap:6px;}
   .gt-sem{flex-direction:column;gap:0;padding:10px 12px;}
 }
+/* zzz268: recados */
+.gt-rec-form{display:grid;grid-template-columns:200px 1fr;gap:10px;}
+.gt-rec-form #gt-rec-tit,.gt-rec-form #gt-rec-tx{grid-column:1 / -1;}
+.gt-rec-ate{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-3);}
+.gt-rec-ate .campo{width:auto;}
+.gt-rec-form [data-rec-pub]{justify-self:end;}
+.gt-rec{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:12px 4px;border-top:1px solid var(--borda);}
+.gt-rec:first-of-type{border-top:0;}
+.gt-rec b{display:block;font-size:14px;}
+.gt-rec small{display:block;font-size:12px;color:var(--ink-3);margin-top:2px;}
+.gt-rec p{margin:6px 0 0;font-size:13px;color:var(--ink-2);}
+@media (max-width:640px){ .gt-rec-form{grid-template-columns:1fr;} .gt-rec{flex-direction:column;} }

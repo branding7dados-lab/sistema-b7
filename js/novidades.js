@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz268', versao: 'zzz268', em: '2026-10-24T20:00:00-03:00',
+    titulo: 'Comunicação com o cliente: e-mail semanal, recados e WhatsApp',
+    itens: ['Resumo semanal por e-mail: no portal (Meu perfil) o cliente informa o e-mail e recebe toda segunda de manhã o que foi aprovado, o que espera por ele, o que vai ao ar e as gravações — num e-mail com a cara da Branding7. Semana vazia não manda nada.',
+            'Recados: em Gestão → Recados você publica um aviso (feriado, novidade, atenção) para todos os clientes ou para um só, com data para sair. Ele aparece no Início do portal e o cliente pode dispensar.',
+            'Aprovações: novo botão "Avisar no WhatsApp" — abre o grupo do cliente com a mensagem pronta e o link direto para aprovar.'] },
   { id: 'v-zzz267', versao: 'zzz267', em: '2026-10-24T18:00:00-03:00',
     titulo: 'IA: sete ferramentas novas',
     itens: ['Ata de reunião com IA (botão Criar): grave a reunião ou envie o áudio e receba resumo, decisões e tarefas com responsável e prazo.',

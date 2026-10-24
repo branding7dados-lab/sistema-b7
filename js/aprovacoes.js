@@ -297,6 +297,9 @@ B7.Aprovacoes = (function () {
           (ap.enviado_por_nome ? ' por ' + esc(ap.enviado_por_nome) : '') + '</p></div>' +
         '<div class="ap-cab-acoes">' +
           (linkMaterial ? '<button class="b pri" data-ir="' + esc(linkMaterial) + '">Abrir no editor</button>' : '') +
+          /* zzz268: avisar o cliente no WhatsApp com o link direto para aprovar */
+          ((ap.situacao === 'pendente' || ap.situacao === 'parcial') && ap.versao_atual && B7.WhatsApp && B7.WhatsApp.podeEnviar()
+            ? '<button class="b contorno" data-wa-aprov>Avisar no WhatsApp</button>' : '') +
           (ap.demanda_id ? '<button class="b contorno" data-ir="#/kanban/' + esc(ap.demanda_id) + '">Demanda: ' + esc(B7.Kanban ? B7.Kanban.nomeColuna(ap.demanda_coluna) : ap.demanda_coluna) + '</button>' : '') +
           (podeAnular && decisaoVale(ap)
             ? '<button class="b perigo contorno" data-anular="total" title="Anula a decisão do cliente sobre esta versão (auditado)">Excluir aprovação</button>' : '') +
@@ -386,6 +389,9 @@ B7.Aprovacoes = (function () {
 
     const p = painel();
     p.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
+    const waAp = p.querySelector('[data-wa-aprov]');
+    if (waAp) waAp.onclick = () => B7.WhatsApp.enviar({ tipo: 'aprovacao', refId: ap.id, clienteId: ap.client_id, clienteNome: ap.cliente_nome || '',
+      titulo: ap.titulo || '', link: 'https://branding7dados-lab.github.io/sistema/#/revisar/' + ap.id });
     p.querySelectorAll('[data-resolver]').forEach(b => b.onclick = async () => {
       try { await B7.DB.resolverComentario(b.dataset.resolver); abrirDetalhe(id); }
       catch (e) { B7.UI.toast('Não foi possível resolver', { tipo: 'erro' }); }

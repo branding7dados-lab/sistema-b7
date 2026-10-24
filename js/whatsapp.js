@@ -810,7 +810,9 @@ B7.WhatsApp = (function () {
   const MODELOS = {
     video: 'Olá, {cliente}! 🎬\nSegue o vídeo{titulo} para vocês conferirem. Qualquer ajuste, é só nos falar por aqui.',
     design: 'Olá, {cliente}! 🎨\nSegue a arte{titulo} para vocês conferirem. Qualquer ajuste, é só nos falar por aqui.',
-    gravacao: 'Olá, {cliente}! 🎥\nPassando para confirmar a nossa gravação:\n📅 {data}{hora}{local}\nQualquer mudança, nos avise por aqui. Até lá!'
+    gravacao: 'Olá, {cliente}! 🎥\nPassando para confirmar a nossa gravação:\n📅 {data}{hora}{local}\nQualquer mudança, nos avise por aqui. Até lá!',
+    /* zzz268: material esperando aprovação no portal, com o link direto */
+    aprovacao: 'Olá, {cliente}! ✅\nTem material novo esperando a aprovação de vocês{titulo}:\n👉 {link}\nÉ só abrir, aprovar ou pedir ajuste por lá. Qualquer dúvida, estamos aqui!'
   };
   const chaveModelo = t => 'wa_modelo_' + t;
   function preencher(tpl, d) {
@@ -819,7 +821,8 @@ B7.WhatsApp = (function () {
       .replace(/\{titulo\}/g, d.titulo ? ' "' + d.titulo + '"' : '')
       .replace(/\{data\}/g, d.data || '')
       .replace(/\{hora\}/g, d.hora ? ' às ' + d.hora : '')
-      .replace(/\{local\}/g, d.local ? '\n📍 ' + d.local : '');
+      .replace(/\{local\}/g, d.local ? '\n📍 ' + d.local : '')
+      .replace(/\{link\}/g, d.link || '');
   }
 
   /* ----------------------------------------- "Enviar ao cliente" */
@@ -837,7 +840,7 @@ B7.WhatsApp = (function () {
     const autoArtes = prog && D.enviaUrls && artes.length;
     if (d.tipo === 'design' && prog && !autoArtes) d.comArquivo = true;
     const oQue = d.tipo === 'design' ? 'a arte' : 'o vídeo';
-    const m = B7.UI.modal('<h3>' + (d.tipo === 'gravacao' ? 'Avisar a gravação no WhatsApp' : d.tipo === 'design' ? 'Enviar a arte no WhatsApp' : 'Enviar o vídeo no WhatsApp') + '</h3>' +
+    const m = B7.UI.modal('<h3>' + (d.tipo === 'gravacao' ? 'Avisar a gravação no WhatsApp' : d.tipo === 'aprovacao' ? 'Avisar a aprovação no WhatsApp' : d.tipo === 'design' ? 'Enviar a arte no WhatsApp' : 'Enviar o vídeo no WhatsApp') + '</h3>' +
       '<p class="sub">' + (prog
         ? 'O sistema abre o grupo, ' + (autoArtes ? 'anexa ' + (artes.length > 1 ? 'as ' + artes.length + ' artes ' : 'a arte ') : d.comArquivo ? 'anexa ' + oQue + (d.tipo === 'video' ? ' como documento ' : ' ') : '') + 'e escreve a mensagem. <b>Quem aperta enviar é você.</b>'
         : cel ? 'Abre o WhatsApp com a mensagem' + (d.comArquivo ? ' e ' + oQue : '') + ' — você escolhe o grupo e envia.'

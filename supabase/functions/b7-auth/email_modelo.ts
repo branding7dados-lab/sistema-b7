@@ -89,3 +89,75 @@ ${login ? `<div style="padding-top:12px;"><a href="${SITE}" style="display:inlin
     '\n\nE-mail automático do Sistema B7.';
   return { assunto, html, texto };
 }
+
+/* zzz268: resumo semanal do cliente (toda segunda de manhã) */
+const PORTAL = 'https://branding7dados-lab.github.io/sistema/';
+const dataCurta = (iso: string) => { const [, m, d] = String(iso).slice(0, 10).split('-'); return d + '/' + m; };
+export type Resumo = { nome?: string | null; empresa: string; papel?: string | null; aprovados: string[]; pendentes: string[];
+  proximas: { titulo: string; data: string }[]; gravacoes: { nome: string; data: string }[]; pedidos_prontos: string[] };
+export function temAlgo(r: Resumo) {
+  return r.aprovados.length + r.pendentes.length + r.proximas.length + r.gravacoes.length + r.pedidos_prontos.length > 0;
+}
+export function emailResumoSemanal(r: Resumo) {
+  const primeiro = String(r.nome || '').trim().split(/\s+/)[0];
+  const decide = r.papel === 'dono' || r.papel === 'gestor';
+  const numero = (n: number, rot: string, cor: string) => `<td align="center" width="33%" style="padding:6px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="cod" style="background:#F7F5FD;border:1px solid #E2DBF7;border-radius:16px;"><tr><td align="center" style="padding:14px 6px;">
+<div style="font:800 28px/1 Arial,Helvetica,sans-serif;color:${cor};">${n}</div>
+<div class="tx2" style="font:600 11.5px/1.3 Arial,Helvetica,sans-serif;color:#7A7393;padding-top:6px;">${esc(rot)}</div></td></tr></table></td>`;
+  const lista = (titulo: string, emoji: string, itens: string[]) => !itens.length ? '' : `<tr><td class="pad" style="padding:18px 36px 0;">
+<div class="tx" style="font:800 15px/1.3 Arial,Helvetica,sans-serif;color:#1B1631;">${emoji} ${esc(titulo)}</div>
+${itens.map(i => `<div class="tx2 linha" style="font:400 14px/1.5 Arial,Helvetica,sans-serif;color:#5D5675;padding:8px 0;border-bottom:1px solid #EEEAF8;">${i}</div>`).join('')}
+</td></tr>`;
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Sua semana com a Branding7</title>
+<style>
+@media (max-width:600px){.card{width:100%!important;border-radius:0!important}.pad{padding-left:22px!important;padding-right:22px!important}}
+@media (prefers-color-scheme:dark){.fundo{background:#0A0714!important}.card{background:#150F22!important}.tx{color:#EDEAF7!important}.tx2{color:#A9A2C4!important}
+.cod{background:#1E1730!important;border-color:#3A2C66!important}.linha{border-color:#2A2140!important}}
+</style></head>
+<body style="margin:0;padding:0;background:#F3F1FA;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${r.pendentes.length && decide ? r.pendentes.length + ' material(is) esperando você · ' : ''}o resumo da semana da ${esc(r.empresa)}.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="fundo" style="background:#F3F1FA;"><tr><td align="center" style="padding:32px 12px;">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" class="card" style="width:560px;max-width:560px;background:#FFFFFF;border-radius:24px;overflow:hidden;">
+<tr><td class="pad" style="background:#1A1240;background-image:linear-gradient(135deg,#0B0A1E 0%,#3A1E86 62%,#C21C83 130%);padding:30px 36px 28px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td><img src="${LOGO}" width="132" alt="Branding7" style="display:block;width:132px;height:auto;border:0;"></td>
+<td align="right" style="font:600 11px/1 Arial,Helvetica,sans-serif;letter-spacing:.14em;color:#CFC8EA;text-transform:uppercase;">Resumo semanal</td>
+</tr></table>
+<div style="height:24px;line-height:24px;">&nbsp;</div>
+<div style="font:800 26px/1.2 Arial,Helvetica,sans-serif;color:#FFFFFF;">Sua semana com a Branding7</div>
+<div style="font:400 14px/1.5 Arial,Helvetica,sans-serif;color:#D9D3F0;padding-top:6px;">${esc(r.empresa)}</div>
+</td></tr>
+<tr><td class="pad" style="padding:28px 36px 6px;">
+<div class="tx" style="font:400 16px/1.55 Arial,Helvetica,sans-serif;color:#1B1631;">Olá${primeiro ? ', <b>' + esc(primeiro) + '</b>' : ''}! 👋</div>
+<div class="tx2" style="font:400 15px/1.6 Arial,Helvetica,sans-serif;color:#5D5675;padding-top:6px;">Aqui está o que aconteceu e o que vem por aí.</div>
+</td></tr>
+<tr><td class="pad" style="padding:12px 30px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+${numero(r.aprovados.length, 'aprovados na semana', '#12805A')}${numero(r.pendentes.length, decide ? 'esperando você' : 'esperando aprovação', '#C21C83')}${numero(r.proximas.length, 'publicações nos próximos 7 dias', '#3A1E86')}
+</tr></table></td></tr>
+${lista(decide ? 'Esperando a sua aprovação' : 'Esperando aprovação', '⏳', r.pendentes.map(t => esc(t)))}
+${lista('Aprovado nesta semana', '✅', r.aprovados.map(t => esc(t)))}
+${lista('Vai ao ar nos próximos dias', '📅', r.proximas.map(p => '<b style="color:#3A1E86;">' + dataCurta(p.data) + '</b> · ' + esc(p.titulo)))}
+${lista('Gravações marcadas', '🎬', r.gravacoes.map(g => '<b style="color:#3A1E86;">' + dataCurta(g.data) + '</b> · ' + esc(g.nome)))}
+${lista('Seus pedidos que ficaram prontos', '🎉', r.pedidos_prontos.map(t => esc(t)))}
+<tr><td class="pad" align="center" style="padding:26px 36px 30px;">
+<a href="${PORTAL}" style="display:inline-block;background:#3A1E86;background-image:linear-gradient(135deg,#3A1E86,#C21C83);color:#FFFFFF;font:800 15px/1 Arial,Helvetica,sans-serif;text-decoration:none;padding:16px 30px;border-radius:14px;">${r.pendentes.length && decide ? 'Revisar agora' : 'Abrir o portal'}</a>
+</td></tr>
+</table>
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" class="card" style="width:560px;max-width:560px;"><tr><td align="center" class="pad" style="padding:20px 36px 0;">
+<div class="tx2" style="font:400 12px/1.6 Arial,Helvetica,sans-serif;color:#9A93B3;">Você recebe este resumo porque ativou no portal (Meu perfil → Resumo semanal).<br>Para parar, é só apagar o e-mail lá. · Branding7</div>
+</td></tr></table>
+</td></tr></table>
+</body></html>`;
+  const sec = (t: string, l: string[]) => l.length ? '\n' + t + ':\n' + l.map(x => '- ' + x).join('\n') : '';
+  const texto = 'Sua semana com a Branding7 — ' + r.empresa +
+    sec(decide ? 'Esperando a sua aprovação' : 'Esperando aprovação', r.pendentes) + sec('Aprovado nesta semana', r.aprovados) +
+    sec('Vai ao ar nos próximos dias', r.proximas.map(p => dataCurta(p.data) + ' · ' + p.titulo)) +
+    sec('Gravações marcadas', r.gravacoes.map(g => dataCurta(g.data) + ' · ' + g.nome)) + sec('Pedidos prontos', r.pedidos_prontos) +
+    '\n\nAbrir o portal: ' + PORTAL + '\nPara parar de receber: Meu perfil → Resumo semanal.';
+  const assunto = r.pendentes.length && decide
+    ? '⏳ ' + r.pendentes.length + (r.pendentes.length === 1 ? ' material esperando você' : ' materiais esperando você') + ' · semana da ' + r.empresa
+    : '📬 Sua semana com a Branding7 · ' + r.empresa;
+  return { assunto, html, texto };
+}

@@ -662,3 +662,27 @@ button.pcal-item:hover{background:color-mix(in srgb,var(--cal-post) 10%,var(--su
 .psat-obg b{font-size:15px;}
 .psat-obg small{font-size:12.5px;color:var(--ink-3);}
 @media (max-width:560px){ .psat-notas{grid-template-columns:repeat(6,minmax(0,1fr));} }
+
+/* zzz268: recados da B7 no Início e resumo semanal no perfil */
+#ph-recados:not(:empty){display:flex;flex-direction:column;gap:10px;margin-bottom:18px;}
+.prc{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:var(--r);border:1px solid var(--borda);background:var(--card);
+  position:relative;overflow:hidden;animation:irEntra .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * .07s);transition:opacity .25s ease,transform .25s ease;}
+.prc::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:linear-gradient(180deg,var(--sb-luz1),var(--sb-luz2));}
+.prc.prc-atencao::before{background:var(--ambar);}
+.prc.prc-feriado::before{background:var(--cal-grav);}
+.prc.saindo{opacity:0;transform:translateX(12px);}
+.prc-ic{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px;background:var(--acento-suave);}
+.prc-tx{flex:1;min-width:0;}
+.prc-tx small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);}
+.prc-tx b{display:block;font-size:14.5px;margin-top:1px;}
+.prc-tx p{margin:4px 0 0;font-size:13px;color:var(--ink-3);line-height:1.5;white-space:pre-line;}
+.prc-x{background:none;border:0;font-size:20px;line-height:1;color:var(--ink-4);cursor:pointer;padding:0 2px;}
+.pre-cx{margin:16px 0 4px;padding:14px 16px;border-radius:var(--r);border:1px solid var(--borda);background:var(--card);}
+.pre-cab{display:flex;gap:12px;align-items:flex-start;}
+.pre-cab > span:first-child{font-size:20px;}
+.pre-cab > div{flex:1;min-width:0;}
+.pre-cab b{display:block;font-size:14.5px;}
+.pre-cab small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px;}
+.pre-on{font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--ok-bg);color:var(--ok);}
+.pre-linha{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.pre-linha .campo{flex:1 1 220px;}
