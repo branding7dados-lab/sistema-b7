@@ -34,6 +34,14 @@ export const TUTORIAIS_PORTAL: Record<string, Tutorial> = {
       'Outras ações (na lista da Equipe): mudar o papel no seletor; "Senha nova" quando a pessoa esqueceu a senha (a sessão dela é encerrada e ela recebe uma senha provisória); "Tirar" para remover o acesso a esta empresa.\n' +
       'Cuidado:\n- A empresa sempre precisa de pelo menos um Dono: o último não pode ser tirado nem rebaixado.\n- Se você não é Dono e precisa de acesso para alguém, peça ao Dono da sua empresa ou à Branding7.'
   },
+  'portal-pedidos': {
+    titulo: 'Portal do cliente: fazer um pedido novo', grupo: 'Portal do cliente',
+    texto: 'Onde fica: menu → "Pedidos".\nServe para: pedir algo novo à Branding7 (uma arte, um vídeo, um post, um texto) e acompanhar até ficar pronto.\n' +
+      'Passo a passo:\n1. Abra "Pedidos" e toque em "Fazer um pedido".\n2. Escolha o tipo, escreva em poucas palavras o que precisa e, se quiser, os detalhes (textos, preços, referências) e a data.\n' +
+      '3. Toque em "Enviar pedido": a equipe da Branding7 é avisada na hora.\n' +
+      'Acompanhando: o pedido aparece como "Recebido", depois "Em produção" e "Pronto". Quem pediu recebe um aviso quando ele começa e quando fica pronto. Se for algo para aprovar, ele também chega em "Aprovações".\n' +
+      'Dicas:\n- Qualquer pessoa da empresa pode pedir. Para algo urgente, abra também um chamado no Suporte.'
+  },
   'portal-linha': {
     titulo: 'Portal do cliente: linha editorial', grupo: 'Portal do cliente',
     texto: 'Onde fica: menu → "Linha Editorial".\nServe para: ver o planejamento de conteúdo do mês que foi liberado para você: os temas, os formatos e as datas previstas.\n' +

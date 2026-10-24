@@ -407,3 +407,6 @@ select.kb-filtro.ativo{border-color:var(--acento);color:var(--acento);font-weigh
   /* a frase de apoio só no computador, como nas outras telas */
   .kanban-tela .kb-intro{display:none;}
 }
+/* zzz263: pedido feito pelo cliente no portal */
+.kb-pedido{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:6px;
+  background:color-mix(in srgb,var(--ambar) 16%,transparent);color:var(--ambar);}

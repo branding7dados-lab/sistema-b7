@@ -355,6 +355,8 @@ B7.Kanban = (function () {
       '<h4>' + esc(d.titulo) + '</h4>' +
       '<div class="kb-tags">' +
         '<span class="kb-tipo ' + esc(classeTipo(d)) + '">' + esc(rotuloTipo(d)) + '</span>' +
+        /* zzz263: pedido feito pelo cliente no portal */
+        (d.origem_evento === 'cliente.pedido' ? '<span class="kb-pedido" title="O cliente pediu pelo portal">Pedido do cliente</span>' : '') +
         (d.aprovacao_situacao
           ? '<span class="kb-ap ' + esc(d.aprovacao_situacao) + '" title="Aprovação do cliente' +
             (d.aprovacao_versao ? ' (v' + d.aprovacao_versao + ')' : '') + '">' +

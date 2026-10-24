@@ -565,3 +565,26 @@ a.pt-item{display:block;color:inherit;text-decoration:none;}
   display:grid;place-items:center;font-size:13px;font-weight:700;background:var(--acento);color:#fff;}
 .pt-bv b{font-size:14px;}
 .pt-bv span{font-size:13px;color:var(--ink-3);line-height:1.45;}
+
+/* zzz263: pedidos do cliente */
+.pp-sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:22px 0 10px;}
+.pp-sec small{font-size:12px;color:var(--ink-4);margin-left:4px;}
+.pp-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.pp-pedido{background:var(--card);border:1px solid var(--borda);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-width:0;}
+.pp-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.pp-tipo{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);}
+.pp-sit{font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--neutro-bg);color:var(--neutro);}
+.pp-sit.pp-em_producao{background:color-mix(in srgb,var(--acento) 14%,transparent);color:var(--acento);}
+.pp-sit.pp-concluido{background:var(--ok-bg);color:var(--ok);}
+.pp-sit.pp-cancelado{background:var(--suave);color:var(--ink-4);}
+.pp-pedido h3{font-size:15.5px;font-weight:700;margin:0;overflow-wrap:anywhere;}
+.pp-desc{font-size:13px;color:var(--ink-3);line-height:1.5;margin:0;white-space:pre-line;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+.pp-pe{font-size:12px;color:var(--ink-4);margin-top:auto;}
+.pp-pe b{color:var(--ink-2);font-weight:600;}
+.pp-tipos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+.pp-tipo-op{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;border:1px solid var(--borda);border-radius:12px;cursor:pointer;}
+.pp-tipo-op:has(input:checked){border-color:var(--acento);background:color-mix(in srgb,var(--acento) 7%,transparent);}
+.pp-tipo-op input{margin-top:3px;accent-color:var(--acento);}
+.pp-tipo-op b{display:block;font-size:13px;}
+.pp-tipo-op small{display:block;font-size:11.5px;color:var(--ink-3);margin-top:1px;line-height:1.35;}

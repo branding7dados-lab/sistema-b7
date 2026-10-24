@@ -25,6 +25,13 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz263', versao: 'zzz263', em: '2026-10-24T10:00:00-03:00',
+    titulo: 'Pedidos do cliente e lembrete de aprovação',
+    itens: ['Portal do cliente: nova tela "Pedidos". O cliente pede algo novo (arte, vídeo, post, texto) com detalhes e data, e acompanha: Recebido → Em produção → Pronto.',
+            'Cada pedido vira um cartão no Kanban, marcado "Pedido do cliente", e a coordenação recebe um aviso na hora.',
+            'Quando a equipe move o cartão, o pedido muda sozinho no portal e quem pediu é avisado quando começa e quando fica pronto.',
+            'Lembrete automático: em dia útil, às 10h, o dono e o gestor do cliente recebem "N materiais esperando sua aprovação" quando há material parado há 2 dias ou mais (no máximo a cada 3 dias).',
+            'O assistente do Suporte do portal sabe explicar como fazer um pedido.'] },
   { id: 'v-zzz262', versao: 'zzz262', em: '2026-10-23T21:00:00-03:00',
     titulo: 'Pronto para o lançamento: segurança, portal e IA',
     itens: ['Segurança: 50 funções do banco que respondiam até para quem não tinha entrado agora só respondem para quem está logado. As internas (avisos e rotinas) ficaram fechadas para todos.',
