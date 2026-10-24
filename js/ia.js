@@ -145,7 +145,7 @@ B7.IA = (function () {
     const querFluxo = typeof opcoes.aoTrecho === 'function' && !!(window.ReadableStream && window.TextDecoder);
     const ctrl = new AbortController();
     let estourou = false;
-    const relogio = setTimeout(() => { estourou = true; ctrl.abort(); }, PRAZO_MS);
+    const relogio = setTimeout(() => { estourou = true; ctrl.abort(); }, opcoes.prazo || PRAZO_MS);
     const externo = opcoes.signal;
     const aoCancelar = () => ctrl.abort();
     if (externo) {

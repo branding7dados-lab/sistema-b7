@@ -55,13 +55,16 @@ B7.Chat = (function () {
     ['☀️', 'Meu dia', 'o que fazer hoje', 'Resumo do meu dia'],
     ['⏰', 'Atrasos', 'o que está vencido', 'O que está atrasado hoje?'],
     ['🔥', 'Ideias com trends', 'usar o que a equipe guardou', 'Com as trends que a equipe guardou, me dê ideias de vídeo e para quais clientes servem'],
-    ['📊', 'Números do mês', 'entregas e aprovações', 'Quantos vídeos e artes entregamos este mês, e o que os clientes aprovaram?']
+    ['📊', 'Números do mês', 'entregas e aprovações', 'Quantos vídeos e artes entregamos este mês, e o que os clientes aprovaram?'],
+    /* zzz267: datas comemorativas da semana viram ideias por cliente */
+    ['🎉', 'Datas da semana', 'ideias para cada cliente', 'Quais datas comemorativas e oportunidades vêm nos próximos 7 dias? Para cada uma, diga para quais clientes faz sentido e dê uma ideia de post.']
   ];
   const SUGESTOES_CLIENTE = [
     ['🧭', 'Situação', 'como está este cliente', 'Resuma a situação deste cliente'],
     ['💡', '5 ideias', 'de conteúdo para ele', 'Me dê 5 ideias de conteúdo para este cliente'],
     ['✅', 'Aprovações', 'o que aprovou ou pediu', 'O que este cliente aprovou ou pediu ajuste?'],
-    ['📅', 'Esta semana', 'o que vai ao ar', 'O que está programado para publicar esta semana?']
+    ['📅', 'Esta semana', 'o que vai ao ar', 'O que está programado para publicar esta semana?'],
+    ['🎉', 'Datas próximas', 'ideias para as datas', 'Que datas comemorativas dos próximos 7 dias combinam com este cliente? Dê uma ideia de post para cada uma.']
   ];
 
   /* estado da conversa aberta */

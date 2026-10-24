@@ -59,7 +59,13 @@ B7.Gestao = (function () {
     if (!cx || !dados) return;
     cx.innerHTML = aba === 'saude' ? saude() : aba === 'pedidos' ? pedidos() : geral();
     cx.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
+    const ia = cx.querySelector('[data-ia-riscos]');
+    if (ia) ia.onclick = () => B7.IAFerramentas.riscos(cx.querySelector('#gt-ia'));
   }
+
+  /* zzz267: a IA lê a saúde dos clientes e diz o que olhar primeiro */
+  const iaBloco = () => B7.IAFerramentas && B7.IAFerramentas.ligada()
+    ? '<div id="gt-ia"><button type="button" class="gt-ia-bt" data-ia-riscos><span aria-hidden="true">✨</span><b>O que olhar primeiro?</b><small>A IA lê os números e a saúde de cada cliente e te diz por onde começar.</small></button></div>' : '';
 
   /* ------------------------------------------------------ visão geral */
   function geral() {
@@ -70,7 +76,7 @@ B7.Gestao = (function () {
     const ritmo = k.entregas_ant && fracao ? Math.round(100 * (k.entregas_mes / fracao - k.entregas_ant) / k.entregas_ant) : null;
     const card = (v, l, sub, cls, ir) => '<' + (ir ? 'button type="button" data-ir="' + ir + '"' : 'div') + ' class="gt-kpi ' + (cls || '') + '"><b>' + v + '</b><span>' + l + '</span>' +
       (sub ? '<small>' + sub + '</small>' : '') + '</' + (ir ? 'button' : 'div') + '>';
-    return '<div class="gt-kpis">' +
+    return iaBloco() + '<div class="gt-kpis">' +
       card(num(k.clientes), 'clientes ativos', '', '', '#/clientes') +
       card(num(k.entregas_mes), 'entregas no mês', varia == null || ritmo == null ? '' : (ritmo >= 0 ? '▲ ritmo ' + ritmo + '% acima' : '▼ ritmo ' + Math.abs(ritmo) + '% abaixo') + ' do mês passado', ritmo != null && ritmo < -10 ? 'atencao' : '') +
       card(num(k.atrasos), 'entregas atrasadas', k.atrasos ? 'design e vídeo com prazo vencido' : 'nada atrasado 🎉', k.atrasos ? 'erro' : 'ok', '#/kanban') +
@@ -108,7 +114,7 @@ B7.Gestao = (function () {
   function saude() {
     const l = dados.clientes || [];
     const conta = cor => l.filter(c => c.cor === cor).length;
-    return '<div class="gt-semaforos">' +
+    return iaBloco() + '<div class="gt-semaforos">' +
       '<div class="gt-sem vermelho"><b>' + conta('vermelho') + '</b><span>em risco</span></div>' +
       '<div class="gt-sem amarelo"><b>' + conta('amarelo') + '</b><span>atenção</span></div>' +
       '<div class="gt-sem verde"><b>' + conta('verde') + '</b><span>saudáveis</span></div></div>' +

@@ -25,6 +25,15 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz267', versao: 'zzz267', em: '2026-10-24T18:00:00-03:00',
+    titulo: 'IA: sete ferramentas novas',
+    itens: ['Ata de reunião com IA (botão Criar): grave a reunião ou envie o áudio e receba resumo, decisões e tarefas com responsável e prazo.',
+            'Legenda a partir da arte: a IA olha a arte, segue o tom do cliente e sugere duas legendas com hashtags. Também no Design, nas peças aprovadas ("✨ Legenda com IA").',
+            'Revisar na voz da marca: cole um texto e a IA dá nota de aderência, aponta o que ajustar e entrega a versão sugerida.',
+            'Kanban: no feedback do cliente, "✨ Virar tarefas com IA" transforma os comentários em tarefas e adiciona como notas internas.',
+            'Gestão: "O que olhar primeiro?" — a IA lê a saúde dos clientes e diz por onde começar, com uma ação para cada cliente em risco.',
+            'Portal: no pedido, "✨ Conferir com a IA" aponta o que falta (tamanho, textos, preço, data) para a equipe acertar de primeira.',
+            'Assistente: nova sugestão "Datas da semana" com ideias de post para cada cliente.'] },
   { id: 'v-zzz266', versao: 'zzz266', em: '2026-10-24T16:00:00-03:00',
     titulo: 'Gestão: o painel do dono da agência',
     itens: ['Nova tela "Gestão" (só administrador, no grupo Principal) com três abas.',
