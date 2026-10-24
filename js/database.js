@@ -961,6 +961,12 @@ B7.DB = (function () {
       return ok(await q.limit(50));
     },
 
+    /* zzz265: só id + snapshot de várias aprovações (miniaturas do calendário do portal) */
+    async aprovacoesSnapshots(ids) {
+      if (!ids || !ids.length) return [];
+      return ok(await sb().from('aprovacoes').select('id, snapshot').in('id', ids).limit(80));
+    },
+
     async aprovacao(id) {
       const linhas = ok(await sb().from('aprovacoes').select('*').eq('id', id).limit(1));
       return linhas[0] || null;

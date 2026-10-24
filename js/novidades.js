@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz265', versao: 'zzz265', em: '2026-10-24T14:00:00-03:00',
+    titulo: 'Portal: calendário do mês e pesquisa de satisfação',
+    itens: ['Portal do cliente: nova tela "Calendário" com o mês inteiro — o que vai ao ar em cada dia (com a miniatura da arte, quando há) e as gravações marcadas. No celular vira uma agenda por dia. Tocar num item com aprovação abre a revisão.',
+            'Pesquisa de satisfação: a partir do dia 20, o cliente vê no Início "De 0 a 10, quanto você recomendaria a Branding7 este mês?", com comentário opcional.',
+            'A coordenação recebe um aviso a cada resposta — nota de 0 a 6 chega como "Atenção".'] },
   { id: 'v-zzz264', versao: 'zzz264', em: '2026-10-24T12:00:00-03:00',
     titulo: 'As respostas da IA ficaram muito mais bonitas',
     itens: ['O Assistente, o Suporte (da equipe e do portal do cliente) e o "O que rolou aqui?" do WhatsApp agora respondem com blocos visuais: destaques coloridos (dica, atenção, resolvido, urgente), números em cartões, passos numerados, listas de checagem, cartões por cliente, tabelas e marca-texto.',

@@ -83,6 +83,7 @@ B7.PortalEquipe = (function () {
     const itens = [
       ['Aprovações', aprova ? 'Tudo o que a B7 manda para você aprovar: aprove ou peça ajustes num clique.'
                             : 'Veja o que a B7 enviou e deixe seus comentários. Quem decide é o dono ou o gestor.'],
+      ['Calendário', 'O mês inteiro num olhar: o que vai ao ar em cada dia e as gravações.'],
       ['Pedidos', 'Precisa de algo novo? Peça aqui e acompanhe até ficar pronto.'],
       ['Linha editorial e produção', 'Acompanhe o planejamento e cada conteúdo, do roteiro até a publicação.'],
       ['Gravações', 'Datas, local e o que vai ser gravado em cada dia.']

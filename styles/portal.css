@@ -588,3 +588,77 @@ a.pt-item{display:block;color:inherit;text-decoration:none;}
 .pp-tipo-op input{margin-top:3px;accent-color:var(--acento);}
 .pp-tipo-op b{display:block;font-size:13px;}
 .pp-tipo-op small{display:block;font-size:11.5px;color:var(--ink-3);margin-top:1px;line-height:1.35;}
+
+/* zzz265: calendário de publicações do portal */
+.pcal-nav{display:flex;align-items:center;gap:10px;}
+.pcal-nav b{font-size:14px;font-weight:700;text-transform:capitalize;min-width:128px;text-align:center;}
+.pcal-nav .b{min-width:36px;padding-inline:0;font-size:18px;line-height:1;}
+.pcal-grade{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;}
+.pcal-sem{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);padding:0 6px 4px;}
+.pcal-dia{min-height:112px;background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;min-width:0;}
+.pcal-dia.vazio{background:transparent;border-color:transparent;}
+.pcal-dia.passado{opacity:.62;}
+.pcal-dia.hoje{border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave);}
+.pcal-n{font-size:12px;font-weight:700;color:var(--ink-3);padding:1px 3px;}
+.pcal-dia.hoje .pcal-n{color:var(--acento);}
+.pcal-item{display:flex;align-items:center;gap:6px;padding:4px 6px 4px 4px;border-radius:9px;background:var(--suave);border:0;text-align:left;
+  font:inherit;color:inherit;min-width:0;width:100%;border-left:3px solid var(--cal-post);}
+button.pcal-item{cursor:pointer;transition:transform .15s ease,background .15s ease;}
+button.pcal-item:hover{background:color-mix(in srgb,var(--cal-post) 10%,var(--suave));transform:translateY(-1px);}
+.pcal-item.pcal-grav{border-left-color:var(--cal-grav);}
+.pcal-item.st-aguardando_voce{border-left-color:var(--ambar);}
+.pcal-item.st-publicado{border-left-color:var(--ok);}
+.pcal-ic{flex:none;font-size:13px;width:22px;text-align:center;}
+.pcal-mini{flex:none;width:26px;height:26px;border-radius:6px;background:color-mix(in srgb,var(--cal-post) 18%,var(--suave)) center/cover no-repeat;}
+.pcal-mini.ok{box-shadow:0 1px 3px rgba(0,0,0,.18);}
+.pcal-tx{min-width:0;display:flex;flex-direction:column;}
+.pcal-tx b{font-size:11.5px;font-weight:600;line-height:1.3;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
+.pcal-tx small{font-size:10px;color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pcal-mais{font-size:11px;font-weight:700;color:var(--ink-4);padding:0 4px;}
+.pcal-agenda{display:none;}
+.pcal-legenda{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--ink-4);margin-top:14px;}
+.pcal-l{width:10px;height:10px;border-radius:3px;background:var(--cal-post);display:inline-block;margin-left:6px;}
+.pcal-l.grav{background:var(--cal-grav);}
+@media (max-width:760px){
+  .pcal-grade{display:none;}
+  .pcal-agenda{display:flex;flex-direction:column;gap:10px;}
+  .pcal-ag-dia{display:grid;grid-template-columns:52px 1fr;gap:10px;background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:10px;}
+  .pcal-ag-dia.hoje{border-color:var(--acento);}
+  .pcal-ag-dia h3{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;}
+  .pcal-ag-dia h3 b{font-family:'Archivo';font-size:24px;font-weight:900;line-height:1;}
+  .pcal-ag-dia h3 span{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);margin-top:3px;text-align:center;}
+  .pcal-ag-dia > div{display:flex;flex-direction:column;gap:6px;min-width:0;}
+  .pcal-ag-dia .pcal-item{padding:7px 8px 7px 6px;}
+  .pcal-ag-dia .pcal-tx b{font-size:13px;white-space:normal;}
+  .pcal-ag-dia .pcal-tx small{font-size:11px;}
+  .pcal-ag-dia .pcal-mini{width:40px;height:40px;border-radius:8px;}
+  .pcal-nav b{min-width:0;}
+}
+
+/* zzz265: pesquisa de satisfação do mês */
+.psat{background:var(--card);border:1px solid var(--borda);border-radius:var(--r);padding:16px 18px;margin-bottom:22px;position:relative;overflow:hidden;
+  box-shadow:var(--sh-2);animation:irEntra .5s cubic-bezier(.2,.8,.2,1) both;}
+.psat::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--sb-luz1),var(--sb-luz2));}
+.psat-cab{display:flex;gap:12px;align-items:flex-start;}
+.psat-ic{flex:none;width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:18px;background:var(--acento-suave);}
+.psat-cab b{display:block;font-size:15px;color:var(--ink);}
+.psat-cab small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px;}
+.psat-cab > div{flex:1;min-width:0;}
+.psat-x{background:none;border:0;font-size:22px;line-height:1;color:var(--ink-4);cursor:pointer;padding:0 4px;}
+.psat-notas{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:6px;margin-top:14px;}
+.psat-n{height:40px;border-radius:10px;border:1px solid var(--borda);background:var(--suave);font:700 14px/1 inherit;color:var(--ink-2);cursor:pointer;
+  transition:transform .12s ease,background .12s ease,color .12s ease,border-color .12s ease;}
+.psat-n:hover{transform:translateY(-2px);}
+.psat-n.nb:hover,.psat-n.nb.on{background:var(--erro-bg);border-color:var(--erro);color:var(--erro);}
+.psat-n.nm:hover,.psat-n.nm.on{background:var(--ambar-bg);border-color:var(--ambar);color:var(--ambar);}
+.psat-n.na:hover,.psat-n.na.on{background:var(--ok-bg);border-color:var(--ok);color:var(--ok);}
+.psat-n.on{transform:scale(1.08);}
+.psat-eixo{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-4);margin-top:6px;}
+.psat-mais{margin-top:12px;}
+.psat-mais .rot{font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink-2);}
+.psat-mais .acoes{margin-top:8px;display:flex;justify-content:flex-end;}
+.psat-obg{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:8px 0;}
+.psat-obg span{font-size:30px;}
+.psat-obg b{font-size:15px;}
+.psat-obg small{font-size:12.5px;color:var(--ink-3);}
+@media (max-width:560px){ .psat-notas{grid-template-columns:repeat(6,minmax(0,1fr));} }
