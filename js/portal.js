@@ -51,6 +51,11 @@ B7.Portal = (function () {
      Quando preenchido, o portal mostra a empresa escolhida pelo admin e
      fica somente leitura. Fora da prévia é null. */
   let previa = null;
+  /* zzz269: pessoa escolhida em "Visualizar como" antes de abrir a prévia */
+  let comoPendente = null;
+  function previaComo(p) { comoPendente = p && p.client_id ? p : null; }
+  const PAPEL_ROT = { dono: 'Dono', gestor: 'Gestor', equipe: 'Equipe' };
+  const contaDeOutro = () => !!(B7.Auth && B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
 
   /* ---- empresa da sessão ----
      O cliente pode estar vinculado a mais de uma empresa. A escolhida
@@ -107,7 +112,9 @@ B7.Portal = (function () {
   };
   /* zzz261: quem é da Equipe da empresa não aprova — o que espera decisão
      espera o dono ou o gestor, não "você" */
-  const soComenta = () => !previa && !!B7.PortalEquipe && !!empresa() && !B7.PortalEquipe.podeAprovarEm(empresa().id);
+  /* zzz269: na prévia "como Fulano", vale o papel dele na empresa */
+  const soComenta = () => previa ? !!(previa.pessoa && previa.pessoa.papel === 'equipe')
+    : !!B7.PortalEquipe && !!empresa() && !B7.PortalEquipe.podeAprovarEm(empresa().id);
   const statusCli = s => s === 'aguardando_voce' && soComenta() ? 'Aguardando aprovação' : STATUS_CLIENTE[s];
   const ORDEM_STATUS = ['aguardando_voce', 'em_producao', 'em_revisao', 'aprovado', 'programado', 'publicado'];
   const STATUS_GRAVACAO = {
@@ -156,7 +163,7 @@ B7.Portal = (function () {
   /* zzz261: "Equipe" é do dono da empresa (na prévia, o admin também vê) */
   const navVisivel = (secao, emp) => {
     if (secao === 'suporte') return !previa;
-    if (secao === 'equipe') return !!emp && (!!previa || (B7.PortalEquipe && B7.PortalEquipe.souDonoDe(emp.id)));
+    if (secao === 'equipe') return !!emp && (previa ? (!previa.pessoa || previa.pessoa.papel === 'dono') : !!(B7.PortalEquipe && B7.PortalEquipe.souDonoDe(emp.id)));
     return true;
   };
 
@@ -207,8 +214,8 @@ B7.Portal = (function () {
       bt.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
         'stroke-width="1.7" stroke-linecap="round"><path d="M15 17l5-5-5-5"/>' +
         '<path d="M20 12H9"/><path d="M12 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/></svg>' +
-        '<span>' + (previa ? 'Voltar ao Admin' : 'Sair da conta') + '</span>';
-      bt.onclick = () => previa ? voltarAoAdmin() : B7.Auth.sair();
+        '<span>' + (previa ? 'Voltar ao Admin' : contaDeOutro() ? 'Voltar para minha conta' : 'Sair da conta') + '</span>';
+      bt.onclick = () => previa ? voltarAoAdmin() : B7.Auth.sair();   /* na conta de outro, sair = voltar */
       rodape.insertBefore(bt, rodape.firstChild);
     }
 
@@ -225,18 +232,25 @@ B7.Portal = (function () {
   function montarBanner() {
     const antigo = document.getElementById('pt-banner-previa');
     if (antigo) antigo.remove();
-    if (!previa) return;
+    const outro = !previa && contaDeOutro();
+    if (!previa && !outro) return;
     const tela = document.getElementById('tela-dashboard');
     if (!tela) return;
     const b = document.createElement('div');
     b.id = 'pt-banner-previa';
-    b.className = 'pt-banner-previa';
+    b.className = 'pt-banner-previa' + (outro ? ' pt-banner-outro' : '');
     b.setAttribute('role', 'status');
-    b.innerHTML = '<div class="pt-banner-tx"><b>Prévia do cliente: ' + esc(previa.nome) + '</b>' +
-      '<span>Você continua como administrador. Tudo aqui é somente leitura: nenhuma decisão é registrada.</span></div>' +
-      '<button class="b fina" id="pt-voltar-admin">Voltar ao Admin</button>';
+    const P = previa && previa.pessoa;
+    /* zzz269: dentro da conta de um cliente (Entrar como) o aviso é outro: aqui tudo vale de verdade */
+    b.innerHTML = outro
+      ? '<div class="pt-banner-tx"><b>Você está na conta de ' + esc((B7.Auth.usuario() || {}).nome || 'um cliente') + '</b>' +
+          '<span>Tudo o que fizer aqui (aprovar, comentar, pedir) fica registrado no nome dessa pessoa.</span></div>' +
+        '<button class="b fina" id="pt-voltar-admin">Voltar para minha conta</button>'
+      : '<div class="pt-banner-tx"><b>Prévia do cliente: ' + esc(previa.nome) + (P ? ' · como ' + esc(P.nome) + ' (' + esc(PAPEL_ROT[P.papel] || P.papel) + ')' : '') + '</b>' +
+          '<span>Você continua como administrador. Tudo aqui é somente leitura: nenhuma decisão é registrada.</span></div>' +
+        '<button class="b fina" id="pt-voltar-admin">Voltar ao Admin</button>';
     tela.insertBefore(b, tela.firstChild);
-    b.querySelector('#pt-voltar-admin').onclick = voltarAoAdmin;
+    b.querySelector('#pt-voltar-admin').onclick = outro ? (() => B7.Auth.voltarParaMinhaConta()) : voltarAoAdmin;
   }
 
   function voltarAoAdmin() {
@@ -257,7 +271,10 @@ B7.Portal = (function () {
       location.replace('#/');
       return;
     }
-    if (!previa || previa.id !== clientId) {
+    /* zzz269: "Visualizar como" uma pessoa do cliente: a prévia assume o papel dela */
+    const como = comoPendente && comoPendente.client_id === clientId ? comoPendente : null;
+    comoPendente = null;
+    if (!previa || previa.id !== clientId || como) {
       carregando('Abrindo a prévia do cliente…');
       let c = null;
       try { c = await B7.DB.cliente(clientId); } catch (e) { c = null; }
@@ -267,7 +284,8 @@ B7.Portal = (function () {
         return;
       }
       previa = { id: c.id, nome: c.nome, logo_url: c.logo_url || null,
-                 servico: c.servico || 'ativo', mensagem: c.servico_mensagem || null };
+                 servico: c.servico || 'ativo', mensagem: c.servico_mensagem || null,
+                 pessoa: como && como.id ? { id: como.id, nome: como.nome, papel: como.papel } : null };
       B7.Portal.somenteLeitura = true;
       desassinar();
       montarLayout();
@@ -1643,7 +1661,7 @@ B7.Portal = (function () {
     aprovado: 'Aprovado', ajustes: 'Ajustes solicitados', recusado: 'Recusado',
     substituido: 'Versão substituída', cancelado: 'Cancelado' }[s] || s);
 
-  return { montarLayout, abrirHome, abrirAprovacoes, abrirRevisao,
+  return { previaComo, montarLayout, abrirHome, abrirAprovacoes, abrirRevisao,
            abrirLinha, abrirProducao, abrirGravacoes, abrirStatus, abrirHistorico, abrirPerfil,
            abrirPrevia, sairPrevia, emPrevia, definirEmpresa, rota,
            telaServico, empresa, marcarNav, statusCli, somenteLeitura: false };

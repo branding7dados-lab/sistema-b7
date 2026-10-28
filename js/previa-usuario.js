@@ -233,6 +233,8 @@ B7.PreviaUsuario = (function () {
      — some sozinho pra quem não é admin pelo mesmo mecanismo que já
      esconde item de menu (aplicarPapelNaNavegacao em js/app.js).
      ================================================================= */
+  const PAPEL_CLI = { dono: 'Dono', gestor: 'Gestor', equipe: 'Equipe' };
+  const IC_CHAVE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/></svg>';
   let itens = null; /* { clientes:[...], usuarios:[...] } — recarregado a cada abertura */
 
   function normal(s) {
@@ -244,7 +246,9 @@ B7.PreviaUsuario = (function () {
     const inic = B7.UI && B7.UI.iniciais ? B7.UI.iniciais(item.nome) : item.nome.slice(0, 2).toUpperCase();
     const sub = item.tipo === 'usuario'
       ? rotuloPapel(item.papel) + (item.funcoes_extra.length ? ' · ' + item.funcoes_extra.map(rotuloPapel).join(' · ') : '')
-      : 'Empresa';
+      : item.tipo === 'pessoa-cliente'
+      ? item.empresas.map(e => (PAPEL_CLI[e.papel] || 'Cliente') + ' · ' + e.nome).join(' / ')
+      : 'Empresa · ver o Portal';
     return '<div class="res" data-tipo="' + item.tipo + '" data-id="' + esc(item.id) + '">' +
       '<div class="mini">' + esc(inic) + '</div>' +
       '<div><b>' + esc(item.nome) + '</b><small>' + esc(sub) + '</small></div>' +
@@ -255,23 +259,27 @@ B7.PreviaUsuario = (function () {
     lista = lista || document.getElementById('ver-como-lista');
     if (!lista || !itens) return;
     const termo = normal(q);
-    const clientes = itens.clientes.filter(c => !termo || normal(c.nome).includes(termo));
-    const usuarios = itens.usuarios.filter(u => !termo || normal(u.nome).includes(termo));
-    if (!clientes.length && !usuarios.length) {
+    const casa = t => !termo || normal(t).includes(termo);
+    const clientes = itens.clientes.filter(c => casa(c.nome));
+    const usuarios = itens.usuarios.filter(u => casa(u.nome));
+    const pessoasCli = (itens.pessoasCliente || []).filter(u => casa(u.nome) || u.empresas.some(e => casa(e.nome)));
+    if (!clientes.length && !usuarios.length && !pessoasCli.length) {
       lista.innerHTML = '<div class="nada">Nada encontrado.</div>';
       return;
     }
     lista.innerHTML =
-      (clientes.length ? '<div class="grupo">CLIENTES</div>' + clientes.map(linhaResultado).join('') : '') +
-      (usuarios.length ? '<div class="grupo">USUÁRIOS</div>' + usuarios.map(linhaResultado).join('') : '');
+      (usuarios.length ? '<div class="grupo">EQUIPE B7</div>' + usuarios.map(linhaResultado).join('') : '') +
+      (pessoasCli.length ? '<div class="grupo">PESSOAS DOS CLIENTES</div>' + pessoasCli.map(linhaResultado).join('') : '') +
+      (clientes.length ? '<div class="grupo">EMPRESAS</div>' + clientes.map(linhaResultado).join('') : '');
     lista.querySelectorAll('.res').forEach(el => el.onclick = () => {
       const tipo = el.dataset.tipo, id = el.dataset.id;
       if (tipo === 'cliente') {
         fecharCaixa(); fecharLateral();
+        if (B7.Portal && B7.Portal.previaComo) B7.Portal.previaComo({ client_id: id });
         location.hash = '#/previa/' + id;
       } else {
-        const u = itens.usuarios.find(x => x.id === id);
-        if (u) entrarDireto(u, el);
+        const u = tipo === 'usuario' ? itens.usuarios.find(x => x.id === id) : pessoasCli.find(x => x.id === id);
+        if (u) { fecharCaixa(); fecharLateral(); escolherModo(u); }
       }
     });
   }
@@ -281,19 +289,58 @@ B7.PreviaUsuario = (function () {
      administrador: o servidor (b7-auth, entrar_como) recusa qualquer
      outra pessoa, recusa conta de cliente e anota a entrada na
      auditoria. Empresa continua abrindo a prévia do Portal, só leitura. */
+  /* zzz269: escolher uma PESSOA (da equipe ou de um cliente) pergunta o
+     modo: só visualizar (nada é salvo, você continua você) ou entrar na
+     conta (age como ela, fica registrado). Só administrador. A troca de
+     conta não passa pela abertura nem pela tela de carregamento. */
+  function escolherModo(u) {
+    const cliente = u.tipo === 'pessoa-cliente';
+    let empSel = cliente ? u.empresas[0] : null;
+    const inic = B7.UI && B7.UI.iniciais ? B7.UI.iniciais(u.nome) : u.nome.slice(0, 2).toUpperCase();
+    const m = B7.UI.modal(
+      '<div class="vc-modo">' +
+        '<div class="vc-quem"><span class="vc-av">' + esc(inic) + '</span><div><b>' + esc(u.nome) + '</b><small>' +
+          esc(cliente ? 'Cliente · ' + u.empresas.map(e => e.nome).join(', ') : rotuloPapel(u.papel)) + '</small></div></div>' +
+        (cliente && u.empresas.length > 1
+          ? '<label class="rot" for="vc-emp">EMPRESA</label><select class="campo" id="vc-emp">' +
+              u.empresas.map((e, i) => '<option value="' + i + '">' + esc(e.nome) + ' · ' + esc(PAPEL_CLI[e.papel] || '') + '</option>').join('') + '</select>'
+          : '') +
+        '<div class="vc-ops">' +
+          '<button type="button" class="vc-op" data-modo="ver">' + IC_OLHO + '<span><b>Só visualizar</b><small>Você vê ' +
+            (cliente ? 'o Portal' : 'o sistema') + ' exatamente como ' + esc(primeiro(u.nome)) + ' vê. Nada é salvo e você continua na sua conta.</small></span></button>' +
+          '<button type="button" class="vc-op vc-entrar" data-modo="entrar">' + IC_CHAVE + '<span><b>Entrar na conta</b><small>Você age como ' + esc(primeiro(u.nome)) +
+            ': o que fizer fica registrado no nome dessa pessoa (e na auditoria). Volte quando quiser.</small></span></button>' +
+        '</div>' +
+        '<div class="acoes"><button class="b" data-fecha>Cancelar</button></div>' +
+      '</div>', { extra: 'vc-fundo' });
+    const sel = m.querySelector('#vc-emp');
+    if (sel) sel.onchange = () => { empSel = u.empresas[+sel.value]; };
+    m.querySelector('[data-modo="ver"]').onclick = () => {
+      m.fechar();
+      if (cliente) {
+        if (B7.Portal && B7.Portal.previaComo) B7.Portal.previaComo({ client_id: empSel.id, id: u.id, nome: u.nome, papel: empSel.papel });
+        location.hash = '#/previa/' + empSel.id;
+      } else abrir(u);
+    };
+    const bt = m.querySelector('[data-modo="entrar"]');
+    bt.onclick = () => entrarDireto(u, bt, m);
+  }
+  const primeiro = n => String(n || '').trim().split(/\s+/)[0];
+
   let entrando = false;
-  async function entrarDireto(u, el) {
+  async function entrarDireto(u, el, modal) {
     if (entrando) return;
     entrando = true;
     const sm = el && el.querySelector('small'), antes = sm ? sm.textContent : '';
     if (el) el.classList.add('entrando');
     if (sm) sm.textContent = 'Entrando na conta…';
-    try { await B7.Auth.entrarComo(u.id); }   /* recarrega a página ao dar certo */
+    if (el) el.disabled = true;
+    try { await B7.Auth.entrarComo(u.id); }   /* recarrega a página ao dar certo (sem abertura) */
     catch (e) {
       entrando = false;
-      if (el) el.classList.remove('entrando');
+      if (el) { el.classList.remove('entrando'); el.disabled = false; }
       if (sm) sm.textContent = antes;
-      B7.UI.toast((e && e.message) || 'Não foi possível entrar na conta.');
+      B7.UI.toast((e && e.message) || 'Não foi possível entrar na conta.', { tipo: 'erro' });
     }
   }
 
@@ -331,7 +378,14 @@ B7.PreviaUsuario = (function () {
       });
       return r;
     };
+    /* zzz269: pessoas dos clientes, com as empresas e o papel em cada uma */
+    const vinc = dados.vinculos || [];
+    const pessoasCliente = (dados.usuarios || []).filter(u => u.papel === 'cliente' && u.estado === 'ativa').map(u => ({
+      tipo: 'pessoa-cliente', id: u.id, nome: u.nome || u.username || 'Cliente',
+      empresas: vinc.filter(v => v.perfil_id === u.id).map(v => ({ id: v.client_id, nome: (v.clientes && v.clientes.nome) || 'Empresa', papel: v.papel || 'gestor' }))
+    })).filter(u => u.empresas.length);
     itens = {
+      pessoasCliente,
       clientes: (clientes || []).map(c => ({ tipo: 'cliente', id: c.id, nome: c.nome || 'Sem nome' })),
       usuarios: usuariosTodos.map(u => ({
         tipo: 'usuario', id: u.id, nome: u.nome || u.username || 'Usuário',
@@ -353,7 +407,7 @@ B7.PreviaUsuario = (function () {
     if (modalSeletor) return;
     modalSeletor = B7.UI.modal('<div class="tp-folha-cab"><h3>Visualizar como…</h3>' +
       '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
-      '<p class="sub" style="margin:0 10px 10px">Escolha alguém da equipe para entrar na conta — o que fizer fica registrado no nome da pessoa. Empresa abre o Portal, somente leitura.</p>' +
+      '<p class="sub" style="margin:0 10px 10px">Escolha uma pessoa (da equipe ou de um cliente) e depois se quer só visualizar ou entrar na conta. Empresa abre o Portal, somente leitura.</p>' +
       '<div class="ver-como-caixa ver-como-dialogo"><input id="ver-como-busca" type="search" name="b7-buscar-pessoa" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" data-foco placeholder="Buscar cliente ou usuário…" autocomplete="off" aria-label="Buscar cliente ou usuário">' +
       '<div class="ver-como-lista" id="ver-como-lista"><div class="nada">Carregando…</div></div></div>',
       { classe: 'tp-folha', aoFechar: () => { modalSeletor = null; } });

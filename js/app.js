@@ -766,7 +766,8 @@ B7.Rota = (function () {
        performance.getEntriesByType('mark')): quando o sistema ficou
        pronto e quando a abertura começou a sair */
     try { performance.mark('b7:pronto'); } catch (e) {}
-    const inicial = el.classList.contains('inicial');
+    /* zzz269: troca de conta (html.ab-sem) não espera a sequência da abertura */
+    const inicial = el.classList.contains('inicial') && !document.documentElement.classList.contains('ab-sem');
     const espera = inicial ? faltaDaAbertura(el, MINIMO_ABERTURA_MS) : 0;
     if (inicial && espera > 0) setTimeout(() => sairQuandoTerminar(el, MINIMO_ABERTURA_MS, () => sairCortina(el, inicial)), Math.min(espera, 1500));
     else sairCortina(el, inicial);
@@ -791,7 +792,7 @@ B7.Rota = (function () {
     const tempo = voarLogo(el);
     /* remove só depois do pouso e do céu sumir: tirar antes devolve o
        corte seco que a abertura existe para evitar */
-    setTimeout(() => el.remove(), Math.max(tempo, reduzMov() ? 220 : 640));
+    setTimeout(() => { el.remove(); document.documentElement.classList.remove('ab-sem'); }, Math.max(tempo, reduzMov() ? 220 : 640));
   }
 
   /* "Ver abertura" (Configurações → Aparência): a sequência completa de
@@ -913,6 +914,8 @@ B7.Rota = (function () {
   }
   B7.pintarSessao = function () {
     pintarSessao();
+    /* zzz270: a conta no pé da barra lateral (no computador sai do topo) */
+    if (B7.PerfilLateral) { try { B7.PerfilLateral.montar(); } catch (e) {} }
     if (B7.Notif) B7.Notif.montar();
     /* zzz134: o botão das conversas da equipe, ao lado do sino */
     if (B7.Conversas) { try { B7.Conversas.montar(); } catch (e) {} }
