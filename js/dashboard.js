@@ -2775,6 +2775,9 @@ B7.Dashboard = (function () {
     esqueleto('lista', { n: 5 });
     let dados;
     try { dados = await B7.DB.lixeira(); } catch (e) { return erro(e, 'abrirLixeira'); }
+    /* zzz275: demandas apagadas (vídeo, design, produção) — só restaurar; o banco guarda */
+    const demandasApagadas = await B7.DB.rpc('demandas_lixeira', {}).catch(() => []) || [];
+    const TIPO_DEM = { video: 'Edição de vídeo', design: 'Design', kanban: 'Produção' };
 
     const itens = []
       .concat(dados.gravacoes.map(g => ({ tabela: 'gravacoes', id: g.id, nome: g.nome,
@@ -2783,6 +2786,8 @@ B7.Dashboard = (function () {
         tipo: 'Roteiro', cliente: '', quando: r.deleted_at })))
       .concat(dados.clientes.map(c => ({ tabela: 'clientes', id: c.id, nome: c.nome,
         tipo: 'Cliente', cliente: '', quando: c.deleted_at })))
+      .concat(demandasApagadas.map(d => ({ tabela: 'demanda-' + d.tipo, id: d.id, nome: d.nome || 'Sem título',
+        tipo: TIPO_DEM[d.tipo] || 'Demanda', cliente: d.cliente || '', quando: d.quando, soRestaurar: true })))
       .sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
 
     painel().innerHTML = '<div class="conteudo entra">' +
@@ -2798,8 +2803,8 @@ B7.Dashboard = (function () {
           '<div class="nm"><b>' + esc(i.nome) + '</b><small>' +
           (i.cliente ? esc(i.cliente) + ' · ' : '') + 'excluído ' + B7.UI.quando(i.quando) + '</small></div>' +
           '<button class="b fina contorno" data-restaurar="' + esc(i.tabela) + ':' + esc(i.id) + '">Restaurar</button>' +
-          '<button class="b fina perigo" data-apagar="' + esc(i.tabela) + ':' + esc(i.id) + '" ' +
-            'data-nome="' + esc(i.nome) + '">Excluir</button>' +
+          (i.soRestaurar ? '' : '<button class="b fina perigo" data-apagar="' + esc(i.tabela) + ':' + esc(i.id) + '" ' +
+            'data-nome="' + esc(i.nome) + '">Excluir</button>') +
         '</div>').join('') + '</div>'
         : estadoB7(IC.gravacoes, 'A lixeira está vazia.',
                    'O que você excluir aparece aqui antes de sumir de vez.')) +
@@ -2809,6 +2814,10 @@ B7.Dashboard = (function () {
     painel().querySelectorAll('[data-restaurar]').forEach(b => b.onclick = async () => {
       const [tabela, id] = b.dataset.restaurar.split(':');
       try {
+        if (tabela.startsWith('demanda-')) {
+          await B7.Save.acao(() => B7.DB.rpc('demandas_restaurar', { p_tipo: tabela.slice(8), p_ids: [id] }), 'Restaurado');
+          return abrirLixeira();
+        }
         await B7.Save.acao(() => B7.DB.restaurar_(tabela, id), 'Restaurado');
         B7.DB.registrar({ tipo: 'restaurar', entidade: tabela, id: id, texto: 'Restaurado da lixeira' });
         abrirLixeira();

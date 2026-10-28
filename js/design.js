@@ -456,6 +456,9 @@ B7.Design = (function () {
         ids.forEach(id => { const d = dados.find(x => x.id === id); if (d) d.status = status; });
         B7.UI.toast(ids.length === 1 ? 'Movida para “' + rotuloStatus(status) + '”.' : ids.length + ' peças movidas para “' + rotuloStatus(status) + '”.');
       },
+      /* zzz275: com peças marcadas, a faixa oferece apagar (vai para a lixeira) */
+      acoes: () => B7.Lote && B7.Lote.podeApagar('design') ? [{ rotulo: 'Apagar', perigo: true,
+        fazer: (ids, limpar) => B7.Lote.apagar('design', ids, ok => { if (ok) { limpar(); B7.Rota.recarregar(); } }) }] : [],
       contar: raiz => raiz.querySelectorAll('.ds-col[data-status]').forEach(col => {
         const n = col.querySelectorAll('.ds-card[data-peca]').length, c = col.querySelector('.ds-cont');
         if (c) c.textContent = n;

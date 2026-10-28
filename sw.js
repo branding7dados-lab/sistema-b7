@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v476';
+const CACHE = 'roteiros-b7-v477';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -20,7 +20,7 @@ const CASCA = [
   './js/autosave.js', './js/print.js', './js/resumo-mes.js', './js/teleprompter.js', './js/ia-analise.js', './js/ia-texto.js','./styles/teleprompter.css', './js/dashboard.js', './js/editor.js', './js/gravacao.js',
   './js/backup.js', './js/app.js', './js/abertura-som.js', './js/abertura-particulas.js', './js/abertura-faixas.js', './js/abertura-hiper.js', './js/abertura-cenas.js', './js/movimento.js', './js/desempenho.js',
   './js/auth.js', './js/usuarios.js', './js/pedido-acesso.js', './js/superadmin.js', './js/central.js', './js/panorama.js', './js/conteudo.js',
-  './js/linha.js', './js/design.js', './js/video.js', './js/eventos.js', './js/calendario.js', './js/oportunidades.js', './js/trends.js', './js/suporte.js', './js/tour.js', './js/ajuda-admin.js', './js/ajuda-dados.js', './js/ajuda.js', './js/tempo-real.js', './js/arrastar.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
+  './js/linha.js', './js/design.js', './js/video.js', './js/eventos.js', './js/calendario.js', './js/oportunidades.js', './js/trends.js', './js/suporte.js', './js/tour.js', './js/ajuda-admin.js', './js/ajuda-dados.js', './js/ajuda.js', './js/tempo-real.js', './js/arrastar.js', './js/lote.js', './js/semana.js', './js/doc-semana.js', './js/slides.js',
   './js/print-linha.js', './js/extras.js', './js/publicacoes.js', './js/painel.js', './js/painel-coord.js', './js/painel-design.js', './js/painel-multi.js', './js/tv.js', './js/recursos.js', './js/sistema.js', './js/atualizacao-pc.js', './js/whatsapp.js', './js/admin-extra.js', './js/corretor.js', './js/conversas.js', './js/novidades.js', './js/topo.js', './js/nav.js',
   './js/permissoes.js', './js/portal.js', './js/portal-equipe.js', './js/portal-pedidos.js', './js/portal-calendario.js', './js/portal-satisfacao.js', './js/portal-comunicacao.js', './js/gestao.js', './js/projetos.js', './js/kanban.js', './js/perfil.js', './js/equipe.js', './js/silencio.js', './js/relatorio.js', './js/pacotes.js', './js/seguranca.js', './js/foto.js',
   /* zzz45: estava faltando. Sem rede, o "Visualizar como…" sumia em
