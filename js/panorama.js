@@ -211,6 +211,8 @@ B7.Panorama = (function () {
         '<button type="button" class="pan-hoje" data-mes="0"' + (ehMesAtual() ? ' disabled' : '') + '>Este mês</button>' +
         /* zzz254: entregas, prazos e aprovações do mês, por cliente e por pessoa */
         (B7.Relatorio && B7.Auth.ehEquipe && B7.Auth.ehEquipe() ? '<button type="button" class="pan-hoje pan-relatorio" data-relatorio>Relatório do mês</button>' : '') +
+        /* zzz280: o mês contado em histórias */
+        (B7.Retro ? '<button type="button" class="pan-hoje pan-relatorio" data-retro>✨ Retrospectiva</button>' : '') +
       '</div></header>';
   }
 
@@ -288,6 +290,7 @@ B7.Panorama = (function () {
       carregar(true);
     });
     const rel = raiz.querySelector('[data-relatorio]'); if (rel) rel.onclick = () => B7.Relatorio.abrir(S.ano, S.mes);
+    const rt = raiz.querySelector('[data-retro]'); if (rt) rt.onclick = () => B7.Retro.abrir(S.ano, S.mes);
     S.dir = 0;
     await carregar(true);
   }

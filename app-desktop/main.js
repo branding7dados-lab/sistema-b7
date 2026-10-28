@@ -389,6 +389,7 @@ function abrirMenuB7() {
   janelasB7.menu(janela, [
     { titulo: 'Sistema', itens: [
       { id: 'inicio', rotulo: 'Ir para o início' },
+      { id: 'retrospectiva', rotulo: '✨ Retrospectiva do mês' },
       { id: 'recarregar', rotulo: 'Recarregar', atalho: 'Ctrl+R' }] },
     { titulo: 'Exibir', itens: [
       { id: 'zoom-mais', rotulo: 'Aumentar o zoom', atalho: 'Ctrl +' },
@@ -402,6 +403,7 @@ function abrirMenuB7() {
   ], id => {
     if (!janela || janela.isDestroyed()) return;
     if (id === 'inicio') janela.loadURL(SITE);
+    else if (id === 'retrospectiva') wc.executeJavaScript('window.B7&&B7.Retro&&B7.Retro.abrir()', true).catch(() => {});
     else if (id === 'recarregar') wc.reload();
     else if (id === 'zoom-mais') wc.setZoomLevel(Math.min(wc.getZoomLevel() + 0.5, 5));
     else if (id === 'zoom-menos') wc.setZoomLevel(Math.max(wc.getZoomLevel() - 0.5, -3));

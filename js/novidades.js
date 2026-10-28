@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz280', versao: 'zzz280', em: '2026-10-29T06:00:00-03:00',
+    titulo: 'Retrospectiva do mês: o mês da B7 contado em histórias',
+    itens: ['Igual à retrospectiva do Spotify: o mês em telas cheias, com quantos vídeos, artes e posts saíram, os bastidores, o dia mais corrido e quantas vezes os clientes disseram “aprovado”.',
+            'No fim, o seu mês: o que você entregou e quanto saiu no prazo.',
+            'Abra pelo botão ✨ Meu mês no seu perfil, no Panorama ou, no programa do Windows, apertando Alt. No começo de cada mês ela chega sozinha.'] },
   { id: 'v-zzz279', versao: 'zzz279', em: '2026-10-29T05:00:00-03:00',
     titulo: 'Legendas mais fácil, barra de rolagem nova e o programa do Windows com a cara do B7',
     itens: ['A tela de Legendas ficou em passos: escolha o cliente, arraste o .srt (ou cole o texto) e veja quantas legendas e quanto tempo antes de mandar para a IA.',
