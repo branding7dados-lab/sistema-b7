@@ -1317,6 +1317,7 @@ B7.Usuarios = (function () {
           }).join('') +
         '</tbody></table></div>' +
       '</section>' +
+      '<section class="cfg-g" data-pm-acoes></section>' +
       (B7.Auth.ehAdmin && B7.Auth.ehAdmin() ? '<section class="cfg-g"><h2 class="cfg-g-t">Conferência de segurança</h2>' +
         '<p class="cfg-g-nota">O banco testa sozinho cada pessoa em cada módulo e cada regra de acesso: ninguém pode alterar mais do que o nível dado, cliente não entra em módulo da equipe e nenhuma tabela fica aberta.</p>' +
         '<div class="pm-conf" data-pm-conf></div>' +
@@ -1326,8 +1327,9 @@ B7.Usuarios = (function () {
         '<div class="cfg-lista">' + NIVEIS.map(([v, r, d]) => '<div class="cfg-l"><span class="cfg-l-tx"><b>' + chipNv(v) + ' ' + esc(r) + '</b><small>' + esc(d) + '</small></span></div>').join('') + '</div>' +
         '<p class="cfg-g-nota">O banco confere cada ação pelo nível: quem só pode ver recebe um aviso se tentar alterar. ' +
         'Administrador tem tudo em Total. <b>Designer e videomaker</b>: o nível marcado com pontinho vale para o trabalho deles (peças, demandas, entregas); ' +
-        'para alterar o conteúdo de Clientes, Linhas, Roteiros, Gravações ou Status semanal, dê o nível na conta da pessoa ou use uma função personalizada.</p>' +
+        'para alterar o conteúdo de Clientes, Linhas, Roteiros ou Gravações, ligue a ação em <b>O que cada um pode fazer</b> (acima), na função ou só na pessoa.</p>' +
       '</section>';
+    const cxA = alvo.querySelector('[data-pm-acoes]'); if (cxA) montarAcoes(cxA, equipe);
     const btF = alvo.querySelector('[data-pm-funcoes]'); if (btF) btF.onclick = () => modalFuncoes(usuarios);
     const btC = alvo.querySelector('[data-pm-conferir]');
     if (btC) { btC.onclick = () => conferir(alvo, btC); conferir(alvo, btC); }
@@ -1335,6 +1337,112 @@ B7.Usuarios = (function () {
       const u = usuarios.find(x => x.id === b.dataset.pmPessoa); if (!u) return;
       modalEditar(u, clientes, vinculos, extras.filter(f => f.perfil_id === u.id).map(f => f.funcao));
     });
+  }
+
+  /* =================================================================
+     zzz269: O QUE CADA UM PODE FAZER (ações)
+     Além do nível do módulo, cada ação importante tem um sim/não: por
+     função (vale para todos com a função) e por pessoa (vale só para ela,
+     por cima da função). Quem decide de verdade é o banco (pode_acao);
+     sem nada marcado vale o padrão, que é a regra de sempre.
+     ================================================================= */
+  async function montarAcoes(caixa, equipe) {
+    const cab = '<h2 class="cfg-g-t">O que cada um pode fazer</h2>' +
+      '<p class="cfg-g-nota">Cada ação liga ou desliga sozinha, por cima do nível do módulo. Marque por <b>função</b> (vale para todos com ela) ' +
+      'ou abra uma <b>pessoa</b> para dar ou tirar só dela. O banco obedece na hora, e a pessoa vê a mudança sem precisar sair e entrar.</p>';
+    caixa.innerHTML = cab + B7.UI.skeleton('lista', { n: 4 });
+    let d;
+    try { d = await B7.DB.rpc('acoes_painel', {}); }
+    catch (e) { caixa.innerHTML = cab + '<p class="cfg-g-nota">Não foi possível carregar as ações. ' + esc((e && e.message) || '') + '</p>'; return; }
+    if (!caixa.isConnected) return;
+    const cat = d.catalogo || [];
+    let fx = {}, px = {}, ef = d.efetivo || {};
+    const ler = dd => {
+      fx = {}; px = {}; ef = dd.efetivo || {};
+      (dd.funcoes || []).forEach(f => { (fx[f.funcao] = fx[f.funcao] || {})[f.acao] = !!f.permitido; });
+      (dd.pessoas || []).forEach(x => { (px[x.perfil_id] = px[x.perfil_id] || {})[x.acao] = x.efeito; });
+    };
+    ler(d);
+    const fns = todasFuncoes();
+    const pessoas = (equipe || []).filter(u => !identidadeDe(u).ehAdmin);
+    let aba = 'funcao', pessoaSel = pessoas[0] ? pessoas[0].id : null;
+    const modulosCat = []; cat.forEach(a => { if (!modulosCat.includes(a.modulo)) modulosCat.push(a.modulo); });
+    /* o padrão de uma função: o cargo está na regra de sempre e o nível no módulo alcança */
+    const padraoFn = (f, a) => {
+      const n = ORD[nivelPacote(f.id, a.modulo)] || 0;
+      return f.base ? n >= a.nivel_min : (a.padrao_funcoes || []).includes(f.id) && n >= a.nivel_min;
+    };
+    const valorFn = (f, a) => (fx[f.id] && a.id in fx[f.id]) ? fx[f.id][a.id] : padraoFn(f, a);
+    const recarregar = async () => { try { ler(await B7.DB.rpc('acoes_painel', {})); } catch (e) {} };
+
+    function tabelaFuncoes() {
+      return '<div class="pm-rolar"><table class="pm-tabela pa-tabela"><thead><tr><th>Ação</th>' + fns.map(f => '<th>' + esc(f.rotulo) + '</th>').join('') + '</tr></thead><tbody>' +
+        modulosCat.map(md => '<tr class="pa-mod"><th colspan="' + (fns.length + 1) + '">' + esc(rotuloModulo(md)) + '</th></tr>' +
+          cat.filter(a => a.modulo === md).map(a => '<tr><th><span class="pa-ac"><b>' + esc(a.rotulo) + '</b>' + (a.descricao ? '<small>' + esc(a.descricao) + '</small>' : '') + '</span></th>' +
+            fns.map(f => {
+              const v = valorFn(f, a), pers = fx[f.id] && a.id in fx[f.id] && fx[f.id][a.id] !== padraoFn(f, a);
+              return '<td><button type="button" class="pa-cel ' + (v ? 'sim' : 'nao') + (pers ? ' pers' : '') + '" data-fn="' + esc(f.id) + '" data-ac="' + esc(a.id) + '" aria-pressed="' + v + '" ' +
+                'title="' + esc(f.rotulo + ' · ' + a.rotulo + ': ' + (v ? 'pode' : 'não pode') + (pers ? ' (mudado por você; o padrão era ' + (padraoFn(f, a) ? 'sim' : 'não') + ')' : ' (padrão)')) + '">' +
+                (v ? 'Sim' : 'Não') + '</button></td>';
+            }).join('') + '</tr>').join('')).join('') +
+        '</tbody></table></div>' +
+        '<p class="cfg-g-nota pa-leg"><span class="pa-cel sim">Sim</span> pode · <span class="pa-cel nao">Não</span> não pode · <span class="pa-cel sim pers">Sim</span> com contorno: você mudou o padrão. Toque para trocar.</p>';
+    }
+    function blocoPessoa() {
+      if (!pessoas.length) return '<p class="cfg-g-nota">Só há administradores na equipe: eles podem tudo.</p>';
+      const u = pessoas.find(x => x.id === pessoaSel) || pessoas[0];
+      const meu = px[u.id] || {}, efu = ef[u.id] || {};
+      const n = Object.keys(meu).length;
+      return '<div class="pa-pessoas" role="tablist" aria-label="Pessoa">' + pessoas.map(x =>
+          '<button type="button" role="tab" class="pa-p' + (x.id === u.id ? ' on' : '') + '" data-pa-pessoa="' + esc(x.id) + '" aria-selected="' + (x.id === u.id) + '">' +
+          '<b>' + esc(primeiroNome(x)) + '</b><small>' + esc(rotuloFuncao(identidadeDe(x).funcao)) + (Object.keys(px[x.id] || {}).length ? ' · ' + Object.keys(px[x.id]).length + (Object.keys(px[x.id]).length === 1 ? ' exceção' : ' exceções') : '') + '</small></button>').join('') + '</div>' +
+        '<p class="cfg-g-nota">' + esc(u.nome) + ' · ' + esc(rotuloFuncao(identidadeDe(u).funcao)) + (n ? ' · <b>' + n + (n === 1 ? ' exceção marcada' : ' exceções marcadas') + '</b>' : ' · segue a função em tudo') + '</p>' +
+        '<div class="pa-lista">' + modulosCat.map(md => '<div class="pa-grupo"><h3>' + esc(rotuloModulo(md)) + '</h3>' +
+          cat.filter(a => a.modulo === md).map(a => {
+            const e = meu[a.id] || '', v = efu[a.id] ? !!efu[a.id].v : false;
+            const daFuncao = e ? null : v;
+            return '<div class="pa-linha' + (e ? ' pers' : '') + '"><span class="pa-ac"><b>' + esc(a.rotulo) + '</b><small>' +
+                (e ? 'Só para ' + esc(primeiroNome(u)) + ': ' + (e === 'permitir' ? 'pode' : 'não pode') : 'Pela função: ' + (daFuncao ? 'pode' : 'não pode')) + '</small></span>' +
+              '<div class="ac-nv pa-seg" role="radiogroup" aria-label="' + esc(a.rotulo) + '">' +
+                [['', 'Como a função'], ['permitir', 'Sim'], ['negar', 'Não']].map(([k, r]) =>
+                  '<button type="button" role="radio" aria-checked="' + (k === e) + '" class="ac-nv-b' + (k === e ? ' on' : '') + (k === 'permitir' ? ' anv-total' : k === 'negar' ? ' anv-sem' : ' anv-ver') + '" data-pa-ac="' + esc(a.id) + '" data-pa-ef="' + k + '">' + r + '</button>').join('') +
+              '</div></div>';
+          }).join('') + '</div>').join('') + '</div>';
+    }
+    function pintar() {
+      if (!caixa.isConnected) return;
+      caixa.innerHTML = cab +
+        '<div class="pa-abas" role="tablist"><button type="button" role="tab" data-pa-aba="funcao" class="' + (aba === 'funcao' ? 'on' : '') + '" aria-selected="' + (aba === 'funcao') + '">Por função</button>' +
+        '<button type="button" role="tab" data-pa-aba="pessoa" class="' + (aba === 'pessoa' ? 'on' : '') + '" aria-selected="' + (aba === 'pessoa') + '">Por pessoa</button></div>' +
+        (aba === 'funcao' ? tabelaFuncoes() : blocoPessoa());
+      caixa.querySelectorAll('[data-pa-aba]').forEach(b => b.onclick = () => { aba = b.dataset.paAba; pintar(); });
+      caixa.querySelectorAll('[data-pa-pessoa]').forEach(b => b.onclick = () => { pessoaSel = b.dataset.paPessoa; pintar(); });
+      caixa.querySelectorAll('.pa-cel[data-fn]').forEach(b => b.onclick = async () => {
+        const f = fns.find(x => x.id === b.dataset.fn), a = cat.find(x => x.id === b.dataset.ac);
+        if (!f || !a) return;
+        const novo = !valorFn(f, a);
+        b.disabled = true;
+        try {
+          await B7.DB.rpc('funcao_acao_definir', { p_funcao: f.id, p_acao: a.id, p_permitido: novo === padraoFn(f, a) ? null : novo });
+          await recarregar();
+          B7.UI.toast(f.rotulo + ': ' + a.rotulo.toLowerCase() + ' — ' + (novo ? 'pode' : 'não pode') + '. Quem tem a função já vê a mudança.');
+        } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
+        pintar();
+      });
+      caixa.querySelectorAll('[data-pa-ac]').forEach(b => b.onclick = async () => {
+        const u = pessoas.find(x => x.id === pessoaSel) || pessoas[0], a = cat.find(x => x.id === b.dataset.paAc);
+        if (!u || !a || b.classList.contains('on')) return;
+        caixa.querySelectorAll('[data-pa-ac="' + a.id + '"]').forEach(x => { x.disabled = true; });
+        try {
+          const r = await B7.DB.rpc('perfil_acao_definir', { p_perfil: u.id, p_acao: a.id, p_efeito: b.dataset.paEf || null });
+          if (b.dataset.paEf) (px[u.id] = px[u.id] || {})[a.id] = b.dataset.paEf; else if (px[u.id]) delete px[u.id][a.id];
+          if (r) (ef[u.id] = ef[u.id] || {})[a.id] = r;
+          B7.UI.toast(primeiroNome(u) + ': ' + a.rotulo.toLowerCase() + ' — ' + (r && r.v ? 'pode' : 'não pode') + '. Já está valendo.');
+        } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
+        pintar();
+      });
+    }
+    pintar();
   }
 
   async function conferir(alvo, bt) {

@@ -26,7 +26,7 @@ B7.DB = (function () {
     if (!/row-level security/i.test(msg)) return error;
     const t = (msg.match(/table "([a-z_]+)"/) || [])[1];
     const e = new Error('Seu acesso ' + (TABELA_MODULO[t] ? 'a ' + TABELA_MODULO[t] + ' ' : '') +
-      'não deixa fazer esta alteração. Se precisar, peça à administração para ajustar o seu nível em Funções e acessos.');
+      'não deixa fazer esta alteração. Se precisar, peça à administração para liberar em Funções e permissões.');
     e.code = error.code || '42501'; e.status = error.status; e.permissao = true;
     return e;
   }
@@ -46,6 +46,12 @@ B7.DB = (function () {
     const tp = traduzirPermissao(error);
     if (tp !== error) return tp;
     const msg = String((error && error.message) || '');
+    /* zzz269: "Só a equipe…" agora é uma ação que a administração libera por pessoa ou função */
+    if (error && error.code === '42501' && /^Só /.test(msg)) {
+      const e = new Error(msg.replace(/\.?$/, '.') + ' Se você precisa, peça à administração para liberar em Funções e permissões.');
+      e.code = error.code; e.status = error.status; e.tecnico = msg; e.permissao = true;
+      return e;
+    }
     const achado = AMIGAVEIS.find(([re]) => re.test(msg));
     if (!achado) return error;
     const e = new Error(achado[1]);

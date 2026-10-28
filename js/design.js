@@ -76,6 +76,8 @@ B7.Design = (function () {
 
   const ehDesigner = () => B7.Auth.papel() === 'designer';
   const ehEquipe = () => !!(B7.Auth.ehEquipe && B7.Auth.ehEquipe());
+  /* zzz269: ação com permissão própria (Configurações → Permissões) */
+  const pode = acao => !B7.Perm || !B7.Perm.pode || B7.Perm.pode(acao);
   /* "eu": em "Visualizar como…" é a pessoa em prévia (a prévia bloqueia
      toda escrita — ver js/previa-usuario.js), senão a sessão real. Assim
      "comigo"/"minha fila" mostram o trabalho de quem está sendo visto,
@@ -165,7 +167,7 @@ B7.Design = (function () {
       '<div class="cab-conteudo"><div><h1>Produção de Design</h1>' +
       '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.'
                             : 'A fila de produção visual da equipe.') + '</p></div>' +
-      (equipe ? '<button class="b pri" id="ds-nova" aria-label="Nova demanda de Design"><span class="ds-nova-mais" aria-hidden="true">+</span><span class="ds-nova-tx">Nova demanda de Design</span></button>' : '') + '</div>' +
+      (pode('design.criar') ? '<button class="b pri" id="ds-nova" aria-label="Nova demanda de Design"><span class="ds-nova-mais" aria-hidden="true">+</span><span class="ds-nova-tx">Nova demanda de Design</span></button>' : '') + '</div>' +
       (equipe ? '<nav class="ds-abas" role="tablist">' + ABAS_EQUIPE.map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (F.aba === k ? 'on' : '') + '" aria-selected="' + (F.aba === k) + '">' +
         esc(r) + (STATUS_DA_ABA[k] ? '<i class="ds-aba-n" data-aba-n="' + k + '"></i>' : '') + '</button>').join('') + '</nav>' : '') +
@@ -445,7 +447,7 @@ B7.Design = (function () {
   /* zzz165: o quadro da equipe ganha arrastar (fluido, uma ou várias
      peças) — igual ao de Edição de vídeo. O banco registra no histórico. */
   function ligarArrastar(area) {
-    if (!ehEquipe() || !B7.Arrastar) return;
+    if (!ehEquipe() || !pode('design.mover') || !B7.Arrastar) return;
     B7.Arrastar.ligar(area, {
       cartao: '.ds-quadro .ds-card[data-peca]', coluna: '.ds-quadro .ds-col[data-status]', lista: '.ds-lista', rolo: '.ds-quadro',
       id: el => el.dataset.peca, destino: col => col.dataset.status,
@@ -2370,7 +2372,7 @@ B7.Design = (function () {
     return {
       efetivos: arquivosEfetivos(), rascunhos: arquivosRascunho(),
       podeEditar: (equipe || souResponsavel) && d.status !== 'finalizado',
-      podeRevisar: equipe && !souResponsavel && d.status === 'revisao_interna',
+      podeRevisar: pode('design.revisar') && !souResponsavel && d.status === 'revisao_interna',
       /* decisão do cliente registrada pela B7: só Admin/Coordenador, com
          a peça aprovada por dentro ou já aguardando o cliente */
       podeRegistrarCliente: equipe && podeRegistrarDecisaoCliente(d),

@@ -596,7 +596,7 @@ B7.PainelCoord = (function () {
     geracao++; ouvinte = null;
     B7.Dashboard.marcarNav('#/painel');
     B7.Rota.titulo(['Painel']);
-    const podeCriarLinha = !!(B7.Conteudo && B7.Conteudo.novaLinha) && B7.Perm.podeRota('linhas') &&
+    const podeCriarLinha = !!(B7.Conteudo && B7.Conteudo.novaLinha) && B7.Perm.podeRota('linhas') && (!B7.Perm.pode || B7.Perm.pode('linha.editar')) &&
       !(B7.Conteudo.souDesignerSomenteLeitura && B7.Conteudo.souDesignerSomenteLeitura());
     painel().innerHTML = '<div class="conteudo entra pn pnc" id="pnc-raiz">' +
       U().cabecalho({ visoes: (o && o.visoes) || ['coordenacao'], visao: 'coordenacao',

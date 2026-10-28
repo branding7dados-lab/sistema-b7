@@ -134,6 +134,18 @@ B7.Perm = (function () {
     return n && NIVEL_NUM[n[id]] ? n[id] : 'total';
   }
   const podeNivel = (id, min) => NIVEL_NUM[nivel(id)] >= NIVEL_NUM[min];
+  /* zzz269: AÇÕES — o que a pessoa pode FAZER ("criar gravação", "criar
+     demanda de design"…), além do nível do módulo. Quem decide é o banco
+     (pode_acao); a sessão traz o resultado. Sessão antiga, sem o campo:
+     a tela deixa o banco decidir. */
+  function pode(acao) {
+    if (semSessao()) return true;
+    if (papel() === 'cliente') return false;
+    if (souAdmin()) return true;
+    const a = B7.Auth && B7.Auth.acoes ? B7.Auth.acoes() : null;
+    if (!a || !Object.prototype.hasOwnProperty.call(a, acao)) return true;
+    return !!a[acao];
+  }
   const moduloDaRota = rota => ROTA_MODULO[String(rota || '').replace(/^#\//, '').split('/')[0]] || null;
   /* rota sem módulo (ou módulo sem nível definido) = Total */
   const nivelDaRota = rota => { const m = moduloDaRota(rota); return m ? nivel(m) : 'total'; };
@@ -281,8 +293,16 @@ B7.Perm = (function () {
   /* Esconde o que o papel não alcança. Some do DOM em vez de ficar
      desabilitado: opção com cadeado só informa o que a pessoa não pode
      fazer, e isso não ajuda ninguém. */
+  /* zzz269: botões de criar espalhados pelas telas (Nova gravação aparece
+     em vários lugares) somem por uma classe no <body> — um lugar só, vale
+     para qualquer tela nova que use o mesmo atributo. */
+  const BOTOES_ACAO = { 'gravacao.criar': 'gravacao-criar', 'linha.editar': 'linha-editar', 'cliente.criar': 'cliente-criar' };
+  function aplicarAcoes() {
+    Object.keys(BOTOES_ACAO).forEach(a => document.body.classList.toggle('sem-' + BOTOES_ACAO[a], !pode(a)));
+  }
   function aplicarNavegacao() {
     if (semSessao()) return;
+    aplicarAcoes();
 
     /* Painel e logo — roda ANTES do retorno do admin (NAV.admin é null,
        então tudo abaixo não roda pra ele). Quem não é elegível perde o
@@ -343,5 +363,5 @@ B7.Perm = (function () {
 
   return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
            painelElegivel, painelVisoes, souCoordenadorElegivel, souDesignerElegivel, funcoesOperacionais, ROTAS, CONFIG,
-           MODULOS, PADRAO_FUNCAO, modulosEfetivos, temModulo, funcao, nivel, podeNivel, moduloDaRota, nivelDaRota };
+           MODULOS, PADRAO_FUNCAO, modulosEfetivos, temModulo, funcao, nivel, podeNivel, pode, aplicarAcoes, moduloDaRota, nivelDaRota };
 })();

@@ -364,20 +364,50 @@ B7.Suporte = (function () {
     vigiar(minha);
   }
 
-  /* atualiza sozinho a cada 40 s com a tela aberta e visível, sem perder o que está sendo escrito */
+  /* atualiza sozinho com a tela aberta, sem perder o que está sendo escrito.
+     zzz269: em tempo real — mensagem nova (de quem pediu, da equipe ou do
+     assistente) aparece na hora; o relógio de 40 s fica só de reserva */
+  let canalSp = null, tMsgs = 0, tLista = 0;
+  const fecharCanal = () => { if (canalSp) { const c = canalSp; canalSp = null; B7.DB.fecharCanal(c); } };
+  async function refrescarLista(minha) {
+    if (minha !== vez || !document.getElementById('spx')) return;
+    const antes = JSON.stringify(lista.map(c => [c.id, c.updated_at, c.status, c.atendente]));
+    try { await carregar(); } catch (e) { return; }
+    if (minha !== vez || JSON.stringify(lista.map(c => [c.id, c.updated_at, c.status, c.atendente])) === antes) return;
+    /* na conversa aberta, só o cabeçalho/andamento mudou: redesenha guardando o rascunho */
+    if (sel && atendendo[sel]) return;
+    const txt = document.getElementById('sp-resp-t'); const rascunho = txt ? txt.value : '';
+    const foco = document.activeElement && document.activeElement.id === 'sp-resp-t';
+    pintar();
+    const t2 = document.getElementById('sp-resp-t');
+    if (t2 && rascunho) { t2.value = rascunho; t2.dispatchEvent(new Event('input')); }
+    if (t2 && foco) { try { t2.focus({ preventScroll: true }); } catch (e) {} }
+  }
+  function aoMudarSp(p, minha) {
+    if (minha !== vez || !document.getElementById('spx')) { fecharCanal(); return; }
+    const linha = p.new || p.old || {};
+    if (p.table === 'suporte_mensagens') {
+      if (sel && linha.chamado_id === sel && !atendendo[sel]) {
+        clearTimeout(tMsgs);
+        tMsgs = setTimeout(() => { const c = lista.find(x => x.id === sel); if (c && !atendendo[sel]) mensagens(c); }, 120);
+      }
+    }
+    clearTimeout(tLista);
+    tLista = setTimeout(() => refrescarLista(minha), 400);
+  }
   function vigiar(minha) {
     clearInterval(relogio);
+    fecharCanal();
+    if (B7.DB.canal) canalSp = B7.DB.canal('suporte-' + (eu() || 'x') + '-' + minha, [
+      { event: 'INSERT', table: 'suporte_mensagens' }, { event: '*', table: 'suporte_chamados' }
+    ], p => aoMudarSp(p, minha));
     relogio = setInterval(async () => {
-      if (minha !== vez || !document.getElementById('spx')) { clearInterval(relogio); return; }
+      if (minha !== vez || !document.getElementById('spx')) { clearInterval(relogio); fecharCanal(); return; }
       if (document.hidden) return;
-      const antes = JSON.stringify(lista.map(c => [c.id, c.updated_at, c.status]));
-      try { await carregar(); } catch (e) { return; }
-      if (JSON.stringify(lista.map(c => [c.id, c.updated_at, c.status])) === antes) return;
-      const txt = document.getElementById('sp-resp-t'); const rascunho = txt ? txt.value : '';
-      pintar();
-      const t2 = document.getElementById('sp-resp-t'); if (t2 && rascunho) t2.value = rascunho;
+      refrescarLista(minha);
     }, 40000);
   }
+  addEventListener('hashchange', () => { if (!/^#\/suporte/.test(location.hash)) fecharCanal(); });
   const pintar = () => (equipe() ? pintarAdm() : pintarEquipe());
 
   /* ============================================================ EQUIPE */

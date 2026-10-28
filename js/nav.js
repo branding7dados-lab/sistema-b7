@@ -66,8 +66,12 @@ B7.Nav = (function () {
                    pode: () => !!(perm() && perm().painelElegivel()) },
     /* Central: para o Designer (papel) a rota "#/" é a Central de Design;
        para o videomaker puro "#/" redireciona ao Painel, então some. */
+    /* zzz269: o Panorama é a visão de gestão do mês, cliente a cliente —
+       para a produção (fora o designer, cujo "#/" é a Central de Design)
+       só aparece para quem tem o módulo Clientes */
     central:     { rota: '#/', rotulo: 'Panorama', curto: 'Panorama', base: [''],
-                   pode: () => pode('') && !(papel() === 'videomaker' && perm().painelElegivel()) },
+                   pode: () => pode('') && !(papel() === 'videomaker' && perm().painelElegivel()) &&
+                     (ehAdmin() || papel() === 'designer' || !perm().temModulo || perm().temModulo('clientes')) },
     clientes:    { rota: '#/clientes', rotulo: 'Clientes', curto: 'Clientes', base: ['clientes', 'cliente'], pode: () => pode('clientes') },
     publicacoes: { rota: '#/publicacoes', rotulo: 'Publicações do Dia', curto: 'Publicações', id: 'nav-publicacoes', base: ['publicacoes'], pode: () => pode('publicacoes') },
     aprovacoes:  { rota: '#/aprovacoes', rotulo: 'Aprovações', curto: 'Aprovações', id: 'nav-aprovacoes', base: ['aprovacoes'], pode: () => pode('aprovacoes') },
@@ -117,8 +121,11 @@ B7.Nav = (function () {
 
   function rotuloDe(id) {
     if (id === 'central' && papel() === 'designer') return 'Central de Design';
+    /* zzz269: para a produção, os nomes falam do trabalho, não da gestão */
+    if (!ehAdmin() && PRODUCAO[id]) return PRODUCAO[id];
     return ITENS[id].rotulo;
   }
+  const PRODUCAO = { central: 'Visão do mês' };
   function curtoDe(id) {
     if (id === 'central' && papel() === 'designer') return 'Central';
     return ITENS[id].curto;
@@ -202,11 +209,13 @@ B7.Nav = (function () {
   let G = { grupos: [], aberto: null, rota: null, funcoes: [] };
 
   function gruposDe(r) {
+    /* zzz269: o administrador vê a casa como gestão; a equipe, como produção */
+    const adm = ehAdmin();
     return [
-      { id: 'principal', rotulo: 'Principal', ids: r.principal },
+      { id: 'principal', rotulo: adm ? 'Principal' : 'Meu dia', ids: r.principal },
       { id: 'trabalho', rotulo: 'Meu trabalho', ids: r.trabalho },
-      { id: 'operacao', rotulo: r.trabalho.length ? 'Operação' : 'Produção', ids: r.operacao },
-      { id: 'ferramentas', rotulo: 'Mais ferramentas', ids: r.ferramentas }
+      { id: 'operacao', rotulo: adm ? (r.trabalho.length ? 'Operação' : 'Produção') : (r.trabalho.length ? 'Produção da equipe' : 'Produção'), ids: r.operacao },
+      { id: 'ferramentas', rotulo: adm ? 'Mais ferramentas' : 'Mais', ids: r.ferramentas }
     ].filter(g => g.ids.length);            /* grupo sem item autorizado não existe */
   }
   function grupoHTML(g) {

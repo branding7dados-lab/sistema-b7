@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-24-zzz268';
+  const VERSAO = '2026-10-28-zzz269';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -79,9 +79,12 @@ B7.Auth = (function () {
     simulacao = { papel: papelAlvo, funcoes_extra: funcoesExtraAlvo || [],
                   funcao: alvo && alvo.funcao !== undefined ? alvo.funcao : undefined,
                   modulos: alvo && Array.isArray(alvo.modulos) ? alvo.modulos : undefined,
-                  niveis: alvo && alvo.niveis && typeof alvo.niveis === 'object' ? alvo.niveis : undefined };
+                  niveis: alvo && alvo.niveis && typeof alvo.niveis === 'object' ? alvo.niveis : undefined,
+                  acoes: alvo && alvo.acoes && typeof alvo.acoes === 'object' ? alvo.acoes : undefined };
     return true;
   }
+  /* zzz269: as ações da pessoa chegam depois (acoes_painel) */
+  function simularAcoes(mapa) { if (simulacao && mapa && typeof mapa === 'object') simulacao.acoes = mapa; }
   function encerrarSimulacao() { simulacao = null; }
   const emSimulacao = () => !!simulacao;
 
@@ -133,6 +136,12 @@ B7.Auth = (function () {
   function niveis() {
     const fonte = simulacao || sessao;
     return fonte && fonte.niveis && typeof fonte.niveis === 'object' ? fonte.niveis : null;
+  }
+  /* zzz269: o que a pessoa pode FAZER, ação por ação ({ 'design.criar': true, … }),
+     resolvido no banco (minha_sessao.acoes). null = sessão antiga, sem o campo. */
+  function acoes() {
+    const fonte = simulacao || sessao;
+    return fonte && fonte.acoes && typeof fonte.acoes === 'object' ? fonte.acoes : null;
   }
   const souVideomakerElegivel = () => funcao() === 'videomaker';
 
@@ -613,8 +622,83 @@ B7.Auth = (function () {
     };
   }
 
+  /* =================================================================
+     zzz269: ACESSO VIVO
+     A administração liberou (ou tirou) um acesso: vale na hora, sem a
+     pessoa precisar sair e entrar. O banco avisa pelo tempo real quando
+     muda a exceção da pessoa ou o padrão de uma função; ao voltar para a
+     aba e a cada 10 min também confere. Mudou → o sistema se atualiza
+     (o menu é montado uma vez, então recarrega — só quando nada está
+     sendo digitado ou salvo).
+     ================================================================= */
+  const assinaturaAcesso = s => JSON.stringify(s ? [s.papel, s.estado, s.eh_admin, s.funcao, s.funcoes_extra, s.modulos, s.niveis, s.acoes] : null);
+  let conferidoEm = 0, canalAcesso = null, tAcesso = 0, recarregarPendente = false;
+  async function atualizarAcesso() {
+    if (!sessao || simulacao || sessao.papel === 'cliente') return false;
+    conferidoEm = Date.now();
+    let nova = null;
+    try { nova = await B7.DB.minhaSessao(); } catch (e) { return false; }
+    if (!nova || !sessao || nova.id !== sessao.id) return false;
+    const mudou = assinaturaAcesso(nova) !== assinaturaAcesso(sessao);
+    if (!mudou) return false;
+    sessao = nova;
+    anotar('acesso', 'mudou');
+    aplicarAcessoNovo();
+    return true;
+  }
+  const ocupado = () => {
+    if (B7.Save && B7.Save.temPendencias && B7.Save.temPendencias()) return true;
+    if (document.querySelector('.fundo-modal, body.tele-aberto')) return true;
+    const a = document.activeElement;
+    return !!(a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && String(a.value || a.textContent || '').trim());
+  };
+  function aplicarAcessoNovo() {
+    /* o menu é remontado na hora (o mesmo que a prévia "Visualizar como" faz);
+       a tela atual redesenha quando a pessoa não estiver digitando */
+    if (B7.montarShellInterno) {
+      try {
+        const nav = document.querySelector('.nav'); if (nav) delete nav.dataset.shell;
+        B7.montarShellInterno();
+        if (B7.Perm && B7.Perm.aplicarAcoes) B7.Perm.aplicarAcoes();
+        const redesenhar = n => { if (!ocupado() || n > 40) { try { B7.Rota.ir(); } catch (e) {} } else setTimeout(() => redesenhar(n + 1), 3000); };
+        redesenhar(0);
+        B7.UI.toast('Seus acessos foram atualizados e já estão valendo.', { tipo: 'ok' });
+        return;
+      } catch (e) { /* cai no recarregamento */ }
+    }
+    if (recarregarPendente) return;
+    recarregarPendente = true;
+    try { sessionStorage.setItem('b7_acesso_mudou', '1'); } catch (e) {}
+    const tentar = (n) => {
+      if (!ocupado() || n > 40) { location.reload(); return; }
+      if (n === 0) B7.UI.toast('Seus acessos foram atualizados. A tela se atualiza assim que você terminar o que está fazendo.',
+        { tipo: 'info', tempo: 9000, acao: 'Atualizar agora', aoClicar: () => location.reload() });
+      setTimeout(() => tentar(n + 1), 3000);
+    };
+    setTimeout(() => tentar(0), 600);
+  }
+  function vigiarAcesso() {
+    if (canalAcesso || !sessao || sessao.papel === 'cliente' || !B7.DB || !B7.DB.canal) return;
+    const me = sessao.id;
+    const mexeu = () => { clearTimeout(tAcesso); tAcesso = setTimeout(atualizarAcesso, 700); };
+    canalAcesso = B7.DB.canal('b7-acesso-' + me, [
+      { table: 'perfil_modulos', filter: 'perfil_id=eq.' + me }, { table: 'perfil_acoes', filter: 'perfil_id=eq.' + me },
+      { table: 'funcao_modulos' }, { table: 'funcao_acoes' }
+    ], mexeu);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && sessao && Date.now() - conferidoEm > 60000) atualizarAcesso();
+  });
+  setInterval(() => { if (!document.hidden && sessao && Date.now() - conferidoEm > 600000) atualizarAcesso(); }, 60000);
+  /* liga quando a sessão existir; depois da troca, conta o que aconteceu */
+  const tLigaAcesso = setInterval(() => { if (sessao) { conferidoEm = conferidoEm || Date.now(); vigiarAcesso(); if (canalAcesso || sessao.papel === 'cliente') clearInterval(tLigaAcesso); } }, 2500);
+  setTimeout(() => {
+    let mudou = null; try { mudou = sessionStorage.getItem('b7_acesso_mudou'); sessionStorage.removeItem('b7_acesso_mudou'); } catch (e) {}
+    if (mudou && B7.UI) B7.UI.toast('Pronto: seus acessos novos já estão valendo.', { tipo: 'ok' });
+  }, 2500);
+
   return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, concluirLogin, sair, carregar, telaLogin, sessaoPersiste,
-           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel, funcao, modulos, niveis,
-           ehAdminReal, superadmin, simularPapel, encerrarSimulacao, emSimulacao,
+           usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel, funcao, modulos, niveis, acoes, atualizarAcesso,
+           ehAdminReal, superadmin, simularPapel, simularAcoes, encerrarSimulacao, emSimulacao,
            entrarComo, voltarParaMinhaConta, naContaDeOutro, contaDeOrigem };
 })();

@@ -174,6 +174,16 @@ B7.PreviaUsuario = (function () {
     /* zzz68: a prévia mostra o menu e o Painel pela FUNÇÃO e pelos módulos
        efetivos da pessoa (padrão da função + exceções) */
     B7.Auth.simularPapel(alvo.papel, alvo.funcoes_extra, { funcao: alvo.funcao, modulos: alvo.modulos, niveis: alvo.niveis });
+    /* zzz269: o que a pessoa pode fazer, ação por ação — os botões da prévia seguem isso */
+    const idAlvo = alvo.id;
+    if (B7.Auth.simularAcoes) B7.DB.rpc('acoes_painel', {}).then(r => {
+      const ef = r && r.efetivo && r.efetivo[idAlvo];
+      if (!ef || !alvo || alvo.id !== idAlvo) return;
+      const mapa = {}; Object.keys(ef).forEach(k => { mapa[k] = !!(ef[k] && ef[k].v); });
+      B7.Auth.simularAcoes(mapa);
+      if (B7.Perm && B7.Perm.aplicarAcoes) B7.Perm.aplicarAcoes();
+      if (B7.Rota && B7.Rota.ir) B7.Rota.ir();
+    }).catch(() => {});
     remontarNav();
     montarBanner();
     ligarBloqueioEscrita();
@@ -191,6 +201,7 @@ B7.PreviaUsuario = (function () {
     esquecerFaixa();
     document.body.classList.remove('modo-previa-usuario');
     if (B7.Auth) B7.Auth.encerrarSimulacao();
+    if (B7.Perm && B7.Perm.aplicarAcoes) B7.Perm.aplicarAcoes();
     remontarNav();
     irParaInicio();
     return true;

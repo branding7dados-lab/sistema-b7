@@ -62,6 +62,8 @@ B7.Topo = (function () {
   /* Criar exige poder editar no módulo (zzz215: nível Ver não cria) */
   const podeRota = r => !!(B7.Perm && B7.Perm.podeRota(r)) &&
     !(B7.Perm.moduloDaRota && B7.Perm.moduloDaRota(r) && !B7.Perm.podeNivel(B7.Perm.moduloDaRota(r), 'editar'));
+  /* zzz269: criar é uma AÇÃO com permissão própria (B7.Perm.pode); abrir a tela continua sendo a rota */
+  const podeAcao = (r, acao) => !!(B7.Perm && B7.Perm.podeRota(r)) && (B7.Perm.pode ? B7.Perm.pode(acao) : podeRota(r));
   const ehEquipe = () => !!(B7.Auth && B7.Auth.ehEquipe && B7.Auth.ehEquipe());
 
   /* Abre a tela dona do fluxo e aciona o MESMO botão que a pessoa
@@ -90,25 +92,25 @@ B7.Topo = (function () {
     { id: 'gravacao', rotulo: 'Nova gravação', dica: 'agenda e roteiros de um cliente', ic: IC.grav,
       contexto: ['gravacoes', 'gravacao', 'roteiros'],
       /* zzz64: ver a área de Gravações não é poder criar — criar é da equipe */
-      pode: () => podeRota('gravacoes') && !!(B7.Auth && B7.Auth.ehEquipe && B7.Auth.ehEquipe()),
+      pode: () => podeAcao('gravacoes', 'gravacao.criar'),
       fazer: () => B7.Dashboard.modalNovaGravacao() },
     { id: 'video', rotulo: 'Nova demanda de vídeo', dica: 'edição a partir de uma gravação', ic: IC.video,
       contexto: ['video'],
-      pode: () => podeRota('video'),
+      pode: () => podeAcao('video', 'video.criar'),
       fazer: () => naTelaClicar('#/video', '#vd-nova') },
     { id: 'linha', rotulo: 'Nova linha editorial', dica: 'planejamento de um mês', ic: IC.linha,
       contexto: ['linhas', 'linha'],
-      pode: () => podeRota('linhas') && !!(B7.Conteudo && B7.Conteudo.novaLinha) &&
+      pode: () => podeAcao('linhas', 'linha.editar') && !!(B7.Conteudo && B7.Conteudo.novaLinha) &&
         !(B7.Conteudo.souDesignerSomenteLeitura && B7.Conteudo.souDesignerSomenteLeitura()),
       fazer: () => B7.Conteudo.novaLinha() },
     /* a tela de Design só mostra "+ Nova demanda de Design" para a equipe */
     { id: 'design', rotulo: 'Nova demanda de Design', dica: 'peça avulsa fora da linha', ic: IC.design,
       contexto: ['design'],
-      pode: () => podeRota('design') && ehEquipe(),
+      pode: () => podeAcao('design', 'design.criar'),
       fazer: () => naTelaClicar('#/design', '#ds-nova') },
     { id: 'kanban', rotulo: 'Nova demanda de produção', dica: 'no quadro de Produção', ic: IC.kanban,
       contexto: ['kanban'],
-      pode: () => podeRota('kanban'),
+      pode: () => podeAcao('kanban', 'kanban.criar'),
       fazer: () => naTelaClicar('#/kanban', '#kb-nova') },
     { id: 'semana', rotulo: 'Novo status semanal', dica: 'acompanhamento de sete dias', ic: IC.semana,
       contexto: ['semanas', 'semana'],
@@ -116,7 +118,7 @@ B7.Topo = (function () {
       fazer: () => B7.Semana.modalNovo(null) },
     { id: 'cliente', rotulo: 'Novo cliente', dica: 'cadastrar um cliente', ic: IC.cliente, separar: true,
       contexto: ['clientes', 'cliente'],
-      pode: () => podeRota('clientes'),
+      pode: () => podeAcao('clientes', 'cliente.criar'),
       fazer: () => B7.Dashboard.modalNovoCliente() },
     /* zzz267: ferramentas de IA (js/ia-ferramentas.js) */
     { id: 'ia-reuniao', rotulo: 'Ata de reunião com IA', dica: 'grave ou envie o áudio', ic: IC.ia, separar: true, contexto: [],

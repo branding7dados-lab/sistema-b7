@@ -19,6 +19,7 @@ globalThis.B7 = {
     funcoesExtra: () => (sessao && sessao.extras) || [],
     modulos: () => (sessao && sessao.modulos) || null,
     niveis: () => (sessao && sessao.niveis) || null,
+    acoes: () => (sessao && sessao.acoes) || null,
     ehEquipe: () => !!sessao && ['admin', 'coordenador'].includes(sessao.papel)
   }
 };
@@ -94,5 +95,25 @@ const mig = await readFile(fileURLToPath(new URL('../migration_permissoes_niveis
 const travadas = new Set([...mig.matchAll(/alter policy \w+ on public\.(\w+)/g)].map(m => m[1]));
 const mapa = db.slice(db.indexOf('TABELA_MODULO'), db.indexOf('function traduzirPermissao'));
 for (const t of travadas) ok(new RegExp('\\b' + t + ':').test(mapa), 'mensagem de permissão para ' + t);
+
+/* zzz269: ações (o que a pessoa pode FAZER) — a tela segue o que o banco mandou na sessão */
+como({ id: 'a', papel: 'admin', funcao: null, acoes: { 'design.criar': false } });
+ok(P.pode('design.criar'), 'administrador pode tudo, mesmo com ação desligada na sessão');
+como({ id: 'c', papel: 'cliente', funcao: null, acoes: { 'design.criar': true } });
+ok(!P.pode('design.criar'), 'cliente nunca tem ação da equipe');
+como({ id: 'd', papel: 'designer', funcao: 'designer', modulos: ['design'], niveis: { design: 'total' }, acoes: { 'design.criar': true, 'design.mover': false } });
+ok(P.pode('design.criar') && !P.pode('design.mover'), 'designer: ação liberada e ação negada');
+ok(P.pode('acao.que.nao.existe'), 'ação fora da sessão: o banco decide');
+como({ id: 'd', papel: 'designer', funcao: 'designer', modulos: ['design'] });
+ok(P.pode('design.criar'), 'sessão antiga sem ações: o banco decide');
+
+/* toda ação usada na tela existe no catálogo da migration */
+const migA = await readFile(fileURLToPath(new URL('../migration_acoes.sql', import.meta.url)), 'utf8');
+const catalogo = new Set([...migA.matchAll(/^\s*\('([a-z]+\.[a-z_]+)',\s*'[a-z]+',/gm)].map(m => m[1]));
+ok(catalogo.size >= 20, 'catálogo de ações lido da migration');
+const telas = await Promise.all(['topo.js', 'design.js', 'video.js', 'kanban.js', 'dashboard.js', 'painel-coord.js', 'painel-multi.js', 'permissoes.js'].map(ler));
+const usadas = new Set(telas.flatMap(t => [...t.matchAll(/pode(?:Acao)?\((?:'[a-z]+',\s*)?'([a-z]+\.[a-z_]+)'\)/g)].map(m => m[1])));
+ok(usadas.size >= 6, 'telas usam ações');
+for (const a of usadas) ok(catalogo.has(a), 'ação "' + a + '" existe no banco');
 
 console.log('permissões: ' + n + ' conferências ok');
