@@ -66,8 +66,7 @@ alter table public.gravacoes add column if not exists pelo_cliente boolean not n
 create index if not exists gravacoes_projeto_idx on public.gravacoes (projeto_id);
 alter table public.demandas_edicao add column if not exists projeto_id uuid references public.projetos_avulsos(id) on delete set null;
 create index if not exists demandas_edicao_projeto_idx on public.demandas_edicao (projeto_id);
-alter table public.demandas_edicao drop constraint if exists demandas_edicao_origem_check;
-alter table public.demandas_edicao add constraint demandas_edicao_origem_check check (origem in ('manual', 'importacao', 'linha', 'projeto'));
+-- origem fica 'manual'; o vínculo com o projeto é o projeto_id (sem mexer na regra de origem)
 
 -- ações (Configurações → O que cada um pode fazer)
 insert into public.acoes (id, modulo, rotulo, descricao, ordem, padrao_funcoes, nivel_min) values
@@ -117,7 +116,7 @@ begin
       case when qtd = 1 then nome else nome || ' — vídeo ' || k end, p_prazo, drive, 'standby',
       case p_tipo when 'completo' then 'Projeto avulso: libera quando a gravação acontecer.'
                   else 'Projeto avulso: libera quando o material do cliente chegar (link do Drive).' end,
-      'projeto', auth.uid(), pid);
+      'manual', auth.uid(), pid);
   end loop;
   return pid;
 end $$;
@@ -221,8 +220,7 @@ begin
    where id = pid and etapa is distinct from (case when total > 0 and entregues = total then 'entregue' when abertas = 0 and aprov > 0 then 'aprovacao' else 'edicao' end);
   return null;
 end $$;
-drop trigger if exists zz_projeto_sync_demanda on public.demandas_edicao;
-create trigger zz_projeto_sync_demanda after update of editing_status on public.demandas_edicao
+create or replace trigger zz_projeto_sync_demanda after update of editing_status on public.demandas_edicao
   for each row when (new.projeto_id is not null and new.editing_status is distinct from old.editing_status)
   execute function public._projeto_sync_demanda();
 
@@ -237,8 +235,7 @@ begin
   end if;
   return null;
 end $$;
-drop trigger if exists zz_projeto_sync_gravacao on public.gravacoes;
-create trigger zz_projeto_sync_gravacao after update of concluida_em on public.gravacoes
+create or replace trigger zz_projeto_sync_gravacao after update of concluida_em on public.gravacoes
   for each row when (new.projeto_id is not null) execute function public._projeto_sync_gravacao();
 
 -- ------------------------------------------------------------ lista
