@@ -53,72 +53,72 @@ B7.Retro = (function () {
     const Mes = mes.charAt(0).toUpperCase() + mes.slice(1);
 
     L.push({ tema: 'capa', html:
-      '<div class="rt-capa"><span class="rt-selo">Retrospectiva B7</span>' +
-      '<h2 class="rt-mega">' + esc(Mes) + '<small>' + d.ano + '</small></h2>' +
-      '<p class="rt-lead">' + (d.parcial ? 'O mês ainda não acabou, mas já dá para contar uma boa história.' : 'Um mês inteiro de trabalho. Bora relembrar?') + '</p>' +
-      '<span class="rt-dica">Toque para avançar</span></div>' });
+      '<div class="rtv-capa"><span class="rtv-selo">Retrospectiva B7</span>' +
+      '<h2 class="rtv-mega">' + esc(Mes) + '<small>' + d.ano + '</small></h2>' +
+      '<p class="rtv-lead">' + (d.parcial ? 'O mês ainda não acabou, mas já dá para contar uma boa história.' : 'Um mês inteiro de trabalho. Bora relembrar?') + '</p>' +
+      '<span class="rtv-dica">Toque para avançar</span></div>' });
 
     if (entregas) L.push({ tema: 'roxo', html:
-      '<p class="rt-pre">Em ' + esc(mes) + ', a B7 entregou</p>' +
-      '<b class="rt-num" data-conta="' + entregas + '">0</b>' +
-      '<p class="rt-pos">' + plural(entregas, 'peça', 'peças') + ' prontas</p>' +
-      '<div class="rt-par">' +
+      '<p class="rtv-pre">Em ' + esc(mes) + ', a B7 entregou</p>' +
+      '<b class="rtv-num" data-conta="' + entregas + '">0</b>' +
+      '<p class="rtv-pos">' + plural(entregas, 'peça', 'peças') + ' prontas</p>' +
+      '<div class="rtv-par">' +
         '<span><b data-conta="' + n(t.videos) + '">0</b>' + plural(n(t.videos), 'vídeo editado', 'vídeos editados') + '</span>' +
         '<span><b data-conta="' + n(t.artes) + '">0</b>' + plural(n(t.artes), 'arte finalizada', 'artes finalizadas') + '</span></div>' +
       (n(d.entregas_mes_anterior) && entregas > n(d.entregas_mes_anterior)
-        ? '<p class="rt-sobe">↑ ' + Math.round((entregas / n(d.entregas_mes_anterior) - 1) * 100) + '% a mais que ' + esc(MESES[(d.mes + 10) % 12]) + '</p>' : '') });
+        ? '<p class="rtv-sobe">↑ ' + Math.round((entregas / n(d.entregas_mes_anterior) - 1) * 100) + '% a mais que ' + esc(MESES[(d.mes + 10) % 12]) + '</p>' : '') });
 
     if (n(t.posts)) L.push({ tema: 'rosa', html:
-      '<p class="rt-pre">Foram ao ar</p>' +
-      '<b class="rt-num" data-conta="' + n(t.posts) + '">0</b>' +
-      '<p class="rt-pos">' + plural(n(t.posts), 'post publicado', 'posts publicados') + '</p>' +
-      (n(t.clientes) ? '<p class="rt-lead">para <b>' + fmt(t.clientes) + '</b> ' + plural(n(t.clientes), 'cliente', 'clientes') + ' diferentes</p>' : '') +
-      '<div class="rt-chuva" aria-hidden="true">' + pecas(14) + '</div>' });
+      '<p class="rtv-pre">Foram ao ar</p>' +
+      '<b class="rtv-num" data-conta="' + n(t.posts) + '">0</b>' +
+      '<p class="rtv-pos">' + plural(n(t.posts), 'post publicado', 'posts publicados') + '</p>' +
+      (n(t.clientes) ? '<p class="rtv-lead">para <b>' + fmt(t.clientes) + '</b> ' + plural(n(t.clientes), 'cliente', 'clientes') + ' diferentes</p>' : '') +
+      '<div class="rtv-chuva" aria-hidden="true">' + pecas(14) + '</div>' });
 
     const bast = [[t.gravacoes, 'gravação', 'gravações', '🎬'], [t.roteiros, 'roteiro escrito', 'roteiros escritos', '✍️'],
       [t.legendas, 'legenda consertada pela IA', 'legendas consertadas pela IA', '💬']].filter(x => n(x[0]));
     if (bast.length) L.push({ tema: 'azul', html:
-      '<p class="rt-pre">Nos bastidores</p><h3 class="rt-tit">O que ninguém vê, mas faz tudo acontecer</h3>' +
-      '<ul class="rt-bast">' + bast.map((x, i) => '<li style="--i:' + i + '"><span aria-hidden="true">' + x[3] + '</span><b data-conta="' + n(x[0]) + '">0</b>' +
+      '<p class="rtv-pre">Nos bastidores</p><h3 class="rtv-tit">O que ninguém vê, mas faz tudo acontecer</h3>' +
+      '<ul class="rtv-bast">' + bast.map((x, i) => '<li style="--i:' + i + '"><span aria-hidden="true">' + x[3] + '</span><b data-conta="' + n(x[0]) + '">0</b>' +
         esc(plural(n(x[0]), x[1], x[2])) + '</li>').join('') + '</ul>' });
 
     if (d.pico && n(d.pico.entregas) > 1) {
       const p = dataLonga(d.pico.dia), sem = (d.semana || []).map(n), max = Math.max(1, ...sem), top = sem.indexOf(Math.max(...sem));
       L.push({ tema: 'laranja', html:
-        '<p class="rt-pre">O dia mais corrido foi</p>' +
-        '<h3 class="rt-dia">' + esc(p.texto) + '<small>' + esc(/sábado|domingo/.test(p.semana) ? 'um ' + p.semana : 'uma ' + p.semana + '-feira') + '</small></h3>' +
-        '<p class="rt-lead"><b data-conta="' + n(d.pico.entregas) + '">0</b> entregas num dia só. Ufa.</p>' +
-        (sem.some(Boolean) ? '<div class="rt-barras" role="img" aria-label="Entregas por dia da semana">' + sem.map((v, i) =>
+        '<p class="rtv-pre">O dia mais corrido foi</p>' +
+        '<h3 class="rtv-dia">' + esc(p.texto) + '<small>' + esc(/sábado|domingo/.test(p.semana) ? 'um ' + p.semana : 'uma ' + p.semana + '-feira') + '</small></h3>' +
+        '<p class="rtv-lead"><b data-conta="' + n(d.pico.entregas) + '">0</b> entregas num dia só. Ufa.</p>' +
+        (sem.some(Boolean) ? '<div class="rtv-barras" role="img" aria-label="Entregas por dia da semana">' + sem.map((v, i) =>
           '<span class="' + (i === top ? 'on' : '') + '" style="--h:' + Math.max(4, Math.round(v * 100 / max)) + '%;--i:' + i + '"><i></i><small>' + DIAS[i].slice(0, 3) + '</small></span>').join('') + '</div>' +
-          '<p class="rt-nota">' + esc(DIAS[top].charAt(0).toUpperCase() + DIAS[top].slice(1)) + ' é o dia da B7.</p>' : '') });
+          '<p class="rtv-nota">' + esc(DIAS[top].charAt(0).toUpperCase() + DIAS[top].slice(1)) + ' é o dia da B7.</p>' : '') });
     }
 
     if (n(t.aprovadas)) {
       const r = horas(t.resposta_horas);
       L.push({ tema: 'verde', html:
-        '<p class="rt-pre">Os clientes disseram “aprovado”</p>' +
-        '<b class="rt-num" data-conta="' + n(t.aprovadas) + '">0</b>' +
-        '<p class="rt-pos">' + plural(n(t.aprovadas), 'vez', 'vezes') + '</p>' +
-        (r ? '<p class="rt-lead">e responderam, em média, em <b>' + esc(r) + '</b></p>' : '') +
-        '<div class="rt-check" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>' });
+        '<p class="rtv-pre">Os clientes disseram “aprovado”</p>' +
+        '<b class="rtv-num" data-conta="' + n(t.aprovadas) + '">0</b>' +
+        '<p class="rtv-pos">' + plural(n(t.aprovadas), 'vez', 'vezes') + '</p>' +
+        (r ? '<p class="rtv-lead">e responderam, em média, em <b>' + esc(r) + '</b></p>' : '') +
+        '<div class="rtv-check" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>' });
     }
 
     const c = d.cliente_do_mes;
     if (c && n(c.total)) L.push({ tema: 'ouro', html:
-      '<p class="rt-pre">Cliente do mês</p>' +
-      '<div class="rt-logo">' + (c.logo ? '<img src="' + esc(c.logo) + '" alt="">' : '<i>' + esc(ini(c.nome)) + '</i>') + '</div>' +
-      '<h3 class="rt-tit">' + esc(c.nome) + '</h3>' +
-      '<p class="rt-lead"><b data-conta="' + n(c.total) + '">0</b> entregas para o cliente em ' + esc(mes) + '</p>' +
-      '<div class="rt-par">' + [[c.videos, 'vídeo', 'vídeos'], [c.artes, 'arte', 'artes'], [c.posts, 'post', 'posts']].filter(x => n(x[0]))
+      '<p class="rtv-pre">Cliente do mês</p>' +
+      '<div class="rtv-logo">' + (c.logo ? '<img src="' + esc(c.logo) + '" alt="">' : '<i>' + esc(ini(c.nome)) + '</i>') + '</div>' +
+      '<h3 class="rtv-tit">' + esc(c.nome) + '</h3>' +
+      '<p class="rtv-lead"><b data-conta="' + n(c.total) + '">0</b> entregas para o cliente em ' + esc(mes) + '</p>' +
+      '<div class="rtv-par">' + [[c.videos, 'vídeo', 'vídeos'], [c.artes, 'arte', 'artes'], [c.posts, 'post', 'posts']].filter(x => n(x[0]))
         .map(x => '<span><b>' + fmt(x[0]) + '</b>' + plural(n(x[0]), x[1], x[2]) + '</span>').join('') + '</div>' });
 
     const pd = d.podio || [];
     if (pd.length) {
       const ordem = pd.length === 3 ? [1, 0, 2] : pd.length === 2 ? [1, 0] : [0];
       L.push({ tema: 'noite', html:
-        '<p class="rt-pre">Quem mais entregou</p><h3 class="rt-tit">O pódio de ' + esc(mes) + '</h3>' +
-        '<div class="rt-podio">' + ordem.map(i => { const p = pd[i]; return '<div class="rt-deg rt-deg' + (i + 1) + '" style="--i:' + i + '">' +
-          '<span class="rt-foto">' + (p.foto ? '<img src="' + esc(p.foto) + '" alt="">' : '<i>' + esc(ini(p.nome)) + '</i>') + '</span>' +
+        '<p class="rtv-pre">Quem mais entregou</p><h3 class="rtv-tit">O pódio de ' + esc(mes) + '</h3>' +
+        '<div class="rtv-podio">' + ordem.map(i => { const p = pd[i]; return '<div class="rtv-deg rtv-deg' + (i + 1) + '" style="--i:' + i + '">' +
+          '<span class="rtv-foto">' + (p.foto ? '<img src="' + esc(p.foto) + '" alt="">' : '<i>' + esc(ini(p.nome)) + '</i>') + '</span>' +
           '<b>' + esc(String(p.nome || '').split(' ')[0]) + '</b><small>' + fmt(p.entregas) + ' ' + plural(n(p.entregas), 'entrega', 'entregas') + '</small>' +
           '<em>' + (i + 1) + 'º</em></div>'; }).join('') + '</div>' });
     }
@@ -129,20 +129,20 @@ B7.Retro = (function () {
         [v.gravacoes, 'gravação', 'gravações'], [v.legendas, 'legenda consertada', 'legendas consertadas']].filter(x => n(x[0]));
       const pr = n(v.com_prazo) ? Math.round(n(v.no_prazo) * 100 / n(v.com_prazo)) : null;
       L.push({ tema: 'voce', html:
-        '<p class="rt-pre">E você' + (v.nome ? ', ' + esc(v.nome) : '') + '?</p><h3 class="rt-tit">O seu ' + esc(mes) + '</h3>' +
-        '<ul class="rt-meu">' + itens.map((x, i) => '<li style="--i:' + i + '"><b data-conta="' + n(x[0]) + '">0</b>' + esc(plural(n(x[0]), x[1], x[2])) + '</li>').join('') + '</ul>' +
-        (pr !== null ? '<div class="rt-anel" style="--p:' + pr + '"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52"/><circle cx="60" cy="60" r="52" pathLength="100"/></svg>' +
+        '<p class="rtv-pre">E você' + (v.nome ? ', ' + esc(v.nome) : '') + '?</p><h3 class="rtv-tit">O seu ' + esc(mes) + '</h3>' +
+        '<ul class="rtv-meu">' + itens.map((x, i) => '<li style="--i:' + i + '"><b data-conta="' + n(x[0]) + '">0</b>' + esc(plural(n(x[0]), x[1], x[2])) + '</li>').join('') + '</ul>' +
+        (pr !== null ? '<div class="rtv-anel" style="--p:' + pr + '"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52"/><circle cx="60" cy="60" r="52" pathLength="100"/></svg>' +
           '<span><b>' + pr + '%</b>no prazo</span></div>' : '') });
     }
 
     L.push({ tema: 'fim', html:
-      '<div class="rt-capa"><span class="rt-selo">Retrospectiva B7</span>' +
-      '<h2 class="rt-mega rt-mega-s">' + (d.parcial ? 'E ainda tem mais ' + esc(mes) + ' pela frente.' : 'Obrigado por ' + esc(mes) + '.') + '</h2>' +
-      '<p class="rt-lead">' + (d.parcial ? 'Volte no fim do mês para ver a história completa.' : 'Que ' + esc(MESES[d.mes % 12]) + ' venha ainda maior. 🚀') + '</p>' +
-      '<div class="rt-fim-acoes"><button type="button" class="rt-bt" data-rt-denovo>Ver de novo</button>' +
-      '<button type="button" class="rt-bt rt-bt-pri" data-rt-fechar>Fechar</button></div>' +
-      '<button type="button" class="rt-outro" data-rt-anterior>Ver ' + esc(MESES[(d.mes + 10) % 12]) + ' →</button></div>' +
-      '<div class="rt-confete" aria-hidden="true">' + pecas(28) + '</div>' });
+      '<div class="rtv-capa"><span class="rtv-selo">Retrospectiva B7</span>' +
+      '<h2 class="rtv-mega rtv-mega-s">' + (d.parcial ? 'E ainda tem mais ' + esc(mes) + ' pela frente.' : 'Obrigado por ' + esc(mes) + '.') + '</h2>' +
+      '<p class="rtv-lead">' + (d.parcial ? 'Volte no fim do mês para ver a história completa.' : 'Que ' + esc(MESES[d.mes % 12]) + ' venha ainda maior. 🚀') + '</p>' +
+      '<div class="rtv-fim-acoes"><button type="button" class="rtv-bt" data-rt-denovo>Ver de novo</button>' +
+      '<button type="button" class="rtv-bt rtv-bt-pri" data-rt-fechar>Fechar</button></div>' +
+      '<button type="button" class="rtv-outro" data-rt-anterior>Ver ' + esc(MESES[(d.mes + 10) % 12]) + ' →</button></div>' +
+      '<div class="rtv-confete" aria-hidden="true">' + pecas(28) + '</div>' });
     return L;
   }
 
@@ -166,20 +166,20 @@ B7.Retro = (function () {
   function montar(d) {
     const L = historias(d);
     const raiz = document.createElement('div');
-    raiz.className = 'rt'; raiz.setAttribute('role', 'dialog'); raiz.setAttribute('aria-modal', 'true');
+    raiz.className = 'rtv'; raiz.setAttribute('role', 'dialog'); raiz.setAttribute('aria-modal', 'true');
     raiz.setAttribute('aria-label', 'Retrospectiva de ' + MESES[d.mes - 1] + ' de ' + d.ano);
-    raiz.innerHTML = '<div class="rt-palco">' +
-      '<div class="rt-fundo" aria-hidden="true"><i></i><i></i><i></i></div>' +
-      '<div class="rt-barra">' + L.map(() => '<span><i></i></span>').join('') + '</div>' +
-      '<button type="button" class="rt-x" data-rt-fechar aria-label="Fechar (Esc)">✕</button>' +
-      '<button type="button" class="rt-pausa" data-rt-pausa aria-label="Pausar">❚❚</button>' +
-      '<div class="rt-hist" aria-live="polite"></div>' +
-      '<button type="button" class="rt-nav rt-ant" data-rt-ant aria-label="Anterior"></button>' +
-      '<button type="button" class="rt-nav rt-prox" data-rt-prox aria-label="Próxima"></button></div>';
+    raiz.innerHTML = '<div class="rtv-palco">' +
+      '<div class="rtv-fundo" aria-hidden="true"><i></i><i></i><i></i></div>' +
+      '<div class="rtv-barra">' + L.map(() => '<span><i></i></span>').join('') + '</div>' +
+      '<button type="button" class="rtv-x" data-rt-fechar aria-label="Fechar (Esc)">✕</button>' +
+      '<button type="button" class="rtv-pausa" data-rt-pausa aria-label="Pausar">❚❚</button>' +
+      '<div class="rtv-hist" aria-live="polite"></div>' +
+      '<button type="button" class="rtv-nav rtv-ant" data-rt-ant aria-label="Anterior"></button>' +
+      '<button type="button" class="rtv-nav rtv-prox" data-rt-prox aria-label="Próxima"></button></div>';
     document.body.appendChild(raiz);
-    document.documentElement.classList.add('rt-aberto');
-    const hist = raiz.querySelector('.rt-hist'), palco = raiz.querySelector('.rt-palco');
-    const barras = [...raiz.querySelectorAll('.rt-barra span')];
+    document.documentElement.classList.add('rtv-aberto');
+    const hist = raiz.querySelector('.rtv-hist'), palco = raiz.querySelector('.rtv-palco');
+    const barras = [...raiz.querySelectorAll('.rtv-barra span')];
     const btPausa = raiz.querySelector('[data-rt-pausa]');
     let i = -1, t = 0, inicio = 0, resta = DURACAO, pausado = false;
 
@@ -211,7 +211,7 @@ B7.Retro = (function () {
       i = k; resta = DURACAO;
       const h = L[i];
       palco.dataset.tema = h.tema;
-      hist.innerHTML = '<div class="rt-cena">' + h.html + '</div>';
+      hist.innerHTML = '<div class="rtv-cena">' + h.html + '</div>';
       marcar(); contar(hist);
       ligarBotoes();
       if (!pausado) correr();
@@ -227,7 +227,7 @@ B7.Retro = (function () {
       document.removeEventListener('keydown', tecla, true);
       document.removeEventListener('visibilitychange', vis);
       raiz.classList.add('saindo');
-      document.documentElement.classList.remove('rt-aberto');
+      document.documentElement.classList.remove('rtv-aberto');
       setTimeout(() => raiz.remove(), 260);
       if (aberto === api) aberto = null;
     }
@@ -238,7 +238,7 @@ B7.Retro = (function () {
       else if (e.key === ' ' && !(e.target && e.target.closest && e.target.closest('button'))) { e.preventDefault(); pausar(!pausado); }
     }
     document.addEventListener('keydown', tecla, true);
-    raiz.querySelector('.rt-x').onclick = fechar;
+    raiz.querySelector('.rtv-x').onclick = fechar;
     btPausa.onclick = () => pausar(!pausado);
 
     /* segurar pausa; toque curto navega */
@@ -247,7 +247,7 @@ B7.Retro = (function () {
       if (segurando) { segurando = false; pausar(false); return; }
       ir(i + sinal);
     };
-    raiz.querySelectorAll('.rt-nav').forEach(b => {
+    raiz.querySelectorAll('.rtv-nav').forEach(b => {
       b.addEventListener('pointerdown', () => { apertou = Date.now(); timerSeg = setTimeout(() => { segurando = true; pausar(true); }, 260); });
       b.addEventListener('pointerup', e => { clearTimeout(timerSeg); lado(e, b.hasAttribute('data-rt-prox') ? 1 : -1); });
       b.addEventListener('pointerleave', () => { clearTimeout(timerSeg); if (segurando) { segurando = false; pausar(false); } });
@@ -267,9 +267,9 @@ B7.Retro = (function () {
     const hoje = new Date();
     ano = ano || hoje.getFullYear(); mes = mes || hoje.getMonth() + 1;
     const carregando = document.createElement('div');
-    carregando.className = 'rt rt-carregando';
-    carregando.innerHTML = '<div class="rt-palco" data-tema="capa"><div class="rt-fundo" aria-hidden="true"><i></i><i></i><i></i></div>' +
-      '<div class="rt-cena"><div class="rt-capa"><span class="rt-selo">Retrospectiva B7</span><p class="rt-lead">Juntando o mês de ' + esc(MESES[mes - 1]) + '…</p></div></div></div>';
+    carregando.className = 'rtv rtv-carregando';
+    carregando.innerHTML = '<div class="rtv-palco" data-tema="capa"><div class="rtv-fundo" aria-hidden="true"><i></i><i></i><i></i></div>' +
+      '<div class="rtv-cena"><div class="rtv-capa"><span class="rtv-selo">Retrospectiva B7</span><p class="rtv-lead">Juntando o mês de ' + esc(MESES[mes - 1]) + '…</p></div></div></div>';
     document.body.appendChild(carregando);
     let d;
     try { d = await B7.DB.rpc('retrospectiva_mes', { p_ano: ano, p_mes: mes }); }
