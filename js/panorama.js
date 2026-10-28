@@ -209,6 +209,10 @@ B7.Panorama = (function () {
         '<b id="pan-mes-rot" aria-live="polite">' + esc(mesRotulo()) + '</b>' +
         '<button type="button" class="pan-mes-bt" data-mes="1" aria-label="Próximo mês">' + IC.dir + '</button>' +
         '<button type="button" class="pan-hoje" data-mes="0"' + (ehMesAtual() ? ' disabled' : '') + '>Este mês</button>' +
+      '</div>' +
+      /* zzz283: os atalhos do mês ficam num grupo à parte (no celular, dentro
+         do seletor de mês, espremiam o nome do mês até virar uma letra por linha) */
+      '<div class="pan-acoes">' +
         /* zzz254: entregas, prazos e aprovações do mês, por cliente e por pessoa */
         (B7.Relatorio && B7.Auth.ehEquipe && B7.Auth.ehEquipe() ? '<button type="button" class="pan-hoje pan-relatorio" data-relatorio>Relatório do mês</button>' : '') +
         /* zzz280: o mês contado em histórias */

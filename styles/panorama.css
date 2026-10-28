@@ -212,6 +212,11 @@ html.modo-leve .pan-linha,html.modo-leve .pan-kpi,html.modo-leve .pan-barra i,ht
 }
 /* zzz254: relatório do mês */
 .pan-relatorio{background:var(--grad-curto, var(--acento));color:#fff;}
+/* zzz283: Relatório e Retrospectiva num grupo próprio, ao lado do mês */
+.pan-acoes{display:flex;gap:8px;align-items:center;}
+.pan-acoes:empty{display:none;}
+.pan-hoje{white-space:nowrap;}
+@media (max-width:760px){ .pan-acoes{width:100%;} .pan-acoes .pan-hoje{flex:1;height:40px;} }
 .rl-modal{max-width:980px;}
 .rl-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;}
 .rl-cab h3{margin:0;}
