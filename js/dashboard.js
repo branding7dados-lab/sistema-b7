@@ -970,6 +970,7 @@ B7.Dashboard = (function () {
        contadores e última atividade. Mesmas ações (ligar()) de antes. */
     const comGrav = clientes.filter(c => c.total_gravacoes > 0).length;
     const fixadosN = clientes.filter(c => c.is_pinned).length;
+    const avulsosN = clientes.filter(c => c.contrato === 'avulso').length;
     const pil = (id, rot, n) => '<button type="button" class="cl2-pil' + (id === 'todos' ? ' on' : '') + '" data-f="' + id + '">' + rot + '<b>' + n + '</b></button>';
     painel().innerHTML = '<div class="conteudo cl2">' +
       '<div class="cab-conteudo cl2-cab"><div><h1>Clientes</h1>' +
@@ -981,7 +982,10 @@ B7.Dashboard = (function () {
             '<label class="cl2-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
               '<input id="busca-cli" placeholder="Buscar cliente…" autocomplete="off" aria-label="Buscar cliente"></label>' +
             '<div class="cl2-pils" id="filtro-cli" role="group" aria-label="Filtrar clientes">' +
-              pil('todos', 'Todos', clientes.length) + pil('com', 'Com gravações', comGrav) + pil('sem', 'Sem gravações', clientes.length - comGrav) +
+              pil('todos', 'Todos', clientes.length) +
+              /* zzz274: com algum cliente avulso, dá para separar quem é mensal de quem comprou um projeto */
+              (avulsosN ? pil('mensal', 'Mensais', clientes.length - avulsosN) + pil('avulso', 'Avulsos', avulsosN) : '') +
+              pil('com', 'Com gravações', comGrav) + pil('sem', 'Sem gravações', clientes.length - comGrav) +
             '</div>' +
             '<div class="cl2-ordem" id="ordem-cli" role="group" aria-label="Ordem">' +
               '<button type="button" class="on" data-o="recentes">Recentes</button><button type="button" data-o="az">A–Z</button></div>' +
@@ -996,6 +1000,8 @@ B7.Dashboard = (function () {
       let lista = clientes.slice();
       if (filtroAtual === 'com') lista = lista.filter(c => c.total_gravacoes > 0);
       if (filtroAtual === 'sem') lista = lista.filter(c => !c.total_gravacoes);
+      if (filtroAtual === 'mensal') lista = lista.filter(c => c.contrato !== 'avulso');
+      if (filtroAtual === 'avulso') lista = lista.filter(c => c.contrato === 'avulso');
       if (termo) lista = lista.filter(c => c.nome.toLowerCase().includes(termo));
       lista.sort(ordem === 'az'
         ? (a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')
@@ -1038,7 +1044,8 @@ B7.Dashboard = (function () {
     return '<div class="cl2-card' + (c.is_pinned ? ' fixado' : '') + (c.total_gravacoes ? '' : ' sem-grav') + '" data-cliente="' + esc(c.id) + '"' +
         ' style="--i:' + Math.min(i, 16) + '" tabindex="0" title="Abrir ' + esc(c.nome) + '">' +
       '<span class="cl2-logo">' + B7.UI.avatarCliente(c.nome, c.logo_url) + '</span>' +
-      '<div class="cl2-tx"><b>' + esc(c.nome) + (c.teste ? ' <i class="tag-teste" title="Cliente fictício: fora dos números do Panorama e da TV">teste</i>' : '') + '</b>' +
+      '<div class="cl2-tx"><b>' + esc(c.nome) + (c.teste ? ' <i class="tag-teste" title="Cliente fictício: fora dos números do Panorama e da TV">teste</i>' : '') +
+          (c.contrato === 'avulso' ? ' <i class="tag-avulso" title="Cliente avulso: comprou um projeto pontual, não tem mês contratado">avulso</i>' : '') + '</b>' +
         '<span class="cl2-meta">' +
           '<span class="cl2-n" title="Gravações">' + IC_CL2.grav + c.total_gravacoes + '</span>' +
           '<span class="cl2-n" title="Roteiros">' + IC_CL2.rot + c.total_roteiros + '</span>' +
@@ -1086,6 +1093,7 @@ B7.Dashboard = (function () {
     { k: 'video', r: 'Vídeos', rota: 'video' },
     { k: 'design', r: 'Design', rota: 'design' },
     { k: 'ideias', r: 'Ideias' },
+    { k: 'projetos', r: 'Projetos', rota: 'projetos', equipe: true },
     { k: 'inteligencia', r: 'Inteligência' },
     { k: 'arquivados', r: 'Arquivados', equipe: true }
   ];
@@ -1108,6 +1116,14 @@ B7.Dashboard = (function () {
       '<span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></label>').join('') + '</div></div>';
   const lerModo = m => { const l = [...m.querySelectorAll('input[name="cli-modo"]:checked')].map(r => r.value); return (l.length ? l : ['linha']).join(','); };
   const hrefSecao = (id, k) => '#/cliente/' + id + (k === 'geral' ? '' : '/' + k);
+  /* zzz274: contrato — mensal (produção todo mês) ou avulso (comprou um
+     projeto pontual: um vídeo, uma edição). Avulso não entra nas contas de
+     "mês atrasado" do Panorama e da Gestão e não usa o portal. */
+  const campoContrato = atual => '<div class="mb"><label class="rot">CONTRATO</label><div class="cli-modos cli-contrato">' +
+    [['mensal', 'Mensal', 'produção todo mês'], ['avulso', 'Avulso', 'comprou um projeto pontual (vídeo, edição)']].map(x =>
+      '<label class="cli-modo"><input type="radio" name="cli-contrato" value="' + x[0] + '"' + ((atual || 'mensal') === x[0] ? ' checked' : '') + '>' +
+      '<span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></label>').join('') + '</div></div>';
+  const lerContrato = m => { const r = m.querySelector('input[name="cli-contrato"]:checked'); return r ? r.value : 'mensal'; };
 
   /* cabeçalho compacto + seções: o mesmo em todas as seções do cliente
      (inclusive as que moram em js/conteudo.js: Editorial, Ideias, Inteligência) */
@@ -1118,20 +1134,26 @@ B7.Dashboard = (function () {
     const gestor = souEquipeCli();
     const criaGravacao = gestor;
     const quandoTx = c.ultima_atividade ? 'atualizado ' + B7.UI.quando(c.ultima_atividade) : '';
-    const resumoMes = B7.ResumoMes && gestor;
+    const resumoMes = B7.ResumoMes && gestor && c.contrato !== 'avulso';
+    const avulso = c.contrato === 'avulso';
+    const criaProjeto = gestor && B7.Projetos && B7.Projetos.podeGerir();
     return '<div class="cli-shell">' +
       (podeIrRota('clientes') ? '<a class="cli-voltar" href="#/clientes">' + IC_VOLTAR + 'Clientes</a>' : '') +
       '<header class="cli-cab">' +
         B7.UI.avatarCliente(c.nome, c.logo_url, 'cli-av') +
         '<div class="cli-cab-tx"><h1>' + esc(c.nome) + '</h1>' +
-          ((quandoTx || modosDe(c).join() !== 'linha') ? '<p class="cli-meta">' +
+          ((quandoTx || modosDe(c).join() !== 'linha' || c.contrato === 'avulso') ? '<p class="cli-meta">' +
+            (c.contrato === 'avulso' ? '<span class="cli-modo-chip avulso">Avulso</span>' : '') +
             (modosDe(c).join() !== 'linha' ? modosDe(c).map(k => '<span class="cli-modo-chip">' + esc(MODOS_CLIENTE.find(x => x[0] === k)[1]) + '</span>').join('') : '') +
             esc(quandoTx) + '</p>' : '') + '</div>' +
         (gestor ? '<div class="cli-acoes">' +
-          (criaGravacao ? '<button class="b pri fina cli-so-largo" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + '<span>Nova gravação</span></button>' : '') +
+          /* zzz274: no cliente avulso, o botão principal abre um projeto (o projeto já monta gravação, roteiro e edição) */
+          (avulso && criaProjeto ? '<button class="b pri fina cli-so-largo" data-novo-projeto>' + IC.mais + '<span>Novo projeto</span></button>'
+            : criaGravacao ? '<button class="b pri fina cli-so-largo" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + '<span>Nova gravação</span></button>' : '') +
           (resumoMes ? '<button class="b contorno fina cli-so-largo" data-resumo-mes>Resumo do mês</button>' : '') +
           '<div class="menu"><button class="ico" aria-label="Mais ações do cliente">⋯</button><div class="lista">' +
             (criaGravacao ? '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' : '') +
+            (criaProjeto ? '<button data-novo-projeto>Novo projeto avulso</button>' : '') +
             (resumoMes ? '<button data-resumo-mes>Resumo do mês</button>' : '') +
             '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
             (ehAdmin() ? '<button data-ir="#/previa/' + esc(c.id) + '">Visualizar como cliente</button>' : '') +
@@ -1155,6 +1177,7 @@ B7.Dashboard = (function () {
     const raiz = painel().querySelector('.cli-tela') || painel(); if (!raiz.querySelector('.cli-shell')) return;
     raiz.querySelectorAll('[data-nova-gravacao]').forEach(b => b.onclick = ev => { ev.stopPropagation(); modalNovaGravacao(b.dataset.novaGravacao); });
     raiz.querySelectorAll('[data-editar-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); modalEditarCliente(b.dataset.editarCli); });
+    raiz.querySelectorAll('[data-novo-projeto]').forEach(b => b.onclick = ev => { ev.stopPropagation(); B7.Projetos.novo(cliente); });
     raiz.querySelectorAll('[data-excluir-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); excluirCliente(b.dataset.excluirCli); });
     raiz.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
     raiz.querySelectorAll('[data-resumo-mes]').forEach(b => b.onclick = () => {
@@ -1360,6 +1383,7 @@ B7.Dashboard = (function () {
        : sec === 'arquivados' ? '<div id="aba-arquivados">' + B7.UI.skeleton('cards', { n: 3, titulo: false }) + '</div>'
        : sec === 'video' ? secaoVideoCliente(cliente, lista)
        : sec === 'design' ? secaoDesignCliente(cliente, lista)
+       : sec === 'projetos' ? '<div id="cli-projetos">' + B7.UI.skeleton('lista', { n: 2 }) + '</div>'
        : abaRoteirosCliente(cliente, roteiros), seq)) return;
 
     ligar();
@@ -1392,6 +1416,13 @@ B7.Dashboard = (function () {
     if (sec === 'gravacoes') ligarFiltrosGravacoes(gravacoes);
     if (sec === 'arquivados') carregarArquivadosCliente(id);
     if (sec === 'video' || sec === 'design') ligarFiltroSecao();
+    /* zzz274: projetos avulsos — seção própria e, no cliente avulso, logo no topo da visão geral */
+    if (B7.Projetos && (sec === 'projetos' || (sec === 'geral' && cliente.contrato === 'avulso'))) {
+      let el = document.getElementById('cli-projetos');
+      const cx = painel().querySelector('.cli-corpo');
+      if (!el && cx) { el = document.createElement('div'); el.id = 'cli-projetos'; cx.prepend(el); }
+      if (el) B7.Projetos.secaoCliente(el, cliente);
+    }
     /* Oportunidades do cliente (fase 7): segmentos + próximas datas */
     if (sec === 'geral' && B7.Oportunidades) {
       const cx = painel().querySelector('.cli-corpo');
@@ -3068,6 +3099,7 @@ B7.Dashboard = (function () {
       campoLogo(null) +
       '<div class="mb"><label class="rot">OBSERVAÇÕES <span class="leve">— opcional</span></label>' +
       '<textarea class="campo" id="nc-obs" rows="2" placeholder="Tom de voz, contato, particularidades…"></textarea></div>' +
+      campoContrato('mensal') +
       campoModo('linha') +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Criar cliente</button></div>');
@@ -3089,6 +3121,7 @@ B7.Dashboard = (function () {
           const nova = await logo.resolver(c.id, null) || {};
           const modo = lerModo(m);
           if (modo !== 'linha' && 'modo' in c) nova.modo = modo;   /* padrão = só linha editorial */   /* 'modo' só existe depois da migração */
+          if (lerContrato(m) === 'avulso' && 'contrato' in c) nova.contrato = 'avulso';
           if (Object.keys(nova).length) {
             await B7.DB.atualizarCliente(c.id, nova);
             completo = Object.assign({}, c, nova);
@@ -3166,6 +3199,7 @@ B7.Dashboard = (function () {
       campoLogo(c.logo_url) +
       '<div class="mb"><label class="rot">OBSERVAÇÕES <span class="leve">— opcional</span></label>' +
       '<textarea class="campo" id="ec-obs" rows="2">' + esc(c.observacoes || '') + '</textarea></div>' +
+      (c.contrato !== undefined ? campoContrato(c.contrato) : '') +
       (c.modo !== undefined ? campoModo(c.modo) : '') +
       /* zzz170: o grupo do cliente no WhatsApp ("Enviar no WhatsApp" abre ele) */
       (c.whatsapp_grupo !== undefined
@@ -3186,6 +3220,7 @@ B7.Dashboard = (function () {
       botao.disabled = true;
       const patch = { nome: nome.value.trim(), observacoes: m.querySelector('#ec-obs').value };
       if (c.modo !== undefined) patch.modo = lerModo(m);
+      if (c.contrato !== undefined) patch.contrato = lerContrato(m);
       if (c.whatsapp_grupo !== undefined) patch.whatsapp_grupo = m.querySelector('#ec-wa').value.trim();
       try {
         /* a logo resolve primeiro: se o envio falhar, nada é gravado e a

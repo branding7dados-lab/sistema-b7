@@ -50,7 +50,7 @@ function respostaRest(url) {
 
 const ROTAS = ['#/', '#/clientes', '#/cliente/c1', '#/gravacoes', '#/gravacao/g1', '#/roteiros', '#/linhas',
   '#/publicacoes', '#/calendario', '#/kanban', '#/aprovacoes', '#/oportunidades', '#/video', '#/design',
-  '#/semanas', '#/painel', '#/lixeira', '#/arquivados', '#/config'];
+  '#/semanas', '#/painel', '#/lixeira', '#/arquivados', '#/config', '#/projetos', '#/cliente/c1/projetos'];
 
 const falhas = [];
 const navegador = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});

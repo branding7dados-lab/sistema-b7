@@ -242,6 +242,11 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return B7.Gestao.abrir(params);
     }
+    /* zzz274: projetos avulsos (js/projetos.js) */
+    if (partes[0] === 'projetos' && B7.Projetos) {
+      mostrar('tela-dashboard');
+      return B7.Projetos.abrir(partes[1] || null, params);
+    }
     if (partes[0] === 'oportunidades' && B7.Oportunidades) {
       mostrar('tela-dashboard');
       return B7.Oportunidades.abrir(params);

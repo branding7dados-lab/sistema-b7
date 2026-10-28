@@ -319,3 +319,22 @@ begin
     execute d;
   end if;
 end $$;
+
+-- ------------------------------------------------------------ demandas: etiqueta "Avulso" (projetos_avulsos_3_resumo)
+create or replace view public.demandas_edicao_resumo with (security_invoker = true) as
+ SELECT de.id, de.client_id, de.gravacao_id, de.videomaker_id, de.competencia_ano, de.competencia_mes, de.codigo, de.titulo, de.pacote,
+    de.prazo, de.link_material, de.editing_status, de.observacoes, de.origem, de.import_lote_id, de.criado_por, de.created_at, de.updated_at,
+    de.entregue_em, de.deleted_at, cl.nome AS cliente_nome, COALESCE(cl.servico, 'ativo'::text) AS cliente_servico, pf.nome AS videomaker_nome,
+    g.situacao AS gravacao_situacao, g.nome AS gravacao_nome, de.kanban_id, de.prioridade, de.roteiro_id, de.standby_revisar_em,
+    cl.logo_url AS cliente_logo_url, COALESCE(rot.roteiros_vinculados, '[]'::jsonb) AS roteiros_vinculados, de.enviado_grupo_em,
+    de.upado_drive_em, de.conteudo_id, de.formato_video, de.referencia_link,
+    de.projeto_id, pa.nome AS projeto_nome, pa.tipo AS projeto_tipo, pa.etapa AS projeto_etapa
+   FROM demandas_edicao de
+     LEFT JOIN clientes cl ON cl.id = de.client_id
+     LEFT JOIN perfis pf ON pf.id = de.videomaker_id
+     LEFT JOIN gravacoes g ON g.id = de.gravacao_id
+     LEFT JOIN projetos_avulsos pa ON pa.id = de.projeto_id
+     LEFT JOIN LATERAL ( SELECT jsonb_agg(jsonb_build_object('id', r.id, 'titulo', r.titulo) ORDER BY r."position", r.created_at) AS roteiros_vinculados
+           FROM demandas_edicao_roteiros der JOIN roteiros r ON r.id = der.roteiro_id AND r.deleted_at IS NULL
+          WHERE der.demanda_id = de.id) rot ON true
+  WHERE de.deleted_at IS NULL;
