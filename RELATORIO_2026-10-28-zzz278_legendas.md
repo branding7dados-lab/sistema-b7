@@ -23,7 +23,7 @@ Pedido do Kevin: trazer para o sistema o agente que ele usava no GPT para revisa
 - Legenda que a IA não devolveu fica como estava. Cada parte que falha é tentada uma segunda vez.
 
 ## As regras da IA
-É o prompt do agente do Kevin (regras 1 a 16 e a checagem contra reescrita), adaptado para o formato de entrada e saída por índice. Fica em `supabase/functions/_shared/ia/extra.ts`, operação `srt`, com temperatura 0.1. As marcas vêm de `legenda_termos` (geral + cliente).
+É o prompt do agente do Kevin (regras 1 a 16 e a checagem contra reescrita), adaptado para o formato de entrada e saída por índice. Fica em `supabase/functions/_shared/ia/extra.ts`, operação `srt`, com temperatura 0.1. As marcas vêm de `legenda_termos` (geral + cliente) e incluem o **nome de todos os clientes** da agência (pedido do Kevin: se o vídeo citar um cliente, o nome sai certo mesmo que o vídeo seja de outro).
 
 ## Permissões
 - Módulo novo **Legendas** (`legendas`): coordenação e videomaker com acesso Total por padrão; o administrador sempre tem.

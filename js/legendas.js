@@ -147,7 +147,7 @@ B7.Legendas = (function () {
       const cues = ler(texto);
       if (!cues) return B7.UI.toast(texto.trim() ? 'Isso não parece uma legenda .srt (faltam os tempos "-->").' : 'Escolha o arquivo .srt ou cole o texto.', { tipo: 'erro' });
       const clienteId = fixo ? S.clienteId : (cx.querySelector('#lg-cli').value || null);
-      if (!clienteId && !await B7.UI.confirmar({ titulo: 'Sem cliente?', texto: 'Sem o cliente, a IA usa só a lista geral de marcas. Seguir assim?', rotulo: 'Seguir' })) return;
+      if (!clienteId && !await B7.UI.confirmar({ titulo: 'Sem cliente?', texto: 'Sem o cliente, a IA usa a lista geral e o nome de todos os clientes, mas não os termos específicos de um cliente. Seguir assim?', rotulo: 'Seguir' })) return;
       const nome = arquivo.nome || 'legenda.srt';
       S = Object.assign(S || {}, { nome, clienteId, cues: cues.map(c => Object.assign(c, { ia: c.texto, usar: 'ia' })), feito: false, salvoComo: null });
       await processar(cx);
@@ -291,10 +291,10 @@ B7.Legendas = (function () {
     const doCli = todos.filter(t => t.client_id && t.client_id === clienteTermos);
     cx.innerHTML =
       '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Lista geral</h2></div>' +
-        '<p class="gt-nota">Marcas, siglas e nomes que valem para todos os vídeos. A IA sempre usa esta grafia.</p>' +
+        '<p class="gt-nota">Marcas, siglas e nomes que valem para todos os vídeos. A IA sempre usa esta grafia — e o nome de todos os clientes da agência já entra sozinho.</p>' +
         chips(todos.filter(t => !t.client_id), podeGeral() && podeEditar()) + add('lg-add-geral', podeGeral() && podeEditar(), 'Ex.: Instagram, PJe-Calc, DHT (separe por vírgula)') + '</section>' +
       '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Do cliente</h2></div>' +
-        '<p class="gt-nota">Nome do dono, produtos, procedimentos, bairros… O nome do cliente já entra sozinho.</p>' +
+        '<p class="gt-nota">Nome do dono, produtos, procedimentos, bairros… Valem quando o vídeo é deste cliente.</p>' +
         '<div class="mb"><select class="campo" id="lg-tcli"><option value="">Escolha o cliente…</option>' +
           (clientes || []).map(c => '<option value="' + esc(c.id) + '"' + (c.id === clienteTermos ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select></div>' +
         (clienteTermos ? chips(doCli, podeEditar()) + add('lg-add-cli', podeEditar(), 'Ex.: Dr. Fulano, Botox, Harmonização (separe por vírgula)') : '') + '</section>';

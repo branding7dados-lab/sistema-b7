@@ -103,6 +103,10 @@ export async function carregarContexto(sb: SupabaseClient, p: Pedido, papel: str
     q = p.clienteId ? q.or('client_id.is.null,client_id.eq.' + p.clienteId) : q.is('client_id', null);
     const { data: termos } = await q;
     const geral = (termos || []).filter((x: any) => !x.client_id).map((x: any) => String(x.termo));
+    /* o nome de TODOS os clientes da agência entra como marca conhecida: se um
+       vídeo citar outro cliente, a grafia sai certa mesmo assim */
+    const { data: clis } = await sb.from('clientes').select('nome').is('deleted_at', null).limit(300);
+    for (const c of clis || []) { const n = String((c as any).nome || '').trim(); if (n && !geral.includes(n)) geral.push(n); }
     const doCliente = (termos || []).filter((x: any) => x.client_id).map((x: any) => String(x.termo));
     if (cliente) doCliente.unshift(cliente);
     linhas.push('KNOWN BRANDS AND TERMS (official spelling): ' + (geral.join(', ') || '(none)'));
