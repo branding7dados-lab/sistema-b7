@@ -2046,3 +2046,4 @@ button.pa-cel:disabled{opacity:.5;cursor:wait;}
 .pj-tempo b{font-size:13.5px;}
 .pj-tempo li:not(.feito):not(.agora) b{color:var(--ink-3);font-weight:600;}
 .pj-tempo small{font-size:12px;color:var(--ink-4);}
+[data-campo-modo][hidden]{display:none;}

@@ -1111,7 +1111,7 @@ B7.Dashboard = (function () {
     ['roteiros', 'Roteiros e trends', 'a B7 faz roteiros, gravações e trends']
   ];
   const modosDe = c => { const l = String((c && c.modo) || 'linha').split(',').filter(x => MODOS_CLIENTE.some(m => m[0] === x)); return l.length ? l : ['linha']; };
-  const campoModo = atual => '<div class="mb"><label class="rot">COMO TRABALHAMOS COM ESTE CLIENTE <span class="leve">— marque tudo o que vale</span></label><div class="cli-modos">' +
+  const campoModo = atual => '<div class="mb" data-campo-modo><label class="rot">COMO TRABALHAMOS COM ESTE CLIENTE <span class="leve">— marque tudo o que vale</span></label><div class="cli-modos">' +
     MODOS_CLIENTE.map(x => '<label class="cli-modo"><input type="checkbox" name="cli-modo" value="' + x[0] + '"' + (modosDe({ modo: atual }).includes(x[0]) ? ' checked' : '') + '>' +
       '<span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></label>').join('') + '</div></div>';
   const lerModo = m => { const l = [...m.querySelectorAll('input[name="cli-modo"]:checked')].map(r => r.value); return (l.length ? l : ['linha']).join(','); };
@@ -1123,6 +1123,12 @@ B7.Dashboard = (function () {
     [['mensal', 'Mensal', 'produção todo mês'], ['avulso', 'Avulso', 'comprou um projeto pontual (vídeo, edição)']].map(x =>
       '<label class="cli-modo"><input type="radio" name="cli-contrato" value="' + x[0] + '"' + ((atual || 'mensal') === x[0] ? ' checked' : '') + '>' +
       '<span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></label>').join('') + '</div></div>';
+  /* no avulso, "como trabalhamos" não se aplica — o que vale é o projeto: o campo some */
+  const ligarContrato = m => {
+    const pintar = () => { const c = m.querySelector('[data-campo-modo]'); if (c) c.hidden = lerContrato(m) === 'avulso'; };
+    m.querySelectorAll('input[name="cli-contrato"]').forEach(r => r.addEventListener('change', pintar));
+    pintar();
+  };
   const lerContrato = m => { const r = m.querySelector('input[name="cli-contrato"]:checked'); return r ? r.value : 'mensal'; };
 
   /* cabeçalho compacto + seções: o mesmo em todas as seções do cliente
@@ -3114,6 +3120,7 @@ B7.Dashboard = (function () {
       '<button class="b pri" data-ok>Criar cliente</button></div>');
 
     const logo = ligarCampoLogo(m, null);
+    ligarContrato(m);
     const nome = m.querySelector('#nc-nome');
     const botao = m.querySelector('[data-ok]');
 
@@ -3220,6 +3227,7 @@ B7.Dashboard = (function () {
       '<button class="b pri" data-ok>Salvar alterações</button></div>');
 
     const logo = ligarCampoLogo(m, c.logo_url);
+    ligarContrato(m);
     const lerFixa = podeFixa ? ligarGravacaoFixa(m) : null;
     const nome = m.querySelector('#ec-nome');
     const botao = m.querySelector('[data-ok]');
