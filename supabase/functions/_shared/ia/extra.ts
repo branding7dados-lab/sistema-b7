@@ -7,20 +7,22 @@
 //   marca    confere se um texto está na voz do cliente (memória dele)
 //   ajustes  o comentário do cliente vira uma lista de tarefas objetivas
 //   reuniao  áudio de uma reunião vira resumo, decisões e tarefas
+//   demandas (zzz277) lê os roteiros de uma gravação e propõe as demandas de
+//            edição: título curto e o resumo para quem edita, uma por roteiro
 //
 // Nada é gravado no sistema por aqui: a tela mostra, a pessoa decide.
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { Mensagem } from './provedor.ts';
 import { FORMATO_RICO } from './formato.ts';
 
-export type Operacao = 'pedido' | 'riscos' | 'legenda' | 'marca' | 'ajustes' | 'reuniao';
+export type Operacao = 'pedido' | 'riscos' | 'legenda' | 'marca' | 'ajustes' | 'reuniao' | 'demandas';
 export type Pedido = {
-  operacao: Operacao; clienteId: string | null; titulo: string; texto: string; tipo: string;
+  operacao: Operacao; clienteId: string | null; refId: string | null; titulo: string; texto: string; tipo: string;
   imagem: { mime: string; base64: string } | null; audio: { mime: string; base64: string } | null;
 };
 
 export const LIMITE = { texto: 4000, imagem: 1_400_000, audio: 9_000_000 };
-const OPS: Operacao[] = ['pedido', 'riscos', 'legenda', 'marca', 'ajustes', 'reuniao'];
+const OPS: Operacao[] = ['pedido', 'riscos', 'legenda', 'marca', 'ajustes', 'reuniao', 'demandas'];
 const IMAGENS = ['image/png', 'image/jpeg', 'image/webp'];
 const AUDIOS = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav', 'audio/aac', 'audio/flac', 'audio/x-m4a', 'audio/m4a'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,7 +33,8 @@ export function validar(corpo: Record<string, unknown>): { ok: true; pedido: Ped
   const operacao = corpo.operacao as Operacao;
   if (!OPS.includes(operacao)) return { ok: false };
   const clienteId = typeof corpo.cliente_id === 'string' && UUID.test(corpo.cliente_id) ? corpo.cliente_id : null;
-  const p: Pedido = { operacao, clienteId, titulo: txt(corpo.titulo, 160), texto: txt(corpo.texto, LIMITE.texto), tipo: txt(corpo.tipo, 30), imagem: null, audio: null };
+  const refId = typeof corpo.ref_id === 'string' && UUID.test(corpo.ref_id) ? corpo.ref_id : null;
+  const p: Pedido = { operacao, clienteId, refId, titulo: txt(corpo.titulo, 160), texto: txt(corpo.texto, LIMITE.texto), tipo: txt(corpo.tipo, 30), imagem: null, audio: null };
   if (operacao === 'legenda') {
     const im = corpo.imagem as Record<string, unknown> | null;
     const mime = im && typeof im.mime === 'string' ? im.mime.toLowerCase() : '';
@@ -46,6 +49,7 @@ export function validar(corpo: Record<string, unknown>): { ok: true; pedido: Ped
     if (!dado || !AUDIOS.includes(mime)) return { ok: false };
     p.audio = { mime: mime === 'audio/x-m4a' || mime === 'audio/m4a' ? 'audio/mp4' : mime, base64: dado };
   }
+  if (operacao === 'demandas' && !refId) return { ok: false };
   if ((operacao === 'pedido') && p.titulo.length < 3) return { ok: false };
   if ((operacao === 'marca' || operacao === 'ajustes') && p.texto.length < 3) return { ok: false };
   if ((operacao === 'pedido' || operacao === 'marca' || operacao === 'legenda') && !clienteId) return { ok: false };
@@ -57,6 +61,7 @@ export function permitido(p: Pedido, papel: string): boolean {
   if (p.operacao === 'pedido') return true;                 // cliente e equipe
   if (papel === 'cliente') return false;
   if (p.operacao === 'riscos') return papel === 'admin';
+  if (p.operacao === 'demandas') return papel !== 'designer';
   return true;                                               // equipe interna
 }
 
@@ -74,6 +79,30 @@ export async function carregarContexto(sb: SupabaseClient, p: Pedido, papel: str
     cliente = String(data.nome || '');
   }
   const linhas: string[] = [];
+  if (p.operacao === 'demandas') {
+    /* a gravação e os roteiros dela, lidos com o RLS de quem pediu */
+    const { data: g } = await sb.from('gravacoes').select('id,nome,client_id,data_gravacao,concluida_em,observacoes').eq('id', p.refId).is('deleted_at', null).maybeSingle();
+    if (!g) return null;
+    const { data: cli } = await sb.from('clientes').select('nome').eq('id', g.client_id).maybeSingle();
+    cliente = String((cli && cli.nome) || '');
+    const { data: rots } = await sb.from('roteiros').select('id,titulo,objetivo,observacao_gravacao,formato,tema,pilar,status,position')
+      .eq('recording_session_id', g.id).is('deleted_at', null).order('position');
+    if (!rots || !rots.length) return null;
+    const ids = rots.map((r: any) => r.id);
+    const { data: cenas } = await sb.from('cenas').select('script_id,position,tipo,funcao,direcao,texto').in('script_id', ids).order('position');
+    const limpa = (v: unknown, n: number) => String(v || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
+    linhas.push('GRAVAÇÃO: ' + limpa(g.nome, 120) + ' · cliente ' + cliente + (g.data_gravacao ? ' · gravada em ' + g.data_gravacao : '') + (g.observacoes ? ' · obs.: ' + limpa(g.observacoes, 300) : ''));
+    let total = 0;
+    for (const r of rots as any[]) {
+      const cs = (cenas || []).filter((c: any) => c.script_id === r.id);
+      const bloco = ['', 'ROTEIRO id=' + r.id + ' · "' + limpa(r.titulo, 140) + '"' + (r.formato ? ' · formato: ' + limpa(r.formato, 40) : '') + (r.tema ? ' · tema: ' + limpa(r.tema, 80) : ''),
+        r.objetivo ? 'Objetivo: ' + limpa(r.objetivo, 300) : '', r.observacao_gravacao ? 'Obs. de gravação: ' + limpa(r.observacao_gravacao, 300) : '',
+        ...cs.slice(0, 25).map((c: any, i: number) => (i + 1) + '. ' + [c.funcao && limpa(c.funcao, 30), limpa(c.texto, 260), c.direcao && '(direção: ' + limpa(c.direcao, 160) + ')'].filter(Boolean).join(' — '))]
+        .filter(x => x !== '').join('\n');
+      if (total + bloco.length > 14000) { linhas.push('(roteiros restantes cortados por tamanho)'); break; }
+      total += bloco.length; linhas.push(bloco);
+    }
+  }
   if (p.operacao === 'riscos') {
     const { data, error } = await sb.rpc('gestao_painel');
     if (error || !data) return null;
@@ -140,17 +169,26 @@ export function montarMensagens(p: Pedido, ctx: Contexto): Mensagem[] {
         'Estrutura: uma frase de abertura com o assunto; "## 📝 Resumo" (3 a 6 tópicos); "## ✅ Decisões"; "## 🎯 Tarefas" como lista de checagem "- [ ] tarefa — responsável (se dito) — prazo (se dito)"; "## ❓ Em aberto" se houver; e "> 💡" com o próximo passo mais importante.',
         'Escreva só o que foi dito. Nome, número e data só se aparecerem no áudio. Se o áudio não tiver fala, responda exatamente [[SEM_FALA]].', FORMATO_RICO),
         user(p.titulo ? 'ASSUNTO INFORMADO: ' + p.titulo : 'Transcreva mentalmente e escreva a ata.')];
+    case 'demandas':
+      return [sis(
+        'TAREFA: a gravação abaixo, do cliente ' + ctx.cliente + ', aconteceu. Para CADA roteiro, prepare a demanda de edição do vídeo para o editor.',
+        'Para cada roteiro devolva: "roteiro_id" (copie exatamente o id), "titulo" (curto, até 60 caracteres, o assunto do vídeo — sem "Roteiro", sem data) e "resumo" (o briefing para quem edita, 2 a 6 linhas: formato e duração aproximada se der para deduzir, a ideia central, as cenas/falas principais na ordem, textos que devem aparecer na tela, chamada final e qualquer cuidado citado na direção).',
+        'Use SÓ o que está nos roteiros. Não invente informação, preço, data ou nome. Um item por roteiro, na mesma ordem.',
+        'Responda SOMENTE com JSON: {"itens":[{"roteiro_id":"...","titulo":"...","resumo":"..."}]}.'),
+        user(...ctx.linhas)];
   }
 }
 
-export const ehLista = (p: Pedido) => p.operacao === 'pedido' || p.operacao === 'legenda' || p.operacao === 'ajustes';
-export const limiteDeSaida = (p: Pedido) => p.operacao === 'reuniao' ? 2500 : p.operacao === 'riscos' ? 1600 : p.operacao === 'marca' ? 1400 : 1200;
-export const prazo = (p: Pedido) => p.operacao === 'reuniao' ? 120_000 : 45_000;
+export const ehLista = (p: Pedido) => p.operacao === 'pedido' || p.operacao === 'legenda' || p.operacao === 'ajustes' || p.operacao === 'demandas';
+export const limiteDeSaida = (p: Pedido) => p.operacao === 'demandas' ? 3500 : p.operacao === 'reuniao' ? 2500 : p.operacao === 'riscos' ? 1600 : p.operacao === 'marca' ? 1400 : 1200;
+export const prazo = (p: Pedido) => p.operacao === 'reuniao' ? 120_000 : p.operacao === 'demandas' ? 90_000 : 45_000;
 
 export function esquema(p: Pedido): Record<string, unknown> | undefined {
   if (p.operacao === 'legenda') return { type: 'object', properties: { itens: { type: 'array', items: { type: 'object',
     properties: { titulo: { type: 'string' }, legenda: { type: 'string' }, hashtags: { type: 'string' } }, required: ['legenda'] } } }, required: ['itens'] };
   if (p.operacao === 'pedido' || p.operacao === 'ajustes') return { type: 'object', properties: { itens: { type: 'array', items: { type: 'string' } }, resumo: { type: 'string' } }, required: ['itens'] };
+  if (p.operacao === 'demandas') return { type: 'object', properties: { itens: { type: 'array', items: { type: 'object',
+    properties: { roteiro_id: { type: 'string' }, titulo: { type: 'string' }, resumo: { type: 'string' } }, required: ['roteiro_id', 'titulo'] } } }, required: ['itens'] };
   return undefined;
 }
 
@@ -167,6 +205,13 @@ export function limpador(p: Pedido): (bruto: string) => string {
     const j = jsonDe(bruto); if (!j || !Array.isArray(j.itens)) return '';
     const itens = j.itens.map((x: unknown) => String(x || '').trim()).filter(Boolean).slice(0, p.operacao === 'pedido' ? 4 : 15).map((x: string) => x.slice(0, 240));
     return JSON.stringify({ itens, resumo: typeof j.resumo === 'string' ? j.resumo.slice(0, 240) : '' });
+  };
+  if (p.operacao === 'demandas') return (bruto: string) => {
+    const j = jsonDe(bruto); if (!j || !Array.isArray(j.itens)) return '';
+    const itens = j.itens.filter((x: any) => x && UUID.test(String(x.roteiro_id || '')) && String(x.titulo || '').trim()).slice(0, 40).map((x: any) => ({
+      roteiro_id: String(x.roteiro_id), titulo: String(x.titulo).trim().slice(0, 80), resumo: String(x.resumo || '').trim().slice(0, 1500)
+    }));
+    return itens.length ? JSON.stringify({ itens }) : '';
   };
   if (p.operacao === 'legenda') return (bruto: string) => {
     const j = jsonDe(bruto); if (!j || !Array.isArray(j.itens)) return '';

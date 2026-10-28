@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz277', versao: 'zzz277', em: '2026-10-29T03:00:00-03:00',
+    titulo: 'A IA monta as demandas de edição a partir dos roteiros',
+    rota: 'video', ia: 'chat',
+    itens: ['Na tela da gravação, “✨ Demandas de edição com IA” lê os roteiros e prepara uma demanda para cada vídeo: título curto, resumo para quem edita e prazo (3 dias úteis depois da gravação).',
+            'Você confere, ajusta o título, o resumo, o prazo e quem edita, e só então confirma. Roteiro que já tem demanda não entra de novo.',
+            'Ao concluir uma gravação, o aviso já oferece “Gerar demandas com IA”.'] },
   { id: 'v-zzz276', versao: 'zzz276', em: '2026-10-29T02:00:00-03:00',
     titulo: 'Cliente avulso: cadastro mais simples',
     rota: 'clientes',
