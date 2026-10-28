@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz273', versao: 'zzz273', em: '2026-10-28T23:00:00-03:00',
+    titulo: 'Entrar com Google também no programa do Windows',
+    itens: ['No programa do Windows, "Entrar com Google" e "Vincular conta Google" abrem o Google no navegador do computador; depois de escolher a conta, o programa entra sozinho.',
+            'Precisa da versão nova do programa: ela chega pela atualização automática (ou em Ajuda → Procurar atualização).'] },
   { id: 'v-zzz272', versao: 'zzz272', em: '2026-10-28T22:00:00-03:00',
     titulo: 'Política de Privacidade e Termos de Serviço',
     itens: ['O Sistema B7 agora tem Política de Privacidade (de acordo com a LGPD e com as regras do Google) e Termos de Serviço, em páginas públicas com link fixo.',

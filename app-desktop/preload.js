@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('B7Desktop', {
   estadoAtualizacao: () => ipcRenderer.invoke('b7:estado-atualizacao'),
   aoAtualizacao: cb => { ipcRenderer.on('b7:atualizacao', (ev, e) => { try { cb(e); } catch (x) {} }); },
   instalarAtualizacao: () => ipcRenderer.invoke('b7:instalar'),
+  /* zzz273: Entrar com Google pelo navegador do computador (a volta chega no programa) */
+  oauth: url => ipcRenderer.invoke('b7:oauth', url),
   /* zzz170: WhatsApp encaixado na tela #/whatsapp (app-desktop/whatsapp.js) */
   wa: {
     mostrar: r => ipcRenderer.invoke('b7:wa:mostrar', r),

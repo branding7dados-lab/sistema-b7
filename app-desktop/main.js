@@ -413,6 +413,50 @@ ipcMain.handle('b7:atualizar', () => conferir(true));
 ipcMain.handle('b7:estado-atualizacao', () => estadoAtualizacao);
 ipcMain.handle('b7:instalar', () => instalarAgora());
 
+/* -------------------------------------------- Entrar com Google (zzz273)
+   O Google não deixa fazer login dentro de programas (só no navegador).
+   Então: o site pede o endereço de login ao Supabase, o programa abre no
+   navegador do computador e escuta a volta num endereço local fixo
+   (http://127.0.0.1:47821/callback — cadastrado nas Redirect URLs do
+   Supabase). Chegou o ?code=, devolve para o site, que troca pela sessão
+   (o código só vale junto com o segredo que ficou no próprio site). */
+const http = require('node:http');
+const PORTA_OAUTH = 47821;
+let esperaOauth = null;
+const paginaVolta = ok => '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Sistema B7</title>' +
+  '<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0A0714;color:#EDEAF7;font:16px system-ui,Segoe UI,Arial}' +
+  '.c{text-align:center;padding:32px 28px;border-radius:22px;background:#150F22;border:1px solid rgba(255,255,255,.08);max-width:420px}' +
+  'h1{font-size:21px;margin:0 0 8px}p{margin:0;color:#A9A2C4}</style></head><body><div class="c"><h1>' +
+  (ok ? 'Pronto! Pode voltar ao Sistema B7' : 'Não foi possível concluir') + '</h1><p>' +
+  (ok ? 'O programa já recebeu a sua conta Google. Esta aba pode ser fechada.' : 'Volte ao programa e tente de novo.') +
+  '</p></div></body></html>';
+ipcMain.handle('b7:oauth', async (ev, url) => {
+  if (typeof url !== 'string' || !/^https:\/\/[a-z0-9-]+\.supabase\.co\//.test(url)) return { erro: 'Endereço de login inválido.' };
+  if (esperaOauth) esperaOauth.cancelar();
+  return new Promise(resolve => {
+    let fim = false;
+    const servidor = http.createServer((req, res) => {
+      const u = new URL(req.url, 'http://127.0.0.1:' + PORTA_OAUTH);
+      if (u.pathname !== '/callback') { res.writeHead(404); res.end(); return; }
+      const code = u.searchParams.get('code'), erro = u.searchParams.get('error_description') || u.searchParams.get('error');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(paginaVolta(!!code && !erro));
+      terminar(code ? { code } : { erro: erro || 'Sem resposta do Google.' });
+    });
+    const terminar = r => {
+      if (fim) return; fim = true; esperaOauth = null;
+      clearTimeout(relogio);
+      try { servidor.close(); } catch (e) {}
+      if (janela) { if (janela.isMinimized()) janela.restore(); janela.focus(); }
+      resolve(r);
+    };
+    const relogio = setTimeout(() => terminar({ erro: 'O login com o Google demorou demais. Tente de novo.' }), 5 * 60 * 1000);
+    esperaOauth = { cancelar: () => terminar({ erro: 'cancelado' }) };
+    servidor.on('error', () => terminar({ erro: 'Não foi possível esperar a volta do Google (porta ' + PORTA_OAUTH + ' ocupada).' }));
+    servidor.listen(PORTA_OAUTH, '127.0.0.1', () => { shell.openExternal(url); });
+  });
+});
+
 /* ------------------------------------------------------- arranque */
 app.setAppUserModelId('br.com.branding7.sistemab7');
 app.on('second-instance', () => {
