@@ -78,7 +78,13 @@ B7.AoVivo = (function () {
     window.addEventListener('hashchange', aoTrocarTela);
     document.addEventListener('visibilitychange', aoVisibilidade);
   }
-  function aoTrocarTela() { anunciar(false); if (painel) pintar(); if (compartilhando()) emitirTela(true); }
+  function aoTrocarTela() {
+    anunciar(false); if (painel) pintar(); if (compartilhando()) emitirTela(true);
+    /* zzz287: se o super (acompanhando) troca de tela por conta própria — ex.: abre
+       o WhatsApp — ele deixa de acompanhar, em vez de a tela ficar brigando com o
+       av-tela da pessoa (que puxava de volta e travava tudo). */
+    if (seguindo) { if (seguindo.auto) seguindo.auto = false; else pararDeSeguir(true); }
+  }
   function aoVisibilidade() { anunciar(true); if (document.hidden && compartilhando()) pararDeCompartilhar(); }
   function enviar(event, payload) { try { canal && canal.send({ type: 'broadcast', event, payload }); } catch (e) {} }
 
@@ -189,7 +195,7 @@ B7.AoVivo = (function () {
       if (Date.now() - seguindo.ultimo > 30000) marcarEspera(true);   /* parou de chegar: a pessoa saiu/minimizou */
     }, 9000);
     montarSeguir(nome);
-    if (m && m.hash && m.hash !== location.hash) location.hash = m.hash;
+    if (m && m.hash && m.hash !== location.hash) { seguindo.auto = true; location.hash = m.hash; }
   }
   function pararDeSeguir(semVoltar) {
     if (!seguindo) return;
@@ -226,7 +232,7 @@ B7.AoVivo = (function () {
     if (!seguindo || !p || p.de !== seguindo.id) return;
     seguindo.ultimo = Date.now(); marcarEspera(false);
     /* mesma rota que a pessoa */
-    if (p.hash && p.hash !== (location.hash || '#/')) { try { location.hash = p.hash; } catch (e) {} atualizarRotuloSeguir(p.hash); }
+    if (p.hash && p.hash !== (location.hash || '#/')) { seguindo.auto = true; try { location.hash = p.hash; } catch (e) {} atualizarRotuloSeguir(p.hash); }
     /* rolagem proporcional (as telas podem ter alturas diferentes) */
     try {
       const doc = document.documentElement;

@@ -62,6 +62,10 @@
 /* barra do super enquanto acompanha */
 .av-barra-seguir{position:fixed;top:0;left:0;right:0;z-index:9500;display:flex;align-items:center;gap:10px;
   padding:9px 16px;font:600 13px 'Inter',system-ui,sans-serif;color:#fff;
+  /* zzz287: no celular a barra não pode ficar embaixo da hora/bateria (notch) */
+  padding-top:calc(9px + env(safe-area-inset-top,0px));
+  padding-left:calc(16px + env(safe-area-inset-left,0px));
+  padding-right:calc(16px + env(safe-area-inset-right,0px));
   background:linear-gradient(90deg,#7c4dff,#d6336c);box-shadow:0 6px 24px -8px #0009;animation:avBarra .25s ease both;}
 @keyframes avBarra{from{transform:translateY(-100%)}to{transform:none}}
 .av-barra-seguir b{font-weight:800;}
@@ -72,7 +76,7 @@
 .av-bs-parar{margin-left:auto;padding:6px 14px;border-radius:999px;border:0;background:#ffffff26;color:#fff;font:700 12.5px 'Inter',sans-serif;cursor:pointer;transition:background .15s;}
 .av-bs-parar:hover{background:#ffffff3d;}
 html.av-seguindo{scroll-behavior:auto;}
-html.av-seguindo body{padding-top:38px;}
+html.av-seguindo body{padding-top:calc(38px + env(safe-area-inset-top,0px));}
 
 /* cursor remoto (a seta da pessoa, com o nome) — só na tela do super */
 .av-cursor-remoto{position:fixed;z-index:9490;top:-40px;left:-40px;pointer-events:none;transform:translate(-2px,-2px);
