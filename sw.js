@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v471';
+const CACHE = 'roteiros-b7-v472';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -25,7 +25,7 @@ const CASCA = [
   './js/permissoes.js', './js/portal.js', './js/portal-equipe.js', './js/portal-pedidos.js', './js/portal-calendario.js', './js/portal-satisfacao.js', './js/portal-comunicacao.js', './js/gestao.js', './js/kanban.js', './js/perfil.js', './js/equipe.js', './js/silencio.js', './js/relatorio.js', './js/pacotes.js', './js/seguranca.js', './js/foto.js',
   /* zzz45: estava faltando. Sem rede, o "Visualizar como…" sumia em
      silêncio porque o arquivo nunca entrava no cache. */
-  './js/previa-usuario.js', './js/menu-contexto.js',
+  './js/previa-usuario.js', './js/perfil-lateral.js', './js/menu-contexto.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js', './js/app-nativo.js', './js/hoje.js', './js/convite-app.js', './js/atalhos-app.js', './styles/hoje.css',
   './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js', './js/ia-rico.js', './js/ia-ferramentas.js', './js/ia-chat.js',
   /* zzz158: html2canvas, jsPDF e XLSX (1,4 MB) saíram da casca — elas só

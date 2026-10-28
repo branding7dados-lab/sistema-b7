@@ -64,6 +64,8 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
+  /* zzz269: troca de conta ("Entrar como" e "Voltar para minha conta") abre direto, sem abertura */
+  try { if (sessionStorage.getItem('b7_troca_rapida')) { sessionStorage.removeItem('b7_troca_rapida'); document.documentElement.classList.add('ab-sem'); } } catch (e) {}
   /* zzz230/zzz231: estilo da abertura completa, antes da primeira pintura
      (o CSS da sequência começa a andar nela). Ordem: a escolha da pessoa
      neste aparelho (Configurações → Aparência); se for "Padrão do sistema",
@@ -444,6 +446,7 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
 <script defer src="js/portal-comunicacao.js"></script>
 <script defer src="js/gestao.js"></script>
 <script defer src="js/previa-usuario.js"></script>
+<script defer src="js/perfil-lateral.js"></script>
 <script defer src="js/autosave.js"></script>
 <script defer src="js/print.js"></script>
 <script defer src="js/resumo-mes.js"></script>

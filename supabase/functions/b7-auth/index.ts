@@ -26,7 +26,7 @@ import * as EM from './email_modelo.ts';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
-const VERSAO = '2026-10-24-resumo-semanal';
+const VERSAO = '2026-10-28-entrar-como-cliente';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -1080,10 +1080,8 @@ Deno.serve(comCors(async (req) => {
       if (!alvo) return json({ erro: 'Conta não encontrada.' }, 404);
       if (alvo.id === autor.id) return json({ erro: 'Você já está na sua conta.' }, 400);
       if (alvo.estado !== 'ativa') return json({ erro: 'Esta conta não está ativa.' }, 400);
-      if (alvo.papel === 'cliente') {
-        return json({ erro: 'Não é possível entrar na conta de um cliente. ' +
-          'Use "Visualizar como" a empresa para ver o Portal.' }, 403);
-      }
+      /* zzz269: o administrador também entra na conta de um cliente (para ver
+         e agir no Portal como ele) — fica registrado igual na auditoria */
 
       const { data: link, error: erroLink } = await sb.auth.admin.generateLink({
         type: 'magiclink', email: identidadeTecnica(alvo.id)

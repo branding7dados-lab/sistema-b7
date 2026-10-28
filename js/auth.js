@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-28-zzz269';
+  const VERSAO = '2026-10-28-zzz270';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -288,9 +288,13 @@ B7.Auth = (function () {
     } catch (e) { throw new Error('Este navegador não deixou guardar a sua sessão para a volta.'); }
     try { await B7.DB.assumirSessao(r.access_token, r.refresh_token); }
     catch (e) { esquecerVolta(); throw new Error('Não foi possível entrar na conta.'); }
+    trocaRapida();
     location.hash = '#/';
     location.reload();
   }
+  /* zzz269: trocar de conta (entrar como / voltar) não passa pela abertura
+     nem pela tela de carregamento — index.html lê esta marca uma vez */
+  function trocaRapida() { try { sessionStorage.setItem('b7_troca_rapida', '1'); } catch (e) {} }
 
   async function voltarParaMinhaConta() {
     const v = lerVolta();
@@ -305,6 +309,7 @@ B7.Auth = (function () {
     esquecerVolta();
     sessao = null;
     try { sessionStorage.clear(); } catch (e) {}
+    if (ok) trocaRapida();
     location.hash = '#/';
     location.reload();   /* sem a sessão de volta, o recarregamento cai na tela de login */
     return ok;

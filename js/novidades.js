@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz270', versao: 'zzz270', em: '2026-10-28T20:00:00-03:00',
+    titulo: 'Sua conta na barra lateral, status da equipe e "Visualizar como" para clientes',
+    itens: ['No computador, a sua conta agora fica no pé da barra lateral: foto, nome e status. Tocando abre o painel com Meu status, Meu dia (para hoje, atrasadas, gravações de hoje), tema e atalhos.',
+            'Status: Disponível, Em gravação, Em reunião, Ausente ou Não perturbe, com um recado curto. No "Não perturbe" os avisos ficam guardados no sino, sem som, e chega um resumo quando você volta.',
+            'Visualizar como (administradores): escolha alguém da equipe ou uma pessoa de um cliente e decida entre "Só visualizar" (nada é salvo) ou "Entrar na conta" (age como a pessoa, fica registrado).',
+            'Trocar de conta e voltar para a sua agora é direto, sem a abertura e sem a tela de carregamento.'] },
   { id: 'v-zzz269', versao: 'zzz269', em: '2026-10-28T18:00:00-03:00',
     titulo: 'Permissões ação por ação, acesso que vale na hora e chamado em tempo real',
     itens: ['Configurações → Funções e permissões → "O que cada um pode fazer": liga e desliga cada ação (criar gravação, criar demanda de design, mover no quadro, enviar para o cliente…) por função ou só para uma pessoa. O banco obedece de verdade.',

@@ -49,6 +49,8 @@ window.B7 = window.B7 || {};
 B7.SomAbertura = (function () {
   const AC = window.AudioContext || window.webkitAudioContext;
   const ligado = () => {
+    /* zzz269: troca de conta abre sem abertura — e sem som */
+    if (document.documentElement.classList.contains('ab-sem')) return false;
     try { const v = localStorage.getItem('b7_pref_som_abertura'); return v === null ? true : JSON.parse(v); }
     catch (e) { return true; }
   };

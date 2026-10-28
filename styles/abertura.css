@@ -861,3 +861,11 @@ html[data-ab-carga="pontos"].ab-curta .b7-abertura.b7-abertura.b7-abertura.inici
    destas animações, então param junto */
 html.ab-espera-app .b7-abertura, html.ab-espera-app .b7-abertura *,
 html.ab-espera-app .b7-abertura *::before, html.ab-espera-app .b7-abertura *::after{animation-play-state:paused !important;}
+
+/* zzz269: troca de conta — sem abertura nem tela de carregamento; o sistema aparece direto */
+html.ab-sem .b7-abertura{background:var(--fundo) !important;filter:none !important;animation:none !important;}
+html.ab-sem .b7-abertura > *{display:none !important;}
+html.ab-sem .b7-abertura::after{content:"";position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
+  border:2.5px solid color-mix(in srgb, var(--ink) 14%, transparent);border-top-color:var(--acento);animation:abSemGira .8s linear infinite;}
+html.ab-sem .b7-abertura.saindo{opacity:0;transition:opacity .18s ease;}
+@keyframes abSemGira{to{transform:rotate(360deg);}}

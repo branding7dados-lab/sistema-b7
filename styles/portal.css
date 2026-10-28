@@ -686,3 +686,6 @@ button.pcal-item:hover{background:color-mix(in srgb,var(--cal-post) 10%,var(--su
 .pre-on{font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--ok-bg);color:var(--ok);}
 .pre-linha{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
 .pre-linha .campo{flex:1 1 220px;}
+
+/* zzz269: dentro da conta de um cliente (Entrar como) — aviso em rosa: aqui vale de verdade */
+.pt-banner-previa.pt-banner-outro{background:color-mix(in srgb, var(--acento) 12%, var(--card));color:var(--acento);}
