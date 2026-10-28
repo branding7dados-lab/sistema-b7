@@ -111,8 +111,23 @@ B7.Seguranca = (function () {
   }
 
   /* =============================================================== Google */
-  const semGoogleAqui = () => /Electron\//.test(navigator.userAgent || '') ||
+  /* zzz273: o programa do Windows novo abre o Google no navegador e recebe a volta
+     (window.B7Desktop.oauth); o antigo e o app de Android ainda não */
+  const pcComGoogle = () => !!(window.B7Desktop && typeof window.B7Desktop.oauth === 'function');
+  const semGoogleAqui = () => (/Electron\//.test(navigator.userAgent || '') && !pcComGoogle()) ||
     !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const VOLTA_PC = 'http://127.0.0.1:47821/callback';
+  /* no programa: pede o endereço sem sair da tela, abre no navegador e, com o código
+     de volta, recarrega com ?code= — o mesmo caminho da volta no navegador (retornoOAuth) */
+  async function pelaJanelaDoPc(pedir) {
+    const { data, error } = await pedir({ redirectTo: VOLTA_PC, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } });
+    if (error) throw error;
+    if (!data || !data.url) throw new Error('O Supabase não devolveu o endereço de login.');
+    B7.UI.toast('Continue no navegador: escolha a sua conta Google e volte para o programa.', { tipo: 'info', tempo: 9000 });
+    const r = await window.B7Desktop.oauth(data.url);
+    if (!r || r.erro) { if (r && r.erro === 'cancelado') return; throw new Error((r && r.erro) || 'Sem resposta do Google.'); }
+    location.replace(location.pathname + '?code=' + encodeURIComponent(r.code) + location.hash);
+  }
   let googleCache = null;
   async function googleLigado() {
     if (googleCache !== null) return googleCache;
@@ -130,11 +145,13 @@ B7.Seguranca = (function () {
   const marcarOauth = t => { try { localStorage.setItem('b7_oauth', t); } catch (e) {} };
   async function entrarComGoogle() {
     marcarOauth('login');
+    if (pcComGoogle()) return pelaJanelaDoPc(op => B7.sb.auth.signInWithOAuth({ provider: 'google', options: op }));
     const { error } = await B7.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: voltaUrl(), queryParams: { prompt: 'select_account' } } });
     if (error) throw error;
   }
   async function vincularGoogle() {
     marcarOauth('vincular');
+    if (pcComGoogle()) return pelaJanelaDoPc(op => B7.sb.auth.linkIdentity({ provider: 'google', options: op }));
     const { error } = await B7.sb.auth.linkIdentity({ provider: 'google', options: { redirectTo: voltaUrl(), queryParams: { prompt: 'select_account' } } });
     if (error) throw error;
   }
@@ -241,7 +258,7 @@ B7.Seguranca = (function () {
       cx.innerHTML = '<h4 class="pf-tit"><span class="pf-ic pf-azul" aria-hidden="true">' + SVG(IC.google) + '</span>Entrar com Google' +
           '<span class="seg-pill">' + (app ? 'Só no navegador' : 'Indisponível') + '</span></h4>' +
         '<p class="ajuda">' + (app
-          ? 'O Google não deixa entrar por dentro do programa do Windows nem do app de Android. Abra o sistema no navegador (Chrome, Edge…) e vincule em Meu perfil → Segurança; depois o botão "Entrar com Google" aparece no login do navegador.'
+          ? (/Electron\//.test(navigator.userAgent || '') ? 'Atualize o programa do Windows (Ajuda → Procurar atualização) para entrar com o Google por aqui. Enquanto isso, dá para vincular pelo navegador (Chrome, Edge…) em Meu perfil → Segurança.' : 'O app de Android ainda não entra com o Google. Use o navegador (Chrome) do celular ou do computador: vincule em Meu perfil → Segurança e o botão "Entrar com Google" aparece no login.')
           : adm
           ? 'O login com Google ainda não está ligado no servidor. É preciso criar as credenciais do Google (Google Cloud) e ativar o provedor Google e o "Manual linking" no Supabase — depois disso este botão funciona para todo mundo.'
           : 'O login com Google ainda não foi ativado pela administração.') + '</p>';
