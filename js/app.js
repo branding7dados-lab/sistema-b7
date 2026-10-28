@@ -934,6 +934,7 @@ B7.Rota = (function () {
     /* zzz213: tour de boas-vindas, dica da primeira visita e primeiros passos */
     if (B7.Tour) { try { B7.Tour.aoEntrar(); } catch (e) {} }
     if (B7.Presenca) B7.Presenca.iniciar();
+    if (B7.AoVivo) { try { B7.AoVivo.iniciar(); } catch (e) {} }
     /* zzz247: recado fixo da administração e aniversários do dia */
     if (B7.Equipe) { try { B7.Equipe.aoEntrar(); } catch (e) {} }
     if (B7.Push && B7.Push.manter) setTimeout(() => B7.Push.manter(), 2500);
