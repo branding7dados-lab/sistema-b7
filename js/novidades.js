@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz276', versao: 'zzz276', em: '2026-10-29T02:00:00-03:00',
+    titulo: 'Cliente avulso: cadastro mais simples',
+    rota: 'clientes',
+    itens: ['Ao marcar o contrato como Avulso, o campo “Como trabalhamos com este cliente” some: no avulso, o que vale é o projeto.'] },
   { id: 'v-zzz275', versao: 'zzz275', em: '2026-10-29T01:30:00-03:00',
     titulo: 'Apagar várias demandas de uma vez',
     itens: ['Na Edição de vídeo, no Design e na Produção, selecione as demandas (Ctrl ou Shift + clique) e use “Apagar” na barra de baixo. Na Edição de vídeo também dá pelo botão direito.',
