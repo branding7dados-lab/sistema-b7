@@ -41,3 +41,44 @@
 
 @media (max-width:520px){ .av-janela{border-radius:18px;} .av-ir{padding:8px 10px;} }
 @media (prefers-reduced-motion:reduce){ .av-modal *,.av-modal{animation:none!important} }
+
+/* ---------- parte 2 (zzz285): acompanhar ao vivo ---------- */
+.av-acoes{display:flex;flex-direction:column;gap:6px;flex:none;}
+.av-seguir{padding:8px 12px;border-radius:999px;border:0;background:linear-gradient(120deg,var(--acento),var(--acento-2,#d6336c));color:#fff;
+  font-size:12.5px;font-weight:700;cursor:pointer;transition:transform .15s,filter .15s;}
+.av-seguir:hover{filter:brightness(1.07);}
+.av-seguir:active{transform:scale(.95);}
+
+/* selo na tela de quem está sendo acompanhado — visível de propósito */
+.av-selo-compart{position:fixed;left:14px;bottom:14px;z-index:9400;display:flex;align-items:center;gap:8px;
+  padding:9px 14px;border-radius:999px;font:700 12.5px 'Inter',system-ui,sans-serif;color:#fff;
+  background:linear-gradient(120deg,#d6336c,#7c4dff);box-shadow:0 10px 30px -10px #0008,0 0 0 1px #ffffff26;
+  pointer-events:none;animation:avSeloEntra .3s ease both;}
+@keyframes avSeloEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.av-selo-ponto{width:9px;height:9px;border-radius:50%;background:#fff;animation:avSeloPisca 1.4s ease-in-out infinite;}
+@keyframes avSeloPisca{50%{opacity:.35}}
+@media (max-width:520px){ .av-selo-compart{left:50%;transform:translateX(-50%);bottom:76px;} }
+
+/* barra do super enquanto acompanha */
+.av-barra-seguir{position:fixed;top:0;left:0;right:0;z-index:9500;display:flex;align-items:center;gap:10px;
+  padding:9px 16px;font:600 13px 'Inter',system-ui,sans-serif;color:#fff;
+  background:linear-gradient(90deg,#7c4dff,#d6336c);box-shadow:0 6px 24px -8px #0009;animation:avBarra .25s ease both;}
+@keyframes avBarra{from{transform:translateY(-100%)}to{transform:none}}
+.av-barra-seguir b{font-weight:800;}
+.av-bs-ponto{width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 0 0 #ffffff80;animation:avBsPulso 1.8s ease-out infinite;}
+@keyframes avBsPulso{0%{box-shadow:0 0 0 0 #ffffff80}70%{box-shadow:0 0 0 7px #ffffff00}100%{box-shadow:0 0 0 0 #ffffff00}}
+.av-bs-tela{font-size:12px;opacity:.85;}
+.av-barra-seguir.esperando{filter:saturate(.6) brightness(.9);}
+.av-bs-parar{margin-left:auto;padding:6px 14px;border-radius:999px;border:0;background:#ffffff26;color:#fff;font:700 12.5px 'Inter',sans-serif;cursor:pointer;transition:background .15s;}
+.av-bs-parar:hover{background:#ffffff3d;}
+html.av-seguindo{scroll-behavior:auto;}
+html.av-seguindo body{padding-top:38px;}
+
+/* cursor remoto (a seta da pessoa, com o nome) — só na tela do super */
+.av-cursor-remoto{position:fixed;z-index:9490;top:-40px;left:-40px;pointer-events:none;transform:translate(-2px,-2px);
+  transition:top .09s linear,left .09s linear;opacity:0;}
+.av-cursor-remoto.on{opacity:1;}
+.av-cursor-remoto svg{width:24px;height:24px;fill:#7c4dff;stroke:#fff;stroke-width:1.3;filter:drop-shadow(0 2px 4px #0007);}
+.av-cursor-remoto b{position:absolute;left:18px;top:16px;padding:2px 8px;border-radius:8px;white-space:nowrap;
+  font:700 11.5px 'Inter',sans-serif;color:#fff;background:#7c4dff;box-shadow:0 4px 10px -3px #0008;}
+@media (prefers-reduced-motion:reduce){ .av-cursor-remoto{transition:none} .av-selo-compart,.av-barra-seguir{animation:none} }

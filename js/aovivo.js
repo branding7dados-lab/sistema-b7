@@ -1,21 +1,22 @@
 /* =====================================================================
-   EQUIPE AO VIVO (zzz284) — só super admin e admin supremo.
+   EQUIPE AO VIVO — só super admin e admin supremo.
 
-   Parte 1: ver quem da equipe está no Sistema agora e em que tela está,
-   ao vivo. Usa o mesmo tempo real das conversas (Supabase Realtime,
-   presença). Cada pessoa da equipe interna "anuncia" no canal só a
-   sua tela atual (nome, foto, rota, há quanto tempo); o cartão só é
-   enviado enquanto a pessoa está com o B7 na frente. A aba escondida
-   sai da presença, igual ao "online" das conversas.
+   Parte 1 (zzz284): ver quem da equipe está no Sistema agora e em que
+   tela está, ao vivo (Supabase Realtime, presença).
 
-   Quem ABRE o painel é só quem é super/supremo (o botão nem aparece
-   para os outros). Daqui a pessoa pode pular para a mesma tela que o
-   outro está vendo. O "seguir ao vivo" (cursor e rolagem) vem depois.
+   Parte 2 (zzz285): ACOMPANHAR ao vivo. O super escolhe uma pessoa e
+   passa a ver a tela dela (a mesma rota, a rolagem e o cursor dela com
+   o nome). O cursor do super NÃO aparece para a pessoa.
+   Em troca, enquanto alguém está acompanhando, a tela da pessoa mostra
+   o selo "Tela compartilhada" — ela tem como saber. Esse selo aparece
+   para QUALQUER acompanhamento (não dá para acompanhar sem ele).
+   O acompanhamento do uso do Sistema está nos Termos (seção 2).
 
-   O acompanhamento do trabalho pelo Sistema está nos Termos (seção 2).
+   Só se envia algo pela rede enquanto há de fato alguém acompanhando;
+   sem ninguém olhando, nada é transmitido (não pesa no Realtime).
 
-   B7.AoVivo.iniciar()  → no login, para a equipe interna: entra no canal
-   B7.AoVivo.abrir()    → super/supremo: abre o painel
+   B7.AoVivo.iniciar()  → no login, para a equipe interna
+   B7.AoVivo.abrir()    → super/supremo: painel de quem está online
    B7.AoVivo.pode()     → super/supremo?
    ===================================================================== */
 window.B7 = window.B7 || {};
@@ -25,7 +26,6 @@ B7.AoVivo = (function () {
   const eu = () => (B7.Auth && B7.Auth.usuario && B7.Auth.usuario()) || null;
   const pode = () => !!(B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin());
 
-  /* a tela atual, com o nome que a equipe lê (ex.: "Edição de vídeo") */
   function telaAtual() {
     let base = '';
     try { base = (location.hash || '#/').replace(/^#\/?/, '').split('/')[0].split('?')[0]; } catch (e) {}
@@ -49,7 +49,7 @@ B7.AoVivo = (function () {
   function anunciar(forcar) {
     if (!canal) return;
     const agora = Date.now();
-    if (!forcar && agora - ultimoEnvio < 2500) {            /* troca rápida de tela: só o último sinal */
+    if (!forcar && agora - ultimoEnvio < 2500) {
       clearTimeout(timerEnvio);
       timerEnvio = setTimeout(() => anunciar(true), 2600 - (agora - ultimoEnvio));
       return;
@@ -59,8 +59,6 @@ B7.AoVivo = (function () {
   }
 
   function iniciar() {
-    /* só a equipe interna anuncia; cliente, prévia/entrar-como e quem não
-       tem sessão ficam de fora (a prévia não é a pessoa de verdade) */
     const u = eu();
     if (!u || !B7.sb || !B7.sb.channel) return;
     if (B7.Auth.ehCliente && B7.Auth.ehCliente()) return;
@@ -69,17 +67,24 @@ B7.AoVivo = (function () {
     desligar();
     meuId = u.id;
     try {
-      canal = B7.sb.channel('b7-aovivo', { config: { presence: { key: meuId } } });
-      canal.on('presence', { event: 'sync' }, () => { if (painel) pintar(); })
-           .subscribe(st => { if (st === 'SUBSCRIBED') anunciar(true); });
+      canal = B7.sb.channel('b7-aovivo', { config: { presence: { key: meuId }, broadcast: { self: false } } });
+      canal
+        .on('presence', { event: 'sync' }, () => { if (painel) pintar(); seguirSync(); })
+        .on('broadcast', { event: 'av-olhar' }, ({ payload }) => aoPedirOlhar(payload))
+        .on('broadcast', { event: 'av-parar' }, ({ payload }) => aoPararOlhar(payload))
+        .on('broadcast', { event: 'av-tela' }, ({ payload }) => aoReceberTela(payload))
+        .subscribe(st => { if (st === 'SUBSCRIBED') anunciar(true); });
     } catch (e) { canal = null; return; }
     window.addEventListener('hashchange', aoTrocarTela);
     document.addEventListener('visibilitychange', aoVisibilidade);
   }
-  function aoTrocarTela() { anunciar(false); if (painel) pintar(); }
-  function aoVisibilidade() { anunciar(true); }
+  function aoTrocarTela() { anunciar(false); if (painel) pintar(); if (compartilhando()) emitirTela(true); }
+  function aoVisibilidade() { anunciar(true); if (document.hidden && compartilhando()) pararDeCompartilhar(); }
+  function enviar(event, payload) { try { canal && canal.send({ type: 'broadcast', event, payload }); } catch (e) {} }
+
   function desligar() {
-    try { if (canal) B7.sb.removeChannel ? B7.sb.removeChannel(canal) : canal.unsubscribe(); } catch (e) {}
+    pararDeSeguir(true); pararDeCompartilhar();
+    try { if (canal) (B7.sb.removeChannel ? B7.sb.removeChannel(canal) : canal.unsubscribe()); } catch (e) {}
     canal = null; clearTimeout(timerEnvio);
     window.removeEventListener('hashchange', aoTrocarTela);
     document.removeEventListener('visibilitychange', aoVisibilidade);
@@ -90,11 +95,158 @@ B7.AoVivo = (function () {
     let st = {};
     try { st = canal.presenceState() || {}; } catch (e) { return []; }
     const lista = [];
-    Object.keys(st).forEach(k => {
-      const m = (st[k] && st[k][0]) || null;
-      if (m && m.id && m.id !== meuId) lista.push(m);
-    });
+    Object.keys(st).forEach(k => { const m = (st[k] && st[k][0]) || null; if (m && m.id && m.id !== meuId) lista.push(m); });
     return lista.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+  }
+  function presencaDe(id) { return online().find(m => m.id === id) || null; }
+
+  /* ============================================ LADO DE QUEM É OLHADO
+     Enquanto houver ao menos um super acompanhando, a tela mostra o selo
+     "Tela compartilhada" e passa a emitir rota + rolagem + cursor. */
+  const olhadores = new Map();   /* adminId -> { nome, visto } */
+  let capturando = false, ultCursor = 0, ultRolagem = 0, selo = null, limpezaOlhadores = null;
+  const compartilhando = () => olhadores.size > 0;
+
+  function aoPedirOlhar(p) {
+    if (!p || p.para !== meuId || !p.de) return;
+    olhadores.set(p.de, { nome: p.deNome || 'Administração', visto: Date.now() });
+    if (!capturando) comecarCompartilhar();
+    emitirTela(true);                                   /* manda o estado atual na hora */
+  }
+  function aoPararOlhar(p) {
+    if (!p || p.para !== meuId || !p.de) return;
+    olhadores.delete(p.de);
+    if (!compartilhando()) pararDeCompartilhar();
+    else atualizarSelo();
+  }
+  function comecarCompartilhar() {
+    capturando = true;
+    document.addEventListener('mousemove', aoMover, true);
+    window.addEventListener('scroll', aoRolar, true);
+    mostrarSelo();
+    limpezaOlhadores = setInterval(() => {
+      const lim = Date.now() - 26000;                   /* super sumiu sem avisar: cai sozinho */
+      let mudou = false;
+      olhadores.forEach((v, k) => { if (v.visto < lim) { olhadores.delete(k); mudou = true; } });
+      if (!compartilhando()) pararDeCompartilhar();
+      else if (mudou) atualizarSelo();
+    }, 8000);
+  }
+  function pararDeCompartilhar() {
+    capturando = false; olhadores.clear();
+    document.removeEventListener('mousemove', aoMover, true);
+    window.removeEventListener('scroll', aoRolar, true);
+    clearInterval(limpezaOlhadores); limpezaOlhadores = null;
+    esconderSelo();
+  }
+  function aoMover(e) {
+    const agora = Date.now(); if (agora - ultCursor < 80) return; ultCursor = agora;
+    ultimoXY = { xr: e.clientX / Math.max(1, innerWidth), yr: e.clientY / Math.max(1, innerHeight) };
+    emitirTela(false);
+  }
+  function aoRolar() { const agora = Date.now(); if (agora - ultRolagem < 140) return; ultRolagem = agora; emitirTela(false); }
+  let ultimoXY = { xr: 0.5, yr: 0.4 };
+  function emitirTela(forcar) {
+    if (!compartilhando()) return;
+    const doc = document.documentElement;
+    enviar('av-tela', { de: meuId, hash: location.hash || '#/',
+      sy: window.scrollY || 0, docH: doc.scrollHeight || 0, visH: innerHeight || 0,
+      xr: ultimoXY.xr, yr: ultimoXY.yr, em: Date.now() });
+    if (forcar) { /* nada extra; o send acima já é imediato */ }
+  }
+  function mostrarSelo() {
+    if (selo) return atualizarSelo();
+    selo = document.createElement('div');
+    selo.className = 'av-selo-compart';
+    selo.setAttribute('role', 'status');
+    document.body.appendChild(selo);
+    atualizarSelo();
+  }
+  function atualizarSelo() {
+    if (!selo) return;
+    selo.innerHTML = '<span class="av-selo-ponto" aria-hidden="true"></span>' +
+      '<span>Tela compartilhada</span>';
+  }
+  function esconderSelo() { if (selo) { selo.remove(); selo = null; } }
+
+  /* ================================================= LADO DE QUEM OLHA
+     O super acompanha uma pessoa: a própria tela vai para a rota dela,
+     rola junto e mostra o cursor dela (com o nome). */
+  let seguindo = null;   /* { id, nome, hashAntes, barra, cursor, ping, ultimo } */
+
+  function acompanhar(id) {
+    if (!pode() || !id || id === meuId) return;
+    if (!canal) iniciar();
+    const m = presencaDe(id);
+    const nome = (m && m.nome) || 'a pessoa';
+    if (seguindo && seguindo.id === id) return;
+    if (seguindo) pararDeSeguir(false);
+    seguindo = { id, nome, hashAntes: location.hash || '#/', ultimo: 0 };
+    enviar('av-olhar', { de: meuId, deNome: (eu() || {}).nome || 'Administração', para: id });
+    seguindo.ping = setInterval(() => {
+      if (!seguindo) return;
+      enviar('av-olhar', { de: meuId, deNome: (eu() || {}).nome || 'Administração', para: seguindo.id });
+      if (Date.now() - seguindo.ultimo > 30000) marcarEspera(true);   /* parou de chegar: a pessoa saiu/minimizou */
+    }, 9000);
+    montarSeguir(nome);
+    if (m && m.hash && m.hash !== location.hash) location.hash = m.hash;
+  }
+  function pararDeSeguir(semVoltar) {
+    if (!seguindo) return;
+    const s = seguindo; seguindo = null;
+    enviar('av-parar', { de: meuId, para: s.id });
+    clearInterval(s.ping);
+    if (s.barra) s.barra.remove();
+    if (s.cursor) s.cursor.remove();
+    document.documentElement.classList.remove('av-seguindo');
+    if (!semVoltar && s.hashAntes && s.hashAntes !== location.hash) { try { location.hash = s.hashAntes; } catch (e) {} }
+  }
+  function montarSeguir(nome) {
+    document.documentElement.classList.add('av-seguindo');
+    const barra = document.createElement('div');
+    barra.className = 'av-barra-seguir';
+    barra.innerHTML = '<span class="av-bs-ponto" aria-hidden="true"></span>' +
+      '<b>Acompanhando ' + esc(nome) + '</b><span class="av-bs-tela" data-bs-tela></span>' +
+      '<button type="button" class="av-bs-parar" data-bs-parar>Parar</button>';
+    document.body.appendChild(barra);
+    barra.querySelector('[data-bs-parar]').onclick = () => pararDeSeguir(false);
+    const cursor = document.createElement('div');
+    cursor.className = 'av-cursor-remoto';
+    cursor.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l6 16 2.2-6.2L19 11z"/></svg><b>' + esc(nome.split(' ')[0]) + '</b>';
+    document.body.appendChild(cursor);
+    seguindo.barra = barra; seguindo.cursor = cursor;
+  }
+  function marcarEspera(sim) {
+    if (!seguindo || !seguindo.barra) return;
+    const t = seguindo.barra.querySelector('[data-bs-tela]');
+    if (t) t.textContent = sim ? '· esperando (minimizou ou saiu)' : '';
+    seguindo.barra.classList.toggle('esperando', !!sim);
+  }
+  function aoReceberTela(p) {
+    if (!seguindo || !p || p.de !== seguindo.id) return;
+    seguindo.ultimo = Date.now(); marcarEspera(false);
+    /* mesma rota que a pessoa */
+    if (p.hash && p.hash !== (location.hash || '#/')) { try { location.hash = p.hash; } catch (e) {} atualizarRotuloSeguir(p.hash); }
+    /* rolagem proporcional (as telas podem ter alturas diferentes) */
+    try {
+      const doc = document.documentElement;
+      const alvoMax = Math.max(1, (p.docH || 0) - (p.visH || 0));
+      const meuMax = Math.max(0, doc.scrollHeight - innerHeight);
+      const frac = Math.min(1, Math.max(0, (p.sy || 0) / alvoMax));
+      window.scrollTo({ top: Math.round(frac * meuMax), behavior: 'auto' });
+    } catch (e) {}
+    /* cursor dela, proporcional à minha janela */
+    if (seguindo.cursor) {
+      seguindo.cursor.style.left = Math.round((p.xr || 0.5) * innerWidth) + 'px';
+      seguindo.cursor.style.top = Math.round((p.yr || 0.4) * innerHeight) + 'px';
+      seguindo.cursor.classList.add('on');
+    }
+  }
+  function atualizarRotuloSeguir() { /* o rótulo da barra fica no nome; a tela em si já mudou */ }
+  function seguirSync() {
+    /* se a pessoa que eu sigo saiu da presença, aviso na barra */
+    if (!seguindo) return;
+    if (!presencaDe(seguindo.id)) marcarEspera(true);
   }
 
   /* --------------------------------------------------------- o painel */
@@ -115,17 +267,17 @@ B7.AoVivo = (function () {
     const cont = painel.querySelector('[data-av-n]');
     if (cont) cont.textContent = lista.length ? lista.length + (lista.length === 1 ? ' pessoa online' : ' pessoas online') : 'ninguém online';
     if (!corpo) return;
-    if (!lista.length) {
-      corpo.innerHTML = '<p class="av-vazio">Ninguém da equipe está com o Sistema aberto agora.</p>';
-      return;
-    }
+    if (!lista.length) { corpo.innerHTML = '<p class="av-vazio">Ninguém da equipe está com o Sistema aberto agora.</p>'; return; }
     corpo.innerHTML = lista.map(m =>
       '<div class="av-card">' +
         '<span class="av-foto">' + (m.foto ? '<img src="' + esc(m.foto) + '" alt="">' : '<i>' + esc(iniciais(m.nome)) + '</i>') + '<b class="av-ponto" aria-hidden="true"></b></span>' +
         '<div class="av-txt"><b>' + esc(m.nome) + '</b>' +
           '<span class="av-tela">' + esc(m.rotulo || 'No Sistema') + '</span>' +
           '<small>' + esc(haQuanto(m.em)) + '</small></div>' +
-        '<button type="button" class="av-ir" data-hash="' + esc(m.hash || '#/') + '">Ir para a tela</button>' +
+        '<div class="av-acoes">' +
+          '<button type="button" class="av-ir" data-ir-hash="' + esc(m.hash || '#/') + '">Ir para a tela</button>' +
+          '<button type="button" class="av-seguir" data-seguir="' + esc(m.id) + '">Acompanhar</button>' +
+        '</div>' +
       '</div>').join('');
   }
 
@@ -141,7 +293,7 @@ B7.AoVivo = (function () {
         '<div class="av-topo"><div><h3>Equipe ao vivo</h3><span data-av-n class="sub">—</span></div>' +
           '<button type="button" class="av-x" data-av-fechar aria-label="Fechar">✕</button></div>' +
         '<div class="av-corpo" data-av-corpo></div>' +
-        '<p class="av-rodape">Mostra quem está com o Sistema aberto agora e em que tela. Só super admin e admin supremo veem isto.</p>' +
+        '<p class="av-rodape">Quem está com o Sistema aberto e em que tela. Em "Acompanhar", você vê a tela da pessoa ao vivo — e a tela dela mostra "Tela compartilhada". Só super admin e admin supremo.</p>' +
       '</div>';
     document.body.appendChild(el);
     painel = el;
@@ -150,13 +302,14 @@ B7.AoVivo = (function () {
     document.addEventListener('keydown', aoTeclar, true);
     el.addEventListener('click', e => {
       if (e.target.closest('[data-av-fechar]') || e.target === el) return fechar();
-      const ir = e.target.closest('[data-av-ir]') || e.target.closest('.av-ir');
-      if (ir && ir.dataset.hash) { location.hash = ir.dataset.hash; fechar(); }
+      const ir = e.target.closest('[data-ir-hash]');
+      if (ir) { location.hash = ir.dataset.irHash; return fechar(); }
+      const seg = e.target.closest('[data-seguir]');
+      if (seg) { const id = seg.dataset.seguir; fechar(); acompanhar(id); }
     });
     pintar();
-    /* o "há X min" anda sozinho enquanto o painel está aberto */
     const t = setInterval(() => { if (!painel) return clearInterval(t); pintar(); }, 20000);
   }
 
-  return { iniciar, abrir, pode, desligar };
+  return { iniciar, abrir, pode, acompanhar, pararDeSeguir, desligar };
 })();
