@@ -10,3 +10,8 @@
 
 ## Testes
 - `npm test` verde; prints: cartão e painel com foto (tema claro) e a abertura streaming parada na espera (antes/depois).
+
+## Vincular com o Google (relatado depois)
+- Causa: o provedor Google está **desligado** no Supabase (`/auth/v1/settings` → `external.google: false`). O cartão em Meu perfil → Segurança simplesmente sumia, sem dizer por quê.
+- Agora o cartão aparece sempre e explica: no app (Windows/Android) só pelo navegador; sem o Google ligado no servidor, o administrador vê o que falta ativar.
+- O que falta (do lado do Kevin, com a conta Google dele): credenciais OAuth no Google Cloud, provedor Google + "Manual linking" no Supabase e as URLs de volta. Recomendado também desligar "Allow new users to sign up" (hoje está ligado; as contas do B7 são criadas pela função b7-auth, que não depende disso).

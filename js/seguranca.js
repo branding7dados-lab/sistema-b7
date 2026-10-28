@@ -232,7 +232,21 @@ B7.Seguranca = (function () {
 
   async function montarGoogle(cx) {
     if (!cx) return;
-    if (!(await googleLigado())) { cx.hidden = true; return; }
+    /* zzz271: em vez de sumir, o cartão diz por que não dá para vincular
+       (no app, só no navegador; no servidor, o Google ainda não foi ligado) */
+    if (!(await googleLigado())) {
+      const app = semGoogleAqui();
+      const adm = !!(B7.Auth && B7.Auth.ehAdminReal && B7.Auth.ehAdminReal());
+      cx.hidden = false;
+      cx.innerHTML = '<h4 class="pf-tit"><span class="pf-ic pf-azul" aria-hidden="true">' + SVG(IC.google) + '</span>Entrar com Google' +
+          '<span class="seg-pill">' + (app ? 'Só no navegador' : 'Indisponível') + '</span></h4>' +
+        '<p class="ajuda">' + (app
+          ? 'O Google não deixa entrar por dentro do programa do Windows nem do app de Android. Abra o sistema no navegador (Chrome, Edge…) e vincule em Meu perfil → Segurança; depois o botão "Entrar com Google" aparece no login do navegador.'
+          : adm
+          ? 'O login com Google ainda não está ligado no servidor. É preciso criar as credenciais do Google (Google Cloud) e ativar o provedor Google e o "Manual linking" no Supabase — depois disso este botão funciona para todo mundo.'
+          : 'O login com Google ainda não foi ativado pela administração.') + '</p>';
+      return;
+    }
     cx.hidden = false;
     const idt = await identidadeGoogle();
     const email = idt && idt.identity_data && idt.identity_data.email;
