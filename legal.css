@@ -1,0 +1,25 @@
+/* Páginas públicas: Política de Privacidade e Termos de Serviço (zzz272) */
+:root{--fundo:#0A0714;--card:#150F22;--ink:#EDEAF7;--ink2:#B4ADCC;--borda:rgba(255,255,255,.09);--acento:#E2409C;}
+@media (prefers-color-scheme: light){:root{--fundo:#F6F3FB;--card:#FFFFFF;--ink:#1C1530;--ink2:#5A5270;--borda:rgba(28,21,48,.1);--acento:#B5177A;}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--fundo);color:var(--ink);font:400 16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
+body{padding:28px 16px 56px;background:radial-gradient(90% 50% at 10% 0%,rgba(58,30,134,.35),transparent 70%),var(--fundo);}
+.doc{max-width:760px;margin:0 auto;padding:36px 32px 28px;border-radius:26px;background:var(--card);border:1px solid var(--borda);box-shadow:0 30px 80px -40px rgba(0,0,0,.6);}
+.doc-cab{margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid var(--borda);}
+.doc-logo{display:inline-block;padding:10px 14px;border-radius:14px;background:linear-gradient(135deg,#3A1E86,#C21C83);}
+.doc-logo img{display:block;width:104px;height:auto;}
+.doc-tag{margin:18px 0 4px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);}
+h1{margin:0;font:800 30px/1.2 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;letter-spacing:-.01em;}
+.doc-data{margin:6px 0 14px;color:var(--ink2);font-size:14px;}
+.doc-nav{display:flex;gap:8px;flex-wrap:wrap;}
+.doc-nav a{padding:7px 14px;border-radius:99px;border:1px solid var(--borda);color:var(--ink);text-decoration:none;font-size:14px;font-weight:600;}
+.doc-nav a[aria-current="page"]{background:linear-gradient(135deg,#3A1E86,#C21C83);color:#fff;border-color:transparent;}
+h2{margin:28px 0 8px;font-size:19px;line-height:1.3;}
+p{margin:0 0 12px;}
+ul{margin:0 0 12px;padding-left:22px;}
+li{margin-bottom:6px;}
+a{color:var(--acento);}
+b{font-weight:700;}
+.doc-pe{margin-top:32px;padding-top:18px;border-top:1px solid var(--borda);text-align:center;color:var(--ink2);font-size:14px;}
+.doc-pe p{margin:8px 0 0;}
+@media (max-width:560px){.doc{padding:26px 18px 22px;border-radius:20px}h1{font-size:25px}}

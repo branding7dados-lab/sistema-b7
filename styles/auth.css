@@ -1110,3 +1110,8 @@ body.b7-nv-editar #tela-dashboard :is([data-decidir],[data-excluir],[data-apagar
 .nu-pe-linha b{flex:1;min-width:140px;font-size:13.5px;font-weight:600;}
 .nu-pe-linha select{flex:0 1 360px;min-width:0;}
 @media (max-width:640px){.nu-pe-linha select{flex:1 1 100%;}}
+
+/* zzz272: links de Privacidade e Termos no pé do login */
+.login-legal{margin:16px 0 0;text-align:center;font-size:12px;color:rgba(255,255,255,.5);}
+.login-legal a{color:rgba(255,255,255,.72);text-decoration:none;}
+.login-legal a:hover{color:#fff;text-decoration:underline;}
