@@ -8,7 +8,8 @@
 -- Ordem: administrador = sempre sim → pessoa → função (qualquer cargo da
 -- pessoa que diga sim) → padrão (cargo na lista E nível no módulo, ou uma
 -- liberação explícita do módulo na conta da pessoa).
--- Aplicada como: acoes_1_catalogo, acoes_2_portoes, acoes_3_leitura, acoes_4_tempo_real.
+-- Aplicada como: acoes_1_catalogo, acoes_2_portoes, acoes_2b_initplan, acoes_3_leitura, acoes_5_videomaker_grava
+-- (videomaker com Gravações em Editar/Total cria e edita gravações, como já fazia pelo Calendário).
 
 -- ============================================================ 1) catálogo
 create table if not exists public.acoes (
@@ -54,9 +55,9 @@ create policy perfil_acoes_ler on public.perfil_acoes for select to authenticate
   using (perfil_id = (select auth.uid()) or (select public.sou_admin()));
 
 insert into public.acoes (id, modulo, rotulo, descricao, ordem, padrao_funcoes, nivel_min) values
-  ('gravacao.criar',    'gravacoes', 'Criar gravação',                 'Cadastrar uma gravação nova (também a partir da agenda).', 10, '{coordenador}', 2),
+  ('gravacao.criar',    'gravacoes', 'Criar gravação',                 'Cadastrar uma gravação nova (também a partir da agenda).', 10, '{coordenador,videomaker}', 2),
   ('gravacao.agendar',  'gravacoes', 'Marcar e remarcar a data',       'Escolher ou mudar o dia e o horário de uma gravação.', 11, '{coordenador,videomaker}', 2),
-  ('gravacao.editar',   'gravacoes', 'Editar a gravação',              'Mudar nome, local, observações e o roteiro do dia.', 12, '{coordenador}', 2),
+  ('gravacao.editar',   'gravacoes', 'Editar a gravação',              'Mudar nome, local, observações e o roteiro do dia.', 12, '{coordenador,videomaker}', 2),
   ('gravacao.concluir', 'gravacoes', 'Concluir gravação',              'Marcar que a gravação aconteceu.', 13, '{coordenador,videomaker}', 2),
   ('gravacao.cancelar', 'gravacoes', 'Cancelar ou excluir gravação',   null, 14, '{coordenador}', 3),
   ('gravacao.portal',   'gravacoes', 'Mostrar gravação no portal',     'Liberar a gravação para o cliente ver no portal.', 15, '{coordenador}', 2),

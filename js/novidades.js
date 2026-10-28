@@ -30,6 +30,7 @@ B7.NOVIDADES_VERSOES = [
     itens: ['Configurações → Funções e permissões → "O que cada um pode fazer": liga e desliga cada ação (criar gravação, criar demanda de design, mover no quadro, enviar para o cliente…) por função ou só para uma pessoa. O banco obedece de verdade.',
             'Acesso liberado vale na hora: quando a administração aprova um pedido ou muda uma permissão, o menu e a tela da pessoa se atualizam sozinhos, sem sair e entrar.',
             'Corrigido: com o módulo Produção (quadro) liberado, a pessoa continuava vendo o quadro vazio. Agora aparece e funciona. O mesmo para Edição de vídeo liberada a quem não é videomaker.',
+            'Gravações: o videomaker com Gravações em Editar ou Total agora vê o botão "Nova gravação" também na tela de Gravações (antes só no Calendário).',
             'Botões de criar só aparecem para quem pode usar; se o sistema recusar, a mensagem diz onde pedir a liberação.',
             'Chamados: a conversa atualiza em tempo real dos dois lados — a mensagem aparece na hora, sem esperar.',
             'Para a equipe, o menu fala de produção: "Meu dia", "Meu trabalho" e "Produção da equipe".'] },

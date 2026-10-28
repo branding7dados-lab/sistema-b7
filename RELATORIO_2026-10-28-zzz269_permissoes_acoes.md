@@ -34,6 +34,10 @@
 - **Chamado em tempo real** (`js/suporte.js`): mensagem nova aparece na hora; a lista e o andamento se atualizam guardando o rascunho e o foco.
 - **Menu da equipe com cara de produção** (`js/nav.js`): "Meu dia", "Meu trabalho", "Produção da equipe"; o Panorama vira "Visão do mês" e só aparece para quem tem Clientes.
 
+### Pedido extra: videomaker sem "Nova gravação" na tela de Gravações
+- Causa: uma regra antiga de estilo (`body.b7-so-leitura`, zzz64) escondia o botão de todo mundo que não fosse admin/coordenador, ignorando o acesso. No Calendário o botão aparecia porque lá a regra era outra.
+- Agora o botão segue a ação `gravacao.criar`; o padrão de "Criar gravação" e "Editar a gravação" passou a incluir o videomaker com Gravações em Editar/Total (migração acoes_5_videomaker_grava). Testado: Kaique cria gravação (transação desfeita).
+
 ## Testes
 - `npm test` verde; `permissoes.test.mjs` com 175 conferências (inclui as ações e que toda ação usada na tela existe no banco).
 - Prints PC e celular da tela nova de permissões; telas do designer e da coordenação com e sem ações.

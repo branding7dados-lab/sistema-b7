@@ -2101,7 +2101,8 @@ body.recolhida .ver-como-campo + .ver-como-caixa + .ver-como-bt{display:flex;}
    designer). Nas listas de Gravações e Roteiros somem as ações que o
    banco recusaria; no editor de roteiro somem as de escrever. Ficam
    abrir, Teleprompter, apresentar, visualizar, baixar e imprimir. */
-body.b7-so-leitura #tela-dashboard :is([data-nova-gravacao],[data-dup],[data-fixar-grav],[data-arquivar],[data-definir-mes],[data-excluir][data-nome]){display:none !important;}
+/* zzz269: "Nova gravação" saiu daqui: segue a ação gravacao.criar (body.sem-gravacao-criar, dashboard.css) */
+body.b7-so-leitura #tela-dashboard :is([data-dup],[data-fixar-grav],[data-arquivar],[data-definir-mes],[data-excluir][data-nome]){display:none !important;}
 body.b7-so-leitura #tela-dashboard :is(.gl-item,.card,.rt-item) .menu .lista hr{display:none;}
 body.ed-leitura #tela-editor :is(#mn-ed-novo,#mn-ed-dados,#mn-ed-portal,#mn-ed-arquivar,#mn-ed-exportar,#mn-ed-excluir,
   #bt-add-roteiro,#bt-add-cena,.entre,.puxa,.cena-topo .menu,.bloco-topo .escala,.auto-bt,#indicador-salvamento-editor,
