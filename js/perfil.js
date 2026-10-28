@@ -96,6 +96,7 @@ B7.Perfil = (function () {
       '<div class="acoes">' +
         '<button class="b contorno" id="pf-sair"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/></svg>Sair da conta</button>' +
         '<div style="flex:1"></div>' +
+        (B7.Retro && !(B7.Auth.ehCliente && B7.Auth.ehCliente()) ? '<button class="b contorno" id="pf-retro">✨ Meu mês</button>' : '') +
         '<button class="b" data-fecha>Fechar</button>' +
       '</div>',
       { larga: true, extra: 'modal-perfil pf-modal',
@@ -132,6 +133,8 @@ B7.Perfil = (function () {
     ligarSeg(m);
 
     m.querySelector('#pf-sair').onclick = () => B7.Auth.sair();
+    const btRetro = m.querySelector('#pf-retro');
+    if (btRetro) btRetro.onclick = () => { const f = m.querySelector('[data-fecha]'); if (f) f.click(); B7.Retro.abrir(); };
 
     /* --------------------------------------------------- notificações */
     ligarNotificacoes(m); if (B7.Silencio) B7.Silencio.montarPessoa(m.querySelector('[data-sl-pessoa]'));
