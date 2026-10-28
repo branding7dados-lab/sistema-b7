@@ -1559,3 +1559,63 @@ body:has(#vd-selbar) .arr-barra{display:none;}
 .vd-card.arr-sel{outline:2px solid var(--rosa,#F0559E);outline-offset:-2px;}
 /* zzz275: apagar as selecionadas */
 #vd-selbar .b.perigo{color:var(--erro);}
+
+/* =====================================================================
+   zzz278 — LEGENDAS (js/legendas.js)
+   ===================================================================== */
+.lg-entrada{max-width:760px;}
+.lg-para{margin:0 0 14px;font-size:13.5px;color:var(--ink-2);}
+.lg-solta{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:34px 20px;border-radius:var(--r);
+  border:2px dashed var(--borda-forte);background:var(--card);cursor:pointer;text-align:center;transition:border-color .15s,background .15s;}
+.lg-solta:hover,.lg-solta.sobre{border-color:var(--acento);background:var(--acento-suave);}
+.lg-solta.ok{border-style:solid;border-color:var(--ok);}
+.lg-solta b{font-size:15px;}
+.lg-solta small{font-size:12.5px;color:var(--ink-3);}
+.lg-solta em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--ok);}
+.lg-solta-ic,.lg-h-ic{display:inline-grid;place-items:center;width:44px;height:30px;border-radius:7px;border:2px solid currentColor;font:800 13px/1 system-ui,sans-serif;color:var(--acento);margin-bottom:6px;}
+.lg-colar{margin:12px 0 0;}
+.lg-colar summary{cursor:pointer;font-size:13px;color:var(--ink-3);}
+.lg-colar textarea{margin-top:8px;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;}
+.lg-acoes{margin-top:14px;display:flex;gap:8px;}
+.lg-prog{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding:14px 16px;border-radius:var(--r);background:var(--card);border:1px solid var(--borda);}
+.lg-prog i{flex:1 1 100%;height:5px;border-radius:9px;background:var(--borda);position:relative;overflow:hidden;}
+.lg-prog i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--p,0%);background:linear-gradient(90deg,var(--sb-luz1),var(--sb-luz2));transition:width .4s;}
+.lg-res-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+.lg-res-cab h2{margin:0;font-size:18px;word-break:break-all;}
+.lg-res-cab p{margin:4px 0 0;font-size:13px;color:var(--ink-3);}
+.lg-res-bts{display:flex;gap:8px;flex-wrap:wrap;}
+.lg-filtro{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);margin:4px 0 12px;cursor:pointer;}
+.lg-cues{display:flex;flex-direction:column;gap:8px;}
+.lg-cue{padding:10px 14px;border-radius:var(--r-s,10px);background:var(--card);border:1px solid var(--borda);}
+.lg-cue.mudou{border-left:3px solid var(--acento);}
+.lg-cue.desfeita{border-left-color:var(--ink-4);opacity:.85;}
+.lg-cue-cab{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.lg-cue-cab b{font-size:12px;color:var(--ink-3);}
+.lg-cue-cab small{font:11.5px ui-monospace,Menlo,Consolas,monospace;color:var(--ink-4);}
+.lg-cue-cab .cb-link{margin-left:auto;font-size:12px;}
+.lg-dois{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media (max-width:640px){.lg-dois{grid-template-columns:1fr;gap:4px;}}
+.lg-dois p,.lg-igual{margin:0;font-size:14px;line-height:1.5;}
+.lg-antes{color:var(--ink-3);}
+.lg-antes del{background:var(--erro-bg);color:var(--erro);text-decoration:line-through;border-radius:3px;padding:0 2px;}
+.lg-depois mark{background:var(--ok-bg);color:var(--ok);font-weight:700;border-radius:3px;padding:0 2px;}
+.lg-barrada{margin:6px 0 0;font-size:12px;color:var(--ambar);}
+.lg-hist{display:flex;flex-direction:column;gap:8px;}
+.lg-h{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r);background:var(--card);border:1px solid var(--borda);flex-wrap:wrap;}
+.lg-h-ic{width:36px;height:26px;font-size:11px;margin:0;}
+.lg-h-tx{flex:1;min-width:180px;display:flex;flex-direction:column;}
+.lg-h-tx b{font-size:14px;word-break:break-all;}
+.lg-h-tx small{font-size:12px;color:var(--ink-3);}
+.lg-chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
+.lg-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 6px 4px 10px;border-radius:99px;background:var(--suave);border:1px solid var(--borda);font-size:13px;font-weight:600;}
+.lg-chip button{border:0;background:none;color:var(--ink-3);cursor:pointer;font-size:15px;line-height:1;padding:0 4px;border-radius:99px;}
+.lg-chip button:hover{background:var(--erro-bg);color:var(--erro);}
+.lg-add{display:flex;gap:8px;}
+.lg-add .campo{flex:1;}
+/* na demanda de vídeo */
+.vd-legendas{margin:0 0 16px;padding:12px 14px;border-radius:var(--r);background:var(--card);border:1px solid var(--borda);}
+.vd-leg-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.vd-leg-cab .b{text-decoration:none;}
+.vd-leg{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--borda);font-size:13px;}
+.vd-leg small{color:var(--ink-3);}
+.vd-leg-vazio{margin:0;font-size:12.5px;color:var(--ink-3);}

@@ -25,6 +25,13 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz278', versao: 'zzz278', em: '2026-10-29T04:00:00-03:00',
+    titulo: 'Legendas: a IA conserta a legenda do vídeo',
+    rota: 'legendas',
+    itens: ['Nova aba Legendas: arraste o .srt (ou cole o texto), escolha o cliente e a IA conserta ortografia, acento, maiúscula, pontuação, %, R$ e o nome das marcas — sem reescrever o que foi falado.',
+            'Os tempos e a numeração nunca mudam. Você vê o antes e depois de cada legenda e pode desfazer qualquer correção.',
+            'Baixe o .srt corrigido pronto para o editor. Fica guardado no Histórico e, se veio de uma demanda de edição, na própria demanda.',
+            'Em “Marcas e termos” fica a grafia oficial das marcas (lista geral) e os termos de cada cliente.'] },
   { id: 'v-zzz277', versao: 'zzz277', em: '2026-10-29T03:00:00-03:00',
     titulo: 'A IA monta as demandas de edição a partir dos roteiros',
     rota: 'video', ia: 'chat',

@@ -2257,6 +2257,8 @@ B7.Video = (function () {
 
       '<div class="vd-detalhe-corpo">' +
         '<div class="vd-detalhe-principal">' +
+          /* zzz278: legenda do vídeo — consertar com IA e as já corrigidas desta demanda */
+          (B7.Legendas && B7.Perm && B7.Perm.podeRota('legendas') ? '<section class="vd-legendas" id="vd-legendas" data-demanda-leg="' + esc(d.id) + '"></section>' : '') +
           secaoRoteiros(d, rc, podeEditar) +
 
           secaoVersoes(d, versoesAtual, podeGerir, podeOperar) +
@@ -2376,6 +2378,7 @@ B7.Video = (function () {
     '</div>';
 
     ligarDetalhe(d, rc);
+    pintarLegendasDaDemanda(d);
   }
 
   /* =================================================================
@@ -2659,6 +2662,28 @@ B7.Video = (function () {
       (ev.mensagem && ev.tipo === 'status' ? '<div class="vd-tl-msg">' + esc(ev.mensagem) + '</div>' : '') +
       /* zzz165: dia e hora exatos; o "há 2 dias" fica no passar do mouse */
       '<span class="vd-tl-quando" title="' + esc(B7.UI.quando ? B7.UI.quando(ev.created_at) : '') + '">' + esc(dataHora(ev.created_at)) + '</span></div></li>';
+  }
+
+  /* zzz278: as legendas corrigidas desta demanda (aba Legendas) */
+  async function pintarLegendasDaDemanda(d) {
+    const cx = document.getElementById('vd-legendas');
+    if (!cx || !B7.sb) return;
+    let l = [];
+    try { const r = await B7.sb.from('legendas').select('id,nome_arquivo,alteradas,total,created_at').eq('demanda_id', d.id).is('deleted_at', null).order('created_at', { ascending: false }).limit(5); l = r.data || []; } catch (e) {}
+    if (!cx.isConnected) return;
+    const pode = !B7.Perm || !B7.Perm.podeNivel || B7.Perm.podeNivel('legendas', 'editar');
+    cx.innerHTML = '<div class="vd-leg-cab"><b>Legenda</b>' +
+      (pode ? '<a class="b fina contorno" href="#/legendas?demanda=' + esc(d.id) + '">✨ Consertar legenda</a>' : '') + '</div>' +
+      (l.length ? l.map(x => '<div class="vd-leg"><span>' + esc(x.nome_arquivo) + ' <small>' + x.alteradas + ' de ' + x.total + ' corrigidas · ' + esc(B7.UI.quando(x.created_at)) + '</small></span>' +
+          '<button type="button" class="b fina pri" data-leg="' + esc(x.id) + '">Baixar</button></div>').join('')
+        : '<p class="vd-leg-vazio">Nenhuma legenda corrigida ainda. Mande o .srt do vídeo e a IA conserta ortografia, pontuação e marcas.</p>');
+    cx.querySelectorAll('[data-leg]').forEach(b => b.onclick = async () => {
+      const r = await B7.sb.from('legendas').select('nome_arquivo,corrigido').eq('id', b.dataset.leg).single();
+      if (r.error) return B7.UI.toast('Não foi possível baixar.', { tipo: 'erro' });
+      const url = URL.createObjectURL(new Blob([r.data.corrigido], { type: 'application/x-subrip;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = String(r.data.nome_arquivo).replace(/(\.srt|\.txt)?$/i, '') + ' (corrigida).srt';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+    });
   }
 
   function ligarDetalhe(d, rc) {

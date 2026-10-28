@@ -82,6 +82,8 @@ B7.Perm = (function () {
     { id: 'roteiros',      rotulo: 'Roteiros',            rotas: ['roteiros', 'trends'] },
     { id: 'gravacoes',     rotulo: 'Gravações',           rotas: ['gravacoes'] },
     { id: 'video',         rotulo: 'Vídeo',               rotas: ['video'] },
+    /* zzz278: consertar legenda (.srt) com IA */
+    { id: 'legendas',      rotulo: 'Legendas',            rotas: ['legendas'] },
     { id: 'design',        rotulo: 'Design',              rotas: ['design'] },
     { id: 'publicacoes',   rotulo: 'Publicações do Dia',  rotas: ['publicacoes'] },
     { id: 'aprovacoes',    rotulo: 'Aprovações',          rotas: ['aprovacoes'] },
@@ -111,7 +113,7 @@ B7.Perm = (function () {
   const PADRAO_FUNCAO = {
     coordenador: MODULOS.map(m => m.id).filter(m => m !== 'lixeira' && m !== 'equipe'),
     designer: ['design', 'linhas', 'calendario', 'whatsapp'],
-    videomaker: ['video', 'gravacoes', 'roteiros', 'calendario', 'whatsapp']
+    videomaker: ['video', 'legendas', 'gravacoes', 'roteiros', 'calendario', 'whatsapp']
   };
   const funcao = () => (B7.Auth && B7.Auth.funcao ? B7.Auth.funcao() : null);
   const souAdmin = () => papel() === 'admin';

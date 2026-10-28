@@ -40,6 +40,7 @@ B7.Nav = (function () {
       "roteiros": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M7 3.5h6.1a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V18a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 18V6A2.5 2.5 0 0 1 7 3.5z\"/><path class=\"d\" d=\"M8.5 12.6h7M8.5 16.2h4.5\"/></svg>",
       "linhas": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"3.5\" y=\"4.5\" width=\"17\" height=\"15\" rx=\"3.6\"/><path class=\"d\" d=\"M7.6 9.6h.01M7.6 14.4h.01M11 9.6h5.5M11 14.4h5.5\"/></svg>",
       "semanas": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"3.5\" y=\"4.5\" width=\"17\" height=\"16\" rx=\"3.6\"/><path class=\"d\" d=\"M3.5 9.5h17M9 15l2 2 3.9-4.1\"/><path class=\"o\" d=\"M8 2.8v3M16 2.8v3\"/></svg>",
+      "legendas": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"2.5\" y=\"5\" width=\"19\" height=\"14\" rx=\"3.4\"/><path class=\"d\" d=\"M10.6 10.2a2.4 2.4 0 1 0 0 3.6M17.6 10.2a2.4 2.4 0 1 0 0 3.6\"/></svg>",
       "projetos": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M4 8.2 12 4l8 4.2v7.6L12 20l-8-4.2z\"/><path class=\"d\" d=\"M4.4 8.4 12 12.4l7.6-4M12 12.4V19.6\"/></svg>",
       "arquivados": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"3\" y=\"4.5\" width=\"18\" height=\"4.6\" rx=\"1.9\"/><path class=\"f\" d=\"M4.8 9.1h14.4v8.4a2.5 2.5 0 0 1-2.5 2.5H7.3a2.5 2.5 0 0 1-2.5-2.5z\"/><path class=\"d\" d=\"M10 13.2h4\"/></svg>",
       "lixeira": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M6 7.5h12l-.8 10.7a2.5 2.5 0 0 1-2.5 2.3H9.3a2.5 2.5 0 0 1-2.5-2.3z\"/><path class=\"o\" d=\"M4 7.5h16M9.5 7.5V5.6a1.6 1.6 0 0 1 1.6-1.6h1.8a1.6 1.6 0 0 1 1.6 1.6v1.9\"/><path class=\"d\" d=\"M10.2 11.5v5M13.8 11.5v5\"/></svg>",
@@ -81,6 +82,7 @@ B7.Nav = (function () {
     aprovacoes:  { rota: '#/aprovacoes', rotulo: 'Aprovações', curto: 'Aprovações', id: 'nav-aprovacoes', base: ['aprovacoes'], pode: () => pode('aprovacoes') },
     kanban:      { rota: '#/kanban', rotulo: 'Produção', curto: 'Produção', id: 'nav-kanban', base: ['kanban'], pode: () => pode('kanban') },
     design:      { rota: '#/design', rotulo: 'Design', curto: 'Design', id: 'nav-design', base: ['design'], pode: () => pode('design') },
+    legendas:    { rota: '#/legendas', rotulo: 'Legendas', curto: 'Legendas', id: 'nav-legendas', base: ['legendas'], pode: () => pode('legendas') },
     video:       { rota: '#/video', rotulo: 'Edição de vídeo', curto: 'Vídeo', id: 'nav-video', base: ['video'], pode: () => pode('video') },
     gravacoes:   { rota: '#/gravacoes', rotulo: 'Gravações', curto: 'Gravações', base: ['gravacoes', 'gravacao', 'diaria'], pode: () => pode('gravacoes') },
     calendario:  { rota: '#/calendario', rotulo: 'Calendário', curto: 'Calendário', id: 'nav-calendario', base: ['calendario'], pode: () => pode('calendario') },
@@ -106,7 +108,7 @@ B7.Nav = (function () {
      só aparece se ITENS[x].pode() deixar. */
   const MEU_TRABALHO = {
     coordenador: ['linhas', 'publicacoes', 'roteiros', 'gravacoes', 'aprovacoes'],
-    videomaker:  ['video', 'gravacoes', 'roteiros', 'calendario'],
+    videomaker:  ['video', 'legendas', 'gravacoes', 'roteiros', 'calendario'],
     designer:    ['design', 'linhas']
   };
   /* barra inferior: frequência > completude (máx. 3 além da casa) */
@@ -116,7 +118,7 @@ B7.Nav = (function () {
     designer:    ['design', 'linhas', 'calendario'],
     gestao:      ['kanban', 'clientes', 'gravacoes', 'publicacoes']   /* sem função operacional (ex.: admin puro) */
   };
-  const OPERACAO = ['clientes', 'projetos', 'publicacoes', 'aprovacoes', 'kanban', 'design', 'video', 'gravacoes', 'calendario', 'oportunidades',
+  const OPERACAO = ['clientes', 'projetos', 'publicacoes', 'aprovacoes', 'kanban', 'design', 'video', 'legendas', 'gravacoes', 'calendario', 'oportunidades',
                     'roteiros', 'trends', 'linhas', 'semanas'];
   /* Atalhos saiu da barra permanente: continua no menu da conta e na tecla "?" */
   /* zzz200: Usuários e acessos saiu da lateral e do "Mais": fica em
