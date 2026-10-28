@@ -7,6 +7,7 @@
      riscos(alvo)        Gestão: o que olhar primeiro, escrito pela IA
      ajustesTarefas(o)   comentário do cliente → lista de tarefas
      pedidoPerguntas(o)  portal: o que falta no pedido do cliente
+     demandasDaGravacao(id) roteiros da gravação → demandas de edição (revisar e criar)
 
    Nada é gravado sozinho: a pessoa lê, copia ou confirma.
    ===================================================================== */
@@ -201,10 +202,83 @@ B7.IAFerramentas = (function () {
     };
   }
 
+  /* ============================================ DEMANDAS DE EDIÇÃO (zzz277)
+     A IA lê os roteiros da gravação e propõe uma demanda por roteiro:
+     título curto e o resumo para quem edita. O prazo nasce da data da
+     gravação + 3 dias úteis. A pessoa revisa tudo e confirma; roteiro que
+     já tem demanda não entra (o banco também confere). */
+  const podeDemandas = () => ligada() && !!(B7.Perm && B7.Perm.podeRota && B7.Perm.podeRota('video')) && (!B7.Perm.pode || B7.Perm.pode('video.criar'));
+  function diasUteis(iso, n) {
+    const d = new Date((iso || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
+    while (n > 0) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) n--; }
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  async function demandasDaGravacao(gravacaoId, aoCriar) {
+    const m = B7.UI.modal('<h3>✨ Demandas de edição com IA</h3>' +
+      '<p class="sub">A IA leu os roteiros desta gravação e preparou uma demanda para cada vídeo. Confira, ajuste o que quiser e confirme — nada é criado antes disso.</p>' +
+      '<div class="iaf-saida"></div><div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" data-criar disabled>Criar demandas</button></div>',
+      { larga: true, extra: 'iaf-modal' });
+    const saida = m.querySelector('.iaf-saida'), btCriar = m.querySelector('[data-criar]');
+    saida.innerHTML = pensando('Lendo os roteiros da gravação…');
+    let g, rots, existentes, vms;
+    try {
+      [g, rots, existentes, vms] = await Promise.all([B7.DB.gravacao(gravacaoId), B7.DB.listarRoteiros(gravacaoId),
+        B7.DB.demandasDaGravacaoVideo(gravacaoId).catch(() => []), B7.DB.listarVideomakers().catch(() => [])]);
+    } catch (e) { saida.innerHTML = '<div class="iaf-erro">Não consegui abrir esta gravação.</div>'; return; }
+    rots = (rots || []).filter(r => !r.deleted_at && !r.archived_at);
+    if (!rots.length) { saida.innerHTML = '<div class="iaf-erro">Esta gravação ainda não tem roteiros.</div>'; return; }
+    const jaTem = new Map((existentes || []).filter(d => d.roteiro_id).map(d => [d.roteiro_id, d]));
+    if (rots.every(r => jaTem.has(r.id))) { saida.innerHTML = '<div class="iaf-erro">Todos os roteiros desta gravação já têm demanda de edição.</div>'; return; }
+    const r = await B7.IA.pedir('extra', { operacao: 'demandas', ref_id: gravacaoId }, { prazo: 100000 });
+    if (!m.isConnected) return;
+    if (!r.ok) { saida.innerHTML = '<div class="iaf-erro">' + esc(r.mensagem || 'Não deu para ler os roteiros agora.') + '</div>'; return; }
+    const daIA = new Map((r.itens || []).map(x => [x.roteiro_id, x]));
+    const prazo = diasUteis(g.data_gravacao, 3);
+    const itens = rots.map(rt => {
+      const x = daIA.get(rt.id) || {};
+      return { roteiro_id: rt.id, original: rt.titulo || 'Sem título', titulo: x.titulo || rt.titulo || g.nome, resumo: x.resumo || '', prazo, existe: jaTem.get(rt.id) };
+    });
+    saida.innerHTML =
+      '<div class="iaf-dm-topo"><span>🎬 <b>' + esc(g.nome) + '</b>' + (g.data_gravacao ? ' · gravada em ' + esc(B7.UI.dataBR(g.data_gravacao)) : '') + '</span>' +
+        '<label>Quem edita <select class="campo fina" data-vm><option value="">Ninguém ainda</option>' +
+          (vms || []).map(v => '<option value="' + esc(v.id) + '"' + (v.id === g.videomaker_id ? ' selected' : '') + '>' + esc(v.nome) + '</option>').join('') + '</select></label></div>' +
+      '<div class="iaf-dms">' + itens.map((it, i) => it.existe
+        ? '<div class="iaf-dm feito" style="--i:' + i + '"><span class="iaf-dm-ja">já tem demanda' + (it.existe.codigo ? ' ' + esc(it.existe.codigo) : '') + '</span><b>' + esc(it.original) + '</b></div>'
+        : '<div class="iaf-dm" style="--i:' + i + '" data-i="' + i + '">' +
+            '<label class="iaf-dm-cab"><input type="checkbox" checked data-on><small>Roteiro: ' + esc(it.original) + '</small></label>' +
+            '<input class="campo" data-tit maxlength="120" value="' + esc(it.titulo) + '" aria-label="Título da demanda">' +
+            '<textarea class="campo" data-res rows="4" maxlength="2000" placeholder="Resumo para quem edita" aria-label="Resumo para quem edita">' + esc(it.resumo) + '</textarea>' +
+            '<label class="iaf-dm-prazo">Prazo <input class="campo fina" type="date" data-prz value="' + esc(it.prazo) + '"></label>' +
+          '</div>').join('') + '</div>' +
+      '<p class="ajuda">Prazo sugerido: 3 dias úteis depois da gravação. O resumo vai nas observações da demanda.</p>';
+    const contar = () => {
+      const n = saida.querySelectorAll('[data-on]:checked').length;
+      btCriar.disabled = !n; btCriar.textContent = n === 1 ? 'Criar 1 demanda' : 'Criar ' + n + ' demandas';
+    };
+    saida.querySelectorAll('[data-on]').forEach(c => c.onchange = () => { c.closest('.iaf-dm').classList.toggle('fora', !c.checked); contar(); });
+    contar();
+    btCriar.onclick = async () => {
+      const lista = [...saida.querySelectorAll('.iaf-dm[data-i]')].filter(el => el.querySelector('[data-on]').checked).map(el => ({
+        roteiro_id: itens[+el.dataset.i].roteiro_id, titulo: el.querySelector('[data-tit]').value.trim(),
+        resumo: el.querySelector('[data-res]').value.trim(), prazo: el.querySelector('[data-prz]').value || null
+      }));
+      if (!lista.length) return;
+      btCriar.disabled = true; btCriar.textContent = 'Criando…';
+      try {
+        const res = await B7.DB.criarDemandasIAVideo(gravacaoId, lista, saida.querySelector('[data-vm]').value || null);
+        const novas = (res || []).filter(x => !x.ja_existia).length, ja = (res || []).length - novas;
+        m.fechar();
+        B7.UI.toast((novas === 1 ? '1 demanda de edição criada' : novas + ' demandas de edição criadas') + (ja ? ' · ' + ja + ' já existia' + (ja === 1 ? '' : 'm') : '') + '.',
+          { acao: 'Ver na Edição de vídeo', aoClicar: () => { location.hash = '#/video'; } });
+        if (aoCriar) aoCriar(res);
+      } catch (e) { contar(); B7.UI.toast((e && e.message) || 'Não foi possível criar.', { tipo: 'erro' }); }
+    };
+  }
+
   /* ===================================================== PEDIDO (portal) */
   async function pedidoPerguntas({ clienteId, tipo, titulo, texto }) {
     return B7.IA.pedir('extra', { operacao: 'pedido', cliente_id: clienteId, tipo, titulo, texto });
   }
 
-  return { ligada, reuniao, marca, legenda, riscos, ajustesTarefas, pedidoPerguntas };
+  return { ligada, reuniao, marca, legenda, riscos, ajustesTarefas, pedidoPerguntas, demandasDaGravacao, podeDemandas };
 })();

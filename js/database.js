@@ -2371,6 +2371,15 @@ B7.DB = (function () {
     async roteirosParaAutomacaoVideo(gravacaoId) {
       return this.listarRoteiros(gravacaoId);
     },
+    /* zzz277: o que já tem demanda nesta gravação (para a IA não propor de novo) */
+    async demandasDaGravacaoVideo(gravacaoId) {
+      return ok(await sb().from('demandas_edicao').select('id,roteiro_id,editing_status,codigo')
+        .eq('gravacao_id', gravacaoId).is('deleted_at', null).neq('editing_status', 'descartado'));
+    },
+    /* zzz277: cria as demandas revisadas na tela da IA ([{roteiro_id,titulo,resumo,prazo}]) */
+    async criarDemandasIAVideo(gravacaoId, itens, videomakerId) {
+      return ok(await sb().rpc('video_criar_demandas_ia', { p_gravacao_id: gravacaoId, p_itens: itens || [], p_videomaker_id: videomakerId || null, p_prazo: null }));
+    },
     async gerarDemandasDeGravacaoVideo(gravacaoId, roteiroIds, videomakerId, prazo) {
       return ok(await sb().rpc('video_gerar_demandas_de_gravacao', {
         p_gravacao_id: gravacaoId, p_roteiro_ids: roteiroIds || [],

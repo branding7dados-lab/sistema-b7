@@ -318,12 +318,17 @@ B7.Gravacao = (function () {
       '<div class="gv-acoes">' +
         (principal === 'concluir' ? btConcluir + btAgendar : btAgendar + btConcluir) +
         '<a class="b contorno" href="#/gravacao/' + esc(g.id) + '/roteiros">' + TIPO.roteiro.ic + '<span>Abrir roteiros</span></a>' +
+        /* zzz277: a IA lê os roteiros e propõe as demandas de edição (revisar e criar) */
+        (B7.IAFerramentas && B7.IAFerramentas.podeDemandas() && sit !== 'Cancelada'
+          ? '<button type="button" class="b contorno" id="gv-ia-dm"><span aria-hidden="true">✨</span><span>Demandas de edição com IA</span></button>' : '') +
         /* zzz170: avisar o cliente no grupo do WhatsApp (js/whatsapp.js) */
         (g.data_gravacao && !concluida && sit !== 'Cancelada' && B7.WhatsApp && B7.WhatsApp.podeEnviar()
           ? '<button type="button" class="b contorno" id="gv-wa">' + B7.WhatsApp.icone + '<span>Avisar no WhatsApp</span></button>' : '') +
         '<button type="button" class="b contorno ico gv-mais-acoes" data-gv="menu" aria-label="Mais ações" aria-haspopup="menu">' + IC.menu + '</button>' +
       '</div>';
     ligarAcoes(cx);
+    const btIa = cx.querySelector('#gv-ia-dm');
+    if (btIa) btIa.onclick = () => B7.IAFerramentas.demandasDaGravacao(g.id);
     const btWa = cx.querySelector('#gv-wa');
     if (btWa) btWa.onclick = () => B7.WhatsApp.enviar({
       tipo: 'gravacao', refId: g.id, clienteId: g.client_id, clienteNome: g.cliente_nome, titulo: g.nome,
@@ -793,7 +798,10 @@ B7.Gravacao = (function () {
     if (!ok) return;
     try {
       await B7.Save.acao(() => B7.DB.gravacaoConcluir(S.id));
-      B7.UI.toast('Gravação concluída.', B7.Perm && B7.Perm.podeRota('video') ? { acao: 'Gerar demandas de edição', aoClicar: () => { location.hash = '#/video'; } } : undefined);
+      /* zzz277: com a IA ligada, o atalho já abre a revisão das demandas */
+      const comIA = B7.IAFerramentas && B7.IAFerramentas.podeDemandas();
+      B7.UI.toast('Gravação concluída.', comIA ? { acao: '✨ Gerar demandas com IA', aoClicar: () => B7.IAFerramentas.demandasDaGravacao(S.id) }
+        : B7.Perm && B7.Perm.podeRota('video') ? { acao: 'Gerar demandas de edição', aoClicar: () => { location.hash = '#/video'; } } : undefined);
       recarregarGravacao(); pintarItens();
     } catch (e) {}
   }

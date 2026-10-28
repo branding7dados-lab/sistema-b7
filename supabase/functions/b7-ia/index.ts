@@ -350,7 +350,9 @@ Deno.serve(comCors(async (req: Request) => {
        numa resposta que o próprio cliente lê */
     if (perfil.papel === 'cliente' || !['legenda', 'marca'].includes(pedido.operacao)) memoriaPronta = { memoria: '', exemplos: '' };
     t = {
-      recurso: pedido.operacao, acao: pedido.operacao, entidadeTipo: pedido.clienteId ? 'cliente' : 'perfil', entidadeId: pedido.clienteId || perfil.id,
+      recurso: pedido.operacao, acao: pedido.operacao,
+      entidadeTipo: pedido.operacao === 'demandas' ? 'gravacao' : pedido.clienteId ? 'cliente' : 'perfil',
+      entidadeId: pedido.operacao === 'demandas' ? String(pedido.refId) : pedido.clienteId || perfil.id,
       tamanhoEntrada: pedido.texto.length + pedido.titulo.length + (pedido.audio ? pedido.audio.base64.length : 0),
       mensagens: Extra.montarMensagens(pedido, ctx), maxTokens: Extra.limiteDeSaida(pedido),
       temperatura: pedido.operacao === 'legenda' ? 0.85 : pedido.operacao === 'pedido' ? 0.4 : 0.3,
