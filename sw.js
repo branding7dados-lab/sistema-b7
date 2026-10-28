@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v473';
+const CACHE = 'roteiros-b7-v474';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -113,6 +113,8 @@ self.addEventListener('fetch', ev => {
   /* zzz222: a página do botão do e-mail (confirmar.html) é outra página, não o app:
      vai sempre direto à rede. Antes, toda navegação recebia o index.html e o link caía no login. */
   if (url.pathname.endsWith('/confirmar.html')) return;
+  /* zzz272: Política de Privacidade e Termos são páginas públicas, não o app */
+  if (/\/(privacidade|termos)\.html$/.test(url.pathname) || url.pathname.endsWith('/legal.css')) return;
 
   /* config.js: sempre da rede, mas sem segurar a abertura — se a rede não
      responde em 2,5 s, vale a cópia guardada */

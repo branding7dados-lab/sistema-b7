@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-28-zzz271';
+  const VERSAO = '2026-10-28-zzz272';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -391,6 +391,8 @@ B7.Auth = (function () {
         '<div class="login-erro" id="lg-erro" role="alert"></div>' +
 
         '<button class="b pri login-entrar" type="submit">Entrar</button>' +
+        /* zzz272: links públicos (o Google exige para o login com Google) */
+        '<p class="login-legal"><a href="privacidade.html" target="_blank" rel="noopener">Privacidade</a> · <a href="termos.html" target="_blank" rel="noopener">Termos de Serviço</a></p>' +
       '</form>';
 
     document.body.appendChild(tela);

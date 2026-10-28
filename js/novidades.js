@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz272', versao: 'zzz272', em: '2026-10-28T22:00:00-03:00',
+    titulo: 'Política de Privacidade e Termos de Serviço',
+    itens: ['O Sistema B7 agora tem Política de Privacidade (de acordo com a LGPD e com as regras do Google) e Termos de Serviço, em páginas públicas com link fixo.',
+            'Os links aparecem no pé da tela de login.'] },
   { id: 'v-zzz271', versao: 'zzz271', em: '2026-10-28T21:00:00-03:00',
     titulo: 'Correções: bolinha do status e tela de carregamento',
     itens: ['A bolinha do status no perfil (barra lateral e painel) ficava amassada em cima da foto. Agora fica redonda, no canto.',
