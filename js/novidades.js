@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz275', versao: 'zzz275', em: '2026-10-29T01:30:00-03:00',
+    titulo: 'Apagar várias demandas de uma vez',
+    itens: ['Na Edição de vídeo, no Design e na Produção, selecione as demandas (Ctrl ou Shift + clique) e use “Apagar” na barra de baixo. Na Edição de vídeo também dá pelo botão direito.',
+            'O que for apagado vai para a Lixeira — dá para desfazer na hora, no aviso, ou restaurar depois por lá.',
+            'Na Produção, agora dá para selecionar várias demandas também (Ctrl ou Shift + clique).'] },
   { id: 'v-zzz274', versao: 'zzz274', em: '2026-10-29T00:30:00-03:00',
     titulo: 'Projetos avulsos: o cliente que compra um vídeo ou uma edição',
     rota: 'projetos',

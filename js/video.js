@@ -873,14 +873,27 @@ B7.Video = (function () {
     const n = total;
     b.innerHTML = '<span><b>' + n + '</b> selecionada' + (n === 1 ? '' : 's') + '</span>' +
       '<button type="button" class="b pri fina" data-a="entregar">Marcar como entregue</button>' +
+      (podeApagarLote() ? '<button type="button" class="b fina perigo" data-a="apagar">Apagar</button>' : '') +
       '<button type="button" class="b fina" data-a="todas">Selecionar todas</button>' +
       '<button type="button" class="b fina" data-a="limpar">Limpar</button>';
     b.onclick = e => {
       const a = e.target.closest('button') && e.target.closest('button').dataset.a;
       if (a === 'entregar') entregarSelecionadas();
+      else if (a === 'apagar') apagarSelecionadas();
       else if (a === 'todas') selecionarTodas();
       else if (a === 'limpar') limparSel();
     };
+  }
+  /* zzz275: apagar as selecionadas (vão para a lixeira; js/lote.js) */
+  const podeApagarLote = () => !!(B7.Lote && B7.Lote.podeApagar('video'));
+  function apagarSelecionadas() {
+    const ids = [...idsSel()];
+    if (!ids.length) return;
+    B7.Lote.apagar('video', ids, ok => {
+      if (!ok) return;
+      limparSel();
+      B7.Rota.recarregar();
+    });
   }
   function selecionarTodas() { visiveisAgora().forEach(d => SEL.add(d.id)); pintarSelecao(); }
   async function entregarSelecionadas() {
@@ -940,6 +953,7 @@ B7.Video = (function () {
     const itens = [
       ['entregar', n === 1 ? 'Marcar como entregue' : 'Marcar ' + n + ' como entregues', true],
       n === 1 ? ['abrir', 'Abrir demanda'] : null,
+      podeApagarLote() ? ['apagar', n === 1 ? 'Apagar' : 'Apagar ' + n] : null,
       ['todas', 'Selecionar todas'],
       ['limpar', 'Limpar seleção']
     ].filter(Boolean);
@@ -958,6 +972,7 @@ B7.Video = (function () {
       if (!a) return;
       e.stopPropagation(); fecharMenuLote();
       if (a === 'entregar') entregarSelecionadas();
+      else if (a === 'apagar') apagarSelecionadas();
       else if (a === 'abrir') location.hash = '#/video/' + id;
       else if (a === 'todas') selecionarTodas();
       else limparSel();

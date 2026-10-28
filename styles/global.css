@@ -2263,6 +2263,9 @@ html.arr-ativo,html.arr-ativo *{cursor:grabbing !important;user-select:none !imp
 .arr-barra.on{transform:translate(-50%,0);opacity:1;}
 .arr-barra span{color:var(--ink-3);}
 .arr-barra button{border:0;border-radius:99px;padding:6px 12px;background:var(--suave);color:var(--ink);font:inherit;font-weight:650;cursor:pointer;}
+/* zzz275: apagar em lote (vai para a lixeira) */
+.arr-barra button.perigo{background:var(--erro-bg);color:var(--erro);}
+.arr-barra button.perigo:hover{background:var(--erro);color:#fff;}
 @media (max-width:760px){ .arr-barra{bottom:96px;} .arr-barra span{display:none;} }
 @media (prefers-reduced-motion:reduce){ .arr-barra,.arr-origem,.arr-pronto{transition:none;} }
 

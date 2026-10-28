@@ -448,10 +448,33 @@ B7.Kanban = (function () {
   /* =================================================================
      INTERAÇÕES
      ================================================================= */
+  /* zzz275: escolher várias (Ctrl/⌘ ou Shift + clique; com alguma
+     marcada, o clique simples só alterna) e apagar de uma vez */
+  const SEL_KB = new Set();
+  function pintarSelKb(area) {
+    const vivos = new Set(dados.map(d => d.id));
+    [...SEL_KB].forEach(id => { if (!vivos.has(id)) SEL_KB.delete(id); });
+    (area || painel()).querySelectorAll('.kb-card[data-demanda]').forEach(c => c.classList.toggle('arr-sel', SEL_KB.has(c.dataset.demanda)));
+    if (!B7.Lote) return;
+    B7.Lote.barra(SEL_KB.size, B7.Lote.podeApagar('kanban') ? [{ rotulo: 'Apagar', perigo: true, fazer: () =>
+      B7.Lote.apagar('kanban', [...SEL_KB], ok => { if (!ok) return; SEL_KB.clear(); B7.Lote.barra(0); B7.Rota.recarregar(); }) }] : [],
+      () => { SEL_KB.clear(); pintarSelKb(); });
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && SEL_KB.size) { SEL_KB.clear(); pintarSelKb(); } });
+  window.addEventListener('hashchange', () => SEL_KB.clear());
+
   function ligar(area) {
+    pintarSelKb(area);
     area.querySelectorAll('[data-demanda]').forEach(el => {
       el.onclick = e => {
         if (e.target.closest('[data-menu]')) return;
+        if (e.ctrlKey || e.metaKey || e.shiftKey || SEL_KB.size) {
+          e.preventDefault();
+          const id = el.dataset.demanda;
+          if (SEL_KB.has(id)) SEL_KB.delete(id); else SEL_KB.add(id);
+          pintarSelKb(area);
+          return;
+        }
         const fb = e.target.closest('[data-feedback]');
         abrirDetalhe(el.dataset.demanda, fb ? 'feedback' : null);
       };

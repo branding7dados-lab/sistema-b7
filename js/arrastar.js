@@ -14,7 +14,8 @@
      B7.Arrastar.ligar(raiz, {
        cartao: '.ds-card[data-peca]', coluna: '.ds-col[data-status]', lista: '.ds-lista',
        id: el => el.dataset.peca, destino: col => col.dataset.status,
-       aoSoltar: async (ids, destino) => {...}   // lança erro para desfazer
+       aoSoltar: async (ids, destino) => {...},  // lança erro para desfazer
+       acoes: () => [{ rotulo: 'Apagar', perigo: true, fazer: (ids, limpar) => {...} }]   // opcional, na faixa
      });
    ===================================================================== */
 window.B7 = window.B7 || {};
@@ -38,8 +39,13 @@ B7.Arrastar = (function () {
       if (!n) { if (barra) { barra.classList.remove('on'); } return; }
       if (!barra) {
         barra = document.createElement('div'); barra.className = 'arr-barra';
-        barra.innerHTML = '<b></b><span>Arraste um deles para mover todos</span><button type="button">Limpar</button>';
-        barra.querySelector('button').onclick = limparSel;
+        /* zzz275: op.acoes() = [{ rotulo, perigo, fazer(ids, limpar) }] — ex.: Apagar */
+        const acoes = op.acoes ? op.acoes() || [] : [];
+        barra.innerHTML = '<b></b><span>Arraste um deles para mover todos</span>' +
+          acoes.map((a, i) => '<button type="button" data-i="' + i + '"' + (a.perigo ? ' class="perigo"' : '') + '>' + B7.UI.esc(a.rotulo) + '</button>').join('') +
+          '<button type="button" data-limpar>Limpar</button>';
+        barra.querySelector('[data-limpar]').onclick = limparSel;
+        barra.querySelectorAll('[data-i]').forEach(b => b.onclick = () => acoes[+b.dataset.i].fazer(selecionados().map(op.id), limparSel));
         document.body.appendChild(barra);
       }
       barra.querySelector('b').textContent = n + (n === 1 ? ' marcado' : ' marcados');

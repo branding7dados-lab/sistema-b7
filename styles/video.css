@@ -1557,3 +1557,5 @@ html.modo-leve .vd-h-bokeh{display:none;}
 /* a barra de seleção da Edição de vídeo (com "Marcar como entregue") substitui a do arrastar */
 body:has(#vd-selbar) .arr-barra{display:none;}
 .vd-card.arr-sel{outline:2px solid var(--rosa,#F0559E);outline-offset:-2px;}
+/* zzz275: apagar as selecionadas */
+#vd-selbar .b.perigo{color:var(--erro);}
