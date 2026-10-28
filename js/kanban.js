@@ -111,13 +111,14 @@ B7.Kanban = (function () {
     painel().innerHTML = '<div class="conteudo entra kanban-tela">' +
       '<div class="cab-conteudo kb-cab"><div><h1>Produção <span class="conta" id="kb-conta"></span></h1>' +
       '<p class="kb-intro">As demandas da equipe. O cliente não vê esta área.</p></div>' +
-      '<button class="b pri kb-nova" id="kb-nova" aria-label="Nova demanda">' +
+      (pode('kanban.criar') ? '<button class="b pri kb-nova" id="kb-nova" aria-label="Nova demanda">' +
         '<span class="kb-nova-mais" aria-hidden="true">+</span>' +
-        '<span class="kb-nova-tx">Nova<span class="kb-so-largo">&nbsp;demanda</span></span></button></div>' +
+        '<span class="kb-nova-tx">Nova<span class="kb-so-largo">&nbsp;demanda</span></span></button>' : '') + '</div>' +
       '<div id="kb-barra"></div>' +
       '<div id="kb-area"></div>' +
     '</div>';
-    painel().querySelector('#kb-nova').onclick = () => modalDemanda(null);
+    const btNova = painel().querySelector('#kb-nova');
+    if (btNova) btNova.onclick = () => modalDemanda(null);
     desenharBarra();
     desenharArea();
   }
@@ -342,7 +343,7 @@ B7.Kanban = (function () {
     const n = pendentes(d);
     return '<article class="kb-card' + (d.prioridade === 'alta' ? ' alta' : '') +
       (doCliente(d) ? ' do-cliente' : '') + '" ' +
-      'draggable="true" data-demanda="' + esc(d.id) + '" tabindex="0" role="button" ' +
+      (pode('kanban.mover') ? 'draggable="true" ' : '') + 'data-demanda="' + esc(d.id) + '" tabindex="0" role="button" ' +
       'aria-label="' + esc(d.titulo) + '">' +
       '<div class="kb-card-topo">' +
         (d.cliente_nome
@@ -602,7 +603,10 @@ B7.Kanban = (function () {
   }
 
   /* ---------------------------------------------------- arrastar */
+  /* zzz269: ação com permissão própria (Configurações → Permissões) */
+  const pode = acao => !B7.Perm || !B7.Perm.pode || B7.Perm.pode(acao);
   function ligarArrastar(raiz) {
+    if (!pode('kanban.mover')) return;
     let arrastando = null, marcador = null, autoRolar = null;
     const rol = raiz.querySelector('#kb-rol');
 

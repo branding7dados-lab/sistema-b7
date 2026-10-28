@@ -1915,3 +1915,39 @@ button.gt-kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-2);}
 .gt-rec small{display:block;font-size:12px;color:var(--ink-3);margin-top:2px;}
 .gt-rec p{margin:6px 0 0;font-size:13px;color:var(--ink-2);}
 @media (max-width:640px){ .gt-rec-form{grid-template-columns:1fr;} .gt-rec{flex-direction:column;} }
+
+/* zzz269: botões de criar somem para quem não tem a ação (js/permissoes.js aplicarAcoes) */
+body.sem-gravacao-criar [data-nova-gravacao],
+body.sem-gravacao-criar [data-criar="gravacao"],
+body.sem-linha-editar [data-criar-linha],
+body.sem-cliente-criar [data-novo-cliente] { display: none !important; }
+
+/* zzz269: o que cada um pode fazer (Configurações → Permissões) */
+.pa-abas{display:inline-flex;gap:4px;padding:4px;border-radius:12px;background:color-mix(in srgb, var(--ink) 5%, transparent);margin:4px 0 14px;}
+.pa-abas button{border:0;background:none;font:inherit;font-size:13px;font-weight:650;color:var(--ink-3);padding:7px 14px;border-radius:9px;cursor:pointer;}
+.pa-abas button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12);}
+.pa-tabela tbody th{white-space:normal;min-width:220px;}
+.pa-tabela tr.pa-mod th{position:static;background:color-mix(in srgb, var(--acento) 7%, var(--card));font-size:11.5px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);padding:8px 12px;}
+.pa-ac{display:flex;flex-direction:column;gap:2px;}
+.pa-ac b{font-size:13px;font-weight:650;}
+.pa-ac small{font-size:11.5px;font-weight:500;color:var(--ink-3);white-space:normal;}
+.pa-cel{display:inline-flex;align-items:center;justify-content:center;min-width:52px;padding:4px 10px;border-radius:99px;border:0;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease;}
+.pa-cel.sim{color:#fff;background:var(--grad-curto);}
+.pa-cel.nao{color:var(--ink-3);background:color-mix(in srgb, var(--ink) 7%, transparent);}
+.pa-cel.pers{box-shadow:0 0 0 2px var(--card), 0 0 0 3.5px var(--acento);}
+button.pa-cel:hover{transform:translateY(-1px);}
+button.pa-cel:disabled{opacity:.5;cursor:wait;}
+.pa-leg .pa-cel{cursor:default;min-width:0;padding:2px 8px;}
+.pa-pessoas{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.pa-p{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 12px;border-radius:12px;border:1px solid var(--borda);background:var(--card);font:inherit;color:inherit;cursor:pointer;text-align:left;}
+.pa-p b{font-size:13px;}
+.pa-p small{font-size:11px;color:var(--ink-3);}
+.pa-p.on{border-color:var(--acento);box-shadow:0 0 0 1px var(--acento);}
+.pa-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:12px;}
+.pa-grupo{border:1px solid var(--borda);border-radius:14px;padding:10px 12px;background:var(--card);}
+.pa-grupo h3{margin:2px 0 6px;font-size:11.5px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);}
+.pa-linha{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--borda);}
+.pa-linha:first-of-type{border-top:0;}
+.pa-linha.pers .pa-ac small{color:var(--acento);font-weight:650;}
+.pa-seg{flex-shrink:0;}
+@media (max-width:560px){ .pa-linha{flex-direction:column;align-items:stretch;} .pa-seg{align-self:flex-start;} .pa-tabela tbody th{min-width:140px;} .pa-tabela .pa-ac small{display:none;} .pa-tabela th,.pa-tabela td{padding:9px 8px;} }

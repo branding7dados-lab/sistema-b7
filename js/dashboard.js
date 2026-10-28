@@ -3275,6 +3275,9 @@ B7.Dashboard = (function () {
 
   /* =================================================== nova gravação */
   async function modalNovaGravacao(clienteId) {
+    if (B7.Perm && B7.Perm.pode && !B7.Perm.pode('gravacao.criar')) {
+      return B7.UI.toast('Sua conta não cria gravações. Peça à administração se precisar.', { tipo: 'aviso' });
+    }
     let clientes = [];
     try { clientes = await B7.DB.listarClientes(); }
     catch (e) { return B7.UI.toast('Erro ao carregar clientes', { tipo: 'erro' }); }

@@ -36,6 +36,8 @@ B7.Video = (function () {
   /* operar = mudar situação, registrar versão, materiais, conclusão e
      comentar, em QUALQUER demanda. Gerir (souEquipe) continua à parte. */
   const possoOperar = () => !!(souEquipe() || souVideomakerElegivel());
+  /* zzz269: ação com permissão própria (Configurações → Permissões) */
+  const pode = acao => !B7.Perm || !B7.Perm.pode || B7.Perm.pode(acao);
   /* "eu": em "Visualizar como…" é a pessoa em prévia (a prévia bloqueia
      toda escrita — ver js/previa-usuario.js), senão a sessão real. Assim
      "comigo"/"minha fila" mostram o trabalho de quem está sendo visto,
@@ -306,7 +308,7 @@ B7.Video = (function () {
               ? '<button class="b fina" id="vd-descartados">' + IC.lixeira + 'Descartados <span class="vd-contagem">' + descartados.length + '</span></button>'
               : '') +
           '</div>' +
-          '<button class="b pri" id="vd-nova" aria-label="Nova demanda">' + IC.mais + '<span>Nova demanda</span></button>' +
+          (pode('video.criar') ? '<button class="b pri" id="vd-nova" aria-label="Nova demanda">' + IC.mais + '<span>Nova demanda</span></button>' : '') +
           /* zzz22: no celular as ferramentas moram neste ⋯ (a fileira de
              botões grandes cortava na borda e empurrava a fila para baixo) */
           '<div class="menu vd-ferr-menu"><button class="b contorno vd-ferr-bt" aria-label="Ferramentas da Produção de Vídeo">' +
@@ -316,7 +318,7 @@ B7.Video = (function () {
               (descartados.length ? '<hr><button data-vd-ferr="vd-descartados">Descartados (' + descartados.length + ')</button>' : '') +
             '</div></div></div>'
         /* zzz64: o videomaker cria demanda, sem as ferramentas de gestão */
-        : (possoOperar()
+        : (pode('video.criar')
           ? '<div class="vd-acoes-topo"><button class="b pri" id="vd-nova" aria-label="Nova demanda">' + IC.mais + '<span>Nova demanda</span></button></div>'
           : '')) +
       '</div>' +

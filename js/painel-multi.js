@@ -307,7 +307,7 @@ B7.PainelMulti = (function () {
 
   /* ------------------------------------------------------------ abrir */
   function acaoPrincipal(funcao) {
-    if (funcao === 'coordenador' && B7.Conteudo && B7.Conteudo.novaLinha && B7.Perm.podeRota('linhas') &&
+    if (funcao === 'coordenador' && B7.Conteudo && B7.Conteudo.novaLinha && B7.Perm.podeRota('linhas') && (!B7.Perm.pode || B7.Perm.pode('linha.editar')) &&
         !(B7.Conteudo.souDesignerSomenteLeitura && B7.Conteudo.souDesignerSomenteLeitura()))
       return '<button type="button" class="b pri pn-cab-acao" id="pnm-nova-linha">' + IC_MAIS + '<span>Nova linha editorial</span></button>';
     if (funcao === 'videomaker') return '<a class="b contorno pn-cab-acao" href="#/video?minha=1&comp=todas">' + U().IC.camera + '<span>Minha fila de edição</span></a>';
