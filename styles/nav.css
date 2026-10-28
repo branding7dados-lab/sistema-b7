@@ -883,9 +883,10 @@ html.modo-leve body[data-shell="interno"] .lateral:after{display:none !important
   transition:background .15s ease, border-color .15s ease;}
 .pf-card:hover,.pf-card.on{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);}
 .pf-card:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
-.pf-av{position:relative;flex:none;width:38px;height:38px;border-radius:12px;font-size:13px;}
-.pf-av.com-foto img{border-radius:inherit;}
-.pf-ponto{position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;background:var(--pf-cor,#22C55E);box-shadow:0 0 0 2.5px #241a33;}
+.pf-av{position:relative;flex:none;display:inline-block;width:38px;height:38px;}
+.pf-av .pf-av-in{width:100%;height:100%;border-radius:12px;font-size:38px;}
+.pf-av .pf-av-in img{border-radius:inherit;}
+.pf-ponto{position:absolute;z-index:2;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;background:var(--pf-cor,#22C55E);box-shadow:0 0 0 2.5px #241a33;}
 .pf-tx{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px;}
 .pf-tx b{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pf-tx small{font-size:11.5px;color:rgba(255,255,255,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -901,7 +902,8 @@ body.recolhida .pf-card .pf-tx,body.recolhida .pf-card > svg{display:none;}
 .pf-pop.saindo{opacity:0;transform:translateX(-6px);transition:opacity .15s ease, transform .15s ease;}
 @keyframes pfEntra{from{opacity:0;transform:translateX(-8px) scale(.98);}to{opacity:1;transform:none;}}
 .pf-topo{display:flex;align-items:center;gap:13px;padding:14px;border-radius:16px;color:#fff;background:var(--grad-curto, linear-gradient(135deg,#4B2BB8,#B8327A));}
-.pf-topo .pf-av-g{width:54px;height:54px;border-radius:16px;font-size:18px;}
+.pf-topo .pf-av-g{width:54px;height:54px;}
+.pf-topo .pf-av-g .pf-av-in{border-radius:16px;font-size:54px;}
 .pf-topo .pf-ponto{width:14px;height:14px;box-shadow:0 0 0 3px rgba(80,40,150,.95);}
 .pf-quem{min-width:0;flex:1;}
 .pf-quem b{display:block;font-size:16px;line-height:1.2;}
@@ -938,5 +940,3 @@ button.pf-it:hover{background:color-mix(in srgb, var(--ink) 5%, transparent);}
 .pf-folha{padding:4px 2px 2px;}
 @media (max-width:760px){ .pf-so-pc{display:none;} }
 body.modo-portal .pf-card{display:none;}
-.pf-av span{font-size:13px;font-weight:800;}
-.pf-av-g span{font-size:18px;}

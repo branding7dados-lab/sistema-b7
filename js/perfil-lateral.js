@@ -44,9 +44,12 @@ B7.PerfilLateral = (function () {
   const souEquipe = () => { const u = eu(); return !!u && u.papel !== 'cliente'; };
   const funcoes = u => (B7.Topo && B7.Topo.funcoesDoUsuario ? B7.Topo.funcoesDoUsuario(u) : '') || 'Equipe B7';
 
+  /* a bolinha fica FORA do avatar: ele corta o que passa da borda (overflow)
+     e, com foto, a espremia ao lado da imagem */
   function avatar(u, classe) {
-    const html = B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'pf-av ' + (classe || '')) : '';
-    return html.replace(/<\/div>$/, '<i class="pf-ponto" style="--pf-cor:' + corDe(estado.status) + '" aria-hidden="true"></i></div>');
+    const html = B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'pf-av-in') : '';
+    return '<span class="pf-av ' + (classe || '') + '">' + html +
+      '<i class="pf-ponto" style="--pf-cor:' + corDe(estado.status) + '" aria-hidden="true"></i></span>';
   }
 
   /* ----------------------------------------------------------- cartão */
