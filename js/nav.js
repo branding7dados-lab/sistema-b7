@@ -287,6 +287,12 @@ B7.Nav = (function () {
         (bts[(i + (e.key === 'ArrowDown' ? 1 : bts.length - 1)) % bts.length]).focus();
       });
     });
+    /* zzz286: "Equipe ao vivo" é item de ação (href="#"), não navega — abre o painel.
+       (antes o onclick estava em ligarDicas(), que não é chamada, e o link caía no Panorama) */
+    nav.querySelectorAll('a[data-nav]').forEach(a => {
+      if (ITENS[a.dataset.nav] && ITENS[a.dataset.nav].acao === 'aovivo')
+        a.onclick = e => { e.preventDefault(); B7.AoVivo && B7.AoVivo.abrir(); };
+    });
     sincronizar(true);
     marcarAtivo();
     return true;
@@ -462,9 +468,6 @@ B7.Nav = (function () {
      recolhida mostrar os itens em vez dos grupos. */
   function ligarDicas(nav) {
     nav.querySelectorAll('a').forEach(a => {
-      /* zzz284: item de ação na lateral (ex.: "Equipe ao vivo") não navega — abre o painel */
-      const ac = a.dataset.nav && ITENS[a.dataset.nav] && ITENS[a.dataset.nav].acao;
-      if (ac === 'aovivo') a.onclick = e => { e.preventDefault(); B7.AoVivo && B7.AoVivo.abrir(); };
       const tx = () => (a.querySelector('span') || {}).textContent || '';
       const mostrar = () => { if (document.body.classList.contains('recolhida')) B7.UI.dica(a, tx()); };
       a.addEventListener('mouseenter', mostrar);
