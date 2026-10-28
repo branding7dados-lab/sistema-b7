@@ -39,8 +39,8 @@ begin
       codigo_novo := public._video_proximo_codigo_gravacao(p_gravacao_id);
       nova := public.video_criar_demanda(
         g.client_id, tit, codigo_novo,
-        extract(year from coalesce(prz, g.data_gravacao, now()))::int,
-        extract(month from coalesce(prz, g.data_gravacao, now()))::int,
+        coalesce(g.competencia_ano::int, extract(year from coalesce(g.data_gravacao, prz, now()))::int),
+        coalesce(g.competencia_mes::int, extract(month from coalesce(g.data_gravacao, prz, now()))::int),
         p_gravacao_id, coalesce(p_videomaker_id, g.videomaker_id), '', prz, obs,
         p_roteiro_id => rid
       );
@@ -56,3 +56,7 @@ begin
 end $$;
 revoke execute on function public.video_criar_demandas_ia(uuid, jsonb, uuid, date) from public, anon;
 grant execute on function public.video_criar_demandas_ia(uuid, jsonb, uuid, date) to authenticated;
+
+-- demandas_ia_2: o mês da demanda é o MÊS DA GRAVAÇÃO (competência), não o do prazo —
+-- prazo em novembro jogava a demanda para novembro e ela sumia da tela de outubro.
+-- Corrige as duas criadas antes (Infinite Fio · Semana 3).
