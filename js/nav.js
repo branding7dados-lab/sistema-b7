@@ -47,6 +47,7 @@ B7.Nav = (function () {
       "usuarios": "<svg viewBox=\"0 0 24 24\"><circle class=\"f\" cx=\"9.3\" cy=\"8\" r=\"3.4\"/><path class=\"f\" d=\"M3.0999999999999996 19.2a6.2 6.2 0 0 1 12.4 0 .8.8 0 0 1-.8.8H3.9a.8.8 0 0 1-.8-.8z\"/><path class=\"o\" d=\"M19 8.2v5.2M21.6 10.8h-5.2\"/></svg>",
       "config": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z\"/><circle class=\"d\" cx=\"12\" cy=\"12\" r=\"3.2\"/></svg>",
       "atalhos": "<svg viewBox=\"0 0 24 24\"><rect class=\"f\" x=\"2.5\" y=\"5.5\" width=\"19\" height=\"13\" rx=\"3.2\"/><path class=\"d\" d=\"M7 10h.01M10.3 10h.01M13.7 10h.01M17 10h.01M8 14.2h8\"/></svg>",
+    "aovivo": "<svg viewBox=\"0 0 24 24\"><circle class=\"f\" cx=\"12\" cy=\"12\" r=\"3.2\"/><path class=\"d\" d=\"M4.5 12a7.5 7.5 0 0 1 15 0M2 12a10 10 0 0 1 20 0\"/></svg>",
       "mais": "<svg viewBox=\"0 0 24 24\"><circle class=\"f\" cx=\"12\" cy=\"12\" r=\"8.6\"/><path class=\"d\" d=\"M8 12h.01M12 12h.01M16 12h.01\"/></svg>",
       "vercomo": "<svg viewBox=\"0 0 24 24\"><path class=\"f\" d=\"M2.5 12s3.4-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.4 6.5-9.5 6.5S2.5 12 2.5 12z\"/><circle class=\"d\" cx=\"12\" cy=\"12\" r=\"3\"/></svg>"
   };
@@ -100,7 +101,9 @@ B7.Nav = (function () {
     /* Configurações na lateral só para o admin (as preferências de todo
        mundo estão no menu da conta); Atalhos só faz sentido com teclado */
     config:      { rota: '#/config', rotulo: 'Configurações', curto: 'Configurações', id: 'nav-config', base: ['config'], pode: () => ehAdmin() && pode('config') },
-    atalhos:     { acao: 'atalhos', rotulo: 'Atalhos', curto: 'Atalhos', id: 'nav-atalhos', base: [], pode: () => ehAdmin() }
+    atalhos:     { acao: 'atalhos', rotulo: 'Atalhos', curto: 'Atalhos', id: 'nav-atalhos', base: [], pode: () => ehAdmin() },
+    /* zzz284: só super admin / admin supremo — o botão nem aparece para os outros */
+    aovivo:      { acao: 'aovivo', rotulo: 'Equipe ao vivo', curto: 'Ao vivo', id: 'nav-aovivo', base: [], pode: () => !!(B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin()) }
   };
 
   /* --------------------------------------------------- prioridades
@@ -123,7 +126,7 @@ B7.Nav = (function () {
   /* Atalhos saiu da barra permanente: continua no menu da conta e na tecla "?" */
   /* zzz200: Usuários e acessos saiu da lateral e do "Mais": fica em
      Configurações → Admin → Pessoas e no menu da conta */
-  const FERRAMENTAS = ['arquivados', 'lixeira', 'config'];
+  const FERRAMENTAS = ['aovivo', 'arquivados', 'lixeira', 'config'];
 
   function rotuloDe(id) {
     if (id === 'central' && papel() === 'designer') return 'Central de Design';
@@ -421,6 +424,7 @@ B7.Nav = (function () {
     bt.classList.add('aberto');
     el.querySelectorAll('[data-nf]').forEach(a => {
       if (ITENS[a.dataset.nf].acao === 'atalhos') a.onclick = e => { e.preventDefault(); fecharFlyout(); B7.UI.atalhos(); };
+      if (ITENS[a.dataset.nf].acao === 'aovivo') a.onclick = e => { e.preventDefault(); fecharFlyout(); B7.AoVivo && B7.AoVivo.abrir(); };
     });
     el.addEventListener('keydown', e => {
       const links = [...el.querySelectorAll('a')], i = links.indexOf(document.activeElement);
@@ -458,6 +462,9 @@ B7.Nav = (function () {
      recolhida mostrar os itens em vez dos grupos. */
   function ligarDicas(nav) {
     nav.querySelectorAll('a').forEach(a => {
+      /* zzz284: item de ação na lateral (ex.: "Equipe ao vivo") não navega — abre o painel */
+      const ac = a.dataset.nav && ITENS[a.dataset.nav] && ITENS[a.dataset.nav].acao;
+      if (ac === 'aovivo') a.onclick = e => { e.preventDefault(); B7.AoVivo && B7.AoVivo.abrir(); };
       const tx = () => (a.querySelector('span') || {}).textContent || '';
       const mostrar = () => { if (document.body.classList.contains('recolhida')) B7.UI.dica(a, tx()); };
       a.addEventListener('mouseenter', mostrar);
@@ -583,6 +590,7 @@ B7.Nav = (function () {
       if (ITENS[id]) contarUso(id);
       const m = folhaMais; if (m) m.fechar();
       if (d.acao === 'atalhos') return B7.UI.atalhos();
+      if (d.acao === 'aovivo') return B7.AoVivo && B7.AoVivo.abrir();
       location.hash = d.rota;
     });
     const hj = folhaMais.querySelector('[data-hoje]');

@@ -1,0 +1,43 @@
+/* =====================================================================
+   EQUIPE AO VIVO (zzz284) — js/aovivo.js. Painel só do super/supremo.
+   ===================================================================== */
+.av-modal{position:fixed;inset:0;z-index:7000;display:grid;place-items:center;padding:16px;
+  background:color-mix(in srgb,var(--ink) 55%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  animation:avFade .2s ease both;}
+@keyframes avFade{from{opacity:0}to{opacity:1}}
+.av-janela{width:min(460px,100%);max-height:min(680px,92vh);display:flex;flex-direction:column;
+  background:var(--card);border:1px solid var(--borda);border-radius:22px;box-shadow:var(--sh-3,0 30px 80px -24px #0009);overflow:hidden;
+  animation:avSobe .26s cubic-bezier(.2,.9,.25,1) both;}
+@keyframes avSobe{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+
+.av-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 18px 12px;}
+.av-topo h3{margin:0;font-family:'Archivo',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.01em;}
+.av-topo .sub{font-size:12.5px;color:var(--ink-2);}
+.av-x{width:32px;height:32px;flex:none;border-radius:50%;border:0;background:var(--suave);color:var(--ink-2);font-size:13px;cursor:pointer;transition:background .15s;}
+.av-x:hover{background:var(--borda);}
+
+.av-corpo{flex:1;overflow:auto;padding:4px 14px 8px;display:flex;flex-direction:column;gap:8px;}
+.av-vazio{margin:26px 14px;text-align:center;color:var(--ink-2);font-size:14px;line-height:1.5;}
+
+.av-card{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:var(--suave);border:1px solid transparent;transition:border-color .15s,background .15s;}
+.av-card:hover{border-color:var(--borda);}
+.av-foto{position:relative;width:42px;height:42px;flex:none;border-radius:50%;overflow:visible;}
+.av-foto img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
+.av-foto i{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;font:700 14px 'Archivo',sans-serif;font-style:normal;
+  color:#fff;background:linear-gradient(135deg,var(--acento),var(--acento-2,#d6336c));}
+.av-ponto{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#20c56a;border:2.5px solid var(--card);
+  box-shadow:0 0 0 0 #20c56a66;animation:avPulso 2.2s ease-out infinite;}
+@keyframes avPulso{0%{box-shadow:0 0 0 0 #20c56a66}70%{box-shadow:0 0 0 7px #20c56a00}100%{box-shadow:0 0 0 0 #20c56a00}}
+.av-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.av-txt b{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.av-tela{font-size:13px;color:var(--acento);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.av-txt small{font-size:11.5px;color:var(--ink-3,var(--ink-2));}
+.av-ir{flex:none;padding:8px 12px;border-radius:999px;border:1px solid var(--borda);background:var(--card);color:var(--ink);
+  font-size:12.5px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s;}
+.av-ir:hover{background:var(--suave);}
+.av-ir:active{transform:scale(.95);}
+
+.av-rodape{margin:0;padding:12px 18px 16px;font-size:11.5px;line-height:1.5;color:var(--ink-3,var(--ink-2));border-top:1px solid var(--borda);}
+
+@media (max-width:520px){ .av-janela{border-radius:18px;} .av-ir{padding:8px 10px;} }
+@media (prefers-reduced-motion:reduce){ .av-modal *,.av-modal{animation:none!important} }
