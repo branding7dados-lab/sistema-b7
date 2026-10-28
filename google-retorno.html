@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
+<title>Sistema B7 · Google</title>
+<link rel="icon" href="assets/icons/favicon.png">
+<!-- zzz279: volta da conexão com o Google (Agenda). A função google-agenda
+     redireciona para cá (o Supabase não deixa funções devolverem páginas:
+     elas apareciam como código cru). Esta página avisa a janela do sistema
+     que abriu o popup e se fecha; aberta direto, volta para o Calendário. -->
+<style>
+:root{--fundo:#0A0714;--card:#150F22;--ink:#EDEAF7;--ink2:#B4ADCC;--borda:rgba(255,255,255,.09);--ok:#3DD69A;--erro:#F0559E}
+@media (prefers-color-scheme: light){:root{--fundo:#F6F3FB;--card:#fff;--ink:#1C1530;--ink2:#5A5270;--borda:rgba(28,21,48,.1);--ok:#12805A;--erro:#C2185B}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:radial-gradient(90% 60% at 15% 0%,rgba(58,30,134,.45),transparent 70%),var(--fundo);color:var(--ink);
+  font:400 15px/1.55 'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif}
+body{min-height:100vh;display:grid;place-items:center;padding:24px}
+.c{width:min(420px,100%);padding:34px 28px 28px;border-radius:24px;background:var(--card);border:1px solid var(--borda);text-align:center;
+  box-shadow:0 30px 80px -40px rgba(0,0,0,.7);animation:e .45s cubic-bezier(.2,.9,.3,1.2) both}
+.ic{width:64px;height:64px;margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;font-size:30px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,#3A1E86,#C21C83);box-shadow:0 16px 40px -14px #C21C83}
+.c.erro .ic{background:linear-gradient(135deg,#7a1240,#C2185B)}
+h1{margin:0 0 6px;font-size:21px;line-height:1.25}
+p{margin:0;color:var(--ink2)}
+.a{margin-top:20px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+a.b{display:inline-block;padding:10px 18px;border-radius:99px;text-decoration:none;font-weight:700;font-size:14px;color:#fff;background:linear-gradient(135deg,#3A1E86,#C21C83)}
+small{display:block;margin-top:14px;color:var(--ink2);font-size:12.5px}
+@keyframes e{from{opacity:0;transform:translateY(10px) scale(.97)}}
+@media (prefers-reduced-motion:reduce){.c{animation:none}}
+</style>
+</head>
+<body>
+<main class="c" id="c">
+  <div class="ic" id="ic" aria-hidden="true">✓</div>
+  <h1 id="t">Google conectado</h1>
+  <p id="m">Já pode voltar ao Sistema B7.</p>
+  <div class="a"><a class="b" id="v" href="./#/calendario">Voltar ao sistema</a></div>
+  <small id="s"></small>
+</main>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var ok = q.get('ok') === '1';
+  var msg = (q.get('msg') || '').slice(0, 200);
+  var destino = './#/calendario?conectado=' + (ok ? '1' : '0');
+  document.getElementById('t').textContent = ok ? 'Google conectado' : 'Não foi possível conectar';
+  document.getElementById('m').textContent = msg || (ok ? 'Já pode voltar ao Sistema B7.' : 'Volte ao sistema e tente de novo.');
+  document.getElementById('ic').textContent = ok ? '✓' : '!';
+  if (!ok) document.getElementById('c').classList.add('erro');
+  document.getElementById('v').href = destino;
+  var avisou = false;
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({ tipo: 'b7-google-agenda', ok: ok, mensagem: msg }, location.origin);
+      avisou = true;
+      document.getElementById('s').textContent = 'Esta janela fecha sozinha…';
+      setTimeout(function () { window.close(); }, 1200);
+    }
+  } catch (e) {}
+  if (!avisou) {
+    document.getElementById('s').textContent = 'Voltando ao sistema em instantes…';
+    setTimeout(function () { location.replace(destino); }, 2500);
+  }
+})();
+</script>
+</body>
+</html>

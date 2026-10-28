@@ -117,41 +117,90 @@ B7.Legendas = (function () {
     const clientes = await B7.DB.listarClientes().catch(() => []);
     if (!cx.isConnected) return;
     const fixo = S && S.demandaId;
-    cx.innerHTML = '<section class="lg-entrada">' +
-      (fixo ? '<p class="lg-para">Para a demanda <b>' + esc(S.demandaTitulo || '') + '</b> · ' + esc(S.clienteNome || '') +
-          ' <a class="cb-link" href="#/legendas">trocar</a></p>'
-        : '<div class="mb"><label class="rot" for="lg-cli">CLIENTE DO VÍDEO</label><select class="campo" id="lg-cli"><option value="">Escolha… (usa as marcas e termos dele)</option>' +
-          clientes.map(c => '<option value="' + esc(c.id) + '"' + (S && S.clienteId === c.id ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select></div>') +
-      '<label class="lg-solta" id="lg-solta"><input type="file" accept=".srt,.txt,text/plain,application/x-subrip" hidden id="lg-arq">' +
-        '<span class="lg-solta-ic" aria-hidden="true">CC</span><b>Arraste o arquivo .srt aqui</b><small>ou clique para escolher</small>' +
-        '<em id="lg-arq-nome"></em></label>' +
-      '<details class="lg-colar"><summary>Ou cole o texto da legenda</summary><textarea class="campo" id="lg-texto" rows="8" placeholder="1&#10;00:00:01,000 --> 00:00:02,000&#10;texto da legenda"></textarea></details>' +
-      '<div class="lg-acoes"><button class="b pri" id="lg-ir"' + (podeEditar() ? '' : ' disabled title="Sua conta só vê as legendas"') + '>✨ Consertar com IA</button></div>' +
-      '<div id="lg-prog"></div></section>';
-    let arquivo = { nome: '', texto: '' };
-    const solta = cx.querySelector('#lg-solta'), inp = cx.querySelector('#lg-arq');
+    /* zzz279: passo a passo (cliente → legenda → consertar) e, ao lado, o que
+       a IA corrige e o que nunca muda — quem chega entende sem perguntar */
+    cx.innerHTML = '<div class="lg-grade">' +
+      '<section class="lg-passos">' +
+        '<div class="lg-passo"><span class="lg-n">1</span><div class="lg-passo-c"><b>Cliente do vídeo</b>' +
+          (fixo ? '<p class="lg-para">Demanda <b>' + esc(S.demandaTitulo || '') + '</b> · ' + esc(S.clienteNome || '') + ' <a class="cb-link" href="#/legendas">trocar</a></p>'
+            : '<select class="campo" id="lg-cli" aria-label="Cliente do vídeo"><option value="">Escolha o cliente…</option>' +
+              clientes.map(c => '<option value="' + esc(c.id) + '"' + (S && S.clienteId === c.id ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select>' +
+              '<small class="lg-dica">A IA usa os termos e produtos dele. Marcas e nomes de todos os clientes ela já conhece.</small>') +
+        '</div></div>' +
+        '<div class="lg-passo"><span class="lg-n">2</span><div class="lg-passo-c"><b>A legenda</b>' +
+          '<div class="lg-modo" role="tablist"><button type="button" class="on" data-modo="arq" role="tab">Arquivo .srt</button><button type="button" data-modo="colar" role="tab">Colar o texto</button></div>' +
+          '<label class="lg-solta" id="lg-solta"><input type="file" accept=".srt,.txt,text/plain,application/x-subrip" hidden id="lg-arq">' +
+            '<span class="lg-solta-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>' +
+            '<b>Arraste o .srt aqui</b><small>ou clique para escolher · até ~900 KB</small></label>' +
+          '<div class="lg-arq" id="lg-arq-chip" hidden><span class="lg-arq-ic" aria-hidden="true">CC</span><span class="lg-arq-tx"><b id="lg-arq-nome"></b><small id="lg-arq-info"></small></span>' +
+            '<button type="button" class="ico" id="lg-arq-tirar" aria-label="Tirar o arquivo" title="Tirar o arquivo">✕</button></div>' +
+          '<textarea class="campo lg-texto" id="lg-texto" rows="9" hidden placeholder="1&#10;00:00:01,000 --> 00:00:02,000&#10;texto da legenda&#10;&#10;2&#10;…"></textarea>' +
+          '<small class="lg-erro" id="lg-erro" hidden></small>' +
+        '</div></div>' +
+        '<div class="lg-passo ult"><span class="lg-n">3</span><div class="lg-passo-c"><b>Consertar</b>' +
+          '<button class="b pri lg-ir" id="lg-ir" disabled' + (podeEditar() ? '' : ' title="Sua conta só vê as legendas"') + '>✨ Consertar com IA</button>' +
+          '<small class="lg-dica" id="lg-ir-dica">Escolha o arquivo ou cole a legenda para começar.</small>' +
+          '<div id="lg-prog"></div>' +
+        '</div></div>' +
+      '</section>' +
+      '<aside class="lg-lado">' +
+        '<div class="lg-card"><h3>O que a IA corrige</h3><ul class="lg-lista ok">' +
+          ['Ortografia e acentos', 'Maiúsculas e pontuação', 'Nomes de marcas e clientes', '“cem por cento” → 100% · preços em R$', 'Erros claros da transcrição automática'].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' +
+        '<div class="lg-card"><h3>O que nunca muda</h3><ul class="lg-lista trava">' +
+          ['Os tempos e a numeração', 'O jeito de falar (“pra”, “tá”, “né”)', 'Frases que a IA tentar reescrever: fica a original'].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' +
+          '<p class="lg-nota">Você confere o antes e depois e pode desfazer qualquer correção antes de baixar.</p></div>' +
+        '<a class="lg-card lg-atalho" href="#/legendas?aba=termos"><b>Marcas e termos</b><small>Ensine a grafia certa de um produto ou nome</small></a>' +
+      '</aside></div>';
+    let arquivo = { nome: '', texto: '' }, modo = 'arq';
+    const q = sel => cx.querySelector(sel);
+    const solta = q('#lg-solta'), inp = q('#lg-arq'), bt = q('#lg-ir'), dica = q('#lg-ir-dica'), erro = q('#lg-erro');
+    const texto = () => modo === 'arq' ? arquivo.texto : q('#lg-texto').value;
+    const atualizar = () => {
+      const t = texto(), cues = t.trim() ? ler(t) : null;
+      erro.hidden = !(t.trim() && !cues);
+      erro.textContent = 'Isso não parece uma legenda .srt — faltam os tempos (00:00:01,000 --> 00:00:02,000).';
+      const n = cues ? cues.filter(c => c.texto.trim()).length : 0;
+      bt.disabled = !n || !podeEditar();
+      bt.textContent = n ? '✨ Consertar ' + n + (n === 1 ? ' legenda' : ' legendas') + ' com IA' : '✨ Consertar com IA';
+      dica.textContent = n ? 'Leva uns ' + Math.max(10, Math.ceil(n / POR_PARTE) * 20) + ' segundos. Os tempos ficam iguais.' : 'Escolha o arquivo ou cole a legenda para começar.';
+    };
+    cx.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => {
+      modo = b.dataset.modo;
+      cx.querySelectorAll('[data-modo]').forEach(x => x.classList.toggle('on', x === b));
+      q('#lg-texto').hidden = modo !== 'colar';
+      solta.hidden = modo !== 'arq' || !!arquivo.texto;
+      q('#lg-arq-chip').hidden = modo !== 'arq' || !arquivo.texto;
+      if (modo === 'colar') q('#lg-texto').focus();
+      atualizar();
+    });
     const pegar = async f => {
       if (!f) return;
       if (f.size > 900000) return B7.UI.toast('Arquivo grande demais (máx. ~900 KB).', { tipo: 'erro' });
       arquivo = { nome: f.name, texto: await f.text() };
-      cx.querySelector('#lg-arq-nome').textContent = f.name + ' · ' + ((ler(arquivo.texto) || []).length) + ' legendas';
-      solta.classList.add('ok');
+      const cues = ler(arquivo.texto) || [];
+      q('#lg-arq-nome').textContent = f.name;
+      q('#lg-arq-info').textContent = cues.length ? cues.length + ' legendas · ' + (cues[cues.length - 1].tempo.split('-->')[1] || '').trim().replace(/,\d+$/, '') + ' de vídeo' : 'não parece um .srt';
+      solta.hidden = true; q('#lg-arq-chip').hidden = false;
+      atualizar();
     };
+    q('#lg-arq-tirar').onclick = () => { arquivo = { nome: '', texto: '' }; inp.value = ''; solta.hidden = false; q('#lg-arq-chip').hidden = true; atualizar(); };
+    q('#lg-texto').oninput = atualizar;
     inp.onchange = () => pegar(inp.files[0]);
     ['dragenter', 'dragover'].forEach(ev => solta.addEventListener(ev, e => { e.preventDefault(); solta.classList.add('sobre'); }));
     ['dragleave', 'drop'].forEach(ev => solta.addEventListener(ev, e => { e.preventDefault(); solta.classList.remove('sobre'); }));
     solta.addEventListener('drop', e => pegar(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]));
-    cx.querySelector('#lg-ir').onclick = async () => {
-      const colado = cx.querySelector('#lg-texto').value;
-      const texto = arquivo.texto || colado;
-      const cues = ler(texto);
-      if (!cues) return B7.UI.toast(texto.trim() ? 'Isso não parece uma legenda .srt (faltam os tempos "-->").' : 'Escolha o arquivo .srt ou cole o texto.', { tipo: 'erro' });
-      const clienteId = fixo ? S.clienteId : (cx.querySelector('#lg-cli').value || null);
+    bt.onclick = async () => {
+      const cues = ler(texto());
+      if (!cues) return atualizar();
+      const sel = q('#lg-cli');
+      const clienteId = fixo ? S.clienteId : ((sel && sel.value) || null);
       if (!clienteId && !await B7.UI.confirmar({ titulo: 'Sem cliente?', texto: 'Sem o cliente, a IA usa a lista geral e o nome de todos os clientes, mas não os termos específicos de um cliente. Seguir assim?', rotulo: 'Seguir' })) return;
-      const nome = arquivo.nome || 'legenda.srt';
+      const nome = (modo === 'arq' && arquivo.nome) || 'legenda.srt';
       S = Object.assign(S || {}, { nome, clienteId, cues: cues.map(c => Object.assign(c, { ia: c.texto, usar: 'ia' })), feito: false, salvoComo: null });
+      cx.querySelectorAll('.lg-passos select, .lg-passos textarea, .lg-modo button, #lg-arq-tirar').forEach(el => { el.disabled = true; });
       await processar(cx);
     };
+    atualizar();
   }
 
   async function processar(cx) {

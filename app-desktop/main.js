@@ -18,6 +18,8 @@
    ===================================================================== */
 const { app, BrowserWindow, shell, dialog, Menu, screen, session, ipcMain, Notification } = require('electron');
 const { autoUpdater } = require('electron-updater');
+/* zzz279: avisos e menu com a cara do B7 (no lugar das caixas cinzas do Windows) */
+const janelasB7 = require('./janelas-b7');
 const path = require('node:path');
 const fs = require('node:fs');
 const ligarWhatsApp = require('./whatsapp');   /* zzz170: WhatsApp dentro do programa */
@@ -70,7 +72,9 @@ function criarJanela() {
     backgroundColor: FUNDO,
     title: 'Sistema B7',
     icon: path.join(__dirname, 'recursos', 'icone.ico'),
-    autoHideMenuBar: true,
+    /* zzz279: a barra de menu do Windows não aparece mais com Alt — o Alt
+       abre o menu do B7 (abrirMenuB7); os atalhos continuam valendo */
+    autoHideMenuBar: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -81,6 +85,13 @@ function criarJanela() {
     }
   });
   if (usar && salva.maximizada) janela.maximize();
+  janela.setMenuBarVisibility(false);
+  /* Alt sozinho (apertou e soltou, sem outra tecla) abre o menu do B7 */
+  let altSozinho = false;
+  janela.webContents.on('before-input-event', (ev, input) => {
+    if (input.type === 'keyDown') altSozinho = input.key === 'Alt' && !input.isAutoRepeat && !input.control && !input.shift && !input.meta;
+    else if (input.type === 'keyUp' && input.key === 'Alt' && altSozinho) { altSozinho = false; ev.preventDefault(); abrirMenuB7(); }
+  });
 
   /* o nome na barra de cima fica SEMPRE "Sistema B7": o site troca o título
      a cada tela ("Configurações · Branding7"), o que no computador fica
@@ -173,10 +184,10 @@ function contarAoSite(e) {
    eles saíam brancos e sem texto — a página não é nossa para mexer assim.
    Agora o programa fala pelos meios do Windows: caixa de diálogo quando a
    pessoa pediu alguma coisa, e aviso do sistema quando é só uma notícia. */
-function caixa(titulo, detalhe, erro) {
-  const op = { type: erro ? 'warning' : 'info', title: 'Sistema B7', message: titulo,
-               detail: detalhe || '', buttons: ['Fechar'], noLink: true };
-  if (janela && !janela.isDestroyed()) dialog.showMessageBox(janela, op); else dialog.showMessageBox(op);
+/* zzz279: a caixa agora tem a cara do B7 (app-desktop/janelas-b7.js) */
+function caixa(titulo, detalhe, erro, tipo) {
+  return janelasB7.aviso(janela && !janela.isDestroyed() ? janela : null,
+    { titulo, texto: detalhe || '', tipo: erro ? 'erro' : (tipo || 'info') });
 }
 function avisoDoSistema(texto, aoTocar) {
   try {
@@ -202,12 +213,12 @@ function ligarAtualizacao() {
       return;
     }
     caixa('Versão ' + (info && info.version ? info.version : 'nova') + ' encontrada',
-          'Estou baixando agora (uns 78 MB). Quando terminar, pergunto se pode instalar. Pode continuar usando.');
+          'Estou baixando agora (uns 78 MB). Quando terminar, pergunto se pode instalar. Pode continuar usando.', false, 'nova');
   });
   autoUpdater.on('update-not-available', () => {
     if (!pedidoDaPessoa) return;
     pedidoDaPessoa = false;
-    caixa('Tudo em dia', 'Você já está na versão mais nova do programa (' + app.getVersion() + ').');
+    caixa('Tudo em dia', 'Você já está na versão mais nova do programa (' + app.getVersion() + ').', false, 'ok');
   });
   autoUpdater.on('download-progress', p => {
     const pct = Math.round(p && p.percent ? p.percent : 0);
@@ -222,19 +233,15 @@ function ligarAtualizacao() {
     avisoDoSistema('Atualização do Sistema B7 pronta. Clique para instalar agora.', () => instalarAgora());
     if (avisando || !janela || janela.isDestroyed()) return;
     avisando = true;
-    const r = await dialog.showMessageBox(janela, {
-      type: 'info',
-      title: 'Sistema B7',
-      message: 'Tem uma versão nova do Sistema B7',
-      detail: 'A versão ' + (info && info.version ? info.version : 'nova') +
+    const r = await janelasB7.aviso(janela, {
+      tipo: 'nova',
+      titulo: 'Tem uma versão nova do Sistema B7',
+      texto: 'A versão ' + (info && info.version ? info.version : 'nova') +
         ' já foi baixada. Instalar agora leva uns segundos; nada do seu trabalho se perde.',
-      buttons: ['Instalar agora', 'Depois, ao fechar'],
-      defaultId: 0,
-      cancelId: 1,
-      noLink: true
+      botoes: [{ id: 'instalar', rotulo: 'Instalar agora', pri: true }, { id: 'depois', rotulo: 'Depois, ao fechar' }]
     });
     avisando = false;
-    if (r.response === 0) instalarAgora();
+    if (r === 'instalar') instalarAgora();
   });
   autoUpdater.on('error', e => {
     if (janela && !janela.isDestroyed()) janela.setProgressBar(-1);
@@ -373,6 +380,39 @@ async function abrirSobre() {
   janelaSobre.loadURL(telaSobre(app.getVersion(), sistema, estadoAtualizacao)).catch(() => {});
 }
 
+/* zzz279: o menu do B7 (Alt) — mesmas opções do menu antigo, em português
+   e com a cara do sistema. Copiar/colar/desfazer não precisam estar aqui:
+   continuam nos atalhos de sempre (Ctrl+C, Ctrl+V, Ctrl+Z). */
+function abrirMenuB7() {
+  if (!janela || janela.isDestroyed()) return;
+  const wc = janela.webContents;
+  janelasB7.menu(janela, [
+    { titulo: 'Sistema', itens: [
+      { id: 'inicio', rotulo: 'Ir para o início' },
+      { id: 'recarregar', rotulo: 'Recarregar', atalho: 'Ctrl+R' }] },
+    { titulo: 'Exibir', itens: [
+      { id: 'zoom-mais', rotulo: 'Aumentar o zoom', atalho: 'Ctrl +' },
+      { id: 'zoom-menos', rotulo: 'Diminuir o zoom', atalho: 'Ctrl −' },
+      { id: 'zoom-normal', rotulo: 'Zoom normal', atalho: 'Ctrl+0' },
+      { id: 'tela-cheia', rotulo: janela.isFullScreen() ? 'Sair da tela cheia' : 'Tela cheia', atalho: 'F11' }] },
+    { titulo: 'Programa', itens: [
+      { id: 'atualizar', rotulo: estadoAtualizacao.estado === 'pronta' ? 'Instalar a versão nova' : 'Procurar atualização' },
+      { id: 'sobre', rotulo: 'Sobre o Sistema B7' },
+      { id: 'sair', rotulo: 'Sair', atalho: 'Alt+F4' }] }
+  ], id => {
+    if (!janela || janela.isDestroyed()) return;
+    if (id === 'inicio') janela.loadURL(SITE);
+    else if (id === 'recarregar') wc.reload();
+    else if (id === 'zoom-mais') wc.setZoomLevel(Math.min(wc.getZoomLevel() + 0.5, 5));
+    else if (id === 'zoom-menos') wc.setZoomLevel(Math.max(wc.getZoomLevel() - 0.5, -3));
+    else if (id === 'zoom-normal') wc.setZoomLevel(0);
+    else if (id === 'tela-cheia') janela.setFullScreen(!janela.isFullScreen());
+    else if (id === 'atualizar') { if (estadoAtualizacao.estado === 'pronta') instalarAgora(); else conferir(true); }
+    else if (id === 'sobre') abrirSobre();
+    else if (id === 'sair') app.quit();
+  });
+}
+
 /* --------------------------------------------------------- menu
    Menu escondido (o sistema tem a navegação dele), mas os atalhos de
    sempre continuam valendo: copiar, colar, recarregar, zoom, F12. */
@@ -387,7 +427,8 @@ function montarMenu() {
         { label: 'Sair', accelerator: 'Alt+F4', role: 'quit' }
       ]
     },
-    { label: 'Editar', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
+    { label: 'Editar', submenu: [{ role: 'undo', label: 'Desfazer' }, { role: 'redo', label: 'Refazer' }, { type: 'separator' },
+      { role: 'cut', label: 'Recortar' }, { role: 'copy', label: 'Copiar' }, { role: 'paste', label: 'Colar' }, { role: 'selectAll', label: 'Selecionar tudo' }] },
     {
       label: 'Exibir',
       submenu: [

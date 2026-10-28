@@ -44,3 +44,14 @@ jobs:
             echo "tentativa $t falhou; esperando"; sleep $((t * 20))
           done
           exit 1
+      # zzz279: a google-agenda (conexão com o Google Agenda) também sai daqui.
+      # O código do repositório é o mesmo publicado (versão 2026-09-15-f) mais
+      # a volta por google-retorno.html.
+      - name: Publicar google-agenda
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN não configurado — nada publicado"; exit 0; fi
+          for t in 1 2 3; do
+            { supabase functions deploy google-agenda --project-ref "$PROJETO" --no-verify-jwt --use-api || supabase functions deploy google-agenda --project-ref "$PROJETO" --no-verify-jwt; } && exit 0
+            echo "tentativa $t falhou; esperando"; sleep $((t * 20))
+          done
+          exit 1
