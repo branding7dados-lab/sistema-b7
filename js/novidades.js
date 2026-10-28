@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz279', versao: 'zzz279', em: '2026-10-29T05:00:00-03:00',
+    titulo: 'Legendas mais fácil, barra de rolagem nova e o programa do Windows com a cara do B7',
+    itens: ['A tela de Legendas ficou em passos: escolha o cliente, arraste o .srt (ou cole o texto) e veja quantas legendas e quanto tempo antes de mandar para a IA.',
+            'A barra de rolagem agora é fina e arredondada, em todas as telas.',
+            'Ao ligar o Google (Agenda ou conta), a tela de volta agora é bonita e fecha sozinha.',
+            'No programa do Windows, os avisos de atualização e o menu do Alt agora têm a cara do B7, tudo em português.'] },
   { id: 'v-zzz278', versao: 'zzz278', em: '2026-10-29T04:00:00-03:00',
     titulo: 'Legendas: a IA conserta a legenda do vídeo',
     rota: 'legendas',

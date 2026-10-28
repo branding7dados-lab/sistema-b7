@@ -94,7 +94,7 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { comCors } from '../_shared/cors.ts';
 
-const VERSAO = '2026-09-15-f';
+const VERSAO = '2026-10-28-retorno-bonito';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -103,9 +103,6 @@ const CORS = {
 
 function json(corpo: unknown, status = 200): Response {
   return new Response(JSON.stringify(corpo), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
-}
-function paginaHtml(corpo: string, status = 200): Response {
-  return new Response(corpo, { status, headers: { ...CORS, 'Content-Type': 'text/html; charset=utf-8' } });
 }
 
 const admin = () => createClient(
@@ -252,29 +249,13 @@ async function tratarCallback(url: URL): Promise<Response> {
 }
 
 function paginaRetorno(ok: boolean, mensagem: string): Response {
-  const destino = APP_URL.replace(/\/$/, '') + '/#/calendario?conectado=' + (ok ? '1' : '0');
-  const cor = ok ? '#2E7D32' : '#C2185B';
-  const msgSegura = mensagem.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string));
-  /* Se esta página foi aberta como popup pela tela de Configurações do
-     Calendário, avisa a janela original por postMessage e se fecha
-     sozinha — volta pro mesmo lugar sem trocar de aba. Sem opener
-     (abriu direto, ou o navegador bloqueou o "window.close"), cai no
-     redirecionamento normal via meta refresh. */
-  return paginaHtml(
-    '<!doctype html><html><head><meta charset="utf-8"><title>Sistema B7</title>' +
-    '<meta http-equiv="refresh" content="3;url=' + destino + '"></head>' +
-    '<body style="font-family:system-ui,sans-serif;padding:48px 24px;text-align:center;color:' + cor + '">' +
-    '<p style="font-size:15px">' + (ok ? '✓' : '✗') + ' ' + msgSegura + '</p>' +
-    '<p style="color:#888;font-size:13px">Redirecionando de volta ao sistema…</p>' +
-    '<p><a href="' + destino + '">Clique aqui se não redirecionar sozinho</a></p>' +
-    /* a mensagem pode trazer texto da URL (?error=…): dentro do <script>
-       os sinais < > & viram \u00xx, para nada fechar a tag e virar código;
-       e o aviso só vai para a janela do app (origem fixa, não "*") */
-    '<script>try{if(window.opener){window.opener.postMessage({tipo:"b7-google-agenda",ok:' + (ok ? 'true' : 'false') + ',mensagem:' +
-      JSON.stringify(mensagem).replace(/[<>&]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')) +
-      '},' + JSON.stringify(new URL(APP_URL).origin) + ');window.close();}}catch(e){}</script>' +
-    '</body></html>'
-  );
+  /* zzz279: o Supabase não deixa uma função devolver página HTML (ela
+     aparecia como código cru, "âœ“ Conectado…"). Agora a volta é um
+     redirecionamento para google-retorno.html, no próprio site do sistema:
+     a página avisa a janela que abriu o popup (postMessage, mesma origem)
+     e se fecha; aberta direto, volta para o Calendário. */
+  const destino = APP_URL.replace(/\/$/, '') + '/google-retorno.html?ok=' + (ok ? '1' : '0') + '&msg=' + encodeURIComponent(mensagem.slice(0, 200));
+  return new Response(null, { status: 302, headers: { ...CORS, Location: destino, 'Cache-Control': 'no-store' } });
 }
 
 async function desconectar(perfil: Perfil): Promise<Response> {

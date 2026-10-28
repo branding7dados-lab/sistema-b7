@@ -25,6 +25,7 @@
     },
     "files": [
       "main.js",
+      "janelas-b7.js",
       "preload.js",
       "whatsapp.js",
       "preload-whatsapp.js",
