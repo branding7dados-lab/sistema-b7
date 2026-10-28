@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz271', versao: 'zzz271', em: '2026-10-28T21:00:00-03:00',
+    titulo: 'Correções: bolinha do status e tela de carregamento',
+    itens: ['A bolinha do status no perfil (barra lateral e painel) ficava amassada em cima da foto. Agora fica redonda, no canto.',
+            'A frase "Preparando o seu espaço…" ficava em cima das faixas claras da abertura e não dava para ler. Agora tem uma placa escura atrás.',
+            'Meu perfil → Segurança: o cartão "Entrar com Google" agora explica por que não dá para vincular (no app, só pelo navegador; ou o Google ainda não foi ativado no servidor) em vez de sumir.'] },
   { id: 'v-zzz270', versao: 'zzz270', em: '2026-10-28T20:00:00-03:00',
     titulo: 'Sua conta na barra lateral, status da equipe e "Visualizar como" para clientes',
     itens: ['No computador, a sua conta agora fica no pé da barra lateral: foto, nome e status. Tocando abre o painel com Meu status, Meu dia (para hoje, atrasadas, gravações de hoje), tema e atalhos.',

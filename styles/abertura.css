@@ -869,3 +869,12 @@ html.ab-sem .b7-abertura::after{content:"";position:absolute;left:50%;top:50%;wi
   border:2.5px solid color-mix(in srgb, var(--ink) 14%, transparent);border-top-color:var(--acento);animation:abSemGira .8s linear infinite;}
 html.ab-sem .b7-abertura.saindo{opacity:0;transition:opacity .18s ease;}
 @keyframes abSemGira{to{transform:rotate(360deg);}}
+
+/* zzz270: a frase da espera ficava em cima das faixas claras da abertura
+   (streaming e outras) e não dava para ler — ganha uma placa de vidro
+   escuro só do tamanho dela, centralizada */
+.b7-abertura .ab-espera{width:max-content;max-width:calc(100vw - 32px);margin-inline:auto;box-sizing:border-box;
+  padding:14px 22px 16px;border-radius:18px;background:rgba(10,6,20,.8);z-index:30;
+  -webkit-backdrop-filter:blur(14px) saturate(1.1);backdrop-filter:blur(14px) saturate(1.1);
+  box-shadow:0 10px 40px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.08);}
+.b7-abertura.b7-abertura.b7-abertura .ab-frase{color:rgba(255,255,255,.86);}
