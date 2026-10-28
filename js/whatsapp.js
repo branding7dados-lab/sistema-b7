@@ -812,7 +812,10 @@ B7.WhatsApp = (function () {
     design: 'Olá, {cliente}! 🎨\nSegue a arte{titulo} para vocês conferirem. Qualquer ajuste, é só nos falar por aqui.',
     gravacao: 'Olá, {cliente}! 🎥\nPassando para confirmar a nossa gravação:\n📅 {data}{hora}{local}\nQualquer mudança, nos avise por aqui. Até lá!',
     /* zzz268: material esperando aprovação no portal, com o link direto */
-    aprovacao: 'Olá, {cliente}! ✅\nTem material novo esperando a aprovação de vocês{titulo}:\n👉 {link}\nÉ só abrir, aprovar ou pedir ajuste por lá. Qualquer dúvida, estamos aqui!'
+    aprovacao: 'Olá, {cliente}! ✅\nTem material novo esperando a aprovação de vocês{titulo}:\n👉 {link}\nÉ só abrir, aprovar ou pedir ajuste por lá. Qualquer dúvida, estamos aqui!',
+    /* zzz274: projeto avulso — o roteiro vai no texto (o cliente avulso não usa o portal) e o pedido do material */
+    roteiro: 'Olá, {cliente}! 📝\nSegue o roteiro{titulo} para vocês conferirem:\n\n{texto}\n\nEstando tudo certo, é só responder "aprovado" por aqui. Qualquer ajuste, nos fale!',
+    material: 'Olá, {cliente}! 📂\nPara seguirmos com{titulo}, precisamos do material gravado. Pode subir os arquivos nesta pasta do Drive?{link}\nAssim que chegar, a edição começa. Obrigado!'
   };
   const chaveModelo = t => 'wa_modelo_' + t;
   function preencher(tpl, d) {
@@ -822,7 +825,8 @@ B7.WhatsApp = (function () {
       .replace(/\{data\}/g, d.data || '')
       .replace(/\{hora\}/g, d.hora ? ' às ' + d.hora : '')
       .replace(/\{local\}/g, d.local ? '\n📍 ' + d.local : '')
-      .replace(/\{link\}/g, d.link || '');
+      .replace(/\{link\}/g, d.tipo === 'material' ? (d.link ? '\n👉 ' + d.link : '') : (d.link || ''))
+      .replace(/\{texto\}/g, d.texto || '');
   }
 
   /* ----------------------------------------- "Enviar ao cliente" */
@@ -840,7 +844,7 @@ B7.WhatsApp = (function () {
     const autoArtes = prog && D.enviaUrls && artes.length;
     if (d.tipo === 'design' && prog && !autoArtes) d.comArquivo = true;
     const oQue = d.tipo === 'design' ? 'a arte' : 'o vídeo';
-    const m = B7.UI.modal('<h3>' + (d.tipo === 'gravacao' ? 'Avisar a gravação no WhatsApp' : d.tipo === 'aprovacao' ? 'Avisar a aprovação no WhatsApp' : d.tipo === 'design' ? 'Enviar a arte no WhatsApp' : 'Enviar o vídeo no WhatsApp') + '</h3>' +
+    const m = B7.UI.modal('<h3>' + (d.tipo === 'roteiro' ? 'Enviar o roteiro no WhatsApp' : d.tipo === 'material' ? 'Pedir o material no WhatsApp' : d.tipo === 'gravacao' ? 'Avisar a gravação no WhatsApp' : d.tipo === 'aprovacao' ? 'Avisar a aprovação no WhatsApp' : d.tipo === 'design' ? 'Enviar a arte no WhatsApp' : 'Enviar o vídeo no WhatsApp') + '</h3>' +
       '<p class="sub">' + (prog
         ? 'O sistema abre o grupo, ' + (autoArtes ? 'anexa ' + (artes.length > 1 ? 'as ' + artes.length + ' artes ' : 'a arte ') : d.comArquivo ? 'anexa ' + oQue + (d.tipo === 'video' ? ' como documento ' : ' ') : '') + 'e escreve a mensagem. <b>Quem aperta enviar é você.</b>'
         : cel ? 'Abre o WhatsApp com a mensagem' + (d.comArquivo ? ' e ' + oQue : '') + ' — você escolhe o grupo e envia.'
@@ -862,7 +866,7 @@ B7.WhatsApp = (function () {
             (cel ? 'você escolhe ao tocar em “Abrir no WhatsApp”' : 'nenhum escolhido') + '</span></div></div>'
         : '') +
       '<div class="mb"><label class="rot" for="wa-tx">MENSAGEM</label>' +
-        '<textarea class="campo alta" id="wa-tx" rows="6">' + esc(preencher(tpl, d)) + '</textarea>' +
+        '<textarea class="campo alta" id="wa-tx" rows="' + (d.tipo === 'roteiro' ? 14 : 6) + '">' + esc(preencher(tpl, d)) + '</textarea>' +
         '<small class="leve">' + (prog ? 'A assinatura com o seu nome entra sozinha quando você enviar.' : '') +
           ' <button type="button" class="link" id="wa-modelo">Usar este texto como modelo</button></small></div>' +
       '<div class="acoes"><button type="button" class="b" data-fecha>Cancelar</button>' +
@@ -883,6 +887,7 @@ B7.WhatsApp = (function () {
     m.querySelector('#wa-modelo').onclick = () => {
       /* guarda o texto com os espaços {cliente}, {data}… no lugar dos valores */
       let t = m.querySelector('#wa-tx').value;
+      if (d.texto) t = t.split(d.texto).join('{texto}');
       if (d.clienteNome) t = t.split(d.clienteNome).join('{cliente}');
       if (d.titulo) t = t.split(' "' + d.titulo + '"').join('{titulo}');
       if (d.data) t = t.split(d.data).join('{data}');

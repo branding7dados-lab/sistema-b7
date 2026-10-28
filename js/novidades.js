@@ -25,6 +25,14 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz274', versao: 'zzz274', em: '2026-10-29T00:30:00-03:00',
+    titulo: 'Projetos avulsos: o cliente que compra um vídeo ou uma edição',
+    rota: 'projetos',
+    itens: ['Cliente agora tem contrato Mensal ou Avulso (Editar cliente). Avulso é quem comprou um trabalho pontual e não usa o portal.',
+            'Novo projeto avulso (no botão Criar ou na página do cliente), em três tipos: vídeo completo (roteiro, gravação e edição), cliente grava (a B7 faz roteiro e edição) ou só edição.',
+            'Ao criar, o sistema já monta o roteiro, a gravação e as demandas de edição. A edição fica esperando até a gravação acontecer ou o material chegar pelo Drive.',
+            'O roteiro vai para o cliente pelo WhatsApp (texto pronto ou PDF); quando ele aprovar, é só marcar "Cliente aprovou o roteiro". "Material recebido" libera a edição.',
+            'Cada projeto mostra a linha do tempo e o próximo passo. As demandas de vídeo dele ganham a etiqueta "Avulso".'] },
   { id: 'v-zzz273', versao: 'zzz273', em: '2026-10-28T23:00:00-03:00',
     titulo: 'Entrar com Google também no programa do Windows',
     itens: ['No programa do Windows, "Entrar com Google" e "Vincular conta Google" abrem o Google no navegador do computador; depois de escolher a conta, o programa entra sozinho.',

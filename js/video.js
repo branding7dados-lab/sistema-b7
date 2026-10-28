@@ -646,7 +646,7 @@ B7.Video = (function () {
         return '<tr data-demanda="' + d.id + '" tabindex="0">' +
           '<td class="vd-codigo" data-rot="Código">' + esc(d.codigo || '—') + '</td>' +
           '<td data-rot="Cliente"><div class="vd-tb-cliente">' + logoClienteHTML(d, 'sm') + '<span>' + esc(d.cliente_nome || '—') + '</span></div></td>' +
-          '<td class="vd-tb-titulo" data-rot="Título">' + tituloComFallback(d) + '</td>' +
+          '<td class="vd-tb-titulo" data-rot="Título">' + tituloComFallback(d) + tagAvulso(d) + '</td>' +
           '<td data-rot="Prioridade">' + prioridadeBadge(d.prioridade) + '</td>' +
           '<td data-rot="Prazo">' + prazoHTML(d, atrasada) + '</td>' +
           '<td data-rot="Status">' + statusBadge(d.editing_status) + '</td>' +
@@ -721,10 +721,17 @@ B7.Video = (function () {
         '<div class="vd-m3-meta"><span class="vd-m3-cli">' + esc(d.cliente_nome || 'Cliente') + '</span>' +
           (d.codigo ? '<em>#' + esc(String(d.codigo).replace(/^#+/, '')) + '</em>' : '') + '</div>' +
         '<div class="vd-m3-tags"><span class="vd-m3-etapa">' + esc(rotuloSituacao(d.editing_status)) + '</span>' +
-          (prio !== 'normal' ? prioridadeBadge(prio) : '') +
+          (prio !== 'normal' ? prioridadeBadge(prio) : '') + tagAvulso(d) +
           (atrasada ? '<span class="vd-m3-atraso">' + esc(prazoRelativo(d)) + '</span>' : '') + '</div>' +
       '</div>' + quem +
       '</article>';
+  }
+
+  /* zzz274: demanda de projeto avulso — etiqueta e, enquanto travada, o que ela espera */
+  function tagAvulso(d) {
+    if (!d.projeto_id) return '';
+    const espera = d.editing_status === 'standby' ? (d.projeto_tipo === 'completo' ? ' · aguardando gravação' : ' · aguardando material') : '';
+    return '<a class="vd-tag-avulso" href="#/projetos/' + esc(d.projeto_id) + '" title="Projeto avulso' + (d.projeto_nome ? ': ' + esc(d.projeto_nome) : '') + '" onclick="event.stopPropagation()">Avulso' + espera + '</a>';
   }
 
   function tituloComFallback(d) {
@@ -779,7 +786,7 @@ B7.Video = (function () {
       '<div class="vd-card-topo"><span class="vd-card-cliente">' + logoClienteHTML(d, 'sm') + '<b>' + esc(d.cliente_nome || 'Cliente') + '</b></span>' +
       (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') + '</div>' +
       '<div class="vd-card-titulo">' + tituloComFallback(d) + '</div>' +
-      (prio !== 'normal' ? prioridadeBadge(prio) : '') +
+      (prio !== 'normal' ? prioridadeBadge(prio) : '') + tagAvulso(d) +
       '<div class="vd-card-rodape">' +
       quemHTML(d) +
       (d.prazo ? '<span class="vd-prazo-pill' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + '</span>' : '') +
@@ -2219,7 +2226,7 @@ B7.Video = (function () {
           '<div class="vd-hero-id">' + logoClienteHTML(d, 'lg') +
             '<div class="vd-cab-texto"><p class="vd-hero-cliente"><span>' + esc(d.cliente_nome || '') + '</span>' + (d.codigo ? '<span class="vd-codigo">' + esc(d.codigo) + '</span>' : '') +
               (d.competencia_ano ? '<span class="vd-hero-comp">' + esc(competenciaRotulo(competenciaChave(d))) + '</span>' : '') +
-              (d.created_at ? '<span class="vd-hero-criada">criada ' + esc(dataHora(d.created_at)) + '</span>' : '') + '</p>' +
+              (d.created_at ? '<span class="vd-hero-criada">criada ' + esc(dataHora(d.created_at)) + '</span>' : '') + tagAvulso(d) + '</p>' +
               '<h1>' + tituloComFallback(d) + '</h1>' +
               faixaResumoHTML(d, atrasada) +
             '</div></div>' +

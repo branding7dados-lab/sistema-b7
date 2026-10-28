@@ -8,6 +8,7 @@
      • Saúde        — um semáforo por cliente (0–100) com os motivos:
                       atrasos, aprovação parada, demora para responder,
                       ajustes demais, nota baixa, sem entregas;
+     • Avulsos      — projetos avulsos em andamento (zzz274, js/projetos.js);
      • Pedidos      — o que os clientes pediram pelo portal, tempo até
                       ficar pronto e quem mais pede.
    ===================================================================== */
@@ -29,7 +30,7 @@ B7.Gestao = (function () {
     if (!B7.Auth.ehAdmin()) { painel().innerHTML = '<div class="conteudo"><div class="estado-b7"><b>Só o administrador abre a Gestão.</b></div></div>'; return; }
     painel().innerHTML = '<div class="conteudo entra gs">' +
       '<div class="cb-topo"><div class="cb-titulo"><h1>Gestão</h1><p class="gt-intro">A agência num olhar: entregas, saúde de cada cliente e o que eles estão pedindo.</p></div></div>' +
-      '<div class="filtro rolavel gt-abas" role="tablist">' + [['geral', 'Visão geral'], ['saude', 'Saúde dos clientes'], ['pedidos', 'Pedidos'], ['recados', 'Recados']].map(([k, r]) =>
+      '<div class="filtro rolavel gt-abas" role="tablist">' + [['geral', 'Visão geral'], ['saude', 'Saúde dos clientes'], ['avulsos', 'Avulsos'], ['pedidos', 'Pedidos'], ['recados', 'Recados']].filter(([k]) => k !== 'avulsos' || B7.Projetos).map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (aba === k ? 'on' : '') + '" aria-selected="' + (aba === k) + '">' + r + '<span class="gt-n" data-n-' + k + '></span></button>').join('') + '</div>' +
       '<div id="gt-corpo">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
     painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => {
@@ -58,6 +59,8 @@ B7.Gestao = (function () {
     const cx = document.getElementById('gt-corpo');
     if (!cx || !dados) return;
     if (aba === 'recados') return recados(cx);
+    /* zzz274: projetos avulsos — fora da saúde (não têm mês), com o seu próprio quadro */
+    if (aba === 'avulsos' && B7.Projetos) return B7.Projetos.montarGestao(cx);
     cx.innerHTML = aba === 'saude' ? saude() : aba === 'pedidos' ? pedidos() : geral();
     cx.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
     const ia = cx.querySelector('[data-ia-riscos]');

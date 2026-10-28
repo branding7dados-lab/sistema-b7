@@ -116,6 +116,11 @@ B7.Topo = (function () {
       contexto: ['semanas', 'semana'],
       pode: () => podeRota('semanas') && !!(B7.Semana && B7.Semana.modalNovo),
       fazer: () => B7.Semana.modalNovo(null) },
+    /* zzz274: projeto avulso — o cliente que compra um vídeo ou uma edição (js/projetos.js) */
+    { id: 'projeto', rotulo: 'Novo projeto avulso', dica: 'um vídeo ou uma edição, fora do mês', ic: IC.video,
+      contexto: ['projetos'],
+      pode: () => !!(B7.Projetos && B7.Perm.podeRota('projetos') && B7.Projetos.podeGerir()),
+      fazer: () => B7.Projetos.novo(null) },
     { id: 'cliente', rotulo: 'Novo cliente', dica: 'cadastrar um cliente', ic: IC.cliente, separar: true,
       contexto: ['clientes', 'cliente'],
       pode: () => podeAcao('clientes', 'cliente.criar'),
@@ -135,7 +140,7 @@ B7.Topo = (function () {
   /* Telas que JÁ têm o próprio botão primário de criar no cabeçalho da
      página: ali o "Criar" do topo vira secundário (contorno), para a tela
      não ter dois botões magenta disputando o mesmo clique. */
-  const TELAS_COM_PRIMARIO = ['gravacoes', 'video', 'linhas', 'design', 'clientes', 'semanas', 'kanban', 'calendario'];
+  const TELAS_COM_PRIMARIO = ['projetos', 'gravacoes', 'video', 'linhas', 'design', 'clientes', 'semanas', 'kanban', 'calendario'];
 
   function rotaBase() {
     return String(location.hash || '#/').replace(/^#\//, '').split(/[/?]/)[0];

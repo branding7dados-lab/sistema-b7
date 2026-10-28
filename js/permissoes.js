@@ -77,7 +77,7 @@ B7.Perm = (function () {
      "Criar" e atalhos decidem por B7.Perm.podeRota — um lugar só.
      ================================================================= */
   const MODULOS = [
-    { id: 'clientes',      rotulo: 'Clientes',            rotas: ['clientes'] },
+    { id: 'clientes',      rotulo: 'Clientes',            rotas: ['clientes', 'projetos'] },
     { id: 'linhas',        rotulo: 'Linhas editoriais',   rotas: ['linhas', 'linha'] },
     { id: 'roteiros',      rotulo: 'Roteiros',            rotas: ['roteiros', 'trends'] },
     { id: 'gravacoes',     rotulo: 'Gravações',           rotas: ['gravacoes'] },
