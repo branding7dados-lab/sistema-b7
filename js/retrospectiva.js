@@ -219,18 +219,32 @@ B7.Retro = (function () {
     function ligarBotoes() {
       const den = hist.querySelector('[data-rt-denovo]'); if (den) den.onclick = e => { e.stopPropagation(); ir(0); };
       const ant = hist.querySelector('[data-rt-anterior]');
-      if (ant) ant.onclick = e => { e.stopPropagation(); const m = d.mes === 1 ? 12 : d.mes - 1, a = d.mes === 1 ? d.ano - 1 : d.ano; fechar(); abrir(a, m); };
+      if (ant) ant.onclick = e => { e.stopPropagation(); const m = d.mes === 1 ? 12 : d.mes - 1, a = d.mes === 1 ? d.ano - 1 : d.ano; fechar(false, () => abrir(a, m)); };
       hist.querySelectorAll('[data-rt-fechar]').forEach(b => b.onclick = e => { e.stopPropagation(); fechar(); });
     }
-    function fechar() {
+    /* "voltar" do Android (e do navegador) fecha a retrospectiva em vez de
+       trocar a tela por trás dela: abrimos com uma entrada no histórico e,
+       ao fechar por outro caminho, tiramos essa entrada (mesmo jeito do Meu dia) */
+    let fechado = false, empurrou = false;
+    function fechar(semHistorico, depois) {
+      if (fechado) return; fechado = true;
       clearTimeout(t);
       document.removeEventListener('keydown', tecla, true);
       document.removeEventListener('visibilitychange', vis);
+      window.removeEventListener('popstate', aoVoltar);
       raiz.classList.add('saindo');
       document.documentElement.classList.remove('rtv-aberto');
       setTimeout(() => raiz.remove(), 260);
       if (aberto === api) aberto = null;
+      const seguir = () => { if (depois) { try { depois(); } catch (e) {} } };
+      if (empurrou && semHistorico !== true) {
+        const uma = () => { window.removeEventListener('popstate', uma); seguir(); };
+        window.addEventListener('popstate', uma);
+        try { history.back(); } catch (e) { uma(); }
+        setTimeout(() => { window.removeEventListener('popstate', uma); }, 1500);
+      } else seguir();
     }
+    function aoVoltar() { fechar(true); }
     function tecla(e) {
       if (e.key === 'Escape') { e.preventDefault(); fechar(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); ir(i + 1); }
@@ -257,6 +271,8 @@ B7.Retro = (function () {
     const vis = () => { if (document.hidden) pausar(true); };
     document.addEventListener('visibilitychange', vis);
     const api = { fechar };
+    try { history.pushState({ b7retro: 1 }, ''); empurrou = true; } catch (e) {}
+    window.addEventListener('popstate', aoVoltar);
     ir(0);
     raiz.querySelector('[data-rt-prox]').focus({ preventScroll: true });
     return api;
