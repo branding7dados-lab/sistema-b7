@@ -126,7 +126,8 @@ B7.Nav = (function () {
   /* Atalhos saiu da barra permanente: continua no menu da conta e na tecla "?" */
   /* zzz200: Usuários e acessos saiu da lateral e do "Mais": fica em
      Configurações → Admin → Pessoas e no menu da conta */
-  const FERRAMENTAS = ['aovivo', 'arquivados', 'lixeira', 'config'];
+  /* zzz289: "Equipe ao vivo" saiu da barra — virou parte do "Visualizar como" */
+  const FERRAMENTAS = ['arquivados', 'lixeira', 'config'];
 
   function rotuloDe(id) {
     if (id === 'central' && papel() === 'designer') return 'Central de Design';

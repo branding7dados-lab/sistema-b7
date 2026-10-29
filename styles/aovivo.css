@@ -76,7 +76,18 @@
 .av-bs-parar{margin-left:auto;padding:6px 14px;border-radius:999px;border:0;background:#ffffff26;color:#fff;font:700 12.5px 'Inter',sans-serif;cursor:pointer;transition:background .15s;}
 .av-bs-parar:hover{background:#ffffff3d;}
 html.av-seguindo{scroll-behavior:auto;}
-html.av-seguindo body{padding-top:calc(38px + env(safe-area-inset-top,0px));}
+/* zzz289: empurra o #app (igual ao banner "Visualizando como"), não o body —
+   senão o topo do sistema rola por dentro e sobra um espaço morto lá em cima */
+html.av-seguindo #app{margin-top:calc(38px + env(safe-area-inset-top,0px));
+  height:calc(100vh - 38px - env(safe-area-inset-top,0px));
+  height:calc(100dvh - 38px - env(safe-area-inset-top,0px));}
+
+/* ---------- online no "Visualizar como" (zzz289) ---------- */
+.res .mini{position:relative;}
+.res .av-on-ponto{position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:#20c56a;border:2.5px solid var(--card);}
+.res small .av-on-tela{color:var(--acento);font-weight:700;}
+.res small .av-on-tela:before{content:"● ";color:#20c56a;font-size:9px;vertical-align:1px;}
+.vc-acompanhar{background:#ffffff14;}
 
 /* cursor remoto (a seta da pessoa, com o nome) — só na tela do super */
 .av-cursor-remoto{position:fixed;z-index:9490;top:-40px;left:-40px;pointer-events:none;transform:translate(-2px,-2px);

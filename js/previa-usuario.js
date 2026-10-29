@@ -246,16 +246,21 @@ B7.PreviaUsuario = (function () {
       .normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
+  /* zzz289: quem está no Sistema agora e em que tela (só super/supremo veem) */
+  const aoVivoDe = id => (B7.AoVivo && B7.AoVivo.estaOnline) ? B7.AoVivo.estaOnline(id) : null;
+
   function linhaResultado(item) {
     const inic = B7.UI && B7.UI.iniciais ? B7.UI.iniciais(item.nome) : item.nome.slice(0, 2).toUpperCase();
-    const sub = item.tipo === 'usuario'
+    const ao = item.tipo === 'usuario' ? aoVivoDe(item.id) : null;
+    let sub = item.tipo === 'usuario'
       ? rotuloPapel(item.papel) + (item.funcoes_extra.length ? ' · ' + item.funcoes_extra.map(rotuloPapel).join(' · ') : '')
       : item.tipo === 'pessoa-cliente'
       ? item.empresas.map(e => (PAPEL_CLI[e.papel] || 'Cliente') + ' · ' + e.nome).join(' / ')
       : 'Empresa · ver o Portal';
+    const telaAo = ao ? '<span class="av-on-tela">em ' + esc(ao.rotulo || 'No Sistema') + '</span>' : '';
     return '<div class="res" data-tipo="' + item.tipo + '" data-id="' + esc(item.id) + '">' +
-      '<div class="mini">' + esc(inic) + '</div>' +
-      '<div><b>' + esc(item.nome) + '</b><small>' + esc(sub) + '</small></div>' +
+      '<div class="mini">' + esc(inic) + (ao ? '<span class="av-on-ponto" aria-hidden="true"></span>' : '') + '</div>' +
+      '<div><b>' + esc(item.nome) + '</b><small>' + (telaAo || esc(sub)) + '</small></div>' +
     '</div>';
   }
 
@@ -265,7 +270,9 @@ B7.PreviaUsuario = (function () {
     const termo = normal(q);
     const casa = t => !termo || normal(t).includes(termo);
     const clientes = itens.clientes.filter(c => casa(c.nome));
-    const usuarios = itens.usuarios.filter(u => casa(u.nome));
+    /* zzz289: quem está online agora aparece primeiro */
+    const usuarios = itens.usuarios.filter(u => casa(u.nome))
+      .sort((a, b) => (aoVivoDe(b.id) ? 1 : 0) - (aoVivoDe(a.id) ? 1 : 0));
     const pessoasCli = (itens.pessoasCliente || []).filter(u => casa(u.nome) || u.empresas.some(e => casa(e.nome)));
     if (!clientes.length && !usuarios.length && !pessoasCli.length) {
       lista.innerHTML = '<div class="nada">Nada encontrado.</div>';
@@ -300,17 +307,21 @@ B7.PreviaUsuario = (function () {
   function escolherModo(u) {
     const cliente = u.tipo === 'pessoa-cliente';
     let empSel = cliente ? u.empresas[0] : null;
+    const ao = !cliente ? aoVivoDe(u.id) : null;   /* zzz289: online? em que tela? (só super/supremo) */
     const inic = B7.UI && B7.UI.iniciais ? B7.UI.iniciais(u.nome) : u.nome.slice(0, 2).toUpperCase();
     const m = B7.UI.modal(
       '<div class="vc-modo">' +
-        '<div class="vc-quem"><span class="vc-av">' + esc(inic) + '</span><div><b>' + esc(u.nome) + '</b><small>' +
-          esc(cliente ? 'Cliente · ' + u.empresas.map(e => e.nome).join(', ') : rotuloPapel(u.papel)) + '</small></div></div>' +
+        '<div class="vc-quem"><span class="vc-av">' + esc(inic) + (ao ? '<span class="av-on-ponto" aria-hidden="true"></span>' : '') + '</span><div><b>' + esc(u.nome) + '</b><small>' +
+          esc(cliente ? 'Cliente · ' + u.empresas.map(e => e.nome).join(', ') : rotuloPapel(u.papel)) +
+          (ao ? ' · <span class="av-on-tela">em ' + esc(ao.rotulo || 'No Sistema') + '</span>' : '') + '</small></div></div>' +
         (cliente && u.empresas.length > 1
           ? '<label class="rot" for="vc-emp">EMPRESA</label><select class="campo" id="vc-emp">' +
               u.empresas.map((e, i) => '<option value="' + i + '">' + esc(e.nome) + ' · ' + esc(PAPEL_CLI[e.papel] || '') + '</option>').join('') + '</select>'
           : '') +
         '<div class="vc-ops">' +
-          '<button type="button" class="vc-op" data-modo="ver">' + IC_OLHO + '<span><b>Só visualizar</b><small>Você vê ' +
+          (ao ? '<button type="button" class="vc-op vc-acompanhar" data-modo="acompanhar">' + IC_OLHO + '<span><b>Acompanhar ao vivo</b><small>Você vê a tela de ' + esc(primeiro(u.nome)) +
+            ' ao vivo (rota, rolagem, cursor). A tela dela mostra "Tela compartilhada".</small></span></button>' : '') +
+          '<button type="button" class="vc-op" data-modo="ver">' + IC_OLHO + '<span><b>Só visualizar' + (ao ? ', na tela dela' : '') + '</b><small>Você vê ' +
             (cliente ? 'o Portal' : 'o sistema') + ' exatamente como ' + esc(primeiro(u.nome)) + ' vê. Nada é salvo e você continua na sua conta.</small></span></button>' +
           '<button type="button" class="vc-op vc-entrar" data-modo="entrar">' + IC_CHAVE + '<span><b>Entrar na conta</b><small>Você age como ' + esc(primeiro(u.nome)) +
             ': o que fizer fica registrado no nome dessa pessoa (e na auditoria). Volte quando quiser.</small></span></button>' +
@@ -324,8 +335,10 @@ B7.PreviaUsuario = (function () {
       if (cliente) {
         if (B7.Portal && B7.Portal.previaComo) B7.Portal.previaComo({ client_id: empSel.id, id: u.id, nome: u.nome, papel: empSel.papel });
         location.hash = '#/previa/' + empSel.id;
-      } else abrir(u);
+      } else abrir(u, ao && ao.hash);   /* online: cai na tela em que a pessoa está */
     };
+    const ac = m.querySelector('[data-modo="acompanhar"]');
+    if (ac) ac.onclick = () => { m.fechar(); if (B7.AoVivo && B7.AoVivo.acompanhar) B7.AoVivo.acompanhar(u.id); };
     const bt = m.querySelector('[data-modo="entrar"]');
     bt.onclick = () => entrarDireto(u, bt, m);
   }

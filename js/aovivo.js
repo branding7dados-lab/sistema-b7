@@ -105,6 +105,12 @@ B7.AoVivo = (function () {
     return lista.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
   }
   function presencaDe(id) { return online().find(m => m.id === id) || null; }
+  /* zzz289: o "Visualizar como" usa isto para marcar quem está online e em que tela */
+  function estaOnline(id) {
+    if (!pode()) return null;
+    const m = presencaDe(id);
+    return m ? { hash: m.hash || '#/', rotulo: m.rotulo || '', em: m.em } : null;
+  }
 
   /* ============================================ LADO DE QUEM É OLHADO
      Enquanto houver ao menos um super acompanhando, a tela mostra o selo
@@ -319,5 +325,5 @@ B7.AoVivo = (function () {
     const t = setInterval(() => { if (!painel) return clearInterval(t); pintar(); }, 20000);
   }
 
-  return { iniciar, abrir, pode, acompanhar, pararDeSeguir, desligar };
+  return { iniciar, abrir, pode, acompanhar, pararDeSeguir, estaOnline, online, desligar };
 })();
