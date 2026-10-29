@@ -17,6 +17,9 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.Person;
 import androidx.core.app.RemoteInput;
+import androidx.core.content.LocusIdCompat;
+import androidx.core.content.pm.ShortcutInfoCompat;
+import androidx.core.content.pm.ShortcutManagerCompat;
 import androidx.core.graphics.drawable.IconCompat;
 import java.util.HashMap;
 import java.util.Map;
@@ -74,6 +77,7 @@ public class AvisoConversa {
             NotificationCompat.MessagingStyle estilo = new NotificationCompat.MessagingStyle(eu);
             if (grupo) estilo.setConversationTitle(nome).setGroupConversation(true);
             Bitmap ultimaFoto = null;
+            Person ultimaPessoa = null;
             String ultimoNome = nome, ultimoTexto = "";
             for (int i = 0; i < msgs.length(); i++) {
                 JSONObject m = msgs.getJSONObject(i);
@@ -81,8 +85,9 @@ public class AvisoConversa {
                 Bitmap foto = foto(m.optString("f"));
                 Person.Builder pb = new Person.Builder().setName(quem).setKey(quem);
                 if (foto != null) pb.setIcon(IconCompat.createWithBitmap(foto));
-                estilo.addMessage(m.optString("t"), m.optLong("em", System.currentTimeMillis()), pb.build());
-                ultimaFoto = foto; ultimoNome = quem; ultimoTexto = m.optString("t");
+                Person pessoa = pb.build();
+                estilo.addMessage(m.optString("t"), m.optLong("em", System.currentTimeMillis()), pessoa);
+                ultimaFoto = foto; ultimaPessoa = pessoa; ultimoNome = quem; ultimoTexto = m.optString("t");
             }
 
             int num = numero(id);
@@ -100,6 +105,26 @@ public class AvisoConversa {
                 .setAutoCancel(true)
                 .setContentIntent(abrir(ctx, destino, num));
             if (ultimaFoto != null && !grupo) n.setLargeIcon(ultimaFoto);
+            /* zzz299: atalho de conversa — é ele que faz o Android desenhar como
+               no WhatsApp (foto grande da pessoa com o ícone do B7 pequeno em
+               cima, na seção "Conversas" da barra) */
+            try {
+                String sid = "conversa_" + id;
+                Intent abrirSc = new Intent(ctx, MainActivity.class).setAction(Intent.ACTION_VIEW)
+                    .putExtra(MainActivity.EXTRA_LINK, destino).putExtra(MainActivity.EXTRA_ID, "");
+                ShortcutInfoCompat.Builder sc = new ShortcutInfoCompat.Builder(ctx, sid)
+                    .setShortLabel(grupo ? nome : ultimoNome)
+                    .setLongLived(true)
+                    .setLocusId(new LocusIdCompat(sid))
+                    .setIntent(abrirSc)
+                    .setIcon(ultimaFoto != null && !grupo ? IconCompat.createWithBitmap(ultimaFoto)
+                        : IconCompat.createWithResource(ctx, R.mipmap.ic_launcher));
+                if (!grupo && ultimaPessoa != null) sc.setPerson(ultimaPessoa);
+                ShortcutManagerCompat.pushDynamicShortcut(ctx, sc.build());
+                n.setShortcutId(sid).setLocusId(new LocusIdCompat(sid));
+            } catch (Exception e) {
+                /* sem atalho: o aviso sai igual, só sem o desenho de conversa */
+            }
 
             /* Responder: o campo abre ali mesmo, como no WhatsApp */
             RemoteInput campo = new RemoteInput.Builder(CHAVE_RESPOSTA).setLabel("Mensagem").build();

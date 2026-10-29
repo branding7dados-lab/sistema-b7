@@ -47,7 +47,7 @@ import webpush from 'npm:web-push@3.6.7';
 import { comCors, iguais } from '../_shared/cors.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-10-29-zzz297';
+const VERSAO = '2026-10-29-zzz299';
 
 /* Endereço do cartão do aviso (função b7-arte) e a assinatura que ela
    exige: HMAC do id, com um segredo que só as duas funções conhecem.
@@ -94,7 +94,15 @@ async function montarConversa(sb: SupabaseClient, dest: string, conversa: string
     .order('created_at', { ascending: false }).limit(6);
   if (part.lida_ate) q = q.gt('created_at', part.lida_ate);
   const { data: msgs } = await q;
-  const lista = (msgs || []).reverse();
+  let lista = (msgs || []).reverse();
+  /* zzz299: mensagens em sequência — a tela pode ter marcado como lida no
+     meio do caminho; mesmo assim o aviso é de conversa (a última de quem mandou) */
+  if (!lista.length) {
+    const { data: ult } = await sb.from('chat_mensagens').select('autor_id, tipo, texto, arquivo_nome, created_at')
+      .eq('conversa_id', conversa).neq('autor_id', dest).is('apagada_em', null)
+      .order('created_at', { ascending: false }).limit(1);
+    lista = ult || [];
+  }
   if (!lista.length) return { c: null, silenciada: false };
   const ids = [...new Set(lista.map((m: any) => m.autor_id))];
   const { data: pessoas } = await sb.from('perfis').select('id, nome, username, avatar_url').in('id', ids);
@@ -454,8 +462,10 @@ Deno.serve(comCors(async (req: Request) => {
   }
   if (conversa) {
     const ult = conversa.mensagens[conversa.mensagens.length - 1];
-    logo = ult.f || logo; imagem = null;
+    logo = ult.f || logo;
   }
+  /* aviso de conversa nunca leva o cartão grande (b7-arte): é mensagem, não demanda */
+  if (tipo === 'chat.mensagem') imagem = null;
   const payload = JSON.stringify({ conversa,
     v: 2, id: n.id, tipo: tipo || null, link,
     titulo: n.titulo || 'Sistema B7',

@@ -333,7 +333,11 @@ B7.AppNativo = (function () {
     /* a cada login: token renovado e gravado, sem perguntar nada */
     async garantir() {
       if (permissaoApp !== 'permitida') return;
-      await gravarNoBanco(await registrarNoFirebase());
+      /* zzz299: se o Firebase demorar, usa o token já guardado — o importante
+         é o registro passar para o formato novo ("fcm2") */
+      let t = '';
+      try { t = await registrarNoFirebase(); } catch (e) { t = lerToken(); }
+      if (t) await gravarNoBanco(t);
     }
   };
 
