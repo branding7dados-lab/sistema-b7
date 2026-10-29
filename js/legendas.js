@@ -253,10 +253,36 @@ B7.Legendas = (function () {
     const partes = [];
     for (let k = 0; k < comTexto.length; k += POR_PARTE) partes.push(comTexto.slice(k, k + POR_PARTE));
     let falhas = 0;
+    /* zzz294: carregamento com frases que trocam e barra que anda de verdade
+       (antes, com uma parte só, a barra ficava parada em 0%) */
+    const FRASES = ['Lendo as legendas…', 'Ouvindo o jeito de falar…', 'Conferindo acentos…', 'Arrumando maiúsculas…',
+      'Colocando vírgulas e pontos…', 'Procurando nomes de marcas…', 'Transformando “cem por cento” em 100%…',
+      'Conferindo palavra por palavra…', 'Deixando o “pra” e o “tá” do jeitinho…', 'Revisando com carinho…', 'Quase lá…'];
+    prog.innerHTML = '<div class="lg-prog"><span class="iaf-orbe" aria-hidden="true"></span>' +
+      '<div class="lg-prog-cx"><b class="lg-prog-frase" aria-live="polite">' + FRASES[0] + '</b><small class="lg-prog-sub"></small></div>' +
+      '<span class="lg-prog-pct">0%</span><i><s></s></i></div>';
+    const elFrase = prog.querySelector('.lg-prog-frase'), elSub = prog.querySelector('.lg-prog-sub'),
+      elPct = prog.querySelector('.lg-prog-pct'), elBarra = prog.querySelector('.lg-prog i');
+    let fi = 0, pct = 0, alvo = 0;
+    const tFrase = setInterval(() => {
+      if (!elFrase.isConnected) return clearInterval(tFrase);
+      const ult = FRASES.length - 1;                       /* "Quase lá…" só quando falta pouco */
+      const prox = pct > 85 ? ult : (fi + 1) % ult;
+      if (prox === fi) return;
+      fi = prox;
+      elFrase.classList.add('troca');
+      setTimeout(() => { elFrase.textContent = FRASES[fi]; elFrase.classList.remove('troca'); }, 220);
+    }, 2400);
+    /* anda sozinha até perto do fim da parte atual, sem nunca passar dela */
+    const tBarra = setInterval(() => {
+      if (!elBarra.isConnected) return clearInterval(tBarra);
+      pct += (alvo - pct) * 0.025;
+      elBarra.style.setProperty('--p', pct.toFixed(1) + '%'); elPct.textContent = Math.floor(pct) + '%';
+    }, 200);
     const marcas = await palavrasDeMarca(S.clienteId);
     for (let p = 0; p < partes.length; p++) {
-      prog.innerHTML = '<div class="lg-prog"><span class="iaf-orbe" aria-hidden="true"></span><b>Corrigindo… parte ' + (p + 1) + ' de ' + partes.length + '</b>' +
-        '<i style="--p:' + Math.round(100 * p / partes.length) + '%"></i></div>';
+      alvo = 100 * (p + 0.92) / partes.length;
+      elSub.textContent = comTexto.length + ' legendas' + (partes.length > 1 ? ' · parte ' + (p + 1) + ' de ' + partes.length : '');
       let r = await B7.IA.pedir('extra', { operacao: 'srt', cliente_id: S.clienteId, cues: partes[p] }, { prazo: 100000 });
       if (!r.ok && !r.cancelado) r = await B7.IA.pedir('extra', { operacao: 'srt', cliente_id: S.clienteId, cues: partes[p] }, { prazo: 100000 });
       if (!cx.isConnected) return;
@@ -267,6 +293,8 @@ B7.Legendas = (function () {
         else { c.ia = c.texto; c.barrada = x.t; }   /* reescreveu: fica a original */
       });
     }
+    clearInterval(tFrase); clearInterval(tBarra);
+    elBarra.style.setProperty('--p', '100%'); elPct.textContent = '100%';
     S.feito = true;
     if (falhas === partes.length) {
       S.feito = false; bt.disabled = false;
