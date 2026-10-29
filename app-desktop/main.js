@@ -16,7 +16,7 @@
 
    O instalador e o latest.yml saem do .github/workflows/desktop.yml.
    ===================================================================== */
-const { app, BrowserWindow, shell, dialog, Menu, screen, session, ipcMain, Notification } = require('electron');
+const { app, BrowserWindow, shell, dialog, Menu, screen, session, ipcMain, Notification, desktopCapturer } = require('electron');
 const { autoUpdater } = require('electron-updater');
 /* zzz279: avisos e menu com a cara do B7 (no lugar das caixas cinzas do Windows) */
 const janelasB7 = require('./janelas-b7');
@@ -455,6 +455,42 @@ ipcMain.handle('b7:pasta', () => { shell.openPath(app.getPath('downloads')); ret
 ipcMain.handle('b7:atualizar', () => conferir(true));
 ipcMain.handle('b7:estado-atualizacao', () => estadoAtualizacao);
 ipcMain.handle('b7:instalar', () => instalarAgora());
+
+/* ------------------------------------------- Tela do PC (zzz298)
+   No "Acompanhar ao vivo", o super admin pode ver a tela inteira deste
+   computador (os computadores são da empresa). Quem pede é o B7 (aovivo.js),
+   uma foto por vez (~1 por segundo), só da tela principal. Enquanto isso,
+   uma pílula "Tela compartilhada" fica fixa no canto da tela, por cima de
+   tudo — a pessoa sempre sabe. Está nos Termos (seção 2). */
+let pilula = null;
+const PILULA = '<!doctype html><meta charset="utf-8"><body style="margin:0;background:transparent;overflow:hidden">' +
+  '<div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:999px;color:#fff;' +
+  'font:700 12.5px Segoe UI,Arial,sans-serif;background:linear-gradient(120deg,#d6336c,#7c4dff);box-shadow:0 6px 18px rgba(0,0,0,.35);width:max-content">' +
+  '<span style="width:9px;height:9px;border-radius:50%;background:#fff;animation:p 1.4s ease-in-out infinite"></span>Tela compartilhada</div>' +
+  '<style>@keyframes p{50%{opacity:.35}}</style>';
+function mostrarPilula() {
+  if (pilula && !pilula.isDestroyed()) return;
+  const a = screen.getPrimaryDisplay().workArea;
+  pilula = new BrowserWindow({ width: 200, height: 40, x: a.x + a.width - 214, y: a.y + a.height - 54,
+    frame: false, transparent: true, resizable: false, alwaysOnTop: true, skipTaskbar: true, focusable: false,
+    show: false, hasShadow: false, webPreferences: { sandbox: true, javascript: false } });
+  pilula.setAlwaysOnTop(true, 'screen-saver');
+  pilula.setIgnoreMouseEvents(true);
+  pilula.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(PILULA));
+  pilula.once('ready-to-show', () => { if (pilula && !pilula.isDestroyed()) pilula.showInactive(); });
+  pilula.on('closed', () => { pilula = null; });
+}
+function esconderPilula() { if (pilula && !pilula.isDestroyed()) pilula.destroy(); pilula = null; }
+ipcMain.handle('b7:tela:aviso', (ev, ligado) => { if (ligado) mostrarPilula(); else esconderPilula(); return true; });
+ipcMain.handle('b7:tela:quadro', async (ev, largura) => {
+  const tela = screen.getPrimaryDisplay();
+  const w = Math.max(640, Math.min(Number(largura) || 1280, 1600));
+  const h = Math.round(w * tela.size.height / Math.max(1, tela.size.width));
+  const fontes = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: w, height: h } });
+  const f = fontes.find(x => String(x.display_id) === String(tela.id)) || fontes[0];
+  if (!f || f.thumbnail.isEmpty()) return null;
+  return { jpg: f.thumbnail.toJPEG(55).toString('base64'), w, h };
+});
 
 /* -------------------------------------------- Entrar com Google (zzz273)
    O Google não deixa fazer login dentro de programas (só no navegador).

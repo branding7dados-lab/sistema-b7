@@ -57,7 +57,8 @@ B7.AoVivo = (function () {
   function dados() {
     const u = eu() || {}, t = telaAtual();
     return { id: meuId, nome: u.nome || u.username || 'Alguém', foto: u.avatar_url || '',
-             funcao: (u.funcao || u.papel || ''), hash: t.hash, rotulo: t.rotulo, em: Date.now() };
+             funcao: (u.funcao || u.papel || ''), hash: t.hash, rotulo: t.rotulo, em: Date.now(),
+             pc: !!(window.B7Desktop && window.B7Desktop.tela) };
   }
   function anunciar(forcar) {
     if (!canal) return;
@@ -88,7 +89,8 @@ B7.AoVivo = (function () {
       meuCanal = B7.sb.channel(topicoDe(meuId), { config: { private: true, broadcast: { self: false } } });
       meuCanal
         .on('broadcast', { event: 'av-olhar' }, ({ payload }) => aoPedirOlhar(payload))
-        .on('broadcast', { event: 'av-parar' }, ({ payload }) => aoPararOlhar(payload))
+        .on('broadcast', { event: 'av-parar' }, ({ payload }) => { aoPararOlhar(payload); if (payload && payload.para === meuId) pararPc(); })
+        .on('broadcast', { event: 'av-pc-pedir' }, ({ payload }) => aoPedirPc(payload))
         .subscribe();
     } catch (e) { canal = null; meuCanal = null; return; }
     window.addEventListener('hashchange', aoTrocarTela);
@@ -100,7 +102,7 @@ B7.AoVivo = (function () {
   function tirarCanal(c) { try { if (c) (B7.sb.removeChannel ? B7.sb.removeChannel(c) : c.unsubscribe()); } catch (e) {} }
 
   function desligar() {
-    pararLive(true); pararDeCompartilhar();
+    pararLive(true); pararDeCompartilhar(); pararPc();
     tirarCanal(canal); tirarCanal(meuCanal);
     canal = null; meuCanal = null; clearTimeout(timerEnvio);
     window.removeEventListener('hashchange', aoTrocarTela);
@@ -152,6 +154,7 @@ B7.AoVivo = (function () {
     if (!p || p.para !== meuId || !p.de) return;
     const novo = !olhadores.has(p.de);
     olhadores.set(p.de, { nome: p.deNome || 'Administração', visto: Date.now() });
+    if (pcLaco) pcAte = Date.now() + 26000;            /* o super segue olhando a tela do PC */
     if (!capturando) comecarCompartilhar();
     if (novo) { marcarRolados(); ultimoHtml = ''; sujo = true; }   /* quem chegou agora recebe a tela inteira */
   }
@@ -278,6 +281,42 @@ B7.AoVivo = (function () {
     ocupado = false;
   }
 
+  /* ------------------------------------------ Tela do PC (zzz298)
+     Só no programa do Windows (window.B7Desktop.tela): uma foto da tela
+     inteira por segundo, em pedaços, pelo canal privado da pessoa. Continua
+     com o B7 minimizado. O programa mostra a pílula "Tela compartilhada"
+     fixa no canto da tela enquanto durar. */
+  let pcLaco = null, pcAte = 0, pcOcupado = false, pcSeq = 0;
+  function aoPedirPc(p) {
+    if (!p || p.para !== meuId || !p.de) return;
+    const T = window.B7Desktop && window.B7Desktop.tela;
+    if (!T) return;
+    if (!p.ligado) return pararPc();
+    pcAte = Date.now() + 26000;
+    if (pcLaco) return;
+    try { T.aviso(true); } catch (e) {}
+    const foto = async () => {
+      if (Date.now() > pcAte) return pararPc();
+      if (pcOcupado || !meuCanal) return;
+      pcOcupado = true;
+      try {
+        const q = await T.quadro(1280);
+        if (q && q.jpg) {
+          const id = ++pcSeq, n = Math.max(1, Math.ceil(q.jpg.length / PEDACO));
+          for (let i = 0; i < n; i++) enviarEm(meuCanal, 'av-pc', { de: meuId, seq: id, i, n, w: q.w, h: q.h, d: q.jpg.slice(i * PEDACO, (i + 1) * PEDACO) });
+        }
+      } catch (e) { /* uma foto que falha não derruba: vem a próxima */ }
+      pcOcupado = false;
+    };
+    foto();
+    pcLaco = setInterval(foto, 1000);
+  }
+  function pararPc() {
+    if (!pcLaco) return;
+    clearInterval(pcLaco); pcLaco = null; pcAte = 0;
+    try { window.B7Desktop.tela.aviso(false); } catch (e) {}
+  }
+
   function mostrarSelo() {
     if (selo) return;
     selo = document.createElement('div');
@@ -303,7 +342,8 @@ B7.AoVivo = (function () {
     /* zzz290: vira a pessoa (Visualizar como), já na tela dela — ao parar
        o ao vivo, o super continua na conta dela, onde ela estava */
     if (B7.PreviaUsuario && B7.PreviaUsuario.verComoId) { try { B7.PreviaUsuario.verComoId(id, m && m.hash); } catch (e) {} }
-    const s = seguindo = { id, nome, pedacos: new Map(), aplicado: 0, hash: (m && m.hash) || '#/', w: 0, h: 0 };
+    const s = seguindo = { id, nome, pedacos: new Map(), aplicado: 0, hash: (m && m.hash) || '#/', w: 0, h: 0,
+      pc: !!(m && m.pc), vendoPc: false, pcPedacos: new Map(), pcAplicado: 0 };
     montarMoldura(s);
     const pedir = () => enviarEm(s.canal, 'av-olhar', { de: meuId, deNome: (eu() || {}).nome || 'Administração', para: id });
     try {
@@ -312,6 +352,7 @@ B7.AoVivo = (function () {
         .on('broadcast', { event: 'av-dom' }, ({ payload }) => aoReceberDom(s, payload))
         .on('broadcast', { event: 'av-pos' }, ({ payload }) => aoReceberPos(s, payload))
         .on('broadcast', { event: 'av-clique' }, ({ payload }) => aoReceberClique(s, payload))
+        .on('broadcast', { event: 'av-pc' }, ({ payload }) => aoReceberPc(s, payload))
         .subscribe(st => {
           if (st === 'SUBSCRIBED') pedir();
           else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') estadoMoldura(s, 'Não deu para conectar à tela de ' + nome.split(' ')[0] + '. Tente de novo.');
@@ -327,17 +368,21 @@ B7.AoVivo = (function () {
     el.innerHTML =
       '<div class="av-esp-barra"><span class="av-bs-ponto" aria-hidden="true"></span>' +
         '<span class="av-esp-tx">Acompanhando <b>' + esc(s.nome) + '</b> ao vivo <span class="av-esp-tela" data-av-tela></span></span>' +
+        (s.pc ? '<button type="button" class="av-bs-parar av-esp-pc" data-av-pc>🖥 Tela do PC</button>' : '') +
         '<button type="button" class="av-bs-parar" data-av-parar>Parar de acompanhar</button></div>' +
       '<div class="av-esp-palco" data-av-palco>' +
         '<div class="av-esp-espera" data-av-espera><span class="iaf-orbe" aria-hidden="true"></span>Conectando à tela de ' + esc(s.nome.split(' ')[0]) + '…</div>' +
         '<div class="av-esp-moldura" data-av-moldura hidden>' +
           '<iframe class="av-esp-frame" sandbox="allow-same-origin" title="Tela de ' + esc(s.nome) + '"></iframe>' +
+          '<img class="av-esp-tela-pc" data-av-img alt="Tela do computador de ' + esc(s.nome) + '" hidden>' +
           '<div class="av-cursor-remoto" data-av-cursor><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l6 16 2.2-6.2L19 11z"/></svg><b>' + esc(s.nome.split(' ')[0]) + '</b></div>' +
         '</div></div>';
     document.body.appendChild(el);
     document.documentElement.classList.add('av-espelhando');
     s.el = el; s.frame = el.querySelector('iframe'); s.cursor = el.querySelector('[data-av-cursor]');
     el.querySelector('[data-av-parar]').onclick = () => pararLive(false);
+    const bpc = el.querySelector('[data-av-pc]');
+    if (bpc) bpc.onclick = () => trocarPc(s, !s.vendoPc);
     s.aoRedimensionar = () => encaixar(s);
     window.addEventListener('resize', s.aoRedimensionar);
     /* o documento do espelho: os mesmos estilos do Sistema, nenhum script */
@@ -350,11 +395,43 @@ B7.AoVivo = (function () {
   function estadoMoldura(s, txt) { const e = s.el && s.el.querySelector('[data-av-espera]'); if (e) e.innerHTML = esc(txt); }
   /* a moldura tem o tamanho da tela da pessoa, encolhida para caber */
   function encaixar(s) {
-    if (!s.el || !s.w || !s.h) return;
+    const w = s.vendoPc ? s.pcW : s.w, h = s.vendoPc ? s.pcH : s.h;
+    if (!s.el || !w || !h) return;
     const palco = s.el.querySelector('[data-av-palco]'), mol = s.el.querySelector('[data-av-moldura]');
-    const esc2 = Math.min(1, (palco.clientWidth - 24) / s.w, (palco.clientHeight - 24) / s.h);
-    mol.style.width = s.w + 'px'; mol.style.height = s.h + 'px';
+    const esc2 = Math.min(1, (palco.clientWidth - 24) / w, (palco.clientHeight - 24) / h);
+    mol.style.width = w + 'px'; mol.style.height = h + 'px';
     mol.style.transform = 'translate(-50%,-50%) scale(' + esc2.toFixed(4) + ')';
+  }
+
+  /* zzz298: alterna entre o B7 da pessoa e a tela inteira do PC dela */
+  function trocarPc(s, ligar) {
+    if (seguindo !== s) return;
+    s.vendoPc = ligar;
+    enviarEm(s.canal, 'av-pc-pedir', { de: meuId, para: s.id, ligado: ligar });
+    const b = s.el.querySelector('[data-av-pc]'); if (b) b.textContent = ligar ? '↩ Voltar ao B7' : '🖥 Tela do PC';
+    const img = s.el.querySelector('[data-av-img]'), fr = s.frame;
+    if (img) img.hidden = !ligar || !s.pcAplicado;
+    if (fr) fr.style.visibility = ligar ? 'hidden' : '';
+    if (s.cursor) s.cursor.style.display = ligar ? 'none' : '';
+    if (ligar && !s.pcAplicado) { const e = s.el.querySelector('[data-av-espera]'), mol = s.el.querySelector('[data-av-moldura]');
+      if (e) { e.hidden = false; e.innerHTML = '<span class="iaf-orbe" aria-hidden="true"></span>Abrindo a tela do computador de ' + esc(s.nome.split(' ')[0]) + '…'; }
+      if (mol) mol.hidden = true; }
+    if (!ligar) { const mol = s.el.querySelector('[data-av-moldura]'), e = s.el.querySelector('[data-av-espera]');
+      if (s.aplicado) { if (mol) mol.hidden = false; if (e) e.hidden = true; } encaixar(s); }
+  }
+  function aoReceberPc(s, p) {
+    if (seguindo !== s || !s.vendoPc || !p || p.de !== s.id || !p.seq || p.seq <= s.pcAplicado) return;
+    let pc = s.pcPedacos.get(p.seq);
+    if (!pc) { pc = new Array(p.n); s.pcPedacos.set(p.seq, pc); }
+    pc[p.i] = p.d;
+    for (let i = 0; i < pc.length; i++) if (pc[i] === undefined) return;
+    s.pcPedacos.forEach((_, k) => { if (k <= p.seq) s.pcPedacos.delete(k); });
+    s.pcAplicado = p.seq;
+    const img = s.el.querySelector('[data-av-img]'), mol = s.el.querySelector('[data-av-moldura]'), e = s.el.querySelector('[data-av-espera]');
+    img.src = 'data:image/jpeg;base64,' + pc.join('');
+    img.hidden = false; if (mol) mol.hidden = false; if (e) e.hidden = true;
+    if (p.w !== s.pcW || p.h !== s.pcH) { s.pcW = p.w; s.pcH = p.h; }
+    encaixar(s);
   }
 
   async function aoReceberDom(s, p) {
@@ -383,9 +460,7 @@ B7.AoVivo = (function () {
     const tl = s.el.querySelector('[data-av-tela]'); if (tl) tl.textContent = t.rotulo ? '· ' + t.rotulo : '';
     if (t.w !== s.w || t.h !== s.h) { s.w = t.w; s.h = t.h; }
     const esp = s.el.querySelector('[data-av-espera]'), mol = s.el.querySelector('[data-av-moldura]');
-    if (esp) esp.hidden = true;
-    if (mol) mol.hidden = false;
-    encaixar(s);
+    if (!s.vendoPc) { if (esp) esp.hidden = true; if (mol) mol.hidden = false; encaixar(s); }
     if (s.ultRol) rolar(s, s.ultRol);
   }
   function rolar(s, rol) {
@@ -420,6 +495,7 @@ B7.AoVivo = (function () {
   function pararLive(sairPreview) {
     if (!seguindo) return;
     const s = seguindo; seguindo = null;
+    if (s.vendoPc) enviarEm(s.canal, 'av-pc-pedir', { de: meuId, para: s.id, ligado: false });
     enviarEm(s.canal, 'av-parar', { de: meuId, para: s.id });
     clearInterval(s.ping);
     window.removeEventListener('resize', s.aoRedimensionar);
