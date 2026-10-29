@@ -95,7 +95,11 @@
 .pan-tabela{--pan-quem:minmax(190px,250px);}
 .pan-cab,.pan-linha{display:grid;grid-template-columns:var(--pan-quem) minmax(0,1fr) 22px;align-items:center;gap:14px;}
 .pan-cels{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;min-width:0;}
-.pan-cab{padding:0 16px 8px;position:sticky;top:0;z-index:3;}
+.pan-cab{padding:0 16px 8px;position:sticky;top:0;z-index:3;
+  /* zzz295: grudado no topo ao rolar, precisa de fundo — senão as linhas passam
+     por baixo e o texto encavala (Linha/Roteiros riscados pela barra) */
+  margin-top:-8px;padding-top:8px;background:var(--fundo);
+  box-shadow:0 10px 12px -10px color-mix(in srgb, var(--fundo) 90%, transparent);}
 .pan-cab-quem{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-4);}
 .pan-cab-et{display:flex;align-items:center;gap:6px;min-width:0;padding:0 10px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--ink-3);}
 .pan-cab-et svg{width:15px;height:15px;flex:none;opacity:.8;}
