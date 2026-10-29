@@ -30,6 +30,19 @@ ok(L._parecido('as entradas elas continuam avançando', 'As entradas, elas conti
 ok(L._parecido('calvice é um problema de muita gente', 'Calvície é um problema de muita gente.'), 'acento não conta como reescrita');
 ok(L._parecido('cem por cento natural tá e custa quarenta e nove e noventa', '100% natural, tá? E custa R$ 49,90.'), 'número falado → 100% e R$ não conta como reescrita');
 ok(!L._parecido('você sabia que isso acontece com muita gente', 'Descubra agora o segredo que ninguém te contou.'), 'reescrita é barrada');
+/* zzz293: troca de palavra e legenda esvaziada */
+ok(!L._parecido('eu tô nesse projeto há um ano', 'Eu tô neste projeto há um ano.'), '"nesse" → "neste" é barrado');
+ok(!L._parecido('isso aqui é muito bom', 'Isto aqui é muito bom.'), '"isso" → "isto" é barrado');
+ok(!L._parecido('vem pra cá', 'Vem para cá.'), 'legenda curta: "pra" → "para" é barrado');
+ok(!L._parecido('a gente vai', ''), 'legenda curta não pode ficar vazia');
+ok(!L._parecido('a gente vai', 'A gente'), 'legenda curta não pode perder palavra');
+ok(!L._parecido('essa pessoa chegou cedo', 'Essas pessoas chegaram cedo.'), 'singular → plural é barrado');
+ok(!L._parecido('o produto chegou ontem', 'O produto chegou ontem e já foi aprovado.'), 'acrescentar palavras é barrado');
+ok(L._parecido('lembre se do contra cheque', 'Lembre-se do contracheque.'), 'juntar/separar palavra passa');
+ok(L._parecido('pos operatorio', 'Pós-operatório.'), 'acento e hífen em legenda curta passam');
+ok(L._parecido('ok', 'Ok.'), 'legenda de uma palavra só com maiúscula passa');
+ok(L._parecido('conheça a infinity film', 'Conheça a Infinite Fio.', new Set(['infinite', 'fio'])), 'nome de marca da lista passa');
+ok(!L._parecido('conheça a infinity film', 'Conheça a Infinite Fio.'), 'troca de nome fora da lista é barrada');
 const d = L._diff('calvice e queda', 'Calvície e queda.');
 ok(/<mark>Calvície<\/mark>/.test(d.depois) && /<del>calvice<\/del>/.test(d.antes), 'diferença marca a palavra trocada');
 
