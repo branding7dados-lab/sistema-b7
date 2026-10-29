@@ -97,3 +97,16 @@ html.av-seguindo #app{margin-top:calc(38px + env(safe-area-inset-top,0px));
 .av-cursor-remoto b{position:absolute;left:18px;top:16px;padding:2px 8px;border-radius:8px;white-space:nowrap;
   font:700 11.5px 'Inter',sans-serif;color:#fff;background:#7c4dff;box-shadow:0 4px 10px -3px #0008;}
 @media (prefers-reduced-motion:reduce){ .av-cursor-remoto{transition:none} .av-selo-compart,.av-barra-seguir{animation:none} }
+
+/* ---------- rodapé "Visualizando como" na prévia / acompanhar (zzz291) ---------- */
+.ver-como.como-previa{animation:avPrevEntra .34s cubic-bezier(.2,.9,.25,1) both;}
+@keyframes avPrevEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ver-como.como-previa .co-av{position:relative;}
+.ver-como.como-previa .co-av:after{content:"";position:absolute;inset:-3px;border-radius:50%;
+  box-shadow:0 0 0 0 var(--acento);animation:avPrevPulso 2.2s ease-out infinite;pointer-events:none;}
+@keyframes avPrevPulso{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acento) 55%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+/* o ícone de ciclo contínuo gira sozinho (devagar), e acelera no hover */
+.ver-como.como-previa .co-voltar svg{animation:avGira 4s linear infinite;transform-origin:50% 50%;}
+.ver-como.como-previa .co-voltar:hover svg{animation-duration:1.1s;}
+@keyframes avGira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){ .ver-como.como-previa,.ver-como.como-previa .co-av:after,.ver-como.como-previa .co-voltar svg{animation:none!important} }

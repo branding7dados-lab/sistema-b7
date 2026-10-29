@@ -170,7 +170,8 @@ B7.PreviaUsuario = (function () {
     if (usuario.papel === 'cliente') return false; /* isso é prévia de cliente, não de usuário */
     alvo = { id: usuario.id, nome: usuario.nome || usuario.username || 'Usuário',
              papel: usuario.papel, funcoes_extra: usuario.funcoes_extra || [],
-             funcao: usuario.funcao, modulos: usuario.modulos, niveis: usuario.niveis };
+             funcao: usuario.funcao, modulos: usuario.modulos, niveis: usuario.niveis,
+             foto: usuario.avatar_url || usuario.foto || '' };
     /* zzz68: a prévia mostra o menu e o Painel pela FUNÇÃO e pelos módulos
        efetivos da pessoa (padrão da função + exceções) */
     B7.Auth.simularPapel(alvo.papel, alvo.funcoes_extra, { funcao: alvo.funcao, modulos: alvo.modulos, niveis: alvo.niveis });
@@ -407,7 +408,7 @@ B7.PreviaUsuario = (function () {
       pessoasCliente,
       clientes: (clientes || []).map(c => ({ tipo: 'cliente', id: c.id, nome: c.nome || 'Sem nome' })),
       usuarios: usuariosTodos.map(u => ({
-        tipo: 'usuario', id: u.id, nome: u.nome || u.username || 'Usuário',
+        tipo: 'usuario', id: u.id, nome: u.nome || u.username || 'Usuário', avatar_url: u.avatar_url || u.foto || '',
         papel: u.papel, funcoes_extra: funcoesExtraDe(u.id),
         funcao: u.funcao !== undefined ? (u.funcao || null) : undefined,
         modulos: modulosDe(u), niveis: niveisDe(u)
@@ -467,6 +468,8 @@ B7.PreviaUsuario = (function () {
      ================================================================= */
   const IC_OLHO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
   const IC_VOLTA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
+  /* zzz291: ícone de ciclo contínuo (voltar para a minha conta na prévia) */
+  const IC_CICLO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V10a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>';
 
   async function voltarParaMinhaConta(botao) {
     if (botao) { botao.disabled = true; const s = botao.querySelector('span'); if (s) s.textContent = 'Voltando…'; }
@@ -493,6 +496,24 @@ B7.PreviaUsuario = (function () {
       const bt = cx.querySelector('#co-voltar');
       bt.onclick = () => voltarParaMinhaConta(bt);
       montarFaixaCelular(u);
+      return;
+    }
+
+    /* zzz291: visualizando como (prévia / acompanhar ao vivo) — mostra a foto
+       e o nome da pessoa e um botão de ciclo para voltar à minha conta */
+    if (ativa()) {
+      const u = usuarioAtivo() || {};
+      cx.hidden = false;
+      cx.className = 'ver-como como-outro como-previa';
+      cx.innerHTML =
+        '<div class="co-quem" title="Você está visualizando como ' + esc(u.nome || 'pessoa') + '. Nada que fizer aqui é salvo.">' +
+          (B7.UI.avatarPessoa ? B7.UI.avatarPessoa({ nome: u.nome, avatar_url: u.foto }, 'co-av') : '') +
+          '<div class="co-tx"><small>Visualizando como</small><b>' + esc(u.nome || 'pessoa') + '</b></div>' +
+        '</div>' +
+        '<button type="button" class="co-voltar" id="pv-voltar-lat" title="Voltar para a minha conta" aria-label="Voltar para a minha conta">' +
+          IC_CICLO + '<span>Voltar para minha conta</span></button>';
+      const bt = cx.querySelector('#pv-voltar-lat');
+      bt.onclick = () => sair();
       return;
     }
 
