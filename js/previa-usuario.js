@@ -198,6 +198,8 @@ B7.PreviaUsuario = (function () {
 
   function sair() {
     if (!alvo) return false;
+    /* zzz290: se estava acompanhando ao vivo por cima do Visualizar como, encerra o ao vivo também */
+    if (B7.AoVivo && B7.AoVivo.pararDeSeguir) { try { B7.AoVivo.pararDeSeguir(true); } catch (e) {} }
     alvo = null;
     desligarBloqueioEscrita();
     const b = document.getElementById('pv-banner-usuario');

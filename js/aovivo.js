@@ -83,13 +83,14 @@ B7.AoVivo = (function () {
     /* zzz287: se o super (acompanhando) troca de tela por conta própria — ex.: abre
        o WhatsApp — ele deixa de acompanhar, em vez de a tela ficar brigando com o
        av-tela da pessoa (que puxava de volta e travava tudo). */
-    if (seguindo) { if (seguindo.auto) seguindo.auto = false; else pararDeSeguir(true); }
+    /* navegou para fora da tela seguida (dentro do Visualizar como): encerra só o ao vivo */
+    if (seguindo && (location.hash || '#/') !== (seguindo.hashAlvo || '#/')) pararLive(false);
   }
   function aoVisibilidade() { anunciar(true); if (document.hidden && compartilhando()) pararDeCompartilhar(); }
   function enviar(event, payload) { try { canal && canal.send({ type: 'broadcast', event, payload }); } catch (e) {} }
 
   function desligar() {
-    pararDeSeguir(true); pararDeCompartilhar();
+    pararLive(true); pararDeCompartilhar();
     try { if (canal) (B7.sb.removeChannel ? B7.sb.removeChannel(canal) : canal.unsubscribe()); } catch (e) {}
     canal = null; clearTimeout(timerEnvio);
     window.removeEventListener('hashchange', aoTrocarTela);
@@ -184,7 +185,7 @@ B7.AoVivo = (function () {
   /* ================================================= LADO DE QUEM OLHA
      O super acompanha uma pessoa: a própria tela vai para a rota dela,
      rola junto e mostra o cursor dela (com o nome). */
-  let seguindo = null;   /* { id, nome, hashAntes, barra, cursor, ping, ultimo } */
+  let seguindo = null;   /* { id, nome, hashAlvo, ultimo, ping, cursor } */
 
   function acompanhar(id) {
     if (!pode() || !id || id === meuId) return;
@@ -192,54 +193,45 @@ B7.AoVivo = (function () {
     const m = presencaDe(id);
     const nome = (m && m.nome) || 'a pessoa';
     if (seguindo && seguindo.id === id) return;
-    if (seguindo) pararDeSeguir(false);
-    seguindo = { id, nome, hashAntes: location.hash || '#/', ultimo: 0 };
+    if (seguindo) pararLive(true);
+    /* zzz290: vira a pessoa (Visualizar como), já na tela dela — assim o
+       super vê a CONTA dela, e por cima segue o cursor/rolagem ao vivo.
+       O indicador no topo é o banner "Visualizando como" (Voltar ao Admin
+       encerra tudo). A tela da pessoa mostra "Tela compartilhada". */
+    if (B7.PreviaUsuario && B7.PreviaUsuario.verComoId) { try { B7.PreviaUsuario.verComoId(id, m && m.hash); } catch (e) {} }
+    seguindo = { id, nome, hashAlvo: (m && m.hash) || location.hash || '#/', ultimo: 0 };
     enviar('av-olhar', { de: meuId, deNome: (eu() || {}).nome || 'Administração', para: id });
     seguindo.ping = setInterval(() => {
       if (!seguindo) return;
       enviar('av-olhar', { de: meuId, deNome: (eu() || {}).nome || 'Administração', para: seguindo.id });
-      if (Date.now() - seguindo.ultimo > 30000) marcarEspera(true);   /* parou de chegar: a pessoa saiu/minimizou */
     }, 9000);
-    montarSeguir(nome);
-    if (m && m.hash && m.hash !== location.hash) { seguindo.auto = true; location.hash = m.hash; }
-  }
-  function pararDeSeguir(semVoltar) {
-    if (!seguindo) return;
-    const s = seguindo; seguindo = null;
-    enviar('av-parar', { de: meuId, para: s.id });
-    clearInterval(s.ping);
-    if (s.barra) s.barra.remove();
-    if (s.cursor) s.cursor.remove();
-    document.documentElement.classList.remove('av-seguindo');
-    if (!semVoltar && s.hashAntes && s.hashAntes !== location.hash) { try { location.hash = s.hashAntes; } catch (e) {} }
-  }
-  function montarSeguir(nome) {
-    document.documentElement.classList.add('av-seguindo');
-    const barra = document.createElement('div');
-    barra.className = 'av-barra-seguir';
-    barra.innerHTML = '<span class="av-bs-ponto" aria-hidden="true"></span>' +
-      '<b>Acompanhando ' + esc(nome) + '</b><span class="av-bs-tela" data-bs-tela></span>' +
-      '<button type="button" class="av-bs-parar" data-bs-parar>Parar</button>';
-    document.body.appendChild(barra);
-    barra.querySelector('[data-bs-parar]').onclick = () => pararDeSeguir(false);
     const cursor = document.createElement('div');
     cursor.className = 'av-cursor-remoto';
     cursor.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l6 16 2.2-6.2L19 11z"/></svg><b>' + esc(nome.split(' ')[0]) + '</b>';
     document.body.appendChild(cursor);
-    seguindo.barra = barra; seguindo.cursor = cursor;
+    seguindo.cursor = cursor;
   }
-  function marcarEspera(sim) {
-    if (!seguindo || !seguindo.barra) return;
-    const t = seguindo.barra.querySelector('[data-bs-tela]');
-    if (t) t.textContent = sim ? '· esperando (minimizou ou saiu)' : '';
-    seguindo.barra.classList.toggle('esperando', !!sim);
+  /* para só a parte ao vivo (cursor + sincronismo). sairPreview=true também
+     sai do "Visualizar como". */
+  function pararLive(sairPreview) {
+    if (!seguindo) return;
+    const s = seguindo; seguindo = null;
+    enviar('av-parar', { de: meuId, para: s.id });
+    clearInterval(s.ping);
+    if (s.cursor) s.cursor.remove();
+    if (sairPreview && B7.PreviaUsuario && B7.PreviaUsuario.ativa && B7.PreviaUsuario.ativa())
+      { try { B7.PreviaUsuario.sair(); } catch (e) {} }
   }
+  /* chamado pelo "Voltar ao Admin" do Visualizar como: encerra o ao vivo
+     sem tentar sair de novo (já está saindo) */
+  function pararDeSeguir(daPreview) { pararLive(!daPreview); }
+
   function aoReceberTela(p) {
     if (!seguindo || !p || p.de !== seguindo.id) return;
-    seguindo.ultimo = Date.now(); marcarEspera(false);
-    /* mesma rota que a pessoa */
-    if (p.hash && p.hash !== (location.hash || '#/')) { seguindo.auto = true; try { location.hash = p.hash; } catch (e) {} atualizarRotuloSeguir(p.hash); }
-    /* rolagem proporcional (as telas podem ter alturas diferentes) */
+    seguindo.ultimo = Date.now();
+    /* mesma rota que a pessoa — marca o alvo para a navegação dela não
+       ser confundida com o super saindo da tela */
+    if (p.hash) { seguindo.hashAlvo = p.hash; if (p.hash !== (location.hash || '#/')) { try { location.hash = p.hash; } catch (e) {} } }
     try {
       const doc = document.documentElement;
       const alvoMax = Math.max(1, (p.docH || 0) - (p.visH || 0));
@@ -247,19 +239,13 @@ B7.AoVivo = (function () {
       const frac = Math.min(1, Math.max(0, (p.sy || 0) / alvoMax));
       window.scrollTo({ top: Math.round(frac * meuMax), behavior: 'auto' });
     } catch (e) {}
-    /* cursor dela, proporcional à minha janela */
     if (seguindo.cursor) {
       seguindo.cursor.style.left = Math.round((p.xr || 0.5) * innerWidth) + 'px';
       seguindo.cursor.style.top = Math.round((p.yr || 0.4) * innerHeight) + 'px';
       seguindo.cursor.classList.add('on');
     }
   }
-  function atualizarRotuloSeguir() { /* o rótulo da barra fica no nome; a tela em si já mudou */ }
-  function seguirSync() {
-    /* se a pessoa que eu sigo saiu da presença, aviso na barra */
-    if (!seguindo) return;
-    if (!presencaDe(seguindo.id)) marcarEspera(true);
-  }
+  function seguirSync() { /* presença mudou; nada a repintar (o banner é do Visualizar como) */ }
 
   /* --------------------------------------------------------- o painel */
   let painel = null;
