@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz296', versao: 'zzz296', em: '2026-10-29T14:00:00-03:00',
+    titulo: 'Esqueceu a senha? Agora dá para criar uma nova sozinho',
+    itens: ['Na tela de entrada, toque em “Esqueci minha senha”: chega um código no seu e-mail e você cria uma senha nova na hora.',
+            'Para isso, cadastre o seu e-mail de recuperação: menu da sua foto → Meu perfil → Segurança → E-mail de recuperação.',
+            'Quando a senha é trocada assim, você recebe um aviso por e-mail e as sessões abertas em outros aparelhos são encerradas.'] },
   { id: 'v-zzz280', versao: 'zzz280', em: '2026-10-29T06:00:00-03:00',
     titulo: 'Retrospectiva do mês: o mês da B7 contado em histórias',
     itens: ['Igual à retrospectiva do Spotify: o mês em telas cheias, com quantos vídeos, artes e posts saíram, os bastidores, o dia mais corrido e quantas vezes os clientes disseram “aprovado”.',

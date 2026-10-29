@@ -419,7 +419,7 @@ Deno.serve(comCors(async (req) => {
         admin_existe: (count || 0) > 0,
         /* zzz218: o envio de código por e-mail está pronto? (ok | sem_chave | sem_remetente) */
         email_2fa: await DF.estadoEmail(),
-        acoes: ['ping', 'login', 'login_2fa', 'login_2fa_reenviar', 'login_2fa_status', 'email_link', ...DF.ACOES_SEG, ...DF.ACOES_SEG_ADMIN, 'bootstrap', 'recuperar_admin', 'remover_admin',
+        acoes: ['ping', 'login', 'senha_esqueci', 'senha_trocar', 'login_2fa', 'login_2fa_reenviar', 'login_2fa_status', 'email_link', ...DF.ACOES_SEG, ...DF.ACOES_SEG_ADMIN, 'bootstrap', 'recuperar_admin', 'remover_admin',
                 'criar_usuario', 'redefinir_senha', 'alterar_conta', 'listar_usuarios', 'entrar_como']
       });
     }
@@ -441,6 +441,53 @@ Deno.serve(comCors(async (req) => {
         if (await DF.enviarEmail(r.email, m.assunto, m.html, m.texto)) enviados++; else falhas++;
       }
       return json({ ok: true, enviados, vazios, falhas });
+    }
+
+    // =================================================================
+    // ESQUECI MINHA SENHA (zzz296) — sem sessão. O código vai para o
+    // e-mail de recuperação da conta (ou o da verificação em 2 etapas).
+    // A resposta é SEMPRE a mesma, exista a conta ou não, tenha e-mail
+    // ou não: assim ninguém descobre quais usuários existem.
+    // =================================================================
+    if (acao === 'senha_esqueci') {
+      const username = String(corpo.username || '').trim();
+      const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'sem-ip';
+      if (!username) return json({ erro: 'Digite o seu usuário.' }, 400);
+      const chave = 'esqueci:' + username.toLowerCase(), chaveIp = 'esqueci-ip:' + ip;
+      if (bloqueado(chave) || bloqueado(chaveIp)) return json({ erro: 'Muitos pedidos. Tente de novo em alguns minutos.' }, 429);
+      registrarFalha(chave); registrarFalha(chaveIp);         /* conta cada pedido no freio */
+      const { data: achados } = await sb.rpc('resolver_login', { p_username: username });
+      const perfil = achados && achados[0];
+      if (perfil && perfil.estado === 'ativa') {
+        try { await DF.senhaPedir(sb, perfil.perfil_id); } catch (e) { console.error('esqueci senha:', (e as Error).message); }
+      }
+      return json({ ok: true });
+    }
+
+    if (acao === 'senha_trocar') {
+      const username = String(corpo.username || '').trim();
+      const senha = String(corpo.senha || '');
+      const chave = 'trocar:' + username.toLowerCase();
+      if (!username) return json({ erro: 'Digite o seu usuário.' }, 400);
+      if (bloqueado(chave)) return json({ erro: 'Muitas tentativas. Peça outro código daqui a alguns minutos.' }, 429);
+      const fraca = senhaFraca(senha);
+      if (fraca) return json({ erro: fraca }, 400);
+      const { data: achados } = await sb.rpc('resolver_login', { p_username: username });
+      const perfil = achados && achados[0];
+      if (!perfil || perfil.estado !== 'ativa') { registrarFalha(chave); return json({ erro: 'Código incorreto ou expirado.' }, 401); }
+      const r = await DF.senhaConferir(sb, perfil.perfil_id, corpo.codigo);
+      if (!r.ok) { registrarFalha(chave); return json({ erro: r.erro }, r.status); }
+      const { error } = await sb.auth.admin.updateUserById(perfil.perfil_id, { password: senha });
+      if (error) return json({ erro: 'Não foi possível trocar a senha agora. Tente de novo.' }, 500);
+      tentativas.delete(chave); tentativas.delete(username.toLowerCase());
+      /* a pessoa escolheu a senha: deixa de ser provisória; quem estava logado entra de novo */
+      await sb.from('perfis').update({ senha_provisoria: false }).eq('id', perfil.perfil_id);
+      await sb.auth.admin.signOut(perfil.perfil_id, 'global').catch(() => {});
+      const { data: quem } = await sb.from('perfis').select('nome, username').eq('id', perfil.perfil_id).maybeSingle();
+      await auditar(sb, { id: perfil.perfil_id, username: quem && quem.username }, 'senha_esqueci',
+        { tipo: 'perfil', id: perfil.perfil_id, descricao: (quem && quem.username) || username });
+      try { const m = EM.emailSenhaTrocada({ nome: quem && quem.nome }); await DF.enviarEmail(r.email, m.assunto, m.html, m.texto); } catch (_e) { /* o aviso nunca impede */ }
+      return json({ ok: true });
     }
 
     // =================================================================

@@ -18,7 +18,7 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-10-29-zzz295';
+  const VERSAO = '2026-10-29-zzz296';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -389,6 +389,8 @@ B7.Auth = (function () {
             '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/>' +
             '<circle cx="12" cy="12" r="3"/></svg></button>' +
         '</div>' +
+        /* zzz296: recuperar a senha pelo e-mail de recuperação */
+        '<div class="login-esqueci"><button type="button" class="lg2-link" id="lg-esqueci">Esqueci minha senha</button></div>' +
 
         '<div class="login-erro" id="lg-erro" role="alert"></div>' +
 
@@ -413,6 +415,12 @@ B7.Auth = (function () {
         mostrando ? 'Mostrar senha' : 'Ocultar senha');
       tela.querySelector('.login-olho').classList.toggle('on', !mostrando);
       campoSenha.focus();
+    };
+
+    tela.querySelector('#lg-esqueci').onclick = () => {
+      if (!(B7.Seguranca && B7.Seguranca.esqueciSenha)) return;
+      B7.Seguranca.esqueciSenha(form, { username: campoUser.value.trim(),
+        voltar: u => { tela.remove(); const t = telaLogin(); const c = t.querySelector('#lg-user'); if (u && c) { c.value = u; setTimeout(() => t.querySelector('#lg-senha').focus(), 80); } } });
     };
 
     form.onsubmit = async e => {
