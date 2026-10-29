@@ -164,7 +164,7 @@ B7.PreviaUsuario = (function () {
   /* =================================================================
      ENTRAR / SAIR
      ================================================================= */
-  function abrir(usuario) {
+  function abrir(usuario, hashDestino) {
     if (!B7.Auth || !B7.Auth.ehAdmin || !B7.Auth.ehAdmin()) return false;
     if (!usuario || !usuario.id || !usuario.papel) return false;
     if (usuario.papel === 'cliente') return false; /* isso é prévia de cliente, não de usuário */
@@ -188,7 +188,11 @@ B7.PreviaUsuario = (function () {
     montarBanner();
     ligarBloqueioEscrita();
     if (B7.UI) B7.UI.fecharMenus && B7.UI.fecharMenus();
-    irParaInicio();
+    /* zzz288: vindo da Equipe ao vivo, cai na tela em que a pessoa está (não no início) */
+    if (hashDestino && hashDestino !== '#/' && hashDestino !== '#') {
+      if ((location.hash || '') === hashDestino) { if (B7.Rota && B7.Rota.ir) B7.Rota.ir(); }
+      else location.hash = hashDestino;
+    } else irParaInicio();
     return true;
   }
 
@@ -400,6 +404,20 @@ B7.PreviaUsuario = (function () {
      (folha no celular) a partir do menu da conta ou do "Mais". Mesmos
      ids de busca/lista, então renderizarLista e carregarItens valem. */
   let modalSeletor = null;
+  /* zzz288: "Ver como" direto a partir da Equipe ao vivo — sem passar pelo
+     seletor. Busca os dados da pessoa (papel, módulos, níveis) e entra em
+     "Visualizar como", caindo na tela em que ela está agora. */
+  async function verComoId(id, hashDestino) {
+    if (!B7.Auth || !(B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin())) return false;
+    if (B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro()) return false;
+    if (ativa()) sair();
+    if (!id) return false;
+    try { if (!itens) await carregarItens(); } catch (e) { itens = null; }
+    const u = itens && itens.usuarios && itens.usuarios.find(x => x.id === id);
+    if (!u) { if (B7.UI) B7.UI.toast('Não foi possível ver como essa pessoa.', { tipo: 'erro' }); return false; }
+    return abrir(u, hashDestino);
+  }
+
   function abrirSeletor() {
     if (!B7.Auth || !(B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin())) return;
     /* dentro da conta de outra pessoa não se entra em mais uma: primeiro volta */
@@ -541,5 +559,5 @@ B7.PreviaUsuario = (function () {
     bt.onclick = () => voltarParaMinhaConta(bt);
   }
 
-  return { abrir, sair, ativa, usuarioAtivo, montarSeletor, abrirSeletor };
+  return { abrir, sair, ativa, usuarioAtivo, montarSeletor, abrirSeletor, verComoId };
 })();
