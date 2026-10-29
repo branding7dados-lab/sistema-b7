@@ -48,16 +48,58 @@ B7.Legendas = (function () {
     'mil milhao milhoes e por cento reais real centavos centavo').split(' '));
   const base = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}\s%$]/gu, ' ').split(/\s+/)
     .filter(w => w && !NUMEROS.has(w) && !/^(r\$?|\$)?[\d.,]*%?$/.test(w));
-  function parecido(a, b) {
-    const x = base(a), y = base(b);
-    if (x.length < 4) return true;
-    const m = lcs(x, y);
-    return m / Math.max(x.length, y.length) >= 0.55;
+  /* zzz293: a conferência é palavra por palavra. Antes bastava 55% de
+     parecença (e legenda com menos de 4 palavras passava sempre), então a IA
+     conseguia trocar "nesse" por "neste" ou esvaziar uma legenda curta. Agora
+     cada palavra falada tem que continuar lá; só passa correção de grafia
+     (acento, letra trocada em palavra longa, junta/separa), número → 100%/R$
+     e nome de marca da lista. Qualquer outra troca: fica a original. */
+  const TROCAS_PROIBIDAS = new Set([
+    ['nesse', 'neste'], ['nessa', 'nesta'], ['nesses', 'nestes'], ['nessas', 'nestas'], ['esse', 'este'], ['essa', 'esta'],
+    ['esses', 'estes'], ['essas', 'estas'], ['isso', 'isto'], ['nisso', 'nisto'], ['desse', 'deste'], ['dessa', 'desta'],
+    ['desses', 'destes'], ['dessas', 'destas'], ['disso', 'disto'], ['pra', 'para'], ['pro', 'para'], ['ta', 'esta'], ['to', 'estou'],
+    ['ce', 'voce'], ['ne', 'nao'], ['tava', 'estava'], ['tamo', 'estamos'], ['mas', 'mais']
+  ].flatMap(([a, b]) => [a + '|' + b, b + '|' + a]));
+  function distancia(a, b) {
+    const d = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      let p = d[0]; d[0] = i;
+      for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, p + (a[i - 1] === b[j - 1] ? 0 : 1)); p = t; }
+    }
+    return d[b.length];
   }
-  function lcs(a, b) {
-    const n = a.length, m = b.length, d = Array(m + 1).fill(0);
-    for (let i = 1; i <= n; i++) { let p = 0; for (let j = 1; j <= m; j++) { const t = d[j]; d[j] = a[i - 1] === b[j - 1] ? p + 1 : Math.max(d[j], d[j - 1]); p = t; } }
-    return d[m];
+  /* "calvice" → "calvicie" passa; "nesse" → "neste", "pessoa" → "pessoas", "do" → "da" não */
+  function soGrafia(a, b) {
+    if (a === b) return true;
+    if (TROCAS_PROIBIDAS.has(a + '|' + b)) return false;
+    if (Math.min(a.length, b.length) <= 3) return false;
+    const ra = a.slice(0, -1), rb = b.slice(0, -1);
+    if (a + 's' === b || b + 's' === a) return false;                       /* singular ↔ plural */
+    if (ra === rb && /[aoe]/.test(a.slice(-1)) && /[aoe]/.test(b.slice(-1))) return false;   /* gênero */
+    return distancia(a, b) <= (Math.max(a.length, b.length) >= 8 ? 2 : 1);
+  }
+  function parecido(a, b, marcas) {
+    const x = base(a), y = base(b);
+    if (!y.length) return !x.length;                                         /* nunca esvazia uma legenda */
+    const t = Array.from({ length: x.length + 1 }, () => new Int32Array(y.length + 1));
+    for (let i = x.length - 1; i >= 0; i--) for (let j = y.length - 1; j >= 0; j--)
+      t[i][j] = x[i] === y[j] ? t[i + 1][j + 1] + 1 : Math.max(t[i + 1][j], t[i][j + 1]);
+    /* percorre os trechos que não batem e confere cada um */
+    let i = 0, j = 0, sai = [], entra = [];
+    const confere = () => {
+      if (!sai.length && !entra.length) return true;
+      const ok = (sai.join('') === entra.join('') && sai.length && entra.length)                       /* junta/separa */
+        || (sai.length === entra.length && sai.every((w, k) => soGrafia(w, entra[k])))
+        || (marcas && sai.length && entra.length && Math.abs(sai.length - entra.length) <= 2 && entra.every(w => marcas.has(w)));
+      sai = []; entra = [];
+      return ok;
+    };
+    while (i < x.length || j < y.length) {
+      if (i < x.length && j < y.length && x[i] === y[j]) { if (!confere()) return false; i++; j++; }
+      else if (j < y.length && (i >= x.length || t[i][j + 1] >= t[i + 1][j])) entra.push(y[j++]);
+      else sai.push(x[i++]);
+    }
+    return confere();
   }
   /* diferença palavra a palavra: o que saiu e o que entrou */
   function diff(a, b) {
@@ -211,6 +253,7 @@ B7.Legendas = (function () {
     const partes = [];
     for (let k = 0; k < comTexto.length; k += POR_PARTE) partes.push(comTexto.slice(k, k + POR_PARTE));
     let falhas = 0;
+    const marcas = await palavrasDeMarca(S.clienteId);
     for (let p = 0; p < partes.length; p++) {
       prog.innerHTML = '<div class="lg-prog"><span class="iaf-orbe" aria-hidden="true"></span><b>Corrigindo… parte ' + (p + 1) + ' de ' + partes.length + '</b>' +
         '<i style="--p:' + Math.round(100 * p / partes.length) + '%"></i></div>';
@@ -220,7 +263,7 @@ B7.Legendas = (function () {
       if (!r.ok) { falhas++; continue; }
       (r.itens || []).forEach(x => {
         const c = cues[x.i]; if (!c || typeof x.t !== 'string' || !x.t.trim()) return;
-        if (parecido(c.texto, x.t)) c.ia = x.t;
+        if (parecido(c.texto, x.t, marcas)) c.ia = x.t;
         else { c.ia = c.texto; c.barrada = x.t; }   /* reescreveu: fica a original */
       });
     }
@@ -234,6 +277,18 @@ B7.Legendas = (function () {
     resultado(cx);
   }
 
+  /* palavras das marcas e termos (gerais + do cliente) e dos nomes de clientes:
+     trocar "Infinity Film" por "Infinite Fio" é correção, não reescrita */
+  async function palavrasDeMarca(clienteId) {
+    const s = new Set();
+    try {
+      let q = sb().from('legenda_termos').select('termo,client_id').limit(400);
+      q = clienteId ? q.or('client_id.is.null,client_id.eq.' + clienteId) : q.is('client_id', null);
+      const [{ data }, clis] = await Promise.all([q, B7.DB.listarClientes().catch(() => [])]);
+      [...(data || []).map(x => x.termo), ...(clis || []).map(c => c.nome)].forEach(t => base(t).forEach(w => s.add(w)));
+    } catch (e) { /* sem a lista, troca de marca fica barrada (mais seguro) */ }
+    return s;
+  }
   function texto(c) { return c.usar === 'ia' ? c.ia : c.texto; }
   function resultado(cx) {
     const cues = S.cues;
@@ -247,7 +302,8 @@ B7.Legendas = (function () {
           (mudou(c) ? '<button type="button" class="cb-link" data-desfazer="' + i + '">' + (desfeita ? 'Usar a correção' : 'Desfazer esta') + '</button>' : '') + '</div>' +
         (mudou(c) ? '<div class="lg-dois"><p class="lg-antes">' + d.antes + '</p><p class="lg-depois">' + (desfeita ? esc(c.texto).replace(/\n/g, '<br>') : d.depois) + '</p></div>'
           : '<p class="lg-igual">' + esc(c.texto).replace(/\n/g, '<br>') + '</p>') +
-        (c.barrada ? '<p class="lg-barrada">⚠️ A IA quis reescrever esta legenda; ficou a original. Sugestão dela: “' + esc(c.barrada) + '”</p>' : '') +
+        (c.barrada ? '<p class="lg-barrada">⚠️ A IA quis trocar palavras desta legenda; ficou a original. Sugestão dela: “' + esc(c.barrada) + '” ' +
+          '<button type="button" class="cb-link" data-aceitar="' + i + '">Usar a sugestão</button></p>' : '') +
       '</div>';
     }).join('');
     cx.innerHTML = '<section class="lg-res">' +
@@ -262,6 +318,9 @@ B7.Legendas = (function () {
       lista.innerHTML = linhas() || '<p class="gt-vazio">A IA não encontrou nada para corrigir.</p>';
       lista.querySelectorAll('[data-desfazer]').forEach(b => b.onclick = () => {
         const c = cues[+b.dataset.desfazer]; c.usar = c.usar === 'ia' ? 'original' : 'ia'; S.salvoComo = null; repintar();
+      });
+      lista.querySelectorAll('[data-aceitar]').forEach(b => b.onclick = () => {
+        const c = cues[+b.dataset.aceitar]; c.ia = c.barrada; c.barrada = null; c.usar = 'ia'; S.salvoComo = null; repintar();
       });
     };
     repintar();
