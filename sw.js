@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v498';
+const CACHE = 'roteiros-b7-v499';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -228,9 +228,45 @@ self.addEventListener('message', ev => {
   if (d.tipo === 'b7-versao' && ev.ports && ev.ports[0]) ev.ports[0].postMessage({ versao: CACHE });
 });
 
+/* zzz297: aviso de conversa no estilo WhatsApp — quem mandou, as mensagens
+   ainda não lidas, a foto e os botões Responder / Marcar como lida /
+   Silenciar, que funcionam sem abrir o B7 (a assinatura do aviso vale só
+   para esta pessoa e esta conversa). */
+const B7_PUSH = 'https://rartcafydsaocdzshqcx.supabase.co/functions/v1/b7-push';
+function avisoDeConversa(d) {
+  const c = d.conversa, msgs = (c.mensagens || []).slice(-5), ult = msgs[msgs.length - 1] || {};
+  const titulo = c.grupo ? c.nome : (ult.n || c.nome || 'Conversa');
+  const linhas = msgs.map(m => (c.grupo ? m.n + ': ' : '') + m.t);
+  const max = (self.Notification && Notification.maxActions) || 0;
+  const acoes = [{ action: 'responder', title: 'Responder', type: 'text', placeholder: 'Mensagem' },
+    { action: 'lida', title: 'Marcar como lida' }, { action: 'silenciar', title: 'Silenciar' }].slice(0, max);
+  return [titulo, {
+    body: linhas.join('\n'),
+    icon: ult.f || './assets/icons/icon-192.png',
+    badge: './assets/icons/badge-96.png',
+    tag: 'b7-chat-' + c.id, renotify: true, timestamp: ult.em || Date.now(), vibrate: [80, 40, 80],
+    actions: acoes,
+    data: { link: d.link || '#/conversa/' + c.id, id: null, links: {},
+      conversa: { conversa: c.id, perfil: c.perfil, exp: c.exp, ass: c.ass } }
+  }];
+}
+function acaoDeConversa(c, acao, texto) {
+  return fetch(B7_PUSH, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ conversa_acao: Object.assign({ acao, texto: texto || undefined }, c) }) })
+    .then(r => r.ok);
+}
+
 self.addEventListener('push', ev => {
   let d = {};
   try { d = ev.data ? ev.data.json() : {}; } catch (e) { d = { titulo: ev.data ? ev.data.text() : '' }; }
+  if (d.conversa && d.conversa.id && Array.isArray(d.conversa.mensagens) && d.conversa.mensagens.length) {
+    const [t, op] = avisoDeConversa(d);
+    const mostrarC = () => self.registration.showNotification(t, op)
+      .catch(() => self.registration.showNotification(t, Object.assign({}, op, { actions: [] })));
+    ev.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(l => (l.some(c => c.focused && c.visibilityState === 'visible') ? null : mostrarC()), mostrarC));
+    return;
+  }
   const v2 = Number(d.v) >= 2;
   /* A logo do cliente vira o ícone grande (bucket público) — bate o olho
      e já se sabe de quem é. Sem cliente ou sem logo, ícone do B7. O
@@ -282,6 +318,21 @@ self.addEventListener('push', ev => {
 self.addEventListener('notificationclick', ev => {
   ev.notification.close();
   const dados = ev.notification.data || {};
+  /* zzz297: botões do aviso de conversa — Marcar como lida e Silenciar
+     não abrem nada; Responder manda o texto escrito na própria notificação
+     (onde o navegador deixa) ou abre a conversa pronta para digitar */
+  const conv = dados.conversa;
+  if (conv && (ev.action === 'lida' || ev.action === 'silenciar')) {
+    ev.waitUntil(acaoDeConversa(conv, ev.action).catch(() => false));
+    return;
+  }
+  if (conv && ev.action === 'responder' && typeof ev.reply === 'string' && ev.reply.trim()) {
+    ev.waitUntil(acaoDeConversa(conv, 'responder', ev.reply.trim()).then(ok => ok ? null :
+      self.registration.showNotification('Não deu para enviar', { body: 'Sua resposta não foi enviada. Toque para abrir a conversa.',
+        icon: './assets/icons/icon-192.png', badge: './assets/icons/badge-96.png', tag: 'b7-chat-' + conv.conversa,
+        data: { link: dados.link, id: null, links: {} } }), () => null));
+    return;
+  }
   let link = (ev.action && dados.links && dados.links[ev.action]) || dados.link || '#/';
   if (typeof link !== 'string' || !link.startsWith('#/')) link = '#/';
   const destino = new URL(link, self.registration.scope).href;

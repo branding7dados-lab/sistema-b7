@@ -159,6 +159,11 @@ public class MainActivity extends BridgeActivity {
     String linkPendente = null;
     String idPendente = null;
 
+    /* zzz297: conversa aberta na tela agora (a tela avisa) e app na frente:
+       o aviso dessa conversa não toca (AvisoConversa) */
+    static volatile String conversaAberta = "";
+    static volatile boolean naFrente = false;
+
     /* a abertura do Android segura até a do sistema aparecer (ou 3 s) */
     volatile boolean telasProntas = false;
 
@@ -180,6 +185,7 @@ public class MainActivity extends BridgeActivity {
         });
 
         criarCanalDeAvisos();
+        AvisoConversa.criarCanal(this);
 
         /* aberto pelo widget ou por um atalho do ícone com o app fechado:
            o link espera a página pedir ("linkPendente") */
@@ -294,8 +300,17 @@ public class MainActivity extends BridgeActivity {
     /* foi para segundo plano: o som da abertura (js/abertura-som.js) cala
        na hora — o WebView não para o áudio sozinho */
     @Override
+    public void onResume() {
+        super.onResume();
+        naFrente = true;
+        /* voltou para a conversa que estava aberta: o aviso dela sai da barra */
+        if (!conversaAberta.isEmpty()) AvisoConversa.tirar(this, conversaAberta);
+    }
+
+    @Override
     public void onPause() {
         super.onPause();
+        naFrente = false;
         if (bridge != null && bridge.getWebView() != null) {
             bridge.getWebView().evaluateJavascript("window.B7Pausou && window.B7Pausou()", null);
         }
@@ -410,6 +425,11 @@ public class MainActivity extends BridgeActivity {
                     case "mostrarAviso":
                         new Thread(() -> act.mostrarAviso(m.optString("titulo"), m.optString("corpo"), m.optString("link"),
                             m.optString("id"), m.optString("imagem"), m.optString("logo"), m.optString("acoes"))).start();
+                        ok = true;
+                        break;
+                    case "conversaAberta":
+                        MainActivity.conversaAberta = m.optString("id", "");
+                        if (!MainActivity.conversaAberta.isEmpty()) AvisoConversa.tirar(act, MainActivity.conversaAberta);
                         ok = true;
                         break;
                     case "widgetToken":

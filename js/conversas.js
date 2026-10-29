@@ -69,6 +69,8 @@ B7.Conversas = (function () {
   let conversas = new Map();        /* outroId → linha de chat_lista */
   let porConversa = new Map();      /* conversaId → outroId */
   let atual = null;                 /* { outroId, conversaId, msgs, temMais, carregando } */
+  /* zzz297: no app Android, o aviso da conversa que está aberta na tela não toca */
+  const contarAoApp = id => { try { if (B7.AppNativo && B7.AppNativo.conversaAberta) B7.AppNativo.conversaAberta(id || ''); } catch (e) {} };
   let online = new Set(), saiuEm = new Map();
   let atividade = new Map();        /* outroId → { estado, ate } */
   let canalDados = null, canalPresenca = null, canalDe = null;
@@ -335,7 +337,7 @@ B7.Conversas = (function () {
   function desligarTudo() {
     desligarCanais();
     if (painel) { painel.remove(); painel = null; }
-    aberto = false; atual = null; document.body.classList.remove('conv-aberta');
+    aberto = false; atual = null; contarAoApp(''); document.body.classList.remove('conv-aberta');
   }
   function pintarBadge() {
     const n = totalNaoLidas();
@@ -422,14 +424,14 @@ B7.Conversas = (function () {
   }
   function fechar() {
     limparConversa();
-    aberto = false; atual = null;
+    aberto = false; atual = null; contarAoApp('');
     document.body.classList.remove('conv-aberta');
     if (painel) { painel.remove(); painel = null; }
     document.querySelectorAll('.conv-bt').forEach(b => b.setAttribute('aria-expanded', 'false'));
   }
   function voltar() {
     limparConversa();
-    atual = null; pintarVazio(); pintarLinhas(); carregarLista();
+    atual = null; contarAoApp(''); pintarVazio(); pintarLinhas(); carregarLista();
     const b = painel && painel.querySelector('#conv-busca'); if (b && LARGA.matches) b.focus();
   }
 
@@ -526,6 +528,7 @@ B7.Conversas = (function () {
       if (!conversas.has(outroId)) conversas.set(outroId, { conversa_id: conversaId, outro_id: outroId, nao_lidas: 0, ultima: null });
     }
     const conv = atual = { outroId, conversaId, msgs: [], temMais: false, carregando: true };
+    contarAoApp(conversaId);
     pintarConversa();
     pintarLinhas();
     await carregarMensagens(false);

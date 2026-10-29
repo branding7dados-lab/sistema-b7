@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz297', versao: 'zzz297', em: '2026-10-29T16:00:00-03:00',
+    titulo: 'Mensagens chegam como no WhatsApp: responda pela própria notificação',
+    itens: ['No app Android, a mensagem chega com a foto e o nome de quem mandou e as mensagens ainda não lidas, uma embaixo da outra.',
+            'Toque em Responder e escreva ali mesmo, sem abrir o B7. Também dá para Marcar como lida ou Silenciar a conversa por 8 horas.',
+            'No navegador, a notificação também mostra quem mandou e a mensagem, com Marcar como lida e Responder.',
+            'Atualize o app Android para a versão nova para ver o aviso novo.'] },
   { id: 'v-zzz296', versao: 'zzz296', em: '2026-10-29T14:00:00-03:00',
     titulo: 'Esqueceu a senha? Agora dá para criar uma nova sozinho',
     itens: ['Na tela de entrada, toque em “Esqueci minha senha”: chega um código no seu e-mail e você cria uma senha nova na hora.',
