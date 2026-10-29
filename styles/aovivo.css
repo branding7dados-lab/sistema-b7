@@ -119,7 +119,7 @@ html.av-espelhando, html.av-espelhando body{overflow:hidden;}
   padding-top:calc(10px + env(safe-area-inset-top,0px));
   padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(16px + env(safe-area-inset-right,0px));
   background:linear-gradient(90deg,#7c4dff,#d6336c);box-shadow:0 6px 24px -8px #0009;font:600 13px 'Inter',system-ui,sans-serif;}
-.av-esp-tx{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.av-esp-tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .av-esp-tx b{font-weight:800;}
 .av-esp-tela{opacity:.85;font-weight:600;}
 .av-esp-palco{position:relative;flex:1;min-height:0;overflow:hidden;}
@@ -134,3 +134,7 @@ html.av-espelhando, html.av-espelhando body{overflow:hidden;}
   border:3px solid #7c4dff;background:#7c4dff33;animation:avClique .65s ease-out forwards;}
 @keyframes avClique{from{transform:scale(.3);opacity:1}to{transform:scale(1.6);opacity:0}}
 @media (prefers-reduced-motion:reduce){ .av-esp,.av-esp-clique{animation:none} .av-esp .av-cursor-remoto{transition:none} }
+/* zzz298: Tela do PC — a foto da tela inteira, dentro da mesma moldura */
+.av-esp-tela-pc{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;background:#000;}
+.av-esp-tela-pc[hidden]{display:none;}
+.av-esp-pc{background:#ffffff3d;}

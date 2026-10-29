@@ -296,9 +296,18 @@ B7.AppNativo = (function () {
     });
   }
 
+  /* zzz297: "fcm2" = este app monta o aviso de conversa (foto, mensagens,
+     Responder…); a b7-push manda só os dados para ele. Grava sempre: o
+     registro do banco troca "fcm" por "fcm2" no aparelho que atualizou. */
   async function gravarNoBanco(token) {
-    const endpoint = 'fcm:' + token;
-    if (!(await B7.DB.temPush(endpoint))) await B7.DB.registrarPush({ endpoint, p256dh: 'fcm', auth: 'fcm' });
+    await B7.DB.registrarPush({ endpoint: 'fcm:' + token, p256dh: 'fcm2', auth: 'fcm' });
+  }
+  /* conversa aberta na tela (js/conversas.js): o aviso dela não toca */
+  let ultimaConversa = null;
+  function conversaAberta(id) {
+    if (!ativo || id === ultimaConversa) return;
+    ultimaConversa = id;
+    pedir('conversaAberta', { id: id || '' });
   }
 
   const push = {
@@ -375,7 +384,7 @@ B7.AppNativo = (function () {
   const whatsCompartilhar = (texto, arquivo) => pedir('whatsCompartilhar', { texto, arquivo: !!arquivo });
 
   return {
-    ativo, icone, iconeAtual, whatsCompartilhar,
+    ativo, icone, iconeAtual, whatsCompartilhar, conversaAberta,
     versao: () => instalada,
     ligarAtualizacao,
     instalar,

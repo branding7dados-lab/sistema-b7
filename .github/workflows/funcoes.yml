@@ -55,3 +55,13 @@ jobs:
             echo "tentativa $t falhou; esperando"; sleep $((t * 20))
           done
           exit 1
+      # zzz297: a b7-push (avisos no celular e no navegador) também sai daqui.
+      # O código do repositório era o mesmo publicado à mão (versão zzz152).
+      - name: Publicar b7-push
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN não configurado — nada publicado"; exit 0; fi
+          for t in 1 2 3; do
+            { supabase functions deploy b7-push --project-ref "$PROJETO" --no-verify-jwt --use-api || supabase functions deploy b7-push --project-ref "$PROJETO" --no-verify-jwt; } && exit 0
+            echo "tentativa $t falhou; esperando"; sleep $((t * 20))
+          done
+          exit 1

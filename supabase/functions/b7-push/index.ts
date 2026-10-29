@@ -47,7 +47,7 @@ import webpush from 'npm:web-push@3.6.7';
 import { comCors, iguais } from '../_shared/cors.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const VERSAO = '2026-10-11-zzz152';
+const VERSAO = '2026-10-29-zzz297';
 
 /* Endereço do cartão do aviso (função b7-arte) e a assinatura que ela
    exige: HMAC do id, com um segredo que só as duas funções conhecem.
@@ -58,6 +58,58 @@ async function assinar(texto: string): Promise<string> {
   const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(chave), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const m = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode('b7-arte:' + texto));
   return Array.from(new Uint8Array(m)).slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* zzz297: aviso de conversa igual ao do WhatsApp. O aviso leva uma
+   assinatura que vale só para aquela pessoa e aquela conversa, por 7 dias:
+   com ela, os botões da notificação (Responder, Marcar como lida,
+   Silenciar) funcionam sem abrir o B7 e sem sessão. */
+const SETE_DIAS = 7 * 24 * 60 * 60 * 1000;
+async function assinarConversa(perfil: string, conversa: string, exp: number): Promise<string> {
+  const chave = Deno.env.get('B7_WEBHOOK_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(chave), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const m = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode('b7-conversa:' + perfil + ':' + conversa + ':' + exp));
+  return Array.from(new Uint8Array(m)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+type MsgAviso = { n: string; f: string; t: string; em: number };
+type Conversa = { id: string; nome: string; grupo: boolean; perfil: string; exp: number; ass: string; mensagens: MsgAviso[] };
+
+function previaDe(m: { tipo?: string; texto?: string | null; arquivo_nome?: string | null }): string {
+  if (m.tipo === 'audio') return '🎤 Mensagem de voz';
+  if (m.tipo === 'imagem') return '📷 Foto' + (m.texto ? ': ' + m.texto : '');
+  if (m.tipo === 'arquivo') return '📄 ' + (m.arquivo_nome || 'Arquivo');
+  return String(m.texto || '');
+}
+
+/* as mensagens ainda não lidas daquela conversa (até 6), com nome e foto de quem mandou */
+async function montarConversa(sb: SupabaseClient, dest: string, conversa: string): Promise<{ c: Conversa | null; silenciada: boolean }> {
+  const { data: part } = await sb.from('chat_participantes').select('lida_ate, silenciada_ate')
+    .eq('conversa_id', conversa).eq('perfil_id', dest).maybeSingle();
+  if (!part) return { c: null, silenciada: false };
+  if (part.silenciada_ate && new Date(part.silenciada_ate).getTime() > Date.now()) return { c: null, silenciada: true };
+  const { data: conv } = await sb.from('chat_conversas').select('tipo, nome').eq('id', conversa).maybeSingle();
+  let q = sb.from('chat_mensagens').select('autor_id, tipo, texto, arquivo_nome, created_at')
+    .eq('conversa_id', conversa).neq('autor_id', dest).is('apagada_em', null)
+    .order('created_at', { ascending: false }).limit(6);
+  if (part.lida_ate) q = q.gt('created_at', part.lida_ate);
+  const { data: msgs } = await q;
+  const lista = (msgs || []).reverse();
+  if (!lista.length) return { c: null, silenciada: false };
+  const ids = [...new Set(lista.map((m: any) => m.autor_id))];
+  const { data: pessoas } = await sb.from('perfis').select('id, nome, username, avatar_url').in('id', ids);
+  const quem = new Map((pessoas || []).map((p: any) => [p.id, p]));
+  const grupo = !!(conv && conv.tipo && conv.tipo !== 'direta');
+  const exp = Date.now() + SETE_DIAS;
+  const ultimo: any = quem.get(lista[lista.length - 1].autor_id) || {};
+  return { silenciada: false, c: {
+    id: conversa, grupo, perfil: dest, exp, ass: await assinarConversa(dest, conversa, exp),
+    nome: grupo ? String((conv && conv.nome) || 'Grupo') : String(ultimo.nome || ultimo.username || 'Equipe'),
+    mensagens: lista.map((m: any) => {
+      const p: any = quem.get(m.autor_id) || {};
+      return { n: String(p.nome || p.username || 'Equipe'), f: String(p.avatar_url || ''), t: previaDe(m).slice(0, 500), em: new Date(m.created_at).getTime() };
+    })
+  } };
 }
 
 const CORS = {
@@ -144,10 +196,28 @@ async function tokenFcm(conta: Conta): Promise<string> {
 
 /* mesmo aviso, no formato do Firebase: título, texto, imagem e, nos
    dados, o link e o id (o app abre a tela certa ao tocar) */
-async function enviarFcm(token: string, payload: string, ttl: number) {
+async function enviarFcm(token: string, payload: string, ttl: number, versaoApp = '') {
   const conta = lerConta();
   if (!conta) throw Object.assign(new Error('sem_fcm'), { statusCode: 503 });
   const p = JSON.parse(payload);
+  /* zzz297: app que sabe montar o aviso de conversa ("fcm2") recebe só os
+     DADOS — quem desenha é o próprio app (foto, mensagens, Responder…).
+     App antigo continua recebendo o aviso pronto, como antes. */
+  if (p.conversa && versaoApp === 'fcm2') {
+    const r0 = await fetch('https://fcm.googleapis.com/v1/projects/' + conta.project_id + '/messages:send', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + await tokenFcm(conta), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: { token,
+        data: { kind: 'conversa', conversa: JSON.stringify(p.conversa), link: String(p.link || '#/'), id: String(p.id || '') },
+        android: { priority: 'HIGH', ttl: ttl + 's' } } })
+    });
+    if (!r0.ok) {
+      const j = await r0.json().catch(() => ({}));
+      const sumiu = /UNREGISTERED/.test(JSON.stringify(j)) || r0.status === 404;
+      throw Object.assign(new Error('fcm'), { statusCode: sumiu ? 410 : r0.status });
+    }
+    return;
+  }
   /* imagem, logo e botões vão também nos dados: com o app aberto quem
      mostra o aviso é o próprio app (zzz152), e ele monta o mesmo cartão */
   const dados: Record<string, string> = {
@@ -185,7 +255,7 @@ async function enviar(sb: SupabaseClient, lista: Inscricao[], payload: string, t
   await Promise.all(lista.map(async s => {
     try {
       if (s.endpoint.startsWith('fcm:')) {
-        await enviarFcm(s.endpoint.slice(4), payload, ttl);
+        await enviarFcm(s.endpoint.slice(4), payload, ttl, s.p256dh);
         enviados++;
         return;
       }
@@ -276,6 +346,33 @@ Deno.serve(comCors(async (req: Request) => {
   }
 
   /* ================================================================
+     BOTÕES DO AVISO DE CONVERSA (zzz297) — sem sessão: vale a assinatura
+     que foi junto no aviso (só aquela pessoa, só aquela conversa, 7 dias)
+     ================================================================ */
+  const ac = (corpo as any).conversa_acao;
+  if (ac && typeof ac === 'object') {
+    const perfil = String(ac.perfil || ''), conversa = String(ac.conversa || ''), exp = Number(ac.exp) || 0;
+    if (!UUID.test(perfil) || !UUID.test(conversa) || exp < Date.now() || exp > Date.now() + SETE_DIAS + 60000)
+      return json({ ok: false, erro: 'Aviso expirado. Abra a conversa no B7.' }, 401);
+    if (!iguais(String(ac.ass || ''), await assinarConversa(perfil, conversa, exp)))
+      return json({ ok: false, erro: 'Aviso inválido.' }, 401);
+    const { data: quem } = await sb.from('perfis').select('estado').eq('id', perfil).maybeSingle();
+    if (!quem || quem.estado !== 'ativa') return json({ ok: false, erro: 'Conta inativa.' }, 403);
+    let r: { error: any } = { error: null };
+    if (ac.acao === 'responder') {
+      const texto = String(ac.texto || '').trim().slice(0, 4000);
+      if (!texto) return json({ ok: false, erro: 'Mensagem vazia.' }, 400);
+      r = await sb.rpc('chat_enviar_como', { p_autor: perfil, p_conversa: conversa, p_texto: texto });
+    } else if (ac.acao === 'lida') {
+      r = await sb.rpc('chat_marcar_lida_como', { p_perfil: perfil, p_conversa: conversa });
+    } else if (ac.acao === 'silenciar') {
+      r = await sb.rpc('chat_silenciar_como', { p_perfil: perfil, p_conversa: conversa, p_horas: 8 });
+    } else return json({ ok: false, erro: 'Ação desconhecida.' }, 400);
+    if (r.error) return json({ ok: false, erro: String(r.error.message || 'Não foi possível.').slice(0, 160) }, 400);
+    return json({ ok: true, versao: VERSAO });
+  }
+
+  /* ================================================================
      WEBHOOK — uma notificação acabou de nascer
      ================================================================ */
   /* Sem segredo configurado, a função RECUSA (antes aceitava qualquer
@@ -342,7 +439,24 @@ Deno.serve(comCors(async (req: Request) => {
 
   const tipo = n.tipo || '';
   const link = n.link || '#/';
-  const payload = JSON.stringify({
+  /* zzz297: mensagem de conversa — vai com as mensagens, a foto de quem
+     mandou e a assinatura dos botões; conversa silenciada não toca */
+  let conversa: Conversa | null = null;
+  if (tipo === 'chat.mensagem' && typeof dados.conversa === 'string' && UUID.test(dados.conversa)) {
+    try {
+      const m = await montarConversa(sb, n.destinatario_id, dados.conversa);
+      if (m.silenciada) {
+        await registrar(sb, n.id, 'conversa_silenciada');
+        return json({ ok: true, enviados: 0, motivo: 'conversa silenciada', versao: VERSAO });
+      }
+      conversa = m.c;
+    } catch (_e) { conversa = null; }
+  }
+  if (conversa) {
+    const ult = conversa.mensagens[conversa.mensagens.length - 1];
+    logo = ult.f || logo; imagem = null;
+  }
+  const payload = JSON.stringify({ conversa,
     v: 2, id: n.id, tipo: tipo || null, link,
     titulo: n.titulo || 'Sistema B7',
     corpo: [cliente, n.mensagem].filter(Boolean).join(' · '),
