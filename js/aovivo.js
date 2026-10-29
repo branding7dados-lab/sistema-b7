@@ -281,8 +281,8 @@ B7.AoVivo = (function () {
           '<span class="av-tela">' + esc(m.rotulo || 'No Sistema') + '</span>' +
           '<small>' + esc(haQuanto(m.em)) + '</small></div>' +
         '<div class="av-acoes">' +
-          '<button type="button" class="av-ir" data-ir-hash="' + esc(m.hash || '#/') + '">Ir para a tela</button>' +
-          '<button type="button" class="av-seguir" data-seguir="' + esc(m.id) + '">Acompanhar</button>' +
+          '<button type="button" class="av-seguir" data-vercomo="' + esc(m.id) + '" data-hash="' + esc(m.hash || '#/') + '">Ver como</button>' +
+          '<button type="button" class="av-ir" data-seguir="' + esc(m.id) + '">Acompanhar</button>' +
         '</div>' +
       '</div>').join('');
   }
@@ -299,7 +299,7 @@ B7.AoVivo = (function () {
         '<div class="av-topo"><div><h3>Equipe ao vivo</h3><span data-av-n class="sub">—</span></div>' +
           '<button type="button" class="av-x" data-av-fechar aria-label="Fechar">✕</button></div>' +
         '<div class="av-corpo" data-av-corpo></div>' +
-        '<p class="av-rodape">Quem está com o Sistema aberto e em que tela. Em "Acompanhar", você vê a tela da pessoa ao vivo — e a tela dela mostra "Tela compartilhada". Só super admin e admin supremo.</p>' +
+        '<p class="av-rodape">Quem está com o Sistema aberto e em que tela. <b>Ver como</b>: você entra como a pessoa, na tela em que ela está (nada é salvo). <b>Acompanhar</b>: você vê a tela dela ao vivo — e a tela dela mostra "Tela compartilhada". Só super admin e admin supremo.</p>' +
       '</div>';
     document.body.appendChild(el);
     painel = el;
@@ -308,8 +308,10 @@ B7.AoVivo = (function () {
     document.addEventListener('keydown', aoTeclar, true);
     el.addEventListener('click', e => {
       if (e.target.closest('[data-av-fechar]') || e.target === el) return fechar();
-      const ir = e.target.closest('[data-ir-hash]');
-      if (ir) { location.hash = ir.dataset.irHash; return fechar(); }
+      const vc = e.target.closest('[data-vercomo]');
+      if (vc) { const id = vc.dataset.vercomo, hash = vc.dataset.hash; fechar();
+        if (B7.PreviaUsuario && B7.PreviaUsuario.verComoId) B7.PreviaUsuario.verComoId(id, hash);
+        return; }
       const seg = e.target.closest('[data-seguir]');
       if (seg) { const id = seg.dataset.seguir; fechar(); acompanhar(id); }
     });
