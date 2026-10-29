@@ -16,12 +16,16 @@ function quandoBrasilia(): string {
   return p.day + '/' + p.month + ' às ' + p.hour + ':' + p.minute;
 }
 
-export function emailCodigo(o: { codigo: string; motivo: 'login' | 'cadastro'; nome?: string | null; aparelho?: string | null; link?: string | null; acao?: string | null }) {
+export function emailCodigo(o: { codigo: string; motivo: 'login' | 'cadastro' | 'senha' | 'recuperacao'; nome?: string | null; aparelho?: string | null; link?: string | null; acao?: string | null }) {
   const login = o.motivo === 'login';
+  /* zzz296: esqueci minha senha / cadastro do e-mail de recuperação */
+  const senha = o.motivo === 'senha', rec = o.motivo === 'recuperacao';
   /* zzz225: confirmar uma ação sensível (ex.: passar o cargo de admin supremo) */
-  const titulo = o.acao ? 'Confirme esta ação' : login ? 'Seu código de acesso' : 'Confirme seu e-mail';
-  const sub = o.acao ? 'Ação do super admin' : login ? 'Verificação em 2 etapas' : 'Verificação em 2 etapas · cadastro do e-mail';
-  const frase = o.acao ? 'Para confirmar: ' + o.acao + ', digite este código no B7. Se não foi você, troque a sua senha agora.' : o.link
+  const titulo = o.acao ? 'Confirme esta ação' : senha ? 'Crie uma senha nova' : rec ? 'Confirme seu e-mail de recuperação' : login ? 'Seu código de acesso' : 'Confirme seu e-mail';
+  const sub = o.acao ? 'Ação do super admin' : senha ? 'Esqueci minha senha' : rec ? 'Recuperação de senha · cadastro do e-mail' : login ? 'Verificação em 2 etapas' : 'Verificação em 2 etapas · cadastro do e-mail';
+  const frase = o.acao ? 'Para confirmar: ' + o.acao + ', digite este código no B7. Se não foi você, troque a sua senha agora.'
+    : senha ? 'Alguém pediu para trocar a senha da sua conta no B7. Para criar uma senha nova, digite este código na tela de acesso:'
+    : rec ? 'Para usar este e-mail na recuperação da sua senha, digite este código no B7:' : o.link
     ? (login ? 'Para terminar de entrar no B7, toque no botão abaixo — ou digite o código na tela de acesso.'
              : 'Para usar este e-mail na verificação em 2 etapas, toque no botão abaixo — ou digite o código no B7.')
     : (login ? 'Para terminar de entrar no B7, digite este código na tela de acesso:'
@@ -33,7 +37,7 @@ export function emailCodigo(o: { codigo: string; motivo: 'login' | 'cadastro'; n
   const cod = o.codigo.slice(0, 3) + ' ' + o.codigo.slice(3);
   const primeiro = String(o.nome || '').trim().split(/\s+/)[0];
   const quando = 'Hoje, ' + quandoBrasilia() + (o.aparelho ? ' · ' + esc(String(o.aparelho).slice(0, 80)) : '');
-  const assunto = (o.acao ? 'Confirme a ação no B7: ' : login ? 'Seu código para entrar no B7: ' : 'Confirme seu e-mail no B7: ') + o.codigo;
+  const assunto = (o.acao ? 'Confirme a ação no B7: ' : senha ? 'Código para trocar sua senha no B7: ' : rec ? 'Confirme seu e-mail de recuperação no B7: ' : login ? 'Seu código para entrar no B7: ' : 'Confirme seu e-mail no B7: ') + o.codigo;
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${esc(titulo)}</title>
 <style>
@@ -159,5 +163,35 @@ ${lista('Seus pedidos que ficaram prontos', '🎉', r.pedidos_prontos.map(t => e
   const assunto = r.pendentes.length && decide
     ? '⏳ ' + r.pendentes.length + (r.pendentes.length === 1 ? ' material esperando você' : ' materiais esperando você') + ' · semana da ' + r.empresa
     : '📬 Sua semana com a Branding7 · ' + r.empresa;
+  return { assunto, html, texto };
+}
+
+/* zzz296: aviso de que a senha foi trocada pelo "Esqueci minha senha" */
+export function emailSenhaTrocada(o: { nome?: string | null }) {
+  const primeiro = String(o.nome || '').trim().split(/\s+/)[0];
+  const quando = 'Hoje, ' + quandoBrasilia();
+  const assunto = 'Sua senha do B7 foi trocada';
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${assunto}</title></head>
+<body style="margin:0;padding:0;background:#F3F1FA;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F1FA;"><tr><td align="center" style="padding:32px 12px;">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background:#FFFFFF;border-radius:24px;overflow:hidden;">
+<tr><td style="background:#1A1240;background-image:linear-gradient(135deg,#0B0A1E 0%,#3A1E86 62%,#C21C83 130%);padding:30px 36px 28px;">
+<img src="${LOGO}" width="132" alt="Branding7" style="display:block;width:132px;height:auto;border:0;">
+<div style="height:22px;line-height:22px;">&nbsp;</div>
+<div style="font:800 26px/1.2 Arial,Helvetica,sans-serif;color:#FFFFFF;">Senha trocada</div>
+<div style="font:400 14px/1.5 Arial,Helvetica,sans-serif;color:#D9D3F0;padding-top:6px;">${esc(quando)}</div>
+</td></tr>
+<tr><td style="padding:30px 36px 8px;font:400 15px/1.6 Arial,Helvetica,sans-serif;color:#1B1631;">
+Olá${primeiro ? ', <b>' + esc(primeiro) + '</b>' : ''}! A senha da sua conta no Sistema B7 acabou de ser trocada pelo <b>Esqueci minha senha</b>. As sessões abertas em outros aparelhos foram encerradas.
+</td></tr>
+<tr><td style="padding:16px 36px 30px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF7EA;border:1px solid #F6E0B6;border-radius:16px;"><tr><td style="padding:16px 18px;font:400 13.5px/1.55 Arial,Helvetica,sans-serif;color:#8A5A0B;">
+<b>Não foi você?</b> Fale com a Branding7 na hora: alguém pode ter acesso ao seu e-mail.
+</td></tr></table>
+</td></tr></table>
+<div style="font:400 12px/1.6 Arial,Helvetica,sans-serif;color:#9A93B3;padding-top:18px;">E-mail automático do Sistema B7 · não precisa responder.</div>
+</td></tr></table></body></html>`;
+  const texto = 'A senha da sua conta no Sistema B7 foi trocada (' + quando + ') pelo "Esqueci minha senha". ' +
+    'As sessões abertas foram encerradas. Não foi você? Fale com a Branding7 na hora.';
   return { assunto, html, texto };
 }

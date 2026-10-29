@@ -4,13 +4,25 @@
    Parte 1 (zzz284): ver quem da equipe está no Sistema agora e em que
    tela está, ao vivo (Supabase Realtime, presença).
 
-   Parte 2 (zzz285): ACOMPANHAR ao vivo. O super escolhe uma pessoa e
-   passa a ver a tela dela (a mesma rota, a rolagem e o cursor dela com
-   o nome). O cursor do super NÃO aparece para a pessoa.
+   Parte 2 (zzz285 → zzz296): ACOMPANHAR ao vivo. O super escolhe uma
+   pessoa e vê a TELA DELA como ela vê: subtelas, abas, janelas abertas,
+   o que ela digita nos campos, a rolagem, o cursor e os cliques. É um
+   espelho: a tela da pessoa é copiada (sem nenhum script) e desenhada
+   numa moldura do tamanho da tela dela — no celular, aparece o celular.
+   Nada é "clicado" do lado do super: só se olha.
+
+   O que NUNCA sai da tela da pessoa: senha, código de verificação e
+   qualquer campo marcado com data-av-privado.
+
    Em troca, enquanto alguém está acompanhando, a tela da pessoa mostra
    o selo "Tela compartilhada" — ela tem como saber. Esse selo aparece
    para QUALQUER acompanhamento (não dá para acompanhar sem ele).
    O acompanhamento do uso do Sistema está nos Termos (seção 2).
+
+   Segurança (zzz296): os canais são PRIVADOS (Realtime Authorization,
+   migration_aovivo_privado.sql). "b7-aovivo" (quem está online) só a
+   equipe interna; "b7-aovivo:<id>" (a tela da pessoa) só ela mesma e os
+   super admins. Sem sessão da equipe, nada entra nem sai.
 
    Só se envia algo pela rede enquanto há de fato alguém acompanhando;
    sem ninguém olhando, nada é transmitido (não pesa no Realtime).
@@ -25,6 +37,7 @@ B7.AoVivo = (function () {
   const esc = s => (B7.UI && B7.UI.esc ? B7.UI.esc(s) : String(s == null ? '' : s));
   const eu = () => (B7.Auth && B7.Auth.usuario && B7.Auth.usuario()) || null;
   const pode = () => !!(B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin());
+  const TOPICO = 'b7-aovivo', topicoDe = id => TOPICO + ':' + id;
 
   function telaAtual() {
     let base = '';
@@ -39,7 +52,7 @@ B7.AoVivo = (function () {
   }
 
   /* ----------------------------------------------------- eu me anuncio */
-  let canal = null, meuId = null, ultimoEnvio = 0, timerEnvio = null;
+  let canal = null, meuCanal = null, meuId = null, ultimoEnvio = 0, timerEnvio = null;
 
   function dados() {
     const u = eu() || {}, t = telaAtual();
@@ -67,32 +80,29 @@ B7.AoVivo = (function () {
     desligar();
     meuId = u.id;
     try {
-      canal = B7.sb.channel('b7-aovivo', { config: { presence: { key: meuId }, broadcast: { self: false } } });
+      canal = B7.sb.channel(TOPICO, { config: { private: true, presence: { key: meuId } } });
       canal
-        .on('presence', { event: 'sync' }, () => { if (painel) pintar(); seguirSync(); })
+        .on('presence', { event: 'sync' }, () => { if (painel) pintar(); })
+        .subscribe(st => { if (st === 'SUBSCRIBED') anunciar(true); });
+      /* o meu canal: é por aqui que um super pede para acompanhar */
+      meuCanal = B7.sb.channel(topicoDe(meuId), { config: { private: true, broadcast: { self: false } } });
+      meuCanal
         .on('broadcast', { event: 'av-olhar' }, ({ payload }) => aoPedirOlhar(payload))
         .on('broadcast', { event: 'av-parar' }, ({ payload }) => aoPararOlhar(payload))
-        .on('broadcast', { event: 'av-tela' }, ({ payload }) => aoReceberTela(payload))
-        .subscribe(st => { if (st === 'SUBSCRIBED') anunciar(true); });
-    } catch (e) { canal = null; return; }
+        .subscribe();
+    } catch (e) { canal = null; meuCanal = null; return; }
     window.addEventListener('hashchange', aoTrocarTela);
     document.addEventListener('visibilitychange', aoVisibilidade);
   }
-  function aoTrocarTela() {
-    anunciar(false); if (painel) pintar(); if (compartilhando()) emitirTela(true);
-    /* zzz287: se o super (acompanhando) troca de tela por conta própria — ex.: abre
-       o WhatsApp — ele deixa de acompanhar, em vez de a tela ficar brigando com o
-       av-tela da pessoa (que puxava de volta e travava tudo). */
-    /* navegou para fora da tela seguida (dentro do Visualizar como): encerra só o ao vivo */
-    if (seguindo && (location.hash || '#/') !== (seguindo.hashAlvo || '#/')) pararLive(false);
-  }
+  function aoTrocarTela() { anunciar(false); if (painel) pintar(); if (compartilhando()) sujo = true; }
   function aoVisibilidade() { anunciar(true); if (document.hidden && compartilhando()) pararDeCompartilhar(); }
-  function enviar(event, payload) { try { canal && canal.send({ type: 'broadcast', event, payload }); } catch (e) {} }
+  function enviarEm(c, event, payload) { try { c && c.send({ type: 'broadcast', event, payload }); } catch (e) {} }
+  function tirarCanal(c) { try { if (c) (B7.sb.removeChannel ? B7.sb.removeChannel(c) : c.unsubscribe()); } catch (e) {} }
 
   function desligar() {
     pararLive(true); pararDeCompartilhar();
-    try { if (canal) (B7.sb.removeChannel ? B7.sb.removeChannel(canal) : canal.unsubscribe()); } catch (e) {}
-    canal = null; clearTimeout(timerEnvio);
+    tirarCanal(canal); tirarCanal(meuCanal);
+    canal = null; meuCanal = null; clearTimeout(timerEnvio);
     window.removeEventListener('hashchange', aoTrocarTela);
     document.removeEventListener('visibilitychange', aoVisibilidade);
   }
@@ -113,79 +123,175 @@ B7.AoVivo = (function () {
     return m ? { hash: m.hash || '#/', rotulo: m.rotulo || '', em: m.em } : null;
   }
 
+  /* ============================================ compressão (gzip + base64) */
+  const temGzip = typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+  async function comprimir(txt) {
+    if (!temGzip) return { z: false, d: txt };
+    const buf = new Uint8Array(await new Response(new Blob([txt]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return { z: true, d: btoa(bin) };
+  }
+  async function descomprimir(z, d) {
+    if (!z) return d;
+    const bin = atob(d), buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  }
+  const PEDACO = 90000;   /* cada mensagem do Realtime fica bem abaixo do limite */
+
   /* ============================================ LADO DE QUEM É OLHADO
      Enquanto houver ao menos um super acompanhando, a tela mostra o selo
-     "Tela compartilhada" e passa a emitir rota + rolagem + cursor. */
+     "Tela compartilhada" e passa a emitir o espelho da tela. */
   const olhadores = new Map();   /* adminId -> { nome, visto } */
-  let capturando = false, ultCursor = 0, ultRolagem = 0, selo = null, limpezaOlhadores = null;
+  let capturando = false, selo = null, limpezaOlhadores = null, observador = null, laco = null;
+  let sujo = false, ocupado = false, ultimoHtml = '', seq = 0, ultPos = 0, ultimoXY = { xr: 0.5, yr: 0.4 };
   const compartilhando = () => olhadores.size > 0;
 
   function aoPedirOlhar(p) {
     if (!p || p.para !== meuId || !p.de) return;
+    const novo = !olhadores.has(p.de);
     olhadores.set(p.de, { nome: p.deNome || 'Administração', visto: Date.now() });
     if (!capturando) comecarCompartilhar();
-    emitirTela(true);                                   /* manda o estado atual na hora */
+    if (novo) { marcarRolados(); ultimoHtml = ''; sujo = true; }   /* quem chegou agora recebe a tela inteira */
   }
   function aoPararOlhar(p) {
     if (!p || p.para !== meuId || !p.de) return;
     olhadores.delete(p.de);
     if (!compartilhando()) pararDeCompartilhar();
-    else atualizarSelo();
   }
   function comecarCompartilhar() {
-    capturando = true;
-    document.addEventListener('mousemove', aoMover, true);
-    window.addEventListener('scroll', aoRolar, true);
+    capturando = true; sujo = true; ultimoHtml = '';
     mostrarSelo();
+    document.addEventListener('mousemove', aoMover, true);
+    document.addEventListener('scroll', aoRolar, true);
+    document.addEventListener('input', aoDigitar, true);
+    document.addEventListener('change', aoDigitar, true);
+    document.addEventListener('focusin', aoDigitar, true);
+    document.addEventListener('pointerdown', aoClicar, true);
+    try {
+      observador = new MutationObserver(() => { sujo = true; });
+      observador.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+    } catch (e) { observador = null; }
+    laco = setInterval(() => { if (sujo && !ocupado) emitirEspelho(); }, 450);
     limpezaOlhadores = setInterval(() => {
       const lim = Date.now() - 26000;                   /* super sumiu sem avisar: cai sozinho */
-      let mudou = false;
-      olhadores.forEach((v, k) => { if (v.visto < lim) { olhadores.delete(k); mudou = true; } });
+      olhadores.forEach((v, k) => { if (v.visto < lim) olhadores.delete(k); });
       if (!compartilhando()) pararDeCompartilhar();
-      else if (mudou) atualizarSelo();
     }, 8000);
   }
   function pararDeCompartilhar() {
     capturando = false; olhadores.clear();
     document.removeEventListener('mousemove', aoMover, true);
-    window.removeEventListener('scroll', aoRolar, true);
+    document.removeEventListener('scroll', aoRolar, true);
+    document.removeEventListener('input', aoDigitar, true);
+    document.removeEventListener('change', aoDigitar, true);
+    document.removeEventListener('focusin', aoDigitar, true);
+    document.removeEventListener('pointerdown', aoClicar, true);
+    if (observador) { observador.disconnect(); observador = null; }
+    clearInterval(laco); laco = null;
     clearInterval(limpezaOlhadores); limpezaOlhadores = null;
+    ultimoHtml = '';
     esconderSelo();
   }
-  function aoMover(e) {
-    const agora = Date.now(); if (agora - ultCursor < 80) return; ultCursor = agora;
-    ultimoXY = { xr: e.clientX / Math.max(1, innerWidth), yr: e.clientY / Math.max(1, innerHeight) };
-    emitirTela(false);
+  function rel(e) { return { xr: e.clientX / Math.max(1, innerWidth), yr: e.clientY / Math.max(1, innerHeight) }; }
+  function aoMover(e) { ultimoXY = rel(e); emitirPos(false); }
+  function aoRolar(e) {
+    const el = e && e.target && e.target.nodeType === 1 ? e.target : null;
+    if (el && el !== document.documentElement && !el.hasAttribute('data-av-r')) el.setAttribute('data-av-r', String(++numR));
+    emitirPos(false);
   }
-  function aoRolar() { const agora = Date.now(); if (agora - ultRolagem < 140) return; ultRolagem = agora; emitirTela(false); }
-  let ultimoXY = { xr: 0.5, yr: 0.4 };
-  function emitirTela(forcar) {
-    if (!compartilhando()) return;
-    const doc = document.documentElement;
-    enviar('av-tela', { de: meuId, hash: location.hash || '#/',
-      sy: window.scrollY || 0, docH: doc.scrollHeight || 0, visH: innerHeight || 0,
-      xr: ultimoXY.xr, yr: ultimoXY.yr, em: Date.now() });
-    if (forcar) { /* nada extra; o send acima já é imediato */ }
+  /* uma varredura só, quando alguém começa a olhar: marca o que já estava rolado */
+  function marcarRolados() {
+    try { document.querySelectorAll('body *').forEach(el => {
+      if ((el.scrollTop || el.scrollLeft) && !el.hasAttribute('data-av-r')) el.setAttribute('data-av-r', String(++numR));
+    }); } catch (e) {}
   }
+  function aoDigitar() { sujo = true; }
+  function aoClicar(e) { ultimoXY = rel(e); enviarEm(meuCanal, 'av-clique', { de: meuId, xr: ultimoXY.xr, yr: ultimoXY.yr }); }
+  function emitirPos(forcar) {
+    const agora = Date.now(); if (!forcar && agora - ultPos < 70) return; ultPos = agora;
+    enviarEm(meuCanal, 'av-pos', { de: meuId, xr: ultimoXY.xr, yr: ultimoXY.yr, rol: rolagens() });
+  }
+
+  /* campos que nunca saem daqui: senha, código de verificação, marcados à mão */
+  function ehPrivado(el) {
+    if (!el || !el.getAttribute) return false;
+    const tipo = String(el.getAttribute('type') || '').toLowerCase();
+    const ac = String(el.getAttribute('autocomplete') || '').toLowerCase();
+    return tipo === 'password' || ac === 'one-time-code' || ac === 'current-password' || ac === 'new-password' ||
+      !!(el.closest && el.closest('[data-av-privado]'));
+  }
+  /* rolagem de cada área que rola (a tela principal e as janelas abertas) */
+  function rolagens() {
+    const r = {};
+    try {
+      const sc = document.scrollingElement; if (sc && sc.scrollTop) r['@doc'] = sc.scrollTop;
+      document.querySelectorAll('[data-av-r]').forEach(el => { if (el.scrollTop || el.scrollLeft) r[el.getAttribute('data-av-r')] = [el.scrollTop, el.scrollLeft]; });
+    } catch (e) {}
+    return r;
+  }
+  let numR = 0;
+  /* a cópia da tela: o corpo da página, sem script, com o valor de cada campo */
+  function retrato() {
+    const campos = Array.from(document.body.querySelectorAll('input, textarea, select'));
+    const foco = document.activeElement;
+    const copia = document.body.cloneNode(true);
+    const camposC = Array.from(copia.querySelectorAll('input, textarea, select'));
+    camposC.forEach((c, i) => {
+      const o = campos[i]; if (!o) return;
+      if (ehPrivado(o)) { c.setAttribute('value', o.value ? '••••••' : ''); if (c.tagName === 'TEXTAREA') c.textContent = ''; return; }
+      if (c.tagName === 'TEXTAREA') c.textContent = o.value;
+      else if (c.tagName === 'SELECT') Array.from(c.options).forEach((op, k) => { if (o.options[k] && o.options[k].selected) op.setAttribute('selected', ''); else op.removeAttribute('selected'); });
+      else if (/^(checkbox|radio)$/i.test(o.type)) { if (o.checked) c.setAttribute('checked', ''); else c.removeAttribute('checked'); }
+      else c.setAttribute('value', o.value);
+      if (o === foco) c.setAttribute('data-av-foco', '');
+    });
+    copia.querySelectorAll('[data-av-privado]').forEach(el => { el.innerHTML = '<div class="av-esp-privado">🔒 Área privada</div>'; });
+    copia.querySelectorAll('script, noscript, template').forEach(el => el.remove());
+    copia.querySelectorAll('iframe, video, canvas, object, embed').forEach(el => {
+      const d = document.createElement('div'); d.className = 'av-esp-midia'; d.style.cssText = el.getAttribute('style') || '';
+      d.textContent = el.tagName === 'VIDEO' ? '▶ vídeo' : '▦ conteúdo';
+      el.replaceWith(d);
+    });
+    if (foco && foco.isContentEditable && foco !== document.body) {
+      const tudo = Array.from(document.body.querySelectorAll('*')), k = tudo.indexOf(foco);
+      const alvo = k >= 0 ? copia.querySelectorAll('*')[k] : null; if (alvo) alvo.setAttribute('data-av-foco', '');
+    }
+    const attrs = el => Array.from(el.attributes).map(a => [a.name, a.value]);
+    return JSON.stringify({ html: attrs(document.documentElement), body: attrs(document.body), corpo: copia.innerHTML,
+      w: innerWidth, h: innerHeight, hash: location.hash || '#/', rotulo: telaAtual().rotulo });
+  }
+  async function emitirEspelho() {
+    if (!compartilhando() || !meuCanal) return;
+    ocupado = true; sujo = false;
+    try {
+      const txt = retrato();
+      if (txt !== ultimoHtml) {
+        ultimoHtml = txt;
+        const c = await comprimir(txt), n = Math.max(1, Math.ceil(c.d.length / PEDACO)), id = ++seq;
+        for (let i = 0; i < n; i++)
+          enviarEm(meuCanal, 'av-dom', { de: meuId, seq: id, i, n, z: c.z, d: c.d.slice(i * PEDACO, (i + 1) * PEDACO) });
+        emitirPos(true);
+      }
+    } catch (e) { /* uma cópia que falha não derruba nada: vem outra */ }
+    ocupado = false;
+  }
+
   function mostrarSelo() {
-    if (selo) return atualizarSelo();
+    if (selo) return;
     selo = document.createElement('div');
     selo.className = 'av-selo-compart';
     selo.setAttribute('role', 'status');
+    selo.innerHTML = '<span class="av-selo-ponto" aria-hidden="true"></span><span>Tela compartilhada</span>';
     document.body.appendChild(selo);
-    atualizarSelo();
-  }
-  function atualizarSelo() {
-    if (!selo) return;
-    selo.innerHTML = '<span class="av-selo-ponto" aria-hidden="true"></span>' +
-      '<span>Tela compartilhada</span>';
   }
   function esconderSelo() { if (selo) { selo.remove(); selo = null; } }
 
   /* ================================================= LADO DE QUEM OLHA
-     O super acompanha uma pessoa: a própria tela vai para a rota dela,
-     rola junto e mostra o cursor dela (com o nome). */
-  let seguindo = null;   /* { id, nome, hashAlvo, ultimo, ping, cursor } */
+     O super acompanha uma pessoa: entra como ela (Visualizar como) e, por
+     cima, vê o espelho da tela dela numa moldura do tamanho da tela dela. */
+  let seguindo = null;   /* { id, nome, canal, ping, el, frame, cursor, pedacos, aplicado, hash, w, h } */
 
   function acompanhar(id) {
     if (!pode() || !id || id === meuId) return;
@@ -194,58 +300,139 @@ B7.AoVivo = (function () {
     const nome = (m && m.nome) || 'a pessoa';
     if (seguindo && seguindo.id === id) return;
     if (seguindo) pararLive(true);
-    /* zzz290: vira a pessoa (Visualizar como), já na tela dela — assim o
-       super vê a CONTA dela, e por cima segue o cursor/rolagem ao vivo.
-       O indicador no topo é o banner "Visualizando como" (Voltar ao Admin
-       encerra tudo). A tela da pessoa mostra "Tela compartilhada". */
+    /* zzz290: vira a pessoa (Visualizar como), já na tela dela — ao parar
+       o ao vivo, o super continua na conta dela, onde ela estava */
     if (B7.PreviaUsuario && B7.PreviaUsuario.verComoId) { try { B7.PreviaUsuario.verComoId(id, m && m.hash); } catch (e) {} }
-    seguindo = { id, nome, hashAlvo: (m && m.hash) || location.hash || '#/', ultimo: 0 };
-    enviar('av-olhar', { de: meuId, deNome: (eu() || {}).nome || 'Administração', para: id });
-    seguindo.ping = setInterval(() => {
-      if (!seguindo) return;
-      enviar('av-olhar', { de: meuId, deNome: (eu() || {}).nome || 'Administração', para: seguindo.id });
-    }, 9000);
-    const cursor = document.createElement('div');
-    cursor.className = 'av-cursor-remoto';
-    cursor.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l6 16 2.2-6.2L19 11z"/></svg><b>' + esc(nome.split(' ')[0]) + '</b>';
-    document.body.appendChild(cursor);
-    seguindo.cursor = cursor;
+    const s = seguindo = { id, nome, pedacos: new Map(), aplicado: 0, hash: (m && m.hash) || '#/', w: 0, h: 0 };
+    montarMoldura(s);
+    const pedir = () => enviarEm(s.canal, 'av-olhar', { de: meuId, deNome: (eu() || {}).nome || 'Administração', para: id });
+    try {
+      s.canal = B7.sb.channel(topicoDe(id), { config: { private: true, broadcast: { self: false } } });
+      s.canal
+        .on('broadcast', { event: 'av-dom' }, ({ payload }) => aoReceberDom(s, payload))
+        .on('broadcast', { event: 'av-pos' }, ({ payload }) => aoReceberPos(s, payload))
+        .on('broadcast', { event: 'av-clique' }, ({ payload }) => aoReceberClique(s, payload))
+        .subscribe(st => {
+          if (st === 'SUBSCRIBED') pedir();
+          else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') estadoMoldura(s, 'Não deu para conectar à tela de ' + nome.split(' ')[0] + '. Tente de novo.');
+        });
+    } catch (e) { estadoMoldura(s, 'Não deu para conectar.'); }
+    s.ping = setInterval(() => { if (seguindo === s) pedir(); }, 9000);
   }
-  /* para só a parte ao vivo (cursor + sincronismo). sairPreview=true também
-     sai do "Visualizar como". */
+
+  function montarMoldura(s) {
+    const el = document.createElement('div');
+    el.className = 'av-esp';
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Acompanhando ' + s.nome + ' ao vivo');
+    el.innerHTML =
+      '<div class="av-esp-barra"><span class="av-bs-ponto" aria-hidden="true"></span>' +
+        '<span class="av-esp-tx">Acompanhando <b>' + esc(s.nome) + '</b> ao vivo <span class="av-esp-tela" data-av-tela></span></span>' +
+        '<button type="button" class="av-bs-parar" data-av-parar>Parar de acompanhar</button></div>' +
+      '<div class="av-esp-palco" data-av-palco>' +
+        '<div class="av-esp-espera" data-av-espera><span class="iaf-orbe" aria-hidden="true"></span>Conectando à tela de ' + esc(s.nome.split(' ')[0]) + '…</div>' +
+        '<div class="av-esp-moldura" data-av-moldura hidden>' +
+          '<iframe class="av-esp-frame" sandbox="allow-same-origin" title="Tela de ' + esc(s.nome) + '"></iframe>' +
+          '<div class="av-cursor-remoto" data-av-cursor><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l6 16 2.2-6.2L19 11z"/></svg><b>' + esc(s.nome.split(' ')[0]) + '</b></div>' +
+        '</div></div>';
+    document.body.appendChild(el);
+    document.documentElement.classList.add('av-espelhando');
+    s.el = el; s.frame = el.querySelector('iframe'); s.cursor = el.querySelector('[data-av-cursor]');
+    el.querySelector('[data-av-parar]').onclick = () => pararLive(false);
+    s.aoRedimensionar = () => encaixar(s);
+    window.addEventListener('resize', s.aoRedimensionar);
+    /* o documento do espelho: os mesmos estilos do Sistema, nenhum script */
+    const estilos = Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map(n => n.outerHTML).join('');
+    s.frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><base href="' + esc(location.href.split('#')[0]) + '">' + estilos +
+      '<style>[data-av-foco]{outline:2px solid #7c4dff!important;outline-offset:2px;box-shadow:0 0 0 6px #7c4dff33!important}' +
+      '.av-esp-privado,.av-esp-midia{display:grid;place-items:center;min-height:60px;border-radius:12px;background:#0002;color:#888;font:600 13px Inter,sans-serif}' +
+      '*{animation-duration:0s!important;animation-delay:0s!important;transition:none!important}</style></head><body></body></html>';
+  }
+  function estadoMoldura(s, txt) { const e = s.el && s.el.querySelector('[data-av-espera]'); if (e) e.innerHTML = esc(txt); }
+  /* a moldura tem o tamanho da tela da pessoa, encolhida para caber */
+  function encaixar(s) {
+    if (!s.el || !s.w || !s.h) return;
+    const palco = s.el.querySelector('[data-av-palco]'), mol = s.el.querySelector('[data-av-moldura]');
+    const esc2 = Math.min(1, (palco.clientWidth - 24) / s.w, (palco.clientHeight - 24) / s.h);
+    mol.style.width = s.w + 'px'; mol.style.height = s.h + 'px';
+    mol.style.transform = 'translate(-50%,-50%) scale(' + esc2.toFixed(4) + ')';
+  }
+
+  async function aoReceberDom(s, p) {
+    if (seguindo !== s || !p || p.de !== s.id || !p.seq || p.seq <= s.aplicado) return;
+    let pc = s.pedacos.get(p.seq);
+    if (!pc) { pc = new Array(p.n); s.pedacos.set(p.seq, pc); }
+    pc[p.i] = p.d;
+    for (let i = 0; i < pc.length; i++) if (pc[i] === undefined) return;
+    s.pedacos.forEach((_, k) => { if (k <= p.seq) s.pedacos.delete(k); });
+    let t;
+    try { t = JSON.parse(await descomprimir(p.z, pc.join(''))); } catch (e) { return; }
+    if (seguindo !== s || p.seq <= s.aplicado) return;
+    s.aplicado = p.seq;
+    aplicar(s, t);
+  }
+  function aplicar(s, t) {
+    const doc = s.frame && s.frame.contentDocument; if (!doc || !doc.body) return;
+    const por = (el, lista) => {
+      Array.from(el.attributes).forEach(a => { if (!lista.some(x => x[0] === a.name)) el.removeAttribute(a.name); });
+      lista.forEach(([k, v]) => { if (!/^on/i.test(k)) { try { el.setAttribute(k, v); } catch (e) {} } });
+    };
+    por(doc.documentElement, t.html || []);
+    por(doc.body, t.body || []);
+    doc.body.innerHTML = t.corpo || '';
+    s.hash = t.hash || s.hash;
+    const tl = s.el.querySelector('[data-av-tela]'); if (tl) tl.textContent = t.rotulo ? '· ' + t.rotulo : '';
+    if (t.w !== s.w || t.h !== s.h) { s.w = t.w; s.h = t.h; }
+    const esp = s.el.querySelector('[data-av-espera]'), mol = s.el.querySelector('[data-av-moldura]');
+    if (esp) esp.hidden = true;
+    if (mol) mol.hidden = false;
+    encaixar(s);
+    if (s.ultRol) rolar(s, s.ultRol);
+  }
+  function rolar(s, rol) {
+    const doc = s.frame && s.frame.contentDocument; if (!doc) return;
+    Object.keys(rol || {}).forEach(k => {
+      try {
+        if (k === '@doc') { if (doc.scrollingElement) doc.scrollingElement.scrollTop = rol[k]; return; }
+        const el = doc.querySelector('[data-av-r="' + k.replace(/[^\d]/g, '') + '"]');
+        if (el) { el.scrollTop = rol[k][0]; el.scrollLeft = rol[k][1]; }
+      } catch (e) {}
+    });
+  }
+  function aoReceberPos(s, p) {
+    if (seguindo !== s || !p || p.de !== s.id) return;
+    s.ultRol = p.rol; rolar(s, p.rol);
+    if (s.cursor && s.w) {
+      s.cursor.style.left = Math.round((p.xr || 0) * s.w) + 'px';
+      s.cursor.style.top = Math.round((p.yr || 0) * s.h) + 'px';
+      s.cursor.classList.add('on');
+    }
+  }
+  function aoReceberClique(s, p) {
+    if (seguindo !== s || !p || p.de !== s.id || !s.w) return;
+    const mol = s.el.querySelector('[data-av-moldura]'); if (!mol) return;
+    const o = document.createElement('i'); o.className = 'av-esp-clique';
+    o.style.left = Math.round((p.xr || 0) * s.w) + 'px'; o.style.top = Math.round((p.yr || 0) * s.h) + 'px';
+    mol.appendChild(o); setTimeout(() => o.remove(), 700);
+  }
+
+  /* para só a parte ao vivo. sairPreview=true também sai do "Visualizar
+     como"; senão o super continua como a pessoa, na tela em que ela está */
   function pararLive(sairPreview) {
     if (!seguindo) return;
     const s = seguindo; seguindo = null;
-    enviar('av-parar', { de: meuId, para: s.id });
+    enviarEm(s.canal, 'av-parar', { de: meuId, para: s.id });
     clearInterval(s.ping);
-    if (s.cursor) s.cursor.remove();
-    if (sairPreview && B7.PreviaUsuario && B7.PreviaUsuario.ativa && B7.PreviaUsuario.ativa())
-      { try { B7.PreviaUsuario.sair(); } catch (e) {} }
+    window.removeEventListener('resize', s.aoRedimensionar);
+    setTimeout(() => tirarCanal(s.canal), 300);
+    if (s.el) s.el.remove();
+    document.documentElement.classList.remove('av-espelhando');
+    if (sairPreview) {
+      if (B7.PreviaUsuario && B7.PreviaUsuario.ativa && B7.PreviaUsuario.ativa()) { try { B7.PreviaUsuario.sair(); } catch (e) {} }
+    } else if (s.hash && s.hash !== (location.hash || '#/')) { try { location.hash = s.hash; } catch (e) {} }
   }
   /* chamado pelo "Voltar ao Admin" do Visualizar como: encerra o ao vivo
      sem tentar sair de novo (já está saindo) */
   function pararDeSeguir(daPreview) { pararLive(!daPreview); }
-
-  function aoReceberTela(p) {
-    if (!seguindo || !p || p.de !== seguindo.id) return;
-    seguindo.ultimo = Date.now();
-    /* mesma rota que a pessoa — marca o alvo para a navegação dela não
-       ser confundida com o super saindo da tela */
-    if (p.hash) { seguindo.hashAlvo = p.hash; if (p.hash !== (location.hash || '#/')) { try { location.hash = p.hash; } catch (e) {} } }
-    try {
-      const doc = document.documentElement;
-      const alvoMax = Math.max(1, (p.docH || 0) - (p.visH || 0));
-      const meuMax = Math.max(0, doc.scrollHeight - innerHeight);
-      const frac = Math.min(1, Math.max(0, (p.sy || 0) / alvoMax));
-      window.scrollTo({ top: Math.round(frac * meuMax), behavior: 'auto' });
-    } catch (e) {}
-    if (seguindo.cursor) {
-      seguindo.cursor.style.left = Math.round((p.xr || 0.5) * innerWidth) + 'px';
-      seguindo.cursor.style.top = Math.round((p.yr || 0.4) * innerHeight) + 'px';
-      seguindo.cursor.classList.add('on');
-    }
-  }
-  function seguirSync() { /* presença mudou; nada a repintar (o banner é do Visualizar como) */ }
 
   /* --------------------------------------------------------- o painel */
   let painel = null;
@@ -311,5 +498,5 @@ B7.AoVivo = (function () {
     const t = setInterval(() => { if (!painel) return clearInterval(t); pintar(); }, 20000);
   }
 
-  return { iniciar, abrir, pode, acompanhar, pararDeSeguir, estaOnline, online, desligar };
+  return { iniciar, abrir, pode, acompanhar, pararDeSeguir, estaOnline, online, desligar, _ehPrivado: ehPrivado };
 })();

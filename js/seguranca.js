@@ -54,6 +54,98 @@ B7.Seguranca = (function () {
   };
 
   /* ===================================================== passo do login */
+  /* ------------------------------------------ esqueci minha senha (zzz296)
+     Três passos dentro da própria caixa do login: usuário → código + senha
+     nova → pronto. O servidor responde igual exista a conta ou não. */
+  const OLHO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  function esqueciSenha(form, opcoes) {
+    const voltar = u => opcoes.voltar(u);
+    let usuario = String(opcoes.username || '').trim();
+    function passo1() {
+      form.innerHTML =
+        '<img class="login-marca" src="assets/brand/logo-white.png" alt="Branding7">' +
+        '<span class="lg2-ic" aria-hidden="true">' + SVG(IC.escudo) + '</span>' +
+        '<h1>Esqueceu a senha?</h1>' +
+        '<p class="login-sub">Digite o seu usuário. Enviamos um código para o <b>e-mail de recuperação</b> da sua conta, e com ele você cria uma senha nova.</p>' +
+        '<label class="rot" for="es-user">USUÁRIO</label>' +
+        '<input class="campo" id="es-user" autocomplete="username" autocapitalize="none" spellcheck="false" required>' +
+        '<div class="login-erro" id="lg-erro" role="alert"></div>' +
+        '<button class="b pri login-entrar" type="submit">Enviar código</button>' +
+        '<div class="lg2-links"><span></span><button type="button" class="lg2-link" id="es-voltar">Voltar ao login</button></div>';
+      const campo = form.querySelector('#es-user'), erro = form.querySelector('#lg-erro'), bt = form.querySelector('.login-entrar');
+      campo.value = usuario;
+      form.querySelector('#es-voltar').onclick = () => voltar(campo.value.trim());
+      form.onsubmit = async e => {
+        e.preventDefault();
+        const u = campo.value.trim(); if (!u) return;
+        erro.textContent = ''; bt.disabled = true; bt.textContent = 'Enviando…';
+        try { await auth({ acao: 'senha_esqueci', username: u }); usuario = u; passo2(); }
+        catch (ex) { bt.disabled = false; bt.textContent = 'Enviar código'; erro.textContent = ex.message || 'Não foi possível enviar agora.'; }
+      };
+      setTimeout(() => campo.focus(), 60);
+    }
+    function passo2() {
+      form.innerHTML =
+        '<img class="login-marca" src="assets/brand/logo-white.png" alt="Branding7">' +
+        '<span class="lg2-ic" aria-hidden="true">' + SVG(IC.email) + '</span>' +
+        '<h1>Crie uma senha nova</h1>' +
+        '<p class="login-sub">Se a conta <b>' + esc(usuario) + '</b> tem e-mail de recuperação, o código acabou de chegar lá (vale 10 minutos — olhe também o spam). ' +
+          'Não tem e-mail cadastrado? Peça para a Branding7 trocar a sua senha.</p>' +
+        '<label class="rot" for="es-cod">CÓDIGO DO E-MAIL</label>' +
+        '<input class="campo lg2-cod" id="es-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" placeholder="000000" required>' +
+        '<label class="rot" for="es-senha">SENHA NOVA</label>' +
+        '<div class="login-senha"><input class="campo" id="es-senha" type="password" autocomplete="new-password" required>' +
+          '<button type="button" class="login-olho" aria-label="Mostrar senha">' + OLHO + '</button></div>' +
+        '<label class="rot" for="es-senha2">REPITA A SENHA NOVA</label>' +
+        '<input class="campo" id="es-senha2" type="password" autocomplete="new-password" required>' +
+        '<p class="es-regra">Pelo menos 10 caracteres, com letras e números.</p>' +
+        '<div class="login-erro" id="lg-erro" role="alert"></div>' +
+        '<button class="b pri login-entrar" type="submit">Trocar senha</button>' +
+        '<div class="lg2-links"><button type="button" class="lg2-link" id="es-reenviar">Reenviar código</button>' +
+          '<button type="button" class="lg2-link" id="es-voltar">Voltar ao login</button></div>';
+      const cod = form.querySelector('#es-cod'), s1 = form.querySelector('#es-senha'), s2 = form.querySelector('#es-senha2');
+      const erro = form.querySelector('#lg-erro'), bt = form.querySelector('.login-entrar'), olho = form.querySelector('.login-olho');
+      cod.addEventListener('input', () => { cod.value = cod.value.replace(/\D/g, '').slice(0, 6); if (cod.value.length === 6) s1.focus(); });
+      olho.onclick = () => { const v = s1.type === 'text'; s1.type = s2.type = v ? 'password' : 'text'; olho.classList.toggle('on', !v); };
+      form.querySelector('#es-voltar').onclick = () => voltar(usuario);
+      const re = form.querySelector('#es-reenviar');
+      re.onclick = async () => {
+        re.disabled = true; erro.textContent = '';
+        try { await auth({ acao: 'senha_esqueci', username: usuario }); re.textContent = 'Código reenviado'; setTimeout(() => { re.textContent = 'Reenviar código'; re.disabled = false; }, 30000); }
+        catch (e) { erro.textContent = e.message || 'Não foi possível reenviar.'; re.disabled = false; }
+      };
+      form.onsubmit = async e => {
+        e.preventDefault();
+        erro.textContent = '';
+        if (cod.value.length !== 6) { erro.textContent = 'Digite os 6 números do código.'; return cod.focus(); }
+        if (s1.value.length < 10 || !/[a-zA-Z]/.test(s1.value) || !/[0-9]/.test(s1.value)) { erro.textContent = 'A senha precisa de pelo menos 10 caracteres, com letras e números.'; return s1.focus(); }
+        if (s1.value !== s2.value) { erro.textContent = 'As duas senhas não são iguais.'; return s2.focus(); }
+        bt.disabled = true; bt.textContent = 'Trocando…';
+        try {
+          await auth({ acao: 'senha_trocar', username: usuario, codigo: cod.value, senha: s1.value });
+          s1.value = s2.value = '';
+          passo3();
+        } catch (ex) {
+          bt.disabled = false; bt.textContent = 'Trocar senha';
+          erro.textContent = ex.message || 'Não foi possível trocar a senha.';
+          if (/código/i.test(erro.textContent)) { cod.value = ''; cod.focus(); }
+        }
+      };
+      setTimeout(() => cod.focus(), 60);
+    }
+    function passo3() {
+      form.innerHTML =
+        '<img class="login-marca" src="assets/brand/logo-white.png" alt="Branding7">' +
+        '<span class="lg2-ic es-ok" aria-hidden="true">' + SVG(IC.ok) + '</span>' +
+        '<h1>Senha trocada!</h1>' +
+        '<p class="login-sub">Pronto. Agora é só entrar com a senha nova. Se você estava logado em outro aparelho, vai precisar entrar de novo lá.</p>' +
+        '<button class="b pri login-entrar" type="submit">Entrar</button>';
+      form.onsubmit = e => { e.preventDefault(); voltar(usuario); };
+      setTimeout(() => { const b = form.querySelector('.login-entrar'); if (b) b.focus(); }, 60);
+    }
+    passo1();
+  }
+
   function passoLogin(form, info, opcoes) {
     const porEmail = info.metodo === 'email';
     form.innerHTML =
@@ -228,7 +320,16 @@ B7.Seguranca = (function () {
       (adm && !cx.closest('.cfg-meu-perfil') ? '<div class="seg-politica"><label class="rot" for="seg-pol">PARA A EQUIPE (SÓ ADMINISTRADOR)</label><div class="seg-pol-l">' +
           '<select class="campo fina" id="seg-pol"><option value="ninguem">Cada pessoa decide</option><option value="gestao">Exigir de administração e coordenação</option><option value="todos">Exigir de toda a equipe</option></select>' +
           '<button type="button" class="b fina pri" id="seg-pol-b" disabled>Salvar</button></div>' +
-          '<small class="ajuda">Quem é exigido e ainda não ligou recebe o pedido ao entrar. Quem perdeu o celular: Usuários e acessos → ⋯ → "Desligar verificação em 2 etapas".</small></div>' : '');
+          '<small class="ajuda">Quem é exigido e ainda não ligou recebe o pedido ao entrar. Quem perdeu o celular: Usuários e acessos → ⋯ → "Desligar verificação em 2 etapas".</small></div>' : '') +
+      /* zzz296: e-mail de recuperação — é para lá que vai o "Esqueci minha senha" */
+      '<div class="seg-rec"><h4 class="pf-tit"><span class="pf-ic pf-azul" aria-hidden="true">' + SVG(IC.email) + '</span>E-mail de recuperação' +
+        '<span class="seg-pill' + (st.email_recuperacao ? ' on' : '') + '">' + (st.email_recuperacao ? 'Cadastrado' : 'Não cadastrado') + '</span></h4>' +
+        '<p class="ajuda">' + (st.email_recuperacao ? 'Se você esquecer a senha, o código para criar uma nova chega em <b>' + esc(mascara(st.email_recuperacao)) + '</b>.'
+          : 'Cadastre um e-mail seu: se um dia você esquecer a senha, é por ele que você cria uma nova, sem depender de ninguém.') + '</p>' +
+        '<div class="seg-acoes"><button type="button" class="b fina contorno" data-seg-rec' + (emailOk ? '' : ' disabled') + '>' +
+          (st.email_recuperacao ? 'Trocar e-mail' : 'Cadastrar e-mail') + '</button></div></div>';
+    const brec = cx.querySelector('[data-seg-rec]');
+    if (brec) brec.onclick = () => fluxoRecuperacao(() => montarCartao(cx, cxGoogle));
     cx.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => {
       const a = b.dataset.seg;
       if (a === 'email') return fluxoEmail(() => montarCartao(cx, cxGoogle));
@@ -290,6 +391,36 @@ B7.Seguranca = (function () {
   }
 
   /* ---------------------------------------------------- ligar por e-mail */
+  /* zzz296: cadastrar o e-mail de recuperação (código de 6 números) */
+  function fluxoRecuperacao(aoTerminar) {
+    const m = B7.UI.modal('<h3>E-mail de recuperação</h3>' +
+      '<p class="sub">Use um e-mail seu, que você consegue abrir. Se esquecer a senha, o código para criar uma nova chega nele.</p>' +
+      '<div class="seg-passo" id="rec-p1"><label class="rot" for="rec-email">SEU E-MAIL</label>' +
+        '<input class="campo" id="rec-email" type="email" autocomplete="email" data-foco placeholder="voce@gmail.com" value="' + esc((st && (st.email_recuperacao || st.email)) || '') + '"></div>' +
+      '<div class="seg-passo" id="rec-p2" hidden><label class="rot" for="rec-cod">CÓDIGO QUE CHEGOU</label>' +
+        '<input class="campo seg-cod" id="rec-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"><small class="ajuda" id="rec-dica"></small></div>' +
+      '<div class="login-erro" id="rec-erro" role="alert"></div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="rec-ok">Enviar código</button></div>');
+    const q = s => m.querySelector(s), ok = q('#rec-ok'), erro = q('#rec-erro');
+    let etapa = 1;
+    q('#rec-cod').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
+    ok.onclick = async () => {
+      erro.textContent = ''; ok.disabled = true;
+      try {
+        if (etapa === 1) {
+          const r = await auth({ acao: 'seg_rec_enviar', email: q('#rec-email').value.trim() });
+          etapa = 2; q('#rec-p1').hidden = true; q('#rec-p2').hidden = false; ok.textContent = 'Confirmar';
+          q('#rec-dica').textContent = 'Enviamos para ' + r.email + '. Digite o código aqui. Não chegou? Confira o spam.';
+          q('#rec-cod').focus();
+        } else {
+          await auth({ acao: 'seg_rec_confirmar', codigo: q('#rec-cod').value });
+          m.fechar(); B7.UI.toast('E-mail de recuperação cadastrado.'); aoTerminar && aoTerminar(true); return;
+        }
+      } catch (e) { erro.textContent = e.message || 'Não foi possível.'; }
+      ok.disabled = false;
+    };
+  }
+
   function fluxoEmail(aoTerminar) {
     const m = B7.UI.modal('<h3>Código por e-mail</h3>' +
       '<p class="sub">Escreva um e-mail seu, que você abre no celular. Vamos mandar um código para confirmar.</p>' +
@@ -403,5 +534,5 @@ B7.Seguranca = (function () {
     if (sair) sair.onclick = () => { pronto = true; m.fechar(); if (B7.Auth && B7.Auth.sair) B7.Auth.sair(); };
   }
 
-  return { lerAparelho, passoLogin, retornoOAuth, botaoGoogleLogin, montarCartao, configurar, googleLigado };
+  return { lerAparelho, passoLogin, esqueciSenha, retornoOAuth, botaoGoogleLogin, montarCartao, configurar, googleLigado };
 })();

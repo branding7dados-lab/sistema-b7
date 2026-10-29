@@ -31,7 +31,7 @@ const SITE = 'https://branding7dados-lab.github.io/sistema-b7/';
 const linkDe = (id: string, t: string) => SITE + 'confirmar.html#' + id + '.' + t;
 const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
 export const ACOES_SEG = ['seg_status', 'seg_email_enviar', 'seg_email_confirmar', 'seg_app_iniciar',
-  'seg_app_confirmar', 'seg_desligar', 'seg_aparelhos_esquecer'];
+  'seg_app_confirmar', 'seg_desligar', 'seg_aparelhos_esquecer', 'seg_rec_enviar', 'seg_rec_confirmar'];
 export const ACOES_SEG_ADMIN = ['seg_politica', 'seg_resetar'];
 
 /* ---------------------------------------------------------- utilidades */
@@ -122,7 +122,7 @@ export async function enviarEmail(para: string, assunto: string, html: string, t
 async function nomeDe(sb: SB, perfilId: string): Promise<string | null> {
   try { const { data } = await sb.from('perfis').select('nome').eq('id', perfilId).maybeSingle(); return (data && data.nome) || null; } catch (_e) { return null; }
 }
-async function enviarCodigo(para: string, codigo: string, motivo: 'login' | 'cadastro', ctx: { nome?: string | null; aparelho?: string | null; link?: string | null; acao?: string | null } = {}) {
+async function enviarCodigo(para: string, codigo: string, motivo: 'login' | 'cadastro' | 'senha' | 'recuperacao', ctx: { nome?: string | null; aparelho?: string | null; link?: string | null; acao?: string | null } = {}) {
   const chave = Deno.env.get('B7_BREVO_API_KEY');
   if (!chave) throw new Error('O envio de e-mail não está configurado. Fale com o administrador.');
   const de = await remetente(chave);
@@ -287,6 +287,7 @@ export async function acaoPropria(sb: SB, eu: any, acao: string, corpo: any, con
     const { count } = await sb.from('seguranca_aparelhos').select('id', { count: 'exact', head: true })
       .eq('perfil_id', eu.id).eq('revogado', false).gt('expira_em', new Date().toISOString());
     return { status: 200, corpo: { metodo: (cfg && cfg.metodo) || null, email: (cfg && cfg.email) || null, ligado_em: (cfg && cfg.ligado_em) || null,
+      email_recuperacao: emailDeRecuperacao(cfg),
       aparelhos: count || 0, politica: await politica(sb), exigido: await exigidoPara(sb, eu.id), email_envio: await estadoEmail() } };
   }
 
@@ -343,11 +344,79 @@ export async function acaoPropria(sb: SB, eu: any, acao: string, corpo: any, con
     return { status: 200, corpo: { ok: true } };
   }
 
+  /* zzz296: e-mail de recuperação da senha (não liga a verificação em 2 etapas) */
+  if (acao === 'seg_rec_enviar') {
+    const email = String(corpo.email || '').trim().toLowerCase();
+    if (!emailValido(email)) return { status: 400, corpo: { erro: 'E-mail inválido.' } };
+    const umaHora = new Date(Date.now() - 3600000).toISOString();
+    const { count } = await sb.from('seguranca_codigos').select('id', { count: 'exact', head: true })
+      .eq('perfil_id', eu.id).eq('finalidade', 'cadastro_rec').gt('created_at', umaHora);
+    if ((count || 0) >= 5) return { status: 429, corpo: { erro: 'Muitos envios. Espere um pouco e tente de novo.' } };
+    const codigo = codigo6();
+    await sb.from('seguranca_codigos').insert({ perfil_id: eu.id, finalidade: 'cadastro_rec', metodo: 'email', email,
+      codigo_hash: await hash('rec', eu.id, codigo), expira_em: new Date(Date.now() + DEZ_MIN).toISOString() });
+    await enviarCodigo(email, codigo, 'recuperacao', { nome: await nomeDe(sb, eu.id) });
+    return { status: 200, corpo: { ok: true, email: mascarar(email) } };
+  }
+
+  if (acao === 'seg_rec_confirmar') {
+    const codigo = soDigitos(corpo.codigo);
+    const { data: d } = await sb.from('seguranca_codigos').select('*').eq('perfil_id', eu.id).eq('finalidade', 'cadastro_rec')
+      .eq('usado', false).gt('expira_em', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!d) return { status: 400, corpo: { erro: 'O código expirou. Peça outro.' } };
+    if (d.tentativas >= 5) return { status: 429, corpo: { erro: 'Muitas tentativas. Peça outro código.' } };
+    if (codigo.length !== 6 || (await hash('rec', eu.id, codigo)) !== d.codigo_hash) {
+      await sb.from('seguranca_codigos').update({ tentativas: d.tentativas + 1 }).eq('id', d.id);
+      return { status: 401, corpo: { erro: 'Código incorreto.' } };
+    }
+    await sb.from('seguranca_codigos').update({ usado: true }).eq('id', d.id);
+    await salvar({ email_recuperacao: d.email });
+    return { status: 200, corpo: { ok: true, email_recuperacao: d.email } };
+  }
+
   if (acao === 'seg_aparelhos_esquecer') {
     await sb.from('seguranca_aparelhos').update({ revogado: true }).eq('perfil_id', eu.id);
     return { status: 200, corpo: { ok: true } };
   }
   return { status: 400, corpo: { erro: 'Ação desconhecida.' } };
+}
+
+/* ------------------------------------- esqueci minha senha (zzz296) */
+/** Para onde vai o código: o e-mail de recuperação; sem ele, o e-mail já
+ *  confirmado da verificação em 2 etapas. Os dois foram confirmados com código. */
+export const emailDeRecuperacao = (cfg: any): string | null => (cfg && (cfg.email_recuperacao || cfg.email)) || null;
+
+/** Manda o código de troca de senha. Devolve false se a conta não tem
+ *  e-mail confirmado (quem chama responde igual nos dois casos). */
+export async function senhaPedir(sb: SB, perfilId: string): Promise<boolean> {
+  const email = emailDeRecuperacao(await config2fa(sb, perfilId));
+  if (!email) return false;
+  const umaHora = new Date(Date.now() - 3600000).toISOString();
+  const { count } = await sb.from('seguranca_codigos').select('id', { count: 'exact', head: true })
+    .eq('perfil_id', perfilId).eq('finalidade', 'senha').gt('created_at', umaHora);
+  if ((count || 0) >= 4) return true;                          /* freio: no máximo 4 e-mails por hora */
+  await sb.from('seguranca_codigos').update({ usado: true }).eq('perfil_id', perfilId).eq('finalidade', 'senha').eq('usado', false);
+  const codigo = codigo6();
+  await sb.from('seguranca_codigos').insert({ perfil_id: perfilId, finalidade: 'senha', metodo: 'email', email,
+    codigo_hash: await hash('senha', perfilId, codigo), expira_em: new Date(Date.now() + DEZ_MIN).toISOString() });
+  await enviarCodigo(email, codigo, 'senha', { nome: await nomeDe(sb, perfilId) });
+  return true;
+}
+
+/** Confere o código (5 tentativas, 10 minutos, uma vez só). */
+export async function senhaConferir(sb: SB, perfilId: string, codigoBruto: unknown):
+  Promise<{ ok: true; email: string } | { ok: false; status: number; erro: string }> {
+  const codigo = soDigitos(codigoBruto);
+  const { data: d } = await sb.from('seguranca_codigos').select('*').eq('perfil_id', perfilId).eq('finalidade', 'senha')
+    .eq('usado', false).gt('expira_em', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (!d) return { ok: false, status: 400, erro: 'O código expirou ou não existe. Peça outro.' };
+  if (d.tentativas >= 5) return { ok: false, status: 429, erro: 'Muitas tentativas. Peça outro código.' };
+  if (codigo.length !== 6 || (await hash('senha', perfilId, codigo)) !== d.codigo_hash) {
+    await sb.from('seguranca_codigos').update({ tentativas: d.tentativas + 1 }).eq('id', d.id);
+    return { ok: false, status: 401, erro: 'Código incorreto.' };
+  }
+  await sb.from('seguranca_codigos').update({ usado: true }).eq('id', d.id);
+  return { ok: true, email: d.email };
 }
 
 /* ------------------------------------- passar o admin supremo (zzz225) */
