@@ -415,7 +415,9 @@ Deno.serve(comCors(async (req: Request) => {
      e tem mais uma chance. Se repetir de novo, a tela recebe "igual" e
      explica — nunca uma sugestão idêntica. Erro de cota/limite não
      repete (ver servico.ts). */
-  const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema, audio: t.audio, imagem: t.imagem, prazoMs: t.prazoMs };
+  const op = { maxTokens: t.maxTokens, temperatura: t.temperatura, limpar: t.limpar, json: t.json, esquema: t.esquema, audio: t.audio, imagem: t.imagem, prazoMs: t.prazoMs,
+    /* zzz300: legendas e revisão de marca ficam com o Gemini (português palavra por palavra) */
+    fino: ['srt', 'legenda', 'marca'].includes(t.recurso) };
 
   const fecharRegistro = async (r: Resultado) => {
     if (!reg) return;

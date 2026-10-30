@@ -32,6 +32,12 @@ export type PedidoDeGeracao = {
   audio?: { mime: string; base64: string };
   /** zzz128: uma imagem que acompanha o pedido (anexo do assistente) */
   imagem?: { mime: string; base64: string };
+  /** zzz300: tarefa de português palavra por palavra (legendas, marca):
+      com Groq e Gemini juntos, vai direto para o Gemini (duplo.ts) */
+  fino?: boolean;
+  /** zzz300: a tarefa aceita esta resposta? (o mesmo limpador dela). Com
+      reserva (duplo.ts), resposta recusada aqui vai para o outro provedor */
+  valida?: (texto: string) => boolean;
 };
 
 /** O que pode dar errado, em termos do B7 (não do provedor). */

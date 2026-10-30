@@ -22,6 +22,8 @@
 
 import { criarGemini } from './gemini.ts';
 import { criarOmniRoute } from './omniroute.ts';
+import { criarGroq } from './groq.ts';
+import { criarDuplo } from './duplo.ts';
 import type { ErroDoProvedor, Mensagem, Provedor, RespostaDoProvedor } from './provedor.ts';
 
 export type { Mensagem } from './provedor.ts';
@@ -50,6 +52,8 @@ export type Opcoes = {
   audio?: { mime: string; base64: string };
   /** zzz128: imagem que acompanha o pedido */
   imagem?: { mime: string; base64: string };
+  /** zzz300: português palavra por palavra (vai para o Gemini, duplo.ts) */
+  fino?: boolean;
 };
 
 /**
@@ -72,7 +76,12 @@ export function quaseIgual(a: string, b: string, limiar = 0.9): boolean {
 
 /** O provedor desta instalação. null = IA não configurada neste ambiente. */
 export function provedorAtual(env: (nome: string) => string | undefined): Provedor | null {
-  return criarOmniRoute(env) || criarGemini(env);
+  const omni = criarOmniRoute(env);
+  if (omni) return omni;
+  /* zzz300: com a chave do Groq, ele atende o texto e o Gemini fica de reserva */
+  const gemini = criarGemini(env), groq = criarGroq(env);
+  if (groq && gemini) return criarDuplo(groq, gemini);
+  return gemini || groq;
 }
 
 /* Do motivo técnico para o que a pessoa precisa saber. Chave errada,
@@ -121,7 +130,8 @@ async function gerarCom(provedor: Provedor | null, mensagens: Mensagem[], op: Op
 
   let r;
   try {
-    const pedido = { mensagens, maxTokens: op.maxTokens, temperatura: op.temperatura, prazoMs: op.prazoMs ?? 30_000, json: op.json, esquema: op.esquema, audio: op.audio, imagem: op.imagem };
+    const pedido = { mensagens, maxTokens: op.maxTokens, temperatura: op.temperatura, prazoMs: op.prazoMs ?? 30_000, json: op.json, esquema: op.esquema, audio: op.audio, imagem: op.imagem, fino: op.fino,
+      valida: (bruto: string) => { try { return !!op.limpar(bruto); } catch (_e) { return false; } } };
     if (aoTrecho && provedor.gerarFluxo && !op.json) {
       /* zzz128: o fluxo às vezes cai logo no começo (visto três vezes nos
          testes, sempre em menos de 2 s e sem nada escrito). Quando NADA

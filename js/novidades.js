@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz300', versao: 'zzz300', em: '2026-10-30T09:00:00-03:00',
+    titulo: 'Assistente de IA mais rápido',
+    itens: ['O assistente, as sugestões do WhatsApp e os resumos agora respondem bem mais rápido, quase na hora.',
+            'Legendas, revisão de marca, áudio e imagem continuam com o mesmo cuidado de antes, palavra por palavra.'] },
   { id: 'v-zzz297', versao: 'zzz297', em: '2026-10-29T16:00:00-03:00',
     titulo: 'Mensagens chegam como no WhatsApp: responda pela própria notificação',
     itens: ['No app Android, a mensagem chega com a foto e o nome de quem mandou e as mensagens ainda não lidas, uma embaixo da outra.',
