@@ -74,7 +74,24 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
   const pedido = (env('GEMINI_MODEL') || '').trim();
   const modelo = /^[a-z0-9][a-z0-9.\-]{2,60}$/.test(pedido) ? pedido : MODELO_PADRAO;
 
+  /* zzz300: os modelos 3.x "pensam" antes de responder; para reescrever
+     um trecho isso é só espera. Pedimos o mínimo. Se este modelo não
+     aceitar o ajuste (400 falando de thinking), o pedido sai de novo sem
+     ele e não se tenta mais nesta instância. GEMINI_THINKING=padrao desliga. */
+  let pensarPouco = (env('GEMINI_THINKING') || '').trim() !== 'padrao';
+  const pensar = () => pensarPouco ? { thinkingConfig: { thinkingLevel: 'minimal' } } : {};
+  const recusouPensar = (status: number, corpo: RespostaGemini | null) => {
+    const e = (corpo && corpo.error) || {};
+    return pensarPouco && status === 400 && /think/i.test(String(e.message || ''));
+  };
+
   async function gerar(p: PedidoDeGeracao): Promise<RespostaDoProvedor> {
+    const r = await gerarUma(p);
+    if (!r.ok && r.erro === 'sem_pensar') { pensarPouco = false; return (await gerarUma(p)) as RespostaDoProvedor; }
+    return r as RespostaDoProvedor;
+  }
+
+  async function gerarUma(p: PedidoDeGeracao): Promise<RespostaDoProvedor | { ok: false; erro: 'sem_pensar'; status: number }> {
     const sistema = p.mensagens.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
     const usuario = p.mensagens.filter(m => m.role === 'user').map(m => m.content).join('\n\n');
     const ctrl = new AbortController();
@@ -89,7 +106,7 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
             ...(p.audio ? [{ inlineData: { mimeType: p.audio.mime, data: p.audio.base64 } }] : []),
             ...(p.imagem ? [{ inlineData: { mimeType: p.imagem.mime, data: p.imagem.base64 } }] : [])] }],
           generationConfig: {
-            temperature: p.temperatura, maxOutputTokens: p.maxTokens,
+            temperature: p.temperatura, maxOutputTokens: p.maxTokens, ...pensar(),
             ...(p.json ? { responseMimeType: 'application/json' } : {}),
             /* resposta estruturada: prende o JSON ao formato pedido (sem
                campo inventado nem texto em volta) */
@@ -100,6 +117,7 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
 
       let corpo: RespostaGemini | null = null;
       try { corpo = await r.json(); } catch (_e) { corpo = null; }
+      if (!r.ok && recusouPensar(r.status, corpo)) return { ok: false, erro: 'sem_pensar', status: r.status };
       if (!r.ok) return { ok: false, erro: erroPorStatus(r.status, corpo), status: r.status };
       if (!corpo) return { ok: false, erro: 'resposta_invalida', status: r.status };
 
@@ -132,6 +150,12 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
      as de gerar(): recusa, corte por limite de tokens e resposta vazia
      continuam sendo erro, mesmo que parte do texto já tenha saído. */
   async function gerarFluxo(p: PedidoDeGeracao, aoTrecho: (texto: string) => void): Promise<RespostaDoProvedor> {
+    const r = await fluxoUm(p, aoTrecho);
+    if (!r.ok && r.erro === 'sem_pensar') { pensarPouco = false; return (await fluxoUm(p, aoTrecho)) as RespostaDoProvedor; }
+    return r as RespostaDoProvedor;
+  }
+
+  async function fluxoUm(p: PedidoDeGeracao, aoTrecho: (texto: string) => void): Promise<RespostaDoProvedor | { ok: false; erro: 'sem_pensar'; status: number }> {
     const sistema = p.mensagens.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
     const usuario = p.mensagens.filter(m => m.role === 'user').map(m => m.content).join('\n\n');
     const ctrl = new AbortController();
@@ -144,12 +168,13 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
           ...(sistema ? { systemInstruction: { parts: [{ text: sistema }] } } : {}),
           contents: [{ role: 'user', parts: [{ text: usuario },
             ...(p.imagem ? [{ inlineData: { mimeType: p.imagem.mime, data: p.imagem.base64 } }] : [])] }],
-          generationConfig: { temperature: p.temperatura, maxOutputTokens: p.maxTokens }
+          generationConfig: { temperature: p.temperatura, maxOutputTokens: p.maxTokens, ...pensar() }
         })
       });
       if (!r.ok || !r.body) {
         let corpo: RespostaGemini | null = null;
         try { corpo = await r.json(); } catch (_e) { corpo = null; }
+        if (!r.ok && recusouPensar(r.status, corpo)) return { ok: false, erro: 'sem_pensar', status: r.status };
         return { ok: false, erro: r.ok ? 'resposta_invalida' : erroPorStatus(r.status, corpo), status: r.status };
       }
 
