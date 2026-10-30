@@ -11,14 +11,24 @@
 // MESMO pedido vai para o Gemini, uma vez.
 // No fluxo do chat isso só acontece se nada tiver sido escrito na tela.
 //
+// zzz301: pedido grande demais para a camada gratuita do Groq (o chat
+// manda ~9 mil tokens de contexto; o limite grátis é ~8 mil por minuto e
+// ele devolve 413 na hora) vai direto para o Gemini, sem a ida e volta
+// perdida. Limite em GROQ_LIMITE_TOKENS (padrão 6000, estimado por
+// caracteres).
+//
 // No registro de uso aparece "b7:groq" ou "b7:gemini" (quem atendeu) e
 // houve_fallback quando o Groq falhou e o Gemini respondeu.
 // =====================================================================
 
 import type { PedidoDeGeracao, Provedor, RespostaDoProvedor } from './provedor.ts';
 
-export function criarDuplo(rapido: Provedor, reserva: Provedor): Provedor {
-  const vaiNaReserva = (p: PedidoDeGeracao) => !!(p.audio || p.imagem || p.fino);
+/* ~3,5 caracteres por token em português; conta também a resposta pedida */
+export const tokensEstimados = (p: PedidoDeGeracao) =>
+  Math.ceil(p.mensagens.reduce((n, m) => n + m.content.length, 0) / 3.5) + p.maxTokens;
+
+export function criarDuplo(rapido: Provedor, reserva: Provedor, limiteTokens = 6000): Provedor {
+  const vaiNaReserva = (p: PedidoDeGeracao) => !!(p.audio || p.imagem || p.fino) || tokensEstimados(p) > limiteTokens;
   const marca = (r: RespostaDoProvedor, quem: string, trocou: boolean): RespostaDoProvedor =>
     r.ok ? { ...r, servidoPor: quem, trocas: trocou ? 1 : null } : r;
 

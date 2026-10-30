@@ -80,7 +80,7 @@ export function provedorAtual(env: (nome: string) => string | undefined): Proved
   if (omni) return omni;
   /* zzz300: com a chave do Groq, ele atende o texto e o Gemini fica de reserva */
   const gemini = criarGemini(env), groq = criarGroq(env);
-  if (groq && gemini) return criarDuplo(groq, gemini);
+  if (groq && gemini) return criarDuplo(groq, gemini, Number(env('GROQ_LIMITE_TOKENS')) || 6000);
   return gemini || groq;
 }
 
