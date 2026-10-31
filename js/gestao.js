@@ -18,7 +18,7 @@ B7.Gestao = (function () {
   const esc = s => B7.UI.esc(s);
   const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const SIT = { recebido: 'Recebido', em_producao: 'Em produção', concluido: 'Pronto', cancelado: 'Encerrado' };
-  let aba = 'geral', dados = null;
+  let aba = 'geral', dados = null, params0 = null;
 
   const painel = () => document.getElementById('painel-dashboard');
   const num = v => (v == null ? '—' : Number(v).toLocaleString('pt-BR'));
@@ -27,16 +27,18 @@ B7.Gestao = (function () {
     if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/gestao');
     if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['Gestão']);
     if (params && params.get && params.get('aba')) aba = params.get('aba');
+    params0 = params || null;
     if (!B7.Auth.ehAdmin()) { painel().innerHTML = '<div class="conteudo"><div class="estado-b7"><b>Só o administrador abre a Gestão.</b></div></div>'; return; }
     painel().innerHTML = '<div class="conteudo entra gs">' +
-      '<div class="cb-topo"><div class="cb-titulo"><h1>Gestão</h1><p class="gt-intro">A agência num olhar: entregas, saúde de cada cliente e o que eles estão pedindo.</p></div></div>' +
-      '<div class="filtro rolavel gt-abas" role="tablist">' + [['geral', 'Visão geral'], ['saude', 'Saúde dos clientes'], ['avulsos', 'Avulsos'], ['pedidos', 'Pedidos'], ['recados', 'Recados']].filter(([k]) => k !== 'avulsos' || B7.Projetos).map(([k, r]) =>
+      '<div class="cb-topo"><div class="cb-titulo"><h1>Gestão</h1><p class="gt-intro">A agência num olhar: entregas, a equipe, a saúde de cada cliente e o que eles estão pedindo.</p></div></div>' +
+      '<div class="filtro rolavel gt-abas" role="tablist">' + [['geral', 'Visão geral'], ['equipe', 'Equipe'], ['saude', 'Saúde dos clientes'], ['avulsos', 'Avulsos'], ['pedidos', 'Pedidos'], ['recados', 'Recados']].filter(([k]) => (k !== 'avulsos' || B7.Projetos) && (k !== 'equipe' || B7.Colaboradores)).map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (aba === k ? 'on' : '') + '" aria-selected="' + (aba === k) + '">' + r + '<span class="gt-n" data-n-' + k + '></span></button>').join('') + '</div>' +
       '<div id="gt-corpo">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
     painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => {
       aba = b.dataset.aba;
       painel().querySelectorAll('[data-aba]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
       try { history.replaceState(null, '', '#/gestao?aba=' + aba); } catch (e) {}
+      params0 = null;
       pintar();
     });
     const vale = B7.Rota.marca();
@@ -59,6 +61,8 @@ B7.Gestao = (function () {
     const cx = document.getElementById('gt-corpo');
     if (!cx || !dados) return;
     if (aba === 'recados') return recados(cx);
+    /* zzz302: entregas de cada pessoa da equipe (js/colaboradores.js) */
+    if (aba === 'equipe' && B7.Colaboradores) return B7.Colaboradores.montar(cx, params0);
     /* zzz274: projetos avulsos — fora da saúde (não têm mês), com o seu próprio quadro */
     if (aba === 'avulsos' && B7.Projetos) return B7.Projetos.montarGestao(cx);
     cx.innerHTML = aba === 'saude' ? saude() : aba === 'pedidos' ? pedidos() : geral();

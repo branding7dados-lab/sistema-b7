@@ -1125,3 +1125,48 @@ body.b7-nv-editar #tela-dashboard :is([data-decidir],[data-excluir],[data-apagar
 .login-legal{margin:16px 0 0;text-align:center;font-size:12px;color:rgba(255,255,255,.5);}
 .login-legal a{color:rgba(255,255,255,.72);text-decoration:none;}
 .login-legal a:hover{color:#fff;text-decoration:underline;}
+
+/* =====================================================================
+   USUÁRIOS 6 (zzz302) — Parceiros B7 · Colaboradores · Clientes
+   ===================================================================== */
+.lu6-cab{align-items:center;gap:16px;}
+.lu6-cab p{margin-top:4px;}
+.lu6-on{display:inline-flex;align-items:center;gap:6px;color:var(--ok);font-weight:600;}
+.lu6-acoes{display:flex;align-items:center;gap:8px;flex:none;}
+.lu6-grupos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:6px 0 10px;}
+.lu6-g{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;border:1px solid var(--borda);background:var(--card);
+  font:inherit;color:inherit;text-align:left;cursor:pointer;box-shadow:var(--sh-1);
+  transition:border-color .2s ease,box-shadow .2s ease,transform .15s ease,background .2s ease;}
+.lu6-g:hover{transform:translateY(-1px);box-shadow:var(--sh-2);}
+.lu6-g:active{transform:scale(.98);}
+.lu6-g.on{border-color:color-mix(in srgb,var(--acento) 55%,var(--borda));background:color-mix(in srgb,var(--acento) 5%,var(--card));
+  box-shadow:0 0 0 3px var(--acento-suave),var(--sh-1);}
+.lu6-g-ic{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;background:var(--grad-curto);}
+.lu6-g-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.lu6-g-ic.parceiros{background:linear-gradient(135deg,#f59e0b,#d97706);}
+.lu6-g-ic.colaboradores{background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));}
+.lu6-g-ic.clientes{background:linear-gradient(135deg,#0ea5e9,#2563eb);}
+.lu6-g-tx{min-width:0;}
+.lu6-g-tx b{display:block;font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lu6-g-tx small{display:block;font-size:12px;color:var(--ink-4);font-variant-numeric:tabular-nums;}
+.lu6-ajuda{font-size:12.5px;color:var(--ink-3);margin:2px 2px 14px;line-height:1.5;}
+.lu6-barra{margin-bottom:16px;}
+.lu6 .lu4-grade{margin-bottom:8px;}
+.lu6-desat{margin-top:18px;}
+.lu6-desat summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;border:1px dashed var(--borda-forte);
+  font-size:12.5px;font-weight:700;color:var(--ink-3);margin-bottom:12px;}
+.lu6-desat summary::-webkit-details-marker{display:none;}
+.lu6-desat summary span{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--suave);}
+@media (max-width:640px){
+  .conteudo .cab-conteudo.lu6-cab{flex-direction:column;align-items:stretch;gap:12px;}
+  .lu6-acoes{width:100%;}
+  .lu6-acoes .lu3-novo{flex:1;justify-content:center;}
+  .lu6-acoes .lu3-novo span{display:inline;}
+  .conteudo .lu6-cab .lu3-novo{width:auto !important;height:44px;padding:0 14px;border-radius:14px;flex:1;}
+  .lu6-grupos{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
+  .lu6-g{flex-direction:column;align-items:center;text-align:center;gap:6px;padding:12px 6px;border-radius:14px;}
+  .lu6-g-ic{width:34px;height:34px;border-radius:10px;}
+  .lu6-g-tx b{font-size:12.5px;white-space:normal;line-height:1.2;}
+  .lu6-g-tx small{font-size:11px;}
+  .lu6-barra{gap:10px;}
+}
