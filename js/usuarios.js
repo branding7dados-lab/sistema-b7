@@ -731,19 +731,20 @@ B7.Usuarios = (function () {
       atencao: usuarios.filter(atencao).length,
       inativas
     };
-    /* zzz302: três grupos — Parceiros B7 (os administradores, donos da
-       agência), Colaboradores (a equipe que produz) e Clientes (Portal).
+    /* zzz302: três grupos — Parceiros B7 (freelancers e parceiros de fora,
+       marcados na conta), Colaboradores (a equipe interna, administradores
+       incluídos) e Clientes (Portal).
        Um seletor no alto troca o grupo; os filtros finos (online, pedem
        atenção, acesso personalizado, desativadas) aparecem só quando têm
        alguém. Mesmos dados e ações de antes: nada aqui decide permissão. */
-    const grupoDe = u => u.papel === 'cliente' ? 'clientes' : identidadeDe(u).ehAdmin ? 'parceiros' : 'colaboradores';
+    const grupoDe = u => u.papel === 'cliente' ? 'clientes' : u.parceiro ? 'parceiros' : 'colaboradores';
     const GRUPOS = [
-      ['parceiros', 'Parceiros B7', 'Quem administra a agência: abre tudo, cria contas e decide os acessos.'],
-      ['colaboradores', 'Colaboradores', 'Quem produz no dia a dia: coordenação, design e vídeo — cada um com os módulos da sua função.'],
+      ['parceiros', 'Parceiros B7', 'Freelancers e parceiros de fora que produzem com a B7. Marque em ⋯ → Marcar como Parceiro B7.'],
+      ['colaboradores', 'Colaboradores', 'A equipe interna: administração, coordenação, design e vídeo — cada um com os módulos da sua função.'],
       ['clientes', 'Clientes', 'Quem acompanha e aprova pelo Portal, só nas empresas vinculadas.']
     ];
     const nGrupo = g => usuarios.filter(u => grupoDe(u) === g && u.estado === 'ativa').length;
-    if (!GRUPOS.some(g => g[0] === filtro.grupo)) filtro.grupo = nGrupo('colaboradores') ? 'colaboradores' : 'parceiros';
+    if (!GRUPOS.some(g => g[0] === filtro.grupo)) filtro.grupo = 'colaboradores';
     const FILTROS = [['todos', 'Todas'], ['online', 'Online agora'], ['atencao', 'Pedem atenção'], ['personalizado', 'Acesso personalizado'], ['inativas', 'Desativadas']];
     if (!FILTROS.some(f => f[0] === filtro.tipo)) filtro.tipo = 'todos';
     const contaNoGrupo = id => usuarios.filter(u => grupoDe(u) === filtro.grupo).filter(u =>
@@ -810,6 +811,15 @@ B7.Usuarios = (function () {
       if (acao === 'historico') return modalHistorico(u, usuarios);
       /* zzz302: o que a pessoa entregou (Gestão → Equipe) */
       if (acao === 'entregas') { location.hash = '#/gestao?aba=equipe&p=' + encodeURIComponent(u.id); return; }
+      if (acao === 'parceiro') return (async () => {
+        const vira = !u.parceiro;
+        try {
+          await B7.DB.rpc('perfil_parceiro_definir', { p_perfil: u.id, p_parceiro: vira });
+          u.parceiro = vira;
+          B7.UI.toast(u.nome + (vira ? ' agora está em Parceiros B7.' : ' voltou para Colaboradores.'));
+          reabrir();
+        } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível mudar.', { tipo: 'erro' }); }
+      })();
     };
 
     /* A lista é redesenhada a partir do que já veio do servidor: buscar
@@ -900,7 +910,8 @@ B7.Usuarios = (function () {
       ? '<span class="lu4-tag lu3-p-cliente">Cliente</span>' +
         (empresas.some(e => / \(dono\)$/.test(e)) ? '<span class="lu4-tag leve">dono</span>'
           : empresas.some(e => / \(gestor\)$/.test(e)) ? '<span class="lu4-tag leve">aprova</span>' : '')
-      : (idt.ehAdmin ? (u.superadmin === 'supremo' ? '<span class="lu4-tag lu3-p-super supremo" title="Acima de todos os administradores">Admin supremo</span>'
+      : (u.parceiro ? '<span class="lu4-tag lu6-parceiro" title="Freelancer ou parceiro de fora">Parceiro B7</span>' : '') +
+        (idt.ehAdmin ? (u.superadmin === 'supremo' ? '<span class="lu4-tag lu3-p-super supremo" title="Acima de todos os administradores">Admin supremo</span>'
           : u.superadmin === 'super' ? '<span class="lu4-tag lu3-p-super" title="Acima dos administradores">Super admin</span>'
           : '<span class="lu4-tag lu3-p-admin">Administrador</span>') : '') +
         (idt.funcao ? '<span class="lu4-tag lu3-p-' + esc(idt.funcao) + '">' + esc(rotuloFuncao(idt.funcao)) + '</span>' : '') +
@@ -934,6 +945,7 @@ B7.Usuarios = (function () {
         '<div class="menu"><button class="ico" aria-label="Ações da conta de ' + esc(u.nome) + '">⋯</button><div class="lista">' +
           '<button data-acao-conta="editar" data-id="' + esc(u.id) + '">Editar acesso</button>' +
           (!ehCliente && B7.Colaboradores && B7.Auth.ehAdmin && B7.Auth.ehAdmin() ? '<button data-acao-conta="entregas" data-id="' + esc(u.id) + '">Ver entregas</button>' : '') +
+          (!ehCliente ? '<button data-acao-conta="parceiro" data-id="' + esc(u.id) + '">' + (u.parceiro ? 'Mover para Colaboradores' : 'Marcar como Parceiro B7') + '</button>' : '') +
           '<button data-acao-conta="historico" data-id="' + esc(u.id) + '">Histórico de acesso</button>' +
           '<button data-acao-conta="foto" data-id="' + esc(u.id) + '">Foto de perfil</button>' +
           '<button data-acao-conta="senha" data-id="' + esc(u.id) + '">Redefinir senha</button>' +

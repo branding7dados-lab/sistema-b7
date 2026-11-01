@@ -18,7 +18,8 @@ Tudo aqui é só do administrador.
 - Design quase não tem prazo cadastrado. Por isso, para design, conta "parado há mais de 7 dias" em vez de atraso.
 
 ## 2. Usuários e acessos
-- Três grupos no alto: **Parceiros B7** (administradores), **Colaboradores** (coordenação, design, vídeo) e **Clientes**. Cada um tem ícone e contagem.
+- Três grupos no alto: **Parceiros B7** (freelancers e parceiros de fora), **Colaboradores** (equipe interna, administradores incluídos) e **Clientes**. Cada um tem ícone e contagem.
+- Marcar alguém como Parceiro B7: menu ⋯ → **Marcar como Parceiro B7** (ou **Mover para Colaboradores**). Grava em `perfis.parceiro` pela função `perfil_parceiro_definir`, que só o administrador pode chamar.
 - Saíram os 6 quadradinhos de números. Os filtros finos (online, pedem atenção, acesso personalizado, desativadas) aparecem só quando têm alguém. Desativadas ficam recolhidas no fim.
 - Cabeçalho mais limpo no celular: Histórico e Funções viraram ícones, e Novo usuário ocupa o resto.
 

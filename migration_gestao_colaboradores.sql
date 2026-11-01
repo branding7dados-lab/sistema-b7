@@ -1,3 +1,18 @@
+-- Parceiros B7 = freelancers e parceiros de fora (marcados na conta)
+alter table public.perfis add column if not exists parceiro boolean not null default false;
+
+create or replace function public.perfil_parceiro_definir(p_perfil uuid, p_parceiro boolean)
+returns void language plpgsql security definer set search_path to 'public' as $$
+begin
+  if not public.sou_admin() then raise exception 'Só o administrador muda isso.' using errcode = '42501'; end if;
+  update public.perfis set parceiro = coalesce(p_parceiro, false)
+   where id = p_perfil and papel <> 'cliente';
+  if not found then raise exception 'Conta da equipe não encontrada.'; end if;
+end;
+$$;
+revoke all on function public.perfil_parceiro_definir(uuid, boolean) from public, anon;
+grant execute on function public.perfil_parceiro_definir(uuid, boolean) to authenticated;
+
 -- zzz302 — Gestão → Equipe: o que cada pessoa entregou, o que está em falta e o que precisa.
 -- Só leitura, só administrador. Conta vídeo (demandas_edicao), design (design_deliverables),
 -- gravações e itens gravados. Datas no fuso de São Paulo.
@@ -17,7 +32,7 @@ begin
   with pessoas as (
     select p.id, p.nome, p.avatar_url, p.papel, p.funcao, coalesce(p.funcoes_adicionais, '{}') funcoes_adicionais,
            p.superadmin, coalesce(p.last_seen_at, p.last_login_at, p.ultimo_acesso) visto,
-           case when p.papel = 'admin' or coalesce(p.eh_admin, false) then 'parceiro' else 'colaborador' end grupo
+           case when p.parceiro then 'parceiro' else 'colaborador' end grupo
       from perfis p where p.papel <> 'cliente' and p.estado = 'ativa'
   ),
   vid as (

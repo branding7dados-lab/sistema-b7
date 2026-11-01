@@ -7,7 +7,7 @@
 
      • No alto: o período e os números da equipe (entregas, pontualidade
        dos vídeos, atrasos agora e o que está sem responsável);
-     • Colaboradores × Parceiros B7: um cartão por pessoa com o que
+     • Colaboradores (equipe interna) × Parceiros B7 (freelancers): um cartão por pessoa com o que
        entregou, a barra das últimas 8 semanas e o que está na mão dela;
      • Tocar no cartão abre o detalhe: o que pede atenção (atrasado, vence,
        parado, standby), o resto da fila e as próximas gravações.
@@ -59,7 +59,7 @@ B7.Colaboradores = (function () {
 
   function tags(p) {
     const fs = [p.funcao].concat(p.funcoes_adicionais || []).filter((f, i, a) => f && ROT_FUNCAO[f] && a.indexOf(f) === i);
-    return (p.grupo === 'parceiro' ? '<span class="cl-tag parceiro">Parceiro B7</span>' : '') +
+    return (p.grupo === 'parceiro' ? '<span class="cl-tag parceiro" title="Freelancer ou parceiro de fora">Parceiro B7</span>' : '') +
       fs.map(f => '<span class="cl-tag ' + esc(f) + '">' + ROT_FUNCAO[f] + '</span>').join('');
   }
   function linhaStatus(p) {

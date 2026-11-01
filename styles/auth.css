@@ -1170,3 +1170,4 @@ body.b7-nv-editar #tela-dashboard :is([data-decidir],[data-excluir],[data-apagar
   .lu6-g-tx small{font-size:11px;}
   .lu6-barra{gap:10px;}
 }
+.lu6-parceiro{background:linear-gradient(90deg,#f59e0b,#d97706);color:#fff;border-color:transparent;}
