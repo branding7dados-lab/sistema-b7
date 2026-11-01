@@ -341,7 +341,9 @@ B7.Rota = (function () {
     const pode = document.startViewTransition && !document.hidden &&
       !window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
       document.getElementById('tela-dashboard')?.classList.contains('ativa') &&
-      !document.querySelector('.b7-abertura, .fundo-modal:not(.saindo)');
+      !document.querySelector('.b7-abertura, .fundo-modal:not(.saindo)') &&
+      /* zzz304: troca de aba pelo gesto de arrastar já tem o próprio deslize */
+      !html.dataset.vindo;
     if (!pode) return false;
     html.classList.add('b7-vt');
     if (vtAtual) { try { vtAtual.skipTransition(); } catch (e) {} }

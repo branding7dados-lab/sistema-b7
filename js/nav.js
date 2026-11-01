@@ -513,13 +513,16 @@ B7.Nav = (function () {
     const abas = () => { const r = resolver(); return r ? r.inferior : []; };
     B7.Movimento.deslizar(p, () => p.querySelector(':scope > .conteudo') || p.firstElementChild, dir => {
       const l = abas(), i = l.indexOf(itemDaRota()), j = i + dir;
-      if (i < 0 || j < 0 || j >= l.length || !ITENS[l[j]] || !ITENS[l[j]].rota) return;
+      if (i < 0 || j < 0 || j >= l.length || !ITENS[l[j]] || !ITENS[l[j]].rota) return false;
+      /* data-vindo: a aba nova entra do lado certo, sem o morph com desfoque
+         da troca de módulo (js/app.js) e sem as contagens de "estreia" */
       document.documentElement.dataset.vindo = dir > 0 ? 'dir' : 'esq';
       clearTimeout(ligarDeslizeAbas._t);
-      ligarDeslizeAbas._t = setTimeout(() => { delete document.documentElement.dataset.vindo; }, 700);
+      ligarDeslizeAbas._t = setTimeout(() => { delete document.documentElement.dataset.vindo; }, 1200);
       location.hash = ITENS[l[j]].rota;
+      return true;
     }, {
-      semBorda: true,
+      semBorda: true, livre: true,
       ignorar: t => {
         if (!celular() || document.body.dataset.shell !== 'interno') return true;
         if (document.querySelector('.fundo-modal, .ni-folha.aberta')) return true;

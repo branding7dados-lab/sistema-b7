@@ -448,7 +448,10 @@ B7.Video = (function () {
       h.querySelectorAll('.vd-seg').forEach(b => { b.style.flexGrow = b.dataset.n; b.classList.toggle('vazio', !+b.dataset.n); });
       fitas.forEach((f, i) => f.style.setProperty('--v', alvo[i]));
     };
-    const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('modo-leve');
+    /* chegando pelo arrastar entre abas (data-vindo), os números já aparecem
+       prontos: a contagem desde o zero parecia demora para carregar */
+    const reduz = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('modo-leve') ||
+      !!document.documentElement.dataset.vindo;
     if (reduz) { h.classList.remove('estreia'); h.classList.add('ja-visto'); aplicar(); p.textContent = pct + '%'; return; }
     if (pctDe) anel.style.strokeDashoffset = (C * (1 - pctDe / 100)).toFixed(1);
     const atraso = estreia ? 420 : 0;
