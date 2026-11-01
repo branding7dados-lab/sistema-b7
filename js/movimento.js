@@ -192,7 +192,17 @@ window.B7 = window.B7 || {};
     const p = painel(), t = telaDoPainel();
     /* tela inteira ainda em esqueleto não vira foto; um bloco ou outro carregando, sim */
     if (!p || !t || !t.classList.contains('ativa') || !p.firstElementChild || p.querySelector(':scope > .conteudo > .esqueleto-tela, :scope > .esqueleto-tela')) return;
-    fotos.set(hash, { html: p.innerHTML, cls: p.className, rolagem: p.scrollTop, quando: Date.now() });
+    /* zzz304: a tela pode estar no meio do arrastar entre abas (deslocada e
+       esmaecida): a foto guarda a tela parada, no lugar */
+    const c0 = p.firstElementChild, mexida = c0 && (c0.style.translate || c0.style.opacity);
+    let html = p.innerHTML;
+    if (mexida) {
+      const tr = c0.style.translate, op = c0.style.opacity, tn = c0.style.transition;
+      c0.style.translate = ''; c0.style.opacity = ''; c0.style.transition = '';
+      html = p.innerHTML;
+      c0.style.translate = tr; c0.style.opacity = op; c0.style.transition = tn;
+    }
+    fotos.set(hash, { html, cls: p.className, rolagem: p.scrollTop, quando: Date.now() });
     if (fotos.size > 24) fotos.delete(fotos.keys().next().value);
   }
   /* enquanto a foto está na tela, a tela de verdade monta por baixo SEM as
@@ -233,6 +243,10 @@ window.B7 = window.B7 || {};
     if (!foto || !p || Date.now() - foto.quando > FOTO_VALE) return null;
     tirarFoto(true);
     const el = montarFoto(foto);
+    /* chegando pelo arrastar entre abas: a foto entra do lado do gesto */
+    const vindo = document.documentElement.dataset.vindo;
+    if (vindo && el.animate) el.animate([{ transform: 'translate3d(' + (vindo === 'dir' ? 38 : -38) + 'vw,0,0)', opacity: .2 }, { transform: 'none', opacity: 1 }],
+      { duration: 300, easing: 'cubic-bezier(.16,1,.3,1)' });
     clearTimeout(semEntrada.t); semEntrada(true);
     const f = { el, hash, rolagem: foto.rolagem, antigo };
     fotoAtual = f;
@@ -732,11 +746,13 @@ window.B7 = window.B7 || {};
       }
       dx = mx;
       const a = alvo(); if (!a) return;
-      /* resistência suave: anda menos quanto mais longe vai */
-      const d = Math.sign(dx) * 90 * (1 - Math.exp(-Math.abs(dx) / 160));
+      /* resistência suave: anda menos quanto mais longe vai. Com opcoes.livre
+         (troca de aba) a tela acompanha o dedo de verdade */
+      const d = opcoes && opcoes.livre ? dx * 0.92
+        : Math.sign(dx) * 90 * (1 - Math.exp(-Math.abs(dx) / 160));
       a.style.transition = 'none';
       a.style.translate = d.toFixed(1) + 'px 0';
-      a.style.opacity = String(1 - Math.min(.35, Math.abs(d) / 260));
+      a.style.opacity = String(1 - Math.min(opcoes && opcoes.livre ? .5 : .35, Math.abs(d) / (opcoes && opcoes.livre ? 520 : 260)));
     }, { passive: true });
     const fim = () => {
       const eraX = modo === 'x';
@@ -756,16 +772,21 @@ window.B7 = window.B7 || {};
       vibrar(6);
       /* o conteúdo atual sai para o lado do gesto; o novo entra do outro */
       let foi = false;
+      const volta = () => { if (a.isConnected) { a.getAnimations().forEach(x => x.cancel()); a.style.translate = ''; a.style.opacity = ''; a.style.transition = ''; } };
       const ir = () => {
         if (foi) return; foi = true;
-        aoIr(dir);
+        /* aoIr devolve true quando a troca vai acontecer (ex.: outra aba,
+           que redesenha um instante depois): a tela que saiu fica fora até
+           ser trocada — sem "voltar e sumir de novo". Se nada trocar em
+           1,5 s, ela volta ao lugar. */
+        if (aoIr(dir) === true) { setTimeout(volta, 1500); return; }
         /* se a troca não redesenhou (ex.: nada a trocar), devolve ao lugar */
-        if (a.isConnected) { a.getAnimations().forEach(x => x.cancel()); a.style.translate = ''; a.style.opacity = ''; a.style.transition = ''; }
+        volta();
       };
       if (reduz() || !a.animate) { ir(); return; }
       const ani = a.animate([{ translate: a.style.translate || '0 0', opacity: a.style.opacity || 1 },
-                             { translate: (dir > 0 ? -70 : 70) + 'px 0', opacity: 0 }],
-        { duration: 140, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
+                             { translate: (dir > 0 ? -1 : 1) * (opcoes && opcoes.livre ? Math.round(innerWidth * .45) : 70) + 'px 0', opacity: 0 }],
+        { duration: opcoes && opcoes.livre ? 170 : 140, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
       ani.onfinish = ir;
       setTimeout(ir, 220);
     };

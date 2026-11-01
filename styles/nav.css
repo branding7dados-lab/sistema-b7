@@ -991,10 +991,10 @@ body.modo-portal .pf-card{display:none;}
     -webkit-backdrop-filter:url(#b7-vidro-liq) saturate(170%) brightness(1.07);backdrop-filter:url(#b7-vidro-liq) saturate(170%) brightness(1.07);}
   html.vidro-liquido[data-theme="dark"] body[data-shell="interno"] .nav-inferior{background:color-mix(in srgb, #1B1426 18%, transparent);}
   /* a aba nova entra do lado de onde o dedo levou */
-  html[data-vindo="dir"] body .conteudo.entra{animation:b7VemDir .32s cubic-bezier(.2,.8,.2,1) both;}
-  html[data-vindo="esq"] body .conteudo.entra{animation:b7VemEsq .32s cubic-bezier(.2,.8,.2,1) both;}
+  html[data-vindo="dir"] body .conteudo.entra{animation:b7VemDir .3s cubic-bezier(.16,1,.3,1) both;}
+  html[data-vindo="esq"] body .conteudo.entra{animation:b7VemEsq .3s cubic-bezier(.16,1,.3,1) both;}
 }
-@keyframes b7VemDir{from{opacity:0;transform:translate3d(56px,0,0);}to{opacity:1;transform:none;}}
-@keyframes b7VemEsq{from{opacity:0;transform:translate3d(-56px,0,0);}to{opacity:1;transform:none;}}
+@keyframes b7VemDir{from{opacity:.2;transform:translate3d(38vw,0,0);}to{opacity:1;transform:none;}}
+@keyframes b7VemEsq{from{opacity:.2;transform:translate3d(-38vw,0,0);}to{opacity:1;transform:none;}}
 @media (prefers-reduced-motion:reduce){ html[data-vindo] body .conteudo.entra{animation:none;} }
 html.modo-leve[data-theme] body[data-shell="interno"] .nav-inferior::before,html.modo-leve[data-theme] body[data-shell="interno"] .nav-inferior::after{display:none;}
