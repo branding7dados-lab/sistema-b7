@@ -51,18 +51,7 @@ tem uma **linha editorial** por mês; dela saem as **gravações**, as demandas 
 **vídeo** e de **design**; o cliente **aprova** pelo portal dele; e o **status
 semanal** fecha a conta dos sete dias.
 
-```mermaid
-flowchart LR
-    L["📋 Linha editorial<br/><sub>o plano do mês</sub>"] --> G["🎥 Gravação<br/><sub>roteiros e cenas</sub>"]
-    G --> P["🎬 Produção<br/><sub>vídeo e design</sub>"]
-    P --> A["✅ Aprovação<br/><sub>o cliente vê e aprova</sub>"]
-    A --> S["📊 Status semanal<br/><sub>o relatório do cliente</sub>"]
-    style L fill:#29236E,color:#fff,stroke:#29236E
-    style G fill:#45237F,color:#fff,stroke:#45237F
-    style P fill:#6B2490,color:#fff,stroke:#6B2490
-    style A fill:#8E2189,color:#fff,stroke:#8E2189
-    style S fill:#B01E82,color:#fff,stroke:#B01E82
-```
+<p align="center"><img src="docs/fluxo.svg" alt="Linha editorial → Gravação → Produção → Aprovação → Status semanal" width="100%"></p>
 
 Não é um gerenciador de tarefas genérico: **cada tela conhece o fluxo da
 agência**. Uma demanda de vídeo sabe de qual conteúdo da linha ela nasceu, a
@@ -212,29 +201,7 @@ Cada função tem um **nível por módulo** (sem acesso · ver · editar · tota
 
 ## ✦ Como foi construído
 
-```mermaid
-flowchart TB
-    subgraph Aparelhos["Aparelhos"]
-      W["🌐 Navegador · PWA"]
-      PC["🖥️ Windows · Electron"]
-      AN["📱 Android · Capacitor"]
-    end
-    subgraph Site["GitHub Pages"]
-      H["index.html + js/ + styles/<br/><sub>HTML, CSS e JS puros — sem build</sub>"]
-      SW["sw.js<br/><sub>cache, versão e modo sem rede</sub>"]
-    end
-    subgraph Supa["Supabase"]
-      DB[("PostgreSQL<br/>118 tabelas · RLS em todas")]
-      RT["Realtime<br/><sub>tudo ao vivo</sub>"]
-      ST["Storage<br/><sub>artes, chat, fotos</sub>"]
-      FN["Funções de servidor<br/><sub>b7-auth · b7-ia · b7-push · b7-arte<br/>google-agenda · oportunidades-sync</sub>"]
-    end
-    IA["🤖 Groq + Gemini"]
-    PUSH["🔔 Web Push + Firebase"]
-    W & PC & AN --> H
-    H --> DB & RT & ST & FN
-    FN --> IA & PUSH
-```
+<p align="center"><img src="docs/arquitetura.svg" alt="Aparelhos → GitHub Pages → Supabase → IA e avisos" width="100%"></p>
 
 **Sem framework e sem etapa de compilação.** O que está no repositório é
 exatamente o que roda no navegador. Publicar é dar um merge: o GitHub Pages
