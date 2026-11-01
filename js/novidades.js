@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz303', versao: 'zzz303', em: '2026-11-01T10:00:00-03:00',
+    titulo: 'No celular: arraste para o lado e troque de aba',
+    itens: ['Arraste a tela para a esquerda ou para a direita e vá para a aba vizinha da barra de baixo, como num app.',
+            'A barra de baixo virou vidro líquido: o que passa por trás aparece e se curva nas bordas, como no iPhone.',
+            'Carrosséis, o Calendário, as Publicações e o quadro continuam com o arrastar de lado deles.'] },
   { id: 'v-zzz300', versao: 'zzz300', em: '2026-10-30T09:00:00-03:00',
     titulo: 'Assistente de IA mais rápido',
     itens: ['O assistente, as sugestões do WhatsApp e os resumos agora respondem bem mais rápido, quase na hora.',

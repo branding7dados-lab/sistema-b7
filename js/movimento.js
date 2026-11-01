@@ -716,6 +716,11 @@ window.B7 = window.B7 || {};
       if (area && !(t.closest && t.closest(area))) { modo = 'nao'; return; }
       if (t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) { modo = 'nao'; return; }
       if (rolaDeLado(t, el)) { modo = 'nao'; return; }
+      /* zzz303: quem chama pode recusar o gesto (ex.: as abas da barra,
+         quando um módulo tem o próprio arrastar de lado ou há folha aberta) */
+      if (opcoes && opcoes.ignorar && opcoes.ignorar(t)) { modo = 'nao'; return; }
+      /* começar colado na borda é o "voltar" do Android/iOS, não nosso */
+      if (opcoes && opcoes.semBorda) { const bx = e.touches[0].clientX; if (bx < 22 || bx > innerWidth - 22) { modo = 'nao'; return; } }
       x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
     }, { passive: true });
     el.addEventListener('touchmove', e => {

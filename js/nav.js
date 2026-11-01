@@ -497,6 +497,40 @@ B7.Nav = (function () {
         '<span class="ni-ic" aria-hidden="true">' + IC.mais + '</span><span class="ni-tx">Mais</span></button></li></ul>';
     barra.querySelector('[data-inf="mais"]').onclick = abrirMais;
     marcarAtivo();
+    ligarDeslizeAbas();
+    if (B7.Vidro) B7.Vidro.aplicar(barra);
+  }
+
+  /* zzz303: arrastar a tela para o lado vai para a aba vizinha da barra de
+     baixo (Painel ↔ Vídeo ↔ Design…), como num app. Não briga com o que já
+     arrasta de lado: carrosséis e faixas que rolam, o Calendário, as
+     Publicações e o Kanban (que têm o próprio gesto), campos de texto,
+     folhas abertas e o "voltar" da borda da tela. */
+  const celular = () => window.matchMedia('(max-width: 760px)').matches;
+  function ligarDeslizeAbas() {
+    const p = document.getElementById('painel-dashboard');
+    if (!p || p._deslize || !B7.Movimento || !B7.Movimento.deslizar) return;
+    const abas = () => { const r = resolver(); return r ? r.inferior : []; };
+    B7.Movimento.deslizar(p, () => p.querySelector(':scope > .conteudo') || p.firstElementChild, dir => {
+      const l = abas(), i = l.indexOf(itemDaRota()), j = i + dir;
+      if (i < 0 || j < 0 || j >= l.length || !ITENS[l[j]] || !ITENS[l[j]].rota) return;
+      document.documentElement.dataset.vindo = dir > 0 ? 'dir' : 'esq';
+      clearTimeout(ligarDeslizeAbas._t);
+      ligarDeslizeAbas._t = setTimeout(() => { delete document.documentElement.dataset.vindo; }, 700);
+      location.hash = ITENS[l[j]].rota;
+    }, {
+      semBorda: true,
+      ignorar: t => {
+        if (!celular() || document.body.dataset.shell !== 'interno') return true;
+        if (document.querySelector('.fundo-modal, .ni-folha.aberta')) return true;
+        if (abas().indexOf(itemDaRota()) < 0) return true;
+        const sel = window.getSelection && window.getSelection();
+        if (sel && !sel.isCollapsed) return true;
+        /* um módulo com o próprio arrastar de lado entre o dedo e a tela */
+        for (let n = t; n && n !== p; n = n.parentElement) if (n._deslize || (n.dataset && 'semDeslize' in n.dataset)) return true;
+        return !!(t.closest && t.closest('.kb-quadro, .kanban, [draggable="true"], .ed-linha-tempo, canvas, video'));
+      }
+    });
   }
 
   /* ------------------------------------------------ folha "Mais"

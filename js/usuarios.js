@@ -731,46 +731,59 @@ B7.Usuarios = (function () {
       atencao: usuarios.filter(atencao).length,
       inativas
     };
-    const FILTROS = [['todos', 'Todas'], ['online', 'Online'], ['admin', 'Administradores'], ['coordenador', 'Coordenação'], ['designer', 'Design'],
-      ['videomaker', 'Vídeo'], ['clientes', 'Clientes'], ['personalizado', 'Acesso personalizado'], ['atencao', 'Pedem atenção'], ['inativas', 'Desativadas']];
+    /* zzz302: três grupos — Parceiros B7 (freelancers e parceiros de fora,
+       marcados na conta), Colaboradores (a equipe interna, administradores
+       incluídos) e Clientes (Portal).
+       Um seletor no alto troca o grupo; os filtros finos (online, pedem
+       atenção, acesso personalizado, desativadas) aparecem só quando têm
+       alguém. Mesmos dados e ações de antes: nada aqui decide permissão. */
+    const grupoDe = u => u.papel === 'cliente' ? 'clientes' : u.parceiro ? 'parceiros' : 'colaboradores';
+    const GRUPOS = [
+      ['parceiros', 'Parceiros B7', 'Freelancers e parceiros de fora que produzem com a B7. Marque em ⋯ → Marcar como Parceiro B7.'],
+      ['colaboradores', 'Colaboradores', 'A equipe interna: administração, coordenação, design e vídeo — cada um com os módulos da sua função.'],
+      ['clientes', 'Clientes', 'Quem acompanha e aprova pelo Portal, só nas empresas vinculadas.']
+    ];
+    const nGrupo = g => usuarios.filter(u => grupoDe(u) === g && u.estado === 'ativa').length;
+    if (!GRUPOS.some(g => g[0] === filtro.grupo)) filtro.grupo = 'colaboradores';
+    const FILTROS = [['todos', 'Todas'], ['online', 'Online agora'], ['atencao', 'Pedem atenção'], ['personalizado', 'Acesso personalizado'], ['inativas', 'Desativadas']];
     if (!FILTROS.some(f => f[0] === filtro.tipo)) filtro.tipo = 'todos';
-    const pilula = (id, rot) => '<button type="button" class="lu3-pil' + (filtro.tipo === id ? ' on' : '') + '" data-lu-tipo="' + id + '">' +
-      (id === 'online' ? '<i class="lu3-ponto' + (conta.online ? ' vivo' : '') + '" aria-hidden="true"></i>' : '') +
-      (id === 'atencao' ? '<i class="lu4-ponto-at" aria-hidden="true"></i>' : '') +
-      rot + '<b>' + conta[id] + '</b></button>';
-    const kpi = (id, n, rot, cls, i) => '<button type="button" class="lu4-kpi ' + (cls || '') + (filtro.tipo === id ? ' on' : '') + '" data-lu-tipo="' + id + '" style="--i:' + i + '">' +
-      '<b>' + n + '</b><span>' + rot + '</span></button>';
+    const contaNoGrupo = id => usuarios.filter(u => grupoDe(u) === filtro.grupo).filter(u =>
+      id === 'online' ? u.estado === 'ativa' && presenca(u).online : id === 'atencao' ? atencao(u)
+      : id === 'personalizado' ? u.estado === 'ativa' && difDe(u).length > 0 : id === 'inativas' ? u.estado !== 'ativa' : u.estado === 'ativa').length;
+    const ICG = {
+      parceiros: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 16.4 6.7 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>',
+      colaboradores: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.6c2.3.1 4.2 1.4 4.8 4.4"/></svg>',
+      clientes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/></svg>'
+    };
 
-    painel().innerHTML = '<div class="conteudo entra lu3 lu4">' +
+    painel().innerHTML = '<div class="conteudo entra lu3 lu4 lu6">' +
       '<div class="trilha"><a href="#/config">Configurações</a><span>/</span>' +
       '<b>Usuários e acessos</b></div>' +
-      '<div class="cab-conteudo lu3-cab"><div><h1>Usuários e acessos</h1>' +
-        '<p>' + usuarios.length + ' conta' + (usuarios.length === 1 ? '' : 's') + ' · criadas pela Branding7, sem cadastro público.</p></div>' +
-        '<button class="b contorno lu3-funcoes" id="lu-hist" title="Quem mudou o acesso de quem">' + IC_HIST + '<span>Histórico</span></button>' +
-        '<button class="b contorno lu3-funcoes" id="lu-funcoes">' + IC_ACESSO + '<span>Funções e acessos</span></button>' +
-        '<button class="b pri lu3-novo" id="novo-usuario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Novo usuário</span></button>' +
+      '<div class="cab-conteudo lu3-cab lu6-cab"><div><h1>Usuários e acessos</h1>' +
+        '<p>' + ativos.length + ' conta' + (ativos.length === 1 ? '' : 's') + ' ativa' + (ativos.length === 1 ? '' : 's') +
+          (online ? ' · <span class="lu6-on"><i class="lu3-ponto vivo" aria-hidden="true"></i>' + online + ' online agora</span>' : '') + '</p></div>' +
+        '<div class="lu6-acoes">' +
+          '<button class="b contorno lu3-funcoes" id="lu-hist" title="Quem mudou o acesso de quem">' + IC_HIST + '<span>Histórico</span></button>' +
+          '<button class="b contorno lu3-funcoes" id="lu-funcoes">' + IC_ACESSO + '<span>Funções</span></button>' +
+          '<button class="b pri lu3-novo" id="novo-usuario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Novo usuário</span></button>' +
+        '</div>' +
       '</div>' +
 
       (usuarios.length
-        ? '<div class="lu4-kpis">' +
-            kpi('todos', equipeAtiva.length, 'na equipe', '', 0) +
-            kpi('online', conta.online, 'online agora', conta.online ? 'ok' : '', 1) +
-            kpi('admin', conta.admin, conta.admin === 1 ? 'administrador' : 'administradores', '', 2) +
-            kpi('personalizado', conta.personalizado, 'com acesso personalizado', conta.personalizado ? 'violeta' : '', 3) +
-            kpi('atencao', conta.atencao, conta.atencao === 1 ? 'conta pede atenção' : 'contas pedem atenção', conta.atencao ? 'ambar' : 'ok', 4) +
-            (conta.clientes ? kpi('clientes', conta.clientes, 'no Portal', '', 5) : '') +
+        ? '<div class="lu6-grupos" role="tablist" aria-label="Grupo de contas">' + GRUPOS.map(([k, r]) =>
+            '<button type="button" role="tab" class="lu6-g' + (filtro.grupo === k ? ' on' : '') + '" data-lu-grupo="' + k + '" aria-selected="' + (filtro.grupo === k) + '">' +
+              '<span class="lu6-g-ic ' + k + '">' + ICG[k] + '</span><span class="lu6-g-tx"><b>' + r + '</b><small>' + nGrupo(k) + (nGrupo(k) === 1 ? ' conta' : ' contas') + '</small></span></button>').join('') +
           '</div>' +
           '<div id="lu-avisos" class="lu5-avisos"></div>' +
-          '<div class="lu3-barra">' +
+          '<p class="lu6-ajuda" id="lu-ajuda"></p>' +
+          '<div class="lu3-barra lu6-barra">' +
             '<label class="lu-busca lu3-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
             '<input id="lu-busca" placeholder="Buscar por nome ou usuário…" autocomplete="off" value="' + esc(filtro.termo) + '"></label>' +
-            '<div class="lu3-pils" role="group" aria-label="Filtrar contas">' +
-              FILTROS.filter(f => f[0] === 'todos' || conta[f[0]]).map(f => pilula(f[0], f[1])).join('') +
-            '</div>' +
+            '<div class="lu3-pils" role="group" aria-label="Filtrar contas" id="lu-pils"></div>' +
           '</div>' +
           '<div id="lu-lista"></div>'
         : '<div class="estado-b7"><b>Nenhuma conta ainda.</b>' +
-          '<p>Crie a primeira conta de coordenador ou cliente.</p></div>') +
+          '<p>Crie a primeira conta de colaborador ou cliente.</p></div>') +
     '</div>';
 
     document.getElementById('novo-usuario').onclick = () => modalNovo(clientes);
@@ -796,45 +809,65 @@ B7.Usuarios = (function () {
       if (acao === 'foto') return modalFoto(u);
       if (acao === 'excluir') return excluirConta(u);
       if (acao === 'historico') return modalHistorico(u, usuarios);
+      /* zzz302: o que a pessoa entregou (Gestão → Equipe) */
+      if (acao === 'entregas') { location.hash = '#/gestao?aba=equipe&p=' + encodeURIComponent(u.id); return; }
+      if (acao === 'parceiro') return (async () => {
+        const vira = !u.parceiro;
+        try {
+          await B7.DB.rpc('perfil_parceiro_definir', { p_perfil: u.id, p_parceiro: vira });
+          u.parceiro = vira;
+          B7.UI.toast(u.nome + (vira ? ' agora está em Parceiros B7.' : ' voltou para Colaboradores.'));
+          reabrir();
+        } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível mudar.', { tipo: 'erro' }); }
+      })();
     };
 
     /* A lista é redesenhada a partir do que já veio do servidor: buscar
-       e filtrar não refazem a consulta. Equipe e clientes em blocos
-       separados — quem produz × quem acompanha. */
+       e filtrar não refazem a consulta. */
     function pintar() {
       const alvo = document.getElementById('lu-lista');
       if (!alvo) return;
+      const g = GRUPOS.find(x => x[0] === filtro.grupo);
+      const ajuda = document.getElementById('lu-ajuda'); if (ajuda) ajuda.textContent = g[2];
+      const pils = document.getElementById('lu-pils');
+      if (pils) {
+        const vis = FILTROS.filter(f => f[0] === 'todos' || contaNoGrupo(f[0]) || filtro.tipo === f[0]);
+        if (!vis.some(f => f[0] === filtro.tipo)) filtro.tipo = 'todos';
+        pils.innerHTML = vis.length > 1 ? vis.map(([id, rot]) => '<button type="button" class="lu3-pil' + (filtro.tipo === id ? ' on' : '') + '" data-lu-tipo="' + id + '">' +
+          (id === 'online' ? '<i class="lu3-ponto vivo" aria-hidden="true"></i>' : '') +
+          (id === 'atencao' ? '<i class="lu4-ponto-at" aria-hidden="true"></i>' : '') +
+          rot + '<b>' + contaNoGrupo(id) + '</b></button>').join('') : '';
+        pils.querySelectorAll('[data-lu-tipo]').forEach(b => b.onclick = () => {
+          const t = b.dataset.luTipo;
+          filtro.tipo = filtro.tipo === t || t === 'todos' ? 'todos' : t;
+          pintar();
+        });
+      }
       const termo = filtro.termo.trim().toLowerCase();
-      const t = filtro.tipo, idt = u => identidadeDe(u);
+      const t = filtro.tipo;
       const passaTipo = u => t === 'online' ? (u.estado === 'ativa' && presenca(u).online)
-        : t === 'admin' ? u.estado === 'ativa' && u.papel !== 'cliente' && idt(u).ehAdmin
-        : ['coordenador', 'designer', 'videomaker'].includes(t) ? u.estado === 'ativa' && u.papel !== 'cliente' && idt(u).funcao === t
-        : t === 'clientes' ? u.papel === 'cliente' && u.estado === 'ativa'
         : t === 'personalizado' ? u.estado === 'ativa' && difDe(u).length > 0
         : t === 'atencao' ? atencao(u)
         : t === 'inativas' ? u.estado !== 'ativa' : true;
-      const passa = u => passaTipo(u) && (!termo || (u.nome || '').toLowerCase().includes(termo) ||
+      const passa = u => grupoDe(u) === filtro.grupo && passaTipo(u) && (!termo || (u.nome || '').toLowerCase().includes(termo) ||
         (u.username || '').toLowerCase().includes(termo));
       const eu = B7.Auth && B7.Auth.usuario && B7.Auth.usuario();
       const minha = u => (eu && eu.id === u.id ? 0 : 1);
       const ordem = (a, b) => minha(a) - minha(b) ||
-        (a.estado === 'ativa' ? 0 : 1) - (b.estado === 'ativa' ? 0 : 1) ||
         (presenca(b).online ? 1 : 0) - (presenca(a).online ? 1 : 0) ||
         String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
-      const equipe = usuarios.filter(u => u.papel !== 'cliente' && passa(u)).sort(ordem);
-      const clis = usuarios.filter(u => u.papel === 'cliente' && passa(u)).sort(ordem);
+      const lista = usuarios.filter(passa);
+      const ativas = lista.filter(u => u.estado === 'ativa').sort(ordem);
+      const desativadas = lista.filter(u => u.estado !== 'ativa').sort(ordem);
+      const ehCli = filtro.grupo === 'clientes';
       let n = 0;
-      const bloco = (titulo, ajuda, lista, ehCliente) => !lista.length ? '' :
-        '<section class="lu3-grupo">' +
-          '<h2 class="lu3-grupo-tit" title="' + ajuda + '">' + titulo + '<span>' + lista.length + '</span></h2>' +
-          '<div class="lu4-grade">' +
-            lista.map(u => cartaoPessoa(u, empresasDe(u.id), extrasDe(u.id), presenca(u), alertasDe(u), ehCliente, n++)).join('') +
-          '</div></section>';
+      const grade = l => '<div class="lu4-grade">' + l.map(u => cartaoPessoa(u, empresasDe(u.id), extrasDe(u.id), presenca(u), alertasDe(u), ehCli, n++)).join('') + '</div>';
 
-      alvo.innerHTML = (equipe.length || clis.length)
-        ? bloco('Equipe', 'Quem produz e organiza o trabalho dentro do B7.', equipe, false) +
-          bloco('Clientes', 'Quem acompanha e aprova pelo Portal, só nas empresas vinculadas.', clis, true)
-        : '<div class="estado-b7"><b>Ninguém aqui' + (filtro.termo ? ' para “' + esc(filtro.termo) + '”' : '') + '.</b></div>';
+      alvo.innerHTML = lista.length
+        ? (ativas.length ? grade(ativas) : '') +
+          (desativadas.length ? '<details class="lu6-desat"' + (t === 'inativas' || !ativas.length ? ' open' : '') + '><summary>Desativadas <span>' + desativadas.length + '</span></summary>' + grade(desativadas) + '</details>' : '')
+        : '<div class="estado-b7"><b>Ninguém aqui' + (filtro.termo ? ' para “' + esc(filtro.termo) + '”' : '') + '.</b>' +
+          (!termo && t === 'todos' ? '<p>Use <b>Novo usuário</b> para criar a primeira conta deste grupo.</p>' : '') + '</div>';
 
       B7.UI.ligarMenus(alvo);
       alvo.querySelectorAll('[data-acao-conta]').forEach(b => b.onclick = e => {
@@ -844,16 +877,15 @@ B7.Usuarios = (function () {
       /* o cartão inteiro abre "Editar acesso"; o menu ⋯ guarda o resto */
       alvo.querySelectorAll('.lu4-card').forEach(el => {
         const abrirEdicao = () => abrirAcao(usuarios.find(x => x.id === el.dataset.id), 'editar');
-        el.onclick = e => { if (!e.target.closest('.menu')) abrirEdicao(); };
+        el.onclick = e => { if (!e.target.closest('.menu') && !e.target.closest('[data-acao-conta]')) abrirEdicao(); };
         el.onkeydown = e => { if (e.key === 'Enter' && e.target === el) abrirEdicao(); };
       });
     }
     pintar();
-    const marcarFiltro = () => painel().querySelectorAll('[data-lu-tipo]').forEach(x => x.classList.toggle('on', x.dataset.luTipo === filtro.tipo));
-    painel().querySelectorAll('[data-lu-tipo]').forEach(b => b.onclick = () => {
-      const t = b.dataset.luTipo;
-      filtro.tipo = filtro.tipo === t || t === 'todos' ? 'todos' : t;
-      marcarFiltro();
+    painel().querySelectorAll('[data-lu-grupo]').forEach(b => b.onclick = () => {
+      filtro.grupo = b.dataset.luGrupo;
+      filtro.tipo = 'todos';
+      painel().querySelectorAll('[data-lu-grupo]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
       pintar();
     });
     const busca = document.getElementById('lu-busca');
@@ -878,7 +910,8 @@ B7.Usuarios = (function () {
       ? '<span class="lu4-tag lu3-p-cliente">Cliente</span>' +
         (empresas.some(e => / \(dono\)$/.test(e)) ? '<span class="lu4-tag leve">dono</span>'
           : empresas.some(e => / \(gestor\)$/.test(e)) ? '<span class="lu4-tag leve">aprova</span>' : '')
-      : (idt.ehAdmin ? (u.superadmin === 'supremo' ? '<span class="lu4-tag lu3-p-super supremo" title="Acima de todos os administradores">Admin supremo</span>'
+      : (u.parceiro ? '<span class="lu4-tag lu6-parceiro" title="Freelancer ou parceiro de fora">Parceiro B7</span>' : '') +
+        (idt.ehAdmin ? (u.superadmin === 'supremo' ? '<span class="lu4-tag lu3-p-super supremo" title="Acima de todos os administradores">Admin supremo</span>'
           : u.superadmin === 'super' ? '<span class="lu4-tag lu3-p-super" title="Acima dos administradores">Super admin</span>'
           : '<span class="lu4-tag lu3-p-admin">Administrador</span>') : '') +
         (idt.funcao ? '<span class="lu4-tag lu3-p-' + esc(idt.funcao) + '">' + esc(rotuloFuncao(idt.funcao)) + '</span>' : '') +
@@ -911,6 +944,8 @@ B7.Usuarios = (function () {
         '<div class="lu4-id"><b>' + esc(u.nome) + (souEu ? '<em>você</em>' : '') + '</b><span>@' + esc(u.username) + '</span></div>' +
         '<div class="menu"><button class="ico" aria-label="Ações da conta de ' + esc(u.nome) + '">⋯</button><div class="lista">' +
           '<button data-acao-conta="editar" data-id="' + esc(u.id) + '">Editar acesso</button>' +
+          (!ehCliente && B7.Colaboradores && B7.Auth.ehAdmin && B7.Auth.ehAdmin() ? '<button data-acao-conta="entregas" data-id="' + esc(u.id) + '">Ver entregas</button>' : '') +
+          (!ehCliente ? '<button data-acao-conta="parceiro" data-id="' + esc(u.id) + '">' + (u.parceiro ? 'Mover para Colaboradores' : 'Marcar como Parceiro B7') + '</button>' : '') +
           '<button data-acao-conta="historico" data-id="' + esc(u.id) + '">Histórico de acesso</button>' +
           '<button data-acao-conta="foto" data-id="' + esc(u.id) + '">Foto de perfil</button>' +
           '<button data-acao-conta="senha" data-id="' + esc(u.id) + '">Redefinir senha</button>' +
@@ -934,7 +969,7 @@ B7.Usuarios = (function () {
 
   /* o que estava digitado na busca sobrevive a um redesenho da tela
      (depois de editar uma conta, a lista é recarregada) */
-  const filtro = { termo: '', tipo: 'todos' };
+  const filtro = { termo: '', tipo: 'todos', grupo: '' };
 
   /* =================================================================
      CRIAR
@@ -1292,30 +1327,55 @@ B7.Usuarios = (function () {
       .sort((a, b) => (identidadeDe(b).ehAdmin - identidadeDe(a).ehAdmin) || String(a.nome).localeCompare(b.nome));
     const fns = todasFuncoes(), mods = ACESSO.modulos;
     const so = id => ['designer', 'videomaker'].includes(id);
+    /* zzz302: uma função (ou uma pessoa) por vez, módulo a módulo, em vez
+       da tabela larga que não cabia no celular. Mesma leitura, mesmas regras. */
+    const DESC_MOD = (m, n, extra) => n === 'sem' ? 'não aparece no menu' : n === 'ver' ? 'abre e consulta' : n === 'editar' ? 'cria e altera' : 'edita, aprova e exclui';
+    let vista = 'funcao', fnSel = (fns[0] || {}).id, pessoaSel = (equipe.find(u => !identidadeDe(u).ehAdmin) || equipe[0] || {}).id;
+    const resumoNv = lista => {
+      const abre = lista.filter(n => n !== 'sem').length;
+      return 'Abre <b>' + abre + '</b> de ' + lista.length + ' módulos' + (abre ? ' · ' + lista.filter(n => n === 'total').length + ' em Total' : '');
+    };
+    function blocoMatriz() {
+      if (vista === 'funcao') {
+        const f = fns.find(x => x.id === fnSel) || fns[0];
+        if (!f) return '<p class="cfg-g-nota">Nenhuma função cadastrada.</p>';
+        const niveis = mods.map(m => nivelPacote(f.id, m.id));
+        const quem = equipe.filter(u => identidadeDe(u).funcao === f.id);
+        return '<div class="pm2-sel" role="tablist" aria-label="Função">' + fns.map(x =>
+            '<button type="button" role="tab" class="pm2-chip' + (x.id === f.id ? ' on' : '') + '" data-pm2-fn="' + esc(x.id) + '" aria-selected="' + (x.id === f.id) + '">' + esc(x.rotulo) +
+            '<small>' + equipe.filter(u => identidadeDe(u).funcao === x.id).length + '</small></button>').join('') + '</div>' +
+          '<div class="pm2-cab"><span>' + resumoNv(niveis) + '</span><span class="pm2-quem">' +
+            (quem.length ? quem.map(u => '<i title="' + esc(u.nome) + '">' + B7.UI.avatarPessoa(u, 'lu-avatar') + '</i>').join('') + '<em>' + quem.length + (quem.length === 1 ? ' pessoa' : ' pessoas') + '</em>' : '<em>ninguém com esta função</em>') +
+          '</span></div>' +
+          '<div class="pm2-lista">' + mods.map((m, i) => {
+            const n = niveis[i], trab = so(f.id) && CONTEUDO.includes(m.id) && ORD[n] >= 2;
+            return '<div class="pm2-l' + (n === 'sem' ? ' off' : '') + '"><span class="pm2-mod"><b>' + esc(m.rotulo) + '</b><small>' +
+              (trab ? 'vale para o trabalho dele (peças, demandas, entregas)' : DESC_MOD(m, n)) + '</small></span>' + chipNv(n, trab ? 'pm-trab' : '') + '</div>';
+          }).join('') + '</div>' +
+          '<div class="pm-acoes"><button type="button" class="b pri fina" data-pm-funcoes>Editar funções e acessos</button></div>';
+      }
+      const u = equipe.find(x => x.id === pessoaSel) || equipe[0];
+      if (!u) return '<p class="cfg-g-nota">Ninguém na equipe ainda.</p>';
+      const idt = identidadeDe(u), niveis = mods.map(m => nivelDe(u, m.id));
+      const difs = idt.ehAdmin ? 0 : mods.filter((m, i) => niveis[i] !== nivelPadraoDe(u, m.id)).length;
+      return '<div class="pm2-sel pm2-pessoas" role="tablist" aria-label="Pessoa">' + equipe.map(x =>
+          '<button type="button" role="tab" class="pm2-chip pm2-p' + (x.id === u.id ? ' on' : '') + '" data-pm2-p="' + esc(x.id) + '" aria-selected="' + (x.id === u.id) + '">' +
+          '<i>' + B7.UI.avatarPessoa(x, 'lu-avatar') + '</i>' + esc(primeiroNome(x)) + '</button>').join('') + '</div>' +
+        '<div class="pm2-cab"><span><b>' + esc(u.nome) + '</b> · ' + esc(idt.ehAdmin ? 'Parceiro B7 (administrador)' : rotuloFuncao(idt.funcao)) + '<br>' +
+          (idt.ehAdmin ? 'Abre tudo em Total.' : resumoNv(niveis) + (difs ? ' · <b class="pm2-dif">' + difs + (difs === 1 ? ' diferente da função' : ' diferentes da função') + '</b>' : ' · igual à função')) + '</span>' +
+          '<button type="button" class="b fina contorno" data-pm-pessoa="' + esc(u.id) + '">Mudar o acesso</button></div>' +
+        '<div class="pm2-lista">' + mods.map((m, i) => {
+          const n = niveis[i], pad = nivelPadraoDe(u, m.id), dif = !idt.ehAdmin && n !== pad;
+          return '<div class="pm2-l' + (n === 'sem' ? ' off' : '') + (dif ? ' dif' : '') + '"><span class="pm2-mod"><b>' + esc(m.rotulo) + '</b><small>' +
+            (dif ? 'só para ' + esc(primeiroNome(u)) + ' · a função dá ' + esc(rotuloNivel(pad).toLowerCase()) : DESC_MOD(m, n)) + '</small></span>' + chipNv(n, dif ? 'pm-dif' : '') + '</div>';
+        }).join('') + '</div>';
+    }
     alvo.innerHTML =
-      '<section class="cfg-g"><h2 class="cfg-g-t">Por função</h2>' +
-        '<p class="cfg-g-nota">O padrão de cada função: quem tem a função herda. Para uma pessoa só, mude na conta dela (abaixo).</p>' +
-        '<div class="pm-rolar"><table class="pm-tabela"><thead><tr><th>Módulo</th>' + fns.map(f => '<th>' + esc(f.rotulo) + '</th>').join('') + '</tr></thead><tbody>' +
-          mods.map(m => '<tr><th>' + esc(m.rotulo) + '</th>' + fns.map(f => {
-            const n = nivelPacote(f.id, m.id);
-            return '<td>' + chipNv(n, so(f.id) && CONTEUDO.includes(m.id) && ORD[n] >= 2 ? 'pm-trab' : '') + '</td>';
-          }).join('') + '</tr>').join('') +
-        '</tbody></table></div>' +
-        '<div class="pm-acoes"><button type="button" class="b pri fina" data-pm-funcoes>Editar funções e acessos</button></div>' +
-      '</section>' +
-      '<section class="cfg-g"><h2 class="cfg-g-t">Por pessoa</h2>' +
-        '<p class="cfg-g-nota">O que vale para cada um hoje. Com contorno: diferente do padrão da função (exceção dada na conta). Toque no nome para mudar.</p>' +
-        '<div class="pm-rolar"><table class="pm-tabela pm-pessoas"><thead><tr><th>Pessoa</th>' + mods.map(m => '<th>' + esc(m.rotulo) + '</th>').join('') + '</tr></thead><tbody>' +
-          equipe.map(u => {
-            const idt = identidadeDe(u);
-            return '<tr><th><button type="button" class="pm-pessoa" data-pm-pessoa="' + esc(u.id) + '"><b>' + esc(u.nome) + '</b><small>' +
-                esc(idt.ehAdmin ? 'Administrador' : rotuloFuncao(idt.funcao)) + '</small></button></th>' +
-              mods.map(m => {
-                const n = nivelDe(u, m.id), dif = !idt.ehAdmin && n !== nivelPadraoDe(u, m.id);
-                return '<td>' + chipNv(n, dif ? 'pm-dif' : '') + '</td>';
-              }).join('') + '</tr>';
-          }).join('') +
-        '</tbody></table></div>' +
+      '<section class="cfg-g pm2"><h2 class="cfg-g-t">Quem abre o quê</h2>' +
+        '<p class="cfg-g-nota">Escolha uma função para ver o padrão dela, ou uma pessoa para ver o que vale para ela hoje. Exceções de uma pessoa só mudam na conta dela.</p>' +
+        '<div class="cl-seg pm2-vista" role="tablist"><button type="button" role="tab" data-pm2-vista="funcao" class="on" aria-selected="true">Por função</button>' +
+          '<button type="button" role="tab" data-pm2-vista="pessoa" aria-selected="false">Por pessoa</button></div>' +
+        '<div data-pm2></div>' +
       '</section>' +
       '<section class="cfg-g" data-pm-acoes></section>' +
       (B7.Auth.ehAdmin && B7.Auth.ehAdmin() ? '<section class="cfg-g"><h2 class="cfg-g-t">Conferência de segurança</h2>' +
@@ -1329,14 +1389,27 @@ B7.Usuarios = (function () {
         'Administrador tem tudo em Total. <b>Designer e videomaker</b>: o nível marcado com pontinho vale para o trabalho deles (peças, demandas, entregas); ' +
         'para alterar o conteúdo de Clientes, Linhas, Roteiros ou Gravações, ligue a ação em <b>O que cada um pode fazer</b> (acima), na função ou só na pessoa.</p>' +
       '</section>';
+    const cxM = alvo.querySelector('[data-pm2]');
+    const pintarMatriz = () => {
+      if (!cxM || !cxM.isConnected) return;
+      cxM.innerHTML = blocoMatriz();
+      cxM.querySelectorAll('[data-pm2-fn]').forEach(b => b.onclick = () => { fnSel = b.dataset.pm2Fn; pintarMatriz(); });
+      cxM.querySelectorAll('[data-pm2-p]').forEach(b => b.onclick = () => { pessoaSel = b.dataset.pm2P; pintarMatriz(); });
+      const btF = cxM.querySelector('[data-pm-funcoes]'); if (btF) btF.onclick = () => modalFuncoes(usuarios);
+      cxM.querySelectorAll('[data-pm-pessoa]').forEach(b => b.onclick = () => {
+        const u = usuarios.find(x => x.id === b.dataset.pmPessoa); if (!u) return;
+        modalEditar(u, clientes, vinculos, extras.filter(f => f.perfil_id === u.id).map(f => f.funcao));
+      });
+    };
+    alvo.querySelectorAll('[data-pm2-vista]').forEach(b => b.onclick = () => {
+      vista = b.dataset.pm2Vista;
+      alvo.querySelectorAll('[data-pm2-vista]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
+      pintarMatriz();
+    });
+    pintarMatriz();
     const cxA = alvo.querySelector('[data-pm-acoes]'); if (cxA) montarAcoes(cxA, equipe);
-    const btF = alvo.querySelector('[data-pm-funcoes]'); if (btF) btF.onclick = () => modalFuncoes(usuarios);
     const btC = alvo.querySelector('[data-pm-conferir]');
     if (btC) { btC.onclick = () => conferir(alvo, btC); conferir(alvo, btC); }
-    alvo.querySelectorAll('[data-pm-pessoa]').forEach(b => b.onclick = () => {
-      const u = usuarios.find(x => x.id === b.dataset.pmPessoa); if (!u) return;
-      modalEditar(u, clientes, vinculos, extras.filter(f => f.perfil_id === u.id).map(f => f.funcao));
-    });
   }
 
   /* =================================================================
@@ -1375,18 +1448,25 @@ B7.Usuarios = (function () {
     const valorFn = (f, a) => (fx[f.id] && a.id in fx[f.id]) ? fx[f.id][a.id] : padraoFn(f, a);
     const recarregar = async () => { try { ler(await B7.DB.rpc('acoes_painel', {})); } catch (e) {} };
 
+    /* zzz302: uma função por vez, ação por ação, com um interruptor —
+       no lugar da tabela larga (mesmos botões e mesma gravação). */
+    let fnA = (fns[0] || {}).id;
     function tabelaFuncoes() {
-      return '<div class="pm-rolar"><table class="pm-tabela pa-tabela"><thead><tr><th>Ação</th>' + fns.map(f => '<th>' + esc(f.rotulo) + '</th>').join('') + '</tr></thead><tbody>' +
-        modulosCat.map(md => '<tr class="pa-mod"><th colspan="' + (fns.length + 1) + '">' + esc(rotuloModulo(md)) + '</th></tr>' +
-          cat.filter(a => a.modulo === md).map(a => '<tr><th><span class="pa-ac"><b>' + esc(a.rotulo) + '</b>' + (a.descricao ? '<small>' + esc(a.descricao) + '</small>' : '') + '</span></th>' +
-            fns.map(f => {
-              const v = valorFn(f, a), pers = fx[f.id] && a.id in fx[f.id] && fx[f.id][a.id] !== padraoFn(f, a);
-              return '<td><button type="button" class="pa-cel ' + (v ? 'sim' : 'nao') + (pers ? ' pers' : '') + '" data-fn="' + esc(f.id) + '" data-ac="' + esc(a.id) + '" aria-pressed="' + v + '" ' +
-                'title="' + esc(f.rotulo + ' · ' + a.rotulo + ': ' + (v ? 'pode' : 'não pode') + (pers ? ' (mudado por você; o padrão era ' + (padraoFn(f, a) ? 'sim' : 'não') + ')' : ' (padrão)')) + '">' +
-                (v ? 'Sim' : 'Não') + '</button></td>';
-            }).join('') + '</tr>').join('')).join('') +
-        '</tbody></table></div>' +
-        '<p class="cfg-g-nota pa-leg"><span class="pa-cel sim">Sim</span> pode · <span class="pa-cel nao">Não</span> não pode · <span class="pa-cel sim pers">Sim</span> com contorno: você mudou o padrão. Toque para trocar.</p>';
+      const f = fns.find(x => x.id === fnA) || fns[0];
+      if (!f) return '<p class="cfg-g-nota">Nenhuma função cadastrada.</p>';
+      const nPers = cat.filter(a => fx[f.id] && a.id in fx[f.id] && fx[f.id][a.id] !== padraoFn(f, a)).length;
+      return '<div class="pm2-sel" role="tablist" aria-label="Função">' + fns.map(x =>
+          '<button type="button" role="tab" class="pm2-chip' + (x.id === f.id ? ' on' : '') + '" data-pa-fn="' + esc(x.id) + '" aria-selected="' + (x.id === f.id) + '">' + esc(x.rotulo) + '</button>').join('') + '</div>' +
+        '<p class="cfg-g-nota">' + esc(f.rotulo) + ': pode ' + cat.filter(a => valorFn(f, a)).length + ' de ' + cat.length + ' ações' +
+          (nPers ? ' · <b>' + nPers + (nPers === 1 ? ' mudada por você' : ' mudadas por você') + '</b>' : ' · tudo no padrão') + '. Toque para ligar ou desligar.</p>' +
+        '<div class="pa-lista pa2">' + modulosCat.map(md => '<div class="pa-grupo"><h3>' + esc(rotuloModulo(md)) + '</h3>' +
+          cat.filter(a => a.modulo === md).map(a => {
+            const v = valorFn(f, a), pers = fx[f.id] && a.id in fx[f.id] && fx[f.id][a.id] !== padraoFn(f, a);
+            return '<div class="pa-linha' + (pers ? ' pers' : '') + '"><span class="pa-ac"><b>' + esc(a.rotulo) + '</b><small>' +
+                (a.descricao ? esc(a.descricao) + ' · ' : '') + (pers ? 'mudado por você (o padrão era ' + (padraoFn(f, a) ? 'sim' : 'não') + ')' : 'padrão') + '</small></span>' +
+              '<button type="button" class="pa-cel pa-sw ' + (v ? 'sim' : 'nao') + (pers ? ' pers' : '') + '" role="switch" data-fn="' + esc(f.id) + '" data-ac="' + esc(a.id) + '" aria-checked="' + v + '" ' +
+                'aria-label="' + esc(f.rotulo + ' · ' + a.rotulo) + '"><i aria-hidden="true"></i><span>' + (v ? 'Pode' : 'Não pode') + '</span></button></div>';
+          }).join('') + '</div>').join('') + '</div>';
     }
     function blocoPessoa() {
       if (!pessoas.length) return '<p class="cfg-g-nota">Só há administradores na equipe: eles podem tudo.</p>';
@@ -1417,6 +1497,7 @@ B7.Usuarios = (function () {
         (aba === 'funcao' ? tabelaFuncoes() : blocoPessoa());
       caixa.querySelectorAll('[data-pa-aba]').forEach(b => b.onclick = () => { aba = b.dataset.paAba; pintar(); });
       caixa.querySelectorAll('[data-pa-pessoa]').forEach(b => b.onclick = () => { pessoaSel = b.dataset.paPessoa; pintar(); });
+      caixa.querySelectorAll('[data-pa-fn]').forEach(b => b.onclick = () => { fnA = b.dataset.paFn; pintar(); });
       caixa.querySelectorAll('.pa-cel[data-fn]').forEach(b => b.onclick = async () => {
         const f = fns.find(x => x.id === b.dataset.fn), a = cat.find(x => x.id === b.dataset.ac);
         if (!f || !a) return;
