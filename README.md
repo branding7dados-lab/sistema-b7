@@ -1,172 +1,289 @@
 <div align="center">
 
-<img src="assets/brand/logo-color.png" alt="Branding7" width="210">
-
-# Sistema B7
-
-**O sistema de produção de conteúdo da Branding7.**<br>
-Do planejamento do mês à entrega para o cliente, num lugar só.
-
-<a href="https://branding7dados-lab.github.io/sistema-b7/"><img alt="Abrir o sistema" src="https://img.shields.io/badge/abrir_o_sistema-D63384?style=for-the-badge&logoColor=white"></a>
-<a href="https://github.com/branding7dados-lab/sistema-b7/releases/download/app-desktop/sistema-b7-instalador.exe"><img alt="Baixar para Windows" src="https://img.shields.io/badge/baixar_para_windows-1E3A8A?style=for-the-badge&logoColor=white"></a>
-<img alt="PWA" src="https://img.shields.io/badge/PWA-instal%C3%A1vel-6B3FD8?style=for-the-badge">
-<img alt="Sem build" src="https://img.shields.io/badge/sem_build-HTML_CSS_JS-1B9E6B?style=for-the-badge">
+<img src="docs/banner.svg" alt="Sistema B7 — Branding7" width="100%">
 
 <br>
 
-<img src="docs/prints/painel-m.png" alt="Central B7" width="195">
-<img src="docs/prints/video-m.png" alt="Produção de vídeo" width="195">
-<img src="docs/prints/semanas-m.png" alt="Status semanal" width="195">
-<img src="docs/prints/calendario-m.png" alt="Calendário" width="195">
+<a href="https://branding7dados-lab.github.io/sistema-b7/"><img alt="Abrir o sistema" src="https://img.shields.io/badge/%E2%86%97%20abrir%20o%20sistema-D63384?style=for-the-badge"></a>
+<a href="https://github.com/branding7dados-lab/sistema-b7/releases/download/app-desktop/sistema-b7-instalador.exe"><img alt="Baixar para Windows" src="https://img.shields.io/badge/%E2%8A%9E%20windows-baixar-1E3A8A?style=for-the-badge"></a>
+<a href="https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk"><img alt="Baixar para Android" src="https://img.shields.io/badge/%E2%96%B6%20android-baixar%20apk-1B9E6B?style=for-the-badge"></a>
+
+<img alt="Testes" src="https://img.shields.io/github/actions/workflow/status/branding7dados-lab/sistema-b7/testes.yml?branch=main&label=testes&style=flat-square">
+<img alt="Versão" src="https://img.shields.io/badge/vers%C3%A3o-zzz304-6B3FD8?style=flat-square">
+<img alt="PWA" src="https://img.shields.io/badge/PWA-instal%C3%A1vel-6B3FD8?style=flat-square">
+<img alt="Sem build" src="https://img.shields.io/badge/sem%20build-HTML%20%C2%B7%20CSS%20%C2%B7%20JS-1B9E6B?style=flat-square">
+<img alt="Supabase" src="https://img.shields.io/badge/banco-Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white">
+
+<br><br>
+
+**O sistema de produção de conteúdo da Branding7.**<br>
+Linha editorial, gravação, edição, design, aprovação do cliente, equipe e IA — tudo conversando entre si,<br>
+no navegador, no computador e no celular.
+
+<br>
+
+<img src="docs/prints/painel-m.png" alt="Central B7" width="190">
+<img src="docs/prints/video-m.png" alt="Produção de vídeo" width="190">
+<img src="docs/prints/semanas-m.png" alt="Status semanal" width="190">
+<img src="docs/prints/calendario-m.png" alt="Calendário" width="190">
 
 </div>
 
----
+<br>
 
-## O que é
-
-O Sistema B7 acompanha o conteúdo da agência do começo ao fim. Cada cliente tem
-uma **linha editorial** por mês; dela saem as **gravações**, as demandas de
-**vídeo** e as de **design**; o cliente **aprova** pelo portal dele; e o
-**status semanal** fecha a conta dos sete dias.
-
-```
-Linha editorial  →  Gravação  →  Produção  →  Aprovação  →  Status semanal
-   o plano do        roteiros     vídeo e      o cliente      o relatório
-   mês do cliente    e cenas      design       vê e aprova    que vai pra ele
-```
-
-Não é um gerenciador de tarefas genérico: cada tela conhece o fluxo da agência.
-Uma demanda de vídeo sabe de qual conteúdo da linha ela nasceu, e o status
-semanal se atualiza sozinho quando o conteúdo é publicado.
-
----
-
-## As telas
-
-<table>
+<table align="center">
 <tr>
-<td width="25%" align="center"><img src="docs/prints/painel-m.png" width="100%"><br><b>Central B7</b><br><sub>O panorama do dia: o que atrasou, o que vence, o que está esperando você.</sub></td>
-<td width="25%" align="center"><img src="docs/prints/video-m.png" width="100%"><br><b>Produção de vídeo</b><br><sub>A fila de edição em lista ou kanban, com prazo, responsável e versões.</sub></td>
-<td width="25%" align="center"><img src="docs/prints/design-m.png" width="100%"><br><b>Design</b><br><sub>As artes por etapa, da produção à aprovação do cliente.</sub></td>
-<td width="25%" align="center"><img src="docs/prints/semanas-m.png" width="100%"><br><b>Status semanal</b><br><sub>O relatório de sete dias, pronto para exportar e enviar.</sub></td>
-</tr>
-<tr>
-<td align="center"><img src="docs/prints/linhas-m.png" width="100%"><br><b>Linhas editoriais</b><br><sub>O planejamento de cada cliente, mês a mês, com pilares e datas.</sub></td>
-<td align="center"><img src="docs/prints/clientes-m.png" width="100%"><br><b>Clientes</b><br><sub>A carteira da agência, cada um com o espaço dele.</sub></td>
-<td align="center"><img src="docs/prints/gravacoes-m.png" width="100%"><br><b>Gravações</b><br><sub>Sessões, roteiros e cenas — com teleprompter embutido.</sub></td>
-<td align="center"><img src="docs/prints/calendario-m.png" width="100%"><br><b>Calendário</b><br><sub>Agenda da produção, integrada ao Google Agenda.</sub></td>
+<td align="center"><h2>118</h2><sub>tabelas no banco</sub></td>
+<td align="center"><h2>214</h2><sub>regras de acesso por linha</sub></td>
+<td align="center"><h2>385</h2><sub>funções no servidor</sub></td>
+<td align="center"><h2>107</h2><sub>módulos de tela</sub></td>
+<td align="center"><h2>3</h2><sub>plataformas</sub></td>
+<td align="center"><h2>400+</h2><sub>versões publicadas</sub></td>
 </tr>
 </table>
 
-<div align="center">
-<img src="docs/prints/video-d.png" alt="Produção de vídeo no computador" width="88%">
-<br><sub><i>A mesma tela no computador: barra lateral, mais colunas e a gestão da equipe.</i></sub>
-</div>
+---
+
+## ✦ O que é
+
+O Sistema B7 acompanha o conteúdo da agência **do começo ao fim**. Cada cliente
+tem uma **linha editorial** por mês; dela saem as **gravações**, as demandas de
+**vídeo** e de **design**; o cliente **aprova** pelo portal dele; e o **status
+semanal** fecha a conta dos sete dias.
+
+```mermaid
+flowchart LR
+    L["📋 Linha editorial<br/><sub>o plano do mês</sub>"] --> G["🎥 Gravação<br/><sub>roteiros e cenas</sub>"]
+    G --> P["🎬 Produção<br/><sub>vídeo e design</sub>"]
+    P --> A["✅ Aprovação<br/><sub>o cliente vê e aprova</sub>"]
+    A --> S["📊 Status semanal<br/><sub>o relatório do cliente</sub>"]
+    style L fill:#29236E,color:#fff,stroke:#29236E
+    style G fill:#45237F,color:#fff,stroke:#45237F
+    style P fill:#6B2490,color:#fff,stroke:#6B2490
+    style A fill:#8E2189,color:#fff,stroke:#8E2189
+    style S fill:#B01E82,color:#fff,stroke:#B01E82
+```
+
+Não é um gerenciador de tarefas genérico: **cada tela conhece o fluxo da
+agência**. Uma demanda de vídeo sabe de qual conteúdo da linha ela nasceu, a
+gravação sabe quais roteiros vai gravar, e o status semanal se atualiza sozinho
+quando o conteúdo é publicado.
 
 ---
 
-## O que o sistema faz
+## ✦ Onde roda
+
+<table>
+<tr>
+<td width="33%" valign="top" align="center">
+
+### 🌐 Navegador
+**PWA instalável**<br>
+<sub>Abre em qualquer navegador e vira app na tela inicial. Funciona sem
+internet para o que já foi visto e se atualiza sozinho.</sub>
+
+</td>
+<td width="33%" valign="top" align="center">
+
+### 🖥️ Windows
+**Programa (Electron)**<br>
+<sub>Atualização automática, avisos do sistema, WhatsApp integrado com os
+clientes reconhecidos e o atalho da Retrospectiva no Alt.</sub>
+
+</td>
+<td width="33%" valign="top" align="center">
+
+### 📱 Android
+**App (Capacitor)**<br>
+<sub>Notificações no estilo WhatsApp (foto, Responder, Marcar como lida,
+Silenciar), widget "Meu dia", gestos de arrastar entre abas e barra de vidro
+líquido.</sub>
+
+</td>
+</tr>
+</table>
+
+---
+
+## ✦ O que o sistema faz
 
 <table>
 <tr><td width="33%" valign="top">
 
-### 📋 Planejamento
-Linha editorial por cliente e por mês, com pilares de conteúdo, posicionamento,
-metas e calendário de postagem. Duplicar um mês leva o que você escolher.
+#### 📋 Planejamento
+- Linha editorial por cliente e mês, com pilares, funil e formatos
+- Calendário de publicações e **datas comemorativas** que combinam com cada cliente
+- Pacotes de produção: o que cada cliente contrata por mês
+- Duplicar um mês levando só o que interessa
 
 </td><td width="33%" valign="top">
 
-### 🎬 Produção
-Gravações com roteiros, cenas e teleprompter. Demandas de vídeo e de design em
-kanban, com prazo, prioridade, responsável e histórico de versões.
+#### 🎬 Produção
+- **Gravações** com roteiros, cenas, referências e **teleprompter**
+- **Vídeo** em lista ou kanban: prazo, responsável, versões, comentários com minuto, entrega
+- **Design** por etapa: versões, revisão por parte, aprovação interna e do cliente
+- **Legendas com IA**: corrige a fala sem trocar palavras
+- Projetos avulsos fora do mês
 
 </td><td width="33%" valign="top">
 
-### ✅ Aprovação
-Portal próprio do cliente: ele vê só o que foi liberado, comenta e aprova.
-Quem pode dar o aval oficial é definido conta por conta.
+#### ✅ Cliente
+- **Portal próprio**: vê só o que foi liberado, comenta e aprova
+- Papéis de dono, gestor e equipe por empresa
+- Pedidos pelo portal, recados e **pesquisa de satisfação**
+- Status semanal exportável em PDF, um a um ou em lote
 
 </td></tr>
 <tr><td valign="top">
 
-### 📊 Status semanal
-O relatório de sete dias que vai para o cliente, montado a partir da linha
-editorial e exportável em PDF ou em lote.
+#### 👥 Equipe e gestão
+- **Gestão → Equipe**: o que cada pessoa entregou, pontualidade, atrasos e o que precisa
+- Saúde de cada cliente (0–100) com os motivos
+- **Acompanhar ao vivo** a tela da equipe (e a do PC, nos computadores da empresa)
+- Ausências, aniversários, repasse de trabalho e a **Retrospectiva** do mês
 
 </td><td valign="top">
 
-### 🔔 Avisos
-Notificações no aparelho, mesmo com o sistema fechado: prazo vencendo, arte
-esperando aprovação, gravação marcada para amanhã.
+#### 💬 Comunicação
+- **Chat** da equipe em tempo real, com foto, áudio, reações e respostas
+- Avisos no aparelho mesmo com o sistema fechado, com **horário de silêncio**
+- Prazos que avisam antes e escalam
+- Resumo semanal por e-mail e mural de recados
 
 </td><td valign="top">
 
-### 🤖 IA
-Apoio para roteiro, legenda, hashtags e análise da linha editorial — sempre com
-o contexto do cliente e dentro das permissões de quem pediu.
+#### 🤖 Inteligência artificial
+- Assistente que conhece o cliente, a fila e a agência
+- Roteiros, legendas, hashtags, revisão de marca e riscos
+- Demandas criadas a partir de um pedido ou de um áudio de reunião
+- **Groq** para o que é rápido, **Gemini** para áudio, imagem e português palavra por palavra
 
 </td></tr>
 </table>
 
+<div align="center">
+<img src="docs/prints/gestao-equipe-d.png" alt="Gestão → Equipe" width="88%">
+<br><sub><i>Gestão → Equipe: as entregas de cada pessoa, a pontualidade dos vídeos e o que pede atenção.</i></sub>
+<br><br>
+<img src="docs/prints/video-d.png" alt="Produção de vídeo no computador" width="88%">
+<br><sub><i>Produção de vídeo no computador: barra lateral, mais colunas e a gestão da equipe.</i></sub>
+</div>
+
 ---
 
-## Quem usa e o que cada um vê
+## ✦ As telas
 
-| Papel | Enxerga |
+<table>
+<tr>
+<td width="25%" align="center"><img src="docs/prints/painel-m.png" width="100%"><br><b>Central B7</b><br><sub>O panorama do dia: o que atrasou, o que vence, o que espera você.</sub></td>
+<td width="25%" align="center"><img src="docs/prints/video-m.png" width="100%"><br><b>Produção de vídeo</b><br><sub>A fila de edição com prazo, responsável e versões.</sub></td>
+<td width="25%" align="center"><img src="docs/prints/design-m.png" width="100%"><br><b>Design</b><br><sub>As artes por etapa, da produção à aprovação do cliente.</sub></td>
+<td width="25%" align="center"><img src="docs/prints/semanas-m.png" width="100%"><br><b>Status semanal</b><br><sub>O relatório de sete dias, pronto para enviar.</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/prints/linhas-m.png" width="100%"><br><b>Linhas editoriais</b><br><sub>O planejamento de cada cliente, mês a mês.</sub></td>
+<td align="center"><img src="docs/prints/clientes-m.png" width="100%"><br><b>Clientes</b><br><sub>A carteira da agência, cada um com o espaço dele.</sub></td>
+<td align="center"><img src="docs/prints/gravacoes-m.png" width="100%"><br><b>Gravações</b><br><sub>Sessões, roteiros e cenas, com teleprompter.</sub></td>
+<td align="center"><img src="docs/prints/calendario-m.png" width="100%"><br><b>Calendário</b><br><sub>A agenda da produção, ligada ao Google Agenda.</sub></td>
+</tr>
+</table>
+
+---
+
+## ✦ Quem usa e o que cada um vê
+
+| Grupo | Papel | Enxerga |
+|---|---|---|
+| **Colaboradores** | Administrador | Tudo, incluindo contas, acessos, Gestão e configurações. |
+| | Coordenador | A produção inteira da agência, sem a administração de contas. |
+| | Designer | A fila de design e o contexto do briefing. |
+| | Videomaker | A fila de edição, as gravações e o contexto do cliente. |
+| **Parceiros B7** | Freelancers | O mesmo da função dada, marcados à parte para a gestão. |
+| **Clientes** | Dono · Gestor · Equipe | Só o portal da empresa: o que foi liberado, para ver, pedir e aprovar. |
+
+Cada função tem um **nível por módulo** (sem acesso · ver · editar · total) e
+**ações** que ligam ou desligam sozinhas — por função ou só para uma pessoa.
+
+> 🔒 As permissões valem **no banco**, não só na tela. Esconder um botão não
+> protege nada: cada tabela tem regra por linha, o papel vem sempre do servidor e
+> o próprio banco confere, sozinho, se alguém consegue mais do que devia.
+
+---
+
+## ✦ Como foi construído
+
+```mermaid
+flowchart TB
+    subgraph Aparelhos["Aparelhos"]
+      W["🌐 Navegador · PWA"]
+      PC["🖥️ Windows · Electron"]
+      AN["📱 Android · Capacitor"]
+    end
+    subgraph Site["GitHub Pages"]
+      H["index.html + js/ + styles/<br/><sub>HTML, CSS e JS puros — sem build</sub>"]
+      SW["sw.js<br/><sub>cache, versão e modo sem rede</sub>"]
+    end
+    subgraph Supa["Supabase"]
+      DB[("PostgreSQL<br/>118 tabelas · RLS em todas")]
+      RT["Realtime<br/><sub>tudo ao vivo</sub>"]
+      ST["Storage<br/><sub>artes, chat, fotos</sub>"]
+      FN["Funções de servidor<br/><sub>b7-auth · b7-ia · b7-push · b7-arte<br/>google-agenda · oportunidades-sync</sub>"]
+    end
+    IA["🤖 Groq + Gemini"]
+    PUSH["🔔 Web Push + Firebase"]
+    W & PC & AN --> H
+    H --> DB & RT & ST & FN
+    FN --> IA & PUSH
+```
+
+**Sem framework e sem etapa de compilação.** O que está no repositório é
+exatamente o que roda no navegador. Publicar é dar um merge: o GitHub Pages
+serve em menos de um minuto, os apps do Windows e do Android são montados pelo
+próprio GitHub, e cada aparelho recebe o aviso de versão nova.
+
+| Camada | Tecnologia |
 |---|---|
-| **Administrador** | Tudo, incluindo contas, acessos e configurações do sistema. |
-| **Coordenador** | A produção inteira da agência, sem a administração de contas. |
-| **Designer** | A fila de design e o contexto do briefing (linha editorial, em leitura). |
-| **Videomaker** | A fila de edição de vídeo e o contexto mínimo do cliente. |
-| **Cliente** | Só o portal dele: o que foi liberado, para ver, comentar e aprovar. |
+| Telas | HTML, CSS e JavaScript puros · View Transitions · vidro líquido com filtro SVG |
+| Banco | Supabase (PostgreSQL) · RLS · Realtime · Storage |
+| Servidor | Funções Deno no Supabase (login, 2 etapas, IA, avisos, agenda, artes) |
+| IA | Groq (rápido) com Gemini de reserva e para áudio e imagem |
+| Avisos | Web Push · Firebase Cloud Messaging · e-mail (Brevo) |
+| Apps | Electron (Windows) · Capacitor (Android) |
+| Testes | Playwright: teste de fumaça que abre todas as telas + testes por módulo |
 
-> As permissões valem **no banco**, não só na tela. Esconder um botão não
-> protege nada — cada tabela tem política por linha, e o papel vem sempre do
-> servidor, nunca do navegador.
-
----
-
-## Como foi construído
-
-**Sem framework e sem etapa de compilação.** HTML, CSS e JavaScript puros: o que
-está no repositório é exatamente o que roda no navegador. Publicar é dar um
-merge — o GitHub Pages serve em menos de um minuto, e o sistema avisa sozinho
-quando há versão nova.
+<details>
+<summary><b>Estrutura das pastas</b></summary>
 
 ```
 sistema-b7/
 ├── index.html              a casca: topo, navegação e os contêineres das telas
 ├── sw.js                   service worker: cache, versão e funcionamento sem rede
-├── manifest.json           o que faz virar app instalável no celular
+├── manifest.json           o que faz virar app instalável
 │
-├── js/
-│   ├── app.js              rotas, arranque e a abertura
-│   ├── auth.js             sessão, papéis e troca de conta
-│   ├── database.js         toda conversa com o Supabase mora aqui
+├── js/                     107 módulos — um por área
+│   ├── app.js              rotas, arranque e trocas de tela
+│   ├── auth.js             sessão, papéis e a VERSAO
+│   ├── database.js         toda conversa com o Supabase
 │   ├── permissoes.js       um lugar só decide o que cada papel alcança
-│   ├── ui.js               modais, avisos e as peças compartilhadas
-│   │
-│   ├── linha.js            linha editorial  ·  conteudo.js   detalhe do conteúdo
-│   ├── video.js            produção de vídeo ·  design.js     produção de design
-│   ├── semana.js           status semanal    ·  gravacao.js   gravações
-│   ├── calendario.js       calendário        ·  portal.js     portal do cliente
+│   ├── nav.js · vidro.js   menu, barra de baixo e o vidro líquido
+│   ├── video.js · design.js · gravacao.js · linha.js · semana.js …
+│   ├── gestao.js · colaboradores.js · usuarios.js
 │   └── ia*.js              os apoios de IA
 │
 ├── styles/                 um arquivo de estilo por área
 ├── assets/                 marca, ícones e fontes
-├── supabase/functions/     funções de servidor (login, IA, avisos, agenda)
-├── migration_*.sql         a história do banco, em ordem
-└── testes/                 teste de fumaça que abre todas as telas
+├── app-android/            o app Android (Capacitor)
+├── app-desktop/            o programa do Windows (Electron)
+├── supabase/functions/     funções de servidor
+├── migration_*.sql         a história do banco, em ordem (160 migrações)
+└── testes/                 fumaça + testes por módulo
 ```
 
-**Supabase como banco.** 67 tabelas em PostgreSQL, com proteção por linha em
-todas elas. Sete funções de servidor cuidam do que não pode viver no navegador:
-login, IA, notificações e Google Agenda.
+</details>
 
 ---
 
-## Instalação
+## ✦ Instalação
 
 <details>
 <summary><b>Passo a passo completo</b> — para montar uma cópia nova do zero</summary>
@@ -250,7 +367,7 @@ O GitHub roda sozinho a cada envio — veja `.github/workflows/testes.yml`.
 
 ---
 
-## Publicar uma versão
+## ✦ Publicar uma versão
 
 Toda publicação muda dois números, sempre juntos:
 
@@ -263,14 +380,16 @@ Depois é só dar merge na `main`. O GitHub Pages publica em menos de um minuto 
 cada aparelho recebe o aviso de atualização.
 
 Cada pacote de mudança tem um relatório próprio (`RELATORIO_*.md`) explicando o
-que mudou e por quê — são **156** até agora.
+que mudou e por quê — são **mais de 400** até agora.
 
 ---
 
-## Segurança
+## ✦ Segurança
 
-- **Tem login**, com cinco papéis e sessão no servidor. O papel vem sempre do
-  banco, nunca do navegador.
+- **Login com verificação em 2 etapas** (e-mail ou app autenticador), entrar
+  com Google e "esqueci minha senha" por e-mail de recuperação.
+- **Níveis por módulo e ações por função**, com histórico de quem mudou o acesso
+  de quem e uma conferência automática das regras do banco.
 - **Proteção por linha em todas as tabelas.** Um cliente só alcança os dados
   dele, e só o que foi liberado para ele.
 - **Nenhum segredo no repositório.** Só a chave publicável, que é pública por
@@ -284,7 +403,7 @@ descreva a falha num lugar público.
 
 ---
 
-## Documentos
+## ✦ Documentos
 
 | Arquivo | Sobre |
 |---|---|
