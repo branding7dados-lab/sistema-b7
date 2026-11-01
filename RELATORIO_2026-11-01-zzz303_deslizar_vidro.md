@@ -19,7 +19,8 @@
   - três passadas, uma por cor, com forças um pouco diferentes, que dão a franja colorida;
   - um desfoque leve por cima.
   O filtro é aplicado com `backdrop-filter: url(#b7-vidro-liq)` e refeito quando a barra muda de tamanho.
-- `styles/nav.css`: vidro mais claro em todo celular, com brilho que corre pelo contorno (máscara), reflexo no alto e a pílula do item ativo como lente menor. iPhone/Safari e o modo leve ficam com o vidro desfocado, sem o filtro SVG.
+- Ajustado pela referência do Kevin (Liquid Glass da Apple): quase sem véu (12–18% de cor), desfoque leve (9 px; 4 px dentro do filtro), curva forte só na borda, contorno fino e brilhante e reflexo de luz no canto de cima. O mapa tem cinza neutro fora da forma arredondada, para as pontas da pílula não puxarem imagem de fora da barra.
+- `styles/nav.css`: em todo celular, com brilho que corre pelo contorno (máscara), reflexo no alto e a pílula do item ativo como lente menor. iPhone/Safari e o modo leve ficam com o vidro desfocado, sem o filtro SVG.
 
 ## Conferido
 - Simulação de toque: de Clientes, arrastar para a esquerda leva a Gravações, para a direita volta a Clientes, e começar na borda não troca.

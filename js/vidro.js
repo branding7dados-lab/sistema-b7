@@ -39,7 +39,10 @@ B7.Vidro = (function () {
       '<defs><linearGradient id="r" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#f00"/></linearGradient>' +
       '<linearGradient id="b" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#00f"/></linearGradient>' +
       '<filter id="d"><feGaussianBlur stdDeviation="' + (borda * 0.55).toFixed(1) + '"/></filter></defs>' +
-      '<rect width="' + w + '" height="' + h + '" fill="#000"/>' +
+      /* fora da forma arredondada: cinza neutro = sem deslocamento (senão as
+         pontas da pílula puxariam a imagem de fora da barra e manchariam) */
+      '<rect width="' + w + '" height="' + h + '" fill="#808080"/>' +
+      '<rect width="' + w + '" height="' + h + '" rx="' + raio + '" fill="#000"/>' +
       '<rect width="' + w + '" height="' + h + '" rx="' + raio + '" fill="url(#r)"/>' +
       '<rect width="' + w + '" height="' + h + '" rx="' + raio + '" fill="url(#b)" style="mix-blend-mode:screen"/>' +
       '<rect x="' + borda + '" y="' + borda + '" width="' + Math.max(1, w - 2 * borda) + '" height="' + Math.max(1, h - 2 * borda) + '" rx="' +
@@ -48,8 +51,8 @@ B7.Vidro = (function () {
   }
 
   function filtro(w, h, raio) {
-    const borda = Math.max(8, Math.round(Math.min(h, w) * 0.22));
-    const forca = Math.round(Math.min(h, 80) * 0.42);
+    const borda = Math.max(7, Math.round(Math.min(h, w) * 0.2));
+    const forca = Math.round(Math.min(h, 80) * 0.9);
     /* uma passada por canal de cor, com força um pouco diferente: a franja */
     const canal = (nome, k, m) => '<feDisplacementMap in="SourceGraphic" in2="mapa" scale="' + (-forca * k).toFixed(1) + '" xChannelSelector="R" yChannelSelector="B" result="d' + nome + '"/>' +
       '<feColorMatrix in="d' + nome + '" type="matrix" values="' + m + '" result="c' + nome + '"/>';
@@ -60,7 +63,7 @@ B7.Vidro = (function () {
       canal('b', 1.10, '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0') +
       '<feBlend in="cr" in2="cg" mode="screen" result="rg"/>' +
       '<feBlend in="rg" in2="cb" mode="screen" result="rgb"/>' +
-      '<feGaussianBlur in="rgb" stdDeviation="2.2"/>' +
+      '<feGaussianBlur in="rgb" stdDeviation="4"/>' +
       '</filter>';
   }
 
