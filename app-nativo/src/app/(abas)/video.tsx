@@ -6,7 +6,7 @@ import { useSessao } from '@/lib/sessao';
 import { ROT_VIDEO, VIDEO_ABERTO, lista, useLeitura } from '@/lib/dados';
 import { supabase } from '@/lib/supabase';
 import { hojeISO, prazoTexto } from '@/lib/datas';
-import { abrirNoSistema } from '@/lib/sistema';
+import { router } from 'expo-router';
 import { Tela } from '@/ui/tela';
 import { Segmento } from '@/ui/segmento';
 import { Avatar, Cartao, Linha, Secao, Selo, Vazio } from '@/ui/base';
@@ -34,7 +34,7 @@ export default function Video() {
                   sub={[d.codigo, d.cliente_nome].filter(Boolean).join(' · ')}
                   esquerda={<Avatar nome={d.videomaker_nome || 'Sem dono'} tam={36} />}
                   direita={<Selo texto={prazoTexto(d.prazo)} tom={d.prazo && d.prazo < hoje && st !== 'aguardando_aprovacao' ? 'erro' : d.prazo === hoje ? 'ambar' : 'neutro'} />}
-                  aoTocar={() => abrirNoSistema('#/video/' + d.id)} />
+                  aoTocar={() => router.push({ pathname: '/video/[id]', params: { id: d.id } })} />
               ))}
             </Cartao>
           </View>

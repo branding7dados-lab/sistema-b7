@@ -4,11 +4,12 @@ import Constants from 'expo-constants';
 import { useSessao } from '@/lib/sessao';
 import { useCores } from '@/lib/tema';
 import { abrirNoSistema } from '@/lib/sistema';
+import { router } from 'expo-router';
 import { Tela } from '@/ui/tela';
 import { Avatar, Cartao, Linha, Secao } from '@/ui/base';
 
 const ATALHOS: [string, string][] = [
-  ['Conversas', '#/conversas'], ['Clientes', '#/clientes'], ['Linhas editoriais', '#/linhas'], ['Aprovações', '#/aprovacoes'],
+  ['Clientes', '#/clientes'], ['Linhas editoriais', '#/linhas'], ['Aprovações', '#/aprovacoes'],
   ['Calendário', '#/calendario'], ['Gestão', '#/gestao'], ['Configurações', '#/config'],
 ];
 
@@ -19,6 +20,10 @@ export default function Mais() {
     <Tela titulo="Mais">
       <Cartao style={{ marginTop: 14 }}>
         <Linha titulo={perfil?.nome || ''} sub={'@' + (perfil?.username || '')} esquerda={<Avatar nome={perfil?.nome} url={perfil?.avatar_url} tam={48} />} ultimo />
+      </Cartao>
+      <Secao titulo="No app" />
+      <Cartao>
+        <Linha titulo="Conversas" sub="chat com a equipe" ultimo direita={<Text style={{ color: c.ink4, fontSize: 18 }}>›</Text>} aoTocar={() => router.push('/conversas')} />
       </Cartao>
       <Secao titulo="No sistema completo" />
       <Cartao>
