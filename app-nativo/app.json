@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "B7",
+    "slug": "b7-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "br.com.branding7.b7app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#3A2080",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "br.com.branding7.b7app",
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-sqlite",
+      "expo-image",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 140,
+          "backgroundColor": "#2A1D6E",
+          "dark": {
+            "backgroundColor": "#120D24"
+          }
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "scheme": "b7app",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
