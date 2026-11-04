@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-3.1.1', versao: '3.1.1', em: '2026-11-04T17:00:00-03:00',
+    titulo: 'Sistema mais leve',
+    itens: ['Trocar de aba ficou mais rápido: a tela não fica mais parada esperando a próxima carregar.',
+            'O vidro da barra de baixo, no celular, ficou bem mais leve, com o mesmo efeito.',
+            'O sistema parou de recalcular a página à toa a cada mudança, principalmente no computador.'] },
   { id: 'v-3.1.0', versao: '3.1.0', em: '2026-11-04T15:00:00-03:00',
     titulo: 'Quadro de prioridade na Edição de vídeo',
     itens: ['Na Edição de vídeo, a aba Prioridade mostra a fila inteira em três faixas: Urgente, Alta e Normal.',

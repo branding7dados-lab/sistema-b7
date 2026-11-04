@@ -439,7 +439,7 @@ B7.Design = (function () {
     ligarArea(area);
     ligarThumbs(area);
     ligarArrastar(area);
-    area.classList.remove('ds-troca'); void area.offsetWidth; area.classList.add('ds-troca');
+    area.classList.add('ds-troca');   /* v3.1.1: conteúdo novo já anima sozinho, sem forçar recálculo */
     const selOn = area.querySelector('.ds-movel-sel .on');
     if (selOn && selOn.scrollIntoView && ehMovel()) selOn.scrollIntoView({ inline: 'center', block: 'nearest' });
   }

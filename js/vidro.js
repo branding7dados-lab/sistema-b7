@@ -8,8 +8,8 @@
 
      • um "mapa de deslocamento" do tamanho da barra: neutro no meio e
        inclinado nas bordas → o conteúdo de trás entorta nas beiradas;
-     • três passadas, uma por cor (R, G, B), com forças um pouco
-       diferentes → a leve franja colorida do vidro;
+     • uma passada de deslocamento (até a v3.1.0 eram três, uma por cor,
+       para uma franja colorida que quase não se via e pesava no celular);
      • desfoque e saturação por cima; brilho e sombra interna no CSS.
 
    Só o Chromium (Android, programa do Windows, Chrome) desenha filtro SVG
@@ -30,6 +30,7 @@ B7.Vidro = (function () {
     !(window.matchMedia && window.matchMedia('(prefers-reduced-transparency: reduce)').matches);
 
   let svg = null, ultimo = '';
+  const raioCache = { t: '', v: 24, k: ':24' };
 
   /* O mapa: vermelho = empurra em x, azul = empurra em y; 50% = parado.
      Dois degradês cruzados dão a inclinação das bordas e um retângulo
@@ -53,27 +54,38 @@ B7.Vidro = (function () {
   function filtro(w, h, raio) {
     const borda = Math.max(7, Math.round(Math.min(h, w) * 0.2));
     const forca = Math.round(Math.min(h, 80) * 0.9);
-    /* uma passada por canal de cor, com força um pouco diferente: a franja */
-    const canal = (nome, k, m) => '<feDisplacementMap in="SourceGraphic" in2="mapa" scale="' + (-forca * k).toFixed(1) + '" xChannelSelector="R" yChannelSelector="B" result="d' + nome + '"/>' +
-      '<feColorMatrix in="d' + nome + '" type="matrix" values="' + m + '" result="c' + nome + '"/>';
     return '<filter id="b7-vidro-liq" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">' +
       '<feImage href="' + mapa(w, h, raio, borda) + '" x="0" y="0" width="' + w + '" height="' + h + '" preserveAspectRatio="none" result="mapa"/>' +
-      canal('r', 1.00, '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0') +
-      canal('g', 1.05, '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0') +
-      canal('b', 1.10, '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0') +
-      '<feBlend in="cr" in2="cg" mode="screen" result="rg"/>' +
-      '<feBlend in="rg" in2="cb" mode="screen" result="rgb"/>' +
-      '<feGaussianBlur in="rgb" stdDeviation="4"/>' +
+      /* v3.1.1: uma passada só (antes eram três, uma por cor, para a franja
+         colorida). O filtro roda a cada quadro em que algo passa atrás da
+         barra; a franja quase não se via e custava 3× mais no celular. */
+      '<feDisplacementMap in="SourceGraphic" in2="mapa" scale="' + (-forca * 1.05).toFixed(1) + '" xChannelSelector="R" yChannelSelector="B" result="d"/>' +
+      '<feGaussianBlur in="d" stdDeviation="4"/>' +
       '</filter>';
   }
 
+  /* v3.1.1: o tamanho da barra vem de um ResizeObserver (o navegador avisa
+     quando muda). Antes cada mudança de classe no <html> — e elas
+     acontecem a toda hora: troca de tela, tempo real, animações — media a
+     barra com getBoundingClientRect e obrigava a página inteira a se
+     recalcular, até no computador, onde a barra nem aparece. */
+  let tam = null, olhando = null;
+  const ro = window.ResizeObserver ? new ResizeObserver(es => {
+    const e = es[es.length - 1], b = e.borderBoxSize && e.borderBoxSize[0];
+    tam = b ? { w: Math.round(b.inlineSize), h: Math.round(b.blockSize) } : { w: Math.round(e.contentRect.width), h: Math.round(e.contentRect.height) };
+    refazer();
+  }) : null;
   function aplicar(barra) {
     if (!barra) return;
     if (!pode()) { if (html.classList.contains('vidro-liquido')) html.classList.remove('vidro-liquido'); return; }
-    const r = barra.getBoundingClientRect();
-    const w = Math.round(r.width), h = Math.round(r.height);
-    if (!w || !h) return;
-    const raio = parseFloat(getComputedStyle(barra).borderTopLeftRadius) || 24;
+    if (ro && olhando !== barra) { if (olhando) ro.unobserve(olhando); olhando = barra; ro.observe(barra); return; }
+    if (!ro) { const r = barra.getBoundingClientRect(); tam = { w: Math.round(r.width), h: Math.round(r.height) }; }
+    const w = tam ? tam.w : 0, h = tam ? tam.h : 0;
+    if (!w || !h) return;   /* barra escondida (computador): nada a desenhar */
+    const chaveTam = w + 'x' + h;
+    if (chaveTam + raioCache.k === ultimo && html.classList.contains('vidro-liquido')) return;
+    if (raioCache.t !== chaveTam) { raioCache.t = chaveTam; raioCache.v = parseFloat(getComputedStyle(barra).borderTopLeftRadius) || 24; raioCache.k = ':' + raioCache.v; }
+    const raio = raioCache.v;
     const chave = w + 'x' + h + ':' + raio;
     if (chave !== ultimo) {
       ultimo = chave;
@@ -93,9 +105,12 @@ B7.Vidro = (function () {
     if (pedido) return;
     pedido = requestAnimationFrame(() => { pedido = 0; aplicar(document.getElementById('nav-inferior')); });
   };
-  window.addEventListener('resize', refazer, { passive: true });
-  /* o modo leve liga/desliga depois: acompanha */
-  try { new MutationObserver(refazer).observe(html, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+  if (!ro) window.addEventListener('resize', refazer, { passive: true });
+  /* o modo leve liga/desliga depois: acompanha — só quando ELE muda, não a
+     cada classe que entra e sai do <html> */
+  let leveAntes = html.classList.contains('modo-leve');
+  try { new MutationObserver(() => { const l = html.classList.contains('modo-leve'); if (l !== leveAntes) { leveAntes = l; refazer(); } })
+    .observe(html, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
 
   return { aplicar, suportado: () => chromium };
 })();
