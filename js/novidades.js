@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.4.5', versao: '4.4.5', em: '2026-11-05T10:00:00-03:00',
+    titulo: 'Ícones novos no menu',
+    itens: ['O menu lateral, a barra de baixo do celular e o menu "Mais" ganharam ícones novos, de traço fino; o da página aberta fica cheio.',
+            'O WhatsApp agora aparece com o logo oficial dele.'] },
   { id: 'v-4.4.4', versao: '4.4.4', em: '2026-11-05T09:00:00-03:00',
     titulo: 'IA até 10 vezes mais rápida em legendas e textos',
     itens: ['A revisão de legendas (SRT), as legendas de post e as mensagens de WhatsApp com IA passaram a usar um modelo mais rápido do Google: o que levava 15 a 40 segundos agora sai em poucos segundos.',

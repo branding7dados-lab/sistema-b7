@@ -338,3 +338,12 @@ html.modo-leve .cli-secoes-rolo{-webkit-backdrop-filter:none;backdrop-filter:non
 /* limpeza 4.5: Gestão → Equipe no celular — o filtro de período rolava de
    lado, mas o contêiner não encolhia e empurrava a tela */
 @media (max-width: 760px){ .cl-per{max-width:100%;min-width:0;} .cl-per{flex:1 1 100%;} }
+
+/* 4.4.5 — ícones da navegação (Phosphor): traço fino; o destino ativo
+   troca para a versão cheia. Os SVGs vêm em pares .phi-r / .phi-f. */
+svg.phi{fill:currentColor !important;stroke:none !important;flex:none;}
+.phi-f{display:none !important;}
+:is(.nav a.on, .on .ni-ic, .ntr button.on, button.on, a.on) > svg.phi-r,
+.on .ni-ic svg.phi-r{display:none !important;}
+:is(.nav a.on, .ntr button.on, button.on, a.on) > svg.phi-f,
+.on .ni-ic svg.phi-f{display:block !important;}
