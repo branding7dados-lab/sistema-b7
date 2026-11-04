@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.2.0', versao: '4.2.0', em: '2026-11-05T02:00:00-03:00',
+    titulo: 'Abertura Estúdio e mais telas no visual novo',
+    itens: ['Abertura nova, "Estúdio": três refletores acendem um a um, viram para o centro e o logo aparece no foco. Escolha em Configurações → Abertura e sons.',
+            'Gravações: o dia de cada gravação virou um ladrilho de vidro, o de hoje brilha com o degradê da B7, e a barra de itens gravados também ganhou o degradê.',
+            'Calendário e Configurações ganharam o visual Estúdio: grade de vidro, o dia de hoje em destaque e o item aberto do menu com o degradê.'] },
   { id: 'v-4.1.0', versao: '4.1.0', em: '2026-11-05T00:30:00-03:00',
     titulo: 'Estúdio no login, no Painel e na Produção de Vídeo',
     itens: ['No computador, o login ganhou ao lado a vitrine da Branding7, com o caminho de cada trabalho: roteiro, gravação, edição e aprovação.',

@@ -549,11 +549,11 @@ B7.Rota = (function () {
      (streaming 4,9 s; big bang e clássica 6,4 s) */
   /* zzz231: streaming encurtou (as faixas abrem direto o sistema) e entrou o hiperespaço */
   /* zzz234: tinta · glitch · aurora · neon · mosaico */
-  const DURACAO_ESTILO = { streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400, tinta: 4200, glitch: 4200, aurora: 4200, neon: 3800, mosaico: 4200 };
+  const DURACAO_ESTILO = { streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400, tinta: 4200, glitch: 4200, aurora: 4200, neon: 3800, mosaico: 4200, estudio: 4200 };
   const duracaoAbertura = () => reduzMov() ? 6400 : (DURACAO_ESTILO[document.documentElement.getAttribute('data-ab-estilo')] || 6400);
   B7.duracaoAbertura = duracaoAbertura;
   /* qual abertura vale para esta pessoa neste aparelho (a mesma regra do <head> do index.html) */
-  const ESTILOS_AB = [['streaming', 'Streaming'], ['hiper', 'Hiperespaço'], ['tinta', 'Tinta'], ['glitch', 'Glitch'], ['aurora', 'Aurora'],
+  const ESTILOS_AB = [['streaming', 'Streaming'], ['estudio', 'Estúdio'], ['hiper', 'Hiperespaço'], ['tinta', 'Tinta'], ['glitch', 'Glitch'], ['aurora', 'Aurora'],
                       ['neon', 'Neon'], ['mosaico', 'Mosaico'], ['bigbang', 'Big bang'], ['classica', 'Clássica']];
   /* zzz234: o carregamento (a versão curta, ao recarregar) também tem estilos */
   const CARGAS = [['relampago', 'Relâmpago'], ['pulso', 'Pulso'], ['orbita', 'Órbita'], ['barra', 'Barra'], ['brilho', 'Brilho'], ['pontos', 'Pontos']];

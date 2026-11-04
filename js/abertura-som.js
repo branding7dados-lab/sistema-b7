@@ -586,7 +586,7 @@ B7.SomAbertura = (function () {
     [2.3, t => ignicao(t, .7)], [2.3, camaSonora], [2.3, t => coro(t, 2.0, [261.63, 392, 523.25, 659.25], .06, .08)],
     [2.6, letras], [3.2, cintilar], [3.4, assinatura]
   ];
-  const ROTEIROS_EST = { streaming: ROTEIRO_STREAMING, hiper: ROTEIRO_HIPER, tinta: ROTEIRO_TINTA, glitch: ROTEIRO_GLITCH, aurora: ROTEIRO_AURORA, neon: ROTEIRO_NEON, mosaico: ROTEIRO_MOSAICO };
+  const ROTEIROS_EST = { streaming: ROTEIRO_STREAMING, hiper: ROTEIRO_HIPER, tinta: ROTEIRO_TINTA, glitch: ROTEIRO_GLITCH, aurora: ROTEIRO_AURORA, neon: ROTEIRO_NEON, mosaico: ROTEIRO_MOSAICO, estudio: ROTEIRO_AURORA };
   const estiloAtual = () => document.documentElement.getAttribute('data-ab-estilo');
   const roteiroCompleto = () => ROTEIROS_EST[estiloAtual()] || ROTEIRO;
   let inicioAnim = null, tocada = false, roteiro = ROTEIRO;
@@ -656,7 +656,7 @@ B7.SomAbertura = (function () {
     const off = new OAC(2, 44100 * (curto ? 3.5 : 9), 44100);
     preparar(off);
     (curto ? ROTEIRO_CURTO : ROTEIROS_EST[qual] || ROTEIRO).forEach(([quando, fn]) => fn(quando));
-    partida(curto ? 1.0 : (saidaEm || ({ streaming: 3.6, hiper: 4.0, tinta: 4.2, glitch: 4.2, aurora: 4.2, neon: 3.8, mosaico: 4.2 })[qual] || 6.4));
+    partida(curto ? 1.0 : (saidaEm || ({ streaming: 3.6, hiper: 4.0, tinta: 4.2, glitch: 4.2, aurora: 4.2, neon: 3.8, mosaico: 4.2, estudio: 4.2 })[qual] || 6.4));
     const buf = await off.startRendering();
     [ctx, saida, sala, ruido, drone, cama] = salvo;
     if (cru) return [buf.getChannelData(0), buf.getChannelData(1)];

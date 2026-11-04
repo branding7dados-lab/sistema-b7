@@ -747,6 +747,17 @@ html[data-ab-estilo="aurora"]:not(.ab-curta) .b7-abertura.inicial .ab-cor{animat
 html[data-ab-estilo="aurora"]:not(.ab-curta) .b7-abertura.inicial .ab-palavra{animation:abAuPalavra 4.2s both;}
 html[data-ab-estilo="aurora"]:not(.ab-curta) .b7-abertura.inicial .ab-brilho b{animation-delay:3.1s;}
 html[data-ab-estilo="aurora"]:not(.ab-curta) .b7-abertura.inicial .ab-espera{animation-delay:4.8s;}
+/* 4.2: Estúdio — mesmo tempo do logo da aurora; a cena é js/abertura-cenas.js */
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial .ab-ceu{background:radial-gradient(130% 100% at 50% 30%, #1A0E28 0%, #0C0714 55%, #06030B 100%);}
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial .ab-ceu > :not(.ab-grao):not(.ab-vinheta){display:none;}
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial :is(.ab-bloom,.ab-onda,.ab-centelha,.ab-faiscas,.ab-poeira,.ab-carga,.ab-linha,.ab-flare,.ab-titulo){display:none;}
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial .ab-palco{animation:none;}
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial .ab-simbolo{animation:none;}
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial .ab-marca{animation:abAuMarca 4.2s both;}
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial .ab-cor{animation:abAuCor 2.8s both;}
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial .ab-palavra{animation:abAuPalavra 4.2s both;}
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial .ab-brilho b{animation-delay:3.1s;}
+html[data-ab-estilo="estudio"]:not(.ab-curta) .b7-abertura.inicial .ab-espera{animation-delay:4.8s;}
 @keyframes abAuMarca{
   0%,38%{opacity:0;transform:translate3d(0,10px,0) scale(1.06)}
   39%   {opacity:.05;animation-timing-function:cubic-bezier(.22,1,.36,1)}

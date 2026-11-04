@@ -14,6 +14,9 @@
               do logo (0,6–1,2 s) e a palavra pisca depois
      mosaico  quadrados viram das bordas até o centro (0,2–2,0 s) e
               depois se abrem do centro para fora revelando o logo
+     estudio  (4.2) o estúdio acende: três refletores ligam um a um
+              (0,25 / 0,55 / 0,85 s), giram até o centro e a luz da
+              marca abre nos cantos; 1,6 s o logo aparece no foco
    Relógio: o da animação CSS do logo (.ab-marca), como as outras cenas.
    Só na abertura completa e sem "reduzir movimento".
    ===================================================================== */
@@ -27,7 +30,7 @@
   /* as cores da lâmpada */
   const CORES = [[61, 47, 217], [122, 43, 201], [166, 43, 184], [194, 28, 131], [226, 64, 156], [255, 95, 168], [255, 143, 203], [255, 179, 107]];
   const rgba = (c, a) => 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')';
-  const ESTILOS = ['tinta', 'glitch', 'aurora', 'neon', 'mosaico'];
+  const ESTILOS = ['tinta', 'glitch', 'aurora', 'neon', 'mosaico', 'estudio'];
   const estilo = () => html.getAttribute('data-ab-estilo');
   const ligada = () => {
     if (ESTILOS.indexOf(estilo()) < 0) return false;
@@ -231,7 +234,55 @@
     };
   }
 
-  const CENAS = { tinta, glitch, aurora, neon, mosaico };
+  /* -------------------------------------------------------- ESTÚDIO (4.2) */
+  function estudio(W, H, celular) {
+    const LIGA = [.25, .55, .85];
+    const COR_R = [[200, 180, 255], [255, 225, 245], [255, 170, 215]];
+    const refl = [.18, .5, .82].map((u, i) => ({ x: W * u, liga: LIGA[i], cor: COR_R[i] }));
+    const poeira = Array.from({ length: celular ? 40 : 90 }, () => ({ u: Math.random(), v: Math.random(), r: .5 + Math.random() * 1.3, f: Math.random() * 6.28, s: .02 + Math.random() * .05 }));
+    /* um sprite de cone: forte no alto, sumindo para baixo */
+    const cone = c => { const cv = document.createElement('canvas'); cv.width = 64; cv.height = 256; const g = cv.getContext('2d');
+      const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, rgba(c, .55)); gr.addColorStop(.6, rgba(c, .14)); gr.addColorStop(1, rgba(c, 0));
+      g.fillStyle = gr; g.beginPath(); g.moveTo(26, 0); g.lineTo(38, 0); g.lineTo(64, 256); g.lineTo(0, 256); g.closePath(); g.fill(); return cv; };
+    const cones = COR_R.map(cone);
+    return (g, t, cx, cy) => {
+      g.globalCompositeOperation = 'lighter';
+      const gira = suave(lim((t - 1.05) / .9, 0, 1));            /* 1,05–1,95 s os refletores miram o logo */
+      const abre = suave(lim((t - 1.3) / 1.2, 0, 1));            /* a luz da marca nos cantos */
+      const baixa = 1 - lim((t - 1.9) / 1.2, 0, 1) * .7;        /* e eles baixam para o logo respirar */
+      /* a luz da marca, igual ao fundo do sistema */
+      if (abre > 0) {
+        const R1 = Math.max(W, H) * .75, R2 = Math.max(W, H) * .65;
+        g.globalAlpha = abre * .55; g.drawImage(bolha([194, 28, 131]), W * .92 - R1, -H * .12 - R1, R1 * 2, R1 * 2);
+        g.globalAlpha = abre * .5; g.drawImage(bolha([91, 68, 192]), -W * .06 - R2, H * 1.1 - R2, R2 * 2, R2 * 2);
+      }
+      refl.forEach((r, i) => {
+        const lt = t - r.liga; if (lt < 0) return;
+        const flash = lt < .08 ? 1 : Math.max(0, 1 - (lt - .08) / .25);    /* o estalo de ligar */
+        const on = lim(lt / .12, 0, 1) * baixa;
+        const alvo = Math.atan2(cx - r.x, cy) * gira;                       /* inclina até o centro */
+        const comp = Math.hypot(W, H) * .9, larg = comp * (celular ? .5 : .42);
+        g.save(); g.translate(r.x, -10); g.rotate(-alvo);
+        g.globalAlpha = on * .62; g.drawImage(cones[i], -larg / 2, 0, larg, comp);
+        g.restore();
+        /* a lâmpada do refletor e o clarão */
+        const L = 46 + flash * 120; g.globalAlpha = on * .9 + flash * .6;
+        g.drawImage(bolha(r.cor), r.x - L / 2, -L / 2, L, L);
+      });
+      /* poeira dançando dentro da luz */
+      const vis = lim((t - .3) / .8, 0, 1) * baixa;
+      g.fillStyle = '#fff';
+      for (const p of poeira) {
+        const y = ((p.v - t * p.s) % 1 + 1) % 1 * H, x = p.u * W + Math.sin(t + p.f) * 8;
+        g.globalAlpha = vis * (.15 + .25 * Math.sin(t * 2 + p.f) ** 2); g.fillRect(x, y, p.r, p.r);
+      }
+      /* o foco no chão, embaixo do logo */
+      const foco = lim((t - 1.5) / .6, 0, 1);
+      if (foco > 0) { const R = Math.min(W, H) * .42; g.globalAlpha = foco * .28; g.save(); g.translate(cx, cy + Math.min(W, H) * .12); g.scale(1.6, .55); g.drawImage(bolha([255, 200, 235]), -R, -R, R * 2, R * 2); g.restore(); }
+    };
+  }
+
+  const CENAS = { tinta, glitch, aurora, neon, mosaico, estudio };
 
   function iniciar(el) {
     if (!el || el.dataset.cena || !ligada()) return;

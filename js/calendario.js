@@ -318,7 +318,7 @@ B7.Calendario = (function () {
 
   function pintarCabecalho() {
     const cx = document.getElementById('cb-topo'); if (!cx) return;
-    cx.innerHTML = '<div class="cb-titulo"><h1>Calendário</h1>' +
+    cx.innerHTML = '<div class="cb-titulo"><p class="v4-sobre">Toda a operação</p><h1>Calendário</h1>' +
         '<p>Gravações, publicações e prazos da operação num lugar só.</p>' +
         (ehAgenda() ? '<small class="cb-sub" id="cb-sub" aria-live="polite"></small>' : '') + '</div>' +
       '<div class="cb-topo-acoes">' +

@@ -605,7 +605,7 @@ B7.Dashboard = (function () {
     painel().innerHTML = '<div class="conteudo gl-pagina">' +
       /* zzz17: título de página (h1) — o nome do topo do celular se
          recolhe enquanto ele está à vista — e a contagem como frase */
-      '<div class="secao-topo gl-topo"><div class="gl-tit"><h1>Gravações</h1>' +
+      '<div class="secao-topo gl-topo"><div class="gl-tit"><p class="v4-sobre">Agenda de campo</p><h1>Gravações</h1>' +
       '<p><b id="gv-conta">' + gravacoes.length + '</b> <span id="gv-conta-tx">gravaç' + (gravacoes.length === 1 ? 'ão' : 'ões') + '</span> · por mês de referência</p></div><div class="espaco"></div>' +
       (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno gl-cal" href="#/calendario?v=mes&amp;tipo=gravacoes" aria-label="Calendário de gravações">' + IC_CAL + '<span class="gl-so-largo">Calendário</span></a>' : '') +
       '<button class="b pri gl-nova" data-nova-gravacao>' + IC.mais + 'Nova<span class="gl-so-largo">&nbsp;gravação</span></button></div>' +

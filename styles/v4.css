@@ -180,3 +180,52 @@ html.modo-leve[data-theme] body, html.modo-leve.b7-vt[data-theme] #painel-dashbo
 [data-theme="dark"] .vd-card{background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.03)), var(--card);
   border-color:rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.07);}
 .vd-card:hover{border-color:color-mix(in srgb, var(--magenta) 35%, var(--borda));}
+
+/* =====================================================================
+   4.2 — Gravações, detalhe da gravação, Calendário e Configurações
+   ===================================================================== */
+/* ---------------------------------------------------------- gravações */
+.gl-tit h1, .cb-titulo h1, .cfg-titulo{font-size:clamp(28px, 2.6vw, 36px);letter-spacing:-.03em;}
+.gl-grupo-cab h3{font-family:'B7 Titulo','Inter',sans-serif;font-weight:800;letter-spacing:-.02em;}
+.gl-lista{border-radius:var(--r-lg);box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-2);}
+[data-theme="dark"] .gl-lista{background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012)), var(--card);border-color:rgba(255,255,255,.08);}
+[data-theme="dark"] .gl-item + .gl-item{border-top-color:rgba(255,255,255,.06);}
+.gl-item:hover{background:color-mix(in srgb, var(--magenta) 5%, transparent);}
+/* o dia virou um ladrilho de vidro; o de hoje brilha com o degradê */
+.gl-dia{background:color-mix(in srgb, var(--violeta) 8%, var(--card));}
+[data-theme="dark"] .gl-dia{background:rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);}
+.gl-dia.hoje{background:linear-gradient(140deg, var(--violeta), var(--magenta));
+  box-shadow:0 10px 24px -10px color-mix(in srgb, var(--magenta) 70%, transparent), inset 0 1px 0 rgba(255,255,255,.25);}
+.gl-dia b{font-size:21px;}
+.gl-barra i{background:linear-gradient(90deg, var(--violeta), var(--magenta));}
+.gl-prog.completo .gl-barra i{background:linear-gradient(90deg, #3FD08A, var(--ok));}
+.gl-quem .avatar{border-radius:13px;}
+.gl-status button{border-radius:999px;}
+
+/* detalhe da gravação: os blocos em vidro */
+.gv-bloco{border-radius:var(--r-lg);box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-2);}
+[data-theme="dark"] .gv-bloco{background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012)), var(--card);border-color:rgba(255,255,255,.08);}
+.gv-sec-cab h2, .gv-sec-cab h3{font-family:'B7 Titulo','Inter',sans-serif;letter-spacing:-.02em;}
+
+/* ---------------------------------------------------------- calendário */
+.cb-mes-grade{border-radius:var(--r-lg);overflow:hidden;box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-2);}
+[data-theme="dark"] .cb-mes-grade{background:rgba(255,255,255,.025);}
+[data-theme="dark"] .cb-cel{border-color:rgba(255,255,255,.06);}
+.cb-cel-num b{font-family:'B7 Titulo','Inter',sans-serif;}
+.cb-cel.hoje .cb-cel-num b{background:linear-gradient(140deg, var(--violeta), var(--magenta));color:#fff;
+  box-shadow:0 6px 14px -6px color-mix(in srgb, var(--magenta) 70%, transparent);}
+.cb-card{border-radius:10px;}
+[data-theme="dark"] .cb-card{background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));}
+.cb-vistas, .cb-tipos{border-radius:14px;}
+.cb-chip{border-radius:999px;}
+
+/* ------------------------------------------------------- configurações */
+.cfg-v2 .cfg-painel-bloco:not(span){border-radius:var(--r-lg);box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-2);}
+[data-theme="dark"] .cfg-v2 .cfg-painel-bloco:not(span){background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012)), var(--card);border-color:rgba(255,255,255,.08);}
+/* item aberto no menu das Configurações: o mesmo degradê do menu lateral */
+@media (min-width: 901px){
+  .cfg-v2 .cfg-nav-i.on{background:linear-gradient(120deg, color-mix(in srgb, var(--violeta) 16%, transparent), color-mix(in srgb, var(--magenta) 12%, transparent));
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--magenta) 22%, transparent);}
+  .cfg-v2 .cfg-nav-i.on::before{background:linear-gradient(180deg, var(--violeta), var(--magenta));}
+}
+.cfg-v2 .cfg-eu{border-radius:var(--r-lg);}
