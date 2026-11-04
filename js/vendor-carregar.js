@@ -22,7 +22,9 @@ B7.vendor = (function () {
     jspdf:       { src: 'js/vendor/jspdf.umd.min.js',   pronta: () => !!window.jspdf,       nome: 'de PDF' },
     xlsx:        { src: 'js/vendor/xlsx.full.min.js',   pronta: () => !!window.XLSX,        nome: 'de planilha' },
     /* zzz218: QR Code do app autenticador (verificação em 2 etapas) — MIT, Kazuhiko Arase */
-    qrcode:      { src: 'js/vendor/qrcode.js',          pronta: () => !!window.qrcode,      nome: 'do QR Code' }
+    qrcode:      { src: 'js/vendor/qrcode.js',          pronta: () => !!window.qrcode,      nome: 'do QR Code' },
+    /* 4.8.0: 3D do jogo da manutenção — three.js r160 (MIT). Só chega quando o jogo abre. */
+    three:       { src: 'js/vendor/three.min.js',       pronta: () => !!window.THREE,       nome: 'do jogo 3D' }
   };
   const indo = {};
 

@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.8.0', versao: '4.8.0', em: '2026-11-05T15:00:00-03:00',
+    titulo: '"Ação! Corta!" agora em 3D',
+    itens: ['O jogo da manutenção virou 3D: a lâmpada da B7 corre por uma passarela de luz até a câmera do diretor, num estúdio com refletores, poeira de luz e confete.',
+            'No AÇÃO! o diretor vira e te filma: segure para correr. No CORTA! ele vira de costas: solte na hora. Soltar bem no momento do corta vale "NO LIMITE!" e sobe o combo até ×5.',
+            'Pegue ideias douradas, café (turbo) e a claquete de ouro (vida extra). Cada cena gravada dá estrelas, e o diretor fica mais rápido.',
+            '8 conquistas para desbloquear, recorde, ranking da equipe, som e tela cheia.'] },
   { id: 'v-4.7.0', versao: '4.7.0', em: '2026-11-05T13:00:00-03:00',
     titulo: 'Jogo na tela de manutenção: Ação! Corta!',
     itens: ['Enquanto o sistema está em manutenção, dá para jogar "Ação! Corta!": segure para a lâmpada da B7 andar até a câmera no AÇÃO! e solte na hora do CORTA!. Mexeu no corta, perde uma vida.',

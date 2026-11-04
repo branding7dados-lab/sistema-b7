@@ -90,7 +90,7 @@ B7.Manutencao = (function () {
     };
     /* 4.7.0: quem está no meio do jogo não é jogado para fora — aparece
        "o sistema voltou" e a pessoa entra quando quiser */
-    if (el && el.querySelector('.jm.jm-jogando') && !el.querySelector('.mn-voltou')) {
+    if (el && el.querySelector('.jm.jm-jogando, .j3.j3-jogando') && !el.querySelector('.mn-voltou')) {
       const aviso = document.createElement('div'); aviso.className = 'mn-voltou';
       aviso.innerHTML = '<b>O sistema voltou! 🎉</b><button type="button" class="b pri">Entrar no B7</button>';
       aviso.querySelector('button').onclick = soltar;
@@ -103,8 +103,12 @@ B7.Manutencao = (function () {
   }
   /* o jogo da manutenção (js/jogo-manut.js) */
   function comJogo(el) {
-    if (!(B7.JogoManut && B7.JogoManut.montar) || el.querySelector('.jm')) return;
-    try { B7.JogoManut.montar(el.querySelector('.mn-caixa')); } catch (e) {}
+    if (el.querySelector('.jm, .j3')) return;
+    /* 4.8.0: o 3D quando o aparelho aguenta; senão o 2D */
+    try {
+      if (B7.Jogo3D) B7.Jogo3D.montarMelhor(el.querySelector('.mn-caixa'));
+      else if (B7.JogoManut) B7.JogoManut.montar(el.querySelector('.mn-caixa'));
+    } catch (e) {}
   }
 
   const ROT_FASE = { nenhuma: 'Desligado', agendada: 'Agendado', aviso: 'Marcado', ativa: 'Ligado' };
