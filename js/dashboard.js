@@ -1279,6 +1279,9 @@ B7.Dashboard = (function () {
     const seq = ++trocaSeq;
     const tela = telaViva(id);
     if (!tela) { esqueleto(tipoEsq, opEsq); return seq; }
+    /* zzz308: atualização do tempo real — a seção atual fica na tela até a
+       nova chegar (sem esqueleto e sem a troca animada) */
+    if (B7.recargaSilenciosa && tela.dataset.sec === secao) return seq;
     guardarSecao(tela);
     const de = ordemSecao(tela.dataset.sec), para = ordemSecao(secao);
     tela.style.setProperty('--cli-dir', para >= de ? 1 : -1);

@@ -63,20 +63,110 @@ B7.TempoReal = (function () {
     return true;
   };
 
-  function atualizar() {
+  /* zzz308: rolagens de DENTRO da tela (colunas do quadro, listas com
+     rolagem própria). Cada elemento rolado é lembrado por uma chave (id,
+     classes e data-*) e pela posição entre os iguais; depois do redesenho
+     o elemento equivalente volta para o mesmo ponto. */
+  const chaveDe = el => el.tagName + '#' + (el.id || '') + '.' + [...el.classList].filter(c => !/^(entra|vd-troca|ativa?|mostra)$/.test(c)).sort().join('.') +
+    Object.keys(el.dataset || {}).sort().map(k => '[' + k + '=' + el.dataset[k] + ']').join('');
+  function guardarRolagens(raiz) {
+    const lista = [];
+    if (!raiz) return lista;
+    const conta = {};
+    raiz.querySelectorAll('*').forEach(el => {
+      const k = chaveDe(el), i = conta[k] = (conta[k] || 0);
+      conta[k]++;
+      if (el.scrollTop > 0 || el.scrollLeft > 0) lista.push({ k, i, top: el.scrollTop, left: el.scrollLeft });
+    });
+    return lista;
+  }
+  function voltarRolagens(raiz, lista) {
+    if (!raiz || !lista || !lista.length) return;
+    const porChave = {};
+    raiz.querySelectorAll('*').forEach(el => {
+      const k = chaveDe(el);
+      (porChave[k] = porChave[k] || []).push(el);
+    });
+    lista.forEach(r => {
+      const el = (porChave[r.k] || [])[r.i];
+      if (el) { el.scrollTop = r.top; el.scrollLeft = r.left; }
+    });
+  }
+
+  /* zzz308: durante a atualização silenciosa o painel não aceita o
+     esqueleto de carregamento ("class=\"esq …"). A tela antiga fica
+     inteira, parada e clicável, até a nova estar pronta — e aí troca de
+     uma vez, sem piscar. Vale para todas as telas, sem mexer em cada uma. */
+  const DESC_HTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+  function blindar(painel) {
+    if (!painel || !DESC_HTML) return () => {};
+    try {
+      Object.defineProperty(painel, 'innerHTML', {
+        configurable: true,
+        get() { return DESC_HTML.get.call(this); },
+        set(v) {
+          if (typeof v === 'string' && v.indexOf('class="esq ') >= 0) return;
+          DESC_HTML.set.call(this, v);
+        }
+      });
+    } catch (e) { return () => {}; }
+    return () => { try { delete painel.innerHTML; } catch (e) {} };
+  }
+
+  /* Partes que carregam sozinhas depois da tela (ex.: Oportunidades e
+     Projetos dentro do cliente) também mostravam o esqueleto. Enquanto a
+     atualização acontece, uma parte com id que acabou de virar esqueleto
+     recebe de volta o conteúdo que tinha antes; quando a busca dela
+     termina, ela mesma escreve o conteúdo novo por cima. */
+  function vigiarPartes(painel, ms) {
+    if (!painel || !window.MutationObserver) return;
+    const antes = new Map();
+    painel.querySelectorAll('[id]').forEach(el => {
+      if (el.querySelector('.esq')) return;
+      const h = DESC_HTML.get.call(el);
+      if (h && h.length < 300000) antes.set(el.id, h);
+    });
+    if (!antes.size) return;
+    const obs = new MutationObserver(() => {
+      painel.querySelectorAll('.esq').forEach(esq => {
+        let el = esq.parentElement;
+        while (el && el !== painel && !(el.id && antes.has(el.id))) el = el.parentElement;
+        if (el && el !== painel && el.isConnected) { const h = antes.get(el.id); antes.delete(el.id); DESC_HTML.set.call(el, h); }
+      });
+    });
+    obs.observe(painel, { childList: true, subtree: true });
+    setTimeout(() => obs.disconnect(), ms);
+  }
+
+  let atualizando = false;
+  async function atualizar() {
     if (!pendente) return;
-    if (!podeAtualizar()) { agendar(500); return; }
+    if (atualizando || !podeAtualizar()) { agendar(500); return; }
     pendente = false;
+    atualizando = true;
     /* guarda a rolagem de quem rola (a página ou o painel) */
     const rolagens = [];
-    let el = document.getElementById('painel-dashboard');
+    const painel = document.getElementById('painel-dashboard');
+    let el = painel;
     while (el) { if (el.scrollTop > 0) rolagens.push([el, el.scrollTop]); el = el.parentElement; }
     const raiz = document.scrollingElement; if (raiz && raiz.scrollTop) rolagens.push([raiz, raiz.scrollTop]);
+    const dentro = guardarRolagens(painel);
+    const hash = location.hash;
     document.documentElement.classList.add('b7-rt-silencioso');
-    try { B7.Rota.ir(); } catch (e) {}
-    const voltar = () => rolagens.forEach(([e, t]) => { try { e.scrollTop = t; } catch (x) {} });
-    requestAnimationFrame(voltar); setTimeout(voltar, 350); setTimeout(voltar, 900);
-    setTimeout(() => document.documentElement.classList.remove('b7-rt-silencioso'), 1200);
+    const soltar = blindar(painel);
+    vigiarPartes(painel, 6000);
+    B7.recargaSilenciosa = true;
+    try {
+      await Promise.race([Promise.resolve(B7.Rota.ir()), new Promise(r => setTimeout(r, 8000))]);
+    } catch (e) {}
+    finally { soltar(); B7.recargaSilenciosa = false; atualizando = false; }
+    if (location.hash !== hash) { document.documentElement.classList.remove('b7-rt-silencioso'); return; }
+    const voltar = () => {
+      rolagens.forEach(([e, t]) => { try { e.scrollTop = t; } catch (x) {} });
+      voltarRolagens(document.getElementById('painel-dashboard'), dentro);
+    };
+    voltar(); requestAnimationFrame(voltar); setTimeout(voltar, 350);
+    setTimeout(() => document.documentElement.classList.remove('b7-rt-silencioso'), 600);
   }
   function agendar(ms) { clearTimeout(relogio); relogio = setTimeout(atualizar, ms); }
 
@@ -136,5 +226,5 @@ B7.TempoReal = (function () {
     ligar();
   }, 2000);
 
-  return { ligar, desligar, _depende: DEPENDE, _simular: tabela => aoMudar({ table: tabela }), arrastando: v => { arrastando = !!v; } };
+  return { ligar, desligar, guardarRolagens, voltarRolagens, _depende: DEPENDE, _simular: tabela => aoMudar({ table: tabela }), arrastando: v => { arrastando = !!v; } };
 })();

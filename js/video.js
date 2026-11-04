@@ -630,6 +630,7 @@ B7.Video = (function () {
           '<p>Ajuste a busca, o mês ou os filtros ativos.</p></div>');
     ligarArea(cx);
     /* entrada em cascata a cada troca (filtro, etapa, vista, busca) */
+    if (B7.recargaSilenciosa) { cx.classList.remove('vd-troca'); return; }
     cx.classList.remove('vd-troca'); void cx.offsetWidth; cx.classList.add('vd-troca');
   }
 
@@ -1192,18 +1193,29 @@ B7.Video = (function () {
      a gravação segue por baixo, pela mesma ação de negócio de sempre.
      Se ela falhar (ou a pessoa cancelar a confirmação), o cartão volta
      para onde estava e um aviso explica. Devolve a função que desfaz. */
+  /* zzz308: redesenho "por baixo" — sem a entrada da tela, sem a cascata
+     dos cartões e com as colunas na mesma rolagem. Mover um cartão não
+     pode parecer que a página inteira recarregou. */
+  function redesenharQuieto() {
+    const TR = B7.TempoReal;
+    const rolos = TR && TR.guardarRolagens ? TR.guardarRolagens(painel()) : [];
+    const antes = B7.recargaSilenciosa;
+    B7.recargaSilenciosa = true;
+    try { desenharProducao(); } finally { B7.recargaSilenciosa = antes; }
+    if (TR && TR.voltarRolagens) TR.voltarRolagens(painel(), rolos);
+  }
   function moverNaTela(d, status) {
     const antes = d.editing_status;
     if (antes === status) return () => {};
     d.editing_status = status;
-    desenharProducao();
+    redesenharQuieto();
     if (B7.Movimento && B7.Movimento.assentar)
       B7.Movimento.assentar(document.querySelector('.vd-card[data-demanda="' + CSS.escape(d.id) + '"]'));
     return () => {
       /* só desfaz se ninguém mexeu de novo no cartão nesse meio-tempo */
       if (d.editing_status !== status) return;
       d.editing_status = antes;
-      desenharProducao();
+      redesenharQuieto();
     };
   }
   async function commitStatusVideo(d, status, mensagem, desfazer) {
