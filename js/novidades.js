@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.10.1', versao: '4.10.1', em: '2026-11-05T21:00:00-03:00',
+    titulo: 'Jogos da manutenção mais leves',
+    itens: ['Corre pro Set! e Ação! Corta! rodam mais lisos: menos coisas desenhadas por quadro, sombras mais baratas e qualidade que se ajusta sozinha quando o aparelho começa a engasgar.'] },
   { id: 'v-4.10.0', versao: '4.10.0', em: '2026-11-05T19:00:00-03:00',
     titulo: 'Corre pro Set! com cara de set de verdade',
     itens: ['A lâmpada virou uma lâmpada de vidro de verdade, com filamento aceso e rosca de metal. As skins mudam a cor do brilho.',

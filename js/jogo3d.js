@@ -167,7 +167,7 @@ B7.Jogo3D = (function () {
       await B7.vendor('three');
       T = window.THREE;
       renderer = new T.WebGLRenderer({ canvas: tela, antialias: !leve, powerPreference: 'high-performance' });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.5 : 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.5));
       renderer.outputColorSpace = T.SRGBColorSpace;
       renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
       renderer.shadowMap.enabled = !leve; renderer.shadowMap.type = T.PCFSoftShadowMap;
@@ -185,7 +185,7 @@ B7.Jogo3D = (function () {
       /* luz ambiente e de preenchimento */
       cena.add(new T.HemisphereLight(0x9c7cff, 0x1a0e28, 0.55));
       const sol = new T.DirectionalLight(0xffe2f2, 1.1); sol.position.set(6, 14, 6);
-      sol.castShadow = !leve; sol.shadow.mapSize.set(1024, 1024);
+      sol.castShadow = !leve; sol.shadow.mapSize.set(512, 512);
       Object.assign(sol.shadow.camera, { left: -12, right: 12, top: 12, bottom: -50, near: 1, far: 80 });
       cena.add(sol);
       /* chão de estúdio brilhante */
@@ -217,7 +217,7 @@ B7.Jogo3D = (function () {
         pe.position.set(lado * 6, 2.1, z); cena.add(pe);
         const caixaL = new T.Mesh(new T.BoxGeometry(1.8, 1.2, 0.3), M({ color: 0xffffff, emissive: i % 3 ? 0xffd9f0 : 0xd9ccff, emissiveIntensity: 1.4 }));
         caixaL.position.set(lado * 6, 4.4, z); caixaL.lookAt(0, 1, z - 3); cena.add(caixaL); mundo.softs.push(caixaL);
-        if (i < 2 || !leve) { const pl = new T.PointLight(i % 2 ? 0xff7ac6 : 0x9c8cff, 6, 16, 2); pl.position.set(lado * 4.5, 4, z); cena.add(pl); }
+        if (i < 2 && !leve) { const pl = new T.PointLight(i % 2 ? 0xff7ac6 : 0x9c8cff, 6, 16, 2); pl.position.set(lado * 4.5, 4, z); cena.add(pl); }
       }
       /* poeira de luz flutuando */
       const N = leve ? 160 : 380, pos = new Float32Array(N * 3);
@@ -309,7 +309,7 @@ B7.Jogo3D = (function () {
       const qtd = 9 + Math.min(10, nivel * 2);
       for (let i = 0; i < qtd; i++) {
         const z = -4 - (i / qtd) * (PISTA - 8) - Math.random() * 1.5, x = (Math.random() - 0.5) * 2.4;
-        const m = new T.Mesh(mundo.geoIdeia, mundo.matIdeia); m.position.set(x, 1.1, z); m.castShadow = !leve;
+        const m = new T.Mesh(mundo.geoIdeia, mundo.matIdeia); m.position.set(x, 1.1, z);
         cena.add(m); mundo.itens.push({ m, tipo: 'ideia', vivo: true, fase: Math.random() * 6 });
       }
       if (Math.random() < 0.75) { const m = new T.Mesh(mundo.geoCafe, mundo.matCafe); m.position.set((Math.random() - 0.5) * 2, 1.1, -10 - Math.random() * 20); cena.add(m); mundo.itens.push({ m, tipo: 'cafe', vivo: true, fase: 0 }); }
@@ -387,7 +387,22 @@ B7.Jogo3D = (function () {
 
       if (S && S.rodando) logica(agora, dt);
       animar(tempo, dt, agora);
+      qualidade(agora);
       renderer.render(cena, cam);
+    }
+    /* 4.10.1: qualidade automática — a cada ~1 s olha o tempo médio dos
+       quadros; travando (>24 ms), baixa a resolução; sobrando fôlego
+       (<15 ms), sobe de volta até o teto do aparelho */
+    let qMedia = 16, qUlt = 0, qN = 0;
+    function qualidade(agora) {
+      if (qUlt) qMedia = qMedia * 0.9 + Math.min(100, agora - qUlt) * 0.1;
+      qUlt = agora;
+      if (++qN < 60) return; qN = 0;
+      const teto = Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.5), pr = renderer.getPixelRatio();
+      let novo = pr;
+      if (qMedia > 24 && pr > 0.6) novo = Math.max(0.6, pr - 0.2);
+      else if (qMedia < 15 && pr < teto) novo = Math.min(teto, pr + 0.1);
+      if (novo !== pr) { renderer.setPixelRatio(novo); medir(); }
     }
 
     function logica(agora, dt) {

@@ -163,9 +163,9 @@ B7.JogoCorrida = (function () {
       $('.j3-carregando').hidden = false;
       await B7.vendor('three'); T = window.THREE;
       renderer = new T.WebGLRenderer({ canvas: tela, antialias: !leve, powerPreference: 'high-performance' });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.5 : 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.5));
       renderer.outputColorSpace = T.SRGBColorSpace; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.5;
-      renderer.shadowMap.enabled = !leve;
+      renderer.shadowMap.enabled = false;   /* 4.10.1: sombras de contato no lugar das reais (desenhavam tudo 2×) */
       cena = new T.Scene(); cena.background = new T.Color(0x24163d); cena.fog = new T.Fog(0x24163d, 34, 105);
       cam = new T.PerspectiveCamera(60, 1, 0.1, 160); cam.position.set(0, 3.4, 7);
       /* 4.10.0: modelos realistas (js/jogo-corrida-modelos.js) e reflexo de estúdio */
@@ -179,7 +179,7 @@ B7.JogoCorrida = (function () {
     function montarMundo() {
       cena.add(new T.HemisphereLight(0xd8ccff, 0x4a3570, 1.5)); cena.add(new T.AmbientLight(0xffffff, 0.35));
       const sol = new T.DirectionalLight(0xffe6f4, 1.2); sol.position.set(5, 12, 8); sol.castShadow = !leve;
-      sol.shadow.mapSize.set(1024, 1024); Object.assign(sol.shadow.camera, { left: -8, right: 8, top: 10, bottom: -30, near: 1, far: 60 }); cena.add(sol);
+      sol.shadow.mapSize.set(512, 512); Object.assign(sol.shadow.camera, { left: -8, right: 8, top: 10, bottom: -30, near: 1, far: 60 }); cena.add(sol);
       /* chão e pista com 3 faixas */
       const chao = new T.Mesh(new T.PlaneGeometry(70, 200), mat({ map: X.piso, color: 0xb9a8d8, roughness: 0.55, metalness: 0.15, envMapIntensity: 0.6 }));
       chao.rotation.x = -Math.PI / 2; chao.position.z = -70; chao.receiveShadow = true; cena.add(chao);
@@ -192,19 +192,20 @@ B7.JogoCorrida = (function () {
       });
       /* faixas no chão que passam (sensação de velocidade) */
       M.listras = [];
-      for (let i = 0; i < 24; i++) { const l = new T.Mesh(new T.BoxGeometry(7, 0.02, 0.08), mat({ color: 0x7b5cff, emissive: 0x7b5cff, emissiveIntensity: 0.35, transparent: true, opacity: 0.5 })); l.position.set(0, 0.11, -i * 6); cena.add(l); M.listras.push(l); }
+      for (let i = 0; i < 0; i++) { const l = new T.Mesh(new T.BoxGeometry(7, 0.02, 0.08), mat({ color: 0x7b5cff, emissive: 0x7b5cff, emissiveIntensity: 0.35, transparent: true, opacity: 0.5 })); l.position.set(0, 0.11, -i * 6); cena.add(l); M.listras.push(l); }
       /* cenário dos lados: refletores e cases empilhados que passam */
       M.lados = [];
-      const tplRef = MD.refletor(T, MT), tplCad = MD.cadeiraDiretor(T, MT), tplCase = MD.flightCase(T, MT, 1.3, 0.9, 1), tplCabo = MD.cabos(T, MT);
-      for (let i = 0; i < 14; i++) {
+      const tplRef = MD.fundir(T, MD.refletor(T, MT)), tplCad = MD.fundir(T, MD.cadeiraDiretor(T, MT)), tplCase = MD.fundir(T, MD.flightCase(T, MT, 1.3, 0.9, 1)), tplCabo = MD.fundir(T, MD.cabos(T, MT));
+      for (let i = 0; i < 9; i++) {
         const g = new T.Group(), lado = i % 2 ? 1 : -1;
+        if (leve && i % 2) { g.position.set(lado * 6.2, 0, -i * 12); cena.add(g); M.lados.push(g); continue; }
         const r = tplRef.clone(); r.rotation.y = lado > 0 ? -2.2 : 2.2; g.add(r);
         if (i % 3 === 0) { const c = tplCad.clone(); c.position.set(lado * -1.3, 0, 1.5); c.rotation.y = lado * 0.6 + Math.PI; g.add(c); }
         if (i % 3 === 1) { const c = tplCase.clone(); c.position.set(lado * -1.1, 0, -1.2); c.rotation.y = 0.3 * lado; g.add(c); }
         if (i % 4 === 2) { const c = tplCabo.clone(); c.position.set(lado * -1.4, 0, 0); c.scale.setScalar(0.5); g.add(c); }
-        g.position.set(lado * 6.2, 0, -i * 11); cena.add(g); M.lados.push(g);
+        g.position.set(lado * 6.2, 0, -i * 12); cena.add(g); M.lados.push(g);
       }
-      for (let i = 0; i < (leve ? 2 : 4); i++) { const pl = new T.PointLight(i % 2 ? 0xff7ac6 : 0x9c8cff, 10, 22, 2); pl.position.set(i % 2 ? 4 : -4, 4, -8 - i * 12); cena.add(pl); }
+      for (let i = 0; i < (leve ? 0 : 2); i++) { const pl = new T.PointLight(i % 2 ? 0xff7ac6 : 0x9c8cff, 10, 22, 2); pl.position.set(i % 2 ? 4 : -4, 4, -8 - i * 12); cena.add(pl); }
       const ciclo = new T.Mesh(new T.PlaneGeometry(120, 40), mat({ color: 0x2a1240, emissive: 0x5a1e78, emissiveIntensity: 0.7 }));
       ciclo.position.set(0, 14, -110); cena.add(ciclo);
 
@@ -212,6 +213,7 @@ B7.JogoCorrida = (function () {
       const lamp = new T.Group(); cena.add(lamp);
       const corpo = new T.Group(); lamp.add(corpo);
       const LP = MD.lampada(T, MT, X, leve); LP.g.position.y = -0.02; corpo.add(LP.g);
+      M.sombraLamp = new T.Mesh(new T.PlaneGeometry(1.3, 1.3), MT.sombra); M.sombraLamp.rotation.x = -Math.PI / 2; M.sombraLamp.position.y = 0.12; lamp.add(M.sombraLamp);
       M.bulboMat = LP.vidroMat; M.filMat = LP.filMat; M.baseMat = LP.baseMat; M.nucleo = LP.nucleo; M.aura = LP.aura;
       const bulbo = LP.g;
       M.pontos = [];
@@ -240,8 +242,8 @@ B7.JogoCorrida = (function () {
         moeda: mat({ color: 0xffd36b, emissive: 0xffa000, emissiveIntensity: 1.1, metalness: 0.8, roughness: 0.25 })
       };
       M.geoMoeda = new T.CylinderGeometry(0.32, 0.32, 0.08, 22);
-      M.tpl = { baixo: MD.trussBaixo(T, MT), alto: MD.trussAlto(T, MT, X), case: MD.flightCase(T, MT, 1.95, 2.45, 2.3), case2: MD.caseEmpilhado(T, MT), moeda: MD.moeda(T, MT) };
-      Object.values(M.tpl).forEach(t => t.traverse(o => { if (o.isMesh && !leve) o.castShadow = o.castShadow || false; }));
+      const F = g => MD.fundir(T, g);
+      M.tpl = { baixo: F(MD.trussBaixo(T, MT)), alto: F(MD.trussAlto(T, MT, X)), case: F(MD.flightCase(T, MT, 1.95, 2.45, 2.3)), case2: F(MD.caseEmpilhado(T, MT)), moeda: F(MD.moeda(T, MT)) };
       M.objs = [];
       /* rastro */
       const NR = 50; M.rastro = { n: NR, pos: new Float32Array(NR * 3), i: 0 };
@@ -275,9 +277,6 @@ B7.JogoCorrida = (function () {
         const m = new T.Mesh(new T.IcosahedronGeometry(0.42, 0), mat({ color: cores[tipo], emissive: cores[tipo], emissiveIntensity: 1.6 }));
         g.add(m); g.position.y = 1.2;
         const anel = new T.Mesh(new T.TorusGeometry(0.62, 0.05, 8, 32), new T.MeshBasicMaterial({ color: cores[tipo] })); g.add(anel);
-      }
-      if (tipo === 'baixo' || tipo === 'alto' || tipo === 'case') {
-        const marca = new T.Mesh(new T.PlaneGeometry(1.9, 1.4), M.mats.aviso); marca.rotation.x = -Math.PI / 2; marca.position.set(0, 0.13, 1.6); g.add(marca);
       }
       cena.add(g);
       const o = { tipo, faixa, g, vivo: true };
@@ -341,7 +340,22 @@ B7.JogoCorrida = (function () {
       const t = agora / 1000;
       if (S && S.rodando) logica(agora, dt);
       animar(t, dt, agora);
+      qualidade(agora);
       renderer.render(cena, cam);
+    }
+    /* 4.10.1: qualidade automática — a cada ~1 s olha o tempo médio dos
+       quadros; travando (>24 ms), baixa a resolução; sobrando fôlego
+       (<15 ms), sobe de volta até o teto do aparelho */
+    let qMedia = 16, qUlt = 0, qN = 0;
+    function qualidade(agora) {
+      if (qUlt) qMedia = qMedia * 0.9 + Math.min(100, agora - qUlt) * 0.1;
+      qUlt = agora;
+      if (++qN < 60) return; qN = 0;
+      const teto = Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.5), pr = renderer.getPixelRatio();
+      let novo = pr;
+      if (qMedia > 24 && pr > 0.6) novo = Math.max(0.6, pr - 0.2);
+      else if (qMedia < 15 && pr < teto) novo = Math.min(teto, pr + 0.1);
+      if (novo !== pr) { renderer.setPixelRatio(novo); medir(); }
     }
 
     function logica(agora, dt) {
@@ -431,11 +445,12 @@ B7.JogoCorrida = (function () {
       const av = (S && S.rodando ? vel : 4) * dt;
       M.listras.forEach(l => { l.position.z += av; if (l.position.z > 8) l.position.z -= 24 * 6; });
       if (M.pistaTex) { M.pistaTex.offset.y = (M.pistaTex.offset.y + av / 5) % 1; X.piso.offset.y = (X.piso.offset.y + av / 6.67) % 1; }
-      M.lados.forEach(g => { g.position.z += av; if (g.position.z > 10) g.position.z -= 14 * 11; });
+      M.lados.forEach(g => { g.position.z += av; if (g.position.z > 10) g.position.z -= 9 * 12; });
       const pulso = 1.3 + Math.sin(t * 5) * 0.4; M.neon.forEach((b, i) => { if (i === 0 || i === 3) b.material.emissiveIntensity = pulso; });
       /* lâmpada */
       const x = S ? S.x : 0, y = S ? S.y : 0, rast = S && agora < S.rastejaAte;
       M.lamp.position.set(x, y, 0);
+      if (M.sombraLamp) { M.sombraLamp.position.y = 0.12 - y; const k = Math.max(0.35, 1 - y * 0.25); M.sombraLamp.scale.set(k, k, k); }
       M.corpo.scale.y += ((rast ? 0.5 : 1) - M.corpo.scale.y) * Math.min(1, dt * 18);
       M.corpo.rotation.x = rast ? -0.5 : -0.15 * corre;
       M.corpo.position.y = y > 0 ? 0 : Math.abs(Math.sin(t * 14)) * 0.12 * corre;

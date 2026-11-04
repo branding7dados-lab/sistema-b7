@@ -216,10 +216,10 @@ B7.CorridaModelos = (function () {
     return g;
   }
 
+  /* 4.10.1: moeda numa peça só (1 desenho em vez de 3) — as tampas levam o B7 */
   function moeda(T, MT) {
     const g = new T.Group();
-    const borda = new T.Mesh(new T.CylinderGeometry(0.34, 0.34, 0.09, 28, 1, true), MT.moedaBorda); borda.rotation.x = Math.PI / 2; g.add(borda);
-    [0.046, -0.046].forEach((z, i) => { const f = new T.Mesh(new T.CircleGeometry(0.34, 28), MT.moedaFace); f.position.z = z; if (i) f.rotation.y = Math.PI; g.add(f); });
+    const m = new T.Mesh(new T.CylinderGeometry(0.34, 0.34, 0.09, 24), [MT.moedaBorda, MT.moedaFace, MT.moedaFace]); m.rotation.x = Math.PI / 2; g.add(m);
     return g;
   }
 
@@ -263,7 +263,7 @@ B7.CorridaModelos = (function () {
     perfil.unshift(new T.Vector2(0.25, 0.5), new T.Vector2(0.27, 0.62), new T.Vector2(0.38, 0.72));
     const vidroMat = leve
       ? new T.MeshStandardMaterial({ color: 0xffd6ee, emissive: 0xe2409c, emissiveIntensity: 0.55, transparent: true, opacity: 0.5, roughness: 0.05, metalness: 0, depthWrite: false })
-      : new T.MeshPhysicalMaterial({ color: 0xffffff, emissive: 0xe2409c, emissiveIntensity: 0.25, roughness: 0.03, metalness: 0, transmission: 0.92, thickness: 0.35, ior: 1.5, transparent: true, clearcoat: 1, clearcoatRoughness: 0.05, attenuationColor: new T.Color(0xffb3e0), attenuationDistance: 1.2 });
+      : new T.MeshPhysicalMaterial({ color: 0xffe6f4, emissive: 0xe2409c, emissiveIntensity: 0.45, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.42, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.6, depthWrite: false });
     const vidro = new T.Mesh(new T.LatheGeometry(perfil.reverse(), 40), vidroMat); vidro.castShadow = true; g.add(vidro);
     /* filamento aceso (zigue-zague) e hastes */
     const fil = []; for (let i = 0; i <= 10; i++) fil.push(new T.Vector3(-0.18 + i * 0.036, 1.22 + (i % 2 ? 0.05 : -0.05), 0));
@@ -355,5 +355,34 @@ B7.CorridaModelos = (function () {
     return { g, corpo, cab, bracos, cotovelos, pernas, joelhos };
   }
 
-  return { texturas, ambiente, materiais, trussBaixo, trussAlto, flightCase, caseEmpilhado, moeda, refletor, cadeiraDiretor, cabos, lampada, diretor };
+  /* 4.10.1 — OTIMIZAÇÃO: junta todas as pecinhas de um modelo que usam o
+     mesmo material numa malha só. Um case tinha ~50 malhas (50 desenhos
+     por quadro); depois disso, uns 6. Sprites e malhas com vários
+     materiais ficam como estão. */
+  function fundir(T, raiz) {
+    raiz.updateMatrixWorld(true);
+    const inv = new T.Matrix4().copy(raiz.matrixWorld).invert();
+    const porMat = new Map(), soltos = [];
+    raiz.traverse(o => {
+      if (o.isSprite || (o.isMesh && Array.isArray(o.material))) { soltos.push(o); return; }
+      if (!o.isMesh) return;
+      const gm = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      gm.applyMatrix4(new T.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+      if (!gm.attributes.normal) gm.computeVertexNormals();
+      if (!gm.attributes.uv) gm.setAttribute('uv', new T.BufferAttribute(new Float32Array(gm.attributes.position.count * 2), 2));
+      const k = o.material.uuid; if (!porMat.has(k)) porMat.set(k, { m: o.material, g: [] }); porMat.get(k).g.push(gm);
+    });
+    const out = new T.Group();
+    porMat.forEach(({ m, g }) => {
+      let n = 0; g.forEach(x => { n += x.attributes.position.count; });
+      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let i = 0;
+      g.forEach(x => { pos.set(x.attributes.position.array, i * 3); nor.set(x.attributes.normal.array, i * 3); uv.set(x.attributes.uv.array, i * 2); i += x.attributes.position.count; x.dispose(); });
+      const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T.BufferAttribute(nor, 3)); geo.setAttribute('uv', new T.BufferAttribute(uv, 2));
+      geo.computeBoundingSphere(); out.add(new T.Mesh(geo, m));
+    });
+    soltos.forEach(o => { const c = o.clone(); c.matrixAutoUpdate = true; o.updateMatrixWorld(true); new T.Matrix4().multiplyMatrices(inv, o.matrixWorld).decompose(c.position, c.quaternion, c.scale); out.add(c); });
+    return out;
+  }
+
+  return { fundir, texturas, ambiente, materiais, trussBaixo, trussAlto, flightCase, caseEmpilhado, moeda, refletor, cadeiraDiretor, cabos, lampada, diretor };
 })();
