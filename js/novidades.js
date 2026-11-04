@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-zzz308', versao: 'zzz308', em: '2026-11-04T10:00:00-03:00',
+    titulo: 'A tela não pisca mais quando algo muda',
+    itens: ['Mover uma demanda de coluna agora só muda o cartão de lugar: a página não recarrega nem refaz a animação de entrada.',
+            'Quando alguém da equipe muda alguma coisa, sua tela se atualiza por baixo, sem a tela de carregamento e sem perder onde você estava.',
+            'O assistente de IA não fica mais parado esperando quando o Google demora: ele pede de novo sozinho, em poucos segundos.'] },
   { id: 'v-zzz303', versao: 'zzz303', em: '2026-11-01T10:00:00-03:00',
     titulo: 'No celular: arraste para o lado e troque de aba',
     itens: ['Arraste a tela para a esquerda ou para a direita e vá para a aba vizinha da barra de baixo, como num app.',

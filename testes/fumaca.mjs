@@ -58,7 +58,7 @@ const ctx = await navegador.newContext({ viewport: { width: 390, height: 844 }, 
 let lento = 0;
 await ctx.route(/supabase\.co\//, async rota => {
   const url = new URL(rota.request().url());
-  if (lento && /video|demanda/i.test(url.pathname)) await new Promise(r => setTimeout(r, lento));
+  if (lento && /video|demanda|client/i.test(url.pathname)) await new Promise(r => setTimeout(r, lento));
   if (url.pathname.startsWith('/rest/v1/')) {
     const um = (rota.request().headers()['accept'] || '').includes('vnd.pgrst.object');
     const dados = respostaRest(url);
@@ -112,6 +112,32 @@ const ficou = await pg.evaluate(() => (document.getElementById('painel-dashboard
 lento = 0;
 if (/Produção de Vídeo/.test(ficou) || !/Clientes/.test(ficou)) falhas.push(telaAtual + ' → a tela antiga se desenhou por cima: ' + ficou.replace(/\s+/g, ' ').slice(0, 90));
 console.log((/Produção de Vídeo/.test(ficou) ? '✗ ' : '✓ ') + telaAtual);
+
+/* zzz308: atualização do tempo real é invisível — a tela antiga fica até a
+   nova estar pronta, sem esqueleto de carregamento no meio. Confere o que
+   é de fato pintado, quadro a quadro. */
+for (const [rota, tabela] of [['#/video', 'demandas_edicao'], ['#/clientes', 'clientes'], ['#/cliente/c1', 'clientes']]) {
+  telaAtual = 'tempo real sem piscar em ' + rota;
+  await pg.evaluate(r => { location.hash = r; }, rota);
+  await pg.waitForTimeout(1500);
+  lento = 700;
+  await pg.evaluate(() => {
+    const p = document.getElementById('painel-dashboard');
+    window.__piscou = 0; window.__vendo = true;
+    const olhar = () => {
+      if (!window.__vendo) return;
+      if (p.querySelector('.esq') || (p.innerText || '').trim().length < 10) window.__piscou++;
+      requestAnimationFrame(olhar);
+    };
+    requestAnimationFrame(olhar);
+  });
+  await pg.evaluate(t => B7.TempoReal._simular(t), tabela);
+  await pg.waitForTimeout(2000);
+  const piscou = await pg.evaluate(() => { window.__vendo = false; return window.__piscou; });
+  lento = 0;
+  if (piscou) falhas.push(telaAtual + ' → apareceu o esqueleto/tela vazia durante a atualização');
+  console.log((piscou ? '✗ ' : '✓ ') + telaAtual);
+}
 
 await navegador.close();
 servidor.close();

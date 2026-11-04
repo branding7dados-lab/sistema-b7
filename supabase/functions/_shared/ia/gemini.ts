@@ -149,17 +149,35 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
      texto chega em pedaços e vai sendo repassado. As regras do fim são
      as de gerar(): recusa, corte por limite de tokens e resposta vazia
      continuam sendo erro, mesmo que parte do texto já tenha saído. */
+  /* zzz308: às vezes o Google aceita o pedido e não manda nada (ficava 30 s
+     parado e dava "tempo esgotado" — 6 vezes seguidas num dia). Normalmente
+     o primeiro pedaço chega em 1–2 s; se em GEMINI_PRIMEIRO_MS (padrão 8 s)
+     não chegou nada, aquela ligação é largada e o MESMO pedido vai de novo,
+     uma vez, com o tempo que sobrar. */
+  const primeiroMs = Number(env('GEMINI_PRIMEIRO_MS')) || 8000;
   async function gerarFluxo(p: PedidoDeGeracao, aoTrecho: (texto: string) => void): Promise<RespostaDoProvedor> {
-    const r = await fluxoUm(p, aoTrecho);
-    if (!r.ok && r.erro === 'sem_pensar') { pensarPouco = false; return (await fluxoUm(p, aoTrecho)) as RespostaDoProvedor; }
+    const t0 = Date.now();
+    let r = await fluxoUm(p, aoTrecho, primeiroMs);
+    if (!r.ok && r.erro === 'sem_pensar') { pensarPouco = false; r = await fluxoUm(p, aoTrecho, primeiroMs); }
+    if (!r.ok && r.erro === 'sem_inicio') {
+      const sobra = p.prazoMs - (Date.now() - t0);
+      console.error('[b7-ia] gemini sem resposta em ' + primeiroMs + ' ms; pedindo de novo');
+      if (sobra < 4000) return { ok: false, erro: 'tempo', status: null };
+      r = await fluxoUm({ ...p, prazoMs: sobra }, aoTrecho, sobra);
+      if (!r.ok && (r.erro === 'sem_inicio' || r.erro === 'sem_pensar')) return { ok: false, erro: 'tempo', status: null };
+    }
     return r as RespostaDoProvedor;
   }
 
-  async function fluxoUm(p: PedidoDeGeracao, aoTrecho: (texto: string) => void): Promise<RespostaDoProvedor | { ok: false; erro: 'sem_pensar'; status: number }> {
+  async function fluxoUm(p: PedidoDeGeracao, aoTrecho: (texto: string) => void, inicioMs: number):
+    Promise<RespostaDoProvedor | { ok: false; erro: 'sem_pensar'; status: number } | { ok: false; erro: 'sem_inicio'; status: null }> {
     const sistema = p.mensagens.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
     const usuario = p.mensagens.filter(m => m.role === 'user').map(m => m.content).join('\n\n');
     const ctrl = new AbortController();
     const relogio = setTimeout(() => ctrl.abort(), p.prazoMs);
+    /* nada chegou ainda? larga esta ligação (gerarFluxo pede de novo) */
+    let comecou = false, largou = false;
+    const vigia = setTimeout(() => { if (!comecou) { largou = true; ctrl.abort(); } }, Math.min(inicioMs, p.prazoMs));
     try {
       const r = await fetchFn(BASE + modelo + ':streamGenerateContent?alt=sse', {
         method: 'POST', signal: ctrl.signal,
@@ -188,6 +206,7 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
         let j: RespostaGemini | null = null;
         try { j = JSON.parse(dado); } catch (_e) { return; }
         if (!j) return;
+        comecou = true;   /* o Google respondeu: daqui em diante vale o prazo inteiro */
         if (j.promptFeedback && j.promptFeedback.blockReason) bloqueio = true;
         if (j.usageMetadata) uso = j.usageMetadata;
         if (j.modelVersion) versao = j.modelVersion;
@@ -217,9 +236,10 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
         tokensSaida: typeof uso.candidatesTokenCount === 'number' ? uso.candidatesTokenCount : null
       };
     } catch (e) {
+      if (largou) return { ok: false, erro: 'sem_inicio', status: null };
       return { ok: false, erro: (e as Error).name === 'AbortError' ? 'tempo' : 'indisponivel', status: null };
     } finally {
-      clearTimeout(relogio);
+      clearTimeout(relogio); clearTimeout(vigia);
     }
   }
 
