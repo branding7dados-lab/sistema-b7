@@ -1509,7 +1509,7 @@ B7.Design = (function () {
      THUMBS — carregadas sob demanda (IntersectionObserver), nunca de
      uma vez: uma fila com 40 peças não dispara 40 URLs assinadas juntas
      ================================================================= */
-  const cacheThumb = new Map();
+  const cacheThumb = B7.DB.mapaUrlsAssinadas();
   let observerThumb = null;
   function ligarThumbs(raiz) {
     if (!observerThumb && 'IntersectionObserver' in window) {
@@ -2112,7 +2112,7 @@ B7.Design = (function () {
      REAL do arquivo (largura/altura gravadas no upload) — nada de
      esticar, nada de cortar.
      ================================================================= */
-  const cacheUrlArte = new Map();   // caminho → url assinada (curta)
+  const cacheUrlArte = B7.DB.mapaUrlsAssinadas();   // caminho → url assinada (curta)
 
   /* partes canônicas da peça aberta, na ordem da Linha Editorial —
      null quando a peça é de arte única (Card, Capa de Reel, Story de 1

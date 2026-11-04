@@ -17,7 +17,7 @@ B7.PortalCalendario = (function () {
   const icone = t => ICONE[String(t || '').toLowerCase()] || '✨';
   const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   let mes = null;                 // primeiro dia do mês aberto
-  const urls = new Map();         // caminho → url assinada (cache da sessão)
+  const urls = B7.DB.mapaUrlsAssinadas();         // caminho → url assinada (cache da sessão)
 
   async function abrir(desloc) {
     const P = B7.Portal;

@@ -144,6 +144,10 @@ B7.Painel = (function () {
      falhar, fica o dado anterior em vez de um erro no meio da tela */
   function carregar(fonte, silencioso) {
     const g = geracao, uid = meuId();
+    /* limpeza 4.5: sem sessão (saindo, ou a sessão expirou) não há "meu"
+       trabalho para buscar; antes ia "videomaker_id=eq.null" e o banco
+       respondia erro 400 */
+    if (!uid && fonte !== 'agencia') return;
     const tinha = !!(silencioso && S[fonte] && S[fonte].estado === 'ok');
     if (!tinha) { S[fonte] = { estado: 'carregando' }; pintar(); }
     let p;

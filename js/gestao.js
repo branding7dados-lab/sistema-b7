@@ -42,7 +42,7 @@ B7.Gestao = (function () {
       pintar();
     });
     const vale = B7.Rota.marca();
-    try { dados = await B7.DB.rpc('gestao_painel', {}); }
+    try { dados = (await B7.DB.rpc('gestao_painel', {})) || {}; }
     catch (e) {
       if (!vale()) return;
       document.getElementById('gt-corpo').innerHTML = '<div class="cb-aviso erro">' + esc(e.message || 'Não foi possível carregar.') + ' <button class="cb-link" data-de-novo>Tentar de novo</button></div>';

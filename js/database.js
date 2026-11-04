@@ -2043,6 +2043,21 @@ B7.DB = (function () {
       return (l && l.descricao) || '';
     },
 
+    /* limpeza 4.5: as URLs assinadas valem 10 min. As telas guardavam a
+       URL num Map para sempre e, com a tela aberta mais de 10 min, as
+       imagens quebravam (o Storage respondia 400). Este mapa esquece cada
+       URL depois de 8 min, e a próxima leitura pede uma nova. */
+    mapaUrlsAssinadas() {
+      const m = new Map(), VALE = 8 * 60 * 1000;
+      return {
+        get(k) { const v = m.get(k); if (!v) return undefined; if (Date.now() - v.t > VALE) { m.delete(k); return undefined; } return v.u; },
+        set(k, u) { m.set(k, { u, t: Date.now() }); return this; },
+        has(k) { return this.get(k) !== undefined; },
+        delete(k) { return m.delete(k); },
+        clear() { m.clear(); }
+      };
+    },
+
     urlArquivoDesign(caminho) {
       /* Storage privado: sem URL pública. A visualização passa por
          createSignedUrl, curta duração, pedida na hora de abrir. */

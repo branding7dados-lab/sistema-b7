@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.4.2', versao: '4.4.2', em: '2026-11-05T06:00:00-03:00',
+    titulo: 'Revisão geral: correções e banco mais rápido',
+    itens: ['As imagens das peças de Design não quebram mais quando a tela fica aberta por muito tempo.',
+            'No celular, a Central de atendimento e a Gestão → Equipe não empurram mais a tela para o lado.',
+            'O banco de dados ganhou atalhos de busca e ajustes de segurança, para responder mais rápido.'] },
   { id: 'v-4.4.0', versao: '4.4.0', em: '2026-11-05T04:30:00-03:00',
     titulo: 'Estúdio em Roteiros e Gestão',
     itens: ['Roteiros e Gestão ganharam títulos maiores e cartões de vidro, como o resto do sistema.',

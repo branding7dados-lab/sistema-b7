@@ -325,3 +325,16 @@ html.modo-leve[data-theme] body, html.modo-leve.b7-vt[data-theme] #painel-dashbo
   box-shadow:inset 0 0 0 1px var(--borda), 0 10px 26px -18px rgba(20,8,40,.45);}
 [data-theme="dark"] .cli-secoes-rolo{background:rgba(23,15,34,.72);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08), 0 10px 26px -18px rgba(0,0,0,.7);}
 html.modo-leve .cli-secoes-rolo{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card);}
+
+/* limpeza 4.5: Central de atendimento no celular — as 4 abas e o botão
+   não cabiam numa linha e empurravam a tela para o lado. Agora as abas
+   rolam de lado dentro da própria cápsula e o botão desce para baixo. */
+@media (max-width: 760px){
+  .spx-adm-ac{flex-wrap:wrap;width:100%;min-width:0;}
+  .spx-abas{max-width:100%;overflow-x:auto;scrollbar-width:none;}
+  .spx-abas::-webkit-scrollbar{display:none;}
+  .spx-abas button{flex:none;white-space:nowrap;}
+}
+/* limpeza 4.5: Gestão → Equipe no celular — o filtro de período rolava de
+   lado, mas o contêiner não encolhia e empurrava a tela */
+@media (max-width: 760px){ .cl-per{max-width:100%;min-width:0;} .cl-per{flex:1 1 100%;} }
