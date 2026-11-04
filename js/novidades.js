@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-3.3.0', versao: '3.3.0', em: '2026-11-04T20:00:00-03:00',
+    titulo: 'Assistente mais rápido, aviso de trabalho parado e prioridade sugerida',
+    itens: ['O assistente de IA responde mais rápido também às perguntas sobre o seu trabalho.',
+            'Todo dia útil às 8h, quem tem trabalho parado há 5 dias ou mais recebe um aviso com os mais antigos.',
+            'Na Edição de vídeo → Prioridade, o sistema sugere subir o que está atrasado ou perto do prazo. É só tocar em Aplicar.'] },
   { id: 'v-3.2.0', versao: '3.2.0', em: '2026-11-04T19:00:00-03:00',
     titulo: 'Entrar com Google no app do celular',
     itens: ['No app Android, o botão "Entrar com Google" agora aparece na tela de login.',

@@ -792,25 +792,51 @@ B7.Video = (function () {
   /* v3.1.3: coordenação e videomakers (Kevin); dá para tirar de alguém em Funções e permissões */
   const podePriorizar = () => !!((souEquipe() || souVideomakerElegivel()) && pode('video.priorizar'));
 
+  /* v3.3.0 — PRIORIDADE SUGERIDA. O sistema olha o prazo e sugere:
+       atrasado e ainda não urgente → Urgente; vence em até 2 dias e ainda
+       Normal → Alta. Quem prioriza vê a faixa de sugestões e aplica com um
+       toque (ou "Agora não", que vale até fechar o app). Nunca muda sozinho. */
+  const somaDias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+  function sugestoesPrioridade(abertas) {
+    const h = hoje(), limite = somaDias(h, 2);
+    return abertas.map(d => {
+      const p = d.prioridade || 'normal';
+      if (!d.prazo) return null;
+      if (d.prazo < h && p !== 'urgente') return { d, para: 'urgente', motivo: 'atrasado' };
+      if (d.prazo <= limite && p === 'normal') return { d, para: 'alta', motivo: d.prazo === h ? 'vence hoje' : 'vence em até 2 dias' };
+      return null;
+    }).filter(Boolean);
+  }
+  let sugestoesFechadas = false;
+  try { sugestoesFechadas = sessionStorage.getItem('b7.video.sug') === '1'; } catch (e) {}
   function prioridadeHTML(lista) {
     const abertas = lista.filter(d => ABERTAS_PRIO.includes(d.editing_status)).sort(ordemPrioridade);
     const posicao = new Map(abertas.map((d, i) => [d.id, i + 1]));
     const mexe = podePriorizar();
+    const sug = mexe ? sugestoesPrioridade(abertas) : [];
+    const sugDe = new Map(sug.map(s => [s.d.id, s]));
+    const nU = sug.filter(s => s.para === 'urgente').length, nA = sug.length - nU;
+    const faixaSug = sug.length && !sugestoesFechadas
+      ? '<div class="vp-sug" role="status"><span class="vp-sug-ic" aria-hidden="true">💡</span><div class="vp-sug-tx"><b>' +
+          (sug.length === 1 ? '1 sugestão de prioridade' : sug.length + ' sugestões de prioridade') + '</b><small>' +
+          [nU ? nU + (nU === 1 ? ' atrasado' : ' atrasados') + ' → Urgente' : '', nA ? nA + ' perto do prazo → Alta' : ''].filter(Boolean).join(' · ') +
+          '</small></div><button type="button" class="b fina pri" data-sug="aplicar">Aplicar</button><button type="button" class="b fina contorno" data-sug="fechar">Agora não</button></div>'
+      : '';
     const faixa = ([k, nome, sub]) => {
       const itens = abertas.filter(d => (d.prioridade || 'normal') === k);
       return '<section class="vp-faixa vp-' + k + '" data-faixa="' + k + '">' +
         '<header class="vp-cab"><span class="vp-cab-nome"><i></i>' + esc(nome) + '</span><small>' + esc(sub) + '</small><b>' + itens.length + '</b></header>' +
         '<div class="vp-lista" data-faixa-lista="' + k + '">' +
-          itens.map(d => cartaoPrioHTML(d, posicao.get(d.id), mexe)).join('') +
+          itens.map(d => cartaoPrioHTML(d, posicao.get(d.id), mexe, sugestoesFechadas ? null : sugDe.get(d.id))).join('') +
           '<div class="vp-vazia">' + (mexe ? 'Arraste um vídeo para cá' : 'Nenhum vídeo aqui') + '</div>' +
         '</div></section>';
     };
     return '<p class="vp-ajuda">' + (mexe
         ? 'Arraste para mudar a ordem. O <b>1º</b> da fila é o próximo vídeo a ser editado.'
-        : 'A coordenação define a ordem. Edite de cima para baixo: o <b>1º</b> é o próximo.') + '</p>' +
+        : 'A coordenação define a ordem. Edite de cima para baixo: o <b>1º</b> é o próximo.') + '</p>' + faixaSug +
       '<div class="vp-quadro' + (mexe ? ' vp-mexe' : '') + '">' + FAIXAS_PRIO.map(faixa).join('') + '</div>';
   }
-  function cartaoPrioHTML(d, pos, mexe) {
+  function cartaoPrioHTML(d, pos, mexe, sug) {
     const atrasada = ehAtrasada(d);
     const sit = (SITUACOES.find(([v]) => v === d.editing_status) || [, d.editing_status])[1];
     return '<article class="vp-card' + (atrasada ? ' vp-atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0">' +
@@ -819,6 +845,7 @@ B7.Video = (function () {
         '<div class="vp-topo">' + logoClienteHTML(d, 'sm') + '<b>' + esc(d.cliente_nome || 'Cliente') + '</b>' +
           '<span class="vp-sit vp-sit-' + d.editing_status + '">' + esc(sit) + '</span></div>' +
         '<div class="vp-titulo">' + tituloComFallback(d) + '</div>' +
+        (sug ? '<span class="vp-sug-chip vp-sug-' + sug.para + '">Sugestão: ' + (sug.para === 'urgente' ? 'Urgente' : 'Alta') + ' · ' + esc(sug.motivo) + '</span>' : '') +
         '<div class="vp-rodape">' + quemHTML(d) +
           (d.prazo ? '<span class="vd-prazo-pill' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + '</span>' : '') +
         '</div>' +
@@ -830,7 +857,34 @@ B7.Video = (function () {
   /* arrastar: mouse (Pointer Events) e dedo (segurar 0,3 s). O cartão
      sai do lugar, uma vaga mostra onde ele vai cair e, ao soltar, a
      ordem nova é o meio entre os vizinhos (o banco não renumera nada). */
+  async function aplicarSugestoes(bt) {
+    const fila = filtrar(baseFiltrada(true)).filter(d => ABERTAS_PRIO.includes(d.editing_status));
+    const sug = sugestoesPrioridade(fila);
+    if (!sug.length) return;
+    bt.disabled = true; bt.textContent = 'Aplicando…';
+    /* vão para o topo da faixa nova, os mais atrasados primeiro */
+    sug.sort((a, b) => String(a.d.prazo).localeCompare(String(b.d.prazo)));
+    let feitos = 0;
+    for (const faixa of ['urgente', 'alta']) {
+      const daFaixa = sug.filter(s => s.para === faixa);
+      const topo = Math.min(1000, ...fila.filter(d => (d.prioridade || 'normal') === faixa).map(ordemNum));
+      for (let i = 0; i < daFaixa.length; i++) {
+        const d = daFaixa[i].d, antes = { prioridade: d.prioridade, prioridade_ordem: d.prioridade_ordem };
+        const ordem = topo - (daFaixa.length - i) * 10;
+        try { await B7.DB.priorizarVideo(d.id, faixa, ordem); d.prioridade = faixa; d.prioridade_ordem = ordem; feitos++; }
+        catch (e) { Object.assign(d, antes); B7.UI.toast(e.message || 'Não foi possível mudar a prioridade.'); break; }
+      }
+    }
+    redesenharQuieto();
+    if (feitos) B7.UI.toast(feitos === 1 ? '1 vídeo mudou de prioridade.' : feitos + ' vídeos mudaram de prioridade.');
+  }
   function ligarPrioridade(cx) {
+    cx.querySelectorAll('[data-sug]').forEach(b => b.onclick = () => {
+      if (b.dataset.sug === 'aplicar') return aplicarSugestoes(b);
+      sugestoesFechadas = true;
+      try { sessionStorage.setItem('b7.video.sug', '1'); } catch (e) {}
+      redesenharQuieto();
+    });
     const quadro = cx.querySelector('.vp-quadro');
     if (!quadro || !podePriorizar()) return;
     let sess = null;

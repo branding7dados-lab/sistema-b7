@@ -1734,3 +1734,14 @@ body.vp-arrastando .vp-card{cursor:grabbing;}
 .vp-fantasma{position:fixed;z-index:9999;pointer-events:none;margin:0;cursor:grabbing;will-change:transform;
   box-shadow:0 18px 40px -12px rgba(0,0,0,.35), 0 0 0 1px color-mix(in srgb, var(--acento, var(--magenta)) 40%, transparent);}
 @media (prefers-reduced-motion: reduce){.vp-urgente .vp-cab-nome i{animation:none;}}
+
+/* v3.3.0 — sugestões de prioridade */
+.vp-sug{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border-radius:14px;
+  border:1px solid color-mix(in srgb, var(--ambar) 40%, var(--borda));background:color-mix(in srgb, var(--ambar) 9%, var(--card));}
+.vp-sug-ic{font-size:20px;line-height:1;}
+.vp-sug-tx{flex:1;min-width:180px;display:flex;flex-direction:column;gap:1px;}
+.vp-sug-tx b{font-size:13.5px;color:var(--ink);}
+.vp-sug-tx small{font-size:12px;color:var(--ink-3);}
+.vp-sug-chip{align-self:flex-start;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;}
+.vp-sug-urgente{background:var(--erro-bg);color:var(--erro);}
+.vp-sug-alta{background:var(--ambar-bg);color:var(--ambar);}

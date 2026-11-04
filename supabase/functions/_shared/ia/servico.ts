@@ -80,7 +80,13 @@ export function provedorAtual(env: (nome: string) => string | undefined): Proved
   if (omni) return omni;
   /* zzz300: com a chave do Groq, ele atende o texto e o Gemini fica de reserva */
   const gemini = criarGemini(env), groq = criarGroq(env);
-  if (groq && gemini) return criarDuplo(groq, gemini, Number(env('GROQ_LIMITE_TOKENS')) || 6000);
+  if (groq && gemini) {
+    /* v3.3.0: modelo grande do Groq para o chat (GROQ_MODELO_GRANDE=nenhum desliga) */
+    const nomeGrande = (env('GROQ_MODELO_GRANDE') || 'meta-llama/llama-4-scout-17b-16e-instruct').trim();
+    const g = nomeGrande && nomeGrande !== 'nenhum' ? criarGroq(env, fetch, nomeGrande) : null;
+    return criarDuplo(groq, gemini, Number(env('GROQ_LIMITE_TOKENS')) || 6000,
+      g ? { provedor: g, limite: Number(env('GROQ_LIMITE_GRANDE')) || 24000 } : null);
+  }
   return gemini || groq;
 }
 

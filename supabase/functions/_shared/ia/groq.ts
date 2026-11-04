@@ -55,10 +55,11 @@ function erroPorStatus(status: number, corpo: RespostaOpenAI | null): ErroDoProv
 const conteudo = (v: unknown): string => typeof v === 'string' ? v : '';
 
 /** Cria o provedor a partir dos segredos. null = chave não configurada. */
-export function criarGroq(env: (nome: string) => string | undefined, fetchFn: typeof fetch = fetch): Provedor | null {
+export function criarGroq(env: (nome: string) => string | undefined, fetchFn: typeof fetch = fetch, outroModelo?: string): Provedor | null {
   const chave = (env('GROQ_API_KEY') || '').trim();
   if (!chave) return null;
-  const pedido = (env('GROQ_MODEL') || '').trim();
+  /* v3.3.0: outroModelo = o modelo "grande" (pedidos que não cabem no padrão; ver duplo.ts) */
+  const pedido = (outroModelo || env('GROQ_MODEL') || '').trim();
   const modelo = /^[\w][\w.\-/:]{1,80}$/.test(pedido) ? pedido : MODELO_PADRAO;
   const raciocina = /gpt-oss/.test(modelo);
 
