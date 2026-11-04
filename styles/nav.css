@@ -800,7 +800,7 @@ html.modo-leve body[data-shell="interno"] .lateral:after{display:none !important
     background:url('../assets/brand/symbol-white.png') center/contain no-repeat;pointer-events:none;}
   .nm-topo-tx{padding-right:44px;}
   .nm-topo-tx small{display:block;font-size:12px;font-weight:600;letter-spacing:.02em;opacity:.78;}
-  .nm-topo-tx h3{margin:2px 0 0;font-family:'Archivo';font-size:25px;font-weight:700;letter-spacing:-.025em;line-height:1.1;color:#fff;
+  .nm-topo-tx h3{margin:2px 0 0;font-family:'B7 Titulo';font-size:25px;font-weight:700;letter-spacing:-.025em;line-height:1.1;color:#fff;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .nm-fechar{position:absolute;top:12px;right:12px;width:32px;height:32px;display:grid;place-items:center;padding:0;border-radius:50%;cursor:pointer;
     border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.14);color:#fff;
@@ -831,7 +831,7 @@ html.modo-leve body[data-shell="interno"] .lateral:after{display:none !important
   /* títulos dos grupos, agora visíveis, com o filete da marca */
   html[data-theme] body .nm-folha .nm-secao,.nm-usados{background:none;box-shadow:none;border-radius:0;overflow:visible;}
   html body .nm-folha .nm-secao h4,.nm-usados h4{position:static;width:auto;height:auto;margin:0 0 8px 4px;padding:0;overflow:visible;clip:auto;white-space:normal;
-    display:flex;align-items:center;gap:8px;font-family:'Archivo';font-size:13px;font-weight:700;letter-spacing:.01em;text-transform:none;color:var(--ink-2);}
+    display:flex;align-items:center;gap:8px;font-family:'B7 Titulo';font-size:13px;font-weight:700;letter-spacing:.01em;text-transform:none;color:var(--ink-2);}
   html body .nm-folha .nm-secao h4::before,.nm-usados h4::before{content:"";width:14px;height:4px;border-radius:4px;background:var(--grad-curto);}
 
   /* cartão da lista */

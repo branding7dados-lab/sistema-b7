@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'b7-v3.5.0';   /* sempre igual à VERSAO de js/auth.js */
+const CACHE = 'b7-v4.0.0';   /* sempre igual à VERSAO de js/auth.js */
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -26,7 +26,7 @@ const CASCA = [
   /* zzz45: estava faltando. Sem rede, o "Visualizar como…" sumia em
      silêncio porque o arquivo nunca entrava no cache. */
   './js/previa-usuario.js', './js/perfil-lateral.js', './js/menu-contexto.js',
-  './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js', './js/app-nativo.js', './js/hoje.js', './js/convite-app.js', './js/atalhos-app.js', './styles/hoje.css',
+  './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js', './js/app-nativo.js', './js/hoje.js', './js/convite-app.js', './js/atalhos-app.js', './styles/hoje.css', './styles/v4.css',
   './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js', './js/ia-rico.js', './js/ia-ferramentas.js', './js/ia-chat.js',
   /* zzz158: html2canvas, jsPDF e XLSX (1,4 MB) saíram da casca — elas só
      chegam quando alguém exporta ou importa (js/vendor-carregar.js), e o
@@ -37,7 +37,7 @@ const CASCA = [
   './assets/brand/logo-color.png', './assets/brand/logo-white.png',
   './assets/brand/symbol-color.png', './assets/brand/symbol-white.png',
   './assets/fonts/inter-400.woff2', './assets/fonts/inter-500.woff2',
-  './assets/fonts/inter-600.woff2', './assets/fonts/inter-700.woff2',
+  './assets/fonts/inter-600.woff2', './assets/fonts/inter-700.woff2', './assets/fonts/sora-var.woff2',
   './assets/fonts/archivo-700.woff2', './assets/fonts/archivo-800.woff2', './assets/fonts/archivo-900.woff2',
   './assets/icons/icon-192.png', './assets/icons/icon-512.png', './assets/icons/badge-96.png', './assets/icons/favicon.png',
   './manifest.json'

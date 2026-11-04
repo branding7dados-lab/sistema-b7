@@ -23,7 +23,7 @@
 .cp-cat-cab{display:flex;align-items:center;gap:11px;margin-bottom:13px;}
 .cp-ic{width:22px;height:22px;color:var(--acento);flex:none;}
 .cp-ic svg{width:100%;height:100%;}
-.cp-cat-cab h2{font-family:'Archivo';font-weight:800;font-size:18px;letter-spacing:-.2px;margin:0;}
+.cp-cat-cab h2{font-family:'B7 Titulo';font-weight:800;font-size:18px;letter-spacing:-.2px;margin:0;}
 .cp-cat-cab .b{margin-left:auto;}
 .cp-cat-cab .b svg{width:13px;height:13px;}
 
@@ -37,7 +37,7 @@
   color:var(--ink);transition:var(--t-micro);}
 .cp-num:hover{border-color:var(--borda-forte);transform:translateY(-2px);}
 .cp-num:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
-.cp-num b{font-family:'Archivo';font-weight:800;font-size:38px;line-height:1;letter-spacing:-.02em;}
+.cp-num b{font-family:'B7 Titulo';font-weight:800;font-size:38px;line-height:1;letter-spacing:-.02em;}
 .cp-num span{font-size:12.5px;color:var(--ink-3);}
 .cp-num .cp-seta{position:absolute;right:16px;top:18px;width:14px;height:14px;
   color:var(--ink-4);opacity:0;transition:var(--t-micro);}
@@ -54,7 +54,7 @@
   background:var(--suave);border:1px solid var(--borda);border-radius:99px;padding:6px 14px;
   transition:var(--t-micro);}
 .cp-andamento button:hover{border-color:var(--acento);color:var(--acento);}
-.cp-andamento b{font-family:'Archivo';font-weight:800;color:var(--ink);}
+.cp-andamento b{font-family:'B7 Titulo';font-weight:800;color:var(--ink);}
 
 /* ----------------------------------------------------------- agenda */
 .cp-agenda{margin-top:16px;background:var(--card);border:1px solid var(--borda);
@@ -74,7 +74,7 @@
 .cp-ag-data{flex:none;width:62px;text-align:center;}
 .cp-ag-data .dow{display:block;font-size:9.5px;font-weight:700;letter-spacing:.14em;
   color:var(--ink-4);}
-.cp-ag-data .dt{display:block;font-family:'Archivo';font-weight:800;font-size:13px;
+.cp-ag-data .dt{display:block;font-family:'B7 Titulo';font-weight:800;font-size:13px;
   color:var(--ink);margin-top:2px;}
 .cp-ag-tx{flex:1;min-width:0;}
 .cp-ag-tx b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;
@@ -105,7 +105,7 @@
 /* ------------------------------------------------------------ vazio */
 .cp-vazio{margin-top:14px;padding:22px;text-align:center;background:var(--suave);
   border-radius:var(--r-lg);}
-.cp-vazio b{display:block;font-family:'Archivo';font-weight:800;font-size:15px;}
+.cp-vazio b{display:block;font-family:'B7 Titulo';font-weight:800;font-size:15px;}
 .cp-vazio p{font-size:12.5px;color:var(--ink-4);margin:7px 0 14px;}
 
 /* -------------------------------------------------------- esqueleto */
@@ -116,7 +116,7 @@
 /* ------------------------------------------------- configurações */
 .cfg-bloco{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);
   padding:18px 20px;margin-bottom:12px;}
-.cfg-bloco h3{font-family:'Archivo';font-weight:800;font-size:15px;margin:0 0 4px;}
+.cfg-bloco h3{font-family:'B7 Titulo';font-weight:800;font-size:15px;margin:0 0 4px;}
 .cfg-bloco p{font-size:12.5px;color:var(--ink-4);margin:0 0 14px;}
 .cfg-linha{display:flex;align-items:center;gap:12px;padding:11px 0;
   border-top:1px solid var(--borda);font-size:12.5px;}

@@ -94,7 +94,7 @@
    O B7.UI.modal já vira bottom sheet ≤520px; aqui só o miolo. */
 .tp-folha .modal{padding:10px 10px calc(12px + env(safe-area-inset-bottom));}
 .tp-folha-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 4px 8px 10px;}
-.tp-folha-cab h3{margin:0;font-family:'Archivo';font-weight:800;font-size:17px;}
+.tp-folha-cab h3{margin:0;font-family:'B7 Titulo';font-weight:800;font-size:17px;}
 .tp-folha-corpo{display:flex;flex-direction:column;overflow-y:auto;max-height:calc(80vh - 60px);max-height:calc(80dvh - 60px);}
 .tp-folha .tp-item{min-height:52px;}
 .tp-folha .tp-item-simples{min-height:48px;}
@@ -125,7 +125,7 @@ body.modo-portal .topo-criar,body.modo-portal .topo-ctx{display:none !important;
   .busca.busca-gatilho:hover{background:var(--suave);}
   .busca-gatilho .busca-tx,.busca.busca-gatilho kbd{display:none;}
   .busca.busca-gatilho .lupa{width:18px;height:18px;}
-  .topo-ctx{display:block;flex:1 1 auto;min-width:0;padding:0 4px;font-family:'Archivo';font-weight:800;font-size:15px;
+  .topo-ctx{display:block;flex:1 1 auto;min-width:0;padding:0 4px;font-family:'B7 Titulo';font-weight:800;font-size:15px;
     letter-spacing:-.2px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .topo-global .espaco{display:none;}
   .topo .ico-sessao{width:34px;height:34px;margin:3px;font-size:34px;}
@@ -170,7 +170,7 @@ body.modo-portal .topo-criar,body.modo-portal .topo-ctx{display:none !important;
 .tc-av .tp-conta-av{width:100%;height:100%;border-radius:50%;font-size:22px;border:2px solid var(--card);}
 @keyframes tcAnel{from{transform:rotate(-120deg) scale(.6);opacity:0}to{transform:none;opacity:1}}
 .tc-id{display:flex;flex-direction:column;gap:3px;min-width:0;}
-.tc-id b{font-family:'Archivo',sans-serif;font-size:18px;font-weight:800;color:var(--ink);line-height:1.15;overflow-wrap:anywhere;
+.tc-id b{font-family:'B7 Titulo',sans-serif;font-size:18px;font-weight:800;color:var(--ink);line-height:1.15;overflow-wrap:anywhere;
   animation:tcSobe .5s var(--tc-mola) .12s both;}
 .tc-id small{font-size:12.5px;color:var(--ink-3);animation:tcSobe .5s var(--tc-mola) .18s both;}
 .tc-papeis{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}

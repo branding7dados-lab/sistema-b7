@@ -17,7 +17,7 @@
 .gv-cli:hover{color:var(--acento);}
 .gv-badge{font-size:12px;padding:5px 10px;}
 .gv-st-semdata{--cal-st:var(--ink-4);--cal-st-bg:var(--suave);--cal-st-border:var(--borda);}
-.gv-nome{margin:0;font-family:'Archivo';font-weight:800;font-size:28px;letter-spacing:-.4px;line-height:1.15;color:var(--ink);overflow-wrap:anywhere;}
+.gv-nome{margin:0;font-family:'B7 Titulo';font-weight:800;font-size:28px;letter-spacing:-.4px;line-height:1.15;color:var(--ink);overflow-wrap:anywhere;}
 .gv-fatos{display:flex;flex-wrap:wrap;gap:10px;}
 .gv-fato{display:inline-flex;align-items:center;gap:10px;padding:9px 13px;border-radius:12px;background:var(--card);border:1px solid var(--borda);min-width:0;}
 .gv-fato > svg{width:18px;height:18px;flex:none;color:var(--acento);}
@@ -38,11 +38,11 @@
 .gv-principal,.gv-lado{display:flex;flex-direction:column;gap:18px;min-width:0;}
 .gv-bloco{background:var(--card);border:1px solid var(--borda);border-radius:var(--r);padding:18px;min-width:0;}
 .gv-sec-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
-.gv-sec-cab h2{margin:0;font-family:'Archivo';font-weight:800;font-size:17px;color:var(--ink);}
+.gv-sec-cab h2{margin:0;font-family:'B7 Titulo';font-weight:800;font-size:17px;color:var(--ink);}
 .gv-sec-cab .b{margin-left:auto;}
 .gv-sec-cab .gv-tele + .gv-add{margin-left:0;}
 .gv-progresso{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-3);}
-.gv-progresso b{font-family:'Archivo';font-weight:800;color:var(--ink);}
+.gv-progresso b{font-family:'B7 Titulo';font-weight:800;color:var(--ink);}
 .gv-progresso i{display:inline-block;width:64px;height:6px;border-radius:4px;background:var(--suave);position:relative;overflow:hidden;}
 .gv-progresso i::after{content:'';position:absolute;inset:0 auto 0 0;width:var(--p);background:var(--ok);border-radius:4px;}
 .gv-add svg{width:15px;height:15px;}
@@ -163,7 +163,7 @@
 
 .gl-grupo{margin-bottom:26px;}
 .gl-grupo-cab{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 14px;margin:0 2px 10px;}
-.gl-grupo-cab h3{display:flex;align-items:center;gap:8px;margin:0;font-family:'Archivo';font-size:16px;font-weight:800;letter-spacing:-.01em;color:var(--ink);}
+.gl-grupo-cab h3{display:flex;align-items:center;gap:8px;margin:0;font-family:'B7 Titulo';font-size:16px;font-weight:800;letter-spacing:-.01em;color:var(--ink);}
 .gl-tag{font-family:'Inter';font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--acento);background:var(--acento-suave);padding:3px 8px;border-radius:999px;}
 .gl-resumo{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:12.5px;color:var(--ink-3);}
 .gl-resumo-itens{color:var(--ink-2);font-weight:600;}
@@ -180,7 +180,7 @@
 
 .gl-dia{grid-area:dia;width:52px;height:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;
   background:var(--suave);color:var(--ink-2);line-height:1.05;}
-.gl-dia b{font-family:'Archivo';font-size:20px;font-weight:800;color:var(--ink);}
+.gl-dia b{font-family:'B7 Titulo';font-size:20px;font-weight:800;color:var(--ink);}
 .gl-dia small{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);}
 .gl-dia.hoje{background:var(--acento);}
 .gl-dia.hoje b,.gl-dia.hoje small{color:#fff;}
@@ -396,7 +396,7 @@ button.gv-fato:hover .gv-fato-ed,button.gv-fato:focus-visible .gv-fato-ed{opacit
    ===================================================================== */
 .gl-pagina{--gl-mola:cubic-bezier(.16,1,.3,1);}
 .gl-topo{align-items:flex-start;margin-bottom:18px;animation:cfgEntra .5s var(--gl-mola) both;}
-.gl-tit h1{margin:0;font-family:'Archivo',sans-serif;font-size:28px;font-weight:900;letter-spacing:-.6px;color:var(--ink);}
+.gl-tit h1{margin:0;font-family:'B7 Titulo',sans-serif;font-size:28px;font-weight:900;letter-spacing:-.6px;color:var(--ink);}
 .gl-tit p{margin:4px 0 0;font-size:13.5px;color:var(--ink-3);}
 .gl-tit p b{color:var(--ink-2);font-weight:700;}
 .gl-topo .gl-cal{border-radius:13px;}
@@ -464,7 +464,7 @@ button.gv-fato:hover .gv-fato-ed,button.gv-fato:focus-visible .gv-fato-ed{opacit
 .ng-modal .ng-ic{flex:none;width:46px;height:46px;border-radius:15px;display:inline-flex;align-items:center;justify-content:center;color:#fff;
   background:linear-gradient(135deg,var(--violeta),color-mix(in srgb,var(--magenta) 86%,#fff));box-shadow:0 10px 22px -12px color-mix(in srgb,color-mix(in srgb,var(--roxo) 89%,#fff) 55.8%,transparent);}
 .ng-modal .ng-ic svg{width:23px;height:23px;}
-.ng-modal .ng-topo h3{margin:0;font-family:'Archivo',sans-serif;font-size:22px;font-weight:900;letter-spacing:-.4px;}
+.ng-modal .ng-topo h3{margin:0;font-family:'B7 Titulo',sans-serif;font-size:22px;font-weight:900;letter-spacing:-.4px;}
 .ng-modal .ng-topo .sub{margin:4px 0 0;font-size:13px;line-height:1.45;color:var(--ink-4);}
 .ng-bloco{margin:0 0 12px;padding:14px 14px 14px;border-radius:18px;background:color-mix(in srgb, var(--ink) 3%, var(--card));
   border:1px solid color-mix(in srgb, var(--ink) 7%, transparent);animation:ngIn .5s cubic-bezier(.16,1,.3,1) both;}

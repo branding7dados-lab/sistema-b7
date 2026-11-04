@@ -32,7 +32,7 @@ body.modo-tv #toasts,body.modo-tv #b7-chat-fab,body.modo-tv #b7-chat,body.modo-t
 .tv-hoje b{font-size:clamp(15px,2vh,22px);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tv-hoje em{font-style:normal;font-size:clamp(12px,1.5vh,16px);color:var(--ink-3);flex:none;}
 .tv-relogio{margin-left:auto;display:flex;align-items:baseline;gap:clamp(10px,1.2vw,22px);font-variant-numeric:tabular-nums;flex:none;}
-.tv-relogio b{font-family:'Archivo';font-weight:800;font-size:clamp(36px,7vh,76px);line-height:.9;letter-spacing:-.035em;}
+.tv-relogio b{font-family:'B7 Titulo';font-weight:800;font-size:clamp(36px,7vh,76px);line-height:.9;letter-spacing:-.035em;}
 .tv-relogio b i{font-style:normal;margin:0 2px;opacity:.45;animation:tvPisca 2s steps(1) infinite;}
 .tv-relogio span{font-size:clamp(13px,1.9vh,21px);font-weight:600;color:var(--ink-3);}
 @keyframes tvPisca{50%{opacity:.12;}}
@@ -50,22 +50,22 @@ body.modo-tv #toasts,body.modo-tv #b7-chat-fab,body.modo-tv #b7-chat,body.modo-t
 .tv-anel circle{fill:none;stroke-width:11;}
 .tv-anel .f{stroke:var(--suave);}
 .tv-anel .v{stroke:var(--acento);stroke-linecap:round;stroke-dasharray:var(--c);stroke-dashoffset:var(--o);transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1);}
-.tv-anel b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Archivo';font-weight:800;
+.tv-anel b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'B7 Titulo';font-weight:800;
   font-size:clamp(22px,3.6vh,40px);letter-spacing:-.03em;}
 .tv-anel b i{font-style:normal;font-size:.5em;margin-left:2px;color:var(--ink-4);}
 .tv-resumo-tx{display:flex;flex-direction:column;gap:4px;min-width:0;}
 .tv-resumo-tx span{font-size:clamp(11px,1.3vh,14px);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);}
-.tv-resumo-tx strong{font-family:'Archivo';font-weight:800;font-size:clamp(17px,2.6vh,30px);letter-spacing:-.02em;line-height:1.1;}
+.tv-resumo-tx strong{font-family:'B7 Titulo';font-weight:800;font-size:clamp(17px,2.6vh,30px);letter-spacing:-.02em;line-height:1.1;}
 .tv-nums{margin-left:auto;display:flex;gap:clamp(8px,1vw,18px);}
 .tv-num{min-width:clamp(92px,9.5vw,178px);padding:clamp(8px,1.3vh,16px) clamp(12px,1.2vw,22px);border-radius:clamp(14px,1.8vh,20px);
   background:color-mix(in srgb, var(--ec) 9%, var(--card));border:1px solid color-mix(in srgb, var(--ec) 26%, var(--borda));
   display:flex;flex-direction:column;gap:2px;}
-.tv-num b{font-family:'Archivo';font-weight:800;font-size:clamp(28px,5.2vh,58px);line-height:1;letter-spacing:-.03em;color:var(--ec);font-variant-numeric:tabular-nums;}
+.tv-num b{font-family:'B7 Titulo';font-weight:800;font-size:clamp(28px,5.2vh,58px);line-height:1;letter-spacing:-.03em;color:var(--ec);font-variant-numeric:tabular-nums;}
 .tv-num span{font-size:clamp(11px,1.5vh,16px);font-weight:600;color:var(--ink-3);}
 
 .tv-bloco{min-height:0;display:flex;flex-direction:column;padding:clamp(12px,1.8vh,22px) clamp(14px,1.4vw,26px);
   border-radius:clamp(18px,2.4vh,28px);background:var(--card);border:1px solid var(--borda);}
-.tv-bloco h2{font-family:'Archivo';font-weight:800;font-size:clamp(14px,1.9vh,21px);letter-spacing:-.015em;margin:0 0 clamp(8px,1.2vh,14px);}
+.tv-bloco h2{font-family:'B7 Titulo';font-weight:800;font-size:clamp(14px,1.9vh,21px);letter-spacing:-.015em;margin:0 0 clamp(8px,1.2vh,14px);}
 
 /* -------------------------------------------------------------- clientes */
 .tv-clientes header{display:flex;align-items:baseline;gap:16px;flex:none;}
@@ -83,7 +83,7 @@ body.modo-tv #toasts,body.modo-tv #b7-chat-fab,body.modo-tv #b7-chat,body.modo-t
   font-size:clamp(9.5px,1.25vh,13px);font-weight:700;font-variant-numeric:tabular-nums;
   background:color-mix(in srgb, var(--ec) 16%, transparent);color:color-mix(in srgb, var(--ec) 78%, var(--ink));}
 .tv-cli-etapas i.tv-e-vazio{background:color-mix(in srgb, var(--ink-4) 9%, transparent);}
-.tv-cli-pct{flex:none;width:clamp(40px,3.2vw,60px);text-align:right;font-family:'Archivo';font-weight:800;font-size:clamp(13px,2vh,21px);
+.tv-cli-pct{flex:none;width:clamp(40px,3.2vw,60px);text-align:right;font-family:'B7 Titulo';font-weight:800;font-size:clamp(13px,2vh,21px);
   font-variant-numeric:tabular-nums;color:var(--ec);}
 .tv-cli.tv-e-andamento .tv-cli-pct,.tv-cli.tv-e-ok .tv-cli-pct{color:var(--ink-2);}
 .tv-cli-cab{animation:none;border-bottom-color:var(--borda);padding-left:calc(clamp(26px,3.6vh,38px) + clamp(8px,.8vw,14px));align-items:flex-end;padding-bottom:6px;}
@@ -111,7 +111,7 @@ body.modo-tv #toasts,body.modo-tv #b7-chat-fab,body.modo-tv #b7-chat,body.modo-t
 .tv-lista-tx small{font-size:clamp(11px,1.35vh,14.5px);color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tv-pub{display:flex;flex-direction:column;gap:8px;}
 .tv-pub-n{display:flex;align-items:baseline;gap:10px;}
-.tv-pub-n b{font-family:'Archivo';font-weight:800;font-size:clamp(24px,4vh,44px);line-height:1;color:var(--ok);font-variant-numeric:tabular-nums;}
+.tv-pub-n b{font-family:'B7 Titulo';font-weight:800;font-size:clamp(24px,4vh,44px);line-height:1;color:var(--ok);font-variant-numeric:tabular-nums;}
 .tv-pub-n span{font-size:clamp(12px,1.6vh,17px);color:var(--ink-3);}
 
 /* -------------------------------------------------------------- rodapé */
@@ -177,14 +177,14 @@ html.modo-leve .tv-relogio b i{animation:none;}
 .tv-sdia header{flex:none;display:flex;align-items:baseline;gap:8px;padding:clamp(10px,1.6vh,18px) clamp(10px,1vw,18px) clamp(6px,1vh,12px);border-bottom:1px solid var(--borda);}
 .tv-sdia header span{font-size:clamp(11px,1.5vh,16px);font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-4);}
 .tv-sdia.hoje header span{color:var(--acento);}
-.tv-sdia header b{margin-left:auto;font-family:'Archivo';font-weight:800;font-size:clamp(22px,4vh,44px);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;}
+.tv-sdia header b{margin-left:auto;font-family:'B7 Titulo';font-weight:800;font-size:clamp(22px,4vh,44px);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;}
 .tv-sdia-corpo{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:clamp(8px,1.3vh,14px);padding:clamp(10px,1.5vh,16px) clamp(10px,1vw,18px);}
 .tv-sdia-corpo p{margin:0;display:flex;flex-direction:column;gap:1px;min-width:0;}
 .tv-sdia-corpo time{font-size:clamp(11px,1.4vh,15px);font-weight:700;color:var(--acento);font-variant-numeric:tabular-nums;}
 .tv-sdia-corpo b{font-size:clamp(13px,1.9vh,20px);font-weight:650;line-height:1.2;overflow-wrap:anywhere;}
 .tv-sdia-livre,.tv-sdia-mais{font-size:clamp(12px,1.5vh,16px);color:var(--ink-4);}
 .tv-sdia footer{flex:none;display:flex;align-items:baseline;gap:7px;padding:clamp(8px,1.2vh,14px) clamp(10px,1vw,18px);border-top:1px solid var(--borda);}
-.tv-sdia footer b{font-family:'Archivo';font-weight:800;font-size:clamp(17px,2.6vh,28px);color:var(--ink);font-variant-numeric:tabular-nums;}
+.tv-sdia footer b{font-family:'B7 Titulo';font-weight:800;font-size:clamp(17px,2.6vh,28px);color:var(--ink);font-variant-numeric:tabular-nums;}
 .tv-sdia footer span{font-size:clamp(11px,1.4vh,15px);color:var(--ink-3);}
 @media (max-width:1100px){
   .tv-semana{grid-template-columns:minmax(0,1fr);}
@@ -356,7 +356,7 @@ html.modo-leve .tv-grao{display:none;}
   border:1px solid color-mix(in srgb, var(--acento) 45%, transparent);box-shadow:0 0 60px -22px var(--acento);animation:tvEntraBloco .8s cubic-bezier(.16,1,.3,1) both;}
 .tv-recado[hidden],.tv-faixa[hidden],.tv-sauda[hidden],.tv-logo-tela[hidden]{display:none;}
 .tv-recado i{flex:none;width:clamp(9px,1.2vh,14px);height:clamp(9px,1.2vh,14px);border-radius:50%;background:var(--acento);box-shadow:0 0 18px var(--acento);animation:tvPisca 2.4s ease-in-out infinite;}
-.tv-recado b{font-family:'Archivo';font-weight:800;font-size:clamp(17px,2.9vh,34px);letter-spacing:-.015em;line-height:1.15;text-align:center;overflow-wrap:anywhere;}
+.tv-recado b{font-family:'B7 Titulo';font-weight:800;font-size:clamp(17px,2.9vh,34px);letter-spacing:-.015em;line-height:1.15;text-align:center;overflow-wrap:anywhere;}
 
 /* ---- recado: faixa correndo embaixo ---- */
 .tv-faixa{flex:none;overflow:hidden;border-radius:999px;padding:clamp(7px,1.1vh,13px) 0;background:color-mix(in srgb, var(--acento) 16%, transparent);
@@ -378,20 +378,20 @@ html.modo-leve .tv-grao{display:none;}
 .tv-sauda.on .tv-sauda-caixa > :nth-child(3){animation-delay:.26s;}
 .tv-sauda.on .tv-sauda-caixa > :nth-child(4){animation-delay:.4s;}
 .tv-sauda small{display:block;font-size:clamp(13px,2vh,22px);font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);}
-.tv-sauda h1{margin:clamp(8px,1.6vh,18px) 0;font-family:'Archivo';font-weight:800;font-size:clamp(44px,12vh,140px);line-height:.95;letter-spacing:-.04em;
+.tv-sauda h1{margin:clamp(8px,1.6vh,18px) 0;font-family:'B7 Titulo';font-weight:800;font-size:clamp(44px,12vh,140px);line-height:.95;letter-spacing:-.04em;
   background:linear-gradient(180deg, var(--ink) 25%, color-mix(in srgb, var(--acento) 70%, var(--ink)) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}
 .tv-sauda p{margin:0 0 clamp(18px,3.4vh,40px);font-size:clamp(16px,2.8vh,32px);color:var(--ink-2);}
 .tv-sauda p b{color:var(--acento);}
 .tv-sauda-fatos{display:flex;justify-content:center;gap:clamp(18px,3vw,60px);flex-wrap:wrap;}
 .tv-sauda-fatos div{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:clamp(120px,12vw,220px);}
-.tv-sauda-fatos b{font-family:'Archivo';font-weight:800;font-size:clamp(34px,8vh,92px);line-height:1;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums;}
+.tv-sauda-fatos b{font-family:'B7 Titulo';font-weight:800;font-size:clamp(34px,8vh,92px);line-height:1;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums;}
 .tv-sauda-fatos b i{font-style:normal;font-size:.5em;color:var(--ink-4);}
 .tv-sauda-fatos span{font-size:clamp(13px,1.9vh,21px);color:var(--ink-3);}
 
 /* ---- mural de hoje ---- */
 .tv-mural{min-height:0;display:flex;flex-direction:column;gap:clamp(10px,1.6vh,20px);animation:tvLinha .5s cubic-bezier(.2,.8,.2,1) both;}
 .tv-mural header{flex:none;display:flex;align-items:baseline;gap:16px;}
-.tv-mural h2{margin:0;font-family:'Archivo';font-weight:800;font-size:clamp(18px,3vh,34px);letter-spacing:-.02em;}
+.tv-mural h2{margin:0;font-family:'B7 Titulo';font-weight:800;font-size:clamp(18px,3vh,34px);letter-spacing:-.02em;}
 .tv-mural header span{font-size:clamp(12px,1.6vh,18px);color:var(--ink-4);}
 .tv-mural-grade{flex:1;min-height:0;display:grid;gap:clamp(8px,1vw,18px);grid-auto-rows:minmax(0,1fr);
   grid-template-columns:repeat(clamp(2, calc(var(--n) / 2 + 1), 6), minmax(0,1fr));}
@@ -421,7 +421,7 @@ html.modo-leve .tv-grao{display:none;}
 @keyframes tvLogoBrilho{0%{background-position:130% 0;}30%,100%{background-position:-40% 0;}}
 .tv-logo-caixa p{margin:0;font-size:clamp(15px,3vh,36px);font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-2);text-align:center;max-width:80vw;}
 .tv-logo-hora{position:absolute;left:0;right:0;bottom:clamp(22px,5vh,60px);display:flex;flex-direction:column;align-items:center;gap:4px;font-variant-numeric:tabular-nums;}
-.tv-logo-hora b{font-family:'Archivo';font-weight:800;font-size:clamp(26px,5.4vh,62px);letter-spacing:-.03em;line-height:1;color:var(--ink);}
+.tv-logo-hora b{font-family:'B7 Titulo';font-weight:800;font-size:clamp(26px,5.4vh,62px);letter-spacing:-.03em;line-height:1;color:var(--ink);}
 .tv-logo-hora b i{font-style:normal;margin:0 2px;opacity:.45;animation:tvPisca 2s steps(1) infinite;}
 .tv-logo-hora span{font-size:clamp(12px,1.8vh,20px);color:var(--ink-3);}
 

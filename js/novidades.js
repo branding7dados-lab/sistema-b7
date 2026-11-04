@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.0.0', versao: '4.0.0', em: '2026-11-04T23:30:00-03:00',
+    titulo: 'B7 4.0: visual novo, o Estúdio',
+    itens: ['O sistema ganhou cara nova nos dois temas: fundo com a luz da marca, cartões mais arredondados com brilho no alto e títulos numa letra própria.',
+            'Os botões principais agora são pílulas com o degradê da B7, e o item aberto no menu fica destacado com o mesmo degradê.',
+            'As cores que você escolheu em Aparência continuam valendo. Em Configurações → Aparência → Desempenho, o modo Leve tira a luz do fundo para aparelhos mais simples.'] },
   { id: 'v-3.5.0', versao: '3.5.0', em: '2026-11-04T22:00:00-03:00',
     titulo: 'Mais de um videomaker na mesma gravação',
     itens: ['Ao editar uma gravação, marque em "Quem grava junto" as outras pessoas que vão filmar, como numa viagem.',

@@ -1,0 +1,94 @@
+/* =====================================================================
+   B7 4.0 — LINGUAGEM "ESTÚDIO" (escolhida pelo Kevin, 04/11/2026)
+   Carregado por ÚLTIMO (index.html): troca a base do sistema inteiro
+   sem mexer em cada tela. O que muda:
+     • títulos em Sora (assets/fonts/sora-var.woff2, fonte própria do site);
+     • fundo com luz da marca (magenta no alto, violeta embaixo) nos dois
+       temas; no escuro, superfícies em ameixa profunda;
+     • cartões mais arredondados, com borda de luz em cima (vidro discreto);
+     • botão principal em pílula com o degradê e brilho;
+     • item ativo do menu com o degradê da marca;
+     • abas (Lista/Kanban/…) e chips em cápsula.
+   Os dois temas continuam; as cores escolhidas em Aparência (variáveis no
+   <html>) continuam valendo por cima disto.
+   ===================================================================== */
+@font-face{font-family:'B7 Titulo';src:url('../assets/fonts/sora-var.woff2') format('woff2');font-weight:500 800;font-display:swap;}
+
+:root{
+  --r-sm:12px; --r:16px; --r-lg:20px; --r-xl:26px;
+  /* claro: papel levemente lilás, cartões brancos */
+  --fundo:#F6F3FB; --suave:#F2EDF9; --borda:#E8E2F2;
+  --luz-a:color-mix(in srgb, var(--magenta) 16%, transparent);
+  --luz-b:color-mix(in srgb, var(--violeta) 14%, transparent);
+  --vidro-topo:rgba(255,255,255,.9);
+  --sh-2:0 1px 2px rgba(42,22,80,.05), 0 14px 32px -18px rgba(42,22,80,.22);
+  --sh-3:0 30px 80px -20px rgba(42,22,80,.35);
+}
+[data-theme="dark"]{
+  /* escuro: ameixa profunda, como a direção A */
+  --sidebar:#09050F; --sidebar-2:#130B1F;
+  --fundo:#0C0714; --card:#170F22; --suave:#1E142D; --elevado:#21162F;
+  --borda:#2A1F3D; --borda-forte:#3B2D55;
+  --ink:#F3EEFA; --ink-2:#D3C8E6; --ink-3:#B4A8CC; --ink-4:#8A7EA6;
+  --esq-1:#21162F; --esq-2:#2B1F3C;
+  --luz-a:color-mix(in srgb, var(--magenta) 30%, transparent);
+  --luz-b:color-mix(in srgb, var(--violeta) 30%, transparent);
+  --vidro-topo:rgba(255,255,255,.07);
+  --topo-bg:rgba(14,8,24,.82);
+  --sh-2:0 1px 2px rgba(0,0,0,.4), 0 16px 34px -18px rgba(0,0,0,.6);
+}
+
+/* ---------------------------------------------------------------- fundo
+   Luz fixa da marca atrás de tudo. O painel rola por cima, a luz fica. */
+html[data-theme] body, html.b7-vt[data-theme] #painel-dashboard{
+  background:
+    radial-gradient(1200px 760px at 90% -14%, var(--luz-a), transparent 64%),
+    radial-gradient(1000px 680px at -6% 110%, var(--luz-b), transparent 62%),
+    var(--fundo);
+  background-attachment:fixed;
+}
+/* na troca de tela a foto do painel precisa ser opaca (senão as duas telas
+   se misturam); com a mesma luz presa à janela, ela casa com o fundo */
+html[data-theme] #painel-dashboard{background:transparent;}
+html.modo-leve[data-theme] body, html.modo-leve.b7-vt[data-theme] #painel-dashboard{background:var(--fundo);}
+
+/* ------------------------------------------------------------- títulos */
+.conteudo h1, .cab-conteudo h1, .hero h1, .modal h3, .vp-cab h2{font-family:'B7 Titulo','Inter',sans-serif;}
+.conteudo > .cab-conteudo h1, .conteudo > header h1, .cab-conteudo h1{letter-spacing:-.03em;font-weight:800;}
+
+/* --------------------------------------------------------------- cartões
+   Borda de luz em cima (vidro discreto) e sombra macia. */
+.cartao, .bloco, .metrica, .card-gravacao, .card-cliente, .vd-card, .vp-card, .vp-faixa, .ds-card, .vd-coluna,
+.pn-card{
+  border-radius:var(--r-lg);
+  box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-2);
+}
+[data-theme="dark"] .cartao, [data-theme="dark"] .bloco, [data-theme="dark"] .metrica,
+[data-theme="dark"] .card-gravacao, [data-theme="dark"] .card-cliente, [data-theme="dark"] .vd-card,
+[data-theme="dark"] .vp-card, [data-theme="dark"] .ds-card{
+  background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012)), var(--card);
+}
+[data-theme="dark"] .vd-coluna, [data-theme="dark"] .vp-faixa{background:rgba(255,255,255,.028);}
+.vp-faixa.vp-urgente{box-shadow:inset 0 1px 0 color-mix(in srgb, var(--erro) 35%, transparent), 0 0 60px -34px var(--erro);}
+
+/* -------------------------------------------------------------- botões */
+.b{border-radius:999px;}
+.b.pri{background:linear-gradient(120deg, var(--violeta), var(--magenta));
+  box-shadow:0 10px 28px -12px color-mix(in srgb, var(--magenta) 75%, transparent), inset 0 1px 0 rgba(255,255,255,.25);}
+.b.pri:hover{filter:brightness(1.07);}
+.b.fina{border-radius:999px;}
+
+/* ------------------------------------------------- menu lateral (ativo) */
+.nav a{border-radius:12px;}
+.nav a.on{background:linear-gradient(120deg, color-mix(in srgb, var(--base-violeta) 70%, transparent), color-mix(in srgb, var(--base-magenta) 55%, transparent));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+
+/* --------------------------------------------------------- abas e chips */
+.seg-vista{border-radius:14px !important;padding:4px !important;}
+.seg-vista button{border-radius:10px !important;}
+.campo{border-radius:12px;}
+.modal{border-radius:var(--r-xl);box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-3);}
+
+@media (prefers-reduced-transparency: reduce){
+  html[data-theme] body{background:var(--fundo);}
+}

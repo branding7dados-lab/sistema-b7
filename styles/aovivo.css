@@ -11,7 +11,7 @@
 @keyframes avSobe{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
 
 .av-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 18px 12px;}
-.av-topo h3{margin:0;font-family:'Archivo',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.01em;}
+.av-topo h3{margin:0;font-family:'B7 Titulo',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.01em;}
 .av-topo .sub{font-size:12.5px;color:var(--ink-2);}
 .av-x{width:32px;height:32px;flex:none;border-radius:50%;border:0;background:var(--suave);color:var(--ink-2);font-size:13px;cursor:pointer;transition:background .15s;}
 .av-x:hover{background:var(--borda);}
@@ -23,7 +23,7 @@
 .av-card:hover{border-color:var(--borda);}
 .av-foto{position:relative;width:42px;height:42px;flex:none;border-radius:50%;overflow:visible;}
 .av-foto img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
-.av-foto i{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;font:700 14px 'Archivo',sans-serif;font-style:normal;
+.av-foto i{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;font:700 14px 'B7 Titulo',sans-serif;font-style:normal;
   color:#fff;background:linear-gradient(135deg,var(--acento),var(--acento-2,#d6336c));}
 .av-ponto{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#20c56a;border:2.5px solid var(--card);
   box-shadow:0 0 0 0 #20c56a66;animation:avPulso 2.2s ease-out infinite;}

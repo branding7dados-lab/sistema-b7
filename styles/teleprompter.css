@@ -50,7 +50,7 @@ body.tele-aberto{overflow:hidden;}
 
 /* contagem: dentro da área de leitura, então espelha junto com o texto */
 .tele-contagem{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;
-  font-family:'Archivo','Inter',sans-serif;font-weight:800;font-size:min(46vh,260px);line-height:1;font-variant-numeric:tabular-nums;}
+  font-family:'B7 Titulo','Inter',sans-serif;font-weight:800;font-size:min(46vh,260px);line-height:1;font-variant-numeric:tabular-nums;}
 .tele-contagem[hidden]{display:none;}
 .tele-contagem.bate{animation:teleBate .9s ease-out both;}
 @keyframes teleBate{0%{transform:scale(1.18);opacity:.2}18%{transform:scale(1);opacity:1}80%{opacity:1}100%{opacity:.55}}
@@ -98,7 +98,7 @@ body.tele-aberto{overflow:hidden;}
   -webkit-user-select:text;user-select:text;}
 .tele-painel[hidden]{display:none;}
 .tele-olho{display:block;font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--tele-rosa);}
-.tele-painel h2{font-family:'Archivo','Inter',sans-serif;font-size:clamp(22px,3.4vw,32px);font-weight:800;line-height:1.15;margin:8px 0 6px;color:#fff;}
+.tele-painel h2{font-family:'B7 Titulo','Inter',sans-serif;font-size:clamp(22px,3.4vw,32px);font-weight:800;line-height:1.15;margin:8px 0 6px;color:#fff;}
 .tele-sub{font-size:14px;color:rgba(255,255,255,.66);margin:0 0 16px;}
 .tele-nota{font-size:12.5px;color:rgba(255,255,255,.55);margin:10px 0 0;line-height:1.45;}
 .tele-nota.erro{color:#FF8FA3;}
@@ -160,7 +160,7 @@ body.tele-aberto{overflow:hidden;}
 /* preparar a cena: para o videomaker, nunca espelha */
 .tele-prep,.tele-fim{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:12px;}
 .tele-prep-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.tele-num{font-family:'Archivo','Inter',sans-serif;font-size:14px;font-weight:800;letter-spacing:.14em;}
+.tele-num{font-family:'B7 Titulo','Inter',sans-serif;font-size:14px;font-weight:800;letter-spacing:.14em;}
 .tele-tipo{font-size:12px;font-weight:700;padding:4px 11px;border-radius:99px;background:rgba(226,64,156,.2);color:#FFB6DD;}
 .tele-campo{background:var(--tele-cartao);border-radius:14px;padding:11px 15px;}
 .tele-campo small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:4px;}
@@ -182,7 +182,7 @@ body.tele-aberto{overflow:hidden;}
 .tele-gate[hidden]{display:none;}
 .tele-gate svg{width:112px;height:112px;stroke-width:2.4;color:#fff;margin-bottom:8px;animation:teleGira 2.4s ease-in-out infinite;}
 .tele-gate svg .alvo{stroke:var(--tele-rosa);stroke-dasharray:4 4;}
-.tele-gate b{font-family:'Archivo','Inter',sans-serif;font-size:22px;font-weight:800;}
+.tele-gate b{font-family:'B7 Titulo','Inter',sans-serif;font-size:22px;font-weight:800;}
 .tele-gate span{font-size:14.5px;color:rgba(255,255,255,.66);max-width:280px;line-height:1.45;}
 .tele-gate .tele-bt{margin-top:14px;padding:0 22px;}
 @keyframes teleGira{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-12deg)}}
