@@ -311,7 +311,8 @@ B7.Gravacao = (function () {
       '<div class="gv-fatos">' +
         fato('gv-fato-mes' + (mes ? '' : ' falta'), IC.mes, 'Mês de referência', mes ? esc(mes) : 'Não definido', '', 'editar') +
         fato('gv-fato-data' + (dias != null && dias < 0 && ativa ? ' atrasada' : ''), IC.agenda, sit === 'Remarcada' ? 'Nova data' : 'Data da gravação', dataValor, dataExtra, concluida ? '' : 'agendar') +
-        fato('gv-fato-resp' + (g.videomaker_nome ? '' : ' vazio'), IC.pessoa, 'Responsável', esc(g.videomaker_nome || g.videomaker || 'Ninguém ainda'), '', 'editar') +
+        fato('gv-fato-resp' + (g.videomaker_nome ? '' : ' vazio'), IC.pessoa, (g.videomakers_extra_nomes || []).length ? 'Quem grava' : 'Responsável',
+          esc(g.videomaker_nome || g.videomaker || 'Ninguém ainda') + ((g.videomakers_extra_nomes || []).length ? ' + ' + esc(g.videomakers_extra_nomes.join(', ')) : ''), '', 'editar') +
       '</div>' +
       (!mes && ed ? '<div class="gv-aviso"><span>Esta gravação é anterior ao mês de referência. Defina o mês para ela aparecer na produção certa.</span>' +
         '<button type="button" class="b fina contorno" data-gv="editar">Definir mês</button></div>' : '') +
@@ -866,8 +867,29 @@ B7.Gravacao = (function () {
           vms.map(v => '<option value="' + esc(v.id) + '"' + (v.id === g.videomaker_id ? ' selected' : '') + '>' + esc(v.nome) + '</option>').join('') + '</select></div>' +
         '<div class="mb"><label class="rot" for="gv-ed-local">LOCAL <span class="leve">— opcional</span></label><input class="campo" id="gv-ed-local" placeholder="Ex.: consultório, estúdio B7" value="' + esc(g.local || '') + '"></div>' +
       '</div>' +
+      /* v3.5.0: mais de um videomaker na mesma gravação (ex.: viagem) */
+      '<div class="mb"><label class="rot">QUEM GRAVA JUNTO <span class="leve">— opcional</span></label>' +
+        '<div class="gv-junto" id="gv-ed-junto">' + vms.map(v => '<button type="button" class="gv-junto-p' +
+          ((g.videomakers_extra || []).includes(v.id) ? ' on' : '') + '" data-vm="' + esc(v.id) + '" aria-pressed="' + ((g.videomakers_extra || []).includes(v.id)) + '">' +
+          esc(v.nome) + '</button>').join('') + '</div>' +
+        '<div class="ajuda gv-ajuda">Quem você marcar aqui vê a gravação no dia e recebe os mesmos avisos do responsável.</div></div>' +
       '<div class="ajuda erro-txt" id="gv-ed-erro" role="alert"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="gv-ed-ok">Salvar</button></div>');
+    const junto = m.querySelector('#gv-ed-junto');
+    const pintarJunto = () => {
+      const resp = m.querySelector('#gv-ed-vm').value;
+      junto.querySelectorAll('[data-vm]').forEach(b => {
+        const eResp = b.dataset.vm === resp;
+        b.hidden = eResp;                       /* o responsável não aparece duas vezes */
+        if (eResp) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); }
+      });
+    };
+    junto.onclick = e => {
+      const b = e.target.closest('[data-vm]'); if (!b) return;
+      b.classList.toggle('on'); b.setAttribute('aria-pressed', b.classList.contains('on'));
+    };
+    m.querySelector('#gv-ed-vm').onchange = pintarJunto;
+    pintarJunto();
     m.querySelector('#gv-ed-ok').onclick = async () => {
       const nome = m.querySelector('#gv-ed-nome').value.trim();
       const mes = +m.querySelector('#gv-ed-mes').value, ano = +m.querySelector('#gv-ed-ano').value;
@@ -875,7 +897,8 @@ B7.Gravacao = (function () {
       if (!nome) { erro.textContent = 'Dê um nome para a gravação.'; return; }
       if (!mes || !ano) { erro.textContent = 'Escolha o mês de referência.'; return; }
       const patch = { nome, competencia_mes: mes, competencia_ano: ano,
-        videomaker_id: m.querySelector('#gv-ed-vm').value || null, local: m.querySelector('#gv-ed-local').value.trim() };
+        videomaker_id: m.querySelector('#gv-ed-vm').value || null, local: m.querySelector('#gv-ed-local').value.trim(),
+        videomakers_extra: [...junto.querySelectorAll('[data-vm].on:not([hidden])')].map(b => b.dataset.vm) };
       const bt = m.querySelector('#gv-ed-ok'); bt.disabled = true;
       try {
         await B7.Save.acao(() => B7.DB.atualizarGravacao(S.id, patch), 'Gravação atualizada');

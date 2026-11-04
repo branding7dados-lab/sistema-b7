@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-3.5.0', versao: '3.5.0', em: '2026-11-04T22:00:00-03:00',
+    titulo: 'Mais de um videomaker na mesma gravação',
+    itens: ['Ao editar uma gravação, marque em "Quem grava junto" as outras pessoas que vão filmar, como numa viagem.',
+            'Quem grava junto vê a gravação no Meu dia e no Painel e recebe os mesmos avisos do responsável: lembretes, remarcação, cancelamento e roteiro pronto.',
+            'Na lista de Gravações aparece um "+1" ao lado do responsável, e o filtro por pessoa também acha quem grava junto.'] },
   { id: 'v-3.4.0', versao: '3.4.0', em: '2026-11-04T21:00:00-03:00',
     titulo: 'Telas abrindo mais rápido e puxar para atualizar sem piscar',
     itens: ['As telas que você já abriu voltam na hora, mesmo com a equipe mexendo no sistema ao mesmo tempo.',

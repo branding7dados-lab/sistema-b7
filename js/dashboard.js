@@ -494,7 +494,9 @@ B7.Dashboard = (function () {
         '</span></div></div>' +
       progressoGrav(g) +
       '<div class="gl-resp">' + (g.videomaker_nome
-        ? B7.UI.avatarPessoa({ nome: g.videomaker_nome }, 'mini') + '<span>' + esc(String(g.videomaker_nome).split(' ')[0]) + '</span>'
+        ? B7.UI.avatarPessoa({ nome: g.videomaker_nome }, 'mini') + '<span>' + esc(String(g.videomaker_nome).split(' ')[0]) +
+          /* v3.5.0: quem grava junto */
+          ((g.videomakers_extra_nomes || []).length ? ' <small class="gl-mais-vm" title="' + esc(g.videomakers_extra_nomes.join(', ')) + '">+' + g.videomakers_extra_nomes.length + '</small>' : '') + '</span>'
         : '<span class="gl-sem">Sem responsável</span>') + '</div>' +
       '<div class="gl-st">' + chipGravacao(g) + '</div>' +
       '<div class="menu"><button class="ico gl-mais" aria-label="Mais ações" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button>' +
@@ -628,7 +630,7 @@ B7.Dashboard = (function () {
       return (!t || (String(g.cliente_nome || '') + ' ' + String(g.nome || '')).toLowerCase().includes(t)) &&
         (!FG.cliente || g.client_id === FG.cliente) &&
         (!FG.mes || (FG.mes === 'sem' ? !g.competencia_ano : chaveMes(g) === FG.mes)) &&
-        (!FG.resp || (FG.resp === 'sem' ? !g.videomaker_id : g.videomaker_id === FG.resp)) &&
+        (!FG.resp || (FG.resp === 'sem' ? !g.videomaker_id : g.videomaker_id === FG.resp || (g.videomakers_extra || []).includes(FG.resp))) &&
         (semStatus || !FG.status || (g.situacao || 'Pendente') === FG.status);
     };
     const pintarStatus = () => {

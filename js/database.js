@@ -2103,7 +2103,7 @@ B7.DB = (function () {
        e já classifica o tipo pelo título (migration_agenda_lembretes.sql). */
     async painelGravacoes(desdeISO, ateISO) {
       return ok(await sb().from('agenda_compromissos')
-        .select('origem,id,titulo,inicio,dia_inteiro,local,gravacao_id,cliente_nome,videomaker_id')
+        .select('origem,id,titulo,inicio,dia_inteiro,local,gravacao_id,cliente_nome,videomaker_id,videomakers_extra')
         .eq('tipo', 'gravacao')
         .gte('inicio', desdeISO).lte('inicio', ateISO)
         .order('inicio', { ascending: true }));

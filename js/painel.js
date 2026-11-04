@@ -293,7 +293,7 @@ B7.Painel = (function () {
      Gravações 2.0) e as que ainda não têm responsável — nunca as de outro
      videomaker. A consulta é a mesma da coordenação (compartilhada); o
      recorte pessoal é feito aqui. */
-  const gravacoes = () => ok('agenda') ? S.agenda.dados.filter(g => !g.videomaker_id || g.videomaker_id === meuId()) : [];
+  const gravacoes = () => ok('agenda') ? S.agenda.dados.filter(g => !g.videomaker_id || g.videomaker_id === meuId() || (g.videomakers_extra || []).includes(meuId())) : [];
 
   /* Ordem de prioridade (primeiro que couber, sem repetir a mesma demanda):
        1. atrasadas            — no máximo 2 aqui; o KPI já conta todas

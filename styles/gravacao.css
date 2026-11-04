@@ -634,3 +634,12 @@ html.modo-leve .nl-existe{animation:none;}
 .gfx-linha input[type=number]{width:64px;}
 .gfx-linha input[type=time]{width:112px;}
 .gfx-linha [hidden]{display:none !important;}
+
+/* v3.5.0 — quem grava junto (editar gravação) */
+.gv-junto{display:flex;flex-wrap:wrap;gap:6px;}
+.gv-junto-p{border:1px solid var(--borda);background:var(--card);color:var(--ink-2);border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;
+  transition:background var(--t-rapido, .15s), border-color var(--t-rapido, .15s), color var(--t-rapido, .15s);}
+.gv-junto-p:hover{border-color:var(--borda-forte);}
+.gv-junto-p.on{background:color-mix(in srgb, var(--acento, var(--magenta)) 16%, var(--card));border-color:var(--acento, var(--magenta));color:var(--ink);font-weight:600;}
+.gv-junto-p.on::before{content:"✓ ";}
+.gl-mais-vm{font-size:11px;font-weight:700;color:var(--ink-3);}

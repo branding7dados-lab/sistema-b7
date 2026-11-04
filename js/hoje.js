@@ -97,7 +97,7 @@ B7.Hoje = (() => {
         .is('deleted_at', null).is('archived_at', null).eq('data_postagem', hoje)
         .order('position', { ascending: true }).limit(60)) : [],
       talvez(sb.from('gravacoes_resumo')
-        .select('id,nome,client_id,cliente_nome,cliente_logo_url,data_gravacao,hora_inicio,hora_fim,local,videomaker_id,videomaker_nome,situacao,gravada_em,concluida_em')
+        .select('id,nome,client_id,cliente_nome,cliente_logo_url,data_gravacao,hora_inicio,hora_fim,local,videomaker_id,videomaker_nome,videomakers_extra,situacao,gravada_em,concluida_em')
         .is('deleted_at', null).is('archived_at', null)
         .gte('data_gravacao', hoje).lte('data_gravacao', amanha)
         .order('data_gravacao', { ascending: true }).order('hora_inicio', { ascending: true, nullsFirst: false })),
@@ -114,7 +114,7 @@ B7.Hoje = (() => {
     }));
     const gravacoes = gravs.filter(valido)
       .filter(x => !x.concluida_em && x.situacao !== 'concluida' && x.situacao !== 'cancelada')
-      .filter(x => g || x.videomaker_id === eu.id || (!x.videomaker_id && souVideomaker))
+      .filter(x => g || x.videomaker_id === eu.id || (x.videomakers_extra || []).includes(eu.id) || (!x.videomaker_id && souVideomaker))
       .map(x => ({
         id: x.id, nome: x.nome || 'Gravação', cliente: x.cliente_nome || '', logo: x.cliente_logo_url || '',
         dia: String(x.data_gravacao).slice(0, 10) === hoje ? 'hoje' : 'amanhã',
