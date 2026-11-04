@@ -18,7 +18,13 @@ B7.Auth = (function () {
   /* Aparece no rodapé da tela de acesso. Serve para saber, olhando, qual
      build está publicado — sem isso não dá para distinguir "o bug voltou"
      de "a correção não subiu". */
-  const VERSAO = '2026-11-04-zzz308';
+  /* zzz309 → 3.0.0: a versão agora é um número de três partes (VERSOES.md):
+       3.0.0 → 4.0.0  mudança grande (ex.: o redesenho das telas)
+       3.0.0 → 3.1.0  novidade que a equipe percebe
+       3.0.0 → 3.0.1  correção ou ajuste
+     A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
+     programa do Windows. O aviso de atualização só compara se mudou. */
+  const VERSAO = '3.0.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
