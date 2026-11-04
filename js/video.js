@@ -776,7 +776,7 @@ B7.Video = (function () {
      de cima para baixo. O número no cartão é a posição na fila inteira:
      o 1º é o próximo vídeo a ser editado. Só os vídeos em aberto
      (pendente, em edição, correção) entram.
-     Quem tem a ação "video.priorizar" (padrão: coordenação) arrasta:
+     Quem tem a ação "video.priorizar" (padrão: coordenação e videomakers) arrasta:
      no computador com o mouse, no celular segurando o cartão. Os outros
      veem a mesma ordem, só para ler. A ordem também vale no Kanban.
      Banco: migration_video_prioridade.sql (video_priorizar).
@@ -789,7 +789,8 @@ B7.Video = (function () {
     return (RANK_FAIXA[a.prioridade || 'normal'] - RANK_FAIXA[b.prioridade || 'normal']) ||
       (ordemNum(a) - ordemNum(b)) || String(a.prazo || '9999').localeCompare(String(b.prazo || '9999'));
   }
-  const podePriorizar = () => !!(souEquipe() && pode('video.priorizar'));
+  /* v3.1.3: coordenação e videomakers (Kevin); dá para tirar de alguém em Funções e permissões */
+  const podePriorizar = () => !!((souEquipe() || souVideomakerElegivel()) && pode('video.priorizar'));
 
   function prioridadeHTML(lista) {
     const abertas = lista.filter(d => ABERTAS_PRIO.includes(d.editing_status)).sort(ordemPrioridade);

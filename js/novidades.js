@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-3.1.3', versao: '3.1.3', em: '2026-11-04T18:00:00-03:00', funcao: 'videomaker',
+    titulo: 'Você também pode mudar a prioridade dos vídeos',
+    itens: ['Na Edição de vídeo → Prioridade, arraste os vídeos entre Urgente, Alta e Normal ou suba e desça na fila.',
+            'No celular, segure o cartão um instante e arraste.'] },
   { id: 'v-3.1.1', versao: '3.1.1', em: '2026-11-04T17:00:00-03:00',
     titulo: 'Sistema mais leve',
     itens: ['Trocar de aba ficou mais rápido: a tela não fica mais parada esperando a próxima carregar.',
