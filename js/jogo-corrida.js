@@ -162,12 +162,12 @@ B7.JogoCorrida = (function () {
       if (renderer) return;
       $('.j3-carregando').hidden = false;
       await B7.vendor('three'); T = window.THREE;
-      renderer = new T.WebGLRenderer({ canvas: tela, antialias: !leve, powerPreference: 'high-performance' });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.5));
+      renderer = new T.WebGLRenderer({ canvas: tela, antialias: false, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1 : 1.25));
       renderer.outputColorSpace = T.SRGBColorSpace; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.5;
       renderer.shadowMap.enabled = false;   /* 4.10.1: sombras de contato no lugar das reais (desenhavam tudo 2×) */
-      cena = new T.Scene(); cena.background = new T.Color(0x24163d); cena.fog = new T.Fog(0x24163d, 34, 105);
-      cam = new T.PerspectiveCamera(60, 1, 0.1, 160); cam.position.set(0, 3.4, 7);
+      cena = new T.Scene(); cena.background = new T.Color(0x24163d); cena.fog = new T.Fog(0x24163d, 28, 80);
+      cam = new T.PerspectiveCamera(60, 1, 0.1, 85); cam.position.set(0, 3.4, 7);
       /* 4.10.0: modelos realistas (js/jogo-corrida-modelos.js) e reflexo de estúdio */
       MD = B7.CorridaModelos; X = MD.texturas(T); MT = MD.materiais(T, X);
       try { cena.environment = MD.ambiente(T, renderer); } catch (e) {}
@@ -178,7 +178,7 @@ B7.JogoCorrida = (function () {
     const mat = o => new T.MeshStandardMaterial(o);
     function montarMundo() {
       cena.add(new T.HemisphereLight(0xd8ccff, 0x4a3570, 1.5)); cena.add(new T.AmbientLight(0xffffff, 0.35));
-      const sol = new T.DirectionalLight(0xffe6f4, 1.2); sol.position.set(5, 12, 8); sol.castShadow = !leve;
+      const sol = new T.DirectionalLight(0xffe6f4, 1.2); sol.position.set(5, 12, 8); sol.castShadow = false;
       sol.shadow.mapSize.set(512, 512); Object.assign(sol.shadow.camera, { left: -8, right: 8, top: 10, bottom: -30, near: 1, far: 60 }); cena.add(sol);
       /* chão e pista com 3 faixas */
       const chao = new T.Mesh(new T.PlaneGeometry(70, 200), mat({ map: X.piso, color: 0xb9a8d8, roughness: 0.55, metalness: 0.15, envMapIntensity: 0.6 }));
@@ -205,7 +205,7 @@ B7.JogoCorrida = (function () {
         if (i % 4 === 2) { const c = tplCabo.clone(); c.position.set(lado * -1.4, 0, 0); c.scale.setScalar(0.5); g.add(c); }
         g.position.set(lado * 6.2, 0, -i * 12); cena.add(g); M.lados.push(g);
       }
-      for (let i = 0; i < (leve ? 0 : 2); i++) { const pl = new T.PointLight(i % 2 ? 0xff7ac6 : 0x9c8cff, 10, 22, 2); pl.position.set(i % 2 ? 4 : -4, 4, -8 - i * 12); cena.add(pl); }
+      for (let i = 0; i < 0; i++) { const pl = new T.PointLight(i % 2 ? 0xff7ac6 : 0x9c8cff, 10, 22, 2); pl.position.set(i % 2 ? 4 : -4, 4, -8 - i * 12); cena.add(pl); }
       const ciclo = new T.Mesh(new T.PlaneGeometry(120, 40), mat({ color: 0x2a1240, emissive: 0x5a1e78, emissiveIntensity: 0.7 }));
       ciclo.position.set(0, 14, -110); cena.add(ciclo);
 
@@ -350,10 +350,10 @@ B7.JogoCorrida = (function () {
     function qualidade(agora) {
       if (qUlt) qMedia = qMedia * 0.9 + Math.min(100, agora - qUlt) * 0.1;
       qUlt = agora;
-      if (++qN < 60) return; qN = 0;
-      const teto = Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.5), pr = renderer.getPixelRatio();
+      if (++qN < 30) return; qN = 0;
+      const teto = Math.min(window.devicePixelRatio || 1, leve ? 1 : 1.25), pr = renderer.getPixelRatio();
       let novo = pr;
-      if (qMedia > 24 && pr > 0.6) novo = Math.max(0.6, pr - 0.2);
+      if (qMedia > 20 && pr > 0.5) novo = Math.max(0.5, pr - 0.25);
       else if (qMedia < 15 && pr < teto) novo = Math.min(teto, pr + 0.1);
       if (novo !== pr) { renderer.setPixelRatio(novo); medir(); }
     }

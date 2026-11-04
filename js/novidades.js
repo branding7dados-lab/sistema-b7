@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.10.2', versao: '4.10.2', em: '2026-11-05T22:00:00-03:00',
+    titulo: 'Jogos sem travar',
+    itens: ['Tiramos o desfoque do fundo da manutenção enquanto o jogo roda (era o que mais pesava), além de sombras e luzes extras. A resolução se ajusta mais rápido quando o aparelho engasga.'] },
   { id: 'v-4.10.1', versao: '4.10.1', em: '2026-11-05T21:00:00-03:00',
     titulo: 'Jogos da manutenção mais leves',
     itens: ['Corre pro Set! e Ação! Corta! rodam mais lisos: menos coisas desenhadas por quadro, sombras mais baratas e qualidade que se ajusta sozinha quando o aparelho começa a engasgar.'] },

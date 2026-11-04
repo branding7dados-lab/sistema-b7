@@ -28,6 +28,8 @@ body:has(#b7-manut-faixa) #toasts{bottom:78px;}
   animation:mnEntra .45s ease both;}
 @keyframes mnEntra{from{opacity:0;}to{opacity:1;}}
 html.modo-leve .mn-trava{background:var(--fundo);backdrop-filter:none;-webkit-backdrop-filter:none;}
+/* 4.10.2: com jogo na tela, nada de desfoque (o navegador refazia o blur a cada quadro do jogo) */
+.mn-trava:has(.j3,.jc,.jm){background:var(--fundo);backdrop-filter:none;-webkit-backdrop-filter:none;}
 .mn-caixa{width:min(460px,100%);padding:34px 30px 28px;border-radius:26px;text-align:center;
   background:var(--card);border:1px solid var(--borda);box-shadow:0 30px 80px -30px rgba(0,0,0,.4);}
 .mn-logo{height:34px;width:auto;margin:0 auto 20px;display:block;}
@@ -1888,7 +1890,7 @@ a.sa-item:hover{background:var(--suave);}
 .j3-barra i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#8B7BFF,#FF4FA8,#FFD36B);box-shadow:0 0 12px #FF4FA8;transition:width .1s linear;}
 .j3-dir{position:absolute;right:12px;top:10px;display:flex;align-items:center;gap:6px;pointer-events:auto;}
 .j3-vidas{font-size:15px;letter-spacing:1px;margin-right:4px;}
-.j3-bt{width:32px;height:32px;border-radius:10px;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:15px;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
+.j3-bt{width:32px;height:32px;border-radius:10px;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:15px;cursor:pointer;}
 .j3-bt:hover{background:rgba(255,255,255,.22);}
 .j3-combo{position:absolute;left:14px;top:50px;padding:4px 10px;border-radius:99px;font-weight:900;font-size:13px;letter-spacing:.04em;
   background:linear-gradient(120deg,#FF7A1A,#FF2D7A);box-shadow:0 6px 18px -6px #FF2D7A;}
