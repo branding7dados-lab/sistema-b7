@@ -198,6 +198,8 @@ public class MainActivity extends BridgeActivity {
         }
 
         WebView web = bridge.getWebView();
+        /* v3.2.0: aberto pela volta do Google com o app fechado */
+        if (voltaDoGoogle(inicio)) inicio.setData(null);
         /* o som da abertura toca sem precisar de um toque antes */
         web.getSettings().setMediaPlaybackRequiresUserGesture(false);
         web.setBackgroundColor(Color.parseColor("#05030A"));
@@ -320,6 +322,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (voltaDoGoogle(intent)) return;
         String link = intent == null ? null : intent.getStringExtra(EXTRA_LINK);
         if (link == null || link.isEmpty()) return;
         linkPendente = link;
@@ -328,6 +331,19 @@ public class MainActivity extends BridgeActivity {
         if (bridge == null || bridge.getWebView() == null) return;
         String js = "window.B7AppAbrir ? (B7AppAbrir(" + JSONObject.quote(link) + "," + JSONObject.quote(idPendente == null ? "" : idPendente) + "), true) : false";
         bridge.getWebView().evaluateJavascript(js, r -> { if ("true".equals(r)) { linkPendente = null; idPendente = null; } });
+    }
+
+    /* v3.2.0 — volta do login com Google: sistemab7://google?code=… (ou ?error=…).
+       Recarrega as telas com o código na URL; js/seguranca.js (retornoOAuth)
+       troca pela sessão com a chave que o app guardou ao abrir o Google. */
+    private boolean voltaDoGoogle(Intent intent) {
+        Uri d = intent == null ? null : intent.getData();
+        if (d == null || !"sistemab7".equals(d.getScheme()) || !"google".equals(d.getHost())) return false;
+        String q = d.getEncodedQuery();
+        if (q == null || q.isEmpty() || bridge == null || bridge.getWebView() == null) return true;
+        String destino = ORIGEM + "/?" + q;
+        bridge.getWebView().post(() -> bridge.getWebView().loadUrl(destino));
+        return true;
     }
 
     /* o SystemBars do Capacitor muda os ícones ao girar ou trocar o tema

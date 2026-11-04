@@ -391,7 +391,7 @@ B7.Aprovacoes = (function () {
     p.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
     const waAp = p.querySelector('[data-wa-aprov]');
     if (waAp) waAp.onclick = () => B7.WhatsApp.enviar({ tipo: 'aprovacao', refId: ap.id, clienteId: ap.client_id, clienteNome: ap.cliente_nome || '',
-      titulo: ap.titulo || '', link: 'https://branding7dados-lab.github.io/sistema/#/revisar/' + ap.id });
+      titulo: ap.titulo || '', link: 'https://branding7dados-lab.github.io/sistema-b7/#/revisar/' + ap.id });
     p.querySelectorAll('[data-resolver]').forEach(b => b.onclick = async () => {
       try { await B7.DB.resolverComentario(b.dataset.resolver); abrirDetalhe(id); }
       catch (e) { B7.UI.toast('Não foi possível resolver', { tipo: 'erro' }); }

@@ -17,7 +17,13 @@
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:exported="true">
-
+            <!-- v3.2.0: volta do login com Google (o site devolve o código para cá) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sistemab7" android:host="google" />
+            </intent-filter>
         </activity>
 
         <!-- zzz165: o ícone do app é escolhido pela pessoa (Configurações).

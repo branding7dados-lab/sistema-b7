@@ -211,10 +211,49 @@ B7.Seguranca = (function () {
 
   /* =============================================================== Google */
   /* zzz273: o programa do Windows novo abre o Google no navegador e recebe a volta
-     (window.B7Desktop.oauth); o antigo e o app de Android ainda não */
+     (window.B7Desktop.oauth); o antigo ainda não.
+     v3.2.0: o app Android também (ver peloNavegadorDoCelular) */
   const pcComGoogle = () => !!(window.B7Desktop && typeof window.B7Desktop.oauth === 'function');
-  const semGoogleAqui = () => (/Electron\//.test(navigator.userAgent || '') && !pcComGoogle()) ||
-    !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const noApp = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const semGoogleAqui = () => /Electron\//.test(navigator.userAgent || '') && !pcComGoogle();
+  /* v3.2.0 — Google no APP ANDROID. Dentro do app as telas moram em
+     https://localhost, que o Google não aceita como volta. Então:
+       1. o app pede o endereço do Google com a volta no SITE público (o mesmo
+          endereço que o login do navegador já usa) e abre no navegador do celular;
+       2. a pessoa escolhe a conta; o Google volta para o site com ?code=;
+       3. o site percebe que o login não começou nele (sem a marca b7_oauth e
+          sem a chave do PKCE neste navegador) e devolve o código para o app
+          (sistemab7://google?code=… — o app abre sozinho);
+       4. o app recarrega com ?code= e troca pela sessão com a chave que ele
+          guardou no passo 1 (retornoOAuth, o caminho de sempre). */
+  const SITE_PUBLICO = 'https://branding7dados-lab.github.io/sistema-b7/';
+  async function peloNavegadorDoCelular(pedir) {
+    const { data, error } = await pedir({ redirectTo: SITE_PUBLICO, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } });
+    if (error) throw error;
+    if (!data || !data.url) throw new Error('O Supabase não devolveu o endereço de login.');
+    B7.UI.toast('Escolha a sua conta Google no navegador. O app abre sozinho depois.', { tipo: 'info', tempo: 9000 });
+    window.open(data.url, '_blank');   /* js/app-nativo.js manda para o navegador do celular */
+  }
+  /* no navegador do celular, a volta do Google que começou no APP vai para o app */
+  function devolverAoApp(u) {
+    if (noApp() || !/Android/i.test(navigator.userAgent || '')) return false;
+    let minha = false;
+    try {
+      minha = !!localStorage.getItem('b7_oauth') ||
+        Object.keys(localStorage).some(k => /^b7-sessao.*code-verifier/.test(k) && !/^(\[\]|null|)$/.test(localStorage.getItem(k) || ''));
+    } catch (e) { minha = true; }
+    if (minha) return false;   /* o login começou neste navegador: segue o caminho normal */
+    const q = new URLSearchParams();
+    ['code', 'error', 'error_code', 'error_description'].forEach(k => { const v = u.searchParams.get(k); if (v) q.set(k, v); });
+    const intent = 'intent://google?' + q.toString() + '#Intent;scheme=sistemab7;package=br.com.branding7.sistemab7;end';
+    document.body.innerHTML = '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;' +
+      'font:16px system-ui,sans-serif;color:#fff;background:#120A1E">' +
+      '<b style="font-size:20px">Voltando para o app do B7…</b>' +
+      '<span style="opacity:.7">Se o app não abrir sozinho, toque no botão.</span>' +
+      '<a href="' + intent + '" style="padding:14px 22px;border-radius:14px;color:#fff;text-decoration:none;font-weight:700;background:linear-gradient(90deg,#6A3FE0,#E2409C)">Abrir o app</a></div>';
+    try { location.href = intent; } catch (e) {}
+    return true;
+  }
   const VOLTA_PC = 'http://127.0.0.1:47821/callback';
   /* no programa: pede o endereço sem sair da tela, abre no navegador e, com o código
      de volta, recarrega com ?code= — o mesmo caminho da volta no navegador (retornoOAuth) */
@@ -245,12 +284,14 @@ B7.Seguranca = (function () {
   async function entrarComGoogle() {
     marcarOauth('login');
     if (pcComGoogle()) return pelaJanelaDoPc(op => B7.sb.auth.signInWithOAuth({ provider: 'google', options: op }));
+    if (noApp()) return peloNavegadorDoCelular(op => B7.sb.auth.signInWithOAuth({ provider: 'google', options: op }));
     const { error } = await B7.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: voltaUrl(), queryParams: { prompt: 'select_account' } } });
     if (error) throw error;
   }
   async function vincularGoogle() {
     marcarOauth('vincular');
     if (pcComGoogle()) return pelaJanelaDoPc(op => B7.sb.auth.linkIdentity({ provider: 'google', options: op }));
+    if (noApp()) return peloNavegadorDoCelular(op => B7.sb.auth.linkIdentity({ provider: 'google', options: op }));
     const { error } = await B7.sb.auth.linkIdentity({ provider: 'google', options: { redirectTo: voltaUrl(), queryParams: { prompt: 'select_account' } } });
     if (error) throw error;
   }
@@ -271,6 +312,8 @@ B7.Seguranca = (function () {
     const u = new URL(location.href);
     const code = u.searchParams.get('code'), erro = u.searchParams.get('error_description') || u.searchParams.get('error');
     if (!code && !erro) return null;
+    /* começou no app Android: devolve para ele e para por aqui */
+    if (devolverAoApp(u)) return new Promise(() => {});
     let tipo = '';
     try { tipo = localStorage.getItem('b7_oauth') || ''; localStorage.removeItem('b7_oauth'); } catch (e) {}
     ['code', 'error', 'error_code', 'error_description', 'state', 'sb'].forEach(k => u.searchParams.delete(k));

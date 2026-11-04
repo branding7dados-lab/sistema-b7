@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-3.2.0', versao: '3.2.0', em: '2026-11-04T19:00:00-03:00',
+    titulo: 'Entrar com Google no app do celular',
+    itens: ['No app Android, o botão "Entrar com Google" agora aparece na tela de login.',
+            'Ele abre o navegador para você escolher a conta, e o app abre sozinho já com você dentro.',
+            'Para usar, vincule antes o Google à sua conta em Meu perfil → Segurança. Isso também funciona pelo app.'] },
   { id: 'v-3.1.3', versao: '3.1.3', em: '2026-11-04T18:00:00-03:00', funcao: 'videomaker',
     titulo: 'Você também pode mudar a prioridade dos vídeos',
     itens: ['Na Edição de vídeo → Prioridade, arraste os vídeos entre Urgente, Alta e Normal ou suba e desça na fila.',
