@@ -106,7 +106,11 @@ B7.Manutencao = (function () {
     if (el.querySelector('.jm, .j3')) return;
     /* 4.8.0: o 3D quando o aparelho aguenta; senão o 2D */
     try {
-      if (B7.Jogo3D) B7.Jogo3D.montarMelhor(el.querySelector('.mn-caixa'));
+      const cx = el.querySelector('.mn-caixa');
+      /* 4.9.0: a corrida é o jogo principal; "Ação! Corta!" fica como opção */
+      let gl = false; try { const c = document.createElement('canvas'); gl = !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e2) {}
+      if (gl && B7.JogoCorrida && B7.vendor) B7.JogoCorrida.montar(cx, { outroJogo: () => B7.Jogo3D && B7.Jogo3D.montar(cx) });
+      else if (B7.Jogo3D) B7.Jogo3D.montarMelhor(cx);
       else if (B7.JogoManut) B7.JogoManut.montar(el.querySelector('.mn-caixa'));
     } catch (e) {}
   }

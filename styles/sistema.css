@@ -1936,3 +1936,42 @@ a.sa-item:hover{background:var(--suave);}
 .j3-ranking li{display:flex;justify-content:space-between;font-size:13.5px;color:var(--ink-2);}
 .j3-ranking li b{font-variant-numeric:tabular-nums;color:var(--ink);}
 @media (prefers-reduced-motion: reduce){ .j3-logo span, .j3-grito.on, .j3-pop{animation-duration:.01s !important;} }
+
+/* ---------------------------------------------------------------------
+   4.9.0 — "Corre pro Set!" (js/jogo-corrida.js); reaproveita o .j3
+   --------------------------------------------------------------------- */
+.jc .j3-palco{height:clamp(340px,60vh,520px);}
+.jc-moedas{position:absolute;left:14px;top:46px;display:flex;align-items:center;gap:6px;font-weight:800;font-size:16px;text-shadow:0 2px 10px rgba(0,0,0,.6);}
+.jc-moeda-ic{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c4,#ffd36b 45%,#e09a00);box-shadow:0 0 10px rgba(255,190,40,.7);}
+.jc-poderes{font-size:16px;margin-right:2px;}
+.jc-dica{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);padding:12px 18px;border-radius:16px;font-weight:800;font-size:15px;white-space:nowrap;
+  background:rgba(12,7,20,.82);border:1px solid rgba(255,255,255,.18);box-shadow:0 10px 30px -10px rgba(226,64,156,.8);animation:jcDica 1s ease-in-out infinite;}
+@keyframes jcDica{50%{transform:translateX(-50%) scale(1.05)}}
+.jc-dica[hidden]{display:none;}
+.jc-perigo{position:absolute;left:50%;top:76px;transform:translateX(-50%);padding:6px 12px;border-radius:99px;font-size:12.5px;font-weight:800;background:rgba(255,45,85,.85);animation:j3Pisca 0.8s infinite;}
+.jc-perigo[hidden]{display:none;}
+.jc-titulo{font-family:'B7 Titulo',Inter,sans-serif;font-weight:900;font-size:clamp(32px,6.5vw,54px);letter-spacing:-.03em;line-height:1;color:#fff;
+  text-shadow:0 0 30px rgba(226,64,156,.6);transform:skew(-6deg);}
+.jc-titulo b{color:#FFD36B;}
+.jc-bts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.jc .j3-menu .b.contorno, .jc-fim .b.contorno{color:#fff;border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.06);}
+.jc-outro{border:0;background:none;color:#CFC3E3;font:inherit;font-size:12.5px;text-decoration:underline;cursor:pointer;}
+/* loja */
+.jc-loja{position:absolute;inset:0;z-index:3;padding:14px;background:rgba(12,7,20,.94);color:#fff;display:flex;flex-direction:column;gap:10px;overflow:auto;}
+.jc-loja[hidden]{display:none;}
+.jc-loja-cab{display:flex;align-items:center;gap:10px;}
+.jc-loja-cab b{font-family:'B7 Titulo',Inter,sans-serif;font-size:20px;flex:1;}
+.jc-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;}
+.jc-skin{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;font:inherit;cursor:pointer;transition:transform .15s;}
+.jc-skin:hover{transform:translateY(-2px);}
+.jc-skin.on{border-color:#FFD36B;box-shadow:0 0 0 2px #FFD36B inset, 0 0 22px -6px #FFD36B;}
+.jc-skin.cara{opacity:.55;}
+.jc-skin b{font-size:13px;} .jc-skin small{font-size:12px;color:#FFD36B;font-weight:700;}
+.jc-skin-bola{position:relative;width:46px;height:52px;border-radius:50% 50% 46% 46%;box-shadow:0 6px 18px -6px rgba(255,255,255,.5);}
+.jc-boina{position:absolute;left:6px;top:-6px;width:34px;height:10px;border-radius:50%;background:#1c1633;transform:rotate(-12deg);}
+/* fim de corrida */
+.jc-fim{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;color:#fff;padding:16px;
+  background:radial-gradient(80% 70% at 50% 40%, rgba(90,20,40,.6), rgba(12,7,20,.92));}
+.jc-fim[hidden]{display:none;}
+.jc-fim-t{font-family:'B7 Titulo',Inter,sans-serif;font-size:clamp(26px,5vw,40px);color:#FF4D6D;}
+.jc-fim-l{font-size:13.5px;color:#E6DDF2;}

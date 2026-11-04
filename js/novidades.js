@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.9.0', versao: '4.9.0', em: '2026-11-05T17:00:00-03:00',
+    titulo: 'Novo jogo na manutenção: Corre pro Set!',
+    itens: ['Corrida infinita em 3D: a lâmpada da B7 corre por um set de gravação em 3 faixas. Deslize para os lados para desviar dos cases, para cima para pular os tripés e para baixo para rastejar sob os varais de luz.',
+            'Bateu de raspão? O diretor sai correndo atrás de você. Tropeçou de novo com ele perto, ele te pega.',
+            'Junte moedas B7 para comprar 8 skins (Neon, Dourada, Lava, Arco-íris, Diretora…) e pegue ímã, pontos ×2, superpulo e escudo. Dá para continuar a corrida pagando moedas.',
+            'Tutorial guiado na primeira vez. O "Ação! Corta!" continua lá, no link do menu.'] },
   { id: 'v-4.8.0', versao: '4.8.0', em: '2026-11-05T15:00:00-03:00',
     titulo: '"Ação! Corta!" agora em 3D',
     itens: ['O jogo da manutenção virou 3D: a lâmpada da B7 corre por uma passarela de luz até a câmera do diretor, num estúdio com refletores, poeira de luz e confete.',
