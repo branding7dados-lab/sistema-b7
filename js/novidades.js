@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.10.0', versao: '4.10.0', em: '2026-11-05T19:00:00-03:00',
+    titulo: 'Corre pro Set! com cara de set de verdade',
+    itens: ['A lâmpada virou uma lâmpada de vidro de verdade, com filamento aceso e rosca de metal. As skins mudam a cor do brilho.',
+            'Obstáculos de set de filmagem: treliça de alumínio com fita zebrada (pule), pórtico de treliça com refletores acesos (rasteje) e cases de transporte com cantoneiras, travas e rodinhas, às vezes empilhados (desvie).',
+            'Cenário com refletores de cinema em tripé, cadeiras de diretor, cabos no chão, piso de estúdio e reflexos de luz. O diretor ganhou jaqueta com botões, cinto, óculos escuros, boina e megafone.'] },
   { id: 'v-4.9.0', versao: '4.9.0', em: '2026-11-05T17:00:00-03:00',
     titulo: 'Novo jogo na manutenção: Corre pro Set!',
     itens: ['Corrida infinita em 3D: a lâmpada da B7 corre por um set de gravação em 3 faixas. Deslize para os lados para desviar dos cases, para cima para pular os tripés e para baixo para rastejar sob os varais de luz.',
