@@ -1,14 +1,14 @@
 -- v3.1.0 — Prioridade das demandas de edição (quadro de prioridade)
 --
--- O coordenador decide a ordem dos vídeos: três faixas (Urgente, Alta,
--- Normal) e, dentro de cada uma, a ordem de cima para baixo. O videomaker
--- vê a mesma ordem (só leitura) e o primeiro da fila é o próximo a editar.
+-- A coordenação e os videomakers (v3.1.3) decidem a ordem dos vídeos: três
+-- faixas (Urgente, Alta, Normal) e, dentro de cada uma, a ordem de cima para
+-- baixo. O primeiro da fila é o próximo a editar.
 --
 --   prioridade_ordem  posição dentro da faixa (menor = mais em cima).
 --                     Número com casas: arrastar entre dois cartões grava
 --                     o meio dos dois, sem renumerar a fila inteira.
 --   video_priorizar   única forma de mudar faixa/ordem; exige a ação
---                     'video.priorizar' (padrão: coordenação; admin sempre).
+--                     'video.priorizar' (padrão: coordenação e videomakers; admin sempre).
 --                     Troca de faixa vai para o histórico e avisa o
 --                     videomaker quando o vídeo dele sobe para Alta/Urgente.
 
@@ -83,8 +83,10 @@ create or replace view public.demandas_edicao_resumo with (security_invoker = tr
 -- a ação nova, nas Configurações → Funções e permissões
 insert into public.acoes (id, modulo, rotulo, descricao, ordem, padrao_funcoes, nivel_min) values
   ('video.priorizar', 'video', 'Definir a prioridade dos vídeos',
-   'Arrastar os vídeos no quadro de prioridade: o que é urgente e a ordem da fila de edição.', 55, '{coordenador}', 2)
+   'Arrastar os vídeos no quadro de prioridade: o que é urgente e a ordem da fila de edição.', 55, '{coordenador,videomaker}', 2)
 on conflict (id) do nothing;
+-- v3.1.3: o videomaker também muda a prioridade (Kevin)
+update public.acoes set padrao_funcoes = '{coordenador,videomaker}' where id = 'video.priorizar';
 
 create or replace function public.video_priorizar(p_demanda_id uuid, p_prioridade text, p_ordem double precision)
 returns void language plpgsql security definer set search_path to 'public' as $$
@@ -94,7 +96,7 @@ declare
 begin
   perform public.exigir_nivel('video', 2);
   if not public.pode_acao('video.priorizar') then
-    raise exception 'Só a coordenação define a prioridade dos vídeos.' using errcode = '42501';
+    raise exception 'Você não tem permissão para mudar a prioridade dos vídeos.' using errcode = '42501';
   end if;
   if p_prioridade not in ('normal', 'alta', 'urgente') then
     raise exception 'Prioridade inválida.';
