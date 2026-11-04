@@ -641,7 +641,9 @@ B7.Video = (function () {
     ligarArea(cx);
     /* entrada em cascata a cada troca (filtro, etapa, vista, busca) */
     if (B7.recargaSilenciosa) { cx.classList.remove('vd-troca'); return; }
-    cx.classList.remove('vd-troca'); void cx.offsetWidth; cx.classList.add('vd-troca');
+    /* cartões novos (innerHTML) já começam a animação sozinhos: não precisa
+       forçar o recálculo da página (offsetWidth) para reiniciar a classe */
+    cx.classList.add('vd-troca');
   }
 
   /* ---------------- LISTA (versão moderna da planilha) ---------------- */

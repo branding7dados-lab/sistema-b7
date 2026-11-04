@@ -385,12 +385,12 @@ B7.Nav = (function () {
     if (mudou && !inicial) {
       /* item ativo fora da área visível da barra: traz para perto, sem
          rolar a página e só quando precisa */
-      setTimeout(() => {
+      setTimeout(() => requestAnimationFrame(() => {   /* v3.1.1: mede junto com o quadro */
         const nav = document.querySelector('.nav'), a = nav && nav.querySelector('.ng.aberto a.on');
         if (!a || document.body.classList.contains('recolhida')) return;
         const rn = nav.getBoundingClientRect(), ra = a.getBoundingClientRect();
         if (ra.top < rn.top || ra.bottom > rn.bottom) nav.scrollTop += ra.top < rn.top ? ra.top - rn.top - 8 : ra.bottom - rn.bottom + 8;
-      }, 200);
+      }), 200);
     }
   }
 
@@ -682,8 +682,13 @@ B7.Nav = (function () {
       el.classList.toggle('on', on);
       if (on && el.tagName === 'A') el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
     });
-    moverLuz(barra);
+    /* v3.1.1: mede no próximo quadro (sem forçar o recálculo da página) */
+    cancelAnimationFrame(luzPedido);
+    /* no computador a barra de baixo nem aparece: não mede nada */
+    if (!window.matchMedia('(max-width: 760px)').matches) return;
+    luzPedido = requestAnimationFrame(() => moverLuz(barra));
   }
+  let luzPedido = 0;
   /* A luz do item ativo é UMA pílula que desliza de um item para o outro
      (só transform). Primeira vez, sem transição: nasce no lugar. */
   let luzPosta = false;

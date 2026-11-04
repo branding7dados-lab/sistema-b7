@@ -355,8 +355,12 @@ B7.Rota = (function () {
         document.querySelectorAll('.fundo-modal.saindo').forEach(f => f.remove());
         const feito = Promise.resolve(B7.Save.agora()).catch(() => {}).then(ir);
         /* com a memória de dados a tela nova está pronta quase na hora;
-           se ainda for buscar, espera um pouco antes de fotografar */
-        await Promise.race([feito, new Promise(r => setTimeout(r, 450))]);
+           se ainda for buscar, espera um pouco antes de fotografar.
+           v3.1.1: até 0,12 s (era 0,45 s). Durante essa espera o navegador
+           mostra a tela antiga CONGELADA — era o "trava ao trocar de aba".
+           Se a busca demorar mais, a tela nova chega com o esqueleto e os
+           dados entram logo depois, sem segurar a pessoa. */
+        await Promise.race([feito, new Promise(r => setTimeout(r, 120))]);
         /* a entrada própria da tela não roda depois do morph (seria repetir) */
         document.querySelectorAll('#painel-dashboard .conteudo.entra').forEach(c => c.classList.remove('entra'));
       });
@@ -504,10 +508,28 @@ B7.Rota = (function () {
     if (metaTema.content !== cor) metaTema.content = cor;
   }
   B7.pintarBarraDoSistema = pintarBarraDoSistema;
-  try { new MutationObserver(pintarBarraDoSistema).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
+  /* v3.1.1: os observadores chamavam a pintura a cada classe/filho que
+     mudava no body (dezenas por troca de tela), e cada chamada lia o CSS
+     calculado — a página se recalculava várias vezes por quadro. Agora
+     junta tudo num quadro só e só repinta se algo que muda a cor mudou. */
+  let pintarPedido = 0, pintarChave = '';
+  const pintarDepois = () => {
+    if (pintarPedido) return;
+    pintarPedido = requestAnimationFrame(() => {
+      pintarPedido = 0;
+      const b = document.body, ab = document.querySelector('.b7-abertura');
+      const k = [document.documentElement.getAttribute('data-theme'), ab ? (ab.classList.contains('saindo') ? 's' : 'a') : '',
+        b && b.classList.contains('tele-aberto'), b && b.classList.contains('chat-aberto'), !!document.querySelector('.fundo-modal'),
+        window.innerWidth <= 760].join('|');
+      if (k === pintarChave) return;
+      pintarChave = k;
+      pintarBarraDoSistema();
+    });
+  };
+  try { new MutationObserver(pintarDepois).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
   /* janelas entram e saem como filhas diretas do body; chat e teleprompter
      trocam classes nele */
-  const vigiarCorpo = () => { try { new MutationObserver(pintarBarraDoSistema).observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true }); } catch (e) {} };
+  const vigiarCorpo = () => { try { new MutationObserver(pintarDepois).observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true }); } catch (e) {} };
   if (document.body) vigiarCorpo(); else document.addEventListener('DOMContentLoaded', vigiarCorpo);
   pintarBarraDoSistema();
 
@@ -1224,7 +1246,14 @@ B7.Rota = (function () {
       }
     };
     B7.criarTrilha();
+    /* v3.1.1: mede no próximo quadro, junto com o resto — medir logo depois
+       de trocar a classe .on obrigava a página a se recalcular na hora */
+    let trilhaPedido = 0;
     B7.moverTrilha = function () {
+      if (trilhaPedido) return;
+      trilhaPedido = requestAnimationFrame(() => { trilhaPedido = 0; moverTrilhaJa(); });
+    };
+    function moverTrilhaJa() {
       B7.criarTrilha();
       const trilha = nav.querySelector('.nav-trilha');
       const ativo = nav.querySelector('a.on');
@@ -1232,7 +1261,7 @@ B7.Rota = (function () {
       trilha.style.top = (ativo.offsetTop + 8) + 'px';
       trilha.style.height = (ativo.offsetHeight - 16) + 'px';
       trilha.classList.add('visivel');
-    };
+    }
     /* nada de observar mutações aqui: a própria trilha muda de classe e o
        observador se auto-alimentava. Quem marca a seção ativa chama isto. */
     window.addEventListener('resize', () => B7.moverTrilha());

@@ -1909,13 +1909,16 @@ html.b7-vt .b7-atu{view-transition-name:b7-atu;}
 ::view-transition-image-pair(b7-pagina){isolation:isolate;}
 ::view-transition-old(b7-pagina){animation:b7VtSai .26s cubic-bezier(.4,0,1,1) both;transform-origin:50% 30%;}
 ::view-transition-new(b7-pagina){animation:b7VtEntra .52s cubic-bezier(.16,1,.3,1) .08s both;transform-origin:50% 30%;}
+/* v3.1.1: sem o desfoque (filter: blur) — desfocar a foto da tela inteira a
+   cada quadro era o que mais pesava ao trocar de aba no computador. Fica o
+   mesmo movimento (recua e esmaece / sobe e aparece), só com opacidade e
+   transform, que a placa de vídeo faz de graça. */
 @keyframes b7VtSai{
-  from{opacity:1;transform:none;filter:none}
-  to{opacity:0;transform:scale(.975);filter:blur(6px)}}
+  from{opacity:1;transform:none}
+  to{opacity:0;transform:scale(.975)}}
 @keyframes b7VtEntra{
-  from{opacity:0;transform:translateY(16px) scale(1.012);filter:blur(10px)}
-  60%{filter:blur(0)}
-  to{opacity:1;transform:none;filter:none}}
+  from{opacity:0;transform:translateY(16px) scale(1.012)}
+  to{opacity:1;transform:none}}
 /* a tela nova não refaz a entrada dela por baixo do morph */
 html.b7-vt #painel-dashboard .conteudo.entra, html.b7-vt #painel-dashboard .conteudo.entra > *{animation:none !important;}
 /* modo leve: sem desfoque (é o que pesa), só o deslize e o esmaecer */
