@@ -315,3 +315,13 @@ html.modo-leve[data-theme] body, html.modo-leve.b7-vt[data-theme] #painel-dashbo
    de vidro; aqui só o título da linha ganha a escala do Estúdio */
 .conteudo .linha-cab h1, .conteudo .ln-cab h1{letter-spacing:-.03em;}
 /* TV: fica como está; ela tem os próprios visuais (Cinema, Aurora, Claro…) escolhidos nas configurações da TV */
+
+/* 4.4.1 — a barra de seções do cliente gruda no topo ao rolar. Antes ela
+   pintava uma faixa lisa da largura da tela (cortava a luz do fundo);
+   agora só a cápsula tem fundo, de vidro fosco, e o resto fica livre. */
+.cli-secoes{background:none;box-shadow:none;clip-path:none;}
+.cli-secoes-rolo{background:color-mix(in srgb, var(--card) 78%, transparent);
+  -webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
+  box-shadow:inset 0 0 0 1px var(--borda), 0 10px 26px -18px rgba(20,8,40,.45);}
+[data-theme="dark"] .cli-secoes-rolo{background:rgba(23,15,34,.72);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08), 0 10px 26px -18px rgba(0,0,0,.7);}
+html.modo-leve .cli-secoes-rolo{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card);}
