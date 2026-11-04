@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.6.0', versao: '4.6.0', em: '2026-11-05T12:00:00-03:00',
+    titulo: 'Avisos de vídeo sem responsável e gravação sem data',
+    itens: ['Se um vídeo ficar mais de 1 dia sem responsável, a coordenação recebe um aviso às 8h, já com a sugestão de quem tem a menor fila.',
+            'Se uma gravação ficar mais de 3 dias sem data, quem grava recebe um lembrete para marcar a data e ela aparecer no calendário.'] },
   { id: 'v-4.5.0', versao: '4.5.0', em: '2026-11-05T11:00:00-03:00',
     titulo: 'Gravações que se fecham sozinhas',
     itens: ['Quando o último item de uma gravação é marcado como gravado, a gravação se conclui sozinha. Não precisa mais apertar "Concluir gravação".',
