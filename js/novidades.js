@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.7.0', versao: '4.7.0', em: '2026-11-05T13:00:00-03:00',
+    titulo: 'Jogo na tela de manutenção: Ação! Corta!',
+    itens: ['Enquanto o sistema está em manutenção, dá para jogar "Ação! Corta!": segure para a lâmpada da B7 andar até a câmera no AÇÃO! e solte na hora do CORTA!. Mexeu no corta, perde uma vida.',
+            'Cada cena gravada deixa o diretor mais rápido e mais traiçoeiro. Seu recorde fica guardado, e o ranking mostra os 5 melhores da equipe.',
+            'Se a manutenção acabar no meio da partida, o jogo pausa e aparece "O sistema voltou!" para você entrar quando quiser.'] },
   { id: 'v-4.6.0', versao: '4.6.0', em: '2026-11-05T12:00:00-03:00',
     titulo: 'Avisos de vídeo sem responsável e gravação sem data',
     itens: ['Se um vídeo ficar mais de 1 dia sem responsável, a coordenação recebe um aviso às 8h, já com a sugestão de quem tem a menor fila.',

@@ -82,9 +82,29 @@ B7.Manutencao = (function () {
 
   function tirar(id) { const el = document.getElementById(id); if (el) el.remove(); }
   function destravar() {
-    tirar('b7-manut');
-    document.body.classList.remove('em-manutencao');
-    const app = document.getElementById('app'); if (app) app.inert = false;
+    const el = document.getElementById('b7-manut');
+    const soltar = () => {
+      tirar('b7-manut');
+      document.body.classList.remove('em-manutencao');
+      const app = document.getElementById('app'); if (app) app.inert = false;
+    };
+    /* 4.7.0: quem está no meio do jogo não é jogado para fora — aparece
+       "o sistema voltou" e a pessoa entra quando quiser */
+    if (el && el.querySelector('.jm.jm-jogando') && !el.querySelector('.mn-voltou')) {
+      const aviso = document.createElement('div'); aviso.className = 'mn-voltou';
+      aviso.innerHTML = '<b>O sistema voltou! 🎉</b><button type="button" class="b pri">Entrar no B7</button>';
+      aviso.querySelector('button').onclick = soltar;
+      const cx = el.querySelector('.mn-caixa'); cx.insertBefore(aviso, cx.firstChild);
+      el.classList.add('mn-liberada');
+      return;
+    }
+    if (el && el.querySelector('.mn-voltou')) return;   /* esperando a pessoa clicar */
+    soltar();
+  }
+  /* o jogo da manutenção (js/jogo-manut.js) */
+  function comJogo(el) {
+    if (!(B7.JogoManut && B7.JogoManut.montar) || el.querySelector('.jm')) return;
+    try { B7.JogoManut.montar(el.querySelector('.mn-caixa')); } catch (e) {}
   }
 
   const ROT_FASE = { nenhuma: 'Desligado', agendada: 'Agendado', aviso: 'Marcado', ativa: 'Ligado' };
@@ -165,11 +185,13 @@ B7.Manutencao = (function () {
       '<img class="mn-logo escuro" src="assets/brand/logo-white.png" alt="" aria-hidden="true">' +
       '<h2>Sistema em manutenção</h2><p class="mn-msg"></p><p class="mn-fim"></p>' +
       '<p class="mn-nota">Esta tela se libera sozinha quando terminar. O que você já tinha salvo continua guardado.</p>' +
-      '<button type="button" class="b contorno mn-fechar-previa">Fechar prévia</button><small class="mn-previa-aviso">Prévia: é isto que a equipe vê. Nada foi ligado.</small></div>';
+      '<small class="mn-previa-aviso">Prévia: é isto que a equipe vê. Nada foi ligado.</small><button type="button" class="b contorno mn-fechar-previa">Fechar prévia</button></div>';
     el.querySelector('.mn-msg').textContent = (mensagem || '').trim() || MSG_PADRAO;
     el.querySelector('.mn-fim').textContent = fimTx;
     el.querySelector('.mn-fechar-previa').onclick = () => el.remove();
     document.body.appendChild(el);
+    comJogo(el);
+    const fp = el.querySelector('.mn-fechar-previa'); el.querySelector('.mn-caixa').appendChild(el.querySelector('.mn-previa-aviso')); el.querySelector('.mn-caixa').appendChild(fp);
     el.querySelector('.mn-fechar-previa').focus();
   }
 
@@ -184,6 +206,7 @@ B7.Manutencao = (function () {
         '<h2 id="mn-titulo">Sistema em manutenção</h2><p class="mn-msg"></p><p class="mn-fim"></p>' +
         '<p class="mn-nota">Esta tela se libera sozinha quando terminar. O que você já tinha salvo continua guardado.</p></div>';
       document.body.appendChild(el);
+      comJogo(el);
       /* tira o foco de onde estava: ninguém digita por baixo da trava */
       try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
     }
