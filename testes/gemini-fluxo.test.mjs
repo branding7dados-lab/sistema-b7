@@ -31,4 +31,29 @@ const pedido = { mensagens: [{ role: 'user', content: 'oi' }], maxTokens: 100, t
   const r = await g.gerarFluxo(pedido, () => {});
   ok(r.ok && n === 1, 'normal: um pedido só'); }
 
+/* 4.4.4: o modelo rápido vai na frente; sobrecarregado → o padrão */
+const json = (st, o) => Promise.resolve(new Response(JSON.stringify(o), { status: st }));
+const resp = t => ({ candidates: [{ content: { parts: [{ text: t }] }, finishReason: 'STOP' }] });
+{ const urls = [];
+  const g = criarGemini(env, u => { urls.push(u); return json(200, resp('rápido')); });
+  const r = await g.gerar(pedido);
+  ok(r.ok && urls.length === 1 && /gemini-3\.5-flash:/.test(urls[0]), 'gerar: vai primeiro no modelo rápido'); }
+{ const urls = [];
+  const g = criarGemini(env, u => { urls.push(u); return urls.length === 1 ? json(503, { error: { message: 'high demand' } }) : json(200, resp('reserva')); });
+  const r = await g.gerar(pedido);
+  ok(r.ok && r.texto === 'reserva' && urls.length === 2 && /flash-lite/.test(urls[1]), 'gerar: rápido sobrecarregado → modelo padrão'); }
+{ const urls = [];
+  const g = criarGemini(env, u => { urls.push(u); return json(400, { error: { message: 'bad request' } }); });
+  const r = await g.gerar(pedido);
+  ok(!r.ok && urls.length === 1, 'gerar: pedido inválido não troca de modelo'); }
+{ const urls = [];
+  const g = criarGemini(env, (u, o) => { urls.push(u); return urls.length === 1 ? json(429, { error: { message: 'rate' } }) : Promise.resolve(sse('fluxo')); });
+  const r = await g.gerarFluxo(pedido, () => {});
+  ok(r.ok && /flash-lite/.test(urls[1]), 'fluxo: limite no rápido → modelo padrão'); }
+{ const urls = [];
+  const env2 = n => ({ GEMINI_API_KEY: 'x', GEMINI_MODELO_RAPIDO: 'nenhum' })[n];
+  const g = criarGemini(env2, u => { urls.push(u); return json(200, resp('só um')); });
+  await g.gerar(pedido);
+  ok(/flash-lite/.test(urls[0]), 'GEMINI_MODELO_RAPIDO=nenhum: só o padrão'); }
+
 process.exit(falhas ? 1 : 0);

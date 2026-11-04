@@ -18,6 +18,15 @@
 // SEGREDOS (Supabase → Edge Functions → Secrets):
 //   GEMINI_API_KEY   chave criada no Google AI Studio (aistudio.google.com/apikey)
 //   GEMINI_MODEL     opcional; sem ele vale o MODELO_PADRAO abaixo
+//   GEMINI_MODELO_RAPIDO  opcional; padrão gemini-3.5-flash ("nenhum" desliga)
+//
+// 4.4.4 — MODELO RÁPIDO NA FRENTE. Medido em 05/11/2026 com a mesma
+// revisão de legenda (395 tokens de entrada, ~330 de saída): o Flash-Lite
+// levou de 13 a 33 s, o Flash de 2,4 a 4,4 s. Cada pedido tenta primeiro
+// o rápido; se ele responder "sobrecarregado", "limite/cota" ou "modelo
+// indisponível", ou travar sem mandar nada, o MESMO pedido vai para o
+// modelo padrão (o de antes). Recusa por conteúdo e pedido inválido não
+// mudam de modelo.
 //
 // MODELO. gemini-3.5-flash-lite: na página de preços aparece como
 // "Free of charge" na camada gratuita e, na de modelos, como o mais
@@ -25,8 +34,8 @@
 // trechos curtos em português, com pouca espera). Um modelo maior não
 // melhora "encurte esta fala" e gasta a cota mais rápido.
 //
-// CAMADA GRATUITA. Este arquivo não liga cobrança nem tem modelo pago
-// "de reserva": uma chave, um modelo. Quando o Google responde que o
+// CAMADA GRATUITA. Este arquivo não liga cobrança: uma chave, e dois
+// modelos da mesma chave (o rápido na frente, o padrão de reserva). Quando o Google responde que o
 // limite ou a cota acabou, isso sobe como 'limite' ou 'cota' e a pessoa
 // vê um aviso — nada é tentado de novo, para não gastar mais cota.
 // Cobrança só existe se alguém ativar o faturamento do projeto no
@@ -36,6 +45,7 @@
 import type { ErroDoProvedor, PedidoDeGeracao, Provedor, RespostaDoProvedor } from './provedor.ts';
 
 export const MODELO_PADRAO = 'gemini-3.5-flash-lite';
+export const MODELO_RAPIDO = 'gemini-3.5-flash';
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
 type ParteGemini = { text?: string; thought?: boolean };
@@ -73,25 +83,47 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
   if (!chave) return null;
   const pedido = (env('GEMINI_MODEL') || '').trim();
   const modelo = /^[a-z0-9][a-z0-9.\-]{2,60}$/.test(pedido) ? pedido : MODELO_PADRAO;
+  const rapidoPedido = (env('GEMINI_MODELO_RAPIDO') || '').trim();
+  const rapido = rapidoPedido === 'nenhum' ? null
+    : /^[a-z0-9][a-z0-9.\-]{2,60}$/.test(rapidoPedido) ? rapidoPedido : MODELO_RAPIDO;
+  /* a ordem de tentativa: o rápido (se houver e for outro) e depois o padrão */
+  const ordem = rapido && rapido !== modelo ? [rapido, modelo] : [modelo];
+  /* erros em que vale tentar o outro modelo */
+  const TROCA = new Set(['indisponivel', 'limite', 'cota', 'modelo', 'sem_inicio']);
 
   /* zzz300: os modelos 3.x "pensam" antes de responder; para reescrever
      um trecho isso é só espera. Pedimos o mínimo. Se este modelo não
      aceitar o ajuste (400 falando de thinking), o pedido sai de novo sem
      ele e não se tenta mais nesta instância. GEMINI_THINKING=padrao desliga. */
-  let pensarPouco = (env('GEMINI_THINKING') || '').trim() !== 'padrao';
-  const pensar = () => pensarPouco ? { thinkingConfig: { thinkingLevel: 'minimal' } } : {};
-  const recusouPensar = (status: number, corpo: RespostaGemini | null) => {
+  const pensarDesligado = (env('GEMINI_THINKING') || '').trim() === 'padrao';
+  const naoAceitaPensar = new Set<string>();   /* modelos que recusaram o ajuste */
+  const pensarPouco = (m: string) => !pensarDesligado && !naoAceitaPensar.has(m);
+  const pensar = (m: string) => pensarPouco(m) ? { thinkingConfig: { thinkingLevel: 'minimal' } } : {};
+  const recusouPensar = (m: string, status: number, corpo: RespostaGemini | null) => {
     const e = (corpo && corpo.error) || {};
-    return pensarPouco && status === 400 && /think/i.test(String(e.message || ''));
+    return pensarPouco(m) && status === 400 && /think/i.test(String(e.message || ''));
   };
 
-  async function gerar(p: PedidoDeGeracao): Promise<RespostaDoProvedor> {
-    const r = await gerarUma(p);
-    if (!r.ok && r.erro === 'sem_pensar') { pensarPouco = false; return (await gerarUma(p)) as RespostaDoProvedor; }
+  async function gerarCom(m: string, p: PedidoDeGeracao): Promise<RespostaDoProvedor> {
+    const r = await gerarUma(m, p);
+    if (!r.ok && r.erro === 'sem_pensar') { naoAceitaPensar.add(m); return (await gerarUma(m, p)) as RespostaDoProvedor; }
     return r as RespostaDoProvedor;
   }
 
-  async function gerarUma(p: PedidoDeGeracao): Promise<RespostaDoProvedor | { ok: false; erro: 'sem_pensar'; status: number }> {
+  async function gerar(p: PedidoDeGeracao): Promise<RespostaDoProvedor> {
+    const t0 = Date.now();
+    let r: RespostaDoProvedor = { ok: false, erro: 'indisponivel', status: null } as RespostaDoProvedor;
+    for (let i = 0; i < ordem.length; i++) {
+      const sobra = p.prazoMs - (Date.now() - t0);
+      if (i > 0 && sobra < 4000) break;
+      r = await gerarCom(ordem[i], i ? { ...p, prazoMs: sobra } : p);
+      if (r.ok || !TROCA.has(String(r.erro))) return r;
+      if (i + 1 < ordem.length) console.error('[b7-ia] gemini ' + ordem[i] + ': ' + r.erro + '; tentando ' + ordem[i + 1]);
+    }
+    return r;
+  }
+
+  async function gerarUma(modelo: string, p: PedidoDeGeracao): Promise<RespostaDoProvedor | { ok: false; erro: 'sem_pensar'; status: number }> {
     const sistema = p.mensagens.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
     const usuario = p.mensagens.filter(m => m.role === 'user').map(m => m.content).join('\n\n');
     const ctrl = new AbortController();
@@ -106,7 +138,7 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
             ...(p.audio ? [{ inlineData: { mimeType: p.audio.mime, data: p.audio.base64 } }] : []),
             ...(p.imagem ? [{ inlineData: { mimeType: p.imagem.mime, data: p.imagem.base64 } }] : [])] }],
           generationConfig: {
-            temperature: p.temperatura, maxOutputTokens: p.maxTokens, ...pensar(),
+            temperature: p.temperatura, maxOutputTokens: p.maxTokens, ...pensar(modelo),
             ...(p.json ? { responseMimeType: 'application/json' } : {}),
             /* resposta estruturada: prende o JSON ao formato pedido (sem
                campo inventado nem texto em volta) */
@@ -117,7 +149,7 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
 
       let corpo: RespostaGemini | null = null;
       try { corpo = await r.json(); } catch (_e) { corpo = null; }
-      if (!r.ok && recusouPensar(r.status, corpo)) return { ok: false, erro: 'sem_pensar', status: r.status };
+      if (!r.ok && recusouPensar(modelo, r.status, corpo)) return { ok: false, erro: 'sem_pensar', status: r.status };
       if (!r.ok) return { ok: false, erro: erroPorStatus(r.status, corpo), status: r.status };
       if (!corpo) return { ok: false, erro: 'resposta_invalida', status: r.status };
 
@@ -157,19 +189,30 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
   const primeiroMs = Number(env('GEMINI_PRIMEIRO_MS')) || 8000;
   async function gerarFluxo(p: PedidoDeGeracao, aoTrecho: (texto: string) => void): Promise<RespostaDoProvedor> {
     const t0 = Date.now();
-    let r = await fluxoUm(p, aoTrecho, primeiroMs);
-    if (!r.ok && r.erro === 'sem_pensar') { pensarPouco = false; r = await fluxoUm(p, aoTrecho, primeiroMs); }
-    if (!r.ok && r.erro === 'sem_inicio') {
+    /* 1ª ligação: o modelo rápido (ou o único). Se travar sem mandar nada,
+       ou responder sobrecarregado/limite, a 2ª vai para o modelo padrão
+       (ou de novo para o mesmo, quando só há um), com o tempo que sobrar.
+       Só se tenta a troca enquanto nenhum texto saiu para a tela. */
+    let saiuTexto = false;
+    const ouvir = (t: string) => { saiuTexto = true; aoTrecho(t); };
+    const um = async (m: string, pp: PedidoDeGeracao, inicio: number) => {
+      let r = await fluxoUm(m, pp, ouvir, inicio);
+      if (!r.ok && r.erro === 'sem_pensar') { naoAceitaPensar.add(m); r = await fluxoUm(m, pp, ouvir, inicio); }
+      return r;
+    };
+    let r = await um(ordem[0], p, primeiroMs);
+    if (!r.ok && !saiuTexto && TROCA.has(String(r.erro))) {
+      const segundo = ordem[1] || ordem[0];
       const sobra = p.prazoMs - (Date.now() - t0);
-      console.error('[b7-ia] gemini sem resposta em ' + primeiroMs + ' ms; pedindo de novo');
+      console.error('[b7-ia] gemini ' + ordem[0] + ': ' + r.erro + '; pedindo de novo em ' + segundo);
       if (sobra < 4000) return { ok: false, erro: 'tempo', status: null };
-      r = await fluxoUm({ ...p, prazoMs: sobra }, aoTrecho, sobra);
-      if (!r.ok && (r.erro === 'sem_inicio' || r.erro === 'sem_pensar')) return { ok: false, erro: 'tempo', status: null };
+      r = await um(segundo, { ...p, prazoMs: sobra }, sobra);
     }
+    if (!r.ok && (r.erro === 'sem_inicio' || r.erro === 'sem_pensar')) return { ok: false, erro: 'tempo', status: null };
     return r as RespostaDoProvedor;
   }
 
-  async function fluxoUm(p: PedidoDeGeracao, aoTrecho: (texto: string) => void, inicioMs: number):
+  async function fluxoUm(modelo: string, p: PedidoDeGeracao, aoTrecho: (texto: string) => void, inicioMs: number):
     Promise<RespostaDoProvedor | { ok: false; erro: 'sem_pensar'; status: number } | { ok: false; erro: 'sem_inicio'; status: null }> {
     const sistema = p.mensagens.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
     const usuario = p.mensagens.filter(m => m.role === 'user').map(m => m.content).join('\n\n');
@@ -186,13 +229,13 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
           ...(sistema ? { systemInstruction: { parts: [{ text: sistema }] } } : {}),
           contents: [{ role: 'user', parts: [{ text: usuario },
             ...(p.imagem ? [{ inlineData: { mimeType: p.imagem.mime, data: p.imagem.base64 } }] : [])] }],
-          generationConfig: { temperature: p.temperatura, maxOutputTokens: p.maxTokens, ...pensar() }
+          generationConfig: { temperature: p.temperatura, maxOutputTokens: p.maxTokens, ...pensar(modelo) }
         })
       });
       if (!r.ok || !r.body) {
         let corpo: RespostaGemini | null = null;
         try { corpo = await r.json(); } catch (_e) { corpo = null; }
-        if (!r.ok && recusouPensar(r.status, corpo)) return { ok: false, erro: 'sem_pensar', status: r.status };
+        if (!r.ok && recusouPensar(modelo, r.status, corpo)) return { ok: false, erro: 'sem_pensar', status: r.status };
         return { ok: false, erro: r.ok ? 'resposta_invalida' : erroPorStatus(r.status, corpo), status: r.status };
       }
 
@@ -243,5 +286,5 @@ export function criarGemini(env: (nome: string) => string | undefined, fetchFn: 
     }
   }
 
-  return { nome: 'gemini', modelo, gerar, gerarFluxo };
+  return { nome: 'gemini', modelo: ordem[0], gerar, gerarFluxo };
 }

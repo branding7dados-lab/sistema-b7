@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.4.4', versao: '4.4.4', em: '2026-11-05T09:00:00-03:00',
+    titulo: 'IA até 10 vezes mais rápida em legendas e textos',
+    itens: ['A revisão de legendas (SRT), as legendas de post e as mensagens de WhatsApp com IA passaram a usar um modelo mais rápido do Google: o que levava 15 a 40 segundos agora sai em poucos segundos.',
+            'Se esse modelo estiver sobrecarregado, o sistema passa sozinho para o de antes, sem você precisar fazer nada.'] },
   { id: 'v-4.4.2', versao: '4.4.2', em: '2026-11-05T06:00:00-03:00',
     titulo: 'Revisão geral: correções e banco mais rápido',
     itens: ['As imagens das peças de Design não quebram mais quando a tela fica aberta por muito tempo.',
