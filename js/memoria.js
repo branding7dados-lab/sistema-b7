@@ -49,7 +49,7 @@ B7.Memoria = (function () {
   ];
   /* tudo que muda dado no banco; o resto (heartbeat, sessão, leituras de
      detalhe) não mexe na memória */
-  const ESCRITA = /^(criar|atualizar|excluir|fixar|arquivar|paraLixeira|restaurar|reordenar|duplicar|salvar|definir|mover|registrar(?!Push)|enviar|decidir|anular|comentar|resolver|liberar|gerar|atribuir|assumir|concluir|solicitar|aprovar|finalizar|fechar|reabrir|importar|confirmar|backfill|vincular|desvincular|alternar|sincronizar|editar|remover(?!Push)|revisar|cancelar|apagar|mudar|desconectar|iniciarConexao|reprocessar|verificarAlertas|chamarCalendario|marcarConclusao|marcarGravacao|oportunidade(Ajustar|Vincular|Desvincular|DefinirEstado|Unir|CadastrarManual)|oportunidadesSincronizar|cliente(Municipios|Segmentos)Definir|conteudoDefinir|ocorrencia(Concluir|Remarcar|Cancelar)|gravacao(Item(Adicionar|Editar|Remover|Mover|Marcar)|Agendar|Concluir|Cancelar))/;
+  const ESCRITA = /^(criar|atualizar|excluir|fixar|arquivar|paraLixeira|restaurar|reordenar|duplicar|salvar|definir|mover|registrar(?!Push)|enviar|decidir|anular|comentar|resolver|liberar|gerar|atribuir|assumir|concluir|solicitar|aprovar|finalizar|fechar(?!Canal)|reabrir|importar|confirmar|backfill|vincular|desvincular|alternar|sincronizar|editar|remover(?!Push)|revisar|cancelar|apagar|mudar|desconectar|iniciarConexao|reprocessar|chamarCalendario|marcarConclusao|marcarGravacao|oportunidade(Ajustar|Vincular|Desvincular|DefinirEstado|Unir|CadastrarManual)|oportunidadesSincronizar|cliente(Municipios|Segmentos)Definir|conteudoDefinir|ocorrencia(Concluir|Remarcar|Cancelar)|gravacao(Item(Adicionar|Editar|Remover|Mover|Marcar)|Agendar|Concluir|Cancelar))/;
 
   const FRESCA = 5000;            /* resposta com menos de 5 s nem volta ao banco */
   const VALIDADE = 7 * 864e5;     /* no aparelho, no máximo uma semana */
@@ -235,20 +235,32 @@ B7.Memoria = (function () {
     };
   });
 
-  /* chamada direta ao rpc fora do database.js: na dúvida, é escrita */
+  /* chamada direta ao rpc fora do database.js: na dúvida, é escrita.
+     v3.4.0: muitas funções do banco são SÓ LEITURA (Panorama, Gestão,
+     relatórios, listas) ou só registram algo que não aparece nas telas
+     guardadas (o "estou online" de cada minuto, notificação lida, mensagem
+     lida). Elas apagavam a memória de todas as telas o tempo todo — e as
+     telas voltavam a esperar o banco. Agora não apagam mais. */
+  const RPC_NAO_MUDA = /^(painel|listar|contar|contagem|resumo|minhas?_|meu_dia|meu_email_resumo$|buscar|ler_|ver_|panorama_|gestao_(painel|colaboradores)|relatorio_|retrospectiva_|saude_|medico_|super_(painel|uso|limites$|avaliacoes)|sessoes_listar|sistema_avisos|textos_padrao|abertura_config|acoes_painel|acessos_historico|ajuda_videos|agencia_semana_dados|calendario_status_conexao|cliente_pessoas|conferir_permissoes|dashboard_resumo|demandas_lixeira|expediente_equipe$|gravacao_(preparacao|referencias_linha)|gravacoes_preparacao_resumo|ia_uso_resumo|limite_admin|prazos_em_risco_lista|redistribuicao_sugestoes|saida_resumo|satisfacao_pendente|suporte_(atendimento_resumo|autoajuda_resumo|autoajuda_registrar|faq_publico|ideias|status)|video_(carga_equipe|gestao_resumo|mes_fechado|producao_por_cliente|relatorio_por_videomaker|demandas_\w+_nao_confiavel|verificar_alertas_prazo)|\w+_(listar|lista)$|perfil_heartbeat|perfil_preferencias_gravar|meu_status_definir|silencio_gravar|push_registrar|widget_token_novo|whatsapp_diagnostico_registrar|notif_marcar_|chat_marcar_|chat_comunicado_lidos|notificar_teste)/;
   const rpcOrig = B7.DB.rpc;
   if (typeof rpcOrig === 'function') {
     B7.DB.rpc = function (nome, ...resto) {
-      if (!/^(painel|listar|contar|contagem|resumo|minhas?_|buscar|ler_|ver_)/.test(String(nome || ''))) invalidar();
+      if (!RPC_NAO_MUDA.test(String(nome || ''))) invalidar();
       return rpcOrig.call(B7.DB, nome, ...resto);
     };
   }
 
-  /* Realtime: alguém mudou algo → o que está guardado vira "a conferir" */
+  /* Realtime: alguém mudou algo → o que está guardado vira "a conferir".
+     v3.4.0: avisos, conversas, presença e suporte não mudam nada do que as
+     telas guardam: chegada de notificação não apaga mais a memória. */
+  const TABELA_NAO_MUDA = /^(notificacoes|chat_|suporte_|perfis$|push_|ia_|eventos_dominio)/;
   const canalOrig = B7.DB.canal;
   if (typeof canalOrig === 'function') {
-    B7.DB.canal = function (nome, assinaturas, aoMudar) {
-      return canalOrig.call(B7.DB, nome, assinaturas, p => { invalidar(2500); return aoMudar(p); });
+    B7.DB.canal = function (nome, assinaturas, aoMudar, ...resto) {
+      return canalOrig.call(B7.DB, nome, assinaturas, p => {
+        if (!(p && TABELA_NAO_MUDA.test(String(p.table || '')))) invalidar(2500);
+        return aoMudar(p);
+      }, ...resto);
     };
   }
 

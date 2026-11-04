@@ -570,7 +570,19 @@ window.B7 = window.B7 || {};
       /* telas que sabem atualizar "por baixo" (sem esqueleto nem
          entrada de novo) olham esta marca — ver js/video.js abrir() */
       B7.recargaSilenciosa = true;
-      if (B7.Rota && B7.Rota.ir) await Promise.race([Promise.resolve(B7.Rota.ir()), new Promise(r => setTimeout(r, 6000))]);
+      /* v3.4.0: a mesma proteção da atualização do tempo real — a tela atual
+         fica (sem esqueleto de carregamento no meio) até a nova estar pronta,
+         as partes que carregam sozinhas guardam o conteúdo e as colunas
+         voltam à mesma rolagem. Antes, as telas que não sabiam atualizar
+         "por baixo" piscavam o esqueleto embaixo do dedo. */
+      const TR = B7.TempoReal, pn = painel();
+      const rolos = TR && TR.guardarRolagens ? TR.guardarRolagens(pn) : [];
+      const soltar = TR && TR.blindar ? TR.blindar(pn) : () => {};
+      if (TR && TR.vigiarPartes) TR.vigiarPartes(pn, 6000);
+      try {
+        if (B7.Rota && B7.Rota.ir) await Promise.race([Promise.resolve(B7.Rota.ir()), new Promise(r => setTimeout(r, 6000))]);
+      } finally { soltar(); }
+      if (TR && TR.voltarRolagens) requestAnimationFrame(() => TR.voltarRolagens(painel(), rolos));
     } catch (e) {} finally { B7.recargaSilenciosa = false; }
     /* o véu sai assim que a tela nova está pronta: os números deslizam à vista */
     document.documentElement.classList.remove('b7-recarga');

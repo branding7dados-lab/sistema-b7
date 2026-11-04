@@ -226,5 +226,5 @@ B7.TempoReal = (function () {
     ligar();
   }, 2000);
 
-  return { ligar, desligar, guardarRolagens, voltarRolagens, _depende: DEPENDE, _simular: tabela => aoMudar({ table: tabela }), arrastando: v => { arrastando = !!v; } };
+  return { ligar, desligar, guardarRolagens, voltarRolagens, blindar, vigiarPartes, _depende: DEPENDE, _simular: tabela => aoMudar({ table: tabela }), arrastando: v => { arrastando = !!v; } };
 })();

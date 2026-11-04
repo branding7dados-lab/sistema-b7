@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-3.4.0', versao: '3.4.0', em: '2026-11-04T21:00:00-03:00',
+    titulo: 'Telas abrindo mais rápido e puxar para atualizar sem piscar',
+    itens: ['As telas que você já abriu voltam na hora, mesmo com a equipe mexendo no sistema ao mesmo tempo.',
+            'No celular, puxar a tela para baixo para atualizar não pisca mais a tela de carregamento no meio.'] },
   { id: 'v-3.3.0', versao: '3.3.0', em: '2026-11-04T20:00:00-03:00',
     titulo: 'Assistente mais rápido, aviso de trabalho parado e prioridade sugerida',
     itens: ['O assistente de IA responde mais rápido também às perguntas sobre o seu trabalho.',
