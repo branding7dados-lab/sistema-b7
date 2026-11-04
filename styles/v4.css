@@ -297,3 +297,21 @@ html.modo-leve[data-theme] body, html.modo-leve.b7-vt[data-theme] #painel-dashbo
 .vp-faixa:not(.vp-urgente):not(.vp-alta) .vp-pos{color:var(--violeta);background:color-mix(in srgb, var(--violeta) 11%, transparent);}
 [data-theme="dark"] .vp-faixa:not(.vp-urgente):not(.vp-alta) .vp-pos{color:#B4A8E6;}
 .vp-sug{border-radius:18px;background:color-mix(in srgb, var(--ambar) 9%, transparent);border:1px solid color-mix(in srgb, var(--ambar) 30%, transparent);}
+
+/* =====================================================================
+   4.4 — Roteiros, Ideias, Linha editorial, Gestão e TV
+   ===================================================================== */
+.rt-cab h1{font-size:clamp(28px, 2.6vw, 36px);letter-spacing:-.03em;}
+.rt-grupo, .gt-kpi, .gt-bloco{border-radius:var(--r-lg);box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-2);}
+[data-theme="dark"] :is(.rt-grupo, .gt-kpi, .gt-bloco){background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012)), var(--card);border-color:rgba(255,255,255,.08);}
+[data-theme="dark"] :is(.gt-cli, .gt-ped){border-top-color:rgba(255,255,255,.06);}
+.rt-linha:hover, .gt-cli:hover, .gt-ped:hover{background:color-mix(in srgb, var(--magenta) 5%, transparent);}
+.gt-kpi b, .gt-n{font-family:'B7 Titulo','Inter',sans-serif;letter-spacing:-.03em;}
+/* abas da Gestão e das telas que usam a mesma barra: cápsulas com a aberta em degradê */
+.gt-abas{border-radius:14px;}
+.gt-abas button.on, .gt-abas a.on{color:#fff;background:linear-gradient(120deg, var(--violeta), var(--magenta));border-radius:10px;
+  box-shadow:0 8px 20px -12px color-mix(in srgb, var(--magenta) 80%, transparent);}
+/* Ideias e Linha editorial usam os blocos de sempre (.bloco), que já são
+   de vidro; aqui só o título da linha ganha a escala do Estúdio */
+.conteudo .linha-cab h1, .conteudo .ln-cab h1{letter-spacing:-.03em;}
+/* TV: fica como está; ela tem os próprios visuais (Cinema, Aurora, Claro…) escolhidos nas configurações da TV */

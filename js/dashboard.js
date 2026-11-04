@@ -827,7 +827,7 @@ B7.Dashboard = (function () {
     const ICL = '<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>';
     const ICC = '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7.2" height="7.2" rx="2.3"/><rect x="13.3" y="3.5" width="7.2" height="7.2" rx="2.3"/><rect x="3.5" y="13.3" width="7.2" height="7.2" rx="2.3"/><rect x="13.3" y="13.3" width="7.2" height="7.2" rx="2.3"/></svg>';
     painel().innerHTML = '<div class="conteudo entra rt">' +
-      '<div class="rt-cab"><div class="rt-cab-tx"><h1>Roteiros</h1>' +
+      '<div class="rt-cab"><div class="rt-cab-tx"><p class="v4-sobre">Escrita</p><h1>Roteiros</h1>' +
         '<p id="rt-sub">' + roteiros.length + ' roteiros, separados pelo mês da gravação</p></div>' +
         (roteiros.length ? '<div class="rt-cab-acoes"><div class="filtro rt-vista" role="group" aria-label="Forma de ver">' +
           '<button data-vista="lista" aria-label="Lista por gravação" title="Lista por gravação">' + ICL + '<span>Lista</span></button>' +

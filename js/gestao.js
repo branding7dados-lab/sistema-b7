@@ -30,7 +30,7 @@ B7.Gestao = (function () {
     params0 = params || null;
     if (!B7.Auth.ehAdmin()) { painel().innerHTML = '<div class="conteudo"><div class="estado-b7"><b>Só o administrador abre a Gestão.</b></div></div>'; return; }
     painel().innerHTML = '<div class="conteudo entra gs">' +
-      '<div class="cb-topo"><div class="cb-titulo"><h1>Gestão</h1><p class="gt-intro">A agência num olhar: entregas, a equipe, a saúde de cada cliente e o que eles estão pedindo.</p></div></div>' +
+      '<div class="cb-topo"><div class="cb-titulo"><p class="v4-sobre">Visão da agência</p><h1>Gestão</h1><p class="gt-intro">A agência num olhar: entregas, a equipe, a saúde de cada cliente e o que eles estão pedindo.</p></div></div>' +
       '<div class="filtro rolavel gt-abas" role="tablist">' + [['geral', 'Visão geral'], ['equipe', 'Equipe'], ['saude', 'Saúde dos clientes'], ['avulsos', 'Avulsos'], ['pedidos', 'Pedidos'], ['recados', 'Recados']].filter(([k]) => (k !== 'avulsos' || B7.Projetos) && (k !== 'equipe' || B7.Colaboradores)).map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (aba === k ? 'on' : '') + '" aria-selected="' + (aba === k) + '">' + r + '<span class="gt-n" data-n-' + k + '></span></button>').join('') + '</div>' +
       '<div id="gt-corpo">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';

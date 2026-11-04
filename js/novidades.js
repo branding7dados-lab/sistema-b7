@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.4.0', versao: '4.4.0', em: '2026-11-05T04:30:00-03:00',
+    titulo: 'Estúdio em Roteiros e Gestão',
+    itens: ['Roteiros e Gestão ganharam títulos maiores e cartões de vidro, como o resto do sistema.',
+            'Na Gestão, a aba aberta (Visão geral, Equipe, Saúde dos clientes…) fica com o degradê da B7.'] },
   { id: 'v-4.3.0', versao: '4.3.0', em: '2026-11-05T03:30:00-03:00',
     titulo: 'Estúdio em Clientes, Design, Aprovações, Portal e Prioridade',
     itens: ['Na página de cada cliente, as seções (Visão geral, Editorial, Gravações…) viraram cápsulas, e a aberta fica com o degradê da B7.',
