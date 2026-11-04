@@ -164,9 +164,9 @@ B7.JogoCorrida = (function () {
       await B7.vendor('three'); T = window.THREE;
       renderer = new T.WebGLRenderer({ canvas: tela, antialias: !leve, powerPreference: 'high-performance' });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.5 : 2));
-      renderer.outputColorSpace = T.SRGBColorSpace; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+      renderer.outputColorSpace = T.SRGBColorSpace; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.5;
       renderer.shadowMap.enabled = !leve;
-      cena = new T.Scene(); cena.background = new T.Color(0x0c0714); cena.fog = new T.Fog(0x0c0714, 22, 75);
+      cena = new T.Scene(); cena.background = new T.Color(0x24163d); cena.fog = new T.Fog(0x24163d, 34, 105);
       cam = new T.PerspectiveCamera(60, 1, 0.1, 160); cam.position.set(0, 3.4, 7);
       try { montarMundo(); } catch (e) { renderer.dispose(); renderer = null; throw e; }
       vestir(); medir(); addEventListener('resize', aoRedim);
@@ -174,13 +174,13 @@ B7.JogoCorrida = (function () {
     }
     const mat = o => new T.MeshStandardMaterial(o);
     function montarMundo() {
-      cena.add(new T.HemisphereLight(0xa48cff, 0x1a0e28, 0.7));
+      cena.add(new T.HemisphereLight(0xd8ccff, 0x4a3570, 1.5)); cena.add(new T.AmbientLight(0xffffff, 0.35));
       const sol = new T.DirectionalLight(0xffe6f4, 1.2); sol.position.set(5, 12, 8); sol.castShadow = !leve;
       sol.shadow.mapSize.set(1024, 1024); Object.assign(sol.shadow.camera, { left: -8, right: 8, top: 10, bottom: -30, near: 1, far: 60 }); cena.add(sol);
       /* chão e pista com 3 faixas */
-      const chao = new T.Mesh(new T.PlaneGeometry(70, 200), mat({ color: 0x120a1d, roughness: 0.35, metalness: 0.3 }));
+      const chao = new T.Mesh(new T.PlaneGeometry(70, 200), mat({ color: 0x2c1f45, roughness: 0.45, metalness: 0.25 }));
       chao.rotation.x = -Math.PI / 2; chao.position.z = -70; chao.receiveShadow = true; cena.add(chao);
-      const pista = new T.Mesh(new T.BoxGeometry(7.4, 0.1, 200), mat({ color: 0x221436, roughness: 0.3, metalness: 0.35 }));
+      const pista = new T.Mesh(new T.BoxGeometry(7.4, 0.1, 200), mat({ color: 0x43306a, roughness: 0.5, metalness: 0.2 }));
       pista.position.set(0, 0.05, -70); pista.receiveShadow = true; cena.add(pista);
       M.neon = [];
       [-3.65, -1.15, 1.15, 3.65].forEach((x, i) => {
@@ -221,27 +221,68 @@ B7.JogoCorrida = (function () {
       M.escudo.position.y = 1.05; M.escudo.visible = false; lamp.add(M.escudo);
       Object.assign(M, { lamp, corpo, bulbo });
 
-      /* o diretor (aparece correndo atrás quando você tropeça) */
-      const dir = new T.Group(); dir.visible = false; cena.add(dir);
-      const tronco = new T.Mesh(new T.CapsuleGeometry(0.42, 0.9, 6, 12), mat({ color: 0x2a1b6b, roughness: 0.6 })); tronco.position.y = 1.55; tronco.castShadow = true; dir.add(tronco);
-      const cab = new T.Mesh(new T.SphereGeometry(0.34, 20, 16), mat({ color: 0xf2c1a0, roughness: 0.7 })); cab.position.y = 2.45; dir.add(cab);
-      const boina = new T.Mesh(new T.CylinderGeometry(0.4, 0.34, 0.14, 20), mat({ color: 0x111111, roughness: 0.9 })); boina.position.set(0.06, 2.72, 0); boina.rotation.z = -0.25; dir.add(boina);
-      const oculos = new T.Mesh(new T.BoxGeometry(0.5, 0.1, 0.06), mat({ color: 0x050505, metalness: 0.6, roughness: 0.2 })); oculos.position.set(0, 2.47, -0.31); dir.add(oculos);
-      const mega = new T.Mesh(new T.ConeGeometry(0.22, 0.6, 16, 1, true), mat({ color: 0xffd36b, emissive: 0xb07800, emissiveIntensity: 0.4, side: T.DoubleSide }));
-      mega.rotation.x = -Math.PI / 2; mega.position.set(0.45, 2.3, -0.5); dir.add(mega);
-      M.pernas = [];
-      [-0.18, 0.18].forEach(x => { const p = new T.Mesh(new T.CapsuleGeometry(0.13, 0.7, 4, 8), mat({ color: 0x15102a })); p.position.set(x, 0.55, 0); dir.add(p); M.pernas.push(p); });
+      { /* o diretor (aparece correndo atrás quando você tropeça) — 4.9.1:
+         modelo novo com d_quadril, ombros e joelhos articulados; corre de
+         frente para a lâmpada (a gente vê as costas, com "DIRETOR") */
+      const dir = new T.Group(); dir.visible = false; dir.scale.setScalar(0.85); cena.add(dir);
+      const d_pele = mat({ color: 0xf0bf98, roughness: 0.7 }), d_jaqueta = mat({ color: 0x3b2a8a, roughness: 0.55 }),
+            d_calca = mat({ color: 0x1c1633, roughness: 0.7 }), d_sapato = mat({ color: 0x0c0a10, roughness: 0.4, metalness: 0.3 }),
+            d_camisa = mat({ color: 0xf3eefa, roughness: 0.8 }), d_lenco = mat({ color: 0xff3d6e, emissive: 0x7a0f2c, emissiveIntensity: 0.4 }),
+            d_preto = mat({ color: 0x0a0810, roughness: 0.3, metalness: 0.5 }), d_cabelo = mat({ color: 0x2a1a12, roughness: 0.9 });
+      const d_quadril = new T.Group(); d_quadril.position.y = 1.02; dir.add(d_quadril);
+      const d_corpo = new T.Group(); d_quadril.add(d_corpo);
+      const d_tronco = new T.Mesh(new T.CapsuleGeometry(0.4, 0.62, 8, 16), d_jaqueta); d_tronco.position.y = 0.55; d_tronco.scale.set(1, 1, 0.78); d_tronco.castShadow = true; d_corpo.add(d_tronco);
+      const d_peito = new T.Mesh(new T.BoxGeometry(0.34, 0.6, 0.05), d_camisa); d_peito.position.set(0, 0.62, -0.31); d_corpo.add(d_peito);
+      const d_gola = new T.Mesh(new T.TorusGeometry(0.2, 0.07, 10, 20), d_lenco); d_gola.rotation.x = Math.PI / 2; d_gola.position.y = 1.0; d_corpo.add(d_gola);
+      const d_pescoco = new T.Mesh(new T.CylinderGeometry(0.1, 0.12, 0.16, 12), d_pele); d_pescoco.position.y = 1.06; d_corpo.add(d_pescoco);
+      const d_cab = new T.Group(); d_cab.position.y = 1.36; d_corpo.add(d_cab);
+      const d_cabeca = new T.Mesh(new T.SphereGeometry(0.29, 24, 20), d_pele); d_cabeca.scale.set(1, 1.08, 1); d_cab.add(d_cabeca);
+      const d_nariz = new T.Mesh(new T.SphereGeometry(0.06, 10, 8), d_pele); d_nariz.position.set(0, -0.02, -0.29); d_cab.add(d_nariz);
+      const d_bigode = new T.Mesh(new T.CapsuleGeometry(0.035, 0.16, 4, 8), d_cabelo); d_bigode.rotation.z = Math.PI / 2; d_bigode.position.set(0, -0.1, -0.27); d_cab.add(d_bigode);
+      const d_nuca = new T.Mesh(new T.SphereGeometry(0.295, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), d_cabelo); d_nuca.rotation.x = 0.5; d_nuca.position.set(0, 0.02, 0.03); d_cab.add(d_nuca);
+      [-0.11, 0.11].forEach(x => { const l = new T.Mesh(new T.CylinderGeometry(0.085, 0.085, 0.04, 16), d_preto); l.rotation.x = Math.PI / 2; l.position.set(x, 0.04, -0.27); d_cab.add(l); });
+      const d_ponte = new T.Mesh(new T.BoxGeometry(0.08, 0.02, 0.02), d_preto); d_ponte.position.set(0, 0.05, -0.29); d_cab.add(d_ponte);
+      const d_boina = new T.Mesh(new T.SphereGeometry(0.33, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.42), mat({ color: 0x14101c, roughness: 0.95 }));
+      d_boina.scale.set(1.12, 0.55, 1.12); d_boina.position.set(0.04, 0.2, 0.02); d_boina.rotation.z = -0.22; d_cab.add(d_boina);
+      const d_pino = new T.Mesh(new T.CylinderGeometry(0.02, 0.02, 0.07, 6), mat({ color: 0x14101c })); d_pino.position.set(0.02, 0.38, 0.02); d_cab.add(d_pino);
+      /* "DIRETOR" nas costas */
+      const d_cv = document.createElement('canvas'); d_cv.width = 256; d_cv.height = 64; const d_gx = d_cv.getContext('2d');
+      d_gx.fillStyle = '#ffd36b'; d_gx.font = '900 44px Inter, sans-serif'; d_gx.textAlign = 'center'; d_gx.textBaseline = 'middle'; d_gx.fillText('DIRETOR', 128, 34);
+      const d_letreiro = new T.Mesh(new T.PlaneGeometry(0.62, 0.16), new T.MeshBasicMaterial({ map: new T.CanvasTexture(d_cv), transparent: true }));
+      d_letreiro.position.set(0, 0.72, 0.325); d_corpo.add(d_letreiro);
+      /* braços articulados no ombro, com mão; o direito segura o megafone */
       M.bracos = [];
-      [-0.55, 0.55].forEach(x => { const b = new T.Mesh(new T.CapsuleGeometry(0.1, 0.6, 4, 8), mat({ color: 0x2a1b6b })); b.position.set(x, 1.7, 0); dir.add(b); M.bracos.push(b); });
-      M.dir = dir;
+      [-1, 1].forEach(lado => {
+        const ombro = new T.Group(); ombro.position.set(lado * 0.46, 0.88, 0); d_corpo.add(ombro);
+        const manga = new T.Mesh(new T.CapsuleGeometry(0.11, 0.42, 6, 10), d_jaqueta); manga.position.y = -0.3; ombro.add(manga);
+        const mao = new T.Mesh(new T.SphereGeometry(0.1, 12, 10), d_pele); mao.position.y = -0.62; ombro.add(mao);
+        if (lado > 0) {
+          const mega = new T.Mesh(new T.CylinderGeometry(0.2, 0.07, 0.5, 18, 1, true), mat({ color: 0xffd36b, emissive: 0xb07800, emissiveIntensity: 0.5, side: T.DoubleSide, metalness: 0.5, roughness: 0.3 }));
+          mega.rotation.x = Math.PI / 2; mega.position.set(0, -0.66, -0.3); ombro.add(mega);
+        }
+        M.bracos.push(ombro);
+      });
+      /* pernas articuladas no d_quadril e no joelho */
+      M.pernas = []; M.joelhos = [];
+      [-0.17, 0.17].forEach(x => {
+        const coxa = new T.Group(); coxa.position.set(x, 0, 0); d_quadril.add(coxa);
+        const c = new T.Mesh(new T.CapsuleGeometry(0.14, 0.32, 6, 10), d_calca); c.position.y = -0.24; coxa.add(c);
+        const joelho = new T.Group(); joelho.position.y = -0.5; coxa.add(joelho);
+        const canela = new T.Mesh(new T.CapsuleGeometry(0.12, 0.3, 6, 10), d_calca); canela.position.y = -0.22; joelho.add(canela);
+        const pe = new T.Mesh(new T.BoxGeometry(0.2, 0.12, 0.36), d_sapato); pe.position.set(0, -0.46, -0.08); joelho.add(pe);
+        M.pernas.push(coxa); M.joelhos.push(joelho);
+      });
+      M.dirCorpo = d_corpo; M.dirCab = d_cab; M.dir = dir; }
 
       /* modelos dos obstáculos e itens (reaproveitados) */
       M.mats = {
-        tripe: mat({ color: 0x3a2a55, metalness: 0.7, roughness: 0.3 }),
-        listra: mat({ color: 0xffd36b, emissive: 0xff9f1a, emissiveIntensity: 0.8 }),
-        varal: mat({ color: 0xffffff, emissive: 0xff3fa4, emissiveIntensity: 2 }),
-        case: mat({ color: 0x241a33, metalness: 0.5, roughness: 0.35 }),
-        caseBorda: mat({ color: 0x8b7bff, emissive: 0x5b44c0, emissiveIntensity: 1 }),
+        tripe: mat({ color: 0xb8b0cc, metalness: 0.8, roughness: 0.25 }),
+        listra: mat({ color: 0xffd200, emissive: 0xffb000, emissiveIntensity: 1.4 }),
+        preto: mat({ color: 0x141018, roughness: 0.6 }),
+        varal: mat({ color: 0xffffff, emissive: 0xff3fa4, emissiveIntensity: 3 }),
+        case: mat({ color: 0x5a4a8a, metalness: 0.4, roughness: 0.35 }),
+        caseBorda: mat({ color: 0x7df9ff, emissive: 0x22d3ee, emissiveIntensity: 2.2 }),
+        aviso: new T.MeshBasicMaterial({ color: 0xff3d6e, transparent: true, opacity: 0.35, depthWrite: false, blending: T.AdditiveBlending }),
         moeda: mat({ color: 0xffd36b, emissive: 0xffa000, emissiveIntensity: 1.1, metalness: 0.8, roughness: 0.25 })
       };
       M.geoMoeda = new T.CylinderGeometry(0.32, 0.32, 0.08, 22);
@@ -265,16 +306,19 @@ B7.JogoCorrida = (function () {
     function criar(tipo, faixa, z) {
       const g = new T.Group(); g.position.set(FAIXA[faixa], 0, z);
       if (tipo === 'baixo') {        /* tripé deitado com faixa de aviso: pule */
-        const barra = new T.Mesh(new T.BoxGeometry(1.9, 0.18, 0.18), M.mats.listra); barra.position.y = 0.75; g.add(barra);
+        for (let k = 0; k < 6; k++) { const seg = new T.Mesh(new T.BoxGeometry(0.33, 0.26, 0.26), k % 2 ? M.mats.preto : M.mats.listra); seg.position.set(-0.83 + k * 0.33, 0.75, 0); g.add(seg); }
         [-0.8, 0.8].forEach(x => { const p = new T.Mesh(new T.CylinderGeometry(0.05, 0.07, 0.8, 6), M.mats.tripe); p.position.set(x, 0.4, 0); p.rotation.z = x > 0 ? 0.25 : -0.25; g.add(p); });
       } else if (tipo === 'alto') {  /* varal de luz suspenso: rasteje */
-        const barra = new T.Mesh(new T.BoxGeometry(2.1, 0.22, 0.22), M.mats.varal); barra.position.y = 1.45; g.add(barra);
+        const barra = new T.Mesh(new T.BoxGeometry(2.1, 0.3, 0.3), M.mats.varal); barra.position.y = 1.45; g.add(barra);
+        const brilho = new T.PointLight(0xff3fa4, 6, 5, 2); brilho.position.y = 1.2; if (!leve) g.add(brilho);
         [-1.05, 1.05].forEach(x => { const p = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 2.6, 6), M.mats.tripe); p.position.set(x, 1.3, 0); g.add(p); });
         const placa = new T.Mesh(new T.BoxGeometry(1.2, 0.5, 0.06), M.mats.listra); placa.position.y = 2.1; g.add(placa);
       } else if (tipo === 'case') {  /* case de equipamento: desvie */
         const c = new T.Mesh(new T.BoxGeometry(1.9, 2.6, 2.4), M.mats.case); c.position.y = 1.3; c.castShadow = !leve; g.add(c);
         const b1 = new T.Mesh(new T.BoxGeometry(1.94, 0.1, 2.44), M.mats.caseBorda); b1.position.y = 2.35; g.add(b1);
         const b2 = b1.clone(); b2.position.y = 0.4; g.add(b2);
+        [-0.97, 0.97].forEach(x => { const v = new T.Mesh(new T.BoxGeometry(0.06, 2.6, 0.08), M.mats.caseBorda); v.position.set(x, 1.3, 1.21); g.add(v); });
+        const fita = new T.Mesh(new T.BoxGeometry(1.94, 0.35, 0.02), M.mats.listra); fita.position.set(0, 1.4, 1.215); g.add(fita);
       } else if (tipo === 'moeda' || tipo === 'moedaAlta') {
         const m = new T.Mesh(M.geoMoeda, M.mats.moeda); m.rotation.x = Math.PI / 2; g.add(m); g.position.y = tipo === 'moedaAlta' ? 2.1 : 1;
       } else {                       /* poderes */
@@ -282,6 +326,9 @@ B7.JogoCorrida = (function () {
         const m = new T.Mesh(new T.IcosahedronGeometry(0.42, 0), mat({ color: cores[tipo], emissive: cores[tipo], emissiveIntensity: 1.6 }));
         g.add(m); g.position.y = 1.2;
         const anel = new T.Mesh(new T.TorusGeometry(0.62, 0.05, 8, 32), new T.MeshBasicMaterial({ color: cores[tipo] })); g.add(anel);
+      }
+      if (tipo === 'baixo' || tipo === 'alto' || tipo === 'case') {
+        const marca = new T.Mesh(new T.PlaneGeometry(1.9, 1.4), M.mats.aviso); marca.rotation.x = -Math.PI / 2; marca.position.set(0, 0.13, 1.6); g.add(marca);
       }
       cena.add(g);
       const o = { tipo, faixa, g, vivo: true };
@@ -368,7 +415,12 @@ B7.JogoCorrida = (function () {
       S.pontos += avanco * S.mult * (S.poderes.x2 > agora ? 2 : 1) * 1.5;
       /* mover objetos (o mundo vem até você) */
       for (const o of M.objs) o.g.position.z += avanco;
-      M.objs = M.objs.filter(o => { if (o.g.position.z > 8) { cena.remove(o.g); return false; } return true; });
+      M.objs = M.objs.filter(o => {
+        const z = o.g.position.z;
+        if (z > 1.4 && ['baixo', 'alto', 'case'].includes(o.tipo)) { o.g.scale.y = Math.max(0.001, 1 - (z - 1.4) * 1.8); }
+        if (z > (['baixo', 'alto', 'case'].includes(o.tipo) ? 2.1 : 8)) { cena.remove(o.g); return false; }
+        return true;
+      });
       S.proxFileira += avanco;
       while (S.proxFileira > -60) { fileira(S.proxFileira - 30); S.proxFileira -= Math.max(9, 17 - S.vel * 0.25); }
       /* física */
@@ -449,13 +501,18 @@ B7.JogoCorrida = (function () {
       M.objs.forEach(o => { if (o.tipo.startsWith('moeda')) o.g.rotation.y += dt * 4; else if (!['baixo', 'alto', 'case'].includes(o.tipo)) { o.g.rotation.y += dt * 2; o.g.position.y = 1.2 + Math.sin(t * 4) * 0.15; } });
       /* diretor correndo atrás */
       if (M.dir.visible && S) {
-        const alvo = S.morrendo ? 0.9 : S.perseg > 0 ? 3.2 : 14;
+        const alvo = S.morrendo ? 1.2 : S.perseg > 0 ? 4.4 : 14;
         S.dirZ += (alvo - S.dirZ) * Math.min(1, dt * (S.morrendo ? 6 : 2));
-        M.dir.position.set(S.x * 0.6 + (S.x > 0 ? -1.3 : 1.3) * (S.morrendo ? 0.3 : 1), 0, S.dirZ); M.dir.rotation.y = Math.PI;
-        const passoD = Math.sin(t * 16);
-        M.pernas[0].rotation.x = passoD * 0.8; M.pernas[1].rotation.x = -passoD * 0.8;
-        M.bracos[0].rotation.x = -passoD * 0.9; M.bracos[1].rotation.x = passoD * 0.9;
-        M.dir.position.y = Math.abs(passoD) * 0.12;
+        /* segue a faixa da lâmpada com um atraso (corre pelo caminho já livre) */
+        S.dirX = S.dirX == null ? S.x : S.dirX + (S.x - S.dirX) * Math.min(1, dt * 3);
+        M.dir.position.set(S.dirX + (S.morrendo ? 0 : (S.x > 0 ? -0.9 : 0.9)), 0, S.dirZ); M.dir.rotation.y = 0;
+        const fase = t * 15, passoD = Math.sin(fase);
+        M.pernas[0].rotation.x = passoD * 0.9; M.pernas[1].rotation.x = -passoD * 0.9;
+        M.joelhos[0].rotation.x = Math.max(0, -Math.cos(fase)) * 1.1; M.joelhos[1].rotation.x = Math.max(0, Math.cos(fase)) * 1.1;
+        M.bracos[0].rotation.x = -passoD * 1.0;
+        M.bracos[1].rotation.x = S.morrendo ? -1.4 : -0.9 + Math.sin(t * 6) * 0.25;   /* megafone apontado para você */
+        M.dirCorpo.rotation.x = -0.18; M.dirCab.rotation.y = Math.sin(t * 3) * 0.2;
+        M.dir.position.y = Math.abs(Math.cos(fase)) * 0.1;
         if (S.dirZ > 13) M.dir.visible = false;
       }
       /* câmera */
