@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.3.0', versao: '4.3.0', em: '2026-11-05T03:30:00-03:00',
+    titulo: 'Estúdio em Clientes, Design, Aprovações, Portal e Prioridade',
+    itens: ['Na página de cada cliente, as seções (Visão geral, Editorial, Gravações…) viraram cápsulas, e a aberta fica com o degradê da B7.',
+            'Clientes, Produção de Design, Aprovações e o Portal do cliente ganharam cartões de vidro e títulos maiores.',
+            'Na Prioridade da edição de vídeo, cada faixa (Urgente, Alta, Normal) tem a sua cor, e a posição na fila virou um ladrilho na cor da faixa.'] },
   { id: 'v-4.2.0', versao: '4.2.0', em: '2026-11-05T02:00:00-03:00',
     titulo: 'Abertura Estúdio e mais telas no visual novo',
     itens: ['Abertura nova, "Estúdio": três refletores acendem um a um, viram para o centro e o logo aparece no foco. Escolha em Configurações → Abertura e sons.',

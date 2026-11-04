@@ -229,3 +229,71 @@ html.modo-leve[data-theme] body, html.modo-leve.b7-vt[data-theme] #painel-dashbo
   .cfg-v2 .cfg-nav-i.on::before{background:linear-gradient(180deg, var(--violeta), var(--magenta));}
 }
 .cfg-v2 .cfg-eu{border-radius:var(--r-lg);}
+
+/* =====================================================================
+   4.3 — Clientes, página do cliente, Design, Aprovações, Portal e
+   a Prioridade da Produção de Vídeo (as faixas do desenho A)
+   ===================================================================== */
+/* vidro comum às listas e cartões destas telas */
+.cl2-card, .ap-item, .ap-num, .ds-card, .ph-item, .ph-num, .ph-bloco, .pt-item, .pt-cena, .ph-st{
+  box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-2);}
+[data-theme="dark"] :is(.cl2-card, .ap-item, .ap-num, .ds-card, .ph-item, .ph-num, .ph-bloco, .pt-item, .pt-cena, .ph-st){
+  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)), var(--card);border-color:rgba(255,255,255,.08);}
+.conteudo .cl2-cab h1, .design-tela .cab-conteudo h1, .ap-cab h1, .ph-cab h1{font-size:clamp(28px, 2.6vw, 36px);letter-spacing:-.03em;}
+
+/* ------------------------------------------------------------ clientes */
+.cl2-card{border-radius:var(--r-lg);transition:transform .25s cubic-bezier(.16,1,.3,1), border-color .2s;}
+.cl2-card:hover{transform:translateY(-2px);border-color:color-mix(in srgb, var(--magenta) 35%, var(--borda));}
+.cl2-logo, .cl2-card .avatar{border-radius:14px;}
+.cl2-busca{border-radius:999px;}
+
+/* ------------------------------------------------- página do cliente */
+.cli-cab h1{font-size:clamp(26px, 2.4vw, 34px);letter-spacing:-.03em;}
+.cli-cab .avatar{width:54px;height:54px;border-radius:16px;box-shadow:0 12px 26px -14px color-mix(in srgb, var(--magenta) 70%, transparent);}
+@media (max-width: 760px){ .cli-cab .avatar{width:42px;height:42px;border-radius:13px;} }
+/* as seções viram cápsulas: a aberta ganha o degradê */
+.cli-secoes{border-bottom:0;}
+.cli-secoes-rolo{gap:4px;padding:4px;border-radius:14px;background:color-mix(in srgb, var(--ink) 4%, transparent);width:max-content;max-width:100%;}
+[data-theme="dark"] .cli-secoes-rolo{background:rgba(255,255,255,.05);}
+.cli-secoes a{padding:8px 13px;border-radius:10px;}
+.cli-secoes a::after, .cli-ind{display:none;}
+.cli-secoes a.on{color:#fff;background:linear-gradient(120deg, var(--violeta), var(--magenta));
+  box-shadow:0 8px 20px -12px color-mix(in srgb, var(--magenta) 80%, transparent);}
+
+/* -------------------------------------------------------------- design */
+.ds-col{border-radius:var(--r-lg);border:1px solid var(--borda);background:color-mix(in srgb, var(--card) 55%, transparent);}
+[data-theme="dark"] .ds-col{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.07);}
+.ds-card{border-radius:16px;}
+.ds-card:hover{border-color:color-mix(in srgb, var(--magenta) 35%, var(--borda));}
+
+/* ---------------------------------------------------------- aprovações */
+.ap-num{border-radius:var(--r-lg);}
+.ap-num b{font-size:34px;letter-spacing:-.035em;}
+.ap-item{border-radius:16px;}
+.ap-item:hover{border-color:color-mix(in srgb, var(--magenta) 35%, var(--borda));}
+.ap-abas{border-radius:14px;}
+
+/* -------------------------------------------------- portal do cliente */
+.ph-item, .ph-num, .ph-bloco, .pt-item{border-radius:var(--r-lg);}
+.ph-num b, .ph-st b{font-family:'B7 Titulo','Inter',sans-serif;letter-spacing:-.03em;}
+.ph-item:hover, .ph-bloco:hover{border-color:color-mix(in srgb, var(--magenta) 35%, var(--borda));}
+
+/* ------------------------------------- prioridade (desenho A, Estúdio) */
+.vp-quadro{gap:18px;}
+.vp-faixa{border-radius:22px;padding:14px;background:color-mix(in srgb, var(--tom) 5%, var(--card));
+  border-color:color-mix(in srgb, var(--tom) 18%, var(--borda));box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-2);}
+[data-theme="dark"] .vp-faixa{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.08);}
+[data-theme="dark"] .vp-faixa.vp-urgente{box-shadow:inset 0 1px 0 rgba(255,92,138,.35), 0 0 60px -30px rgba(255,92,138,.6);}
+.vp-cab{padding:2px 4px 14px;}
+.vp-cab-nome{font-family:'B7 Titulo','Inter',sans-serif;font-size:17px;}
+.vp-cab-nome i{width:10px;height:10px;border-radius:50%;background:var(--tom);box-shadow:0 0 0 4px color-mix(in srgb, var(--tom) 20%, transparent);}
+.vp-cab b{padding:3px 10px;}
+.vp-card{border-radius:16px;padding:12px;}
+[data-theme="dark"] .vp-card{background:linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.04));border-color:rgba(255,255,255,.1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);}
+/* a posição na fila: um ladrilho na cor da faixa */
+.vp-pos{min-width:46px;border-radius:12px;font-family:'B7 Titulo','Inter',sans-serif;font-weight:800;font-size:19px;
+  color:var(--tom);background:color-mix(in srgb, var(--tom) 13%, transparent);}
+.vp-faixa:not(.vp-urgente):not(.vp-alta) .vp-pos{color:var(--violeta);background:color-mix(in srgb, var(--violeta) 11%, transparent);}
+[data-theme="dark"] .vp-faixa:not(.vp-urgente):not(.vp-alta) .vp-pos{color:#B4A8E6;}
+.vp-sug{border-radius:18px;background:color-mix(in srgb, var(--ambar) 9%, transparent);border:1px solid color-mix(in srgb, var(--ambar) 30%, transparent);}

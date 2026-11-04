@@ -129,7 +129,7 @@ B7.Aprovacoes = (function () {
     painel().innerHTML = '<div class="conteudo entra">' +
       /* zzx: no celular o cabeçalho é compacto (título + contador); a
          frase de apoio fica só no computador */
-      '<div class="cab-conteudo ap-cab"><div><h1>Aprovações <span class="conta">' + itens.length + '</span></h1>' +
+      '<div class="cab-conteudo ap-cab"><div><p class="v4-sobre">Com o cliente</p><h1>Aprovações <span class="conta">' + itens.length + '</span></h1>' +
       '<p class="ap-intro">O que foi enviado aos clientes e o que eles decidiram. Corrigir é no editor; aqui você vê e acompanha.</p></div></div>' +
 
       '<div class="ap-resumo">' +

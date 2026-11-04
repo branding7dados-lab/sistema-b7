@@ -975,7 +975,7 @@ B7.Dashboard = (function () {
     const avulsosN = clientes.filter(c => c.contrato === 'avulso').length;
     const pil = (id, rot, n) => '<button type="button" class="cl2-pil' + (id === 'todos' ? ' on' : '') + '" data-f="' + id + '">' + rot + '<b>' + n + '</b></button>';
     painel().innerHTML = '<div class="conteudo cl2">' +
-      '<div class="cab-conteudo cl2-cab"><div><h1>Clientes</h1>' +
+      '<div class="cab-conteudo cl2-cab"><div><p class="v4-sobre">Carteira</p><h1>Clientes</h1>' +
         '<p>' + clientes.length + ' cliente' + (clientes.length === 1 ? '' : 's') +
           (fixadosN ? ' · ' + fixadosN + ' fixado' + (fixadosN === 1 ? '' : 's') : '') + ' · cada um com o seu workspace.</p></div>' +
         '<button class="b pri cl2-novo" data-novo-cliente>' + IC.mais + '<span>Novo cliente</span></button></div>' +

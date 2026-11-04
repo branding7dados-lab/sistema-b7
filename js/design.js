@@ -150,7 +150,7 @@ B7.Design = (function () {
     if (aba) F.aba = aba;
     if (!F.aba) F.aba = ehDesigner() ? 'fila' : 'todas';
 
-    painel().innerHTML = '<div class="conteudo design-tela"><div class="cab-conteudo"><div><h1>Produção de Design</h1>' +
+    painel().innerHTML = '<div class="conteudo design-tela"><div class="cab-conteudo"><div><p class="v4-sobre">Fila de criação</p><h1>Produção de Design</h1>' +
       '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.' : 'A fila de produção visual da equipe.') + '</p></div></div>' +
       B7.UI.skeleton('cards', { n: 6, titulo: false }) + '</div>';
 
@@ -164,7 +164,7 @@ B7.Design = (function () {
   function desenhar() {
     const equipe = ehEquipe();
     painel().innerHTML = '<div class="conteudo entra design-tela">' +
-      '<div class="cab-conteudo"><div><h1>Produção de Design</h1>' +
+      '<div class="cab-conteudo"><div><p class="v4-sobre">Fila de criação</p><h1>Produção de Design</h1>' +
       '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.'
                             : 'A fila de produção visual da equipe.') + '</p></div>' +
       (pode('design.criar') ? '<button class="b pri" id="ds-nova" aria-label="Nova demanda de Design"><span class="ds-nova-mais" aria-hidden="true">+</span><span class="ds-nova-tx">Nova demanda de Design</span></button>' : '') + '</div>' +
