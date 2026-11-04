@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-3.1.0', versao: '3.1.0', em: '2026-11-04T15:00:00-03:00',
+    titulo: 'Quadro de prioridade na Edição de vídeo',
+    itens: ['Na Edição de vídeo, a aba Prioridade mostra a fila inteira em três faixas: Urgente, Alta e Normal.',
+            'Cada vídeo tem a posição dele na fila: o 1º é o próximo a ser editado.',
+            'A coordenação arrasta os vídeos para mudar a ordem; no celular, é só segurar o cartão.',
+            'Quem edita recebe um aviso quando um vídeo seu vira urgente ou de prioridade alta. No Kanban, cada coluna também segue essa ordem.'] },
   { id: 'v-3.0.0', versao: '3.0.0', em: '2026-11-04T12:00:00-03:00',
     titulo: 'O B7 agora tem número de versão: 3.0.0',
     itens: ['No lugar do código "zzz", cada versão tem um número de três partes, como nos apps do celular.',
