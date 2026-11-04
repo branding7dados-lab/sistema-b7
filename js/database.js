@@ -559,16 +559,6 @@ B7.DB = (function () {
       ok(await sb().from('conteudos').update({ pilar_id: null }).eq('pilar_id', id));
       return ok(await sb().from('pilares').delete().eq('id', id));
     },
-    async reordenarPilares(ids) {
-      for (let i = 0; i < ids.length; i++) {
-        ok(await sb().from('pilares').update({ position: i }).eq('id', ids[i]));
-      }
-    },
-    /* vincula (ou desvincula, com null) um conteúdo a um pilar */
-    async definirPilarDoConteudo(conteudoId, pilarId) {
-      return ok(await sb().from('conteudos').update({ pilar_id: pilarId || null })
-        .eq('id', conteudoId).select());
-    },
 
     /* ---- conteúdos ---- */
     async listarConteudos(linhaId) {
@@ -1320,10 +1310,6 @@ B7.DB = (function () {
         .update({ deleted_at: new Date().toISOString() }).eq('id', id));
     },
 
-    async demandasDoMaterial(tipo, id) {
-      return ok(await sb().from('kanban_demandas').select('*')
-        .eq('tipo_vinculo', tipo).eq('vinculo_id', id).is('deleted_at', null));
-    },
 
     async comentariosDemanda(id) {
       return ok(await sb().from('kanban_comentarios').select('*')
@@ -1347,13 +1333,6 @@ B7.DB = (function () {
         .eq('demanda_id', id).order('created_at', { ascending: false }).limit(100));
     },
 
-    async registrarKanban(id, de, para, campo) {
-      const u = window.B7 && B7.Auth && B7.Auth.usuario();
-      ok(await sb().from('kanban_historico').insert([{
-        demanda_id: id, de, para, campo: campo || 'coluna',
-        autor_nome: u ? u.nome : null, autor_id: u ? u.id : null
-      }]));
-    },
 
     /* tudo o que a gaveta de detalhe precisa, em paralelo: notas internas,
        histórico e — se há aprovação — cenas decididas, comentários do
@@ -1676,9 +1655,6 @@ B7.DB = (function () {
       return ok(await sb().from('design_resumo').select('*').eq('id', id).single());
     },
 
-    async designDoConteudo(conteudoId) {
-      return ok(await sb().from('design_resumo').select('*').eq('conteudo_id', conteudoId));
-    },
 
     async designProducaoDaLinha(linhaId) {
       const l = ok(await sb().from('design_producao_linha').select('*').eq('linha_id', linhaId));
@@ -1708,9 +1684,6 @@ B7.DB = (function () {
 
     async versoesDesign(deliverableId) {
       return ok(await sb().from('design_versoes').select('*').eq('deliverable_id', deliverableId).order('numero', { ascending: false }));
-    },
-    async arquivosVersaoDesign(versaoId) {
-      return ok(await sb().from('design_arquivos').select('*').eq('versao_id', versaoId).order('papel').order('posicao'));
     },
     async criarRascunhoDesign(deliverableId) {
       return this.rpc('design_versao_rascunho', { p_deliverable_id: deliverableId });
@@ -1801,10 +1774,6 @@ B7.DB = (function () {
        null = fica em "Demandas a fazer" para qualquer Designer assumir. */
     async concluirLinha(linhaId, responsavelId) {
       return this.rpc('linha_concluir', { p_linha_id: linhaId, p_responsavel_design_id: responsavelId || null });
-    },
-    async versoesDaLinha(linhaId) {
-      return ok(await sb().from('linha_versoes').select('id, versao, concluida_em, concluida_por, responsavel_design_id')
-        .eq('linha_id', linhaId).order('versao', { ascending: false }));
     },
     async solicitarAjusteDesign(versaoId, mensagem) {
       return this.rpc('design_solicitar_ajuste', { p_versao_id: versaoId, p_mensagem: mensagem });
@@ -2292,14 +2261,8 @@ B7.DB = (function () {
     async resolverLinhaImportacaoVideo(linhaId, clienteId, lembrarApelido) {
       return this.rpc('video_import_resolver_linha', { p_linha_id: linhaId, p_cliente_id: clienteId, p_lembrar_apelido: lembrarApelido !== false });
     },
-    async confirmarLinhaImportacaoVideo(linhaId) { return this.rpc('video_import_confirmar_linha', { p_linha_id: linhaId }); },
     async confirmarLoteImportacaoVideo(loteId) { return this.rpc('video_import_confirmar_lote', { p_lote_id: loteId }); },
 
-    /* ---- backfill de competência (migration_video_producao.sql) ---- */
-    async backfillCompetenciaVideo() { return this.rpc('video_backfill_competencia', {}); },
-    async demandasCompetenciaNaoConfiavelVideo() { return this.rpc('video_demandas_competencia_nao_confiavel', {}); },
-    async backfillResponsavelVideo() { return this.rpc('video_backfill_responsavel', {}); },
-    async demandasResponsavelNaoConfiavelVideo() { return this.rpc('video_demandas_responsavel_nao_confiavel', {}); },
 
     /* ---- Workspace de Vídeo — versões, aprovação, entrega (Parte 2, migration_video_workspace.sql) ---- */
     async versoesDemandaVideo(demandaId) {
@@ -2320,12 +2283,6 @@ B7.DB = (function () {
       return this.rpc('video_registrar_entrega', { p_demanda_id: demandaId, p_versao_id: versaoId, p_mensagem: mensagem || null });
     },
 
-    /* ---- Comentários com timecode (migration_video_comentarios.sql) ----
-       Timecode é digitado por quem comenta (o preview do Drive não expõe
-       o tempo do player pra fora do iframe) — ver nota no arquivo SQL. */
-    async comentariosVersaoVideo(versaoId) {
-      return ok(await sb().from('video_comentarios_resumo').select('*').eq('versao_id', versaoId).order('timecode_seg', { ascending: true }));
-    },
     /* Todos os comentários da demanda de uma vez — a tela de detalhe abre
        com N versões e antes fazia uma consulta por versão (N idas e voltas
        enfileiradas no limite de conexões do navegador). A view já traz
@@ -2382,9 +2339,6 @@ B7.DB = (function () {
     async reabrirMesVideo(ano, mes) {
       return this.rpc('video_reabrir_mes', { p_ano: ano, p_mes: mes });
     },
-    async competenciasFechadasVideo() {
-      return ok(await sb().from('video_competencias_fechadas').select('*').order('competencia_ano', { ascending: false }).order('competencia_mes', { ascending: false }));
-    },
     /* roteiros de uma gravação "Gravado", pra montar o checklist da
        automação Gravação→Edição — reaproveita listarRoteiros já existente. */
     async roteirosParaAutomacaoVideo(gravacaoId) {
@@ -2404,15 +2358,6 @@ B7.DB = (function () {
         p_gravacao_id: gravacaoId, p_roteiro_ids: roteiroIds || [],
         p_videomaker_id: videomakerId || null, p_prazo: prazo || null
       }));
-    },
-    /* Mesma automação, mas junta os roteiros marcados numa ÚNICA
-       demanda em vez de uma demanda por roteiro (Parte 2 da auditoria,
-       item 7 — "vários roteiros selecionados por demanda"). */
-    async gerarDemandaAgrupadaVideo(gravacaoId, roteiroIds, titulo, videomakerId, prazo) {
-      return this.rpc('video_gerar_demanda_agrupada', {
-        p_gravacao_id: gravacaoId, p_roteiro_ids: roteiroIds || [], p_titulo: titulo || null,
-        p_videomaker_id: videomakerId || null, p_prazo: prazo || null
-      });
     },
     async verificarAlertasPrazoVideo() {
       return this.rpc('video_verificar_alertas_prazo', {});
@@ -2464,9 +2409,6 @@ B7.DB = (function () {
     },
     async vincularGravacaoCalendario(eventoId, gravacaoId) {
       return this.rpc('calendario_vincular_gravacao', { p_event_id: eventoId, p_gravacao_id: gravacaoId });
-    },
-    async desvincularCalendario(eventoId) {
-      return this.rpc('calendario_desvincular', { p_event_id: eventoId });
     },
     async criarGravacaoDeEventoCalendario({ eventoId, clienteId, nome, dataGravacao, local, observacoes }) {
       return this.rpc('calendario_criar_gravacao_de_evento', {

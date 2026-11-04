@@ -242,7 +242,8 @@ sistema-b7/
 ├── app-android/            o app Android (Capacitor)
 ├── app-desktop/            o programa do Windows (Electron)
 ├── supabase/functions/     funções de servidor
-├── migration_*.sql         a história do banco, em ordem (160 migrações)
+├── supabase/sql/           a história do banco, em ordem (165 migrações)
+├── docs/                   documentação; docs/relatorios/ tem um relatório por versão
 └── testes/                 fumaça + testes por módulo
 ```
 
@@ -265,9 +266,9 @@ Espere uns dois minutos.
 
 ### 2. Criar as tabelas
 
-No menu lateral, **SQL Editor → New query**. Abra o `supabase_setup.sql` deste
+No menu lateral, **SQL Editor → New query**. Abra o `supabase/sql/supabase_setup.sql` deste
 projeto, cole tudo e clique em **Run**. Depois rode, na ordem, as migrações
-`migration_*.sql` que ainda não estiverem aplicadas.
+`supabase/sql/migration_*.sql` que ainda não estiverem aplicadas.
 
 Deve aparecer "Success". Se der erro, a mensagem costuma dizer exatamente o que
 faltou.
@@ -309,7 +310,7 @@ pastas. Não apague.
 
 ### 6. Criar o primeiro administrador
 
-Siga o `BOOTSTRAP.md`. O modo de bootstrap se desliga sozinho assim que existe
+Siga o `docs/BOOTSTRAP.md`. O modo de bootstrap se desliga sozinho assim que existe
 um administrador.
 
 </details>
@@ -355,7 +356,7 @@ O número fica em dois lugares, sempre iguais:
 Depois é só dar merge na `main`. O GitHub Pages publica em menos de um minuto e
 cada aparelho recebe o aviso de atualização.
 
-Cada pacote de mudança tem um relatório próprio (`RELATORIO_*.md`) explicando o
+Cada pacote de mudança tem um relatório próprio (`docs/relatorios/RELATORIO_*.md`) explicando o
 que mudou e por quê — são **mais de 400** até agora.
 
 ---
@@ -383,14 +384,14 @@ descreva a falha num lugar público.
 
 | Arquivo | Sobre |
 |---|---|
-| `BOOTSTRAP.md` | criar o primeiro administrador |
-| `CENTRAL.md` | a Central de Conteúdo |
-| `SEMANA.md` | o Status Semanal |
-| `APROVACOES.md` | o fluxo de aprovação do cliente |
-| `IA.md` | como a IA é usada e os limites dela |
-| `BRAND.md` | identidade visual |
-| `CHECKLIST_TESTES.md` | roteiro de teste manual |
-| `RELATORIO_HISTORICO_COMPLETO.md` | a história do sistema |
+| `docs/BOOTSTRAP.md` | criar o primeiro administrador |
+| `docs/CENTRAL.md` | a Central de Conteúdo |
+| `docs/SEMANA.md` | o Status Semanal |
+| `docs/APROVACOES.md` | o fluxo de aprovação do cliente |
+| `docs/IA.md` | como a IA é usada e os limites dela |
+| `docs/BRAND.md` | identidade visual |
+| `docs/CHECKLIST_TESTES.md` | roteiro de teste manual |
+| `docs/relatorios/RELATORIO_HISTORICO_COMPLETO.md` | a história do sistema |
 
 ---
 

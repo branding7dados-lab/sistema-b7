@@ -91,7 +91,7 @@ const usados = [...db.matchAll(/:\s*'([^']+)'/g)].map(m => m[1]).filter(r => /^(
 ok(usados.length > 0 && usados.every(r => nomes.has(r)), 'rótulos de TABELA_MODULO existem em MODULOS');
 
 /* E toda tabela travada pela migration de níveis está no mapa de mensagens */
-const mig = await readFile(fileURLToPath(new URL('../migration_permissoes_niveis.sql', import.meta.url)), 'utf8');
+const mig = await readFile(fileURLToPath(new URL('../supabase/sql/migration_permissoes_niveis.sql', import.meta.url)), 'utf8');
 const travadas = new Set([...mig.matchAll(/alter policy \w+ on public\.(\w+)/g)].map(m => m[1]));
 const mapa = db.slice(db.indexOf('TABELA_MODULO'), db.indexOf('function traduzirPermissao'));
 for (const t of travadas) ok(new RegExp('\\b' + t + ':').test(mapa), 'mensagem de permissão para ' + t);
@@ -108,7 +108,7 @@ como({ id: 'd', papel: 'designer', funcao: 'designer', modulos: ['design'] });
 ok(P.pode('design.criar'), 'sessão antiga sem ações: o banco decide');
 
 /* toda ação usada na tela existe no catálogo da migration */
-const migA = await readFile(fileURLToPath(new URL('../migration_acoes.sql', import.meta.url)), 'utf8');
+const migA = await readFile(fileURLToPath(new URL('../supabase/sql/migration_acoes.sql', import.meta.url)), 'utf8');
 const catalogo = new Set([...migA.matchAll(/^\s*\('([a-z]+\.[a-z_]+)',\s*'[a-z]+',/gm)].map(m => m[1]));
 ok(catalogo.size >= 20, 'catálogo de ações lido da migration');
 const telas = await Promise.all(['topo.js', 'design.js', 'video.js', 'kanban.js', 'dashboard.js', 'painel-coord.js', 'painel-multi.js', 'permissoes.js'].map(ler));

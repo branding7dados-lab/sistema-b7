@@ -24,6 +24,6 @@ Começamos no **3**: o B7 já teve duas fases. A primeira foi a Roteiros B7, de 
 | Configurações → Este aparelho | mostra `v3.0.0` |
 | App Android | o nome da versão do APK é a VERSAO (`.github/workflows/apk.yml`) |
 | Programa do Windows | `<grande>.<novidade>.<execução>`, ex.: `3.0.57`. O último número precisa sempre crescer para a atualização automática do Windows funcionar, então ele conta as gerações do instalador, não as correções (`.github/workflows/desktop.yml`) |
-| Relatório | `RELATORIO_<data>-v3.0.0_<assunto>.md` |
+| Relatório | `docs/relatorios/RELATORIO_<data>-v3.0.0_<assunto>.md` |
 
 O aviso de "Nova versão" de cada aparelho compara só se o número mudou, então qualquer subida (inclusive de correção) faz todos atualizarem.
