@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.1.0', versao: '4.1.0', em: '2026-11-05T00:30:00-03:00',
+    titulo: 'Estúdio no login, no Painel e na Produção de Vídeo',
+    itens: ['No computador, o login ganhou ao lado a vitrine da Branding7, com o caminho de cada trabalho: roteiro, gravação, edição e aprovação.',
+            'No Painel, os números ficaram maiores, a lista "Precisa da sua atenção" ficou mais limpa (uma faixa de cor marca o que está atrasado) e a coluna da direita não tem mais o espaço vazio entre "Minha semana" e "Minha fila".',
+            'Na Produção de Vídeo, o título ficou maior e as colunas e os cartões do Kanban ganharam o visual de vidro do Estúdio.'] },
   { id: 'v-4.0.0', versao: '4.0.0', em: '2026-11-04T23:30:00-03:00',
     titulo: 'B7 4.0: visual novo, o Estúdio',
     itens: ['O sistema ganhou cara nova nos dois temas: fundo com a luz da marca, cartões mais arredondados com brilho no alto e títulos numa letra própria.',

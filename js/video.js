@@ -296,7 +296,7 @@ B7.Video = (function () {
     document.body.classList.remove('vd-arrastando-toque');
     ultAnteriores = anteriores.length;
     painel().innerHTML = '<div class="conteudo' + (B7.recargaSilenciosa ? '' : ' entra') + ' vd-tela">' +
-      '<div class="cab-conteudo"><div><h1>Produção de Vídeo</h1>' +
+      '<div class="cab-conteudo"><div><p class="v4-sobre">Fila de edição</p><h1>Produção de Vídeo</h1>' +
       '<p>Toda a fila de edição da B7 em um só lugar.</p><p class="vd-sub-m" id="vd-sub-m"></p></div>' +
       /* ferramentas de gestão: só equipe (o banco recusa de qualquer jeito) */
       (equipe

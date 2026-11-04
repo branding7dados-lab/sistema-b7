@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '4.0.0';
+  const VERSAO = '4.1.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -373,6 +373,19 @@ B7.Auth = (function () {
         '<span class="brilho um"></span><span class="brilho dois"></span>' +
         '<span class="malha"></span><span class="rastro"></span>' +
       '</div>' +
+
+      /* 4.0: a vitrine da marca ao lado do formulário (só em tela larga) */
+      '<aside class="login-vitrine" aria-hidden="true">' +
+        '<span class="lv-sobre">Branding7 · Estúdio</span>' +
+        '<p class="lv-titulo">Da ideia à <em>entrega</em>, num lugar só.</p>' +
+        '<p class="lv-sub">Roteiros, gravações, edição, design e aprovação do cliente, com a equipe inteira vendo a mesma coisa.</p>' +
+        '<ol class="lv-fluxo">' +
+          '<li><i></i><b>Roteiro</b><span>a ideia no papel</span></li>' +
+          '<li><i></i><b>Gravação</b><span>a equipe em campo</span></li>' +
+          '<li><i></i><b>Edição</b><span>a fila por prioridade</span></li>' +
+          '<li><i></i><b>Aprovação</b><span>o cliente dá o ok</span></li>' +
+        '</ol>' +
+      '</aside>' +
 
       '<form class="login-caixa" autocomplete="off">' +
         /* fundo escuro pede a versão branca da marca: a colorida some */

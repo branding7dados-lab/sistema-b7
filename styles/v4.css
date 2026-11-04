@@ -92,3 +92,91 @@ html.modo-leve[data-theme] body, html.modo-leve.b7-vt[data-theme] #painel-dashbo
 @media (prefers-reduced-transparency: reduce){
   html[data-theme] body{background:var(--fundo);}
 }
+
+/* =====================================================================
+   4.1 — TELA A TELA: login, abertura, painel e produção de vídeo
+   ===================================================================== */
+
+/* --------------------------------------------------------------- login
+   Tela larga: vitrine da marca à esquerda, formulário à direita.
+   Celular: só o formulário, como antes. */
+.login-vitrine{display:none;}
+.tela-login{background:radial-gradient(120% 90% at 85% 0%, #3A1650 0%, #120A1E 46%, #0A0612 100%);}
+@media (min-width: 980px){
+  .tela-login{gap:clamp(48px, 7vw, 120px);}
+  .login-vitrine{position:relative;z-index:1;display:flex;flex-direction:column;gap:18px;width:min(500px, 44vw);color:#F3EEFA;
+    animation:loginEntra .7s cubic-bezier(.16,1,.3,1) .08s both;}
+  .lv-sobre{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#FF9AD5;}
+  .lv-titulo{margin:0;font-family:'B7 Titulo','Inter',sans-serif;font-weight:800;font-size:clamp(38px, 3.6vw, 52px);
+    line-height:1.04;letter-spacing:-.035em;}
+  .lv-titulo em{font-style:normal;background:linear-gradient(110deg, #B9A6FF, #FF7AC6 60%, #FFB3DC);
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .lv-sub{margin:0;font-size:15px;line-height:1.55;color:#B9AECF;max-width:42ch;}
+  .lv-fluxo{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(4, minmax(0,1fr));gap:10px;}
+  .lv-fluxo li{position:relative;display:flex;flex-direction:column;gap:3px;padding:14px 12px 13px;border-radius:16px;
+    background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.1);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+    animation:lvPasso .6s cubic-bezier(.16,1,.3,1) both;}
+  .lv-fluxo li:nth-child(1){animation-delay:.35s}.lv-fluxo li:nth-child(2){animation-delay:.45s}
+  .lv-fluxo li:nth-child(3){animation-delay:.55s}.lv-fluxo li:nth-child(4){animation-delay:.65s}
+  .lv-fluxo i{width:9px;height:9px;border-radius:50%;margin-bottom:8px;background:#9C8FBF;box-shadow:0 0 0 4px rgba(156,143,191,.18);}
+  .lv-fluxo li:nth-child(2) i{background:#8B7BFF;box-shadow:0 0 0 4px rgba(139,123,255,.2);}
+  .lv-fluxo li:nth-child(3) i{background:#FF5C8A;box-shadow:0 0 0 4px rgba(255,92,138,.2);}
+  .lv-fluxo li:nth-child(4) i{background:#3DDC97;box-shadow:0 0 0 4px rgba(61,220,151,.2);}
+  .lv-fluxo b{font-size:13.5px;font-weight:700;color:#fff;}
+  .lv-fluxo span{font-size:11.5px;color:#A99CC0;line-height:1.35;}
+  /* o fio que liga as etapas */
+  .lv-fluxo li + li::before{content:"";position:absolute;left:-10px;top:22px;width:10px;height:1px;
+    background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,154,213,.5));}
+}
+@keyframes lvPasso{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.login-caixa{border-radius:var(--r-xl);
+  background:linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.035));}
+.login-caixa h1{font-size:26px;}
+.login-entrar{border-radius:999px;}
+@media (prefers-reduced-motion: reduce){ .login-vitrine, .lv-fluxo li{animation:none;} }
+
+/* ------------------------------------------------------------ abertura
+   A animação fica a mesma (é a que o Kevin escolheu). Só o céu ganha a
+   luz do Estúdio, para a passagem da abertura ao sistema não ter emenda. */
+.ab-ceu{background:
+  radial-gradient(70% 60% at 88% -6%, rgba(194,28,131,.30), transparent 62%),
+  radial-gradient(60% 55% at 6% 108%, rgba(91,68,192,.30), transparent 62%),
+  radial-gradient(130% 85% at 50% 108%, #1B0B30 0%, #0C0714 46%, #07040D 100%);}
+
+/* --------------------------------------------------------------- painel */
+.pn-cab h1{font-size:clamp(28px, 2.6vw, 38px);letter-spacing:-.03em;}
+.pn-kicker, .v4-sobre{color:var(--magenta);}
+[data-theme="dark"] .pn-kicker, [data-theme="dark"] .v4-sobre{color:#FF9AD5;}
+.pn .pn-kpi{border-radius:var(--r-lg);}
+.pn .pn-kpi .pn-kpi-num{font-size:calc(40px * var(--d, 1));letter-spacing:-.035em;}
+.pn .pn-kpi.pn-tom-erro{box-shadow:inset 0 1px 0 color-mix(in srgb, var(--erro) 35%, transparent), 0 0 60px -30px var(--erro);}
+.pn-bloco{border-radius:var(--r-lg);box-shadow:inset 0 1px 0 var(--vidro-topo), var(--sh-2);}
+[data-theme="dark"] .pn-bloco{background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012)), var(--card);}
+.pn-sec-cab h2{font-size:17px;letter-spacing:-.02em;}
+/* linhas de atenção: vidro neutro com uma faixa de cor à esquerda, em vez
+   da linha inteira tingida (no claro ficava tudo rosa) */
+.pn-att{position:relative;overflow:hidden;border-radius:14px;background:var(--card);border:1px solid var(--borda);}
+[data-theme="dark"] .pn-att{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);}
+.pn-att-erro, .pn-att-ambar{background:var(--card);}
+[data-theme="dark"] .pn-att-erro, [data-theme="dark"] .pn-att-ambar{background:rgba(255,255,255,.04);}
+.pn-att-erro::before, .pn-att-ambar::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--erro);}
+.pn-att-ambar::before{background:var(--ambar);}
+.pn-att-ic{border-radius:11px;}
+/* a coluna da direita empilha sem vão: a primeira linha mede só "Minha
+   semana"; o que sobra da lista de atenção vai para a segunda */
+@media (min-width: 1101px) and (max-width: 1499px){
+  .pn-grade.pnv-grade{grid-template-rows:min-content 1fr;}
+}
+
+/* ---------------------------------------------------- produção de vídeo */
+.v4-sobre{margin:0 0 4px;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;}
+.vd-tela .cab-conteudo h1{font-size:clamp(28px, 2.6vw, 36px);letter-spacing:-.03em;}
+.vd-coluna{border-radius:var(--r-lg);padding:8px;border:1px solid var(--borda);
+  background:color-mix(in srgb, var(--card) 55%, transparent);}
+[data-theme="dark"] .vd-coluna{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.07);}
+.vd-coluna-cab b{border-radius:99px;}
+.vd-card{border-radius:16px;}
+[data-theme="dark"] .vd-card{background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.03)), var(--card);
+  border-color:rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.07);}
+.vd-card:hover{border-color:color-mix(in srgb, var(--magenta) 35%, var(--borda));}
