@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.5.0', versao: '4.5.0', em: '2026-11-05T11:00:00-03:00',
+    titulo: 'Gravações que se fecham sozinhas',
+    itens: ['Quando o último item de uma gravação é marcado como gravado, a gravação se conclui sozinha. Não precisa mais apertar "Concluir gravação".',
+            'Se a data da gravação passou e ela continua como agendada, quem grava recebe um aviso às 8h perguntando "Gravou?". É só abrir e concluir, remarcar ou marcar como cancelada.',
+            'Gravações canceladas há mais de 30 dias vão sozinhas para Arquivados, sem apagar nada.'] },
   { id: 'v-4.4.5', versao: '4.4.5', em: '2026-11-05T10:00:00-03:00',
     titulo: 'Ícones novos no menu',
     itens: ['O menu lateral, a barra de baixo do celular e o menu "Mais" ganharam ícones novos, de traço fino; o da página aberta fica cheio.',
