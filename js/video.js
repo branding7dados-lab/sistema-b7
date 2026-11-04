@@ -226,14 +226,15 @@ B7.Video = (function () {
 
   /* tudo que não é o filtro de status/prazo — alimenta o resumo (cada
      chip do resumo é, ele mesmo, um filtro rápido de status/prazo) */
-  function baseFiltrada() {
+  /* todosMeses (v3.1.0): o quadro de prioridade é a fila inteira, de qualquer mês */
+  function baseFiltrada(todosMeses) {
     const t = F.busca.trim().toLowerCase();
     return demandas.filter(d => {
       /* Descartado nunca aparece na produção normal (Lista/Kanban/
          resumo) — nem via filtro de status. Fica só no arquivo
          "Descartados" (descarregado à parte, ver modalDescartados). */
       if (d.editing_status === 'descartado') return false;
-      if (F.competencia !== 'todas' && competenciaChave(d) !== F.competencia) return false;
+      if (!todosMeses && F.competencia !== 'todas' && competenciaChave(d) !== F.competencia) return false;
       if (F.cliente && d.client_id !== F.cliente) return false;
       if (F.responsavel === 'sem' && d.videomaker_id) return false;
       if (F.responsavel && F.responsavel !== 'sem' && d.videomaker_id !== F.responsavel) return false;
@@ -583,6 +584,7 @@ B7.Video = (function () {
       '<div class="seg-vista" role="tablist">' +
         '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista" aria-label="Lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg><span>Lista</span></button>' +
         '<button role="tab" class="' + (F.vista === 'kanban' ? 'on' : '') + '" data-vista="kanban" aria-label="Kanban"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="4" width="4.7" height="16" rx="1.9"/><rect x="9.65" y="4" width="4.7" height="11" rx="1.9"/><rect x="15.8" y="4" width="4.7" height="7" rx="1.9"/></svg><span>Kanban</span></button>' +
+        '<button role="tab" class="' + (F.vista === 'prioridade' ? 'on' : '') + '" data-vista="prioridade" aria-label="Prioridade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M4 12h7M4 18h4"/><path d="M18 19V5m0 0-3 3m3-3 3 3"/></svg><span>Prioridade</span></button>' +
       '</div>' +
     '</div>';
 
@@ -617,6 +619,14 @@ B7.Video = (function () {
   function desenharArea(visiveis) {
     const cx = painel().querySelector('#vd-area');
     if (!cx) return;
+    if (F.vista === 'prioridade') {
+      /* v3.1.0: a prioridade vale para a fila inteira, não só para o mês escolhido */
+      const fila = filtrar(baseFiltrada(true)).filter(d => ABERTAS_PRIO.includes(d.editing_status));
+      cx.innerHTML = '<p class="vd-total">' + fila.length + ' vídeo' + (fila.length === 1 ? '' : 's') + ' na fila de edição · todos os meses</p>' +
+        prioridadeHTML(fila);
+      ligarArea(cx);
+      return;
+    }
     const sub = painel().querySelector('#vd-sub-m');
     if (sub) sub.textContent = (F.competencia !== 'todas' ? competenciaRotulo(F.competencia) : 'Todos os meses') +
       ' · ' + visiveis.length + ' demanda' + (visiveis.length === 1 ? '' : 's');
@@ -625,7 +635,7 @@ B7.Video = (function () {
         (F.competencia !== 'todas' ? ' em ' + esc(competenciaRotulo(F.competencia)) : '')
       : '') + '</p>' +
       (visiveis.length
-        ? (F.vista === 'lista' ? tabelaHTML(visiveis) : quadroHTML(visiveis))
+        ? (F.vista === 'lista' ? tabelaHTML(visiveis) : F.vista === 'prioridade' ? prioridadeHTML(visiveis) : quadroHTML(visiveis))
         : '<div class="estado-b7"><b>Nenhuma demanda com esses filtros.</b>' +
           '<p>Ajuste a busca, o mês ou os filtros ativos.</p></div>');
     ligarArea(cx);
@@ -758,6 +768,188 @@ B7.Video = (function () {
       (atrasada ? '<small>' + (dias === 1 ? '1 dia em atraso' : dias + ' dias em atraso') + '</small>' : '') + '</span>';
   }
 
+  /* =================================================================
+     QUADRO DE PRIORIDADE (v3.1.0) — a coordenação decide a ordem.
+     Três faixas (Urgente, Alta, Normal) e, dentro de cada uma, a ordem
+     de cima para baixo. O número no cartão é a posição na fila inteira:
+     o 1º é o próximo vídeo a ser editado. Só os vídeos em aberto
+     (pendente, em edição, correção) entram.
+     Quem tem a ação "video.priorizar" (padrão: coordenação) arrasta:
+     no computador com o mouse, no celular segurando o cartão. Os outros
+     veem a mesma ordem, só para ler. A ordem também vale no Kanban.
+     Banco: migration_video_prioridade.sql (video_priorizar).
+     ================================================================= */
+  const FAIXAS_PRIO = [['urgente', 'Urgente', 'Edite primeiro'], ['alta', 'Alta', 'Logo depois'], ['normal', 'Normal', 'Na ordem da fila']];
+  const RANK_FAIXA = { urgente: 0, alta: 1, normal: 2 };
+  const ABERTAS_PRIO = ['pendente', 'em_edicao', 'correcao'];
+  const ordemNum = d => (typeof d.prioridade_ordem === 'number' ? d.prioridade_ordem : 1e12);
+  function ordemPrioridade(a, b) {
+    return (RANK_FAIXA[a.prioridade || 'normal'] - RANK_FAIXA[b.prioridade || 'normal']) ||
+      (ordemNum(a) - ordemNum(b)) || String(a.prazo || '9999').localeCompare(String(b.prazo || '9999'));
+  }
+  const podePriorizar = () => !!(souEquipe() && pode('video.priorizar'));
+
+  function prioridadeHTML(lista) {
+    const abertas = lista.filter(d => ABERTAS_PRIO.includes(d.editing_status)).sort(ordemPrioridade);
+    const posicao = new Map(abertas.map((d, i) => [d.id, i + 1]));
+    const mexe = podePriorizar();
+    const faixa = ([k, nome, sub]) => {
+      const itens = abertas.filter(d => (d.prioridade || 'normal') === k);
+      return '<section class="vp-faixa vp-' + k + '" data-faixa="' + k + '">' +
+        '<header class="vp-cab"><span class="vp-cab-nome"><i></i>' + esc(nome) + '</span><small>' + esc(sub) + '</small><b>' + itens.length + '</b></header>' +
+        '<div class="vp-lista" data-faixa-lista="' + k + '">' +
+          itens.map(d => cartaoPrioHTML(d, posicao.get(d.id), mexe)).join('') +
+          '<div class="vp-vazia">' + (mexe ? 'Arraste um vídeo para cá' : 'Nenhum vídeo aqui') + '</div>' +
+        '</div></section>';
+    };
+    return '<p class="vp-ajuda">' + (mexe
+        ? 'Arraste para mudar a ordem. O <b>1º</b> da fila é o próximo vídeo a ser editado.'
+        : 'A coordenação define a ordem. Edite de cima para baixo: o <b>1º</b> é o próximo.') + '</p>' +
+      '<div class="vp-quadro' + (mexe ? ' vp-mexe' : '') + '">' + FAIXAS_PRIO.map(faixa).join('') + '</div>';
+  }
+  function cartaoPrioHTML(d, pos, mexe) {
+    const atrasada = ehAtrasada(d);
+    const sit = (SITUACOES.find(([v]) => v === d.editing_status) || [, d.editing_status])[1];
+    return '<article class="vp-card' + (atrasada ? ' vp-atrasada' : '') + '" data-demanda="' + d.id + '" tabindex="0">' +
+      '<span class="vp-pos" aria-label="Posição ' + pos + '">' + pos + 'º</span>' +
+      '<div class="vp-miolo">' +
+        '<div class="vp-topo">' + logoClienteHTML(d, 'sm') + '<b>' + esc(d.cliente_nome || 'Cliente') + '</b>' +
+          '<span class="vp-sit vp-sit-' + d.editing_status + '">' + esc(sit) + '</span></div>' +
+        '<div class="vp-titulo">' + tituloComFallback(d) + '</div>' +
+        '<div class="vp-rodape">' + quemHTML(d) +
+          (d.prazo ? '<span class="vd-prazo-pill' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      (mexe ? '<span class="vp-alca" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' : '') +
+    '</article>';
+  }
+
+  /* arrastar: mouse (Pointer Events) e dedo (segurar 0,3 s). O cartão
+     sai do lugar, uma vaga mostra onde ele vai cair e, ao soltar, a
+     ordem nova é o meio entre os vizinhos (o banco não renumera nada). */
+  function ligarPrioridade(cx) {
+    const quadro = cx.querySelector('.vp-quadro');
+    if (!quadro || !podePriorizar()) return;
+    let sess = null;
+    const rolo = () => document.getElementById('painel-dashboard');
+
+    function comecar(card, x, y, toque) {
+      const r = card.getBoundingClientRect();
+      const fant = card.cloneNode(true);
+      fant.classList.add('vp-fantasma');
+      Object.assign(fant.style, { width: r.width + 'px', left: r.left + 'px', top: r.top + 'px' });
+      document.body.appendChild(fant);
+      const vaga = document.createElement('div');
+      vaga.className = 'vp-vaga'; vaga.style.height = r.height + 'px';
+      card.after(vaga);
+      card.classList.add('vp-levando');
+      document.body.classList.add('vp-arrastando');
+      if (toque && navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+      if (B7.TempoReal && B7.TempoReal.arrastando) B7.TempoReal.arrastando(true);
+      sess.on = true; sess.fant = fant; sess.vaga = vaga; sess.dx = x - r.left; sess.dy = y - r.top; sess.r0 = r;
+      mover(x, y);
+    }
+    function mover(x, y) {
+      sess.x = x; sess.y = y;
+      sess.fant.style.transform = 'translate3d(' + (x - sess.dx - sess.r0.left) + 'px,' + (y - sess.dy - sess.r0.top) + 'px,0) rotate(1.2deg) scale(1.02)';
+      const el = document.elementFromPoint(x, y);
+      const faixa = el && el.closest('.vp-faixa');
+      const lista = faixa && faixa.querySelector('.vp-lista');
+      if (lista) {
+        let antes = null;
+        for (const k of lista.querySelectorAll('.vp-card:not(.vp-levando)')) {
+          const rk = k.getBoundingClientRect();
+          if (y < rk.top + rk.height / 2) { antes = k; break; }
+        }
+        const vazia = lista.querySelector('.vp-vazia');
+        if (antes) { if (sess.vaga.nextElementSibling !== antes) lista.insertBefore(sess.vaga, antes); }
+        else if (sess.vaga.parentElement !== lista || sess.vaga.nextElementSibling !== vazia) lista.insertBefore(sess.vaga, vazia);
+        quadro.querySelectorAll('.vp-faixa').forEach(f => f.classList.toggle('sobre', f === faixa));
+      }
+      /* perto da borda de cima/baixo, a tela rola sozinha */
+      cancelAnimationFrame(sess.raf);
+      const borda = 70, h = window.innerHeight;
+      const v = y < borda ? -(borda - y) / 4 : y > h - borda ? (y - (h - borda)) / 4 : 0;
+      if (v) sess.raf = requestAnimationFrame(function passo() {
+        const r = rolo(); if (r) r.scrollTop += v; window.scrollBy(0, v);
+        if (sess && sess.on) { mover(sess.x, sess.y); }
+      });
+    }
+    async function terminar(ok) {
+      const s = sess; sess = null;
+      clearTimeout(s.timer); cancelAnimationFrame(s.raf);
+      document.removeEventListener('pointermove', s.pm); document.removeEventListener('pointerup', s.pu); document.removeEventListener('pointercancel', s.pc);
+      document.removeEventListener('touchmove', s.tm, { passive: false }); document.removeEventListener('touchend', s.te); document.removeEventListener('touchcancel', s.tc);
+      if (!s.on) return;
+      const card = s.card;
+      card._arrastou = true; setTimeout(() => { card._arrastou = false; }, 60);
+      document.body.classList.remove('vp-arrastando');
+      if (B7.TempoReal && B7.TempoReal.arrastando) B7.TempoReal.arrastando(false);
+      quadro.querySelectorAll('.vp-faixa').forEach(f => f.classList.remove('sobre'));
+      const lista = s.vaga.parentElement;
+      const vizinho = (el, dir) => { let n = el && el[dir]; while (n && !(n.classList.contains('vp-card') && !n.classList.contains('vp-levando'))) n = n[dir]; return n; };
+      const ant = vizinho(s.vaga, 'previousElementSibling'), dep = vizinho(s.vaga, 'nextElementSibling');
+      s.vaga.replaceWith(card);
+      card.classList.remove('vp-levando');
+      s.fant.remove();
+      if (!ok || !lista) return;
+      const d = demandas.find(x => x.id === card.dataset.demanda);
+      if (!d) return;
+      const faixa = lista.dataset.faixaLista;
+      const oA = ant ? ordemNum(demandas.find(x => x.id === ant.dataset.demanda) || {}) : null;
+      const oD = dep ? ordemNum(demandas.find(x => x.id === dep.dataset.demanda) || {}) : null;
+      const ordem = oA == null && oD == null ? 1000 : oA == null ? oD - 1000 : oD == null ? oA + 1000 : (oA + oD) / 2;
+      if (faixa === (d.prioridade || 'normal') && ordemNum(d) > (oA == null ? -Infinity : oA) && ordemNum(d) < (oD == null ? Infinity : oD)) {
+        redesenharQuieto(); return;   /* soltou no mesmo lugar */
+      }
+      const antes = { prioridade: d.prioridade, prioridade_ordem: d.prioridade_ordem };
+      d.prioridade = faixa; d.prioridade_ordem = ordem;
+      redesenharQuieto();
+      if (B7.Movimento && B7.Movimento.assentar) B7.Movimento.assentar(painel().querySelector('.vp-card[data-demanda="' + CSS.escape(d.id) + '"]'));
+      try {
+        await B7.DB.priorizarVideo(d.id, faixa, ordem);
+      } catch (e) {
+        Object.assign(d, antes); redesenharQuieto();
+        B7.UI.toast(e.message || 'Não foi possível mudar a prioridade.');
+      }
+    }
+
+    /* mouse */
+    quadro.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || sess) return;
+      const card = e.target.closest('.vp-card'); if (!card) return;
+      const x0 = e.clientX, y0 = e.clientY;
+      sess = { card, on: false };
+      sess.pm = ev => {
+        if (!sess) return;
+        if (!sess.on) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return; comecar(card, x0, y0, false); }
+        ev.preventDefault(); mover(ev.clientX, ev.clientY);
+      };
+      sess.pu = () => terminar(true);
+      sess.pc = () => terminar(false);
+      document.addEventListener('pointermove', sess.pm); document.addEventListener('pointerup', sess.pu); document.addEventListener('pointercancel', sess.pc);
+    });
+    /* dedo: segurar 0,3 s descola o cartão; mexer antes disso é rolar a tela */
+    quadro.addEventListener('touchstart', e => {
+      if (sess || e.touches.length !== 1) return;
+      const card = e.target.closest('.vp-card'); if (!card) return;
+      const t0 = e.touches[0], x0 = t0.clientX, y0 = t0.clientY;
+      sess = { card, on: false };
+      sess.timer = setTimeout(() => { if (sess && !sess.on) comecar(card, x0, y0, true); }, 300);
+      sess.tm = ev => {
+        if (!sess) return;
+        const t = ev.touches[0];
+        if (!sess.on) { if (Math.hypot(t.clientX - x0, t.clientY - y0) > 8) terminar(false); return; }
+        ev.preventDefault(); mover(t.clientX, t.clientY);
+      };
+      sess.te = () => terminar(true);
+      sess.tc = () => terminar(false);
+      document.addEventListener('touchmove', sess.tm, { passive: false }); document.addEventListener('touchend', sess.te); document.addEventListener('touchcancel', sess.tc);
+    }, { passive: true });
+    /* segurar no celular não abre o menu do navegador */
+    quadro.addEventListener('contextmenu', e => { if (e.target.closest('.vp-card') && window.matchMedia('(pointer: coarse)').matches) e.preventDefault(); });
+  }
+
   /* ---------------- QUADRO (Kanban secundário, mesmos dados) ---------------- */
   const COLUNAS_KANBAN = SITUACOES_ATIVAS;
   const LIMITE_COLUNA = 30;
@@ -768,7 +960,7 @@ B7.Video = (function () {
        do filtrar() acima. */
     const colunas = F.status === 'entregue' ? COLUNAS_KANBAN : COLUNAS_KANBAN.filter(([chave]) => chave !== 'entregue');
     const grupos = colunas.map(([chave, nome]) => ({
-      chave, nome, itens: lista.filter(d => d.editing_status === chave)
+      chave, nome, itens: lista.filter(d => d.editing_status === chave).sort(ordemPrioridade)
     }));
     return '<div class="vd-quadro">' + grupos.map(colunaHTML).join('') + '</div>';
   }
@@ -809,6 +1001,7 @@ B7.Video = (function () {
       ligarArrastarVideo(cx);
     });
     if (F.vista === 'kanban' && possoOperar()) ligarArrastarVideo(cx);
+    if (F.vista === 'prioridade') ligarPrioridade(cx);
     ligarSelecaoLote(cx);
     pintarSelecao();
   }
@@ -834,6 +1027,7 @@ B7.Video = (function () {
       const id = el.dataset.demanda;
       const ir = () => location.hash = '#/video/' + id;
       el.onclick = e => {
+        if (el._arrastou) return;   /* v3.1.0: soltou um arrasto no quadro de prioridade */
         if (possoOperar() && (e.ctrlKey || e.metaKey || e.shiftKey || idsSel().size)) { e.preventDefault(); alternarSel(id); return; }
         ir();
       };

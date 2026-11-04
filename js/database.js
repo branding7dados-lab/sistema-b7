@@ -2242,6 +2242,10 @@ B7.DB = (function () {
     async definirLinkVideo(demandaId, link) {
       return this.rpc('video_definir_link', { p_demanda_id: demandaId, p_link: link || '' });
     },
+    /* v3.1.0: quadro de prioridade (só quem tem a ação video.priorizar) */
+    async priorizarVideo(demandaId, prioridade, ordem) {
+      return this.rpc('video_priorizar', { p_demanda_id: demandaId, p_prioridade: prioridade, p_ordem: ordem });
+    },
     async editarDemandaVideo(demandaId, patch) {
       return this.rpc('video_editar_demanda', {
         p_demanda_id: demandaId,
