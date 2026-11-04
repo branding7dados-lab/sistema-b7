@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-3.0.0', versao: '3.0.0', em: '2026-11-04T12:00:00-03:00',
+    titulo: 'O B7 agora tem número de versão: 3.0.0',
+    itens: ['No lugar do código "zzz", cada versão tem um número de três partes, como nos apps do celular.',
+            'O primeiro número muda em mudança grande, o segundo quando chega novidade e o terceiro em correção.',
+            'O número aparece em Configurações, aqui nas novidades, no app Android e no programa do Windows.'] },
   { id: 'v-zzz308', versao: 'zzz308', em: '2026-11-04T10:00:00-03:00',
     titulo: 'A tela não pisca mais quando algo muda',
     itens: ['Mover uma demanda de coluna agora só muda o cartão de lugar: a página não recarrega nem refaz a animação de entrada.',

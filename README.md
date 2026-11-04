@@ -9,7 +9,7 @@
 <a href="https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk"><img alt="Baixar para Android" src="https://img.shields.io/badge/%E2%96%B6%20android-baixar%20apk-1B9E6B?style=for-the-badge"></a>
 
 <img alt="Testes" src="https://img.shields.io/github/actions/workflow/status/branding7dados-lab/sistema-b7/testes.yml?branch=main&label=testes&style=flat-square">
-<img alt="Versão" src="https://img.shields.io/badge/vers%C3%A3o-zzz304-6B3FD8?style=flat-square">
+<img alt="Versão" src="https://img.shields.io/badge/vers%C3%A3o-3.0.0-6B3FD8?style=flat-square">
 <img alt="PWA" src="https://img.shields.io/badge/PWA-instal%C3%A1vel-6B3FD8?style=flat-square">
 <img alt="Sem build" src="https://img.shields.io/badge/sem%20build-HTML%20%C2%B7%20CSS%20%C2%B7%20JS-1B9E6B?style=flat-square">
 <img alt="Supabase" src="https://img.shields.io/badge/banco-Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white">
@@ -336,12 +336,21 @@ O GitHub roda sozinho a cada envio — veja `.github/workflows/testes.yml`.
 
 ## ✦ Publicar uma versão
 
-Toda publicação muda dois números, sempre juntos:
+Toda publicação sobe a versão, que tem três partes (detalhes em
+[`VERSOES.md`](VERSOES.md)):
+
+| Muda | Quando | Exemplo |
+|---|---|---|
+| o 1º número | mudança grande, que muda o jeito de usar | 3.4.2 → **4.0.0** |
+| o 2º número | novidade que a equipe percebe | 3.4.2 → 3.**5**.0 |
+| o 3º número | correção ou ajuste | 3.4.2 → 3.4.**3** |
+
+O número fica em dois lugares, sempre iguais:
 
 | Arquivo | O quê | Para quê |
 |---|---|---|
-| `js/auth.js` | `VERSAO` | é o que aparece em Configurações e dispara o aviso de versão nova |
-| `sw.js` | `CACHE` | troca o cache do aparelho; sem isso o celular fica na versão velha |
+| `js/auth.js` | `VERSAO = '3.0.0'` | aparece em Configurações, nas novidades e no app Android, e dispara o aviso de versão nova |
+| `sw.js` | `CACHE = 'b7-v3.0.0'` | troca o cache do aparelho; sem isso o celular fica na versão velha |
 
 Depois é só dar merge na `main`. O GitHub Pages publica em menos de um minuto e
 cada aparelho recebe o aviso de atualização.

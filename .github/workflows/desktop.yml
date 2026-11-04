@@ -48,8 +48,10 @@ jobs:
           key: electron-${{ hashFiles('app-desktop/package-lock.json') }}
       - name: Versão
         run: |
-          # o número só cresce: 1.0.<número da execução deste workflow>
-          versao="1.0.$GITHUB_RUN_NUMBER"
+          # programa = <grande>.<novidade> da versão do sistema + número desta execução
+          # (sempre cresce: a atualização automática do Windows exige isso)
+          site=$(grep -oP "VERSAO = '\K[^']+" ../js/auth.js)
+          versao="$(echo "$site" | cut -d. -f1-2).$GITHUB_RUN_NUMBER"
           node -e "const f='package.json',j=require('./'+f);j.version='$versao';require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
           echo "B7_VERSAO_EXE=$versao" >> "$GITHUB_ENV"
           echo "B7_VERSAO_SITE=$(grep -oP "VERSAO = '\K[^']+" ../js/auth.js)" >> "$GITHUB_ENV"
