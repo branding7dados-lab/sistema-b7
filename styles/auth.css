@@ -85,6 +85,8 @@ body.sem-sessao main{display:none;}
 .login-olho svg{width:19px;height:19px;}
 
 .login-erro{min-height:18px;font-size:12.5px;color:#FF9BC8;margin-top:14px;line-height:1.45;}
+/* v3.1.2: sem erro, a linha não ocupa espaço (deixava um vão entre "Esqueci minha senha" e Entrar) */
+.login-erro:empty{min-height:0;margin-top:0;}
 .login-erro:not(:empty){animation:loginErro .34s cubic-bezier(.36,.07,.19,.97);}
 @keyframes loginErro{
   0%,100%{transform:translateX(0)}
@@ -1049,7 +1051,8 @@ body.b7-nv-editar #tela-dashboard :is([data-decidir],[data-excluir],[data-apagar
 .lg2-link:hover{color:#fff;}
 .lg2-link:disabled{opacity:.6;cursor:default;text-decoration:none;}
 /* zzz296: esqueci minha senha */
-.login-esqueci{display:flex;justify-content:flex-end;margin:-4px 0 4px;}
+/* v3.1.2: com respiro abaixo do campo da senha (antes encostava nele) */
+.login-esqueci{display:flex;justify-content:flex-end;margin:12px 0 6px;}
 .login-esqueci .lg2-link{font-size:12.5px;color:rgba(255,255,255,.62);text-decoration:none;}
 .login-esqueci .lg2-link:hover{color:#fff;text-decoration:underline;}
 .es-regra{margin:-2px 0 6px;font-size:12px;color:rgba(255,255,255,.5);}
