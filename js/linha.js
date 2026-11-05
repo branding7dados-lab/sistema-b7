@@ -191,6 +191,48 @@ B7.Linha = (function () {
            L.aba === 'design' ? design() : postagens();
   }
 
+  /* 4.16.0: avisos no topo da linha — Reels das próximas 2 semanas sem
+     roteiro, e conteúdo que passou da data sem ser publicado */
+  function alertasCalc() {
+    const hoje = B7.UI.hojeISO(), lim = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
+    const cs = L.conteudos || [], d = c => String(c.data_postagem || '').slice(0, 10);
+    return {
+      reels: cs.filter(c => c.tipo === 'Reel' && !c.script_id && d(c) && d(c) >= hoje && d(c) <= lim).sort((a, b) => d(a) < d(b) ? -1 : 1),
+      atrasados: cs.filter(c => d(c) && d(c) < hoje && !['Publicado', 'Programado'].includes(c.status))
+    };
+  }
+  function alertasHTML() {
+    if (B7.Auth && B7.Auth.ehEquipe && !B7.Auth.ehEquipe()) return '';
+    const { reels, atrasados } = alertasCalc();
+    if (!reels.length && !atrasados.length) return '';
+    const dia = c => B7.UI.dataBR(String(c.data_postagem).slice(0, 10)).slice(0, 5);
+    return '<div class="ln-alertas">' +
+      (reels.length ? '<div class="ln-alerta"><div class="ln-alerta-cab"><b>🎬 ' + reels.length + (reels.length === 1 ? ' Reel sai' : ' Reels saem') + ' nas próximas 2 semanas sem roteiro</b></div>' +
+        '<ul>' + reels.slice(0, 6).map(c => '<li><span><em>' + esc(dia(c)) + '</em> ' + esc(c.titulo || 'Sem título') + '</span><button type="button" class="b fina contorno" data-ln-roteiro="' + esc(c.id) + '">Criar roteiro</button></li>').join('') + '</ul>' +
+        (reels.length > 6 ? '<small>e mais ' + (reels.length - 6) + '…</small>' : '') + '</div>' : '') +
+      (atrasados.length ? '<div class="ln-alerta ln-alerta-atraso"><div class="ln-alerta-cab"><b>⏰ ' + atrasados.length + (atrasados.length === 1 ? ' conteúdo passou' : ' conteúdos passaram') + ' da data sem estar como Publicado</b>' +
+        '<button type="button" class="b fina pri" data-ln-publicar>Marcar como publicados</button></div>' +
+        '<ul>' + atrasados.slice(0, 6).map(c => '<li><span><em>' + esc(dia(c)) + '</em> ' + esc(c.titulo || 'Sem título') + ' · ' + esc(c.status || '') + '</span></li>').join('') + '</ul>' +
+        (atrasados.length > 6 ? '<small>e mais ' + (atrasados.length - 6) + '…</small>' : '') + '</div>' : '') +
+    '</div>';
+  }
+  function ligarAlertas() {
+    painel().querySelectorAll('[data-ln-roteiro]').forEach(b => b.onclick = () => {
+      const c = (L.conteudos || []).find(x => x.id === b.dataset.lnRoteiro);
+      if (c) criarRoteiroDoConteudo(c, { fechar() {} });
+    });
+    const pub = painel().querySelector('[data-ln-publicar]');
+    if (pub) pub.onclick = async () => {
+      const { atrasados } = alertasCalc();
+      const ok = await B7.UI.confirmar({ titulo: 'Marcar ' + atrasados.length + ' como publicados?', texto: 'Use quando eles já foram postados. Os que não saíram, ajuste a data no conteúdo.', rotulo: 'Marcar como publicados' });
+      if (!ok) return;
+      try {
+        await B7.Save.acao(async () => { for (const c of atrasados) { await B7.DB.atualizarConteudo(c.id, { status: 'Publicado' }); c.status = 'Publicado'; } }, 'Conteúdos marcados como publicados');
+        render();
+      } catch (e) {}
+    };
+  }
+
   function render() {
     const l = L.linha;
     const podeCliente = !B7.Perm || B7.Perm.podeRota('cliente');
@@ -203,7 +245,7 @@ B7.Linha = (function () {
           '<span>/</span><button data-ir="#/cliente/' + esc(l.client_id) + '/linhas">Editorial</button>') +
         '<span>/</span><b>' + esc(l.nome || MESES[l.mes - 1] + ' ' + l.ano) + '</b></div>' +
 
-      capa(l) +
+      capa(l) + alertasHTML() +
       '<div class="abas-cliente abas-linha">' + ABAS.map(([k, r]) =>
         '<button data-aba="' + k + '"' + (L.aba === k ? ' class="on"' : '') + '>' + r + '</button>').join('') +
       '</div>' +
@@ -211,6 +253,7 @@ B7.Linha = (function () {
 
     painel().querySelectorAll('[data-ir]').forEach(b => b.onclick = () => location.hash = b.dataset.ir);
     painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => trocarAba(b.dataset.aba));
+    ligarAlertas();
     C.ligarCampos(painel(), espelhar);
     B7.UI.ligarMenus(painel());
     ligarAba();
@@ -1781,28 +1824,30 @@ B7.Linha = (function () {
   async function criarRoteiroDoConteudo(c, modalPai) {
     let gravs = [];
     try { gravs = (await B7.DB.gravacoesDoClienteParaVideo(L.linha.client_id)).filter(g => !['Gravada', 'Cancelada'].includes(g.situacao)); } catch (e) {}
-    if (!gravs.length) return B7.UI.toast('Este cliente não tem gravação em aberto. Crie a gravação primeiro, em Gravações.', { tipo: 'erro' });
+    /* 4.16.0: sem gravação em aberto, o roteiro nasce no banco de roteiros */
     const doMes = gravs.find(g => g.data_gravacao && +String(g.data_gravacao).slice(5, 7) === L.linha.mes && +String(g.data_gravacao).slice(0, 4) === L.linha.ano);
     const rot = g => (g.nome || 'Gravação') + (g.data_gravacao ? ' · ' + B7.UI.dataBR(String(g.data_gravacao).slice(0, 10)) : ' · sem data');
     const m = B7.UI.modal('<h3>Criar roteiro com IA</h3>' +
       '<div class="sub">Cria um roteiro novo para <b>' + esc(c.titulo || 'este conteúdo') + '</b> na gravação escolhida, já ligado a este conteúdo, e abre o editor no rascunho da IA. Lá você escolhe as cenas que entram.</div>' +
       '<div class="mb"><label class="rot">GRAVAÇÃO</label><select class="campo" id="lr-grav">' +
+        '<option value="banco"' + (doMes ? '' : ' selected') + '>📥 Banco de roteiros (ainda sem gravação)</option>' +
         gravs.map(g => '<option value="' + esc(g.id) + '"' + (doMes && g.id === doMes.id ? ' selected' : '') + '>' + esc(rot(g)) + '</option>').join('') + '</select></div>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="lr-ok">Criar roteiro e abrir</button></div>');
     const ok = m.querySelector('#lr-ok');
     ok.onclick = async () => {
-      const gid = m.querySelector('#lr-grav').value; if (!gid) return;
+      const escolha = m.querySelector('#lr-grav').value; if (!escolha) return;
+      const banco = escolha === 'banco', gid = banco ? null : escolha;
       ok.disabled = true; ok.textContent = 'Criando…';
       try {
-        const existentes = await B7.DB.listarRoteiros(gid);
-        const r = await B7.DB.criarRoteiro({ recording_session_id: gid, position: existentes.length,
+        const existentes = banco ? await B7.DB.roteirosDoBanco(L.linha.client_id) : await B7.DB.listarRoteiros(gid);
+        const r = await B7.DB.criarRoteiro({ recording_session_id: gid, client_id: L.linha.client_id, position: existentes.length,
           titulo: c.titulo || '', objetivo: c.objetivo || '', observacao_gravacao: '', escala: 1, escala_automatica: true,
           content_id: c.id, formato: c.tipo, tema: c.tema || c.titulo || '' });
         await B7.DB.atualizarConteudo(c.id, { script_id: r.id });
         c.script_id = r.id;
         try { B7.DB.registrar({ tipo: 'criar', entidade: 'roteiro', id: r.id, cliente: L.linha.client_id, gravacao: gid, texto: 'Novo roteiro a partir do conteúdo: ' + (c.titulo || 'sem título') }); } catch (e) {}
         m.fechar(); modalPai.fechar();
-        location.hash = '#/gravacao/' + gid + '?roteiro=' + r.id + '&ia=rascunho';
+        location.hash = '#/gravacao/' + (gid || 'banco-' + L.linha.client_id) + '/roteiros?roteiro=' + r.id + '&ia=rascunho';
       } catch (e) {
         ok.disabled = false; ok.textContent = 'Criar roteiro e abrir';
         B7.UI.toast('Não foi possível criar o roteiro: ' + ((e && e.message) || 'erro'), { tipo: 'erro' });

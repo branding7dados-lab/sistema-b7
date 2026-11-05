@@ -324,6 +324,18 @@ B7.DB = (function () {
         .eq('client_id', clienteId).is('deleted_at', null).is('archived_at', null)
         .order('data_gravacao', { ascending: false, nullsFirst: true }).limit(40));
     },
+    /* 4.16.0: planejamento — Reels próximos sem roteiro e linhas do mês seguinte */
+    async reelsSemRoteiro(dias = 14) {
+      const hoje = new Date().toISOString().slice(0, 10), lim = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
+      return ok(await sb().from('conteudos').select('id,titulo,data_postagem,linha_id,client_id,clientes(nome)')
+        .eq('tipo', 'Reel').is('script_id', null).is('deleted_at', null)
+        .gte('data_postagem', hoje).lte('data_postagem', lim).order('data_postagem').limit(200));
+    },
+    async linhasPorMes(meses) {   /* [{ano,mes}] → linhas desses meses */
+      const anos = [...new Set(meses.map(m => m.ano))];
+      const r = ok(await sb().from('linhas_editoriais').select('client_id,ano,mes').is('deleted_at', null).in('ano', anos));
+      return r.filter(l => meses.some(m => m.ano === l.ano && m.mes === l.mes));
+    },
     async listarRoteiros(gravacaoId) {
       return ok(await sb().from('roteiros').select('*')
         .eq('recording_session_id', gravacaoId).is('deleted_at', null).order('position'));

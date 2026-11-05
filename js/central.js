@@ -71,9 +71,18 @@ B7.Central = (function () {
       B7.DB.painelAprovacoes({ somenteAtual: true, clienteId: F.clienteId || null, de: F.de, ate: F.ate, limite: 1000 }).catch(() => null)
     ]);
 
+    /* 4.16.0: planejamento (extra, nunca derruba a Central) */
+    const agoraD = new Date(), prox = { ano: agoraD.getMonth() === 11 ? agoraD.getFullYear() + 1 : agoraD.getFullYear(), mes: (agoraD.getMonth() + 1) % 12 + 1 };
+    const atual = { ano: agoraD.getFullYear(), mes: agoraD.getMonth() + 1 }, ant = { ano: agoraD.getMonth() === 0 ? atual.ano - 1 : atual.ano, mes: agoraD.getMonth() === 0 ? 12 : atual.mes - 1 };
+    const [reels, linhasMes] = await Promise.all([
+      B7.DB.reelsSemRoteiro ? B7.DB.reelsSemRoteiro(14).catch(() => []) : [],
+      agoraD.getDate() >= 20 && B7.DB.linhasPorMes ? B7.DB.linhasPorMes([ant, atual, prox]).catch(() => null) : null
+    ]);
+
     if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
     painel().innerHTML = '<div class="conteudo entra">' +
       cabecalho(p, clientes) +
+      planejamento(reels, linhasMes, prox, atual, ant) +
       categoriaGravacoes(dados.gravacoes) +
       categoriaLinhas(dados.linhas, recentesLinhas) +
       categoriaRoteiros(dados.roteiros, recentesRoteiros.slice(0, 4)) +
@@ -81,6 +90,26 @@ B7.Central = (function () {
     '</div>';
 
     ligar(clientes);
+  }
+
+  function planejamento(reels, linhas, prox, atual, ant) {
+    const doFiltro = x => !F.clienteId || x.client_id === F.clienteId;
+    reels = (reels || []).filter(doFiltro);
+    let falta = null;
+    if (linhas) {
+      const tem = (m, c) => linhas.some(l => l.client_id === c && l.ano === m.ano && l.mes === m.mes);
+      const ativos = [...new Set(linhas.filter(l => (l.ano === atual.ano && l.mes === atual.mes) || (l.ano === ant.ano && l.mes === ant.mes)).map(l => l.client_id))];
+      falta = { total: ativos.length, prontas: ativos.filter(c => tem(prox, c)).length };
+    }
+    if (!reels.length && !(falta && falta.total && falta.prontas < falta.total)) return '';
+    const porCli = {};
+    reels.forEach(r => { const k = r.client_id; (porCli[k] = porCli[k] || { nome: (r.clientes && r.clientes.nome) || 'Cliente', n: 0, linha: r.linha_id }).n++; });
+    return '<section class="cp-categoria cp-plan"><div class="cp-cat-cab"><h2>Planejamento</h2></div><div class="cp-plan-grade">' +
+      (reels.length ? '<div class="cp-plan-item"><b>🎬 ' + reels.length + (reels.length === 1 ? ' Reel' : ' Reels') + ' nas próximas 2 semanas sem roteiro</b><ul>' +
+        Object.values(porCli).sort((a, b) => b.n - a.n).slice(0, 6).map(c => '<li><a href="#/linha/' + esc(c.linha || '') + '">' + esc(c.nome) + '</a><span>' + c.n + '</span></li>').join('') + '</ul></div>' : '') +
+      (falta && falta.total && falta.prontas < falta.total ? '<div class="cp-plan-item"><b>🗓 Linhas de ' + MESES[prox.mes - 1].toLowerCase() + ': ' + falta.prontas + ' de ' + falta.total + ' clientes</b>' +
+        '<p>Clientes com linha neste mês ou no anterior que ainda não têm a de ' + MESES[prox.mes - 1].toLowerCase() + '.</p><a class="cp-ver" href="#/linhas">Abrir linhas editoriais →</a></div>' : '') +
+    '</div></section>';
   }
 
   /* Aprovações: um material (versão atual) conta uma vez, qualquer que
