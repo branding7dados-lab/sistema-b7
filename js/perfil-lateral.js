@@ -88,7 +88,7 @@ B7.PerfilLateral = (function () {
     const num = (n, rot, ir, cls) => '<button type="button" class="pf-num' + (cls || '') + '" data-ir-pf="' + ir + '"><b>' + (dia ? n : '–') + '</b><small>' + rot + '</small></button>';
     return '<div class="pf-painel">' +
       '<div class="pf-topo">' + avatar(u, 'pf-av-g') +
-        '<div class="pf-quem"><b>' + esc(u.nome || u.username) + '</b><small>' + esc(funcoes(u)) + (sup && !outro ? ' · ' + (sup === 'supremo' ? 'Admin supremo' : 'Super admin') : '') + '</small></div>' +
+        '<div class="pf-quem"><b>' + esc(u.nome || u.username) + '</b><small>' + esc(funcoes(u)) + (sup && !outro ? ' · ' + (sup === 'supremo' ? 'Programador' : 'Super admin') : '') + '</small></div>' +
         '<button type="button" class="pf-editar" data-pf="perfil">Editar perfil</button></div>' +
       '<div class="pf-rot">Meu status</div>' +
       '<div class="pf-st" role="radiogroup" aria-label="Meu status">' + STATUS.map(([k, r, c]) =>

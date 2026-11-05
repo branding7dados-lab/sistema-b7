@@ -911,7 +911,7 @@ B7.Usuarios = (function () {
         (empresas.some(e => / \(dono\)$/.test(e)) ? '<span class="lu4-tag leve">dono</span>'
           : empresas.some(e => / \(gestor\)$/.test(e)) ? '<span class="lu4-tag leve">aprova</span>' : '')
       : (u.parceiro ? '<span class="lu4-tag lu6-parceiro" title="Freelancer ou parceiro de fora">Parceiro B7</span>' : '') +
-        (idt.ehAdmin ? (u.superadmin === 'supremo' ? '<span class="lu4-tag lu3-p-super supremo" title="Acima de todos os administradores">Admin supremo</span>'
+        (idt.ehAdmin ? (u.superadmin === 'supremo' ? '<span class="lu4-tag lu3-p-super supremo" title="Acima de todos os administradores">Programador</span>'
           : u.superadmin === 'super' ? '<span class="lu4-tag lu3-p-super" title="Acima dos administradores">Super admin</span>'
           : '<span class="lu4-tag lu3-p-admin">Administrador</span>') : '') +
         (idt.funcao ? '<span class="lu4-tag lu3-p-' + esc(idt.funcao) + '">' + esc(rotuloFuncao(idt.funcao)) + '</span>' : '') +

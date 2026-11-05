@@ -2068,7 +2068,7 @@ B7.Dashboard = (function () {
       ['seguranca', 'Segurança', 'escudo', 'verde', 'sessões, verificação em 2 etapas e emergência'],
       ['uso', 'Uso e backup', 'grafico', 'laranja', 'espaço ocupado, uso do sistema e cópias'],
       ['avaliacoes', 'Avaliações do suporte', 'estrela', 'rosa', 'as notas que a equipe deu aos atendimentos'],
-      ['supremo', 'Supremo', 'coroa', 'violeta', 'o cargo supremo e as ações mais críticas']
+      ['supremo', 'Programador', 'coroa', 'violeta', 'o cargo de programador e as ações mais críticas']
     ].filter(a => a[0] !== 'supremo' || ehSupremo);
 
     /* zzz245: o perfil mora aqui. Cada parte é uma seção editável no lugar

@@ -70,14 +70,14 @@ B7.Super = (function () {
   let aba = 'painel', vez = 0;
 
   const ABAS = [['painel', 'Painel', 'painel'], ['aprovacoes', 'Aprovações', 'caixa'], ['limites', 'Limites', 'limites'], ['seguranca', 'Segurança', 'escudo'],
-                ['uso', 'Uso e backup', 'grafico'], ['avaliacoes', 'Avaliações', 'estrela'], ['supremo', 'Supremo', 'coroa']];
+                ['uso', 'Uso e backup', 'grafico'], ['avaliacoes', 'Avaliações', 'estrela'], ['supremo', 'Programador', 'coroa']];
   const ROT_ACAO = {
     alterar_conta: 'alterou o acesso de', criar_usuario: 'criou a conta de', excluir_conta: 'excluiu a conta de', redefinir_senha: 'redefiniu a senha de',
     entrar_como: 'entrou na conta de', salvar_preset: 'mudou o padrão da função', config_alterada: 'mudou a configuração', cliente_para_lixeira: 'mandou para a lixeira o cliente',
     cliente_apagado: 'apagou o cliente', politica_2fa: 'mudou a verificação em 2 etapas', resetar_2fa: 'desligou a verificação em 2 etapas de',
     acesso_pedido_aprovado: 'aprovou o acesso de', acesso_pedido_recusado: 'recusou o acesso de', funcao_personalizada_salvar: 'salvou a função', funcao_personalizada_excluir: 'excluiu a função',
     super_aprovou: 'aprovou o pedido sobre', super_recusou: 'recusou o pedido sobre', super_derrubar_todos: 'derrubou todas as sessões', super_derrubar: 'derrubou as sessões de',
-    super_rebaixou: 'tirou o administrador de', supremo_transferido: 'passou o cargo de supremo para', emergencia_ligada: 'ligou a emergência', emergencia_desligada: 'desligou a emergência',
+    super_rebaixou: 'tirou o administrador de', supremo_transferido: 'passou o cargo de programador para', emergencia_ligada: 'ligou a emergência', emergencia_desligada: 'desligou a emergência',
     acesso_aparelho_novo: 'entrou de um aparelho novo', avatar_definido_por_admin: 'trocou a foto de', avatar_removido_por_admin: 'tirou a foto de',
     meu_perfil: 'editou o próprio perfil', editar_proprio_perfil: 'editou o próprio perfil', avatar_definido: 'trocou a própria foto',
     ligar_2fa: 'ligou a verificação em 2 etapas', desligar_2fa: 'desligou a verificação em 2 etapas'
@@ -111,7 +111,7 @@ B7.Super = (function () {
     const sup = nivel() === 'supremo';
     painel().innerHTML = '<div class="conteudo entra sa' + (hospede ? ' sa-hospede' : '') + '" id="sa">' + (hospede ? '' :
       '<header class="sa-cab"><span class="sa-coroa' + (sup ? ' supremo' : '') + '">' + SVG(IC.coroa) + '</span>' +
-        '<div class="sa-cab-tx"><span class="sa-tag">' + (sup ? 'Admin supremo' : 'Super admin') + '</span><h1>Super admin</h1>' +
+        '<div class="sa-cab-tx"><span class="sa-tag">' + (sup ? 'Programador' : 'Super admin') + '</span><h1>Super admin</h1>' +
         '<p>Acima dos administradores: o que eles fazem, o que precisam pedir, a segurança e o sistema todo.</p></div></header>' +
       '<nav class="sa-abas" role="tablist" aria-label="Seções do super admin">' + ABAS.filter(a => a[0] !== 'supremo' || sup).map(([k, r, i]) =>
         '<button type="button" role="tab" aria-selected="' + (aba === k) + '" data-aba="' + k + '" class="' + (aba === k ? 'on' : '') + (k === 'supremo' ? ' sa-aba-supremo' : '') + '">' +
@@ -155,7 +155,7 @@ B7.Super = (function () {
     '<div><h2>' + titulo + '</h2>' + (sub ? '<small>' + sub + '</small>' : '') + '</div></header>' + corpo + '</section>';
   const vazio = (t, icone) => '<p class="sa-vazio">' + SVG(IC[icone || 'ok']) + '<span>' + t + '</span></p>';
   const av = p => B7.UI.avatarPessoa ? B7.UI.avatarPessoa({ nome: p.nome, avatar_url: p.avatar_url }, 'lu-avatar') : '';
-  const selo = n => n ? '<em class="sa-sel ' + n + '">' + (n === 'supremo' ? 'supremo' : 'super') + '</em>' : '';
+  const selo = n => n ? '<em class="sa-sel ' + n + '">' + (n === 'supremo' ? 'programador' : 'super') + '</em>' : '';
   const ligarIrAba = cx => cx.querySelectorAll('[data-ir-aba]').forEach(b => b.onclick = () => irAba(b.dataset.irAba));
   function rotuloDia(iso) {
     const d = new Date(iso), hoje = new Date(); const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
@@ -377,7 +377,7 @@ B7.Super = (function () {
     const outros = d.admins.filter(a => a.superadmin !== 'supremo');
     const FUN = [['coordenador', 'Coordenador'], ['designer', 'Designer'], ['videomaker', 'Videomaker']];
     const opcoes = vazioRot => '<option value="">' + vazioRot + '</option>' + outros.map(a => '<option value="' + esc(a.id) + '">' + esc(a.nome) + (a.superadmin ? ' (super admin)' : '') + '</option>').join('');
-    cx.innerHTML = '<p class="sa-aviso-topo">' + SVG(IC.alerta) + '<span>Tudo aqui é sério e só o admin supremo vê. Cada ação pede confirmação e fica no histórico.</span></p>' +
+    cx.innerHTML = '<p class="sa-aviso-topo">' + SVG(IC.alerta) + '<span>Tudo aqui é sério e só o programador vê. Cada ação pede confirmação e fica no histórico.</span></p>' +
       bloco('alerta', 'Emergência', emerg ? '<b class="sa-ruim">ligada agora</b>' : 'trava o sistema para todos, menos os super admins',
         emerg ? '<div class="sa-perigo-linha"><p><b>O sistema está travado</b> para a equipe, os administradores e os clientes. Só os super admins usam.</p>' +
             '<button type="button" class="b pri" id="sa-emerg-off">Desligar a emergência</button></div>'
@@ -390,7 +390,7 @@ B7.Super = (function () {
         '<label class="sa-rot" for="sa-reb-quem">Quem</label><select class="campo" id="sa-reb-quem">' + opcoes('Escolha a pessoa…') + '</select>' +
         '<label class="sa-rot" for="sa-reb-fn">Passa a ser</label><select class="campo" id="sa-reb-fn">' + FUN.map(([v, r]) => '<option value="' + v + '">' + r + '</option>').join('') + '</select>' +
         '<div class="sa-acoes"><button type="button" class="b pri perigo" id="sa-reb" disabled>Tirar administrador</button></div>') +
-      bloco('passar', 'Passar o cargo de admin supremo', 'você continua super admin',
+      bloco('passar', 'Passar o cargo de programador', 'você continua super admin',
         '<ol class="sa-passos"><li class="on" id="sa-tr-p1"><span>1</span>Escolha a pessoa e peça o código</li><li id="sa-tr-p2"><span>2</span>Digite o código que chegou no seu e-mail</li></ol>' +
         '<label class="sa-rot" for="sa-tr-para">Para quem</label><div class="sa-form"><select class="campo" id="sa-tr-para">' + opcoes('Escolha a pessoa…') + '</select>' +
         '<button type="button" class="b contorno" id="sa-tr-ir" disabled>Enviar código</button></div>' +
@@ -430,7 +430,7 @@ B7.Super = (function () {
       } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível.', { tipo: 'erro' }); }
     };
     q('#sa-tr-ok').onclick = async () => {
-      const ok = await B7.UI.confirmar({ titulo: 'Passar o cargo de admin supremo?', texto: 'Você continua super admin, mas quem manda no cargo passa a ser a outra pessoa.', rotulo: 'Passar o cargo', perigo: true });
+      const ok = await B7.UI.confirmar({ titulo: 'Passar o cargo de programador?', texto: 'Você continua super admin, mas quem manda no cargo passa a ser a outra pessoa.', rotulo: 'Passar o cargo', perigo: true });
       if (!ok) return;
       try { await auth({ acao: 'super_transferir_confirmar', codigo: q('#sa-tr-c').value }); B7.UI.toast('Cargo passado. Recarregando…'); setTimeout(() => location.reload(), 1500); }
       catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível.', { tipo: 'erro' }); }
