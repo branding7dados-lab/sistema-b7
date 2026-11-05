@@ -2032,3 +2032,11 @@ a.sa-item:hover{background:var(--suave);}
 .jhub-card b{font-size:15px;}
 .jhub-card small{font-size:12px;opacity:.85;}
 @media (max-width:560px){.jhub-aba span{display:none;}.jhub-aba{font-size:18px;padding:4px 9px;}}
+
+/* ---- 4.12.3: tela cheia dos jogos ---- */
+.j3-sair-cheia{display:none;position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5;border:1px solid rgba(255,255,255,.25);
+  border-radius:999px;padding:8px 14px;background:rgba(12,7,20,.7);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+.j3.j3-cheio .j3-sair-cheia{display:block;}
+.j3.j3-cheio .j3-palco{height:100dvh;}
+.j3.j3-cheio .j3-hud{top:env(safe-area-inset-top);left:env(safe-area-inset-left);right:env(safe-area-inset-right);}
+.j3-palco:fullscreen{width:100vw;height:100vh;border-radius:0;}

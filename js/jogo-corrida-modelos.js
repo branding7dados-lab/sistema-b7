@@ -412,13 +412,23 @@ B7.CorridaModelos = (function () {
     const vid = new T.Mesh(new T.BoxGeometry(1.5, 0.75, 0.05), new T.MeshStandardMaterial({ color: 0x1d2a44, metalness: 0.6, roughness: 0.1, emissive: 0x223355, emissiveIntensity: 0.4 }));
     vid.position.set(0, 1.95, L / 2 + 0.01); g.add(vid);
     [-0.6, 0.6].forEach(x => { const f = new T.Mesh(new T.CylinderGeometry(0.13, 0.13, 0.06, 14), MT.lente); f.rotation.x = Math.PI / 2; f.position.set(x, 0.85, L / 2 + 0.02); g.add(f); });
-    const para = new T.Mesh(new T.BoxGeometry(1.9, 0.22, 0.2), MT.aluminio); para.position.set(0, 0.45, L / 2 + 0.05); g.add(para);
+    const para = new T.Mesh(new T.BoxGeometry(1.9, 0.22, 0.2), MT.zebra); para.position.set(0, 0.5, L / 2 + 0.06); g.add(para);
+    /* 4.12.3: cara de locomotiva — nariz inclinado, faixa, faróis com brilho, equipamento no teto */
+    const nariz = new T.Mesh(new T.BoxGeometry(1.95, 0.5, 0.7), frente); nariz.position.set(0, topo - 0.12, L / 2 - 0.2); nariz.rotation.x = -0.5; g.add(nariz);
+    const faixa = new T.Mesh(new T.BoxGeometry(1.97, 0.12, 0.04), new T.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffd36b, emissiveIntensity: 0.6 })); faixa.position.set(0, 1.35, L / 2 + 0.02); g.add(faixa);
+    [-0.6, 0.6].forEach(x => { const h = new T.Sprite(MT.halo(0xfff1d6, 0.9)); h.scale.set(0.9, 0.9, 1); h.position.set(x, 0.85, L / 2 + 0.1); g.add(h); });
+    for (let i = 0; i < 2; i++) { const ac = new T.Mesh(new T.BoxGeometry(1.1, 0.25, 1.4), MT.aluminioEsc); ac.position.set(0, topo + 0.2, -L / 2 + 2 + i * 4.5); g.add(ac); }
     return g;
   }
   function rampa(T, MT) {                /* rampa de madeira: sobe 2,6 m em 6 m */
     const g = new T.Group(), Lr = 6, H = 2.6, ang = Math.atan2(H, Lr), comp = Math.hypot(H, Lr);
-    const tab = new T.Mesh(new T.BoxGeometry(1.9, 0.12, comp), MT.madeira); tab.rotation.x = -ang; tab.position.set(0, H / 2, 0); g.add(tab);
-    for (let i = 0; i < 6; i++) { const r = new T.Mesh(new T.BoxGeometry(1.92, 0.04, 0.12), MT.zebra); const k = (i + 0.5) / 6; r.position.set(0, H * (1 - k) + 0.09, -Lr / 2 + Lr * k); r.rotation.x = -ang; g.add(r); }
+    const tab = new T.Mesh(new T.BoxGeometry(1.9, 0.12, comp), new T.MeshStandardMaterial({ color: 0xc8925a, roughness: 0.55 })); tab.rotation.x = ang; tab.position.set(0, H / 2, 0); g.add(tab);
+    /* 4.12.3: setas amarelas acesas para ler "suba aqui" de longe */
+    const seta = new T.MeshBasicMaterial({ color: 0xffd36b });
+    for (let i = 0; i < 3; i++) { const k = (i + 1) / 4, z = -Lr / 2 + Lr * k, y = H * (1 - k) + 0.1;
+      [-1, 1].forEach(l => { const b = new T.Mesh(new T.BoxGeometry(0.75, 0.03, 0.16), seta); b.position.set(l * 0.3, y, z); b.rotation.x = ang; b.rotation.y = l * 0.6; g.add(b); }); }
+    [-0.98, 0.98].forEach(x => { const c = new T.Mesh(new T.BoxGeometry(0.08, 0.2, comp), new T.MeshStandardMaterial({ color: 0xff3fa4, emissive: 0xff3fa4, emissiveIntensity: 0.8 })); c.rotation.x = ang; c.position.set(x, H / 2 + 0.15, 0); g.add(c); });
+    for (let i = 0; i < 6; i++) { const r = new T.Mesh(new T.BoxGeometry(1.92, 0.04, 0.12), MT.zebra); const k = (i + 0.5) / 6; r.position.set(0, H * (1 - k) + 0.09, -Lr / 2 + Lr * k); r.rotation.x = ang; g.add(r); }
     [-0.85, 0.85].forEach(x => { const l = new T.Mesh(new T.BoxGeometry(0.1, H, 0.12), MT.aluminioEsc); l.position.set(x, H / 2, -Lr / 2 + 0.2); g.add(l);
       const l2 = new T.Mesh(new T.BoxGeometry(0.1, H / 2, 0.12), MT.aluminioEsc); l2.position.set(x, H / 4, 0); g.add(l2); });
     return g;

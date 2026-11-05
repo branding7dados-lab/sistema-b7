@@ -107,7 +107,7 @@ B7.Manutencao = (function () {
     /* 4.12.2: os jogos não vêm na abertura do sistema; chegam aqui */
     if (!el.dataset.jogosTentou && !(B7.JogoCorrida && B7.JogoMemoria && B7.JogoManut)) {
       el.dataset.jogosIndo = '1';
-      B7.vendor('jogoManut', 'jogo3d', 'corridaModelos', 'corrida', 'memoria').catch(() => {})
+      B7.vendor('telaCheia', 'jogoManut', 'jogo3d', 'corridaModelos', 'corrida', 'memoria').catch(() => {})
           .then(() => { delete el.dataset.jogosIndo; el.dataset.jogosTentou = '1'; if (el.isConnected) comJogo(el); });
       return;
     }

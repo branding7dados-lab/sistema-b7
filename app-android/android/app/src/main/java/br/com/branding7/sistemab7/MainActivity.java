@@ -434,6 +434,10 @@ public class MainActivity extends BridgeActivity {
                     case "salvar":
                         ok = salvar(m.optString("base64"), m.optString("nome"), m.optString("tipo"));
                         break;
+                    case "telaCheia":
+                        telaCheia(m.optBoolean("ligar"));
+                        ok = true;
+                        break;
                     case "barras":
                         barras(m.optBoolean("claras"));
                         ok = true;
@@ -662,6 +666,18 @@ public class MainActivity extends BridgeActivity {
         }
 
         /* claras = ícones brancos (tela escura atrás) */
+        /* jogos da manutenção: tela cheia de verdade (some barra de status e
+           de navegação; deslizar da borda mostra por um instante) */
+        void telaCheia(boolean ligar) {
+            act.runOnUiThread(() -> {
+                WindowInsetsControllerCompat c = WindowCompat.getInsetsController(act.getWindow(), act.getWindow().getDecorView());
+                if (ligar) {
+                    c.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                    c.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars());
+                } else c.show(androidx.core.view.WindowInsetsCompat.Type.systemBars());
+            });
+        }
+
         void barras(boolean claras) {
             act.runOnUiThread(() -> {
                 act.iconesClaros = claras;

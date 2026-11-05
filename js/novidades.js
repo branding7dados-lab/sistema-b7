@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.12.3', versao: '4.12.3', em: '2026-11-06T02:00:00-03:00',
+    titulo: 'Rampa certa e tela cheia de verdade',
+    itens: ['A rampa do trem agora sobe na direção certa, com setas acesas, e o trem ganhou cara de locomotiva.',
+            'Tela cheia nos jogos: ocupa a tela toda (no app Android some a barra de cima e a de baixo) e tem o botão "Sair da tela cheia".'] },
   { id: 'v-4.12.0', versao: '4.12.0', em: '2026-11-06T00:30:00-03:00',
     titulo: 'Tela de jogos na manutenção',
     itens: ['Quando o sistema entra em manutenção, aparece a tela de jogos: escolha entre Corre pro Set!, Ação! Corta!, Memória do Set e Clássico 2D. A barra em cima deixa trocar de jogo a qualquer momento.'] },

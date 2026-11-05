@@ -116,7 +116,7 @@ B7.Jogo3D = (function () {
     const som = criarSom();
     $('.j3-som').textContent = som.mudo ? '🔇' : '🔊';
     $('.j3-som').onclick = e => { e.stopPropagation(); $('.j3-som').textContent = som.alternar() ? '🔇' : '🔊'; };
-    $('.j3-cheia').onclick = e => { e.stopPropagation(); raiz.classList.toggle('j3-cheio'); setTimeout(medir, 30); };
+    const sairCheia = B7.JogoTelaCheia ? B7.JogoTelaCheia(raiz, () => medir()) : () => {};
 
     /* ------------------------------------------------- menu: recorde etc. */
     const conq = () => L.get('b7_jogo_conq', {});
@@ -592,7 +592,7 @@ B7.Jogo3D = (function () {
     if (temWebGL()) prepararMundo().then(() => { if (!S) { cam.position.set(4, 4.5, 8); } }).catch(() => {});
 
     function parar() {
-      if (fim) return; fim = true; cancelAnimationFrame(quadro);
+      if (fim) return; fim = true; cancelAnimationFrame(quadro); try { sairCheia(); } catch (e) {}
       removeEventListener('resize', aoRedim); removeEventListener('pointerup', solta); removeEventListener('pointercancel', solta); removeEventListener('blur', solta);
       removeEventListener('keydown', tecla); removeEventListener('keyup', tecla); removeEventListener('keydown', desvio);
       try { if (renderer) { renderer.dispose(); renderer.forceContextLoss(); } } catch (e) {}

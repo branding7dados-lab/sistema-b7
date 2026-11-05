@@ -26,6 +26,7 @@ B7.vendor = (function () {
     /* 4.8.0: 3D do jogo da manutenção — three.js r160 (MIT). Só chega quando o jogo abre. */
     three:       { src: 'js/vendor/three.min.js',       pronta: () => !!window.THREE,       nome: 'do jogo 3D' },
     /* 4.12.2: os jogos da manutenção só chegam quando a manutenção abre */
+    telaCheia:    { src: 'js/jogo-tela-cheia.js',      pronta: () => !!(window.B7 && B7.JogoTelaCheia), nome: 'do jogo' },
     jogoManut:    { src: 'js/jogo-manut.js',           pronta: () => !!(window.B7 && B7.JogoManut),     nome: 'do jogo' },
     jogo3d:       { src: 'js/jogo3d.js',               pronta: () => !!(window.B7 && B7.Jogo3D),        nome: 'do jogo' },
     corridaModelos: { src: 'js/jogo-corrida-modelos.js', pronta: () => !!(window.B7 && B7.CorridaModelos), nome: 'do jogo' },

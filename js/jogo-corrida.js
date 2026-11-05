@@ -139,7 +139,7 @@ B7.JogoCorrida = (function () {
     const HUD = { pts: $('.j3-pts'), moedas: $('.jc-moedas span'), poderes: $('.jc-poderes') };
     $('.j3-som').textContent = som.mudo ? '🔇' : '🔊';
     $('.j3-som').onclick = e => { e.stopPropagation(); $('.j3-som').textContent = som.alternar() ? '🔇' : '🔊'; };
-    $('.j3-cheia').onclick = e => { e.stopPropagation(); raiz.classList.toggle('j3-cheio'); setTimeout(medir, 30); };
+    const sairCheia = B7.JogoTelaCheia ? B7.JogoTelaCheia(raiz, () => medir()) : () => {};
     if (opcoes.jogos) raiz.querySelectorAll('.jc-outro').forEach(b => b.onclick = () => { parar(); raiz.remove(); opcoes.jogos[+b.dataset.j].abrir(); });
     else if (opcoes.outroJogo) $('.jc-outro').onclick = () => { parar(); raiz.remove(); opcoes.outroJogo(); };
 
@@ -699,7 +699,7 @@ B7.JogoCorrida = (function () {
     preparar().catch(() => {});
 
     function parar() {
-      if (fim) return; fim = true; cancelAnimationFrame(quadro); som.musica.parar();
+      if (fim) return; fim = true; cancelAnimationFrame(quadro); try { sairCheia(); } catch (e) {} som.musica.parar();
       removeEventListener('resize', aoRedim); removeEventListener('keydown', tecla);
       try { if (renderer) { renderer.dispose(); renderer.forceContextLoss(); } } catch (e) {}
     }
