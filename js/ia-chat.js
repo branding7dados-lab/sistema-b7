@@ -733,14 +733,14 @@ B7.Chat = (function () {
           '<div class="ch-tit"><b>Conversas</b><small>só você vê as suas</small></div>' +
           '<button type="button" class="ch-bt" id="ch-fechar" aria-label="Fechar">' + IC.x + '</button></header>' +
         histCabHTML() +
-        '<div class="ch-corpo ch-lista" id="ch-lista"><div class="ch-nada">Carregando…</div></div>';
+        '<div class="ch-corpo ch-lista" id="ch-lista"><div class="ch-nada">' + B7.UI.spin() + 'Carregando…</div></div>';
       painel.querySelector('#ch-volta').onclick = () => { S.vista = 'conversa'; pintar(); };
       painel.querySelector('#ch-fechar').onclick = fechar;
       ligarHistCab();
       return;
     }
     painel.innerHTML = (lado ? '<aside class="ch-lado" aria-label="Conversas anteriores"><div class="ch-lado-tit"><b>Conversas</b><small>só você vê</small></div>' + histCabHTML() +
-        '<div class="ch-lista" id="ch-lista"><div class="ch-nada">Carregando…</div></div></aside>' : '') +
+        '<div class="ch-lista" id="ch-lista"><div class="ch-nada">' + B7.UI.spin() + 'Carregando…</div></div></aside>' : '') +
       '<div class="ch-principal">' +
       '<header class="ch-topo">' + topoHTML() + '</header>' +
       '<div class="ch-corpo-cx"><div class="ch-corpo" aria-live="polite"></div>' +

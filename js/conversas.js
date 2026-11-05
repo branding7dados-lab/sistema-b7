@@ -721,7 +721,7 @@ B7.Conversas = (function () {
   function pintarMensagens(descer, mantendo) {
     const corpo = painel && painel.querySelector('#conv-corpo'); if (!corpo || !atual) return;
     const perto = corpo.scrollHeight - corpo.scrollTop - corpo.clientHeight < 140, alturaAntes = corpo.scrollHeight;
-    if (atual.carregando) { corpo.innerHTML = '<p class="conv-vazio">Carregando…</p>'; return; }
+    if (atual.carregando) { corpo.innerHTML = '<p class="conv-vazio">' + B7.UI.spin() + 'Carregando…</p>'; return; }
     if (atual.erro && !atual.msgs.length) { corpo.innerHTML = '<p class="conv-vazio">Não foi possível carregar a conversa. Feche e abra de novo.</p>'; return; }
     if (!atual.msgs.length) { corpo.innerHTML = '<p class="conv-vazio">Nenhuma mensagem ainda. Diga oi 👋</p>'; return; }
     let html = atual.temMais ? '<p class="conv-mais">Role para cima para ver mensagens anteriores</p>' : '', dia = '', ant = null;

@@ -443,7 +443,7 @@ B7.PreviaUsuario = (function () {
       '<button type="button" class="ico" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
       '<p class="sub" style="margin:0 10px 10px">Escolha uma pessoa (da equipe ou de um cliente) e depois se quer só visualizar ou entrar na conta. Empresa abre o Portal, somente leitura.</p>' +
       '<div class="ver-como-caixa ver-como-dialogo"><input id="ver-como-busca" type="search" name="b7-buscar-pessoa" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" data-foco placeholder="Buscar cliente ou usuário…" autocomplete="off" aria-label="Buscar cliente ou usuário">' +
-      '<div class="ver-como-lista" id="ver-como-lista"><div class="nada">Carregando…</div></div></div>',
+      '<div class="ver-como-lista" id="ver-como-lista"><div class="nada">' + B7.UI.spin() + 'Carregando…</div></div></div>',
       { classe: 'tp-folha', aoFechar: () => { modalSeletor = null; } });
     const campo = modalSeletor.querySelector('#ver-como-busca');
     campo.addEventListener('input', () => renderizarLista(campo.value));
@@ -527,7 +527,7 @@ B7.PreviaUsuario = (function () {
       ? '<label class="ver-como-campo" title="Visualizar como…">' + IC_OLHO +
           '<input id="ver-como-lat" type="search" readonly name="b7-buscar-pessoa" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" placeholder="Visualizar como…" autocomplete="off" spellcheck="false" ' +
             'role="combobox" aria-expanded="false" aria-controls="ver-como-lista-lat" aria-label="Visualizar como: buscar pessoa ou empresa"></label>' +
-        '<div class="ver-como-caixa"><div class="ver-como-lista" id="ver-como-lista-lat"><div class="nada">Carregando…</div></div></div>' +
+        '<div class="ver-como-caixa"><div class="ver-como-lista" id="ver-como-lista-lat"><div class="nada">' + B7.UI.spin() + 'Carregando…</div></div></div>' +
         '<button type="button" class="ver-como-bt" id="ver-como-bt" title="Visualizar como…" aria-label="Visualizar como…">' + IC_OLHO + '</button>'
       : '';
     const bt = cx.querySelector('#ver-como-bt');

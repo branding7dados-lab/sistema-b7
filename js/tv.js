@@ -601,7 +601,7 @@ B7.TV = (function () {
       ['vinheta', 'Vinheta da B7 a cada 5 minutos', 'a animação de abertura passa por cima do painel e some'],
       ['clima', 'Clima', 'a temperatura da cidade, ao lado da data']];
     const m = B7.UI.modal('<h3>Painel de TV</h3><p class="sub">Vale para todo aparelho que abrir o Painel de TV; quem já está com ele aberto recebe em até 5 minutos.</p>' +
-      '<div class="tv-cfg" id="tv-cfg"><p class="adm-vazio">Carregando…</p></div>' +
+      '<div class="tv-cfg" id="tv-cfg"><p class="adm-vazio">' + B7.UI.spin() + 'Carregando…</p></div>' +
       '<div class="acoes"><button type="button" class="b contorno" data-fecha>Cancelar</button><button type="button" class="b pri" id="tv-cfg-ok" disabled>Salvar</button></div>', { larga: true });
     m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
     const cx = m.querySelector('#tv-cfg'), ok = m.querySelector('#tv-cfg-ok');

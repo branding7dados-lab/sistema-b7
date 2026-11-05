@@ -2465,7 +2465,7 @@ B7.Design = (function () {
   }
 
   function blocoArte(d, x) {
-    if (!drawer.briefing) return '<section class="ds-arte-secao"><div class="ds-arte-moldura vazia"><div class="ds-arte-vazio">' + iconeTipo(d.tipo) + '<span>Carregando…</span></div></div></section>';
+    if (!drawer.briefing) return '<section class="ds-arte-secao"><div class="ds-arte-moldura vazia"><div class="ds-arte-vazio">' + iconeTipo(d.tipo) + '<span>' + B7.UI.spin() + 'Carregando…</span></div></div></section>';
     return ehMultiparte() ? blocoArteMultiparte(d, x) : blocoArteUnica(d, x);
   }
 
@@ -2895,7 +2895,7 @@ B7.Design = (function () {
      conteúdo canônico) continua no briefing genérico. */
   function conteudoPrincipal(d) {
     const b = drawer.briefing;
-    if (!b) return '<p class="vazio-leve">Carregando…</p>';
+    if (!b) return '<p class="vazio-leve">' + B7.UI.spin() + 'Carregando…</p>';
     if (b.erro) return '<p class="vazio-leve">Não foi possível carregar o briefing.</p>';
     if (!b.manual && b.conteudo.tipo === 'Card') return blocoPrincipalCard(b);
     if (!b.manual && b.conteudo.tipo === 'Reel') return blocoPrincipalReel(b);
@@ -3081,7 +3081,7 @@ B7.Design = (function () {
      tem os quatro). */
   function blocoBriefing(d) {
     const b = drawer.briefing;
-    if (!b) return '<p class="vazio-leve">Carregando…</p>';
+    if (!b) return '<p class="vazio-leve">' + B7.UI.spin() + 'Carregando…</p>';
     if (b.erro) return '<p class="vazio-leve">Não foi possível carregar o briefing.</p>';
     if (b.manual) {
       return b.descricao

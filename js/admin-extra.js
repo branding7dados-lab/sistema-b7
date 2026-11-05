@@ -36,7 +36,7 @@ B7.Sessoes = (function () {
   function abrir() {
     const m = B7.UI.modal('<h3>Sessões ativas</h3>' +
       '<p class="sub">Cada linha é um aparelho ou navegador onde a conta está aberta. Encerrar tira o acesso daquele aparelho: com o B7 aberto, ele sai da conta em até 1 minuto, e a pessoa precisa entrar de novo. Não muda a senha.</p>' +
-      '<div class="adm-corpo" id="adm-sessoes"><p class="adm-vazio">Carregando…</p></div>' +
+      '<div class="adm-corpo" id="adm-sessoes"><p class="adm-vazio">' + B7.UI.spin() + 'Carregando…</p></div>' +
       '<div class="acoes"><button type="button" class="b pri" data-fecha>Fechar</button></div>', { larga: true });
     m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
     const cx = m.querySelector('#adm-sessoes');
@@ -125,7 +125,7 @@ B7.UsoIA = (function () {
     const m = B7.UI.modal('<h3>Uso da IA</h3>' +
       '<div class="adm-periodo" role="radiogroup" aria-label="Período">' + [[7, '7 dias'], [30, '30 dias'], [90, '90 dias']].map(([v, r]) =>
         '<button type="button" role="radio" data-dias="' + v + '" aria-checked="' + (v === dias) + '"' + (v === dias ? ' class="on"' : '') + '>' + r + '</button>').join('') + '</div>' +
-      '<div class="adm-corpo" id="adm-ia"><p class="adm-vazio">Carregando…</p></div>' +
+      '<div class="adm-corpo" id="adm-ia"><p class="adm-vazio">' + B7.UI.spin() + 'Carregando…</p></div>' +
       '<div class="acoes"><button type="button" class="b pri" data-fecha>Fechar</button></div>', { larga: true });
     m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
     const cx = m.querySelector('#adm-ia');
@@ -1203,7 +1203,7 @@ B7.AberturaAdm = (function () {
     if (!B7.Abertura) return;
     const m = B7.UI.modal('<h3>Abertura do sistema</h3>' +
       '<p class="sub">A animação que aparece quando o B7 abre. Vale a partir da próxima vez que cada pessoa abrir o sistema. Quem escolheu outra em Configurações → Aparência continua com a dela.</p>' +
-      '<div class="adm-corpo" id="abadm-corpo"><p class="adm-vazio">Carregando…</p></div>' +
+      '<div class="adm-corpo" id="abadm-corpo"><p class="adm-vazio">' + B7.UI.spin() + 'Carregando…</p></div>' +
       '<div class="acoes"><button type="button" class="b" data-fecha>Cancelar</button><button type="button" class="b pri" id="abadm-salvar" disabled>Salvar</button></div>', { larga: true });
     m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
     const cx = m.querySelector('#abadm-corpo');

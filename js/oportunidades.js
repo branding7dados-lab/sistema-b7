@@ -378,7 +378,7 @@ B7.Oportunidades = (function () {
               : '<p class="op-nada">Sem fonte registrada.</p>') +
           '</section>' +
 
-          '<section class="op-sec" id="op-linhas"><h4>Linhas editoriais</h4><p class="op-nada">Carregando…</p></section>' +
+          '<section class="op-sec" id="op-linhas"><h4>Linhas editoriais</h4><p class="op-nada">' + B7.UI.spin() + 'Carregando…</p></section>' +
 
           '<div class="acoes">' +
             (souGestor() ? '<a class="b contorno" href="#/oportunidades" data-ir>Todas as oportunidades</a>' : '') +

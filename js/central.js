@@ -320,7 +320,7 @@ B7.Central = (function () {
     const filtros = { de: F.de, ate: F.ate, clienteId: F.clienteId };
 
     const m = B7.UI.modal('<h3>' + esc(regra.rotulo) + '</h3>' +
-      '<div class="sub" id="cpl-sub">Carregando…</div>' +
+      '<div class="sub" id="cpl-sub">' + B7.UI.spin() + 'Carregando…</div>' +
       '<div id="cpl-lista" class="cp-lista-modal"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>', { larga: true });
 

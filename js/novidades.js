@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.12.5', versao: '4.12.5', em: '2026-11-06T03:00:00-03:00',
+    titulo: 'Novo indicador de carregando',
+    itens: ['Onde aparecia só "Carregando…", agora tem o spinner de barrinhas girando.'] },
   { id: 'v-4.12.4', versao: '4.12.4', em: '2026-11-06T02:00:00-03:00',
     titulo: 'Céu novo, rampa certa e tela cheia de verdade',
     itens: ['A rampa do trem agora sobe na direção certa, com setas acesas, e o trem ganhou cara de locomotiva.',

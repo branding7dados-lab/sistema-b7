@@ -1050,6 +1050,9 @@ B7.UI = (function () {
      arrastar arquivo para a tela — os textos dizem "toque para escolher" */
   const toque = () => { try { return matchMedia('(hover: none) and (pointer: coarse)').matches; } catch (e) { return false; } };
 
-  return { toque, dataHora, atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, linkExterno, linkInterno, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
+  /* 4.12.5: spinner de 12 barras girando (o "Bars Spinner" que o Kevin
+     mandou, refeito em CSS puro — sem React). spin() = 16 px na cor do texto. */
+  function spin(px) { return '<span class="b7-spin" aria-hidden="true"' + (px ? ' style="--b7-spin:' + px + 'px"' : '') + '>' + '<i></i>'.repeat(12) + '</span>'; }
+  return { spin, toque, dataHora, atalhos, avatarCliente, avatarPessoa, iniciais, tomDoNome, chipRevisao, REVISAO, CLASSE_REVISAO, esc, linkExterno, linkInterno, toast, modal, confirmar, perguntar, ligarMenus, fecharMenus, dica, esconderDica, MESES, paleta,
            dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura, skeleton, copiarTexto, ocupado };
 })();
