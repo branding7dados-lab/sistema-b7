@@ -760,6 +760,14 @@ B7.Dashboard = (function () {
   }
   const chaveMesRot = m => m.ano + '-' + String(m.mes).padStart(2, '0');
   const rotuloMes = k => { const [a, m] = k.split('-').map(Number); return (B7.UI.MESES[m - 1] || m) + ' ' + a; };
+  const IC_LIXO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M5.5 7l1 12.5A1.5 1.5 0 0 0 8 21h8a1.5 1.5 0 0 0 1.5-1.5L18.5 7M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/></svg>';
+  /* 4.17.3: apagar roteiro direto da lista (vai para a Lixeira, com o nome digitado) */
+  async function apagarRoteiroDaLista(id, nome) {
+    const ok = await B7.UI.confirmar({ titulo: 'Apagar este roteiro?', texto: 'Ele vai para a Lixeira (dá para restaurar).', rotulo: 'Apagar roteiro', perigo: true,
+      digitar: (nome || '').trim() || 'apagar' });
+    if (!ok) return;
+    try { await B7.Save.acao(() => B7.DB.paraLixeira('roteiros', id), 'Roteiro na lixeira'); B7.Rota.recarregar(); } catch (e) {}
+  }
   function cardRoteiro(r) {
     const g = r.gravacao || {};
     const cliente = g.cliente_nome || 'Sem cliente';
@@ -772,7 +780,7 @@ B7.Dashboard = (function () {
       '</div>' +
       '<h3>' + esc(tituloTela(r.titulo)) + '</h3>' +
       (r.objetivo ? '<p>' + esc(r.objetivo) + '</p>' : '') +
-      '<div class="cr-pe">' + B7.UI.chipRevisao(r.status) +
+      '<div class="cr-pe">' + B7.UI.chipRevisao(r.status) + '<button type="button" class="rt-apagar" data-apagar-roteiro="' + esc(r.id) + '" data-nome="' + esc(r.titulo || '') + '" title="Apagar roteiro" aria-label="Apagar roteiro">' + IC_LIXO + '</button>' +
         '<span class="cr-quando" title="' + esc(r.updated_at || '') + '">' + esc(B7.UI.quando(r.updated_at)) + '</span>' +
         (g.id ? '<span class="cr-data">' + esc(quandoGrava(g)) + '</span>' : '') +
       '</div></div>';
@@ -783,6 +791,7 @@ B7.Dashboard = (function () {
       '<span class="rt-l-tx"><b>' + esc(tituloTela(r.titulo)) + '</b>' + (r.objetivo ? '<small>' + esc(r.objetivo) + '</small>' : '') + '</span>' +
       '<span class="rt-l-st">' + B7.UI.chipRevisao(r.status) + '</span>' +
       '<span class="rt-l-quando" title="' + esc(r.updated_at || '') + '">' + esc(B7.UI.quando(r.updated_at)) + '</span>' +
+      '<button type="button" class="rt-apagar" data-apagar-roteiro="' + esc(r.id) + '" data-nome="' + esc(r.titulo || '') + '" title="Apagar roteiro" aria-label="Apagar roteiro">' + IC_LIXO + '</button>' +
       '<span class="rt-l-seta" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>';
   }
   function grupoRoteirosHTML(grp) {
@@ -864,6 +873,12 @@ B7.Dashboard = (function () {
           '<button class="b contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo">' + IC.mais + 'Novo roteiro sem cliente</button>')) +
       '</div>';
     ligar();
+    /* lixeira de cada roteiro (delegado: a lista é redesenhada pelos filtros) */
+    if (!painel().__rtApagar) painel().__rtApagar = true, painel().addEventListener('click', e => {
+      const b = e.target.closest('[data-apagar-roteiro]'); if (!b) return;
+      e.stopPropagation(); e.preventDefault();
+      apagarRoteiroDaLista(b.dataset.apagarRoteiro, b.dataset.nome);
+    }, true);
     painel().querySelectorAll('.rt-geral [data-roteiro]').forEach(el => {
       const ir = () => { location.hash = '#/gravacao/banco-geral/roteiros?roteiro=' + el.dataset.roteiro; };
       el.onclick = ir; el.onkeydown = e => { if (e.key === 'Enter') ir(); };

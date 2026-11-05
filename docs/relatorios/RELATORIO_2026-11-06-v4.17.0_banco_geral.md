@@ -15,3 +15,6 @@
 - Folha A4 / PDF de roteiro do Banco geral sem a faixa Cliente/Gravação/Vídeo (e sem os dados da capa).
 - Em Roteiros, o Banco geral virou uma seção própria no topo ("Ideias e modelos"), fora dos meses — não aparece mais como grupo "Sem cliente".
 - Editor do Banco geral: título "Banco geral · Ideias e modelos, sem cliente"; bloco "Enviar para aprovação" escondido (não há cliente).
+
+## 4.17.3
+- Lixeira em cada roteiro da lista de Roteiros (lista e cards; aparece ao passar o mouse, fixa no celular) — também entra no menu do botão direito. Manda para a Lixeira com o nome digitado (sem título: digitar "apagar").
