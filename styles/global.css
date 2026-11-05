@@ -2364,3 +2364,11 @@ html.modo-leve[data-theme="dark"] .toast,html.modo-leve [data-theme="dark"] .toa
 .b7-spin i:nth-child(12){transform:rotate(330deg) translate(146%);animation-delay:-0.1s;}
 @keyframes b7Barras{0%{opacity:1}100%{opacity:.15}}
 @media (prefers-reduced-motion:reduce){.b7-spin i{animation-duration:2.4s;}}
+
+/* 4.21.1: celular DEITADO (app Android): a barra de cima do sistema (hora,
+   bateria) e o recorte da câmera ficam por cima do B7. Em pé já havia
+   margem; deitado o B7 usa o layout de tela larga, que não tinha. */
+@media (orientation:landscape) and (hover:none) and (max-height:600px){
+  #app{box-sizing:border-box;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+  #app .lateral{padding-top:0;padding-bottom:0;}
+}
