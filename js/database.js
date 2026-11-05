@@ -310,6 +310,20 @@ B7.DB = (function () {
     },
 
     /* ---------------------------------------------------- ROTEIROS */
+    /* 4.15.0: banco de roteiros — roteiros do cliente sem gravação */
+    async roteirosDoBanco(clienteId) {
+      return ok(await sb().from('roteiros').select('*')
+        .eq('client_id', clienteId).is('recording_session_id', null).is('deleted_at', null).order('position'));
+    },
+    async moverRoteiro(id, gravacaoId, clienteId) {
+      const patch = gravacaoId ? { recording_session_id: gravacaoId } : { recording_session_id: null, client_id: clienteId };
+      return ok(await sb().from('roteiros').update(patch).eq('id', id).select());
+    },
+    async gravacoesAbertasDoCliente(clienteId) {
+      return ok(await sb().from('gravacoes').select('id,nome,data_gravacao,status')
+        .eq('client_id', clienteId).is('deleted_at', null).is('archived_at', null)
+        .order('data_gravacao', { ascending: false, nullsFirst: true }).limit(40));
+    },
     async listarRoteiros(gravacaoId) {
       return ok(await sb().from('roteiros').select('*')
         .eq('recording_session_id', gravacaoId).is('deleted_at', null).order('position'));
@@ -369,6 +383,7 @@ B7.DB = (function () {
       const cenas = await this.listarCenas(roteiro.id);
       const copia = await this.criarRoteiro({
         recording_session_id: roteiro.recording_session_id,
+        client_id: roteiro.client_id,
         position: novaPosicao,
         titulo: roteiro.titulo,
         objetivo: roteiro.objetivo,

@@ -44,8 +44,20 @@ B7.Editor = (function () {
     document.getElementById('folhas').innerHTML = '';
 
     try {
-      const gravacao = await B7.DB.gravacao(gravacaoId);
-      const roteiros = await B7.DB.listarRoteiros(gravacaoId);
+      /* 4.15.0: "banco-<cliente>" abre o banco de roteiros do cliente
+         (roteiros sem gravação) no mesmo editor */
+      const banco = String(gravacaoId).startsWith('banco-');
+      let gravacao, roteiros;
+      if (banco) {
+        const clienteId = String(gravacaoId).slice(6), c = await B7.DB.cliente(clienteId);
+        gravacao = { id: gravacaoId, banco: true, client_id: clienteId, nome: 'Banco de roteiros', cliente_nome: c ? c.nome : '',
+          cliente_logo_url: c ? c.logo_url : null, status: '', data_gravacao: null };
+        roteiros = await B7.DB.roteirosDoBanco(clienteId);
+      } else {
+        gravacao = await B7.DB.gravacao(gravacaoId);
+        roteiros = await B7.DB.listarRoteiros(gravacaoId);
+      }
+      document.body.classList.toggle('ed-banco', banco);
       const ids = roteiros.map(r => r.id);
       const todasCenas = await B7.DB.listarCenasDaGravacao(ids);
       const cenas = {};
@@ -67,6 +79,17 @@ B7.Editor = (function () {
          no estado vazio abaixo. */
       renderTrilho(); renderEscrita(); renderPrevia();
       B7.Save.atualizar();
+      /* 4.15.0: a gravação já passou e ainda há roteiro sem "Gravado" */
+      const hoje = new Date().toISOString().slice(0, 10), g0 = E.gravacao;
+      const pend = !g0.banco && !soLeitura() && g0.data_gravacao && g0.data_gravacao < hoje ? E.roteiros.filter(r => r.status !== 'Gravado') : [];
+      if (pend.length) B7.UI.toast('A gravação foi em ' + B7.UI.dataBR(g0.data_gravacao) + ' e ' + pend.length + (pend.length === 1 ? ' roteiro ainda não está' : ' roteiros ainda não estão') + ' como Gravado.', {
+        tipo: 'aviso', tempo: 12000, acao: 'Marcar como gravados',
+        aoClicar: async () => {
+          try {
+            await B7.Save.acao(async () => { for (const r of pend) { await B7.DB.atualizarRoteiro(r.id, { status: 'Gravado' }); r.status = 'Gravado'; } }, 'Roteiros marcados como gravados');
+            renderTrilho(); renderEscrita();
+          } catch (e) {}
+        } });
       /* zzz128: veio de "Criar roteiro com IA" (linha editorial): abre a
          janela de rascunho deste roteiro. Só abre — quem manda gerar e
          quem escolhe as cenas é a pessoa. O "ia=rascunho" sai do endereço
@@ -90,7 +113,7 @@ B7.Editor = (function () {
     document.getElementById('ed-gravacao').textContent =
       g.nome + (g.data_gravacao ? ' · ' + B7.UI.dataBR(g.data_gravacao) : '');
     const bt = document.getElementById('ed-status');
-    bt.innerHTML = B7.UI.chipStatus(g.status);
+    bt.innerHTML = g.banco ? '<span class="chip-revisao">Sem gravação</span>' : B7.UI.chipStatus(g.status);
     if (B7.pintarPortalGravacao) B7.pintarPortalGravacao();
   }
 
@@ -167,6 +190,7 @@ B7.Editor = (function () {
   }
 
   function menuStatus() {
+    if (E.gravacao && E.gravacao.banco) return;
     if (soLeitura()) return;
     const m = B7.UI.modal('<h3>Status da gravação</h3><div class="sub">Aparece no dashboard e na lista do cliente.</div>' +
       ['Rascunho', 'Pronto para gravar', 'Gravado'].map(s =>
@@ -268,7 +292,8 @@ B7.Editor = (function () {
     if (soLeitura()) return;
     try {
       const r = await B7.Save.acao(() => B7.DB.criarRoteiro({
-        recording_session_id: E.gravacao.id,
+        recording_session_id: E.gravacao.banco ? null : E.gravacao.id,
+        client_id: E.gravacao.client_id,
         position: E.roteiros.length,
         titulo: '', objetivo: '', observacao_gravacao: '',
         escala: 1, escala_automatica: true
@@ -300,6 +325,32 @@ B7.Editor = (function () {
       selecionar(copia.id);
       renderTrilho();
     } catch (e) {}
+  }
+
+  /* 4.15.0: leva o roteiro para outra gravação do cliente ou para o banco */
+  async function moverRoteiro(r) {
+    if (soLeitura()) return;
+    let gravs = [];
+    try { gravs = await B7.DB.gravacoesAbertasDoCliente(E.gravacao.client_id); } catch (e) {}
+    gravs = gravs.filter(g => g.id !== E.gravacao.id);
+    const op = (E.gravacao.banco ? [] : [{ id: '', nome: '📥 Banco de roteiros (sem gravação)' }])
+      .concat(gravs.map(g => ({ id: g.id, nome: g.nome + (g.data_gravacao ? ' · ' + B7.UI.dataBR(g.data_gravacao) : ' · sem data') })));
+    if (!op.length) { B7.UI.toast('Este cliente não tem outra gravação aberta. Crie uma gravação primeiro.'); return; }
+    const m = B7.UI.modal('<h3>Mover “' + esc(r.titulo || 'Roteiro sem título') + '”</h3><div class="sub">Escolha para onde o roteiro vai. As cenas vão junto.</div>' +
+      '<div class="mv-lista">' + op.map(o => '<button type="button" class="mv-op" data-g="' + esc(o.id) + '">' + esc(o.nome) + '</button>').join('') + '</div>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button></div>');
+    m.querySelectorAll('[data-g]').forEach(b => b.onclick = async () => {
+      m.fechar();
+      const destino = b.dataset.g || null;
+      try {
+        await B7.Save.acao(() => B7.DB.moverRoteiro(r.id, destino, E.gravacao.client_id), 'Roteiro movido');
+        const idx = E.roteiros.findIndex(x => x.id === r.id);
+        if (idx >= 0) E.roteiros.splice(idx, 1);
+        if (E.atual === r.id) E.atual = E.roteiros.length ? E.roteiros[Math.max(0, idx - 1)].id : null;
+        renderTrilho(); renderEscrita(); renderPrevia();
+        B7.UI.toast('Roteiro movido', { acao: 'Abrir', aoClicar: () => { location.hash = '#/gravacao/' + (destino || 'banco-' + E.gravacao.client_id) + '/roteiros?roteiro=' + r.id; } });
+      } catch (e) {}
+    });
   }
 
   function excluirRoteiro(id) {
@@ -384,6 +435,7 @@ B7.Editor = (function () {
           '<button data-acao="apresentar">Apresentar roteiros</button>' +
           (window.B7.Teleprompter && B7.Teleprompter.podeUsar && !B7.Teleprompter.podeUsar() ? '' : '<button data-acao="teleprompter">Abrir Teleprompter</button><hr>') +
           '<button data-acao="duplicar">Duplicar roteiro</button>' +
+          '<button data-acao="mover">Mover para outra gravação…</button>' +
           '<button data-acao="novo">Novo roteiro</button>' +
           '<button data-acao="fixar">' + (r.is_pinned ? 'Desafixar' : 'Fixar roteiro') + '</button><hr>' +
           '<button class="perigo" data-acao="excluir">Excluir roteiro</button>' +
@@ -553,7 +605,7 @@ B7.Editor = (function () {
       try {
         await B7.Save.acao(() => B7.DB.atualizarRoteiro(r.id, { status: v }), 'Estágio: ' + v);
         B7.DB.registrar({ tipo: 'status', entidade: 'roteiro', id: r.id,
-          cliente: E.gravacao.client_id, gravacao: E.gravacao.id,
+          cliente: E.gravacao.client_id, gravacao: E.gravacao.banco ? null : E.gravacao.id,
           texto: (r.titulo || 'Roteiro sem título') + ' → ' + v });
       } catch (e) {}
       renderTrilho();
@@ -568,6 +620,7 @@ B7.Editor = (function () {
       const a = b.dataset.acao;
       if (a === 'enviar-aprovacao') return enviarParaAprovacao();
       if (a === 'duplicar') duplicarRoteiro(r.id);
+      if (a === 'mover') moverRoteiro(r);
       if (a === 'novo') novoRoteiro();
       if (a === 'baixar') baixar(r.id);
       if (a === 'espiar') espiar(r);
@@ -883,7 +936,7 @@ B7.Editor = (function () {
 
   /* ============================================== dados da gravação */
   function editarGravacao() {
-    if (soLeitura()) return;
+    if (soLeitura() || E.gravacao.banco) return;
     const g = E.gravacao;
     const m = B7.UI.modal('<h3>Dados da gravação</h3>' +
       '<div class="mb"><label class="rot">NOME DA GRAVAÇÃO</label><input class="campo" id="dd-nome" data-foco value="' + esc(g.nome) + '"></div>' +

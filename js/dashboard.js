@@ -763,7 +763,7 @@ B7.Dashboard = (function () {
   function cardRoteiro(r) {
     const g = r.gravacao || {};
     const cliente = g.cliente_nome || 'Sem cliente';
-    return '<div class="card-roteiro spot eleva" data-gravacao="' + esc(r.recording_session_id) +
+    return '<div class="card-roteiro spot eleva" data-gravacao="' + esc(r.recording_session_id || ('banco-' + r.client_id)) +
       '" data-roteiro="' + esc(r.id) + '" data-total-roteiros="' + (g.total_roteiros || 0) + '" ' +
       'role="link" tabindex="0" aria-label="Abrir roteiro ' + esc(tituloTela(r.titulo)) + '">' +
       '<div class="cr-topo">' + B7.UI.avatarCliente(cliente, g.cliente_logo_url || null) +
@@ -778,7 +778,7 @@ B7.Dashboard = (function () {
       '</div></div>';
   }
   function linhaRoteiroLista(r) {
-    return '<div class="rt-linha" data-gravacao="' + esc(r.recording_session_id) + '" data-roteiro="' + esc(r.id) + '" role="link" tabindex="0" ' +
+    return '<div class="rt-linha" data-gravacao="' + esc(r.recording_session_id || ('banco-' + r.client_id)) + '" data-roteiro="' + esc(r.id) + '" role="link" tabindex="0" ' +
         'aria-label="Abrir roteiro ' + esc(tituloTela(r.titulo)) + '">' +
       '<span class="rt-l-tx"><b>' + esc(tituloTela(r.titulo)) + '</b>' + (r.objetivo ? '<small>' + esc(r.objetivo) + '</small>' : '') + '</span>' +
       '<span class="rt-l-st">' + B7.UI.chipRevisao(r.status) + '</span>' +
@@ -1714,7 +1714,7 @@ B7.Dashboard = (function () {
       ' · ' + g.total_roteiros + ' roteiro' + (g.total_roteiros === 1 ? '' : 's') + '</small></div></div>').join('');
 
     const listaRoteiros = roteiros.length ? '<div class="vg-lista">' + roteiros.map(r =>
-      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id) +
+      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id || ('banco-' + r.client_id)) +
         '" data-roteiro="' + esc(r.id) + '">' +
         '<div class="n">' + String((r.position || 0) + 1).padStart(2, '0') + '</div>' +
         '<div class="tx"><b>' + esc(r.titulo || 'Sem título') + '</b><small>' +
@@ -1760,6 +1760,7 @@ B7.Dashboard = (function () {
         '</div>' +
         '<input class="campo" id="busca-grav" placeholder="Buscar gravações…">' +
         '<div class="espaco" style="flex:1"></div>' +
+        '<a class="b contorno" href="#/gravacao/banco-' + esc(c.id) + '/roteiros" title="Roteiros escritos antes de ter gravação marcada">📥 Banco de roteiros</a>' +
         '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button>' +
       '</div>' +
       (gravacoes.length
@@ -1799,7 +1800,7 @@ B7.Dashboard = (function () {
     }
     /* mesma lista única da visão geral (zzd) */
     return '<div class="vg-lista">' + roteiros.map(r =>
-      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id) +
+      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id || ('banco-' + r.client_id)) +
         '" data-roteiro="' + esc(r.id) + '">' +
         '<div class="n">' + String((r.position || 0) + 1).padStart(2, '0') + '</div>' +
         '<div class="tx"><b>' + esc(r.titulo || 'Sem título') + '</b><small>' +
@@ -3515,7 +3516,7 @@ B7.Dashboard = (function () {
       }
       if (r.roteiros.length) {
         html += '<div class="grupo">ROTEIROS</div>' + r.roteiros.map(t =>
-          '<div class="res" data-ir="#/gravacao/' + esc(t.recording_session_id) + '?roteiro=' + esc(t.id) +
+          '<div class="res" data-ir="#/gravacao/' + esc(t.recording_session_id || ('banco-' + t.client_id)) + '?roteiro=' + esc(t.id) +
           '"><div class="mini">' + IC.roteiros + '</div><div><b>' + esc(t.titulo || 'Sem título') +
           '</b><small>abrir na gravação</small></div></div>').join('');
       }
@@ -3540,7 +3541,7 @@ B7.Dashboard = (function () {
       }
       if ((r.cenas || []).length) {
         html += '<div class="grupo">NO TEXTO DAS CENAS</div>' + r.cenas.map(c =>
-          '<div class="res" data-ir="#/gravacao/' + esc(c.roteiro.recording_session_id) +
+          '<div class="res" data-ir="#/gravacao/' + esc(c.roteiro.recording_session_id || ('banco-' + c.roteiro.client_id)) +
           '?roteiro=' + esc(c.roteiro.id) + '"><div class="mini">' + IC.roteiros +
           '</div><div><b>' + esc(String(c.texto || '').slice(0, 60)) + '…</b><small>' +
           esc(c.roteiro.titulo || 'Sem título') + (c.funcao ? ' · ' + esc(c.funcao) : '') +

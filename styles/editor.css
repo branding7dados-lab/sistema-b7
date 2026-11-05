@@ -362,3 +362,10 @@ body.foco .topo .contexto,body.foco .topo .nome-app,body.foco .topo .risco{displ
 .ref-uso:empty{display:none;}
 .ref-uso .rot-uso{font-size:12.5px;color:var(--ink-3);}
 .ref-uso .rot-uso b{color:#F0A443;}
+
+/* 4.15.0: banco de roteiros (editor sem gravação) e mover roteiro */
+body.ed-banco #mn-ed-portal,body.ed-banco #mn-ed-arquivar,body.ed-banco #mn-ed-dados,body.ed-banco #mn-ed-excluir{display:none !important;}
+body.ed-banco #ed-status{pointer-events:none;}
+.mv-lista{display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto;margin:12px 0;}
+.mv-op{text-align:left;border:1px solid var(--borda);background:var(--card);color:var(--ink);border-radius:12px;padding:11px 14px;font:inherit;font-size:13.5px;cursor:pointer;}
+.mv-op:hover{border-color:var(--acento);background:var(--acento-suave);}
