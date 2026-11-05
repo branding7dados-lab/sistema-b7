@@ -57,8 +57,27 @@ jobs:
           echo "B7_VERSAO_SITE=$(grep -oP "VERSAO = '\K[^']+" ../js/auth.js)" >> "$GITHUB_ENV"
           echo "Instalador $versao"
       - run: npm ci --no-audit --no-fund
+      # Assinatura (certificado próprio da Branding7 — app-desktop/certificado/LEIA-ME.md).
+      # Sem os segredos, o instalador sai sem assinatura, como antes.
       - name: Gerar o instalador
-        run: npx electron-builder --win --publish never
+        env:
+          CSC_LINK: ${{ secrets.B7_CERT_PFX_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.B7_CERT_SENHA }}
+        run: |
+          if [ -z "$CSC_LINK" ]; then echo "::warning::Sem certificado (segredo B7_CERT_PFX_BASE64): instalador sem assinatura."; unset CSC_LINK CSC_KEY_PASSWORD; fi
+          npx electron-builder --win --publish never
+      - name: Exportar a parte pública do certificado (branding7.cer)
+        if: github.event_name != 'pull_request'
+        env:
+          PFX: ${{ secrets.B7_CERT_PFX_BASE64 }}
+          SENHA: ${{ secrets.B7_CERT_SENHA }}
+        run: |
+          if [ -z "$PFX" ]; then exit 0; fi
+          echo "$PFX" | base64 -d > /tmp/b7.pfx
+          openssl pkcs12 -in /tmp/b7.pfx -clcerts -nokeys -passin env:SENHA -out /tmp/b7.pem 2>/dev/null || openssl pkcs12 -legacy -in /tmp/b7.pfx -clcerts -nokeys -passin env:SENHA -out /tmp/b7.pem
+          openssl x509 -in /tmp/b7.pem -outform der -out dist/branding7.cer
+          rm -f /tmp/b7.pfx /tmp/b7.pem
+          cp certificado/instalar-certificado.cmd dist/instalar-certificado-branding7.cmd
       - name: Conferir o que saiu
         run: |
           node latest-yml.mjs
@@ -93,6 +112,7 @@ jobs:
           # nesse meio-tempo recebia "Cannot download ... 404".
           gh release upload app-desktop "$B7_EXE" dist/sistema-b7-instalador.exe --clobber
           gh release upload app-desktop dist/latest.yml --clobber
+          if [ -f dist/branding7.cer ]; then gh release upload app-desktop dist/branding7.cer dist/instalar-certificado-branding7.cmd --clobber; fi
           # zzz161: cada publicação deixava mais um instalador de 78 MB na
           # release. Fica só o desta versão (o latest.yml aponta para ele) e
           # o sistema-b7-instalador.exe, que é o link fixo.

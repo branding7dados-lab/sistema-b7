@@ -44,7 +44,8 @@
         }
       ],
       "icon": "recursos/icone.ico",
-      "artifactName": "sistema-b7-setup-${version}.exe"
+      "artifactName": "sistema-b7-setup-${version}.exe",
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": true,
