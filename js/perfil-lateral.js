@@ -50,7 +50,8 @@ B7.PerfilLateral = (function () {
     if (sup && !outro) h += sup === 'supremo'
       ? '<span class="pf-cargo pf-cargo-prog"><i aria-hidden="true">&lt;/&gt;</i>Programador<em aria-hidden="true">_</em></span>'
       : '<span class="pf-cargo pf-cargo-super">Super admin</span>';
-    return '<span class="pf-cargos">' + h + lista.map((c, i) => '<span class="pf-cargo" style="--i:' + (i + 1) + '">' + esc(c) + '</span>').join('') + '</span>';
+    /* zzz294: o cargo especial numa etiqueta; as funções numa linha de texto embaixo */
+    return '<span class="pf-cargos">' + h + '</span>' + (lista.length ? '<small class="pf-funcoes">' + lista.map(esc).join(' · ') + '</small>' : '');
   }
   const funcoes = u => (B7.Topo && B7.Topo.funcoesDoUsuario ? B7.Topo.funcoesDoUsuario(u) : '') || 'Equipe B7';
 
