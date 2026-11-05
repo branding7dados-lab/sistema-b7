@@ -29,7 +29,7 @@ body:has(#b7-manut-faixa) #toasts{bottom:78px;}
 @keyframes mnEntra{from{opacity:0;}to{opacity:1;}}
 html.modo-leve .mn-trava{background:var(--fundo);backdrop-filter:none;-webkit-backdrop-filter:none;}
 /* 4.10.2: com jogo na tela, nada de desfoque (o navegador refazia o blur a cada quadro do jogo) */
-.mn-trava:has(.j3,.jc,.jm){background:var(--fundo);backdrop-filter:none;-webkit-backdrop-filter:none;}
+.mn-trava:has(.j3,.jc,.jm,.jmem){background:var(--fundo);backdrop-filter:none;-webkit-backdrop-filter:none;}
 .mn-caixa{width:min(460px,100%);padding:34px 30px 28px;border-radius:26px;text-align:center;
   background:var(--card);border:1px solid var(--borda);box-shadow:0 30px 80px -30px rgba(0,0,0,.4);}
 .mn-logo{height:34px;width:auto;margin:0 auto 20px;display:block;}
@@ -1977,3 +1977,39 @@ a.sa-item:hover{background:var(--suave);}
 .jc-fim[hidden]{display:none;}
 .jc-fim-t{font-family:'B7 Titulo',Inter,sans-serif;font-size:clamp(26px,5vw,40px);color:#FF4D6D;}
 .jc-fim-l{font-size:13.5px;color:#E6DDF2;}
+
+/* ---- 4.11.0: Corre pro Set! — prancha e outros jogos ---- */
+.jc-prancha-bt{width:auto;padding:0 8px;display:inline-flex;align-items:center;gap:3px;}
+.jc-prancha-bt i{font-style:normal;font-size:12px;font-weight:700;}
+.jc-prancha-bt.on{background:rgba(76,195,255,.45);box-shadow:0 0 12px rgba(76,195,255,.8);}
+.jc-prancha-ic{display:flex;align-items:center;justify-content:center;font-size:26px;background:linear-gradient(140deg,#2a1b6b,#e2409c)!important;}
+.jc-outros{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin-top:4px;}
+.jc-outros small{width:100%;text-align:center;color:#CFC3E3;font-size:11.5px;}
+.jc-outros .jc-outro{text-decoration:none;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fff;}
+.jc-outros .jc-outro:hover{background:rgba(255,255,255,.2);}
+
+/* ---- 4.11.0: Memória do Set ---- */
+.jmem{position:relative;margin-top:16px;padding:14px;border-radius:20px;background:linear-gradient(160deg,#1d1233,#2a1240);color:#fff;text-align:center;}
+.jmem-topo{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;}
+.jmem-tit{font-size:16px;letter-spacing:.5px;}
+.jmem-volta{border:0;background:none;color:#CFC3E3;font:inherit;cursor:pointer;text-decoration:underline;}
+.jmem-rec{color:#FFD36B;}
+.jmem-hud{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:10px 0 6px;font-size:13px;}
+.jmem-combo{color:#FF9AD5;font-weight:700;}
+.jmem-barra{height:5px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden;margin-bottom:10px;}
+.jmem-barra i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#8B7BFF,#FF4FA8,#FFD36B);transition:width 1s linear;}
+.jmem-grade{display:grid;grid-template-columns:repeat(var(--col,4),1fr);gap:8px;max-width:420px;margin:0 auto;}
+.jmem-carta{position:relative;aspect-ratio:3/4;border:0;padding:0;border-radius:12px;cursor:pointer;background:none;perspective:600px;}
+.jmem-carta span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:12px;backface-visibility:hidden;transition:transform .32s ease;}
+.jmem-verso{background:linear-gradient(140deg,#7b5cff,#e2409c);font-weight:800;font-size:18px;color:rgba(255,255,255,.85);}
+.jmem-frente{background:#f7f2ff;font-size:clamp(22px,6vw,34px);transform:rotateY(180deg);}
+.jmem-carta.aberta .jmem-verso{transform:rotateY(180deg);}
+.jmem-carta.aberta .jmem-frente{transform:rotateY(0);}
+.jmem-carta.ok .jmem-frente{background:#d8ffe9;box-shadow:0 0 0 2px #3ddc97 inset;}
+.jmem-tela{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;border-radius:20px;background:rgba(18,10,30,.9);}
+.jmem-tela[hidden]{display:none;}
+.jmem-tela b{font-size:18px;}
+.jmem-tela p{margin:0;color:#CFC3E3;font-size:13px;max-width:280px;}
+.jmem-rank{margin-top:12px;font-size:12.5px;text-align:left;}
+.jmem-rank ol{margin:6px 0 0;padding:0;list-style:none;}
+.jmem-rank li{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.08);}

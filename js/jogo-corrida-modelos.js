@@ -384,5 +384,53 @@ B7.CorridaModelos = (function () {
     return out;
   }
 
-  return { fundir, texturas, ambiente, materiais, trussBaixo, trussAlto, flightCase, caseEmpilhado, moeda, refletor, cadeiraDiretor, cabos, lampada, diretor };
+  /* ------------------------------------------------- 4.11.0: trens e prancha
+     Trem de cenário (vagão de 9 m, topo a 2,6 m: dá para correr em cima),
+     rampa para subir nele e a prancha da lâmpada. */
+  let texTrem = null;
+  function trem(T, MT, cor) {
+    if (!texTrem) texTrem = tex(T, 512, 128, (g, w, h) => {
+      g.fillStyle = '#ece6f5'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#e2409c'; g.fillRect(0, h * 0.68, w, h * 0.14);
+      g.fillStyle = '#7b5cff'; g.fillRect(0, h * 0.84, w, h * 0.06);
+      for (let i = 0; i < 6; i++) { g.fillStyle = '#1d1730'; g.fillRect(18 + i * 82, h * 0.16, 62, h * 0.38); g.fillStyle = 'rgba(160,200,255,.35)'; g.fillRect(22 + i * 82, h * 0.18, 20, h * 0.34); }
+      g.fillStyle = '#e2409c'; g.font = 'bold 34px sans-serif'; g.fillText('B7', w - 70, h * 0.62);
+      ruido(g, w, h, 1500, 0.12, '#000');
+    });
+    const g = new T.Group(), L = 9, topo = 2.6;
+    const lat = new T.MeshStandardMaterial({ map: texTrem, color: cor || 0xffffff, roughness: 0.45, metalness: 0.25 });
+    const frente = new T.MeshStandardMaterial({ color: 0xe2409c, roughness: 0.4, metalness: 0.2, emissive: 0x3a0a28, emissiveIntensity: 0.5 });
+    const corpo = new T.Mesh(new T.BoxGeometry(1.95, topo - 0.45, L), [lat, lat, MT.aluminio, MT.pretoMetal, frente, frente]);
+    corpo.position.y = 0.45 + (topo - 0.45) / 2; g.add(corpo);
+    const teto = new T.Mesh(new T.BoxGeometry(1.7, 0.08, L - 0.3), MT.aluminioEsc); teto.position.y = topo + 0.04; g.add(teto);
+    const chassi = new T.Mesh(new T.BoxGeometry(1.6, 0.3, L - 0.6), MT.pretoMetal); chassi.position.y = 0.32; g.add(chassi);
+    [-L / 2 + 1.4, L / 2 - 1.4].forEach(z => [-0.72, 0.72].forEach(x => {
+      const r = new T.Mesh(new T.CylinderGeometry(0.3, 0.3, 0.18, 16), MT.pretoMetal); r.rotation.z = Math.PI / 2; r.position.set(x, 0.3, z); g.add(r);
+      const r2 = new T.Mesh(new T.CylinderGeometry(0.3, 0.3, 0.18, 16), MT.pretoMetal); r2.rotation.z = Math.PI / 2; r2.position.set(x, 0.3, z + 0.75); g.add(r2);
+    }));
+    /* frente: para-brisa e faróis */
+    const vid = new T.Mesh(new T.BoxGeometry(1.5, 0.75, 0.05), new T.MeshStandardMaterial({ color: 0x1d2a44, metalness: 0.6, roughness: 0.1, emissive: 0x223355, emissiveIntensity: 0.4 }));
+    vid.position.set(0, 1.95, L / 2 + 0.01); g.add(vid);
+    [-0.6, 0.6].forEach(x => { const f = new T.Mesh(new T.CylinderGeometry(0.13, 0.13, 0.06, 14), MT.lente); f.rotation.x = Math.PI / 2; f.position.set(x, 0.85, L / 2 + 0.02); g.add(f); });
+    const para = new T.Mesh(new T.BoxGeometry(1.9, 0.22, 0.2), MT.aluminio); para.position.set(0, 0.45, L / 2 + 0.05); g.add(para);
+    return g;
+  }
+  function rampa(T, MT) {                /* rampa de madeira: sobe 2,6 m em 6 m */
+    const g = new T.Group(), Lr = 6, H = 2.6, ang = Math.atan2(H, Lr), comp = Math.hypot(H, Lr);
+    const tab = new T.Mesh(new T.BoxGeometry(1.9, 0.12, comp), MT.madeira); tab.rotation.x = -ang; tab.position.set(0, H / 2, 0); g.add(tab);
+    for (let i = 0; i < 6; i++) { const r = new T.Mesh(new T.BoxGeometry(1.92, 0.04, 0.12), MT.zebra); const k = (i + 0.5) / 6; r.position.set(0, H * (1 - k) + 0.09, -Lr / 2 + Lr * k); r.rotation.x = -ang; g.add(r); }
+    [-0.85, 0.85].forEach(x => { const l = new T.Mesh(new T.BoxGeometry(0.1, H, 0.12), MT.aluminioEsc); l.position.set(x, H / 2, -Lr / 2 + 0.2); g.add(l);
+      const l2 = new T.Mesh(new T.BoxGeometry(0.1, H / 2, 0.12), MT.aluminioEsc); l2.position.set(x, H / 4, 0); g.add(l2); });
+    return g;
+  }
+  function prancha(T) {
+    const g = new T.Group();
+    const base = new T.Mesh(new T.CapsuleGeometry(0.42, 1.2, 6, 14), new T.MeshStandardMaterial({ color: 0x2a1b6b, emissive: 0xe2409c, emissiveIntensity: 0.6, roughness: 0.35, metalness: 0.4 }));
+    base.rotation.x = Math.PI / 2; base.scale.set(1, 1, 0.16); g.add(base);
+    const brilho = new T.Mesh(new T.PlaneGeometry(1, 2), new T.MeshBasicMaterial({ color: 0x4cc3ff, transparent: true, opacity: 0.45, depthWrite: false, blending: T.AdditiveBlending }));
+    brilho.rotation.x = -Math.PI / 2; brilho.position.y = -0.1; g.add(brilho);
+    return g;
+  }
+
+  return { trem, rampa, prancha, fundir, texturas, ambiente, materiais, trussBaixo, trussAlto, flightCase, caseEmpilhado, moeda, refletor, cadeiraDiretor, cabos, lampada, diretor };
 })();

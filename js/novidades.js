@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.11.0', versao: '4.11.0', em: '2026-11-05T23:30:00-03:00',
+    titulo: 'Corre pro Set! com trens, prancha e música',
+    itens: ['Trens de cenário: parados (suba pela rampa e corra em cima) ou vindo na sua direção. Com o superpulo dá para subir nos cases e nos trens.',
+            'Prancha: toque duas vezes na tela (no PC, tecla E ou o botão 🛹). Dura 30 segundos e, se você bater, ela quebra no seu lugar. Você ganha 3 e compra mais na loja.',
+            'O ímã agora puxa todas as moedas em volta da lâmpada, das 3 faixas. E o jogo ganhou música, que acelera junto com a corrida.',
+            'Novo jogo na manutenção: Memória do Set, com 3 fases contra o relógio e ranking. Fica em "Outros jogos", junto do Ação! Corta! e do Clássico 2D.'] },
   { id: 'v-4.10.2', versao: '4.10.2', em: '2026-11-05T22:00:00-03:00',
     titulo: 'Jogos sem travar',
     itens: ['Tiramos o desfoque do fundo da manutenção enquanto o jogo roda (era o que mais pesava), além de sombras e luzes extras. A resolução se ajusta mais rápido quando o aparelho engasga.'] },

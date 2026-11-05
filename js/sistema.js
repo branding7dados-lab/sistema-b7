@@ -103,13 +103,19 @@ B7.Manutencao = (function () {
   }
   /* o jogo da manutenção (js/jogo-manut.js) */
   function comJogo(el) {
-    if (el.querySelector('.jm, .j3')) return;
+    if (el.querySelector('.jm, .j3, .jmem')) return;
     /* 4.8.0: o 3D quando o aparelho aguenta; senão o 2D */
     try {
       const cx = el.querySelector('.mn-caixa');
       /* 4.9.0: a corrida é o jogo principal; "Ação! Corta!" fica como opção */
       let gl = false; try { const c = document.createElement('canvas'); gl = !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e2) {}
-      if (gl && B7.JogoCorrida && B7.vendor) B7.JogoCorrida.montar(cx, { outroJogo: () => B7.Jogo3D && B7.Jogo3D.montar(cx) });
+      /* 4.11.0: menu de outros jogos (Ação! Corta!, Memória do Set, Batatinha 2D) */
+      const corrida = () => B7.JogoCorrida.montar(cx, { jogos: [
+        { nome: '🎬 Ação! Corta!', abrir: () => B7.Jogo3D && B7.Jogo3D.montar(cx) },
+        B7.JogoMemoria && { nome: '🃏 Memória do Set', abrir: () => B7.JogoMemoria.montar(cx, { voltar: corrida }) },
+        B7.JogoManut && { nome: '🕹 Clássico 2D', abrir: () => B7.JogoManut.montar(cx) }
+      ].filter(Boolean) });
+      if (gl && B7.JogoCorrida && B7.vendor) corrida();
       else if (B7.Jogo3D) B7.Jogo3D.montarMelhor(cx);
       else if (B7.JogoManut) B7.JogoManut.montar(el.querySelector('.mn-caixa'));
     } catch (e) {}
