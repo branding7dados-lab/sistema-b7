@@ -375,7 +375,12 @@ B7.Novidades = (function () {
     if (n.ia && !(B7.IA && B7.IA.ligada && B7.IA.ligada(n.ia))) return false;
     return true;
   }
-  const dasVersoes = () => (B7.NOVIDADES_VERSOES || []).filter(valePara);
+  /* 4.20.2: o administrador pode apagar uma novidade de versão sem publicar
+     o site: a lista de apagadas fica no banco (sistema_config.novidades_ocultas) */
+  let ocultas = null;
+  const ocultasIds = () => ocultas || (B7.pref ? B7.pref.ler('sis_novidades_ocultas', null) : null) || [];
+  const dasVersoes = () => (B7.NOVIDADES_VERSOES || []).filter(n => valePara(n) && !ocultasIds().includes(n.id));
+  const souAdm = () => !!(B7.Auth && B7.Auth.ehAdminReal && B7.Auth.ehAdminReal());
   const dados = () => doBanco().concat(dasVersoes()).sort((a, b) => new Date(b.em) - new Date(a.em));
   const dia = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.getDate() + ' de ' + MESES[d.getMonth()]; };
   const vistas = () => (B7.pref && B7.pref.ler('novidades_vistas', [])) || [];
@@ -386,9 +391,11 @@ B7.Novidades = (function () {
   async function sincronizar() {
     if (!B7.sb) return;
     try {
-      const { data } = await B7.sb.from('sistema_config').select('valor').eq('chave', 'novidades').maybeSingle();
-      lista = (data && Array.isArray(data.valor)) ? data.valor : [];
-      if (B7.pref) B7.pref.gravar('sis_novidades', lista);
+      const { data } = await B7.sb.from('sistema_config').select('chave,valor').in('chave', ['novidades', 'novidades_ocultas']);
+      const de = k => ((data || []).find(x => x.chave === k) || {}).valor;
+      lista = Array.isArray(de('novidades')) ? de('novidades') : [];
+      ocultas = Array.isArray(de('novidades_ocultas')) ? de('novidades_ocultas') : [];
+      if (B7.pref) { B7.pref.gravar('sis_novidades', lista); B7.pref.gravar('sis_novidades_ocultas', ocultas); }
     } catch (e) { /* sem rede: as novidades da versão aparecem do mesmo jeito */ }
     cartao();
   }
@@ -417,7 +424,8 @@ B7.Novidades = (function () {
     return '<div class="nv-lista">' + itens.map(n =>
       '<article class="nv-item' + (!comRemover && !v.includes(n.id) ? ' nova' : '') + '"><header><b>' + esc(n.titulo) + '</b>' +
         '<small>' + esc([dia(n.em), n.versao || ''].filter(Boolean).join(' · ')) + '</small>' +
-        (comRemover ? '<button type="button" class="nv-rm" data-rm="' + esc(n.id) + '">Remover</button>' : '') + '</header>' +
+        (comRemover ? '<button type="button" class="nv-rm" data-rm="' + esc(n.id) + '">Remover</button>' : '') +
+        (!comRemover && souAdm() ? '<button type="button" class="nv-rm nv-apagar" data-apagar-nv="' + esc(n.id) + '" title="Apagar esta novidade para todo mundo" aria-label="Apagar esta novidade">🗑</button>' : '') + '</header>' +
         ((n.itens || []).length ? '<ul>' + n.itens.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '') +
         /* zzz213: a novidade leva até a tela onde ela está */
         (!comRemover && (n.irPara || n.rota) ? '<a class="nv-ir" href="#/' + esc(n.irPara || n.rota) + '" data-fecha-nv>Ver na tela →</a>' : '') + '</article>').join('') + '</div>';
@@ -429,6 +437,23 @@ B7.Novidades = (function () {
       '<div class="acoes"><button type="button" class="b pri" data-fecha>Entendi</button></div>', { larga: true });
     m.querySelectorAll('[data-fecha]').forEach(x => x.onclick = m.fechar);
     m.querySelectorAll("[data-fecha-nv]").forEach(a => a.addEventListener("click", () => m.fechar()));
+    m.querySelectorAll('[data-apagar-nv]').forEach(b => b.onclick = async () => {
+      const id = b.dataset.apagarNv;
+      const ok = await B7.UI.confirmar({ titulo: 'Apagar esta novidade?', texto: 'Ela some do Novidades para toda a equipe. Não precisa atualizar o sistema.', rotulo: 'Apagar', perigo: true });
+      if (!ok) return;
+      try {
+        if (doBanco().some(n => n.id === id)) {
+          const nova = doBanco().filter(n => n.id !== id);
+          const r = await B7.DB.rpc('novidades_definir', { p_lista: nova });
+          lista = Array.isArray(r) ? r : nova; if (B7.pref) B7.pref.gravar('sis_novidades', lista);
+        } else {
+          const r = await B7.DB.rpc('novidades_ocultar', { p_ids: ocultasIds().concat(id) });
+          ocultas = Array.isArray(r) ? r : ocultasIds().concat(id); if (B7.pref) B7.pref.gravar('sis_novidades_ocultas', ocultas);
+        }
+        const art = b.closest('.nv-item'); if (art) art.remove();
+        B7.UI.toast('Novidade apagada.'); cartao();
+      } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível apagar.', { tipo: 'erro' }); }
+    });
     marcarLidas();
   }
 
