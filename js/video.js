@@ -1201,6 +1201,56 @@ B7.Video = (function () {
       abrirMenuLote(e.clientX, e.clientY, id);
     };
   }
+  /* 4.19.0: duplicar demanda — cria 1 a 10 demandas novas a partir de uma,
+     começando do zero (Pendente, sem versões, sem conclusão). Copia
+     cliente, competência, gravação, pacote e prioridade; responsável,
+     prazo, roteiros e observações são escolha da pessoa. */
+  async function duplicarDemanda(id) {
+    let d;
+    try { d = await B7.DB.demandaVideo(id); } catch (e) { B7.UI.toast('Não foi possível abrir a demanda para duplicar.', { tipo: 'erro' }); return; }
+    const rots = d.roteiros_vinculados || [];
+    const marca = (k, r, on) => '<label class="vd-dup-op"><input type="checkbox" data-k="' + k + '"' + (on ? ' checked' : '') + '><span>' + r + '</span></label>';
+    const m = B7.UI.modal('<h3>Duplicar demanda</h3>' +
+      '<div class="sub">A cópia começa do zero (Pendente, sem versões e sem conclusão), no mesmo cliente' + (d.gravacao_id ? ' e gravação' : '') + '.</div>' +
+      '<div class="mb"><label class="rot" for="vd-dup-tit">TÍTULO</label><input class="campo" id="vd-dup-tit" data-foco value="' + esc((d.titulo || '') + ' (cópia)') + '"></div>' +
+      '<div class="linha mb"><div><label class="rot" for="vd-dup-cod">CÓDIGO</label><input class="campo" id="vd-dup-cod" placeholder="opcional" value=""></div>' +
+        '<div><label class="rot" for="vd-dup-n">QUANTAS CÓPIAS</label><input class="campo" id="vd-dup-n" type="number" min="1" max="10" value="1"></div></div>' +
+      '<div class="vd-dup-ops">' +
+        marca('resp', 'Manter o responsável' + (d.videomaker_nome ? ' (' + esc(d.videomaker_nome) + ')' : ''), true) +
+        marca('prazo', 'Manter o prazo' + (d.prazo ? ' (' + esc(B7.UI.dataBR(String(d.prazo).slice(0, 10))) + ')' : ''), !!d.prazo) +
+        (rots.length ? marca('rot', 'Vincular os mesmos roteiros (' + rots.length + ')', true) : '') +
+        marca('obs', 'Copiar o "Sobre o vídeo"', !!d.observacoes) +
+      '</div>' +
+      '<p class="fraca vd-dup-dica">Com mais de uma cópia, o título ganha 2, 3, 4… no fim.</p>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="vd-dup-ok">Duplicar</button></div>');
+    const ok = m.querySelector('#vd-dup-ok'), on = k => { const c = m.querySelector('[data-k="' + k + '"]'); return !!(c && c.checked); };
+    ok.onclick = async () => {
+      const base = m.querySelector('#vd-dup-tit').value.trim() || d.titulo || 'Demanda';
+      const n = Math.max(1, Math.min(10, parseInt(m.querySelector('#vd-dup-n').value, 10) || 1));
+      const codigo = m.querySelector('#vd-dup-cod').value.trim();
+      ok.disabled = true; ok.textContent = 'Duplicando…';
+      const criadas = [];
+      try {
+        for (let i = 0; i < n; i++) {
+          const novo = await B7.DB.criarDemandaVideo({
+            clienteId: d.client_id, titulo: n > 1 ? base + ' ' + (i + 1) : base, codigo: n > 1 && codigo ? codigo + '-' + (i + 1) : codigo,
+            competenciaAno: d.competencia_ano || null, competenciaMes: d.competencia_mes || null, gravacaoId: d.gravacao_id || null,
+            videomakerId: on('resp') ? d.videomaker_id || null : null, pacote: d.pacote || '', prazo: on('prazo') ? d.prazo || null : null,
+            observacoes: on('obs') ? d.observacoes || '' : '', prioridade: d.prioridade || 'normal' });
+          const nid = typeof novo === 'string' ? novo : (novo && (novo.id || novo[0])) || null;
+          if (nid && on('rot') && rots.length) { try { await B7.DB.definirRoteirosVideo(nid, rots.map(r => r.id)); } catch (e) {} }
+          if (nid) criadas.push(nid);
+        }
+        m.fechar();
+        B7.UI.toast(criadas.length === 1 ? 'Demanda duplicada.' : criadas.length + ' demandas criadas.', criadas.length === 1 ? { acao: 'Abrir', aoClicar: () => { location.hash = '#/video/' + criadas[0]; } } : {});
+        if (!/^#\/video\/[^/?]/.test(location.hash)) abrir();
+      } catch (e) {
+        ok.disabled = false; ok.textContent = 'Duplicar';
+        B7.UI.toast((e && e.message) || 'Não foi possível duplicar.', { tipo: 'erro' });
+      }
+    };
+  }
+
   function abrirMenuLote(x, y, id) {
     fecharMenuLote();
     if (B7.Ctx && B7.Ctx.fechar) B7.Ctx.fechar();
@@ -1208,6 +1258,7 @@ B7.Video = (function () {
     const itens = [
       ['entregar', n === 1 ? 'Marcar como entregue' : 'Marcar ' + n + ' como entregues', true],
       n === 1 ? ['abrir', 'Abrir demanda'] : null,
+      n === 1 && possoOperar() ? ['duplicar', 'Duplicar…'] : null,
       podeApagarLote() ? ['apagar', n === 1 ? 'Apagar' : 'Apagar ' + n] : null,
       ['todas', 'Selecionar todas'],
       ['limpar', 'Limpar seleção']
@@ -1229,6 +1280,7 @@ B7.Video = (function () {
       if (a === 'entregar') entregarSelecionadas();
       else if (a === 'apagar') apagarSelecionadas();
       else if (a === 'abrir') location.hash = '#/video/' + id;
+      else if (a === 'duplicar') duplicarDemanda(id);
       else if (a === 'todas') selecionarTodas();
       else limparSel();
     };
@@ -2514,6 +2566,7 @@ B7.Video = (function () {
           (podeEditar
             ? '<div class="vd-acoes-topo">' +
               '<button class="b fina contorno" id="vd-dt-editar">Editar nome e código</button>' +
+              '<button class="b fina contorno" id="vd-dt-duplicar">Duplicar</button>' +
               (d.editing_status !== 'descartado' ? '<button class="b fina contorno" id="vd-dt-descartar">Descartar</button>' : '') +
               '<button class="b fina contorno perigo" id="vd-dt-excluir">Excluir</button></div>'
             : '') +
@@ -3194,6 +3247,8 @@ B7.Video = (function () {
       salvarRoteirosVinculados(novos, btRoteiroAdd);
     };
 
+    const btDuplicar = document.getElementById('vd-dt-duplicar');
+    if (btDuplicar) btDuplicar.onclick = () => duplicarDemanda(d.id);
     const btDescartar = document.getElementById('vd-dt-descartar');
     if (btDescartar) btDescartar.onclick = async () => {
       const ok = await B7.UI.confirmar({
