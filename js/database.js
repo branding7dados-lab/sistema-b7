@@ -2062,6 +2062,7 @@ B7.DB = (function () {
     /* Demandas ativas da pessoa (sem entregue/descartado) — alimenta
        KPIs, atenção, semana e compromissos. Volume pequeno por natureza. */
     async painelDemandasAtivas(uid) {
+      if (!uid) return [];   /* sem sessão: nada a buscar (evita videomaker_id=eq.null → 400) */
       return ok(await sb().from('demandas_edicao_resumo')
         .select('id,titulo,codigo,client_id,cliente_nome,cliente_logo_url,editing_status,prioridade,prazo,standby_revisar_em,gravacao_id,updated_at')
         .eq('videomaker_id', uid)
@@ -2075,6 +2076,7 @@ B7.DB = (function () {
        semana de 14/09), o que faria o gráfico mentir. O embed !inner em
        demandas_edicao escopa pelo videomaker numa chamada só. */
     async painelEntregas(uid, desdeISO) {
+      if (!uid) return [];
       return ok(await sb().from('demandas_edicao_eventos')
         .select('demanda_id,created_at,demandas_edicao!inner(videomaker_id,editing_status,titulo,clientes(nome,logo_url))')
         .eq('tipo', 'status').eq('para_status', 'entregue')
