@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.18.0', versao: '4.18.0', em: '2026-11-06T14:00:00-03:00',
+    titulo: 'Teleprompter: escolha como usar',
+    itens: ['Ao abrir o teleprompter, escolha: 📱 Ler na tela, 🪞 Teleprompter (no aparelho, como o Ulanzi RT02: texto espelhado e o celular pode ficar em pé) ou 🎥 Gravar com o celular.',
+            'Controle remoto Bluetooth: Enter ou play/pause começa e pausa; avançar e voltar trocam de cena.'] },
   { id: 'v-4.17.3', versao: '4.17.3', em: '2026-11-06T13:00:00-03:00',
     titulo: 'Roteiros sem cliente: Banco geral',
     itens: ['Em Roteiros, "Novo roteiro" cria um roteiro sem cliente e sem gravação, no Banco geral (seção própria no topo da página). Bom para ideias e modelos; a folha A4 sai sem a faixa de cliente.',

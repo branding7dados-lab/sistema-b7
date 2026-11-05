@@ -281,3 +281,6 @@ html.b7-cam-nativa,html.b7-cam-nativa body{background:transparent !important;}
 html.b7-cam-nativa body::before,html.b7-cam-nativa body::after{display:none !important;}
 html.b7-cam-nativa body > *:not(.tele){visibility:hidden !important;}
 html.b7-cam-nativa .tele,html.b7-cam-nativa .tele.com-camera{background:transparent !important;}
+/* 4.18.0: como vai usar (3 opções) */
+.tele-uso{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
+.tele-gate .tele-acao-2{background:rgba(255,255,255,.12);box-shadow:none;}

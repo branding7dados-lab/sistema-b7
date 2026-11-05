@@ -61,7 +61,7 @@ B7.Teleprompter = (function () {
      2. PREFERÊNCIAS — deste aparelho (não vão para o banco)
      ================================================================ */
   const PADRAO = { modo: 'cenas', fonte: 0, velocidade: 7, espaco: 'normal', largura: 'media',
-                   espelho: false, contagem: 3, preparar: true, camera: false,
+                   espelho: false, contagem: 3, preparar: true, camera: false, aparelho: false,
                    caixa: { x: 4, y: 10, w: 92, h: 28 } };
   const ESPACO = { compacto: 1.18, normal: 1.38, amplo: 1.62 };
   const LARGURA = { estreita: 58, media: 76, larga: 94 };
@@ -97,7 +97,8 @@ B7.Teleprompter = (function () {
      consulta de mídia (orientation) pode atualizar um instante depois */
   const emRetrato = () => window.innerHeight > window.innerWidth;
   /* com a câmera, retrato vale: é o vídeo vertical (Reels, TikTok) */
-  const precisaGirar = () => ehCelular() && emRetrato() && !(S && S.camera);
+  /* 4.18.0: no modo aparelho (Ulanzi RT02 e afins) o celular pode ficar em pé */
+  const precisaGirar = () => ehCelular() && emRetrato() && !(S && S.camera) && !(P && P.aparelho);
 
   const elTelaCheia = () => document.fullscreenElement || document.webkitFullscreenElement || null;
   function entrarTelaCheia() {
@@ -269,8 +270,9 @@ B7.Teleprompter = (function () {
       '<section class="tele-painel" id="tele-painel" hidden></section>' +
       '<aside class="tele-folha" id="tele-folha" role="dialog" aria-label="Ajustes de leitura" hidden></aside>' +
       '<div class="tele-gate" id="tele-gate" role="alert" hidden>' + IC.girar +
-        '<b>Gire o celular para continuar</b><span>O Teleprompter B7 funciona no modo paisagem.</span>' +
-        (camDisponivel() ? '<button type="button" class="tele-acao" data-tele="camera">Gravar em pé com a câmera</button>' : '') +
+        '<b>Gire o celular para ler na tela</b><span>Ou escolha como usar em pé:</span>' +
+        '<button type="button" class="tele-acao" data-uso="aparelho">🪞 Usar no aparelho de teleprompter</button>' +
+        (camDisponivel() ? '<button type="button" class="tele-acao tele-acao-2" data-tele="camera">🎥 Gravar em pé com a câmera</button>' : '') +
         '<button type="button" class="tele-bt texto" data-tele="sair">Sair</button></div>';
     document.body.appendChild(el);
     document.body.classList.add('tele-aberto');
@@ -456,7 +458,14 @@ B7.Teleprompter = (function () {
             '<button type="button" role="radio" aria-checked="' + (P.modo === 'cenas') + '" data-modo="cenas"><b>Por cenas</b><small>Uma cena por vez, para gravar em takes</small></button>' +
             '<button type="button" role="radio" aria-checked="' + (P.modo === 'continuo') + '" data-modo="continuo"><b>Contínuo</b><small>O roteiro inteiro, rolando</small></button>' +
           '</div>' +
-          (camDisponivel()
+          /* 4.18.0: como vai usar — ler na tela, aparelho de teleprompter (espelhado) ou gravar com o celular */
+          '<small class="tele-rotulo">Como vai usar</small>' +
+          '<div class="tele-modo tele-uso" role="radiogroup" aria-label="Como vai usar">' +
+            '<button type="button" role="radio" aria-checked="' + (!S.camera && !P.aparelho) + '" data-uso="tela"><b>📱 Ler na tela</b><small>Texto normal, direto no aparelho</small></button>' +
+            '<button type="button" role="radio" aria-checked="' + (!S.camera && !!P.aparelho) + '" data-uso="aparelho"><b>🪞 Teleprompter</b><small>No aparelho (Ulanzi RT02): texto espelhado para o vidro</small></button>' +
+            (camDisponivel() ? '<button type="button" role="radio" aria-checked="' + !!S.camera + '" data-uso="camera"><b>🎥 Gravar</b><small>Câmera do celular grava enquanto você lê</small></button>' : '') +
+          '</div>' +
+          (false
             ? '<label class="tele-liga tele-cam-liga"><span><b>Gravar com a câmera</b><small>' +
                 (S.camera ? 'Câmera da frente ligada. Cada leitura vira um vídeo' + (B7.AppNativo && B7.AppNativo.ativo ? ' na galeria.' : ', baixado ao terminar.')
                   : 'A câmera da frente grava enquanto você lê.') + '</small></span>' +
@@ -678,9 +687,19 @@ B7.Teleprompter = (function () {
     } else if (!on && ui) { ui.remove(); gravarPrefs(); medir(true); }
   }
 
+  function escolherUso(uso) {
+    if (!S) return;
+    if (uso === 'camera') { P.aparelho = false; gravarPrefs(); if (!S.camera) ligarCamera(); else telaInicio(); return; }
+    if (S.camera) desligarCamera();
+    P.camera = false; P.aparelho = uso === 'aparelho'; P.espelho = uso === 'aparelho';
+    gravarPrefs(); aplicarPrefs(); conferirOrientacao(); telaInicio();
+  }
+
   function aoClicar(e) {
     if (!S) return;
     if (e.target.closest('.tele-caixa-ui')) return;
+    const u = e.target.closest('[data-uso]');
+    if (u) { escolherUso(u.dataset.uso); return; }
     const b = e.target.closest('[data-tele],[data-pref],[data-modo],[data-roteiro]');
     if (!b || b.disabled) {
       /* toque na área de leitura: mostra ou esconde os controles */
@@ -712,7 +731,10 @@ B7.Teleprompter = (function () {
       return fechar();
     }
     if (S.fase === 'inicio' || S.fase === 'aviso' || !S.folha.hidden) return;
-    if (k === ' ' || k === 'Spacebar') {
+    /* 4.18.0: controle remoto Bluetooth (Ulanzi e afins) manda Enter ou teclas de mídia */
+    if (k === 'MediaTrackNext') { e.preventDefault(); return S.fase === 'fim' ? null : irCena(1); }
+    if (k === 'MediaTrackPrevious') { e.preventDefault(); return S.fase === 'fim' ? null : irCena(-1); }
+    if (k === ' ' || k === 'Spacebar' || k === 'Enter' || k === 'MediaPlayPause') {
       if (emBotao) return;                            /* o botão focado já responde ao espaço */
       e.preventDefault();
       if (S.fase === 'cena-prep') return agir(roteiro().cenas[S.cena].fala ? 'apresentar' : 'cena-prox');
