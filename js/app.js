@@ -617,6 +617,17 @@ B7.Rota = (function () {
     const marca = el.querySelector('.ab-marca'), simbolo = el.querySelector('.ab-simbolo');
     const voa = d.tipo === 'lockup' ? marca : simbolo;
     if (!voa) { el.classList.add('sem-voo'); return 420; }
+    /* zzz296 (Kevin: "ainda acho pesada, queria mudar"): o logo não viaja
+       mais pela tela. O do centro some no lugar (encolhe um pouco e
+       apaga) e o da barra aparece no lugar dele, num fade curto. */
+    if (!window.B7_VOO_ANTIGO) {
+      [voa, simbolo, marca].forEach(n => { if (n) n.style.animation = 'none'; });
+      marca && marca.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.94)' }],
+        { duration: 260, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
+      d.alvo.animate([{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'none' }],
+        { duration: 340, delay: 140, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
+      return 300;
+    }
     const de = voa.getBoundingClientRect(), para = d.alvo.getBoundingClientRect();
     /* o símbolo do logo tem proporção fixa: encaixa pela altura */
     const s = d.tipo === 'lockup' ? para.width / de.width : para.height / de.height;
