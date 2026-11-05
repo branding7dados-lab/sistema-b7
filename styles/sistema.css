@@ -29,7 +29,7 @@ body:has(#b7-manut-faixa) #toasts{bottom:78px;}
 @keyframes mnEntra{from{opacity:0;}to{opacity:1;}}
 html.modo-leve .mn-trava{background:var(--fundo);backdrop-filter:none;-webkit-backdrop-filter:none;}
 /* 4.10.2: com jogo na tela, nada de desfoque (o navegador refazia o blur a cada quadro do jogo) */
-.mn-trava:has(.j3,.jc,.jm,.jmem){background:var(--fundo);backdrop-filter:none;-webkit-backdrop-filter:none;}
+.mn-trava:has(.jhub,.j3,.jc,.jm,.jmem){background:var(--fundo);backdrop-filter:none;-webkit-backdrop-filter:none;}
 .mn-caixa{width:min(460px,100%);padding:34px 30px 28px;border-radius:26px;text-align:center;
   background:var(--card);border:1px solid var(--borda);box-shadow:0 30px 80px -30px rgba(0,0,0,.4);}
 .mn-logo{height:34px;width:auto;margin:0 auto 20px;display:block;}
@@ -2013,3 +2013,22 @@ a.sa-item:hover{background:var(--suave);}
 .jmem-rank{margin-top:12px;font-size:12.5px;text-align:left;}
 .jmem-rank ol{margin:6px 0 0;padding:0;list-style:none;}
 .jmem-rank li{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.08);}
+
+/* ---- 4.12.0: tela de jogos da manutenção ---- */
+.jhub{margin-top:16px;}
+.jhub-barra{display:none;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between;padding:6px 6px 6px 12px;border-radius:14px;background:var(--card);border:1px solid var(--borda);font-size:13px;}
+.jhub.jogando .jhub-barra{display:flex;}
+.jhub-abas{display:flex;gap:4px;flex-wrap:wrap;}
+.jhub-aba{border:0;border-radius:10px;padding:6px 10px;background:transparent;color:var(--texto);font:inherit;font-size:12.5px;cursor:pointer;}
+.jhub-aba:hover{background:color-mix(in srgb,var(--texto) 8%,transparent);}
+.jhub-aba.on{background:linear-gradient(140deg,#7b5cff,#e2409c);color:#fff;font-weight:700;}
+.jhub.jogando .jhub-escolha{display:none;}
+.jhub-escolha p{margin:0 0 10px;color:var(--texto-2,var(--texto));opacity:.8;font-size:13.5px;}
+.jhub-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+.jhub-card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:18px 12px;border-radius:18px;border:1px solid rgba(255,255,255,.12);cursor:pointer;color:#fff;font:inherit;
+  background:linear-gradient(160deg,#2a1b6b,#5a1e78 60%,#e2409c);transition:transform .15s ease,box-shadow .15s ease;}
+.jhub-card:hover{transform:translateY(-3px);box-shadow:0 14px 30px -12px rgba(226,64,156,.8);}
+.jhub-card i{font-style:normal;font-size:34px;}
+.jhub-card b{font-size:15px;}
+.jhub-card small{font-size:12px;opacity:.85;}
+@media (max-width:560px){.jhub-aba span{display:none;}.jhub-aba{font-size:18px;padding:4px 9px;}}

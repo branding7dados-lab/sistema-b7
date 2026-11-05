@@ -103,21 +103,34 @@ B7.Manutencao = (function () {
   }
   /* o jogo da manutenção (js/jogo-manut.js) */
   function comJogo(el) {
-    if (el.querySelector('.jm, .j3, .jmem')) return;
-    /* 4.8.0: o 3D quando o aparelho aguenta; senão o 2D */
+    if (el.querySelector('.jhub')) return;
+    /* 4.12.0: tela de jogos — escolhe um e troca quando quiser */
     try {
       const cx = el.querySelector('.mn-caixa');
-      /* 4.9.0: a corrida é o jogo principal; "Ação! Corta!" fica como opção */
       let gl = false; try { const c = document.createElement('canvas'); gl = !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e2) {}
-      /* 4.11.0: menu de outros jogos (Ação! Corta!, Memória do Set, Batatinha 2D) */
-      const corrida = () => B7.JogoCorrida.montar(cx, { jogos: [
-        { nome: '🎬 Ação! Corta!', abrir: () => B7.Jogo3D && B7.Jogo3D.montar(cx) },
-        B7.JogoMemoria && { nome: '🃏 Memória do Set', abrir: () => B7.JogoMemoria.montar(cx, { voltar: corrida }) },
-        B7.JogoManut && { nome: '🕹 Clássico 2D', abrir: () => B7.JogoManut.montar(cx) }
-      ].filter(Boolean) });
-      if (gl && B7.JogoCorrida && B7.vendor) corrida();
-      else if (B7.Jogo3D) B7.Jogo3D.montarMelhor(cx);
-      else if (B7.JogoManut) B7.JogoManut.montar(el.querySelector('.mn-caixa'));
+      const JOGOS = [
+        gl && B7.JogoCorrida && B7.vendor && { id: 'corrida', ic: '🏃', nome: 'Corre pro Set!', txt: 'Corra, suba nos trens e fuja do diretor', abrir: c => B7.JogoCorrida.montar(c) },
+        gl && B7.Jogo3D && { id: 'corta', ic: '🎬', nome: 'Ação! Corta!', txt: 'Ande no AÇÃO, congele no CORTA', abrir: c => B7.Jogo3D.montar(c) },
+        B7.JogoMemoria && { id: 'memoria', ic: '🃏', nome: 'Memória do Set', txt: 'Ache os pares contra o relógio', abrir: c => B7.JogoMemoria.montar(c) },
+        B7.JogoManut && { id: 'classico', ic: '🕹', nome: 'Clássico 2D', txt: 'Versão leve, roda em qualquer aparelho', abrir: c => B7.JogoManut.montar(c) }
+      ].filter(Boolean);
+      if (!JOGOS.length) return;
+      const hub = document.createElement('div'); hub.className = 'jhub';
+      hub.innerHTML = '<div class="jhub-barra"><b>🎮 Jogos</b><div class="jhub-abas">' +
+        JOGOS.map(j => '<button type="button" class="jhub-aba" data-j="' + j.id + '">' + j.ic + ' <span>' + esc(j.nome) + '</span></button>').join('') + '</div></div>' +
+        '<div class="jhub-escolha"><p>Enquanto a manutenção não acaba, escolha um jogo:</p><div class="jhub-cards">' +
+        JOGOS.map(j => '<button type="button" class="jhub-card" data-j="' + j.id + '"><i>' + j.ic + '</i><b>' + esc(j.nome) + '</b><small>' + esc(j.txt) + '</small></button>').join('') + '</div></div>' +
+        '<div class="jhub-palco"></div>';
+      cx.appendChild(hub);
+      const palco = hub.querySelector('.jhub-palco'); let atual = null;
+      function abrir(id) {
+        const j = JOGOS.find(x => x.id === id); if (!j) return;
+        try { atual && atual.parar && atual.parar(); } catch (e3) {}
+        palco.innerHTML = ''; atual = j.abrir(palco) || null;
+        hub.classList.add('jogando'); hub.querySelectorAll('.jhub-aba').forEach(b => b.classList.toggle('on', b.dataset.j === id));
+        try { localStorage.setItem('b7_jogo_ultimo', id); } catch (e4) {}
+      }
+      hub.querySelectorAll('[data-j]').forEach(b => b.onclick = () => abrir(b.dataset.j));
     } catch (e) {}
   }
 
@@ -333,7 +346,7 @@ B7.Manutencao = (function () {
     return (f === 'ativa' ? 'ligado agora: a equipe está travada' : 'marcado: trava a equipe às ' + horaDe(new Date(atual.inicio).getTime() - desvio)) + ' · ' + fim;
   }
 
-  return { iniciar, conferir, fase, descricao, abrirGerenciar };
+  return { iniciar, conferir, fase, descricao, abrirGerenciar, previa };
 })();
 
 B7.Novidades = (function () {

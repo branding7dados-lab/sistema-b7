@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.12.0', versao: '4.12.0', em: '2026-11-06T00:30:00-03:00',
+    titulo: 'Tela de jogos na manutenção',
+    itens: ['Quando o sistema entra em manutenção, aparece a tela de jogos: escolha entre Corre pro Set!, Ação! Corta!, Memória do Set e Clássico 2D. A barra em cima deixa trocar de jogo a qualquer momento.'] },
   { id: 'v-4.11.0', versao: '4.11.0', em: '2026-11-05T23:30:00-03:00',
     titulo: 'Corre pro Set! com trens, prancha e música',
     itens: ['Trens de cenário: parados (suba pela rampa e corra em cima) ou vindo na sua direção. Com o superpulo dá para subir nos cases e nos trens.',
