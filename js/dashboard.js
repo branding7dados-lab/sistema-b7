@@ -2130,11 +2130,11 @@ B7.Dashboard = (function () {
         (B7.Abertura ? L({ ic: 'animacao', tom: 'violeta', t: 'Estilo da abertura',
             d: 'como o B7 abre; vale neste aparelho · padrão do sistema: ' + esc((B7.Abertura.ESTILOS.find(e => e[0] === B7.Abertura.padraoDoSistema()) || ['', 'Streaming'])[1]),
             dir: sel('abertura_estilo', B7.Abertura.valido(B7.pref.ler('abertura_estilo', null)) || 'padrao',
-              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.ESTILOS), 'Estilo da abertura') }) : '') +
+              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.ESTILOS, B7.Programador && B7.Programador.eh() ? B7.Abertura.SO_PROG || [] : []), 'Estilo da abertura') }) : '') +
         (B7.Abertura && B7.Abertura.CARGAS ? L({ ic: 'atualizar', tom: 'azul', t: 'Tela de carregamento',
             d: 'o que aparece enquanto o B7 carrega; vale neste aparelho · padrão do sistema: ' + esc((B7.Abertura.CARGAS.find(e => e[0] === B7.Abertura.cargaDoSistema()) || ['', 'Relâmpago'])[1]),
             dir: sel('carregamento_estilo', B7.Abertura.cargaValida(B7.pref.ler('carregamento_estilo', null)) || 'padrao',
-              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.CARGAS), 'Estilo da tela de carregamento') }) : '') +
+              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.CARGAS, B7.Programador && B7.Programador.eh() ? B7.Abertura.SO_PROG || [] : []), 'Estilo da tela de carregamento') }) : '') +
         (ehAdm ?         L({ ic: 'som', tom: 'laranja', t: 'Trilha sonora', d: 'som na animação de entrada', cls: 'cfg-alterna',
             dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
         L({ ic: 'play', tom: 'rosa', t: 'Testar abertura', d: 'a sequência completa, com som', botao: true, attrs: ' data-ver-abertura' }) +

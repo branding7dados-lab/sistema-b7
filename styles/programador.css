@@ -68,7 +68,6 @@ html.modo-leve :is(.pf-cargo,.pf-cargo-prog::before,.pf-topo-prog::after,.pf-top
 
 /* ---------- zzz291: abertura e carregamento do Programador ---------- */
 /* a abertura normal fica só como fundo escuro: quem aparece é a do programador */
-html.b7-prog:not(.ab-sem) .b7-abertura > *{visibility:hidden !important;}
 .prog-term::after{content:"";}
 .prog-carga{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:14px;width:min(260px,80vw);}
 .prog-carga .prog-tag{display:flex;align-items:center;gap:2px;font-size:56px;line-height:1;}

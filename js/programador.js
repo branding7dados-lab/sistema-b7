@@ -1,5 +1,9 @@
 /* =====================================================================
-   PROGRAMADOR (antigo "Admin supremo") — abertura e carregamento próprios
+   PROGRAMADOR (antigo "Admin supremo")
+   zzz292: a abertura e o carregamento do programador agora são estilos
+   escolhíveis como os outros (Configurações → Abertura e sons), só
+   listados para ele: js/abertura-cenas.js (cena) e styles/abertura.css.
+   Esta camada por cima não toca mais sozinha (ficava por cima da outra).
    zzz291. Quem tem o cargo (perfis.superadmin = 'supremo') fica marcado
    neste aparelho (localStorage b7_prog); o <head> do index.html põe a
    classe html.b7-prog antes da primeira pintura, e o conteúdo da abertura
@@ -89,31 +93,5 @@ B7.Programador = (function () {
     setTimeout(proxima, 200);
   }
 
-  /* no arranque: se este aparelho já sabe que é o programador, a abertura é a dele */
-  function arranque() {
-    if (!R.classList.contains('b7-prog') || R.classList.contains('ab-sem')) return;
-    montar(R.classList.contains('ab-curta') ? 'carga' : 'abertura');
-  }
-  if (document.body) arranque(); else document.addEventListener('DOMContentLoaded', arranque);
-
-  /* depois do login: marca (ou desmarca) este aparelho. Na primeira vez
-     que descobre que é o programador, toca a abertura dele já. */
-  let tentativas = 0;
-  function vigiar() {
-    const logado = !!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario());
-    if (logado && !(B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro())) {
-      const eh = ehProg();
-      let antes = null; try { antes = localStorage.getItem('b7_prog'); } catch (e) {}
-      try {
-        if (eh) { localStorage.setItem('b7_prog', '1'); localStorage.setItem('b7_prog_nome', nomeCurto()); }
-        else { localStorage.removeItem('b7_prog'); localStorage.removeItem('b7_prog_nome'); }
-      } catch (e) {}
-      R.classList.toggle('b7-prog', eh);
-      if (eh && antes !== '1') setTimeout(() => montar('abertura'), 300);
-      return;
-    }
-    if (++tentativas < 240) setTimeout(vigiar, 1000);
-  }
-  setTimeout(vigiar, 800);
-  return { tocar: () => montar('abertura'), carga: () => montar('carga'), eh: ehProg };
+  return { eh: ehProg };
 })();

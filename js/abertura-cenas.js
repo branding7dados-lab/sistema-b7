@@ -30,7 +30,7 @@
   /* as cores da lâmpada */
   const CORES = [[61, 47, 217], [122, 43, 201], [166, 43, 184], [194, 28, 131], [226, 64, 156], [255, 95, 168], [255, 143, 203], [255, 179, 107]];
   const rgba = (c, a) => 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')';
-  const ESTILOS = ['tinta', 'glitch', 'aurora', 'neon', 'mosaico', 'estudio'];
+  const ESTILOS = ['tinta', 'glitch', 'aurora', 'neon', 'mosaico', 'estudio', 'programador'];
   const estilo = () => html.getAttribute('data-ab-estilo');
   const ligada = () => {
     if (ESTILOS.indexOf(estilo()) < 0) return false;
@@ -282,7 +282,60 @@
     };
   }
 
-  const CENAS = { tinta, glitch, aurora, neon, mosaico, estudio };
+  /* ---------------------------------------------------- PROGRAMADOR
+     zzz292 (exclusiva do cargo): chuva de caracteres nas cores da B7, um
+     terminal digita o acesso no centro; 1,75 s um clarão limpa e o logo
+     entra com o glitch; a chuva continua fraquinha atrás dele. */
+  function programador(W, H, celular) {
+    const fs = celular ? 13 : 15, cols = Math.ceil(W / fs);
+    const CH = '01<>/{}[];=+*B7$#&ABCDEF';
+    const CORES = ['#7B4DFF', '#B5248F', '#E2409C', '#4C6FFF'];
+    let semente = 11;
+    const rnd = () => { semente = (semente * 16807) % 2147483647; return semente / 2147483647; };
+    const col = Array.from({ length: cols }, () => ({ v: 6 + rnd() * 10, o: rnd() * H * 1.2, n: 8 + ((rnd() * 18) | 0) }));
+    let nome = 'dev';
+    try { const u = B7.Auth && B7.Auth.usuario && B7.Auth.usuario(); nome = String((u && (u.username || u.nome)) || 'dev').split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'dev'; } catch (e) {}
+    const LINHAS = ['$ ssh ' + nome + '@sistema-b7', '> carregando módulos… ok', '> cargo: PROGRAMADOR', '> sudo liberado ✓'];
+    const fonteT = Math.round(Math.min(W, H) * (celular ? .036 : .024));
+    return (g, t, cx, cy) => {
+      g.globalCompositeOperation = 'source-over';
+      const fundo = t < 1.75 ? 1 : .28;
+      g.font = '600 ' + fs + 'px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
+      g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+      for (let i = 0; i < cols; i++) {
+        const c = col[i], cabeca = (c.o + t * c.v * fs * 3.2) % (H + c.n * fs);
+        for (let k = 0; k < c.n; k++) {
+          const y = cabeca - k * fs; if (y < 0 || y > H) continue;
+          g.globalAlpha = fundo * (k === 0 ? .95 : .55 * (1 - k / c.n));
+          g.fillStyle = k === 0 ? '#fff' : CORES[i % 4];
+          g.fillText(CH[((Math.imul(i + 1, 2654435761) ^ Math.imul(((t * 12) | 0) + k * 7 + 3, 40503)) >>> 0) % CH.length], i * fs, y);
+        }
+      }
+      /* terminal */
+      if (t > .15 && t < 1.8) {
+        const w = Math.min(W - 32, fonteT * 22), lh = fonteT * 1.6, h = lh * 4 + fonteT * 2.6;
+        const x = cx - w / 2, y = cy - h / 2;
+        g.globalAlpha = Math.min(1, (t - .15) / .2) * (t > 1.6 ? (1.8 - t) / .2 : 1);
+        g.fillStyle = 'rgba(12,6,28,.88)'; g.strokeStyle = 'rgba(123,77,255,.6)'; g.lineWidth = 1;
+        g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, 12); else g.rect(x, y, w, h); g.fill(); g.stroke();
+        g.fillStyle = '#E2409C';
+        for (let d = 0; d < 3; d++) { g.beginPath(); g.arc(x + 16 + d * 12, y + 14, 3, 0, 7); g.fill(); }
+        g.font = '500 ' + fonteT + 'px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
+        let resta = Math.max(0, (t - .3) / .011) | 0;
+        for (let l = 0; l < LINHAS.length && resta > 0; l++) {
+          const tx = LINHAS[l].slice(0, resta); resta -= LINHAS[l].length + 6;
+          g.fillStyle = l === 2 ? '#FF8FCB' : '#C9B8FF';
+          const ly = y + fonteT * 2.4 + l * lh;
+          g.fillText(tx + (resta <= 0 && Math.floor(t * 6) % 2 ? '▋' : ''), x + 16, ly + fonteT * .4);
+        }
+      }
+      /* clarão que limpa a tela para o logo */
+      const est = t > 1.7 && t < 2.2 ? Math.max(0, 1 - Math.abs(t - 1.76) / (t < 1.76 ? .06 : .4)) : 0;
+      if (est > 0) { g.globalAlpha = est * .8; g.fillStyle = '#E9E1FF'; g.fillRect(0, 0, W, H); }
+    };
+  }
+
+  const CENAS = { tinta, glitch, aurora, neon, mosaico, estudio, programador };
 
   function iniciar(el) {
     if (!el || el.dataset.cena || !ligada()) return;

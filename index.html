@@ -64,8 +64,6 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
-  /* zzz291: quem é Programador (marcado por js/programador.js) tem abertura e carregamento próprios */
-  try { if (localStorage.getItem('b7_prog') === '1') document.documentElement.classList.add('b7-prog'); } catch (e) {}
   /* zzz269: troca de conta ("Entrar como" e "Voltar para minha conta") abre direto, sem abertura */
   try { if (sessionStorage.getItem('b7_troca_rapida')) { sessionStorage.removeItem('b7_troca_rapida'); document.documentElement.classList.add('ab-sem'); } } catch (e) {}
   /* zzz230/zzz231: estilo da abertura completa, antes da primeira pintura
@@ -76,7 +74,7 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
      as partículas (zzz227) fica com a clássica.
      streaming · hiper · bigbang · classica */
   try {
-    var b7Ok = function (e) { return /^(streaming|hiper|bigbang|classica|tinta|glitch|aurora|neon|mosaico|estudio)$/.test(e || '') ? e : null; };
+    var b7Ok = function (e) { return /^(streaming|hiper|bigbang|classica|tinta|glitch|aurora|neon|mosaico|estudio|programador)$/.test(e || '') ? e : null; };
     var b7Est = b7Ok(JSON.parse(localStorage.getItem('b7_pref_abertura_estilo') || 'null'));
     if (!b7Est) {
       var b7Pp = localStorage.getItem('b7_pref_abertura_particulas');
@@ -84,7 +82,7 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
     }
     document.documentElement.setAttribute('data-ab-estilo', b7Est);
     /* zzz234: estilo do carregamento (a versão curta): o da pessoa, senão o do sistema */
-    var b7Cg = function (e) { return /^(relampago|pulso|orbita|barra|brilho|pontos)$/.test(e || '') ? e : null; };
+    var b7Cg = function (e) { return /^(relampago|pulso|orbita|barra|brilho|pontos|programador)$/.test(e || '') ? e : null; };
     document.documentElement.setAttribute('data-ab-carga', b7Cg(JSON.parse(localStorage.getItem('b7_pref_carregamento_estilo') || 'null')) || b7Cg(localStorage.getItem('b7_carga_padrao')) || 'relampago');
   } catch (e) { document.documentElement.setAttribute('data-ab-estilo', 'streaming'); }
   /* zzz156: app (ou PWA instalado) que o Android fechou em segundo plano

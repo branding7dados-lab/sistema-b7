@@ -889,3 +889,26 @@ html.ab-sem .b7-abertura.saindo{opacity:0;transition:opacity .18s ease;}
   -webkit-backdrop-filter:blur(14px) saturate(1.1);backdrop-filter:blur(14px) saturate(1.1);
   box-shadow:0 10px 40px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.08);}
 .b7-abertura.b7-abertura.b7-abertura .ab-frase{color:rgba(255,255,255,.86);}
+
+/* zzz292 — abertura PROGRAMADOR (exclusiva do cargo): mesma entrada do logo do glitch, céu escuro e a cena em js/abertura-cenas.js */
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-ceu{background:#030206;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-ceu > :not(.ab-grao):not(.ab-vinheta){display:none;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial :is(.ab-bloom,.ab-onda,.ab-centelha,.ab-faiscas,.ab-poeira,.ab-carga,.ab-linha,.ab-flare,.ab-titulo){display:none;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-palco{animation:none;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-simbolo{animation:none;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-marca{animation:abGlMarca 4.2s both;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-cor{animation:abGlCor 2.6s both;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-palavra{animation:abGlPalavra 4.2s both;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-brilho b{animation-delay:2.8s;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-espera{animation-delay:4.8s;}
+html[data-ab-estilo="programador"]:not(.ab-curta) .b7-abertura.inicial .ab-ceu{background:#080414;}
+/* carregamento PROGRAMADOR: "</>" abrindo e fechando e "compilando…" */
+@media (prefers-reduced-motion: no-preference) {
+html[data-ab-carga="programador"].ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-brilho,html[data-ab-carga="programador"] .b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-brilho{display:none;}
+html[data-ab-carga="programador"].ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-espera,html[data-ab-carga="programador"] .b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-espera{animation-delay:.35s;}
+html[data-ab-carga="programador"].ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-fio,html[data-ab-carga="programador"] .b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-fio{width:auto;height:auto;background:none;overflow:visible;}
+html[data-ab-carga="programador"].ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-fio:after,html[data-ab-carga="programador"] .b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-fio:after{content:"</>";position:static;display:block;inset:auto;width:auto;height:auto;background:linear-gradient(90deg,#8F6BFF,#E2409C);-webkit-background-clip:text;background-clip:text;color:transparent;font:800 30px/1 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:4px;box-shadow:none;filter:drop-shadow(0 0 10px rgba(226,64,156,.6));animation:abCgProg .9s cubic-bezier(.5,0,.3,1) infinite;}
+html[data-ab-carga="programador"].ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-frase,html[data-ab-carga="programador"] .b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-frase{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:0;}
+html[data-ab-carga="programador"].ab-curta .b7-abertura.b7-abertura.b7-abertura.inicial .ab-frase::after,html[data-ab-carga="programador"] .b7-abertura.b7-abertura.b7-abertura:not(.inicial) .ab-frase::after{content:"compilando sistema-b7_";font-size:13px;letter-spacing:.06em;color:#C9B8FF;}
+@keyframes abCgProg{0%,100%{letter-spacing:4px;opacity:1}50%{letter-spacing:14px;opacity:.75}}
+}
