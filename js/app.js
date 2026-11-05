@@ -622,26 +622,14 @@ B7.Rota = (function () {
     const s = d.tipo === 'lockup' ? para.width / de.width : para.height / de.height;
     const dx = (para.left + para.width / 2) - (de.left + de.width / 2);
     const dy = (para.top + para.height / 2) - (de.top + de.height / 2);
-    const DUR = 820, curva = 'cubic-bezier(.7,0,.2,1)';
+    /* zzz295 (Kevin: "tá muito pesada"): voo mais curto e macio, sem rastro e sem brilho no pouso */
+    const DUR = 560, curva = 'cubic-bezier(.32,.72,0,1)';
     d.alvo.classList.add('ab-destino');
     voa.style.transformOrigin = '50% 50%';
     /* a animação CSS da peça para aqui: o voo parte do quadro final dela */
     [voa, simbolo, marca].forEach(n => { if (n) n.style.animation = 'none'; });
     const quadros = [{ transform: 'none' }, { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s + ')' }];
     voa.animate(quadros, { duration: DUR, easing: curva, fill: 'forwards' });
-    /* rastro de luz (zzp): três ecos da peça seguem o mesmo caminho um
-       pouco atrás, cada vez mais apagados — o logo "risca" a tela */
-    const forca = document.documentElement.getAttribute('data-theme') === 'light' ? .6 : 1;   /* no claro o eco pesa mais */
-    [55, 105, 160].forEach((atraso, k) => {
-      const r = document.createElement('i');
-      r.className = 'ab-rastro' + (d.tipo === 'lockup' ? ' lockup' : '');
-      r.setAttribute('aria-hidden', 'true');
-      Object.assign(r.style, { left: de.left + 'px', top: de.top + 'px', width: de.width + 'px', height: de.height + 'px', transformOrigin: '50% 50%' });
-      document.body.appendChild(r);
-      r.animate(quadros, { duration: DUR, delay: atraso, easing: curva, fill: 'forwards' });
-      r.animate([{ opacity: 0 }, { opacity: (.34 - k * .1) * forca, offset: .25 }, { opacity: 0 }], { duration: DUR, delay: atraso, easing: 'ease-out', fill: 'both' });
-      setTimeout(() => r.remove(), DUR + atraso + 40);
-    });
     /* destino branco (fundo escuro): a lâmpada colorida vira a branca no ar */
     if (d.branco) {
       const cor = el.querySelector('.ab-cor'), branca = el.querySelector('.ab-branca');
@@ -658,11 +646,10 @@ B7.Rota = (function () {
     /* pouso: o destino assume e a peça da abertura se apaga no mesmo quadro */
     setTimeout(() => {
       d.alvo.classList.remove('ab-destino'); d.alvo.classList.add('ab-pousou');
-      brilhoDoPouso(d.alvo);
-      voa.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
+      voa.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease-out', fill: 'forwards' });
       setTimeout(() => d.alvo.classList.remove('ab-pousou'), 260);
     }, DUR - 20);
-    return DUR + 170;
+    return DUR + 120;
   }
 
   /* =================================================================
