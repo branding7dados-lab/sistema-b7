@@ -103,7 +103,14 @@ B7.Manutencao = (function () {
   }
   /* o jogo da manutenção (js/jogo-manut.js) */
   function comJogo(el) {
-    if (el.querySelector('.jhub')) return;
+    if (el.querySelector('.jhub') || el.dataset.jogosIndo) return;
+    /* 4.12.2: os jogos não vêm na abertura do sistema; chegam aqui */
+    if (!el.dataset.jogosTentou && !(B7.JogoCorrida && B7.JogoMemoria && B7.JogoManut)) {
+      el.dataset.jogosIndo = '1';
+      B7.vendor('jogoManut', 'jogo3d', 'corridaModelos', 'corrida', 'memoria').catch(() => {})
+          .then(() => { delete el.dataset.jogosIndo; el.dataset.jogosTentou = '1'; if (el.isConnected) comJogo(el); });
+      return;
+    }
     /* 4.12.0: tela de jogos — escolhe um e troca quando quiser */
     try {
       const cx = el.querySelector('.mn-caixa');
