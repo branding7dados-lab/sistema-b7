@@ -808,10 +808,37 @@ B7.Teleprompter = (function () {
   ];
   const tipoVideo = () => TIPOS_VIDEO.find(([t]) => { try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; } }) || ['', 'webm'];
 
+  /* 4.14.0: no app Android novo, a câmera é a NATIVA do celular (CameraX:
+     estabilização, HDR, 4K, áudio da câmera sem filtro de chamada), atrás do
+     teleprompter; o vídeo vai direto para a galeria. Senão, a do navegador. */
+  const N = () => B7.AppNativo;
+  const nativaDisponivel = () => !!(N() && N().ativo && N().recursos && N().recursos.camNativa);
+  async function ligarCameraNativa(minha) {
+    const r = await N().pedir('camAbrir', { frente: true });
+    if (S !== minha) { N().pedir('camFechar'); return true; }
+    if (!r.ok) {
+      if (r.motivo === 'permissao') B7.UI.toast('Libere a câmera e o microfone e toque de novo em "Gravar com a câmera".');
+      return false;
+    }
+    document.documentElement.classList.add('b7-cam-nativa');
+    S.camera = { nativa: true, rec: null };
+    S.el.classList.add('com-camera');
+    P.camera = true; gravarPrefs(); aplicarPrefs();
+    if (r.recursos) B7.UI.toast('Câmera do celular: ' + r.recursos);
+    return true;
+  }
+
   async function ligarCamera() {
     if (!S || S.camera || S.ligandoCamera) return;
     const minha = S;
     S.ligandoCamera = true;
+    if (nativaDisponivel()) {
+      try { if (await ligarCameraNativa(minha)) { if (S === minha) { S.ligandoCamera = false; conferirOrientacao(); if (S.fase === 'inicio') telaInicio(); } return; } }
+      catch (e) {}
+      if (S !== minha) return;
+      S.ligandoCamera = false; P.camera = false; gravarPrefs();
+      return;
+    }
     try {
       /* 4.13.0: áudio PURO do microfone do celular — sem cancelamento de eco,
          sem "redução de ruído" e sem ganho automático (eram eles que deixavam
@@ -852,8 +879,11 @@ B7.Teleprompter = (function () {
   function desligarCamera() {
     if (!S || !S.camera) return;
     pararGravacao();
-    try { S.camera.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
-    S.camera.video.remove();
+    if (S.camera.nativa) { N().pedir('camFechar'); document.documentElement.classList.remove('b7-cam-nativa'); }
+    else {
+      try { S.camera.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+      S.camera.video.remove();
+    }
     S.camera = null;
     S.el.classList.remove('com-camera');
     aplicarPrefs();
@@ -898,6 +928,7 @@ B7.Teleprompter = (function () {
   /* começa a gravar quando a leitura começa (fim da contagem) */
   function gravar(oQue) {
     if (!S || !S.camera || S.camera.rec) return;
+    if (S.camera.nativa) return gravarNativo(oQue);
     const [tipo, ext] = tipoVideo();
     const r = roteiro();
     const agora = new Date();
@@ -920,10 +951,24 @@ B7.Teleprompter = (function () {
     pintar(); cam.relogio = setInterval(pintar, 500);
   }
 
+  function gravarNativo(oQue) {
+    const r = roteiro(), agora = new Date();
+    const hora = String(agora.getHours()).padStart(2, '0') + 'h' + String(agora.getMinutes()).padStart(2, '0') + '-' + String(agora.getSeconds()).padStart(2, '0');
+    const nome = ('B7 ' + (r ? r.titulo : 'teleprompter') + ' ' + oQue + ' ' + hora).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const cam = S.camera;
+    cam.rec = { nativo: true }; cam.inicio = Date.now();
+    N().pedir('camGravar', { nome }).then(x => { if (!x.ok && cam.rec && cam.rec.nativo) { pararGravacao(); B7.UI.toast('Não foi possível começar a gravar.', { tipo: 'erro' }); } });
+    const caixa = S.el.querySelector('#tele-rec'), tempo = S.el.querySelector('#tele-rec-t');
+    caixa.hidden = false;
+    const pintar = () => { const t = Math.floor((Date.now() - cam.inicio) / 1000); tempo.textContent = 'REC ' + Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+    pintar(); cam.relogio = setInterval(pintar, 500);
+  }
+
   function pararGravacao() {
     if (!S || !S.camera || !S.camera.rec) return;
     const cam = S.camera;
     clearInterval(cam.relogio);
+    if (cam.rec.nativo) { N().pedir('camParar'); cam.rec = null; const cx = S.el.querySelector('#tele-rec'); if (cx) cx.hidden = true; return; }
     try { if (cam.rec.state !== 'inactive') cam.rec.stop(); } catch (e) {}
     cam.rec = null;
     const caixa = S.el.querySelector('#tele-rec'); if (caixa) caixa.hidden = true;

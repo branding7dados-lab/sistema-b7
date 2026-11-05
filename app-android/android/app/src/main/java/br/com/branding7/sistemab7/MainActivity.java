@@ -363,6 +363,8 @@ public class MainActivity extends BridgeActivity {
         private Uri videoUri = null;
         private File videoArquivo = null;
         private OutputStream videoSaida = null;
+        /* 4.14.0: câmera nativa do teleprompter */
+        private CameraNativa cam = null;
 
         Nativo(MainActivity act, WebView web) {
             this.act = act;
@@ -387,6 +389,8 @@ public class MainActivity extends BridgeActivity {
             String acao = m.optString("acao");
             /* a abertura do sistema já está na tela: a do Android sai */
             if (acao.equals("aberturaVisivel")) { act.telasProntas = true; return; }
+            /* 4.14.0: câmera nativa (thread da interface; a resposta vem quando terminar) */
+            if (acao.startsWith("cam")) { act.runOnUiThread(() -> camera(acao, m, id, resposta)); return; }
             /* vídeo: tudo pela mesma fila, para respeitar a ordem das partes */
             if (acao.startsWith("video")) {
                 fila.execute(() -> {
@@ -520,6 +524,37 @@ public class MainActivity extends BridgeActivity {
             responder(resposta, id, ok, extra);
         }
 
+        private void camera(String acao, JSONObject m, String id, JavaScriptReplyProxy resposta) {
+            JSONObject extra = new JSONObject();
+            try {
+                if (cam == null) cam = new CameraNativa(act, web);
+                switch (acao) {
+                    case "camAbrir": {
+                        if (!cam.temPermissao()) { cam.pedirPermissao(); extra.put("motivo", "permissao"); responder(resposta, id, false, extra); return; }
+                        final boolean frente = m.optBoolean("frente", true);
+                        com.google.common.util.concurrent.ListenableFuture<androidx.camera.lifecycle.ProcessCameraProvider> f =
+                            androidx.camera.lifecycle.ProcessCameraProvider.getInstance(act);
+                        f.addListener(() -> {
+                            JSONObject r = new JSONObject();
+                            boolean ok = false;
+                            try { cam.abrir(f.get(), frente); r.put("recursos", cam.info); ok = true; }
+                            catch (Exception e) { try { r.put("erro", String.valueOf(e.getMessage())); } catch (Exception e2) {} }
+                            responder(resposta, id, ok, r);
+                        }, androidx.core.content.ContextCompat.getMainExecutor(act));
+                        return;
+                    }
+                    case "camFechar": cam.fechar(); break;
+                    case "camTrocar": cam.trocar(); extra.put("recursos", cam.info); break;
+                    case "camGravar": if (!cam.gravar(m.optString("nome"))) { responder(resposta, id, false, extra); return; } break;
+                    case "camParar": cam.parar(); break;
+                    default: responder(resposta, id, false, extra); return;
+                }
+                responder(resposta, id, true, extra);
+            } catch (Exception e) {
+                responder(resposta, id, false, extra);
+            }
+        }
+
         private void responder(JavaScriptReplyProxy resposta, String id, boolean ok, JSONObject r) {
             try {
                 r.put("id", id);
@@ -528,6 +563,7 @@ public class MainActivity extends BridgeActivity {
                 r.put("codigo", BuildConfig.VERSION_CODE);
                 r.put("firebase", BuildConfig.TEM_FIREBASE);
                 r.put("binario", WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER));
+                r.put("camNativa", true);
                 resposta.postMessage(r.toString());
             } catch (Exception e) {
                 /* a tela já saiu */

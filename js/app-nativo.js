@@ -21,7 +21,7 @@ B7.AppNativo = (function () {
 
   let instalada = '';
   /* o que este APK sabe fazer (vem na resposta da ponte) */
-  const recursos = { firebase: null, binario: false };
+  const recursos = { firebase: null, binario: false, camNativa: false };
   let seq = 0;
   const esperando = {};
 
@@ -44,6 +44,7 @@ B7.AppNativo = (function () {
       if (r.codigo) codigo = r.codigo;
       if ('firebase' in r) recursos.firebase = !!r.firebase;
       if ('binario' in r) recursos.binario = !!r.binario;
+      if ('camNativa' in r) recursos.camNativa = !!r.camNativa;
       const f = esperando[r.id];
       if (f) { delete esperando[r.id]; f(r); }
     };

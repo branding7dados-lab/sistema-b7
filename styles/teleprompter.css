@@ -274,3 +274,10 @@ body.tele-aberto{overflow:hidden;}
 .tele.tele-ajustando .tele-zona{display:none;}
 .tele.tele-ajustando .tele-painel,.tele.tele-ajustando .tele-ctrl,.tele.tele-ajustando .tele-folha{display:none !important;}
 .tele.tele-ajustando .tele-palco{z-index:7;}
+
+/* 4.14.0: câmera nativa do app Android fica ATRÁS da página (WebView
+   transparente): tudo que não é o teleprompter some e os fundos ficam vazados */
+html.b7-cam-nativa,html.b7-cam-nativa body{background:transparent !important;}
+html.b7-cam-nativa body::before,html.b7-cam-nativa body::after{display:none !important;}
+html.b7-cam-nativa body > *:not(.tele){visibility:hidden !important;}
+html.b7-cam-nativa .tele,html.b7-cam-nativa .tele.com-camera{background:transparent !important;}
