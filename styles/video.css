@@ -1745,3 +1745,15 @@ body.vp-arrastando .vp-card{cursor:grabbing;}
 .vp-sug-chip{align-self:flex-start;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;}
 .vp-sug-urgente{background:var(--erro-bg);color:var(--erro);}
 .vp-sug-alta{background:var(--ambar-bg);color:var(--ambar);}
+
+/* 4.13.2: blocos "Enviar ao cliente" e "Conclusão" — texto de apoio sem
+   estilo (saía branco e grudado no botão) e barra de progresso que ficava
+   solta no meio do cabeçalho */
+.vd-bloco > p.fraca{font-size:12.5px;line-height:1.5;color:var(--ink-3);margin:0 0 12px;}
+.vd-bloco > p.fraca.vd-conclusao-aviso{margin:10px 0 0;font-size:12px;color:var(--ink-4);}
+.vd-bloco-conclusao .vd-bloco-cab{justify-content:flex-start;}
+.vd-bloco-conclusao .vd-bloco-cab small{margin-left:auto;}
+.vd-bloco-conclusao .vd-progresso{margin:0 0 0 12px;}
+.vd-bloco-conclusao .vd-dt-link{margin-top:14px;}
+.vd-bloco-conclusao .vd-abrir-materiais{margin-top:10px;}
+.vd-wa .b{display:inline-flex;align-items:center;gap:8px;}
