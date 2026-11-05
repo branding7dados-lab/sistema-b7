@@ -25,9 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
-  { id: 'v-4.12.3', versao: '4.12.3', em: '2026-11-06T02:00:00-03:00',
-    titulo: 'Rampa certa e tela cheia de verdade',
+  { id: 'v-4.12.4', versao: '4.12.4', em: '2026-11-06T02:00:00-03:00',
+    titulo: 'Céu novo, rampa certa e tela cheia de verdade',
     itens: ['A rampa do trem agora sobe na direção certa, com setas acesas, e o trem ganhou cara de locomotiva.',
+            'Corre pro Set! ganhou céu de entardecer com lua, estrelas e uma cidade de janelas acesas no horizonte.',
             'Tela cheia nos jogos: ocupa a tela toda (no app Android some a barra de cima e a de baixo) e tem o botão "Sair da tela cheia".'] },
   { id: 'v-4.12.0', versao: '4.12.0', em: '2026-11-06T00:30:00-03:00',
     titulo: 'Tela de jogos na manutenção',

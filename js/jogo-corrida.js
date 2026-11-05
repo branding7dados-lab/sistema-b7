@@ -210,7 +210,7 @@ B7.JogoCorrida = (function () {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1 : 1.25));
       renderer.outputColorSpace = T.SRGBColorSpace; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.5;
       renderer.shadowMap.enabled = false;   /* 4.10.1: sombras de contato no lugar das reais (desenhavam tudo 2×) */
-      cena = new T.Scene(); cena.background = new T.Color(0x24163d); cena.fog = new T.Fog(0x24163d, 28, 80);
+      cena = new T.Scene(); cena.background = new T.Color(0x1a0b2e); cena.fog = new T.Fog(0x4a2160, 26, 72);
       cam = new T.PerspectiveCamera(60, 1, 0.1, 85); cam.position.set(0, 3.4, 7);
       /* 4.10.0: modelos realistas (js/jogo-corrida-modelos.js) e reflexo de estúdio */
       MD = B7.CorridaModelos; X = MD.texturas(T); MT = MD.materiais(T, X);
@@ -250,8 +250,32 @@ B7.JogoCorrida = (function () {
         g.position.set(lado * 6.2, 0, -i * 12); cena.add(g); M.lados.push(g);
       }
       for (let i = 0; i < 0; i++) { const pl = new T.PointLight(i % 2 ? 0xff7ac6 : 0x9c8cff, 10, 22, 2); pl.position.set(i % 2 ? 4 : -4, 4, -8 - i * 12); cena.add(pl); }
-      const ciclo = new T.Mesh(new T.PlaneGeometry(120, 40), mat({ color: 0x2a1240, emissive: 0x5a1e78, emissiveIntensity: 0.7 }));
-      ciclo.position.set(0, 14, -110); cena.add(ciclo);
+      /* 4.12.4: céu — degradê de entardecer, estrelas, lua e a silhueta de
+         uma cidade com janelas acesas. Tudo preso à câmera (fica sempre lá
+         no fundo) e fora da neblina. */
+      const ceu = new T.Group(); cena.add(ceu); M.ceu = ceu;
+      const tx = (w, h, f) => { const c = document.createElement('canvas'); c.width = w; c.height = h; f(c.getContext('2d'), w, h); const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; return t; };
+      const grad = tx(4, 512, (g, w, h) => { const d = g.createLinearGradient(0, 0, 0, h);
+        d.addColorStop(0, '#0b0626'); d.addColorStop(0.28, '#2a0f55'); d.addColorStop(0.42, '#7a2a8c'); d.addColorStop(0.48, '#ff6f91'); d.addColorStop(0.5, '#ffb56b'); d.addColorStop(0.52, '#5a2a6e'); d.addColorStop(1, '#1a0b2e'); g.fillStyle = d; g.fillRect(0, 0, w, h); });
+      const esfera = new T.Mesh(new T.SphereGeometry(78, 24, 16), new T.MeshBasicMaterial({ map: grad, side: T.BackSide, fog: false, depthWrite: false }));
+      esfera.renderOrder = -10; ceu.add(esfera);
+      const ne = leve ? 160 : 320, pe = new Float32Array(ne * 3);
+      for (let i = 0; i < ne; i++) { const a = Math.random() * Math.PI * 2, el = 0.15 + Math.random() * 1.3, r = 74; pe[i * 3] = Math.cos(a) * Math.cos(el) * r; pe[i * 3 + 1] = Math.sin(el) * r; pe[i * 3 + 2] = Math.sin(a) * Math.cos(el) * r; }
+      const ge = new T.BufferGeometry(); ge.setAttribute('position', new T.BufferAttribute(pe, 3));
+      M.estrelas = new T.Points(ge, new T.PointsMaterial({ color: 0xffffff, size: leve ? 1.6 : 2, sizeAttenuation: false, transparent: true, opacity: 0.85, fog: false, depthWrite: false }));
+      M.estrelas.renderOrder = -9; ceu.add(M.estrelas);
+      const lua = new T.Mesh(new T.CircleGeometry(4, 32), new T.MeshBasicMaterial({ map: tx(128, 128, (g, w) => { const d = g.createRadialGradient(54, 54, 8, 64, 64, 64); d.addColorStop(0, '#fff8e6'); d.addColorStop(0.85, '#ffd9a8'); d.addColorStop(1, 'rgba(255,217,168,0)'); g.fillStyle = d; g.fillRect(0, 0, w, w);
+        g.fillStyle = 'rgba(200,150,120,.25)'; [[40, 70, 9], [80, 45, 6], [75, 85, 5]].forEach(([x, y, r]) => { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }); }), transparent: true, fog: false, depthWrite: false }));
+      lua.position.set(-26, 30, -64); lua.lookAt(0, 0, 0); lua.renderOrder = -8; ceu.add(lua);
+      const brilhoLua = new T.Sprite(MT.halo(0xffc8e8, 0.55)); brilhoLua.material.fog = false; brilhoLua.scale.set(26, 26, 1); brilhoLua.position.copy(lua.position); brilhoLua.renderOrder = -9; ceu.add(brilhoLua);
+      const cidade = tx(1024, 128, (g, w, h) => { let x = 0;
+        while (x < w) { const bw = 18 + Math.random() * 46, bh = 30 + Math.random() * 90; g.fillStyle = Math.random() < 0.5 ? '#160a2c' : '#1f0e3a'; g.fillRect(x, h - bh, bw, bh);
+          for (let yy = h - bh + 6; yy < h - 6; yy += 9) for (let xx = x + 4; xx < x + bw - 4; xx += 7) if (Math.random() < 0.28) { g.fillStyle = Math.random() < 0.7 ? '#ffd36b' : '#ff7ac6'; g.globalAlpha = 0.5 + Math.random() * 0.5; g.fillRect(xx, yy, 3, 4); g.globalAlpha = 1; }
+          if (Math.random() < 0.15) { g.fillStyle = '#ff3d6e'; g.fillRect(x + bw / 2, h - bh - 8, 2, 8); }
+          x += bw + Math.random() * 4; } });
+      cidade.wrapS = T.RepeatWrapping; cidade.repeat.set(3, 1);
+      const anel = new T.Mesh(new T.CylinderGeometry(70, 70, 16, 40, 1, true), new T.MeshBasicMaterial({ map: cidade, side: T.BackSide, transparent: true, fog: false, depthWrite: false }));
+      anel.position.y = 6.5; anel.renderOrder = -7; ceu.add(anel);
 
       /* a lâmpada */
       const lamp = new T.Group(); cena.add(lamp);
@@ -567,6 +591,7 @@ B7.JogoCorrida = (function () {
       if (M.pistaTex) { M.pistaTex.offset.y = (M.pistaTex.offset.y + av / 5) % 1; X.piso.offset.y = (X.piso.offset.y + av / 6.67) % 1; }
       M.lados.forEach(g => { g.position.z += av; if (g.position.z > 10) g.position.z -= 9 * 12; });
       const pulso = 1.3 + Math.sin(t * 5) * 0.4; M.neon.forEach((b, i) => { if (i === 0 || i === 3) b.material.emissiveIntensity = pulso; });
+      if (M.ceu) { M.ceu.position.set(cam.position.x, 0, cam.position.z); M.estrelas.material.opacity = 0.7 + Math.sin(t * 1.7) * 0.15; }
       /* lâmpada */
       const x = S ? S.x : 0, y = S ? S.y : 0, rast = S && agora < S.rastejaAte;
       M.lamp.position.set(x, y, 0);
