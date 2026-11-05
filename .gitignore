@@ -18,3 +18,5 @@ node_modules/
 *.jks
 *.keystore
 android/chave/
+_site/
+.github/publicar/node_modules/
