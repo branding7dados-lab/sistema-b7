@@ -116,6 +116,8 @@ B7.PerfilLateral = (function () {
         (sup && !outro ? '<button type="button" class="pf-it" data-pf="super">' + IC.super + 'Super admin</button>' : '') +
         '<div class="pf-it pf-tema-l">' + IC.tema + 'Tema<div class="pf-tema" role="radiogroup" aria-label="Tema">' +
           [['light', 'Claro'], ['dark', 'Escuro'], ['sistema', 'Auto']].map(([k, r]) => '<button type="button" role="radio" aria-checked="' + (k === temaAtual) + '" class="' + (k === temaAtual ? 'on' : '') + '" data-tema="' + k + '">' + r + '</button>').join('') + '</div></div>' +
+        (B7.Console ? '<button type="button" class="pf-it pf-ent" data-pf="entreter" role="switch" aria-checked="' + B7.Console.ligado() + '">' +
+          '<span class="pf-ent-ic" aria-hidden="true">🎮</span>Modo entretenimento<i class="pf-chave' + (B7.Console.ligado() ? ' on' : '') + '" aria-hidden="true"></i></button>' : '') +
         '<button type="button" class="pf-it" data-pf="ajuda">' + IC.ajuda + 'Ajuda e tutoriais</button>' +
         '<button type="button" class="pf-it" data-pf="suporte">' + IC.suporte + 'Suporte e feedback</button>' +
         '<button type="button" class="pf-it pf-so-pc" data-pf="atalhos">' + IC.teclado + 'Atalhos de teclado<span>?</span></button>' +
@@ -131,6 +133,7 @@ B7.PerfilLateral = (function () {
     ajuda: () => { location.hash = '#/ajuda'; },
     suporte: () => { location.hash = '#/suporte'; },
     atalhos: () => B7.UI.atalhos(),
+    entreter: () => { const v = !B7.Console.ligado(); B7.Console.ligar(v); if (v) setTimeout(() => { location.hash = '#/jogos'; }, 250); },
     sair: () => B7.Auth.sair()
   };
 

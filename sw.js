@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'b7-v4.25.1';   /* sempre igual à VERSAO de js/auth.js */
+const CACHE = 'b7-v4.26.0';   /* sempre igual à VERSAO de js/auth.js */
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
@@ -25,7 +25,7 @@ const CASCA = [
   './js/permissoes.js', './js/portal.js', './js/portal-equipe.js', './js/portal-pedidos.js', './js/portal-calendario.js', './js/portal-satisfacao.js', './js/portal-comunicacao.js', './js/gestao.js', './js/colaboradores.js', './js/vidro.js', './js/projetos.js', './js/legendas.js', './js/kanban.js', './js/perfil.js', './js/equipe.js', './js/silencio.js', './js/relatorio.js', './js/retrospectiva.js', './styles/retro.css', './js/aovivo.js', './styles/aovivo.css', './js/pacotes.js', './js/seguranca.js', './js/foto.js',
   /* zzz45: estava faltando. Sem rede, o "Visualizar como…" sumia em
      silêncio porque o arquivo nunca entrava no cache. */
-  './js/previa-usuario.js', './js/perfil-lateral.js', './js/programador.js', './js/menu-contexto.js',
+  './js/previa-usuario.js', './js/perfil-lateral.js', './js/programador.js', './js/console.js', './js/jogos-extra.js', './js/menu-contexto.js',
   './js/aprovacoes.js', './js/notificacoes.js', './js/presenca.js', './js/push.js', './js/app-nativo.js', './js/hoje.js', './js/convite-app.js', './js/atalhos-app.js', './styles/hoje.css', './styles/v4.css',
   './js/ia.js', './js/ia-roteiro.js', './js/ia-linha.js', './js/ia-rico.js', './js/ia-ferramentas.js', './js/ia-chat.js',
   /* zzz158: html2canvas, jsPDF e XLSX (1,4 MB) saíram da casca — elas só
@@ -33,7 +33,7 @@ const CASCA = [
      próprio service worker as guarda no primeiro uso. */
   './styles/auth.css', './styles/central.css', './styles/panorama.css', './styles/conteudo.css', './styles/semana.css',
   './styles/kanban.css', './styles/portal.css', './styles/aprovacoes.css', './styles/linha.css', './styles/ia-chat.css', './styles/design.css',
-  './styles/video.css', './styles/calendario.css', './styles/oportunidades.css', './styles/gravacao.css', './styles/publicacoes.css', './styles/painel.css', './styles/tv.css', './styles/sistema.css', './styles/conversas.css', './styles/topo.css', './styles/nav.css', './styles/programador.css',
+  './styles/video.css', './styles/calendario.css', './styles/oportunidades.css', './styles/gravacao.css', './styles/publicacoes.css', './styles/painel.css', './styles/tv.css', './styles/sistema.css', './styles/conversas.css', './styles/topo.css', './styles/nav.css', './styles/programador.css', './styles/console.css',
   './assets/brand/logo-color.png', './assets/brand/logo-white.png',
   './assets/brand/symbol-color.png', './assets/brand/symbol-white.png',
   './assets/fonts/inter-400.woff2', './assets/fonts/inter-500.woff2',

@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.26.0', versao: '4.26.0', em: '2026-11-05T18:00:00-03:00',
+    titulo: 'Modo entretenimento: console de jogos',
+    itens: ['No painel do seu perfil há a chave "Modo entretenimento". Ligada, aparece a aba Jogos no menu.',
+            'A aba Jogos abre um console em tela cheia: escolha o jogo com as setas, o dedo ou um controle de videogame.',
+            'Jogos novos: Drone B7, Cabo Solto, Fusão 2048 e Quebra-Claquete, além dos que já existiam. Cada um guarda o seu recorde.'] },
   { id: 'v-4.21.0', versao: '4.21.0', em: '2026-11-06T17:00:00-03:00',
     titulo: 'WhatsApp mais leve',
     itens: ['O WhatsApp dentro do app de PC ficou bem mais leve: o sistema lê a lista de grupos e a conversa só quando algo muda, em vez de o tempo todo. Atualize o app de PC para pegar a melhoria.'] },

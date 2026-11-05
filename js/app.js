@@ -279,6 +279,9 @@ B7.Rota = (function () {
     /* zzz129: Painel de TV — cobre a tela inteira por cima do sistema (js/tv.js) */
     if (partes[0] === 'tv' && B7.TV) { mostrar('tela-dashboard'); return B7.TV.abrir(); }
     if (partes[0] === 'config')     { mostrar('tela-dashboard'); return B7.Dashboard.abrirConfig(); }
+    /* zzz297: console de jogos (modo entretenimento) por cima do sistema */
+    if (partes[0] === 'jogos' && B7.Console) { mostrar('tela-dashboard'); if (!B7.Console.ligado()) { location.replace('#/'); return; } return B7.Console.abrir(); }
+    if (B7.Console && B7.Console.aberto()) B7.Console.fechar(true);
     if (partes[0] === 'lixeira')    { mostrar('tela-dashboard'); return B7.Dashboard.abrirLixeira(); }
     if (partes[0] === 'arquivados') { mostrar('tela-dashboard'); return B7.Dashboard.abrirArquivados(); }
     if (partes[0] === 'clientes')  { mostrar('tela-dashboard'); return B7.Dashboard.abrirClientes(); }

@@ -31,7 +31,8 @@ B7.vendor = (function () {
     jogo3d:       { src: 'js/jogo3d.js',               pronta: () => !!(window.B7 && B7.Jogo3D),        nome: 'do jogo' },
     corridaModelos: { src: 'js/jogo-corrida-modelos.js', pronta: () => !!(window.B7 && B7.CorridaModelos), nome: 'do jogo' },
     corrida:      { src: 'js/jogo-corrida.js',         pronta: () => !!(window.B7 && B7.JogoCorrida),   nome: 'do jogo' },
-    memoria:      { src: 'js/jogo-memoria.js',         pronta: () => !!(window.B7 && B7.JogoMemoria),   nome: 'do jogo' }
+    memoria:      { src: 'js/jogo-memoria.js',         pronta: () => !!(window.B7 && B7.JogoMemoria),   nome: 'do jogo' },
+    jogosExtra:   { src: 'js/jogos-extra.js',          pronta: () => !!(window.B7 && B7.JogosExtra),    nome: 'do jogo' }
   };
   const indo = {};
 
