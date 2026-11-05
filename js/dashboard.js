@@ -2764,7 +2764,13 @@ B7.Dashboard = (function () {
   }
 
   /* excluir agora manda para a lixeira; o registro continua no banco */
-  async function paraLixeira(tabela, id, rotulo) {
+  async function paraLixeira(tabela, id, rotulo, jaConfirmado) {
+    /* 4.13.1: gravação e roteiro só vão para a lixeira com o nome digitado */
+    if (!jaConfirmado && (tabela === 'gravacoes' || tabela === 'roteiros')) {
+      const ok = await B7.UI.confirmar({ titulo: 'Mandar para a lixeira?', texto: '“' + rotulo + '” sai da lista. Dá para restaurar pela Lixeira.',
+        rotulo: 'Mandar para a lixeira', perigo: true, digitar: rotulo });
+      if (!ok) return;
+    }
     try {
       await B7.Save.acao(() => B7.DB.paraLixeira(tabela, id));
       B7.DB.registrar({ tipo: 'lixeira', entidade: tabela, id: id, texto: rotulo + ' movido para a lixeira' });
@@ -2840,7 +2846,7 @@ B7.Dashboard = (function () {
         titulo: 'Excluir permanentemente?',
         texto: '“' + b.dataset.nome + '” será apagado do banco junto com tudo que depende dele. ' +
                'Esta ação não pode ser desfeita.',
-        rotulo: 'Excluir para sempre', perigo: true,
+        rotulo: 'Excluir para sempre', perigo: true, digitar: b.dataset.nome || 'excluir',
         aoConfirmar: async () => {
           try {
             await B7.Save.acao(() => B7.DB.excluirDefinitivo(tabela, id), 'Excluído permanentemente');

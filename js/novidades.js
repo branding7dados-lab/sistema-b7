@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.13.1', versao: '4.13.1', em: '2026-11-06T05:00:00-03:00',
+    titulo: 'Apagar pede o nome',
+    itens: ['Para apagar um roteiro, uma gravação, uma linha editorial ou excluir algo da lixeira para sempre, agora é preciso digitar o nome dele. Evita apagar a coisa errada sem querer.'] },
   { id: 'v-4.13.0', versao: '4.13.0', em: '2026-11-06T04:00:00-03:00',
     titulo: 'Teleprompter: caixa ajustável e áudio limpo',
     itens: ['Gravando com a câmera, o texto passa numa caixa que você posiciona e redimensiona (botão "Caixa"): arraste para mover e puxe o canto para mudar o tamanho. Fica guardada no aparelho.',

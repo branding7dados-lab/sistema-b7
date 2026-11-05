@@ -318,7 +318,15 @@ B7.UI = (function () {
       '<button class="b pri" data-ok>' + esc(confirmar) + '</button></div>',
       { aoFechar: () => { if (!decidido) { decidido = true; resolver(null); } } });
 
-    m.querySelector('[data-ok]').onclick = () => {
+    const okBt = m.querySelector('[data-ok]');
+    if (opcoes.digitar) {
+      const alvo = String(opcoes.digitar).trim().toLowerCase().replace(/\s+/g, ' '), campo = m.querySelector('#conf-nome');
+      const conferir = () => { okBt.disabled = campo.value.trim().toLowerCase().replace(/\s+/g, ' ') !== alvo; };
+      conferir(); campo.oninput = conferir; setTimeout(() => campo.focus(), 50);
+      campo.onkeydown = ev => { if (ev.key === 'Enter' && !okBt.disabled) okBt.click(); };
+    }
+    okBt.onclick = () => {
+      if (okBt.disabled) return;
       decidido = true;
       const t = m.querySelector('#pg-texto').value.trim();
       m.fechar();
@@ -336,6 +344,9 @@ B7.UI = (function () {
 
     const m = modal(
       '<h3>' + esc(titulo) + '</h3><div class="sub">' + esc(texto) + '</div>' +
+      /* 4.13.1: apagar coisa importante pede o nome digitado */
+      (opcoes.digitar ? '<div class="mb conf-digitar"><label class="rot" for="conf-nome">Para confirmar, digite <b>' + esc(opcoes.digitar) + '</b></label>' +
+        '<input class="campo" id="conf-nome" autocomplete="off" placeholder="' + esc(opcoes.digitar) + '"></div>' : '') +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri' + (perigo ? ' perigo' : '') + '" data-ok data-foco>' +
       esc(rotulo) + '</button></div>',

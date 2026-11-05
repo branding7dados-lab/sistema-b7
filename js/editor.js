@@ -307,6 +307,12 @@ B7.Editor = (function () {
     const idx = E.roteiros.findIndex(r => r.id === id);
     if (idx < 0) return;
     const registro = { ...E.roteiros[idx] };
+    /* 4.13.1: só apaga com o nome do roteiro digitado */
+    if (!excluirRoteiro.confirmado) {
+      B7.UI.confirmar({ titulo: 'Apagar este roteiro?', texto: 'Ele vai para a Lixeira (dá para restaurar).', rotulo: 'Apagar roteiro', perigo: true,
+        digitar: registro.titulo || 'apagar' }).then(ok => { if (ok) { excluirRoteiro.confirmado = true; try { excluirRoteiro(id); } finally { excluirRoteiro.confirmado = false; } } });
+      return;
+    }
 
     const aplicar = async () => {
       E.roteiros.splice(idx, 1);

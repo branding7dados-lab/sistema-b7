@@ -1108,7 +1108,7 @@ B7.Linha = (function () {
     if (excluir) excluir.onclick = () => B7.UI.confirmar({
       titulo: 'Excluir esta linha editorial?',
       texto: 'Ela vai para a lixeira com os conteúdos ligados a ela. Dá para restaurar depois.',
-      rotulo: 'Excluir', perigo: true,
+      rotulo: 'Excluir', perigo: true, digitar: L.linha.nome || 'excluir',
       aoConfirmar: async () => {
         try {
           await B7.Save.acao(() => B7.DB.excluirLinha(L.linha.id), 'Linha excluída');
