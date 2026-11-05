@@ -48,7 +48,10 @@ B7.Editor = (function () {
          (roteiros sem gravação) no mesmo editor */
       const banco = String(gravacaoId).startsWith('banco-');
       let gravacao, roteiros;
-      if (banco) {
+      if (gravacaoId === 'banco-geral') {
+        gravacao = { id: gravacaoId, banco: true, geral: true, client_id: null, nome: 'Banco geral', cliente_nome: 'Sem cliente', cliente_logo_url: null, status: '', data_gravacao: null };
+        roteiros = await B7.DB.roteirosGerais();
+      } else if (banco) {
         const clienteId = String(gravacaoId).slice(6), c = await B7.DB.cliente(clienteId);
         gravacao = { id: gravacaoId, banco: true, client_id: clienteId, nome: 'Banco de roteiros', cliente_nome: c ? c.nome : '',
           cliente_logo_url: c ? c.logo_url : null, status: '', data_gravacao: null };
@@ -94,6 +97,7 @@ B7.Editor = (function () {
          janela de rascunho deste roteiro. Só abre — quem manda gerar e
          quem escolhe as cenas é a pessoa. O "ia=rascunho" sai do endereço
          para não reabrir a janela ao recarregar. */
+      if (acaoIA === 'novo' && !soLeitura()) { history.replaceState(null, '', location.hash.replace(/[?&]ia=novo/, '')); novoRoteiro(); }
       if (acaoIA === 'rascunho' && roteiroAlvo && E.atual === roteiroAlvo) {
         try { history.replaceState(null, '', location.pathname + location.search + location.hash.replace(/[?&]ia=rascunho/, '')); } catch (e) {}
         setTimeout(() => { const b = document.querySelector('#escrita [data-ia-rascunho]'); if (b) b.click(); }, 250);
@@ -327,30 +331,68 @@ B7.Editor = (function () {
     } catch (e) {}
   }
 
-  /* 4.15.0: leva o roteiro para outra gravação do cliente ou para o banco */
+  /* 4.17.0: mover / duplicar para: banco geral, banco de um cliente ou
+     uma gravação (escolhendo cliente e gravação) */
+  function escolher(titulo, sub, ops) {
+    return new Promise(res => {
+      let feito = false;
+      const m = B7.UI.modal('<h3>' + esc(titulo) + '</h3>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') +
+        '<div class="mv-lista">' + ops.map((o, i) => '<button type="button" class="mv-op" data-i="' + i + '">' + esc(o.nome) + (o.dica ? '<small>' + esc(o.dica) + '</small>' : '') + '</button>').join('') + '</div>' +
+        '<div class="acoes"><button class="b" data-fecha>Cancelar</button></div>', { aoFechar: () => { if (!feito) res(null); } });
+      m.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { feito = true; m.fechar(); res(ops[+b.dataset.i]); });
+    });
+  }
+  async function escolherDestino(r, duplicar) {
+    const g = E.gravacao, nomeR = '“' + (r.titulo || 'Roteiro sem título') + '”';
+    const ops = [];
+    if (duplicar || !g.geral) ops.push({ k: 'geral', nome: '📚 Banco geral (sem cliente)' });
+    if (g.client_id) {
+      if (duplicar || !g.banco) ops.push({ k: 'banco', cli: g.client_id, nome: '📥 Banco de roteiros de ' + (g.cliente_nome || 'este cliente') });
+      ops.push({ k: 'grav', cli: g.client_id, nome: '🎬 Uma gravação de ' + (g.cliente_nome || 'este cliente') + '…' });
+    }
+    ops.push({ k: 'outro', nome: g.client_id ? '👤 Outro cliente…' : '👤 Um cliente…', dica: 'banco de roteiros ou gravação do cliente' });
+    let o = await escolher((duplicar ? 'Duplicar ' : 'Mover ') + nomeR, duplicar ? 'A cópia vai para o destino; o original fica onde está.' : 'As cenas vão junto.', ops);
+    if (!o) return null;
+    if (o.k === 'geral') return { gid: null, cli: null, rot: 'Banco geral' };
+    let cli = o.cli, cliNome = g.cliente_nome;
+    if (o.k === 'outro') {
+      let cs = []; try { cs = await B7.DB.listarClientes(); } catch (e) {}
+      cs = cs.filter(c => !c.deleted_at && c.id !== g.client_id).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+      const c = await escolher('Para qual cliente?', '', cs.map(c => ({ id: c.id, nome: c.nome })));
+      if (!c) return null;
+      cli = c.id; cliNome = c.nome;
+      const d = await escolher('Onde, em ' + c.nome + '?', '', [{ k: 'banco', nome: '📥 Banco de roteiros (sem gravação)' }, { k: 'grav', nome: '🎬 Uma gravação…' }]);
+      if (!d) return null;
+      o = { k: d.k };
+    }
+    if (o.k === 'banco') return { gid: null, cli, rot: 'Banco de roteiros de ' + cliNome };
+    let gravs = []; try { gravs = await B7.DB.gravacoesAbertasDoCliente(cli); } catch (e) {}
+    gravs = gravs.filter(x => x.id !== g.id);
+    if (!gravs.length) { B7.UI.toast(cliNome + ' não tem gravação aberta. Crie uma gravação ou use o banco de roteiros.'); return null; }
+    const gg = await escolher('Qual gravação?', '', gravs.map(x => ({ id: x.id, nome: x.nome + (x.data_gravacao ? ' · ' + B7.UI.dataBR(x.data_gravacao) : ' · sem data') })));
+    if (!gg) return null;
+    return { gid: gg.id, cli, rot: gg.nome };
+  }
+  const rotaDe = d => '#/gravacao/' + (d.gid || (d.cli ? 'banco-' + d.cli : 'banco-geral')) + '/roteiros';
   async function moverRoteiro(r) {
     if (soLeitura()) return;
-    let gravs = [];
-    try { gravs = await B7.DB.gravacoesAbertasDoCliente(E.gravacao.client_id); } catch (e) {}
-    gravs = gravs.filter(g => g.id !== E.gravacao.id);
-    const op = (E.gravacao.banco ? [] : [{ id: '', nome: '📥 Banco de roteiros (sem gravação)' }])
-      .concat(gravs.map(g => ({ id: g.id, nome: g.nome + (g.data_gravacao ? ' · ' + B7.UI.dataBR(g.data_gravacao) : ' · sem data') })));
-    if (!op.length) { B7.UI.toast('Este cliente não tem outra gravação aberta. Crie uma gravação primeiro.'); return; }
-    const m = B7.UI.modal('<h3>Mover “' + esc(r.titulo || 'Roteiro sem título') + '”</h3><div class="sub">Escolha para onde o roteiro vai. As cenas vão junto.</div>' +
-      '<div class="mv-lista">' + op.map(o => '<button type="button" class="mv-op" data-g="' + esc(o.id) + '">' + esc(o.nome) + '</button>').join('') + '</div>' +
-      '<div class="acoes"><button class="b" data-fecha>Cancelar</button></div>');
-    m.querySelectorAll('[data-g]').forEach(b => b.onclick = async () => {
-      m.fechar();
-      const destino = b.dataset.g || null;
-      try {
-        await B7.Save.acao(() => B7.DB.moverRoteiro(r.id, destino, E.gravacao.client_id), 'Roteiro movido');
-        const idx = E.roteiros.findIndex(x => x.id === r.id);
-        if (idx >= 0) E.roteiros.splice(idx, 1);
-        if (E.atual === r.id) E.atual = E.roteiros.length ? E.roteiros[Math.max(0, idx - 1)].id : null;
-        renderTrilho(); renderEscrita(); renderPrevia();
-        B7.UI.toast('Roteiro movido', { acao: 'Abrir', aoClicar: () => { location.hash = '#/gravacao/' + (destino || 'banco-' + E.gravacao.client_id) + '/roteiros?roteiro=' + r.id; } });
-      } catch (e) {}
-    });
+    const d = await escolherDestino(r, false); if (!d) return;
+    try {
+      await B7.Save.acao(() => B7.DB.moverRoteiro(r.id, d.gid, d.cli), 'Roteiro movido');
+      const idx = E.roteiros.findIndex(x => x.id === r.id);
+      if (idx >= 0) E.roteiros.splice(idx, 1);
+      if (E.atual === r.id) E.atual = E.roteiros.length ? E.roteiros[Math.max(0, idx - 1)].id : null;
+      renderTrilho(); renderEscrita(); renderPrevia();
+      B7.UI.toast('Roteiro movido para ' + d.rot, { acao: 'Abrir', aoClicar: () => { location.hash = rotaDe(d) + '?roteiro=' + r.id; } });
+    } catch (e) {}
+  }
+  async function duplicarPara(r) {
+    if (soLeitura()) return;
+    const d = await escolherDestino(r, true); if (!d) return;
+    try {
+      const c = await B7.Save.acao(() => B7.DB.duplicarRoteiroPara(r, d.gid, d.cli), 'Roteiro duplicado');
+      B7.UI.toast('Cópia criada em ' + d.rot, { acao: 'Abrir', aoClicar: () => { location.hash = rotaDe(d) + '?roteiro=' + c.id; } });
+    } catch (e) {}
   }
 
   function excluirRoteiro(id) {
@@ -435,7 +477,8 @@ B7.Editor = (function () {
           '<button data-acao="apresentar">Apresentar roteiros</button>' +
           (window.B7.Teleprompter && B7.Teleprompter.podeUsar && !B7.Teleprompter.podeUsar() ? '' : '<button data-acao="teleprompter">Abrir Teleprompter</button><hr>') +
           '<button data-acao="duplicar">Duplicar roteiro</button>' +
-          '<button data-acao="mover">Mover para outra gravação…</button>' +
+          '<button data-acao="mover">Mover para…</button>' +
+          '<button data-acao="duplicar-para">Duplicar para…</button>' +
           '<button data-acao="novo">Novo roteiro</button>' +
           '<button data-acao="fixar">' + (r.is_pinned ? 'Desafixar' : 'Fixar roteiro') + '</button><hr>' +
           '<button class="perigo" data-acao="excluir">Excluir roteiro</button>' +
@@ -621,6 +664,7 @@ B7.Editor = (function () {
       if (a === 'enviar-aprovacao') return enviarParaAprovacao();
       if (a === 'duplicar') duplicarRoteiro(r.id);
       if (a === 'mover') moverRoteiro(r);
+      if (a === 'duplicar-para') duplicarPara(r);
       if (a === 'novo') novoRoteiro();
       if (a === 'baixar') baixar(r.id);
       if (a === 'espiar') espiar(r);

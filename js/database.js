@@ -315,8 +315,21 @@ B7.DB = (function () {
       return ok(await sb().from('roteiros').select('*')
         .eq('client_id', clienteId).is('recording_session_id', null).is('deleted_at', null).order('position'));
     },
+    /* 4.17.0: banco geral — roteiros sem cliente e sem gravação */
+    async roteirosGerais() {
+      return ok(await sb().from('roteiros').select('*')
+        .is('client_id', null).is('recording_session_id', null).is('deleted_at', null).order('position'));
+    },
+    async duplicarRoteiroPara(roteiro, gravacaoId, clienteId) {
+      const cenas = await this.listarCenas(roteiro.id);
+      const destino = gravacaoId ? await this.listarRoteiros(gravacaoId) : (clienteId ? await this.roteirosDoBanco(clienteId) : await this.roteirosGerais());
+      const copia = await this.criarRoteiro({ recording_session_id: gravacaoId || null, client_id: clienteId || null, position: destino.length,
+        titulo: roteiro.titulo, objetivo: roteiro.objetivo, observacao_gravacao: roteiro.observacao_gravacao, escala: roteiro.escala, escala_automatica: roteiro.escala_automatica });
+      if (cenas.length) await this.criarCenas(cenas.map(c => ({ script_id: copia.id, position: c.position, tipo: c.tipo, direcao: c.direcao, texto: c.texto, sugestao_cenas: c.sugestao_cenas, funcao: c.funcao })));
+      return copia;
+    },
     async moverRoteiro(id, gravacaoId, clienteId) {
-      const patch = gravacaoId ? { recording_session_id: gravacaoId } : { recording_session_id: null, client_id: clienteId };
+      const patch = gravacaoId ? { recording_session_id: gravacaoId } : { recording_session_id: null, client_id: clienteId || null };
       return ok(await sb().from('roteiros').update(patch).eq('id', id).select());
     },
     async gravacoesAbertasDoCliente(clienteId) {
@@ -1620,15 +1633,23 @@ B7.DB = (function () {
     /* roteiros mexidos por último, com a gravação e o cliente de cada um */
     async roteirosRecentes(limite = 8) {
       const roteiros = ok(await sb().from('roteiros')
-        .select('id,titulo,objetivo,status,recording_session_id,created_at,updated_at')
+        .select('id,titulo,objetivo,status,recording_session_id,client_id,created_at,updated_at')
         .is('deleted_at', null).is('archived_at', null)
         .order('updated_at', { ascending: false }).limit(limite));
       if (!roteiros.length) return [];
-      const ids = [...new Set(roteiros.map(r => r.recording_session_id))];
-      const gravacoes = ok(await sb().from('gravacoes_resumo').select('*').in('id', ids));
+      const ids = [...new Set(roteiros.map(r => r.recording_session_id).filter(Boolean))];
+      const gravacoes = ids.length ? ok(await sb().from('gravacoes_resumo').select('*').in('id', ids)) : [];
       const porId = {};
       gravacoes.forEach(g => porId[g.id] = g);
-      return roteiros.map(r => ({ ...r, gravacao: porId[r.recording_session_id] || null }));
+      /* 4.17.0: roteiro sem gravação ganha uma "gravação" de mentira para a tela agrupar: o banco do cliente ou o banco geral */
+      const cliIds = [...new Set(roteiros.filter(r => !r.recording_session_id && r.client_id).map(r => r.client_id))];
+      const clis = {};
+      if (cliIds.length) ok(await sb().from('clientes').select('id,nome,logo_url').in('id', cliIds)).forEach(c => { clis[c.id] = c; });
+      return roteiros.map(r => {
+        if (r.recording_session_id) return { ...r, gravacao: porId[r.recording_session_id] || null };
+        const c = r.client_id ? clis[r.client_id] : null;
+        return { ...r, gravacao: { id: r.client_id ? 'banco-' + r.client_id : 'banco-geral', nome: r.client_id ? 'Banco de roteiros' : 'Banco geral', cliente_nome: c ? c.nome : (r.client_id ? 'Cliente' : 'Sem cliente'), cliente_logo_url: c ? c.logo_url : null, banco: true } };
+      });
     },
 
     /* ------------------------------------------------------ BACKUP */

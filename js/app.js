@@ -162,7 +162,7 @@ B7.Rota = (function () {
        js/gravacao.js). O editor de roteiros continua em
        #/gravacao/<id>/roteiros — e ?roteiro=<id> / ?imprimir=1 (links
        antigos, busca, notificações de roteiro) seguem indo direto nele. */
-    if (partes[0] === 'gravacao' && partes[1] && B7.Gravacao && partes[2] !== 'roteiros' &&
+    if (partes[0] === 'gravacao' && partes[1] && B7.Gravacao && partes[2] !== 'roteiros' && !String(partes[1]).startsWith('banco-') &&
         !params.get('roteiro') && !params.get('imprimir')) {
       mostrar('tela-dashboard');
       return B7.Gravacao.abrir(partes[1]);

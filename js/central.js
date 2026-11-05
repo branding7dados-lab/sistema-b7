@@ -305,7 +305,7 @@ B7.Central = (function () {
       /* roteiro abre dentro da gravação dele */
       try {
         const r = await B7.DB.roteiro(el.dataset.abrirRoteiro);
-        location.hash = '#/gravacao/' + (r.recording_session_id || 'banco-' + r.client_id);
+        location.hash = '#/gravacao/' + (r.recording_session_id || (r.client_id ? 'banco-' + r.client_id : 'banco-geral'));
       } catch (e) { B7.UI.toast('Não foi possível abrir o roteiro', { tipo: 'erro' }); }
     });
   }
@@ -395,7 +395,7 @@ B7.Central = (function () {
         try {
           const r = await B7.DB.roteiro(el.dataset.abrirRoteiro);
           m.fechar();
-          location.hash = '#/gravacao/' + (r.recording_session_id || 'banco-' + r.client_id);
+          location.hash = '#/gravacao/' + (r.recording_session_id || (r.client_id ? 'banco-' + r.client_id : 'banco-geral'));
         } catch (e) {}
       });
     } catch (e) {

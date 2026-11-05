@@ -369,3 +369,4 @@ body.ed-banco #ed-status{pointer-events:none;}
 .mv-lista{display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto;margin:12px 0;}
 .mv-op{text-align:left;border:1px solid var(--borda);background:var(--card);color:var(--ink);border-radius:12px;padding:11px 14px;font:inherit;font-size:13.5px;cursor:pointer;}
 .mv-op:hover{border-color:var(--acento);background:var(--acento-suave);}
+.mv-op small{display:block;font-size:11.5px;color:var(--ink-4);margin-top:2px;}

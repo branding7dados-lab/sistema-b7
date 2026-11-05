@@ -763,7 +763,7 @@ B7.Dashboard = (function () {
   function cardRoteiro(r) {
     const g = r.gravacao || {};
     const cliente = g.cliente_nome || 'Sem cliente';
-    return '<div class="card-roteiro spot eleva" data-gravacao="' + esc(r.recording_session_id || ('banco-' + r.client_id)) +
+    return '<div class="card-roteiro spot eleva" data-gravacao="' + esc(r.recording_session_id || (r.client_id ? 'banco-' + r.client_id : 'banco-geral')) +
       '" data-roteiro="' + esc(r.id) + '" data-total-roteiros="' + (g.total_roteiros || 0) + '" ' +
       'role="link" tabindex="0" aria-label="Abrir roteiro ' + esc(tituloTela(r.titulo)) + '">' +
       '<div class="cr-topo">' + B7.UI.avatarCliente(cliente, g.cliente_logo_url || null) +
@@ -778,7 +778,7 @@ B7.Dashboard = (function () {
       '</div></div>';
   }
   function linhaRoteiroLista(r) {
-    return '<div class="rt-linha" data-gravacao="' + esc(r.recording_session_id || ('banco-' + r.client_id)) + '" data-roteiro="' + esc(r.id) + '" role="link" tabindex="0" ' +
+    return '<div class="rt-linha" data-gravacao="' + esc(r.recording_session_id || (r.client_id ? 'banco-' + r.client_id : 'banco-geral')) + '" data-roteiro="' + esc(r.id) + '" role="link" tabindex="0" ' +
         'aria-label="Abrir roteiro ' + esc(tituloTela(r.titulo)) + '">' +
       '<span class="rt-l-tx"><b>' + esc(tituloTela(r.titulo)) + '</b>' + (r.objetivo ? '<small>' + esc(r.objetivo) + '</small>' : '') + '</span>' +
       '<span class="rt-l-st">' + B7.UI.chipRevisao(r.status) + '</span>' +
@@ -832,6 +832,7 @@ B7.Dashboard = (function () {
         (roteiros.length ? '<div class="rt-cab-acoes"><div class="filtro rt-vista" role="group" aria-label="Forma de ver">' +
           '<button data-vista="lista" aria-label="Lista por gravação" title="Lista por gravação">' + ICL + '<span>Lista</span></button>' +
           '<button data-vista="cards" aria-label="Cards" title="Cards">' + ICC + '<span>Cards</span></button></div>' +
+          '<button class="b contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo" title="Roteiro sem cliente e sem gravação">' + IC.mais + '<span>Novo roteiro</span></button>' +
           '<button class="b pri rt-novo" data-nova-gravacao aria-label="Nova gravação">' + IC.mais + '<span>Nova gravação</span></button></div>' : '') +
       '</div>' +
       (roteiros.length ?
@@ -852,7 +853,7 @@ B7.Dashboard = (function () {
       : estadoB7(IC.roteiros, 'Nenhum roteiro ainda.',
           'Crie uma gravação e escreva o primeiro roteiro: ele aparece aqui assim que for salvo.',
           '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button>' +
-          '<button class="b contorno" data-ir="#/gravacoes">Ver gravações</button>')) +
+          '<button class="b contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo">' + IC.mais + 'Novo roteiro sem cliente</button>')) +
       '</div>';
     ligar();
     if (!roteiros.length) return;
@@ -909,7 +910,7 @@ B7.Dashboard = (function () {
         /* agrupa por gravação, mantendo a ordem de "mexido por último" */
         const grupos = [], idx = new Map();
         itens.forEach(r => {
-          const k = r.recording_session_id;
+          const k = r.recording_session_id || (r.gravacao && r.gravacao.id);
           if (!idx.has(k)) { const grp = { id: k, gravacao: r.gravacao, itens: [], recente: r.updated_at }; idx.set(k, grp); grupos.push(grp); }
           idx.get(k).itens.push(r);
         });
@@ -1714,7 +1715,7 @@ B7.Dashboard = (function () {
       ' · ' + g.total_roteiros + ' roteiro' + (g.total_roteiros === 1 ? '' : 's') + '</small></div></div>').join('');
 
     const listaRoteiros = roteiros.length ? '<div class="vg-lista">' + roteiros.map(r =>
-      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id || ('banco-' + r.client_id)) +
+      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id || (r.client_id ? 'banco-' + r.client_id : 'banco-geral')) +
         '" data-roteiro="' + esc(r.id) + '">' +
         '<div class="n">' + String((r.position || 0) + 1).padStart(2, '0') + '</div>' +
         '<div class="tx"><b>' + esc(r.titulo || 'Sem título') + '</b><small>' +
@@ -1800,7 +1801,7 @@ B7.Dashboard = (function () {
     }
     /* mesma lista única da visão geral (zzd) */
     return '<div class="vg-lista">' + roteiros.map(r =>
-      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id || ('banco-' + r.client_id)) +
+      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id || (r.client_id ? 'banco-' + r.client_id : 'banco-geral')) +
         '" data-roteiro="' + esc(r.id) + '">' +
         '<div class="n">' + String((r.position || 0) + 1).padStart(2, '0') + '</div>' +
         '<div class="tx"><b>' + esc(r.titulo || 'Sem título') + '</b><small>' +
@@ -3516,7 +3517,7 @@ B7.Dashboard = (function () {
       }
       if (r.roteiros.length) {
         html += '<div class="grupo">ROTEIROS</div>' + r.roteiros.map(t =>
-          '<div class="res" data-ir="#/gravacao/' + esc(t.recording_session_id || ('banco-' + t.client_id)) + '?roteiro=' + esc(t.id) +
+          '<div class="res" data-ir="#/gravacao/' + esc(t.recording_session_id || (t.client_id ? 'banco-' + t.client_id : 'banco-geral')) + '?roteiro=' + esc(t.id) +
           '"><div class="mini">' + IC.roteiros + '</div><div><b>' + esc(t.titulo || 'Sem título') +
           '</b><small>abrir na gravação</small></div></div>').join('');
       }
@@ -3541,7 +3542,7 @@ B7.Dashboard = (function () {
       }
       if ((r.cenas || []).length) {
         html += '<div class="grupo">NO TEXTO DAS CENAS</div>' + r.cenas.map(c =>
-          '<div class="res" data-ir="#/gravacao/' + esc(c.roteiro.recording_session_id || ('banco-' + c.roteiro.client_id)) +
+          '<div class="res" data-ir="#/gravacao/' + esc(c.roteiro.recording_session_id || (c.roteiro.client_id ? 'banco-' + c.roteiro.client_id : 'banco-geral')) +
           '?roteiro=' + esc(c.roteiro.id) + '"><div class="mini">' + IC.roteiros +
           '</div><div><b>' + esc(String(c.texto || '').slice(0, 60)) + '…</b><small>' +
           esc(c.roteiro.titulo || 'Sem título') + (c.funcao ? ' · ' + esc(c.funcao) : '') +
