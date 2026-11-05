@@ -2523,6 +2523,12 @@ B7.Video = (function () {
 
       '<div class="vd-detalhe-corpo">' +
         '<div class="vd-detalhe-principal">' +
+          /* 4.13.3: o que é o vídeo vem primeiro (antes ficava lá embaixo) */
+          (podeEditar
+            ? '<section class="vd-bloco vd-bloco-obs"><div class="vd-bloco-cab"><label class="rot">Sobre o vídeo</label><span class="vd-autosave-dica" id="vd-obs-estado"></span></div>' +
+              '<textarea class="campo alta" id="vd-dt-obs" rows="4" placeholder="Orientações para a edição, referências, pontos de atenção…">' + esc(d.observacoes || '') + '</textarea></section>'
+            : (d.observacoes ? '<section class="vd-bloco vd-bloco-obs"><div class="vd-bloco-cab"><label class="rot">Sobre o vídeo</label></div><div class="vd-so-leitura">' + esc(d.observacoes) + '</div></section>' : '')) +
+
           /* zzz278: legenda do vídeo — consertar com IA e as já corrigidas desta demanda */
           (B7.Legendas && B7.Perm && B7.Perm.podeRota('legendas') ? '<section class="vd-legendas" id="vd-legendas" data-demanda-leg="' + esc(d.id) + '"></section>' : '') +
           secaoRoteiros(d, rc, podeEditar) +
@@ -2531,8 +2537,8 @@ B7.Video = (function () {
 
           /* zzz170: mandar o vídeo no grupo do cliente (js/whatsapp.js) */
           (podeOperar && B7.WhatsApp && B7.WhatsApp.podeEnviar()
-            ? '<section class="vd-bloco vd-wa"><div class="vd-bloco-cab"><label class="rot">Enviar ao cliente</label></div>' +
-              '<p class="fraca">Abre o grupo do cliente no WhatsApp com o vídeo (como documento) e a mensagem prontos. Quem aperta enviar é você.</p>' +
+            ? '<section class="vd-bloco vd-wa"><div class="vd-wa-tx"><label class="rot">Enviar ao cliente</label>' +
+              '<p class="fraca">Abre o grupo do cliente no WhatsApp com o vídeo (como documento) e a mensagem prontos. Quem aperta enviar é você.</p></div>' +
               '<button type="button" class="b pri" id="vd-wa-enviar">' + B7.WhatsApp.icone + 'Enviar no WhatsApp</button></section>'
             : '') +
 
@@ -2562,11 +2568,6 @@ B7.Video = (function () {
                 : '<div class="vd-so-leitura">Sem link de referência.</div>') +
               '</section>'
             : '') +
-
-          (podeEditar
-            ? '<section class="vd-bloco"><div class="vd-bloco-cab"><label class="rot">Observações</label><span class="vd-autosave-dica" id="vd-obs-estado"></span></div>' +
-              '<textarea class="campo alta" id="vd-dt-obs" rows="4" placeholder="Orientações para a edição, referências, pontos de atenção…">' + esc(d.observacoes || '') + '</textarea></section>'
-            : (d.observacoes ? '<section class="vd-bloco"><div class="vd-bloco-cab"><label class="rot">Observações</label></div><div class="vd-so-leitura">' + esc(d.observacoes) + '</div></section>' : '')) +
 
           '<section class="vd-bloco"><div class="vd-bloco-cab"><label class="rot">Histórico</label></div>' +
           (historico.length

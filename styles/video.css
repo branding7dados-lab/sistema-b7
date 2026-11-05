@@ -1757,3 +1757,24 @@ body.vp-arrastando .vp-card{cursor:grabbing;}
 .vd-bloco-conclusao .vd-dt-link{margin-top:14px;}
 .vd-bloco-conclusao .vd-abrir-materiais{margin-top:10px;}
 .vd-wa .b{display:inline-flex;align-items:center;gap:8px;}
+
+/* 4.13.3: tela da demanda mais organizada
+   • todos os blocos com o mesmo título (antes: um grande, outros
+     minúsculos em caixa alta);
+   • "Sobre o vídeo" no topo, Enviar ao cliente numa linha só,
+     versões vazias mais baixas, Roteiros sem borda rosa avulsa. */
+.vd-detalhe .vd-bloco{padding:16px 20px;border-radius:16px;}
+.vd-detalhe .vd-bloco-cab .rot,.vd-detalhe .vd-wa-tx .rot{font-family:'B7 Titulo',inherit;font-size:14.5px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:700;margin:0;}
+.vd-detalhe .vd-bloco-roteiros{border-color:var(--borda);}
+.vd-detalhe .vd-bloco-obs{border-left:3px solid var(--acento);}
+.vd-detalhe .vd-bloco-obs .campo{min-height:84px;}
+.vd-detalhe .vd-wa{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.vd-detalhe .vd-wa-tx{flex:1;min-width:240px;}
+.vd-detalhe .vd-wa-tx p.fraca{margin:4px 0 0;}
+.vd-detalhe .vd-vazio-versao{padding:16px 18px 14px;gap:4px;}
+.vd-detalhe .vd-vazio-ico{width:36px;height:36px;border-radius:12px;margin-bottom:2px;}
+.vd-detalhe .vd-vazio-versao p{margin:0 0 6px;}
+.vd-detalhe .vd-legendas{border-radius:16px;padding:14px 20px;}
+.vd-detalhe .vd-wa-tx p.fraca{font-size:12.5px;line-height:1.5;color:var(--ink-3);}
+.vd-detalhe .vd-bloco .vd-vazio-versao{padding:14px 18px 12px;}
+.vd-detalhe .vd-bloco .vd-vazio-versao p{max-width:520px;}
