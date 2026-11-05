@@ -258,3 +258,19 @@ body.tele-aberto{overflow:hidden;}
 .tele-rec button{border:0;border-radius:99px;background:rgba(255,255,255,.16);padding:4px 10px;font-size:12px;font-weight:700;}
 @keyframes teleRec{50%{opacity:.25}}
 @media (prefers-reduced-motion: reduce){ .tele-rec i{animation:none;} }
+
+/* ---- 4.13.0: caixa do texto sobre a câmera (posição e tamanho ajustáveis) ---- */
+.tele-bt-caixa{display:none;}
+.tele.com-camera .tele-bt-caixa{display:inline-flex;}
+.tele.com-camera .tele-palco{inset:auto;left:var(--cx,4%);top:var(--cy,10%);width:var(--cw,92%);height:var(--ch,28%);border-radius:18px;
+  background:rgba(0,0,0,.42);--tele-foco:14px;--tele-largura:96%;}
+.tele.com-camera .tele-palco:before{display:none;}
+.tele.com-camera .tele-palco.cabe .tele-rolo{padding-top:10px;}
+.tele-caixa-ui{position:absolute;inset:0;z-index:9;border:2px dashed #FFD36B;border-radius:18px;cursor:move;touch-action:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(255,211,107,.08);}
+.tele-caixa-dica{font-size:13px;font-weight:600;color:#fff;background:rgba(0,0,0,.6);padding:6px 12px;border-radius:99px;text-align:center;}
+.tele-caixa-ok{border:0;border-radius:99px;background:#FFD36B;color:#1a1030;font:inherit;font-weight:800;font-size:14px;padding:9px 22px;cursor:pointer;}
+.tele-alca{position:absolute;right:-12px;bottom:-12px;width:30px;height:30px;border-radius:50%;background:#FFD36B;border:3px solid #1a1030;cursor:nwse-resize;}
+.tele.tele-ajustando .tele-zona{display:none;}
+.tele.tele-ajustando .tele-painel,.tele.tele-ajustando .tele-ctrl,.tele.tele-ajustando .tele-folha{display:none !important;}
+.tele.tele-ajustando .tele-palco{z-index:7;}

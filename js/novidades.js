@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.13.0', versao: '4.13.0', em: '2026-11-06T04:00:00-03:00',
+    titulo: 'Teleprompter: caixa ajustável e áudio limpo',
+    itens: ['Gravando com a câmera, o texto passa numa caixa que você posiciona e redimensiona (botão "Caixa"): arraste para mover e puxe o canto para mudar o tamanho. Fica guardada no aparelho.',
+            'Áudio puro do microfone do celular: sem cancelamento de eco, sem redução de ruído e sem ganho automático, que deixavam a voz pipocada. 48 kHz e 256 kb/s.',
+            'Vídeo na maior resolução que a câmera da frente der (até 4K) e com mais qualidade de gravação.'] },
   { id: 'v-4.12.5', versao: '4.12.5', em: '2026-11-06T03:00:00-03:00',
     titulo: 'Novo indicador de carregando',
     itens: ['Onde aparecia só "Carregando…", agora tem o spinner de barrinhas girando.'] },

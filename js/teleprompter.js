@@ -61,7 +61,8 @@ B7.Teleprompter = (function () {
      2. PREFERÊNCIAS — deste aparelho (não vão para o banco)
      ================================================================ */
   const PADRAO = { modo: 'cenas', fonte: 0, velocidade: 7, espaco: 'normal', largura: 'media',
-                   espelho: false, contagem: 3, preparar: true, camera: false };
+                   espelho: false, contagem: 3, preparar: true, camera: false,
+                   caixa: { x: 4, y: 10, w: 92, h: 28 } };
   const ESPACO = { compacto: 1.18, normal: 1.38, amplo: 1.62 };
   const LARGURA = { estreita: 58, media: 76, larga: 94 };
   const FONTE = { min: 26, max: 132, passo: 4 };
@@ -78,6 +79,9 @@ B7.Teleprompter = (function () {
     /* sem tamanho salvo: proporcional à altura da tela em paisagem */
     if (!P.fonte) P.fonte = Math.round(Math.min(72, Math.max(38, Math.min(window.innerWidth, window.innerHeight) * 0.15)) / 2) * 2;
     P.fonte = Math.min(FONTE.max, Math.max(FONTE.min, Number(P.fonte) || 56));
+    const c = P.caixa || {}, n = (v, d) => Number.isFinite(+v) ? +v : d;
+    P.caixa = { w: Math.min(100, Math.max(30, n(c.w, 92))), h: Math.min(90, Math.max(12, n(c.h, 28))) };
+    P.caixa.x = Math.min(100 - P.caixa.w, Math.max(0, n(c.x, 4))); P.caixa.y = Math.min(100 - P.caixa.h, Math.max(0, n(c.y, 10)));
   }
   function gravarPrefs() { B7.pref.gravar('teleprompter', P); }
 
@@ -217,6 +221,7 @@ B7.Teleprompter = (function () {
     ant: '<svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
     prox: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
     repetir: '<svg viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4.5 4.5v4h4"/></svg>',
+    caixa: '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="10" rx="2"/><path d="M15 19h5v-5"/><path d="M20 19l-4-4"/></svg>',
     espelho: '<svg viewBox="0 0 24 24"><path d="M12 3.5v17"/><path d="M8.5 7.5L4 12l4.5 4.5z"/><path d="M15.5 7.5L20 12l-4.5 4.5z"/></svg>',
     cheia: '<svg viewBox="0 0 24 24"><path d="M4.5 9.5v-5h5M19.5 9.5v-5h-5M4.5 14.5v5h5M19.5 14.5v5h-5"/></svg>',
     ajustes: '<svg viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 12h2M11 12h8M5 17h7M16 17h3"/><circle cx="16" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="14" cy="17" r="2"/></svg>',
@@ -233,6 +238,9 @@ B7.Teleprompter = (function () {
     e.setProperty('--tele-largura', (emPeComCamera() ? 94 : LARGURA[P.largura]) + '%');
     /* espelho é para o vidro do teleprompter; gravando com a câmera, não */
     S.palco.classList.toggle('espelho', !!P.espelho && !S.camera);
+    /* 4.13.0: com a câmera, o texto passa numa caixa que a pessoa posiciona
+       e redimensiona (normalmente logo abaixo da lente) */
+    e.setProperty('--cx', P.caixa.x + '%'); e.setProperty('--cy', P.caixa.y + '%'); e.setProperty('--cw', P.caixa.w + '%'); e.setProperty('--ch', P.caixa.h + '%');
     S.el.querySelectorAll('[data-tele="espelho"]').forEach(b => { b.classList.toggle('on', !!P.espelho); b.setAttribute('aria-pressed', String(!!P.espelho)); });
   }
 
@@ -250,6 +258,7 @@ B7.Teleprompter = (function () {
       '<header class="tele-topo">' +
         '<button type="button" class="tele-bt" data-tele="sair" aria-label="Sair do teleprompter">' + IC.sair + '</button>' +
         '<div class="tele-onde" id="tele-onde"></div>' +
+        '<button type="button" class="tele-bt tele-bt-caixa" data-tele="caixa" aria-label="Ajustar a caixa do texto" title="Ajustar a caixa do texto">' + IC.caixa + '<span>Caixa</span></button>' +
         '<button type="button" class="tele-bt" data-tele="espelho" aria-pressed="false" aria-label="Espelhar o texto" title="Espelhar (M)">' + IC.espelho + '<span>Espelhar</span></button>' +
         '<button type="button" class="tele-bt" data-tele="cheia" aria-label="Tela cheia" title="Tela cheia (F)">' + IC.cheia + '</button>' +
         '<button type="button" class="tele-bt" data-tele="ajustes" aria-label="Ajustes de leitura" aria-haspopup="dialog">' + IC.ajustes + '</button>' +
@@ -611,6 +620,7 @@ B7.Teleprompter = (function () {
     if (!S) return;
     if (a === 'sair') return fechar();
     if (a === 'espelho') return mudarPref('espelho', !P.espelho);
+    if (a === 'caixa') return ajustarCaixa(!S.el.classList.contains('tele-ajustando'));
     if (a === 'cheia') return elTelaCheia() ? sairTelaCheia() : entrarTelaCheia();
     if (a === 'ajustes') return S.folha.hidden ? abrirFolha() : fecharFolha();
     if (a === 'fechar-folha') return fecharFolha();
@@ -637,8 +647,40 @@ B7.Teleprompter = (function () {
     if (a === 'camera') return alternarCamera();
     if (a === 'parar-gravacao') return pararGravacao();
   }
+  /* ---------------------------------------------- 4.13.0: caixa do texto
+     Modo ajuste: arrastar a caixa move; puxar o canto muda o tamanho.
+     Guarda em porcentagem da tela (vale em pé e deitado). */
+  function ajustarCaixa(on) {
+    if (!S) return;
+    if (on && R.tocando) pausar();
+    S.el.classList.toggle('tele-ajustando', on);
+    let ui = S.el.querySelector('.tele-caixa-ui');
+    if (on && !ui) {
+      ui = document.createElement('div'); ui.className = 'tele-caixa-ui';
+      ui.innerHTML = '<span class="tele-caixa-dica">Arraste para mover · puxe o canto para o tamanho</span><button type="button" class="tele-caixa-ok">Pronto</button><i class="tele-alca" aria-hidden="true"></i>';
+      S.palco.appendChild(ui);
+      ui.querySelector('.tele-caixa-ok').onclick = ev => { ev.stopPropagation(); ajustarCaixa(false); };
+      let d = null;
+      ui.addEventListener('pointerdown', ev => {
+        if (ev.target.closest('.tele-caixa-ok')) return;
+        ev.preventDefault(); ev.stopPropagation(); ui.setPointerCapture(ev.pointerId);
+        d = { x: ev.clientX, y: ev.clientY, c: Object.assign({}, P.caixa), canto: !!ev.target.closest('.tele-alca') };
+      });
+      ui.addEventListener('pointermove', ev => {
+        if (!d) return;
+        const W = S.el.clientWidth || 1, H = S.el.clientHeight || 1, dx = (ev.clientX - d.x) / W * 100, dy = (ev.clientY - d.y) / H * 100, c = P.caixa;
+        if (d.canto) { c.w = Math.min(100 - c.x, Math.max(30, d.c.w + dx)); c.h = Math.min(100 - c.y, Math.max(12, d.c.h + dy)); }
+        else { c.x = Math.min(100 - c.w, Math.max(0, d.c.x + dx)); c.y = Math.min(100 - c.h, Math.max(0, d.c.y + dy)); }
+        aplicarPrefs();
+      });
+      const solta = () => { if (!d) return; d = null; gravarPrefs(); medir(true); };
+      ui.addEventListener('pointerup', solta); ui.addEventListener('pointercancel', solta);
+    } else if (!on && ui) { ui.remove(); gravarPrefs(); medir(true); }
+  }
+
   function aoClicar(e) {
     if (!S) return;
+    if (e.target.closest('.tele-caixa-ui')) return;
     const b = e.target.closest('[data-tele],[data-pref],[data-modo],[data-roteiro]');
     if (!b || b.disabled) {
       /* toque na área de leitura: mostra ou esconde os controles */
@@ -771,10 +813,21 @@ B7.Teleprompter = (function () {
     const minha = S;
     S.ligandoCamera = true;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
-        audio: { echoCancellation: true, noiseSuppression: true }
-      });
+      /* 4.13.0: áudio PURO do microfone do celular — sem cancelamento de eco,
+         sem "redução de ruído" e sem ganho automático (eram eles que deixavam
+         a voz pipocada/robótica); 48 kHz. Vídeo: a maior resolução que a
+         câmera da frente der (até 4K), 30 qps, sem a câmera reduzir sozinha. */
+      const AUDIO = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, sampleRate: { ideal: 48000 }, sampleSize: { ideal: 16 }, channelCount: { ideal: 1 } };
+      const VIDEO = { facingMode: 'user', width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 30, min: 24 }, resizeMode: 'none' };
+      let stream;
+      try { stream = await navigator.mediaDevices.getUserMedia({ video: VIDEO, audio: AUDIO }); }
+      catch (e1) {
+        if (e1 && (e1.name === 'NotAllowedError' || e1.name === 'SecurityError')) throw e1;
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }, audio: AUDIO });
+      }
+      /* desliga de novo depois de abrir: alguns Android ignoram no pedido */
+      stream.getAudioTracks().forEach(t => { try { t.applyConstraints({ echoCancellation: false, noiseSuppression: false, autoGainControl: false }); } catch (e2) {} });
+      stream.getVideoTracks().forEach(t => { try { t.contentHint = 'detail'; } catch (e2) {} });
       if (S !== minha) { stream.getTracks().forEach(t => t.stop()); return; }
       const v = document.createElement('video');
       v.className = 'tele-cam'; v.muted = true; v.playsInline = true; v.autoplay = true;
@@ -851,7 +904,9 @@ B7.Teleprompter = (function () {
     const hora = String(agora.getHours()).padStart(2, '0') + 'h' + String(agora.getMinutes()).padStart(2, '0') + '-' + String(agora.getSeconds()).padStart(2, '0');
     const nome = ('B7 ' + (r ? r.titulo : 'teleprompter') + ' ' + oQue + ' ' + hora).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
     let rec;
-    try { rec = new MediaRecorder(S.camera.stream, Object.assign({ videoBitsPerSecond: 8000000 }, tipo ? { mimeType: tipo } : {})); }
+    try { const st = (S.camera.stream.getVideoTracks()[0] || { getSettings: () => ({}) }).getSettings(), px = (st.width || 1920) * (st.height || 1080);
+      /* bitrate pela resolução real: 1080p ≈ 16 Mb/s, 4K ≈ 40 Mb/s; áudio 256 kb/s */
+      rec = new MediaRecorder(S.camera.stream, Object.assign({ videoBitsPerSecond: px > 4e6 ? 40000000 : px > 1.5e6 ? 16000000 : 10000000, audioBitsPerSecond: 256000 }, tipo ? { mimeType: tipo } : {})); }
     catch (e) { B7.UI.toast('Este aparelho não grava vídeo por aqui.', { tipo: 'erro' }); return; }
     const destino = destinoDoVideo(nome, rec.mimeType || tipo, ext);
     rec.ondataavailable = ev => { if (ev.data && ev.data.size) destino.parte(ev.data); };
