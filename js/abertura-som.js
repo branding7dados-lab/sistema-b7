@@ -586,7 +586,21 @@ B7.SomAbertura = (function () {
     [2.3, t => ignicao(t, .7)], [2.3, camaSonora], [2.3, t => coro(t, 2.0, [261.63, 392, 523.25, 659.25], .06, .08)],
     [2.6, letras], [3.2, cintilar], [3.4, assinatura]
   ];
-  const ROTEIROS_EST = { streaming: ROTEIRO_STREAMING, hiper: ROTEIRO_HIPER, tinta: ROTEIRO_TINTA, glitch: ROTEIRO_GLITCH, aurora: ROTEIRO_AURORA, neon: ROTEIRO_NEON, mosaico: ROTEIRO_MOSAICO, estudio: ROTEIRO_AURORA };
+  /* zzz293 — PROGRAMADOR (4,2 s), alinhado a js/abertura-cenas.js:
+       0,0  zumbido do terminal ligando        0,3–1,6  teclado (um estalo por tecla)
+       1,0  nota "ok", 1,4 duas notas do "sudo liberado"
+       1,55 subida e prato ao contrário        1,76 clarão: impacto + braam; 1,9 o logo */
+  const ROTEIRO_PROGRAMADOR = [
+    [0.0, t => prologo(t, t + 1.75)], [0.0, t => motor(t, t + 1.5)],
+    [0.3, t => { let x = 0, n = 0; while (x < 1.3 && n < 60) { estalo(t + x); x += .022 + ((n * 37) % 11) / 260; n++; } }],
+    [1.0, t => sino(t, 880, .02, .5)], [1.4, t => sino(t, 1046.5, .022, .6)], [1.5, t => sino(t, 1318.5, .02, .8)],
+    [1.25, t => riser(t, .5)], [1.3, t => pratoReverso(t, t + .45)], [1.7, t => folego(t, t + .05)],
+    [1.76, t => ignicao(t, .9)], [1.76, t => boom(t, .45)], [1.76, t => braam(t, .9)],
+    [1.9, camaSonora], [1.9, t => coro(t, 2.0, [261.63, 392, 523.25, 659.25], .055, .06)],
+    [1.94, t => { estalo(t); estalo(t + .05); estalo(t + .11); }],
+    [2.2, letras], [2.8, cintilar], [3.1, assinatura]
+  ];
+  const ROTEIROS_EST = { streaming: ROTEIRO_STREAMING, hiper: ROTEIRO_HIPER, tinta: ROTEIRO_TINTA, glitch: ROTEIRO_GLITCH, aurora: ROTEIRO_AURORA, neon: ROTEIRO_NEON, mosaico: ROTEIRO_MOSAICO, estudio: ROTEIRO_AURORA, programador: ROTEIRO_PROGRAMADOR };
   const estiloAtual = () => document.documentElement.getAttribute('data-ab-estilo');
   const roteiroCompleto = () => ROTEIROS_EST[estiloAtual()] || ROTEIRO;
   let inicioAnim = null, tocada = false, roteiro = ROTEIRO;
@@ -656,7 +670,7 @@ B7.SomAbertura = (function () {
     const off = new OAC(2, 44100 * (curto ? 3.5 : 9), 44100);
     preparar(off);
     (curto ? ROTEIRO_CURTO : ROTEIROS_EST[qual] || ROTEIRO).forEach(([quando, fn]) => fn(quando));
-    partida(curto ? 1.0 : (saidaEm || ({ streaming: 3.6, hiper: 4.0, tinta: 4.2, glitch: 4.2, aurora: 4.2, neon: 3.8, mosaico: 4.2, estudio: 4.2 })[qual] || 6.4));
+    partida(curto ? 1.0 : (saidaEm || ({ streaming: 3.6, hiper: 4.0, tinta: 4.2, glitch: 4.2, aurora: 4.2, neon: 3.8, mosaico: 4.2, estudio: 4.2, programador: 4.2 })[qual] || 6.4));
     const buf = await off.startRendering();
     [ctx, saida, sala, ruido, drone, cama] = salvo;
     if (cru) return [buf.getChannelData(0), buf.getChannelData(1)];
