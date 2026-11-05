@@ -42,6 +42,16 @@ B7.PerfilLateral = (function () {
 
   const eu = () => (B7.Auth && B7.Auth.usuario && B7.Auth.usuario()) || null;
   const souEquipe = () => { const u = eu(); return !!u && u.papel !== 'cliente'; };
+  /* zzz291: Programador (superadmin 'supremo') é o cargo principal */
+  const ehProg = () => !!(B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() === 'supremo' && !(B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro()));
+  function cargosHTML(u, sup, outro) {
+    const lista = String(funcoes(u) || '').split(' · ').map(x => x.trim()).filter(Boolean);
+    let h = '';
+    if (sup && !outro) h += sup === 'supremo'
+      ? '<span class="pf-cargo pf-cargo-prog"><i aria-hidden="true">&lt;/&gt;</i>Programador<em aria-hidden="true">_</em></span>'
+      : '<span class="pf-cargo pf-cargo-super">Super admin</span>';
+    return '<span class="pf-cargos">' + h + lista.map((c, i) => '<span class="pf-cargo" style="--i:' + (i + 1) + '">' + esc(c) + '</span>').join('') + '</span>';
+  }
   const funcoes = u => (B7.Topo && B7.Topo.funcoesDoUsuario ? B7.Topo.funcoesDoUsuario(u) : '') || 'Equipe B7';
 
   /* a bolinha fica FORA do avatar: ele corta o que passa da borda (overflow)
@@ -64,7 +74,8 @@ B7.PerfilLateral = (function () {
     card.setAttribute('aria-label', 'Sua conta: ' + (u.nome || u.username) + ' · ' + rotDe(estado.status));
     card.innerHTML = avatar(u) +
       '<span class="pf-tx"><b>' + esc(u.nome || u.username) + '</b><small>' +
-        esc((funcoes(u).split(' · ')[0] || '') + ' · ' + (estado.recado || rotDe(estado.status))) + '</small></span>' + IC.setas;
+        esc((ehProg() ? 'Programador' : (funcoes(u).split(' · ')[0] || '')) + ' · ' + (estado.recado || rotDe(estado.status))) + '</small></span>' + IC.setas;
+    card.classList.toggle('pf-prog', ehProg());
     card.onclick = e => { e.stopPropagation(); aberto ? fechar() : abrir(); };
     if (!velho) pe.insertBefore(card, pe.firstChild);
     document.body.classList.add('perfil-lateral');
@@ -87,8 +98,8 @@ B7.PerfilLateral = (function () {
     const temaAtual = (() => { let t = null; try { t = localStorage.getItem('b7_tema'); } catch (e) {} return t === 'dark' || t === 'light' ? t : 'sistema'; })();
     const num = (n, rot, ir, cls) => '<button type="button" class="pf-num' + (cls || '') + '" data-ir-pf="' + ir + '"><b>' + (dia ? n : '–') + '</b><small>' + rot + '</small></button>';
     return '<div class="pf-painel">' +
-      '<div class="pf-topo">' + avatar(u, 'pf-av-g') +
-        '<div class="pf-quem"><b>' + esc(u.nome || u.username) + '</b><small>' + esc(funcoes(u)) + (sup && !outro ? ' · ' + (sup === 'supremo' ? 'Programador' : 'Super admin') : '') + '</small></div>' +
+      '<div class="pf-topo' + (sup === 'supremo' && !outro ? ' pf-topo-prog' : '') + '">' + avatar(u, 'pf-av-g') +
+        '<div class="pf-quem"><b>' + esc(u.nome || u.username) + '</b>' + cargosHTML(u, sup, outro) + '</div>' +
         '<button type="button" class="pf-editar" data-pf="perfil">Editar perfil</button></div>' +
       '<div class="pf-rot">Meu status</div>' +
       '<div class="pf-st" role="radiogroup" aria-label="Meu status">' + STATUS.map(([k, r, c]) =>

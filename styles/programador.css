@@ -33,3 +33,61 @@
 /* selo do cargo no topo e na lista de usuários */
 .tc-super.supremo,.lu4-tag.supremo{background:linear-gradient(90deg,#7B4DFF,#E2409C) !important;color:#fff !important;font-family:ui-monospace,Consolas,monospace;}
 .tc-super.supremo::before,.lu4-tag.supremo::before{content:"</> ";}
+
+/* ---------- zzz291: cargos em etiquetas no painel do perfil ---------- */
+.pf-topo{align-items:flex-start;position:relative;overflow:hidden;isolation:isolate;}
+.pf-quem b{margin-top:2px;}
+.pf-cargos{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+.pf-cargo{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border-radius:99px;font-size:11.5px;font-weight:650;line-height:1;
+  color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:pfCargo .4s cubic-bezier(.3,1.4,.5,1) calc(var(--i,0) * 60ms) both;}
+.pf-cargo-super{background:rgba(255,255,255,.26);}
+/* Programador: etiqueta escura de terminal, borda de luz girando, cursor piscando */
+.pf-cargo-prog{position:relative;padding:0 10px 0 8px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11.5px;letter-spacing:.01em;
+  color:#E9E1FF;background:#0E0820;border:0;isolation:isolate;overflow:hidden;box-shadow:0 4px 14px -4px rgba(226,64,156,.7);}
+.pf-cargo-prog::before{content:"";position:absolute;inset:-150%;z-index:-2;
+  background:conic-gradient(from 0deg,#4C6FFF,#7B4DFF,#E2409C,#FF8FCB,#4C6FFF);animation:pfGira 2.6s linear infinite;}
+.pf-cargo-prog::after{content:"";position:absolute;inset:1.5px;z-index:-1;border-radius:99px;background:#0E0820;}
+.pf-cargo-prog i{font-style:normal;font-weight:800;background:linear-gradient(90deg,#8F6BFF,#FF5FA8);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.pf-cargo-prog em{font-style:normal;color:#FF5FA8;animation:progCursor .9s steps(1) infinite;margin-left:-1px;}
+/* o topo do programador: um código sutil passando ao fundo */
+.pf-topo-prog::after{content:"01 </> {} B7 => 10 ;; 0x7 </> 11 [] 01 => {} B7";position:absolute;left:0;right:0;bottom:-2px;z-index:-1;
+  font:600 10px/1 ui-monospace,Consolas,monospace;letter-spacing:3px;white-space:nowrap;color:rgba(255,255,255,.13);animation:pfCodigo 14s linear infinite;}
+.pf-topo-prog .pf-av-g{position:relative;}
+.pf-topo-prog .pf-av-g::before{content:"";position:absolute;inset:-3px;border-radius:19px;z-index:0;
+  background:conic-gradient(from 0deg,#4C6FFF,#E2409C,#FFB36B,#4C6FFF);animation:pfGira 3.2s linear infinite;}
+.pf-topo-prog .pf-av-g > *{position:relative;z-index:1;}
+.pf-card.pf-prog,.pf-prog{}
+@keyframes pfGira{to{transform:rotate(360deg)}}
+@keyframes pfCargo{from{opacity:0;transform:translateY(5px) scale(.9)}to{opacity:1;transform:none}}
+@keyframes pfCodigo{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){
+  .pf-cargo,.pf-cargo-prog::before,.pf-cargo-prog em,.pf-topo-prog::after,.pf-topo-prog .pf-av-g::before{animation:none;}
+}
+html.modo-leve :is(.pf-cargo,.pf-cargo-prog::before,.pf-topo-prog::after,.pf-topo-prog .pf-av-g::before){animation:none;}
+
+/* ---------- zzz291: abertura e carregamento do Programador ---------- */
+/* a abertura normal fica só como fundo escuro: quem aparece é a do programador */
+html.b7-prog:not(.ab-sem) .b7-abertura > *{visibility:hidden !important;}
+.prog-term::after{content:"";}
+.prog-carga{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:14px;width:min(260px,80vw);}
+.prog-carga .prog-tag{display:flex;align-items:center;gap:2px;font-size:56px;line-height:1;}
+.prog-carga .prog-tag b{display:inline-block;font-weight:800;animation:progAbre 1s cubic-bezier(.5,0,.3,1) infinite;}
+.prog-carga .prog-tag b:last-child{animation-name:progFecha;}
+.prog-carga .prog-tag i{font-style:normal;font-weight:800;display:inline-block;animation:progBarraGira 1s cubic-bezier(.6,0,.3,1) infinite;}
+.prog-compila{margin:0;font-size:12.5px;letter-spacing:.06em;color:#C9B8FF;}
+.prog-compila span{animation:progCursor .6s steps(1) infinite;}
+.prog-barra{width:100%;height:3px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;}
+.prog-barra i{display:block;height:100%;width:100%;border-radius:3px;background:linear-gradient(90deg,#4C6FFF,#7B4DFF,#E2409C);
+  transform-origin:left;animation:progEnche 1.15s cubic-bezier(.3,.8,.3,1) both;box-shadow:0 0 12px #E2409C;}
+.prog-intro.calmo .prog-carga *{animation:none !important;}
+@keyframes progAbre{0%,100%{transform:translateX(0)}50%{transform:translateX(-8px)}}
+@keyframes progFecha{0%,100%{transform:translateX(0)}50%{transform:translateX(8px)}}
+@keyframes progBarraGira{0%{transform:rotate(0)}60%,100%{transform:rotate(180deg)}}
+@keyframes progEnche{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.prog-carga .prog-tag{background:none;color:#fff;}
+.prog-carga .prog-tag b,.prog-carga .prog-tag i{background:linear-gradient(180deg,#8F6BFF,#E2409C);-webkit-background-clip:text;background-clip:text;color:transparent;}
+/* o "Editar perfil" vai para o canto: as etiquetas usam a largura toda */
+.pf-topo .pf-editar{position:absolute;top:12px;right:12px;}
+.pf-topo .pf-quem b{padding-right:96px;}
+.pf-cargos{margin-right:-2px;}

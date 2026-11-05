@@ -64,6 +64,8 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* abertura completa só uma vez por sessão do navegador: recarregar (ou a
      atualização automática) no meio do dia mostra a versão curta */
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
+  /* zzz291: quem é Programador (marcado por js/programador.js) tem abertura e carregamento próprios */
+  try { if (localStorage.getItem('b7_prog') === '1') document.documentElement.classList.add('b7-prog'); } catch (e) {}
   /* zzz269: troca de conta ("Entrar como" e "Voltar para minha conta") abre direto, sem abertura */
   try { if (sessionStorage.getItem('b7_troca_rapida')) { sessionStorage.removeItem('b7_troca_rapida'); document.documentElement.classList.add('ab-sem'); } } catch (e) {}
   /* zzz230/zzz231: estilo da abertura completa, antes da primeira pintura
