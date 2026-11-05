@@ -405,7 +405,18 @@ B7.WhatsApp = (function () {
     });
     return r.sort((a, b) => b.p - a.p);
   }
+  /* 4.21.0: o resultado de casar(nome) não muda enquanto a lista de
+     clientes for a mesma — guarda em memória (antes refazia a comparação
+     de todos os grupos com todos os clientes a cada leitura) */
+  const casarMemo = new Map(); let casarClientes = null;
   function casar(nomeGrupo) {
+    if (casarClientes !== clientes) { casarMemo.clear(); casarClientes = clientes; }
+    if (casarMemo.has(nomeGrupo)) return casarMemo.get(nomeGrupo);
+    const r = casarCalc(nomeGrupo);
+    casarMemo.set(nomeGrupo, r);
+    return r;
+  }
+  function casarCalc(nomeGrupo) {
     const bruto = String(nomeGrupo || '');
     if (INTERNO_RE.test(norm(bruto)) || /\(você\)/i.test(bruto)) return null;
     const partes = bruto.split(/\s+[-–—|]\s+/).map(limpar).filter(Boolean);
@@ -456,8 +467,12 @@ B7.WhatsApp = (function () {
     });
     clearTimeout(tMandar); tMandar = setTimeout(mandarLeitura, 4000);
     vigiarEsperando();
-    pintarLado();
+    /* 4.21.0: só redesenha o painel se mudou a linha da conversa aberta */
+    const aberta = conversaAberta && listaViva.find(x => x.nome === conversaAberta.titulo);
+    const sigLado = aberta ? JSON.stringify(aberta) : '';
+    if (sigLado !== ultimoLado) { ultimoLado = sigLado; pintarLado(); }
   }
+  let ultimoLado = null;
   async function mandarLeitura() {
     const itens = [...paraMandar.values()]; paraMandar = new Map();
     if (itens.length) { try { await B7.sb.rpc('whatsapp_grupos_sincronizar', { p_itens: itens }); } catch (e) {} }

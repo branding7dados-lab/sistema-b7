@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.21.0', versao: '4.21.0', em: '2026-11-06T17:00:00-03:00',
+    titulo: 'WhatsApp mais leve',
+    itens: ['O WhatsApp dentro do app de PC ficou bem mais leve: o sistema lê a lista de grupos e a conversa só quando algo muda, em vez de o tempo todo. Atualize o app de PC para pegar a melhoria.'] },
   { id: 'v-4.19.0', versao: '4.19.0', em: '2026-11-06T15:00:00-03:00',
     titulo: 'Duplicar demanda de vídeo',
     itens: ['Botão direito numa demanda (Kanban ou Lista) → "Duplicar…", ou o botão "Duplicar" dentro da demanda. Dá para criar até 10 cópias de uma vez, escolhendo se mantém responsável, prazo, roteiros e o "Sobre o vídeo". A cópia começa do zero: Pendente, sem versões e sem conclusão.'] },

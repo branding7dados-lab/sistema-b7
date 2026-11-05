@@ -394,25 +394,39 @@ function lerConversa() {
     const m = /^\[([^\]]+)\]\s*([^:]*):/.exec(pre);
     const caixa = el.closest('.message-out, .message-in');
     return { de: m ? m[2].trim() : '', quando: m ? m[1] : '', minha: !!(caixa && caixa.classList.contains('message-out')),
-             texto: ((el.querySelector('.selectable-text') || el).innerText || '').trim().slice(0, 400) };
+             texto: ((el.querySelector('.selectable-text') || el).textContent || '').trim().slice(0, 400) };
   }).filter(x => x.texto);
   return { titulo, msgs, grupo: ehGrupo };
 }
 
-let ultimaLista = '', ultimaConversa = '', tLer = 0;
-function lerEMandar() {
-  clearTimeout(tLer);
-  tLer = setTimeout(() => {
-    try {
-      const l = lerLista(), jl = JSON.stringify(l);
-      if (l.length && jl !== ultimaLista) { ultimaLista = jl; ipcRenderer.send('b7wa:conversas', l); }
-      const c = lerConversa(), jc = JSON.stringify(c);
-      if (jc !== ultimaConversa) { ultimaConversa = jc; ipcRenderer.send('b7wa:conversa', c); }
-    } catch (e) {}
-  }, 1200);
+/* 4.21.0 (WhatsApp travando): antes um MutationObserver olhava a PÁGINA
+   INTEIRA (subtree + texto) — o WhatsApp muda o DOM o tempo todo, então a
+   leitura disparava sem parar e usava innerText (obriga a tela a se
+   recalcular). Agora: uma olhada leve a cada 3 s (1 a cada 15 s com a janela
+   escondida), com uma "assinatura" barata — só lê de verdade quando a
+   lista ou a conversa mudou. */
+let ultimaLista = '', ultimaConversa = '', assinatura = '', ultimaVolta = 0;
+function lerEMandar(forcar) {
+  try {
+    const pane = qs('#pane-side'), main = qs('#main');
+    const msgs = main ? qsa('[data-pre-plain-text]', main) : [];
+    const ult = msgs.length ? msgs[msgs.length - 1].getAttribute('data-pre-plain-text') + (msgs[msgs.length - 1].textContent || '').length : '';
+    const sig = (pane ? pane.textContent.length + ':' + pane.childElementCount : '-') + '|' + tituloDaConversa() + '|' + msgs.length + '|' + ult;
+    if (!forcar && sig === assinatura) return;
+    assinatura = sig;
+    const l = lerLista(), jl = JSON.stringify(l);
+    if (l.length && jl !== ultimaLista) { ultimaLista = jl; ipcRenderer.send('b7wa:conversas', l); }
+    const c = lerConversa(), jc = JSON.stringify(c);
+    if (jc !== ultimaConversa) { ultimaConversa = jc; ipcRenderer.send('b7wa:conversa', c); }
+  } catch (e) {}
 }
-new MutationObserver(lerEMandar).observe(document, { childList: true, subtree: true, characterData: true });
-setInterval(lerEMandar, 60000);   /* "há quanto tempo" muda mesmo sem mensagem nova */
+setInterval(() => {
+  const agora = Date.now();
+  if (document.hidden && agora - ultimaVolta < 15000) return;
+  ultimaVolta = agora;
+  lerEMandar(false);
+}, 3000);
+setInterval(() => lerEMandar(true), 60000);   /* "há quanto tempo" muda mesmo sem mensagem nova */
 
 ACOES.escanear = async () => {
   const p = qs('#pane-side');
