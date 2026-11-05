@@ -25,9 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
-  { id: 'v-4.13.3', versao: '4.13.3', em: '2026-11-06T06:00:00-03:00',
+  { id: 'v-4.13.4', versao: '4.13.4', em: '2026-11-06T06:00:00-03:00',
     titulo: 'Tela da demanda de vídeo mais organizada',
-    itens: ['"Sobre o vídeo" (as observações) agora fica no topo, todos os blocos têm o mesmo tipo de título, "Enviar ao cliente" ocupa uma linha só e a Conclusão ficou mais limpa.'] },
+    itens: ['No celular, Situação, Responsável, Prazo e Prioridade ficam logo abaixo do título.',
+            '"Sobre o vídeo" (as observações) agora fica no topo, todos os blocos têm o mesmo tipo de título, "Enviar ao cliente" ocupa uma linha só e a Conclusão ficou mais limpa.'] },
   { id: 'v-4.13.1', versao: '4.13.1', em: '2026-11-06T05:00:00-03:00',
     titulo: 'Apagar pede o nome',
     itens: ['Para apagar um roteiro, uma gravação, uma linha editorial ou excluir algo da lixeira para sempre, agora é preciso digitar o nome dele. Evita apagar a coisa errada sem querer.'] },

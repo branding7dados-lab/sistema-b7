@@ -1778,3 +1778,21 @@ body.vp-arrastando .vp-card{cursor:grabbing;}
 .vd-detalhe .vd-wa-tx p.fraca{font-size:12.5px;line-height:1.5;color:var(--ink-3);}
 .vd-detalhe .vd-bloco .vd-vazio-versao{padding:14px 18px 12px;}
 .vd-detalhe .vd-bloco .vd-vazio-versao p{max-width:520px;}
+
+/* 4.13.4: no celular/tablet, Fluxo (situação, responsável, prazo,
+   prioridade) sobe para logo abaixo do título; Contexto fica no fim */
+@media (max-width: 900px){
+  .vd-detalhe .vd-detalhe-corpo{display:flex;flex-direction:column;align-items:stretch;gap:16px;}
+  .vd-detalhe .vd-detalhe-lateral > *{align-self:stretch;width:auto;}
+  .vd-detalhe .vd-detalhe-lateral{display:contents;}
+  .vd-detalhe .vd-detalhe-principal{order:1;}
+  .vd-detalhe .vd-detalhe-lateral > .vd-lat-grupo{background:var(--suave);border-radius:16px;padding:14px 16px;margin:0;}
+  .vd-detalhe .vd-detalhe-lateral > .vd-lat-grupo:first-child{order:0;display:grid;grid-template-columns:1fr 1fr;column-gap:12px;}
+  .vd-detalhe .vd-detalhe-lateral > .vd-lat-grupo:first-child .vd-lat-titulo{grid-column:1/-1;}
+  .vd-detalhe .vd-detalhe-lateral > .vd-lat-grupo:first-child > :not(.vd-dt-campo):not(.vd-lat-titulo){grid-column:1/-1;}
+  .vd-detalhe .vd-detalhe-lateral > .vd-lat-grupo:not(:first-child),.vd-detalhe .vd-lat-rodape{order:2;}
+  .vd-detalhe .vd-detalhe-principal > .vd-bloco:last-child{margin-bottom:0;}
+}
+@media (max-width: 420px){
+  .vd-detalhe .vd-detalhe-lateral > .vd-lat-grupo:first-child{grid-template-columns:1fr;}
+}
