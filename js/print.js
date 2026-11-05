@@ -64,7 +64,8 @@ B7.Folha = (function () {
       '<div class="folha-cabeca"><div class="esq"><img src="' + MARCA + '" alt="">' +
         '<span>B7 &nbsp;/&nbsp; BRANDING7</span></div>' +
         '<div class="dir">ROTEIROS DE GRAVAÇÃO</div></div>' +
-      '<div class="proj">' +
+      /* 4.17.2: roteiro do Banco geral (sem cliente) não leva a faixa cliente/gravação */
+      (ctx.semCliente ? '' : '<div class="proj">' +
         '<div class="cel"><b>CLIENTE</b>' +
           (ctx.clienteLogo
             ? '<div class="cli-com-logo"><img src="' + esc(ctx.clienteLogo) + '" alt="">' +
@@ -75,7 +76,7 @@ B7.Folha = (function () {
           esc(ctx.gravacao || 'Gravação') + '</span></div>' +
         (ctx.dataGravacao ? '<div class="cel"><b>DATA</b><span>' + esc(ctx.dataGravacao) + '</span></div>' : '') +
         '<div class="cel fim"><b>VÍDEO</b><span>' + num + ' / ' + String(ctx.total).padStart(2, '0') + '</span></div>' +
-      '</div>' +
+      '</div>') +
       '<div class="titulo-bloco"><div class="numero">' + num + '</div><div class="titulo-dir">' +
         '<div class="kicker"><i></i>ROTEIRO ' + num + ' &nbsp;·&nbsp; ' + ctx.cenas.length +
           ' CENA' + (ctx.cenas.length === 1 ? '' : 'S') + '</div>' +
@@ -115,11 +116,11 @@ B7.Folha = (function () {
       '<div class="miolo">' +
         '<div class="olho"><i></i>PRODUÇÃO DE CONTEÚDO</div>' +
         '<h1>Roteiros<br>de Gravação</h1>' +
-        '<div class="dados">' +
+        (ctx.semCliente ? '' : '<div class="dados">' +
           '<div class="cel"><b>CLIENTE</b><span>' + esc(ctx.cliente || '—') + '</span></div>' +
           '<div class="cel"><b>GRAVAÇÃO</b><span>' + esc(ctx.gravacao || '—') + '</span></div>' +
           (ctx.dataGravacao ? '<div class="cel"><b>DATA</b><span>' + esc(ctx.dataGravacao) + '</span></div>' : '') +
-        '</div>' +
+        '</div>') +
         '<div class="indice"><div class="rot">ROTEIROS DESTA GRAVAÇÃO</div>' + itens + '</div>' +
       '</div></div>';
   }

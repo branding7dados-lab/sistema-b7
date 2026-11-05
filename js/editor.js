@@ -49,7 +49,7 @@ B7.Editor = (function () {
       const banco = String(gravacaoId).startsWith('banco-');
       let gravacao, roteiros;
       if (gravacaoId === 'banco-geral') {
-        gravacao = { id: gravacaoId, banco: true, geral: true, client_id: null, nome: 'Banco geral', cliente_nome: 'Sem cliente', cliente_logo_url: null, status: '', data_gravacao: null };
+        gravacao = { id: gravacaoId, banco: true, geral: true, client_id: null, nome: 'Ideias e modelos, sem cliente', cliente_nome: 'Banco geral', cliente_logo_url: null, status: '', data_gravacao: null };
         roteiros = await B7.DB.roteirosGerais();
       } else if (banco) {
         const clienteId = String(gravacaoId).slice(6), c = await B7.DB.cliente(clienteId);
@@ -61,6 +61,7 @@ B7.Editor = (function () {
         roteiros = await B7.DB.listarRoteiros(gravacaoId);
       }
       document.body.classList.toggle('ed-banco', banco);
+      document.body.classList.toggle('ed-geral', gravacaoId === 'banco-geral');
       const ids = roteiros.map(r => r.id);
       const todasCenas = await B7.DB.listarCenasDaGravacao(ids);
       const cenas = {};
@@ -895,7 +896,7 @@ B7.Editor = (function () {
     const idx = E.roteiros.findIndex(x => x.id === r.id);
 
     cx.innerHTML = B7.Folha.folhaHTML({
-      cliente: E.gravacao.cliente_nome,
+      cliente: E.gravacao.cliente_nome, semCliente: !!E.gravacao.geral,
       clienteLogo: E.gravacao.cliente_logo_url || null,
       gravacao: E.gravacao.nome,
       dataGravacao: E.gravacao.data_gravacao ? B7.UI.dataBR(E.gravacao.data_gravacao) : '',
@@ -953,7 +954,7 @@ B7.Editor = (function () {
   /* contexto único para impressão, download, quick view e apresentação */
   function contexto() {
     return {
-      cliente: E.gravacao.cliente_nome,
+      cliente: E.gravacao.cliente_nome, semCliente: !!E.gravacao.geral,
       clienteLogo: E.gravacao.cliente_logo_url || null,
       clienteId: E.gravacao.client_id,
       gravacao: E.gravacao.nome,

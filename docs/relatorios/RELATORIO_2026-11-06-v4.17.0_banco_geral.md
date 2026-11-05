@@ -10,3 +10,8 @@
 ## 4.17.1
 - Voltar no editor do banco: banco geral → Roteiros; banco do cliente → aba Gravações do cliente (antes ia para #/gravacao/banco-…, que reabria o editor: preso).
 - Barra lateral marca "Roteiros" no banco de roteiros (antes "Gravações").
+
+## 4.17.2
+- Folha A4 / PDF de roteiro do Banco geral sem a faixa Cliente/Gravação/Vídeo (e sem os dados da capa).
+- Em Roteiros, o Banco geral virou uma seção própria no topo ("Ideias e modelos"), fora dos meses — não aparece mais como grupo "Sem cliente".
+- Editor do Banco geral: título "Banco geral · Ideias e modelos, sem cliente"; bloco "Enviar para aprovação" escondido (não há cliente).

@@ -814,6 +814,10 @@ B7.Dashboard = (function () {
     const vale = B7.Rota.marca();
     try { roteiros = await B7.DB.roteirosRecentes(1000); } catch (e) { if (!vale()) return; return erro(e, 'abrirRoteiros'); }
     if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
+    /* 4.17.2: o Banco geral (sem cliente e sem gravação) fica numa seção
+       própria no topo, em vez de virar um grupo "Sem cliente" nos meses */
+    const gerais = roteiros.filter(r => !r.recording_session_id && !r.client_id);
+    roteiros = roteiros.filter(r => r.recording_session_id || r.client_id);
     roteiros.forEach(r => { r._mes = mesDoRoteiro(r); r._chaveMes = chaveMesRot(r._mes); });
     const agoraMes = chaveMesRot({ ano: new Date().getFullYear(), mes: new Date().getMonth() + 1 });
     const meses = [...new Set(roteiros.map(r => r._chaveMes))].sort().reverse();
@@ -835,6 +839,10 @@ B7.Dashboard = (function () {
           '<button class="b contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo" title="Roteiro sem cliente e sem gravação">' + IC.mais + '<span>Novo roteiro</span></button>' +
           '<button class="b pri rt-novo" data-nova-gravacao aria-label="Nova gravação">' + IC.mais + '<span>Nova gravação</span></button></div>' : '') +
       '</div>' +
+      '<section class="rt-geral"><header class="rt-geral-cab"><span class="rt-geral-ic">📚</span><span><b>Banco geral</b><small>Ideias e modelos de roteiro, sem cliente. Quando for usar, “Mover para…” ou “Duplicar para…” um cliente.</small></span>' +
+        '<button class="b fina contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo">' + IC.mais + 'Novo</button></header>' +
+        (gerais.length ? '<div class="rt-geral-lista">' + gerais.map(linhaRoteiroLista).join('') + '</div>' : '<p class="rt-geral-vazio">Nenhum roteiro no banco geral.</p>') +
+      '</section>' +
       (roteiros.length ?
         '<div class="filtro rolavel rt-status" id="rt-status" role="group" aria-label="Estágio"></div>' +
         '<div class="rt-barra-f">' +
@@ -856,6 +864,10 @@ B7.Dashboard = (function () {
           '<button class="b contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo">' + IC.mais + 'Novo roteiro sem cliente</button>')) +
       '</div>';
     ligar();
+    painel().querySelectorAll('.rt-geral [data-roteiro]').forEach(el => {
+      const ir = () => { location.hash = '#/gravacao/banco-geral/roteiros?roteiro=' + el.dataset.roteiro; };
+      el.onclick = ir; el.onkeydown = e => { if (e.key === 'Enter') ir(); };
+    });
     if (!roteiros.length) return;
 
     const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
