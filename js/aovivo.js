@@ -322,7 +322,9 @@ B7.AoVivo = (function () {
     selo = document.createElement('div');
     selo.className = 'av-selo-compart';
     selo.setAttribute('role', 'status');
-    selo.innerHTML = '<span class="av-selo-ponto" aria-hidden="true"></span><span>Tela compartilhada</span>';
+    /* 4.20.0: só uma bolinha discreta (pedido do Kevin); o nome fica no title e para leitor de tela */
+    selo.setAttribute('aria-label', 'Tela compartilhada'); selo.title = 'Tela compartilhada';
+    selo.innerHTML = '<span class="av-selo-ponto" aria-hidden="true"></span>';
     document.body.appendChild(selo);
   }
   function esconderSelo() { if (selo) { selo.remove(); selo = null; } }
@@ -554,7 +556,7 @@ B7.AoVivo = (function () {
         '<div class="av-topo"><div><h3>Equipe ao vivo</h3><span data-av-n class="sub">—</span></div>' +
           '<button type="button" class="av-x" data-av-fechar aria-label="Fechar">✕</button></div>' +
         '<div class="av-corpo" data-av-corpo></div>' +
-        '<p class="av-rodape">Quem está com o Sistema aberto e em que tela. <b>Ver como</b>: você entra como a pessoa, na tela em que ela está (nada é salvo). <b>Acompanhar</b>: você vê a tela dela ao vivo — e a tela dela mostra "Tela compartilhada". Só super admin e admin supremo.</p>' +
+        '<p class="av-rodape">Quem está com o Sistema aberto e em que tela. <b>Ver como</b>: você entra como a pessoa, na tela em que ela está (nada é salvo). <b>Acompanhar</b>: você vê a tela dela ao vivo — e a tela dela mostra uma bolinha rosa piscando no canto (tela compartilhada). Só super admin e admin supremo.</p>' +
       '</div>';
     document.body.appendChild(el);
     painel = el;

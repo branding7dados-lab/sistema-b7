@@ -138,3 +138,8 @@ html.av-espelhando, html.av-espelhando body{overflow:hidden;}
 .av-esp-tela-pc{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;background:#000;}
 .av-esp-tela-pc[hidden]{display:none;}
 .av-esp-pc{background:#ffffff3d;}
+
+/* 4.20.0: o aviso de tela compartilhada virou uma bolinha pequena */
+.av-selo-compart{padding:0;width:12px;height:12px;gap:0;left:10px;bottom:10px;background:none;box-shadow:none;}
+.av-selo-compart .av-selo-ponto{width:10px;height:10px;background:#e2409c;box-shadow:0 0 0 2px #fff,0 0 8px #e2409c;}
+@media (max-width:520px){ .av-selo-compart{left:10px;transform:none;bottom:86px;} }

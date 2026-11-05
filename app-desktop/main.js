@@ -464,14 +464,13 @@ ipcMain.handle('b7:instalar', () => instalarAgora());
    tudo — a pessoa sempre sabe. Está nos Termos (seção 2). */
 let pilula = null;
 const PILULA = '<!doctype html><meta charset="utf-8"><body style="margin:0;background:transparent;overflow:hidden">' +
-  '<div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:999px;color:#fff;' +
-  'font:700 12.5px Segoe UI,Arial,sans-serif;background:linear-gradient(120deg,#d6336c,#7c4dff);box-shadow:0 6px 18px rgba(0,0,0,.35);width:max-content">' +
-  '<span style="width:9px;height:9px;border-radius:50%;background:#fff;animation:p 1.4s ease-in-out infinite"></span>Tela compartilhada</div>' +
+  /* bolinha discreta (pedido do Kevin): pisca enquanto a tela é compartilhada */
+  '<div title="Tela compartilhada" style="margin:4px;width:10px;height:10px;border-radius:50%;background:#e2409c;box-shadow:0 0 0 2px #fff,0 0 8px #e2409c;animation:p 1.4s ease-in-out infinite"></div>' +
   '<style>@keyframes p{50%{opacity:.35}}</style>';
 function mostrarPilula() {
   if (pilula && !pilula.isDestroyed()) return;
   const a = screen.getPrimaryDisplay().workArea;
-  pilula = new BrowserWindow({ width: 200, height: 40, x: a.x + a.width - 214, y: a.y + a.height - 54,
+  pilula = new BrowserWindow({ width: 18, height: 18, x: a.x + a.width - 26, y: a.y + a.height - 26,
     frame: false, transparent: true, resizable: false, alwaysOnTop: true, skipTaskbar: true, focusable: false,
     show: false, hasShadow: false, webPreferences: { sandbox: true, javascript: false } });
   pilula.setAlwaysOnTop(true, 'screen-saver');
