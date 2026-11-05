@@ -6,3 +6,7 @@
 - "Mover para…" e "Duplicar para…": Banco geral, banco do cliente atual, gravação do cliente atual, ou outro cliente (banco ou gravação). `B7.DB.duplicarRoteiroPara` copia roteiro + cenas.
 - Rota `#/gravacao/banco-*` sempre vai para o editor (antes um link de grupo podia cair na tela de gravação).
 - Testado com dados simulados: abrir o banco geral, mover para outro cliente (destino correto), lista de Roteiros com os dois bancos.
+
+## 4.17.1
+- Voltar no editor do banco: banco geral → Roteiros; banco do cliente → aba Gravações do cliente (antes ia para #/gravacao/banco-…, que reabria o editor: preso).
+- Barra lateral marca "Roteiros" no banco de roteiros (antes "Gravações").

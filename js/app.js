@@ -169,8 +169,9 @@ B7.Rota = (function () {
     }
     if (partes[0] === 'gravacao' && partes[1]) {
       mostrar('tela-editor');
+      const ehBanco = String(partes[1]).startsWith('banco-');
       document.querySelectorAll('.nav a').forEach(a =>
-        a.classList.toggle('on', a.dataset.ir === '#/gravacoes'));
+        a.classList.toggle('on', a.dataset.ir === (ehBanco ? '#/roteiros' : '#/gravacoes')));
       if (B7.moverTrilha) B7.moverTrilha();
       document.body.dataset.aba = document.body.dataset.aba || 'editor';
       await B7.Editor.abrir(partes[1], params.get('roteiro'), params.get('ia'));
@@ -1070,6 +1071,10 @@ B7.Rota = (function () {
     /* do editor de roteiros, "voltar" leva à GRAVAÇÃO (Gravações 2.0) */
     ligarTopo('bt-voltar', () => {
       const m = /^#\/gravacao\/([^/?]+)/.exec(location.hash);
+      /* 4.17.1: banco de roteiros não tem tela de gravação: volta para o
+         cliente (banco do cliente) ou para Roteiros (banco geral) */
+      if (m && m[1] === 'banco-geral') { location.hash = '#/roteiros'; return; }
+      if (m && m[1].startsWith('banco-')) { location.hash = '#/cliente/' + m[1].slice(6) + '/gravacoes'; return; }
       location.hash = m ? '#/gravacao/' + m[1] : '#/';
     });
     document.getElementById('ed-status').onclick = () => B7.Editor.menuStatus();

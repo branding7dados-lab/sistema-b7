@@ -188,6 +188,8 @@ B7.Nav = (function () {
   }
   function itemDaRota(base) {
     const b = base === undefined ? baseAtual() : base;
+    /* 4.17.1: banco de roteiros (#/gravacao/banco-…) é da área Roteiros */
+    if (base === undefined && /^#\/gravacao\/banco-/.test(location.hash || '')) return 'roteiros';
     /* #/ do designer (Central de Design) e do resto (Central B7) */
     for (const id of Object.keys(ITENS)) if ((ITENS[id].base || []).includes(b)) return id;
     return null;
