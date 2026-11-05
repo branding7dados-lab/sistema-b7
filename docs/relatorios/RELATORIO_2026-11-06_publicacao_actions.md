@@ -4,3 +4,6 @@
 - Deixam de ser públicos: docs/, supabase/, testes/, emails/, app-android/, app-desktop/, README/VERSOES.
 - Testado localmente: fumaça (todas as telas) e a tela de jogos na versão compactada, sem erros.
 - Ativação: Settings → Pages → Source → "GitHub Actions". Até lá, o workflow falha no passo de publicar e o site segue pelo modo antigo.
+
+## Correção (06/11)
+- A compactação renomeava `VERSAO` em js/auth.js; site, app de PC e Android leem essa linha para saber da versão nova, então ninguém via atualização ("não foi possível conferir agora"). `montar.mjs` agora não compacta js/auth.js, e o workflow falha se a linha sumir.

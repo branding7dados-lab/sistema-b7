@@ -18,6 +18,9 @@ async function andar(dir) {
     const p = join(dir, n), s = await stat(p);
     if (s.isDirectory()) { if (n !== 'vendor') await andar(p); continue; }
     const ext = extname(n); if (ext !== '.js' && ext !== '.css') continue;
+    /* js/auth.js fica como está: o app, o site aberto e o Android leem dele
+       a linha VERSAO = '…' para saber se há versão nova (compactar apagava) */
+    if (p.endsWith('/js/auth.js')) continue;
     const fonte = await readFile(p, 'utf8');
     const r = await transform(fonte, { loader: ext.slice(1), minify: true, legalComments: 'none', target: 'es2022', charset: 'utf8' });
     await writeFile(p, r.code); antes += fonte.length; depois += r.code.length;

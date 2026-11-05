@@ -31,6 +31,7 @@ jobs:
           cd testes && npm install --no-audit --no-fund && npx playwright install --with-deps chromium && cd ..
           mkdir -p _site/testes && (cd testes && tar cf - --exclude=node_modules .) | (cd _site/testes && tar xf -)
           ln -s "$PWD/testes/node_modules" _site/testes/node_modules
+          grep -q "VERSAO = '" _site/js/auth.js || { echo 'js/auth.js perdeu a linha VERSAO: o aviso de atualização pararia'; exit 1; }
           cd _site/testes && node sintaxe.mjs && node fumaca.mjs
       - name: Tirar os testes da cópia publicada
         run: rm -r _site/testes
