@@ -25,9 +25,6 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
-  { id: 'v-4.20.0', versao: '4.20.0', em: '2026-11-06T16:00:00-03:00',
-    titulo: 'Acompanhar ao vivo mais discreto',
-    itens: ['Enquanto a tela é acompanhada ao vivo, no lugar da pílula "Tela compartilhada" aparece uma bolinha rosa piscando no canto (o nome aparece ao passar o mouse). Os Termos de uso foram atualizados para descrever o novo aviso.'] },
   { id: 'v-4.19.0', versao: '4.19.0', em: '2026-11-06T15:00:00-03:00',
     titulo: 'Duplicar demanda de vídeo',
     itens: ['Botão direito numa demanda (Kanban ou Lista) → "Duplicar…", ou o botão "Duplicar" dentro da demanda. Dá para criar até 10 cópias de uma vez, escolhendo se mantém responsável, prazo, roteiros e o "Sobre o vídeo". A cópia começa do zero: Pendente, sem versões e sem conclusão.'] },
