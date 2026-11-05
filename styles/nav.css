@@ -998,3 +998,47 @@ body.modo-portal .pf-card{display:none;}
 @keyframes b7VemEsq{from{opacity:.2;transform:translate3d(-38vw,0,0);}to{opacity:1;transform:none;}}
 @media (prefers-reduced-motion:reduce){ html[data-vindo] body .conteudo.entra{animation:none;} }
 html.modo-leve[data-theme] body[data-shell="interno"] .nav-inferior::before,html.modo-leve[data-theme] body[data-shell="interno"] .nav-inferior::after{display:none;}
+
+/* =====================================================================
+   zzz290 — "MAIS" mais enxuto (Kevin: "tá muito grande, tá estranho";
+   a barra de baixo aparecia cortada por baixo da folha).
+   • a folha tem a altura do conteúdo (até 86%), não 95% da tela;
+   • topo da marca vira uma faixa baixa: saudação menor, "Meu dia" numa
+     linha só, sem o subtítulo;
+   • busca, títulos e linhas mais baixos; ícones e textos menores;
+   • a barra de baixo sai de cena enquanto a folha está aberta.
+   ===================================================================== */
+@media (max-width:760px){
+  html body .fundo-modal.tp-folha.nm-folha .modal{height:auto;max-height:86vh;max-height:86dvh;padding:6px 12px calc(10px + env(safe-area-inset-bottom));}
+  html body .fundo-modal.tp-folha.nm-folha .modal:before{margin:0 auto 6px;}
+  .nm-topo{margin:2px 0 10px;padding:12px 14px;border-radius:18px;}
+  .nm-topo-marca{width:96px;height:114px;right:-10px;top:-8px;}
+  .nm-topo-tx small{font-size:11px;}
+  .nm-topo-tx h3{font-size:19px;}
+  .nm-fechar{top:10px;right:10px;width:28px;height:28px;}
+  html body .nm-topo .nm-hoje{margin:10px 0 0;padding:6px 10px 6px 6px;border-radius:12px;gap:10px;}
+  html body .nm-topo .nm-hoje .nm-hoje-ic{width:28px;height:28px;}
+  html body .nm-topo .nm-hoje .nm-hoje-ic svg{width:12px;height:12px;}
+  html body .nm-topo .nm-hoje b{font-size:13.5px;}
+  html body .nm-topo .nm-hoje small{display:none;}
+  .nm-busca{height:40px;margin:0 0 10px;border-radius:12px;}
+  .nm-busca svg{width:16px;height:16px;}
+  .nm-busca input{font-size:16px;}
+  html body .nm-folha .nm-corpo{gap:12px;padding:0 0 6px;}
+  html body .nm-folha .nm-secao h4,.nm-usados h4{margin:0 0 6px 4px;font-size:12px;color:var(--ink-3);}
+  html body .nm-folha .nm-secao h4::before,.nm-usados h4::before{width:10px;height:3px;}
+  html body .nm-folha .nm-grade{border-radius:14px;}
+  html body .nm-folha .nm-item{min-height:44px;padding:6px 34px 6px 10px;gap:11px;}
+  html body .nm-folha .nm-item + .nm-item::before{left:49px;}
+  html body .nm-folha .nm-ic{width:28px;height:28px;border-radius:8px;}
+  html body .nm-folha .nm-ic svg{width:16px;height:16px;}
+  html body .nm-folha .nm-tx{font-size:14.5px;font-weight:550;}
+  html body .nm-folha .nm-item::after{right:13px;width:6px;height:6px;}
+  .nm-usados-fila{gap:6px;}
+  .nm-chip{height:34px;padding:0 12px 0 4px;font-size:13px;gap:6px;}
+  html body .nm-folha .nm-chip .nm-ic{width:26px;height:26px;}
+  html body .nm-folha .nm-chip .nm-ic svg{width:14px;height:14px;}
+  .nm-aqui{font-size:10px;padding:2px 7px;}
+  /* a barra de baixo some enquanto o "Mais" está aberto */
+  body:has(.nm-folha) .nav-inferior{opacity:0;pointer-events:none;transform:translate3d(0,110%,0);transition:opacity .18s ease, transform .22s ease;}
+}
