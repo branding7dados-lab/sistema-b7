@@ -148,7 +148,7 @@ B7.Teleprompter = (function () {
   function aplicarRolagem() {
     if (!S) return;
     S.rolo.style.transform = 'translate3d(0,' + (-R.y).toFixed(2) + 'px,0)';
-    S.prog.style.transform = 'scaleX(' + (R.max > 0 ? Math.min(1, R.y / R.max) : (S.fase === 'cena-ap' ? 1 : 0)) + ')';
+    S.prog.style.transform = 'scaleX(' + (R.max > 0 ? Math.min(1, Math.max(0, R.y) / R.max) : (S.fase === 'cena-ap' ? 1 : 0)) + ')';
   }
   function passo(dt) {
     R.y += pxPorSegundo() * dt;
@@ -174,7 +174,7 @@ B7.Teleprompter = (function () {
     R.tocando = false; cancelAnimationFrame(R.raf);
     aoMudarReproducao();
   }
-  function irPara(y) { R.y = Math.min(R.max, Math.max(0, y)); aplicarRolagem(); acompanharCena(); }
+  function irPara(y) { R.y = Math.min(R.max, Math.max(R.inicio || 0, y)); aplicarRolagem(); acompanharCena(); }
 
   /* mede de novo (mudou letra, largura, tela) mantendo o ponto de leitura */
   function medir(manter) {
@@ -188,12 +188,16 @@ B7.Teleprompter = (function () {
     const alturaTexto = miolo ? miolo.offsetHeight : 0;
     const cabe = S.fase === 'cena-ap' && alturaTexto <= h - 24;
     S.palco.classList.toggle('cabe', cabe);
-    if (cabe) { R.max = 0; R.y = 0; R.marcas = []; }
+    if (cabe) { R.max = 0; R.y = 0; R.inicio = 0; R.marcas = []; }
     else {
       /* a primeira linha nasce na faixa de leitura e a última sai por ela */
       R.max = Math.max(0, alturaTexto - Math.round(fonte() * ESPACO[P.espaco] * 0.6));
       R.marcas = [...S.rolo.querySelectorAll('[data-cena]')].map(el => ({ i: Number(el.dataset.cena), y: el.offsetTop }));
-      R.y = manter ? Math.min(R.max, antes * R.max) : 0;
+      /* zzz298 (Kevin: "depois do 3, 2, 1 o texto tem que começar lá embaixo"):
+         a leitura nasce no pé da tela e sobe até a faixa de leitura, para a
+         pessoa acompanhar desde a primeira palavra */
+      R.inicio = -Math.max(0, Math.round(h * 0.88 - foco - fonte() * 1.2));
+      R.y = manter ? Math.min(R.max, antes * R.max) : R.inicio;
     }
     aplicarRolagem();
   }
@@ -548,7 +552,7 @@ B7.Teleprompter = (function () {
   }
   function repetir() {
     if (S.fase === 'cena-ap') apresentarCena(S.cena, true);
-    else if (S.fase === 'continuo') { pausar(); cancelarContagem(); irPara(0); pintarCtrl(); mostrarControles(); }
+    else if (S.fase === 'continuo') { pausar(); cancelarContagem(); irPara(R.inicio || 0); pintarCtrl(); mostrarControles(); }
   }
   function aoChegarAoFim() {
     if (!S) return;
