@@ -345,6 +345,7 @@ B7.SitePainel = (function () {
         g('sp-wpp', 'WHATSAPP (com DDD)', c.whatsapp, 'É para onde vão o botão verde e o formulário.', ' inputmode="tel"') +
         g('sp-insta', 'INSTAGRAM', c.instagram, 'Sem o @.') + '</div><div class="st-2">' +
         g('sp-nome', 'NOME DE QUEM ATENDE', c.whatsapp_nome) + g('sp-cargo', 'CARGO', c.whatsapp_cargo) + '</div>' +
+        ta('sp-interesses', 'OPÇÕES DE "O QUE VOCÊ PRECISA?" NO FORMULÁRIO (uma por linha)', linhas(c.interesses), 5, 'Vídeos para Reels e TikTok\nCriativos para anúncios\nGravação e edição\nCasamento\nEvento\nVídeo institucional\nGestão de redes sociais\nAinda não sei, quero conversar') +
         '<div class="st-campo"><label class="rot" for="sp-msg">MENSAGEM QUE JÁ VEM ESCRITA NO WHATSAPP</label><textarea class="campo" id="sp-msg" rows="2" maxlength="300">' + esc(c.whatsapp_msg || '') + '</textarea></div></section>' +
       '<section class="st-bloco"><h3>Regiões e números</h3><div class="st-2">' +
         '<div class="st-campo"><label class="rot" for="sp-reg">REGIÕES ONDE GRAVAM (uma por linha)</label><textarea class="campo" id="sp-reg" rows="4" placeholder="Vitória da Conquista\nSudoeste da Bahia">' + esc(linhas(c.regioes)) + '</textarea><div class="gv-ajuda">Vazio = a seção não aparece.</div></div>' +
@@ -372,7 +373,8 @@ B7.SitePainel = (function () {
         notas: v('sp-notas').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 2),
         sobre_titulo: v('sp-sobre-tit'), sobre_texto: v('sp-sobre'), cta: v('sp-cta'),
         passos: pares(v('sp-passos'), 6).map(([t, d]) => ({ t, d })),
-        faq: pares(v('sp-faq'), 12).map(([p, r]) => ({ p, r }))
+        faq: pares(v('sp-faq'), 12).map(([p, r]) => ({ p, r })),
+        interesses: v('sp-interesses').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 15)
       });
       const bt = cx.querySelector('#sp-salvar'); bt.disabled = true; bt.textContent = 'Salvando…';
       try {

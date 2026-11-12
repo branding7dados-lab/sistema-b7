@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.38.0', versao: '4.38.0', em: '2026-11-14T16:00:00-03:00',
+    titulo: 'Operações do mês',
+    itens: ['Nova tela "Operações": cada cliente numa linha e, nas colunas, calendário editorial, artes, campanha, gravação, edição e publicação do mês.',
+            'A situação aparece sozinha a partir do que você já faz no sistema (linha editorial, artes, gravações, vídeos e publicações).',
+            'Se precisar, toque na célula e ajuste a situação, com uma observação curta. Dá para voltar ao automático depois.'] },
   { id: 'v-4.34.0', versao: '4.34.0', em: '2026-11-13T19:00:00-03:00',
     titulo: 'Acessos cedidos',
     itens: ['Em Usuários e acessos, o que você libera fica no quadro "Acessos cedidos": quem, onde, de onde veio o pedido e até quando.',
