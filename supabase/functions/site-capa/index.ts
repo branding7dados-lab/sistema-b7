@@ -7,6 +7,8 @@
 //   POST { id }            um item
 //   POST { todos: true }   todos os vídeos/depoimentos de link sem capa
 //   POST { ..., refazer: true }  troca mesmo se já tiver capa
+// Sem login (o site chama ao ver vídeo de link sem capa): só { todos } —
+// completa o que falta; escolher item ou refazer é só do administrador.
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
 /* CORS: o mesmo critério de _shared/cors.ts (só o sistema e o site) */
@@ -37,11 +39,14 @@ Deno.serve(async req => {
     const url = Deno.env.get('SUPABASE_URL')!;
     const jwt = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     const eu = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: 'Bearer ' + jwt } }, auth: { persistSession: false } });
-    const adm = await eu.rpc('sou_admin');
-    if (adm.error || adm.data !== true) return resp({ erro: 'Só administrador.' }, 403);
+    const adm = jwt ? await eu.rpc('sou_admin') : { data: false, error: null };
+    const souAdm = !adm.error && adm.data === true;
     const sb = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
-    const p = await req.json().catch(() => ({}));
+    let p = await req.json().catch(() => ({}));
+    /* visitante do site (sem login): só completa as capas que faltam, sem
+       escolher item nem refazer — o próprio site se conserta sozinho */
+    if (!souAdm) p = { todos: true };
     let q = sb.from('site_itens').select('id, video_url, capa_url').in('tipo', ['video', 'depoimento']).not('video_url', 'is', null);
     if (p.id) q = q.eq('id', String(p.id));
     else if (!p.refazer) q = q.is('capa_url', null);
