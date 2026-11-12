@@ -72,6 +72,8 @@ B7.Areas = (function () {
     calendario:   ['js/calendario.js',    () => B7.Calendario],
     publicacoes:  ['js/publicacoes.js',   () => B7.Publicacoes],
     trends:       ['js/trends.js',        () => B7.Trends],
+    sitePainel:   ['js/site-painel.js',   () => B7.SitePainel],
+    siteCss:      ['styles/site-painel.css', () => !!document.querySelector('link[href="styles/site-painel.css"]')],
     legendas:     ['js/legendas.js',      () => B7.Legendas],
     kanban:       ['js/kanban.js',        () => B7.Kanban],
     central:      ['js/central.js',       () => B7.Central],
@@ -95,7 +97,7 @@ B7.Areas = (function () {
     calendario: ['calendario'], publicacoes: ['publicacoes', 'publicacoesCss'], trends: ['trends'], legendas: ['legendas'],
     kanban: ['kanban'], config: ['usuarios', 'superadmin', 'tvCss'], tv: ['tvCss'], gravacao: ['editor', 'teleprompter', 'trends'],
     linha: ['slides', 'printLinha', 'iaLinha'], painel: ['painelCoord', 'painelDesign', 'painelMulti'],
-    video: ['legendas'], ajuda: ['ajudaDados'], suporte: ['ajudaDados'],
+    video: ['legendas'], site: ['sitePainel', 'siteCss'], ajuda: ['ajudaDados'], suporte: ['ajudaDados'],
     '': () => (B7.Panorama ? [] : ['central'])
   };
   const indo = {};

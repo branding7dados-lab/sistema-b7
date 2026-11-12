@@ -238,6 +238,11 @@ B7.Rota = (function () {
     /* zzz244: Super admin e Usuários moram nas Configurações; os
        endereços antigos (avisos, favoritos) levam para lá */
     if (partes[0] === 'super') return location.replace('#/config?s=super-' + (partes[1] || 'painel'));
+    /* 4.36.0: painel do site (js/site-painel.js) */
+    if (partes[0] === 'site' && B7.SitePainel) {
+      mostrar('tela-dashboard');
+      return B7.SitePainel.abrir(params);
+    }
     if (partes[0] === 'trends' && B7.Trends) {
       mostrar('tela-dashboard');
       return B7.Trends.abrir();
