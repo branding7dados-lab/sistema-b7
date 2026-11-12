@@ -151,7 +151,13 @@ B7.SitePainel = (function () {
   function pintarItens(cx, tipo) {
     const lista = itens.filter(i => i.tipo === tipo);
     const T = TIPO[tipo];
+    const semCapa = lista.filter(x => !x.capa_url && /instagram\.com|youtu/i.test(x.video_url || '')).length;
+    if (semCapa && !pintarItens.tentou) {
+      pintarItens.tentou = true;
+      puxarCapas({ todos: true }).then(f => { if (f && f.some(x => x.ok)) { pintar(); B7.UI.toast('Capas puxadas do Instagram/YouTube.'); } });
+    }
     cx.innerHTML = '<div class="st-barra"><button class="b pri" id="st-novo">' + T.novo + '</button>' +
+      ((tipo === 'video' || tipo === 'depoimento') && lista.some(x => /instagram\.com|youtu/i.test(x.video_url || '')) ? '<button class="b" id="st-capas">Atualizar capas</button>' : '') +
       (lista.length > 1 ? '<small>Use as setas para mudar a ordem no site.</small>' : '') + '</div>' +
       (lista.length ? '<div class="st-lista st-l-' + tipo + '">' + lista.map((i, k) => {
         const midia = i.capa_url ? '<img src="' + esc(i.capa_url) + '" alt="" loading="lazy">'
@@ -172,6 +178,15 @@ B7.SitePainel = (function () {
             '<button class="cb-ic perigo" data-apagar aria-label="Apagar">' + IC.lixo + '</button></div></div>';
       }).join('') + '</div>' : '<div class="estado-b7"><div class="b7-marca fraca"></div><p>' + esc(T.vazio) + '</p></div>');
     cx.querySelector('#st-novo').onclick = () => editar(tipo, null);
+    const bc = cx.querySelector('#st-capas');
+    if (bc) bc.onclick = async () => {
+      bc.disabled = true; bc.textContent = 'Puxando…';
+      const f = await puxarCapas({ refazer: true });
+      if (!f) B7.UI.toast('Não foi possível puxar as capas agora.', { tipo: 'erro' });
+      else { const okN = f.filter(x => x.ok).length, falha = f.filter(x => !x.ok);
+        B7.UI.toast(okN + ' capa' + (okN === 1 ? '' : 's') + ' atualizada' + (okN === 1 ? '' : 's') + (falha.length ? '; ' + falha.length + ' sem capa (' + falha[0].motivo + ')' : '') + '.'); }
+      pintar();
+    };
     cx.querySelectorAll('[data-item]').forEach(el => {
       const id = el.dataset.item, i = itens.find(x => x.id === id);
       el.querySelector('[data-editar]').onclick = () => editar(tipo, i);
@@ -208,6 +223,27 @@ B7.SitePainel = (function () {
     return sb().storage.from('site').getPublicUrl(caminho).data.publicUrl;
   }
 
+  /* 4.39.0: cliente do vídeo/depoimento escolhido da lista do sistema (ou digitado) */
+  function seletorCliente(atual) {
+    const nomes = clientesB7.map(c => c.nome);
+    const outro = !!atual && !nomes.includes(atual);
+    return '<label class="rot" for="si-cli-sel">CLIENTE</label><select class="campo" id="si-cli-sel">' +
+      '<option value="">Escolha o cliente</option>' + clientesB7.map(c => '<option value="' + esc(c.nome) + '"' + (c.nome === atual ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') +
+      '<option value="__outro"' + (outro ? ' selected' : '') + '>Outro (digitar)…</option></select>' +
+      '<input class="campo st-cli-outro" id="si-cli" maxlength="120" placeholder="Nome do cliente" value="' + esc(outro ? atual : (atual || '')) + '"' + (outro ? '' : ' hidden') + '>';
+  }
+
+  /* 4.39.0: capa automática dos vídeos de link (função site-capa) */
+  async function puxarCapas(corpo) {
+    try {
+      const r = await sb().functions.invoke('site-capa', { body: corpo });
+      if (r.error) throw r.error;
+      const feitos = (r.data && r.data.feitos) || [];
+      feitos.forEach(f => { if (f.ok) itens = itens.map(x => x.id === f.id ? { ...x, capa_url: f.capa_url } : x); });
+      return feitos;
+    } catch (e) { return null; }
+  }
+
   function editar(tipo, i) {
     const novo = !i; i = i || { tipo, publicado: true };
     const campo = (id, rot, val, extra) => '<label class="rot" for="' + id + '">' + rot + '</label><input class="campo" id="' + id + '" value="' + esc(val || '') + '"' + (extra || '') + '>';
@@ -218,7 +254,7 @@ B7.SitePainel = (function () {
       (tipo === 'servico' ? campo('si-titulo', 'NOME DO SERVIÇO', i.titulo, ' maxlength="140"') +
         '<label class="rot" for="si-texto">DESCRIÇÃO</label><textarea class="campo" id="si-texto" rows="3" maxlength="800">' + esc(i.texto || '') + '</textarea>' +
         campo('si-icone', 'NÚMERO OU EMOJI', i.icone, ' maxlength="4" placeholder="01"') : '') +
-      (tipo !== 'servico' ? '<div class="st-2">' + '<div>' + campo('si-cli', tipo === 'cliente' ? 'NOME DA MARCA' : 'CLIENTE', i.cliente_nome, ' maxlength="120"') + '</div>' +
+      (tipo !== 'servico' ? '<div class="st-2">' + '<div>' + (tipo === 'cliente' ? campo('si-cli', 'NOME DA MARCA', i.cliente_nome, ' maxlength="120"') : seletorCliente(i.cliente_nome)) + '</div>' +
         (tipo !== 'cliente' ? '<div>' + campo('si-arroba', '@ DO INSTAGRAM', i.cliente_arroba ? String(i.cliente_arroba).replace(/^@/, '') : '', ' maxlength="60" placeholder="sem o @"') + '</div>' : '') + '</div>' : '') +
       (tipo === 'video' ? campo('si-cat', 'CATEGORIA (vira filtro no site)', i.categoria, ' maxlength="60" list="si-cats" placeholder="Ex.: Reels, Anúncio, Institucional"') +
         '<datalist id="si-cats">' + [...new Set(itens.filter(x => x.categoria).map(x => x.categoria).concat(['Reels', 'Anúncio', 'Institucional', 'Depoimento']))].map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' : '') +
@@ -233,12 +269,17 @@ B7.SitePainel = (function () {
       ((tipo === 'video' || tipo === 'cliente' || tipo === 'depoimento') ? '<label class="rot" for="si-capa">' + (tipo === 'cliente' ? 'LOGO (PNG transparente, de preferência)' : 'CAPA <span class="mg-obr leve">opcional</span>') + '</label>' +
         (i.capa_url ? '<div class="st-capa-atual"><img src="' + esc(i.capa_url) + '" alt=""><label class="check"><input type="checkbox" id="si-tira-capa"><span>Tirar a imagem atual</span></label></div>' : '') +
         '<input class="campo" id="si-capa" type="file" accept="image/png,image/jpeg,image/webp">' +
-        (tipo === 'video' ? '<div class="gv-ajuda">Para vídeos de link a capa é o que aparece no site; sem capa, entra um fundo com o degradê da B7.</div>' : '') : '') +
+        (tipo === 'video' ? '<div class="gv-ajuda">Link do Instagram ou do YouTube: a capa vem sozinha ao salvar. Envie uma imagem só se quiser outra capa.</div>' : '') : '') +
       (tipo === 'video' ? '<label class="check st-check"><input type="checkbox" id="si-dest"' + (i.destaque ? ' checked' : '') + '><span>Destaque: toca no fundo da abertura do site (precisa ser arquivo enviado)</span></label>' : '') +
       '<label class="check st-check"><input type="checkbox" id="si-pub"' + (i.publicado ? ' checked' : '') + '><span>Aparecer no site</span></label>';
     const m = B7.UI.modal('<div class="ng-topo"><span class="ng-ic">' + IC.globo + '</span><div><h3>' + (novo ? 'Novo ' : 'Editar ') + TIPO[tipo].um + '</h3><div class="sub">Aparece em branding7.com.br assim que você salvar.</div></div></div>' +
       '<section class="ng-bloco st-form">' + corpo + '</section>' +
       '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" data-ok>Salvar</button></div>', { extra: 'ng-modal st-modal' });
+    const sel = m.querySelector('#si-cli-sel');
+    if (sel) sel.onchange = () => {
+      const inp = m.querySelector('#si-cli'), o = sel.value === '__outro';
+      inp.hidden = !o; inp.value = o ? '' : sel.value; if (o) inp.focus();
+    };
     let fonte = fonteInicial;
     m.querySelectorAll('[data-fonte]').forEach(b => b.onclick = () => {
       fonte = b.dataset.fonte;
@@ -295,6 +336,12 @@ B7.SitePainel = (function () {
         }
         m.fechar(); pintar();
         B7.UI.toast(d.publicado ? 'Salvo. Já está no site.' : 'Salvo (escondido do site).');
+        const salvo = itens.find(x => x.id === (novo ? itens[itens.length - 1].id : i.id));
+        if (salvo && !salvo.capa_url && /instagram\.com|youtu/i.test(salvo.video_url || '')) {
+          const f = await puxarCapas({ id: salvo.id });
+          if (f && f[0] && f[0].ok) { pintar(); B7.UI.toast('Capa puxada do ' + (/instagram/i.test(salvo.video_url) ? 'Instagram' : 'YouTube') + '.'); }
+          else if (f && f[0]) B7.UI.toast('Não deu para puxar a capa: ' + f[0].motivo + '. Você pode enviar uma imagem.', { tipo: 'aviso' });
+        }
       } catch (e) {
         bt.disabled = false; bt.textContent = 'Salvar';
         B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' });
