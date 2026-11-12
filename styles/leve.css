@@ -1,0 +1,43 @@
+/* =====================================================================
+   4.28.0 — SISTEMA MAIS LEVE (carrega por último)
+   Kevin: "tudo tá muito pesado", no celular e principalmente no programa
+   de PC. O processamento das telas mede leve; o que pesa é o DESENHO:
+   vidro desfocado grande, a tela inteira sendo redesenhada em toda troca
+   e animações que nunca param. Aqui:
+   • troca de tela: só opacidade + um deslize curto (sem "escala", que
+     obrigava a redesenhar todo o texto da tela), 170 ms;
+   • abrir janela/folha não encolhe mais o sistema inteiro por trás;
+   • luzes decorativas (aurora, brilhos, "respiração") ficam paradas;
+   • nada anima com a janela sem foco ou a aba escondida (js/desempenho.js);
+   • linhas de lista fora da tela não são desenhadas até chegarem perto.
+   (Os desfoques foram reduzidos nos próprios arquivos de estilo; o vidro
+   líquido da barra de baixo e o cartão que "voava" foram desligados no JS.)
+   ===================================================================== */
+
+/* ---- troca de tela ---- */
+:root{--m-pagina:170ms;--m-grande:220ms;}
+[data-nav="frente"] .conteudo.entra{animation:b7LeveFrente var(--m-pagina) cubic-bezier(.2,.8,.2,1) both;}
+[data-nav="volta"] .conteudo.entra{animation:b7LeveVolta var(--m-pagina) cubic-bezier(.2,.8,.2,1) both;}
+@keyframes b7LeveFrente{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
+@keyframes b7LeveVolta{from{opacity:0;transform:translate3d(0,-5px,0)}to{opacity:1;transform:none}}
+
+/* ---- o sistema não encolhe mais atrás de janelas e folhas ---- */
+html body #app{transition:none;}
+html body:has(> .fundo-modal) #app{transform:none;border-radius:0;filter:none;}
+
+/* ---- luzes decorativas paradas (eram animações infinitas sobre desfoque) ---- */
+.pan-heroi-luz,.estado-b7:before,.estado-b7:after,.estado-b7 .b7-marca,.estado-b7 .b7-marca *,.estado-b7 i,.ilu,.cb-livre-ic,
+.vd-h-luz i,.vd-h-bokeh i,.vd-heroi .vd-h-reflexo:before{animation:none !important;}
+
+/* ---- janela sem foco / aba escondida: tudo descansa ---- */
+html.b7-parado *,html.b7-parado *::before,html.b7-parado *::after{animation-play-state:paused !important;}
+
+/* ---- listas longas: o que está fora da tela espera para ser desenhado ---- */
+@supports (content-visibility:auto){
+  .gl-item,.cs-item,.vd-m-card,.card-gravacao,.item-status{content-visibility:auto;contain-intrinsic-size:auto 88px;}
+}
+
+/* ---- sombras enormes custam a cada quadro de rolagem: mais curtas no toque ---- */
+@media (hover:none){
+  .card,.cartao,.vd-m-card,.card-gravacao{box-shadow:0 1px 2px rgba(20,10,40,.08);}
+}

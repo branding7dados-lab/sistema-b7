@@ -690,8 +690,8 @@
    (--ox/--oy = de onde o cartão nasce) e o conteúdo entra em cascata. */
 .pv-det{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
   gap:18px;padding:28px;}
-.pv-det-fundo{position:absolute;inset:0;background:rgba(7,3,13,.72);backdrop-filter:blur(14px) saturate(1.2);
-  -webkit-backdrop-filter:blur(14px) saturate(1.2);animation:pv-det-fundo .4s ease-out both;cursor:pointer;}
+.pv-det-fundo{position:absolute;inset:0;background:rgba(7,3,13,.72);backdrop-filter:blur(10px) saturate(1.2);
+  -webkit-backdrop-filter:blur(10px) saturate(1.2);animation:pv-det-fundo .4s ease-out both;cursor:pointer;}
 @keyframes pv-det-fundo{from{opacity:0;}to{opacity:1;}}
 
 .pv-det-cartao{position:relative;z-index:1;width:min(1060px,100%);max-height:min(680px,100%);

@@ -197,7 +197,7 @@ html.modo-leve .ch-fab,html.modo-leve .ch-msg{animation:none;}
     --ch-risco:color-mix(in srgb, var(--ink) 9%, transparent);
     isolation:isolate;
     background:linear-gradient(165deg, color-mix(in srgb, var(--card) 64%, transparent), color-mix(in srgb, var(--card) 46%, transparent));
-    -webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);
+    -webkit-backdrop-filter:blur(10px) saturate(140%);backdrop-filter:blur(10px) saturate(140%);
     border:1px solid var(--ch-fio);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1px rgba(255,255,255,.18), inset 0 -18px 30px -24px color-mix(in srgb,var(--magenta) 22%,transparent),
       0 0 0 1px rgba(60,20,90,.07), 0 36px 80px -32px rgba(40,10,70,.341), 0 10px 24px -14px rgba(20,8,40,.174);
@@ -246,7 +246,7 @@ html.modo-leve .ch-fab,html.modo-leve .ch-msg{animation:none;}
   html:not(.modo-leve) .ch-acao{background:var(--ch-sup-forte);}
   html:not(.modo-leve) .ch-pop{background:color-mix(in srgb, var(--ink) 10%, transparent);}
   html:not(.modo-leve) .ch-pop-cx{background:color-mix(in srgb, var(--elevado, var(--card)) 86%, transparent);border-color:var(--ch-fio);
-    -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
+    -webkit-backdrop-filter:blur(10px) saturate(140%);backdrop-filter:blur(10px) saturate(140%);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 22px 46px -22px rgba(40,10,70,.372);}
   [data-theme="dark"]:not(.modo-leve) .ch-pop-cx{box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 22px 46px -20px rgba(0,0,0,.496);}
   html:not(.modo-leve) .ch-aviso{color:var(--ink-3);}

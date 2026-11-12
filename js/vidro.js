@@ -26,7 +26,10 @@ B7.Vidro = (function () {
   /* Chromium de verdade (Chrome, Edge, WebView do Android, Electron) — não o
      Chrome do iPhone, que é Safari por dentro */
   const chromium = /Chrome\/\d+/.test(ua) && !/iPhone|iPad|iPod|CriOS/.test(ua);
-  const pode = () => chromium && !html.classList.contains('modo-leve') &&
+  /* 4.28.0: o filtro SVG no fundo era o efeito mais caro do celular (recalcula a cada
+     quadro de rolagem). Fica desligado; liga só com localStorage b7_vidro_liquido=1. */
+  const querVidro = () => { try { return localStorage.getItem('b7_vidro_liquido') === '1'; } catch (e) { return false; } };
+  const pode = () => querVidro() && chromium && !html.classList.contains('modo-leve') &&
     !(window.matchMedia && window.matchMedia('(prefers-reduced-transparency: reduce)').matches);
 
   let svg = null, ultimo = '';

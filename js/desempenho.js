@@ -99,3 +99,16 @@ B7.Desempenho = (function () {
   aplicar();
   return { definir, modo, estado, aplicar, animacoesLigadas, definirAnimacoes };
 })();
+
+/* 4.28.0 — DESCANSO: com a aba escondida ou a janela sem foco (o programa de
+   PC atrás de outro, o app em segundo plano), toda animação contínua pausa
+   (styles/leve.css, html.b7-parado). Volta no instante em que a pessoa volta. */
+(function () {
+  const html = document.documentElement;
+  let foco = true;
+  const aplicar = () => html.classList.toggle('b7-parado', document.hidden || !foco);
+  document.addEventListener('visibilitychange', aplicar);
+  window.addEventListener('blur', () => { foco = false; aplicar(); });
+  window.addEventListener('focus', () => { foco = true; aplicar(); });
+  aplicar();
+})();

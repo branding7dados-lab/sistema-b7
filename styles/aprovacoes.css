@@ -204,7 +204,7 @@
 .sino-painel{position:fixed;z-index:520;width:400px;max-width:calc(100vw - 24px);max-height:min(76vh,620px);
   display:flex;flex-direction:column;overflow:hidden;border-radius:22px;
   background:color-mix(in srgb, var(--card) 96%, transparent);
-  -webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);
+  -webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%);
   border:1px solid color-mix(in srgb, var(--ink) 8%, transparent);
   box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 30px 70px -28px rgba(20,8,40,.31), 0 8px 24px -16px rgba(20,8,40,.186);
   transform-origin:calc(100% - 28px) -8px;animation:sinoNasce .46s cubic-bezier(.16,1,.3,1) both;}

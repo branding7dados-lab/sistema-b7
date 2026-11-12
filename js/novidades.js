@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.28.0', versao: '4.28.0', em: '2026-11-12T23:00:00-03:00',
+    titulo: 'Sistema mais leve',
+    itens: ['As telas trocam mais rápido, com uma transição curta e simples.',
+            'Os efeitos de vidro e as luzes de fundo ficaram mais leves; as animações que rodavam sem parar foram desligadas.',
+            'O programa de PC e o app descansam quando estão em segundo plano. Atualize os dois para pegar tudo.'] },
   { id: 'v-4.27.0', versao: '4.27.0', em: '2026-11-12T21:00:00-03:00',
     titulo: 'App Android atualizado e giro de tela corrigido',
     itens: ['Girar o celular para deitado e voltar para em pé não desarruma mais a tela.',

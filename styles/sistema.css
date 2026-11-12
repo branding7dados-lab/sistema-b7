@@ -24,7 +24,7 @@ body:has(#b7-manut-faixa) #toasts{bottom:78px;}
 
 /* ---- trava de tela ---- */
 .mn-trava{position:fixed;inset:0;z-index:480;display:flex;align-items:center;justify-content:center;padding:24px;
-  background:color-mix(in srgb, var(--fundo) 90%, transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:color-mix(in srgb, var(--fundo) 90%, transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   animation:mnEntra .45s ease both;}
 @keyframes mnEntra{from{opacity:0;}to{opacity:1;}}
 html.modo-leve .mn-trava{background:var(--fundo);backdrop-filter:none;-webkit-backdrop-filter:none;}

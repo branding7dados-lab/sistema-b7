@@ -80,8 +80,9 @@ function criarJanela() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      spellcheck: true,
-      backgroundThrottling: false
+      spellcheck: true
+      /* 4.28.0: sem backgroundThrottling:false — minimizada ou coberta, a janela
+         descansa (antes as animações seguiam a toda velocidade em segundo plano) */
     }
   });
   if (usar && salva.maximizada) janela.maximize();

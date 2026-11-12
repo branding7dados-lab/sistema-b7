@@ -4,7 +4,7 @@
    trabalho): cada história tem o seu par de cores (data-tema).
    ===================================================================== */
 html.rtv-aberto{overflow:hidden;}
-.rtv{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:#07040fe6;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+.rtv{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:#07040fe6;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   color:#fff;font-family:'Inter',system-ui,sans-serif;animation:rtv-entra .35s ease both;}
 .rtv.saindo{animation:rtv-sai .25s ease both;}
 @keyframes rtv-entra{from{opacity:0}to{opacity:1}}

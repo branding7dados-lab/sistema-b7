@@ -60,6 +60,7 @@ window.B7 = window.B7 || {};
   const px = r => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
 
   document.addEventListener('click', e => {
+    if (!VOO_LIGADO) return;
     if (reduz() || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const p = painel(); if (!p) return;
     const el = e.target.closest && e.target.closest(SEL_VOO);
@@ -80,7 +81,10 @@ window.B7 = window.B7 || {};
     pendente = { el, r, copia, raio, ctx, chave: chaveDe(el), de: location.hash || '#/', t: performance.now() };
   }, true);
 
+  /* 4.28.0: o voo do cartão pesava em toda troca de tela; fica a transição curta da tela */
+  const VOO_LIGADO = (() => { try { return localStorage.getItem('b7_voo_cartao') === '1'; } catch (e) { return false; } })();
   function voarAbrindo(info) {
+    if (!VOO_LIGADO) return;
     const raio = info.raio;
     const g = document.createElement('div');
     g.className = 'b7-voo';
@@ -145,6 +149,7 @@ window.B7 = window.B7 || {};
      onde se veio "pousa": vem de cima, maior e com sombra, e assenta no
      lugar dele com um anel de luz. */
   function voarVoltando(voo) {
+    if (!VOO_LIGADO) return;
     const t0 = performance.now();
     const procura = () => {
       const p = painel();
