@@ -761,7 +761,7 @@ B7.Aparencia = (function () {
     const anima = document.startViewTransition && !(B7.Desempenho && B7.Desempenho.animacoesLigadas && !B7.Desempenho.animacoesLigadas()) &&
       !matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!anima) return aplicarCSS(c);
-    try { document.startViewTransition(() => aplicarCSS(c)); } catch (e) { aplicarCSS(c); }
+    try { const vt = document.startViewTransition(() => aplicarCSS(c)); vt.ready.catch(() => {}); vt.finished.catch(() => {}); } catch (e) { aplicarCSS(c); }
   }
 
   /* opcoes.pessoal = a folha da própria pessoa (só neste aparelho) */
@@ -895,7 +895,7 @@ B7.Aparencia = (function () {
         temaRasc.tema = b.dataset.v;
         const mudar = () => B7.definirTema && B7.definirTema(temaRasc.tema);
         const anima = document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (anima) { try { document.startViewTransition(mudar); } catch (e) { mudar(); } } else mudar();
+        if (anima) { try { const vt = document.startViewTransition(mudar); vt.ready.catch(() => {}); vt.finished.catch(() => {}); } catch (e) { mudar(); } } else mudar();
         escuroPrev = document.documentElement.getAttribute('data-theme') === 'dark';
         pintarTema(); pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev);
       });

@@ -85,12 +85,15 @@ B7.Areas = (function () {
     painelCoord:  ['js/painel-coord.js',  () => B7.PainelCoord],
     painelDesign: ['js/painel-design.js', () => B7.PainelDesign],
     painelMulti:  ['js/painel-multi.js',  () => B7.PainelMulti],
-    ajudaDados:   ['js/ajuda-dados.js',   () => B7.AJUDA_DADOS]
+    ajudaDados:   ['js/ajuda-dados.js',   () => B7.AJUDA_DADOS],
+    /* 4.32.0: estilos só de uma tela também esperam a tela abrir */
+    tvCss:        ['styles/tv.css',          () => !!document.querySelector('link[href="styles/tv.css"]')],
+    publicacoesCss: ['styles/publicacoes.css', () => !!document.querySelector('link[href="styles/publicacoes.css"]')]
   };
   /* primeira parte do endereço → módulos que a tela precisa */
   const ROTA = {
-    calendario: ['calendario'], publicacoes: ['publicacoes'], trends: ['trends'], legendas: ['legendas'],
-    kanban: ['kanban'], config: ['usuarios', 'superadmin'], gravacao: ['editor', 'teleprompter', 'trends'],
+    calendario: ['calendario'], publicacoes: ['publicacoes', 'publicacoesCss'], trends: ['trends'], legendas: ['legendas'],
+    kanban: ['kanban'], config: ['usuarios', 'superadmin', 'tvCss'], tv: ['tvCss'], gravacao: ['editor', 'teleprompter', 'trends'],
     linha: ['slides', 'printLinha', 'iaLinha'], painel: ['painelCoord', 'painelDesign', 'painelMulti'],
     video: ['legendas'], ajuda: ['ajudaDados'], suporte: ['ajudaDados'],
     '': () => (B7.Panorama ? [] : ['central'])
@@ -98,11 +101,12 @@ B7.Areas = (function () {
   const indo = {};
   const pronto = id => { try { return !!M[id][1](); } catch (e) { return false; } };
   function um(id) {
-    if (!M[id] || pronto(id)) return Promise.resolve();
     if (indo[id]) return indo[id];
+    if (!M[id] || pronto(id)) return Promise.resolve();
     indo[id] = new Promise(ok => {
-      const s = document.createElement('script');
-      s.src = M[id][0]; s.async = false;
+      const css = /\.css$/.test(M[id][0]);
+      const s = document.createElement(css ? 'link' : 'script');
+      if (css) { s.rel = 'stylesheet'; s.href = M[id][0]; } else { s.src = M[id][0]; s.async = false; }
       /* falha de rede não trava a navegação: a tela tenta abrir mesmo assim */
       s.onload = ok; s.onerror = () => { delete indo[id]; ok(); };
       document.head.appendChild(s);

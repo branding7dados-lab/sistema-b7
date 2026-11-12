@@ -373,6 +373,9 @@ B7.Rota = (function () {
       });
     } catch (e) { html.classList.remove('b7-vt'); return false; }
     vtAtual = vt;
+    /* 4.32.0: troca rápida pula o morph anterior — a promessa "pronta" dele é
+       rejeitada; sem este catch virava erro solto no console a cada clique rápido */
+    vt.ready.catch(() => {}); vt.updateCallbackDone.catch(() => {});
     const fim = () => {
       if (vtAtual === vt) { vtAtual = null; html.classList.remove('b7-vt'); }
     };

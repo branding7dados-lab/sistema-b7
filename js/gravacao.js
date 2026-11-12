@@ -112,6 +112,7 @@ B7.Gravacao = (function () {
   /* instante de uma ocorrência (timestamptz) → dd/mm HH:MM no fuso local */
   function quandoOc(iso, semHorario) {
     const d = new Date(iso);
+    if (!iso || isNaN(d)) return '—';
     const dia = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
     return semHorario ? dia : dia + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
