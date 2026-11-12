@@ -46,9 +46,36 @@ B7.Suporte = (function () {
 
   /* ---- últimos erros da tela (só texto, ficam na memória; vão no chamado se a pessoa deixar) ---- */
   const erros = [];
-  const guardarErro = msg => { erros.push({ msg: String(msg || '').slice(0, 220), em: new Date().toISOString() }); if (erros.length > 8) erros.shift(); };
-  window.addEventListener('error', e => guardarErro((e && e.message) || 'erro'));
-  window.addEventListener('unhandledrejection', e => guardarErro('promessa: ' + ((e && e.reason && (e.reason.message || e.reason)) || 'rejeitada')));
+  /* 4.33.0: além de ir no chamado, o erro fica registrado no banco
+     (erro_app_registrar → tabela erros_app; só o administrador lê) — assim
+     um defeito que só acontece no aparelho de alguém aparece para nós.
+     Só o texto do erro, a tela, a versão e a plataforma. Cada mensagem vai
+     uma vez por sessão, no máximo 15; se a função não existir, para. */
+  const enviados = new Set(); let envioParado = false;
+  const IGNORAR = /ResizeObserver loop|Transition was skipped|AbortError|Load failed|Failed to fetch|NetworkError|Script error\.?$/i;
+  function registrarNoBanco(msg, origem) {
+    if (envioParado || enviados.size >= 15 || IGNORAR.test(msg) || enviados.has(msg)) return;
+    if (!(B7.Auth && B7.Auth.usuario && B7.Auth.usuario()) || (B7.Auth.emSimulacao && B7.Auth.emSimulacao())) return;
+    if (!(window.B7 && B7.supabase && B7.supabase.rpc) && !(B7.DB && B7.DB.rpc)) return;
+    enviados.add(msg);
+    const args = { p_mensagem: msg.slice(0, 300), p_origem: String(origem || '').slice(0, 200),
+      p_tela: String(location.hash || '#/').split('?')[0].replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, ':id').slice(0, 120),
+      p_versao: (B7.Auth && B7.Auth.VERSAO) || '', p_plataforma: plataforma() };
+    setTimeout(() => {
+      Promise.resolve(B7.DB.rpc('erro_app_registrar', args)).catch(e => {
+        if (/erro_app_registrar|function|404|PGRST202/i.test(String((e && (e.message || e.code)) || ''))) envioParado = true;
+      });
+    }, 1500);
+  }
+  const guardarErro = (msg, origem) => {
+    msg = String(msg || '').slice(0, 220);
+    erros.push({ msg, em: new Date().toISOString() }); if (erros.length > 8) erros.shift();
+    try { registrarNoBanco(msg, origem); } catch (e) {}
+  };
+  window.addEventListener('error', e => guardarErro((e && e.message) || 'erro',
+    e && e.filename ? String(e.filename).split('/').pop() + ':' + (e.lineno || 0) : ''));
+  window.addEventListener('unhandledrejection', e => guardarErro('promessa: ' + ((e && e.reason && (e.reason.message || e.reason)) || 'rejeitada'),
+    e && e.reason && e.reason.stack ? String(e.reason.stack).split('\n')[1] || '' : ''));
 
   function plataforma() {
     const ua = navigator.userAgent || '';
