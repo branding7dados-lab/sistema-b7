@@ -163,7 +163,7 @@ B7.SitePainel = (function () {
         const midia = i.capa_url ? '<img src="' + esc(i.capa_url) + '" alt="" loading="lazy">'
           : tipoLink(i.video_url) === 'Arquivo' ? '<video src="' + esc(i.video_url) + '#t=0.5" muted preload="metadata"></video>' : '';
         const titulo = tipo === 'cliente' ? (i.cliente_nome || i.titulo) : tipo === 'depoimento' ? (i.cliente_nome || 'Depoimento') : i.titulo || i.cliente_nome || '(sem título)';
-        const sub = tipo === 'video' ? [i.cliente_nome, i.cliente_arroba ? '@' + String(i.cliente_arroba).replace(/^@/, '') : '', i.categoria, tipoLink(i.video_url)].filter(Boolean).join(' · ')
+        const sub = tipo === 'video' ? [i.cliente_nome, i.categoria, tipoLink(i.video_url), i.visualizacoes ? i.visualizacoes + ' visualizações' : '', i.resultado || ''].filter(Boolean).join(' · ')
           : tipo === 'depoimento' ? (i.video_url ? 'Vídeo · ' + tipoLink(i.video_url) : '“' + String(i.texto || '').slice(0, 90) + (String(i.texto || '').length > 90 ? '…' : '') + '”')
           : tipo === 'servico' ? String(i.texto || '').slice(0, 110) : i.capa_url ? 'com logo' : 'só o nome';
         return '<div class="st-item' + (i.publicado ? '' : ' oculto') + '" data-item="' + esc(i.id) + '">' +
@@ -256,6 +256,11 @@ B7.SitePainel = (function () {
         campo('si-icone', 'NÚMERO OU EMOJI', i.icone, ' maxlength="4" placeholder="01"') : '') +
       (tipo !== 'servico' ? '<div class="st-2">' + '<div>' + (tipo === 'cliente' ? campo('si-cli', 'NOME DA MARCA', i.cliente_nome, ' maxlength="120"') : seletorCliente(i.cliente_nome)) + '</div>' +
         (tipo !== 'cliente' ? '<div>' + campo('si-arroba', '@ DO INSTAGRAM', i.cliente_arroba ? String(i.cliente_arroba).replace(/^@/, '') : '', ' maxlength="60" placeholder="sem o @"') + '</div>' : '') + '</div>' : '') +
+      (tipo === 'video' ? '<div class="st-resultados"><b>Resultados <small>(aparecem no cartão do vídeo; deixe em branco o que não tiver)</small></b><div class="st-3">' +
+          '<div>' + campo('si-views', 'VISUALIZAÇÕES', i.visualizacoes, ' maxlength="20" placeholder="Ex.: 120 mil"') + '</div>' +
+          '<div>' + campo('si-likes', 'CURTIDAS', i.curtidas, ' maxlength="20" placeholder="Ex.: 8,2 mil"') + '</div>' +
+          '<div>' + campo('si-coment', 'COMENTÁRIOS', i.comentarios, ' maxlength="20" placeholder="Ex.: 340"') + '</div></div>' +
+          campo('si-result', 'RESULTADO PARA O CLIENTE', i.resultado, ' maxlength="140" placeholder="Ex.: +30 orçamentos na semana do vídeo"') + '</div>' : '') +
       (tipo === 'video' ? campo('si-cat', 'CATEGORIA (vira filtro no site)', i.categoria, ' maxlength="60" list="si-cats" placeholder="Ex.: Reels, Anúncio, Institucional"') +
         '<datalist id="si-cats">' + [...new Set(itens.filter(x => x.categoria).map(x => x.categoria).concat(['Reels', 'Anúncio', 'Institucional', 'Depoimento']))].map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' : '') +
       (tipo === 'depoimento' ? '<label class="rot" for="si-texto">O QUE O CLIENTE DISSE <span class="mg-obr leve">ou use um vídeo abaixo</span></label><textarea class="campo" id="si-texto" rows="3" maxlength="800" placeholder="Ex.: O vídeo ficou top! Em uma semana a gente teve mais procura que no mês inteiro.">' + esc(i.texto || '') + '</textarea>' +
@@ -299,6 +304,7 @@ B7.SitePainel = (function () {
       if (selC) { const c = clientesB7.find(x => x.nome === selC.value); d.avatar_url = c && c.logo_url ? c.logo_url : (selC.value === '__outro' ? null : (i.avatar_url || null)); }
       if (val('si-arroba') !== undefined) d.cliente_arroba = (val('si-arroba') || '').replace(/^@/, '') || null;
       if (val('si-cat') !== undefined) d.categoria = val('si-cat') || null;
+      if (val('si-views') !== undefined) { d.visualizacoes = val('si-views') || null; d.curtidas = val('si-likes') || null; d.comentarios = val('si-coment') || null; d.resultado = val('si-result') || null; }
       const dest = m.querySelector('#si-dest'); if (dest) d.destaque = dest.checked;
       /* validação do que o site precisa para mostrar algo */
       if (tipo === 'servico' && !d.titulo) return B7.UI.toast('Dê um nome ao serviço.', { tipo: 'erro' });

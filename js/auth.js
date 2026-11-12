@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '4.40.0';
+  const VERSAO = '4.41.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 

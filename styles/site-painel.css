@@ -143,3 +143,9 @@
 .st-tela .st-2 > .st-bloco{margin-top:0;}
 .st-cli-outro{margin-top:8px;}
 .st-cli-outro[hidden]{display:none !important;}
+/* 4.41.0: resultados do vídeo */
+.st-resultados{margin-top:14px;padding:12px 14px 14px;border-radius:14px;background:var(--acento-suave);}
+.st-resultados > b{display:block;font-size:13px;}
+.st-resultados > b small{font-weight:500;color:var(--ink-3,#777);}
+.st-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+@media (max-width:640px){ .st-3{grid-template-columns:1fr 1fr;} }
