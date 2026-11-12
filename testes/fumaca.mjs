@@ -50,7 +50,7 @@ function respostaRest(url) {
 
 const ROTAS = ['#/', '#/clientes', '#/cliente/c1', '#/gravacoes', '#/gravacao/g1', '#/roteiros', '#/linhas',
   '#/publicacoes', '#/calendario', '#/kanban', '#/aprovacoes', '#/oportunidades', '#/video', '#/design',
-  '#/semanas', '#/painel', '#/lixeira', '#/arquivados', '#/config', '#/projetos', '#/cliente/c1/projetos', '#/legendas', '#/legendas?aba=historico', '#/legendas?aba=termos', '#/gestao?aba=equipe', '#/site', '#/site?aba=video', '#/site?aba=pagina'];
+  '#/semanas', '#/painel', '#/lixeira', '#/arquivados', '#/config', '#/projetos', '#/cliente/c1/projetos', '#/legendas', '#/legendas?aba=historico', '#/legendas?aba=termos', '#/gestao?aba=equipe', '#/site', '#/site?aba=video', '#/site?aba=pagina', '#/site?aba=cliente', '#/site?aba=metricas'];
 
 const falhas = [];
 const navegador = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});

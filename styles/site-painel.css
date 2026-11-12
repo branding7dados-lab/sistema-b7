@@ -90,3 +90,54 @@
   .st-acoes{margin-left:auto;}
   .st-tela .cb-topo-acoes .b{padding:0 12px;}
 }
+
+/* 4.37.0 — clientes do sistema, métricas, API e mais textos */
+.st-tela .st-bloco + .st-bloco,.st-tela .st-2 + .st-bloco,.st-tela .st-bloco + .st-2{margin-top:14px;}
+.st-cli-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;}
+.st-cli-cab h3{margin:0 0 2px;}
+.st-cli-cab .gv-ajuda{margin:0;}
+.st-cli-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.st-cli{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 10px 12px;border-radius:14px;border:1.5px solid var(--borda);
+  background:var(--card);font:inherit;color:var(--ink);cursor:pointer;text-align:center;transition:border-color .15s,box-shadow .15s,opacity .15s;opacity:.62;}
+.st-cli:hover{opacity:.9;}
+.st-cli.on{opacity:1;border-color:var(--acento);box-shadow:0 0 0 3px var(--acento-suave);}
+.st-cli-logo{width:64px;height:64px;border-radius:14px;background:var(--fundo);display:grid;place-items:center;overflow:hidden;}
+.st-cli-logo img{width:100%;height:100%;object-fit:contain;padding:6px;}
+.st-cli-logo b{font-size:24px;color:var(--ink-3,#777);}
+.st-cli-nome{font-size:13px;font-weight:600;line-height:1.25;}
+.st-cli small{font-size:11px;color:var(--ink-3,#777);margin-top:-4px;}
+.st-cli-chave{position:absolute;top:8px;right:8px;width:30px;height:18px;border-radius:9px;background:var(--borda-forte);transition:background .15s;}
+.st-cli-chave::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+.st-cli.on .st-cli-chave{background:var(--acento);}
+.st-cli.on .st-cli-chave::after{transform:translateX(12px);}
+.st-met-topo{display:flex;justify-content:flex-end;margin-bottom:12px;}
+.st-dias{width:auto;margin:0;}
+.st-dias button{flex:none;padding:0 14px;}
+.st-funil{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.st-f{position:relative;padding:12px;border-radius:12px;background:var(--fundo);overflow:hidden;display:flex;flex-direction:column;gap:2px;}
+.st-f-barra{position:absolute;left:0;bottom:0;height:4px;width:var(--w);background:linear-gradient(90deg,var(--roxo,#5b2dbf),var(--magenta,#e0218a));}
+.st-f b{font-size:26px;line-height:1.1;}
+.st-f span{font-size:13px;font-weight:600;}
+.st-f small{font-size:11.5px;color:var(--ink-3,#777);}
+.st-cliques{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.st-cliques span{font-size:12.5px;padding:5px 10px;border-radius:999px;background:var(--fundo);color:var(--ink-2,var(--ink));}
+.st-cliques b{margin-left:4px;}
+.st-dias-graf{display:flex;align-items:flex-end;gap:3px;height:120px;}
+.st-dias-graf div{position:relative;flex:1;height:100%;display:flex;align-items:flex-end;}
+.st-dias-graf i{display:block;width:100%;height:var(--h);border-radius:4px 4px 1px 1px;background:linear-gradient(180deg,var(--magenta,#e0218a),var(--roxo,#5b2dbf));opacity:.85;}
+.st-dias-graf em{position:absolute;top:-2px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--ok,#1a9e5a);}
+.st-tab{width:100%;border-collapse:collapse;font-size:13px;}
+.st-tab th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3,#777);padding:6px 4px;border-bottom:1px solid var(--borda);}
+.st-tab td{padding:7px 4px;border-bottom:1px solid var(--borda);}
+.st-tab td:not(:first-child),.st-tab th:not(:first-child){text-align:right;}
+.st-doc{margin-top:12px;}
+.st-doc summary{cursor:pointer;font-weight:600;font-size:13.5px;}
+.st-doc pre{white-space:pre-wrap;word-break:break-all;font-size:12px;background:var(--fundo);padding:10px 12px;border-radius:10px;}
+.st-chave{margin:12px 0;padding:12px;border-radius:12px;background:var(--fundo);word-break:break-all;font-size:13px;user-select:all;}
+.st-secoes{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px 14px;}
+@media (max-width:640px){
+  .st-funil{grid-template-columns:1fr 1fr;}
+  .st-cli-grade{grid-template-columns:repeat(2,1fr);}
+  .st-cli-cab{flex-direction:column;}
+}
+.st-tela .st-2 > .st-bloco{margin-top:0;}

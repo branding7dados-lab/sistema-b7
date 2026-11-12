@@ -18,7 +18,7 @@ B7.SitePainel = (function () {
   const sb = () => B7.sb;
   const ok = r => { if (r.error) throw r.error; return r.data; };
   const SITE = 'https://branding7.com.br/';
-  const ABAS = [['contatos', 'Contatos'], ['video', 'Vídeos'], ['depoimento', 'Depoimentos'], ['servico', 'Serviços'], ['cliente', 'Clientes'], ['pagina', 'Página']];
+  const ABAS = [['contatos', 'Contatos'], ['video', 'Vídeos'], ['depoimento', 'Depoimentos'], ['servico', 'Serviços'], ['cliente', 'Clientes'], ['pagina', 'Página'], ['metricas', 'Métricas']];
   const STATUS = [['novo', 'Novo', 'rosa'], ['em_contato', 'Em contato', 'azul'], ['virou_cliente', 'Virou cliente', 'verde'], ['descartado', 'Descartado', 'cinza']];
   const IC = {
     globo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.9 3.9 5.9 3.9 9s-1.3 6.1-3.9 9c-2.6-2.9-3.9-5.9-3.9-9s1.3-6.1 3.9-9z"/></svg>',
@@ -30,7 +30,7 @@ B7.SitePainel = (function () {
     lapis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>'
   };
-  let aba = 'contatos', itens = [], leads = [], cfg = {};
+  let aba = 'contatos', itens = [], leads = [], cfg = {}, clientesB7 = [], dias = 30;
 
   const tipoLink = u => {
     u = String(u || '');
@@ -43,12 +43,14 @@ B7.SitePainel = (function () {
   const telLimpo = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length <= 11) d = '55' + d; return d; };
 
   async function carregar() {
-    const [c, i, l] = await Promise.all([
+    const [c, i, l, k] = await Promise.all([
       sb().from('site_config').select('dados').eq('id', 1).maybeSingle(),
       sb().from('site_itens').select('*').order('ordem', { ascending: true }).order('created_at', { ascending: false }),
-      sb().from('site_leads').select('*').order('created_at', { ascending: false }).limit(300)
+      sb().from('site_leads').select('*').order('created_at', { ascending: false }).limit(300),
+      sb().from('clientes').select('id, nome, logo_url, no_site, site_ordem, teste').is('deleted_at', null).order('nome')
     ]);
     cfg = (ok(c) || {}).dados || {}; itens = ok(i) || []; leads = ok(l) || [];
+    clientesB7 = (k.error ? [] : (k.data || [])).filter(x => !x.teste);
   }
 
   async function abrir(params) {
@@ -82,6 +84,7 @@ B7.SitePainel = (function () {
     const p = painel(); if (!p) return;
     const n = { contatos: leads.filter(l => l.status === 'novo').length };
     ['video', 'depoimento', 'servico', 'cliente'].forEach(t => { n[t] = itens.filter(i => i.tipo === t).length; });
+    n.cliente += clientesB7.filter(x => x.no_site).length;
     p.querySelectorAll('[data-n]').forEach(s => { const v = n[s.dataset.n]; s.textContent = v ? v : ''; s.classList.toggle('alerta', s.dataset.n === 'contatos' && v > 0); });
   }
 
@@ -90,6 +93,8 @@ B7.SitePainel = (function () {
     contadores();
     if (aba === 'contatos') return pintarContatos(cx);
     if (aba === 'pagina') return pintarPagina(cx);
+    if (aba === 'metricas') return pintarMetricas(cx);
+    if (aba === 'cliente') return pintarClientes(cx);
     pintarItens(cx, aba);
   }
 
@@ -298,15 +303,44 @@ B7.SitePainel = (function () {
   }
 
   /* ---------------------------------------------------------- página */
+  const SECOES = [['sobre', 'Sobre'], ['trabalhos', 'Vídeos (projetos)'], ['processo', 'Processo (câmera 3D)'], ['servicos', 'Serviços'],
+    ['depoimentos', 'Depoimentos'], ['clientes', 'Marcas que confiam'], ['regioes', 'Regiões'], ['faq', 'Perguntas frequentes']];
+  /* textos padrão do site (branding7-site/components/Site.jsx) — aparecem como dica */
+  const PAD = {
+    fita: 'VENDER, VIRALIZAR, PERFORMAR, ROTEIRO, GRAVAÇÃO, EDIÇÃO, CRIATIVOS, ANÚNCIOS',
+    manifesto: 'PRENDA A ATENÇÃO.\nCONTE A SUA HISTÓRIA.\nFAÇA VENDER.',
+    notas: 'Os primeiros 3 segundos decidem se a pessoa fica.\nVídeo bom é o que traz cliente, não só curtida.',
+    sobre_titulo: 'Muito além de gravar um vídeo.',
+    sobre_texto: 'Na Branding7, cada vídeo nasce de uma estratégia...\n\nO resultado é conteúdo que a sua marca tem orgulho de postar...',
+    cta: 'Quero vídeos assim',
+    passos: 'Diagnóstico | Entendemos o seu negócio...\nRoteiro | Ganchos, falas e cenas...\nGravação | ...\nEdição | ...\nPublicação | ...\nPerformance | ...',
+    faq: 'Vocês gravam na minha cidade? | ...\nEu preciso saber falar na câmera? | ...'
+  };
+  const pares = (t, max) => t.split('\n').map(x => x.split('|')).filter(p => p[0] && p[0].trim() && p[1] && p[1].trim())
+    .slice(0, max).map(p => [p[0].trim(), p.slice(1).join('|').trim()]);
   function pintarPagina(cx) {
     const c = cfg || {};
     const linhas = a => (Array.isArray(a) ? a : []).join('\n');
     const nums = (Array.isArray(c.numeros) ? c.numeros : []).map(n => (n.valor || '') + ' | ' + (n.rotulo || '')).join('\n');
+    const sec = c.secoes || {};
+    const ta = (id, rot, val, rows, ph) => '<div class="st-campo"><label class="rot" for="' + id + '">' + rot + '</label><textarea class="campo" id="' + id + '" rows="' + rows + '" placeholder="' + esc(ph || '') + '">' + esc(val || '') + '</textarea></div>';
     const g = (id, rot, val, ajuda, extra) => '<div class="st-campo"><label class="rot" for="' + id + '">' + rot + '</label><input class="campo" id="' + id + '" value="' + esc(val || '') + '"' + (extra || '') + '>' + (ajuda ? '<div class="gv-ajuda">' + ajuda + '</div>' : '') + '</div>';
     cx.innerHTML = '<div class="st-pagina">' +
       '<section class="st-bloco"><h3>Abertura</h3>' +
         g('sp-palavras', 'PALAVRAS QUE GIRAM NO TÍTULO', (c.palavras || ['vender', 'viralizar', 'performar']).join(', '), '“O vídeo que faz você ___.” Separe por vírgula.') +
         '<div class="st-campo"><label class="rot" for="sp-sub">FRASE ABAIXO DO TÍTULO</label><textarea class="campo" id="sp-sub" rows="2" maxlength="240">' + esc(c.subtitulo || '') + '</textarea></div></section>' +
+      '<section class="st-bloco"><h3>Seções do site</h3><p class="gv-ajuda">Desmarque para esconder uma parte inteira do site.</p><div class="st-secoes">' +
+        SECOES.map(([k, r]) => '<label class="check"><input type="checkbox" data-secao="' + k + '"' + (sec[k] === false ? '' : ' checked') + '><span>' + r + '</span></label>').join('') + '</div></section>' +
+      '<section class="st-bloco"><h3>Textos</h3><p class="gv-ajuda">Deixe em branco para usar o texto padrão (aparece apagado no campo).</p>' +
+        g('sp-fita', 'FAIXA DE PALAVRAS (separe por vírgula)', (c.fita || []).join(', '), '', ' placeholder="' + esc(PAD.fita) + '"') +
+        ta('sp-manif', 'MANIFESTO (uma frase por linha; a última fica com o degradê)', linhas(c.manifesto), 3, PAD.manifesto) +
+        ta('sp-notas', 'FRASES SOLTAS DO MANIFESTO (até 2, uma por linha)', linhas(c.notas), 2, PAD.notas) +
+        g('sp-sobre-tit', 'TÍTULO DO "SOBRE"', c.sobre_titulo, '', ' maxlength="90" placeholder="' + esc(PAD.sobre_titulo) + '"') +
+        ta('sp-sobre', 'TEXTO DO "SOBRE" (pule uma linha entre os parágrafos)', c.sobre_texto, 4, PAD.sobre_texto) +
+        g('sp-cta', 'TEXTO DO BOTÃO PRINCIPAL', c.cta, '', ' maxlength="40" placeholder="' + esc(PAD.cta) + '"') +
+        ta('sp-passos', 'PASSOS DO PROCESSO (Título | descrição, até 6)', (c.passos || []).map(x => x.t + ' | ' + x.d).join('\n'), 6, PAD.passos) +
+        ta('sp-faq', 'PERGUNTAS FREQUENTES (Pergunta | resposta, uma por linha)', (c.faq || []).map(x => x.p + ' | ' + x.r).join('\n'), 6, PAD.faq) +
+      '</section>' +
       '<section class="st-bloco"><h3>Contato</h3><div class="st-2">' +
         g('sp-wpp', 'WHATSAPP (com DDD)', c.whatsapp, 'É para onde vão o botão verde e o formulário.', ' inputmode="tel"') +
         g('sp-insta', 'INSTAGRAM', c.instagram, 'Sem o @.') + '</div><div class="st-2">' +
@@ -331,7 +365,14 @@ B7.SitePainel = (function () {
         whatsapp_nome: v('sp-nome'), whatsapp_cargo: v('sp-cargo'), whatsapp_msg: v('sp-msg'),
         regioes: v('sp-reg').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 30),
         numeros: v('sp-num').split('\n').map(x => x.split('|')).filter(p => p[0] && p[0].trim()).slice(0, 6).map(p => ({ valor: p[0].trim(), rotulo: (p[1] || '').trim() })),
-        pixel_meta: v('sp-pixel').replace(/\D/g, ''), ga4: ga.toUpperCase()
+        pixel_meta: v('sp-pixel').replace(/\D/g, ''), ga4: ga.toUpperCase(),
+        secoes: Object.fromEntries([...cx.querySelectorAll('[data-secao]')].map(i => [i.dataset.secao, i.checked])),
+        fita: v('sp-fita').split(',').map(x => x.trim()).filter(Boolean).slice(0, 12),
+        manifesto: v('sp-manif').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 4),
+        notas: v('sp-notas').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 2),
+        sobre_titulo: v('sp-sobre-tit'), sobre_texto: v('sp-sobre'), cta: v('sp-cta'),
+        passos: pares(v('sp-passos'), 6).map(([t, d]) => ({ t, d })),
+        faq: pares(v('sp-faq'), 12).map(([p, r]) => ({ p, r }))
       });
       const bt = cx.querySelector('#sp-salvar'); bt.disabled = true; bt.textContent = 'Salvando…';
       try {
@@ -340,6 +381,99 @@ B7.SitePainel = (function () {
       } catch (e) { B7.UI.toast('Não foi possível salvar: ' + ((e && e.message) || ''), { tipo: 'erro' }); }
       bt.disabled = false; bt.textContent = 'Salvar a página';
     };
+  }
+
+  /* ---------------------------------------------------------- clientes (4.37.0)
+     Os clientes do sistema (com o logo que já está cadastrado) entram na
+     faixa "Marcas que confiam" com um toque. Embaixo, marcas avulsas. */
+  function pintarClientes(cx) {
+    const noSite = clientesB7.filter(c => c.no_site).length;
+    cx.innerHTML = '<section class="st-bloco st-cli-b7"><div class="st-cli-cab"><div><h3>Clientes do sistema</h3>' +
+        '<p class="gv-ajuda">Toque para ligar ou desligar quem aparece no site. O logo é o mesmo do cadastro do cliente.</p></div>' +
+        '<span class="st-chip">' + noSite + ' no site</span></div>' +
+      (clientesB7.length ? '<div class="st-cli-grade">' + clientesB7.map(c =>
+        '<button type="button" class="st-cli' + (c.no_site ? ' on' : '') + '" data-cli="' + esc(c.id) + '" aria-pressed="' + !!c.no_site + '">' +
+          '<span class="st-cli-logo">' + (c.logo_url ? '<img src="' + esc(c.logo_url) + '" alt="" loading="lazy">' : '<b>' + esc(String(c.nome || '?').charAt(0)) + '</b>') + '</span>' +
+          '<span class="st-cli-nome">' + esc(c.nome) + '</span>' +
+          '<span class="st-cli-chave" aria-hidden="true"></span>' +
+          (c.logo_url ? '' : '<small>sem logo: aparece o nome</small>') +
+        '</button>').join('') + '</div>' : '<p class="gv-ajuda">Nenhum cliente cadastrado.</p>') +
+      '</section><section class="st-bloco"><h3>Outras marcas</h3><p class="gv-ajuda">Marcas que não estão no sistema (ex.: trabalhos antigos).</p><div id="st-cli-extra"></div></section>';
+    cx.querySelectorAll('[data-cli]').forEach(b => b.onclick = async () => {
+      const c = clientesB7.find(x => x.id === b.dataset.cli); if (!c) return;
+      const v = !c.no_site; c.no_site = v; b.classList.toggle('on', v); b.setAttribute('aria-pressed', String(v));
+      try { ok(await sb().from('clientes').update({ no_site: v }).eq('id', c.id)); contadores(); const ch = cx.querySelector('.st-cli-b7 .st-chip'); if (ch) ch.textContent = clientesB7.filter(x => x.no_site).length + ' no site'; }
+      catch (e) { c.no_site = !v; b.classList.toggle('on', !v); B7.UI.toast('Não foi possível salvar.', { tipo: 'erro' }); }
+    });
+    pintarItens(cx.querySelector('#st-cli-extra'), 'cliente');
+  }
+
+  /* ---------------------------------------------------------- métricas (4.37.0) */
+  const FUNIL = [['visitantes', 'Visitaram o site'], ['engajaram', 'Rolaram ou viram vídeo'], ['clicaram_contato', 'Clicaram para falar'], ['viraram_lead', 'Mandaram o formulário']];
+  const API_URL = 'https://rartcafydsaocdzshqcx.supabase.co/functions/v1/site-api';
+  async function pintarMetricas(cx) {
+    cx.innerHTML = '<div class="st-met-topo"><div class="st-fonte st-dias">' + [7, 30, 90].map(d => '<button type="button" data-dias="' + d + '"' + (d === dias ? ' class="on"' : '') + '>' + d + ' dias</button>').join('') + '</div></div>' +
+      '<div id="st-met">' + B7.UI.skeleton('cards', { n: 4 }) + '</div><div id="st-api"></div>';
+    cx.querySelectorAll('[data-dias]').forEach(b => b.onclick = () => { dias = +b.dataset.dias; pintarMetricas(cx); });
+    pintarApi(cx.querySelector('#st-api'));
+    let m;
+    try { m = ok(await sb().rpc('site_metricas', { p_dias: dias })); }
+    catch (e) { const el = cx.querySelector('#st-met'); if (el) el.innerHTML = '<div class="cb-aviso erro">Não foi possível carregar as métricas.</div>'; return; }
+    const el = cx.querySelector('#st-met'); if (!el || aba !== 'metricas') return;
+    const f = m.funil || {}, topo = Math.max(1, f.visitantes || 0);
+    const pc = (a, b) => b ? Math.round(a * 100 / b) + '%' : '—';
+    const dia = m.por_dia || [], maxD = Math.max(1, ...dia.map(d => d.visitantes));
+    const tabela = (lista, chave, rot) => lista && lista.length ? '<table class="st-tab"><thead><tr><th>' + rot + '</th><th>Visitantes</th><th>Contatos</th><th>Conversão</th></tr></thead><tbody>' +
+      lista.slice(0, 12).map(o => '<tr><td>' + esc(o[chave]) + '</td><td>' + o.visitantes + '</td><td>' + o.leads + '</td><td>' + pc(o.leads, o.visitantes) + '</td></tr>').join('') + '</tbody></table>'
+      : '<p class="gv-ajuda">Ainda sem dados.</p>';
+    const disp = m.dispositivos || {}, totD = Object.values(disp).reduce((a, b) => a + b, 0);
+    el.innerHTML = '<section class="st-bloco"><h3>Funil do site</h3><div class="st-funil">' + FUNIL.map(([k, r], n) => {
+        const v = f[k] || 0;
+        return '<div class="st-f"><div class="st-f-barra" style="--w:' + Math.max(3, v * 100 / topo).toFixed(1) + '%"></div><b>' + v + '</b><span>' + r + '</span>' +
+          (n ? '<small>' + pc(v, f[FUNIL[n - 1][0]] || 0) + ' da etapa anterior</small>' : '<small>pessoas diferentes</small>') + '</div>';
+      }).join('') + '</div>' +
+      '<div class="st-cliques"><span>WhatsApp <b>' + ((m.cliques || {}).whatsapp || 0) + '</b></span><span>Formulário aberto <b>' + ((m.cliques || {}).formulario || 0) + '</b></span>' +
+        '<span>Instagram <b>' + ((m.cliques || {}).instagram || 0) + '</b></span><span>Vídeos assistidos <b>' + ((m.cliques || {}).videos || 0) + '</b></span>' +
+        '<span>Contatos no período <b>' + ((m.leads || {}).total || 0) + '</b></span></div></section>' +
+      '<section class="st-bloco"><h3>Visitantes por dia</h3>' + (dia.length ? '<div class="st-dias-graf">' + dia.map(d =>
+        '<div title="' + esc(B7.UI.dataBR ? B7.UI.dataBR(d.dia) : d.dia) + ': ' + d.visitantes + ' visitantes, ' + d.leads + ' contatos"><i style="--h:' + Math.max(4, d.visitantes * 100 / maxD).toFixed(1) + '%"></i>' + (d.leads ? '<em></em>' : '') + '</div>').join('') + '</div>'
+        : '<p class="gv-ajuda">Os números começam a aparecer conforme as pessoas visitam o site.</p>') + '</section>' +
+      '<div class="st-2"><section class="st-bloco"><h3>De onde vieram</h3>' + tabela(m.origens, 'origem', 'Origem') + '</section>' +
+        '<section class="st-bloco"><h3>Campanhas (UTM)</h3>' + tabela(m.campanhas, 'campanha', 'Campanha') +
+        '<p class="gv-ajuda">Nos anúncios, use links com ?utm_source=meta&amp;utm_campaign=nome-da-campanha para ver cada uma aqui.</p></section></div>' +
+      '<section class="st-bloco"><h3>Aparelho</h3><div class="st-cliques">' + (totD ? Object.entries(disp).map(([k, v]) => '<span>' + esc(k) + ' <b>' + pc(v, totD) + '</b></span>').join('') : '<span>Sem dados ainda</span>') + '</div>' +
+        '<p class="gv-ajuda">Contagem própria do site (sem cookies e sem dado pessoal). Os números do Google Analytics e do Pixel da Meta continuam nos painéis deles.</p></section>';
+  }
+
+  async function pintarApi(el) {
+    if (!el) return;
+    const r = await sb().from('site_api_chaves').select('id, nome, prefixo, created_at, ultimo_uso, usos, revogada_em').order('created_at', { ascending: false });
+    const lista = (r.data || []).filter(k => !k.revogada_em);
+    el.innerHTML = '<section class="st-bloco"><div class="st-cli-cab"><div><h3>API para outras ferramentas</h3>' +
+      '<p class="gv-ajuda">Para a IA do comercial (ou qualquer sistema) ler o funil, as origens e os contatos do site. Só leitura.</p></div>' +
+      '<button class="b" id="st-api-nova">+ Gerar chave</button></div>' +
+      (lista.length ? '<div class="st-lista">' + lista.map(k => '<div class="st-item"><div class="st-tx"><b>' + esc(k.nome) + '</b><small>' + esc(k.prefixo) + '… · criada ' +
+        esc(B7.UI.quando(k.created_at)) + (k.ultimo_uso ? ' · último uso ' + esc(B7.UI.quando(k.ultimo_uso)) + ' (' + k.usos + ')' : ' · nunca usada') + '</small></div>' +
+        '<button class="b fina perigo" data-revogar="' + esc(k.id) + '">Revogar</button></div>').join('') + '</div>' : '<p class="gv-ajuda">Nenhuma chave ativa.</p>') +
+      '<details class="st-doc"><summary>Como usar</summary><pre>GET ' + API_URL + '?recurso=tudo&amp;dias=30\nAuthorization: Bearer SUA_CHAVE</pre>' +
+      '<p class="gv-ajuda"><b>recurso</b>: metricas (funil, origens, campanhas, visitantes por dia, aparelhos), leads (contatos do formulário, aceita &amp;status=novo) ou tudo. <b>dias</b>: 1 a 365. A resposta é JSON.</p></details></section>';
+    el.querySelector('#st-api-nova').onclick = async () => {
+      const nome = await B7.UI.perguntar({ titulo: 'Nova chave de API', rotulo: 'Para quem é?', placeholder: 'Ex.: IA do Gabriel', confirmar: 'Gerar' });
+      if (!nome) return;
+      try {
+        const chave = ok(await sb().rpc('site_api_chave_criar', { p_nome: nome }));
+        const m = B7.UI.modal('<h3>Chave criada</h3><div class="sub">Copie agora: por segurança ela não aparece de novo. Se perder, gere outra e revogue esta.</div>' +
+          '<div class="st-chave"><code>' + esc(chave) + '</code></div>' +
+          '<div class="acoes"><button class="b" data-fecha>Fechar</button><button class="b pri" data-copiar>Copiar chave</button></div>', { extra: 'st-modal' });
+        m.querySelector('[data-copiar]').onclick = () => B7.UI.copiarTexto(chave, { msgSucesso: 'Chave copiada.', msgErro: 'Não foi possível copiar. Selecione e copie à mão.' });
+        pintarApi(el);
+      } catch (e) { B7.UI.toast('Não foi possível gerar a chave.', { tipo: 'erro' }); }
+    };
+    el.querySelectorAll('[data-revogar]').forEach(b => b.onclick = async () => {
+      if (!(await B7.UI.confirmar({ titulo: 'Revogar esta chave?', texto: 'Quem usa ela para de ler os números do site na hora.', rotulo: 'Revogar', perigo: true }))) return;
+      try { ok(await sb().rpc('site_api_chave_revogar', { p_id: b.dataset.revogar })); pintarApi(el); B7.UI.toast('Chave revogada.'); }
+      catch (e) { B7.UI.toast('Não foi possível revogar.', { tipo: 'erro' }); }
+    });
   }
 
   return { abrir };
