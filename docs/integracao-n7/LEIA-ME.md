@@ -1,6 +1,6 @@
 # Site da Branding7 → banco do N7
 
-O Sistema B7 envia, a cada 15 minutos, as métricas e os contatos do site
+O Sistema B7 envia, a cada minuto (contatos na hora), as métricas e os contatos do site
 branding7.com.br para o banco do N7, **só em tabelas novas com final `_b7`**.
 Nada do N7 é alterado ou apagado.
 
@@ -22,7 +22,7 @@ Os últimos 3 dias são recalculados a cada envio (o dia de hoje muda a cada vis
 2. **B7 (Kevin):** Supabase do Sistema B7 → Edge Functions → Secrets:
    - `N7_URL` = `https://<projeto-do-n7>.supabase.co`
    - `N7_SERVICE_KEY` = chave **service_role** do N7 (de preferência a nova, depois de trocar a que foi exposta no chat).
-3. Em até 15 minutos os dados chegam (função `n7-sync`, job `n7-sync` no pg_cron do B7).
+3. Os dados chegam em até 1 minuto (função `n7-sync`, job `n7-sync` no pg_cron do B7, a cada minuto); contato novo ou mudança de status vai na hora (gatilho em `site_leads`).
 
 ## Conferir
 ```sql
