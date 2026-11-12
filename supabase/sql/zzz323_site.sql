@@ -105,3 +105,8 @@ on conflict (id) do nothing;
 create policy site_arquivos_admin_ins on storage.objects for insert to authenticated with check (bucket_id = 'site' and public.sou_admin());
 create policy site_arquivos_admin_upd on storage.objects for update to authenticated using (bucket_id = 'site' and public.sou_admin());
 create policy site_arquivos_admin_del on storage.objects for delete to authenticated using (bucket_id = 'site' and public.sou_admin());
+
+-- zzz324 (aplicada): visitante sem login não executa sou_admin(); a regra
+-- única "publicado or sou_admin()" derrubava a leitura inteira do site.
+alter policy site_itens_publico on public.site_itens to authenticated using (publicado or public.sou_admin());
+create policy site_itens_visitante on public.site_itens for select to anon using (publicado);
