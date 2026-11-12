@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.29.0', versao: '4.29.0', em: '2026-11-13T10:00:00-03:00',
+    titulo: 'Linha editorial a partir da anterior',
+    itens: ['Ao criar uma linha editorial, o sistema oferece aproveitar a estratégia da linha anterior do cliente: objetivo, posicionamento e tom de voz, canais e meta, e pilares.',
+            'Dá para desmarcar o que não quiser. Os conteúdos não vêm junto: o mês novo começa vazio, com a estratégia pronta.'] },
   { id: 'v-4.28.0', versao: '4.28.0', em: '2026-11-12T23:00:00-03:00',
     titulo: 'Sistema mais leve',
     itens: ['As telas trocam mais rápido, com uma transição curta e simples.',

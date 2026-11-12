@@ -751,6 +751,8 @@ B7.Conteudo = (function () {
         '<div id="nl-aviso"></div>' +
       '</section>' +
 
+      '<section class="ng-bloco" id="nl-base-bloco" hidden><h4>' + ICL.linha + 'Começar a partir da anterior <span class="mg-obr leve">opcional</span></h4>' +
+        '<div id="nl-base"></div></section>' +
       (B7.Pacotes ? B7.Pacotes.blocoNovaLinha(ICL.pacote) : '') +
       '<section class="ng-bloco"><h4>' + ICL.nome + 'Nome <span class="mg-obr leve">opcional</span></h4>' +
         '<div class="mb ng-ult"><input class="campo" id="nl-nome" aria-label="Nome da linha editorial" value="' +
@@ -785,7 +787,33 @@ B7.Conteudo = (function () {
 
     /* Já existe uma linha para esse cliente e mês? Avisamos e oferecemos
        abrir — sem impedir de criar outra, porque às vezes faz sentido. */
+    /* 4.29.0 — "a partir da anterior": a linha mais recente do cliente
+       empresta a estratégia (objetivo, posicionamento, canais e meta,
+       pilares). Conteúdos não vêm: o mês novo tem conteúdo novo. */
+    let base = null;
+    async function mostrarBase() {
+      const bloco = m.querySelector('#nl-base-bloco'), alvo = m.querySelector('#nl-base');
+      const cli = clienteId || (selCli && selCli.value);
+      const lista = !cli ? [] : (cli === clienteId && existentes ? existentes : await B7.DB.listarLinhas(cli).catch(() => []));
+      const alvoMes = +selAno.value * 12 + +selMes.value;
+      base = lista.filter(l => l.ano * 12 + l.mes < alvoMes).sort((a, b) => (b.ano * 12 + b.mes) - (a.ano * 12 + a.mes))[0]
+          || lista.filter(l => !(l.mes === +selMes.value && l.ano === +selAno.value))[0] || null;
+      if (!base) { bloco.hidden = true; alvo.innerHTML = ''; return; }
+      bloco.hidden = false;
+      const antes = {}; alvo.querySelectorAll('[data-base]').forEach(c => { antes[c.dataset.base] = c.checked; });
+      const ligado = 'usar' in antes ? antes.usar : true;
+      alvo.innerHTML =
+        '<label class="check nl-base-usar"><input type="checkbox" data-base="usar"' + (ligado ? ' checked' : '') + '>' +
+          '<span>Aproveitar a estratégia de <b>' + esc(base.nome || (MESES[base.mes - 1] + ' ' + base.ano)) + '</b></span></label>' +
+        '<div class="lista-check nl-base-itens"' + (ligado ? '' : ' hidden') + '>' +
+        [['objetivo', 'Objetivo do mês'], ['posicionamento', 'Posicionamento e tom de voz'], ['canais', 'Canais e meta de conteúdos'], ['pilares', 'Pilares de conteúdo']].map(([k, rot]) =>
+          '<label class="check"><input type="checkbox" data-base="' + k + '"' + (antes[k] === false ? '' : ' checked') + '><span>' + rot + '</span></label>').join('') +
+        '</div><div class="gv-ajuda">Os conteúdos não vêm junto: o mês novo começa vazio, com a estratégia pronta.</div>';
+      const usar = alvo.querySelector('[data-base="usar"]');
+      usar.onchange = () => { alvo.querySelector('.nl-base-itens').hidden = !usar.checked; };
+    }
     async function avisarExistente() {
+      mostrarBase().catch(() => {});
       const alvo = m.querySelector('#nl-aviso');
       const cli = clienteId || (selCli && selCli.value);
       if (!cli) return alvo.innerHTML = '';
@@ -822,6 +850,25 @@ B7.Conteudo = (function () {
         }), 'Linha editorial criada');
         B7.DB.registrar({ tipo: 'criar', entidade: 'linha', id: nova.id, cliente: cli,
           texto: 'Linha editorial: ' + nova.nome });
+        const quer = k => { const c = m.querySelector('[data-base="' + k + '"]'); return !!(c && c.checked); };
+        if (base && quer('usar')) {
+          try {
+            const o = await B7.DB.linha(base.id);
+            const d = {};
+            if (quer('objetivo')) { d.objetivo = o.objetivo; d.objetivo_detalhe = o.objetivo_detalhe; }
+            if (quer('posicionamento')) { d.posicionamento = o.posicionamento; d.tom_voz = o.tom_voz; d.puv = o.puv; d.percepcao = o.percepcao; }
+            if (quer('canais')) { d.canais = o.canais; d.meta_conteudos = o.meta_conteudos; }
+            if (Object.keys(d).length) await B7.DB.atualizarLinha(nova.id, d);
+            if (quer('pilares')) {
+              const ps = await B7.DB.listarPilares(base.id).catch(() => []);
+              for (let i = 0; i < ps.length; i++) {
+                const pl = ps[i];
+                await B7.DB.criarPilar({ linha_id: nova.id, position: i, nome: pl.nome, percentual: pl.percentual,
+                  funil: pl.funil, objetivo: pl.objetivo, observacoes: pl.observacoes });
+              }
+            }
+          } catch (e) { B7.UI.toast('A linha foi criada, mas a estratégia anterior não veio: ' + ((e && e.message) || ''), { tipo: 'erro' }); }
+        }
         const idPacote = pacote && pacote.escolhido();
         if (idPacote) { try { await B7.Pacotes.aplicar(nova.id, idPacote); } catch (e) { B7.UI.toast('A linha foi criada, mas o pacote não: ' + ((e && e.message) || ''), { tipo: 'erro' }); } }
         m.fechar();
