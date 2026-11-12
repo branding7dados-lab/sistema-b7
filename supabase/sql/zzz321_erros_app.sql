@@ -18,7 +18,6 @@ create table if not exists public.erros_app (
 create unique index if not exists erros_app_unico on public.erros_app (perfil_id, dia, mensagem, coalesce(tela, ''));
 create index if not exists erros_app_ultimo on public.erros_app (ultimo_em desc);
 alter table public.erros_app enable row level security;
-drop policy if exists erros_app_admin_le on public.erros_app;
 create policy erros_app_admin_le on public.erros_app for select to authenticated using (public.sou_admin());
 
 create or replace function public.erro_app_registrar(p_mensagem text, p_origem text, p_tela text, p_versao text, p_plataforma text)
