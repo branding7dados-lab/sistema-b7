@@ -491,6 +491,135 @@ B7.Usuarios = (function () {
      ================================================================= */
   const IC_HIST = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3 4.5V9h4.5"/><path d="M12 7.5V12l3 2"/></svg>';
   const primeiroNome = u => String((u && (u.nome || u.username)) || '').trim().split(/\s+/)[0];
+  /* =================================================================
+     4.34.0 — ACESSOS CEDIDOS
+     Kevin: "quando eu ceder um acesso (pela telinha de pedir ou pelo
+     suporte), já aparece como cedido na minha tela; quando eu quiser
+     tirar, é só tirar." Cada acesso cedido vira um cartão: quem, o quê,
+     de onde veio, até quando — com "Tirar" (volta exatamente ao que era
+     antes) e o prazo, que dá para mudar. "Ceder acesso" cede direto,
+     sem pedido; o mesmo formulário abre de dentro de um chamado do
+     suporte. Quem grava e desfaz é o banco (acesso_ceder / acesso_revogar
+     / acesso_prazo; o vencido sai sozinho de hora em hora).
+     ================================================================= */
+  const PRAZOS = [[0, 'Sem prazo'], [1, '1 dia'], [7, '7 dias'], [30, '30 dias']];
+  const NV_ROT = { sem: 'Sem acesso', ver: 'Ver', editar: 'Editar', total: 'Total' };
+  const ORIGEM = { pedido: 'Pedido pela tela', suporte: 'Pelo suporte', manual: 'Cedido direto' };
+  const IC_CEDE = {
+    chave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l8.5-8.5M16 7l2.5 2.5M14 9l2 2"/></svg>',
+    mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    relogio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>'
+  };
+  function quandoVence(iso) {
+    if (!iso) return { tx: 'sem prazo', classe: '' };
+    const h = (new Date(iso) - Date.now()) / 36e5;
+    if (h <= 0) return { tx: 'vencendo agora', classe: 'perto' };
+    if (h < 24) return { tx: 'vence em ' + Math.max(1, Math.round(h)) + ' h', classe: 'perto' };
+    const d = Math.round(h / 24);
+    return { tx: 'vence em ' + d + (d === 1 ? ' dia' : ' dias'), classe: d <= 2 ? 'perto' : '' };
+  }
+  function blocoCedidos(usuarios, pedidos) {
+    const cedidos = (pedidos || []).filter(p => p.estado === 'aprovado');
+    const saiu = (pedidos || []).filter(p => p.estado === 'revogado' || p.estado === 'expirado').slice(0, 8);
+    const pessoa = p => usuarios.find(x => x.id === p.perfil_id) || { nome: p.nome, username: p.username, avatar_url: p.avatar_url, id: p.perfil_id };
+    const origem = p => p.origem === 'suporte' && p.chamado_numero ? 'Suporte #' + p.chamado_numero : (ORIGEM[p.origem] || ORIGEM.pedido);
+    const cartao = p => {
+      const u = pessoa(p), v = quandoVence(p.expira_em);
+      return '<div class="lu6-cedido" data-cedido="' + esc(p.id) + '">' +
+        B7.UI.avatarPessoa(u, 'lu-avatar') +
+        '<div class="lu6-tx"><b>' + esc(u.nome || p.nome) + '</b>' +
+          '<span class="lu6-acesso"><em class="lu5-nv hnv-' + esc(p.nivel_dado || p.nivel) + '">' + NV_ROT[p.nivel_dado || p.nivel] + '</em> em <b>' + esc(p.modulo_rotulo) + '</b></span>' +
+          '<small>' + esc(origem(p)) + ' · cedido ' + esc(B7.UI.quando ? B7.UI.quando(p.decidido_em || p.created_at) : '') +
+            (p.decidido_por_nome ? ' por ' + esc(primeiroNome({ nome: p.decidido_por_nome })) : '') +
+            (p.antes_efeito && p.antes_efeito !== 'padrao' ? ' · antes: ' + NV_ROT[p.antes_nivel || 'sem'] : '') + '</small></div>' +
+        '<label class="lu6-prazo ' + v.classe + '" title="Até quando vale">' + IC_CEDE.relogio +
+          '<span>' + esc(v.tx) + '</span><select data-prazo-cedido aria-label="Mudar o prazo">' +
+          '<option value="" selected disabled>mudar</option>' + PRAZOS.map(([d, rot]) => '<option value="' + d + '">' + rot + '</option>').join('') + '</select></label>' +
+        '<button type="button" class="b fina lu6-tirar" data-tirar>Tirar</button></div>';
+    };
+    return '<section class="lu5-bloco lu6-cedidos">' +
+      '<header><h3><span class="lu6-ic" aria-hidden="true">' + IC_CEDE.chave + '</span>Acessos cedidos' + (cedidos.length ? ' <b>' + cedidos.length + '</b>' : '') + '</h3>' +
+        '<button type="button" class="b fina lu6-ceder" data-ceder>' + IC_CEDE.mais + 'Ceder acesso</button></header>' +
+      '<p class="lu6-sub">O que você liberou fora do padrão da função de cada pessoa. Tirar volta exatamente ao que era antes.</p>' +
+      (cedidos.length ? '<div class="lu6-lista">' + cedidos.map(cartao).join('') + '</div>'
+        : '<div class="lu6-vazio">Nenhum acesso cedido agora. Quando você aprovar um pedido ou ceder pelo suporte, ele aparece aqui.</div>') +
+      (saiu.length ? '<details class="lu6-saiu"><summary>Retirados recentemente (' + saiu.length + ')</summary>' + saiu.map(p => {
+          const u = pessoa(p);
+          return '<div class="lu6-saiu-it">' + esc(primeiroNome(u)) + ' · ' + NV_ROT[p.nivel_dado || p.nivel] + ' em ' + esc(p.modulo_rotulo) + ' · ' +
+            (p.estado === 'expirado' ? 'venceu' : 'tirado') + ' ' + esc(B7.UI.quando ? B7.UI.quando(p.revogado_em) : '') +
+            (p.revogado_por_nome ? ' por ' + esc(primeiroNome({ nome: p.revogado_por_nome })) : '') + '</div>';
+        }).join('') + '</details>' : '') +
+      '</section>';
+  }
+  function ligarCedidos(box, usuarios) {
+    const bt = box.querySelector('[data-ceder]');
+    if (bt) bt.onclick = () => cederAcesso({ usuarios, modulos: ACESSO.modulos, aoCeder: reabrir });
+    box.querySelectorAll('[data-cedido]').forEach(el => {
+      const id = el.dataset.cedido;
+      el.querySelector('[data-tirar]').onclick = async () => {
+        const motivo = B7.UI.perguntar ? await B7.UI.perguntar({ titulo: 'Tirar este acesso?', rotulo: 'A pessoa volta ao acesso que tinha antes e recebe um aviso. Se quiser, diga o motivo.', placeholder: 'Opcional', confirmar: 'Tirar acesso' }) : '';
+        if (motivo === null || motivo === undefined || motivo === false) return;
+        el.classList.add('saindo');
+        try {
+          await B7.DB.rpc('acesso_revogar', { p_id: id, p_motivo: typeof motivo === 'string' ? motivo : null });
+          B7.UI.toast('Acesso retirado. A pessoa já recebeu o aviso.');
+          reabrir();
+        } catch (e) { el.classList.remove('saindo'); B7.UI.toast((e && e.message) || 'Não foi possível tirar.', { tipo: 'erro' }); }
+      };
+      el.querySelector('[data-prazo-cedido]').onchange = async ev => {
+        const dias = +ev.target.value;
+        try { await B7.DB.rpc('acesso_prazo', { p_id: id, p_dias: dias }); B7.UI.toast(dias ? 'Prazo ajustado: vale por mais ' + dias + (dias === 1 ? ' dia.' : ' dias.') : 'Agora sem prazo.'); reabrir(); }
+        catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível mudar o prazo.', { tipo: 'erro' }); }
+      };
+    });
+  }
+  /* o formulário de ceder — aqui e de dentro de um chamado do suporte */
+  async function cederAcesso(op) {
+    op = op || {};
+    let usuarios = op.usuarios, modulosBanco = op.modulos;
+    if (!usuarios || !modulosBanco) {
+      try { const d = (await B7.DB.chamarAuth({ acao: 'listar_usuarios' })) || {}; usuarios = usuarios || d.usuarios || []; modulosBanco = modulosBanco || d.modulos; }
+      catch (e) { usuarios = usuarios || []; }
+    }
+    const equipe = (Array.isArray(usuarios) ? usuarios : []).filter(u => u.papel !== 'cliente' && u.estado === 'ativa' && !identidadeDe(u).ehAdmin);
+    if (!equipe.length) return B7.UI.toast('Não achei ninguém da equipe para ceder acesso.', { tipo: 'erro' });
+    /* os módulos que o banco conhece (a lista do app tem rotas a mais, como Trends) */
+    const mods = ((modulosBanco && modulosBanco.length ? modulosBanco : (B7.Perm && B7.Perm.MODULOS) || []))
+      .filter(m => m.id !== 'equipe').map(m => ({ id: m.id, rotulo: m.rotulo }));
+    let nivel = op.nivel || 'editar', dias = 0;
+    const m = B7.UI.modal(
+      '<div class="ng-topo"><span class="ng-ic">' + IC_CEDE.chave + '</span><div><h3>Ceder acesso</h3>' +
+        '<div class="sub">' + (op.chamado ? 'Pelo chamado #' + esc(op.chamadoNumero || '') + '. ' : '') + 'A pessoa recebe o aviso na hora. Dá para tirar quando quiser.</div></div></div>' +
+      '<section class="ng-bloco"><label class="rot" for="ca-pessoa">PARA QUEM</label>' +
+        '<select class="campo" id="ca-pessoa">' + equipe.map(u => '<option value="' + esc(u.id) + '"' + (u.id === op.perfil ? ' selected' : '') + '>' + esc(u.nome || u.username) + '</option>').join('') + '</select></section>' +
+      '<section class="ng-bloco"><label class="rot" for="ca-modulo">ONDE</label>' +
+        '<select class="campo" id="ca-modulo">' + mods.map(x => '<option value="' + esc(x.id) + '"' + (x.id === op.modulo ? ' selected' : '') + '>' + esc(x.rotulo) + '</option>').join('') + '</select>' +
+        '<label class="rot" style="margin-top:12px">NÍVEL</label><div class="lu6-seg" data-grupo="nivel">' +
+          [['ver', 'Ver', 'abrir e consultar'], ['editar', 'Editar', 'criar e alterar'], ['total', 'Total', 'também aprovar e excluir']].map(([k, r2, d]) =>
+            '<button type="button" data-v="' + k + '"' + (k === nivel ? ' class="on"' : '') + '><b>' + r2 + '</b><small>' + d + '</small></button>').join('') + '</div></section>' +
+      '<section class="ng-bloco"><label class="rot">POR QUANTO TEMPO</label><div class="lu6-seg curto" data-grupo="dias">' +
+          PRAZOS.map(([d, r2]) => '<button type="button" data-v="' + d + '"' + (d === 0 ? ' class="on"' : '') + '><b>' + r2 + '</b></button>').join('') + '</div>' +
+        '<div class="gv-ajuda">Com prazo, o acesso sai sozinho quando vencer e a pessoa é avisada.</div></section>' +
+      '<section class="ng-bloco"><label class="rot" for="ca-motivo">MOTIVO <span class="mg-obr leve">opcional</span></label>' +
+        '<input class="campo" id="ca-motivo" maxlength="300" placeholder="Ex.: cobrir as férias da Ana" value="' + esc(op.motivo || '') + '"></section>' +
+      '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" data-ok>Ceder acesso</button></div>',
+      { extra: 'ng-modal lu6-modal' });
+    m.querySelectorAll('.lu6-seg').forEach(g => g.querySelectorAll('button').forEach(b => b.onclick = () => {
+      g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      if (g.dataset.grupo === 'nivel') nivel = b.dataset.v; else dias = +b.dataset.v;
+    }));
+    m.querySelector('[data-ok]').onclick = async () => {
+      const ok = m.querySelector('[data-ok]'); ok.disabled = true; ok.textContent = 'Cedendo…';
+      try {
+        await B7.DB.rpc('acesso_ceder', { p_perfil: m.querySelector('#ca-pessoa').value, p_modulo: m.querySelector('#ca-modulo').value,
+          p_nivel: nivel, p_dias: dias || null, p_chamado: op.chamado || null, p_motivo: m.querySelector('#ca-motivo').value.trim() || null });
+        m.fechar();
+        B7.UI.toast('Acesso cedido. A pessoa já recebeu o aviso.');
+        if (op.aoCeder) op.aoCeder();
+      } catch (e) { ok.disabled = false; ok.textContent = 'Ceder acesso'; B7.UI.toast((e && e.message) || 'Não foi possível ceder.', { tipo: 'erro' }); }
+    };
+  }
+
   function pintarAvisos(usuarios, pedidos, editar, diasSem, presenca) {
     const box = document.getElementById('lu-avisos');
     if (!box) return;
@@ -531,8 +660,10 @@ B7.Usuarios = (function () {
               (p.motivo ? '<q>' + esc(p.motivo) + '</q>' : '') + '</div>' +
             '<div class="lu5-ped-acoes"><select class="campo fina" data-nivel aria-label="Nível a dar">' +
               ['ver', 'editar', 'total'].map(n => '<option value="' + n + '"' + (n === p.nivel ? ' selected' : '') + '>' + NVR[n] + '</option>').join('') + '</select>' +
-              '<button type="button" class="b fina pri" data-aprovar>Aprovar</button><button type="button" class="b fina" data-recusar>Recusar</button></div></div>';
+              '<select class="campo fina" data-prazo aria-label="Por quanto tempo">' + PRAZOS.map(([d, rot]) => '<option value="' + d + '">' + rot + '</option>').join('') + '</select>' +
+              '<button type="button" class="b fina pri" data-aprovar>Ceder</button><button type="button" class="b fina" data-recusar>Recusar</button></div></div>';
         }).join('') + '</section>' : '') +
+      blocoCedidos(usuarios, pedidos) +
       (achados.length || semNinguem.length
         ? '<details class="lu5-bloco lu5-conf"' + (pend.length ? '' : ' open') + '><summary><h3>Conferência de acessos <b>' + achados.length + '</b></h3>' +
             '<span>o que parece fora do lugar · nada aqui muda sozinho</span></summary>' +
@@ -544,6 +675,7 @@ B7.Usuarios = (function () {
         : '<div class="lu5-bloco lu5-ok"><b>Acessos em ordem.</b><span>A conferência não achou nada fora do lugar.</span></div>');
 
     box.querySelectorAll('[data-editar-pessoa]').forEach(b => b.onclick = () => editar(usuarios.find(u => u.id === b.dataset.editarPessoa)));
+    ligarCedidos(box, usuarios);
     box.querySelectorAll('[data-pedido]').forEach(el => {
       const decidir = async aprovar => {
         el.querySelectorAll('button,select').forEach(x => { x.disabled = true; });
@@ -554,7 +686,9 @@ B7.Usuarios = (function () {
         }
         try {
           await B7.DB.rpc('acesso_decidir', { p_id: el.dataset.pedido, p_aprovar: aprovar, p_nivel: el.querySelector('[data-nivel]').value, p_resposta: typeof resposta === 'string' ? resposta : null });
-          B7.UI.toast(aprovar ? 'Acesso liberado. A pessoa já recebeu o aviso.' : 'Pedido recusado.');
+          const dias = +((el.querySelector('[data-prazo]') || {}).value || 0);
+          if (aprovar && dias) await B7.DB.rpc('acesso_prazo', { p_id: el.dataset.pedido, p_dias: dias }).catch(() => {});
+          B7.UI.toast(aprovar ? 'Acesso cedido. Ele já aparece em "Acessos cedidos".' : 'Pedido recusado.');
           reabrir();
         } catch (e) {
           B7.UI.toast((e && e.message) || 'Não foi possível responder.', { tipo: 'erro' });
@@ -1583,5 +1717,5 @@ B7.Usuarios = (function () {
           '<small>Conferido às ' + quando + '. Corrija em Funções e acessos ou na conta da pessoa; se for uma regra do banco, peça ajuda ao suporte.</small></div>';
   }
 
-  return { abrir, gerarSenha, montarMatriz, mostrarSenha };
+  return { abrir, gerarSenha, montarMatriz, mostrarSenha, cederAcesso };
 })();

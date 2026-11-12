@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.34.0', versao: '4.34.0', em: '2026-11-13T19:00:00-03:00',
+    titulo: 'Acessos cedidos',
+    itens: ['Em Usuários e acessos, o que você libera fica no quadro "Acessos cedidos": quem, onde, de onde veio o pedido e até quando.',
+            'Para tirar, é só tocar em "Tirar": a pessoa volta exatamente ao acesso que tinha antes e recebe um aviso.',
+            'Dá para ceder com prazo (1, 7 ou 30 dias): quando vence, o acesso sai sozinho.',
+            'Dentro de um chamado do suporte, o administrador tem o botão "Ceder acesso", que já vem com a pessoa e o módulo preenchidos.'] },
   { id: 'v-4.31.0', versao: '4.31.0', em: '2026-11-13T15:00:00-03:00',
     titulo: 'Entrega de acesso nova',
     itens: ['Ao criar um usuário ou redefinir a senha, a tela de entrega ficou nova: usuário e senha com botão de copiar cada um, e a senha pode ser escondida.',

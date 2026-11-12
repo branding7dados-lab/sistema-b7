@@ -390,3 +390,62 @@ svg.phi{fill:currentColor !important;stroke:none !important;flex:none;}
 @keyframes seSelo{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
 @media (max-width:420px){ .se-bt span{display:none;} .se-bt{width:34px;padding:0;justify-content:center;} }
 @media (prefers-reduced-motion:reduce){ .se-selo{animation:none;} }
+
+/* =====================================================================
+   4.34.0 — ACESSOS CEDIDOS (js/usuarios.js) e "Ceder acesso" no suporte
+   ===================================================================== */
+.lu6-cedidos header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.lu6-cedidos h3{display:flex;align-items:center;gap:9px;}
+.lu6-ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;color:#fff;background:var(--grad-curto);flex:none;}
+.lu6-ic svg{width:16px;height:16px;}
+.lu6-ceder{display:inline-flex;align-items:center;gap:6px;}
+.lu6-ceder svg{width:15px;height:15px;}
+.lu6-sub{margin:6px 0 12px;font-size:12.5px;color:var(--ink-3);}
+.lu6-lista{display:flex;flex-direction:column;gap:8px;}
+.lu6-cedido{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;border:1px solid var(--borda);background:var(--fundo);
+  transition:opacity .25s ease, transform .25s ease;animation:lu6Entra .4s cubic-bezier(.2,.8,.2,1) both;}
+.lu6-cedido.saindo{opacity:.35;transform:translateX(8px);pointer-events:none;}
+.lu6-cedido .lu-avatar{flex:none;}
+.lu6-tx{flex:1;min-width:0;}
+.lu6-tx > b{display:block;font-size:14px;}
+.lu6-acesso{display:block;margin-top:2px;font-size:13px;color:var(--ink-2);}
+.lu6-tx small{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-4);}
+.lu6-prazo{position:relative;flex:none;display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;border-radius:99px;
+  font-size:12px;font-weight:650;color:var(--ink-3);background:var(--card);border:1px solid var(--borda);cursor:pointer;}
+.lu6-prazo svg{width:14px;height:14px;}
+.lu6-prazo.perto{color:#B25E00;border-color:color-mix(in srgb,#E08A00 45%,var(--borda));background:color-mix(in srgb,#E08A00 9%,var(--card));}
+.lu6-prazo select{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.lu6-tirar{flex:none;color:var(--erro,#C2185B);border-color:color-mix(in srgb,var(--erro,#C2185B) 30%,var(--borda));}
+.lu6-tirar:hover{background:color-mix(in srgb,var(--erro,#C2185B) 8%,transparent);}
+.lu6-vazio{padding:14px;border-radius:14px;border:1px dashed var(--borda);font-size:13px;color:var(--ink-3);text-align:center;}
+.lu6-saiu{margin-top:10px;font-size:12.5px;color:var(--ink-3);}
+.lu6-saiu summary{cursor:pointer;font-weight:650;}
+.lu6-saiu-it{padding:5px 2px;border-top:1px solid var(--borda);}
+.lu6-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px;}
+.lu6-seg.curto{grid-template-columns:repeat(4,1fr);}
+.lu6-seg button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 6px;border-radius:12px;border:1px solid var(--borda);
+  background:var(--card);color:var(--ink-2);cursor:pointer;transition:border-color .15s, background .15s;}
+.lu6-seg button b{font-size:13.5px;}
+.lu6-seg button small{font-size:10.5px;color:var(--ink-4);text-align:center;line-height:1.2;}
+.lu6-seg button.on{border-color:var(--acento);background:var(--acento-suave);color:var(--ink);box-shadow:inset 0 0 0 1px var(--acento);}
+.spx-cab-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;align-items:center;}
+.spx-ceder{display:inline-flex;align-items:center;gap:6px;}
+.spx-ceder svg{width:15px;height:15px;}
+@keyframes lu6Entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (max-width:600px){
+  .lu6-cedido{flex-wrap:wrap;}
+  .lu6-tx{flex-basis:calc(100% - 60px);}
+  .lu6-prazo{margin-left:52px;}
+  .lu6-tirar{margin-left:auto;}
+  .lu6-seg.curto{grid-template-columns:repeat(2,1fr);}
+}
+@media (prefers-reduced-motion:reduce){ .lu6-cedido{animation:none;} }
+/* 4.34.0: os blocos da área de acessos encolhem no celular (antes o de pedidos
+   empurrava a tela para o lado: item de grade com min-width automático) */
+.lu5-avisos > *{min-width:0;}
+@media (max-width:600px){
+  .lu5-ped-acoes{flex-wrap:wrap;}
+  .lu5-ped-acoes select{flex:1 1 40%;min-width:0;}
+  .lu5-ped-acoes .b{flex:1 1 40%;justify-content:center;}
+  .lu6-cedidos header .lu6-ceder{width:100%;justify-content:center;}
+}

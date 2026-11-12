@@ -871,7 +871,9 @@ B7.Suporte = (function () {
       '<header class="spx-conv-cab">' + icTipo(c.tipo) + '<div><div class="spx-conv-l1"><span class="sp-tp sp-tp-' + esc(c.tipo) + '">' + esc(t.rot) + '</span><span>#' + c.numero + '</span>' +
           (c.urgente && !fechado ? '<em class="spx-urg">urgente</em>' : '') + '</div>' +
         '<h2>' + esc(c.titulo) + '</h2><small>' + av(c.criado_por_nome) + esc(souAutor ? 'Você' : (c.criado_por_nome || 'alguém')) + ' · aberto ' + esc(quando(c.created_at)) + '</small></div>' +
-        (adm ? '<button type="button" class="b fina contorno spx-virar" id="sp-virar-faq" title="Usa o título e a última resposta da equipe">Virar pergunta frequente</button>' : '') + '</header>' +
+        (adm ? '<div class="spx-cab-acoes">' + (podeCeder(c) ? '<button type="button" class="b fina pri spx-ceder" id="sp-ceder" title="Libera um módulo para quem abriu o chamado">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l8.5-8.5M16 7l2.5 2.5M14 9l2 2"/></svg>Ceder acesso</button>' : '') +
+          '<button type="button" class="b fina contorno spx-virar" id="sp-virar-faq" title="Usa o título e a última resposta da equipe">Virar pergunta frequente</button></div>' : '') + '</header>' +
       atendimentoHTML(c, adm, souAutor) +
       (adm ? '<div class="spx-and"><div class="spx-st-pills" role="group" aria-label="Andamento">' + Object.keys(STATUS).map(k => '<button type="button" data-st="' + k + '" class="' + (c.status === k ? 'on' : '') + '">' + esc(STATUS[k]) + '</button>').join('') + '</div>' +
           '<label class="spx-prio-sel">Prioridade <select class="campo fina" id="sp-pr">' + Object.keys(PRIO).map(k => '<option value="' + k + '"' + (c.prioridade === k ? ' selected' : '') + '>' + PRIO[k] + '</option>').join('') + '</select></label></div>'
@@ -889,6 +891,8 @@ B7.Suporte = (function () {
         '<small class="leve">Ctrl+Enter envia' + (adm ? ' · a pessoa recebe aviso no sino (a nota interna, não)' : '') + '</small></div>') + '</div>';
     cx.querySelector('#sp-volta').onclick = () => { sel = null; pintar(); };
     anexos(c); mensagens(c);
+    const ced = cx.querySelector('#sp-ceder');
+    if (ced) ced.onclick = () => cederPeloChamado(c);
     const vf = cx.querySelector('#sp-virar-faq');
     if (vf) vf.onclick = () => editarFaq(null, { pergunta: c.titulo, resposta: ultimaResp[c.id] || '' });
     ligarAtendimento(cx, c);
@@ -927,6 +931,39 @@ B7.Suporte = (function () {
     cx.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { if (b.dataset.st !== c.status) salvarAnd(b.dataset.st, cx.querySelector('#sp-pr').value); });
     const pr = cx.querySelector('#sp-pr'); if (pr) pr.onchange = () => salvarAnd(c.status, pr.value);
     if (!adm || window.matchMedia('(min-width: 1100px)').matches) setTimeout(() => { try { tx.focus({ preventScroll: true }); } catch (e) {} }, 80);
+  }
+
+  /* 4.34.0 — "Ceder acesso" direto do chamado: só administrador, só chamado
+     da equipe (cliente não tem módulos). O módulo vem adivinhado pelo texto
+     ("acesso às gravações" → Gravações); ao ceder, a pessoa recebe a
+     resposta no chamado e o acesso aparece em Usuários → Acessos cedidos. */
+  function podeCeder(c) {
+    return !!(c && !c.do_cliente && c.criado_por && c.criado_por !== eu() && B7.Auth && B7.Auth.ehAdmin && B7.Auth.ehAdmin() &&
+      !(B7.Auth.emSimulacao && B7.Auth.emSimulacao()));
+  }
+  function moduloDoTexto(c) {
+    const t = ((c.titulo || '') + ' ' + (c.descricao || '')).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const mods = (B7.Perm && B7.Perm.MODULOS) || [];
+    let melhor = null, pontos = 0;
+    mods.forEach(m => {
+      const chaves = [m.id, m.rotulo].concat(m.rotas || []).map(x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())
+        .map(x => x.replace(/(oes|aes|s)$/, '')).filter(x => x.length > 3);
+      const n = chaves.reduce((a, k) => a + (t.includes(k) ? k.length : 0), 0);
+      if (n > pontos) { pontos = n; melhor = m.id; }
+    });
+    return melhor;
+  }
+  async function cederPeloChamado(c) {
+    try { if (B7.Areas) await B7.Areas.carregar(['usuarios']); } catch (e) {}
+    if (!(B7.Usuarios && B7.Usuarios.cederAcesso)) return B7.UI.toast('Não foi possível abrir agora. Tente de novo.', { tipo: 'erro' });
+    const t = ((c.titulo || '') + ' ' + (c.descricao || '')).toLowerCase();
+    B7.Usuarios.cederAcesso({ perfil: c.criado_por, chamado: c.id, chamadoNumero: c.numero, modulo: moduloDoTexto(c),
+      nivel: /exclu|total|aprovar/.test(t) ? 'total' : /\bver\b|consultar|visualizar/.test(t) ? 'ver' : 'editar',
+      motivo: 'Chamado #' + c.numero + ': ' + String(c.titulo || '').slice(0, 200),
+      aoCeder: async () => {
+        try { await B7.DB.rpc('suporte_responder', { p_id: c.id, p_texto: 'Pronto! Liberei o acesso que você pediu. Se a tela não mudar, atualize o sistema.', p_interno: false }); } catch (e) {}
+        try { await mensagens(c); } catch (e) {}
+      } });
   }
 
   function contextoHTML(c) {
