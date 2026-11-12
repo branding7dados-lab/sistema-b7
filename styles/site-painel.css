@@ -142,3 +142,4 @@
 }
 .st-tela .st-2 > .st-bloco{margin-top:0;}
 .st-cli-outro{margin-top:8px;}
+.st-cli-outro[hidden]{display:none !important;}

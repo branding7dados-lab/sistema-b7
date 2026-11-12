@@ -294,11 +294,16 @@ B7.SitePainel = (function () {
       if (val('si-texto') !== undefined) d.texto = val('si-texto') || null;
       if (val('si-icone') !== undefined) d.icone = val('si-icone') || null;
       if (val('si-cli') !== undefined) d.cliente_nome = val('si-cli') || null;
+      /* 4.40.0: cliente do sistema → o logo dele vira a foto de perfil no site */
+      const selC = m.querySelector('#si-cli-sel');
+      if (selC) { const c = clientesB7.find(x => x.nome === selC.value); d.avatar_url = c && c.logo_url ? c.logo_url : (selC.value === '__outro' ? null : (i.avatar_url || null)); }
       if (val('si-arroba') !== undefined) d.cliente_arroba = (val('si-arroba') || '').replace(/^@/, '') || null;
       if (val('si-cat') !== undefined) d.categoria = val('si-cat') || null;
       const dest = m.querySelector('#si-dest'); if (dest) d.destaque = dest.checked;
       /* validação do que o site precisa para mostrar algo */
       if (tipo === 'servico' && !d.titulo) return B7.UI.toast('Dê um nome ao serviço.', { tipo: 'erro' });
+      /* 4.40.0: vídeo e depoimento precisam do cliente (sem ele o nome sumia do site) */
+      if (selC && !d.cliente_nome) return B7.UI.toast(selC.value === '__outro' ? 'Digite o nome do cliente.' : 'Escolha o cliente.', { tipo: 'erro' });
       if (tipo === 'cliente' && !d.cliente_nome) return B7.UI.toast('Coloque o nome da marca.', { tipo: 'erro' });
       bt.disabled = true; bt.textContent = 'Salvando…';
       try {
