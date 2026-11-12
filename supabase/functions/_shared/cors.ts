@@ -11,12 +11,17 @@
 //   supabase secrets set B7_ORIGENS=https://app.branding7.com.br,https://branding7dados-lab.github.io
 // =====================================================================
 
-const PADRAO = ['https://branding7dados-lab.github.io'];
+/* 4.35.0: domínio próprio — o sistema vai para sistema.branding7.com.br
+   (o site da agência fica em branding7.com.br). O endereço antigo segue
+   valendo enquanto houver aba aberta nele. */
+const PADRAO = ['https://sistema.branding7.com.br', 'https://branding7.com.br', 'https://www.branding7.com.br',
+  'https://branding7dados-lab.github.io'];
 const LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 
 function permitidas(): string[] {
   const env = (Deno.env.get('B7_ORIGENS') || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
-  return env.length ? env : PADRAO;
+  /* soma (antes o secret substituía a lista e um domínio novo podia ficar de fora) */
+  return Array.from(new Set(PADRAO.concat(env)));
 }
 
 /** Cabeçalhos de CORS para esta requisição. Origem desconhecida recebe
