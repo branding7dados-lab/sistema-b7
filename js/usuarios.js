@@ -1042,7 +1042,7 @@ B7.Usuarios = (function () {
         if (cargosNovos.length && criado && criado.id) await B7.DB.rpc('perfil_definir_cargos', { p_id: criado.id, p_cargos: cargosNovos }).catch(() => {});
         const senha = corpo.senha;
         m.fechar();
-        mostrarSenha(corpo.username, senha, 'Conta criada');
+        mostrarSenha(corpo.username, senha, 'Conta criada', corpo.nome);
         reabrir();
       } catch (e) {
         botao.disabled = false; botao.textContent = 'Criar usuário';
@@ -1147,7 +1147,7 @@ B7.Usuarios = (function () {
       try {
         await B7.DB.chamarAuth({ acao: 'redefinir_senha', perfil_id: u.id, senha });
         m.fechar();
-        mostrarSenha(u.username, senha, 'Senha redefinida');
+        mostrarSenha(u.username, senha, 'Senha redefinida', u.nome);
       } catch (e) {
         botao.disabled = false; botao.textContent = 'Redefinir';
         erro.textContent = e.message || 'Não foi possível redefinir.';
@@ -1184,24 +1184,65 @@ B7.Usuarios = (function () {
   /* =================================================================
      A SENHA APARECE UMA VEZ SÓ
      ================================================================= */
-  function mostrarSenha(username, senha, titulo) {
-    const m = B7.UI.modal('<h3>' + esc(titulo) + '</h3>' +
-      '<div class="sub">Copie agora e entregue pelo canal que a equipe usa. ' +
-      'Esta senha não poderá ser consultada depois.</div>' +
-      '<div class="senha-entrega">' +
-        '<div><small>USUÁRIO</small><b>' + esc(username) + '</b></div>' +
-        '<div><small>SENHA</small><b id="se-valor">' + esc(senha) + '</b></div>' +
+  /* 4.31.0 (Kevin: "essa tela tá meio feia"): entrega de acesso nova —
+     cabeçalho de sucesso, usuário e senha em linhas com copiar cada um,
+     senha que dá para esconder, a mensagem pronta (com o endereço do
+     sistema) para copiar ou mandar no WhatsApp, e o aviso de que a senha
+     não aparece de novo. */
+  const SITE_B7 = 'https://branding7dados-lab.github.io/sistema-b7/';
+  function mostrarSenha(username, senha, titulo, nome) {
+    const primeiro = String(nome || '').trim().split(/\s+/)[0] || '';
+    const msg = () => B7.Textos.ler('acesso_entrega', { nome: primeiro || username, usuario: username, senha: senha, link: SITE_B7 })
+      .replace(/^Olá, !/, 'Olá!');
+    const IC = {
+      ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+      copiar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></svg>',
+      olho: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+      user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg>',
+      chave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l8.5-8.5M16 7l2.5 2.5M14 9l2 2"/></svg>',
+      zap: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2a9.7 9.7 0 0 0-8.4 14.6L2.3 21.6l4.9-1.3A9.8 9.8 0 1 0 12 2.2zm0 17.8a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8.1 8.1 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.7-1.8c-.2-.5-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 2s.8 2.3.9 2.5c.1.2 1.6 2.5 4 3.5 1.5.6 2 .7 2.8.6.4-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1l-.4-.2z"/></svg>',
+      alerta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.4 17.6A2 2 0 0 0 4.1 20.6h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>'
+    };
+    const m = B7.UI.modal(
+      '<div class="se-topo"><span class="se-selo" aria-hidden="true">' + IC.ok + '</span>' +
+        '<div><h3>' + esc(titulo) + '</h3><p>' + (nome ? 'Acesso de <b>' + esc(nome) + '</b> pronto para entregar.' : 'Acesso pronto para entregar.') + '</p></div></div>' +
+      '<div class="se-cartao">' +
+        '<div class="se-linha"><span class="se-ic" aria-hidden="true">' + IC.user + '</span>' +
+          '<div class="se-tx"><small>Usuário</small><b>' + esc(username) + '</b></div>' +
+          '<button type="button" class="se-bt" data-copiar="usuario" aria-label="Copiar usuário">' + IC.copiar + '<span>Copiar</span></button></div>' +
+        '<div class="se-linha"><span class="se-ic" aria-hidden="true">' + IC.chave + '</span>' +
+          '<div class="se-tx"><small>Senha</small><b class="se-senha" id="se-valor">' + esc(senha) + '</b></div>' +
+          '<button type="button" class="se-bt so-ic" data-olho aria-label="Esconder a senha" aria-pressed="false">' + IC.olho + '</button>' +
+          '<button type="button" class="se-bt" data-copiar="senha" aria-label="Copiar senha">' + IC.copiar + '<span>Copiar</span></button></div>' +
       '</div>' +
-      '<button class="b contorno" id="se-copiar" style="width:100%">Copiar usuário e senha</button>' +
-      '<div class="acoes"><button class="b pri" data-fecha>Concluído</button></div>');
-
-    m.querySelector('#se-copiar').onclick = async () => {
+      '<div class="se-msg"><small>Mensagem pronta</small><pre id="se-msg"></pre></div>' +
+      '<p class="se-aviso">' + IC.alerta + '<span>Esta senha não aparece de novo. Se perder, é só redefinir.</span></p>' +
+      '<div class="se-acoes">' +
+        '<button type="button" class="b pri se-principal" data-copiar="msg">' + IC.copiar + '<span>Copiar mensagem</span></button>' +
+        '<a class="b se-zap" target="_blank" rel="noopener" id="se-zap">' + IC.zap + '<span>WhatsApp</span></a>' +
+      '</div>' +
+      '<button type="button" class="b se-fim" data-fecha>Concluído</button>',
+      { extra: 'se-modal' });
+    m.querySelector('#se-msg').textContent = msg();
+    m.querySelector('#se-zap').href = 'https://wa.me/?text=' + encodeURIComponent(msg());
+    const valor = { usuario: username, senha: senha, msg: msg() };
+    m.querySelectorAll('[data-copiar]').forEach(b => b.onclick = async () => {
+      const k = b.dataset.copiar;
       try {
-        await navigator.clipboard.writeText(B7.Textos.ler('acesso_entrega', { usuario: username, senha: senha }));
-        m.querySelector('#se-copiar').textContent = 'Copiado';
+        await navigator.clipboard.writeText(valor[k]);
+        const sp = b.querySelector('span'), antes = sp ? sp.textContent : '';
+        b.classList.add('ok'); if (sp) sp.textContent = 'Copiado';
+        setTimeout(() => { b.classList.remove('ok'); if (sp) sp.textContent = antes; }, 1600);
       } catch (e) {
-        B7.UI.toast('Não foi possível copiar — selecione o texto acima', { tipo: 'erro' });
+        B7.UI.toast('Não foi possível copiar — selecione o texto', { tipo: 'erro' });
       }
+    });
+    const olho = m.querySelector('[data-olho]'), campo = m.querySelector('#se-valor');
+    olho.onclick = () => {
+      const esconde = !campo.classList.contains('oculta');
+      campo.classList.toggle('oculta', esconde);
+      olho.setAttribute('aria-pressed', String(esconde));
+      olho.setAttribute('aria-label', esconde ? 'Mostrar a senha' : 'Esconder a senha');
     };
   }
 
@@ -1542,5 +1583,5 @@ B7.Usuarios = (function () {
           '<small>Conferido às ' + quando + '. Corrija em Funções e acessos ou na conta da pessoa; se for uma regra do banco, peça ajuda ao suporte.</small></div>';
   }
 
-  return { abrir, gerarSenha, montarMatriz };
+  return { abrir, gerarSenha, montarMatriz, mostrarSenha };
 })();

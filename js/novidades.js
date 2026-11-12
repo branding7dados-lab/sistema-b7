@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.31.0', versao: '4.31.0', em: '2026-11-13T15:00:00-03:00',
+    titulo: 'Entrega de acesso nova',
+    itens: ['Ao criar um usuário ou redefinir a senha, a tela de entrega ficou nova: usuário e senha com botão de copiar cada um, e a senha pode ser escondida.',
+            'Já vem uma mensagem pronta com o endereço do sistema, o usuário e a senha, para copiar ou mandar direto no WhatsApp.',
+            'As áreas do sistema agora carregam só quando você abre: a abertura ficou mais rápida.'] },
   { id: 'v-4.29.0', versao: '4.29.0', em: '2026-11-13T10:00:00-03:00',
     titulo: 'Linha editorial a partir da anterior',
     itens: ['Ao criar uma linha editorial, o sistema oferece aproveitar a estratégia da linha anterior do cliente: objetivo, posicionamento e tom de voz, canais e meta, e pilares.',
