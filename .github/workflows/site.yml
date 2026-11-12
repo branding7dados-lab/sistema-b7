@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   montar:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # fixo: o Playwright dos testes ainda não aceita o Ubuntu 26.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
           path: _site
   publicar:
     needs: montar
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # fixo: o Playwright dos testes ainda não aceita o Ubuntu 26.04
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}

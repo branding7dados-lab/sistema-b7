@@ -11,7 +11,7 @@ permissions:
   contents: read
 jobs:
   testes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # fixo: o Playwright dos testes ainda não aceita o Ubuntu 26.04
     timeout-minutes: 10
     defaults:
       run:
