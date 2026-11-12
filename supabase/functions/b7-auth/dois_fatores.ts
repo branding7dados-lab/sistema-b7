@@ -27,7 +27,7 @@ const descartavel = () => createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.g
 
 const DEZ_MIN = 10 * 60 * 1000;
 /* zzz221: link do e-mail que confirma com um clique (o código continua valendo) */
-const SITE = 'https://branding7dados-lab.github.io/sistema-b7/';
+const SITE = 'https://sistema.branding7.com.br/';
 const linkDe = (id: string, t: string) => SITE + 'confirmar.html#' + id + '.' + t;
 const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
 export const ACOES_SEG = ['seg_status', 'seg_email_enviar', 'seg_email_confirmar', 'seg_app_iniciar',

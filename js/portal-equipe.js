@@ -17,7 +17,7 @@ window.B7 = window.B7 || {};
 
 B7.PortalEquipe = (function () {
   const esc = s => B7.UI.esc(s);
-  const SITE = 'https://branding7dados-lab.github.io/sistema-b7/';
+  const SITE = 'https://sistema.branding7.com.br/';
   const PAPEIS = {
     dono:   { nome: 'Dono',   txt: 'Vê tudo, aprova e cuida da equipe da empresa.' },
     gestor: { nome: 'Gestor', txt: 'Vê tudo e aprova os materiais.' },

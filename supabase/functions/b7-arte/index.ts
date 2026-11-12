@@ -32,7 +32,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const h = React.createElement;
 const L = 1200, A = 600;
-const SITE = Deno.env.get('B7_SITE_URL') || 'https://branding7dados-lab.github.io/sistema-b7';
+const SITE = Deno.env.get('B7_SITE_URL') || 'https://sistema.branding7.com.br';
 /* símbolo da B7 com fundo transparente: assenta no quadro branco como as logos dos clientes */
 const MARCA_B7 = SITE + '/assets/brand/symbol-color.png';
 /* o mesmo símbolo em branco, para o selo "Sistema B7" no canto do cartão */

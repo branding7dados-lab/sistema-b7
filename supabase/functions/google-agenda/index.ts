@@ -79,7 +79,7 @@
 //                           https://<ref>.supabase.co/functions/v1/google-agenda
 //   APP_URL                 (opcional) URL do sistema publicado, pra onde
 //                           o navegador volta depois de conectar —
-//                           padrão: https://branding7dados-lab.github.io/sistema-b7/
+//                           padrão: https://sistema.branding7.com.br/
 // SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já vêm da plataforma.
 //
 // Deploy:  supabase functions deploy google-agenda --no-verify-jwt
@@ -114,7 +114,7 @@ const admin = () => createClient(
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') || '';
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
 const GOOGLE_REDIRECT_URI = Deno.env.get('GOOGLE_REDIRECT_URI') || '';
-const APP_URL = Deno.env.get('APP_URL') || 'https://branding7dados-lab.github.io/sistema-b7/';
+const APP_URL = Deno.env.get('APP_URL') || 'https://sistema.branding7.com.br/';
 // A partir desta rodada, além de ler (listar agendas + eventos), também
 // escreve: mover a data de um evento numa remarcação, e cancelar um
 // evento quando a gravação é cancelada no B7 — sempre feito nesta Edge

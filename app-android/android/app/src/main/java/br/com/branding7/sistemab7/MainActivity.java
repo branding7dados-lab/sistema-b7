@@ -148,7 +148,7 @@ public class MainActivity extends BridgeActivity {
     static final String ORIGEM = "https://localhost";
     static final String RELEASES = "https://api.github.com/repos/branding7dados-lab/sistema-b7/releases/latest";
     static final String APK = "https://github.com/branding7dados-lab/sistema-b7/releases/latest/download/sistema-b7.apk";
-    static final String SITE_AUTH = "https://branding7dados-lab.github.io/sistema-b7/js/auth.js";
+    static final String SITE_AUTH = "https://sistema.branding7.com.br/js/auth.js";
 
     static final String EXTRA_LINK = "b7_link";
     static final String EXTRA_ID = "b7_id";

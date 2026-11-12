@@ -1323,7 +1323,7 @@ B7.Usuarios = (function () {
      senha que dá para esconder, a mensagem pronta (com o endereço do
      sistema) para copiar ou mandar no WhatsApp, e o aviso de que a senha
      não aparece de novo. */
-  const SITE_B7 = 'https://branding7dados-lab.github.io/sistema-b7/';
+  const SITE_B7 = 'https://sistema.branding7.com.br/';
   function mostrarSenha(username, senha, titulo, nome) {
     const primeiro = String(nome || '').trim().split(/\s+/)[0] || '';
     const msg = () => B7.Textos.ler('acesso_entrega', { nome: primeiro || username, usuario: username, senha: senha, link: SITE_B7 })

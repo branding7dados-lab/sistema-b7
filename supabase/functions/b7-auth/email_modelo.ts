@@ -4,7 +4,7 @@
    tabelas e estilo inline, porque Gmail e Outlook ignoram CSS moderno.
    Nada de segredo aqui: só monta o HTML e o texto.
    ===================================================================== */
-const SITE = 'https://branding7dados-lab.github.io/sistema-b7/';
+const SITE = 'https://sistema.branding7.com.br/';
 const LOGO = SITE + 'assets/brand/logo-white.png';
 
 const esc = (s: string) => String(s).replace(/[&<>"']/g, (c) =>
@@ -95,7 +95,7 @@ ${login ? `<div style="padding-top:12px;"><a href="${SITE}" style="display:inlin
 }
 
 /* zzz268: resumo semanal do cliente (toda segunda de manhã) */
-const PORTAL = 'https://branding7dados-lab.github.io/sistema/';
+const PORTAL = 'https://sistema.branding7.com.br/';
 const dataCurta = (iso: string) => { const [, m, d] = String(iso).slice(0, 10).split('-'); return d + '/' + m; };
 export type Resumo = { nome?: string | null; empresa: string; papel?: string | null; aprovados: string[]; pendentes: string[];
   proximas: { titulo: string; data: string }[]; gravacoes: { nome: string; data: string }[]; pedidos_prontos: string[] };

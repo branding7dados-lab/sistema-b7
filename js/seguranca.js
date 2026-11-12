@@ -226,7 +226,7 @@ B7.Seguranca = (function () {
           (sistemab7://google?code=… — o app abre sozinho);
        4. o app recarrega com ?code= e troca pela sessão com a chave que ele
           guardou no passo 1 (retornoOAuth, o caminho de sempre). */
-  const SITE_PUBLICO = 'https://branding7dados-lab.github.io/sistema-b7/';
+  const SITE_PUBLICO = 'https://sistema.branding7.com.br/';
   async function peloNavegadorDoCelular(pedir) {
     const { data, error } = await pedir({ redirectTo: SITE_PUBLICO, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } });
     if (error) throw error;

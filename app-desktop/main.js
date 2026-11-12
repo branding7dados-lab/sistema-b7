@@ -24,8 +24,12 @@ const path = require('node:path');
 const fs = require('node:fs');
 const ligarWhatsApp = require('./whatsapp');   /* zzz170: WhatsApp dentro do programa */
 
-const SITE = 'https://branding7dados-lab.github.io/sistema-b7/';
+/* 4.35.0: domínio próprio. O endereço antigo redireciona para cá; ele segue
+   na lista de "nossos" para uma janela aberta antes da troca não perder
+   câmera, avisos e navegação. */
+const SITE = 'https://sistema.branding7.com.br/';
 const ORIGEM = new URL(SITE).origin;
+const ORIGENS = [ORIGEM, 'https://branding7dados-lab.github.io'];
 const FUNDO = '#05030A';            /* o céu da abertura: nada de piscar branco */
 
 /* uma janela só: clicar no atalho de novo traz a que já está aberta */
@@ -110,7 +114,7 @@ function criarJanela() {
     return { action: 'deny' };
   });
   janela.webContents.on('will-navigate', (ev, url) => {
-    if (new URL(url).origin !== ORIGEM) { ev.preventDefault(); shell.openExternal(url); }
+    if (!ORIGENS.includes(new URL(url).origin)) { ev.preventDefault(); shell.openExternal(url); }
   });
 
   /* o site fora do ar (ou sem internet na primeira vez): tela de espera
@@ -132,7 +136,7 @@ function ligarSessao() {
      e por isso o Electron respondia "bloqueada" ao sistema — era o que
      aparecia em Avisos. Agora compara a ORIGEM de verdade. */
   const PERMITIDAS = ['media', 'notifications', 'fullscreen', 'clipboard-sanitized-write', 'clipboard-read'];
-  const nossa = u => { try { return new URL(u).origin === ORIGEM; } catch (e) { return false; } };
+  const nossa = u => { try { return ORIGENS.includes(new URL(u).origin); } catch (e) { return false; } };
   ses.setPermissionRequestHandler((wc, permissao, responder, detalhes) => {
     const origem = (detalhes && detalhes.requestingUrl) || (wc && wc.getURL()) || '';
     responder(nossa(origem) && PERMITIDAS.includes(permissao));
