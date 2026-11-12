@@ -57,3 +57,75 @@ B7.vendor = (function () {
     return Promise.all([].slice.call(arguments).map(uma));
   };
 })();
+
+/* =====================================================================
+   4.30.0 — ÁREAS SOB DEMANDA
+   Pedido do Kevin: "carregar cada área só quando abre". Estes módulos não
+   vêm mais na abertura (saíram do index.html): o roteador (js/app.js)
+   pede os da rota antes de abrir a tela, e depois que o sistema assenta
+   o resto chega aos poucos em segundo plano, sem atrapalhar — assim um
+   botão de outra área (ex.: "Legendas" dentro de uma demanda) nunca fica
+   faltando por muito tempo. Continuam no cache do sw.js (abrem offline).
+   ===================================================================== */
+B7.Areas = (function () {
+  const M = {
+    calendario:   ['js/calendario.js',    () => B7.Calendario],
+    publicacoes:  ['js/publicacoes.js',   () => B7.Publicacoes],
+    trends:       ['js/trends.js',        () => B7.Trends],
+    legendas:     ['js/legendas.js',      () => B7.Legendas],
+    kanban:       ['js/kanban.js',        () => B7.Kanban],
+    central:      ['js/central.js',       () => B7.Central],
+    usuarios:     ['js/usuarios.js',      () => B7.Usuarios],
+    superadmin:   ['js/superadmin.js',    () => B7.Super],
+    editor:       ['js/editor.js',        () => B7.Editor],
+    teleprompter: ['js/teleprompter.js',  () => B7.Teleprompter],
+    slides:       ['js/slides.js',        () => B7.Slides],
+    printLinha:   ['js/print-linha.js',   () => B7.FolhaLinha],
+    iaLinha:      ['js/ia-linha.js',      () => B7.IALinha],
+    painelCoord:  ['js/painel-coord.js',  () => B7.PainelCoord],
+    painelDesign: ['js/painel-design.js', () => B7.PainelDesign],
+    painelMulti:  ['js/painel-multi.js',  () => B7.PainelMulti],
+    ajudaDados:   ['js/ajuda-dados.js',   () => B7.AJUDA_DADOS]
+  };
+  /* primeira parte do endereço → módulos que a tela precisa */
+  const ROTA = {
+    calendario: ['calendario'], publicacoes: ['publicacoes'], trends: ['trends'], legendas: ['legendas'],
+    kanban: ['kanban'], config: ['usuarios', 'superadmin'], gravacao: ['editor', 'teleprompter', 'trends'],
+    linha: ['slides', 'printLinha', 'iaLinha'], painel: ['painelCoord', 'painelDesign', 'painelMulti'],
+    video: ['legendas'], ajuda: ['ajudaDados'], suporte: ['ajudaDados'],
+    '': () => (B7.Panorama ? [] : ['central'])
+  };
+  const indo = {};
+  const pronto = id => { try { return !!M[id][1](); } catch (e) { return false; } };
+  function um(id) {
+    if (!M[id] || pronto(id)) return Promise.resolve();
+    if (indo[id]) return indo[id];
+    indo[id] = new Promise(ok => {
+      const s = document.createElement('script');
+      s.src = M[id][0]; s.async = false;
+      /* falha de rede não trava a navegação: a tela tenta abrir mesmo assim */
+      s.onload = ok; s.onerror = () => { delete indo[id]; ok(); };
+      document.head.appendChild(s);
+    });
+    return indo[id];
+  }
+  const carregar = ids => Promise.all((ids || []).map(um));
+  function paraRota(partes) {
+    let ids = ROTA[(partes && partes[0]) || ''];
+    if (typeof ids === 'function') ids = ids();
+    const falta = (ids || []).filter(id => !pronto(id));
+    return falta.length ? carregar(falta) : null;
+  }
+  /* o resto, um por vez, quando o navegador está à toa */
+  function emSegundoPlano() {
+    const fila = Object.keys(M).filter(id => !pronto(id) && id !== 'central');
+    const proximo = () => {
+      const id = fila.shift(); if (!id) return;
+      const pede = window.requestIdleCallback || (f => setTimeout(f, 200));
+      pede(() => um(id).then(() => setTimeout(proximo, 150)), { timeout: 4000 });
+    };
+    proximo();
+  }
+  window.addEventListener('load', () => setTimeout(emSegundoPlano, 6000));
+  return { carregar, paraRota, pronto };
+})();

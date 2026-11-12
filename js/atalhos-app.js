@@ -77,6 +77,7 @@ B7.AtalhosApp = (() => {
   }
 
   async function teleprompter() {
+    if (B7.Areas) await B7.Areas.carregar(['teleprompter']);
     if (!(B7.Teleprompter && B7.Teleprompter.podeUsar && B7.Teleprompter.podeUsar())) {
       B7.UI.toast('O teleprompter é de quem grava ou coordena.'); return;
     }
