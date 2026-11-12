@@ -1013,7 +1013,7 @@ body.b7-nv-editar #tela-dashboard :is([data-decidir],[data-excluir],[data-apagar
 .hi-item li .hnv-ver{color:#2f6fd6;font-weight:700;} .hi-item li .hnv-editar{color:#b7791f;font-weight:700;} .hi-item li .hnv-total{color:var(--acento);font-weight:700;} .hi-item li .hnv-sem{color:var(--erro);font-weight:700;}
 
 /* Pedido de acesso (equipe) */
-.pa-aviso{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;
+.pa-aviso{position:fixed;left:50%;bottom:calc(18px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;
   max-width:min(620px,calc(100vw - 32px));padding:8px 8px 8px 16px;border-radius:16px;font-size:13px;font-weight:600;
   background:color-mix(in srgb, var(--card) 92%, transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border:1px solid var(--borda);box-shadow:0 18px 40px -18px rgba(0,0,0,.45);animation:pa-sobe .5s cubic-bezier(.2,.8,.2,1) both;}
@@ -1022,7 +1022,7 @@ body.b7-nv-editar #tela-dashboard :is([data-decidir],[data-excluir],[data-apagar
 .pa-aviso i{flex:none;width:8px;height:8px;border-radius:50%;background:#2f6fd6;}
 .pa-aviso.pnv-editar i{background:#d69e2e;}
 .pa-aviso button{flex:none;border:0;border-radius:11px;padding:8px 14px;font:inherit;font-size:12.5px;font-weight:700;color:#fff;background:var(--grad-curto, var(--acento));cursor:pointer;}
-@media (max-width:760px){ .pa-aviso{bottom:calc(84px + env(safe-area-inset-bottom));font-size:12px;} }
+@media (max-width:760px){ .pa-aviso{bottom:calc(84px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));font-size:12px;} }
 .pa-topo{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;}
 .pa-topo h3{margin:0;}
 .pa-topo p{margin:3px 0 0;font-size:13px;color:var(--ink-3);}

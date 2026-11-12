@@ -63,9 +63,9 @@
 .av-barra-seguir{position:fixed;top:0;left:0;right:0;z-index:9500;display:flex;align-items:center;gap:10px;
   padding:9px 16px;font:600 13px 'Inter',system-ui,sans-serif;color:#fff;
   /* zzz287: no celular a barra não pode ficar embaixo da hora/bateria (notch) */
-  padding-top:calc(9px + env(safe-area-inset-top,0px));
-  padding-left:calc(16px + env(safe-area-inset-left,0px));
-  padding-right:calc(16px + env(safe-area-inset-right,0px));
+  padding-top:calc(9px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  padding-left:calc(16px + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
+  padding-right:calc(16px + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
   background:linear-gradient(90deg,#7c4dff,#d6336c);box-shadow:0 6px 24px -8px #0009;animation:avBarra .25s ease both;}
 @keyframes avBarra{from{transform:translateY(-100%)}to{transform:none}}
 .av-barra-seguir b{font-weight:800;}
@@ -78,9 +78,9 @@
 html.av-seguindo{scroll-behavior:auto;}
 /* zzz289: empurra o #app (igual ao banner "Visualizando como"), não o body —
    senão o topo do sistema rola por dentro e sobra um espaço morto lá em cima */
-html.av-seguindo #app{margin-top:calc(38px + env(safe-area-inset-top,0px));
-  height:calc(100vh - 38px - env(safe-area-inset-top,0px));
-  height:calc(100dvh - 38px - env(safe-area-inset-top,0px));}
+html.av-seguindo #app{margin-top:calc(38px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  height:calc(100vh - 38px - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  height:calc(100dvh - 38px - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));}
 
 /* ---------- online no "Visualizar como" (zzz289) ---------- */
 .res .mini{position:relative;}
@@ -116,8 +116,8 @@ html.av-espelhando, html.av-espelhando body{overflow:hidden;}
 .av-esp{position:fixed;inset:0;z-index:9600;display:flex;flex-direction:column;
   background:radial-gradient(120% 90% at 50% 0%, #2a1748 0%, #0d0716 70%);animation:avFade .2s ease both;}
 .av-esp-barra{flex:none;display:flex;align-items:center;gap:10px;padding:10px 16px;color:#fff;
-  padding-top:calc(10px + env(safe-area-inset-top,0px));
-  padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(16px + env(safe-area-inset-right,0px));
+  padding-top:calc(10px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  padding-left:calc(16px + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));padding-right:calc(16px + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
   background:linear-gradient(90deg,#7c4dff,#d6336c);box-shadow:0 6px 24px -8px #0009;font:600 13px 'Inter',system-ui,sans-serif;}
 .av-esp-tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .av-esp-tx b{font-weight:800;}

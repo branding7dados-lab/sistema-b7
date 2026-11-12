@@ -15,6 +15,18 @@
 
 window.B7 = window.B7 || {};
 
+/* 4.27.0: o app avisa quando a tela girou (MainActivity.onConfigurationChanged).
+   Fecha o que ficou aberto com medidas da posição antiga e manda todo mundo
+   se medir de novo; o menu troca entre barra de baixo e barra lateral. */
+window.B7Girou = function () {
+  try {
+    if (B7.Nav) { B7.Nav.fecharFlyout && B7.Nav.fecharFlyout(true); B7.Nav.aplicarLargura && B7.Nav.aplicarLargura(); B7.Nav.marcarAtivo && B7.Nav.marcarAtivo(); }
+    window.scrollTo(window.scrollX, window.scrollY);
+    void document.documentElement.offsetHeight;
+    window.dispatchEvent(new Event('resize'));
+  } catch (e) {}
+};
+
 B7.AppNativo = (function () {
   const ponte = window.B7Nativo;
   const ativo = !!(ponte && typeof ponte.postMessage === 'function');

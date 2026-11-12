@@ -402,7 +402,7 @@
 .cb-agenda .cb-dia{padding:14px 12px;border-radius:var(--r);}
 .cb-agenda .cb-linha,.cb-folha .cb-linha{grid-template-columns:66px minmax(0,1fr);}
 .cb-agenda .cb-linha-lado,.cb-folha .cb-linha-lado{grid-column:2;flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;}
-.cb-agenda .cb-corpo{padding-bottom:calc(16px + env(safe-area-inset-bottom));}
+.cb-agenda .cb-corpo{padding-bottom:calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));}
 /* seletor de mês */
 .cb-sm-nav{display:flex;gap:6px;justify-content:center;margin:4px 0 10px;}
 .cb-sm-nav .ico{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;padding:0;}

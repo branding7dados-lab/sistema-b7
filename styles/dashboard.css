@@ -1703,7 +1703,7 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 .rd-msg.rd-fora{color:var(--ambar);}
 
 /* cartões no alto da tela: recado da administração e aniversários */
-.eq-avisos{position:fixed;z-index:60;top:calc(72px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+.eq-avisos{position:fixed;z-index:60;top:calc(72px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));left:50%;transform:translateX(-50%);
   width:min(560px, calc(100vw - 24px));display:flex;flex-direction:column;gap:8px;pointer-events:none;}
 .eq-aviso{position:relative;overflow:hidden;display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;border-radius:18px;pointer-events:auto;
   color:#fff;background:var(--grad);box-shadow:0 18px 40px -18px rgba(58,30,134,.6), inset 0 1px 0 rgba(255,255,255,.2);
@@ -1724,7 +1724,7 @@ html.modo-leve .cfg-pf-atalhos button{-webkit-backdrop-filter:none;backdrop-filt
 @keyframes eqEntra{from{opacity:0;transform:translate3d(0,-14px,0) scale(.96)}to{opacity:1;transform:none}}
 @keyframes eqSai{to{opacity:0;transform:translate3d(0,-10px,0) scale(.97)}}
 @keyframes eqConfete{0%{opacity:1;transform:translate3d(0,0,0) rotate(0)}100%{opacity:0;transform:translate3d(var(--dx),90px,0) rotate(var(--r))}}
-@media (max-width:760px){ .eq-avisos{top:calc(64px + env(safe-area-inset-top));} .eq-aviso-tx b{font-size:13.5px;} }
+@media (max-width:760px){ .eq-avisos{top:calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));} .eq-aviso-tx b{font-size:13.5px;} }
 @media (prefers-reduced-motion:reduce){ .eq-aviso,.eq-aviso.saindo{animation:none;} }
 .cfg-v2 .cfg-eq-agenda .cfg-g{display:block;}
 .cfg-v2 .cfg-eq-agenda .cfg-g-nota{margin:0 0 14px;}

@@ -61,7 +61,7 @@ body.hj-aberto { overflow: hidden; }
 .hj-tela.saindo .hj-faixa { height: 51vh; transition: height .42s cubic-bezier(.7, 0, .3, 1); }
 
 /* barrinhas de progresso */
-.hj-barras { display: flex; gap: 4px; padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 0; transition: opacity .5s ease; }
+.hj-barras { display: flex; gap: 4px; padding: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 10px) 12px 0; transition: opacity .5s ease; }
 .hj-tela.cinema .hj-barras, .hj-tela.cinema .hj-topo { opacity: 0; }
 .hj-barras > span { flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,.22); overflow: hidden; }
 .hj-barras i { display: block; height: 100%; background: #fff; transform-origin: left center; transform: scaleX(0); box-shadow: 0 0 10px rgba(255,255,255,.8); }
@@ -141,7 +141,7 @@ body.hj-aberto { overflow: hidden; }
 .hj-atraso { flex: none; padding: 4px 9px; border-radius: 999px; background: #ef4444; font-size: 12.5px; font-weight: 800; box-shadow: 0 0 18px rgba(239,68,68,.55); }
 .hj-mais { margin: 10px 0 0 4px; font-size: 13.5px; opacity: .7; animation: hjSobe .7s ease 1s both; --op: .7; }
 
-.hj-rodape { padding: 12px 22px calc(env(safe-area-inset-bottom, 0px) + 18px); min-height: 56px; display: flex; justify-content: center; position: relative; z-index: 6; }
+.hj-rodape { padding: 12px 22px calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 18px); min-height: 56px; display: flex; justify-content: center; position: relative; z-index: 6; }
 .hj-cta, .hj-bt { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 22px; border-radius: 999px; border: 0; background: #fff; color: #111; font: 700 15px Inter, system-ui, sans-serif; text-decoration: none; cursor: pointer; }
 .hj-cta { animation: hjSobe .7s var(--hj-mola) .9s both; box-shadow: 0 10px 40px -10px rgba(255,255,255,.5); }
 .hj-cta svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }

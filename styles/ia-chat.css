@@ -168,15 +168,15 @@ body.tem-chat .b7-atu{bottom:92px;}
 .ch-nada{margin:auto;font-size:13px;color:var(--ink-4);text-align:center;padding:16px;}
 
 @media (max-width:760px){
-  .ch-fab{right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:52px;height:52px;}
-  html body[data-shell="interno"] .ch-fab{bottom:calc(84px + env(safe-area-inset-bottom));}
+  .ch-fab{right:16px;bottom:calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));width:52px;height:52px;}
+  html body[data-shell="interno"] .ch-fab{bottom:calc(84px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));}
   body.chat-aberto .ch-fab, body.teclado-aberto .ch-fab{display:none;}
-  body.tem-chat .b7-atu{bottom:calc(16px + env(safe-area-inset-bottom));right:80px;}
-  html body[data-shell="interno"].tem-chat .b7-atu{bottom:calc(84px + env(safe-area-inset-bottom));}
-  .ch-painel{inset:0;width:auto;height:auto;border-radius:0;border:0;z-index:195;padding-bottom:env(safe-area-inset-bottom);}
-  .ch-topo{padding-top:calc(12px + env(safe-area-inset-top));}
+  body.tem-chat .b7-atu{bottom:calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));right:80px;}
+  html body[data-shell="interno"].tem-chat .b7-atu{bottom:calc(84px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));}
+  .ch-painel{inset:0;width:auto;height:auto;border-radius:0;border:0;z-index:195;padding-bottom:var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));}
+  .ch-topo{padding-top:calc(12px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));}
   .ch-form textarea,.ch-pop-busca{font-size:16px;}   /* iOS não dá zoom no campo */
-  .ch-pop{padding-top:calc(62px + env(safe-area-inset-top));}
+  .ch-pop{padding-top:calc(62px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));}
 }
 @media print{ .ch-fab,.ch-painel{display:none !important;} }
 html.modo-leve .ch-fab,html.modo-leve .ch-msg{animation:none;}

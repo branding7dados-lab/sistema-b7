@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.27.0', versao: '4.27.0', em: '2026-11-12T21:00:00-03:00',
+    titulo: 'App Android atualizado e giro de tela corrigido',
+    itens: ['Girar o celular para deitado e voltar para em pé não desarruma mais a tela.',
+            'O app Android foi atualizado por dentro (câmera, avisos e a base do app). Instale a versão nova quando o aviso aparecer.'] },
   { id: 'v-4.26.0', versao: '4.26.0', em: '2026-11-05T18:00:00-03:00',
     titulo: 'Modo entretenimento: console de jogos',
     itens: ['No painel do seu perfil há a chave "Modo entretenimento". Ligada, aparece a aba Jogos no menu.',

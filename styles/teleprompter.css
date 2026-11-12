@@ -11,8 +11,8 @@ body.tele-aberto{overflow:hidden;}
   font-family:'Inter',system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation;
   --tele-fonte:56px;--tele-linha:1.38;--tele-largura:76%;--tele-foco:120px;
   --tele-rosa:#E2409C;--tele-fundo:#0B0A12;--tele-cartao:#17141F;--tele-borda:rgba(255,255,255,.12);
-  --tele-sl:max(14px,env(safe-area-inset-left));--tele-sr:max(14px,env(safe-area-inset-right));
-  --tele-st:max(10px,env(safe-area-inset-top));--tele-sb:max(12px,env(safe-area-inset-bottom));}
+  --tele-sl:max(14px,var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));--tele-sr:max(14px,var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
+  --tele-st:max(10px,var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));--tele-sb:max(12px,var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));}
 .tele *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.28) transparent;}
 .tele button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .tele button:focus-visible{outline:2px solid #fff;outline-offset:2px;}

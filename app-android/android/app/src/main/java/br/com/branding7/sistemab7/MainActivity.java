@@ -351,7 +351,25 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onConfigurationChanged(Configuration nova) {
         super.onConfigurationChanged(nova);
-        getWindow().getDecorView().post(this::pintarBarras);
+        final View decor = getWindow().getDecorView();
+        decor.post(this::pintarBarras);
+        /* 4.27.0: ao girar (paisagem ↔ retrato) o WebView às vezes fica com
+           as margens das barras e a largura da posição anterior — a tela
+           "bugava toda". Pede as margens de novo (o SystemBars reinjeta
+           --safe-area-inset-*) e manda a página se medir outra vez, agora e
+           quando o giro termina de assentar. */
+        final Runnable assentar = () -> {
+            try {
+                androidx.core.view.ViewCompat.requestApplyInsets(decor);
+                if (bridge != null && bridge.getWebView() != null) {
+                    bridge.getWebView().requestLayout();
+                    bridge.getWebView().evaluateJavascript("window.B7Girou && window.B7Girou()", null);
+                }
+            } catch (Exception e) { /* sem a correção, segue como antes */ }
+        };
+        decor.post(assentar);
+        decor.postDelayed(assentar, 350);
+        decor.postDelayed(assentar, 900);
     }
 
     static class Nativo {
