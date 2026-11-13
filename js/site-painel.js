@@ -18,7 +18,7 @@ B7.SitePainel = (function () {
   const sb = () => B7.sb;
   const ok = r => { if (r.error) throw r.error; return r.data; };
   const SITE = 'https://branding7.com.br/';
-  const ABAS = [['contatos', 'Contatos'], ['video', 'Vídeos'], ['depoimento', 'Depoimentos'], ['servico', 'Serviços'], ['cliente', 'Clientes'], ['pagina', 'Página'], ['metricas', 'Métricas']];
+  const ABAS = [['contatos', 'Contatos'], ['video', 'Vídeos'], ['depoimento', 'Depoimentos'], ['servico', 'Serviços'], ['cliente', 'Clientes'], ['sobre', 'Sobre nós'], ['agenda', 'Agenda'], ['pagina', 'Página'], ['metricas', 'Métricas']];
   const STATUS = [['novo', 'Novo', 'rosa'], ['em_contato', 'Em contato', 'azul'], ['virou_cliente', 'Virou cliente', 'verde'], ['descartado', 'Descartado', 'cinza']];
   const IC = {
     globo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.9 3.9 5.9 3.9 9s-1.3 6.1-3.9 9c-2.6-2.9-3.9-5.9-3.9-9s1.3-6.1 3.9-9z"/></svg>',
@@ -30,7 +30,7 @@ B7.SitePainel = (function () {
     lapis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>'
   };
-  let aba = 'contatos', itens = [], leads = [], cfg = {}, clientesB7 = [], dias = 30;
+  let aba = 'contatos', itens = [], leads = [], cfg = {}, clientesB7 = [], dias = 30, reunioes = [];
 
   const tipoLink = u => {
     u = String(u || '');
@@ -43,14 +43,16 @@ B7.SitePainel = (function () {
   const telLimpo = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length <= 11) d = '55' + d; return d; };
 
   async function carregar() {
-    const [c, i, l, k] = await Promise.all([
+    const [c, i, l, k, a] = await Promise.all([
       sb().from('site_config').select('dados').eq('id', 1).maybeSingle(),
       sb().from('site_itens').select('*').order('ordem', { ascending: true }).order('created_at', { ascending: false }),
       sb().from('site_leads').select('*').order('created_at', { ascending: false }).limit(300),
-      sb().from('clientes').select('id, nome, logo_url, no_site, site_ordem, teste').is('deleted_at', null).order('nome')
+      sb().from('clientes').select('id, nome, logo_url, no_site, site_ordem, teste').is('deleted_at', null).order('nome'),
+      sb().from('site_agendamentos').select('id, lead_id, inicio, fim, status').gte('inicio', new Date(Date.now() - 30 * 864e5).toISOString()).order('inicio')
     ]);
     cfg = (ok(c) || {}).dados || {}; itens = ok(i) || []; leads = ok(l) || [];
     clientesB7 = (k.error ? [] : (k.data || [])).filter(x => !x.teste);
+    reunioes = a.error ? [] : (a.data || []);
   }
 
   async function abrir(params) {
@@ -85,6 +87,8 @@ B7.SitePainel = (function () {
     const n = { contatos: leads.filter(l => l.status === 'novo').length };
     ['video', 'depoimento', 'servico', 'cliente'].forEach(t => { n[t] = itens.filter(i => i.tipo === t).length; });
     n.cliente += clientesB7.filter(x => x.no_site).length;
+    n.sobre = itens.filter(i => i.tipo === 'equipe' || i.tipo === 'bastidor').length;
+    n.agenda = reunioes.filter(r => r.status === 'marcado' && new Date(r.fim) > new Date()).length;
     p.querySelectorAll('[data-n]').forEach(s => { const v = n[s.dataset.n]; s.textContent = v ? v : ''; s.classList.toggle('alerta', s.dataset.n === 'contatos' && v > 0); });
   }
 
@@ -95,6 +99,8 @@ B7.SitePainel = (function () {
     if (aba === 'pagina') return pintarPagina(cx);
     if (aba === 'metricas') return pintarMetricas(cx);
     if (aba === 'cliente') return pintarClientes(cx);
+    if (aba === 'sobre') return pintarSobre(cx);
+    if (aba === 'agenda') return pintarAgenda(cx);
     pintarItens(cx, aba);
   }
 
@@ -120,6 +126,7 @@ B7.SitePainel = (function () {
         '<div class="st-lead-cab"><div><b>' + esc(l.nome) + '</b><small>' + esc([l.empresa, l.cidade].filter(Boolean).join(' · ') || 'sem empresa/cidade') + '</small></div>' +
           '<select class="campo fina st-status" aria-label="Situação">' + STATUS.map(([k, r]) => '<option value="' + k + '"' + (k === l.status ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div>' +
         (l.interesse ? '<span class="st-chip">' + esc(l.interesse) + '</span>' : '') +
+        reunioes.filter(r => r.lead_id === l.id && r.status === 'marcado').map(r => '<span class="st-chip st-reuniao">Reunião ' + esc(quandoReuniao(r.inicio)) + '</span>').join('') +
         (l.mensagem ? '<p class="st-msg">' + esc(l.mensagem) + '</p>' : '') +
         '<div class="st-lead-pe"><small>' + esc(B7.UI.quando ? B7.UI.quando(l.created_at) : '') + ' · ' + esc(origemTx(l.origem)) + '</small>' +
           '<a class="b fina st-zap" target="_blank" rel="noopener" href="https://wa.me/' + telLimpo(l.whatsapp) + '?text=' + encodeURIComponent(msg) + '">' + IC.zap + esc(l.whatsapp) + '</a></div>' +
@@ -146,7 +153,9 @@ B7.SitePainel = (function () {
     video: { um: 'vídeo', novo: '+ Novo vídeo', vazio: 'Nenhum vídeo ainda. Os vídeos aparecem no site em "Projetos selecionados"; o marcado com estrela também toca na abertura.' },
     depoimento: { um: 'depoimento', novo: '+ Novo depoimento', vazio: 'Nenhum depoimento ainda. Coloque o print da fala do cliente em texto ou o vídeo dele falando.' },
     servico: { um: 'serviço', novo: '+ Novo serviço', vazio: 'Sem serviços cadastrados: o site mostra 6 serviços padrão (Reels, anúncios, gravação, edição, roteiro, redes). Cadastre aqui para trocar pelos seus.' },
-    cliente: { um: 'cliente', novo: '+ Novo cliente', vazio: 'Nenhum cliente na faixa "Marcas que confiam". Coloque o nome ou o logo.' }
+    cliente: { um: 'cliente', novo: '+ Novo cliente', vazio: 'Nenhum cliente na faixa "Marcas que confiam". Coloque o nome ou o logo.' },
+    equipe: { um: 'pessoa', novo: '+ Pessoa da equipe', vazio: 'Ninguém da equipe ainda. Coloque nome, cargo e uma foto: aparece na página "Sobre" do site.' },
+    bastidor: { um: 'foto', novo: '+ Foto de bastidor', vazio: 'Sem fotos de bastidor. Gravações, set, equipe em ação: aparecem na página "Sobre".' }
   };
   function pintarItens(cx, tipo) {
     const lista = itens.filter(i => i.tipo === tipo);
@@ -162,10 +171,11 @@ B7.SitePainel = (function () {
       (lista.length ? '<div class="st-lista st-l-' + tipo + '">' + lista.map((i, k) => {
         const midia = i.capa_url ? '<img src="' + esc(i.capa_url) + '" alt="" loading="lazy">'
           : tipoLink(i.video_url) === 'Arquivo' ? '<video src="' + esc(i.video_url) + '#t=0.5" muted preload="metadata"></video>' : '';
-        const titulo = tipo === 'cliente' ? (i.cliente_nome || i.titulo) : tipo === 'depoimento' ? (i.cliente_nome || 'Depoimento') : i.titulo || i.cliente_nome || '(sem título)';
+        const titulo = tipo === 'cliente' ? (i.cliente_nome || i.titulo) : tipo === 'depoimento' ? (i.cliente_nome || 'Depoimento') : tipo === 'bastidor' ? (i.titulo || 'Bastidor') : i.titulo || i.cliente_nome || '(sem título)';
         const sub = tipo === 'video' ? [i.cliente_nome, i.categoria, tipoLink(i.video_url), i.visualizacoes ? i.visualizacoes + ' visualizações' : '', i.resultado || ''].filter(Boolean).join(' · ')
           : tipo === 'depoimento' ? (i.video_url ? 'Vídeo · ' + tipoLink(i.video_url) : '“' + String(i.texto || '').slice(0, 90) + (String(i.texto || '').length > 90 ? '…' : '') + '”')
-          : tipo === 'servico' ? String(i.texto || '').slice(0, 110) : i.capa_url ? 'com logo' : 'só o nome';
+          : tipo === 'servico' ? String(i.texto || '').slice(0, 110) : tipo === 'equipe' ? (i.texto || 'sem cargo') + (i.capa_url ? '' : ' · sem foto')
+          : tipo === 'bastidor' ? 'Foto' : i.capa_url ? 'com logo' : 'só o nome';
         return '<div class="st-item' + (i.publicado ? '' : ' oculto') + '" data-item="' + esc(i.id) + '">' +
           (tipo === 'servico' ? '<span class="st-num">' + esc(i.icone || String(k + 1).padStart(2, '0')) + '</span>'
             : '<span class="st-midia' + (tipo === 'cliente' ? ' logo' : '') + '">' + midia + (tipo !== 'cliente' && (i.video_url) ? '<i>' + IC.play + '</i>' : '') + '</span>') +
@@ -254,7 +264,10 @@ B7.SitePainel = (function () {
       (tipo === 'servico' ? campo('si-titulo', 'NOME DO SERVIÇO', i.titulo, ' maxlength="140"') +
         '<label class="rot" for="si-texto">DESCRIÇÃO</label><textarea class="campo" id="si-texto" rows="3" maxlength="800">' + esc(i.texto || '') + '</textarea>' +
         campo('si-icone', 'NÚMERO OU EMOJI', i.icone, ' maxlength="4" placeholder="01"') : '') +
-      (tipo !== 'servico' ? '<div class="st-2">' + '<div>' + (tipo === 'cliente' ? campo('si-cli', 'NOME DA MARCA', i.cliente_nome, ' maxlength="120"') : seletorCliente(i.cliente_nome)) + '</div>' +
+      (tipo === 'equipe' ? '<div class="st-2"><div>' + campo('si-titulo', 'NOME', i.titulo, ' maxlength="140"') + '</div><div>' + campo('si-texto', 'CARGO', i.texto, ' maxlength="80" placeholder="Ex.: Filmmaker e editor"') + '</div></div>' +
+        campo('si-arroba', '@ DO INSTAGRAM (opcional)', i.cliente_arroba ? String(i.cliente_arroba).replace(/^@/, '') : '', ' maxlength="60" placeholder="sem o @"') : '') +
+      (tipo === 'bastidor' ? campo('si-titulo', 'LEGENDA (opcional)', i.titulo, ' maxlength="140" placeholder="Ex.: Gravação na Academia Força"') : '') +
+      (tipo !== 'servico' && tipo !== 'equipe' && tipo !== 'bastidor' ? '<div class="st-2">' + '<div>' + (tipo === 'cliente' ? campo('si-cli', 'NOME DA MARCA', i.cliente_nome, ' maxlength="120"') : seletorCliente(i.cliente_nome)) + '</div>' +
         (tipo !== 'cliente' ? '<div>' + campo('si-arroba', '@ DO INSTAGRAM', i.cliente_arroba ? String(i.cliente_arroba).replace(/^@/, '') : '', ' maxlength="60" placeholder="sem o @"') + '</div>' : '') + '</div>' : '') +
       (tipo === 'video' ? '<div class="st-resultados"><b>Resultados <small>(aparecem no cartão do vídeo; deixe em branco o que não tiver)</small></b><div class="st-3">' +
           '<div>' + campo('si-views', 'VISUALIZAÇÕES', i.visualizacoes, ' maxlength="20" placeholder="Ex.: 120 mil"') + '</div>' +
@@ -271,7 +284,7 @@ B7.SitePainel = (function () {
           '<div class="gv-ajuda">Recomendado: não gasta espaço no banco. Funciona com Reels, YouTube (inclusive Shorts) e Google Drive (compartilhado como "qualquer pessoa com o link").</div></div>' +
         '<div data-painel="arquivo"' + (fonteInicial === 'arquivo' ? '' : ' hidden') + '><input class="campo" id="si-arq" type="file" accept="video/mp4,video/webm,video/quicktime">' +
           '<div class="gv-ajuda">Até 50 MB. Prefira MP4 comprimido (1080×1920, até 30 s). ' + (fonteInicial === 'arquivo' ? 'Já tem um vídeo enviado; escolha outro só para trocar.' : '') + ' Arquivo próprio toca sozinho no site (prévia muda) — o de link abre ao tocar.</div></div>' : '') +
-      ((tipo === 'video' || tipo === 'cliente' || tipo === 'depoimento') ? '<label class="rot" for="si-capa">' + (tipo === 'cliente' ? 'LOGO (PNG transparente, de preferência)' : 'CAPA <span class="mg-obr leve">opcional</span>') + '</label>' +
+      (tipo !== 'servico' ? '<label class="rot" for="si-capa">' + (tipo === 'cliente' ? 'LOGO (PNG transparente, de preferência)' : tipo === 'equipe' ? 'FOTO (de preferência quadrada ou vertical)' : tipo === 'bastidor' ? 'FOTO' : 'CAPA <span class="mg-obr leve">opcional</span>') + '</label>' +
         (i.capa_url ? '<div class="st-capa-atual"><img src="' + esc(i.capa_url) + '" alt=""><label class="check"><input type="checkbox" id="si-tira-capa"><span>Tirar a imagem atual</span></label></div>' : '') +
         '<input class="campo" id="si-capa" type="file" accept="image/png,image/jpeg,image/webp">' +
         (tipo === 'video' ? '<div class="gv-ajuda">Link do Instagram ou do YouTube: a capa vem sozinha ao salvar. Envie uma imagem só se quiser outra capa.</div>' : '') : '') +
@@ -311,6 +324,9 @@ B7.SitePainel = (function () {
       /* 4.40.0: vídeo e depoimento precisam do cliente (sem ele o nome sumia do site) */
       if (selC && !d.cliente_nome) return B7.UI.toast(selC.value === '__outro' ? 'Digite o nome do cliente.' : 'Escolha o cliente.', { tipo: 'erro' });
       if (tipo === 'cliente' && !d.cliente_nome) return B7.UI.toast('Coloque o nome da marca.', { tipo: 'erro' });
+      if (tipo === 'equipe' && !d.titulo) return B7.UI.toast('Coloque o nome da pessoa.', { tipo: 'erro' });
+      const capaArq = m.querySelector('#si-capa');
+      if (tipo === 'bastidor' && !(capaArq && capaArq.files[0]) && !i.capa_url) return B7.UI.toast('Escolha a foto.', { tipo: 'erro' });
       bt.disabled = true; bt.textContent = 'Salvando…';
       try {
         if (temVideo) {
@@ -357,6 +373,93 @@ B7.SitePainel = (function () {
         bt.disabled = false; bt.textContent = 'Salvar';
         B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' });
       }
+    };
+  }
+
+  /* ---------------------------------------------------------- sobre nós (4.46.0)
+     Página branding7.com.br/sobre: história, equipe e fotos de bastidor. */
+  async function salvarCfg(extra) {
+    const dados = Object.assign({}, cfg, extra);
+    ok(await sb().from('site_config').update({ dados, atualizado_em: new Date().toISOString(), atualizado_por: (B7.Auth.usuario() || {}).id || null }).eq('id', 1));
+    cfg = dados;
+  }
+  function pintarSobre(cx) {
+    const c = cfg || {};
+    cx.innerHTML = '<div class="st-pagina">' +
+      '<section class="st-bloco"><h3>Nossa história</h3><p class="gv-ajuda">Aparece no topo da página <a href="' + SITE + 'sobre/" target="_blank" rel="noopener">branding7.com.br/sobre</a>. Deixe em branco para usar o texto padrão.</p>' +
+        '<div class="st-campo"><label class="rot" for="ss-tit">TÍTULO</label><input class="campo" id="ss-tit" maxlength="90" value="' + esc(c.historia_titulo || '') + '" placeholder="A gente conta histórias que vendem."></div>' +
+        '<div class="st-campo"><label class="rot" for="ss-txt">HISTÓRIA (pule uma linha entre os parágrafos)</label><textarea class="campo" id="ss-txt" rows="6" maxlength="3000" placeholder="Como a Branding7 começou, o que vocês acreditam, como trabalham…">' + esc(c.historia || '') + '</textarea></div>' +
+        '<div class="st-campo"><label class="rot" for="ss-marcos">MARCOS (ano | o que aconteceu, um por linha; opcional)</label><textarea class="campo" id="ss-marcos" rows="4" placeholder="2021 | Primeiro vídeo para um cliente\n2023 | Estúdio próprio\n2025 | +40 marcas atendidas">' + esc((c.marcos || []).map(x => x.ano + ' | ' + x.tx).join('\n')) + '</textarea></div>' +
+        '<div class="st-salvar"><button class="b pri" id="ss-salvar">Salvar a história</button></div></section>' +
+      '<section class="st-bloco"><h3>Equipe</h3><div id="ss-equipe"></div></section>' +
+      '<section class="st-bloco"><h3>Bastidores</h3><div id="ss-bast"></div></section></div>';
+    pintarItens(cx.querySelector('#ss-equipe'), 'equipe');
+    pintarItens(cx.querySelector('#ss-bast'), 'bastidor');
+    cx.querySelector('#ss-salvar').onclick = async e => {
+      const bt = e.currentTarget, v = id => cx.querySelector('#' + id).value.trim();
+      bt.disabled = true; bt.textContent = 'Salvando…';
+      try {
+        await salvarCfg({ historia_titulo: v('ss-tit'), historia: v('ss-txt'), marcos: pares(v('ss-marcos'), 10).map(([ano, tx]) => ({ ano, tx })) });
+        B7.UI.toast('História salva. Já está no site.');
+      } catch (er) { B7.UI.toast('Não foi possível salvar: ' + ((er && er.message) || ''), { tipo: 'erro' }); }
+      bt.disabled = false; bt.textContent = 'Salvar a história';
+    };
+  }
+
+  /* ---------------------------------------------------------- agenda (4.46.0)
+     O visitante escolhe dia e horário no site. Os horários livres já
+     descontam as reuniões marcadas e os compromissos da agenda do Google
+     conectada ao sistema. */
+  const DIAS_S = [[1, 'Seg'], [2, 'Ter'], [3, 'Qua'], [4, 'Qui'], [5, 'Sex'], [6, 'Sáb'], [7, 'Dom']];
+  const quandoReuniao = iso => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' }).replace('.', '') + ' às ' +
+      d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  };
+  function pintarAgenda(cx) {
+    const a = Object.assign({ ativo: false, dias: [1, 2, 3, 4, 5], inicio: '09:00', fim: '18:00', duracao: 30, antecedencia_h: 2, ate_dias: 14 }, cfg.agenda || {});
+    const agora = new Date();
+    const prox = reunioes.filter(r => new Date(r.fim) > agora || r.status === 'marcado').filter(r => r.status !== 'cancelado');
+    const passadas = reunioes.filter(r => !prox.includes(r)).reverse().slice(0, 15);
+    const linha = r => {
+      const l = leads.find(x => x.id === r.lead_id) || {};
+      const msg = 'Olá, ' + String(l.nome || '').split(' ')[0] + '! Aqui é da Branding7. Confirmando a nossa conversa ' + quandoReuniao(r.inicio) + '.';
+      return '<div class="st-reu st-reu-' + esc(r.status) + '" data-reu="' + esc(r.id) + '"><div class="st-reu-q"><b>' + esc(quandoReuniao(r.inicio)) + '</b><small>' + esc(r.status === 'marcado' ? 'Marcada' : r.status === 'feito' ? 'Feita' : 'Cancelada') + '</small></div>' +
+        '<div class="st-tx"><b>' + esc(l.nome || 'Contato apagado') + '</b><small>' + esc([l.empresa, l.interesse].filter(Boolean).join(' · ')) + '</small></div>' +
+        (l.whatsapp ? '<a class="b fina st-zap" target="_blank" rel="noopener" href="https://wa.me/' + telLimpo(l.whatsapp) + '?text=' + encodeURIComponent(msg) + '">' + IC.zap + 'Confirmar</a>' : '') +
+        (r.status === 'marcado' ? '<button class="b fina" data-reu-st="feito">Feita</button><button class="b fina contorno" data-reu-st="cancelado">Cancelar</button>' : '') + '</div>';
+    };
+    cx.innerHTML = '<div class="st-pagina">' +
+      '<section class="st-bloco"><h3>Próximas reuniões</h3>' + (prox.length ? '<div class="st-reus">' + prox.map(linha).join('') + '</div>'
+        : '<p class="gv-ajuda">Nenhuma reunião marcada. Quando alguém escolher um horário no site, aparece aqui, em Contatos e no sino.</p>') + '</section>' +
+      '<section class="st-bloco"><h3>Horários que o site oferece</h3>' +
+        '<label class="check st-check"><input type="checkbox" id="sa-ativo"' + (a.ativo ? ' checked' : '') + '><span>Deixar o visitante marcar reunião pelo site</span></label>' +
+        '<label class="rot">DIAS DA SEMANA</label><div class="st-secoes">' + DIAS_S.map(([k, r]) => '<label class="check"><input type="checkbox" data-dia="' + k + '"' + (a.dias.includes(k) ? ' checked' : '') + '><span>' + r + '</span></label>').join('') + '</div>' +
+        '<div class="st-3"><div class="st-campo"><label class="rot" for="sa-ini">COMEÇA</label><input class="campo" type="time" id="sa-ini" value="' + esc(a.inicio) + '"></div>' +
+          '<div class="st-campo"><label class="rot" for="sa-fim">TERMINA</label><input class="campo" type="time" id="sa-fim" value="' + esc(a.fim) + '"></div>' +
+          '<div class="st-campo"><label class="rot" for="sa-dur">DURAÇÃO</label><select class="campo" id="sa-dur">' + [15, 20, 30, 45, 60, 90].map(m => '<option value="' + m + '"' + (+a.duracao === m ? ' selected' : '') + '>' + m + ' min</option>').join('') + '</select></div></div>' +
+        '<div class="st-2"><div class="st-campo"><label class="rot" for="sa-ant">ANTECEDÊNCIA MÍNIMA</label><select class="campo" id="sa-ant">' + [[1, '1 hora'], [2, '2 horas'], [4, '4 horas'], [12, '12 horas'], [24, '1 dia'], [48, '2 dias']].map(([v, r]) => '<option value="' + v + '"' + (+a.antecedencia_h === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div>' +
+          '<div class="st-campo"><label class="rot" for="sa-ate">MOSTRAR ATÉ</label><select class="campo" id="sa-ate">' + [[7, '1 semana à frente'], [14, '2 semanas à frente'], [21, '3 semanas à frente'], [30, '1 mês à frente']].map(([v, r]) => '<option value="' + v + '"' + (+a.ate_dias === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div></div>' +
+        '<p class="gv-ajuda">Os compromissos da agenda do Google conectada ao sistema somem dos horários livres sozinhos. O site nunca mostra o que tem na agenda, só os horários.</p>' +
+        '<div class="st-salvar"><button class="b pri" id="sa-salvar">Salvar horários</button></div></section>' +
+      (passadas.length ? '<section class="st-bloco"><h3>Anteriores</h3><div class="st-reus">' + passadas.map(linha).join('') + '</div></section>' : '') + '</div>';
+    cx.querySelectorAll('[data-reu]').forEach(el => el.querySelectorAll('[data-reu-st]').forEach(b => b.onclick = async () => {
+      const st = b.dataset.reuSt, r = reunioes.find(x => x.id === el.dataset.reu);
+      if (st === 'cancelado' && !(await B7.UI.confirmar({ titulo: 'Cancelar esta reunião?', texto: 'O horário volta a ficar livre no site. Avise a pessoa pelo WhatsApp.', rotulo: 'Cancelar reunião', perigo: true }))) return;
+      try { ok(await sb().from('site_agendamentos').update({ status: st, atualizado_em: new Date().toISOString() }).eq('id', r.id)); r.status = st; pintar(); }
+      catch (er) { B7.UI.toast('Não foi possível salvar.', { tipo: 'erro' }); }
+    }));
+    cx.querySelector('#sa-salvar').onclick = async e => {
+      const bt = e.currentTarget, v = id => cx.querySelector('#' + id).value;
+      const dias = [...cx.querySelectorAll('[data-dia]')].filter(x => x.checked).map(x => +x.dataset.dia);
+      if (!dias.length) return B7.UI.toast('Marque pelo menos um dia.', { tipo: 'erro' });
+      if (!v('sa-ini') || !v('sa-fim') || v('sa-fim') <= v('sa-ini')) return B7.UI.toast('O horário de término precisa ser depois do início.', { tipo: 'erro' });
+      bt.disabled = true; bt.textContent = 'Salvando…';
+      try {
+        await salvarCfg({ agenda: { ativo: cx.querySelector('#sa-ativo').checked, dias, inicio: v('sa-ini'), fim: v('sa-fim'), duracao: +v('sa-dur'), antecedencia_h: +v('sa-ant'), ate_dias: +v('sa-ate') } });
+        B7.UI.toast('Horários salvos. Já valem no site.');
+      } catch (er) { B7.UI.toast('Não foi possível salvar: ' + ((er && er.message) || ''), { tipo: 'erro' }); }
+      bt.disabled = false; bt.textContent = 'Salvar horários';
     };
   }
 

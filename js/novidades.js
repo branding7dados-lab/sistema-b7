@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.46.0', versao: '4.46.0', em: '2026-11-13T19:00:00-03:00', rota: 'site',
+    titulo: 'Site: reuniões marcadas pelo site e página Sobre',
+    itens: ['Nova aba Agenda: o visitante escolhe dia e horário no site para conversar com a gente. A reunião aparece aqui, em Contatos e no sino.',
+      'Os horários oferecidos descontam sozinhos os compromissos da agenda do Google conectada.',
+      'Contato do site parado há mais de 1 hora sem resposta gera um aviso no sino.',
+      'Nova aba Sobre nós: história, equipe e fotos de bastidor da página branding7.com.br/sobre.'] },
   { id: 'v-4.43.2', versao: '4.43.2', em: '2026-11-13T15:00:00-03:00',
     titulo: 'Botão "Marcar correção" voltou a funcionar',
     itens: ['Ao mover um vídeo para Correção, a caixa "O que precisa corrigir?" agora salva normalmente ao tocar em "Marcar correção".',

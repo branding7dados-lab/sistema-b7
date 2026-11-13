@@ -149,3 +149,15 @@
 .st-resultados > b small{font-weight:500;color:var(--ink-3,#777);}
 .st-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 @media (max-width:640px){ .st-3{grid-template-columns:1fr 1fr;} }
+
+/* 4.46.0 — agenda de reuniões marcadas pelo site */
+.st-chip.st-reuniao{background:color-mix(in srgb, #22c55e 16%, transparent);color:#15803d;}
+[data-theme="dark"] .st-chip.st-reuniao{color:#4ade80;}
+.st-reus{display:flex;flex-direction:column;gap:8px;}
+.st-reu{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--borda);border-radius:12px;background:var(--card);}
+.st-reu .st-tx{flex:1;min-width:160px;}
+.st-reu-q{display:flex;flex-direction:column;min-width:130px;}
+.st-reu-q b{font-size:14px;text-transform:capitalize;}
+.st-reu-q small{font-size:12px;color:var(--ink-3,#777);}
+.st-reu-cancelado,.st-reu-feito{opacity:.6;}
+.st-reu-marcado .st-reu-q small{color:#15803d;font-weight:600;}
