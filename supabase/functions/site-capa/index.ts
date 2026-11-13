@@ -28,6 +28,11 @@ function alvo(u: string): { tipo: string; cod: string; urls: string[] } | null {
   if (ig) return { tipo: 'ig', cod: ig[1], urls: [`https://www.instagram.com/p/${ig[1]}/media/?size=l`] };
   const yt = u.match(/(?:shorts\/|v=|youtu\.be\/|embed\/)([\w-]{6,})/);
   if (yt) return { tipo: 'yt', cod: yt[1], urls: [`https://img.youtube.com/vi/${yt[1]}/maxresdefault.jpg`, `https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg`] };
+  /* 4.46.1: Google Drive (arquivo compartilhado "qualquer pessoa com o link") */
+  if (/drive\.google\.com/i.test(u)) {
+    const dr = u.match(/\/d\/([\w-]{10,})/) || u.match(/[?&]id=([\w-]{10,})/);
+    if (dr) return { tipo: 'dr', cod: dr[1], urls: [`https://drive.google.com/thumbnail?id=${dr[1]}&sz=w720`] };
+  }
   return null;
 }
 
@@ -69,7 +74,7 @@ Deno.serve(async req => {
         if (b.length < 3000) continue;              /* imagem vazia/placeholder */
         bytes = b; tipo = ct.split(';')[0]; break;
       }
-      if (!bytes) { feitos.push({ id: it.id, ok: false, motivo: 'o ' + (a.tipo === 'ig' ? 'Instagram' : 'YouTube') + ' não entregou a capa (post privado ou removido?)' }); continue; }
+      if (!bytes) { feitos.push({ id: it.id, ok: false, motivo: 'o ' + (a.tipo === 'ig' ? 'Instagram' : a.tipo === 'dr' ? 'Google Drive' : 'YouTube') + ' não entregou a capa (post privado ou removido?)' }); continue; }
       const ext = tipo.includes('webp') ? 'webp' : tipo.includes('png') ? 'png' : 'jpg';
       const caminho = `capas/${a.tipo}-${a.cod}.${ext}`;
       const up = await sb.storage.from('site').upload(caminho, bytes, { contentType: tipo, upsert: true, cacheControl: '31536000' });

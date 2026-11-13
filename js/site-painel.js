@@ -160,13 +160,13 @@ B7.SitePainel = (function () {
   function pintarItens(cx, tipo) {
     const lista = itens.filter(i => i.tipo === tipo);
     const T = TIPO[tipo];
-    const semCapa = lista.filter(x => !x.capa_url && /instagram\.com|youtu/i.test(x.video_url || '')).length;
+    const semCapa = lista.filter(x => !x.capa_url && /instagram\.com|youtu|drive\.google/i.test(x.video_url || '')).length;
     if (semCapa && !pintarItens.tentou) {
       pintarItens.tentou = true;
       puxarCapas({ todos: true }).then(f => { if (f && f.some(x => x.ok)) { pintar(); B7.UI.toast('Capas puxadas do Instagram/YouTube.'); } });
     }
     cx.innerHTML = '<div class="st-barra"><button class="b pri" id="st-novo">' + T.novo + '</button>' +
-      ((tipo === 'video' || tipo === 'depoimento') && lista.some(x => /instagram\.com|youtu/i.test(x.video_url || '')) ? '<button class="b" id="st-capas">Atualizar capas</button>' : '') +
+      ((tipo === 'video' || tipo === 'depoimento') && lista.some(x => /instagram\.com|youtu|drive\.google/i.test(x.video_url || '')) ? '<button class="b" id="st-capas">Atualizar capas</button>' : '') +
       (lista.length > 1 ? '<small>Use as setas para mudar a ordem no site.</small>' : '') + '</div>' +
       (lista.length ? '<div class="st-lista st-l-' + tipo + '">' + lista.map((i, k) => {
         const midia = i.capa_url ? '<img src="' + esc(i.capa_url) + '" alt="" loading="lazy">'
@@ -364,9 +364,9 @@ B7.SitePainel = (function () {
         m.fechar(); pintar();
         B7.UI.toast(d.publicado ? 'Salvo. Já está no site.' : 'Salvo (escondido do site).');
         const salvo = itens.find(x => x.id === (novo ? itens[itens.length - 1].id : i.id));
-        if (salvo && !salvo.capa_url && /instagram\.com|youtu/i.test(salvo.video_url || '')) {
+        if (salvo && !salvo.capa_url && /instagram\.com|youtu|drive\.google/i.test(salvo.video_url || '')) {
           const f = await puxarCapas({ id: salvo.id });
-          if (f && f[0] && f[0].ok) { pintar(); B7.UI.toast('Capa puxada do ' + (/instagram/i.test(salvo.video_url) ? 'Instagram' : 'YouTube') + '.'); }
+          if (f && f[0] && f[0].ok) { pintar(); B7.UI.toast('Capa puxada do ' + (/instagram/i.test(salvo.video_url) ? 'Instagram' : /drive/i.test(salvo.video_url) ? 'Google Drive' : 'YouTube') + '.'); }
           else if (f && f[0]) B7.UI.toast('Não deu para puxar a capa: ' + f[0].motivo + '. Você pode enviar uma imagem.', { tipo: 'aviso' });
         }
       } catch (e) {
