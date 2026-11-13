@@ -30,7 +30,10 @@ B7.SitePainel = (function () {
     lapis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>'
   };
-  let aba = 'contatos', itens = [], leads = [], cfg = {}, clientesB7 = [], dias = 30, reunioes = [], pessoas = [];
+  let aba = 'contatos', itens = [], leads = [], cfg = {}, clientesB7 = [], dias = 30, reunioes = [], pessoas = [], funcoesP = {};
+  /* 4.46.3: cargo no site a partir das funções do sistema (igual a _site_cargo_de no banco) */
+  const ROT_FN = { coordenador: 'Coordenador', designer: 'Designer', videomaker: 'Videomaker', admin: 'Administrador' };
+  const cargoDe = x => x ? [...new Set([funcoesP[x.funcao_personalizada] || x.funcao].concat(x.funcoes_adicionais || []).filter(Boolean).map(f => ROT_FN[f] || f))].join(' · ') : '';
 
   const tipoLink = u => {
     u = String(u || '');
@@ -43,18 +46,20 @@ B7.SitePainel = (function () {
   const telLimpo = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length <= 11) d = '55' + d; return d; };
 
   async function carregar() {
-    const [c, i, l, k, a, pe] = await Promise.all([
+    const [c, i, l, k, a, pe, fp] = await Promise.all([
       sb().from('site_config').select('dados').eq('id', 1).maybeSingle(),
       sb().from('site_itens').select('*').order('ordem', { ascending: true }).order('created_at', { ascending: false }),
       sb().from('site_leads').select('*').order('created_at', { ascending: false }).limit(300),
       sb().from('clientes').select('id, nome, logo_url, no_site, site_ordem, teste').is('deleted_at', null).order('nome'),
       sb().from('site_agendamentos').select('id, lead_id, inicio, fim, status').gte('inicio', new Date(Date.now() - 30 * 864e5).toISOString()).order('inicio'),
-      sb().from('perfis').select('id, nome, avatar_url, estado, parceiro').eq('estado', 'ativa').order('nome')
+      sb().from('perfis').select('id, nome, avatar_url, estado, parceiro, funcao, funcoes_adicionais, funcao_personalizada').eq('estado', 'ativa').order('nome'),
+      sb().from('funcoes_personalizadas').select('id, rotulo')
     ]);
     cfg = (ok(c) || {}).dados || {}; itens = ok(i) || []; leads = ok(l) || [];
     clientesB7 = (k.error ? [] : (k.data || [])).filter(x => !x.teste);
     reunioes = a.error ? [] : (a.data || []);
     pessoas = pe.error ? [] : (pe.data || []).filter(x => !x.parceiro && !/teste/i.test(x.nome || ''));
+    funcoesP = fp.error ? {} : Object.fromEntries((fp.data || []).map(x => [x.id, x.rotulo]));
   }
 
   async function abrir(params) {
@@ -269,7 +274,8 @@ B7.SitePainel = (function () {
       (tipo === 'equipe' ? '<label class="rot" for="si-perfil">PESSOA DO SISTEMA <span class="mg-obr leve">usa a foto de perfil dela</span></label>' +
         '<div class="st-pessoa"><span class="st-pessoa-av" id="si-perfil-av"></span><select class="campo" id="si-perfil"><option value="">Ninguém (vou enviar a foto)</option>' +
         pessoas.map(x => '<option value="' + esc(x.id) + '"' + (x.id === i.perfil_id ? ' selected' : '') + '>' + esc(x.nome) + (x.avatar_url ? '' : ' (sem foto no perfil)') + '</option>').join('') + '</select></div>' +
-        '<div class="st-2"><div>' + campo('si-titulo', 'NOME', i.titulo, ' maxlength="140"') + '</div><div>' + campo('si-texto', 'CARGO', i.texto, ' maxlength="80" placeholder="Ex.: Filmmaker e editor"') + '</div></div>' +
+        '<div class="st-2"><div>' + campo('si-titulo', 'NOME', i.titulo, ' maxlength="140"') + '</div><div>' + campo('si-texto', 'CARGO', i.texto, ' maxlength="120" placeholder="Ex.: Filmmaker e editor"') + '</div></div>' +
+        '<label class="check st-check" id="si-cargo-pf-l"><input type="checkbox" id="si-cargo-pf"' + (i.cargo_perfil ? ' checked' : '') + '><span>Cargo = as funções da pessoa no sistema (muda sozinho quando mudarem)</span></label>' +
         campo('si-arroba', '@ DO INSTAGRAM (opcional)', i.cliente_arroba ? String(i.cliente_arroba).replace(/^@/, '') : '', ' maxlength="60" placeholder="sem o @"') : '') +
       (tipo === 'bastidor' ? campo('si-titulo', 'LEGENDA (opcional)', i.titulo, ' maxlength="140" placeholder="Ex.: Gravação na Academia Força"') : '') +
       (tipo !== 'servico' && tipo !== 'equipe' && tipo !== 'bastidor' ? '<div class="st-2">' + '<div>' + (tipo === 'cliente' ? campo('si-cli', 'NOME DA MARCA', i.cliente_nome, ' maxlength="120"') : seletorCliente(i.cliente_nome)) + '</div>' +
@@ -306,12 +312,21 @@ B7.SitePainel = (function () {
         av.innerHTML = x && x.avatar_url ? '<img src="' + esc(x.avatar_url) + '" alt="">' : esc(x ? (x.nome || '?').charAt(0) : '');
         av.hidden = !x;
       };
+      const ck = m.querySelector('#si-cargo-pf'), cargo = m.querySelector('#si-texto');
+      const sincCargo = () => {
+        const x = pessoas.find(y => y.id === selP.value);
+        m.querySelector('#si-cargo-pf-l').hidden = !x;
+        const usa = !!x && ck.checked;
+        cargo.readOnly = usa;
+        if (usa) cargo.value = cargoDe(x) || cargo.value;
+      };
+      ck.onchange = sincCargo;
       selP.onchange = () => {
         const x = pessoas.find(y => y.id === selP.value), nome = m.querySelector('#si-titulo');
         if (x && nome && !nome.value.trim()) nome.value = x.nome || '';
-        mostra();
+        mostra(); sincCargo();
       };
-      mostra();
+      mostra(); sincCargo();
     }
     const sel = m.querySelector('#si-cli-sel');
     if (sel) sel.onchange = () => {
@@ -345,7 +360,6 @@ B7.SitePainel = (function () {
       if (selC && !d.cliente_nome) return B7.UI.toast(selC.value === '__outro' ? 'Digite o nome do cliente.' : 'Escolha o cliente.', { tipo: 'erro' });
       if (tipo === 'cliente' && !d.cliente_nome) return B7.UI.toast('Coloque o nome da marca.', { tipo: 'erro' });
       if (tipo === 'equipe' && !d.titulo) return B7.UI.toast('Coloque o nome da pessoa.', { tipo: 'erro' });
-      if (tipo === 'equipe' && m.querySelector('#si-tira-capa') && m.querySelector('#si-tira-capa').checked && m.querySelector('#si-perfil').value) m.querySelector('#si-perfil').value = '';
       const capaArq = m.querySelector('#si-capa');
       if (tipo === 'bastidor' && !(capaArq && capaArq.files[0]) && !i.capa_url) return B7.UI.toast('Escolha a foto.', { tipo: 'erro' });
       bt.disabled = true; bt.textContent = 'Salvando…';
@@ -371,7 +385,9 @@ B7.SitePainel = (function () {
         if (selP) {
           const x = pessoas.find(y => y.id === selP.value);
           d.perfil_id = x ? x.id : null;
-          d.foto_perfil = !!(x && !(capa && capa.files[0]));
+          const tira = m.querySelector('#si-tira-capa') && m.querySelector('#si-tira-capa').checked;
+          d.foto_perfil = !!(x && !(capa && capa.files[0]) && !tira);
+          d.cargo_perfil = !!(x && m.querySelector('#si-cargo-pf').checked);
           if (d.foto_perfil) d.capa_url = x.avatar_url || null;
         }
         if (capa && capa.files[0]) {
