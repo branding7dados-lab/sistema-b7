@@ -2254,6 +2254,9 @@ html .fundo-modal.paleta{padding-bottom:calc(10px + var(--safe-area-inset-bottom
 
 /* zzz165: atualização em tempo real — a tela se redesenha sem a animação de entrada */
 .b7-rt-silencioso .entra,.b7-rt-silencioso .entra *{animation:none !important;}
+/* 4.45.0: na atualização silenciosa (tempo real e depois de salvar) nada
+   do painel "entra" de novo — nem os cartões do cliente (cli-chega) */
+.b7-rt-silencioso #painel-dashboard *,.b7-sem-entrada #painel-dashboard *{animation:none !important;}
 
 /* =====================================================================
    ARRASTAR (zzz165) — js/arrastar.js
@@ -2372,3 +2375,12 @@ html.modo-leve[data-theme="dark"] .toast,html.modo-leve [data-theme="dark"] .toa
   #app{box-sizing:border-box;padding:var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) var(--safe-area-inset-right, env(safe-area-inset-right, 0px)) var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) var(--safe-area-inset-left, env(safe-area-inset-left, 0px));}
   #app .lateral{padding-top:0;padding-bottom:0;}
 }
+
+/* 4.45.0: troca sem piscar (salvar / aba dentro da tela) — a tela antiga
+   fica parada até a nova estar pronta e as duas trocam num esmaecer curto */
+html.b7-suave::view-transition-old(root){animation:none;mix-blend-mode:normal;}
+html.b7-suave::view-transition-new(root){animation:b7SuaveEntra .16s ease-out both;mix-blend-mode:normal;}
+@keyframes b7SuaveEntra{from{opacity:0}}
+html.b7-sem-entrada #painel-dashboard .entra,
+html.b7-sem-entrada #painel-dashboard .entra > *,
+html.b7-sem-entrada #painel-dashboard .aparece{animation:none !important;}

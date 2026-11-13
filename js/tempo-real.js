@@ -139,9 +139,10 @@ B7.TempoReal = (function () {
   }
 
   let atualizando = false;
-  async function atualizar() {
+  async function atualizar(forcado) {
     if (!pendente) return;
-    if (atualizando || !podeAtualizar()) { agendar(500); return; }
+    if (atualizando) { agendar(forcado ? 120 : 500); return; }
+    if (!forcado && !podeAtualizar()) { agendar(500); return; }
     pendente = false;
     atualizando = true;
     /* guarda a rolagem de quem rola (a página ou o painel) */
@@ -167,6 +168,16 @@ B7.TempoReal = (function () {
     };
     voltar(); requestAnimationFrame(voltar); setTimeout(voltar, 350);
     setTimeout(() => document.documentElement.classList.remove('b7-rt-silencioso'), 600);
+  }
+  /* 4.45.0: depois de salvar (B7.Rota.recarregar), a mesma atualização
+     silenciosa do tempo real: a tela fica parada e só o que mudou troca,
+     sem esqueleto, sem animação de entrada e sem perder a rolagem */
+  function recarregarSilencioso() {
+    if (document.hidden) return false;
+    document.querySelectorAll('.fundo-modal.saindo').forEach(f => f.remove());
+    pendente = true; clearTimeout(relogio);
+    atualizar(true);
+    return true;
   }
   function agendar(ms) { clearTimeout(relogio); relogio = setTimeout(atualizar, ms); }
 
@@ -226,5 +237,5 @@ B7.TempoReal = (function () {
     ligar();
   }, 2000);
 
-  return { ligar, desligar, guardarRolagens, voltarRolagens, blindar, vigiarPartes, _depende: DEPENDE, _simular: tabela => aoMudar({ table: tabela }), arrastando: v => { arrastando = !!v; } };
+  return { recarregarSilencioso, ligar, desligar, guardarRolagens, voltarRolagens, blindar, vigiarPartes, _depende: DEPENDE, _simular: tabela => aoMudar({ table: tabela }), arrastando: v => { arrastando = !!v; } };
 })();

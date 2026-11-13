@@ -329,7 +329,43 @@ B7.Rota = (function () {
   function recarregar() {
     const h = location.hash;
     if (h.startsWith('#/gravacao/')) location.hash = '#/';
-    else ir();
+    /* 4.45.0: salvar não pisca — atualização silenciosa (a do tempo real);
+       sem ela, a troca suave; sem as duas, o de sempre */
+    else if (!(B7.TempoReal && B7.TempoReal.recarregarSilencioso && B7.TempoReal.recarregarSilencioso()) && !trocaSuave(ir, true)) ir();
+  }
+
+  /* 4.45.0: TROCA SEM PISCAR — ao salvar (recarregar) e ao trocar de aba
+     dentro da mesma tela (#/cliente/x/linhas → #/cliente/x/video), a tela
+     atual fica PARADA (foto do navegador) até a nova estar pronta, sem
+     passar pelo esqueleto cinza nem pela animação de entrada, e troca com
+     um esmaecer curto. Espera no máximo 0,9 s; depois disso mostra o que
+     tiver. Sem suporte (navegador antigo), aba escondida ou janela aberta:
+     o caminho de sempre. */
+  function trocaSuave(fazer, manterRolagem) {
+    if (!document.startViewTransition || document.hidden || html.classList.contains('b7-vt') ||
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        !document.getElementById('tela-dashboard')?.classList.contains('ativa') ||
+        document.querySelector('.b7-abertura, .fundo-modal:not(.saindo)')) return false;
+    const y = window.scrollY, pn = document.getElementById('painel-dashboard'), yp = pn ? pn.scrollTop : 0;
+    html.classList.add('b7-suave');
+    let vt;
+    try {
+      vt = document.startViewTransition(async () => {
+        document.querySelectorAll('.fundo-modal.saindo').forEach(f => f.remove());
+        try { await Promise.resolve(fazer()); } catch (e) {}
+        const t0 = performance.now();
+        /* espera os dados chegarem (sem esqueleto na tela) */
+        while (performance.now() - t0 < 900 && pn && pn.querySelector('.esq')) await new Promise(r => setTimeout(r, 30));
+        document.querySelectorAll('#painel-dashboard .conteudo.entra, #painel-dashboard .entra').forEach(c => c.classList.remove('entra'));
+        if (manterRolagem) { window.scrollTo(0, y); if (pn) pn.scrollTop = yp; }
+      });
+    } catch (e) { html.classList.remove('b7-suave'); return false; }
+    vt.ready.catch(() => {}); vt.updateCallbackDone.catch(() => {});
+    /* o que chegar logo depois (seções que carregam em seguida) também entra sem animação */
+    html.classList.add('b7-sem-entrada'); clearTimeout(trocaSuave.t);
+    const fim = () => { html.classList.remove('b7-suave'); trocaSuave.t = setTimeout(() => html.classList.remove('b7-sem-entrada'), 1200); };
+    vt.finished.then(fim, fim);
+    return true;
   }
 
   /* ---------------------------------------------- MORPH ENTRE TELAS (zzz9)
@@ -404,6 +440,10 @@ B7.Rota = (function () {
     /* zzz181: o WhatsApp é uma camada do programa — o morph só atrasava */
     const wa = h => /^#\/whatsapp/.test(h);
     if (!wa(de) && !wa(para) && ehTrocaDeModulo(de, para) && trocarComMorph(de, para)) return;
+    /* 4.45.0: aba dentro da mesma tela (mesmo item, outra seção ou filtro) troca sem piscar */
+    const a = nivel(de), b = nivel(para);
+    if (!wa(para) && a[0] === b[0] && a[1] === b[1] && de !== para &&
+        trocaSuave(() => Promise.resolve(B7.Save.agora()).catch(() => {}).then(ir), false)) return;
     /* garante que nada digitado se perca ao trocar de tela */
     B7.Save.agora().finally(ir);
   });
