@@ -2196,3 +2196,16 @@ button.pa-cel:disabled{opacity:.5;cursor:wait;}
   .pa-sw span{display:none;}
   .pa-sw{padding:4px;}
 }
+
+/* 4.43.0 — clientes inativos / contrato cancelado */
+.tag-inativo{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:var(--neutro-bg,#eee);color:var(--ink-3,#777);font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;}
+.cl2-card.inativo .cl2-logo{filter:grayscale(1);opacity:.6;}
+.cl2-card.inativo .cl2-tx b{color:var(--ink-3,#777);}
+.dc-modal .dc-ops{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0 12px;}
+.dc-op{display:flex;gap:10px;align-items:flex-start;padding:12px;border-radius:12px;border:1.5px solid var(--borda);cursor:pointer;transition:border-color .15s,background .15s;}
+.dc-op:has(input:checked){border-color:var(--acento);background:var(--acento-suave);}
+.dc-op input{margin-top:3px;accent-color:var(--acento);}
+.dc-op b{display:block;font-size:14px;}
+.dc-op small{display:block;font-size:12px;color:var(--ink-3,#777);margin-top:2px;}
+.dc-efeitos{margin:12px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink-3,#777);line-height:1.5;}
+@media (max-width:560px){ .dc-modal .dc-ops{grid-template-columns:1fr;} }

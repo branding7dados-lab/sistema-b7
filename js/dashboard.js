@@ -998,16 +998,22 @@ B7.Dashboard = (function () {
        topo enquanto está à vista), busca + pílulas com contagem, ordem
        Recentes/A–Z, fixados em grupo próprio e cartões com logo grande,
        contadores e última atividade. Mesmas ações (ligar()) de antes. */
+    /* 4.43.0: clientes inativos (pausado/cancelado) ficam fora da lista principal */
+    const inativo = c => c.servico && c.servico !== 'ativo';
+    const inativosN = clientes.filter(inativo).length;
+    const todosClientes = clientes;
+    clientes = clientes.filter(c => !inativo(c));
     const comGrav = clientes.filter(c => c.total_gravacoes > 0).length;
     const fixadosN = clientes.filter(c => c.is_pinned).length;
     const avulsosN = clientes.filter(c => c.contrato === 'avulso').length;
     const pil = (id, rot, n) => '<button type="button" class="cl2-pil' + (id === 'todos' ? ' on' : '') + '" data-f="' + id + '">' + rot + '<b>' + n + '</b></button>';
     painel().innerHTML = '<div class="conteudo cl2">' +
       '<div class="cab-conteudo cl2-cab"><div><p class="v4-sobre">Carteira</p><h1>Clientes</h1>' +
-        '<p>' + clientes.length + ' cliente' + (clientes.length === 1 ? '' : 's') +
+        '<p>' + clientes.length + ' cliente' + (clientes.length === 1 ? '' : 's') + ' ativo' + (clientes.length === 1 ? '' : 's') +
+          (inativosN ? ' · ' + inativosN + ' inativo' + (inativosN === 1 ? '' : 's') : '') +
           (fixadosN ? ' · ' + fixadosN + ' fixado' + (fixadosN === 1 ? '' : 's') : '') + ' · cada um com o seu workspace.</p></div>' +
         '<button class="b pri cl2-novo" data-novo-cliente>' + IC.mais + '<span>Novo cliente</span></button></div>' +
-      (clientes.length
+      (todosClientes.length
         ? '<div class="cl2-barra">' +
             '<label class="cl2-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
               '<input id="busca-cli" placeholder="Buscar cliente…" autocomplete="off" aria-label="Buscar cliente"></label>' +
@@ -1016,6 +1022,7 @@ B7.Dashboard = (function () {
               /* zzz274: com algum cliente avulso, dá para separar quem é mensal de quem comprou um projeto */
               (avulsosN ? pil('mensal', 'Mensais', clientes.length - avulsosN) + pil('avulso', 'Avulsos', avulsosN) : '') +
               pil('com', 'Com gravações', comGrav) + pil('sem', 'Sem gravações', clientes.length - comGrav) +
+              (inativosN ? pil('inativos', 'Inativos', inativosN) : '') +
             '</div>' +
             '<div class="cl2-ordem" id="ordem-cli" role="group" aria-label="Ordem">' +
               '<button type="button" class="on" data-o="recentes">Recentes</button><button type="button" data-o="az">A–Z</button></div>' +
@@ -1027,7 +1034,7 @@ B7.Dashboard = (function () {
     const aplicar = () => {
       const cx = document.getElementById('lista-cli');
       if (!cx) return;
-      let lista = clientes.slice();
+      let lista = filtroAtual === 'inativos' ? todosClientes.filter(inativo) : clientes.slice();
       if (filtroAtual === 'com') lista = lista.filter(c => c.total_gravacoes > 0);
       if (filtroAtual === 'sem') lista = lista.filter(c => !c.total_gravacoes);
       if (filtroAtual === 'mensal') lista = lista.filter(c => c.contrato !== 'avulso');
@@ -1071,11 +1078,13 @@ B7.Dashboard = (function () {
   };
   function cartaoCliente2(c, i) {
     const qd = c.ultima_atividade ? B7.UI.quando(c.ultima_atividade) : '';
-    return '<div class="cl2-card' + (c.is_pinned ? ' fixado' : '') + (c.total_gravacoes ? '' : ' sem-grav') + '" data-cliente="' + esc(c.id) + '"' +
+    const inat = c.servico && c.servico !== 'ativo';
+    return '<div class="cl2-card' + (c.is_pinned ? ' fixado' : '') + (c.total_gravacoes ? '' : ' sem-grav') + (inat ? ' inativo' : '') + '" data-cliente="' + esc(c.id) + '"' +
         ' style="--i:' + Math.min(i, 16) + '" tabindex="0" title="Abrir ' + esc(c.nome) + '">' +
       '<span class="cl2-logo">' + B7.UI.avatarCliente(c.nome, c.logo_url) + '</span>' +
       '<div class="cl2-tx"><b>' + esc(c.nome) + (c.teste ? ' <i class="tag-teste" title="Cliente fictício: fora dos números do Panorama e da TV">teste</i>' : '') +
-          (c.contrato === 'avulso' ? ' <i class="tag-avulso" title="Cliente avulso: comprou um projeto pontual, não tem mês contratado">avulso</i>' : '') + '</b>' +
+          (c.contrato === 'avulso' ? ' <i class="tag-avulso" title="Cliente avulso: comprou um projeto pontual, não tem mês contratado">avulso</i>' : '') +
+          (inat ? ' <i class="tag-inativo" title="' + esc((c.servico === 'cancelado' ? 'Contrato cancelado' : 'Inativo') + (c.servico_desde ? ' desde ' + B7.UI.dataBR(c.servico_desde) : '') + (c.servico_nota_interna ? ' — ' + c.servico_nota_interna : '')) + '">' + (c.servico === 'cancelado' ? 'cancelado' : 'inativo') + '</i>' : '') + '</b>' +
         '<span class="cl2-meta">' +
           '<span class="cl2-n" title="Gravações">' + IC_CL2.grav + c.total_gravacoes + '</span>' +
           '<span class="cl2-n" title="Roteiros">' + IC_CL2.rot + c.total_roteiros + '</span>' +
@@ -1088,7 +1097,8 @@ B7.Dashboard = (function () {
           '<button data-abrir-cli="' + esc(c.id) + '">Abrir workspace</button>' +
           '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
           '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
-          '<button data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '">' + (c.is_pinned ? 'Desafixar' : 'Fixar no topo') + '</button><hr>' +
+          '<button data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '">' + (c.is_pinned ? 'Desafixar' : 'Fixar no topo') + '</button>' +
+          (ehAdmin() ? (inat ? '<button data-reativar-cli="' + esc(c.id) + '">Reativar cliente</button>' : '<button data-desativar-cli="' + esc(c.id) + '">Desativar cliente</button>') : '') + '<hr>' +
           (c.teste ? '' : '<button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>') +
         '</div></div>' +
       '</div></div>';
@@ -1193,6 +1203,7 @@ B7.Dashboard = (function () {
             (resumoMes ? '<button data-resumo-mes>Resumo do mês</button>' : '') +
             '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
             (ehAdmin() ? '<button data-ir="#/previa/' + esc(c.id) + '">Visualizar como cliente</button>' : '') +
+            (ehAdmin() ? (c.servico && c.servico !== 'ativo' ? '<button data-reativar-cli="' + esc(c.id) + '">Reativar cliente</button>' : '<button data-desativar-cli="' + esc(c.id) + '">Desativar cliente</button>') : '') +
             (c.teste ? '' : '<hr><button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>') +
           '</div></div></div>' : '') +
       '</header>' +
@@ -1215,6 +1226,8 @@ B7.Dashboard = (function () {
     raiz.querySelectorAll('[data-editar-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); modalEditarCliente(b.dataset.editarCli); });
     raiz.querySelectorAll('[data-novo-projeto]').forEach(b => b.onclick = ev => { ev.stopPropagation(); B7.Projetos.novo(cliente); });
     raiz.querySelectorAll('[data-excluir-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); excluirCliente(b.dataset.excluirCli); });
+    raiz.querySelectorAll('[data-desativar-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); if (B7.UI.fecharMenus) B7.UI.fecharMenus(); desativarCliente(b.dataset.desativarCli); });
+    raiz.querySelectorAll('[data-reativar-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); if (B7.UI.fecharMenus) B7.UI.fecharMenus(); reativarCliente(b.dataset.reativarCli); });
     raiz.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; });
     raiz.querySelectorAll('[data-resumo-mes]').forEach(b => b.onclick = () => {
       if (B7.UI.fecharMenus) B7.UI.fecharMenus();
@@ -3016,6 +3029,8 @@ B7.Dashboard = (function () {
     p.querySelectorAll('[data-excluir-cli]').forEach(b => b.onclick = ev => {
       ev.stopPropagation(); excluirCliente(b.dataset.excluirCli);
     });
+    p.querySelectorAll('[data-desativar-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); if (B7.UI.fecharMenus) B7.UI.fecharMenus(); desativarCliente(b.dataset.desativarCli); });
+    p.querySelectorAll('[data-reativar-cli]').forEach(b => b.onclick = ev => { ev.stopPropagation(); if (B7.UI.fecharMenus) B7.UI.fecharMenus(); reativarCliente(b.dataset.reativarCli); });
     p.querySelectorAll('[data-imprimir]').forEach(b => b.onclick = ev => {
       ev.stopPropagation();
       location.hash = '#/gravacao/' + b.dataset.imprimir + '?imprimir=1';
@@ -3311,6 +3326,44 @@ B7.Dashboard = (function () {
         }
       }
     };
+  }
+
+  /* ============================================ desativar / reativar (4.43.0)
+     Inativo = pausado; Cancelado = contrato encerrado. Nada é apagado:
+     o histórico continua no workspace. O cliente sai da lista principal
+     (fica em "Inativos") e do dash de Operações, e o portal dele mostra
+     "serviço pausado/encerrado" no lugar dos materiais. */
+  async function desativarCliente(id) {
+    let c;
+    try { c = await B7.DB.cliente(id); } catch (e) { return B7.UI.toast('Não consegui carregar o cliente', { tipo: 'erro' }); }
+    const m = B7.UI.modal('<h3>Desativar ' + esc(c.nome) + '</h3>' +
+      '<div class="sub">Nada é apagado: gravações, roteiros, vídeos e artes continuam no workspace. Dá para reativar quando quiser.</div>' +
+      '<div class="dc-ops" role="radiogroup" aria-label="Situação">' +
+        '<label class="dc-op"><input type="radio" name="dc" value="pausado" checked><span><b>Inativo</b><small>Parou por um tempo, pode voltar.</small></span></label>' +
+        '<label class="dc-op"><input type="radio" name="dc" value="cancelado"><span><b>Contrato cancelado</b><small>Encerrou o contrato com a B7.</small></span></label>' +
+      '</div>' +
+      '<label class="rot" for="dc-nota">MOTIVO <span class="leve">— opcional, só a equipe vê</span></label>' +
+      '<input class="campo" id="dc-nota" maxlength="300" placeholder="Ex.: cancelou em novembro, sem verba">' +
+      '<ul class="dc-efeitos"><li>Sai da lista de clientes (fica no filtro <b>Inativos</b>) e do dash de <b>Operações</b>.</li>' +
+        '<li>No portal do cliente aparece "serviço pausado/encerrado" no lugar dos materiais.</li></ul>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri perigo" data-ok>Desativar</button></div>', { extra: 'dc-modal' });
+    m.querySelector('[data-ok]').onclick = async () => {
+      const bt = m.querySelector('[data-ok]'); bt.disabled = true;
+      const v = m.querySelector('input[name=dc]:checked').value;
+      try {
+        await B7.DB.situacaoCliente(id, v, m.querySelector('#dc-nota').value.trim());
+        m.fechar(); B7.UI.toast(c.nome + (v === 'cancelado' ? ': contrato cancelado.' : ': cliente inativo.'));
+        esquecerSecoes(id); B7.Rota.recarregar();
+      } catch (e) { bt.disabled = false; B7.UI.toast('Não foi possível desativar: ' + ((e && e.message) || ''), { tipo: 'erro' }); }
+    };
+  }
+  async function reativarCliente(id) {
+    let c;
+    try { c = await B7.DB.cliente(id); } catch (e) { return B7.UI.toast('Não consegui carregar o cliente', { tipo: 'erro' }); }
+    const sim = await B7.UI.confirmar({ titulo: 'Reativar ' + c.nome + '?', texto: 'Ele volta para a lista de clientes e para Operações, e o portal dele volta a abrir os materiais.', rotulo: 'Reativar' });
+    if (!sim) return;
+    try { await B7.DB.situacaoCliente(id, 'ativo', null); B7.UI.toast(c.nome + ' reativado.'); esquecerSecoes(id); B7.Rota.recarregar(); }
+    catch (e) { B7.UI.toast('Não foi possível reativar: ' + ((e && e.message) || ''), { tipo: 'erro' }); }
   }
 
   /* ================================================= excluir cliente */

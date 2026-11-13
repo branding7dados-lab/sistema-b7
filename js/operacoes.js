@@ -73,9 +73,12 @@ B7.Operacoes = (function () {
     const rot = document.getElementById('op-mes-rot'); if (rot) rot.textContent = MESES[mes - 1] + ' ' + ano;
     const cx = document.getElementById('op-corpo'); if (!cx) return;
     try {
-      const r = await sb().rpc('operacoes_mes', { p_ano: ano, p_mes: mes });
+      const [r, sv] = await Promise.all([sb().rpc('operacoes_mes', { p_ano: ano, p_mes: mes }),
+        sb().from('clientes').select('id, servico').neq('servico', 'ativo')]);
       if (r.error) throw r.error;
-      linhas = Array.isArray(r.data) ? r.data : [];
+      /* 4.43.0: clientes inativos ou com contrato cancelado ficam fora */
+      const fora = new Set((sv.data || []).map(x => x.id));
+      linhas = (Array.isArray(r.data) ? r.data : []).filter(l => !fora.has(l.id));
       pintar();
     } catch (e) {
       cx.innerHTML = '<div class="cb-aviso erro">Não foi possível carregar as operações. <button class="cb-link" id="op-denovo">Tentar de novo</button></div>';

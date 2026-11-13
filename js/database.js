@@ -77,10 +77,32 @@ B7.DB = (function () {
   const api = {
     /* ---------------------------------------------------- CLIENTES */
     async listarClientes() {
-      return ok(await sb().from('clientes_resumo').select('*').is('deleted_at', null).order('nome'));
+      /* 4.43.0: junta a situação do contrato (ativo/pausado/cancelado),
+         que não vem na view — quem não consegue ler fica como ativo */
+      const [l, sv] = await Promise.all([
+        sb().from('clientes_resumo').select('*').is('deleted_at', null).order('nome'),
+        sb().from('clientes').select('id, servico, servico_desde, servico_nota_interna').is('deleted_at', null)
+      ]);
+      const lista = ok(l), mapa = {};
+      (sv.data || []).forEach(x => { mapa[x.id] = x; });
+      return lista.map(c => Object.assign({ servico: 'ativo' }, c, mapa[c.id] ? { servico: mapa[c.id].servico || 'ativo', servico_desde: mapa[c.id].servico_desde, servico_nota_interna: mapa[c.id].servico_nota_interna } : {}));
     },
     async cliente(id) {
-      return ok(await sb().from('clientes_resumo').select('*').eq('id', id).single());
+      const [c, sv] = await Promise.all([
+        sb().from('clientes_resumo').select('*').eq('id', id).single(),
+        sb().from('clientes').select('servico, servico_desde, servico_nota_interna, servico_mensagem').eq('id', id).maybeSingle()
+      ]);
+      return Object.assign({ servico: 'ativo' }, ok(c), sv.data ? { servico: sv.data.servico || 'ativo', servico_desde: sv.data.servico_desde,
+        servico_nota_interna: sv.data.servico_nota_interna, servico_mensagem: sv.data.servico_mensagem } : {});
+    },
+    /* 4.43.0: desativar (pausado = inativo, cancelado = contrato encerrado) ou reativar */
+    async situacaoCliente(id, servico, nota) {
+      const antes = ok(await sb().from('clientes').select('servico').eq('id', id).maybeSingle()) || {};
+      const r = ok(await sb().from('clientes').update({ servico, servico_desde: new Date().toISOString(),
+        servico_nota_interna: nota || null }).eq('id', id).select('id'));
+      try { await sb().from('servico_historico').insert({ client_id: id, de: antes.servico || 'ativo', para: servico, nota_interna: nota || null,
+        autor_id: (B7.Auth && B7.Auth.usuario() || {}).id || null }); } catch (e) {}
+      return r;
     },
     async criarCliente(nome, observacoes = '', logo = null) {
       const dados = { nome: nome.trim(), observacoes };
