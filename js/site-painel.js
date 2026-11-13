@@ -30,7 +30,7 @@ B7.SitePainel = (function () {
     lapis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>'
   };
-  let aba = 'contatos', itens = [], leads = [], cfg = {}, clientesB7 = [], dias = 30, reunioes = [];
+  let aba = 'contatos', itens = [], leads = [], cfg = {}, clientesB7 = [], dias = 30, reunioes = [], pessoas = [];
 
   const tipoLink = u => {
     u = String(u || '');
@@ -43,16 +43,18 @@ B7.SitePainel = (function () {
   const telLimpo = t => { let d = String(t || '').replace(/\D/g, ''); if (d.length <= 11) d = '55' + d; return d; };
 
   async function carregar() {
-    const [c, i, l, k, a] = await Promise.all([
+    const [c, i, l, k, a, pe] = await Promise.all([
       sb().from('site_config').select('dados').eq('id', 1).maybeSingle(),
       sb().from('site_itens').select('*').order('ordem', { ascending: true }).order('created_at', { ascending: false }),
       sb().from('site_leads').select('*').order('created_at', { ascending: false }).limit(300),
       sb().from('clientes').select('id, nome, logo_url, no_site, site_ordem, teste').is('deleted_at', null).order('nome'),
-      sb().from('site_agendamentos').select('id, lead_id, inicio, fim, status').gte('inicio', new Date(Date.now() - 30 * 864e5).toISOString()).order('inicio')
+      sb().from('site_agendamentos').select('id, lead_id, inicio, fim, status').gte('inicio', new Date(Date.now() - 30 * 864e5).toISOString()).order('inicio'),
+      sb().from('perfis').select('id, nome, avatar_url, estado, parceiro').eq('estado', 'ativa').order('nome')
     ]);
     cfg = (ok(c) || {}).dados || {}; itens = ok(i) || []; leads = ok(l) || [];
     clientesB7 = (k.error ? [] : (k.data || [])).filter(x => !x.teste);
     reunioes = a.error ? [] : (a.data || []);
+    pessoas = pe.error ? [] : (pe.data || []).filter(x => !x.parceiro && !/teste/i.test(x.nome || ''));
   }
 
   async function abrir(params) {
@@ -174,7 +176,7 @@ B7.SitePainel = (function () {
         const titulo = tipo === 'cliente' ? (i.cliente_nome || i.titulo) : tipo === 'depoimento' ? (i.cliente_nome || 'Depoimento') : tipo === 'bastidor' ? (i.titulo || 'Bastidor') : i.titulo || i.cliente_nome || '(sem título)';
         const sub = tipo === 'video' ? [i.cliente_nome, i.categoria, tipoLink(i.video_url), i.visualizacoes ? i.visualizacoes + ' visualizações' : '', i.resultado || ''].filter(Boolean).join(' · ')
           : tipo === 'depoimento' ? (i.video_url ? 'Vídeo · ' + tipoLink(i.video_url) : '“' + String(i.texto || '').slice(0, 90) + (String(i.texto || '').length > 90 ? '…' : '') + '”')
-          : tipo === 'servico' ? String(i.texto || '').slice(0, 110) : tipo === 'equipe' ? (i.texto || 'sem cargo') + (i.capa_url ? '' : ' · sem foto')
+          : tipo === 'servico' ? String(i.texto || '').slice(0, 110) : tipo === 'equipe' ? (i.texto || 'sem cargo') + (i.foto_perfil ? ' · foto do perfil' : i.capa_url ? '' : ' · sem foto')
           : tipo === 'bastidor' ? 'Foto' : i.capa_url ? 'com logo' : 'só o nome';
         return '<div class="st-item' + (i.publicado ? '' : ' oculto') + '" data-item="' + esc(i.id) + '">' +
           (tipo === 'servico' ? '<span class="st-num">' + esc(i.icone || String(k + 1).padStart(2, '0')) + '</span>'
@@ -264,7 +266,10 @@ B7.SitePainel = (function () {
       (tipo === 'servico' ? campo('si-titulo', 'NOME DO SERVIÇO', i.titulo, ' maxlength="140"') +
         '<label class="rot" for="si-texto">DESCRIÇÃO</label><textarea class="campo" id="si-texto" rows="3" maxlength="800">' + esc(i.texto || '') + '</textarea>' +
         campo('si-icone', 'NÚMERO OU EMOJI', i.icone, ' maxlength="4" placeholder="01"') : '') +
-      (tipo === 'equipe' ? '<div class="st-2"><div>' + campo('si-titulo', 'NOME', i.titulo, ' maxlength="140"') + '</div><div>' + campo('si-texto', 'CARGO', i.texto, ' maxlength="80" placeholder="Ex.: Filmmaker e editor"') + '</div></div>' +
+      (tipo === 'equipe' ? '<label class="rot" for="si-perfil">PESSOA DO SISTEMA <span class="mg-obr leve">usa a foto de perfil dela</span></label>' +
+        '<div class="st-pessoa"><span class="st-pessoa-av" id="si-perfil-av"></span><select class="campo" id="si-perfil"><option value="">Ninguém (vou enviar a foto)</option>' +
+        pessoas.map(x => '<option value="' + esc(x.id) + '"' + (x.id === i.perfil_id ? ' selected' : '') + '>' + esc(x.nome) + (x.avatar_url ? '' : ' (sem foto no perfil)') + '</option>').join('') + '</select></div>' +
+        '<div class="st-2"><div>' + campo('si-titulo', 'NOME', i.titulo, ' maxlength="140"') + '</div><div>' + campo('si-texto', 'CARGO', i.texto, ' maxlength="80" placeholder="Ex.: Filmmaker e editor"') + '</div></div>' +
         campo('si-arroba', '@ DO INSTAGRAM (opcional)', i.cliente_arroba ? String(i.cliente_arroba).replace(/^@/, '') : '', ' maxlength="60" placeholder="sem o @"') : '') +
       (tipo === 'bastidor' ? campo('si-titulo', 'LEGENDA (opcional)', i.titulo, ' maxlength="140" placeholder="Ex.: Gravação na Academia Força"') : '') +
       (tipo !== 'servico' && tipo !== 'equipe' && tipo !== 'bastidor' ? '<div class="st-2">' + '<div>' + (tipo === 'cliente' ? campo('si-cli', 'NOME DA MARCA', i.cliente_nome, ' maxlength="120"') : seletorCliente(i.cliente_nome)) + '</div>' +
@@ -284,7 +289,7 @@ B7.SitePainel = (function () {
           '<div class="gv-ajuda">Recomendado: não gasta espaço no banco. Funciona com Reels, YouTube (inclusive Shorts) e Google Drive (compartilhado como "qualquer pessoa com o link").</div></div>' +
         '<div data-painel="arquivo"' + (fonteInicial === 'arquivo' ? '' : ' hidden') + '><input class="campo" id="si-arq" type="file" accept="video/mp4,video/webm,video/quicktime">' +
           '<div class="gv-ajuda">Até 50 MB. Prefira MP4 comprimido (1080×1920, até 30 s). ' + (fonteInicial === 'arquivo' ? 'Já tem um vídeo enviado; escolha outro só para trocar.' : '') + ' Arquivo próprio toca sozinho no site (prévia muda) — o de link abre ao tocar.</div></div>' : '') +
-      (tipo !== 'servico' ? '<label class="rot" for="si-capa">' + (tipo === 'cliente' ? 'LOGO (PNG transparente, de preferência)' : tipo === 'equipe' ? 'FOTO (de preferência quadrada ou vertical)' : tipo === 'bastidor' ? 'FOTO' : 'CAPA <span class="mg-obr leve">opcional</span>') + '</label>' +
+      (tipo !== 'servico' ? '<label class="rot" for="si-capa">' + (tipo === 'cliente' ? 'LOGO (PNG transparente, de preferência)' : tipo === 'equipe' ? 'OUTRA FOTO <span class="mg-obr leve">opcional; troca a do perfil</span>' : tipo === 'bastidor' ? 'FOTO' : 'CAPA <span class="mg-obr leve">opcional</span>') + '</label>' +
         (i.capa_url ? '<div class="st-capa-atual"><img src="' + esc(i.capa_url) + '" alt=""><label class="check"><input type="checkbox" id="si-tira-capa"><span>Tirar a imagem atual</span></label></div>' : '') +
         '<input class="campo" id="si-capa" type="file" accept="image/png,image/jpeg,image/webp">' +
         (tipo === 'video' ? '<div class="gv-ajuda">Link do Instagram ou do YouTube: a capa vem sozinha ao salvar. Envie uma imagem só se quiser outra capa.</div>' : '') : '') +
@@ -293,6 +298,21 @@ B7.SitePainel = (function () {
     const m = B7.UI.modal('<div class="ng-topo"><span class="ng-ic">' + IC.globo + '</span><div><h3>' + (novo ? 'Novo ' : 'Editar ') + TIPO[tipo].um + '</h3><div class="sub">Aparece em branding7.com.br assim que você salvar.</div></div></div>' +
       '<section class="ng-bloco st-form">' + corpo + '</section>' +
       '<div class="acoes ng-acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" data-ok>Salvar</button></div>', { extra: 'ng-modal st-modal' });
+    /* 4.46.2: equipe ligada ao perfil do sistema → foto de perfil */
+    const selP = m.querySelector('#si-perfil');
+    if (selP) {
+      const mostra = () => {
+        const x = pessoas.find(y => y.id === selP.value), av = m.querySelector('#si-perfil-av');
+        av.innerHTML = x && x.avatar_url ? '<img src="' + esc(x.avatar_url) + '" alt="">' : esc(x ? (x.nome || '?').charAt(0) : '');
+        av.hidden = !x;
+      };
+      selP.onchange = () => {
+        const x = pessoas.find(y => y.id === selP.value), nome = m.querySelector('#si-titulo');
+        if (x && nome && !nome.value.trim()) nome.value = x.nome || '';
+        mostra();
+      };
+      mostra();
+    }
     const sel = m.querySelector('#si-cli-sel');
     if (sel) sel.onchange = () => {
       const inp = m.querySelector('#si-cli'), o = sel.value === '__outro';
@@ -325,6 +345,7 @@ B7.SitePainel = (function () {
       if (selC && !d.cliente_nome) return B7.UI.toast(selC.value === '__outro' ? 'Digite o nome do cliente.' : 'Escolha o cliente.', { tipo: 'erro' });
       if (tipo === 'cliente' && !d.cliente_nome) return B7.UI.toast('Coloque o nome da marca.', { tipo: 'erro' });
       if (tipo === 'equipe' && !d.titulo) return B7.UI.toast('Coloque o nome da pessoa.', { tipo: 'erro' });
+      if (tipo === 'equipe' && m.querySelector('#si-tira-capa') && m.querySelector('#si-tira-capa').checked && m.querySelector('#si-perfil').value) m.querySelector('#si-perfil').value = '';
       const capaArq = m.querySelector('#si-capa');
       if (tipo === 'bastidor' && !(capaArq && capaArq.files[0]) && !i.capa_url) return B7.UI.toast('Escolha a foto.', { tipo: 'erro' });
       bt.disabled = true; bt.textContent = 'Salvando…';
@@ -347,6 +368,12 @@ B7.SitePainel = (function () {
           if (d.destaque && tipoLink(d.video_url) !== 'Arquivo') { d.destaque = false; B7.UI.toast('Destaque só toca na abertura com arquivo enviado; marquei sem destaque.'); }
         }
         const capa = m.querySelector('#si-capa');
+        if (selP) {
+          const x = pessoas.find(y => y.id === selP.value);
+          d.perfil_id = x ? x.id : null;
+          d.foto_perfil = !!(x && !(capa && capa.files[0]));
+          if (d.foto_perfil) d.capa_url = x.avatar_url || null;
+        }
         if (capa && capa.files[0]) {
           if (capa.files[0].size > 5 * 1024 * 1024) throw new Error('A imagem passa de 5 MB.');
           bt.textContent = 'Enviando a imagem…'; d.capa_url = await subir(capa.files[0], 'capas');
