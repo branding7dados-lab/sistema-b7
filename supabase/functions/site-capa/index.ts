@@ -39,7 +39,8 @@ Deno.serve(async req => {
     const url = Deno.env.get('SUPABASE_URL')!;
     const jwt = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     const eu = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: 'Bearer ' + jwt } }, auth: { persistSession: false } });
-    const adm = jwt ? await eu.rpc('sou_admin') : { data: false, error: null };
+    /* 4.44.0: quem tem o módulo Site para editar (administrador sempre) */
+    const adm = jwt ? await eu.rpc('pode_nivel', { p_modulo: 'site', p_min: 2 }) : { data: false, error: null };
     const souAdm = !adm.error && adm.data === true;
     const sb = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 

@@ -94,7 +94,10 @@ B7.Perm = (function () {
     /* zzz249: módulos que eram fixos (por cargo) e agora entram na matriz */
     { id: 'whatsapp',      rotulo: 'WhatsApp',            rotas: ['whatsapp'] },
     { id: 'lixeira',       rotulo: 'Lixeira',             rotas: ['lixeira'] },
-    { id: 'equipe',        rotulo: 'Agenda e recado da equipe', rotas: [] }
+    { id: 'equipe',        rotulo: 'Agenda e recado da equipe', rotas: [] },
+    /* 4.44.0: entram na matriz para liberar a colaboradores */
+    { id: 'operacoes',     rotulo: 'Operações',           rotas: ['operacoes'] },
+    { id: 'site',          rotulo: 'Site da agência',     rotas: ['site'] }
   ];
   const ROTA_MODULO = {};
   MODULOS.forEach(m => m.rotas.forEach(r => { ROTA_MODULO[r] = m.id; }));
@@ -106,14 +109,14 @@ B7.Perm = (function () {
   /* zzz129: 'tv' (Painel de TV) é só leitura e mostra o que o banco já
      entrega a quem está logado; quem vê a entrada é o liga/desliga de
      recursos (B7.Recursos). */
-  const ROTAS_INTERNAS = ['', 'config', 'cliente', 'gravacao', 'tv', 'conversa', 'suporte', 'ajuda', 'jogos', 'operacoes'];
+  const ROTAS_INTERNAS = ['', 'config', 'cliente', 'gravacao', 'tv', 'conversa', 'suporte', 'ajuda', 'jogos'];
   /* Padrão de cada função — só usado se a sessão ainda não trouxer os
      módulos (aba antiga aberta durante a atualização). O valor de verdade
      vem do banco (funcao_modulos + perfil_modulos). */
   const PADRAO_FUNCAO = {
-    coordenador: MODULOS.map(m => m.id).filter(m => m !== 'lixeira' && m !== 'equipe'),
-    designer: ['design', 'linhas', 'calendario', 'whatsapp'],
-    videomaker: ['video', 'legendas', 'gravacoes', 'roteiros', 'calendario', 'whatsapp']
+    coordenador: MODULOS.map(m => m.id).filter(m => m !== 'lixeira' && m !== 'equipe' && m !== 'site'),
+    designer: ['design', 'linhas', 'calendario', 'whatsapp', 'operacoes'],
+    videomaker: ['video', 'legendas', 'gravacoes', 'roteiros', 'calendario', 'whatsapp', 'operacoes']
   };
   const funcao = () => (B7.Auth && B7.Auth.funcao ? B7.Auth.funcao() : null);
   const souAdmin = () => papel() === 'admin';

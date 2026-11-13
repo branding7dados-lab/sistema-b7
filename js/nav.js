@@ -106,7 +106,7 @@ B7.Nav = (function () {
     /* 4.38.0: dash de operações (js/operacoes.js) — equipe interna */
     operacoes:   { rota: '#/operacoes', rotulo: 'Operações', curto: 'Operações', base: ['operacoes'], pode: () => !!(B7.Auth && B7.Auth.usuario() && !B7.Auth.ehCliente()) && pode('operacoes') },
     /* 4.36.0: painel do site da agência (js/site-painel.js) — só admin */
-    site:        { rota: '#/site', rotulo: 'Site', curto: 'Site', base: ['site'], pode: () => ehAdmin() },
+    site:        { rota: '#/site', rotulo: 'Site', curto: 'Site', base: ['site'], pode: () => ehAdmin() || pode('site') },
     lixeira:     { rota: '#/lixeira', rotulo: 'Lixeira', curto: 'Lixeira', base: ['lixeira'], pode: () => pode('lixeira') },
     usuarios:    { rota: '#/usuarios', rotulo: 'Usuários e acessos', curto: 'Usuários', base: ['usuarios'], pode: () => pode('usuarios') },
     /* Configurações na lateral só para o admin (as preferências de todo

@@ -65,3 +65,12 @@ jobs:
             echo "tentativa $t falhou; esperando"; sleep $((t * 20))
           done
           exit 1
+      # 4.44.0: a site-capa (capa automática dos vídeos do site) também sai daqui.
+      - name: Publicar site-capa
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN não configurado — nada publicado"; exit 0; fi
+          for t in 1 2 3; do
+            { supabase functions deploy site-capa --project-ref "$PROJETO" --no-verify-jwt --use-api || supabase functions deploy site-capa --project-ref "$PROJETO" --no-verify-jwt; } && exit 0
+            echo "tentativa $t falhou; esperando"; sleep $((t * 20))
+          done
+          exit 1

@@ -1,0 +1,32 @@
+# Aplica UM arquivo de migração (supabase/sql/zzzNNN_*.sql) no banco do
+# Sistema B7, pela API de gestão do Supabase. Só roda quando alguém pede
+# (Actions → sql → Run workflow) — nunca sozinho. Usa o mesmo segredo
+# SUPABASE_ACCESS_TOKEN das funções; nada de chave no código.
+name: sql
+on:
+  workflow_dispatch:
+    inputs:
+      arquivo:
+        description: 'Caminho do arquivo (ex.: supabase/sql/zzz333_modulos_operacoes_site.sql)'
+        required: true
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJETO: rartcafydsaocdzshqcx
+      ARQUIVO: ${{ inputs.arquivo }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar migração
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::error::SUPABASE_ACCESS_TOKEN não configurado"; exit 1; fi
+          # só migrações numeradas desta pasta
+          if ! printf '%s' "$ARQUIVO" | grep -Eq '^supabase/sql/zzz[0-9]{3,4}_[a-z0-9_]+\.sql$'; then echo "::error::arquivo fora do padrão: $ARQUIVO"; exit 1; fi
+          if [ ! -f "$ARQUIVO" ]; then echo "::error::arquivo não existe: $ARQUIVO"; exit 1; fi
+          python3 -c "import json,sys; print(json.dumps({'query': open(sys.argv[1]).read()}))" "$ARQUIVO" > corpo.json
+          codigo=$(curl -sS -o resposta.json -w '%{http_code}' -X POST \
+            "https://api.supabase.com/v1/projects/$PROJETO/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @corpo.json)
+          echo "HTTP $codigo"; head -c 4000 resposta.json; echo
+          case "$codigo" in 2*) ;; *) exit 1;; esac
