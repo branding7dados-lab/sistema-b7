@@ -1025,12 +1025,12 @@ B7.Dashboard = (function () {
               (inativosN ? pil('inativos', 'Inativos', inativosN) : '') +
             '</div>' +
             '<div class="cl2-ordem" id="ordem-cli" role="group" aria-label="Ordem">' +
-              '<button type="button" class="on" data-o="recentes">Recentes</button><button type="button" data-o="az">A–Z</button></div>' +
+              '<button type="button" data-o="recentes">Recentes</button><button type="button" class="on" data-o="az">A–Z</button></div>' +
           '</div>' +
           '<div id="lista-cli"></div>'
         : vazioClientes()) + '</div>';
 
-    let filtroAtual = 'todos', termo = '', ordem = 'recentes';
+    let filtroAtual = 'todos', termo = '', ordem = 'az';   /* 4.43.1: padrão A–Z */
     const aplicar = () => {
       const cx = document.getElementById('lista-cli');
       if (!cx) return;
