@@ -319,12 +319,8 @@ B7.UI = (function () {
       { aoFechar: () => { if (!decidido) { decidido = true; resolver(null); } } });
 
     const okBt = m.querySelector('[data-ok]');
-    if (opcoes.digitar) {
-      const alvo = String(opcoes.digitar).trim().toLowerCase().replace(/\s+/g, ' '), campo = m.querySelector('#conf-nome');
-      const conferir = () => { okBt.disabled = campo.value.trim().toLowerCase().replace(/\s+/g, ' ') !== alvo; };
-      conferir(); campo.oninput = conferir; setTimeout(() => campo.focus(), 50);
-      campo.onkeydown = ev => { if (ev.key === 'Enter' && !okBt.disabled) okBt.click(); };
-    }
+    /* 4.43.2: aqui havia um trecho do confirmar() (opcoes.digitar) que não
+       existe nesta função — dava erro e o botão nunca era ligado */
     okBt.onclick = () => {
       if (okBt.disabled) return;
       decidido = true;
@@ -354,7 +350,16 @@ B7.UI = (function () {
          zzz105: toda confirmação usa o desenho de alerta (styles/global.css) */
       { classe: 'alerta', aoFechar: () => { if (!decidido) { decidido = true; resolver(false); } } });
 
-    m.querySelector('[data-ok]').onclick = () => {
+    const okBt = m.querySelector('[data-ok]');
+    /* 4.13.1/4.43.2: com "digitar", o botão só libera com o nome certo */
+    if (opcoes.digitar) {
+      const alvo = String(opcoes.digitar).trim().toLowerCase().replace(/\s+/g, ' '), campo = m.querySelector('#conf-nome');
+      const conferir = () => { okBt.disabled = campo.value.trim().toLowerCase().replace(/\s+/g, ' ') !== alvo; };
+      conferir(); campo.oninput = conferir; setTimeout(() => campo.focus(), 50);
+      campo.onkeydown = ev => { if (ev.key === 'Enter' && !okBt.disabled) okBt.click(); };
+    }
+    okBt.onclick = () => {
+      if (okBt.disabled) return;
       decidido = true;
       m.fechar();
       resolver(true);

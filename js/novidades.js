@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.43.2', versao: '4.43.2', em: '2026-11-13T15:00:00-03:00',
+    titulo: 'Botão "Marcar correção" voltou a funcionar',
+    itens: ['Ao mover um vídeo para Correção, a caixa "O que precisa corrigir?" agora salva normalmente ao tocar em "Marcar correção".',
+            'O mesmo vale para as outras caixas em que você escreve uma resposta antes de confirmar.'] },
   { id: 'v-4.38.0', versao: '4.38.0', em: '2026-11-14T16:00:00-03:00',
     titulo: 'Operações do mês',
     itens: ['Nova tela "Operações": cada cliente numa linha e, nas colunas, calendário editorial, artes, campanha, gravação, edição e publicação do mês.',
