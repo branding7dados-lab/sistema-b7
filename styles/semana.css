@@ -738,3 +738,28 @@
 .ss-tela .is-meta > :last-child{overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .ss-tela .is-situacao{flex-shrink:0;}
 @media (max-width:640px){.ss-tela .is-sit-longo{display:none;}}
+
+/* =====================================================================
+   4.47.0 — documentos 4:5 (Status da semana e Resumo do mês) na mesma
+   linguagem dos roteiros: degradê da marca nos dias, dias vazios leves,
+   faixa do cliente em pílula, cartões mais arredondados.
+   ===================================================================== */
+.pag45 .ps-cabeca{background:linear-gradient(118deg,#001559 0%,#3A1E86 40%,#7C1E85 72%,#C21C83 100%);}
+.pag45 .ps-olho{color:rgba(255,255,255,.75);}
+.pag45 .ps-olho i{background:#fff;opacity:.7;}
+.pag45 .ps-periodo{color:#fff;background:rgba(255,255,255,.16);padding:5px 12px;border-radius:99px;font-size:12.5px;}
+.pag45 .ps-cliente{background:#F7F4FC;border-bottom:0;margin:14px 56px 0;padding:10px 16px;border-radius:18px;}
+.pag45 .ps-cli-logo{border-radius:12px;}
+.pag45 .ps-dia{border-color:#ECE6F5;background:#FCFBFE;border-radius:16px;}
+.pag45 .ps-data{background:var(--grad,linear-gradient(118deg,#001559 0%,#3A1E86 34%,#7C1E85 66%,#C21C83 100%));}
+.pag45 .ps-data .dow{color:rgba(255,255,255,.8);}
+.pag45 .ps-data .dt{color:#fff;}
+.pag45 .ps-dia-vazio{background:transparent;border-style:dashed;}
+.pag45 .ps-dia-vazio .ps-data{background:#F1ECF8;}
+.pag45 .ps-dia-vazio .ps-data .dow{color:var(--grey);}
+.pag45 .ps-dia-vazio .ps-data .dt{color:var(--ink-2);}
+.pag45 .ps-nota-geral{border-radius:16px;background:linear-gradient(118deg,#F7F1FC,#FCEFF7);}
+.pag45 .rm-leitura{border-left:0;border-radius:18px;background:linear-gradient(118deg,#F7F1FC,#FCEFF7);}
+.pag45 .rm-kpi{border-radius:18px;border-color:#ECE6F5;}
+.pag45 .rm-kpi:first-child{background:linear-gradient(118deg,#001559 0%,#3A1E86 40%,#7C1E85 72%,#C21C83 100%);}
+.pag45 .rm-kpi:first-child small{color:rgba(255,255,255,.8);}

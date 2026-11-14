@@ -28,7 +28,8 @@ B7.Export = (function () {
     if (comAbertura) {
       html += B7.Folha.aberturaHTML({
         cliente: ctx.cliente, dataGravacao: ctx.dataGravacao,
-        gravacao: ctx.gravacao, roteiros: selecionados
+        gravacao: ctx.gravacao, roteiros: selecionados,
+        clienteLogo: ctx.clienteLogo, cenasPorRoteiro: ctx.cenasPorRoteiro
       });
     }
     selecionados.forEach(r => {

@@ -105,22 +105,24 @@ B7.Folha = (function () {
       '<span class="rt-tk-sp"></span><span class="rt-tk rt-tk-ok"><i></i>Aprovado</span></div>';
   }
 
+  /* 4.47.0: capa nova — mesma linguagem da ficha (selo, cartões, pílulas) */
   function aberturaHTML(ctx) {
-    const itens = ctx.roteiros.map((r, i) =>
-      '<div class="it"><b>' + String(i + 1).padStart(2, '0') + '</b><span>' +
-      esc(r.titulo || 'Sem título') + '</span></div>').join('');
-    return '<div class="folha abertura">' +
-      '<div class="brilho"></div>' +
-      '<img class="marca" src="' + LOGO + '" alt="B7">' +
+    const lista = ctx.roteiros || [];
+    const cenas = r => ((ctx.cenasPorRoteiro || {})[r.id] || []).length;
+    const itens = lista.map((r, i) =>
+      '<div class="it"><b>' + String(i + 1).padStart(2, '0') + '</b><span>' + esc(r.titulo || 'Sem título') + '</span>' +
+      (cenas(r) ? '<small>' + cenas(r) + ' cena' + (cenas(r) === 1 ? '' : 's') + '</small>' : '') + '</div>').join('');
+    const dado = (rot, v) => v ? '<div class="cel"><b>' + rot + '</b><span>' + esc(v) + '</span></div>' : '';
+    return '<div class="folha abertura rt-capa">' +
+      '<div class="brilho"></div><div class="brilho b2"></div><div class="rt-capa-anel"></div>' +
+      '<div class="rt-capa-topo"><img class="marca" src="' + LOGO + '" alt="B7">' +
+        (ctx.clienteLogo && !ctx.semCliente ? '<span class="rt-capa-cli"><img src="' + esc(ctx.clienteLogo) + '" alt=""></span>' : '') + '</div>' +
       '<div class="miolo">' +
-        '<div class="olho"><i></i>PRODUÇÃO DE CONTEÚDO</div>' +
-        '<h1>Roteiros<br>de Gravação</h1>' +
-        (ctx.semCliente ? '' : '<div class="dados">' +
-          '<div class="cel"><b>CLIENTE</b><span>' + esc(ctx.cliente || '—') + '</span></div>' +
-          '<div class="cel"><b>GRAVAÇÃO</b><span>' + esc(ctx.gravacao || '—') + '</span></div>' +
-          (ctx.dataGravacao ? '<div class="cel"><b>DATA</b><span>' + esc(ctx.dataGravacao) + '</span></div>' : '') +
-        '</div>') +
-        '<div class="indice"><div class="rot">ROTEIROS DESTA GRAVAÇÃO</div>' + itens + '</div>' +
+        '<div class="olho"><i></i>Produção de conteúdo</div>' +
+        '<h1>Roteiros de<br><em>gravação</em></h1>' +
+        (ctx.semCliente ? '' : '<div class="dados">' + dado('Cliente', ctx.cliente || '—') + dado('Gravação', ctx.gravacao || '—') + dado('Data', ctx.dataGravacao) +
+          dado('Roteiros', String(lista.length).padStart(2, '0')) + '</div>') +
+        '<div class="indice"><div class="rot">Nesta gravação</div>' + itens + '</div>' +
       '</div></div>';
   }
 
@@ -320,7 +322,8 @@ B7.Impressao = (function () {
     if (comAbertura) {
       html += B7.Folha.aberturaHTML({
         cliente: ctx.cliente, dataGravacao: ctx.dataGravacao,
-        gravacao: ctx.gravacao, roteiros: selecionados
+        gravacao: ctx.gravacao, roteiros: selecionados,
+        clienteLogo: ctx.clienteLogo, cenasPorRoteiro: ctx.cenasPorRoteiro
       });
     }
     selecionados.forEach((r, i) => {

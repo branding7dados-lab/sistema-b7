@@ -1097,3 +1097,95 @@
 .rt-pe{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:8.5px;font-weight:600;letter-spacing:.12em;
   text-transform:uppercase;color:var(--grey);}
 .rt-pe b{font-family:'B7 Titulo';font-weight:800;font-size:11px;letter-spacing:0;color:var(--magenta);}
+
+/* 4.47.0 — CAPA NOVA DOS ROTEIROS (.folha.abertura.rt-capa) */
+.folha.rt-capa{background:#0B0512;padding:18mm 18mm 16mm;justify-content:space-between;}
+.folha.rt-capa .brilho{right:-50mm;top:-30mm;width:190mm;height:190mm;background:radial-gradient(circle,rgba(194,28,131,.55) 0%,rgba(124,30,133,.28) 38%,transparent 68%);}
+.folha.rt-capa .brilho.b2{left:-70mm;right:auto;top:auto;bottom:-60mm;width:170mm;height:170mm;background:radial-gradient(circle,rgba(58,30,134,.6) 0%,rgba(0,21,89,.25) 42%,transparent 70%);}
+.rt-capa-anel{position:absolute;right:-28mm;top:42mm;width:120mm;height:120mm;border-radius:50%;border:1.5px solid rgba(255,255,255,.08);}
+.rt-capa-anel:after{content:"";position:absolute;inset:16mm;border-radius:50%;border:1.5px solid rgba(255,255,255,.06);}
+.rt-capa-topo{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;}
+.folha.rt-capa .marca{width:40mm;}
+.rt-capa-cli{width:20mm;height:20mm;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  box-shadow:0 12px 30px -10px rgba(0,0,0,.6);}
+.rt-capa-cli img{width:84%;height:84%;object-fit:contain;}
+.folha.rt-capa .olho{display:inline-flex;align-items:center;gap:10px;font-size:10px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;
+  color:#F29BD0;margin-bottom:16px;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);}
+.folha.rt-capa .olho i{width:7px;height:7px;border-radius:50%;background:#E2409C;}
+.folha.rt-capa h1{font-family:'B7 Titulo';font-weight:800;font-size:62px;line-height:.98;letter-spacing:-.04em;text-transform:none;}
+.folha.rt-capa h1 em{font-style:normal;color:#F29BD0;}
+.folha.rt-capa .dados{display:flex;gap:8px;margin-top:26px;border-top:0;}
+.folha.rt-capa .dados .cel{flex:1;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);}
+.folha.folha.rt-capa .dados .cel+.cel{padding-left:14px;border-left:1px solid rgba(255,255,255,.1);}
+.folha.rt-capa .dados b{font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:6px;}
+.folha.rt-capa .dados span{font-size:13.5px;}
+.folha.rt-capa .indice{margin-top:20px;padding:14px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);}
+.folha.rt-capa .indice .rot{font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;margin:2px 4px 10px;}
+.folha.rt-capa .indice .it{display:flex;align-items:center;gap:12px;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.07);}
+.folha.rt-capa .indice .it:last-child{border-bottom:0;}
+.folha.rt-capa .indice .it b{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;
+  background:var(--grad);color:#fff;font-size:11px;}
+.folha.rt-capa .indice .it span{flex:1;font-family:'B7 Titulo';font-weight:700;font-size:13px;color:#fff;}
+.folha.rt-capa .indice .it small{font-size:10px;color:rgba(255,255,255,.5);flex:none;}
+
+/* =====================================================================
+   4.47.0 — LINHA EDITORIAL (A4 e 16:9) NA LINGUAGEM NOVA
+   Número da seção num selo em degradê (em vez do número vazado),
+   cartões arredondados para os posts e os números do mês, etiquetas
+   em pílula. Só aparência: a paginação continua medindo no DOM.
+   ===================================================================== */
+.le-folha .faixa-topo{height:2.2mm;}
+.le-folha .titulo-bloco{align-items:center;gap:calc(14px * var(--fs));}
+.le-folha .numero{width:calc(17mm * var(--fs));height:calc(17mm * var(--fs));border-radius:14px;background:var(--grad);color:#fff;
+  -webkit-text-stroke:0;font-size:calc(26px * var(--fs));line-height:1;letter-spacing:-.03em;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -10px rgba(124,30,133,.7);}
+.le-folha .titulo-dir{border-left:0;padding:0;}
+.le-folha .titulo-dir .kicker{margin-bottom:5px;color:var(--magenta);}
+.le-folha .titulo-dir .kicker i{display:none;}
+.le-folha .titulo-dir h2{text-transform:none;font-weight:800;font-size:calc(24px * var(--fs));letter-spacing:-.025em;}
+.le-folha .risco-titulo{display:none;}
+
+.le-numeros{gap:calc(8px * var(--fs));border:0;border-radius:0;overflow:visible;}
+.le-numeros > div{border:0;border-radius:14px;background:#F7F4FC;}
+.le-numeros b{color:var(--magenta);}
+.le-numeros span{letter-spacing:.14em;}
+.le-campo > b{letter-spacing:.14em;color:var(--violeta);}
+.le-chips span{border-radius:99px !important;}
+.le-txt p{font-size:calc(11.8px * var(--fs));}
+
+.le-criativo{padding:calc(13px * var(--fs)) calc(15px * var(--fs));margin-bottom:calc(10px * var(--fs));
+  border:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:16px;background:#FCFBFE;}
+.le-criativo:last-child{border-bottom:1px solid var(--line);}
+.le-cri-topo{gap:calc(6px * var(--fs));}
+.le-cri-n{padding:3px 9px;border-radius:99px;background:var(--grad);color:#fff;letter-spacing:.12em;}
+.le-cri-f{border-radius:99px !important;padding:3px 9px !important;background:#EFEAF7 !important;color:var(--ink) !important;}
+.le-cri-d,.le-cri-p{padding:3px 9px;border-radius:99px;background:#fff;border:1px solid var(--line);}
+.le-criativo h3{font-size:calc(16px * var(--fs));letter-spacing:-.015em;}
+.le-slide{border-left:0;padding:calc(8px * var(--fs)) calc(11px * var(--fs));border-radius:10px;background:#F7F4FC;}
+.le-roteiro{border-radius:12px;}
+.le-tabela th{background:#F7F4FC;}
+.le-tabela th:first-child{border-radius:10px 0 0 10px;} .le-tabela th:last-child{border-radius:0 10px 10px 0;}
+.le-pilar-n{color:var(--magenta);}
+
+/* capa da linha editorial: mesma capa dos roteiros */
+.folha.le-capa h1{text-transform:none;font-weight:800;font-size:62px;letter-spacing:-.04em;}
+.folha.le-capa .olho{padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);letter-spacing:.24em;}
+.folha.le-capa .olho i{width:7px;height:7px;border-radius:50%;}
+.folha.le-capa .dados{gap:8px;border-top:0;}
+.folha.le-capa .dados .cel{padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);}
+.folha.le-capa .dados .cel+.cel{padding-left:14px;border-left:1px solid rgba(255,255,255,.1);}
+.folha.le-capa .le-logo-cliente{border-radius:22px;box-shadow:0 14px 34px -12px rgba(0,0,0,.6);}
+
+/* apresentação 16:9 */
+.sl-secao{align-items:center;gap:6mm;}
+.sl-num{width:19mm;height:19mm;border-radius:16px;background:var(--grad);color:#fff;-webkit-text-stroke:0;font-size:28px;line-height:1;
+  display:flex;align-items:center;justify-content:center;letter-spacing:-.03em;box-shadow:0 10px 24px -12px rgba(124,30,133,.7);}
+.sl-kicker{color:var(--magenta);letter-spacing:.18em;}
+.sl-kicker i{display:none;}
+.sl-risco{display:none;}
+.sl-campo b{letter-spacing:.16em;color:var(--violeta);}
+.sl-objetivo-hero{border-left:0;border-radius:18px;background:linear-gradient(118deg,#F7F1FC,#FCEFF7);}
+.sl-capa h1{letter-spacing:-.04em;}
+.sl-dados{gap:3mm;border-top:0;}
+.sl-dados > div{padding:3mm 5mm;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);}
+.sl-logo-cliente{border-radius:22px;box-shadow:0 14px 34px -12px rgba(0,0,0,.6);}

@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.47.1', versao: '4.47.1', em: '2026-11-14T14:00:00-03:00',
+    titulo: 'Capa e documentos com o visual novo',
+    itens: ['A capa dos roteiros ganhou a logo do cliente, o título novo e a lista dos roteiros com a quantidade de cenas.',
+      'Linha editorial (PDF e apresentação), Status da semana e Resumo do mês agora seguem o mesmo visual do roteiro: número da seção num selo colorido, posts em cartões e dias da semana no degradê da marca.'] },
   { id: 'v-4.47.0', versao: '4.47.0', em: '2026-11-14T13:00:00-03:00',
     titulo: 'Roteiro com visual novo',
     itens: ['A folha do roteiro (prévia, PDF, PNG e impressão) ganhou um design novo: as cenas numa linha do tempo, o tipo de cada cena em etiqueta colorida e o número do roteiro num selo.',
