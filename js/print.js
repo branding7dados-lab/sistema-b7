@@ -28,68 +28,70 @@ B7.Folha = (function () {
     'Narração': 'bl-narracao', 'CTA': 'bl-cta'
   };
 
+  /* 4.47.0: ficha nova. Linha do tempo das cenas (bolinha numerada à
+     esquerda), tipo da cena em etiqueta arredondada, cartões leves e o
+     número do roteiro num selo — antes o "01" vazado batia na faixa da
+     cena 1 e tudo era faixa preta e rosa. Mesma API (folhaHTML) e mesmo
+     ajuste automático de escala (--fs). */
+  const ROTULO = { 'Gancho': 'Gancho', 'Narrativa': 'Narrativa', 'Narração': 'Narração', 'CTA': 'Chamada (CTA)' };
+  const CHAVE = { 'Gancho': 'gancho', 'Narrativa': 'narrativa', 'Narração': 'narracao', 'CTA': 'cta' };
+  const IC_CAM = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 10l5-3v10l-5-3M4 7h11v10H4z"/></svg>';
+  const IC_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+  const IC_SETA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
   function cenaHTML(cena, indice) {
-    const tipo = cena.tipo || 'Narrativa';
-    const etiqueta = (cena.funcao && cena.funcao.trim()) ? cena.funcao.trim().toUpperCase() : tipo.toUpperCase();
+    const tipo = CHAVE[cena.tipo] ? cena.tipo : 'Narrativa';
+    const k = CHAVE[tipo];
+    const etiqueta = (cena.funcao && cena.funcao.trim()) ? cena.funcao.trim() : ROTULO[tipo];
     let corpo;
     if (tipo === 'Gancho') {
-      corpo = '<div class="bl-gancho"><div class="aspas">&ldquo;</div>' +
-              '<div class="txt">' + paragrafos(cena.texto) + '</div></div>';
+      corpo = '<div class="rt-gancho"><span class="rt-aspas">&ldquo;</span>' + paragrafos(cena.texto) + '</div>';
     } else if (tipo === 'CTA') {
-      corpo = '<div class="bl-cta">' + paragrafos(cena.texto) + '</div>';
+      corpo = '<div class="rt-cta"><div class="rt-cta-tx">' + paragrafos(cena.texto) + '</div><span class="rt-cta-ic">' + IC_SETA + '</span></div>';
     } else if (tipo === 'Narração') {
-      corpo = '<div class="bl-narracao">' + paragrafos(cena.texto) + '</div>' +
-              '<div class="sug"><b>SUGESTÃO DE CENAS</b><div class="sug-txt">' +
-              paragrafos(cena.sugestao_cenas) + '</div></div>';
+      corpo = '<div class="rt-narracao"><span class="rt-mic">' + IC_MIC + '</span><div>' + paragrafos(cena.texto) + '</div></div>' +
+        (vazio(cena.sugestao_cenas) ? '' : '<div class="rt-sug">' + IC_CAM + '<b>Imagens:</b><div>' + paragrafos(cena.sugestao_cenas) + '</div></div>');
     } else {
-      corpo = '<div class="bl-narrativa">' + paragrafos(cena.texto) + '</div>';
+      corpo = '<div class="rt-narrativa">' + paragrafos(cena.texto) + '</div>';
     }
-    return '<div class="cena-bloco"><div class="cena-cabeca">' +
-      '<div class="cena-num">CENA ' + (indice + 1) + '</div>' +
-      '<div class="cena-dir">' + esc(cena.direcao || '') + '</div>' +
-      '<div class="cena-linha"></div>' +
-      '<div class="etiqueta e-' + esc(tipo) + '">' + esc(etiqueta) + '</div>' +
-      '</div>' + corpo + '</div>';
+    return '<div class="rt-cena c-' + k + '">' +
+      '<span class="rt-bola">' + (indice + 1) + '</span>' +
+      '<div class="rt-cena-cx">' +
+        '<div class="rt-cena-meta"><span class="rt-tipo">' + esc(etiqueta) + '</span>' +
+          (vazio(cena.direcao) ? '' : '<span class="rt-dir">' + esc(cena.direcao) + '</span>') + '</div>' +
+        corpo +
+      '</div></div>';
   }
 
-  /* ctx = { cliente, dataGravacao, gravacao, roteiro, cenas, indice, total }
-     dataGravacao é opcional: sem data, a coluna some da folha em vez de
-     mostrar um campo vazio. */
+  /* ctx = { cliente, clienteLogo, dataGravacao, gravacao, roteiro, cenas, indice, total, semCliente }
+     dataGravacao é opcional: sem data, ela some em vez de mostrar vazio. */
   function folhaHTML(ctx) {
     const r = ctx.roteiro;
     const cenas = ctx.cenas.map((c, i) => cenaHTML(c, i)).join('<div class="esp"></div>');
     const num = String(ctx.indice + 1).padStart(2, '0');
-    return '<div class="folha" data-roteiro="' + esc(r.id) + '" style="--fs:' + (r.escala || 1) + '">' +
-      '<div class="faixa-topo"></div>' +
-      '<div class="folha-cabeca"><div class="esq"><img src="' + MARCA + '" alt="">' +
-        '<span>B7 &nbsp;/&nbsp; BRANDING7</span></div>' +
-        '<div class="dir">ROTEIROS DE GRAVAÇÃO</div></div>' +
-      /* 4.17.2: roteiro do Banco geral (sem cliente) não leva a faixa cliente/gravação */
-      (ctx.semCliente ? '' : '<div class="proj">' +
-        '<div class="cel"><b>CLIENTE</b>' +
-          (ctx.clienteLogo
-            ? '<div class="cli-com-logo"><img src="' + esc(ctx.clienteLogo) + '" alt="">' +
-              '<span>' + esc(ctx.cliente || 'Cliente') + '</span></div>'
-            : '<span class="' + (ctx.cliente ? '' : 'fraco') + '">' + esc(ctx.cliente || 'Cliente') + '</span>') +
+    const total = String(ctx.total || 1).padStart(2, '0');
+    const n = ctx.cenas.length;
+    const meta = ctx.semCliente ? '' :
+      '<div class="rt-cli">' +
+        (ctx.clienteLogo ? '<span class="rt-cli-logo"><img src="' + esc(ctx.clienteLogo) + '" alt=""></span>' : '') +
+        '<div class="rt-cli-tx"><b class="' + (ctx.cliente ? '' : 'fraco') + '">' + esc(ctx.cliente || 'Cliente') + '</b>' +
+          '<small>' + esc([ctx.gravacao || 'Gravação', ctx.dataGravacao].filter(Boolean).join(' · ')) + '</small></div>' +
+      '</div>';
+    return '<div class="folha rt" data-roteiro="' + esc(r.id) + '" style="--fs:' + (r.escala || 1) + '">' +
+      '<div class="rt-faixa"></div>' +
+      '<div class="rt-cab"><div class="rt-marca"><img src="' + MARCA + '" alt=""><span><b>Branding7</b><small>Roteiro de gravação</small></span></div>' + meta + '</div>' +
+      '<div class="rt-topo">' +
+        '<div class="rt-selo"><small>ROTEIRO</small><b>' + num + '</b><i>de ' + total + '</i></div>' +
+        '<div class="rt-topo-tx">' +
+          '<div class="rt-kicker">' + n + ' cena' + (n === 1 ? '' : 's') + (ctx.semCliente || !ctx.gravacao ? '' : ' &nbsp;·&nbsp; ' + esc(ctx.gravacao)) + '</div>' +
+          '<h2 class="' + (vazio(r.titulo) ? 'fraco' : '') + '">' + esc(r.titulo || 'Título do roteiro') + '</h2>' +
+          (vazio(r.objetivo) ? '' : '<div class="rt-obj"><b>Objetivo</b><span>' + esc(r.objetivo) + '</span></div>') +
+          (vazio(r.observacao_gravacao) ? '' : '<div class="rt-nota"><b>Na gravação</b><span>' + esc(r.observacao_gravacao) + '</span></div>') +
         '</div>' +
-        '<div class="cel"><b>GRAVAÇÃO</b><span class="' + (ctx.gravacao ? '' : 'fraco') + '">' +
-          esc(ctx.gravacao || 'Gravação') + '</span></div>' +
-        (ctx.dataGravacao ? '<div class="cel"><b>DATA</b><span>' + esc(ctx.dataGravacao) + '</span></div>' : '') +
-        '<div class="cel fim"><b>VÍDEO</b><span>' + num + ' / ' + String(ctx.total).padStart(2, '0') + '</span></div>' +
-      '</div>') +
-      '<div class="titulo-bloco"><div class="numero">' + num + '</div><div class="titulo-dir">' +
-        '<div class="kicker"><i></i>ROTEIRO ' + num + ' &nbsp;·&nbsp; ' + ctx.cenas.length +
-          ' CENA' + (ctx.cenas.length === 1 ? '' : 'S') + '</div>' +
-        '<h2 class="' + (vazio(r.titulo) ? 'fraco' : '') + '">' + esc(r.titulo || 'Título do roteiro') + '</h2>' +
-        '<div class="risco-titulo"></div>' +
-        (vazio(r.objetivo) ? '' : '<div class="obj"><b>OBJETIVO</b><div class="obj-txt">' + esc(r.objetivo) + '</div></div>') +
-        (vazio(r.observacao_gravacao) ? '' : '<div class="nota-grav"><b>NA GRAVAÇÃO</b><div class="obj-txt">' +
-          esc(r.observacao_gravacao) + '</div></div>') +
-      '</div></div>' +
-      '<div class="folha-corpo"><div class="esp"></div>' + cenas + '<div class="esp fim"></div></div>' +
-      takesHTML(ctx.cenas.length) +
-      '<div class="folha-pe"><div class="esq">B7 / BRANDING7 &nbsp;·&nbsp; ROTEIROS DE GRAVAÇÃO</div>' +
-        '<div class="dir">' + num + '</div></div>' +
+      '</div>' +
+      '<div class="folha-corpo rt-corpo"><div class="esp"></div><div class="rt-cenas">' + cenas + '</div><div class="esp fim"></div></div>' +
+      takesHTML(n) +
+      '<div class="rt-pe"><span>Branding7 &nbsp;·&nbsp; Roteiros de gravação</span><b>' + num + ' / ' + total + '</b></div>' +
       '<div class="aviso-overflow">PASSOU DA PÁGINA — REDUZA A FONTE (A−) OU TIRE UMA CENA</div>' +
     '</div>';
   }
@@ -98,12 +100,9 @@ B7.Folha = (function () {
      Cresce junto com o roteiro. */
   function takesHTML(quantas) {
     const caixas = [];
-    for (let i = 1; i <= quantas; i++) {
-      caixas.push('<div class="tk"><span class="bx"></span>' + String(i).padStart(2, '0') + '</div>');
-    }
-    return '<div class="takes"><div class="tk-rot">CENAS GRAVADAS</div>' +
-      caixas.join('') + '<div class="sp"></div>' +
-      '<div class="tk"><span class="bx"></span>APROVADO</div></div>';
+    for (let i = 1; i <= quantas; i++) caixas.push('<span class="rt-tk"><i></i>' + i + '</span>');
+    return '<div class="takes rt-takes"><b>Cenas gravadas</b>' + caixas.join('') +
+      '<span class="rt-tk-sp"></span><span class="rt-tk rt-tk-ok"><i></i>Aprovado</span></div>';
   }
 
   function aberturaHTML(ctx) {

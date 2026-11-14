@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.47.0', versao: '4.47.0', em: '2026-11-14T13:00:00-03:00',
+    titulo: 'Roteiro com visual novo',
+    itens: ['A folha do roteiro (prévia, PDF, PNG e impressão) ganhou um design novo: as cenas numa linha do tempo, o tipo de cada cena em etiqueta colorida e o número do roteiro num selo.',
+      'Gancho, narração e chamada final aparecem em cartões próprios; a sugestão de imagens vem junto da narração.'] },
   { id: 'v-4.46.6', versao: '4.46.6', em: '2026-11-14T12:00:00-03:00',
     titulo: 'Baixar roteiro no app Android',
     itens: ['O download do roteiro em PDF e em PNG agora funciona no app Android (os PNG de vários roteiros saem um atrás do outro).'] },
