@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.46.4', versao: '4.46.4', em: '2026-11-14T10:30:00-03:00',
+    titulo: 'Sistema não cai mais na tela "Falta ligar o banco"',
+    itens: ['Com internet fraca, ou logo depois de uma atualização, o sistema às vezes abria numa tela dizendo "Falta ligar o banco". Isso foi corrigido: ele abre normalmente.'] },
   { id: 'v-4.46.0', versao: '4.46.0', em: '2026-11-13T19:00:00-03:00', rota: 'site',
     titulo: 'Site: reuniões marcadas pelo site e página Sobre',
     itens: ['Nova aba Agenda: o visitante escolhe dia e horário no site para conversar com a gente. A reunião aparece aqui, em Contatos e no sino.',

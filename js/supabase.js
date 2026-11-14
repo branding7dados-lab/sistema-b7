@@ -5,7 +5,21 @@
 window.B7 = window.B7 || {};
 
 (function () {
-  const cfg = window.B7_CONFIG || {};
+  /* 4.46.4: reserva embutida. Se js/config.js não chegar (internet lenta no
+     celular, ou logo depois de uma atualização, quando a cópia guardada
+     ainda não existe), o sistema caía na tela "Falta ligar o banco".
+     Agora usa estes mesmos valores (todos públicos; nenhuma chave secreta
+     entra aqui). O que estiver em js/config.js continua valendo por cima. */
+  const RESERVA = {
+    SUPABASE_URL: 'https://rartcafydsaocdzshqcx.supabase.co',
+    SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_N9Ha9Gwmh-jJsXaI5oY7Lw_dY4XAb8e',
+    VAPID_PUBLIC_KEY: 'BA5kmM_qFyJonTd6jA4ggG_l1k2zJblzY0aB68NiotyupdSE6btda-Y1bnhTFNhO__qQrDNigEYZzpKb0HtMjko',
+    IA: { roteiros: true, linhas: true, chat: true }
+  };
+  const doArquivo = window.B7_CONFIG || {};
+  if (!doArquivo.SUPABASE_URL || !doArquivo.SUPABASE_PUBLISHABLE_KEY) window.B7_CONFIG = Object.assign({}, RESERVA, doArquivo, {
+    SUPABASE_URL: doArquivo.SUPABASE_URL || RESERVA.SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY: doArquivo.SUPABASE_PUBLISHABLE_KEY || RESERVA.SUPABASE_PUBLISHABLE_KEY });
+  const cfg = window.B7_CONFIG;
 
   /* Arruma os enganos comuns ao colar a URL: espaço sobrando, barra no
      final (vira // na chamada e o Supabase responde "Invalid path
