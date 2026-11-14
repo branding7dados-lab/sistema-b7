@@ -95,14 +95,23 @@ B7.AppNativo = (function () {
     return !!fim.ok;
   }
 
-  async function salvarLink(a) {
+  /* 4.46.6: um download por vez (vários PNG de roteiro saem em sequência e
+     as partes de um arquivo não podem se misturar com as de outro) */
+  let filaDl = Promise.resolve();
+  function salvarLink(a) {
     const url = a.href;
     const nome = nomeDoLink(a, url);
+    /* busca já (a tela libera o blob: logo depois do clique); só a gravação espera a vez */
+    const busca = fetch(url).then(resp => { if (!resp.ok) throw new Error('HTTP ' + resp.status); return resp.blob(); });
+    busca.catch(() => {});
+    const vez = () => salvarUm(url, nome, busca);
+    filaDl = filaDl.then(vez, vez);
+    return filaDl;
+  }
+  async function salvarUm(url, nome, busca) {
     const aviso = setTimeout(() => { if (B7.UI && B7.UI.toast) B7.UI.toast('Baixando ' + nome + '…'); }, 400);
     try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const blob = await resp.blob();
+      const blob = await busca;
       const tipo = String(blob.type || '').split(';')[0].trim();
       let ok;
       if (recursos.arquivos) ok = await salvarEmPartes(blob, nome, tipo);

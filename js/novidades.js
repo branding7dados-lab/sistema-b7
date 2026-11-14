@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.46.6', versao: '4.46.6', em: '2026-11-14T12:00:00-03:00',
+    titulo: 'Baixar roteiro no app Android',
+    itens: ['O download do roteiro em PDF e em PNG agora funciona no app Android (os PNG de vários roteiros saem um atrás do outro).'] },
   { id: 'v-4.46.5', versao: '4.46.5', em: '2026-11-14T11:30:00-03:00',
     titulo: 'Downloads funcionando no app Android',
     itens: ['No app Android, baixar artes, ZIPs, relatórios, legendas e backups voltou a funcionar (atualize o app quando aparecer "Nova versão do app B7").',

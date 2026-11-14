@@ -117,7 +117,9 @@ B7.Export = (function () {
         if (i > 0) pdf.addPage();
         pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
       }
-      pdf.save(nome);
+      /* 4.46.6: pelo mesmo caminho de download do resto do sistema (o
+         pdf.save() dispara um clique que o app Android não enxerga) */
+      baixarBlob(pdf.output('blob'), nome);
     } finally { limpar(area); }
   }
 
