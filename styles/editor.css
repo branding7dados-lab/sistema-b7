@@ -372,3 +372,10 @@ body.ed-banco #ed-status{pointer-events:none;}
 .mv-op small{display:block;font-size:11.5px;color:var(--ink-4);margin-top:2px;}
 /* 4.17.2: sem cliente não há aprovação */
 body.ed-geral #ap-status-roteiro,body.ed-geral [data-acao="enviar-aprovacao"]{display:none !important;}
+
+/* 4.47.4: app Android em pé — o topo do editor ficava por baixo da barra
+   de status (hora, bateria). O topo principal já se afastava; este não. */
+@media (max-width:760px) and (orientation:portrait){
+  #tela-editor > .topo{height:calc(58px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+    padding-top:var(--safe-area-inset-top, env(safe-area-inset-top, 0px));}
+}
