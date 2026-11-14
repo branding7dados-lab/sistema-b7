@@ -12,7 +12,7 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'b7-v4.47.1';   /* sempre igual à VERSAO de js/auth.js */
+const CACHE = 'b7-v4.47.2';   /* sempre igual à VERSAO de js/auth.js */
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/abertura.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',

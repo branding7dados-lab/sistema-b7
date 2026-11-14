@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.47.2', versao: '4.47.2', em: '2026-11-14T15:30:00-03:00',
+    titulo: 'Linha editorial em PDF refeita e capas novas',
+    itens: ['O PDF da linha editorial começa com o mês num olhar: números por formato, objetivo e posicionamento em cartões e um calendário com cada post no seu dia.',
+      'Os posts vêm em duas colunas de cartões, em ordem de data, com a prévia da arte dos Cards, os slides do carrossel e a legenda — sem meia página em branco.',
+      'Capas novas e claras para os roteiros e a linha editorial, com a logo do cliente preenchendo o quadro.'] },
   { id: 'v-4.47.1', versao: '4.47.1', em: '2026-11-14T14:00:00-03:00',
     titulo: 'Capa e documentos com o visual novo',
     itens: ['A capa dos roteiros ganhou a logo do cliente, o título novo e a lista dos roteiros com a quantidade de cenas.',

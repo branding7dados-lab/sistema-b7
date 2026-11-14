@@ -105,25 +105,43 @@ B7.Folha = (function () {
       '<span class="rt-tk-sp"></span><span class="rt-tk rt-tk-ok"><i></i>Aprovado</span></div>';
   }
 
-  /* 4.47.0: capa nova — mesma linguagem da ficha (selo, cartões, pílulas) */
+  /* 4.47.2: capa clara, comum aos roteiros e à linha editorial.
+     o = { kicker, titulo (HTML), sub, cliente, clienteLogo, dados:[[rótulo, valor]],
+           listaTitulo, listaHTML } */
+  function capa(o) {
+    const dados = (o.dados || []).filter(d => d && d[1]);
+    return '<div class="folha abertura cp">' +
+      '<div class="cp-painel"><div class="cp-luz"></div><div class="cp-luz l2"></div>' +
+        '<div class="cp-topo"><img class="cp-marca" src="' + LOGO + '" alt="B7"><span class="cp-kicker">' + esc(o.kicker || '') + '</span></div>' +
+        '<div class="cp-miolo">' +
+          '<h1>' + o.titulo + '</h1>' +
+          (o.sub ? '<div class="cp-sub">' + esc(o.sub) + '</div>' : '') +
+        '</div>' +
+        (o.cliente ? '<div class="cp-cli">' +
+          (o.clienteLogo ? '<span class="cp-cli-logo"><img src="' + esc(o.clienteLogo) + '" alt=""></span>' : '') +
+          '<span class="cp-cli-tx"><small>Cliente</small><b>' + esc(o.cliente) + '</b></span></div>' : '') +
+      '</div>' +
+      (dados.length ? '<div class="cp-dados">' + dados.map(([r, v]) => '<div><small>' + esc(r) + '</small><b>' + esc(v) + '</b></div>').join('') + '</div>' : '') +
+      (o.listaHTML ? '<div class="cp-lista"><div class="cp-lista-tit">' + esc(o.listaTitulo || '') + '</div>' + o.listaHTML + '</div>' : '') +
+      '<div class="cp-pe"><span>Branding7</span><span>' + esc(o.rodape || 'Produção de conteúdo') + '</span></div>' +
+    '</div>';
+  }
+
   function aberturaHTML(ctx) {
     const lista = ctx.roteiros || [];
     const cenas = r => ((ctx.cenasPorRoteiro || {})[r.id] || []).length;
     const itens = lista.map((r, i) =>
-      '<div class="it"><b>' + String(i + 1).padStart(2, '0') + '</b><span>' + esc(r.titulo || 'Sem título') + '</span>' +
+      '<div class="cp-it"><b>' + String(i + 1).padStart(2, '0') + '</b><span>' + esc(r.titulo || 'Sem título') + '</span>' +
       (cenas(r) ? '<small>' + cenas(r) + ' cena' + (cenas(r) === 1 ? '' : 's') + '</small>' : '') + '</div>').join('');
-    const dado = (rot, v) => v ? '<div class="cel"><b>' + rot + '</b><span>' + esc(v) + '</span></div>' : '';
-    return '<div class="folha abertura rt-capa">' +
-      '<div class="brilho"></div><div class="brilho b2"></div><div class="rt-capa-anel"></div>' +
-      '<div class="rt-capa-topo"><img class="marca" src="' + LOGO + '" alt="B7">' +
-        (ctx.clienteLogo && !ctx.semCliente ? '<span class="rt-capa-cli"><img src="' + esc(ctx.clienteLogo) + '" alt=""></span>' : '') + '</div>' +
-      '<div class="miolo">' +
-        '<div class="olho"><i></i>Produção de conteúdo</div>' +
-        '<h1>Roteiros de<br><em>gravação</em></h1>' +
-        (ctx.semCliente ? '' : '<div class="dados">' + dado('Cliente', ctx.cliente || '—') + dado('Gravação', ctx.gravacao || '—') + dado('Data', ctx.dataGravacao) +
-          dado('Roteiros', String(lista.length).padStart(2, '0')) + '</div>') +
-        '<div class="indice"><div class="rot">Nesta gravação</div>' + itens + '</div>' +
-      '</div></div>';
+    return capa({
+      kicker: 'Roteiros de gravação',
+      titulo: 'Roteiros de<br>gravação',
+      sub: ctx.semCliente ? '' : (ctx.gravacao || ''),
+      cliente: ctx.semCliente ? '' : (ctx.cliente || ''), clienteLogo: ctx.clienteLogo,
+      dados: ctx.semCliente ? [['Roteiros', String(lista.length).padStart(2, '0')]] :
+        [['Gravação', ctx.gravacao || '—'], ['Data', ctx.dataGravacao], ['Roteiros', String(lista.length).padStart(2, '0')]],
+      listaTitulo: 'Nesta gravação', listaHTML: itens, rodape: 'Roteiros de gravação'
+    });
   }
 
   /* ------------------------------------------------- ajuste de escala */
@@ -144,7 +162,7 @@ B7.Folha = (function () {
     folha.classList.toggle('estourou', estourou(folha));
   }
 
-  return { folhaHTML, aberturaHTML, ajustar, estourou, marcarOverflow };
+  return { folhaHTML, aberturaHTML, capa, ajustar, estourou, marcarOverflow };
 })();
 
 

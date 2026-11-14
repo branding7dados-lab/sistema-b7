@@ -420,8 +420,181 @@ B7.FolhaLinha = (function () {
     return blocos;
   }
 
+  /* =================================================================
+     4.47.2 — LINHA EDITORIAL NOVA
+     Página 1: o mês num olhar (cliente, números por formato, estratégia
+     em cartões e o calendário de postagens ocupando o resto da folha).
+     Depois: os posts em DUAS colunas de cartões, preenchidas uma de cada
+     vez com medição real no DOM — a folha enche em vez de sobrar meia
+     página em branco. Cada cartão tem o selo da data, o formato em cor
+     e, no Card, uma prévia da arte (headline, sub e botão).
+     ================================================================= */
+  const TIPO_COR = { Reel: 'reel', Card: 'card', Carrossel: 'carrossel', Story: 'story' };
+  const TIPO_PLURAL = { Reel: 'Reels', Card: 'Cards', Carrossel: 'Carrosséis', Story: 'Stories' };
+  const DOW = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  const MES_CURTO = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+  const dataDe = d => { const m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  const ordenarPorData = lista => lista.slice().sort((a, b) =>
+    String(a.data_postagem || '9999').localeCompare(String(b.data_postagem || '9999')) || (a.position || 0) - (b.position || 0));
+  const nota = (rot, v) => vazio(v) ? '' : '<div class="l2-nota"><b>' + rot + '</b><div>' + paragrafos(v) + '</div></div>';
+
+  function cab2(rot) {
+    return '<div class="faixa-topo"></div><div class="l2-cab"><img src="' + MARCA + '" alt=""><span>' + esc(rot) + '</span></div>';
+  }
+  function pe2(ctx, num) {
+    const l = ctx.linha;
+    return '<div class="l2-pe"><span>' + esc(l.cliente_nome || '') + ' · Linha editorial · ' + esc(MESES[l.mes - 1] || '') + ' ' + l.ano + '</span><b>' + String(num).padStart(2, '0') + '</b></div>';
+  }
+
+  function calendarioHTML(ctx) {
+    const l = ctx.linha, ano = +l.ano, mes = +l.mes - 1;
+    const primeiro = new Date(ano, mes, 1), dias = new Date(ano, mes + 1, 0).getDate();
+    const desloc = (primeiro.getDay() + 6) % 7;
+    const porDia = {};
+    ctx.conteudos.forEach(c => { const d = dataDe(c.data_postagem); if (d && d.getFullYear() === ano && d.getMonth() === mes) (porDia[d.getDate()] = porDia[d.getDate()] || []).push(c); });
+    const celulas = [];
+    for (let i = 0; i < desloc; i++) celulas.push('<div class="l2-dia fora"></div>');
+    for (let d = 1; d <= dias; d++) {
+      const lista = ordenarPorData(porDia[d] || []);
+      celulas.push('<div class="l2-dia' + (lista.length ? ' tem' : '') + '"><span class="l2-dn">' + d + '</span>' +
+        lista.slice(0, 3).map(c => '<span class="l2-ev t-' + TIPO_COR[c.tipo] + '"><i></i>' + esc(c.titulo || c.tipo) + '</span>').join('') +
+        (lista.length > 3 ? '<span class="l2-mais">+' + (lista.length - 3) + '</span>' : '') + '</div>');
+    }
+    while (celulas.length % 7) celulas.push('<div class="l2-dia fora"></div>');
+    const semData = ctx.conteudos.filter(c => { const d = dataDe(c.data_postagem); return !d || d.getFullYear() !== ano || d.getMonth() !== mes; });
+    return '<div class="l2-cal"><div class="l2-sec"><b>Calendário de postagens</b>' +
+      '<span class="l2-legenda">' + ['Reel', 'Card', 'Carrossel', 'Story'].filter(t => ctx.conteudos.some(c => c.tipo === t))
+        .map(t => '<i class="t-' + TIPO_COR[t] + '"></i>' + TIPO_PLURAL[t]).join('') + '</span></div>' +
+      '<div class="l2-grade">' + DOW.map(d => '<div class="l2-dow">' + d + '</div>').join('') + celulas.join('') + '</div>' +
+      (semData.length ? '<div class="l2-semdata"><b>Sem data neste mês:</b> ' + semData.map(c => esc(c.titulo || c.tipo)).join(' · ') + '</div>' : '') +
+    '</div>';
+  }
+
+  function paginaResumo(ctx) {
+    const l = ctx.linha;
+    const formatos = ['Reel', 'Card', 'Carrossel', 'Story'].map(t => [t, ctx.conteudos.filter(c => c.tipo === t).length]).filter(x => x[1]);
+    const canais = (l.canais || '').split(',').map(x => x.trim()).filter(Boolean);
+    const estrategia = [['Objetivo do mês', l.objetivo], ['O que a estratégia pretende gerar', l.objetivo_detalhe], ['Posicionamento', l.posicionamento],
+      ['Tom de voz', l.tom_voz], ['Proposta única de valor', l.puv], ['Percepção desejada', l.percepcao], ['Observações', l.observacoes]].filter(x => !vazio(x[1]));
+    const pilares = (ctx.pilares || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
+    return '<div class="folha le-folha l2 l2-p1" data-secao="RESUMO">' + cab2('Linha editorial') +
+      '<div class="l2-heroi">' +
+        (ctx.clienteLogo ? '<span class="l2-logo"><img src="' + esc(ctx.clienteLogo) + '" alt=""></span>' : '') +
+        '<div class="l2-heroi-tx"><small>' + esc(l.cliente_nome || '') + '</small><h1>Linha editorial · ' + esc(MESES[l.mes - 1] || '') + ' ' + l.ano + '</h1>' +
+          (periodo(l) ? '<span>' + esc(periodo(l)) + '</span>' : (canais.length ? '<span>' + canais.map(esc).join(' · ') + '</span>' : '')) + '</div>' +
+        '<div class="l2-total"><b>' + ctx.conteudos.length + '</b><small>conteúdo' + (ctx.conteudos.length === 1 ? '' : 's') + (l.meta_conteudos ? ' de ' + l.meta_conteudos : '') + '</small></div>' +
+      '</div>' +
+      (formatos.length ? '<div class="l2-formatos">' + formatos.map(([t, n]) =>
+        '<div class="t-' + TIPO_COR[t] + '"><i>' + ICONE[t] + '</i><b>' + n + '</b><small>' + (n === 1 ? t : TIPO_PLURAL[t]) + '</small></div>').join('') + '</div>' : '') +
+      (estrategia.length ? '<div class="l2-estrat">' + estrategia.map(([r, v], i) =>
+        '<div class="l2-card' + (i === 0 ? ' destaque' : '') + '"><b>' + r + '</b>' + paragrafos(v) + '</div>').join('') + '</div>' : '') +
+      (pilares.length ? '<div class="l2-pilares">' + pilares.map((p, i) => '<span><i class="f' + (i % 4) + '"></i>' + esc(p.nome || 'Pilar') +
+        (+p.percentual ? ' · ' + (+p.percentual) + '%' : '') + '</span>').join('') + '</div>' : '') +
+      calendarioHTML(ctx) +
+      pe2(ctx, 1) +
+      '<div class="aviso-overflow">PASSOU DA PÁGINA — REDUZA A FONTE (A−)</div></div>';
+  }
+
+  function cartaoPost(c, n, ctx) {
+    const d = dataDe(c.data_postagem);
+    const roteiro = c.script_id ? ctx.roteiros[c.script_id] : null;
+    let corpo = '';
+    if (c.tipo === 'Card' && (c.headline || c.sub_headline || c.cta)) {
+      const repete = String(c.headline || '').trim().toLowerCase() === String(c.titulo || '').trim().toLowerCase();
+      corpo += '<div class="l2-arte">' + (vazio(c.headline) || repete ? '' : '<b>' + esc(c.headline) + '</b>') +
+        (vazio(c.sub_headline) ? '' : '<p>' + esc(c.sub_headline) + '</p>') +
+        (vazio(c.cta) ? '' : '<span>' + esc(c.cta) + '</span>') + '</div>';
+    }
+    if (c.tipo === 'Carrossel') {
+      const sl = ctx.slides[c.id] || [];
+      if (sl.length) corpo += '<div class="l2-seq">' + sl.map((s2, k) => '<div><i>' + String(k + 1).padStart(2, '0') + '</i><span>' +
+        (vazio(s2.titulo) ? '' : '<b>' + esc(s2.titulo) + '</b>') + (vazio(s2.texto) ? '' : esc(String(s2.texto).replace(/^\s*[-•]\s*/gm, '').replace(/\s*\n+\s*/g, ' · '))) + '</span></div>').join('') + '</div>';
+      else if (!vazio(c.headline)) corpo += nota('Capa', c.headline);
+    }
+    if (c.tipo === 'Story') {
+      const fr = ctx.frames[c.id] || [];
+      if (fr.length) corpo += '<div class="l2-seq">' + fr.map((f, k) => '<div><i>S' + (k + 1) + '</i><span>' +
+        (vazio(f.titulo) ? '' : '<b>' + esc(f.titulo) + '</b>') + esc(f.texto || '') + (vazio(f.direcao_visual) ? '' : ' <em>' + esc(f.direcao_visual) + '</em>') + '</span></div>').join('') + '</div>';
+    }
+    if (c.tipo === 'Reel') {
+      if (!vazio(c.headline)) corpo += nota('Headline', c.headline);
+      if (roteiro && !vazio(roteiro.titulo) && roteiro.titulo.trim().toLowerCase() !== String(c.titulo || '').trim().toLowerCase()) corpo += '<div class="l2-chip"><b>Roteiro</b>' + esc(roteiro.titulo) + '</div>';
+      if (!vazio(c.referencia_link)) corpo += '<div class="l2-chip"><b>Referência</b>' + esc(c.referencia_link) + '</div>';
+    }
+    corpo += nota('Ideia', c.ideia_geral) + nota('Objetivo', c.objetivo) + nota('Direção visual', c.direcao) + nota('Para o design', c.observacao_design);
+    if (c.tipo !== 'Card' && c.tipo !== 'Carrossel' && !vazio(c.cta)) corpo += nota('CTA', c.cta);
+    if (!vazio(c.legenda)) corpo += '<div class="l2-leg"><b>Legenda</b>' + paragrafos(c.legenda) + '</div>';
+    const pil = nomePilar(ctx, c.pilar_id);
+    return '<div class="l2-post t-' + TIPO_COR[c.tipo] + '">' +
+      '<div class="l2-post-cab">' +
+        '<div class="l2-data">' + (d ? '<b>' + d.getDate() + '</b><small>' + MES_CURTO[d.getMonth()] + '</small>' : '<b>—</b><small>sem data</small>') + '</div>' +
+        '<div class="l2-post-tit"><div class="l2-tags"><span class="l2-tipo">' + ICONE[c.tipo] + ' ' + esc(c.tipo) + '</span><span class="l2-n">#' + String(n).padStart(2, '0') + '</span>' +
+          (pil ? '<span class="l2-pil">' + esc(pil) + '</span>' : '') + '</div>' +
+          '<h3>' + esc(c.titulo || 'Sem título') + '</h3></div>' +
+      '</div>' + corpo + '</div>';
+  }
+
+  function paginasPosts(ctx, area, primeiraNum) {
+    const cards = ordenarPorData(ctx.conteudos).map((c, i) => cartaoPost(c, i + 1, ctx));
+    if (!cards.length) return '';
+    const medidor = document.createElement('div');
+    medidor.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden';
+    (area || document.body).appendChild(medidor);
+    const pagina = (cols, num, primeira) => '<div class="folha le-folha l2 l2-posts" data-secao="POSTS">' + cab2('Conteúdos do mês') +
+      (primeira ? '<div class="l2-sec l2-sec-posts"><b>Conteúdos do mês</b><span>' + cards.length + ' post' + (cards.length === 1 ? '' : 's') + ', em ordem de data</span></div>' : '') +
+      '<div class="l2-colunas">' + cols.map(c => '<div class="l2-col">' + c.join('') + '</div>').join('') + '</div>' +
+      pe2(ctx, num) + '<div class="aviso-overflow">PASSOU DA PÁGINA — REDUZA A FONTE (A−)</div></div>';
+    const cabe = (cols, num, primeira, k) => {
+      medidor.innerHTML = pagina(cols, num, primeira);
+      const col = medidor.querySelectorAll('.l2-col')[k];
+      return col.scrollHeight <= col.clientHeight + 2;
+    };
+    const paginas = [];
+    let i = 0;
+    while (i < cards.length) {
+      const num = primeiraNum + paginas.length, primeira = !paginas.length;
+      const cols = [[], []];
+      for (let k = 0; k < 2 && i < cards.length; k++) {
+        while (i < cards.length) {
+          cols[k].push(cards[i]);
+          if (cabe(cols, num, primeira, k)) { i++; continue; }
+          cols[k].pop();
+          if (!cols[k].length) { cols[k].push(cards[i]); i++; }   /* cartão maior que a coluna: fica sozinho e a escala ajusta */
+          break;
+        }
+      }
+      paginas.push(pagina(cols, num, primeira));
+    }
+    medidor.remove();
+    return paginas.join('');
+  }
+
+  function capa2(ctx) {
+    const l = ctx.linha;
+    const formatos = ['Reel', 'Card', 'Carrossel', 'Story'].map(t => [t, ctx.conteudos.filter(c => c.tipo === t).length]).filter(x => x[1]);
+    return B7.Folha.capa({
+      kicker: 'Planejamento de conteúdo', titulo: 'Linha<br>editorial',
+      sub: (MESES[l.mes - 1] || '') + ' ' + l.ano + (periodo(l) ? ' · ' + periodo(l) : ''),
+      cliente: l.cliente_nome || '', clienteLogo: ctx.clienteLogo,
+      dados: [['Mês', (MESES[l.mes - 1] || '') + ' ' + l.ano], ['Conteúdos', String(ctx.conteudos.length)], ['Canais', (l.canais || '').split(',').map(x => x.trim()).filter(Boolean).join(', ')]],
+      listaTitulo: 'Formatos do mês',
+      listaHTML: formatos.map(([t, n]) => { const pub = ctx.conteudos.filter(c => c.tipo === t && c.status === 'Publicado').length;
+        return '<div class="cp-it"><b>' + n + '</b><span>' + (n === 1 ? t : TIPO_PLURAL[t]) + '</span>' +
+          (pub ? '<small>' + pub + (pub === 1 ? ' publicado' : ' publicados') + '</small>' : '') + '</div>'; }).join(''),
+      rodape: 'Linha editorial'
+    });
+  }
+
+  function documentoNovoHTML(ctx, area) {
+    return (ctx.incluirCapa ? capa2(ctx) : '') + paginaResumo(ctx) + paginasPosts(ctx, area, 2);
+  }
+
   /* documento com paginação medida — é o usado na geração real */
   function documentoMedidoHTML(ctx, area) {
+    return documentoNovoHTML(ctx, area);
+  }
+  /* o modelo anterior continua disponível (testes antigos e comparação) */
+  function documentoAntigoHTML(ctx, area) {
     return (ctx.incluirCapa ? capaHTML(ctx) : '') +
            montarFolhas(ctx, blocosDocumento(ctx), area);
   }
@@ -441,7 +614,7 @@ B7.FolhaLinha = (function () {
     return html;
   }
 
-  return { documentoHTML, documentoMedidoHTML, montarFolhas, blocosDocumento,
+  return { documentoHTML, documentoMedidoHTML, documentoAntigoHTML, montarFolhas, blocosDocumento,
            blocosVisao, blocosPilares, blocosCriativos, blocosTabela, criativoHTML,
            tituloSecao, aberturaCompacta, capaHTML };
 })();
