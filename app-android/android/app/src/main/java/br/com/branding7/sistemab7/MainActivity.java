@@ -381,6 +381,11 @@ public class MainActivity extends BridgeActivity {
         private Uri videoUri = null;
         private File videoArquivo = null;
         private OutputStream videoSaida = null;
+        /* 4.46.5: arquivo baixado chegando em partes (mesma fila do vídeo) */
+        private Uri arqUri = null;
+        private File arqArquivo = null;
+        private OutputStream arqSaida = null;
+        private String arqNome = null, arqMime = null, arqOnde = null;
         /* 4.14.0: câmera nativa do teleprompter */
         private CameraNativa cam = null;
 
@@ -423,6 +428,29 @@ public class MainActivity extends BridgeActivity {
                         }
                     } catch (Exception e) {
                         ok = false;
+                    }
+                    boolean fim = ok;
+                    act.runOnUiThread(() -> responder(resposta, id, fim, r));
+                });
+                return;
+            }
+            /* 4.46.5: download em partes, fora da linha da tela (antes o arquivo
+               inteiro vinha numa mensagem só e travava/derrubava o app) */
+            if (acao.startsWith("arquivo") || acao.equals("salvar")) {
+                fila.execute(() -> {
+                    JSONObject r = new JSONObject();
+                    boolean ok = false;
+                    try {
+                        switch (acao) {
+                            case "arquivoInicio": ok = abrirArquivo(m.optString("nome"), m.optString("tipo")); break;
+                            case "arquivoParte": ok = escreverArquivo(Base64.decode(m.optString("base64"), Base64.DEFAULT)); break;
+                            case "arquivoFim": ok = fecharArquivo(r); break;
+                            case "arquivoCancelar": cancelarArquivo(); ok = true; break;
+                            case "salvar": ok = salvar(m.optString("base64"), m.optString("nome"), m.optString("tipo")); break;
+                        }
+                    } catch (Exception e) {
+                        ok = false;
+                        if (!acao.equals("arquivoCancelar")) cancelarArquivo();
                     }
                     boolean fim = ok;
                     act.runOnUiThread(() -> responder(resposta, id, fim, r));
@@ -582,6 +610,7 @@ public class MainActivity extends BridgeActivity {
                 r.put("firebase", BuildConfig.TEM_FIREBASE);
                 r.put("binario", WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER));
                 r.put("camNativa", true);
+                r.put("arquivos", true);
                 resposta.postMessage(r.toString());
             } catch (Exception e) {
                 /* a tela já saiu */
@@ -701,12 +730,101 @@ public class MainActivity extends BridgeActivity {
 
         /* ---------------------------------------------------- arquivos */
 
+        /* 4.46.5: download em partes. Imagem → Galeria (Imagens/Sistema B7),
+           vídeo → Galeria (Filmes/Sistema B7), o resto → Downloads/Sistema B7. */
+        private boolean abrirArquivo(String nome, String tipo) throws Exception {
+            cancelarArquivo();
+            String t = limparTipo(tipo);
+            String arquivo = nomeSeguro(nome, t);
+            String mime = t.isEmpty() ? adivinharTipo(arquivo) : t;
+            arqNome = arquivo;
+            arqMime = mime;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ContentValues v = new ContentValues();
+                Uri colecao;
+                if (mime.startsWith("image/")) {
+                    colecao = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                    v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Sistema B7");
+                    arqOnde = "Galeria (Imagens/Sistema B7)";
+                } else if (mime.startsWith("video/")) {
+                    colecao = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+                    v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/Sistema B7");
+                    arqOnde = "Galeria (Filmes/Sistema B7)";
+                } else {
+                    colecao = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+                    v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Sistema B7");
+                    arqOnde = "Downloads/Sistema B7";
+                }
+                v.put(MediaStore.MediaColumns.DISPLAY_NAME, arquivo);
+                v.put(MediaStore.MediaColumns.MIME_TYPE, mime);
+                v.put(MediaStore.MediaColumns.IS_PENDING, 1);
+                try {
+                    arqUri = act.getContentResolver().insert(colecao, v);
+                } catch (Exception e) {
+                    /* tipo que a coleção não aceita: vai como arquivo genérico para Downloads */
+                    v.put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream");
+                    v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Sistema B7");
+                    arqOnde = "Downloads/Sistema B7";
+                    arqUri = act.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                }
+                if (arqUri == null) throw new Exception("sem acesso a Downloads");
+                arqSaida = act.getContentResolver().openOutputStream(arqUri);
+            } else {
+                File dir = act.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                if (dir == null) dir = act.getFilesDir();
+                arqArquivo = new File(dir, arquivo);
+                arqSaida = new FileOutputStream(arqArquivo);
+                arqOnde = "pasta do app";
+            }
+            return arqSaida != null;
+        }
+
+        private boolean escreverArquivo(byte[] parte) throws Exception {
+            if (arqSaida == null) return false;
+            if (parte != null) arqSaida.write(parte);
+            return true;
+        }
+
+        private boolean fecharArquivo(JSONObject r) throws Exception {
+            if (arqSaida == null) return false;
+            arqSaida.close();
+            arqSaida = null;
+            Uri uri;
+            if (arqUri != null) {
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.MediaColumns.IS_PENDING, 0);
+                act.getContentResolver().update(arqUri, v, null, null);
+                uri = arqUri;
+            } else {
+                uri = FileProvider.getUriForFile(act, act.getPackageName() + ".fileprovider", arqArquivo);
+            }
+            final String nome = arqNome, mime = arqMime, onde = arqOnde;
+            r.put("onde", onde);
+            arqUri = null;
+            arqArquivo = null;
+            act.runOnUiThread(() -> {
+                Toast.makeText(act, "Salvo em " + onde + ": " + nome, Toast.LENGTH_LONG).show();
+                abrir(uri, mime);
+            });
+            return true;
+        }
+
+        private void cancelarArquivo() {
+            try { if (arqSaida != null) arqSaida.close(); } catch (Exception e) { /* nada */ }
+            arqSaida = null;
+            try { if (arqUri != null) act.getContentResolver().delete(arqUri, null, null); } catch (Exception e) { /* nada */ }
+            if (arqArquivo != null) arqArquivo.delete();
+            arqUri = null;
+            arqArquivo = null;
+        }
+
         /* conteúdo em base64 (sem o prefixo data:) → Downloads, e abre */
         boolean salvar(String base64, String nome, String tipo) {
             try {
                 byte[] dados = Base64.decode(base64, Base64.DEFAULT);
-                String arquivo = nomeSeguro(nome, tipo);
-                String mime = (tipo == null || tipo.isEmpty()) ? adivinharTipo(arquivo) : tipo;
+                String t = limparTipo(tipo);
+                String arquivo = nomeSeguro(nome, t);
+                String mime = t.isEmpty() ? adivinharTipo(arquivo) : t;
                 Uri uri = gravar(act, dados, arquivo, mime);
                 act.runOnUiThread(() -> {
                     Toast.makeText(act, "Salvo em Downloads: " + arquivo, Toast.LENGTH_LONG).show();
@@ -794,6 +912,12 @@ public class MainActivity extends BridgeActivity {
         } finally {
             c.disconnect();
         }
+    }
+
+    /* "text/csv;charset=utf-8" → "text/csv" (o Android recusa o tipo com parâmetros) */
+    static String limparTipo(String tipo) {
+        if (tipo == null) return "";
+        return tipo.split(";")[0].trim().toLowerCase();
     }
 
     static String nomeSeguro(String nome, String tipo) {

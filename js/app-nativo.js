@@ -33,7 +33,7 @@ B7.AppNativo = (function () {
 
   let instalada = '';
   /* o que este APK sabe fazer (vem na resposta da ponte) */
-  const recursos = { firebase: null, binario: false, camNativa: false };
+  const recursos = { firebase: null, binario: false, camNativa: false, arquivos: false };
   let seq = 0;
   const esperando = {};
 
@@ -57,6 +57,7 @@ B7.AppNativo = (function () {
       if ('firebase' in r) recursos.firebase = !!r.firebase;
       if ('binario' in r) recursos.binario = !!r.binario;
       if ('camNativa' in r) recursos.camNativa = !!r.camNativa;
+      if ('arquivos' in r) recursos.arquivos = !!r.arquivos;
       const f = esperando[r.id];
       if (f) { delete esperando[r.id]; f(r); }
     };
@@ -79,16 +80,37 @@ B7.AppNativo = (function () {
     catch (e) { return 'arquivo'; }
   }
 
+  /* 4.46.5: o arquivo vai em partes de ~384 KB, fora da linha da tela do
+     Android. Antes ia inteiro numa mensagem só: arte, ZIP ou vídeo grande
+     travava ou derrubava o app e o download não acontecia. */
+  const PARTE = 384 * 1024;
+  async function salvarEmPartes(blob, nome, tipo) {
+    const ini = await pedir('arquivoInicio', { nome, tipo });
+    if (!ini.ok) return false;
+    for (let i = 0; i < blob.size; i += PARTE) {
+      const r = await pedir('arquivoParte', { base64: await paraBase64(blob.slice(i, i + PARTE)) });
+      if (!r.ok) { pedir('arquivoCancelar'); return false; }
+    }
+    const fim = await pedir('arquivoFim');
+    return !!fim.ok;
+  }
+
   async function salvarLink(a) {
     const url = a.href;
     const nome = nomeDoLink(a, url);
+    const aviso = setTimeout(() => { if (B7.UI && B7.UI.toast) B7.UI.toast('Baixando ' + nome + '…'); }, 400);
     try {
       const resp = await fetch(url);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const blob = await resp.blob();
-      const r = await pedir('salvar', { base64: await paraBase64(blob), nome, tipo: blob.type || '' });
-      if (!r.ok) throw new Error('não salvou');
+      const tipo = String(blob.type || '').split(';')[0].trim();
+      let ok;
+      if (recursos.arquivos) ok = await salvarEmPartes(blob, nome, tipo);
+      else ok = (await pedir('salvar', { base64: await paraBase64(blob), nome, tipo })).ok;
+      clearTimeout(aviso);
+      if (!ok) throw new Error('não salvou');
     } catch (e) {
+      clearTimeout(aviso);
       /* não deu para buscar (link de outro site sem permissão): abre fora */
       if (/^https?:/i.test(url)) pedir('abrirFora', { url });
       else if (B7.UI && B7.UI.toast) B7.UI.toast('Não foi possível baixar o arquivo.', { tipo: 'erro' });
