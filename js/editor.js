@@ -10,12 +10,14 @@ window.B7 = window.B7 || {};
 B7.Editor = (function () {
   const esc = B7.UI.esc;
   const TIPOS = ['Gancho', 'Narrativa', 'Narração', 'CTA'];
+  const vazio = t => !String(t || '').trim();
   const DIRECAO_PADRAO = { 'Gancho': 'DIRETO PRA CÂMERA', 'Narrativa': 'DIRETO PRA CÂMERA',
                            'Narração': 'VOZ EM OFF', 'CTA': 'DIRETO PRA CÂMERA' };
 
   let E = { gravacao: null, roteiros: [], cenas: {}, atual: null, aprovacoes: {} };
   let zoomManual = null;
   let fechadas = new Set();     // cenas recolhidas (só visual)
+  let detalhesAbertos = false;  // 4.48.0: painel "Detalhes" do roteiro (objetivo, estágio, notas)
 
   /* =================================================== carregar */
   /* zzz64: quem é da casa mas não é equipe (videomaker, designer) abre
@@ -464,54 +466,68 @@ B7.Editor = (function () {
     const idx = E.roteiros.findIndex(x => x.id === r.id);
     const cenas = E.cenas[r.id] || [];
 
+    /* 4.48.0: escrita em primeiro lugar — abre direto no título e nas
+       cenas, como um documento. O que não é fala (objetivo, estágio,
+       observação, nota interna, fonte da folha, IA e aprovação) fica no
+       painel "Detalhes"; as ações do dia a dia ficam na barra de baixo. */
+    const estagio = r.status || 'Em criação';
+    const ia = B7.IAAnalise && !soLeitura() ? B7.IAAnalise.botoesHTML(r, cenas) : '';
+    const IC_IA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
     cx.innerHTML =
-      '<div class="bloco"><div class="bloco-topo">' +
-        '<div class="rn">ROTEIRO ' + String(idx + 1).padStart(2, '0') + '</div>' +
-        '<div class="escala"><button data-escala="-1" title="Diminuir fonte">A−</button>' +
-        '<div class="pc">' + Math.round((r.escala || 1) * 100) + '%</div>' +
-        '<button data-escala="1" title="Aumentar fonte">A+</button></div>' +
-        '<button class="auto-bt' + (r.escala_automatica ? ' on' : '') + '" data-auto title="Ajusta a fonte sozinho">auto</button>' +
-        '<div class="menu"><button class="ico">⋯</button><div class="lista">' +
-          '<button data-acao="enviar-aprovacao">Enviar para aprovação</button><hr>' +
-          '<button data-acao="baixar">Baixar roteiro</button>' +
-          '<button data-acao="espiar">Visualização rápida</button>' +
-          '<button data-acao="apresentar">Apresentar roteiros</button>' +
-          (window.B7.Teleprompter && B7.Teleprompter.podeUsar && !B7.Teleprompter.podeUsar() ? '' : '<button data-acao="teleprompter">Abrir Teleprompter</button><hr>') +
-          '<button data-acao="duplicar">Duplicar roteiro</button>' +
-          '<button data-acao="mover">Mover para…</button>' +
-          '<button data-acao="duplicar-para">Duplicar para…</button>' +
-          '<button data-acao="novo">Novo roteiro</button>' +
-          '<button data-acao="fixar">' + (r.is_pinned ? 'Desafixar' : 'Fixar roteiro') + '</button><hr>' +
-          '<button class="perigo" data-acao="excluir">Excluir roteiro</button>' +
-        '</div></div>' +
-      '</div><div class="bloco-corpo">' +
-        /* IA que analisa o roteiro inteiro (não altera nada) */
-        (B7.IAAnalise && !soLeitura() ? B7.IAAnalise.botoesHTML(r, cenas) : '') +
-        '<div class="mb" id="ap-status-roteiro">' + (B7.Aprovacoes ? B7.Aprovacoes.blocoStatus(E.aprovacoes[r.id], { botaoEnviar: !soLeitura() }) : '') + '</div>' +
-        '<div class="mb"><label class="rot">TÍTULO</label>' +
-        '<input class="campo" data-campo="titulo" placeholder="Título do roteiro" value="' + esc(r.titulo) + '"></div>' +
-        '<div class="mb"><label class="rot">OBJETIVO DO ROTEIRO</label>' +
-        '<textarea class="campo cresce" data-campo="objetivo" rows="2" placeholder="O que esse vídeo precisa gerar">' + esc(r.objetivo) + '</textarea></div>' +
-        '<div class="mb"><label class="rot">ESTÁGIO DO ROTEIRO</label>' +
-        '<div class="opcoes" id="revisao">' + B7.UI.REVISAO.map(v =>
-          '<button data-rev="' + v + '"' + ((r.status || 'Em criação') === v ? ' class="on"' : '') + '>' +
-          v + '</button>').join('') + '</div></div>' +
-        '<div class="mb"><label class="rot">OBSERVAÇÃO DE GRAVAÇÃO</label>' +
-        '<textarea class="campo cresce" data-campo="observacao_gravacao" rows="2" placeholder="Ex: plano fechado, mais energia, pausa antes do CTA">' + esc(r.observacao_gravacao) + '</textarea>' +
-        '<div class="ajuda">Não faz parte da fala. Sai na folha como nota de produção.</div></div>' +
-        '<div class="nota-b7"><label class="rot">NOTA INTERNA B7</label>' +
-        '<textarea class="campo cresce" data-campo="nota_interna" rows="2" ' +
-          'placeholder="Só a equipe vê. Ex: cliente pediu para evitar a palavra promoção.">' +
-          esc(r.nota_interna || '') + '</textarea>' +
-        '<div class="ajuda">Nunca entra no roteiro, na folha A4, no PDF nem no PNG.</div></div>' +
-      '</div></div>' +
-
-      '<div class="bloco"><div class="bloco-topo"><div class="rn">CENAS</div>' +
-        '<span style="font-size:12px;color:var(--grey)">' + cenas.length + '</span></div>' +
-        '<div class="bloco-corpo" id="lista-cenas">' +
-          cenas.map((c, i) => cenaHTML(c, i)).join('') +
-          '<button class="add-largo" id="bt-add-cena">+ NOVA CENA</button>' +
-        '</div></div>';
+      '<div class="ed2">' +
+      '<div class="ed2-cab">' +
+        '<div class="ed2-meta"><span class="ed2-n">Roteiro ' + String(idx + 1).padStart(2, '0') + '</span>' +
+          '<span class="ed2-pt">·</span><span>' + cenas.length + ' cena' + (cenas.length === 1 ? '' : 's') + '</span>' +
+          '<span class="ed2-estagio">' + esc(estagio) + '</span>' +
+          '<div class="menu ed2-menu"><button class="ico" aria-label="Mais ações do roteiro">⋯</button><div class="lista">' +
+            '<button data-acao="enviar-aprovacao">Enviar para aprovação</button><hr>' +
+            '<button data-acao="baixar">Baixar roteiro</button>' +
+            '<button data-acao="espiar">Visualização rápida</button>' +
+            '<button data-acao="apresentar">Apresentar roteiros</button>' +
+            (window.B7.Teleprompter && B7.Teleprompter.podeUsar && !B7.Teleprompter.podeUsar() ? '' : '<button data-acao="teleprompter">Abrir Teleprompter</button><hr>') +
+            '<button data-acao="duplicar">Duplicar roteiro</button>' +
+            '<button data-acao="mover">Mover para…</button>' +
+            '<button data-acao="duplicar-para">Duplicar para…</button>' +
+            '<button data-acao="novo">Novo roteiro</button>' +
+            '<button data-acao="fixar">' + (r.is_pinned ? 'Desafixar' : 'Fixar roteiro') + '</button><hr>' +
+            '<button class="perigo" data-acao="excluir">Excluir roteiro</button>' +
+          '</div></div></div>' +
+        '<textarea class="ed2-titulo cresce" data-campo="titulo" rows="1" placeholder="Título do roteiro">' + esc(r.titulo) + '</textarea>' +
+        (vazio(r.objetivo) ? '' : '<p class="ed2-obj">' + esc(r.objetivo) + '</p>') +
+        '<button class="ed2-det-bt' + (detalhesAbertos ? ' on' : '') + '" id="ed2-det-bt" aria-expanded="' + detalhesAbertos + '">' +
+          '<span>Detalhes</span><small>objetivo, estágio, notas' + (ia ? ', IA' : '') + ' e aprovação</small><i>▾</i></button>' +
+        '<div class="ed2-det"' + (detalhesAbertos ? '' : ' hidden') + ' id="ed2-det">' +
+          ia +
+          '<div class="mb" id="ap-status-roteiro">' + (B7.Aprovacoes ? B7.Aprovacoes.blocoStatus(E.aprovacoes[r.id], { botaoEnviar: !soLeitura() }) : '') + '</div>' +
+          '<div class="mb"><label class="rot">OBJETIVO DO ROTEIRO</label>' +
+          '<textarea class="campo cresce" data-campo="objetivo" rows="2" placeholder="O que esse vídeo precisa gerar">' + esc(r.objetivo) + '</textarea></div>' +
+          '<div class="mb"><label class="rot">ESTÁGIO DO ROTEIRO</label>' +
+          '<div class="opcoes" id="revisao">' + B7.UI.REVISAO.map(v =>
+            '<button data-rev="' + v + '"' + (estagio === v ? ' class="on"' : '') + '>' + v + '</button>').join('') + '</div></div>' +
+          '<div class="mb"><label class="rot">OBSERVAÇÃO DE GRAVAÇÃO</label>' +
+          '<textarea class="campo cresce" data-campo="observacao_gravacao" rows="2" placeholder="Ex: plano fechado, mais energia, pausa antes do CTA">' + esc(r.observacao_gravacao) + '</textarea>' +
+          '<div class="ajuda">Não faz parte da fala. Sai na folha como nota de produção.</div></div>' +
+          '<div class="nota-b7"><label class="rot">NOTA INTERNA B7</label>' +
+          '<textarea class="campo cresce" data-campo="nota_interna" rows="2" placeholder="Só a equipe vê. Ex: cliente pediu para evitar a palavra promoção.">' + esc(r.nota_interna || '') + '</textarea>' +
+          '<div class="ajuda">Nunca entra no roteiro, na folha A4, no PDF nem no PNG.</div></div>' +
+          '<div class="mb ed2-fonte"><label class="rot">TAMANHO DA LETRA NA FOLHA</label><div class="ed2-fonte-l">' +
+            '<div class="escala"><button data-escala="-1" title="Diminuir fonte">A−</button>' +
+            '<div class="pc">' + Math.round((r.escala || 1) * 100) + '%</div>' +
+            '<button data-escala="1" title="Aumentar fonte">A+</button></div>' +
+            '<button class="auto-bt' + (r.escala_automatica ? ' on' : '') + '" data-auto title="Ajusta a fonte sozinho">auto</button></div></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ed2-cenas" id="lista-cenas">' +
+        cenas.map((c, i) => cenaHTML(c, i)).join('') +
+        '<button class="ed2-add" id="bt-add-cena"><i>+</i>Nova cena</button>' +
+      '</div>' +
+      (soLeitura() ? '' : '<div class="ed2-barra">' +
+        '<button class="ed2-b" data-ed2="cena"><i>+</i><span>Cena</span></button>' +
+        (ia ? '<button class="ed2-b" data-ed2="ia">' + IC_IA + '<span>IA</span></button>' : '') +
+        '<button class="ed2-b" data-ed2="previa"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Prévia</span></button>' +
+        '<button class="ed2-b pri" data-ed2="enviar"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M4 12l16-8-6 16-3-7z"/></svg><span>Enviar</span></button>' +
+      '</div>') +
+      '</div>';
 
     ligarEscrita(r);
     B7.UI.ligarMenus(cx);
@@ -571,40 +587,39 @@ B7.Editor = (function () {
     if (campo) { try { campo.focus({ preventScroll: true }); } catch (e) {} }
   }
 
+  /* 4.48.0: cena na linha do tempo — número na bolinha (cor do tipo),
+     tipo numa etiqueta que abre a lista de tipos, direção em linha, texto
+     sem caixa. "Melhorar com IA" aparece quando a cena está em foco. */
+  const CHAVE_TIPO = { 'Gancho': 'gancho', 'Narrativa': 'narrativa', 'Narração': 'narracao', 'CTA': 'cta' };
   function cenaHTML(c, i) {
     const fechada = fechadas.has(c.id);
     const falta = c.tipo === 'Narração' && !String(c.sugestao_cenas || '').trim();
-    const tipos = TIPOS.map(t =>
-      '<button data-tipo="' + t + '"' + (c.tipo === t ? ' class="on"' : '') + '>' + t + '</button>').join('');
-
-    return '<div class="entre" data-antes="' + i + '"><button>+ ADICIONAR CENA</button></div>' +
-      '<div class="cena' + (fechada ? ' fechada' : '') + (falta ? ' alerta' : '') + '" data-cena="' + esc(c.id) + '" draggable="true">' +
-      '<div class="cena-topo">' +
-        '<span class="puxa" title="Arraste para reordenar">⠿</span>' +
-        '<div class="rot"><span class="pt t-' + esc(c.tipo) + '"></span>CENA ' + (i + 1) +
-          '<span class="dir">' + esc(c.direcao || '') + '</span></div>' +
-        '<div class="menu"><button class="ico" data-menu>⋯</button><div class="lista">' +
-          '<button data-c-acao="duplicar">Duplicar cena</button>' +
-          '<button data-c-acao="cima">Mover para cima</button>' +
-          '<button data-c-acao="baixo">Mover para baixo</button><hr>' +
-          '<button class="perigo" data-c-acao="excluir">Excluir cena</button>' +
-        '</div></div>' +
-        '<span class="abre">▾</span>' +
-      '</div>' +
-      '<div class="cena-corpo">' +
-        '<div class="tipos">' + tipos + '</div>' +
-        '<input class="campo" data-c-campo="direcao" placeholder="DIREÇÃO" ' +
-          'style="padding:8px 12px;font-size:12px;letter-spacing:.06em;margin-bottom:10px" value="' + esc(c.direcao) + '">' +
-        '<textarea class="campo cresce" data-c-campo="texto" rows="3" ' +
-          'placeholder="Texto da cena — Enter cria um novo parágrafo">' + esc(c.texto) + '</textarea>' +
-        /* assistente de IA do texto desta cena (só existe se o recurso estiver ligado) */
-        (B7.IARoteiro && !soLeitura() ? B7.IARoteiro.html(c) : '') +
-        (c.tipo === 'Narração' ?
-          '<div class="sugestao-cx' + (falta ? ' falta' : '') + '">' +
-          '<label class="rot">SUGESTÃO DE CENAS' + (falta ? ' · OBRIGATÓRIO' : '') + '</label>' +
-          '<textarea class="campo cresce" data-c-campo="sugestao_cenas" rows="2" ' +
-            'placeholder="Uma imagem por linha">' + esc(c.sugestao_cenas) + '</textarea>' +
-          '<div class="ajuda">Cada linha vira um item da lista na folha.</div></div>' : '') +
+    const k = CHAVE_TIPO[c.tipo] || 'narrativa';
+    return '<div class="entre" data-antes="' + i + '"><button aria-label="Adicionar cena aqui">+</button></div>' +
+      '<div class="cena ed2-cena c-' + k + (fechada ? ' fechada' : '') + (falta ? ' alerta' : '') + '" data-cena="' + esc(c.id) + '" draggable="true">' +
+      '<div class="cena-topo" title="Recolher / abrir"><span class="ed2-bola">' + (i + 1) + '</span></div>' +
+      '<div class="ed2-cena-cx">' +
+        '<div class="ed2-cena-meta">' +
+          '<div class="menu ed2-tipo-menu"><button class="ed2-tipo" aria-label="Tipo da cena">' + esc(c.tipo || 'Narrativa') + '<i>▾</i></button><div class="lista">' +
+            TIPOS.map(t => '<button data-tipo="' + t + '"' + (c.tipo === t ? ' class="on"' : '') + '>' + t + '</button>').join('') + '</div></div>' +
+          '<input class="ed2-dir" data-c-campo="direcao" placeholder="Direção (ex.: direto pra câmera)" value="' + esc(c.direcao) + '" aria-label="Direção da cena">' +
+          '<span class="puxa" title="Arraste para reordenar">⠿</span>' +
+          '<div class="menu"><button class="ico" data-menu aria-label="Ações da cena">⋯</button><div class="lista">' +
+            '<button data-c-acao="duplicar">Duplicar cena</button>' +
+            '<button data-c-acao="cima">Mover para cima</button>' +
+            '<button data-c-acao="baixo">Mover para baixo</button><hr>' +
+            '<button class="perigo" data-c-acao="excluir">Excluir cena</button>' +
+          '</div></div>' +
+        '</div>' +
+        '<div class="cena-corpo">' +
+          '<textarea class="ed2-texto cresce" data-c-campo="texto" rows="2" placeholder="Escreva a fala desta cena…">' + esc(c.texto) + '</textarea>' +
+          (c.tipo === 'Narração' ?
+            '<div class="sugestao-cx ed2-sug' + (falta ? ' falta' : '') + '">' +
+            '<label class="rot">IMAGENS DA NARRAÇÃO' + (falta ? ' · OBRIGATÓRIO' : '') + '</label>' +
+            '<textarea class="cresce" data-c-campo="sugestao_cenas" rows="1" placeholder="Uma imagem por linha (ex.: motorista buscando o pedido)">' + esc(c.sugestao_cenas) + '</textarea></div>' : '') +
+          /* assistente de IA do texto desta cena (só existe se o recurso estiver ligado) */
+          (B7.IARoteiro && !soLeitura() ? B7.IARoteiro.html(c) : '') +
+        '</div>' +
       '</div></div>';
   }
 
@@ -675,6 +690,36 @@ B7.Editor = (function () {
       if (a === 'excluir') excluirRoteiro(r.id);
     });
 
+    /* 4.48.0: título — Enter vai para a primeira cena (o título não quebra linha) */
+    const tit = cx.querySelector('.ed2-titulo');
+    if (tit) tit.addEventListener('keydown', ev => {
+      if (ev.key !== 'Enter') return;
+      ev.preventDefault();
+      const t1 = cx.querySelector('#lista-cenas [data-c-campo="texto"]');
+      if (t1) t1.focus(); else tit.blur();
+    });
+    /* painel Detalhes */
+    const detBt = cx.querySelector('#ed2-det-bt'), det = cx.querySelector('#ed2-det');
+    if (detBt && det) detBt.onclick = () => {
+      detalhesAbertos = det.hidden;
+      det.hidden = !detalhesAbertos;
+      detBt.classList.toggle('on', detalhesAbertos);
+      detBt.setAttribute('aria-expanded', String(detalhesAbertos));
+      if (detalhesAbertos) det.querySelectorAll('textarea.cresce').forEach(B7.UI.autoAltura);
+    };
+    /* barra de baixo */
+    cx.querySelectorAll('[data-ed2]').forEach(b => b.onclick = () => {
+      const a = b.dataset.ed2;
+      if (a === 'cena') return novaCena(r.id, (E.cenas[r.id] || []).length);
+      if (a === 'enviar') return enviarParaAprovacao();
+      if (a === 'previa') { const ab = document.querySelector('#tela-editor .abas [data-aba="previa"]'); if (ab && getComputedStyle(ab).display !== 'none' && ab.offsetParent) ab.click(); else espiar(r); return; }
+      if (a === 'ia') {
+        if (det && det.hidden) detBt.click();
+        const bloco = cx.querySelector('.ia-bloco');
+        if (bloco) { bloco.scrollIntoView({ block: 'center', behavior: 'smooth' }); bloco.classList.add('ia-alvo'); setTimeout(() => bloco.classList.remove('ia-alvo'), 1800); }
+      }
+    });
+
     /* cenas */
     cx.querySelectorAll('.cena').forEach(el => ligarCena(el, r));
     cx.querySelectorAll('.entre').forEach(e => {
@@ -714,13 +759,13 @@ B7.Editor = (function () {
         const nome = campo.dataset.cCampo;
         cena[nome] = campo.value;
         B7.Save.campo('cenas', id, { [nome]: campo.value });
-        if (nome === 'direcao') el.querySelector('.cena-topo .dir').textContent = campo.value;
+        if (nome === 'direcao') { const d = el.querySelector('.cena-topo .dir'); if (d) d.textContent = campo.value; }
         if (nome === 'sugestao_cenas') {
           const cx = el.querySelector('.sugestao-cx');
           const falta = !campo.value.trim();
           cx.classList.toggle('falta', falta);
           el.classList.toggle('alerta', falta);
-          cx.querySelector('.rot').textContent = 'SUGESTÃO DE CENAS' + (falta ? ' · OBRIGATÓRIO' : '');
+          cx.querySelector('.rot').textContent = 'IMAGENS DA NARRAÇÃO' + (falta ? ' · OBRIGATÓRIO' : '');
         }
         renderPrevia();
       };

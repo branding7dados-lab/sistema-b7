@@ -25,6 +25,13 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.48.0', versao: '4.48.0', em: '2026-11-14T18:00:00-03:00',
+    titulo: 'Tela de escrever roteiro reformulada',
+    itens: ['O editor abre direto no título e nas cenas, como um documento: as cenas ficam numa linha do tempo numerada, com a cor do tipo.',
+      'Para trocar o tipo da cena, toque na etiqueta (Gancho, Narrativa, Narração, CTA). A direção fica na mesma linha e o texto não tem mais caixa.',
+      'Objetivo, estágio, observação de gravação, nota interna, tamanho da letra, IA e aprovação ficam em "Detalhes".',
+      'Embaixo, uma barra fixa com + Cena, IA, Prévia e Enviar. "Melhorar com IA" aparece na cena que você está escrevendo.',
+      'No app Android, o topo do editor não fica mais por baixo da barra de status.'] },
   { id: 'v-4.47.3', versao: '4.47.3', em: '2026-11-14T16:30:00-03:00',
     titulo: 'Apresentação da linha editorial com o visual novo',
     itens: ['A apresentação (16:9) segue o mesmo estilo do PDF: capa nova, o mês num olhar com o calendário de postagens e os posts em três colunas de cartões.',

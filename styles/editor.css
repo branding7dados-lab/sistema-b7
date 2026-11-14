@@ -379,3 +379,121 @@ body.ed-geral #ap-status-roteiro,body.ed-geral [data-acao="enviar-aprovacao"]{di
   #tela-editor > .topo{height:calc(58px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
     padding-top:var(--safe-area-inset-top, env(safe-area-inset-top, 0px));}
 }
+
+/* =====================================================================
+   4.48.0 — EDITOR DE ROTEIRO: ESCRITA EM PRIMEIRO LUGAR (.ed2)
+   Abre no título e nas cenas, como um documento. Cenas numa linha do
+   tempo (igual à folha), tipo em etiqueta, texto sem caixa. O resto
+   fica em "Detalhes"; as ações do dia a dia na barra de baixo.
+   ===================================================================== */
+.ed2{position:relative;min-height:100%;display:flex;flex-direction:column;
+  --c-gancho:#C21C83;--c-narrativa:var(--ink-2);--c-narracao:#6B3FD6;--c-cta:#1B2A8F;}
+[data-tema="escuro"] .ed2,html[data-theme="dark"] .ed2{--c-gancho:#F06AB8;--c-narracao:#A88BFF;--c-cta:#8FA4FF;}
+.ed2-cab{background:var(--card);border:1px solid var(--borda);border-radius:22px;padding:16px 18px 12px;box-shadow:var(--sh-1);}
+.ed2-meta{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;color:var(--ink-3);}
+.ed2-n{font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--acento);}
+.ed2-pt{opacity:.6;}
+.ed2-estagio{margin-left:6px;padding:3px 9px;border-radius:99px;background:var(--acento-suave);color:var(--acento);font-weight:700;font-size:11px;}
+.ed2-menu{margin-left:auto;}
+.ed2-titulo{display:block;width:100%;margin:8px 0 2px;padding:0;border:0;background:none;resize:none;overflow:hidden;outline:none;
+  font-family:'B7 Titulo',var(--fonte,inherit);font-weight:800;font-size:25px;line-height:1.18;letter-spacing:-.025em;color:var(--ink);}
+.ed2-titulo::placeholder{color:var(--ink-4,var(--ink-3));}
+.ed2-obj{margin:4px 0 0;font-size:13.5px;line-height:1.45;color:var(--ink-3);}
+.ed2-det-bt{display:flex;align-items:center;gap:8px;width:100%;margin-top:10px;padding:9px 0 2px;border:0;border-top:1px solid var(--borda);background:none;
+  cursor:pointer;color:var(--ink-2);text-align:left;font:inherit;}
+.ed2-det-bt span{font-weight:700;font-size:13px;}
+.ed2-det-bt small{flex:1;min-width:0;font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ed2-det-bt i{font-style:normal;transition:transform .25s;color:var(--ink-3);}
+.ed2-det-bt.on i{transform:rotate(180deg);}
+.ed2-det{padding-top:12px;}
+.ed2-det .ia-bloco{margin-bottom:12px;}
+.ed2-fonte-l{display:flex;align-items:center;gap:8px;}
+
+/* cenas */
+.ed2-cenas{position:relative;padding:14px 2px 6px;flex:1;}
+.ed2-cenas:before{content:"";position:absolute;left:19px;top:30px;bottom:60px;width:2px;border-radius:2px;
+  background:linear-gradient(180deg,var(--c-gancho),var(--c-narracao) 60%,var(--c-cta));opacity:.22;}
+.ed2-cena{position:relative;display:flex;gap:12px;align-items:flex-start;padding:4px 0;background:none;border:0;box-shadow:none;}
+.ed2-cena .cena-topo{flex:none;padding:0;background:none;border:0;cursor:pointer;}
+.ed2-bola{position:relative;z-index:1;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'B7 Titulo',inherit;font-weight:800;font-size:14px;background:var(--card);color:var(--c-tipo);border:2px solid var(--c-tipo);}
+.c-gancho{--c-tipo:var(--c-gancho);} .c-narrativa{--c-tipo:var(--c-narrativa);} .c-narracao{--c-tipo:var(--c-narracao);} .c-cta{--c-tipo:var(--c-cta);}
+.c-gancho .ed2-bola,.c-cta .ed2-bola{background:var(--c-tipo);color:#fff;}
+.ed2-cena-cx{flex:1;min-width:0;background:var(--card);border:1px solid var(--borda);border-radius:18px;padding:10px 12px 10px 14px;
+  transition:border-color .2s, box-shadow .2s;}
+.ed2-cena:focus-within .ed2-cena-cx{border-color:color-mix(in srgb,var(--c-tipo) 45%,var(--borda));box-shadow:0 10px 26px -18px color-mix(in srgb,var(--c-tipo) 70%,transparent);}
+.ed2-cena-meta{display:flex;align-items:center;gap:6px;min-width:0;}
+.ed2-tipo{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;border:0;cursor:pointer;
+  background:color-mix(in srgb,var(--c-tipo) 13%,transparent);color:var(--c-tipo);font-weight:800;font-size:11px;line-height:1;font-family:inherit;letter-spacing:.08em;text-transform:uppercase;}
+.ed2-tipo i{font-style:normal;font-size:9px;opacity:.7;}
+.ed2-tipo-menu .lista button.on{color:var(--acento);font-weight:700;}
+.ed2-dir{flex:1;min-width:0;padding:4px 4px;border:0;background:none;outline:none;font-weight:600;font-size:11.5px;line-height:1.2;font-family:inherit;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);}
+.ed2-dir:focus{color:var(--ink-2);}
+.ed2-cena .puxa{cursor:grab;color:var(--ink-4,var(--ink-3));padding:0 2px;}
+.ed2-cena .menu > .ico{width:30px;height:30px;}
+.ed2-texto{display:block;width:100%;margin-top:6px;padding:2px 0;border:0;background:none;resize:none;overflow:hidden;outline:none;
+  font-weight:400;font-size:16px;line-height:1.6;font-family:inherit;color:var(--ink);}
+.c-gancho .ed2-texto{font-family:'B7 Titulo',inherit;font-weight:700;font-size:17px;line-height:1.45;}
+.c-cta .ed2-texto{font-weight:600;}
+.c-narracao .ed2-texto{font-style:italic;color:var(--ink-2);}
+.ed2-texto::placeholder{color:var(--ink-4,var(--ink-3));font-style:normal;}
+.ed2-sug{margin-top:8px;padding:8px 10px;border-radius:12px;border:1.2px dashed color-mix(in srgb,var(--c-narracao) 40%,var(--borda));background:none;}
+.ed2-sug .rot{font-size:10px;letter-spacing:.12em;color:var(--c-narracao);margin:0 0 3px;}
+.ed2-sug textarea{display:block;width:100%;border:0;background:none;resize:none;overflow:hidden;outline:none;font-weight:400;font-size:14px;line-height:1.5;font-family:inherit;color:var(--ink-2);padding:0;}
+.ed2-sug.falta{border-color:var(--erro);}
+.ed2-sug.falta .rot{color:var(--erro);}
+/* "Melhorar com IA": só na cena em foco (ou com o painel aberto) */
+.ed2-cena .ia-rot{margin-top:6px;}
+.ed2-cena .ia-rot > .ia-entrada{height:30px;padding:0 10px;font-size:12px;opacity:0;max-height:0;overflow:hidden;transition:opacity .2s, max-height .2s;}
+.ed2-cena:focus-within .ia-rot > .ia-entrada,.ed2-cena .ia-rot > .ia-entrada[aria-expanded="true"]{opacity:1;max-height:40px;}
+/* recolhida: só a primeira linha do texto */
+.ed2-cena.fechada .cena-corpo{max-height:26px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 40%,transparent);mask-image:linear-gradient(#000 40%,transparent);}
+.ed2-cena.fechada .ed2-bola{opacity:.75;}
+.ed2-cena.alerta .ed2-cena-cx{border-color:color-mix(in srgb,var(--erro) 40%,var(--borda));}
+.ed2-cena.arrastando{opacity:.5;}
+.ed2-cena.alvo-drop .ed2-cena-cx{border-color:var(--acento);}
+.ed2-cena.ia-alvo .ed2-cena-cx{box-shadow:0 0 0 3px var(--acento-suave);}
+/* adicionar entre cenas: um "+" discreto na linha do tempo */
+.ed2-cenas .entre{position:relative;height:10px;margin:0;}
+.ed2-cenas .entre button{position:absolute;left:9px;top:-6px;z-index:2;width:22px;height:22px;border-radius:50%;border:1px solid var(--borda);background:var(--card);
+  color:var(--ink-3);font-size:14px;line-height:1;padding:0;opacity:0;transition:opacity .2s;cursor:pointer;}
+.ed2-cenas .entre:hover button,.ed2-cenas .entre button:focus{opacity:1;}
+.ed2-add{display:flex;align-items:center;gap:12px;margin:10px 0 0;padding:6px 0;border:0;background:none;color:var(--ink-3);font-weight:700;font-size:13px;font-family:inherit;cursor:pointer;}
+.ed2-add i{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:20px;
+  border:2px dashed var(--borda-forte,var(--borda));background:var(--card);}
+.ed2-add:hover{color:var(--acento);}
+
+/* barra de ações (fica presa embaixo enquanto rola) */
+.ed2-barra{position:sticky;bottom:12px;z-index:5;display:flex;gap:6px;margin:16px auto 0;padding:6px;border-radius:20px;width:max-content;max-width:100%;
+  background:color-mix(in srgb,var(--card) 92%,transparent);border:1px solid var(--borda);box-shadow:var(--sh-2);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);}
+.ed2-b{display:flex;align-items:center;gap:6px;height:42px;padding:0 14px;border:0;border-radius:14px;background:none;cursor:pointer;
+  color:var(--ink-2);font-weight:700;font-size:13.5px;font-family:inherit;}
+.ed2-b i{font-style:normal;font-size:19px;line-height:1;}
+.ed2-b svg{width:18px;height:18px;}
+.ed2-b:hover{background:var(--acento-suave);color:var(--acento);}
+.ed2-b.pri{background:linear-gradient(118deg,#3A1E86,#9A2AA8 60%,#C21C83);color:#fff;}
+.ed2-b.pri:hover{color:#fff;filter:brightness(1.08);}
+
+@media (max-width:860px){
+  #tela-editor .escrita{padding:12px 12px 24px;}
+  .ed2-cab{border-radius:20px;padding:14px 14px 10px;}
+  .ed2-titulo{font-size:23px;}
+  .ed2-cenas{padding-left:0;}
+  .ed2-cenas:before{left:17px;}
+  .ed2-bola{width:32px;height:32px;font-size:13px;}
+  .ed2-cena{gap:9px;}
+  .ed2-cena .puxa{display:none;}
+  .ed2-cenas .entre button{left:5px;opacity:.85;}
+  .ed2-barra{bottom:calc(10px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));width:100%;justify-content:space-between;}
+  .ed2-b{flex:1;justify-content:center;flex-direction:column;gap:2px;height:52px;padding:0 4px;font-size:11.5px;}
+  #tela-editor .fab-ia,#tela-editor .ia-fab{display:none;}
+}
+
+.ed2-cena .cena-corpo{padding:0;border:0;background:none;}
+.ed2-cena .ed2-texto{min-height:0;}
+.ed2-cena{margin-bottom:0;border-radius:0;}
+.ed2-cena .ia-rot > .ia-entrada{display:none !important;}
+.ed2-cena:focus-within .ia-rot > .ia-entrada,.ed2-cena .ia-rot > .ia-entrada[aria-expanded="true"]{display:inline-flex !important;opacity:1;max-height:none;height:32px;}
+.ed2-cena .ia-rot{margin-top:0;}
+.ed2-cena:focus-within .ia-rot{margin-top:6px;}
