@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.47.3', versao: '4.47.3', em: '2026-11-14T16:30:00-03:00',
+    titulo: 'Apresentação da linha editorial com o visual novo',
+    itens: ['A apresentação (16:9) segue o mesmo estilo do PDF: capa nova, o mês num olhar com o calendário de postagens e os posts em três colunas de cartões.',
+      'Na apresentação, tocar num cartão continua abrindo os detalhes do conteúdo.'] },
   { id: 'v-4.47.2', versao: '4.47.2', em: '2026-11-14T15:30:00-03:00',
     titulo: 'Linha editorial em PDF refeita e capas novas',
     itens: ['O PDF da linha editorial começa com o mês num olhar: números por formato, objetivo e posicionamento em cartões e um calendário com cada post no seu dia.',

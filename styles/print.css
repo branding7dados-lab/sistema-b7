@@ -1333,3 +1333,46 @@
 .cp-cli-logo,.l2-logo,.rt-cli-logo{padding:0 !important;background:#fff;}
 .cp-cli-logo img,.l2-logo img,.rt-cli-logo img{width:100% !important;height:100% !important;object-fit:cover !important;display:block;}
 .rt-cli-logo{border-radius:10px !important;}
+
+/* =====================================================================
+   4.47.3 — APRESENTAÇÃO NOVA (16:9)
+   ===================================================================== */
+.slide.s2{padding:11mm 14mm 9mm;}
+.slide.s2 .sl-topo{border-bottom:0;padding-bottom:0;}
+.slide.s2 .sl-topo .esq span{display:none;}
+.slide.s2 .sl-topo .dir{padding:4px 11px;border-radius:99px;background:#F7F4FC;letter-spacing:.16em;}
+.slide.s2 .sl-corpo{padding-top:5mm;display:flex;flex-direction:column;}
+.slide.s2 .sl-pe{border-top:0;padding-top:4mm;}
+.slide.s2 .sl-pe .n{color:var(--magenta);}
+.s2-sec{flex:none;}
+.s2-sec b{font-size:20px !important;}
+
+/* o mês num olhar */
+.s2-resumo{flex:1;min-height:0;display:flex;gap:7mm;}
+.s2-esq{flex:0 0 44%;min-width:0;display:flex;flex-direction:column;}
+.s2-dir{flex:1;min-width:0;display:flex;flex-direction:column;}
+.s2-dir .l2-cal{margin-top:0;}
+.s2-esq .l2-heroi-tx h1{font-size:24px;}
+.s2-cards{display:flex;flex-direction:column;gap:6px;margin-top:8px;flex:1;min-height:0;}
+.s2-cards .l2-card p{font-size:12px;}
+.s2-cards .l2-card.destaque p{font-size:15px;}
+.s2-estrat{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.s2-estrat .l2-card p{font-size:13px;line-height:1.55;}
+
+/* posts em três colunas */
+.s2-colunas{gap:7px;}
+.s2-colunas .l2-col{gap:7px;}
+.slide.s2 [data-cid]{cursor:pointer;}
+
+/* capa */
+.slide.s2-capa{padding:9mm;display:flex;flex-direction:row;gap:9mm;background:#fff;color:var(--ink,#15122B);}
+.s2-capa-painel{position:relative;overflow:hidden;flex:0 0 58%;border-radius:28px;color:#fff;padding:12mm 13mm;display:flex;flex-direction:column;
+  background:linear-gradient(140deg,#0B0512 0%,#1B1140 38%,#3A1E86 66%,#9A2AA8 88%,#C21C83 100%);}
+.s2-capa-painel h1{font-family:'B7 Titulo';font-weight:800;font-size:66px;line-height:.95;letter-spacing:-.045em;margin:0;color:#fff;}
+.s2-capa-lado{flex:1;min-width:0;display:flex;flex-direction:column;gap:6mm;padding:6mm 2mm 4mm 0;}
+.s2-capa-cli{display:flex;align-items:center;gap:14px;}
+.s2-capa-cli .cp-cli-logo{width:28mm;height:28mm;border-radius:22px;box-shadow:0 14px 30px -14px rgba(28,16,48,.45);border:1px solid var(--line,#E5E0EE);}
+.s2-capa-cli small{display:block;font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--grey,#8B85A0);}
+.s2-capa-cli b{display:block;font-family:'B7 Titulo';font-weight:800;font-size:24px;letter-spacing:-.02em;color:var(--ink,#15122B);margin-top:3px;}
+.s2-capa-lado .cp-lista{flex:1;}
+.s2-cards .l2-card{flex:1;display:flex;flex-direction:column;justify-content:center;}

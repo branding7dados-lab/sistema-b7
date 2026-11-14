@@ -373,8 +373,115 @@ B7.Slides = (function () {
     return lista;
   }
 
+  /* =================================================================
+     4.47.3 — APRESENTAÇÃO NOVA (mesma linguagem do PDF A4 da 4.47.2)
+     Capa clara · o mês num olhar (números, estratégia e calendário) ·
+     estratégia/pilares quando existem · posts em três colunas de
+     cartões (os mesmos cartões do PDF, vindos de B7.FolhaLinha; clicar
+     num cartão continua abrindo o detalhe do conteúdo).
+     ================================================================= */
+  function capa2(ctx) {
+    const l = ctx.linha, F = B7.FolhaLinha;
+    const formatos = ['Reel', 'Card', 'Carrossel', 'Story'].map(t => [t, ctx.conteudos.filter(c => c.tipo === t).length]).filter(x => x[1]);
+    const canais = (l.canais || '').split(',').map(x => x.trim()).filter(Boolean);
+    return '<div class="slide s2-capa">' +
+      '<div class="s2-capa-painel"><div class="cp-luz"></div><div class="cp-luz l2"></div>' +
+        '<div class="cp-topo"><img class="cp-marca" src="' + LOGO + '" alt="B7"><span class="cp-kicker">Planejamento de conteúdo</span></div>' +
+        '<div class="cp-miolo"><h1>Linha<br>editorial</h1><div class="cp-sub">' + esc(rotulo(l)) + (periodo(l) ? ' · ' + esc(periodo(l)) : '') + '</div></div>' +
+      '</div>' +
+      '<div class="s2-capa-lado">' +
+        '<div class="s2-capa-cli">' + (ctx.clienteLogo ? '<span class="cp-cli-logo"><img src="' + esc(ctx.clienteLogo) + '" alt=""></span>' : '') +
+          '<span><small>Cliente</small><b>' + esc(l.cliente_nome || '') + '</b></span></div>' +
+        '<div class="cp-dados">' + [['Conteúdos', String(ctx.conteudos.length) + (l.meta_conteudos ? ' de ' + l.meta_conteudos : '')], ['Canais', canais.join(', ')]]
+          .filter(d => d[1]).map(([r, v]) => '<div><small>' + r + '</small><b>' + esc(v) + '</b></div>').join('') + '</div>' +
+        (formatos.length ? '<div class="cp-lista"><div class="cp-lista-tit">Formatos do mês</div>' + formatos.map(([t, n]) =>
+          '<div class="cp-it"><b>' + n + '</b><span>' + (n === 1 ? t : F.TIPO_PLURAL[t]) + '</span></div>').join('') + '</div>' : '') +
+      '</div></div>';
+  }
+
+  function slideResumo(ctx) {
+    const l = ctx.linha, F = B7.FolhaLinha;
+    const formatos = ['Reel', 'Card', 'Carrossel', 'Story'].map(t => [t, ctx.conteudos.filter(c => c.tipo === t).length]).filter(x => x[1]);
+    const cards = [['Objetivo do mês', l.objetivo], ['Posicionamento', l.posicionamento], ['Tom de voz', l.tom_voz]].filter(x => !vazio(x[1]));
+    return '<div class="s2-resumo"><div class="s2-esq">' +
+      '<div class="l2-heroi">' + (ctx.clienteLogo ? '<span class="l2-logo"><img src="' + esc(ctx.clienteLogo) + '" alt=""></span>' : '') +
+        '<div class="l2-heroi-tx"><small>' + esc(l.cliente_nome || '') + '</small><h1>' + esc(rotulo(l)) + '</h1>' +
+          (periodo(l) ? '<span>' + esc(periodo(l)) + '</span>' : '') + '</div>' +
+        '<div class="l2-total"><b>' + ctx.conteudos.length + '</b><small>conteúdo' + (ctx.conteudos.length === 1 ? '' : 's') + (l.meta_conteudos ? ' de ' + l.meta_conteudos : '') + '</small></div></div>' +
+      (formatos.length ? '<div class="l2-formatos">' + formatos.map(([t, n]) => '<div class="t-' + F.TIPO_COR[t] + '"><i>' + F.ICONE[t] + '</i><b>' + n + '</b><small>' +
+        (n === 1 ? t : F.TIPO_PLURAL[t]) + '</small></div>').join('') + '</div>' : '') +
+      (cards.length ? '<div class="s2-cards">' + cards.map(([r, v], i) => '<div class="l2-card' + (i === 0 ? ' destaque' : '') + '"><b>' + r + '</b>' + paragrafos(v) + '</div>').join('') + '</div>' : '') +
+      '</div><div class="s2-dir">' + F.calendarioHTML(ctx) + '</div></div>';
+  }
+
+  function slidesPosts(ctx, area) {
+    const F = B7.FolhaLinha;
+    const cards = F.ordenarPorData(ctx.conteudos).map((c, i) => F.cartaoPost(c, i + 1, ctx));
+    if (!cards.length) return [];
+    const COLS = 3;
+    const corpo = (cols, primeira) => (primeira ? '<div class="l2-sec s2-sec"><b>Conteúdos do mês</b><span>' + cards.length + ' post' + (cards.length === 1 ? '' : 's') + ', em ordem de data</span></div>' :
+        '<div class="l2-sec s2-sec"><b>Conteúdos do mês</b><span>continuação</span></div>') +
+      '<div class="l2-colunas s2-colunas">' + cols.map(c => '<div class="l2-col">' + c.join('') + '</div>').join('') + '</div>';
+    let caixa = null;
+    try {
+      if (typeof document !== 'undefined' && area && area.appendChild) {
+        caixa = document.createElement('div');
+        caixa.style.cssText = 'position:absolute;left:-99999px;top:0;visibility:hidden;';
+        area.appendChild(caixa);
+      }
+    } catch (e) { caixa = null; }
+    const cabe = (cols, primeira, k) => {
+      if (!caixa) return cols[k].length <= 2;
+      caixa.innerHTML = slide(corpo(cols, primeira), { secao: 'CONTEÚDOS', rodape: '', num: 1 }).replace('<div class="slide"', '<div class="slide s2"');
+      const col = caixa.querySelectorAll('.l2-col')[k];
+      if (!col || !col.clientHeight) return cols[k].length <= 2;
+      return col.scrollHeight <= col.clientHeight + 2;
+    };
+    const lista = [];
+    let i = 0;
+    while (i < cards.length) {
+      const primeira = !lista.length, cols = [];
+      for (let k = 0; k < COLS; k++) cols.push([]);
+      for (let k = 0; k < COLS && i < cards.length; k++) {
+        while (i < cards.length) {
+          cols[k].push(cards[i]);
+          if (cabe(cols, primeira, k)) { i++; continue; }
+          cols[k].pop();
+          if (!cols[k].length) { cols[k].push(cards[i]); i++; }
+          break;
+        }
+      }
+      lista.push({ secao: 'CONTEÚDOS', html: corpo(cols, primeira) });
+    }
+    try { if (caixa) caixa.remove(); } catch (e) {}
+    return lista;
+  }
+
+  function slidesDo2(ctx, area) {
+    const l = ctx.linha;
+    const lista = [{ secao: 'O MÊS', html: slideResumo(ctx) }];
+    const extra = [['O que a estratégia pretende gerar', l.objetivo_detalhe], ['Proposta única de valor', l.puv], ['Percepção desejada', l.percepcao],
+      ['Observações', l.observacoes]].filter(x => !vazio(x[1]));
+    if (extra.length) lista.push({ secao: 'ESTRATÉGIA', html: '<div class="l2-sec s2-sec"><b>Estratégia</b></div><div class="s2-estrat">' +
+      extra.map(([r, v]) => '<div class="l2-card"><b>' + r + '</b>' + paragrafos(v) + '</div>').join('') + '</div>' });
+    /* pilares: o slide que já existia (cartões), com o cabeçalho novo via CSS */
+    slidesDo(ctx, area).filter(s => s.secao === 'PILARES').forEach(s => lista.push(s));
+    return lista.concat(slidesPosts(ctx, area));
+  }
+
+  function documentoHTML2(ctx, area) {
+    const lista = slidesDo2(ctx, area);
+    const rodape = (ctx.linha.cliente_nome || '') + ' · ' + rotulo(ctx.linha);
+    return (ctx.incluirCapa ? capa2(ctx) : '') +
+      lista.map((s, i) => slide(s.html, { secao: s.secao, rodape, num: i + 1 }).replace('<div class="slide"', '<div class="slide s2"')).join('');
+  }
+
   /* ------------------------------------------------------ documento */
   function documentoHTML(ctx, area) {
+    if (B7.FolhaLinha && B7.FolhaLinha.cartaoPost) return documentoHTML2(ctx, area);
+    return documentoAntigo(ctx, area);
+  }
+  function documentoAntigo(ctx, area) {
     const lista = slidesDo(ctx, area);
     const rodape = (ctx.linha.cliente_nome || '') + ' · ' + rotulo(ctx.linha);
     let n = 0;
@@ -386,7 +493,7 @@ B7.Slides = (function () {
   }
 
   /* quantos slides o documento terá, sem montar o HTML */
-  const contar = ctx => slidesDo(ctx).length + (ctx.incluirCapa ? 1 : 0);
+  const contar = ctx => (B7.FolhaLinha && B7.FolhaLinha.cartaoPost ? slidesDo2(ctx).length : slidesDo(ctx).length) + (ctx.incluirCapa ? 1 : 0);
 
   /* Espera fontes/imagens antes de medir — mesma regra usada na prévia.
      Compartilhada aqui porque tanto o modal de exportação (PNG "todos os
@@ -772,7 +879,10 @@ B7.PreviewLinha = (function () {
     '.sl-numeros > div', '.sl-dist > div', '.sl-chips > span',
     '.sl-pilar', '.sl-barra-total',
     '.sl-tabela thead', '.sl-tabela tbody tr',
-    '.sl-cri-topo', '.sl-cri-t', '.sl-slides .sl-slide', '.sl-txt', '.sl-links'
+    '.sl-cri-topo', '.sl-cri-t', '.sl-slides .sl-slide', '.sl-txt', '.sl-links',
+    /* 4.47.3: apresentação nova */
+    '.s2-capa-painel', '.s2-capa-cli', '.s2-capa-lado .cp-dados', '.s2-capa-lado .cp-it',
+    '.s2 .l2-heroi', '.s2 .l2-formatos > div', '.s2 .l2-card', '.s2 .l2-sec', '.s2 .l2-dia.tem', '.s2 .l2-post'
   ].join(',');
 
   /* Cada tipo de elemento chega do seu jeito — é isso que separa uma
@@ -787,7 +897,8 @@ B7.PreviewLinha = (function () {
     ['.sl-secao h2, .sl-cri-t', 'sl-ani-titulo'],
     ['.sl-risco', 'sl-ani-barra'],
     ['.sl-numeros > div', 'sl-ani-numero'],
-    ['.sl-pilar, .sl-slides .sl-slide', 'sl-ani-carta'],
+    ['.sl-pilar, .sl-slides .sl-slide, .s2 .l2-post, .s2 .l2-card, .s2 .l2-formatos > div, .s2-capa-lado .cp-it', 'sl-ani-carta'],
+    ['.s2 .l2-dia.tem', 'sl-ani-pop'],
     ['.sl-tabela tbody tr, .sl-dist > div, .sl-objetivo-hero, .sl-kicker, .sl-capa .olho', 'sl-ani-lado'],
     ['.sl-chips > span', 'sl-ani-pop'],
     ['.sl-tabela thead, .slide.escuro .marca', 'sl-ani-fade']

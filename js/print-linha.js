@@ -525,7 +525,7 @@ B7.FolhaLinha = (function () {
     if (c.tipo !== 'Card' && c.tipo !== 'Carrossel' && !vazio(c.cta)) corpo += nota('CTA', c.cta);
     if (!vazio(c.legenda)) corpo += '<div class="l2-leg"><b>Legenda</b>' + paragrafos(c.legenda) + '</div>';
     const pil = nomePilar(ctx, c.pilar_id);
-    return '<div class="l2-post t-' + TIPO_COR[c.tipo] + '">' +
+    return '<div class="l2-post t-' + TIPO_COR[c.tipo] + '" data-cid="' + esc(c.id) + '">' +
       '<div class="l2-post-cab">' +
         '<div class="l2-data">' + (d ? '<b>' + d.getDate() + '</b><small>' + MES_CURTO[d.getMonth()] + '</small>' : '<b>—</b><small>sem data</small>') + '</div>' +
         '<div class="l2-post-tit"><div class="l2-tags"><span class="l2-tipo">' + ICONE[c.tipo] + ' ' + esc(c.tipo) + '</span><span class="l2-n">#' + String(n).padStart(2, '0') + '</span>' +
@@ -614,7 +614,8 @@ B7.FolhaLinha = (function () {
     return html;
   }
 
-  return { documentoHTML, documentoMedidoHTML, documentoAntigoHTML, montarFolhas, blocosDocumento,
+  return { documentoHTML, documentoMedidoHTML, documentoAntigoHTML, cartaoPost, calendarioHTML, ordenarPorData,
+           TIPO_COR, TIPO_PLURAL, ICONE, montarFolhas, blocosDocumento,
            blocosVisao, blocosPilares, blocosCriativos, blocosTabela, criativoHTML,
            tituloSecao, aberturaCompacta, capaHTML };
 })();
