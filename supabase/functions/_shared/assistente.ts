@@ -284,6 +284,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
     const conv = convP || { jid, nome: String(raw.pushName || ''), cliente_id: null };
     const modoP = key.fromMe ? 'ordem' : dentroDoHorario(cfg.horario) ? 'marcado' : 'fora_horario';
     const autorP = key.fromMe ? 'Você' : String(raw.pushName || 'contato');
+    if (await talvezRecado(sb, cfg, raw, texto, jid, { quem: autorP, onde: 'conversa no privado', cliente: !key.fromMe })) return;
     const rp = await pensar(sb, cfg, conv, texto, autorP, modoP);
     if (!rp.resposta || /\[\[\s*SILENCIO\s*\]\]/i.test(rp.saida.texto)) return;
     await digitando(jid, cfg);
@@ -334,6 +335,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
     const { data: cl } = await sb.from('clientes').select('id, nome').eq('id', conv.cliente_id).maybeSingle();
     if (await talvezDocumento(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid, cl)) return;
   }
+  if (modo !== 'sem_marcacao' && await talvezRecado(sb, cfg, raw, texto, jid, { quem: autor, onde: 'grupo ' + (conv.nome || ''), cliente: !daCasa })) return;
   const r = await pensar(sb, cfg, conv, texto, autor, modo);
   if (!r.resposta || /\[\[\s*SILENCIO\s*\]\]/i.test(r.saida.texto)) {
     if (!r.saida.texto) await registrar(sb, { tipo: 'erro', jid, grupo: conv.nome, autor, pergunta: texto.slice(0, 800), ...usoDe(r.saida) });
@@ -603,11 +605,38 @@ async function pdfDaGravacao(sb: SupabaseClient, gravacaoId: string): Promise<{ 
   return { nome: nomeArq([g.cliente_nome, g.nome, 'ROTEIROS']), bytes };
 }
 
+/* =====================================================================
+   4.58.2 — RECADOS: "Otto, avisa o Kevin pra ele me responder no WhatsApp".
+   O Otto manda no privado da pessoa da equipe (cadastrada na aba Equipe)
+   dizendo quem pediu, de onde e o quê — e confirma para quem pediu.
+   ===================================================================== */
+const VERBO_RECADO = /\b(avis[ae]|avisar|fal[ae] (pr[ao]|com|para)|diz(er)? (pr[ao]|para)|manda(r)? (uma )?(mensagem|msg|recado) (pr[ao]|para)|cham[ae] (o|a)|ped[ei] (pr[ao]|para)|lembr[ae] (o|a)|recado (pr[ao]|para))\b/;
+async function talvezRecado(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string, origem: { quem: string; onde: string; cliente?: boolean }): Promise<boolean> {
+  const n = semAcento(texto);
+  if (!VERBO_RECADO.test(n)) return false;
+  const equipe = (cfg.equipe || []).filter(p => p.nome && p.numero);
+  /* quem deve receber: o primeiro nome de alguém da equipe citado no texto (não quem está pedindo) */
+  const alvo = equipe.find(p => { const pn = semAcento(String(p.nome).split(/\s+/)[0]); return pn.length >= 3 && new RegExp('(^|[^a-z0-9])' + pn + '([^a-z0-9]|$)').test(n) && semAcento(origem.quem).split(/\s+/)[0] !== pn; });
+  if (!alvo) return false;
+  const citar = raw?.key?.id ? { key: raw.key, message: { conversation: texto.slice(0, 200) } } : undefined;
+  const s = await ia(
+    `Você é ${cfg.nome}, assistente da agência Branding7. Escreva um RECADO curto (1 ou 2 frases, tom de WhatsApp, em primeira pessoa como assistente) para ${alvo.nome}, da equipe, ` +
+    'dizendo QUEM pediu, DE ONDE (grupo/conversa) e O QUE a pessoa quer — ex.: "Oi, Kevin! O Kaique pediu pra você responder ele no WhatsApp." Se houver assunto, inclua. Sem assinatura, sem listas.',
+    'PEDIDO (de ' + origem.quem + (origem.onde ? ', em ' + origem.onde : '') + (origem.cliente ? ', cliente' : '') + '): ' + texto.replace(/@\d{6,}/g, '').trim(), 200);
+  const recado = s.texto || ('Oi, ' + String(alvo.nome).split(/\s+/)[0] + '! ' + origem.quem + (origem.onde ? ' (' + origem.onde + ')' : '') + ' pediu: ' + texto.slice(0, 300));
+  const foi = await enviar(sb, cfg, dig(alvo.numero) + '@s.whatsapp.net', recado);
+  await registrar(sb, { tipo: foi ? 'recado' : 'erro', jid: destino, autor: origem.quem, pergunta: texto.slice(0, 500), resposta: 'para ' + alvo.nome + ': ' + recado.slice(0, 800), ...usoDe(s) });
+  await digitando(destino, cfg);
+  await enviar(sb, cfg, destino, foi ? 'Pronto, avisei ' + (/a$/i.test(String(alvo.nome).split(/\s+/)[0]) ? 'a ' : 'o ') + String(alvo.nome).split(/\s+/)[0] + ' 👍' : 'Não consegui mandar o recado agora, tenta de novo daqui a pouco.', citar ? { quoted: citar } : {});
+  return true;
+}
+
 /** Pergunta interna da equipe (grupo da equipe ou privado): pendências ou o que há de um cliente. */
 async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
   const key = raw?.key || {};
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
   if (await talvezDocumento(sb, cfg, raw, pedido, destino)) return;
+  if (await talvezRecado(sb, cfg, raw, pedido, destino, { quem: String(raw?.pushName || (key.fromMe ? 'Você' : 'alguém da equipe')), onde: destino === cfg.grupo_equipe ? 'grupo da equipe' : 'privado' })) return;
   if (/pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta|esperando resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true, destino); return; }
   const clientes = await clientesCitados(sb, pedido);
   let contexto = '';
