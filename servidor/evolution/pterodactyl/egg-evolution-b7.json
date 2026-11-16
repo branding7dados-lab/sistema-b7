@@ -1,0 +1,262 @@
+{
+  "_comment": "Egg do Evolution API v2.3.7 para o Sistema B7 (piloto). Importar em Admin -> Nests -> Import Egg.",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-11-16T22:30:00-03:00",
+  "name": "Evolution API (Sistema B7)",
+  "author": "egg@branding7.com.br",
+  "description": "Servidor do WhatsApp (Evolution API v2.3.7) para a Central de Conversas do Sistema B7. Banco MySQL do painel, cache local, chave da API gerada sozinha em .b7-chave.",
+  "features": null,
+  "docker_images": {
+    "Node 22": "ghcr.io/parkervcp/yolks:nodejs_22"
+  },
+  "file_denylist": [],
+  "startup": "if [ ! -f .b7-chave ]; then node -e 'process.stdout.write(require(\"crypto\").randomBytes(24).toString(\"hex\"))' > .b7-chave; fi; export AUTHENTICATION_API_KEY=$(cat .b7-chave); export DATABASE_CONNECTION_URI=\"mysql://${DB_USER}:$(node -e 'process.stdout.write(encodeURIComponent(process.env.DB_PASS||\"\"))')@${DB_HOST}:${DB_PORT}/${DB_NAME}\"; export SERVER_URL=$EVO_URL; if [ -z \"$SERVER_URL\" ]; then export SERVER_URL=http://localhost:$SERVER_PORT; fi; npm run db:deploy && node dist/main",
+  "config": {
+    "files": "{}",
+    "startup": "{\n    \"done\": \"HTTP - ON\"\n}",
+    "logs": "{}",
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/bash\n# Instala o Evolution API v2.3.7 (Sistema B7) na pasta do servidor.\nset -e\napt-get update -qq && apt-get install -y -qq git ca-certificates openssl > /dev/null\ncd /mnt/server\nif [ ! -f package.json ]; then\n  rm -rf /tmp/evo && git clone --depth 1 -b 2.3.7 https://github.com/EvolutionAPI/evolution-api.git /tmp/evo\n  cp -a /tmp/evo/. /mnt/server/ && rm -rf /tmp/evo\nfi\nexport NODE_OPTIONS=--max-old-space-size=1536\nnpm ci --no-audit --no-fund\nDATABASE_PROVIDER=mysql npm run db:generate\nnpx tsup\necho \"== Evolution instalado. Agora: aba Databases -> criar banco; aba Startup -> preencher DB_*; Start.\"\n",
+      "container": "node:22-bookworm",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Banco: tipo",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "DATABASE_PROVIDER",
+      "default_value": "mysql",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Cache local",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "CACHE_LOCAL_ENABLED",
+      "default_value": "true",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Redis",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "CACHE_REDIS_ENABLED",
+      "default_value": "false",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Salvar instância",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "DATABASE_SAVE_DATA_INSTANCE",
+      "default_value": "true",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Salvar mensagens",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "DATABASE_SAVE_DATA_NEW_MESSAGE",
+      "default_value": "true",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Salvar atualizações",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "DATABASE_SAVE_MESSAGE_UPDATE",
+      "default_value": "true",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Salvar contatos",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "DATABASE_SAVE_DATA_CONTACTS",
+      "default_value": "true",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Salvar conversas",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "DATABASE_SAVE_DATA_CHATS",
+      "default_value": "true",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Salvar histórico",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "DATABASE_SAVE_DATA_HISTORIC",
+      "default_value": "true",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Idioma",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "LANGUAGE",
+      "default_value": "pt-BR",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Nome do aparelho",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "CONFIG_SESSION_PHONE_CLIENT",
+      "default_value": "Sistema B7",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Navegador do aparelho",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "CONFIG_SESSION_PHONE_NAME",
+      "default_value": "Chrome",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Apagar instância parada",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "DEL_INSTANCE",
+      "default_value": "false",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Esconder chave nas listas",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES",
+      "default_value": "false",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Webhook global",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "WEBHOOK_GLOBAL_ENABLED",
+      "default_value": "false",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Log",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "LOG_LEVEL",
+      "default_value": "ERROR,WARN,INFO,LOG",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Tipo do servidor",
+      "description": "Fixo pelo Sistema B7.",
+      "env_variable": "SERVER_TYPE",
+      "default_value": "http",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Banco: host",
+      "description": "Endpoint do banco (aba Databases), só o host. Ex.: 10.0.0.5",
+      "env_variable": "DB_HOST",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:120",
+      "field_type": "text"
+    },
+    {
+      "name": "Banco: porta",
+      "description": "Porta do banco (aba Databases).",
+      "env_variable": "DB_PORT",
+      "default_value": "3306",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|numeric",
+      "field_type": "text"
+    },
+    {
+      "name": "Banco: nome",
+      "description": "Nome do banco (aba Databases). Ex.: s12_evolution",
+      "env_variable": "DB_NAME",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:120",
+      "field_type": "text"
+    },
+    {
+      "name": "Banco: usuário",
+      "description": "Usuário do banco (aba Databases).",
+      "env_variable": "DB_USER",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:120",
+      "field_type": "text"
+    },
+    {
+      "name": "Banco: senha",
+      "description": "Senha do banco (aba Databases, clique no olho).",
+      "env_variable": "DB_PASS",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:200",
+      "field_type": "text"
+    },
+    {
+      "name": "Endereço público",
+      "description": "Como o servidor é acessado de fora: http://IP:PORTA (a porta da aba Network). Pode ficar vazio no começo.",
+      "env_variable": "EVO_URL",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:200",
+      "field_type": "text"
+    }
+  ]
+}
