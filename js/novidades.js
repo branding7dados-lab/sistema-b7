@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.48.1', versao: '4.48.1', em: '2026-11-16T12:00:00-03:00',
+    titulo: 'Editor de roteiro mais caprichado',
+    itens: ['Cada cena virou um cartão com a faixa na cor do tipo e o número da cena em destaque.',
+      'O tempo de fala aparece em cada cena e o total do roteiro fica no topo, atualizando enquanto você escreve.',
+      'Detalhes, IA do roteiro e o aviso de "Não enviado ao cliente" ficam juntos logo abaixo do título.',
+      'No computador a coluna de escrita ficou mais larga e o "+ cena" entre as cenas aparece ao passar o mouse.'] },
   { id: 'v-4.48.0', versao: '4.48.0', em: '2026-11-14T18:00:00-03:00',
     titulo: 'Tela de escrever roteiro reformulada',
     itens: ['O editor abre direto no título e nas cenas, como um documento: as cenas ficam numa linha do tempo numerada, com a cor do tipo.',

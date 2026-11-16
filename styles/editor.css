@@ -497,3 +497,89 @@ body.ed-geral #ap-status-roteiro,body.ed-geral [data-acao="enviar-aprovacao"]{di
 .ed2-cena:focus-within .ia-rot > .ia-entrada,.ed2-cena .ia-rot > .ia-entrada[aria-expanded="true"]{display:inline-flex !important;opacity:1;max-height:none;height:32px;}
 .ed2-cena .ia-rot{margin-top:0;}
 .ed2-cena:focus-within .ia-rot{margin-top:6px;}
+
+/* =====================================================================
+   4.48.1 — editor de roteiro: refinamento visual (mesma estrutura)
+   Cena = cartão limpo com faixa lateral na cor do tipo, número dentro,
+   tempo de fala no canto. Cabeçalho com total de fala e chips.
+   ===================================================================== */
+@media (min-width:861px){
+  .escrita{width:600px;}
+  body.foco .escrita{width:680px;}
+}
+@media (min-width:861px) and (max-width:1240px){ .escrita{width:480px;} }
+
+.ed2-cab{border-radius:24px;padding:20px 22px 16px;border:1px solid var(--borda);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--acento) 5%,var(--card)),var(--card) 70%);}
+.ed2-meta{font-size:12px;gap:6px;flex-wrap:wrap;}
+.ed2-n{letter-spacing:.14em;}
+.ed2-estagio{order:0;}
+.ed2-titulo{font-size:28px;line-height:1.15;margin:10px 0 4px;letter-spacing:-.03em;}
+.ed2-obj{font-size:14px;margin:2px 0 0;}
+.ed2-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
+.ed2-chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:99px;border:1px solid var(--borda);
+  background:var(--card);color:var(--ink-2);font-weight:600;font-size:12.5px;font-family:inherit;cursor:pointer;width:auto;margin:0;}
+.ed2-chip svg{width:15px;height:15px;color:var(--acento);}
+.ed2-chip i{font-style:normal;font-size:10px;color:var(--ink-3);transition:transform .25s;}
+.ed2-chip.on{border-color:color-mix(in srgb,var(--acento) 40%,var(--borda));background:var(--acento-suave);color:var(--acento);}
+.ed2-chip.on i{transform:rotate(180deg);}
+.ed2-chip:hover{border-color:color-mix(in srgb,var(--acento) 35%,var(--borda));}
+.ed2-chip.leve{cursor:default;background:none;border-style:dashed;color:var(--ink-3);font-weight:500;}
+.ed2-det-bt{padding:0 12px;border-top:1px solid var(--borda);}
+.ed2-det{margin-top:14px;padding-top:16px;border-top:1px solid var(--borda);}
+
+/* cenas: sem a linha do tempo de bolinhas */
+.ed2-cenas{padding:18px 0 6px;}
+.ed2-cenas:before{display:none;}
+.ed2-cena{display:block;padding:0;}
+.ed2-cena-cx{position:relative;border-radius:20px;padding:14px 16px 14px 20px;overflow:hidden;
+  box-shadow:0 1px 0 rgba(255,255,255,.03), 0 10px 24px -22px rgba(20,8,40,.5);}
+.ed2-cena-cx:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c-tipo);opacity:.85;}
+.c-narrativa .ed2-cena-cx:before{opacity:.35;}
+.ed2-cena:focus-within .ed2-cena-cx{box-shadow:0 0 0 3px color-mix(in srgb,var(--c-tipo) 16%,transparent), 0 16px 30px -22px color-mix(in srgb,var(--c-tipo) 80%,transparent);}
+.ed2-num{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;padding:0 6px;border-radius:8px;cursor:pointer;
+  font-family:'B7 Titulo',inherit;font-weight:800;font-size:12px;letter-spacing:.02em;color:var(--c-tipo);
+  background:color-mix(in srgb,var(--c-tipo) 11%,transparent);}
+.c-gancho .ed2-num,.c-cta .ed2-num{background:var(--c-tipo);color:#fff;}
+.ed2-cena .cena-topo{display:inline-flex;}
+.ed2-tipo{height:24px;padding:0 9px;font-size:10.5px;}
+.ed2-dir{font-size:11px;}
+.ed2-tempo{flex:none;font-size:11px;font-weight:600;color:var(--ink-3);font-variant-numeric:tabular-nums;}
+.ed2-texto{margin-top:10px;font-size:16.5px;line-height:1.65;}
+.c-gancho .ed2-texto{font-size:18px;line-height:1.45;}
+.ed2-sug{margin-top:10px;}
+
+/* adicionar entre cenas: linha fina com "+ cena" */
+.ed2-cenas .entre{height:14px;display:flex;align-items:center;justify-content:center;position:relative;}
+.ed2-cenas .entre:before{content:"";position:absolute;left:12%;right:12%;top:50%;height:1px;background:var(--borda);opacity:0;transition:opacity .2s;}
+.ed2-cenas .entre button{position:relative;left:auto;top:auto;width:auto;height:22px;padding:0 10px;border-radius:99px;font-size:11px;font-weight:700;
+  color:var(--acento);background:var(--card);border:1px solid color-mix(in srgb,var(--acento) 30%,var(--borda));}
+.ed2-cenas .entre:hover:before{opacity:1;}
+.ed2-add{margin:14px auto 0;padding:10px 16px;border-radius:14px;border:1.5px dashed var(--borda-forte,var(--borda));width:100%;justify-content:center;}
+.ed2-add i{width:auto;height:auto;border:0;background:none;font-size:18px;}
+
+/* barra de baixo mais discreta */
+.ed2-barra{border-radius:18px;padding:5px;}
+.ed2-b{height:40px;border-radius:13px;font-size:13px;}
+
+@media (max-width:860px){
+  .ed2-cab{padding:16px 16px 14px;border-radius:22px;}
+  .ed2-titulo{font-size:24px;}
+  .ed2-cena-cx{padding:12px 14px 12px 18px;border-radius:18px;}
+  .ed2-texto{font-size:16px;}
+  .ed2-cenas .entre button{opacity:.9;}
+  .ed2-b{height:50px;}
+}
+.ed2-cab{position:relative;}
+.ed2-meta{padding-right:36px;}
+.ed2-menu{position:absolute;top:14px;right:12px;margin:0;}
+.ed2-cenas .entre button{opacity:0;transition:opacity .2s;}
+.ed2-cenas .entre:hover button,.ed2-cenas .entre button:focus-visible{opacity:1;}
+@media (max-width:860px){
+  .ed2-cenas .entre{height:10px;}
+  .ed2-cenas .entre button{display:none;}
+}
+@media (min-width:861px){ .ed2-b[data-ed2="previa"]{display:none;} }
+.ed2-dir{text-overflow:ellipsis;}
+.ed2-tempo{margin-left:6px;}
+@media (max-width:860px){ .ed2-dir{font-size:10.5px;letter-spacing:.02em;} }

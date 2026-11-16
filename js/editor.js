@@ -478,6 +478,7 @@ B7.Editor = (function () {
       '<div class="ed2-cab">' +
         '<div class="ed2-meta"><span class="ed2-n">Roteiro ' + String(idx + 1).padStart(2, '0') + '</span>' +
           '<span class="ed2-pt">·</span><span>' + cenas.length + ' cena' + (cenas.length === 1 ? '' : 's') + '</span>' +
+          '<span class="ed2-pt">·</span><span id="ed2-total">' + (tempoTx(cenas.reduce((n, c) => n + segundos(c.texto), 0)) || '0 s') + ' de fala</span>' +
           '<span class="ed2-estagio">' + esc(estagio) + '</span>' +
           '<div class="menu ed2-menu"><button class="ico" aria-label="Mais ações do roteiro">⋯</button><div class="lista">' +
             '<button data-acao="enviar-aprovacao">Enviar para aprovação</button><hr>' +
@@ -494,8 +495,12 @@ B7.Editor = (function () {
           '</div></div></div>' +
         '<textarea class="ed2-titulo cresce" data-campo="titulo" rows="1" placeholder="Título do roteiro">' + esc(r.titulo) + '</textarea>' +
         (vazio(r.objetivo) ? '' : '<p class="ed2-obj">' + esc(r.objetivo) + '</p>') +
-        '<button class="ed2-det-bt' + (detalhesAbertos ? ' on' : '') + '" id="ed2-det-bt" aria-expanded="' + detalhesAbertos + '">' +
-          '<span>Detalhes</span><small>objetivo, estágio, notas' + (ia ? ', IA' : '') + ' e aprovação</small><i>▾</i></button>' +
+        '<div class="ed2-chips">' +
+          '<button class="ed2-chip ed2-det-bt' + (detalhesAbertos ? ' on' : '') + '" id="ed2-det-bt" aria-expanded="' + detalhesAbertos + '">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></svg>Detalhes<i>▾</i></button>' +
+          (ia ? '<button class="ed2-chip" data-ed2="ia"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg>IA do roteiro</button>' : '') +
+          (E.aprovacoes && E.aprovacoes[r.id] ? '' : '<span class="ed2-chip leve">Não enviado ao cliente</span>') +
+        '</div>' +
         '<div class="ed2-det"' + (detalhesAbertos ? '' : ' hidden') + ' id="ed2-det">' +
           ia +
           '<div class="mb" id="ap-status-roteiro">' + (B7.Aprovacoes ? B7.Aprovacoes.blocoStatus(E.aprovacoes[r.id], { botaoEnviar: !soLeitura() }) : '') + '</div>' +
@@ -591,18 +596,22 @@ B7.Editor = (function () {
      tipo numa etiqueta que abre a lista de tipos, direção em linha, texto
      sem caixa. "Melhorar com IA" aparece quando a cena está em foco. */
   const CHAVE_TIPO = { 'Gancho': 'gancho', 'Narrativa': 'narrativa', 'Narração': 'narracao', 'CTA': 'cta' };
+  /* 4.48.1: tempo de fala estimado (~2,6 palavras por segundo) */
+  const segundos = t => { const n = String(t || '').trim().split(/\s+/).filter(Boolean).length; return n ? Math.max(1, Math.round(n / 2.6)) : 0; };
+  const tempoTx = s => s ? '~' + s + ' s' : '';
   function cenaHTML(c, i) {
     const fechada = fechadas.has(c.id);
     const falta = c.tipo === 'Narração' && !String(c.sugestao_cenas || '').trim();
     const k = CHAVE_TIPO[c.tipo] || 'narrativa';
-    return '<div class="entre" data-antes="' + i + '"><button aria-label="Adicionar cena aqui">+</button></div>' +
+    return '<div class="entre" data-antes="' + i + '"><button aria-label="Adicionar cena aqui">+ cena</button></div>' +
       '<div class="cena ed2-cena c-' + k + (fechada ? ' fechada' : '') + (falta ? ' alerta' : '') + '" data-cena="' + esc(c.id) + '" draggable="true">' +
-      '<div class="cena-topo" title="Recolher / abrir"><span class="ed2-bola">' + (i + 1) + '</span></div>' +
       '<div class="ed2-cena-cx">' +
         '<div class="ed2-cena-meta">' +
+          '<span class="cena-topo" title="Recolher / abrir"><span class="ed2-num">' + String(i + 1).padStart(2, '0') + '</span></span>' +
           '<div class="menu ed2-tipo-menu"><button class="ed2-tipo" aria-label="Tipo da cena">' + esc(c.tipo || 'Narrativa') + '<i>▾</i></button><div class="lista">' +
             TIPOS.map(t => '<button data-tipo="' + t + '"' + (c.tipo === t ? ' class="on"' : '') + '>' + t + '</button>').join('') + '</div></div>' +
           '<input class="ed2-dir" data-c-campo="direcao" placeholder="Direção (ex.: direto pra câmera)" value="' + esc(c.direcao) + '" aria-label="Direção da cena">' +
+          '<span class="ed2-tempo">' + tempoTx(segundos(c.texto)) + '</span>' +
           '<span class="puxa" title="Arraste para reordenar">⠿</span>' +
           '<div class="menu"><button class="ico" data-menu aria-label="Ações da cena">⋯</button><div class="lista">' +
             '<button data-c-acao="duplicar">Duplicar cena</button>' +
@@ -760,6 +769,11 @@ B7.Editor = (function () {
         cena[nome] = campo.value;
         B7.Save.campo('cenas', id, { [nome]: campo.value });
         if (nome === 'direcao') { const d = el.querySelector('.cena-topo .dir'); if (d) d.textContent = campo.value; }
+        if (nome === 'texto') {
+          const tp = el.querySelector('.ed2-tempo'); if (tp) tp.textContent = tempoTx(segundos(campo.value));
+          const tot = document.getElementById('ed2-total');
+          if (tot) tot.textContent = (tempoTx((E.cenas[r.id] || []).reduce((n, c) => n + segundos(c.texto), 0)) || '0 s') + ' de fala';
+        }
         if (nome === 'sugestao_cenas') {
           const cx = el.querySelector('.sugestao-cx');
           const falta = !campo.value.trim();
