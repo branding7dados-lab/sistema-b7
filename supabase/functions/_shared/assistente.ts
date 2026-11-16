@@ -203,6 +203,13 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
   return { saida, resposta, perguntaEquipe, mencionar };
 }
 
+/** 4.56.3: chamaram pelo nome ("Otto, …", "…, Otto?", "@Otto") — sem precisar marcar */
+function chamouPeloNome(cfg: Config, texto: string): boolean {
+  const n = semAcento(String(cfg.nome || 'Otto').split(/\s+/)[0]).replace(/[^a-z0-9]/g, '');
+  if (n.length < 3) return false;
+  return new RegExp('(^|[^a-z0-9])@?' + n + '([^a-z0-9]|$)').test(semAcento(texto));
+}
+
 /** Entrada: toda mensagem que chega pelo webhook (já gravada no B7). */
 export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   const key = raw?.key || {};
@@ -229,25 +236,40 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
     if (!fone && /@lid$/.test(jid)) { const { data: ct } = await sb.from('wa_contatos').select('numero').eq('jid', jid).maybeSingle(); fone = dig(ct?.numero); }
     const comigo = key.fromMe && (fim8(jid) === numero.slice(-8) || (cfg.meu_lid && dig(jid) === cfg.meu_lid));
     const pessoa = key.fromMe ? (comigo ? { nome: 'Você' } : null) : daEquipe(cfg, fone);
-    if (!pessoa) return;
-    await responderDuvida(sb, cfg, texto, String(ctx.stanzaId || ''), pessoa.nome || 'equipe', jid);
+    /* resposta a uma dúvida (citando o aviso) */
+    if (pessoa && ctx.stanzaId) { const r = await responderDuvida(sb, cfg, texto, String(ctx.stanzaId || ''), pessoa.nome || 'equipe', jid); if (r.ok) return; }
+    /* 4.56.3: chamaram o Otto no privado */
+    let chamado = chamouPeloNome(cfg, texto);
+    if (!chamado && ctx.stanzaId) { const { data: c } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle(); chamado = !!c?.do_assistente; }
+    if (!chamado) return;
+    if (pessoa) { await consultaInterna(sb, cfg, raw, texto, jid); return; }        /* equipe (ou você no "conversar comigo"): pergunta interna */
+    const { data: convP } = await sb.from('wa_conversas').select('jid, nome, cliente_id').eq('jid', jid).maybeSingle();
+    const conv = convP || { jid, nome: String(raw.pushName || ''), cliente_id: null };
+    const modoP = key.fromMe ? 'ordem' : dentroDoHorario(cfg.horario) ? 'marcado' : 'fora_horario';
+    const autorP = key.fromMe ? 'Você' : String(raw.pushName || 'contato');
+    const rp = await pensar(sb, cfg, conv, texto, autorP, modoP);
+    if (!rp.resposta || /\[\[\s*SILENCIO\s*\]\]/i.test(rp.saida.texto)) return;
+    await digitando(jid, cfg);
+    const foiP = await enviar(sb, cfg, jid, rp.resposta, modoP === 'ordem' ? {} : { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
+    await registrar(sb, { tipo: !foiP ? 'erro' : modoP === 'ordem' ? 'instrucao' : 'resposta', jid, grupo: conv.nome, autor: autorP, pergunta: texto.slice(0, 800), resposta: rp.resposta.slice(0, 1500), ...usoDe(rp.saida) });
     return;
   }
 
   /* ---- grupo ---- */
-  if (key.fromMe) return;
+  /* 4.56.3: você, pelo celular conectado, chamando o Otto num grupo = uma ordem */
+  if (key.fromMe && !chamouPeloNome(cfg, texto)) return;
   const { data: conv } = await sb.from('wa_conversas').select('jid, nome, cliente_id').eq('jid', jid).maybeSingle();
   const g = (cfg.grupos || {})[jid] || {};
   if (!conv?.cliente_id || g.desligado) return;
   const autorJid = String(key.participant || raw.participant || '');
   const autorFone = dig([key.participantAlt, key.participantPn].find((x: any) => typeof x === 'string') || autorJid);
-  const daCasa = daEquipe(cfg, autorFone);
+  const daCasa = key.fromMe ? { nome: 'Você' } : daEquipe(cfg, autorFone);
 
   /* marcado? (@número, @código do WhatsApp, @nome) — ou respondeu CITANDO uma mensagem do assistente */
   const marcados = new Set<string>([...((ctx.mentionedJid || []) as string[]).map(dig), ...[...texto.matchAll(/@(\d{8,})/g)].map(v => v[1])]);
   const lid = marcados.size ? await meuLid(sb, cfg, jid, numero) : (cfg.meu_lid || '');
   let fuiMarcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid))
-    || new RegExp('@' + cfg.nome.split(/\s+/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(texto);
+    || chamouPeloNome(cfg, texto);
   if (!fuiMarcado && ctx.stanzaId) {
     const { data: citada } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle();
     fuiMarcado = !!citada?.do_assistente;
@@ -447,15 +469,21 @@ async function clientesCitados(sb: SupabaseClient, texto: string): Promise<{ id:
 
 async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: string, ctx: any, numero: string) {
   const key = raw?.key || {};
-  if (key.fromMe || !texto) return;
+  if (!texto) return;
+  if (key.fromMe && !chamouPeloNome(cfg, texto)) return;
   const marcados = new Set<string>([...((ctx.mentionedJid || []) as string[]).map(dig), ...[...texto.matchAll(/@(\d{8,})/g)].map(v => v[1])]);
   const lid = marcados.size ? await meuLid(sb, cfg, cfg.grupo_equipe!, numero) : (cfg.meu_lid || '');
-  let marcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid))
-    || new RegExp('@' + cfg.nome.split(/\s+/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(texto);
+  let marcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid)) || chamouPeloNome(cfg, texto);
   if (!marcado && ctx.stanzaId) { const { data: c } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle(); marcado = !!c?.do_assistente; }
   if (!marcado) return;
+  await consultaInterna(sb, cfg, raw, texto, cfg.grupo_equipe!);
+}
+
+/** Pergunta interna da equipe (grupo da equipe ou privado): pendências ou o que há de um cliente. */
+async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
+  const key = raw?.key || {};
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
-  if (/pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true); return; }
+  if (destino === cfg.grupo_equipe && /pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true); return; }
   const clientes = await clientesCitados(sb, pedido);
   let contexto = '';
   if (clientes.length) {
@@ -470,11 +498,11 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
     contexto = '\n\nGRUPOS DE CLIENTE ESPERANDO RESPOSTA:\n' + (esperando.join('\n\n') || '(nenhum)');
   }
   const s = await ia(
-    `Você é ${cfg.nome}, assistente interno da equipe da Branding7, respondendo no grupo da EQUIPE (não é cliente). Responda o que perguntaram usando só os dados abaixo: o que está em produção (artes, vídeos, gravações) e o que os clientes escreveram nos grupos. ` +
+    `Você é ${cfg.nome}, assistente interno da equipe da Branding7, respondendo alguém da EQUIPE (não é cliente). Responda o que perguntaram usando só os dados abaixo: o que está em produção (artes, vídeos, gravações) e o que os clientes escreveram nos grupos. ` +
     'Seja objetivo, formato de WhatsApp (tópicos curtos com "•", *negrito* nos nomes de clientes). Se não houver dado sobre o que perguntaram, diga isso claramente. Não invente.',
     'PERGUNTA DE ' + String(raw.pushName || 'alguém da equipe') + ': ' + pedido + contexto, 700);
   if (!s.texto) return;
-  await digitando(cfg.grupo_equipe!, cfg);
-  await enviar(sb, cfg, cfg.grupo_equipe!, s.texto, { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
-  await registrar(sb, { tipo: 'consulta', jid: cfg.grupo_equipe, autor: String(raw.pushName || ''), pergunta: pedido.slice(0, 800), resposta: s.texto.slice(0, 1500), ...usoDe(s) });
+  await digitando(destino, cfg);
+  await enviar(sb, cfg, destino, s.texto, { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
+  await registrar(sb, { tipo: 'consulta', jid: destino, autor: String(raw.pushName || ''), pergunta: pedido.slice(0, 800), resposta: s.texto.slice(0, 1500), ...usoDe(s) });
 }

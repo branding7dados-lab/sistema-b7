@@ -126,7 +126,7 @@ B7.AssistenteWA = (function () {
     if (S.aba === 'equipe') {
       const ge = c.grupo_equipe || '';
       return '<div class="asw-card asw-ge"><div class="asw-ge-top"><span class="asw-ge-ic">🔔</span><div><h3>Grupo da equipe</h3>' +
-          '<p class="asw-sub">Ele lê os grupos dos clientes e manda aqui <b>o que cada cliente pediu e ninguém respondeu</b>. Nesse grupo, marque o assistente para perguntar de qualquer cliente: “@' + esc((c.nome || 'B7').split(' ')[0]) + ' o que tem da Arena Deck?” ou “@' + esc((c.nome || 'B7').split(' ')[0]) + ' pendências”.</p></div></div>' +
+          '<p class="asw-sub">Ele lê os grupos dos clientes e manda aqui <b>o que cada cliente pediu e ninguém respondeu</b>. Nesse grupo, chame pelo nome para perguntar de qualquer cliente: “' + esc((c.nome || 'B7').split(' ')[0]) + ' o que tem da Arena Deck?” ou “' + esc((c.nome || 'B7').split(' ')[0]) + ', pendências”.</p></div></div>' +
         '<div class="asw-ge-campos"><div><label class="rot">Grupo</label><select class="campo" data-c="grupo_equipe"><option value="">— escolha o grupo interno —</option>' +
           S.todosGrupos.map(g => '<option value="' + esc(g.jid) + '"' + (g.jid === ge ? ' selected' : '') + '>' + esc(g.nome || g.jid) + '</option>').join('') + '</select></div>' +
         '<div><label class="rot">Mandar as pendências</label><select class="campo" data-c="resumo_horas" data-num>' + [[1, 'a cada 1 hora'], [2, 'a cada 2 horas'], [3, 'a cada 3 horas'], [4, 'a cada 4 horas'], [6, 'a cada 6 horas'], [12, '2 vezes por dia'], [24, '1 vez por dia'], [168, '1 vez por semana'], [720, '1 vez por mês']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.resumo_horas || 3) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div>' +
