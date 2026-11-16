@@ -96,7 +96,17 @@ async function conectar() {
 }
 
 Deno.serve(comCors(async (req: Request) => {
-  if (req.method === 'GET') return json({ ok: true, versao: VERSAO });
+  /* diagnóstico sem dado sensível: os segredos existem? o Evolution responde? a chave vale? */
+  if (req.method === 'GET') {
+    const d: Record<string, unknown> = { ok: true, versao: VERSAO, configurado: !!(BASE() && CHAVE()) };
+    if (d.configurado) {
+      try {
+        const r = await evo('/instance/fetchInstances?instanceName=' + encodeURIComponent(INST()));
+        d.evolution = r.status === 401 ? 'chave recusada' : r.ok ? 'ok' : 'respondeu ' + r.status;
+      } catch (_e) { d.evolution = 'sem resposta'; }
+    }
+    return json(d);
+  }
   if (req.method !== 'POST') return json({ erro: 'Use POST.' }, 405);
   const p = await quemChamou(req);
   if (!p) return json({ erro: 'Entre no sistema de novo.' }, 401);
