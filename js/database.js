@@ -2451,6 +2451,16 @@ B7.DB = (function () {
        que usa a service role. O resto (status, escolher agendas ativas,
        vincular/desvincular/criar gravação a partir de um evento) é RPC
        direto, igual ao resto do sistema. ---- */
+    /* 4.50.0: ponte com o Evolution API (WhatsApp, piloto) — Edge Function wa-evolution */
+    async waEvolution(acao, extra) {
+      const { data, error } = await sb().functions.invoke('wa-evolution', { body: Object.assign({ acao: acao }, extra || {}) });
+      if (error) {
+        let corpoErro = null;
+        try { corpoErro = await error.context.clone().json(); } catch (x) {}
+        throw new Error((corpoErro && corpoErro.erro) || 'Não consegui falar com o servidor do WhatsApp.');
+      }
+      return data || {};
+    },
     async chamarCalendarioGoogle(corpo) {
       const { data, error } = await sb().functions.invoke('google-agenda', { body: corpo });
       if (error) {
