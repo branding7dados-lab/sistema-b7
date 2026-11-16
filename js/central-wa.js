@@ -337,6 +337,23 @@ B7.CentralWA = (function () {
   }
 
   /* ------------------------------------------------------------ cliques */
+  /* 4.52.2: os menus do sistema (⋮, anexar, emoji) são "soltos" no body para não
+     serem cortados — os cliques neles não passam pela Central. Este ouvinte pega
+     esses cliques (fase de captura, antes de o menu fechar e sumir). */
+  document.addEventListener('click', e => {
+    if (!raiz || !raiz.isConnected) return;
+    const alvo = e.target.closest && e.target.closest('[data-wz], [data-emoji]');
+    if (!alvo || raiz.contains(alvo) || !alvo.closest('.lista')) return;
+    e.preventDefault(); e.stopPropagation();
+    if (B7.UI.fecharMenus) B7.UI.fecharMenus();
+    if (alvo.dataset.emoji) {
+      const t = raiz.querySelector('#wz-texto');
+      if (t) { t.setRangeText(alvo.dataset.emoji, t.selectionStart, t.selectionEnd, 'end'); t.focus(); t.dispatchEvent(new Event('input')); }
+      return;
+    }
+    acao(alvo.dataset.wz);
+  }, true);
+
   function cliqueGeral(e) {
     const it = e.target.closest('.wz-it'); if (it) return abrirConversa(it.dataset.jid);
     const f = e.target.closest('[data-filtro]'); if (f) { S.filtro = f.dataset.filtro; pintarFiltros(); pintarLista(); return; }
@@ -598,11 +615,12 @@ B7.CentralWA = (function () {
         if (r.erro) throw new Error(r.erro);
         tot.grupos += r.grupos || 0; tot.conversas += r.conversas || 0; tot.mensagens += r.mensagens || 0;
         const el = m.querySelector('#wz-imp'), b = m.querySelector('#wz-imp-b');
-        if (el) el.textContent = tot.conversas + ' de ' + (r.total || '?') + ' conversas · ' + tot.mensagens + ' mensagens';
-        if (b && r.total) b.style.width = Math.min(100, Math.round(tot.conversas / r.total * 100)) + '%';
+        if (el) el.textContent = tot.mensagens + ' mensagens trazidas' + (tot.grupos ? ' · ' + tot.grupos + ' grupos' : '') + '…';
+        if (b && r.total) b.style.width = Math.min(100, Math.round((r.lidas || 0) / r.total * 100)) + '%';
         pagina = r.proxima;
       }
-      const el = m.querySelector('#wz-imp'); if (el) el.textContent = 'Pronto: ' + tot.conversas + ' conversas e ' + tot.mensagens + ' mensagens.';
+      const el = m.querySelector('#wz-imp'); if (el) el.textContent = 'Pronto: ' + tot.mensagens + ' mensagens trazidas. As novas chegam sozinhas daqui para frente.';
+      const bb = m.querySelector('#wz-imp-b'); if (bb) bb.style.width = '100%';
     } catch (e) { const el = m.querySelector('#wz-imp'); if (el) el.textContent = e.message || 'Não deu para puxar agora.'; }
     await carregarConversas(); pintarFiltros(); pintarLista();
   }
