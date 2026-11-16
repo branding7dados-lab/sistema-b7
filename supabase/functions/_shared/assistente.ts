@@ -394,20 +394,39 @@ export async function mandarResumo(sb: SupabaseClient, cfg: Config | null, forca
     await registrar(sb, { tipo: 'resumo', jid: cfg.grupo_equipe, pergunta: forcado ? 'pedido' : 'automático', resposta: 'nada pendente' });
     return { ok: true, vazio: true };
   }
+  /* 4.56.1: UMA mensagem curta — uma linha por cliente, marcando quem cuida (ou todo mundo) */
+  const equipe = (cfg.equipe || []).filter(p => p.nome && p.numero);
   const s = await ia(
-    'Você ajuda a equipe da Branding7 (agência de conteúdo) a não deixar cliente sem resposta. Recebe, por grupo de cliente, as mensagens que o cliente mandou e a equipe ainda não respondeu. ' +
-    'Escreva um resumo para o grupo interno da equipe, em formato de WhatsApp: para cada cliente com algo que precisa de resposta ou ação, uma linha "*Nome do cliente* · há X" e embaixo tópicos curtos "• o que pediram/perguntaram". ' +
-    'Ignore cumprimentos, agradecimentos, "ok", figurinhas e conversa entre as pessoas — se num grupo só houver isso, deixe o grupo de fora. Do mais antigo para o mais novo. Sem introdução longa: comece com "🔔 *Pendências nos grupos*". ' +
-    'Se nenhum grupo tiver algo que precise de resposta, responda exatamente [[NADA]].',
-    blocos.join('\n\n'), 900);
+    'Você ajuda a equipe da Branding7 (agência de conteúdo) a não deixar cliente sem resposta. Recebe, por grupo de cliente, o que o cliente mandou e a equipe ainda não respondeu.\n' +
+    'Escreva UMA mensagem curta de WhatsApp para o grupo da equipe, exatamente neste formato:\n' +
+    '🔔 *Clientes esperando resposta*\n' +
+    '• *Nome do cliente* (há X) — o que o cliente quer, em até 12 palavras' + (equipe.length ? ' {{marcar:Nome de quem cuida}}' : '') + '\n' +
+    'Uma linha por cliente, do que espera há mais tempo para o mais recente. Junte vários pedidos do mesmo cliente na mesma linha. Nada além disso: sem introdução, sem conclusão, sem títulos extras.\n' +
+    'Ignore cumprimentos, agradecimentos, "ok", figurinhas e conversa entre as pessoas — se num grupo só houver isso, deixe o cliente de fora.' +
+    (equipe.length ? '\nQUEM CUIDA DE CADA ASSUNTO (marque com {{marcar:Nome}} exatamente como aqui; se não souber de quem é, não marque):\n' + equipe.map(p => '- ' + p.nome + (p.assuntos ? ': ' + p.assuntos : '')).join('\n') : '') +
+    '\nSe nenhum cliente precisar de resposta, responda exatamente [[NADA]].',
+    blocos.join('\n\n'), 700);
   if (!s.texto) { await registrar(sb, { tipo: 'erro', jid: cfg.grupo_equipe, pergunta: 'resumo', ...usoDe(s) }); return { ok: false, erro: 'A IA não respondeu agora.' }; }
   if (/\[\[NADA\]\]/.test(s.texto)) {
     if (forcado) await enviar(sb, cfg, cfg.grupo_equipe, '✅ Nenhum cliente esperando resposta agora.');
     await registrar(sb, { tipo: 'resumo', jid: cfg.grupo_equipe, pergunta: forcado ? 'pedido' : 'automático', resposta: 'nada pendente', ...usoDe(s) });
     return { ok: true, vazio: true };
   }
-  const foi = await enviar(sb, cfg, cfg.grupo_equipe, s.texto);
-  await registrar(sb, { tipo: 'resumo', jid: cfg.grupo_equipe, pergunta: forcado ? 'pedido' : 'automático', resposta: s.texto.slice(0, 1500), ...usoDe(s) });
+  /* marcações: quem cuida de cada linha; quem não foi marcado em nenhuma linha vai no fim ("todo mundo") */
+  const mencionar: string[] = [];
+  let texto = s.texto.replace(/\{\{\s*marcar\s*:\s*([^}]+)\}\}/gi, (_m, n: string) => {
+    const p = equipe.find(x => x.nome!.toLowerCase() === n.trim().toLowerCase() || x.nome!.toLowerCase().split(' ')[0] === n.trim().toLowerCase().split(' ')[0]);
+    if (!p) return '';
+    const d = dig(p.numero); if (!mencionar.includes(d)) mencionar.push(d); return '@' + d;
+  }).replace(/[ \t]+\n/g, '\n').trim();
+  let extra: Record<string, unknown> = {};
+  if (equipe.length) {
+    const resto = equipe.map(p => dig(p.numero)).filter(d => !mencionar.includes(d));
+    if (resto.length) { texto += '\n\n' + resto.map(d => '@' + d).join(' '); mencionar.push(...resto); }
+    extra = { mentioned: mencionar };
+  } else extra = { mentionsEveryOne: true };   /* sem equipe cadastrada: marca o grupo todo */
+  const foi = await enviar(sb, cfg, cfg.grupo_equipe, texto, extra);
+  await registrar(sb, { tipo: 'resumo', jid: cfg.grupo_equipe, pergunta: forcado ? 'pedido' : 'automático', resposta: texto.slice(0, 1500), ...usoDe(s) });
   return foi ? { ok: true } : { ok: false, erro: 'O WhatsApp não aceitou a mensagem.' };
 }
 
