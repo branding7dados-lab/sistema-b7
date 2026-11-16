@@ -13,11 +13,11 @@
 // =====================================================================
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
-import { responderDuvida } from '../_shared/assistente.ts';
+import { responderDuvida, testar as testarAssistente } from '../_shared/assistente.ts';
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-const VERSAO = 'wa-evolution 15 (4.54.1)';
+const VERSAO = 'wa-evolution 16 (4.55.0)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -380,7 +380,7 @@ Deno.serve(comCors(async (req: Request) => {
   let c: Record<string, any> = {};
   try { c = await req.json(); } catch (_e) { /* vazio */ }
   const acao = String(c.acao || 'estado');
-  const soAdmin = ['estado', 'conectar', 'desconectar', 'importar', 'contatos'];
+  const soAdmin = ['estado', 'conectar', 'desconectar', 'importar', 'contatos', 'assistente_testar'];
   if (soAdmin.includes(acao) ? !ehAdmin(p) : !(await podeVer(p))) return json({ erro: 'Sem permissão para o WhatsApp do B7.' }, 403);
   if (!BASE() || !CHAVE()) return json({ configurado: false, erro: 'O WhatsApp do B7 não está configurado.' });
 
@@ -395,6 +395,12 @@ Deno.serve(comCors(async (req: Request) => {
       case 'desconectar': { const r = await evo('/instance/logout/' + I(), 'DELETE'); return json({ ok: r.ok }); }
       case 'importar': return json(await importar(Math.max(0, Number(c.pagina) || 0)));
       case 'contatos': return json(await atualizarContatos());
+      /* 4.55.0: "Testar" da tela do assistente — o que ele responderia, sem mandar */
+      case 'assistente_testar': {
+        const t = String(c.texto || '').trim().slice(0, 1000);
+        if (!c.jid || !t) return json({ erro: 'Escolha o grupo e escreva a mensagem.' });
+        return json(await testarAssistente(admin(), String(c.jid), t, String(c.autor || ''), c.equipe === true));
+      }
       /* 4.54.0: responder pela Central uma dúvida que o Assistente levou à equipe */
       case 'responder_duvida': {
         const t = String(c.resposta || '').trim().slice(0, 1500);
