@@ -14,7 +14,7 @@
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa } from '../_shared/wa.ts';
 
-const VERSAO = 'wa-evolution 4 (4.52.0)';
+const VERSAO = 'wa-evolution 5 (4.52.1)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -79,28 +79,32 @@ async function conectar(numero: string) {
   return { qr: comPrefixo(r.dados?.base64 || ''), codigo: r.dados?.pairingCode || null };
 }
 
-/* histórico recente: grupos, conversas e as últimas mensagens de cada uma (em páginas de 15 conversas) */
+/* histórico recente. 4.52.1: o "findChats" do Evolution quebra com banco MySQL
+   ("Named and positional parameters mixed"), então as conversas saem das próprias
+   mensagens: lê as mais recentes de todas as conversas (da mais nova para a mais
+   antiga), 150 por página, até 16 páginas (~2.400 mensagens). Página 0 também
+   traz todos os grupos (nome e foto). */
+const POR_PAGINA = 150, PAGINAS = 16;
 async function importar(pagina: number) {
   const sb = admin();
-  let grupos = 0, conversas = 0, mensagens = 0;
+  let grupos = 0, mensagens = 0;
   if (pagina === 0) {
     const g = await evo('/group/fetchAllGroups/' + I() + '?getParticipants=false', 'GET', undefined, 60000);
     if (g.ok && Array.isArray(g.dados)) for (const x of g.dados) { if (x?.id) { await garantirConversa(sb, x.id, null, x.subject || null, x.pictureUrl || null); grupos++; } }
   }
-  const c = await evo('/chat/findChats/' + I(), 'POST', {}, 60000);
-  const lista = (Array.isArray(c.dados) ? c.dados : [])
-    .filter((x: any) => /@(g\.us|s\.whatsapp\.net)$/.test(x?.remoteJid || ''))
-    .sort((a: any, b: any) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
-    .slice(0, 90);
-  const fatia = lista.slice(pagina * 15, pagina * 15 + 15);
-  for (const ch of fatia) {
-    await garantirConversa(sb, ch.remoteJid, ch.pushName || ch.name || null, null, ch.profilePicUrl || null);
-    conversas++;
-    const m = await evo('/chat/findMessages/' + I(), 'POST', { where: { key: { remoteJid: ch.remoteJid } }, page: 1, offset: 40 }, 30000);
-    const recs = m.dados?.messages?.records || (Array.isArray(m.dados) ? m.dados : []);
-    for (const r of [...recs].reverse()) { if (await gravar(sb, r, {}, { historico: true })) mensagens++; }
+  const m = await evo('/chat/findMessages/' + I(), 'POST', { page: pagina + 1, offset: POR_PAGINA }, 60000);
+  if (!m.ok) return { erro: 'O Evolution não devolveu as mensagens (' + m.status + ').' };
+  const recs: any[] = m.dados?.messages?.records || [];
+  const total = Number(m.dados?.messages?.total || 0);
+  const jids = new Set<string>();
+  /* da mais antiga para a mais nova, para a prévia de cada conversa ficar com a última */
+  for (const r of [...recs].reverse()) {
+    const jid = r?.key?.remoteJid || '';
+    if (!/@(g\.us|s\.whatsapp\.net|lid)$/.test(jid)) continue;
+    try { if (await gravar(sb, r, {}, { historico: true })) { mensagens++; jids.add(jid); } } catch (_e) { /* uma mensagem estranha não para o resto */ }
   }
-  return { grupos, conversas, mensagens, proxima: (pagina + 1) * 15 < lista.length ? pagina + 1 : null, total: lista.length };
+  const temMais = recs.length === POR_PAGINA && (pagina + 1) < PAGINAS && (pagina + 1) * POR_PAGINA < total;
+  return { grupos, conversas: jids.size, mensagens, proxima: temMais ? pagina + 1 : null, total: Math.min(total, POR_PAGINA * PAGINAS), lidas: (pagina + 1) * POR_PAGINA };
 }
 
 async function msgDe(id: string) {
