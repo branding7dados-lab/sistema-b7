@@ -45,7 +45,8 @@ B7.WaCentral = (function () {
           '<button class="b contorno perigo" data-wac="desconectar">Desconectar este número</button>');
       }
       return pinta('<div class="wac-msg"><b>Nenhum número conectado</b><p>Use um <strong>número secundário</strong> no piloto: o Evolution não é oficial e há risco de bloqueio.</p></div>' +
-        '<button class="b pri" data-wac="conectar">Mostrar QR Code</button>');
+        '<div class="wac-modos"><button class="b pri" data-wac="conectar">Mostrar QR Code</button>' +
+        '<button class="b contorno" data-wac="pelo-numero">Conectar com o número</button></div>');
     }
 
     async function conectar() {
@@ -72,11 +73,56 @@ B7.WaCentral = (function () {
       }, 3000);
     }
 
+    /* 4.50.1: conectar pelo NÚMERO — o WhatsApp mostra um código de 8 letras
+       para digitar no celular (em vez de ler o QR Code) */
+    function pedirNumero() {
+      clearInterval(relogio);
+      pinta('<label class="rot" for="wac-num">NÚMERO DO WHATSAPP (com DDD)</label>' +
+        '<div class="wac-num"><span>+55</span><input class="campo" id="wac-num" inputmode="tel" autocomplete="tel" placeholder="62 99999-0000"></div>' +
+        '<p class="wac-nota">O número precisa estar com o WhatsApp aberto no celular para receber o aviso.</p>' +
+        '<div class="wac-modos"><button class="b pri" data-wac="gerar-codigo">Gerar código</button>' +
+        '<button class="b contorno" data-wac="conectar">Prefiro o QR Code</button></div>');
+      const i = corpo.querySelector('#wac-num');
+      if (i) { i.focus(); i.onkeydown = ev => { if (ev.key === 'Enter') gerarCodigo(); }; }
+    }
+    async function gerarCodigo() {
+      const i = corpo.querySelector('#wac-num');
+      let dig = String((i && i.value) || '').replace(/\D/g, '');
+      if (dig.startsWith('55') && dig.length >= 12) dig = dig.slice(2);
+      if (dig.length < 10 || dig.length > 11) { B7.UI.toast('Digite o DDD + número (10 ou 11 dígitos).'); if (i) i.focus(); return; }
+      const numero = '55' + dig;
+      pinta('<div class="wac-carrega"><i></i><span>Pedindo o código ao WhatsApp…</span></div>');
+      let r;
+      try { r = await B7.DB.waEvolution('conectar', { numero }); } catch (e) { return erro(e.message); }
+      if (!vivo) return;
+      if (r.conectado) return estado();
+      if (r.erro) return erro(r.erro);
+      if (!r.codigo) return erro('O WhatsApp não mandou o código. Confira o número ou use o QR Code.');
+      const cod = String(r.codigo).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      pinta('<div class="wac-codigo" aria-label="Código para digitar no celular">' + esc(cod.slice(0, 4)) + '<i>-</i>' + esc(cod.slice(4)) + '</div>' +
+        '<ol class="wac-passos"><li>No celular do número <b>+55 ' + esc(dig) + '</b>, abra o <b>WhatsApp</b>.</li>' +
+        '<li>Toque em <b>⋮ → Aparelhos conectados → Conectar um aparelho</b>.</li>' +
+        '<li>Toque em <b>“Conectar com número de telefone”</b> e digite o código acima.</li></ol>' +
+        '<p class="wac-nota">Esperando a confirmação… o código vale por pouco tempo.</p>' +
+        '<div class="wac-modos"><button class="b contorno" data-wac="gerar-de-novo">Gerar outro código</button>' +
+        '<button class="b contorno" data-wac="conectar">Usar o QR Code</button></div>');
+      corpo.dataset.numero = dig;
+      clearInterval(relogio);
+      relogio = setInterval(async () => {
+        if (!vivo) return;
+        let s; try { s = await B7.DB.waEvolution('estado'); } catch (x) { return; }
+        if (s && s.estado === 'open') { clearInterval(relogio); B7.UI.toast('WhatsApp conectado ao B7.'); estado(); }
+      }, 3000);
+    }
+
     corpo.addEventListener('click', async e => {
       const b = e.target.closest('[data-wac]'); if (!b) return;
       const a = b.dataset.wac;
       if (a === 'tentar') return estado();
       if (a === 'conectar') return conectar();
+      if (a === 'pelo-numero') return pedirNumero();
+      if (a === 'gerar-codigo') return gerarCodigo();
+      if (a === 'gerar-de-novo') { pedirNumero(); const i = corpo.querySelector('#wac-num'); if (i) i.value = corpo.dataset.numero || ''; return; }
       if (a === 'desconectar') {
         const ok = await B7.UI.confirmar({ titulo: 'Desconectar o número?', texto: 'O B7 deixa de receber e enviar por este número até conectar de novo pelo QR Code.', confirmar: 'Desconectar', perigo: true });
         if (!ok) return;

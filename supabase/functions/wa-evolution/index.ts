@@ -13,12 +13,13 @@
 // Ações (POST { acao }), só administrador nesta etapa:
 //   estado        → { configurado, existe, estado: 'open'|'connecting'|'close'|..., numero? }
 //   conectar      → cria a conexão se não existir e devolve o QR Code { qr (data:image/png;base64), codigo? }
+//                   { numero } → devolve também o código de 8 letras para "Conectar com número de telefone"
 //   desconectar   → desliga o número (logout); a conexão continua criada
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { comCors } from '../_shared/cors.ts';
 
-const VERSAO = 'wa-evolution 1 (4.50.0)';
+const VERSAO = 'wa-evolution 2 (4.50.1)';
 const json = (d: unknown, status = 200) =>
   new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -81,11 +82,14 @@ async function estado() {
   return { configurado: true, existe: true, estado: st, numero, instancia: INST() };
 }
 
-async function conectar() {
+/* numero (só dígitos, com DDI, ex.: 5562999990000) = conectar pelo código de 8 letras
+   ("Conectar com número de telefone" no celular), em vez do QR Code */
+async function conectar(numero: string) {
   if (!BASE() || !CHAVE()) return { configurado: false };
-  let r = await evo('/instance/connect/' + encodeURIComponent(INST()));
+  const q = numero ? '?number=' + numero : '';
+  let r = await evo('/instance/connect/' + encodeURIComponent(INST()) + q);
   if (r.status === 404) {
-    r = await evo('/instance/create', 'POST', { instanceName: INST(), integration: 'WHATSAPP-BAILEYS', qrcode: true });
+    r = await evo('/instance/create', 'POST', Object.assign({ instanceName: INST(), integration: 'WHATSAPP-BAILEYS', qrcode: true }, numero ? { number: numero } : {}));
     if (!r.ok) return { erro: 'Não consegui criar a conexão no Evolution (' + r.status + ').' };
     const q = r.dados?.qrcode || {};
     return { qr: comPrefixo(q.base64 || ''), codigo: q.pairingCode || null };
@@ -116,7 +120,11 @@ Deno.serve(comCors(async (req: Request) => {
   const acao = String(corpo.acao || 'estado');
   try {
     if (acao === 'estado') return json(await estado());
-    if (acao === 'conectar') return json(await conectar());
+    if (acao === 'conectar') {
+      const numero = String(corpo.numero || '').replace(/\D/g, '');
+      if (numero && (numero.length < 10 || numero.length > 15)) return json({ erro: 'Número inválido. Use DDI + DDD + número, ex.: 55 62 99999-0000.' });
+      return json(await conectar(numero));
+    }
     if (acao === 'desconectar') {
       const r = await evo('/instance/logout/' + encodeURIComponent(INST()), 'DELETE');
       return json({ ok: r.ok });

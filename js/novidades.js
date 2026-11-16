@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.50.1', versao: '4.50.1', em: '2026-11-16T23:30:00-03:00', rota: 'whatsapp', funcao: 'admin',
+    titulo: 'WhatsApp do B7: conectar também pelo número',
+    itens: ['Além do QR Code, dá para conectar pelo número: o B7 mostra um código de 8 letras para digitar no celular em "Conectar com número de telefone".'] },
   { id: 'v-4.50.0', versao: '4.50.0', em: '2026-11-16T23:00:00-03:00', rota: 'whatsapp', funcao: 'admin',
     titulo: 'WhatsApp do B7 (piloto): conectar o número pelo QR Code',
     itens: ['Na tela do WhatsApp, o botão "WhatsApp B7 (piloto)" mostra o QR Code para ligar um número ao B7 pelo servidor próprio.',

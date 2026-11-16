@@ -2166,3 +2166,13 @@ body.wa-aberta #tela-dashboard .topo,body.wa-aberta #tela-dashboard .topo *{anim
 .wac-ok-ic{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:22px;background:#1FA971;margin-bottom:6px;}
 .wac-ok b{font-size:17px;}
 .wac-ok p{margin:0;font-size:13px;color:var(--ink-3);}
+/* 4.50.1: conectar pelo número */
+.wac-modos{display:flex;gap:8px;flex-wrap:wrap;}
+.wac-modos .b{flex:1 1 160px;justify-content:center;}
+.wac-num{display:flex;align-items:center;gap:8px;}
+.wac-num span{flex:none;padding:0 12px;height:44px;display:grid;place-items:center;border-radius:12px;background:var(--suave);font-weight:700;color:var(--ink-2);}
+.wac-num .campo{flex:1;font-size:16px;letter-spacing:.02em;}
+.wac-codigo{align-self:center;display:flex;align-items:center;gap:6px;padding:16px 22px;border-radius:20px;background:var(--card);border:1px solid var(--borda);
+  font-family:'B7 Titulo',ui-monospace,monospace;font-size:34px;font-weight:800;letter-spacing:.14em;color:var(--ink);
+  box-shadow:0 16px 34px -24px rgba(30,20,70,.5);}
+.wac-codigo i{font-style:normal;color:var(--acento);}
