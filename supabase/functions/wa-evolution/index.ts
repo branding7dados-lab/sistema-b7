@@ -152,6 +152,26 @@ Deno.serve(comCors(async (req: Request) => {
       try {
         const r = await evo('/instance/fetchInstances?instanceName=' + I());
         d.evolution = r.status === 401 ? 'chave recusada' : r.ok ? 'ok' : 'respondeu ' + r.status;
+        /* ?diag=1: só contagens e formatos (sem nomes nem textos) para achar onde o histórico trava */
+        if (new URL(req.url).searchParams.get('diag') === '1') {
+          const st = await evo('/instance/connectionState/' + I());
+          d.estado = st.dados?.instance?.state || st.status;
+          const ch = await evo('/chat/findChats/' + I(), 'POST', {}, 60000);
+          const lista = Array.isArray(ch.dados) ? ch.dados : [];
+          d.chats = { status: ch.status, n: lista.length, chaves: lista[0] ? Object.keys(lista[0]) : [], erro: !ch.ok ? JSON.stringify(ch.dados).slice(0, 300) : undefined,
+            sufixos: lista.reduce((a: Record<string, number>, x: any) => { const s = String(x?.remoteJid || x?.id || '?').split('@')[1] || '?'; a[s] = (a[s] || 0) + 1; return a; }, {}) };
+          const alvo = lista.find((x: any) => /@g\.us$/.test(x?.remoteJid || '')) || lista[0];
+          if (alvo) {
+            const m = await evo('/chat/findMessages/' + I(), 'POST', { where: { key: { remoteJid: alvo.remoteJid } }, page: 1, offset: 5 }, 30000);
+            const recs = m.dados?.messages?.records || (Array.isArray(m.dados) ? m.dados : []);
+            d.mensagens = { status: m.status, formato: m.dados ? Object.keys(m.dados) : null, total: m.dados?.messages?.total, n: recs.length,
+              chaves: recs[0] ? Object.keys(recs[0]) : [], tipos: recs.map((x: any) => x?.messageType), erro: !m.ok ? JSON.stringify(m.dados).slice(0, 300) : undefined };
+          }
+          const tudo = await evo('/chat/findMessages/' + I(), 'POST', { page: 1, offset: 3 }, 30000);
+          d.mensagensGeral = { status: tudo.status, total: tudo.dados?.messages?.total, erro: !tudo.ok ? JSON.stringify(tudo.dados).slice(0, 300) : undefined };
+          const wh = await evo('/webhook/find/' + I());
+          d.webhook = { status: wh.status, ligado: wh.dados?.enabled, eventos: wh.dados?.events, url: wh.dados?.url ? String(wh.dados.url).replace(/^https:\/\/[^/]+/, '…') : null };
+        }
       } catch (_e) { d.evolution = 'sem resposta'; }
     }
     return json(d);
