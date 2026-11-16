@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.49.1', versao: '4.49.1', em: '2026-11-16T19:00:00-03:00', rota: 'design',
+    titulo: 'Design: marque várias peças e resolva de uma vez',
+    itens: ['Novo botão "Selecionar" no Design (também dentro de cada linha editorial): aparece uma caixinha em cada peça.',
+      'Com as peças marcadas, a barra de baixo aprova, marca como aprovado pelo cliente ou como entregue de uma vez só.',
+      'Em "Mais": mover para outra etapa, trocar o responsável, mudar o prazo ou apagar todas as marcadas.'] },
   { id: 'v-4.49.0', versao: '4.49.0', em: '2026-11-16T18:00:00-03:00',
     titulo: 'Ícones novos e WhatsApp com a cara da B7',
     itens: ['Os ícones do menu agora são cheios, em duas cores; a página aberta ganha o ícone em rosa.',

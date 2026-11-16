@@ -1155,3 +1155,62 @@ body.ds-lb-aberta{overflow:hidden;}
   .ds-m-mais:active{background:color-mix(in srgb, var(--acento) 6%, transparent);}
 }
 @keyframes dsAcaoIn{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:none}}
+
+/* =====================================================================
+   4.49.1 — SELEÇÃO EM LOTE (js/design.js → ligarSelecao / desenharLote)
+   ===================================================================== */
+.ds-sel-bt{display:inline-flex;align-items:center;gap:7px;}
+.ds-sel-bt svg{width:17px;height:17px;}
+.ds-sel-bt.on{background:var(--acento-suave);border-color:color-mix(in srgb,var(--acento) 40%,var(--borda));color:var(--acento);}
+.dl-sel-linha{display:flex;justify-content:flex-end;margin:4px 0 10px;}
+.ds-selecionando [data-peca]{position:relative;cursor:pointer;}
+.ds-selbox{position:absolute;top:10px;left:10px;z-index:3;width:24px;height:24px;cursor:pointer;}
+.ds-tr .ds-selbox{position:static;}
+.ds-selbox input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer;}
+.ds-selbox i{display:block;width:24px;height:24px;border-radius:8px;background:rgba(255,255,255,.92);border:1.5px solid color-mix(in srgb,var(--acento) 45%,var(--borda));
+  box-shadow:0 4px 12px -6px rgba(40,20,90,.45);transition:background .15s, border-color .15s, transform .15s;}
+.ds-selbox input:checked + i{background:linear-gradient(118deg,#3A1E86,#9A2AA8 60%,#C21C83);border-color:transparent;transform:scale(1.06);}
+.ds-selbox input:checked + i:after{content:"";position:absolute;left:8.5px;top:4.5px;width:6px;height:11px;border:solid #fff;border-width:0 2.4px 2.4px 0;transform:rotate(45deg);}
+.ds-selbox input:focus-visible + i{outline:2px solid var(--acento);outline-offset:2px;}
+[data-peca].ds-marcada{outline:2px solid color-mix(in srgb,var(--acento) 70%,transparent);outline-offset:2px;
+  box-shadow:0 12px 26px -16px color-mix(in srgb,var(--acento) 70%,transparent);}
+.ds-tr.ds-marcada{outline-offset:-2px;background:var(--acento-suave);}
+
+.dsx-lote{position:fixed;left:50%;bottom:calc(18px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));z-index:60;
+  display:flex;align-items:center;gap:6px;max-width:calc(100vw - 24px);padding:7px 8px 7px 16px;border-radius:20px;
+  background:linear-gradient(160deg,#241654,#140F2B 60%,#2A0F33);color:#fff;border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 26px 50px -20px rgba(30,10,70,.65),inset 0 1px 0 rgba(255,255,255,.12);
+  transform:translate(-50%,24px);opacity:0;transition:transform .32s cubic-bezier(.2,.9,.25,1.1),opacity .2s;}
+.dsx-lote.on{transform:translate(-50%,0);opacity:1;}
+.dsx-lote-n{display:flex;align-items:baseline;gap:6px;margin-right:4px;white-space:nowrap;}
+.dsx-lote-n b{font-family:'B7 Titulo',system-ui,sans-serif;font-size:20px;}
+.dsx-lote-n span{font-size:12.5px;color:rgba(255,255,255,.7);}
+.dsx-lote-sep{width:1px;height:24px;background:rgba(255,255,255,.14);margin:0 4px;}
+.dsx-lote button{font-family:inherit;}
+.dsx-lote-todas{border:0;background:none;color:#F7B6DD;font-size:12.5px;font-weight:700;padding:8px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;}
+.dsx-lote-todas:hover{background:rgba(255,255,255,.08);}
+.dsx-lote-b{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border:0;border-radius:13px;background:rgba(255,255,255,.08);color:#fff;
+  font-size:13px;font-weight:650;cursor:pointer;white-space:nowrap;transition:background .15s, transform .12s;}
+.dsx-lote-b svg{width:17px;height:17px;flex:none;}
+.dsx-lote-b i{font-style:normal;font-size:10px;opacity:.7;}
+.dsx-lote-b:hover:not(:disabled){background:rgba(255,255,255,.16);}
+.dsx-lote-b:active:not(:disabled){transform:scale(.97);}
+.dsx-lote-b.pri{background:linear-gradient(118deg,#5B2BC6,#C21C83);box-shadow:0 10px 22px -10px rgba(226,64,156,.75);}
+.dsx-lote-b:disabled{opacity:.4;cursor:default;}
+.dsx-lote-mais{position:relative;}
+.dsx-lote-mais .lista{bottom:calc(100% + 8px);top:auto;right:0;left:auto;min-width:220px;}
+.dsx-lote-x{width:34px;height:34px;border:0;border-radius:11px;background:none;color:rgba(255,255,255,.65);cursor:pointer;font-size:14px;}
+.dsx-lote-x:hover{background:rgba(255,255,255,.1);color:#fff;}
+@media (max-width:860px){
+  .dsx-lote{left:12px;right:12px;transform:translateY(24px);flex-wrap:wrap;justify-content:center;padding:10px;bottom:calc(84px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));}
+  .dsx-lote.on{transform:none;}
+  .dsx-lote-b span{font-size:12px;}
+  .dsx-lote-b[data-lote="aprovado_cliente"] span{display:none;}
+  .dsx-lote-sep{display:none;}
+}
+.dsx-lote{flex-direction:row;flex-wrap:nowrap;width:max-content;}
+@media (max-width:860px){ .dsx-lote{width:auto;flex-wrap:wrap;} }
+@media (min-width:861px){
+  body[data-shell="interno"] .dsx-lote{left:calc(50% + (var(--sb-larga, 256px) + 12px) / 2);}
+  body[data-shell="interno"].recolhida .dsx-lote{left:calc(50% + (var(--sb-fina, 70px) + 12px) / 2);}
+}

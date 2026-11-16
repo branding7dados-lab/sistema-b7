@@ -249,6 +249,7 @@ B7.Design = (function () {
       (filtrosAtivos() ? '<button class="b fina contorno" id="ds-limpar">Limpar filtros</button>' : '') +
       '<div class="ds-espaco"></div>' +
       '<span class="ds-total" id="ds-total"></span>' +
+      (equipe && pode('design.mover') ? '<button type="button" class="b fina contorno ds-sel-bt' + (modoSel ? ' on' : '') + '" id="ds-sel-bt" aria-pressed="' + modoSel + '">' + IC_SEL + '<span>Selecionar</span></button>' : '') +
       (equipe ? '<div class="seg-vista" role="tablist">' +
         '<button role="tab" class="' + (F.vista === 'quadro' ? 'on' : '') + '" data-vista="quadro" aria-label="Quadro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="4" width="5" height="16" rx="1.5"/><rect x="10.5" y="4" width="5" height="10" rx="1.5"/><rect x="17.5" y="4" width="3" height="13" rx="1.2"/></svg><span>Quadro</span></button>' +
         '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista" aria-label="Lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg><span>Lista</span></button>' +
@@ -291,6 +292,8 @@ B7.Design = (function () {
       cx.querySelectorAll('[data-modo]').forEach(x => x.classList.toggle('on', x === b));
       desenharArea();
     });
+    const selBt = cx.querySelector('#ds-sel-bt');
+    if (selBt) selBt.onclick = () => alternarSelecao();
     const limpar = cx.querySelector('#ds-limpar');
     if (limpar) limpar.onclick = () => {
       F.cliente = F.designer = F.tipo = F.status = F.prazo = F.linha = F.prioridade = F.busca = F.rapido = '';
@@ -1001,7 +1004,10 @@ B7.Design = (function () {
       }
     };
     painel().querySelectorAll('[data-aba-linha]').forEach(b => b.onclick = () => { abaLinha = b.dataset.abaLinha; desenharLinha(); });
-    painel().querySelectorAll('[data-peca]').forEach(el => el.onclick = () => abrirDetalhe(el.dataset.peca));
+    painel().querySelectorAll('[data-peca]').forEach(el => el.onclick = e => { if (e.target.closest('[data-check]')) return; cliquePeca(el); });
+    const selBtL = painel().querySelector('#ds-sel-bt');
+    if (selBtL) selBtL.onclick = () => alternarSelecao();
+    ligarSelecao(painel().querySelector('#ds-linha-raiz'));
     ligarThumbs(painel());
   }
 
@@ -1018,6 +1024,7 @@ B7.Design = (function () {
         return '<button role="tab" data-aba-linha="' + k + '" class="' + (abaLinha === k ? 'on' : '') + '" aria-selected="' + (abaLinha === k) + '">' +
           esc(r) + (n ? ' <b>' + n + '</b>' : '') + '</button>';
       }).join('') + '</nav>') +
+      (ehEquipe() && pode('design.mover') && vis.length ? '<div class="dl-sel-linha"><button type="button" class="b fina contorno ds-sel-bt' + (modoSel ? ' on' : '') + '" id="ds-sel-bt" aria-pressed="' + modoSel + '">' + IC_SEL + '<span>Selecionar</span></button></div>' : '') +
       (vis.length ? '<div class="ds-lista ds-lista-grade">' + vis.map(cartao).join('') + '</div>'
         : '<div class="estado-b7"><b>' + (total ? 'Nada nesta aba.' : 'Nenhuma peça de Design nesta linha ainda.') + '</b></div>');
   }
@@ -1344,11 +1351,7 @@ B7.Design = (function () {
   function viewLista(vis) {
     if (!vis.length) return blocoVazio();
     const equipe = ehEquipe();
-    return (equipe ? '<div class="ds-barra-selecao" id="ds-sel-barra" hidden>' +
-      '<span id="ds-sel-cont"></span>' +
-      '<button class="b fina pri" id="ds-sel-atribuir">Atribuir a…</button>' +
-      '<button class="b fina" id="ds-sel-cancelar">Cancelar seleção</button></div>' : '') +
-      '<div class="ds-tabela' + (equipe ? ' com-selecao' : '') + '">' +
+    return '<div class="ds-tabela' + (equipe ? ' com-selecao' : '') + '">' +
       '<div class="ds-th">' + (equipe ? '<span></span>' : '') +
         '<span>Peça</span><span>Cliente</span><span>Tipo</span><span>Status</span><span>Designer</span><span>Prazo</span></div>' +
       vis.slice().sort(ordenarPorUrgencia).map(d => {
@@ -1608,8 +1611,8 @@ B7.Design = (function () {
      ================================================================= */
   function ligarArea(area) {
     area.querySelectorAll('[data-peca]').forEach(el => {
-      el.onclick = e => { if (e.target.closest('[data-check]')) return; abrirDetalhe(el.dataset.peca); };
-      el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirDetalhe(el.dataset.peca); } };
+      el.onclick = e => { if (e.target.closest('[data-check]')) return; cliquePeca(el); };
+      el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cliquePeca(el); } };
     });
     area.querySelectorAll('[data-col-movel]').forEach(b => b.onclick = () => { F._colMovel = b.dataset.colMovel; desenharArea(); });
     area.querySelectorAll('[data-mais-m]').forEach(b => b.onclick = () => {
@@ -1634,28 +1637,8 @@ B7.Design = (function () {
       if (ids.length) abrirSeletorDesigner(null, ids);
     });
 
-    /* seleção múltipla, só existe na lista */
-    const barraSel = area.querySelector('#ds-sel-barra');
-    if (barraSel) {
-      const atualizarBarra = () => {
-        barraSel.hidden = selecionados.size === 0;
-        const c = area.querySelector('#ds-sel-cont');
-        if (c) c.textContent = selecionados.size + (selecionados.size === 1 ? ' peça selecionada' : ' peças selecionadas');
-      };
-      area.querySelectorAll('[data-check]').forEach(chk => {
-        chk.checked = selecionados.has(chk.dataset.check);
-        chk.onclick = e => e.stopPropagation();
-        chk.onchange = () => {
-          if (chk.checked) selecionados.add(chk.dataset.check); else selecionados.delete(chk.dataset.check);
-          atualizarBarra();
-        };
-      });
-      const cancelar = area.querySelector('#ds-sel-cancelar');
-      if (cancelar) cancelar.onclick = () => { selecionados.clear(); desenharArea(); };
-      const atribuir = area.querySelector('#ds-sel-atribuir');
-      if (atribuir) atribuir.onclick = () => abrirSeletorDesigner(null, [...selecionados], () => { selecionados.clear(); });
-      atualizarBarra();
-    }
+    /* 4.49.1: seleção em lote (todas as vistas) */
+    ligarSelecao(area);
   }
 
   /* Popover simples de atribuição — usado tanto no card/linha quanto em massa */
@@ -3811,6 +3794,154 @@ B7.Design = (function () {
         desenharDrawer(); redesenharTela();
       } catch (e) { B7.UI.toast('Não foi possível enviar ao cliente: ' + (e.message || ''), { tipo: 'erro' }); }
     };
+  }
+
+
+  /* =================================================================
+     4.49.1 — AÇÕES EM LOTE. "Selecionar" liga caixinhas em todas as
+     peças (quadro, lista, finalizadas e dentro da linha editorial); com
+     peças marcadas, a barra de baixo oferece aprovar, aprovado pelo
+     cliente, marcar como entregue, mover de etapa, trocar responsável,
+     mudar prazo e apagar. Status em lote usa design_mover_status (a mesma
+     função do arrastar no quadro, que registra o histórico).
+     ================================================================= */
+  const IC_SEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M8 12.2l2.7 2.7L16.2 9"/></svg>';
+  let modoSel = false;
+  function alternarSelecao(forcar) {
+    modoSel = typeof forcar === 'boolean' ? forcar : !modoSel;
+    if (!modoSel) selecionados.clear();
+    if (linhaAberta) desenharLinha(); else { desenharBarra(); desenharArea(); }
+    desenharLote();
+  }
+  function cliquePeca(el) {
+    const id = el.dataset.peca;
+    if (modoSel || selecionados.size) {
+      if (selecionados.has(id)) selecionados.delete(id); else selecionados.add(id);
+      el.classList.toggle('ds-marcada', selecionados.has(id));
+      const chk = el.querySelector('[data-check]'); if (chk) chk.checked = selecionados.has(id);
+      desenharLote();
+      return;
+    }
+    abrirDetalhe(id);
+  }
+  function ligarSelecao(raiz) {
+    if (!raiz) return;
+    raiz.classList.toggle('ds-selecionando', modoSel);
+    raiz.querySelectorAll('[data-peca]').forEach(el => {
+      const id = el.dataset.peca;
+      if (modoSel && !el.querySelector('[data-check]')) {
+        el.insertAdjacentHTML('afterbegin', '<label class="ds-selbox" aria-label="Selecionar"><input type="checkbox" data-check="' + esc(id) + '"><i></i></label>');
+      }
+      el.classList.toggle('ds-marcada', selecionados.has(id));
+    });
+    raiz.querySelectorAll('[data-check]').forEach(chk => {
+      chk.checked = selecionados.has(chk.dataset.check);
+      chk.onclick = e => e.stopPropagation();
+      chk.onchange = () => {
+        if (chk.checked) selecionados.add(chk.dataset.check); else selecionados.delete(chk.dataset.check);
+        const el = chk.closest('[data-peca]'); if (el) el.classList.toggle('ds-marcada', chk.checked);
+        desenharLote();
+      };
+    });
+    desenharLote();
+  }
+  const idsVisiveis = () => [...painel().querySelectorAll('[data-peca]')].map(el => el.dataset.peca).filter((v, i, a) => a.indexOf(v) === i);
+  const pecaPorId = id => itensLinha.find(x => x.id === id) || dados.find(x => x.id === id);
+  function desenharLote() {
+    let b = document.getElementById('ds-lote');
+    const n = selecionados.size;
+    if (!modoSel && !n) { if (b) { b.classList.remove('on'); setTimeout(() => { if (b && !b.classList.contains('on')) b.remove(); }, 250); } return; }
+    if (!b) {
+      b = document.createElement('div'); b.id = 'ds-lote'; b.className = 'dsx-lote'; b.setAttribute('role', 'toolbar'); b.setAttribute('aria-label', 'Ações com as peças marcadas');
+      document.body.appendChild(b);
+      if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(() => { modoSel = false; selecionados.clear(); const x = document.getElementById('ds-lote'); if (x) x.remove(); });
+    }
+    const vis = idsVisiveis(), todas = vis.length && vis.every(id => selecionados.has(id));
+    const dis = n ? '' : ' disabled';
+    b.innerHTML = '<div class="dsx-lote-n"><b>' + n + '</b><span>' + (n === 1 ? 'peça marcada' : 'peças marcadas') + '</span></div>' +
+      '<button type="button" class="dsx-lote-todas" data-lote="todas">' + (todas ? 'Desmarcar todas' : 'Marcar todas (' + vis.length + ')') + '</button>' +
+      '<i class="dsx-lote-sep"></i>' +
+      '<button type="button" class="dsx-lote-b" data-lote="aprovado_interno"' + dis + '>' + IC_SEL + '<span>Aprovar</span></button>' +
+      '<button type="button" class="dsx-lote-b" data-lote="aprovado_cliente"' + dis + '><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M15.5 12.5l2 2 4-4"/></svg><span>Aprovado pelo cliente</span></button>' +
+      '<button type="button" class="dsx-lote-b pri" data-lote="finalizado"' + dis + '><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg><span>Marcar como entregue</span></button>' +
+      '<div class="menu ds-lote-mais"><button type="button" class="dsx-lote-b" data-menu' + dis + '><span>Mais</span><i>▾</i></button><div class="lista">' +
+        '<button data-lote="mover">Mover para outra etapa…</button>' +
+        '<button data-lote="responsavel">Trocar responsável…</button>' +
+        '<button data-lote="prazo">Mudar prazo…</button>' +
+        (B7.Lote && B7.Lote.podeApagar && B7.Lote.podeApagar('design') ? '<hr><button class="perigo" data-lote="apagar">Apagar…</button>' : '') +
+      '</div></div>' +
+      '<button type="button" class="dsx-lote-x" data-lote="sair" aria-label="Sair da seleção" title="Sair da seleção">✕</button>';
+    if (B7.UI.ligarMenus) B7.UI.ligarMenus(b);
+    b.querySelectorAll('[data-lote]').forEach(x => x.onclick = e => { e.stopPropagation(); acaoLote(x.dataset.lote); });
+    requestAnimationFrame(() => b.classList.add('on'));
+  }
+  async function recarregarDepoisDoLote() {
+    try {
+      const [todas, daLinha] = await Promise.all([B7.DB.listarDesign(), linhaAberta ? B7.DB.listarDesign({ linhaId: linhaAberta }) : null]);
+      dados = todas || dados;
+      if (linhaAberta && daLinha) itensLinha = daLinha;
+    } catch (e) {}
+    if (linhaAberta) desenharLinha(); else desenharArea();
+  }
+  async function moverLote(status, ids) {
+    const rot = rotuloStatus(status);
+    const ok = await B7.UI.confirmar({
+      titulo: (ids.length === 1 ? '1 peça' : ids.length + ' peças') + ' → ' + rot,
+      texto: status === 'finalizado' ? 'As peças marcadas vão para Finalizadas (entregues). Dá para voltar depois, se precisar.'
+        : 'As peças marcadas passam para “' + rot + '”. Fica registrado no histórico de cada uma.',
+      confirmar: status === 'finalizado' ? 'Marcar como entregue' : 'Confirmar'
+    });
+    if (!ok) return;
+    try {
+      const n = await B7.DB.rpc('design_mover_status', { p_ids: ids, p_status: status });
+      const feitas = typeof n === 'number' ? n : ids.length;
+      B7.UI.toast(feitas === 0 ? 'Todas já estavam em “' + rot + '”.' : (feitas === 1 ? '1 peça' : feitas + ' peças') + ' em “' + rot + '”.');
+      selecionados.clear(); modoSel = false;
+      desenharLote(); await recarregarDepoisDoLote(); if (!linhaAberta) desenharBarra();
+    } catch (e) { B7.UI.toast((e && e.message) || 'Não deu para mudar as peças.', { tipo: 'erro' }); }
+  }
+  function prazoLote(ids) {
+    const m = B7.UI.modal('<h3>Mudar prazo</h3><div class="sub">' + (ids.length === 1 ? '1 peça marcada.' : ids.length + ' peças marcadas.') + ' A prioridade de cada uma continua a mesma.</div>' +
+      '<label class="rot" for="ds-lote-prazo">NOVO PRAZO</label><input class="campo" type="date" id="ds-lote-prazo" data-foco>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="ds-lote-prazo-ok">Aplicar</button></div>');
+    m.querySelector('#ds-lote-prazo-ok').onclick = async () => {
+      const v = m.querySelector('#ds-lote-prazo').value;
+      if (!v) { B7.UI.toast('Escolha a data.'); return; }
+      m.fechar();
+      let falhas = 0;
+      for (const id of ids) {
+        const d = pecaPorId(id);
+        try { await B7.DB.definirPrazoPrioridadeDesign(id, v, (d && d.prioridade) || 'normal'); } catch (e) { falhas++; }
+      }
+      B7.UI.toast(falhas ? falhas + ' peça(s) não mudaram.' : 'Prazo atualizado.', falhas ? { tipo: 'erro' } : undefined);
+      selecionados.clear(); modoSel = false; desenharLote(); recarregarDepoisDoLote();
+    };
+  }
+  function moverPara(ids) {
+    const m = B7.UI.modal('<h3>Mover para…</h3><div class="sub">' + (ids.length === 1 ? '1 peça marcada.' : ids.length + ' peças marcadas.') + '</div>' +
+      '<div class="lista solta mostrando" style="position:static;max-height:360px;overflow:auto">' +
+        STATUS.map(([k, r]) => '<button role="menuitem" data-st="' + k + '">' + esc(r) + '</button>').join('') +
+      '</div><div class="acoes"><button class="b" data-fecha>Cancelar</button></div>');
+    m.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { m.fechar(); moverLote(b.dataset.st, ids); });
+  }
+  function acaoLote(a) {
+    const ids = [...selecionados];
+    if (a === 'sair') return alternarSelecao(false);
+    if (a === 'todas') {
+      const vis = idsVisiveis(), todas = vis.every(id => selecionados.has(id));
+      vis.forEach(id => { if (todas) selecionados.delete(id); else selecionados.add(id); });
+      painel().querySelectorAll('[data-peca]').forEach(el => {
+        el.classList.toggle('ds-marcada', selecionados.has(el.dataset.peca));
+        const c = el.querySelector('[data-check]'); if (c) c.checked = selecionados.has(el.dataset.peca);
+      });
+      return desenharLote();
+    }
+    if (!ids.length) return;
+    if (a === 'aprovado_interno' || a === 'aprovado_cliente' || a === 'finalizado') return moverLote(a, ids);
+    if (a === 'mover') return moverPara(ids);
+    if (a === 'prazo') return prazoLote(ids);
+    if (a === 'responsavel') return abrirSeletorDesigner(null, ids, () => { selecionados.clear(); modoSel = false; desenharLote(); recarregarDepoisDoLote(); });
+    if (a === 'apagar' && B7.Lote) return B7.Lote.apagar('design', ids, ok => { if (ok) { selecionados.clear(); modoSel = false; desenharLote(); B7.Rota.recarregar(); } });
   }
 
   return { abrir, abrirCentral, abrirDetalhe, abrirLinha, rotuloStatus, rotuloTipo };
