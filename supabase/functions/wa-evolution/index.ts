@@ -14,7 +14,7 @@
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa } from '../_shared/wa.ts';
 
-const VERSAO = 'wa-evolution 3 (4.51.0)';
+const VERSAO = 'wa-evolution 4 (4.52.0)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -121,8 +121,8 @@ async function registrarEnvio(dados: any, p: Perfil, extra: Record<string, unkno
   await sb.from('wa_mensagens').update({ enviada_por: p.id, enviada_por_nome: p.nome, ...extra }).eq('id', dados.key.id);
   return dados.key.id;
 }
-async function urlAssinada(path: string, s = 900) {
-  const { data } = await admin().storage.from('wa-midia').createSignedUrl(path, s);
+async function urlAssinada(path: string, s = 900, bucket = 'wa-midia') {
+  const { data } = await admin().storage.from(bucket).createSignedUrl(path, s);
   return data?.signedUrl || null;
 }
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'video/mp4': 'mp4', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'application/pdf': 'pdf' };
@@ -184,8 +184,10 @@ Deno.serve(comCors(async (req: Request) => {
         return json({ ok: true, id: await registrarEnvio(r.dados, p) });
       }
       case 'enviar_midia': {
-        if (!c.jid || !c.path || !String(c.path).startsWith('envio/')) return json({ erro: 'Arquivo inválido.' });
-        const url = await urlAssinada(String(c.path), 900);
+        /* de onde vem o arquivo: o que a pessoa subiu agora (wa-midia/envio/) ou uma arte do Design */
+        const bucket = c.bucket === 'design-files' ? 'design-files' : 'wa-midia';
+        if (!c.jid || !c.path || (bucket === 'wa-midia' && !String(c.path).startsWith('envio/'))) return json({ erro: 'Arquivo inválido.' });
+        const url = await urlAssinada(String(c.path), 900, bucket);
         if (!url) return json({ erro: 'Não achei o arquivo enviado.' });
         const tipo = ['image', 'video', 'document'].includes(c.tipo) ? c.tipo : 'document';
         const r = await evo('/message/sendMedia/' + I(), 'POST', {
@@ -193,7 +195,7 @@ Deno.serve(comCors(async (req: Request) => {
           media: url, fileName: c.nome || undefined, quoted: await citacao(c.citar)
         }, 120000);
         if (!r.ok) return json({ erro: 'O WhatsApp não aceitou o arquivo (' + r.status + ').' });
-        return json({ ok: true, id: await registrarEnvio(r.dados, p, { midia_path: c.path }) });
+        return json({ ok: true, id: await registrarEnvio(r.dados, p, bucket === 'wa-midia' ? { midia_path: c.path } : {}) });
       }
       case 'enviar_audio': {
         if (!c.jid || !c.path || !String(c.path).startsWith('envio/')) return json({ erro: 'Áudio inválido.' });

@@ -22,7 +22,6 @@ const { autoUpdater } = require('electron-updater');
 const janelasB7 = require('./janelas-b7');
 const path = require('node:path');
 const fs = require('node:fs');
-const ligarWhatsApp = require('./whatsapp');   /* zzz170: WhatsApp dentro do programa */
 
 /* 4.35.0: domínio próprio. O endereço antigo redireciona para cá; ele segue
    na lista de "nossos" para uma janela aberta antes da troca não perder
@@ -36,7 +35,18 @@ const FUNDO = '#05030A';            /* o céu da abertura: nada de piscar branco
 if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 
 let janela = null;
-const whats = ligarWhatsApp(() => janela);
+/* 4.52.0: o WhatsApp Web que rodava dentro do programa (zzz170) saiu — o
+   WhatsApp agora é a Central de Conversas do B7 (Evolution API), que roda
+   no próprio site. Na primeira abertura, apaga a sessão antiga dele daqui. */
+function limparWhatsAppAntigo() {
+  try {
+    const marca = path.join(app.getPath('userData'), 'whatsapp-removido.txt');
+    if (fs.existsSync(marca)) return;
+    session.fromPartition('persist:whatsapp').clearStorageData().catch(() => {});
+    try { fs.unlinkSync(path.join(app.getPath('userData'), 'whatsapp.json')); } catch (e) {}
+    fs.writeFileSync(marca, new Date().toISOString());
+  } catch (e) {}
+}
 
 /* ------------------------------------------------- lugar da janela */
 const arquivoJanela = () => path.join(app.getPath('userData'), 'janela.json');
@@ -105,8 +115,7 @@ function criarJanela() {
 
   janela.once('ready-to-show', () => janela.show());
   ['resize', 'move', 'close'].forEach(ev => janela.on(ev, guardarJanela));
-  janela.on('closed', () => { janela = null; whats.aoFecharJanela(); });
-  janela.webContents.once('did-finish-load', () => whats.aoAbrirJanela());
+  janela.on('closed', () => { janela = null; });
 
   /* link de fora (ajuda, release, site de cliente) abre no navegador */
   janela.webContents.setWindowOpenHandler(({ url }) => {
@@ -281,14 +290,12 @@ h1{margin:0;font-size:21px;font-weight:700}p{margin:0;color:#bfb3d9;font-size:13
 @keyframes a{0%{transform:translateX(-110%)}100%{transform:translateX(280%)}}@keyframes p{50%{transform:scale(1.06)}}</style></head>
 <body><div class="c"><div class="l"><b>B7</b></div><h1>Atualizando o Sistema B7</h1><p>Leva só alguns segundos — o programa abre sozinho de novo.</p><div class="bar"><i></i></div></div></body></html>`);
 function fecharParaInstalar() {
-  try { whats.encerrar(); } catch (e) {}
   if (janela && !janela.isDestroyed()) {
     try { janela.loadURL(TELA_ATUALIZANDO).catch(() => {}); } catch (e) {}
     setTimeout(fecharDeVez, 1400);
   } else fecharDeVez();
 }
 function fecharDeVez() {
-  try { whats.encerrar(); } catch (e) {}
   app.removeAllListeners('window-all-closed');
   BrowserWindow.getAllWindows().forEach(w => { try { w.removeAllListeners('close'); w.destroy(); } catch (e) {} });
   autoUpdater.quitAndInstall(true, true);   /* calado (sem a janelinha) e reabre depois */
@@ -548,6 +555,7 @@ app.on('second-instance', () => {
   janela.focus();
 });
 app.whenReady().then(() => {
+  limparWhatsAppAntigo();
   ligarSessao();
   montarMenu();
   criarJanela();

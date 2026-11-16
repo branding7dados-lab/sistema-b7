@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.52.0', versao: '4.52.0', em: '2026-11-17T02:00:00-03:00', funcao: 'videomaker',
+    titulo: '"Enviar no WhatsApp" agora manda direto',
+    itens: ['Em Edição de vídeo, Design, Aprovações, Projetos e Gravações, o "Enviar no WhatsApp" manda direto para a conversa do cliente, com a sua assinatura — sem abrir o WhatsApp nem colar nada.',
+      'Artes do Design vão sozinhas (a versão mais nova); vídeo e outros arquivos você escolhe do computador ou do celular.',
+      'O WhatsApp que rodava dentro do programa de computador saiu: tudo agora é a Central de Conversas.'] },
   { id: 'v-4.51.0', versao: '4.51.0', em: '2026-11-17T01:00:00-03:00', rota: 'whatsapp', funcao: 'videomaker',
     titulo: 'Central de Conversas: o WhatsApp agora é do B7',
     itens: ['A tela do WhatsApp virou a Central de Conversas: lista, conversa e envio no visual do B7 — no navegador, no celular e no computador.',

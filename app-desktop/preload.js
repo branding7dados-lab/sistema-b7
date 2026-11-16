@@ -18,29 +18,5 @@ contextBridge.exposeInMainWorld('B7Desktop', {
   tela: {
     quadro: largura => ipcRenderer.invoke('b7:tela:quadro', largura),
     aviso: ligado => ipcRenderer.invoke('b7:tela:aviso', !!ligado)
-  },
-  /* zzz170: WhatsApp encaixado na tela #/whatsapp (app-desktop/whatsapp.js) */
-  wa: {
-    mostrar: r => ipcRenderer.invoke('b7:wa:mostrar', r),
-    esconder: comFoto => ipcRenderer.invoke('b7:wa:esconder', !!comFoto),
-    foto: () => ipcRenderer.invoke('b7:wa:foto'),
-    /* zzz176: leitura das conversas (só leitura) e abrir um grupo */
-    estadoLeitura: () => ipcRenderer.invoke('b7:wa:estado-leitura'),
-    aoConversas: cb => { ipcRenderer.on('b7:wa:conversas', (ev, l) => { try { cb(l); } catch (x) {} }); },
-    aoConversa: cb => { ipcRenderer.on('b7:wa:conversa', (ev, c) => { try { cb(c); } catch (x) {} }); },
-    escanear: () => ipcRenderer.invoke('b7:wa:escanear'),
-    abrirGrupo: nome => ipcRenderer.invoke('b7:wa:abrir-grupo', nome),
-    zoom: passo => ipcRenderer.invoke('b7:wa:zoom', passo),
-    desconectar: () => ipcRenderer.invoke('b7:wa:desconectar'),
-    recarregar: () => ipcRenderer.invoke('b7:wa:recarregar'),
-    tema: css => ipcRenderer.invoke('b7:wa:tema', css),
-    config: () => ipcRenderer.invoke('b7:wa:config'),
-    definirConfig: c => ipcRenderer.invoke('b7:wa:definir-config', c),
-    escolherArquivo: o => ipcRenderer.invoke('b7:wa:escolher-arquivo', o),
-    enviar: d => ipcRenderer.invoke('b7:wa:enviar', d),
-    /* zzz185: enviar() aceita urls [{url, nome}] — baixa e anexa */
-    enviaUrls: true,
-    aoNaoLidas: cb => { ipcRenderer.on('b7:wa:naolidas', (ev, n) => { try { cb(n); } catch (x) {} }); },
-    aoIr: cb => { ipcRenderer.on('b7:wa:ir', () => { try { cb(); } catch (x) {} }); }
   }
 });
