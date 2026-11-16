@@ -28,13 +28,18 @@ B7.Arrastar = (function () {
     raiz._arrastarLigado = true;
     let ini = null, fantasma = null, arrastando = false, alvo = null, origemCol = null, levados = [], raf = 0, px = 0, py = 0, timerSegurar = 0, segurou = false, cancelaClique = false, rolarRaf = 0;
 
+    /* 4.49.3: a tela pode ter a PRÓPRIA seleção (op.marcar / op.levar) —
+       aí o Ctrl/Shift+clique e o segurar do toque vão para ela, e esta
+       faixa interna não aparece (antes as duas seleções se misturavam). */
+    const externa = typeof op.marcar === 'function';
     const selecionados = () => [...raiz.querySelectorAll(op.cartao + '.arr-sel')];
     const limparSel = () => { selecionados().forEach(c => c.classList.remove('arr-sel')); atualizarBarra(); };
-    const alternar = c => { c.classList.toggle('arr-sel'); atualizarBarra(); };
+    const alternar = (c, e) => { if (externa) { op.marcar(c, e || {}); return; } c.classList.toggle('arr-sel'); atualizarBarra(); };
 
     /* faixa que aparece com o número de marcados */
     let barra = null;
     function atualizarBarra() {
+      if (externa) return;
       const n = selecionados().length;
       if (!n) { if (barra) { barra.classList.remove('on'); } return; }
       if (!barra) {
@@ -63,7 +68,7 @@ B7.Arrastar = (function () {
     raiz.addEventListener('click', e => {
       const c = e.target.closest(op.cartao); if (!c) return;
       if (cancelaClique) { e.stopPropagation(); e.preventDefault(); cancelaClique = false; return; }
-      if (e.ctrlKey || e.metaKey || e.shiftKey) { e.stopPropagation(); e.preventDefault(); alternar(c); }
+      if (e.ctrlKey || e.metaKey || e.shiftKey) { e.stopPropagation(); e.preventDefault(); alternar(c, e); }
       else if (selecionados().length && !c.classList.contains('arr-sel') && segurou) { e.stopPropagation(); e.preventDefault(); }
     }, true);
 
@@ -99,8 +104,11 @@ B7.Arrastar = (function () {
       clearTimeout(timerSegurar);
       arrastando = true;
       ini.cartao.classList.remove('arr-pronto');
-      if (!ini.cartao.classList.contains('arr-sel')) { limparSel(); }
-      levados = ini.cartao.classList.contains('arr-sel') ? selecionados() : [ini.cartao];
+      if (externa) levados = (op.levar && op.levar(ini.cartao)) || [ini.cartao];
+      else {
+        if (!ini.cartao.classList.contains('arr-sel')) { limparSel(); }
+        levados = ini.cartao.classList.contains('arr-sel') ? selecionados() : [ini.cartao];
+      }
       origemCol = ini.cartao.closest(op.coluna);
       const r = ini.cartao.getBoundingClientRect();
       ini.ox = ini.x - r.left; ini.oy = ini.y - r.top;
@@ -151,7 +159,7 @@ B7.Arrastar = (function () {
       if (c) c.classList.remove('arr-pronto');
       if (!arrastando) {
         /* toque segurado e solto sem mexer: marca/desmarca */
-        if (ini && ini.toque && segurou && c) { alternar(c); cancelaClique = true; setTimeout(() => { cancelaClique = false; }, 400); }
+        if (ini && ini.toque && segurou && c) { alternar(c, { toque: true }); cancelaClique = true; setTimeout(() => { cancelaClique = false; }, 400); }
         ini = null; return;
       }
       arrastando = false; cancelaClique = true; setTimeout(() => { cancelaClique = false; }, 300);

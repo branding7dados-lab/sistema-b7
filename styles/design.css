@@ -1214,3 +1214,21 @@ body.ds-lb-aberta{overflow:hidden;}
   body[data-shell="interno"] .dsx-lote{left:calc(50% + (var(--sb-larga, 256px) + 12px) / 2);}
   body[data-shell="interno"].recolhida .dsx-lote{left:calc(50% + (var(--sb-fina, 70px) + 12px) / 2);}
 }
+/* 4.49.3 — seleção mais limpa: caixinha no canto de cima à direita, aparece ao
+   passar o mouse (ou fixa no modo seleção / peça marcada) */
+[data-peca]{position:relative;}
+.ds-selbox{top:9px;right:9px;left:auto;width:22px;height:22px;opacity:0;transform:scale(.85);transition:opacity .15s ease, transform .15s ease;}
+.ds-selbox i{width:22px;height:22px;border-radius:7px;background:var(--card);border:1.5px solid color-mix(in srgb,var(--ink-3) 45%,transparent);box-shadow:none;}
+.ds-selbox input:checked + i:after{left:7.5px;top:3.5px;width:5px;height:10px;}
+[data-peca]:hover > .ds-selbox,.ds-selecionando .ds-selbox,[data-peca].ds-marcada > .ds-selbox{opacity:1;transform:none;}
+.ds-selecionando [data-peca]:not(.ds-marcada) .ds-selbox i{border-color:color-mix(in srgb,var(--acento) 45%,var(--borda));}
+@media (hover:none){ .ds-selbox{opacity:0;} .ds-selecionando .ds-selbox,[data-peca].ds-marcada > .ds-selbox{opacity:1;transform:none;} }
+/* peça marcada: fundo lilás e borda fina na cor da marca, sem contorno grosso */
+[data-peca].ds-marcada{outline:none;box-shadow:0 0 0 1.5px var(--acento),0 12px 24px -16px color-mix(in srgb,var(--acento) 60%,transparent) !important;
+  background:color-mix(in srgb,var(--acento) 6%,var(--card)) !important;}
+.ds-tr.ds-marcada{box-shadow:inset 3px 0 0 var(--acento) !important;}
+/* no modo seleção, o cursor e o hover dizem "marcar", não "abrir" */
+.ds-selecionando [data-peca]{cursor:pointer;user-select:none;}
+.ds-selecionando [data-peca]:not(.ds-marcada):hover{box-shadow:0 0 0 1.5px color-mix(in srgb,var(--acento) 35%,transparent) !important;}
+/* a tabela: a caixinha nativa da lista continua na primeira coluna */
+.ds-tr > span > .ds-check{accent-color:var(--acento);width:17px;height:17px;}

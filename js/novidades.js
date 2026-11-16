@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.49.3', versao: '4.49.3', em: '2026-11-16T21:00:00-03:00', rota: 'design',
+    titulo: 'Design: selecionar peças ficou mais fácil',
+    itens: ['Ctrl+clique marca uma peça; Shift+clique marca todas entre a última marcada e a clicada.',
+      'Ao passar o mouse, aparece uma caixinha no canto da peça — um clique já começa a seleção.',
+      'Peça marcada fica com fundo lilás; arrastar uma marcada leva todas. Esc sai da seleção.'] },
   { id: 'v-4.49.2', versao: '4.49.2', em: '2026-11-16T20:00:00-03:00',
     titulo: 'Ícones na cor da sua aparência e WhatsApp mais estável',
     itens: ['Os ícones do menu agora seguem a cor que você escolheu em Aparência.',

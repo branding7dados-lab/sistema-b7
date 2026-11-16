@@ -454,8 +454,12 @@ B7.Design = (function () {
     B7.Arrastar.ligar(area, {
       cartao: '.ds-quadro .ds-card[data-peca]', coluna: '.ds-quadro .ds-col[data-status]', lista: '.ds-lista', rolo: '.ds-quadro',
       id: el => el.dataset.peca, destino: col => col.dataset.status,
+      /* 4.49.3: Ctrl/Shift+clique e o segurar do toque usam a MESMA seleção do botão Selecionar */
+      marcar: (el, e) => marcarPeca(el.dataset.peca, e),
+      levar: el => selecionados.has(el.dataset.peca) ? [...area.querySelectorAll('.ds-quadro .ds-card[data-peca]')].filter(c => selecionados.has(c.dataset.peca)) : [el],
       aoSoltar: async (ids, status) => {
         await B7.DB.rpc('design_mover_status', { p_ids: ids, p_status: status });
+        ids.forEach(id => selecionados.delete(id)); atualizarMarcas();
         ids.forEach(id => { const d = dados.find(x => x.id === id); if (d) d.status = status; });
         B7.UI.toast(ids.length === 1 ? 'Movida para “' + rotuloStatus(status) + '”.' : ids.length + ' peças movidas para “' + rotuloStatus(status) + '”.');
       },
@@ -1004,7 +1008,7 @@ B7.Design = (function () {
       }
     };
     painel().querySelectorAll('[data-aba-linha]').forEach(b => b.onclick = () => { abaLinha = b.dataset.abaLinha; desenharLinha(); });
-    painel().querySelectorAll('[data-peca]').forEach(el => el.onclick = e => { if (e.target.closest('[data-check]')) return; cliquePeca(el); });
+    painel().querySelectorAll('[data-peca]').forEach(el => el.onclick = e => { if (e.target.closest('[data-check], .ds-selbox')) return; cliquePeca(el, e); });
     const selBtL = painel().querySelector('#ds-sel-bt');
     if (selBtL) selBtL.onclick = () => alternarSelecao();
     ligarSelecao(painel().querySelector('#ds-linha-raiz'));
@@ -1611,7 +1615,7 @@ B7.Design = (function () {
      ================================================================= */
   function ligarArea(area) {
     area.querySelectorAll('[data-peca]').forEach(el => {
-      el.onclick = e => { if (e.target.closest('[data-check]')) return; cliquePeca(el); };
+      el.onclick = e => { if (e.target.closest('[data-check], .ds-selbox')) return; cliquePeca(el, e); };
       el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cliquePeca(el); } };
     });
     area.querySelectorAll('[data-col-movel]').forEach(b => b.onclick = () => { F._colMovel = b.dataset.colMovel; desenharArea(); });
@@ -3809,39 +3813,60 @@ B7.Design = (function () {
   let modoSel = false;
   function alternarSelecao(forcar) {
     modoSel = typeof forcar === 'boolean' ? forcar : !modoSel;
-    if (!modoSel) selecionados.clear();
+    if (!modoSel) { selecionados.clear(); ultimoMarcado = null; }
     if (linhaAberta) desenharLinha(); else { desenharBarra(); desenharArea(); }
     desenharLote();
   }
-  function cliquePeca(el) {
+  let ultimoMarcado = null;
+  /* Esc sai da seleção (se não houver janela aberta por cima) */
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || (!modoSel && !selecionados.size)) return;
+    if (document.querySelector('.fundo-modal, .ds-drawer.aberto')) return;
+    if (!painel().querySelector('#ds-area, #ds-linha-raiz')) return;
+    alternarSelecao(false);
+  });
+  const podeSelecionar = () => ehEquipe() && pode('design.mover');
+  /* marca/desmarca uma peça. Shift = marca o intervalo desde a última marcada. */
+  function marcarPeca(id, e) {
+    if (!podeSelecionar()) return;
+    e = e || {};
+    if (e.shiftKey && ultimoMarcado && ultimoMarcado !== id) {
+      const vis = idsVisiveis(), i = vis.indexOf(ultimoMarcado), j = vis.indexOf(id);
+      if (i >= 0 && j >= 0) vis.slice(Math.min(i, j), Math.max(i, j) + 1).forEach(x => selecionados.add(x));
+      else selecionados.add(id);
+    } else if (selecionados.has(id)) selecionados.delete(id);
+    else selecionados.add(id);
+    ultimoMarcado = id;
+    if (!modoSel) { modoSel = true; const bt = painel().querySelector('#ds-sel-bt'); if (bt) { bt.classList.add('on'); bt.setAttribute('aria-pressed', 'true'); } }
+    atualizarMarcas();
+  }
+  function cliquePeca(el, e) {
     const id = el.dataset.peca;
-    if (modoSel || selecionados.size) {
-      if (selecionados.has(id)) selecionados.delete(id); else selecionados.add(id);
-      el.classList.toggle('ds-marcada', selecionados.has(id));
-      const chk = el.querySelector('[data-check]'); if (chk) chk.checked = selecionados.has(id);
-      desenharLote();
-      return;
-    }
+    if (podeSelecionar() && (modoSel || selecionados.size || (e && (e.ctrlKey || e.metaKey || e.shiftKey)))) { marcarPeca(id, e); return; }
     abrirDetalhe(id);
   }
+  /* põe a caixinha em cada peça (aparece ao passar o mouse; fixa no modo seleção) */
   function ligarSelecao(raiz) {
-    if (!raiz) return;
-    raiz.classList.toggle('ds-selecionando', modoSel);
+    if (!raiz || !podeSelecionar()) return;
     raiz.querySelectorAll('[data-peca]').forEach(el => {
-      const id = el.dataset.peca;
-      if (modoSel && !el.querySelector('[data-check]')) {
-        el.insertAdjacentHTML('afterbegin', '<label class="ds-selbox" aria-label="Selecionar"><input type="checkbox" data-check="' + esc(id) + '"><i></i></label>');
+      if (!el.querySelector('[data-check]')) {
+        el.insertAdjacentHTML('afterbegin', '<label class="ds-selbox" title="Selecionar (Ctrl+clique; Shift+clique marca um intervalo)"><input type="checkbox" data-check="' + esc(el.dataset.peca) + '" aria-label="Selecionar peça"><i></i></label>');
       }
-      el.classList.toggle('ds-marcada', selecionados.has(id));
     });
     raiz.querySelectorAll('[data-check]').forEach(chk => {
-      chk.checked = selecionados.has(chk.dataset.check);
-      chk.onclick = e => e.stopPropagation();
-      chk.onchange = () => {
-        if (chk.checked) selecionados.add(chk.dataset.check); else selecionados.delete(chk.dataset.check);
-        const el = chk.closest('[data-peca]'); if (el) el.classList.toggle('ds-marcada', chk.checked);
-        desenharLote();
-      };
+      chk.onclick = e => { e.stopPropagation(); const ev = { shiftKey: e.shiftKey }; setTimeout(() => marcarPeca(chk.dataset.check, ev), 0); };
+      chk.onchange = null;
+    });
+    atualizarMarcas();
+  }
+  /* só repinta as marcas (sem redesenhar a tela) */
+  function atualizarMarcas() {
+    const p = painel();
+    p.querySelectorAll('#ds-area, #ds-linha-raiz').forEach(r => r.classList.toggle('ds-selecionando', modoSel));
+    p.querySelectorAll('[data-peca]').forEach(el => {
+      const on = selecionados.has(el.dataset.peca);
+      el.classList.toggle('ds-marcada', on);
+      const c = el.querySelector('[data-check]'); if (c) c.checked = on;
     });
     desenharLote();
   }
@@ -3930,11 +3955,7 @@ B7.Design = (function () {
     if (a === 'todas') {
       const vis = idsVisiveis(), todas = vis.every(id => selecionados.has(id));
       vis.forEach(id => { if (todas) selecionados.delete(id); else selecionados.add(id); });
-      painel().querySelectorAll('[data-peca]').forEach(el => {
-        el.classList.toggle('ds-marcada', selecionados.has(el.dataset.peca));
-        const c = el.querySelector('[data-check]'); if (c) c.checked = selecionados.has(el.dataset.peca);
-      });
-      return desenharLote();
+      return atualizarMarcas();
     }
     if (!ids.length) return;
     if (a === 'aprovado_interno' || a === 'aprovado_cliente' || a === 'finalizado') return moverLote(a, ids);
