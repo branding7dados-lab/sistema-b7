@@ -1232,3 +1232,60 @@ body.ds-lb-aberta{overflow:hidden;}
 .ds-selecionando [data-peca]:not(.ds-marcada):hover{box-shadow:0 0 0 1.5px color-mix(in srgb,var(--acento) 35%,transparent) !important;}
 /* a tabela: a caixinha nativa da lista continua na primeira coluna */
 .ds-tr > span > .ds-check{accent-color:var(--acento);width:17px;height:17px;}
+
+/* =====================================================================
+   4.49.4 — TELA DE DESIGN NO PADRÃO NOVO (selo, números, cápsulas)
+   As cores saem da aparência (--sb-luz1/--sb-luz2/--acento).
+   ===================================================================== */
+.ds2-tit{display:flex;align-items:center;gap:16px;min-width:0;}
+.ds2-selo{flex:none;width:56px;height:56px;border-radius:18px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));
+  box-shadow:0 16px 30px -16px color-mix(in srgb,var(--sb-luz1) 80%,transparent),inset 0 1px 0 rgba(255,255,255,.3);}
+.ds2-selo svg{width:28px;height:28px;}
+.ds2-cab h1{letter-spacing:-.03em;}
+@media (max-width:760px){ .ds2-selo{width:44px;height:44px;border-radius:14px;} .ds2-selo svg{width:22px;height:22px;} }
+
+/* números do momento */
+.ds2-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:2px 0 16px;}
+.ds2-kpi{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 16px 13px;border-radius:18px;text-align:left;cursor:pointer;
+  background:var(--card);border:1px solid var(--borda);box-shadow:0 10px 26px -22px rgba(30,20,70,.5);font:inherit;color:var(--ink);overflow:hidden;
+  transition:transform .18s cubic-bezier(.3,1.4,.5,1), box-shadow .2s ease, border-color .2s ease;}
+.ds2-kpi:before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--k,var(--acento));}
+.ds2-kpi:hover{transform:translateY(-2px);box-shadow:0 16px 30px -20px rgba(30,20,70,.45);}
+.ds2-kpi.on{border-color:color-mix(in srgb,var(--k,var(--acento)) 55%,var(--borda));background:color-mix(in srgb,var(--k,var(--acento)) 6%,var(--card));}
+.ds2-kpi-rot{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);}
+.ds2-kpi b{font-family:'B7 Titulo',system-ui,sans-serif;font-size:30px;line-height:1.1;letter-spacing:-.03em;}
+.ds2-kpi small{font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.ds2-kpi.k1{--k:var(--sb-luz1);} .ds2-kpi.k2{--k:#6B46E5;} .ds2-kpi.k3{--k:#E8952E;} .ds2-kpi.k4{--k:var(--sb-luz2);} .ds2-kpi.k5{--k:#1FA971;}
+@media (max-width:1100px){ .ds2-kpis{grid-template-columns:repeat(3,minmax(0,1fr));} }
+@media (max-width:760px){ .ds2-kpis{display:flex;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:0 16px;} .ds2-kpi{flex:0 0 150px;} }
+
+/* abas numa cápsula só */
+.design-tela .ds-abas{display:inline-flex;gap:4px;padding:4px;border-radius:16px;background:var(--card);border:1px solid var(--borda);
+  box-shadow:0 10px 26px -24px rgba(30,20,70,.5);max-width:100%;}
+.design-tela .ds-abas button{border:0;border-radius:12px;padding:8px 14px;color:var(--ink-3);transition:background .15s, color .15s;}
+.design-tela .ds-abas button:hover{background:var(--suave);color:var(--ink);}
+.design-tela .ds-abas button.on{background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));color:#fff;border:0;box-shadow:0 8px 18px -10px var(--sb-luz1);}
+.design-tela .ds-abas button.on .ds-aba-n{background:rgba(255,255,255,.22);color:#fff;}
+
+/* filtros e vista numa barra-cartão */
+.design-tela .ds-barra{padding:8px;border-radius:18px;background:var(--card);border:1px solid var(--borda);box-shadow:0 10px 26px -24px rgba(30,20,70,.5);}
+.design-tela .ds-barra .seg-vista{background:var(--suave);border-radius:12px;padding:3px;}
+.design-tela .ds-barra .seg-vista button.on{background:var(--card);box-shadow:0 2px 8px -4px rgba(30,20,70,.35);color:var(--acento);}
+
+/* colunas do quadro */
+.design-tela .ds-col{background:color-mix(in srgb,var(--suave) 70%,transparent);border:1px solid var(--borda);border-radius:20px;padding:10px;}
+.design-tela .ds-col header b{font-size:13px;}
+.design-tela .ds-col .ds-cont{min-width:24px;text-align:center;padding:2px 8px;border-radius:99px;background:var(--card);font-weight:800;font-size:11.5px;color:var(--ink-2);}
+.design-tela .ds-col.vazia{opacity:.75;}
+
+/* tudo em dia */
+.ds2-vazio{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:56px 20px;border-radius:24px;
+  background:radial-gradient(60% 80% at 50% 0%,color-mix(in srgb,var(--sb-luz1) 10%,transparent),transparent 70%),var(--card);
+  border:1px solid var(--borda);box-shadow:0 18px 40px -32px rgba(30,20,70,.5);}
+.ds2-vazio-ic{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;color:#fff;margin-bottom:6px;
+  background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));box-shadow:0 16px 30px -14px var(--sb-luz1);}
+.ds2-vazio-ic svg{width:30px;height:30px;}
+.ds2-vazio b{font-family:'B7 Titulo',system-ui,sans-serif;font-size:21px;letter-spacing:-.02em;}
+.ds2-vazio p{margin:0;color:var(--ink-3);font-size:14px;}
+.ds2-vazio-acoes{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px;}

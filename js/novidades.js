@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.49.4', versao: '4.49.4', em: '2026-11-16T22:00:00-03:00',
+    titulo: 'Ícones em pastilha e tela de Design renovada',
+    itens: ['Os ícones do menu agora ficam dentro de pastilhas coloridas, na cor da sua aparência; a página aberta acende.',
+      'Design: cabeçalho novo e cinco números do momento (em produção, em revisão, ajustes, aprovadas e entregues no mês) — clique num deles para filtrar.',
+      'Abas, filtros e colunas do quadro com o visual novo; quando não há peça, aparece um aviso de "tudo em dia" com atalhos.'] },
   { id: 'v-4.49.3', versao: '4.49.3', em: '2026-11-16T21:00:00-03:00', rota: 'design',
     titulo: 'Design: selecionar peças ficou mais fácil',
     itens: ['Ctrl+clique marca uma peça; Shift+clique marca todas entre a última marcada e a clicada.',

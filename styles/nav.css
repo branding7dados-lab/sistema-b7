@@ -1069,3 +1069,18 @@ svg.phi.phd{--duo1:color-mix(in srgb,var(--acento) 16%,#fff);--duo2:var(--acento
 .lateral .nav a.on > svg.phi.phd{--duo1:color-mix(in srgb,var(--sb-luz2) 55%,#fff);--duo2:#fff;}
 #b7-duo-defs stop.b7-duo-a{stop-color:var(--sb-luz1);}
 #b7-duo-defs stop.b7-duo-b{stop-color:var(--sb-luz2);}
+
+/* 4.49.4 — ÍCONES EM PASTILHA (escolha do Kevin): cada ícone branco dentro de
+   um quadradinho com o gradiente da aparência; o ativo acende. */
+@media (min-width:761px){
+  body[data-shell="interno"] .lateral .nav.multi .ng a svg.phi.phd{box-sizing:content-box;width:16px;height:16px;padding:6px;border-radius:10px;opacity:1;
+    background:linear-gradient(135deg,color-mix(in srgb,var(--sb-luz1) 55%,transparent),color-mix(in srgb,var(--sb-luz2) 40%,transparent));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18);--duo1:rgba(255,255,255,.35);--duo2:#fff;
+    transition:background .2s ease, box-shadow .25s ease, transform .2s cubic-bezier(.3,1.4,.5,1);}
+  body[data-shell="interno"] .lateral .nav.multi .ng a,
+  body[data-shell="interno"].recolhida .lateral .nav.multi .ng a{padding-left:8px;gap:11px;height:38px;min-height:38px;}
+  body[data-shell="interno"].recolhida .lateral .nav.multi .ng a{padding-left:11px;}
+  body[data-shell="interno"] .lateral .nav.multi .ng a:hover svg.phi.phd{background:linear-gradient(135deg,color-mix(in srgb,var(--sb-luz1) 75%,transparent),color-mix(in srgb,var(--sb-luz2) 60%,transparent));transform:scale(1.06);--duo1:rgba(255,255,255,.45);}
+  body[data-shell="interno"] .lateral .nav.multi .ng a.on svg.phi.phd{background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 6px 14px -6px var(--sb-luz2);--duo1:rgba(255,255,255,.5);--duo2:#fff;}
+}

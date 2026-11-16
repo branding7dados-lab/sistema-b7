@@ -164,13 +164,15 @@ B7.Design = (function () {
   function desenhar() {
     const equipe = ehEquipe();
     painel().innerHTML = '<div class="conteudo entra design-tela">' +
-      '<div class="cab-conteudo"><div><p class="v4-sobre">Fila de criação</p><h1>Produção de Design</h1>' +
+      /* 4.49.4: cabeçalho no padrão novo (selo + sobretítulo + título) e números do momento */
+      '<div class="cab-conteudo ds2-cab"><div class="ds2-tit"><span class="ds2-selo" aria-hidden="true">' + IC_DS2 + '</span><div><p class="v4-sobre">Fila de criação</p><h1>Produção de Design</h1>' +
       '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.'
-                            : 'A fila de produção visual da equipe.') + '</p></div>' +
+                            : 'A fila de produção visual da equipe.') + '</p></div></div>' +
       (pode('design.criar') ? '<button class="b pri" id="ds-nova" aria-label="Nova demanda de Design"><span class="ds-nova-mais" aria-hidden="true">+</span><span class="ds-nova-tx">Nova demanda de Design</span></button>' : '') + '</div>' +
       (equipe ? '<nav class="ds-abas" role="tablist">' + ABAS_EQUIPE.map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (F.aba === k ? 'on' : '') + '" aria-selected="' + (F.aba === k) + '">' +
         esc(r) + (STATUS_DA_ABA[k] ? '<i class="ds-aba-n" data-aba-n="' + k + '"></i>' : '') + '</button>').join('') + '</nav>' : '') +
+      (equipe ? '<div class="ds2-kpis" id="ds-kpis"></div>' : '') +
       '<div id="ds-resumo"></div>' +
       '<div id="ds-barra"></div>' +
       '<div id="ds-area"></div>' +
@@ -420,6 +422,7 @@ B7.Design = (function () {
 
     desenharResumoEquipe();
     contarAbas();
+    desenharKpis();
     /* peça finalizada sai do caminho: só aparece na aba "Finalizadas" (ou
        com o filtro de status em "Finalizado"). O total avisa quantas
        ficaram de fora e leva até elas. */
@@ -1255,6 +1258,7 @@ B7.Design = (function () {
 
   function viewQuadro(vis) {
     if (!vis.length && !ehEquipe()) return blocoVazio();
+    if (!vis.length && ehEquipe()) return vazioEquipe();
     const presentes = new Set(vis.map(d => d.status));
     if (ehEquipe() && !filtrosAtivos() && !F.rapido && (!F.aba || F.aba === 'todas')) COLUNAS_FIXAS_EQUIPE.forEach(c => presentes.add(c));
     const statusPresentes = [...presentes].sort((a, b) => ordemStatus(a) - ordemStatus(b));
@@ -3964,6 +3968,58 @@ B7.Design = (function () {
     if (a === 'responsavel') return abrirSeletorDesigner(null, ids, () => { selecionados.clear(); modoSel = false; desenharLote(); recarregarDepoisDoLote(); });
     if (a === 'apagar' && B7.Lote) return B7.Lote.apagar('design', ids, ok => { if (ok) { selecionados.clear(); modoSel = false; desenharLote(); B7.Rota.recarregar(); } });
   }
+
+
+  /* =================================================================
+     4.49.4 — TELA DE DESIGN NO PADRÃO NOVO: selo do cabeçalho, números
+     do momento (clicáveis) e o "tudo em dia" quando não há peça.
+     ================================================================= */
+  const IC_DS2 = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.2 0 1.9-.8 1.9-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8h2.1a3.7 3.7 0 0 0 3.7-3.7C20.5 6.6 16.7 3.5 12 3.5z"/><circle cx="7.6" cy="11.3" r="1.1" fill="currentColor"/><circle cx="10.4" cy="7.4" r="1.1" fill="currentColor"/><circle cx="15" cy="7.6" r="1.1" fill="currentColor"/></svg>';
+  function desenharKpis() {
+    const cx = painel().querySelector('#ds-kpis');
+    if (!cx) return;
+    const conta = st => dados.filter(d => st.includes(d.status)).length;
+    const mes = new Date().toISOString().slice(0, 7);
+    const entregues = dados.filter(d => d.status === 'finalizado' && String(d.finalizado_em || d.updated_at || '').slice(0, 7) === mes).length;
+    const K = [
+      ['todas', 'Em produção', conta(['aguardando_producao', 'em_criacao']), 'para fazer e em criação', 'k1'],
+      ['revisao', 'Em revisão', conta(['revisao_interna']), 'esperando a equipe aprovar', 'k2'],
+      ['ajustes', 'Ajustes', conta(['ajustes', 'ajustes_cliente']), 'da equipe e do cliente', 'k3'],
+      ['aprovadas', 'Aprovadas', conta(['aprovado_interno', 'aguardando_cliente', 'aprovado_cliente']), 'com o cliente ou prontas', 'k4'],
+      ['finalizadas', 'Entregues no mês', entregues, 'finalizadas em ' + new Date().toLocaleDateString('pt-BR', { month: 'long' }), 'k5']
+    ];
+    cx.innerHTML = K.map(([aba, rot, n, sub, k]) =>
+      '<button type="button" class="ds2-kpi ' + k + (F.aba === aba && aba !== 'todas' ? ' on' : '') + '" data-kpi="' + aba + '">' +
+        '<span class="ds2-kpi-rot">' + esc(rot) + '</span><b>' + n + '</b><small>' + esc(sub) + '</small></button>').join('');
+    cx.querySelectorAll('[data-kpi]').forEach(b => b.onclick = () => {
+      F.aba = b.dataset.kpi; guardarFiltros();
+      painel().querySelectorAll('[data-aba]').forEach(x => x.classList.toggle('on', x.dataset.aba === F.aba));
+      desenharBarra(); desenharArea();
+    });
+  }
+  function vazioEquipe() {
+    const filtros = filtrosAtivos() || F.rapido || (F.aba && F.aba !== 'todas');
+    const fin = dados.filter(d => d.status === 'finalizado').length;
+    return '<div class="ds2-vazio"><span class="ds2-vazio-ic" aria-hidden="true">' + IC_DS2 + '</span>' +
+      '<b>' + (filtros ? 'Nada com esses filtros.' : 'Tudo em dia por aqui.') + '</b>' +
+      '<p>' + (filtros ? 'Tente limpar os filtros ou trocar de aba.' : 'Nenhuma peça em produção agora' + (fin ? ' — ' + fin + ' já foram entregues.' : '.')) + '</p>' +
+      '<div class="ds2-vazio-acoes">' +
+        (filtros ? '<button type="button" class="b contorno" data-vazio="limpar">Limpar filtros</button>' : '') +
+        (fin ? '<button type="button" class="b contorno" data-vazio="finalizadas">Ver entregues</button>' : '') +
+        (pode('design.criar') ? '<button type="button" class="b pri" data-vazio="nova">+ Nova demanda de Design</button>' : '') +
+      '</div></div>';
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('[data-vazio]');
+    if (!b || !painel().contains(b)) return;
+    const a = b.dataset.vazio;
+    if (a === 'nova') return modalNovaDemanda();
+    if (a === 'finalizadas') { F.aba = 'finalizadas'; }
+    if (a === 'limpar') { F.cliente = F.designer = F.tipo = F.status = F.prazo = F.linha = F.prioridade = F.busca = F.rapido = ''; F.aba = 'todas'; }
+    guardarFiltros();
+    painel().querySelectorAll('[data-aba]').forEach(x => x.classList.toggle('on', x.dataset.aba === F.aba));
+    desenharBarra(); desenharArea();
+  });
 
   return { abrir, abrirCentral, abrirDetalhe, abrirLinha, rotuloStatus, rotuloTipo };
 })();
