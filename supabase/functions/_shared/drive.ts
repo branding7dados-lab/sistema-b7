@@ -13,7 +13,11 @@ const API = 'https://www.googleapis.com/drive/v3';
 const RAIZ = 'B7 · WhatsApp';
 
 /** token de acesso válido, ou null se o Drive não estiver conectado */
+/* 4.58.4: se o Google recusou (401/403), para de tentar por 15 min.
+   Antes cada arquivo aberto tentava o Drive de novo e a tela ficava lenta. */
+let pausaAte = 0;
 export async function tokenDrive(sb: SupabaseClient): Promise<string | null> {
+  if (Date.now() < pausaAte) return null;
   const { data: c } = await sb.from('drive_conexoes').select('*').eq('status', 'ativa').order('conectado_em', { ascending: false }).limit(1).maybeSingle();
   if (!c) return null;
   const expira = c.token_expira_em ? new Date(c.token_expira_em).getTime() : 0;
@@ -38,8 +42,13 @@ async function criarPasta(tk: string, nome: string, pai: string | null): Promise
     method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: nome, mimeType: 'application/vnd.google-apps.folder', ...(pai ? { parents: [pai] } : {}) })
   });
-  const d = await r.json();
-  if (!r.ok || !d.id) throw new Error('Drive: não criou a pasta (' + r.status + ')');
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.id) {
+    const motivo = d?.error?.errors?.[0]?.reason || d?.error?.status || '';
+    const msg = String(d?.error?.message || '').slice(0, 300);
+    if (r.status === 401 || r.status === 403) pausaAte = Date.now() + 15 * 60_000;
+    throw new Error('Drive: não criou a pasta (' + r.status + (motivo ? ' ' + motivo : '') + ')' + (msg ? ' — ' + msg : ''));
+  }
   return d.id;
 }
 
@@ -47,7 +56,13 @@ async function criarPasta(tk: string, nome: string, pai: string | null): Promise
 async function pasta(sb: SupabaseClient, tk: string, chave: string, nome: string, pai: string | null): Promise<string> {
   const { data } = await sb.from('wa_drive_pastas').select('drive_id').eq('chave', chave).maybeSingle();
   if (data?.drive_id) return data.drive_id;
-  const id = await criarPasta(tk, nome, pai);
+  let id: string;
+  try { id = await criarPasta(tk, nome, pai); }
+  catch (e) {
+    /* guarda o motivo pra tela de conexão mostrar (sem derrubar a conexão) */
+    await sb.from('drive_conexoes').update({ ultimo_erro: String((e as Error).message).slice(0, 400) }).eq('status', 'ativa');
+    throw e;
+  }
   await sb.from('wa_drive_pastas').upsert({ chave, drive_id: id });
   return id;
 }

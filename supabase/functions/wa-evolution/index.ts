@@ -505,6 +505,27 @@ Deno.serve(comCors(async (req: Request) => {
         return json({ ok: true });
       }
       case 'midia': return json(await baixarMidia(String(c.id || '')));
+      /* 4.58.4: o painel de figurinhas numa chamada só, sem repetidas (pelo
+         fileSha256 do WhatsApp) e já com os links. Antes eram 40 chamadas. */
+      case 'figurinhas': {
+        const { data } = await admin().from('wa_mensagens')
+          .select('id, midia_path, drive_id, sha:midia_raw->message->stickerMessage->fileSha256')
+          .eq('tipo', 'figurinha').eq('apagada', false).order('criada_em', { ascending: false }).limit(400);
+        const vistos = new Set<string>(), lista: any[] = [];
+        for (const f of (data || []) as any[]) {
+          const k = f.sha ? JSON.stringify(f.sha) : f.id;
+          if (vistos.has(k)) continue; vistos.add(k); lista.push(f);
+          if (lista.length >= 60) break;
+        }
+        const caminhos = lista.filter(f => f.midia_path && !f.drive_id).map(f => f.midia_path);
+        const { data: ass } = caminhos.length ? await admin().storage.from('wa-midia').createSignedUrls(caminhos, 3600) : { data: [] as any[] };
+        const porCaminho = new Map((ass || []).map((a: any) => [a.path, a.signedUrl]));
+        const itens = await Promise.all(lista.map(async f => ({
+          id: f.id,
+          url: f.drive_id ? await linkAssinado(f.id) : (f.midia_path ? porCaminho.get(f.midia_path) || null : null)
+        })));
+        return json({ itens });
+      }
     }
     return json({ erro: 'Ação desconhecida.' }, 400);
   } catch (e) {

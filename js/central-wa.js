@@ -729,27 +729,33 @@ B7.CentralWA = (function () {
     cx.hidden = false;
     cx.innerHTML = '<div class="wz-figs-top"><b>Figurinhas</b><button class="b fina contorno" data-wz="fig-nova">＋ Criar de uma imagem</button></div><div class="wz-figs-grade"><p class="sub">Carregando…</p></div>';
     let usadas = []; try { usadas = JSON.parse(localStorage.getItem(FIG_FAV) || '[]'); } catch (e) {}
-    const { data } = await sb().from('wa_mensagens').select('id,midia_tamanho,criada_em').eq('tipo', 'figurinha').eq('apagada', false).order('criada_em', { ascending: false }).limit(150);
-    /* a mesma figurinha chega várias vezes: fica uma de cada (pelo tamanho do arquivo) */
-    const vistos = new Set(), lista = [];
-    for (const id of usadas) { if (!lista.includes(id)) lista.push(id); }
-    for (const f of data || []) { const k = f.midia_tamanho || f.id; if (vistos.has(k)) continue; vistos.add(k); if (!lista.includes(f.id)) lista.push(f.id); }
     const grade = cx.querySelector('.wz-figs-grade');
+    /* 4.58.4: uma chamada só, já sem repetidas e com os links */
+    let itens = [];
+    try { const r = await chamar('figurinhas', {}); if (r.erro) throw new Error(r.erro); itens = r.itens || []; }
+    catch (e) { grade.innerHTML = '<p class="sub">Não consegui carregar as figurinhas agora. Tenta de novo.</p>'; return; }
+    if (cx.hidden) return;
+    itens.forEach(f => { if (f.url) figUrl.set(f.id, f.url); });
+    const ids = itens.map(f => f.id);
+    const lista = [...usadas.filter(id => ids.includes(id) || figUrl.has(id)), ...ids].filter((id, i, a) => a.indexOf(id) === i).slice(0, 48);
     if (!lista.length) { grade.innerHTML = '<p class="sub">As figurinhas que chegarem nas conversas aparecem aqui. Ou crie uma de uma imagem.</p>'; return; }
-    grade.innerHTML = lista.slice(0, 40).map(id => '<button class="wz-figs-it" data-fig="' + esc(id) + '"><i class="wz-ph">🙂</i></button>').join('');
-    /* carrega as imagens 4 por vez */
-    const fila = [...grade.querySelectorAll('[data-fig]')];
+    grade.innerHTML = lista.map(id => {
+      const u = figUrl.get(id);
+      return '<button class="wz-figs-it" data-fig="' + esc(id) + '" aria-label="Mandar figurinha">' + (u ? '<img src="' + esc(u) + '" alt="" loading="lazy">' : '<i class="wz-ph">🙂</i>') + '</button>';
+    }).join('');
+    /* imagem que não abrir sai da grade (em vez de ficar o quadradinho vazio) */
+    grade.querySelectorAll('img').forEach(im => { im.onerror = () => { figUrl.delete(im.parentElement.dataset.fig); im.parentElement.remove(); }; });
+    /* as que ainda não estão guardadas: busca 3 por vez */
+    const fila = [...grade.querySelectorAll('[data-fig]')].filter(b => !b.querySelector('img'));
     const proxima = async () => {
       const b = fila.shift(); if (!b) return;
-      const id = b.dataset.fig;
       try {
-        let url = figUrl.get(id);
-        if (!url) { const r = await chamar('midia', { id }); url = r && r.url; if (url) figUrl.set(id, url); }
-        if (url) b.innerHTML = '<img src="' + esc(url) + '" alt="Figurinha" loading="lazy">'; else b.remove();
+        const r = await chamar('midia', { id: b.dataset.fig });
+        if (r && r.url) { figUrl.set(b.dataset.fig, r.url); b.innerHTML = '<img src="' + esc(r.url) + '" alt="" loading="lazy">'; } else b.remove();
       } catch (e) { b.remove(); }
       return proxima();
     };
-    proxima(); proxima(); proxima(); proxima();
+    proxima(); proxima(); proxima();
   }
   async function enviarFigurinha(extra) {
     const jid = S.aberta; if (!jid) return;
