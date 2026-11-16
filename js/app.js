@@ -1201,7 +1201,10 @@ B7.Rota = (function () {
       const destino = alvo.dataset.ir;
       if (!destino) return;
       e.preventDefault();
-      location.hash = destino;
+      /* 4.53.6: já no mesmo endereço (ex.: outra tela terminou de carregar por cima
+         do WhatsApp) — o hash não muda e o clique "não fazia nada": abre de novo */
+      if ((location.hash || '#/') === destino) { if (B7.Rota && B7.Rota.ir) B7.Rota.ir(); }
+      else location.hash = destino;
       if (B7.fecharGaveta) B7.fecharGaveta();
     });
 

@@ -100,6 +100,7 @@ B7.CentralWA = (function () {
     try { S.clientes = (await sb().from('clientes_resumo').select('id,nome,logo_url').is('deleted_at', null).order('nome')).data || []; } catch (e) {}
     S.contatos = null;
     await carregarConversas();
+    if (!raiz.isConnected) return;   /* a pessoa já foi para outra tela */
     desenhar();
     ligarTempoReal();
     atualizarContatosDeVezEmQuando();
@@ -128,7 +129,8 @@ B7.CentralWA = (function () {
     chamar('contatos').then(async () => { await Promise.all([carregarContatos(), carregarConversas()]); pintarLista(); }).catch(() => {});
   }
   async function carregarConversas() {
-    if (!S.contatos) await carregarContatos();
+    /* 4.53.6: os nomes dos contatos chegam depois — não seguram a abertura da tela */
+    if (!S.contatos) { S.contatos = new Map(); carregarContatos().then(() => { if (raiz && raiz.isConnected) pintarLista(); }); }
     const { data } = await sb().from('wa_conversas').select('*').order('fixada', { ascending: false }).order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
     S.conversas = data || [];
     S.porJid = new Map(S.conversas.map(c => [c.jid, c]));
