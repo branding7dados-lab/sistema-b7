@@ -12,9 +12,9 @@
 // O webhook (mensagens chegando → wa-entrada) é ligado sozinho ao conectar.
 // =====================================================================
 import { comCors } from '../_shared/cors.ts';
-import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa } from '../_shared/wa.ts';
+import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
 
-const VERSAO = 'wa-evolution 6 (4.52.3)';
+const VERSAO = 'wa-evolution 7 (4.52.4)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -95,20 +95,53 @@ async function importar(pagina: number) {
     if (g.ok && Array.isArray(g.dados)) for (const x of g.dados) { if (x?.id) { await garantirConversa(sb, x.id, null, x.subject || null, x.pictureUrl || null); grupos++; } }
     return { grupos, conversas: 0, mensagens: 0, proxima: 1, total: POR_PAGINA * PAGINAS, lidas: 0 };
   }
-  let mensagens = 0;
-  const m = await evo('/chat/findMessages/' + I(), 'POST', { page: pagina, offset: POR_PAGINA }, 60000);
+  /* 4.52.4: em lote — uma busca no Evolution, uma leitura das conversas, uma gravação das
+     mensagens e uma atualização por conversa (antes eram ~5 consultas por mensagem) */
+  const t0 = Date.now();
+  const m = await evo('/chat/findMessages/' + I(), 'POST', { page: pagina, offset: POR_PAGINA }, 45000);
+  const msEvo = Date.now() - t0;
   if (!m.ok) return { erro: 'O Evolution não devolveu as mensagens (' + m.status + ').' };
   const recs: any[] = m.dados?.messages?.records || [];
   const total = Math.min(Number(m.dados?.messages?.total || 0), POR_PAGINA * PAGINAS);
-  const jids = new Set<string>();
-  /* da mais antiga para a mais nova, para a prévia de cada conversa ficar com a última */
-  for (const r of [...recs].reverse()) {
+  const linhas = new Map<string, Linha>(); const nomes = new Map<string, string>();
+  for (const r of recs) {
     const jid = r?.key?.remoteJid || '';
     if (!/@(g\.us|s\.whatsapp\.net|lid)$/.test(jid)) continue;
-    try { if (await gravar(sb, r, {}, { historico: true })) { mensagens++; jids.add(jid); } } catch (_e) { /* uma mensagem estranha não para o resto */ }
+    let x: ReturnType<typeof interpretar> = null;
+    try { x = interpretar(r); } catch (_e) { continue; }
+    if (!x?.linha) continue;   /* reações/edições antigas ficam de fora do histórico */
+    const l = x.linha; if (!l.id) continue;
+    linhas.set(String(l.id), l);
+    if (!l.de_mim && r.pushName && !nomes.has(jid)) nomes.set(jid, String(r.pushName));
+  }
+  const lista = [...linhas.values()];
+  const jids = [...new Set(lista.map(l => String(l.jid)))];
+  if (!lista.length) return { grupos: 0, conversas: 0, mensagens: 0, proxima: null, total, lidas: pagina * POR_PAGINA, msEvo };
+  const { data: existentes } = await sb.from('wa_conversas').select('jid, ultima_em, esperando_desde').in('jid', jids);
+  const conv = new Map<string, any>((existentes || []).map((c: any) => [c.jid, c]));
+  for (const jid of jids) if (!conv.has(jid)) {
+    try { await garantirConversa(sb, jid, /@g\.us$/.test(jid) ? null : (nomes.get(jid) || null)); } catch (_e) { /* segue */ }
+    conv.set(jid, { jid, ultima_em: null, esperando_desde: null });
+  }
+  const { data: novas, error } = await sb.from('wa_mensagens')
+    .upsert(lista, { onConflict: 'id', ignoreDuplicates: true, defaultToNull: false }).select('id');
+  if (error) return { erro: 'Não consegui guardar as mensagens: ' + error.message };
+  const ids = new Set((novas || []).map((n: any) => n.id));
+  const ultima = new Map<string, Linha>();
+  for (const l of lista) if (ids.has(l.id)) {
+    const u = ultima.get(String(l.jid));
+    if (!u || new Date(String(l.criada_em)) > new Date(String(u.criada_em))) ultima.set(String(l.jid), l);
+  }
+  for (const [jid, l] of ultima) {
+    const c = conv.get(jid);
+    if (c?.ultima_em && new Date(String(l.criada_em)) < new Date(c.ultima_em)) continue;
+    const patch: Linha = { atualizado_em: new Date().toISOString(), ultima_em: l.criada_em, previa: previaDe(l),
+      previa_autor: l.de_mim ? (l.enviada_por_nome || null) : (/@g\.us$/.test(jid) ? l.autor_nome : null), previa_de_mim: !!l.de_mim };
+    if (l.de_mim) patch.esperando_desde = null; else if (!c?.esperando_desde) patch.esperando_desde = l.criada_em;
+    await sb.from('wa_conversas').update(patch).eq('jid', jid);
   }
   const temMais = recs.length === POR_PAGINA && pagina < PAGINAS && pagina * POR_PAGINA < total;
-  return { grupos: 0, conversas: jids.size, mensagens, proxima: temMais ? pagina + 1 : null, total, lidas: pagina * POR_PAGINA };
+  return { grupos: 0, conversas: ultima.size, mensagens: ids.size, proxima: temMais ? pagina + 1 : null, total, lidas: pagina * POR_PAGINA, msEvo, ms: Date.now() - t0 };
 }
 
 async function msgDe(id: string) {
