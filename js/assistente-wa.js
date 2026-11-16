@@ -288,7 +288,11 @@ B7.AssistenteWA = (function () {
       const r = await chamar('assistente_testar', { jid: S.testeJid, texto: tx, autor: 'Cliente (teste)', equipe: S.testeEquipe });
       S.teste.pop();
       if (r.erro) S.teste.push({ de: 'ele', t: '⚠️ ' + r.erro });
-      else S.teste.push({ de: 'ele', t: r.resposta || '(ficaria calado)', pq: r.perguntaEquipe, meta: [r.modo === 'fora_horario' ? 'fora do horário' : r.modo === 'ordem' ? 'ordem da equipe' : '', r.provedor, r.ms ? (r.ms / 1000).toFixed(1) + ' s' : ''].filter(Boolean).join(' · ') });
+      else {
+        /* 4.58.1: várias mensagens seguidas = vários balões */
+        const partes = String(r.resposta || '').split(/\n?\s*\[\[\s*NOVA\s*\]\]\s*\n?/i).map(x => x.trim()).filter(Boolean);
+        partes.slice(0, -1).forEach(t => S.teste.push({ de: 'ele', t }));
+        S.teste.push({ de: 'ele', t: partes[partes.length - 1] || '(ficaria calado)', pq: r.perguntaEquipe, meta: [r.modo === 'fora_horario' ? 'fora do horário' : r.modo === 'ordem' ? 'ordem da equipe' : '', r.provedor, r.ms ? (r.ms / 1000).toFixed(1) + ' s' : ''].filter(Boolean).join(' · ') }); }
     } catch (x) { S.teste.pop(); S.teste.push({ de: 'ele', t: '⚠️ ' + x.message }); }
     desenhar();
     const ch = raiz.querySelector('#asw-chat'); if (ch) ch.scrollTop = ch.scrollHeight;

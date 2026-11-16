@@ -114,9 +114,25 @@ function noJeitoDoWhats(cfg: Config, t: string): string {
     .replace(/^[ \t]{0,3}#{1,6}[ \t]*/gm, '').replace(new RegExp('^\\s*\\*?' + n + ':?\\*?:?\\s*', 'i'), '')
     .replace(/\n{3,}/g, '\n\n').trim();
 }
+/* 4.58.1: mais de uma mensagem seguida — a IA separa com uma linha [[NOVA]] (até 3). A primeira leva a
+   assinatura, a citação e as marcações; as outras saem em seguida, com "digitando…" proporcional ao texto. */
+const SEP = /\n?\s*\[\[\s*NOVA\s*\]\]\s*\n?/i;
 async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}) {
-  /* assinatura igual à da equipe: *Otto:* e a mensagem embaixo */
-  texto = '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' + noJeitoDoWhats(cfg, texto);
+  const partes = String(texto || '').split(SEP).map(t => t.trim()).filter(Boolean).slice(0, 3);
+  if (partes.length > 1) {
+    const primeira = await enviarUma(sb, cfg, jid, partes[0], extra, true);
+    for (const t of partes.slice(1)) {
+      const ms = Math.min(6000, 1200 + t.length * 45);
+      await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'composing', delay: ms }, ms + 5000).catch(() => null);
+      await enviarUma(sb, cfg, jid, t, {}, false);
+    }
+    return primeira;
+  }
+  return enviarUma(sb, cfg, jid, partes[0] || String(texto || ''), extra, true);
+}
+async function enviarUma(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown>, assinar: boolean) {
+  /* assinatura igual à da equipe: *Otto:* e a mensagem embaixo (só na primeira de uma sequência) */
+  texto = (assinar ? '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' : '') + noJeitoDoWhats(cfg, texto);
   const r = await evo('/message/sendText/' + I(), 'POST', { number: jid, text: texto.slice(0, 3000), ...extra }, 30000);
   if (!r.ok) { console.log('assistente envio', r.status, JSON.stringify(r.dados).slice(0, 200)); return null; }
   try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava depois */ }
@@ -188,6 +204,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
     'Nunca fale de valores, cobrança ou financeiro: diga que o time vai falar sobre isso. Nunca exponha dados de outro cliente nem coisas internas da agência.',
     'Não assine a mensagem (a assinatura entra sozinha). Português do Brasil, tom próximo e profissional.',
     'ESCREVA COMO UMA PESSOA NO WHATSAPP: texto corrido, frases normais. NÃO use listas, tópicos, marcadores (•, -, 1.), títulos nem negrito — a não ser que a pessoa peça explicitamente uma lista.',
+    'Se ficar mais natural, você pode mandar ATÉ 3 mensagens curtas seguidas (ex.: uma responde, a outra complementa), separando-as com uma linha contendo só [[NOVA]]. Use só quando ajudar; resposta simples = uma mensagem.',
     equipe.length ? '\nQUEM CUIDA DE CADA ASSUNTO (para chamar a pessoa, escreva {{marcar:Nome}} com o nome exato; no máximo 1 pessoa, só quando ajudar):\n' + equipe.map(p => '- ' + p.nome + (p.assuntos ? ': ' + p.assuntos : '')).join('\n') : '',
     (ap || []).length ? '\nO QUE A EQUIPE JÁ RESPONDEU (vale como verdade; use em vez de perguntar de novo):\n' + (ap || []).map(a => '- ' + a.pergunta + ' → ' + a.resposta).join('\n') : '',
     cfg.jeito?.trim() ? '\nCOMO SE COMPORTAR (definido pela agência):\n' + cfg.jeito.trim().slice(0, 3000) : '',
@@ -358,7 +375,7 @@ export async function responderDuvida(sb: SupabaseClient, cfg: Config | null, re
     }
   }
   if (!dv) return { ok: false, erro: 'Essa dúvida já foi respondida.' };
-  const sistema = `Você é ${cfg.nome}, do atendimento da Branding7, num grupo de WhatsApp com o cliente. Repasse ao cliente a resposta que a equipe deu, em mensagem curta e cordial de WhatsApp, em primeira pessoa. Não diga que perguntou a alguém nem cite nomes da equipe. Não acrescente nada além do que a equipe respondeu. Sem assinatura.` +
+  const sistema = `Você é ${cfg.nome}, do atendimento da Branding7, num grupo de WhatsApp com o cliente. Repasse ao cliente a resposta que a equipe deu, em mensagem curta e cordial de WhatsApp, em primeira pessoa. Não diga que perguntou a alguém nem cite nomes da equipe. Não acrescente nada além do que a equipe respondeu. Sem assinatura. Se a resposta for longa, pode dividir em até 3 mensagens curtas separadas por uma linha contendo só [[NOVA]].` +
     (cfg.jeito?.trim() ? '\n\nCOMO SE COMPORTAR:\n' + cfg.jeito.trim().slice(0, 2000) : '');
   const s = await ia(sistema, 'Pergunta do cliente (' + (dv.autor || 'cliente') + '): ' + dv.pergunta + '\n\nResposta da equipe: ' + respostaEquipe + '\n\nEscreva só a mensagem para o cliente.', 300);
   const paraCliente = s.texto || respostaEquipe;
@@ -607,7 +624,7 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
   }
   const s = await ia(
     `Você é ${cfg.nome}, assistente interno da equipe da Branding7, respondendo alguém da EQUIPE (não é cliente). Responda o que perguntaram usando só os dados abaixo: o que está em produção (artes, vídeos, gravações) e o que os clientes escreveram nos grupos. ` +
-    'Responda como uma pessoa da equipe falando no WhatsApp: texto corrido, curto (2 a 4 frases), direto ao ponto, sem listas, tópicos, marcadores, títulos, negrito nem "próximos passos sugeridos" — a não ser que a pessoa peça explicitamente uma lista. Não assine (a assinatura entra sozinha). Se não houver dado sobre o que perguntaram, diga isso claramente. Não invente.',
+    'Responda como uma pessoa da equipe falando no WhatsApp: texto corrido, curto (2 a 4 frases), direto ao ponto, sem listas, tópicos, marcadores, títulos, negrito nem "próximos passos sugeridos" — a não ser que a pessoa peça explicitamente uma lista. Não assine (a assinatura entra sozinha). Se ficar mais natural, pode mandar até 3 mensagens curtas seguidas, separadas por uma linha contendo só [[NOVA]]. Se não houver dado sobre o que perguntaram, diga isso claramente. Não invente.',
     'PERGUNTA DE ' + String(raw.pushName || 'alguém da equipe') + ': ' + pedido + contexto, 700);
   if (!s.texto) return;
   await digitando(destino, cfg);
