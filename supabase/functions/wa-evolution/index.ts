@@ -13,7 +13,7 @@
 // =====================================================================
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
-import { responderDuvida, testar as testarAssistente, mandarResumo, enviarPdfPedido } from '../_shared/assistente.ts';
+import { responderDuvida, testar as testarAssistente, mandarResumo } from '../_shared/assistente.ts';
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -395,8 +395,6 @@ Deno.serve(comCors(async (req: Request) => {
       case 'desconectar': { const r = await evo('/instance/logout/' + I(), 'DELETE'); return json({ ok: r.ok }); }
       case 'importar': return json(await importar(Math.max(0, Number(c.pagina) || 0)));
       case 'contatos': return json(await atualizarContatos());
-      /* 4.58.0: um B7 aberto gerou o PDF que o Otto pediu — manda no WhatsApp */
-      case 'otto_pdf_enviar': return json(await enviarPdfPedido(admin(), String(c.id || ''), path => urlAssinada(path, 3600)));
       /* 4.56.0: mandar agora as pendências no grupo da equipe */
       case 'assistente_pendencias': return json(await mandarResumo(admin(), null, true));
       /* 4.56.0: participantes do grupo, para marcar com @ */
