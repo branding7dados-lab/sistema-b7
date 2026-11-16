@@ -199,3 +199,9 @@ html[data-theme="dark"] .asw-tag.fh{background:rgba(14,165,233,.16);color:#7DD3F
   .asw-abas button{padding:8px 11px;font-size:13px;}
   .asw-teste-top select{max-width:100%;flex:1 1 100%;}
 }
+
+/* 4.56.6: Salvar também no topo das abas (aparece quando há alteração) */
+.asw-abas .asw-salvar2{margin-left:auto;background:#16A34A;color:#fff;font-weight:700;}
+.asw-abas .asw-salvar2:hover{background:#15803D;}
+.asw-abas .asw-salvar2[hidden]{display:none;}
+.asw-barra{transition:transform .25s cubic-bezier(.2,.8,.2,1),bottom .2s;}

@@ -59,7 +59,24 @@ B7.AssistenteWA = (function () {
   }
 
   const mudou = () => { S.cfg.regras = regrasTexto(S.regras); return JSON.stringify(S.cfg) !== S.orig; };
-  function marcarSujo() { const b = raiz.querySelector('#asw-salvar'); if (b) b.classList.toggle('on', mudou()); }
+  function marcarSujo() {
+    const sujo = mudou();
+    const b = raiz.querySelector('#asw-salvar'); if (b) b.classList.toggle('on', sujo);
+    const b2 = raiz.querySelector('#asw-salvar2'); if (b2) b2.hidden = !sujo;
+    posicionarBarra();
+  }
+  /* 4.56.6: a barra de Salvar fica logo ACIMA do que estiver fixo embaixo (navegação do app,
+     botão da IA) — medido no aparelho, não chutado */
+  function posicionarBarra() {
+    const barra = raiz && raiz.querySelector('.asw-barra'); if (!barra) return;
+    let topo = innerHeight;
+    document.querySelectorAll('#nav-inferior, .nav-inferior, #b7-chat-fab, .ia-fab').forEach(el => {
+      const r = el.getBoundingClientRect(), st = getComputedStyle(el);
+      if (r.height && st.display !== 'none' && st.visibility !== 'hidden' && r.top > innerHeight * 0.5 && (st.position === 'fixed' || st.position === 'sticky')) topo = Math.min(topo, r.top);
+    });
+    barra.style.bottom = Math.max(18, innerHeight - topo + 10) + 'px';
+  }
+  addEventListener('resize', () => posicionarBarra());
 
   function desenhar() {
     const c = S.cfg, hoje = new Date().toDateString();
@@ -76,7 +93,8 @@ B7.AssistenteWA = (function () {
         '<div class="asw-kpis">' +
           kpi(nHoje, 'respostas hoje') + kpi(reais.filter(r => r.tipo !== 'erro').length, 'nos últimos 7 dias') + kpi(S.dv.length, 'dúvidas esperando', S.dv.length ? 'alerta' : '') + kpi(S.ap.length, 'coisas aprendidas') +
         '</div></header>' +
-      '<nav class="asw-abas">' + ABAS.map(([k, r, n]) => '<button class="' + (S.aba === k ? 'on' : '') + '" data-aba="' + k + '">' + r + (n != null && n !== 0 ? ' <b>' + n + '</b>' : '') + '</button>').join('') + '</nav>' +
+      '<nav class="asw-abas">' + ABAS.map(([k, r, n]) => '<button class="' + (S.aba === k ? 'on' : '') + '" data-aba="' + k + '">' + r + (n != null && n !== 0 ? ' <b>' + n + '</b>' : '') + '</button>').join('') +
+        '<button class="asw-salvar2" id="asw-salvar2" data-salvar hidden>✓ Salvar</button></nav>' +
       '<section class="asw-corpo">' + corpo() + '</section>' +
       '<div class="asw-barra"><span>Alterações ainda não salvas</span><button class="b" data-desfazer>Desfazer</button><button class="b pri" id="asw-salvar" data-salvar>Salvar</button></div>';
     marcarSujo();
