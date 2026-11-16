@@ -180,3 +180,11 @@ html[data-theme="dark"] .asw-tag.fh{background:rgba(14,165,233,.16);color:#7DD3F
   .asw-ensina,.asw-nova-regra{grid-template-columns:1fr;}
 }
 @media (max-width:600px){ .asw{padding:0 10px;} .asw-id h1{font-size:22px;} .asw-av{width:50px;height:50px;border-radius:16px;} .asw-bl{max-width:88%;} }
+
+/* 4.56.0: grupo da equipe */
+.asw-ge{gap:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--sb-luz1) 9%,var(--card)),var(--card) 60%);}
+.asw-ge-top{display:flex;gap:12px;align-items:flex-start;}
+.asw-ge-ic{flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;font-size:20px;background:color-mix(in srgb,var(--sb-luz1) 18%,var(--card));}
+.asw-ge-campos{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:10px;}
+.asw-ge-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+@media (max-width:900px){ .asw-ge-campos{grid-template-columns:1fr;} }

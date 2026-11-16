@@ -251,6 +251,7 @@ B7.CentralWA = (function () {
           '😀 😂 😍 🥰 😎 🤩 😉 🙏 👍 👏 🙌 💪 ❤️ 🔥 ✨ 🎉 ✅ 📌 📷 🎬 🎨 📅 ⏰ 💜'.split(' ').map(e => '<button data-emoji="' + e + '">' + e + '</button>').join('') + '</div></div>' +
         '<button class="wz-ic wz-fig-bt" data-wz="figs" aria-label="Figurinhas" title="Figurinhas">' + I.fig + '</button>' +
         '<div class="wz-figs" id="wz-figs" hidden></div>' +
+        '<div class="wz-men" id="wz-men" hidden></div>' +
         '<textarea id="wz-texto" rows="1" placeholder="Digite uma mensagem"></textarea>' +
         '<button class="wz-env" id="wz-env" aria-label="Gravar áudio">' + I.mic + '</button>' +
       '</footer>' +
@@ -389,6 +390,7 @@ B7.CentralWA = (function () {
     const em = e.target.closest('[data-emoji]'); if (em) { const t = raiz.querySelector('#wz-texto'); if (t) { t.setRangeText(em.dataset.emoji, t.selectionStart, t.selectionEnd, 'end'); t.focus(); t.dispatchEvent(new Event('input')); } B7.UI.fecharMenus && B7.UI.fecharMenus(); return; }
     const md = e.target.closest('[data-carregar]');
     if (md) { if (md.dataset.carregar === 'audio' && md.querySelector('audio')) { const a = md.querySelector('audio'); if (e.target.closest('.wz-aud-p')) (a.paused ? a.play() : a.pause()); return; } if (md.dataset.carregar === 'img' && md.dataset.ok) return; return carregarMidia(md, true); }
+    const mn = e.target.closest('[data-men]'); if (mn) { escolherMencao(mn.dataset.men); return; }
     const fg = e.target.closest('[data-fig]'); if (fg) { if (fg.querySelector('img')) enviarFigurinha({ id: fg.dataset.fig }); return; }
     if (!e.target.closest('#wz-figs, .wz-fig-bt')) { const fx = raiz.querySelector('#wz-figs'); if (fx && !fx.hidden) fx.hidden = true; }
     const z = e.target.closest('[data-zoom]'); if (z) return zoom(z.dataset.zoom);
@@ -478,7 +480,19 @@ B7.CentralWA = (function () {
     const t = cx.querySelector('#wz-texto'), bt = cx.querySelector('#wz-env');
     const ajusta = () => { t.style.height = 'auto'; t.style.height = Math.min(140, t.scrollHeight) + 'px'; const tem = !!t.value.trim(); bt.innerHTML = tem ? I.env : I.mic; bt.setAttribute('aria-label', tem ? 'Enviar' : 'Gravar áudio'); bt.classList.toggle('envia', tem); };
     t.addEventListener('input', ajusta);
-    t.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer:coarse)').matches) { e.preventDefault(); enviarTexto(); } });
+    t.addEventListener('keydown', e => {
+      /* 4.56.0: lista de menção aberta — setas escolhem, Enter/Tab marca, Esc fecha */
+      const men = raiz.querySelector('#wz-men');
+      if (men && !men.hidden) {
+        const itens = [...men.querySelectorAll('[data-men]')]; let i = itens.findIndex(x => x.classList.contains('on'));
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!itens.length) return; i = (i + (e.key === 'ArrowDown' ? 1 : -1) + itens.length) % itens.length; itens.forEach((x, k) => x.classList.toggle('on', k === i)); itens[i].scrollIntoView({ block: 'nearest' }); return; }
+        if ((e.key === 'Enter' || e.key === 'Tab') && itens.length) { e.preventDefault(); escolherMencao(itens[Math.max(0, i)].dataset.men); return; }
+        if (e.key === 'Escape') { e.preventDefault(); men.hidden = true; return; }
+      }
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer:coarse)').matches) { e.preventDefault(); enviarTexto(); }
+    });
+    t.addEventListener('input', () => verMencao(t));
+    t.addEventListener('blur', () => setTimeout(() => { const m = raiz && raiz.querySelector('#wz-men'); if (m) m.hidden = true; }, 200));
     t.addEventListener('paste', e => { const fs = [...(e.clipboardData && e.clipboardData.files || [])]; if (fs.length) { e.preventDefault(); prepararArquivos(fs); } });
     bt.onclick = () => t.value.trim() ? enviarTexto() : gravar();
     const fi = cx.querySelector('#wz-arq-fig');
@@ -501,11 +515,15 @@ B7.CentralWA = (function () {
         try { const r = await B7.Corretor.corrigir(texto); if (r && r.ok && r.mudou) texto = r.texto; } catch (e) {}
       }
     } finally { S.enviando = false; }
+    /* 4.56.0: "@Nome" escolhido na lista vira "@<código>" + a marcação de verdade */
+    const mencoes = [];
+    (S.mencoes || []).forEach(m => { const alvo = '@' + m.nome; if (texto.includes(alvo)) { texto = texto.split(alvo).join('@' + String(m.jid).split('@')[0]); if (!mencoes.includes(m.jid)) mencoes.push(m.jid); if (S.contatos && !S.contatos.has(m.jid)) S.contatos.set(m.jid, m.nome); } });
+    S.mencoes = [];
     const corpo = assinatura() + texto;
     const temp = { id: 'tmp_' + Date.now(), jid, de_mim: true, tipo: 'texto', texto: corpo, status: 'PENDING', criada_em: new Date().toISOString(), enviada_por_nome: eu().nome, citada_id: citar || null, reacoes: {} };
     S.msgs.push(temp); pintarMensagens(); rolarFim();
     try {
-      const r = await chamar('enviar_texto', { jid, texto: corpo, citar });
+      const r = await chamar('enviar_texto', { jid, texto: corpo, citar, mencoes });
       if (r.erro) throw new Error(r.erro);
       temp.id = r.id || temp.id; temp.status = 'SERVER_ACK';
     } catch (e) { temp.status = 'ERROR'; B7.UI.toast(e.message || 'Não enviou.', { tipo: 'erro' }); t.value = texto; t.dispatchEvent(new Event('input')); }
@@ -667,6 +685,39 @@ B7.CentralWA = (function () {
       const bb = m.querySelector('#wz-imp-b'); if (bb) bb.style.width = '100%';
     } catch (e) { const el = m.querySelector('#wz-imp'); if (el) el.textContent = e.message || 'Não deu para puxar agora.'; }
     await carregarConversas(); pintarFiltros(); pintarLista();
+  }
+
+  /* ------------------------------------------------------------ menção com @ (4.56.0) */
+  S.part = S.part || {};
+  async function participantes(jid) {
+    if (S.part[jid]) return S.part[jid];
+    try { const r = await chamar('participantes', { jid }); S.part[jid] = (r.lista || []).sort((a, b) => String(a.nome).localeCompare(String(b.nome))); } catch (e) { S.part[jid] = []; }
+    return S.part[jid];
+  }
+  const semAc = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  async function verMencao(t) {
+    const men = raiz.querySelector('#wz-men'); if (!men) return;
+    const jid = S.aberta;
+    const m = t.value.slice(0, t.selectionStart).match(/(^|\s)@([^\s@]{0,30})$/);
+    if (!m || !jid || !/@g\.us$/.test(jid)) { men.hidden = true; return; }
+    const lista = await participantes(jid);
+    if (S.aberta !== jid) return;
+    const f = semAc(m[2]);
+    const achados = lista.filter(p => !f || semAc(p.nome).includes(f) || String(p.numero || '').includes(f)).slice(0, 8);
+    if (!achados.length) { men.hidden = true; return; }
+    men.innerHTML = '<small>Marcar no grupo</small>' + achados.map((p, i) => '<button type="button" class="' + (i === 0 ? 'on' : '') + '" data-men="' + esc(p.jid) + '"><span class="wz-av p" style="--c:' + corDe(p.nome) + '"><b>' + esc(ini(p.nome)) + '</b></span><span>' + esc(p.nome) + (p.numero && !String(p.nome).startsWith('+') ? '<em>+' + esc(p.numero) + '</em>' : '') + '</span></button>').join('');
+    men.hidden = false;
+  }
+  function escolherMencao(pjid) {
+    const t = raiz.querySelector('#wz-texto'), men = raiz.querySelector('#wz-men');
+    const p = (S.part[S.aberta] || []).find(x => x.jid === pjid); if (!t || !p) return;
+    const nome = String(p.nome).replace(/^\+/, '').split(/\s+/).slice(0, 2).join(' ');
+    const antes = t.value.slice(0, t.selectionStart).replace(/@([^\s@]{0,30})$/, '@' + nome + ' ');
+    const depois = t.value.slice(t.selectionStart);
+    t.value = antes + depois; t.focus(); t.setSelectionRange(antes.length, antes.length);
+    S.mencoes = (S.mencoes || []).filter(x => x.jid !== p.jid).concat([{ nome, jid: p.jid }]);
+    if (men) men.hidden = true;
+    t.dispatchEvent(new Event('input'));
   }
 
   /* ------------------------------------------------------------ figurinhas (4.54.1) */

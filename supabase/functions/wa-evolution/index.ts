@@ -13,11 +13,11 @@
 // =====================================================================
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
-import { responderDuvida, testar as testarAssistente } from '../_shared/assistente.ts';
+import { responderDuvida, testar as testarAssistente, mandarResumo } from '../_shared/assistente.ts';
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-const VERSAO = 'wa-evolution 16 (4.55.0)';
+const VERSAO = 'wa-evolution 17 (4.56.0)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -380,7 +380,7 @@ Deno.serve(comCors(async (req: Request) => {
   let c: Record<string, any> = {};
   try { c = await req.json(); } catch (_e) { /* vazio */ }
   const acao = String(c.acao || 'estado');
-  const soAdmin = ['estado', 'conectar', 'desconectar', 'importar', 'contatos', 'assistente_testar'];
+  const soAdmin = ['estado', 'conectar', 'desconectar', 'importar', 'contatos', 'assistente_testar', 'assistente_pendencias'];
   if (soAdmin.includes(acao) ? !ehAdmin(p) : !(await podeVer(p))) return json({ erro: 'Sem permissão para o WhatsApp do B7.' }, 403);
   if (!BASE() || !CHAVE()) return json({ configurado: false, erro: 'O WhatsApp do B7 não está configurado.' });
 
@@ -395,6 +395,20 @@ Deno.serve(comCors(async (req: Request) => {
       case 'desconectar': { const r = await evo('/instance/logout/' + I(), 'DELETE'); return json({ ok: r.ok }); }
       case 'importar': return json(await importar(Math.max(0, Number(c.pagina) || 0)));
       case 'contatos': return json(await atualizarContatos());
+      /* 4.56.0: mandar agora as pendências no grupo da equipe */
+      case 'assistente_pendencias': return json(await mandarResumo(admin(), null, true));
+      /* 4.56.0: participantes do grupo, para marcar com @ */
+      case 'participantes': {
+        if (!/@g\.us$/.test(String(c.jid || ''))) return json({ lista: [] });
+        const r = await evo('/group/participants/' + I() + '?groupJid=' + encodeURIComponent(String(c.jid)), 'GET', undefined, 15000);
+        const ps: any[] = r.dados?.participants || [];
+        const ids = ps.map(x => String(x?.id || '')).filter(Boolean);
+        const { data: cts } = ids.length ? await admin().from('wa_contatos').select('jid, nome, numero').in('jid', ids) : { data: [] as any[] };
+        const nomes = new Map((cts || []).map((x: any) => [x.jid, x]));
+        return json({ lista: ps.map(x => { const id = String(x.id || ''); const ct: any = nomes.get(id) || {};
+          const fone = String(x.phoneNumber || ct.numero || (/@s\.whatsapp\.net$/.test(id) ? id : '')).split('@')[0].replace(/\D/g, '');
+          return { jid: id, nome: ct.nome || (fone ? '+' + fone : id.split('@')[0]), numero: fone || null, admin: !!x.admin }; }) });
+      }
       /* 4.55.0: "Testar" da tela do assistente — o que ele responderia, sem mandar */
       case 'assistente_testar': {
         const t = String(c.texto || '').trim().slice(0, 1000);
@@ -410,7 +424,9 @@ Deno.serve(comCors(async (req: Request) => {
       case 'enviar_texto': {
         const texto = String(c.texto || '').slice(0, 4000);
         if (!c.jid || !texto.trim()) return json({ erro: 'Escreva a mensagem.' });
-        const r = await evo('/message/sendText/' + I(), 'POST', { number: c.jid, text: texto, quoted: await citacao(c.citar) }, 30000);
+        /* 4.56.0: menções (@) — jids dos marcados; o texto já leva "@<código>" */
+        const mencoes = Array.isArray(c.mencoes) ? c.mencoes.map((x: unknown) => String(x)).filter((x: string) => /^\d{6,}(@(s\.whatsapp\.net|lid))?$/.test(x)).slice(0, 50) : [];
+        const r = await evo('/message/sendText/' + I(), 'POST', { number: c.jid, text: texto, quoted: await citacao(c.citar), ...(mencoes.length ? { mentioned: mencoes } : {}) }, 30000);
         if (!r.ok) return json({ erro: 'O WhatsApp não aceitou a mensagem (' + r.status + ').' });
         return json({ ok: true, id: await registrarEnvio(r.dados, p) });
       }

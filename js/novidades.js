@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.56.0', versao: '4.56.0', em: '2026-11-17T18:00:00-03:00', funcao: 'videomaker',
+    titulo: 'Marque pessoas com @ no WhatsApp do B7',
+    itens: ['Num grupo, digite @ e o começo do nome: aparece a lista de quem está no grupo. Escolha com as setas e Enter (ou clique) — a pessoa é marcada de verdade no WhatsApp.'] },
   { id: 'v-4.55.0', versao: '4.55.0', em: '2026-11-17T15:00:00-03:00', funcao: 'videomaker',
     titulo: 'WhatsApp do B7 com visual novo',
     itens: ['Lista, conversa e painel do cliente em cartões separados, com o topo da conversa na cor da aparência e a caixa de texto flutuante.', 'O item WhatsApp do menu agora fica aceso quando você está nele.'] },
