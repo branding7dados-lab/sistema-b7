@@ -105,7 +105,8 @@ B7.Export = (function () {
   }
 
   /* ---------------------------------------------------------- PDF */
-  async function gerarPDF(ctx, ids, comAbertura, nome, aoAndar) {
+  /* 4.58.0: opcoes.blob → devolve o arquivo em vez de baixar (o Otto manda no WhatsApp) */
+  async function gerarPDF(ctx, ids, comAbertura, nome, aoAndar, opcoes) {
     const { area, folhas } = montarFolhas(ctx, ids, comAbertura);
     try {
       await B7.vendor('jspdf');
@@ -120,6 +121,7 @@ B7.Export = (function () {
       }
       /* 4.46.6: pelo mesmo caminho de download do resto do sistema (o
          pdf.save() dispara um clique que o app Android não enxerga) */
+      if (opcoes && opcoes.blob) return pdf.output('blob');
       baixarBlob(pdf.output('blob'), nome);
     } finally { limpar(area); }
   }

@@ -743,7 +743,7 @@ B7.BaixarLinha = (function () {
      usa para as fichas de Roteiro. O resultado é sempre um arquivo salvo
      na pasta de downloads, nunca a caixa de impressão nativa: o layout
      não depende mais de margem/escala escolhidas pela pessoa. */
-  async function gerar(ctx, formato, aoAndar) {
+  async function gerar(ctx, formato, aoAndar, opcoes) {
     /* Fontes carregadas ANTES de medir: a paginação (medição real no
        DOM) depende da altura do texto já com a tipografia final — sem
        esperar document.fonts.ready, a primeira geração de cada sessão
@@ -777,6 +777,8 @@ B7.BaixarLinha = (function () {
       const mes = (B7.UI.MESES[l.mes - 1] || '').toUpperCase();
       const nome = B7.Export.nomeArquivo(
         [l.cliente_nome, 'LINHA_EDITORIAL', mes, String(l.ano), slides ? 'APRESENTACAO' : ''], 'pdf');
+      /* 4.58.0: o Otto pede o arquivo (sem baixar) */
+      if (opcoes && opcoes.blob) return { blob: pdf.output('blob'), nome };
       B7.Export.baixarBlob(pdf.output('blob'), nome);
     } finally {
       area.innerHTML = '';

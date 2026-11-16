@@ -23,7 +23,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { evo, INST, gravar } from './wa.ts';
 import { gerar, provedorAtual } from './ia/servico.ts';
 import { carregarContexto } from './ia/whatsapp.ts';
-import { pdfRoteiros, pdfLinha, MESES } from './pdf.ts';
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 type Pessoa = { nome?: string; numero?: string; assuntos?: string; duvidas?: boolean };
 type Horario = { ativo?: boolean; ini?: string; fim?: string; dias?: number[]; mensagem?: string };
@@ -511,7 +511,6 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
    4.57.0 — DOCUMENTOS: "Otto, me manda o PDF dos roteiros da Sabor da Feira
    de novembro" / "a linha editorial da Arena Deck". Só para a equipe.
    ===================================================================== */
-function paraB64(u: Uint8Array) { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); }
 function mesDoTexto(t: string): { mes: number | null; ano: number | null } {
   const n = semAcento(t), hoje = new Date(Date.now() - 3 * 3600000);
   let mes: number | null = null, ano: number | null = null;
@@ -523,9 +522,9 @@ function mesDoTexto(t: string): { mes: number | null; ano: number | null } {
   if (mes && !ano) ano = hoje.getUTCFullYear();
   return { mes, ano };
 }
-async function enviarDocumento(sb: SupabaseClient, cfg: Config, jid: string, nome: string, bytes: Uint8Array, legenda: string, citar?: any) {
+async function enviarDocumento(sb: SupabaseClient, cfg: Config, jid: string, nome: string, media: string, legenda: string, citar?: any) {
   const r = await evo('/message/sendMedia/' + I(), 'POST', { number: jid, mediatype: 'document', mimetype: 'application/pdf', fileName: nome,
-    media: paraB64(bytes), caption: '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' + legenda, ...(citar ? { quoted: citar } : {}) }, 90000);
+    media, caption: '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' + legenda, ...(citar ? { quoted: citar } : {}) }, 90000);
   if (!r.ok) { console.log('documento', r.status, JSON.stringify(r.dados).slice(0, 200)); return null; }
   try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ }
   if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
@@ -549,10 +548,7 @@ async function talvezDocumento(sb: SupabaseClient, cfg: Config, raw: any, pedido
     if (mes) q = q.eq('mes', mes); if (ano) q = q.eq('ano', ano);
     const { data: ls } = await q.order('ano', { ascending: false }).order('mes', { ascending: false }).limit(1);
     if (!ls?.length) { await enviar(sb, cfg, destino, 'Não achei linha editorial da ' + c.nome + (mes ? ' de ' + MESES[mes - 1] : '') + ' no sistema.', citar ? { quoted: citar } : {}); return true; }
-    const doc = await pdfLinha(sb, ls[0].id);
-    if (!doc) return false;
-    const foi = await enviarDocumento(sb, cfg, destino, doc.nome, doc.bytes, 'Aqui está a ' + doc.titulo.toLowerCase().replace(/^linha editorial/, 'linha editorial') + '.', citar);
-    await registrar(sb, { tipo: foi ? 'documento' : 'erro', jid: destino, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: doc.titulo });
+    await pedirPdf(sb, cfg, 'linha', ls[0].id, 'linha editorial da ' + c.nome + ' de ' + MESES[(ls[0].mes || 1) - 1] + (ls[0].ano ? ' de ' + ls[0].ano : ''), destino, citar, String(raw?.pushName || ''), pedido);
     return true;
   }
   let q: any = sb.from('gravacoes').select('id, nome, data_gravacao, competencia_mes, competencia_ano').eq('client_id', c.id).is('deleted_at', null).is('archived_at', null);
@@ -563,13 +559,39 @@ async function talvezDocumento(sb: SupabaseClient, cfg: Config, raw: any, pedido
   const nomeG = lista.find(g => semAcento(g.nome).split(/\s+/).filter((w: string) => w.length >= 5).some((w: string) => n.includes(w)));
   const escolhidas = nomeG ? [nomeG] : lista.slice(0, mes ? 3 : 1);
   if (!escolhidas.length) { await enviar(sb, cfg, destino, 'Não achei gravação da ' + c.nome + (mes ? ' em ' + MESES[mes - 1] : '') + ' com roteiros no sistema.', citar ? { quoted: citar } : {}); return true; }
-  for (const g of escolhidas) {
-    const doc = await pdfRoteiros(sb, g.id);
-    if (!doc) continue;
-    const foi = await enviarDocumento(sb, cfg, destino, doc.nome, doc.bytes, 'Aqui estão os ' + doc.titulo.replace(/^Roteiros/, 'roteiros') + '.', citar);
-    await registrar(sb, { tipo: foi ? 'documento' : 'erro', jid: destino, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: doc.titulo });
-  }
+  for (const g of escolhidas) await pedirPdf(sb, cfg, 'roteiros', g.id, 'roteiros da ' + c.nome + ' · ' + g.nome, destino, citar, String(raw?.pushName || ''), pedido);
   return true;
+}
+
+/* 4.58.0: o PDF é desenhado por um B7 aberto (mesmo código do botão Baixar — o design não muda).
+   Aqui só fica o pedido; js/otto-pdf.js pega, gera, sobe e chama `otto_pdf_enviar`. */
+async function pedirPdf(sb: SupabaseClient, cfg: Config, tipo: 'roteiros' | 'linha', refId: string, titulo: string, destino: string, citar: any, quem: string, pedido: string) {
+  const { data: pd } = await sb.from('wa_pdf_pedidos').insert({ tipo, ref_id: refId, titulo, destino, citar: citar || null, pedido_por: quem }).select('id').single();
+  await registrar(sb, { tipo: 'documento', jid: destino, autor: quem, pergunta: pedido.slice(0, 500), resposta: 'pedido: ' + titulo });
+  if (!pd?.id) return;
+  /* ninguém com o B7 aberto pegou em 25 s: avisa (o pedido continua na fila e sai quando alguém abrir) */
+  await dorme(25000);
+  const { data: agora } = await sb.from('wa_pdf_pedidos').select('status').eq('id', pd.id).maybeSingle();
+  if (agora?.status === 'aguardando') await enviar(sb, cfg, destino, 'Pra sair no layout do B7 eu preciso de um B7 aberto no computador de alguém da equipe. Assim que alguém abrir, eu mando ' + (tipo === 'linha' ? 'a ' : 'os ') + titulo + '.', citar ? { quoted: citar } : {});
+}
+
+/** Chamado pelo B7 que gerou o PDF (wa-evolution `otto_pdf_enviar`): manda no WhatsApp. */
+export async function enviarPdfPedido(sb: SupabaseClient, id: string, urlAssinada: (path: string) => Promise<string | null>): Promise<{ ok: boolean; erro?: string }> {
+  const cfg = await lerConfig(sb);
+  if (!cfg) return { ok: false, erro: 'Otto não configurado.' };
+  const { data: p } = await sb.from('wa_pdf_pedidos').select('*').eq('id', id).maybeSingle();
+  if (!p) return { ok: false, erro: 'Pedido não encontrado.' };
+  if (p.status === 'enviado') return { ok: true };
+  if (p.status === 'erro') {
+    await enviar(sb, cfg, p.destino, 'Não consegui gerar o PDF ' + (p.titulo ? 'd' + (p.tipo === 'linha' ? 'a ' : 'os ') + p.titulo : '') + ' agora (' + String(p.erro || 'erro').slice(0, 120) + ').', p.citar ? { quoted: p.citar } : {});
+    return { ok: false, erro: p.erro || 'erro' };
+  }
+  if (p.status !== 'pronto' || !p.path) return { ok: false, erro: 'O PDF ainda não está pronto.' };
+  const url = await urlAssinada(p.path);
+  if (!url) return { ok: false, erro: 'Não achei o arquivo.' };
+  const foi = await enviarDocumento(sb, cfg, p.destino, p.nome || 'documento.pdf', url, 'Aqui ' + (p.tipo === 'linha' ? 'está a ' : 'estão os ') + (p.titulo || 'documento') + '.', p.citar || undefined);
+  await sb.from('wa_pdf_pedidos').update({ status: foi ? 'enviado' : 'erro', erro: foi ? null : 'WhatsApp recusou o envio', atualizado_em: new Date().toISOString() }).eq('id', id);
+  return foi ? { ok: true } : { ok: false, erro: 'O WhatsApp não aceitou o arquivo.' };
 }
 
 /** Pergunta interna da equipe (grupo da equipe ou privado): pendências ou o que há de um cliente. */
