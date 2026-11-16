@@ -288,7 +288,7 @@ B7.AssistenteWA = (function () {
   async function salvar(quieto) {
     S.cfg.regras = regrasTexto(S.regras);
     const c = S.cfg;
-    const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Assistente B7', jeito: c.jeito || '', regras: c.regras || '',
+    const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
       equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: String(p.numero).replace(/\D/g, ''), assuntos: (p.assuntos || '').trim(), duvidas: p.duvidas !== false })),
       sem_marcacao: !!c.sem_marcacao, pausa_min: Math.max(5, Number(c.pausa_min) || 30), ouvir_audio: c.ouvir_audio !== false,
       espera_min_s: Math.max(1, Number(c.espera_min_s) || 4), espera_max_s: Math.max(Number(c.espera_min_s) || 4, Number(c.espera_max_s) || 9),

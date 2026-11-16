@@ -146,7 +146,7 @@ B7.CentralWA = (function () {
       '<aside class="wz-lista">' +
         '<div class="wz-topo"><h2>Conversas</h2>' +
           (souAdmin() ? '<div class="menu"><button class="wz-ic" data-menu aria-label="Mais opções">' + I.mais + '</button><div class="lista">' +
-            '<button data-wz="conexao">Conexão do número</button><button data-wz="importar">Puxar conversas recentes</button><button data-wz="drive">Arquivos no Google Drive</button><button data-wz="assistente">🤖 Assistente nos grupos</button></div></div>' : '') +
+            '<button data-wz="conexao">Conexão do número</button><button data-wz="importar">Puxar conversas recentes</button><button data-wz="drive">Arquivos no Google Drive</button><button data-wz="assistente">🤖 Otto · assistente nos grupos</button></div></div>' : '') +
         '</div>' +
         '<label class="wz-busca">' + I.busca + '<input id="wz-busca" placeholder="Buscar conversa ou cliente" autocomplete="off"></label>' +
         '<div class="wz-filtros" id="wz-filtros"></div>' +
