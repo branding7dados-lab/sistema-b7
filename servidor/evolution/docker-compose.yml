@@ -1,0 +1,50 @@
+# Evolution API (WhatsApp) para o Sistema B7 — piloto
+# Roda ao lado do Pterodactyl sem mexer nele:
+#   • a API fica só em 127.0.0.1:8095 (o Nginx da máquina publica com HTTPS);
+#   • Postgres e Redis próprios, numa rede interna (não usam portas da máquina);
+#   • não usa 8080/2022 (Wings do Pterodactyl) nem 80/443 (Nginx do painel).
+# Versão fixa (estável): v2.3.7. Atualizar = trocar a tag e rodar `docker compose up -d`.
+name: b7-evolution
+
+services:
+  api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: b7_evolution_api
+    restart: unless-stopped
+    depends_on: [postgres, redis]
+    env_file: .env
+    ports:
+      - "127.0.0.1:8095:8080"
+    volumes:
+      - instances:/evolution/instances
+    networks: [b7evo]
+
+  postgres:
+    image: postgres:15
+    container_name: b7_evolution_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: evolution
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks: [b7evo]
+
+  redis:
+    image: redis:7
+    container_name: b7_evolution_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis:/data
+    networks: [b7evo]
+
+volumes:
+  instances:
+  postgres:
+  redis:
+
+networks:
+  b7evo:
+    name: b7evo
