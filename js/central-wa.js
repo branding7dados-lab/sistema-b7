@@ -488,12 +488,18 @@ B7.CentralWA = (function () {
   async function enviarTexto() {
     const t = raiz.querySelector('#wz-texto'); const jid = S.aberta;
     let texto = t.value.trim(); if (!texto || !jid) return;
-    if (B7.Corretor && B7.Corretor.ligado && B7.Corretor.ligado()) {
-      try { const r = await B7.Corretor.corrigir(texto); if (r && r.ok && r.mudou) texto = r.texto; } catch (e) {}
-    }
-    const corpo = assinatura() + texto;
+    /* 4.54.2: trava contra envio duplo — o campo esvazia NA HORA (antes só esvaziava depois do
+       Corretor, e um segundo Enter nesse meio-tempo mandava a mensagem de novo) */
+    if (S.enviando) return;
+    S.enviando = true;
     const citar = S.citar && S.citar.id;
     t.value = ''; t.dispatchEvent(new Event('input')); S.citar = null; pintarCitacao();
+    try {
+      if (B7.Corretor && B7.Corretor.ligado && B7.Corretor.ligado()) {
+        try { const r = await B7.Corretor.corrigir(texto); if (r && r.ok && r.mudou) texto = r.texto; } catch (e) {}
+      }
+    } finally { S.enviando = false; }
+    const corpo = assinatura() + texto;
     const temp = { id: 'tmp_' + Date.now(), jid, de_mim: true, tipo: 'texto', texto: corpo, status: 'PENDING', criada_em: new Date().toISOString(), enviada_por_nome: eu().nome, citada_id: citar || null, reacoes: {} };
     S.msgs.push(temp); pintarMensagens(); rolarFim();
     try {
