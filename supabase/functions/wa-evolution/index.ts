@@ -16,7 +16,7 @@ import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, 
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-const VERSAO = 'wa-evolution 12 (4.53.4)';
+const VERSAO = 'wa-evolution 13 (4.53.4)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -74,10 +74,23 @@ async function conectar(numero: string) {
     if (st.ok && estadoAtual === 'open') return { conectado: true };
     if (st.ok) {
       await evo('/instance/logout/' + I(), 'DELETE').catch(() => null);
-      await evo('/instance/delete/' + I(), 'DELETE').catch(() => null);
+      const del = await evo('/instance/delete/' + I(), 'DELETE').catch(() => null);
+      console.log('delete', del?.status, JSON.stringify(del?.dados || {}).slice(0, 200));
+      /* espera o Evolution soltar o nome (até ~8 s) */
+      for (let i = 0; i < 8; i++) {
+        const f = await evo('/instance/fetchInstances?instanceName=' + I());
+        if (f.status === 404 || (Array.isArray(f.dados) && !f.dados.length)) break;
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
-    const cr = await evo('/instance/create', 'POST', { instanceName: INST(), integration: 'WHATSAPP-BAILEYS', qrcode: true, number: numero }, 40000);
-    if (!cr.ok) return { erro: 'Não consegui criar a conexão no Evolution (' + cr.status + ').' };
+    let cr = await evo('/instance/create', 'POST', { instanceName: INST(), integration: 'WHATSAPP-BAILEYS', qrcode: true, number: numero }, 40000);
+    if (!cr.ok) {
+      console.log('create', cr.status, JSON.stringify(cr.dados || {}).slice(0, 300));
+      /* o nome ainda está preso: pede o código na conexão que existe */
+      const r2 = await evo('/instance/connect/' + I() + '?number=' + numero);
+      if (r2.ok && r2.dados?.pairingCode) return { qr: comPrefixo(r2.dados?.base64 || ''), codigo: r2.dados.pairingCode };
+      return { erro: 'O Evolution não deixou recriar a conexão (' + cr.status + '). Tente de novo em 1 minuto.' };
+    }
     await ligarWebhook().catch(() => null);
     let codigo = cr.dados?.qrcode?.pairingCode || null;
     if (!codigo) { const r2 = await evo('/instance/connect/' + I() + '?number=' + numero); codigo = r2.dados?.pairingCode || null; }
