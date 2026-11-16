@@ -13,47 +13,61 @@
 import { jsPDF } from 'npm:jspdf@2.5.1';
 import * as F from './fontes-b7.ts';
 
-type RGB = [number, number, number];
-const INK: RGB = [21, 18, 43], INK2: RGB = [59, 53, 87], GREY: RGB = [139, 133, 160], LINE: RGB = [229, 224, 238];
-const MAG: RGB = [194, 28, 131], VIOL: RGB = [58, 30, 134];
+export type RGB = [number, number, number];
+export const INK: RGB = [21, 18, 43], INK2: RGB = [59, 53, 87], GREY: RGB = [139, 133, 160], LINE: RGB = [229, 224, 238];
+export const MAG: RGB = [194, 28, 131], VIOL: RGB = [58, 30, 134];
 const GRAD: [number, RGB][] = [[0, [0, 21, 89]], [0.34, [58, 30, 134]], [0.66, [124, 30, 133]], [1, [194, 28, 131]]];
-const PX = 0.264583;                     /* 1px CSS em mm */
-const PT = (px: number) => px * 0.75;    /* px CSS → pt (tamanho de fonte) */
+export const PX = 0.264583;                     /* 1px CSS em mm */
+export const PT = (px: number) => px * 0.75;    /* px CSS → pt (tamanho de fonte) */
 const ROTULO: Record<string, string> = { 'Gancho': 'Gancho', 'Narrativa': 'Narrativa', 'Narração': 'Narração', 'CTA': 'Chamada (CTA)' };
 
-const corDoGrad = (t: number): RGB => {
-  for (let i = 1; i < GRAD.length; i++) if (t <= GRAD[i][0]) {
-    const [t0, a] = GRAD[i - 1], [t1, b] = GRAD[i], k = (t - t0) / (t1 - t0);
+const corDoGrad = (t: number, G: [number, RGB][] = GRAD): RGB => {
+  for (let i = 1; i < G.length; i++) if (t <= G[i][0]) {
+    const [t0, a] = G[i - 1], [t1, b] = G[i], k = (t - t0) / (t1 - t0);
     return [0, 1, 2].map(j => Math.round(a[j] + (b[j] - a[j]) * k)) as RGB;
   }
-  return GRAD[GRAD.length - 1][1];
+  return G[G.length - 1][1];
 };
-const limpo = (t: unknown) => String(t ?? '').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}\u{20E3}]/gu, '').replace(/ /g, ' ');
+export const limpo = (t: unknown) => String(t ?? '').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}\u{20E3}]/gu, '').replace(/ /g, ' ');
 
 export type Cena = { tipo?: string; funcao?: string; direcao?: string; texto?: string; sugestao_cenas?: string };
 export type Roteiro = { id?: string; titulo?: string; objetivo?: string; observacao_gravacao?: string; escala?: number; escala_automatica?: boolean };
-export type Ctx = { cliente?: string; gravacao?: string; dataGravacao?: string; semCliente?: boolean; roteiros: Roteiro[]; cenasPorRoteiro: Record<string, Cena[]> };
+export type Logo = { b64: string; fmt: 'PNG' | 'JPEG' };
+export type Ctx = { cliente?: string; clienteLogo?: Logo | null; gravacao?: string; dataGravacao?: string; semCliente?: boolean; roteiros: Roteiro[]; cenasPorRoteiro: Record<string, Cena[]> };
 
-function novoDoc() {
+/** Logo do cliente "cobrindo" a forma (object-fit: cover), recortada num círculo ou num quadrado arredondado. */
+export function desenharLogo(d: jsPDF, logo: Logo, x: number, y: number, w: number, h: number, raio: number) {
+  try {
+    const props = (d as any).getImageProperties('data:image/' + logo.fmt.toLowerCase() + ';base64,' + logo.b64);
+    const k = Math.max(w / props.width, h / props.height), iw = props.width * k, ih = props.height * k;
+    d.saveGraphicsState();
+    (d as any).roundedRect(x, y, w, h, raio, raio, null); (d as any).clip(); (d as any).discardPath();
+    d.setFillColor(255, 255, 255); d.rect(x, y, w, h, 'F');
+    d.addImage(logo.b64, logo.fmt, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+    d.restoreGraphicsState();
+  } catch (_e) { /* imagem que o PDF não lê: fica sem a logo */ }
+}
+
+export function novoDoc() {
   const d = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const fontes: [string, string, string][] = [['Sora', '700', F.SORA_700], ['Sora', '800', F.SORA_800], ['Inter', '400', F.INTER_400], ['Inter', '500', F.INTER_500], ['Inter', '600', F.INTER_600], ['Inter', '700', F.INTER_700]];
   for (const [fam, w, b64] of fontes) { const arq = fam + '-' + w + '.ttf'; d.addFileToVFS(arq, b64); d.addFont(arq, fam, w); }
   return d;
 }
 
-class Pincel {
+export class Pincel {
   constructor(public d: jsPDF, public fs = 1) {}
   fonte(fam: 'Sora' | 'Inter', w: string, px: number, cor: RGB, espacoEm = 0) {
     this.d.setFont(fam, fam === 'Inter' && Number(w) > 700 ? '700' : w); this.d.setFontSize(PT(px * this.fs)); this.d.setTextColor(...cor);
     this.d.setCharSpace(espacoEm * px * this.fs * PX);
   }
   /* degradê da B7 (118°) — faixas finas, da esquerda para a direita */
-  grad(x: number, y: number, w: number, h: number, r = 0) {
+  grad(x: number, y: number, w: number, h: number, r = 0, paradas: [number, RGB][] = GRAD) {
     const d = this.d, passos = Math.max(24, Math.round(w * 2));
     if (r > 0) { d.saveGraphicsState(); (d as any).roundedRect(x, y, w, h, r, r, null); (d as any).clip(); (d as any).discardPath(); }
     for (let i = 0; i < passos; i++) {
-      const t = i / (passos - 1); d.setFillColor(...corDoGrad(t));
-      d.rect(x + (w * i) / passos, y, w / passos + 0.05, h, 'F');
+      const t = i / (passos - 1); d.setFillColor(...corDoGrad(t, paradas));
+      d.rect(x + (w * i) / passos, y, w / passos + 0.45, h, 'F');
     }
     if (r > 0) d.restoreGraphicsState();
   }
@@ -95,11 +109,17 @@ function folha(d: jsPDF, ctx: Ctx, r: Roteiro, cenas: Cena[], indice: number, to
     if (!ctx.semCliente) {
       p.fonte('Sora', '800', 12, INK); const n = limpo(ctx.cliente || 'Cliente').slice(0, 40); const wn = p.largura(n);
       p.fonte('Inter', '400', 9.5, GREY); const sub = limpo([ctx.gravacao || 'Gravação', ctx.dataGravacao].filter(Boolean).join(' · ')).slice(0, 60); const ws = p.largura(sub);
-      const wTx = Math.max(wn, ws), wP = Math.min(W * 0.6, wTx + (14 + 10) * PX), hP = 10 * PX + 9.5;
+      /* .rt-cli: padding 6px 14px 6px 6px; logo 9 mm redonda + 10px + 4px até o texto */
+      const comLogo = !!ctx.clienteLogo, recuo = comLogo ? 6 * PX + 9 + (10 + 4) * PX : 10 * PX;
+      const wTx = Math.max(wn, ws), wP = Math.min(W * 0.6, wTx + recuo + 14 * PX), hP = comLogo ? 9 + 12 * PX : 10 * PX + 9.5;
       const xP = X + W - wP, yP = TOPO + 5 - hP / 2;
       p.caixa(xP, yP, wP, hP, hP / 2, null, LINE, 0.26);
-      p.fonte('Sora', '800', 12, ctx.cliente ? INK : [201, 194, 218]); d.text(n, xP + 10 * PX, yP + 4.6);
-      p.fonte('Inter', '400', 9.5, GREY); d.text(sub, xP + 10 * PX, yP + 8.2);
+      if (comLogo) {
+        desenharLogo(d, ctx.clienteLogo!, xP + 6 * PX, yP + 6 * PX, 9, 9, 4.5);
+        d.setDrawColor(...LINE); d.setLineWidth(PX); d.circle(xP + 6 * PX + 4.5, yP + 6 * PX + 4.5, 4.5, 'S');
+      }
+      p.fonte('Sora', '800', 12, ctx.cliente ? INK : [201, 194, 218]); d.text(n, xP + recuo, yP + hP / 2 - 0.4);
+      p.fonte('Inter', '400', 9.5, GREY); d.text(sub, xP + recuo, yP + hP / 2 + 3.2);
     }
     p.fs = fs;
   }

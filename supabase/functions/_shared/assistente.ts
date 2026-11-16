@@ -23,7 +23,8 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { evo, INST, gravar } from './wa.ts';
 import { gerar, provedorAtual } from './ia/servico.ts';
 import { carregarContexto } from './ia/whatsapp.ts';
-import { fichaRoteiros } from './ficha.ts';
+import { fichaRoteiros, type Logo } from './ficha.ts';
+import { fichaLinha } from './ficha-linha.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 type Pessoa = { nome?: string; numero?: string; assuntos?: string; duvidas?: boolean };
@@ -568,8 +569,11 @@ async function talvezDocumento(sb: SupabaseClient, cfg: Config, raw: any, pedido
     if (mes) q = q.eq('mes', mes); if (ano) q = q.eq('ano', ano);
     const { data: ls } = await q.order('ano', { ascending: false }).order('mes', { ascending: false }).limit(1);
     if (!ls?.length) { await enviar(sb, cfg, destino, 'Não achei linha editorial da ' + c.nome + (mes ? ' de ' + MESES[mes - 1] : '') + ' no sistema.', citar ? { quoted: citar } : {}); return true; }
-    /* a ficha da linha editorial ainda não foi refeita no servidor — sem inventar outro design */
-    await enviar(sb, cfg, destino, 'O PDF da linha editorial no layout do B7 eu ainda não consigo gerar sozinho — por enquanto mando só os roteiros. A linha você baixa no B7, em Linhas editoriais → Baixar.', citar ? { quoted: citar } : {});
+    const doc = await pdfDaLinha(sb, ls[0].id);
+    if (!doc) { await enviar(sb, cfg, destino, 'Não consegui montar a linha editorial agora.', citar ? { quoted: citar } : {}); return true; }
+    const tit = 'linha editorial da ' + c.nome + ' de ' + MESES[(ls[0].mes || 1) - 1] + (ls[0].ano ? ' de ' + ls[0].ano : '');
+    const foi = await enviarDocumento(sb, cfg, destino, doc.nome, paraB64(doc.bytes), 'Aqui está a ' + tit + '.', citar);
+    await registrar(sb, { tipo: foi ? 'documento' : 'erro', jid: destino, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: tit });
     return true;
   }
   let q: any = sb.from('gravacoes').select('id, nome, data_gravacao, competencia_mes, competencia_ano').eq('client_id', c.id).is('deleted_at', null).is('archived_at', null);
@@ -592,6 +596,40 @@ async function talvezDocumento(sb: SupabaseClient, cfg: Config, raw: any, pedido
 /* 4.58.0: a ficha de roteiro do B7, desenhada aqui (supabase/functions/_shared/ficha.ts) */
 function paraB64(u: Uint8Array) { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); }
 const nomeArq = (partes: string[]) => (partes.filter(Boolean).join('_').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').trim().replace(/[\s-]+/g, '_').toUpperCase().slice(0, 90) || 'ROTEIRO_B7') + '.pdf';
+/* logo do cliente para o PDF (PNG/JPEG; outro formato fica de fora, como no sistema quando a imagem falha) */
+async function logoDe(url: unknown): Promise<Logo | null> {
+  if (!url || typeof url !== 'string') return null;
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const u = new Uint8Array(await r.arrayBuffer());
+    if (u.length > 3_000_000) return null;
+    const fmt = u[0] === 0x89 && u[1] === 0x50 ? 'PNG' : u[0] === 0xFF && u[1] === 0xD8 ? 'JPEG' : null;
+    if (fmt) return { b64: paraB64(u), fmt };
+    // WebP (RIFF....WEBP): a maioria das logos. O jsPDF não lê, então converte pra PNG.
+    const ehWebp = u[0] === 0x52 && u[1] === 0x49 && u[8] === 0x57 && u[9] === 0x45 && u[10] === 0x42 && u[11] === 0x50;
+    if (!ehWebp) return null;
+    const png = await webpParaPng(u);
+    return png ? { b64: paraB64(png), fmt: 'PNG' } : null;
+  } catch (_e) { return null; }
+}
+let webpPronto: Promise<any> | null = null;
+async function webpParaPng(u: Uint8Array): Promise<Uint8Array | null> {
+  try {
+    webpPronto ||= (async () => {
+      const [{ default: decode, init }, { encode }, { WEBP_DEC_WASM }] = await Promise.all([
+        import('npm:@jsquash/webp@1.4.0/decode.js'), import('npm:fast-png@6.2.0'), import('./webp-dec.ts')
+      ]);
+      const bin = Uint8Array.from(atob(WEBP_DEC_WASM), c => c.charCodeAt(0));
+      await init(await WebAssembly.compile(bin));
+      return { decode, encode };
+    })();
+    const { decode, encode } = await webpPronto;
+    const img = await decode(u.slice().buffer);
+    if (!img?.width) return null;
+    return encode({ width: img.width, height: img.height, data: new Uint8Array(img.data.buffer), channels: 4 });
+  } catch (_e) { webpPronto = null; return null; }
+}
 async function pdfDaGravacao(sb: SupabaseClient, gravacaoId: string): Promise<{ nome: string; bytes: Uint8Array } | null> {
   const { data: g } = await sb.from('gravacoes_resumo').select('*').eq('id', gravacaoId).maybeSingle();
   if (!g) return null;
@@ -601,8 +639,30 @@ async function pdfDaGravacao(sb: SupabaseClient, gravacaoId: string): Promise<{ 
   const por: Record<string, any[]> = {};
   rts.forEach((r: any) => { por[r.id] = (cenas || []).filter((c: any) => c.script_id === r.id); });
   const data = g.data_gravacao ? String(g.data_gravacao).slice(0, 10).split('-').reverse().join('/') : '';
-  const bytes = fichaRoteiros({ cliente: g.cliente_nome, semCliente: !!g.geral, gravacao: g.nome, dataGravacao: data, roteiros: rts, cenasPorRoteiro: por });
+  const bytes = fichaRoteiros({ cliente: g.cliente_nome, clienteLogo: g.geral ? null : await logoDe(g.cliente_logo_url), semCliente: !!g.geral, gravacao: g.nome, dataGravacao: data, roteiros: rts, cenasPorRoteiro: por });
   return { nome: nomeArq([g.cliente_nome, g.nome, 'ROTEIROS']), bytes };
+}
+/* 4.58.3: a linha editorial, como o "Baixar PDF" (A4) da tela */
+async function pdfDaLinha(sb: SupabaseClient, linhaId: string): Promise<{ nome: string; bytes: Uint8Array } | null> {
+  const { data: l } = await sb.from('linhas_resumo').select('*').eq('id', linhaId).maybeSingle();
+  if (!l) return null;
+  const [cs, pl, cl] = await Promise.all([
+    sb.from('conteudos').select('*').eq('linha_id', linhaId).is('deleted_at', null).order('position'),
+    sb.from('pilares').select('*').eq('linha_id', linhaId).order('position'),
+    sb.from('clientes_resumo').select('logo_url').eq('id', l.client_id).maybeSingle()
+  ]);
+  const conteudos = (cs.data || []) as any[];
+  const ids = (t: string) => conteudos.filter(c => c.tipo === t).map(c => c.id);
+  const [sl, fr, rt] = await Promise.all([
+    ids('Carrossel').length ? sb.from('slides').select('*').in('content_id', ids('Carrossel')).order('position') : { data: [] as any[] },
+    ids('Story').length ? sb.from('frames').select('*').in('content_id', ids('Story')).order('position') : { data: [] as any[] },
+    conteudos.some(c => c.script_id) ? sb.from('roteiros').select('id, titulo').in('id', conteudos.filter(c => c.script_id).map(c => c.script_id)) : { data: [] as any[] }
+  ]);
+  const agrupa = (lista: any[]) => { const o: Record<string, any[]> = {}; (lista || []).forEach(x => (o[x.content_id] = o[x.content_id] || []).push(x)); return o; };
+  const roteiros: Record<string, any> = {}; ((rt.data || []) as any[]).forEach(r => { roteiros[r.id] = r; });
+  const bytes = fichaLinha({ linha: l, conteudos, pilares: (pl.data || []) as any[], slides: agrupa(sl.data as any[]), frames: agrupa(fr.data as any[]), roteiros, clienteLogo: await logoDe((cl.data as any)?.logo_url) });
+  const MESU = ['JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+  return { nome: nomeArq([l.cliente_nome, 'LINHA_EDITORIAL', MESU[(l.mes || 1) - 1] || '', String(l.ano || '')]), bytes };
 }
 
 /* =====================================================================
