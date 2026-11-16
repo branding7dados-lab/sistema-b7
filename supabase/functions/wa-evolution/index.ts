@@ -17,7 +17,7 @@ import { responderDuvida } from '../_shared/assistente.ts';
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-const VERSAO = 'wa-evolution 14 (4.54.0)';
+const VERSAO = 'wa-evolution 15 (4.54.1)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -283,6 +283,16 @@ function levarDepois(id: string | null) {
   try { EdgeRuntime?.waitUntil(job); } catch (_e) { /* segue */ }
 }
 
+/* os bytes de uma mídia já recebida, em base64 (Drive → Storage → WhatsApp) */
+function paraB64(u: Uint8Array) { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); }
+async function base64DaMidia(m: any): Promise<string> {
+  const sb = admin();
+  if (m.drive_id) { const tk = await tokenDrive(sb); if (tk) { const r = await ler(tk, m.drive_id); if (r.ok) return paraB64(new Uint8Array(await r.arrayBuffer())); } }
+  if (m.midia_path) { const d = await sb.storage.from('wa-midia').download(m.midia_path); if (!d.error && d.data) return paraB64(new Uint8Array(await d.data.arrayBuffer())); }
+  const r = await evo('/chat/getBase64FromMediaMessage/' + I(), 'POST', { message: m.midia_raw || { key: { id: m.id } } }, 60000);
+  return r.ok ? String(r.dados?.base64 || '') : '';
+}
+
 async function baixarMidia(id: string) {
   const m = await msgDe(id);
   if (!m) return { erro: 'Mensagem não encontrada.' };
@@ -423,6 +433,25 @@ Deno.serve(comCors(async (req: Request) => {
         const idAud = await registrarEnvio(r.dados, p, { midia_path: c.path });
         levarDepois(idAud);
         return json({ ok: true, id: idAud });
+      }
+      /* 4.54.1: figurinha — uma que já chegou numa conversa ({id}) ou criada de uma imagem ({path} em envio/) */
+      case 'enviar_figurinha': {
+        if (!c.jid) return json({ erro: 'Conversa inválida.' });
+        let sticker = '';
+        if (c.path) {
+          if (!String(c.path).startsWith('envio/')) return json({ erro: 'Arquivo inválido.' });
+          sticker = (await urlAssinada(String(c.path), 900)) || '';
+        } else if (c.id) {
+          const m = await msgDe(String(c.id));
+          if (!m || m.tipo !== 'figurinha') return json({ erro: 'Figurinha não encontrada.' });
+          sticker = await base64DaMidia(m);
+        }
+        if (!sticker) return json({ erro: 'Não consegui pegar a figurinha.' });
+        const r = await evo('/message/sendSticker/' + I(), 'POST', { number: c.jid, sticker }, 60000);
+        if (!r.ok) { console.log('figurinha', r.status, JSON.stringify(r.dados).slice(0, 200)); return json({ erro: 'O WhatsApp não aceitou a figurinha (' + r.status + ').' }); }
+        const idF = await registrarEnvio(r.dados, p, c.path ? { midia_path: c.path } : {});
+        if (c.path) levarDepois(idF);
+        return json({ ok: true, id: idF });
       }
       case 'reagir': {
         const m = await msgDe(String(c.id || ''));

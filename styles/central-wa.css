@@ -258,3 +258,14 @@ html[data-theme="dark"] .wz-onda u{background:color-mix(in srgb,var(--ink-2) 40%
 .wz-as textarea{min-height:76px;}
 .wz-as-chave .campo{display:inline-block;width:64px !important;height:30px;min-height:0;padding:2px 8px;margin:0 4px;}
 .wz-as-num input{height:40px;}
+
+/* ---------- 4.54.1: figurinhas ---------- */
+.wz-figs{position:absolute;left:12px;bottom:calc(100% + 8px);width:min(400px,calc(100vw - 24px));max-height:360px;display:flex;flex-direction:column;z-index:6;
+  background:var(--card);border:1px solid var(--borda);border-radius:18px;box-shadow:0 22px 44px -18px rgba(0,0,0,.55);padding:10px;}
+.wz-figs-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 4px 8px;}
+.wz-figs-grade{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;overflow-y:auto;min-height:0;}
+.wz-figs-grade .sub{grid-column:1/-1;padding:16px 6px;text-align:center;}
+.wz-figs-it{aspect-ratio:1;border:0;border-radius:12px;background:var(--suave);cursor:pointer;display:grid;place-items:center;padding:6px;transition:transform .12s;}
+.wz-figs-it:hover{transform:scale(1.06);background:var(--acento-suave);}
+.wz-figs-it img{width:100%;height:100%;object-fit:contain;}
+.wz-figs-it .wz-ph{font-style:normal;opacity:.4;}

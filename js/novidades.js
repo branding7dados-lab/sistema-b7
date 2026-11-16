@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.54.1', versao: '4.54.1', em: '2026-11-17T12:00:00-03:00', funcao: 'videomaker',
+    titulo: 'Figurinhas no WhatsApp do B7',
+    itens: ['No campo de escrever, o novo botão de figurinhas mostra as que já chegaram nas conversas (as que você mais usa ficam primeiro) — um clique e ela vai.', 'Dá para criar uma figurinha nova de qualquer imagem.'] },
   { id: 'v-4.52.0', versao: '4.52.0', em: '2026-11-17T02:00:00-03:00', funcao: 'videomaker',
     titulo: '"Enviar no WhatsApp" agora manda direto',
     itens: ['Em Edição de vídeo, Design, Aprovações, Projetos e Gravações, o "Enviar no WhatsApp" manda direto para a conversa do cliente, com a sua assinatura — sem abrir o WhatsApp nem colar nada.',

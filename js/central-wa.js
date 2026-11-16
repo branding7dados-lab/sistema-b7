@@ -32,6 +32,7 @@ B7.CentralWA = (function () {
   const I = {
     busca: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
     clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5 12.4 20a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"/></svg>',
+    fig: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.5V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h5.5"/><path d="M20 12.5 12.5 20c0-4.1 3.4-7.5 7.5-7.5Z"/><path d="M9 10h.01M15 10h.01" stroke-width="3"/><path d="M9 14.5c.8.6 1.8 1 3 1"/></svg>',
     emoji: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><path d="M9 9.5h.01M15 9.5h.01" stroke-width="3"/></svg>',
     mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
     env: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>',
@@ -246,10 +247,12 @@ B7.CentralWA = (function () {
           '<button data-wz="anexo-midia">🖼️ Fotos e vídeos</button><button data-wz="anexo-doc">📄 Documento</button><button data-wz="anexo-cam" class="wz-so-cel">📷 Câmera</button><hr><button data-wz="nota">🔒 Nota interna (só a equipe vê)</button></div></div>' +
         '<div class="menu wz-emo"><button class="wz-ic" data-menu aria-label="Emoji">' + I.emoji + '</button><div class="lista wz-emojis">' +
           '😀 😂 😍 🥰 😎 🤩 😉 🙏 👍 👏 🙌 💪 ❤️ 🔥 ✨ 🎉 ✅ 📌 📷 🎬 🎨 📅 ⏰ 💜'.split(' ').map(e => '<button data-emoji="' + e + '">' + e + '</button>').join('') + '</div></div>' +
+        '<button class="wz-ic wz-fig-bt" data-wz="figs" aria-label="Figurinhas" title="Figurinhas">' + I.fig + '</button>' +
+        '<div class="wz-figs" id="wz-figs" hidden></div>' +
         '<textarea id="wz-texto" rows="1" placeholder="Digite uma mensagem"></textarea>' +
         '<button class="wz-env" id="wz-env" aria-label="Gravar áudio">' + I.mic + '</button>' +
       '</footer>' +
-      '<input type="file" id="wz-arq-midia" accept="image/*,video/*" multiple hidden><input type="file" id="wz-arq-doc" multiple hidden><input type="file" id="wz-arq-cam" accept="image/*" capture="environment" hidden>';
+      '<input type="file" id="wz-arq-fig" accept="image/*" hidden><input type="file" id="wz-arq-midia" accept="image/*,video/*" multiple hidden><input type="file" id="wz-arq-doc" multiple hidden><input type="file" id="wz-arq-cam" accept="image/*" capture="environment" hidden>';
     if (B7.UI.ligarMenus) B7.UI.ligarMenus(cx);
     ligarComposer(cx);
     const caixa = cx.querySelector('#wz-msgs');
@@ -384,6 +387,8 @@ B7.CentralWA = (function () {
     const em = e.target.closest('[data-emoji]'); if (em) { const t = raiz.querySelector('#wz-texto'); if (t) { t.setRangeText(em.dataset.emoji, t.selectionStart, t.selectionEnd, 'end'); t.focus(); t.dispatchEvent(new Event('input')); } B7.UI.fecharMenus && B7.UI.fecharMenus(); return; }
     const md = e.target.closest('[data-carregar]');
     if (md) { if (md.dataset.carregar === 'audio' && md.querySelector('audio')) { const a = md.querySelector('audio'); if (e.target.closest('.wz-aud-p')) (a.paused ? a.play() : a.pause()); return; } if (md.dataset.carregar === 'img' && md.dataset.ok) return; return carregarMidia(md, true); }
+    const fg = e.target.closest('[data-fig]'); if (fg) { if (fg.querySelector('img')) enviarFigurinha({ id: fg.dataset.fig }); return; }
+    if (!e.target.closest('#wz-figs, .wz-fig-bt')) { const fx = raiz.querySelector('#wz-figs'); if (fx && !fx.hidden) fx.hidden = true; }
     const z = e.target.closest('[data-zoom]'); if (z) return zoom(z.dataset.zoom);
     const q = e.target.closest('[data-ir]'); if (q) { const alvo = raiz.querySelector('.wz-b[data-id="' + CSS.escape(q.dataset.ir) + '"]'); if (alvo) { alvo.scrollIntoView({ block: 'center', behavior: 'smooth' }); alvo.classList.add('pisca'); setTimeout(() => alvo.classList.remove('pisca'), 1400); } return; }
     const am = e.target.closest('[data-acao-msg]'); if (am) return acaoMsg(am.dataset.acaoMsg, am.closest('.wz-b').dataset.id, am);
@@ -402,6 +407,8 @@ B7.CentralWA = (function () {
     if (a === 'lado') { S.lado = !S.lado; raiz.classList.toggle('sem-lado', !S.lado); pintarChat(); pintarMensagens(); pintarLado(); return; }
     if (a === 'conexao') return B7.WaCentral && B7.WaCentral.abrir();
     if (a === 'importar') return importar();
+    if (a === 'figs') return abrirFigurinhas();
+    if (a === 'fig-nova') return raiz.querySelector('#wz-arq-fig').click();
     if (a === 'drive') return modalDrive();
     if (a === 'assistente') return modalAssistente();
     if (a === 'anexo-midia') return raiz.querySelector('#wz-arq-midia').click();
@@ -472,6 +479,9 @@ B7.CentralWA = (function () {
     t.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer:coarse)').matches) { e.preventDefault(); enviarTexto(); } });
     t.addEventListener('paste', e => { const fs = [...(e.clipboardData && e.clipboardData.files || [])]; if (fs.length) { e.preventDefault(); prepararArquivos(fs); } });
     bt.onclick = () => t.value.trim() ? enviarTexto() : gravar();
+    const fi = cx.querySelector('#wz-arq-fig');
+    if (fi) fi.onchange = async () => { const f = fi.files[0]; fi.value = ''; if (!f) return; if (f.size > 8 * 1024 * 1024) return B7.UI.toast('Imagem grande demais para figurinha (até 8 MB).');
+      try { B7.UI.toast('Criando a figurinha…'); const path = await subir(f, f.name || 'figurinha.png'); await enviarFigurinha({ path }); } catch (e) { B7.UI.toast(e.message); } };
     ['#wz-arq-midia', '#wz-arq-doc', '#wz-arq-cam'].forEach(s => { const i = cx.querySelector(s); i.onchange = () => { if (i.files.length) prepararArquivos([...i.files], s === '#wz-arq-doc'); i.value = ''; }; });
     ajusta();
   }
@@ -649,6 +659,47 @@ B7.CentralWA = (function () {
       const bb = m.querySelector('#wz-imp-b'); if (bb) bb.style.width = '100%';
     } catch (e) { const el = m.querySelector('#wz-imp'); if (el) el.textContent = e.message || 'Não deu para puxar agora.'; }
     await carregarConversas(); pintarFiltros(); pintarLista();
+  }
+
+  /* ------------------------------------------------------------ figurinhas (4.54.1) */
+  const FIG_FAV = 'b7.wz.figs';
+  const figUrl = new Map();
+  async function abrirFigurinhas() {
+    const cx = raiz.querySelector('#wz-figs'); if (!cx) return;
+    if (!cx.hidden) { cx.hidden = true; return; }
+    cx.hidden = false;
+    cx.innerHTML = '<div class="wz-figs-top"><b>Figurinhas</b><button class="b fina contorno" data-wz="fig-nova">＋ Criar de uma imagem</button></div><div class="wz-figs-grade"><p class="sub">Carregando…</p></div>';
+    let usadas = []; try { usadas = JSON.parse(localStorage.getItem(FIG_FAV) || '[]'); } catch (e) {}
+    const { data } = await sb().from('wa_mensagens').select('id,midia_tamanho,criada_em').eq('tipo', 'figurinha').eq('apagada', false).order('criada_em', { ascending: false }).limit(150);
+    /* a mesma figurinha chega várias vezes: fica uma de cada (pelo tamanho do arquivo) */
+    const vistos = new Set(), lista = [];
+    for (const id of usadas) { if (!lista.includes(id)) lista.push(id); }
+    for (const f of data || []) { const k = f.midia_tamanho || f.id; if (vistos.has(k)) continue; vistos.add(k); if (!lista.includes(f.id)) lista.push(f.id); }
+    const grade = cx.querySelector('.wz-figs-grade');
+    if (!lista.length) { grade.innerHTML = '<p class="sub">As figurinhas que chegarem nas conversas aparecem aqui. Ou crie uma de uma imagem.</p>'; return; }
+    grade.innerHTML = lista.slice(0, 40).map(id => '<button class="wz-figs-it" data-fig="' + esc(id) + '"><i class="wz-ph">🙂</i></button>').join('');
+    /* carrega as imagens 4 por vez */
+    const fila = [...grade.querySelectorAll('[data-fig]')];
+    const proxima = async () => {
+      const b = fila.shift(); if (!b) return;
+      const id = b.dataset.fig;
+      try {
+        let url = figUrl.get(id);
+        if (!url) { const r = await chamar('midia', { id }); url = r && r.url; if (url) figUrl.set(id, url); }
+        if (url) b.innerHTML = '<img src="' + esc(url) + '" alt="Figurinha" loading="lazy">'; else b.remove();
+      } catch (e) { b.remove(); }
+      return proxima();
+    };
+    proxima(); proxima(); proxima(); proxima();
+  }
+  async function enviarFigurinha(extra) {
+    const jid = S.aberta; if (!jid) return;
+    const cx = raiz.querySelector('#wz-figs'); if (cx) cx.hidden = true;
+    try {
+      const r = await chamar('enviar_figurinha', Object.assign({ jid }, extra));
+      if (r.erro) throw new Error(r.erro);
+      if (extra.id) { let u = []; try { u = JSON.parse(localStorage.getItem(FIG_FAV) || '[]'); } catch (e) {} u = [extra.id, ...u.filter(x => x !== extra.id)].slice(0, 16); try { localStorage.setItem(FIG_FAV, JSON.stringify(u)); } catch (e) {} }
+    } catch (e) { B7.UI.toast(e.message || 'Não deu para mandar a figurinha.'); }
   }
 
   /* ------------------------------------------------------------ Google Drive (4.53.0) */
