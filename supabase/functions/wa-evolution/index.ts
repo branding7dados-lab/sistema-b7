@@ -13,8 +13,10 @@
 // =====================================================================
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
+import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-const VERSAO = 'wa-evolution 8 (4.52.5)';
+const VERSAO = 'wa-evolution 9 (4.53.0)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -186,10 +188,45 @@ async function urlAssinada(path: string, s = 900, bucket = 'wa-midia') {
 }
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'video/mp4': 'mp4', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'application/pdf': 'pdf' };
 
+/* 4.53.0: com o Google Drive conectado, os arquivos vão para lá ("B7 · WhatsApp"/conversa/mês)
+   e saem do Storage do Supabase; a tela abre por um link assinado desta função. */
+async function paraDrive(m: any, dados?: { bin: Uint8Array; mime: string }): Promise<string | null> {
+  const sb = admin();
+  const tk = await tokenDrive(sb);
+  if (!tk) return null;
+  let bin = dados?.bin, mime = dados?.mime || m.midia_mime || 'application/octet-stream';
+  if (!bin && m.midia_path) {
+    const d = await sb.storage.from('wa-midia').download(m.midia_path);
+    if (d.error || !d.data) return null;
+    bin = new Uint8Array(await d.data.arrayBuffer()); mime = m.midia_mime || d.data.type || mime;
+  }
+  if (!bin) return null;
+  const { data: conv } = await sb.from('wa_conversas').select('nome').eq('jid', m.jid).maybeSingle();
+  const pasta = await pastaDaConversa(sb, tk, m.jid, conv?.nome || String(m.jid).split('@')[0], m.criada_em);
+  const ext = EXT[String(mime).split(';')[0]] || (String(m.midia_nome || '').includes('.') ? String(m.midia_nome).split('.').pop() : 'bin');
+  const quando = String(m.criada_em || new Date().toISOString()).slice(0, 16).replace('T', ' ').replace(':', 'h');
+  const base = m.midia_nome ? String(m.midia_nome) : ({ imagem: 'foto', video: 'video', audio: 'audio', figurinha: 'figurinha' } as Record<string, string>)[m.tipo] || 'arquivo';
+  const nome = quando + ' · ' + (m.de_mim ? (m.enviada_por_nome || 'B7') : (m.autor_nome || 'contato')) + ' · ' + base + (/\.[a-z0-9]{2,5}$/i.test(base) ? '' : '.' + ext);
+  const driveId = await subir(tk, pasta, nome, String(mime).split(';')[0], bin);
+  await sb.from('wa_mensagens').update({ drive_id: driveId, midia_mime: mime, midia_path: null }).eq('id', m.id);
+  if (m.midia_path) await sb.storage.from('wa-midia').remove([m.midia_path]);
+  return driveId;
+}
+/* depois de enviar um arquivo pelo B7: leva a cópia para o Drive sem segurar a resposta */
+function levarDepois(id: string | null) {
+  if (!id) return;
+  const job = (async () => { const m = await msgDe(id); if (m?.midia_path && !m.drive_id) await paraDrive(m); })().catch(e => console.log('drive', String(e)));
+  try { EdgeRuntime?.waitUntil(job); } catch (_e) { /* segue */ }
+}
+
 async function baixarMidia(id: string) {
   const m = await msgDe(id);
   if (!m) return { erro: 'Mensagem não encontrada.' };
-  if (m.midia_path) return { url: await urlAssinada(m.midia_path, 3600), mime: m.midia_mime };
+  if (m.drive_id) return { url: await linkAssinado(id), mime: m.midia_mime };
+  if (m.midia_path) {
+    try { if (await paraDrive(m)) return { url: await linkAssinado(id), mime: m.midia_mime }; } catch (e) { console.log('drive', String(e)); }
+    return { url: await urlAssinada(m.midia_path, 3600), mime: m.midia_mime };
+  }
   if (Number(m.midia_tamanho || 0) > 80 * 1024 * 1024) return { erro: 'Arquivo grande demais para abrir aqui (mais de 80 MB). Abra pelo celular.' };
   /* 4.52.5: manda a mensagem inteira (o Evolution no MySQL não acha a mensagem só pelo id) */
   const r = await evo('/chat/getBase64FromMediaMessage/' + I(), 'POST', { message: m.midia_raw || { key: { id } }, convertToMp4: m.tipo === 'video' }, 120000);
@@ -197,8 +234,10 @@ async function baixarMidia(id: string) {
   const b64 = r.dados?.base64;
   if (!r.ok || !b64) return { erro: 'O WhatsApp não liberou este arquivo (pode ter expirado).' };
   const mime = r.dados?.mimetype || m.midia_mime || 'application/octet-stream';
-  const ext = EXT[String(mime).split(';')[0]] || (String(m.midia_nome || '').split('.').pop() || 'bin');
   const bin = Uint8Array.from(atob(b64), ch => ch.charCodeAt(0));
+  try { if (await paraDrive(m, { bin, mime })) return { url: await linkAssinado(id), mime }; } catch (e) { console.log('drive', String(e)); }
+  /* sem Drive conectado (ou o Drive falhou): fica no Storage, como antes */
+  const ext = EXT[String(mime).split(';')[0]] || (String(m.midia_nome || '').split('.').pop() || 'bin');
   const path = 'rec/' + m.jid.split('@')[0] + '/' + id + '.' + ext;
   const up = await admin().storage.from('wa-midia').upload(path, bin, { contentType: String(mime).split(';')[0], upsert: true });
   if (up.error) return { erro: 'Não consegui guardar o arquivo.' };
@@ -206,8 +245,30 @@ async function baixarMidia(id: string) {
   return { url: await urlAssinada(path, 3600), mime };
 }
 
+/* GET ?m=<id da mensagem>&e=<expira>&s=<assinatura>[&dl=1]: entrega o arquivo do Drive */
+async function entregarDoDrive(req: Request, u: URL): Promise<Response> {
+  const id = u.searchParams.get('m') || '', exp = Number(u.searchParams.get('e') || 0), sig = u.searchParams.get('s') || '';
+  if (!id || exp < Date.now() / 1000 || sig !== await assinar(id, exp)) return new Response('Link expirado. Abra o arquivo de novo pelo B7.', { status: 403 });
+  const m = await msgDe(id);
+  if (!m?.drive_id) return new Response('Arquivo não encontrado.', { status: 404 });
+  const tk = await tokenDrive(admin());
+  if (!tk) return new Response('O Google Drive do B7 está desconectado.', { status: 503 });
+  const r = await ler(tk, m.drive_id, req.headers.get('range'));
+  if (!r.ok && r.status !== 206) return new Response('O Drive não entregou o arquivo (' + r.status + ').', { status: 502 });
+  const h = new Headers({ 'Content-Type': String(m.midia_mime || r.headers.get('content-type') || 'application/octet-stream').split(';')[0], 'Cache-Control': 'private, max-age=3600', 'Accept-Ranges': 'bytes' });
+  for (const k of ['content-length', 'content-range']) { const v = r.headers.get(k); if (v) h.set(k, v); }
+  if (u.searchParams.get('dl')) {
+    const ext = EXT[String(m.midia_mime || '').split(';')[0]] || 'bin';
+    const nome = m.midia_nome || ('whatsapp-' + id + '.' + ext);
+    h.set('Content-Disposition', "attachment; filename*=UTF-8''" + encodeURIComponent(nome));
+  }
+  return new Response(r.body, { status: r.status, headers: h });
+}
+
 Deno.serve(comCors(async (req: Request) => {
   if (req.method === 'GET') {
+    const u = new URL(req.url);
+    if (u.searchParams.get('m')) return await entregarDoDrive(req, u);
     const d: Record<string, unknown> = { ok: true, versao: VERSAO, configurado: !!(BASE() && CHAVE()) };
     if (d.configurado) {
       try {
@@ -278,7 +339,9 @@ Deno.serve(comCors(async (req: Request) => {
           media: url, fileName: c.nome || undefined, quoted: await citacao(c.citar)
         }, 120000);
         if (!r.ok) return json({ erro: 'O WhatsApp não aceitou o arquivo (' + r.status + ').' });
-        return json({ ok: true, id: await registrarEnvio(r.dados, p, bucket === 'wa-midia' ? { midia_path: c.path } : {}) });
+        const idEnv = await registrarEnvio(r.dados, p, bucket === 'wa-midia' ? { midia_path: c.path } : {});
+        if (bucket === 'wa-midia') levarDepois(idEnv);
+        return json({ ok: true, id: idEnv });
       }
       case 'enviar_audio': {
         if (!c.jid || !c.path || !String(c.path).startsWith('envio/')) return json({ erro: 'Áudio inválido.' });
@@ -286,7 +349,9 @@ Deno.serve(comCors(async (req: Request) => {
         if (!url) return json({ erro: 'Não achei o áudio gravado.' });
         const r = await evo('/message/sendWhatsAppAudio/' + I(), 'POST', { number: c.jid, audio: url }, 120000);
         if (!r.ok) return json({ erro: 'O WhatsApp não aceitou o áudio (' + r.status + ').' });
-        return json({ ok: true, id: await registrarEnvio(r.dados, p, { midia_path: c.path }) });
+        const idAud = await registrarEnvio(r.dados, p, { midia_path: c.path });
+        levarDepois(idAud);
+        return json({ ok: true, id: idAud });
       }
       case 'reagir': {
         const m = await msgDe(String(c.id || ''));

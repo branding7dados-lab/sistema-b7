@@ -121,7 +121,7 @@ B7.CentralWA = (function () {
       '<aside class="wz-lista">' +
         '<div class="wz-topo"><h2>Conversas</h2>' +
           (souAdmin() ? '<div class="menu"><button class="wz-ic" data-menu aria-label="Mais opções">' + I.mais + '</button><div class="lista">' +
-            '<button data-wz="conexao">Conexão do número</button><button data-wz="importar">Puxar conversas recentes</button></div></div>' : '') +
+            '<button data-wz="conexao">Conexão do número</button><button data-wz="importar">Puxar conversas recentes</button><button data-wz="drive">Arquivos no Google Drive</button></div></div>' : '') +
         '</div>' +
         '<label class="wz-busca">' + I.busca + '<input id="wz-busca" placeholder="Buscar conversa ou cliente" autocomplete="off"></label>' +
         '<div class="wz-filtros" id="wz-filtros"></div>' +
@@ -380,6 +380,7 @@ B7.CentralWA = (function () {
     if (a === 'lado') { S.lado = !S.lado; raiz.classList.toggle('sem-lado', !S.lado); pintarChat(); pintarMensagens(); pintarLado(); return; }
     if (a === 'conexao') return B7.WaCentral && B7.WaCentral.abrir();
     if (a === 'importar') return importar();
+    if (a === 'drive') return modalDrive();
     if (a === 'anexo-midia') return raiz.querySelector('#wz-arq-midia').click();
     if (a === 'anexo-doc') return raiz.querySelector('#wz-arq-doc').click();
     if (a === 'anexo-cam') return raiz.querySelector('#wz-arq-cam').click();
@@ -429,7 +430,7 @@ B7.CentralWA = (function () {
 
   function zoom(url) {
     const z = document.createElement('div'); z.className = 'wz-zoom';
-    z.innerHTML = '<img src="' + esc(url) + '" alt=""><a href="' + esc(url) + '" target="_blank" rel="noopener" download>Baixar</a>';
+    z.innerHTML = '<img src="' + esc(url) + '" alt=""><a href="' + esc(/wa-evolution\?m=/.test(url) ? url + '&dl=1' : url) + '" target="_blank" rel="noopener" download>Baixar</a>';
     z.onclick = e => { if (e.target.tagName !== 'A') z.remove(); };
     document.body.appendChild(z);
   }
@@ -629,6 +630,49 @@ B7.CentralWA = (function () {
       const bb = m.querySelector('#wz-imp-b'); if (bb) bb.style.width = '100%';
     } catch (e) { const el = m.querySelector('#wz-imp'); if (el) el.textContent = e.message || 'Não deu para puxar agora.'; }
     await carregarConversas(); pintarFiltros(); pintarLista();
+  }
+
+  /* ------------------------------------------------------------ Google Drive (4.53.0) */
+  async function modalDrive() {
+    const m = B7.UI.modal('<h3>Arquivos no Google Drive</h3><div id="wz-drv" class="sub">Conferindo…</div><div class="acoes" id="wz-drv-ac"><button class="b" data-fecha>Fechar</button></div>');
+    const corpo = m.querySelector('#wz-drv'), ac = m.querySelector('#wz-drv-ac');
+    let ouvinte = null;
+    const soltar = () => { if (ouvinte) window.removeEventListener('message', ouvinte); ouvinte = null; };
+    async function pintar() {
+      let st = { conectado: false };
+      try { const r = await sb().rpc('wa_drive_status'); if (!r.error && r.data) st = r.data; } catch (e) {}
+      if (!m.isConnected) return soltar();
+      if (st.conectado && st.status === 'ativa') {
+        corpo.innerHTML = '<p>✓ Conectado ao Drive de <b>' + esc(st.conta || 'conta do Google') + '</b>.</p>' +
+          '<p>Fotos, vídeos, áudios e documentos do WhatsApp ficam na pasta <b>B7 · WhatsApp</b>, separados por conversa e mês — não pesam no sistema. ' +
+          (st.arquivos ? '<b>' + st.arquivos + '</b> arquivo(s) já estão lá.' : '') + '</p>';
+        ac.innerHTML = '<button class="b contorno perigo" data-drv="sair">Desconectar</button><button class="b" data-fecha>Fechar</button>';
+      } else {
+        corpo.innerHTML = (st.conectado ? '<p class="erro">A conexão com o Drive caiu' + (st.erro ? ' (' + esc(st.erro) + ')' : '') + '. Conecte de novo.</p>' : '') +
+          '<p>Conecte a conta Google da agência: os arquivos do WhatsApp passam a ser guardados numa pasta <b>B7 · WhatsApp</b> no Drive, em vez do armazenamento do sistema.</p>' +
+          '<p class="sub">O B7 só enxerga as pastas que ele mesmo criar — o resto do seu Drive fica fora do alcance.</p>';
+        ac.innerHTML = '<button class="b" data-fecha>Fechar</button><button class="b pri" data-drv="entrar">Conectar o Google Drive</button>';
+      }
+    }
+    m.addEventListener('click', async e => {
+      const b = e.target.closest('[data-drv]'); if (!b) { if (e.target.closest('[data-fecha]')) soltar(); return; }
+      if (b.dataset.drv === 'entrar') {
+        try {
+          const r = await B7.DB.chamarCalendarioGoogle({ acao: 'iniciar_conexao_drive' });
+          const j = window.open(r.url, 'b7-google-drive', 'width=520,height=680');
+          if (!j) { B7.UI.toast('O navegador bloqueou a janela — permita pop-ups e tente de novo.'); return; }
+          soltar();
+          ouvinte = ev => { if (ev.origin !== location.origin || !ev.data || ev.data.tipo !== 'b7-google-agenda') return; B7.UI.toast(ev.data.mensagem || (ev.data.ok ? 'Google Drive conectado.' : 'Não deu para conectar.')); pintar(); };
+          window.addEventListener('message', ouvinte);
+          const v = setInterval(() => { if (j.closed) { clearInterval(v); pintar(); } }, 1000);
+        } catch (x) { B7.UI.toast(x.message || 'Não deu para iniciar a conexão.'); }
+      } else if (b.dataset.drv === 'sair') {
+        if (!(await B7.UI.confirmar({ titulo: 'Desconectar o Google Drive?', texto: 'Os arquivos já guardados continuam no Drive, mas o B7 deixa de abrir e guardar lá.', confirmar: 'Desconectar', perigo: true }))) return;
+        try { await B7.DB.chamarCalendarioGoogle({ acao: 'desconectar_drive' }); } catch (x) { B7.UI.toast(x.message); }
+        pintar();
+      }
+    });
+    pintar();
   }
 
   /* ------------------------------------------------------------ tempo real */

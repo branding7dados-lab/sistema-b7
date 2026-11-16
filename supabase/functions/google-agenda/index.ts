@@ -164,6 +164,8 @@ Deno.serve(comCors(async (req: Request) => {
 
   if (acao === 'iniciar_conexao') return await iniciarConexao(perfil);
   if (acao === 'desconectar') return await desconectar(perfil);
+  if (acao === 'iniciar_conexao_drive') return await iniciarConexao(perfil, 'drive');
+  if (acao === 'desconectar_drive') return await desconectarDrive(perfil);
   if (acao === 'listar_calendarios') return await listarCalendarios(perfil);
   if (acao === 'sincronizar') return await sincronizar(perfil, corpo);
   if (acao === 'atualizar_evento') return await atualizarEvento(perfil, corpo);
@@ -178,21 +180,25 @@ Deno.serve(comCors(async (req: Request) => {
 // =====================================================================
 // CONEXÃO
 // =====================================================================
-async function iniciarConexao(perfil: Perfil): Promise<Response> {
-  if (!ehEquipe(perfil)) return json({ erro: 'Só admin/coordenador conectam o Google Calendar.' }, 403);
+/* 4.53.0: o mesmo app do Google também conecta o Drive (arquivos do WhatsApp do B7).
+   Escopo drive.file: o B7 só enxerga as pastas/arquivos que ele mesmo criou. */
+const SCOPE_DRIVE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
+
+async function iniciarConexao(perfil: Perfil, proposito: 'agenda' | 'drive' = 'agenda'): Promise<Response> {
+  if (!ehEquipe(perfil)) return json({ erro: proposito === 'drive' ? 'Só admin/coordenador conectam o Google Drive.' : 'Só admin/coordenador conectam o Google Calendar.' }, 403);
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
     return json({ erro: 'Integração não configurada nesta função: faltam os secrets GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET/GOOGLE_REDIRECT_URI.' }, 500);
   }
   const estado = crypto.randomUUID() + crypto.randomUUID();
   const sb = admin();
-  const { error } = await sb.from('calendario_oauth_estados').insert({ estado, admin_id: perfil.id });
+  const { error } = await sb.from('calendario_oauth_estados').insert({ estado, admin_id: perfil.id, proposito });
   if (error) return json({ erro: 'Não foi possível iniciar a conexão: ' + error.message }, 500);
 
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GOOGLE_REDIRECT_URI,
     response_type: 'code',
-    scope: SCOPE,
+    scope: proposito === 'drive' ? SCOPE_DRIVE : SCOPE,
     access_type: 'offline',
     prompt: 'consent',
     include_granted_scopes: 'true',
@@ -237,6 +243,13 @@ async function tratarCallback(url: URL): Promise<Response> {
   } catch (_e) { /* não impede a conexão — só não mostra o e-mail */ }
 
   const expiraEm = new Date(Date.now() + (tok.expires_in || 3600) * 1000).toISOString();
+  if (estadoRow.proposito === 'drive') {
+    if (!String(tok.scope || '').includes('drive.file')) return paginaRetorno(false, 'O Google não deu a permissão do Drive — marque a caixinha do Drive ao conectar.');
+    await sb.from('drive_conexoes').delete().not('id', 'is', null);
+    await sb.from('drive_conexoes').insert({ conta_email: contaEmail, refresh_token: tok.refresh_token, access_token: tok.access_token,
+      token_expira_em: expiraEm, status: 'ativa', conectado_por: estadoRow.admin_id });
+    return paginaRetorno(true, 'Google Drive conectado como ' + (contaEmail || 'conta do Google') + '.');
+  }
   /* Uma conexão só por vez, de propósito (fonte única de verdade) — a
      conexão nova substitui qualquer anterior. */
   await sb.from('calendario_conexoes').delete().not('id', 'is', null);
@@ -256,6 +269,17 @@ function paginaRetorno(ok: boolean, mensagem: string): Response {
      e se fecha; aberta direto, volta para o Calendário. */
   const destino = APP_URL.replace(/\/$/, '') + '/google-retorno.html?ok=' + (ok ? '1' : '0') + '&msg=' + encodeURIComponent(mensagem.slice(0, 200));
   return new Response(null, { status: 302, headers: { ...CORS, Location: destino, 'Cache-Control': 'no-store' } });
+}
+
+async function desconectarDrive(perfil: Perfil): Promise<Response> {
+  if (!ehEquipe(perfil)) return json({ erro: 'Só admin/coordenador desconectam o Google Drive.' }, 403);
+  const sb = admin();
+  const { data: c } = await sb.from('drive_conexoes').select('id, refresh_token').limit(1).maybeSingle();
+  if (c) {
+    try { await fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(c.refresh_token), { method: 'POST' }); } catch (_e) { /* best-effort */ }
+    await sb.from('drive_conexoes').delete().eq('id', c.id);
+  }
+  return json({ ok: true });
 }
 
 async function desconectar(perfil: Perfil): Promise<Response> {
