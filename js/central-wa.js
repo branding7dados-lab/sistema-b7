@@ -21,6 +21,8 @@ B7.CentralWA = (function () {
   const corDe = s => { let h = 0; for (const ch of String(s || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PAL[h % PAL.length]; };
   const ini = s => { const p = String(s || '?').replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0] || '')[1] || '')).toUpperCase(); };
   const num = jid => String(jid || '').split('@')[0];
+  /* 4.52.6: @lid é um código interno do WhatsApp, não é telefone */
+  const fone = jid => /@lid$/.test(String(jid || '')) ? 'Contato do WhatsApp' : '+' + num(jid);
   const ehGrupo = jid => /@g\.us$/.test(jid || '');
 
   const S = { conversas: [], porJid: new Map(), aberta: null, msgs: [], fim: false, filtro: 'tudo', busca: '', citar: null, canal: null, clientes: [], gravando: null, lado: true };
@@ -206,7 +208,7 @@ B7.CentralWA = (function () {
     const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
     cx.innerHTML =
       '<header class="wz-cab"><button class="wz-ic wz-volta" data-wz="voltar" aria-label="Voltar">' + I.volta + '</button>' + avatar(c, 'p') +
-        '<div class="wz-cab-tx"><b>' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : '+' + esc(num(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') + '</small></div>' +
+        '<div class="wz-cab-tx"><b>' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : esc(fone(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') + '</small></div>' +
         '<div class="wz-cab-acoes"><button class="wz-ic wz-so-pc' + (S.lado ? ' on' : '') + '" data-wz="lado" title="Painel do cliente">' + I.lado + '</button>' +
           '<div class="menu"><button class="wz-ic" data-menu aria-label="Opções da conversa">' + I.mais + '</button><div class="lista">' +
             '<button data-wz="fixar">' + (c.fixada ? 'Desafixar' : 'Fixar no topo') + '</button>' +
@@ -259,7 +261,7 @@ B7.CentralWA = (function () {
     else {
       if (m.citada_id) {
         const q = S.msgs.find(x => x.id === m.citada_id);
-        const qa = q ? (q.de_mim ? 'Você' : (q.autor_nome || '')) : (m.citada_autor ? '+' + m.citada_autor : '');
+        const qa = q ? (q.de_mim ? 'Você' : (q.autor_nome || '')) : (m.citada_autor ? (/^\d{14,}$/.test(m.citada_autor) ? 'Contato' : '+' + m.citada_autor) : '');
         corpo += '<span class="wz-q" data-ir="' + esc(m.citada_id) + '"><b style="--c:' + corDe(qa) + '">' + esc(qa || 'Mensagem') + '</b>' + esc((q && (q.texto || q.midia_nome)) || m.citada_previa || '') + '</span>';
       }
       corpo += midia(m);
@@ -570,7 +572,7 @@ B7.CentralWA = (function () {
     const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
     if (!S.equipe) { try { S.equipe = (await B7.DB.listarVideomakers()) || []; } catch (e) { S.equipe = []; } if (!S.aberta || S.aberta !== c.jid) return; }
     const pessoas = S.equipe;
-    cx.innerHTML = '<div class="wz-cli">' + avatar(c, 'g') + '<b>' + esc(cli ? cli.nome : (c.nome || num(c.jid))) + '</b><small>' + (cli ? 'Cliente do B7' : c.tipo === 'grupo' ? 'Grupo ainda sem cliente' : '+' + esc(num(c.jid))) + '</small>' +
+    cx.innerHTML = '<div class="wz-cli">' + avatar(c, 'g') + '<b>' + esc(cli ? cli.nome : (c.nome || num(c.jid))) + '</b><small>' + (cli ? 'Cliente do B7' : c.tipo === 'grupo' ? 'Grupo ainda sem cliente' : esc(fone(c.jid))) + '</small>' +
       (cli ? '<a class="b fina contorno" href="#/cliente/' + esc(cli.id) + '">Abrir o cliente</a>' : '<button class="b fina contorno" data-wz="vincular">Ligar a um cliente</button>') + '</div>' +
       '<div class="wz-box" id="wz-pend"><h4>Com este cliente agora</h4>' + (cli ? '<p class="wz-carregando">Carregando…</p>' : '<p class="wz-mudo">Ligue a conversa a um cliente para ver as pendências.</p>') + '</div>' +
       '<div class="wz-box"><h4>Atendimento</h4><p><span>Esperando resposta</span><b>' + (espera(c.esperando_desde) || (c.esperando_desde ? 'há pouco' : 'não')) + '</b></p>' +

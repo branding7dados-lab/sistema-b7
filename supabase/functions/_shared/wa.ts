@@ -201,6 +201,11 @@ export async function garantirConversa(sb: SupabaseClient, jid: string, nomeCont
     }
   }
   if (!grupo && !nome && nomeContato && nomeContato !== 'Você') nome = nomeContato;
+  if (!grupo && (!nome || /^\+?\d+$/.test(nome))) {
+    /* 4.52.6: conversa começada por nós (sem pushName) — usa o nome guardado do contato */
+    const { data: ct } = await sb.from('wa_contatos').select('nome').eq('jid', jid).maybeSingle();
+    if (ct?.nome && !/^\+?\d+$/.test(ct.nome)) nome = ct.nome;
+  }
   let cliente = c?.cliente_id || null;
   if (!cliente && grupo && nome) {
     const { data: g } = await sb.from('whatsapp_grupos').select('cliente_id').eq('nome', nome).eq('ignorar', false).not('cliente_id', 'is', null).maybeSingle();
