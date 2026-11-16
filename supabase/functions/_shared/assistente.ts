@@ -413,6 +413,9 @@ async function coletarEsperando(sb: SupabaseClient, cfg: Config, clienteIds?: st
   else q = q.not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - espera * 60000).toISOString());
   const { data: convs } = await q.order('esperando_desde', { ascending: true }).limit(15);
   const blocos: string[] = [];
+  const ids = [...new Set(((convs || []) as any[]).map((c: any) => c.cliente_id).filter(Boolean))];
+  const { data: cls } = ids.length ? await sb.from('clientes').select('id, nome').in('id', ids) : { data: [] as any[] };
+  const nomeCli = new Map(((cls || []) as any[]).map((x: any) => [x.id, x.nome]));
   for (const c of (convs || []) as any[]) {
     const { data: ult } = await sb.from('wa_mensagens').select('criada_em').eq('jid', c.jid).eq('de_mim', true).eq('nota', false).order('criada_em', { ascending: false }).limit(1);
     let mq: any = sb.from('wa_mensagens').select('autor_nome, texto, tipo, criada_em').eq('jid', c.jid).eq('de_mim', false).order('criada_em', { ascending: false }).limit(clienteIds ? 15 : 10);
@@ -420,18 +423,19 @@ async function coletarEsperando(sb: SupabaseClient, cfg: Config, clienteIds?: st
     const { data: ms } = await mq;
     const linhas = ((ms || []) as any[]).reverse().map((m: any) => '  - ' + (m.autor_nome || 'cliente') + ' (' + ha(m.criada_em) + ' atrás): ' + (m.texto ? String(m.texto).slice(0, 300) : '(' + m.tipo + ')'));
     if (!linhas.length && !clienteIds) continue;
-    blocos.push('GRUPO "' + c.nome + '"' + (c.esperando_desde ? ' — esperando resposta há ' + ha(c.esperando_desde) : '') + ':\n' + (linhas.join('\n') || '  (sem mensagens recentes do cliente)'));
+    blocos.push('CLIENTE "' + (nomeCli.get(c.cliente_id) || c.nome) + '" (grupo "' + c.nome + '")' + (c.esperando_desde ? ' — esperando resposta há ' + ha(c.esperando_desde) : '') + ':\n' + (linhas.join('\n') || '  (sem mensagens recentes do cliente)'));
   }
   return blocos;
 }
 
-export async function mandarResumo(sb: SupabaseClient, cfg: Config | null, forcado: boolean): Promise<{ ok: boolean; vazio?: boolean; erro?: string }> {
+export async function mandarResumo(sb: SupabaseClient, cfg: Config | null, forcado: boolean, destinoPedido?: string): Promise<{ ok: boolean; vazio?: boolean; erro?: string }> {
   cfg = cfg || await lerConfig(sb);
-  if (!cfg?.grupo_equipe) return { ok: false, erro: 'Escolha o grupo da equipe primeiro.' };
+  const destino = destinoPedido || cfg?.grupo_equipe;
+  if (!cfg || !destino) return { ok: false, erro: 'Escolha o grupo da equipe primeiro.' };
   const blocos = await coletarEsperando(sb, cfg);
   if (!blocos.length) {
-    if (forcado) await enviar(sb, cfg, cfg.grupo_equipe, '✅ Nenhum cliente esperando resposta agora.');
-    await registrar(sb, { tipo: 'resumo', jid: cfg.grupo_equipe, pergunta: forcado ? 'pedido' : 'automático', resposta: 'nada pendente' });
+    if (forcado) await enviar(sb, cfg, destino, '✅ Nenhum cliente esperando resposta agora.');
+    await registrar(sb, { tipo: 'resumo', jid: destino, pergunta: forcado ? 'pedido' : 'automático', resposta: 'nada pendente' });
     return { ok: true, vazio: true };
   }
   /* 4.56.1: UMA mensagem curta — uma linha por cliente, marcando quem cuida (ou todo mundo) */
@@ -440,16 +444,16 @@ export async function mandarResumo(sb: SupabaseClient, cfg: Config | null, forca
     'Você ajuda a equipe da Branding7 (agência de conteúdo) a não deixar cliente sem resposta. Recebe, por grupo de cliente, o que o cliente mandou e a equipe ainda não respondeu.\n' +
     'Escreva UMA mensagem curta de WhatsApp para o grupo da equipe, exatamente neste formato:\n' +
     '🔔 *Clientes esperando resposta*\n' +
-    '• *Nome do cliente* (há X) — o que o cliente quer, em até 12 palavras' + (equipe.length ? ' {{marcar:Nome de quem cuida}}' : '') + '\n' +
+    '• *Nome do cliente* (há X) — o que o cliente quer, em até 10 palavras' + (equipe.length ? ' {{marcar:Nome de quem cuida}}' : '') + '\n' +
     'Uma linha por cliente, do que espera há mais tempo para o mais recente. Junte vários pedidos do mesmo cliente na mesma linha. Nada além disso: sem introdução, sem conclusão, sem títulos extras.\n' +
-    'Ignore cumprimentos, agradecimentos, "ok", figurinhas e conversa entre as pessoas — se num grupo só houver isso, deixe o cliente de fora.' +
+    'Use o nome do CLIENTE (não o nome do grupo; nada de "Suporte N7 –"). Só entra o que precisa de resposta ou ação da equipe: pedido, pergunta, aprovação, ajuste, agendamento. Ignore cumprimentos, agradecimentos, "ok", figurinhas, "enviei o documento" sem pedido e conversa entre as pessoas — se só houver isso, deixe o cliente de fora. Escreva o que o cliente quer ("quer trocar a cor da mesa"), não o que ele fez ("enviou áudio").' +
     (equipe.length ? '\nQUEM CUIDA DE CADA ASSUNTO (marque com {{marcar:Nome}} exatamente como aqui; se não souber de quem é, não marque):\n' + equipe.map(p => '- ' + p.nome + (p.assuntos ? ': ' + p.assuntos : '')).join('\n') : '') +
     '\nSe nenhum cliente precisar de resposta, responda exatamente [[NADA]].',
     blocos.join('\n\n'), 700);
-  if (!s.texto) { await registrar(sb, { tipo: 'erro', jid: cfg.grupo_equipe, pergunta: 'resumo', ...usoDe(s) }); return { ok: false, erro: 'A IA não respondeu agora.' }; }
+  if (!s.texto) { await registrar(sb, { tipo: 'erro', jid: destino, pergunta: 'resumo', ...usoDe(s) }); return { ok: false, erro: 'A IA não respondeu agora.' }; }
   if (/\[\[NADA\]\]/.test(s.texto)) {
-    if (forcado) await enviar(sb, cfg, cfg.grupo_equipe, '✅ Nenhum cliente esperando resposta agora.');
-    await registrar(sb, { tipo: 'resumo', jid: cfg.grupo_equipe, pergunta: forcado ? 'pedido' : 'automático', resposta: 'nada pendente', ...usoDe(s) });
+    if (forcado) await enviar(sb, cfg, destino, '✅ Nenhum cliente esperando resposta agora.');
+    await registrar(sb, { tipo: 'resumo', jid: destino, pergunta: forcado ? 'pedido' : 'automático', resposta: 'nada pendente', ...usoDe(s) });
     return { ok: true, vazio: true };
   }
   /* marcações: quem cuida de cada linha; quem não foi marcado em nenhuma linha vai no fim ("todo mundo") */
@@ -465,8 +469,8 @@ export async function mandarResumo(sb: SupabaseClient, cfg: Config | null, forca
     if (resto.length) { texto += '\n\n' + resto.map(d => '@' + d).join(' '); mencionar.push(...resto); }
     extra = { mentioned: mencionar };
   } else extra = { mentionsEveryOne: true };   /* sem equipe cadastrada: marca o grupo todo */
-  const foi = await enviar(sb, cfg, cfg.grupo_equipe, texto, extra);
-  await registrar(sb, { tipo: 'resumo', jid: cfg.grupo_equipe, pergunta: forcado ? 'pedido' : 'automático', resposta: texto.slice(0, 1500), ...usoDe(s) });
+  const foi = await enviar(sb, cfg, destino, texto, extra);
+  await registrar(sb, { tipo: 'resumo', jid: destino, pergunta: forcado ? 'pedido' : 'automático', resposta: texto.slice(0, 1500), ...usoDe(s) });
   return foi ? { ok: true } : { ok: false, erro: 'O WhatsApp não aceitou a mensagem.' };
 }
 
@@ -501,7 +505,7 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
 async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
   const key = raw?.key || {};
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
-  if (destino === cfg.grupo_equipe && /pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true); return; }
+  if (/pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta|esperando resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true, destino); return; }
   const clientes = await clientesCitados(sb, pedido);
   let contexto = '';
   if (clientes.length) {
