@@ -14,7 +14,7 @@
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
 
-const VERSAO = 'wa-evolution 7 (4.52.4)';
+const VERSAO = 'wa-evolution 8 (4.52.5)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -93,7 +93,16 @@ async function importar(pagina: number) {
     let grupos = 0;
     const g = await evo('/group/fetchAllGroups/' + I() + '?getParticipants=false', 'GET', undefined, 60000);
     if (g.ok && Array.isArray(g.dados)) for (const x of g.dados) { if (x?.id) { await garantirConversa(sb, x.id, null, x.subject || null, x.pictureUrl || null); grupos++; } }
-    return { grupos, conversas: 0, mensagens: 0, proxima: 1, total: POR_PAGINA * PAGINAS, lidas: 0 };
+    /* 4.52.5: nomes dos contatos (para trocar os códigos @lid pelo nome nos grupos) */
+    let contatos = 0;
+    try {
+      const ct = await evo('/chat/findContacts/' + I(), 'POST', {}, 45000);
+      const lista = (Array.isArray(ct.dados) ? ct.dados : []).filter((c: any) => c?.remoteJid && c?.pushName && c.pushName !== 'Você')
+        .map((c: any) => ({ jid: String(c.remoteJid), nome: String(c.pushName), numero: /@s\.whatsapp\.net$/.test(c.remoteJid) ? String(c.remoteJid).split('@')[0] : null, atualizado_em: new Date().toISOString() }));
+      for (let i = 0; i < lista.length; i += 500) { const { error } = await sb.from('wa_contatos').upsert(lista.slice(i, i + 500)); if (!error) contatos += Math.min(500, lista.length - i); }
+      await sb.rpc('wa_nomes_aplicar');
+    } catch (_e) { /* segue sem os nomes */ }
+    return { grupos, contatos, conversas: 0, mensagens: 0, proxima: 1, total: POR_PAGINA * PAGINAS, lidas: 0 };
   }
   /* 4.52.4: em lote — uma busca no Evolution, uma leitura das conversas, uma gravação das
      mensagens e uma atualização por conversa (antes eram ~5 consultas por mensagem) */
@@ -103,7 +112,7 @@ async function importar(pagina: number) {
   if (!m.ok) return { erro: 'O Evolution não devolveu as mensagens (' + m.status + ').' };
   const recs: any[] = m.dados?.messages?.records || [];
   const total = Math.min(Number(m.dados?.messages?.total || 0), POR_PAGINA * PAGINAS);
-  const linhas = new Map<string, Linha>(); const nomes = new Map<string, string>();
+  const linhas = new Map<string, Linha>(); const nomes = new Map<string, string>(); const autores = new Map<string, string>();
   for (const r of recs) {
     const jid = r?.key?.remoteJid || '';
     if (!/@(g\.us|s\.whatsapp\.net|lid)$/.test(jid)) continue;
@@ -113,6 +122,7 @@ async function importar(pagina: number) {
     const l = x.linha; if (!l.id) continue;
     linhas.set(String(l.id), l);
     if (!l.de_mim && r.pushName && !nomes.has(jid)) nomes.set(jid, String(r.pushName));
+    if (!l.de_mim && l.autor_jid && r.pushName && r.pushName !== 'Você') autores.set(String(l.autor_jid), String(r.pushName));
   }
   const lista = [...linhas.values()];
   const jids = [...new Set(lista.map(l => String(l.jid)))];
@@ -127,6 +137,14 @@ async function importar(pagina: number) {
     .upsert(lista, { onConflict: 'id', ignoreDuplicates: true, defaultToNull: false }).select('id');
   if (error) return { erro: 'Não consegui guardar as mensagens: ' + error.message };
   const ids = new Set((novas || []).map((n: any) => n.id));
+  /* mensagens que já estavam no B7 sem os dados de download da mídia */
+  const comMidia = lista.filter(l => l.midia_raw && !ids.has(l.id)).map(l => String(l.id));
+  if (comMidia.length) {
+    const { data: faltam } = await sb.from('wa_mensagens').select('id').in('id', comMidia).is('midia_raw', null);
+    for (const f of faltam || []) await sb.from('wa_mensagens').update({ midia_raw: linhas.get(f.id)!.midia_raw }).eq('id', f.id);
+  }
+  if (autores.size) await sb.from('wa_contatos').upsert([...autores].map(([jid, nome]) => ({ jid, nome, atualizado_em: new Date().toISOString() })));
+  await sb.rpc('wa_nomes_aplicar');
   const ultima = new Map<string, Linha>();
   for (const l of lista) if (ids.has(l.id)) {
     const u = ultima.get(String(l.jid));
@@ -173,7 +191,9 @@ async function baixarMidia(id: string) {
   if (!m) return { erro: 'Mensagem não encontrada.' };
   if (m.midia_path) return { url: await urlAssinada(m.midia_path, 3600), mime: m.midia_mime };
   if (Number(m.midia_tamanho || 0) > 80 * 1024 * 1024) return { erro: 'Arquivo grande demais para abrir aqui (mais de 80 MB). Abra pelo celular.' };
-  const r = await evo('/chat/getBase64FromMediaMessage/' + I(), 'POST', { message: { key: { id } }, convertToMp4: m.tipo === 'video' }, 120000);
+  /* 4.52.5: manda a mensagem inteira (o Evolution no MySQL não acha a mensagem só pelo id) */
+  const r = await evo('/chat/getBase64FromMediaMessage/' + I(), 'POST', { message: m.midia_raw || { key: { id } }, convertToMp4: m.tipo === 'video' }, 120000);
+  if (!r.ok) console.log('midia', r.status, JSON.stringify(r.dados).slice(0, 300));
   const b64 = r.dados?.base64;
   if (!r.ok || !b64) return { erro: 'O WhatsApp não liberou este arquivo (pode ter expirado).' };
   const mime = r.dados?.mimetype || m.midia_mime || 'application/octet-stream';

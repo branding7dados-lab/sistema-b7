@@ -96,12 +96,18 @@ export function interpretar(raw: any): { linha?: Linha; efeito?: { tipo: string;
   else if (m.senderKeyDistributionMessage && Object.keys(m).length <= 2) return null;
   else if (!Object.keys(m).length) return null;
 
+  /* 4.52.5: nos grupos o WhatsApp manda um código @lid; o número de verdade pode vir ao lado */
+  const alt = [key.participantAlt, key.participantPn, key.senderPn, key.remoteJidAlt, raw.participantAlt].find((x: any) => typeof x === 'string' && /@s\.whatsapp\.net$/.test(x));
+  const nomeAutor = raw.pushName && raw.pushName !== 'Você' ? String(raw.pushName) : (alt ? '+' + numeroDe(alt) : numeroDe(autorJid || jid));
   const linha: Linha = {
     id: key.id, jid, de_mim: !!key.fromMe,
-    autor_jid: autorJid, autor_nome: key.fromMe ? null : (raw.pushName && raw.pushName !== 'Você' ? raw.pushName : numeroDe(autorJid || jid)),
+    autor_jid: autorJid, autor_nome: key.fromMe ? null : nomeAutor,
     tipo, texto, midia_mime: mime, midia_nome: nome, midia_tamanho: tam, duracao: dur, miniatura: mini,
     status: raw.status || (key.fromMe ? 'SERVER_ACK' : null), criada_em: quando
   };
+  /* 4.52.5: o necessário para baixar a mídia depois (sem a miniatura, que já fica em `miniatura`) */
+  const tipoMidia = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage', 'stickerMessage'].find(k => m[k]);
+  if (tipoMidia) { const o = { ...m[tipoMidia] }; delete o.jpegThumbnail; delete o.contextInfo; delete o.thumbnailDirectPath; linha.midia_raw = { key: { id: key.id, remoteJid: jid, fromMe: !!key.fromMe, participant: key.participant || undefined }, message: { [tipoMidia]: o } }; }
   if (ctx?.stanzaId) {
     linha.citada_id = ctx.stanzaId;
     const q = desembrulhar(ctx.quotedMessage || {});
@@ -134,6 +140,9 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
   if (r.efeito) { await aplicarEfeito(sb, raw?.key?.remoteJid, r.efeito); return null; }
   const l = Object.assign(r.linha!, extra);
   const jid = String(l.jid);
+  if (!l.de_mim && l.autor_jid && raw.pushName && raw.pushName !== 'Você') {
+    await sb.from('wa_contatos').upsert({ jid: String(l.autor_jid), nome: String(raw.pushName), atualizado_em: new Date().toISOString() });
+  }
   await garantirConversa(sb, jid, l.de_mim ? null : (ehGrupo(jid) ? null : String(raw.pushName || '')));
   const { data: ja } = await sb.from('wa_mensagens').select('id, enviada_por, midia_path').eq('id', l.id).maybeSingle();
   if (ja) {
