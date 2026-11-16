@@ -286,6 +286,8 @@ B7.WhatsApp = (function () {
     D.foto().then(f => { if (f) { fotoPronta = { f, em: Date.now() }; guardarFoto(f); } }).catch(() => {});
   }
   function ligar() {
+    /* 4.49.2: as cores da B7 dentro do WhatsApp (o programa aplica por cima) */
+    if (B7.WhatsAppTema) B7.WhatsAppTema.aplicar(D);
     const topoG = document.querySelector('#tela-dashboard .topo');
     if (topoG && !topoG._waFoto) { topoG._waFoto = true; topoG.addEventListener('pointerenter', preFoto); }
     document.body.classList.add('wa-aberta');

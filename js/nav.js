@@ -793,7 +793,7 @@ B7.Nav = (function () {
     d.id = 'b7-duo-defs'; d.setAttribute('aria-hidden', 'true');
     d.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
     d.innerHTML = '<svg width="0" height="0"><defs>' +
-      '<linearGradient id="b7-duo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8B5CF6"/><stop offset=".55" stop-color="#C026D3"/><stop offset="1" stop-color="#F0469C"/></linearGradient>' +
+      '<linearGradient id="b7-duo" x1="0" y1="0" x2="1" y2="1"><stop class="b7-duo-a" offset="0" stop-color="#8B5CF6"/><stop class="b7-duo-b" offset="1" stop-color="#F0469C"/></linearGradient>' +
       '</defs></svg>';
     document.body.appendChild(d);
   }

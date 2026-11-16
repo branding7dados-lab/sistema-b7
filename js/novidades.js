@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.49.2', versao: '4.49.2', em: '2026-11-16T20:00:00-03:00',
+    titulo: 'Ícones na cor da sua aparência e WhatsApp mais estável',
+    itens: ['Os ícones do menu agora seguem a cor que você escolheu em Aparência.',
+      'A barra do WhatsApp (Assinatura, Corrigir texto) e o botão Novidades não somem mais na tela do WhatsApp.',
+      'No programa de computador, as cores da B7 chegam ao WhatsApp por dentro: fundos roxos, suas mensagens em roxo e destaques em magenta.'] },
   { id: 'v-4.49.1', versao: '4.49.1', em: '2026-11-16T19:00:00-03:00', rota: 'design',
     titulo: 'Design: marque várias peças e resolva de uma vez',
     itens: ['Novo botão "Selecionar" no Design (também dentro de cada linha editorial): aparece uma caixinha em cada peça.',

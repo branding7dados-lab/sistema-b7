@@ -2128,3 +2128,10 @@ a.sa-item:hover{background:var(--suave);}
 .wa2 .wa-area{border-radius:19px;flex:1;}
 .wa2 .wa-lado{border-radius:24px;}
 @media (max-width:1100px){ .wa2-envio-rot{display:none;} }
+/* 4.49.2: com o WhatsApp do programa por cima, a janela às vezes para de
+   desenhar a página atrás dele — e o que entra com animação começando
+   invisível (opacity 0) ficava preso invisível: a barra do WhatsApp e o
+   botão Novidades "sumiam". Nesta tela nada entra a partir do invisível. */
+.wa2 .wa-barra,.wa2 .wa-nl,.wa2 .wa-esp,.wa2::before,.wa2 .wa-area.abrindo,.wa2 .wa-lado{animation:none !important;opacity:1 !important;}
+body.wa-aberta #tela-dashboard .topo,body.wa-aberta #tela-dashboard .topo *{animation:none !important;}
+.wa2 .wa-barra{position:relative;z-index:1;transform:translateZ(0);}

@@ -1059,3 +1059,13 @@ svg.phi.phd .d2{fill:var(--duo2) !important;transition:fill .2s ease;}
 .lateral .nav a.on > svg.phi.phd{--duo1:url(#b7-duo);--duo2:#fff;}
 .lateral .nav a.on > svg.phi.phd{--duo1:#F6A3D6;--duo2:#fff;}
 @media (min-width:761px){ body[data-shell="interno"] .nav.multi .ng a svg.phd{width:21px;height:21px;} }
+/* 4.49.2: os ícones seguem a COR DA APARÊNCIA escolhida (--sb-luz1 / --sb-luz2 /
+   --acento), em vez do roxo e rosa fixos */
+svg.phi.phd{--duo1:color-mix(in srgb,var(--acento) 16%,#fff);--duo2:var(--acento);}
+:is(a.on, button.on, .on .ni-ic) > svg.phi.phd,
+.on .ni-ic svg.phi.phd{--duo1:url(#b7-duo);--duo2:color-mix(in srgb,var(--acento) 70%,#000);}
+.lateral svg.phi.phd{--duo1:color-mix(in srgb,var(--sb-luz1) 62%,transparent);--duo2:color-mix(in srgb,#fff 86%,var(--sb-luz1));}
+.lateral .nav a:hover > svg.phi.phd{--duo1:color-mix(in srgb,var(--sb-luz1) 85%,transparent);--duo2:#fff;}
+.lateral .nav a.on > svg.phi.phd{--duo1:color-mix(in srgb,var(--sb-luz2) 55%,#fff);--duo2:#fff;}
+#b7-duo-defs stop.b7-duo-a{stop-color:var(--sb-luz1);}
+#b7-duo-defs stop.b7-duo-b{stop-color:var(--sb-luz2);}
