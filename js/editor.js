@@ -611,7 +611,7 @@ B7.Editor = (function () {
           '<span class="cena-topo" title="Recolher / abrir"><span class="ed2-num">' + String(i + 1).padStart(2, '0') + '</span></span>' +
           '<div class="menu ed2-tipo-menu"><button class="ed2-tipo" aria-label="Tipo da cena">' + esc(c.tipo || 'Narrativa') + '<i>▾</i></button><div class="lista">' +
             TIPOS.map(t => '<button data-tipo="' + t + '"' + (c.tipo === t ? ' class="on"' : '') + '>' + t + '</button>').join('') + '</div></div>' +
-          '<input class="ed2-dir" data-c-campo="direcao" placeholder="Direção (ex.: direto pra câmera)" value="' + esc(c.direcao) + '" aria-label="Direção da cena">' +
+          '<textarea class="ed2-dir cresce" data-c-campo="direcao" rows="1" placeholder="Direção (ex.: direto pra câmera)" aria-label="Direção da cena">' + esc(c.direcao) + '</textarea>' +
           '<span class="ed2-tempo">' + tempoTx(segundos(c.texto)) + '</span>' +
           '<span class="puxa" title="Arraste para reordenar">⠿</span>' +
           '<div class="menu"><button class="ico" data-menu aria-label="Ações da cena">⋯</button><div class="lista">' +
@@ -622,7 +622,7 @@ B7.Editor = (function () {
           '</div></div>' +
         '</div>' +
         '<div class="cena-corpo">' +
-          '<textarea class="ed2-texto cresce" data-c-campo="texto" rows="2" placeholder="Escreva a fala desta cena…">' + esc(c.texto) + '</textarea>' +
+          '<textarea class="ed2-texto cresce" data-c-campo="texto" rows="1" placeholder="Escreva a fala desta cena… (Ctrl+Enter cria a próxima)">' + esc(c.texto) + '</textarea>' +
           (c.tipo === 'Narração' ?
             '<div class="sugestao-cx ed2-sug' + (falta ? ' falta' : '') + '">' +
             '<label class="rot">IMAGENS DA NARRAÇÃO' + (falta ? ' · OBRIGATÓRIO' : '') + '</label>' +
@@ -784,6 +784,25 @@ B7.Editor = (function () {
         }
         renderPrevia();
       };
+    });
+
+    /* 4.48.3: atalhos — Ctrl+Enter nova cena abaixo; Alt+↑/↓ move a cena;
+       Enter na direção não quebra linha */
+    const dirCampo = el.querySelector('.ed2-dir');
+    if (dirCampo) dirCampo.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter') { ev.preventDefault(); const t = el.querySelector('.ed2-texto'); if (t) t.focus(); }
+    });
+    el.addEventListener('keydown', async ev => {
+      if (!ev.target.matches('textarea, input') || soLeitura()) return;
+      const lista = E.cenas[r.id] || [];
+      const i = lista.findIndex(c => c.id === id);
+      if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
+        ev.preventDefault(); novaCena(r.id, i + 1);
+      } else if (ev.altKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
+        ev.preventDefault();
+        await moverCena(r.id, id, ev.key === 'ArrowUp' ? -1 : 1);
+        const t = document.querySelector('[data-cena="' + id + '"] .ed2-texto'); if (t) t.focus();
+      }
     });
 
     /* menu da cena */

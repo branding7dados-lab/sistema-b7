@@ -595,3 +595,17 @@ body.ed-geral #ap-status-roteiro,body.ed-geral [data-acao="enviar-aprovacao"]{di
   .ed2-cenas{padding-bottom:32px;}
 }
 @media (min-width:861px){ .ed2-chips .ed2-chip.leve{display:none;} }
+/* 4.48.3 — direção quebra linha em vez de cortar; texto sem sobra embaixo */
+.ed2-dir{resize:none;overflow:hidden;display:block;min-height:22px;white-space:pre-wrap;text-overflow:clip;}
+.ed2-cena-meta{align-items:flex-start;}
+.ed2-cena-meta > *:not(.ed2-dir){margin-top:1px;}
+.ed2-texto{min-height:30px;}
+.ed2-tipo-menu,.ed2-tipo{flex:none;white-space:nowrap;}
+.ed2-cena-meta .menu:not(.ed2-tipo-menu){margin-top:-3px;}
+@media (max-width:860px){
+  .ed2-cena-meta{flex-wrap:wrap;align-items:center;}
+  .ed2-cena-meta > *:not(.ed2-dir){margin-top:0;}
+  .ed2-cena-meta .ed2-tempo{margin-left:auto;}
+  .ed2-dir{order:10;flex:1 0 100%;padding:2px 0 0;}
+}
+.ed2-cena-meta .ed2-tipo{min-height:0;height:24px;}

@@ -19,7 +19,11 @@ B7.Folha = (function () {
 
   const paragrafos = txt => {
     const ls = String(txt || '').split('\n').map(s => s.trim()).filter(Boolean);
-    return (ls.length ? ls : ['']).map(p => '<p>' + esc(p) + '</p>').join('');
+    /* 4.48.3: diálogo — "Cliente: fala" vira o nome em destaque */
+    return (ls.length ? ls : ['']).map(p => {
+      const m = p.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 .]{0,22}):\s+(.+)$/);
+      return m ? '<p class="rt-fala"><b class="rt-quem">' + esc(m[1]) + '</b> ' + esc(m[2]) + '</p>' : '<p>' + esc(p) + '</p>';
+    }).join('');
   };
   const vazio = t => !String(t || '').trim();
 

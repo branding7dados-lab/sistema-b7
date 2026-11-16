@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.48.3', versao: '4.48.3', em: '2026-11-16T14:00:00-03:00',
+    titulo: 'Roteiro: diálogos, atalhos e direção inteira',
+    itens: ['Diálogos ficam mais claros na folha: em linhas como "Cliente: Oi, bom dia!", o nome de quem fala aparece em destaque.',
+      'A direção da cena não é mais cortada com "…": quando é longa, ela quebra linha (no celular, fica numa linha própria embaixo do tipo).',
+      'No computador: Ctrl+Enter cria a próxima cena logo abaixo e Alt+↑ / Alt+↓ sobem ou descem a cena em que você está.',
+      'Enter na direção pula direto para o texto da cena, e os cartões não têm mais espaço sobrando embaixo do texto.'] },
   { id: 'v-4.48.2', versao: '4.48.2', em: '2026-11-16T13:00:00-03:00',
     titulo: 'Editor de roteiro no computador sem barra por cima do texto',
     itens: ['No computador, a barra de botões que flutuava por cima das cenas saiu: o botão "Enviar ao cliente" fica no topo, ao lado de Detalhes e IA do roteiro, e a nova cena se cria pelo "+ Nova cena" no fim da lista.'] },
