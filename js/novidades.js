@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.51.0', versao: '4.51.0', em: '2026-11-17T01:00:00-03:00', rota: 'whatsapp', funcao: 'videomaker',
+    titulo: 'Central de Conversas: o WhatsApp agora é do B7',
+    itens: ['A tela do WhatsApp virou a Central de Conversas: lista, conversa e envio no visual do B7 — no navegador, no celular e no computador.',
+      'Mande texto, fotos, vídeos, documentos e áudio gravado na hora; responda citando, reaja com emoji e apague para todos.',
+      'Filtros de Não lidas, Esperando resposta e Grupos; notas internas que só a equipe vê; painel do cliente ao lado da conversa.'] },
   { id: 'v-4.50.1', versao: '4.50.1', em: '2026-11-16T23:30:00-03:00', rota: 'whatsapp', funcao: 'admin',
     titulo: 'WhatsApp do B7: conectar também pelo número',
     itens: ['Além do QR Code, dá para conectar pelo número: o B7 mostra um código de 8 letras para digitar no celular em "Conectar com número de telefone".'] },

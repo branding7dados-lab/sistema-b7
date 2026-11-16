@@ -222,9 +222,11 @@ B7.Rota = (function () {
       mostrar('tela-dashboard');
       return partes[1] ? B7.Video.abrirDetalhe(partes[1]) : B7.Video.abrir(params);
     }
-    if (partes[0] === 'whatsapp' && B7.WhatsApp) {
+    /* 4.51.0: o WhatsApp agora é a Central de Conversas (Evolution) — o
+       WhatsApp Web que rodava dentro do programa saiu */
+    if (partes[0] === 'whatsapp' && B7.CentralWA) {
       mostrar('tela-dashboard');
-      return B7.WhatsApp.abrir();
+      return B7.CentralWA.abrir();
     }
     if (partes[0] === 'ajuda' && B7.Ajuda) {
       mostrar('tela-dashboard');
