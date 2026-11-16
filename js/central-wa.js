@@ -93,6 +93,8 @@ B7.CentralWA = (function () {
     const painel = document.getElementById('painel-dashboard');
     if (!painel) return;
     if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['WhatsApp']);
+    /* 4.55.0: acende o WhatsApp no menu lateral (cada tela marca o seu item) */
+    if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/whatsapp');
     painel.innerHTML = '<div class="wz" id="wz"><div class="wz-carrega"><i></i><span>Abrindo as conversas…</span></div></div>';
     raiz = painel.querySelector('#wz');
     let pode = false;

@@ -242,3 +242,30 @@ html[data-theme="dark"] .wz-onda u{background:color-mix(in srgb,var(--ink-2) 40%
 .wz-figs-it:hover{transform:scale(1.06);background:var(--acento-suave);}
 .wz-figs-it img{width:100%;height:100%;object-fit:contain;}
 .wz-figs-it .wz-ph{font-style:normal;opacity:.4;}
+
+/* ---------- 4.55.0: visual "Cartões" (opção C aprovada) — só no computador ---------- */
+@media (min-width:761px){
+.wz{background:none;border:0;box-shadow:none;gap:14px;margin:8px 14px 12px 16px;grid-template-columns:minmax(300px,350px) minmax(0,1fr) 290px;border-radius:0;overflow:visible}
+.wz-lista,.wz-chat,.wz-lado{background:var(--card);border:1px solid var(--borda) !important;border-radius:26px;overflow:hidden;box-shadow:0 18px 40px -30px rgba(0,0,0,.7)}
+.wz-topo{padding:18px 18px 10px}
+.wz-topo h2{font-size:24px}
+.wz-busca{border-radius:99px}
+.wz-filtros button{border-radius:99px}
+.wz-it{margin:3px 10px;width:calc(100% - 20px);border-radius:18px}
+.wz-it.on{background:linear-gradient(135deg,color-mix(in srgb,var(--sb-luz1) 22%,var(--card)),color-mix(in srgb,var(--sb-luz2) 16%,var(--card)))} .wz-it.on:before{display:none}
+.wz-cab{border:0;padding:16px 20px;background:linear-gradient(120deg,var(--sb-luz1),var(--sb-luz2));color:#fff}
+.wz-cab-tx b,.wz-cab-tx small{color:#fff !important}
+.wz-cab .wz-ic{background:rgba(255,255,255,.16);color:#fff}
+.wz-msgs{padding:20px 7% 96px}
+.wz-b{border-radius:20px;padding:8px 13px 6px}
+.wz-b.ele{border-top-left-radius:6px} .wz-b.eu{border-top-right-radius:6px}
+html[data-theme="dark"] .wz-b.eu{background:linear-gradient(135deg,color-mix(in srgb,var(--sb-luz1) 70%,#000),color-mix(in srgb,var(--sb-luz2) 60%,#000)) !important;color:#fff}
+.wz-comp{position:absolute;left:18px;right:18px;bottom:16px;border:1px solid var(--borda);border-radius:24px;padding:8px;background:var(--card);box-shadow:0 16px 36px -18px rgba(0,0,0,.7)}
+.wz-comp textarea{background:none}
+.wz-lado{padding:20px 16px}
+.wz-cli .wz-av.g{width:88px;height:88px;border-radius:28px}
+.wz-box{border-radius:18px}
+.wz.sem-lado{grid-template-columns:minmax(300px,350px) minmax(0,1fr) 0;gap:14px 14px;}
+.wz.sem-lado .wz-lado{display:none;}
+}
+@media (min-width:761px) and (max-width:1180px){ .wz{grid-template-columns:minmax(280px,330px) minmax(0,1fr) 0;} }

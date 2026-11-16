@@ -32,6 +32,7 @@ B7.AssistenteWA = (function () {
   async function abrir() {
     const painel = document.getElementById('painel-dashboard'); if (!painel) return;
     if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['WhatsApp', 'Assistente']);
+    if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/whatsapp');
     const adm = !!(B7.Auth && (B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin && B7.Auth.ehAdmin()));
     painel.innerHTML = '<div class="asw" id="asw"><div class="asw-carrega"><i></i>Abrindo o assistente…</div></div>';
     raiz = painel.querySelector('#asw');
