@@ -188,3 +188,14 @@ html[data-theme="dark"] .asw-tag.fh{background:rgba(14,165,233,.16);color:#7DD3F
 .asw-ge-campos{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:10px;}
 .asw-ge-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
 @media (max-width:900px){ .asw-ge-campos{grid-template-columns:1fr;} }
+
+/* 4.56.5: no celular a barra de Salvar ficava atrás da navegação de baixo */
+@media (max-width:760px){
+  .asw{margin-bottom:180px;}
+  .asw-barra{left:12px;right:12px;bottom:calc(96px + env(safe-area-inset-bottom, 0px));transform:translateY(calc(100% + 140px));justify-content:flex-end;padding:8px 8px 8px 14px;}
+  .asw-barra span{flex:1;font-size:12.5px;}
+  .asw:has(#asw-salvar.on) .asw-barra{transform:translateY(0);}
+  .asw-abas{top:4px;flex-wrap:wrap;}
+  .asw-abas button{padding:8px 11px;font-size:13px;}
+  .asw-teste-top select{max-width:100%;flex:1 1 100%;}
+}
