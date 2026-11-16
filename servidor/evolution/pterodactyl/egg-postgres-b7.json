@@ -1,0 +1,32 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PANEL",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2024-06-02T14:34:27+00:00",
+    "name": "Postgres 16 (B7 · Evolution)",
+    "author": "sistema-b7@branding7.com.br",
+    "uuid": "3490d65d-66df-431e-8455-99a649f89c0e",
+    "description": "Banco Postgres 16 para o Evolution API do Sistema B7. A senha é gerada sozinha na instalação e fica no arquivo .b7-senha (aba Files).",
+    "features": null,
+    "docker_images": {
+        "ghcr.io/parkervcp/yolks:postgres_16": "ghcr.io/parkervcp/yolks:postgres_16"
+    },
+    "file_denylist": [],
+    "startup": "postgres -D /home/container/postgres_db/",
+    "config": {
+        "files": "{\n    \"postgres_db/postgresql.conf\": {\n        \"parser\": \"file\",\n        \"find\": {\n            \"#port =\": \"port = {{server.build.default.port}}\",\n            \"#external_pid_file =\": \"external_pid_file = '/home/container/postgres_db/run/postgres.pid'\",\n            \"#unix_socket_directories =\": \"unix_socket_directories = '/home/container/postgres_db/run/'\",\n            \"#listen_addresses =\": \"listen_addresses = '*'\"\n        }\n    }\n}",
+        "startup": "{\r\n    \"done\": \"database system is ready to accept connections\"\r\n}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/ash\n# Postgres 16 para o Evolution do Sistema B7. Usuário: b7. Senha: gerada aqui, salva em .b7-senha.\nadduser -D -h /home/container container 2>/dev/null || true\nmkdir -p /mnt/server\nif [ ! -f /mnt/server/postgres_db/PG_VERSION ]; then\n  SENHA=$(head -c 24 /dev/urandom | base64 | tr -d '+/=' | cut -c1-28)\n  echo -n \"$SENHA\" > /mnt/server/.b7-senha\n  echo \"$SENHA\" > /tmp/pw && chmod 644 /tmp/pw\n  chown -R container: /mnt/server/\n  su container -c \"initdb -D /mnt/server/postgres_db/ -A scram-sha-256 -U b7 --pwfile=/tmp/pw\"\n  rm -f /tmp/pw\n  echo \"host    all             all             0.0.0.0/0               scram-sha-256\" >> /mnt/server/postgres_db/pg_hba.conf\nfi\nmkdir -p /mnt/server/postgres_db/run/\nchown -R container: /mnt/server/\necho \"== Postgres pronto. Usuário: b7 · senha: arquivo .b7-senha (aba Files) · banco: postgres\"\n",
+            "container": "postgres:16-alpine",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": []
+}
