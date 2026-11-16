@@ -226,6 +226,7 @@ B7.Rota = (function () {
        WhatsApp Web que rodava dentro do programa saiu */
     if (partes[0] === 'whatsapp' && B7.CentralWA) {
       mostrar('tela-dashboard');
+      if (partes[1] === 'assistente' && B7.AssistenteWA) return B7.AssistenteWA.abrir();
       return B7.CentralWA.abrir();
     }
     if (partes[0] === 'ajuda' && B7.Ajuda) {

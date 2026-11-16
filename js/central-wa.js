@@ -410,7 +410,7 @@ B7.CentralWA = (function () {
     if (a === 'figs') return abrirFigurinhas();
     if (a === 'fig-nova') return raiz.querySelector('#wz-arq-fig').click();
     if (a === 'drive') return modalDrive();
-    if (a === 'assistente') return modalAssistente();
+    if (a === 'assistente') { location.hash = '#/whatsapp/assistente'; return; }
     if (a === 'anexo-midia') return raiz.querySelector('#wz-arq-midia').click();
     if (a === 'anexo-doc') return raiz.querySelector('#wz-arq-doc').click();
     if (a === 'anexo-cam') return raiz.querySelector('#wz-arq-cam').click();
@@ -743,80 +743,6 @@ B7.CentralWA = (function () {
       }
     });
     pintar();
-  }
-
-  /* ------------------------------------------------------------ Assistente B7 (4.54.0) */
-  async function modalAssistente() {
-    const m = B7.UI.modal('<h3>🤖 Assistente nos grupos</h3><div class="sub">Responde nos grupos de cliente quando é marcado (@), com o que está em produção. O que não sabe, pergunta à equipe e aprende.</div><div id="wz-as" class="wz-as"><p class="sub">Carregando…</p></div>', { extra: 'wz-as-modal' });
-    const cx = m.querySelector('#wz-as');
-    const [c0, ap0, dv0] = await Promise.all([
-      sb().from('wa_assistente').select('*').eq('id', 1).maybeSingle(),
-      sb().from('wa_assistente_aprendizados').select('id,pergunta,resposta,grupo,respondido_por,criado_em').order('criado_em', { ascending: false }).limit(100),
-      sb().from('wa_assistente_duvidas').select('id,grupo_nome,autor,pergunta,pergunta_equipe,criada_em').is('respondida_em', null).order('criada_em', { ascending: false }).limit(30)
-    ]);
-    if (c0.error || !c0.data) { cx.innerHTML = '<p class="erro">Não consegui abrir a configuração (' + esc((c0.error && c0.error.message) || 'sem acesso') + ').</p>'; return; }
-    const cfg = c0.data; let equipe = Array.isArray(cfg.equipe) ? cfg.equipe.slice() : [];
-    const grupos = S.conversas.filter(c => c.tipo === 'grupo' && c.cliente_id).sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
-    const gcfg = Object.assign({}, cfg.grupos || {});
-    const linhaPessoa = (p, i) => '<div class="wz-as-pes" data-i="' + i + '"><input class="campo fina" data-k="nome" placeholder="Nome" value="' + esc(p.nome || '') + '">' +
-      '<input class="campo fina" data-k="numero" placeholder="55 62 99999-0000" inputmode="tel" value="' + esc(p.numero || '') + '">' +
-      '<input class="campo fina" data-k="assuntos" placeholder="Cuida de… (ex.: artes, design)" value="' + esc(p.assuntos || '') + '">' +
-      '<label title="Recebe as dúvidas no privado"><input type="checkbox" data-k="duvidas"' + (p.duvidas !== false ? ' checked' : '') + '> dúvidas</label>' +
-      '<button class="wz-ic" data-tira="' + i + '" aria-label="Tirar">✕</button></div>';
-    function pintar() {
-      cx.innerHTML =
-        '<label class="wz-as-chave"><input type="checkbox" id="as-ativo"' + (cfg.ativo ? ' checked' : '') + '> <b>Ligado</b> <span>responde pelo número conectado</span></label>' +
-        '<div class="wz-as-lin"><div><label class="rot">Nome</label><input class="campo" id="as-nome" maxlength="40" value="' + esc(cfg.nome || '') + '"></div>' +
-        '<div><label class="rot">Espera antes de responder</label><div class="wz-as-num"><input class="campo" id="as-emin" type="number" min="1" max="30" value="' + (cfg.espera_min_s || 4) + '"> a <input class="campo" id="as-emax" type="number" min="1" max="40" value="' + (cfg.espera_max_s || 9) + '"> s</div></div></div>' +
-        '<label class="rot">Como se comportar</label><textarea class="campo" id="as-jeito" rows="3" placeholder="Ex.: Seja simpático e direto, trate pelo primeiro nome, use no máximo um emoji. Prazos de arte: 2 dias úteis…">' + esc(cfg.jeito || '') + '</textarea>' +
-        '<label class="rot">Regras fixas (uma por linha)</label><textarea class="campo" id="as-regras" rows="3" placeholder="NUNCA prometa data de postagem sem a agenda.\nNÃO RESPONDA quando o assunto for contrato.\nSEMPRE chame o Kevin quando falarem de gravação.">' + esc(cfg.regras || '') + '</textarea>' +
-        '<label class="rot">Equipe (para marcar quem cuida de cada assunto e para tirar dúvidas no privado)</label><div id="as-eq">' + equipe.map(linhaPessoa).join('') + '</div>' +
-        '<button class="b fina contorno" data-mais>+ Pessoa</button>' +
-        '<label class="wz-as-chave"><input type="checkbox" id="as-sem"' + (cfg.sem_marcacao ? ' checked' : '') + '> Responder pedidos de ajuda <b>sem ser marcado</b> <span>(fica calado se a equipe falou no grupo nos últimos <input class="campo fina" id="as-pausa" type="number" min="5" max="600" value="' + (cfg.pausa_min || 30) + '" style="width:64px"> min)</span></label>' +
-        '<details class="wz-as-det"><summary>Grupos (' + grupos.filter(g => !(gcfg[g.jid] || {}).desligado).length + ' de ' + grupos.length + ' ligados)</summary>' +
-          (grupos.length ? grupos.map(g => '<div class="wz-as-g"><label><input type="checkbox" data-g="' + esc(g.jid) + '"' + ((gcfg[g.jid] || {}).desligado ? '' : ' checked') + '> ' + esc(g.nome || '') + '</label>' +
-            '<input class="campo fina" data-gr="' + esc(g.jid) + '" placeholder="Regras só deste grupo (opcional)" value="' + esc((gcfg[g.jid] || {}).regras || '') + '"></div>').join('') : '<p class="sub">Nenhum grupo ligado a cliente ainda.</p>') + '</details>' +
-        '<details class="wz-as-det"' + ((dv0.data || []).length ? ' open' : '') + '><summary>Dúvidas esperando a equipe (' + (dv0.data || []).length + ')</summary>' +
-          ((dv0.data || []).map(d => '<div class="wz-as-dv" data-dv="' + esc(d.id) + '"><b>' + esc(d.grupo_nome || '') + '</b> · ' + esc(d.autor || '') + ': “' + esc(d.pergunta) + '”' +
-            (d.pergunta_equipe ? '<small>Precisa saber: ' + esc(d.pergunta_equipe) + '</small>' : '') +
-            '<div class="wz-as-resp"><input class="campo fina" placeholder="Resposta para o cliente…"><button class="b fina pri" data-resp>Enviar</button></div></div>').join('') || '<p class="sub">Nenhuma.</p>') + '</details>' +
-        '<details class="wz-as-det"><summary>O que ele já aprendeu (' + (ap0.data || []).length + ')</summary>' +
-          ((ap0.data || []).map(a => '<div class="wz-as-ap" data-ap="' + esc(a.id) + '"><span><b>' + esc(a.pergunta) + '</b><br>' + esc(a.resposta) + '<small>' + esc([a.grupo, a.respondido_por].filter(Boolean).join(' · ')) + '</small></span><button class="wz-ic" data-esquece aria-label="Esquecer">✕</button></div>').join('') || '<p class="sub">Ainda nada — ele aprende quando a equipe responde uma dúvida.</p>') + '</details>' +
-        '<div class="acoes"><button class="b" data-fecha>Fechar</button><button class="b pri" data-salvar>Salvar</button></div>';
-    }
-    function lerEquipe() {
-      equipe = [...cx.querySelectorAll('.wz-as-pes')].map(l => ({ nome: l.querySelector('[data-k=nome]').value.trim(), numero: l.querySelector('[data-k=numero]').value.replace(/\D/g, ''),
-        assuntos: l.querySelector('[data-k=assuntos]').value.trim(), duvidas: l.querySelector('[data-k=duvidas]').checked }));
-    }
-    pintar();
-    m.addEventListener('click', async e => {
-      if (e.target.closest('[data-mais]')) { lerEquipe(); equipe.push({ nome: '', numero: '', assuntos: '', duvidas: true }); const d = cx.querySelector('#as-eq'); d.insertAdjacentHTML('beforeend', linhaPessoa(equipe[equipe.length - 1], equipe.length - 1)); return; }
-      const t = e.target.closest('[data-tira]'); if (t) { t.closest('.wz-as-pes').remove(); return; }
-      const esq = e.target.closest('[data-esquece]');
-      if (esq) { const l = esq.closest('[data-ap]'); const r = await sb().from('wa_assistente_aprendizados').delete().eq('id', l.dataset.ap); if (!r.error) l.remove(); return; }
-      const rb = e.target.closest('[data-resp]');
-      if (rb) {
-        const l = rb.closest('[data-dv]'), i = l.querySelector('input'); if (!i.value.trim()) return i.focus();
-        rb.disabled = true;
-        try { const r = await chamar('responder_duvida', { id: l.dataset.dv, resposta: i.value.trim() }); if (r.ok) { l.innerHTML = '<small>✅ Respondida e enviada ao grupo.</small>'; } else B7.UI.toast(r.erro || 'Não deu para enviar.'); } catch (x) { B7.UI.toast(x.message); }
-        rb.disabled = false; return;
-      }
-      if (e.target.closest('[data-salvar]')) {
-        lerEquipe();
-        cx.querySelectorAll('[data-g]').forEach(c => { const j = c.dataset.g; gcfg[j] = Object.assign({}, gcfg[j], { desligado: !c.checked }); });
-        cx.querySelectorAll('[data-gr]').forEach(c => { const j = c.dataset.gr; gcfg[j] = Object.assign({}, gcfg[j], { regras: c.value.trim() }); });
-        const v = id => cx.querySelector(id);
-        const novo = { ativo: v('#as-ativo').checked, nome: v('#as-nome').value.trim() || 'Assistente B7', jeito: v('#as-jeito').value, regras: v('#as-regras').value,
-          equipe: equipe.filter(p => p.nome && p.numero), sem_marcacao: v('#as-sem').checked, pausa_min: Number(v('#as-pausa').value) || 30,
-          espera_min_s: Number(v('#as-emin').value) || 4, espera_max_s: Number(v('#as-emax').value) || 9, grupos: gcfg, atualizado_em: new Date().toISOString() };
-        if (novo.espera_max_s < novo.espera_min_s) novo.espera_max_s = novo.espera_min_s;
-        const r = await sb().from('wa_assistente').update(novo).eq('id', 1);
-        if (r.error) return B7.UI.toast('Não salvou: ' + r.error.message);
-        Object.assign(cfg, novo);
-        B7.UI.toast(novo.ativo ? 'Assistente ligado. Marque o número num grupo de cliente para testar.' : 'Configuração salva (assistente desligado).');
-        m.fechar ? m.fechar() : m.remove();
-      }
-    });
   }
 
   /* ------------------------------------------------------------ tempo real */
