@@ -14,7 +14,7 @@
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa } from '../_shared/wa.ts';
 
-const VERSAO = 'wa-evolution 5 (4.52.1)';
+const VERSAO = 'wa-evolution 6 (4.52.3)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -84,18 +84,22 @@ async function conectar(numero: string) {
    mensagens: lê as mais recentes de todas as conversas (da mais nova para a mais
    antiga), 150 por página, até 16 páginas (~2.400 mensagens). Página 0 também
    traz todos os grupos (nome e foto). */
-const POR_PAGINA = 150, PAGINAS = 16;
+const POR_PAGINA = 80, PAGINAS = 30;
+/* 4.52.3: em pedaços curtos (o sistema desiste de pedidos longos): página 0 = só os
+   grupos; páginas 1..30 = 80 mensagens cada (≈ 2.400 no total) */
 async function importar(pagina: number) {
   const sb = admin();
-  let grupos = 0, mensagens = 0;
   if (pagina === 0) {
+    let grupos = 0;
     const g = await evo('/group/fetchAllGroups/' + I() + '?getParticipants=false', 'GET', undefined, 60000);
     if (g.ok && Array.isArray(g.dados)) for (const x of g.dados) { if (x?.id) { await garantirConversa(sb, x.id, null, x.subject || null, x.pictureUrl || null); grupos++; } }
+    return { grupos, conversas: 0, mensagens: 0, proxima: 1, total: POR_PAGINA * PAGINAS, lidas: 0 };
   }
-  const m = await evo('/chat/findMessages/' + I(), 'POST', { page: pagina + 1, offset: POR_PAGINA }, 60000);
+  let mensagens = 0;
+  const m = await evo('/chat/findMessages/' + I(), 'POST', { page: pagina, offset: POR_PAGINA }, 60000);
   if (!m.ok) return { erro: 'O Evolution não devolveu as mensagens (' + m.status + ').' };
   const recs: any[] = m.dados?.messages?.records || [];
-  const total = Number(m.dados?.messages?.total || 0);
+  const total = Math.min(Number(m.dados?.messages?.total || 0), POR_PAGINA * PAGINAS);
   const jids = new Set<string>();
   /* da mais antiga para a mais nova, para a prévia de cada conversa ficar com a última */
   for (const r of [...recs].reverse()) {
@@ -103,8 +107,8 @@ async function importar(pagina: number) {
     if (!/@(g\.us|s\.whatsapp\.net|lid)$/.test(jid)) continue;
     try { if (await gravar(sb, r, {}, { historico: true })) { mensagens++; jids.add(jid); } } catch (_e) { /* uma mensagem estranha não para o resto */ }
   }
-  const temMais = recs.length === POR_PAGINA && (pagina + 1) < PAGINAS && (pagina + 1) * POR_PAGINA < total;
-  return { grupos, conversas: jids.size, mensagens, proxima: temMais ? pagina + 1 : null, total: Math.min(total, POR_PAGINA * PAGINAS), lidas: (pagina + 1) * POR_PAGINA };
+  const temMais = recs.length === POR_PAGINA && pagina < PAGINAS && pagina * POR_PAGINA < total;
+  return { grupos: 0, conversas: jids.size, mensagens, proxima: temMais ? pagina + 1 : null, total, lidas: pagina * POR_PAGINA };
 }
 
 async function msgDe(id: string) {

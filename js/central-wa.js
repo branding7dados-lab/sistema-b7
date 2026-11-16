@@ -611,7 +611,11 @@ B7.CentralWA = (function () {
     let pagina = 0, tot = { grupos: 0, conversas: 0, mensagens: 0 };
     try {
       while (pagina != null && m.isConnected) {
-        const r = await chamar('importar', { pagina });
+        /* 4.52.3: direto na função, com até 2 min por pedaço (o atalho do sistema desiste em 20 s) */
+        const inv = await Promise.race([B7.sb.functions.invoke('wa-evolution', { body: { acao: 'importar', pagina } }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('O WhatsApp demorou demais. Tente de novo — o que já veio fica guardado.')), 120000))]);
+        if (inv.error) { let c = null; try { c = await inv.error.context.json(); } catch (x) {} throw new Error((c && c.erro) || 'Não consegui falar com o WhatsApp do B7.'); }
+        const r = inv.data || {};
         if (r.erro) throw new Error(r.erro);
         tot.grupos += r.grupos || 0; tot.conversas += r.conversas || 0; tot.mensagens += r.mensagens || 0;
         const el = m.querySelector('#wz-imp'), b = m.querySelector('#wz-imp-b');
