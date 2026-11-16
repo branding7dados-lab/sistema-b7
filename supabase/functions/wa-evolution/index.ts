@@ -172,7 +172,9 @@ Deno.serve(comCors(async (req: Request) => {
               chaves: recs[0] ? Object.keys(recs[0]) : [], tipos: recs.map((x: any) => x?.messageType), erro: !m.ok ? JSON.stringify(m.dados).slice(0, 300) : undefined };
           }
           const tudo = await evo('/chat/findMessages/' + I(), 'POST', { page: 1, offset: 3 }, 30000);
-          d.mensagensGeral = { status: tudo.status, total: tudo.dados?.messages?.total, erro: !tudo.ok ? JSON.stringify(tudo.dados).slice(0, 300) : undefined };
+          const rec0 = tudo.dados?.messages?.records || [];
+          d.mensagensGeral = { status: tudo.status, total: tudo.dados?.messages?.total, erro: !tudo.ok ? JSON.stringify(tudo.dados).slice(0, 300) : undefined,
+            maisRecentes: rec0.map((x: any) => ({ em: x?.messageTimestamp ? new Date(Number(x.messageTimestamp) * 1000).toISOString() : null, tipo: x?.messageType, deMim: x?.key?.fromMe, sufixo: String(x?.key?.remoteJid || '').split('@')[1] })) };
           const wh = await evo('/webhook/find/' + I());
           d.webhook = { status: wh.status, ligado: wh.dados?.enabled, eventos: wh.dados?.events, url: wh.dados?.url ? String(wh.dados.url).replace(/^https:\/\/[^/]+/, '…') : null };
         }
