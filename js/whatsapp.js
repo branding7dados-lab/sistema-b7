@@ -94,9 +94,14 @@ B7.WhatsApp = (function () {
       if (cx) { cx.classList.toggle('on', c.assinatura !== false); const b = document.getElementById('wa-ass'); if (b) b.setAttribute('aria-checked', String(c.assinatura !== false)); }
     }).catch(() => {});
     const extras = !!(D.zoom && D.desconectar);
-    painel.innerHTML = '<div class="wa-tela">' +
+    /* 4.49.0: tela refeita — cabeçalho no padrão das telas do B7 (título
+       grande + selos), "Envio" (assinatura e correção) numa cápsula só,
+       ferramentas agrupadas e o WhatsApp dentro de uma moldura roxa. */
+    painel.innerHTML = '<div class="wa-tela wa2">' +
       '<div class="wa-barra">' +
-        '<span class="wa-tit">' + icone + '<b>WhatsApp</b><i class="wa-nl" id="wa-nl"' + (naoLidas ? '' : ' hidden') + '>' + naoLidas + ' não lidas</i><i class="wa-esp" id="wa-esp" hidden></i></span>' +
+        '<span class="wa-tit"><span class="wa2-selo">' + icone + '</span><span class="wa2-tx"><small>CONVERSAS COM OS CLIENTES</small><b>WhatsApp</b>' +
+          '<span class="wa2-chips"><i class="wa-nl" id="wa-nl"' + (naoLidas ? '' : ' hidden') + '>' + naoLidas + ' não lidas</i><i class="wa-esp" id="wa-esp" hidden></i></span></span></span>' +
+        '<div class="wa2-envio"><span class="wa2-envio-rot">Envio</span>' +
         '<div class="wa-assin' + (cfg.assinatura !== false ? ' on' : '') + '" id="wa-assin">' +
           '<button type="button" class="wa-chave" id="wa-ass" role="switch" aria-checked="' + (cfg.assinatura !== false) + '" title="Assinar as mensagens com o seu nome"><i></i></button>' +
           '<span class="wa-assin-rot">Assinatura</span>' +
@@ -106,13 +111,16 @@ B7.WhatsApp = (function () {
         (B7.Corretor && B7.Corretor.disponivel() && D.config ? '<div class="wa-assin wa-corr' + (B7.Corretor.ligado() ? ' on' : '') + '" id="wa-corr" title="Corrige ortografia e gramática da mensagem quando você aperta enviar">' +
           '<button type="button" class="wa-chave" id="wa-corr-bt" role="switch" aria-checked="' + B7.Corretor.ligado() + '" aria-label="Corrigir texto ao enviar"><i></i></button>' +
           '<span class="wa-assin-rot">Corrigir texto</span></div>' : '') +
+        '</div>' +
         '<div class="wa-ferr">' +
           (D.aoConversas ? '<button type="button" class="wa-ic' + (ladoAberto ? ' on' : '') + '" id="wa-lado-bt" title="Mostrar/esconder o painel do cliente" aria-label="Painel do cliente">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M14.5 4.5v15"/></svg></button>' : '') +
           (B7.Chat ? '<button type="button" class="wa-ic wa-ia" id="wa-ia" title="Assistente do B7" aria-label="Abrir o assistente">' +
             '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9z"/><path d="M18.5 15l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg></button>' : '') +
+          '<i class="wa2-sep" aria-hidden="true"></i>' +
           (extras ? '<button type="button" class="wa-ic" id="wa-menos" title="Letra menor" aria-label="Letra menor">A−</button>' +
                     '<button type="button" class="wa-ic" id="wa-mais" title="Letra maior" aria-label="Letra maior">A+</button>' : '') +
+          '<i class="wa2-sep" aria-hidden="true"></i>' +
           '<button type="button" class="wa-ic" id="wa-recarregar" title="Recarregar o WhatsApp" aria-label="Recarregar o WhatsApp">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/></svg></button>' +
           (extras ? '<button type="button" class="wa-ic" id="wa-sair" title="Desconectar este WhatsApp do programa" aria-label="Desconectar">' +
@@ -124,10 +132,10 @@ B7.WhatsApp = (function () {
            quando o de verdade chega, é idêntico: sem tela preta, sem pulo.
            Sem foto guardada: um esqueleto com a cara do WhatsApp. */
         (fotoGuardada()
-          ? '<div class="wa-area com-foto abrindo" id="wa-area" style="background-image:url(&quot;' + fotoGuardada() + '&quot;)"></div>'
-          : '<div class="wa-area abrindo" id="wa-area"><div class="wa-esq" aria-hidden="true"><div class="wa-esq-lista">' +
+          ? '<div class="wa2-moldura"><div class="wa-area com-foto abrindo" id="wa-area" style="background-image:url(&quot;' + fotoGuardada() + '&quot;)"></div></div>'
+          : '<div class="wa2-moldura"><div class="wa-area abrindo" id="wa-area"><div class="wa-esq" aria-hidden="true"><div class="wa-esq-lista">' +
               '<i class="wa-esq-busca"></i>' + Array.from({ length: 7 }, (_, i) => '<div class="wa-esq-it" style="--i:' + i + '"><i class="av"></i><span><i></i><i></i></span></div>').join('') +
-            '</div><div class="wa-esq-chat"><span class="wa-esp-ic">' + icone + '</span><b>Abrindo o WhatsApp…</b></div></div></div>') +
+            '</div><div class="wa-esq-chat"><span class="wa-esp-ic">' + icone + '</span><b>Abrindo o WhatsApp…</b></div></div></div></div>') +
         (D.aoConversas ? '<aside class="wa-lado" id="wa-lado" aria-label="Painel do cliente"></aside>' : '') +
       '</div>' +
     '</div>';
@@ -224,7 +232,7 @@ B7.WhatsApp = (function () {
     /* a área vai até o pé da janela */
     const caixa = document.getElementById('wa-corpo') || area;
     const topo = caixa.getBoundingClientRect().top;
-    const alt = Math.max(320, Math.round(innerHeight - topo - 18));
+    const alt = Math.max(320, Math.round(innerHeight - topo - 20));
     if (Math.abs(caixa.offsetHeight - alt) > 1) caixa.style.height = alt + 'px';
     const r = area.getBoundingClientRect();
     const fora = r.width < 60 || r.height < 60 || document.hidden;
@@ -249,7 +257,7 @@ B7.WhatsApp = (function () {
     if (ret === ultimoRet && !escondido) return;
     ultimoRet = ret; escondido = false;
     setTimeout(() => { const a = document.getElementById('wa-area'); if (a && !escondido) { a.classList.remove('com-foto'); a.style.backgroundImage = ''; } }, 120);
-    D.mostrar({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height), raio: 16 });
+    D.mostrar({ x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height), raio: 19 });
     area.classList.add('pronta');
   }
   /* foto do WhatsApp posta como fundo da área; espera a imagem estar

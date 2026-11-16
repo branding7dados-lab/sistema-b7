@@ -484,3 +484,95 @@ function marcarTrilho() {
 }
 setInterval(marcarTrilho, 2000);
 document.addEventListener('DOMContentLoaded', () => setTimeout(marcarTrilho, 800));
+
+/* 4.49.0: CORES DA B7 DENTRO DO WHATSAPP. Duas camadas, só de cor (nada
+   muda no funcionamento):
+   1. pelos NOMES semânticos do sistema de cores do WhatsApp (--WDS-…):
+      fundo, superfícies, balões, fundo da conversa, destaque — um tema B7
+      para o escuro (roxos do menu do B7) e outro para o claro (lilases);
+   2. pelo VALOR, para as variáveis de nome embaralhado: onde valer um
+      cinza/verde do WhatsApp, passa a valer o roxo/magenta da B7.
+   O sistema pode desligar: b7wa:tema-cores (true/false). */
+const NOMES_B7 = {
+  escuro: {
+    '--WDS-background-wash-plain': '#120D27', '--WDS-background-elevated-wash-plain': '#1A1336',
+    '--WDS-surface-default': '#140F2B', '--WDS-surface-emphasized': '#1E1640', '--WDS-surface-elevated-default': '#1C1540',
+    '--WDS-surface-elevated-emphasized': '#251B4D', '--WDS-surface-inverse': '#EDE6FF',
+    '--WDS-surface-highlight': 'rgba(167, 139, 250, .12)', '--WDS-components-active-list-row': 'rgba(226, 64, 156, .18)',
+    '--WDS-components-surface-nav-bar': '#1A1335',
+    '--WDS-systems-chat-background-wallpaper': '#17112F', '--WDS-systems-chat-foreground-wallpaper': '#241A48',
+    '--WDS-systems-chat-surface-composer': '#221A45', '--WDS-systems-chat-surface-tray': '#1B143B',
+    '--WDS-systems-bubble-surface-outgoing': '#5B2BC6', '--WDS-systems-bubble-surface-incoming': '#251C4E',
+    '--WDS-systems-bubble-surface-overlay': 'rgba(167, 139, 250, .14)',
+    '--outgoing-background': '#5B2BC6', '--incoming-background': '#251C4E',
+    '--panel-background': '#140F2B', '--panel-background-deep': '#120D27', '--panel-input-background': '#2B2155',
+    '--WDS-accent': '#E2409C', '--WDS-accent-emphasized': '#F06BB3', '--WDS-accent-deemphasized': 'rgba(226, 64, 156, .22)',
+    '--WDS-content-action-emphasized': '#F29BD0', '--WDS-content-external-link': '#C9A7FF',
+    '--WDS-persistent-activity-indicator': '#E2409C', '--WDS-secondary-positive': '#E2409C', '--WDS-persistent-always-branded': '#C21C83',
+    '--WDS-lines-divider': 'rgba(167, 139, 250, .14)'
+  },
+  claro: {
+    '--WDS-background-wash-plain': '#FBF9FE', '--WDS-surface-default': '#FFFFFF', '--WDS-surface-emphasized': '#F5F1FB',
+    '--WDS-surface-elevated-emphasized': '#F5F1FB', '--WDS-components-surface-nav-bar': '#F5F1FB',
+    '--WDS-surface-highlight': 'rgba(124, 58, 237, .07)', '--WDS-components-active-list-row': 'rgba(124, 58, 237, .10)',
+    '--WDS-systems-chat-background-wallpaper': '#F4EFFA', '--WDS-systems-chat-foreground-wallpaper': '#E8DFF6',
+    '--WDS-systems-chat-surface-tray': '#F5F1FB',
+    '--WDS-systems-bubble-surface-outgoing': '#EBDDFF', '--outgoing-background': '#EBDDFF',
+    '--panel-background': '#F5F1FB', '--panel-background-deep': '#EEE7F8', '--panel-input-background': '#EEE7F8',
+    '--WDS-accent': '#9A2AA8', '--WDS-accent-emphasized': '#7C3AED', '--WDS-accent-deemphasized': '#EBDDFF',
+    '--WDS-content-action-emphasized': '#7C3AED', '--WDS-content-external-link': '#7C3AED',
+    '--WDS-persistent-activity-indicator': '#C21C83', '--WDS-secondary-positive': '#C21C83', '--WDS-persistent-always-branded': '#9A2AA8'
+  }
+};
+const CORES_B7 = {
+  '#111B21': '#140F2B', '#161717': '#140F2B', '#0B141A': '#1A1335', '#1D1F1F': '#1A1335', '#111010': '#120D27',
+  '#202C33': '#221A45', '#242626': '#221A45', '#222E35': '#201842', '#182229': '#1C1540', '#233138': '#271E50',
+  '#2A3942': '#2B2155', '#2E2F2F': '#2B2155', '#343636': '#352A63', '#374045': '#352A63', '#313D45': '#33285E', '#3B4A54': '#3E3170',
+  '#005C4B': '#5B2BC6', '#144D37': '#5B2BC6', '#103529': '#3A1E86', '#0A332C': '#2E1A63', '#15603E': '#7C3AED',
+  '#00A884': '#E2409C', '#21C063': '#E2409C', '#25D366': '#E2409C', '#1DAA61': '#C21C83', '#06CF9C': '#E2409C', '#1B8755': '#9A2AA8', '#218D51': '#9A2AA8',
+  '#F0F2F5': '#F5F1FB', '#EFEAE2': '#F4EFFA', '#EFE9E0': '#F4EFFA', '#F5F1EB': '#F4EFFA', '#EAE0D3': '#E8DFF6',
+  '#D9FDD3': '#EBDDFF', '#E7FCE3': '#F3EBFF', '#C3FDC0': '#E4D3FF', '#008069': '#7C3AED', '#00A783': '#C21C83'
+};
+let coresLigadas = true, coresSig = '';
+ipcRenderer.on('b7wa:tema-cores', (ev, on) => { coresLigadas = on !== false; coresSig = ''; aplicarCoresB7(); });
+const escuroDe = cs => {
+  const m = /^#?([0-9a-f]{6})$/i.exec((cs.getPropertyValue('--WDS-surface-default') || '').trim());
+  if (m) { const n = parseInt(m[1], 16); return ((n >> 16) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11) < 110; }
+  return document.body.classList.contains('dark') || document.documentElement.classList.contains('dark');
+};
+function aplicarCoresB7() {
+  try {
+    let st = document.getElementById('b7-cores');
+    if (!coresLigadas) { if (st) st.textContent = ''; qsa('[data-b7-cores]').forEach(e => e.removeAttribute('data-b7-cores')); return; }
+    if (!document.body) return;
+    /* onde as variáveis de cor são declaradas: a raiz, o body e o começo da árvore do app */
+    const hosts = [document.documentElement, document.body];
+    let el = qs('#app');
+    for (let i = 0; el && i < 5; i++) { hosts.push(el); el = el.firstElementChild; }
+    const sig = hosts.map(h => h.className).join('|');
+    if (sig === coresSig) return;
+    coresSig = sig;
+    /* lê os valores ORIGINAIS: tira a troca antiga antes de medir */
+    if (st) st.textContent = '';
+    const tema = NOMES_B7[escuroDe(getComputedStyle(document.body)) ? 'escuro' : 'claro'];
+    const regras = [];
+    hosts.forEach((h, i) => {
+      const cs = getComputedStyle(h), troca = {};
+      for (let k = 0; k < cs.length; k++) {
+        const n = cs[k];
+        if (n.charCodeAt(0) !== 45 || n.charCodeAt(1) !== 45) continue;
+        if (tema[n]) { troca[n] = tema[n]; continue; }
+        const v = cs.getPropertyValue(n).trim().toUpperCase();
+        if (CORES_B7[v]) troca[n] = CORES_B7[v];
+      }
+      h.setAttribute('data-b7-cores', String(i));
+      const l = Object.keys(troca).map(n => n + ':' + troca[n] + ' !important');
+      if (l.length) regras.push('[data-b7-cores="' + i + '"]{' + l.join(';') + '}');
+    });
+    if (!st) { st = document.createElement('style'); st.id = 'b7-cores'; (document.head || document.documentElement).appendChild(st); }
+    st.textContent = regras.join('\n');
+  } catch (e) {}
+}
+/* o WhatsApp monta a tela aos poucos e troca de tema sem recarregar: confere de vez em quando (barato: só compara as classes) */
+setInterval(() => { if (!document.hidden) aplicarCoresB7(); }, 2500);
+document.addEventListener('DOMContentLoaded', () => setTimeout(aplicarCoresB7, 600));

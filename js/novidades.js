@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.49.0', versao: '4.49.0', em: '2026-11-16T18:00:00-03:00',
+    titulo: 'Ícones novos e WhatsApp com a cara da B7',
+    itens: ['Os ícones do menu agora são cheios, em duas cores; a página aberta ganha o ícone em rosa.',
+      'Tela do WhatsApp nova: título no padrão do B7, Assinatura e Corrigir texto juntos em "Envio", ferramentas agrupadas e o WhatsApp numa moldura roxa.',
+      'No programa de computador, o WhatsApp por dentro ganha as cores da B7: fundos roxos, suas mensagens em roxo e os destaques em magenta (atualize o programa).'] },
   { id: 'v-4.48.5', versao: '4.48.5', em: '2026-11-16T16:00:00-03:00', rota: 'whatsapp',
     titulo: 'WhatsApp com mais respiro e no visual do B7',
     itens: ['A tela do WhatsApp não fica mais grudada no menu lateral: tem a mesma margem das outras telas.',

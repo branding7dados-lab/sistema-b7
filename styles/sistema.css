@@ -2088,3 +2088,43 @@ a.sa-item:hover{background:var(--suave);}
 /* 4.48.5: a tela do WhatsApp não encosta mais na lateral — mesmo respiro das outras telas */
 .wa-tela{padding:14px 18px 0 20px;}
 @media (max-width:860px){ .wa-tela{padding:10px 12px 0;} }
+
+/* =====================================================================
+   4.49.0 — TELA DO WHATSAPP REFEITA (.wa2)
+   ===================================================================== */
+.wa2{gap:16px;padding-top:18px;}
+.wa2 .wa-barra{min-height:0;padding:0 2px;border:0;background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;gap:14px;flex-wrap:wrap;}
+.wa2 .wa-tit{gap:14px;align-items:center;}
+.wa2-selo{flex:none;width:52px;height:52px;border-radius:17px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(135deg,#25D366 -10%,#5B2BC6 55%,#C21C83 115%);
+  box-shadow:0 14px 28px -14px rgba(91,43,198,.75),inset 0 1px 0 rgba(255,255,255,.3);}
+.wa2-selo svg{width:27px;height:27px;}
+.wa2-tx{display:flex;flex-direction:column;min-width:0;}
+.wa2-tx small{font-size:10.5px;font-weight:800;letter-spacing:.16em;color:var(--acento);}
+.wa2-tx > b{font-family:'B7 Titulo',system-ui,sans-serif;font-size:28px;line-height:1.1;letter-spacing:-.03em;color:var(--ink);font-weight:800;}
+.wa2-chips{display:inline-flex;gap:6px;margin-top:6px;}
+.wa2-chips:not(:has(i:not([hidden]))){display:none;}
+/* cápsula "Envio" */
+.wa2-envio{display:inline-flex;align-items:center;gap:4px;padding:4px 4px 4px 14px;border-radius:99px;
+  background:var(--card);border:1px solid var(--borda);box-shadow:0 10px 24px -18px rgba(40,20,90,.35);}
+.wa2-envio-rot{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-4,var(--ink-3));margin-right:4px;}
+.wa2 .wa2-envio .wa-assin{border:0;background:none;height:34px;padding:0 12px 0 4px;border-radius:99px;}
+.wa2 .wa2-envio .wa-assin + .wa-assin{border-left:1px solid var(--borda);border-radius:0 99px 99px 0;padding-left:12px;}
+.wa2 .wa-assin.on .wa-chave{background:linear-gradient(118deg,#3A1E86,#9A2AA8 60%,#C21C83);}
+/* ferramentas agrupadas */
+.wa2 .wa-ferr{padding:4px;border:1px solid var(--borda);border-radius:99px;background:var(--card);box-shadow:0 10px 24px -18px rgba(40,20,90,.35);gap:2px;}
+.wa2 .wa-ic{border-radius:99px;width:34px;height:34px;}
+.wa2 .wa-ic:hover{background:var(--acento-suave);color:var(--acento);}
+.wa2 .wa-ic.on{background:var(--acento-suave);color:var(--acento);}
+.wa2-sep{width:1px;height:18px;background:var(--borda);margin:0 3px;}
+/* a moldura roxa em volta do WhatsApp */
+.wa2 .wa-corpo{gap:14px;}
+.wa2-moldura{position:relative;flex:1;min-width:0;display:flex;padding:7px;border-radius:26px;
+  background:linear-gradient(160deg,#241654,#120C2A 45%,#2A0F33);
+  box-shadow:0 30px 60px -30px rgba(58,30,134,.55),0 0 0 1px rgba(124,62,214,.35),inset 0 1px 0 rgba(255,255,255,.12);}
+.wa2-moldura:before{content:"";position:absolute;inset:-1px;border-radius:27px;padding:1px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(139,92,246,.9),rgba(194,28,131,.6) 50%,rgba(37,211,102,.5));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;}
+.wa2 .wa-area{border-radius:19px;flex:1;}
+.wa2 .wa-lado{border-radius:24px;}
+@media (max-width:1100px){ .wa2-envio-rot{display:none;} }

@@ -1042,3 +1042,20 @@ html.modo-leve[data-theme] body[data-shell="interno"] .nav-inferior::before,html
   /* a barra de baixo some enquanto o "Mais" está aberto */
   body:has(.nm-folha) .nav-inferior{opacity:0;pointer-events:none;transform:translate3d(0,110%,0);transition:opacity .18s ease, transform .22s ease;}
 }
+
+/* =====================================================================
+   4.49.0 — ÍCONES EM DUAS CORES (Phosphor duotone, js/nav.js)
+   .d1 = o corpo cheio do ícone · .d2 = o traço. Cada lugar só troca as
+   duas variáveis: --duo1 (corpo) e --duo2 (traço).
+   ===================================================================== */
+svg.phi.phd{--duo1:#E6DBFB;--duo2:#5B2BC6;}
+svg.phi.phd .d1{fill:var(--duo1) !important;opacity:1 !important;transition:fill .2s ease;}
+svg.phi.phd .d2{fill:var(--duo2) !important;transition:fill .2s ease;}
+:is(a.on, button.on, .on .ni-ic) > svg.phi.phd,
+.on .ni-ic svg.phi.phd{--duo1:url(#b7-duo);--duo2:#3A1E86;}
+/* menu lateral escuro */
+.lateral svg.phi.phd{--duo1:#5E3FC2;--duo2:#EDE6FF;}
+.lateral .nav a:hover > svg.phi.phd{--duo1:#7A55E0;--duo2:#fff;}
+.lateral .nav a.on > svg.phi.phd{--duo1:url(#b7-duo);--duo2:#fff;}
+.lateral .nav a.on > svg.phi.phd{--duo1:#F6A3D6;--duo2:#fff;}
+@media (min-width:761px){ body[data-shell="interno"] .nav.multi .ng a svg.phd{width:21px;height:21px;} }
