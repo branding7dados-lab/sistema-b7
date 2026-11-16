@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.48.2', versao: '4.48.2', em: '2026-11-16T13:00:00-03:00',
+    titulo: 'Editor de roteiro no computador sem barra por cima do texto',
+    itens: ['No computador, a barra de botões que flutuava por cima das cenas saiu: o botão "Enviar ao cliente" fica no topo, ao lado de Detalhes e IA do roteiro, e a nova cena se cria pelo "+ Nova cena" no fim da lista.'] },
   { id: 'v-4.48.1', versao: '4.48.1', em: '2026-11-16T12:00:00-03:00',
     titulo: 'Editor de roteiro mais caprichado',
     itens: ['Cada cena virou um cartão com a faixa na cor do tipo e o número da cena em destaque.',

@@ -481,7 +481,7 @@ B7.Editor = (function () {
           '<span class="ed2-pt">·</span><span id="ed2-total">' + (tempoTx(cenas.reduce((n, c) => n + segundos(c.texto), 0)) || '0 s') + ' de fala</span>' +
           '<span class="ed2-estagio">' + esc(estagio) + '</span>' +
           '<div class="menu ed2-menu"><button class="ico" aria-label="Mais ações do roteiro">⋯</button><div class="lista">' +
-            '<button data-acao="enviar-aprovacao">Enviar para aprovação</button><hr>' +
+            '<button data-acao="enviar-aprovacao">Enviar ao cliente</button><hr>' +
             '<button data-acao="baixar">Baixar roteiro</button>' +
             '<button data-acao="espiar">Visualização rápida</button>' +
             '<button data-acao="apresentar">Apresentar roteiros</button>' +
@@ -500,6 +500,7 @@ B7.Editor = (function () {
             '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></svg>Detalhes<i>▾</i></button>' +
           (ia ? '<button class="ed2-chip" data-ed2="ia"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/></svg>IA do roteiro</button>' : '') +
           (E.aprovacoes && E.aprovacoes[r.id] ? '' : '<span class="ed2-chip leve">Não enviado ao cliente</span>') +
+          (soLeitura() ? '' : '<button class="ed2-chip ed2-enviar-pc" data-ed2="enviar"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M4 12l16-8-6 16-3-7z"/></svg>Enviar ao cliente</button>') +
         '</div>' +
         '<div class="ed2-det"' + (detalhesAbertos ? '' : ' hidden') + ' id="ed2-det">' +
           ia +

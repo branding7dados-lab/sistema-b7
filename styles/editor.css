@@ -583,3 +583,15 @@ body.ed-geral #ap-status-roteiro,body.ed-geral [data-acao="enviar-aprovacao"]{di
 .ed2-dir{text-overflow:ellipsis;}
 .ed2-tempo{margin-left:6px;}
 @media (max-width:860px){ .ed2-dir{font-size:10.5px;letter-spacing:.02em;} }
+/* 4.48.2 — no PC as ações ficam no cabeçalho; nada flutuando por cima do texto */
+.ed2-enviar-pc{display:none;}
+@media (min-width:861px){
+  .ed2-barra{display:none;}
+  .ed2-chips{align-items:center;}
+  .ed2-enviar-pc{display:inline-flex;margin-left:auto;border:0;color:#fff;
+    background:linear-gradient(118deg,#3A1E86,#9A2AA8 60%,#C21C83);}
+  .ed2-enviar-pc svg{color:#fff;}
+  .ed2-enviar-pc:hover{filter:brightness(1.08);}
+  .ed2-cenas{padding-bottom:32px;}
+}
+@media (min-width:861px){ .ed2-chips .ed2-chip.leve{display:none;} }
