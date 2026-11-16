@@ -155,7 +155,7 @@ B7.CentralWA = (function () {
     pintarFiltros(); pintarLista(); pintarChat(); pintarLado();
   }
 
-  const FILTROS = [['tudo', 'Tudo'], ['naolidas', 'Não lidas'], ['esperando', 'Esperando'], ['grupos', 'Grupos'], ['minhas', 'Minhas'], ['arquivadas', 'Arquivadas']];
+  const FILTROS = [['tudo', 'Tudo'], ['naolidas', 'Não lidas'], ['esperando', 'Esperando'], ['grupos', 'Grupos'], ['arquivadas', 'Arquivadas']];
   function filtrar(c) {
     if (S.busca) {
       const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
@@ -166,7 +166,6 @@ B7.CentralWA = (function () {
     if (S.filtro === 'naolidas') return c.nao_lidas > 0;
     if (S.filtro === 'esperando') return !!espera(c.esperando_desde);
     if (S.filtro === 'grupos') return c.tipo === 'grupo';
-    if (S.filtro === 'minhas') return c.responsavel_id === eu().id;
     return true;
   }
   function pintarFiltros() {
@@ -235,7 +234,7 @@ B7.CentralWA = (function () {
             '<button data-wz="fixar">' + (c.fixada ? 'Desafixar' : 'Fixar no topo') + '</button>' +
             '<button data-wz="arquivar">' + (c.arquivada ? 'Desarquivar' : 'Arquivar') + '</button>' +
             '<button data-wz="semespera">Não precisa responder</button>' +
-            '<button data-wz="vincular">Ligar a um cliente…</button>' +
+            (c.tipo === 'grupo' ? '<button data-wz="vincular">Ligar a um cliente…</button>' : '') +
           '</div></div></div></header>' +
       '<div class="wz-msgs" id="wz-msgs"></div>' +
       '<div class="wz-solta" id="wz-solta" hidden><b>Solte para enviar</b></div>' +
@@ -592,16 +591,12 @@ B7.CentralWA = (function () {
     const c = S.aberta && S.porJid.get(S.aberta);
     if (!c) { cx.innerHTML = ''; return; }
     const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
-    if (!S.equipe) { try { S.equipe = (await B7.DB.listarVideomakers()) || []; } catch (e) { S.equipe = []; } if (!S.aberta || S.aberta !== c.jid) return; }
-    const pessoas = S.equipe;
     cx.innerHTML = '<div class="wz-cli">' + avatar(c, 'g') + '<b>' + esc(cli ? cli.nome : (c.nome || num(c.jid))) + '</b><small>' + (cli ? 'Cliente do B7' : c.tipo === 'grupo' ? 'Grupo ainda sem cliente' : esc(fone(c.jid))) + '</small>' +
-      (cli ? '<a class="b fina contorno" href="#/cliente/' + esc(cli.id) + '">Abrir o cliente</a>' : '<button class="b fina contorno" data-wz="vincular">Ligar a um cliente</button>') + '</div>' +
-      '<div class="wz-box" id="wz-pend"><h4>Com este cliente agora</h4>' + (cli ? '<p class="wz-carregando">Carregando…</p>' : '<p class="wz-mudo">Ligue a conversa a um cliente para ver as pendências.</p>') + '</div>' +
-      '<div class="wz-box"><h4>Atendimento</h4><p><span>Esperando resposta</span><b>' + (espera(c.esperando_desde) || (c.esperando_desde ? 'há pouco' : 'não')) + '</b></p>' +
-        '<p><span>Responsável</span><select class="campo fina" id="wz-resp"><option value="">Ninguém</option>' +
-        pessoas.filter(p => p && p.id).map(p => '<option value="' + esc(p.id) + '"' + (p.id === c.responsavel_id ? ' selected' : '') + '>' + esc(p.nome || '') + '</option>').join('') + '</select></p></div>';
-    const sel = cx.querySelector('#wz-resp');
-    if (sel) sel.onchange = async () => { c.responsavel_id = sel.value || null; try { await sb().rpc('wa_conversa_marcar', { p_jid: c.jid, p_campo: 'responsavel', p_valor: sel.value }); } catch (e) {} pintarLista(); };
+      (cli ? '<a class="b fina contorno" href="#/cliente/' + esc(cli.id) + '">Abrir o cliente</a>' : c.tipo === 'grupo' ? '<button class="b fina contorno" data-wz="vincular">Ligar a um cliente</button>' : '') + '</div>' +
+      /* 4.53.3: contato não se liga a cliente (só grupos) */
+      (cli || c.tipo === 'grupo' ? '<div class="wz-box" id="wz-pend"><h4>Com este cliente agora</h4>' + (cli ? '<p class="wz-carregando">Carregando…</p>' : '<p class="wz-mudo">Ligue a conversa a um cliente para ver as pendências.</p>') + '</div>' : '') +
+      /* 4.53.3: sem "Responsável" — cada um já está na própria conta */
+      '<div class="wz-box"><h4>Atendimento</h4><p><span>Esperando resposta</span><b>' + (espera(c.esperando_desde) || (c.esperando_desde ? 'há pouco' : 'não')) + '</b></p></div>';
     if (cli) {
       const pend = cx.querySelector('#wz-pend');
       const contar = async (tab, filtro) => { try { let q = sb().from(tab).select('id', { count: 'exact', head: true }); q = filtro(q); const r = await q; return r.count || 0; } catch (e) { return '–'; } };
