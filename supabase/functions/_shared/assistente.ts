@@ -23,6 +23,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { evo, INST, gravar } from './wa.ts';
 import { gerar, provedorAtual } from './ia/servico.ts';
 import { carregarContexto } from './ia/whatsapp.ts';
+import { pdfRoteiros, pdfLinha, MESES } from './pdf.ts';
 
 type Pessoa = { nome?: string; numero?: string; assuntos?: string; duvidas?: boolean };
 type Horario = { ativo?: boolean; ini?: string; fim?: string; dias?: number[]; mensagem?: string };
@@ -310,6 +311,11 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   if (modo !== 'ordem' && !dentroDoHorario(cfg.horario)) modo = 'fora_horario';
 
   const autor = String(raw.pushName || (daCasa?.nome) || 'alguém do grupo');
+  /* 4.57.0: a equipe pedindo um documento no grupo do cliente → o PDF vai ali mesmo */
+  if (modo === 'ordem') {
+    const { data: cl } = await sb.from('clientes').select('id, nome').eq('id', conv.cliente_id).maybeSingle();
+    if (await talvezDocumento(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid, cl)) return;
+  }
   const r = await pensar(sb, cfg, conv, texto, autor, modo);
   if (!r.resposta || /\[\[\s*SILENCIO\s*\]\]/i.test(r.saida.texto)) {
     if (!r.saida.texto) await registrar(sb, { tipo: 'erro', jid, grupo: conv.nome, autor, pergunta: texto.slice(0, 800), ...usoDe(r.saida) });
@@ -501,10 +507,76 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
   await consultaInterna(sb, cfg, raw, texto, cfg.grupo_equipe!);
 }
 
+/* =====================================================================
+   4.57.0 — DOCUMENTOS: "Otto, me manda o PDF dos roteiros da Sabor da Feira
+   de novembro" / "a linha editorial da Arena Deck". Só para a equipe.
+   ===================================================================== */
+function paraB64(u: Uint8Array) { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); }
+function mesDoTexto(t: string): { mes: number | null; ano: number | null } {
+  const n = semAcento(t), hoje = new Date(Date.now() - 3 * 3600000);
+  let mes: number | null = null, ano: number | null = null;
+  MESES.forEach((m, i) => { if (new RegExp('\\b' + semAcento(m) + '\\b').test(n)) mes = i + 1; });
+  if (/mes passado|ultimo mes/.test(n)) { mes = hoje.getUTCMonth() === 0 ? 12 : hoje.getUTCMonth(); ano = hoje.getUTCMonth() === 0 ? hoje.getUTCFullYear() - 1 : hoje.getUTCFullYear(); }
+  else if (/(esse|este|deste|desse) mes/.test(n)) { mes = hoje.getUTCMonth() + 1; }
+  else if (/proximo mes/.test(n)) { mes = hoje.getUTCMonth() === 11 ? 1 : hoje.getUTCMonth() + 2; ano = hoje.getUTCMonth() === 11 ? hoje.getUTCFullYear() + 1 : hoje.getUTCFullYear(); }
+  const a = n.match(/\b(20\d{2})\b/); if (a) ano = Number(a[1]);
+  if (mes && !ano) ano = hoje.getUTCFullYear();
+  return { mes, ano };
+}
+async function enviarDocumento(sb: SupabaseClient, cfg: Config, jid: string, nome: string, bytes: Uint8Array, legenda: string, citar?: any) {
+  const r = await evo('/message/sendMedia/' + I(), 'POST', { number: jid, mediatype: 'document', mimetype: 'application/pdf', fileName: nome,
+    media: paraB64(bytes), caption: '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' + legenda, ...(citar ? { quoted: citar } : {}) }, 90000);
+  if (!r.ok) { console.log('documento', r.status, JSON.stringify(r.dados).slice(0, 200)); return null; }
+  try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ }
+  if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
+  return r.dados;
+}
+/** Pedido de documento? Responde e devolve true; senão false (segue a conversa normal). */
+async function talvezDocumento(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, destino: string, clientePadrao?: { id: string; nome: string } | null): Promise<boolean> {
+  const n = semAcento(pedido);
+  const querLinha = /editorial|linha (do|da|de)|linha editorial/.test(n);
+  const querRoteiro = /roteiro/.test(n);
+  if (!(querLinha || querRoteiro) || !/pdf|manda|envia|mande|envie|passa|me da|preciso d|quero/.test(n)) return false;
+  const citar = raw?.key?.id ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
+  let clientes = await clientesCitados(sb, pedido);
+  if (!clientes.length && clientePadrao) clientes = [clientePadrao];
+  if (!clientes.length) { await enviar(sb, cfg, destino, 'De qual cliente? Me fala o nome que eu já te mando o PDF.', citar ? { quoted: citar } : {}); return true; }
+  const c = clientes[0];
+  const { mes, ano } = mesDoTexto(pedido);
+  await digitando(destino, cfg);
+  if (querLinha) {
+    let q: any = sb.from('linhas_editoriais').select('id, mes, ano, nome').eq('client_id', c.id).is('deleted_at', null);
+    if (mes) q = q.eq('mes', mes); if (ano) q = q.eq('ano', ano);
+    const { data: ls } = await q.order('ano', { ascending: false }).order('mes', { ascending: false }).limit(1);
+    if (!ls?.length) { await enviar(sb, cfg, destino, 'Não achei linha editorial da ' + c.nome + (mes ? ' de ' + MESES[mes - 1] : '') + ' no sistema.', citar ? { quoted: citar } : {}); return true; }
+    const doc = await pdfLinha(sb, ls[0].id);
+    if (!doc) return false;
+    const foi = await enviarDocumento(sb, cfg, destino, doc.nome, doc.bytes, 'Aqui está a ' + doc.titulo.toLowerCase().replace(/^linha editorial/, 'linha editorial') + '.', citar);
+    await registrar(sb, { tipo: foi ? 'documento' : 'erro', jid: destino, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: doc.titulo });
+    return true;
+  }
+  let q: any = sb.from('gravacoes').select('id, nome, data_gravacao, competencia_mes, competencia_ano').eq('client_id', c.id).is('deleted_at', null).is('archived_at', null);
+  const { data: gs } = await q.order('data_gravacao', { ascending: false, nullsFirst: false }).limit(60);
+  let lista = (gs || []) as any[];
+  if (mes) lista = lista.filter(g => (g.competencia_mes ? Number(g.competencia_mes) === mes && (!ano || Number(g.competencia_ano) === ano)
+    : g.data_gravacao && Number(String(g.data_gravacao).slice(5, 7)) === mes && (!ano || Number(String(g.data_gravacao).slice(0, 4)) === ano)));
+  const nomeG = lista.find(g => semAcento(g.nome).split(/\s+/).filter((w: string) => w.length >= 5).some((w: string) => n.includes(w)));
+  const escolhidas = nomeG ? [nomeG] : lista.slice(0, mes ? 3 : 1);
+  if (!escolhidas.length) { await enviar(sb, cfg, destino, 'Não achei gravação da ' + c.nome + (mes ? ' em ' + MESES[mes - 1] : '') + ' com roteiros no sistema.', citar ? { quoted: citar } : {}); return true; }
+  for (const g of escolhidas) {
+    const doc = await pdfRoteiros(sb, g.id);
+    if (!doc) continue;
+    const foi = await enviarDocumento(sb, cfg, destino, doc.nome, doc.bytes, 'Aqui estão os ' + doc.titulo.replace(/^Roteiros/, 'roteiros') + '.', citar);
+    await registrar(sb, { tipo: foi ? 'documento' : 'erro', jid: destino, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: doc.titulo });
+  }
+  return true;
+}
+
 /** Pergunta interna da equipe (grupo da equipe ou privado): pendências ou o que há de um cliente. */
 async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
   const key = raw?.key || {};
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
+  if (await talvezDocumento(sb, cfg, raw, pedido, destino)) return;
   if (/pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta|esperando resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true, destino); return; }
   const clientes = await clientesCitados(sb, pedido);
   let contexto = '';
