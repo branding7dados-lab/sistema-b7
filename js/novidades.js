@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.50.0', versao: '4.50.0', em: '2026-11-16T23:00:00-03:00', rota: 'whatsapp', funcao: 'admin',
+    titulo: 'WhatsApp do B7 (piloto): conectar o número pelo QR Code',
+    itens: ['Na tela do WhatsApp, o botão "WhatsApp B7 (piloto)" mostra o QR Code para ligar um número ao B7 pelo servidor próprio.',
+      'Quando o celular lê o código, a janela mostra "Conectado" com o número. Dá para desconectar pelo mesmo lugar.'] },
   { id: 'v-4.49.4', versao: '4.49.4', em: '2026-11-16T22:00:00-03:00',
     titulo: 'Ícones em pastilha e tela de Design renovada',
     itens: ['Os ícones do menu agora ficam dentro de pastilhas coloridas, na cor da sua aparência; a página aberta acende.',

@@ -112,6 +112,7 @@ B7.WhatsApp = (function () {
           '<button type="button" class="wa-chave" id="wa-corr-bt" role="switch" aria-checked="' + B7.Corretor.ligado() + '" aria-label="Corrigir texto ao enviar"><i></i></button>' +
           '<span class="wa-assin-rot">Corrigir texto</span></div>' : '') +
         '</div>' +
+        (B7.WaCentral ? B7.WaCentral.botao('b fina contorno wa2-evo') : '') +
         '<div class="wa-ferr">' +
           (D.aoConversas ? '<button type="button" class="wa-ic' + (ladoAberto ? ' on' : '') + '" id="wa-lado-bt" title="Mostrar/esconder o painel do cliente" aria-label="Painel do cliente">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M14.5 4.5v15"/></svg></button>' : '') +
@@ -191,7 +192,8 @@ B7.WhatsApp = (function () {
       '<p>' + (cel
         ? 'No celular, o WhatsApp abre no app dele. Os botões “Enviar no WhatsApp” do sistema já mandam a mensagem pronta para lá.'
         : 'No navegador, o WhatsApp não deixa ser aberto dentro de outro site. No <b>programa do B7 para Windows</b>, ele aparece aqui dentro, com a sua assinatura em negrito.') + '</p>' +
-      '<div class="acoes"><button type="button" class="b pri" id="wa-abrir-fora">' + (cel ? 'Abrir o WhatsApp' : 'Abrir o WhatsApp Web') + '</button></div></div>';
+      '<div class="acoes"><button type="button" class="b pri" id="wa-abrir-fora">' + (cel ? 'Abrir o WhatsApp' : 'Abrir o WhatsApp Web') + '</button>' +
+        (B7.WaCentral ? B7.WaCentral.botao('b contorno') : '') + '</div></div>';
     painel.querySelector('#wa-abrir-fora').onclick = () => {
       if (cel) location.href = 'whatsapp://send';
       else window.open('https://web.whatsapp.com/', '_blank', 'noopener');
