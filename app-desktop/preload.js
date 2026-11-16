@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('B7Desktop', {
     zoom: passo => ipcRenderer.invoke('b7:wa:zoom', passo),
     desconectar: () => ipcRenderer.invoke('b7:wa:desconectar'),
     recarregar: () => ipcRenderer.invoke('b7:wa:recarregar'),
+    tema: css => ipcRenderer.invoke('b7:wa:tema', css),
     config: () => ipcRenderer.invoke('b7:wa:config'),
     definirConfig: c => ipcRenderer.invoke('b7:wa:definir-config', c),
     escolherArquivo: o => ipcRenderer.invoke('b7:wa:escolher-arquivo', o),

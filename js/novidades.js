@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.48.5', versao: '4.48.5', em: '2026-11-16T16:00:00-03:00', rota: 'whatsapp',
+    titulo: 'WhatsApp com mais respiro e no visual do B7',
+    itens: ['A tela do WhatsApp não fica mais grudada no menu lateral: tem a mesma margem das outras telas.',
+      'No programa de computador, a barra de ícones do WhatsApp (Conversas, Status, Comunidades…) ganhou o visual roxo do menu do B7.'] },
   { id: 'v-4.48.4', versao: '4.48.4', em: '2026-11-16T15:00:00-03:00', rota: 'video',
     titulo: 'Trends da gravação viram demandas de edição',
     itens: ['Em "Nova demanda de edição", ao escolher a gravação, as trends dela aparecem junto com os roteiros — é só marcar e gerar.',

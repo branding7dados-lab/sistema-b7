@@ -44,6 +44,32 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     if (j && !j.isDestroyed()) j.webContents.send(canal, dado);
   }
 
+  /* 4.48.5: barra de ícones do WhatsApp no visual da lateral do B7 */
+  const TEMA_PADRAO = `
+    [data-b7-trilho]{background:
+      radial-gradient(140% 30% at 0% 0%, rgba(124,62,214,.38), transparent 70%),
+      radial-gradient(140% 26% at 100% 100%, rgba(194,28,131,.30), transparent 72%),
+      linear-gradient(180deg,#171338,#0B0A1E) !important;
+      border-right:1px solid rgba(255,255,255,.08) !important;}
+    [data-b7-limpo]:not([data-b7-trilho]){background-color:transparent !important;}
+    [data-b7-trilho] [data-icon], [data-b7-trilho] svg{color:rgba(255,255,255,.74) !important;}
+    [data-b7-trilho] button, [data-b7-trilho] [role="button"]{border-radius:12px !important;transition:background-color .15s ease, box-shadow .15s ease;}
+    [data-b7-trilho] button:hover, [data-b7-trilho] [role="button"]:hover{background-color:rgba(255,255,255,.08) !important;}
+    [data-b7-trilho] [aria-pressed="true"], [data-b7-trilho] [aria-selected="true"], [data-b7-trilho] [aria-current="page"], [data-b7-trilho] [data-navbar-item-selected="true"]{
+      background:linear-gradient(120deg, rgba(58,30,134,.85), rgba(194,28,131,.7)) !important;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.16) !important;}
+    [data-b7-trilho] [aria-pressed="true"] svg, [data-b7-trilho] [aria-selected="true"] svg, [data-b7-trilho] [data-navbar-item-selected="true"] svg{color:#fff !important;}
+  `;
+  let temaCss = TEMA_PADRAO, chaveTema = null;
+  async function aplicarTema() {
+    if (!view) return;
+    const wc = view.webContents;
+    try {
+      if (chaveTema) { await wc.removeInsertedCSS(chaveTema).catch(() => {}); chaveTema = null; }
+      if (temaCss) chaveTema = await wc.insertCSS(temaCss);
+    } catch (e) {}
+  }
+
   /* ------------------------------------------------------ a camada */
   function criar() {
     if (view) return view;
@@ -92,6 +118,7 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     /* zzz176: um acabamento leve por cima do WhatsApp — barras de rolagem
        finas e transições suaves; nada que mude como ele funciona */
     wc.on('dom-ready', () => {
+      chaveTema = null; aplicarTema();
       wc.insertCSS(`
         ::-webkit-scrollbar{width:7px;height:7px;}
         ::-webkit-scrollbar-track{background:transparent;}
@@ -260,6 +287,13 @@ module.exports = function ligarWhatsApp(pegarJanela) {
     try { await session.fromPartition(PARTICAO).clearStorageData(); } catch (e) {}
     if (view) view.webContents.loadURL(URL_WA);
     return true;
+  });
+  /* 4.48.5: visual B7 por cima do WhatsApp (barra de ícones). O padrão vem
+     daqui; o sistema pode mandar uma versão nova (b7:wa:tema) sem precisar
+     de instalador novo. Só CSS: nada que mude como o WhatsApp funciona. */
+  ipcMain.handle('b7:wa:tema', async (ev, css) => {
+    if (typeof css !== 'string' || css.length > 40000) return false;
+    temaCss = css; await aplicarTema(); return true;
   });
   ipcMain.handle('b7:wa:recarregar', () => { if (view) view.webContents.reload(); return true; });
   ipcMain.handle('b7:wa:config', () => ({ nome: cfg.nome, assinatura: cfg.assinatura, corrigir: cfg.corrigir }));

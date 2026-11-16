@@ -450,3 +450,37 @@ ipcRenderer.on('b7wa:fazer', async (ev, p) => {
   catch (e) { r = { ok: false, motivo: 'O WhatsApp mudou algo na tela e este passo falhou.' }; }
   ipcRenderer.send('b7wa:resposta', Object.assign({ id: p.id }, r));
 });
+
+/* 4.48.5: VISUAL B7 NA BARRA DE ÍCONES DO WHATSAPP. O WhatsApp não tem
+   nomes fixos nas classes; aqui achamos a coluna estreita da esquerda pelo
+   botão de Conversas e marcamos com data-b7-trilho (e o que pinta o fundo
+   dela com data-b7-limpo). O desenho (CSS) vem do programa/sistema. */
+function marcarTrilho() {
+  try {
+    if (document.hidden) return;
+    const atual = qs('[data-b7-trilho]');
+    if (atual && atual.isConnected && atual.getBoundingClientRect().width > 0) return;
+    const alvo = qsa('[data-navbar-item], [aria-label="Conversas"], [aria-label="Chats"], [data-icon^="chats-"], [data-icon^="chat-filled"], [data-icon="status-outline"], [data-icon^="status-refreshed"]')
+      .find(visivel);
+    if (!alvo) return;
+    let el = alvo, trilho = null;
+    while (el && el !== document.body) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.width < 110 && r.height > innerHeight * 0.75) trilho = el;
+      else if (trilho && r.width >= 110) break;
+      el = el.parentElement;
+    }
+    if (!trilho) return;
+    qsa('[data-b7-trilho]').forEach(x => x.removeAttribute('data-b7-trilho'));
+    qsa('[data-b7-limpo]').forEach(x => x.removeAttribute('data-b7-limpo'));
+    trilho.setAttribute('data-b7-trilho', '');
+    /* o que pinta o fundo da coluna (o próprio trilho e as caixas grandes dentro) */
+    [trilho].concat(qsa('*', trilho)).forEach(x => {
+      const b = getComputedStyle(x).backgroundColor;
+      if (x !== trilho && x.getBoundingClientRect().width < 40) return;
+      if (b && b !== 'rgba(0, 0, 0, 0)' && b !== 'transparent') x.setAttribute('data-b7-limpo', '');
+    });
+  } catch (e) {}
+}
+setInterval(marcarTrilho, 2000);
+document.addEventListener('DOMContentLoaded', () => setTimeout(marcarTrilho, 800));

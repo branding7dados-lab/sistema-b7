@@ -224,7 +224,7 @@ B7.WhatsApp = (function () {
     /* a área vai até o pé da janela */
     const caixa = document.getElementById('wa-corpo') || area;
     const topo = caixa.getBoundingClientRect().top;
-    const alt = Math.max(320, Math.round(innerHeight - topo - 14));
+    const alt = Math.max(320, Math.round(innerHeight - topo - 18));
     if (Math.abs(caixa.offsetHeight - alt) > 1) caixa.style.height = alt + 'px';
     const r = area.getBoundingClientRect();
     const fora = r.width < 60 || r.height < 60 || document.hidden;

@@ -2085,3 +2085,6 @@ a.sa-item:hover{background:var(--suave);}
 .rt-geral .rt-linha{padding-left:16px;}
 .nv-apagar{margin-left:auto;opacity:.55;}
 .nv-apagar:hover{opacity:1;}
+/* 4.48.5: a tela do WhatsApp não encosta mais na lateral — mesmo respiro das outras telas */
+.wa-tela{padding:14px 18px 0 20px;}
+@media (max-width:860px){ .wa-tela{padding:10px 12px 0;} }
