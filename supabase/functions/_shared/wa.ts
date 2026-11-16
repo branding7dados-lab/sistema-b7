@@ -140,6 +140,11 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
   if (r.efeito) { await aplicarEfeito(sb, raw?.key?.remoteJid, r.efeito); return null; }
   const l = Object.assign(r.linha!, extra);
   const jid = String(l.jid);
+  /* 4.53.1: sem pushName (código @lid) — usa o nome já conhecido do contato */
+  if (!l.de_mim && l.autor_jid && /^\+?\d+$/.test(String(l.autor_nome || ''))) {
+    const { data: ct } = await sb.from('wa_contatos').select('nome').eq('jid', String(l.autor_jid)).maybeSingle();
+    if (ct?.nome && !/^\+?\d+$/.test(ct.nome)) l.autor_nome = ct.nome;
+  }
   if (!l.de_mim && l.autor_jid && raw.pushName && raw.pushName !== 'Você') {
     await sb.from('wa_contatos').upsert({ jid: String(l.autor_jid), nome: String(raw.pushName), atualizado_em: new Date().toISOString() });
   }

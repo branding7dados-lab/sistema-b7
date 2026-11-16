@@ -67,8 +67,11 @@ B7.CentralWA = (function () {
   const tamanho = b => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
   const espera = iso => { if (!iso) return ''; const min = (Date.now() - new Date(iso)) / 60000; if (min < 30) return ''; return min < 60 ? Math.round(min) + ' min sem resposta' : min < 1440 ? Math.floor(min / 60) + ' h sem resposta' : Math.floor(min / 1440) + ' d sem resposta'; };
   const ticks = st => st === 'READ' || st === 'PLAYED' ? '<i class="wz-tk lido">✓✓</i>' : st === 'DELIVERY_ACK' ? '<i class="wz-tk">✓✓</i>' : st === 'PENDING' ? '<i class="wz-tk">🕓</i>' : st === 'ERROR' ? '<i class="wz-tk erro">!</i>' : '<i class="wz-tk">✓</i>';
+  /* 4.53.1: "@178859651645554" (menção por código do WhatsApp) → "@Nome" */
+  const nomeCodigo = d => { const n = S.contatos && (S.contatos.get(d + '@lid') || S.contatos.get(d + '@s.whatsapp.net')); return n && !/^\+?\d+$/.test(n) ? n : null; };
+  const semCodigos = t => String(t || '').replace(/@(\d{8,})/g, (x, d) => { const n = nomeCodigo(d); return n ? '@' + n : x; });
   function textoRico(t) {
-    let h = esc(t || '');
+    let h = esc(semCodigos(t));
     h = h.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
     h = h.replace(/(^|[\s>])\*([^*\n]+)\*(?=[\s<.,!?]|$)/g, '$1<b>$2</b>').replace(/(^|[\s>])_([^_\n]+)_(?=[\s<.,!?]|$)/g, '$1<i>$2</i>')
       .replace(/(^|[\s>])~([^~\n]+)~(?=[\s<.,!?]|$)/g, '$1<s>$2</s>');
@@ -95,9 +98,11 @@ B7.CentralWA = (function () {
     try { const r = await sb().rpc('pode_ver_wa'); pode = !!r.data; } catch (e) {}
     if (!pode) { raiz.innerHTML = '<div class="wz-vazio"><span class="wz-vazio-ic">' + I.wa + '</span><b>As conversas do WhatsApp são da equipe de vídeo</b><p>Peça acesso a um administrador.</p></div>'; return; }
     try { S.clientes = (await sb().from('clientes_resumo').select('id,nome,logo_url').is('deleted_at', null).order('nome')).data || []; } catch (e) {}
+    S.contatos = null;
     await carregarConversas();
     desenhar();
     ligarTempoReal();
+    atualizarContatosDeVezEmQuando();
     if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(sair);
     const alvo = (location.hash.split('?')[1] || '').match(/jid=([^&]+)/);
     if (alvo) abrirConversa(decodeURIComponent(alvo[1]));
@@ -108,7 +113,22 @@ B7.CentralWA = (function () {
     S.aberta = null; document.body.classList.remove('wz-tela-cheia');
   }
 
+  async function carregarContatos() {
+    try {
+      const { data } = await sb().from('wa_contatos').select('jid,nome').not('nome', 'is', null).limit(5000);
+      S.contatos = new Map((data || []).map(x => [x.jid, x.nome]));
+    } catch (e) { S.contatos = S.contatos || new Map(); }
+  }
+  /* admin: nomes e fotos dos contatos, no máximo a cada 12 h */
+  function atualizarContatosDeVezEmQuando() {
+    if (!souAdmin()) return;
+    let ult = 0; try { ult = Number(localStorage.getItem('b7.wz.contatos') || 0); } catch (e) {}
+    if (Date.now() - ult < 12 * 3600e3) return;
+    try { localStorage.setItem('b7.wz.contatos', String(Date.now())); } catch (e) {}
+    chamar('contatos').then(async () => { await Promise.all([carregarContatos(), carregarConversas()]); pintarLista(); }).catch(() => {});
+  }
   async function carregarConversas() {
+    if (!S.contatos) await carregarContatos();
     const { data } = await sb().from('wa_conversas').select('*').order('fixada', { ascending: false }).order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
     S.conversas = data || [];
     S.porJid = new Map(S.conversas.map(c => [c.jid, c]));
@@ -164,10 +184,11 @@ B7.CentralWA = (function () {
     }
     cx.innerHTML = vis.map(c => {
       const esp = espera(c.esperando_desde);
-      const autor = c.previa_de_mim ? 'Você: ' : (c.tipo === 'grupo' && c.previa_autor ? c.previa_autor.split(' ')[0] + ': ' : '');
+      const pa = c.previa_autor && /^\+?\d+$/.test(c.previa_autor) ? (nomeCodigo(c.previa_autor.replace('+', '')) || '') : c.previa_autor;
+      const autor = c.previa_de_mim ? 'Você: ' : (c.tipo === 'grupo' && pa ? pa.split(' ')[0] + ': ' : '');
       return '<button class="wz-it' + (S.aberta === c.jid ? ' on' : '') + (c.nao_lidas ? ' nl' : '') + '" data-jid="' + esc(c.jid) + '">' + avatar(c) +
         '<span class="wz-it-tx"><span class="wz-l1"><b>' + esc(c.nome || num(c.jid)) + '</b><time>' + esc(hora(c.ultima_em)) + '</time></span>' +
-        '<span class="wz-l2"><span>' + esc(autor + (c.previa || '')) + '</span>' +
+        '<span class="wz-l2"><span>' + esc(autor + semCodigos(c.previa)) + '</span>' +
           (esp ? '<em class="wz-esp">' + esc(esp) + '</em>' : '') + (c.nao_lidas ? '<i class="wz-n">' + c.nao_lidas + '</i>' : '') + (c.fixada ? '<i class="wz-pin">📌</i>' : '') + '</span></span></button>';
     }).join('');
   }

@@ -16,7 +16,7 @@ import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, 
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-const VERSAO = 'wa-evolution 9 (4.53.0)';
+const VERSAO = 'wa-evolution 10 (4.53.1)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -164,6 +164,36 @@ async function importar(pagina: number) {
   return { grupos: 0, conversas: ultima.size, mensagens: ids.size, proxima: temMais ? pagina + 1 : null, total, lidas: pagina * POR_PAGINA, msEvo, ms: Date.now() - t0 };
 }
 
+/* 4.53.1: nomes e fotos dos contatos (o admin chama sozinho ao abrir a Central, no máx. 2x por dia) */
+async function atualizarContatos() {
+  const sb = admin(); let n = 0, fotos = 0;
+  const ct = await evo('/chat/findContacts/' + I(), 'POST', {}, 45000);
+  const agora = new Date().toISOString();
+  const lista = (Array.isArray(ct.dados) ? ct.dados : []).filter((c: any) => c?.remoteJid && !/@g\.us$/.test(c.remoteJid))
+    .map((c: any) => {
+      const o: Linha = { jid: String(c.remoteJid), atualizado_em: agora };
+      if (c.pushName && c.pushName !== 'Você') o.nome = String(c.pushName);
+      if (/@s\.whatsapp\.net$/.test(c.remoteJid)) o.numero = String(c.remoteJid).split('@')[0];
+      if (c.profilePicUrl) o.foto_url = String(c.profilePicUrl);
+      return o;
+    });
+  /* só atualiza o que veio (upsert por grupos de colunas iguais) */
+  const grupos = new Map<string, Linha[]>();
+  for (const o of lista) { const k = Object.keys(o).sort().join(','); (grupos.get(k) || grupos.set(k, []).get(k)!).push(o); }
+  for (const g of grupos.values()) for (let i = 0; i < g.length; i += 500) { const { error } = await sb.from('wa_contatos').upsert(g.slice(i, i + 500)); if (!error) n += Math.min(500, g.length - i); }
+  /* conversas individuais ainda sem foto: pergunta ao WhatsApp (até 40 por vez) */
+  const { data: sem } = await sb.from('wa_conversas').select('jid').neq('tipo', 'grupo').is('foto_url', null).order('ultima_em', { ascending: false, nullsFirst: false }).limit(40);
+  for (const c of sem || []) {
+    try {
+      const r = await evo('/chat/fetchProfilePictureUrl/' + I(), 'POST', { number: c.jid }, 8000);
+      const url = r.dados?.profilePictureUrl;
+      if (r.ok && url) { await sb.from('wa_contatos').upsert({ jid: c.jid, foto_url: url, atualizado_em: agora }); fotos++; }
+    } catch (_e) { /* segue */ }
+  }
+  await sb.rpc('wa_nomes_aplicar');
+  return { ok: true, contatos: n, fotos };
+}
+
 async function msgDe(id: string) {
   const { data } = await admin().from('wa_mensagens').select('*').eq('id', id).maybeSingle();
   return data;
@@ -306,7 +336,7 @@ Deno.serve(comCors(async (req: Request) => {
   let c: Record<string, any> = {};
   try { c = await req.json(); } catch (_e) { /* vazio */ }
   const acao = String(c.acao || 'estado');
-  const soAdmin = ['estado', 'conectar', 'desconectar', 'importar'];
+  const soAdmin = ['estado', 'conectar', 'desconectar', 'importar', 'contatos'];
   if (soAdmin.includes(acao) ? !ehAdmin(p) : !(await podeVer(p))) return json({ erro: 'Sem permissão para o WhatsApp do B7.' }, 403);
   if (!BASE() || !CHAVE()) return json({ configurado: false, erro: 'O WhatsApp do B7 não está configurado.' });
 
@@ -320,6 +350,7 @@ Deno.serve(comCors(async (req: Request) => {
       }
       case 'desconectar': { const r = await evo('/instance/logout/' + I(), 'DELETE'); return json({ ok: r.ok }); }
       case 'importar': return json(await importar(Math.max(0, Number(c.pagina) || 0)));
+      case 'contatos': return json(await atualizarContatos());
       case 'enviar_texto': {
         const texto = String(c.texto || '').slice(0, 4000);
         if (!c.jid || !texto.trim()) return json({ erro: 'Escreva a mensagem.' });
