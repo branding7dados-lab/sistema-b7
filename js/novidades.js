@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.48.4', versao: '4.48.4', em: '2026-11-16T15:00:00-03:00', rota: 'video',
+    titulo: 'Trends da gravação viram demandas de edição',
+    itens: ['Em "Nova demanda de edição", ao escolher a gravação, as trends dela aparecem junto com os roteiros — é só marcar e gerar.',
+      'A demanda de uma trend já nasce com o link da referência e não é criada duas vezes para a mesma trend.'] },
   { id: 'v-4.48.3', versao: '4.48.3', em: '2026-11-16T14:00:00-03:00',
     titulo: 'Roteiro: diálogos, atalhos e direção inteira',
     itens: ['Diálogos ficam mais claros na folha: em linhas como "Cliente: Oi, bom dia!", o nome de quem fala aparece em destaque.',

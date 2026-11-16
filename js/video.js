@@ -1643,6 +1643,9 @@ B7.Video = (function () {
     let gravacoesCache = [];
     let roteirosDaGravacao = [];
     let roteiroSelecionados = new Set();
+    /* zzz339: trends (e avulsos/conteúdos) da gravação também viram demanda */
+    let itensDaGravacao = [];
+    let itemSelecionados = new Set();
     let prazoEditadoManualmente = false;
     let ajustandoPrazoProgramaticamente = false;
 
@@ -1657,7 +1660,7 @@ B7.Video = (function () {
         '</select>' +
         '<label class="rot">Gravação <em>opcional</em></label>' +
         '<select class="campo" id="vd-nd-gravacao"><option value="">Carregando…</option></select>' +
-        '<p class="fraca vd-nd-gravacao-dica">Escolher uma gravação traz os roteiros dela aqui — marque os que viram demanda. Não precisa estar marcada como gravada.</p>' +
+        '<p class="fraca vd-nd-gravacao-dica">Escolher uma gravação traz os roteiros e as trends dela aqui — marque os que viram demanda. Não precisa estar marcada como gravada.</p>' +
         '<div id="vd-nd-roteiros"></div>' +
         '<p class="vd-nd-aviso-lote" id="vd-nd-aviso-lote" hidden></p>' +
       '</div>' +
@@ -1716,12 +1719,23 @@ B7.Video = (function () {
     }
 
     function roteirosHTML() {
-      if (!roteirosDaGravacao.length) return '<p class="fraca">Esta gravação não tem roteiros cadastrados.</p>';
+      if (!roteirosDaGravacao.length && !itensDaGravacao.length) return '<p class="fraca">Esta gravação não tem roteiros nem trends cadastrados.</p>';
       const g = gravacoesCache.find(x => x.id === selGravacao.value);
       const avisoStatus = g && g.status && g.status !== 'Gravado'
         ? '<p class="vd-nd-status-grav">Gravação ainda <b>' + esc(g.status) + '</b> — tudo bem, a demanda pode nascer antes de marcar como gravada.</p>'
         : '';
-      return avisoStatus + '<label class="rot">Roteiros (marque os que viram demanda — nada é marcado automaticamente)</label>' +
+      const ROT_ITEM = { referencia: 'Trend', avulso: 'Avulso', conteudo: 'Conteúdo' };
+      const itensHTML = itensDaGravacao.length ? '<label class="rot">Trends e outros vídeos da gravação</label>' +
+        '<div class="vd-roteiros-lista">' + itensDaGravacao.map(it => {
+          const on = itemSelecionados.has(it.id);
+          return '<label class="vd-roteiro-item' + (on ? ' on' : '') + (it.ja_tem_demanda ? ' ja' : '') + '"><input type="checkbox" data-item="' + it.id + '"' +
+            (on ? ' checked' : '') + (it.ja_tem_demanda ? ' disabled' : '') + '>' +
+            '<span><b>' + esc(it.titulo || it.conteudo_titulo || ROT_ITEM[it.tipo] || 'Item') + '</b><small>' + esc(ROT_ITEM[it.tipo] || it.tipo) +
+              (it.url ? ' · ' + esc(String(it.url).replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)) : '') + '</small></span>' +
+            (it.ja_tem_demanda ? '<span class="vd-badge-ja">já virou demanda' + (it.codigo ? ' ' + esc(it.codigo) : '') + '</span>' : '') +
+          '</label>';
+        }).join('') + '</div>' : '';
+      return avisoStatus + (roteirosDaGravacao.length ? '<label class="rot">Roteiros (marque os que viram demanda — nada é marcado automaticamente)</label>' +
         '<div class="vd-roteiros-lista">' + roteirosDaGravacao.map(r => {
           const codigoExistente = r.ja_tem_demanda ? codigoDemandaExistente(r.id) : '';
           return '<label class="vd-roteiro-item' + (roteiroSelecionados.has(r.id) ? ' on' : '') + (r.ja_tem_demanda ? ' ja' : '') + '"><input type="checkbox" data-roteiro="' + r.id + '"' +
@@ -1729,11 +1743,11 @@ B7.Video = (function () {
             '<span><b>' + esc(r.titulo || '(sem título)') + '</b>' + (r.objetivo ? '<small>' + esc(r.objetivo) + '</small>' : '') + '</span>' +
             (r.ja_tem_demanda ? '<span class="vd-badge-ja">já virou demanda' + (codigoExistente ? ' ' + esc(codigoExistente) : '') + '</span>' : '') +
           '</label>';
-        }).join('') + '</div>';
+        }).join('') + '</div>' : '') + itensHTML;
     }
 
     function atualizarModoLote() {
-      const n = roteiroSelecionados.size;
+      const n = roteiroSelecionados.size + itemSelecionados.size;
       const num3 = m.querySelector('#vd-nd-num3');
       if (num3) num3.textContent = n > 0 ? '2' : '3';
       if (n > 0) {
@@ -1741,7 +1755,7 @@ B7.Video = (function () {
         cxPrioridade.hidden = true;
         cxAvisoPrioridade.hidden = false;
         cxAvisoLote.hidden = false;
-        cxAvisoLote.textContent = n + ' roteiro' + (n === 1 ? '' : 's') + ' selecionado' + (n === 1 ? '' : 's') +
+        cxAvisoLote.textContent = n + ' vídeo' + (n === 1 ? '' : 's') + ' selecionado' + (n === 1 ? '' : 's') +
           ' — ser' + (n === 1 ? 'á criada 1 demanda' : 'ão criadas ' + n + ' demandas') + '.';
         btnSalvar.textContent = n === 1 ? 'Gerar 1 demanda' : 'Gerar ' + n + ' demandas';
       } else {
@@ -1758,6 +1772,8 @@ B7.Video = (function () {
       cxRoteiros.innerHTML = '';
       roteiroSelecionados = new Set();
       roteirosDaGravacao = [];
+      itemSelecionados = new Set();
+      itensDaGravacao = [];
       atualizarModoLote();
       if (!clienteId) { selGravacao.innerHTML = '<option value="">Sem vínculo</option>'; return; }
       try {
@@ -1775,6 +1791,8 @@ B7.Video = (function () {
       const gravacaoId = selGravacao.value;
       roteiroSelecionados = new Set();
       roteirosDaGravacao = [];
+      itemSelecionados = new Set();
+      itensDaGravacao = [];
       cxRoteiros.innerHTML = '';
       atualizarModoLote();
       if (!gravacaoId) return;
@@ -1787,14 +1805,26 @@ B7.Video = (function () {
          apenas um aviso informativo dentro da lista. */
       cxRoteiros.innerHTML = '<p class="fraca">Carregando roteiros…</p>';
       try {
-        const [roteiros, existentes] = await Promise.all([
+        const [roteiros, existentes, itens, doBanco] = await Promise.all([
           B7.DB.roteirosParaAutomacaoVideo(gravacaoId),
-          Promise.resolve(demandas.filter(d => d.gravacao_id === gravacaoId && d.editing_status !== 'descartado'))
+          Promise.resolve(demandas.filter(d => d.gravacao_id === gravacaoId && d.editing_status !== 'descartado')),
+          B7.DB.gravacaoItens(gravacaoId).catch(() => []),
+          B7.DB.demandasDaGravacaoVideo(gravacaoId).catch(() => [])
         ]);
         const comRoteiro = new Set(existentes.filter(d => d.roteiro_id).map(d => d.roteiro_id));
         roteirosDaGravacao = (roteiros || []).map(r => ({ ...r, ja_tem_demanda: comRoteiro.has(r.id) }));
+        const porItem = new Map((doBanco || []).filter(d => d.gravacao_item_id).map(d => [d.gravacao_item_id, d]));
+        itensDaGravacao = (itens || []).filter(it => it.tipo && it.tipo !== 'roteiro' && !it.removido_em)
+          .map(it => ({ ...it, ja_tem_demanda: porItem.has(it.id), codigo: (porItem.get(it.id) || {}).codigo || '' }));
         if (selGravacao.value !== gravacaoId) return; // usuário já trocou de novo
         cxRoteiros.innerHTML = roteirosHTML();
+        cxRoteiros.querySelectorAll('[data-item]').forEach(chk => {
+          chk.onchange = () => {
+            if (chk.checked) itemSelecionados.add(chk.dataset.item); else itemSelecionados.delete(chk.dataset.item);
+            chk.closest('.vd-roteiro-item').classList.toggle('on', chk.checked);
+            atualizarModoLote();
+          };
+        });
         cxRoteiros.querySelectorAll('[data-roteiro]').forEach(chk => {
           chk.onchange = () => {
             if (chk.checked) roteiroSelecionados.add(chk.dataset.roteiro); else roteiroSelecionados.delete(chk.dataset.roteiro);
@@ -1809,22 +1839,20 @@ B7.Video = (function () {
       const gravacaoId = selGravacao.value || null;
 
       /* -------- Modo lote: N roteiros marcados = N demandas -------- */
-      if (roteiroSelecionados.size > 0) {
-        const n = roteiroSelecionados.size;
+      if (roteiroSelecionados.size + itemSelecionados.size > 0) {
+        const n = roteiroSelecionados.size + itemSelecionados.size;
         const ok = await B7.UI.confirmar({
-          titulo: n === 1 ? '1 roteiro selecionado' : n + ' roteiros selecionados',
+          titulo: n === 1 ? '1 vídeo selecionado' : n + ' vídeos selecionados',
           texto: (n === 1 ? 'Será criada 1 demanda de edição.' : 'Serão criadas ' + n + ' demandas de edição.') +
-            ' Cada uma nasce com o título do roteiro correspondente.',
+            ' Cada uma nasce com o título do roteiro ou da trend correspondente.',
           confirmar: n === 1 ? 'Gerar 1 demanda' : 'Gerar ' + n + ' demandas'
         });
         if (!ok) return;
         btnSalvar.disabled = true; btnSalvar.textContent = 'Gerando…';
         try {
-          const resultado = await B7.DB.gerarDemandasDeGravacaoVideo(
-            gravacaoId, [...roteiroSelecionados],
-            m.querySelector('#vd-nd-videomaker').value || null,
-            campoPrazo.value || null
-          );
+          const vm = m.querySelector('#vd-nd-videomaker').value || null, prz = campoPrazo.value || null;
+          const resultado = (roteiroSelecionados.size ? await B7.DB.gerarDemandasDeGravacaoVideo(gravacaoId, [...roteiroSelecionados], vm, prz) || [] : [])
+            .concat(itemSelecionados.size ? await B7.DB.gerarDemandasDeItensVideo(gravacaoId, [...itemSelecionados], vm, prz) || [] : []);
           const novas = (resultado || []).filter(r => !r.ja_existia);
           const existiam = (resultado || []).filter(r => r.ja_existia);
           const codigosNovos = novas.map(r => r.codigo).filter(Boolean);
