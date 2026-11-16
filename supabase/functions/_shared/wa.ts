@@ -149,11 +149,13 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
     await sb.from('wa_contatos').upsert({ jid: String(l.autor_jid), nome: String(raw.pushName), atualizado_em: new Date().toISOString() });
   }
   await garantirConversa(sb, jid, l.de_mim ? null : (ehGrupo(jid) ? null : String(raw.pushName || '')));
-  const { data: ja } = await sb.from('wa_mensagens').select('id, enviada_por, midia_path').eq('id', l.id).maybeSingle();
+  const { data: ja } = await sb.from('wa_mensagens').select('id, enviada_por, midia_path, status').eq('id', l.id).maybeSingle();
   if (ja) {
     /* já existe (ex.: o B7 gravou ao enviar e o eco chegou): só completa o que faltar */
     const patch: Linha = {};
-    for (const k of ['status', 'miniatura', 'midia_mime', 'midia_tamanho', 'duracao', 'midia_nome']) if (l[k] != null) patch[k] = l[k];
+    for (const k of ['miniatura', 'midia_mime', 'midia_tamanho', 'duracao', 'midia_nome']) if (l[k] != null) patch[k] = l[k];
+    /* 4.53.2: o status só sobe (✓ → ✓✓ → lida); o eco "PENDING" não volta o relógio */
+    if (l.status != null && STATUS_ORDEM.indexOf(String(l.status)) > STATUS_ORDEM.indexOf(String(ja.status || ''))) patch.status = l.status;
     if (Object.keys(patch).length) await sb.from('wa_mensagens').update(patch).eq('id', l.id);
     return null;
   }

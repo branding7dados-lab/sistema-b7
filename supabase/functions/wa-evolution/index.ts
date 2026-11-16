@@ -16,7 +16,7 @@ import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, 
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-const VERSAO = 'wa-evolution 10 (4.53.1)';
+const VERSAO = 'wa-evolution 11 (4.53.2)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -209,7 +209,10 @@ async function registrarEnvio(dados: any, p: Perfil, extra: Record<string, unkno
   const sb = admin();
   if (!dados?.key?.id) return null;
   await gravar(sb, dados, { enviada_por: p.id, enviada_por_nome: p.nome, ...extra });
+  /* 4.53.2: o Evolution aceitou → já saiu (✓). O Evolution com MySQL não avisa os ✓✓ depois. */
   await sb.from('wa_mensagens').update({ enviada_por: p.id, enviada_por_nome: p.nome, ...extra }).eq('id', dados.key.id);
+  await sb.from('wa_mensagens').update({ status: 'SERVER_ACK' }).eq('id', dados.key.id).in('status', ['PENDING', 'ERROR']);
+  await sb.from('wa_mensagens').update({ status: 'SERVER_ACK' }).eq('id', dados.key.id).is('status', null);
   return dados.key.id;
 }
 async function urlAssinada(path: string, s = 900, bucket = 'wa-midia') {
