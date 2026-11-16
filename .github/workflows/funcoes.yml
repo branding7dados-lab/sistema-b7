@@ -55,6 +55,15 @@ jobs:
             echo "tentativa $t falhou; esperando"; sleep $((t * 20))
           done
           exit 1
+      # 4.51.0: o webhook do Evolution (mensagens chegando no B7).
+      - name: Publicar wa-entrada
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN não configurado — nada publicado"; exit 0; fi
+          for t in 1 2 3; do
+            { supabase functions deploy wa-entrada --project-ref "$PROJETO" --no-verify-jwt --use-api || supabase functions deploy wa-entrada --project-ref "$PROJETO" --no-verify-jwt; } && exit 0
+            echo "tentativa $t falhou; esperando"; sleep $((t * 20))
+          done
+          exit 1
       # 4.50.0: a ponte com o Evolution API (WhatsApp, piloto).
       - name: Publicar wa-evolution
         run: |
