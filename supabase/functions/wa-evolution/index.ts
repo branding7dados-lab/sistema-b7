@@ -13,10 +13,11 @@
 // =====================================================================
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
+import { responderDuvida } from '../_shared/assistente.ts';
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-const VERSAO = 'wa-evolution 13 (4.53.4)';
+const VERSAO = 'wa-evolution 14 (4.54.0)';
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const I = () => encodeURIComponent(INST());
 
@@ -384,6 +385,12 @@ Deno.serve(comCors(async (req: Request) => {
       case 'desconectar': { const r = await evo('/instance/logout/' + I(), 'DELETE'); return json({ ok: r.ok }); }
       case 'importar': return json(await importar(Math.max(0, Number(c.pagina) || 0)));
       case 'contatos': return json(await atualizarContatos());
+      /* 4.54.0: responder pela Central uma dúvida que o Assistente levou à equipe */
+      case 'responder_duvida': {
+        const t = String(c.resposta || '').trim().slice(0, 1500);
+        if (!c.id || !t) return json({ erro: 'Escreva a resposta.' });
+        return json(await responderDuvida(admin(), null, t, '', p.nome, null, String(c.id)));
+      }
       case 'enviar_texto': {
         const texto = String(c.texto || '').slice(0, 4000);
         if (!c.jid || !texto.trim()) return json({ erro: 'Escreva a mensagem.' });

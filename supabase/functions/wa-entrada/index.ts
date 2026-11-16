@@ -9,11 +9,13 @@
 // =====================================================================
 import { admin, gravar, garantirConversa, tokenWebhook, STATUS_ORDEM } from '../_shared/wa.ts';
 import { iguais } from '../_shared/cors.ts';
+import { aoReceber } from '../_shared/assistente.ts';
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
 const ok = (d: unknown = { ok: true }) => new Response(JSON.stringify(d), { headers: { 'Content-Type': 'application/json' } });
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'GET') return ok({ ok: true, versao: 'wa-entrada 1 (4.51.0)' });
+  if (req.method === 'GET') return ok({ ok: true, versao: 'wa-entrada 2 (4.54.0)' });
   if (req.method !== 'POST') return new Response('Use POST', { status: 405 });
   const tk = req.headers.get('x-b7-token') || new URL(req.url).searchParams.get('t') || '';
   if (!tk || !iguais(tk, await tokenWebhook())) return new Response('Sem permissão', { status: 401 });
@@ -28,6 +30,11 @@ Deno.serve(async (req: Request) => {
     if (evento === 'messages.upsert' || evento === 'send.message') {
       const lista = Array.isArray(dados) ? dados : [dados];
       for (const m of lista) await gravar(sb, m);
+      /* 4.54.0: o Assistente B7 avalia a mensagem em segundo plano (o webhook responde já) */
+      if (evento === 'messages.upsert') {
+        const job = (async () => { for (const m of lista) { try { await aoReceber(sb, m); } catch (e) { console.error('assistente', (e as Error)?.message); } } })();
+        try { EdgeRuntime?.waitUntil(job); } catch (_e) { /* segue */ }
+      }
     } else if (evento === 'messages.set') {
       /* histórico em lote: guarda só as mais recentes de cada conversa */
       const lista = (Array.isArray(dados) ? dados : dados?.messages || []).slice(-800);
