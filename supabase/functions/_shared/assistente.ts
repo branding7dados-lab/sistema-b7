@@ -26,6 +26,7 @@ import { carregarContexto } from './ia/whatsapp.ts';
 import { fichaRoteiros, type Logo } from './ficha.ts';
 import { fichaLinha } from './ficha-linha.ts';
 import { gerarImagem, formatoDoTexto, type Ref } from './imagem.ts';
+import { cuidarDasDemandas, perfilDe, FALA_DE_DEMANDA } from './otto-demandas.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 type Pessoa = { nome?: string; numero?: string; assuntos?: string; duvidas?: boolean };
@@ -387,6 +388,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   if (modo === 'ordem') {
     const { data: cl } = await sb.from('clientes').select('id, nome').eq('id', conv.cliente_id).maybeSingle();
     if (await talvezImagem(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid)) return;
+    if (await talvezDemandas(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid, cl)) return;
     if (await talvezDocumento(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid, cl)) return;
   }
   if (modo !== 'sem_marcacao' && await talvezRecado(sb, cfg, raw, texto, jid, { quem: autor, onde: 'grupo ' + (conv.nome || ''), cliente: !daCasa })) return;
@@ -677,6 +679,45 @@ async function talvezImagem(sb: SupabaseClient, cfg: Config, raw: any, pedido: s
   return true;
 }
 
+/* ------------------------------------------------------------ 4.59.0: demandas de edição */
+/** quem da equipe mandou esta mensagem (null = não é da equipe) */
+async function quemPediu(sb: SupabaseClient, cfg: Config, raw: any): Promise<{ nome: string | null; perfilId: string | null } | null> {
+  const key = raw?.key || {};
+  if (key.fromMe) return { nome: null, perfilId: (cfg as any).dono_perfil_id || null };
+  const alt = [key.participantAlt, key.participantPn, key.senderPn, key.remoteJidAlt].find((x: any) => typeof x === 'string' && /@s\.whatsapp\.net$/.test(x));
+  let fone = dig(alt || (/@s\.whatsapp\.net$/.test(String(key.participant || key.remoteJid || '')) ? (key.participant || key.remoteJid) : ''));
+  if (!fone) {
+    const j = String(key.participant || key.remoteJid || '');
+    if (/@lid$/.test(j)) { const { data: ct } = await sb.from('wa_contatos').select('numero').eq('jid', j).maybeSingle(); fone = dig(ct?.numero); }
+  }
+  const p = fone ? daEquipe(cfg, fone) : null;
+  return p ? { nome: p.nome || null, perfilId: (p as any).perfil_id || null } : null;
+}
+/** "Otto, cria/gera/exclui/passa demanda..." ou "quais demandas...". Responde e devolve true; senão false. */
+async function talvezDemandas(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, destino: string, clientePadrao?: { id: string; nome: string } | null): Promise<boolean> {
+  const n = semAcento(pedido);
+  if (!FALA_DE_DEMANDA.test(n)) return false;
+  const quem = await quemPediu(sb, cfg, raw);
+  if (!quem) return false;
+  const citar = raw?.key?.id ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
+  const perfil = await perfilDe(sb, quem.nome, quem.perfilId);
+  if (!perfil) {
+    await enviar(sb, cfg, destino, 'Não achei seu usuário no B7 para mexer nas demandas. Na tela do Otto, em Equipe, liga seu número ao seu usuário.', citar ? { quoted: citar } : {});
+    return true;
+  }
+  await digitando(destino, cfg);
+  const cls = await clientesCitados(sb, pedido);
+  const foco = cls.length ? cls.map(c => c.id) : clientePadrao ? [clientePadrao.id] : [];
+  const t0 = Date.now();
+  let resp = '';
+  try { resp = await cuidarDasDemandas(sb, { pedido: pedido.replace(/@\d{6,}/g, '').trim(), perfil, focoIds: foco, clientePadrao: clientePadrao?.nome || null }); }
+  catch (e) { console.log('demandas', String(e).slice(0, 300)); resp = 'Deu um erro mexendo nas demandas. Tenta de novo?'; }
+  if (!resp) return false;
+  await enviar(sb, cfg, destino, resp, citar ? { quoted: citar } : {});
+  await registrar(sb, { tipo: 'demanda', jid: destino, autor: perfil.nome, pergunta: pedido.slice(0, 800), resposta: resp.slice(0, 1500), ms: Date.now() - t0 });
+  return true;
+}
+
 /** Pedido de documento? Responde e devolve true; senão false (segue a conversa normal). */
 async function talvezDocumento(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, destino: string, clientePadrao?: { id: string; nome: string } | null): Promise<boolean> {
   const n = semAcento(pedido);
@@ -822,6 +863,7 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
   const key = raw?.key || {};
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
   if (await talvezImagem(sb, cfg, raw, pedido, destino)) return;
+  if (await talvezDemandas(sb, cfg, raw, pedido, destino)) return;
   if (await talvezDocumento(sb, cfg, raw, pedido, destino)) return;
   if (await talvezRecado(sb, cfg, raw, pedido, destino, { quem: String(raw?.pushName || (key.fromMe ? 'Você' : 'alguém da equipe')), onde: destino === cfg.grupo_equipe ? 'grupo da equipe' : 'privado' })) return;
   if (/pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta|esperando resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true, destino); return; }
