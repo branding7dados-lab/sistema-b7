@@ -100,6 +100,8 @@ export async function printDaConversa(titulo: string, subtitulo: string, msgs: M
     const mim = !!m.de_mim;
     const autor = mim ? (m.do_assistente ? 'Otto' : semEmoji(m.enviada_por_nome || 'Branding7').trim()) : semEmoji(m.autor_nome || 'Cliente').trim();
     const { rotulo, texto } = corpoDe(m);
+    /* mensagem sem nada para mostrar (reação, aviso do sistema, enquete apagada...): fica de fora */
+    if (!rotulo && !texto.trim() && !((m.tipo === 'imagem' || m.tipo === 'video') && m.miniatura)) continue;
     const linhas = texto ? quebrar(texto.slice(0, 700), BMAX - 20) : [];
     /* mensagens seguidas da mesma pessoa (até 5 min): sem repetir nome e bolinha */
     const chave = (mim ? 'eu:' : 'ele:') + autor, em = new Date(m.criada_em).getTime();

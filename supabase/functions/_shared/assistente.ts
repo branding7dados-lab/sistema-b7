@@ -906,12 +906,26 @@ async function talvezDemandas(sb: SupabaseClient, cfg: Config, raw: any, pedido:
 /* ------------------------------------------------------------ 4.59.9: print da conversa de um cliente */
 const PEDE_PRINT = /\b(print|printa|printar|printe|captura|screenshot|foto da conversa|mostra(r)? a conversa|manda(r)? a conversa)\b/;
 const VAZIAS = new Set(['otto', 'print', 'printa', 'manda', 'mande', 'envia', 'envie', 'conversa', 'grupo', 'cliente', 'pedindo', 'mostra', 'aqui', 'esse', 'essa', 'dessa', 'desse', 'como', 'quero', 'favor', 'suporte', 'nucleo7', 'nucleo', 'start']);
-async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, destino: string): Promise<boolean> {
+/** "manda lá no grupo da equipe" → o grupo da equipe; senão, a própria conversa */
+function destinoDoPedido(cfg: Config, n: string, aqui: string): string {
+  if (cfg.grupo_equipe && /\b(no|pro|para o|pra|ao|la no|la pro)\s+grupo\s+(da|de)\s+equipe\b|\bgrupo interno\b|\bno social interno\b/.test(n)) return cfg.grupo_equipe;
+  return aqui;
+}
+async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, aqui: string): Promise<boolean> {
   const n = semAcento(pedido);
-  if (!PEDE_PRINT.test(n)) return false;
-  const citar = raw?.key?.id ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
+  /* 4.59.15: "é pra mandar no grupo da equipe!" logo depois de um print = refazer lá */
+  let anterior: any = null;
+  if (!PEDE_PRINT.test(n)) {
+    if (!(cfg.grupo_equipe && destinoDoPedido(cfg, n, aqui) === cfg.grupo_equipe && aqui !== cfg.grupo_equipe)) return false;
+    const { data: ult } = await sb.from('wa_assistente_registro').select('pergunta, em').eq('tipo', 'print').eq('jid', aqui).gte('em', new Date(Date.now() - 15 * 60_000).toISOString()).order('em', { ascending: false }).limit(1).maybeSingle();
+    if (!ult) return false;
+    anterior = ult;
+  }
+  const destino = destinoDoPedido(cfg, n, aqui);
+  const citar = raw?.key?.id && destino === aqui ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
+  const citarAqui = raw?.key?.id ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
   let conv: any = null;
-  const cls = await clientesCitados(sb, pedido);
+  const cls = await clientesCitados(sb, anterior ? String(anterior.pergunta || '') + ' ' + pedido : pedido);
   if (cls.length) {
     const { data } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').in('cliente_id', cls.map(c => c.id))
       .order('ultima_em', { ascending: false, nullsFirst: false }).limit(5);
@@ -930,12 +944,19 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
       }
     }
   }
-  if (!conv) { await enviar(sb, cfg, destino, 'De qual cliente ou conversa? Me fala o nome que eu mando o print.', citar ? { quoted: citar } : {}); return true; }
+  if (!conv) { await enviar(sb, cfg, aqui, 'De qual cliente ou conversa? Me fala o nome que eu mando o print.', citarAqui ? { quoted: citarAqui } : {}); return true; }
   await digitando(destino, cfg);
   const { data: ms } = await sb.from('wa_mensagens').select('de_mim, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em, duracao, midia_nome, miniatura, citada_previa, citada_autor, do_assistente')
     .eq('jid', conv.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(40);
   let lista = ((ms || []) as any[]).reverse();
-  if (!lista.length) { await enviar(sb, cfg, destino, 'A conversa ' + (conv.nome || '') + ' ainda não tem mensagens no B7.', citar ? { quoted: citar } : {}); return true; }
+  if (!lista.length) { await enviar(sb, cfg, aqui, 'A conversa ' + (conv.nome || '') + ' ainda não tem mensagens no B7.', citarAqui ? { quoted: citarAqui } : {}); return true; }
+  /* "@164871597473906" (código do WhatsApp) vira "@Nome" no print */
+  const cods = [...new Set(lista.flatMap(m => [...String(m.texto || '').matchAll(/@(\d{10,})/g)].map(x => x[1])))];
+  if (cods.length) {
+    const { data: cts } = await sb.from('wa_contatos').select('jid, nome, numero').or('jid.in.(' + cods.flatMap(d => [d + '@lid', d + '@s.whatsapp.net']).join(',') + '),numero.in.(' + cods.join(',') + ')');
+    const nomeDe = (d: string) => { const c = ((cts || []) as any[]).find(x => dig(x.jid) === d || dig(x.numero) === d); return c?.nome && !/^\+?\d+$/.test(c.nome) ? String(c.nome).split(/\s+/)[0] : ''; };
+    for (const m of lista) if (m.texto) m.texto = String(m.texto).replace(/@(\d{10,})/g, (_x: string, d: string) => { const nm = nomeDe(d); return nm ? '@' + nm : ''; });
+  }
   /* o trecho que importa: desde o que o cliente está esperando (com um pouco antes), ou as últimas */
   if (conv.esperando_desde) {
     const i = lista.findIndex(m => m.criada_em >= conv.esperando_desde);
@@ -957,7 +978,7 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
   }
   let png: Uint8Array;
   try { png = await printDaConversa(conv.nome || 'Conversa', 'Print do B7 · ' + quando, lista, conv.tipo === 'grupo' || /@g\.us$/.test(conv.jid), fotoTitulo); }
-  catch (e) { console.log('print', String(e).slice(0, 300)); await enviar(sb, cfg, destino, 'Não consegui montar o print agora. Tenta de novo?', citar ? { quoted: citar } : {}); return true; }
+  catch (e) { console.log('print', String(e).slice(0, 300)); await enviar(sb, cfg, aqui, 'Não consegui montar o print agora. Tenta de novo?', citarAqui ? { quoted: citarAqui } : {}); return true; }
   const conversa = lista.map(m => (m.de_mim ? '[EQUIPE] ' + (m.do_assistente ? cfg.nome : m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'Cliente')) + ': ' + (m.texto ? String(m.texto).slice(0, 400) : '(' + m.tipo + ')')).join('\n');
   const r = await ia('Você é ' + cfg.nome + ', da equipe da Branding7. Abaixo está a conversa de um CLIENTE com a agência no WhatsApp. ' +
     'Em 1 ou 2 frases curtas, conte para a equipe o que o CLIENTE está pedindo, perguntando ou esperando nessa conversa e se já responderam ou ainda falta responder. ' +
@@ -972,7 +993,12 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
     try { await gravar(sb, env.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ }
     if (env.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', env.dados.key.id);
   } else console.log('print envio', env.status, JSON.stringify(env.dados).slice(0, 200));
-  await registrar(sb, { tipo: env.ok ? 'print' : 'erro', jid: destino, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: 'print: ' + (conv.nome || '') + (r.texto ? ' · ' + r.texto.slice(0, 600) : ''), ...usoDe(r) });
+  /* mandou em outro lugar: avisa aqui */
+  if (destino !== aqui) {
+    if (env.ok && raw?.key?.id && /@g\.us$/.test(aqui)) await reagirNaMensagem(sb, String(raw.key.id), '👍', aqui, pedido);
+    else await enviar(sb, cfg, aqui, env.ok ? 'Mandei o print da ' + (conv.nome || 'conversa') + ' no grupo da equipe 👍' : 'Não consegui mandar no grupo da equipe agora.', citarAqui ? { quoted: citarAqui } : {});
+  }
+  await registrar(sb, { tipo: env.ok ? 'print' : 'erro', jid: aqui, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: 'print: ' + (conv.nome || '') + (r.texto ? ' · ' + r.texto.slice(0, 600) : ''), ...usoDe(r) });
   return true;
 }
 
