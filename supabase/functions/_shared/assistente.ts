@@ -132,66 +132,110 @@ async function semCodigos(sb: SupabaseClient, texto: string, marcados: string[])
 /* 4.58.1: mais de uma mensagem seguida — a IA separa com uma linha [[NOVA]] (até 3). A primeira leva a
    assinatura, a citação e as marcações; as outras saem em seguida, com "digitando…" proporcional ao texto. */
 const SEP = /\n?\s*\[\[\s*NOVA\s*\]\]\s*\n?/i;
-/* 4.59.6: marcação de verdade. "{{marcar:Yury}}", "@Yury" ou "@Yury Nóbrega" de alguém da equipe
-   (com número na tela do Otto) vira "@5577…" + a lista "mentioned" — é assim que o WhatsApp marca. */
-export function comMarcacoes(cfg: Config, texto: string): { texto: string; nums: string[] } {
-  const nums: string[] = [];
-  const equipe = (cfg.equipe || []).filter(p => p.nome && dig(p.numero).length >= 10);
+/* 4.59.8: marcação de verdade, com quem está no GRUPO (não só a equipe da tela).
+   "@Nome", "@Nome Sobrenome" ou "{{marcar:Nome}}" vira "@<id da pessoa>" + "mentioned";
+   "@todos" / "@all" / "@geral" / "@everyone" marca o grupo inteiro. */
+type Marcavel = { nome: string; token: string; mencao: string; fone: string };
+/** número com DDI do Brasil quando veio só com DDD (ex.: 71982136074 → 5571982136074) */
+function foneBR(n: unknown): string { const d = dig(n); return d.length === 10 || d.length === 11 ? '55' + d : d; }
+const cacheGrupo = new Map<string, { em: number; lista: Marcavel[] }>();
+/** participantes do grupo com nome (contatos do B7 + equipe da tela) */
+export async function participantesDoGrupo(sb: SupabaseClient, cfg: Config, jid: string): Promise<Marcavel[]> {
+  if (!/@g\.us$/.test(jid)) return [];
+  const c = cacheGrupo.get(jid);
+  if (c && Date.now() - c.em < 5 * 60_000) return c.lista;
+  const lista: Marcavel[] = [];
+  try {
+    const r = await evo('/group/participants/' + I() + '?groupJid=' + encodeURIComponent(jid), 'GET', undefined, 12000);
+    const ps = (r.dados?.participants || []) as any[];
+    const ids = ps.map(x => String(x?.id || '')).filter(Boolean);
+    const fones = ps.map(x => dig(x?.phoneNumber || '')).filter(Boolean);
+    const [{ data: porId }, { data: porFone }] = await Promise.all([
+      ids.length ? sb.from('wa_contatos').select('jid, nome, numero').in('jid', ids) : Promise.resolve({ data: [] as any[] }),
+      fones.length ? sb.from('wa_contatos').select('jid, nome, numero').in('numero', fones) : Promise.resolve({ data: [] as any[] })
+    ]);
+    const meu = await meuNumero();
+    for (const x of ps) {
+      const id = String(x?.id || ''); if (!id) continue;
+      const fone = dig(x?.phoneNumber || (/@s\.whatsapp\.net$/.test(id) ? id : ''));
+      if (fone && meu && fim8(fone) === fim8(meu)) continue;   /* o próprio número do B7 */
+      const eq = (cfg.equipe || []).find(e => fone && fim8(e.numero) === fim8(fone));
+      const ct = ((porId || []) as any[]).find(k => k.jid === id) || ((porFone || []) as any[]).find(k => fone && dig(k.numero) === fone);
+      const bom = (v: unknown) => typeof v === 'string' && v.trim() && !/^\+?\d+$/.test(v.trim()) ? v.trim() : '';
+      const nome = bom(eq?.nome) || bom(ct?.nome) || '';
+      lista.push({ nome, token: id.split('@')[0], mencao: id, fone });
+    }
+  } catch (_e) { /* sem a lista */ }
+  cacheGrupo.set(jid, { em: Date.now(), lista });
+  return lista;
+}
+export function comMarcacoes(cfg: Config, texto: string, grupo: Marcavel[] = []): { texto: string; mencoes: string[]; todos: boolean } {
+  const mencoes: string[] = [];
+  /* quem dá para marcar: as pessoas do grupo; fora de grupo, a equipe da tela (pelo número) */
+  const pessoas: Marcavel[] = grupo.filter(p => p.nome).slice();
+  for (const e of cfg.equipe || []) {
+    if (!e.nome || dig(e.numero).length < 10) continue;
+    if (pessoas.some(p => p.fone && fim8(p.fone) === fim8(e.numero))) continue;
+    if (grupo.length) continue;   /* num grupo, só quem está nele */
+    const d = foneBR(e.numero); pessoas.push({ nome: e.nome, token: d, mencao: d, fone: d });
+  }
+  const pri = (n: string) => semAcento(n).split(/\s+/)[0];
   const achar = (nome: string) => {
-    const n = semAcento(nome).trim();
-    return equipe.find(p => semAcento(p.nome!) === n) || equipe.filter(p => semAcento(p.nome!).split(/\s+/)[0] === n.split(/\s+/)[0]).find((_p, _i, l) => l.length === 1) || null;
+    const n = semAcento(nome).replace(/^@/, '').trim();
+    return pessoas.find(p => semAcento(p.nome) === n) || (pessoas.filter(p => pri(p.nome) === pri(n)).length === 1 ? pessoas.find(p => pri(p.nome) === pri(n)) : null) || null;
   };
-  const marca = (p: Pessoa) => { const d = foneBR(p.numero); if (!nums.includes(d)) nums.push(d); return '@' + d; };
-  let t = String(texto || '').replace(/\{\{\s*marcar\s*:\s*([^}]+)\}\}/gi, (_m, n: string) => { const p = achar(n); return p ? marca(p) : n.trim(); });
-  /* "@Nome Sobrenome" primeiro (nome completo), depois "@Nome" */
-  for (const p of [...equipe].sort((a, b) => b.nome!.length - a.nome!.length)) {
-    for (const forma of [p.nome!, p.nome!.split(/\s+/)[0]]) {
+  const marca = (p: Marcavel) => { if (!mencoes.includes(p.mencao)) mencoes.push(p.mencao); return '@' + p.token; };
+  let todos = false;
+  let t = String(texto || '').replace(/\{\{\s*marcar\s*:\s*([^}]+)\}\}/gi, (_m, n: string) => {
+    if (/^(todos|todo mundo|all|geral|everyone|grupo)$/i.test(n.trim())) { todos = true; return '@todos'; }
+    const p = achar(n); return p ? marca(p) : n.trim();
+  });
+  /* @todos / @all / @geral / @everyone */
+  t = t.replace(/(?<![\p{L}\d._-])@(todos|todas|todo mundo|all|geral|everyone|galera|pessoal)(?![\p{L}\d])/giu, () => { todos = true; return '@todos'; });
+  /* "@Nome Sobrenome" primeiro (nome completo), depois "@Nome" (só se o primeiro nome for único) */
+  for (const p of [...pessoas].sort((a, b) => b.nome.length - a.nome.length)) {
+    const formas = [p.nome];
+    if (pessoas.filter(x => pri(x.nome) === pri(p.nome)).length === 1) formas.push(p.nome.split(/\s+/)[0]);
+    for (const forma of formas) {
       const re = new RegExp('(?<![\\p{L}\\d._-])@' + forma.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\d])', 'giu');
-      if (forma === p.nome!.split(/\s+/)[0] && equipe.filter(x => semAcento(x.nome!).split(/\s+/)[0] === semAcento(forma)).length > 1) continue;
       t = t.replace(re, () => marca(p));
     }
   }
-  return { texto: t, nums };
+  return { texto: t, mencoes, todos };
 }
-/** número com DDI do Brasil quando veio só com DDD (ex.: 71982136074 → 5571982136074) */
-function foneBR(n: unknown): string { const d = dig(n); return d.length === 10 || d.length === 11 ? '55' + d : d; }
-/** num grupo, a marcação vai pelo id da pessoa NO grupo (o @lid, nos grupos novos): "@<id>" + mentioned "<id>@lid" */
-async function idsNoGrupo(jid: string, nums: string[]): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  if (!nums.length || !/@g\.us$/.test(jid)) return out;
-  try {
-    const r = await evo('/group/participants/' + I() + '?groupJid=' + encodeURIComponent(jid), 'GET', undefined, 12000);
-    for (const x of (r.dados?.participants || []) as any[]) {
-      const id = String(x?.id || ''); const fone = dig(x?.phoneNumber || (/@s\.whatsapp\.net$/.test(id) ? id : ''));
-      const n = nums.find(v => fone && fim8(v) === fim8(fone));
-      if (n && id) out.set(n, id);
-    }
-  } catch (_e) { /* sem a lista: marca pelo número */ }
-  return out;
+/** para a IA: quem está no grupo e como marcar */
+async function genteDoGrupo(sb: SupabaseClient, cfg: Config, jid: string): Promise<string> {
+  const g = (await participantesDoGrupo(sb, cfg, jid)).filter(p => p.nome);
+  if (!g.length) return '';
+  return 'PESSOAS NESTE GRUPO (' + g.length + ' com nome): ' + g.map(p => p.nome).join(', ') +
+    '.\nPara MARCAR alguém, escreva @ e o nome como está aqui (ex.: @' + g[0].nome.split(/\s+/)[0] + '). Para marcar TODO MUNDO do grupo, escreva @todos. Nunca escreva @ seguido de números.';
 }
 async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}) {
-  const ja = ((extra.mentioned as string[]) || []).map(dig);
+  const grupo = await participantesDoGrupo(sb, cfg, jid);
+  /* marcações que já vieram prontas ("@5571…" + mentioned com o número): passa para o id no grupo */
+  const ja = ((extra.mentioned as string[]) || []).map(x => String(x));
   const partes = String(texto || '').split(SEP).map(t => t.trim()).filter(Boolean).slice(0, 3);
-  const prontas: { t: string; m: string[] }[] = [];
+  const prontas: { t: string; m: string[]; todos: boolean }[] = [];
   for (const p of partes.length ? partes : [String(texto || '')]) {
-    const c = comMarcacoes(cfg, p);
+    const c = comMarcacoes(cfg, p, grupo);
     let t = c.texto;
-    /* troca "@5571…" pelo id da pessoa no grupo, quando houver */
-    const todos = [...new Set([...(prontas.length ? [] : ja), ...c.nums])];
-    const ids = await idsNoGrupo(jid, todos);
-    const m: string[] = [];
-    for (const n of todos) {
-      const id = ids.get(n);
-      if (id) { t = t.split('@' + n).join('@' + id.split('@')[0]); m.push(id); }
-      else m.push(n);
+    const m: string[] = [...c.mencoes];
+    for (const n of prontas.length ? [] : ja) {
+      const d = dig(n);
+      const g = grupo.find(x => x.fone && fim8(x.fone) === fim8(d));
+      if (g) { t = t.split('@' + d).join('@' + g.token); m.push(g.mencao); } else m.push(d.length < 14 ? foneBR(d) : d);
     }
-    prontas.push({ t: await semCodigos(sb, t, m.map(x => x.split('@')[0])), m: [...new Set(m)] });
+    const todos = c.todos || (!prontas.length && extra.mentionsEveryOne === true);
+    if (todos) t = t.replace(/@todos/g, grupo.length ? 'pessoal' : '@todos').replace(/\bpessoal,?\s+pessoal\b/i, 'pessoal');
+    prontas.push({ t: await semCodigos(sb, t, m.map(x => x.split('@')[0])), m: [...new Set(m)], todos });
   }
-  const primeira = await enviarUma(sb, cfg, jid, prontas[0].t, { ...extra, ...(prontas[0].m.length ? { mentioned: prontas[0].m } : {}) }, true);
+  const opc = (p: { m: string[]; todos: boolean }) => ({ ...(p.m.length ? { mentioned: p.m } : {}), ...(p.todos ? { mentionsEveryOne: true } : {}) });
+  const { mentioned: _a, mentionsEveryOne: _b, ...resto } = extra as any;
+  const primeira = await enviarUma(sb, cfg, jid, prontas[0].t, { ...resto, ...opc(prontas[0]) }, true);
   for (const p of prontas.slice(1)) {
     const ms = Math.min(6000, 1200 + p.t.length * 45);
     await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'composing', delay: ms }, ms + 5000).catch(() => null);
-    await enviarUma(sb, cfg, jid, p.t, p.m.length ? { mentioned: p.m } : {}, false);
+    await enviarUma(sb, cfg, jid, p.t, opc(p), false);
   }
   return primeira;
 }
@@ -700,7 +744,7 @@ async function responderBot(sb: SupabaseClient, cfg: Config, raw: any, texto: st
     `Você é ${cfg.nome}, a IA da Branding7, no grupo interno da equipe. Quem acabou de escrever é ${bot.nome}, OUTRA inteligência artificial` + (bot.sobre ? ' (' + bot.sobre + ')' : '') + '. ' +
     'Converse com ela como um colega de trabalho esperto e bem-humorado: responda ao que ela disse de verdade; se ela respondeu no automático ou não entendeu o contexto, pode zoar de leve e ajudar a entender (a equipe se diverte com isso). ' +
     'Nunca trate como cliente, nunca diga que vai "encaminhar para a equipe". Curto: 1 ou 2 frases, no máximo 1 emoji. Não assine. Nunca escreva @ seguido de números; chame pelo nome.',
-    await quemEQuem(sb, cfg, false) + '\n\nCONVERSA RECENTE:\n' + conversa + '\n\nÚLTIMA MENSAGEM DE ' + bot.nome + ': ' + texto, 300);
+    await quemEQuem(sb, cfg, false) + '\n\n' + await genteDoGrupo(sb, cfg, destino) + '\n\nCONVERSA RECENTE:\n' + conversa + '\n\nÚLTIMA MENSAGEM DE ' + bot.nome + ': ' + texto, 300);
   if (!s.texto || /\[\[\s*SILENCIO/i.test(s.texto)) return;
   await digitando(destino, cfg);
   await enviar(sb, cfg, destino, s.texto, { quoted: { key: raw.key, message: { conversation: texto.slice(0, 300) } } });
@@ -1015,12 +1059,12 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
     'Você é inteligente, esperto e útil, como um colega muito bom: entende a mensagem e a conversa em volta e responde de verdade. ' +
     'Responda QUALQUER coisa que perguntarem, não só sobre o sistema: ideias de conteúdo, roteiros, legendas, ganchos, trends, estratégia, marketing, redes sociais, textos, e-mails, propostas, contas, explicações, conselhos e conversa do dia a dia — usando o seu próprio conhecimento. ' +
     'Você conhece a equipe (lista QUEM É QUEM): quando falarem de alguém, saiba quem é e o que faz (ex.: "o Kaique é o videomaker da B7"). ' +
-    'Para MARCAR alguém da equipe (quando pedirem ou quando ajudar), escreva @ e o primeiro nome, ex.: @Yury — o sistema transforma na marcação de verdade. Nunca escreva @ com números. ' +
+    'Para MARCAR alguém (quando pedirem ou quando ajudar), escreva @ e o nome da pessoa como aparece em PESSOAS NESTE GRUPO (ex.: @Yury); para marcar todo mundo, @todos. O sistema transforma na marcação de verdade. Nunca escreva @ com números. ' +
     'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
     'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]].',
     /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
     'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +
-    '\n\n' + await quemEQuem(sb, cfg, true) + '\n\nDADOS DO SISTEMA:' + contexto + '\n\nMENSAGEM DE ' + String(raw.pushName || 'alguém da equipe') + ' (responda a esta): ' + pedido, 1400);
+    '\n\n' + await quemEQuem(sb, cfg, true) + '\n\n' + await genteDoGrupo(sb, cfg, destino) + '\n\nDADOS DO SISTEMA:' + contexto + '\n\nMENSAGEM DE ' + String(raw.pushName || 'alguém da equipe') + ' (responda a esta): ' + pedido, 1400);
   if (!s.texto) return;
   await digitando(destino, cfg);
   await enviar(sb, cfg, destino, s.texto, { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
