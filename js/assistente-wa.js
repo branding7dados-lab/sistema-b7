@@ -322,7 +322,7 @@ B7.AssistenteWA = (function () {
     S.cfg.regras = regrasTexto(S.regras);
     const c = S.cfg;
     const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
-      equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: String(p.numero).replace(/\D/g, ''), assuntos: (p.assuntos || '').trim(), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
+      equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
       quem_e_quem: Object.fromEntries(Object.entries(c.quem_e_quem || {}).map(([k, v]) => [k, String(v || '').trim().slice(0, 200)]).filter(([, v]) => v)),
       sem_marcacao: !!c.sem_marcacao, pausa_min: Math.max(5, Number(c.pausa_min) || 30), ouvir_audio: c.ouvir_audio !== false,

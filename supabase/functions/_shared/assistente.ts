@@ -141,7 +141,7 @@ export function comMarcacoes(cfg: Config, texto: string): { texto: string; nums:
     const n = semAcento(nome).trim();
     return equipe.find(p => semAcento(p.nome!) === n) || equipe.filter(p => semAcento(p.nome!).split(/\s+/)[0] === n.split(/\s+/)[0]).find((_p, _i, l) => l.length === 1) || null;
   };
-  const marca = (p: Pessoa) => { const d = dig(p.numero); if (!nums.includes(d)) nums.push(d); return '@' + d; };
+  const marca = (p: Pessoa) => { const d = foneBR(p.numero); if (!nums.includes(d)) nums.push(d); return '@' + d; };
   let t = String(texto || '').replace(/\{\{\s*marcar\s*:\s*([^}]+)\}\}/gi, (_m, n: string) => { const p = achar(n); return p ? marca(p) : n.trim(); });
   /* "@Nome Sobrenome" primeiro (nome completo), depois "@Nome" */
   for (const p of [...equipe].sort((a, b) => b.nome!.length - a.nome!.length)) {
@@ -153,14 +153,39 @@ export function comMarcacoes(cfg: Config, texto: string): { texto: string; nums:
   }
   return { texto: t, nums };
 }
+/** número com DDI do Brasil quando veio só com DDD (ex.: 71982136074 → 5571982136074) */
+function foneBR(n: unknown): string { const d = dig(n); return d.length === 10 || d.length === 11 ? '55' + d : d; }
+/** num grupo, a marcação vai pelo id da pessoa NO grupo (o @lid, nos grupos novos): "@<id>" + mentioned "<id>@lid" */
+async function idsNoGrupo(jid: string, nums: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!nums.length || !/@g\.us$/.test(jid)) return out;
+  try {
+    const r = await evo('/group/participants/' + I() + '?groupJid=' + encodeURIComponent(jid), 'GET', undefined, 12000);
+    for (const x of (r.dados?.participants || []) as any[]) {
+      const id = String(x?.id || ''); const fone = dig(x?.phoneNumber || (/@s\.whatsapp\.net$/.test(id) ? id : ''));
+      const n = nums.find(v => fone && fim8(v) === fim8(fone));
+      if (n && id) out.set(n, id);
+    }
+  } catch (_e) { /* sem a lista: marca pelo número */ }
+  return out;
+}
 async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}) {
   const ja = ((extra.mentioned as string[]) || []).map(dig);
   const partes = String(texto || '').split(SEP).map(t => t.trim()).filter(Boolean).slice(0, 3);
   const prontas: { t: string; m: string[] }[] = [];
   for (const p of partes.length ? partes : [String(texto || '')]) {
     const c = comMarcacoes(cfg, p);
-    const m = [...new Set([...(prontas.length ? [] : ja), ...c.nums])];
-    prontas.push({ t: await semCodigos(sb, c.texto, m), m });
+    let t = c.texto;
+    /* troca "@5571…" pelo id da pessoa no grupo, quando houver */
+    const todos = [...new Set([...(prontas.length ? [] : ja), ...c.nums])];
+    const ids = await idsNoGrupo(jid, todos);
+    const m: string[] = [];
+    for (const n of todos) {
+      const id = ids.get(n);
+      if (id) { t = t.split('@' + n).join('@' + id.split('@')[0]); m.push(id); }
+      else m.push(n);
+    }
+    prontas.push({ t: await semCodigos(sb, t, m.map(x => x.split('@')[0])), m: [...new Set(m)] });
   }
   const primeira = await enviarUma(sb, cfg, jid, prontas[0].t, { ...extra, ...(prontas[0].m.length ? { mentioned: prontas[0].m } : {}) }, true);
   for (const p of prontas.slice(1)) {
@@ -319,7 +344,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
   resposta = resposta.replace(/\{\{\s*marcar\s*:\s*([^}]+)\}\}/gi, (_m, n: string) => {
     const p = equipe.find(x => x.nome!.toLowerCase() === n.trim().toLowerCase());
     if (!p) return n.trim();
-    const d = dig(p.numero); mencionar.push(d); return '@' + d;
+    const d = foneBR(p.numero); mencionar.push(d); return '@' + d;
   });
   return { saida, resposta, perguntaEquipe, mencionar };
 }
@@ -585,11 +610,11 @@ export async function mandarResumo(sb: SupabaseClient, cfg: Config | null, forca
   let texto = s.texto.replace(/\{\{\s*marcar\s*:\s*([^}]+)\}\}/gi, (_m, n: string) => {
     const p = equipe.find(x => x.nome!.toLowerCase() === n.trim().toLowerCase() || x.nome!.toLowerCase().split(' ')[0] === n.trim().toLowerCase().split(' ')[0]);
     if (!p) return '';
-    const d = dig(p.numero); if (!mencionar.includes(d)) mencionar.push(d); return '@' + d;
+    const d = foneBR(p.numero); if (!mencionar.includes(d)) mencionar.push(d); return '@' + d;
   }).replace(/[ \t]+\n/g, '\n').trim();
   let extra: Record<string, unknown> = {};
   if (equipe.length) {
-    const resto = equipe.map(p => dig(p.numero)).filter(d => !mencionar.includes(d));
+    const resto = equipe.map(p => foneBR(p.numero)).filter(d => !mencionar.includes(d));
     if (resto.length) { texto += '\n\n' + resto.map(d => '@' + d).join(' '); mencionar.push(...resto); }
     extra = { mentioned: mencionar };
   } else extra = { mentionsEveryOne: true };   /* sem equipe cadastrada: marca o grupo todo */
