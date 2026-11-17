@@ -224,6 +224,7 @@ B7.CentralWA = (function () {
     const alt = caixa ? caixa.scrollHeight - caixa.scrollTop : 0;
     S.msgs = antigas ? novas.concat(S.msgs) : novas;
     pintarMensagens();
+    if (!antigas) pintarLado();   /* 4.66.6: última mensagem e mídia recente no painel */
     const cx = raiz.querySelector('#wz-msgs');
     if (cx) cx.scrollTop = antigas ? cx.scrollHeight - alt : cx.scrollHeight;
   }
@@ -693,22 +694,59 @@ B7.CentralWA = (function () {
     const c = S.aberta && S.porJid.get(S.aberta);
     if (!c) { cx.innerHTML = ''; return; }
     const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
-    cx.innerHTML = '<div class="wz-cli">' + avatar(c, 'g') + '<b>' + esc(cli ? cli.nome : (c.nome || num(c.jid))) + '</b><small>' + (cli ? 'Cliente do B7' : c.tipo === 'grupo' ? 'Grupo ainda sem cliente' : esc(fone(c.jid))) + '</small>' +
-      (cli ? '<a class="b fina contorno" href="#/cliente/' + esc(cli.id) + '">Abrir o cliente</a>' : c.tipo === 'grupo' ? '<button class="b fina contorno" data-wz="vincular">Ligar a um cliente</button>' : '') + '</div>' +
-      /* 4.53.3: contato não se liga a cliente (só grupos) */
-      (cli || c.tipo === 'grupo' ? '<div class="wz-box" id="wz-pend"><h4>Com este cliente agora</h4>' + (cli ? '<p class="wz-carregando">Carregando…</p>' : '<p class="wz-mudo">Ligue a conversa a um cliente para ver as pendências.</p>') + '</div>' : '') +
-      /* 4.53.3: sem "Responsável" — cada um já está na própria conta */
-      '<div class="wz-box"><h4>Atendimento</h4><p><span>Esperando resposta</span><b>' + (espera(c.esperando_desde) || (c.esperando_desde ? 'há pouco' : 'não')) + '</b></p></div>';
+    const grupo = c.tipo === 'grupo';
+    /* 4.66.6: painel novo — situação do atendimento em destaque, números em blocos, mídia recente */
+    const msgs = (S.msgs || []).filter(m => m.jid === c.jid && !m.nota && !m.apagada);
+    const ult = msgs[msgs.length - 1];
+    const min = c.esperando_desde ? (Date.now() - new Date(c.esperando_desde)) / 60000 : 0;
+    const nivel = !c.esperando_desde ? 'ok' : min >= 1440 ? 'quente' : min >= 60 ? 'morno' : 'leve';
+    const txtEspera = !c.esperando_desde ? 'Em dia' : min < 1 ? 'Esperando agora' : 'Esperando há ' + (min < 60 ? Math.round(min) + ' min' : min < 1440 ? Math.floor(min / 60) + ' h' : Math.floor(min / 1440) + (Math.floor(min / 1440) === 1 ? ' dia' : ' dias'));
+    const subEspera = !c.esperando_desde ? 'Ninguém esperando resposta nesta conversa.' : 'Desde ' + new Date(c.esperando_desde).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
+    const quemUlt = ult ? (ult.do_assistente ? 'Otto' : ult.de_mim ? (ult.enviada_por_nome ? ult.enviada_por_nome.split(' ')[0] : 'Você') : (ult.autor_nome || c.nome || 'Contato').split(' ')[0]) : '';
+    const resumoUlt = ult ? (ult.texto ? semCodigos(ult.texto) : ({ imagem: '📷 Foto', video: '🎬 Vídeo', audio: '🎤 Áudio', figurinha: '💟 Figurinha', documento: '📄 ' + (ult.midia_nome || 'Documento') })[ult.tipo] || 'Mensagem') : '';
+    const fotos = msgs.filter(m => (m.tipo === 'imagem' || m.tipo === 'video') && m.miniatura).slice(-6).reverse();
+    const ic = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+    cx.innerHTML =
+      '<div class="wz-ld-topo">' + avatar(c, 'g') +
+        '<b>' + esc(cli ? cli.nome : (c.nome || num(c.jid))) + '</b>' +
+        '<small>' + (cli ? (grupo ? 'Grupo do cliente' : 'Contato do cliente') : grupo ? 'Grupo ainda sem cliente' : esc(fone(c.jid))) + '</small>' +
+        (cli && grupo && c.nome && c.nome !== cli.nome ? '<span class="wz-ld-tag">' + esc(c.nome) + '</span>' : '') +
+        '<div class="wz-ld-acoes">' +
+          (cli ? '<a class="wz-ld-bt" href="#/cliente/' + esc(cli.id) + '">' + ic('<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>') + 'Abrir cliente</a>' : '') +
+          (grupo ? '<button class="wz-ld-bt' + (cli ? ' so-icone' : '') + '" data-wz="vincular" title="' + (cli ? 'Trocar o cliente' : 'Ligar a um cliente') + '">' + ic('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>') + (cli ? '' : 'Ligar a um cliente') + '</button>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="wz-ld-st ' + nivel + '"><i></i><div><b>' + txtEspera + '</b><span>' + esc(subEspera) + '</span></div>' +
+        (c.esperando_desde ? '<button class="wz-ld-ok" data-wz="semespera" title="Marcar como respondida">' + ic('<path d="M20 6 9 17l-5-5"/>') + '</button>' : '') + '</div>' +
+      (ult ? '<div class="wz-box wz-ld-ult"><h4>Última mensagem</h4><p><b>' + esc(quemUlt) + '</b><small>' + hm(ult.criada_em) + '</small></p><span>' + esc(resumoUlt).slice(0, 160) + '</span></div>' : '') +
+      (cli ? '<div class="wz-box" id="wz-pend"><h4>Com este cliente agora</h4><div class="wz-ld-num"><a href="#/design"><b>…</b><span>Design em produção</span></a><a href="#/video"><b>…</b><span>Vídeos em edição</span></a></div><div class="wz-ld-grav"><span>' + ic('<rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/>') + '</span><div><small>Próxima gravação</small><b>…</b></div></div></div>'
+        : grupo ? '<div class="wz-box"><h4>Com este cliente agora</h4><p class="wz-mudo">Ligue a conversa a um cliente para ver design, vídeos e gravações.</p></div>' : '') +
+      (fotos.length ? '<div class="wz-box"><h4>Mídia recente</h4><div class="wz-ld-fotos">' + fotos.map(m => '<button data-ir="' + esc(m.id) + '" title="Ir para a mensagem"><img src="data:image/jpeg;base64,' + m.miniatura + '" alt="">' + (m.tipo === 'video' ? '<i>▶</i>' : '') + '</button>').join('') + '</div></div>' : '');
     if (cli) {
       const pend = cx.querySelector('#wz-pend');
+      /* números do cliente guardados por 1 min (o painel repinta quando as mensagens chegam) */
+      S.ladoCache = S.ladoCache || new Map();
+      const guard = S.ladoCache.get(cli.id);
+      if (guard && Date.now() - guard.em < 60e3) return preencher(guard.ds, guard.vd, guard.grav, guard.gravNome);
       const contar = async (tab, filtro) => { try { let q = sb().from(tab).select('id', { count: 'exact', head: true }); q = filtro(q); const r = await q; return r.count || 0; } catch (e) { return '–'; } };
       const [ds, vd] = await Promise.all([
         contar('design_resumo', q => q.eq('client_id', cli.id).neq('status', 'finalizado')),
         contar('demandas_edicao', q => q.eq('client_id', cli.id).is('deleted_at', null).in('editing_status', ['pendente', 'em_edicao', 'aguardando_aprovacao']))
       ]);
-      let grav = '';
-      try { const g = await sb().from('gravacoes').select('nome,data_gravacao').eq('client_id', cli.id).is('deleted_at', null).gte('data_gravacao', new Date().toISOString().slice(0, 10)).order('data_gravacao').limit(1); if (g.data && g.data[0]) grav = B7.UI.dataBR ? B7.UI.dataBR(g.data[0].data_gravacao) : g.data[0].data_gravacao; } catch (e) {}
-      if (pend && pend.isConnected) pend.innerHTML = '<h4>Com este cliente agora</h4><p><span>Design em produção</span><b>' + ds + '</b></p><p><span>Vídeos em edição</span><b>' + vd + '</b></p><p><span>Próxima gravação</span><b>' + (grav || '—') + '</b></p>';
+      let grav = '', gravNome = '';
+      try { const g = await sb().from('gravacoes').select('nome,data_gravacao').eq('client_id', cli.id).is('deleted_at', null).gte('data_gravacao', new Date().toISOString().slice(0, 10)).order('data_gravacao').limit(1); if (g.data && g.data[0]) { grav = new Date(g.data[0].data_gravacao + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace(/\./g, ''); grav = grav.charAt(0).toUpperCase() + grav.slice(1); gravNome = g.data[0].nome || ''; } } catch (e) {}
+      S.ladoCache.set(cli.id, { em: Date.now(), ds, vd, grav, gravNome });
+      preencher(ds, vd, grav, gravNome);
+    }
+    function preencher(ds, vd, grav, gravNome) {
+      const pend = cx.querySelector('#wz-pend');
+      if (pend && pend.isConnected) {
+        const n = pend.querySelectorAll('.wz-ld-num b'); n[0].textContent = ds; n[1].textContent = vd;
+        n[0].parentNode.classList.toggle('zero', !ds); n[1].parentNode.classList.toggle('zero', !vd);
+        const gb = pend.querySelector('.wz-ld-grav b'); gb.textContent = grav || 'Nada marcado';
+        pend.querySelector('.wz-ld-grav').classList.toggle('zero', !grav);
+        if (gravNome) gb.title = gravNome;
+      }
     }
   }
   function vincularCliente(c) {
