@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.67.2', versao: '4.67.2', em: '2026-11-17T13:30:00-03:00', rota: 'whatsapp',
+    titulo: 'Prévia de fotos e transcrição pelo Otto',
+    itens: ['Na Central de Conversas, clicar numa foto abre a prévia em tela cheia: passe para as outras fotos da conversa com as setas (ou ← →), baixe e feche com Esc.',
+      'No WhatsApp, cite um áudio e escreva "Otto, transcreve": ele responde com o texto do áudio.'] },
   { id: 'v-4.67.1', versao: '4.67.1', em: '2026-11-17T11:00:00-03:00', rota: 'whatsapp',
     titulo: 'Baixar áudios',
     itens: ['Na Central de Conversas, todo áudio tem um botão de baixar. Fotos, vídeos, documentos e figurinhas também baixam pelo menu da mensagem (passe o mouse ou toque nela).'] },

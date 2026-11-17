@@ -353,7 +353,7 @@ B7.CentralWA = (function () {
     try {
       const url = await urlMidia(el.dataset.id);
       const t = el.dataset.carregar;
-      if (t === 'img') { el.innerHTML = '<img src="' + esc(url) + '" alt="" data-zoom="' + esc(url) + '">'; const im = el.querySelector('img'); im.onload = () => { if (S.grudado !== false) rolarFim(); }; }
+      if (t === 'img') { el.innerHTML = '<img src="' + esc(url) + '" alt="" data-zoom="' + esc(url) + '">'; const im = el.querySelector('img'); im.onload = () => { if (S.grudado !== false) rolarFim(); }; if (tocar === true) previa(el.dataset.id, url); }
       else if (t === 'video') el.outerHTML = '<video class="wz-video" src="' + esc(url) + '" controls ' + (tocar ? 'autoplay' : '') + ' playsinline></video>';
       else if (t === 'doc') window.open(url, '_blank', 'noopener');
       else if (t === 'audio') {
@@ -423,7 +423,7 @@ B7.CentralWA = (function () {
     const f = e.target.closest('[data-filtro]'); if (f) { S.filtro = f.dataset.filtro; pintarFiltros(); pintarLista(); return; }
     const em = e.target.closest('[data-emoji]'); if (em) { const t = raiz.querySelector('#wz-texto'); if (t) { t.setRangeText(em.dataset.emoji, t.selectionStart, t.selectionEnd, 'end'); t.focus(); t.dispatchEvent(new Event('input')); } B7.UI.fecharMenus && B7.UI.fecharMenus(); return; }
     const md = e.target.closest('[data-carregar]');
-    if (md) { if (md.dataset.carregar === 'audio' && md.querySelector('audio')) { const a = md.querySelector('audio'); if (e.target.closest('.wz-aud-p')) (a.paused ? a.play() : a.pause()); return; } if (md.dataset.carregar === 'img' && md.dataset.ok) return; return carregarMidia(md, true); }
+    if (md) { if (md.dataset.carregar === 'audio' && md.querySelector('audio')) { const a = md.querySelector('audio'); if (e.target.closest('.wz-aud-p')) (a.paused ? a.play() : a.pause()); return; } if (md.dataset.carregar === 'img' && md.dataset.ok) { const im = md.querySelector('img[data-zoom]'); if (im) previa(md.dataset.id, im.dataset.zoom); return; } return carregarMidia(md, true); }
     const mn = e.target.closest('[data-men]'); if (mn) { escolherMencao(mn.dataset.men); return; }
     const tr = e.target.closest('[data-transc]');
     if (tr) {
@@ -436,7 +436,7 @@ B7.CentralWA = (function () {
     }
     const fg = e.target.closest('[data-fig]'); if (fg) { if (fg.querySelector('img')) enviarFigurinha({ id: fg.dataset.fig }); return; }
     if (!e.target.closest('#wz-figs, .wz-fig-bt')) { const fx = raiz.querySelector('#wz-figs'); if (fx && !fx.hidden) fx.hidden = true; }
-    const z = e.target.closest('[data-zoom]'); if (z) return zoom(z.dataset.zoom);
+    const z = e.target.closest('[data-zoom]'); if (z) { const b = z.closest('[data-id]'); return previa(b ? b.dataset.id : '', z.dataset.zoom); }
     const q = e.target.closest('[data-ir]'); if (q) { const alvo = raiz.querySelector('.wz-b[data-id="' + CSS.escape(q.dataset.ir) + '"]'); if (alvo) { alvo.scrollIntoView({ block: 'center', behavior: 'smooth' }); alvo.classList.add('pisca'); setTimeout(() => alvo.classList.remove('pisca'), 1400); } return; }
     const am = e.target.closest('[data-acao-msg]'); if (am) return acaoMsg(am.dataset.acaoMsg, am.closest('.wz-b').dataset.id, am);
     const w = e.target.closest('[data-wz]'); if (w) return acao(w.dataset.wz);
@@ -552,12 +552,50 @@ B7.CentralWA = (function () {
     cx.querySelector('[data-tira-cita]').onclick = () => { S.citar = null; pintarCitacao(); };
   }
 
-  function zoom(url) {
-    const z = document.createElement('div'); z.className = 'wz-zoom';
-    z.innerHTML = '<img src="' + esc(url) + '" alt=""><a href="' + esc(/wa-evolution\?m=/.test(url) ? url + '&dl=1' : url) + '" target="_blank" rel="noopener" download>Baixar</a>';
-    z.onclick = e => { if (e.target.tagName !== 'A') z.remove(); };
+  function zoom(url) { previa('', url); }
+  /* 4.67.2: prévia da foto em tela cheia — passa pelas fotos da conversa (setas / ← →), baixar, Esc fecha */
+  function previa(id, url) {
+    document.querySelectorAll('.wz-zoom').forEach(x => x.remove());
+    const fotos = S.msgs.filter(m => m.tipo === 'imagem' && !m.apagada);
+    let i = id ? fotos.findIndex(m => m.id === id) : -1;   /* -1: foto fora da lista (figurinha, etc.) — mostra só ela */
+    const z = document.createElement('div'); z.className = 'wz-zoom'; z.setAttribute('role', 'dialog'); z.setAttribute('aria-label', 'Prévia da foto');
+    z.innerHTML = '<div class="wz-zoom-topo"><div class="wz-zoom-info"><b></b><small></small></div><button class="wz-zoom-bt" data-z="baixar" title="Baixar">' + I.baixar + '</button><button class="wz-zoom-bt" data-z="fechar" title="Fechar (Esc)">✕</button></div>' +
+      '<button class="wz-zoom-seta e" data-z="ant" aria-label="Foto anterior">‹</button><figure><img alt=""></figure><button class="wz-zoom-seta d" data-z="prox" aria-label="Próxima foto">›</button>' +
+      '<div class="wz-zoom-legenda"></div>';
     document.body.appendChild(z);
+    const img = z.querySelector('img');
+    const mostra = async () => {
+      const m = i >= 0 ? fotos[i] : null;
+      const c = m && S.porJid.get(m.jid);
+      z.querySelector('.wz-zoom-info b').textContent = m ? (m.de_mim ? (m.enviada_por_nome || 'Você') : (m.autor_nome || (c && c.nome) || 'Contato')) : 'Foto';
+      z.querySelector('.wz-zoom-info small').textContent = m ? new Date(m.criada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às') + (fotos.length > 1 ? ' · ' + (i + 1) + ' de ' + fotos.length : '') : '';
+      z.querySelector('.wz-zoom-legenda').textContent = m && m.texto ? semCodigos(m.texto) : '';
+      z.querySelector('[data-z="ant"]').hidden = !(i > 0);
+      z.querySelector('[data-z="prox"]').hidden = !(i >= 0 && i < fotos.length - 1);
+      z.querySelector('[data-z="baixar"]').hidden = !m;
+      if (m && m.miniatura) img.src = 'data:image/jpeg;base64,' + m.miniatura;
+      img.classList.add('carregando');
+      try { const u = m ? (m.id === id && url ? url : await urlMidia(m.id)) : url; if (z.isConnected && (i < 0 || fotos[i] === m)) img.src = u; }
+      catch (e) { B7.UI.toast('Não deu para abrir a foto.', { tipo: 'erro' }); }
+      img.onload = () => img.classList.remove('carregando');
+    };
+    const fechar = () => { z.remove(); document.removeEventListener('keydown', tecla); };
+    const vai = d => { const n = i + d; if (n < 0 || n >= fotos.length) return; i = n; mostra(); };
+    const tecla = e => { if (e.key === 'Escape') fechar(); else if (e.key === 'ArrowLeft') vai(-1); else if (e.key === 'ArrowRight') vai(1); };
+    document.addEventListener('keydown', tecla);
+    z.addEventListener('click', e => {
+      const b = e.target.closest('[data-z]');
+      if (b) { e.stopPropagation(); const a = b.dataset.z; if (a === 'fechar') fechar(); else if (a === 'ant') vai(-1); else if (a === 'prox') vai(1); else if (a === 'baixar' && fotos[i]) baixarMidia(fotos[i].id, b); return; }
+      if (e.target === img) return;
+      fechar();
+    });
+    /* celular: arrastar para o lado troca de foto */
+    let x0 = null;
+    z.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+    z.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) vai(dx < 0 ? 1 : -1); });
+    mostra();
   }
+
 
   /* ------------------------------------------------------------ escrever / enviar */
   function assinatura() {
