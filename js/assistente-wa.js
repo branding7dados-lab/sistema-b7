@@ -61,6 +61,9 @@ B7.AssistenteWA = (function () {
     S = { cfg: JSON.parse(JSON.stringify(cfg)), orig: JSON.stringify(cfg), aba: S && S.aba && S.aba !== 'grupos' ? S.aba : 'geral', ap: ap.data || [], dv: dv.data || [], reg: rg.data || [], grupos: gr.data || [],
       regras: regrasDe(cfg.regras), busca: '', todosGrupos: tg.data || [], perfis: (pf.data || []).filter(p => !/teste/i.test(p.nome || '')), mem: mm.data || [], clientes: cl.data || [], memFiltro: '', teste: [], testeJid: (gr.data || [])[0] ? gr.data[0].jid : '', testeEquipe: false };
     if (!S.cfg.horario) S.cfg.horario = { ativo: false, ini: '08:00', fim: '18:00', dias: [1, 2, 3, 4, 5], mensagem: '' };
+    /* 4.77.2: o "original" é o que a tela mostra depois de arrumar (regras reescritas, horário padrão) —
+       senão a barra de salvar aparecia sem ninguém ter mexido */
+    S.cfg.regras = regrasTexto(S.regras); S.orig = JSON.stringify(S.cfg);
     desenhar();
     raiz.addEventListener('click', clique);
     raiz.addEventListener('input', digitou);
@@ -71,6 +74,7 @@ B7.AssistenteWA = (function () {
   function marcarSujo() {
     const sujo = mudou();
     const b = raiz.querySelector('#asw-salvar'); if (b) b.classList.toggle('on', sujo);
+    const br = raiz.querySelector('.asw-barra'); if (br) { br.classList.toggle('visivel', sujo); br.setAttribute('aria-hidden', sujo ? 'false' : 'true'); }
     const b2 = raiz.querySelector('#asw-salvar2'); if (b2) b2.hidden = !sujo;
     posicionarBarra();
   }
