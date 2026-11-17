@@ -176,6 +176,7 @@ B7.AssistenteWA = (function () {
         bloco('Áudio', 'Quando ele ouve e quando ele fala.',
           linha('Ouvir áudios', 'Transcreve todo áudio que chega (aparece escrito na Central).', chave('ouvir_audio', c.ouvir_audio !== false)) +
           linha('Responder em áudio', 'Com a equipe, quando mandam áudio para ele. Também fala quando pedem (“' + nome + ', me manda um áudio”).', chave('responder_audio', c.responder_audio !== false)) +
+          linha('Alternar áudio e texto', 'De vez em quando responde a equipe em áudio, sem ninguém pedir. Só em conversa leve: pendências, listas, prazos, links e números sempre vão escritos, e nunca manda dois áudios seguidos. Cliente nunca.', seg('audio_variar', String(Number(c.audio_variar) || 0), [['0', 'Nunca'], ['15', 'Às vezes'], ['30', 'Bastante']])) +
           linha('Duração máxima', 'Áudio longo demais ninguém ouve até o fim.', '<span class="asw-faixa"><input type="range" min="15" max="120" step="5" data-c="audio_max_s" data-num value="' + mx + '"><output id="asw-maxs">' + mx + ' s</output></span>') +
           linha('Adaptar o texto para fala', 'Reescreve a resposta do jeito que se fala (datas e números por extenso). Leva alguns segundos a mais.', seg('audio_roteiro', c.audio_roteiro || 'auto', [['auto', 'Só quando precisa'], ['sempre', 'Sempre'], ['nunca', 'Nunca']])) +
           linha('Gravar como gente', 'Deixa o “gravando áudio…” no tempo do áudio antes de mandar. Mais natural, mais lento.', chave('audio_humano', !!c.audio_humano))) +
@@ -446,7 +447,7 @@ B7.AssistenteWA = (function () {
       dono_perfil_id: c.dono_perfil_id || null,
       bom_dia_ligado: c.bom_dia_ligado !== false, bom_dia_hora: /^\d{2}:\d{2}$/.test(c.bom_dia_hora || '') ? c.bom_dia_hora : '08:00',
       push_espera_min: Math.max(0, Math.min(240, Number(c.push_espera_min ?? 15) || 0)), push_para: (Array.isArray(c.push_para) ? c.push_para : []).filter(Boolean),
-      velocidade: ['rapido', 'natural', 'humano'].includes(c.velocidade) ? c.velocidade : 'natural', audio_humano: !!c.audio_humano,
+      velocidade: ['rapido', 'natural', 'humano'].includes(c.velocidade) ? c.velocidade : 'natural', audio_humano: !!c.audio_humano, audio_variar: [0, 15, 30].includes(Number(c.audio_variar)) ? Number(c.audio_variar) : 0,
       audio_roteiro: ['auto', 'sempre', 'nunca'].includes(c.audio_roteiro) ? c.audio_roteiro : 'auto', audio_max_s: Math.max(15, Math.min(120, Number(c.audio_max_s) || 40)),
       regras_equipe: String(c.regras_equipe || '').slice(0, 2000), modo_restrito: !!c.modo_restrito, zoacao_nivel: ['leve', 'medio', 'pesado'].includes(c.zoacao_nivel) ? c.zoacao_nivel : 'medio',
       modo_clientes: c.modo_clientes === 'atende' ? 'atende' : 'vigia', vigia_min: Math.max(5, Number(c.vigia_min) || 20),

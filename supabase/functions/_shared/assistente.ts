@@ -43,7 +43,7 @@ export type Config = {
   ativo: boolean; nome: string; jeito: string; regras: string; equipe: Pessoa[]; sem_marcacao: boolean;
   regras_equipe?: string; modo_restrito?: boolean; zoacao_nivel?: 'leve' | 'medio' | 'pesado';
   /* 4.68.0: velocidade */
-  velocidade?: 'rapido' | 'natural' | 'humano'; audio_humano?: boolean; audio_roteiro?: 'auto' | 'sempre' | 'nunca'; audio_max_s?: number;
+  velocidade?: 'rapido' | 'natural' | 'humano'; audio_humano?: boolean; audio_roteiro?: 'auto' | 'sempre' | 'nunca'; audio_max_s?: number; audio_variar?: number;
   pausa_min: number; espera_min_s: number; espera_max_s: number; grupos: Record<string, { desligado?: boolean; regras?: string }>;
   meu_lid: string | null; horario?: Horario; ouvir_audio?: boolean;
   grupo_equipe?: string | null; resumo_horas?: number; resumo_ultimo?: string | null; resumo_espera_min?: number;
@@ -947,6 +947,31 @@ async function juntarSequencia(sb: SupabaseClient, cfg: Config, raw: any, texto:
 /* 4.59.4: quem é quem na equipe (usuários do B7 + o que a tela do Otto diz de cada um) */
 const FUNCAO: Record<string, string> = { admin: 'administrador do sistema', coordenador: 'coordenador(a)', videomaker: 'videomaker (grava e edita vídeo)', designer: 'designer (artes)', social_media: 'social media', atendimento: 'atendimento', editor: 'editor(a) de vídeo', redator: 'redator(a)' };
 export const PEDE_STATUS = /\b(marc\w*|coloc\w*|mud\w*|pass\w*|deix\w*|bot\w*|pod\w* marcar|atualiz\w*|move\w*)\b.{0,80}\b(entregue|entregues|aprovad\w*|em aprovacao|correcao|em edicao|finalizad\w*|concluid\w*|standby|a fazer|pendente)\b/;
+/* ------------------------------------------------------------ 4.72.0: alternar áudio e texto
+   De vez em quando a resposta sai em áudio, para ficar mais gente. Só conversa leve com a EQUIPE:
+   nunca cliente, nunca lista/pendência/prazo/link/número, nunca depois de ferramenta, nunca dois áudios seguidos. */
+const PEDE_TEXTO = /escrev|por escrito|em texto|digit|manda escrito|sem audio|nao (manda|mande) audio|nao consigo ouvir|to em reuniao|estou em reuniao/;
+const PEDE_DADO = /pend[e]n|lista|listar|\bquais\b|\bquant[oa]s?\b|resum|agenda|prazo|demanda|link|senha|endere|numero|telefone|cpf|cnpj|valor|preco|horario|\bdata\b|que dia|que horas|copi|status|relatorio|planilha|pdf|print/;
+export function podeVariarEmAudio(o: { resposta: string; pedido: string; acoes: any[]; ehCliente: boolean; chance: number; sorteio: number; ultimoFoiAudio: boolean; minDesdeAudio: number }): boolean {
+  if (!(o.chance > 0) || o.ehCliente) return false;
+  if (o.acoes.some(a => a?.ferramenta && a.ferramenta !== 'reagir')) return false;   // fez algo → resultado vai escrito
+  const p = semAcento(o.pedido), r = String(o.resposta || '').trim();
+  if (PEDE_TEXTO.test(p) || PEDE_DADO.test(p)) return false;
+  if (r.length < 12 || r.length > 280) return false;                                    // curto demais = texto; longo = ninguém ouve
+  if (r.split('\n').filter(x => x.trim()).length > 2) return false;                     // tem cara de lista
+  if (/\n\s*([-•*▸]|\d+[.)])|https?:\/\/|www\.|@\d|@\w|#\d|\d{2}\/\d{2}|\d{1,2}h\d{0,2}|R\$|\*[^*]+\*/.test(r)) return false;
+  if ((r.match(/\d/g) || []).length > 3) return false;                                  // número falado se perde
+  if (o.ultimoFoiAudio || o.minDesdeAudio < 10) return false;                           // alterna: nunca dois seguidos
+  return o.sorteio < Math.min(60, o.chance) / 100;
+}
+async function sortearAudio(sb: SupabaseClient, cfg: Config, jid: string, resposta: string, pedido: string, acoes: any[], ehCliente: boolean): Promise<boolean> {
+  const chance = Number(cfg.audio_variar) || 0;
+  if (!(chance > 0) || ehCliente || (cfg as any).responder_audio === false) return false;
+  const { data: ult } = await sb.from('wa_mensagens').select('tipo').eq('jid', jid).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+  const { data: aud } = await sb.from('wa_mensagens').select('criada_em').eq('jid', jid).eq('do_assistente', true).eq('tipo', 'audio').order('criada_em', { ascending: false }).limit(1).maybeSingle();
+  const min = aud?.criada_em ? (Date.now() - new Date(aud.criada_em).getTime()) / 60000 : 1e9;
+  return podeVariarEmAudio({ resposta, pedido, acoes, ehCliente, chance, sorteio: Math.random(), ultimoFoiAudio: ult?.tipo === 'audio', minDesdeAudio: min });
+}
 /** 4.71.1: texto da mensagem citada, numa linha ("autor: texto") */
 async function textoCitado(sb: SupabaseClient, raw: any): Promise<string> {
   const id = String(ctxDe(raw).stanzaId || '');
@@ -1977,7 +2002,8 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   if (resposta) {
     const citarR = key.id && !ehCliente ? { quoted: { key, message: { conversation: texto.slice(0, 300) } } } : {};
     /* 4.61.0: mandou áudio → responde em áudio (se der; senão, texto) */
-    const emAudio = plano.emAudio || (!ehCliente && temAudio(raw) && (cfg as any).responder_audio !== false);
+    const emAudio = plano.emAudio || (!ehCliente && temAudio(raw) && (cfg as any).responder_audio !== false)
+      || await sortearAudio(sb, cfg, aqui, resposta, pedido, plano.acoes, ehCliente).catch(() => false);
     const foiAudio = emAudio ? await responderEmAudio(sb, cfg, aqui, resposta, citarR) : false;
     if (!foiAudio) { await digitando(aqui, cfg, resposta.length); await enviar(sb, cfg, aqui, resposta, citarR); }
   }
