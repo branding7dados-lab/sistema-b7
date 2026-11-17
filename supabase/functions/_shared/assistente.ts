@@ -27,7 +27,7 @@ import { fichaRoteiros, type Logo } from './ficha.ts';
 import { fichaLinha } from './ficha-linha.ts';
 import { gerarImagem, formatoDoTexto, type Ref } from './imagem.ts';
 import { cuidarDasDemandas, perfilDe, FALA_DE_DEMANDA } from './otto-demandas.ts';
-import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, type Bot } from './otto-social.ts';
+import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, decidirJeito, reagirNaMensagem, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 type Pessoa = { nome?: string; numero?: string; assuntos?: string; duvidas?: boolean };
@@ -599,6 +599,14 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
   let marcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid)) || chamouPeloNome(cfg, texto);
   if (!marcado && ctx.stanzaId) { const { data: c } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle(); marcado = !!c?.do_assistente; }
   if (!marcado) { if (!key.fromMe && key.id) await talvezReagir(sb, raw, texto, cfg.grupo_equipe!, String(key.id)); return; }
+  /* 4.59.3: pelo teor da mensagem — só reagir, responder, ou os dois */
+  if (key.id) {
+    const { data: h } = await sb.from('wa_mensagens').select('autor_nome, do_assistente, de_mim, texto').eq('jid', cfg.grupo_equipe!).order('criada_em', { ascending: false }).limit(8);
+    const conversa = ((h || []) as any[]).reverse().filter(m => m.texto).map(m => (m.do_assistente ? cfg.nome : m.autor_nome || 'alguém') + ': ' + String(m.texto).slice(0, 200)).join('\n');
+    const j = await decidirJeito(texto, chamouPeloNome(cfg, texto), conversa);
+    if (j.acao !== 'responder' && j.emoji) await reagirNaMensagem(sb, String(key.id), j.emoji, cfg.grupo_equipe!, texto);
+    if (j.acao === 'reagir') return;
+  }
   await consultaInterna(sb, cfg, raw, texto, cfg.grupo_equipe!);
 }
 
