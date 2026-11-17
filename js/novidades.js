@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.76.0', versao: '4.76.0', em: '2026-11-17T20:30:00-03:00', rota: 'whatsapp',
+    titulo: 'Otto sabe a hora de falar',
+    itens: ['O Otto não responde mais "kkk", "show", "valeu" com texto: reage com emoji. Quando o papo já rendeu, ele para.',
+      'Ele entra na conversa do grupo de vez em quando sem ser chamado: responde o bom dia, a gratidão, as comemorações e perguntas sobre o trabalho que ele sabe responder.',
+      'De vez em quando ele responde em áudio, alternando com texto.'] },
   { id: 'v-4.74.0', versao: '4.74.0', em: '2026-11-17T19:30:00-03:00', rota: 'whatsapp',
     titulo: 'Otto conversa melhor',
     itens: ['O Otto parou de terminar toda mensagem com "se precisar, tô aqui" e de repetir "Oi Fulano" no meio da conversa.',
