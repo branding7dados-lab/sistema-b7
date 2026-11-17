@@ -30,6 +30,7 @@ import { cuidarDasDemandas, perfilDe, FALA_DE_DEMANDA } from './otto-demandas.ts
 import { printDaConversa } from './print-conversa.ts';
 import { memorias, lembrar, esquecer, falar, roteiroDeFala, avisosPendentes, marcarAvisados, dadosDoDia, escreverResumoDia } from './otto-extras.ts';
 import { mandarFigurinha } from './otto-social.ts';
+import { ferramentaLigada, filtrarFerramentas, mudaSistema, podeMandar, quemPodeMandar, precisaConfirmar, respostaConfirmacao, regraTamanho, regraEmojis, tirarEmojis, chamou, podeZoarAgora, fdsQuieto } from './otto-controle.ts';
 import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, decidirJeito, reagirNaMensagem, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -44,6 +45,8 @@ export type Config = {
   regras_equipe?: string; modo_restrito?: boolean; zoacao_nivel?: 'leve' | 'medio' | 'pesado';
   /* 4.68.0: velocidade */
   velocidade?: 'rapido' | 'natural' | 'humano'; audio_humano?: boolean; audio_roteiro?: 'auto' | 'sempre' | 'nunca'; audio_max_s?: number; audio_variar?: number;
+  /* 4.73.0: jeito + controle */
+  tamanho?: string; emojis?: string; apelidos_otto?: string; zoacao_espontanea?: number; ferramentas_off?: string[]; ordens_quem?: string[]; confirmar_acoes?: boolean; fds_silencio?: boolean;
   pausa_min: number; espera_min_s: number; espera_max_s: number; grupos: Record<string, { desligado?: boolean; regras?: string }>;
   meu_lid: string | null; horario?: Horario; ouvir_audio?: boolean;
   grupo_equipe?: string | null; resumo_horas?: number; resumo_ultimo?: string | null; resumo_espera_min?: number;
@@ -520,6 +523,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
     'Não assine a mensagem (a assinatura entra sozinha). Português do Brasil, tom próximo e profissional.',
     'ESCREVA COMO UMA PESSOA NO WHATSAPP: texto corrido, frases normais. NÃO use listas, tópicos, marcadores (•, -, 1.), títulos nem negrito — a não ser que a pessoa peça explicitamente uma lista.',
     'Se ficar mais natural, você pode mandar ATÉ 3 mensagens curtas seguidas (ex.: uma responde, a outra complementa), separando-as com uma linha contendo só [[NOVA]]. Use só quando ajudar; resposta simples = uma mensagem.',
+    regraTamanho(cfg), regraEmojis(cfg),
     equipe.length ? '\nQUEM CUIDA DE CADA ASSUNTO (para chamar a pessoa, escreva {{marcar:Nome}} com o nome exato; no máximo 1 pessoa, só quando ajudar):\n' + equipe.map(p => '- ' + p.nome + (p.assuntos ? ': ' + p.assuntos : '')).join('\n') : '',
     (ap || []).length ? '\nO QUE A EQUIPE JÁ RESPONDEU (vale como verdade; use em vez de perguntar de novo):\n' + (ap || []).map(a => '- ' + a.pergunta + ' → ' + a.resposta).join('\n') : '',
     cfg.jeito?.trim() ? '\nCOMO SE COMPORTAR (definido pela agência):\n' + cfg.jeito.trim().slice(0, 3000) : '',
@@ -553,9 +557,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
 
 /** 4.56.3: chamaram pelo nome ("Otto, …", "…, Otto?", "@Otto") — sem precisar marcar */
 function chamouPeloNome(cfg: Config, texto: string): boolean {
-  const n = semAcento(String(cfg.nome || 'Otto').split(/\s+/)[0]).replace(/[^a-z0-9]/g, '');
-  if (n.length < 3) return false;
-  return new RegExp('(^|[^a-z0-9])@?' + n + '([^a-z0-9]|$)').test(semAcento(texto));
+  return chamou(cfg, texto);   /* 4.73.0: o nome + os apelidos da tela */
 }
 
 /** Entrada: toda mensagem que chega pelo webhook (já gravada no B7). */
@@ -585,6 +587,8 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   }
   const numero = await meuNumero();
   /* 4.56.0: de tempos em tempos, as pendências vão para o grupo da equipe */
+  /* 4.73.0: fim de semana em silêncio — nada por conta própria (só responde se chamarem) */
+  if (!fdsQuieto(cfg)) {
   talvezResumo(sb, cfg).catch(e => console.log('resumo', String(e)));
   /* 4.61.0: avisos por conta própria e resumo do dia (sem cron: a cada mensagem, quem chega primeiro pega a vez) */
   talvezAvisos(sb, cfg).catch(e => console.log('avisos', String(e)));
@@ -592,6 +596,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   talvezAvisarCelular(sb, cfg).catch(e => console.log('aviso celular', String(e)));
   talvezBomDia(sb, cfg, false).catch(e => console.log('bom dia', String(e)));
   talvezResumoDia(sb, cfg, false).catch(e => console.log('resumo dia', String(e)));
+  }
   /* grupo da equipe: perguntas sobre qualquer cliente */
   if (cfg.grupo_equipe && jid === cfg.grupo_equipe) { await noGrupoEquipe(sb, cfg, raw, texto, ctx, numero); return; }
 
@@ -679,12 +684,13 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
     /* 4.64.0: ordem da equipe no grupo do cliente → o agente (com as travas do grupo de cliente) */
     try { if (await agente(sb, cfg, raw, texto, jid, { conv })) return; } catch (e) { console.log('agente cliente: erro', String(e).slice(0, 300)); }
     const { data: cl } = await sb.from('clientes').select('id, nome').eq('id', conv.cliente_id).maybeSingle();
+    const pz = texto.replace(/@\d{6,}/g, '').trim(), lig = (f: string) => ferramentaLigada(cfg, f);
     /* 4.59.14: "me chama no PV" também vale quando alguém da equipe pede num grupo de cliente */
-    if (await talvezPrivado(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid)) return;
-    if (await talvezPrint(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid)) return;
-    if (await talvezImagem(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid)) return;
-    if (await talvezDemandas(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid, cl)) return;
-    if (await talvezDocumento(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid, cl)) return;
+    if (lig('privado') && await talvezPrivado(sb, cfg, raw, pz, jid)) return;
+    if (lig('print') && await talvezPrint(sb, cfg, raw, pz, jid)) return;
+    if (lig('imagem') && await talvezImagem(sb, cfg, raw, pz, jid)) return;
+    if (lig('demandas') && await podeMandarAqui(sb, cfg, raw, { ferramenta: 'demandas', pedido: pz }) && await talvezDemandas(sb, cfg, raw, pz, jid, cl)) return;
+    if (lig('pdf') && await talvezDocumento(sb, cfg, raw, pz, jid, cl)) return;
   }
   if (modo !== 'sem_marcacao' && await talvezRecado(sb, cfg, raw, texto, jid, { quem: autor, onde: 'grupo ' + (conv.nome || ''), cliente: !daCasa })) return;
   const r = await pensar(sb, cfg, conv, texto, autor, modo);
@@ -904,7 +910,15 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
       marcado = true;
     }
   }
-  if (!marcado) { if (!key.fromMe && key.id) await talvezReagir(sb, raw, texto, cfg.grupo_equipe!, String(key.id)); return; }
+  /* 4.73.0: resposta a um "confirma?" do Otto ("sim" / "não"), mesmo sem chamar pelo nome */
+  if (cfg.confirmar_acoes && await talvezConfirmacao(sb, cfg, raw, texto, cfg.grupo_equipe!)) return;
+  if (!marcado) {
+    if (!key.fromMe && key.id && !fdsQuieto(cfg)) {
+      if (cfg.emojis !== 'nada') await talvezReagir(sb, raw, texto, cfg.grupo_equipe!, String(key.id), cfg.emojis === 'bastante' ? 'bastante' : 'pouco');
+      await talvezZoar(sb, cfg, raw, texto).catch(e => console.log('zoeira', String(e).slice(0, 200)));
+    }
+    return;
+  }
   /* 4.67.2: "Otto, transcreve" citando um áudio — antes de decidir o jeito (não pode virar só uma reação) */
   if (await talvezTranscreverCitado(sb, cfg, raw, texto, cfg.grupo_equipe!).catch(() => false)) return;
   /* 4.71.0: mensagens em sequência ("Otto" ... "manda o print do Mercato" ... "no grupo da equipe"):
@@ -918,8 +932,9 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
     const { data: h } = await sb.from('wa_mensagens').select('autor_nome, do_assistente, de_mim, texto').eq('jid', cfg.grupo_equipe!).order('criada_em', { ascending: false }).limit(8);
     const conversa = ((h || []) as any[]).reverse().filter(m => m.texto).map(m => (m.do_assistente ? cfg.nome : m.autor_nome || 'alguém') + ': ' + String(m.texto).slice(0, 200)).join('\n');
     const j = await decidirJeito(texto, chamouPeloNome(cfg, texto), conversa);
-    if (j.acao === 'ignorar') { if (j.emoji) await reagirNaMensagem(sb, String(key.id), j.emoji, cfg.grupo_equipe!, texto); return; }
-    if (j.acao !== 'responder' && j.emoji) await reagirNaMensagem(sb, String(key.id), j.emoji, cfg.grupo_equipe!, texto);
+    const semEmoji = cfg.emojis === 'nada';   /* 4.73.0: sem emoji = sem reação também */
+    if (j.acao === 'ignorar') { if (j.emoji && !semEmoji) await reagirNaMensagem(sb, String(key.id), j.emoji, cfg.grupo_equipe!, texto); return; }
+    if (j.acao !== 'responder' && j.emoji && !semEmoji) await reagirNaMensagem(sb, String(key.id), j.emoji, cfg.grupo_equipe!, texto);
     if (j.acao === 'reagir') return;
   }
   await consultaInterna(sb, cfg, raw, texto, cfg.grupo_equipe!);
@@ -1771,7 +1786,58 @@ async function consultarConversa(sb: SupabaseClient, cfg: Config, nome: string):
   return 'CONVERSA "' + (conv.nome || '') + '"' + (conv.esperando_desde ? ' (cliente esperando resposta desde ' + hm(conv.esperando_desde) + ')' : '') +
     '\nEM PRODUÇÃO: ' + (pend.length ? pend.join(' | ') : 'nada registrado') + '\nÚLTIMAS MENSAGENS:\n' + (linhas.join('\n') || '(nenhuma no B7)');
 }
-async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, aqui: string, cli?: { conv: any }): Promise<boolean> {
+/* ------------------------------------------------------------ 4.73.0: controle */
+/** quem pediu pode mandar o Otto MEXER no sistema? (lista "Quem pode dar ordens" da tela) */
+async function podeMandarAqui(sb: SupabaseClient, cfg: Config, raw: any, a: any): Promise<boolean> {
+  if (!(cfg.ordens_quem || []).filter(Boolean).length || !mudaSistema(a)) return true;
+  if (raw?.key?.fromMe) return true;
+  return podeMandar(cfg, await foneDoAutor(sb, cfg, raw), false);
+}
+/** "sim"/"não" para um "confirma?" do Otto (até 10 min, mesma conversa, mesma pessoa) */
+async function talvezConfirmacao(sb: SupabaseClient, cfg: Config, raw: any, texto: string, jid: string): Promise<boolean> {
+  const r = respostaConfirmacao(texto);
+  if (!r) return false;
+  const key = raw?.key || {};
+  const fone = key.fromMe ? 'eu' : await foneDoAutor(sb, cfg, raw);
+  const { data: p } = await sb.from('wa_otto_confirmar').select('id, pedido, acoes').eq('jid', jid).eq('autor', fone).is('usado_em', null)
+    .gte('criado_em', new Date(Date.now() - 10 * 60_000).toISOString()).order('criado_em', { ascending: false }).limit(1).maybeSingle();
+  if (!p) return false;
+  /* pega a vez (dois webhooks não executam o mesmo plano) */
+  const { data: vez } = await sb.from('wa_otto_confirmar').update({ usado_em: new Date().toISOString(), resposta: r }).eq('id', p.id).is('usado_em', null).select('id');
+  if (!vez?.length) return true;
+  const citar = key.id ? { quoted: { key, message: { conversation: texto.slice(0, 300) } } } : {};
+  if (r === 'nao') { await enviar(sb, cfg, jid, 'Beleza, não fiz nada.', citar); return true; }
+  try { if (await agente(sb, cfg, raw, String(p.pedido || texto), jid, undefined, { acoes: (p.acoes || []) as any[] })) return true; }
+  catch (e) { console.log('confirmar: erro', String(e).slice(0, 300)); }
+  await enviar(sb, cfg, jid, 'Não consegui fazer agora 😕 Me pede de novo?', citar);
+  return true;
+}
+/** zoação espontânea no grupo da equipe (sorteio + travas + a IA decide se tem graça; senão, fica quieto) */
+async function talvezZoar(sb: SupabaseClient, cfg: Config, raw: any, texto: string): Promise<void> {
+  const pct = Number(cfg.zoacao_espontanea) || 0;
+  if (!(pct > 0) || cfg.modo_restrito || !cfg.grupo_equipe) return;
+  const sorteio = Math.random();
+  if (sorteio >= Math.min(30, pct) / 100) return;   /* barato primeiro: a maioria das mensagens para aqui */
+  const g = cfg.grupo_equipe;
+  const desde = (iso?: string | null) => iso ? (Date.now() - new Date(iso).getTime()) / 60000 : 1e9;
+  const { data: z } = await sb.from('wa_assistente_registro').select('em').eq('tipo', 'zoeira').eq('jid', g).order('em', { ascending: false }).limit(1).maybeSingle();
+  const { data: o } = await sb.from('wa_mensagens').select('criada_em').eq('jid', g).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+  const fone = await foneDoAutor(sb, cfg, raw);
+  if (!podeZoarAgora({ cfg, texto, daEquipe: numeroDaEquipe(cfg, fone), sorteio, minDesdeZoeira: desde(z?.em), minDesdeOtto: desde(o?.criada_em), fds: fdsQuieto(cfg) })) return;
+  const { data: h } = await sb.from('wa_mensagens').select('autor_nome, do_assistente, texto').eq('jid', g).eq('nota', false).order('criada_em', { ascending: false }).limit(8);
+  const conversa = ((h || []) as any[]).reverse().filter(m => m.texto).map(m => (m.do_assistente ? cfg.nome : m.autor_nome || 'alguém') + ': ' + String(m.texto).slice(0, 200)).join('\n');
+  const quem = String(raw?.pushName || 'alguém');
+  const r = await ia(`Você é ${cfg.nome}, a IA da Branding7, no grupo interno da equipe. Ninguém te chamou: você pode soltar UMA zoeira curta (1 frase, tom de colega) sobre a última mensagem — só se tiver graça de verdade. ` +
+    'Se for assunto sério, de trabalho com cliente, problema, ou se não tiver uma piada boa, responda só NADA. Nunca preconceito, nunca sobre cliente, nunca algo que magoe. ' + regrasDaEquipe(cfg, g) + ' ' + regraEmojis(cfg),
+    'CONVERSA:\n' + conversa.slice(-1500) + '\n\nÚLTIMA MENSAGEM (' + quem + '): ' + texto.slice(0, 300) + '\n\nSua zoeira (ou NADA):', 120);
+  const t = String(r.texto || '').trim().replace(/^["“]|["”]$/g, '');
+  if (!t || /^nada\b/i.test(t) || t.length > 220) return;
+  const key = raw?.key || {};
+  await digitando(g, cfg, t.length);
+  const foi = await enviar(sb, cfg, g, cfg.emojis === 'nada' ? tirarEmojis(t) : t, key.id ? { quoted: { key, message: { conversation: texto.slice(0, 300) } } } : {});
+  if (foi) await registrar(sb, { tipo: 'zoeira', jid: g, autor: quem, pergunta: texto.slice(0, 500), resposta: t.slice(0, 500), ...usoDe(r) });
+}
+async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, aqui: string, cli?: { conv: any }, forcado?: { acoes: any[] }): Promise<boolean> {
   /* 4.64.0: cli = ordem da equipe DENTRO do grupo de um cliente (a resposta vai para o cliente) */
   const ehCliente = !!cli;
   const key = raw?.key || {};
@@ -1799,7 +1865,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
       : `Você é ${cfg.nome}, o assistente (IA) da Branding7, agência de conteúdo para redes sociais. Quem fala com você agora é alguém da EQUIPE (${quem}), ${ehEquipe ? 'no grupo interno da equipe' : ehGrupo ? 'num grupo' : 'no privado'}.`,
     ehCliente ? 'NESTE GRUPO DE CLIENTE: a "resposta" vai para o grupo, onde o CLIENTE lê. Se a equipe pediu para falar algo ao cliente (avisar, responder, explicar, cobrar material), escreva em "resposta" a mensagem para o cliente cumprindo o pedido: em primeira pessoa, cordial e profissional, sem dizer que recebeu uma ordem. Se o pedido é algo interno (print, demanda, PDF para a equipe, chamar alguém no privado, resumo, pendências, perguntas sobre outros clientes), use as ferramentas e deixe "resposta" VAZIA — nada interno pode aparecer para o cliente. Nunca fale de valores, de outros clientes ou de assuntos internos aqui. Nada de palavrão, zoação ou ironia.' : '',
     'Você é um AGENTE: entende o pedido (pela mensagem E pela conversa em volta — "isso", "desse grupo", "lá", respostas curtas a perguntas suas) e usa FERRAMENTAS para agir de verdade. Pode encadear várias ferramentas num pedido só.',
-    FERRAMENTAS,
+    filtrarFerramentas(FERRAMENTAS, cfg),
     'COMO RESPONDER: SÓ um JSON {"acoes":[...], "resposta":"...", "em_audio": false}. "em_audio": true quando pedirem para você responder/falar em áudio ("me manda um áudio", "fala aí", "responde por áudio") — aí a "resposta" vira áudio com a sua voz.',
     '- "resposta": a mensagem que vai AQUI, depois das ações. Quando uma ação já avisa por si (print, privado, imagem, pdf, demandas, encaminhar, pendências), deixe "resposta" vazia ou bem curta. Se só precisa conversar/responder, "acoes": [] e escreva a resposta.',
     '- Se usar "consultar", deixe "resposta" vazia: o resultado volta e você decide de novo.',
@@ -1807,6 +1873,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     '- NUNCA diga que fez algo sem ter chamado a ferramenta. Ferramentas que você chamou e falharam voltam como erro.',
     'Você responde QUALQUER coisa (ideias, legendas, roteiros, estratégia, textos, contas, conversa) com seu conhecimento. Sobre clientes e produção, use só os dados — não invente prazo, data ou status.',
     'Jeito: WhatsApp, texto corrido, direto, bom humor. Pergunta simples = 1 a 3 frases; algo para produzir = completo. Liste só se pedirem ou for natural. Sem títulos/negrito em excesso. Não assine. Até 3 mensagens separadas por uma linha só com [[NOVA]] se ficar natural.',
+    regraTamanho(cfg), regraEmojis(cfg),
     'Marcar alguém: escreva @Nome (como em PESSOAS NESTE GRUPO). Marcar todo mundo / a equipe / o grupo: escreva SÓ @todos, uma vez — NUNCA liste os nomes. Nunca @números.',
     ehCliente ? '' : regrasDaEquipe(cfg, aqui),
     /* 4.66.7: do privado, a equipe pode mandar o Otto agir no grupo da equipe e no privado dos colegas */
@@ -1825,7 +1892,9 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     '\n\nDADOS DO SISTEMA:' + dados + await marcadosNaMensagem(sb, cfg, raw, aqui) + await citadaNaMensagem(sb, cfg, raw) + '\n\nMENSAGEM DE ' + quem + ' (responda a esta): ' + pedido;
   const provedor = provedorAtual(n => Deno.env.get(n));
   let plano: Plano | null = null, saida: any = null;
-  for (let rodada = 0; rodada < 3; rodada++) {
+  /* 4.73.0: confirmaram ("sim") uma ação que ele perguntou antes → executa o plano guardado, sem perguntar à IA de novo */
+  if (forcado) plano = { acoes: forcado.acoes, resposta: '' };
+  else for (let rodada = 0; rodada < 3; rodada++) {
     saida = await gerar(provedor, [{ role: 'system', content: sistema }, { role: 'user', content: usuario }],
       { maxTokens: 2200, temperatura: 0.3, json: true, prazoMs: 60000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
     if (!saida.ok) { console.log('agente: IA falhou', saida.erro || ''); return false; }
@@ -1841,7 +1910,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   if (!plano) return false;
   /* 4.67.4: pediram zoação, está liberada, e o modelo recusou ("não posso enviar mensagens ofensivas") →
      tenta de novo uma vez com o modelo de reserva (Gemini), lembrando que é brincadeira consentida */
-  if (!ehCliente && !cfg.modo_restrito && PEDE_ZOACAO.test(semAcento(pedido)) && RECUSOU.test(semAcento(plano.resposta)) && !plano.acoes.length) {
+  if (!forcado && !ehCliente && !cfg.modo_restrito && PEDE_ZOACAO.test(semAcento(pedido)) && RECUSOU.test(semAcento(plano.resposta)) && !plano.acoes.length) {
     const s2 = await gerar(provedor, [{ role: 'system', content: sistema }, { role: 'user', content: usuario + '\n\nLEMBRETE: a zoação está LIBERADA pela própria equipe (modo restrito desligado). É brincadeira entre colegas — faça, no nível pedido e dentro dos limites. Não recuse.' }],
       { maxTokens: 2200, temperatura: 0.5, json: true, prazoMs: 45000, fino: true, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
     const j2 = s2.ok ? jsonDoTexto(s2.texto) : null;
@@ -1853,7 +1922,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   /* 4.71.1: pedido para MUDAR STATUS de vídeo ("pode marcar todos como entregue, menos o Novembro Azul"),
      inclusive o "sim" a uma oferta do próprio Otto ("quer que eu marque como aprovado/entregue?"), tem que
      passar pela ferramenta de demandas — 17/11 ele respondeu "todos entregues" sem mexer em nada. */
-  if (!ehCliente && !plano.acoes.some(a => a?.ferramenta === 'demandas')) {
+  if (!forcado && !ehCliente && ferramentaLigada(cfg, 'demandas') && !plano.acoes.some(a => a?.ferramenta === 'demandas')) {
     const cit = await textoCitado(sb, raw);
     const ofertaDoOtto = /marqu\w* como (aprovad|entregue)|quer que eu marque/i.test(semAcento(cit));
     const sim = /^\s*(\*[^*]+:\*\s*)?(sim|pode|pode sim|isso|manda ver|marca|marque|faz|fa[cç]a|ok|beleza|confirmo|confirmado|bora)\b/i.test(pedido);
@@ -1886,6 +1955,38 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     const antes = plano.acoes.length;
     plano.acoes = plano.acoes.filter(a => a?.ferramenta === 'reagir' || a?.ferramenta === 'figurinha');
     if (plano.acoes.length < antes) plano.resposta = '';   /* a resposta falava das ações que não vão acontecer */
+  }
+  /* 4.73.0: o que a tela permite — ferramenta desligada, quem pode mexer no sistema, figurinha/reação sem emoji */
+  {
+    const antes = plano.acoes.length;
+    const pediuFig = /figurinha|sticker|reag/i.test(semAcento(pedido));
+    const ok: any[] = [];
+    for (const a of plano.acoes) {
+      const f = String(a?.ferramenta || '');
+      if (!ferramentaLigada(cfg, f)) { const m = 'essa função (' + f.replace(/_/g, ' ') + ') está desligada nas configurações do ' + String(cfg.nome || 'Otto').split(/\s+/)[0]; if (!falhas.includes(m)) falhas.push(m); continue; }
+      if (mudaSistema(a) && !await podeMandarAqui(sb, cfg, raw, a)) { const m = 'só ' + quemPodeMandar(cfg) + ' podem pedir para eu mexer nisso'; if (!falhas.includes(m)) falhas.push(m); continue; }
+      if (cfg.emojis === 'nada' && (f === 'reagir' || f === 'figurinha') && !pediuFig) continue;
+      ok.push(a);
+    }
+    plano.acoes = ok;
+    if (ok.length < antes) plano.resposta = falhas.length ? '' : plano.resposta;
+  }
+  /* 4.73.0: ação grande (excluir, mexer em várias demandas, mandar em grupo de cliente, apagar) → pergunta antes */
+  if (!forcado && cfg.confirmar_acoes && !ehCliente) {   /* no grupo de cliente não pergunta: o cliente veria */
+    const grandes = plano.acoes.map(a => precisaConfirmar(a)).filter(Boolean) as string[];
+    if (grandes.length) {
+      /* guarda o pedido completo (com a mensagem citada) — no "sim", a citação já é outra */
+      const cit = await textoCitado(sb, raw);
+      const acoes = plano.acoes.map(a => a?.ferramenta === 'demandas' && cit && !/\(Contexto — /.test(String(a.pedido || '')) ? { ...a, pedido: String(a.pedido || pedido) + '\n(Contexto — mensagem citada: ' + cit + ')' } : a);
+      const fone = key.fromMe ? 'eu' : await foneDoAutor(sb, cfg, raw);
+      await sb.from('wa_otto_confirmar').insert({ jid: aqui, autor: fone, autor_nome: quem, pedido: pedido.slice(0, 2000), acoes });
+      const msg = 'Antes de fazer, confirma?\n' + grandes.map(g => '• ' + g).join('\n') + '\n\nResponde *sim* ou *não* (vale por 10 min).';
+      const citarC = key.id ? { quoted: { key, message: { conversation: texto.slice(0, 300) } } } : {};
+      await digitando(aqui, cfg, msg.length);
+      await enviar(sb, cfg, aqui, msg, citarC);
+      await registrar(sb, { tipo: 'confirmar', jid: aqui, autor: quem, pergunta: pedido.slice(0, 800), resposta: grandes.join(' | ').slice(0, 1500) });
+      return true;
+    }
   }
   for (const a of plano.acoes) {
     const f = String(a?.ferramenta || '');
@@ -1999,6 +2100,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   if (bloqueou) { const f = falhas.filter(x => /^não mando|^o Otto está desligado/.test(x)); falhas.length = 0; falhas.push(...f); }
   if (falhas.length && !feitos.length && plano.acoes.length) resposta = '';
   if (falhas.length) resposta = (resposta ? resposta + '\n\n' : '') + 'Não deu: ' + falhas.join('; ') + '.';
+  if (resposta && cfg.emojis === 'nada') resposta = tirarEmojis(resposta);
   if (resposta) {
     const citarR = key.id && !ehCliente ? { quoted: { key, message: { conversation: texto.slice(0, 300) } } } : {};
     /* 4.61.0: mandou áudio → responde em áudio (se der; senão, texto) */
@@ -2072,6 +2174,7 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
   talvezAprenderCorrecao(sb, cfg, raw, texto, destino).catch(e => console.log('aprender correção', String(e).slice(0, 200)));   /* em paralelo: não atrasa a resposta */
   avisarPensando(destino, temAudio(raw) && (cfg as any).responder_audio !== false ? 'recording' : 'composing');
   if (await talvezTranscreverCitado(sb, cfg, raw, texto, destino).catch(e => { console.log('transcrever citado', String(e).slice(0, 200)); return false; })) return;
+  if (cfg.confirmar_acoes && await talvezConfirmacao(sb, cfg, raw, texto, destino)) return;
   try { if (await agente(sb, cfg, raw, texto, destino)) return; }
   catch (e) { console.log('agente: erro', String(e).slice(0, 300)); }
   await consultaAntiga(sb, cfg, raw, texto, destino);
@@ -2080,13 +2183,14 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
 async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
   const key = raw?.key || {};
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
-  if (await talvezPrivado(sb, cfg, raw, pedido, destino)) return;
-  if (await talvezEncaminhar(sb, cfg, raw, pedido, destino)) return;
-  if (await talvezPrint(sb, cfg, raw, pedido, destino)) return;
+  const lig = (f: string) => ferramentaLigada(cfg, f);   /* 4.73.0: ferramenta desligada na tela não roda nem pelo jeito antigo */
+  if (lig('privado') && await talvezPrivado(sb, cfg, raw, pedido, destino)) return;
+  if (lig('print') && await talvezEncaminhar(sb, cfg, raw, pedido, destino)) return;
+  if (lig('print') && await talvezPrint(sb, cfg, raw, pedido, destino)) return;
   const onde = destinoDoPedido(cfg, semAcento(pedido), destino);   /* "manda no grupo da equipe" */
-  if (await talvezImagem(sb, cfg, raw, pedido, onde)) return;
-  if (await talvezDemandas(sb, cfg, raw, pedido, destino)) return;
-  if (await talvezDocumento(sb, cfg, raw, pedido, onde)) return;
+  if (lig('imagem') && await talvezImagem(sb, cfg, raw, pedido, onde)) return;
+  if (lig('demandas') && await podeMandarAqui(sb, cfg, raw, { ferramenta: 'demandas', pedido }) && await talvezDemandas(sb, cfg, raw, pedido, destino)) return;
+  if (lig('pdf') && await talvezDocumento(sb, cfg, raw, pedido, onde)) return;
   if (await talvezRecado(sb, cfg, raw, pedido, destino, { quem: String(raw?.pushName || (key.fromMe ? 'Você' : 'alguém da equipe')), onde: destino === cfg.grupo_equipe ? 'grupo da equipe' : 'privado' })) return;
   if (/pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta|esperando resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true, destino); return; }
   const clientes = await clientesCitados(sb, pedido);
@@ -2117,7 +2221,7 @@ async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: 
     'Você conhece a equipe (lista QUEM É QUEM): quando falarem de alguém, saiba quem é e o que faz (ex.: "o Kaique é o videomaker da B7"). ' +
     'Para MARCAR alguém (quando pedirem ou quando ajudar), escreva @ e o nome da pessoa como aparece em PESSOAS NESTE GRUPO (ex.: @Yury); para marcar todo mundo, @todos. O sistema transforma na marcação de verdade. Nunca escreva @ com números. ' +
     'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
-    'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]].',
+    'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]]. ' + regraTamanho(cfg) + ' ' + regraEmojis(cfg),
     ' ' + regrasDaEquipe(cfg, destino) + ' ' +
     /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
     'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +

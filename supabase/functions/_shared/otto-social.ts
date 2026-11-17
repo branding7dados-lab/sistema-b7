@@ -121,7 +121,9 @@ async function ultimaVez(sb: SupabaseClient, tipo: string, jid: string): Promise
 }
 
 /** Mensagem no grupo da equipe que NÃO era para o Otto: talvez reagir / mandar figurinha. */
-export async function talvezReagir(sb: SupabaseClient, raw: any, texto: string, jid: string, msgId: string): Promise<void> {
+export async function talvezReagir(sb: SupabaseClient, raw: any, texto: string, jid: string, msgId: string, nivel: 'pouco' | 'bastante' = 'pouco'): Promise<void> {
+  /* 4.73.0: "bastante" = reage a toda risada e manda figurinha com mais frequência */
+  const muito = nivel === 'bastante';
   try {
     const agora = Date.now();
     const ctx = desembrulhar(raw?.message)?.extendedTextMessage?.contextInfo || {};
@@ -138,11 +140,11 @@ export async function talvezReagir(sb: SupabaseClient, raw: any, texto: string, 
       }
       if (!alvo || jaReagiu(alvo) || alvo.do_assistente) return;
       /* nem toda risada: ~2 em 3 */
-      if (Math.random() > 0.66) return;
+      if (!muito && Math.random() > 0.66) return;
       if (await reagir(sb, alvo, '😂')) {
         await sb.from('wa_assistente_registro').insert({ tipo: 'reacao', jid, autor: 'Otto', pergunta: String(alvo.texto || alvo.tipo || '').slice(0, 300), resposta: '😂' });
         /* às vezes, uma figurinha (no máx. 1 a cada 20 min) */
-        if (Math.random() < 0.3 && agora - await ultimaVez(sb, 'figurinha', jid) > 20 * 60_000) {
+        if (Math.random() < (muito ? 0.5 : 0.3) && agora - await ultimaVez(sb, 'figurinha', jid) > (muito ? 10 : 20) * 60_000) {
           if (await mandarFigurinha(sb, jid, 'A turma está rindo de: ' + String(alvo.texto || '(uma mídia)')))
             await sb.from('wa_assistente_registro').insert({ tipo: 'figurinha', jid, autor: 'Otto', pergunta: String(alvo.texto || '').slice(0, 300), resposta: 'figurinha' });
         }
@@ -151,7 +153,7 @@ export async function talvezReagir(sb: SupabaseClient, raw: any, texto: string, 
     }
     /* 2) notícia boa, conquista, agradecimento: reação que combina (com calma) */
     if (texto.length < 8 || !/!|parab|fech|vend|aprovad|conseguimos|bateu|meta|top|show|brabo|incr[ií]vel|obrigad|valeu|bora|nasceu|anivers|[🎉🚀🔥👏❤️💪🥳]/i.test(texto)) return;
-    if (agora - await ultimaVez(sb, 'reacao', jid) < 3 * 60_000) return;
+    if (agora - await ultimaVez(sb, 'reacao', jid) < (muito ? 90_000 : 3 * 60_000)) return;
     const e = (await ia('Você está num grupo de WhatsApp da equipe de uma agência. Diga se vale reagir à mensagem e com qual emoji, como um colega simpático faria (sem exagero: só quando for conquista, notícia boa, comemoração, agradecimento ou algo engraçado). Responda SÓ um destes: 👏 ❤️ 🔥 😂 🙏 🥳 — ou NADA.',
       'MENSAGEM: ' + texto.slice(0, 500), 8)).trim();
     const emoji = ['👏', '❤️', '🔥', '😂', '🙏', '🥳'].find(x => e.startsWith(x));

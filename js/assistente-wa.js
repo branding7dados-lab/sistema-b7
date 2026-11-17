@@ -23,7 +23,7 @@ B7.AssistenteWA = (function () {
     ['😄 Descontraído', 'Pode ser leve e bem-humorado, como alguém da agência que conhece o cliente.']
   ];
   const TIPOS_REGRA = [['NUNCA', 'Nunca'], ['SEMPRE', 'Sempre'], ['NÃO RESPONDA quando o assunto for', 'Não responder sobre'], ['CHAME', 'Chamar alguém quando']];
-  const ROT_TIPO = { resposta: ['Respondeu', 'ok'], duvida: ['Perguntou à equipe', 'dv'], repasse: ['Repassou resposta', 'rp'], instrucao: ['Cumpriu ordem', 'or'], fora_horario: ['Fora do horário', 'fh'], teste: ['Teste', 'ts'], erro: ['Falhou', 'er'], resumo: ['Pendências à equipe', 'rp'], consulta: ['Respondeu a equipe', 'or'], documento: ['Mandou PDF', 'ok'], recado: ['Deu recado', 'rp'], imagem: ['Gerou imagem', 'ok'], demanda: ['Mexeu nas demandas', 'or'], reacao: ['Reagiu', 'ok'], figurinha: ['Mandou figurinha', 'ok'], bot: ['Falou com outra IA', 'rp'], print: ['Mandou print', 'ok'], privado: ['Chamou no privado', 'rp'], agente: ['Agiu (ferramentas)', 'or'], aviso: ['Avisou a equipe', 'rp'], aprendeu: ['Aprendeu com correção', 'ok'], transcricao: ['Transcreveu', 'ok'] };
+  const ROT_TIPO = { resposta: ['Respondeu', 'ok'], duvida: ['Perguntou à equipe', 'dv'], repasse: ['Repassou resposta', 'rp'], instrucao: ['Cumpriu ordem', 'or'], fora_horario: ['Fora do horário', 'fh'], teste: ['Teste', 'ts'], erro: ['Falhou', 'er'], resumo: ['Pendências à equipe', 'rp'], consulta: ['Respondeu a equipe', 'or'], documento: ['Mandou PDF', 'ok'], recado: ['Deu recado', 'rp'], imagem: ['Gerou imagem', 'ok'], demanda: ['Mexeu nas demandas', 'or'], reacao: ['Reagiu', 'ok'], figurinha: ['Mandou figurinha', 'ok'], bot: ['Falou com outra IA', 'rp'], print: ['Mandou print', 'ok'], privado: ['Chamou no privado', 'rp'], agente: ['Agiu (ferramentas)', 'or'], aviso: ['Avisou a equipe', 'rp'], aprendeu: ['Aprendeu com correção', 'ok'], transcricao: ['Transcreveu', 'ok'], zoeira: ['Zoou sem ser chamado', 'rp'], confirmar: ['Pediu confirmação', 'dv'] };
   let S = null, raiz = null;
 
   const ini = s => { const p = String(s || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase(); };
@@ -96,9 +96,21 @@ B7.AssistenteWA = (function () {
     equipe: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.6-3.4 3-5.4 6-5.4s5.4 2 6 5.4"/><path d="M16 4.6a3.2 3.2 0 0 1 0 6.3M18 14.8c1.7.6 2.7 2.4 3 5.2"/>',
     clientes: '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
     saber: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 21.5V5.5"/><path d="M9 8h7"/>',
+    controle: '<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
     testar: '<path d="M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9V3"/><path d="M8.5 3h7M7 15h10"/>'
   };
   const icone = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (IC[k] || '') + '</svg>';
+  /* 4.73.0: o que ele pode fazer (grupos de ferramentas do servidor: otto-controle.ts → GRUPOS_FERRAMENTAS) */
+  const FERRS = [['demandas', 'Mexer nas demandas', 'Criar, editar, mudar status e excluir demandas de vídeo. Desligado: nem consulta.'],
+    ['mensagem_em_grupo', 'Mandar mensagem em outro grupo', 'Ex.: “manda no grupo da equipe”, “avisa o grupo do Mercato”.'],
+    ['privado', 'Chamar no privado', 'Mandar recado no privado de alguém da equipe.'],
+    ['audio', 'Mandar áudio em outro lugar', 'Áudio no grupo da equipe ou no privado. Responder em áudio ali mesmo fica em Velocidade e voz.'],
+    ['print', 'Print de conversa', 'Também encaminhar a última coisa que ele mandou.'],
+    ['imagem', 'Gerar e editar imagem', ''], ['pdf', 'PDF de roteiro e linha editorial', ''],
+    ['figurinha', 'Figurinhas', 'Mandar figurinha quando pedem ou quando cai bem.'],
+    ['editar_apagar', 'Editar e apagar mensagem dele', ''],
+    ['lembrar', 'Guardar na memória', 'Lembrar e esquecer combinados quando pedem.'],
+    ['resumos', 'Pendências, resumo e bom dia a pedido', 'Os automáticos têm a chave deles em Equipe e Clientes.']];
   const VELOCIDADES = [['rapido', 'Rápido', 'Responde assim que pensa'], ['natural', 'Natural', 'Digita no tamanho da resposta'], ['humano', 'Humano', 'Espera como uma pessoa']];
   /* mesmas contas do servidor (assistente.ts → tempoDigitando) */
   const digitaMs = (c, tam) => { const v = c.velocidade || 'natural'; if (v === 'rapido') return 500; if (v === 'humano') return ((Math.max(1, c.espera_min_s || 4) + Math.max(c.espera_min_s || 4, c.espera_max_s || 9)) / 2) * 1000; return Math.max(700, Math.min(2500, 400 + tam * 12)); };
@@ -128,7 +140,7 @@ B7.AssistenteWA = (function () {
     const ativos = S.grupos.filter(g => !((c.grupos || {})[g.jid] || {}).desligado).length;
     const t = tempoReal();
     const ABAS = [['geral', 'Visão geral', S.dv.length || null], ['velocidade', 'Velocidade e voz'], ['jeito', 'Personalidade'], ['equipe', 'Equipe', (c.equipe || []).length],
-      ['clientes', 'Clientes e grupos', ativos + '/' + S.grupos.length], ['saber', 'Conhecimento', (S.mem || []).length + S.ap.length || null], ['testar', 'Testar']];
+      ['clientes', 'Clientes e grupos', ativos + '/' + S.grupos.length], ['saber', 'Conhecimento', (S.mem || []).length + S.ap.length || null], ['controle', 'Permissões', (c.ferramentas_off || []).length ? (FERRS.length - (c.ferramentas_off || []).length) + '/' + FERRS.length : null], ['testar', 'Testar']];
     const nome = esc((c.nome || 'Otto').split(' ')[0]);
     raiz.innerHTML =
       '<header class="asw-hero' + (c.ativo ? ' on' : '') + '">' +
@@ -194,6 +206,10 @@ B7.AssistenteWA = (function () {
           '<label class="asw-lb">Jeito de falar com cliente</label><div class="asw-chips">' + TONS.map(([r], i) => '<button class="asw-chip" data-tom="' + i + '">' + r + '</button>').join('') + '</div>' +
           '<textarea class="campo" data-c="jeito" rows="5" placeholder="Ex.: trate pelo primeiro nome; prazo padrão de arte é 2 dias úteis; vídeos saem em até 5 dias depois da gravação.">' + esc(c.jeito || '') + '</textarea>' +
           linha('Ajudar sem ser chamado', 'No grupo do cliente, responde pedidos de ajuda mesmo sem ser marcado — e fica quieto se a equipe falou nos últimos <input class="campo asw-mini" type="number" min="5" max="600" data-c="pausa_min" value="' + (c.pausa_min || 30) + '"> min.', chave('sem_marcacao', !!c.sem_marcacao))) +
+        bloco('Como ele escreve', 'Vale com a equipe e com os clientes.',
+          linha('Tamanho das respostas', 'Automático: ele mede pelo pedido. Algo para produzir (legenda, roteiro) sai completo em qualquer opção.', seg('tamanho', c.tamanho || 'auto', [['auto', 'Automático'], ['curta', 'Curtas'], ['media', 'Médias'], ['detalhada', 'Detalhadas']]), 'asw-pilha') +
+          linha('Emojis e figurinhas', 'Nada: sem emoji no texto e sem reagir ou mandar figurinha por conta própria (só se pedirem). Bastante: mais emoji, reage a toda risada e manda mais figurinha.', seg('emojis', c.emojis || 'pouco', [['nada', 'Nada'], ['pouco', 'Pouco'], ['bastante', 'Bastante']]), 'asw-pilha') +
+          linha('Apelidos do ' + nome, 'Outros nomes que também chamam ele, separados por vírgula. Evite palavras comuns (“robô”, “bot”): ele vai achar que é com ele toda vez que alguém falar.', '<input class="campo" data-c="apelidos_otto" maxlength="120" placeholder="Ex.: Ottinho, Ottão" value="' + esc(c.apelidos_otto || '') + '">', 'asw-pilha')) +
         bloco('Regras fixas com clientes', 'Valem acima de tudo, em todos os grupos de cliente.',
           '<ul class="asw-regras">' + (S.regras.map((r, i) => '<li><span class="asw-rtipo t' + TIPOS_REGRA.findIndex(([k]) => k === r.tipo) + '">' + esc((TIPOS_REGRA.find(([k]) => k === r.tipo) || ['', 'Regra'])[1]) + '</span><span>' + esc(r.texto) + '</span><button class="asw-x" data-tira-regra="' + i + '" aria-label="Tirar regra">✕</button></li>').join('') || '<li class="asw-nada">Nenhuma regra ainda.</li>') + '</ul>' +
           '<div class="asw-nova-regra"><select class="campo" id="asw-rtipo">' + TIPOS_REGRA.map(([k, r]) => '<option value="' + esc(k) + '">' + r + '</option>').join('') + '</select>' +
@@ -214,6 +230,7 @@ B7.AssistenteWA = (function () {
         bloco('Com a equipe', 'Valem no grupo interno e no privado de quem está na lista abaixo. Com cliente, valem as regras da Personalidade.',
           linha('Modo restrito', 'Ligado: nada de palavrão, nem de brincadeira. Desligado: zoação liberada com a equipe — nunca com cliente nem sobre cliente.', chave('modo_restrito', !!c.modo_restrito)) +
           '<div class="asw-row asw-vigia' + (c.modo_restrito ? ' off' : '') + '"><div class="asw-row-t"><b>Até onde a zoação pode ir</b><small>Ele mede pelo tom de quem pediu e não passa deste limite.</small></div><div class="asw-row-c">' + seg('zoacao_nivel', c.zoacao_nivel || 'medio', [['leve', 'Leve'], ['medio', 'Média'], ['pesado', 'Pesada']]) + '</div></div>' +
+          '<div class="asw-row asw-vigia' + (c.modo_restrito ? ' off' : '') + '"><div class="asw-row-t"><b>Zoação espontânea</b><small>Solta uma zoeira sem ninguém chamar, no grupo da equipe. No máximo 1 a cada 2 horas, nunca em assunto sério (cliente, problema, cobrança), e só se tiver graça; senão, fica quieto.</small></div><div class="asw-row-c">' + seg('zoacao_espontanea', String(Number(c.zoacao_espontanea) || 0), [['0', 'Nunca'], ['10', 'Às vezes'], ['25', 'Bastante']]) + '</div></div>' +
           '<label class="asw-lb">Regras fixas da equipe</label><textarea class="campo" data-c="regras_equipe" rows="3" maxlength="2000" placeholder="Uma por linha. Ex.: não zoar a Talita; sempre chamar o Yury de chefe.">' + esc(c.regras_equipe || '') + '</textarea>', 'asw-regeq') +
         bloco('Pessoas', 'Quem é da equipe para o ' + nome + ' (pelo número). Elas podem dar ordens, recebem as dúvidas e são marcadas quando o assunto é delas.',
           '<div class="asw-equipe">' + (c.equipe || []).map((p, i) =>
@@ -268,6 +285,21 @@ B7.AssistenteWA = (function () {
             '<div class="asw-ap-ac"><label class="asw-sw p"><input type="checkbox" data-ap-ativo' + (a.ativo !== false ? ' checked' : '') + '><span></span>Usar</label><button class="asw-x" data-esquece aria-label="Esquecer">✕</button></div></div>').join('')
             || '<div class="asw-nada">Ainda não aprendeu nada.</div>') + '</div>') + '</div>';
     }
+    if (S.aba === 'controle') {
+      const off = c.ferramentas_off || [], oq = c.ordens_quem || [], eq = (c.equipe || []).filter(p => p.nome && p.numero);
+      const fim8 = n => String(n || '').replace(/\D/g, '').slice(-8);
+      return '<div class="asw-2">' +
+        bloco('O que ele pode fazer', 'Desligado, ele nem oferece: se alguém pedir, responde que a função está desligada aqui.',
+          FERRS.map(([k, t, d]) => linha(t, d, '<label class="asw-tg"><input type="checkbox" data-ferr="' + k + '"' + (off.includes(k) ? '' : ' checked') + ' aria-label="' + esc(t) + '"><span></span></label>')).join('')) +
+        '<div>' +
+        bloco('Quem pode dar ordens', 'Quem pode pedir para ele MEXER no sistema: criar, editar, mudar status ou excluir demandas, apagar e editar mensagem, guardar na memória. Consultar, todo mundo da equipe pode. Nenhum marcado: todos. O celular do B7 sempre pode.',
+          eq.length ? '<div class="asw-chips">' + eq.map(p => { const on = oq.some(n => fim8(n) === fim8(p.numero)); return '<button class="asw-chip' + (on ? ' on' : '') + '" data-ordem="' + esc(p.numero) + '" aria-pressed="' + on + '">' + esc(String(p.nome).split(' ')[0]) + '</button>'; }).join('') + '</div>'
+            : '<div class="asw-nada">Cadastre as pessoas na aba Equipe primeiro.</div>') +
+        bloco('Segurança', '',
+          linha('Confirmar antes de agir', 'Em ação grande ele pergunta “confirma?” e só faz depois do “sim” (vale por 10 min): excluir demanda, mexer em várias demandas de uma vez, mandar algo em grupo de cliente, apagar mensagem.', chave('confirmar_acoes', !!c.confirmar_acoes)) +
+          linha('Fim de semana em silêncio', 'Sábado e domingo ele não manda nada por conta própria: sem bom dia, resumo, pendências, avisos, aviso no celular, reação ou zoeira. Se chamarem, responde normal.', chave('fds_silencio', !!c.fds_silencio))) +
+        '</div></div>';
+    }
     if (S.aba === 'testar') {
       return bloco('Testar sem mandar nada', 'Escreva como se fosse o cliente no grupo escolhido. Ele usa a conversa real e o que está em produção, mas não envia nada no WhatsApp.',
         '<div class="asw-teste"><div class="asw-teste-top"><select class="campo" id="asw-tjid">' + S.grupos.map(g => '<option value="' + esc(g.jid) + '"' + (g.jid === S.testeJid ? ' selected' : '') + '>' + esc(g.nome) + '</option>').join('') + '</select>' +
@@ -287,6 +319,7 @@ B7.AssistenteWA = (function () {
 
   function digitou(e) {
     const t = e.target;
+    if (t.dataset.ferr && e.type === 'change') { const k = t.dataset.ferr, l = (S.cfg.ferramentas_off || []).filter(x => x !== k); if (!t.checked) l.push(k); S.cfg.ferramentas_off = l; marcarSujo(); return; }
     if (t.dataset.c) {
       const v = t.type === 'checkbox' ? t.checked : (t.type === 'number' || t.hasAttribute('data-num')) ? Number(t.value) || 0 : t.value;
       if (t.dataset.c === 'grupo_equipe') { const bt = raiz.querySelector('[data-pendencias]'); if (bt) bt.disabled = !t.value; }
@@ -299,7 +332,7 @@ B7.AssistenteWA = (function () {
       if (t.dataset.c === 'audio_max_s') { const o = raiz.querySelector('#asw-maxs'); if (o) o.textContent = t.value + ' s'; }
       if (t.dataset.c === 'voz_provedor') { const e = raiz.querySelector('.asw-eleven'); if (e) e.classList.toggle('fora', t.value !== 'elevenlabs'); }
       if (t.dataset.c === 'modo_clientes') { const d = t.closest('.asw-row').querySelector('.asw-row-t small'); if (d) d.textContent = t.value === 'vigia' ? 'Só vigiar: não responde o cliente. Se ninguém da equipe responder, manda o print no grupo da equipe marcando quem precisa.' : 'Atender: responde o cliente quando chamado.'; }
-      if (t.dataset.c === 'modo_restrito') { const z = raiz.querySelector('.asw-regeq .asw-vigia'); if (z) z.classList.toggle('off', t.checked); }
+      if (t.dataset.c === 'modo_restrito') raiz.querySelectorAll('.asw-regeq .asw-vigia').forEach(z => z.classList.toggle('off', t.checked));
       if (t.dataset.c === 'horario.ativo') { const h = raiz.querySelector('.asw-horario'); if (h) h.classList.toggle('off', !t.checked); }
       if (t.dataset.c === 'nome') { const h = raiz.querySelector('.asw-hero h1'); if (h) h.textContent = t.value || 'Assistente'; }
     } else if (t.dataset.qq) {
@@ -361,6 +394,8 @@ B7.AssistenteWA = (function () {
     if (t.closest('[data-desfazer]')) { S.cfg = JSON.parse(S.orig); S.regras = regrasDe(S.cfg.regras); desenhar(); return; }
     const tom = t.closest('[data-tom]');
     if (tom) { const x = TONS[Number(tom.dataset.tom)][1]; const j = String(S.cfg.jeito || ''); if (!j.includes(x)) S.cfg.jeito = (j.trim() ? j.trim() + '\n' : '') + x; desenhar(); return; }
+    const od = t.closest('[data-ordem]');
+    if (od) { const n = od.dataset.ordem, f8 = x => String(x || '').replace(/\D/g, '').slice(-8), l = (S.cfg.ordens_quem || []).filter(x => f8(x) !== f8(n)); const liga = l.length === (S.cfg.ordens_quem || []).length; if (liga) l.push(n); S.cfg.ordens_quem = l; od.classList.toggle('on', liga); od.setAttribute('aria-pressed', liga ? 'true' : 'false'); marcarSujo(); return; }
     const pu = t.closest('[data-push]');
     if (pu) { const id = pu.dataset.push, l = Array.isArray(S.cfg.push_para) ? S.cfg.push_para.slice() : []; const i = l.indexOf(id); if (i >= 0) l.splice(i, 1); else l.push(id); S.cfg.push_para = l; pu.classList.toggle('on', i < 0); pu.setAttribute('aria-pressed', i < 0 ? 'true' : 'false'); marcarSujo(); return; }
     const dia = t.closest('[data-dia]');
@@ -448,6 +483,10 @@ B7.AssistenteWA = (function () {
       bom_dia_ligado: c.bom_dia_ligado !== false, bom_dia_hora: /^\d{2}:\d{2}$/.test(c.bom_dia_hora || '') ? c.bom_dia_hora : '08:00',
       push_espera_min: Math.max(0, Math.min(240, Number(c.push_espera_min ?? 15) || 0)), push_para: (Array.isArray(c.push_para) ? c.push_para : []).filter(Boolean),
       velocidade: ['rapido', 'natural', 'humano'].includes(c.velocidade) ? c.velocidade : 'natural', audio_humano: !!c.audio_humano, audio_variar: [0, 15, 30].includes(Number(c.audio_variar)) ? Number(c.audio_variar) : 0,
+      tamanho: ['auto', 'curta', 'media', 'detalhada'].includes(c.tamanho) ? c.tamanho : 'auto', emojis: ['nada', 'pouco', 'bastante'].includes(c.emojis) ? c.emojis : 'pouco',
+      apelidos_otto: String(c.apelidos_otto || '').split(',').map(x => x.trim()).filter(x => x.length >= 3).slice(0, 6).join(', '), zoacao_espontanea: [0, 10, 25].includes(Number(c.zoacao_espontanea)) ? Number(c.zoacao_espontanea) : 0,
+      ferramentas_off: (c.ferramentas_off || []).filter(k => FERRS.some(([f]) => f === k)), ordens_quem: (c.ordens_quem || []).map(n => String(n).replace(/\D/g, '')).filter(Boolean),
+      confirmar_acoes: !!c.confirmar_acoes, fds_silencio: !!c.fds_silencio,
       audio_roteiro: ['auto', 'sempre', 'nunca'].includes(c.audio_roteiro) ? c.audio_roteiro : 'auto', audio_max_s: Math.max(15, Math.min(120, Number(c.audio_max_s) || 40)),
       regras_equipe: String(c.regras_equipe || '').slice(0, 2000), modo_restrito: !!c.modo_restrito, zoacao_nivel: ['leve', 'medio', 'pesado'].includes(c.zoacao_nivel) ? c.zoacao_nivel : 'medio',
       modo_clientes: c.modo_clientes === 'atende' ? 'atende' : 'vigia', vigia_min: Math.max(5, Number(c.vigia_min) || 20),
