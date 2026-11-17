@@ -286,14 +286,14 @@ html[data-theme="dark"] .wz-b.eu{background:linear-gradient(135deg,color-mix(in 
 .wz-transc:disabled{cursor:default;opacity:.6;}
 
 /* 4.66.3: quem reagiu */
-.wz-quem{position:fixed;z-index:3000;color:var(--ink);min-width:220px;max-width:300px;max-height:320px;overflow:auto;padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--borda);box-shadow:0 14px 30px -12px rgba(30,20,70,.5);}
-.wz-quem-cab{padding:6px 10px 8px;font-size:12px;font-weight:700;opacity:.65;border-bottom:1px solid var(--borda);margin-bottom:4px;}
-.wz-quem-l{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;}
-.wz-quem-l.eu{cursor:pointer;}
-.wz-quem-l.eu:hover{background:var(--suave);}
-.wz-quem-n{flex:1;min-width:0;display:flex;flex-direction:column;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;}
-.wz-quem-n small{font-size:11.5px;font-weight:500;opacity:.6;}
-.wz-quem-e{font-size:20px;line-height:1;}
+.wz-reagiram{position:fixed;z-index:3000;color:var(--ink);min-width:220px;max-width:300px;max-height:320px;overflow:auto;padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--borda);box-shadow:0 14px 30px -12px rgba(30,20,70,.5);}
+.wz-rg-cab{padding:6px 10px 8px;font-size:12px;font-weight:700;opacity:.65;border-bottom:1px solid var(--borda);margin-bottom:4px;}
+.wz-rg-l{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;}
+.wz-rg-l.eu{cursor:pointer;}
+.wz-rg-l.eu:hover{background:var(--suave);}
+.wz-rg-n{flex:1;min-width:0;display:flex;flex-direction:column;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;}
+.wz-rg-n small{font-size:11.5px;font-weight:500;opacity:.6;}
+.wz-rg-e{font-size:20px;line-height:1;}
 
 /* 4.66.5: a barra de rolagem da conversa e da lista é a do sistema (fina, arredondada, sem setinhas).
    "scrollbar-width:thin" fazia o Chrome do Windows voltar à barra cinza com setas. Firefox: fina na cor do tema. */

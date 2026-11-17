@@ -69,7 +69,12 @@ B7.CentralWA = (function () {
   const espera = iso => { if (!iso) return ''; const min = (Date.now() - new Date(iso)) / 60000; if (min < 30) return ''; return min < 60 ? Math.round(min) + ' min sem resposta' : min < 1440 ? Math.floor(min / 60) + ' h sem resposta' : Math.floor(min / 1440) + ' d sem resposta'; };
   const ticks = st => st === 'READ' || st === 'PLAYED' ? '<i class="wz-tk lido">✓✓</i>' : st === 'DELIVERY_ACK' ? '<i class="wz-tk">✓✓</i>' : st === 'PENDING' ? '<i class="wz-tk">🕓</i>' : st === 'ERROR' ? '<i class="wz-tk erro">!</i>' : '<i class="wz-tk">✓</i>';
   /* 4.53.1: "@178859651645554" (menção por código do WhatsApp) → "@Nome" */
-  const nomeCodigo = d => { const n = S.contatos && (S.contatos.get(d + '@lid') || S.contatos.get(d + '@s.whatsapp.net')); return n && !/^\+?\d+$/.test(n) ? n : null; };
+  const nomeCodigo = d => {
+    let n = S.contatos && (S.contatos.get(d + '@lid') || S.contatos.get(d + '@s.whatsapp.net'));
+    /* 4.66.6: quem escreveu nesta conversa também serve (o @lid nem sempre está nos contatos) */
+    if (!n || /^\+?\d+$/.test(n)) { const m = (S.msgs || []).find(x => x.autor_nome && (x.autor_jid === d + '@lid' || x.autor_jid === d + '@s.whatsapp.net')); n = m && m.autor_nome; }
+    return n && !/^\+?\d+$/.test(n) ? n : null;
+  };
   const semCodigos = t => String(t || '').replace(/@(\d{8,})/g, (x, d) => { const n = nomeCodigo(d); return n ? '@' + n : x; });
   function textoRico(t) {
     let h = esc(semCodigos(t));
@@ -290,7 +295,7 @@ B7.CentralWA = (function () {
       if (m.citada_id) {
         const q = S.msgs.find(x => x.id === m.citada_id);
         const qa = q ? (q.de_mim ? 'Você' : (q.autor_nome || '')) : (m.citada_autor ? (/^\d{14,}$/.test(m.citada_autor) ? 'Contato' : '+' + m.citada_autor) : '');
-        corpo += '<span class="wz-q" data-ir="' + esc(m.citada_id) + '"><b style="--c:' + corDe(qa) + '">' + esc(qa || 'Mensagem') + '</b>' + esc((q && (q.texto || q.midia_nome)) || m.citada_previa || '') + '</span>';
+        corpo += '<span class="wz-q" data-ir="' + esc(m.citada_id) + '"><b style="--c:' + corDe(qa) + '">' + esc(qa || 'Mensagem') + '</b>' + esc(semCodigos((q && (q.texto || q.midia_nome)) || m.citada_previa || '')) + '</span>';
       }
       corpo += midia(m);
       if (m.texto && m.tipo !== 'localizacao' && m.tipo !== 'contato' && m.tipo !== 'enquete') corpo += '<span class="wz-txt">' + textoRico(m.texto) + '</span>';
@@ -484,14 +489,14 @@ B7.CentralWA = (function () {
     return /@lid$/.test(jid) ? 'Contato' : '+' + num(jid);
   }
   function quemReagiu(m, bt) {
-    document.querySelectorAll('.wz-quem').forEach(x => x.remove());
+    document.querySelectorAll('.wz-reagiram').forEach(x => x.remove());
     const linhas = [];
     Object.entries(m.reacoes || {}).forEach(([e, l]) => l.forEach(j => linhas.push({ e, j })));
     linhas.sort((a, b) => (b.j === 'eu') - (a.j === 'eu'));
-    const caixa = document.createElement('div'); caixa.className = 'wz-quem'; caixa.setAttribute('role', 'dialog');
-    caixa.innerHTML = '<div class="wz-quem-cab">' + linhas.length + (linhas.length === 1 ? ' reação' : ' reações') + '</div>' +
-      linhas.map(x => '<div class="wz-quem-l' + (x.j === 'eu' ? ' eu' : '') + '"><span class="wz-quem-n">' + esc(nomeDoJid(x.j)) +
-        (x.j === 'eu' ? '<small>Clique para tirar</small>' : '') + '</span><span class="wz-quem-e">' + x.e + '</span></div>').join('');
+    const caixa = document.createElement('div'); caixa.className = 'wz-reagiram'; caixa.setAttribute('role', 'dialog');
+    caixa.innerHTML = '<div class="wz-rg-cab">' + linhas.length + (linhas.length === 1 ? ' reação' : ' reações') + '</div>' +
+      linhas.map(x => '<div class="wz-rg-l' + (x.j === 'eu' ? ' eu' : '') + '"><span class="wz-rg-n">' + esc(nomeDoJid(x.j)) +
+        (x.j === 'eu' ? '<small>Clique para tirar</small>' : '') + '</span><span class="wz-rg-e">' + x.e + '</span></div>').join('');
     document.body.appendChild(caixa);
     const r = bt.getBoundingClientRect(), h = caixa.offsetHeight, w = caixa.offsetWidth;
     caixa.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
@@ -501,7 +506,7 @@ B7.CentralWA = (function () {
     const esc_ = ev => { if (ev.key === 'Escape') fechar(); };
     setTimeout(() => { document.addEventListener('pointerdown', fora, true); document.addEventListener('keydown', esc_); }, 0);
     caixa.onclick = async ev => {
-      if (!ev.target.closest('.wz-quem-l.eu')) return;
+      if (!ev.target.closest('.wz-rg-l.eu')) return;
       fechar();
       const antes = JSON.parse(JSON.stringify(m.reacoes || {}));
       for (const k of Object.keys(m.reacoes || {})) { m.reacoes[k] = m.reacoes[k].filter(x => x !== 'eu'); if (!m.reacoes[k].length) delete m.reacoes[k]; }
