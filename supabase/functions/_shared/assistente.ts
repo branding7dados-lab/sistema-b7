@@ -132,19 +132,43 @@ async function semCodigos(sb: SupabaseClient, texto: string, marcados: string[])
 /* 4.58.1: mais de uma mensagem seguida — a IA separa com uma linha [[NOVA]] (até 3). A primeira leva a
    assinatura, a citação e as marcações; as outras saem em seguida, com "digitando…" proporcional ao texto. */
 const SEP = /\n?\s*\[\[\s*NOVA\s*\]\]\s*\n?/i;
-async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}) {
-  texto = await semCodigos(sb, texto, (extra.mentioned as string[]) || []);
-  const partes = String(texto || '').split(SEP).map(t => t.trim()).filter(Boolean).slice(0, 3);
-  if (partes.length > 1) {
-    const primeira = await enviarUma(sb, cfg, jid, partes[0], extra, true);
-    for (const t of partes.slice(1)) {
-      const ms = Math.min(6000, 1200 + t.length * 45);
-      await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'composing', delay: ms }, ms + 5000).catch(() => null);
-      await enviarUma(sb, cfg, jid, t, {}, false);
+/* 4.59.6: marcação de verdade. "{{marcar:Yury}}", "@Yury" ou "@Yury Nóbrega" de alguém da equipe
+   (com número na tela do Otto) vira "@5577…" + a lista "mentioned" — é assim que o WhatsApp marca. */
+export function comMarcacoes(cfg: Config, texto: string): { texto: string; nums: string[] } {
+  const nums: string[] = [];
+  const equipe = (cfg.equipe || []).filter(p => p.nome && dig(p.numero).length >= 10);
+  const achar = (nome: string) => {
+    const n = semAcento(nome).trim();
+    return equipe.find(p => semAcento(p.nome!) === n) || equipe.filter(p => semAcento(p.nome!).split(/\s+/)[0] === n.split(/\s+/)[0]).find((_p, _i, l) => l.length === 1) || null;
+  };
+  const marca = (p: Pessoa) => { const d = dig(p.numero); if (!nums.includes(d)) nums.push(d); return '@' + d; };
+  let t = String(texto || '').replace(/\{\{\s*marcar\s*:\s*([^}]+)\}\}/gi, (_m, n: string) => { const p = achar(n); return p ? marca(p) : n.trim(); });
+  /* "@Nome Sobrenome" primeiro (nome completo), depois "@Nome" */
+  for (const p of [...equipe].sort((a, b) => b.nome!.length - a.nome!.length)) {
+    for (const forma of [p.nome!, p.nome!.split(/\s+/)[0]]) {
+      const re = new RegExp('(?<![\\p{L}\\d._-])@' + forma.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\d])', 'giu');
+      if (forma === p.nome!.split(/\s+/)[0] && equipe.filter(x => semAcento(x.nome!).split(/\s+/)[0] === semAcento(forma)).length > 1) continue;
+      t = t.replace(re, () => marca(p));
     }
-    return primeira;
   }
-  return enviarUma(sb, cfg, jid, partes[0] || String(texto || ''), extra, true);
+  return { texto: t, nums };
+}
+async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}) {
+  const ja = ((extra.mentioned as string[]) || []).map(dig);
+  const partes = String(texto || '').split(SEP).map(t => t.trim()).filter(Boolean).slice(0, 3);
+  const prontas: { t: string; m: string[] }[] = [];
+  for (const p of partes.length ? partes : [String(texto || '')]) {
+    const c = comMarcacoes(cfg, p);
+    const m = [...new Set([...(prontas.length ? [] : ja), ...c.nums])];
+    prontas.push({ t: await semCodigos(sb, c.texto, m), m });
+  }
+  const primeira = await enviarUma(sb, cfg, jid, prontas[0].t, { ...extra, ...(prontas[0].m.length ? { mentioned: prontas[0].m } : {}) }, true);
+  for (const p of prontas.slice(1)) {
+    const ms = Math.min(6000, 1200 + p.t.length * 45);
+    await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'composing', delay: ms }, ms + 5000).catch(() => null);
+    await enviarUma(sb, cfg, jid, p.t, p.m.length ? { mentioned: p.m } : {}, false);
+  }
+  return primeira;
 }
 async function enviarUma(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown>, assinar: boolean) {
   /* assinatura igual à da equipe: *Otto:* e a mensagem embaixo (só na primeira de uma sequência) */
@@ -966,6 +990,7 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
     'Você é inteligente, esperto e útil, como um colega muito bom: entende a mensagem e a conversa em volta e responde de verdade. ' +
     'Responda QUALQUER coisa que perguntarem, não só sobre o sistema: ideias de conteúdo, roteiros, legendas, ganchos, trends, estratégia, marketing, redes sociais, textos, e-mails, propostas, contas, explicações, conselhos e conversa do dia a dia — usando o seu próprio conhecimento. ' +
     'Você conhece a equipe (lista QUEM É QUEM): quando falarem de alguém, saiba quem é e o que faz (ex.: "o Kaique é o videomaker da B7"). ' +
+    'Para MARCAR alguém da equipe (quando pedirem ou quando ajudar), escreva @ e o primeiro nome, ex.: @Yury — o sistema transforma na marcação de verdade. Nunca escreva @ com números. ' +
     'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
     'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]].',
     /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
