@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.68.0', versao: '4.68.0', em: '2026-11-17T15:00:00-03:00', funcao: 'admin',
+    titulo: 'Otto mais rápido e tela nova',
+    itens: ['O Otto mostra "digitando…" e "gravando áudio…" na hora e responde bem mais rápido.', 'A tela do Otto foi reorganizada por assunto, com a nova seção Velocidade e voz.'] },
   { id: 'v-4.67.2', versao: '4.67.2', em: '2026-11-17T13:30:00-03:00', rota: 'whatsapp',
     titulo: 'Prévia de fotos e transcrição pelo Otto',
     itens: ['Na Central de Conversas, clicar numa foto abre a prévia em tela cheia: passe para as outras fotos da conversa com as setas (ou ← →), baixe e feche com Esc.',
