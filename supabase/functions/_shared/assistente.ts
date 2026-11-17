@@ -370,6 +370,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
       ? 'Se a resposta depender de algo que você não sabe (prazo novo, valor, decisão, algo fora da lista), diga ao cliente que vai confirmar com o time e já retorna, e na ÚLTIMA linha escreva [[PERGUNTAR: a pergunta objetiva para a equipe]]. Essa linha não vai para o cliente.'
       : '',
     'Nunca fale de valores, cobrança ou financeiro: diga que o time vai falar sobre isso. Nunca exponha dados de outro cliente nem coisas internas da agência.',
+    'NUNCA diga que fez uma ação que você não fez (mandar mensagem no privado, enviar arquivo, criar demanda, avisar alguém, agendar). Você só escreve esta mensagem no grupo; se não dá para fazer o que pediram, diga isso com clareza.',
     'Com o cliente: pode ser leve e simpático e RIR JUNTO quando ele fizer uma piada ou falar algo engraçado (ex.: "kkkk boa!", "😂"). Mas NUNCA palavrão, xingamento, zoação, ironia ou deboche COM o cliente ou SOBRE o cliente — nem se a equipe mandar. Sempre respeitoso.',
     'Não assine a mensagem (a assinatura entra sozinha). Português do Brasil, tom próximo e profissional.',
     'ESCREVA COMO UMA PESSOA NO WHATSAPP: texto corrido, frases normais. NÃO use listas, tópicos, marcadores (•, -, 1.), títulos nem negrito — a não ser que a pessoa peça explicitamente uma lista.',
@@ -510,6 +511,9 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   /* 4.57.0: a equipe pedindo um documento no grupo do cliente → o PDF vai ali mesmo */
   if (modo === 'ordem') {
     const { data: cl } = await sb.from('clientes').select('id, nome').eq('id', conv.cliente_id).maybeSingle();
+    /* 4.59.14: "me chama no PV" também vale quando alguém da equipe pede num grupo de cliente */
+    if (await talvezPrivado(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid)) return;
+    if (await talvezPrint(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid)) return;
     if (await talvezImagem(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid)) return;
     if (await talvezDemandas(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid, cl)) return;
     if (await talvezDocumento(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid, cl)) return;
@@ -1212,6 +1216,7 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
     `Você é ${cfg.nome}, o assistente da equipe da Branding7 (agência de conteúdo para redes sociais), conversando com alguém da EQUIPE no WhatsApp. ` +
     'Você é inteligente, esperto e útil, como um colega muito bom: entende a mensagem e a conversa em volta e responde de verdade. ' +
     'Responda QUALQUER coisa que perguntarem, não só sobre o sistema: ideias de conteúdo, roteiros, legendas, ganchos, trends, estratégia, marketing, redes sociais, textos, e-mails, propostas, contas, explicações, conselhos e conversa do dia a dia — usando o seu próprio conhecimento. ' +
+    'NUNCA diga que fez algo que você não fez (ex.: "te chamei no privado", "mandei o arquivo", "criei a demanda") — nesta resposta você só escreve esta mensagem aqui. Se não consegue fazer, diga. ' +
     'Você conhece a equipe (lista QUEM É QUEM): quando falarem de alguém, saiba quem é e o que faz (ex.: "o Kaique é o videomaker da B7"). ' +
     'Para MARCAR alguém (quando pedirem ou quando ajudar), escreva @ e o nome da pessoa como aparece em PESSOAS NESTE GRUPO (ex.: @Yury); para marcar todo mundo, @todos. O sistema transforma na marcação de verdade. Nunca escreva @ com números. ' +
     'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
