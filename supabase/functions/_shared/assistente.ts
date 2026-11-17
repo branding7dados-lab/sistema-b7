@@ -1211,10 +1211,13 @@ const vozDe = (cfg: Config) => ({ provedor: (cfg as any).voz_provedor || 'gemini
 /** 4.62.0: responde EM ÁUDIO — reescreve como fala, gera a voz, manda; se tiver link/lista, manda o texto junto. false = não deu (aí vai texto) */
 async function responderEmAudio(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}): Promise<boolean> {
   if (jid !== cfg.grupo_equipe && temPalavrao(texto)) return false;
-  await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'recording', delay: 4000 }, 8000).catch(() => null);
+  await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'recording', delay: 8000 }, 12000).catch(() => null);
   const { fala, comTexto } = await roteiroDeFala(texto);
   const audio = await falar(fala, vozDe(cfg));
   if (!audio) return false;
+  /* 4.62.1: "gravando áudio…" por quase o tempo do áudio (como gente gravando), até 20 s */
+  const grava = Math.min(20000, Math.max(2500, Math.round(audio.segundos * 850)));
+  await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'recording', delay: grava }, grava + 8000).catch(() => null);
   const ok = await enviarAudio(sb, cfg, jid, audio.b64, extra);
   if (ok && comTexto) await enviar(sb, cfg, jid, texto);
   return ok;

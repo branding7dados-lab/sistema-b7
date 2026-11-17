@@ -46,6 +46,21 @@ async function ttsModelos(chave: string): Promise<string[]> {
   modelosTTS = (l.length ? l.sort((a, b) => nota(a) - nota(b)) : ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts']).slice(0, 3);
   return modelosTTS;
 }
+/* 4.62.1: sem estalo/chiado — tira o resto ímpar, suaviza começo (15 ms) e fim (120 ms) e põe 250 ms de silêncio no fim */
+function limparPCM(pcm: Uint8Array, rate: number): Uint8Array {
+  const n = Math.floor(pcm.length / 2);
+  const pad = Math.floor(rate * 0.25);
+  const out = new Int16Array(n + pad);
+  const dv = new DataView(pcm.buffer, pcm.byteOffset, n * 2);
+  const ini = Math.floor(rate * 0.015), fim = Math.floor(rate * 0.12);
+  for (let i = 0; i < n; i++) {
+    let v = dv.getInt16(i * 2, true);
+    if (i < ini) v = v * (i / ini);
+    if (i > n - fim) v = v * Math.max(0, (n - i) / fim);
+    out[i] = v;
+  }
+  return new Uint8Array(out.buffer);
+}
 function wav(pcm: Uint8Array, rate = 24000): Uint8Array {
   const h = new ArrayBuffer(44), v = new DataView(h);
   const w = (o: number, s: string) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
@@ -65,7 +80,7 @@ export const VOZES: [string, string][] = [
   ['Sadachbia', 'viva'], ['Sadaltager', 'conhecedora'], ['Sulafat', 'calorosa (fem.)']
 ];
 export type Voz = { provedor?: string; voz?: string; estilo?: string; elevenId?: string | null };
-export type Audio = { b64: string; mime: string };
+export type Audio = { b64: string; mime: string; segundos: number };
 /** a resposta escrita vira FALA: curta, natural, sem lista/link/código; diz se é bom mandar o texto junto */
 export async function roteiroDeFala(texto: string): Promise<{ fala: string; comTexto: boolean }> {
   const t = String(texto || '').replace(/\[\[\s*NOVA\s*\]\]/gi, '\n').trim();
@@ -87,7 +102,8 @@ async function falarEleven(texto: string, vozId: string): Promise<Audio | null> 
       body: JSON.stringify({ text: texto, model_id: Deno.env.get('ELEVENLABS_MODELO') || 'eleven_multilingual_v2', voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.35, use_speaker_boost: true } })
     });
     if (!r.ok) { console.log('eleven', r.status, (await r.text()).slice(0, 200)); return null; }
-    return { b64: b64(new Uint8Array(await r.arrayBuffer())), mime: 'audio/mpeg' };
+    const mp3 = new Uint8Array(await r.arrayBuffer());
+    return { b64: b64(mp3), mime: 'audio/mpeg', segundos: mp3.length / 16000 };   /* 128 kbps */
   } catch (e) { console.log('eleven', String(e).slice(0, 200)); return null; }
 }
 /** texto (já em forma de fala) → áudio. Gemini TTS por padrão; ElevenLabs se configurado. */
@@ -105,7 +121,12 @@ export async function falar(texto: string, v: Voz | string = 'Orus'): Promise<Au
       const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent', {
         method: 'POST', signal: AbortSignal.timeout(60000), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': chave },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Fale em português do Brasil, com sotaque brasileiro, de um jeito ' + estilo + '. Ritmo de conversa, sem soar como locutor nem robô:\n' + limpo }] }],
+          contents: [{ parts: [{ text:
+            '# AUDIO PROFILE: Otto\n' +
+            '## THE SCENE: um colega de trabalho brasileiro gravando um áudio de WhatsApp para a equipe.\n' +
+            "### DIRECTOR'S NOTES\nEstilo: " + estilo + '.\nSotaque: português do Brasil.\nRitmo: de conversa, natural, sem soar como locutor nem robô.\n' +
+            'Leia em voz alta SOMENTE o texto da seção TRANSCRIPT. Não leia estas notas.\n\n' +
+            '#### TRANSCRIPT\n' + limpo }] }],
           generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: o.voz || 'Orus' } } } }
         })
       });
@@ -114,8 +135,8 @@ export async function falar(texto: string, v: Voz | string = 'Orus'): Promise<Au
       const p = (d?.candidates?.[0]?.content?.parts || []).find((x: any) => x?.inlineData?.data);
       if (!p) continue;
       const rate = Number(/rate=(\d+)/.exec(String(p.inlineData.mimeType || ''))?.[1] || 24000);
-      const pcm = Uint8Array.from(atob(p.inlineData.data), c => c.charCodeAt(0));
-      return { b64: b64(wav(pcm, rate)), mime: 'audio/wav' };
+      const pcm = limparPCM(Uint8Array.from(atob(p.inlineData.data), c => c.charCodeAt(0)), rate);
+      return { b64: b64(wav(pcm, rate)), mime: 'audio/wav', segundos: pcm.length / 2 / rate };
     } catch (e) { console.log('tts', m, String(e).slice(0, 200)); }
   }
   return null;
