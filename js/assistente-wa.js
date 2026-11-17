@@ -239,6 +239,11 @@ B7.AssistenteWA = (function () {
           linha('Avisar a equipe depois de', 'Sem resposta da equipe, no horário de atendimento.', '<select class="campo" data-c="vigia_min" data-num>' + [10, 15, 20, 30, 45, 60, 90, 120].map(v => '<option value="' + v + '"' + (Number(c.vigia_min || 20) === v ? ' selected' : '') + '>' + v + ' min</option>').join('') + '</select>') +
           linha('Avisos no grupo da equipe', 'Demanda atrasada ou que vence amanhã sem começar, cliente esperando há mais de 2 h, cliente que aprovou algo. No máximo a cada 30 min.', chave('alertas_ligados', c.alertas_ligados !== false)) +
           linha('Resumo do dia', 'Entregas, o que vence amanhã, atrasos e quem espera resposta, 1 vez por dia útil a partir de <input class="campo asw-hora" type="time" data-c="resumo_dia_hora" value="' + esc(c.resumo_dia_hora || '18:00') + '">.', chave('resumo_dia_ligado', c.resumo_dia_ligado !== false))) +
+        /* 4.69.0: aviso no celular */
+        bloco('Aviso no celular', 'Notificação do B7 no celular e no computador quando um cliente fica sem resposta. Um aviso por espera, só no horário de atendimento.',
+          linha('Avisar depois de', 'Tempo sem resposta da equipe.', '<select class="campo" data-c="push_espera_min" data-num>' + [[0, 'Desligado'], [10, '10 min'], [15, '15 min'], [20, '20 min'], [30, '30 min'], [45, '45 min'], [60, '1 hora']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.push_espera_min ?? 15) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>') +
+          '<div class="asw-row asw-push' + (Number(c.push_espera_min ?? 15) ? '' : ' off') + '"><div class="asw-row-t"><b>Quem recebe</b><small>Nenhum marcado: todos que veem o WhatsApp do B7.</small></div><div class="asw-row-c"><div class="asw-chips">' +
+            (S.perfis || []).map(u => '<button class="asw-chip' + ((c.push_para || []).includes(u.id) ? ' on' : '') + '" data-push="' + esc(u.id) + '" aria-pressed="' + ((c.push_para || []).includes(u.id) ? 'true' : 'false') + '">' + esc(u.nome.split(' ')[0]) + '</button>').join('') + '</div></div></div>') +
         bloco('Grupos', 'Só grupos ligados a um cliente do B7. Desligado, ele não manda nada ali — nem a pedido.',
           '<div class="asw-gtopo"><input class="campo" id="asw-busca" placeholder="Buscar grupo…" value="' + esc(S.busca) + '"><button class="b fina contorno" data-todos="1">Ligar todos</button><button class="b fina contorno" data-todos="0">Desligar todos</button></div>' +
           (gs.length ? gs.map(g => { const gc = (c.grupos || {})[g.jid] || {};
@@ -285,6 +290,7 @@ B7.AssistenteWA = (function () {
       if (t.type === 'radio') { t.closest('.asw-seg').querySelectorAll('label').forEach(l => l.classList.toggle('on', l.contains(t))); }
       if (t.dataset.c === 'velocidade') { const h = raiz.querySelector('.asw-humano'); if (h) h.classList.toggle('fora', t.value !== 'humano'); }
       if (['velocidade', 'espera_min_s', 'espera_max_s'].includes(t.dataset.c)) { const tl = raiz.querySelector('#asw-tl2'); if (tl) { tl.outerHTML = linhaDoTempo(); const n = raiz.querySelector('#asw-tl2'); n.classList.add('anima'); } }
+      if (t.dataset.c === 'push_espera_min') { const r = raiz.querySelector('.asw-push'); if (r) r.classList.toggle('off', !Number(t.value)); }
       if (t.dataset.c === 'audio_max_s') { const o = raiz.querySelector('#asw-maxs'); if (o) o.textContent = t.value + ' s'; }
       if (t.dataset.c === 'voz_provedor') { const e = raiz.querySelector('.asw-eleven'); if (e) e.classList.toggle('fora', t.value !== 'elevenlabs'); }
       if (t.dataset.c === 'modo_clientes') { const d = t.closest('.asw-row').querySelector('.asw-row-t small'); if (d) d.textContent = t.value === 'vigia' ? 'Só vigiar: não responde o cliente. Se ninguém da equipe responder, manda o print no grupo da equipe marcando quem precisa.' : 'Atender: responde o cliente quando chamado.'; }
@@ -348,6 +354,8 @@ B7.AssistenteWA = (function () {
     if (t.closest('[data-desfazer]')) { S.cfg = JSON.parse(S.orig); S.regras = regrasDe(S.cfg.regras); desenhar(); return; }
     const tom = t.closest('[data-tom]');
     if (tom) { const x = TONS[Number(tom.dataset.tom)][1]; const j = String(S.cfg.jeito || ''); if (!j.includes(x)) S.cfg.jeito = (j.trim() ? j.trim() + '\n' : '') + x; desenhar(); return; }
+    const pu = t.closest('[data-push]');
+    if (pu) { const id = pu.dataset.push, l = Array.isArray(S.cfg.push_para) ? S.cfg.push_para.slice() : []; const i = l.indexOf(id); if (i >= 0) l.splice(i, 1); else l.push(id); S.cfg.push_para = l; pu.classList.toggle('on', i < 0); pu.setAttribute('aria-pressed', i < 0 ? 'true' : 'false'); marcarSujo(); return; }
     const dia = t.closest('[data-dia]');
     if (dia) { const h = S.cfg.horario; const d = Number(dia.dataset.dia); h.dias = (h.dias || []).includes(d) ? h.dias.filter(x => x !== d) : [...(h.dias || []), d]; dia.classList.toggle('on'); marcarSujo(); return; }
     if (t.closest('[data-mais-regra]')) {
@@ -430,6 +438,7 @@ B7.AssistenteWA = (function () {
     const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
       equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), ...((p.apelidos || '').trim() ? { apelidos: String(p.apelidos).split(',').map(x => x.trim()).filter(Boolean).slice(0, 6).join(', ') } : {}), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
+      push_espera_min: Math.max(0, Math.min(240, Number(c.push_espera_min ?? 15) || 0)), push_para: (Array.isArray(c.push_para) ? c.push_para : []).filter(Boolean),
       velocidade: ['rapido', 'natural', 'humano'].includes(c.velocidade) ? c.velocidade : 'natural', audio_humano: !!c.audio_humano,
       audio_roteiro: ['auto', 'sempre', 'nunca'].includes(c.audio_roteiro) ? c.audio_roteiro : 'auto', audio_max_s: Math.max(15, Math.min(120, Number(c.audio_max_s) || 40)),
       regras_equipe: String(c.regras_equipe || '').slice(0, 2000), modo_restrito: !!c.modo_restrito, zoacao_nivel: ['leve', 'medio', 'pesado'].includes(c.zoacao_nivel) ? c.zoacao_nivel : 'medio',

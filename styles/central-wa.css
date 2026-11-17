@@ -402,3 +402,19 @@ html[data-theme="dark"] .wz-b.eu{background:linear-gradient(135deg,color-mix(in 
 .wz-b.eu .wz-aud-dl{color:inherit;background:rgba(255,255,255,.14);}
 [data-baixar].carregando{opacity:.4;pointer-events:none;animation:wzPulsoBx 1s ease-in-out infinite;}
 @keyframes wzPulsoBx{50%{opacity:.15;}}
+
+/* 4.69.0: ajuda da IA na caixa de mensagem */
+.wz-ia .lista{left:0;min-width:280px;max-width:320px;bottom:calc(100% + 8px);top:auto;}
+.wz-ia .lista button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;white-space:normal;}
+.wz-ia .lista button b{font-weight:650;}
+.wz-ia .lista button small{font-size:11.5px;line-height:1.35;color:var(--ink-3);font-weight:400;}
+.wz-comp .wz-ia > .wz-ic{color:color-mix(in srgb,var(--sb-luz2) 80%,var(--ink-2));}
+.wz-ia-aviso{position:absolute;left:12px;bottom:calc(100% + 8px);z-index:6;display:flex;align-items:center;gap:8px;max-width:calc(100% - 24px);padding:7px 8px 7px 12px;border-radius:12px;
+  background:var(--card);border:1px solid color-mix(in srgb,var(--sb-luz2) 40%,var(--borda));box-shadow:0 10px 24px -14px rgba(0,0,0,.6);font-size:12.5px;color:var(--ink-2);}
+.wz-ia-aviso[hidden]{display:none;}
+.wz-ia-aviso button{border:0;border-radius:8px;padding:4px 10px;background:var(--suave);color:var(--ink);font:inherit;font-weight:650;cursor:pointer;}
+.wz-ia-aviso button:hover{background:color-mix(in srgb,var(--acento) 18%,var(--suave));}
+.wz-ia-gira{width:13px;height:13px;flex:none;border-radius:50%;border:2px solid var(--borda);border-top-color:var(--sb-luz2);animation:wzGiraIA .8s linear infinite;}
+@keyframes wzGiraIA{to{transform:rotate(360deg);}}
+.wz-comp textarea.ia-pensando{opacity:.6;}
+@media (prefers-reduced-motion:reduce){ .wz-ia-gira{animation:none;} }

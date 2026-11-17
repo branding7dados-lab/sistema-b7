@@ -579,6 +579,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   /* 4.61.0: avisos por conta própria e resumo do dia (sem cron: a cada mensagem, quem chega primeiro pega a vez) */
   talvezAvisos(sb, cfg).catch(e => console.log('avisos', String(e)));
   talvezVigiar(sb, cfg).catch(e => console.log('vigia', String(e)));
+  talvezAvisarCelular(sb, cfg).catch(e => console.log('aviso celular', String(e)));
   talvezResumoDia(sb, cfg, false).catch(e => console.log('resumo dia', String(e)));
   /* grupo da equipe: perguntas sobre qualquer cliente */
   if (cfg.grupo_equipe && jid === cfg.grupo_equipe) { await noGrupoEquipe(sb, cfg, raw, texto, ctx, numero); return; }
@@ -1963,4 +1964,91 @@ async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: 
   await digitando(destino, cfg);
   await enviar(sb, cfg, destino, s.texto, { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
   await registrar(sb, { tipo: 'consulta', jid: destino, autor: String(raw.pushName || ''), pergunta: pedido.slice(0, 800), resposta: s.texto.slice(0, 1500), ...usoDe(s) });
+}
+
+/* =====================================================================
+   4.69.0 — ajudas da Central para quem responde (não envia nada)
+   ===================================================================== */
+/** Rascunho de resposta para a pessoa da equipe revisar e mandar. Escreve COMO a Branding7 (não como o Otto). */
+export async function sugerirResposta(sb: SupabaseClient, jid: string, quem: string, pedido = ''): Promise<{ texto: string; erro?: string }> {
+  const cfg = await lerConfig(sb);
+  const { data: conv } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde').eq('jid', jid).maybeSingle();
+  if (!conv) return { texto: '', erro: 'Conversa não encontrada.' };
+  let pend: string[] = [];
+  if (conv.cliente_id) { try { pend = (await carregarContexto(sb, { clienteId: conv.cliente_id } as any)).pendencias; } catch (_e) { /* sem */ } }
+  const { data: ms } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, do_assistente, tipo, texto, criada_em').eq('jid', jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(20);
+  const linhas = ((ms || []) as any[]).reverse().map(m => (m.de_mim ? '[EQUIPE] ' + (m.do_assistente ? (cfg?.nome || 'Otto') : m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'Cliente')) + ': ' + (m.texto ? String(m.texto).slice(0, 400) : '(' + m.tipo + ')'));
+  if (!linhas.length) return { texto: '', erro: 'Ainda não há mensagens nesta conversa.' };
+  const { data: ap } = await sb.from('wa_assistente_aprendizados').select('pergunta, resposta').eq('ativo', true).order('criado_em', { ascending: false }).limit(25);
+  const ehCli = !!conv.cliente_id;
+  const sistema = [
+    'Você escreve um RASCUNHO de resposta de WhatsApp para ' + String(quem || 'alguém').split(' ')[0] + ', da equipe da Branding7 (agência de conteúdo para redes sociais), responder agora nesta conversa' + (ehCli ? ' com um CLIENTE' : '') + '. A pessoa vai revisar antes de mandar.',
+    'Escreva em primeira pessoa, como a pessoa da equipe (não como assistente, não se apresente, não assine). Responda o que o cliente pediu por último e ainda não foi respondido. Português do Brasil, natural de WhatsApp, cordial e direto, curto (1 a 4 frases). No máximo 1 emoji, se combinar.',
+    'Use só os fatos de EM PRODUÇÃO e do que já foi combinado na conversa. Não invente prazo, data, preço ou status: se faltar a informação, escreva a frase deixando o dado entre colchetes para a pessoa completar, ex.: "a arte fica pronta [dia]".',
+    ehCli && cfg?.jeito ? 'Jeito de falar com este tipo de cliente: ' + cfg.jeito : '',
+    ehCli && cfg?.regras ? 'Regras que valem: ' + cfg.regras : '',
+    ((cfg?.grupos || {}) as any)[jid]?.regras ? 'Regras deste grupo: ' + ((cfg?.grupos || {}) as any)[jid].regras : '',
+    'Nada de palavrão. Devolva SÓ o texto da mensagem.'
+  ].filter(Boolean).join('\n');
+  const usuario = 'CONVERSA "' + (conv.nome || '') + '" (mais antiga primeiro):\n' + linhas.join('\n') +
+    '\n\nEM PRODUÇÃO PARA ESTE CLIENTE: ' + (pend.length ? pend.join(' | ') : 'nada registrado') +
+    (ap?.length ? '\n\nO QUE A AGÊNCIA JÁ ENSINOU:\n' + (ap as any[]).map(a => '- ' + a.pergunta + ': ' + a.resposta).join('\n') : '') +
+    (pedido ? '\n\nA PESSOA QUER RESPONDER ASSIM (siga): ' + String(pedido).slice(0, 400) : '');
+  const r = await gerar(provedorAtual(n => Deno.env.get(n)), [{ role: 'system', content: sistema }, { role: 'user', content: usuario }],
+    { maxTokens: 500, temperatura: 0.5, prazoMs: 30000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^["“]|["”]$/g, '').trim() });
+  if (!r.ok || !r.texto) return { texto: '', erro: 'A IA não respondeu agora. Tente de novo em instantes.' };
+  return { texto: r.texto.replace(/\[\[\s*NOVA\s*\]\]/gi, '\n').trim() };
+}
+
+/** Corrige ortografia/pontuação e, se pedirem, ajusta o tom. Mantém o sentido, os nomes, links e emojis. */
+export async function corrigirTexto(texto: string, tom: 'manter' | 'formal' | 'leve' | 'curto' = 'manter'): Promise<{ texto: string; erro?: string }> {
+  const t = String(texto || '').trim();
+  if (t.length < 2) return { texto: '', erro: 'Escreva a mensagem primeiro.' };
+  const TOM: Record<string, string> = {
+    manter: 'Mantenha o tom e o jeito de quem escreveu; só corrija.',
+    formal: 'Deixe mais profissional e educado, sem gírias, sem ficar duro.',
+    leve: 'Deixe mais leve e simpático, natural de WhatsApp.',
+    curto: 'Deixe mais curto e direto, sem perder nada importante.'
+  };
+  const r = await gerar(provedorAtual(n => Deno.env.get(n)), [
+    { role: 'system', content: 'Você revisa mensagens de WhatsApp em português do Brasil antes de serem enviadas. Corrija ortografia, acentos, pontuação e concordância. ' + (TOM[tom] || TOM.manter) + ' Não acrescente informação, não mude fatos, datas, valores, nomes, links, @menções nem emojis. Não assine. Devolva SÓ o texto final.' },
+    { role: 'user', content: t.slice(0, 3000) }
+  ], { maxTokens: 900, temperatura: 0.2, prazoMs: 25000, limpar: (x: string) => String(x || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^["“]|["”]$/g, '').trim() });
+  if (!r.ok || !r.texto) return { texto: '', erro: 'A IA não respondeu agora. Tente de novo em instantes.' };
+  return { texto: r.texto };
+}
+
+/* 4.69.0: aviso no CELULAR (push do B7) quando um cliente espera resposta há mais de X min.
+   Uma vez por espera (não repete até o cliente esperar de novo), no horário de atendimento,
+   checado no máximo a cada 2 min (sem cron: quem chega primeiro pega a vez). */
+async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
+  const min = Number((cfg as any).push_espera_min ?? 15);
+  if (!min || min < 1) return;
+  if (!dentroDoHorario(cfg.horario?.ativo ? cfg.horario : HORARIO_PADRAO)) return;
+  const { data: vez } = await sb.from('wa_assistente').update({ push_ultimo: new Date().toISOString() }).eq('id', 1)
+    .or('push_ultimo.is.null,push_ultimo.lt.' + new Date(Date.now() - 2 * 60_000).toISOString()).select('id');
+  if (!vez || !vez.length) return;
+  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde, push_avisado_em').not('cliente_id', 'is', null).eq('arquivada', false)
+    .not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - min * 60_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 24 * 3600_000).toISOString()).limit(20);
+  const pendentes = ((convs || []) as any[]).filter(c => !c.push_avisado_em || new Date(c.push_avisado_em) < new Date(c.esperando_desde));
+  if (!pendentes.length) return;
+  let para: string[] = Array.isArray((cfg as any).push_para) ? (cfg as any).push_para.filter(Boolean) : [];
+  if (!para.length) { const { data } = await sb.rpc('wa_quem_ve_whatsapp'); para = ((data || []) as any[]).map(x => typeof x === 'string' ? x : x?.wa_quem_ve_whatsapp).filter(Boolean); }
+  if (!para.length) return;
+  const ids = [...new Set(pendentes.map(c => c.cliente_id))];
+  const { data: cls } = await sb.from('clientes').select('id, nome').in('id', ids);
+  const nomeCli = new Map(((cls || []) as any[]).map(x => [x.id, x.nome]));
+  for (const c of pendentes) {
+    /* marca antes de mandar: duas checagens ao mesmo tempo não avisam duas vezes */
+    const { data: marcou } = await sb.from('wa_conversas').update({ push_avisado_em: new Date().toISOString() }).eq('jid', c.jid)
+      .or('push_avisado_em.is.null,push_avisado_em.lt.' + c.esperando_desde).select('jid');
+    if (!marcou || !marcou.length) continue;
+    const { data: ult } = await sb.from('wa_mensagens').select('autor_nome, texto, tipo').eq('jid', c.jid).eq('de_mim', false).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+    const quem = String(ult?.autor_nome || 'Cliente').split(' ')[0];
+    const oque = ult ? (ult.texto ? String(ult.texto).replace(/^🎤 /, '').slice(0, 90) : ({ audio: '🎤 áudio', imagem: '📷 foto', video: '🎬 vídeo', documento: '📄 documento', figurinha: 'figurinha' } as any)[ult.tipo] || 'mensagem') : 'mensagem';
+    const cliente = nomeCli.get(c.cliente_id) || c.nome || 'Cliente';
+    const { error } = await sb.rpc('wa_avisar_espera', { p_jid: c.jid, p_esperando: c.esperando_desde, p_client: c.cliente_id, p_titulo: cliente + ' está esperando resposta',
+      p_mensagem: quem + ': ' + oque + ' — há ' + ha(c.esperando_desde) + ' sem resposta', p_link: '#/whatsapp?jid=' + encodeURIComponent(c.jid), p_para: para });
+    if (error) console.log('aviso celular', error.message);
+  }
 }

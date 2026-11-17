@@ -41,6 +41,7 @@ B7.CentralWA = (function () {
     mais: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>',
     play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',
     pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>',
+    ia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>',
     baixar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
     resp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v5"/></svg>',
@@ -259,6 +260,12 @@ B7.CentralWA = (function () {
         '<button class="wz-ic wz-fig-bt" data-wz="figs" aria-label="Figurinhas" title="Figurinhas">' + I.fig + '</button>' +
         '<div class="wz-figs" id="wz-figs" hidden></div>' +
         '<div class="wz-men" id="wz-men" hidden></div>' +
+        /* 4.69.0: ajuda da IA — sugerir resposta e corrigir o texto (nada é enviado sozinho) */
+        '<div class="menu wz-ia"><button class="wz-ic" data-menu aria-label="Ajuda da IA" title="Sugerir ou corrigir com IA">' + I.ia + '</button><div class="lista">' +
+          '<button data-ia="sugerir"><b>Sugerir resposta</b><small>O Otto escreve um rascunho com base na conversa. Se já tiver texto, ele usa como guia.</small></button><hr>' +
+          '<button data-ia="manter"><b>Corrigir o texto</b><small>Ortografia e pontuação, sem mudar o jeito.</small></button>' +
+          '<button data-ia="formal">Deixar mais formal</button><button data-ia="leve">Deixar mais leve</button><button data-ia="curto">Deixar mais curto</button></div></div>' +
+        '<div class="wz-ia-aviso" id="wz-ia-aviso" hidden></div>' +
         '<textarea id="wz-texto" rows="1" placeholder="Digite uma mensagem"></textarea>' +
         '<button class="wz-env" id="wz-env" aria-label="Gravar áudio">' + I.mic + '</button>' +
       '</footer>' +
@@ -418,6 +425,8 @@ B7.CentralWA = (function () {
 
   function cliqueGeral(e) {
     const it = e.target.closest('.wz-it'); if (it) return abrirConversa(it.dataset.jid);
+    const ia = e.target.closest('[data-ia]'); if (ia) { B7.UI.fecharMenus && B7.UI.fecharMenus(); return ajudaIA(ia.dataset.ia); }
+    const iad = e.target.closest('[data-ia-desfaz]'); if (iad) { const t = raiz.querySelector('#wz-texto'); if (t && S.iaAntes != null) { t.value = S.iaAntes; t.dispatchEvent(new Event('input')); t.focus(); } S.iaAntes = null; avisoIA(''); return; }
     const aj = e.target.closest('[data-abrir-jid]'); if (aj) return abrirConversa(aj.dataset.abrirJid);
     const bx = e.target.closest('[data-baixar]'); if (bx) { e.stopPropagation(); return baixarMidia(bx.dataset.baixar, bx); }
     const f = e.target.closest('[data-filtro]'); if (f) { S.filtro = f.dataset.filtro; pintarFiltros(); pintarLista(); return; }
@@ -629,6 +638,27 @@ B7.CentralWA = (function () {
     ['#wz-arq-midia', '#wz-arq-doc', '#wz-arq-cam'].forEach(s => { const i = cx.querySelector(s); i.onchange = () => { if (i.files.length) prepararArquivos([...i.files], s === '#wz-arq-doc'); i.value = ''; }; });
     ajusta();
   }
+  /* 4.69.0: ajuda da IA na caixa de mensagem */
+  function avisoIA(html) { const a = raiz && raiz.querySelector('#wz-ia-aviso'); if (!a) return; a.innerHTML = html; a.hidden = !html; }
+  async function ajudaIA(tipo) {
+    const t = raiz.querySelector('#wz-texto'), jid = S.aberta; if (!t || !jid) return;
+    const atual = t.value.trim();
+    if (tipo !== 'sugerir' && !atual) { B7.UI.toast('Escreva a mensagem primeiro — aí eu corrijo.'); return t.focus(); }
+    if (S.iaOcupado) return;
+    S.iaOcupado = true;
+    const ph = t.placeholder; t.readOnly = true; t.classList.add('ia-pensando');
+    t.placeholder = tipo === 'sugerir' ? 'O Otto está escrevendo…' : 'Corrigindo…';
+    avisoIA('<span class="wz-ia-gira"></span>' + (tipo === 'sugerir' ? 'Lendo a conversa e escrevendo um rascunho…' : 'Revisando o texto…'));
+    try {
+      const r = tipo === 'sugerir' ? await chamar('sugerir_resposta', { jid, pedido: atual }) : await chamar('corrigir_texto', { texto: atual, tom: tipo });
+      if (S.aberta !== jid) return;
+      if (r.erro || !r.texto) throw new Error(r.erro || 'Sem resposta.');
+      S.iaAntes = t.value; t.value = r.texto; t.dispatchEvent(new Event('input'));
+      avisoIA((tipo === 'sugerir' ? 'Rascunho do Otto — revise antes de enviar.' : 'Texto revisado.') + ' <button data-ia-desfaz>Desfazer</button>');
+      t.focus(); t.setSelectionRange(t.value.length, t.value.length);
+    } catch (e) { avisoIA(''); B7.UI.toast(e.message || 'Não deu certo.', { tipo: 'erro' }); }
+    finally { S.iaOcupado = false; t.readOnly = false; t.classList.remove('ia-pensando'); t.placeholder = ph; }
+  }
   async function enviarTexto() {
     const t = raiz.querySelector('#wz-texto'); const jid = S.aberta;
     let texto = t.value.trim(); if (!texto || !jid) return;
@@ -637,7 +667,7 @@ B7.CentralWA = (function () {
     if (S.enviando) return;
     S.enviando = true;
     const citar = S.citar && S.citar.id;
-    t.value = ''; t.dispatchEvent(new Event('input')); S.citar = null; pintarCitacao();
+    t.value = ''; t.dispatchEvent(new Event('input')); S.citar = null; pintarCitacao(); S.iaAntes = null; avisoIA('');
     try {
       if (B7.Corretor && B7.Corretor.ligado && B7.Corretor.ligado()) {
         try { const r = await B7.Corretor.corrigir(texto); if (r && r.ok && r.mudou) texto = r.texto; } catch (e) {}

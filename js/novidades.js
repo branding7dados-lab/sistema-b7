@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.69.0', versao: '4.69.0', em: '2026-11-17T16:00:00-03:00', rota: 'whatsapp',
+    titulo: 'IA na caixa de mensagem',
+    itens: ['Na Central de Conversas, o botão ✨ ao lado da caixa de mensagem sugere uma resposta com base na conversa (você revisa antes de mandar).',
+      'O mesmo botão corrige o texto que você escreveu e deixa mais formal, mais leve ou mais curto. Dá para desfazer.',
+      'O B7 avisa no celular quando um cliente fica sem resposta.'] },
   { id: 'v-4.68.0', versao: '4.68.0', em: '2026-11-17T15:00:00-03:00',
     titulo: 'Otto mais rápido',
     itens: ['No WhatsApp, o Otto mostra "digitando…" e "gravando áudio…" assim que recebe a mensagem e responde bem mais rápido.'] },

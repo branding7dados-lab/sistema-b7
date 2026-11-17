@@ -156,6 +156,7 @@ function acoesDe(tipo: string, link: string): Acao[] {
   if (tipo.startsWith('aprovacao.') || tipo.startsWith('parte.')) return [abrir('Abrir aprovação')];
   if (tipo === 'resumo.diario') return [abrir('Abrir B7'), { id: 'calendario', rotulo: 'Abrir calendário', link: '#/calendario' }];
   if (tipo.startsWith('agenda.')) return [abrir('Abrir calendário')];
+  if (tipo.startsWith('whatsapp.')) return [abrir('Abrir conversa')];
   return [abrir('Abrir B7')];
 }
 
