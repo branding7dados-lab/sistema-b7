@@ -394,6 +394,7 @@ B7.CentralWA = (function () {
 
   function cliqueGeral(e) {
     const it = e.target.closest('.wz-it'); if (it) return abrirConversa(it.dataset.jid);
+    const aj = e.target.closest('[data-abrir-jid]'); if (aj) return abrirConversa(aj.dataset.abrirJid);
     const f = e.target.closest('[data-filtro]'); if (f) { S.filtro = f.dataset.filtro; pintarFiltros(); pintarLista(); return; }
     const em = e.target.closest('[data-emoji]'); if (em) { const t = raiz.querySelector('#wz-texto'); if (t) { t.setRangeText(em.dataset.emoji, t.selectionStart, t.selectionEnd, 'end'); t.focus(); t.dispatchEvent(new Event('input')); } B7.UI.fecharMenus && B7.UI.fecharMenus(); return; }
     const md = e.target.closest('[data-carregar]');
@@ -706,6 +707,15 @@ B7.CentralWA = (function () {
     const resumoUlt = ult ? (ult.texto ? semCodigos(ult.texto) : ({ imagem: '📷 Foto', video: '🎬 Vídeo', audio: '🎤 Áudio', figurinha: '💟 Figurinha', documento: '📄 ' + (ult.midia_nome || 'Documento') })[ult.tipo] || 'Mensagem') : '';
     const fotos = msgs.filter(m => (m.tipo === 'imagem' || m.tipo === 'video') && m.miniatura).slice(-6).reverse();
     const ic = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+    const ultHtml = ult ? '<div class="wz-box wz-ld-ult"><h4>Última mensagem</h4><p><b>' + esc(quemUlt) + '</b><small>' + hm(ult.criada_em) + '</small></p><span>' + esc(resumoUlt).slice(0, 160) + '</span></div>' : '';
+    const fotosHtml = fotos.length ? '<div class="wz-box"><h4>Mídia recente</h4><div class="wz-ld-fotos">' + fotos.map(m => '<button data-ir="' + esc(m.id) + '" title="Ir para a mensagem"><img src="data:image/jpeg;base64,' + m.miniatura + '" alt="">' + (m.tipo === 'video' ? '<i>▶</i>' : '') + '</button>').join('') + '</div></div>' : '';
+    /* 4.67.0: grupo da equipe ou privado de alguém da equipe → painel da equipe */
+    if (!cli) {
+      const eq = await painelEquipe(c.jid);
+      if (S.aberta !== c.jid || !cx.isConnected) return;
+      if (eq && eq.tipo === 'grupo') { cx.innerHTML = ladoGrupoEquipe(c, eq, ic) + ultHtml + fotosHtml; return; }
+      if (eq && eq.tipo === 'pessoa') { cx.innerHTML = ladoPessoa(c, eq, ic, nivel, txtEspera, subEspera) + ultHtml + fotosHtml; return; }
+    }
     cx.innerHTML =
       '<div class="wz-ld-topo">' + avatar(c, 'g') +
         '<b>' + esc(cli ? cli.nome : (c.nome || num(c.jid))) + '</b>' +
@@ -718,10 +728,10 @@ B7.CentralWA = (function () {
       '</div>' +
       '<div class="wz-ld-st ' + nivel + '"><i></i><div><b>' + txtEspera + '</b><span>' + esc(subEspera) + '</span></div>' +
         (c.esperando_desde ? '<button class="wz-ld-ok" data-wz="semespera" title="Marcar como respondida">' + ic('<path d="M20 6 9 17l-5-5"/>') + '</button>' : '') + '</div>' +
-      (ult ? '<div class="wz-box wz-ld-ult"><h4>Última mensagem</h4><p><b>' + esc(quemUlt) + '</b><small>' + hm(ult.criada_em) + '</small></p><span>' + esc(resumoUlt).slice(0, 160) + '</span></div>' : '') +
+      ultHtml +
       (cli ? '<div class="wz-box" id="wz-pend"><h4>Com este cliente agora</h4><div class="wz-ld-num"><a href="#/design"><b>…</b><span>Design em produção</span></a><a href="#/video"><b>…</b><span>Vídeos em edição</span></a></div><div class="wz-ld-grav"><span>' + ic('<rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/>') + '</span><div><small>Próxima gravação</small><b>…</b></div></div></div>'
         : grupo ? '<div class="wz-box"><h4>Com este cliente agora</h4><p class="wz-mudo">Ligue a conversa a um cliente para ver design, vídeos e gravações.</p></div>' : '') +
-      (fotos.length ? '<div class="wz-box"><h4>Mídia recente</h4><div class="wz-ld-fotos">' + fotos.map(m => '<button data-ir="' + esc(m.id) + '" title="Ir para a mensagem"><img src="data:image/jpeg;base64,' + m.miniatura + '" alt="">' + (m.tipo === 'video' ? '<i>▶</i>' : '') + '</button>').join('') + '</div></div>' : '');
+      fotosHtml;
     if (cli) {
       const pend = cx.querySelector('#wz-pend');
       /* números do cliente guardados por 1 min (o painel repinta quando as mensagens chegam) */
@@ -749,6 +759,62 @@ B7.CentralWA = (function () {
       }
     }
   }
+  /* ---------- 4.67.0: painel da equipe ---------- */
+  async function painelEquipe(jid) {
+    S.eqCache = S.eqCache || new Map();
+    const g = S.eqCache.get(jid);
+    if (g && Date.now() - g.em < 60e3) return g.dados;
+    let dados = null;
+    try { const r = await sb().rpc('wa_painel_equipe', { p_jid: jid }); dados = r.error ? null : r.data; } catch (e) {}
+    S.eqCache.set(jid, { em: Date.now(), dados });
+    return dados;
+  }
+  const PRESENCA = { disponivel: ['Disponível', 'ok'], gravacao: ['Em gravação', 'roxo'], reuniao: ['Em reunião', 'morno'], ausente: ['Ausente', 'cinza'], nao_perturbe: ['Não perturbe', 'quente'] };
+  const FUNCAO = { videomaker: 'Videomaker', designer: 'Designer', coordenador: 'Coordenação', admin: 'Administração' };
+  const dataCurta = d => { if (!d) return ''; const x = new Date(String(d).slice(0, 10) + 'T12:00:00'), h = new Date(); h.setHours(12, 0, 0, 0); const dias = Math.round((x - h) / 864e5); if (dias === 0) return 'Hoje'; if (dias === 1) return 'Amanhã'; if (dias === -1) return 'Ontem'; const t = x.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace(/\./g, ''); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const atrasado = d => d && String(d).slice(0, 10) < new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10);
+  const hojeD = d => d && String(d).slice(0, 10) === new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10);
+  function avatarPessoa(p, cls) {
+    const nome = p.nome || '';
+    return '<span class="wz-av ' + (cls || '') + '" style="--c:' + corDe(nome) + '">' + (p.avatar_url ? '<img src="' + esc(p.avatar_url) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(ini(nome)) + '</b></span>';
+  }
+  function listaGravacoes(gs, ic) {
+    if (!gs || !gs.length) return '<p class="wz-mudo">Nenhuma gravação marcada.</p>';
+    return '<div class="wz-ld-lista">' + gs.map(g => '<div class="wz-ld-li"><span class="wz-ld-dia' + (hojeD(g.data) ? ' hoje' : '') + '"><b>' + esc(String(g.data).slice(8, 10)) + '</b><small>' + esc(new Date(String(g.data).slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')) + '</small></span><div><b>' + esc(g.cliente || g.nome || 'Gravação') + '</b><small>' + esc(dataCurta(g.data) + (g.hora ? ' · ' + String(g.hora).slice(0, 5) : '') + (g.cliente && g.nome && g.nome !== g.cliente ? ' · ' + g.nome : '')) + '</small></div></div>').join('') + '</div>';
+  }
+  function ladoGrupoEquipe(c, eq, ic) {
+    /* clientes esperando: das conversas ligadas a cliente */
+    const esp = (S.conversas || []).filter(x => x.esperando_desde && x.cliente_id && !x.arquivada).sort((a, b) => new Date(a.esperando_desde) - new Date(b.esperando_desde));
+    const maisVelho = esp[0] ? (Date.now() - new Date(esp[0].esperando_desde)) / 60000 : 0;
+    const nivel = !esp.length ? 'ok' : maisVelho >= 1440 ? 'quente' : maisVelho >= 60 ? 'morno' : 'leve';
+    const p = eq.producao || {};
+    const nomeCli = x => { const cl = S.clientes.find(k => k.id === x.cliente_id); return cl ? cl.nome : (x.nome || 'Cliente'); };
+    const tempo = iso => { const m = (Date.now() - new Date(iso)) / 60000; return m < 60 ? Math.round(m) + ' min' : m < 1440 ? Math.floor(m / 60) + ' h' : Math.floor(m / 1440) + ' d'; };
+    const nivelDe = iso => { const m = (Date.now() - new Date(iso)) / 60000; return m >= 1440 ? 'quente' : m >= 60 ? 'morno' : 'leve'; };
+    return '<div class="wz-ld-topo">' + avatar(c, 'g') + '<b>' + esc(c.nome || 'Grupo da equipe') + '</b><small>Grupo da equipe</small><span class="wz-ld-tag">🤖 Otto trabalha aqui</span></div>' +
+      '<div class="wz-ld-st ' + nivel + '"><i></i><div><b>' + (esp.length ? esp.length + (esp.length === 1 ? ' cliente esperando' : ' clientes esperando') : 'Clientes em dia') + '</b><span>' + (esp.length ? 'O mais antigo espera há ' + tempo(esp[0].esperando_desde) : 'Nenhum cliente esperando resposta.') + '</span></div></div>' +
+      (esp.length ? '<div class="wz-box"><h4>Esperando resposta</h4><div class="wz-ld-lista">' + esp.slice(0, 5).map(x => '<button class="wz-ld-li wz-ld-esp" data-abrir-jid="' + esc(x.jid) + '">' + avatar(x) + '<div><b>' + esc(nomeCli(x)) + '</b><small>' + esc(x.nome || '') + '</small></div><em class="' + nivelDe(x.esperando_desde) + '">' + tempo(x.esperando_desde) + '</em></button>').join('') + (esp.length > 5 ? '<p class="wz-mudo wz-ld-mais">+ ' + (esp.length - 5) + ' no filtro "Esperando"</p>' : '') + '</div></div>' : '') +
+      '<div class="wz-box"><h4>Produção agora</h4><div class="wz-ld-num tres"><a href="#/design"' + (p.design ? '' : ' class="zero"') + '><b>' + (p.design ?? '–') + '</b><span>Design</span></a><a href="#/video"' + (p.videos ? '' : ' class="zero"') + '><b>' + (p.videos ?? '–') + '</b><span>Vídeos</span></a><a href="#/gravacoes"' + (p.gravacoes_semana ? '' : ' class="zero"') + '><b>' + (p.gravacoes_semana ?? '–') + '</b><span title="Nos próximos 7 dias">Gravações</span></a></div>' +
+        (p.atrasados ? '<a class="wz-ld-alerta" href="#/video">⚠️ ' + p.atrasados + (p.atrasados === 1 ? ' vídeo com prazo vencido' : ' vídeos com prazo vencido') + '</a>' : '') + '</div>' +
+      '<div class="wz-box"><h4>Próximas gravações</h4>' + listaGravacoes(eq.gravacoes, ic) + '</div>' +
+      ((eq.membros || []).length ? '<div class="wz-box"><h4>Equipe · ' + eq.membros.length + '</h4><div class="wz-ld-lista">' + eq.membros.map(m => { const pr = PRESENCA[m.presenca] || null; return '<div class="wz-ld-li wz-ld-pessoa">' + '<span class="wz-ld-avp">' + avatarPessoa(m) + (pr ? '<i class="' + pr[1] + '" title="' + pr[0] + '"></i>' : '') + '</span><div><b>' + esc(m.nome) + '</b><small>' + esc(m.quem || m.assuntos || FUNCAO[m.funcao] || '') + '</small></div></div>'; }).join('') + '</div></div>' : '');
+  }
+  function ladoPessoa(c, eq, ic, nivel, txtEspera, subEspera) {
+    const p = eq.pessoa || {};
+    const pr = PRESENCA[p.presenca] || null;
+    const primeiro = String(p.nome || c.nome || '').split(/\s+/)[0];
+    const visto = p.visto ? (() => { const m = (Date.now() - new Date(p.visto)) / 60000; return m < 5 ? 'Online no B7 agora' : 'Visto no B7 ' + (m < 60 ? 'há ' + Math.round(m) + ' min' : m < 1440 ? 'há ' + Math.floor(m / 60) + ' h' : 'há ' + Math.floor(m / 1440) + ' d'); })() : '';
+    const STATUS = { pendente: 'A fazer', em_edicao: 'Editando', aguardando_aprovacao: 'Em aprovação' };
+    return '<div class="wz-ld-topo"><span class="wz-ld-avp g">' + avatarPessoa({ nome: p.nome || c.nome, avatar_url: p.avatar_url || c.foto_url }, 'g') + (pr ? '<i class="' + pr[1] + '"></i>' : '') + '</span>' +
+        '<b>' + esc(p.nome || c.nome || '') + '</b><small>' + esc(p.quem || p.assuntos || FUNCAO[p.funcao] || 'Da equipe') + '</small>' +
+        '<span class="wz-ld-tag">' + (pr ? pr[0] + (visto ? ' · ' : '') : '') + esc(visto || (pr ? '' : 'Da equipe')) + '</span></div>' +
+      (c.esperando_desde ? '<div class="wz-ld-st ' + nivel + '"><i></i><div><b>' + txtEspera + '</b><span>' + esc(subEspera) + '</span></div><button class="wz-ld-ok" data-wz="semespera" title="Marcar como respondida">' + ic('<path d="M20 6 9 17l-5-5"/>') + '</button></div>' : '') +
+      '<div class="wz-box"><h4>Com ' + esc(primeiro) + ' agora</h4><div class="wz-ld-num"><a href="#/video"' + (eq.videos_total ? '' : ' class="zero"') + '><b>' + (eq.videos_total ?? 0) + '</b><span>Vídeos em edição</span></a><a href="#/design"' + (eq.designs ? '' : ' class="zero"') + '><b>' + (eq.designs ?? 0) + '</b><span>Design em produção</span></a></div>' +
+        ((eq.videos || []).length ? '<div class="wz-ld-lista wz-ld-vids">' + eq.videos.map(v => '<div class="wz-ld-li"><div><b>' + esc((v.codigo ? v.codigo + ' · ' : '') + (v.titulo || 'Vídeo')) + '</b><small>' + esc((v.cliente || '') + ' · ' + (STATUS[v.status] || v.status || '')) + '</small></div>' + (v.prazo ? '<em class="' + (atrasado(v.prazo) ? 'quente' : hojeD(v.prazo) ? 'morno' : 'leve') + '">' + esc(atrasado(v.prazo) ? 'Atrasado' : dataCurta(v.prazo)) + '</em>' : '') + '</div>').join('') + '</div>' : '') +
+      '</div>' +
+      '<div class="wz-box"><h4>Próximas gravações</h4>' + listaGravacoes(eq.gravacoes, ic) + '</div>';
+  }
+
   function vincularCliente(c) {
     const m = B7.UI.modal('<h3>Ligar a um cliente</h3><div class="sub">' + esc(c.nome || '') + '</div><input class="campo" id="wz-cli-b" placeholder="Buscar cliente…" data-foco>' +
       '<div class="lista solta mostrando wz-cli-lista" id="wz-cli-l" style="position:static;max-height:300px;overflow:auto"></div>' +

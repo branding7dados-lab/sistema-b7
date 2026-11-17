@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.67.0', versao: '4.67.0', em: '2026-11-17T10:30:00-03:00', rota: 'whatsapp',
+    titulo: 'Painel novo nas conversas',
+    itens: ['O painel da direita na Central de Conversas mostra há quanto tempo o cliente espera (com cor), a última mensagem, design, vídeos, a próxima gravação e as fotos recentes.',
+      'No grupo da equipe ele mostra quem está esperando resposta, a produção, as próximas gravações e a equipe. No privado de um colega, os vídeos e gravações dele.'] },
   { id: 'v-4.66.3', versao: '4.66.3', em: '2026-11-17T09:00:00-03:00', rota: 'whatsapp',
     titulo: 'Quem reagiu',
     itens: ['Na Central de Conversas, clique na bolinha de reações de uma mensagem para ver quem reagiu. Na sua reação, um clique tira.'] },
