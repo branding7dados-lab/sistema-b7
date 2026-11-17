@@ -628,7 +628,8 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   const lid = marcados.size ? await meuLid(sb, cfg, jid, numero) : (cfg.meu_lid || '');
   let fuiMarcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid))
     || chamouPeloNome(cfg, texto);
-  if (!fuiMarcado && ctx.stanzaId) {
+  /* responder citando o Otto só vale como chamado para o CLIENTE (modo atender); a equipe precisa chamar pelo nome (4.67.5) */
+  if (!fuiMarcado && ctx.stanzaId && !daCasa) {
     const { data: citada } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle();
     fuiMarcado = !!citada?.do_assistente;
   }
@@ -850,8 +851,9 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
   if (bot) { if (await podeResponderBot(sb, cfg.grupo_equipe!)) await responderBot(sb, cfg, raw, texto, bot); return; }
   const marcados = new Set<string>([...((ctx.mentionedJid || []) as string[]).map(dig), ...[...texto.matchAll(/@(\d{8,})/g)].map(v => v[1])]);
   const lid = marcados.size ? await meuLid(sb, cfg, cfg.grupo_equipe!, numero) : (cfg.meu_lid || '');
-  let marcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid)) || chamouPeloNome(cfg, texto);
-  if (!marcado && ctx.stanzaId) { const { data: c } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle(); marcado = !!c?.do_assistente; }
+  /* 4.67.5: no grupo da equipe ele só RESPONDE se chamarem "Otto" ou marcarem @Otto. Citar uma mensagem dele
+     não basta (17/11: "Deixa de ser feio, q ngm te chamou aq" citando o Otto e ele respondeu) — no máximo reage. */
+  const marcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid)) || chamouPeloNome(cfg, texto);
   if (!marcado) { if (!key.fromMe && key.id) await talvezReagir(sb, raw, texto, cfg.grupo_equipe!, String(key.id)); return; }
   /* 4.67.2: "Otto, transcreve" citando um áudio — antes de decidir o jeito (não pode virar só uma reação) */
   if (await talvezTranscreverCitado(sb, cfg, raw, texto, cfg.grupo_equipe!).catch(() => false)) return;
