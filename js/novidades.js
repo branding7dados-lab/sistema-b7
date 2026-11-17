@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.70.0', versao: '4.70.0', em: '2026-11-17T17:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Otto aprende e dá bom dia',
+    itens: ['Quando você corrige o Otto ("não, o prazo é sexta"), ele guarda o certo e reage com ✍️ — não erra de novo.',
+      'O que vocês pedem para ele lembrar sobre um cliente fica preso àquele cliente.',
+      'Nos dias úteis, às 8h, ele manda o bom dia da equipe com as gravações e o que vence hoje, marcando quem tem tarefa.'] },
   { id: 'v-4.69.0', versao: '4.69.0', em: '2026-11-17T16:00:00-03:00', rota: 'whatsapp',
     titulo: 'IA na caixa de mensagem',
     itens: ['Na Central de Conversas, o botão ✨ ao lado da caixa de mensagem sugere uma resposta com base na conversa (você revisa antes de mandar).',

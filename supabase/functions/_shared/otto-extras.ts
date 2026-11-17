@@ -10,17 +10,26 @@ const hojeISO = () => agoraBR().toISOString().slice(0, 10);
 const dm = (iso: string) => { const [, m, d] = String(iso).slice(0, 10).split('-'); return d + '/' + m; };
 
 /* ------------------------------------------------------------ memória */
-export async function memorias(sb: SupabaseClient, filtro?: string[]): Promise<string> {
-  const { data } = await sb.from('wa_otto_memoria').select('texto, sobre').eq('ativo', true).order('criada_em', { ascending: false }).limit(80);
+/** 4.70.0: memória geral (sem cliente) + a dos clientes do assunto. Lembrança presa a um cliente só aparece
+ *  quando a conversa é sobre ele. filtro (nomes) continua valendo para as gerais antigas com "sobre". */
+export async function memorias(sb: SupabaseClient, filtro?: string[], clientes: string[] = []): Promise<string> {
+  const { data } = await sb.from('wa_otto_memoria').select('texto, sobre, cliente_id, origem, clientes(nome)').eq('ativo', true).order('criada_em', { ascending: false }).limit(150);
   let l = (data || []) as any[];
-  if (filtro) { const f = filtro.map(sem).filter(Boolean); l = l.filter(m => f.some(x => sem(m.sobre).includes(x) || sem(m.texto).includes(x))); }
+  const f = (filtro || []).map(sem).filter(Boolean);
+  l = l.filter(m => m.cliente_id ? clientes.includes(m.cliente_id) : (!filtro || f.some(x => sem(m.sobre).includes(x) || sem(m.texto).includes(x))));
   if (!l.length) return '';
-  return 'MEMÓRIA (combinados e preferências que você deve seguir):\n' + l.map(m => '- ' + m.texto + (m.sobre ? ' (' + m.sobre + ')' : '')).join('\n');
+  const gerais = l.filter(m => !m.cliente_id), deCli = l.filter(m => m.cliente_id);
+  return 'MEMÓRIA (combinados e preferências que você deve seguir):\n' +
+    [...gerais.slice(0, 50).map(m => '- ' + m.texto + (m.sobre ? ' (' + m.sobre + ')' : '') + (m.origem === 'correcao' ? ' [correção da equipe]' : '')),
+     ...deCli.slice(0, 40).map(m => '- [' + (m.clientes?.nome || 'cliente') + '] ' + m.texto + (m.origem === 'correcao' ? ' [correção da equipe]' : ''))].join('\n');
 }
-export async function lembrar(sb: SupabaseClient, texto: string, sobre: string, quem: string): Promise<boolean> {
+export async function lembrar(sb: SupabaseClient, texto: string, sobre: string, quem: string, clienteId: string | null = null, origem: 'pedido' | 'correcao' | 'tela' = 'pedido'): Promise<boolean> {
   const t = String(texto || '').trim().slice(0, 500);
   if (t.length < 3) return false;
-  const { error } = await sb.from('wa_otto_memoria').insert({ texto: t, sobre: String(sobre || '').trim().slice(0, 120) || null, criado_por: quem });
+  /* não guarda repetido */
+  const { data: ja } = await sb.from('wa_otto_memoria').select('id').eq('ativo', true).ilike('texto', t.replace(/[%_]/g, '')).limit(1);
+  if (ja && ja.length) return true;
+  const { error } = await sb.from('wa_otto_memoria').insert({ texto: t, sobre: String(sobre || '').trim().slice(0, 120) || null, criado_por: quem, cliente_id: clienteId, origem });
   return !error;
 }
 export async function esquecer(sb: SupabaseClient, trecho: string): Promise<number> {

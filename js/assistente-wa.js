@@ -23,7 +23,7 @@ B7.AssistenteWA = (function () {
     ['😄 Descontraído', 'Pode ser leve e bem-humorado, como alguém da agência que conhece o cliente.']
   ];
   const TIPOS_REGRA = [['NUNCA', 'Nunca'], ['SEMPRE', 'Sempre'], ['NÃO RESPONDA quando o assunto for', 'Não responder sobre'], ['CHAME', 'Chamar alguém quando']];
-  const ROT_TIPO = { resposta: ['Respondeu', 'ok'], duvida: ['Perguntou à equipe', 'dv'], repasse: ['Repassou resposta', 'rp'], instrucao: ['Cumpriu ordem', 'or'], fora_horario: ['Fora do horário', 'fh'], teste: ['Teste', 'ts'], erro: ['Falhou', 'er'], resumo: ['Pendências à equipe', 'rp'], consulta: ['Respondeu a equipe', 'or'], documento: ['Mandou PDF', 'ok'], recado: ['Deu recado', 'rp'], imagem: ['Gerou imagem', 'ok'], demanda: ['Mexeu nas demandas', 'or'], reacao: ['Reagiu', 'ok'], figurinha: ['Mandou figurinha', 'ok'], bot: ['Falou com outra IA', 'rp'], print: ['Mandou print', 'ok'], privado: ['Chamou no privado', 'rp'], agente: ['Agiu (ferramentas)', 'or'], aviso: ['Avisou a equipe', 'rp'] };
+  const ROT_TIPO = { resposta: ['Respondeu', 'ok'], duvida: ['Perguntou à equipe', 'dv'], repasse: ['Repassou resposta', 'rp'], instrucao: ['Cumpriu ordem', 'or'], fora_horario: ['Fora do horário', 'fh'], teste: ['Teste', 'ts'], erro: ['Falhou', 'er'], resumo: ['Pendências à equipe', 'rp'], consulta: ['Respondeu a equipe', 'or'], documento: ['Mandou PDF', 'ok'], recado: ['Deu recado', 'rp'], imagem: ['Gerou imagem', 'ok'], demanda: ['Mexeu nas demandas', 'or'], reacao: ['Reagiu', 'ok'], figurinha: ['Mandou figurinha', 'ok'], bot: ['Falou com outra IA', 'rp'], print: ['Mandou print', 'ok'], privado: ['Chamou no privado', 'rp'], agente: ['Agiu (ferramentas)', 'or'], aviso: ['Avisou a equipe', 'rp'], aprendeu: ['Aprendeu com correção', 'ok'], transcricao: ['Transcreveu', 'ok'] };
   let S = null, raiz = null;
 
   const ini = s => { const p = String(s || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase(); };
@@ -44,7 +44,7 @@ B7.AssistenteWA = (function () {
     raiz = painel.querySelector('#asw');
     if (!adm) { raiz.innerHTML = '<div class="asw-vazio"><b>Só o administrador configura o assistente.</b></div>'; return; }
     const desde7 = new Date(Date.now() - 7 * 864e5).toISOString();
-    const [c, ap, dv, rg, gr, tg, pf, mm] = await Promise.all([
+    const [c, ap, dv, rg, gr, tg, pf, mm, cl] = await Promise.all([
       sb().from('wa_assistente').select('*').eq('id', 1).maybeSingle(),
       sb().from('wa_assistente_aprendizados').select('*').order('criado_em', { ascending: false }).limit(200),
       sb().from('wa_assistente_duvidas').select('id,jid,grupo_nome,autor,pergunta,pergunta_equipe,criada_em').is('respondida_em', null).order('criada_em', { ascending: false }).limit(40),
@@ -52,13 +52,14 @@ B7.AssistenteWA = (function () {
       sb().from('wa_conversas').select('jid,nome,cliente_id,foto_url').eq('tipo', 'grupo').not('cliente_id', 'is', null).order('nome'),
       sb().from('wa_conversas').select('jid,nome').eq('tipo', 'grupo').order('nome').limit(500),
       sb().from('perfis').select('id,nome').eq('estado', 'ativa').neq('papel', 'cliente').order('nome'),
-      sb().from('wa_otto_memoria').select('id,texto,sobre,criado_por,criada_em').eq('ativo', true).order('criada_em', { ascending: false }).limit(200)
+      sb().from('wa_otto_memoria').select('id,texto,sobre,criado_por,criada_em,cliente_id,origem').eq('ativo', true).order('criada_em', { ascending: false }).limit(200),
+      sb().from('clientes').select('id,nome').is('deleted_at', null).order('nome').limit(500)
     ]);
     if (!raiz.isConnected) return;
     if (c.error || !c.data) { raiz.innerHTML = '<div class="asw-vazio"><b>Não consegui abrir</b><p>' + esc((c.error && c.error.message) || 'Configuração não encontrada.') + '</p></div>'; return; }
     const cfg = c.data;
     S = { cfg: JSON.parse(JSON.stringify(cfg)), orig: JSON.stringify(cfg), aba: S && S.aba && S.aba !== 'grupos' ? S.aba : 'geral', ap: ap.data || [], dv: dv.data || [], reg: rg.data || [], grupos: gr.data || [],
-      regras: regrasDe(cfg.regras), busca: '', todosGrupos: tg.data || [], perfis: (pf.data || []).filter(p => !/teste/i.test(p.nome || '')), mem: mm.data || [], teste: [], testeJid: (gr.data || [])[0] ? gr.data[0].jid : '', testeEquipe: false };
+      regras: regrasDe(cfg.regras), busca: '', todosGrupos: tg.data || [], perfis: (pf.data || []).filter(p => !/teste/i.test(p.nome || '')), mem: mm.data || [], clientes: cl.data || [], memFiltro: '', teste: [], testeJid: (gr.data || [])[0] ? gr.data[0].jid : '', testeEquipe: false };
     if (!S.cfg.horario) S.cfg.horario = { ativo: false, ini: '08:00', fim: '18:00', dias: [1, 2, 3, 4, 5], mensagem: '' };
     desenhar();
     raiz.addEventListener('click', clique);
@@ -207,6 +208,7 @@ B7.AssistenteWA = (function () {
           linha('Grupo', '', '<select class="campo" data-c="grupo_equipe"><option value="">Escolha o grupo interno</option>' + S.todosGrupos.map(g => '<option value="' + esc(g.jid) + '"' + (g.jid === ge ? ' selected' : '') + '>' + esc(g.nome || g.jid) + '</option>').join('') + '</select>') +
           linha('Mandar as pendências', 'Quem está esperando resposta, no horário de atendimento.', '<select class="campo" data-c="resumo_horas" data-num>' + [[1, 'A cada 1 hora'], [2, 'A cada 2 horas'], [3, 'A cada 3 horas'], [4, 'A cada 4 horas'], [6, 'A cada 6 horas'], [12, '2 vezes por dia'], [24, '1 vez por dia'], [168, '1 vez por semana'], [720, '1 vez por mês']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.resumo_horas || 3) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>') +
           linha('Conta como pendente depois de', '', '<select class="campo" data-c="resumo_espera_min" data-num>' + [[15, '15 min sem resposta'], [30, '30 min sem resposta'], [60, '1 hora sem resposta'], [120, '2 horas sem resposta']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.resumo_espera_min || 30) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>') +
+          linha('Bom dia da equipe', 'Em dia útil, a partir de <input class="campo asw-hora" type="time" data-c="bom_dia_hora" value="' + esc(c.bom_dia_hora || '08:00') + '">: gravações de hoje, o que vence hoje, atrasados e quem espera resposta — marcando quem tem tarefa.', chave('bom_dia_ligado', c.bom_dia_ligado !== false)) +
           '<div class="asw-acao"><button class="b pri" data-pendencias' + (ge ? '' : ' disabled') + '>Mandar pendências agora</button></div>') +
         bloco('Com a equipe', 'Valem no grupo interno e no privado de quem está na lista abaixo. Com cliente, valem as regras da Personalidade.',
           linha('Modo restrito', 'Ligado: nada de palavrão, nem de brincadeira. Desligado: zoação liberada com a equipe — nunca com cliente nem sobre cliente.', chave('modo_restrito', !!c.modo_restrito)) +
@@ -254,9 +256,10 @@ B7.AssistenteWA = (function () {
     }
     if (S.aba === 'saber') {
       return '<div class="asw-2">' +
-        bloco('Memória', 'Combinados e preferências que ele sempre segue. Ele guarda sozinho quando pedem (“' + nome + ', lembra que…”).',
-          '<div class="asw-ensina"><input class="campo" id="asw-mem-t" maxlength="500" placeholder="Ex.: o Kevin prefere receber os prints no grupo da equipe"><input class="campo" id="asw-mem-s" maxlength="120" placeholder="Sobre (opcional)"><button class="b pri" data-mem-add>Guardar</button></div>' +
-          '<div class="asw-mem">' + ((S.mem || []).map(m => '<div class="asw-ap" data-mem="' + esc(m.id) + '"><p>' + esc(m.texto) + '</p><small>' + esc([m.sobre, m.criado_por, quando(m.criada_em)].filter(Boolean).join(' · ')) + '</small><div class="asw-ap-ac"><button class="asw-x" data-mem-tira aria-label="Esquecer">✕</button></div></div>').join('') || '<div class="asw-nada">Nada guardado ainda.</div>') + '</div>') +
+        bloco('Memória', 'Combinados e preferências que ele sempre segue. Presa a um cliente, só vale quando o assunto é aquele cliente. Ele guarda sozinho quando pedem (“' + nome + ', lembra que…”) e quando alguém corrige ele (✍️).',
+          '<div class="asw-ensina asw-ensina3"><input class="campo" id="asw-mem-t" maxlength="500" placeholder="Ex.: a Luana do Mercato prefere áudio"><select class="campo" id="asw-mem-c"><option value="">Vale para tudo</option>' + (S.clientes || []).map(k => '<option value="' + esc(k.id) + '">' + esc(k.nome) + '</option>').join('') + '</select><button class="b pri" data-mem-add>Guardar</button></div>' +
+          ((S.mem || []).some(m => m.cliente_id) ? '<select class="campo asw-mem-f" id="asw-mem-f"><option value="">Todas as lembranças</option><option value="geral"' + (S.memFiltro === 'geral' ? ' selected' : '') + '>Só as gerais</option>' + [...new Set((S.mem || []).map(m => m.cliente_id).filter(Boolean))].map(id => '<option value="' + esc(id) + '"' + (S.memFiltro === id ? ' selected' : '') + '>' + esc(nomeCliente(id)) + '</option>').join('') + '</select>' : '') +
+          '<div class="asw-mem">' + ((S.mem || []).filter(m => !S.memFiltro || (S.memFiltro === 'geral' ? !m.cliente_id : m.cliente_id === S.memFiltro)).map(m => '<div class="asw-ap" data-mem="' + esc(m.id) + '"><p>' + (m.cliente_id ? '<span class="asw-mem-cli">' + esc(nomeCliente(m.cliente_id)) + '</span>' : '') + esc(m.texto) + '</p><small>' + (m.origem === 'correcao' ? '✍️ corrigido por ' : '') + esc([m.criado_por, quando(m.criada_em)].filter(Boolean).join(' · ')) + '</small><div class="asw-ap-ac"><button class="asw-x" data-mem-tira aria-label="Esquecer">✕</button></div></div>').join('') || '<div class="asw-nada">Nada guardado ainda.</div>') + '</div>') +
         bloco('Respostas ensinadas', 'Ele usa como verdade com os clientes. Também aprende quando a equipe responde uma dúvida.',
           '<div class="asw-ensina"><input class="campo" id="asw-ap-p" placeholder="Assunto (ex.: prazo padrão de arte)"><input class="campo" id="asw-ap-r" placeholder="Resposta (ex.: 2 dias úteis depois do briefing)"><button class="b pri" data-ensinar>Ensinar</button></div>' +
           '<div class="asw-saber">' + (S.ap.map(a => '<div class="asw-ap' + (a.ativo === false ? ' off' : '') + '" data-ap="' + esc(a.id) + '"><b>' + esc(a.pergunta) + '</b><p>' + esc(a.resposta) + '</p>' +
@@ -277,6 +280,7 @@ B7.AssistenteWA = (function () {
     return '';
   }
   const sw = (k, on, t, d) => linha(t, d, chave(k, on));
+  const nomeCliente = id => ((S.clientes || []).find(k => k.id === id) || {}).nome || 'Cliente';
 
   function definir(k, v) { const p = k.split('.'); let o = S.cfg; while (p.length > 1) { const x = p.shift(); o[x] = o[x] || {}; o = o[x]; } o[p[0]] = v; }
 
@@ -313,6 +317,7 @@ B7.AssistenteWA = (function () {
       S.busca = t.value; const pos = t.selectionStart; desenhar(); const b = raiz.querySelector('#asw-busca'); if (b) { b.focus(); b.setSelectionRange(pos, pos); } return;
     } else if (t.id === 'asw-tjid') { S.testeJid = t.value; S.teste = []; desenhar(); return; }
     else if (t.id === 'asw-teq') { S.testeEquipe = t.checked; return; }
+    else if (t.id === 'asw-mem-f') { S.memFiltro = t.value; desenhar(); return; }
     else if (t.hasAttribute('data-ap-ativo')) {
       const id = t.closest('[data-ap]').dataset.ap; const a = S.ap.find(x => x.id === id); if (a) a.ativo = t.checked;
       t.closest('.asw-ap').classList.toggle('off', !t.checked);
@@ -335,9 +340,10 @@ B7.AssistenteWA = (function () {
       return;
     }
     if (t.closest('[data-mem-add]')) {
-      const tx = (raiz.querySelector('#asw-mem-t') || {}).value || '', so = (raiz.querySelector('#asw-mem-s') || {}).value || '';
+      const tx = (raiz.querySelector('#asw-mem-t') || {}).value || '', cid = (raiz.querySelector('#asw-mem-c') || {}).value || '';
       if (tx.trim().length < 3) return B7.UI.toast('Escreva o que ele deve lembrar.');
-      sb().from('wa_otto_memoria').insert({ texto: tx.trim(), sobre: so.trim() || null, criado_por: 'tela' }).select('id,texto,sobre,criado_por,criada_em').single().then(r => {
+      const eu = (B7.Auth && B7.Auth.usuario && B7.Auth.usuario()) || {};
+      sb().from('wa_otto_memoria').insert({ texto: tx.trim(), sobre: cid ? nomeCliente(cid) : null, cliente_id: cid || null, origem: 'tela', criado_por: eu.nome || 'tela' }).select('id,texto,sobre,criado_por,criada_em,cliente_id,origem').single().then(r => {
         if (r.error) return B7.UI.toast('Não salvou: ' + r.error.message);
         S.mem = [r.data, ...(S.mem || [])]; desenhar(); B7.UI.toast('Guardado na memória.');
       });
@@ -438,6 +444,7 @@ B7.AssistenteWA = (function () {
     const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
       equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), ...((p.apelidos || '').trim() ? { apelidos: String(p.apelidos).split(',').map(x => x.trim()).filter(Boolean).slice(0, 6).join(', ') } : {}), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
+      bom_dia_ligado: c.bom_dia_ligado !== false, bom_dia_hora: /^\d{2}:\d{2}$/.test(c.bom_dia_hora || '') ? c.bom_dia_hora : '08:00',
       push_espera_min: Math.max(0, Math.min(240, Number(c.push_espera_min ?? 15) || 0)), push_para: (Array.isArray(c.push_para) ? c.push_para : []).filter(Boolean),
       velocidade: ['rapido', 'natural', 'humano'].includes(c.velocidade) ? c.velocidade : 'natural', audio_humano: !!c.audio_humano,
       audio_roteiro: ['auto', 'sempre', 'nunca'].includes(c.audio_roteiro) ? c.audio_roteiro : 'auto', audio_max_s: Math.max(15, Math.min(120, Number(c.audio_max_s) || 40)),

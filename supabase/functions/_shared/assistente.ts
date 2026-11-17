@@ -520,7 +520,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
     modo === 'fora_horario' && cfg.horario?.mensagem ? '\nMENSAGEM PADRÃO PARA FORA DO HORÁRIO (adapte se ajudar):\n' + cfg.horario.mensagem : ''
   ].filter(Boolean).join('\n');
   const equipeB7 = await quemEQuem(sb, cfg, false);
-  const memCli = await memorias(sb, [conv.nome || '', ...(conv.cliente_id ? [String((await sb.from('clientes').select('nome').eq('id', conv.cliente_id).maybeSingle()).data?.nome || '')] : [])].filter(Boolean));
+  const memCli = await memorias(sb, [conv.nome || '', ...(conv.cliente_id ? [String((await sb.from('clientes').select('nome').eq('id', conv.cliente_id).maybeSingle()).data?.nome || '')] : [])].filter(Boolean), conv.cliente_id ? [conv.cliente_id] : []);
   const usuario = [
     equipeB7, '', memCli, '',
     'EM PRODUÇÃO PARA ESTE CLIENTE:', ...(pend.length ? pend.map(x => '- ' + x) : ['- nada registrado agora']),
@@ -582,6 +582,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   talvezAvisos(sb, cfg).catch(e => console.log('avisos', String(e)));
   talvezVigiar(sb, cfg).catch(e => console.log('vigia', String(e)));
   talvezAvisarCelular(sb, cfg).catch(e => console.log('aviso celular', String(e)));
+  talvezBomDia(sb, cfg, false).catch(e => console.log('bom dia', String(e)));
   talvezResumoDia(sb, cfg, false).catch(e => console.log('resumo dia', String(e)));
   /* grupo da equipe: perguntas sobre qualquer cliente */
   if (cfg.grupo_equipe && jid === cfg.grupo_equipe) { await noGrupoEquipe(sb, cfg, raw, texto, ctx, numero); return; }
@@ -1624,13 +1625,14 @@ const FERRAMENTAS = `FERRAMENTAS (use só quando o pedido pedir isso; várias po
 - {"ferramenta":"demandas","pedido":"<o que fazer, completo: cliente, gravação, quem, prazo...>"} → cria, edita, exclui, gera da gravação ou consulta demandas de edição de vídeo.
 - {"ferramenta":"pendencias","destino":"aqui"|"equipe"} → manda o resumo de quais clientes estão esperando resposta.
 - {"ferramenta":"reagir","emoji":"😂"} → reage à mensagem de quem pediu (😂 👍 ❤️ 👏 🔥 🥳 🙏 😮).
-- {"ferramenta":"lembrar","texto":"<o combinado/preferência, completo>","sobre":"<pessoa/cliente/assunto>"} → guarda na sua MEMÓRIA para sempre seguir (ex.: "Kevin prefere print no grupo da equipe"). Use quando pedirem para lembrar/anotar ou quando alguém da equipe definir uma preferência clara.
+- {"ferramenta":"lembrar","texto":"<o combinado/preferência, completo>","sobre":"<pessoa/assunto>","cliente":"<nome do cliente, se for sobre um cliente>"} → guarda na sua MEMÓRIA para sempre seguir (ex.: "Kevin prefere print no grupo da equipe"; cliente: "a Luana do Mercato prefere áudio"). Se for sobre um cliente, SEMPRE preencha "cliente" — a lembrança fica presa a ele. Use quando pedirem para lembrar/anotar ou quando alguém da equipe definir uma preferência clara.
 - {"ferramenta":"esquecer","texto":"<trecho do que esquecer>"} → tira da memória.
 - {"ferramenta":"audio","mensagem":"<o que falar, já escrito>","destino":"equipe"|"<cliente ou grupo>"|"privado:<pessoa>"} → manda um ÁUDIO com a sua voz em OUTRO lugar (para responder aqui em áudio, use "em_audio"). Grupo de cliente só se pedirem.
 - {"ferramenta":"editar_mensagem","novo_texto":"<o texto corrigido, completo>"} → edita uma mensagem SUA aqui (a que a pessoa respondeu/citou, ou a sua última). Só texto, até ~15 min depois de enviada.
 - {"ferramenta":"apagar_mensagem"} → apaga para todos uma mensagem SUA aqui (a citada, ou a sua última). Use quando pedirem para apagar.
 - {"ferramenta":"figurinha","momento":"<o clima/assunto, para escolher a figurinha>","destino":"aqui"|"equipe"|"<cliente ou grupo>"} → manda uma figurinha que combine (das que você conhece). "lá no grupo" pedido no privado = "equipe". Use quando pedirem ou, com moderação, quando uma figurinha cair muito bem na conversa (risada, comemoração). Não a toda hora.
-- {"ferramenta":"resumo_dia","destino":"aqui"|"equipe"} → manda o resumo do dia (entregas, o que vence amanhã, atrasos, quem espera resposta).`;
+- {"ferramenta":"resumo_dia","destino":"aqui"|"equipe"} → manda o resumo do dia (entregas, o que vence amanhã, atrasos, quem espera resposta).
+- {"ferramenta":"bom_dia","destino":"aqui"|"equipe"} → manda o bom dia / agenda de HOJE (gravações de hoje, o que vence hoje, atrasados, quem espera resposta), marcando quem tem tarefa.`;
 type Plano = { acoes: any[]; resposta: string; emAudio?: boolean };
 function jsonDoTexto(t: string): any {
   const x = String(t || '').replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '').trim();
@@ -1735,7 +1737,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   let usuario = 'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +
     '\n\n' + await quemEQuem(sb, cfg, true) + '\n\n' + await genteDoGrupo(sb, cfg, aqui) +
     '\n\nCLIENTES DA AGÊNCIA: ' + ((cls || []) as any[]).map(c => c.nome).join(', ') +
-    '\n\n' + await memorias(sb) +
+    '\n\n' + await memorias(sb, undefined, [...clientes.map((c: any) => c.id), ...(cli?.conv?.cliente_id ? [cli.conv.cliente_id] : [])]) +
     '\n\nDADOS DO SISTEMA:' + dados + await marcadosNaMensagem(sb, cfg, raw, aqui) + '\n\nMENSAGEM DE ' + quem + ' (responda a esta): ' + pedido;
   const provedor = provedorAtual(n => Deno.env.get(n));
   let plano: Plano | null = null, saida: any = null;
@@ -1826,7 +1828,11 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
       }
       if (f === 'demandas') { if (await talvezDemandas(sb, cfg, raw, 'demanda: ' + String(a.pedido || pedido), aqui)) feitos.push('demandas'); else falhas.push('não consegui mexer nas demandas'); continue; }
       if (f === 'pendencias') { const dest = await interno(a.destino); await mandarResumo(sb, cfg, true, dest || aqui); feitos.push('pendências'); continue; }
-      if (f === 'lembrar') { if (await lembrar(sb, String(a.texto || ''), String(a.sobre || ''), quem)) feitos.push('lembrou'); else falhas.push('não consegui guardar na memória'); continue; }
+      if (f === 'lembrar') {
+        const cl = String(a.cliente || '').trim() ? (await clientesCitados(sb, String(a.cliente)))[0] : null;
+        if (await lembrar(sb, String(a.texto || ''), String(a.sobre || '') || (cl?.nome || ''), quem, cl?.id || null)) feitos.push('lembrou' + (cl ? ' (' + cl.nome + ')' : '')); else falhas.push('não consegui guardar na memória');
+        continue;
+      }
       if (f === 'esquecer') { const n = await esquecer(sb, String(a.texto || '')); if (n) feitos.push('esqueceu ' + n); else falhas.push('não achei isso na memória'); continue; }
       if (f === 'editar_mensagem' || f === 'apagar_mensagem') {
         const m = await minhaMensagem(sb, raw, aqui);
@@ -1870,6 +1876,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
         else falhas.push('a voz não saiu agora');
         continue;
       }
+      if (f === 'bom_dia') { const dest = await interno(a.destino); if (await talvezBomDia(sb, cfg, true, dest || aqui)) feitos.push('bom dia'); else falhas.push('não consegui montar a agenda de hoje'); continue; }
       if (f === 'resumo_dia') { const dest = await interno(a.destino); if (await talvezResumoDia(sb, cfg, true, dest || aqui)) feitos.push('resumo do dia'); else falhas.push('não consegui montar o resumo do dia'); continue; }
     } catch (e) { console.log('agente: ferramenta', f, String(e).slice(0, 300)); falhas.push(f + ' deu erro'); }
   }
@@ -1922,7 +1929,39 @@ async function talvezTranscreverCitado(sb: SupabaseClient, cfg: Config, raw: any
   await registrar(sb, { tipo: foi ? 'transcricao' : 'erro', jid: dest, autor: String(raw?.pushName || ''), pergunta: texto.slice(0, 300), resposta: corpo.slice(0, 1500) });
   return true;
 }
+/* 4.70.0: alguém da equipe CORRIGIU o Otto ("não, o prazo é sexta", "tá errado, quem grava é o Kaique") —
+   respondendo a uma mensagem dele (citando, ou logo depois dela, até 15 min) — ele guarda o fato certo
+   na memória (presa ao cliente, se for de um cliente) e reage com ✍️. A resposta segue normal depois. */
+export const CORRIGE = /(^|[\s,.!])(nao|n|errad\w*|na verdade|o certo (e|eh|era)|corrigindo|correcao|voce errou|vc errou|tu errou|ta errado|esta errado|nao e (isso|assim|ele|ela)|nao foi|nao era|nada a ver|e (na|no|dia|o|a) .{1,40},? nao)([\s,.!?]|$)/;
+async function talvezAprenderCorrecao(sb: SupabaseClient, cfg: Config, raw: any, texto: string, aqui: string): Promise<void> {
+  const t = semAcento(texto);
+  if (!CORRIGE.test(t) || t.split(/\s+/).length < 3) return;
+  const ctx = ctxDe(raw), key = raw?.key || {};
+  let doOtto: any = null;
+  if (ctx.stanzaId) {
+    const { data } = await sb.from('wa_mensagens').select('texto, do_assistente, criada_em').eq('id', String(ctx.stanzaId)).maybeSingle();
+    if (data?.do_assistente) doOtto = data;
+  }
+  if (!doOtto) {
+    const { data } = await sb.from('wa_mensagens').select('texto, do_assistente, criada_em').eq('jid', aqui).eq('nota', false).neq('id', String(key.id || '')).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+    if (data?.do_assistente && Date.now() - new Date(data.criada_em).getTime() <= 15 * 60_000) doOtto = data;
+  }
+  if (!doOtto?.texto) return;
+  const r = await ia('Você decide se a mensagem de alguém da equipe CORRIGE uma informação que o assistente ' + cfg.nome + ' deu, e extrai o fato certo para ele guardar e não errar de novo. ' +
+    'Só vale correção de FATO durável (prazo combinado, quem cuida do quê, preferência de cliente, regra da agência, nome, valor). Não vale: bronca, piada, "fica quieto", opinião, pedido novo, algo que só vale hoje. ' +
+    'Responda SÓ um JSON: {"aprender": true|false, "fato": "<o fato certo, completo e curto, em 1 frase, sem citar o assistente>", "cliente": "<nome do cliente se o fato for de um cliente, senão vazio>"}.',
+    'O ASSISTENTE DISSE: ' + String(doOtto.texto).slice(0, 600) + '\n\nA EQUIPE RESPONDEU: ' + texto.slice(0, 600), 200);
+  const j = jsonDoTexto(r.texto);
+  if (!j?.aprender || String(j.fato || '').trim().length < 6) return;
+  const cl = String(j.cliente || '').trim() ? (await clientesCitados(sb, String(j.cliente)))[0] : null;
+  const quem = String(raw?.pushName || (key.fromMe ? 'Você' : 'equipe'));
+  if (await lembrar(sb, String(j.fato).trim(), cl?.nome || '', quem, cl?.id || null, 'correcao')) {
+    if (key.id) await reagirNaMensagem(sb, String(key.id), '✍️', aqui, texto);
+    await registrar(sb, { tipo: 'aprendeu', jid: aqui, autor: quem, pergunta: texto.slice(0, 500), resposta: (cl ? '[' + cl.nome + '] ' : '') + String(j.fato).slice(0, 500) });
+  }
+}
 async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
+  talvezAprenderCorrecao(sb, cfg, raw, texto, destino).catch(e => console.log('aprender correção', String(e).slice(0, 200)));   /* em paralelo: não atrasa a resposta */
   avisarPensando(destino, temAudio(raw) && (cfg as any).responder_audio !== false ? 'recording' : 'composing');
   if (await talvezTranscreverCitado(sb, cfg, raw, texto, destino).catch(e => { console.log('transcrever citado', String(e).slice(0, 200)); return false; })) return;
   try { if (await agente(sb, cfg, raw, texto, destino)) return; }
@@ -1996,6 +2035,7 @@ export async function sugerirResposta(sb: SupabaseClient, jid: string, quem: str
   const linhas = ((ms || []) as any[]).reverse().map(m => (m.de_mim ? '[EQUIPE] ' + (m.do_assistente ? (cfg?.nome || 'Otto') : m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'Cliente')) + ': ' + (m.texto ? String(m.texto).slice(0, 400) : '(' + m.tipo + ')'));
   if (!linhas.length) return { texto: '', erro: 'Ainda não há mensagens nesta conversa.' };
   const { data: ap } = await sb.from('wa_assistente_aprendizados').select('pergunta, resposta').eq('ativo', true).order('criado_em', { ascending: false }).limit(25);
+  const memo = conv.cliente_id ? await memorias(sb, [conv.nome || ''], [conv.cliente_id]) : '';
   const ehCli = !!conv.cliente_id;
   const sistema = [
     'Você escreve um RASCUNHO de resposta de WhatsApp para ' + String(quem || 'alguém').split(' ')[0] + ', da equipe da Branding7 (agência de conteúdo para redes sociais), responder agora nesta conversa' + (ehCli ? ' com um CLIENTE' : '') + '. A pessoa vai revisar antes de mandar.',
@@ -2009,6 +2049,7 @@ export async function sugerirResposta(sb: SupabaseClient, jid: string, quem: str
   const usuario = 'CONVERSA "' + (conv.nome || '') + '" (mais antiga primeiro):\n' + linhas.join('\n') +
     '\n\nEM PRODUÇÃO PARA ESTE CLIENTE: ' + (pend.length ? pend.join(' | ') : 'nada registrado') +
     (ap?.length ? '\n\nO QUE A AGÊNCIA JÁ ENSINOU:\n' + (ap as any[]).map(a => '- ' + a.pergunta + ': ' + a.resposta).join('\n') : '') +
+    (memo ? '\n\n' + memo : '') +
     (pedido ? '\n\nA PESSOA QUER RESPONDER ASSIM (siga): ' + String(pedido).slice(0, 400) : '');
   const r = await gerar(provedorAtual(n => Deno.env.get(n)), [{ role: 'system', content: sistema }, { role: 'user', content: usuario }],
     { maxTokens: 500, temperatura: 0.5, prazoMs: 30000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^["“]|["”]$/g, '').trim() });
@@ -2067,4 +2108,63 @@ async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
       p_mensagem: quem + ': ' + oque + ' — há ' + ha(c.esperando_desde) + ' sem resposta', p_link: '#/whatsapp?jid=' + encodeURIComponent(c.jid), p_para: para });
     if (error) console.log('aviso celular', error.message);
   }
+}
+
+/* =====================================================================
+   4.70.0 — BOM DIA DA EQUIPE: dias úteis, a partir da hora da tela (padrão 8h, até 11h), no grupo da equipe.
+   O que vence hoje (vídeo e design), atrasados, gravações do dia e quem espera resposta — marcando quem tem tarefa.
+   ===================================================================== */
+async function dadosBomDia(sb: SupabaseClient, cfg: Config): Promise<{ texto: string; pessoas: string[] }> {
+  const br = new Date(Date.now() - 3 * 3600_000), hoje = br.toISOString().slice(0, 10);
+  const [{ data: vids }, { data: atr }, { data: des }, { data: desAtr }, { data: gravs }, { data: esp }, { data: cls }, { data: ps }] = await Promise.all([
+    sb.from('demandas_edicao').select('codigo, titulo, client_id, videomaker_id, editing_status').eq('prazo', hoje).is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado)').limit(60),
+    sb.from('demandas_edicao').select('id', { count: 'exact', head: false }).lt('prazo', hoje).is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado,standby)').limit(200),
+    sb.from('design_resumo').select('titulo, cliente_nome, designer_id, designer_nome, status').eq('prazo', hoje).neq('status', 'finalizado').limit(60),
+    sb.from('design_resumo').select('titulo').lt('prazo', hoje).neq('status', 'finalizado').limit(200),
+    sb.from('gravacoes').select('nome, data_gravacao, hora_inicio, client_id, videomaker_id, situacao').eq('data_gravacao', hoje).is('deleted_at', null).is('archived_at', null).order('hora_inicio', { ascending: true, nullsFirst: false }).limit(20),
+    sb.from('wa_conversas').select('nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).eq('arquivada', false).not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - 30 * 60_000).toISOString()).order('esperando_desde').limit(12),
+    sb.from('clientes').select('id, nome'), sb.from('perfis').select('id, nome')
+  ]);
+  const cliente = new Map(((cls || []) as any[]).map(c => [c.id, c.nome]));
+  const pessoa = new Map(((ps || []) as any[]).map(p => [p.id, p.nome]));
+  const pessoas = new Set<string>();
+  const marca = (id: string | null, nome?: string | null) => { const n = (id && pessoa.get(id)) || nome || ''; if (n) pessoas.add(n); return n ? n.split(' ')[0] : 'sem responsável'; };
+  const gr = ((gravs || []) as any[]).filter(g => String(g.situacao || '') !== 'Cancelada');
+  const linhas = [
+    'HOJE: ' + br.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', timeZone: 'UTC' }),
+    'GRAVAÇÕES DE HOJE:\n' + (gr.map(g => '- ' + (g.hora_inicio ? String(g.hora_inicio).slice(0, 5) + ' ' : '') + (cliente.get(g.client_id) || g.nome || 'gravação') + (g.nome && g.nome !== cliente.get(g.client_id) ? ' (' + g.nome + ')' : '') + ' — ' + marca(g.videomaker_id)).join('\n') || '(nenhuma)'),
+    'VÍDEOS QUE VENCEM HOJE:\n' + (((vids || []) as any[]).map(v => '- ' + (v.codigo ? v.codigo + ' ' : '') + String(v.titulo || '').slice(0, 50) + ' (' + (cliente.get(v.client_id) || '') + ') — ' + marca(v.videomaker_id)).join('\n') || '(nenhum)'),
+    'DESIGN QUE VENCE HOJE:\n' + (((des || []) as any[]).map(d => '- ' + String(d.titulo || '').slice(0, 50) + ' (' + (d.cliente_nome || '') + ') — ' + marca(d.designer_id, d.designer_nome)).join('\n') || '(nenhum)'),
+    'ATRASADOS: ' + ((atr || []) as any[]).length + ' vídeo(s) e ' + ((desAtr || []) as any[]).length + ' design(s)',
+    'CLIENTES ESPERANDO RESPOSTA:\n' + (((esp || []) as any[]).map(c => '- ' + (cliente.get(c.cliente_id) || c.nome) + ' (há ' + ha(c.esperando_desde) + ')').join('\n') || '(ninguém)')
+  ];
+  return { texto: linhas.join('\n\n'), pessoas: [...pessoas] };
+}
+export async function talvezBomDia(sb: SupabaseClient, cfg: Config, forcado: boolean, destino?: string): Promise<boolean> {
+  const dest = destino || cfg.grupo_equipe;
+  if (!dest) return false;
+  if (!forcado) {
+    if ((cfg as any).bom_dia_ligado === false) return false;
+    const br = new Date(Date.now() - 3 * 3600_000);
+    const dias = (cfg.horario?.ativo && cfg.horario.dias?.length) ? cfg.horario.dias : [1, 2, 3, 4, 5];
+    if (!dias.includes(br.getUTCDay())) return false;
+    const [hh, mm] = String((cfg as any).bom_dia_hora || '08:00').split(':').map(Number);
+    const agora = br.getUTCHours() * 60 + br.getUTCMinutes(), alvo = (hh || 8) * 60 + (mm || 0);
+    if (agora < alvo || agora > alvo + 180) return false;   /* só nas 3 h seguintes: depois do almoço já não é "bom dia" */
+    const hoje = br.toISOString().slice(0, 10);
+    const { data: vez } = await sb.from('wa_assistente').update({ bom_dia_ultimo: hoje }).eq('id', 1).or('bom_dia_ultimo.is.null,bom_dia_ultimo.lt.' + hoje).select('id');
+    if (!vez || !vez.length) return false;
+  }
+  const d = await dadosBomDia(sb, cfg);
+  const r = await gerar(provedorAtual(n => Deno.env.get(n)), [
+    { role: 'system', content: 'Você é ' + (cfg.nome || 'Otto') + ', assistente da Branding7. Escreva o BOM DIA da equipe no grupo interno do WhatsApp com os dados de hoje. ' +
+      'Comece com um bom dia animado e curto (varie, nada de clichê). Depois, só o que existe: gravações de hoje (hora, cliente, quem grava), o que vence hoje (vídeo e design, com quem), os atrasados (só o número) e quem está esperando resposta. ' +
+      'Marque quem tem tarefa hoje escrevendo @ + o nome exato da lista PESSOAS COM TAREFA (ex.: @Kaique Viana), uma vez cada. Uma linha por item, sem títulos com #, sem negrito em excesso. Se não tiver nada para hoje, diga isso de um jeito leve. ' +
+      'Termine com uma frase curta de incentivo. Não invente nada. Não assine.' },
+    { role: 'user', content: d.texto + '\n\nPESSOAS COM TAREFA: ' + (d.pessoas.join(', ') || 'ninguém') }
+  ], { maxTokens: 700, temperatura: 0.6, prazoMs: 40000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
+  const texto = r.ok && r.texto ? r.texto : 'Bom dia, equipe! ☀️\n\n' + d.texto.split('\n\n').slice(1).join('\n\n');
+  const foi = await enviar(sb, cfg, dest, texto);
+  await registrar(sb, { tipo: 'resumo', jid: dest, autor: cfg.nome, pergunta: forcado ? 'bom dia (pedido)' : 'bom dia da equipe', resposta: texto.slice(0, 1500) });
+  return !!foi;
 }
