@@ -946,6 +946,15 @@ async function juntarSequencia(sb: SupabaseClient, cfg: Config, raw: any, texto:
 
 /* 4.59.4: quem é quem na equipe (usuários do B7 + o que a tela do Otto diz de cada um) */
 const FUNCAO: Record<string, string> = { admin: 'administrador do sistema', coordenador: 'coordenador(a)', videomaker: 'videomaker (grava e edita vídeo)', designer: 'designer (artes)', social_media: 'social media', atendimento: 'atendimento', editor: 'editor(a) de vídeo', redator: 'redator(a)' };
+export const PEDE_STATUS = /\b(marc\w*|coloc\w*|mud\w*|pass\w*|deix\w*|bot\w*|pod\w* marcar|atualiz\w*|move\w*)\b.{0,80}\b(entregue|entregues|aprovad\w*|em aprovacao|correcao|em edicao|finalizad\w*|concluid\w*|standby|a fazer|pendente)\b/;
+/** 4.71.1: texto da mensagem citada, numa linha ("autor: texto") */
+async function textoCitado(sb: SupabaseClient, raw: any): Promise<string> {
+  const id = String(ctxDe(raw).stanzaId || '');
+  if (!id) return '';
+  const { data: m } = await sb.from('wa_mensagens').select('texto, tipo, autor_nome, do_assistente').eq('id', id).maybeSingle();
+  if (!m) return '';
+  return (m.do_assistente ? 'Otto' : (m.autor_nome || 'alguém')) + ': ' + (m.texto ? String(m.texto).replace(/^\*[^*]+:\*\s*/, '').replace(/\s+/g, ' ').slice(0, 500) : '(' + m.tipo + ')');
+}
 /** 4.71.0: a mensagem que a pessoa CITOU ao falar com o Otto ("Otto, o que acha disso?" citando o cliente) */
 async function citadaNaMensagem(sb: SupabaseClient, cfg: Config, raw: any): Promise<string> {
   const id = String(ctxDe(raw).stanzaId || '');
@@ -1816,6 +1825,19 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
       saida = s2;
     }
   }
+  /* 4.71.1: pedido para MUDAR STATUS de vídeo ("pode marcar todos como entregue, menos o Novembro Azul"),
+     inclusive o "sim" a uma oferta do próprio Otto ("quer que eu marque como aprovado/entregue?"), tem que
+     passar pela ferramenta de demandas — 17/11 ele respondeu "todos entregues" sem mexer em nada. */
+  if (!ehCliente && !plano.acoes.some(a => a?.ferramenta === 'demandas')) {
+    const cit = await textoCitado(sb, raw);
+    const ofertaDoOtto = /marqu\w* como (aprovad|entregue)|quer que eu marque/i.test(semAcento(cit));
+    const sim = /^\s*(\*[^*]+:\*\s*)?(sim|pode|pode sim|isso|manda ver|marca|marque|faz|fa[cç]a|ok|beleza|confirmo|confirmado|bora)\b/i.test(pedido);
+    if (PEDE_STATUS.test(semAcento(pedido)) || (ofertaDoOtto && sim)) {
+      plano.acoes = plano.acoes.filter(a => !(a?.ferramenta === 'mensagem_em_grupo' && /equipe|interno/i.test(String(a.grupo || '')) && aqui === cfg.grupo_equipe));
+      plano.acoes.push({ ferramenta: 'demandas', pedido: pedido + (cit ? '\n(Contexto — ele respondeu a esta mensagem: ' + cit + ')' : '') });
+      plano.resposta = '';
+    }
+  }
   /* executa */
   const interno = async (d: unknown): Promise<string | null> => { const r = await resolver(d); return ehCliente && r === aqui ? (cfg.grupo_equipe || null) : r; };
   const resolver = async (d: unknown): Promise<string | null> => {
@@ -1861,6 +1883,8 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
       }
       if (f === 'mensagem_em_grupo') {
         const dest = await resolver(a.grupo);
+        /* 4.71.1: "mensagem no grupo" para o grupo onde ele já está = é a resposta (e passa pela checagem de honestidade) */
+        if (dest === aqui) { if (!plano.resposta && String(a.mensagem || '').trim()) plano.resposta = String(a.mensagem); continue; }
         if (!dest || !String(a.mensagem || '').trim()) { falhas.push('não achei o grupo "' + (a.grupo || '') + '"'); continue; }
         let msgG = String(a.mensagem);
         if (pedeTodos(pedido) || /@todos\b/i.test(msgG)) { msgG = paraTodos(msgG, await nomesConhecidos(sb, cfg, dest)); }
@@ -1879,7 +1903,12 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
         if (await talvezDocumento(sb, cfg, raw, ped, dest || aqui)) feitos.push('pdf'); else falhas.push('não consegui o PDF');
         continue;
       }
-      if (f === 'demandas') { if (await talvezDemandas(sb, cfg, raw, 'demanda: ' + String(a.pedido || pedido), aqui)) feitos.push('demandas'); else falhas.push('não consegui mexer nas demandas'); continue; }
+      if (f === 'demandas') {
+        /* a mensagem citada vai junto (ex.: o aviso "C6 Farma disse 'Ficou top'"): é dali que sai o cliente */
+        const cit = /\(Contexto — /.test(String(a.pedido || '')) ? '' : await textoCitado(sb, raw);
+        if (await talvezDemandas(sb, cfg, raw, 'demanda: ' + String(a.pedido || pedido) + (cit ? '\n(Contexto — mensagem citada: ' + cit + ')' : ''), aqui)) feitos.push('demandas'); else falhas.push('não consegui mexer nas demandas');
+        continue;
+      }
       if (f === 'pendencias') { const dest = await interno(a.destino); await mandarResumo(sb, cfg, true, dest || aqui); feitos.push('pendências'); continue; }
       if (f === 'lembrar') {
         const cl = String(a.cliente || '').trim() ? (await clientesCitados(sb, String(a.cliente)))[0] : null;
@@ -1985,7 +2014,7 @@ async function talvezTranscreverCitado(sb: SupabaseClient, cfg: Config, raw: any
 /* 4.70.0: alguém da equipe CORRIGIU o Otto ("não, o prazo é sexta", "tá errado, quem grava é o Kaique") —
    respondendo a uma mensagem dele (citando, ou logo depois dela, até 15 min) — ele guarda o fato certo
    na memória (presa ao cliente, se for de um cliente) e reage com ✍️. A resposta segue normal depois. */
-export const CORRIGE = /(^|[\s,.!])(nao|n|errad\w*|na verdade|o certo (e|eh|era)|corrigindo|correcao|voce errou|vc errou|tu errou|ta errado|esta errado|nao e (isso|assim|ele|ela)|nao foi|nao era|nada a ver|e (na|no|dia|o|a) .{1,40},? nao)([\s,.!?]|$)/;
+export const CORRIGE = /(^|[\s,.!])(nao|n|errad\w*|na verdade|o certo (e|eh|era)|corrigindo|voce errou|vc errou|tu errou|ta errado|esta errado|nao e (isso|assim|ele|ela)|nao foi|nao era|nada a ver|e (na|no|dia|o|a) .{1,40},? nao)([\s,.!?]|$)/;
 async function talvezAprenderCorrecao(sb: SupabaseClient, cfg: Config, raw: any, texto: string, aqui: string): Promise<void> {
   const t = semAcento(texto);
   if (!CORRIGE.test(t) || t.split(/\s+/).length < 3) return;
@@ -2001,7 +2030,7 @@ async function talvezAprenderCorrecao(sb: SupabaseClient, cfg: Config, raw: any,
   }
   if (!doOtto?.texto) return;
   const r = await ia('Você decide se a mensagem de alguém da equipe CORRIGE uma informação que o assistente ' + cfg.nome + ' deu, e extrai o fato certo para ele guardar e não errar de novo. ' +
-    'Só vale correção de FATO durável (prazo combinado, quem cuida do quê, preferência de cliente, regra da agência, nome, valor). Não vale: bronca, piada, "fica quieto", opinião, pedido novo, algo que só vale hoje. ' +
+    'Só vale correção de FATO durável (prazo combinado, quem cuida do quê, preferência de cliente, regra da agência, nome, valor). Não vale: bronca, piada, "fica quieto", opinião, ORDEM ou pedido ("pode marcar", "faz", "manda"), resposta a uma pergunta do assistente, algo que só vale hoje. ' +
     'Responda SÓ um JSON: {"aprender": true|false, "fato": "<o fato certo, completo e curto, em 1 frase, sem citar o assistente>", "cliente": "<nome do cliente se o fato for de um cliente, senão vazio>"}.',
     'O ASSISTENTE DISSE: ' + String(doOtto.texto).slice(0, 600) + '\n\nA EQUIPE RESPONDEU: ' + texto.slice(0, 600), 200);
   const j = jsonDoTexto(r.texto);
@@ -2231,11 +2260,11 @@ export async function talvezBomDia(sb: SupabaseClient, cfg: Config, forcado: boo
    (17/11: "mandei em áudio" quando foi texto; "mandei no privado do 9970…" quando foi para outro número;
    "deixo registrado para priorizar" sem ter como registrar.) Se a frase afirma algo que nenhuma ação fez,
    vira a confirmação montada com o que de fato aconteceu. */
-const AFIRMA = /\b(mandei|enviei|criei|gerei|registrei|anotei|guardei|avisei|chamei|marquei|encaminhei|deixei registrado|ja deixo registrado|deixo registrado|vou deixar registrado|vou registrar)\b/;
+const AFIRMA = /\b(mandei|enviei|criei|gerei|registrei|anotei|guardei|avisei|chamei|marquei|encaminhei|deixei registrado|ja deixo registrado|deixo registrado|vou deixar registrado|vou registrar|atualizei|mudei|aprovados? e entregues?|marcad[oa]s? como|ja (esta|estao) (entregue|aprovad)\w*|todos (aprovados|entregues))\b/;
 const PROVAS: [RegExp, RegExp][] = [
   [/\baudio\b/, /áudio/], [/\b(privado|pv)\b/, /privado|áudio/], [/\bprint\b/, /print/], [/\bpdf\b/, /pdf/],
   [/\bfigurinha\b/, /figurinha/], [/\b(imagem|arte gerada)\b/, /imagem/], [/\bdemanda/, /demanda/],
-  [/\b(registr|anotei|guardei)/, /lembrou|demanda/], [/\b(no grupo|la no grupo|na equipe)\b/, /mensagem em|áudio|figurinha|print|pdf|imagem|resumo|bom dia|pendências/]
+  [/\b(registr|anotei|guardei)/, /lembrou|demanda/], [/\b(entregue|aprovad|marquei|marcad|atualizei|mudei)/, /demanda/], [/\b(no grupo|la no grupo|na equipe)\b/, /mensagem em|áudio|figurinha|print|pdf|imagem|resumo|bom dia|pendências/]
 ];
 export function respostaHonesta(resposta: string, feitos: string[], nAcoes: number): string {
   const r = String(resposta || '');
