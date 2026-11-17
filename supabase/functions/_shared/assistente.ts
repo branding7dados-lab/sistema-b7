@@ -1027,14 +1027,15 @@ async function formatoVariado(sb: SupabaseClient, cfg: Config, jid: string, resp
   return formatoDaVez({ vez, falavel, misto: cfg.audio_misto, tamanho: String(resposta || '').length });
 }
 /** 4.77.0: áudio curto com o principal ("te mandei aqui embaixo") + o texto completo */
-async function responderMisto(sb: SupabaseClient, cfg: Config, jid: string, resposta: string, citar: Record<string, unknown> = {}): Promise<boolean> {
+async function responderMisto(sb: SupabaseClient, cfg: Config, jid: string, resposta: string, citar: Record<string, unknown> = {}, nome = ''): Promise<boolean> {
   const f = await ia('Você transforma uma resposta escrita de WhatsApp numa FALA curta para um áudio (1 ou 2 frases, uns 10 segundos), em primeira pessoa e natural, com o principal — e avisando que o detalhe está escrito logo abaixo (ex.: "te deixei escrito aqui embaixo"). ' +
     'Sem listas, links, códigos, datas no formato 18/11 ou números longos (fale por extenso). Sem saudação se não tiver na resposta. Só a fala, sem aspas. ' + identidade(cfg), 'RESPOSTA ESCRITA:\n' + String(resposta).slice(0, 2000), 160);
-  const fala = String(f.texto || '').trim().replace(/^["“]|["”]$/g, '');
+  let fala = String(f.texto || '').trim().replace(/^["“]|["”]$/g, '');
+  if (nome && nome.length >= 2 && !semAcento(fala.slice(0, 40)).includes(semAcento(nome))) fala = nome + ', ' + fala.charAt(0).toLowerCase() + fala.slice(1);
   if (!fala || fala.length > 400) return false;
   if (!await responderEmAudio(sb, cfg, jid, fala, citar, true)) return false;
   await digitando(jid, cfg, resposta.length);
-  await enviar(sb, cfg, jid, resposta);
+  await enviar(sb, cfg, jid, resposta, citar);   /* o texto cita a mensagem (o áudio não consegue) */
   return true;
 }
 /** 4.71.1: texto da mensagem citada, numa linha ("autor: texto") */
@@ -2297,11 +2298,23 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     /* 4.61.0: mandou áudio → responde em áudio (se der; senão, texto) */
     /* 4.77.0: pediram áudio E texto, ou é a vez do áudio e a resposta tem dado/lista → áudio curto + texto completo */
     const pedido_ = plano.emAudio || (!ehCliente && temAudio(raw) && (cfg as any).responder_audio !== false);
-    const formato = plano.misto && !ehCliente ? 'misto' : pedido_ ? ((cfg.audio_misto === 'sempre' && !ehCliente) ? 'misto' : 'audio')
+    let formato = plano.misto && !ehCliente ? 'misto' : pedido_ ? ((cfg.audio_misto === 'sempre' && !ehCliente) ? 'misto' : 'audio')
       : await formatoVariado(sb, cfg, aqui, resposta, pedido, plano.acoes, ehCliente).catch(() => 'texto' as const);
+    /* 4.78.1: o WhatsApp (Evolution) não deixa o ÁUDIO responder citando a mensagem. Num grupo, se já veio outra
+       mensagem depois desta (ou ele já respondeu outra coisa), o áudio sorteado fica sem dono — vai em texto, citando. */
+    if (ehGrupo && formato !== 'texto' && !plano.misto && !pedido_ && key.id) {
+      const { data: eu } = await sb.from('wa_mensagens').select('criada_em').eq('id', String(key.id)).maybeSingle();
+      if (eu) {
+        const { count } = await sb.from('wa_mensagens').select('id', { count: 'exact', head: true }).eq('jid', aqui).eq('nota', false).gt('criada_em', eu.criada_em);
+        if ((count || 0) > 0) formato = 'texto';
+      }
+    }
+    /* no grupo, o áudio começa chamando a pessoa pelo nome — é o que mostra para quem é a resposta */
+    const nomeQ = ehGrupo ? String(quem).replace(/[^\p{L}\s]/gu, ' ').trim().split(/\s+/)[0] : '';
+    const comNome = (t: string) => !nomeQ || nomeQ.length < 2 || semAcento(t.slice(0, 40)).includes(semAcento(nomeQ)) ? t : nomeQ + ', ' + t.charAt(0).toLowerCase() + t.slice(1);
     let foiAudio = false;
-    if (formato === 'misto') foiAudio = await responderMisto(sb, cfg, aqui, resposta, citarR).catch(() => false);
-    if (!foiAudio && formato === 'audio') foiAudio = await responderEmAudio(sb, cfg, aqui, resposta, citarR);   /* misto que falhou: vai só o texto */
+    if (formato === 'misto') foiAudio = await responderMisto(sb, cfg, aqui, resposta, citarR, nomeQ).catch(() => false);
+    if (!foiAudio && formato === 'audio') foiAudio = await responderEmAudio(sb, cfg, aqui, comNome(resposta), citarR);   /* misto que falhou: vai só o texto */
     if (!foiAudio) { await digitando(aqui, cfg, resposta.length); await enviar(sb, cfg, aqui, resposta, citarR); }
   }
   await registrar(sb, { tipo: ehCliente ? 'instrucao' : plano.acoes.length ? 'agente' : 'consulta', jid: aqui, autor: quem, pergunta: pedido.slice(0, 800),

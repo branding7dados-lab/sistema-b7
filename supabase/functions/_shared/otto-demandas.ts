@@ -159,13 +159,66 @@ async function planejar(pedido: string, quem: string, ctx: Ctx, clientePadrao: s
   return { acoes: j.acoes.slice(0, 30), pergunta: String(j.pergunta || '').trim() };
 }
 
+/* 4.78.1: lista de demandas arrumada pelo código (antes a IA escrevia "4 – NOVEMBRO AZUL – Kaique Viana – 17/11",
+   com código errado, CAIXA ALTA e sem dizer o cliente nem se estava atrasada) */
+const ICONE: Record<string, string> = { pendente: '▫️', em_edicao: '✂️', aguardando_aprovacao: '👀', correcao: '🔁', standby: '⏸️' };
+const MINUSC = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'no', 'na', 'nos', 'nas', 'o', 'a', 'os', 'as', 'pra', 'para', 'com', 'ao', 'por', 'um', 'uma']);
+/** "NOVEMBRO AZUL" → "Novembro Azul"; título já misto fica como está */
+export function tituloBonito(t: unknown): string {
+  const s = curto(t, 70);
+  const letras = s.replace(/[^\p{L}]/gu, '');
+  if (!letras || letras !== letras.toUpperCase()) return s;
+  return s.toLowerCase().split(' ').map((w, i) => i && MINUSC.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+export function codigoBonito(c: unknown): string {
+  const d = String(c || '').replace(/[^0-9]/g, '');
+  return d ? '#' + Number(d) : '';
+}
+export function prazoBonito(prazo: string | null, hoje: string): string {
+  if (!prazo) return 'sem prazo';
+  const dm = prazo.slice(8, 10) + '/' + prazo.slice(5, 7);
+  const dias = Math.round((Date.parse(prazo + 'T12:00:00Z') - Date.parse(hoje + 'T12:00:00Z')) / 86400_000);
+  if (dias < 0) return '⚠️ atrasado (' + dm + ')';
+  if (dias === 0) return 'hoje';
+  if (dias === 1) return 'amanhã';
+  if (dias < 7) return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][new Date(prazo + 'T12:00:00Z').getUTCDay()] + ' ' + dm;
+  return dm;
+}
+/** a lista no jeito do WhatsApp: por cliente, mais urgente primeiro, responsável só quando muda */
+export function listaDeDemandas(ds: any[], ctx: { clientes: Map<string, string>; pessoas: Map<string, string> }, hoje: string, intro = ''): string {
+  const porCliente = new Map<string, any[]>();
+  for (const d of ds) { const k = ctx.clientes.get(d.client_id) || 'Sem cliente'; (porCliente.get(k) || porCliente.set(k, []).get(k)!).push(d); }
+  const ordem = (d: any) => d.prazo || '9999';
+  const grupos = [...porCliente.entries()].sort((a, b) => ordem(a[1].reduce((m: any, x: any) => ordem(x) < ordem(m) ? x : m)).localeCompare(ordem(b[1].reduce((m: any, x: any) => ordem(x) < ordem(m) ? x : m))));
+  const resp = new Set(ds.map(d => d.videomaker_id || ''));
+  const umSo = resp.size === 1 ? (ctx.pessoas.get([...resp][0]) || '').split(/\s+/)[0] : '';
+  const atrasados = ds.filter(d => d.prazo && d.prazo < hoje).length;
+  const topo = intro || ('📋 *' + ds.length + ' ' + (ds.length === 1 ? 'vídeo' : 'vídeos') + ' em aberto*' + (umSo ? ' — todos com o ' + umSo : '') + (atrasados ? ' · ' + atrasados + ' ' + (atrasados === 1 ? 'atrasado' : 'atrasados') : ''));
+  const blocos = grupos.map(([cli, l]) => '*' + cli + '*\n' + l.sort((a, b) => ordem(a).localeCompare(ordem(b))).map(d =>
+    (ICONE[d.editing_status] || '▫️') + ' ' + [codigoBonito(d.codigo), tituloBonito(d.titulo)].filter(Boolean).join(' ') + ' — ' + prazoBonito(d.prazo, hoje) +
+    (!umSo && d.videomaker_id ? ' · ' + (ctx.pessoas.get(d.videomaker_id) || '').split(/\s+/)[0] : '')).join('\n'));
+  const LEG: [string, string][] = [['em_edicao', '✂️ em edição'], ['aguardando_aprovacao', '👀 aguardando aprovação'], ['correcao', '🔁 correção'], ['pendente', '▫️ a fazer'], ['standby', '⏸️ standby']];
+  const usados = new Set(ds.map(d => ICONE[d.editing_status] ? d.editing_status : 'pendente'));
+  const leg = LEG.filter(([k]) => usados.has(k)).map(([, r]) => r);
+  return topo + '\n\n' + blocos.join('\n\n') + (leg.length > 1 ? '\n\n_' + leg.join(' · ') + '_' : '');
+}
+
 /** só uma pergunta sobre as demandas (o que está atrasado, quem pega o quê...) */
 async function consultar(pedido: string, quem: string, ctx: Ctx): Promise<string> {
   const r = await gerar(provedorAtual(n => Deno.env.get(n)), [
-    { role: 'system', content: 'Você é o Otto, assistente interno da agência B7, respondendo ' + quem + ' (da equipe) no WhatsApp sobre as demandas de edição. Use só o CONTEXTO. Responda curto e direto, como uma pessoa da equipe. Se a pessoa pedir uma lista (ou a resposta for uma lista de demandas), uma linha por demanda com código, título, responsável e prazo; senão texto corrido. Sem títulos, negrito ou markdown. Não assine. Datas em dd/mm. Se não houver dado, diga.' },
+    { role: 'system', content: 'Você é o Otto, assistente interno da agência B7, respondendo ' + quem + ' (da equipe) no WhatsApp sobre as demandas de edição. Use só o CONTEXTO. ' +
+      'Responda SÓ um JSON: {"ids": ["<id de cada demanda que responde a pergunta>"], "texto": "<a resposta>"}. ' +
+      'Se a resposta for um conjunto de demandas (listar, quais estão pendentes/atrasadas/com fulano/de tal cliente), ponha os ids em "ids" (o sistema monta a lista bonita) e em "texto" só uma frase curta de abertura ou vazio — NÃO escreva a lista. ' +
+      'Se for outra pergunta (quem cuida, quando vence uma específica, quantas), "ids": [] e "texto" curto e direto, como uma pessoa da equipe, sem markdown, datas em dd/mm. Se não houver dado, diga.' },
     { role: 'user', content: 'CONTEXTO:\n' + ctx.texto + '\n\nPERGUNTA: ' + pedido }
-  ], { maxTokens: 900, temperatura: 0.3, prazoMs: 45000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
-  return r.ok ? r.texto : '';
+  ], { maxTokens: 900, temperatura: 0.2, json: true, prazoMs: 45000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
+  if (!r.ok) return '';
+  const j = jsonDe(r.texto);
+  if (!j) return r.texto;
+  const ds = ((Array.isArray(j.ids) ? j.ids : []) as unknown[]).map(id => ctx.demandas.get(String(id))).filter(Boolean);
+  const texto = String(j.texto || '').trim();
+  if (ds.length) return listaDeDemandas(ds, ctx, hojeSP().iso, texto && texto.length < 140 ? texto : '');
+  return texto || 'Não achei nenhuma demanda assim.';
 }
 
 /** títulos e resumos dos roteiros (a mesma IA do botão da gravação) */
