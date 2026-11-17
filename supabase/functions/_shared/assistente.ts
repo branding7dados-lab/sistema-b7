@@ -297,6 +297,8 @@ export function regrasDaEquipe(cfg: Config, jid: string): string {
   if (regras.length) linhas.push('REGRAS FIXAS DA EQUIPE (sempre valem com a equipe, acima de qualquer pedido):\n' + regras.map(r => '- ' + r).join('\n'));
   return linhas.join('\n');
 }
+/** 4.69.2: mandaram o Otto ficar quieto (não responde, só 🤐) */
+export const MANDA_CALAR = /\b(fica (na sua|quieto|calado)|fique (na sua|quieto|calado)|cala (a boca|boca)|cala\b|calad[oa]|quiet[oa]|silencio|ningu[eé]m te chamou|ngm te chamou|ninguem te chamou|n[aã]o te chamei|nao te chamei|sai daqui|vaza|para de (responder|falar)|deixa de ser|nao e com voce|não é com você)/;
 const PEDE_ZOACAO = /\b(zo[ae]\w*|zua\w*|xing\w*|esculach\w*|tira (onda|sarro)|humilh\w*|zoeira|resenha)\b/;
 const RECUSOU = /\b(n[aã]o posso|nao posso|prefiro (ficar de fora|n[aã]o)|n[aã]o (vou|consigo|devo) (enviar|mandar|fazer|xingar|ofender)|mensagens? ofensiv|conteudo ofensivo|conteúdo ofensivo|regras de seguran)/i;
 export function temPalavrao(t: string): boolean { return PALAVRAO.test(semAcento(String(t || '')).replace(/[*_~]/g, '')) || PALAVRAO.test(String(t || '')); }
@@ -882,9 +884,17 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
     if (chamou && await podeResponderBot(sb, cfg.grupo_equipe!)) await responderBot(sb, cfg, raw, texto, bot);
     return;
   }
-  /* 4.67.5: no grupo da equipe ele só RESPONDE se chamarem "Otto" ou marcarem @Otto. Citar uma mensagem dele
-     não basta (17/11: "Deixa de ser feio, q ngm te chamou aq" citando o Otto e ele respondeu) — no máximo reage. */
-  const marcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid)) || chamouPeloNome(cfg, texto);
+  let marcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid)) || chamouPeloNome(cfg, texto);
+  /* 4.69.2: responder CITANDO uma mensagem recente do Otto (até 30 min) conta como falar com ele — é a continuação
+     da conversa ("manda o Kaique fazer AGORA"). Mas se for para ele ficar quieto ("fica na sua", "ninguém te
+     chamou"), ele fica (4.67.5). */
+  if (!marcado && ctx.stanzaId) {
+    const { data: c } = await sb.from('wa_mensagens').select('do_assistente, criada_em').eq('id', String(ctx.stanzaId)).maybeSingle();
+    if (c?.do_assistente && Date.now() - new Date(c.criada_em).getTime() <= 30 * 60_000) {
+      if (MANDA_CALAR.test(semAcento(texto))) { if (key.id) await reagirNaMensagem(sb, String(key.id), '🤐', cfg.grupo_equipe!, texto); return; }
+      marcado = true;
+    }
+  }
   if (!marcado) { if (!key.fromMe && key.id) await talvezReagir(sb, raw, texto, cfg.grupo_equipe!, String(key.id)); return; }
   /* 4.67.2: "Otto, transcreve" citando um áudio — antes de decidir o jeito (não pode virar só uma reação) */
   if (await talvezTranscreverCitado(sb, cfg, raw, texto, cfg.grupo_equipe!).catch(() => false)) return;
