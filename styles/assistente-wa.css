@@ -105,7 +105,7 @@ html[data-theme="dark"] .asw-x:hover{background:rgba(239,68,68,.15);color:#FCA5A
 .asw-dv-r input{flex:1;}
 
 /* linha do tempo */
-.asw-tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:560px;overflow-y:auto;scrollbar-width:thin;}
+.asw-tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:560px;overflow-y:auto;}
 .asw-tl li{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;padding:10px 2px;border-top:1px solid var(--borda);font-size:13px;}
 .asw-tl li:first-child{border-top:0;}
 .asw-tl time{grid-column:3;grid-row:1;color:var(--ink-3);font-size:11.5px;}
