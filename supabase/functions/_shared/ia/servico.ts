@@ -82,10 +82,12 @@ export function provedorAtual(env: (nome: string) => string | undefined): Proved
   const gemini = criarGemini(env), groq = criarGroq(env);
   if (groq && gemini) {
     /* v3.3.0: modelo grande do Groq para o chat (GROQ_MODELO_GRANDE=nenhum desliga) */
-    const nomeGrande = (env('GROQ_MODELO_GRANDE') || 'meta-llama/llama-4-scout-17b-16e-instruct').trim();
-    const g = nomeGrande && nomeGrande !== 'nenhum' ? criarGroq(env, fetch, nomeGrande) : null;
+    /* 4.66.4: fila de modelos grandes (o Llama 4 Scout saiu do Groq). GROQ_MODELO_GRANDE vai na frente. */
+    const pedido = (env('GROQ_MODELO_GRANDE') || '').trim();
+    const nomes = pedido === 'nenhum' ? [] : [...new Set([pedido, 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'meta-llama/llama-4-maverick-17b-128e-instruct'].filter(Boolean))];
+    const gs = nomes.map(n => criarGroq(env, fetch, n)).filter(Boolean) as Provedor[];
     return criarDuplo(groq, gemini, Number(env('GROQ_LIMITE_TOKENS')) || 6000,
-      g ? { provedor: g, limite: Number(env('GROQ_LIMITE_GRANDE')) || 24000 } : null);
+      gs.length ? { provedor: gs[0], limite: Number(env('GROQ_LIMITE_GRANDE')) || 24000, outros: gs.slice(1) } : null);
   }
   return gemini || groq;
 }

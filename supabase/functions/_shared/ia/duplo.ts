@@ -34,7 +34,14 @@ export const tokensEstimados = (p: PedidoDeGeracao) =>
    Llama 4 Scout) tenta primeiro esses pedidos até GROQ_LIMITE_GRANDE tokens.
    Se ele recusar (limite do minuto, modelo retirado, fora do ar, resposta
    fora do formato), o MESMO pedido vai ao Gemini, como antes. */
-export type Grande = { provedor: Provedor; limite: number };
+export type Grande = { provedor: Provedor; limite: number; outros?: Provedor[] };
+
+/* 4.66.4: o Llama 4 Scout foi retirado do Groq (404) e o agente do Otto caía
+   no Gemini, que estourava o tempo com o pedido grande. Agora o "grande" é
+   uma fila: modelo retirado fica marcado (até a função reiniciar) e o pedido
+   tenta o próximo modelo do Groq antes de ir para a reserva. */
+const retirados = new Set<string>();
+const PULA = new Set(['modelo', 'limite', 'cota', 'indisponivel', 'resposta_invalida', 'pedido_invalido']);
 
 export function criarDuplo(rapido: Provedor, reserva: Provedor, limiteTokens = 6000, grande: Grande | null = null): Provedor {
   const soReserva = (p: PedidoDeGeracao) => !!(p.audio || p.imagem || p.fino);
@@ -52,9 +59,15 @@ export function criarDuplo(rapido: Provedor, reserva: Provedor, limiteTokens = 6
   async function gerar(p: PedidoDeGeracao): Promise<RespostaDoProvedor> {
     const q = primeiro(p);
     if (!q) return marca(await reserva.gerar(p), reserva.nome, false);
-    const r = await q.gerar(p);
-    if (r.ok && (!p.valida || p.valida(r.texto))) return marca(r, q.nome, false);
-    console.error('[b7-ia] ' + q.nome + ' (' + q.modelo + ') falhou (' + (r.ok ? 'fora do formato' : r.erro + ', ' + r.status) + '); indo para ' + reserva.nome);
+    const fila = q === grande?.provedor ? [q, ...(grande.outros || [])] : [q];
+    for (const x of fila) {
+      if (retirados.has(x.modelo)) continue;
+      const r = await x.gerar(p);
+      if (r.ok && (!p.valida || p.valida(r.texto))) return marca(r, x.nome, x !== q);
+      if (!r.ok && r.erro === 'modelo') retirados.add(x.modelo);
+      console.error('[b7-ia] ' + x.nome + ' (' + x.modelo + ') falhou (' + (r.ok ? 'fora do formato' : r.erro + ', ' + r.status) + '); ' + (x === fila[fila.length - 1] ? 'indo para ' + reserva.nome : 'tentando o próximo'));
+      if (!r.ok && !PULA.has(r.erro)) break;
+    }
     return marca(await reserva.gerar(p), reserva.nome, true);
   }
 

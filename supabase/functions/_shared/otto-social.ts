@@ -68,7 +68,7 @@ async function descrever(sb: SupabaseClient, k: string, msgId: string): Promise<
 }
 
 /** escolhe uma figurinha que combine com o momento (ou nenhuma) e manda */
-export async function mandarFigurinha(sb: SupabaseClient, jid: string, momento: string): Promise<boolean> {
+export async function mandarFigurinha(sb: SupabaseClient, jid: string, momento: string, pedida = false): Promise<boolean> {
   let { data: figs } = await sb.from('wa_figurinhas').select('sha, msg_id, descricao, usos').not('descricao', 'is', null).limit(80);
   if ((figs || []).length < 8) {
     /* aprende as figurinhas que já estão nas conversas (até 6 por vez) */
@@ -87,10 +87,11 @@ export async function mandarFigurinha(sb: SupabaseClient, jid: string, momento: 
   }
   const lista = (figs || []) as any[];
   if (!lista.length) return false;
-  const esc = await ia('Você escolhe UMA figurinha de WhatsApp que combine com o momento do grupo, como uma pessoa bem-humorada faria. Responda só o número da figurinha, ou 0 se nenhuma combinar bem.',
+  const esc = await ia('Você escolhe UMA figurinha de WhatsApp que combine com o momento do grupo, como uma pessoa bem-humorada faria. Responda só o número da figurinha' + (pedida ? ' — pediram uma figurinha, então escolha a que mais combina (nunca 0).' : ', ou 0 se nenhuma combinar bem.'),
     'MOMENTO: ' + momento.slice(0, 400) + '\n\nFIGURINHAS:\n' + lista.map((f, i) => (i + 1) + '. ' + f.descricao).join('\n'), 10);
   const i = parseInt(esc.replace(/\D/g, ''), 10);
-  const f = i > 0 && i <= lista.length ? lista[i - 1] : null;
+  /* 4.66.4: pediram e a IA não escolheu → uma das menos usadas, para não repetir sempre a mesma */
+  const f = i > 0 && i <= lista.length ? lista[i - 1] : pedida ? [...lista].sort((a, b) => (a.usos || 0) - (b.usos || 0))[Math.floor(Math.random() * Math.min(3, lista.length))] : null;
   if (!f) return false;
   const { data: m } = await sb.from('wa_mensagens').select('id, midia_path, midia_raw').eq('id', f.msg_id).maybeSingle();
   const b64 = m ? await bytesDaFigurinha(sb, m as any) : '';

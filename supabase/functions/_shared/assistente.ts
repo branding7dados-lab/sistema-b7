@@ -141,6 +141,25 @@ const SEP = /\n?\s*\[\[\s*NOVA\s*\]\]\s*\n?/i;
 type Marcavel = { nome: string; token: string; mencao: string; fone: string };
 /** número com DDI do Brasil quando veio só com DDD (ex.: 71982136074 → 5571982136074) */
 function foneBR(n: unknown): string { const d = dig(n); return d.length === 10 || d.length === 11 ? '55' + d : d; }
+/* 4.66.4: o jid de verdade de um número. Celular do Brasil pode estar no WhatsApp
+   com ou sem o 9 da frente (o do Kevin é sem) — pergunta ao WhatsApp qual existe. */
+const jidsAchados = new Map<string, string>();
+async function jidPrivado(fone: unknown): Promise<string> {
+  const d = foneBR(fone);
+  if (!d) return '';
+  if (jidsAchados.has(d)) return jidsAchados.get(d)!;
+  const cands = [d];
+  if (/^55\d{2}9\d{8}$/.test(d)) cands.push(d.slice(0, 4) + d.slice(5));
+  else if (/^55\d{2}[6-9]\d{7}$/.test(d)) cands.push(d.slice(0, 4) + '9' + d.slice(4));
+  let jid = d + '@s.whatsapp.net';
+  try {
+    const r = await evo('/chat/whatsappNumbers/' + I(), 'POST', { numbers: cands }, 15000);
+    const ok = Array.isArray(r.dados) ? r.dados.find((x: any) => x?.exists && x?.jid) : null;
+    if (ok) jid = String(ok.jid);
+  } catch (_e) { /* fica o número como veio */ }
+  jidsAchados.set(d, jid);
+  return jid;
+}
 const cacheGrupo = new Map<string, { em: number; lista: Marcavel[] }>();
 /** participantes do grupo com nome (contatos do B7 + equipe da tela) */
 export async function participantesDoGrupo(sb: SupabaseClient, cfg: Config, jid: string): Promise<Marcavel[]> {
@@ -1414,7 +1433,7 @@ async function talvezPrivado(sb: SupabaseClient, cfg: Config, raw: any, pedido: 
     }
   }
   if (!fone) { await enviar(sb, cfg, destino, 'Não achei o número ' + (nome ? 'de ' + nome.split(' ')[0] : 'dessa pessoa') + ' pra chamar no privado. Se for da equipe, coloca o número na tela do ' + cfg.nome + '.', citar ? { quoted: citar } : {}); return true; }
-  const pv = foneBR(fone) + '@s.whatsapp.net';
+  const pv = await jidPrivado(fone);
   if (pv.split('@')[0] === (await meuNumero())) return false;
   await digitando(pv, cfg);
   const foi = await enviar(sb, cfg, pv, String(j.mensagem).trim());
@@ -1450,7 +1469,7 @@ const FERRAMENTAS = `FERRAMENTAS (use só quando o pedido pedir isso; várias po
 - {"ferramenta":"audio","mensagem":"<o que falar, já escrito>","destino":"equipe"|"<cliente ou grupo>"|"privado:<pessoa>"} → manda um ÁUDIO com a sua voz em OUTRO lugar (para responder aqui em áudio, use "em_audio"). Grupo de cliente só se pedirem.
 - {"ferramenta":"editar_mensagem","novo_texto":"<o texto corrigido, completo>"} → edita uma mensagem SUA aqui (a que a pessoa respondeu/citou, ou a sua última). Só texto, até ~15 min depois de enviada.
 - {"ferramenta":"apagar_mensagem"} → apaga para todos uma mensagem SUA aqui (a citada, ou a sua última). Use quando pedirem para apagar.
-- {"ferramenta":"figurinha","momento":"<o clima/assunto, para escolher a figurinha>"} → manda uma figurinha que combine (das que você conhece). Use quando pedirem ou, com moderação, quando uma figurinha cair muito bem na conversa (risada, comemoração). Não a toda hora.
+- {"ferramenta":"figurinha","momento":"<o clima/assunto, para escolher a figurinha>","destino":"aqui"|"equipe"|"<cliente ou grupo>"} → manda uma figurinha que combine (das que você conhece). "lá no grupo" pedido no privado = "equipe". Use quando pedirem ou, com moderação, quando uma figurinha cair muito bem na conversa (risada, comemoração). Não a toda hora.
 - {"ferramenta":"resumo_dia","destino":"aqui"|"equipe"} → manda o resumo do dia (entregas, o que vence amanhã, atrasos, quem espera resposta).`;
 type Plano = { acoes: any[]; resposta: string; emAudio?: boolean };
 function jsonDoTexto(t: string): any {
@@ -1617,14 +1636,24 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
         }
         continue;
       }
-      if (f === 'figurinha') { if (await mandarFigurinha(sb, aqui, String(a.momento || pedido))) feitos.push('figurinha'); else falhas.push('não achei uma figurinha que combinasse'); continue; }
+      if (f === 'figurinha') {
+        /* 4.66.4: pode mandar em outro lugar ("manda uma figurinha lá no grupo"); pedida = nunca volta sem nada */
+        const v = String(a.destino || 'aqui');
+        const dest = /^(aqui)?$/i.test(v) ? aqui : await resolver(v);
+        if (!dest) { falhas.push('não achei para onde mandar a figurinha'); continue; }
+        if (await mandarFigurinha(sb, dest, String(a.momento || pedido), /figurinh|sticker/i.test(pedido))) { feitos.push('figurinha'); if (dest !== aqui && ehGrupo && key.id) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
+        else falhas.push('não consegui mandar a figurinha');
+        continue;
+      }
       if (f === 'audio') {
         const v = String(a.destino || 'equipe'); let dest: string | null = null;
         if (/^privado:/i.test(v)) {
           const pessoa = v.replace(/^privado:\s*/i, '');
           const eq = (cfg.equipe || []).find(p => p.nome && semAcento(p.nome).split(/\s+/)[0] === semAcento(pessoa).split(/\s+/)[0]);
           const fone = /^(eu|me|mim)$/i.test(pessoa) ? await foneDoAutor(sb, cfg, raw) : (eq ? dig(eq.numero) : '');
-          dest = fone ? foneBR(fone) + '@s.whatsapp.net' : null;
+          dest = fone ? await jidPrivado(fone) : null;
+          /* já estamos no privado dessa pessoa: manda aqui mesmo */
+          if (dest && !ehGrupo && (/^(eu|me|mim)$/i.test(pessoa) || dig(dest) === dig(aqui))) dest = aqui;
         } else dest = await resolver(v);
         if (!dest || !String(a.mensagem || '').trim()) { falhas.push('não achei para onde mandar o áudio'); continue; }
         if (await responderEmAudio(sb, cfg, dest, String(a.mensagem))) { feitos.push('áudio'); if (dest !== aqui && ehGrupo && key.id) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
@@ -1707,7 +1736,8 @@ async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: 
     /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
     'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +
     '\n\n' + await quemEQuem(sb, cfg, true) + '\n\n' + await genteDoGrupo(sb, cfg, destino) + '\n\nDADOS DO SISTEMA:' + contexto + '\n\nMENSAGEM DE ' + String(raw.pushName || 'alguém da equipe') + ' (responda a esta): ' + pedido, 1400);
-  if (!s.texto) return;
+  /* 4.66.4: a IA não respondeu nem aqui — avisa em vez de ficar calado */
+  if (!s.texto) { await enviar(sb, cfg, destino, 'Travei aqui agora 😅 Me manda de novo daqui a pouco?', { quoted: { key, message: { conversation: texto.slice(0, 300) } } }); return; }
   await digitando(destino, cfg);
   await enviar(sb, cfg, destino, s.texto, { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
   await registrar(sb, { tipo: 'consulta', jid: destino, autor: String(raw.pushName || ''), pergunta: pedido.slice(0, 800), resposta: s.texto.slice(0, 1500), ...usoDe(s) });
