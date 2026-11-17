@@ -47,7 +47,7 @@ export type Config = {
   /* 4.68.0: velocidade */
   velocidade?: 'rapido' | 'natural' | 'humano'; audio_humano?: boolean; audio_roteiro?: 'auto' | 'sempre' | 'nunca'; audio_max_s?: number; audio_variar?: number;
   /* 4.73.0: jeito + controle */
-  tamanho?: string; emojis?: string; apelidos_otto?: string; zoacao_espontanea?: number; ferramentas_off?: string[]; ordens_quem?: string[]; confirmar_acoes?: boolean; fds_silencio?: boolean; se_apresenta_ia?: boolean; participar?: string; audio_cada?: number; audio_misto?: string;
+  tamanho?: string; emojis?: string; apelidos_otto?: string; zoacao_espontanea?: number; ferramentas_off?: string[]; ordens_quem?: string[]; confirmar_acoes?: boolean; fds_silencio?: boolean; se_apresenta_ia?: boolean; participar?: string; audio_cada?: number; audio_misto?: string; esperando_cliente_h?: number;
   pausa_min: number; espera_min_s: number; espera_max_s: number; grupos: Record<string, { desligado?: boolean; regras?: string }>;
   meu_lid: string | null; horario?: Horario; ouvir_audio?: boolean;
   grupo_equipe?: string | null; resumo_horas?: number; resumo_ultimo?: string | null; resumo_espera_min?: number;
@@ -609,6 +609,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   /* 4.61.0: avisos por conta própria e resumo do dia (sem cron: a cada mensagem, quem chega primeiro pega a vez) */
   emSegundoPlano('avisos', talvezAvisos(sb, cfg));
   emSegundoPlano('vigia', talvezVigiar(sb, cfg));
+  emSegundoPlano('esperando cliente', talvezEsperandoCliente(sb, cfg));
   emSegundoPlano('aviso celular', talvezAvisarCelular(sb, cfg));
   emSegundoPlano('bom dia', talvezBomDia(sb, cfg, false));
   emSegundoPlano('resumo dia', talvezResumoDia(sb, cfg, false));
@@ -1644,6 +1645,67 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
     await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, grupo: c.nome, autor: cfg.nome, pergunta: 'vigia ' + (c.nome || ''), resposta: legenda.slice(0, 800) });
     feitos++;
   }
+}
+
+/** 4.78.0: o OUTRO lado da vigia — a gente esperando o CLIENTE. A equipe mandou algo que pede retorno (aprovação,
+ *  pergunta, material, confirmação) num grupo de cliente e o cliente não respondeu há X horas. No máximo a cada 2 h,
+ *  no horário, tudo numa mensagem só, e cada espera é avisada UMA vez. */
+async function talvezEsperandoCliente(sb: SupabaseClient, cfg: Config) {
+  const horas = Number(cfg.esperando_cliente_h ?? 24);
+  if (!cfg.grupo_equipe || !(horas > 0) || (cfg as any).alertas_ligados === false) return;
+  if (!dentroDoHorario(cfg.horario?.ativo ? cfg.horario : HORARIO_PADRAO)) return;
+  const { data: vez } = await sb.from('wa_assistente').update({ cobrar_ultimo: new Date().toISOString() }).eq('id', 1)
+    .or('cobrar_ultimo.is.null,cobrar_ultimo.lt.' + new Date(Date.now() - 2 * 3600_000).toISOString()).select('id');
+  if (!vez || !vez.length) return;
+  const limite = new Date(Date.now() - horas * 3600_000).toISOString();
+  /* grupos de cliente parados há X horas (até 7 dias); quem falou por último (equipe ou cliente) é conferido abaixo, pelo número —
+     o "esperando_desde" não serve: marca espera quando alguém da equipe escreve do celular pessoal */
+  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, ultima_em').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false)
+    .lt('ultima_em', limite).gt('ultima_em', new Date(Date.now() - 7 * 86400_000).toISOString()).order('ultima_em', { ascending: false }).limit(40);
+  const fones = new Set((cfg.equipe || []).map(e => fim8(e.numero)).filter(Boolean));
+  const cands: { c: any; ult: any; txt: string; chave: string }[] = [];
+  for (const c of (convs || []) as any[]) {
+    if (((cfg.grupos || {})[c.jid] || {}).desligado) continue;
+    const { data: ms } = await sb.from('wa_mensagens').select('id, de_mim, do_assistente, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em').eq('jid', c.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(8);
+    const l = ((ms || []) as any[]);
+    if (!l.length) continue;
+    const ids = [...new Set(l.filter(m => !m.de_mim && m.autor_jid).map(m => String(m.autor_jid)))];
+    const { data: cts } = ids.length ? await sb.from('wa_contatos').select('jid, numero').in('jid', ids) : { data: [] as any[] };
+    const foneDe = new Map(((cts || []) as any[]).map(x => [x.jid, dig(x.numero)]));
+    const daEq = (m: any) => m.de_mim || fones.has(fim8(foneDe.get(m.autor_jid) || m.autor_jid));
+    if (!daEq(l[0])) continue;                       /* a última palavra foi do cliente: não é a gente esperando */
+    const chave = 'cobrar:' + c.jid + ':' + l[0].id;
+    const { data: ja } = await sb.from('wa_otto_avisos').select('chave').eq('chave', chave).maybeSingle();
+    if (ja) continue;
+    /* o que a equipe mandou por último (até a última fala do cliente) */
+    const daGente: any[] = [];
+    for (const m of l) { if (!daEq(m)) break; daGente.unshift(m); }
+    const txt = daGente.map(m => (m.enviada_por_nome || m.autor_nome || 'Equipe') + ': ' + (m.texto ? String(m.texto).replace(/^\*[^*]+:\*\s*/, '').slice(0, 250) : '(' + m.tipo + ')')).join('\n');
+    cands.push({ c, ult: l[0], txt, chave });
+    if (cands.length >= 8) break;
+  }
+  if (!cands.length) return;
+  const r = await ia('Você é ' + cfg.nome + ', da agência. Para cada grupo de cliente abaixo, a ÚLTIMA mensagem foi da equipe e o cliente não respondeu. Diga se a equipe está ESPERANDO um retorno do cliente (pediu aprovação, fez uma pergunta, pediu material/informação, pediu confirmação de data) — ' +
+    'ou não (só avisou algo, agradeceu, desejou bom dia, mandou conteúdo que não pede resposta). Responda SÓ um JSON: {"itens":[{"n":1,"espera":true,"resumo":"mandamos a arte da Black Friday pra aprovação"}]} — resumo curto, do ponto de vista da equipe ("mandamos…", "perguntamos…", "pedimos…").',
+    cands.map((x, i) => (i + 1) + ') GRUPO "' + (x.c.nome || '') + '":\n' + x.txt).join('\n\n'), 600);
+  let j: any = null; try { const t = r.texto; j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (_e) { j = null; }
+  if (!j || !Array.isArray(j.itens)) return;
+  /* toda candidata é marcada (com ou sem aviso): não pergunta à IA de novo pela mesma espera */
+  const ok = new Set(await marcarAvisados(sb, cands.map(x => x.chave)));
+  const { data: cls } = await sb.from('clientes').select('id, nome').in('id', cands.map(x => x.c.cliente_id));
+  const nomeCli = new Map(((cls || []) as any[]).map(k => [k.id, k.nome]));
+  const linhas: string[] = [];
+  for (const it of j.itens as any[]) {
+    const x = cands[Number(it?.n) - 1];
+    if (!x || !it?.espera || !ok.has(x.chave)) continue;
+    const h = Math.round((Date.now() - Date.parse(x.ult.criada_em)) / 3600_000);
+    const quando = h < 48 ? 'há ' + h + 'h' : 'há ' + Math.round(h / 24) + ' dias';
+    linhas.push('• *' + (nomeCli.get(x.c.cliente_id) || x.c.nome) + '*: ' + String(it.resumo || 'mandamos algo').replace(/\.$/, '') + ' — sem resposta ' + quando);
+  }
+  if (!linhas.length) return;
+  const texto = 'Ó pessoal, estamos esperando retorno de cliente:\n' + linhas.slice(0, 6).join('\n') + '\n\nSe quiserem que eu cobre, é só pedir (ex.: "' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ', cobra a ' + (linhas[0].match(/\*([^*]+)\*/)?.[1] || 'Mercato') + '").';
+  await enviar(sb, cfg, cfg.grupo_equipe, texto);
+  await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, autor: cfg.nome, pergunta: 'esperando o cliente', resposta: texto.slice(0, 1500), ...usoDe(r) });
 }
 
 /** de 30 em 30 min, no horário: o que merece aviso no grupo da equipe (atraso, vence amanhã, cliente esperando, aprovação) */

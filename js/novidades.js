@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.78.0', versao: '4.78.0', em: '2026-11-17T22:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Otto avisa quando o cliente sumiu',
+    itens: ['Quando a gente manda algo que pede retorno (aprovação, pergunta, material) e o cliente não responde em 24 h, o Otto avisa no grupo da equipe. Para cobrar: "Otto, cobra a Mercato".'] },
   { id: 'v-4.77.0', versao: '4.77.0', em: '2026-11-17T21:00:00-03:00', rota: 'whatsapp',
     titulo: 'Otto responde com áudio e texto',
     itens: ['O Otto pode mandar um áudio curto com o principal e, logo embaixo, a mensagem escrita com os detalhes. Para pedir: "Otto, fala e escreve…".'] },
