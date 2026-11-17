@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.60.0', versao: '4.60.0', em: '2026-11-18T01:30:00-03:00',
+    titulo: 'O Otto entende pedidos do jeito que você fala',
+    itens: ['Pode pedir com suas palavras e até várias coisas de uma vez: "Otto, manda o print da C6 no grupo da equipe e cria uma demanda pro Kaique editar o vídeo da esposa até sexta".', 'Ele entende "isso", "desse grupo" e respostas curtas pela conversa, e pergunta quando falta algo — sem fingir que fez.'] },
   { id: 'v-4.59.0', versao: '4.59.0', em: '2026-11-17T23:30:00-03:00', rota: 'video',
     titulo: 'O Otto mexe nas demandas de edição',
     itens: ['No WhatsApp: "Otto, gera as demandas da gravação de novembro da Sabor da Feira pro Kaique, prazo sexta". Ele lê os roteiros, as trends e as referências e cria uma demanda para cada, com resumo e link.', 'Também cria, muda prazo, responsável e prioridade, muda a situação e exclui: "Otto, passa a SF-03 pro Pedro", "exclui a SF-05".', 'Ele faz em seu nome, com as suas permissões no B7.'] },
