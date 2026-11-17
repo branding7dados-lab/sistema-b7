@@ -27,6 +27,7 @@ import { fichaRoteiros, type Logo } from './ficha.ts';
 import { fichaLinha } from './ficha-linha.ts';
 import { gerarImagem, formatoDoTexto, type Ref } from './imagem.ts';
 import { cuidarDasDemandas, perfilDe, FALA_DE_DEMANDA } from './otto-demandas.ts';
+import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 type Pessoa = { nome?: string; numero?: string; assuntos?: string; duvidas?: boolean };
@@ -117,10 +118,22 @@ function noJeitoDoWhats(cfg: Config, t: string): string {
     .replace(/^[ \t]{0,3}#{1,6}[ \t]*/gm, '').replace(new RegExp('^\\s*\\*?' + n + ':?\\*?:?\\s*', 'i'), '')
     .replace(/\n{3,}/g, '\n\n').trim();
 }
+/* 4.59.2: "@61512991383626" (código do WhatsApp) que não é marcação de verdade vira o nome da pessoa */
+async function semCodigos(sb: SupabaseClient, texto: string, marcados: string[]): Promise<string> {
+  const achados = [...new Set([...String(texto || '').matchAll(/@(\d{10,})/g)].map(m => m[1]))].filter(d => !marcados.some(x => dig(x) === d));
+  if (!achados.length) return texto;
+  const { data } = await sb.from('wa_contatos').select('jid, nome').in('jid', achados.flatMap(d => [d + '@lid', d + '@s.whatsapp.net']));
+  for (const d of achados) {
+    const c = ((data || []) as any[]).find(x => dig(x.jid) === d && x.nome && !/^\+?\d+$/.test(x.nome));
+    texto = texto.split('@' + d).join(c ? String(c.nome).split(/\s+/)[0] : '');
+  }
+  return texto.replace(/ {2,}/g, ' ');
+}
 /* 4.58.1: mais de uma mensagem seguida — a IA separa com uma linha [[NOVA]] (até 3). A primeira leva a
    assinatura, a citação e as marcações; as outras saem em seguida, com "digitando…" proporcional ao texto. */
 const SEP = /\n?\s*\[\[\s*NOVA\s*\]\]\s*\n?/i;
 async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}) {
+  texto = await semCodigos(sb, texto, (extra.mentioned as string[]) || []);
   const partes = String(texto || '').split(SEP).map(t => t.trim()).filter(Boolean).slice(0, 3);
   if (partes.length > 1) {
     const primeira = await enviarUma(sb, cfg, jid, partes[0], extra, true);
@@ -303,6 +316,8 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   /* 4.58.7: todo áudio vira texto na Central (mesmo com o Otto desligado) */
   const ouvido = temAudio(raw) && cfg?.ouvir_audio !== false ? await ouvirEGuardar(sb, raw, id) : '';
   if (!cfg?.ativo) return;
+  /* 4.59.2: figurinha nova → o Otto aprende o que ela é (para usar depois) */
+  if (desembrulhar(raw?.message)?.stickerMessage) { await conhecerFigurinha(sb, raw, String(key.id || '')).catch(e => console.log('figurinha', String(e).slice(0, 200))); return; }
   const { data: novo } = await sb.from('wa_assistente_vistos').upsert({ msg_id: id }, { onConflict: 'msg_id', ignoreDuplicates: true }).select('msg_id');
   if (!novo || !novo.length) return;
   let texto = textoDe(raw) || ouvido;
@@ -576,12 +591,31 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
   const key = raw?.key || {};
   if (!texto) return;
   if (key.fromMe && !chamouPeloNome(cfg, texto)) return;
+  /* 4.59.2: outra IA no grupo (ex.: o Gabriel, do comercial da Núcleo 7) — conversa com ela, com limite */
+  const bot = !key.fromMe ? ehBot((cfg as any).bots as Bot[], String(key.participant || ''), String(raw?.pushName || '')) : null;
+  if (bot) { if (await podeResponderBot(sb, cfg.grupo_equipe!)) await responderBot(sb, cfg, raw, texto, bot); return; }
   const marcados = new Set<string>([...((ctx.mentionedJid || []) as string[]).map(dig), ...[...texto.matchAll(/@(\d{8,})/g)].map(v => v[1])]);
   const lid = marcados.size ? await meuLid(sb, cfg, cfg.grupo_equipe!, numero) : (cfg.meu_lid || '');
   let marcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid)) || chamouPeloNome(cfg, texto);
   if (!marcado && ctx.stanzaId) { const { data: c } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle(); marcado = !!c?.do_assistente; }
-  if (!marcado) return;
+  if (!marcado) { if (!key.fromMe && key.id) await talvezReagir(sb, raw, texto, cfg.grupo_equipe!, String(key.id)); return; }
   await consultaInterna(sb, cfg, raw, texto, cfg.grupo_equipe!);
+}
+
+/** resposta à outra IA do grupo: colega, bem-humorado, curto */
+async function responderBot(sb: SupabaseClient, cfg: Config, raw: any, texto: string, bot: Bot) {
+  const destino = cfg.grupo_equipe!;
+  const { data: hist } = await sb.from('wa_mensagens').select('autor_nome, enviada_por_nome, de_mim, do_assistente, texto').eq('jid', destino).eq('nota', false).order('criada_em', { ascending: false }).limit(12);
+  const conversa = ((hist || []) as any[]).reverse().filter(m => (m.texto || '').trim()).map(m => (m.do_assistente ? cfg.nome : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + String(m.texto).slice(0, 300)).join('\n');
+  const s = await ia(
+    `Você é ${cfg.nome}, a IA da Branding7, no grupo interno da equipe. Quem acabou de escrever é ${bot.nome}, OUTRA inteligência artificial` + (bot.sobre ? ' (' + bot.sobre + ')' : '') + '. ' +
+    'Converse com ela como um colega de trabalho esperto e bem-humorado: responda ao que ela disse de verdade; se ela respondeu no automático ou não entendeu o contexto, pode zoar de leve e ajudar a entender (a equipe se diverte com isso). ' +
+    'Nunca trate como cliente, nunca diga que vai "encaminhar para a equipe". Curto: 1 ou 2 frases, no máximo 1 emoji. Não assine. Nunca escreva @ seguido de números; chame pelo nome.',
+    'CONVERSA RECENTE:\n' + conversa + '\n\nÚLTIMA MENSAGEM DE ' + bot.nome + ': ' + texto, 300);
+  if (!s.texto || /\[\[\s*SILENCIO/i.test(s.texto)) return;
+  await digitando(destino, cfg);
+  await enviar(sb, cfg, destino, s.texto, { quoted: { key: raw.key, message: { conversation: texto.slice(0, 300) } } });
+  await registrar(sb, { tipo: 'bot', jid: destino, autor: bot.nome, pergunta: texto.slice(0, 600), resposta: s.texto.slice(0, 800), ...usoDe(s) });
 }
 
 /* =====================================================================
