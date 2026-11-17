@@ -30,7 +30,7 @@ import { cuidarDasDemandas, perfilDe, FALA_DE_DEMANDA } from './otto-demandas.ts
 import { printDaConversa } from './print-conversa.ts';
 import { memorias, lembrar, esquecer, falar, roteiroDeFala, avisosPendentes, marcarAvisados, dadosDoDia, escreverResumoDia } from './otto-extras.ts';
 import { mandarFigurinha } from './otto-social.ts';
-import { limparResposta, ESTILO_EQUIPE, nomesDoOtto, ferramentaLigada, filtrarFerramentas, mudaSistema, podeMandar, quemPodeMandar, precisaConfirmar, respostaConfirmacao, regraTamanho, regraEmojis, tirarEmojis, chamou, podeZoarAgora, fdsQuieto } from './otto-controle.ts';
+import { limparResposta, estiloEquipe, identidade, papelDoOtto, nomesDoOtto, ferramentaLigada, filtrarFerramentas, mudaSistema, podeMandar, quemPodeMandar, precisaConfirmar, respostaConfirmacao, regraTamanho, regraEmojis, tirarEmojis, chamou, podeZoarAgora, fdsQuieto } from './otto-controle.ts';
 import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, decidirJeito, reagirNaMensagem, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -46,7 +46,7 @@ export type Config = {
   /* 4.68.0: velocidade */
   velocidade?: 'rapido' | 'natural' | 'humano'; audio_humano?: boolean; audio_roteiro?: 'auto' | 'sempre' | 'nunca'; audio_max_s?: number; audio_variar?: number;
   /* 4.73.0: jeito + controle */
-  tamanho?: string; emojis?: string; apelidos_otto?: string; zoacao_espontanea?: number; ferramentas_off?: string[]; ordens_quem?: string[]; confirmar_acoes?: boolean; fds_silencio?: boolean;
+  tamanho?: string; emojis?: string; apelidos_otto?: string; zoacao_espontanea?: number; ferramentas_off?: string[]; ordens_quem?: string[]; confirmar_acoes?: boolean; fds_silencio?: boolean; se_apresenta_ia?: boolean;
   pausa_min: number; espera_min_s: number; espera_max_s: number; grupos: Record<string, { desligado?: boolean; regras?: string }>;
   meu_lid: string | null; horario?: Horario; ouvir_audio?: boolean;
   grupo_equipe?: string | null; resumo_horas?: number; resumo_ultimo?: string | null; resumo_espera_min?: number;
@@ -532,7 +532,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
     'Não assine a mensagem (a assinatura entra sozinha). Português do Brasil, tom próximo e profissional.',
     'ESCREVA COMO UMA PESSOA NO WHATSAPP: texto corrido, frases normais. NÃO use listas, tópicos, marcadores (•, -, 1.), títulos nem negrito — a não ser que a pessoa peça explicitamente uma lista.',
     'Se ficar mais natural, você pode mandar ATÉ 3 mensagens curtas seguidas (ex.: uma responde, a outra complementa), separando-as com uma linha contendo só [[NOVA]]. Use só quando ajudar; resposta simples = uma mensagem.',
-    regraTamanho(cfg), regraEmojis(cfg),
+    regraTamanho(cfg), regraEmojis(cfg), identidade(cfg),
     equipe.length ? '\nQUEM CUIDA DE CADA ASSUNTO (para chamar a pessoa, escreva {{marcar:Nome}} com o nome exato; no máximo 1 pessoa, só quando ajudar):\n' + equipe.map(p => '- ' + p.nome + (p.assuntos ? ': ' + p.assuntos : '')).join('\n') : '',
     (ap || []).length ? '\nO QUE A EQUIPE JÁ RESPONDEU (vale como verdade; use em vez de perguntar de novo):\n' + (ap || []).map(a => '- ' + a.pergunta + ' → ' + a.resposta).join('\n') : '',
     cfg.jeito?.trim() ? '\nCOMO SE COMPORTAR (definido pela agência):\n' + cfg.jeito.trim().slice(0, 3000) : '',
@@ -1070,7 +1070,7 @@ async function responderBot(sb: SupabaseClient, cfg: Config, raw: any, texto: st
   const { data: hist } = await sb.from('wa_mensagens').select('autor_nome, enviada_por_nome, de_mim, do_assistente, texto').eq('jid', destino).eq('nota', false).order('criada_em', { ascending: false }).limit(12);
   const conversa = ((hist || []) as any[]).reverse().filter(m => (m.texto || '').trim()).map(m => (m.do_assistente ? cfg.nome : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + String(m.texto).slice(0, 300)).join('\n');
   const s = await ia(
-    `Você é ${cfg.nome}, a IA da Branding7, no grupo interno da equipe. Quem acabou de escrever é ${bot.nome}, OUTRA inteligência artificial` + (bot.sobre ? ' (' + bot.sobre + ')' : '') + '. ' +
+    `Você é ${cfg.nome}, ${papelDoOtto(cfg)} da Branding7, no grupo interno da equipe. Quem acabou de escrever é ${bot.nome}, OUTRA inteligência artificial` + (bot.sobre ? ' (' + bot.sobre + ')' : '') + '. ' +
     'Converse com ela como um colega de trabalho esperto e bem-humorado: responda ao que ela disse de verdade; se ela respondeu no automático ou não entendeu o contexto, pode zoar de leve e ajudar a entender (a equipe se diverte com isso). ' +
     'Nunca trate como cliente, nunca diga que vai "encaminhar para a equipe". Curto: 1 ou 2 frases, no máximo 1 emoji. Não assine. Nunca escreva @ seguido de números; chame pelo nome. ' +
     'Se a equipe pedir para zoar ou xingar o ' + bot.nome.split(' ')[0] + ', pode, de brincadeira (sem preconceito nem ameaça).',
@@ -1839,7 +1839,7 @@ async function talvezZoar(sb: SupabaseClient, cfg: Config, raw: any, texto: stri
   const { data: h } = await sb.from('wa_mensagens').select('autor_nome, do_assistente, texto').eq('jid', g).eq('nota', false).order('criada_em', { ascending: false }).limit(8);
   const conversa = ((h || []) as any[]).reverse().filter(m => m.texto).map(m => (m.do_assistente ? cfg.nome : m.autor_nome || 'alguém') + ': ' + String(m.texto).slice(0, 200)).join('\n');
   const quem = String(raw?.pushName || 'alguém');
-  const r = await ia(`Você é ${cfg.nome}, a IA da Branding7, no grupo interno da equipe. Ninguém te chamou: você pode soltar UMA zoeira curta (1 frase, tom de colega) sobre a última mensagem — só se tiver graça de verdade. ` +
+  const r = await ia(`Você é ${cfg.nome}, ${papelDoOtto(cfg)} da Branding7, no grupo interno da equipe. Ninguém te chamou: você pode soltar UMA zoeira curta (1 frase, tom de colega) sobre a última mensagem — só se tiver graça de verdade. ` +
     'Se for assunto sério, de trabalho com cliente, problema, ou se não tiver uma piada boa, responda só NADA. Nunca preconceito, nunca sobre cliente, nunca algo que magoe. ' + regrasDaEquipe(cfg, g) + ' ' + regraEmojis(cfg),
     'CONVERSA:\n' + conversa.slice(-1500) + '\n\nÚLTIMA MENSAGEM (' + quem + '): ' + texto.slice(0, 300) + '\n\nSua zoeira (ou NADA):', 120);
   const t = String(r.texto || '').trim().replace(/^["“]|["”]$/g, '');
@@ -1873,8 +1873,8 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   const ehEquipe = aqui === cfg.grupo_equipe, ehGrupo = /@g\.us$/.test(aqui);
   const sistema = [
     ehCliente
-      ? `Você é ${cfg.nome}, o assistente (IA) da Branding7. Você está no GRUPO DO CLIENTE "${cli!.conv.nome || ''}" no WhatsApp. Quem acabou de te chamar é alguém da EQUIPE da agência (${quem}) — o cliente também está no grupo e VÊ tudo o que você escreve aqui.`
-      : `Você é ${cfg.nome}, o assistente (IA) da Branding7, agência de conteúdo para redes sociais. Quem fala com você agora é alguém da EQUIPE (${quem}), ${ehEquipe ? 'no grupo interno da equipe' : ehGrupo ? 'num grupo' : 'no privado'}.`,
+      ? `Você é ${cfg.nome}, ${papelDoOtto(cfg)} da Branding7. Você está no GRUPO DO CLIENTE "${cli!.conv.nome || ''}" no WhatsApp. Quem acabou de te chamar é alguém da EQUIPE da agência (${quem}) — o cliente também está no grupo e VÊ tudo o que você escreve aqui.`
+      : `Você é ${cfg.nome}, ${papelDoOtto(cfg)} da Branding7, agência de conteúdo para redes sociais. Quem fala com você agora é alguém da EQUIPE (${quem}), ${ehEquipe ? 'no grupo interno da equipe' : ehGrupo ? 'num grupo' : 'no privado'}.`,
     ehCliente ? 'NESTE GRUPO DE CLIENTE: a "resposta" vai para o grupo, onde o CLIENTE lê. Se a equipe pediu para falar algo ao cliente (avisar, responder, explicar, cobrar material), escreva em "resposta" a mensagem para o cliente cumprindo o pedido: em primeira pessoa, cordial e profissional, sem dizer que recebeu uma ordem. Se o pedido é algo interno (print, demanda, PDF para a equipe, chamar alguém no privado, resumo, pendências, perguntas sobre outros clientes), use as ferramentas e deixe "resposta" VAZIA — nada interno pode aparecer para o cliente. Nunca fale de valores, de outros clientes ou de assuntos internos aqui. Nada de palavrão, zoação ou ironia.' : '',
     'Você é um AGENTE: entende o pedido (pela mensagem E pela conversa em volta — "isso", "desse grupo", "lá", respostas curtas a perguntas suas) e usa FERRAMENTAS para agir de verdade. Pode encadear várias ferramentas num pedido só.',
     filtrarFerramentas(FERRAMENTAS, cfg),
@@ -1888,7 +1888,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     regraTamanho(cfg), regraEmojis(cfg),
     'Marcar alguém: escreva @Nome (como em PESSOAS NESTE GRUPO). Marcar todo mundo / a equipe / o grupo: escreva SÓ @todos, uma vez — NUNCA liste os nomes. Nunca @números.',
     ehCliente ? '' : regrasDaEquipe(cfg, aqui),
-    ehCliente ? '' : ESTILO_EQUIPE,
+    ehCliente ? identidade(cfg) : estiloEquipe(cfg),
     /* 4.66.7: do privado, a equipe pode mandar o Otto agir no grupo da equipe e no privado dos colegas */
     !ehGrupo && !ehCliente ? 'NO PRIVADO, qualquer pessoa da equipe pode pedir para você fazer coisas em OUTRO lugar: mandar mensagem, áudio, figurinha, print, imagem ou PDF no grupo da equipe ("lá no grupo", "no grupo" = grupo da equipe), marcar alguém ou @todos lá, ou mandar recado no privado de outra pessoa da equipe. Faça com a ferramenta certa (mensagem_em_grupo com "equipe", privado com o nome da pessoa, audio, figurinha…). Quando for recado de alguém, deixe claro de quem é se fizer sentido (ex.: "O ' + (quem === 'Você' ? 'Fulano' : quem.split(/\s+/)[0]) + ' pediu pra avisar: …"). Mensagem ou áudio para o grupo da equipe segue a zoação liberada de lá (se o modo restrito estiver desligado). Depois, confirme aqui em 1 frase curta.' : '',
     /* 4.67.3: nome igual entre equipe e cliente */
@@ -2248,7 +2248,7 @@ async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: 
     (m.do_assistente ? cfg.nome : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + String(m.texto).slice(0, 400)).join('\n');
   const hoje = new Date(Date.now() - 3 * 3600000);
   const s = await ia(
-    `Você é ${cfg.nome}, o assistente da equipe da Branding7 (agência de conteúdo para redes sociais), conversando com alguém da EQUIPE no WhatsApp. ` +
+    `Você é ${cfg.nome}, ${papelDoOtto(cfg)} da Branding7 (agência de conteúdo para redes sociais), conversando com alguém da EQUIPE no WhatsApp. ` +
     'Você é inteligente, esperto e útil, como um colega muito bom: entende a mensagem e a conversa em volta e responde de verdade. ' +
     'Responda QUALQUER coisa que perguntarem, não só sobre o sistema: ideias de conteúdo, roteiros, legendas, ganchos, trends, estratégia, marketing, redes sociais, textos, e-mails, propostas, contas, explicações, conselhos e conversa do dia a dia — usando o seu próprio conhecimento. ' +
     'NUNCA diga que fez algo que você não fez (ex.: "te chamei no privado", "mandei o arquivo", "criei a demanda") — nesta resposta você só escreve esta mensagem aqui. Se não consegue fazer, diga. ' +
@@ -2256,7 +2256,7 @@ async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: 
     'Você conhece a equipe (lista QUEM É QUEM): quando falarem de alguém, saiba quem é e o que faz (ex.: "o Kaique é o videomaker da B7"). ' +
     'Para MARCAR alguém (quando pedirem ou quando ajudar), escreva @ e o nome da pessoa como aparece em PESSOAS NESTE GRUPO (ex.: @Yury); para marcar todo mundo, @todos. O sistema transforma na marcação de verdade. Nunca escreva @ com números. ' +
     'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
-    'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]]. ' + regraTamanho(cfg) + ' ' + regraEmojis(cfg) + '\n' + ESTILO_EQUIPE,
+    'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]]. ' + regraTamanho(cfg) + ' ' + regraEmojis(cfg) + '\n' + estiloEquipe(cfg),
     ' ' + regrasDaEquipe(cfg, destino) + ' ' +
     /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
     'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +

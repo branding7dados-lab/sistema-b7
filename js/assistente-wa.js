@@ -205,6 +205,7 @@ B7.AssistenteWA = (function () {
           '<label class="asw-lb">Nome</label><input class="campo" data-c="nome" maxlength="40" value="' + esc(c.nome || '') + '" placeholder="Ex.: Otto">' +
           '<label class="asw-lb">Jeito de falar com cliente</label><div class="asw-chips">' + TONS.map(([r], i) => '<button class="asw-chip" data-tom="' + i + '">' + r + '</button>').join('') + '</div>' +
           '<textarea class="campo" data-c="jeito" rows="5" placeholder="Ex.: trate pelo primeiro nome; prazo padrão de arte é 2 dias úteis; vídeos saem em até 5 dias depois da gravação.">' + esc(c.jeito || '') + '</textarea>' +
+          linha('Se apresentar como assistente virtual', 'Desligado: fala como uma pessoa da equipe, sem dizer que é IA. Ligado: assume que é o assistente virtual da Branding7 e pode se apresentar assim. Nos dois casos, se alguém perguntar a sério se é robô, ele não mente.', chave('se_apresenta_ia', !!c.se_apresenta_ia)) +
           linha('Ajudar sem ser chamado', 'No grupo do cliente, responde pedidos de ajuda mesmo sem ser marcado — e fica quieto se a equipe falou nos últimos <input class="campo asw-mini" type="number" min="5" max="600" data-c="pausa_min" value="' + (c.pausa_min || 30) + '"> min.', chave('sem_marcacao', !!c.sem_marcacao))) +
         bloco('Como ele escreve', 'Vale com a equipe e com os clientes.',
           linha('Tamanho das respostas', 'Automático: ele mede pelo pedido. Algo para produzir (legenda, roteiro) sai completo em qualquer opção.', seg('tamanho', c.tamanho || 'auto', [['auto', 'Automático'], ['curta', 'Curtas'], ['media', 'Médias'], ['detalhada', 'Detalhadas']]), 'asw-pilha') +
@@ -486,7 +487,7 @@ B7.AssistenteWA = (function () {
       tamanho: ['auto', 'curta', 'media', 'detalhada'].includes(c.tamanho) ? c.tamanho : 'auto', emojis: ['nada', 'pouco', 'bastante'].includes(c.emojis) ? c.emojis : 'pouco',
       apelidos_otto: String(c.apelidos_otto || '').split(',').map(x => x.trim()).filter(x => x.length >= 3).slice(0, 6).join(', '), zoacao_espontanea: [0, 10, 25].includes(Number(c.zoacao_espontanea)) ? Number(c.zoacao_espontanea) : 0,
       ferramentas_off: (c.ferramentas_off || []).filter(k => FERRS.some(([f]) => f === k)), ordens_quem: (c.ordens_quem || []).map(n => String(n).replace(/\D/g, '')).filter(Boolean),
-      confirmar_acoes: !!c.confirmar_acoes, fds_silencio: !!c.fds_silencio,
+      confirmar_acoes: !!c.confirmar_acoes, fds_silencio: !!c.fds_silencio, se_apresenta_ia: !!c.se_apresenta_ia,
       audio_roteiro: ['auto', 'sempre', 'nunca'].includes(c.audio_roteiro) ? c.audio_roteiro : 'auto', audio_max_s: Math.max(15, Math.min(120, Number(c.audio_max_s) || 40)),
       regras_equipe: String(c.regras_equipe || '').slice(0, 2000), modo_restrito: !!c.modo_restrito, zoacao_nivel: ['leve', 'medio', 'pesado'].includes(c.zoacao_nivel) ? c.zoacao_nivel : 'medio',
       modo_clientes: c.modo_clientes === 'atende' ? 'atende' : 'vigia', vigia_min: Math.max(5, Number(c.vigia_min) || 20),
