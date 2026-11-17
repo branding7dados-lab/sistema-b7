@@ -155,6 +155,8 @@ B7.AssistenteWA = (function () {
         '<div class="asw-card asw-dono"><label class="rot">Quando quem fala é o próprio celular do B7, o Otto age como</label><select class="campo" data-c="dono_perfil_id"><option value="">o administrador principal</option>' +
           (S.perfis || []).map(u => '<option value="' + esc(u.id) + '"' + (u.id === c.dono_perfil_id ? ' selected' : '') + '>' + esc(u.nome) + '</option>').join('') + '</select>' +
           '<p class="asw-sub">O Otto cria, edita e exclui demandas em nome de quem pediu, com as permissões dessa pessoa no B7.</p></div>' +
+        '<div class="asw-card asw-qq"><h3>Quem é quem</h3><p class="asw-sub">Como o ' + esc((c.nome || 'Otto').split(' ')[0]) + ' apresenta cada pessoa (ex.: “programador do sistema e videomaker”, “dono da Branding7”). Em branco, ele usa a função do usuário no B7.</p>' +
+          (S.perfis || []).map(u => '<label class="asw-qq-l"><b>' + esc(u.nome) + '</b><input class="campo" data-qq="' + esc(u.id) + '" maxlength="200" placeholder="pela função no sistema" value="' + esc(((c.quem_e_quem || {})[u.id]) || '') + '"></label>').join('') + '</div>' +
         '<div class="asw-equipe">' + (c.equipe || []).map((p, i) =>
         '<div class="asw-pes" data-i="' + i + '"><span class="asw-av p">' + esc(ini(p.nome)) + '</span><div class="asw-pes-c">' +
           '<input class="campo" data-p="nome" placeholder="Nome" value="' + esc(p.nome || '') + '">' +
@@ -208,6 +210,9 @@ B7.AssistenteWA = (function () {
       if (t.dataset.c === 'ativo') { desenhar(); return salvar(true); }
       if (t.dataset.c === 'horario.ativo') { const h = raiz.querySelector('.asw-horario'); if (h) h.classList.toggle('off', !t.checked); }
       if (t.dataset.c === 'nome') { const h = raiz.querySelector('.asw-hero h1'); if (h) h.textContent = t.value || 'Assistente'; }
+    } else if (t.dataset.qq) {
+      S.cfg.quem_e_quem = Object.assign({}, S.cfg.quem_e_quem || {});
+      if (t.value.trim()) S.cfg.quem_e_quem[t.dataset.qq] = t.value; else delete S.cfg.quem_e_quem[t.dataset.qq];
     } else if (t.dataset.p) {
       const i = Number(t.closest('[data-i]').dataset.i), p = S.cfg.equipe[i];
       p[t.dataset.p] = t.type === 'checkbox' ? t.checked : t.dataset.p === 'numero' ? t.value.replace(/\D/g, '') : t.value;
@@ -319,6 +324,7 @@ B7.AssistenteWA = (function () {
     const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
       equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: String(p.numero).replace(/\D/g, ''), assuntos: (p.assuntos || '').trim(), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
+      quem_e_quem: Object.fromEntries(Object.entries(c.quem_e_quem || {}).map(([k, v]) => [k, String(v || '').trim().slice(0, 200)]).filter(([, v]) => v)),
       sem_marcacao: !!c.sem_marcacao, pausa_min: Math.max(5, Number(c.pausa_min) || 30), ouvir_audio: c.ouvir_audio !== false,
       espera_min_s: Math.max(1, Number(c.espera_min_s) || 4), espera_max_s: Math.max(Number(c.espera_min_s) || 4, Number(c.espera_max_s) || 9),
       grupos: c.grupos || {}, horario: c.horario || {}, grupo_equipe: c.grupo_equipe || null,

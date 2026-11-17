@@ -613,7 +613,7 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
 }
 
 /* 4.59.4: quem é quem na equipe (usuários do B7 + o que a tela do Otto diz de cada um) */
-const FUNCAO: Record<string, string> = { admin: 'administrador/sócio', coordenador: 'coordenador(a)', videomaker: 'videomaker (grava e edita vídeo)', designer: 'designer (artes)', social_media: 'social media', atendimento: 'atendimento', editor: 'editor(a) de vídeo', redator: 'redator(a)' };
+const FUNCAO: Record<string, string> = { admin: 'administrador do sistema', coordenador: 'coordenador(a)', videomaker: 'videomaker (grava e edita vídeo)', designer: 'designer (artes)', social_media: 'social media', atendimento: 'atendimento', editor: 'editor(a) de vídeo', redator: 'redator(a)' };
 async function quemEQuem(sb: SupabaseClient, cfg: Config, interno: boolean): Promise<string> {
   const [{ data: ps }, { data: ds }] = await Promise.all([
     sb.from('perfis').select('id, nome, papel, funcao, funcoes_adicionais, funcao_personalizada, eh_admin, status_presenca, status_recado').eq('estado', 'ativa').neq('papel', 'cliente').order('nome'),
@@ -624,7 +624,10 @@ async function quemEQuem(sb: SupabaseClient, cfg: Config, interno: boolean): Pro
   const linhas = ((ps || []) as any[]).filter(p => !/teste/i.test(p.nome || '')).map(p => {
     const fs = [p.funcao_personalizada || p.funcao || (p.eh_admin ? 'admin' : p.papel), ...(Array.isArray(p.funcoes_adicionais) ? p.funcoes_adicionais : [])].filter(Boolean)
       .map((f: string) => FUNCAO[f] || f);
-    if (p.eh_admin && !fs.some((f: string) => /admin/.test(f))) fs.unshift('administrador/sócio');
+    if (p.eh_admin && !fs.some((f: string) => /admin/.test(f))) fs.push('administrador do sistema');
+    /* 4.59.5: o que a agência escreveu sobre a pessoa vale por cima do que dá para deduzir */
+    const escrito = String(((cfg as any).quem_e_quem || {})[p.id] || '').trim();
+    if (escrito) fs.splice(0, fs.length, escrito);
     const eq = (cfg.equipe || []).find(e => (e as any).perfil_id === p.id || semAcento(String(e.nome || '')).split(' ')[0] === semAcento(p.nome).split(' ')[0]);
     return '- ' + p.nome + ': ' + [...new Set(fs)].join(', ') + (eq?.assuntos ? '; cuida de: ' + eq.assuntos : '') +
       (interno && abertas[p.id] ? '; ' + abertas[p.id] + ' demanda(s) de vídeo abertas' : '') +
