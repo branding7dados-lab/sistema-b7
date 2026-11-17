@@ -57,7 +57,7 @@ B7.AssistenteWA = (function () {
     if (!raiz.isConnected) return;
     if (c.error || !c.data) { raiz.innerHTML = '<div class="asw-vazio"><b>Não consegui abrir</b><p>' + esc((c.error && c.error.message) || 'Configuração não encontrada.') + '</p></div>'; return; }
     const cfg = c.data;
-    S = { cfg: JSON.parse(JSON.stringify(cfg)), orig: JSON.stringify(cfg), aba: S && S.aba || 'geral', ap: ap.data || [], dv: dv.data || [], reg: rg.data || [], grupos: gr.data || [],
+    S = { cfg: JSON.parse(JSON.stringify(cfg)), orig: JSON.stringify(cfg), aba: S && S.aba && S.aba !== 'grupos' ? S.aba : 'geral', ap: ap.data || [], dv: dv.data || [], reg: rg.data || [], grupos: gr.data || [],
       regras: regrasDe(cfg.regras), busca: '', todosGrupos: tg.data || [], perfis: (pf.data || []).filter(p => !/teste/i.test(p.nome || '')), mem: mm.data || [], teste: [], testeJid: (gr.data || [])[0] ? gr.data[0].jid : '', testeEquipe: false };
     if (!S.cfg.horario) S.cfg.horario = { ativo: false, ini: '08:00', fim: '18:00', dias: [1, 2, 3, 4, 5], mensagem: '' };
     desenhar();
@@ -86,151 +86,192 @@ B7.AssistenteWA = (function () {
   }
   addEventListener('resize', () => posicionarBarra());
 
+  /* 4.68.0: tela nova — navegação lateral por assunto, ajustes em linhas (o que faz ↔ controle),
+     e a linha do tempo "assim o Otto responde" que muda com a velocidade */
+  const IC = {
+    geral: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+    velocidade: '<path d="M12 13l4-4"/><path d="M3.5 18a9 9 0 1 1 17 0"/><circle cx="12" cy="13" r="1.2"/>',
+    jeito: '<path d="M8 10h.01M16 10h.01"/><path d="M8.5 14.5c2 1.6 5 1.6 7 0"/><circle cx="12" cy="12" r="9"/>',
+    equipe: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.6-3.4 3-5.4 6-5.4s5.4 2 6 5.4"/><path d="M16 4.6a3.2 3.2 0 0 1 0 6.3M18 14.8c1.7.6 2.7 2.4 3 5.2"/>',
+    clientes: '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
+    saber: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 21.5V5.5"/><path d="M9 8h7"/>',
+    testar: '<path d="M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9V3"/><path d="M8.5 3h7M7 15h10"/>'
+  };
+  const icone = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (IC[k] || '') + '</svg>';
+  const VELOCIDADES = [['rapido', 'Rápido', 'Responde assim que pensa'], ['natural', 'Natural', 'Digita no tamanho da resposta'], ['humano', 'Humano', 'Espera como uma pessoa']];
+  /* mesmas contas do servidor (assistente.ts → tempoDigitando) */
+  const digitaMs = (c, tam) => { const v = c.velocidade || 'natural'; if (v === 'rapido') return 500; if (v === 'humano') return ((Math.max(1, c.espera_min_s || 4) + Math.max(c.espera_min_s || 4, c.espera_max_s || 9)) / 2) * 1000; return Math.max(700, Math.min(2500, 400 + tam * 12)); };
+  const seg = (k, val, ops) => '<div class="asw-seg" role="radiogroup">' + ops.map(([v, r, d]) => '<label class="' + (val === v ? 'on' : '') + '"' + (d ? ' title="' + esc(d) + '"' : '') + '><input type="radio" name="' + k + '" data-c="' + k + '" value="' + v + '"' + (val === v ? ' checked' : '') + '><span>' + r + '</span></label>').join('') + '</div>';
+  const linha = (t, d, ctl, cls) => '<div class="asw-row ' + (cls || '') + '"><div class="asw-row-t"><b>' + t + '</b>' + (d ? '<small>' + d + '</small>' : '') + '</div><div class="asw-row-c">' + ctl + '</div></div>';
+  const chave = (k, on, extra) => '<label class="asw-tg"><input type="checkbox" data-c="' + k + '"' + (on ? ' checked' : '') + (extra || '') + '><span></span></label>';
+  const bloco = (t, d, html, cls) => '<section class="asw-bl ' + (cls || '') + '"><header><h3>' + t + '</h3>' + (d ? '<p>' + d + '</p>' : '') + '</header>' + html + '</section>';
+  /* tempo de resposta real (últimos 7 dias): mediana, em segundos */
+  function tempoReal() {
+    const ms = S.reg.filter(r => ['agente', 'consulta', 'resposta', 'instrucao'].includes(r.tipo) && r.ms).map(r => r.ms).sort((a, b) => a - b);
+    return ms.length ? ms[Math.floor(ms.length / 2)] / 1000 : null;
+  }
+  function linhaDoTempo() {
+    const c = S.cfg, t = tempoReal(), pensa = t != null ? Math.min(12, Math.max(0.8, t * 0.6)) : 2.5, digita = digitaMs(c, 140) / 1000;
+    const tot = pensa + digita, pct = x => Math.max(10, Math.round(x / tot * 100));
+    return '<div class="asw-tl2" id="asw-tl2" style="--p:' + pct(pensa) + '%;--d:' + pct(digita) + '%">' +
+      '<div class="asw-tl2-bolha eu">Otto, como tá a arte da Mercato?</div>' +
+      '<div class="asw-tl2-barra"><i class="pensa"><span>pensando ~' + pensa.toFixed(1).replace('.', ',') + ' s</span></i><i class="digita"><span>digitando… ' + digita.toFixed(1).replace('.', ',') + ' s</span></i></div>' +
+      '<div class="asw-tl2-bolha ele"><b>' + esc((c.nome || 'Otto').split(' ')[0]) + '</b>Tá em produção com o Pedro, sai amanhã 👍</div>' +
+      '<p class="asw-tl2-pe">O "digitando…" aparece assim que a mensagem chega' + (t != null ? '. O tempo de pensar vem da média real dos últimos 7 dias.' : '.') + '</p></div>';
+  }
+
   function desenhar() {
     const c = S.cfg, hoje = new Date().toDateString();
     const reais = S.reg.filter(r => r.tipo !== 'teste');
     const nHoje = reais.filter(r => new Date(r.em).toDateString() === hoje && r.tipo !== 'erro').length;
     const ativos = S.grupos.filter(g => !((c.grupos || {})[g.jid] || {}).desligado).length;
-    const ABAS = [['geral', 'Visão geral', S.dv.length], ['jeito', 'Personalidade'], ['equipe', 'Equipe', (c.equipe || []).length], ['grupos', 'Grupos', ativos + '/' + S.grupos.length], ['saber', 'Conhecimento', S.ap.length], ['testar', '✨ Testar']];
+    const t = tempoReal();
+    const ABAS = [['geral', 'Visão geral', S.dv.length || null], ['velocidade', 'Velocidade e voz'], ['jeito', 'Personalidade'], ['equipe', 'Equipe', (c.equipe || []).length],
+      ['clientes', 'Clientes e grupos', ativos + '/' + S.grupos.length], ['saber', 'Conhecimento', (S.mem || []).length + S.ap.length || null], ['testar', 'Testar']];
+    const nome = esc((c.nome || 'Otto').split(' ')[0]);
     raiz.innerHTML =
       '<header class="asw-hero' + (c.ativo ? ' on' : '') + '">' +
-        '<a class="asw-volta" href="#/whatsapp" aria-label="Voltar para as conversas">‹ Conversas</a>' +
-        '<div class="asw-id"><span class="asw-av">' + esc(ini(c.nome)) + '<i></i></span><div><h1>' + esc(c.nome || 'Assistente') + '</h1>' +
-          '<p>' + (c.ativo ? '<b class="asw-ponto"></b>Atendendo nos grupos dos clientes' : 'Desligado — ninguém é respondido por ele') + '</p></div>' +
-          '<label class="asw-chave" title="Ligar / desligar"><input type="checkbox" data-c="ativo"' + (c.ativo ? ' checked' : '') + '><span></span></label></div>' +
-        '<div class="asw-kpis">' +
-          kpi(nHoje, 'respostas hoje') + kpi(reais.filter(r => r.tipo !== 'erro').length, 'nos últimos 7 dias') + kpi(S.dv.length, 'dúvidas esperando', S.dv.length ? 'alerta' : '') + kpi(S.ap.length, 'coisas aprendidas') +
-        '</div></header>' +
-      '<nav class="asw-abas">' + ABAS.map(([k, r, n]) => '<button class="' + (S.aba === k ? 'on' : '') + '" data-aba="' + k + '">' + r + (n != null && n !== 0 ? ' <b>' + n + '</b>' : '') + '</button>').join('') +
-        '<button class="asw-salvar2" id="asw-salvar2" data-salvar hidden>✓ Salvar</button></nav>' +
-      '<section class="asw-corpo">' + corpo() + '</section>' +
+        '<a class="asw-volta" href="#/whatsapp">‹ Conversas</a>' +
+        '<div class="asw-id"><span class="asw-av">' + esc(ini(c.nome)) + '<i></i></span>' +
+          '<div class="asw-id-t"><h1>' + esc(c.nome || 'Assistente') + '</h1><p>' + (c.ativo ? 'Ligado e de olho no WhatsApp da Branding7' : 'Desligado: não responde ninguém') + '</p></div>' +
+          '<label class="asw-chave" title="' + (c.ativo ? 'Desligar' : 'Ligar') + ' o ' + nome + '"><input type="checkbox" data-c="ativo"' + (c.ativo ? ' checked' : '') + '><span></span></label></div>' +
+        '<dl class="asw-stats">' +
+          '<div><dt>respostas hoje</dt><dd>' + nHoje + '</dd></div>' +
+          '<div><dt>tempo de resposta</dt><dd>' + (t != null ? t.toFixed(1).replace('.', ',') + '<small> s</small>' : '–') + '</dd></div>' +
+          '<div class="' + (S.dv.length ? 'alerta' : '') + '"><dt>dúvidas esperando</dt><dd>' + S.dv.length + '</dd></div>' +
+          '<div><dt>grupos ligados</dt><dd>' + ativos + '<small>/' + S.grupos.length + '</small></dd></div>' +
+        '</dl></header>' +
+      '<div class="asw-casca">' +
+        '<nav class="asw-nav" aria-label="Seções">' + ABAS.map(([k, r, n]) => '<button class="' + (S.aba === k ? 'on' : '') + '" data-aba="' + k + '"' + (S.aba === k ? ' aria-current="page"' : '') + '>' + icone(k) + '<span>' + r + '</span>' + (n != null ? '<b>' + n + '</b>' : '') + '</button>').join('') + '</nav>' +
+        '<section class="asw-corpo">' + corpo() + '</section>' +
+      '</div>' +
       '<div class="asw-barra"><span>Alterações ainda não salvas</span><button class="b" data-desfazer>Desfazer</button><button class="b pri" id="asw-salvar" data-salvar>Salvar</button></div>';
     marcarSujo();
   }
-  const kpi = (n, r, cls) => '<div class="asw-kpi ' + (cls || '') + '"><b>' + n + '</b><span>' + r + '</span></div>';
 
   function corpo() {
-    const c = S.cfg;
+    const c = S.cfg, nome = esc((c.nome || 'Otto').split(' ')[0]);
     if (S.aba === 'geral') {
       const reg = S.reg.slice(0, 40);
       return '<div class="asw-2">' +
-        '<div class="asw-card"><h3>Dúvidas esperando a equipe</h3>' + (S.dv.length ? S.dv.map(d =>
-          '<div class="asw-dv" data-dv="' + esc(d.id) + '"><div class="asw-dv-top"><b>' + esc(d.grupo_nome || '') + '</b><time>' + quando(d.criada_em) + '</time></div>' +
-          '<p class="asw-dv-q"><span>' + esc(d.autor || 'Cliente') + '</span>“' + esc(d.pergunta) + '”</p>' +
-          (d.pergunta_equipe ? '<p class="asw-dv-p">🤔 ' + esc(d.pergunta_equipe) + '</p>' : '') +
-          '<div class="asw-dv-r"><input class="campo" placeholder="Sua resposta — ele reescreve e manda no grupo"><button class="b pri" data-resp>Responder</button></div></div>').join('')
-          : '<div class="asw-nada">🎉 Nenhuma dúvida esperando.<small>Quando ele não souber algo, a pergunta aparece aqui e no WhatsApp de quem recebe dúvidas.</small></div>') + '</div>' +
-        '<div class="asw-card"><h3>Atividade recente</h3>' + (reg.length ? '<ol class="asw-tl">' + reg.map(r => {
-          const t = ROT_TIPO[r.tipo] || [r.tipo, ''];
-          return '<li><span class="asw-tag ' + t[1] + '">' + t[0] + '</span><time>' + quando(r.em) + '</time><b>' + esc(r.grupo || '') + '</b>' +
+        bloco('Dúvidas esperando a equipe', 'Quando ele não sabe algo de um cliente, a pergunta para aqui e no WhatsApp de quem recebe dúvidas.',
+          S.dv.length ? S.dv.map(d =>
+            '<div class="asw-dv" data-dv="' + esc(d.id) + '"><div class="asw-dv-top"><b>' + esc(d.grupo_nome || '') + '</b><time>' + quando(d.criada_em) + '</time></div>' +
+            '<p class="asw-dv-q"><span>' + esc(d.autor || 'Cliente') + '</span>“' + esc(d.pergunta) + '”</p>' +
+            (d.pergunta_equipe ? '<p class="asw-dv-p">' + esc(d.pergunta_equipe) + '</p>' : '') +
+            '<div class="asw-dv-r"><input class="campo" placeholder="Sua resposta — ele reescreve e manda no grupo"><button class="b pri" data-resp>Responder</button></div></div>').join('')
+            : '<div class="asw-nada">Nenhuma dúvida esperando.</div>') +
+        bloco('O que ele fez', 'Últimos 7 dias, do mais novo para o mais antigo.', reg.length ? '<ol class="asw-tl">' + reg.map(r => {
+          const tp = ROT_TIPO[r.tipo] || [r.tipo, ''];
+          return '<li><span class="asw-tag ' + tp[1] + '">' + tp[0] + '</span><time>' + quando(r.em) + (r.ms ? ' · ' + (r.ms / 1000).toFixed(1).replace('.', ',') + ' s' : '') + '</time><b>' + esc(r.grupo || '') + '</b>' +
             (r.pergunta ? '<p class="q">' + esc(r.autor ? r.autor + ': ' : '') + esc(r.pergunta) + '</p>' : '') + (r.resposta ? '<p class="r">' + esc(r.resposta) + '</p>' : '') + '</li>';
-        }).join('') + '</ol>' : '<div class="asw-nada">Nada por aqui ainda.<small>' + (c.ativo ? 'Peça para alguém marcar o número num grupo de cliente.' : 'Ligue o assistente e marque o número num grupo de cliente.') + '</small></div>') + '</div></div>';
+        }).join('') + '</ol>' : '<div class="asw-nada">Nada por aqui ainda.<small>' + (c.ativo ? 'Chame o ' + nome + ' no grupo da equipe para começar.' : 'Ligue o ' + nome + ' no topo da tela.') + '</small></div>') + '</div>';
+    }
+    if (S.aba === 'velocidade') {
+      const v = c.velocidade || 'natural', mx = Number(c.audio_max_s) || 40;
+      return bloco('Assim o ' + nome + ' responde', 'Mude a velocidade e veja quanto tempo cada parte leva.', linhaDoTempo() +
+          linha('Velocidade', 'Quanto tempo o “digitando…” fica antes da resposta aparecer.', seg('velocidade', v, VELOCIDADES)) +
+          '<div class="asw-row asw-humano' + (v === 'humano' ? '' : ' fora') + '"><div class="asw-row-t"><b>Espera do modo humano</b><small>Um tempo aleatório entre os dois valores.</small></div><div class="asw-row-c"><span class="asw-par"><input class="campo asw-mini" type="number" min="1" max="30" data-c="espera_min_s" value="' + (c.espera_min_s || 4) + '"> a <input class="campo asw-mini" type="number" min="1" max="40" data-c="espera_max_s" value="' + (c.espera_max_s || 9) + '"> s</span></div></div>', 'asw-destaque') +
+        bloco('Áudio', 'Quando ele ouve e quando ele fala.',
+          linha('Ouvir áudios', 'Transcreve todo áudio que chega (aparece escrito na Central).', chave('ouvir_audio', c.ouvir_audio !== false)) +
+          linha('Responder em áudio', 'Com a equipe, quando mandam áudio para ele. Também fala quando pedem (“' + nome + ', me manda um áudio”).', chave('responder_audio', c.responder_audio !== false)) +
+          linha('Duração máxima', 'Áudio longo demais ninguém ouve até o fim.', '<span class="asw-faixa"><input type="range" min="15" max="120" step="5" data-c="audio_max_s" data-num value="' + mx + '"><output id="asw-maxs">' + mx + ' s</output></span>') +
+          linha('Adaptar o texto para fala', 'Reescreve a resposta do jeito que se fala (datas e números por extenso). Leva alguns segundos a mais.', seg('audio_roteiro', c.audio_roteiro || 'auto', [['auto', 'Só quando precisa'], ['sempre', 'Sempre'], ['nunca', 'Nunca']])) +
+          linha('Gravar como gente', 'Deixa o “gravando áudio…” no tempo do áudio antes de mandar. Mais natural, mais lento.', chave('audio_humano', !!c.audio_humano))) +
+        bloco('Voz', 'Como ele soa nos áudios.',
+          linha('Voz', 'Escolha e ouça antes de salvar.', '<div class="asw-voz-l"><select class="campo" data-c="voz">' + VOZES.map(([vz, d]) => '<option value="' + vz + '"' + ((c.voz || 'Orus') === vz ? ' selected' : '') + '>' + vz + ' · ' + d + '</option>').join('') + '</select><button class="b fina contorno" data-voz-ouvir>▶ Ouvir</button></div>') +
+          linha('Jeito de falar', 'Em poucas palavras.', '<input class="campo" data-c="voz_estilo" maxlength="200" placeholder="Ex.: animado, jovem, sotaque baiano leve" value="' + esc(c.voz_estilo || '') + '">') +
+          linha('De onde vem a voz', 'ElevenLabs aceita voz clonada. Precisa da chave ELEVENLABS_API_KEY no Supabase; sem ela, usa a do Google.', seg('voz_provedor', c.voz_provedor || 'gemini', [['gemini', 'Google'], ['elevenlabs', 'ElevenLabs']])) +
+          '<div class="asw-row asw-eleven' + (c.voz_provedor === 'elevenlabs' ? '' : ' fora') + '"><div class="asw-row-t"><b>ID da voz na ElevenLabs</b><small>Fica em Voices → a voz → ID.</small></div><div class="asw-row-c"><input class="campo" data-c="voz_eleven_id" placeholder="Ex.: 21m00Tcm4TlvDq8ikWAM" value="' + esc(c.voz_eleven_id || '') + '"></div></div>');
     }
     if (S.aba === 'jeito') {
       const h = c.horario || {};
       return '<div class="asw-2">' +
-        '<div class="asw-card"><h3>Identidade</h3>' +
-          '<label class="rot">Nome no grupo</label><input class="campo" data-c="nome" maxlength="40" value="' + esc(c.nome || '') + '" placeholder="Ex.: Gabi, Assistente B7">' +
-          '<label class="rot">Jeito de falar</label><div class="asw-chips">' + TONS.map(([r], i) => '<button class="asw-chip" data-tom="' + i + '">' + r + '</button>').join('') + '</div>' +
-          '<textarea class="campo" data-c="jeito" rows="5" placeholder="Como ele deve se comportar. Ex.: trate pelo primeiro nome; prazo padrão de arte é 2 dias úteis; vídeos saem em até 5 dias depois da gravação.">' + esc(c.jeito || '') + '</textarea>' +
-          '<h3 class="asw-h3b">Quando ele fala</h3>' +
-          sw('sem_marcacao', c.sem_marcacao, 'Responder pedidos de ajuda sem ser marcado', 'Fica calado se a equipe falou no grupo nos últimos <input class="campo asw-mini" type="number" min="5" max="600" data-c="pausa_min" value="' + (c.pausa_min || 30) + '"> min') +
-          sw('ouvir_audio', c.ouvir_audio !== false, 'Ouvir áudios', 'Quando respondem a ele com um áudio, ele transcreve e responde') +
-          '<div class="asw-linha"><span>Espera antes de responder (digitando…)</span><span><input class="campo asw-mini" type="number" min="1" max="30" data-c="espera_min_s" value="' + (c.espera_min_s || 4) + '"> a <input class="campo asw-mini" type="number" min="1" max="40" data-c="espera_max_s" value="' + (c.espera_max_s || 9) + '"> s</span></div>' +
-        '</div>' +
-        '<div class="asw-card"><h3>Regras fixas</h3><p class="asw-sub">Valem acima de tudo, em todos os grupos.</p>' +
-          '<ul class="asw-regras">' + (S.regras.map((r, i) => '<li><span class="asw-rtipo t' + TIPOS_REGRA.findIndex(([k]) => k === r.tipo) + '">' + esc((TIPOS_REGRA.find(([k]) => k === r.tipo) || ['', 'Regra'])[1]) + '</span><span>' + esc(r.texto) + '</span><button class="asw-x" data-tira-regra="' + i + '" aria-label="Tirar">✕</button></li>').join('') || '<li class="asw-nada">Nenhuma regra ainda.</li>') + '</ul>' +
+        bloco('Identidade', 'Como ele se apresenta e fala com os clientes.',
+          '<label class="asw-lb">Nome</label><input class="campo" data-c="nome" maxlength="40" value="' + esc(c.nome || '') + '" placeholder="Ex.: Otto">' +
+          '<label class="asw-lb">Jeito de falar com cliente</label><div class="asw-chips">' + TONS.map(([r], i) => '<button class="asw-chip" data-tom="' + i + '">' + r + '</button>').join('') + '</div>' +
+          '<textarea class="campo" data-c="jeito" rows="5" placeholder="Ex.: trate pelo primeiro nome; prazo padrão de arte é 2 dias úteis; vídeos saem em até 5 dias depois da gravação.">' + esc(c.jeito || '') + '</textarea>' +
+          linha('Ajudar sem ser chamado', 'No grupo do cliente, responde pedidos de ajuda mesmo sem ser marcado — e fica quieto se a equipe falou nos últimos <input class="campo asw-mini" type="number" min="5" max="600" data-c="pausa_min" value="' + (c.pausa_min || 30) + '"> min.', chave('sem_marcacao', !!c.sem_marcacao))) +
+        bloco('Regras fixas com clientes', 'Valem acima de tudo, em todos os grupos de cliente.',
+          '<ul class="asw-regras">' + (S.regras.map((r, i) => '<li><span class="asw-rtipo t' + TIPOS_REGRA.findIndex(([k]) => k === r.tipo) + '">' + esc((TIPOS_REGRA.find(([k]) => k === r.tipo) || ['', 'Regra'])[1]) + '</span><span>' + esc(r.texto) + '</span><button class="asw-x" data-tira-regra="' + i + '" aria-label="Tirar regra">✕</button></li>').join('') || '<li class="asw-nada">Nenhuma regra ainda.</li>') + '</ul>' +
           '<div class="asw-nova-regra"><select class="campo" id="asw-rtipo">' + TIPOS_REGRA.map(([k, r]) => '<option value="' + esc(k) + '">' + r + '</option>').join('') + '</select>' +
           '<input class="campo" id="asw-rtexto" placeholder="Ex.: prometer data de postagem sem olhar a agenda"><button class="b" data-mais-regra>Adicionar</button></div>' +
-          '<h3 class="asw-h3b">Horário de atendimento</h3>' +
-          sw('horario.ativo', h.ativo, 'Respeitar horário', 'Fora dele, avisa que o time responde depois e leva a dúvida à equipe') +
+          linha('Horário de atendimento', 'Fora dele, avisa que o time responde depois e leva a dúvida à equipe.', chave('horario.ativo', !!h.ativo)) +
           '<div class="asw-horario' + (h.ativo ? '' : ' off') + '"><div class="asw-chips">' + DIAS.map(([d, r]) => '<button class="asw-chip' + ((h.dias || []).map(String).includes(d) ? ' on' : '') + '" data-dia="' + d + '">' + r + '</button>').join('') + '</div>' +
-          '<div class="asw-linha"><span>Das</span><span><input class="campo asw-hora" type="time" data-c="horario.ini" value="' + esc(h.ini || '08:00') + '"> às <input class="campo asw-hora" type="time" data-c="horario.fim" value="' + esc(h.fim || '18:00') + '"></span></div>' +
-          '<textarea class="campo" rows="2" data-c="horario.mensagem" placeholder="Mensagem fora do horário">' + esc(h.mensagem || '') + '</textarea></div>' +
-        '</div></div>';
+          '<div class="asw-par">Das <input class="campo asw-hora" type="time" data-c="horario.ini" value="' + esc(h.ini || '08:00') + '"> às <input class="campo asw-hora" type="time" data-c="horario.fim" value="' + esc(h.fim || '18:00') + '"></div>' +
+          '<textarea class="campo" rows="2" data-c="horario.mensagem" placeholder="Mensagem fora do horário">' + esc(h.mensagem || '') + '</textarea></div>') + '</div>';
     }
     if (S.aba === 'equipe') {
       const ge = c.grupo_equipe || '';
-      return '<div class="asw-card asw-ge"><div class="asw-ge-top"><span class="asw-ge-ic">🔔</span><div><h3>Grupo da equipe</h3>' +
-          '<p class="asw-sub">Ele lê os grupos dos clientes e manda aqui <b>o que cada cliente pediu e ninguém respondeu</b>. Nesse grupo, chame pelo nome para perguntar de qualquer cliente: “' + esc((c.nome || 'B7').split(' ')[0]) + ' o que tem da Arena Deck?” ou “' + esc((c.nome || 'B7').split(' ')[0]) + ', pendências”.</p></div></div>' +
-        '<div class="asw-ge-campos"><div><label class="rot">Grupo</label><select class="campo" data-c="grupo_equipe"><option value="">— escolha o grupo interno —</option>' +
-          S.todosGrupos.map(g => '<option value="' + esc(g.jid) + '"' + (g.jid === ge ? ' selected' : '') + '>' + esc(g.nome || g.jid) + '</option>').join('') + '</select></div>' +
-        '<div><label class="rot">Mandar as pendências</label><select class="campo" data-c="resumo_horas" data-num>' + [[1, 'a cada 1 hora'], [2, 'a cada 2 horas'], [3, 'a cada 3 horas'], [4, 'a cada 4 horas'], [6, 'a cada 6 horas'], [12, '2 vezes por dia'], [24, '1 vez por dia'], [168, '1 vez por semana'], [720, '1 vez por mês']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.resumo_horas || 3) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div>' +
-        '<div><label class="rot">Conta como pendente depois de</label><select class="campo" data-c="resumo_espera_min" data-num>' + [[15, '15 min sem resposta'], [30, '30 min sem resposta'], [60, '1 hora sem resposta'], [120, '2 horas sem resposta']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.resumo_espera_min || 30) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div></div>' +
-        '<div class="asw-ge-pe"><span class="asw-sub">Só no horário de atendimento (seg a sex, 8h–18h se o horário não estiver ligado).</span><button class="b pri" data-pendencias' + (ge ? '' : ' disabled') + '>Mandar pendências agora</button></div></div>' +
-        '<p class="asw-sub asw-topo">Quem aparece aqui pode ser <b>marcado</b> por ele quando o assunto for seu e <b>recebe as dúvidas</b> no WhatsApp (responda citando o aviso). Alguém da equipe que marcar o assistente num grupo dá uma <b>ordem</b> — ex.: “@' + esc((c.nome || 'B7').split(' ')[0]) + ' avisa que a arte sai amanhã”.</p>' +
-        /* 4.67.4: regras fixas da equipe, modo restrito e nível da zoação */
-        '<div class="asw-card asw-regeq"><h3>Com a equipe</h3><p class="asw-sub">Valem quando o ' + esc((c.nome || 'Otto').split(' ')[0]) + ' fala com a equipe: no grupo interno e no privado de quem está aqui embaixo. Com cliente, valem o jeito e as regras do atendimento.</p>' +
-          '<label class="asw-sw"><input type="checkbox" data-c="modo_restrito"' + (c.modo_restrito ? ' checked' : '') + '><span></span><div><b>Modo restrito</b><small>Ligado: nada de palavrão ou xingamento, nem de brincadeira. Desligado: zoação liberada com a equipe — nunca com cliente nem sobre cliente.</small></div></label>' +
-          '<div class="asw-vigia' + (c.modo_restrito ? ' off' : '') + '"><label class="rot">Até onde a zoação pode ir</label><select class="campo" data-c="zoacao_nivel">' +
-            [['leve', 'Leve: tiração de sarro, sem palavrão pesado'], ['medio', 'Média: palavrão de resenha, no tom de quem pediu'], ['pesado', 'Pesada: pode pegar pesado quando pedirem (sem preconceito nem ameaça)']]
-              .map(([v, r]) => '<option value="' + v + '"' + ((c.zoacao_nivel || 'medio') === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>' +
-            '<small class="asw-sub">Ele mede pelo tom de quem pediu: brincadeira leve vira resposta leve; só chega no limite se pedirem pesado.</small></div>' +
-          '<label class="rot">Regras fixas da equipe</label><textarea class="campo" data-c="regras_equipe" rows="4" maxlength="2000" placeholder="Uma por linha. Ex.: Não zoar a Talita (ela não curte). Sempre chamar o Yury de chefe. Não mandar figurinha antes das 8h.">' + esc(c.regras_equipe || '') + '</textarea></div>' +
-        '<div class="asw-card asw-auto"><h3>Por conta própria</h3>' +
-          '<div class="asw-vigia"><label class="rot">Nos grupos de cliente</label><select class="campo" data-c="modo_clientes">' +
-            '<option value="vigia"' + ((c.modo_clientes || 'vigia') !== 'atende' ? ' selected' : '') + '>Só vigiar: não responde o cliente; se ninguém da equipe responder, manda o print no grupo da equipe</option>' +
-            '<option value="atende"' + (c.modo_clientes === 'atende' ? ' selected' : '') + '>Atender: responde o cliente quando chamado</option></select>' +
-            '<small class="asw-sub">Avisar depois de <select class="campo fina" data-c="vigia_min" data-num>' + [10, 15, 20, 30, 45, 60, 90, 120].map(v => '<option value="' + v + '"' + (Number(c.vigia_min || 20) === v ? ' selected' : '') + '>' + v + ' min</option>').join('') + '</select> sem resposta da equipe (no horário). As ordens da equipe dentro do grupo do cliente continuam valendo.</small></div>' +
-          '<label class="asw-sw"><input type="checkbox" data-c="alertas_ligados"' + (c.alertas_ligados !== false ? ' checked' : '') + '><span></span><div><b>Avisar no grupo da equipe</b><small>Demanda atrasada ou que vence amanhã sem começar, cliente esperando há mais de 2h, cliente que aprovou algo. No máximo a cada 30 min, no horário, sem repetir.</small></div></label>' +
-          '<label class="asw-sw"><input type="checkbox" data-c="resumo_dia_ligado"' + (c.resumo_dia_ligado !== false ? ' checked' : '') + '><span></span><div><b>Resumo do dia</b><small>Entregas, o que vence amanhã, atrasos e quem espera resposta — 1 vez por dia útil, a partir de <input class="campo fina asw-hora" type="time" data-c="resumo_dia_hora" value="' + esc(c.resumo_dia_hora || '18:00') + '">.</small></div></label>' +
-          '<label class="asw-sw"><input type="checkbox" data-c="responder_audio"' + (c.responder_audio !== false ? ' checked' : '') + '><span></span><div><b>Responder em áudio quando mandarem áudio</b><small>Com a equipe. Também fala quando pedirem (“Otto, me manda um áudio”).</small></div></label>' +
-          '<div class="asw-voz"><label class="rot">Voz</label><div class="asw-voz-l"><select class="campo" data-c="voz">' + VOZES.map(([v, d]) => '<option value="' + v + '"' + ((c.voz || 'Orus') === v ? ' selected' : '') + '>' + v + ' · ' + d + '</option>').join('') + '</select>' +
-            '<button class="b fina contorno" data-voz-ouvir>▶ Ouvir</button></div>' +
-            '<label class="rot">Jeito de falar</label><input class="campo" data-c="voz_estilo" maxlength="200" placeholder="Ex.: animado, jovem, sotaque baiano leve" value="' + esc(c.voz_estilo || '') + '">' +
-            '<label class="rot">Voz da ElevenLabs (opcional, inclusive voz clonada)</label><div class="asw-voz-l"><select class="campo" data-c="voz_provedor"><option value="gemini"' + ((c.voz_provedor || 'gemini') === 'gemini' ? ' selected' : '') + '>Google (padrão)</option><option value="elevenlabs"' + (c.voz_provedor === 'elevenlabs' ? ' selected' : '') + '>ElevenLabs</option></select>' +
-            '<input class="campo" data-c="voz_eleven_id" placeholder="ID da voz na ElevenLabs" value="' + esc(c.voz_eleven_id || '') + '"></div>' +
-            '<small class="asw-sub">A ElevenLabs precisa da chave ELEVENLABS_API_KEY nos segredos das funções do Supabase. Sem ela, usa a voz do Google.</small></div></div>' +
-        '<div class="asw-card asw-dono"><label class="rot">Quando quem fala é o próprio celular do B7, o Otto age como</label><select class="campo" data-c="dono_perfil_id"><option value="">o administrador principal</option>' +
-          (S.perfis || []).map(u => '<option value="' + esc(u.id) + '"' + (u.id === c.dono_perfil_id ? ' selected' : '') + '>' + esc(u.nome) + '</option>').join('') + '</select>' +
-          '<p class="asw-sub">O Otto cria, edita e exclui demandas em nome de quem pediu, com as permissões dessa pessoa no B7.</p></div>' +
-        '<div class="asw-card asw-qq"><h3>Quem é quem</h3><p class="asw-sub">Como o ' + esc((c.nome || 'Otto').split(' ')[0]) + ' apresenta cada pessoa (ex.: “programador do sistema e videomaker”, “dono da Branding7”). Em branco, ele usa a função do usuário no B7.</p>' +
-          (S.perfis || []).map(u => '<label class="asw-qq-l"><b>' + esc(u.nome) + '</b><input class="campo" data-qq="' + esc(u.id) + '" maxlength="200" placeholder="pela função no sistema" value="' + esc(((c.quem_e_quem || {})[u.id]) || '') + '"></label>').join('') + '</div>' +
-        '<div class="asw-equipe">' + (c.equipe || []).map((p, i) =>
-        '<div class="asw-pes" data-i="' + i + '"><span class="asw-av p">' + esc(ini(p.nome)) + '</span><div class="asw-pes-c">' +
-          '<input class="campo" data-p="nome" placeholder="Nome" value="' + esc(p.nome || '') + '">' +
-          '<input class="campo" data-p="numero" inputmode="tel" placeholder="WhatsApp com DDD (55 62 9…)" value="' + esc(p.numero || '') + '">' +
-          '<input class="campo" data-p="assuntos" placeholder="Cuida de… (ex.: artes, gravações)" value="' + esc(p.assuntos || '') + '">' +
-          '<input class="campo" data-p="apelidos" maxlength="120" placeholder="Apelidos, separados por vírgula (ex.: Pedrão, PP)" title="Como a equipe chama essa pessoa. Evita confundir com cliente de mesmo nome." value="' + esc(p.apelidos || '') + '">' +
-          '<select class="campo" data-p="perfil_id" title="Em nome de quem o Otto mexe nas demandas quando esta pessoa pede"><option value="">Usuário no B7: pelo nome</option>' +
-            (S.perfis || []).map(u => '<option value="' + esc(u.id) + '"' + (u.id === p.perfil_id ? ' selected' : '') + '>Usuário no B7: ' + esc(u.nome) + '</option>').join('') + '</select>' +
-          '<label class="asw-sw p"><input type="checkbox" data-p="duvidas"' + (p.duvidas !== false ? ' checked' : '') + '><span></span>Recebe as dúvidas</label></div>' +
-          '<button class="asw-x" data-tira-pes="' + i + '" aria-label="Tirar">✕</button></div>').join('') +
-        '<button class="asw-pes asw-pes-nova" data-mais-pes><span>＋</span>Adicionar pessoa</button></div>';
+      return bloco('Grupo da equipe', 'Onde ele conversa com vocês, manda as pendências e avisa quem precisa responder. Lá, chame pelo nome: “' + nome + ', o que tem da Arena Deck?”.',
+          linha('Grupo', '', '<select class="campo" data-c="grupo_equipe"><option value="">Escolha o grupo interno</option>' + S.todosGrupos.map(g => '<option value="' + esc(g.jid) + '"' + (g.jid === ge ? ' selected' : '') + '>' + esc(g.nome || g.jid) + '</option>').join('') + '</select>') +
+          linha('Mandar as pendências', 'Quem está esperando resposta, no horário de atendimento.', '<select class="campo" data-c="resumo_horas" data-num>' + [[1, 'A cada 1 hora'], [2, 'A cada 2 horas'], [3, 'A cada 3 horas'], [4, 'A cada 4 horas'], [6, 'A cada 6 horas'], [12, '2 vezes por dia'], [24, '1 vez por dia'], [168, '1 vez por semana'], [720, '1 vez por mês']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.resumo_horas || 3) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>') +
+          linha('Conta como pendente depois de', '', '<select class="campo" data-c="resumo_espera_min" data-num>' + [[15, '15 min sem resposta'], [30, '30 min sem resposta'], [60, '1 hora sem resposta'], [120, '2 horas sem resposta']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.resumo_espera_min || 30) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>') +
+          '<div class="asw-acao"><button class="b pri" data-pendencias' + (ge ? '' : ' disabled') + '>Mandar pendências agora</button></div>') +
+        bloco('Com a equipe', 'Valem no grupo interno e no privado de quem está na lista abaixo. Com cliente, valem as regras da Personalidade.',
+          linha('Modo restrito', 'Ligado: nada de palavrão, nem de brincadeira. Desligado: zoação liberada com a equipe — nunca com cliente nem sobre cliente.', chave('modo_restrito', !!c.modo_restrito)) +
+          '<div class="asw-row asw-vigia' + (c.modo_restrito ? ' off' : '') + '"><div class="asw-row-t"><b>Até onde a zoação pode ir</b><small>Ele mede pelo tom de quem pediu e não passa deste limite.</small></div><div class="asw-row-c">' + seg('zoacao_nivel', c.zoacao_nivel || 'medio', [['leve', 'Leve'], ['medio', 'Média'], ['pesado', 'Pesada']]) + '</div></div>' +
+          '<label class="asw-lb">Regras fixas da equipe</label><textarea class="campo" data-c="regras_equipe" rows="3" maxlength="2000" placeholder="Uma por linha. Ex.: não zoar a Talita; sempre chamar o Yury de chefe.">' + esc(c.regras_equipe || '') + '</textarea>', 'asw-regeq') +
+        bloco('Pessoas', 'Quem é da equipe para o ' + nome + ' (pelo número). Elas podem dar ordens, recebem as dúvidas e são marcadas quando o assunto é delas.',
+          '<div class="asw-equipe">' + (c.equipe || []).map((p, i) =>
+            '<div class="asw-pes" data-i="' + i + '"><div class="asw-pes-top"><span class="asw-av p">' + esc(ini(p.nome)) + '</span>' +
+              '<input class="campo asw-pes-nome" data-p="nome" placeholder="Nome" aria-label="Nome" value="' + esc(p.nome || '') + '">' +
+              '<button class="asw-x" data-tira-pes="' + i + '" aria-label="Tirar ' + esc(p.nome || 'pessoa') + '">✕</button></div>' +
+              '<div class="asw-pes-c">' +
+              '<label><span>WhatsApp</span><input class="campo" data-p="numero" inputmode="tel" placeholder="55 77 9…" value="' + esc(p.numero || '') + '"></label>' +
+              '<label><span>Apelidos</span><input class="campo" data-p="apelidos" maxlength="120" placeholder="Pedrão, PP" value="' + esc(p.apelidos || '') + '"></label>' +
+              '<label class="larga"><span>Cuida de</span><input class="campo" data-p="assuntos" placeholder="Artes, gravações…" value="' + esc(p.assuntos || '') + '"></label>' +
+              '<label class="larga"><span>Usuário no B7</span><select class="campo" data-p="perfil_id" title="Em nome de quem ele mexe nas demandas quando esta pessoa pede"><option value="">Pelo nome</option>' +
+                (S.perfis || []).map(u => '<option value="' + esc(u.id) + '"' + (u.id === p.perfil_id ? ' selected' : '') + '>' + esc(u.nome) + '</option>').join('') + '</select></label></div>' +
+              '<label class="asw-sw p"><input type="checkbox" data-p="duvidas"' + (p.duvidas !== false ? ' checked' : '') + '><span></span>Recebe as dúvidas dos clientes</label></div>').join('') +
+          '<button class="asw-pes asw-pes-nova" data-mais-pes><span>＋</span>Adicionar pessoa</button></div>') +
+        '<div class="asw-2">' +
+        bloco('Quem é quem', 'Como ele apresenta cada pessoa. Em branco, usa a função no B7.',
+          (S.perfis || []).map(u => '<label class="asw-qq-l"><b>' + esc(u.nome) + '</b><input class="campo" data-qq="' + esc(u.id) + '" maxlength="200" placeholder="pela função no sistema" value="' + esc(((c.quem_e_quem || {})[u.id]) || '') + '"></label>').join('')) +
+        bloco('Celular do B7', 'Quando quem fala é o próprio número do B7, ele cria e mexe em demandas em nome de:',
+          '<select class="campo" data-c="dono_perfil_id"><option value="">O administrador principal</option>' + (S.perfis || []).map(u => '<option value="' + esc(u.id) + '"' + (u.id === c.dono_perfil_id ? ' selected' : '') + '>' + esc(u.nome) + '</option>').join('') + '</select>') + '</div>';
     }
-    if (S.aba === 'grupos') {
+    if (S.aba === 'clientes') {
       const q = S.busca.toLowerCase(), gs = S.grupos.filter(g => !q || String(g.nome).toLowerCase().includes(q));
-      return '<div class="asw-card"><div class="asw-gtopo"><input class="campo" id="asw-busca" placeholder="Buscar grupo…" value="' + esc(S.busca) + '"><button class="b fina contorno" data-todos="1">Ligar todos</button><button class="b fina contorno" data-todos="0">Desligar todos</button></div>' +
-        '<p class="asw-sub">Só grupos ligados a um cliente do B7. Regras do grupo valem só ali (ex.: “cliente prefere ser chamado de Dr. Rafael”).</p>' +
-        (gs.length ? gs.map(g => { const gc = (c.grupos || {})[g.jid] || {};
-          return '<div class="asw-g' + (gc.desligado ? ' off' : '') + '"><label class="asw-sw"><input type="checkbox" data-g="' + esc(g.jid) + '"' + (gc.desligado ? '' : ' checked') + '><span></span></label>' +
-            '<span class="asw-av g">' + (g.foto_url ? '<img src="' + esc(g.foto_url) + '" alt="" onerror="this.remove()">' : '') + esc(ini(g.nome)) + '</span>' +
-            '<b>' + esc(g.nome || '') + '</b><input class="campo" data-gr="' + esc(g.jid) + '" placeholder="Regras só deste grupo (opcional)" value="' + esc(gc.regras || '') + '"></div>'; }).join('')
-          : '<div class="asw-nada">Nenhum grupo encontrado.<small>Ligue os grupos aos clientes na Central (⋮ da conversa → Ligar a um cliente).</small></div>') + '</div>';
+      const mc = (c.modo_clientes || 'vigia') === 'atende' ? 'atende' : 'vigia';
+      return bloco('Nos grupos de cliente', 'O que ele faz quando um cliente escreve.',
+          linha('Modo', mc === 'vigia' ? 'Só vigiar: não responde o cliente. Se ninguém da equipe responder, manda o print no grupo da equipe marcando quem precisa.' : 'Atender: responde o cliente quando chamado.', seg('modo_clientes', mc, [['vigia', 'Só vigiar'], ['atende', 'Atender']])) +
+          linha('Avisar a equipe depois de', 'Sem resposta da equipe, no horário de atendimento.', '<select class="campo" data-c="vigia_min" data-num>' + [10, 15, 20, 30, 45, 60, 90, 120].map(v => '<option value="' + v + '"' + (Number(c.vigia_min || 20) === v ? ' selected' : '') + '>' + v + ' min</option>').join('') + '</select>') +
+          linha('Avisos no grupo da equipe', 'Demanda atrasada ou que vence amanhã sem começar, cliente esperando há mais de 2 h, cliente que aprovou algo. No máximo a cada 30 min.', chave('alertas_ligados', c.alertas_ligados !== false)) +
+          linha('Resumo do dia', 'Entregas, o que vence amanhã, atrasos e quem espera resposta, 1 vez por dia útil a partir de <input class="campo asw-hora" type="time" data-c="resumo_dia_hora" value="' + esc(c.resumo_dia_hora || '18:00') + '">.', chave('resumo_dia_ligado', c.resumo_dia_ligado !== false))) +
+        bloco('Grupos', 'Só grupos ligados a um cliente do B7. Desligado, ele não manda nada ali — nem a pedido.',
+          '<div class="asw-gtopo"><input class="campo" id="asw-busca" placeholder="Buscar grupo…" value="' + esc(S.busca) + '"><button class="b fina contorno" data-todos="1">Ligar todos</button><button class="b fina contorno" data-todos="0">Desligar todos</button></div>' +
+          (gs.length ? gs.map(g => { const gc = (c.grupos || {})[g.jid] || {};
+            return '<div class="asw-g' + (gc.desligado ? ' off' : '') + '"><label class="asw-tg"><input type="checkbox" data-g="' + esc(g.jid) + '"' + (gc.desligado ? '' : ' checked') + ' aria-label="' + esc(g.nome || '') + '"><span></span></label>' +
+              '<span class="asw-av g">' + (g.foto_url ? '<img src="' + esc(g.foto_url) + '" alt="" onerror="this.remove()">' : '') + esc(ini(g.nome)) + '</span>' +
+              '<b>' + esc(g.nome || '') + '</b><input class="campo" data-gr="' + esc(g.jid) + '" placeholder="Regras só deste grupo (opcional)" value="' + esc(gc.regras || '') + '"></div>'; }).join('')
+            : '<div class="asw-nada">Nenhum grupo encontrado.<small>Ligue os grupos aos clientes na Central (⋮ da conversa → Ligar a um cliente).</small></div>'));
     }
     if (S.aba === 'saber') {
-      return '<div class="asw-card"><h3>Memória</h3><p class="asw-sub">Combinados e preferências que ele sempre segue. Ele guarda sozinho quando pedem no WhatsApp (“Otto, lembra que…”); aqui dá para ver, incluir e tirar.</p>' +
+      return '<div class="asw-2">' +
+        bloco('Memória', 'Combinados e preferências que ele sempre segue. Ele guarda sozinho quando pedem (“' + nome + ', lembra que…”).',
           '<div class="asw-ensina"><input class="campo" id="asw-mem-t" maxlength="500" placeholder="Ex.: o Kevin prefere receber os prints no grupo da equipe"><input class="campo" id="asw-mem-s" maxlength="120" placeholder="Sobre (opcional)"><button class="b pri" data-mem-add>Guardar</button></div>' +
-          '<div class="asw-mem">' + ((S.mem || []).map(m => '<div class="asw-ap" data-mem="' + esc(m.id) + '"><p>' + esc(m.texto) + '</p><small>' + esc([m.sobre, m.criado_por, quando(m.criada_em)].filter(Boolean).join(' · ')) + '</small><div class="asw-ap-ac"><button class="asw-x" data-mem-tira aria-label="Esquecer">✕</button></div></div>').join('') || '<div class="asw-nada">Nada guardado ainda.</div>') + '</div></div>' +
-        '<div class="asw-card"><h3>Ensinar algo</h3><p class="asw-sub">Ele usa isso como verdade em todos os grupos. Também aprende sozinho quando a equipe responde uma dúvida.</p>' +
-        '<div class="asw-ensina"><input class="campo" id="asw-ap-p" placeholder="Pergunta / assunto (ex.: prazo padrão de arte)"><input class="campo" id="asw-ap-r" placeholder="Resposta (ex.: 2 dias úteis depois do briefing)"><button class="b pri" data-ensinar>Ensinar</button></div></div>' +
-        '<div class="asw-saber">' + (S.ap.map(a => '<div class="asw-ap' + (a.ativo === false ? ' off' : '') + '" data-ap="' + esc(a.id) + '"><b>' + esc(a.pergunta) + '</b><p>' + esc(a.resposta) + '</p>' +
-          '<small>' + esc([a.respondido_por, a.grupo, quando(a.criado_em)].filter(Boolean).join(' · ')) + '</small>' +
-          '<div class="asw-ap-ac"><label class="asw-sw p"><input type="checkbox" data-ap-ativo' + (a.ativo !== false ? ' checked' : '') + '><span></span>Usar</label><button class="asw-x" data-esquece aria-label="Esquecer">✕</button></div></div>').join('')
-          || '<div class="asw-nada">Ainda não aprendeu nada.<small>Ensine acima, ou responda as dúvidas que ele levar à equipe.</small></div>') + '</div>';
+          '<div class="asw-mem">' + ((S.mem || []).map(m => '<div class="asw-ap" data-mem="' + esc(m.id) + '"><p>' + esc(m.texto) + '</p><small>' + esc([m.sobre, m.criado_por, quando(m.criada_em)].filter(Boolean).join(' · ')) + '</small><div class="asw-ap-ac"><button class="asw-x" data-mem-tira aria-label="Esquecer">✕</button></div></div>').join('') || '<div class="asw-nada">Nada guardado ainda.</div>') + '</div>') +
+        bloco('Respostas ensinadas', 'Ele usa como verdade com os clientes. Também aprende quando a equipe responde uma dúvida.',
+          '<div class="asw-ensina"><input class="campo" id="asw-ap-p" placeholder="Assunto (ex.: prazo padrão de arte)"><input class="campo" id="asw-ap-r" placeholder="Resposta (ex.: 2 dias úteis depois do briefing)"><button class="b pri" data-ensinar>Ensinar</button></div>' +
+          '<div class="asw-saber">' + (S.ap.map(a => '<div class="asw-ap' + (a.ativo === false ? ' off' : '') + '" data-ap="' + esc(a.id) + '"><b>' + esc(a.pergunta) + '</b><p>' + esc(a.resposta) + '</p>' +
+            '<small>' + esc([a.respondido_por, a.grupo, quando(a.criado_em)].filter(Boolean).join(' · ')) + '</small>' +
+            '<div class="asw-ap-ac"><label class="asw-sw p"><input type="checkbox" data-ap-ativo' + (a.ativo !== false ? ' checked' : '') + '><span></span>Usar</label><button class="asw-x" data-esquece aria-label="Esquecer">✕</button></div></div>').join('')
+            || '<div class="asw-nada">Ainda não aprendeu nada.</div>') + '</div>') + '</div>';
     }
     if (S.aba === 'testar') {
-      return '<div class="asw-teste"><div class="asw-teste-top"><select class="campo" id="asw-tjid">' + S.grupos.map(g => '<option value="' + esc(g.jid) + '"' + (g.jid === S.testeJid ? ' selected' : '') + '>' + esc(g.nome) + '</option>').join('') + '</select>' +
-        '<label class="asw-sw p"><input type="checkbox" id="asw-teq"' + (S.testeEquipe ? ' checked' : '') + '><span></span>Falar como equipe (dar uma ordem)</label></div>' +
-        '<div class="asw-chat" id="asw-chat">' + (S.teste.length ? S.teste.map(m => m.de === 'eu' ? '<div class="asw-bl eu">' + esc(m.t) + '</div>'
-          : m.de === 'pensa' ? '<div class="asw-bl ele pensa"><i></i><i></i><i></i></div>'
-          : '<div class="asw-bl ele"><b>' + esc(S.cfg.nome) + '</b>' + esc(m.t) + (m.pq ? '<span class="asw-pq">🤔 Perguntaria à equipe: ' + esc(m.pq) + '</span>' : '') + (m.meta ? '<small>' + esc(m.meta) + '</small>' : '') + '</div>').join('')
-          : '<div class="asw-nada">Escreva como se fosse o cliente no grupo escolhido.<small>Ele usa a conversa real do grupo e o que está em produção — e <b>não manda nada</b> no WhatsApp.</small></div>') + '</div>' +
-        '<div class="asw-teste-in"><input class="campo" id="asw-tin" placeholder="Ex.: Oi! Como está a arte da Black Friday?"><button class="b pri" data-testar>Enviar</button></div></div>';
+      return bloco('Testar sem mandar nada', 'Escreva como se fosse o cliente no grupo escolhido. Ele usa a conversa real e o que está em produção, mas não envia nada no WhatsApp.',
+        '<div class="asw-teste"><div class="asw-teste-top"><select class="campo" id="asw-tjid">' + S.grupos.map(g => '<option value="' + esc(g.jid) + '"' + (g.jid === S.testeJid ? ' selected' : '') + '>' + esc(g.nome) + '</option>').join('') + '</select>' +
+        '<label class="asw-sw p"><input type="checkbox" id="asw-teq"' + (S.testeEquipe ? ' checked' : '') + '><span></span>Falar como equipe</label></div>' +
+        '<div class="asw-chat" id="asw-chat">' + (S.teste.length ? S.teste.map(m => m.de === 'eu' ? '<div class="asw-bl2 eu">' + esc(m.t) + '</div>'
+          : m.de === 'pensa' ? '<div class="asw-bl2 ele pensa"><i></i><i></i><i></i></div>'
+          : '<div class="asw-bl2 ele"><b>' + esc(S.cfg.nome) + '</b>' + esc(m.t) + (m.pq ? '<span class="asw-pq">Perguntaria à equipe: ' + esc(m.pq) + '</span>' : '') + (m.meta ? '<small>' + esc(m.meta) + '</small>' : '') + '</div>').join('')
+          : '<div class="asw-nada">Ex.: “Oi! Como está a arte da Black Friday?”</div>') + '</div>' +
+        '<div class="asw-teste-in"><input class="campo" id="asw-tin" placeholder="Mensagem do cliente"><button class="b pri" data-testar>Enviar</button></div></div>');
     }
     return '';
   }
-  const sw = (k, on, t, d) => '<label class="asw-sw"><input type="checkbox" data-c="' + k + '"' + (on ? ' checked' : '') + '><span></span><div><b>' + t + '</b>' + (d ? '<small>' + d + '</small>' : '') + '</div></label>';
+  const sw = (k, on, t, d) => linha(t, d, chave(k, on));
 
   function definir(k, v) { const p = k.split('.'); let o = S.cfg; while (p.length > 1) { const x = p.shift(); o[x] = o[x] || {}; o = o[x]; } o[p[0]] = v; }
 
@@ -241,6 +282,12 @@ B7.AssistenteWA = (function () {
       if (t.dataset.c === 'grupo_equipe') { const bt = raiz.querySelector('[data-pendencias]'); if (bt) bt.disabled = !t.value; }
       definir(t.dataset.c, v);
       if (t.dataset.c === 'ativo') { desenhar(); return salvar(true); }
+      if (t.type === 'radio') { t.closest('.asw-seg').querySelectorAll('label').forEach(l => l.classList.toggle('on', l.contains(t))); }
+      if (t.dataset.c === 'velocidade') { const h = raiz.querySelector('.asw-humano'); if (h) h.classList.toggle('fora', t.value !== 'humano'); }
+      if (['velocidade', 'espera_min_s', 'espera_max_s'].includes(t.dataset.c)) { const tl = raiz.querySelector('#asw-tl2'); if (tl) { tl.outerHTML = linhaDoTempo(); const n = raiz.querySelector('#asw-tl2'); n.classList.add('anima'); } }
+      if (t.dataset.c === 'audio_max_s') { const o = raiz.querySelector('#asw-maxs'); if (o) o.textContent = t.value + ' s'; }
+      if (t.dataset.c === 'voz_provedor') { const e = raiz.querySelector('.asw-eleven'); if (e) e.classList.toggle('fora', t.value !== 'elevenlabs'); }
+      if (t.dataset.c === 'modo_clientes') { const d = t.closest('.asw-row').querySelector('.asw-row-t small'); if (d) d.textContent = t.value === 'vigia' ? 'Só vigiar: não responde o cliente. Se ninguém da equipe responder, manda o print no grupo da equipe marcando quem precisa.' : 'Atender: responde o cliente quando chamado.'; }
       if (t.dataset.c === 'modo_restrito') { const z = raiz.querySelector('.asw-regeq .asw-vigia'); if (z) z.classList.toggle('off', t.checked); }
       if (t.dataset.c === 'horario.ativo') { const h = raiz.querySelector('.asw-horario'); if (h) h.classList.toggle('off', !t.checked); }
       if (t.dataset.c === 'nome') { const h = raiz.querySelector('.asw-hero h1'); if (h) h.textContent = t.value || 'Assistente'; }
@@ -383,6 +430,8 @@ B7.AssistenteWA = (function () {
     const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
       equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), ...((p.apelidos || '').trim() ? { apelidos: String(p.apelidos).split(',').map(x => x.trim()).filter(Boolean).slice(0, 6).join(', ') } : {}), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
+      velocidade: ['rapido', 'natural', 'humano'].includes(c.velocidade) ? c.velocidade : 'natural', audio_humano: !!c.audio_humano,
+      audio_roteiro: ['auto', 'sempre', 'nunca'].includes(c.audio_roteiro) ? c.audio_roteiro : 'auto', audio_max_s: Math.max(15, Math.min(120, Number(c.audio_max_s) || 40)),
       regras_equipe: String(c.regras_equipe || '').slice(0, 2000), modo_restrito: !!c.modo_restrito, zoacao_nivel: ['leve', 'medio', 'pesado'].includes(c.zoacao_nivel) ? c.zoacao_nivel : 'medio',
       modo_clientes: c.modo_clientes === 'atende' ? 'atende' : 'vigia', vigia_min: Math.max(5, Number(c.vigia_min) || 20),
       alertas_ligados: c.alertas_ligados !== false, resumo_dia_ligado: c.resumo_dia_ligado !== false, resumo_dia_hora: /^\d{2}:\d{2}$/.test(c.resumo_dia_hora || '') ? c.resumo_dia_hora : '18:00',
