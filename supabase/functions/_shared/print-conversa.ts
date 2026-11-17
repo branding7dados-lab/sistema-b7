@@ -4,7 +4,8 @@
 // últimas mensagens de um grupo/conversa e manda no grupo da equipe:
 // "Otto, manda o print da conversa da Sabor da Feira".
 // Desenho em SVG → PNG com resvg (wasm), fontes Inter já embutidas.
-// Emojis não entram (a fonte não tem): são tirados do texto.
+// 4.66.1: emojis da Apple — cada emoji vira um caractere de marcação (uso privado),
+// ocupa o espaço certo na quebra de linha e é desenhado como imagem (assets/emoji/png).
 // =====================================================================
 import { initWasm, Resvg } from 'npm:@resvg/resvg-wasm@2.6.2';
 import { INTER_400, INTER_600 } from './fontes-b7.ts';
@@ -28,12 +29,58 @@ export type MsgPrint = {
 
 const L = 720, PAD = 14, BMAX = 520, FS = 15, LH = 20;
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-/* tira emoji (e tom de pele, seletores, junções) e qualquer letra que a fonte não tenha — senão vira um quadradinho */
+/* emojis: cada um vira um caractere de uso privado (U+F0000+n) ligado à imagem da Apple */
+const EMOJI_BASE = (Deno.env.get('B7_EMOJI_BASE') || 'https://sistema.branding7.com.br/assets/emoji/png/');
+const PUA0 = 0xF0000;
+let emojiChaves: string[] = [];                      /* índice → "1f44d-1f3fd" */
+const emojiImg = new Map<string, string | null>();  /* chave → data URI (cache entre prints) */
+const ehPUA = (c: string) => { const k = c.codePointAt(0) || 0; return k >= PUA0 && k < PUA0 + 0xFFFD; };
+const segm = new Intl.Segmenter('pt', { granularity: 'grapheme' });
+const EH_EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u;
+function marcarEmojis(s: string): string {
+  let out = '';
+  for (const { segment } of segm.segment(String(s || ''))) {
+    if (!EH_EMOJI.test(segment)) { out += segment; continue; }
+    const chave = [...segment].map(c => (c.codePointAt(0) || 0)).filter(k => k !== 0xFE0F).map(k => k.toString(16)).join('-');
+    let i = emojiChaves.indexOf(chave); if (i < 0) { i = emojiChaves.length; emojiChaves.push(chave); }
+    out += String.fromCodePoint(PUA0 + i);
+  }
+  return out;
+}
+async function carregarEmojis(): Promise<void> {
+  await Promise.all(emojiChaves.filter(k => !emojiImg.has(k)).map(async k => {
+    for (const tent of [k, k.split('-')[0]]) {
+      try {
+        const r = await fetch(EMOJI_BASE + tent + '.png', { signal: AbortSignal.timeout(6000) });
+        if (!r.ok) continue;
+        const u = new Uint8Array(await r.arrayBuffer()); let b = ''; for (let i = 0; i < u.length; i += 0x8000) b += String.fromCharCode(...u.subarray(i, i + 0x8000));
+        emojiImg.set(k, 'data:image/png;base64,' + btoa(b)); return;
+      } catch (_e) { /* tenta o próximo */ }
+    }
+    emojiImg.set(k, null);
+  }));
+}
+/* tira o que a fonte não tem (senão vira quadradinho); mantém os emojis marcados */
 const semEmoji = (s: string) => {
-  let t = String(s || '').replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Emoji_Component}\u{1F1E6}-\u{1F1FF}\u{FE0E}\u{FE0F}\u{200D}\u{20E3}]/gu, (c) => /[0-9#*]/.test(c) ? c : '');
-  if (fonteR) t = [...t].filter(c => c === '\n' || c === ' ' || c === '\t' || fonteR.charToGlyphIndex(c) > 0).join('');
+  let t = marcarEmojis(String(s || '')).replace(/[\u{FE0E}\u{FE0F}\u{200D}]/gu, '');
+  if (fonteR) t = [...t].filter(c => c === '\n' || c === ' ' || c === '\t' || ehPUA(c) || fonteR.charToGlyphIndex(c) > 0).join('');
   return t.replace(/[ \t]{2,}/g, ' ');
 };
+/* uma linha: texto em <text> e cada emoji como <image>, lado a lado */
+function linhaSVG(l: string, x: number, y: number, fs: number, attrs: string, peso = 400): string {
+  let out = '', cx = x, buf = '';
+  const solta = () => { if (buf) { out += `<text x="${cx.toFixed(1)}" y="${y}" font-size="${fs}"${peso >= 600 ? ' font-weight="600"' : ''} ${attrs} xml:space="preserve">${esc(buf)}</text>`; cx += largura(buf, fs, peso); buf = ''; } };
+  for (const c of [...l]) {
+    if (!ehPUA(c)) { buf += c; continue; }
+    solta();
+    const src = emojiImg.get(emojiChaves[(c.codePointAt(0) || 0) - PUA0]);
+    const t = fs * 1.2;
+    if (src) out += `<image href="${src}" x="${(cx + fs * 0.05).toFixed(1)}" y="${(y - fs * 0.98).toFixed(1)}" width="${t.toFixed(1)}" height="${t.toFixed(1)}"/>`;
+    cx += t + fs * 0.1;
+  }
+  solta();
+  return out;
+}
 const CORES = ['#53bdeb', '#f15c6d', '#06cf9c', '#ffbc38', '#a5b337', '#e26ab6', '#00a884', '#fc9775', '#9de1fe', '#c4a7f4'];
 const corDe = (n: string) => { let h = 0; for (const c of n) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CORES[h % CORES.length]; };
 
@@ -41,7 +88,8 @@ const corDe = (n: string) => { let h = 0; for (const c of n) h = (h * 31 + c.cha
 let fonteR: any = null, fonteN: any = null;
 function largura(t: string, fs = FS, peso = 400): number {
   const f = peso >= 600 ? fonteN : fonteR;
-  return f ? f.getAdvanceWidth(t, fs, { kerning: true }) : t.length * fs * 0.56;
+  let n = 0; const resto = [...t].filter(c => { if (ehPUA(c)) { n++; return false; } return true; }).join('');
+  return n * fs * 1.3 + (f ? f.getAdvanceWidth(resto, fs, { kerning: true }) : resto.length * fs * 0.56);
 }
 function quebrar(t: string, max: number, fs = FS): string[] {
   const out: string[] = [];
@@ -85,10 +133,16 @@ function corpoDe(m: MsgPrint): { rotulo: string; texto: string } {
 /** monta o PNG do "print" (largura 720 px, desenhado em 2x) */
 export async function printDaConversa(titulo: string, subtitulo: string, msgs: MsgPrint[], grupo: boolean, fotoTitulo?: string | null): Promise<Uint8Array> {
   await iniciar();
+  emojiChaves = [];
+  /* marca os emojis antes de medir; depois baixa as imagens de uma vez */
+  const prontas = msgs.map(m => ({ m, ...corpoDe(m) }));
+  for (const p of prontas) { semEmoji(p.m.autor_nome || ''); semEmoji(p.m.enviada_por_nome || ''); semEmoji(p.m.citada_previa || ''); }
+  semEmoji(titulo);
+  await carregarEmojis();
   const partes: string[] = [];
   let y = 64 + 12;
   let diaAnt = '', antKey = '', antEm = 0;
-  for (const m of msgs) {
+  for (const { m, rotulo, texto } of prontas) {
     const d = dia(m.criada_em);
     const novoDia = d !== diaAnt;
     if (novoDia) {
@@ -99,7 +153,6 @@ export async function printDaConversa(titulo: string, subtitulo: string, msgs: M
     }
     const mim = !!m.de_mim;
     const autor = mim ? (m.do_assistente ? 'Otto' : semEmoji(m.enviada_por_nome || 'Branding7').trim()) : semEmoji(m.autor_nome || 'Cliente').trim();
-    const { rotulo, texto } = corpoDe(m);
     /* mensagem sem nada para mostrar (reação, aviso do sistema, enquete apagada...): fica de fora */
     if (!rotulo && !texto.trim() && !((m.tipo === 'imagem' || m.tipo === 'video') && m.miniatura)) continue;
     const linhas = texto ? quebrar(texto.slice(0, 700), BMAX - 20) : [];
@@ -127,11 +180,11 @@ export async function printDaConversa(titulo: string, subtitulo: string, msgs: M
     }
     partes.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="${fundo}"/>`);
     let cy = y + 8;
-    if (temNome) { partes.push(`<text x="${x + 10}" y="${cy + 13}" font-size="13" font-weight="600" fill="${corDe(autor)}">${esc(autor)}</text>`); cy += 18; }
+    if (temNome) { partes.push(linhaSVG(autor, x + 10, cy + 13, 13, `fill="${corDe(autor)}"`, 600)); cy += 18; }
     if (cit.length) {
       const ch = cit.length * 17 + 16;
       partes.push(`<rect x="${x + 8}" y="${cy}" width="${w - 16}" height="${ch}" rx="6" fill="${mim ? '#025144' : '#1a2329'}"/><rect x="${x + 8}" y="${cy}" width="4" height="${ch}" rx="2" fill="#06cf9c"/>`);
-      cit.forEach((l, i) => partes.push(`<text x="${x + 20}" y="${cy + 20 + i * 17}" font-size="13" fill="#aebac1">${esc(l)}</text>`));
+      cit.forEach((l, i) => partes.push(linhaSVG(l, x + 20, cy + 20 + i * 17, 13, 'fill="#aebac1"')));
       cy += ch + 6;
     }
     if (thumb) {
@@ -142,7 +195,7 @@ export async function printDaConversa(titulo: string, subtitulo: string, msgs: M
       partes.push(`<circle cx="${x + 18}" cy="${cy + 10}" r="6" fill="none" stroke="#8696a0" stroke-width="1.6"/><text x="${x + 30}" y="${cy + 15}" font-size="14" font-weight="600" fill="#d1d7db">${esc(rotulo)}</text>`);
       cy += 22;
     }
-    linhas.forEach((l, i) => partes.push(`<text x="${x + 10}" y="${cy + 15 + i * LH}" font-size="${FS}" fill="#e9edef">${esc(l)}</text>`));
+    linhas.forEach((l, i) => partes.push(linhaSVG(l, x + 10, cy + 15 + i * LH, FS, 'fill="#e9edef"')));
     /* hora + ✓✓ (desenhados) */
     const hx = x + w - 10 - (mim ? 20 : 0);
     partes.push(`<text x="${hx}" y="${y + h - 7}" font-size="11" fill="${mim ? '#a6cbc4' : '#8696a0'}" text-anchor="end">${hora}</text>`);
@@ -159,7 +212,7 @@ export async function printDaConversa(titulo: string, subtitulo: string, msgs: M
 <rect width="${L}" height="64" fill="#202c33"/>
 <circle cx="38" cy="32" r="20" fill="${corDe(tituloLimpo)}"/><text x="38" y="37" font-size="14" font-weight="600" fill="#0b141a" text-anchor="middle">${esc(iniciais(tituloLimpo))}</text>
 ${fotoTitulo ? `<clipPath id="ft"><circle cx="38" cy="32" r="20"/></clipPath><rect x="18" y="12" width="40" height="40" fill="#ffffff" clip-path="url(#ft)"/><image href="${fotoTitulo}" x="18" y="12" width="40" height="40" preserveAspectRatio="xMidYMid meet" clip-path="url(#ft)"/>` : ''}
-<text x="70" y="28" font-size="16" font-weight="600" fill="#e9edef">${esc(tituloLimpo.slice(0, 60))}</text>
+${linhaSVG([...tituloLimpo].slice(0, 60).join(''), 70, 28, 16, 'fill="#e9edef"', 600)}
 <text x="70" y="48" font-size="12" fill="#8696a0">${esc(semEmoji(subtitulo).slice(0, 90))}</text>
 ${partes.join('\n')}
 </svg>`;
