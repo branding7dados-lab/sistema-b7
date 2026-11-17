@@ -217,3 +217,5 @@ html[data-theme="dark"] .asw-tag.fh{background:rgba(14,165,233,.16);color:#7DD3F
 .asw-voz{display:grid;gap:6px;margin-top:4px;}
 .asw-voz-l{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .asw-voz-l .campo{flex:1;min-width:160px;}
+.asw-vigia{display:grid;gap:6px;}
+.asw-vigia select.campo:not(.fina){width:100%;}

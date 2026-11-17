@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.65.0', versao: '4.65.0', em: '2026-11-17T07:30:00-03:00',
+    titulo: 'O Otto vigia os grupos de cliente',
+    itens: ['Nos grupos de cliente o Otto não responde mais o cliente: ele lê e entende a conversa.', 'Se o cliente pediu algo e ninguém da equipe respondeu em 20 min, ele manda o print da conversa no grupo da equipe dizendo o que o cliente quer e marca o pessoal.', 'Se alguém da equipe já respondeu (pelo número da B7 ou pelo celular), ele não faz nada.'] },
   { id: 'v-4.63.0', versao: '4.63.0', em: '2026-11-17T07:00:00-03:00', funcao: 'videomaker',
     titulo: 'Editar mensagem no WhatsApp do B7',
     itens: ['Na Central de Conversas, passe o mouse (ou toque) numa mensagem que você enviou: ✏️ edita (até 15 min depois) e a lixeira apaga para todos.', 'O Otto também edita ou apaga as mensagens dele quando você pedir, e manda figurinha quando combina.'] },

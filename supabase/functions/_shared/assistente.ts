@@ -466,6 +466,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   talvezResumo(sb, cfg).catch(e => console.log('resumo', String(e)));
   /* 4.61.0: avisos por conta própria e resumo do dia (sem cron: a cada mensagem, quem chega primeiro pega a vez) */
   talvezAvisos(sb, cfg).catch(e => console.log('avisos', String(e)));
+  talvezVigiar(sb, cfg).catch(e => console.log('vigia', String(e)));
   talvezResumoDia(sb, cfg, false).catch(e => console.log('resumo dia', String(e)));
   /* grupo da equipe: perguntas sobre qualquer cliente */
   if (cfg.grupo_equipe && jid === cfg.grupo_equipe) { await noGrupoEquipe(sb, cfg, raw, texto, ctx, numero); return; }
@@ -509,6 +510,8 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   const autorJid = String(key.participant || raw.participant || '');
   const autorFone = dig([key.participantAlt, key.participantPn].find((x: any) => typeof x === 'string') || autorJid);
   const daCasa = key.fromMe ? { nome: 'Você' } : daEquipe(cfg, autorFone);
+  /* 4.65.0: modo vigia (pedido do Yury) — o Otto não responde o cliente; só observa (talvezVigiar avisa a equipe) */
+  if (!daCasa && (cfg as any).modo_clientes !== 'atende') return;
 
   /* marcado? (@número, @código do WhatsApp, @nome) — ou respondeu CITANDO uma mensagem do assistente */
   const marcados = new Set<string>([...((ctx.mentionedJid || []) as string[]).map(dig), ...[...texto.matchAll(/@(\d{8,})/g)].map(v => v[1])]);
@@ -971,7 +974,7 @@ async function talvezEncaminhar(sb: SupabaseClient, cfg: Config, raw: any, pedid
   return true;
 }
 
-async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, aqui: string, forcar?: { conv: any; destino: string }): Promise<boolean> {
+async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, aqui: string, forcar?: { conv: any; destino: string; legenda?: string }): Promise<boolean> {
   let n = semAcento(pedido);
   /* 4.59.17: o que se falou aqui nos últimos 20 min (para "desse grupo", "C6 farma" respondendo a pergunta, etc.) */
   const { data: rec } = await sb.from('wa_mensagens').select('texto, do_assistente, criada_em').eq('jid', aqui).eq('nota', false)
@@ -1062,7 +1065,7 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
   try { png = await printDaConversa(conv.nome || 'Conversa', 'Print do B7 · ' + quando, lista, conv.tipo === 'grupo' || /@g\.us$/.test(conv.jid), fotoTitulo); }
   catch (e) { console.log('print', String(e).slice(0, 300)); await enviar(sb, cfg, aqui, 'Não consegui montar o print agora. Tenta de novo?', citarAqui ? { quoted: citarAqui } : {}); return true; }
   const conversa = lista.map(m => (m.de_mim ? '[EQUIPE] ' + (m.do_assistente ? cfg.nome : m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'Cliente')) + ': ' + (m.texto ? String(m.texto).slice(0, 400) : '(' + m.tipo + ')')).join('\n');
-  const r = await ia('Você é ' + cfg.nome + ', da equipe da Branding7. Abaixo está a conversa de um CLIENTE com a agência no WhatsApp. ' +
+  const r: Saida = forcar?.legenda ? { texto: forcar.legenda } : await ia('Você é ' + cfg.nome + ', da equipe da Branding7. Abaixo está a conversa de um CLIENTE com a agência no WhatsApp. ' +
     'Em 1 ou 2 frases curtas, conte para a equipe o que o CLIENTE está pedindo, perguntando ou esperando nessa conversa e se já responderam ou ainda falta responder. ' +
     'Fale do cliente na terceira pessoa (ex.: "A Camila pediu a arte da Black Friday pra hoje e ainda ninguém respondeu"). Se não há nada pendente, diga isso (ex.: "Tudo respondido por lá; o último assunto foi..."). ' +
     'Texto corrido, sem listas, sem inventar, sem falar de print. Não assine.',
@@ -1265,6 +1268,61 @@ async function enviarAudio(sb: SupabaseClient, cfg: Config, jid: string, audioB6
   if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
   return true;
 }
+/* ------------------------------------------------------------ 4.65.0: modo vigia */
+/** o cliente falou e ninguém da equipe respondeu: se precisar de alguém, print no grupo da equipe marcando o pessoal */
+async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
+  if (!cfg.grupo_equipe || (cfg as any).modo_clientes === 'atende') return;
+  if (!dentroDoHorario(cfg.horario?.ativo ? cfg.horario : HORARIO_PADRAO)) return;
+  const { data: vez } = await sb.from('wa_assistente').update({ vigia_ultimo: new Date().toISOString() }).eq('id', 1)
+    .or('vigia_ultimo.is.null,vigia_ultimo.lt.' + new Date(Date.now() - 3 * 60_000).toISOString()).select('id');
+  if (!vez || !vez.length) return;
+  const espera = Math.max(5, Number((cfg as any).vigia_min) || 20);
+  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').not('cliente_id', 'is', null).not('esperando_desde', 'is', null)
+    .lt('esperando_desde', new Date(Date.now() - espera * 60_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 24 * 3600_000).toISOString())
+    .order('esperando_desde', { ascending: true }).limit(15);
+  /* quem é da equipe (para saber se alguém já respondeu do celular pessoal) */
+  const fones = new Set((cfg.equipe || []).map(e => fim8(e.numero)).filter(Boolean));
+  const { data: ps } = await sb.from('perfis').select('nome').eq('estado', 'ativa').neq('papel', 'cliente');
+  const nomesEq = new Set([...((ps || []) as any[]).map(p => semAcento(p.nome)), ...(cfg.equipe || []).map(e => semAcento(String(e.nome || '')))].filter(Boolean));
+  let feitos = 0;
+  for (const c of (convs || []) as any[]) {
+    if (feitos >= 3) break;
+    if (((cfg.grupos || {})[c.jid] || {}).desligado) continue;
+    const chave = 'vigia:' + c.jid + ':' + c.esperando_desde;
+    const { data: ja } = await sb.from('wa_otto_avisos').select('chave').eq('chave', chave).maybeSingle();
+    if (ja) continue;
+    const { data: ms } = await sb.from('wa_mensagens').select('de_mim, do_assistente, autor_jid, autor_nome, tipo, texto, criada_em').eq('jid', c.jid).eq('nota', false).eq('apagada', false)
+      .gte('criada_em', new Date(Date.parse(c.esperando_desde) - 30 * 60_000).toISOString()).order('criada_em').limit(40);
+    const lista = (ms || []) as any[];
+    const depois = lista.filter(m => m.criada_em >= c.esperando_desde);
+    /* alguém da equipe já respondeu (pelo número da B7 ou pelo celular dele)? */
+    const autoresJid = [...new Set(depois.filter(m => !m.de_mim && m.autor_jid).map(m => String(m.autor_jid)))];
+    const { data: cts } = autoresJid.length ? await sb.from('wa_contatos').select('jid, numero').in('jid', autoresJid) : { data: [] as any[] };
+    const foneDe = new Map(((cts || []) as any[]).map(x => [x.jid, dig(x.numero)]));
+    const daEq = (m: any) => m.de_mim || fones.has(fim8(foneDe.get(m.autor_jid) || m.autor_jid)) || [...nomesEq].some(n => n && semAcento(String(m.autor_nome || '')).startsWith(n.split(' ')[0]) && semAcento(String(m.autor_nome || '')).includes(n.split(' ').slice(-1)[0]));
+    if (depois.some(daEq)) {
+      await marcarAvisados(sb, [chave]);
+      await sb.from('wa_conversas').update({ esperando_desde: null }).eq('jid', c.jid).eq('esperando_desde', c.esperando_desde);
+      continue;
+    }
+    /* precisa de alguém? (pedido, dúvida, reclamação, material, aprovação) — "ok", "obrigado", "bom dia" não */
+    const txt = lista.map(m => (daEq(m) ? '[EQUIPE] ' : '') + (m.autor_nome || 'Cliente') + ': ' + (m.texto ? String(m.texto).slice(0, 300) : '(' + m.tipo + ')')).join('\n');
+    const r = await ia('Você é ' + cfg.nome + ', que observa os grupos de clientes de uma agência. O cliente escreveu e ninguém da equipe respondeu ainda. Decida se precisa de alguém da equipe (pedido, dúvida, reclamação, material enviado, aprovação, cobrança, urgência) ou não (só "ok", "obrigado", "bom dia", conversa entre eles, figurinha). Responda SÓ um JSON: {"precisa": true|false, "resumo": "em 1 frase, o que o cliente quer — ex.: A Camila pediu a arte da Black Friday pra hoje"}.',
+      'GRUPO "' + (c.nome || '') + '" (mais antiga primeiro):\n' + txt, 200);
+    let j: any = null; try { const t = r.texto; j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (_e) { j = null; }
+    if (!(await marcarAvisados(sb, [chave])).length) continue;   /* outro pegou */
+    if (!j?.precisa) continue;
+    const min = Math.round((Date.now() - Date.parse(c.esperando_desde)) / 60_000);
+    const legenda = 'Pessoal, ' + String(j.resumo || 'o cliente está esperando resposta').replace(/^\s*pessoal,?\s*/i, '').replace(/\.?\s*$/, '') + '. Ninguém respondeu ainda (há ' + (min >= 60 ? Math.floor(min / 60) + 'h' + (min % 60 ? String(min % 60).padStart(2, '0') : '') : min + ' min') + ').';
+    await talvezPrint(sb, cfg, null, 'print ' + (c.nome || ''), cfg.grupo_equipe, { conv: c, destino: cfg.grupo_equipe, legenda });
+    /* marca quem recebe as dúvidas (ou todo mundo) */
+    const quem = (cfg.equipe || []).filter(e => e.nome && e.duvidas !== false).map(e => '@' + String(e.nome).split(/\s+/)[0]);
+    await enviar(sb, cfg, cfg.grupo_equipe, (quem.length ? quem.join(' ') : '@todos') + ' alguém pega esse? 👆');
+    await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, grupo: c.nome, autor: cfg.nome, pergunta: 'vigia ' + (c.nome || ''), resposta: legenda.slice(0, 800) });
+    feitos++;
+  }
+}
+
 /** de 30 em 30 min, no horário: o que merece aviso no grupo da equipe (atraso, vence amanhã, cliente esperando, aprovação) */
 async function talvezAvisos(sb: SupabaseClient, cfg: Config) {
   if (!cfg.grupo_equipe || (cfg as any).alertas_ligados === false) return;
@@ -1273,7 +1331,7 @@ async function talvezAvisos(sb: SupabaseClient, cfg: Config) {
   const { data: vez } = await sb.from('wa_assistente').update({ alertas_ultimo: new Date().toISOString() }).eq('id', 1)
     .or('alertas_ultimo.is.null,alertas_ultimo.lt.' + limite).select('id');
   if (!vez || !vez.length) return;
-  const avisos = await avisosPendentes(sb);
+  const avisos = (await avisosPendentes(sb)).filter(a => (cfg as any).modo_clientes === 'atende' || !a.chave.startsWith('espera:'));
   if (!avisos.length) return;
   const ok = new Set(await marcarAvisados(sb, avisos.map(a => a.chave)));
   const lista = avisos.filter(a => ok.has(a.chave)).slice(0, 12);
