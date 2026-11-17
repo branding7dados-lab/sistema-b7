@@ -25,6 +25,7 @@ import { gerar, provedorAtual } from './ia/servico.ts';
 import { carregarContexto } from './ia/whatsapp.ts';
 import { fichaRoteiros, type Logo } from './ficha.ts';
 import { fichaLinha } from './ficha-linha.ts';
+import { gerarImagem, formatoDoTexto, type Ref } from './imagem.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 type Pessoa = { nome?: string; numero?: string; assuntos?: string; duvidas?: boolean };
@@ -385,6 +386,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   /* 4.57.0: a equipe pedindo um documento no grupo do cliente → o PDF vai ali mesmo */
   if (modo === 'ordem') {
     const { data: cl } = await sb.from('clientes').select('id, nome').eq('id', conv.cliente_id).maybeSingle();
+    if (await talvezImagem(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid)) return;
     if (await talvezDocumento(sb, cfg, raw, texto.replace(/@\d{6,}/g, '').trim(), jid, cl)) return;
   }
   if (modo !== 'sem_marcacao' && await talvezRecado(sb, cfg, raw, texto, jid, { quem: autor, onde: 'grupo ' + (conv.nome || ''), cliente: !daCasa })) return;
@@ -602,6 +604,79 @@ async function enviarDocumento(sb: SupabaseClient, cfg: Config, jid: string, nom
   if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
   return r.dados;
 }
+/* ------------------------------------------------------------ 4.58.8: imagens */
+const PEDE_IMAGEM = /\b(ger[ae]r?|cri[ae]r?|fa(z|ca|zer)|desenh[ae]r?|mont[ae]r?|edit[ae]r?|mud[ae]r?|coloc[ae]r?|tir[ae]r?|troc[ae]r?|transform[ae]r?|melhor[ae]r?|bot[ae]r?|poe|ponha)\b/;
+const OBJ_IMAGEM = /\b(imagem|imagens|foto|fotos|arte|ilustracao|desenho|banner|thumb|thumbnail|capa|mockup|figura|fundo|logo)\b/;
+async function refDaMensagem(sb: SupabaseClient, m: any): Promise<Ref | null> {
+  const r = await evo('/chat/getBase64FromMediaMessage/' + I(), 'POST', { message: m }, 60000);
+  const b64 = r.dados?.base64;
+  if (!r.ok || !b64 || b64.length > 9_000_000) return null;
+  return { b64, mime: String(r.dados?.mimetype || 'image/jpeg').split(';')[0] };
+}
+async function refDaUrl(url: string): Promise<Ref | null> {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return null;
+    const u = new Uint8Array(await r.arrayBuffer());
+    if (u.length > 6_000_000) return null;
+    return { b64: paraB64(u), mime: (r.headers.get('content-type') || 'image/png').split(';')[0] };
+  } catch (_e) { return null; }
+}
+/** "Otto, gera uma imagem de..." (só a equipe pede). Responde e devolve true; senão false. */
+async function talvezImagem(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, destino: string): Promise<boolean> {
+  const n = semAcento(pedido);
+  const msg = desembrulhar(raw?.message);
+  const ctx = ctxDe(raw);
+  const citouImagem = !!desembrulhar(ctx.quotedMessage || {})?.imageMessage;
+  const temImagem = !!msg.imageMessage || citouImagem;
+  if (!OBJ_IMAGEM.test(n) || !(PEDE_IMAGEM.test(n) || /^(otto,?\s*)?(uma )?(imagem|arte|foto) d/.test(n))) return false;
+  /* "manda a foto do roteiro" etc. não é gerar: precisa de um verbo de criar/editar */
+  if (/\b(pdf|roteiro|linha editorial)\b/.test(n)) return false;
+  const citar = raw?.key?.id ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
+  await digitando(destino, cfg);
+  const refs: Ref[] = [];
+  /* a foto que veio junto, ou a citada */
+  if (msg.imageMessage) { const r = await refDaMensagem(sb, { key: raw.key, message: { imageMessage: msg.imageMessage } }); if (r) refs.push(r); }
+  else if (citouImagem && ctx.stanzaId) {
+    const { data: q } = await sb.from('wa_mensagens').select('midia_raw').eq('id', String(ctx.stanzaId)).maybeSingle();
+    const m = q?.midia_raw || { key: { id: ctx.stanzaId, remoteJid: raw?.key?.remoteJid, participant: ctx.participant }, message: { imageMessage: desembrulhar(ctx.quotedMessage).imageMessage } };
+    const r = await refDaMensagem(sb, m); if (r) refs.push(r);
+  }
+  /* "com a logo da X" */
+  let clienteNome = '';
+  const cls = await clientesCitados(sb, pedido);
+  if (cls.length) {
+    clienteNome = cls[0].nome;
+    if (/\blogo\b/.test(n)) {
+      const { data: cr } = await sb.from('clientes_resumo').select('logo_url').eq('id', cls[0].id).maybeSingle();
+      if (cr?.logo_url) { const r = await refDaUrl(String(cr.logo_url)); if (r) refs.push(r); }
+    }
+  }
+  const limpo = pedido.replace(/@\d{6,}/g, '').replace(new RegExp('^\\s*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + '[,:]?\\s*', 'i'), '').trim();
+  const descr = limpo + (clienteNome ? '\n(Cliente da agência: ' + clienteNome + '.)' : '') +
+    (refs.length ? '\n(Imagens anexadas: ' + (temImagem ? 'a primeira é a foto de base/referência' : '') + (temImagem && refs.length > 1 ? '; ' : '') + (refs.length > (temImagem ? 1 : 0) ? 'a logo do cliente' : '') + '.)' : '');
+  const t0 = Date.now();
+  const r = await gerarImagem(descr, refs, formatoDoTexto(n));
+  if (!r.ok) {
+    const txt = r.erro === 'faturamento' ? 'Não consegui gerar: a geração de imagem do Google precisa do faturamento ativado na conta da chave do Gemini.'
+      : r.erro === 'cota' ? 'Bati no limite de imagens do Google agora. Tenta de novo daqui a pouco.'
+      : r.erro === 'recusado' ? 'Esse pedido o gerador de imagem recusou. Tenta descrever de outro jeito.'
+      : r.erro === 'sem_chave' || r.erro === 'sem_modelo' ? 'A geração de imagem não está configurada ainda.'
+      : 'Não consegui gerar a imagem agora. Tenta de novo?';
+    await enviar(sb, cfg, destino, txt, citar ? { quoted: citar } : {});
+    await registrar(sb, { tipo: 'erro', jid: destino, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: 'imagem: ' + r.erro + (r.detalhe ? ' ' + r.detalhe.slice(0, 200) : '') });
+    return true;
+  }
+  const env = await evo('/message/sendMedia/' + I(), 'POST', { number: destino, mediatype: 'image', mimetype: r.mime, fileName: 'otto.' + (r.mime.includes('jpeg') ? 'jpg' : 'png'),
+    media: r.b64, caption: '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':* Prontinho.', ...(citar ? { quoted: citar } : {}) }, 90000);
+  if (env.ok) {
+    try { await gravar(sb, env.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ }
+    if (env.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', env.dados.key.id);
+  } else console.log('imagem envio', env.status, JSON.stringify(env.dados).slice(0, 200));
+  await registrar(sb, { tipo: env.ok ? 'imagem' : 'erro', jid: destino, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: 'imagem (' + r.modelo + ')', provedor: 'gemini', modelo: r.modelo, ms: Date.now() - t0 });
+  return true;
+}
+
 /** Pedido de documento? Responde e devolve true; senão false (segue a conversa normal). */
 async function talvezDocumento(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, destino: string, clientePadrao?: { id: string; nome: string } | null): Promise<boolean> {
   const n = semAcento(pedido);
@@ -746,6 +821,7 @@ async function talvezRecado(sb: SupabaseClient, cfg: Config, raw: any, texto: st
 async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
   const key = raw?.key || {};
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
+  if (await talvezImagem(sb, cfg, raw, pedido, destino)) return;
   if (await talvezDocumento(sb, cfg, raw, pedido, destino)) return;
   if (await talvezRecado(sb, cfg, raw, pedido, destino, { quem: String(raw?.pushName || (key.fromMe ? 'Você' : 'alguém da equipe')), onde: destino === cfg.grupo_equipe ? 'grupo da equipe' : 'privado' })) return;
   if (/pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta|esperando resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true, destino); return; }

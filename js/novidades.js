@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.58.8', versao: '4.58.8', em: '2026-11-17T22:30:00-03:00',
+    titulo: 'O Otto cria imagens',
+    itens: ['No WhatsApp, peça: "Otto, gera uma imagem de…". Ele manda a imagem ali mesmo.', 'Dá pra mandar uma foto com "Otto, tira o fundo" (ou responder uma foto) e ele edita. Com "com a logo da [cliente]", ele usa a logo do sistema.', 'Fale "story" para vertical, "banner" para horizontal.'] },
   { id: 'v-4.58.7', versao: '4.58.7', em: '2026-11-17T21:30:00-03:00', funcao: 'videomaker',
     titulo: 'Áudios do WhatsApp viram texto',
     itens: ['Na Central de Conversas, o que foi dito em cada áudio aparece escrito embaixo dele, até nos áudios longos.', 'Áudio antigo sem texto? Toque em "Transcrever" embaixo dele.'] },
