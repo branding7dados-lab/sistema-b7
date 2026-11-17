@@ -326,7 +326,7 @@ B7.CentralWA = (function () {
       if (m.citada_id) {
         const q = S.msgs.find(x => x.id === m.citada_id);
         const qa = q ? (q.de_mim ? 'Você' : (q.autor_nome || '')) : (m.citada_autor ? (/^\d{14,}$/.test(m.citada_autor) ? 'Contato' : '+' + m.citada_autor) : '');
-        corpo += '<span class="wz-q" data-ir="' + esc(m.citada_id) + '"><b style="--c:' + corDe(qa) + '">' + esc(qa || 'Mensagem') + '</b>' + esc(semCodigos((q && (q.texto || q.midia_nome)) || m.citada_previa || '')) + '</span>';
+        corpo += '<span class="wz-q" data-ir-msg="' + esc(m.citada_id) + '"><b style="--c:' + corDe(qa) + '">' + esc(qa || 'Mensagem') + '</b>' + esc(semCodigos((q && (q.texto || q.midia_nome)) || m.citada_previa || '')) + '</span>';
       }
       corpo += midia(m);
       if (m.texto && m.tipo !== 'localizacao' && m.tipo !== 'contato' && m.tipo !== 'enquete') corpo += '<span class="wz-txt">' + textoRico(m.texto) + '</span>';
@@ -468,7 +468,7 @@ B7.CentralWA = (function () {
     const fg = e.target.closest('[data-fig]'); if (fg) { if (fg.querySelector('img')) enviarFigurinha({ id: fg.dataset.fig }); return; }
     if (!e.target.closest('#wz-figs, .wz-fig-bt')) { const fx = raiz.querySelector('#wz-figs'); if (fx && !fx.hidden) fx.hidden = true; }
     const z = e.target.closest('[data-zoom]'); if (z) { const b = z.closest('[data-id]'); return previa(b ? b.dataset.id : '', z.dataset.zoom); }
-    const q = e.target.closest('[data-ir]'); if (q) { irParaMensagem(q.dataset.ir); return; }
+    const q = e.target.closest('[data-ir-msg]'); if (q) { irParaMensagem(q.dataset.irMsg); return; }
     const am = e.target.closest('[data-acao-msg]'); if (am) return acaoMsg(am.dataset.acaoMsg, am.closest('.wz-b').dataset.id, am);
     const w = e.target.closest('[data-wz]'); if (w) return acao(w.dataset.wz);
     /* celular: tocar na mensagem mostra responder / reagir / apagar */
@@ -823,7 +823,7 @@ B7.CentralWA = (function () {
     const fotos = msgs.filter(m => (m.tipo === 'imagem' || m.tipo === 'video') && m.miniatura).slice(-6).reverse();
     const ic = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
     const ultHtml = ult ? '<div class="wz-box wz-ld-ult"><h4>Última mensagem</h4><p><b>' + esc(quemUlt) + '</b><small>' + hm(ult.criada_em) + '</small></p><span>' + esc(resumoUlt).slice(0, 160) + '</span></div>' : '';
-    const fotosHtml = fotos.length ? '<div class="wz-box"><h4>Mídia recente</h4><div class="wz-ld-fotos">' + fotos.map(m => '<button data-ir="' + esc(m.id) + '" title="Ir para a mensagem"><img src="data:image/jpeg;base64,' + m.miniatura + '" alt="">' + (m.tipo === 'video' ? '<i>▶</i>' : '') + '</button>').join('') + '</div></div>' : '';
+    const fotosHtml = fotos.length ? '<div class="wz-box"><h4>Mídia recente</h4><div class="wz-ld-fotos">' + fotos.map(m => '<button data-ir-msg="' + esc(m.id) + '" title="Ir para a mensagem"><img src="data:image/jpeg;base64,' + m.miniatura + '" alt="">' + (m.tipo === 'video' ? '<i>▶</i>' : '') + '</button>').join('') + '</div></div>' : '';
     /* 4.67.0: grupo da equipe ou privado de alguém da equipe → painel da equipe */
     if (!cli) {
       const eq = await painelEquipe(c.jid);
