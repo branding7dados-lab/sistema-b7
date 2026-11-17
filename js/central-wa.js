@@ -123,12 +123,12 @@ B7.CentralWA = (function () {
       S.contatos = new Map((data || []).map(x => [x.jid, x.nome]));
     } catch (e) { S.contatos = S.contatos || new Map(); }
   }
-  /* admin: nomes e fotos dos contatos, no máximo a cada 12 h */
+  /* admin: nomes e fotos dos contatos, no máximo a cada 6 h (4.58.6: as fotos vencem) */
   function atualizarContatosDeVezEmQuando() {
     if (!souAdmin()) return;
-    let ult = 0; try { ult = Number(localStorage.getItem('b7.wz.contatos') || 0); } catch (e) {}
-    if (Date.now() - ult < 12 * 3600e3) return;
-    try { localStorage.setItem('b7.wz.contatos', String(Date.now())); } catch (e) {}
+    let ult = 0; try { ult = Number(localStorage.getItem('b7.wz.contatos2') || 0); } catch (e) {}
+    if (Date.now() - ult < 6 * 3600e3) return;
+    try { localStorage.setItem('b7.wz.contatos2', String(Date.now())); } catch (e) {}
     chamar('contatos').then(async () => { await Promise.all([carregarContatos(), carregarConversas()]); pintarLista(); }).catch(() => {});
   }
   async function carregarConversas() {

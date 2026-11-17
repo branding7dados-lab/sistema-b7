@@ -54,10 +54,31 @@ function desembrulhar(m: any): any {
 
 export type Linha = Record<string, unknown>;
 
+/** o número (@s.whatsapp.net) que o WhatsApp manda ao lado do código @lid, numa conversa individual */
+export function pnAlt(key: any): string {
+  const x = [key?.remoteJidAlt, key?.senderPn].find((v: any) => typeof v === 'string' && /@s\.whatsapp\.net$/.test(v));
+  return x ? String(x) : '';
+}
+/** 4.58.6: o jid de conversa que o B7 usa. A mesma pessoa vinha ora pelo número, ora pelo @lid,
+    e virava duas conversas. Agora fica sempre no número quando dá pra saber qual é. */
+export async function jidCanonico(sb: SupabaseClient, key: any): Promise<string> {
+  const jid = String(key?.remoteJid || '');
+  if (!/@lid$/.test(jid)) return jid;
+  const alt = pnAlt(key);
+  if (alt) {
+    await sb.from('wa_contatos').upsert({ jid, numero: alt.split('@')[0], atualizado_em: new Date().toISOString() });
+    return alt;
+  }
+  const { data: ct } = await sb.from('wa_contatos').select('numero').eq('jid', jid).maybeSingle();
+  return ct?.numero && /^\d{8,}$/.test(ct.numero) ? ct.numero + '@s.whatsapp.net' : jid;
+}
+
 /** mensagem do Evolution → linha de wa_mensagens (ou um "efeito": reação, apagada, editada) */
 export function interpretar(raw: any): { linha?: Linha; efeito?: { tipo: string; alvo: string; valor?: string; autor?: string } } | null {
   const key = raw?.key || {};
-  const jid: string = key.remoteJid || '';
+  const jidOrig: string = key.remoteJid || '';
+  /* 4.58.6: conversa individual vinda pelo código @lid com o número ao lado: fica no número */
+  const jid: string = /@lid$/.test(jidOrig) ? (pnAlt(key) || jidOrig) : jidOrig;
   if (!jid || jid === 'status@broadcast' || /@newsletter$/.test(jid)) return null;
   const m = desembrulhar(raw.message);
   const ts = Number(raw.messageTimestamp || 0);
@@ -107,7 +128,7 @@ export function interpretar(raw: any): { linha?: Linha; efeito?: { tipo: string;
   };
   /* 4.52.5: o necessário para baixar a mídia depois (sem a miniatura, que já fica em `miniatura`) */
   const tipoMidia = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage', 'stickerMessage'].find(k => m[k]);
-  if (tipoMidia) { const o = { ...m[tipoMidia] }; delete o.jpegThumbnail; delete o.contextInfo; delete o.thumbnailDirectPath; linha.midia_raw = { key: { id: key.id, remoteJid: jid, fromMe: !!key.fromMe, participant: key.participant || undefined }, message: { [tipoMidia]: o } }; }
+  if (tipoMidia) { const o = { ...m[tipoMidia] }; delete o.jpegThumbnail; delete o.contextInfo; delete o.thumbnailDirectPath; linha.midia_raw = { key: { id: key.id, remoteJid: jidOrig, fromMe: !!key.fromMe, participant: key.participant || undefined }, message: { [tipoMidia]: o } }; }
   if (ctx?.stanzaId) {
     linha.citada_id = ctx.stanzaId;
     const q = desembrulhar(ctx.quotedMessage || {});
@@ -139,6 +160,7 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
   if (!r) return null;
   if (r.efeito) { await aplicarEfeito(sb, raw?.key?.remoteJid, r.efeito); return null; }
   const l = Object.assign(r.linha!, extra);
+  if (/@lid$/.test(String(raw?.key?.remoteJid || ''))) l.jid = await jidCanonico(sb, raw.key);
   const jid = String(l.jid);
   /* 4.53.1: sem pushName (código @lid) — usa o nome já conhecido do contato */
   if (!l.de_mim && l.autor_jid && /^\+?\d+$/.test(String(l.autor_nome || ''))) {

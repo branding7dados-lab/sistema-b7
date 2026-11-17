@@ -20,7 +20,7 @@
 // Configuração: public.wa_assistente. Chamado pela wa-entrada (webhook).
 // =====================================================================
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { evo, INST, gravar } from './wa.ts';
+import { evo, INST, gravar, jidCanonico } from './wa.ts';
 import { gerar, provedorAtual } from './ia/servico.ts';
 import { carregarContexto } from './ia/whatsapp.ts';
 import { fichaRoteiros, type Logo } from './ficha.ts';
@@ -251,9 +251,10 @@ function chamouPeloNome(cfg: Config, texto: string): boolean {
 /** Entrada: toda mensagem que chega pelo webhook (já gravada no B7). */
 export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   const key = raw?.key || {};
-  const jid = String(key.remoteJid || '');
   const id = String(key.id || '');
-  if (!jid || !id || jid === 'status@broadcast') return;
+  if (!key.remoteJid || !id || key.remoteJid === 'status@broadcast') return;
+  /* 4.58.6: mesma conversa que o B7 guardou (número no lugar do @lid) */
+  const jid = await jidCanonico(sb, key);
   const cfg = await lerConfig(sb);
   if (!cfg?.ativo) return;
   const { data: novo } = await sb.from('wa_assistente_vistos').upsert({ msg_id: id }, { onConflict: 'msg_id', ignoreDuplicates: true }).select('msg_id');

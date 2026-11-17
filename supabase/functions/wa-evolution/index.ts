@@ -178,6 +178,7 @@ async function importar(pagina: number) {
   }
   if (autores.size) await sb.from('wa_contatos').upsert([...autores].map(([jid, nome]) => ({ jid, nome, atualizado_em: new Date().toISOString() })));
   await sb.rpc('wa_nomes_aplicar');
+  await sb.rpc('wa_unir_lids');
   const ultima = new Map<string, Linha>();
   for (const l of lista) if (ids.has(l.id)) {
     const u = ultima.get(String(l.jid));
@@ -212,16 +213,26 @@ async function atualizarContatos() {
   const grupos = new Map<string, Linha[]>();
   for (const o of lista) { const k = Object.keys(o).sort().join(','); (grupos.get(k) || grupos.set(k, []).get(k)!).push(o); }
   for (const g of grupos.values()) for (let i = 0; i < g.length; i += 500) { const { error } = await sb.from('wa_contatos').upsert(g.slice(i, i + 500)); if (!error) n += Math.min(500, g.length - i); }
-  /* conversas individuais ainda sem foto: pergunta ao WhatsApp (até 40 por vez) */
-  const { data: sem } = await sb.from('wa_conversas').select('jid').neq('tipo', 'grupo').is('foto_url', null).order('ultima_em', { ascending: false, nullsFirst: false }).limit(40);
-  for (const c of sem || []) {
-    try {
-      const r = await evo('/chat/fetchProfilePictureUrl/' + I(), 'POST', { number: c.jid }, 8000);
-      const url = r.dados?.profilePictureUrl;
-      if (r.ok && url) { await sb.from('wa_contatos').upsert({ jid: c.jid, foto_url: url, atualizado_em: agora }); fotos++; }
-    } catch (_e) { /* segue */ }
-  }
   await sb.rpc('wa_nomes_aplicar');
+  await sb.rpc('wa_unir_lids');
+  /* 4.58.6: fotos sem link ou com o link do WhatsApp vencido (o "oe=" do link é a validade,
+     em hexadecimal; vence em poucos dias). Pergunta de novo, até 60 por vez, das mais recentes. */
+  const { data: convs } = await sb.from('wa_conversas').select('jid, tipo, foto_url').order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
+  const limite = Date.now() / 1000 + 24 * 3600;
+  const vencida = (u: string | null) => { if (!u) return true; const m = /[?&]oe=([0-9a-f]+)/i.exec(u); return !!m && parseInt(m[1], 16) < limite; };
+  const precisa = (convs || []).filter((c: any) => vencida(c.foto_url)).slice(0, 60);
+  for (let i = 0; i < precisa.length; i += 6) {
+    await Promise.all(precisa.slice(i, i + 6).map(async (c: any) => {
+      try {
+        const grupo = c.tipo === 'grupo' || /@g\.us$/.test(c.jid);
+        const r = await evo('/chat/fetchProfilePictureUrl/' + I(), 'POST', { number: c.jid }, 8000);
+        const url = r.ok ? (r.dados?.profilePictureUrl || null) : undefined;
+        if (url === undefined) return;
+        if (!grupo) await sb.from('wa_contatos').upsert({ jid: c.jid, foto_url: url, atualizado_em: agora });
+        if (url !== c.foto_url) { await sb.from('wa_conversas').update({ foto_url: url }).eq('jid', c.jid); fotos++; }
+      } catch (_e) { /* segue */ }
+    }));
+  }
   return { ok: true, contatos: n, fotos };
 }
 

@@ -70,3 +70,6 @@ begin
   return n;
 end $$;
 revoke all on function public.wa_unir_lids() from public, anon, authenticated;
+
+-- junta as que já estão duplicadas
+select public.wa_unir_lids() as conversas_unidas;
