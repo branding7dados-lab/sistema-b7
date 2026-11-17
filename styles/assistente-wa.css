@@ -209,3 +209,8 @@ html[data-theme="dark"] .asw-tag.fh{background:rgba(14,165,233,.16);color:#7DD3F
 .asw-qq-l{display:grid;grid-template-columns:minmax(120px,180px) 1fr;align-items:center;gap:10px;}
 .asw-qq-l b{font-size:13px;}
 @media (max-width:560px){.asw-qq-l{grid-template-columns:1fr;gap:4px;}}
+.asw-auto{display:grid;gap:10px;}
+.asw-auto small{display:block;line-height:1.5;}
+.asw-hora{width:auto;display:inline-block;padding:2px 6px;height:auto;}
+.asw-auto select.campo{width:auto;display:inline-block;padding:2px 6px;height:auto;}
+.asw-mem{display:grid;gap:8px;margin-top:10px;}

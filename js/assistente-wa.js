@@ -17,7 +17,7 @@ B7.AssistenteWA = (function () {
     ['😄 Descontraído', 'Pode ser leve e bem-humorado, como alguém da agência que conhece o cliente.']
   ];
   const TIPOS_REGRA = [['NUNCA', 'Nunca'], ['SEMPRE', 'Sempre'], ['NÃO RESPONDA quando o assunto for', 'Não responder sobre'], ['CHAME', 'Chamar alguém quando']];
-  const ROT_TIPO = { resposta: ['Respondeu', 'ok'], duvida: ['Perguntou à equipe', 'dv'], repasse: ['Repassou resposta', 'rp'], instrucao: ['Cumpriu ordem', 'or'], fora_horario: ['Fora do horário', 'fh'], teste: ['Teste', 'ts'], erro: ['Falhou', 'er'], resumo: ['Pendências à equipe', 'rp'], consulta: ['Respondeu a equipe', 'or'], documento: ['Mandou PDF', 'ok'], recado: ['Deu recado', 'rp'], imagem: ['Gerou imagem', 'ok'], demanda: ['Mexeu nas demandas', 'or'], reacao: ['Reagiu', 'ok'], figurinha: ['Mandou figurinha', 'ok'], bot: ['Falou com outra IA', 'rp'], print: ['Mandou print', 'ok'], privado: ['Chamou no privado', 'rp'], agente: ['Agiu (ferramentas)', 'or'] };
+  const ROT_TIPO = { resposta: ['Respondeu', 'ok'], duvida: ['Perguntou à equipe', 'dv'], repasse: ['Repassou resposta', 'rp'], instrucao: ['Cumpriu ordem', 'or'], fora_horario: ['Fora do horário', 'fh'], teste: ['Teste', 'ts'], erro: ['Falhou', 'er'], resumo: ['Pendências à equipe', 'rp'], consulta: ['Respondeu a equipe', 'or'], documento: ['Mandou PDF', 'ok'], recado: ['Deu recado', 'rp'], imagem: ['Gerou imagem', 'ok'], demanda: ['Mexeu nas demandas', 'or'], reacao: ['Reagiu', 'ok'], figurinha: ['Mandou figurinha', 'ok'], bot: ['Falou com outra IA', 'rp'], print: ['Mandou print', 'ok'], privado: ['Chamou no privado', 'rp'], agente: ['Agiu (ferramentas)', 'or'], aviso: ['Avisou a equipe', 'rp'] };
   let S = null, raiz = null;
 
   const ini = s => { const p = String(s || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase(); };
@@ -38,20 +38,21 @@ B7.AssistenteWA = (function () {
     raiz = painel.querySelector('#asw');
     if (!adm) { raiz.innerHTML = '<div class="asw-vazio"><b>Só o administrador configura o assistente.</b></div>'; return; }
     const desde7 = new Date(Date.now() - 7 * 864e5).toISOString();
-    const [c, ap, dv, rg, gr, tg, pf] = await Promise.all([
+    const [c, ap, dv, rg, gr, tg, pf, mm] = await Promise.all([
       sb().from('wa_assistente').select('*').eq('id', 1).maybeSingle(),
       sb().from('wa_assistente_aprendizados').select('*').order('criado_em', { ascending: false }).limit(200),
       sb().from('wa_assistente_duvidas').select('id,jid,grupo_nome,autor,pergunta,pergunta_equipe,criada_em').is('respondida_em', null).order('criada_em', { ascending: false }).limit(40),
       sb().from('wa_assistente_registro').select('*').gte('em', desde7).order('em', { ascending: false }).limit(300),
       sb().from('wa_conversas').select('jid,nome,cliente_id,foto_url').eq('tipo', 'grupo').not('cliente_id', 'is', null).order('nome'),
       sb().from('wa_conversas').select('jid,nome').eq('tipo', 'grupo').order('nome').limit(500),
-      sb().from('perfis').select('id,nome').eq('estado', 'ativa').neq('papel', 'cliente').order('nome')
+      sb().from('perfis').select('id,nome').eq('estado', 'ativa').neq('papel', 'cliente').order('nome'),
+      sb().from('wa_otto_memoria').select('id,texto,sobre,criado_por,criada_em').eq('ativo', true).order('criada_em', { ascending: false }).limit(200)
     ]);
     if (!raiz.isConnected) return;
     if (c.error || !c.data) { raiz.innerHTML = '<div class="asw-vazio"><b>Não consegui abrir</b><p>' + esc((c.error && c.error.message) || 'Configuração não encontrada.') + '</p></div>'; return; }
     const cfg = c.data;
     S = { cfg: JSON.parse(JSON.stringify(cfg)), orig: JSON.stringify(cfg), aba: S && S.aba || 'geral', ap: ap.data || [], dv: dv.data || [], reg: rg.data || [], grupos: gr.data || [],
-      regras: regrasDe(cfg.regras), busca: '', todosGrupos: tg.data || [], perfis: (pf.data || []).filter(p => !/teste/i.test(p.nome || '')), teste: [], testeJid: (gr.data || [])[0] ? gr.data[0].jid : '', testeEquipe: false };
+      regras: regrasDe(cfg.regras), busca: '', todosGrupos: tg.data || [], perfis: (pf.data || []).filter(p => !/teste/i.test(p.nome || '')), mem: mm.data || [], teste: [], testeJid: (gr.data || [])[0] ? gr.data[0].jid : '', testeEquipe: false };
     if (!S.cfg.horario) S.cfg.horario = { ativo: false, ini: '08:00', fim: '18:00', dias: [1, 2, 3, 4, 5], mensagem: '' };
     desenhar();
     raiz.addEventListener('click', clique);
@@ -152,6 +153,10 @@ B7.AssistenteWA = (function () {
         '<div><label class="rot">Conta como pendente depois de</label><select class="campo" data-c="resumo_espera_min" data-num>' + [[15, '15 min sem resposta'], [30, '30 min sem resposta'], [60, '1 hora sem resposta'], [120, '2 horas sem resposta']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.resumo_espera_min || 30) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div></div>' +
         '<div class="asw-ge-pe"><span class="asw-sub">Só no horário de atendimento (seg a sex, 8h–18h se o horário não estiver ligado).</span><button class="b pri" data-pendencias' + (ge ? '' : ' disabled') + '>Mandar pendências agora</button></div></div>' +
         '<p class="asw-sub asw-topo">Quem aparece aqui pode ser <b>marcado</b> por ele quando o assunto for seu e <b>recebe as dúvidas</b> no WhatsApp (responda citando o aviso). Alguém da equipe que marcar o assistente num grupo dá uma <b>ordem</b> — ex.: “@' + esc((c.nome || 'B7').split(' ')[0]) + ' avisa que a arte sai amanhã”.</p>' +
+        '<div class="asw-card asw-auto"><h3>Por conta própria</h3>' +
+          '<label class="asw-sw"><input type="checkbox" data-c="alertas_ligados"' + (c.alertas_ligados !== false ? ' checked' : '') + '><span></span><div><b>Avisar no grupo da equipe</b><small>Demanda atrasada ou que vence amanhã sem começar, cliente esperando há mais de 2h, cliente que aprovou algo. No máximo a cada 30 min, no horário, sem repetir.</small></div></label>' +
+          '<label class="asw-sw"><input type="checkbox" data-c="resumo_dia_ligado"' + (c.resumo_dia_ligado !== false ? ' checked' : '') + '><span></span><div><b>Resumo do dia</b><small>Entregas, o que vence amanhã, atrasos e quem espera resposta — 1 vez por dia útil, a partir de <input class="campo fina asw-hora" type="time" data-c="resumo_dia_hora" value="' + esc(c.resumo_dia_hora || '18:00') + '">.</small></div></label>' +
+          '<label class="asw-sw"><input type="checkbox" data-c="responder_audio"' + (c.responder_audio !== false ? ' checked' : '') + '><span></span><div><b>Responder em áudio quando mandarem áudio</b><small>Com a equipe. Voz: <select class="campo fina" data-c="voz">' + ['Orus', 'Puck', 'Charon', 'Fenrir', 'Kore', 'Aoede', 'Leda', 'Zephyr'].map(v => '<option' + ((c.voz || 'Orus') === v ? ' selected' : '') + '>' + v + '</option>').join('') + '</select></small></div></label></div>' +
         '<div class="asw-card asw-dono"><label class="rot">Quando quem fala é o próprio celular do B7, o Otto age como</label><select class="campo" data-c="dono_perfil_id"><option value="">o administrador principal</option>' +
           (S.perfis || []).map(u => '<option value="' + esc(u.id) + '"' + (u.id === c.dono_perfil_id ? ' selected' : '') + '>' + esc(u.nome) + '</option>').join('') + '</select>' +
           '<p class="asw-sub">O Otto cria, edita e exclui demandas em nome de quem pediu, com as permissões dessa pessoa no B7.</p></div>' +
@@ -179,7 +184,10 @@ B7.AssistenteWA = (function () {
           : '<div class="asw-nada">Nenhum grupo encontrado.<small>Ligue os grupos aos clientes na Central (⋮ da conversa → Ligar a um cliente).</small></div>') + '</div>';
     }
     if (S.aba === 'saber') {
-      return '<div class="asw-card"><h3>Ensinar algo</h3><p class="asw-sub">Ele usa isso como verdade em todos os grupos. Também aprende sozinho quando a equipe responde uma dúvida.</p>' +
+      return '<div class="asw-card"><h3>Memória</h3><p class="asw-sub">Combinados e preferências que ele sempre segue. Ele guarda sozinho quando pedem no WhatsApp (“Otto, lembra que…”); aqui dá para ver, incluir e tirar.</p>' +
+          '<div class="asw-ensina"><input class="campo" id="asw-mem-t" maxlength="500" placeholder="Ex.: o Kevin prefere receber os prints no grupo da equipe"><input class="campo" id="asw-mem-s" maxlength="120" placeholder="Sobre (opcional)"><button class="b pri" data-mem-add>Guardar</button></div>' +
+          '<div class="asw-mem">' + ((S.mem || []).map(m => '<div class="asw-ap" data-mem="' + esc(m.id) + '"><p>' + esc(m.texto) + '</p><small>' + esc([m.sobre, m.criado_por, quando(m.criada_em)].filter(Boolean).join(' · ')) + '</small><div class="asw-ap-ac"><button class="asw-x" data-mem-tira aria-label="Esquecer">✕</button></div></div>').join('') || '<div class="asw-nada">Nada guardado ainda.</div>') + '</div></div>' +
+        '<div class="asw-card"><h3>Ensinar algo</h3><p class="asw-sub">Ele usa isso como verdade em todos os grupos. Também aprende sozinho quando a equipe responde uma dúvida.</p>' +
         '<div class="asw-ensina"><input class="campo" id="asw-ap-p" placeholder="Pergunta / assunto (ex.: prazo padrão de arte)"><input class="campo" id="asw-ap-r" placeholder="Resposta (ex.: 2 dias úteis depois do briefing)"><button class="b pri" data-ensinar>Ensinar</button></div></div>' +
         '<div class="asw-saber">' + (S.ap.map(a => '<div class="asw-ap' + (a.ativo === false ? ' off' : '') + '" data-ap="' + esc(a.id) + '"><b>' + esc(a.pergunta) + '</b><p>' + esc(a.resposta) + '</p>' +
           '<small>' + esc([a.respondido_por, a.grupo, quando(a.criado_em)].filter(Boolean).join(' · ')) + '</small>' +
@@ -237,6 +245,21 @@ B7.AssistenteWA = (function () {
 
   async function clique(e) {
     const t = e.target;
+    if (t.closest('[data-mem-add]')) {
+      const tx = (raiz.querySelector('#asw-mem-t') || {}).value || '', so = (raiz.querySelector('#asw-mem-s') || {}).value || '';
+      if (tx.trim().length < 3) return B7.UI.toast('Escreva o que ele deve lembrar.');
+      sb().from('wa_otto_memoria').insert({ texto: tx.trim(), sobre: so.trim() || null, criado_por: 'tela' }).select('id,texto,sobre,criado_por,criada_em').single().then(r => {
+        if (r.error) return B7.UI.toast('Não salvou: ' + r.error.message);
+        S.mem = [r.data, ...(S.mem || [])]; desenhar(); B7.UI.toast('Guardado na memória.');
+      });
+      return;
+    }
+    const mt = t.closest('[data-mem-tira]');
+    if (mt) {
+      const id = mt.closest('[data-mem]').dataset.mem;
+      sb().from('wa_otto_memoria').update({ ativo: false }).eq('id', id).then(r => { if (r.error) return B7.UI.toast(r.error.message); S.mem = (S.mem || []).filter(m => m.id !== id); desenhar(); });
+      return;
+    }
     const ab = t.closest('[data-aba]'); if (ab) { S.aba = ab.dataset.aba; desenhar(); if (S.aba === 'testar') { const i = raiz.querySelector('#asw-tin'); if (i) i.focus(); } return; }
     if (t.closest('[data-salvar]')) return salvar();
     if (t.closest('[data-desfazer]')) { S.cfg = JSON.parse(S.orig); S.regras = regrasDe(S.cfg.regras); desenhar(); return; }
@@ -324,6 +347,8 @@ B7.AssistenteWA = (function () {
     const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
       equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
+      alertas_ligados: c.alertas_ligados !== false, resumo_dia_ligado: c.resumo_dia_ligado !== false, resumo_dia_hora: /^\d{2}:\d{2}$/.test(c.resumo_dia_hora || '') ? c.resumo_dia_hora : '18:00',
+      responder_audio: c.responder_audio !== false, voz: c.voz || 'Orus',
       quem_e_quem: Object.fromEntries(Object.entries(c.quem_e_quem || {}).map(([k, v]) => [k, String(v || '').trim().slice(0, 200)]).filter(([, v]) => v)),
       sem_marcacao: !!c.sem_marcacao, pausa_min: Math.max(5, Number(c.pausa_min) || 30), ouvir_audio: c.ouvir_audio !== false,
       espera_min_s: Math.max(1, Number(c.espera_min_s) || 4), espera_max_s: Math.max(Number(c.espera_min_s) || 4, Number(c.espera_max_s) || 9),

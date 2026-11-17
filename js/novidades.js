@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.61.0', versao: '4.61.0', em: '2026-11-18T02:00:00-03:00',
+    titulo: 'O Otto lembra, avisa, fala e resume o dia',
+    itens: ['Memória: "Otto, lembra que a C6 não gosta de música alta" — ele guarda e segue.', 'Avisa sozinho no grupo da equipe: demanda atrasada ou que vence amanhã sem começar, cliente esperando há mais de 2h, cliente que aprovou algo.', 'Mandou áudio pra ele? Ele responde em áudio.', 'Todo dia útil, às 18h, o resumo do dia no grupo da equipe.'] },
   { id: 'v-4.60.0', versao: '4.60.0', em: '2026-11-18T01:30:00-03:00',
     titulo: 'O Otto entende pedidos do jeito que você fala',
     itens: ['Pode pedir com suas palavras e até várias coisas de uma vez: "Otto, manda o print da C6 no grupo da equipe e cria uma demanda pro Kaique editar o vídeo da esposa até sexta".', 'Ele entende "isso", "desse grupo" e respostas curtas pela conversa, e pergunta quando falta algo — sem fingir que fez.'] },
