@@ -297,7 +297,8 @@ B7.CentralWA = (function () {
     }
     const autor = !m.de_mim && grupo && !seguida ? '<span class="wz-autor" style="--c:' + corDe(m.autor_nome || m.autor_jid) + '">' + esc(m.autor_nome || num(m.autor_jid)) + '</span>' : '';
     const quem = m.de_mim && m.enviada_por_nome ? '<span class="wz-quem">' + esc(m.enviada_por_nome.split(' ')[0]) + '</span>' : '';
-    const reac = m.reacoes && Object.keys(m.reacoes).length ? '<span class="wz-reac">' + Object.entries(m.reacoes).map(([e, l]) => e + (l.length > 1 ? ' ' + l.length : '')).join(' ') + '</span>' : '';
+    /* 4.66.3: a bolinha de reações abre quem reagiu (e deixa tirar a sua) */
+    const reac = m.reacoes && Object.keys(m.reacoes).length ? '<button type="button" class="wz-reac' + (Object.values(m.reacoes).some(l => l.includes('eu')) ? ' minha' : '') + '" data-acao-msg="reacoes" title="Ver quem reagiu">' + Object.entries(m.reacoes).map(([e, l]) => e + (l.length > 1 ? ' ' + l.length : '')).join(' ') + '</button>' : '';
     return '<div class="wz-b ' + lado + (seguida ? ' seg' : '') + (m.tipo === 'figurinha' ? ' fig' : '') + '" data-id="' + esc(m.id) + '">' + autor + corpo +
       '<span class="wz-h">' + quem + (m.editada ? 'editada · ' : '') + hm(m.criada_em) + (m.de_mim ? ticks(m.status) : '') + '</span>' + reac +
       (m.apagada ? '' : '<span class="wz-b-acoes"><button data-acao-msg="citar" title="Responder">' + I.resp + '</button><button data-acao-msg="reagir" title="Reagir">😊</button>' + (m.de_mim && m.tipo === 'texto' && !m.nota && Date.now() - new Date(m.criada_em).getTime() < 15 * 60e3 ? '<button data-acao-msg="editar" title="Editar">✏️</button>' : '') + (m.de_mim ? '<button data-acao-msg="apagar" title="Apagar para todos">' + I.lixo + '</button>' : '') + '</span>') +
@@ -454,6 +455,7 @@ B7.CentralWA = (function () {
       try { const r = await chamar('apagar', { id }); if (r.erro) throw new Error(r.erro); } catch (e) { B7.UI.toast(e.message, { tipo: 'erro' }); }
       return;
     }
+    if (a === 'reacoes') return quemReagiu(m, bt);
     if (a === 'reagir') {
       const caixa = document.createElement('div'); caixa.className = 'wz-reagir';
       caixa.innerHTML = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥'].map(e => '<button data-r="' + e + '">' + e + '</button>').join('');
@@ -468,6 +470,45 @@ B7.CentralWA = (function () {
         try { const x = await chamar('reagir', { id, emoji: b.dataset.r }); if (x.erro) throw new Error(x.erro); } catch (e2) { B7.UI.toast(e2.message, { tipo: 'erro' }); }
       };
     }
+  }
+
+  /* quem reagiu: nome de cada pessoa + "Tirar" na sua reação */
+  function nomeDoJid(jid) {
+    if (jid === 'eu') return 'Você';
+    const c = S.porJid.get(S.aberta);
+    if (c && jid === c.jid && !/@g\.us$/.test(c.jid)) return c.nome || '+' + num(jid);
+    const daMsg = S.msgs.find(x => x.autor_jid === jid && x.autor_nome);
+    if (daMsg) return daMsg.autor_nome;
+    const ct = S.contatos && S.contatos.get(jid);
+    if (ct) return ct;
+    return /@lid$/.test(jid) ? 'Contato' : '+' + num(jid);
+  }
+  function quemReagiu(m, bt) {
+    document.querySelectorAll('.wz-quem').forEach(x => x.remove());
+    const linhas = [];
+    Object.entries(m.reacoes || {}).forEach(([e, l]) => l.forEach(j => linhas.push({ e, j })));
+    linhas.sort((a, b) => (b.j === 'eu') - (a.j === 'eu'));
+    const caixa = document.createElement('div'); caixa.className = 'wz-quem'; caixa.setAttribute('role', 'dialog');
+    caixa.innerHTML = '<div class="wz-quem-cab">' + linhas.length + (linhas.length === 1 ? ' reação' : ' reações') + '</div>' +
+      linhas.map(x => '<div class="wz-quem-l' + (x.j === 'eu' ? ' eu' : '') + '"><span class="wz-quem-n">' + esc(nomeDoJid(x.j)) +
+        (x.j === 'eu' ? '<small>Clique para tirar</small>' : '') + '</span><span class="wz-quem-e">' + x.e + '</span></div>').join('');
+    document.body.appendChild(caixa);
+    const r = bt.getBoundingClientRect(), h = caixa.offsetHeight, w = caixa.offsetWidth;
+    caixa.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+    caixa.style.top = (r.top - h - 8 > 8 ? r.top - h - 8 : Math.min(innerHeight - h - 8, r.bottom + 8)) + 'px';
+    const fechar = () => { caixa.remove(); document.removeEventListener('pointerdown', fora, true); document.removeEventListener('keydown', esc_); };
+    const fora = ev => { if (!caixa.contains(ev.target)) fechar(); };
+    const esc_ = ev => { if (ev.key === 'Escape') fechar(); };
+    setTimeout(() => { document.addEventListener('pointerdown', fora, true); document.addEventListener('keydown', esc_); }, 0);
+    caixa.onclick = async ev => {
+      if (!ev.target.closest('.wz-quem-l.eu')) return;
+      fechar();
+      const antes = JSON.parse(JSON.stringify(m.reacoes || {}));
+      for (const k of Object.keys(m.reacoes || {})) { m.reacoes[k] = m.reacoes[k].filter(x => x !== 'eu'); if (!m.reacoes[k].length) delete m.reacoes[k]; }
+      pintarMensagens();
+      try { const x = await chamar('reagir', { id: m.id, emoji: '' }); if (x.erro) throw new Error(x.erro); }
+      catch (e2) { m.reacoes = antes; pintarMensagens(); B7.UI.toast(e2.message || 'Não deu para tirar a reação.', { tipo: 'erro' }); }
+    };
   }
 
   function pintarCitacao() {

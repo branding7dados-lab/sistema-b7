@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.66.3', versao: '4.66.3', em: '2026-11-17T09:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Quem reagiu',
+    itens: ['Na Central de Conversas, clique na bolinha de reações de uma mensagem para ver quem reagiu. Na sua reação, um clique tira.'] },
   { id: 'v-4.66.0', versao: '4.66.0', em: '2026-11-17T08:00:00-03:00',
     titulo: 'Emojis do iPhone em todo o B7',
     itens: ['Os emojis agora aparecem com o desenho da Apple em qualquer aparelho: Android, Windows, iPhone ou Mac. O texto continua igual.'] },
