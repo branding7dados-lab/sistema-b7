@@ -46,18 +46,43 @@ async function ttsModelos(chave: string): Promise<string[]> {
   modelosTTS = (l.length ? l.sort((a, b) => nota(a) - nota(b)) : ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts']).slice(0, 3);
   return modelosTTS;
 }
-/* 4.62.1: sem estalo/chiado — tira o resto ímpar, suaviza começo (15 ms) e fim (120 ms) e põe 250 ms de silêncio no fim */
+/* 4.62.2: o modelo de voz às vezes solta um "tchh" (ruído curto e agudo) DEPOIS de terminar de falar.
+   Aqui: corta silêncio do fim, corta esse ruído final (trecho curto ≤ 0,45 s, agudo, depois de uma pausa
+   ≥ 0,14 s), suaviza começo (15 ms) e fim (120 ms) e põe 250 ms de silêncio. */
 function limparPCM(pcm: Uint8Array, rate: number): Uint8Array {
   const n = Math.floor(pcm.length / 2);
-  const pad = Math.floor(rate * 0.25);
-  const out = new Int16Array(n + pad);
   const dv = new DataView(pcm.buffer, pcm.byteOffset, n * 2);
-  const ini = Math.floor(rate * 0.015), fim = Math.floor(rate * 0.12);
-  for (let i = 0; i < n; i++) {
-    let v = dv.getInt16(i * 2, true);
-    if (i < ini) v = v * (i / ini);
-    if (i > n - fim) v = v * Math.max(0, (n - i) / fim);
-    out[i] = v;
+  const a = new Float32Array(n);
+  for (let i = 0; i < n; i++) a[i] = dv.getInt16(i * 2, true);
+  /* energia e "agudeza" (cruzamentos de zero) em janelas de 20 ms */
+  const w = Math.max(1, Math.floor(rate * 0.02)), nw = Math.floor(n / w);
+  const rms = new Float32Array(nw), zc = new Float32Array(nw);
+  let max = 0;
+  for (let k = 0; k < nw; k++) {
+    let e = 0, z = 0;
+    for (let i = k * w; i < (k + 1) * w; i++) { e += a[i] * a[i]; if (i > k * w && (a[i] < 0) !== (a[i - 1] < 0)) z++; }
+    rms[k] = Math.sqrt(e / w); zc[k] = z / w * rate / 2; if (rms[k] > max) max = rms[k];
+  }
+  const lim = Math.max(250, max * 0.05);
+  let fim = nw;
+  for (let volta = 0; volta < 3; volta++) {
+    while (fim > 0 && rms[fim - 1] < lim) fim--;                 /* silêncio do fim */
+    let ini = fim; while (ini > 0 && rms[ini - 1] >= lim) ini--;  /* último trecho com som */
+    let gap = ini; while (gap > 0 && rms[gap - 1] < lim) gap--;   /* pausa antes dele */
+    const dur = (fim - ini) * 0.02, pausa = (ini - gap) * 0.02;
+    let zm = 0; for (let k = ini; k < fim; k++) zm += zc[k]; zm = fim > ini ? zm / (fim - ini) : 0;
+    if (gap > 0 && dur <= 0.45 && pausa >= 0.14 && zm >= 1500) { fim = gap; continue; }   /* era ruído: corta */
+    break;
+  }
+  const corte = Math.min(n, fim * w + Math.floor(rate * 0.06));
+  const pad = Math.floor(rate * 0.25);
+  const out = new Int16Array(corte + pad);
+  const fi = Math.floor(rate * 0.015), ff = Math.min(Math.floor(rate * 0.12), corte);
+  for (let i = 0; i < corte; i++) {
+    let v = a[i];
+    if (i < fi) v *= i / fi;
+    if (i > corte - ff) v *= Math.max(0, (corte - i) / ff);
+    out[i] = Math.max(-32768, Math.min(32767, Math.round(v)));
   }
   return new Uint8Array(out.buffer);
 }
