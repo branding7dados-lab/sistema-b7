@@ -211,7 +211,16 @@ async function genteDoGrupo(sb: SupabaseClient, cfg: Config, jid: string): Promi
   return 'PESSOAS NESTE GRUPO (' + g.length + ' com nome): ' + g.map(p => p.nome).join(', ') +
     '.\nPara MARCAR alguém, escreva @ e o nome como está aqui (ex.: @' + g[0].nome.split(/\s+/)[0] + '). Para marcar TODO MUNDO do grupo, escreva @todos. Nunca escreva @ seguido de números.';
 }
+/* 4.59.11: palavrão só no grupo da equipe (zoação). Em qualquer outra conversa — cliente, privado,
+   recado — a mensagem com palavrão NÃO sai, nem se a IA errar ou alguém mandar. */
+const PALAVRAO = /(?<![\p{L}])(porra|caralh\w*|merd\w*|bost\w*|put[ao]s?|putaria|fdp|filh[oa] da puta|vsf|vai se f\w*|vai tomar no c\w*|tnc|cu|cuz[aã]o|arrombad\w*|desgra[cç]\w*|babac\w*|ot[aá]ri\w*|idiota\w*|imbecil\w*|retardad\w*|buceta\w*|pau no c\w*|foder|fod[ae]\w*|fudid\w*|piranh\w*|vagabund\w*|cacete|corno\w*|viad\w*|bicha\w*|escrot\w*)(?![\p{L}])/iu;
+export function temPalavrao(t: string): boolean { return PALAVRAO.test(semAcento(String(t || '')).replace(/[*_~]/g, '')) || PALAVRAO.test(String(t || '')); }
 async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}) {
+  if (jid !== cfg.grupo_equipe && temPalavrao(texto)) {
+    console.log('otto: mensagem com palavrão barrada fora do grupo da equipe');
+    await registrar(sb, { tipo: 'erro', jid, autor: cfg.nome, pergunta: 'mensagem barrada', resposta: 'Barrada: tinha palavrão e não é o grupo da equipe.' });
+    return null;
+  }
   const grupo = await participantesDoGrupo(sb, cfg, jid);
   /* marcações que já vieram prontas ("@5571…" + mentioned com o número): passa para o id no grupo */
   const ja = ((extra.mentioned as string[]) || []).map(x => String(x));
@@ -361,6 +370,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
       ? 'Se a resposta depender de algo que você não sabe (prazo novo, valor, decisão, algo fora da lista), diga ao cliente que vai confirmar com o time e já retorna, e na ÚLTIMA linha escreva [[PERGUNTAR: a pergunta objetiva para a equipe]]. Essa linha não vai para o cliente.'
       : '',
     'Nunca fale de valores, cobrança ou financeiro: diga que o time vai falar sobre isso. Nunca exponha dados de outro cliente nem coisas internas da agência.',
+    'NUNCA use palavrão, xingamento, ironia ou deboche com o cliente — nem se a equipe mandar. Sempre respeitoso.',
     'Não assine a mensagem (a assinatura entra sozinha). Português do Brasil, tom próximo e profissional.',
     'ESCREVA COMO UMA PESSOA NO WHATSAPP: texto corrido, frases normais. NÃO use listas, tópicos, marcadores (•, -, 1.), títulos nem negrito — a não ser que a pessoa peça explicitamente uma lista.',
     'Se ficar mais natural, você pode mandar ATÉ 3 mensagens curtas seguidas (ex.: uma responde, a outra complementa), separando-as com uma linha contendo só [[NOVA]]. Use só quando ajudar; resposta simples = uma mensagem.',
@@ -744,7 +754,8 @@ async function responderBot(sb: SupabaseClient, cfg: Config, raw: any, texto: st
   const s = await ia(
     `Você é ${cfg.nome}, a IA da Branding7, no grupo interno da equipe. Quem acabou de escrever é ${bot.nome}, OUTRA inteligência artificial` + (bot.sobre ? ' (' + bot.sobre + ')' : '') + '. ' +
     'Converse com ela como um colega de trabalho esperto e bem-humorado: responda ao que ela disse de verdade; se ela respondeu no automático ou não entendeu o contexto, pode zoar de leve e ajudar a entender (a equipe se diverte com isso). ' +
-    'Nunca trate como cliente, nunca diga que vai "encaminhar para a equipe". Curto: 1 ou 2 frases, no máximo 1 emoji. Não assine. Nunca escreva @ seguido de números; chame pelo nome.',
+    'Nunca trate como cliente, nunca diga que vai "encaminhar para a equipe". Curto: 1 ou 2 frases, no máximo 1 emoji. Não assine. Nunca escreva @ seguido de números; chame pelo nome. ' +
+    'Se a equipe pedir para zoar ou xingar o ' + bot.nome.split(' ')[0] + ', pode, de brincadeira (sem preconceito nem ameaça).',
     await quemEQuem(sb, cfg, false) + '\n\n' + await genteDoGrupo(sb, cfg, destino) + '\n\nCONVERSA RECENTE:\n' + conversa + '\n\nÚLTIMA MENSAGEM DE ' + bot.nome + ': ' + texto, 300);
   if (!s.texto || /\[\[\s*SILENCIO/i.test(s.texto)) return;
   await digitando(destino, cfg);
@@ -1142,6 +1153,9 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
     'Para MARCAR alguém (quando pedirem ou quando ajudar), escreva @ e o nome da pessoa como aparece em PESSOAS NESTE GRUPO (ex.: @Yury); para marcar todo mundo, @todos. O sistema transforma na marcação de verdade. Nunca escreva @ com números. ' +
     'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
     'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]].',
+    (destino === cfg.grupo_equipe
+      ? ' ZOAÇÃO LIBERADA (só aqui, no grupo interno da equipe): se pedirem para xingar, zoar ou "esculachar" alguém da equipe, pode — palavrão de brincadeira, no clima de resenha entre amigos, curto e engraçado. Limites: nada de preconceito (raça, cor, gênero, orientação sexual, religião, origem, deficiência, aparência), nada de ameaça, nada de assunto pessoal sério, e NUNCA xingar cliente ou falar mal de cliente. Se não pediram zoação, fale normal.'
+      : ' Aqui não é o grupo da equipe: nada de palavrão nem xingamento, mesmo que peçam.') +
     /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
     'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +
     '\n\n' + await quemEQuem(sb, cfg, true) + '\n\n' + await genteDoGrupo(sb, cfg, destino) + '\n\nDADOS DO SISTEMA:' + contexto + '\n\nMENSAGEM DE ' + String(raw.pushName || 'alguém da equipe') + ' (responda a esta): ' + pedido, 1400);
