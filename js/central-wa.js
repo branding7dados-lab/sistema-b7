@@ -41,6 +41,7 @@ B7.CentralWA = (function () {
     mais: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>',
     play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',
     pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></svg>',
+    baixar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>',
     lixo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
     resp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v5"/></svg>',
     wa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 19.8l1.1-3.9A8.2 8.2 0 1 1 8.4 19z"/></svg>'
@@ -307,7 +308,7 @@ B7.CentralWA = (function () {
     const reac = m.reacoes && Object.keys(m.reacoes).length ? '<button type="button" class="wz-reac' + (Object.values(m.reacoes).some(l => l.includes('eu')) ? ' minha' : '') + '" data-acao-msg="reacoes" title="Ver quem reagiu">' + Object.entries(m.reacoes).map(([e, l]) => e + (l.length > 1 ? ' ' + l.length : '')).join(' ') + '</button>' : '';
     return '<div class="wz-b ' + lado + (seguida ? ' seg' : '') + (m.tipo === 'figurinha' ? ' fig' : '') + '" data-id="' + esc(m.id) + '">' + autor + corpo +
       '<span class="wz-h">' + quem + (m.editada ? 'editada · ' : '') + hm(m.criada_em) + (m.de_mim ? ticks(m.status) : '') + '</span>' + reac +
-      (m.apagada ? '' : '<span class="wz-b-acoes"><button data-acao-msg="citar" title="Responder">' + I.resp + '</button><button data-acao-msg="reagir" title="Reagir">😊</button>' + (m.de_mim && m.tipo === 'texto' && !m.nota && Date.now() - new Date(m.criada_em).getTime() < 15 * 60e3 ? '<button data-acao-msg="editar" title="Editar">✏️</button>' : '') + (m.de_mim ? '<button data-acao-msg="apagar" title="Apagar para todos">' + I.lixo + '</button>' : '') + '</span>') +
+      (m.apagada ? '' : '<span class="wz-b-acoes"><button data-acao-msg="citar" title="Responder">' + I.resp + '</button><button data-acao-msg="reagir" title="Reagir">😊</button>' + (/^(imagem|video|audio|documento|figurinha)$/.test(m.tipo) ? '<button data-baixar="' + esc(m.id) + '" title="Baixar">' + I.baixar + '</button>' : '') + (m.de_mim && m.tipo === 'texto' && !m.nota && Date.now() - new Date(m.criada_em).getTime() < 15 * 60e3 ? '<button data-acao-msg="editar" title="Editar">✏️</button>' : '') + (m.de_mim ? '<button data-acao-msg="apagar" title="Apagar para todos">' + I.lixo + '</button>' : '') + '</span>') +
       '</div>';
   }
 
@@ -320,7 +321,7 @@ B7.CentralWA = (function () {
       case 'video': return '<span class="wz-vid" data-carregar="video" data-id="' + id + '">' + (mini ? '<img src="' + mini + '" alt="">' : '') + '<i class="wz-play">' + I.play + '</i>' + (m.duracao ? '<em>' + mmss(m.duracao) + '</em>' : '') + '</span>';
       case 'audio': {
         const ondas = Array.from({ length: 28 }, (_, k) => '<u style="height:' + (25 + ((k * 37 + (m.id || '').charCodeAt(k % ((m.id || 'x').length)) * 13) % 70)) + '%"></u>').join('');
-        return '<span class="wz-aud" data-carregar="audio" data-id="' + id + '"><button class="wz-aud-p" aria-label="Tocar">' + I.play + '</button><span class="wz-onda">' + ondas + '</span><em>' + mmss(m.duracao) + '</em></span>'
+        return '<span class="wz-aud" data-carregar="audio" data-id="' + id + '"><button class="wz-aud-p" aria-label="Tocar">' + I.play + '</button><span class="wz-onda">' + ondas + '</span><em>' + mmss(m.duracao) + '</em><button class="wz-aud-dl" data-baixar="' + id + '" title="Baixar o áudio" aria-label="Baixar o áudio">' + I.baixar + '</button></span>'
           + (m.texto ? '' : '<button class="wz-transc" data-transc="' + id + '">Transcrever</button>');
       }
       case 'documento': {
@@ -364,6 +365,29 @@ B7.CentralWA = (function () {
     } catch (e) { if (tocar !== false) B7.UI.toast(e.message || 'Não deu para abrir.', { tipo: 'erro' }); }
     finally { delete el.dataset.busy; el.classList.remove('carregando'); }
   }
+  /* 4.67.1: baixar áudio, foto, vídeo, documento ou figurinha — salva direto, com nome e data */
+  const EXT_MIME = { 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/aac': 'aac', 'audio/wav': 'wav', 'audio/webm': 'webm', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm', 'application/pdf': 'pdf' };
+  async function baixarMidia(id, bt) {
+    const m = S.msgs.find(x => x.id === id); if (!m) return;
+    if (bt) bt.classList.add('carregando');
+    try {
+      const url = await urlMidia(id);
+      const r = await fetch(url); if (!r.ok) throw new Error('O arquivo não veio (' + r.status + ').');
+      const blob = await r.blob();
+      const mime = String(m.midia_mime || blob.type || '').split(';')[0];
+      const ext = EXT_MIME[mime] || (mime.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'bin';
+      const c = S.porJid.get(m.jid);
+      const quando = new Date(m.criada_em); const dd = n => String(n).padStart(2, '0');
+      const carimbo = quando.getFullYear() + '-' + dd(quando.getMonth() + 1) + '-' + dd(quando.getDate()) + ' ' + dd(quando.getHours()) + 'h' + dd(quando.getMinutes());
+      const quem = (m.de_mim ? (m.enviada_por_nome || 'B7') : (m.autor_nome || (c && c.nome) || 'contato')).split(' ')[0];
+      const tipo = { audio: 'Áudio', imagem: 'Foto', video: 'Vídeo', figurinha: 'Figurinha', documento: 'Documento' }[m.tipo] || 'Arquivo';
+      const nome = (m.tipo === 'documento' && m.midia_nome ? m.midia_nome : tipo + ' ' + quem + ' ' + carimbo + '.' + ext).replace(/[\\/:*?"<>|]+/g, '');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30e3);
+    } catch (e) { B7.UI.toast(e.message || 'Não deu para baixar.', { tipo: 'erro' }); }
+    finally { if (bt) bt.classList.remove('carregando'); }
+  }
   function ligarAudio(el, a) {
     const bt = el.querySelector('.wz-aud-p'), em = el.querySelector('em'), ondas = [...el.querySelectorAll('u')];
     const pinta = () => { const p = a.duration ? a.currentTime / a.duration : 0; ondas.forEach((u, i) => u.classList.toggle('p', i / ondas.length < p)); em.textContent = mmss(a.paused && !a.currentTime ? a.duration : a.currentTime); };
@@ -395,6 +419,7 @@ B7.CentralWA = (function () {
   function cliqueGeral(e) {
     const it = e.target.closest('.wz-it'); if (it) return abrirConversa(it.dataset.jid);
     const aj = e.target.closest('[data-abrir-jid]'); if (aj) return abrirConversa(aj.dataset.abrirJid);
+    const bx = e.target.closest('[data-baixar]'); if (bx) { e.stopPropagation(); return baixarMidia(bx.dataset.baixar, bx); }
     const f = e.target.closest('[data-filtro]'); if (f) { S.filtro = f.dataset.filtro; pintarFiltros(); pintarLista(); return; }
     const em = e.target.closest('[data-emoji]'); if (em) { const t = raiz.querySelector('#wz-texto'); if (t) { t.setRangeText(em.dataset.emoji, t.selectionStart, t.selectionEnd, 'end'); t.focus(); t.dispatchEvent(new Event('input')); } B7.UI.fecharMenus && B7.UI.fecharMenus(); return; }
     const md = e.target.closest('[data-carregar]');

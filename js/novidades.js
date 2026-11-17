@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.67.1', versao: '4.67.1', em: '2026-11-17T11:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Baixar áudios',
+    itens: ['Na Central de Conversas, todo áudio tem um botão de baixar. Fotos, vídeos, documentos e figurinhas também baixam pelo menu da mensagem (passe o mouse ou toque nela).'] },
   { id: 'v-4.67.0', versao: '4.67.0', em: '2026-11-17T10:30:00-03:00', rota: 'whatsapp',
     titulo: 'Painel novo nas conversas',
     itens: ['O painel da direita na Central de Conversas mostra há quanto tempo o cliente espera (com cor), a última mensagem, design, vídeos, a próxima gravação e as fotos recentes.',
