@@ -991,6 +991,14 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
   }
   if (!conv) { await enviar(sb, cfg, aqui, 'De qual cliente ou conversa? Me fala o nome que eu mando o print.', citarAqui ? { quoted: citarAqui } : {}); return true; }
   await digitando(destino, cfg);
+  /* 4.59.18: antes do print, completa com o que o WhatsApp tem e o B7 não recebeu (aviso perdido) */
+  try {
+    const r = await evo('/chat/findMessages/' + I(), 'POST', { where: { key: { remoteJid: conv.jid } }, page: 1, offset: 40 }, 25000);
+    const recs: any[] = r.dados?.messages?.records || (Array.isArray(r.dados) ? r.dados : []);
+    let novas = 0;
+    for (const x of recs) { try { if (await gravar(sb, x, {}, { historico: true })) novas++; } catch (_e) { /* segue */ } }
+    console.log('print: completou', conv.jid, 'evolution', recs.length, 'novas', novas, recs[0]?.messageTimestamp || '');
+  } catch (e) { console.log('print: não completou', String(e).slice(0, 200)); }
   const { data: ms } = await sb.from('wa_mensagens').select('de_mim, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em, duracao, midia_nome, miniatura, citada_previa, citada_autor, do_assistente')
     .eq('jid', conv.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(40);
   let lista = ((ms || []) as any[]).reverse();
