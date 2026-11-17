@@ -873,9 +873,15 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
   if (key.fromMe && !chamouPeloNome(cfg, texto)) return;
   /* 4.59.2: outra IA no grupo (ex.: o Gabriel, do comercial da Núcleo 7) — conversa com ela, com limite */
   const bot = !key.fromMe ? ehBot((cfg as any).bots as Bot[], String(key.participant || ''), String(raw?.pushName || '')) : null;
-  if (bot) { if (await podeResponderBot(sb, cfg.grupo_equipe!)) await responderBot(sb, cfg, raw, texto, bot); return; }
   const marcados = new Set<string>([...((ctx.mentionedJid || []) as string[]).map(dig), ...[...texto.matchAll(/@(\d{8,})/g)].map(v => v[1])]);
   const lid = marcados.size ? await meuLid(sb, cfg, cfg.grupo_equipe!, numero) : (cfg.meu_lid || '');
+  /* 4.69.1: outra IA no grupo (Gabriel): o Otto só responde se ela CHAMAR o Otto (nome ou @). Citar uma mensagem
+     do Otto não basta — virava conversa de robô sem ninguém pedir (17/11, 15:30). */
+  if (bot) {
+    const chamou = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid)) || chamouPeloNome(cfg, texto);
+    if (chamou && await podeResponderBot(sb, cfg.grupo_equipe!)) await responderBot(sb, cfg, raw, texto, bot);
+    return;
+  }
   /* 4.67.5: no grupo da equipe ele só RESPONDE se chamarem "Otto" ou marcarem @Otto. Citar uma mensagem dele
      não basta (17/11: "Deixa de ser feio, q ngm te chamou aq" citando o Otto e ele respondeu) — no máximo reage. */
   const marcado = [...marcados].some(x => x === numero || x.slice(-8) === numero.slice(-8) || (lid && x === lid)) || chamouPeloNome(cfg, texto);
