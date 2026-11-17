@@ -300,7 +300,7 @@ B7.CentralWA = (function () {
     const reac = m.reacoes && Object.keys(m.reacoes).length ? '<span class="wz-reac">' + Object.entries(m.reacoes).map(([e, l]) => e + (l.length > 1 ? ' ' + l.length : '')).join(' ') + '</span>' : '';
     return '<div class="wz-b ' + lado + (seguida ? ' seg' : '') + (m.tipo === 'figurinha' ? ' fig' : '') + '" data-id="' + esc(m.id) + '">' + autor + corpo +
       '<span class="wz-h">' + quem + (m.editada ? 'editada · ' : '') + hm(m.criada_em) + (m.de_mim ? ticks(m.status) : '') + '</span>' + reac +
-      (m.apagada ? '' : '<span class="wz-b-acoes"><button data-acao-msg="citar" title="Responder">' + I.resp + '</button><button data-acao-msg="reagir" title="Reagir">😊</button>' + (m.de_mim ? '<button data-acao-msg="apagar" title="Apagar para todos">' + I.lixo + '</button>' : '') + '</span>') +
+      (m.apagada ? '' : '<span class="wz-b-acoes"><button data-acao-msg="citar" title="Responder">' + I.resp + '</button><button data-acao-msg="reagir" title="Reagir">😊</button>' + (m.de_mim && m.tipo === 'texto' && !m.nota && Date.now() - new Date(m.criada_em).getTime() < 15 * 60e3 ? '<button data-acao-msg="editar" title="Editar">✏️</button>' : '') + (m.de_mim ? '<button data-acao-msg="apagar" title="Apagar para todos">' + I.lixo + '</button>' : '') + '</span>') +
       '</div>';
   }
 
@@ -441,6 +441,13 @@ B7.CentralWA = (function () {
   async function acaoMsg(a, id, bt) {
     const m = S.msgs.find(x => x.id === id); if (!m) return;
     if (a === 'citar') { S.citar = m; pintarCitacao(); raiz.querySelector('#wz-texto').focus(); return; }
+    if (a === 'editar') {
+      const novo = await B7.UI.perguntar({ titulo: 'Editar mensagem', rotulo: 'O WhatsApp mostra “editada” para todos. Dá até 15 minutos depois de enviar.', valor: m.texto || '', confirmar: 'Salvar' });
+      if (novo == null || !novo.trim() || novo.trim() === (m.texto || '').trim()) return;
+      try { const r = await chamar('editar', { id, texto: novo.trim() }); if (r.erro) throw new Error(r.erro); m.texto = novo.trim(); m.editada = true; pintarMensagens(); }
+      catch (e) { B7.UI.toast(e.message, { tipo: 'erro' }); }
+      return;
+    }
     if (a === 'apagar') {
       const ok = await B7.UI.confirmar({ titulo: 'Apagar para todos?', texto: 'A mensagem some para todo mundo na conversa.', confirmar: 'Apagar', perigo: true });
       if (!ok) return;

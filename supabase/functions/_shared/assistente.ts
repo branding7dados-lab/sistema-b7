@@ -29,6 +29,7 @@ import { gerarImagem, formatoDoTexto, type Ref } from './imagem.ts';
 import { cuidarDasDemandas, perfilDe, FALA_DE_DEMANDA } from './otto-demandas.ts';
 import { printDaConversa } from './print-conversa.ts';
 import { memorias, lembrar, esquecer, falar, roteiroDeFala, avisosPendentes, marcarAvisados, dadosDoDia, escreverResumoDia } from './otto-extras.ts';
+import { mandarFigurinha } from './otto-social.ts';
 import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, decidirJeito, reagirNaMensagem, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -1227,6 +1228,18 @@ async function talvezRecado(sb: SupabaseClient, cfg: Config, raw: any, texto: st
 }
 
 /** Pergunta interna da equipe (grupo da equipe ou privado): pendências ou o que há de um cliente. */
+/** 4.63.0: a mensagem do Otto que pediram para editar/apagar: a citada (se for dele) ou a última dele aqui */
+async function minhaMensagem(sb: SupabaseClient, raw: any, aqui: string): Promise<any | null> {
+  const ctx = ctxDe(raw);
+  if (ctx.stanzaId) {
+    const { data } = await sb.from('wa_mensagens').select('id, jid, tipo, texto, do_assistente, criada_em').eq('id', String(ctx.stanzaId)).maybeSingle();
+    if (data?.do_assistente) return data;
+  }
+  const { data } = await sb.from('wa_mensagens').select('id, jid, tipo, texto, do_assistente, criada_em').eq('jid', aqui).eq('do_assistente', true).eq('apagada', false)
+    .gte('criada_em', new Date(Date.now() - 60 * 60_000).toISOString()).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+  return data || null;
+}
+
 /* ------------------------------------------------------------ 4.61.0: áudio, avisos, resumo do dia */
 const vozDe = (cfg: Config) => ({ provedor: (cfg as any).voz_provedor || 'gemini', voz: (cfg as any).voz || 'Orus', estilo: (cfg as any).voz_estilo || '', elevenId: (cfg as any).voz_eleven_id || null });
 /** 4.62.0: responde EM ÁUDIO — reescreve como fala, gera a voz, manda; se tiver link/lista, manda o texto junto. false = não deu (aí vai texto) */
@@ -1375,6 +1388,9 @@ const FERRAMENTAS = `FERRAMENTAS (use só quando o pedido pedir isso; várias po
 - {"ferramenta":"lembrar","texto":"<o combinado/preferência, completo>","sobre":"<pessoa/cliente/assunto>"} → guarda na sua MEMÓRIA para sempre seguir (ex.: "Kevin prefere print no grupo da equipe"). Use quando pedirem para lembrar/anotar ou quando alguém da equipe definir uma preferência clara.
 - {"ferramenta":"esquecer","texto":"<trecho do que esquecer>"} → tira da memória.
 - {"ferramenta":"audio","mensagem":"<o que falar, já escrito>","destino":"equipe"|"<cliente ou grupo>"|"privado:<pessoa>"} → manda um ÁUDIO com a sua voz em OUTRO lugar (para responder aqui em áudio, use "em_audio"). Grupo de cliente só se pedirem.
+- {"ferramenta":"editar_mensagem","novo_texto":"<o texto corrigido, completo>"} → edita uma mensagem SUA aqui (a que a pessoa respondeu/citou, ou a sua última). Só texto, até ~15 min depois de enviada.
+- {"ferramenta":"apagar_mensagem"} → apaga para todos uma mensagem SUA aqui (a citada, ou a sua última). Use quando pedirem para apagar.
+- {"ferramenta":"figurinha","momento":"<o clima/assunto, para escolher a figurinha>"} → manda uma figurinha que combine (das que você conhece). Use quando pedirem ou, com moderação, quando uma figurinha cair muito bem na conversa (risada, comemoração). Não a toda hora.
 - {"ferramenta":"resumo_dia","destino":"aqui"|"equipe"} → manda o resumo do dia (entregas, o que vence amanhã, atrasos, quem espera resposta).`;
 type Plano = { acoes: any[]; resposta: string; emAudio?: boolean };
 function jsonDoTexto(t: string): any {
@@ -1514,6 +1530,25 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
       if (f === 'pendencias') { const dest = await resolver(a.destino); await mandarResumo(sb, cfg, true, dest || aqui); feitos.push('pendências'); continue; }
       if (f === 'lembrar') { if (await lembrar(sb, String(a.texto || ''), String(a.sobre || ''), quem)) feitos.push('lembrou'); else falhas.push('não consegui guardar na memória'); continue; }
       if (f === 'esquecer') { const n = await esquecer(sb, String(a.texto || '')); if (n) feitos.push('esqueceu ' + n); else falhas.push('não achei isso na memória'); continue; }
+      if (f === 'editar_mensagem' || f === 'apagar_mensagem') {
+        const m = await minhaMensagem(sb, raw, aqui);
+        if (!m) { falhas.push('não achei uma mensagem minha recente aqui'); continue; }
+        if (f === 'editar_mensagem') {
+          if (m.tipo !== 'texto') { falhas.push('só consigo editar mensagem de texto'); continue; }
+          const novo = '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' + noJeitoDoWhats(cfg, String(a.novo_texto || '').trim());
+          if (!String(a.novo_texto || '').trim()) { falhas.push('faltou o texto novo'); continue; }
+          if (aqui !== cfg.grupo_equipe && temPalavrao(novo)) { falhas.push('esse texto não pode ir aqui'); continue; }
+          const r = await evo('/chat/updateMessage/' + I(), 'POST', { number: aqui, key: { remoteJid: m.jid, fromMe: true, id: m.id }, text: novo.slice(0, 3000) });
+          if (r.ok) { await sb.from('wa_mensagens').update({ editada: true, texto: novo.slice(0, 3000) }).eq('id', m.id); feitos.push('editou'); if (key.id && ehGrupo) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
+          else falhas.push('o WhatsApp não deixou editar (passou de 15 minutos?)');
+        } else {
+          const r = await evo('/chat/deleteMessageForEveryone/' + I(), 'DELETE', { id: m.id, remoteJid: m.jid, fromMe: true });
+          if (r.ok) { await sb.from('wa_mensagens').update({ apagada: true, texto: null }).eq('id', m.id); feitos.push('apagou'); if (key.id && ehGrupo) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
+          else falhas.push('o WhatsApp não deixou apagar');
+        }
+        continue;
+      }
+      if (f === 'figurinha') { if (await mandarFigurinha(sb, aqui, String(a.momento || pedido))) feitos.push('figurinha'); else falhas.push('não achei uma figurinha que combinasse'); continue; }
       if (f === 'audio') {
         const v = String(a.destino || 'equipe'); let dest: string | null = null;
         if (/^privado:/i.test(v)) {

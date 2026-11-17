@@ -509,6 +509,18 @@ Deno.serve(comCors(async (req: Request) => {
         await admin().from('wa_mensagens').update({ apagada: true, texto: null }).eq('id', m.id);
         return json({ ok: true });
       }
+      /* 4.63.0: editar uma mensagem enviada por nós (o WhatsApp deixa até ~15 min) */
+      case 'editar': {
+        const m = await msgDe(String(c.id || ''));
+        const novo = String(c.texto || '').trim().slice(0, 4000);
+        if (!m || !m.de_mim || m.nota) return json({ erro: 'Só dá para editar mensagem de texto enviada por nós.' });
+        if (m.tipo !== 'texto') return json({ erro: 'Só dá para editar mensagem de texto.' });
+        if (!novo) return json({ erro: 'Escreva o texto novo.' });
+        const r = await evo('/chat/updateMessage/' + I(), 'POST', { number: m.jid, key: { remoteJid: m.jid, fromMe: true, id: m.id }, text: novo });
+        if (!r.ok) return json({ erro: 'O WhatsApp não deixou editar (passou de 15 minutos?).' });
+        await admin().from('wa_mensagens').update({ editada: true, texto: novo }).eq('id', m.id);
+        return json({ ok: true });
+      }
       case 'lida': {
         const sb = admin();
         const { data: ult } = await sb.from('wa_mensagens').select('id, jid, autor_jid').eq('jid', c.jid).eq('de_mim', false).order('criada_em', { ascending: false }).limit(20);
