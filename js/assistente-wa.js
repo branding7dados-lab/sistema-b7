@@ -9,6 +9,12 @@ B7.AssistenteWA = (function () {
   const esc = s => B7.UI.esc(s);
   const sb = () => B7.sb;
   const chamar = (acao, extra) => B7.DB.waEvolution(acao, extra);
+  /* 4.62.0: as 30 vozes do Google (nome · jeito) */
+  const VOZES = [['Orus', 'firme'], ['Puck', 'animada'], ['Charon', 'informativa'], ['Fenrir', 'empolgada'], ['Achird', 'amigável'], ['Zubenelgenubi', 'casual'], ['Sadachbia', 'viva'],
+    ['Algenib', 'grave'], ['Iapetus', 'clara'], ['Umbriel', 'tranquila'], ['Algieba', 'suave'], ['Alnilam', 'firme'], ['Schedar', 'equilibrada'], ['Rasalgethi', 'informativa'],
+    ['Sadaltager', 'conhecedora'], ['Enceladus', 'sussurrada'], ['Kore', 'firme · fem.'], ['Aoede', 'leve · fem.'], ['Leda', 'jovem · fem.'], ['Zephyr', 'clara · fem.'],
+    ['Callirrhoe', 'tranquila · fem.'], ['Autonoe', 'clara · fem.'], ['Despina', 'suave · fem.'], ['Erinome', 'clara · fem.'], ['Laomedeia', 'animada · fem.'],
+    ['Achernar', 'suave · fem.'], ['Gacrux', 'madura · fem.'], ['Pulcherrima', 'direta · fem.'], ['Vindemiatrix', 'gentil · fem.'], ['Sulafat', 'calorosa · fem.']];
   const DIAS = [['1', 'Seg'], ['2', 'Ter'], ['3', 'Qua'], ['4', 'Qui'], ['5', 'Sex'], ['6', 'Sáb'], ['0', 'Dom']];
   const TONS = [
     ['😊 Simpático', 'Seja simpático e acolhedor, trate a pessoa pelo primeiro nome e use no máximo um emoji.'],
@@ -156,7 +162,13 @@ B7.AssistenteWA = (function () {
         '<div class="asw-card asw-auto"><h3>Por conta própria</h3>' +
           '<label class="asw-sw"><input type="checkbox" data-c="alertas_ligados"' + (c.alertas_ligados !== false ? ' checked' : '') + '><span></span><div><b>Avisar no grupo da equipe</b><small>Demanda atrasada ou que vence amanhã sem começar, cliente esperando há mais de 2h, cliente que aprovou algo. No máximo a cada 30 min, no horário, sem repetir.</small></div></label>' +
           '<label class="asw-sw"><input type="checkbox" data-c="resumo_dia_ligado"' + (c.resumo_dia_ligado !== false ? ' checked' : '') + '><span></span><div><b>Resumo do dia</b><small>Entregas, o que vence amanhã, atrasos e quem espera resposta — 1 vez por dia útil, a partir de <input class="campo fina asw-hora" type="time" data-c="resumo_dia_hora" value="' + esc(c.resumo_dia_hora || '18:00') + '">.</small></div></label>' +
-          '<label class="asw-sw"><input type="checkbox" data-c="responder_audio"' + (c.responder_audio !== false ? ' checked' : '') + '><span></span><div><b>Responder em áudio quando mandarem áudio</b><small>Com a equipe. Voz: <select class="campo fina" data-c="voz">' + ['Orus', 'Puck', 'Charon', 'Fenrir', 'Kore', 'Aoede', 'Leda', 'Zephyr'].map(v => '<option' + ((c.voz || 'Orus') === v ? ' selected' : '') + '>' + v + '</option>').join('') + '</select></small></div></label></div>' +
+          '<label class="asw-sw"><input type="checkbox" data-c="responder_audio"' + (c.responder_audio !== false ? ' checked' : '') + '><span></span><div><b>Responder em áudio quando mandarem áudio</b><small>Com a equipe. Também fala quando pedirem (“Otto, me manda um áudio”).</small></div></label>' +
+          '<div class="asw-voz"><label class="rot">Voz</label><div class="asw-voz-l"><select class="campo" data-c="voz">' + VOZES.map(([v, d]) => '<option value="' + v + '"' + ((c.voz || 'Orus') === v ? ' selected' : '') + '>' + v + ' · ' + d + '</option>').join('') + '</select>' +
+            '<button class="b fina contorno" data-voz-ouvir>▶ Ouvir</button></div>' +
+            '<label class="rot">Jeito de falar</label><input class="campo" data-c="voz_estilo" maxlength="200" placeholder="Ex.: animado, jovem, sotaque baiano leve" value="' + esc(c.voz_estilo || '') + '">' +
+            '<label class="rot">Voz da ElevenLabs (opcional, inclusive voz clonada)</label><div class="asw-voz-l"><select class="campo" data-c="voz_provedor"><option value="gemini"' + ((c.voz_provedor || 'gemini') === 'gemini' ? ' selected' : '') + '>Google (padrão)</option><option value="elevenlabs"' + (c.voz_provedor === 'elevenlabs' ? ' selected' : '') + '>ElevenLabs</option></select>' +
+            '<input class="campo" data-c="voz_eleven_id" placeholder="ID da voz na ElevenLabs" value="' + esc(c.voz_eleven_id || '') + '"></div>' +
+            '<small class="asw-sub">A ElevenLabs precisa da chave ELEVENLABS_API_KEY nos segredos das funções do Supabase. Sem ela, usa a voz do Google.</small></div></div>' +
         '<div class="asw-card asw-dono"><label class="rot">Quando quem fala é o próprio celular do B7, o Otto age como</label><select class="campo" data-c="dono_perfil_id"><option value="">o administrador principal</option>' +
           (S.perfis || []).map(u => '<option value="' + esc(u.id) + '"' + (u.id === c.dono_perfil_id ? ' selected' : '') + '>' + esc(u.nome) + '</option>').join('') + '</select>' +
           '<p class="asw-sub">O Otto cria, edita e exclui demandas em nome de quem pediu, com as permissões dessa pessoa no B7.</p></div>' +
@@ -245,6 +257,16 @@ B7.AssistenteWA = (function () {
 
   async function clique(e) {
     const t = e.target;
+    if (t.closest('[data-voz-ouvir]')) {
+      const bt = t.closest('[data-voz-ouvir]'); if (bt.disabled) return;
+      bt.disabled = true; bt.textContent = 'Gerando…';
+      const c = S.cfg;
+      chamar('voz_amostra', { voz: c.voz || 'Orus', estilo: c.voz_estilo || '', provedor: c.voz_provedor || 'gemini', eleven_id: c.voz_eleven_id || '' }).then(r => {
+        if (r.erro) throw new Error(r.erro);
+        const au = new Audio(r.audio); au.play().catch(() => {});
+      }).catch(e => B7.UI.toast(e.message || 'Não deu para gerar a voz.')).finally(() => { bt.disabled = false; bt.textContent = '▶ Ouvir'; });
+      return;
+    }
     if (t.closest('[data-mem-add]')) {
       const tx = (raiz.querySelector('#asw-mem-t') || {}).value || '', so = (raiz.querySelector('#asw-mem-s') || {}).value || '';
       if (tx.trim().length < 3) return B7.UI.toast('Escreva o que ele deve lembrar.');
@@ -348,7 +370,7 @@ B7.AssistenteWA = (function () {
       equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
       alertas_ligados: c.alertas_ligados !== false, resumo_dia_ligado: c.resumo_dia_ligado !== false, resumo_dia_hora: /^\d{2}:\d{2}$/.test(c.resumo_dia_hora || '') ? c.resumo_dia_hora : '18:00',
-      responder_audio: c.responder_audio !== false, voz: c.voz || 'Orus',
+      responder_audio: c.responder_audio !== false, voz: c.voz || 'Orus', voz_estilo: String(c.voz_estilo || '').slice(0, 200), voz_provedor: c.voz_provedor === 'elevenlabs' ? 'elevenlabs' : 'gemini', voz_eleven_id: String(c.voz_eleven_id || '').trim() || null,
       quem_e_quem: Object.fromEntries(Object.entries(c.quem_e_quem || {}).map(([k, v]) => [k, String(v || '').trim().slice(0, 200)]).filter(([, v]) => v)),
       sem_marcacao: !!c.sem_marcacao, pausa_min: Math.max(5, Number(c.pausa_min) || 30), ouvir_audio: c.ouvir_audio !== false,
       espera_min_s: Math.max(1, Number(c.espera_min_s) || 4), espera_max_s: Math.max(Number(c.espera_min_s) || 4, Number(c.espera_max_s) || 9),

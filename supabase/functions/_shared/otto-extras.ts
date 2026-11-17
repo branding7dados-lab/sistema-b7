@@ -55,20 +55,58 @@ function wav(pcm: Uint8Array, rate = 24000): Uint8Array {
   const out = new Uint8Array(44 + pcm.length); out.set(new Uint8Array(h), 0); out.set(pcm, 44); return out;
 }
 const b64 = (u: Uint8Array) => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
-/** texto → áudio WAV em base64 (ou null) */
-export async function falar(texto: string, voz = 'Orus'): Promise<string | null> {
+/* 4.62.0: as 30 vozes do Gemini (nome · jeito) */
+export const VOZES: [string, string][] = [
+  ['Orus', 'firme'], ['Puck', 'animada'], ['Charon', 'informativa'], ['Fenrir', 'empolgada'], ['Kore', 'firme (fem.)'], ['Aoede', 'leve (fem.)'],
+  ['Leda', 'jovem (fem.)'], ['Zephyr', 'clara (fem.)'], ['Callirrhoe', 'tranquila (fem.)'], ['Autonoe', 'clara (fem.)'], ['Enceladus', 'sussurrada'],
+  ['Iapetus', 'clara'], ['Umbriel', 'tranquila'], ['Algieba', 'suave'], ['Despina', 'suave (fem.)'], ['Erinome', 'clara (fem.)'], ['Algenib', 'grave'],
+  ['Rasalgethi', 'informativa'], ['Laomedeia', 'animada (fem.)'], ['Achernar', 'suave (fem.)'], ['Alnilam', 'firme'], ['Schedar', 'equilibrada'],
+  ['Gacrux', 'madura (fem.)'], ['Pulcherrima', 'direta (fem.)'], ['Achird', 'amigável'], ['Zubenelgenubi', 'casual'], ['Vindemiatrix', 'gentil (fem.)'],
+  ['Sadachbia', 'viva'], ['Sadaltager', 'conhecedora'], ['Sulafat', 'calorosa (fem.)']
+];
+export type Voz = { provedor?: string; voz?: string; estilo?: string; elevenId?: string | null };
+export type Audio = { b64: string; mime: string };
+/** a resposta escrita vira FALA: curta, natural, sem lista/link/código; diz se é bom mandar o texto junto */
+export async function roteiroDeFala(texto: string): Promise<{ fala: string; comTexto: boolean }> {
+  const t = String(texto || '').replace(/\[\[\s*NOVA\s*\]\]/gi, '\n').trim();
+  const temCoisaDeLer = /https?:\/\/|www\.|\n\s*[-•*\d]+[.)]?\s|\b[A-Z]{2,}-\d+\b|@\d{6,}/.test(t) || t.length > 700;
+  const r = await gerar(provedorAtual(n => Deno.env.get(n)), [
+    { role: 'system', content: 'Reescreva a mensagem abaixo como FALA de um áudio de WhatsApp em português do Brasil: natural, como quem fala, frases curtas, sem listas, sem emojis, sem links, sem códigos, sem markdown. Datas e horas por extenso ("dezoito de novembro", "às três da tarde"), números como se fala, siglas como se pronuncia. Mantenha o sentido e os fatos; se houver links, listas longas ou códigos, diga só o essencial ("te mandei os detalhes por escrito aqui embaixo"). No máximo uns 40 segundos de fala (até ~110 palavras). Devolva só o texto falado.' },
+    { role: 'user', content: t.slice(0, 3000) }
+  ], { maxTokens: 400, temperatura: 0.4, prazoMs: 20000, limpar: (x: string) => String(x || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^["“]|["”]$/g, '').trim() });
+  const fala = r.ok && r.texto ? r.texto : t.replace(/[*_~`#]/g, '').replace(/https?:\/\/\S+/g, '').slice(0, 700);
+  return { fala, comTexto: temCoisaDeLer };
+}
+/** ElevenLabs (se houver ELEVENLABS_API_KEY e uma voz escolhida) — mais natural, aceita voz clonada */
+async function falarEleven(texto: string, vozId: string): Promise<Audio | null> {
+  const chave = (Deno.env.get('ELEVENLABS_API_KEY') || '').trim();
+  if (!chave || !vozId) return null;
+  try {
+    const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(vozId) + '?output_format=mp3_44100_128', {
+      method: 'POST', signal: AbortSignal.timeout(60000), headers: { 'xi-api-key': chave, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
+      body: JSON.stringify({ text: texto, model_id: Deno.env.get('ELEVENLABS_MODELO') || 'eleven_multilingual_v2', voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.35, use_speaker_boost: true } })
+    });
+    if (!r.ok) { console.log('eleven', r.status, (await r.text()).slice(0, 200)); return null; }
+    return { b64: b64(new Uint8Array(await r.arrayBuffer())), mime: 'audio/mpeg' };
+  } catch (e) { console.log('eleven', String(e).slice(0, 200)); return null; }
+}
+/** texto (já em forma de fala) → áudio. Gemini TTS por padrão; ElevenLabs se configurado. */
+export async function falar(texto: string, v: Voz | string = 'Orus'): Promise<Audio | null> {
+  const o: Voz = typeof v === 'string' ? { voz: v } : v;
+  const limpo = String(texto || '').replace(/\[\[\s*NOVA\s*\]\]/gi, '\n').replace(/[*_~`#]/g, '').replace(/@(\d{6,})/g, '')
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').replace(/\s{2,}/g, ' ').trim().slice(0, 1200);
+  if (!limpo) return null;
+  if (o.provedor === 'elevenlabs' && o.elevenId) { const e = await falarEleven(limpo, o.elevenId); if (e) return e; }
   const chave = (Deno.env.get('GEMINI_API_KEY') || '').trim();
   if (!chave) return null;
-  const limpo = String(texto || '').replace(/\[\[\s*NOVA\s*\]\]/gi, '\n').replace(/[*_~`#]/g, '').replace(/@(\d{6,})/g, '')
-    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').replace(/\s{2,}/g, ' ').trim().slice(0, 900);
-  if (!limpo) return null;
+  const estilo = String(o.estilo || 'animado, simpático e natural, como um colega de trabalho brasileiro mandando áudio no WhatsApp').slice(0, 200);
   for (const m of await ttsModelos(chave)) {
     try {
       const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent', {
         method: 'POST', signal: AbortSignal.timeout(60000), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': chave },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Fale em português do Brasil, num tom natural, simpático e animado, como um colega de trabalho mandando um áudio no WhatsApp: ' + limpo }] }],
-          generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voz || 'Orus' } } } }
+          contents: [{ parts: [{ text: 'Fale em português do Brasil, com sotaque brasileiro, de um jeito ' + estilo + '. Ritmo de conversa, sem soar como locutor nem robô:\n' + limpo }] }],
+          generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: o.voz || 'Orus' } } } }
         })
       });
       const d = await r.json().catch(() => ({} as any));
@@ -77,7 +115,7 @@ export async function falar(texto: string, voz = 'Orus'): Promise<string | null>
       if (!p) continue;
       const rate = Number(/rate=(\d+)/.exec(String(p.inlineData.mimeType || ''))?.[1] || 24000);
       const pcm = Uint8Array.from(atob(p.inlineData.data), c => c.charCodeAt(0));
-      return b64(wav(pcm, rate));
+      return { b64: b64(wav(pcm, rate)), mime: 'audio/wav' };
     } catch (e) { console.log('tts', m, String(e).slice(0, 200)); }
   }
   return null;

@@ -28,7 +28,7 @@ import { fichaLinha } from './ficha-linha.ts';
 import { gerarImagem, formatoDoTexto, type Ref } from './imagem.ts';
 import { cuidarDasDemandas, perfilDe, FALA_DE_DEMANDA } from './otto-demandas.ts';
 import { printDaConversa } from './print-conversa.ts';
-import { memorias, lembrar, esquecer, falar, avisosPendentes, marcarAvisados, dadosDoDia, escreverResumoDia } from './otto-extras.ts';
+import { memorias, lembrar, esquecer, falar, roteiroDeFala, avisosPendentes, marcarAvisados, dadosDoDia, escreverResumoDia } from './otto-extras.ts';
 import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, decidirJeito, reagirNaMensagem, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -1207,8 +1207,20 @@ async function talvezRecado(sb: SupabaseClient, cfg: Config, raw: any, texto: st
 
 /** Pergunta interna da equipe (grupo da equipe ou privado): pendências ou o que há de um cliente. */
 /* ------------------------------------------------------------ 4.61.0: áudio, avisos, resumo do dia */
-async function enviarAudio(sb: SupabaseClient, cfg: Config, jid: string, wavB64: string, extra: Record<string, unknown> = {}): Promise<boolean> {
-  const r = await evo('/message/sendWhatsAppAudio/' + I(), 'POST', { number: jid, audio: wavB64, encoding: true, ...extra }, 90000);
+const vozDe = (cfg: Config) => ({ provedor: (cfg as any).voz_provedor || 'gemini', voz: (cfg as any).voz || 'Orus', estilo: (cfg as any).voz_estilo || '', elevenId: (cfg as any).voz_eleven_id || null });
+/** 4.62.0: responde EM ÁUDIO — reescreve como fala, gera a voz, manda; se tiver link/lista, manda o texto junto. false = não deu (aí vai texto) */
+async function responderEmAudio(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}): Promise<boolean> {
+  if (jid !== cfg.grupo_equipe && temPalavrao(texto)) return false;
+  await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'recording', delay: 4000 }, 8000).catch(() => null);
+  const { fala, comTexto } = await roteiroDeFala(texto);
+  const audio = await falar(fala, vozDe(cfg));
+  if (!audio) return false;
+  const ok = await enviarAudio(sb, cfg, jid, audio.b64, extra);
+  if (ok && comTexto) await enviar(sb, cfg, jid, texto);
+  return ok;
+}
+async function enviarAudio(sb: SupabaseClient, cfg: Config, jid: string, audioB64: string, extra: Record<string, unknown> = {}): Promise<boolean> {
+  const r = await evo('/message/sendWhatsAppAudio/' + I(), 'POST', { number: jid, audio: audioB64, encoding: true, ...extra }, 90000);
   if (!r.ok) { console.log('audio envio', r.status, JSON.stringify(r.dados).slice(0, 200)); return false; }
   try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ }
   if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
@@ -1338,8 +1350,9 @@ const FERRAMENTAS = `FERRAMENTAS (use só quando o pedido pedir isso; várias po
 - {"ferramenta":"reagir","emoji":"😂"} → reage à mensagem de quem pediu (😂 👍 ❤️ 👏 🔥 🥳 🙏 😮).
 - {"ferramenta":"lembrar","texto":"<o combinado/preferência, completo>","sobre":"<pessoa/cliente/assunto>"} → guarda na sua MEMÓRIA para sempre seguir (ex.: "Kevin prefere print no grupo da equipe"). Use quando pedirem para lembrar/anotar ou quando alguém da equipe definir uma preferência clara.
 - {"ferramenta":"esquecer","texto":"<trecho do que esquecer>"} → tira da memória.
+- {"ferramenta":"audio","mensagem":"<o que falar, já escrito>","destino":"equipe"|"<cliente ou grupo>"|"privado:<pessoa>"} → manda um ÁUDIO com a sua voz em OUTRO lugar (para responder aqui em áudio, use "em_audio"). Grupo de cliente só se pedirem.
 - {"ferramenta":"resumo_dia","destino":"aqui"|"equipe"} → manda o resumo do dia (entregas, o que vence amanhã, atrasos, quem espera resposta).`;
-type Plano = { acoes: any[]; resposta: string };
+type Plano = { acoes: any[]; resposta: string; emAudio?: boolean };
 function jsonDoTexto(t: string): any {
   const x = String(t || '').replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '').trim();
   try { return JSON.parse(x); } catch (_e) { /* procura o objeto */ }
@@ -1399,7 +1412,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     `Você é ${cfg.nome}, o assistente (IA) da Branding7, agência de conteúdo para redes sociais. Quem fala com você agora é alguém da EQUIPE (${quem}), ${ehEquipe ? 'no grupo interno da equipe' : ehGrupo ? 'num grupo' : 'no privado'}.`,
     'Você é um AGENTE: entende o pedido (pela mensagem E pela conversa em volta — "isso", "desse grupo", "lá", respostas curtas a perguntas suas) e usa FERRAMENTAS para agir de verdade. Pode encadear várias ferramentas num pedido só.',
     FERRAMENTAS,
-    'COMO RESPONDER: SÓ um JSON {"acoes":[...], "resposta":"..."}.',
+    'COMO RESPONDER: SÓ um JSON {"acoes":[...], "resposta":"...", "em_audio": false}. "em_audio": true quando pedirem para você responder/falar em áudio ("me manda um áudio", "fala aí", "responde por áudio") — aí a "resposta" vira áudio com a sua voz.',
     '- "resposta": a mensagem que vai AQUI, depois das ações. Quando uma ação já avisa por si (print, privado, imagem, pdf, demandas, encaminhar, pendências), deixe "resposta" vazia ou bem curta. Se só precisa conversar/responder, "acoes": [] e escreva a resposta.',
     '- Se usar "consultar", deixe "resposta" vazia: o resultado volta e você decide de novo.',
     '- Se faltar algo essencial (qual cliente, qual pessoa), pergunte em "resposta" e não chame a ferramenta. Mas antes de perguntar, veja se a conversa já responde.',
@@ -1423,7 +1436,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     if (!saida.ok) { console.log('agente: IA falhou', saida.erro || ''); return false; }
     const j = jsonDoTexto(saida.texto);
     if (!j || !Array.isArray(j.acoes)) { console.log('agente: JSON inválido', String(saida.texto).slice(0, 200)); return false; }
-    plano = { acoes: j.acoes.slice(0, 6), resposta: String(j.resposta || '').trim() };
+    plano = { acoes: j.acoes.slice(0, 6), resposta: String(j.resposta || '').trim(), emAudio: j.em_audio === true };
     const consultas = plano.acoes.filter(a => a?.ferramenta === 'consultar');
     if (!consultas.length || rodada === 2) break;
     let res = '';
@@ -1475,6 +1488,19 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
       if (f === 'pendencias') { const dest = await resolver(a.destino); await mandarResumo(sb, cfg, true, dest || aqui); feitos.push('pendências'); continue; }
       if (f === 'lembrar') { if (await lembrar(sb, String(a.texto || ''), String(a.sobre || ''), quem)) feitos.push('lembrou'); else falhas.push('não consegui guardar na memória'); continue; }
       if (f === 'esquecer') { const n = await esquecer(sb, String(a.texto || '')); if (n) feitos.push('esqueceu ' + n); else falhas.push('não achei isso na memória'); continue; }
+      if (f === 'audio') {
+        const v = String(a.destino || 'equipe'); let dest: string | null = null;
+        if (/^privado:/i.test(v)) {
+          const pessoa = v.replace(/^privado:\s*/i, '');
+          const eq = (cfg.equipe || []).find(p => p.nome && semAcento(p.nome).split(/\s+/)[0] === semAcento(pessoa).split(/\s+/)[0]);
+          const fone = /^(eu|me|mim)$/i.test(pessoa) ? await foneDoAutor(sb, cfg, raw) : (eq ? dig(eq.numero) : '');
+          dest = fone ? foneBR(fone) + '@s.whatsapp.net' : null;
+        } else dest = await resolver(v);
+        if (!dest || !String(a.mensagem || '').trim()) { falhas.push('não achei para onde mandar o áudio'); continue; }
+        if (await responderEmAudio(sb, cfg, dest, String(a.mensagem))) { feitos.push('áudio'); if (dest !== aqui && ehGrupo && key.id) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
+        else falhas.push('a voz não saiu agora');
+        continue;
+      }
       if (f === 'resumo_dia') { const dest = await resolver(a.destino); if (await talvezResumoDia(sb, cfg, true, dest || aqui)) feitos.push('resumo do dia'); else falhas.push('não consegui montar o resumo do dia'); continue; }
     } catch (e) { console.log('agente: ferramenta', f, String(e).slice(0, 300)); falhas.push(f + ' deu erro'); }
   }
@@ -1483,13 +1509,8 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   if (resposta) {
     const citarR = key.id ? { quoted: { key, message: { conversation: texto.slice(0, 300) } } } : {};
     /* 4.61.0: mandou áudio → responde em áudio (se der; senão, texto) */
-    const veioAudio = temAudio(raw) && (cfg as any).responder_audio !== false && resposta.length <= 900 && !(aqui !== cfg.grupo_equipe && temPalavrao(resposta));
-    let foiAudio = false;
-    if (veioAudio) {
-      await evo('/chat/sendPresence/' + I(), 'POST', { number: aqui, presence: 'recording', delay: 3000 }, 8000).catch(() => null);
-      const wav = await falar(resposta, (cfg as any).voz || 'Orus');
-      if (wav) foiAudio = await enviarAudio(sb, cfg, aqui, wav, citarR);
-    }
+    const emAudio = plano.emAudio || (temAudio(raw) && (cfg as any).responder_audio !== false);
+    const foiAudio = emAudio ? await responderEmAudio(sb, cfg, aqui, resposta, citarR) : false;
     if (!foiAudio) { await digitando(aqui, cfg); await enviar(sb, cfg, aqui, resposta, citarR); }
   }
   await registrar(sb, { tipo: plano.acoes.length ? 'agente' : 'consulta', jid: aqui, autor: quem, pergunta: pedido.slice(0, 800),
