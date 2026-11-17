@@ -185,7 +185,7 @@ export async function decidirJeito(texto: string, chamadoPeloNome: boolean, conv
   if (RISADA.test(semNome)) return { acao: 'reagir', emoji: '😂' };
   if (OK_CURTO.test(semNome)) return { acao: 'reagir', emoji: /obrigad|brigad|valeu|vlw|🙏/i.test(semNome) ? '❤️' : '👍' };
   /* pergunta ou pedido claro: responde (e sem gastar IA para decidir) */
-  if (/\?/.test(t) || t.length > 140 || /\b(me (manda|envia|passa|fala|diz|explica|ajuda)|faz|faça|cria|crie|gera|gere|escreve|escreva|lista|quais|qual|como|quando|onde|quanto|por ?que)\b/i.test(t)) return { acao: 'responder', emoji: '' };
+  if (/\?/.test(t) || t.length > 140 || /\b(me (manda|envia|passa|fala|diz|explica|ajuda)|faz|faça|cria|crie|gera|gere|escreve|escreva|lista|quais|qual|como|quando|onde|quanto|por ?que|chama|chame|pv|privado|inbox|marca|marque|print)\b/i.test(t)) return { acao: 'responder', emoji: '' };
   const r = (await ia('Num grupo de WhatsApp da equipe, alguém escreveu para o Otto (a IA da agência) ou respondeu uma mensagem dele. Decida como uma pessoa esperta reagiria: ' +
     '"reagir" = só um emoji na mensagem (risada, comentário solto, provocação leve, elogio, "vish", algo que não pede resposta); ' +
     '"ambos" = emoji e uma resposta curta (notícia boa ou conquista que merece comemorar e comentar, brincadeira que pede réplica); ' +

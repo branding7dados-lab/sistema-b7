@@ -17,7 +17,7 @@ B7.AssistenteWA = (function () {
     ['😄 Descontraído', 'Pode ser leve e bem-humorado, como alguém da agência que conhece o cliente.']
   ];
   const TIPOS_REGRA = [['NUNCA', 'Nunca'], ['SEMPRE', 'Sempre'], ['NÃO RESPONDA quando o assunto for', 'Não responder sobre'], ['CHAME', 'Chamar alguém quando']];
-  const ROT_TIPO = { resposta: ['Respondeu', 'ok'], duvida: ['Perguntou à equipe', 'dv'], repasse: ['Repassou resposta', 'rp'], instrucao: ['Cumpriu ordem', 'or'], fora_horario: ['Fora do horário', 'fh'], teste: ['Teste', 'ts'], erro: ['Falhou', 'er'], resumo: ['Pendências à equipe', 'rp'], consulta: ['Respondeu a equipe', 'or'], documento: ['Mandou PDF', 'ok'], recado: ['Deu recado', 'rp'], imagem: ['Gerou imagem', 'ok'], demanda: ['Mexeu nas demandas', 'or'], reacao: ['Reagiu', 'ok'], figurinha: ['Mandou figurinha', 'ok'], bot: ['Falou com outra IA', 'rp'], print: ['Mandou print', 'ok'] };
+  const ROT_TIPO = { resposta: ['Respondeu', 'ok'], duvida: ['Perguntou à equipe', 'dv'], repasse: ['Repassou resposta', 'rp'], instrucao: ['Cumpriu ordem', 'or'], fora_horario: ['Fora do horário', 'fh'], teste: ['Teste', 'ts'], erro: ['Falhou', 'er'], resumo: ['Pendências à equipe', 'rp'], consulta: ['Respondeu a equipe', 'or'], documento: ['Mandou PDF', 'ok'], recado: ['Deu recado', 'rp'], imagem: ['Gerou imagem', 'ok'], demanda: ['Mexeu nas demandas', 'or'], reacao: ['Reagiu', 'ok'], figurinha: ['Mandou figurinha', 'ok'], bot: ['Falou com outra IA', 'rp'], print: ['Mandou print', 'ok'], privado: ['Chamou no privado', 'rp'] };
   let S = null, raiz = null;
 
   const ini = s => { const p = String(s || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase(); };

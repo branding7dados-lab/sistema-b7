@@ -454,7 +454,8 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
     /* resposta a uma dúvida (citando o aviso) */
     if (pessoa && ctx.stanzaId) { const r = await responderDuvida(sb, cfg, texto, String(ctx.stanzaId || ''), pessoa.nome || 'equipe', jid); if (r.ok) return; }
     /* 4.56.3: chamaram o Otto no privado */
-    let chamado = chamouPeloNome(cfg, texto) || (porAudio && (!!pessoa || await conversandoComOtto(sb, jid)));
+    /* 4.59.13: alguém da equipe conversando com o Otto no privado (ele chamou no PV, ou falaram há pouco): não precisa dizer "Otto" */
+    let chamado = chamouPeloNome(cfg, texto) || (porAudio && (!!pessoa || await conversandoComOtto(sb, jid))) || (!!pessoa && await conversandoComOtto(sb, jid));
     if (!chamado && ctx.stanzaId) { const { data: c } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle(); chamado = !!c?.do_assistente; }
     if (!chamado) return;
     if (pessoa) { await consultaInterna(sb, cfg, raw, texto, jid); return; }        /* equipe (ou você no "conversar comigo"): pergunta interna */
@@ -1117,9 +1118,71 @@ async function talvezRecado(sb: SupabaseClient, cfg: Config, raw: any, texto: st
 }
 
 /** Pergunta interna da equipe (grupo da equipe ou privado): pendências ou o que há de um cliente. */
+/* ------------------------------------------------------------ 4.59.13: "me chama no PV" */
+const PEDE_PV = /\b(pv|privado|inbox|direct|dm|particular)\b/;
+/** telefone de quem mandou a mensagem (num grupo: o número ao lado do @lid, os contatos ou a lista do grupo) */
+async function foneDoAutor(sb: SupabaseClient, cfg: Config, raw: any): Promise<string> {
+  const key = raw?.key || {};
+  if (key.fromMe) return '';
+  const alt = [key.participantAlt, key.participantPn, key.senderPn, key.remoteJidAlt].find((x: any) => typeof x === 'string' && /@s\.whatsapp\.net$/.test(x));
+  const j = String(key.participant || key.remoteJid || '');
+  let fone = dig(alt || (/@s\.whatsapp\.net$/.test(j) ? j : ''));
+  if (!fone && /@lid$/.test(j)) {
+    const { data: ct } = await sb.from('wa_contatos').select('numero').eq('jid', j).maybeSingle(); fone = dig(ct?.numero);
+    if (!fone && /@g\.us$/.test(String(key.remoteJid || ''))) fone = (await participantesDoGrupo(sb, cfg, String(key.remoteJid))).find(p => p.mencao === j)?.fone || '';
+  }
+  return fone;
+}
+async function talvezPrivado(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, destino: string): Promise<boolean> {
+  const n = semAcento(pedido);
+  if (!PEDE_PV.test(n)) return false;
+  const key = raw?.key || {};
+  const citar = key.id ? { key, message: { conversation: pedido.slice(0, 200) } } : undefined;
+  /* conversa em volta (para o Otto saber do que se trata) */
+  const { data: h } = await sb.from('wa_mensagens').select('autor_nome, enviada_por_nome, de_mim, do_assistente, texto').eq('jid', destino).eq('nota', false).order('criada_em', { ascending: false }).limit(14);
+  const conversa = ((h || []) as any[]).reverse().filter(m => (m.texto || '').trim()).map(m => (m.do_assistente ? cfg.nome : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + String(m.texto).slice(0, 300)).join('\n');
+  const quem = String(raw?.pushName || (key.fromMe ? 'Você' : 'alguém da equipe'));
+  const plano = await ia('Alguém da equipe pediu ao ' + cfg.nome + ' (assistente da agência) para falar com uma pessoa NO PRIVADO (PV) do WhatsApp. Entenda o pedido e responda SÓ um JSON: ' +
+    '{"pv": true|false, "alvo": "eu" ou o nome da pessoa, "mensagem": "a primeira mensagem que o ' + cfg.nome + ' vai mandar no privado"}. ' +
+    '"pv": false se o pedido não for para mandar algo no privado. "alvo": "eu" quando é para falar com quem pediu ("me chama no pv", "fala comigo no privado"). ' +
+    '"mensagem": escreva como o ' + cfg.nome + ', em português, natural e curta. Se pediram para MANDAR um conteúdo ("manda no pv do Kaique que o vídeo é pra hoje"), a mensagem é esse conteúdo, bem escrito, dizendo quem pediu se for para outra pessoa. ' +
+    'Se pediram só para CHAMAR/CONVERSAR ("me chama no pv para falar de X"), abra a conversa puxando o assunto com o contexto do grupo (ex.: "Oi Kevin! Me chamou lá no grupo pra falar da campanha da C6. Bora, o que você precisa?"). Sem assinatura, sem markdown.',
+    'QUEM PEDIU: ' + quem + '\n\nCONVERSA RECENTE DO GRUPO:\n' + conversa + '\n\nPEDIDO: ' + pedido, 400);
+  let j: any = null;
+  try { const t = plano.texto.replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, ''); j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (_e) { j = null; }
+  if (!j || j.pv === false || !String(j.mensagem || '').trim()) return false;
+  /* para quem */
+  let fone = '', nome = '';
+  const alvo = String(j.alvo || 'eu').trim();
+  if (/^(eu|me|mim|comigo)$/i.test(alvo)) {
+    if (key.fromMe) { await enviar(sb, cfg, destino, 'Você já está no celular do B7 — me chama aqui mesmo 😉', citar ? { quoted: citar } : {}); return true; }
+    fone = await foneDoAutor(sb, cfg, raw); nome = quem;
+  } else {
+    const a = semAcento(alvo);
+    const eq = (cfg.equipe || []).find(p => p.nome && (semAcento(p.nome) === a || semAcento(p.nome).split(/\s+/)[0] === a.split(/\s+/)[0]));
+    if (eq) { fone = dig(eq.numero); nome = eq.nome!; }
+    else if (/@g\.us$/.test(destino)) {
+      const g = (await participantesDoGrupo(sb, cfg, destino)).filter(p => p.nome && p.fone && (semAcento(p.nome) === a || semAcento(p.nome).split(/\s+/)[0] === a.split(/\s+/)[0]));
+      if (g.length === 1) { fone = g[0].fone; nome = g[0].nome; }
+    }
+  }
+  if (!fone) { await enviar(sb, cfg, destino, 'Não achei o número ' + (nome ? 'de ' + nome.split(' ')[0] : 'dessa pessoa') + ' pra chamar no privado. Se for da equipe, coloca o número na tela do ' + cfg.nome + '.', citar ? { quoted: citar } : {}); return true; }
+  const pv = foneBR(fone) + '@s.whatsapp.net';
+  if (pv.split('@')[0] === (await meuNumero())) return false;
+  await digitando(pv, cfg);
+  const foi = await enviar(sb, cfg, pv, String(j.mensagem).trim());
+  if (/@g\.us$/.test(destino)) {
+    if (foi && key.id) await reagirNaMensagem(sb, String(key.id), '👍', destino, pedido);
+    else if (!foi) await enviar(sb, cfg, destino, 'Não consegui mandar no privado agora.', citar ? { quoted: citar } : {});
+  }
+  await registrar(sb, { tipo: foi ? 'privado' : 'erro', jid: pv, autor: quem, pergunta: pedido.slice(0, 500), resposta: ('para ' + nome + ': ' + String(j.mensagem)).slice(0, 1200), ...usoDe(plano) });
+  return true;
+}
+
 async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
   const key = raw?.key || {};
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
+  if (await talvezPrivado(sb, cfg, raw, pedido, destino)) return;
   if (await talvezPrint(sb, cfg, raw, pedido, destino)) return;
   if (await talvezImagem(sb, cfg, raw, pedido, destino)) return;
   if (await talvezDemandas(sb, cfg, raw, pedido, destino)) return;
