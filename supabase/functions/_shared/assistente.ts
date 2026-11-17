@@ -916,7 +916,7 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
   }
   if (!conv) { await enviar(sb, cfg, destino, 'De qual cliente ou conversa? Me fala o nome que eu mando o print.', citar ? { quoted: citar } : {}); return true; }
   await digitando(destino, cfg);
-  const { data: ms } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, tipo, texto, criada_em, duracao, midia_nome, miniatura, citada_previa, citada_autor, do_assistente')
+  const { data: ms } = await sb.from('wa_mensagens').select('de_mim, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em, duracao, midia_nome, miniatura, citada_previa, citada_autor, do_assistente')
     .eq('jid', conv.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(40);
   let lista = ((ms || []) as any[]).reverse();
   if (!lista.length) { await enviar(sb, cfg, destino, 'A conversa ' + (conv.nome || '') + ' ainda não tem mensagens no B7.', citar ? { quoted: citar } : {}); return true; }
@@ -928,12 +928,26 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
   lista = lista.slice(-14);
   const agora = new Date(Date.now() - 3 * 3600000);
   const quando = String(agora.getUTCDate()).padStart(2, '0') + '/' + String(agora.getUTCMonth() + 1).padStart(2, '0') + ' às ' + String(agora.getUTCHours()).padStart(2, '0') + ':' + String(agora.getUTCMinutes()).padStart(2, '0');
+  /* 4.59.10: logo do cliente no topo (ou a foto do grupo) e a foto de cada pessoa */
+  let fotoTitulo: string | null = null;
+  if (conv.cliente_id) { const { data: cr } = await sb.from('clientes_resumo').select('logo_url').eq('id', conv.cliente_id).maybeSingle(); fotoTitulo = await fotoComoDado(cr?.logo_url); }
+  if (!fotoTitulo) { const { data: cv } = await sb.from('wa_conversas').select('foto_url').eq('jid', conv.jid).maybeSingle(); fotoTitulo = await fotoComoDado(cv?.foto_url); }
+  const autores = [...new Set(lista.filter(m => !m.de_mim && m.autor_jid).map(m => String(m.autor_jid)))].slice(0, 12);
+  if (autores.length) {
+    const { data: cts } = await sb.from('wa_contatos').select('jid, foto_url').in('jid', autores);
+    const fotos = new Map<string, string>();
+    await Promise.all(((cts || []) as any[]).filter(c => c.foto_url).map(async c => { const f = await fotoComoDado(c.foto_url); if (f) fotos.set(c.jid, f); }));
+    for (const m of lista) if (!m.de_mim && m.autor_jid && fotos.has(m.autor_jid)) m.foto = fotos.get(m.autor_jid);
+  }
   let png: Uint8Array;
-  try { png = await printDaConversa(conv.nome || 'Conversa', 'Print do B7 · ' + quando, lista, conv.tipo === 'grupo' || /@g\.us$/.test(conv.jid)); }
+  try { png = await printDaConversa(conv.nome || 'Conversa', 'Print do B7 · ' + quando, lista, conv.tipo === 'grupo' || /@g\.us$/.test(conv.jid), fotoTitulo); }
   catch (e) { console.log('print', String(e).slice(0, 300)); await enviar(sb, cfg, destino, 'Não consegui montar o print agora. Tenta de novo?', citar ? { quoted: citar } : {}); return true; }
   const conversa = lista.map(m => (m.de_mim ? '[EQUIPE] ' + (m.do_assistente ? cfg.nome : m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'Cliente')) + ': ' + (m.texto ? String(m.texto).slice(0, 400) : '(' + m.tipo + ')')).join('\n');
-  const r = await ia('Você é ' + cfg.nome + ', da equipe da Branding7. Em 1 ou 2 frases curtas, diga para a equipe o que o cliente está pedindo ou esperando nessa conversa (e se ainda falta responder). Texto corrido, sem listas, sem inventar. Não assine.',
-    'CONVERSA "' + (conv.nome || '') + '" (mais antiga primeiro):\n' + conversa + '\n\nPEDIDO DA EQUIPE: ' + pedido, 250);
+  const r = await ia('Você é ' + cfg.nome + ', da equipe da Branding7. Abaixo está a conversa de um CLIENTE com a agência no WhatsApp. ' +
+    'Em 1 ou 2 frases curtas, conte para a equipe o que o CLIENTE está pedindo, perguntando ou esperando nessa conversa e se já responderam ou ainda falta responder. ' +
+    'Fale do cliente na terceira pessoa (ex.: "A Camila pediu a arte da Black Friday pra hoje e ainda ninguém respondeu"). Se não há nada pendente, diga isso (ex.: "Tudo respondido por lá; o último assunto foi..."). ' +
+    'Texto corrido, sem listas, sem inventar, sem falar de print. Não assine.',
+    'CONVERSA "' + (conv.nome || '') + '" ([EQUIPE] = gente da agência; o resto é o cliente; mais antiga primeiro):\n' + conversa, 250);
   const legenda = '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' + (r.texto ? noJeitoDoWhats(cfg, r.texto) : 'Print da conversa ' + (conv.nome || '') + '.');
   let b64 = ''; for (let i = 0; i < png.length; i += 0x8000) b64 += String.fromCharCode(...png.subarray(i, i + 0x8000));
   const env = await evo('/message/sendMedia/' + I(), 'POST', { number: destino, mediatype: 'image', mimetype: 'image/png', fileName: 'print.png',
@@ -1007,6 +1021,11 @@ async function logoDe(url: unknown): Promise<Logo | null> {
     const png = await webpParaPng(u);
     return png ? { b64: paraB64(png), fmt: 'PNG' } : null;
   } catch (_e) { return null; }
+}
+/** imagem de uma URL como "data:" para o print (PNG/JPEG direto; WebP vira PNG) */
+async function fotoComoDado(url: unknown): Promise<string | null> {
+  const l = await logoDe(url);
+  return l ? 'data:image/' + (l.fmt === 'PNG' ? 'png' : 'jpeg') + ';base64,' + l.b64 : null;
 }
 let webpPronto: Promise<any> | null = null;
 async function webpParaPng(u: Uint8Array): Promise<Uint8Array | null> {

@@ -23,12 +23,17 @@ async function iniciar() {
 
 export type MsgPrint = {
   de_mim: boolean; autor_nome?: string | null; enviada_por_nome?: string | null; tipo: string; texto?: string | null;
-  criada_em: string; duracao?: number | null; midia_nome?: string | null; miniatura?: string | null; citada_previa?: string | null; citada_autor?: string | null; do_assistente?: boolean;
+  criada_em: string; foto?: string | null; duracao?: number | null; midia_nome?: string | null; miniatura?: string | null; citada_previa?: string | null; citada_autor?: string | null; do_assistente?: boolean;
 };
 
 const L = 720, PAD = 14, BMAX = 520, FS = 15, LH = 20;
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const semEmoji = (s: string) => String(s || '').replace(/[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}\u{20E3}]/gu, '').replace(/[ \t]{2,}/g, ' ');
+/* tira emoji (e tom de pele, seletores, junções) e qualquer letra que a fonte não tenha — senão vira um quadradinho */
+const semEmoji = (s: string) => {
+  let t = String(s || '').replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Emoji_Component}\u{1F1E6}-\u{1F1FF}\u{FE0E}\u{FE0F}\u{200D}\u{20E3}]/gu, (c) => /[0-9#*]/.test(c) ? c : '');
+  if (fonteR) t = [...t].filter(c => c === '\n' || c === ' ' || c === '\t' || fonteR.charToGlyphIndex(c) > 0).join('');
+  return t.replace(/[ \t]{2,}/g, ' ');
+};
 const CORES = ['#53bdeb', '#f15c6d', '#06cf9c', '#ffbc38', '#a5b337', '#e26ab6', '#00a884', '#fc9775', '#9de1fe', '#c4a7f4'];
 const corDe = (n: string) => { let h = 0; for (const c of n) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CORES[h % CORES.length]; };
 
@@ -78,7 +83,7 @@ function corpoDe(m: MsgPrint): { rotulo: string; texto: string } {
 }
 
 /** monta o PNG do "print" (largura 720 px, desenhado em 2x) */
-export async function printDaConversa(titulo: string, subtitulo: string, msgs: MsgPrint[], grupo: boolean): Promise<Uint8Array> {
+export async function printDaConversa(titulo: string, subtitulo: string, msgs: MsgPrint[], grupo: boolean, fotoTitulo?: string | null): Promise<Uint8Array> {
   await iniciar();
   const partes: string[] = [];
   let y = 64 + 12;
@@ -116,6 +121,7 @@ export async function printDaConversa(titulo: string, subtitulo: string, msgs: M
     if (seguida) y -= 3;
     if (grupo && !mim && !seguida) {
       partes.push(`<circle cx="${PAD + 14}" cy="${y + 15}" r="14" fill="${corDe(autor)}" opacity="0.9"/><text x="${PAD + 14}" y="${y + 19.5}" font-size="11" font-weight="600" fill="#0b141a" text-anchor="middle">${esc(iniciais(autor))}</text>`);
+      if (m.foto) partes.push(`<clipPath id="a${partes.length}"><circle cx="${PAD + 14}" cy="${y + 15}" r="14"/></clipPath><image href="${m.foto}" x="${PAD}" y="${y + 1}" width="28" height="28" preserveAspectRatio="xMidYMid slice" clip-path="url(#a${partes.length})"/>`);
     }
     partes.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="${fundo}"/>`);
     let cy = y + 8;
@@ -150,6 +156,7 @@ export async function printDaConversa(titulo: string, subtitulo: string, msgs: M
 <rect width="${L}" height="${H}" fill="#0b141a"/>
 <rect width="${L}" height="64" fill="#202c33"/>
 <circle cx="38" cy="32" r="20" fill="${corDe(tituloLimpo)}"/><text x="38" y="37" font-size="14" font-weight="600" fill="#0b141a" text-anchor="middle">${esc(iniciais(tituloLimpo))}</text>
+${fotoTitulo ? `<clipPath id="ft"><circle cx="38" cy="32" r="20"/></clipPath><rect x="18" y="12" width="40" height="40" fill="#ffffff" clip-path="url(#ft)"/><image href="${fotoTitulo}" x="18" y="12" width="40" height="40" preserveAspectRatio="xMidYMid meet" clip-path="url(#ft)"/>` : ''}
 <text x="70" y="28" font-size="16" font-weight="600" fill="#e9edef">${esc(tituloLimpo.slice(0, 60))}</text>
 <text x="70" y="48" font-size="12" fill="#8696a0">${esc(semEmoji(subtitulo).slice(0, 90))}</text>
 ${partes.join('\n')}
