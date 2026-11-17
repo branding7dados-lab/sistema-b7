@@ -84,8 +84,8 @@
 .wz-b.seg.ele{border-top-left-radius:14px;}
 .wz-b.seg.eu{border-top-right-radius:14px;}
 .wz-b.fig{background:none;box-shadow:none;}
-.wz-b.pisca{animation:wzPisca 1.4s ease;}
-@keyframes wzPisca{30%{box-shadow:0 0 0 4px color-mix(in srgb,var(--acento) 40%,transparent);}}
+.wz-b.pisca,.wz-nota.pisca{animation:wzPisca 1.8s ease;}
+@keyframes wzPisca{0%,60%{box-shadow:0 0 0 4px color-mix(in srgb,var(--acento) 55%,transparent);filter:brightness(1.25);}100%{box-shadow:0 0 0 0 transparent;filter:none;}}
 .wz-autor{display:block;font-size:12.5px;font-weight:800;color:var(--c);margin-bottom:1px;}
 .wz-txt{white-space:normal;}
 .wz-txt a{color:#1D6FD8;}

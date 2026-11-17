@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.73.1', versao: '4.73.1', em: '2026-11-17T18:30:00-03:00', rota: 'whatsapp',
+    titulo: 'Ir até a mensagem respondida',
+    itens: ['Na Central de Conversas, tocar na mensagem citada (a parte de cima de uma resposta) leva até a mensagem original e destaca ela, mesmo que seja antiga.'] },
   { id: 'v-4.70.0', versao: '4.70.0', em: '2026-11-17T17:00:00-03:00', rota: 'whatsapp',
     titulo: 'Otto aprende e dá bom dia',
     itens: ['Quando você corrige o Otto ("não, o prazo é sexta"), ele guarda o certo e reage com ✍️ — não erra de novo.',

@@ -231,6 +231,28 @@ B7.CentralWA = (function () {
     if (cx) cx.scrollTop = antigas ? cx.scrollHeight - alt : cx.scrollHeight;
   }
 
+  /* 4.73.1: tocar na mensagem citada leva até ela — se for antiga (ainda não carregada), carrega até lá */
+  async function irParaMensagem(id) {
+    const achar = () => raiz.querySelector('.wz-b[data-id="' + CSS.escape(id) + '"], .wz-nota[data-id="' + CSS.escape(id) + '"]');
+    let alvo = achar();
+    if (!alvo && S.aberta && S.msgs.length) {
+      const jid = S.aberta;
+      const { data: m } = await sb().from('wa_mensagens').select('criada_em').eq('id', id).eq('jid', jid).maybeSingle();
+      if (!m) { B7.UI.toast('Essa mensagem não está mais aqui (apagada ou de antes do B7).'); return; }
+      if (m.criada_em < S.msgs[0].criada_em) {
+        const { data } = await sb().from('wa_mensagens').select('*').eq('jid', jid).gte('criada_em', m.criada_em).lt('criada_em', S.msgs[0].criada_em).order('criada_em', { ascending: true }).limit(1500);
+        if (S.aberta !== jid) return;
+        S.msgs = (data || []).concat(S.msgs);
+        pintarMensagens();
+      }
+      alvo = achar();
+    }
+    if (!alvo) { B7.UI.toast('Não achei essa mensagem.'); return; }
+    alvo.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    alvo.classList.remove('pisca'); void alvo.offsetWidth; alvo.classList.add('pisca');
+    setTimeout(() => alvo.classList.remove('pisca'), 1800);
+  }
+
   function pintarChat() {
     const cx = raiz && raiz.querySelector('#wz-chat'); if (!cx) return;
     const c = S.aberta && S.porJid.get(S.aberta);
@@ -446,7 +468,7 @@ B7.CentralWA = (function () {
     const fg = e.target.closest('[data-fig]'); if (fg) { if (fg.querySelector('img')) enviarFigurinha({ id: fg.dataset.fig }); return; }
     if (!e.target.closest('#wz-figs, .wz-fig-bt')) { const fx = raiz.querySelector('#wz-figs'); if (fx && !fx.hidden) fx.hidden = true; }
     const z = e.target.closest('[data-zoom]'); if (z) { const b = z.closest('[data-id]'); return previa(b ? b.dataset.id : '', z.dataset.zoom); }
-    const q = e.target.closest('[data-ir]'); if (q) { const alvo = raiz.querySelector('.wz-b[data-id="' + CSS.escape(q.dataset.ir) + '"]'); if (alvo) { alvo.scrollIntoView({ block: 'center', behavior: 'smooth' }); alvo.classList.add('pisca'); setTimeout(() => alvo.classList.remove('pisca'), 1400); } return; }
+    const q = e.target.closest('[data-ir]'); if (q) { irParaMensagem(q.dataset.ir); return; }
     const am = e.target.closest('[data-acao-msg]'); if (am) return acaoMsg(am.dataset.acaoMsg, am.closest('.wz-b').dataset.id, am);
     const w = e.target.closest('[data-wz]'); if (w) return acao(w.dataset.wz);
     /* celular: tocar na mensagem mostra responder / reagir / apagar */
