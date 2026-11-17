@@ -905,7 +905,7 @@ async function talvezDemandas(sb: SupabaseClient, cfg: Config, raw: any, pedido:
 
 /* ------------------------------------------------------------ 4.59.9: print da conversa de um cliente */
 const PEDE_PRINT = /\b(print|printa|printar|printe|captura|screenshot|foto da conversa|mostra(r)? a conversa|manda(r)? a conversa)\b/;
-const VAZIAS = new Set(['otto', 'print', 'printa', 'manda', 'mande', 'envia', 'envie', 'conversa', 'grupo', 'cliente', 'pedindo', 'mostra', 'aqui', 'esse', 'essa', 'dessa', 'desse', 'como', 'quero', 'favor', 'suporte', 'nucleo7', 'nucleo', 'start']);
+const VAZIAS = new Set(['otto', 'print', 'printa', 'printar', 'manda', 'mande', 'mandar', 'envia', 'envie', 'enviar', 'conversa', 'conversas', 'grupo', 'grupos', 'cliente', 'clientes', 'pedindo', 'mostra', 'mostrar', 'aqui', 'esse', 'essa', 'dessa', 'desse', 'deste', 'desta', 'como', 'quero', 'favor', 'suporte', 'nucleo7', 'nucleo', 'start', 'equipe', 'agora', 'ultima', 'ultimo', 'umtima', 'mensagem', 'mensagens', 'interno', 'social', 'privado', 'tambem', 'sobre', 'pedido', 'falar', 'todos', 'todas', 'outro', 'outra', 'porfavor', 'rapido', 'depois', 'antes', 'hoje', 'ontem']);
 /** "manda lá no grupo da equipe" → o grupo da equipe; senão, a própria conversa */
 function destinoDoPedido(cfg: Config, n: string, aqui: string): string {
   if (cfg.grupo_equipe && ((/\bgrupo\b/.test(n) && /\bequipe\b/.test(n)) || /\bgrupo interno\b|\bsocial interno\b/.test(n))) return cfg.grupo_equipe;
@@ -943,10 +943,21 @@ async function talvezEncaminhar(sb: SupabaseClient, cfg: Config, raw: any, pedid
 }
 
 async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, aqui: string): Promise<boolean> {
-  const n = semAcento(pedido);
+  let n = semAcento(pedido);
+  /* 4.59.17: o que se falou aqui nos últimos 20 min (para "desse grupo", "C6 farma" respondendo a pergunta, etc.) */
+  const { data: rec } = await sb.from('wa_mensagens').select('texto, do_assistente, criada_em').eq('jid', aqui).eq('nota', false)
+    .gte('criada_em', new Date(Date.now() - 20 * 60_000).toISOString()).order('criada_em', { ascending: false }).limit(12);
+  const recentes = ((rec || []) as any[]).filter(m => m.texto);
+  /* respondendo o "De qual cliente ou conversa?" do Otto */
+  const ultOtto = recentes.find(m => m.do_assistente);
+  const respondendo = !!ultOtto && /me fala o nome que eu mando o print/i.test(ultOtto.texto) && recentes[0] !== ultOtto;
+  if (respondendo) {
+    const ped = recentes.slice(recentes.indexOf(ultOtto) + 1).find(m => !m.do_assistente);
+    if (ped) n = n + ' ' + semAcento(String(ped.texto));   /* traz o destino do pedido original ("no grupo da equipe") */
+  }
   /* 4.59.15: "é pra mandar no grupo da equipe!" logo depois de um print = refazer lá */
   let anterior: any = null;
-  if (!PEDE_PRINT.test(n)) {
+  if (!PEDE_PRINT.test(n) && !respondendo) {
     if (!(cfg.grupo_equipe && destinoDoPedido(cfg, n, aqui) === cfg.grupo_equipe && aqui !== cfg.grupo_equipe)) return false;
     const { data: ult } = await sb.from('wa_assistente_registro').select('pergunta, em').eq('tipo', 'print').eq('jid', aqui).gte('em', new Date(Date.now() - 15 * 60_000).toISOString()).order('em', { ascending: false }).limit(1).maybeSingle();
     if (!ult) return false;
@@ -956,7 +967,9 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
   const citar = raw?.key?.id && destino === aqui ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
   const citarAqui = raw?.key?.id ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
   let conv: any = null;
-  const cls = await clientesCitados(sb, anterior ? String(anterior.pergunta || '') + ' ' + pedido : pedido);
+  let cls = await clientesCitados(sb, anterior ? String(anterior.pergunta || '') + ' ' + pedido : pedido);
+  /* "desse grupo", "dele": o cliente que apareceu por último na conversa */
+  if (!cls.length) for (const m of recentes) { const c = await clientesCitados(sb, String(m.texto)); if (c.length) { cls = c; break; } }
   if (cls.length) {
     const { data } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').in('cliente_id', cls.map(c => c.id))
       .order('ultima_em', { ascending: false, nullsFirst: false }).limit(5);
@@ -964,13 +977,14 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
   }
   if (!conv) {
     /* pelo nome da conversa ("o grupo da Ensino Plus", "conversa com a Camila") */
-    const palavras = n.replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !VAZIAS.has(w));
+    /* só palavras "de nome" (5+ letras, fora das comuns) e casando a palavra inteira; conversa sem mensagem não serve */
+    const palavras = semAcento(pedido).replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length >= 5 && !VAZIAS.has(w));
     if (palavras.length) {
-      const { data } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').neq('jid', destino).order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
+      const { data } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').neq('jid', destino).not('ultima_em', 'is', null).order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
       let melhor = 0;
       for (const c of (data || []) as any[]) {
-        const nome = semAcento(c.nome || '');
-        const pts = palavras.filter(w => nome.includes(w)).length;
+        const ws = semAcento(c.nome || '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/);
+        const pts = palavras.filter(w => ws.includes(w)).length;
         if (pts > melhor) { melhor = pts; conv = c; }
       }
     }
