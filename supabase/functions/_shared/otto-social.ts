@@ -178,23 +178,26 @@ export async function podeResponderBot(sb: SupabaseClient, jid: string): Promise
 
 /* ------------------------------------------------------------ 4.59.3: reagir em vez de responder */
 const OK_CURTO = /^\s*(ok+|okay|blz|beleza|valeu+|vlw|obrigad[oa]s?|brigad[oa]|top+|show+|massa|boa+|perfeito|fechou|tmj|demais|isso a[ií]|entendi|t[aá] bom|certo|uhum|sim|👍|🙏|❤️|👏|🔥)[\s!.]*$/iu;
-export type Jeito = { acao: 'reagir' | 'responder' | 'ambos'; emoji: string };
+export type Jeito = { acao: 'reagir' | 'responder' | 'ambos' | 'ignorar'; emoji: string };
 /** Falaram com o Otto (ou responderam ele): vale texto, só uma reação, ou os dois? */
 export async function decidirJeito(texto: string, chamadoPeloNome: boolean, conversa: string): Promise<Jeito> {
   const t = String(texto || '').trim();
   const semNome = t.replace(/^\s*@?otto[,:!]?\s*/i, '').replace(/[,\s]*@?otto[!.]*\s*$/i, '').trim();
+  /* 4.71.0: falaram DO Otto (3ª pessoa: "o Otto tá desobediente", "pergunta pro Otto") e não COM ele → a IA decide, com "ignorar" */
+  const terceira = chamadoPeloNome && !/^\s*@?otto\b/i.test(t) && !/[,\s]@?otto[?!.\s]*$/i.test(t) && /\b(o|do|no|pro|pra|pelo|ao|com o|que o|esse|nosso|seu) @?otto\b/i.test(t);
   if (RISADA.test(semNome)) return { acao: 'reagir', emoji: '😂' };
   if (OK_CURTO.test(semNome)) return { acao: 'reagir', emoji: /obrigad|brigad|valeu|vlw|🙏/i.test(semNome) ? '❤️' : '👍' };
   /* pergunta ou pedido claro: responde (e sem gastar IA para decidir) */
-  if (/\?/.test(t) || t.length > 140 || /\b(me (manda|envia|passa|fala|diz|explica|ajuda)|faz|faça|cria|crie|gera|gere|escreve|escreva|lista|quais|qual|como|quando|onde|quanto|por ?que|chama|chame|pv|privado|inbox|marca|marque|print|edita|editar|edite|corrige|corrija|apaga|apagar|apague|deleta|exclui|figurinha|sticker|audio|áudio)\b/i.test(t)) return { acao: 'responder', emoji: '' };
+  if (!terceira && (/\?/.test(t) || t.length > 140) || !terceira && /\b(me (manda|envia|passa|fala|diz|explica|ajuda)|faz|faça|cria|crie|gera|gere|escreve|escreva|lista|quais|qual|como|quando|onde|quanto|por ?que|chama|chame|pv|privado|inbox|marca|marque|print|edita|editar|edite|corrige|corrija|apaga|apagar|apague|deleta|exclui|figurinha|sticker|audio|áudio)\b/i.test(t)) return { acao: 'responder', emoji: '' };
   const r = (await ia('Num grupo de WhatsApp da equipe, alguém escreveu para o Otto (a IA da agência) ou respondeu uma mensagem dele. Decida como uma pessoa esperta reagiria: ' +
     '"reagir" = só um emoji na mensagem (risada, comentário solto, provocação leve, elogio, "vish", algo que não pede resposta); ' +
     '"ambos" = emoji e uma resposta curta (notícia boa ou conquista que merece comemorar e comentar, brincadeira que pede réplica); ' +
-    '"responder" = precisa de uma resposta em texto (pedido, dúvida, ordem). ' +
-    'Responda SÓ no formato: acao emoji — ex.: "reagir 😂", "ambos 🥳", "responder -". Emojis possíveis: 😂 👍 ❤️ 👏 🔥 🥳 🙏 😮.',
-    (conversa ? 'CONVERSA RECENTE:\n' + conversa.slice(-1500) + '\n\n' : '') + (chamadoPeloNome ? 'CHAMARAM O OTTO PELO NOME. ' : 'RESPONDERAM A UMA MENSAGEM DO OTTO. ') + 'MENSAGEM: ' + t.slice(0, 400), 12)).trim().toLowerCase();
-  const acao = r.startsWith('reagir') ? 'reagir' : r.startsWith('ambos') ? 'ambos' : 'responder';
-  const emoji = ['😂', '👍', '❤️', '👏', '🔥', '🥳', '🙏', '😮'].find(e => r.includes(e)) || (acao === 'responder' ? '' : '👍');
+    '"responder" = precisa de uma resposta em texto (pedido, dúvida, ordem); ' +
+    '"ignorar" = falaram DO Otto para outra pessoa, não COM ele (ex.: "o Otto tá desobediente", "pergunta pro Otto depois") — não é com ele. ' +
+    'Responda SÓ no formato: acao emoji — ex.: "reagir 😂", "ambos 🥳", "responder -", "ignorar -". Emojis possíveis: 😂 👍 ❤️ 👏 🔥 🥳 🙏 😮 👀.',
+    (conversa ? 'CONVERSA RECENTE:\n' + conversa.slice(-1500) + '\n\n' : '') + (terceira ? 'O NOME DO OTTO APARECE NO MEIO DA FRASE (pode ser que estejam falando DELE, não com ele). ' : chamadoPeloNome ? 'CHAMARAM O OTTO PELO NOME. ' : 'RESPONDERAM A UMA MENSAGEM DO OTTO. ') + 'MENSAGEM: ' + t.slice(0, 400), 12)).trim().toLowerCase();
+  const acao = r.startsWith('ignorar') ? 'ignorar' : r.startsWith('reagir') ? 'reagir' : r.startsWith('ambos') ? 'ambos' : 'responder';
+  const emoji = ['😂', '👍', '❤️', '👏', '🔥', '🥳', '🙏', '😮', '👀'].find(e => r.includes(e)) || (acao === 'responder' || acao === 'ignorar' ? '' : '👍');
   return { acao, emoji };
 }
 /** reage na própria mensagem (pelo id) */
