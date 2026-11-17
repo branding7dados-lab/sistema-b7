@@ -219,3 +219,7 @@ html[data-theme="dark"] .asw-tag.fh{background:rgba(14,165,233,.16);color:#7DD3F
 .asw-voz-l .campo{flex:1;min-width:160px;}
 .asw-vigia{display:grid;gap:6px;}
 .asw-vigia select.campo:not(.fina){width:100%;}
+/* 4.67.4: regras da equipe */
+.asw-regeq{display:grid;gap:10px;}
+.asw-regeq .asw-vigia.off{opacity:.45;pointer-events:none;}
+.asw-regeq textarea.campo{width:100%;resize:vertical;min-height:84px;}

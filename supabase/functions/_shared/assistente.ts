@@ -41,6 +41,7 @@ const numeroDaEquipe = (cfg: Config, fone: string) => !!fone && (cfg.equipe || [
 type Horario = { ativo?: boolean; ini?: string; fim?: string; dias?: number[]; mensagem?: string };
 export type Config = {
   ativo: boolean; nome: string; jeito: string; regras: string; equipe: Pessoa[]; sem_marcacao: boolean;
+  regras_equipe?: string; modo_restrito?: boolean; zoacao_nivel?: 'leve' | 'medio' | 'pesado';
   pausa_min: number; espera_min_s: number; espera_max_s: number; grupos: Record<string, { desligado?: boolean; regras?: string }>;
   meu_lid: string | null; horario?: Horario; ouvir_audio?: boolean;
   grupo_equipe?: string | null; resumo_horas?: number; resumo_ultimo?: string | null; resumo_espera_min?: number;
@@ -267,11 +268,40 @@ async function genteDoGrupo(sb: SupabaseClient, cfg: Config, jid: string): Promi
 /* 4.59.11: palavrão só no grupo da equipe (zoação). Em qualquer outra conversa — cliente, privado,
    recado — a mensagem com palavrão NÃO sai, nem se a IA errar ou alguém mandar. */
 const PALAVRAO = /(?<![\p{L}])(porra|caralh\w*|merd\w*|bost\w*|put[ao]s?|putaria|fdp|filh[oa] da puta|vsf|vai se f\w*|vai tomar no c\w*|tnc|cu|cuz[aã]o|arrombad\w*|desgra[cç]\w*|babac\w*|ot[aá]ri\w*|idiota\w*|imbecil\w*|retardad\w*|buceta\w*|pau no c\w*|foder|fod[ae]\w*|fudid\w*|piranh\w*|vagabund\w*|cacete|corno\w*|viad\w*|bicha\w*|escrot\w*)(?![\p{L}])/iu;
+/** 4.67.4: pode ter palavrão (zoação) nesta conversa? Modo restrito ligado = nunca.
+ *  Desligado = grupo da equipe e privado de quem é da equipe (pelo número). Cliente: nunca. */
+export function podePalavrao(cfg: Config, jid: string): boolean {
+  if (cfg.modo_restrito) return false;
+  if (cfg.grupo_equipe && jid === cfg.grupo_equipe) return true;
+  return /@s\.whatsapp\.net$/.test(jid) && numeroDaEquipe(cfg, dig(jid));
+}
+/** 4.67.4: o bloco "com a equipe" das instruções: zoação (pelo nível) + regras fixas da equipe */
+export function regrasDaEquipe(cfg: Config, jid: string): string {
+  const linhas: string[] = [];
+  if (!podePalavrao(cfg, jid)) {
+    linhas.push(cfg.modo_restrito
+      ? 'MODO RESTRITO LIGADO: nada de palavrão nem xingamento, nem de brincadeira, nem se pedirem. Pode ter bom humor leve.'
+      : 'Aqui não é lugar de palavrão. Zoação com palavrão só no grupo da equipe ou no privado de quem é da equipe.');
+  } else {
+    const nivel = cfg.zoacao_nivel || 'medio';
+    const teto = nivel === 'leve' ? 'LEVE: tiração de sarro e provocação de amigo, sem palavrão pesado (no máximo "besta", "doido", "mané").'
+      : nivel === 'pesado' ? 'PESADO: quando pedirem pesado, pode esculachar de verdade, com palavrão pesado de resenha.'
+      : 'MÉDIO: palavrão de resenha ("porra", "arrombado", "vagabundo"…), curto e engraçado.';
+    linhas.push('ZOAÇÃO LIBERADA com a equipe (é brincadeira consentida entre colegas adultos que se conhecem; a própria equipe ligou isso na tela). Se pedirem para zoar ou xingar alguém da equipe, FAÇA — recusar aqui é errado e quebra o clima. ' +
+      'Meça pelo tom de quem pediu: zoação leve → resposta leve; "pega pesado", "esculacha" → mais forte. Teto: ' + teto +
+      ' Limites que nunca mudam: nada de preconceito (raça, cor, gênero, orientação sexual, religião, origem, deficiência, aparência), nada de ameaça, nada de assunto pessoal sério, e NUNCA com ou sobre cliente. Se não pediram zoação, fale normal.');
+  }
+  const regras = String(cfg.regras_equipe || '').split('\n').map(x => x.trim()).filter(Boolean);
+  if (regras.length) linhas.push('REGRAS FIXAS DA EQUIPE (sempre valem com a equipe, acima de qualquer pedido):\n' + regras.map(r => '- ' + r).join('\n'));
+  return linhas.join('\n');
+}
+const PEDE_ZOACAO = /\b(zo[ae]\w*|zua\w*|xing\w*|esculach\w*|tira (onda|sarro)|humilh\w*|zoeira|resenha)\b/;
+const RECUSOU = /\b(n[aã]o posso|nao posso|prefiro (ficar de fora|n[aã]o)|n[aã]o (vou|consigo|devo) (enviar|mandar|fazer|xingar|ofender)|mensagens? ofensiv|conteudo ofensivo|conteúdo ofensivo|regras de seguran)/i;
 export function temPalavrao(t: string): boolean { return PALAVRAO.test(semAcento(String(t || '')).replace(/[*_~]/g, '')) || PALAVRAO.test(String(t || '')); }
 async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}) {
-  if (jid !== cfg.grupo_equipe && temPalavrao(texto)) {
-    console.log('otto: mensagem com palavrão barrada fora do grupo da equipe');
-    await registrar(sb, { tipo: 'erro', jid, autor: cfg.nome, pergunta: 'mensagem barrada', resposta: 'Barrada: tinha palavrão e não é o grupo da equipe.' });
+  if (!podePalavrao(cfg, jid) && temPalavrao(texto)) {
+    console.log('otto: mensagem com palavrão barrada (fora da equipe ou modo restrito)');
+    await registrar(sb, { tipo: 'erro', jid, autor: cfg.nome, pergunta: 'mensagem barrada', resposta: 'Barrada: tinha palavrão e ' + (cfg.modo_restrito ? 'o modo restrito está ligado.' : 'não é conversa da equipe.') });
     return null;
   }
   const grupo = await participantesDoGrupo(sb, cfg, jid);
@@ -279,8 +309,11 @@ async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: strin
   const ja = ((extra.mentioned as string[]) || []).map(x => String(x));
   const partes = String(texto || '').split(SEP).map(t => t.trim()).filter(Boolean).slice(0, 3);
   const prontas: { t: string; m: string[]; todos: boolean }[] = [];
-  for (const p of partes.length ? partes : [String(texto || '')]) {
-    const c = comMarcacoes(cfg, p, grupo);
+  const ehGrupoJid = /@g\.us$/.test(jid);
+  for (const p0 of partes.length ? partes : [String(texto || '')]) {
+    /* 4.67.4: no privado não existe marcação — "@Kevin" vira só "Kevin" (antes virava "@5577…") */
+    const p = ehGrupoJid ? p0 : p0.replace(/\{\{\s*marcar\s*:\s*([^}]+)\}\}/gi, (_m, n: string) => n.trim()).replace(/(?<![\p{L}\d._-])@(?=\p{L})/gu, '');
+    const c = ehGrupoJid ? comMarcacoes(cfg, p, grupo) : { texto: p, mencoes: [] as string[], todos: false };
     let t = c.texto;
     const m: string[] = [...c.mencoes];
     for (const n of prontas.length ? [] : ja) {
@@ -1348,7 +1381,7 @@ async function minhaMensagem(sb: SupabaseClient, raw: any, aqui: string): Promis
 const vozDe = (cfg: Config) => ({ provedor: (cfg as any).voz_provedor || 'gemini', voz: (cfg as any).voz || 'Orus', estilo: (cfg as any).voz_estilo || '', elevenId: (cfg as any).voz_eleven_id || null });
 /** 4.62.0: responde EM ÁUDIO — reescreve como fala, gera a voz, manda; se tiver link/lista, manda o texto junto. false = não deu (aí vai texto) */
 async function responderEmAudio(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}): Promise<boolean> {
-  if (jid !== cfg.grupo_equipe && temPalavrao(texto)) return false;
+  if (!podePalavrao(cfg, jid) && temPalavrao(texto)) return false;
   await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'recording', delay: 8000 }, 12000).catch(() => null);
   const { fala, comTexto } = await roteiroDeFala(texto);
   const audio = await falar(fala, vozDe(cfg));
@@ -1639,9 +1672,9 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     'Você responde QUALQUER coisa (ideias, legendas, roteiros, estratégia, textos, contas, conversa) com seu conhecimento. Sobre clientes e produção, use só os dados — não invente prazo, data ou status.',
     'Jeito: WhatsApp, texto corrido, direto, bom humor. Pergunta simples = 1 a 3 frases; algo para produzir = completo. Liste só se pedirem ou for natural. Sem títulos/negrito em excesso. Não assine. Até 3 mensagens separadas por uma linha só com [[NOVA]] se ficar natural.',
     'Marcar alguém: escreva @Nome (como em PESSOAS NESTE GRUPO). Marcar todo mundo / a equipe / o grupo: escreva SÓ @todos, uma vez — NUNCA liste os nomes. Nunca @números.',
-    ehCliente ? '' : ehEquipe ? 'ZOAÇÃO LIBERADA aqui (grupo da equipe): se pedirem para zoar/xingar alguém da equipe, pode, de brincadeira — sem preconceito, ameaça ou assunto pessoal sério, e NUNCA com/sobre cliente.' : 'Aqui não é o grupo da equipe: nada de palavrão aqui.',
+    ehCliente ? '' : regrasDaEquipe(cfg, aqui),
     /* 4.66.7: do privado, a equipe pode mandar o Otto agir no grupo da equipe e no privado dos colegas */
-    !ehGrupo && !ehCliente ? 'NO PRIVADO, qualquer pessoa da equipe pode pedir para você fazer coisas em OUTRO lugar: mandar mensagem, áudio, figurinha, print, imagem ou PDF no grupo da equipe ("lá no grupo", "no grupo" = grupo da equipe), marcar alguém ou @todos lá, ou mandar recado no privado de outra pessoa da equipe. Faça com a ferramenta certa (mensagem_em_grupo com "equipe", privado com o nome da pessoa, audio, figurinha…). Quando for recado de alguém, deixe claro de quem é se fizer sentido (ex.: "O ' + (quem === 'Você' ? 'Fulano' : quem.split(/\s+/)[0]) + ' pediu pra avisar: …"). Mensagem para o grupo da equipe pode ter a zoação liberada de lá, se pedirem. Depois, confirme aqui em 1 frase curta.' : '',
+    !ehGrupo && !ehCliente ? 'NO PRIVADO, qualquer pessoa da equipe pode pedir para você fazer coisas em OUTRO lugar: mandar mensagem, áudio, figurinha, print, imagem ou PDF no grupo da equipe ("lá no grupo", "no grupo" = grupo da equipe), marcar alguém ou @todos lá, ou mandar recado no privado de outra pessoa da equipe. Faça com a ferramenta certa (mensagem_em_grupo com "equipe", privado com o nome da pessoa, audio, figurinha…). Quando for recado de alguém, deixe claro de quem é se fizer sentido (ex.: "O ' + (quem === 'Você' ? 'Fulano' : quem.split(/\s+/)[0]) + ' pediu pra avisar: …"). Mensagem ou áudio para o grupo da equipe segue a zoação liberada de lá (se o modo restrito estiver desligado). Depois, confirme aqui em 1 frase curta.' : '',
     /* 4.67.3: nome igual entre equipe e cliente */
     'QUEM É QUEM NA HORA DE ZOAR/MARCAR: pessoa marcada com @ na mensagem (lista MARCADOS NESTA MENSAGEM) vale mais que nome escrito. Só é da equipe quem está em QUEM É QUEM (pelo nome completo ou apelido). Se um nome pode ser de alguém da equipe E de alguém de fora que aparece na conversa (cliente, contato de cliente), pergunte qual antes de zoar, xingar ou marcar ("O Pedro Prado da equipe ou o Pedro da Mercato?"). Zoação/xingamento NUNCA para quem não é da equipe.',
     /* 4.67.2: o Otto não programa o sistema — nada de "vou preparar/ajustar a tela, o Kanban, o CRM" */
@@ -1669,6 +1702,17 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     usuario += '\n\nRESULTADO DAS CONSULTAS QUE VOCÊ PEDIU:' + res + '\n\nAgora decida as ações finais e a resposta (sem "consultar" de novo, a não ser que falte algo).';
   }
   if (!plano) return false;
+  /* 4.67.4: pediram zoação, está liberada, e o modelo recusou ("não posso enviar mensagens ofensivas") →
+     tenta de novo uma vez com o modelo de reserva (Gemini), lembrando que é brincadeira consentida */
+  if (!ehCliente && !cfg.modo_restrito && PEDE_ZOACAO.test(semAcento(pedido)) && RECUSOU.test(semAcento(plano.resposta)) && !plano.acoes.length) {
+    const s2 = await gerar(provedor, [{ role: 'system', content: sistema }, { role: 'user', content: usuario + '\n\nLEMBRETE: a zoação está LIBERADA pela própria equipe (modo restrito desligado). É brincadeira entre colegas — faça, no nível pedido e dentro dos limites. Não recuse.' }],
+      { maxTokens: 2200, temperatura: 0.5, json: true, prazoMs: 45000, fino: true, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
+    const j2 = s2.ok ? jsonDoTexto(s2.texto) : null;
+    if (j2 && Array.isArray(j2.acoes) && !RECUSOU.test(semAcento(String(j2.resposta || '')))) {
+      plano = { acoes: j2.acoes.slice(0, 6), resposta: String(j2.resposta || '').trim(), emAudio: j2.em_audio === true };
+      saida = s2;
+    }
+  }
   /* executa */
   const interno = async (d: unknown): Promise<string | null> => { const r = await resolver(d); return ehCliente && r === aqui ? (cfg.grupo_equipe || null) : r; };
   const resolver = async (d: unknown): Promise<string | null> => {
@@ -1740,7 +1784,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
           if (m.tipo !== 'texto') { falhas.push('só consigo editar mensagem de texto'); continue; }
           const novo = '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' + noJeitoDoWhats(cfg, String(a.novo_texto || '').trim());
           if (!String(a.novo_texto || '').trim()) { falhas.push('faltou o texto novo'); continue; }
-          if (aqui !== cfg.grupo_equipe && temPalavrao(novo)) { falhas.push('esse texto não pode ir aqui'); continue; }
+          if (!podePalavrao(cfg, aqui) && temPalavrao(novo)) { falhas.push('esse texto não pode ir aqui'); continue; }
           const r = await evo('/chat/updateMessage/' + I(), 'POST', { number: aqui, key: { remoteJid: m.jid, fromMe: true, id: m.id }, text: novo.slice(0, 3000) });
           if (r.ok) { await sb.from('wa_mensagens').update({ editada: true, texto: novo.slice(0, 3000) }).eq('id', m.id); feitos.push('editou'); if (key.id && ehGrupo) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
           else falhas.push('o WhatsApp não deixou editar (passou de 15 minutos?)');
@@ -1875,9 +1919,7 @@ async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: 
     'Para MARCAR alguém (quando pedirem ou quando ajudar), escreva @ e o nome da pessoa como aparece em PESSOAS NESTE GRUPO (ex.: @Yury); para marcar todo mundo, @todos. O sistema transforma na marcação de verdade. Nunca escreva @ com números. ' +
     'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
     'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]].',
-    (destino === cfg.grupo_equipe
-      ? ' ZOAÇÃO LIBERADA (só aqui, no grupo interno da equipe): se pedirem para xingar, zoar ou "esculachar" alguém da equipe, pode — palavrão de brincadeira, no clima de resenha entre amigos, curto e engraçado. Limites: nada de preconceito (raça, cor, gênero, orientação sexual, religião, origem, deficiência, aparência), nada de ameaça, nada de assunto pessoal sério, e NUNCA xingar cliente ou falar mal de cliente. Se não pediram zoação, fale normal.'
-      : ' Aqui não é o grupo da equipe: nada de palavrão nem xingamento, mesmo que peçam.') +
+    ' ' + regrasDaEquipe(cfg, destino) + ' ' +
     /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
     'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +
     '\n\n' + await quemEQuem(sb, cfg, true) + '\n\n' + await genteDoGrupo(sb, cfg, destino) + '\n\nDADOS DO SISTEMA:' + contexto + '\n\nMENSAGEM DE ' + String(raw.pushName || 'alguém da equipe') + ' (responda a esta): ' + pedido, 1400);

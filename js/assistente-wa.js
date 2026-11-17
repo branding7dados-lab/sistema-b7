@@ -159,6 +159,14 @@ B7.AssistenteWA = (function () {
         '<div><label class="rot">Conta como pendente depois de</label><select class="campo" data-c="resumo_espera_min" data-num>' + [[15, '15 min sem resposta'], [30, '30 min sem resposta'], [60, '1 hora sem resposta'], [120, '2 horas sem resposta']].map(([v, r]) => '<option value="' + v + '"' + (Number(c.resumo_espera_min || 30) === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div></div>' +
         '<div class="asw-ge-pe"><span class="asw-sub">Só no horário de atendimento (seg a sex, 8h–18h se o horário não estiver ligado).</span><button class="b pri" data-pendencias' + (ge ? '' : ' disabled') + '>Mandar pendências agora</button></div></div>' +
         '<p class="asw-sub asw-topo">Quem aparece aqui pode ser <b>marcado</b> por ele quando o assunto for seu e <b>recebe as dúvidas</b> no WhatsApp (responda citando o aviso). Alguém da equipe que marcar o assistente num grupo dá uma <b>ordem</b> — ex.: “@' + esc((c.nome || 'B7').split(' ')[0]) + ' avisa que a arte sai amanhã”.</p>' +
+        /* 4.67.4: regras fixas da equipe, modo restrito e nível da zoação */
+        '<div class="asw-card asw-regeq"><h3>Com a equipe</h3><p class="asw-sub">Valem quando o ' + esc((c.nome || 'Otto').split(' ')[0]) + ' fala com a equipe: no grupo interno e no privado de quem está aqui embaixo. Com cliente, valem o jeito e as regras do atendimento.</p>' +
+          '<label class="asw-sw"><input type="checkbox" data-c="modo_restrito"' + (c.modo_restrito ? ' checked' : '') + '><span></span><div><b>Modo restrito</b><small>Ligado: nada de palavrão ou xingamento, nem de brincadeira. Desligado: zoação liberada com a equipe — nunca com cliente nem sobre cliente.</small></div></label>' +
+          '<div class="asw-vigia' + (c.modo_restrito ? ' off' : '') + '"><label class="rot">Até onde a zoação pode ir</label><select class="campo" data-c="zoacao_nivel">' +
+            [['leve', 'Leve: tiração de sarro, sem palavrão pesado'], ['medio', 'Média: palavrão de resenha, no tom de quem pediu'], ['pesado', 'Pesada: pode pegar pesado quando pedirem (sem preconceito nem ameaça)']]
+              .map(([v, r]) => '<option value="' + v + '"' + ((c.zoacao_nivel || 'medio') === v ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>' +
+            '<small class="asw-sub">Ele mede pelo tom de quem pediu: brincadeira leve vira resposta leve; só chega no limite se pedirem pesado.</small></div>' +
+          '<label class="rot">Regras fixas da equipe</label><textarea class="campo" data-c="regras_equipe" rows="4" maxlength="2000" placeholder="Uma por linha. Ex.: Não zoar a Talita (ela não curte). Sempre chamar o Yury de chefe. Não mandar figurinha antes das 8h.">' + esc(c.regras_equipe || '') + '</textarea></div>' +
         '<div class="asw-card asw-auto"><h3>Por conta própria</h3>' +
           '<div class="asw-vigia"><label class="rot">Nos grupos de cliente</label><select class="campo" data-c="modo_clientes">' +
             '<option value="vigia"' + ((c.modo_clientes || 'vigia') !== 'atende' ? ' selected' : '') + '>Só vigiar: não responde o cliente; se ninguém da equipe responder, manda o print no grupo da equipe</option>' +
@@ -233,6 +241,7 @@ B7.AssistenteWA = (function () {
       if (t.dataset.c === 'grupo_equipe') { const bt = raiz.querySelector('[data-pendencias]'); if (bt) bt.disabled = !t.value; }
       definir(t.dataset.c, v);
       if (t.dataset.c === 'ativo') { desenhar(); return salvar(true); }
+      if (t.dataset.c === 'modo_restrito') { const z = raiz.querySelector('.asw-regeq .asw-vigia'); if (z) z.classList.toggle('off', t.checked); }
       if (t.dataset.c === 'horario.ativo') { const h = raiz.querySelector('.asw-horario'); if (h) h.classList.toggle('off', !t.checked); }
       if (t.dataset.c === 'nome') { const h = raiz.querySelector('.asw-hero h1'); if (h) h.textContent = t.value || 'Assistente'; }
     } else if (t.dataset.qq) {
@@ -374,6 +383,7 @@ B7.AssistenteWA = (function () {
     const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
       equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), ...((p.apelidos || '').trim() ? { apelidos: String(p.apelidos).split(',').map(x => x.trim()).filter(Boolean).slice(0, 6).join(', ') } : {}), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
+      regras_equipe: String(c.regras_equipe || '').slice(0, 2000), modo_restrito: !!c.modo_restrito, zoacao_nivel: ['leve', 'medio', 'pesado'].includes(c.zoacao_nivel) ? c.zoacao_nivel : 'medio',
       modo_clientes: c.modo_clientes === 'atende' ? 'atende' : 'vigia', vigia_min: Math.max(5, Number(c.vigia_min) || 20),
       alertas_ligados: c.alertas_ligados !== false, resumo_dia_ligado: c.resumo_dia_ligado !== false, resumo_dia_hora: /^\d{2}:\d{2}$/.test(c.resumo_dia_hora || '') ? c.resumo_dia_hora : '18:00',
       responder_audio: c.responder_audio !== false, voz: c.voz || 'Orus', voz_estilo: String(c.voz_estilo || '').slice(0, 200), voz_provedor: c.voz_provedor === 'elevenlabs' ? 'elevenlabs' : 'gemini', voz_eleven_id: String(c.voz_eleven_id || '').trim() || null,
