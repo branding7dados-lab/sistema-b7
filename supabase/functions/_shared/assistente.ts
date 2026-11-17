@@ -908,9 +908,40 @@ const PEDE_PRINT = /\b(print|printa|printar|printe|captura|screenshot|foto da co
 const VAZIAS = new Set(['otto', 'print', 'printa', 'manda', 'mande', 'envia', 'envie', 'conversa', 'grupo', 'cliente', 'pedindo', 'mostra', 'aqui', 'esse', 'essa', 'dessa', 'desse', 'como', 'quero', 'favor', 'suporte', 'nucleo7', 'nucleo', 'start']);
 /** "manda lá no grupo da equipe" → o grupo da equipe; senão, a própria conversa */
 function destinoDoPedido(cfg: Config, n: string, aqui: string): string {
-  if (cfg.grupo_equipe && /\b(no|pro|para o|pra|ao|la no|la pro)\s+grupo\s+(da|de)\s+equipe\b|\bgrupo interno\b|\bno social interno\b/.test(n)) return cfg.grupo_equipe;
+  if (cfg.grupo_equipe && ((/\bgrupo\b/.test(n) && /\bequipe\b/.test(n)) || /\bgrupo interno\b|\bsocial interno\b/.test(n))) return cfg.grupo_equipe;
   return aqui;
 }
+/** 4.59.16: "manda isso lá no grupo da equipe" — a última coisa que o Otto mandou aqui (texto, PDF, imagem) vai para lá */
+async function talvezEncaminhar(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, aqui: string): Promise<boolean> {
+  const n = semAcento(pedido);
+  if (!cfg.grupo_equipe || aqui === cfg.grupo_equipe || destinoDoPedido(cfg, n, aqui) !== cfg.grupo_equipe) return false;
+  if (!/\b(isso|isto|esse|essa|este|esta|ai|aquilo|o que voce (mandou|disse|falou)|sua mensagem|essa mensagem|encaminh\w*|repass\w*)\b/.test(n) && n.split(/\s+/).length > 9) return false;
+  if (PEDE_PRINT.test(n)) return false;
+  const { data: m } = await sb.from('wa_mensagens').select('id, tipo, texto, midia_raw, midia_mime, midia_nome, criada_em').eq('jid', aqui).eq('do_assistente', true)
+    .gte('criada_em', new Date(Date.now() - 20 * 60_000).toISOString()).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+  if (!m) return false;
+  const citarAqui = raw?.key?.id ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
+  let ok = false;
+  if (m.tipo === 'texto') {
+    ok = !!(await enviar(sb, cfg, cfg.grupo_equipe, String(m.texto || '').replace(/^\*[^*\n]+:\*\s*\n?/, '')));
+  } else if (m.midia_raw) {
+    const b = await evo('/chat/getBase64FromMediaMessage/' + I(), 'POST', { message: m.midia_raw }, 60000);
+    const b64 = b.dados?.base64;
+    if (b.ok && b64) {
+      const tipo = m.tipo === 'imagem' ? 'image' : m.tipo === 'video' ? 'video' : 'document';
+      const legenda = String(m.texto || '');
+      const r = await evo('/message/sendMedia/' + I(), 'POST', { number: cfg.grupo_equipe, mediatype: tipo, mimetype: m.midia_mime || (tipo === 'image' ? 'image/png' : 'application/pdf'),
+        fileName: m.midia_nome || (tipo === 'image' ? 'imagem.png' : 'arquivo.pdf'), media: b64, ...(legenda ? { caption: legenda } : {}) }, 90000);
+      ok = r.ok;
+      if (r.ok) { try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ } if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true }).eq('id', r.dados.key.id); }
+    }
+  }
+  if (/@g\.us$/.test(aqui) && ok && raw?.key?.id) await reagirNaMensagem(sb, String(raw.key.id), '👍', aqui, pedido);
+  else await enviar(sb, cfg, aqui, ok ? 'Mandei no grupo da equipe 👍' : 'Não consegui mandar no grupo da equipe agora.', citarAqui ? { quoted: citarAqui } : {});
+  await registrar(sb, { tipo: ok ? 'privado' : 'erro', jid: cfg.grupo_equipe, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: 'encaminhou: ' + (m.tipo === 'texto' ? String(m.texto || '').slice(0, 300) : m.tipo) });
+  return true;
+}
+
 async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, aqui: string): Promise<boolean> {
   const n = semAcento(pedido);
   /* 4.59.15: "é pra mandar no grupo da equipe!" logo depois de um print = refazer lá */
@@ -1213,10 +1244,12 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
   const key = raw?.key || {};
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
   if (await talvezPrivado(sb, cfg, raw, pedido, destino)) return;
+  if (await talvezEncaminhar(sb, cfg, raw, pedido, destino)) return;
   if (await talvezPrint(sb, cfg, raw, pedido, destino)) return;
-  if (await talvezImagem(sb, cfg, raw, pedido, destino)) return;
+  const onde = destinoDoPedido(cfg, semAcento(pedido), destino);   /* "manda no grupo da equipe" */
+  if (await talvezImagem(sb, cfg, raw, pedido, onde)) return;
   if (await talvezDemandas(sb, cfg, raw, pedido, destino)) return;
-  if (await talvezDocumento(sb, cfg, raw, pedido, destino)) return;
+  if (await talvezDocumento(sb, cfg, raw, pedido, onde)) return;
   if (await talvezRecado(sb, cfg, raw, pedido, destino, { quem: String(raw?.pushName || (key.fromMe ? 'Você' : 'alguém da equipe')), onde: destino === cfg.grupo_equipe ? 'grupo da equipe' : 'privado' })) return;
   if (/pend[eê]ncia|quem (est[aá]|t[aá]) esperando|sem resposta|esperando resposta/i.test(pedido) && !(await clientesCitados(sb, pedido)).length) { await mandarResumo(sb, cfg, true, destino); return; }
   const clientes = await clientesCitados(sb, pedido);
