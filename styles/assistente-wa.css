@@ -68,8 +68,8 @@
 html[data-theme="dark"] .asw-x:hover{background:rgba(239,68,68,.15);color:#FCA5A5;}
 
 /* chave pequena */
-.asw-sw{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:8px 0;font-size:13.5px;}
-.asw-sw > input{position:absolute;opacity:0;pointer-events:none;}
+.asw-sw{position:relative;display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:8px 0;font-size:13.5px;}
+.asw-sw > input{position:absolute;left:0;top:8px;width:1px;height:1px;opacity:0;pointer-events:none;}
 .asw-sw > span{flex:none;position:relative;width:38px;height:22px;border-radius:99px;background:var(--suave);border:1px solid var(--borda);transition:background .15s;margin-top:1px;}
 .asw-sw > span:after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 2px 5px -2px rgba(0,0,0,.4);transition:transform .15s;}
 .asw-sw input:checked + span{background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));border-color:transparent;}
