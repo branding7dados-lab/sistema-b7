@@ -570,6 +570,12 @@ function chamouPeloNome(cfg: Config, texto: string): boolean {
   return chamou(cfg, texto);   /* 4.73.0: o nome + os apelidos da tela */
 }
 
+/** 4.77.3: tarefa em segundo plano que o servidor NÃO pode matar no meio. Sem isso, a função respondia o webhook
+ *  e encerrava — a vigia "pegava a vez" (vigia_ultimo) e morria antes de olhar os grupos (3 dias sem nenhum aviso). */
+function emSegundoPlano(nome: string, p: Promise<unknown>) {
+  const q = p.catch(e => console.log(nome, String(e).slice(0, 300)));
+  try { (globalThis as any).EdgeRuntime?.waitUntil(q); } catch (_e) { /* fora do Supabase: segue */ }
+}
 /** Entrada: toda mensagem que chega pelo webhook (já gravada no B7). */
 export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   const key = raw?.key || {};
@@ -599,13 +605,13 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   /* 4.56.0: de tempos em tempos, as pendências vão para o grupo da equipe */
   /* 4.73.0: fim de semana em silêncio — nada por conta própria (só responde se chamarem) */
   if (!fdsQuieto(cfg)) {
-  talvezResumo(sb, cfg).catch(e => console.log('resumo', String(e)));
+  emSegundoPlano('resumo', talvezResumo(sb, cfg));
   /* 4.61.0: avisos por conta própria e resumo do dia (sem cron: a cada mensagem, quem chega primeiro pega a vez) */
-  talvezAvisos(sb, cfg).catch(e => console.log('avisos', String(e)));
-  talvezVigiar(sb, cfg).catch(e => console.log('vigia', String(e)));
-  talvezAvisarCelular(sb, cfg).catch(e => console.log('aviso celular', String(e)));
-  talvezBomDia(sb, cfg, false).catch(e => console.log('bom dia', String(e)));
-  talvezResumoDia(sb, cfg, false).catch(e => console.log('resumo dia', String(e)));
+  emSegundoPlano('avisos', talvezAvisos(sb, cfg));
+  emSegundoPlano('vigia', talvezVigiar(sb, cfg));
+  emSegundoPlano('aviso celular', talvezAvisarCelular(sb, cfg));
+  emSegundoPlano('bom dia', talvezBomDia(sb, cfg, false));
+  emSegundoPlano('resumo dia', talvezResumoDia(sb, cfg, false));
   }
   /* grupo da equipe: perguntas sobre qualquer cliente */
   if (cfg.grupo_equipe && jid === cfg.grupo_equipe) { await noGrupoEquipe(sb, cfg, raw, texto, ctx, numero); return; }
@@ -2298,7 +2304,7 @@ async function talvezAprenderCorrecao(sb: SupabaseClient, cfg: Config, raw: any,
   }
 }
 async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
-  talvezAprenderCorrecao(sb, cfg, raw, texto, destino).catch(e => console.log('aprender correção', String(e).slice(0, 200)));   /* em paralelo: não atrasa a resposta */
+  emSegundoPlano('aprender correção', talvezAprenderCorrecao(sb, cfg, raw, texto, destino));   /* em paralelo: não atrasa a resposta */
   avisarPensando(destino, temAudio(raw) && (cfg as any).responder_audio !== false ? 'recording' : 'composing');
   if (await talvezTranscreverCitado(sb, cfg, raw, texto, destino).catch(e => { console.log('transcrever citado', String(e).slice(0, 200)); return false; })) return;
   if (cfg.confirmar_acoes && await talvezConfirmacao(sb, cfg, raw, texto, destino)) return;
