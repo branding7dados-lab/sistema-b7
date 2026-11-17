@@ -183,6 +183,7 @@ B7.AssistenteWA = (function () {
           '<input class="campo" data-p="nome" placeholder="Nome" value="' + esc(p.nome || '') + '">' +
           '<input class="campo" data-p="numero" inputmode="tel" placeholder="WhatsApp com DDD (55 62 9…)" value="' + esc(p.numero || '') + '">' +
           '<input class="campo" data-p="assuntos" placeholder="Cuida de… (ex.: artes, gravações)" value="' + esc(p.assuntos || '') + '">' +
+          '<input class="campo" data-p="apelidos" maxlength="120" placeholder="Apelidos, separados por vírgula (ex.: Pedrão, PP)" title="Como a equipe chama essa pessoa. Evita confundir com cliente de mesmo nome." value="' + esc(p.apelidos || '') + '">' +
           '<select class="campo" data-p="perfil_id" title="Em nome de quem o Otto mexe nas demandas quando esta pessoa pede"><option value="">Usuário no B7: pelo nome</option>' +
             (S.perfis || []).map(u => '<option value="' + esc(u.id) + '"' + (u.id === p.perfil_id ? ' selected' : '') + '>Usuário no B7: ' + esc(u.nome) + '</option>').join('') + '</select>' +
           '<label class="asw-sw p"><input type="checkbox" data-p="duvidas"' + (p.duvidas !== false ? ' checked' : '') + '><span></span>Recebe as dúvidas</label></div>' +
@@ -371,7 +372,7 @@ B7.AssistenteWA = (function () {
     S.cfg.regras = regrasTexto(S.regras);
     const c = S.cfg;
     const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
-      equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
+      equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), ...((p.apelidos || '').trim() ? { apelidos: String(p.apelidos).split(',').map(x => x.trim()).filter(Boolean).slice(0, 6).join(', ') } : {}), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
       modo_clientes: c.modo_clientes === 'atende' ? 'atende' : 'vigia', vigia_min: Math.max(5, Number(c.vigia_min) || 20),
       alertas_ligados: c.alertas_ligados !== false, resumo_dia_ligado: c.resumo_dia_ligado !== false, resumo_dia_hora: /^\d{2}:\d{2}$/.test(c.resumo_dia_hora || '') ? c.resumo_dia_hora : '18:00',
