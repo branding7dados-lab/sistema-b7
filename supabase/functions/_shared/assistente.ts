@@ -277,7 +277,9 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
     g.regras?.trim() ? '\nREGRAS DESTE GRUPO:\n' + g.regras.trim().slice(0, 2000) : '',
     modo === 'fora_horario' && cfg.horario?.mensagem ? '\nMENSAGEM PADRÃO PARA FORA DO HORÁRIO (adapte se ajudar):\n' + cfg.horario.mensagem : ''
   ].filter(Boolean).join('\n');
+  const equipeB7 = await quemEQuem(sb, cfg, false);
   const usuario = [
+    equipeB7, '',
     'EM PRODUÇÃO PARA ESTE CLIENTE:', ...(pend.length ? pend.map(x => '- ' + x) : ['- nada registrado agora']),
     '', 'CONVERSA RECENTE DO GRUPO (mais antiga primeiro):', historico || '(sem histórico)',
     '', modo === 'ordem' ? 'ORDEM DA EQUIPE (' + autor + '):' : autor + (modo === 'sem_marcacao' ? ' escreveu (sem te marcar):' : ' escreveu para você:'), pedido || texto,
@@ -610,6 +612,33 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
   await consultaInterna(sb, cfg, raw, texto, cfg.grupo_equipe!);
 }
 
+/* 4.59.4: quem é quem na equipe (usuários do B7 + o que a tela do Otto diz de cada um) */
+const FUNCAO: Record<string, string> = { admin: 'administrador/sócio', coordenador: 'coordenador(a)', videomaker: 'videomaker (grava e edita vídeo)', designer: 'designer (artes)', social_media: 'social media', atendimento: 'atendimento', editor: 'editor(a) de vídeo', redator: 'redator(a)' };
+async function quemEQuem(sb: SupabaseClient, cfg: Config, interno: boolean): Promise<string> {
+  const [{ data: ps }, { data: ds }] = await Promise.all([
+    sb.from('perfis').select('id, nome, papel, funcao, funcoes_adicionais, funcao_personalizada, eh_admin, status_presenca, status_recado').eq('estado', 'ativa').neq('papel', 'cliente').order('nome'),
+    interno ? sb.from('demandas_edicao').select('videomaker_id').is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado)') : Promise.resolve({ data: [] as any[] })
+  ]);
+  const abertas: Record<string, number> = {};
+  for (const d of (ds || []) as any[]) if (d.videomaker_id) abertas[d.videomaker_id] = (abertas[d.videomaker_id] || 0) + 1;
+  const linhas = ((ps || []) as any[]).filter(p => !/teste/i.test(p.nome || '')).map(p => {
+    const fs = [p.funcao_personalizada || p.funcao || (p.eh_admin ? 'admin' : p.papel), ...(Array.isArray(p.funcoes_adicionais) ? p.funcoes_adicionais : [])].filter(Boolean)
+      .map((f: string) => FUNCAO[f] || f);
+    if (p.eh_admin && !fs.some((f: string) => /admin/.test(f))) fs.unshift('administrador/sócio');
+    const eq = (cfg.equipe || []).find(e => (e as any).perfil_id === p.id || semAcento(String(e.nome || '')).split(' ')[0] === semAcento(p.nome).split(' ')[0]);
+    return '- ' + p.nome + ': ' + [...new Set(fs)].join(', ') + (eq?.assuntos ? '; cuida de: ' + eq.assuntos : '') +
+      (interno && abertas[p.id] ? '; ' + abertas[p.id] + ' demanda(s) de vídeo abertas' : '') +
+      (interno && p.status_presenca === 'nao_perturbe' ? '; agora em "não perturbe"' : '') + (interno && p.status_recado ? '; recado: ' + String(p.status_recado).slice(0, 60) : '');
+  });
+  /* quem está na equipe do Otto mas não tem usuário no B7 */
+  const nomesB7 = ((ps || []) as any[]).map(p => semAcento(p.nome).split(' ')[0]);
+  for (const e of cfg.equipe || []) {
+    if (!e.nome || (e as any).perfil_id || nomesB7.includes(semAcento(e.nome).split(' ')[0])) continue;
+    linhas.push('- ' + e.nome + ': da equipe' + (e.assuntos ? '; cuida de: ' + e.assuntos : '') + ' (sem usuário no sistema)');
+  }
+  return linhas.length ? 'QUEM É QUEM NA EQUIPE DA BRANDING7 (usuários do sistema):\n' + linhas.join('\n') : '';
+}
+
 /** resposta à outra IA do grupo: colega, bem-humorado, curto */
 async function responderBot(sb: SupabaseClient, cfg: Config, raw: any, texto: string, bot: Bot) {
   const destino = cfg.grupo_equipe!;
@@ -619,7 +648,7 @@ async function responderBot(sb: SupabaseClient, cfg: Config, raw: any, texto: st
     `Você é ${cfg.nome}, a IA da Branding7, no grupo interno da equipe. Quem acabou de escrever é ${bot.nome}, OUTRA inteligência artificial` + (bot.sobre ? ' (' + bot.sobre + ')' : '') + '. ' +
     'Converse com ela como um colega de trabalho esperto e bem-humorado: responda ao que ela disse de verdade; se ela respondeu no automático ou não entendeu o contexto, pode zoar de leve e ajudar a entender (a equipe se diverte com isso). ' +
     'Nunca trate como cliente, nunca diga que vai "encaminhar para a equipe". Curto: 1 ou 2 frases, no máximo 1 emoji. Não assine. Nunca escreva @ seguido de números; chame pelo nome.',
-    'CONVERSA RECENTE:\n' + conversa + '\n\nÚLTIMA MENSAGEM DE ' + bot.nome + ': ' + texto, 300);
+    await quemEQuem(sb, cfg, false) + '\n\nCONVERSA RECENTE:\n' + conversa + '\n\nÚLTIMA MENSAGEM DE ' + bot.nome + ': ' + texto, 300);
   if (!s.texto || /\[\[\s*SILENCIO/i.test(s.texto)) return;
   await digitando(destino, cfg);
   await enviar(sb, cfg, destino, s.texto, { quoted: { key: raw.key, message: { conversation: texto.slice(0, 300) } } });
@@ -933,11 +962,12 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
     `Você é ${cfg.nome}, o assistente da equipe da Branding7 (agência de conteúdo para redes sociais), conversando com alguém da EQUIPE no WhatsApp. ` +
     'Você é inteligente, esperto e útil, como um colega muito bom: entende a mensagem e a conversa em volta e responde de verdade. ' +
     'Responda QUALQUER coisa que perguntarem, não só sobre o sistema: ideias de conteúdo, roteiros, legendas, ganchos, trends, estratégia, marketing, redes sociais, textos, e-mails, propostas, contas, explicações, conselhos e conversa do dia a dia — usando o seu próprio conhecimento. ' +
+    'Você conhece a equipe (lista QUEM É QUEM): quando falarem de alguém, saiba quem é e o que faz (ex.: "o Kaique é o videomaker da B7"). ' +
     'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
     'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]].',
     /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
     'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +
-    '\n\nDADOS DO SISTEMA:' + contexto + '\n\nMENSAGEM DE ' + String(raw.pushName || 'alguém da equipe') + ' (responda a esta): ' + pedido, 1400);
+    '\n\n' + await quemEQuem(sb, cfg, true) + '\n\nDADOS DO SISTEMA:' + contexto + '\n\nMENSAGEM DE ' + String(raw.pushName || 'alguém da equipe') + ' (responda a esta): ' + pedido, 1400);
   if (!s.texto) return;
   await digitando(destino, cfg);
   await enviar(sb, cfg, destino, s.texto, { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
