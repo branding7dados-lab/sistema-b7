@@ -239,16 +239,17 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
   const temQuemPerguntar = equipe.some(p => p.duvidas !== false);
   const pedido = texto.replace(/@\d{6,}/g, '').trim();
   const papel = {
-    marcado: 'Responda SÓ ao pedido de quem te marcou ou te respondeu. Mensagem curta de WhatsApp (até 3 frases), sem textão, sem listas longas, no máximo 1 emoji.',
+    marcado: 'Responda ao que a pessoa escreveu, lendo a conversa para entender o contexto. Mensagem de WhatsApp curta e completa (normalmente até 4 frases), sem textão, no máximo 1 emoji.',
     sem_marcacao: 'Você NÃO foi marcado. Só responda se for um pedido de ajuda, dúvida ou demanda para a agência que ninguém respondeu. Conversa entre as pessoas, aviso, agradecimento, bom dia, piada ou algo já respondido: responda exatamente [[SILENCIO]]. Na dúvida, [[SILENCIO]].',
     ordem: 'Quem escreveu agora é da EQUIPE da agência e te deu uma ORDEM. Escreva a mensagem para o CLIENTE no grupo cumprindo a ordem, em primeira pessoa, curta e cordial. Não diga que recebeu ordem nem cite a pessoa da equipe. Não use [[PERGUNTAR]].',
     fora_horario: 'Agora está FORA do horário de atendimento. Responda curto e cordial: se a pergunta tiver resposta no contexto, responda; senão, diga que o time responde no próximo horário de atendimento.'
   }[modo];
   const sistema = [
     `Você é ${cfg.nome}, do atendimento da Branding7 (agência de conteúdo para redes sociais: vídeos, artes, gravações), num grupo de WhatsApp com o cliente "${conv.nome || ''}".`,
-    'Seu papel: atender o cliente — entender o pedido, responder com o que está no contexto e dizer com clareza o próximo passo.',
+    'Seu papel: atender o cliente como um atendente esperto e prestativo — entender a mensagem (e a conversa em volta), responder de verdade e dizer com clareza o próximo passo.',
+    'Você é inteligente e conversa de forma natural: responde perguntas gerais, dá dicas e ideias de conteúdo, redes sociais, marketing, legenda, horário de postar, tendências, explica termos, ajuda com o que o cliente precisar — usando seu conhecimento, não só o que está no sistema. Cumprimentos e conversa leve: responda com simpatia, sem enrolar.',
     papel,
-    'Use o que está EM PRODUÇÃO para responder sobre artes, vídeos e gravações (ex.: "a arte X está em criação, prazo 18/11"). Não invente prazo, preço, valor, data, resultado nem promessa que não esteja aqui.',
+    'Sobre o TRABALHO da agência com este cliente (artes, vídeos, gravações, entregas) use o que está EM PRODUÇÃO (ex.: "a arte X está em criação, prazo 18/11"). Aí sim: não invente prazo, preço, valor, data de entrega, resultado nem promessa da agência que não esteja aqui.',
     modo !== 'ordem' && temQuemPerguntar
       ? 'Se a resposta depender de algo que você não sabe (prazo novo, valor, decisão, algo fora da lista), diga ao cliente que vai confirmar com o time e já retorna, e na ÚLTIMA linha escreva [[PERGUNTAR: a pergunta objetiva para a equipe]]. Essa linha não vai para o cliente.'
       : '',
@@ -270,7 +271,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
     '', 'Escreva só a mensagem que vai no grupo.'
   ].join('\n');
 
-  const saida = await ia(sistema, usuario);
+  const saida = await ia(sistema, usuario, 800);
   let resposta = saida.texto;
   let perguntaEquipe = '';
   resposta = resposta.replace(/\[\[\s*PERGUNTAR\s*:\s*([\s\S]*?)\]\]/i, (_m, q: string) => { perguntaEquipe = q.trim(); return ''; }).trim();
@@ -880,10 +881,21 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
     const esperando = await coletarEsperando(sb, cfg);
     contexto = '\n\nGRUPOS DE CLIENTE ESPERANDO RESPOSTA:\n' + (esperando.join('\n\n') || '(nenhum)');
   }
+  /* 4.59.1: a conversa em volta, para responder de acordo com a mensagem (não só com o sistema) */
+  const { data: hist } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, texto, tipo, do_assistente')
+    .eq('jid', destino).eq('nota', false).order('criada_em', { ascending: false }).limit(16);
+  const conversaAqui = (hist || []).reverse().filter((m: any) => (m.texto || '').trim()).map((m: any) =>
+    (m.do_assistente ? cfg.nome : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + String(m.texto).slice(0, 400)).join('\n');
+  const hoje = new Date(Date.now() - 3 * 3600000);
   const s = await ia(
-    `Você é ${cfg.nome}, assistente interno da equipe da Branding7, respondendo alguém da EQUIPE (não é cliente). Responda o que perguntaram usando só os dados abaixo: o que está em produção (artes, vídeos, gravações) e o que os clientes escreveram nos grupos. ` +
-    'Responda como uma pessoa da equipe falando no WhatsApp: texto corrido, curto (2 a 4 frases), direto ao ponto, sem listas, tópicos, marcadores, títulos, negrito nem "próximos passos sugeridos" — a não ser que a pessoa peça explicitamente uma lista. Não assine (a assinatura entra sozinha). Se ficar mais natural, pode mandar até 3 mensagens curtas seguidas, separadas por uma linha contendo só [[NOVA]]. Se não houver dado sobre o que perguntaram, diga isso claramente. Não invente.',
-    'PERGUNTA DE ' + String(raw.pushName || 'alguém da equipe') + ': ' + pedido + contexto, 700);
+    `Você é ${cfg.nome}, o assistente da equipe da Branding7 (agência de conteúdo para redes sociais), conversando com alguém da EQUIPE no WhatsApp. ` +
+    'Você é inteligente, esperto e útil, como um colega muito bom: entende a mensagem e a conversa em volta e responde de verdade. ' +
+    'Responda QUALQUER coisa que perguntarem, não só sobre o sistema: ideias de conteúdo, roteiros, legendas, ganchos, trends, estratégia, marketing, redes sociais, textos, e-mails, propostas, contas, explicações, conselhos e conversa do dia a dia — usando o seu próprio conhecimento. ' +
+    'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
+    'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]].',
+    /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
+    'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +
+    '\n\nDADOS DO SISTEMA:' + contexto + '\n\nMENSAGEM DE ' + String(raw.pushName || 'alguém da equipe') + ' (responda a esta): ' + pedido, 1400);
   if (!s.texto) return;
   await digitando(destino, cfg);
   await enviar(sb, cfg, destino, s.texto, { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
