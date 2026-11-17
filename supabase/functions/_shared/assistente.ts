@@ -2156,15 +2156,20 @@ export async function talvezBomDia(sb: SupabaseClient, cfg: Config, forcado: boo
     if (!vez || !vez.length) return false;
   }
   const d = await dadosBomDia(sb, cfg);
+  /* 4.70.1: primeiro um ÁUDIO dele dando bom dia (curto, animado, com o destaque do dia);
+     logo depois a MENSAGEM com as pendências do dia, marcando quem tem tarefa. */
   const r = await gerar(provedorAtual(n => Deno.env.get(n)), [
-    { role: 'system', content: 'Você é ' + (cfg.nome || 'Otto') + ', assistente da Branding7. Escreva o BOM DIA da equipe no grupo interno do WhatsApp com os dados de hoje. ' +
-      'Comece com um bom dia animado e curto (varie, nada de clichê). Depois, só o que existe: gravações de hoje (hora, cliente, quem grava), o que vence hoje (vídeo e design, com quem), os atrasados (só o número) e quem está esperando resposta. ' +
-      'Marque quem tem tarefa hoje escrevendo @ + o nome exato da lista PESSOAS COM TAREFA (ex.: @Kaique Viana), uma vez cada. Uma linha por item, sem títulos com #, sem negrito em excesso. Se não tiver nada para hoje, diga isso de um jeito leve. ' +
-      'Termine com uma frase curta de incentivo. Não invente nada. Não assine.' },
+    { role: 'system', content: 'Você é ' + (cfg.nome || 'Otto') + ', assistente da Branding7. Vai mandar o bom dia da equipe no grupo interno do WhatsApp em duas partes. Responda SÓ um JSON: ' +
+      '{"fala": "<o que você FALA no áudio: bom dia animado e natural (varie, sem clichê), em 2 a 4 frases curtas, com o destaque do dia em linguagem falada (ex.: quantas gravações e entregas tem hoje) e uma frase de incentivo. Sem listas, sem números de código, sem @, sem emoji, sem markdown.>", ' +
+      '"texto": "<a MENSAGEM escrita logo depois do áudio, só com as pendências do dia: gravações de hoje (hora, cliente, quem grava), o que vence hoje (vídeo e design, com quem), os atrasados (só o número) e quem está esperando resposta. Uma linha por item, só o que existe. Marque quem tem tarefa com @ + o nome exato da lista PESSOAS COM TAREFA, uma vez cada. Sem bom dia de novo, sem títulos com #, sem negrito em excesso. Se não tiver nada para hoje, diga em 1 frase leve.>"}. ' +
+      'Não invente nada. Não assine.' },
     { role: 'user', content: d.texto + '\n\nPESSOAS COM TAREFA: ' + (d.pessoas.join(', ') || 'ninguém') }
-  ], { maxTokens: 700, temperatura: 0.6, prazoMs: 40000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
-  const texto = r.ok && r.texto ? r.texto : 'Bom dia, equipe! ☀️\n\n' + d.texto.split('\n\n').slice(1).join('\n\n');
-  const foi = await enviar(sb, cfg, dest, texto);
-  await registrar(sb, { tipo: 'resumo', jid: dest, autor: cfg.nome, pergunta: forcado ? 'bom dia (pedido)' : 'bom dia da equipe', resposta: texto.slice(0, 1500) });
+  ], { maxTokens: 900, temperatura: 0.6, json: true, prazoMs: 40000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
+  const j = r.ok ? jsonDoTexto(r.texto) : null;
+  const fala = String(j?.fala || '').trim() || 'Bom dia, equipe! Bora pra mais um dia. Já deixei aqui embaixo o que tem pra hoje.';
+  const texto = String(j?.texto || '').trim() || d.texto.split('\n\n').slice(1).join('\n\n');
+  const foiAudio = await responderEmAudio(sb, cfg, dest, fala).catch(() => false);
+  const foi = await enviar(sb, cfg, dest, foiAudio ? texto : 'Bom dia, equipe! ☀️\n\n' + texto);
+  await registrar(sb, { tipo: 'resumo', jid: dest, autor: cfg.nome, pergunta: forcado ? 'bom dia (pedido)' : 'bom dia da equipe', resposta: ((foiAudio ? '[áudio] ' + fala + '\n\n' : '') + texto).slice(0, 1500) });
   return !!foi;
 }
