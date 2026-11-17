@@ -42,6 +42,8 @@ type Horario = { ativo?: boolean; ini?: string; fim?: string; dias?: number[]; m
 export type Config = {
   ativo: boolean; nome: string; jeito: string; regras: string; equipe: Pessoa[]; sem_marcacao: boolean;
   regras_equipe?: string; modo_restrito?: boolean; zoacao_nivel?: 'leve' | 'medio' | 'pesado';
+  /* 4.68.0: velocidade */
+  velocidade?: 'rapido' | 'natural' | 'humano'; audio_humano?: boolean; audio_roteiro?: 'auto' | 'sempre' | 'nunca'; audio_max_s?: number;
   pausa_min: number; espera_min_s: number; espera_max_s: number; grupos: Record<string, { desligado?: boolean; regras?: string }>;
   meu_lid: string | null; horario?: Horario; ouvir_audio?: boolean;
   grupo_equipe?: string | null; resumo_horas?: number; resumo_ultimo?: string | null; resumo_espera_min?: number;
@@ -343,7 +345,7 @@ async function enviar(sb: SupabaseClient, cfg: Config, jid: string, texto: strin
   const { mentioned: _a, mentionsEveryOne: _b, ...resto } = extra as any;
   const primeira = await enviarUma(sb, cfg, jid, prontas[0].t, { ...resto, ...opc(prontas[0]) }, true);
   for (const p of prontas.slice(1)) {
-    const ms = Math.min(6000, 1200 + p.t.length * 45);
+    const ms = (cfg.velocidade || 'natural') === 'humano' ? Math.min(6000, 1200 + p.t.length * 45) : tempoDigitando(cfg, p.t.length);
     await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'composing', delay: ms }, ms + 5000).catch(() => null);
     await enviarUma(sb, cfg, jid, p.t, opc(p), false);
   }
@@ -358,9 +360,19 @@ async function enviarUma(sb: SupabaseClient, cfg: Config, jid: string, texto: st
   if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
   return r.dados;
 }
-async function digitando(jid: string, cfg: Config) {
-  const min = Math.max(1, cfg.espera_min_s || 4), max = Math.max(min, cfg.espera_max_s || 9);
-  const ms = Math.round((min + Math.random() * (max - min)) * 1000);
+/** 4.68.0: "digitando…" já enquanto ele pensa (sem esperar) — a pessoa vê na hora que ele recebeu */
+function avisarPensando(jid: string, presenca: 'composing' | 'recording' = 'composing', ms = 15000) {
+  evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: presenca, delay: ms }, ms + 6000).catch(() => null);
+}
+/** quanto tempo de "digitando…" antes de mandar (já pensou com o "digitando" ligado) */
+export function tempoDigitando(cfg: Pick<Config, 'velocidade' | 'espera_min_s' | 'espera_max_s'>, tamanho = 120): number {
+  const v = cfg.velocidade || 'natural';
+  if (v === 'rapido') return 500;
+  if (v === 'humano') { const min = Math.max(1, cfg.espera_min_s || 4), max = Math.max(min, cfg.espera_max_s || 9); return Math.round((min + Math.random() * (max - min)) * 1000); }
+  return Math.max(700, Math.min(2500, 400 + tamanho * 12));
+}
+async function digitando(jid: string, cfg: Config, tamanho = 120) {
+  const ms = tempoDigitando(cfg, tamanho);
   const t0 = Date.now();
   await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'composing', delay: ms }, ms + 6000).catch(() => null);
   const falta = ms - (Date.now() - t0);
@@ -759,6 +771,14 @@ async function talvezResumo(sb: SupabaseClient, cfg: Config) {
 }
 
 /** Conversas de cliente esperando resposta, com o que o cliente escreveu desde a última resposta da equipe. */
+const PEDE_PENDENCIAS = /pend[eê]n|esperando|sem resposta|quem (ta|esta|tá|está)|respond|resum|clientes?|grupos?|atrasad|cobr|o que (tem|falta)|como (ta|esta|anda)/;
+/** 4.68.0: só os nomes dos clientes esperando (barato) */
+async function nomesEsperando(sb: SupabaseClient, cfg: Config): Promise<string[]> {
+  const espera = Math.max(5, cfg.resumo_espera_min || 30);
+  const { data } = await sb.from('wa_conversas').select('nome, cliente_id, esperando_desde').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false)
+    .not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - espera * 60000).toISOString()).order('esperando_desde', { ascending: true }).limit(15);
+  return ((data || []) as any[]).map(c => c.nome + ' (há ' + ha(c.esperando_desde) + ')');
+}
 async function coletarEsperando(sb: SupabaseClient, cfg: Config, clienteIds?: string[]) {
   const espera = Math.max(5, cfg.resumo_espera_min || 30);
   let q: any = sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false);
@@ -769,11 +789,15 @@ async function coletarEsperando(sb: SupabaseClient, cfg: Config, clienteIds?: st
   const ids = [...new Set(((convs || []) as any[]).map((c: any) => c.cliente_id).filter(Boolean))];
   const { data: cls } = ids.length ? await sb.from('clientes').select('id, nome').in('id', ids) : { data: [] as any[] };
   const nomeCli = new Map(((cls || []) as any[]).map((x: any) => [x.id, x.nome]));
-  for (const c of (convs || []) as any[]) {
+  /* 4.68.0: as consultas de cada grupo em paralelo (antes, uma depois da outra) */
+  const msgsPorConv = await Promise.all(((convs || []) as any[]).map(async (c: any) => {
     const { data: ult } = await sb.from('wa_mensagens').select('criada_em').eq('jid', c.jid).eq('de_mim', true).eq('nota', false).order('criada_em', { ascending: false }).limit(1);
     let mq: any = sb.from('wa_mensagens').select('autor_nome, texto, tipo, criada_em').eq('jid', c.jid).eq('de_mim', false).order('criada_em', { ascending: false }).limit(clienteIds ? 15 : 10);
     if (!clienteIds && ult?.[0]) mq = mq.gt('criada_em', ult[0].criada_em);
-    const { data: ms } = await mq;
+    return (await mq).data;
+  }));
+  for (const [k, c] of ((convs || []) as any[]).entries()) {
+    const ms = msgsPorConv[k];
     const linhas = ((ms || []) as any[]).reverse().map((m: any) => '  - ' + (m.autor_nome || 'cliente') + ' (' + ha(m.criada_em) + ' atrás): ' + (m.texto ? String(m.texto).slice(0, 300) : '(' + m.tipo + ')'));
     if (!linhas.length && !clienteIds) continue;
     blocos.push('CLIENTE "' + (nomeCli.get(c.cliente_id) || c.nome) + '" (grupo "' + c.nome + '")' + (c.esperando_desde ? ' — esperando resposta há ' + ha(c.esperando_desde) : '') + ':\n' + (linhas.join('\n') || '  (sem mensagens recentes do cliente)'));
@@ -1384,13 +1408,17 @@ const vozDe = (cfg: Config) => ({ provedor: (cfg as any).voz_provedor || 'gemini
 /** 4.62.0: responde EM ÁUDIO — reescreve como fala, gera a voz, manda; se tiver link/lista, manda o texto junto. false = não deu (aí vai texto) */
 async function responderEmAudio(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}): Promise<boolean> {
   if (!podePalavrao(cfg, jid) && temPalavrao(texto)) return false;
-  await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'recording', delay: 8000 }, 12000).catch(() => null);
-  const { fala, comTexto } = await roteiroDeFala(texto);
+  /* 4.68.0: "gravando áudio…" aparece na hora, SEM esperar (antes travava 8 s aqui e mais até 20 s no fim) */
+  const t0 = Date.now();
+  avisarPensando(jid, 'recording', 20000);
+  const { fala, comTexto } = await roteiroDeFala(texto, { modo: cfg.audio_roteiro || 'auto', maxSegundos: Math.max(15, Math.min(120, Number(cfg.audio_max_s) || 40)) });
   const audio = await falar(fala, vozDe(cfg));
   if (!audio) return false;
-  /* 4.62.1: "gravando áudio…" por quase o tempo do áudio (como gente gravando), até 20 s */
-  const grava = Math.min(20000, Math.max(2500, Math.round(audio.segundos * 850)));
-  await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'recording', delay: grava }, grava + 8000).catch(() => null);
+  /* "gravar como gente" (opcional): completa o tempo de gravação proporcional ao áudio, descontando o que já passou */
+  if (cfg.audio_humano) {
+    const falta = Math.min(20000, Math.max(2500, Math.round(audio.segundos * 850))) - (Date.now() - t0);
+    if (falta > 300) await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'recording', delay: falta }, falta + 8000).catch(() => null);
+  }
   const ok = await enviarAudio(sb, cfg, jid, audio.b64, extra);
   if (ok && comTexto) await enviar(sb, cfg, jid, texto);
   return ok;
@@ -1653,9 +1681,13 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   let dados = '';
   if (ehCliente) dados += '\n\nESTE GRUPO (do cliente):\n' + await consultarConversa(sb, cfg, String(cli!.conv.nome || ''));
   if (clientes.length) { for (const c of clientes.slice(0, 3)) dados += '\n\n' + await consultarConversa(sb, cfg, c.nome); }
-  else if (!ehCliente) { const esperando = await coletarEsperando(sb, cfg); dados = '\nGRUPOS DE CLIENTE ESPERANDO RESPOSTA:\n' + (esperando.join('\n\n') || '(nenhum)'); }
-  const { data: hist } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, texto, tipo, do_assistente').eq('jid', aqui).eq('nota', false).order('criada_em', { ascending: false }).limit(16);
-  const conversaAqui = ((hist || []) as any[]).reverse().map(m => (m.do_assistente ? cfg.nome + ' (você)' : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + (m.texto ? String(m.texto).slice(0, 400) : '(' + m.tipo + ')')).join('\n');
+  else if (!ehCliente) {
+    /* 4.68.0: o detalhe de quem espera (pesado: ~4 mil tokens) só vai quando o assunto é esse; senão, só os nomes */
+    if (PEDE_PENDENCIAS.test(semAcento(pedido))) { const esperando = await coletarEsperando(sb, cfg); dados = '\nGRUPOS DE CLIENTE ESPERANDO RESPOSTA:\n' + (esperando.join('\n\n') || '(nenhum)'); }
+    else dados = '\nCLIENTES ESPERANDO RESPOSTA (só os nomes — use "consultar" se precisar do detalhe): ' + ((await nomesEsperando(sb, cfg)).join(', ') || 'nenhum');
+  }
+  const { data: hist } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, texto, tipo, do_assistente').eq('jid', aqui).eq('nota', false).order('criada_em', { ascending: false }).limit(12);
+  const conversaAqui = ((hist || []) as any[]).reverse().map(m => (m.do_assistente ? cfg.nome + ' (você)' : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + (m.texto ? String(m.texto).slice(0, 300) : '(' + m.tipo + ')')).join('\n');
   const { data: cls } = await sb.from('clientes').select('nome').is('deleted_at', null).order('nome').limit(200);
   const hoje = new Date(Date.now() - 3 * 3600000);
   const ehEquipe = aqui === cfg.grupo_equipe, ehGrupo = /@g\.us$/.test(aqui);
@@ -1841,7 +1873,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     /* 4.61.0: mandou áudio → responde em áudio (se der; senão, texto) */
     const emAudio = plano.emAudio || (!ehCliente && temAudio(raw) && (cfg as any).responder_audio !== false);
     const foiAudio = emAudio ? await responderEmAudio(sb, cfg, aqui, resposta, citarR) : false;
-    if (!foiAudio) { await digitando(aqui, cfg); await enviar(sb, cfg, aqui, resposta, citarR); }
+    if (!foiAudio) { await digitando(aqui, cfg, resposta.length); await enviar(sb, cfg, aqui, resposta, citarR); }
   }
   await registrar(sb, { tipo: ehCliente ? 'instrucao' : plano.acoes.length ? 'agente' : 'consulta', jid: aqui, autor: quem, pergunta: pedido.slice(0, 800),
     resposta: ((feitos.length ? '[' + feitos.join(', ') + '] ' : '') + (resposta || '')).slice(0, 1500), ...usoDe({ texto: '', provedor: saida?.provedor, modelo: saida?.modelo, tokensEntrada: saida?.tokensEntrada, tokensSaida: saida?.tokensSaida, ms: Date.now() - t0 }) });
@@ -1874,6 +1906,7 @@ async function talvezTranscreverCitado(sb: SupabaseClient, cfg: Config, raw: any
   return true;
 }
 async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto: string, destino: string) {
+  avisarPensando(destino, temAudio(raw) && (cfg as any).responder_audio !== false ? 'recording' : 'composing');
   if (await talvezTranscreverCitado(sb, cfg, raw, texto, destino).catch(e => { console.log('transcrever citado', String(e).slice(0, 200)); return false; })) return;
   try { if (await agente(sb, cfg, raw, texto, destino)) return; }
   catch (e) { console.log('agente: erro', String(e).slice(0, 300)); }

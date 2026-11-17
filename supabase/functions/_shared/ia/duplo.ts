@@ -59,7 +59,9 @@ export function criarDuplo(rapido: Provedor, reserva: Provedor, limiteTokens = 6
   async function gerar(p: PedidoDeGeracao): Promise<RespostaDoProvedor> {
     const q = primeiro(p);
     if (!q) return marca(await reserva.gerar(p), reserva.nome, false);
-    const fila = q === grande?.provedor ? [q, ...(grande.outros || [])] : [q];
+    /* 4.68.0: cada modelo do Groq tem o seu limite por minuto — o rápido também tenta a fila antes do Gemini */
+    const fila = (q === grande?.provedor ? [q, ...(grande.outros || [])] : [q, ...(grande ? [grande.provedor, ...(grande.outros || [])] : [])])
+      .filter((x, i, a) => a.findIndex(y => y.modelo === x.modelo) === i);
     for (const x of fila) {
       if (retirados.has(x.modelo)) continue;
       const r = await x.gerar(p);

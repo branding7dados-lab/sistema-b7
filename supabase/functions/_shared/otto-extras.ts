@@ -32,6 +32,9 @@ export async function esquecer(sb: SupabaseClient, trecho: string): Promise<numb
 
 /* ------------------------------------------------------------ voz (Gemini TTS → WAV) */
 let modelosTTS: string[] | null = null;
+/* 4.68.0: modelo de voz sem cota (429) fica de fora por 15 min — não perde tempo tentando de novo */
+const semCota = new Map<string, number>();
+let ultimoTTS = '';
 async function ttsModelos(chave: string): Promise<string[]> {
   const fixo = (Deno.env.get('GEMINI_MODELO_TTS') || '').trim();
   if (fixo) return [fixo];
@@ -43,7 +46,8 @@ async function ttsModelos(chave: string): Promise<string[]> {
     for (const m of d.models || []) { const n = String(m.name || '').replace(/^models\//, ''); if (/tts/i.test(n)) l.push(n); }
   } catch (_e) { /* usa a lista padrão */ }
   const nota = (n: string) => (/flash/.test(n) ? 0 : 1) + (/preview/.test(n) ? 0.5 : 0);
-  modelosTTS = (l.length ? l.sort((a, b) => nota(a) - nota(b)) : ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts']).slice(0, 3);
+  /* 4.68.0: TODOS os modelos de voz (cada um tem a sua cota no Google); o que funcionou por último vai na frente */
+  modelosTTS = (l.length ? l.sort((a, b) => nota(a) - nota(b)) : ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts']).slice(0, 8);
   return modelosTTS;
 }
 /* 4.62.2/4.63.1: o modelo de voz às vezes solta um "tch" (ruído curto) DEPOIS de terminar de falar.
@@ -121,11 +125,17 @@ export const VOZES: [string, string][] = [
 export type Voz = { provedor?: string; voz?: string; estilo?: string; elevenId?: string | null };
 export type Audio = { b64: string; mime: string; segundos: number };
 /** a resposta escrita vira FALA: curta, natural, sem lista/link/código; diz se é bom mandar o texto junto */
-export async function roteiroDeFala(texto: string): Promise<{ fala: string; comTexto: boolean }> {
+export async function roteiroDeFala(texto: string, op: { modo?: 'auto' | 'sempre' | 'nunca'; maxSegundos?: number } = {}): Promise<{ fala: string; comTexto: boolean }> {
   const t = String(texto || '').replace(/\[\[\s*NOVA\s*\]\]/gi, '\n').trim();
   const temCoisaDeLer = /https?:\/\/|www\.|\n\s*[-•*\d]+[.)]?\s|\b[A-Z]{2,}-\d+\b|@\d{6,}/.test(t) || t.length > 700;
+  const palavras = Math.round(2.7 * Math.max(15, Math.min(120, op.maxSegundos || 40)));
+  /* 4.68.0: reescrever para fala custa uma chamada de IA (1 a 20 s). No "auto", só quando precisa:
+     link, lista, número, sigla, emoji/markdown ou texto longo. Texto simples vai direto para a voz. */
+  const simples = !temCoisaDeLer && !/\d|[*_~#]|\b[A-Z]{2,}\b/.test(t) && t.split(/\s+/).length <= palavras;
+  if (op.modo === 'nunca' || (op.modo !== 'sempre' && simples))
+    return { fala: t.replace(/[*_~`#]/g, '').replace(/https?:\/\/\S+/g, '').split(/\s+/).slice(0, palavras).join(' '), comTexto: temCoisaDeLer };
   const r = await gerar(provedorAtual(n => Deno.env.get(n)), [
-    { role: 'system', content: 'Reescreva a mensagem abaixo como FALA de um áudio de WhatsApp em português do Brasil: natural, como quem fala, frases curtas, sem listas, sem emojis, sem links, sem códigos, sem markdown. Datas e horas por extenso ("dezoito de novembro", "às três da tarde"), números como se fala, siglas como se pronuncia. Mantenha o sentido e os fatos; se houver links, listas longas ou códigos, diga só o essencial ("te mandei os detalhes por escrito aqui embaixo"). No máximo uns 40 segundos de fala (até ~110 palavras). Devolva só o texto falado.' },
+    { role: 'system', content: 'Reescreva a mensagem abaixo como FALA de um áudio de WhatsApp em português do Brasil: natural, como quem fala, frases curtas, sem listas, sem emojis, sem links, sem códigos, sem markdown. Datas e horas por extenso ("dezoito de novembro", "às três da tarde"), números como se fala, siglas como se pronuncia. Mantenha o sentido e os fatos; se houver links, listas longas ou códigos, diga só o essencial ("te mandei os detalhes por escrito aqui embaixo"). No máximo uns ' + Math.round(palavras / 2.7) + ' segundos de fala (até ~' + palavras + ' palavras). Devolva só o texto falado.' },
     { role: 'user', content: t.slice(0, 3000) }
   ], { maxTokens: 400, temperatura: 0.4, prazoMs: 20000, limpar: (x: string) => String(x || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^["“]|["”]$/g, '').trim() });
   const fala = r.ok && r.texto ? r.texto : t.replace(/[*_~`#]/g, '').replace(/https?:\/\/\S+/g, '').slice(0, 700);
@@ -155,7 +165,9 @@ export async function falar(texto: string, v: Voz | string = 'Orus'): Promise<Au
   const chave = (Deno.env.get('GEMINI_API_KEY') || '').trim();
   if (!chave) return null;
   const estilo = String(o.estilo || 'animado, simpático e natural, como um colega de trabalho brasileiro mandando áudio no WhatsApp').slice(0, 200);
-  for (const m of await ttsModelos(chave)) {
+  const lista = (await ttsModelos(chave)).filter(m => (semCota.get(m) || 0) < Date.now());
+  if (ultimoTTS && lista.includes(ultimoTTS)) lista.splice(lista.indexOf(ultimoTTS), 1), lista.unshift(ultimoTTS);
+  for (const m of lista) {
     try {
       const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent', {
         method: 'POST', signal: AbortSignal.timeout(60000), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': chave },
@@ -170,11 +182,12 @@ export async function falar(texto: string, v: Voz | string = 'Orus'): Promise<Au
         })
       });
       const d = await r.json().catch(() => ({} as any));
-      if (!r.ok) { console.log('tts', m, r.status, String(d?.error?.message || '').slice(0, 200)); continue; }
+      if (!r.ok) { console.log('tts', m, r.status, String(d?.error?.message || '').slice(0, 200)); if (r.status === 429) semCota.set(m, Date.now() + 15 * 60_000); continue; }
       const p = (d?.candidates?.[0]?.content?.parts || []).find((x: any) => x?.inlineData?.data);
       if (!p) continue;
       const rate = Number(/rate=(\d+)/.exec(String(p.inlineData.mimeType || ''))?.[1] || 24000);
       const pcm = limparPCM(Uint8Array.from(atob(p.inlineData.data), c => c.charCodeAt(0)), rate);
+      ultimoTTS = m;
       return { b64: b64(wav(pcm, rate)), mime: 'audio/wav', segundos: pcm.length / 2 / rate };
     } catch (e) { console.log('tts', m, String(e).slice(0, 200)); }
   }

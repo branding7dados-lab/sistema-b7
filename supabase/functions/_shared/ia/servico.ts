@@ -84,7 +84,7 @@ export function provedorAtual(env: (nome: string) => string | undefined): Proved
     /* v3.3.0: modelo grande do Groq para o chat (GROQ_MODELO_GRANDE=nenhum desliga) */
     /* 4.66.4: fila de modelos grandes (o Llama 4 Scout saiu do Groq). GROQ_MODELO_GRANDE vai na frente. */
     const pedido = (env('GROQ_MODELO_GRANDE') || '').trim();
-    const nomes = pedido === 'nenhum' ? [] : [...new Set([pedido, 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'meta-llama/llama-4-maverick-17b-128e-instruct'].filter(Boolean))];
+    const nomes = pedido === 'nenhum' ? [] : [...new Set([pedido, 'openai/gpt-oss-120b', 'moonshotai/kimi-k2-instruct-0905', 'qwen/qwen3-32b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'].filter(Boolean))];
     const gs = nomes.map(n => criarGroq(env, fetch, n)).filter(Boolean) as Provedor[];
     return criarDuplo(groq, gemini, Number(env('GROQ_LIMITE_TOKENS')) || 6000,
       gs.length ? { provedor: gs[0], limite: Number(env('GROQ_LIMITE_GRANDE')) || 24000, outros: gs.slice(1) } : null);
