@@ -30,7 +30,7 @@ import { cuidarDasDemandas, perfilDe, FALA_DE_DEMANDA } from './otto-demandas.ts
 import { printDaConversa } from './print-conversa.ts';
 import { memorias, lembrar, esquecer, falar, roteiroDeFala, avisosPendentes, marcarAvisados, dadosDoDia, escreverResumoDia } from './otto-extras.ts';
 import { mandarFigurinha } from './otto-social.ts';
-import { nomesDoOtto, ferramentaLigada, filtrarFerramentas, mudaSistema, podeMandar, quemPodeMandar, precisaConfirmar, respostaConfirmacao, regraTamanho, regraEmojis, tirarEmojis, chamou, podeZoarAgora, fdsQuieto } from './otto-controle.ts';
+import { limparResposta, ESTILO_EQUIPE, nomesDoOtto, ferramentaLigada, filtrarFerramentas, mudaSistema, podeMandar, quemPodeMandar, precisaConfirmar, respostaConfirmacao, regraTamanho, regraEmojis, tirarEmojis, chamou, podeZoarAgora, fdsQuieto } from './otto-controle.ts';
 import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, decidirJeito, reagirNaMensagem, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -135,12 +135,21 @@ function noJeitoDoWhats(cfg: Config, t: string): string {
 async function semCodigos(sb: SupabaseClient, texto: string, marcados: string[]): Promise<string> {
   const achados = [...new Set([...String(texto || '').matchAll(/@(\d{10,})/g)].map(m => m[1]))].filter(d => !marcados.some(x => dig(x) === d));
   if (!achados.length) return texto;
-  const { data } = await sb.from('wa_contatos').select('jid, nome').in('jid', achados.flatMap(d => [d + '@lid', d + '@s.whatsapp.net']));
+  const jids = achados.flatMap(d => [d + '@lid', d + '@s.whatsapp.net']);
+  const { data } = await sb.from('wa_contatos').select('jid, nome').in('jid', jids);
+  /* 4.74.0: sem nome no contato → pela equipe (número) → pelo nome com que a pessoa aparece nas mensagens */
+  const cfgE = await lerConfig(sb).catch(() => null);
+  const { data: au } = await sb.from('wa_mensagens').select('autor_jid, autor_nome').in('autor_jid', jids).not('autor_nome', 'is', null).limit(50);
+  const valido = (n: unknown) => n && !/^\+?[\d\s-]+$/.test(String(n));
   for (const d of achados) {
-    const c = ((data || []) as any[]).find(x => dig(x.jid) === d && x.nome && !/^\+?\d+$/.test(x.nome));
-    texto = texto.split('@' + d).join(c ? String(c.nome).split(/\s+/)[0] : '');
+    const c = ((data || []) as any[]).find(x => dig(x.jid) === d && valido(x.nome))?.nome
+      || (cfgE?.equipe || []).find(p => p.numero && fim8(p.numero) === d.slice(-8))?.nome
+      || ((au || []) as any[]).find(x => dig(x.autor_jid) === d && valido(x.autor_nome))?.autor_nome;
+    const nomeC = c ? String(c).replace(/\s*[-|–].*$/, '').split(/\s+/)[0] : '';
+    /* sem nome nenhum: some o código — e a vírgula que vinha junto ("@123, relaxa" → "Relaxa") */
+    texto = nomeC ? texto.split('@' + d).join(nomeC) : texto.replace(new RegExp('(^|\\s)@' + d + ',?\\s*', 'g'), '$1');
   }
-  return texto.replace(/ {2,}/g, ' ');
+  return texto.replace(/ {2,}/g, ' ').replace(/^\s*([a-zà-ú])/, (_m, l: string) => l.toUpperCase());
 }
 /* 4.58.1: mais de uma mensagem seguida — a IA separa com uma linha [[NOVA]] (até 3). A primeira leva a
    assinatura, a citação e as marcações; as outras saem em seguida, com "digitando…" proporcional ao texto. */
@@ -1879,6 +1888,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     regraTamanho(cfg), regraEmojis(cfg),
     'Marcar alguém: escreva @Nome (como em PESSOAS NESTE GRUPO). Marcar todo mundo / a equipe / o grupo: escreva SÓ @todos, uma vez — NUNCA liste os nomes. Nunca @números.',
     ehCliente ? '' : regrasDaEquipe(cfg, aqui),
+    ehCliente ? '' : ESTILO_EQUIPE,
     /* 4.66.7: do privado, a equipe pode mandar o Otto agir no grupo da equipe e no privado dos colegas */
     !ehGrupo && !ehCliente ? 'NO PRIVADO, qualquer pessoa da equipe pode pedir para você fazer coisas em OUTRO lugar: mandar mensagem, áudio, figurinha, print, imagem ou PDF no grupo da equipe ("lá no grupo", "no grupo" = grupo da equipe), marcar alguém ou @todos lá, ou mandar recado no privado de outra pessoa da equipe. Faça com a ferramenta certa (mensagem_em_grupo com "equipe", privado com o nome da pessoa, audio, figurinha…). Quando for recado de alguém, deixe claro de quem é se fizer sentido (ex.: "O ' + (quem === 'Você' ? 'Fulano' : quem.split(/\s+/)[0]) + ' pediu pra avisar: …"). Mensagem ou áudio para o grupo da equipe segue a zoação liberada de lá (se o modo restrito estiver desligado). Depois, confirme aqui em 1 frase curta.' : '',
     /* 4.67.3: nome igual entre equipe e cliente */
@@ -2123,6 +2133,8 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   if (bloqueou) { const f = falhas.filter(x => /^não mando|^o Otto está desligado/.test(x)); falhas.length = 0; falhas.push(...f); }
   if (falhas.length && !feitos.length && plano.acoes.length) resposta = '';
   if (falhas.length) resposta = (resposta ? resposta + '\n\n' : '') + 'Não deu: ' + falhas.join('; ') + '.';
+  /* 4.74.0: tira o enchimento ("se precisar, tô aqui"), o "Oi Fulano" no meio da conversa e a abertura repetida */
+  if (resposta && !ehCliente && !falhas.length) resposta = limparResposta(resposta, { anteriores: ((hist || []) as any[]).filter(m => m.do_assistente && m.texto).map(m => String(m.texto)) });
   if (resposta && cfg.emojis === 'nada') resposta = tirarEmojis(resposta);
   if (resposta) {
     const citarR = key.id && !ehCliente ? { quoted: { key, message: { conversation: texto.slice(0, 300) } } } : {};
@@ -2244,15 +2256,16 @@ async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: 
     'Você conhece a equipe (lista QUEM É QUEM): quando falarem de alguém, saiba quem é e o que faz (ex.: "o Kaique é o videomaker da B7"). ' +
     'Para MARCAR alguém (quando pedirem ou quando ajudar), escreva @ e o nome da pessoa como aparece em PESSOAS NESTE GRUPO (ex.: @Yury); para marcar todo mundo, @todos. O sistema transforma na marcação de verdade. Nunca escreva @ com números. ' +
     'Quando a pergunta for sobre os CLIENTES e o trabalho da agência (o que está em produção, quem pediu o quê, quem está esperando resposta), use os DADOS DO SISTEMA abaixo e não invente prazo, data ou status que não estejam lá; se o dado não estiver lá, diga. ' +
-    'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]]. ' + regraTamanho(cfg) + ' ' + regraEmojis(cfg),
+    'Jeito de escrever: como uma pessoa no WhatsApp, texto corrido, direto, pode ter bom humor. Tamanho conforme o pedido: pergunta simples = 1 a 3 frases; se pedirem algo para produzir (legenda, roteiro, ideias, texto), entregue completo. Liste só se pedirem ou se for o formato natural (ex.: "5 ideias"). Sem títulos, sem negrito em excesso, sem "espero ter ajudado". Não assine (a assinatura entra sozinha). Se ficar mais natural, até 3 mensagens seguidas separadas por uma linha contendo só [[NOVA]]. ' + regraTamanho(cfg) + ' ' + regraEmojis(cfg) + '\n' + ESTILO_EQUIPE,
     ' ' + regrasDaEquipe(cfg, destino) + ' ' +
     /* o "jeito" e as "regras" da tela são do atendimento ao CLIENTE; com a equipe não valem */
     'HOJE: ' + hoje.toISOString().slice(0, 10) + '\n\nCONVERSA AQUI (mais antiga primeiro):\n' + (conversaAqui || '(sem histórico)') +
     '\n\n' + await quemEQuem(sb, cfg, true) + '\n\n' + await genteDoGrupo(sb, cfg, destino) + '\n\nDADOS DO SISTEMA:' + contexto + '\n\nMENSAGEM DE ' + String(raw.pushName || 'alguém da equipe') + ' (responda a esta): ' + pedido, 1400);
   /* 4.66.4: a IA não respondeu nem aqui — avisa em vez de ficar calado */
   if (!s.texto) { await enviar(sb, cfg, destino, 'Travei aqui agora 😅 Me manda de novo daqui a pouco?', { quoted: { key, message: { conversation: texto.slice(0, 300) } } }); return; }
+  const final = limparResposta(s.texto, { anteriores: ((hist || []) as any[]).slice().reverse().filter((m: any) => m.do_assistente && m.texto).map((m: any) => String(m.texto)) });
   await digitando(destino, cfg);
-  await enviar(sb, cfg, destino, s.texto, { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
+  await enviar(sb, cfg, destino, final, { quoted: { key, message: { conversation: texto.slice(0, 300) } } });
   await registrar(sb, { tipo: 'consulta', jid: destino, autor: String(raw.pushName || ''), pergunta: pedido.slice(0, 800), resposta: s.texto.slice(0, 1500), ...usoDe(s) });
 }
 

@@ -130,3 +130,40 @@ export function ehFimDeSemana(agora = new Date()): boolean {
   return br === 0 || br === 6;
 }
 export const fdsQuieto = (cfg: Controle, agora = new Date()) => !!cfg.fds_silencio && ehFimDeSemana(agora);
+
+/* ------------------------------------------------------------ 4.74.0: acabamento das respostas (equipe)
+   O Otto fechava quase toda mensagem com "se precisar de algo, tô aqui", começava sempre com "Oi Fulano" /
+   "Haha" e repetia as mesmas aberturas. Aqui sai o enchimento (sem tocar no conteúdo). */
+const ENCHIMENTO = /(se precisar( de)?( mais)?( algo| alguma coisa| qualquer coisa| de mim| me chama| e so chamar| é só chamar)?|qualquer (outra )?coisa( que precisar)?,? (e|é) so (chamar|falar)|qualquer coisa,? (e|é) so (chamar|falar|gritar)|so chamar que|é só chamar|e so chamar|t[oô] (sempre )?(aqui|na area|na área|à disposição|a disposicao)( pra (ajudar|o que precisar))?|estou (sempre )?(aqui|à disposição|a disposicao)|sempre (pronto|pronta|livre) (pra|para) ajudar|como posso (te )?ajudar\??|espero ter ajudado|fico (a|à) disposi[cç][aã]o)/i;
+const frases = (t: string) => String(t || '').match(/[^.!?\n]+[.!?]*\s*|\n+/g) || [];
+export function limparResposta(texto: string, o: { anteriores?: string[]; nome?: string } = {}): string {
+  let t = String(texto || '').trim();
+  if (!t) return t;
+  /* 1) frase de enchimento no fim (ou no começo do "Mas se precisar…") — só se sobrar conteúdo */
+  const fs = frases(t);
+  /* frase que É enchimento (começa oferecendo ajuda); frase com conteúdo + enchimento no fim é tratada abaixo */
+  const soEnche = (f: string) => { const x = semAcento(f).trim(); return ENCHIMENTO.test(x) && /^(mas |e )?(se precisar|qualquer (outra )?coisa|como posso|t[oô] (sempre )?(aqui|na area|a disposicao)|estou|sempre (pronto|pronta|livre)|espero|fico|so chamar|e so chamar)/.test(x); };
+  const cheias = fs.filter(f => !/^\s*$/.test(f));
+  const util = cheias.filter(f => !soEnche(f));
+  if (util.length && util.length < cheias.length) t = fs.filter(f => /^\s*$/.test(f) || !soEnche(f)).join('').trim();
+  /* "…, mas se precisar de algo, tô aqui!" no meio da frase */
+  t = t.replace(/[,;]?\s*(mas\s+)?se precisar[^.!?\n]*[.!?]?[\s\p{Extended_Pictographic}\u{FE0F}]*/iu, m => /t[ôo] (aqui|na [aá]rea|por aqui)|estou (aqui|por aqui)|chamar|me fala|avisa|[aà] disposi/i.test(m) ? '. ' : m).replace(/\s+\./g, '.').replace(/\.{2,}/g, '.').trim();
+  /* 2) já está conversando: tira o "Oi Fulano," do começo; e não repete a mesma abertura ("Haha", "Opa") */
+  const ant = (o.anteriores || []).map(x => semAcento(String(x || '').replace(/^\*[^*]+:\*\s*/, '')).trim()).filter(Boolean);
+  if (ant.length) {
+    t = t.replace(/^([Oo]i|[Oo]l[aá]|[Oo]pa|[Ee] a[ií])\s*,?\s*\p{Lu}\p{Ll}+\s*[,!]\s*/u, '');
+    const abre = (x: string) => (semAcento(x).match(/^(haha+|kkk+|rs+|opa|ah|calma|relaxa|oxe|eita)\b/) || [])[1]?.replace(/(.)\1+$/, '$1');
+    const a = abre(t);
+    if (a && ant.slice(0, 3).some(x => abre(x) === a)) t = t.replace(/^\s*\S+[,!]?\s*/, '');
+  }
+  t = t.replace(/^\s*[,;.!]\s*/, '').trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : String(texto || '').trim();
+}
+export const ESTILO_EQUIPE = [
+  'ESTILO (importante): você está NO MEIO de uma conversa de WhatsApp. Responda ao que foi dito, como um colega esperto — sem fórmulas.',
+  '- NÃO termine oferecendo ajuda ("se precisar de algo, tô aqui", "é só chamar", "estou sempre pronto pra ajudar", "como posso ajudar?"). Disse o que tinha que dizer, para.',
+  '- NÃO comece com "Oi Fulano," se a conversa já está rolando. Não repita a abertura, piada ou frase das suas últimas mensagens (veja CONVERSA AQUI) — varie.',
+  '- Você é a IA da agência e sabe disso: não finja vida humana (casamento, namoro, coração, família, cansaço, "meu lado editor"). Pode brincar com isso assumindo que é IA.',
+  '- Não invente propostas sem pé nem cabeça ("vamos fazer um vídeo de despedida dele", "postar no Instagram dele"). Brincadeira, sim; plano maluco, não.',
+  '- Recusa ou limite: curto e com personalidade (ex.: "Essa eu passo 😅"), nunca "Desculpa, mas não posso fazer isso" repetido.',
+].join('\n');

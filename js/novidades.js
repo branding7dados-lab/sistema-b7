@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.74.0', versao: '4.74.0', em: '2026-11-17T19:30:00-03:00', rota: 'whatsapp',
+    titulo: 'Otto conversa melhor',
+    itens: ['O Otto parou de terminar toda mensagem com "se precisar, tô aqui" e de repetir "Oi Fulano" no meio da conversa.',
+      'Recado para uma pessoa ("Otto, avisa o Kaique…") vai no privado dela, não no grupo.',
+      'Nas mensagens dele, os nomes aparecem certos, sem números estranhos no lugar.'] },
   { id: 'v-4.73.1', versao: '4.73.1', em: '2026-11-17T18:30:00-03:00', rota: 'whatsapp',
     titulo: 'Ir até a mensagem respondida',
     itens: ['Na Central de Conversas, tocar na mensagem citada (a parte de cima de uma resposta) leva até a mensagem original e destaca ela, mesmo que seja antiga.'] },
