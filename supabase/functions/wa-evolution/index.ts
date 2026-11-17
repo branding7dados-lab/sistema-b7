@@ -13,7 +13,7 @@
 // =====================================================================
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
-import { responderDuvida, testar as testarAssistente, mandarResumo } from '../_shared/assistente.ts';
+import { responderDuvida, testar as testarAssistente, mandarResumo, transcreverGuardada } from '../_shared/assistente.ts';
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -516,6 +516,13 @@ Deno.serve(comCors(async (req: Request) => {
         return json({ ok: true });
       }
       case 'midia': return json(await baixarMidia(String(c.id || '')));
+      /* 4.58.7: transcrever um áudio que ficou sem texto */
+      case 'transcrever': {
+        const m = await msgDe(String(c.id || ''));
+        if (!m || m.tipo !== 'audio') return json({ erro: 'Áudio não encontrado.' });
+        const t = await transcreverGuardada(admin(), m);
+        return t ? json({ ok: true, texto: '🎤 ' + t }) : json({ erro: 'Não consegui entender esse áudio.' });
+      }
       /* 4.58.4: o painel de figurinhas numa chamada só, sem repetidas (pelo
          fileSha256 do WhatsApp) e já com os links. Antes eram 40 chamadas. */
       case 'figurinhas': {

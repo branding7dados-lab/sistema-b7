@@ -166,16 +166,57 @@ async function conversandoComOtto(sb: SupabaseClient, jid: string, min = 30): Pr
   const { count } = await sb.from('wa_mensagens').select('id', { count: 'exact', head: true }).eq('jid', jid).eq('do_assistente', true).gte('criada_em', desde);
   return (count || 0) > 0;
 }
+/** 4.58.7: transcreve uma vez e guarda na mensagem ("🎤 ..."); se já foi transcrita, reaproveita. */
+async function ouvirEGuardar(sb: SupabaseClient, raw: any, id: string): Promise<string> {
+  try {
+    const { data: ja } = await sb.from('wa_mensagens').select('texto').eq('id', id).maybeSingle();
+    if (ja?.texto && String(ja.texto).startsWith('🎤 ')) return String(ja.texto).slice(3);
+    const t = await transcrever(raw);
+    if (t) await sb.from('wa_mensagens').update({ texto: '🎤 ' + t.slice(0, 4000) }).eq('id', id);
+    return t;
+  } catch (e) { console.log('ouvir', String(e).slice(0, 200)); return ''; }
+}
+/** Central: transcrever um áudio antigo (o midia_raw guardado tem a mesma forma da mensagem). */
+export async function transcreverGuardada(sb: SupabaseClient, m: any): Promise<string> {
+  if (!m?.midia_raw || m.tipo !== 'audio') return '';
+  return ouvirEGuardar(sb, m.midia_raw, String(m.id));
+}
 /** Áudio → texto. */
 async function transcrever(raw: any): Promise<string> {
   const m = desembrulhar(raw?.message);
   if (!m.audioMessage) return '';
   const b = await evo('/chat/getBase64FromMediaMessage/' + I(), 'POST', { message: { key: raw.key, message: { audioMessage: m.audioMessage } } }, 60000);
   const b64 = b.dados?.base64;
-  if (!b.ok || !b64 || b64.length > 9_000_000) return '';
+  if (!b.ok || !b64 || b64.length > 9_000_000) { console.log('transcrever: sem áudio do Evolution', b.status, b64 ? b64.length : 0); return ''; }
+  const mime = String(b.dados?.mimetype || m.audioMessage.mimetype || 'audio/ogg').split(';')[0];
+  /* 4.58.7: Whisper (Groq), feito para transcrever e firme em áudio longo; o Gemini fica de reserva */
+  const w = await whisper(b64, mime);
+  if (w !== null) return w;
   const s = await ia('Você transcreve áudios de WhatsApp em português do Brasil. Devolva só o que a pessoa falou, sem comentários. Sem fala compreensível: [[SEM_FALA]].',
-    'Transcreva o áudio.', 600, { mime: String(b.dados?.mimetype || m.audioMessage.mimetype || 'audio/ogg').split(';')[0], base64: b64 });
+    'Transcreva o áudio.', 1500, { mime, base64: b64 });
+  if (!s.texto) console.log('transcrever: reserva sem texto', s.provedor || '', (s as any).erro || '');
   return /\[\[SEM_FALA\]\]/.test(s.texto) ? '' : s.texto;
+}
+/** Whisper do Groq: null = não deu (aí tenta a reserva); '' = sem fala. */
+async function whisper(b64: string, mime: string): Promise<string | null> {
+  const chave = (Deno.env.get('GROQ_API_KEY') || '').trim();
+  if (!chave) return null;
+  try {
+    const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const ext = mime.includes('mp4') || mime.includes('m4a') ? 'm4a' : mime.includes('mpeg') ? 'mp3' : mime.includes('webm') ? 'webm' : 'ogg';
+    const fd = new FormData();
+    fd.append('file', new Blob([bin], { type: mime }), 'audio.' + ext);
+    fd.append('model', 'whisper-large-v3-turbo');
+    fd.append('language', 'pt');
+    fd.append('response_format', 'json');
+    fd.append('temperature', '0');
+    const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + chave }, body: fd, signal: AbortSignal.timeout(60000)
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { console.log('whisper', r.status, JSON.stringify(d).slice(0, 200)); return null; }
+    return String(d.text || '').trim();
+  } catch (e) { console.log('whisper', String(e).slice(0, 200)); return null; }
 }
 
 /** Monta o pedido e pergunta à IA (usado de verdade e no "Testar" da tela). */
@@ -256,10 +297,13 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   /* 4.58.6: mesma conversa que o B7 guardou (número no lugar do @lid) */
   const jid = await jidCanonico(sb, key);
   const cfg = await lerConfig(sb);
+  /* 4.58.7: todo áudio vira texto na Central (mesmo com o Otto desligado) */
+  const ouvido = temAudio(raw) && cfg?.ouvir_audio !== false ? await ouvirEGuardar(sb, raw, id) : '';
   if (!cfg?.ativo) return;
   const { data: novo } = await sb.from('wa_assistente_vistos').upsert({ msg_id: id }, { onConflict: 'msg_id', ignoreDuplicates: true }).select('msg_id');
   if (!novo || !novo.length) return;
-  let texto = textoDe(raw);
+  let texto = textoDe(raw) || ouvido;
+  const porAudio = !!ouvido;
   const ctx = ctxDe(raw);
   /* 4.56.4: nunca reagir à própria mensagem (ela começa com "*Otto:*") — evita conversa em loop */
   if (key.fromMe) {
@@ -276,24 +320,13 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
 
   /* ---- privado: resposta da equipe a uma dúvida ---- */
   if (!/@g\.us$/.test(jid)) {
-    const audioP = !texto && temAudio(raw) && cfg.ouvir_audio !== false;
-    if (!texto && !audioP) return;
+    if (!texto) return;
     const alt = [key.remoteJidAlt, key.senderPn, key.participantPn].find((x: any) => typeof x === 'string' && /@s\.whatsapp\.net$/.test(x));
     let fone = dig(alt || (/@s\.whatsapp\.net$/.test(jid) ? jid : ''));
     if (!fone && /@lid$/.test(jid)) { const { data: ct } = await sb.from('wa_contatos').select('numero').eq('jid', jid).maybeSingle(); fone = dig(ct?.numero); }
     const comigo = key.fromMe && (fim8(jid) === numero.slice(-8) || (cfg.meu_lid && dig(jid) === cfg.meu_lid));
     const pessoa = key.fromMe ? (comigo ? { nome: 'Você' } : null) : daEquipe(cfg, fone);
-    /* 4.58.5: áudio no privado. Da equipe: sempre ouve. De outros: só se citou o Otto ou ele falou ali há pouco. */
-    let porAudio = false;
-    if (audioP) {
-      let ouvir = !!pessoa || await conversandoComOtto(sb, jid);
-      if (!ouvir && ctx.stanzaId) { const { data: c } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle(); ouvir = !!c?.do_assistente; }
-      if (!ouvir) return;
-      texto = await transcrever(raw);
-      if (!texto) return;
-      porAudio = true;
-      await sb.from('wa_mensagens').update({ texto: '🎤 ' + texto.slice(0, 2000) }).eq('id', id);
-    }
+    /* 4.58.5: áudio no privado. Da equipe: é com o Otto. De outros: só se citou o Otto ou ele falou ali há pouco. */
     /* resposta a uma dúvida (citando o aviso) */
     if (pessoa && ctx.stanzaId) { const r = await responderDuvida(sb, cfg, texto, String(ctx.stanzaId || ''), pessoa.nome || 'equipe', jid); if (r.ok) return; }
     /* 4.56.3: chamaram o Otto no privado */
@@ -332,11 +365,6 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   if (!fuiMarcado && ctx.stanzaId) {
     const { data: citada } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle();
     fuiMarcado = !!citada?.do_assistente;
-  }
-  /* áudio: transcreve se citou o assistente, ou se é da equipe (pode ter falado "Otto" no áudio) */
-  if (!texto && (fuiMarcado || daCasa) && cfg.ouvir_audio !== false && temAudio(raw)) {
-    texto = await transcrever(raw);
-    if (texto && !fuiMarcado) fuiMarcado = chamouPeloNome(cfg, texto);
   }
   if (!texto) return;
 
@@ -541,8 +569,6 @@ async function clientesCitados(sb: SupabaseClient, texto: string): Promise<{ id:
 
 async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: string, ctx: any, numero: string) {
   const key = raw?.key || {};
-  /* 4.58.5: áudio no grupo da equipe também vale ("Otto, ..." falado) */
-  if (!texto && temAudio(raw) && cfg.ouvir_audio !== false) texto = await transcrever(raw);
   if (!texto) return;
   if (key.fromMe && !chamouPeloNome(cfg, texto)) return;
   const marcados = new Set<string>([...((ctx.mentionedJid || []) as string[]).map(dig), ...[...texto.matchAll(/@(\d{8,})/g)].map(v => v[1])]);

@@ -313,7 +313,8 @@ B7.CentralWA = (function () {
       case 'video': return '<span class="wz-vid" data-carregar="video" data-id="' + id + '">' + (mini ? '<img src="' + mini + '" alt="">' : '') + '<i class="wz-play">' + I.play + '</i>' + (m.duracao ? '<em>' + mmss(m.duracao) + '</em>' : '') + '</span>';
       case 'audio': {
         const ondas = Array.from({ length: 28 }, (_, k) => '<u style="height:' + (25 + ((k * 37 + (m.id || '').charCodeAt(k % ((m.id || 'x').length)) * 13) % 70)) + '%"></u>').join('');
-        return '<span class="wz-aud" data-carregar="audio" data-id="' + id + '"><button class="wz-aud-p" aria-label="Tocar">' + I.play + '</button><span class="wz-onda">' + ondas + '</span><em>' + mmss(m.duracao) + '</em></span>';
+        return '<span class="wz-aud" data-carregar="audio" data-id="' + id + '"><button class="wz-aud-p" aria-label="Tocar">' + I.play + '</button><span class="wz-onda">' + ondas + '</span><em>' + mmss(m.duracao) + '</em></span>'
+          + (m.texto ? '' : '<button class="wz-transc" data-transc="' + id + '">Transcrever</button>');
       }
       case 'documento': {
         const ext = String(m.midia_nome || '').split('.').pop().slice(0, 4).toUpperCase() || 'DOC';
@@ -391,6 +392,15 @@ B7.CentralWA = (function () {
     const md = e.target.closest('[data-carregar]');
     if (md) { if (md.dataset.carregar === 'audio' && md.querySelector('audio')) { const a = md.querySelector('audio'); if (e.target.closest('.wz-aud-p')) (a.paused ? a.play() : a.pause()); return; } if (md.dataset.carregar === 'img' && md.dataset.ok) return; return carregarMidia(md, true); }
     const mn = e.target.closest('[data-men]'); if (mn) { escolherMencao(mn.dataset.men); return; }
+    const tr = e.target.closest('[data-transc]');
+    if (tr) {
+      if (tr.disabled) return; tr.disabled = true; tr.textContent = 'Transcrevendo…';
+      chamar('transcrever', { id: tr.dataset.transc }).then(r => {
+        if (r.erro) throw new Error(r.erro);
+        const sp = document.createElement('span'); sp.className = 'wz-txt'; sp.textContent = r.texto; tr.replaceWith(sp);
+      }).catch(err => { tr.disabled = false; tr.textContent = 'Transcrever'; B7.UI.toast(err.message || 'Não deu para transcrever.'); });
+      return;
+    }
     const fg = e.target.closest('[data-fig]'); if (fg) { if (fg.querySelector('img')) enviarFigurinha({ id: fg.dataset.fig }); return; }
     if (!e.target.closest('#wz-figs, .wz-fig-bt')) { const fx = raiz.querySelector('#wz-figs'); if (fx && !fx.hidden) fx.hidden = true; }
     const z = e.target.closest('[data-zoom]'); if (z) return zoom(z.dataset.zoom);

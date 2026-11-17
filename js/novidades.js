@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.58.7', versao: '4.58.7', em: '2026-11-17T21:30:00-03:00', funcao: 'videomaker',
+    titulo: 'Áudios do WhatsApp viram texto',
+    itens: ['Na Central de Conversas, o que foi dito em cada áudio aparece escrito embaixo dele, até nos áudios longos.', 'Áudio antigo sem texto? Toque em "Transcrever" embaixo dele.'] },
   { id: 'v-4.56.0', versao: '4.56.0', em: '2026-11-17T18:00:00-03:00', funcao: 'videomaker',
     titulo: 'Marque pessoas com @ no WhatsApp do B7',
     itens: ['Num grupo, digite @ e o começo do nome: aparece a lista de quem está no grupo. Escolha com as setas e Enter (ou clique) — a pessoa é marcada de verdade no WhatsApp.'] },
