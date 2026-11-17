@@ -1480,6 +1480,20 @@ function jsonDoTexto(t: string): any {
   return null;
 }
 /** acha a conversa por nome de cliente ou de grupo */
+/** 4.66.8: pode mandar algo nesta conversa de fora (grupo de cliente, contato)? null = pode; texto = por que não */
+async function bloqueioDeCliente(sb: SupabaseClient, cfg: Config, c: any, pedido: string): Promise<string | null> {
+  const nomeC = String(c.nome || 'esse grupo');
+  if (/@g\.us$/.test(c.jid) && ((cfg.grupos || {}) as any)[c.jid]?.desligado) return 'o Otto está desligado no grupo ' + nomeC + ', então não mando nada lá';
+  const n = semAcento(pedido);
+  const verbo = /\b(mand|envi|avis|fal|diz|diga|escrev|respond|post|comuniq|cobr|pergunt|lembr|repass|encaminh)\w*/.test(n);
+  let citou = false;
+  if (c.cliente_id) citou = (await clientesCitados(sb, pedido)).some(x => x.id === c.cliente_id);
+  if (!citou) {
+    const ws = semAcento(nomeC).replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !VAZIAS.has(w));
+    citou = ws.some(w => new RegExp('\\b' + w + '\\b').test(n));
+  }
+  return verbo && citou ? null : 'não mando nada no grupo ' + nomeC + ' sem um pedido claro com o nome dele nesta mensagem';
+}
 async function acharConversa(sb: SupabaseClient, cfg: Config, nome: string): Promise<any | null> {
   const n = semAcento(nome || '');
   if (!n.trim()) return null;
@@ -1577,9 +1591,24 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     const v = String(d || 'aqui');
     if (/^aqui$/i.test(v)) return aqui;
     if (/equipe|interno/i.test(v)) return cfg.grupo_equipe || aqui;
-    const c = await acharConversa(sb, cfg, v); return c?.jid || null;
+    const c = await acharConversa(sb, cfg, v);
+    if (!c?.jid || c.jid === aqui || c.jid === cfg.grupo_equipe) return c?.jid || null;
+    /* 4.66.8: TRAVA — mandar algo numa conversa de cliente (ou de fora da equipe) só com pedido claro NESTA mensagem:
+       verbo de envio + o nome do cliente/grupo. Grupo com o Otto desligado: nunca.
+       (17/11: a Caroline respondeu "Toma!!!!" a uma mensagem do Otto e ele foi avisar o grupo do Mercato sozinho) */
+    const motivo = await bloqueioDeCliente(sb, cfg, c, pedido);
+    if (motivo) { if (!falhas.includes(motivo)) falhas.push(motivo); bloqueou = true; return null; }
+    return c.jid;
   };
   const feitos: string[] = [], falhas: string[] = [];
+  let bloqueou = false;
+  /* 4.66.8: resposta curta citando o Otto ("Toma!!!", "kkkk") não é ordem: só reagir ou figurinha */
+  if (!chamouPeloNome(cfg, texto) && pedido.split(/\s+/).filter(Boolean).length <= 3 && !/\b(manda|envia|avisa|fala|faz|cria|gera|marca|chama|apaga|edita|responde)\w*/i.test(semAcento(pedido)))
+  {
+    const antes = plano.acoes.length;
+    plano.acoes = plano.acoes.filter(a => a?.ferramenta === 'reagir' || a?.ferramenta === 'figurinha');
+    if (plano.acoes.length < antes) plano.resposta = '';   /* a resposta falava das ações que não vão acontecer */
+  }
   for (const a of plano.acoes) {
     const f = String(a?.ferramenta || '');
     try {
@@ -1673,6 +1702,9 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   }
   if (resposta && (pedeTodos(pedido) || /@todos\b/i.test(resposta)) && ehGrupo && !plano.acoes.some(a => a?.ferramenta === 'mensagem_em_grupo' || a?.ferramenta === 'audio'))
     resposta = paraTodos(resposta, await nomesConhecidos(sb, cfg, aqui));
+  /* 4.66.8: trava de cliente ou nada saiu → a resposta escrita antes ("mandei lá!") não vale */
+  if (bloqueou) { const f = falhas.filter(x => /^não mando|^o Otto está desligado/.test(x)); falhas.length = 0; falhas.push(...f); }
+  if (falhas.length && !feitos.length && plano.acoes.length) resposta = '';
   if (falhas.length) resposta = (resposta ? resposta + '\n\n' : '') + 'Não deu: ' + falhas.join('; ') + '.';
   if (resposta) {
     const citarR = key.id && !ehCliente ? { quoted: { key, message: { conversation: texto.slice(0, 300) } } } : {};
