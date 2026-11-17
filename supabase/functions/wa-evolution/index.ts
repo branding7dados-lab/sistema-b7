@@ -14,7 +14,7 @@
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
 import { responderDuvida, testar as testarAssistente, mandarResumo, transcreverGuardada } from '../_shared/assistente.ts';
-import { falar } from '../_shared/otto-extras.ts';
+import { falar, ultimoDiag } from '../_shared/otto-extras.ts';
 import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -533,6 +533,8 @@ Deno.serve(comCors(async (req: Request) => {
       case 'voz_amostra': {
         const texto = String(c.texto || 'Oi! Eu sou o Otto, o assistente da Branding7. É assim que eu falo nos áudios do WhatsApp. Curtiu?').slice(0, 300);
         const a = await falar(texto, { provedor: String(c.provedor || 'gemini'), voz: String(c.voz || 'Orus'), estilo: String(c.estilo || ''), elevenId: c.eleven_id ? String(c.eleven_id) : null });
+        /* 4.63.1: guarda a medida do fim do áudio (para acertar o corte do chiado) */
+        try { await admin().from('wa_assistente_registro').insert({ tipo: 'diag_voz', autor: p.nome, pergunta: 'voz_amostra ' + String(c.voz || ''), resposta: JSON.stringify(ultimoDiag).slice(0, 1500) }); } catch (_e) { /* sem registro */ }
         return a ? json({ ok: true, audio: 'data:' + a.mime + ';base64,' + a.b64 }) : json({ erro: 'A voz não respondeu agora (confira a chave do Google ou da ElevenLabs).' });
       }
       /* 4.58.7: transcrever um áudio que ficou sem texto */
