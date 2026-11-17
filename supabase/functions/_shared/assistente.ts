@@ -30,7 +30,7 @@ import { cuidarDasDemandas, perfilDe, FALA_DE_DEMANDA } from './otto-demandas.ts
 import { printDaConversa } from './print-conversa.ts';
 import { memorias, lembrar, esquecer, falar, roteiroDeFala, avisosPendentes, marcarAvisados, dadosDoDia, escreverResumoDia } from './otto-extras.ts';
 import { mandarFigurinha } from './otto-social.ts';
-import { temPedido, ehSoSocial, jaDeu, jeitoComBot, assuntoDoGrupo, podeParticipar, turnoDoDia, vezDoAudio } from './otto-conversa.ts';
+import { formatoDaVez, temPedido, ehSoSocial, jaDeu, jeitoComBot, assuntoDoGrupo, podeParticipar, turnoDoDia, vezDoAudio } from './otto-conversa.ts';
 import { limparResposta, estiloEquipe, identidade, papelDoOtto, nomesDoOtto, ferramentaLigada, filtrarFerramentas, mudaSistema, podeMandar, quemPodeMandar, precisaConfirmar, respostaConfirmacao, regraTamanho, regraEmojis, tirarEmojis, chamou, podeZoarAgora, fdsQuieto } from './otto-controle.ts';
 import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, decidirJeito, reagirNaMensagem, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -47,7 +47,7 @@ export type Config = {
   /* 4.68.0: velocidade */
   velocidade?: 'rapido' | 'natural' | 'humano'; audio_humano?: boolean; audio_roteiro?: 'auto' | 'sempre' | 'nunca'; audio_max_s?: number; audio_variar?: number;
   /* 4.73.0: jeito + controle */
-  tamanho?: string; emojis?: string; apelidos_otto?: string; zoacao_espontanea?: number; ferramentas_off?: string[]; ordens_quem?: string[]; confirmar_acoes?: boolean; fds_silencio?: boolean; se_apresenta_ia?: boolean; participar?: string; audio_cada?: number;
+  tamanho?: string; emojis?: string; apelidos_otto?: string; zoacao_espontanea?: number; ferramentas_off?: string[]; ordens_quem?: string[]; confirmar_acoes?: boolean; fds_silencio?: boolean; se_apresenta_ia?: boolean; participar?: string; audio_cada?: number; audio_misto?: string;
   pausa_min: number; espera_min_s: number; espera_max_s: number; grupos: Record<string, { desligado?: boolean; regras?: string }>;
   meu_lid: string | null; horario?: Horario; ouvir_audio?: boolean;
   grupo_equipe?: string | null; resumo_horas?: number; resumo_ultimo?: string | null; resumo_espera_min?: number;
@@ -1002,16 +1002,33 @@ export function podeVariarEmAudio(o: { resposta: string; pedido: string; acoes: 
   if (ritmo) return vezDoAudio({ cada: Number(o.cada), textosDesdeAudio: Number(o.textosDesdeAudio) || 0, sorteio: o.sorteio });
   return o.sorteio < Math.min(60, o.chance) / 100;
 }
-async function sortearAudio(sb: SupabaseClient, cfg: Config, jid: string, resposta: string, pedido: string, acoes: any[], ehCliente: boolean): Promise<boolean> {
+/** 4.77.0: na vez do áudio (ritmo/sorteio e travas de horário/sequência), decide entre áudio, áudio + texto ou só texto */
+async function formatoVariado(sb: SupabaseClient, cfg: Config, jid: string, resposta: string, pedido: string, acoes: any[], ehCliente: boolean): Promise<'texto' | 'audio' | 'misto'> {
   const chance = Number(cfg.audio_variar) || 0, cada = Number(cfg.audio_cada) || 0;
-  if ((!(chance > 0) && cada < 2) || ehCliente || (cfg as any).responder_audio === false) return false;
+  if ((!(chance > 0) && cada < 2) || ehCliente || (cfg as any).responder_audio === false) return 'texto';
   const { data: ultimas } = await sb.from('wa_mensagens').select('tipo').eq('jid', jid).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(12);
   const ult = ((ultimas || []) as any[])[0];
   const iA = ((ultimas || []) as any[]).findIndex(m => m.tipo === 'audio');
   const textosDesdeAudio = ((ultimas || []) as any[]).slice(0, iA < 0 ? 12 : iA).filter(m => m.tipo === 'texto').length;
   const { data: aud } = await sb.from('wa_mensagens').select('criada_em').eq('jid', jid).eq('do_assistente', true).eq('tipo', 'audio').order('criada_em', { ascending: false }).limit(1).maybeSingle();
   const min = aud?.criada_em ? (Date.now() - new Date(aud.criada_em).getTime()) / 60000 : 1e9;
-  return podeVariarEmAudio({ resposta, pedido, acoes, ehCliente, chance, sorteio: Math.random(), ultimoFoiAudio: ult?.tipo === 'audio', minDesdeAudio: min, cada, textosDesdeAudio });
+  const sorteio = Math.random();
+  const base = { acoes, ehCliente, chance, sorteio, ultimoFoiAudio: ult?.tipo === 'audio', minDesdeAudio: min, cada, textosDesdeAudio };
+  const falavel = podeVariarEmAudio({ ...base, resposta, pedido });
+  /* é a vez? (as mesmas travas, com uma resposta qualquer que dá para falar — o conteúdo decide só o formato) */
+  const vez = falavel || (!PEDE_TEXTO.test(semAcento(pedido)) && podeVariarEmAudio({ ...base, resposta: 'Resposta curta que dá para falar.', pedido: '' }));
+  return formatoDaVez({ vez, falavel, misto: cfg.audio_misto, tamanho: String(resposta || '').length });
+}
+/** 4.77.0: áudio curto com o principal ("te mandei aqui embaixo") + o texto completo */
+async function responderMisto(sb: SupabaseClient, cfg: Config, jid: string, resposta: string, citar: Record<string, unknown> = {}): Promise<boolean> {
+  const f = await ia('Você transforma uma resposta escrita de WhatsApp numa FALA curta para um áudio (1 ou 2 frases, uns 10 segundos), em primeira pessoa e natural, com o principal — e avisando que o detalhe está escrito logo abaixo (ex.: "te deixei escrito aqui embaixo"). ' +
+    'Sem listas, links, códigos, datas no formato 18/11 ou números longos (fale por extenso). Sem saudação se não tiver na resposta. Só a fala, sem aspas. ' + identidade(cfg), 'RESPOSTA ESCRITA:\n' + String(resposta).slice(0, 2000), 160);
+  const fala = String(f.texto || '').trim().replace(/^["“]|["”]$/g, '');
+  if (!fala || fala.length > 400) return false;
+  if (!await responderEmAudio(sb, cfg, jid, fala, citar, true)) return false;
+  await digitando(jid, cfg, resposta.length);
+  await enviar(sb, cfg, jid, resposta);
+  return true;
 }
 /** 4.71.1: texto da mensagem citada, numa linha ("autor: texto") */
 async function textoCitado(sb: SupabaseClient, raw: any): Promise<string> {
@@ -1544,7 +1561,7 @@ async function minhaMensagem(sb: SupabaseClient, raw: any, aqui: string): Promis
 /* ------------------------------------------------------------ 4.61.0: áudio, avisos, resumo do dia */
 const vozDe = (cfg: Config) => ({ provedor: (cfg as any).voz_provedor || 'gemini', voz: (cfg as any).voz || 'Orus', estilo: (cfg as any).voz_estilo || '', elevenId: (cfg as any).voz_eleven_id || null });
 /** 4.62.0: responde EM ÁUDIO — reescreve como fala, gera a voz, manda; se tiver link/lista, manda o texto junto. false = não deu (aí vai texto) */
-async function responderEmAudio(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}): Promise<boolean> {
+async function responderEmAudio(sb: SupabaseClient, cfg: Config, jid: string, texto: string, extra: Record<string, unknown> = {}, soAudio = false): Promise<boolean> {
   if (temPreconceito(texto) || (!podePalavrao(cfg, jid) && temPalavrao(texto))) return false;
   /* 4.68.0: "gravando áudio…" aparece na hora, SEM esperar (antes travava 8 s aqui e mais até 20 s no fim) */
   const t0 = Date.now();
@@ -1558,7 +1575,7 @@ async function responderEmAudio(sb: SupabaseClient, cfg: Config, jid: string, te
     if (falta > 300) await evo('/chat/sendPresence/' + I(), 'POST', { number: jid, presence: 'recording', delay: falta }, falta + 8000).catch(() => null);
   }
   const ok = await enviarAudio(sb, cfg, jid, audio.b64, extra);
-  if (ok && comTexto) await enviar(sb, cfg, jid, texto);
+  if (ok && comTexto && !soAudio) await enviar(sb, cfg, jid, texto);
   return ok;
 }
 async function enviarAudio(sb: SupabaseClient, cfg: Config, jid: string, audioB64: string, extra: Record<string, unknown> = {}): Promise<boolean> {
@@ -1758,7 +1775,7 @@ const FERRAMENTAS = `FERRAMENTAS (use só quando o pedido pedir isso; várias po
 - {"ferramenta":"figurinha","momento":"<o clima/assunto, para escolher a figurinha>","destino":"aqui"|"equipe"|"<cliente ou grupo>"} → manda uma figurinha que combine (das que você conhece). "lá no grupo" pedido no privado = "equipe". Use quando pedirem ou, com moderação, quando uma figurinha cair muito bem na conversa (risada, comemoração). Não a toda hora.
 - {"ferramenta":"resumo_dia","destino":"aqui"|"equipe"} → manda o resumo do dia (entregas, o que vence amanhã, atrasos, quem espera resposta).
 - {"ferramenta":"bom_dia","destino":"aqui"|"equipe"} → manda o bom dia / agenda de HOJE (gravações de hoje, o que vence hoje, atrasados, quem espera resposta), marcando quem tem tarefa.`;
-type Plano = { acoes: any[]; resposta: string; emAudio?: boolean };
+type Plano = { acoes: any[]; resposta: string; emAudio?: boolean; misto?: boolean };
 function jsonDoTexto(t: string): any {
   const x = String(t || '').replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '').trim();
   try { return JSON.parse(x); } catch (_e) { /* procura o objeto */ }
@@ -1947,7 +1964,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     ehCliente ? 'NESTE GRUPO DE CLIENTE: a "resposta" vai para o grupo, onde o CLIENTE lê. Se a equipe pediu para falar algo ao cliente (avisar, responder, explicar, cobrar material), escreva em "resposta" a mensagem para o cliente cumprindo o pedido: em primeira pessoa, cordial e profissional, sem dizer que recebeu uma ordem. Se o pedido é algo interno (print, demanda, PDF para a equipe, chamar alguém no privado, resumo, pendências, perguntas sobre outros clientes), use as ferramentas e deixe "resposta" VAZIA — nada interno pode aparecer para o cliente. Nunca fale de valores, de outros clientes ou de assuntos internos aqui. Nada de palavrão, zoação ou ironia.' : '',
     'Você é um AGENTE: entende o pedido (pela mensagem E pela conversa em volta — "isso", "desse grupo", "lá", respostas curtas a perguntas suas) e usa FERRAMENTAS para agir de verdade. Pode encadear várias ferramentas num pedido só.',
     filtrarFerramentas(FERRAMENTAS, cfg),
-    'COMO RESPONDER: SÓ um JSON {"acoes":[...], "resposta":"...", "em_audio": false}. "em_audio": true quando pedirem para você responder/falar em áudio ("me manda um áudio", "fala aí", "responde por áudio") — aí a "resposta" vira áudio com a sua voz.',
+    'COMO RESPONDER: SÓ um JSON {"acoes":[...], "resposta":"...", "em_audio": false}. "em_audio": true quando pedirem para você responder/falar em áudio ("me manda um áudio", "fala aí", "responde por áudio") — aí a "resposta" vira áudio com a sua voz. "em_audio": "misto" quando pedirem áudio E texto juntos ("fala e escreve", "manda o áudio e o texto") — aí vai um áudio curto com o principal e a "resposta" escrita embaixo.',
     '- "resposta": a mensagem que vai AQUI, depois das ações. Quando uma ação já avisa por si (print, privado, imagem, pdf, demandas, encaminhar, pendências), deixe "resposta" vazia ou bem curta. Se só precisa conversar/responder, "acoes": [] e escreva a resposta.',
     '- Se usar "consultar", deixe "resposta" vazia: o resultado volta e você decide de novo.',
     '- Se faltar algo essencial (qual cliente, qual pessoa), pergunte em "resposta" e não chame a ferramenta. Mas antes de perguntar, veja se a conversa já responde.',
@@ -1985,7 +2002,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     if (!saida.ok) { console.log('agente: IA falhou', saida.erro || ''); return false; }
     const j = jsonDoTexto(saida.texto);
     if (!j || !Array.isArray(j.acoes)) { console.log('agente: JSON inválido', String(saida.texto).slice(0, 200)); return false; }
-    plano = { acoes: j.acoes.slice(0, 6), resposta: String(j.resposta || '').trim(), emAudio: j.em_audio === true };
+    plano = { acoes: j.acoes.slice(0, 6), resposta: String(j.resposta || '').trim(), emAudio: j.em_audio === true, misto: j.em_audio === 'misto' };
     const consultas = plano.acoes.filter(a => a?.ferramenta === 'consultar');
     if (!consultas.length || rodada === 2) break;
     let res = '';
@@ -2000,7 +2017,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
       { maxTokens: 2200, temperatura: 0.5, json: true, prazoMs: 45000, fino: true, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
     const j2 = s2.ok ? jsonDoTexto(s2.texto) : null;
     if (j2 && Array.isArray(j2.acoes) && !RECUSOU.test(semAcento(String(j2.resposta || '')))) {
-      plano = { acoes: j2.acoes.slice(0, 6), resposta: String(j2.resposta || '').trim(), emAudio: j2.em_audio === true };
+      plano = { acoes: j2.acoes.slice(0, 6), resposta: String(j2.resposta || '').trim(), emAudio: j2.em_audio === true, misto: j2.em_audio === 'misto' };
       saida = s2;
     }
   }
@@ -2210,9 +2227,13 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
   if (resposta) {
     const citarR = key.id && !ehCliente ? { quoted: { key, message: { conversation: texto.slice(0, 300) } } } : {};
     /* 4.61.0: mandou áudio → responde em áudio (se der; senão, texto) */
-    const emAudio = plano.emAudio || (!ehCliente && temAudio(raw) && (cfg as any).responder_audio !== false)
-      || await sortearAudio(sb, cfg, aqui, resposta, pedido, plano.acoes, ehCliente).catch(() => false);
-    const foiAudio = emAudio ? await responderEmAudio(sb, cfg, aqui, resposta, citarR) : false;
+    /* 4.77.0: pediram áudio E texto, ou é a vez do áudio e a resposta tem dado/lista → áudio curto + texto completo */
+    const pedido_ = plano.emAudio || (!ehCliente && temAudio(raw) && (cfg as any).responder_audio !== false);
+    const formato = plano.misto && !ehCliente ? 'misto' : pedido_ ? ((cfg.audio_misto === 'sempre' && !ehCliente) ? 'misto' : 'audio')
+      : await formatoVariado(sb, cfg, aqui, resposta, pedido, plano.acoes, ehCliente).catch(() => 'texto' as const);
+    let foiAudio = false;
+    if (formato === 'misto') foiAudio = await responderMisto(sb, cfg, aqui, resposta, citarR).catch(() => false);
+    if (!foiAudio && formato === 'audio') foiAudio = await responderEmAudio(sb, cfg, aqui, resposta, citarR);   /* misto que falhou: vai só o texto */
     if (!foiAudio) { await digitando(aqui, cfg, resposta.length); await enviar(sb, cfg, aqui, resposta, citarR); }
   }
   await registrar(sb, { tipo: ehCliente ? 'instrucao' : plano.acoes.length ? 'agente' : 'consulta', jid: aqui, autor: quem, pergunta: pedido.slice(0, 800),

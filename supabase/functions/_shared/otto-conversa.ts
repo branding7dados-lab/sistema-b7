@@ -62,3 +62,14 @@ export function vezDoAudio(o: { cada: number; textosDesdeAudio: number; sorteio:
   const variacao = n >= 3 ? (o.sorteio < 0.25 ? -1 : o.sorteio > 0.75 ? 1 : 0) : 0;
   return o.textosDesdeAudio >= Math.max(1, n - 1 + variacao);
 }
+
+/* ------------------------------------------------------------ 4.77.0: áudio E texto na mesma resposta */
+export type Formato = 'texto' | 'audio' | 'misto';
+/** na vez do áudio: resposta que dá para falar → áudio (ou áudio + texto, se "sempre");
+ *  resposta com dado/lista/link → áudio curto com o principal + o texto completo embaixo ("quando tiver dados") */
+export function formatoDaVez(o: { vez: boolean; falavel: boolean; misto: string | undefined; tamanho: number }): Formato {
+  if (!o.vez) return 'texto';
+  const m = o.misto === 'nunca' ? 'nunca' : o.misto === 'sempre' ? 'sempre' : 'dados';
+  if (o.falavel) return m === 'sempre' ? 'misto' : 'audio';
+  return m === 'nunca' || o.tamanho > 1500 ? 'texto' : 'misto';
+}
