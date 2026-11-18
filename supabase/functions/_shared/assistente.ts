@@ -576,6 +576,22 @@ function emSegundoPlano(nome: string, p: Promise<unknown>) {
   const q = p.catch(e => console.log(nome, String(e).slice(0, 300)));
   try { (globalThis as any).EdgeRuntime?.waitUntil(q); } catch (_e) { /* fora do Supabase: segue */ }
 }
+/** 4.79.2: RELÓGIO do Otto. As tarefas por conta própria (bom dia, resumo do dia, avisos, vigia, esperando o
+ *  cliente, aviso no celular) só rodavam quando chegava alguma mensagem — de manhã cedo, sem ninguém escrever,
+ *  o bom dia não saía (18/11). Agora o banco chama a cada 5 min (pg_cron → wa-entrada com x-b7-relogio). Cada
+ *  tarefa continua "pegando a vez" no banco, então rodar pelo relógio e por mensagem ao mesmo tempo não duplica. */
+export async function relogio(sb: SupabaseClient): Promise<string[]> {
+  const cfg = await lerConfig(sb);
+  if (!cfg?.ativo) return ['desligado'];
+  if (fdsQuieto(cfg)) return ['fim de semana em silêncio'];
+  const tarefas: [string, Promise<unknown>][] = [
+    ['bom dia', talvezBomDia(sb, cfg, false)], ['resumo dia', talvezResumoDia(sb, cfg, false)], ['pendências', talvezResumo(sb, cfg)],
+    ['avisos', talvezAvisos(sb, cfg)], ['vigia', talvezVigiar(sb, cfg)], ['esperando cliente', talvezEsperandoCliente(sb, cfg)],
+    ['aviso celular', talvezAvisarCelular(sb, cfg)]];
+  const r = await Promise.allSettled(tarefas.map(t => t[1]));
+  return r.map((x, i) => tarefas[i][0] + ': ' + (x.status === 'fulfilled' ? 'ok' : 'erro ' + String((x as PromiseRejectedResult).reason).slice(0, 120)));
+}
+
 /** Entrada: toda mensagem que chega pelo webhook (já gravada no B7). */
 export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   const key = raw?.key || {};

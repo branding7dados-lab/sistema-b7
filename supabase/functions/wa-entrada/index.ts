@@ -9,7 +9,7 @@
 // =====================================================================
 import { admin, gravar, garantirConversa, tokenWebhook, STATUS_ORDEM } from '../_shared/wa.ts';
 import { iguais } from '../_shared/cors.ts';
-import { aoReceber } from '../_shared/assistente.ts';
+import { aoReceber, relogio } from '../_shared/assistente.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
 const ok = (d: unknown = { ok: true }) => new Response(JSON.stringify(d), { headers: { 'Content-Type': 'application/json' } });
@@ -17,6 +17,15 @@ const ok = (d: unknown = { ok: true }) => new Response(JSON.stringify(d), { head
 Deno.serve(async (req: Request) => {
   if (req.method === 'GET') return ok({ ok: true, versao: 'wa-entrada 2 (4.54.0)' });
   if (req.method !== 'POST') return new Response('Use POST', { status: 405 });
+  /* 4.79.2: relógio do Otto (pg_cron a cada 5 min) — segredo guardado só no banco (wa_relogio) */
+  const rl = req.headers.get('x-b7-relogio');
+  if (rl) {
+    const sbR = admin();
+    const { data: seg } = await sbR.from('wa_relogio').select('segredo').eq('id', 1).maybeSingle();
+    if (!seg?.segredo || !iguais(rl, String(seg.segredo))) return new Response('Sem permissão', { status: 401 });
+    try { return ok({ ok: true, tarefas: await relogio(sbR) }); }
+    catch (e) { console.error('relogio', (e as Error)?.message); return ok({ ok: false }); }
+  }
   const tk = req.headers.get('x-b7-token') || new URL(req.url).searchParams.get('t') || '';
   if (!tk || !iguais(tk, await tokenWebhook())) return new Response('Sem permissão', { status: 401 });
 
