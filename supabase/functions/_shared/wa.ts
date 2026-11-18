@@ -155,6 +155,15 @@ export function previaDe(l: Linha): string {
 }
 
 /** grava (ou atualiza) uma mensagem e a conversa dela. Devolve a linha gravada. */
+/** números (8 últimos dígitos) da equipe cadastrada na tela do Otto — cache de 1 min */
+let equipeCache: { em: number; nums: Set<string> } | null = null;
+async function numerosDaEquipe(sb: SupabaseClient): Promise<Set<string>> {
+  if (equipeCache && Date.now() - equipeCache.em < 60_000) return equipeCache.nums;
+  const { data } = await sb.from('wa_assistente').select('equipe').eq('id', 1).maybeSingle();
+  const nums = new Set<string>(((data?.equipe || []) as any[]).map(p => String(p?.numero || '').replace(/\D/g, '').slice(-8)).filter(n => n.length === 8));
+  equipeCache = { em: Date.now(), nums };
+  return nums;
+}
 export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, opcoes: { historico?: boolean } = {}): Promise<Linha | null> {
   const r = interpretar(raw);
   if (!r) return null;
@@ -183,6 +192,16 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
   }
   const { error } = await sb.from('wa_mensagens').insert(l);
   if (error) return null;
+  /* 4.79.3: alguém da equipe escrevendo do celular PESSOAL num grupo de cliente ("Ótima segunda a todos" do Matheus)
+     não é o cliente esperando resposta — conta como resposta da equipe. Confere pelo número (nunca pelo nome). */
+  let daEquipe = false;
+  if (!l.de_mim && ehGrupo(jid)) {
+    const k = raw?.key || {};
+    const alt = [k.participantAlt, k.participantPn, k.senderPn, raw?.participantAlt].find((x: any) => typeof x === 'string' && /@s\.whatsapp\.net$/.test(x));
+    let fone = alt ? numeroDe(alt) : (/@s\.whatsapp\.net$/.test(String(l.autor_jid || '')) ? numeroDe(String(l.autor_jid)) : '');
+    if (!fone && l.autor_jid) { const { data: ct } = await sb.from('wa_contatos').select('numero').eq('jid', String(l.autor_jid)).maybeSingle(); fone = String(ct?.numero || '').replace(/\D/g, ''); }
+    if (fone) daEquipe = (await numerosDaEquipe(sb)).has(fone.slice(-8));
+  }
   /* a conversa: prévia, hora, não lidas, "esperando resposta" */
   const { data: c } = await sb.from('wa_conversas').select('ultima_em, nao_lidas, esperando_desde').eq('jid', jid).maybeSingle();
   const maisNova = !c?.ultima_em || new Date(String(l.criada_em)) >= new Date(c.ultima_em);
@@ -192,7 +211,7 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
     patch.previa = previaDe(l);
     patch.previa_autor = l.de_mim ? (l.enviada_por_nome || null) : (ehGrupo(jid) ? l.autor_nome : null);
     patch.previa_de_mim = !!l.de_mim;
-    if (l.de_mim) patch.esperando_desde = null;
+    if (l.de_mim || daEquipe) patch.esperando_desde = null;
     else if (!c?.esperando_desde) patch.esperando_desde = l.criada_em;
   }
   if (!l.de_mim && !opcoes.historico) patch.nao_lidas = (c?.nao_lidas || 0) + 1;
