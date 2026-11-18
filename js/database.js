@@ -2591,9 +2591,15 @@ B7.DB = (function () {
       return data;
     },
     async ocorrenciasCalendario(inicioISO, fimISO) {
-      return ok(await sb().from('calendario_ocorrencias_resumo').select('*')
+      const lista = ok(await sb().from('calendario_ocorrencias_resumo').select('*')
         .lt('inicio', fimISO).or('fim.gte.' + inicioISO + ',fim.is.null')
-        .order('inicio'));
+        .order('inicio')) || [];
+      /* 4.79.1 (QA): gravação arquivada some do Calendário, como some da lista de Gravações (a view não traz archived_at) */
+      const ids = [...new Set(lista.map(o => o.gravacao_id).filter(Boolean))];
+      if (!ids.length) return lista;
+      const { data: arq } = await sb().from('gravacoes').select('id').in('id', ids).not('archived_at', 'is', null);
+      const fora = new Set((arq || []).map(g => g.id));
+      return fora.size ? lista.filter(o => !fora.has(o.gravacao_id)) : lista;
     },
     async ocorrenciaConcluir(ocorrenciaId) {
       return this.rpc('calendario_ocorrencia_concluir', { p_ocorrencia_id: ocorrenciaId });

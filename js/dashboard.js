@@ -825,6 +825,8 @@ B7.Dashboard = (function () {
     if (!vale()) return;   /* zzz4: a pessoa já foi para outra tela */
     /* 4.17.2: o Banco geral (sem cliente e sem gravação) fica numa seção
        própria no topo, em vez de virar um grupo "Sem cliente" nos meses */
+    /* 4.79.1 (QA): roteiro de gravação arquivada sai daqui junto com a gravação (fica em Arquivados) */
+    roteiros = roteiros.filter(r => !(r.gravacao && r.gravacao.archived_at));
     const gerais = roteiros.filter(r => !r.recording_session_id && !r.client_id);
     roteiros = roteiros.filter(r => r.recording_session_id || r.client_id);
     roteiros.forEach(r => { r._mes = mesDoRoteiro(r); r._chaveMes = chaveMesRot(r._mes); });
