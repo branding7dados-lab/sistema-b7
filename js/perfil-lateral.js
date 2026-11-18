@@ -147,8 +147,11 @@ B7.PerfilLateral = (function () {
     const rec = raiz.querySelector('#pf-recado');
     raiz.querySelectorAll('[data-st]').forEach(b => b.onclick = () => salvar(b.dataset.st, rec ? rec.value : estado.recado, raiz));
     if (rec) {
-      rec.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); salvar(estado.status, rec.value, raiz); rec.blur(); } };
-      rec.onchange = () => salvar(estado.status, rec.value, raiz);
+      /* 4.78.3 (QA): o Enter salvava e o blur seguinte disparava o onchange → salvava 2x e repintava no meio do blur
+         (erro "The node to be removed is no longer a child"). Agora: um só salvamento, e só se o texto mudou. */
+      const salvarRec = () => { const v = String(rec.value || '').trim(); if (v !== String(estado.recado || '')) salvar(estado.status, v, raiz); };
+      rec.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); rec.onchange = null; salvarRec(); } };
+      rec.onchange = salvarRec;
     }
   }
 

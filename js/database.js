@@ -70,7 +70,7 @@ B7.DB = (function () {
     return Promise.race([
       promessa,
       new Promise((_, rej) => setTimeout(
-        () => rej(new Error('O banco não respondeu. Confira a conexão e os dados em js/config.js.')), LIMITE))
+        () => rej(new Error('O sistema demorou para responder. Confira a internet e tente de novo em instantes.')), LIMITE))
     ]);
   }
 

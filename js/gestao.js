@@ -58,8 +58,14 @@ B7.Gestao = (function () {
   }
 
   function pintar() {
-    const cx = document.getElementById('gt-corpo');
-    if (!cx || !dados) return;
+    const corpo = document.getElementById('gt-corpo');
+    if (!corpo || !dados) return;
+    /* 4.78.3 (QA): cada aba pinta numa caixa nova. Trocar de aba rápido deixava a resposta atrasada da aba
+       anterior (Equipe, Avulsos, Recados carregam depois) escrever por cima da aba marcada; agora ela cai numa
+       caixa que já saiu da tela. */
+    corpo.innerHTML = '';
+    const cx = document.createElement('div');
+    corpo.appendChild(cx);
     if (aba === 'recados') return recados(cx);
     /* zzz302: entregas de cada pessoa da equipe (js/colaboradores.js) */
     if (aba === 'equipe' && B7.Colaboradores) return B7.Colaboradores.montar(cx, params0);
