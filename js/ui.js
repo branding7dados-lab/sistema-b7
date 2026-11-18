@@ -436,7 +436,9 @@ B7.UI = (function () {
     const alturaLista = lista.offsetHeight;
     const larguraLista = lista.offsetWidth;
 
-    let left = r.right - larguraLista;                    /* alinhado à direita do botão */
+    /* alinhado à direita do botão; 4.79.1 (QA): botão na metade ESQUERDA da tela (ex.: tipo da cena) abre para a
+       direita, colado na borda esquerda do botão — antes abria ~130 px para a esquerda, por cima da barra lateral */
+    let left = (r.left + r.width / 2 < window.innerWidth / 2) ? r.left : r.right - larguraLista;
     left = Math.max(MARGEM, Math.min(left, window.innerWidth - larguraLista - MARGEM));
 
     const espacoAbaixo = window.innerHeight - r.bottom - MARGEM;

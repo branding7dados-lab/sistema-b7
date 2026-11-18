@@ -1802,3 +1802,7 @@ body.vp-arrastando .vp-card{cursor:grabbing;}
 .vd-dup-op{display:flex;align-items:center;gap:10px;font-size:13.5px;cursor:pointer;}
 .vd-dup-op input{width:17px;height:17px;accent-color:var(--acento);}
 .vd-dup-dica{font-size:12px;color:var(--ink-4);margin:0 0 4px;}
+/* 4.79.1 (QA): no celular a fileira "Editar nome e código / Duplicar / Descartar / Excluir" passava da tela — agora quebra linha */
+.vd-acoes-topo{flex-wrap:wrap;max-width:100%;}
+@media (max-width:600px){ .vd-acoes-topo{gap:6px;} .vd-acoes-topo .b{flex:1 1 auto;} }
+@media (max-width:760px){ .vd-cab-detalhe{flex-wrap:wrap;} .vd-cab-detalhe .vd-acoes-topo{margin-left:0;width:100%;min-width:0;} }
