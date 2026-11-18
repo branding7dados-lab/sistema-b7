@@ -1463,6 +1463,7 @@ B7.Rota = (function () {
        app). Sem rede, o service worker devolve a cópia guardada — a
        versão é a mesma e nada acontece. */
     const minha = (B7.Auth && B7.Auth.VERSAO) || '';
+    const aberturaEm = (performance && performance.timeOrigin) || Date.now();
     let registro = null;      /* service worker, quando existe */
     let alvo = null;          /* versão publicada, diferente da que roda */
     let avisou = false, conferindo = false, ultima = 0;
@@ -1475,7 +1476,17 @@ B7.Rota = (function () {
         const r = await fetch('js/auth.js?t=' + Date.now(), { cache: 'no-store' });
         if (r.ok) {
           const m = /VERSAO\s*=\s*'([^']+)'/.exec(await r.text());
-          if (m && m[1] !== minha) { haVersaoNova(m[1]); conferirExigida(m[1]); }
+          if (m && m[1] !== minha) {
+            /* 4.82.2: "tive que atualizar duas vezes" — a casca guardada abre a versão antiga no primeiro F5. Se a versão
+               nova aparece logo que a página abriu (até 25 s, sem nada aberto/digitado), troca na hora: baixa os arquivos
+               novos e recarrega uma vez só. Uma vez por versão nesta aba (sem laço se algo der errado). */
+            let ja = ''; try { ja = sessionStorage.getItem('b7.auto-versao') || ''; } catch (e) { /* sem armazenamento */ }
+            if (Date.now() - aberturaEm < 25000 && ja !== m[1] && !(() => { try { return ocupado(); } catch (e) { return false; } })()) {
+              try { sessionStorage.setItem('b7.auto-versao', m[1]); } catch (e) { /* segue */ }
+              alvo = m[1]; recarregar(); return;
+            }
+            haVersaoNova(m[1]); conferirExigida(m[1]);
+          }
         }
       } catch (e) { /* sem rede agora: pergunta de novo depois */ }
       finally { conferindo = false; }
@@ -1683,6 +1694,8 @@ B7.Rota = (function () {
       navigator.serviceWorker.addEventListener('controllerchange', () => conferir(true));
       navigator.serviceWorker.register('./sw.js').then(reg => { registro = reg; }).catch(() => {});
     }
+    /* 4.82.2: confere já ao abrir (antes só depois de 30 s ou trocando de aba) */
+    conferir(true);
   }
 
   document.addEventListener('DOMContentLoaded', async () => {

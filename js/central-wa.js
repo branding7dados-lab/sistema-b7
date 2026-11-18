@@ -630,6 +630,7 @@ B7.CentralWA = (function () {
   /* quem reagiu: nome de cada pessoa + "Tirar" na sua reação */
   function nomeDoJid(jid) {
     if (jid === 'eu') return 'Você';
+    if (jid === 'otto') return 'Otto (assistente)';
     const c = S.porJid.get(S.aberta);
     if (c && jid === c.jid && !/@g\.us$/.test(c.jid)) return c.nome || '+' + num(jid);
     const daMsg = S.msgs.find(x => x.autor_jid === jid && x.autor_nome);

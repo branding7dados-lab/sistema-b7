@@ -234,7 +234,10 @@ async function aplicarEfeito(sb: SupabaseClient, jid: string, e: { tipo: string;
     const { data } = await sb.from('wa_mensagens').select('reacoes').eq('id', e.alvo).maybeSingle();
     if (!data) return;
     const r: Record<string, string[]> = data.reacoes || {};
-    const quem = e.autor || jid;
+    let quem = e.autor || jid;
+    /* 4.82.2: a reação que o Otto manda volta pelo WhatsApp como "eu" (sai do número da B7). Se o Otto já reagiu e
+       ninguém da Central reagiu, é o eco dele — não conta de novo como "Você". */
+    if (quem === 'eu') { const l = Object.values(r).flat(); if (l.includes('otto') && !l.includes('eu')) quem = 'otto'; }
     for (const k of Object.keys(r)) { r[k] = r[k].filter(x => x !== quem); if (!r[k].length) delete r[k]; }
     if (e.valor) (r[e.valor] = r[e.valor] || []).push(quem);
     await sb.from('wa_mensagens').update({ reacoes: r }).eq('id', e.alvo);
