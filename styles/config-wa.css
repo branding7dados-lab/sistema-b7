@@ -260,3 +260,23 @@
 .asw-emb-liga small{display:block;margin-top:3px;font-size:12.5px;color:var(--ink-3);}
 .asw-emb-liga:not(.on){filter:saturate(.4);}
 @media (max-width:760px){ .asw-nav .cwa-nav-grupo{flex-direction:row;border-top:0;margin:0;padding:0;} .cwa-nav-rot{display:none;} }
+
+/* 4.82.0: Assuntos e responsáveis */
+.cwa-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.cwa-tags span{padding:4px 10px;border-radius:99px;font-size:12px;font-weight:650;color:var(--ink-2);
+  background:color-mix(in srgb,var(--sb-luz1) 12%,transparent);border:1px solid color-mix(in srgb,var(--sb-luz1) 25%,transparent);}
+.cwa-outros{display:flex;flex-direction:column;gap:10px;}
+.cwa-outro{display:grid;grid-template-columns:200px minmax(0,1fr) auto;gap:10px;align-items:start;padding:12px;border-radius:16px;background:var(--suave);border:1px solid var(--borda);}
+.cwa-outro-n{font-weight:700;}
+.cwa-outro textarea{resize:vertical;min-height:44px;}
+.cwa-resp{display:flex;flex-direction:column;gap:10px;}
+.cwa-resp-i{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto minmax(0,1.1fr) auto;gap:10px;align-items:end;padding:12px;border-radius:16px;background:var(--suave);border:1px solid var(--borda);}
+.cwa-resp-q{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.cwa-resp-q small{font-size:10.5px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding-left:2px;}
+.cwa-resp-seta{font-style:normal;color:var(--sb-luz2);font-weight:800;padding-bottom:13px;}
+.cwa-resp-i .cwa-x{margin-bottom:6px;}
+@media (max-width:900px){
+  .cwa-outro{grid-template-columns:1fr auto;} .cwa-outro textarea{grid-column:1 / -1;}
+  .cwa-resp-i{grid-template-columns:1fr 1fr;} .cwa-resp-seta{display:none;} .cwa-resp-i .cwa-resp-q:nth-of-type(3){grid-column:1 / -1;}
+  .cwa-resp-i .cwa-x{grid-column:2;justify-self:end;grid-row:1;}
+}

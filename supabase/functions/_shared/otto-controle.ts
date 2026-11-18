@@ -177,3 +177,28 @@ export function identidade(cfg: Controle & { se_apresenta_ia?: boolean }): strin
 }
 export const papelDoOtto = (cfg: { se_apresenta_ia?: boolean }) => cfg.se_apresenta_ia ? 'o assistente virtual (IA)' : 'da equipe';
 export function estiloEquipe(cfg: Controle & { se_apresenta_ia?: boolean }): string { return ESTILO_BASE + '\n' + identidade(cfg); }
+
+/* =====================================================================
+   4.82.0 — ASSUNTOS E RESPONSÁVEIS (Configurações do WhatsApp → Assuntos e responsáveis)
+   O que é da Branding7 (o Otto avisa e cobra), o que é de outra equipe (Núcleo7: comercial, tráfego pago,
+   link de pagamento… — o Otto NÃO cobra a nossa equipe por isso), quem responde por cada assunto/cliente e
+   instruções livres. Tudo em wa_assistente.avisos_regras.
+   ===================================================================== */
+export type AvisosRegras = { nossos?: string; outros?: { equipe: string; assuntos: string }[]; responsaveis?: { cliente_id?: string | null; assunto?: string; pessoa_id?: string }[]; instrucoes?: string };
+export const ASSUNTOS: Record<string, string> = { artes: 'artes / design / posts', video: 'vídeos e edição', gravacao: 'gravações', roteiro: 'roteiros', legenda: 'legendas', qualquer: 'qualquer assunto' };
+export const regrasAvisos = (cfg: any): AvisosRegras => (cfg && cfg.avisos_regras) || {};
+export function escopoAvisos(cfg: any): string {
+  const r = regrasAvisos(cfg), partes: string[] = [];
+  if (r.nossos) partes.push('O QUE É DA BRANDING7 (o seu papel é cuidar e avisar disso): ' + r.nossos + '.');
+  const outros = (r.outros || []).filter(o => o && o.equipe && o.assuntos);
+  if (outros.length) partes.push('O QUE É DE OUTRA EQUIPE (NÃO é com a Branding7: não cobre nem marque a nossa equipe por isso; se perguntarem, diga com quem é): ' +
+    outros.map(o => o.equipe + ' → ' + o.assuntos).join('; ') + '.');
+  if (r.instrucoes && String(r.instrucoes).trim()) partes.push('INSTRUÇÕES DO ADMINISTRADOR SOBRE AVISOS E RESPONSÁVEIS: ' + String(r.instrucoes).trim());
+  return partes.join('\n');
+}
+/** de outra equipe? devolve o nome da equipe quando o assunto bate com a lista dela (a IA já classifica; isto é a rede) */
+export function outraEquipeDe(cfg: any, nome: string | null | undefined): string | null {
+  const n = String(nome || '').trim().toLowerCase(); if (!n) return null;
+  const o = (regrasAvisos(cfg).outros || []).find(x => x && String(x.equipe || '').trim().toLowerCase() === n);
+  return o ? o.equipe : null;
+}

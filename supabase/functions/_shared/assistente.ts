@@ -32,7 +32,7 @@ import { printDaConversa } from './print-conversa.ts';
 import { memorias, lembrar, esquecer, falar, roteiroDeFala, avisosPendentes, marcarAvisados, dadosDoDia, escreverResumoDia } from './otto-extras.ts';
 import { mandarFigurinha } from './otto-social.ts';
 import { formatoDaVez, temPedido, ehSoSocial, jaDeu, jeitoComBot, assuntoDoGrupo, podeParticipar, turnoDoDia, vezDoAudio } from './otto-conversa.ts';
-import { limparResposta, estiloEquipe, identidade, papelDoOtto, nomesDoOtto, ferramentaLigada, filtrarFerramentas, mudaSistema, podeMandar, quemPodeMandar, precisaConfirmar, respostaConfirmacao, regraTamanho, regraEmojis, tirarEmojis, chamou, podeZoarAgora, fdsQuieto } from './otto-controle.ts';
+import { escopoAvisos, regrasAvisos, outraEquipeDe, ASSUNTOS, limparResposta, estiloEquipe, identidade, papelDoOtto, nomesDoOtto, ferramentaLigada, filtrarFerramentas, mudaSistema, podeMandar, quemPodeMandar, precisaConfirmar, respostaConfirmacao, regraTamanho, regraEmojis, tirarEmojis, chamou, podeZoarAgora, fdsQuieto } from './otto-controle.ts';
 import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, decidirJeito, reagirNaMensagem, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
@@ -619,7 +619,8 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
       '"equipe" = a EQUIPE deve responder: o cliente pediu algo, perguntou, mandou material ou reclamou e a equipe ainda não resolveu nem respondeu de forma conclusiva ("vou ver", "já te falo" não resolvem). ' +
       '"cliente" = o CLIENTE deve responder: a equipe enviou algo para aprovar, pediu informação, material ou confirmação e o cliente ainda não respondeu. ' +
       '"ninguem" = nada pendente: o último assunto foi encerrado (ok, obrigado, beleza, emoji, bom dia, figurinha, aviso que não pede resposta). ' +
-      'Responda SÓ um JSON: {"deve_responder":"equipe|cliente|ninguem","motivo":"em até 90 caracteres, o que falta (ex.: Cliente pediu a arte da Black pra hoje / Mandamos o roteiro, falta o cliente aprovar)"}.',
+      (escopoAvisos(cfg) ? escopoAvisos(cfg) + '\nSe o que está pendente é assunto de OUTRA EQUIPE, use "ninguem" e preencha "outra_equipe" com o nome dela. ' : '') +
+      'Responda SÓ um JSON: {"deve_responder":"equipe|cliente|ninguem","motivo":"em até 90 caracteres, o que falta (ex.: Cliente pediu a arte da Black pra hoje / Mandamos o roteiro, falta o cliente aprovar)","assunto":"artes|video|gravacao|roteiro|legenda|outro","outra_equipe":""}.',
       'GRUPO "' + (c.nome || '') + '" (mais antiga primeiro):\n' + txt, 160);
     let j: any = null; try { const t = r.texto; j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (_e) { j = null; }
     /* vez = QUEM ESTÁ ESPERANDO: se a equipe deve responder, é o cliente que espera (e vice-versa) */
@@ -630,7 +631,11 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
     const lado = (eq: boolean) => { let ini: string | null = null; for (let i = lista.length - 1; i >= 0; i--) { if (daEq(lista[i]) === eq) ini = lista[i].criada_em; else if (ini) break; } return ini; };
     const desdeCli = v === 'cliente' ? (c.esperando_desde || lado(false) || lista[lista.length - 1].criada_em) : null;
     const desdeEq = v === 'equipe' ? (c.aguardando_cliente_desde || lado(true) || lista[lista.length - 1].criada_em) : null;
-    await sb.from('wa_conversas').update({ vez: v, vez_motivo: String(j.motivo || '').slice(0, 120) || null, esperando_desde: desdeCli, aguardando_cliente_desde: desdeEq }).eq('jid', c.jid);
+    const outra = j.outra_equipe ? outraEquipeDe(cfg, j.outra_equipe) : null;
+    const v2 = outra ? 'ninguem' : v;
+    const motivo = (outra ? 'É com a ' + outra + ': ' : '') + String(j.motivo || '').slice(0, 110);
+    await sb.from('wa_conversas').update({ vez: v2, vez_motivo: motivo.trim() || null, vez_assunto: j.assunto ? String(j.assunto).slice(0, 20) : null,
+      esperando_desde: outra ? null : desdeCli, aguardando_cliente_desde: outra ? null : desdeEq }).eq('jid', c.jid);
     feitas++;
   }
   return feitas;
@@ -1727,17 +1732,27 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
     }
     /* precisa de alguém? (pedido, dúvida, reclamação, material, aprovação) — "ok", "obrigado", "bom dia" não */
     const txt = lista.map(m => (daEq(m) ? '[EQUIPE] ' : '') + (m.autor_nome || 'Cliente') + ': ' + (m.texto ? String(m.texto).slice(0, 300) : '(' + m.tipo + ')')).join('\n');
-    const r = await ia('Você é ' + cfg.nome + ', que observa os grupos de clientes de uma agência. O cliente escreveu e ninguém da equipe respondeu ainda. Decida se precisa de alguém da equipe (pedido, dúvida, reclamação, material enviado, aprovação, cobrança, urgência) ou não (só "ok", "obrigado", "bom dia", conversa entre eles, figurinha). Responda SÓ um JSON: {"precisa": true|false, "resumo": "em 1 frase, o que o cliente quer — ex.: A Camila pediu a arte da Black Friday pra hoje"}.',
-      'GRUPO "' + (c.nome || '') + '" (mais antiga primeiro):\n' + txt, 200);
+    const esc0 = escopoAvisos(cfg);
+    const r = await ia('Você é ' + cfg.nome + ', que observa os grupos de clientes de uma agência (Branding7). O cliente escreveu e ninguém da equipe respondeu ainda. Decida se precisa de alguém da equipe (pedido, dúvida, reclamação, material enviado, aprovação, cobrança, urgência) ou não (só "ok", "obrigado", "bom dia", conversa entre eles, figurinha). ' +
+      (esc0 ? '\n' + esc0 + '\nSe o assunto pendente for de OUTRA EQUIPE, responda "outra_equipe" com o nome dela (e "precisa": false).\n' : '') +
+      'Responda SÓ um JSON: {"precisa": true|false, "resumo": "em 1 frase, o que o cliente quer — ex.: A Camila pediu a arte da Black Friday pra hoje", "assunto": "artes|video|gravacao|roteiro|legenda|outro", "outra_equipe": ""}.',
+      'GRUPO "' + (c.nome || '') + '" (mais antiga primeiro):\n' + txt, 220);
     let j: any = null; try { const t = r.texto; j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (_e) { j = null; }
     if (!(await marcarAvisados(sb, [chave])).length) continue;   /* outro pegou */
+    if (j?.outra_equipe && outraEquipeDe(cfg, j.outra_equipe)) {
+      /* 4.82.0: é com outra equipe (ex.: Núcleo7) — não cobra a nossa, e a conversa deixa de contar como "esperando a gente" */
+      await sb.from('wa_conversas').update({ esperando_desde: null, vez: 'ninguem', vez_motivo: 'É com a ' + outraEquipeDe(cfg, j.outra_equipe) + ': ' + String(j.resumo || '').slice(0, 90) }).eq('jid', c.jid);
+      continue;
+    }
     if (!j?.precisa) continue;
     const min = Math.round((Date.now() - Date.parse(c.esperando_desde)) / 60_000);
     const legenda = 'Pessoal, ' + String(j.resumo || 'o cliente está esperando resposta').replace(/^\s*pessoal,?\s*/i, '').replace(/\.?\s*$/, '') + '. Ninguém respondeu ainda (há ' + (min >= 60 ? Math.floor(min / 60) + 'h' + (min % 60 ? String(min % 60).padStart(2, '0') : '') : min + ' min') + ').';
     await talvezPrint(sb, cfg, null, 'print ' + (c.nome || ''), cfg.grupo_equipe, { conv: c, destino: cfg.grupo_equipe, legenda });
     /* marca quem recebe as dúvidas (ou todo mundo) */
     /* 4.79.5: responder cliente é da coordenação (Matheus) — marca ela, pelo nome completo; sem coordenação, quem recebe dúvidas */
-    const co = await coordenacao(sb);
+    /* 4.82.0: o responsável pelo assunto deste cliente (ex.: artes do Mercato → Pedro); sem regra, a coordenação */
+    const resp = await responsaveisPara(sb, cfg, c.cliente_id, j.assunto ? String(j.assunto) : null);
+    const co = resp.length ? resp : await coordenacao(sb);
     const quem = co.length ? co.map(n => '@' + n) : (cfg.equipe || []).filter(e => e.nome && e.duvidas !== false).map(e => '@' + String(e.nome));
     await enviar(sb, cfg, cfg.grupo_equipe, (quem.length ? quem.join(' ') : '@todos') + ', esse cliente está esperando resposta 👆');
     await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, grupo: c.nome, autor: cfg.nome, pergunta: 'vigia ' + (c.nome || ''), resposta: legenda.slice(0, 800) });
@@ -1754,7 +1769,7 @@ async function talvezLembrarEspera(sb: SupabaseClient, cfg: Config) {
   const agora = new Date(), loc = new Date(agora.getTime() - 3 * 3600_000);
   const bloco = loc.toISOString().slice(0, 10) + ':' + Math.floor(loc.getUTCHours() / 3);
   const espera = Math.max(5, Number((cfg as any).vigia_min) || 20);
-  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde, vez, vez_motivo, vez_avaliada_em, ultima_em')
+  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde, vez, vez_motivo, vez_assunto, vez_avaliada_em, ultima_em')
     .not('cliente_id', 'is', null).eq('arquivada', false).not('esperando_desde', 'is', null)
     .lt('esperando_desde', new Date(agora.getTime() - Math.max(60, espera * 3) * 60_000).toISOString()).gt('esperando_desde', new Date(agora.getTime() - 14 * 86400_000).toISOString())
     .order('esperando_desde', { ascending: true }).limit(12);
@@ -1771,7 +1786,9 @@ async function talvezLembrarEspera(sb: SupabaseClient, cfg: Config) {
   const tempo = (iso: string) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60_000); return m < 60 ? m + ' min' : m < 1440 ? Math.floor(m / 60) + 'h' + (m % 60 ? String(m % 60).padStart(2, '0') : '') : Math.floor(m / 1440) + (Math.floor(m / 1440) === 1 ? ' dia' : ' dias'); };
   const linhas = velhos.map(c => '• *' + (nomeCli.get(c.cliente_id) || c.nome || 'Cliente') + '* — há ' + tempo(c.esperando_desde) + '\n   _' + String(c.vez_motivo || 'esperando resposta').replace(/[_*]/g, '').slice(0, 110) + '_');
   const co = await coordenacao(sb);
-  const quem = co.length ? co.map(n => '@' + n).join(' ') : '';
+  const resp: string[] = [];
+  for (const c of velhos) for (const n of await responsaveisPara(sb, cfg, c.cliente_id, c.vez_assunto || null)) if (!resp.includes(n) && !co.includes(n)) resp.push(n);
+  const quem = [...co, ...resp].map(n => '@' + n).join(' ');
   const texto = '⏳ *Clientes esperando a gente* (' + velhos.length + ')\n\n' + linhas.join('\n\n') + '\n\n' + (quem ? quem + ', ' : '') + (velhos.length === 1 ? 'esse ainda está' : 'esses ainda estão') + ' sem resposta.';
   await enviar(sb, cfg, cfg.grupo_equipe, texto);
   await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, grupo: 'equipe', autor: cfg.nome, pergunta: 'lembrete de espera', resposta: texto.slice(0, 800) });
@@ -1859,6 +1876,16 @@ async function talvezAvisos(sb: SupabaseClient, cfg: Config) {
   await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, autor: cfg.nome, pergunta: 'avisos automáticos', resposta: texto.slice(0, 1500) });
 }
 /** quem coordena (responde cliente, cobra aprovação): nomes completos dos coordenadores ativos */
+/** 4.82.0: quem responde por este assunto deste cliente (Configurações → Assuntos e responsáveis). Nomes completos. */
+async function responsaveisPara(sb: SupabaseClient, cfg: Config, clienteId: string | null, assunto: string | null): Promise<string[]> {
+  const regras = (regrasAvisos(cfg).responsaveis || []).filter(r => r && r.pessoa_id &&
+    (!r.cliente_id || r.cliente_id === clienteId) && (!r.assunto || r.assunto === 'qualquer' || r.assunto === assunto));
+  if (!regras.length) return [];
+  /* a regra do cliente vale mais que a geral */
+  const doCliente = regras.filter(r => r.cliente_id), usar = doCliente.length ? doCliente : regras;
+  const { data } = await sb.from('perfis').select('id, nome').in('id', [...new Set(usar.map(r => String(r.pessoa_id)))]);
+  return ((data || []) as any[]).map(p => String(p.nome));
+}
 async function coordenacao(sb: SupabaseClient): Promise<string[]> {
   const { data } = await sb.from('perfis').select('nome, papel, funcao').eq('estado', 'ativa');
   return ((data || []) as any[]).filter(p => (p.papel === 'coordenador' || p.funcao === 'coordenador') && !/teste/i.test(p.nome || '')).map(p => String(p.nome));
@@ -2204,6 +2231,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     'Marcar alguém: escreva @Nome (como em PESSOAS NESTE GRUPO). Marcar todo mundo / a equipe / o grupo: escreva SÓ @todos, uma vez — NUNCA liste os nomes. Nunca @números.',
     ehCliente ? '' : regrasDaEquipe(cfg, aqui),
     ehCliente ? identidade(cfg) : estiloEquipe(cfg),
+    escopoAvisos(cfg),
     /* 4.66.7: do privado, a equipe pode mandar o Otto agir no grupo da equipe e no privado dos colegas */
     !ehGrupo && !ehCliente ? 'NO PRIVADO, qualquer pessoa da equipe pode pedir para você fazer coisas em OUTRO lugar: mandar mensagem, áudio, figurinha, print, imagem ou PDF no grupo da equipe ("lá no grupo", "no grupo" = grupo da equipe), marcar alguém ou @todos lá, ou mandar recado no privado de outra pessoa da equipe. Faça com a ferramenta certa (mensagem_em_grupo com "equipe", privado com o nome da pessoa, audio, figurinha…). Quando for recado de alguém, deixe claro de quem é se fizer sentido (ex.: "O ' + (quem === 'Você' ? 'Fulano' : quem.split(/\s+/)[0]) + ' pediu pra avisar: …"). Mensagem ou áudio para o grupo da equipe segue a zoação liberada de lá (se o modo restrito estiver desligado). Depois, confirme aqui em 1 frase curta.' : '',
     /* 4.67.3: nome igual entre equipe e cliente */

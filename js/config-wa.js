@@ -30,6 +30,7 @@ B7.ConfigWA = (function () {
     grupos: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.6-3.4 3-5.4 6-5.4s5.4 2 6 5.4"/><path d="M16 4.6a3.2 3.2 0 0 1 0 6.3M18 14.8c1.7.6 2.7 2.4 3 5.2"/>',
     arquivos: '<path d="M3.5 7.5A2.5 2.5 0 0 1 6 5h4l2 2.5h6a2.5 2.5 0 0 1 2.5 2.5v7.5A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5z"/>',
     conexao: '<path d="M4.2 19.8l1.1-3.9A8.2 8.2 0 1 1 8.4 19z"/>',
+    assuntos: '<path d="M4 6h10M4 12h7M4 18h10"/><circle cx="17.5" cy="11" r="2.6"/><path d="M13.5 19c.5-2.3 2-3.6 4-3.6s3.5 1.3 4 3.6"/>',
     otto: '<rect x="4" y="7" width="16" height="12" rx="4"/><path d="M12 3v4M9 12h.01M15 12h.01M9.5 15.5h5"/>'
   };
   const icone = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (IC[k] || '') + '</svg>';
@@ -59,7 +60,7 @@ B7.ConfigWA = (function () {
     const adm = souAdmin();
     const q = [
       sb().from('wa_config').select('*').eq('id', 1).maybeSingle(),
-      adm ? sb().from('wa_assistente').select('id,nome,ativo,push_espera_min,push_para,vigia_min,esperando_cliente_h,alertas_ligados,horario').eq('id', 1).maybeSingle() : Promise.resolve({ data: null }),
+      adm ? sb().from('wa_assistente').select('id,nome,ativo,push_espera_min,push_para,vigia_min,esperando_cliente_h,alertas_ligados,horario,avisos_regras').eq('id', 1).maybeSingle() : Promise.resolve({ data: null }),
       adm ? sb().from('perfis').select('id,nome,papel').eq('estado', 'ativa').neq('papel', 'cliente').order('nome') : Promise.resolve({ data: [] }),
       adm ? sb().from('wa_conversas').select('jid,nome,cliente_id,arquivada,ultima_em,foto_url').eq('tipo', 'grupo').order('ultima_em', { ascending: false, nullsFirst: false }).limit(500) : Promise.resolve({ data: [] }),
       adm ? sb().from('clientes_resumo').select('id,nome,logo_url').is('deleted_at', null).order('nome').limit(600) : Promise.resolve({ data: [] }),
@@ -77,7 +78,8 @@ B7.ConfigWA = (function () {
     const est = {
       w: { respostas: cf.data.respostas || [], auto_arquivar_dias: cf.data.auto_arquivar_dias || 0, fotos_auto: cf.data.fotos_auto !== false },
       a: adm ? { push_espera_min: ass.push_espera_min ?? 15, push_para: ass.push_para || [], vigia_min: ass.vigia_min ?? 20, esperando_cliente_h: ass.esperando_cliente_h ?? 24,
-        alertas_ligados: ass.alertas_ligados !== false, horario: ass.horario || { ativo: false, ini: '08:00', fim: '18:00', dias: [1, 2, 3, 4, 5], mensagem: '' } } : null,
+        alertas_ligados: ass.alertas_ligados !== false,
+        avisos_regras: Object.assign({ nossos: '', outros: [], responsaveis: [], instrucoes: '' }, ass.avisos_regras || {}), horario: ass.horario || { ativo: false, ini: '08:00', fim: '18:00', dias: [1, 2, 3, 4, 5], mensagem: '' } } : null,
       p: { assinatura: pref.assinatura !== false, nome: pref.nome || '', enter: pref.enter !== false, vel, modelos }
     };
     S = { ...est, orig: JSON.stringify(est), adm, aba: (params && params.get && params.get('aba')) || (S && S.aba) || 'geral', pessoas: (pf.data || []).filter(p => !/teste/i.test(p.nome || '')),
@@ -134,7 +136,10 @@ B7.ConfigWA = (function () {
         const a = S.a;
         const { error } = await sb().from('wa_assistente').update({ push_espera_min: Math.max(0, Math.min(600, Number(a.push_espera_min) || 0)), push_para: a.push_para,
           vigia_min: Math.max(5, Math.min(600, Number(a.vigia_min) || 20)), esperando_cliente_h: Math.max(0, Math.min(240, Number(a.esperando_cliente_h) || 0)),
-          alertas_ligados: a.alertas_ligados, horario: a.horario }).eq('id', 1);
+          alertas_ligados: a.alertas_ligados, horario: a.horario,
+          avisos_regras: { nossos: String(a.avisos_regras.nossos || '').trim(), instrucoes: String(a.avisos_regras.instrucoes || '').trim(),
+            outros: (a.avisos_regras.outros || []).filter(o => String(o.equipe || '').trim() && String(o.assuntos || '').trim()).map(o => ({ equipe: o.equipe.trim(), assuntos: o.assuntos.trim() })),
+            responsaveis: (a.avisos_regras.responsaveis || []).filter(r => r.pessoa_id).map(r => ({ cliente_id: r.cliente_id || null, assunto: r.assunto || 'qualquer', pessoa_id: r.pessoa_id })) } }).eq('id', 1);
         if (error) throw error;
       }
       if (JSON.stringify(S.p) !== JSON.stringify(o.p)) {
@@ -162,7 +167,7 @@ B7.ConfigWA = (function () {
     const sc = raiz.scrollTop;
     const ABAS = [
       ['geral', 'Visão geral', null, true], ['meu', 'Meu jeito de enviar'], ['respostas', 'Respostas rápidas', (S.w.respostas || []).length],
-      ['modelos', 'Modelos de texto'], ['avisos', 'Avisos e espera', null, true], ['grupos', 'Grupos e clientes', S.grupos.filter(g => !g.cliente_id && !g.arquivada).length || null, true],
+      ['modelos', 'Modelos de texto'], ['avisos', 'Avisos e espera', null, true], ['assuntos', 'Assuntos e responsáveis', S.a && S.a.avisos_regras ? (S.a.avisos_regras.responsaveis || []).length || null : null, true], ['grupos', 'Grupos e clientes', S.grupos.filter(g => !g.cliente_id && !g.arquivada).length || null, true],
       ['arquivos', 'Arquivos e conversas', null, true], ['conexao', 'Número conectado', null, true]
     ].filter(a => S.adm || !a[3]);
     const e = S.estado, on = e && e.estado === 'open';
@@ -277,6 +282,32 @@ B7.ConfigWA = (function () {
           '<div class="cwa-horas"><label><small>Começa</small><input class="campo" type="time" data-c="a.horario.ini" value="' + esc(h.ini || '08:00') + '"></label><i>→</i><label><small>Termina</small><input class="campo" type="time" data-c="a.horario.fim" value="' + esc(h.fim || '18:00') + '"></label></div>' +
           '<label class="cwa-lbl">Mensagem para o cliente fora do horário<textarea class="campo" data-c="a.horario.mensagem" rows="2" maxlength="400">' + esc(h.mensagem || '') + '</textarea></label></div>');
     }
+    if (S.aba === 'assuntos' && a) {
+      const r = a.avisos_regras, ASS = [['qualquer', 'Qualquer assunto'], ['artes', 'Artes / design'], ['video', 'Vídeos e edição'], ['gravacao', 'Gravações'], ['roteiro', 'Roteiros'], ['legenda', 'Legendas']];
+      const optCli = '<option value="">Todos os clientes</option>' + S.clientes.map(c => '<option value="' + c.id + '"' + (c.logo_url ? ' data-img="' + esc(c.logo_url) + '"' : '') + '>' + esc(c.nome) + '</option>').join('');
+      const optAss = ASS.map(([v, t]) => '<option value="' + v + '">' + t + '</option>').join('');
+      const optPes = '<option value="">Escolher pessoa</option>' + S.pessoas.map(x => '<option value="' + x.id + '" data-sub="' + esc(x.papel === 'admin' ? 'Administrador' : x.papel === 'coordenador' ? 'Coordenação' : x.papel === 'designer' ? 'Design' : x.papel === 'videomaker' ? 'Vídeo' : x.papel) + '">' + esc(x.nome) + '</option>').join('');
+      const sel = (opts, v) => v ? opts.replace('value="' + v + '"', 'value="' + v + '" selected') : opts;
+      return bloco('O que é da Branding7', 'É disso que o ' + esc(S.ottoNome) + ' cuida: avisa no grupo da equipe, cobra resposta e lembra do que está parado.',
+          '<textarea class="campo" data-c="a.avisos_regras.nossos" rows="2" maxlength="600" placeholder="vídeos, artes, edição, gravação, roteiros…">' + esc(r.nossos) + '</textarea>' +
+          '<div class="cwa-tags">' + String(r.nossos || '').split(',').map(x => x.trim()).filter(Boolean).map(x => '<span>' + esc(x) + '</span>').join('') + '</div>') +
+        bloco('O que é de outra equipe', 'Quando o assunto é de outra equipe, o ' + esc(S.ottoNome) + ' não cobra a Branding7, não marca ninguém daqui e, se perguntarem, diz com quem é.',
+          '<div class="cwa-outros">' + (r.outros || []).map((o, i) => '<div class="cwa-outro"><input class="campo cwa-outro-n" data-outro="' + i + '" data-k="equipe" value="' + esc(o.equipe) + '" maxlength="40" placeholder="Equipe (ex.: Núcleo7)">' +
+            '<textarea class="campo" data-outro="' + i + '" data-k="assuntos" rows="2" maxlength="600" placeholder="comercial, tráfego pago, link de pagamento…">' + esc(o.assuntos) + '</textarea>' +
+            '<button type="button" class="wz-ic cwa-x" data-tira-outro="' + i + '" title="Tirar esta equipe" aria-label="Tirar esta equipe">✕</button></div>').join('') + '</div>' +
+          '<button type="button" class="b contorno cwa-mais" data-acao="novo-outro">+ Outra equipe</button>') +
+        bloco('Quem responde por quê', 'Quando um cliente espera a gente num desses assuntos, o ' + esc(S.ottoNome) + ' marca a pessoa certa (no aviso e no lembrete). Sem regra, marca a coordenação. A regra de um cliente vale mais que a de “Todos os clientes”.',
+          ((r.responsaveis || []).length ? '<div class="cwa-resp">' + r.responsaveis.map((x, i) =>
+            '<div class="cwa-resp-i"><div class="cwa-resp-q"><small>Cliente</small><select class="campo" data-escolha data-busca="Buscar cliente" data-titulo="Cliente" data-resp="' + i + '" data-k="cliente_id" aria-label="Cliente">' + sel(optCli, x.cliente_id || '') + '</select></div>' +
+            '<div class="cwa-resp-q"><small>Assunto</small><select class="campo" data-escolha data-sem-foto data-titulo="Assunto" data-resp="' + i + '" data-k="assunto" aria-label="Assunto">' + sel(optAss, x.assunto || 'qualquer') + '</select></div>' +
+            '<i class="cwa-resp-seta" aria-hidden="true">→</i>' +
+            '<div class="cwa-resp-q"><small>Marca</small><select class="campo" data-escolha data-titulo="Quem responde" data-vazio="Escolher pessoa" data-resp="' + i + '" data-k="pessoa_id" aria-label="Pessoa">' + sel(optPes, x.pessoa_id || '') + '</select></div>' +
+            '<button type="button" class="wz-ic cwa-x" data-tira-resp="' + i + '" title="Tirar esta regra" aria-label="Tirar esta regra">✕</button></div>').join('') + '</div>'
+            : '<div class="asw-nada">Nenhuma regra ainda: tudo vai para a coordenação.</div>') +
+          '<button type="button" class="b contorno cwa-mais" data-acao="novo-resp">+ Responsável</button>') +
+        bloco('Instruções', 'Regras livres que o ' + esc(S.ottoNome) + ' segue ao avisar e ao falar com a equipe. Escreva como falaria com ele.',
+          '<textarea class="campo" data-c="a.avisos_regras.instrucoes" rows="5" maxlength="3000" placeholder="Ex.: Consulta do Dr. Fabrício quem marca é a Thalita, não é reunião. Aprovação de vídeo é com o Matheus.">' + esc(r.instrucoes) + '</textarea>');
+    }
     if (S.aba === 'grupos') {
       const f = S.busca.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
       const cliDe = g => S.gMud[g.jid] !== undefined ? S.gMud[g.jid] : g.cliente_id;
@@ -343,6 +374,8 @@ B7.ConfigWA = (function () {
       return marcarSujo();
     }
     if (t.dataset.m) { S.p.modelos[t.dataset.m] = t.value; return marcarSujo(); }
+    if (t.dataset.outro != null) { S.a.avisos_regras.outros[+t.dataset.outro][t.dataset.k] = t.value; return marcarSujo(); }
+    if (t.dataset.resp != null) { S.a.avisos_regras.responsaveis[+t.dataset.resp][t.dataset.k] = t.value || null; return marcarSujo(); }
     const c = t.dataset.c; if (!c) return;
     if (c === 'filtroG') { S.filtroG = t.value; return desenhar(); }
     let v = t.type === 'checkbox' ? t.checked : t.value;
@@ -378,6 +411,8 @@ B7.ConfigWA = (function () {
     const di = t.closest('[data-dia]'); if (di && S.a) { const h = S.a.horario; const d = Number(di.dataset.dia); h.dias = (h.dias || []).map(Number); h.dias = h.dias.includes(d) ? h.dias.filter(x => x !== d) : h.dias.concat(d); return desenhar(); }
     const pu = t.closest('[data-push]'); if (pu && S.a) { const id = pu.dataset.push; S.a.push_para = (S.a.push_para || []).includes(id) ? S.a.push_para.filter(x => x !== id) : (S.a.push_para || []).concat(id); return desenhar(); }
     const tr = t.closest('[data-tira]'); if (tr) { S.w.respostas.splice(+tr.dataset.tira, 1); S.rrSel = Math.max(0, +tr.dataset.tira - 1); return desenhar(); }
+    const to = t.closest('[data-tira-outro]'); if (to) { S.a.avisos_regras.outros.splice(+to.dataset.tiraOutro, 1); return desenhar(); }
+    const tre = t.closest('[data-tira-resp]'); if (tre) { S.a.avisos_regras.responsaveis.splice(+tre.dataset.tiraResp, 1); return desenhar(); }
     const rc = t.closest('[data-rr]'); if (rc) { S.rrSel = +rc.dataset.rr; return desenhar(); }
     const pa = t.closest('[data-passo]'), sg = t.closest('[data-sug]');
     if (pa || sg) {
@@ -399,6 +434,8 @@ B7.ConfigWA = (function () {
       const at = raiz.querySelector('.cwa-rr-ed .cwa-atalho input'); if (at) at.focus();
       return;
     }
+    if (a === 'novo-outro') { S.a.avisos_regras.outros.push({ equipe: '', assuntos: '' }); desenhar(); const l = raiz.querySelectorAll('.cwa-outro-n'); if (l.length) l[l.length - 1].focus(); return; }
+    if (a === 'novo-resp') { S.a.avisos_regras.responsaveis.push({ cliente_id: null, assunto: 'qualquer', pessoa_id: '' }); return desenhar(); }
     if (a === 'conexao') { if (B7.WaCentral) B7.WaCentral.abrir(); return; }
     if (a === 'drive') { if (B7.CentralWA && B7.CentralWA.drive) await B7.CentralWA.drive(); carregarVivos(); return; }
     if (a === 'importar') { if (B7.CentralWA && B7.CentralWA.importar) B7.CentralWA.importar(); return; }

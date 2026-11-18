@@ -57,7 +57,7 @@ B7.Escolha = (function () {
     const ops = opcoesDe(sel), celular = matchMedia('(max-width: 760px)').matches;
     const comBusca = ops.length > 7 || sel.dataset.busca;
     const fundo = document.createElement('div');
-    fundo.className = 'esc-fundo' + (celular ? ' esc-folha' : '');
+    fundo.className = 'esc-fundo' + (celular ? ' esc-folha' : '') + (sel.dataset.semFoto != null ? ' sem-foto' : '');
     fundo.innerHTML = '<div class="esc-painel" role="dialog" aria-label="' + esc(sel.dataset.titulo || sel.getAttribute('aria-label') || 'Escolher') + '">' +
       (celular ? '<i class="esc-alca"></i>' + (sel.dataset.titulo ? '<h4>' + esc(sel.dataset.titulo) + '</h4>' : '') : '') +
       (comBusca ? '<label class="esc-busca">' + LUPA + '<input type="search" placeholder="' + esc(sel.dataset.busca || 'Buscar') + '" autocomplete="off" spellcheck="false"></label>' : '') +

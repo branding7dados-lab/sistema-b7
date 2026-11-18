@@ -61,3 +61,5 @@
 .esc-fundo.esc-folha .esc-av.p{width:36px;height:36px;border-radius:11px;}
 
 @media (prefers-reduced-motion:reduce){ .esc-painel,.esc-fundo.esc-folha,.esc-seta{transition:none;} }
+select[data-sem-foto] + .esc-bt .esc-av,.esc-fundo.sem-foto .esc-av{display:none;}
+select[data-sem-foto] + .esc-bt{padding-left:12px;}
