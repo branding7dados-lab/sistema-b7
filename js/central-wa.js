@@ -325,6 +325,18 @@ B7.CentralWA = (function () {
     repintarAudios();
   }
 
+  /* onda do áudio: 36 barras com altura "de voz" (sobe e desce suave), fixa por mensagem */
+  function ondasDe(seed) {
+    let h = 7; for (const ch of String(seed || 'x')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const rnd = () => { h = (h * 1103515245 + 12345) >>> 0; return (h >>> 8) / 16777216; };
+    let v = .4; return Array.from({ length: 36 }, (_, k) => { v = Math.min(1, Math.max(.14, v * .55 + rnd() * .62)); const borda = Math.min(1, (k + 1) / 4, (36 - k) / 4); return '<u style="height:' + Math.round(18 + v * borda * 82) + '%"></u>'; }).join('');
+  }
+  /* transcrição do áudio: bloco próprio, 3 linhas e "Ler tudo" */
+  function blocoTransc(texto) {
+    const t = String(texto || '').replace(/^🎤\s*/, '');
+    return '<span class="wz-tr' + (t.length > 170 ? ' longa' : '') + '"><span class="wz-tr-rot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h10M4 18h7"/></svg>Transcrição</span>' +
+      '<span class="wz-tr-t">' + textoRico(t) + '</span>' + (t.length > 170 ? '<button type="button" class="wz-tr-mais" data-tr-mais>Ler tudo</button>' : '') + '</span>';
+  }
   function bolha(m, grupo, seguida) {
     if (m.nota) return '<div class="wz-nota" data-id="' + esc(m.id) + '">🔒 <b>Nota interna</b> · ' + esc(m.enviada_por_nome || '') + ' · ' + hm(m.criada_em) + '<br>' + textoRico(m.texto) + '</div>';
     const lado = m.de_mim ? 'eu' : 'ele';
@@ -337,7 +349,8 @@ B7.CentralWA = (function () {
         corpo += '<span class="wz-q" data-ir-msg="' + esc(m.citada_id) + '"><b style="--c:' + corDe(qa) + '">' + esc(qa || 'Mensagem') + '</b>' + esc(semCodigos((q && (q.texto || q.midia_nome)) || m.citada_previa || '')) + '</span>';
       }
       corpo += midia(m);
-      if (m.texto && m.tipo !== 'localizacao' && m.tipo !== 'contato' && m.tipo !== 'enquete') corpo += '<span class="wz-txt">' + textoRico(m.texto) + '</span>';
+      if (m.texto && m.tipo === 'audio') corpo += blocoTransc(m.texto);
+      else if (m.texto && m.tipo !== 'localizacao' && m.tipo !== 'contato' && m.tipo !== 'enquete') corpo += '<span class="wz-txt">' + textoRico(m.texto) + '</span>';
     }
     const autor = !m.de_mim && grupo && !seguida ? '<span class="wz-autor" style="--c:' + corDe(m.autor_nome || m.autor_jid) + '">' + esc(m.autor_nome || num(m.autor_jid)) + '</span>' : '';
     const quem = m.de_mim && m.enviada_por_nome ? '<span class="wz-quem">' + esc(m.enviada_por_nome.split(' ')[0]) + '</span>' : '';
@@ -357,9 +370,12 @@ B7.CentralWA = (function () {
       case 'figurinha': return '<span class="wz-fig" data-carregar="img" data-id="' + id + '" data-auto="1"><i class="wz-ph">🙂</i></span>';
       case 'video': return '<span class="wz-vid" data-carregar="video" data-id="' + id + '">' + (mini ? '<img src="' + mini + '" alt="">' : '') + '<i class="wz-play">' + I.play + '</i>' + (m.duracao ? '<em>' + mmss(m.duracao) + '</em>' : '') + '</span>';
       case 'audio': {
-        const ondas = Array.from({ length: 28 }, (_, k) => '<u style="height:' + (25 + ((k * 37 + (m.id || '').charCodeAt(k % ((m.id || 'x').length)) * 13) % 70)) + '%"></u>').join('');
-        return '<span class="wz-aud" data-carregar="audio" data-id="' + id + '"><button class="wz-aud-p" aria-label="Tocar">' + I.play + '</button><span class="wz-onda">' + ondas + '</span><em>' + mmss(m.duracao) + '</em><button class="wz-aud-vel" data-vel aria-label="Velocidade do áudio" title="Velocidade">' + velTx() + '</button><button class="wz-aud-dl" data-baixar="' + id + '" title="Baixar o áudio" aria-label="Baixar o áudio">' + I.baixar + '</button></span>'
-          + (m.texto ? '' : '<button class="wz-transc" data-transc="' + id + '">Transcrever</button>');
+        /* 4.81.0: áudio redesenhado — onda com ponteiro, tempo e velocidade embaixo; baixar fica nas ações do balão */
+        return '<span class="wz-aud" data-carregar="audio" data-id="' + id + '">' +
+          '<button class="wz-aud-p" aria-label="Tocar">' + I.play + '<i class="wz-aud-mic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 17v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></i></button>' +
+          '<span class="wz-aud-m"><span class="wz-onda">' + ondasDe(m.id) + '<i class="wz-aud-pino"></i></span>' +
+          '<span class="wz-aud-pe"><em>' + mmss(m.duracao) + '</em><button class="wz-aud-vel" data-vel aria-label="Velocidade do áudio" title="Velocidade">' + velTx() + '</button>' +
+          (m.texto ? '' : '<button class="wz-transc" data-transc="' + id + '">Transcrever</button>') + '</span></span></span>';
       }
       case 'documento': {
         const ext = String(m.midia_nome || '').split('.').pop().slice(0, 4).toUpperCase() || 'DOC';
@@ -441,6 +457,7 @@ B7.CentralWA = (function () {
       if (bt && bt.dataset.est !== String(tocando)) { bt.dataset.est = String(tocando); bt.innerHTML = tocando ? I.pause : I.play; bt.setAttribute('aria-label', tocando ? 'Pausar' : 'Tocar'); }
       el.classList.toggle('tocando', tocando); el.classList.toggle('esperando', tocando && a.readyState < 3);
       el.querySelectorAll('.wz-onda u').forEach((u, i, l) => u.classList.toggle('p', i / l.length < p));
+      const on = el.querySelector('.wz-onda'); if (on) on.style.setProperty('--p', (p * 100).toFixed(2) + '%');
       if (em) em.textContent = mmss(a.currentTime > 0 ? a.currentTime : a.duration);
       el.dataset.ok = '1';
     });
@@ -491,7 +508,7 @@ B7.CentralWA = (function () {
     const bx = e.target.closest('[data-baixar]'); if (bx) { e.stopPropagation(); return baixarMidia(bx.dataset.baixar, bx); }
     const f = e.target.closest('[data-filtro]'); if (f) { S.filtro = f.dataset.filtro; pintarFiltros(); pintarLista(); return; }
     const em = e.target.closest('[data-emoji]'); if (em) { const t = raiz.querySelector('#wz-texto'); if (t) { t.setRangeText(em.dataset.emoji, t.selectionStart, t.selectionEnd, 'end'); t.focus(); t.dispatchEvent(new Event('input')); } B7.UI.fecharMenus && B7.UI.fecharMenus(); return; }
-    const md = e.target.closest('[data-carregar]');
+    const md = e.target.closest('[data-transc]') ? null : e.target.closest('[data-carregar]');
     if (md && md.dataset.carregar === 'audio') {
       if (e.target.closest('[data-vel]')) return trocarVelocidade();
       const a = players.get(md.dataset.id);
@@ -503,12 +520,15 @@ B7.CentralWA = (function () {
     }
     if (md) { if (md.dataset.carregar === 'img' && md.dataset.ok) { const im = md.querySelector('img[data-zoom]'); if (im) previa(md.dataset.id, im.dataset.zoom); return; } return carregarMidia(md, true); }
     const mn = e.target.closest('[data-men]'); if (mn) { escolherMencao(mn.dataset.men); return; }
+    const tm = e.target.closest('[data-tr-mais]'); if (tm) { const bl = tm.closest('.wz-tr'); bl.classList.toggle('aberta'); tm.textContent = bl.classList.contains('aberta') ? 'Mostrar menos' : 'Ler tudo'; return; }
     const tr = e.target.closest('[data-transc]');
     if (tr) {
       if (tr.disabled) return; tr.disabled = true; tr.textContent = 'Transcrevendo…';
       chamar('transcrever', { id: tr.dataset.transc }).then(r => {
         if (r.erro) throw new Error(r.erro);
-        const sp = document.createElement('span'); sp.className = 'wz-txt'; sp.textContent = r.texto; tr.replaceWith(sp);
+        const b = tr.closest('.wz-b, .wz-bolha, [data-id]'); const alvo = (b && b.querySelector('.wz-aud')) || tr;
+        const m0 = S.msgs.find(x => x.id === tr.dataset.transc); if (m0) m0.texto = r.texto;
+        tr.remove(); alvo.insertAdjacentHTML('afterend', blocoTransc(r.texto));
       }).catch(err => { tr.disabled = false; tr.textContent = 'Transcrever'; B7.UI.toast(err.message || 'Não deu para transcrever.'); });
       return;
     }

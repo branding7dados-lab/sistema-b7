@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.81.0', versao: '4.81.0', em: '2026-11-18T14:30:00-03:00', rota: 'whatsapp',
+    titulo: 'Configurações do WhatsApp, respostas rápidas e áudio novo',
+    itens: ['Engrenagem ⚙️ no topo das Conversas: abre as Configurações do WhatsApp — sua assinatura, Enter envia, velocidade dos áudios e os textos prontos do “Enviar no WhatsApp”.',
+      'Respostas rápidas: na conversa, digite / e o atalho (ex.: /ok, /aprova) e a resposta entra pronta, já com o nome do cliente.',
+      'Áudios com visual novo: onda que acompanha o som, velocidade embaixo e a transcrição num bloco próprio, com “Ler tudo” quando é longa.'] },
   { id: 'v-4.80.5', versao: '4.80.5', em: '2026-11-18T11:30:00-03:00', rota: 'gravacoes',
     titulo: 'Remarcar gravação já concluída',
     itens: ['Gravação marcada como gravada agora pode ser remarcada (para regravar ou se foi concluída por engano): botão "Remarcar" no topo e também no menu ⋯ da gravação.',
