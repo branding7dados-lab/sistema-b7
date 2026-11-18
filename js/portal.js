@@ -1445,9 +1445,13 @@ B7.Portal = (function () {
     if (tipo === 'linha') {
       const itens = Array.isArray(snap.conteudos) ? snap.conteudos : [];
       html += (snap.periodo ? '<div class="pt-campo"><small>PERÍODO</small><p>' + esc(snap.periodo) + '</p></div>' : '');
-      ['objetivo', 'posicionamento_mes', 'canais', 'estrategia'].forEach(k => {
-        if (snap[k]) html += '<div class="pt-campo"><small>' + k.replace(/_/g, ' ').toUpperCase() + '</small><p>' + esc(snap[k]) + '</p></div>';
+      /* 4.78.6 (QA): rótulos de gente (antes "POSICIONAMENTO MES"), tom de voz e os pilares, que já vinham no envio */
+      [['objetivo', 'OBJETIVO'], ['posicionamento_mes', 'POSICIONAMENTO'], ['tom_voz', 'TOM DE VOZ'], ['puv', 'PROPOSTA DE VALOR'], ['canais', 'CANAIS'], ['estrategia', 'ESTRATÉGIA']].forEach(([k, rot]) => {
+        if (snap[k]) html += '<div class="pt-campo"><small>' + rot + '</small><p>' + esc(snap[k]) + '</p></div>';
       });
+      const pil = Array.isArray(snap.pilares) ? snap.pilares.filter(p => p && p.nome) : [];
+      if (pil.length) html += '<div class="pt-campo"><small>PILARES DE CONTEÚDO</small><p>' +
+        pil.map(p => '<b>' + esc(p.nome) + '</b>' + (p.percentual ? ' · ' + esc(String(p.percentual)) + '%' : '') + (p.objetivo ? ' — ' + esc(p.objetivo) : '')).join('<br>') + '</p></div>';
       if (itens.length) {
         html += '<div class="pt-campo"><small>CONTEÚDOS PLANEJADOS (' + itens.length + ')</small><div class="pt-grade">' +
           itens.map(c => '<article class="pt-item"><span class="pt-formato">' + esc(c.tipo || 'Conteúdo') + '</span>' +

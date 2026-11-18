@@ -872,8 +872,8 @@ B7.Conteudo = (function () {
         const idPacote = pacote && pacote.escolhido();
         if (idPacote) { try { await B7.Pacotes.aplicar(nova.id, idPacote); } catch (e) { B7.UI.toast('A linha foi criada, mas o pacote não: ' + ((e && e.message) || ''), { tipo: 'erro' }); } }
         m.fechar();
-        /* abre direto no que acabou de ser criado */
-        location.hash = '#/linha/' + nova.id;
+        /* abre direto no que acabou de ser criado (4.78.6: vindo da lista geral, o voltar e o menu continuam em Linhas) */
+        location.hash = '#/linha/' + nova.id + (/^#\/linhas/.test(location.hash) ? '?de=linhas' : '');
       } catch (e) {
         botao.disabled = false;
         botao.textContent = 'Criar linha editorial';

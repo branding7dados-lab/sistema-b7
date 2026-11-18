@@ -645,8 +645,9 @@ B7.DB = (function () {
     /* Todas as linhas de todos os clientes, para a visão global. Usa a
        mesma view que já traz nome do cliente e contagem de conteúdos. */
     async listarTodasLinhas(limite) {
+      /* 4.78.6 (QA): linha arquivada saía da aba do cliente mas continuava na lista geral */
       return ok(await sb().from('linhas_resumo').select('*')
-        .is('deleted_at', null)
+        .is('deleted_at', null).is('archived_at', null)
         .order('ano', { ascending: false })
         .order('mes', { ascending: false })
         .limit(limite || 60));

@@ -369,7 +369,9 @@ B7.Linha = (function () {
           snapshot: {
             titulo: l.nome || (MESES[l.mes - 1] + ' ' + l.ano),
             periodo: (l.periodo_inicio ? B7.UI.dataBR(l.periodo_inicio) : '') + (l.periodo_fim ? ' a ' + B7.UI.dataBR(l.periodo_fim) : ''),
-            objetivo: l.objetivo || '', posicionamento_mes: l.posicionamento_mes || '', canais: l.canais || '',
+            objetivo: l.objetivo || '', posicionamento_mes: l.posicionamento_mes || l.posicionamento || '', canais: l.canais || '',
+            /* 4.78.6 (QA): a aba Estratégia grava posicionamento/tom de voz/PUV — antes nada disso chegava ao cliente */
+            tom_voz: l.tom_voz || '', puv: l.puv || '',
             estrategia: l.estrategia || '', mes: l.mes, ano: l.ano, cliente: l.cliente_nome,
             /* pilares congelados junto: o cliente aprova a estratégia inteira */
             pilares: L.pilares.map(p => ({ id: p.id, nome: p.nome, percentual: +p.percentual || 0,
@@ -382,7 +384,7 @@ B7.Linha = (function () {
           observacao: m.querySelector('#env-obs').value.trim() || null
         });
         m.fechar();
-        B7.UI.toast('Planejamento enviado para aprovação (v' + proxima + ') — o cliente foi avisado');
+        B7.UI.toast(B7.PORTAL_PAUSADO ? 'Versão ' + proxima + ' marcada como enviada — agora mande para o cliente pelo WhatsApp' : 'Planejamento enviado para aprovação (v' + proxima + ') — o cliente foi avisado');
         abrir(l.id, L.aba);
       } catch (e) {
         botao.disabled = false; botao.textContent = 'Enviar v' + proxima;
@@ -573,7 +575,9 @@ B7.Linha = (function () {
       L.linha.meta_conteudos ? [L.linha.meta_conteudos, 'META'] : null
     ].filter(Boolean);
 
-    return (B7.Aprovacoes ? '<div class="mb" id="ap-status-linha">' + B7.Aprovacoes.blocoStatus(L.aprovacao, { botaoEnviar: !C.souDesignerSomenteLeitura() }) + '</div>' : '') +
+    /* 4.78.6 (QA): o designer (só leitura) não enxerga a aprovação e via "Ainda não enviado ao cliente" numa linha já enviada,
+       com um botão que ele não tem — o bloco de status é de quem envia */
+    return (B7.Aprovacoes && !C.souDesignerSomenteLeitura() ? '<div class="mb" id="ap-status-linha">' + B7.Aprovacoes.blocoStatus(L.aprovacao, { botaoEnviar: true }) + '</div>' : '') +
       '<div class="mini-metricas">' + metricas.map(([n, r]) =>
         '<div class="mini-metrica"><b>' + n + '</b><span>' + r + '</span></div>').join('') +
       '</div>' +

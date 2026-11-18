@@ -57,6 +57,8 @@
 .ap-duplo h3{font-family:'B7 Titulo';font-weight:800;font-size:14px;margin:0 0 10px;letter-spacing:-.01em;}
 .ap-duplo aside h3{margin-top:18px;}
 .ap-duplo aside h3:first-child{margin-top:0;}
+/* 4.78.6 (QA): no celular as duas colunas ficam uma embaixo da outra ("Material enviado" ficava com ~60 px) */
+@media (max-width:760px){.ap-duplo{grid-template-columns:minmax(0,1fr);}}
 .ap-cena{padding:14px 16px;border-radius:var(--r);border:1px solid var(--borda);background:var(--card);margin-bottom:10px;border-left-width:4px;}
 .ap-cena.aprovada{border-left-color:var(--ok);} .ap-cena.ajustes{border-left-color:var(--ambar);} .ap-cena.pendente{border-left-color:var(--borda-forte);}
 .ap-cena-cab{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:11px;letter-spacing:.06em;}

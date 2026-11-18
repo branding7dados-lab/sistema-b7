@@ -121,7 +121,7 @@ B7.Design = (function () {
   function erroCarga(e) {
     painel().innerHTML = '<div class="conteudo entra"><div class="estado-b7"><b>Não foi possível carregar o Design.</b>' +
       '<p>' + esc(e.message || '') + '</p>' +
-      '<p>Se o sistema acabou de ser atualizado, rode migration_design.sql no Supabase.</p></div></div>';
+      '<p>Tente de novo em instantes. Se continuar, avise o administrador.</p></div></div>';
   }
 
   async function abrir(aba, params) {
@@ -636,10 +636,12 @@ B7.Design = (function () {
     const logoUrl = (r.itens[0] && r.itens[0].cliente_logo_url) || null;
 
     return '<article class="cartao-projeto' + (r.concluida ? ' concluido' : '') + '"' +
-      (r.linhaId ? ' data-linha-abrir="' + esc(r.linhaId) + '" tabindex="0" role="button" aria-label="Ver peças de ' + esc(r.linhaNome) + '"' : '') + '>' +
+      (r.linhaId ? ' data-linha-abrir="' + esc(r.linhaId) + '" tabindex="0" role="button" aria-label="Ver peças de ' + esc(r.linhaNome) + '"'
+        /* 4.78.6 (QA): peça avulsa (sem linha) não abria pelo cartão — agora abre a primeira peça */
+        : (r.itens[0] && r.itens[0].id ? ' data-peca="' + esc(r.itens[0].id) + '" tabindex="0" role="button" aria-label="Abrir a peça"' : '')) + '>' +
       '<div class="cp-cab">' + avatarCliente(r.clienteNome, logoUrl) +
         '<div class="cp-cab-tx"><b class="cp-cliente">' + esc(r.clienteNome || 'Interno') + '</b>' +
-        '<span class="cp-linha">Linha Editorial · ' + esc(r.linhaNome) + (r.versao ? ' · V' + String(r.versao).padStart(2, '0') : '') + '</span></div>' +
+        '<span class="cp-linha">' + (r.linhaId ? 'Linha Editorial · ' + esc(r.linhaNome) + (r.versao ? ' · V' + String(r.versao).padStart(2, '0') : '') : 'Peça avulsa (fora da linha editorial)') + '</span></div>' +
       '</div>' +
       tirasPrevia(r.itens) +
       formatosIcone(r.itens) +
