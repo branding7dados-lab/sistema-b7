@@ -1664,8 +1664,10 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
     const legenda = 'Pessoal, ' + String(j.resumo || 'o cliente está esperando resposta').replace(/^\s*pessoal,?\s*/i, '').replace(/\.?\s*$/, '') + '. Ninguém respondeu ainda (há ' + (min >= 60 ? Math.floor(min / 60) + 'h' + (min % 60 ? String(min % 60).padStart(2, '0') : '') : min + ' min') + ').';
     await talvezPrint(sb, cfg, null, 'print ' + (c.nome || ''), cfg.grupo_equipe, { conv: c, destino: cfg.grupo_equipe, legenda });
     /* marca quem recebe as dúvidas (ou todo mundo) */
-    const quem = (cfg.equipe || []).filter(e => e.nome && e.duvidas !== false).map(e => '@' + String(e.nome).split(/\s+/)[0]);
-    await enviar(sb, cfg, cfg.grupo_equipe, (quem.length ? quem.join(' ') : '@todos') + ' alguém pega esse? 👆');
+    /* 4.79.5: responder cliente é da coordenação (Matheus) — marca ela, pelo nome completo; sem coordenação, quem recebe dúvidas */
+    const co = await coordenacao(sb);
+    const quem = co.length ? co.map(n => '@' + n) : (cfg.equipe || []).filter(e => e.nome && e.duvidas !== false).map(e => '@' + String(e.nome));
+    await enviar(sb, cfg, cfg.grupo_equipe, (quem.length ? quem.join(' ') : '@todos') + ', esse cliente está esperando resposta 👆');
     await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, grupo: c.nome, autor: cfg.nome, pergunta: 'vigia ' + (c.nome || ''), resposta: legenda.slice(0, 800) });
     feitos++;
   }
@@ -1727,7 +1729,9 @@ async function talvezEsperandoCliente(sb: SupabaseClient, cfg: Config) {
     linhas.push('• *' + (nomeCli.get(x.c.cliente_id) || x.c.nome) + '*: ' + String(it.resumo || 'mandamos algo').replace(/\.$/, '') + ' — sem resposta ' + quando);
   }
   if (!linhas.length) return;
-  const texto = 'Ó pessoal, estamos esperando retorno de cliente:\n' + linhas.slice(0, 6).join('\n') + '\n\nSe quiserem que eu cobre, é só pedir (ex.: "' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ', cobra a ' + (linhas[0].match(/\*([^*]+)\*/)?.[1] || 'Mercato') + '").';
+  const co = await coordenacao(sb);
+  const texto = '⏳ *Esperando retorno do cliente*\n' + linhas.slice(0, 6).join('\n') + '\n\n' + (co.length ? co.map(n => '@' + n).join(' ') + ', ' : '') +
+    'se quiser que eu cobre, é só pedir (ex.: "' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ', cobra a ' + (linhas[0].match(/\*([^*]+)\*/)?.[1] || 'Mercato') + '").';
   await enviar(sb, cfg, cfg.grupo_equipe, texto);
   await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, autor: cfg.nome, pergunta: 'esperando o cliente', resposta: texto.slice(0, 1500), ...usoDe(r) });
 }
@@ -1745,10 +1749,38 @@ async function talvezAvisos(sb: SupabaseClient, cfg: Config) {
   const ok = new Set(await marcarAvisados(sb, avisos.map(a => a.chave)));
   const lista = avisos.filter(a => ok.has(a.chave)).slice(0, 12);
   if (!lista.length) return;
-  const linhas = lista.map(a => '• ' + a.linha + (a.marcar ? ' @' + String(a.marcar).split(/\s+/)[0] : ''));
-  const texto = (lista.length === 1 ? 'Ó, um aviso:' : 'Ó, uns avisos:') + '\n' + linhas.join('\n');
+  const texto = textoDosAvisos(lista);
   await enviar(sb, cfg, cfg.grupo_equipe, texto);
   await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, autor: cfg.nome, pergunta: 'avisos automáticos', resposta: texto.slice(0, 1500) });
+}
+/** quem coordena (responde cliente, cobra aprovação): nomes completos dos coordenadores ativos */
+async function coordenacao(sb: SupabaseClient): Promise<string[]> {
+  const { data } = await sb.from('perfis').select('nome, papel, funcao').eq('estado', 'ativa');
+  return ((data || []) as any[]).filter(p => (p.papel === 'coordenador' || p.funcao === 'coordenador') && !/teste/i.test(p.nome || '')).map(p => String(p.nome));
+}
+/* 4.79.5: avisos organizados por bloco (era "Ó, uns avisos: • …" tudo misturado). Marca pelo NOME COMPLETO — o
+   primeiro nome sozinho não marcava quando há dois "Matheus" no grupo (ou a mesma pessoa com dois números). */
+const BLOCOS_AVISO: [string, string, (quem: string) => string][] = [
+  ['aprovacao_parada', '👀 *Esperando o cliente aprovar*', q => q + ', vale cobrar o retorno 🙏'],
+  ['aprov', '✅ *Cliente aprovou?*', q => q + ', quer que eu marque como aprovado/entregue? É só responder citando esta mensagem.'],
+  ['atrasada', '⚠️ *Vídeos atrasados*', () => ''],
+  ['amanha', '⏰ *Vencem amanhã e ainda não começaram*', () => ''],
+  ['espera', '💬 *Clientes esperando resposta*', q => q + ', dá uma olhada? 🙏']];
+export function textoDosAvisos(lista: { chave: string; linha: string; marcar?: string | null; item?: string }[]): string {
+  const m = (n?: string | null) => n ? '@' + n : '';
+  const partes: string[] = [];
+  for (const [pref, titulo, rodape] of BLOCOS_AVISO) {
+    const l = lista.filter(a => a.chave.startsWith(pref + ':'));
+    if (!l.length) continue;
+    const quemBloco = [...new Set(l.map(a => a.marcar).filter(Boolean))] as string[];
+    const porLinha = !rodape('x');   /* atrasados/amanhã: cada linha marca o responsável dela */
+    const linhas = l.map(a => '• ' + (a.item || a.linha) + (porLinha && a.marcar ? ' — ' + m(a.marcar) : ''));
+    const fim = !porLinha && quemBloco.length ? '\n' + rodape(quemBloco.map(m).join(' ')) : '';
+    partes.push(titulo + '\n' + linhas.join('\n') + fim);
+  }
+  const outros = lista.filter(a => !BLOCOS_AVISO.some(([p]) => a.chave.startsWith(p + ':')));
+  if (outros.length) partes.push(outros.map(a => '• ' + a.linha + (a.marcar ? ' — ' + m(a.marcar) : '')).join('\n'));
+  return '🔔 *Avisos da produção*\n\n' + partes.join('\n\n');
 }
 /** resumo do dia: sozinho depois da hora marcada (1x por dia útil), ou quando pedirem */
 async function talvezResumoDia(sb: SupabaseClient, cfg: Config, forcado: boolean, destino?: string): Promise<boolean> {

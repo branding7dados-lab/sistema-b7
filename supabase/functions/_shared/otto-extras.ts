@@ -205,7 +205,7 @@ export async function falar(texto: string, v: Voz | string = 'Orus'): Promise<Au
 
 /* ------------------------------------------------------------ avisos por conta própria */
 const APROVOU = /\b(aprovad[oa]s?|aprovo|aprovei|pode (postar|subir|publicar)|gostei( de todos| muito)?|ficou (otimo|top|lindo|perfeito|show|incrivel)|amei|perfeito,? pode)\b/;
-export type Aviso = { chave: string; linha: string; marcar?: string | null };
+export type Aviso = { chave: string; linha: string; marcar?: string | null; item?: string };
 /** junta o que merece aviso agora (sem repetir o que já foi avisado) */
 export async function avisosPendentes(sb: SupabaseClient): Promise<Aviso[]> {
   const hoje = hojeISO();
@@ -225,13 +225,18 @@ export async function avisosPendentes(sb: SupabaseClient): Promise<Aviso[]> {
   for (const d of (ds || []) as any[]) {
     const quem = pessoa.get(d.videomaker_id) || null;
     const rot = (d.codigo ? d.codigo + ' · ' : '') + String(d.titulo || '').slice(0, 60) + (cliente.get(d.client_id) ? ' (' + cliente.get(d.client_id) + ')' : '');
-    if (d.prazo < hoje && d.editing_status === 'aguardando_aprovacao') avisos.push({ chave: 'aprovacao_parada:' + d.id + ':' + hoje, linha: 'esperando o cliente aprovar desde ' + dm(d.prazo) + ': ' + rot + ' — vale cobrar o retorno', marcar: coord });
-    else if (d.prazo < hoje) avisos.push({ chave: 'atrasada:' + d.id + ':' + hoje, linha: 'atrasada desde ' + dm(d.prazo) + ': ' + rot, marcar: quem });
-    else if (d.prazo === amanha && d.editing_status === 'pendente') avisos.push({ chave: 'amanha:' + d.id, linha: 'vence amanhã e ainda não começou: ' + rot, marcar: quem });
+    /* 4.79.5: o item curto para a mensagem organizada por blocos (título em CAIXA ALTA vira normal) */
+    const t0 = String(d.titulo || '').trim().slice(0, 48);
+    const tit = t0 && t0 === t0.toUpperCase() && /[A-Z]/.test(t0) ? t0.toLowerCase().replace(/(^|\s)\S/g, (m: string) => m.toUpperCase()) : t0;
+    const cd = String(d.codigo || '').replace(/[^0-9]/g, '');
+    const item = (cd ? '#' + Number(cd) + ' ' : '') + tit + (cliente.get(d.client_id) ? ' (' + cliente.get(d.client_id) + ')' : '');
+    if (d.prazo < hoje && d.editing_status === 'aguardando_aprovacao') avisos.push({ chave: 'aprovacao_parada:' + d.id + ':' + hoje, linha: 'esperando o cliente aprovar desde ' + dm(d.prazo) + ': ' + rot + ' — vale cobrar o retorno', marcar: coord, item: item + ' · desde ' + dm(d.prazo) });
+    else if (d.prazo < hoje) avisos.push({ chave: 'atrasada:' + d.id + ':' + hoje, linha: 'atrasada desde ' + dm(d.prazo) + ': ' + rot, marcar: quem, item: item + ' · desde ' + dm(d.prazo) });
+    else if (d.prazo === amanha && d.editing_status === 'pendente') avisos.push({ chave: 'amanha:' + d.id, linha: 'vence amanhã e ainda não começou: ' + rot, marcar: quem, item });
   }
   for (const c of (convs || []) as any[]) {
     const h = Math.round((Date.now() - Date.parse(c.esperando_desde)) / 3600_000);
-    avisos.push({ chave: 'espera:' + c.jid + ':' + c.esperando_desde, linha: (cliente.get(c.cliente_id) || c.nome) + ' está esperando resposta há ' + h + 'h', marcar: null });
+    avisos.push({ chave: 'espera:' + c.jid + ':' + c.esperando_desde, linha: (cliente.get(c.cliente_id) || c.nome) + ' está esperando resposta há ' + h + 'h', marcar: coord, item: (cliente.get(c.cliente_id) || c.nome) + ' · há ' + h + 'h' });
   }
   /* cliente aprovou alguma coisa nos últimos 40 min */
   const { data: ms } = await sb.from('wa_mensagens').select('id, jid, texto, autor_nome, criada_em').eq('de_mim', false).eq('tipo', 'texto')
@@ -242,7 +247,7 @@ export async function avisosPendentes(sb: SupabaseClient): Promise<Aviso[]> {
     const ehCliente = new Map(((cv || []) as any[]).map(c => [c.jid, c]));
     for (const m of (ms || []) as any[]) {
       const c = ehCliente.get(m.jid); if (!c) continue;
-      if (APROVOU.test(sem(m.texto))) avisos.push({ chave: 'aprov:' + m.id, linha: (cliente.get(c.cliente_id) || c.nome) + ' disse "' + String(m.texto).slice(0, 80) + '" — parece aprovação. Quer que eu marque como aprovado/entregue?', marcar: null });
+      if (APROVOU.test(sem(m.texto))) avisos.push({ chave: 'aprov:' + m.id, linha: (cliente.get(c.cliente_id) || c.nome) + ' disse "' + String(m.texto).slice(0, 80) + '" — parece aprovação. Quer que eu marque como aprovado/entregue?', marcar: coord, item: (cliente.get(c.cliente_id) || c.nome) + ': "' + String(m.texto).replace(/\s+/g, ' ').slice(0, 80) + '"' });
     }
   }
   if (!avisos.length) return [];
