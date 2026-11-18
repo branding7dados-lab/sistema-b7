@@ -227,6 +227,7 @@ B7.Rota = (function () {
     if (partes[0] === 'whatsapp' && B7.CentralWA) {
       mostrar('tela-dashboard');
       if (partes[1] === 'assistente' && B7.AssistenteWA) return B7.AssistenteWA.abrir();
+      if (partes[1] === 'config' && B7.ConfigWA) return B7.ConfigWA.abrir(params);
       return B7.CentralWA.abrir();
     }
     if (partes[0] === 'ajuda' && B7.Ajuda) {

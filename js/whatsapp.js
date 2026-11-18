@@ -181,5 +181,5 @@ B7.WhatsApp = (function () {
   }
 
   function abrir() { if (B7.CentralWA) return B7.CentralWA.abrir(); }
-  return { abrir, enviar, podeEnviar, icone, noPrograma: false };
+  return { abrir, enviar, podeEnviar, icone, modelos: MODELOS, noPrograma: false };
 })();

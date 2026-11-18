@@ -1,0 +1,121 @@
+/* =====================================================================
+   CONFIGURAÇÕES DO WHATSAPP (js/config-wa.js) — 4.81.0
+   Usa a casca da tela do Otto (asw-*): topo, navegação, blocos, linhas,
+   chaves e barra de salvar. Aqui só o que é desta tela.
+   ===================================================================== */
+.cwa-av svg{width:28px;height:28px;}
+.cwa-av i.off{background:#F87171 !important;}
+.cwa-av i.esp{background:#CBD5E1 !important;animation:cwaPisca 1.2s ease-in-out infinite;}
+@keyframes cwaPisca{50%{opacity:.35;}}
+.asw-stats > div.alerta dd{color:#FDE68A;}
+
+/* atalho para a tela do Otto, no pé da navegação */
+.cwa-nav-otto{display:flex;align-items:center;gap:10px;margin-top:6px;padding:10px 12px;border-radius:14px;border-top:1px solid var(--borda);
+  color:var(--ink-2);text-decoration:none;font:600 13px/1.2 inherit;}
+.cwa-nav-otto svg{width:18px;height:18px;opacity:.75;}
+.cwa-nav-otto span{flex:1;}
+.cwa-nav-otto em{font-style:normal;color:var(--ink-3);}
+.cwa-nav-otto:hover{background:var(--suave);color:var(--ink);}
+
+/* visão geral: cartões de situação */
+.cwa-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.cwa-card{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;align-items:start;text-align:left;cursor:pointer;
+  padding:14px 14px 12px;border-radius:18px;border:1px solid var(--borda);background:var(--suave);color:var(--ink);font:inherit;transition:border-color .15s,transform .15s;}
+.cwa-card:hover{border-color:color-mix(in srgb,var(--sb-luz2) 55%,var(--borda));transform:translateY(-1px);}
+.cwa-card:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
+.cwa-card-ic{grid-row:span 2;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));}
+.cwa-card-ic svg{width:19px;height:19px;}
+.cwa-card-t b{display:block;font-size:14px;font-weight:700;padding-right:16px;}
+.cwa-card-t small{display:block;margin-top:3px;font-size:12.5px;line-height:1.45;color:var(--ink-3);}
+.cwa-card em{grid-column:2;font-style:normal;font-size:12.5px;font-weight:700;color:var(--sb-luz2);margin-top:4px;}
+.cwa-pt{position:absolute;top:14px;right:14px;width:10px;height:10px;border-radius:50%;background:#CBD5E1;}
+.cwa-card.ok .cwa-pt{background:#22C55E;box-shadow:0 0 0 4px color-mix(in srgb,#22C55E 22%,transparent);}
+.cwa-card.meio .cwa-pt{background:#F59E0B;box-shadow:0 0 0 4px color-mix(in srgb,#F59E0B 22%,transparent);}
+.cwa-card.ruim .cwa-pt{background:#EF4444;box-shadow:0 0 0 4px color-mix(in srgb,#EF4444 22%,transparent);}
+.cwa-card.ruim{border-color:color-mix(in srgb,#EF4444 45%,var(--borda));}
+.cwa-card.esp .cwa-pt{animation:cwaPisca 1.2s ease-in-out infinite;}
+.cwa-atalhos{display:flex;flex-wrap:wrap;gap:8px;}
+.cwa-atalhos .b{text-decoration:none;}
+
+/* campos */
+.cwa-num{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-3);white-space:nowrap;}
+.cwa-num input{width:74px;padding:8px 10px;border-radius:11px;border:1px solid var(--borda);background:var(--card);color:var(--ink);font:650 14px/1 inherit;text-align:center;font-variant-numeric:tabular-nums;}
+.cwa-num input:focus{outline:2px solid var(--acento);outline-offset:1px;}
+.cwa-txt{width:min(240px,100%);}
+.cwa-lbl{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:650;color:var(--ink-2);margin-top:10px;}
+.cwa-horas{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.cwa-horas .campo{width:120px;}
+.cwa-horas span{color:var(--ink-3);font-size:13px;}
+.cwa-pessoas{justify-content:flex-end;max-width:360px;}
+.cwa-dica{margin:6px 0 0;font-size:12.5px;color:var(--ink-3);line-height:1.8;}
+.cwa code,.cwa-dica code{font-size:12px;padding:1px 6px;border-radius:6px;background:var(--suave);border:1px solid var(--borda);}
+
+/* prévia da assinatura */
+.cwa-prev{margin-top:4px;padding:14px;border-radius:16px;background:color-mix(in srgb,var(--suave) 70%,transparent);
+  background-image:radial-gradient(color-mix(in srgb,var(--ink-3) 18%,transparent) 1px,transparent 1px);background-size:14px 14px;}
+.cwa-prev small{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--ink-3);margin-bottom:8px;}
+.cwa-bolha{display:inline-block;max-width:320px;padding:8px 12px;border-radius:14px 14px 4px 14px;margin-left:auto;font-size:14px;line-height:1.45;color:#fff;
+  background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));float:right;}
+.cwa-prev::after{content:"";display:block;clear:both;}
+
+/* respostas rápidas */
+.cwa-rr{display:flex;flex-direction:column;gap:10px;}
+.cwa-rr-i{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;border:1px solid var(--borda);background:var(--suave);}
+.cwa-rr-top{display:flex;align-items:center;gap:8px;}
+.cwa-atalho{display:inline-flex;align-items:center;flex:none;border-radius:11px;background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));padding:0 4px 0 10px;color:#fff;font-weight:800;}
+.cwa-atalho input{width:110px;border:0;background:transparent;color:#fff;font:700 14px/1 ui-monospace,SFMono-Regular,Menlo,monospace;padding:9px 6px 9px 2px;outline:0;}
+.cwa-atalho input::placeholder{color:rgba(255,255,255,.65);}
+.cwa-rr-tit{flex:1;min-width:0;}
+.cwa-rr textarea{resize:vertical;min-height:58px;}
+.cwa-x{flex:none;}
+.cwa-mais{align-self:flex-start;}
+
+/* modelos */
+.cwa-mod{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.cwa-mod-i{display:flex;flex-direction:column;gap:6px;}
+.cwa-mod-i b{display:block;font-size:13.5px;}
+.cwa-mod-i small{display:block;font-size:12px;color:var(--ink-3);}
+.cwa-mod-i textarea{resize:vertical;min-height:96px;font-size:13px;line-height:1.5;}
+
+/* grupos e clientes */
+.cwa-gtopo{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.cwa-busca{flex:1 1 220px;margin:0;}
+.cwa-gl{display:flex;flex-direction:column;}
+.cwa-g{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(160px,260px);gap:12px;align-items:center;padding:10px 4px;border-top:1px solid var(--borda);}
+.cwa-g:first-child{border-top:0;}
+.cwa-g .asw-av{position:relative;overflow:hidden;}
+.cwa-g .asw-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.cwa-g-t{min-width:0;}
+.cwa-g-t b{display:block;font-size:13.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cwa-g-t small{display:block;font-size:12px;color:var(--ink-3);}
+.cwa-g.sem .cwa-sel{border-color:color-mix(in srgb,#F59E0B 60%,var(--borda));}
+.cwa-g.mud .cwa-sel{border-color:var(--sb-luz2);box-shadow:0 0 0 3px color-mix(in srgb,var(--sb-luz2) 20%,transparent);}
+.cwa-sel{width:100%;}
+
+/* status (Drive, número) */
+.cwa-drive{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px;border-radius:16px;border:1px solid var(--borda);background:var(--suave);}
+.cwa-drive > i{width:12px;height:12px;border-radius:50%;background:#CBD5E1;}
+.cwa-drive.ok > i{background:#22C55E;box-shadow:0 0 0 4px color-mix(in srgb,#22C55E 22%,transparent);}
+.cwa-drive.ruim > i{background:#EF4444;box-shadow:0 0 0 4px color-mix(in srgb,#EF4444 22%,transparent);}
+.cwa-drive.esp > i{animation:cwaPisca 1.2s ease-in-out infinite;}
+.cwa-drive b{display:block;font-size:14px;}
+.cwa-drive small{display:block;margin-top:2px;font-size:12.5px;color:var(--ink-3);}
+
+/* Central: engrenagem no topo e lista de respostas rápidas ("/") */
+.wz-cfg{display:grid;place-items:center;color:var(--ink-2);text-decoration:none;}
+.wz-cfg svg{width:19px;height:19px;}
+.wz-cfg:hover{color:var(--ink);}
+.wz-men .wz-rr{align-items:flex-start;}
+.wz-men .wz-rr-at{flex:none;padding:3px 8px;border-radius:8px;font:700 12px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));}
+.wz-men .wz-rr em{display:block;white-space:normal;}
+.wz-rr-cfg{display:block;padding:8px 8px 4px;font-size:12px;font-weight:650;color:var(--sb-luz2);text-decoration:none;border-top:1px solid var(--borda);margin-top:4px;}
+
+@media (max-width: 760px){
+  .cwa-cards,.cwa-mod{grid-template-columns:1fr;}
+  .cwa-g{grid-template-columns:auto minmax(0,1fr);}
+  .cwa-g .cwa-sel{grid-column:1 / -1;}
+  .cwa-drive{grid-template-columns:auto minmax(0,1fr);}
+  .cwa-drive .b{grid-column:1 / -1;}
+  .cwa-pessoas{justify-content:flex-start;}
+  .cwa-nav-otto{display:none;}
+}

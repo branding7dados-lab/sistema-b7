@@ -109,7 +109,7 @@ B7.CentralWA = (function () {
     if (!pode) { raiz.innerHTML = '<div class="wz-vazio"><span class="wz-vazio-ic">' + I.wa + '</span><b>As conversas do WhatsApp são da equipe de vídeo</b><p>Peça acesso a um administrador.</p></div>'; return; }
     try { S.clientes = (await sb().from('clientes_resumo').select('id,nome,logo_url').is('deleted_at', null).order('nome')).data || []; } catch (e) {}
     S.contatos = null;
-    await carregarConversas();
+    await Promise.all([carregarConversas(), recarregarConfig()]);
     if (!raiz.isConnected) return;   /* a pessoa já foi para outra tela */
     desenhar();
     ligarTempoReal();
@@ -118,6 +118,11 @@ B7.CentralWA = (function () {
     const alvo = (location.hash.split('?')[1] || '').match(/jid=([^&]+)/);
     if (alvo) abrirConversa(decodeURIComponent(alvo[1]));
   }
+  /* 4.81.0: configurações da equipe (respostas rápidas, fotos automáticas) — #/whatsapp/config */
+  async function recarregarConfig() {
+    try { const r = await sb().from('wa_config').select('respostas,fotos_auto').eq('id', 1).maybeSingle(); S.wcfg = r.data || {}; } catch (e) { S.wcfg = {}; }
+  }
+  const prefWa = () => { try { return B7.pref.ler('wa_cfg', {}) || {}; } catch (e) { return {}; } };
   function sair() {
     if (S.canal) { B7.DB.fecharCanal(S.canal); S.canal = null; }
     pararGravacao(true);
@@ -152,8 +157,9 @@ B7.CentralWA = (function () {
     raiz.innerHTML =
       '<aside class="wz-lista">' +
         '<div class="wz-topo"><h2>Conversas</h2>' +
+          '<a class="wz-ic wz-cfg" href="#/whatsapp/config" title="Configurações do WhatsApp" aria-label="Configurações do WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>' +
           (souAdmin() ? '<div class="menu"><button class="wz-ic" data-menu aria-label="Mais opções">' + I.mais + '</button><div class="lista">' +
-            '<button data-wz="conexao">Conexão do número</button><button data-wz="importar">Puxar conversas recentes</button><button data-wz="drive">Arquivos no Google Drive</button><button data-wz="assistente">🤖 Otto · assistente nos grupos</button></div></div>' : '') +
+            '<a href="#/whatsapp/config">⚙️ Configurações</a><button data-wz="conexao">Conexão do número</button><button data-wz="importar">Puxar conversas recentes</button><button data-wz="drive">Arquivos no Google Drive</button><button data-wz="assistente">🤖 Otto · assistente nos grupos</button></div></div>' : '') +
         '</div>' +
         '<label class="wz-busca">' + I.busca + '<input id="wz-busca" placeholder="Buscar conversa ou cliente" autocomplete="off"></label>' +
         '<div class="wz-filtros" id="wz-filtros"></div>' +
@@ -347,7 +353,7 @@ B7.CentralWA = (function () {
     const mini = m.miniatura ? 'data:image/jpeg;base64,' + m.miniatura : '';
     const id = esc(m.id);
     switch (m.tipo) {
-      case 'imagem': return '<span class="wz-img" data-carregar="img" data-id="' + id + '" data-auto="1">' + (mini ? '<img class="borrada" src="' + mini + '" alt="">' : '<i class="wz-ph">📷</i>') + '</span>';
+      case 'imagem': return '<span class="wz-img" data-carregar="img" data-id="' + id + '"' + (S.wcfg && S.wcfg.fotos_auto === false ? '' : ' data-auto="1"') + '>' + (mini ? '<img class="borrada" src="' + mini + '" alt="">' : '<i class="wz-ph">📷</i>') + '</span>';
       case 'figurinha': return '<span class="wz-fig" data-carregar="img" data-id="' + id + '" data-auto="1"><i class="wz-ph">🙂</i></span>';
       case 'video': return '<span class="wz-vid" data-carregar="video" data-id="' + id + '">' + (mini ? '<img src="' + mini + '" alt="">' : '') + '<i class="wz-play">' + I.play + '</i>' + (m.duracao ? '<em>' + mmss(m.duracao) + '</em>' : '') + '</span>';
       case 'audio': {
@@ -701,7 +707,7 @@ B7.CentralWA = (function () {
         if ((e.key === 'Enter' || e.key === 'Tab') && itens.length) { e.preventDefault(); escolherMencao(itens[Math.max(0, i)].dataset.men); return; }
         if (e.key === 'Escape') { e.preventDefault(); men.hidden = true; return; }
       }
-      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer:coarse)').matches) { e.preventDefault(); enviarTexto(); }
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer:coarse)').matches && prefWa().enter !== false) { e.preventDefault(); enviarTexto(); }
     });
     t.addEventListener('input', () => verMencao(t));
     t.addEventListener('blur', () => setTimeout(() => { const m = raiz && raiz.querySelector('#wz-men'); if (m) m.hidden = true; }, 200));
@@ -1041,6 +1047,18 @@ B7.CentralWA = (function () {
   async function verMencao(t) {
     const men = raiz.querySelector('#wz-men'); if (!men) return;
     const jid = S.aberta;
+    /* 4.81.0: "/" + atalho = resposta rápida da equipe (Configurações do WhatsApp) */
+    const rr = t.value.slice(0, t.selectionStart).match(/(^|\s)\/([^\s/]{0,20})$/);
+    const respostas = (S.wcfg && S.wcfg.respostas) || [];
+    if (rr && respostas.length) {
+      const f = semAc(rr[2]);
+      const achou = respostas.map((r, i) => ({ r, i })).filter(({ r }) => !f || semAc(r.atalho).startsWith(f) || semAc(r.titulo).includes(f)).slice(0, 8);
+      if (achou.length) {
+        men.innerHTML = '<small>Respostas rápidas</small>' + achou.map(({ r, i }, k) => '<button type="button" class="wz-rr' + (k === 0 ? ' on' : '') + '" data-men="rr:' + i + '"><span class="wz-rr-at">/' + esc(r.atalho) + '</span><span>' + esc(r.titulo || r.atalho) + '<em>' + esc(String(r.texto).replace(/\s+/g, ' ').slice(0, 70)) + '</em></span></button>').join('') +
+          (souAdmin() ? '<a class="wz-rr-cfg" href="#/whatsapp/config?aba=respostas">Editar respostas rápidas</a>' : '');
+        men.hidden = false; return;
+      }
+    }
     const m = t.value.slice(0, t.selectionStart).match(/(^|\s)@([^\s@]{0,30})$/);
     if (!m || !jid || !/@g\.us$/.test(jid)) { men.hidden = true; return; }
     const lista = await participantes(jid);
@@ -1053,6 +1071,18 @@ B7.CentralWA = (function () {
   }
   function escolherMencao(pjid) {
     const t = raiz.querySelector('#wz-texto'), men = raiz.querySelector('#wz-men');
+    if (String(pjid).startsWith('rr:')) {
+      const r = ((S.wcfg && S.wcfg.respostas) || [])[Number(pjid.slice(3))]; if (!t || !r) return;
+      const c = S.porJid.get(S.aberta) || {}, cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
+      const nomeCli = cli ? cli.nome : (c.tipo === 'grupo' ? '' : String(c.nome || '').split(' ')[0]);
+      const texto = String(r.texto).replace(/\{cliente\}/g, nomeCli).replace(/\{eu\}/g, String(eu().nome || '').split(' ')[0]).replace(/,\s*!/g, '!').replace(/\s+([,!?])/g, '$1');
+      const antes = t.value.slice(0, t.selectionStart).replace(/\/([^\s/]{0,20})$/, '') + texto;
+      const depois = t.value.slice(t.selectionStart);
+      t.value = antes + depois; t.focus(); t.setSelectionRange(antes.length, antes.length);
+      if (men) men.hidden = true;
+      t.dispatchEvent(new Event('input'));
+      return;
+    }
     const p = (S.part[S.aberta] || []).find(x => x.jid === pjid); if (!t || !p) return;
     const nome = String(p.nome).replace(/^\+/, '').split(/\s+/).slice(0, 2).join(' ');
     const antes = t.value.slice(0, t.selectionStart).replace(/@([^\s@]{0,30})$/, '@' + nome + ' ');
@@ -1215,5 +1245,5 @@ B7.CentralWA = (function () {
   addEventListener('hashchange', () => setTimeout(contarFora, 400));
   setTimeout(contarFora, 4000);
 
-  return { abrir };
+  return { abrir, recarregarConfig, drive: modalDrive, importar };
 })();

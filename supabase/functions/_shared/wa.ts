@@ -206,7 +206,7 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
     if (fone) daEquipe = (await numerosDaEquipe(sb)).has(fone.slice(-8));
   }
   /* a conversa: prévia, hora, não lidas, "esperando resposta" */
-  const { data: c } = await sb.from('wa_conversas').select('ultima_em, nao_lidas, esperando_desde, aguardando_cliente_desde').eq('jid', jid).maybeSingle();
+  const { data: c } = await sb.from('wa_conversas').select('ultima_em, nao_lidas, esperando_desde, aguardando_cliente_desde, arquivada_auto').eq('jid', jid).maybeSingle();
   const maisNova = !c?.ultima_em || new Date(String(l.criada_em)) >= new Date(c.ultima_em);
   const patch: Linha = { atualizado_em: new Date().toISOString() };
   if (maisNova) {
@@ -220,6 +220,8 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
     else { patch.aguardando_cliente_desde = null; if (!c?.esperando_desde) patch.esperando_desde = l.criada_em; }
   }
   if (!l.de_mim && !opcoes.historico) patch.nao_lidas = (c?.nao_lidas || 0) + 1;
+  /* 4.81.0: arquivada sozinha por estar parada — mensagem nova traz de volta para a lista */
+  if (maisNova && !opcoes.historico && c?.arquivada_auto) { patch.arquivada = false; patch.arquivada_auto = false; }
   await sb.from('wa_conversas').update(patch).eq('jid', jid);
   return l;
 }

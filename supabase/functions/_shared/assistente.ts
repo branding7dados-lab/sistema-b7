@@ -636,6 +636,18 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
   return feitas;
 }
 
+/** 4.81.0: Configurações do WhatsApp → "Arquivar sozinho". Conversa sem mensagem há N dias vai para Arquivadas
+ *  (marcada arquivada_auto: volta quando chega mensagem nova). Fixadas, não lidas e quem espera resposta ficam. */
+export async function arquivarParadas(sb: SupabaseClient): Promise<number> {
+  const { data: w } = await sb.from('wa_config').select('auto_arquivar_dias').eq('id', 1).maybeSingle();
+  const dias = Number(w?.auto_arquivar_dias) || 0;
+  if (dias < 1) return 0;
+  const { data } = await sb.from('wa_conversas').update({ arquivada: true, arquivada_auto: true })
+    .eq('arquivada', false).eq('fixada', false).eq('nao_lidas', 0).is('esperando_desde', null)
+    .lt('ultima_em', new Date(Date.now() - dias * 86400_000).toISOString()).select('jid');
+  return (data || []).length;
+}
+
 /** 4.79.2: RELÓGIO do Otto. As tarefas por conta própria (bom dia, resumo do dia, avisos, vigia, esperando o
  *  cliente, aviso no celular) só rodavam quando chegava alguma mensagem — de manhã cedo, sem ninguém escrever,
  *  o bom dia não saía (18/11). Agora o banco chama a cada 5 min (pg_cron → wa-entrada com x-b7-relogio). Cada
@@ -647,7 +659,7 @@ export async function relogio(sb: SupabaseClient): Promise<string[]> {
   const tarefas: [string, Promise<unknown>][] = [
     ['bom dia', talvezBomDia(sb, cfg, false)], ['resumo dia', talvezResumoDia(sb, cfg, false)], ['pendências', talvezResumo(sb, cfg)],
     ['avisos', talvezAvisos(sb, cfg)], ['vigia', talvezVigiar(sb, cfg)], ['esperando cliente', talvezEsperandoCliente(sb, cfg)],
-    ['aviso celular', talvezAvisarCelular(sb, cfg)], ['quem responde', avaliarVezes(sb, cfg)], ['arquivos pro Drive', levarAntigosProDrive(sb)]];
+    ['aviso celular', talvezAvisarCelular(sb, cfg)], ['quem responde', avaliarVezes(sb, cfg)], ['arquivos pro Drive', levarAntigosProDrive(sb)], ['arquivar paradas', arquivarParadas(sb)]];
   const r = await Promise.allSettled(tarefas.map(t => t[1]));
   return r.map((x, i) => tarefas[i][0] + ': ' + (x.status === 'fulfilled' ? 'ok' : 'erro ' + String((x as PromiseRejectedResult).reason).slice(0, 120)));
 }
