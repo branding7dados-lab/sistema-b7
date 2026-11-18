@@ -12,7 +12,7 @@ const CLIENTE_QA = 'fdd4aff8-b62a-446f-9f3a-f2ff1057082d';
 const MAX = Number(process.env.QA_MAX || 60);
 
 /* rotas que só alguns cargos podem abrir: o cargo errado tem que ver "sem acesso", nunca a tela */
-const SO_GESTAO = ['#/usuarios', '#/config', '#/gestao', '#/lixeira', '#/site', '#/super'];
+const SO_GESTAO = ['#/usuarios', '#/gestao', '#/lixeira', '#/site', '#/super'];   /* #/config é "Sua conta": todo mundo abre */
 const SO_EQUIPE = ['#/clientes', '#/kanban', '#/video', '#/gravacoes', '#/whatsapp', '#/painel'];
 
 const normal = (r) => {
@@ -35,14 +35,19 @@ for (const cargo of (process.argv.slice(2).length ? process.argv.slice(2) : CARG
     const fila = [...new Set(['#/', ...(await linksDaTela(pg)).map(normal).filter(Boolean)])];
     if (cargo !== 'cliente') fila.push('#/cliente/' + CLIENTE_QA);
     const vistos = new Set();
+    /* telas do mesmo tipo (#/linha/<id>, #/gravacao/<id>…): 2 de cada bastam */
+    const porTipo = new Map();
+    const tipoDe = (r) => r.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/g, ':id').replace(/\?.*$/, '');
+    const cabe = (r) => { const t = tipoDe(r); if (!/:id/.test(t)) return true; const n = porTipo.get(t) || 0; if (n >= 2) return false; porTipo.set(t, n + 1); return true; };
     while (fila.length && vistos.size < (celular ? Math.min(25, MAX) : MAX)) {
       const rota = fila.shift();
-      if (vistos.has(rota)) continue;
+      if (vistos.has(rota) || !cabe(rota)) continue;
       vistos.add(rota);
       setRota(rota);
       const antes = problemas.length, t0 = Date.now();
       await ir(pg, rota);
       const ms = Date.now() - t0;
+      if (ms > 6000) problemas.push({ rota, tipo: 'lento', texto: 'levou ' + (ms / 1000).toFixed(1) + ' s para abrir' });
       const tela = await olharTela(pg).catch(e => ['não deu para ler a tela: ' + e.message]);
       const novos = problemas.slice(antes);
       const hashFinal = await pg.evaluate(() => location.hash);

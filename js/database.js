@@ -986,7 +986,9 @@ B7.DB = (function () {
         e.rede = true; e.status = status;
         throw e;
       }
-      if (data && data.erro) throw new Error(data.erro);
+      /* 4.78.2: o segundo passo (2 etapas) vem com um `erro` só para o app antigo de Android — aqui ele não é erro:
+         quem chamou mostra o campo do código. Antes, isso trancava fora do navegador quem ligava as 2 etapas. */
+      if (data && data.erro && !data.precisa_2fa) throw new Error(data.erro);
       return data;
     },
 

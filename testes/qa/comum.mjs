@@ -6,6 +6,7 @@
    A senha NUNCA fica no repositório: vem da variável de ambiente QA_SENHA (ou do arquivo apontado por QA_SENHA_ARQ). */
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
+import { createHmac } from 'node:crypto';
 
 export const BASE = process.env.QA_URL || 'https://sistema.branding7.com.br';
 export const CARGOS = ['admin', 'coord', 'designer', 'video', 'cliente'];
@@ -15,6 +16,19 @@ export function senha() {
   const s = process.env.QA_SENHA || (process.env.QA_SENHA_ARQ ? readFileSync(process.env.QA_SENHA_ARQ, 'utf8').trim() : '');
   if (!s) throw new Error('Falta QA_SENHA (ou QA_SENHA_ARQ) com a senha dos usuários de teste.');
   return s;
+}
+
+/** código de 6 números do app autenticador (o qa.admin tem verificação em 2 etapas, como todo admin).
+ *  O segredo vem de QA_TOTP (ou do arquivo QA_TOTP_ARQ) — nunca do repositório. */
+export function codigo2fa() {
+  const seg = (process.env.QA_TOTP || (process.env.QA_TOTP_ARQ ? readFileSync(process.env.QA_TOTP_ARQ, 'utf8') : '')).trim().toUpperCase();
+  if (!seg) return '';
+  const alf = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; let bits = '';
+  for (const ch of seg.replace(/=+$/, '')) bits += alf.indexOf(ch).toString(2).padStart(5, '0');
+  const chave = Buffer.from((bits.match(/.{8}/g) || []).map(b => parseInt(b, 2)));
+  const t = Buffer.alloc(8); t.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
+  const h = createHmac('sha1', chave).update(t).digest(), o = h[h.length - 1] & 15;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1000000).padStart(6, '0');
 }
 
 /** barulho conhecido que não é bug do B7 */
@@ -71,15 +85,28 @@ export async function entrar(pg, cargo) {
   await pg.fill('#lg-user', 'qa.' + cargo);
   await pg.fill('#lg-senha', senha());
   await pg.click('.login-entrar');
+  /* segundo passo (verificação em 2 etapas) */
+  const cod = await pg.waitForSelector('#lg-cod', { timeout: 6000 }).catch(() => null);
+  if (cod) {
+    const c = codigo2fa();
+    if (!c) throw new Error('Esta conta pede código de 2 etapas e falta QA_TOTP/QA_TOTP_ARQ.');
+    await pg.fill('#lg-cod', c);
+  }
   await pg.waitForFunction(() => !document.querySelector('#lg-user') && window.B7 && B7.Auth && B7.Auth.usuario && B7.Auth.usuario(), null, { timeout: 45000 });
   await pg.waitForTimeout(2500);
   await fecharAvisos(pg);
 }
 
-/** abre uma rota e espera a tela assentar */
-export async function ir(pg, rota, espera = 2200) {
+/** abre uma rota e espera a tela assentar: some o "esqueleto" de carregando e aparece conteúdo (até 15 s) */
+export async function ir(pg, rota, espera = 600) {
   await pg.evaluate(r => { location.hash = r; }, rota);
   await pg.waitForTimeout(espera);
+  await pg.waitForFunction(() => {
+    const p = document.querySelector('#painel-dashboard, main') || document.body;
+    const carregando = p.querySelector('[class*="skel"], [class*="esquel"], .esq, .carregando, [aria-busy="true"]');
+    return !carregando && (p.innerText || '').trim().length > 10;
+  }, null, { timeout: 15000 }).catch(() => {});
+  await pg.waitForTimeout(500);
   await fecharAvisos(pg);
 }
 
