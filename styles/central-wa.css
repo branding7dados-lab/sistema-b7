@@ -506,3 +506,18 @@ html[data-theme="dark"] .wz-b.eu .wz-tr-mais{color:#fff;text-decoration:underlin
 .wz-comp textarea{align-self:center;padding:9px 10px;margin:0 6px 0 2px;}
 .wz-comp .wz-env{width:42px;height:42px;margin-left:auto;}
 .wz-comp .wz-env svg{width:19px;height:19px;}
+
+/* 4.83.1: menu da IA na caixa de mensagem (o menu sai da Central e vai para o body — por isso a classe no próprio menu) */
+.lista.wz-ia-lista{min-width:290px;max-width:320px;padding:6px;}
+.lista.wz-ia-lista .wz-ia-rot{display:block;padding:8px 10px 4px;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);}
+.lista.wz-ia-lista .wz-ia-rot + button{margin-top:0;}
+.lista.wz-ia-lista button{display:flex !important;flex-direction:row !important;align-items:center;gap:11px;width:100%;padding:8px 10px;border-radius:12px;text-align:left;white-space:normal;}
+.lista.wz-ia-lista button i{flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--suave);color:var(--ink-2);font-style:normal;}
+.lista.wz-ia-lista button i svg{width:16px;height:16px;}
+.lista.wz-ia-lista button span{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.lista.wz-ia-lista button b{font-size:13.5px;font-weight:650;color:var(--ink);}
+.lista.wz-ia-lista button em{font-style:normal;font-size:11.5px;line-height:1.35;color:var(--ink-3);}
+.lista.wz-ia-lista .wz-ia-sug{background:color-mix(in srgb,var(--sb-luz1) 10%,transparent);margin-bottom:2px;}
+.lista.wz-ia-lista .wz-ia-sug i{color:#fff;background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));}
+.lista.wz-ia-lista button:hover{background:var(--suave);}
+.lista.wz-ia-lista .wz-ia-sug:hover{background:color-mix(in srgb,var(--sb-luz1) 18%,transparent);}

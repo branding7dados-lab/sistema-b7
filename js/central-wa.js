@@ -292,10 +292,14 @@ B7.CentralWA = (function () {
         '<div class="wz-figs" id="wz-figs" hidden></div>' +
         '<div class="wz-men" id="wz-men" hidden></div>' +
         /* 4.69.0: ajuda da IA — sugerir resposta e corrigir o texto (nada é enviado sozinho) */
-        '<div class="menu wz-ia"><button class="wz-ic" data-menu aria-label="Ajuda da IA" title="Sugerir ou corrigir com IA">' + I.ia + '</button><div class="lista">' +
-          '<button data-ia="sugerir"><b>Sugerir resposta</b><small>O Otto escreve um rascunho com base na conversa. Se já tiver texto, ele usa como guia.</small></button><hr>' +
-          '<button data-ia="manter"><b>Corrigir o texto</b><small>Ortografia e pontuação, sem mudar o jeito.</small></button>' +
-          '<button data-ia="formal">Deixar mais formal</button><button data-ia="leve">Deixar mais leve</button><button data-ia="curto">Deixar mais curto</button></div></div>' +
+        '<div class="menu wz-ia"><button class="wz-ic" data-menu aria-label="Ajuda da IA" title="Sugerir ou corrigir com IA">' + I.ia + '</button><div class="lista wz-ia-lista">' +
+          '<small class="wz-ia-rot">O Otto escreve</small>' +
+          '<button data-ia="sugerir" class="wz-ia-sug"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></i><span><b>Sugerir resposta</b><em>Rascunho pela conversa. Se já tiver texto, ele usa como guia.</em></span></button>' +
+          '<small class="wz-ia-rot">Ajustar o que você escreveu</small>' +
+          '<button data-ia="manter"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i><span><b>Corrigir</b><em>Ortografia e pontuação, sem mudar o jeito</em></span></button>' +
+          '<button data-ia="formal"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></i><span><b>Mais formal</b></span></button>' +
+          '<button data-ia="leve"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c2 1.6 5 1.6 7 0M9 10h.01M15 10h.01"/></svg></i><span><b>Mais leve</b></span></button>' +
+          '<button data-ia="curto"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 15h9"/></svg></i><span><b>Mais curto</b></span></button></div></div>' +
         '<div class="wz-ia-aviso" id="wz-ia-aviso" hidden></div>' +
         '<textarea id="wz-texto" rows="1" placeholder="Digite uma mensagem"></textarea>' +
         '<button class="wz-env" id="wz-env" aria-label="Gravar áudio">' + I.mic + '</button>' +
@@ -501,10 +505,12 @@ B7.CentralWA = (function () {
      esses cliques (fase de captura, antes de o menu fechar e sumir). */
   document.addEventListener('click', e => {
     if (!raiz || !raiz.isConnected) return;
-    const alvo = e.target.closest && e.target.closest('[data-wz], [data-emoji]');
+    /* 4.83.1: os botões da IA (sugerir/corrigir) também — antes o clique neles não fazia nada */
+    const alvo = e.target.closest && e.target.closest('[data-wz], [data-emoji], [data-ia]');
     if (!alvo || raiz.contains(alvo) || !alvo.closest('.lista')) return;
     e.preventDefault(); e.stopPropagation();
     if (B7.UI.fecharMenus) B7.UI.fecharMenus();
+    if (alvo.dataset.ia) return ajudaIA(alvo.dataset.ia);
     if (alvo.dataset.emoji) {
       const t = raiz.querySelector('#wz-texto');
       if (t) { t.setRangeText(alvo.dataset.emoji, t.selectionStart, t.selectionEnd, 'end'); t.focus(); t.dispatchEvent(new Event('input')); }
