@@ -614,14 +614,16 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
     const hm = (iso: string) => { const d = new Date(new Date(iso).getTime() - 3 * 3600000); return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
     const txt = lista.map(m => hm(m.criada_em) + ' ' + (daEq(m) ? '[EQUIPE] ' + (m.do_assistente ? 'Otto' : (m.enviada_por_nome || m.autor_nome || 'Branding7')) : '[CLIENTE] ' + (m.autor_nome || 'Cliente')) + ': ' +
       (m.texto ? String(m.texto).replace(/^\*[^*]+:\*\s*/, '').replace(/\s+/g, ' ').slice(0, 280) : '(' + m.tipo + ')')).join('\n');
-    const r = await ia('Você analisa a conversa de WhatsApp entre uma agência (marcados [EQUIPE]) e um cliente ([CLIENTE]) e decide QUEM DEVE A PRÓXIMA RESPOSTA agora. ' +
-      '"cliente" = o cliente pediu algo, perguntou, mandou material ou reclamou e a equipe ainda não resolveu nem respondeu de forma conclusiva ("vou ver", "já te falo" não resolvem). ' +
-      '"equipe" = a equipe pediu aprovação, informação, material ou confirmação e o cliente ainda não respondeu. ' +
+    const r = await ia('Você analisa a conversa de WhatsApp entre uma agência (marcados [EQUIPE]) e um cliente ([CLIENTE]) e decide QUEM DEVE MANDAR A PRÓXIMA MENSAGEM agora. ' +
+      '"equipe" = a EQUIPE deve responder: o cliente pediu algo, perguntou, mandou material ou reclamou e a equipe ainda não resolveu nem respondeu de forma conclusiva ("vou ver", "já te falo" não resolvem). ' +
+      '"cliente" = o CLIENTE deve responder: a equipe enviou algo para aprovar, pediu informação, material ou confirmação e o cliente ainda não respondeu. ' +
       '"ninguem" = nada pendente: o último assunto foi encerrado (ok, obrigado, beleza, emoji, bom dia, figurinha, aviso que não pede resposta). ' +
-      'Responda SÓ um JSON: {"vez":"cliente|equipe|ninguem","motivo":"em até 90 caracteres, o que falta (ex.: Cliente pediu a arte da Black pra hoje / Mandamos o roteiro, falta o cliente aprovar)"}.',
+      'Responda SÓ um JSON: {"deve_responder":"equipe|cliente|ninguem","motivo":"em até 90 caracteres, o que falta (ex.: Cliente pediu a arte da Black pra hoje / Mandamos o roteiro, falta o cliente aprovar)"}.',
       'GRUPO "' + (c.nome || '') + '" (mais antiga primeiro):\n' + txt, 160);
     let j: any = null; try { const t = r.texto; j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (_e) { j = null; }
-    const v = j && ['cliente', 'equipe', 'ninguem'].includes(String(j.vez)) ? String(j.vez) : null;
+    /* vez = QUEM ESTÁ ESPERANDO: se a equipe deve responder, é o cliente que espera (e vice-versa) */
+    const deve = j ? String(j.deve_responder || '') : '';
+    const v = deve === 'equipe' ? 'cliente' : deve === 'cliente' ? 'equipe' : deve === 'ninguem' ? 'ninguem' : null;
     if (!v) continue;   /* IA não respondeu: fica a estimativa da regra; tenta de novo na próxima mensagem */
     /* desde quando: a primeira mensagem do lado que espera, depois da última do outro lado */
     const lado = (eq: boolean) => { let ini: string | null = null; for (let i = lista.length - 1; i >= 0; i--) { if (daEq(lista[i]) === eq) ini = lista[i].criada_em; else if (ini) break; } return ini; };
