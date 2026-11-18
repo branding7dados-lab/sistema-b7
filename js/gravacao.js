@@ -786,8 +786,18 @@ B7.Gravacao = (function () {
     if (!conectado) return;
     if (!ini) { B7.UI.toast('Sem horário: o evento não foi criado no Google. Informe o início para criar.', { tempo: 7000 }); return; }
     try { await B7.DB.criarEventoGoogle(r.ocorrencia_id, 'Grav. ' + ((g && (g.cliente_nome || g.nome)) || ''), iniD.toISOString(), fimD.toISOString(), (g && g.local) || ''); }
-    catch (e) { B7.UI.toast('Data salva no B7, mas não deu pra criar o evento no Google: ' + (e.message || ''), { tempo: 8000 }); }
+    catch (e) {
+      /* 4.78.5 (QA): sem "agenda de escrita" escolhida, toda marcação dava este aviso — e mandava o coordenador mexer
+         numa configuração que é do administrador. Agora só o admin vê (uma vez por sessão); a data fica salva no B7. */
+      const semAgenda = /agenda de escrita/i.test(String(e && e.message || ''));
+      if (semAgenda) {
+        if (!B7.Auth.ehAdmin() || googleAvisado) return;
+        googleAvisado = true;
+      }
+      B7.UI.toast('Data salva no B7, mas não deu pra criar o evento no Google: ' + (e.message || ''), { tempo: 8000 });
+    }
   }
+  let googleAvisado = false;
 
   async function concluir() {
     const total = S.itens.length, feitos = S.itens.filter(i => i.gravado).length, faltam = total - feitos;

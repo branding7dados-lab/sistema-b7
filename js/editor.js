@@ -845,8 +845,14 @@ B7.Editor = (function () {
   }
 
   /* ==================================================== cenas */
+  /* 4.78.5 (QA, grave): "Nova cena" só aparecia depois de regravar a ordem de TODAS as cenas, uma por uma
+     (10–20 s). Nesse tempo cada clique criava outra cena vazia e o texto ia para a cena errada (uma fala foi
+     apagada). Agora: um clique por vez; a cena aparece assim que é criada; a ordem é salva em seguida, só das
+     cenas que mudaram de posição, todas juntas. */
+  let criandoCena = false;
   async function novaCena(roteiroId, posicao) {
-    if (soLeitura()) return;
+    if (soLeitura() || criandoCena) return;
+    criandoCena = true;
     const lista = E.cenas[roteiroId] || (E.cenas[roteiroId] = []);
     try {
       const c = await B7.Save.acao(() => B7.DB.criarCena({
@@ -855,11 +861,11 @@ B7.Editor = (function () {
         texto: '', sugestao_cenas: '', funcao: ''
       }), 'Cena adicionada');
       lista.splice(posicao, 0, c);
-      await persistirOrdemCenas(roteiroId);
       renderEscrita(); renderPrevia();
       const el = document.querySelector('[data-cena="' + c.id + '"] [data-c-campo="texto"]');
       if (el) { el.focus(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
-    } catch (e) {}
+      persistirOrdemCenas(roteiroId);
+    } catch (e) {} finally { criandoCena = false; }
   }
 
   async function duplicarCena(roteiroId, id) {
@@ -873,8 +879,8 @@ B7.Editor = (function () {
         funcao: o.funcao, texto: o.texto, sugestao_cenas: o.sugestao_cenas
       }), 'Cena duplicada');
       lista.splice(i + 1, 0, c);
-      await persistirOrdemCenas(roteiroId);
       renderEscrita(); renderPrevia();
+      persistirOrdemCenas(roteiroId);
     } catch (e) {}
   }
 
@@ -903,9 +909,11 @@ B7.Editor = (function () {
 
   async function persistirOrdemCenas(roteiroId) {
     const lista = E.cenas[roteiroId] || [];
-    lista.forEach((c, i) => c.position = i);
+    const mudaram = [];
+    lista.forEach((c, i) => { if (c.position !== i) mudaram.push({ id: c.id, position: i }); c.position = i; });
+    if (!mudaram.length) return;
     try {
-      await B7.Save.acao(() => B7.DB.reordenarCenas(lista.map(c => ({ id: c.id, position: c.position }))));
+      await B7.Save.acao(() => B7.DB.reordenarCenas(mudaram));
     } catch (e) {}
   }
 

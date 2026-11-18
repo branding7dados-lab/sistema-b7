@@ -414,9 +414,9 @@ B7.DB = (function () {
       return ok(await sb().from('cenas').delete().eq('id', id));
     },
     async reordenarCenas(lista) {
-      for (const c of lista) {
-        ok(await sb().from('cenas').update({ position: c.position }).eq('id', c.id));
-      }
+      /* 4.78.5: em paralelo (antes, uma por vez: 10–20 s num roteiro de 7 cenas com o banco lento) */
+      const r = await Promise.all(lista.map(c => sb().from('cenas').update({ position: c.position }).eq('id', c.id)));
+      r.forEach(ok);
     },
 
     /* Restaura um registro apagado mantendo o mesmo id (usado no Desfazer) */

@@ -228,7 +228,9 @@ B7.Video = (function () {
      chip do resumo é, ele mesmo, um filtro rápido de status/prazo) */
   /* todosMeses (v3.1.0): o quadro de prioridade é a fila inteira, de qualquer mês */
   function baseFiltrada(todosMeses) {
-    const t = F.busca.trim().toLowerCase();
+    /* 4.78.5 (QA): busca sem acento ("edicao" acha "edição") */
+    const sa = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const t = sa(F.busca.trim());
     return demandas.filter(d => {
       /* Descartado nunca aparece na produção normal (Lista/Kanban/
          resumo) — nem via filtro de status. Fica só no arquivo
@@ -240,8 +242,7 @@ B7.Video = (function () {
       if (F.responsavel && F.responsavel !== 'sem' && d.videomaker_id !== F.responsavel) return false;
       if (F.prioridade && (d.prioridade || 'normal') !== F.prioridade) return false;
       if (F.minhaFila && d.videomaker_id !== meuId()) return false;
-      if (t && !((d.titulo || '').toLowerCase().includes(t) || (d.cliente_nome || '').toLowerCase().includes(t) ||
-                 (d.codigo || '').toLowerCase().includes(t))) return false;
+      if (t && !(sa(d.titulo).includes(t) || sa(d.cliente_nome).includes(t) || sa(d.codigo).includes(t))) return false;
       return true;
     });
   }
