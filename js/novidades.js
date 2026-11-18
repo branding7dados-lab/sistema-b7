@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.80.1', versao: '4.80.1', em: '2026-11-18T10:00:00-03:00', rota: 'whatsapp',
+    titulo: 'O Otto entende de quem é a vez de responder',
+    itens: ['Depois que a conversa de um cliente para, o Otto lê as últimas mensagens e decide: o cliente espera a gente, a gente espera o cliente, ou ninguém (quando o cliente só deu "ok", agradeceu ou mandou bom dia).',
+      'Na Central de Conversas, o quadro do lado mostra o que falta em uma frase (ex.: "Cliente pediu a arte da Black pra hoje").',
+      'Os avisos no grupo e no celular seguem esse veredito, então "ok" e "obrigado" não viram mais cobrança.'] },
   { id: 'v-4.78.1', versao: '4.78.1', em: '2026-11-17T22:30:00-03:00', rota: 'whatsapp',
     titulo: 'Lista de demandas mais clara',
     itens: ['Quando vocês pedem ao Otto as demandas de vídeo, a lista vem separada por cliente, com o que está atrasado em destaque e um ícone de situação (em edição, aguardando aprovação, correção).',

@@ -579,6 +579,60 @@ function emSegundoPlano(nome: string, p: Promise<unknown>) {
   const q = p.catch(e => console.log(nome, String(e).slice(0, 300)));
   try { (globalThis as any).EdgeRuntime?.waitUntil(q); } catch (_e) { /* fora do Supabase: segue */ }
 }
+/* =====================================================================
+   4.80.1 — QUEM DEVE A PRÓXIMA RESPOSTA (lendo a conversa)
+   A regra da gravação ("quem falou por último") é só a primeira estimativa. Quando a conversa de um cliente
+   assenta (2 min sem mensagem nova), a IA lê as últimas mensagens e dá o veredito: o CLIENTE espera a gente,
+   a GENTE espera o cliente, ou NINGUÉM (ok, obrigado, bom dia, assunto encerrado). Tudo o que usa essas
+   marcas (vigia, avisos, aviso no celular, bom dia, Central) passa a valer o veredito.
+   ===================================================================== */
+export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Promise<number> {
+  const agora = Date.now();
+  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, ultima_em, vez_avaliada_em, esperando_desde, aguardando_cliente_desde')
+    .not('cliente_id', 'is', null).eq('arquivada', false).not('ultima_em', 'is', null)
+    .lt('ultima_em', new Date(agora - 2 * 60_000).toISOString()).gt('ultima_em', new Date(agora - 14 * 86400_000).toISOString())
+    .order('ultima_em', { ascending: false }).limit(60);
+  const pendentes = ((convs || []) as any[]).filter(c => !c.vez_avaliada_em || c.vez_avaliada_em < c.ultima_em).slice(0, max);
+  if (!pendentes.length) return 0;
+  const fones = new Set((cfg.equipe || []).flatMap(e => fins8(e)));
+  let feitas = 0;
+  for (const c of pendentes) {
+    /* pega a vez desta conversa (dois relógios ao mesmo tempo não avaliam duas vezes) */
+    const marca = new Date().toISOString();
+    let q = sb.from('wa_conversas').update({ vez_avaliada_em: marca }).eq('jid', c.jid);
+    q = c.vez_avaliada_em ? q.eq('vez_avaliada_em', c.vez_avaliada_em) : q.is('vez_avaliada_em', null);
+    const { data: vez } = await q.select('jid');
+    if (!vez?.length) continue;
+    const { data: ms } = await sb.from('wa_mensagens').select('de_mim, do_assistente, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em')
+      .eq('jid', c.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(16);
+    const lista = ((ms || []) as any[]).reverse();
+    if (!lista.length) continue;
+    const ids = [...new Set(lista.filter(m => !m.de_mim && m.autor_jid).map(m => String(m.autor_jid)))];
+    const { data: cts } = ids.length ? await sb.from('wa_contatos').select('jid, numero').in('jid', ids) : { data: [] as any[] };
+    const foneDe = new Map(((cts || []) as any[]).map(x => [x.jid, dig(x.numero)]));
+    const daEq = (m: any) => !!m.de_mim || fones.has(fim8(foneDe.get(m.autor_jid) || m.autor_jid));
+    const hm = (iso: string) => { const d = new Date(new Date(iso).getTime() - 3 * 3600000); return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
+    const txt = lista.map(m => hm(m.criada_em) + ' ' + (daEq(m) ? '[EQUIPE] ' + (m.do_assistente ? 'Otto' : (m.enviada_por_nome || m.autor_nome || 'Branding7')) : '[CLIENTE] ' + (m.autor_nome || 'Cliente')) + ': ' +
+      (m.texto ? String(m.texto).replace(/^\*[^*]+:\*\s*/, '').replace(/\s+/g, ' ').slice(0, 280) : '(' + m.tipo + ')')).join('\n');
+    const r = await ia('Você analisa a conversa de WhatsApp entre uma agência (marcados [EQUIPE]) e um cliente ([CLIENTE]) e decide QUEM DEVE A PRÓXIMA RESPOSTA agora. ' +
+      '"cliente" = o cliente pediu algo, perguntou, mandou material ou reclamou e a equipe ainda não resolveu nem respondeu de forma conclusiva ("vou ver", "já te falo" não resolvem). ' +
+      '"equipe" = a equipe pediu aprovação, informação, material ou confirmação e o cliente ainda não respondeu. ' +
+      '"ninguem" = nada pendente: o último assunto foi encerrado (ok, obrigado, beleza, emoji, bom dia, figurinha, aviso que não pede resposta). ' +
+      'Responda SÓ um JSON: {"vez":"cliente|equipe|ninguem","motivo":"em até 90 caracteres, o que falta (ex.: Cliente pediu a arte da Black pra hoje / Mandamos o roteiro, falta o cliente aprovar)"}.',
+      'GRUPO "' + (c.nome || '') + '" (mais antiga primeiro):\n' + txt, 160);
+    let j: any = null; try { const t = r.texto; j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (_e) { j = null; }
+    const v = j && ['cliente', 'equipe', 'ninguem'].includes(String(j.vez)) ? String(j.vez) : null;
+    if (!v) continue;   /* IA não respondeu: fica a estimativa da regra; tenta de novo na próxima mensagem */
+    /* desde quando: a primeira mensagem do lado que espera, depois da última do outro lado */
+    const lado = (eq: boolean) => { let ini: string | null = null; for (let i = lista.length - 1; i >= 0; i--) { if (daEq(lista[i]) === eq) ini = lista[i].criada_em; else if (ini) break; } return ini; };
+    const desdeCli = v === 'cliente' ? (c.esperando_desde || lado(false) || lista[lista.length - 1].criada_em) : null;
+    const desdeEq = v === 'equipe' ? (c.aguardando_cliente_desde || lado(true) || lista[lista.length - 1].criada_em) : null;
+    await sb.from('wa_conversas').update({ vez: v, vez_motivo: String(j.motivo || '').slice(0, 120) || null, esperando_desde: desdeCli, aguardando_cliente_desde: desdeEq }).eq('jid', c.jid);
+    feitas++;
+  }
+  return feitas;
+}
+
 /** 4.79.2: RELÓGIO do Otto. As tarefas por conta própria (bom dia, resumo do dia, avisos, vigia, esperando o
  *  cliente, aviso no celular) só rodavam quando chegava alguma mensagem — de manhã cedo, sem ninguém escrever,
  *  o bom dia não saía (18/11). Agora o banco chama a cada 5 min (pg_cron → wa-entrada com x-b7-relogio). Cada
@@ -586,11 +640,11 @@ function emSegundoPlano(nome: string, p: Promise<unknown>) {
 export async function relogio(sb: SupabaseClient): Promise<string[]> {
   const cfg = await lerConfig(sb);
   if (!cfg?.ativo) return ['desligado'];
-  if (fdsQuieto(cfg)) return ['fim de semana em silêncio'];
+  if (fdsQuieto(cfg)) return ['fim de semana em silêncio', 'quem responde: ' + await avaliarVezes(sb, cfg).catch(() => 0)];
   const tarefas: [string, Promise<unknown>][] = [
     ['bom dia', talvezBomDia(sb, cfg, false)], ['resumo dia', talvezResumoDia(sb, cfg, false)], ['pendências', talvezResumo(sb, cfg)],
     ['avisos', talvezAvisos(sb, cfg)], ['vigia', talvezVigiar(sb, cfg)], ['esperando cliente', talvezEsperandoCliente(sb, cfg)],
-    ['aviso celular', talvezAvisarCelular(sb, cfg)]];
+    ['aviso celular', talvezAvisarCelular(sb, cfg)], ['quem responde', avaliarVezes(sb, cfg)]];
   const r = await Promise.allSettled(tarefas.map(t => t[1]));
   return r.map((x, i) => tarefas[i][0] + ': ' + (x.status === 'fulfilled' ? 'ok' : 'erro ' + String((x as PromiseRejectedResult).reason).slice(0, 120)));
 }

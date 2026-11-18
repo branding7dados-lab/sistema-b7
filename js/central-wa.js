@@ -497,7 +497,7 @@ B7.CentralWA = (function () {
     const marcar = async (campo, valor) => { try { await sb().rpc('wa_conversa_marcar', { p_jid: c.jid, p_campo: campo, p_valor: valor == null ? null : String(valor) }); } catch (e) { B7.UI.toast('Não deu certo.', { tipo: 'erro' }); } };
     if (a === 'fixar') { c.fixada = !c.fixada; await marcar('fixada', c.fixada); }
     if (a === 'arquivar') { c.arquivada = !c.arquivada; await marcar('arquivada', c.arquivada); B7.UI.toast(c.arquivada ? 'Conversa arquivada.' : 'Conversa de volta à lista.'); }
-    if (a === 'semespera') { c.esperando_desde = null; await marcar('sem_espera'); }
+    if (a === 'semespera') { c.esperando_desde = null; c.aguardando_cliente_desde = null; c.vez = 'ninguem'; c.vez_motivo = 'Marcado pela equipe como respondido'; await marcar('sem_espera'); }
     if (a === 'vincular') return vincularCliente(c);
     pintarLista(); pintarFiltros(); pintarChat(); pintarMensagens();
   }
@@ -821,8 +821,11 @@ B7.CentralWA = (function () {
     const minC = c.aguardando_cliente_desde ? (Date.now() - new Date(c.aguardando_cliente_desde)) / 60000 : 0;
     const txtEspera = c.esperando_desde ? (min < 1 ? 'Esperando agora' : 'Esperando há ' + durTx(min))
       : c.aguardando_cliente_desde && minC >= 60 ? 'Aguardando o cliente há ' + durTx(minC) : 'Em dia';
-    const subEspera = c.esperando_desde ? 'O cliente espera a nossa resposta desde ' + new Date(c.esperando_desde).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às')
+    let subEspera = c.esperando_desde ? 'O cliente espera a nossa resposta desde ' + new Date(c.esperando_desde).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às')
       : c.aguardando_cliente_desde && minC >= 60 ? 'A última mensagem foi da equipe — a vez é do cliente.' : 'Ninguém esperando resposta nesta conversa.';
+    /* 4.80.1: o Otto leu a conversa — mostra o que falta, nas palavras dele */
+    const vezAtual = c.vez && ((c.vez === 'cliente') === !!c.esperando_desde) && ((c.vez === 'equipe') === !!c.aguardando_cliente_desde);
+    if (vezAtual && c.vez_motivo) subEspera = (c.vez === 'ninguem' ? 'Assunto encerrado: ' : '') + c.vez_motivo;
     const quemUlt = ult ? (ult.do_assistente ? 'Otto' : ult.de_mim ? (ult.enviada_por_nome ? ult.enviada_por_nome.split(' ')[0] : 'Você') : (ult.autor_nome || c.nome || 'Contato').split(' ')[0]) : '';
     const resumoUlt = ult ? (ult.texto ? semCodigos(ult.texto) : ({ imagem: '📷 Foto', video: '🎬 Vídeo', audio: '🎤 Áudio', figurinha: '💟 Figurinha', documento: '📄 ' + (ult.midia_nome || 'Documento') })[ult.tipo] || 'Mensagem') : '';
     const fotos = msgs.filter(m => (m.tipo === 'imagem' || m.tipo === 'video') && m.miniatura).slice(-6).reverse();
