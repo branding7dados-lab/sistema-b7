@@ -161,8 +161,7 @@ B7.CentralWA = (function () {
       '<aside class="wz-lista">' +
         '<div class="wz-topo"><h2>Conversas</h2>' +
           '<a class="wz-ic wz-cfg" href="#/whatsapp/config" title="Configurações do WhatsApp" aria-label="Configurações do WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>' +
-          (souAdmin() ? '<div class="menu"><button class="wz-ic" data-menu aria-label="Mais opções">' + I.mais + '</button><div class="lista">' +
-            '<a href="#/whatsapp/config">⚙️ Configurações</a><button data-wz="conexao">Conexão do número</button><button data-wz="importar">Puxar conversas recentes</button><button data-wz="drive">Arquivos no Google Drive</button><button data-wz="assistente">🤖 Otto · assistente nos grupos</button></div></div>' : '') +
+          /* 4.81.3: o menu ⋮ saiu — número, histórico, Drive e Otto ficam nas Configurações (engrenagem) */
         '</div>' +
         '<label class="wz-busca">' + I.busca + '<input id="wz-busca" placeholder="Buscar conversa ou cliente" autocomplete="off"></label>' +
         '<div class="wz-filtros" id="wz-filtros"></div>' +

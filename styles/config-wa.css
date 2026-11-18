@@ -242,3 +242,21 @@
   .cwa-tl-ic{width:38px;height:38px;font-size:16px;}
   .cwa-tl::before{top:18px;}
 }
+
+/* 4.81.3: o Otto dentro das Configurações do WhatsApp */
+.cwa-nav-grupo{margin-top:6px;padding-top:8px;border-top:1px solid var(--borda);display:flex;flex-direction:column;gap:2px;}
+.cwa-nav-rot{display:flex;align-items:center;gap:8px;padding:6px 12px 6px;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);}
+.cwa-nav-rot svg{width:15px;height:15px;opacity:.8;}
+.cwa-nav-rot i{margin-left:auto;width:8px;height:8px;border-radius:50%;background:#94A3B8;}
+.cwa-nav-rot i.on{background:#22C55E;box-shadow:0 0 0 3px color-mix(in srgb,#22C55E 22%,transparent);}
+.asw-nav .cwa-sub{padding:8px 12px 8px 14px;font-size:13px;}
+.asw-nav .cwa-sub svg{width:16px;height:16px;}
+.asw.asw-emb{max-width:none;margin:0;padding:0;gap:16px;}
+.cwa-otto{min-width:0;}
+.cwa-otto .asw-carrega{min-height:240px;}
+.asw-emb-liga{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;
+  background:linear-gradient(125deg,color-mix(in srgb,var(--sb-luz1) 18%,var(--card)),var(--card));}
+.asw-emb-liga b{display:block;font:750 16px/1.25 'B7 Titulo',system-ui;}
+.asw-emb-liga small{display:block;margin-top:3px;font-size:12.5px;color:var(--ink-3);}
+.asw-emb-liga:not(.on){filter:saturate(.4);}
+@media (max-width:760px){ .asw-nav .cwa-nav-grupo{flex-direction:row;border-top:0;margin:0;padding:0;} .cwa-nav-rot{display:none;} }

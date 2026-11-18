@@ -226,6 +226,8 @@ B7.Rota = (function () {
        WhatsApp Web que rodava dentro do programa saiu */
     if (partes[0] === 'whatsapp' && B7.CentralWA) {
       mostrar('tela-dashboard');
+      /* 4.81.3: o Otto mora dentro das Configurações do WhatsApp */
+      if (partes[1] === 'assistente' && B7.ConfigWA) return B7.ConfigWA.abrir(new URLSearchParams('aba=otto-geral'));
       if (partes[1] === 'assistente' && B7.AssistenteWA) return B7.AssistenteWA.abrir();
       if (partes[1] === 'config' && B7.ConfigWA) return B7.ConfigWA.abrir(params);
       return B7.CentralWA.abrir();

@@ -35,12 +35,16 @@ B7.AssistenteWA = (function () {
   });
   const regrasTexto = l => l.map(r => (r.tipo ? r.tipo + ': ' : '') + r.texto).join('\n');
 
-  async function abrir() {
-    const painel = document.getElementById('painel-dashboard'); if (!painel) return;
-    if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['WhatsApp', 'Assistente']);
-    if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/whatsapp');
+  /* 4.81.3: a tela do Otto também mora DENTRO das Configurações do WhatsApp (EMB = o lugar onde ela se desenha;
+     a navegação e o topo são das Configurações). Sozinha (#/whatsapp/assistente) continua igual. */
+  let EMB = null;
+  async function abrir(opts) {
+    EMB = opts && opts.el ? opts.el : null;
+    const painel = EMB || document.getElementById('painel-dashboard'); if (!painel) return;
+    if (!EMB && B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['WhatsApp', 'Assistente']);
+    if (!EMB && B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/whatsapp');
     const adm = !!(B7.Auth && (B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin && B7.Auth.ehAdmin()));
-    painel.innerHTML = '<div class="asw" id="asw"><div class="asw-carrega"><i></i>Abrindo o assistente…</div></div>';
+    painel.innerHTML = '<div class="asw' + (EMB ? ' asw-emb' : '') + '" id="asw"><div class="asw-carrega"><i></i>Abrindo o assistente…</div></div>';
     raiz = painel.querySelector('#asw');
     if (!adm) { raiz.innerHTML = '<div class="asw-vazio"><b>Só o administrador configura o assistente.</b></div>'; return; }
     const desde7 = new Date(Date.now() - 7 * 864e5).toISOString();
@@ -58,7 +62,7 @@ B7.AssistenteWA = (function () {
     if (!raiz.isConnected) return;
     if (c.error || !c.data) { raiz.innerHTML = '<div class="asw-vazio"><b>Não consegui abrir</b><p>' + esc((c.error && c.error.message) || 'Configuração não encontrada.') + '</p></div>'; return; }
     const cfg = c.data;
-    S = { cfg: JSON.parse(JSON.stringify(cfg)), orig: JSON.stringify(cfg), aba: S && S.aba && S.aba !== 'grupos' ? S.aba : 'geral', ap: ap.data || [], dv: dv.data || [], reg: rg.data || [], grupos: gr.data || [],
+    S = { cfg: JSON.parse(JSON.stringify(cfg)), orig: JSON.stringify(cfg), aba: opts && opts.aba ? opts.aba : S && S.aba && S.aba !== 'grupos' ? S.aba : 'geral', ap: ap.data || [], dv: dv.data || [], reg: rg.data || [], grupos: gr.data || [],
       regras: regrasDe(cfg.regras), busca: '', todosGrupos: tg.data || [], perfis: (pf.data || []).filter(p => !/teste/i.test(p.nome || '')), mem: mm.data || [], clientes: cl.data || [], memFiltro: '', teste: [], testeJid: (gr.data || [])[0] ? gr.data[0].jid : '', testeEquipe: false };
     if (!S.cfg.horario) S.cfg.horario = { ativo: false, ini: '08:00', fim: '18:00', dias: [1, 2, 3, 4, 5], mensagem: '' };
     /* 4.77.2: o "original" é o que a tela mostra depois de arrumar (regras reescritas, horário padrão) —
@@ -146,6 +150,15 @@ B7.AssistenteWA = (function () {
     const ABAS = [['geral', 'Visão geral', S.dv.length || null], ['velocidade', 'Velocidade e voz'], ['jeito', 'Personalidade'], ['equipe', 'Equipe', (c.equipe || []).length],
       ['clientes', 'Clientes e grupos', ativos + '/' + S.grupos.length], ['saber', 'Conhecimento', (S.mem || []).length + S.ap.length || null], ['controle', 'Permissões', (c.ferramentas_off || []).length ? (FERRS.length - (c.ferramentas_off || []).length) + '/' + FERRS.length : null], ['testar', 'Testar']];
     const nome = esc((c.nome || 'Otto').split(' ')[0]);
+    if (EMB) {
+      raiz.innerHTML = (S.aba === 'geral' ? '<section class="asw-bl asw-emb-liga' + (c.ativo ? ' on' : '') + '"><span class="asw-av p">' + esc(ini(c.nome)) + '</span><div><b>' + esc(c.nome || 'Assistente') + '</b><small>' +
+          (c.ativo ? 'Ligado e de olho no WhatsApp da Branding7' : 'Desligado: não responde ninguém') + ' · ' + nHoje + ' resposta(s) hoje' + (S.dv.length ? ' · ' + S.dv.length + ' dúvida(s) esperando' : '') + '</small></div>' +
+          '<label class="asw-tg" title="' + (c.ativo ? 'Desligar' : 'Ligar') + ' o ' + nome + '"><input type="checkbox" data-c="ativo"' + (c.ativo ? ' checked' : '') + '><span></span></label></section>' : '') +
+        '<section class="asw-corpo">' + corpo() + '</section>' +
+        '<div class="asw-barra"><span>Alterações do ' + nome + ' ainda não salvas</span><button class="b" data-desfazer>Desfazer</button><button class="b pri" id="asw-salvar" data-salvar>Salvar</button></div>';
+      marcarSujo();
+      return;
+    }
     raiz.innerHTML =
       '<header class="asw-hero' + (c.ativo ? ' on' : '') + '">' +
         '<a class="asw-volta" href="#/whatsapp">‹ Conversas</a>' +
@@ -516,5 +529,8 @@ B7.AssistenteWA = (function () {
     marcarSujo();
   }
 
-  return { abrir };
+  /* para as Configurações do WhatsApp: trocar de seção sem recarregar e saber se há algo por salvar */
+  function irPara(aba) { if (!S || !raiz || !raiz.isConnected) return false; S.aba = aba; desenhar(); return true; }
+  const temMudanca = () => !!(S && raiz && raiz.isConnected && mudou());
+  return { abrir, irPara, temMudanca, ABAS_OTTO: [['geral', 'Visão geral'], ['velocidade', 'Velocidade e voz'], ['jeito', 'Personalidade'], ['equipe', 'Equipe'], ['clientes', 'Clientes e grupos'], ['saber', 'Conhecimento'], ['controle', 'Permissões'], ['testar', 'Testar']], icone };
 })();

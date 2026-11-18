@@ -101,6 +101,15 @@ B7.ConfigWA = (function () {
     ]);
     if (!S || !raiz || !raiz.isConnected) return;
     S.estado = e || {}; S.drive = d || {}; S.uso = { drive: a, sistema: b ? b.length : null, bytes: b ? b.reduce((s, x) => s + (Number(x.midia_tamanho) || 0), 0) : null };
+    if (String(S.aba).startsWith('otto-')) {   /* não redesenha por cima do Otto aberto: só o topo */
+      const e2 = S.estado, on = e2 && e2.estado === 'open', pt = raiz.querySelector('.asw-id p'), bola = raiz.querySelector('.cwa-av i');
+      if (pt) pt.textContent = on ? 'Número ' + (e2.numero ? '+' + e2.numero : '') + ' conectado e recebendo mensagens' : 'Número desconectado — as mensagens não estão chegando';
+      if (bola) bola.className = on ? '' : 'off';
+      const dds = raiz.querySelectorAll('.asw-stats dd');
+      if (dds[2] && S.uso.drive != null) dds[2].textContent = S.uso.drive;
+      if (dds[3] && S.uso.bytes != null) { dds[3].textContent = tam(S.uso.bytes); dds[3].parentElement.classList.toggle('alerta', S.uso.bytes > 50e6); }
+      return;
+    }
     desenhar();
   }
 
@@ -172,17 +181,21 @@ B7.ConfigWA = (function () {
         '</dl>' : '') + '</header>' +
       '<div class="asw-casca">' +
         '<nav class="asw-nav" aria-label="Seções">' + ABAS.map(([k, r, n]) => '<button class="' + (S.aba === k ? 'on' : '') + '" data-aba="' + k + '"' + (S.aba === k ? ' aria-current="page"' : '') + '>' + icone(k) + '<span>' + r + '</span>' + (n != null ? '<b>' + n + '</b>' : '') + '</button>').join('') +
-          (S.adm ? '<a class="cwa-nav-otto" href="#/whatsapp/assistente">' + icone('otto') + '<span>' + esc(S.ottoNome) + ' · assistente</span><em>›</em></a>' : '') + '</nav>' +
+          (S.adm && B7.AssistenteWA && B7.AssistenteWA.ABAS_OTTO ? '<div class="cwa-nav-grupo"><span class="cwa-nav-rot">' + icone('otto') + esc(S.ottoNome) + ' · assistente' + '<i class="' + (S.ottoAtivo ? 'on' : '') + '" title="' + (S.ottoAtivo ? 'Ligado' : 'Desligado') + '"></i></span>' +
+            B7.AssistenteWA.ABAS_OTTO.map(([k, r]) => '<button class="cwa-sub' + (S.aba === 'otto-' + k ? ' on' : '') + '" data-aba="otto-' + k + '"' + (S.aba === 'otto-' + k ? ' aria-current="page"' : '') + '>' + B7.AssistenteWA.icone(k) + '<span>' + r + '</span></button>').join('') + '</div>' : '') + '</nav>' +
         '<section class="asw-corpo">' + corpo() + '</section>' +
       '</div>' +
       '<div class="asw-barra" aria-hidden="true"><span>Alterações ainda não salvas</span><button class="b" data-desfazer>Desfazer</button><button class="b pri" data-salvar>Salvar</button></div>';
     raiz.scrollTop = sc;
+    const host = raiz.querySelector('#cwa-otto');
+    if (host && B7.AssistenteWA) B7.AssistenteWA.abrir({ el: host, aba: S.aba.slice(5) });
     if (B7.Escolha) B7.Escolha.melhorar(raiz);
     marcarSujo();
   }
 
   function corpo() {
     const w = S.w, a = S.a, p = S.p;
+    if (String(S.aba).startsWith('otto-')) return '<div id="cwa-otto" class="cwa-otto"><div class="asw-carrega"><i></i>Abrindo o ' + esc(S.ottoNome) + '…</div></div>';
     if (S.aba === 'geral') {
       const e = S.estado, on = e && e.estado === 'open', d = S.drive || {}, dOk = d.conectado && d.status === 'ativa';
       const semCli = S.grupos.filter(g => !g.cliente_id && !g.arquivada).length;
@@ -196,7 +209,7 @@ B7.ConfigWA = (function () {
           card('avisos', 'Aviso de cliente esperando', a && a.push_espera_min > 0 ? 'ok' : 'meio', a && a.push_espera_min > 0 ? 'No celular depois de ' + a.push_espera_min + ' min sem resposta' : 'Aviso no celular desligado', 'Ajustar') +
         '</div>') +
         bloco('Atalhos', '',
-          '<div class="cwa-atalhos"><button class="b contorno" data-acao="importar">Puxar conversas recentes</button><a class="b contorno" href="#/whatsapp/assistente">Abrir o ' + esc(S.ottoNome) + '</a><button class="b contorno" data-aba="respostas">Criar resposta rápida</button></div>');
+          '<div class="cwa-atalhos"><button class="b contorno" data-acao="importar">Puxar conversas recentes</button><button class="b contorno" data-aba="otto-geral">Abrir o ' + esc(S.ottoNome) + '</button><button class="b contorno" data-aba="respostas">Criar resposta rápida</button></div>');
     }
     if (S.aba === 'meu') {
       const nomeAss = esc(p.nome || primeiro(eu().nome) || 'Seu nome');
@@ -319,6 +332,7 @@ B7.ConfigWA = (function () {
   }
   function digitou(e) {
     const t = e.target;
+    if (t.closest && t.closest('#cwa-otto')) return;   /* a parte do Otto cuida dos próprios campos */
     if (t.dataset.busca != null) { S.busca = t.value; const pos = t.selectionStart; desenhar(); const i = raiz.querySelector('[data-busca]'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } return; }
     if (t.dataset.g) { const g = S.grupos.find(x => x.jid === t.dataset.g); if (g && (g.cliente_id || '') === t.value) delete S.gMud[g.jid]; else S.gMud[t.dataset.g] = t.value; t.closest('.cwa-g').classList.toggle('mud', S.gMud[t.dataset.g] !== undefined); return marcarSujo(); }
     if (t.dataset.r != null) {
@@ -343,7 +357,22 @@ B7.ConfigWA = (function () {
   }
   async function clique(e) {
     const t = e.target;
-    const ab = t.closest('[data-aba]'); if (ab) { S.aba = ab.dataset.aba; desenhar(); raiz.querySelector('.asw-corpo') && window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    if (t.closest('#cwa-otto')) return;   /* cliques dentro do Otto são dele */
+    const ab = t.closest('[data-aba]');
+    if (ab) {
+      const nova = ab.dataset.aba, eraOtto = String(S.aba).startsWith('otto-'), vaiOtto = nova.startsWith('otto-');
+      if (nova === S.aba) return;
+      /* entre seções do Otto: troca só o miolo (não perde o que está sendo editado) */
+      if (eraOtto && vaiOtto && B7.AssistenteWA && B7.AssistenteWA.irPara(nova.slice(5))) {
+        S.aba = nova; raiz.querySelectorAll('.asw-nav [data-aba]').forEach(b => { const on = b.dataset.aba === nova; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+        try { history.replaceState(null, '', '#/whatsapp/config?aba=' + nova); } catch (x) { /* segue */ }
+        return;
+      }
+      if (eraOtto && B7.AssistenteWA && B7.AssistenteWA.temMudanca() && !(await B7.UI.confirmar({ titulo: 'Sair sem salvar?', texto: 'Há mudanças no ' + S.ottoNome + ' que ainda não foram salvas.', confirmar: 'Sair sem salvar', perigo: true }))) return;
+      if (!eraOtto && mudou() && vaiOtto) B7.UI.toast('Suas mudanças daqui continuam marcadas — salve antes de sair da tela.');
+      S.aba = nova; try { history.replaceState(null, '', '#/whatsapp/config?aba=' + nova); } catch (x) { /* segue */ }
+      desenhar(); window.scrollTo({ top: 0, behavior: 'smooth' }); return;
+    }
     if (t.closest('[data-salvar]')) return salvar();
     if (t.closest('[data-desfazer]')) { const o = JSON.parse(S.orig); S.w = o.w; S.a = o.a; S.p = o.p; S.gMud = {}; return desenhar(); }
     const di = t.closest('[data-dia]'); if (di && S.a) { const h = S.a.horario; const d = Number(di.dataset.dia); h.dias = (h.dias || []).map(Number); h.dias = h.dias.includes(d) ? h.dias.filter(x => x !== d) : h.dias.concat(d); return desenhar(); }
