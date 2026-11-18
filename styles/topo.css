@@ -308,3 +308,14 @@ html .fundo-modal.tp-folha .modal:has(.tc){max-height:94vh;max-height:94dvh;}
 .tp-folha .tc-av{width:76px;height:76px;}
 .tp-folha .tc-cab{gap:8px;padding-bottom:16px;}
 .tp-folha .tp-item.tc-item{min-height:58px;}
+
+/* 4.78.4 (QA): em celular estreito (≤ 420 px) os ícones do topo não cabiam — o "+" saía cortado na borda e o
+   título da tela virava um caractere solto. Some o título (a tela já mostra o nome grande) e o "?" de ajuda
+   (a Ajuda continua no menu da conta); o selo das Novidades fica só com o número. */
+@media (max-width:420px){
+  .topo-global .topo-ctx{display:none;}
+  .topo-global .aj-bt{display:none;}
+  .topo-global .nv-topo{padding:0 4px;margin-right:0;}
+  .topo-global .nv-topo svg{display:none;}
+  .topo.topo-global{gap:2px;}
+}

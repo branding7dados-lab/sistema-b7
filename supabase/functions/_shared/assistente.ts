@@ -696,6 +696,12 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
     modo = 'sem_marcacao';
   }
   if (modo !== 'ordem' && !dentroDoHorario(cfg.horario)) modo = 'fora_horario';
+  /* 4.78.4 (QA): fora do horário, o aviso "o time já encerrou" vai UMA vez — não a cada mensagem, e nunca para um "ok" */
+  if (modo === 'fora_horario') {
+    if (ehSoSocial(texto)) return;
+    const { count } = await sb.from('wa_mensagens').select('id', { count: 'exact', head: true }).eq('jid', jid).eq('do_assistente', true).gte('criada_em', new Date(Date.now() - 8 * 3600_000).toISOString());
+    if ((count || 0) > 0) return;
+  }
 
   const autor = String(raw.pushName || (daCasa?.nome) || 'alguém do grupo');
   /* 4.57.0: a equipe pedindo um documento no grupo do cliente → o PDF vai ali mesmo */
@@ -775,6 +781,7 @@ export async function testar(sb: SupabaseClient, jid: string, texto: string, aut
   const { data: conv } = await sb.from('wa_conversas').select('jid, nome, cliente_id').eq('jid', jid).maybeSingle();
   if (!conv) return { erro: 'Grupo não encontrado.' };
   const modo = comoEquipe ? 'ordem' : dentroDoHorario(cfg.horario) ? 'marcado' : 'fora_horario';
+  if (modo === 'fora_horario' && ehSoSocial(texto)) return { resposta: '(ficaria quieto: é só um "ok" fora do horário)', perguntaEquipe: null, modo, provedor: null, ms: 0 };
   const r = await pensar(sb, cfg, conv, texto, autor || 'Cliente', modo);
   await registrar(sb, { tipo: 'teste', jid, grupo: conv.nome, autor: autor || 'teste', pergunta: texto.slice(0, 800), resposta: r.resposta.slice(0, 1500), ...usoDe(r.saida) });
   if (!r.saida.texto) return { erro: 'A IA não respondeu agora. Tente de novo em instantes.' };
