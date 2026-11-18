@@ -637,8 +637,16 @@ B7.Video = (function () {
       : '') + '</p>' +
       (visiveis.length
         ? (F.vista === 'lista' ? tabelaHTML(visiveis) : F.vista === 'prioridade' ? prioridadeHTML(visiveis) : quadroHTML(visiveis))
-        : '<div class="estado-b7"><b>Nenhuma demanda com esses filtros.</b>' +
-          '<p>Ajuste a busca, o mês ou os filtros ativos.</p></div>');
+        : (() => {
+            /* 4.79.1 (QA): tudo o que sobrou está entregue (escondido por padrão) — dizer isso, não "ajuste os filtros" */
+            const ent = !F.status && !F.prazo ? baseFiltrada().filter(d => d.editing_status === 'entregue').length : 0;
+            return ent
+              ? '<div class="estado-b7"><b>Tudo entregue por aqui 🎉</b><p>' + ent + (ent === 1 ? ' demanda entregue fica' : ' demandas entregues ficam') +
+                ' escondida' + (ent === 1 ? '' : 's') + ' da lista. <button class="cb-link" data-ver-entregues>Ver entregues</button></p></div>'
+              : '<div class="estado-b7"><b>Nenhuma demanda com esses filtros.</b><p>Ajuste a busca, o mês ou os filtros ativos.</p></div>';
+          })());
+    const ve = cx.querySelector('[data-ver-entregues]');
+    if (ve) ve.onclick = () => { F.status = 'entregue'; guardarFiltros(); desenharArea(filtrar(baseFiltrada())); desenharResumo(baseFiltrada()); };
     ligarArea(cx);
     /* entrada em cascata a cada troca (filtro, etapa, vista, busca) */
     if (B7.recargaSilenciosa) { cx.classList.remove('vd-troca'); return; }
@@ -2481,6 +2489,12 @@ B7.Video = (function () {
      DETALHE DE UMA DEMANDA — layout principal + painel lateral
      ================================================================= */
   async function abrirDetalhe(id) {
+    /* 4.79.1 (QA): endereço que não é de uma demanda (#/video/gestao, link montado sem id) consultava o banco com
+       o texto e mostrava erro técnico — agora volta para a lista com um aviso */
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ''))) {
+      B7.UI.toast('Essa demanda não existe (o link está incompleto).');
+      location.replace('#/video'); return;
+    }
     const vale = B7.Rota.marca();
     B7.Dashboard.marcarNav('#/video');
     B7.Rota.titulo(['Produção de Vídeo', 'Demanda']);

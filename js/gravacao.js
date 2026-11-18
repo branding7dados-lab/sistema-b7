@@ -119,6 +119,10 @@ B7.Gravacao = (function () {
 
   /* ========================================================= abrir */
   async function abrir(id) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ''))) {   /* 4.79.1 (QA): #/gravacao/undefined */
+      B7.UI.toast('Essa gravação não existe (o link está incompleto).');
+      location.replace('#/gravacoes'); return;
+    }
     const g0 = ++geracao, vale = B7.Rota.marca();   /* zzz234: sair da rota também invalida */
     B7.Dashboard.marcarNav('#/gravacoes');
     B7.Rota.titulo(['Gravação']);

@@ -1295,3 +1295,8 @@ body.ds-lb-aberta{overflow:hidden;}
 .ds-dr-grade > .ds-dr-campo:first-child{grid-column:1 / -1;}
 .ds-dr-grade select.campo{min-width:0;width:100%;text-overflow:ellipsis;}
 @media (max-width:520px){ .ds-dr-grade{grid-template-columns:1fr;} }
+/* 4.79.1 (QA): com a barra de seleção em lote aberta, o aviso (toast) e a dica "Primeira vez aqui?" ficavam por
+   cima dos botões dela — sobem para acima da barra */
+body:has(.dsx-lote.on) #toasts{bottom:96px;}
+body:has(.dsx-lote.on) .tr-dica{display:none;}
+@media (max-width:760px){ html body[data-shell="interno"]:has(.dsx-lote.on) #toasts{bottom:calc(170px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));} }
