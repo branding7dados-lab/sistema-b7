@@ -212,18 +212,21 @@ export async function avisosPendentes(sb: SupabaseClient): Promise<Aviso[]> {
   const amanha = new Date(Date.parse(hoje + 'T12:00:00Z') + 86400_000).toISOString().slice(0, 10);
   const [{ data: ds }, { data: ps }, { data: convs }, { data: cls }] = await Promise.all([
     sb.from('demandas_edicao').select('id, codigo, titulo, prazo, editing_status, videomaker_id, client_id').is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado,standby)').not('prazo', 'is', null).lte('prazo', amanha).gte('prazo', new Date(Date.parse(hoje + 'T12:00:00Z') - 30 * 86400_000).toISOString().slice(0, 10)).limit(200),
-    sb.from('perfis').select('id, nome'),
+    sb.from('perfis').select('id, nome, papel, funcao, estado'),
     sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).not('esperando_desde', 'is', null)
       .lt('esperando_desde', new Date(Date.now() - 2 * 3600_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 24 * 3600_000).toISOString()).limit(50),
     sb.from('clientes').select('id, nome')
   ]);
   const pessoa = new Map(((ps || []) as any[]).map(p => [p.id, p.nome]));
   const cliente = new Map(((cls || []) as any[]).map(c => [c.id, c.nome]));
+  /* 4.79.3: vídeo AGUARDANDO APROVAÇÃO está com o cliente — quem cobra é a coordenação, não o editor */
+  const coord = ((ps || []) as any[]).find(p => p.estado === 'ativa' && (p.papel === 'coordenador' || p.funcao === 'coordenador') && !/teste/i.test(p.nome || ''))?.nome || null;
   const avisos: Aviso[] = [];
   for (const d of (ds || []) as any[]) {
     const quem = pessoa.get(d.videomaker_id) || null;
     const rot = (d.codigo ? d.codigo + ' · ' : '') + String(d.titulo || '').slice(0, 60) + (cliente.get(d.client_id) ? ' (' + cliente.get(d.client_id) + ')' : '');
-    if (d.prazo < hoje) avisos.push({ chave: 'atrasada:' + d.id + ':' + hoje, linha: 'atrasada desde ' + dm(d.prazo) + ': ' + rot, marcar: quem });
+    if (d.prazo < hoje && d.editing_status === 'aguardando_aprovacao') avisos.push({ chave: 'aprovacao_parada:' + d.id + ':' + hoje, linha: 'esperando o cliente aprovar desde ' + dm(d.prazo) + ': ' + rot + ' — vale cobrar o retorno', marcar: coord });
+    else if (d.prazo < hoje) avisos.push({ chave: 'atrasada:' + d.id + ':' + hoje, linha: 'atrasada desde ' + dm(d.prazo) + ': ' + rot, marcar: quem });
     else if (d.prazo === amanha && d.editing_status === 'pendente') avisos.push({ chave: 'amanha:' + d.id, linha: 'vence amanhã e ainda não começou: ' + rot, marcar: quem });
   }
   for (const c of (convs || []) as any[]) {

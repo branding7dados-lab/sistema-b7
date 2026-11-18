@@ -2572,31 +2572,62 @@ async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
    4.70.0 — BOM DIA DA EQUIPE: dias úteis, a partir da hora da tela (padrão 8h, até 11h), no grupo da equipe.
    O que vence hoje (vídeo e design), atrasados, gravações do dia e quem espera resposta — marcando quem tem tarefa.
    ===================================================================== */
-async function dadosBomDia(sb: SupabaseClient, cfg: Config): Promise<{ texto: string; pessoas: string[] }> {
+/* 4.79.3: o bom dia escrito ficava feio (a IA escrevia "Cliente esperando resposta: X (há 1 d)" doze vezes). Agora a
+   mensagem é montada aqui, em blocos; a IA só escreve a FALA do áudio. E vídeo AGUARDANDO APROVAÇÃO não é do
+   editor: está com o cliente, quem cobra é a coordenação — então não conta como "atrasado do Kaique". */
+const DIAS_SEM = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+async function dadosBomDia(sb: SupabaseClient, cfg: Config): Promise<{ texto: string; pessoas: string[]; resumo: string }> {
   const br = new Date(Date.now() - 3 * 3600_000), hoje = br.toISOString().slice(0, 10);
   const [{ data: vids }, { data: atr }, { data: des }, { data: desAtr }, { data: gravs }, { data: esp }, { data: cls }, { data: ps }] = await Promise.all([
-    sb.from('demandas_edicao').select('codigo, titulo, client_id, videomaker_id, editing_status').eq('prazo', hoje).is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado)').limit(60),
-    sb.from('demandas_edicao').select('id', { count: 'exact', head: false }).lt('prazo', hoje).is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado,standby)').limit(200),
+    sb.from('demandas_edicao').select('codigo, titulo, client_id, videomaker_id, editing_status').eq('prazo', hoje).is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado,standby)').limit(60),
+    sb.from('demandas_edicao').select('codigo, titulo, client_id, videomaker_id, editing_status, prazo').lt('prazo', hoje).is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado,standby)').order('prazo').limit(200),
     sb.from('design_resumo').select('titulo, cliente_nome, designer_id, designer_nome, status').eq('prazo', hoje).neq('status', 'finalizado').limit(60),
-    sb.from('design_resumo').select('titulo').lt('prazo', hoje).neq('status', 'finalizado').limit(200),
+    sb.from('design_resumo').select('titulo, cliente_nome, designer_id, designer_nome').lt('prazo', hoje).neq('status', 'finalizado').limit(200),
     sb.from('gravacoes').select('nome, data_gravacao, hora_inicio, client_id, videomaker_id, situacao').eq('data_gravacao', hoje).is('deleted_at', null).is('archived_at', null).order('hora_inicio', { ascending: true, nullsFirst: false }).limit(20),
-    sb.from('wa_conversas').select('nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).eq('arquivada', false).not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - 30 * 60_000).toISOString()).order('esperando_desde').limit(12),
-    sb.from('clientes').select('id, nome'), sb.from('perfis').select('id, nome')
+    sb.from('wa_conversas').select('nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).eq('arquivada', false).not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - 30 * 60_000).toISOString()).order('esperando_desde').limit(30),
+    sb.from('clientes').select('id, nome'), sb.from('perfis').select('id, nome, papel, funcao, estado')
   ]);
   const cliente = new Map(((cls || []) as any[]).map(c => [c.id, c.nome]));
   const pessoa = new Map(((ps || []) as any[]).map(p => [p.id, p.nome]));
+  const coord = ((ps || []) as any[]).filter(p => p.estado === 'ativa' && (p.papel === 'coordenador' || p.funcao === 'coordenador') && !/teste/i.test(p.nome || '')).map(p => String(p.nome));
   const pessoas = new Set<string>();
-  const marca = (id: string | null, nome?: string | null) => { const n = (id && pessoa.get(id)) || nome || ''; if (n) pessoas.add(n); return n ? n.split(' ')[0] : 'sem responsável'; };
+  const mc = (nome?: string | null) => { if (!nome) return 'sem responsável'; pessoas.add(nome); return '@' + nome; };
+  const quem = (id: string | null, nome?: string | null) => mc((id && pessoa.get(id)) || nome || null);
+  const cod = (c: unknown) => { const d = String(c || '').replace(/[^0-9]/g, ''); return d ? '#' + Number(d) + ' ' : ''; };
+  const tit = (t: unknown) => { const x = String(t || '').trim().slice(0, 48); return x && x === x.toUpperCase() && /[A-Z]/.test(x) ? x.toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()) : x; };
+  const dm = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  const blocos: string[] = [];
   const gr = ((gravs || []) as any[]).filter(g => String(g.situacao || '') !== 'Cancelada');
-  const linhas = [
-    'HOJE: ' + br.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', timeZone: 'UTC' }),
-    'GRAVAÇÕES DE HOJE:\n' + (gr.map(g => '- ' + (g.hora_inicio ? String(g.hora_inicio).slice(0, 5) + ' ' : '') + (cliente.get(g.client_id) || g.nome || 'gravação') + (g.nome && g.nome !== cliente.get(g.client_id) ? ' (' + g.nome + ')' : '') + ' — ' + marca(g.videomaker_id)).join('\n') || '(nenhuma)'),
-    'VÍDEOS QUE VENCEM HOJE:\n' + (((vids || []) as any[]).map(v => '- ' + (v.codigo ? v.codigo + ' ' : '') + String(v.titulo || '').slice(0, 50) + ' (' + (cliente.get(v.client_id) || '') + ') — ' + marca(v.videomaker_id)).join('\n') || '(nenhum)'),
-    'DESIGN QUE VENCE HOJE:\n' + (((des || []) as any[]).map(d => '- ' + String(d.titulo || '').slice(0, 50) + ' (' + (d.cliente_nome || '') + ') — ' + marca(d.designer_id, d.designer_nome)).join('\n') || '(nenhum)'),
-    'ATRASADOS: ' + ((atr || []) as any[]).length + ' vídeo(s) e ' + ((desAtr || []) as any[]).length + ' design(s)',
-    'CLIENTES ESPERANDO RESPOSTA:\n' + (((esp || []) as any[]).map(c => '- ' + (cliente.get(c.cliente_id) || c.nome) + ' (há ' + ha(c.esperando_desde) + ')').join('\n') || '(ninguém)')
-  ];
-  return { texto: linhas.join('\n\n'), pessoas: [...pessoas] };
+  if (gr.length) blocos.push('🎬 *Gravações*\n' + gr.map(g => '• ' + (g.hora_inicio ? String(g.hora_inicio).slice(0, 5) + ' · ' : '') + (cliente.get(g.client_id) || g.nome || 'gravação') + ' — ' + quem(g.videomaker_id)).join('\n'));
+  const vh = ((vids || []) as any[]), vhEd = vh.filter(v => v.editing_status !== 'aguardando_aprovacao');
+  const dh = ((des || []) as any[]);
+  if (vhEd.length || dh.length) blocos.push('⏰ *Vence hoje*\n' + [
+    ...vhEd.map(v => '• 🎞️ ' + cod(v.codigo) + tit(v.titulo) + ' (' + (cliente.get(v.client_id) || '') + ') — ' + quem(v.videomaker_id)),
+    ...dh.map(d => '• 🎨 ' + tit(d.titulo) + ' (' + (d.cliente_nome || '') + ') — ' + quem(d.designer_id, d.designer_nome))].join('\n'));
+  const at = ((atr || []) as any[]), atEd = at.filter(v => v.editing_status !== 'aguardando_aprovacao');
+  const dat = ((desAtr || []) as any[]);
+  if (atEd.length || dat.length) {
+    const l = [...atEd.slice(0, 5).map(v => '• 🎞️ ' + cod(v.codigo) + tit(v.titulo) + ' (' + (cliente.get(v.client_id) || '') + ') — desde ' + dm(String(v.prazo)) + ' — ' + quem(v.videomaker_id)),
+      ...dat.slice(0, 3).map(d => '• 🎨 ' + tit(d.titulo) + ' (' + (d.cliente_nome || '') + ') — ' + quem(d.designer_id, d.designer_nome))];
+    const resto = Math.max(0, atEd.length - 5) + Math.max(0, dat.length - 3);
+    blocos.push('⚠️ *Atrasados*\n' + l.join('\n') + (resto ? '\n• e mais ' + resto : ''));
+  }
+  /* com o cliente: aprovação pendente — de quem cobra o retorno (coordenação), não do editor */
+  const aprov = [...vh, ...at].filter(v => v.editing_status === 'aguardando_aprovacao');
+  if (aprov.length) {
+    const porCli = new Map<string, number>(); aprov.forEach(v => { const c = cliente.get(v.client_id) || 'cliente'; porCli.set(c, (porCli.get(c) || 0) + 1); });
+    blocos.push('👀 *Aguardando aprovação do cliente*\n' + [...porCli].map(([c, n]) => '• ' + c + ': ' + n + ' vídeo' + (n === 1 ? '' : 's')).join('\n') +
+      (coord.length ? '\n' + coord.map(n => mc(n)).join(' ') + ', vale cobrar o retorno 🙏' : ''));
+  }
+  const es = ((esp || []) as any[]);
+  if (es.length) {
+    const it = es.map(c => (cliente.get(c.cliente_id) || c.nome) + ' (' + ha(c.esperando_desde) + ')');
+    blocos.push('💬 *Clientes esperando resposta* (' + es.length + ')\n' + it.slice(0, 6).join(' · ') + (it.length > 6 ? ' · e mais ' + (it.length - 6) : ''));
+  }
+  const cab = '☀️ *Agenda de hoje* — ' + DIAS_SEM[br.getUTCDay()] + ', ' + dm(hoje);
+  const texto = cab + '\n\n' + (blocos.length ? blocos.join('\n\n') : 'Nada vencendo nem atrasado hoje 🙌');
+  const resumo = [gr.length + ' gravação(ões) hoje', vhEd.length + dh.length + ' entrega(s) para hoje', atEd.length + dat.length + ' atrasado(s)', aprov.length + ' vídeo(s) aguardando aprovação do cliente', es.length + ' cliente(s) esperando resposta'].join('; ');
+  return { texto, pessoas: [...pessoas], resumo };
 }
 export async function talvezBomDia(sb: SupabaseClient, cfg: Config, forcado: boolean, destino?: string): Promise<boolean> {
   const dest = destino || cfg.grupo_equipe;
@@ -2617,17 +2648,15 @@ export async function talvezBomDia(sb: SupabaseClient, cfg: Config, forcado: boo
   /* 4.70.1: primeiro um ÁUDIO dele dando bom dia (curto, animado, com o destaque do dia);
      logo depois a MENSAGEM com as pendências do dia, marcando quem tem tarefa. */
   const r = await gerar(provedorAtual(n => Deno.env.get(n)), [
-    { role: 'system', content: 'Você é ' + (cfg.nome || 'Otto') + ', assistente da Branding7. Vai mandar o bom dia da equipe no grupo interno do WhatsApp em duas partes. Responda SÓ um JSON: ' +
-      '{"fala": "<o que você FALA no áudio: bom dia animado e natural (varie, sem clichê), em 2 a 4 frases curtas, com o destaque do dia em linguagem falada (ex.: quantas gravações e entregas tem hoje) e uma frase de incentivo. Sem listas, sem números de código, sem @, sem emoji, sem markdown.>", ' +
-      '"texto": "<a MENSAGEM escrita logo depois do áudio, só com as pendências do dia: gravações de hoje (hora, cliente, quem grava), o que vence hoje (vídeo e design, com quem), os atrasados (só o número) e quem está esperando resposta. Uma linha por item, só o que existe. Marque quem tem tarefa com @ + o nome exato da lista PESSOAS COM TAREFA, uma vez cada. Sem bom dia de novo, sem títulos com #, sem negrito em excesso. Se não tiver nada para hoje, diga em 1 frase leve.>"}. ' +
-      'Não invente nada. Não assine.' },
-    { role: 'user', content: d.texto + '\n\nPESSOAS COM TAREFA: ' + (d.pessoas.join(', ') || 'ninguém') }
-  ], { maxTokens: 900, temperatura: 0.6, json: true, prazoMs: 40000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
-  const j = r.ok ? jsonDoTexto(r.texto) : null;
-  const fala = String(j?.fala || '').trim() || 'Bom dia, equipe! Bora pra mais um dia. Já deixei aqui embaixo o que tem pra hoje.';
-  const texto = String(j?.texto || '').trim() || d.texto.split('\n\n').slice(1).join('\n\n');
+    { role: 'system', content: 'Você é ' + (cfg.nome || 'Otto') + ', da Branding7. Escreva o que você FALA num áudio curto de bom dia para a equipe no grupo do WhatsApp: ' +
+      'bom dia animado e natural (varie, sem clichê), 2 a 4 frases curtas, com o destaque do dia em linguagem falada e uma frase de incentivo, e diga que a agenda está escrita logo abaixo. ' +
+      'Sem listas, sem números de código, sem @, sem emoji, sem markdown. Não invente nada. Responda só a fala.' },
+    { role: 'user', content: 'RESUMO DO DIA: ' + d.resumo }
+  ], { maxTokens: 300, temperatura: 0.7, prazoMs: 30000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
+  const fala = (r.ok ? String(r.texto || '').trim().replace(/^["“]|["”]$/g, '') : '') || 'Bom dia, equipe! Bora pra mais um dia. Deixei aqui embaixo a agenda de hoje.';
+  const texto = d.texto;
   const foiAudio = await responderEmAudio(sb, cfg, dest, fala).catch(() => false);
-  const foi = await enviar(sb, cfg, dest, foiAudio ? texto : 'Bom dia, equipe! ☀️\n\n' + texto);
+  const foi = await enviar(sb, cfg, dest, foiAudio ? texto : texto.replace('☀️ *Agenda de hoje*', '☀️ *Bom dia, equipe! Agenda de hoje*'));
   await registrar(sb, { tipo: 'resumo', jid: dest, autor: cfg.nome, pergunta: forcado ? 'bom dia (pedido)' : 'bom dia da equipe', resposta: ((foiAudio ? '[áudio] ' + fala + '\n\n' : '') + texto).slice(0, 1500) });
   return !!foi;
 }
