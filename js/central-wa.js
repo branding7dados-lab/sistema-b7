@@ -263,9 +263,10 @@ B7.CentralWA = (function () {
     const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
     cx.innerHTML =
       '<header class="wz-cab"><button class="wz-ic wz-volta" data-wz="voltar" aria-label="Voltar">' + I.volta + '</button>' + avatar(c, 'p') +
-        '<div class="wz-cab-tx"><b>' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : esc(fone(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') + '</small></div>' +
+        '<div class="wz-cab-tx"><b class="wz-cab-nome" data-wz="renomear" title="Clique para renomear">' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : esc(fone(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') + '</small></div>' +
         '<div class="wz-cab-acoes"><button class="wz-ic wz-so-pc' + (S.lado ? ' on' : '') + '" data-wz="lado" title="Painel do cliente">' + I.lado + '</button>' +
           '<div class="menu"><button class="wz-ic" data-menu aria-label="Opções da conversa">' + I.mais + '</button><div class="lista">' +
+            '<button data-wz="renomear">' + (c.tipo === 'grupo' ? 'Renomear grupo (só no B7)' : 'Renomear contato') + '</button>' +
             '<button data-wz="fixar">' + (c.fixada ? 'Desafixar' : 'Fixar no topo') + '</button>' +
             '<button data-wz="arquivar">' + (c.arquivada ? 'Desarquivar' : 'Arquivar') + '</button>' +
             '<button data-wz="semespera">Não precisa responder</button>' +
@@ -315,6 +316,7 @@ B7.CentralWA = (function () {
     });
     cx.innerHTML = html;
     cx.querySelectorAll('[data-carregar]').forEach(el => { if (el.dataset.auto) carregarMidia(el); });
+    repintarAudios();
   }
 
   function bolha(m, grupo, seguida) {
@@ -350,7 +352,7 @@ B7.CentralWA = (function () {
       case 'video': return '<span class="wz-vid" data-carregar="video" data-id="' + id + '">' + (mini ? '<img src="' + mini + '" alt="">' : '') + '<i class="wz-play">' + I.play + '</i>' + (m.duracao ? '<em>' + mmss(m.duracao) + '</em>' : '') + '</span>';
       case 'audio': {
         const ondas = Array.from({ length: 28 }, (_, k) => '<u style="height:' + (25 + ((k * 37 + (m.id || '').charCodeAt(k % ((m.id || 'x').length)) * 13) % 70)) + '%"></u>').join('');
-        return '<span class="wz-aud" data-carregar="audio" data-id="' + id + '"><button class="wz-aud-p" aria-label="Tocar">' + I.play + '</button><span class="wz-onda">' + ondas + '</span><em>' + mmss(m.duracao) + '</em><button class="wz-aud-dl" data-baixar="' + id + '" title="Baixar o áudio" aria-label="Baixar o áudio">' + I.baixar + '</button></span>'
+        return '<span class="wz-aud" data-carregar="audio" data-id="' + id + '"><button class="wz-aud-p" aria-label="Tocar">' + I.play + '</button><span class="wz-onda">' + ondas + '</span><em>' + mmss(m.duracao) + '</em><button class="wz-aud-vel" data-vel aria-label="Velocidade do áudio" title="Velocidade">' + velTx() + '</button><button class="wz-aud-dl" data-baixar="' + id + '" title="Baixar o áudio" aria-label="Baixar o áudio">' + I.baixar + '</button></span>'
           + (m.texto ? '' : '<button class="wz-transc" data-transc="' + id + '">Transcrever</button>');
       }
       case 'documento': {
@@ -386,9 +388,8 @@ B7.CentralWA = (function () {
       else if (t === 'video') el.outerHTML = '<video class="wz-video" src="' + esc(url) + '" controls ' + (tocar ? 'autoplay' : '') + ' playsinline></video>';
       else if (t === 'doc') window.open(url, '_blank', 'noopener');
       else if (t === 'audio') {
-        let a = el.querySelector('audio');
-        if (!a) { a = new Audio(url); a.preload = 'auto'; el.appendChild(a); ligarAudio(el, a); }
-        if (tocar) a.play().catch(() => {});
+        const a = player(el.dataset.id, url);
+        if (tocar) a.play().catch(() => { B7.UI.toast('Não deu para tocar este áudio.', { tipo: 'erro' }); });
       }
       el.dataset.ok = '1';
     } catch (e) { if (tocar !== false) B7.UI.toast(e.message || 'Não deu para abrir.', { tipo: 'erro' }); }
@@ -417,15 +418,46 @@ B7.CentralWA = (function () {
     } catch (e) { B7.UI.toast(e.message || 'Não deu para baixar.', { tipo: 'erro' }); }
     finally { if (bt) bt.classList.remove('carregando'); }
   }
-  function ligarAudio(el, a) {
-    const bt = el.querySelector('.wz-aud-p'), em = el.querySelector('em'), ondas = [...el.querySelectorAll('u')];
-    const pinta = () => { const p = a.duration ? a.currentTime / a.duration : 0; ondas.forEach((u, i) => u.classList.toggle('p', i / ondas.length < p)); em.textContent = mmss(a.paused && !a.currentTime ? a.duration : a.currentTime); };
-    a.addEventListener('timeupdate', pinta);
-    a.addEventListener('play', () => { bt.innerHTML = I.pause; document.querySelectorAll('.wz-aud audio').forEach(x => { if (x !== a) x.pause(); }); });
-    a.addEventListener('pause', () => { bt.innerHTML = I.play; });
-    a.addEventListener('ended', () => { a.currentTime = 0; pinta(); });
-    el.querySelector('.wz-onda').addEventListener('click', e => { if (!a.duration) return; const r = e.currentTarget.getBoundingClientRect(); a.currentTime = a.duration * (e.clientX - r.left) / r.width; });
+  /* 4.80.3: o áudio não mora mais dentro do balão. Quando a conversa se redesenha (mensagem nova, status,
+     reação), o balão é trocado — antes o som continuava tocando num elemento que já tinha saído da tela e o
+     botão novo ficava parado em "tocar". Agora cada áudio fica guardado pelo id da mensagem e a tela é
+     repintada a partir dele, seja qual for o balão que estiver na tela. */
+  const players = new Map();
+  const VELS = [1, 1.5, 2];
+  let vel = 1; try { vel = Number(localStorage.getItem('b7.wz.vel')) || 1; if (!VELS.includes(vel)) vel = 1; } catch (_e) { /* sem armazenamento */ }
+  function velTx() { return String(vel).replace('.', ',') + '×'; }
+  function baloesDe(id) { return raiz ? [...raiz.querySelectorAll('.wz-aud[data-id="' + CSS.escape(id) + '"]')] : []; }
+  function pintarAudio(id) {
+    const a = players.get(id); if (!a) return;
+    const p = a.duration ? a.currentTime / a.duration : 0, tocando = !a.paused && !a.ended;
+    baloesDe(id).forEach(el => {
+      const bt = el.querySelector('.wz-aud-p'), em = el.querySelector('em');
+      if (bt && bt.dataset.est !== String(tocando)) { bt.dataset.est = String(tocando); bt.innerHTML = tocando ? I.pause : I.play; bt.setAttribute('aria-label', tocando ? 'Pausar' : 'Tocar'); }
+      el.classList.toggle('tocando', tocando); el.classList.toggle('esperando', tocando && a.readyState < 3);
+      el.querySelectorAll('.wz-onda u').forEach((u, i, l) => u.classList.toggle('p', i / l.length < p));
+      if (em) em.textContent = mmss(a.currentTime > 0 ? a.currentTime : a.duration);
+      el.dataset.ok = '1';
+    });
   }
+  function player(id, url) {
+    let a = players.get(id);
+    if (a) return a;
+    a = new Audio(url); a.preload = 'auto'; a.playbackRate = vel;
+    const pinta = () => pintarAudio(id);
+    ['timeupdate', 'play', 'playing', 'pause', 'waiting', 'loadedmetadata', 'canplay'].forEach(ev => a.addEventListener(ev, pinta));
+    a.addEventListener('play', () => { a.playbackRate = vel; players.forEach((x, k) => { if (k !== id && !x.paused) x.pause(); }); });
+    a.addEventListener('ended', () => { a.currentTime = 0; pinta(); });
+    players.set(id, a);
+    return a;
+  }
+  function trocarVelocidade() {
+    vel = VELS[(VELS.indexOf(vel) + 1) % VELS.length];
+    try { localStorage.setItem('b7.wz.vel', String(vel)); } catch (_e) { /* sem armazenamento */ }
+    players.forEach(a => { a.playbackRate = vel; });
+    if (raiz) raiz.querySelectorAll('.wz-aud-vel').forEach(b => { b.textContent = velTx(); });
+  }
+  /* depois de redesenhar a conversa, os balões novos pegam o estado do áudio que já está tocando */
+  function repintarAudios() { players.forEach((_a, id) => pintarAudio(id)); }
 
   /* ------------------------------------------------------------ cliques */
   /* 4.52.2: os menus do sistema (⋮, anexar, emoji) são "soltos" no body para não
@@ -454,7 +486,16 @@ B7.CentralWA = (function () {
     const f = e.target.closest('[data-filtro]'); if (f) { S.filtro = f.dataset.filtro; pintarFiltros(); pintarLista(); return; }
     const em = e.target.closest('[data-emoji]'); if (em) { const t = raiz.querySelector('#wz-texto'); if (t) { t.setRangeText(em.dataset.emoji, t.selectionStart, t.selectionEnd, 'end'); t.focus(); t.dispatchEvent(new Event('input')); } B7.UI.fecharMenus && B7.UI.fecharMenus(); return; }
     const md = e.target.closest('[data-carregar]');
-    if (md) { if (md.dataset.carregar === 'audio' && md.querySelector('audio')) { const a = md.querySelector('audio'); if (e.target.closest('.wz-aud-p')) (a.paused ? a.play() : a.pause()); return; } if (md.dataset.carregar === 'img' && md.dataset.ok) { const im = md.querySelector('img[data-zoom]'); if (im) previa(md.dataset.id, im.dataset.zoom); return; } return carregarMidia(md, true); }
+    if (md && md.dataset.carregar === 'audio') {
+      if (e.target.closest('[data-vel]')) return trocarVelocidade();
+      const a = players.get(md.dataset.id);
+      if (!a) return carregarMidia(md, true);
+      const onda = e.target.closest('.wz-onda');
+      if (onda) { if (a.duration) { const r = onda.getBoundingClientRect(); a.currentTime = a.duration * Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); if (a.paused) a.play().catch(() => {}); } return; }
+      if (a.paused) a.play().catch(() => {}); else a.pause();
+      return;
+    }
+    if (md) { if (md.dataset.carregar === 'img' && md.dataset.ok) { const im = md.querySelector('img[data-zoom]'); if (im) previa(md.dataset.id, im.dataset.zoom); return; } return carregarMidia(md, true); }
     const mn = e.target.closest('[data-men]'); if (mn) { escolherMencao(mn.dataset.men); return; }
     const tr = e.target.closest('[data-transc]');
     if (tr) {
@@ -499,6 +540,18 @@ B7.CentralWA = (function () {
     if (a === 'arquivar') { c.arquivada = !c.arquivada; await marcar('arquivada', c.arquivada); B7.UI.toast(c.arquivada ? 'Conversa arquivada.' : 'Conversa de volta à lista.'); }
     if (a === 'semespera') { c.esperando_desde = null; c.aguardando_cliente_desde = null; c.vez = 'ninguem'; c.vez_motivo = 'Marcado pela equipe como respondido'; await marcar('sem_espera'); }
     if (a === 'vincular') return vincularCliente(c);
+    if (a === 'renomear') {
+      /* 4.80.3: dar nome a quem chega sem nome ("." ou só o número). Fica fixo: o WhatsApp não troca de volta. */
+      const novo = await B7.UI.perguntar({ titulo: c.tipo === 'grupo' ? 'Renomear grupo' : 'Renomear contato',
+        rotulo: (c.tipo === 'grupo' ? 'O nome muda só aqui no B7 (o grupo no WhatsApp continua igual).' : 'Número: ' + fone(c.jid) + '. O nome vale aqui no B7 e para o Otto.') + ' Deixe vazio para voltar ao nome do WhatsApp.',
+        placeholder: 'Ex.: Ana — Mercato', valor: c.nome && !/^\+?\d+$/.test(c.nome) && /[\p{L}\p{N}]/u.test(c.nome) ? c.nome : '', confirmar: 'Salvar' });
+      if (novo == null) return;
+      const { error } = await sb().rpc('wa_conversa_marcar', { p_jid: c.jid, p_campo: 'nome', p_valor: novo.replace(/\s+/g, ' ').slice(0, 80) });
+      if (error) { B7.UI.toast('Não deu para renomear.', { tipo: 'erro' }); return; }
+      if (novo) { c.nome = novo.replace(/\s+/g, ' ').slice(0, 80); c.nome_fixo = true; S.msgs && S.msgs.forEach(m => { if (m.autor_jid === c.jid && !m.de_mim) m.autor_nome = c.nome; }); }
+      else { c.nome_fixo = false; if (c.tipo !== 'grupo') c.nome = num(c.jid); }
+      B7.UI.toast(novo ? 'Nome salvo.' : 'Voltou ao nome do WhatsApp.');
+    }
     pintarLista(); pintarFiltros(); pintarChat(); pintarMensagens();
   }
 

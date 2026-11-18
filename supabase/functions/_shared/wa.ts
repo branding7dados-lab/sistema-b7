@@ -174,12 +174,13 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
   if (/@lid$/.test(String(raw?.key?.remoteJid || ''))) l.jid = await jidCanonico(sb, raw.key);
   const jid = String(l.jid);
   /* 4.53.1: sem pushName (código @lid) — usa o nome já conhecido do contato */
-  if (!l.de_mim && l.autor_jid && /^\+?\d+$/.test(String(l.autor_nome || ''))) {
-    const { data: ct } = await sb.from('wa_contatos').select('nome').eq('jid', String(l.autor_jid)).maybeSingle();
-    if (ct?.nome && !/^\+?\d+$/.test(ct.nome)) l.autor_nome = ct.nome;
-  }
-  if (!l.de_mim && l.autor_jid && raw.pushName && raw.pushName !== 'Você') {
-    await sb.from('wa_contatos').upsert({ jid: String(l.autor_jid), nome: String(raw.pushName), atualizado_em: new Date().toISOString() });
+  /* 4.80.3: nome dado pela equipe na Central (nome_fixo) vale sobre o do WhatsApp; nome sem letra nem número (".") não conta */
+  const semNome = (n: unknown) => !n || /^\+?\d+$/.test(String(n)) || !/[\p{L}\p{N}]/u.test(String(n));
+  if (!l.de_mim && l.autor_jid) {
+    const { data: ct } = await sb.from('wa_contatos').select('nome, nome_fixo').eq('jid', String(l.autor_jid)).maybeSingle();
+    if (ct?.nome && (ct.nome_fixo || semNome(l.autor_nome)) && !semNome(ct.nome)) l.autor_nome = ct.nome;
+    if (!ct?.nome_fixo && raw.pushName && raw.pushName !== 'Você' && !semNome(raw.pushName))
+      await sb.from('wa_contatos').upsert({ jid: String(l.autor_jid), nome: String(raw.pushName), atualizado_em: new Date().toISOString() });
   }
   await garantirConversa(sb, jid, l.de_mim ? null : (ehGrupo(jid) ? null : String(raw.pushName || '')));
   const { data: ja } = await sb.from('wa_mensagens').select('id, enviada_por, midia_path, status').eq('id', l.id).maybeSingle();
@@ -240,7 +241,8 @@ async function aplicarEfeito(sb: SupabaseClient, jid: string, e: { tipo: string;
 
 /** cria a conversa se não existir; nome do grupo vem do Evolution; liga ao cliente pelo nome do grupo */
 export async function garantirConversa(sb: SupabaseClient, jid: string, nomeContato: string | null, nomeGrupo?: string | null, foto?: string | null) {
-  const { data: c } = await sb.from('wa_conversas').select('jid, nome, cliente_id, foto_url').eq('jid', jid).maybeSingle();
+  const { data: c } = await sb.from('wa_conversas').select('jid, nome, nome_fixo, cliente_id, foto_url').eq('jid', jid).maybeSingle();
+  const semNome = (n: unknown) => !n || /^\+?\d+$/.test(String(n)) || !/[\p{L}\p{N}]/u.test(String(n));
   const grupo = ehGrupo(jid);
   let nome = c?.nome || null;
   if (grupo && (nomeGrupo || !nome)) {
@@ -252,12 +254,13 @@ export async function garantirConversa(sb: SupabaseClient, jid: string, nomeCont
       } catch (_e) { /* fica sem nome por ora */ }
     }
   }
-  if (!grupo && !nome && nomeContato && nomeContato !== 'Você') nome = nomeContato;
-  if (!grupo && (!nome || /^\+?\d+$/.test(nome))) {
+  if (!grupo && semNome(nome) && !semNome(nomeContato) && nomeContato !== 'Você') nome = nomeContato;
+  if (!grupo && semNome(nome)) {
     /* 4.52.6: conversa começada por nós (sem pushName) — usa o nome guardado do contato */
     const { data: ct } = await sb.from('wa_contatos').select('nome').eq('jid', jid).maybeSingle();
-    if (ct?.nome && !/^\+?\d+$/.test(ct.nome)) nome = ct.nome;
+    if (ct?.nome && !semNome(ct.nome)) nome = ct.nome;
   }
+  if (c?.nome_fixo) nome = c.nome;   /* 4.80.3: renomeado pela equipe — o WhatsApp não troca */
   let cliente = c?.cliente_id || null;
   if (!cliente && grupo && nome) {
     const { data: g } = await sb.from('whatsapp_grupos').select('cliente_id').eq('nome', nome).eq('ignorar', false).not('cliente_id', 'is', null).maybeSingle();

@@ -418,3 +418,15 @@ html[data-theme="dark"] .wz-b.eu{background:linear-gradient(135deg,color-mix(in 
 @keyframes wzGiraIA{to{transform:rotate(360deg);}}
 .wz-comp textarea.ia-pensando{opacity:.6;}
 @media (prefers-reduced-motion:reduce){ .wz-ia-gira{animation:none;} }
+
+/* 4.80.3: velocidade do áudio e "carregando" no botão de tocar */
+.wz-aud-vel{flex:none;min-width:34px;height:22px;padding:0 7px;border:0;border-radius:11px;font:700 11px/22px inherit;cursor:pointer;
+  background:color-mix(in srgb,var(--ink) 9%,transparent);color:var(--ink-2);transition:background .15s,color .15s;}
+.wz-aud-vel:hover{background:color-mix(in srgb,var(--acento) 18%,transparent);color:var(--acento);}
+.wz-b.eu .wz-aud-vel{background:rgba(255,255,255,.16);color:inherit;}
+.wz-aud.carregando .wz-aud-p,.wz-aud.esperando .wz-aud-p{position:relative;}
+.wz-aud.carregando .wz-aud-p::after,.wz-aud.esperando .wz-aud-p::after{content:"";position:absolute;inset:-3px;border-radius:50%;
+  border:2px solid transparent;border-top-color:var(--sb-luz1);animation:wz-gira .8s linear infinite;}
+@keyframes wz-gira{to{transform:rotate(360deg)}}
+.wz-cab-nome{cursor:pointer;}
+.wz-cab-nome:hover{text-decoration:underline dotted;text-underline-offset:3px;}

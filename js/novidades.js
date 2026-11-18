@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.80.3', versao: '4.80.3', em: '2026-11-18T11:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Áudios mais firmes, velocidade e renomear contato',
+    itens: ['Áudio na Central: o botão mostra de verdade se está tocando ou pausado (mesmo quando chega mensagem nova), gira enquanto carrega e dá para pular tocando na onda.',
+      'Botão de velocidade em cada áudio: 1×, 1,5× e 2×. A escolha fica guardada para os próximos.',
+      'Renomear contato: no ⋮ da conversa (ou clicando no nome no topo), dê um nome a quem chega sem nome. O WhatsApp não troca de volta e o Otto passa a chamar a pessoa por esse nome.'] },
   { id: 'v-4.80.1', versao: '4.80.1', em: '2026-11-18T10:00:00-03:00', rota: 'whatsapp',
     titulo: 'O Otto entende de quem é a vez de responder',
     itens: ['Depois que a conversa de um cliente para, o Otto lê as últimas mensagens e decide: o cliente espera a gente, a gente espera o cliente, ou ninguém (quando o cliente só deu "ok", agradeceu ou mandou bom dia).',

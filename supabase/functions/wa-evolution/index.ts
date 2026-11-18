@@ -177,7 +177,13 @@ async function importar(pagina: number) {
     const { data: faltam } = await sb.from('wa_mensagens').select('id').in('id', comMidia).is('midia_raw', null);
     for (const f of faltam || []) await sb.from('wa_mensagens').update({ midia_raw: linhas.get(f.id)!.midia_raw }).eq('id', f.id);
   }
-  if (autores.size) await sb.from('wa_contatos').upsert([...autores].map(([jid, nome]) => ({ jid, nome, atualizado_em: new Date().toISOString() })));
+  if (autores.size) {
+    /* 4.80.3: não passa por cima do nome que a equipe deu na Central */
+    const { data: fixos } = await sb.from('wa_contatos').select('jid').in('jid', [...autores.keys()]).eq('nome_fixo', true);
+    const pula = new Set((fixos || []).map((f: any) => f.jid));
+    const novosNomes = [...autores].filter(([jid]) => !pula.has(jid));
+    if (novosNomes.length) await sb.from('wa_contatos').upsert(novosNomes.map(([jid, nome]) => ({ jid, nome, atualizado_em: new Date().toISOString() })));
+  }
   await sb.rpc('wa_nomes_aplicar');
   await sb.rpc('wa_unir_lids');
   const ultima = new Map<string, Linha>();
