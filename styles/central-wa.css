@@ -442,8 +442,8 @@ html[data-theme="dark"] .wz-b.eu{background:linear-gradient(135deg,color-mix(in 
 .wz-aud-mic{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;
   background:var(--card);color:var(--sb-luz2);box-shadow:0 0 0 2px var(--card);}
 .wz-aud-mic svg{width:11px;height:11px;}
-.wz-b.eu .wz-aud-p{background:#fff;color:var(--sb-luz1);box-shadow:0 8px 18px -10px rgba(0,0,0,.5);}
-.wz-b.eu .wz-aud-mic{background:var(--sb-luz1);color:#fff;box-shadow:0 0 0 2px #fff;}
+html[data-theme="dark"] .wz-b.eu .wz-aud-p{background:#fff;color:var(--sb-luz1);box-shadow:0 8px 18px -10px rgba(0,0,0,.5);}
+html[data-theme="dark"] .wz-b.eu .wz-aud-mic{background:var(--sb-luz1);color:#fff;box-shadow:0 0 0 2px #fff;}
 .wz-aud-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
 .wz-aud .wz-onda{position:relative;height:30px;gap:2.5px;--p:0%;}
 .wz-aud .wz-onda u{flex:1;min-width:2px;border-radius:3px;background:color-mix(in srgb,var(--ink-3) 38%,transparent);transition:background .15s;}
@@ -451,12 +451,12 @@ html[data-theme="dark"] .wz-b.eu{background:linear-gradient(135deg,color-mix(in 
 .wz-aud-pino{position:absolute;top:50%;left:var(--p);width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;
   background:var(--sb-luz2);box-shadow:0 0 0 3px color-mix(in srgb,var(--sb-luz2) 28%,transparent);opacity:0;transition:opacity .15s;pointer-events:none;}
 .wz-aud.tocando .wz-aud-pino,.wz-aud[data-ok] .wz-onda:hover .wz-aud-pino{opacity:1;}
-.wz-b.eu .wz-aud .wz-onda u{background:rgba(255,255,255,.38);}
-.wz-b.eu .wz-aud .wz-onda u.p{background:#fff;}
-.wz-b.eu .wz-aud-pino{background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.3);}
+html[data-theme="dark"] .wz-b.eu .wz-aud .wz-onda u{background:rgba(255,255,255,.38);}
+html[data-theme="dark"] .wz-b.eu .wz-aud .wz-onda u.p{background:#fff;}
+html[data-theme="dark"] .wz-b.eu .wz-aud-pino{background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.3);}
 .wz-aud-pe{display:flex;align-items:center;gap:8px;}
 .wz-aud-pe em{min-width:0;font:650 11.5px/1 inherit;font-style:normal;font-variant-numeric:tabular-nums;color:var(--ink-3);}
-.wz-b.eu .wz-aud-pe em{color:rgba(255,255,255,.8);}
+html[data-theme="dark"] .wz-b.eu .wz-aud-pe em{color:rgba(255,255,255,.8);}
 .wz-aud-pe .wz-aud-vel{height:20px;min-width:0;padding:0 7px;font-size:10.5px;line-height:20px;}
 .wz-aud-pe .wz-transc{margin:0 0 0 auto;padding:2px 9px;font-size:11px;}
 .wz-aud.tocando .wz-aud-p{animation:wzAudPulso 1.6s ease-in-out infinite;}
@@ -464,13 +464,13 @@ html[data-theme="dark"] .wz-b.eu{background:linear-gradient(135deg,color-mix(in 
 @media (prefers-reduced-motion:reduce){ .wz-aud.tocando .wz-aud-p{animation:none;} }
 
 .wz-tr{display:block;margin:8px 0 2px;padding:8px 10px 9px;border-radius:12px;background:color-mix(in srgb,var(--ink) 5%,transparent);border-left:3px solid color-mix(in srgb,var(--sb-luz2) 55%,transparent);}
-.wz-b.eu .wz-tr{background:rgba(255,255,255,.12);border-left-color:rgba(255,255,255,.55);}
+html[data-theme="dark"] .wz-b.eu .wz-tr{background:rgba(255,255,255,.12);border-left-color:rgba(255,255,255,.55);}
 .wz-tr-rot{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:10.5px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;opacity:.65;}
 .wz-tr-rot svg{width:12px;height:12px;}
 .wz-tr-t{display:block;font-size:13.5px;line-height:1.5;white-space:pre-wrap;}
 .wz-tr.longa:not(.aberta) .wz-tr-t{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .wz-tr-mais{margin-top:3px;padding:0;border:0;background:none;color:var(--sb-luz2);font:700 12px/1.4 inherit;cursor:pointer;}
-.wz-b.eu .wz-tr-mais{color:#fff;text-decoration:underline;}
+html[data-theme="dark"] .wz-b.eu .wz-tr-mais{color:#fff;text-decoration:underline;}
 .wz-aud .wz-onda{flex:none;}
 .wz-aud-pe{flex-wrap:wrap;row-gap:4px;}
 .wz-aud{width:300px;max-width:100%;box-sizing:border-box;}
@@ -493,3 +493,16 @@ html[data-theme="dark"] .wz-b.eu{background:linear-gradient(135deg,color-mix(in 
 .wz-fa img{border-radius:50%;}
 .wz-b:has(.wz-aud){width:min(380px,100%);box-sizing:border-box;}
 .wz-b:has(.wz-aud) .wz-aud{width:100%;}
+
+/* 4.82.1: caixa de escrever — as mensagens não aparecem mais por baixo dela (somem num degradê antes da caixa)
+   e ícones, texto e microfone alinhados no meio, mais juntos */
+@media (min-width:761px){
+  .wz-msgs{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 104px),transparent calc(100% - 78px));
+           mask-image:linear-gradient(to bottom,#000 calc(100% - 104px),transparent calc(100% - 78px));}
+}
+.wz-comp{align-items:center;gap:2px;padding:6px 6px 6px 8px;}
+.wz-comp > .menu > .wz-ic,.wz-comp > .wz-ic{width:36px;height:36px;border-radius:12px;}
+.wz-comp > .wz-ia{margin-right:4px;}
+.wz-comp textarea{align-self:center;padding:9px 10px;margin:0 6px 0 2px;}
+.wz-comp .wz-env{width:42px;height:42px;margin-left:auto;}
+.wz-comp .wz-env svg{width:19px;height:19px;}
