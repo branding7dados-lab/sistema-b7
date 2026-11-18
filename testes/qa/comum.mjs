@@ -103,7 +103,8 @@ export async function ir(pg, rota, espera = 600) {
   await pg.waitForTimeout(espera);
   await pg.waitForFunction(() => {
     const p = document.querySelector('#painel-dashboard, main') || document.body;
-    const carregando = p.querySelector('[class*="skel"], [class*="esquel"], .esq, .carregando, [aria-busy="true"]');
+    /* só o que está VISÍVEL e é de fato "carregando" (a seta .kb-seta.esq do Kanban não é) */
+    const carregando = [...p.querySelectorAll('[class*="skel"], [class*="esquel"], .esq.esq-linha, .esq.esq-titulo, .carregando, [aria-busy="true"]')].some(e => e.offsetParent !== null);
     return !carregando && (p.innerText || '').trim().length > 10;
   }, null, { timeout: 15000 }).catch(() => {});
   await pg.waitForTimeout(500);
