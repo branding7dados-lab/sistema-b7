@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.81.1', versao: '4.81.1', em: '2026-11-18T15:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Fotinha de quem fala nos grupos',
+    itens: ['Nas conversas em grupo, cada mensagem mostra a foto de perfil de quem escreveu (ou as iniciais, quando a pessoa não tem foto), como no WhatsApp.',
+      'Nos áudios de outras pessoas, a foto de quem gravou aparece ao lado da onda.'] },
   { id: 'v-4.81.0', versao: '4.81.0', em: '2026-11-18T14:30:00-03:00', rota: 'whatsapp',
     titulo: 'Configurações do WhatsApp, respostas rápidas e áudio novo',
     itens: ['Engrenagem ⚙️ no topo das Conversas: abre as Configurações do WhatsApp — sua assinatura, Enter envia, velocidade dos áudios e os textos prontos do “Enviar no WhatsApp”.',

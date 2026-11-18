@@ -131,8 +131,11 @@ B7.CentralWA = (function () {
 
   async function carregarContatos() {
     try {
-      const { data } = await sb().from('wa_contatos').select('jid,nome').not('nome', 'is', null).limit(5000);
-      S.contatos = new Map((data || []).map(x => [x.jid, x.nome]));
+      const { data } = await sb().from('wa_contatos').select('jid,nome,foto_url').limit(5000);
+      S.contatos = new Map((data || []).filter(x => x.nome).map(x => [x.jid, x.nome]));
+      /* 4.81.1: foto de perfil de quem fala nos grupos */
+      S.fotos = new Map((data || []).filter(x => x.foto_url).map(x => [x.jid, x.foto_url]));
+      if (S.aberta && /@g\.us$/.test(S.aberta)) pintarMensagens();
     } catch (e) { S.contatos = S.contatos || new Map(); }
   }
   /* admin: nomes e fotos dos contatos, no máximo a cada 6 h (4.58.6: as fotos vencem) */
@@ -337,6 +340,15 @@ B7.CentralWA = (function () {
     return '<span class="wz-tr' + (t.length > 170 ? ' longa' : '') + '"><span class="wz-tr-rot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h10M4 18h7"/></svg>Transcrição</span>' +
       '<span class="wz-tr-t">' + textoRico(t) + '</span>' + (t.length > 170 ? '<button type="button" class="wz-tr-mais" data-tr-mais>Ler tudo</button>' : '') + '</span>';
   }
+  /* 4.81.1: fotinha de quem fala no grupo (foto do WhatsApp; sem foto, as iniciais na cor da pessoa) */
+  function fotoAutor(m, cls) {
+    const nome = m.autor_nome || num(m.autor_jid), foto = S.fotos && S.fotos.get(m.autor_jid);
+    return '<span class="wz-fa ' + (cls || '') + '" style="--c:' + corDe(m.autor_nome || m.autor_jid) + '" title="' + esc(nome) + '">' + (foto ? '<img src="' + esc(foto) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(ini(nome)) + '</b></span>';
+  }
+  function fotoConversa(jid) {
+    const c = S.porJid && S.porJid.get(jid); if (!c) return '';
+    return '<span class="wz-fa aud" style="--c:' + corDe(c.nome) + '">' + (c.foto_url ? '<img src="' + esc(c.foto_url) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(ini(c.nome)) + '</b></span>';
+  }
   function bolha(m, grupo, seguida) {
     if (m.nota) return '<div class="wz-nota" data-id="' + esc(m.id) + '">🔒 <b>Nota interna</b> · ' + esc(m.enviada_por_nome || '') + ' · ' + hm(m.criada_em) + '<br>' + textoRico(m.texto) + '</div>';
     const lado = m.de_mim ? 'eu' : 'ele';
@@ -356,7 +368,8 @@ B7.CentralWA = (function () {
     const quem = m.de_mim && m.enviada_por_nome ? '<span class="wz-quem">' + esc(m.enviada_por_nome.split(' ')[0]) + '</span>' : '';
     /* 4.66.3: a bolinha de reações abre quem reagiu (e deixa tirar a sua) */
     const reac = m.reacoes && Object.keys(m.reacoes).length ? '<button type="button" class="wz-reac' + (Object.values(m.reacoes).some(l => l.includes('eu')) ? ' minha' : '') + '" data-acao-msg="reacoes" title="Ver quem reagiu">' + Object.entries(m.reacoes).map(([e, l]) => e + (l.length > 1 ? ' ' + l.length : '')).join(' ') + '</button>' : '';
-    return '<div class="wz-b ' + lado + (seguida ? ' seg' : '') + (m.tipo === 'figurinha' ? ' fig' : '') + '" data-id="' + esc(m.id) + '">' + autor + corpo +
+    const gr = grupo && !m.de_mim;
+    return '<div class="wz-b ' + lado + (seguida ? ' seg' : '') + (gr ? ' gr' : '') + (m.tipo === 'figurinha' ? ' fig' : '') + '" data-id="' + esc(m.id) + '">' + (gr && !seguida ? fotoAutor(m) : '') + autor + corpo +
       '<span class="wz-h">' + quem + (m.editada ? 'editada · ' : '') + hm(m.criada_em) + (m.de_mim ? ticks(m.status) : '') + '</span>' + reac +
       (m.apagada ? '' : '<span class="wz-b-acoes"><button data-acao-msg="citar" title="Responder">' + I.resp + '</button><button data-acao-msg="reagir" title="Reagir">😊</button>' + (/^(imagem|video|audio|documento|figurinha)$/.test(m.tipo) ? '<button data-baixar="' + esc(m.id) + '" title="Baixar">' + I.baixar + '</button>' : '') + (m.de_mim && m.tipo === 'texto' && !m.nota && Date.now() - new Date(m.criada_em).getTime() < 15 * 60e3 ? '<button data-acao-msg="editar" title="Editar">✏️</button>' : '') + (m.de_mim ? '<button data-acao-msg="apagar" title="Apagar para todos">' + I.lixo + '</button>' : '') + '</span>') +
       '</div>';
@@ -375,7 +388,8 @@ B7.CentralWA = (function () {
           '<button class="wz-aud-p" aria-label="Tocar">' + I.play + '<i class="wz-aud-mic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 17v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></i></button>' +
           '<span class="wz-aud-m"><span class="wz-onda">' + ondasDe(m.id) + '<i class="wz-aud-pino"></i></span>' +
           '<span class="wz-aud-pe"><em>' + mmss(m.duracao) + '</em><button class="wz-aud-vel" data-vel aria-label="Velocidade do áudio" title="Velocidade">' + velTx() + '</button>' +
-          (m.texto ? '' : '<button class="wz-transc" data-transc="' + id + '">Transcrever</button>') + '</span></span></span>';
+          (m.texto ? '' : '<button class="wz-transc" data-transc="' + id + '">Transcrever</button>') + '</span></span>' +
+          (!m.de_mim ? (m.autor_jid ? fotoAutor(m, 'aud') : fotoConversa(m.jid)) : '') + '</span>';
       }
       case 'documento': {
         const ext = String(m.midia_nome || '').split('.').pop().slice(0, 4).toUpperCase() || 'DOC';
